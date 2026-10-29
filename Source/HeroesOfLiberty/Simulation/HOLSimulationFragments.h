@@ -474,6 +474,12 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 
 	EHOLCombatMode Mode = EHOLCombatMode::Normal;
 
+	/**
+	 * J8b.2: its level (the hero's, from his XP, set by UHOLHeroSubsystem at each step's end; 1 for every troop): its attack
+	 * and its maximum health grow with it (HOLCombat::GetDamage, GetMaxHealth). In the padding before DeathStep.
+	 */
+	uint8 Level = 1;
+
 	/** On an attack-move, a fight took it off its way (J7b.3): once no enemy is left, it walks on to AttackMoveGoal. */
 	bool bAttackMoveDetour = false;
 

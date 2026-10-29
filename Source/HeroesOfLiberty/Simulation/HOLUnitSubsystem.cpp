@@ -1017,9 +1017,11 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
 			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
 			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
-			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(Constants->MaxHealth);
+			// J8b.2: the maximum at its level (the hero's grows).
+			const int32 MaxHealth = HOLCombat::GetMaxHealth(*Constants, Combat ? Combat->Level : 1);
+			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(MaxHealth);
 			OutView.Health = HOLCombat::GetShownHealth(State->CurrentHealth);
-			OutView.MaxHealth = Constants->MaxHealth;
+			OutView.MaxHealth = MaxHealth;
 			OutView.bHealthExact = true;
 		}
 		return true;

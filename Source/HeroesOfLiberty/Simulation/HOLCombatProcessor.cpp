@@ -1908,7 +1908,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants);
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level);
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

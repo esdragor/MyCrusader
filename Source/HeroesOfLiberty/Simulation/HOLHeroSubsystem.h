@@ -8,6 +8,9 @@
 #include "HOLHeroSubsystem.generated.h"
 
 class AHOLPlayerState;
+struct FHOLCombatFragment;
+struct FHOLUnitStateFragment;
+struct FHOLUnitTypeConstants;
 
 /** J8a.4: a simulation step's end, the hero sheets already written (Step: UHOLSimulationSubsystem::GetStepIndex). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHOLOnHeroStep, int32, Step);
@@ -81,6 +84,8 @@ private:
 	void OnStepEnded(int64 StepIndex);
 	/** The slot's copies (game state, player state), each written only when it changed. */
 	void WriteCopies(int32 Slot) const;
+	/** J8b.2: his body brought to the level of his XP (attack, max health; the HP gained added), alive only. */
+	void ApplyLevel(int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const;
 	void UnbindSteps();
 
 	/** One per slot (FHOLMatchConfig::MaxSlots). */

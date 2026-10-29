@@ -1,8 +1,13 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Engine/DataTable.h"
 #include "Match/HOLResources.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroSheet.h"
 #include "Simulation/HOLHeroXPRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -12,6 +17,12 @@ namespace UE::HeroesOfLiberty::Tests::HeroXP
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	constexpr float Tolerance = 1.e-3f;
+
+	const FHOLUnitTypeRow* FindRow(const TCHAR* Name)
+	{
+		const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+		return UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(Name, TEXT("Hero XP test"), false) : nullptr;
+	}
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPSourcesTest, "HeroesOfLiberty.HeroXP.Sources", UE::HeroesOfLiberty::Tests::HeroXP::Flags)
@@ -118,6 +129,51 @@ bool FHOLHeroXPStatsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Full at 450, level 1 -> 2: full at 486"), GetHealthAfterLevelUp(450.f, 450.f, 1, 2), 486.f, Tolerance);
 	TestEqual(TEXT("Two levels at once, 2 -> 4 from 100: 172"), GetHealthAfterLevelUp(100.f, 450.f, 2, 4), 172.f, Tolerance);
 	TestEqual(TEXT("Dead stays dead (0)"), GetHealthAfterLevelUp(0.f, 450.f, 1, 2), 0.f, Tolerance);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPChainTest, "HeroesOfLiberty.HeroXP.Chain", UE::HeroesOfLiberty::Tests::HeroXP::Flags)
+
+bool FHOLHeroXPChainTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::HeroXP;
+	// J8b.2: the level reaches the real chain, the table's Hero and Man-at-arms (J8b-Q3).
+	const FHOLUnitTypeRow* HeroRow = FindRow(TEXT("Hero"));
+	const FHOLUnitTypeRow* ManAtArmsRow = FindRow(TEXT("ManAtArms"));
+	if (!TestNotNull(TEXT("The table has a Hero"), HeroRow) || !TestNotNull(TEXT("... a Man-at-arms"), ManAtArmsRow))
+	{
+		return false;
+	}
+	const FHOLUnitTypeConstants Hero = HeroRow->ToConstants(TEXT("Hero"));
+	const FHOLUnitTypeConstants ManAtArms = ManAtArmsRow->ToConstants(TEXT("ManAtArms"));
+	const float Level1 = HOLCombat::GetDamage(Hero, ManAtArms);
+	TestEqual(TEXT("Level 1 hit unchanged by the level (1 by default)"), HOLCombat::GetDamage(Hero, ManAtArms, 1), Level1, Tolerance);
+	TestEqual(TEXT("Level 2: +2.4 (30 -> 32.4)"), HOLCombat::GetDamage(Hero, ManAtArms, 2), Level1 + 2.4f, Tolerance);
+	TestEqual(TEXT("Level 6: +12 (30 -> 42)"), HOLCombat::GetDamage(Hero, ManAtArms, 6), Level1 + 12.f, Tolerance);
+	TestEqual(TEXT("A troop's hit on him does not depend on his level"), HOLCombat::GetDamage(ManAtArms, Hero, 1),
+		static_cast<float>(FMath::Max(ManAtArms.Attack - HOLCombat::GetArmor(Hero, ManAtArms.AttackType), 1)) * 0.3f, Tolerance);
+
+	TestEqual(TEXT("Max health level 1: 450"), HOLCombat::GetMaxHealth(Hero, 1), 450);
+	TestEqual(TEXT("... level 2: 486"), HOLCombat::GetMaxHealth(Hero, 2), 486);
+	TestEqual(TEXT("... level 6: 630"), HOLCombat::GetMaxHealth(Hero, 6), 630);
+	TestEqual(TEXT("A troop at level 1: its table's"), HOLCombat::GetMaxHealth(ManAtArms, 1), ManAtArms.MaxHealth);
+
+	// The sheet's level comes from the XP (J8b-Q2).
+	FHOLHeroSheets Previous;
+	Previous.Public.State = EHOLHeroState::Alive;
+	Previous.Public.Level = 1;
+	Previous.Private.XP = 600;
+	FHOLHeroFacts Facts;
+	Facts.bPresent = true;
+	Facts.Health = 400.f;
+	TestEqual(TEXT("Alive with 600 XP: level 3"), static_cast<int32>(HOLHeroSheet::Make(Facts, Previous).Public.Level), 3);
+	Facts.DeathStep = 10;
+	TestEqual(TEXT("Dying with 600 XP: level 3"), static_cast<int32>(HOLHeroSheet::Make(Facts, Previous).Public.Level), 3);
+	// His body gone, dead: the XP of development still raises him (D06).
+	Previous.Public.State = EHOLHeroState::Dead;
+	Previous.Private.XP = 1300;
+	TestEqual(TEXT("Dead, body gone, 1 300 XP: level 4"), static_cast<int32>(HOLHeroSheet::Make(FHOLHeroFacts(), Previous).Public.Level), 4);
+	TestEqual(TEXT("No hero ever: level 0"), static_cast<int32>(HOLHeroSheet::Make(FHOLHeroFacts(), FHOLHeroSheets()).Public.Level), 0);
 	return true;
 }
 
