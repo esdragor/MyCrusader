@@ -129,6 +129,9 @@ public:
 
 	int32 GetNumObservers() const { return Observers.Num(); }
 
+	/** D389 (« Carte explorée »): every cell of Camp explored from the start; in sight still only around its observers. */
+	void ExploreAll(int32 Camp);
+
 	/** Observers of Camp seeing Cell (0 out of the grid). */
 	int32 GetCount(int32 Camp, const FIntPoint& Cell) const;
 

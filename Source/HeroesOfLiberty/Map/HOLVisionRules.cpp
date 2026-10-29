@@ -222,6 +222,17 @@ void FHOLVisionMap::RemoveObserver(const int32 Handle)
 	}
 }
 
+void FHOLVisionMap::ExploreAll(const int32 Camp)
+{
+	if (Camp >= 0 && Camp < NumCamps)
+	{
+		for (int32 Index = Camp * Grid.Num(); Index < (Camp + 1) * Grid.Num(); ++Index)
+		{
+			Explored[Index] = true;
+		}
+	}
+}
+
 int32 FHOLVisionMap::GetCount(const int32 Camp, const FIntPoint& Cell) const
 {
 	return Camp >= 0 && Camp < NumCamps && Grid.IsInside(Cell) ? Counts[Camp * Grid.Num() + Grid.ToIndex(Cell)] : 0;
