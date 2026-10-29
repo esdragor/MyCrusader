@@ -25,8 +25,10 @@ R2.2 ; décisions M6-Q1 à M6-Q9 de `NetPlaytestInProgress.md`.
 4. **« Prêt » remis à zéro** : un changement de **ma** ligne remet **mon** « Prêt » à zéro ; un changement du chef
    (carte, options, emplacement ouvert / fermé) remet **tous** les « Prêt » à zéro. Le chef doit lui aussi être
    « Prêt » avant « Lancer ».
-5. **Pas d'IA dans les salons** pour l'instant : un emplacement est ouvert, fermé ou tenu par un joueur. Les
-   emplacements ouverts restés vides au lancement sont **fermés** dans `match.json`.
+5. **IA au salon** (IA0.6) : un emplacement est ouvert, fermé, tenu par un joueur ou par une **IA** mise par le chef
+   (niveau Normal). Une IA compte dans les 2 joueurs qu'il faut pour « Lancer » (Q3 = A : le chef seul avec une IA
+   lance) ; elle n'a pas de « Prêt ». Les emplacements ouverts restés vides au lancement sont **fermés** dans
+   `match.json`. Au retour de la partie, les IA restent à leur place avec leur ligne.
 6. **Retour au salon après la partie** (M6-Q7, R2.11, D2) : après `finished`, le salon repasse `lobby` avec ses
    réglages mais **sans les joueurs de la partie** : aucune ligne ni aucun nom ne leur est réservé, personne n'est
    attendu ; « Retour au salon » n'est qu'un raccourci pour `POST /join` sous le même nom (refusé comme tout `join` :
@@ -92,7 +94,7 @@ sert au journal. Un code inconnu du jeu → message générique avec le `message
 | `not_leader` | 403 | réglage ou « Lancer » demandé par un autre que le chef |
 | `slot_taken` | 409 | ouvrir ou fermer un emplacement tenu par un joueur ; carte de moins d'emplacements que ceux tenus |
 | `not_all_ready` | 409 | « Lancer » alors qu'un joueur n'est pas « Prêt » |
-| `not_enough_players` | 409 | « Lancer » seul dans le salon (2 joueurs au moins) |
+| `not_enough_players` | 409 | « Lancer » seul dans le salon, sans IA (2 joueurs ou IA au moins) |
 | `max_servers` | 503 | « Lancer » alors que le maximum de serveurs de partie tourne déjà (M6-Q6) |
 | `server_start_failed` | 500 | l'exécutable du serveur est introuvable ou n'a pas démarré |
 | `no_match` | 409 | « Regarder » un salon qui n'est pas en partie |
@@ -304,7 +306,8 @@ hors de 0 à 7 ou non entier, `state` absent ou inconnu, ouvrir un emplacement a
 
 ### `POST /lobbies/{lobbyId}/start` — « Lancer » (chef)
 
-Conditions : chef, 2 joueurs au moins, **tous « Prêt »**, moins de `maxServers` serveurs en marche. Le gestionnaire
+Conditions : chef, 2 joueurs **ou IA** au moins (IA0.6 Q3 = A : le chef seul avec une IA lance), **tous les joueurs
+« Prêt »** (une IA n'a pas de « Prêt »), moins de `maxServers` serveurs en marche. Le gestionnaire
 écrit `match.json` (format ci-dessous), lance le serveur et passe le salon à `starting`. Réponse `202` :
 `{ "matchId": "M20261023-153012-3" }` ; l'état du salon dit alors `"starting"`, `match` reste `null` jusqu'à
 `listening`. Erreurs, dans cet ordre : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`,
@@ -454,11 +457,12 @@ tailles de carte) :
 | `bDrawPlaces` | booléen | **nouveau en version 3** : `true` depuis un salon : places tirées par le serveur depuis `seed` (TC-Q6) ; absent = places fixes (emplacement i à la place i : scénarios, `quick_check`) |
 | `bTeamsTogether` | booléen | **nouveau en version 3** : « Équipes ensemble » du salon (alliés sur des places voisines) |
 | `slots` | 8 objets | emplacement du salon = index (la place de départ est tirée, `bDrawPlaces`) |
-| `slots[].state` | `"Closed"`, `"Human"`, `"AI"` | `"Human"` pour chaque joueur du salon ; ouvert vide ou fermé → `"Closed"` (faction `DawnOrder`, couleur = index, équipe 0, comme `Normalize`) |
+| `slots[].state` | `"Closed"`, `"Human"`, `"AI"` | `"Human"` pour chaque joueur du salon, `"AI"` pour chaque IA (IA0.6, avec sa couleur, son équipe et sa faction) ; ouvert vide ou fermé → `"Closed"` (faction `DawnOrder`, couleur = index, équipe 0, comme `Normalize`) |
 | `slots[].faction` | `"DawnOrder"`, `"BlackLegions"`, … | |
-| `slots[].colorIndex` | 0 à 7 | palette D233 ; jamais 8 : un joueur sur « Aléatoire » reçoit au lancement, tiré de `seed`, une couleur qu'aucun autre joueur n'a (choisie ou déjà tirée) ; le salon garde « Aléatoire » |
+| `slots[].colorIndex` | 0 à 7 | palette D233 ; jamais 8 : un joueur ou une IA sur « Aléatoire » reçoit au lancement, tiré de `seed` dans l'ordre des emplacements, une couleur qu'aucun autre joueur ni aucune IA n'a (choisie ou déjà tirée) ; le salon garde « Aléatoire » |
 | `slots[].team` | 0 à 4 | 0 = aucune |
 | `slots[].playerName` | chaîne | **nouveau en version 2** : nom du joueur attendu (tel qu'au salon : sans espaces autour, forme composée) ; `""` pour un emplacement fermé ou une IA |
+| `slots[].difficulty` | `"Normal"` | IA0.6 : **sur un emplacement `"AI"` seulement**, son niveau (`FHOLMatchSlot::Difficulty`, `EHOLAIDifficulty` par son nom) ; absent ailleurs (le jeu lit un niveau absent comme Normal), si bien qu'un salon sans IA écrit le même fichier qu'avant. Pas de nouvelle version : le jeu lit `"AI"` et `difficulty` depuis IA0.5 |
 | `mode` | `"Standard"` | |
 | `bNomad`, `bRegicide`, `bCatastrophe` | booléens | options du mode Standard |
 
@@ -497,6 +501,21 @@ Ce fichier sert aussi de **référence partagée** entre le test C# de R2.8 et l
 (`Manager/HOLManager.Tests/Data/match_v3_reference.json` depuis TC3, le test C# le compare au JSON produit ;
 `match_v2_reference.json`, créé en R2.8, reste pour le test C++ de lecture d'un fichier de version 2, lu avec places
 fixes).
+
+Avec des IA (IA0.6 L2), Bob et Alice (équipe 1) contre deux IA (équipe 2) ; référence partagée
+`Manager/HOLManager.Tests/Data/match_v3_ai_reference.json` (test C# `LobbyAIStartTests.ReferenceAILobbyGivesTheAIReferenceFile`,
+test C++ `HeroesOfLiberty.MapSize.Lobby.ManagerAIReference`) :
+
+```json
+  "slots": [
+    { "state": "Human", "faction": "DawnOrder", "colorIndex": 0, "team": 1, "playerName": "Bob" },
+    { "state": "AI", "faction": "DawnOrder", "colorIndex": 6, "team": 2, "playerName": "", "difficulty": "Normal" },
+    { "state": "Human", "faction": "DawnOrder", "colorIndex": 3, "team": 1, "playerName": "Alice" },
+    { "state": "AI", "faction": "DawnOrder", "colorIndex": 4, "team": 2, "playerName": "", "difficulty": "Normal" },
+    { "state": "Closed", "faction": "DawnOrder", "colorIndex": 4, "team": 0, "playerName": "" },
+    ...
+  ],
+```
 
 ## Versions du jeu (lanceur, L2)
 

@@ -48,6 +48,8 @@ public static class LobbyRules
     public const int PlayerNameMaxLength = 16;
     public const int LobbyNameMaxLength = 24;
     public const string DefaultFaction = "DawnOrder";
+
+    /** "Lancer": players and AIs together (IA0.6 Q3 = A: the leader alone with an AI starts). */
     public const int MinPlayersToStart = 2;
 
     /** IA0.6 (Q4): the level of an AI at the lobby, fixed (EHOLAIDifficulty by name). */

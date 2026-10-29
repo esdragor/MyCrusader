@@ -312,16 +312,17 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
 
     /**
      * POST /lobbies/{id}/start (leader): every player ready, MinPlayersToStart at least; writes the match
-     * configuration, starts its server (when a launcher is given) and puts the lobby in the starting state.
+     * configuration, starts its server (when a launcher is given) and puts the lobby in the starting state. IA0.6 L2
+     * (Q3 = A): an AI counts in MinPlayersToStart (the leader alone with an AI starts); it has no "Prêt".
      */
     public LobbyMatch Start(string lobbyId, string? token)
     {
         lock (gate)
         {
             var lobby = GetLeaderLobby(lobbyId, token);
-            if (lobby.Players.Count() < LobbyRules.MinPlayersToStart)
+            if (lobby.Slots.Count(s => s.Player != null || s.AI != null) < LobbyRules.MinPlayersToStart)
             {
-                throw new LobbyException(LobbyErrors.NotEnoughPlayers, $"A match needs {LobbyRules.MinPlayersToStart} players.");
+                throw new LobbyException(LobbyErrors.NotEnoughPlayers, $"A match needs {LobbyRules.MinPlayersToStart} players or AIs.");
             }
             if (lobby.Players.FirstOrDefault(p => !p.Ready) is { } notReady)
             {
