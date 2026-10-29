@@ -10,6 +10,8 @@
 #include "EngineUtils.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "HeroesOfLibertyLog.h"
 
 namespace
@@ -166,4 +168,46 @@ bool UHOLAIOrderLibrary::IssueAISetRallyOrder(const UObject* WorldContextObject,
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
 	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
 	return Building && HOLPlayerOrders::SetRally(*World, PlayerIndex, Building, Point, SourceIndex);
+}
+
+bool UHOLAIOrderLibrary::ReadAIUnitFigures(const UObject* WorldContextObject, const FName TypeName, FHOLAITypeFigures& OutFigures)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const FHOLUnitTypeRow* Row = (Units && !TypeName.IsNone()) ? Units->FindTypeRow(TypeName) : nullptr;
+	if (!Row)
+	{
+		return false;
+	}
+	OutFigures = FHOLAITypeFigures();
+	OutFigures.CostFood = Row->Cost.Food;
+	OutFigures.CostWood = Row->Cost.Wood;
+	OutFigures.CostStone = Row->Cost.Stone;
+	OutFigures.CostGold = Row->Cost.Gold;
+	OutFigures.BuildTime = Row->BuildTime;
+	OutFigures.Population = Row->Population;
+	OutFigures.Speed = Row->Speed;
+	OutFigures.CarryCapacity = Row->CarryCapacity;
+	OutFigures.GatherFood = Row->GatherRates.Food;
+	OutFigures.GatherWood = Row->GatherRates.Wood;
+	OutFigures.GatherStone = Row->GatherRates.Stone;
+	OutFigures.GatherGold = Row->GatherRates.Gold;
+	return true;
+}
+
+bool UHOLAIOrderLibrary::ReadAIBuildingFigures(const FName TypeName, FHOLAITypeFigures& OutFigures)
+{
+	const FHOLBuildingTypeRow* Row = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
+	if (!Row)
+	{
+		return false;
+	}
+	OutFigures = FHOLAITypeFigures();
+	OutFigures.CostFood = Row->Cost.Food;
+	OutFigures.CostWood = Row->Cost.Wood;
+	OutFigures.CostStone = Row->Cost.Stone;
+	OutFigures.CostGold = Row->Cost.Gold;
+	OutFigures.BuildTime = Row->BuildTime;
+	OutFigures.Population = Row->PopulationProvided;
+	return true;
 }

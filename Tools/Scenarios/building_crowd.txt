@@ -1,4 +1,4 @@
-# Bâtiment attaqué par un groupe (EtapeDefini J) : 12 Hommes d'armes sur une maison ennemie, de face puis en biais vers un coin, des Paysans, puis à toi : chacun sa place le long des murs, un seul rang
+# Bâtiment attaqué par un groupe (EtapeDefini J) : 12 Hommes d'armes sur une maison ennemie, de face puis en biais vers un coin, des Paysans, puis à toi : en foule à la AoE4, frappe dès la portée, tassés au mur, débordement sur les côtés (EtapeDefini O)
 # Plain, deux joueurs (building_crowd.json). Positions dans le repère du centre du joueur (X vers le milieu), comme
 # building_attack. Les maisons ennemies (joueur 2, hol.Cheat.SpawnBuilding) sont à ~24 m des groupes, hors du rayon
 # d'agressivité (16 m) : rien ne part tout seul, chaque attaque vient d'un clic droit (hol.Select.OrderNear, le chemin
@@ -48,7 +48,7 @@ hol.Select.Group Select 1
 hol.Camera.FocusNear 6000 -1500
 frames 5
 note 1. Ces 12 Hommes d'armes (sélectionnés) sont face à un côté de la Maison ennemie.
-note    Regarde-les : ils doivent se répartir le long des murs, sur un seul rang, sans se tasser en paquet.
+note    Regarde-les : chacun frappe dès qu'il est à portée, ceux de derrière poussent, la foule se tasse au mur (3 rangs) sans s'empiler.
 note    La Maison tombe ~5 s après les premiers coups : regarde surtout l'arrivée et les premiers coups.
 waitkey Entrée : clic droit des 12 sur la Maison (temps 1)
 hol.Select.Group Select 1
@@ -63,7 +63,7 @@ hol.Select.Group Select 2
 hol.Camera.FocusNear 6300 3300
 frames 5
 note 2. Un autre groupe de 12 arrive en biais, face à un coin de la Maison (avant : tous tassés sur le coin).
-note    Regarde : ils doivent contourner le coin et se répartir sur les deux murs, sur un seul rang.
+note    Regarde : la foule se tasse sur le coin et déborde de part et d'autre, sans s'empiler ni longer la foule en frappant.
 waitkey Entrée : clic droit des 12 sur la Maison du coin (temps 2)
 hol.Select.Group Select 2
 # La caméra sur la maison juste avant le clic : sinon « the point is not on the screen » (vu au temps 2).
@@ -94,4 +94,4 @@ hol.Select.Group Select 1
 hol.Camera.FocusNear 8000 -500
 frames 5
 note 4. À toi : les 12 du temps 1 sont sélectionnés (touche 1 ; touche 2 : ceux du temps 2). Fais toi-même le clic droit sur la nouvelle Maison.
-note    Ils doivent se répartir le long des murs, sur un seul rang. Essaie aussi les deux groupes à la fois (1, puis Maj + 2).
+note    Foule du côté d'arrivée, tassée au mur ; à deux groupes, elle déborde autour. Essaie aussi les deux groupes à la fois (1, puis Maj + 2).

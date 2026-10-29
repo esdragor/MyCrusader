@@ -114,8 +114,11 @@ bool FHOLAISummaryIdlePeasantsTest::RunTest(const FString& Parameters)
 	const FHOLAISummary Slot0 = HOLAISummary::Make(0, Units, {}, {}, {});
 	TestEqual(TEXT("slot 0's summary"), Slot0.PlayerIndex, 0);
 	TestEqual(TEXT("slot 0: its two idle Peasants, ascending"), JoinIds(Slot0.IdlePeasants), FString(TEXT("3 7")));
+	// IA1.5: all its Peasants, idle or not (the opening's builders), the dying, the soldier and slot 1's left out.
+	TestEqual(TEXT("slot 0: its six Peasants, ascending"), JoinIds(Slot0.PeasantIds), FString(TEXT("3 4 5 6 7 8")));
 	const FHOLAISummary Slot1 = HOLAISummary::Make(1, Units, {}, {}, {});
 	TestEqual(TEXT("slot 1: its own idle Peasant"), JoinIds(Slot1.IdlePeasants), FString(TEXT("9")));
+	TestEqual(TEXT("slot 1: its own Peasant"), JoinIds(Slot1.PeasantIds), FString(TEXT("9")));
 	const FHOLAISummary Slot2 = HOLAISummary::Make(2, Units, {}, {}, {});
 	TestEqual(TEXT("slot 2: none"), Slot2.IdlePeasants.Num(), 0);
 	return true;

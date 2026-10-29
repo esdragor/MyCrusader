@@ -279,14 +279,9 @@ bool HOLCombat::IsBuildingShot(const FHOLUnitTypeConstants& Attacker)
 	return Attacker.BuildingAttackType == EHOLAttackType::Ranged;
 }
 
-bool HOLCombat::IsBuildingInReach(const FHOLUnitTypeConstants& Attacker, const double EdgeDistance, const bool bStriking, const bool bWalkEndedShort, const bool bHold)
+bool HOLCombat::IsBuildingInReach(const FHOLUnitTypeConstants& Attacker, const double EdgeDistance)
 {
-	const double Reach = Attacker.BuildingAttackRange;
-	if (bStriking || bWalkEndedShort || bHold || IsBuildingShot(Attacker))
-	{
-		return EdgeDistance <= Reach;
-	}
-	return EdgeDistance <= FMath::Min(Reach, static_cast<double>(BuildingApproachReach));
+	return EdgeDistance <= Attacker.BuildingAttackRange;
 }
 
 float HOLCombat::GetBuildingSearchRadius(const FSeeker& Seeker, const FHOLUnitTypeConstants& Attacker)
@@ -346,328 +341,82 @@ FVector2D HOLCombat::GetBuildingApproachPoint(const FVector2D& Position, const f
 	return Nearest + Out.GetSafeNormal() * (Radius + Gap);
 }
 
-namespace
+FVector2D HOLCombat::GetFreeBuildingWallPoint(const FVector2D& Position, const float Radius, const FBox2D& Box, const double Gap, const double Reach,
+	const TConstArrayView<FVector2D> Bodies, const TConstArrayView<float> BodyRadii)
 {
-	/**
-	 * A ring round a box, off it by D: its sides and quarter arcs, walked from the box's Min corner along +X (bottom side,
-	 * arc, right side, arc, top side, arc, left side, arc). S: the distance walked along it, in [0, Length).
-	 */
-	struct FBuildingRing
+	const FVector2D Facing = GetBuildingApproachPoint(Position, Radius, Box, Gap);
+	// O.7b loop 6: a point is covered by a body on it, or by one in the column ahead of it (out from the wall, as wide as the
+	// two bodies), as deep as the walker stands or as the reach goes, whichever is deeper (loop 9: by the walker's depth alone,
+	// the columns round the corner, beside which it stood, looked free and it went round and round; loop 8, a column with
+	// room in reach behind its last row, sent it pressing into the crowd's back, out of reach, in queues): the crowd's back
+	// rows, off the wall, bar the walk there too, and the walk goes to the nearest column clear of strikers.
+	const double ReachDepth = Reach - Gap;
+	const auto IsFree = [&](const FVector2D& Point)
 	{
-		FBox2D Box;
-		double D = 0.;
-		double W = 0.;
-		double H = 0.;
-		double Arc = 0.;
-		double Length = 0.;
-
-		FBuildingRing(const FBox2D& InBox, const double InD) : Box(InBox), D(FMath::Max(InD, 0.))
+		const FVector2D OnBox(FMath::Clamp(Point.X, Box.Min.X, Box.Max.X), FMath::Clamp(Point.Y, Box.Min.Y, Box.Max.Y));
+		const FVector2D Out = (Point - OnBox).GetSafeNormal();
+		const double Depth = FMath::Max(FVector2D::DotProduct(Position - Point, Out), ReachDepth);
+		for (int32 Body = 0; Body < Bodies.Num(); ++Body)
 		{
-			W = FMath::Max(Box.Max.X - Box.Min.X, 0.);
-			H = FMath::Max(Box.Max.Y - Box.Min.Y, 0.);
-			// Loop 8: the quarter arcs are back (the user's decision: the corners too); loop 4 had removed them.
-			Arc = 0.5 * UE_DOUBLE_PI * D;
-			Length = 2. * (W + H) + 4. * Arc;
-		}
-
-		FVector2D At(double S) const
-		{
-			S = FMath::Fmod(S, Length);
-			if (S < 0.)
+			const double Touch = double(Radius) + BodyRadii[Body];
+			if (FVector2D::DistSquared(Point, Bodies[Body]) < FMath::Square(Touch))
 			{
-				S += Length;
+				return false;
 			}
-			const double Lengths[8] = { W, Arc, H, Arc, W, Arc, H, Arc };
-			int32 Part = 0;
-			while (Part < 7 && S > Lengths[Part])
+			const FVector2D ToBody = Bodies[Body] - Point;
+			const double Along = FVector2D::DotProduct(ToBody, Out);
+			const double Beside = FMath::Abs(FVector2D::CrossProduct(Out, ToBody));
+			if (!Out.IsZero() && Along > -Touch && Along <= Depth && Beside < Touch)
 			{
-				S -= Lengths[Part];
-				++Part;
-			}
-			const double A = D > 0. ? S / D : 0.;
-			switch (Part)
-			{
-			case 0: return FVector2D(Box.Min.X + S, Box.Min.Y - D);
-			case 1: return FVector2D(Box.Max.X, Box.Min.Y) + D * FVector2D(FMath::Sin(A), -FMath::Cos(A));
-			case 2: return FVector2D(Box.Max.X + D, Box.Min.Y + S);
-			case 3: return FVector2D(Box.Max.X, Box.Max.Y) + D * FVector2D(FMath::Cos(A), FMath::Sin(A));
-			case 4: return FVector2D(Box.Max.X - S, Box.Max.Y + D);
-			case 5: return FVector2D(Box.Min.X, Box.Max.Y) + D * FVector2D(-FMath::Sin(A), FMath::Cos(A));
-			case 6: return FVector2D(Box.Min.X - D, Box.Max.Y - S);
-			default: return FVector2D(Box.Min.X, Box.Min.Y) + D * FVector2D(-FMath::Cos(A), -FMath::Sin(A));
+				return false;
 			}
 		}
-
-		/** Along a corner's arc (From: where the arc starts on the ring), by the angle A of P round the corner, in [0, pi/2]. */
-		double OnArc(const double From, const double A) const
-		{
-			return From + FMath::Clamp(A, 0., 0.5 * UE_DOUBLE_PI) * D;
-		}
-
-		/** Where P projects on the ring (the box's point nearest it, then out; round a corner, by its angle); inside: its nearest side. */
-		double Project(const FVector2D& P) const
-		{
-			const bool bLeft = P.X < Box.Min.X, bRight = P.X > Box.Max.X, bDown = P.Y < Box.Min.Y, bUp = P.Y > Box.Max.Y;
-			if (bRight && bDown)
-			{
-				const FVector2D V = P - FVector2D(Box.Max.X, Box.Min.Y);
-				return OnArc(W, FMath::Atan2(V.X, -V.Y));
-			}
-			if (bRight && bUp)
-			{
-				const FVector2D V = P - Box.Max;
-				return OnArc(W + Arc + H, FMath::Atan2(V.Y, V.X));
-			}
-			if (bLeft && bUp)
-			{
-				const FVector2D V = P - FVector2D(Box.Min.X, Box.Max.Y);
-				return OnArc(2. * W + 2. * Arc + H, FMath::Atan2(-V.X, V.Y));
-			}
-			if (bLeft && bDown)
-			{
-				const FVector2D V = P - Box.Min;
-				return OnArc(2. * (W + H) + 3. * Arc, FMath::Atan2(-V.Y, -V.X));
-			}
-			if (bDown)
-			{
-				return P.X - Box.Min.X;
-			}
-			if (bRight)
-			{
-				return W + Arc + (P.Y - Box.Min.Y);
-			}
-			if (bUp)
-			{
-				return W + 2. * Arc + H + (Box.Max.X - P.X);
-			}
-			if (bLeft)
-			{
-				return 2. * W + 3. * Arc + H + (Box.Max.Y - P.Y);
-			}
-			// Inside (pushed in): through the nearest side, as GetBuildingApproachPoint.
-			const double Left = P.X - Box.Min.X, Right = Box.Max.X - P.X, Down = P.Y - Box.Min.Y, Up = Box.Max.Y - P.Y;
-			const double Least = FMath::Min(FMath::Min(Left, Right), FMath::Min(Down, Up));
-			return Least == Left ? 2. * W + 3. * Arc + H + Up : Least == Right ? W + Arc + Down : Least == Down ? Left : W + 2. * Arc + H + Right;
-		}
-
-		/** S - From, wrapped into [-Length / 2, Length / 2). */
-		double Signed(const double S, const double From) const
-		{
-			double Delta = FMath::Fmod(S - From, Length);
-			if (Delta < -0.5 * Length)
-			{
-				Delta += Length;
-			}
-			if (Delta >= 0.5 * Length)
-			{
-				Delta -= Length;
-			}
-			return Delta;
-		}
+		return true;
 	};
-}
-
-void HOLCombat::GetBuildingPlaceChain(const FVector2D& From, const FVector2D& Place, const TConstArrayView<FVector2D> OtherPlaces,
-	const FBox2D& Box, TArray<int32>& OutChain)
-{
-	OutChain.Reset();
-	const auto OffBox = [&Box](const FVector2D& P)
+	if (Radius <= 0.f || IsFree(Facing))
 	{
-		const double X = FMath::Max3(Box.Min.X - P.X, 0., P.X - Box.Max.X);
-		const double Y = FMath::Max3(Box.Min.Y - P.Y, 0., P.Y - Box.Max.Y);
-		return FMath::Sqrt(X * X + Y * Y);
+		return Facing;
+	}
+	// The pushed-out box's round, by its length T from its min corner: bottom, right, top, left (corners square: within reach).
+	const FBox2D Round(Box.Min - FVector2D(Radius + Gap), Box.Max + FVector2D(Radius + Gap));
+	const double Width = Round.Max.X - Round.Min.X;
+	const double Height = Round.Max.Y - Round.Min.Y;
+	const double Length = 2. * (Width + Height);
+	const auto PointAt = [&](double T)
+	{
+		T = FMath::Fmod(T, Length);
+		T = T < 0. ? T + Length : T;
+		if (T < Width)
+		{
+			return FVector2D(Round.Min.X + T, Round.Min.Y);
+		}
+		if (T < Width + Height)
+		{
+			return FVector2D(Round.Max.X, Round.Min.Y + (T - Width));
+		}
+		if (T < 2. * Width + Height)
+		{
+			return FVector2D(Round.Max.X - (T - Width - Height), Round.Max.Y);
+		}
+		return FVector2D(Round.Min.X, Round.Max.Y - (T - 2. * Width - Height));
 	};
-	const double D = OffBox(Place);
-	if (D <= 0.)
+	const FVector2D On(FMath::Clamp(Facing.X, Round.Min.X, Round.Max.X), FMath::Clamp(Facing.Y, Round.Min.Y, Round.Max.Y));
+	const double ToBottom = FMath::Abs(On.Y - Round.Min.Y), ToRight = FMath::Abs(On.X - Round.Max.X);
+	const double ToTop = FMath::Abs(On.Y - Round.Max.Y), ToLeft = FMath::Abs(On.X - Round.Min.X);
+	const double Least = FMath::Min(FMath::Min(ToBottom, ToRight), FMath::Min(ToTop, ToLeft));
+	const double Start = Least == ToBottom ? On.X - Round.Min.X : Least == ToRight ? Width + (On.Y - Round.Min.Y)
+		: Least == ToTop ? Width + Height + (Round.Max.X - On.X) : 2. * Width + Height + (Round.Max.Y - On.Y);
+	const int32 Steps = FMath::CeilToInt32(0.5 * Length / Radius);
+	for (int32 Step = 1; Step <= Steps; ++Step)
 	{
-		return;
-	}
-	const FBuildingRing Ring(Box, D);
-	const double Start = Ring.Project(From);
-	const double Way = Ring.Signed(Ring.Project(Place), Start);
-	if (FMath::Abs(Way) < 1.)
-	{
-		return;
-	}
-	TArray<TPair<double, int32>> Between;
-	for (int32 Index = 0; Index < OtherPlaces.Num(); ++Index)
-	{
-		if (FMath::Abs(OffBox(OtherPlaces[Index]) - D) > 1.)
+		for (const double Sign : { 1., -1. })
 		{
-			continue;
-		}
-		const double Along = Ring.Signed(Ring.Project(OtherPlaces[Index]), Start) * FMath::Sign(Way);
-		if (Along >= 0. && Along < FMath::Abs(Way))
-		{
-			Between.Emplace(Along, Index);
+			const FVector2D Point = PointAt(Start + Sign * Step * Radius);
+			if (IsFree(Point))
+			{
+				return Point;
+			}
 		}
 	}
-	Between.Sort([](const TPair<double, int32>& A, const TPair<double, int32>& B)
-	{
-		return A.Key < B.Key || (A.Key == B.Key && A.Value < B.Value);
-	});
-	for (const TPair<double, int32>& Entry : Between)
-	{
-		OutChain.Add(Entry.Value);
-	}
-}
-
-void HOLCombat::GetBuildingPlaces(const TConstArrayView<FVector2D> Positions, const TConstArrayView<uint32> Ids, const float Radius, const FBox2D& Box,
-	const double Gap, TArray<FVector2D>& OutPlaces)
-{
-	const int32 Count = Positions.Num();
-	OutPlaces.SetNumZeroed(Count);
-	if (Count == 0 || Ids.Num() != Count)
-	{
-		return;
-	}
-	FVector2D Middle = FVector2D::ZeroVector;
-	for (const FVector2D& Position : Positions)
-	{
-		Middle += Position;
-	}
-	Middle /= Count;
-	const double Spacing = 2. * FMath::Max(static_cast<double>(Radius), 1.);
-	// Loop 12: the arc's places BuildingPlaceArcRadii apart (10 % air), so a unit slips in between two friends already striking.
-	const double ArcSpacing = BuildingPlaceArcRadii * FMath::Max(static_cast<double>(Radius), 1.);
-
-	// The units nearest the box take the first ring; the farthest, beyond its room, the next one (smallest Id first on a tie).
-	TArray<int32> Order;
-	Order.Reserve(Count);
-	TArray<double> Edge;
-	Edge.SetNumUninitialized(Count);
-	for (int32 Index = 0; Index < Count; ++Index)
-	{
-		Order.Add(Index);
-		Edge[Index] = GetEdgeDistanceToBox(Positions[Index], Radius, Box);
-	}
-	Algo::Sort(Order, [&](const int32 A, const int32 B) { return Edge[A] != Edge[B] ? Edge[A] < Edge[B] : Ids[A] < Ids[B]; });
-
-	TArray<TPair<double, int32>> Units;
-	TArray<FVector2D> Slots;
-	TArray<double> Offsets;
-	const auto LeastPair = [](const TArray<FVector2D>& Points)
-	{
-		double Least = TNumericLimits<double>::Max();
-		for (int32 A = 0; A < Points.Num(); ++A)
-		{
-			for (int32 B = A + 1; B < Points.Num(); ++B)
-			{
-				Least = FMath::Min(Least, FVector2D::Distance(Points[A], Points[B]));
-			}
-		}
-		return Least;
-	};
-	int32 Done = 0;
-	for (int32 RingIndex = 0; Done < Count; ++RingIndex)
-	{
-		const FBuildingRing Ring(Box, Radius + Gap + RingIndex * Spacing);
-		const double Start = Ring.Project(Middle);
-		// The ring's room: evenly all round, never two places nearer than 2 radii in a straight line (round a corner's arc
-		// the straight line is shorter than the way along the ring: one place fewer until it holds).
-		int32 Room = FMath::Max(1, FMath::FloorToInt32(Ring.Length / Spacing));
-		for (;;)
-		{
-			Slots.Reset();
-			for (int32 Slot = 0; Slot < Room; ++Slot)
-			{
-				Slots.Add(Ring.At(Start + Slot * (Ring.Length / Room)));
-			}
-			if (Room == 1 || LeastPair(Slots) >= Spacing - 0.01)
-			{
-				break;
-			}
-			--Room;
-		}
-		const int32 Taken = FMath::Min(Room, Count - Done);
-		// Loop 11b (user's decision): at contact. Fewer units than the ring's room: a continuous arc of places 2 radii apart (loop 12: 2.2)
-		// along the ring, centred on the group's middle (one there for an odd count, two either side of it for an even one),
-		// then one on each side in turn; round a corner, a place goes on until it is 2 radii from the one before in a straight
-		// line too (1 cm steps): no hole at the corner. The full ring keeps the even spread (spacing = length / places).
-		bool bArc = Taken < Room;
-		if (bArc)
-		{
-			const auto Chord = [&Ring](const double A, const double B) { return FVector2D::Distance(Ring.At(A), Ring.At(B)); };
-			Offsets.Reset();
-			double Ahead = 0., Behind = 0.;
-			if (Taken % 2 == 1)
-			{
-				Offsets.Add(0.);
-			}
-			else
-			{
-				double Half = 0.5 * ArcSpacing;
-				while (Chord(Start + Half, Start - Half) < ArcSpacing - 0.01 && Half < Ring.Length)
-				{
-					Half += 1.;
-				}
-				Ahead = Half;
-				Behind = -Half;
-				Offsets.Add(Behind);
-				Offsets.Add(Ahead);
-			}
-			for (bool bForward = true; Offsets.Num() < Taken; bForward = !bForward)
-			{
-				const double Last = bForward ? Ahead : Behind;
-				const double Sign = bForward ? 1. : -1.;
-				double Next = Last + Sign * ArcSpacing;
-				while (Chord(Start + Next, Start + Last) < ArcSpacing - 0.01 && FMath::Abs(Next) < Ring.Length)
-				{
-					Next += Sign;
-				}
-				(bForward ? Ahead : Behind) = Next;
-				Offsets.Add(Next);
-			}
-			Offsets.Sort();
-			Slots.Reset();
-			for (const double Offset : Offsets)
-			{
-				Slots.Add(Ring.At(Start + Offset));
-			}
-			// The two ends meet round the far side (too near): the even spread round the ring instead.
-			if (Ahead - Behind > Ring.Length - ArcSpacing || LeastPair(Slots) < ArcSpacing - 0.01)
-			{
-				bArc = false;
-			}
-		}
-		if (!bArc)
-		{
-			Slots.Reset();
-			for (int32 Slot = 0; Slot < Taken; ++Slot)
-			{
-				Slots.Add(Ring.At(Start + Slot * (Ring.Length / Taken)));
-			}
-		}
-		// Its units, by their projection on the ring (from the middle's, smallest Id on a tie): the same order round it.
-		Units.Reset();
-		for (int32 Rank = Done; Rank < Done + Taken; ++Rank)
-		{
-			const int32 Index = Order[Rank];
-			Units.Emplace(Ring.Signed(Ring.Project(Positions[Index]), Start), Index);
-		}
-		Algo::Sort(Units, [&](const TPair<double, int32>& A, const TPair<double, int32>& B)
-			{ return A.Key != B.Key ? A.Key < B.Key : Ids[A.Value] < Ids[B.Value]; });
-		// The arc: its places sorted along it, the n-th unit takes the n-th (no crossing). The full ring: the circular shift
-		// with the least sum of distances, the n-th unit takes the (n + Shift)-th place, no crossing.
-		int32 BestShift = 0;
-		double BestSum = TNumericLimits<double>::Max();
-		for (int32 Shift = 0; !bArc && Shift < Taken; ++Shift)
-		{
-			double Sum = 0.;
-			for (int32 Rank = 0; Rank < Taken && Sum < BestSum; ++Rank)
-			{
-				Sum += FVector2D::Distance(Positions[Units[Rank].Value], Slots[(Rank + Shift) % Taken]);
-			}
-			if (Sum < BestSum)
-			{
-				BestSum = Sum;
-				BestShift = Shift;
-			}
-		}
-		for (int32 Rank = 0; Rank < Taken; ++Rank)
-		{
-			OutPlaces[Units[Rank].Value] = Slots[(Rank + BestShift) % Taken];
-		}
-		Done += Taken;
-	}
+	return Facing;
 }

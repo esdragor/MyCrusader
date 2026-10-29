@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLGatherProcessor.h"
+#include "Simulation/HOLUnitView.h"
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -1366,6 +1367,8 @@ namespace UE::HeroesOfLiberty::Gather
 					int32 Phases[4] = {};
 					int32 IdleCarrying = 0;
 					int32 Carried = 0;
+					// IA1.5: workers on a building site (not idle although not gathering).
+					int32 Building = 0;
 				};
 				TMap<int32, FSlotCounts> Counts;
 				const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
@@ -1384,15 +1387,17 @@ namespace UE::HeroesOfLiberty::Gather
 					++Slot.Phases[static_cast<int32>(Gather->Phase)];
 					Slot.Carried += Gather->Load.Amount;
 					Slot.IdleCarrying += !Gather->IsGathering() && Gather->Load.Amount > 0 ? 1 : 0;
+					FHOLUnitView View;
+					Slot.Building += HOLUnitView::Find(*World, UnitId, View) && View.CarryCapacity > 0 && View.Activity == EHOLUnitActivity::Building ? 1 : 0;
 				}
 				Counts.KeySort(TLess<int32>());
 				for (const TPair<int32, FSlotCounts>& Pair : Counts)
 				{
 					const FSlotCounts& Slot = Pair.Value;
-					UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d to source %d, gathering %d, to deposit %d, not gathering %d (%d with a load), carrying %d, unloaded %s"),
+					UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d to source %d, gathering %d, to deposit %d, not gathering %d (%d with a load), carrying %d, unloaded %s, building %d"),
 						Pair.Key, Slot.Phases[static_cast<int32>(EHOLGatherPhase::ToSource)], Slot.Phases[static_cast<int32>(EHOLGatherPhase::Gathering)],
 						Slot.Phases[static_cast<int32>(EHOLGatherPhase::ToDeposit)], Slot.Phases[static_cast<int32>(EHOLGatherPhase::None)], Slot.IdleCarrying,
-						Slot.Carried, *Sources->GetDeposited(static_cast<uint8>(Pair.Key)).ToString());
+						Slot.Carried, *Sources->GetDeposited(static_cast<uint8>(Pair.Key)).ToString(), Slot.Building);
 				}
 				// Since the program started, every slot (D309): sent to a nearby grove, stopped idle in front of a full source.
 				const UHOLGatherProcessor::FCounters& Counters = UHOLGatherProcessor::GetCounters();
