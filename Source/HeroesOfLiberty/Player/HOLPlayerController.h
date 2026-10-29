@@ -8,6 +8,7 @@
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
 #include "Player/HOLUnitPicking.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "HOLPlayerController.generated.h"
 
 class AHOLBuilding;
@@ -459,6 +460,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestReturnHero();
 
+	/**
+	 * J8c.3: the player casts its hero's Ability (the cry; the banner on Location, cm). The order goes through the order
+	 * queue; at the next step the server checks it (alive, level, cool-down, the banner's reach: HOLHeroAbility) and casts
+	 * it, or refuses it. The aura (passive) is never sent.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
+	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
+
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
 	FOnGameMenuRequested OnGameMenuRequested;
@@ -704,6 +713,10 @@ private:
 	/** J8a.4: the player's own slot's hero return, queued (UHOLCommandSubsystem::IssueHeroReturnOrder); no argument to trust. */
 	UFUNCTION(Server, Reliable)
 	void ServerReturnHero();
+
+	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
+	UFUNCTION(Server, Reliable)
+	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

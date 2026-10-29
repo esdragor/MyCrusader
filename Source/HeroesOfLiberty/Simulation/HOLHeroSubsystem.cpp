@@ -234,6 +234,17 @@ void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 			UE_LOG(LogHOLMatch, Display, TEXT("Hero return order: slot %d at step %d %s"), Slot, static_cast<int32>(StepIndex),
 				bBought ? TEXT("bought") : TEXT("refused"));
 		}
+		// J8c.3: the players' abilities, checked and cast here (HOLHeroAbility::CanCast; the banner's reach), in the order given.
+		TArray<FHOLHeroAbilityOrder> AbilityOrders;
+		Commands->ConsumeHeroAbilityOrders(AbilityOrders);
+		for (const FHOLHeroAbilityOrder& Order : AbilityOrders)
+		{
+			const bool bBanner = Order.Ability == EHOLHeroAbility::Banner;
+			const bool bCast = bBanner ? PlantBanner(Order.PlayerIndex, Order.Location)
+				: Order.Ability == EHOLHeroAbility::CloseRanks && CastCloseRanks(Order.PlayerIndex);
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero ability order: slot %d %s at step %d %s"), Order.PlayerIndex, bBanner ? TEXT("banner") : TEXT("cry"),
+				static_cast<int32>(StepIndex), bCast ? TEXT("cast") : TEXT("refused"));
+		}
 	}
 	// J8a.4 loop 3: the return decision (script), called here so it always reads the sheets this step wrote.
 	if (Return)
@@ -448,6 +459,10 @@ bool UHOLHeroSubsystem::CastCloseRanks(const int32 Slot)
 	}
 	Slots.CloseRanksCooldownMs = HOLHeroAbility::GetCooldownMs(EHOLHeroAbility::CloseRanks);
 	Slots.bCloseRanksPending = true;
+	// J8c.3: one cry more for every machine, its cool-down's end for its owner (J8-Q5), written at once.
+	++Sheets[Slot].Public.Cries;
+	SetReadyStep(Slot, EHOLHeroAbility::CloseRanks, GetStepsFromNow(Slots.CloseRanksCooldownMs));
+	WriteCopies(Slot);
 	UE_LOG(LogHOLMatch, Display, TEXT("Hero ability: slot %d cries Serrez les rangs"), Slot);
 	return true;
 }
@@ -482,6 +497,11 @@ bool UHOLHeroSubsystem::PlantBanner(const int32 Slot, const FVector& Location)
 	Slots.BannerCooldownMs = HOLHeroAbility::GetCooldownMs(EHOLHeroAbility::Banner);
 	Slots.BannerMs = HOLHeroAbility::BannerDurationMs;
 	Slots.BannerLocation = Location;
+	// J8c.3: the banner for every machine, its cool-down's end for its owner, written at once.
+	Sheets[Slot].Public.BannerLocation = FIntPoint(FMath::RoundToInt32(Location.X), FMath::RoundToInt32(Location.Y));
+	Sheets[Slot].Public.BannerEndStep = GetStepsFromNow(Slots.BannerMs);
+	SetReadyStep(Slot, EHOLHeroAbility::Banner, GetStepsFromNow(Slots.BannerCooldownMs));
+	WriteCopies(Slot);
 	UE_LOG(LogHOLMatch, Display, TEXT("Hero ability: slot %d plants his banner at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
 	return true;
 }
@@ -517,7 +537,28 @@ bool UHOLHeroSubsystem::ResetAbilities(const int32 Slot)
 		return false;
 	}
 	Abilities[Slot] = FAbilities();
+	Sheets[Slot].Private.CooldownEndSteps.Reset();
+	Sheets[Slot].Public.BannerEndStep = Sheets[Slot].Public.BannerEndStep >= 0 ? GetStepsFromNow(0) : -1;
+	WriteCopies(Slot);
 	return true;
+}
+
+int32 UHOLHeroSubsystem::GetStepsFromNow(const int32 Milliseconds) const
+{
+	const UHOLSimulationSubsystem* Simulation = GetWorld() ? GetWorld()->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	const int32 StepMs = FMath::Max(HOLCombat::ToMilliseconds(GetDefault<UHOLSimulationSettings>()->GetStepSeconds()), 1);
+	return static_cast<int32>(Simulation ? Simulation->GetStepIndex() : 0) + FMath::DivideAndRoundUp(FMath::Max(Milliseconds, 0), StepMs);
+}
+
+void UHOLHeroSubsystem::SetReadyStep(const int32 Slot, const EHOLHeroAbility Ability, const int32 Step)
+{
+	TArray<int32>& Ends = Sheets[Slot].Private.CooldownEndSteps;
+	const int32 Index = static_cast<int32>(Ability);
+	if (Ends.Num() <= Index)
+	{
+		Ends.SetNumZeroed(static_cast<int32>(EHOLHeroAbility::Banner) + 1);
+	}
+	Ends[Index] = Step;
 }
 
 void UHOLHeroSubsystem::TickAbilities()

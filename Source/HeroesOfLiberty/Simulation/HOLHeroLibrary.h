@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "HOLHeroLibrary.generated.h"
 
@@ -92,6 +93,27 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetServerStep(const UObject* WorldContextObject);
+
+	/**
+	 * J8c.3: the step the slot's Ability is ready again (private sheet, J8-Q5: the owner's slot only on a client; compare
+	 * with GetServerStep); 0 never cast; -1 unknown (another's slot on a client, out of range).
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroAbilityReadyStep(const UObject* WorldContextObject, int32 Slot, EHOLHeroAbility Ability);
+
+	/** J8c.3: the level the hero's Ability opens at (D52: 1, the banner 4). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static int32 GetHeroAbilityUnlockLevel(EHOLHeroAbility Ability);
+
+	/** J8c.3: the slot's hero's cries so far (public sheet, wraps at 256): one more, the cry is shown. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroCries(const UObject* WorldContextObject, int32 Slot);
+
+	/** J8c.3: the step the slot's last banner falls at (public sheet; -1 never planted), and where it stands (cm). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroBannerEndStep(const UObject* WorldContextObject, int32 Slot);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static FIntPoint GetHeroBannerLocation(const UObject* WorldContextObject, int32 Slot);
 
 	/** The slot's main forum is in the world and not down (ruin, rebuilding). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))

@@ -144,4 +144,8 @@ private:
 	TArray<FAbilities> Abilities;
 	/** J8c.2: the cool-downs and the banners counted down by a step (OnStepEnded). */
 	void TickAbilities();
+	/** J8c.3: the step Milliseconds from now (the simulation's step, rounded up to whole steps). */
+	int32 GetStepsFromNow(int32 Milliseconds) const;
+	/** J8c.3: the step the slot's Ability is ready again, in his private sheet (J8-Q5). */
+	void SetReadyStep(int32 Slot, EHOLHeroAbility Ability, int32 Step);
 };

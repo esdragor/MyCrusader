@@ -3,8 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HOLHeroAbilityRules.generated.h"
 
-/** The Paladin-Commander's kit at the prototype (D42, D52): a passive aura, two abilities cast by the player. */
+/**
+ * The Paladin-Commander's kit at the prototype (D42, D52): a passive aura, two abilities cast by the player. BlueprintType:
+ * the script's hero block casts them (J8c.3, UHOLHeroLibrary). The index of the private sheet's CooldownEndSteps.
+ */
+UENUM(BlueprintType)
 enum class EHOLHeroAbility : uint8
 {
 	/** Aura de l'Aube (J8c-Q1): passive, the hero's units near him take less damage. */

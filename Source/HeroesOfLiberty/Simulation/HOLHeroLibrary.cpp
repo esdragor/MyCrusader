@@ -13,6 +13,7 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -94,6 +95,49 @@ int32 UHOLHeroLibrary::GetHeroXP(const UObject* WorldContextObject, const int32 
 	const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
 	const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
 	return Local && Local->GetPlayerIndex() == Slot ? Local->GetHeroPrivate().XP : -1;
+}
+
+int32 UHOLHeroLibrary::GetHeroAbilityReadyStep(const UObject* WorldContextObject, const int32 Slot, const EHOLHeroAbility Ability)
+{
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const FHOLHeroPrivateSheet* Private = nullptr;
+	if (const UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(World))
+	{
+		Private = Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? &Heroes->GetSheets(Slot).Private : nullptr;
+	}
+	else
+	{
+		// A client knows its own private sheet only.
+		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+		const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+		Private = Local && Local->GetPlayerIndex() == Slot ? &Local->GetHeroPrivate() : nullptr;
+	}
+	if (!Private)
+	{
+		return -1;
+	}
+	const int32 Index = static_cast<int32>(Ability);
+	return Private->CooldownEndSteps.IsValidIndex(Index) ? Private->CooldownEndSteps[Index] : 0;
+}
+
+int32 UHOLHeroLibrary::GetHeroAbilityUnlockLevel(const EHOLHeroAbility Ability)
+{
+	return HOLHeroAbility::GetUnlockLevel(Ability);
+}
+
+int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Cries;
+}
+
+int32 UHOLHeroLibrary::GetHeroBannerEndStep(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).BannerEndStep;
+}
+
+FIntPoint UHOLHeroLibrary::GetHeroBannerLocation(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).BannerLocation;
 }
 
 int32 UHOLHeroLibrary::GetLevelXP(const int32 Level)

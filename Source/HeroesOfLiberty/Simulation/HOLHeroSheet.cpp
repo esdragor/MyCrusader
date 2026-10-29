@@ -10,6 +10,10 @@ FHOLHeroSheets HOLHeroSheet::Make(const FHOLHeroFacts& Facts, const FHOLHeroShee
 	FHOLHeroSheets Sheets;
 	Sheets.Private.XP = Previous.Private.XP;
 	Sheets.Private.CooldownEndSteps = Previous.Private.CooldownEndSteps;
+	// J8c.3: what his abilities left (the cries, his banner, standing even once he is dead).
+	Sheets.Public.Cries = Previous.Public.Cries;
+	Sheets.Public.BannerLocation = Previous.Public.BannerLocation;
+	Sheets.Public.BannerEndStep = Previous.Public.BannerEndStep;
 	if (!Facts.bPresent)
 	{
 		// His body destroyed after the fall: still dead, his death step kept. Never born: no hero.

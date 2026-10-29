@@ -6,6 +6,7 @@
 #include "Commands/HOLProductionCommand.h"
 #include "Commands/HOLUnitCommand.h"
 #include "CoreMinimal.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 
 class AHOLBuilding;
 #include "Subsystems/WorldSubsystem.h"
@@ -24,6 +25,15 @@ struct FHOLBlockedFootprint
 	float Yaw = 0.f;
 	/** The forbidden area given to the navmesh (the footprint and the bodies' clearance, D310). */
 	FBox Area = FBox(ForceInit);
+};
+
+/** J8c.3: a player's hero ability asked (UHOLCommandSubsystem::IssueHeroAbilityOrder). */
+struct FHOLHeroAbilityOrder
+{
+	int32 PlayerIndex = INDEX_NONE;
+	EHOLHeroAbility Ability = EHOLHeroAbility::Aura;
+	/** The banner's point (cm); unused by the cry. */
+	FVector Location = FVector::ZeroVector;
 };
 
 /**
@@ -158,6 +168,15 @@ public:
 	/** Takes the hero return orders waiting (UHOLHeroSubsystem calls this at the end of each step), in the order given. */
 	void ConsumeHeroReturnOrders(TArray<int32>& OutPlayerIndices);
 
+	/**
+	 * J8c.3: PlayerIndex's player casts its hero's Ability (ServerHeroAbility, hol.Hero.Cast; Location: the banner's point),
+	 * applied at the end of the next step by the hero subsystem, which checks it (HOLHeroAbility::CanCast). Refused here as
+	 * the return orders (no player's slot, a defeated one, the match waiting or paused).
+	 */
+	void IssueHeroAbilityOrder(int32 PlayerIndex, EHOLHeroAbility Ability, const FVector& Location);
+	/** Takes the hero ability orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
+	void ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>& OutOrders);
+
 	/** D358: drops every order of PlayerIndex still waiting (a slot just defeated). */
 	void DropOrdersOf(int32 PlayerIndex);
 
@@ -183,6 +202,8 @@ private:
 	TArray<FHOLBuildOrder> PendingBuildOrders;
 	/** J8a.4: the slots that asked their hero's return, in the order given. */
 	TArray<int32> PendingHeroReturnOrders;
+	/** J8c.3: the hero abilities asked, in the order given. */
+	TArray<FHOLHeroAbilityOrder> PendingHeroAbilityOrders;
 	TArray<FBox> PendingNavigationChanges;
 	TArray<FHOLBlockedFootprint> PendingBlockedFootprints;
 };

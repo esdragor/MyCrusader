@@ -1274,6 +1274,25 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** J8c.3, until the interface's buttons: the local players cast their hero's cry or plant his banner (the server checks it). */
+	FAutoConsoleCommand HeroCastCommand(
+		TEXT("hol.Hero.Cast"),
+		TEXT("hol.Hero.Cast <CloseRanks|Banner> [X Y]: the local player casts its hero's cry, or plants his banner at X Y (cm) (J8c.3)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bBanner = Args.Num() >= 3 && Args[0].Equals(TEXT("Banner"), ESearchCase::IgnoreCase);
+			if (!bBanner && !(Args.Num() >= 1 && Args[0].Equals(TEXT("CloseRanks"), ESearchCase::IgnoreCase)))
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Hero.Cast: CloseRanks, or Banner X Y"));
+				return;
+			}
+			const FVector Location = bBanner ? FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.0) : FVector::ZeroVector;
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestHeroAbility(bBanner ? EHOLHeroAbility::Banner : EHOLHeroAbility::CloseRanks, Location);
+			}
+		}));
+
 #if !UE_BUILD_SHIPPING
 	/**
 	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
@@ -3965,6 +3984,28 @@ void AHOLPlayerController::ServerReturnHero_Implementation()
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Hero return order: slot %d queued"), HOLPlayerState->GetPlayerIndex());
 		Commands->IssueHeroReturnOrder(HOLPlayerState->GetPlayerIndex());
+	}
+}
+
+void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, const FVector Location)
+{
+	if (IsSpectator() || Ability == EHOLHeroAbility::Aura)
+	{
+		return;
+	}
+	ServerHeroAbility(Ability, Location);
+}
+
+void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
+{
+	// The player's own slot only (D288), an ability that is cast (not the aura, not a value out of the enum).
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && (Ability == EHOLHeroAbility::CloseRanks || Ability == EHOLHeroAbility::Banner))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero ability order: slot %d %s queued"), HOLPlayerState->GetPlayerIndex(),
+			Ability == EHOLHeroAbility::CloseRanks ? TEXT("cry") : TEXT("banner"));
+		Commands->IssueHeroAbilityOrder(HOLPlayerState->GetPlayerIndex(), Ability, Location);
 	}
 }
 
