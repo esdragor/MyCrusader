@@ -5,7 +5,8 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver, netai; bodies, rocks and lobby only when asked, not in -Full;
+#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver, netai, hero; bodies, rocks, lobby and hero only when asked, not in -Full;
+#     "hero" (J8a.6, ~3 min): build:hero in solo and the net part cut to its hero phases (sheets, return, block);
 #     "aiserver" (IA0.5 B1, ~40 s, last): the AI's brain on a dedicated server without client (slot 1 AI, 5 starting Peasants);
 #     "netai" (IA0.5 B2, ~60 s, after "aiserver"): the same server with Alice and Bob joined and the AI in slot 2, its
 #     Peasants seen gathering on each client;
@@ -114,6 +115,14 @@ param(
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+# "hero" (J8a.6): the hero's checks alone, solo and 2 clients: the build part's hero cases (build:hero) and the net part
+# cut to its hero phases (each client goes from its start to the hero sheets, the server spawns the heroes once both
+# are there; the "net 2 clients" report keeps its join and server checks only). With "net" asked too, the net part whole.
+$NetHeroOnly = ($Parts -contains "hero") -and -not ($Parts -contains "net")
+if ($Parts -contains "hero") {
+    $Parts = @($Parts | Where-Object { $_ -ne "hero" }) + @("net")
+    if (-not ($Parts -contains "build")) { $Parts += "build:hero" }
+}
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
 # section and the ones its report reads) and the set-up that stands for the cases skipped before it (the state it needs:
 # wood, logs; then a selection, so that its Escape logs "Selection: none"). "build gap" reads "build wall" too (the
@@ -283,10 +292,13 @@ if ($Parts -contains "net") {
     $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
     # The refused pause (D361): client 1 has typed "pause" in its console before its signal; the server must not be
     # paused and its simulation must step on (two reports 1 s apart).
-    @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+    # "hero" alone (J8a.6): the clients' cheats allowed at once (Bob's gold), the heroes made once both clients are done
+    # with their start (their "done" signals).
+    $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
+    else { @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
-        "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") +
+        "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") }) +
         # The hero sheets (J8a.3, J8-Q5): a hero for each client's slot (Alice slot 0, Bob slot 1, R3.2), born here (none at
         # the start: bStartingHero off), 40 m apart; their XP set (5, 7); 2 Men-at-arms of slot 0 strike Bob's hero for 10 s,
         # then removed: once still, the server's report, then each client's (its signal); then Bob's hero killed, the
@@ -2205,6 +2217,8 @@ if ($NetListening) {
         $NetSteps = @("waitmap Plain", "waitlog Camera above the start")
         if ($Client -eq 2) { $NetSteps += "waitlog Wait banner: shown", "frames 5", "capture qcnet_${Client}_wait" }
         $NetSteps += "waitplayers 2", "mark net", "frames 30", "hol.Camera.Report", "hol.Buildings.Report", "capture qcnet_${Client}_start"
+        # "hero" alone (J8a.6): the steps from here to the "done" signal dropped below.
+        $NetStartSteps = $NetSteps.Count
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
         # The refused pause (D361): client 1 types "pause" in its console, as a player would (the engine's ServerPause).
         if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "console pause", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
@@ -2321,6 +2335,7 @@ if ($NetListening) {
         # "others []", the flake of 2026-10-16).
         # The arrows (J7c.2b2): deduced by each client from the Attacking state of the server's Archers (net arrows), all
         # landed by now (client 1 signals its end once they have).
+        if ($NetHeroOnly) { $NetSteps = @($NetSteps | Select-Object -First $NetStartSteps) }
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_done$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_done$Other.flag")", "hol.Combat.ArrowReport"
         # The hero sheets (J8a.3): once the server's heroes are wounded and still, the sheets as this client has them and
         # the units it shows (the wounded hero's health drawn back from the share received); then once Bob's hero is dead.
@@ -5731,6 +5746,16 @@ if ($Parts -contains "net") {
         $Checks["victory: client 2's HUD alert: none ($Alert2)"] = "$Alert2" -eq "none"
         $DefeatAlerts = @(Get-ClientSection @(if ($Client1Log) { Get-Content $Client1Log -ErrorAction SilentlyContinue }) "victory" | Select-String -CaseSensitive -SimpleMatch "Alert: Vous êtes vaincu")
         $Checks["victory: client 1, no alert of its defeat ($($DefeatAlerts.Count))"] = $DefeatAlerts.Count -eq 0
+    }
+    # "hero" alone (J8a.6): the join and the server's checks only (no production, army, fight nor arrows played).
+    if ($NetHeroOnly) {
+        $Kept = [ordered]@{}
+        foreach ($Key in @($Checks.Keys)) {
+            if ($Key -match "^(server listening|two clients in slots|server quits alone|manager: |server: (no match or network error|scripts compiled|waits for the absent)|client 2 \(Alice\) above|client 2's wait banner|client \d : (sequence done|holds a slot|holds the slot of|logged in as|camera above|both centres))") {
+                $Kept[$Key] = $Checks[$Key]
+            }
+        }
+        $Checks = $Kept
     }
     $AllOk = (Report "net 2 clients" $Checks) -and $AllOk
     # The hero sheets over the network (J8a.3, J8-Q5), the server's heroes of the "net hero" phase (Alice slot 0 xp 5, Bob
