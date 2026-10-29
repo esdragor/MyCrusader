@@ -50,6 +50,22 @@ public:
 	static bool FindFreeFootprint(const UWorld& World, const FBox2D& Footprint, const FVector2D& Aim, int32 PlayerIndex, FBox2D& OutFootprint,
 		int32& OutRing, EHOLPlacementRefusal& OutObstacle);
 
+	/**
+	 * IA1.4: a free footprint of Type's size for PlayerIndex, searched in rings of tiles around Centre (ring k: the footprints
+	 * k tiles away along X or Y from the one snapped on Centre, the nearest to Centre first, ring 0 being that one), up to
+	 * MaxRings (negative: none is looked for); each one meets every rule of CheckPlacement, and Planned (footprints the caller
+	 * means to place too) is treated as built.
+	 */
+	static bool FindRingFootprint(const UWorld& World, const FHOLBuildingTypeRow& Type, const FVector2D& Centre, int32 PlayerIndex, int32 MaxRings,
+		TConstArrayView<FBox2D> Planned, FBox2D& OutFootprint);
+
+	/**
+	 * IA1.4: a block of a Mill and the 8 Farms around it (the ring of 3 x 3 cells, farms touching the mill), the first in
+	 * FindRingFootprint's order for the mill where all nine are free (CheckPlacement, none on another).
+	 */
+	static bool FindFarmBlock(const UWorld& World, const FHOLBuildingTypeRow& MillType, const FHOLBuildingTypeRow& FarmType, const FVector2D& Centre,
+		int32 PlayerIndex, int32 MaxRings, FBox2D& OutMill, TArray<FBox2D>& OutFarms);
+
 	/** "on a building", "too near an enemy main centre"...: for the logs (J6a.5 turns them into short messages). */
 	static const TCHAR* DescribeRefusal(EHOLPlacementRefusal Refusal);
 

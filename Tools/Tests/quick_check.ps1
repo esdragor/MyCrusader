@@ -139,6 +139,7 @@ $SubCaseTable = @{
         shiftplace = @{ Marks = @("shiftplace", "shiftplace order"); Setup = @("hol.Cheat.Wood 1000") }
         shiftsite = @{ Marks = @("shiftsite", "shiftsite order", "shiftsite later"); Setup = @("hol.Cheat.Wood 1000") }
         rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
+        corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -287,6 +288,14 @@ if ($Parts -contains "net") {
     # them again for the rest (the army's resources) and answers.
     $NetCheatTriedFlag = Join-Path $TestSaved "quick_net_cheat_tried.flag"
     $NetCheatBackFlag = Join-Path $TestSaved "quick_net_cheat_back.flag"
+    # The limited pause (D513, P5): Bob (client 1) pauses; Alice (client 2) asks to resume, refused while the timer runs;
+    # Bob asks a second pause, refused (already paused); the server reports twice 1 s apart (paused by slot 1, 2 left, the
+    # step unchanged); Bob resumes at once (his own pause); the server reports twice again (running, stepping on).
+    $NetPausedFlag = Join-Path $TestSaved "quick_net_paused.flag"
+    $NetAliceResumeTriedFlag = Join-Path $TestSaved "quick_net_alice_resume_tried.flag"
+    $NetPauseCheckFlag = Join-Path $TestSaved "quick_net_pause_check.flag"
+    $NetPauseCheckedFlag = Join-Path $TestSaved "quick_net_pause_checked.flag"
+    $NetResumedFlag = Join-Path $TestSaved "quick_net_resumed.flag"
     $NetKingAskFlag = Join-Path $TestSaved "quick_net_king_ask.flag"
     $NetKingBornFlag = Join-Path $TestSaved "quick_net_king_born.flag"
     $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
@@ -295,7 +304,9 @@ if ($Parts -contains "net") {
     # "hero" alone (J8a.6): the clients' cheats allowed at once (Bob's gold), the heroes made once both clients are done
     # with their start (their "done" signals).
     $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
-    else { @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+    else { @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
+        "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
+        "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") }) +
@@ -827,6 +838,13 @@ $RallyStepsR2 = @(-15600, 5600)
 $RallyStepsGold = @(-11087, 4592)
 $RallyStepsR3 = @(-14000, 5200)
 $RallyStepsRow = @(for ($k = 0; $k -lt 9; $k++) { , @((-15200 + 300 * $k), 6800) })
+# A unit standing still in a corner of a house's visible wall (EtapeDefini C.1): house X on free ground north of slot 0's
+# centre, clear of every building of the cases before (the barracks at (-18600, 4600) and (-18600, 7400) wedged a corner's unit
+# between two walls at (-18000, 5600): C.3, it stays) and of the rally steps (y 6800); its builder made east of it; a Man-at-arms
+# made 8.5 m beyond each of its corners on the diagonal (the signs of the four corners), sent to the diagonal beyond that corner.
+$CornerHouse = @(-16400, 9600)
+$CornerBuilder = @(-15400, 9600)
+$CornerSigns = @(@{ X = -1; Y = -1 }, @{ X = 1; Y = -1 }, @{ X = -1; Y = 1 }, @{ X = 1; Y = 1 })
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
@@ -1821,6 +1839,30 @@ if ($Parts -contains "camera") {
             Step "frames 3", "hol.Select.Report", "hol.Prod.Rally -15000 0", $RallyStepsWaitRally, "hol.Prod.BuildTime 0", "hol.Units.Remove $($RallyStepsR2 -join ' ') 600 0"
             Key Escape
             Step "waitlog Selection: none"
+            # A unit standing still in a corner of a house's visible wall (EtapeDefini C.1): house X built at once by a Peasant
+            # (removed after); a Man-at-arms made beyond each corner on the diagonal, selected, sent by a right click onto the diagonal
+            # just beyond that corner of X's body (centre +- 380: the navmesh's edge, 85 cm off the body; sent onto the body's corner
+            # itself, the right click's ground point 13 cm off puts it against a side, not in the corner): it stops in the slab's corner, stands idle,
+            # and the still-unit rule eases it out of the visible wall. Where they are 4 s and 8 s after the last order, the
+            # footprint watch. The four removed and X destroyed (the parts after count slot 0's units and its population cap).
+            Step "mark build corner", "hol.Units.SpawnSeed 143", "hol.Cheat.Wood 1000", "hol.Cheat.FastBuild 1", "hol.Nav.Footprints on",
+                "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Camera.Focus $($CornerHouse -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($CornerHouse -join ', ')) valid", "hol.Build.Click", "waitlog Construction: slot 0 finished House at ($($CornerHouse -join ', '))",
+                "hol.Cheat.FastBuild 0", "wait 0.3", "hol.Units.Remove $($CornerHouse -join ' ') 2000 0", "waitlog units of slot 0 within 2000 of ($($CornerHouse -join ', '))"
+            foreach ($S in $CornerSigns) {
+                $CornerFrom = @(($CornerHouse[0] + 850 * $S.X), ($CornerHouse[1] + 850 * $S.Y))
+                $CornerTo = @(($CornerHouse[0] + 380 * $S.X), ($CornerHouse[1] + 380 * $S.Y))
+                Step "hol.Units.Spawn 1 $($CornerFrom -join ' ') 0 ManAtArms 10", "wait 0.5", "hol.Camera.Focus $($CornerFrom -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                    "waitlog Selection: ManAtArms #", "hol.Camera.Focus $($CornerTo -join ' ')", "frames 3", "hol.Select.OrderGround $($CornerTo -join ' ')", "waitlog Order: 1 units to ("
+            }
+            Step "wait 4", "hol.Units.Where 0", "wait 4", "hol.Units.Where 0", "hol.Nav.Footprints", "hol.Nav.Footprints off",
+                "hol.Units.Remove $($CornerHouse -join ' ') 1500 0 ManAtArms", "waitlog units of slot 0 within 1500 of ($($CornerHouse -join ', '))",
+                "hol.Cheat.DamageNear 99999 $($CornerHouse[0] - (Get-SlotStart 0)[0]) $($CornerHouse[1] - (Get-SlotStart 0)[1]) own melee",
+                "waitlog Building destroyed: House of slot 0 at ($($CornerHouse -join ', '))", "frames 3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -2229,6 +2271,13 @@ if ($NetListening) {
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
         # The refused pause (D361): client 1 types "pause" in its console, as a player would (the engine's ServerPause).
         if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "console pause", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
+        # The limited pause (D513): Bob pauses, Alice's resume is refused (timer running), Bob's second pause too.
+        if ($Client -eq 1) {
+            $NetSteps += "hol.Match.Pause", "wait 1", "hol.HUD.Report", "capture qcnet_1_paused", "signal $NetPausedFlag", "waitfile $NetAliceResumeTriedFlag 60", "hol.Match.Pause", "wait 1",
+                "signal $NetPauseCheckFlag", "waitfile $NetPauseCheckedFlag 60", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "signal $NetResumedFlag"
+        } else {
+            $NetSteps += "waitfile $NetPausedFlag 300", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "capture qcnet_2_paused", "signal $NetAliceResumeTriedFlag", "waitfile $NetResumedFlag 120"
+        }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
                 "frames 2", "hol.Select.Report", "capture qcnet_${Client}_slot$Slot"
@@ -4275,6 +4324,37 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["(d) a right click then 8 Shift + right clicks: the 9th refused (refusals $RsDRefused), the flag at the 8th, 8 segments ($RsDSay)"] =
         ($RsDRefused -eq 1) -and (& $RsFlagAt $RsDSay $RallyStepsRow[7]) -and ($RsDLines[0] -eq 8) -and ($RsDLines[1] -eq 7)
     $AllOk = (Report "build rallysteps" $Checks) -and $AllOk
+    # EtapeDefini C.1, the corner: X's centre from its "finished" line, the four Men-at-arms from the last "Units where" of
+    # the section (slot 0's units within 8 m of X). In X's frame, each body's signed distance to the drawn slab (half 370 =
+    # 400 - VisualInset 30, square corners) less its radius (60): its margin. A: every body out of the slab (margin >= -10;
+    # the still-unit rule measured from the body with a round corner leaves ~30 cm of the body in the slab's corner).
+    # B: the case stands: four units, all idle, each within 250 cm of a different corner of the slab.
+    $Corner = @(Get-Section "build corner" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $CornerAt = [regex]::Match("$(& $Value $Corner "(Construction: slot 0 finished House at \(-?\d+, -?\d+\))")", "\((-?\d+), (-?\d+)\)")
+    $CornerX = if ($CornerAt.Success) { [double]$CornerAt.Groups[1].Value } else { $CornerHouse[0] }
+    $CornerY = if ($CornerAt.Success) { [double]$CornerAt.Groups[2].Value } else { $CornerHouse[1] }
+    $CornerWhere = "$(& $Value $Corner "Units where: (.*)$")"
+    $CornerUnits = @(foreach ($Part in (($CornerWhere -replace '^\d+ units: ', '') -split '; ')) {
+        if ($Part -match '^#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)') {
+            $Ux = [double]$Matches[2] - $CornerX; $Uy = [double]$Matches[3] - $CornerY
+            if ([Math]::Sqrt($Ux * $Ux + $Uy * $Uy) -le 800) {
+                $Dx = [Math]::Abs($Ux) - 370; $Dy = [Math]::Abs($Uy) - 370
+                $Signed = if ($Dx -gt 0 -or $Dy -gt 0) { [Math]::Sqrt([Math]::Pow([Math]::Max($Dx, 0), 2) + [Math]::Pow([Math]::Max($Dy, 0), 2)) } else { [Math]::Max($Dx, $Dy) }
+                [pscustomobject]@{ Id = [int]$Matches[1]; Activity = $Matches[4]; Corner = "$(if ($Ux -lt 0) { '-x' } else { '+x' })$(if ($Uy -lt 0) { '-y' } else { '+y' })"
+                    Margin = [Math]::Round($Signed - 60); ToCorner = [Math]::Round([Math]::Sqrt($Dx * $Dx + $Dy * $Dy)) }
+            }
+        }
+    })
+    $CornerSay = @($CornerUnits | ForEach-Object { "$($_.Corner) $($_.Margin)" }) -join ', '
+    $Checks["every body out of the visible wall's corner (margin >= -10 cm; corner margin: $CornerSay)"] =
+        $CornerAt.Success -and ($CornerUnits.Count -eq 4) -and (@($CornerUnits | Where-Object { $_.Margin -lt -10 }).Count -eq 0)
+    $Checks["four Men-at-arms idle, each within 250 cm of a different corner of the slab (house at ($CornerX, $CornerY); $(@($CornerUnits | ForEach-Object { "$($_.Corner) $($_.Activity) $($_.ToCorner) cm" }) -join ', '))"] =
+        $CornerAt.Success -and ($CornerUnits.Count -eq 4) -and (@($CornerUnits | Where-Object { $_.Activity -eq 'Idle' }).Count -eq 4) -and
+        (@($CornerUnits | Select-Object -ExpandProperty Corner -Unique).Count -eq 4) -and (@($CornerUnits | Where-Object { $_.ToCorner -gt 250 }).Count -eq 0)
+    $Checks["the four removed, the house destroyed after"] = [bool]($Corner | Select-String -Pattern "Remove: 4 units of slot 0 within 1500" -Quiet) -and
+        [bool]($Corner | Select-String -SimpleMatch "Building destroyed: House of slot 0 at ($CornerX, $CornerY)" -Quiet)
+    $AllOk = (Report "build corner" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -5627,8 +5707,41 @@ if ($Parts -contains "net") {
     $PauseReports = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause report: paused (\d), simulation step (-?\d+)" | ForEach-Object { $_.Matches[0] } })
     $PauseSays = ($PauseReports | ForEach-Object { "paused $($_.Groups[1].Value) step $($_.Groups[2].Value)" }) -join "; "
     $Checks["server: client 1's pause refused ($PauseRefused), the match not paused and stepping on ($PauseSays)"] = $PauseRefused -eq 1 -and
-        $PauseReports.Count -eq 2 -and @($PauseReports | Where-Object { $_.Groups[1].Value -ne "0" }).Count -eq 0 -and
+        $PauseReports.Count -ge 2 -and @($PauseReports | Where-Object { $_.Groups[1].Value -ne "0" }).Count -eq 0 -and
         [int64]$PauseReports[1].Groups[2].Value -gt [int64]$PauseReports[0].Groups[2].Value
+    # D513 (P5): the limited pause, decided by the server: Bob's pause, Alice's early resume and Bob's second pause refused,
+    # the match frozen while paused (the step unchanged 1 s apart), Bob's resume, the match stepping on.
+    $MatchPauses = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause report: .*, simulation step (-?\d+), match paused (\d) by slot (-?\d+), (-?\d+) left" | ForEach-Object { $_.Matches[0] } })
+    $MatchPauseSays = ($MatchPauses | ForEach-Object { "step $($_.Groups[1].Value) paused $($_.Groups[2].Value) by $($_.Groups[3].Value) left $($_.Groups[4].Value)" }) -join "; "
+    $PauseLines = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause: " | ForEach-Object { $_.Line -replace '^.*Pause: ', '' } })
+    $PauseLinesSay = $PauseLines -join " | "
+    $Checks["server: Bob's pause, Alice's early resume and Bob's second pause refused, Bob's resume ($PauseLinesSay)"] =
+        @($PauseLines | Where-Object { $_ -eq "slot 1 (Bob) paused, 2 left" }).Count -eq 1 -and
+        @($PauseLines | Where-Object { $_ -eq "refused to Alice (slot 0): timer running" }).Count -eq 1 -and
+        @($PauseLines | Where-Object { $_ -eq "refused to Bob (slot 1): already paused" }).Count -eq 1 -and
+        @($PauseLines | Where-Object { $_ -eq "resumed by Bob (slot 1), 2 left" }).Count -eq 1
+    $Checks["server: the match frozen while paused, stepping on once resumed ($MatchPauseSays)"] = $MatchPauses.Count -eq 6 -and
+        $MatchPauses[2].Groups[2].Value -eq "1" -and $MatchPauses[2].Groups[3].Value -eq "1" -and $MatchPauses[2].Groups[4].Value -eq "2" -and
+        $MatchPauses[3].Groups[2].Value -eq "1" -and $MatchPauses[3].Groups[1].Value -eq $MatchPauses[2].Groups[1].Value -and
+        $MatchPauses[4].Groups[2].Value -eq "0" -and $MatchPauses[5].Groups[2].Value -eq "0" -and
+        [int64]$MatchPauses[5].Groups[1].Value -gt [int64]$MatchPauses[4].Groups[1].Value
+    # The pause screen (P5.3) on each client: Bob's (« Reprendre » his, at once), then hidden once resumed; Alice's
+    # (« Reprendre » greyed while the timer runs, 1 to 60 s).
+    foreach ($N in 1, 2) {
+        $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$N.log"
+        $Screens = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "HUD pause: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
+        $Texts = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "HUD pause texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
+        $Says = ($Screens -join "; ") + " / " + ($Texts -join "; ")
+        $Resume = if ($N -eq 1) { "yes" } else { "no" }
+        $Wanted = "^paused by Bob, (\d+) s, 2 left, resume $Resume$"
+        $Shown = @($Screens | Where-Object { $_ -match $Wanted -and [int]$Matches[1] -ge 1 -and [int]$Matches[1] -le 60 })
+        $Hidden = if ($N -eq 1) { $Screens.Count -ge 2 -and $Screens[-1] -eq "hidden" } else { $true }
+        # Its own world paused while the match is (the units' animations, falls, arrows and bodies stand still), then running.
+        $WorldLines = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "Pause: this machine's world (paused|running)" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
+        $Checks["client $N : its world paused then running ($($WorldLines -join ', '))"] = ($WorldLines -join ",") -eq "paused,running"
+        $Checks["client $N : the pause screen, resume $Resume, then hidden once resumed ($Says)"] = $Shown.Count -ge 1 -and $Hidden -and
+            @($Texts | Where-Object { $_ -match "^Partie en pause \| Mise en pause par Bob \| Tout le monde pourra reprendre dans \d:\d\d \| Pauses restantes : 2 \| Reprendre$" }).Count -ge 1
+    }
     $ServerErrors = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "LogHOLMatch: (Error|Warning)|LogHOLNet: (Error|Warning)" })
     $Checks["server: no match or network error ($($ServerErrors.Count))"] = $ServerErrors.Count -eq 0
     # The scripts on the dedicated server (J8a5-Q3c, D484): every .as compiles there too (the editor's -server loads
@@ -6078,6 +6191,81 @@ if ($Parts -contains "aiserver") {
     if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
     $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
     $AllOk = (Report "aiserver" $Checks) -and $AllOk
+}
+
+# The "aiduel" part (IA0.7, IA-Q3): two AI slots against each other, no client, no window (the editor in server mode
+# as "aiserver", on a fixed time step: the game's seconds go by faster than the clock). 2 min of the game's time, a
+# gather report every 2 s; run twice, with hol.Simulation.StepHashes 1. Checks: no Peasant of an AI slot idle (phase
+# None, in the report) for more than 10 s; the two runs' step hashes the same (the match is reproducible: places fixed
+# on Plain, the brain reads its summary in a fixed order); the wall time of the 2 min of game (the speed measured).
+function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
+    $Log = Join-Path $TestSaved "Logs\quick_aiduel_$Tag.log"
+    $Config = Join-Path $TestSaved "quick_aiduel.json"
+    $Sequence = Join-Path $TestSaved "quick_aiduel_$Tag.seq"
+    Remove-Item $Log -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $Config @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    $Lines = @("hol.Simulation.StepHashes 1")
+    for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
+    $Lines += @("hol.Gather.Report", "quit")
+    $Lines | Set-Content -Encoding utf8 $Sequence
+    $Port = Get-AITestPort
+    $Arguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+    $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
+    $TimedOut = -not $Process.WaitForExit(420000)
+    if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }
+    return @{ Log = $Log; TimedOut = $TimedOut; Sequence = $Sequence }
+}
+if ($Parts -contains "aiduel") {
+    $DuelSeconds = 120
+    $DuelFps = 20
+    $DuelRuns = @()
+    foreach ($Tag in "a", "b") {
+        $Watch = [Diagnostics.Stopwatch]::StartNew()
+        $Run = Invoke-AIDuelRun $Tag $DuelSeconds $DuelFps
+        $Run.WallSeconds = $Watch.Elapsed.TotalSeconds
+        $DuelRuns += $Run
+    }
+    $Checks = [ordered]@{}
+    $Hashes = @()
+    foreach ($Run in $DuelRuns) {
+        $Text = if (Test-Path $Run.Log) { Get-Content $Run.Log } else { @() }
+        $Checks["run $($Run.Log | Split-Path -Leaf): the server quit by itself"] = -not $Run.TimedOut
+        $ScriptErrors = @(Get-ScriptErrors $Run.Log)
+        $Checks["run $($Run.Log | Split-Path -Leaf): scripts compiled"] = $ScriptErrors.Count -eq 0
+        $Timeout = $Text | Select-String -Pattern "Test sequence: timeout at step" | Select-Object -First 1
+        $Checks["run $($Run.Log | Split-Path -Leaf): sequence ran to its end"] = -not $Timeout
+        $Checks["run $($Run.Log | Split-Path -Leaf): thinking slots [0, 1]"] = [bool]($Text | Select-String -Pattern "thinking slots \[0, ?1\]" -Quiet)
+        $Run.Hashes = @($Text | Select-String -Pattern "Step hash: step (\d+) ([0-9a-f]{16})" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+        # The idle time: the reports are 2 s of game apart; per slot, the longest run of reports with a Peasant idle.
+        $Reports = @{}
+        foreach ($Match in ($Text | Select-String -Pattern "Gather: slot (\d+) to source \d+, gathering \d+, to deposit \d+, not gathering (\d+)")) {
+            $Slot = [int]$Match.Matches[0].Groups[1].Value
+            if (-not $Reports.ContainsKey($Slot)) { $Reports[$Slot] = @() }
+            $Reports[$Slot] += [int]$Match.Matches[0].Groups[2].Value
+        }
+        $Run.MaxIdle = 0.0
+        $Run.NumReports = 0
+        foreach ($Slot in $Reports.Keys) {
+            $Run.NumReports = [Math]::Max($Run.NumReports, $Reports[$Slot].Count)
+            $Streak = 0
+            # The starting hero is among the "not gathering": the Peasants idle are the ones above it.
+            $Heroes = @($Text | Select-String -Pattern "Starting hero of slot $Slot spawned").Count
+            foreach ($NotGathering in $Reports[$Slot]) {
+                $Streak = if ($NotGathering -gt $Heroes) { $Streak + 1 } else { 0 }
+                $Run.MaxIdle = [Math]::Max($Run.MaxIdle, 2.0 * $Streak)
+            }
+        }
+    }
+    $First = $DuelRuns[0]
+    $Checks["gather reports taken ($($First.NumReports), one per 2 s)"] = $First.NumReports -ge ($DuelSeconds / 2)
+    $Checks["no AI Peasant idle more than 10 s (longest $($First.MaxIdle) s and $($DuelRuns[1].MaxIdle) s)"] = $First.MaxIdle -le 10 -and $DuelRuns[1].MaxIdle -le 10
+    $LastStep = if ($First.Hashes.Count) { ($First.Hashes[-1] -split ' ')[0] } else { "none" }
+    $Checks["step hashes: $($First.Hashes.Count) steps (last $LastStep), 2 min of game = 2400 steps at least"] = $First.Hashes.Count -ge ($DuelSeconds * 20)
+    $Same = ($First.Hashes.Count -gt 0) -and ($First.Hashes.Count -eq $DuelRuns[1].Hashes.Count) -and -not (Compare-Object $First.Hashes $DuelRuns[1].Hashes)
+    $Checks["the two runs' step hashes are the same"] = $Same
+    $Speed = if ($First.WallSeconds -gt 0) { [Math]::Round($DuelSeconds / $First.WallSeconds, 2) } else { 0 }
+    $Checks["speed: $DuelSeconds s of game in $([Math]::Round($First.WallSeconds, 1)) s of wall (x$Speed, with the engine's start) and $([Math]::Round($DuelRuns[1].WallSeconds, 1)) s"] = $true
+    $AllOk = (Report "aiduel" $Checks) -and $AllOk
 }
 
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of

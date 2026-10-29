@@ -25,6 +25,12 @@ bool UHOLCommandSubsystem::IsRefused(const int32 PlayerIndex)
 		UE_LOG(LogHOLCommands, Display, TEXT("Match waits: order of slot %d refused"), PlayerIndex);
 		return true;
 	}
+	// P5 (D513): nor while it is paused.
+	if (GameState && GameState->IsMatchPaused())
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Match paused: order of slot %d refused"), PlayerIndex);
+		return true;
+	}
 	if (!GameState || PlayerIndex == INDEX_NONE || !GameState->IsSlotDefeated(PlayerIndex))
 	{
 		return false;

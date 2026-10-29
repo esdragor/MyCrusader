@@ -2333,14 +2333,15 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 				&& !Combat->BuildingInward.IsZero();
 			const bool bKeptOut = bStill || bStrikesByPlace;
 			bool bPutBack = false;
-			// Loop 9: those out of the square slab, its corners too (the round rule round the body left them ~30 cm in a corner).
-			const bool bMoved = PushOut(Position, Radius, KeepInside, Keep, bKeptOut, bPutBack, bStrikesByPlace);
+			// Loop 9: those out of the square slab, its corners too (the round rule round the body left them ~30 cm in a corner);
+			// EtapeDefini R: the units standing still as well (their bodies stayed ~30 cm in the slab's corners).
+			const bool bMoved = PushOut(Position, Radius, KeepInside, Keep, bKeptOut, bPutBack, bKeptOut);
 			// Its formation place goes out with it: held in the wall, it would walk back in (C.1).
 			if (bKeptOut && Order.PlaceHold.bHeld)
 			{
 				FVector2D Place(Order.Slot.X, Order.Slot.Y);
 				bool bPlacePutBack = false;
-				if (PushOut(Place, Radius, KeepInside, Keep, true, bPlacePutBack, bStrikesByPlace))
+				if (PushOut(Place, Radius, KeepInside, Keep, true, bPlacePutBack, true))
 				{
 					Order.Slot = FVector(Place.X, Place.Y, Order.Slot.Z);
 				}
