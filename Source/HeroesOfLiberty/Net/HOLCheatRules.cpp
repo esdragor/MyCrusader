@@ -7,6 +7,7 @@
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 
 namespace
@@ -27,8 +28,12 @@ namespace
 				return;
 			}
 			const UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
-			UE_LOG(LogHOLMatch, Display, TEXT("Pause report: paused %d, simulation step %lld"), World->IsPaused() ? 1 : 0,
-				Simulation ? static_cast<int64>(Simulation->GetStepIndex()) : -1ll);
+			// P5 (D513): the match's own pause after the engine's (refused in a networked match).
+			const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+			UE_LOG(LogHOLMatch, Display, TEXT("Pause report: paused %d, simulation step %lld, match paused %d by slot %d, %d left"),
+				World->IsPaused() ? 1 : 0, Simulation ? static_cast<int64>(Simulation->GetStepIndex()) : -1ll,
+				GameState && GameState->IsMatchPaused() ? 1 : 0, GameState ? GameState->GetPausedBySlot() : INDEX_NONE,
+				GameState ? GameState->GetPausesLeft() : -1);
 		}));
 }
 

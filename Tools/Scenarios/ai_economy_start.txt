@@ -1,0 +1,15 @@
+# IA0.7 : toi contre une IA, début de partie : l'économie de l'IA tourne seule
+# Plain, toi (slot 0) contre une IA (slot 1, « IA Normal 2 »), 5 Paysans de départ chacun. Le scénario vérifie que le
+# cerveau de l'IA pense et envoie ses Paysans récolter, puis te rend la main : joue ta propre économie à côté.
+# À regarder (laisse tourner 2 à 3 minutes, console ² : hol.Camera.FocusSlot 1 pour suivre l'IA, FocusSlot 0 pour revenir) :
+#  1. les 5 Paysans de l'IA partent récolter tout de suite, sans toi ;
+#  2. ils rapportent au forum (le stock de l'IA monte : hol.Gather.Report 1 dans la console) ;
+#  3. aucun Paysan de l'IA ne reste planté sans rien faire plus de 10 s (arbre ou ferme épuisé : il repart ailleurs) ;
+#  4. l'IA ne construit ni ne produit rien encore (IA1) : seulement sa récolte.
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1: 5 units to source
+hol.Camera.FocusSlot 0
+frames 2
+note L'IA « IA Normal 2 » récolte seule : 5 Paysans partis. Laisse tourner 2 à 3 min, suis-la avec ² hol.Camera.FocusSlot 1.
+note Vérifie : ses Paysans rapportent au forum et aucun ne reste inactif plus de 10 s. Elle ne construit rien encore (IA1).

@@ -29,16 +29,17 @@ $ServerExe = Join-Path $Work "editor_server.cmd"
 "@`"$Editor`" `"$UProject`" %* -server -nullrhi -nosound -nosplash -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Trial_LobbySrv" |
     Set-Content -Encoding ascii $ServerExe
 
-# Ports away from the test scripts' (manager 7790+, match servers UDP 7900+): another copy's test never lands here.
-$Port = 7850
-while ($Port -lt 7890) {
-    try { $Probe = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port); $Probe.Start(); $Probe.Stop(); break } catch { $Port++ }
-}
+# This copy's own trial ports (Tools\Tests\copy_ports.ps1), away from the test scripts' ranges (managers TCP 7790-7889,
+# match servers UDP 7900-7999, both per copy): neither another copy's test nor one of this copy lands here.
+. (Join-Path $Root "Tools\Tests\copy_ports.ps1")
+$CopyIndex = Get-CopyIndex $Root
+$Port = Get-FreeTcpPort (7590 + 10 * $CopyIndex)
+$FirstServerPort = 8000 + 10 * $CopyIndex
 $Url = "http://127.0.0.1:${Port}"
 $Servers = Join-Path $Work "servers.json"
 "{ `"servers`": [ { `"name`": `"Essai IA`", `"url`": `"$Url`" } ] }" | Set-Content -Encoding ascii $Servers
 $ManagerLog = Join-Path $Work "manager.log"
-$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=7960" `
+$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
     -WorkingDirectory $Work -PassThru -WindowStyle Hidden -RedirectStandardOutput $ManagerLog
 Write-Host "ai_lobby: manager on $Url (pid $($Manager.Id), log $ManagerLog)"
 

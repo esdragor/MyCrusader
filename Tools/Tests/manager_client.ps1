@@ -62,11 +62,12 @@ $ManagerLog = Join-Path $Work "manager.log"
 New-Item -ItemType Directory -Force (Split-Path $GameLog) | Out-Null
 Remove-Item $GameLog, $ManagerLog -ErrorAction SilentlyContinue
 
-# A free TCP port from 7790 (another copy's manager may hold 7700).
-$Port = 7790
-while ($Port -lt 7890) {
-    try { $Probe = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port); $Probe.Start(); $Probe.Stop(); break } catch { $Port++ }
-}
+# This copy's own ports (copy_ports.ps1): its test manager on a free TCP port of its range (another copy's manager may
+# hold 7700, another copy's test runs in its own range), its match servers from its own UDP range.
+. (Join-Path $PSScriptRoot "copy_ports.ps1")
+$CopyIndex = Get-CopyIndex $Project
+$Port = Get-FreeTcpPort (7790 + 10 * $CopyIndex)
+$FirstServerPort = 7900 + 10 * $CopyIndex
 $Url = "http://127.0.0.1:${Port}"
 $LobbyName = "Salon R4 test"
 $Failure = $null
@@ -77,7 +78,8 @@ $ManagerArguments = "--urls $Url --GameVersion=$Served"
 if ($Case -in @("Match", "Return", "Killed")) {
     $ServerExe = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
     if (-not (Test-Path $ServerExe)) { Write-Host "manager_client : FAIL (no $ServerExe; run Tools\Tests\net_match.ps1 -Stage)"; exit 1 }
-    $ManagerArguments += " --ServerExe=`"$ServerExe`" --ManagerUrl=$Url"
+    # Its match servers from this copy's UDP range (not the manager's default 7777: another copy's lobby test or game).
+    $ManagerArguments += " --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort"
     # A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion): "dev" for the time of the
     # test, as the game in the editor (package.ps1 writes the real one into a package).
     $ServerVersion = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"

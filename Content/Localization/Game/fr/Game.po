@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-28 15:04\n"
-"PO-Revision-Date: 2026-10-28 15:04\n"
+"POT-Creation-Date: 2026-10-28 19:26\n"
+"PO-Revision-Date: 2026-10-28 19:26\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -61,6 +61,48 @@ msgstr "Pas assez d'or"
 msgctxt "HOLHeroBlock,NoPlace"
 msgid "Aucun forum pour revenir"
 msgstr "Aucun forum pour revenir"
+
+#. Key:	Title
+#. SourceLocation:	Script/UI/HOLPauseScreen.as(51)
+#: Script/UI/HOLPauseScreen.as(51)
+msgctxt "HOLPauseScreen,Title"
+msgid "Partie en pause"
+msgstr "Partie en pause"
+
+#. Key:	By
+#. SourceLocation:	Script/UI/HOLPauseScreen.as(52)
+#: Script/UI/HOLPauseScreen.as(52)
+msgctxt "HOLPauseScreen,By"
+msgid "Mise en pause par {0}"
+msgstr "Mise en pause par {0}"
+
+#. Key:	TimerRunning
+#. SourceLocation:	Script/UI/HOLPauseScreen.as(53)
+#: Script/UI/HOLPauseScreen.as(53)
+msgctxt "HOLPauseScreen,TimerRunning"
+msgid "Tout le monde pourra reprendre dans {0}"
+msgstr "Tout le monde pourra reprendre dans {0}"
+
+#. Key:	TimerOver
+#. SourceLocation:	Script/UI/HOLPauseScreen.as(54)
+#: Script/UI/HOLPauseScreen.as(54)
+msgctxt "HOLPauseScreen,TimerOver"
+msgid "Tout le monde peut reprendre"
+msgstr "Tout le monde peut reprendre"
+
+#. Key:	Left
+#. SourceLocation:	Script/UI/HOLPauseScreen.as(55)
+#: Script/UI/HOLPauseScreen.as(55)
+msgctxt "HOLPauseScreen,Left"
+msgid "Pauses restantes : {0}"
+msgstr "Pauses restantes : {0}"
+
+#. Key:	Resume
+#. SourceLocation:	Script/UI/HOLPauseScreen.as(56)
+#: Script/UI/HOLPauseScreen.as(56)
+msgctxt "HOLPauseScreen,Resume"
+msgid "Reprendre"
+msgstr "Reprendre"
 
 #. Key:	AbsentLine
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDisconnectRules.cpp(70)
@@ -1295,36 +1337,50 @@ msgid "Continuer à regarder"
 msgstr "Continuer à regarder"
 
 #. Key:	Title
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(101)
-#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(101)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(102)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(102)
 msgctxt "HOLGameMenu,Title"
 msgid "Menu"
 msgstr "Menu"
 
 #. Key:	Resume
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(102)
-#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(102)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(103)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(103)
 msgctxt "HOLGameMenu,Resume"
 msgid "Reprendre"
 msgstr "Reprendre"
 
+#. Key:	Pause
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(104)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(104)
+msgctxt "HOLGameMenu,Pause"
+msgid "Pause"
+msgstr "Pause"
+
 #. Key:	Surrender
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(103)
-#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(103)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(106)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(106)
 msgctxt "HOLGameMenu,Surrender"
 msgid "Abandonner"
 msgstr "Abandonner"
 
 #. Key:	Result
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(107)
-#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(107)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(110)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(110)
 msgctxt "HOLGameMenu,Result"
 msgid "Résultat"
 msgstr "Résultat"
 
+#. Key:	PauseLeft
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(212)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(212)
+msgctxt "HOLGameMenu,PauseLeft"
+msgid "Pause ({0})"
+msgstr "Pause ({0})"
+
 #. Key:	SurrenderQuestion
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(61)
-#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(61)
+#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(62)
+#: Source/HeroesOfLibertyUI/Screens/HOLGameMenu.cpp(62)
 msgctxt "HOLGameMenu,SurrenderQuestion"
 msgid "Abandonner la partie ?"
 msgstr "Abandonner la partie ?"

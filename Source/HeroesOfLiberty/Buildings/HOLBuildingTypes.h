@@ -14,7 +14,7 @@ class UStaticMesh;
  * Where a building stands in its construction (J6, D311, D312), replicated with it. The main centres (and the camps
  * the stress tests place by code) are born finished; a building placed by a player is born a foundation.
  */
-UENUM()
+UENUM(BlueprintType)
 enum class EHOLConstructionState : uint8
 {
 	/** Placed and paid (D311): a flat outline on the ground, no work yet; never blocks the navmesh (D312). */

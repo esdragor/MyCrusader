@@ -1,0 +1,8 @@
+# Pause en solo (P5, D513) : bouton « Pause » du menu d'Échap, écran de pause, rien ne bouge, « Reprendre »
+# Plain, toi (slot 0) contre une IA (slot 1). En solo la pause est libre : ni limite, ni minuteur.
+frames 30
+note Échap (rien de sélectionné) ou « Menu » en haut à droite : bouton « Pause » sous « Reprendre ».
+note En pause : la partie s'assombrit, panneau « Partie en pause » + « Reprendre » ; rien ne bouge (Paysans, IA).
+note Pendant la pause, ni caméra (flèches, bord d'écran, molette), ni sélection, ni ordre ; Échap ouvre encore le menu.
+note « Reprendre » relance. Textes : console (²) hol.UI.Language en / ja, puis hol.UI.Language fr.
+note En réseau (vérifié par le test à 2 clients, pas d'essai possible sans serveur cuit) : 3 pauses par partie, « Pause (2) », minuteur de 60 s.
