@@ -3081,4 +3081,8 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **Les cartes dans le prototype (2026-10-27) : D498.**
 
-Prochain numéro : **D499**.
+**Chantier réseau M6, R9.3 (2026-10-28) : D499 à D514.**
+
+**IA du prototype, IA0.6 (2026-10-28) : D515 et D516.**
+
+Prochain numéro : **D517**.

@@ -1352,3 +1352,56 @@ d'un bâtiment (chemin de sortie, par exemple pour contourner une zone) ». Work
 - 2026-10-27 : **essai de l'utilisateur : « tout est bon »** (scénario `rally_steps`). Commit 1ddc9df sur `rally-steps`,
   fusion de `main` d1a7dc5 (GDD et EtapeDefini seulement), **dans `main` : 3026278** (avance rapide). **Étape N close** ;
   ligne retirée d'`EtapeDefini.md`.
+
+## R — Coins carrés de la garde du mur visible pour les unités arrêtées (2026-10-29, Elrond, branche `idle-wall-corners`)
+
+Reste (a) de J boucle 9 : la garde des unités **arrêtées** (C.1) mesure le mur visible depuis le **corps** (75 + rayon + 1 cm),
+donc avec un **coin arrondi** ; le socle dessiné a un coin **carré** (corps + 75 cm). Dans un coin, un Homme d'armes arrêté
+finit à ~30 cm du coin du socle : son corps (rayon 60) est ~30 cm dedans. J boucle 9 a ajouté `bSquareCorners` à
+`HOLConstruction::EaseOutOfVisibleWalls` et ne le passe que pour `bStrikesByPlace` (`PushOut`, `HOLSimulationProcessors.cpp`).
+Demandé le 2026-10-29 (« fais un maximum des petites lignes »). Les autres petites lignes : « aléa build site après
+move,bodies » déjà close (H, 2026-10-25 ; ligne d'EtapeDefini corrigée) ; « barre du bas trop large sous 1500 px » laissée
+(choix de l'utilisateur du 2026-10-21 : avec la mini-carte, pas avant) ; « ligne tous les 5 cases » et « écart des mesures
+de rendu » : questions à poser à l'utilisateur à la fin.
+
+### Plan (boucles de 15 min)
+1. Test rouge sur la vraie chaîne (sous-agent) : sous-cas `build:corner` de `quick_check.ps1` : une Maison finie d'un coup,
+   4 Hommes d'armes envoyés chacun sur un coin du corps, arrêtés 8 s, `hol.Units.Where 0` ; contrôle A = chaque corps hors
+   du socle carré (marge ≥ −10 cm), contrôle B = les 4 bien dans les coins, à l'arrêt. Attendu : A rouge (~−30 cm).
+2. Correctif : `PushOut(..., bKeptOut)` pour `bSquareCorners` (unité et place tenue) ; test pur `IdleWall` étendu (une
+   unité arrêtée dans un coin, coins carrés : hors du socle). Compilation, `build:corner` vert, `tests`, `-Parts build`.
+3. Essai de l'utilisateur (`idle_wall` suffit : un soldat collé dans un coin d'une maison), puis commit.
+
+### Suivi
+- 2026-10-29 : Elrond réservé (`IN_USE.txt`), branche `idle-wall-corners` = `main` 4f5c297, compilation lancée.
+  Sous-agent lancé pour le test rouge (étape 1). `EtapeDefini.md` : lignes GDD (prochain D517, aussi corrigé au § 22 du
+  GDD : D499-D514 et D515-D516 y manquaient), `MovementInProgress.md` (clos, à archiver), C.1 (pointeur vers R) mises à jour.
+- 2026-10-29 : **étape 1 faite, rouge montré** (sous-agent, 4 passages, ~12 min) : sous-cas `build:corner` de `quick_check.ps1`
+  (Elrond, +62 lignes : `$SubCaseTable`, `$CornerHouse` (-18000, 5600) au nord du spot du héros, étapes « mark build corner »
+  en toute fin du build solo, contrôles A/B/C section « build corner »). Une Maison finie d'un coup (`hol.Cheat.FastBuild`),
+  4 Hommes d'armes chacun envoyé par clic droit sur le coin de la dalle à ±380 (le coin exact du corps ±295 tombait 13 cm à
+  côté et les posait le long du mur : marges +1, règle du corps juste là). Résultat sur le code non modifié : **A rouge,
+  marges −32, −33, −31, −33 cm** (136 cm du coin du corps sur la diagonale, 28 cm du coin de la dalle, « eased out of a visible
+  wall: 12 ») ; B vert (4 à l'arrêt, chacun dans son coin), C vert (retirés, Maison détruite). Correctif appliqué (étape 2) :
+  `PushOut(..., bKeptOut)` pour les coins carrés (unité et place tenue), test pur `IdleWall` étendu (coin : règle ronde = corps
+  dans la dalle, coins carrés = dehors en pas de 10 cm, puis immobile). Compilation lancée.
+- 2026-10-29 : **étape 2 faite, vert** : compilation (Elrond) verte ; `-Parts build:corner,tests` **PASS en 44 s** (tests
+  287/287, `IdleWall` étendu compris). `-Parts build` entier : d'abord **rouge au cas `corner` seul** (7 unités près de la
+  Maison au lieu de 4, le coin −x−y à −50 cm) : le spot (-18000, 5600) tombait entre les deux Casernes du cas `barracks`
+  ((-18600, 4600) et (-18600, 7400)) : l'unité du coin était **dans deux murs** (C.3, elle reste), et des unités du cas
+  `hero` traînaient là. Maison déplacée en **(-16400, 9600)** (terrain libre au nord, à l'écart des pas de ralliement y 6800),
+  toutes les unités à moins de 20 m retirées avant les 4 Hommes d'armes (plus seulement les Paysans). `-Parts build`
+  **PASS en 126 s**, les 24 sections vertes (`cut` et `gap` inchangées) ; marges finales des 4 coins **+1, 0, +1, 0 cm**
+  (61 cm de la dalle moins le rayon 60), « eased out of a visible wall: 22 ». Scénario `idle_wall` : consigne du coin ajoutée
+  pour l'essai. Lancé : `-Parts gather,formation,combat` (unités à l'arrêt près des bâtiments ailleurs que dans `build`).
+- 2026-10-29 : `-Parts gather,formation,combat` **PASS en 88 s** (14 sections vertes) ; `-Parts build:corner` seul au nouvel
+  emplacement **PASS en 32 s**. **R prête pour l'essai** : scénario `idle_wall` dans Elrond (consigne du coin ajoutée), puis
+  commit sur `idle-wall-corners` et avance de `main` (fichiers : `HOLSimulationProcessors.cpp` (2 lignes),
+  `HOLConstructionTests.cpp` (test `IdleWall` +32), `quick_check.ps1` (sous-cas `build:corner` +62), `idle_wall.txt`,
+  `EtapeDefini.md`, `GDD.md` § 22, ce journal). À l'avance de `main` : archiver `MovementInProgress.md` (clos) si l'utilisateur
+  est d'accord.
+- 2026-10-29 : **essai validé** (« tout est bon ») et accord sur les trois recommandations : ligne « tous les 5 cases »
+  abandonnée (TileSizeInProgress.md), écart des mesures de rendu clos comme non reproduit (ImplementationInProgress.md
+  archivé), MovementInProgress.md archivé. Code commité dans Elrond (09860a9), `main` 537bdce (IA1.3, M6) fusionnée dans
+  la branche, compilée (87 s), `-Parts build:corner,tests` PASS (tests 290/290) ; `main` avancé en avance rapide (a9e5636).
+  Elrond libéré. **R close.**
