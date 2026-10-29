@@ -9,6 +9,7 @@
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -34,16 +35,39 @@ FString FHOLAISummary::ToString() const
 		Nearest += FString::Printf(TEXT(" %c %d"), TEXT("FWSG")[static_cast<int32>(Resource)], Near.Num());
 		Nearest += Near.IsEmpty() ? FString() : FString::Printf(TEXT(" (%.0f cm)"), Near[0].DepositDistance);
 	}
-	return FString::Printf(TEXT("slot %d: %d idle; stock %s; sources%s; pop %d/%d (+%d queued); %d buildings; gatherers F %d W %d S %d G %d"),
+	return FString::Printf(TEXT("slot %d: %d idle; stock %s; sources%s; pop %d/%d (+%d queued); %d buildings; gatherers F %d W %d S %d G %d; army %d, enemies %d"),
 		PlayerIndex, IdlePeasants.Num(), bHasStock ? *GetStock().ToString() : TEXT("none"), *Nearest, PopulationUsed, PopulationCap,
-		PopulationQueued, Buildings.Num(), Food.Peasants, Wood.Peasants, Stone.Peasants, Gold.Peasants);
+		PopulationQueued, Buildings.Num(), Food.Peasants, Wood.Peasants, Stone.Peasants, Gold.Peasants, Army.Num(), Enemies.Num());
+}
+
+namespace
+{
+	/** A unit as the script reads it (IA2.1): TargetId only while it strikes. */
+	FHOLAIUnit MakeAIUnit(const FHOLUnitView& Unit)
+	{
+		FHOLAIUnit Out;
+		Out.Id = static_cast<int32>(Unit.UnitId);
+		Out.OwnerSlot = Unit.OwnerPlayer;
+		Out.Type = Unit.TypeName;
+		Out.Location = Unit.Location;
+		Out.Health = Unit.Health;
+		Out.bIdle = Unit.Activity == EHOLUnitActivity::Idle;
+		Out.TargetId = Unit.Activity == EHOLUnitActivity::Attacking && Unit.TargetUnitId != 0 ? static_cast<int32>(Unit.TargetUnitId) : INDEX_NONE;
+		return Out;
+	}
+
+	bool IsSlotDefeated(const uint8 DefeatedMask, const int32 Slot)
+	{
+		return Slot >= 0 && Slot < 8 && (DefeatedMask & (1 << Slot)) != 0;
+	}
 }
 
 namespace HOLAISummary
 {
 	FHOLAISummary Make(const int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, const int32 MaxSourcesPerResource,
-		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses)
+		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses,
+		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask)
 	{
 		FHOLAISummary Summary;
 		Summary.PlayerIndex = PlayerIndex;
@@ -67,6 +91,27 @@ namespace HOLAISummary
 			}
 		}
 		Summary.PeasantIds.Sort();
+
+		// IA2.1: its army, the soldiers (a unit that does not gather), the dying, the King and the hero left out.
+		for (const FHOLUnitView& Unit : Units)
+		{
+			if (Unit.OwnerPlayer == PlayerIndex && Unit.CarryCapacity == 0 && Unit.Activity != EHOLUnitActivity::Dying && !Unit.bKing && !Unit.bHero)
+			{
+				Summary.Army.Add(MakeAIUnit(Unit));
+			}
+		}
+		Summary.Army.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
+
+		// IA2.1: the enemies, as GatherEnemies read them (the one place; the fog will cut them there): another slot's, not
+		// defeated, not dying, by identifier.
+		for (const FHOLUnitView& Unit : Enemies)
+		{
+			if (Unit.OwnerPlayer != PlayerIndex && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer) && Unit.Activity != EHOLUnitActivity::Dying)
+			{
+				Summary.Enemies.Add(MakeAIUnit(Unit));
+			}
+		}
+		Summary.Enemies.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
 
 		// Sources: each standing one the slot may gather (not another slot's farm field, IA1.2: the gather would refuse it,
 		// IA0.4 B4) measured from the slot's nearest deposit taking its resource. A few deposits per slot, a few hundred
@@ -153,6 +198,35 @@ namespace HOLAISummary
 				break;
 			}
 		}
+		// IA2.1: the nearest main centre of another slot (not defeated) to its own, a tie to the lower slot, then the first
+		// by position; without a centre of its own, the lowest slot's.
+		{
+			const FHOLAIBuilding* Best = nullptr;
+			double BestDistance = 0.0;
+			for (const FHOLAIBuilding& Building : Buildings)
+			{
+				if (Building.OwnerPlayer == PlayerIndex || Building.TypeName != HOLBuildingTypeNames::MainCentre
+					|| IsSlotDefeated(DefeatedMask, Building.OwnerPlayer))
+				{
+					continue;
+				}
+				const double Distance = Summary.bHasCentre ? FVector::DistSquared2D(Building.Location, Summary.CentreLocation) : 0.0;
+				const bool bBetter = !Best || Distance < BestDistance
+					|| (Distance == BestDistance && (Building.OwnerPlayer < Best->OwnerPlayer
+						|| (Building.OwnerPlayer == Best->OwnerPlayer && (Building.Location.X < Best->Location.X
+							|| (Building.Location.X == Best->Location.X && Building.Location.Y < Best->Location.Y)))));
+				if (bBetter)
+				{
+					Best = &Building;
+					BestDistance = Distance;
+				}
+			}
+			if (Best)
+			{
+				Summary.bHasEnemyCentre = true;
+				Summary.EnemyCentreLocation = Best->Location;
+			}
+		}
 		if (Figures.IsSet())
 		{
 			Summary.bHasPopulation = true;
@@ -164,6 +238,20 @@ namespace HOLAISummary
 			}
 		}
 		return Summary;
+	}
+
+	void GatherEnemies(const UWorld& World, const int32 PlayerIndex, TArray<FHOLUnitView>& OutEnemies)
+	{
+		// The whole world, as the server and a solo game see it (nothing is hidden before the fog, IA2-Q1 A): every unit of
+		// another slot that is not defeated, the dying left out (Gather). THE place to cut to the slot's vision (M7, the fog
+		// chantier): the rules in script and Make do not change.
+		HOLUnitView::Gather(World, OutEnemies);
+		const AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
+		const uint8 DefeatedMask = GameState ? GameState->GetDefeatedMask() : 0;
+		OutEnemies.RemoveAll([PlayerIndex, DefeatedMask](const FHOLUnitView& Unit)
+		{
+			return Unit.OwnerPlayer == PlayerIndex || IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer);
+		});
 	}
 
 	void GatherDeposits(const UWorld& World, TArray<FHOLAIDeposit>& OutDeposits)
@@ -271,8 +359,11 @@ namespace HOLAISummary
 				Uses[Index].Occupants = Uses[Index].Places > 0 ? SourceSystem->GetOccupants(Index) : 0;
 			}
 		}
+		TArray<FHOLUnitView> Enemies;
+		GatherEnemies(World, PlayerIndex, Enemies);
+		const AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
 		return Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
-			ReadFigures(World, PlayerIndex), Uses);
+			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0);
 	}
 }
 

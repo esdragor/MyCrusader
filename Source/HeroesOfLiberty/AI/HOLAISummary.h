@@ -121,6 +121,41 @@ struct HEROESOFLIBERTY_API FHOLAIBuilding
 	bool bProducing = false;
 };
 
+/** A soldier or an enemy unit as the AI reads it (IA2.1): the slot's army, or what it knows of the others' units. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLAIUnit
+{
+	GENERATED_BODY()
+
+	/** Its unit identifier (uint32 in C++; it fits an int32, Blueprint and script have no uint32). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Id = INDEX_NONE;
+
+	/** Its owner's slot. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 OwnerSlot = INDEX_NONE;
+
+	/** Its type's row name (Spearman, ManAtArms, Archer, Crossbowman, Peasant...). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FName Type;
+
+	/** Where it stands (cm). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FVector Location = FVector::ZeroVector;
+
+	/** Its health points now. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Health = 0;
+
+	/** It stands with nothing to do (no order, not fighting: the HUD's Idle activity). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bIdle = false;
+
+	/** While it strikes: the unit identifier of its target; INDEX_NONE otherwise. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 TargetId = INDEX_NONE;
+};
+
 /** The summary of the world for one player slot (IA0.3). */
 USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLAISummary
@@ -187,6 +222,32 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FVector CentreLocation = FVector::ZeroVector;
 
+	/**
+	 * Its army (IA2.1): its soldiers (Spearman, ManAtArms, Archer, Crossbowman...), the dying left out, by identifier
+	 * (ascending). Not its Peasants (PeasantIds), nor its King and its hero (left out of the army: they do not take the
+	 * soldiers' orders; the hero comes with his own chantier).
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FHOLAIUnit> Army;
+
+	/**
+	 * The units of every other slot that is not defeated (IA2.1; in the prototype every other slot is an enemy), Peasants,
+	 * King and hero included (Type tells), the dying left out, by identifier (ascending). Read in one place,
+	 * HOLAISummary::GatherEnemies: that is where the fog (M7) will cut the list to what the slot's vision shows.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FHOLAIUnit> Enemies;
+
+	/**
+	 * An enemy main centre is known (IA2.1) and where the nearest stands to the slot's own centre (a tie: the lower slot;
+	 * without a centre of its own: the lowest slot's): the target of the attack waves. Like Enemies, cut by the fog later.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bHasEnemyCentre = false;
+
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FVector EnemyCentreLocation = FVector::ZeroVector;
+
 	/** The part of one resource. */
 	FHOLAIResourceSummary& Get(EHOLResource Resource);
 	const FHOLAIResourceSummary& Get(const EHOLResource Resource) const { return const_cast<FHOLAISummary&>(*this).Get(Resource); }
@@ -229,12 +290,14 @@ namespace HOLAISummary
 	/**
 	 * The rule (pure, tested alone): PlayerIndex's summary from the units (FHOLUnitView: the dying left out), the sources
 	 * (the used-up and unused ones left out), the deposits (the slot's own only) and its stock (none: zeros, bHasStock
-	 * false).
+	 * false). IA2.1: its army comes from Units (its soldiers); the Enemies come ONLY from the Enemies argument (what
+	 * GatherEnemies read: Make keeps the units of a slot other than PlayerIndex, not defeated (bit of DefeatedMask), not
+	 * dying), and the enemy centre from the Buildings of those slots.
 	 */
 	HEROESOFLIBERTY_API FHOLAISummary Make(int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, int32 MaxSourcesPerResource = DefaultMaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings = {}, const TOptional<FHOLAIPlayerFigures>& Figures = {},
-		TConstArrayView<FHOLAISourceUse> Uses = {});
+		TConstArrayView<FHOLAISourceUse> Uses = {}, TConstArrayView<FHOLUnitView> Enemies = {}, uint8 DefeatedMask = 0);
 
 	/**
 	 * The deposits of the world: the buildings that take deliveries (finished, a forum not down, D312, D351) and accept a
@@ -244,6 +307,13 @@ namespace HOLAISummary
 
 	/** Every building and site of the world as its owner sees it (IA1.3); Make keeps the slot's own. */
 	HEROESOFLIBERTY_API void GatherBuildings(const UWorld& World, TArray<FHOLAIBuilding>& OutBuildings);
+
+	/**
+	 * THE one place the AI reads the other slots' units (IA2-Q1 A): every unit of the world that is not the slot's, today
+	 * (nothing is hidden). With the fog (M7) this is the only function to cut to the camp's vision; the rules in script and
+	 * Make do not change. The list as FHOLUnitView, the dying left out.
+	 */
+	HEROESOFLIBERTY_API void GatherEnemies(const UWorld& World, int32 PlayerIndex, TArray<FHOLUnitView>& OutEnemies);
 
 	/** The population and gatherers of a slot's PlayerState (as ReadStock), unset without one. */
 	HEROESOFLIBERTY_API TOptional<FHOLAIPlayerFigures> ReadFigures(const UWorld& World, int32 PlayerIndex);
