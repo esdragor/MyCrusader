@@ -35,7 +35,10 @@ namespace UE::HeroesOfLiberty::Hero
 
 	FString DescribePrivate(const FHOLHeroPrivateSheet& Private)
 	{
-		return FString::Printf(TEXT("xp %d death %d cooldowns %d"), Private.XP, Private.DeathStep, Private.CooldownEndSteps.Num());
+		// J8c.3: each ability's ready step, by EHOLHeroAbility ("-": none yet).
+		const FString Ready = Private.CooldownEndSteps.IsEmpty() ? FString(TEXT("-"))
+			: FString::JoinBy(Private.CooldownEndSteps, TEXT(","), [](const int32 Step) { return FString::FromInt(Step); });
+		return FString::Printf(TEXT("xp %d death %d cooldowns %d ready %s"), Private.XP, Private.DeathStep, Private.CooldownEndSteps.Num(), *Ready);
 	}
 
 	/**
@@ -59,7 +62,8 @@ namespace UE::HeroesOfLiberty::Hero
 			for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 			{
 				const FHOLHeroSheet& Sheet = GameState->GetHeroSheet(Slot);
-				UE_LOG(LogHOLMatch, Display, TEXT("Hero sheet slot %d: state %s level %d hp %d"), Slot, *DescribeState(Sheet.State), Sheet.Level, Sheet.Health);
+				UE_LOG(LogHOLMatch, Display, TEXT("Hero sheet slot %d: state %s level %d hp %d cries %d banner %d %d until %d"), Slot, *DescribeState(Sheet.State),
+					Sheet.Level, Sheet.Health, Sheet.Cries, Sheet.BannerLocation.X, Sheet.BannerLocation.Y, Sheet.BannerEndStep);
 			}
 			const APlayerController* LocalController = World->GetFirstPlayerController();
 			const APlayerState* Local = LocalController && LocalController->IsLocalController() ? LocalController->PlayerState.Get() : nullptr;

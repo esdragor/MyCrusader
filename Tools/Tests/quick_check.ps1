@@ -289,6 +289,8 @@ if ($Parts -contains "net") {
     $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
     $NetHeroBornFlag = Join-Path $TestSaved "quick_net_hero_born.flag"
     $NetHeroXPFlag = Join-Path $TestSaved "quick_net_hero_xp.flag"
+    $NetHeroAbilitiesFlag = Join-Path $TestSaved "quick_net_hero_abilities.flag"
+    $NetHeroCastFlag = Join-Path $TestSaved "quick_net_hero_cast.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -343,6 +345,13 @@ if ($Parts -contains "net") {
             "mark net hero xp", "hol.Hero.SetXP 1 220", "wait 1", "hol.Units.Spawn 1 14300 300 0 ManAtArms 10", "wait 3",
             "hol.Units.Remove 14200 300 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroXPFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_xp1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_xp2.flag") 120",
+            # J8c.3: Bob's XP to 1 300 (level 4: the banner open); Bob casts his cry twice (the second refused, its cool-down)
+            # and plants his banner by his forum (hol.Hero.Cast); the server's report once he has, the clients' signal; his
+            # abilities reset after.
+            "mark net hero abilities", "hol.Hero.SetXP 1 1300", "wait 1", "signal $NetHeroAbilitiesFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_cast1.flag") 120", "wait 1", "hol.Hero.Report", "signal $NetHeroCastFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities2.flag") 120",
+            "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
@@ -2534,6 +2543,12 @@ if ($NetListening) {
         # J8b.3: Bob's hero at level 2 (the server's signal): the sheets, the units and the block as this client has them.
         $NetSteps += "mark hero xp", "waitfile $NetHeroXPFlag 120", "wait 1", "hol.Hero.Report", "hol.Units.Where", "hol.HUD.Report",
             "signal $(Join-Path $TestSaved "quick_net_hero_xp$Client.flag")"
+        # J8c.3: Bob (client 1) at level 4 casts his cry twice (the second refused at the server) and plants his banner 6 m
+        # from his forum's return place (~(14065, 299)); then both report the sheets as they have them.
+        $NetSteps += "mark hero abilities", "waitfile $NetHeroAbilitiesFlag 120"
+        if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
+            "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
+        $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -6374,6 +6389,33 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero xp" $XPChecks) -and $AllOk
+    # J8c.3: Bob's abilities over the network (J8-Q5): the server casts his cry once (the second refused) and plants his
+    # banner; his ready steps reach Bob alone, the cries and the banner both clients, as the server has them.
+    $AbChecks = [ordered]@{}
+    $AbServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net hero abilities")
+    $AbOrders = @($AbServerLines | Select-String -Pattern "Hero ability order: slot $BobSlot (cry|banner) at step \d+ (cast|refused)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+    $AbTrueReady = "$($AbServerLines | Select-String -Pattern "Hero true slot ${BobSlot}: .* ready (\S+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+    $AbTrueSheet = "$($AbServerLines | Select-String -Pattern "Hero sheet slot ${BobSlot}: .* (cries \d+ banner \S+ \S+ until -?\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+    $AbReadySteps = @("$AbTrueReady" -split "," | ForEach-Object { [int]$_ })
+    $AbChecks["server: the cry cast, refused again, the banner cast ($($AbOrders -join ', ')); ready $AbTrueReady; $AbTrueSheet"] =
+        (($AbOrders -join ",") -eq "cry cast,cry refused,banner cast") -and ($AbReadySteps.Count -eq 3) -and ($AbReadySteps[0] -eq 0) -and
+        ($AbReadySteps[1] -gt 1200) -and ($AbReadySteps[2] -gt 2400) -and ($AbTrueSheet -match "^cries 1 banner 14665 299 until (\d+)$") -and
+        ([int]$Matches[1] -eq $AbReadySteps[2] - 1500)
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $AbLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "hero abilities")
+        $AbSheet = "$($AbLines | Select-String -Pattern "Hero sheet slot ${BobSlot}: .* (cries \d+ banner \S+ \S+ until -?\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $AbChecks["client $N : Bob's cries and banner as the server's ($AbSheet)"] = ($AbSheet -ne "") -and ($AbSheet -eq $AbTrueSheet)
+        if ($N -eq 1) {
+            $AbLocal = "$($AbLines | Select-String -Pattern "Hero private slot $BobSlot local: .* ready (\S+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+            $AbChecks["client $N (Bob): his ready steps as the server's ($AbLocal)"] = ($AbLocal -ne "") -and ($AbLocal -eq $AbTrueReady)
+        }
+        else {
+            $AbOther = "$($AbLines | Select-String -Pattern "Hero private slot $BobSlot other: .* cooldowns (\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+            $AbChecks["client $N (Alice): Bob's cool-downs hidden (cooldowns $AbOther)"] = $AbOther -eq "0"
+        }
+    }
+    $AllOk = (Report "net hero abilities" $AbChecks) -and $AllOk
 }
 
 if ($TestsProcess) {
