@@ -6641,7 +6641,9 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
     Remove-Item $NetFogServerLog, (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client*.log"), (Join-Path $TestSaved "quick_${NetFogPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $NetFogConfig @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
-    @("waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
+    # F6b: after 10 s Alice's units march (fast) to 52 m from Bob's forum, inside its sight (D523: 6400 cm), stay, and come home.
+    @("waitplayers 2", "mark $NetFogPart", "wait 10", "hol.Units.SpeedScale 10", "hol.Units.Move 10000 0 0", "wait 14", "hol.Units.Move -15200 0 0", "wait 16",
+        "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
     $NetFogPort = Get-AITestPort
     $NetFogServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetFogPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetFogConfig`" -abslog=`"$NetFogServerLog`" -ExecCmds=`"hol.Fog.Mode $(if ($NetFogOn) { 2 } else { 0 }),hol.Test.Run $NetFogServerSequence`""
@@ -6662,8 +6664,10 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
                     -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
             }
             $ClientSequence = Join-Path $TestSaved "quick_${NetFogPart}_client$Client.seq"
-            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "wait 1",
-                "signal $($NetFogDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
+            # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
+            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report" })
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report") + $ClientReports +
+                @("signal $($NetFogDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetFogPort} -PlayerName=Bob" } else { "127.0.0.1:${NetFogPort}?Name=Alice" }
@@ -6685,6 +6689,21 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
         $Seen = @(Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Building report: (MainCentre of slot \d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Wanted = if ($NetFogOn) { @("MainCentre of slot $Held") } else { @("MainCentre of slot 0", "MainCentre of slot 1") }
         $Checks["client $N : holds $($Wanted -join ' and ') ($($Seen -join '; '))"] = (($Seen | Sort-Object) -join '|') -eq (($Wanted | Sort-Object) -join '|')
+        # F6b: the units it holds (the last "Units report", "client, 6 displayed: Peasant of slot 0 x5, ..."): its own slot's only in
+        # Normal, both slots' without fog.
+        $UnitsShown = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $UnitSlots = @([regex]::Matches("$UnitsShown", "of slot (\d+)") | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+        $WantedSlots = if ($NetFogOn) { @("$Held") } else { @("0", "1") }
+        $Checks["client $N : units of slot(s) $($WantedSlots -join ' and ') only ($UnitsShown)"] = ($UnitSlots -join '|') -eq ($WantedSlots -join '|')
+        # Entry and exit of the view (Bob's client; Alice's units march to his forum and back): in Normal, slot 0 is absent at the
+        # start, present with slot 1 at some report, then absent again; without fog it is always there.
+        if ($N -eq 1) {
+            $Reports = @(Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Units report: client, (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $HasAlice = @($Reports | ForEach-Object { $_ -match "of slot 0 " })
+            $Pattern = ($HasAlice | ForEach-Object { if ($_) { "A" } else { "-" } }) -join ""
+            $Checks["client $N : Alice's units $(if ($NetFogOn) { 'enter then leave Bob''s view' } else { 'always there' }) ($Pattern)"] = $(
+                if ($NetFogOn) { $Pattern -match "^-+A+-+$" } else { $Pattern -match "^A+$" })
+        }
     }
     $NetFogServerTimedOut = -not $NetFogServer.WaitForExit($(if ($NetFogClients.Count) { 30000 } else { 1000 }))
     if ($NetFogServerTimedOut) { Stop-Process -Id $NetFogServer.Id -Force -ErrorAction SilentlyContinue }

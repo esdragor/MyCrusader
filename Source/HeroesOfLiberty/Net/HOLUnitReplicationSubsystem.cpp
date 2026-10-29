@@ -15,6 +15,8 @@
 #include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
 #include "MassMovementFragments.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Net/HOLFogNetSubsystem.h"
 #include "Net/HOLNetUnitStateNetSerializer.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/HOLUnitReplicationSettings.h"
@@ -214,6 +216,8 @@ void UHOLUnitReplicationSubsystem::Deinitialize()
 	StepEndedHandle.Reset();
 	Records.Reset();
 	FreeSlots.Reset();
+	bFog = false;
+	bFogDecided = false;
 	EntityManager.Reset();
 	Replicator = nullptr;
 
@@ -267,15 +271,27 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 	FString Sample;
 
 	Replicator->SetServerStep(Step);
-	const auto WriteState = [this, Step](FUnitRecord& Record, const FHOLNetUnitState& Current)
+
+	// F6b: with a fog, a family of chunks per camp. Decided once, at the first step: the camps are known by then (the vision
+	// starts here if it has not yet, it would otherwise at its own handler) and no unit has its slot yet.
+	UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	if (!bFogDecided && Vision && Vision->TryStart())
 	{
-		Record.Sent.State = Current;
-		Record.Sent.Step = Step;
-		Replicator->GetOrAddChunk(Record.Slot / AHOLUnitChunk::NumSlots)->SetState(Record.Slot % AHOLUnitChunk::NumSlots, Record.Sent.State);
+		bFogDecided = true;
+		bFog = Vision->GetMode() != EHOLFogMode::Disabled;
+		UE_LOG(LogHOLNet, Log, TEXT("Unit replication: %s"), bFog ? TEXT("a family of chunks per camp (fog)") : TEXT("one family of chunks (no fog)"));
+	}
+	// Seen by a camp this many steps ago and still sent: the grace before the slot is freed (D526: ~0.5 s).
+	const int64 GraceSteps = FMath::Max<int64>(1, FMath::RoundToInt64(0.5 / FMath::Max(StepSeconds, 0.001f)));
+	const auto WriteState = [this, Step](FView& View, const FHOLNetUnitState& Current)
+	{
+		View.Sent.State = Current;
+		View.Sent.Step = Step;
+		Replicator->GetOrAddChunk(View.Slot / AHOLUnitChunk::NumSlots)->SetState(View.Slot % AHOLUnitChunk::NumSlots, View.Sent.State);
 	};
 
 	FMassExecutionContext ExecutionContext(*EntityManager, StepSeconds);
-	UnitQuery.ForEachEntityChunk(ExecutionContext, [this, Step, &Rules, &WriteState, SampleEvery, &Sample](FMassExecutionContext& Context)
+	UnitQuery.ForEachEntityChunk(ExecutionContext, [this, Step, &Rules, &WriteState, SampleEvery, &Sample, Vision, GraceSteps](FMassExecutionContext& Context)
 	{
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
@@ -311,46 +327,95 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			// is sent changes, not the simulation.
 			const FVector Velocity = UE::HeroesOfLiberty::Net::StillZeroVelocity != 0 && !HOLUnitReplication::SendsVelocity(Activity)
 				? FVector::ZeroVector : StepMove;
-			uint16 TargetSlot = FHOLNetUnitState::InvalidTargetSlot;
-			if (Activity == EHOLUnitActivity::Attacking && EntityManager->IsEntityValid(Combat.Target))
-			{
-				const FHOLUnitStateFragment* TargetState = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Combat.Target);
-				const FUnitRecord* TargetRecord = TargetState ? Records.Find(TargetState->UnitId) : nullptr;
-				TargetSlot = TargetRecord && TargetRecord->Slot < FHOLNetUnitState::BuildingTargetSlot ? static_cast<uint16>(TargetRecord->Slot)
-					: FHOLNetUnitState::InvalidTargetSlot;
-			}
-			else if (Activity == EHOLUnitActivity::Attacking && !Combat.TargetBuilding.IsExplicitlyNull())
-			{
-				TargetSlot = FHOLNetUnitState::BuildingTargetSlot; // D345.2b
-			}
 			const FHOLGatherLoad& Load = Gathers[EntityIt].Load;
-			FHOLNetUnitState Current = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount, State.GatherResource);
+			const FHOLNetUnitState Base = FHOLNetUnitState::Make(Position, Velocity, Activity, Step, Load.Resource, Load.Amount, State.GatherResource);
 			// The wire keeps integer health (D455): the float health rounded up, 1 at least alive (J8a.1); a hero's as a
 			// share of his maximum at his level (J8-Q5, J8a.3, J8b.2).
-			Current.SetCombat(HOLCombat::GetShownHealth(State.CurrentHealth), HOLCombat::GetMaxHealth(Constants, Combat.Level), TargetSlot, Order.bFacesFront && Order.Phase == EHOLMovePhase::None,
-				Order.FrontYaw, HOLIsHero(Constants.ArmorCategoryMask));
+			const int32 ShownHealth = HOLCombat::GetShownHealth(State.CurrentHealth);
+			const int32 MaxHealth = HOLCombat::GetMaxHealth(Constants, Combat.Level);
+			const bool bFacesFront = Order.bFacesFront && Order.Phase == EHOLMovePhase::None;
+			const bool bHero = HOLIsHero(Constants.ArmorCategoryMask);
+
 			FUnitRecord* Record = Records.Find(State.UnitId);
 			if (Record == nullptr)
 			{
-				// A new unit: a slot, its identity once, its first state.
 				Record = &Records.Add(State.UnitId);
-				Record->Slot = TakeSlot();
 				Record->OwnerPlayer = State.OwnerPlayer;
-				Replicator->GetOrAddChunk(Record->Slot / AHOLUnitChunk::NumSlots)
-					->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
-				WriteState(*Record, Current);
-				Stats.Sends[static_cast<int32>(EHOLUnitSendReason::None)]++;
 			}
-			else
+			// The target slot is the one in the family of the view written: a camp that does not see the target is not told
+			// where it is (F6b, D518). Looked up after the Add above (it may move the records).
+			const FUnitRecord* TargetRecord = nullptr;
+			bool bTargetBuilding = false;
+			if (Activity == EHOLUnitActivity::Attacking && EntityManager->IsEntityValid(Combat.Target))
 			{
-				if (Record->OwnerPlayer != State.OwnerPlayer)
+				const FHOLUnitStateFragment* TargetState = EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Combat.Target);
+				TargetRecord = TargetState ? Records.Find(TargetState->UnitId) : nullptr;
+			}
+			else if (Activity == EHOLUnitActivity::Attacking && !Combat.TargetBuilding.IsExplicitlyNull())
+			{
+				bTargetBuilding = true; // D345.2b
+			}
+			const auto MakeCurrent = [&](const int32 Family)
+			{
+				uint16 TargetSlot = FHOLNetUnitState::InvalidTargetSlot;
+				if (bTargetBuilding)
+				{
+					TargetSlot = FHOLNetUnitState::BuildingTargetSlot;
+				}
+				else if (TargetRecord)
+				{
+					for (const FView& TargetView : TargetRecord->Views)
+					{
+						if (TargetView.Family == Family && TargetView.Slot < FHOLNetUnitState::BuildingTargetSlot)
+						{
+							TargetSlot = static_cast<uint16>(TargetView.Slot);
+						}
+					}
+				}
+				FHOLNetUnitState Current = Base;
+				Current.SetCombat(ShownHealth, MaxHealth, TargetSlot, bFacesFront, Order.FrontYaw, bHero);
+				return Current;
+			};
+			const auto SetIdentity = [this, &State, TypeIndex](const FView& View)
+			{
+				Replicator->GetOrAddChunk(View.Slot / AHOLUnitChunk::NumSlots)
+					->SetIdentity(View.Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
+			};
+
+			// The families that see it: the one without a fog; with one, the camps whose cell holds it, and its owner.
+			uint32 Families = 1u;
+			if (bFog && Vision)
+			{
+				Families = Vision->GetCampsSeeing(FVector(Position), FVector2D::ZeroVector);
+				const int32 OwnerCamp = Vision->GetCampIndex(State.OwnerPlayer);
+				Families |= OwnerCamp == INDEX_NONE ? 0u : 1u << OwnerCamp;
+			}
+			const bool bConverted = Record->OwnerPlayer != State.OwnerPlayer;
+			Record->OwnerPlayer = State.OwnerPlayer;
+
+			// The views it has: the send rule on each (a view out of its camp sight is sent until the grace is over).
+			uint32 Held = 0u;
+			for (int32 ViewIndex = Record->Views.Num() - 1; ViewIndex >= 0; --ViewIndex)
+			{
+				FView& View = Record->Views[ViewIndex];
+				if (Families & (1u << View.Family))
+				{
+					View.SeenStep = Step;
+				}
+				else if (Step - View.SeenStep > GraceSteps)
+				{
+					FreeSlot(View.Family, View.Slot);
+					Record->Views.RemoveAtSwap(ViewIndex);
+					continue;
+				}
+				Held |= 1u << View.Family;
+				if (bConverted)
 				{
 					// A conversion (D37): the identity is sent again.
-					Record->OwnerPlayer = State.OwnerPlayer;
-					Replicator->GetOrAddChunk(Record->Slot / AHOLUnitChunk::NumSlots)
-						->SetIdentity(Record->Slot % AHOLUnitChunk::NumSlots, State.UnitId, TypeIndex, State.OwnerPlayer);
+					SetIdentity(View);
 				}
-				const EHOLUnitSendReason Reason = HOLUnitReplication::GetSendReason(Record->Sent, Position, Current,
+				const FHOLNetUnitState Current = MakeCurrent(View.Family);
+				const EHOLUnitSendReason Reason = HOLUnitReplication::GetSendReason(View.Sent, Position, Current,
 					State.UnitId, Step, StepSeconds, Rules);
 				if (Reason != EHOLUnitSendReason::None)
 				{
@@ -359,17 +424,29 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 					if (Reason == EHOLUnitSendReason::Activity)
 					{
 						FHOLNetUnitState SameHealth = Current;
-						SameHealth.bFullHealth = Record->Sent.State.bFullHealth;
-						SameHealth.Health = Record->Sent.State.Health;
-						if (HOLUnitReplication::GetSendReason(Record->Sent, Position, SameHealth, State.UnitId, Step, StepSeconds, Rules)
+						SameHealth.bFullHealth = View.Sent.State.bFullHealth;
+						SameHealth.Health = View.Sent.State.Health;
+						if (HOLUnitReplication::GetSendReason(View.Sent, Position, SameHealth, State.UnitId, Step, StepSeconds, Rules)
 							== EHOLUnitSendReason::None)
 						{
 							Stats.HealthSends++;
 						}
 					}
-					WriteState(*Record, Current);
+					WriteState(View, Current);
 					Stats.Sends[static_cast<int32>(Reason)]++;
 				}
+			}
+			// A camp that sees it from now on: a slot in its family, its identity once, its first state.
+			for (uint32 NewFamilies = Families & ~Held; NewFamilies != 0u; NewFamilies &= NewFamilies - 1u)
+			{
+				FView View;
+				View.Family = FMath::CountTrailingZeros(NewFamilies);
+				View.Slot = TakeSlot(View.Family);
+				View.SeenStep = Step;
+				SetIdentity(View);
+				WriteState(View, MakeCurrent(View.Family));
+				Record->Views.Add(View);
+				Stats.Sends[static_cast<int32>(EHOLUnitSendReason::None)]++;
 			}
 			Record->SeenStep = Step;
 			if (SampleEvery > 0 && State.UnitId % SampleEvery == 0)
@@ -384,7 +461,10 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 	{
 		if (It->Value.SeenStep != Step)
 		{
-			FreeSlot(It->Value.Slot);
+			for (const FView& View : It->Value.Views)
+			{
+				FreeSlot(View.Family, View.Slot);
+			}
 			It.RemoveCurrent();
 			++Stats.NumDepartures;
 		}
@@ -410,25 +490,38 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 	}
 }
 
-int32 UHOLUnitReplicationSubsystem::TakeSlot()
+int32 UHOLUnitReplicationSubsystem::TakeSlot(const int32 Family)
 {
-	if (FreeSlots.IsEmpty())
+	if (FreeSlots.Num() <= Family)
 	{
-		// A new chunk: its slots are free, the lowest taken first.
+		FreeSlots.SetNum(Family + 1);
+	}
+	TArray<int32>& Free = FreeSlots[Family];
+	if (Free.IsEmpty())
+	{
+		// A new chunk of this family: its slots are free, the lowest taken first. With a fog it joins its camp group, so
+		// that only the connections receiving the camp get it (spawned and placed in the same frame, before Iris sends).
 		const int32 ChunkIndex = Replicator->GetChunks().Num();
-		Replicator->GetOrAddChunk(ChunkIndex);
+		AHOLUnitChunk* Chunk = Replicator->GetOrAddChunk(ChunkIndex);
+		if (bFog)
+		{
+			if (UHOLFogNetSubsystem* FogNet = GetWorld()->GetSubsystem<UHOLFogNetSubsystem>())
+			{
+				FogNet->SetObjectCamps(Chunk, 1u << Family);
+			}
+		}
 		for (int32 Slot = AHOLUnitChunk::NumSlots - 1; Slot >= 0; --Slot)
 		{
-			FreeSlots.Add(ChunkIndex * AHOLUnitChunk::NumSlots + Slot);
+			Free.Add(ChunkIndex * AHOLUnitChunk::NumSlots + Slot);
 		}
 	}
-	return FreeSlots.Pop(EAllowShrinking::No);
+	return Free.Pop(EAllowShrinking::No);
 }
 
-void UHOLUnitReplicationSubsystem::FreeSlot(const int32 Slot)
+void UHOLUnitReplicationSubsystem::FreeSlot(const int32 Family, const int32 Slot)
 {
 	Replicator->GetOrAddChunk(Slot / AHOLUnitChunk::NumSlots)->SetIdentity(Slot % AHOLUnitChunk::NumSlots, 0, 0, 0);
-	FreeSlots.Add(Slot);
+	FreeSlots[Family].Add(Slot);
 }
 
 FString UHOLUnitReplicationSubsystem::MakeReport() const

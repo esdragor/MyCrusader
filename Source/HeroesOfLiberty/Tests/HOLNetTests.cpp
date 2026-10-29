@@ -562,6 +562,28 @@ bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetDisplayOwnersTest, "HeroesOfLiberty.Net.DisplayOwners", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetDisplayOwnersTest::RunTest(const FString& Parameters)
+{
+	// F6b (D518): a client receiving several camps' families (a spectator) holds a unit in a slot of each family that sees it,
+	// and draws it once: the first slot draws, the others shadow it, and one takes over when the drawing slot lets it go.
+	FHOLDisplayOwners Owners;
+	TestTrue(TEXT("the first slot of a unit draws it"), Owners.Arrive(7, 100));
+	TestFalse(TEXT("the same unit in another family: shadowed"), Owners.Arrive(7, 300));
+	TestFalse(TEXT("and in a third"), Owners.Arrive(7, 500));
+	TestEqual(TEXT("the first draws"), Owners.GetOwner(7), 100);
+	TestTrue(TEXT("another unit is its own"), Owners.Arrive(8, 101));
+	TestEqual(TEXT("a shadow leaving changes nothing"), Owners.Leave(7, 300), int32(INDEX_NONE));
+	TestEqual(TEXT("the first still draws"), Owners.GetOwner(7), 100);
+	TestEqual(TEXT("the drawing slot leaves: the remaining shadow takes over"), Owners.Leave(7, 100), 500);
+	TestEqual(TEXT("it draws now"), Owners.GetOwner(7), 500);
+	TestEqual(TEXT("the last slot leaves: nobody"), Owners.Leave(7, 500), int32(INDEX_NONE));
+	TestEqual(TEXT("no owner left"), Owners.GetOwner(7), int32(INDEX_NONE));
+	TestEqual(TEXT("a lone unit leaving promotes nobody"), Owners.Leave(8, 101), int32(INDEX_NONE));
+	TestTrue(TEXT("a unit back after leaving is drawn again"), Owners.Arrive(7, 300));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetPredictionTest, "HeroesOfLiberty.Net.Prediction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetPredictionTest::RunTest(const FString& Parameters)
 {

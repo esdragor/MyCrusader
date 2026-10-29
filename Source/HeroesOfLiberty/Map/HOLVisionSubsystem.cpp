@@ -355,7 +355,7 @@ void UHOLVisionSubsystem::OnSourceStanding(const int32 SourceIndex, const bool b
 	}
 }
 
-void UHOLVisionSubsystem::OnStepEnded(const int64 StepIndex)
+bool UHOLVisionSubsystem::TryStart()
 {
 	if (!bStarted)
 	{
@@ -363,11 +363,19 @@ void UHOLVisionSubsystem::OnStepEnded(const int64 StepIndex)
 		const AHOLGameState* State = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
 		if (!State || !State->HasStartPlaces())
 		{
-			return;
+			return false;
 		}
 		Start(State->GetLaunchConfig(), static_cast<EHOLFogMode>(FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2)));
 	}
-	Update();
+	return true;
+}
+
+void UHOLVisionSubsystem::OnStepEnded(const int64 StepIndex)
+{
+	if (TryStart())
+	{
+		Update();
+	}
 }
 
 double UHOLVisionSubsystem::GetUnitSight(const FName TypeName)

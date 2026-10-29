@@ -101,6 +101,8 @@ private:
 	float StepSeconds = 0.05f;
 	TArray<FName> TypeNames;
 	TArray<FSlot> Slots;
+	/** F6b: the slot that draws each unit when several slots hold it (every camp's family received, D518). */
+	FHOLDisplayOwners DisplayOwners;
 	int32 NumDisplayed = 0;
 	uint32 WatchedUnitId = 0;
 	EHOLResource WatchedResource = EHOLResource::Food;

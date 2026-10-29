@@ -43,6 +43,13 @@ public:
 	 */
 	void Start(const FHOLMatchConfig& Config, EHOLFogMode InMode);
 
+	/**
+	 * The match's configuration is set (a match, not the menu's world) and the fog not started yet: starts it, from
+	 * hol.Fog.Mode (what the first step does). True when started. The unit replication calls it too (F6b): it must
+	 * know the camps before it places a unit.
+	 */
+	bool TryStart();
+
 	/** One step (after the simulation's, UHOLSimulationSubsystem::GetOnStepEnded): the observers that moved, came or went. */
 	void Update();
 
