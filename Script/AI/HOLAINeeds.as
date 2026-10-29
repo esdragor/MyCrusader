@@ -106,18 +106,21 @@ namespace HOLAINeeds
 			}
 		}
 
-		// The next building of the list, the house apart (its wood is the rate above).
+		// The next building of the list (the houses are the rate above).
 		for (int Index = 0; Index < Data.Steps.Num(); Index++)
 		{
-			if (HOLAIOpening::HasBuilding(Summary, Data.Steps[Index].Type))
-			{
-				continue;
-			}
-			if (!Data.Steps[Index].bWhenRoomLow)
+			if (!HOLAIOpening::HasBuilding(Summary, Data.Steps[Index].Type))
 			{
 				Spend[1] = Spend[1] + float(Data.Steps[Index].WoodCost);
 				break;
 			}
+		}
+
+		// The farms of the block while the berries run low: the ones not built yet (IA1.7).
+		if (HOLAIOpening::FarmsWanted(Summary, Data))
+		{
+			const int Missing = Math::Max(0, Data.FarmCount - HOLAIOpening::CountBuildings(Summary, n"Farm"));
+			Spend[1] = Spend[1] + float(Missing * Data.Farm.CostWood);
 		}
 		return Spend;
 	}

@@ -11,6 +11,7 @@ FHOLAISourceNear NeedsSource(int SourceIndex, FVector Where)
 	FHOLAISourceNear Source;
 	Source.SourceIndex = SourceIndex;
 	Source.Location = Where;
+	Source.Remaining = 200;
 	return Source;
 }
 

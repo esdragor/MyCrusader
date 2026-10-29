@@ -109,7 +109,8 @@ param(
     [switch] $Visible,
     [double] $GameFps = 20,
     [switch] $RealTime,
-    [string] $GameExec = ""
+    [string] $GameExec = "",
+    [int] $DuelSeconds = 120
 )
 # -Full (D327): every part, the default before D327 (~530 s).
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver", "netai") }
@@ -6184,8 +6185,9 @@ if ($Parts -contains "aiserver") {
     $Checks["AI slot 1 thinks (AI slot 1 step)"] = [bool](Find-AILine "AI slot 1 step \d+:")
     $Checks["5 idle -> gather"] = [bool](Find-AILine "AI slot 1 step \d+: 5 idle -> gather \w+ #\d+")
     # IA1.5: the 5 starting Peasants spread, 3 on the food and 2 on the wood (two orders).
-    $Checks["Gather order of slot 1: 3 units to source (food)"] = [bool](Find-AILine "Gather order of slot 1: 3 units to source")
-    $Checks["Gather order of slot 1: 2 units to source (wood)"] = [bool](Find-AILine "Gather order of slot 1: 2 units to source")
+    # IA1.7: the first Peasant goes to build the lumber camp, the four others spread 2 and 2.
+    $Checks["Gather order of slot 1: 2 units to source (food)"] = [bool](Find-AILine "Gather order of slot 1: 2 units to source \d+ \(Food\)")
+    $Checks["Gather order of slot 1: 2 units to source (wood)"] = [bool](Find-AILine "Gather order of slot 1: 2 units to source \d+ \(Wood\)")
     # The report after 5 s: the Peasants sent are on their way, gathering or unloading (a starting hero, if any, stays
     # among the "not gathering").
     $GatherLine = Find-AILine "Gather: slot 1 to source \d+, gathering \d+, to deposit \d+, not gathering \d+"
@@ -6218,7 +6220,6 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
     return @{ Log = $Log; TimedOut = $TimedOut; Sequence = $Sequence }
 }
 if ($Parts -contains "aiduel") {
-    $DuelSeconds = 120
     $DuelFps = 20
     $DuelRuns = @()
     foreach ($Tag in "a", "b") {
@@ -6262,6 +6263,33 @@ if ($Parts -contains "aiduel") {
     $First = $DuelRuns[0]
     $Checks["gather reports taken ($($First.NumReports), one per 2 s)"] = $First.NumReports -ge ($DuelSeconds / 2)
     $Checks["no AI Peasant idle more than 10 s (longest $($First.MaxIdle) s and $($DuelRuns[1].MaxIdle) s)"] = $First.MaxIdle -le 10 -and $DuelRuns[1].MaxIdle -le 10
+    # IA1.7: the status line of the brain (every 5 s per slot): the population rises past 20 (the houses come before the cap),
+    # no queue stays blocked at the cap more than 10 s, no stock goes over 400.
+    $FirstText = if (Test-Path $First.Log) { Get-Content $First.Log } else { @() }
+    $Status = @{}
+    foreach ($Match in ($FirstText | Select-String -Pattern "AI slot (\d+) step (\d+): status pop (\d+)/(\d+) queued (\d+) stock (\d+) (\d+) (\d+) (\d+) peasants (\d+) houses (\d+) camps (\d+) mills (\d+) farms (\d+)")) {
+        $G = $Match.Matches[0].Groups
+        $Slot = [int]$G[1].Value
+        if (-not $Status.ContainsKey($Slot)) { $Status[$Slot] = @() }
+        $Status[$Slot] += [pscustomobject]@{ Used = [int]$G[3].Value; Cap = [int]$G[4].Value; Queued = [int]$G[5].Value; Food = [int]$G[6].Value; Wood = [int]$G[7].Value; Stone = [int]$G[8].Value; Gold = [int]$G[9].Value; Peasants = [int]$G[10].Value; Houses = [int]$G[11].Value; Mills = [int]$G[13].Value; Farms = [int]$G[14].Value }
+    }
+    $MinLines = if ($Status.Count) { ($Status.Values | ForEach-Object { $_.Count } | Measure-Object -Minimum).Minimum } else { 0 }
+    $Checks["AI status lines read (at least $MinLines per slot, $($Status.Count) slots)"] = $Status.Count -ge 2 -and $MinLines -ge ($DuelSeconds / 5 - 3)
+    foreach ($Slot in ($Status.Keys | Sort-Object)) {
+        $Rows = $Status[$Slot]
+        $MaxUsed = ($Rows | Measure-Object -Property Used -Maximum).Maximum
+        $MaxStock = [Math]::Max([Math]::Max(($Rows | Measure-Object -Property Food -Maximum).Maximum, ($Rows | Measure-Object -Property Wood -Maximum).Maximum), [Math]::Max(($Rows | Measure-Object -Property Stone -Maximum).Maximum, ($Rows | Measure-Object -Property Gold -Maximum).Maximum))
+        $Streak = 0; $MaxBlocked = 0
+        foreach ($Row in $Rows) {
+            $Streak = if ($Row.Used -ge $Row.Cap -and $Row.Queued -gt 0) { $Streak + 1 } else { 0 }
+            $MaxBlocked = [Math]::Max($MaxBlocked, 5 * $Streak)
+        }
+        $Last = $Rows[-1]
+        if ($DuelSeconds -ge 300) { $Checks["slot $Slot : population past 20 (max $MaxUsed of cap $($Last.Cap), $($Last.Houses) houses, $($Last.Peasants) Peasants)"] = $MaxUsed -gt 20 }
+        $Checks["slot $Slot : no queue blocked at the cap more than 10 s (longest $MaxBlocked s)"] = $MaxBlocked -le 10
+        $Checks["slot $Slot : no stock over 400 (highest $MaxStock)"] = $MaxStock -le 400
+        Write-Host "  slot $Slot at the end: pop $($Last.Used)/$($Last.Cap), $($Last.Peasants) Peasants, stock F$($Last.Food) W$($Last.Wood) S$($Last.Stone) G$($Last.Gold), $($Last.Houses) houses, $($Last.Mills) mills, $($Last.Farms) farms"
+    }
     $LastStep = if ($First.Hashes.Count) { ($First.Hashes[-1] -split ' ')[0] } else { "none" }
     $Checks["step hashes: $($First.Hashes.Count) steps (last $LastStep), 2 min of game = 2400 steps at least"] = $First.Hashes.Count -ge ($DuelSeconds * 20)
     $Same = ($First.Hashes.Count -gt 0) -and ($First.Hashes.Count -eq $DuelRuns[1].Hashes.Count) -and -not (Compare-Object $First.Hashes $DuelRuns[1].Hashes)
@@ -6355,8 +6383,8 @@ if ($Parts -contains "netai") {
         [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[2\]"
     $Checks["server : AI slot 2 thinks (AI slot 2 step)"] = [bool](Find-NetAILine "AI slot 2 step \d+:")
     $Checks["server : 5 idle -> gather"] = [bool](Find-NetAILine "AI slot 2 step \d+: 5 idle -> gather \w+ #\d+")
-    $Checks["server : Gather order of slot 2: 3 units to source (food)"] = [bool](Find-NetAILine "Gather order of slot 2: 3 units to source")
-    $Checks["server : Gather order of slot 2: 2 units to source (wood)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source")
+    $Checks["server : Gather order of slot 2: 2 units to source (food)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source \d+ \(Food\)")
+    $Checks["server : Gather order of slot 2: 2 units to source (wood)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source \d+ \(Wood\)")
     # The humans' Peasants are theirs: the AI orders none of them.
     $HumanOrder = Find-NetAILine "Gather order of slot [01]:"
     $Checks["server : no gather order for the humans' slots ($(if ($HumanOrder) { ($HumanOrder -replace '^.*(Gather order)', '$1').Trim() } else { 'none' }))"] = -not $HumanOrder

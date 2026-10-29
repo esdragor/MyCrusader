@@ -158,15 +158,17 @@ bool FHOLAIOpeningFirstThoughtTest::RunTest(const FString& Parameters)
 	const FHOLResources Before = Test.AIState->GetResources();
 	TestTrue(TEXT("slot 1 thinks"), Test.Brain->ThinkNow(1));
 
+	// IA1.7: the lumber camp is the opening's first building, built at once by the first idle Peasant; the four others spread.
 	TArray<FHOLGatherOrder> Orders;
 	Test.Commands->ConsumeGatherOrders(Orders);
 	if (TestEqual(TEXT("two gather orders (food, wood)"), Orders.Num(), 2))
 	{
 		TestEqual(TEXT("first: the berries"), Orders[0].SourceIndex, Test.Berries);
-		TestEqual(TEXT("first: three Peasants"), Orders[0].UnitIds.Num(), 3);
+		TestEqual(TEXT("first: two Peasants"), Orders[0].UnitIds.Num(), 2);
 		TestEqual(TEXT("second: the tree"), Orders[1].SourceIndex, Test.Tree);
 		TestEqual(TEXT("second: two Peasants"), Orders[1].UnitIds.Num(), 2);
 		TestEqual(TEXT("given as slot 1"), Orders[0].PlayerIndex, 1);
+		TestFalse(TEXT("the builder is not among the gatherers"), Orders[0].UnitIds.Contains(Test.Peasants[0]) || Orders[1].UnitIds.Contains(Test.Peasants[0]));
 	}
 
 	Test.RunStep();
@@ -174,6 +176,7 @@ bool FHOLAIOpeningFirstThoughtTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("paid: the food went down"), Test.AIState->GetResources().Food < Before.Food);
 	TestEqual(TEXT("its rally on the berries"), Test.Centre->GetRallySource(), Test.Berries);
 	TestEqual(TEXT("no house yet (5 places left)"), Test.CountBuildings(HOLBuildingTypeNames::House, 1), 0);
+	TestEqual(TEXT("the lumber camp: a foundation of slot 1"), Test.CountBuildings(HOLBuildingTypeNames::LumberCamp, 1), 1);
 	return true;
 }
 
@@ -230,6 +233,103 @@ bool FHOLAIOpeningBuildingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("one House still"), Test.CountBuildings(HOLBuildingTypeNames::House, 1), 1);
 	TestEqual(TEXT("one LumberCamp still"), Test.CountBuildings(HOLBuildingTypeNames::LumberCamp, 1), 1);
 	TestEqual(TEXT("one Mill still"), Test.CountBuildings(HOLBuildingTypeNames::Mill, 1), 1);
+	return true;
+}
+
+/**
+ * IA1.7, the houses come again: a first house finished and the places down to 2 of 20, the next thought places a second
+ * House (a Peasant sent, 50 wood paid); with that house under construction (its 10 places coming) the thoughts after it
+ * place no third. Red while the opening places one house only.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIBuildingsHousesTest, "HeroesOfLiberty.AI.Buildings.Houses", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIBuildingsHousesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	// The camp and the mill stand already (the opening is done), a first house is finished: 18 of 20 places taken.
+	int32 Slot = 0;
+	for (const FName Type : { HOLBuildingTypeNames::LumberCamp, HOLBuildingTypeNames::Mill, HOLBuildingTypeNames::House })
+	{
+		AHOLBuilding* Building = Test.World->SpawnActor<AHOLBuilding>(FVector(-6000.0 - 1500.0 * Slot++, 3000.0, 0.0), FRotator::ZeroRotator);
+		if (!TestNotNull(TEXT("a finished building"), Building))
+		{
+			return false;
+		}
+		Building->Setup(Type, 1, 1);
+	}
+	Test.AIState->SetPopulation(18, 20);
+	const FHOLResources Before = Test.AIState->GetResources();
+	TestTrue(TEXT("thought 1"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	TestEqual(TEXT("a second House of slot 1"), Test.CountBuildings(HOLBuildingTypeNames::House, 1), 2);
+	TestEqual(TEXT("paid 50 wood"), Test.AIState->GetResources().Wood, Before.Wood - 50);
+
+	// Its 10 places are coming: no third while it stands unfinished, however low the room.
+	Test.AIState->SetPopulation(19, 20);
+	TestTrue(TEXT("thought 2"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	TestEqual(TEXT("still two Houses"), Test.CountBuildings(HOLBuildingTypeNames::House, 1), 2);
+	return true;
+}
+
+/**
+ * IA1.7, the farm block: the berries nearly used up (10 food left), the camp and the mill standing, wood in plenty: the
+ * thoughts plan the block (FindAIFarmBlock around the centre), then place its mill and its farms one after the other, three
+ * sites under way at most. Red while the opening stops at the mill.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIBuildingsFarmBlockTest, "HeroesOfLiberty.AI.Buildings.FarmBlock", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIBuildingsFarmBlockTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	int32 Slot = 0;
+	for (const FName Type : { HOLBuildingTypeNames::LumberCamp, HOLBuildingTypeNames::Mill })
+	{
+		AHOLBuilding* Building = Test.World->SpawnActor<AHOLBuilding>(FVector(-6000.0 - 1500.0 * Slot++, 3000.0, 0.0), FRotator::ZeroRotator);
+		if (!TestNotNull(TEXT("a finished building"), Building))
+		{
+			return false;
+		}
+		Building->Setup(Type, 1, 1);
+	}
+	Test.AddWood(1000);
+	Test.World->GetSubsystem<UHOLSourceSubsystem>()->Take(Test.Berries, 190);
+
+	for (int32 Thought = 1; Thought <= 3; ++Thought)
+	{
+		TestTrue(*FString::Printf(TEXT("thought %d"), Thought), Test.Brain->ThinkNow(1));
+		Test.RunStep();
+	}
+	TestEqual(TEXT("the block's mill (the second mill of slot 1)"), Test.CountBuildings(HOLBuildingTypeNames::Mill, 1), 2);
+	TestEqual(TEXT("two farms after the mill"), Test.CountBuildings(HOLBuildingTypeNames::Farm, 1), 2);
+	FVector BlockMill = FVector::ZeroVector;
+	for (TActorIterator<AHOLBuilding> It(Test.World); It; ++It)
+	{
+		if (It->GetTypeName() == HOLBuildingTypeNames::Mill && It->GetActorLocation().X > -5000.0)
+		{
+			BlockMill = It->GetActorLocation();
+		}
+	}
+	for (TActorIterator<AHOLBuilding> It(Test.World); It; ++It)
+	{
+		if (It->GetTypeName() == HOLBuildingTypeNames::Farm)
+		{
+			TestTrue(TEXT("a farm of the block: within 3 tiles of its mill"), FVector::Dist2D(It->GetActorLocation(), BlockMill) < 1300.0);
+		}
+	}
+
+	// Three sites under way (the mill and two farms): the fourth thought places nothing.
+	TestTrue(TEXT("thought 4"), Test.Brain->ThinkNow(1));
+	Test.RunStep();
+	TestEqual(TEXT("still two farms: three sites under way"), Test.CountBuildings(HOLBuildingTypeNames::Farm, 1), 2);
 	return true;
 }
 
@@ -330,7 +430,7 @@ bool FHOLAINeedsUsedUpTest::RunTest(const FString& Parameters)
 	if (TestEqual(TEXT("one gather order: the tree"), Orders.Num(), 1))
 	{
 		TestEqual(TEXT("to the tree"), Orders[0].SourceIndex, Test.Tree);
-		TestEqual(TEXT("all five"), Orders[0].UnitIds.Num(), 5);
+		TestEqual(TEXT("all four (the fifth builds the camp)"), Orders[0].UnitIds.Num(), 4);
 	}
 	return true;
 }
