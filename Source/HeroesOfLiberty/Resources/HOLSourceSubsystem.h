@@ -122,6 +122,13 @@ public:
 	void RemoveChunk(AHOLSourceChunk* Chunk);
 	void ReadChunk(const AHOLSourceChunk& Chunk);
 
+	/**
+	 * Server of a networked match, once the fog's mode is known (UHOLFogNetSubsystem): every source so far, and the ones
+	 * added later, go into the chunks everybody receives. Not called when a fog hides the sources per camp (F6d, D524): the
+	 * fog's own chunks carry them.
+	 */
+	void StartGlobalReplication();
+
 	/** "Sources: 320 standing of 320 (Tree 320: 32000 wood left); shown 320, navmesh 320": for the scripted checks. */
 	FString MakeReport() const;
 
@@ -154,4 +161,6 @@ private:
 	bool bStarted = false;
 	bool bAuthority = false;
 	bool bReplicate = false;
+	/** F6d: the chunks everybody receives are in use (no fog, or the fog off). */
+	bool bGlobalReplication = false;
 };

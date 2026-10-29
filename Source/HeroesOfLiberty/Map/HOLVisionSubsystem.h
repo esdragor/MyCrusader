@@ -77,6 +77,11 @@ public:
 	 */
 	const TMap<uint64, FHOLGhost>* GetGhosts(int32 Slot) const;
 
+	/** F6d: a camp's memory (an index of GetMap) and how many times it changed, for what the server sends of it. */
+	int32 GetNumCamps() const { return Ghosts.Num(); }
+	const TMap<uint64, FHOLGhost>& GetCampGhosts(int32 Camp) const { return Ghosts[Camp]; }
+	uint32 GetGhostVersion(int32 Camp) const { return GhostVersions.IsValidIndex(Camp) ? GhostVersions[Camp] : 0; }
+
 	/** "Fog: mode Normal, camps 2, observers 12, camp 0 (slots 0) visible 812 explored 1650, ...; step 0.08 ms". */
 	FString MakeReport() const;
 
@@ -106,6 +111,8 @@ private:
 	TMap<FName, double> UnitSights;
 	/** F4: per camp of Map, its memory. */
 	TArray<TMap<uint64, FHOLGhost>> Ghosts;
+	/** F6d: per camp, counts the changes of its memory. */
+	TArray<uint32> GhostVersions;
 	/** F4: the buildings and sources standing this step, as they are (gathered by Update). */
 	TArray<FHOLGhost> Present;
 	uint32 Stamp = 0;

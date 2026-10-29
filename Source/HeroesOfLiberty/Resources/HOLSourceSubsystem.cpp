@@ -239,7 +239,7 @@ int32 UHOLSourceSubsystem::Take(const int32 SourceIndex, const int32 Amount)
 	}
 	const int32 Taken = FMath::Min(Amount, Source.Remaining);
 	Source.Remaining -= Taken;
-	if (bReplicate)
+	if (bGlobalReplication)
 	{
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetRemaining(SourceIndex % AHOLSourceChunk::NumSlots, Source.Remaining);
 	}
@@ -259,7 +259,7 @@ bool UHOLSourceSubsystem::RemoveSource(const int32 SourceIndex)
 	// Like a used-up source: nothing left, the index kept (gatherers and chunks holding it see it gone).
 	FHOLSource& Source = Sources[SourceIndex];
 	Source.Remaining = 0;
-	if (bReplicate)
+	if (bGlobalReplication)
 	{
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetRemaining(SourceIndex % AHOLSourceChunk::NumSlots, 0);
 	}
@@ -308,12 +308,30 @@ void UHOLSourceSubsystem::OnSourceAdded(const int32 SourceIndex)
 	{
 		Field->ShowSource(SourceIndex, Source.TypeIndex, *TypeRows[Source.TypeIndex], Source.Location);
 	}
-	if (bReplicate)
+	if (bGlobalReplication)
 	{
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetSource(SourceIndex % AHOLSourceChunk::NumSlots, Source.TypeIndex,
 			Source.Location, Source.Remaining);
 	}
 	OnSourceStanding.Broadcast(SourceIndex, true);
+}
+
+void UHOLSourceSubsystem::StartGlobalReplication()
+{
+	if (!bReplicate || bGlobalReplication)
+	{
+		return;
+	}
+	bGlobalReplication = true;
+	for (int32 SourceIndex = 0; SourceIndex < Sources.Num(); ++SourceIndex)
+	{
+		const FHOLSource& Source = Sources[SourceIndex];
+		if (Source.TypeIndex != FHOLSource::NoType)
+		{
+			GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetSource(SourceIndex % AHOLSourceChunk::NumSlots, Source.TypeIndex,
+				Source.Location, Source.Remaining);
+		}
+	}
 }
 
 void UHOLSourceSubsystem::OnSourceUsedUp(const int32 SourceIndex)

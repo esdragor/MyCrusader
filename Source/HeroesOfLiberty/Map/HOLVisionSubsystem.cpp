@@ -100,6 +100,8 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 	Map.Init(FHOLVisionGrid::MakeCentered(AHOLMapBounds::MaxSideTiles, UHOLBuildingSettings::GetTileSize()), Camps.Num());
 	Ghosts.Reset();
 	Ghosts.SetNum(Camps.Num());
+	GhostVersions.Reset();
+	GhostVersions.SetNumZeroed(Camps.Num());
 	if (Mode == EHOLFogMode::Explored)
 	{
 		for (int32 Camp = 0; Camp < Camps.Num(); ++Camp)
@@ -235,8 +237,11 @@ void UHOLVisionSubsystem::Update()
 	}
 	for (int32 Camp = 0; Camp < Ghosts.Num(); ++Camp)
 	{
-		HOLVisionRules::UpdateGhosts(Ghosts[Camp], Present,
-			[this, Camp](const FVector2D& Position) { return Map.GetCount(Camp, Map.GetGrid().ToCell(Position)) > 0; });
+		if (HOLVisionRules::UpdateGhosts(Ghosts[Camp], Present,
+			[this, Camp](const FVector2D& Position) { return Map.GetCount(Camp, Map.GetGrid().ToCell(Position)) > 0; }))
+		{
+			++GhostVersions[Camp];
+		}
 	}
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 }

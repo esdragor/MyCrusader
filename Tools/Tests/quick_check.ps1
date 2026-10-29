@@ -6643,7 +6643,7 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
     # F6b: after 10 s Alice's units march (fast) to 52 m from Bob's forum, inside its sight (D523: 6400 cm), stay, and come home.
     @("waitplayers 2", "mark $NetFogPart", "wait 10", "hol.Units.SpeedScale 10", "hol.Units.Move 10000 0 0", "wait 14", "hol.Units.Move -15200 0 0", "wait 16",
-        "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
+        "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
     $NetFogPort = Get-AITestPort
     $NetFogServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetFogPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetFogConfig`" -abslog=`"$NetFogServerLog`" -ExecCmds=`"hol.Fog.Mode $(if ($NetFogOn) { 2 } else { 0 }),hol.Test.Run $NetFogServerSequence`""
@@ -6666,7 +6666,7 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
             $ClientSequence = Join-Path $TestSaved "quick_${NetFogPart}_client$Client.seq"
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
             $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report" })
-            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report") + $ClientReports +
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "hol.Sources.Report") + $ClientReports +
                 @("signal $($NetFogDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
@@ -6677,6 +6677,7 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
     }
     $Checks = [ordered]@{}
     $Checks["server listening"] = $NetFogListening
+    $ClientSources = @{}
     foreach ($NetClient in $NetFogClients) {
         $ClientTimedOut = -not $NetClient.Process.WaitForExit(240000)
         if ($ClientTimedOut) { Stop-Process -Id $NetClient.Process.Id -Force -ErrorAction SilentlyContinue }
@@ -6689,6 +6690,9 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
         $Seen = @(Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Building report: (MainCentre of slot \d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Wanted = if ($NetFogOn) { @("MainCentre of slot $Held") } else { @("MainCentre of slot 0", "MainCentre of slot 1") }
         $Checks["client $N : holds $($Wanted -join ' and ') ($($Seen -join '; '))"] = (($Seen | Sort-Object) -join '|') -eq (($Wanted | Sort-Object) -join '|')
+        # F6d: the sources it holds ("Sources (client): 240 standing of 320 (...)"), compared below with the server's.
+        $SourcesLine = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Sources \(client\): (\d+) standing" | Select-Object -First 1
+        $ClientSources[$N] = if ($SourcesLine) { [int]$SourcesLine.Matches[0].Groups[1].Value } else { -1 }
         # F6b: the units it holds (the last "Units report", "client, 6 displayed: Peasant of slot 0 x5, ..."): its own slot's only in
         # Normal, both slots' without fog.
         $UnitsShown = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
@@ -6709,6 +6713,11 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
     if ($NetFogServerTimedOut) { Stop-Process -Id $NetFogServer.Id -Force -ErrorAction SilentlyContinue }
     $Checks["server quit by itself"] = -not $NetFogServerTimedOut
     $NetFogLog = if (Test-Path $NetFogServerLog) { Get-Content $NetFogServerLog } else { @() }
+    $ServerSources = $NetFogLog | Select-String -Pattern "Sources \(server\): (\d+) standing" | Select-Object -Last 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+    foreach ($N in $ClientSources.Keys | Sort-Object) {
+        $Checks["client $N : sources $(if ($NetFogOn) { 'of its explored cells only' } else { 'all' }) ($($ClientSources[$N]) of $ServerSources)"] =
+            $ServerSources -gt 0 -and $(if ($NetFogOn) { $ClientSources[$N] -gt 0 -and $ClientSources[$N] -lt $ServerSources } else { $ClientSources[$N] -eq $ServerSources })
+    }
     $FogNet = $NetFogLog | Select-String -Pattern "Fog net: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
     $Checks["server : fog net $(if ($NetFogOn) { 'active, a group per set of camps' } else { 'off' }) ($FogNet)"] = [bool]$FogNet -and $(if ($NetFogOn) { $FogNet -match "^active, groups [1-9]" } else { $FogNet -match "^off" })
     $AllOk = (Report $NetFogPart $Checks) -and $AllOk

@@ -14,6 +14,8 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
+#include "Resources/HOLSourceChunk.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #if UE_WITH_IRIS
 #include "Iris/ReplicationSystem/Filtering/NetObjectFilter.h"
@@ -68,10 +70,113 @@ UReplicationSystem* UHOLFogNetSubsystem::GetReplicationSystem() const
 
 void UHOLFogNetSubsystem::OnStepEnded(const int64 StepIndex)
 {
+	UWorld* World = GetWorld();
+	UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	if (!bSourcesDecided && Vision && Vision->TryStart())
+	{
+		// Without fog everybody receives the sources; with one, each camp its own (PlaceSources), never the registry's chunks.
+		bSourcesDecided = true;
+		UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
+		if (Sources && Vision->GetMode() == EHOLFogMode::Disabled)
+		{
+			Sources->StartGlobalReplication();
+		}
+	}
 	if (IsActive())
 	{
 		RefreshConnections();
 		PlaceBuildings();
+		PlaceSources();
+	}
+}
+
+AHOLSourceChunk* UHOLFogNetSubsystem::GetCampChunk(const int32 Camp, const int32 ChunkIndex)
+{
+	if (SourceCamps.Num() <= Camp)
+	{
+		SourceCamps.SetNum(Camp + 1);
+	}
+	TArray<TWeakObjectPtr<AHOLSourceChunk>>& Chunks = SourceCamps[Camp].Chunks;
+	while (Chunks.Num() <= ChunkIndex)
+	{
+		FActorSpawnParameters Parameters;
+		Parameters.Name = *FString::Printf(TEXT("HOLSourceChunk_c%d_%d"), Camp, Chunks.Num());
+		AHOLSourceChunk* Chunk = GetWorld()->SpawnActor<AHOLSourceChunk>(Parameters);
+		Chunk->InitSlots(Chunks.Num());
+		SetObjectCamps(Chunk, 1u << Camp);
+		Chunks.Add(Chunk);
+	}
+	return Chunks[ChunkIndex].Get();
+}
+
+void UHOLFogNetSubsystem::PlaceSources()
+{
+	UWorld* World = GetWorld();
+	const UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Vision || !Sources)
+	{
+		return;
+	}
+	SourceCamps.SetNum(FMath::Max(SourceCamps.Num(), Vision->GetNumCamps()));
+	for (int32 Camp = 0; Camp < Vision->GetNumCamps(); ++Camp)
+	{
+		FCampSources& Known = SourceCamps[Camp];
+		// Nothing moves unless the camp's memory changed, or a source stands or falls (a farm's field).
+		if (Known.GhostVersion == Vision->GetGhostVersion(Camp) && Known.NumStanding == Sources->GetNumStanding())
+		{
+			continue;
+		}
+		Known.GhostVersion = Vision->GetGhostVersion(Camp);
+		Known.NumStanding = Sources->GetNumStanding();
+
+		// What the camp knows now: its memory's sources as last seen, and its own farms' fields as they are.
+		TMap<int32, int32> Wanted;
+		for (const TPair<uint64, FHOLGhost>& Ghost : Vision->GetCampGhosts(Camp))
+		{
+			if ((Ghost.Key >> 32) == 1)
+			{
+				Wanted.Add(static_cast<int32>(Ghost.Key & 0xFFFFFFFFu), Ghost.Value.Remaining);
+			}
+		}
+		for (int32 Index = 0; Index < Sources->GetSources().Num(); ++Index)
+		{
+			const FHOLSource& Source = Sources->GetSources()[Index];
+			if (Source.IsStanding() && Sources->IsLinked(Index) && Source.OwnerSlot != FHOLSource::NoOwner && Vision->GetCampIndex(Source.OwnerSlot) == Camp)
+			{
+				Wanted.Add(Index, Source.Remaining);
+			}
+		}
+
+		const auto SlotOf = [](const int32 Index) { return Index % AHOLSourceChunk::NumSlots; };
+		for (const TPair<int32, int32>& Source : Wanted)
+		{
+			const int32* Sent = Known.Sent.Find(Source.Key);
+			if (Sent && *Sent == Source.Value)
+			{
+				continue;
+			}
+			AHOLSourceChunk* Chunk = GetCampChunk(Camp, Source.Key / AHOLSourceChunk::NumSlots);
+			if (!Sent)
+			{
+				const FHOLSource& Registry = Sources->GetSources()[Source.Key];
+				Chunk->SetSource(SlotOf(Source.Key), Registry.TypeIndex, Registry.Location, Source.Value);
+			}
+			else
+			{
+				Chunk->SetRemaining(SlotOf(Source.Key), Source.Value);
+			}
+			Known.Sent.Add(Source.Key, Source.Value);
+		}
+		// Forgotten (a ghost whose source was gone, its place seen again): gone for the client too.
+		for (auto It = Known.Sent.CreateIterator(); It; ++It)
+		{
+			if (!Wanted.Contains(It.Key()))
+			{
+				GetCampChunk(Camp, It.Key() / AHOLSourceChunk::NumSlots)->SetRemaining(SlotOf(It.Key()), 0);
+				It.RemoveCurrent();
+			}
+		}
 	}
 }
 
