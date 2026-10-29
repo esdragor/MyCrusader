@@ -281,6 +281,7 @@ if ($Parts -contains "net") {
     $NetHeroReadyFlag = Join-Path $TestSaved "quick_net_hero_ready.flag"
     $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
     $NetHeroBornFlag = Join-Path $TestSaved "quick_net_hero_born.flag"
+    $NetHeroXPFlag = Join-Path $TestSaved "quick_net_hero_xp.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -319,6 +320,12 @@ if ($Parts -contains "net") {
             "waitlog Hero return: slot 1 ready", "mark net hero return", "hol.Hero.Kill 0", "signal $NetHeroReadyFlag",
             "waitlog Hero return: slot 1 by its main forum", "waitlog Hero return: slot 0 by its main forum", "wait 1", "hol.Hero.Report",
             "signal $NetHeroBackFlag", "waitfile $(Join-Path $TestSaved "quick_net_hero_back1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_back2.flag") 120",
+            # J8b.3: both back, Bob's XP to 220 (level 2: his body at 486 / 486); a Man-at-arms of slot 0 made by him (back
+            # by his main forum, ~(14065, 299)) for 3 s, then removed: wounded, the clients show his health of 486; the
+            # server's report, the clients' signal.
+            "mark net hero xp", "hol.Hero.SetXP 1 220", "wait 1", "hol.Units.Spawn 1 14300 300 0 ManAtArms 10", "wait 3",
+            "hol.Units.Remove 14200 300 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroXPFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_xp1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_xp2.flag") 120",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
@@ -1665,7 +1672,7 @@ if ($Parts -contains "camera") {
                 "waitlog Placement ghost: House at ($($HeroXPHouse -join ', ')) valid", "hol.Build.Click", "waitlog Construction: slot 0 finished House at ($($HeroXPHouse -join ', '))",
                 "hol.Cheat.FastBuild 0", "wait 0.3", "hol.Hero.Report",
                 "waitlog Hero return: slot 0 ready", "hol.HUD.Click HeroReturnButton", "waitlog Hero return: slot 0 by its main forum", "wait 0.5", "hol.Hero.Report",
-                "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($HeroXPHouse -join ' ') 1500 0", "hol.Hero.SetXP 0 0",
+                "hol.HUD.Report", "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove $($HeroXPHouse -join ' ') 1500 0", "hol.Hero.SetXP 0 0",
                 "hol.Combat.Enabled 0", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
@@ -2378,6 +2385,9 @@ if ($NetListening) {
                 "hol.HUD.Report", "hol.HUD.Click HeroReturnButton", "wait 1.5", "hol.Hero.Report", "hol.HUD.Report"
         }
         $NetSteps += "waitfile $NetHeroBackFlag 120", "wait 1", "hol.Hero.Report", "hol.HUD.Report", "signal $(Join-Path $TestSaved "quick_net_hero_back$Client.flag")"
+        # J8b.3: Bob's hero at level 2 (the server's signal): the sheets, the units and the block as this client has them.
+        $NetSteps += "mark hero xp", "waitfile $NetHeroXPFlag 120", "wait 1", "hol.Hero.Report", "hol.Units.Where", "hol.HUD.Report",
+            "signal $(Join-Path $TestSaved "quick_net_hero_xp$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -3990,6 +4000,11 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["back by the forum: level 2 at full health ($($Levels | Select-Object -Skip 1 -First 1); $($XPSheets | Select-Object -Skip 2 -First 1))"] =
         [bool]($HeroXP | Select-String -SimpleMatch "Hero return: slot 0 by its main forum" -Quiet) -and ($Levels.Count -eq 2) -and ($Levels[1] -eq "level 1 -> 2, hp 486 / 486") -and
         ($XPSheets.Count -ge 3) -and ($XPSheets[2] -eq "state Alive level 2 hp 486 xp 225")
+    # J8b.3: the return at level 2 dearer (100 + 50 x 2 = 200 at the ready step, bought just after), his block at level 2.
+    $XPPrice = @($HeroXP | Select-String -Pattern "Hero return: slot 0 bought for (\d+) gold" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $XPBlock = "$($HeroXP | Select-String -Pattern "HUD hero: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })"
+    $Checks["the return at level 2 bought for $($XPPrice -join ', ') gold (150 < P <= 200), his block back: $XPBlock"] =
+        ($XPPrice.Count -eq 1) -and ($XPPrice[0] -gt 150) -and ($XPPrice[0] -le 200) -and ($XPBlock -eq "alive level 2 hp 486/486")
     $AllOk = (Report "build hero xp" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
@@ -5823,9 +5838,13 @@ if ($Parts -contains "net") {
     $Wounded = if ($HeroServer.Count -ge 1) { $HeroServer[0].Truth[$BobSlot] } else { $null }
     $Fallen = if ($HeroServer.Count -ge 2) { $HeroServer[1].Truth[$BobSlot] } else { $null }
     $TrueHp = if ($Wounded) { $Wounded.Hp } else { -1 }
-    $HeroChecks["server: 2 reports ($($HeroServer.Count)), Bob's hero wounded and alive (hp $TrueHp of $HeroMax), xp 5 and 7 ($(if ($HeroServer.Count) { "$($HeroServer[0].Truth[$AliceSlot].Xp), $($HeroServer[0].Truth[$BobSlot].Xp)" }))"] =
+    # J8b.2: Bob's hero earns 120 (combat) for each Man-at-arms he kills meanwhile: his XP read back from the server's.
+    $BobXp = if ($Wounded) { $Wounded.Xp } else { -1 }
+    if ($BobXp -ge $HeroXp[$BobSlot] -and ($BobXp - $HeroXp[$BobSlot]) % 120 -eq 0) { $HeroXp[$BobSlot] = $BobXp }
+    $HeroChecks["server: 2 reports ($($HeroServer.Count)), Bob's hero wounded and alive (hp $TrueHp of $HeroMax), xp 5 and 7 + 120 a Man-at-arms he killed ($(if ($HeroServer.Count) { "$($HeroServer[0].Truth[$AliceSlot].Xp), $($HeroServer[0].Truth[$BobSlot].Xp)" }))"] =
         $HeroServer.Count -eq 2 -and $Wounded -and $Wounded.State -eq "Alive" -and $TrueHp -gt 0 -and $TrueHp -lt $HeroMax -and
-        $HeroServer[0].Truth[$AliceSlot].Xp -eq $HeroXp[$AliceSlot] -and $HeroServer[0].Truth[$BobSlot].Xp -eq $HeroXp[$BobSlot] -and $HeroServer[0].Truth[$AliceSlot].State -eq "Alive"
+        $HeroServer[0].Truth[$AliceSlot].Xp -eq $HeroXp[$AliceSlot] -and $HeroServer[0].Truth[$BobSlot].Xp -eq $HeroXp[$BobSlot] -and $HeroXp[$BobSlot] -lt 200 -and
+        $HeroServer[0].Truth[$AliceSlot].State -eq "Alive"
     $HeroChecks["server: Bob's hero dead after hol.Hero.Kill, death step known ($(if ($Fallen) { "$($Fallen.State), death $($Fallen.Death)" }))"] = $Fallen -and $Fallen.State -eq "Dead" -and $Fallen.Death -ge 0
     # The share sent for the wounded hero (HOLUnitReplication::GetWireHealthShare): ceil(hp * 255 / 450); with his public
     # sheet received (loop 4b), the client shows his exact health from it, the share filling his bar: hol.Units.Where logs
@@ -5989,6 +6008,39 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero block" $BlockChecks) -and $AllOk
+    # J8b.3: Bob's hero at level 2 (xp 220) over the network: the level public to both clients, the XP to Bob alone, his
+    # body's maximum at his level (486) on both, his block at level 2 on Bob's.
+    $XPChecks = [ordered]@{}
+    $XPServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net hero xp")
+    $XPServer = & $ReadHeroReports $XPServerLines
+    $XPTruth = if ($XPServer.Count -ge 1) { $XPServer[0].Truth[$BobSlot] } else { $null }
+    $XPLevelUp = "$($XPServerLines | Select-String -Pattern "Hero level: slot $BobSlot (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })"
+    $XPHp = if ($XPTruth) { $XPTruth.Hp } else { -1 }
+    $XPChecks["server: Bob's hero level 2 at 486 / 486, then wounded alive, xp 220 ($XPLevelUp; $(if ($XPTruth) { "$($XPTruth.State) hp $XPHp xp $($XPTruth.Xp)" }))"] =
+        ($XPLevelUp -eq "level 1 -> 2, hp 486 / 486") -and $XPTruth -and $XPTruth.State -eq "Alive" -and $XPHp -gt 400 -and $XPHp -lt 486 -and $XPTruth.Xp -eq 220
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $XPLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "hero xp")
+        $Levels = @($XPLines | Select-String -Pattern "Hero sheet slot ${BobSlot}: state (\w+) level (\d+) hp (\d+)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) level $($_.Matches[0].Groups[2].Value) hp $($_.Matches[0].Groups[3].Value)" })
+        $XPChecks["client $N : Bob's public sheet Alive level 2 hp $XPHp, the server's ($($Levels -join '; '))"] = ($Levels.Count -eq 1) -and ($Levels[0] -eq "Alive level 2 hp $XPHp")
+        $Seen = & $ReadHeroReports $XPLines
+        $Report = if ($Seen.Count -ge 1) { $Seen[0] } else { $null }
+        if ($N -eq 1) {
+            $XPChecks["client $N (Bob): his XP 220 seen ($(if ($Report -and $Report.Local) { "slot $($Report.Local.Slot) xp $($Report.Local.Xp)" }))"] =
+                $Report -and $Report.Local -and $Report.Local.Slot -eq $BobSlot -and $Report.Local.Xp -eq 220
+            $Block = "$($XPLines | Select-String -Pattern "HUD hero: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })"
+            $XPChecks["client $N (Bob): his block at level 2 ($Block)"] = $Block -eq "alive level 2 hp $XPHp/486"
+        }
+        else {
+            $OtherXp = if ($Report -and $Report.Other[$BobSlot]) { $Report.Other[$BobSlot].Xp } else { -1 }
+            $XPChecks["client $N (Alice): Bob's XP hidden (xp $OtherXp)"] = $OtherXp -eq 0
+        }
+        $Where = $XPLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+        $BobHero = @([regex]::Matches("$Where", "slot $BobSlot at \(-?\d+, -?\d+\) [^;]*?hp (\d+)/(\d+)") | Where-Object { [int]$_.Groups[2].Value -gt 400 })
+        $XPChecks["client $N : Bob's wounded hero shown at $XPHp / 486 ($(@($BobHero | ForEach-Object { "$($_.Groups[1].Value)/$($_.Groups[2].Value)" }) -join ', '))"] =
+            ($BobHero.Count -eq 1) -and ($BobHero[0].Groups[1].Value -eq "$XPHp") -and ($BobHero[0].Groups[2].Value -eq "486")
+    }
+    $AllOk = (Report "net hero xp" $XPChecks) -and $AllOk
 }
 
 if ($TestsProcess) {
