@@ -152,7 +152,7 @@ def load():
             for k in ("Radius", "Speed", "MaxHealth", "AvoidanceDistance", "BuildTime", "Population",
                       "CarryCapacity", "Attack", "AttackInterval", "AttackWindUpPercent", "AttackRange",
                       "MeleeArmor", "RangedArmor", "SiegeArmor", "HeroArmor", "AggressionRadius",
-                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange"):
+                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange", "SightRadius"):
                 u[k] = float(row[k])
             u["ArmorCategories"] = parse_list(row["ArmorCategories"])
             u["Bonuses"] = parse_bonuses(row["Bonuses"])
@@ -236,8 +236,12 @@ def main():
 
     L.append("## Déplacement et corps")
     L.append("")
-    rows = [[name(u), speed(u["Speed"]), metres(u["Radius"]), metres(u["AvoidanceDistance"])] for u in units]
-    L.append(table(["Unité", "Vitesse", "Rayon du corps", "Distance d'évitement"], rows))
+    rows = [[name(u), speed(u["Speed"]), metres(u["Radius"]), metres(u["AvoidanceDistance"]), metres(u["SightRadius"])]
+            for u in units]
+    L.append(table(["Unité", "Vitesse", "Rayon du corps", "Distance d'évitement", "Vue"], rows))
+    L.append("")
+    L.append("- Vue : rayon du disque que l'unité découvre dans le brouillard (D383, D523), du centre de sa case ; la forêt "
+             "la coupe derrière sa lisière. Au-delà de sa portée et de son rayon d'agressivité d'une case au moins.")
     L.append("")
 
     L.append("## Production et économie")

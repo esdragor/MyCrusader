@@ -351,6 +351,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	bool bRipostes = false;
 
+	/** F2 (D383, D523): radius (cm) of its sight, a disc around it (HOLVisionRules). */
+	UPROPERTY()
+	float SightRadius = 0.f;
+
 	/** Its attack against a building (D345.2b): type, damage (0: it cannot hit buildings), interval (s), reach (cm, its edge to the body's box). */
 	UPROPERTY()
 	EHOLAttackType BuildingAttackType = EHOLAttackType::Melee;
@@ -592,6 +596,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	bool Ripostes = false;
 
 	/**
+	 * F2 (D383, D523): radius (cm) of its sight, a disc around it (HOLVisionRules), beyond its reach by a tile at least
+	 * (melee and Peasant 8 tiles, shooters 10, the hero 12; provisional).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Vision", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float SightRadius = 0.f;
+
+	/**
 	 * Its attack against a building (D345.2b, always this one against a building): its type (the building's armour of that
 	 * type taken off, HOLConstruction::GetBuildingDamage), damage (0: it never attacks a building), interval (s) and reach
 	 * (cm, from its body's edge to the building's body box, D324).
@@ -663,6 +674,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.Bonuses = Bonuses;
 	Constants.AggressionRadius = AggressionRadius;
 	Constants.bRipostes = Ripostes;
+	Constants.SightRadius = SightRadius;
 	Constants.BuildingAttackType = BuildingAttackType;
 	Constants.BuildingAttack = BuildingAttack;
 	Constants.BuildingAttackInterval = BuildingAttackInterval;

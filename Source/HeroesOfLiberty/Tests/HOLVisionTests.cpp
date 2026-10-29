@@ -1,6 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuildingTypes.h"
+#include "Engine/DataTable.h"
 #include "Map/HOLVisionRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -218,6 +222,36 @@ bool FHOLVisionTreeCutTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("behind the forest again: explored"), Map.GetVision(0, FIntPoint(9, 10)), EHOLCellVision::Explored);
 	Map.RemoveObserver(Eye);
 	TestEqual(TEXT("gone: exactly what it laid taken off"), Map.CountVisible(0), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionSightRadiusTest, "HeroesOfLiberty.Vision.SightRadius", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionSightRadiusTest::RunTest(const FString& Parameters)
+{
+	// F2 (D523): every type of the real tables sees, beyond its reach (attack or riposte) by a tile at least.
+	const double Tile = UHOLBuildingSettings::GetTileSize();
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	if (!TestNotNull(TEXT("the unit type table"), UnitTypes))
+	{
+		return false;
+	}
+	UnitTypes->ForeachRow<FHOLUnitTypeRow>(TEXT("Vision test"), [this, Tile](const FName& Name, const FHOLUnitTypeRow& Row)
+	{
+		const double Reach = FMath::Max(Row.AttackRange, Row.AggressionRadius);
+		TestTrue(*FString::Printf(TEXT("%s sees (%.0f cm) beyond its reach (%.0f cm) by a tile"), *Name.ToString(), Row.SightRadius, Reach),
+			Row.SightRadius >= Reach + Tile);
+		TestEqual(*FString::Printf(TEXT("%s: the simulation reads its sight"), *Name.ToString()), Row.ToConstants(Name).SightRadius, Row.SightRadius);
+	});
+	const UDataTable* BuildingTypes = GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous();
+	if (!TestNotNull(TEXT("the building type table"), BuildingTypes))
+	{
+		return false;
+	}
+	BuildingTypes->ForeachRow<FHOLBuildingTypeRow>(TEXT("Vision test"), [this, Tile](const FName& Name, const FHOLBuildingTypeRow& Row)
+	{
+		const double HalfSide = 0.5 * FMath::Max(Row.Footprint.X, Row.Footprint.Y);
+		TestTrue(*FString::Printf(TEXT("%s sees (%.0f cm) beyond its walls by a tile"), *Name.ToString(), Row.SightRadius), Row.SightRadius >= HalfSide + Tile);
+	});
 	return true;
 }
 

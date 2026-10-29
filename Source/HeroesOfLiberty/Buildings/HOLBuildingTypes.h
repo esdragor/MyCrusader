@@ -147,6 +147,13 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Its provisional shape while Mesh is empty (AR-Q2b): the block and tower of D261 by default. */
 	UPROPERTY(EditAnywhere, Category = "Presentation")
 	EHOLBuildingShape Shape = EHOLBuildingShape::BlockAndTower;
+
+	/**
+	 * F2 (D383, D523): radius (cm) of its sight once finished, a disc around its centre (HOLVisionRules): houses, camps,
+	 * mill and farm 5 tiles, production 8, the main centre 16 (provisional). A site sees half as far, rubble nothing (F3).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Vision", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float SightRadius = 0.f;
 };
 
 /** A type builders build: its cell in the builders' grid (4 to 11, the page under the tabs) and its age tab (0 to 3). */
