@@ -1,4 +1,4 @@
-# L'XP du héros de bout en bout (J8b.5, essai de J8b) : bâtir, combattre, commander, monter de niveau (barre, alertes, éclat doré), mourir, bâtir mort, revenir plus tard et plus cher
+# L'XP du héros de bout en bout (J8b.5, essai de J8b) : bâtir, combattre, commander, monter de niveau (barre, alertes, éclat doré), mourir, bâtir mort, revenir plus tard et plus cher ; le héros de l'IA monte aussi (J8b.6)
 # Plain, toi (slot 0) contre une IA (slot 1), hero_xp.json (copie de hero.json) : 5 Paysans et un héros chacun.
 # hol.Hero.ReturnTimePercent 50 : délais et baisse du prix deux fois plus courts. hol.Cheat.FastBuild pour les deux Maisons.
 # XP (J8b-Q2) : Maison 50 bois = +25 (développement ×0,5) ; Homme d'armes tué par le héros +120 (combat), par une troupe
@@ -59,4 +59,10 @@ frames 3
 note 7. Revenir plus tard et plus cher : au niveau 3, prêt 27 s après la mort (19 s au niveau 1), à 250 or (150 au niveau 1), prix qui baisse en 30 s.
 waitlog Hero return: slot 0 ready
 note Prêt : alerte « Votre héros est prêt à revenir », bouton « Ramener le héros — 250 or » qui baisse. Clic : il revient près du forum, niveau 3, PV 522 / 522.
+note 8. Le héros de l'IA (J8b.6, mêmes règles) : 2 de tes Hommes d'armes près de lui (caméra là-bas) ; il les tue, +120 chacun, niveau 2.
+hol.Camera.Focus 14065 300
+frames 3
+hol.Units.Spawn 2 13265 300 0 ManAtArms 150
+waitlog Hero level: slot 1 level 1 -> 2
+note Niveau 2 de l'IA : éclat doré autour de son héros (vu de tous), sans alerte ni fanfare chez toi (ce sont les siennes). Retour chez toi : F4 deux fois.
 note Ensuite, console (²) : hol.Hero.SetXP 0 3300 : niveau 6, « Palier 2 atteint », barre pleine. Langues : hol.UI.Language en / ja / fr. Vraies durées : hol.Hero.ReturnTimePercent 100.
