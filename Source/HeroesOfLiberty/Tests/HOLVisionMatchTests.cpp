@@ -5,15 +5,21 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
+#include "MassExecutor.h"
+#include "MassProcessingContext.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLCombatProcessor.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -75,7 +81,27 @@ namespace UE::HeroesOfLiberty::Tests::VisionMatch
 
 		bool IsReady() const { return Units && Sources && Vision && Entities && World->GetSubsystem<UHOLSimulationSubsystem>(); }
 
-		uint32 Place(const FName Type, const int32 Owner, const FVector& Location) const
+		/**
+		 * A unit of Type born for Owner at Location, its identifier (0 if none). bSearching: born again until its identifier
+		 * is a multiple of 4, so it searches for a target each step (the test world's step index stays 0, a unit searches
+		 * one step of 4 by its identifier, UHOLCombatProcessor).
+		 */
+		uint32 Place(const FName Type, const int32 Owner, const FVector& Location, const bool bSearching = false) const
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				const uint32 Born = PlaceOnce(Type, Owner, Location);
+				if (Born == 0 || !bSearching || Born % 4 == 0)
+				{
+					return Born;
+				}
+				Units->RequestDestroyUnits({ Born });
+				Units->FlushDestructions();
+			}
+			return 0;
+		}
+
+		uint32 PlaceOnce(const FName Type, const int32 Owner, const FVector& Location) const
 		{
 			TArray<uint32> Before;
 			Units->GetAllUnitIds(Before);
@@ -302,6 +328,77 @@ bool FHOLVisionMatchOrdersTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("in sight: the attack taken"), Commands->GetNumPendingOrders(), Before + 2);
 	Commands->IssueAttackBuildingOrder(Attackers, House, 0);
 	TestEqual(TEXT("the building in sight: taken"), Commands->GetNumPendingOrders(), Before + 3);
+	return true;
+}
+
+namespace UE::HeroesOfLiberty::Tests::VisionMatch
+{
+	/**
+	 * Two enemy Archers 18 m apart (in each other's reach), a wall of trees between them, through the combat processor for
+	 * up to 10 s with the fog of Mode: whether both end up shooting.
+	 */
+	bool ArchersShoot(FAutomationTestBase& Test, const EHOLFogMode Mode)
+	{
+		FVisionWorld Match;
+		UHOLSimulationSubsystem* Simulation = Match.World->GetSubsystem<UHOLSimulationSubsystem>();
+		if (!Test.TestTrue(TEXT("the match's subsystems"), Match.IsReady() && Simulation != nullptr))
+		{
+			return false;
+		}
+		Match.Vision->Start(MakeTeams(), Mode);
+		const FIntPoint Wall = Match.Vision->GetMap().GetGrid().ToCell(FVector2D(900., 0.));
+		for (int32 Row = -12; Row <= 12; ++Row)
+		{
+			for (const double Offset : { -100., 0., 100. })
+			{
+				Match.Sources->AddSource(HOLSourceTypeNames::Tree, Match.Centre(FIntPoint(Wall.X, Wall.Y + Row)) + FVector(Offset, Offset, 0.));
+			}
+		}
+		const uint32 Mine = Match.Place(TEXT("Archer"), 0, FVector::ZeroVector, true);
+		const uint32 Theirs = Match.Place(TEXT("Archer"), 2, FVector(1800., 0., 0.), true);
+		if (!Test.TestTrue(TEXT("two Archers searching each step"), Mine != 0 && Theirs != 0))
+		{
+			return false;
+		}
+		TSharedPtr<FMassEntityManager> EntityManager = Match.Entities->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		Match.Vision->Update();
+		for (int64 Step = 1; Step <= FMath::CeilToInt(10.f / StepSeconds); ++Step)
+		{
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Match.Units->FlushDestructions();
+			Match.Vision->Update();
+			FHOLUnitView Mine1;
+			FHOLUnitView Theirs1;
+			if (Match.Units->GetUnitView(Mine, Mine1) && Match.Units->GetUnitView(Theirs, Theirs1)
+				&& Mine1.Activity == EHOLUnitActivity::Attacking && Theirs1.Activity == EHOLUnitActivity::Attacking)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchAutoTargetTest, "HeroesOfLiberty.Vision.Match.AutoTarget", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchAutoTargetTest::RunTest(const FString& Parameters)
+{
+	// F5: a unit takes on by itself only what its camp sees (two Archers in reach, a wood between them).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	TestTrue(TEXT("no fog: they shoot each other"), ArchersShoot(*this, EHOLFogMode::Disabled));
+	TestFalse(TEXT("the fog: the wood hides them, nobody shoots"), ArchersShoot(*this, EHOLFogMode::Normal));
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
 	return true;
 }
 

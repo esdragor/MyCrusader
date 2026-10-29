@@ -10,6 +10,7 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
@@ -471,6 +472,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const bool bFighting = Enabled != 0;
 	const int64 StepIndex = Simulation ? Simulation->GetStepIndex() : 0;
 	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
+	// F5 (FogInProgress.md point 3): a unit takes on by itself only what its camp sees (the fog of the last step's end).
+	const UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	if (Vision && (!Vision->IsStarted() || Vision->GetMode() == EHOLFogMode::Disabled))
+	{
+		Vision = nullptr;
+	}
+	const auto IsSeenBy = [Vision](const FFighter& Seeker, const FFighter& Other)
+	{
+		return !Vision || Vision->IsVisible(Seeker.State->OwnerPlayer, Other.Location);
+	};
 
 	// The step's units, in identifier order (the outcome does not depend on the chunks). Each one's camp read once here.
 	const FHOLCampTable CampTable = FHOLCampTable::FromWorld(World);
@@ -1213,7 +1224,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// give up at its start, and returns at it (in reach and current), the only candidate that can return early, the
 			// ones before it only ranked. So the scan is spared; it changes nothing (the candidates are the step's scratch).
 			const bool bKeepTarget = bFast && Target != INDEX_NONE && SearchRadius > 0.f
-				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp
+				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && IsSeenBy(Fighter, Fighters[Target])
 				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange);
 			int32 NewTarget = Target;
 			if (!bKeepTarget)
@@ -1234,6 +1245,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				const auto AddCandidate = [&](const int32 Other)
 				{
 					const FFighter& Enemy = Fighters[Other];
+					if (!IsSeenBy(Fighter, Enemy))
+					{
+						return;
+					}
 					HOLCombat::FCandidate& Candidate = Candidates.AddDefaulted_GetRef();
 					Candidate.Id = Enemy.UnitId;
 					Candidate.Position = FVector2D(Enemy.Location);
