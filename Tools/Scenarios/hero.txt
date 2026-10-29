@@ -1,0 +1,25 @@
+# Le héros de bout en bout (J8a.6, essai de J8a) : départ avec le héros, F4 et le portrait, un combat qui le blesse, un autre où il tombe, le retour payé ; le héros de l'IA revient seul
+# Plain, toi (slot 0) contre une IA (slot 1), hero.json (copie de hero_block.json) : 5 Paysans et un héros chacun.
+# hol.Hero.ReturnTimePercent 50 : délai 19 s au lieu de 38 s (niveau 1), prix de 150 à 0 en 30 s au lieu de 60 s.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Hero.ReturnTimePercent 50
+hol.Cheat.Gold 1000
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Ton héros (Paladin-Commandant) derrière le forum, avec 5 Paysans ; son bloc en bas à gauche : « Niveau 1 », « PV 450 / 450 ».
+note F4 : sélectionne le héros (la caméra ne bouge pas) ; F4 encore : la caméra sur lui. Clic sur le portrait : pareil.
+note Dans 25 s, 2 Hommes d'armes ennemis arrivent à côté de lui : il se bat seul (comme un soldat).
+wait 25
+hol.Units.Spawn 2 -16500 300 1 ManAtArms 150
+wait 18
+note 2. Combat fini (les 2 tués) : il a perdu des PV (barre et « PV … / 450 » du bloc). Dans 15 s, 8 Hommes d'armes ennemis : il en tue quelques-uns et tombe (~35 s).
+wait 15
+hol.Units.Spawn 8 -16500 300 1 ManAtArms 150
+waitlog Hero return: slot 0 ready
+note 3. Ton héros est prêt à revenir : alerte « Votre héros est prêt à revenir » dans le fil, bouton « Ramener le héros — … or » au prix qui baisse.
+note Clic sur le bouton : l'or baisse du prix, il revient près du forum à pleins PV. Sans or (console ² : hol.Cheat.Gold -100000) : bouton grisé, « Pas assez d'or ».
+note S'il n'est pas tombé contre les 8 : console (²) hol.Hero.Kill 0.
+hol.Hero.Kill 1
+note 4. Le héros de l'IA vient de tomber : il revient seul, sans payer, 49 s plus tard (délai 19 s + 30 s de prix qui baisse) près de son forum.
+note Vraies durées : hol.Hero.ReturnTimePercent 100 puis hol.Hero.Kill 0. Langues : hol.UI.Language en / ja / fr.
