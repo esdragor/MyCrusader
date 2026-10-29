@@ -397,4 +397,20 @@ bool FHOLVisionGhostsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionReceiversTest, "HeroesOfLiberty.Vision.Receivers", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionReceiversTest::RunTest(const FString& Parameters)
+{
+	// F6a (D518, D376): which camps' sight each connection receives.
+	using namespace HOLVisionRules;
+	TestEqual(TEXT("a player: its camp"), GetReceivedCamps(2, false, false), 1u << 2);
+	TestEqual(TEXT("a player of a team: its camp"), GetReceivedCamps(1, false, true), 1u << 1);
+	TestEqual(TEXT("a spectator: every camp"), GetReceivedCamps(INDEX_NONE, false, false), AllCamps);
+	TestEqual(TEXT("defeated in a team: its team's"), GetReceivedCamps(1, true, true), 1u << 1);
+	TestEqual(TEXT("defeated alone: every camp"), GetReceivedCamps(3, true, false), AllCamps);
+	TestTrue(TEXT("seen by its camp: received"), Receives(GetReceivedCamps(2, false, false), (1u << 0) | (1u << 2)));
+	TestFalse(TEXT("seen by others only: not received"), Receives(GetReceivedCamps(2, false, false), 1u << 0));
+	TestFalse(TEXT("seen by nobody: not even a spectator"), Receives(AllCamps, 0u));
+	return true;
+}
+
 #endif

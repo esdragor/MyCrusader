@@ -99,6 +99,19 @@ struct FHOLGhost
 
 namespace HOLVisionRules
 {
+	/** F6a: every camp (a spectator's sight, D376). */
+	inline constexpr uint32 AllCamps = MAX_uint32;
+
+	/**
+	 * F6a (D518, D376): the camps (a bit per camp of FHOLVisionMap) whose sight a connection receives: a player its own
+	 * camp; a spectator (Camp INDEX_NONE) every camp; a slot defeated its former team's (bTeamCamp: its slot had a team)
+	 * or, alone, every camp.
+	 */
+	HEROESOFLIBERTY_API uint32 GetReceivedCamps(int32 Camp, bool bDefeated, bool bTeamCamp);
+
+	/** F6a: a connection receiving ReceivedCamps gets an object seen by ObjectCamps (a bit per camp). */
+	inline bool Receives(const uint32 ReceivedCamps, const uint32 ObjectCamps) { return (ReceivedCamps & ObjectCamps) != 0; }
+
 	/** F4: a ghost's key, a building's (its actor's unique identifier) or a source's (its index), apart. */
 	inline uint64 MakeGhostKey(const bool bSource, const uint32 Id) { return (static_cast<uint64>(bSource ? 1 : 0) << 32) | Id; }
 

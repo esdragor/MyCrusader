@@ -15,6 +15,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
+#include "Net/HOLFogNetSubsystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -30,7 +31,7 @@ namespace
 		ECVF_Default);
 
 	FAutoConsoleCommandWithWorldAndArgs FogReportCommand(TEXT("hol.Fog.Report"),
-		TEXT("hol.Fog.Report: logs the fog of each camp (cells in sight, explored), its observers and the cost of its last step (server or solo)"),
+		TEXT("hol.Fog.Report: logs the fog of each camp (cells in sight, explored, ghosts), its observers, the cost of its last step and, on a server, its network groups"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* InWorld)
 		{
 			for (const FWorldContext& WorldContext : GEngine->GetWorldContexts())
@@ -40,6 +41,10 @@ namespace
 				if (Vision)
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Vision->MakeReport());
+				}
+				if (const UHOLFogNetSubsystem* FogNet = Vision && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLFogNetSubsystem>() : nullptr)
+				{
+					UE_LOG(LogHOLMatch, Display, TEXT("%s"), *FogNet->MakeReport());
 				}
 			}
 		}));
