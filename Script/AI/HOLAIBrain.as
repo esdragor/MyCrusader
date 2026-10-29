@@ -33,6 +33,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
 
+	// What each slot's defence remembers (IA2.5: defending or at home, the soldiers just sent back to the assembly point), and the orders
+	// it has given (regroup orders, defence orders: the status line shows them).
+	TMap<int, FHOLAIDefence> Defences;
+	TMap<int, int> RegroupCounts;
+	TMap<int, int> DefenceCounts;
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -129,6 +135,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// 3. The military buildings (IA2.4): a unit queued in each that can take one, their soldiers' rally on a point toward the enemy.
 		ThinkMilitary(PlayerIndex, Step, Summary, Data, Produce.bProduce ? 1 : 0);
 
+		// 3b. The army (IA2.5): the base defence when enemy soldiers come near, otherwise the regrouping at the assembly point.
+		ThinkArmy(PlayerIndex, Step, Summary, Data);
+
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
 		{
@@ -201,6 +210,48 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		Memory.Point = Military.RallyPoint;
 		Rallied.Add(PlayerIndex, Memory);
+	}
+
+	// The army's orders (IA2.5). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers within the
+	// defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent again every
+	// few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight on the way).
+	void ThinkArmy(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		const float Now = Data.GameSeconds;
+		FHOLAIDefence State;
+		Defences.Find(PlayerIndex, State);
+		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
+		const FHOLAIThreat Threat = HOLAIArmy::Threat(Summary, Data.Army);
+		const bool bWas = State.bDefending;
+		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Summary, Data.Army, Threat, Assembly), Now, Data.Army);
+		if (State.bDefending != bWas)
+		{
+			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Change} ({Threat.Count} enemies, ratio {Threat.Ratio})");
+		}
+		if (State.bDefending)
+		{
+			const TArray<int> Ids = HOLAIArmy::DefenceOrders(State, Summary, Data.Army, Threat, Now);
+			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Threat.Location))
+			{
+				int Count = 0;
+				DefenceCounts.Find(PlayerIndex, Count);
+				DefenceCounts.Add(PlayerIndex, Count + 1);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: defend with {Ids.Num()} soldiers toward ({Threat.Location.X}, {Threat.Location.Y})");
+			}
+		}
+		else
+		{
+			const TArray<int> Ids = HOLAIArmy::RegroupOrders(State, Summary, Data.Army, Assembly, Now);
+			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Assembly))
+			{
+				int Count = 0;
+				RegroupCounts.Find(PlayerIndex, Count);
+				RegroupCounts.Add(PlayerIndex, Count + 1);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: regroup {Ids.Num()} soldiers to ({Assembly.X}, {Assembly.Y})");
+			}
+		}
+		Defences.Add(PlayerIndex, State);
 	}
 
 	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
@@ -284,7 +335,14 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int Ranges = HOLAIOpening::CountBuildings(Summary, n"ArcheryRange");
 		const int BarracksQueue = QueueOf(Summary, n"Barracks");
 		const int RangeQueue = QueueOf(Summary, n"ArcheryRange");
-		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms} army S{Spears} M{Men} A{Archers} C{Crossbows} barracks {Barracks} q{BarracksQueue} range {Ranges} q{RangeQueue}");
+		FHOLAIDefence Defence;
+		Defences.Find(PlayerIndex, Defence);
+		int Regroups = 0;
+		RegroupCounts.Find(PlayerIndex, Regroups);
+		int Meetings = 0;
+		DefenceCounts.Find(PlayerIndex, Meetings);
+		const FString Stance = Defence.bDefending ? "defend" : "home";
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms} army S{Spears} M{Men} A{Archers} C{Crossbows} barracks {Barracks} q{BarracksQueue} range {Ranges} q{RangeQueue} {Stance} regroups {Regroups} defences {Meetings}");
 	}
 
 	// The soldiers of a type alive (the army of the summary: those of the slot that do not gather).

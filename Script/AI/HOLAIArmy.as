@@ -50,6 +50,65 @@ struct FHOLAIArmyData
 
 	// The ratio given when the enemy has no army.
 	float LargeRatio = 1000.f;
+
+	// Base defence and regrouping (IA2.5), provisional (IA4 tunes them).
+	// An enemy soldier this close to a building of the slot (or to its centre) threatens the base (cm).
+	float DefenceRadius = 3000.f;
+
+	// A soldier idle farther than this from the assembly point is sent back to it; an enemy this close to the assembly point is
+	// fought even when the army is the weaker (cm).
+	float AssemblyRadius = 1000.f;
+
+	// The threatening enemies within this of the nearest one count as one group: the defence aims at their centroid (cm).
+	float ClusterRadius = 1000.f;
+
+	// A soldier is sent back to the assembly point at most once in this time (s).
+	float RegroupEvery = 10.f;
+
+	// The defence orders are sent again at most this often (s), to the soldiers not striking.
+	float DefenceEvery = 3.f;
+
+	// The defence ends after this long with no threat (s).
+	float DefenceQuiet = 5.f;
+
+	// Below this power ratio of our army over the threatening enemies, the army does not go to meet them (it holds the assembly point).
+	float DefenceMinRatio = 0.3f;
+}
+
+// What threatens the base now (HOLAIArmy::Threat).
+struct FHOLAIThreat
+{
+	// An enemy soldier stands within the defence radius of a building or of the centre.
+	bool bThreatened = false;
+
+	// Where to go: the nearest threatening enemy to the centre, or the centre of the group around it.
+	FVector Location;
+
+	// Our power ratio over the threatening enemies alone (PowerRatio on them).
+	float Ratio = 0.f;
+
+	// The threatening enemies.
+	int Count = 0;
+}
+
+// What the defence remembers between two thoughts of a slot (the brain keeps one per slot).
+struct FHOLAIDefence
+{
+	// The army is defending (until the quiet delay has passed with no threat).
+	bool bDefending = false;
+
+	// Game time of the last thought that wanted the defence (s).
+	float LastWanted = -1000.f;
+
+	// Game time of the last defence order (s).
+	float LastOrder = -1000.f;
+
+	// The first order of this defence was sent (the next ones leave out the soldiers that strike).
+	bool bOrdered = false;
+
+	// The soldiers sent back to the assembly point, and when (parallel arrays).
+	TArray<int> RegroupIds;
+	TArray<float> RegroupTimes;
 }
 
 namespace HOLAIArmy
@@ -392,5 +451,178 @@ namespace HOLAIArmy
 		}
 		Choice.Score = BestScore;
 		return Choice;
+	}
+
+	// ---------------------------------------------------------------------------------------------------------------------------
+	// Regrouping and base defence (IA2.5). The brain keeps one FHOLAIDefence per slot and asks, each thought: Threat (who is near the
+	// base), ShouldDefend (whether the army goes to meet them), UpdateDefence (the state, ended by a quiet delay), then DefenceOrders
+	// (while defending) or RegroupOrders (at home). Peasants are not ordered here (no flight yet); only enemy soldiers threaten.
+
+	// The distance on the ground.
+	float FlatDistance(FVector A, FVector B)
+	{
+		FVector Line = A - B;
+		Line.Z = 0;
+		return Line.Size();
+	}
+
+	// An enemy that threatens a base: any unit that is not a Peasant (a scout or a builder is no attack).
+	bool IsThreatening(const FHOLAIUnit& Enemy)
+	{
+		return Enemy.Type != n"Peasant" && Enemy.Health > 0;
+	}
+
+	// The enemy soldiers within the defence radius of a building of the slot or of its centre; their place is that of the nearest to the
+	// centre, or the centre of the group (the threatening enemies within ClusterRadius of it); the ratio is our army's power over them alone.
+	FHOLAIThreat Threat(const FHOLAISummary& Summary, const FHOLAIArmyData& Data)
+	{
+		FHOLAIThreat Result;
+		TArray<FVector> Guarded;
+		if (Summary.bHasCentre)
+		{
+			Guarded.Add(Summary.CentreLocation);
+		}
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			Guarded.Add(Summary.Buildings[Index].Location);
+		}
+		TArray<FHOLAIUnit> Near;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Enemy = Summary.Enemies[Index];
+			if (!IsThreatening(Enemy))
+			{
+				continue;
+			}
+			for (int Place = 0; Place < Guarded.Num(); Place++)
+			{
+				if (FlatDistance(Enemy.Location, Guarded[Place]) <= Data.DefenceRadius)
+				{
+					Near.Add(Enemy);
+					break;
+				}
+			}
+		}
+		if (Near.Num() == 0)
+		{
+			return Result;
+		}
+		FVector From = Summary.CentreLocation;
+		int Nearest = 0;
+		for (int Index = 1; Index < Near.Num(); Index++)
+		{
+			if (FlatDistance(Near[Index].Location, From) < FlatDistance(Near[Nearest].Location, From))
+			{
+				Nearest = Index;
+			}
+		}
+		FVector Sum = FVector(0, 0, 0);
+		int InGroup = 0;
+		for (int Index = 0; Index < Near.Num(); Index++)
+		{
+			if (FlatDistance(Near[Index].Location, Near[Nearest].Location) <= Data.ClusterRadius)
+			{
+				Sum += Near[Index].Location;
+				InGroup++;
+			}
+		}
+		FHOLAISummary Subset;
+		Subset.Army = Summary.Army;
+		Subset.Enemies = Near;
+		Result.bThreatened = true;
+		Result.Location = Sum / float(InGroup);
+		Result.Ratio = PowerRatio(Data, Subset);
+		Result.Count = Near.Num();
+		return Result;
+	}
+
+	// Whether the army goes to meet the threat: a threat, and either the army is not far behind (ratio at least DefenceMinRatio) or an
+	// enemy soldier has come to the assembly point (then it fights there, being cornered).
+	bool ShouldDefend(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIThreat& Threat, FVector AssemblyPoint)
+	{
+		if (!Threat.bThreatened)
+		{
+			return false;
+		}
+		if (Threat.Ratio >= Data.DefenceMinRatio)
+		{
+			return true;
+		}
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (IsThreatening(Summary.Enemies[Index]) && FlatDistance(Summary.Enemies[Index].Location, AssemblyPoint) <= Data.AssemblyRadius)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// The defence state: it begins as soon as the defence is wanted and ends once DefenceQuiet seconds have passed since it last was.
+	void UpdateDefence(FHOLAIDefence& State, bool bWanted, float Now, const FHOLAIArmyData& Data)
+	{
+		if (bWanted)
+		{
+			if (!State.bDefending)
+			{
+				State.bOrdered = false;
+			}
+			State.bDefending = true;
+			State.LastWanted = Now;
+		}
+		else if (State.bDefending && Now - State.LastWanted >= Data.DefenceQuiet)
+		{
+			State.bDefending = false;
+		}
+	}
+
+	// The soldiers to send against the threat now: none without a threat or before DefenceEvery has passed since the last order; at the
+	// first order of a defence every soldier (those assembling and those striking too), after it only those not striking.
+	TArray<int> DefenceOrders(FHOLAIDefence& State, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIThreat& Threat, float Now)
+	{
+		TArray<int> Ids;
+		if (!Threat.bThreatened || Now - State.LastOrder < Data.DefenceEvery)
+		{
+			return Ids;
+		}
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			if (!State.bOrdered || Summary.Army[Index].TargetId < 0)
+			{
+				Ids.Add(Summary.Army[Index].Id);
+			}
+		}
+		if (Ids.Num() > 0)
+		{
+			State.LastOrder = Now;
+			State.bOrdered = true;
+		}
+		return Ids;
+	}
+
+	// The soldiers to send back to the assembly point: idle (not moving, not striking), farther from it than AssemblyRadius, and not sent
+	// in the last RegroupEvery seconds. Marks them as sent.
+	TArray<int> RegroupOrders(FHOLAIDefence& State, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, FVector AssemblyPoint, float Now)
+	{
+		for (int Index = State.RegroupIds.Num() - 1; Index >= 0; Index--)
+		{
+			if (Now - State.RegroupTimes[Index] >= Data.RegroupEvery)
+			{
+				State.RegroupIds.RemoveAt(Index);
+				State.RegroupTimes.RemoveAt(Index);
+			}
+		}
+		TArray<int> Ids;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			const FHOLAIUnit Soldier = Summary.Army[Index];
+			if (Soldier.bIdle && Soldier.TargetId < 0 && FlatDistance(Soldier.Location, AssemblyPoint) > Data.AssemblyRadius && !State.RegroupIds.Contains(Soldier.Id))
+			{
+				Ids.Add(Soldier.Id);
+				State.RegroupIds.Add(Soldier.Id);
+				State.RegroupTimes.Add(Now);
+			}
+		}
+		return Ids;
 	}
 }

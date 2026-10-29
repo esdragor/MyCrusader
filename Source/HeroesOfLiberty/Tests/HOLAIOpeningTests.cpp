@@ -402,6 +402,133 @@ bool FHOLAIArmyProductionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+namespace UE::HeroesOfLiberty::Tests::AIOpening
+{
+	/** Units of Type born for Owner around Center (the world has no movement: they stand idle); their identifiers. */
+	TArray<uint32> PlaceSoldiers(FWorld& Test, const FName Type, const int32 Owner, const FVector& Center, const int32 Count)
+	{
+		UHOLUnitSubsystem* Units = Test.World->GetSubsystem<UHOLUnitSubsystem>();
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = Type;
+		Request.Count = Count;
+		Request.OwnerPlayer = static_cast<uint8>(Owner);
+		Request.Center = Center;
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+		After.Sort();
+		return After;
+	}
+
+	/** The attack-move orders of slot 1 waiting in the queue (the thought's other orders are not moves). */
+	TArray<FHOLMoveOrder> TakeAttackMoves(FWorld& Test)
+	{
+		TArray<FHOLMoveOrder> All;
+		Test.Commands->ConsumeMoveOrders(All);
+		TArray<FHOLMoveOrder> Found;
+		for (const FHOLMoveOrder& Order : All)
+		{
+			if (Order.Kind == EHOLOrderKind::AttackMove && Order.PlayerIndex == 1)
+			{
+				Found.Add(Order);
+			}
+		}
+		return Found;
+	}
+
+	int32 CountOrdered(const TArray<FHOLMoveOrder>& Orders, const TArray<uint32>& Ids)
+	{
+		int32 Count = 0;
+		for (const uint32 Id : Ids)
+		{
+			for (const FHOLMoveOrder& Order : Orders)
+			{
+				if (Order.UnitIds.Contains(Id))
+				{
+					++Count;
+					break;
+				}
+			}
+		}
+		return Count;
+	}
+}
+
+/**
+ * IA2.5, regrouping and base defence on the real chain: three Spearmen of slot 1 stand idle 4000 cm from the assembly point (1500 cm
+ * from the centre toward the enemy centre, at -X) and no enemy is about: the thought sends them there on an attack-move (a
+ * fight on the way). Then an enemy Spearman of slot 0 appears 2500 cm from the centre: the next thought sends all three on an
+ * attack-move toward it (not to the point). Red while the brain sends no soldier anywhere.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIArmyDefenceTest, "HeroesOfLiberty.AI.Army.Defence", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIArmyDefenceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const TArray<uint32> Soldiers = PlaceSoldiers(Test, FName(TEXT("Spearman")), 1, FVector(2000.0, 2500.0, 0.0), 3);
+	if (!TestEqual(TEXT("three Spearmen of slot 1"), Soldiers.Num(), 3))
+	{
+		return false;
+	}
+	TArray<FHOLMoveOrder> Discard;
+	Test.Commands->ConsumeMoveOrders(Discard);
+
+	// 1. Regroup: no enemy, the soldiers far from the point.
+	TestTrue(TEXT("thought 1"), Test.Brain->ThinkNow(1));
+	TArray<FHOLMoveOrder> Regroup = TakeAttackMoves(Test);
+	TestEqual(TEXT("regroup: the three Spearmen are ordered"), CountOrdered(Regroup, Soldiers), 3);
+	for (const FHOLMoveOrder& Order : Regroup)
+	{
+		TestTrue(TEXT("regroup: toward the assembly point, 1500 cm from the centre toward the enemy centre"), FVector::Dist2D(Order.Target, FVector(-1500.0, 0.0, 0.0)) < 300.0);
+	}
+
+	// 2. Defence: an enemy Spearman 2500 cm east of the centre (the House of the test world is not needed: the centre is a building).
+	const TArray<uint32> Enemy = PlaceSoldiers(Test, FName(TEXT("Spearman")), 0, FVector(2500.0, 0.0, 0.0), 1);
+	TestEqual(TEXT("an enemy Spearman"), Enemy.Num(), 1);
+	TestTrue(TEXT("thought 2"), Test.Brain->ThinkNow(1));
+	TArray<FHOLMoveOrder> Defence = TakeAttackMoves(Test);
+	TestEqual(TEXT("defence: the three Spearmen are ordered"), CountOrdered(Defence, Soldiers), 3);
+	for (const FHOLMoveOrder& Order : Defence)
+	{
+		TestTrue(TEXT("defence: toward the enemy, not the assembly point"), FVector::Dist2D(Order.Target, FVector(2500.0, 0.0, 0.0)) < 400.0);
+	}
+	return true;
+}
+
+/**
+ * IA2.5, no suicide: one Spearman of slot 1 at the assembly point against six Men-at-arms of slot 0 within 2500 cm of the centre (far
+ * from the point, power ratio under 0.3): the thought sends it nowhere.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIArmyDefenceWeakTest, "HeroesOfLiberty.AI.Army.DefenceWeak", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIArmyDefenceWeakTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const TArray<uint32> Soldiers = PlaceSoldiers(Test, FName(TEXT("Spearman")), 1, FVector(-1500.0, 0.0, 0.0), 1);
+	const TArray<uint32> Enemy = PlaceSoldiers(Test, FName(TEXT("ManAtArms")), 0, FVector(2500.0, 0.0, 0.0), 6);
+	if (!TestTrue(TEXT("one Spearman of slot 1, six Men-at-arms of slot 0"), Soldiers.Num() == 1 && Enemy.Num() == 6))
+	{
+		return false;
+	}
+	TArray<FHOLMoveOrder> Discard;
+	Test.Commands->ConsumeMoveOrders(Discard);
+	TestTrue(TEXT("thought"), Test.Brain->ThinkNow(1));
+	TestEqual(TEXT("the weak army is sent against nobody"), TakeAttackMoves(Test).Num(), 0);
+	return true;
+}
+
 /**
  * IA1.6, the figures: the brain's costs come from the type tables (UHOLAIOrderLibrary::ReadAIUnitFigures / ReadAIBuildingFigures),
  * not from numbers copied into the script. The Peasant and the House as the tables have them; an unknown type is refused.
