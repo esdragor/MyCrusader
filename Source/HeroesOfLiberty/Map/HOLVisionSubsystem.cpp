@@ -254,8 +254,13 @@ void UHOLVisionSubsystem::OnStepEnded(const int64 StepIndex)
 {
 	if (!bStarted)
 	{
+		// A match only (not the menu's world): its launch configuration set (InitVictory).
 		const AHOLGameState* State = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-		Start(State ? State->GetLaunchConfig() : FHOLMatchConfig::MakeDefault(), static_cast<EHOLFogMode>(FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2)));
+		if (!State || !State->HasStartPlaces())
+		{
+			return;
+		}
+		Start(State->GetLaunchConfig(), static_cast<EHOLFogMode>(FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2)));
 	}
 	Update();
 }
