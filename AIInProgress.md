@@ -1502,3 +1502,111 @@ NG = `Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp`, QC = `Tools/Tests/
   (menu → partie : IA choisie à la liste, `hol.UI.NewGame.Launch -` → « thinking slots [1] », « idle -> gather »), puis
   salon L1-L5 (gestionnaire C#, client, écran, bout en bout après recuisson du serveur), clôture C (GDD, essai) ; puis
   IA0.7. Remarque en attente : ligne « awake … thinking slots [] » sur la carte du menu principal (à filtrer).
+- 2026-10-29 : reprise. Arwen `ai-ia1` avancée à `main` e6f1467 (moteur « UE 5.8 HOL », `.uproject` remis avant la
+  fusion). IA0.6 **S3 test écrit** (`quick_check.ps1`, fin de la partie `menu`) : marque `menu ailaunch` (Nouvelle partie,
+  `hol.UI.Choose SlotState1 2`, `hol.UI.NewGame.Launch - 0` sans fichier, `waitlog AI slot 1 step`, retour au menu
+  principal) ; contrôles : « value 2 chosen », « Match on …: given configuration, 2 occupied slots », « thinking slots
+  [1] », « AI slot 1 step N: 5 idle -> gather ». Attendu : déjà vert (S1 laisse passer l'IA, `Launch` la donne telle
+  quelle), donc S3 sans code si c'est le cas. Compilation de l'éditeur sur le nouveau moteur en cours.
+- 2026-10-29 : IA0.6 **S3 verte, commitée** (c2b8f3f, test seul, aucun code de jeu). Premier passage : le jeu n'a pas
+  démarré à temps (premier lancement sur « UE 5.8 HOL » : 97 s d'attente du serveur Zen, cache neuf) ; deuxième : **rouge**
+  « 5 Peasants sent to gather (0) » (le cerveau pense pour l'emplacement 1, mais population 0/0) : quick_check lance tout le
+  jeu avec `StartingPeasants=0` (`$NoStartingPeasants`), la règle du jeu (5) n'est pas en cause. Le test fait ses 5 Paysans
+  IA (`waitlog Main centre of slot 1`, `hol.Units.Spawn 5 0 0 1 Peasant`) → `-Parts menu` **PASS** (29 s, 4 rapports dont
+  `menu ailaunch`).
+- 2026-10-29 : IA0.6 **L1 verte, commitée** (47263bf ; sous-agent ~6 min + reprise). Gestionnaire :
+  `SlotState.AI`, `LobbyAI` (couleur, équipe, faction, niveau Normal), `SetSlotAI` (`PUT slots/{i}` `{"state":"ai",
+  "colorIndex"?, "team"?}`, chef seul ; nouvelle IA = première couleur libre, équipe 0 ; même requête = changer couleur ou
+  équipe) ; vue `{"state":"ai","level":"Normal","colorIndex","team","faction"}` ; **nom fait par le client** (« IA Normal
+  N », texte traduit) ; couleurs des IA prises (`color_taken`, joueur qui entre) ; ajout/retrait/changement remet les Prêt
+  (Q6) ; `PROTOCOL.md`. **Taille réduite** : le sous-agent retirait une IA au-delà des places alors que la taille
+  l'acceptait (joueurs + IA ≤ places) ; corrigé comme l'écran solo (`FitSlotsToSize`) : l'IA **remonte** comme un joueur,
+  avec couleur et équipe (test `ASmallerSizeMovesAnAIPastItsPlacesBelowAsAPlayer` rouge puis vert). Un joueur qui rejoint
+  ne prend jamais un emplacement IA (état Open seulement). Tests : HOLManager 291/291, Launcher 141, Update 27, Publish 33.
+  Notes pour la suite : `GET /lobbies` compte `players` en humains, `maxPlayers` avec les IA (à voir à l'affichage, L4) ;
+  tant que L2 n'est pas faite, une IA part en `"Closed"` dans `match.json` ; après une partie, les IA restent au salon.
+  Suivant : L2 (lancement : `FromLobby` `"AI"`, niveau, couleurs, départ avec une IA comptée, Q3 = A).
+- 2026-10-29 : L2 (lancement du salon avec IA : `FromLobby` `"AI"`, couleurs, départ Q3 = A, référence
+  `match_v3_ai_reference.json` + test C++) et L3 (client C++ : `EHOLLobbySlotState::AI`, lecture, `MakeSlotBody`,
+  `CanStart`) lancées en parallèle en sous-agents (fichiers séparés ; C++ écrit sans compiler, compilation commune ensuite).
+- 2026-10-29 : **L2 revenue** (sous-agent ~5 min, non commitée, attend la compilation commune avec L3). `FromLobby` :
+  emplacement IA → `{"state":"AI","faction","colorIndex","team","playerName":"","difficulty":"Normal"}` (`difficulty`
+  écrit seulement pour une IA : un salon sans IA écrit le même fichier, `match_v3_reference.json` inchangé, `version` 3) ;
+  « Aléatoire » d'une IA tiré de la graine comme un joueur ; `Start` : joueurs + IA ≥ 2 (Q3 = A), Prêt des humains
+  seulement ; IA gardées au salon après la partie. Rouge vu (3 sur 6 : `not_enough_players`, IA écrites `Closed`,
+  référence) puis vert : HOLManager 297/297 (+ 141, 33, 27). Référence `Data/match_v3_ai_reference.json` (Bob 0, Alice 2,
+  équipe 1 ; IA 1 couleur 6, IA 3 couleur 4, équipe 2) ; test C++ `HeroesOfLiberty.MapSize.Lobby.ManagerAIReference`
+  (lit la référence, IA, couleurs, équipe, niveau Normal, `bAIBrain` ; même fichier en « Hard » lu Hard), non compilé.
+- 2026-10-29 : **L3 revenue** (sous-agent ~4 min) : `EHOLLobbySlotState::AI` (à la fin), `FHOLLobbySlot::Level`, lecture
+  `"ai"` (niveau par nom, Normal par défaut ; couleur et équipe exigées comme pour un joueur), `GetNumAIs`,
+  `CanEditAISlot` (chef, emplacement IA), `MakeAISlotBody(Couleur?, Équipe?)`, `UHOLManagerClient::SetSlotAI`, `CanStart`
+  = joueurs + IA ≥ 2 et humains prêts ; test `HeroesOfLiberty.Net.ManagerClient.AI`. Écran inchangé (L4 : conversion du
+  salon en config où une IA devient Closed, NG ≈535-547 ; lignes « Joueur N »/« Fermé » pour une IA, ≈559-568 ; journal
+  `slots` où une IA sort en `c<couleur>`, ≈623-629). **L2 + L3 vertes, commitées** (b61fe35, fed5aad) : compilation
+  commune PASS du premier coup (64 s ; le C++ des deux, écrit sans compiler, sert de rouge : appels à des fonctions
+  absentes) ; `-Parts tests` **287/287** (dont `MapSize.Lobby.ManagerAIReference` et `Net.ManagerClient.AI`) ;
+  `manager_client.ps1 -Case Leader` PASS (salon inchangé). Suivant : L4 (écran du salon : « IA » du chef, nom « IA Normal
+  N », couleur/équipe, « a » dans la ligne `slots`, `manager_client.ps1 -Case AI`).
+- 2026-10-29 : IA0.6 **L4 verte, commitée** (f6657d4 ; sous-agent ~12 min). Écran du salon : 5e choix « IA » (valeur 4) de
+  la liste d'état, conversion salon → config avec l'IA (état, couleur, équipe, faction, niveau), « IA Normal N » dans la
+  liste d'état, colonne Joueur vide sur une ligne IA, couleur/équipe actives pour le chef seul (`CanEditAISlot` →
+  `SetSlotAI`), colonne Niveau (code du solo) montrée au salon seulement s'il y a une IA, `a<couleur>` dans la ligne
+  `slots`. **Rouge** : « no 'Lobby: slot 2 ai sent' » ; second rouge hors code : le `Saved\Manager\HOLManager.exe` d'Arwen
+  datait d'avant L1 (republié par `build_manager.ps1`). **Vert** : `manager_client -Case AI` PASS (IA Normal 3, niveau
+  grisé, Prêt remis à zéro, couleur 5 et équipe 2 au gestionnaire, retrait par Fermé, Lancer → 500 sans serveur),
+  `-Case Leader` PASS (« slots c0r c1r x o o o o o » inchangé), `-Parts menu,tests` PASS (287/287). Capture
+  `manager_client_ai.png` relue : lisible. Aucun texte nouveau. Points ouverts (choix du sous-agent, gardés) : colonne
+  Joueur vide sur une ligne IA (les lignes libres disent « Joueur N ») ; colonne Niveau qui apparaît avec la première IA ;
+  pas de cas « non-chef voit une IA ». Suivant : L5 (bout en bout, serveur recuit, machine calme), puis clôture C.
+- 2026-10-29 10:29 : **L5 en attente d'une décision** (IA0.6-Q8) : aucun serveur cuit dans Arwen, et « UE 5.8 HOL » n'a
+  jamais cuit le serveur (cache neuf : long) ; `net_match.ps1 -Stage` tient le verrou d'UAT (les lancements des autres
+  sessions attendent) ; Celeborn lance le jeu en ce moment. Options : A) cuire maintenant ; B) plus tard, machine calme ;
+  C) sauter L5 (tout le reste est testé) et clore IA0.6 par l'essai. Reco B, C acceptable. Rappel à 10:44.
+- 2026-10-29 : **IA0.6-Q8 tranchée** par l'utilisateur : L5 **sans serveur cuit** : cas `lobby_match.ps1 -AI` sur le
+  modèle de `-Rejoin` (l'éditeur d'Arwen comme serveur de partie, `.cmd` lancé par le gestionnaire, pas de verrou d'UAT) ;
+  la cuisson « pour tout le monde » se fera dans une autre session (un serveur cuit depuis `main` ≥ e6f1467 suffirait : le
+  code serveur d'Arwen = `main`). L5 lancée en sous-agent.
+- 2026-10-29 ~11:30 : la session d'Elrond (mycrusader-7a) signale que son `lobby_match` a croisé celui de L5 entre 11:28
+  et 11:31 (port 7790 pris par le gestionnaire d'Arwen, course à la sonde de port : ses Alice/Bob sont entrés dans le salon
+  d'Arwen) ; elle ne lance plus de test de salon pendant L5. Sous-agent prévenu (relancer un échec de cette fenêtre).
+  Un serveur dédié cuit depuis `main` 8ea1b8e (UE 5.8 HOL, Version.txt = dev) est désormais dans
+  `Saved\StagedBuilds\WindowsServer` d'Arwen (et des autres copies). Point ouvert : sonde de port de `lobby_match` en
+  course entre copies.
+- 2026-10-29 : IA0.6 **L5 verte, commitée** (d1844e7 ; sous-agent ~10 min ; test seul, aucun code). `lobby_match.ps1 -AI` :
+  l'éditeur d'Arwen comme serveur de partie (même `.cmd` que `-Rejoin`) ; Alice seule + une IA sur Petite (2 places, Q3 =
+  A), couleur 2, IA par `hol.UI.Choose SlotState1 4` (« IA Normal 2 »), Prête, Lancer, Plain_Small ; `hol.Units.Where 1`
+  côté client : 5 Paysans de l'IA en Gathering ; abandon, bannière Défaite, serveur arrêté seul. **Vert direct** (L1-L4
+  suffisaient) ; 1er passage : motif de mon test faux (`slots c2r a0 x …`) ; 2e : FAIL « 1 server(s) of this copy still
+  running » par la collision avec Elrond (une « Carol » d'une autre copie entrée sur le port UDP 7900) ; 3e : **PASS 59 s**.
+  Serveur : « Starting Peasants of slot 1: 5 », « thinking slots [1] », « AI slot 1 step 4: 5 idle -> gather Food #86 »,
+  « Gather order of slot 1: 5 units », « Victory: match over, winners 1 », « Server quits: empty after the match » ;
+  `match.json` : emplacement 1 `"AI"`, `"difficulty": "Normal"`. Client : « Players table: Vous, IA Normal 2 ». Captures
+  `Saved_Tests_Alice\...\lobby_match_ai_*.png` (partie relue : forum, arbres, Paysans, tableau ; le « champ vide » signalé
+  par le sous-agent n'y est pas). `-Rejoin` PASS (90 s). **Points ouverts** : ports entre copies (sonde 7790 du
+  gestionnaire en course ; serveurs de toutes les copies depuis UDP 7900) → plages par copie comme `Get-AITestPort`.
+  **IA0.6 : S1-S3, L1-L5 faites** ; reste la clôture C (GDD, scénario d'essai, essai de l'utilisateur, `main`).
+- 2026-10-29 : clôture C : **essai de salon prêt** (9f7530f) : `Tools\Scenarios\ai_lobby.ps1` (pas de scénario
+  `play.ps1` pour un salon) : gestionnaire d'Arwen sur 7850+ (hors des ports des scripts de test), serveur de partie =
+  éditeur d'Arwen (`.cmd` comme `lobby_match -AI`, UDP 7960+), jeu en fenêtre « Chef » branché dessus ; tout arrêté à la
+  fermeture du jeu. Gestionnaire vérifié hors écran (`/status` : gameVersion dev). Essai demandé à l'utilisateur ; après
+  validation : décisions IA0.6 au GDD (D515+), avance de `main`.
+- 2026-10-29 : **essai `ai_lobby` de l'utilisateur : bug** : salon, IA, lancement : l'IA joue, mais l'utilisateur (renommé
+  « miaou » sur l'écran Multijoueur, jeu lancé avec `-PlayerName=Chef` par le script) reste « en attente de miaou » puis
+  « connexion perdue », sans pouvoir jouer. Serveur : « Match waits for: miaou », « Login request: ?Name=Chef », « Chef
+  joined as a spectator ». **Cause** (bug réseau latent, pas seulement du script) : `UHOLLocalPlayer::GetNickname` rend
+  `-PlayerName=`, qui remplace le `?Name=` de l'adresse de la partie ; le salon, lui, prend le nom de la case. Les
+  `Joueur_<Nom>.bat` du paquet d'essai réseau passent aussi `-PlayerName=` : un ami renommé à l'écran serait spectateur.
+  **Rouge** : `lobby_match -AI` où Alice (`-PlayerName=Alice`) tape « Alicia » (nouvelle commande de dev `hol.UI.Type
+  <Case> <Texte>`) → FAIL (tableau « Alicia, IA Normal 2 », spectatrice). **Correction** : `UHOLLocalPlayer::SetChosenName`,
+  appelé par `TakePlayerName` de l'écran Multijoueur ; `GetNickname` le rend avant `-PlayerName=`. **Vert** : `-AI` PASS
+  (« Alicia holds slot 0 », 59 s), `-Rejoin` PASS, `lobby_match` par défaut (serveur cuit de main 8ea1b8e) PASS,
+  `manager_client` Leader et AI PASS, `quick_check -Parts tests,menu,net,aiserver,netai` PASS (287/287). Commit d4ad92b.
+  Essai à refaire par l'utilisateur.
+- 2026-10-29 : **2e essai `ai_lobby` validé** par l'utilisateur (« c'est bon »). Copie égarée dans la copie principale :
+  `Tools/Tests/lobby_match.ps1` avec une partie des lignes de L5 (le sous-agent avait écrit une fois en chemin relatif),
+  identique au commit d1844e7 : retirée (`git checkout --`). `main` (8ea1b8e, partie de test « hero ») fusionnée dans
+  `ai-ia1` (1fcf4d3, sans conflit) ; `-Parts menu,hero` PASS ; **`main` avancée** en avance rapide à 1fcf4d3. GDD : **D515**
+  (l'IA dans « Nouvelle partie » : Q1, Q2, Q7) et **D516** (l'IA au salon : Q3-Q6, taille réduite, essai), renvoi dans le
+  paragraphe IA du § 14.4. **IA0.6 close.** Prochain : IA0.7 (vérification : IA contre IA sans fenêtre, aucun Paysan IA
+  inactif plus de 10 s pendant 2 min, mêmes `StepHashes` à même graine, vitesse ; essai `ai_economy_start`). Points ouverts
+  hors IA : ports des tests de salon entre copies ; ligne « awake … thinking slots [] » sur la carte du menu principal.
