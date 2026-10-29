@@ -150,8 +150,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 throw new LobbyException(LobbyErrors.BadRequest,
                     $"Color is 0 to {LobbyRules.RandomColor} (random), team 0 to {LobbyRules.MaxTeam}.");
             }
-            // E2-2: "Aléatoire" is never taken.
-            if (colorIndex is { } color && color != LobbyRules.RandomColor && lobby.Players.Any(p => p != me && p.ColorIndex == color))
+            // E2-2: "Aléatoire" is never taken. IA0.6: an AI's colour is taken.
+            if (colorIndex is { } color && color != LobbyRules.RandomColor && lobby.Slots.Any(s => s.Player != me && s.ColorIndex == color))
             {
                 throw new LobbyException(LobbyErrors.ColorTaken, $"Color {color} is taken.");
             }
@@ -180,12 +180,14 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var oldPlaces = Places(lobby);
             var places = mapInfo.Places(newSize);
             var extraSlots = lobby.Slots.Skip(places).ToList();
-            var moving = extraSlots.Where(s => s.Player != null).ToList();
-            // A map without sizes refuses a player past its places; a size (TC-Q4) moves him below, unless the players
-            // are more than its places (such a size is greyed on the screen).
-            if (moving.Count > 0 && (mapInfo.Sizes.Count == 0 || lobby.Players.Count() > places))
+            var moving = extraSlots.Where(s => s.Player != null || s.AI != null).ToList();
+            // A map without sizes refuses a player or an AI past its places; a size (TC-Q4) moves them below, unless the
+            // players and AIs are more than its places (such a size is greyed on the screen). IA0.6: an AI moves as a
+            // player, as on the solo screen (FHOLMapSizeRules::FitSlotsToSize).
+            var occupied = lobby.Slots.Count(s => s.Player != null || s.AI != null);
+            if ((moving.Count > 0 && mapInfo.Sizes.Count == 0) || (mapInfo.Sizes.Count > 0 && occupied > places))
             {
-                throw new LobbyException(LobbyErrors.SlotTaken, $"Map {mapInfo.Name} {newSize} has {places} places; a player holds a slot beyond.");
+                throw new LobbyException(LobbyErrors.SlotTaken, $"Map {mapInfo.Name} {newSize} has {places} places; {occupied} slots are held.");
             }
             var sizeChanged = newSize != settings.Size;
             var changed = mapInfo.Name != settings.Map || sizeChanged || (nomad ?? settings.Nomad) != settings.Nomad
@@ -197,16 +199,25 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             settings.Regicide = regicide ?? settings.Regicide;
             settings.Catastrophe = catastrophe ?? settings.Catastrophe;
             settings.TeamsTogether = teamsTogether ?? settings.TeamsTogether;
-            // TC3 (FHOLMapSizeRules::FitSlotsToSize): each player past the places onto the first free slot below, in order.
+            // TC3 (FHOLMapSizeRules::FitSlotsToSize): each player or AI past the places onto the first free slot below, in order.
             foreach (var from in moving)
             {
-                var to = lobby.Slots.Take(places).First(s => s.Player == null);
+                var to = lobby.Slots.Take(places).First(s => s.Player == null && s.AI == null);
                 to.Player = from.Player;
+                to.AI = from.AI;
                 to.Closed = false;
-                to.Player!.SlotIndex = to.Index;
+                if (to.Player != null)
+                {
+                    to.Player.SlotIndex = to.Index;
+                }
                 from.Player = null;
+                from.AI = null;
             }
-            extraSlots.ForEach(s => s.Closed = true);
+            extraSlots.ForEach(s =>
+            {
+                s.Closed = true;
+                s.AI = null;
+            });
             // A bigger size opens the slots it adds (closed by the smaller one); a bigger map without sizes does not.
             if (sizeChanged && mapInfo.Sizes.Count > 0 && places > oldPlaces)
             {
@@ -241,9 +252,58 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 throw new LobbyException(LobbyErrors.SlotTaken, $"Slot {index} is held by {slot.Player.Name}.");
             }
-            if (slot.Closed == open)
+            // IA0.6 (Q6): an AI removed is a change.
+            if (slot.Closed == open || slot.AI != null)
             {
+                slot.AI = null;
                 slot.Closed = !open.Value;
+                ResetReady(lobby);
+            }
+            return lobby;
+        }
+    }
+
+    /**
+     * PUT /lobbies/{id}/slots/{index} with state "ai" (leader, IA0.6 Q4): an AI on an open or closed slot below the
+     * places, or the slot's AI changed; only the given fields change, a new AI taking the first free colour and no
+     * team. Its colour is unique as a player's (E2-2: "Aléatoire" never taken). A change resets every "Ready" (Q6).
+     */
+    public Lobby SetSlotAI(string lobbyId, string? token, int index, int? colorIndex = null, int? team = null)
+    {
+        lock (gate)
+        {
+            var lobby = GetLeaderLobby(lobbyId, token);
+            if (index < 0 || index >= LobbyRules.SlotCount || colorIndex is < 0 or > LobbyRules.RandomColor || team is < 0 or > LobbyRules.MaxTeam)
+            {
+                throw new LobbyException(LobbyErrors.BadRequest,
+                    $"Slot index is 0 to {LobbyRules.SlotCount - 1}, color 0 to {LobbyRules.RandomColor} (random), team 0 to {LobbyRules.MaxTeam}.");
+            }
+            var mapMax = Places(lobby);
+            if (index >= mapMax)
+            {
+                throw new LobbyException(LobbyErrors.BadRequest, $"Map {lobby.Settings.Map} {lobby.Settings.Size} has {mapMax} slots.");
+            }
+            var slot = lobby.Slots[index];
+            if (slot.Player != null)
+            {
+                throw new LobbyException(LobbyErrors.SlotTaken, $"Slot {index} is held by {slot.Player.Name}.");
+            }
+            if (colorIndex is { } color && color != LobbyRules.RandomColor && lobby.Slots.Any(s => s != slot && s.ColorIndex == color))
+            {
+                throw new LobbyException(LobbyErrors.ColorTaken, $"Color {color} is taken.");
+            }
+            var ai = slot.AI;
+            var changed = ai == null || (colorIndex ?? ai.ColorIndex) != ai.ColorIndex || (team ?? ai.Team) != ai.Team;
+            if (ai == null)
+            {
+                ai = new LobbyAI { ColorIndex = colorIndex ?? FirstFreeColor(lobby) };
+                slot.AI = ai;
+                slot.Closed = false;
+            }
+            ai.ColorIndex = colorIndex ?? ai.ColorIndex;
+            ai.Team = team ?? ai.Team;
+            if (changed)
+            {
                 ResetReady(lobby);
             }
             return lobby;
@@ -661,15 +721,19 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             SlotIndex = slot.Index,
             // E2-1: back from the last match, his color again if free (E2-2: "Aléatoire" always is); else the first free one.
             ColorIndex = lobby.LastMatchColors.TryGetValue(name, out var color)
-                    && (color == LobbyRules.RandomColor || lobby.Players.All(p => p.ColorIndex != color))
+                    && (color == LobbyRules.RandomColor || lobby.Slots.All(s => s.ColorIndex != color))
                 ? color
-                : Enumerable.Range(0, LobbyRules.ColorCount).First(c => lobby.Players.All(p => p.ColorIndex != c)),
+                : FirstFreeColor(lobby),
             JoinOrder = nextJoinOrder++,
             LastSeen = clock.UtcNow,
         };
         slot.Player = player;
         return new JoinResult(lobby, player.Token, slot.Index);
     }
+
+    /** The first colour no player or AI has: eight colours for eight slots, one is always free for an empty slot. */
+    private static int FirstFreeColor(Lobby lobby) =>
+        Enumerable.Range(0, LobbyRules.ColorCount).First(c => lobby.Slots.All(s => s.ColorIndex != c));
 
     /** TC3: the size of a new lobby on a map (DefaultSize, else its biggest); "" for a map without sizes. */
     private static string DefaultSize(MapInfo map) =>

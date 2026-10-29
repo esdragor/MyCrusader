@@ -18,7 +18,7 @@ public static class LobbyRoutes
     private sealed record SettingsRequest(string? Map, bool? Nomad, bool? Regicide, bool? Catastrophe, string? Size = null,
         bool? TeamsTogether = null);
 
-    private sealed record SlotRequest(string? State);
+    private sealed record SlotRequest(string? State, int? ColorIndex = null, int? Team = null);
 
     /** HTTP status of each error code (PROTOCOL.md, Erreurs). */
     private static readonly Dictionary<string, int> Statuses = new()
@@ -109,7 +109,10 @@ public static class LobbyRoutes
             var token = Token(request);
             var slotIndex = int.TryParse(index, out var i) ? i : -1;
             bool? open = body.State switch { "open" => true, "closed" => false, _ => null };
-            return store.Atomic(() => LobbyViews.State(store, store.SetSlot(lobbyId, token, slotIndex, open), token));
+            // IA0.6 (Q4): "ai" puts an AI on the slot, or changes its colour and team.
+            return store.Atomic(() => LobbyViews.State(store, body.State == "ai"
+                ? store.SetSlotAI(lobbyId, token, slotIndex, body.ColorIndex, body.Team)
+                : store.SetSlot(lobbyId, token, slotIndex, open), token));
         });
 
         app.MapPost("/lobbies/{lobbyId}/leave", (string lobbyId, HttpRequest request, LobbyStore store) =>

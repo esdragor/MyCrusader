@@ -50,6 +50,9 @@ public static class LobbyRules
     public const string DefaultFaction = "DawnOrder";
     public const int MinPlayersToStart = 2;
 
+    /** IA0.6 (Q4): the level of an AI at the lobby, fixed (EHOLAIDifficulty by name). */
+    public const string DefaultAILevel = "Normal";
+
     /** At the lobby, a player whose token has not called for this long is removed. */
     public static readonly TimeSpan SilenceLimit = TimeSpan.FromSeconds(5);
 

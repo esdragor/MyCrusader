@@ -223,8 +223,9 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   "slots": [
     { "index": 0, "state": "player", "playerName": "Bob",   "colorIndex": 0, "team": 1, "faction": "DawnOrder", "ready": true },
     { "index": 1, "state": "player", "playerName": "Alice", "colorIndex": 3, "team": 2, "faction": "DawnOrder", "ready": false },
-    { "index": 2, "state": "open" },
-    { "index": 3, "state": "closed" }
+    { "index": 2, "state": "ai", "level": "Normal", "colorIndex": 2, "team": 0, "faction": "DawnOrder" },
+    { "index": 3, "state": "open" },
+    { "index": 4, "state": "closed" }
   ],
   "match": null,
   "notice": null
@@ -236,8 +237,12 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage.
 - `maps[].sizes` : les tailles de la carte et leurs places (vide pour une carte sans tailles) ; `maxPlayers` = places
   de la plus grande. `/Game/Maps/Plain` seule (carte d'essai, TC-Q11) n'est pas servie.
-- `slots` : toujours 8 ; `state` vaut `"open"`, `"closed"` ou `"player"`. `you` : le nom du jeton (`null` sans
+- `slots` : toujours 8 ; `state` vaut `"open"`, `"closed"`, `"player"` ou `"ai"`. `you` : le nom du jeton (`null` sans
   jeton).
+- `"ai"` (IA0.6, Q4-Q5) : une IA mise par le chef ; `level` (`EHOLAIDifficulty` par son nom) vaut toujours `"Normal"`
+  au salon (grisé à l'écran). Pas de `playerName` ni de `ready` : le client la nomme comme le jeu, « IA Normal N »
+  (`HOLForumMessages::GetAIName`, N = `index` + 1, texte traduit). Une IA n'est pas un joueur : elle ne compte pas
+  dans `players` de `GET /lobbies` et son emplacement n'est pas ouvert à l'entrée.
 - `faction` : rendue mais pas encore modifiable (D11 : deux factions au prototype).
 - `match` : `null` hors de `in_game` ; en partie, ce que le client doit faire (voir « Démarrage de la partie ») ;
   lu sans jeton, `playerName` y vaut `null`.
@@ -253,8 +258,8 @@ Champs facultatifs ; seuls ceux présents changent.
 { "colorIndex": 4, "team": 2, "ready": true }
 ```
 
-- `colorIndex` : 0 à 7, unique dans le salon (`color_taken`), ou 8 = « Aléatoire » (E2-2), que plusieurs joueurs
-  peuvent avoir. `team` : 0 (aucune) à 4.
+- `colorIndex` : 0 à 7, unique dans le salon, joueurs et IA (`color_taken`), ou 8 = « Aléatoire » (E2-2), que
+  plusieurs joueurs peuvent avoir. Un joueur qui entre prend la première couleur qu'aucun joueur ni aucune IA n'a. `team` : 0 (aucune) à 4.
 - Un changement de couleur ou d'équipe remet **mon** « Prêt » à `false` (choix 4), sauf si `ready` est dans la même
   requête. Une valeur égale à l'actuelle n'est pas un changement.
 - Plus tard : `faction` (`"DawnOrder"`, `"BlackLegions"`).
@@ -270,20 +275,31 @@ Champs facultatifs ; seuls ceux présents changent.
 Champs facultatifs. Un changement (valeur différente de l'actuelle) remet **tous** les « Prêt » à `false`. Une carte
 de moins d'emplacements ferme ceux de trop (refus `slot_taken` s'ils sont tenus) ; une carte plus grande ne les rouvre
 pas (le chef les rouvre). **Taille** (TC3, TC-Q4) : les emplacements au-delà de ses places sont fermés ; un joueur
-assis au-delà est **remonté**, avec sa ligne, sur le premier emplacement libre en dessous (comme
-`FHOLMapSizeRules::FitSlotsToSize` à l'écran) ; une taille de **moins de places que de joueurs assis** est refusée
+ou une **IA** (IA0.6) assis au-delà est **remonté**, avec sa ligne (couleur, équipe), sur le premier emplacement
+libre en dessous, dans l'ordre (comme `FHOLMapSizeRules::FitSlotsToSize` à l'écran solo) ; une taille de **moins de places que d'emplacements tenus (joueurs et IA)** est refusée
 (`slot_taken` ; grisée à l'écran) ; une taille plus grande **rouvre** les emplacements qu'elle ajoute (ceux fermés par
 le chef en dessous restent fermés). Sans `size`, la taille reste (ou devient celle par défaut d'une autre carte). Réponse `200` : l'état du salon. Erreurs : `lobby_not_found`, `not_in_lobby`,
 `lobby_in_game`, `not_leader`, `bad_request` (carte ou taille inconnue), `slot_taken` (dans cet ordre).
 
-### `PUT /lobbies/{lobbyId}/slots/{index}` — ouvrir / fermer un emplacement (chef)
+### `PUT /lobbies/{lobbyId}/slots/{index}` — ouvrir / fermer un emplacement, y mettre une IA (chef)
 
 ```json
 { "state": "closed" }
+{ "state": "ai", "colorIndex": 5, "team": 2 }
 ```
 
-`state` : `"open"` ou `"closed"`. Un changement remet tous les « Prêt » à `false` (ouvrir un emplacement déjà ouvert
-ne change rien). Erreurs : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`, `bad_request` (index
+`state` : `"open"`, `"closed"` ou `"ai"`. Un changement remet tous les « Prêt » à `false` (ouvrir un emplacement déjà ouvert
+ne change rien). `"open"` ou `"closed"` sur l'emplacement d'une IA la retire.
+
+`"ai"` (IA0.6, Q4) : met une IA de niveau Normal sur un emplacement ouvert ou fermé, en dessous des places de la carte
+à sa taille ; sur l'emplacement d'une IA, change sa couleur ou son équipe. `colorIndex` (0 à 8, 8 = « Aléatoire ») et
+`team` (0 à 4) sont facultatifs : seuls ceux présents changent ; une nouvelle IA prend sinon la première couleur
+libre et l'équipe 0. Couleur unique comme pour un joueur (`color_taken`). Ajouter, retirer ou changer une IA remet
+tous les « Prêt » à `false` (Q6) ; la même IA avec les mêmes valeurs ne change rien. Erreurs `"ai"`, dans cet ordre :
+`lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`, `bad_request` (index, couleur ou équipe hors
+bornes, emplacement au-delà des places), `slot_taken` (emplacement d'un joueur), `color_taken`.
+
+Erreurs `"open"` / `"closed"`, dans cet ordre : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`, `bad_request` (index
 hors de 0 à 7 ou non entier, `state` absent ou inconnu, ouvrir un emplacement au-delà des places de la carte à sa taille), `slot_taken` (emplacement tenu).
 
 ### `POST /lobbies/{lobbyId}/start` — « Lancer » (chef)
