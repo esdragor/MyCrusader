@@ -490,6 +490,12 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	int64 DeathStep = -1;
 
 	/**
+	 * J8c.2: milliseconds it stays under its hero's cry (Serrez les rangs, J8c-Q2): HOLHeroAbility::CloseRanksDurationMs when
+	 * the cry reaches it, counted down each step by the combat processor; 0: not under it.
+	 */
+	int32 CloseRanksMs = 0;
+
+	/**
 	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
 	 * on an attack-move with no enemy unit found, or at rest within its aggression radius. Only while it has no unit
 	 * target: an enemy unit it takes on makes it drop the building (one taken on by itself: an ordered one, never). Unset: none.

@@ -15,13 +15,16 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLHeroReturnSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLUnitView.h"
 
 namespace UE::HeroesOfLiberty::Hero
 {
@@ -94,6 +97,29 @@ namespace UE::HeroesOfLiberty::Hero
 			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.SetXP: slot %d, xp %d"), Slot, Heroes->GetSheets(Slot).Private.XP);
 		}));
 
+	FAutoConsoleCommandWithWorldAndArgs CommandCloseRanks(TEXT("hol.Hero.CloseRanks"),
+		TEXT("hol.Hero.CloseRanks [Slot=0]: the slot's hero cries Serrez les rangs (J8c-Q2), server or solo (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLHeroSubsystem* Heroes = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+			const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			const bool bCast = Heroes && Heroes->CastCloseRanks(Slot);
+			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.CloseRanks: slot %d %s"), Slot, bCast ? TEXT("cast")
+				: TEXT("refused (client, no living hero, or not ready)"));
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CommandBanner(TEXT("hol.Hero.Banner"),
+		TEXT("hol.Hero.Banner <Slot> <X> <Y>: the slot's hero plants his banner there (J8c-Q3), server or solo (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLHeroSubsystem* Heroes = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+			const int32 Slot = Args.Num() >= 3 ? FCString::Atoi(*Args[0]) : INDEX_NONE;
+			const FVector Location(Args.Num() >= 3 ? FCString::Atod(*Args[1]) : 0.0, Args.Num() >= 3 ? FCString::Atod(*Args[2]) : 0.0, 0.0);
+			const bool bPlanted = Heroes && Heroes->PlantBanner(Slot, Location);
+			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.Banner: slot %d at (%.0f, %.0f) %s"), Slot, Location.X, Location.Y, bPlanted ? TEXT("planted")
+				: TEXT("refused (client, <Slot> <X> <Y>, no living hero, below level 4, not ready, or farther than 16 m)"));
+		}));
+
 	FAutoConsoleCommandWithWorldAndArgs CommandKill(TEXT("hol.Hero.Kill"),
 		TEXT("hol.Hero.Kill [Slot=0]: the slot's hero at 0 health, dying as killed in combat, server or solo (development only)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -138,6 +164,7 @@ void UHOLHeroSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
 	Super::Initialize(Collection);
 	Sheets.Init(FHOLHeroSheets(), FHOLMatchConfig::MaxSlots);
+	Abilities.Init(FAbilities(), FHOLMatchConfig::MaxSlots);
 }
 
 void UHOLHeroSubsystem::OnWorldBeginPlay(UWorld& InWorld)
@@ -178,6 +205,8 @@ void UHOLHeroSubsystem::UnbindSteps()
 
 void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 {
+	// J8c.2: a step gone by for the cool-downs and the banners.
+	TickAbilities();
 	UpdateSheets();
 	// J8a.4: the script's return rule, the sheets of this step written.
 	OnHeroStep.Broadcast(static_cast<int32>(StepIndex));
@@ -393,4 +422,96 @@ bool UHOLHeroSubsystem::BuyReturn(const int32 Slot, const int32 PlaceIndex, cons
 	PlayerState->SetResources(Stock);
 	UE_LOG(LogHOLMatch, Display, TEXT("Hero return: slot %d bought for %d gold"), Slot, Price);
 	return true;
+}
+
+bool UHOLHeroSubsystem::CastCloseRanks(const int32 Slot)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	const FHOLHeroSheet& Public = Sheets[Slot].Public;
+	FAbilities& Slots = Abilities[Slot];
+	if (!HOLHeroAbility::CanCast(EHOLHeroAbility::CloseRanks, Public.Level, Public.State == EHOLHeroState::Alive, Slots.CloseRanksCooldownMs))
+	{
+		return false;
+	}
+	Slots.CloseRanksCooldownMs = HOLHeroAbility::GetCooldownMs(EHOLHeroAbility::CloseRanks);
+	Slots.bCloseRanksPending = true;
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero ability: slot %d cries Serrez les rangs"), Slot);
+	return true;
+}
+
+bool UHOLHeroSubsystem::ConsumeCloseRanks(const int32 Slot)
+{
+	if (!Abilities.IsValidIndex(Slot) || !Abilities[Slot].bCloseRanksPending)
+	{
+		return false;
+	}
+	Abilities[Slot].bCloseRanksPending = false;
+	return true;
+}
+
+bool UHOLHeroSubsystem::PlantBanner(const int32 Slot, const FVector& Location)
+{
+	UWorld* World = GetWorld();
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!Sheets.IsValidIndex(Slot) || !Units || World->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	const FHOLHeroSheet& Public = Sheets[Slot].Public;
+	FAbilities& Slots = Abilities[Slot];
+	FHOLUnitView Hero;
+	if (!HOLHeroAbility::CanCast(EHOLHeroAbility::Banner, Public.Level, Public.State == EHOLHeroState::Alive, Slots.BannerCooldownMs)
+		|| !Units->GetUnitView(Units->FindHeroUnit(Slot), Hero)
+		|| !HOLHeroAbility::CanPlantBanner(static_cast<float>(FVector::Dist2D(Hero.Location, Location))))
+	{
+		return false;
+	}
+	Slots.BannerCooldownMs = HOLHeroAbility::GetCooldownMs(EHOLHeroAbility::Banner);
+	Slots.BannerMs = HOLHeroAbility::BannerDurationMs;
+	Slots.BannerLocation = Location;
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero ability: slot %d plants his banner at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
+	return true;
+}
+
+bool UHOLHeroSubsystem::GetBanner(const int32 Slot, FVector& OutLocation) const
+{
+	if (!Abilities.IsValidIndex(Slot) || Abilities[Slot].BannerMs <= 0)
+	{
+		return false;
+	}
+	OutLocation = Abilities[Slot].BannerLocation;
+	return true;
+}
+
+int32 UHOLHeroSubsystem::GetCooldownMs(const int32 Slot, const EHOLHeroAbility Ability) const
+{
+	if (!Abilities.IsValidIndex(Slot))
+	{
+		return 0;
+	}
+	switch (Ability)
+	{
+	case EHOLHeroAbility::CloseRanks: return Abilities[Slot].CloseRanksCooldownMs;
+	case EHOLHeroAbility::Banner: return Abilities[Slot].BannerCooldownMs;
+	default: return 0;
+	}
+}
+
+void UHOLHeroSubsystem::TickAbilities()
+{
+	const int32 StepMs = HOLCombat::ToMilliseconds(GetDefault<UHOLSimulationSettings>()->GetStepSeconds());
+	for (int32 Slot = 0; Slot < Abilities.Num(); ++Slot)
+	{
+		FAbilities& Slots = Abilities[Slot];
+		HOLHeroAbility::Tick(Slots.CloseRanksCooldownMs, StepMs);
+		HOLHeroAbility::Tick(Slots.BannerCooldownMs, StepMs);
+		if (Slots.BannerMs > 0)
+		{
+			HOLHeroAbility::Tick(Slots.BannerMs, StepMs);
+			UE_CLOG(Slots.BannerMs == 0, LogHOLMatch, Display, TEXT("Hero ability: slot %d banner gone"), Slot);
+		}
+	}
 }

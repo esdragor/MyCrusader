@@ -11,6 +11,7 @@
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -20,6 +21,7 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLOrderChainRules.h"
@@ -456,6 +458,17 @@ uint64 UHOLCombatProcessor::HashArrows() const
 	return Hash;
 }
 
+int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
+{
+	bool bInAura = false;
+	for (const FAuraSource& Source : AuraSources)
+	{
+		bInAura |= Source.Owner == Victim.State->OwnerPlayer
+			&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(Source.Location, FVector2D(Victim.Location))));
+	}
+	return HOLHeroAbility::GetDamageTakenPercent(bInAura, Victim.Combat->CloseRanksMs > 0);
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -480,7 +493,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// reads them before), and whether any unit has a target (none: no attacker to count).
 	const bool bZeroAtGather = bFighting && SkipAttackerCount != 0;
 	bool bAnyTarget = false;
-	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable](FMassExecutionContext& Context)
+	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
+	AuraSources.Reset();
+	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
@@ -492,8 +507,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
+		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
+			HOLHeroAbility::Tick(Combats[EntityIt].CloseRanksMs, StepMs);
+			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
+			{
+				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
+				AuraSources.Add(FAuraSource{ FVector2D(Location), States[EntityIt].OwnerPlayer, true });
+			}
 			FFighter& Fighter = Fighters.AddDefaulted_GetRef();
 			Fighter.Entity = Context.GetEntity(EntityIt);
 			Fighter.UnitId = States[EntityIt].UnitId;
@@ -518,6 +540,42 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		TotalArrowsLost += Arrows.Num(); // no target left for any
 		Arrows.Reset();
 		return;
+	}
+	// J8c.2: the banners standing (J8c-Q3, even once their hero is dead), and the cries cast since the last step (J8c-Q2):
+	// each crying hero's living units within his aura's reach now are under it for its whole duration (refreshed).
+	if (UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>())
+	{
+		const int32 HeroSources = AuraSources.Num();
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			FVector BannerLocation;
+			if (Heroes->GetBanner(Slot, BannerLocation))
+			{
+				AuraSources.Add(FAuraSource{ FVector2D(BannerLocation), static_cast<uint8>(Slot), false });
+			}
+			if (!Heroes->ConsumeCloseRanks(Slot))
+			{
+				continue;
+			}
+			for (int32 Source = 0; Source < HeroSources; ++Source)
+			{
+				if (AuraSources[Source].Owner != Slot)
+				{
+					continue;
+				}
+				int32 Cried = 0;
+				for (FFighter& Fighter : Fighters)
+				{
+					if (Fighter.State->OwnerPlayer == Slot && Fighter.State->CurrentHealth > 0.f
+						&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(AuraSources[Source].Location, FVector2D(Fighter.Location)))))
+					{
+						Fighter.Combat->CloseRanksMs = HOLHeroAbility::CloseRanksDurationMs;
+						++Cried;
+					}
+				}
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld slot %d cries Serrez les rangs, %d unit(s) under it"), StepIndex, Slot, Cried);
+			}
+		}
 	}
 	if (!bFighting)
 	{
@@ -897,7 +955,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		const int32 Victim = FindFighter(Arrow.Target);
 		float Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0.f;
-		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Arrow.Damage);
+		// J8c.2: the morale effects where it lands, now (aura, cry), not where it was released.
+		const float Landed = Victim != INDEX_NONE ? HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Fighters[Victim])) : Arrow.Damage;
+		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Landed);
 		if (Outcome == HOLCombat::EArrowOutcome::Lost)
 		{
 			++TotalArrowsLost;
@@ -916,12 +976,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			Enemy.Combat->LastAttacker = Arrow.Shooter;
 			Enemy.Combat->LastHitStep = StepIndex;
-			Fighters[Shooter].Combat->DamageDealt += Arrow.Damage;
+			Fighters[Shooter].Combat->DamageDealt += Landed;
 		}
 		if (LogHits != 0)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s lands on #%u %s for %g, %g HP left (released step %lld, %lld steps)"), StepIndex,
-				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Arrow.Damage), static_cast<double>(Health), Arrow.ReleaseStep,
+				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Landed), static_cast<double>(Health), Arrow.ReleaseStep,
 				StepIndex - Arrow.ReleaseStep);
 		}
 		if (Outcome == HOLCombat::EArrowOutcome::Kill)
@@ -2046,11 +2106,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// D468: the hits come off one after another in the fighters' order (this loop is sequential): with float health the
 		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
-		Enemy.State->CurrentHealth -= Damage;
+		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
+		const float Dealt = HOLHeroAbility::GetReducedDamage(Damage, GetDamageTakenPercent(Enemy));
+		Enemy.State->CurrentHealth -= Dealt;
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		Enemy.Combat->LastHitStep = StepIndex;
 		++Combat.Hits;
-		Combat.DamageDealt += Damage;
+		Combat.DamageDealt += Dealt;
 		++TotalHits;
 		if (Combat.FirstHitStep < 0)
 		{
@@ -2059,7 +2121,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		if (LogHits != 0)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s hits #%u %s for %g, %g HP left"), StepIndex, Fighter.UnitId, *Constants.TypeName.ToString(),
-				Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Damage), static_cast<double>(Enemy.State->CurrentHealth));
+				Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Dealt), static_cast<double>(Enemy.State->CurrentHealth));
 		}
 		if (Enemy.State->CurrentHealth <= 0)
 		{
