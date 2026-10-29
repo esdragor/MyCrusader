@@ -56,6 +56,27 @@ namespace HOLHeroXP
 	 */
 	HEROESOFLIBERTY_API TOptional<EHOLXPSource> GetKillSource(bool bKilledByHero, bool bHeroAlive, float DistanceToHero);
 
+	/** J8b.2: what the simulation knows of a death, for the killer's side hero (GetKillXP). */
+	struct FKillFacts
+	{
+		/** The victim's cost (GetValue), for a unit that is not a hero. */
+		int32 VictimValue = 0;
+		bool bVictimHero = false;
+		/** The victim hero's level, and the killer side's hero's (D05 catch-up). */
+		int32 VictimLevel = 1;
+		int32 HeroLevel = 1;
+		bool bKilledByHero = false;
+		bool bHeroAlive = false;
+		/** From the victim to the hero, in cm. */
+		float DistanceToHero = MAX_flt;
+	};
+
+	/**
+	 * J8b.2: the XP a death gives the killer side's hero and its source (GetKillSource): a unit its cost x the weight, a
+	 * hero GetHeroKillXP; 0 and no source when it gives none (hero dead, troops too far).
+	 */
+	HEROESOFLIBERTY_API int32 GetKillXP(const FKillFacts& Facts, TOptional<EHOLXPSource>& OutSource);
+
 	/** Total XP to reach Level (J8b-Q2): 0, 200, 600, 1 300, 2 200, 3 300; levels outside 1..MaxLevel are clamped. */
 	HEROESOFLIBERTY_API int32 GetLevelXP(int32 Level);
 

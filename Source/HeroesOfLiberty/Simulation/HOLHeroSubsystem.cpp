@@ -257,6 +257,19 @@ void UHOLHeroSubsystem::ApplyLevel(const int32 Slot, FHOLUnitStateFragment* Stat
 		HOLCombat::GetShownHealth(State->CurrentHealth), HOLCombat::GetMaxHealth(*Constants, Level));
 }
 
+void UHOLHeroSubsystem::AddXP(const int32 Slot, const int32 XP, const EHOLXPSource Source)
+{
+	if (!Sheets.IsValidIndex(Slot) || XP <= 0 || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	static const TCHAR* const SourceNames[] = { TEXT("combat"), TEXT("command"), TEXT("development"), TEXT("exploration") };
+	const int32 SourceIndex = static_cast<int32>(Source);
+	Sheets[Slot].Private.XP += XP;
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero XP: slot %d +%d (%s), xp %d"), Slot, XP,
+		SourceIndex < UE_ARRAY_COUNT(SourceNames) ? SourceNames[SourceIndex] : TEXT("?"), Sheets[Slot].Private.XP);
+}
+
 bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
 {
 	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)

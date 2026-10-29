@@ -20,6 +20,8 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLOrderChainRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -813,8 +815,39 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			SearchTouched[Other] = 1;
 		}
 	};
+	// J8b.2: the XP of a death for the killer side's hero (J8b-Q1, Q2, Q5): killed by him (combat), by one of his troops
+	// near him (command, the victim within HOLHeroXP::CommandRadius of him), nothing while he is dead (D06).
+	UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	const auto AwardKillXP = [&](const FFighter& Victim, const int32 KillerPlayer, const uint32 KillerId)
+	{
+		const uint32 HeroId = Heroes && KillerPlayer >= 0 ? Units->FindHeroUnit(KillerPlayer) : 0;
+		const FHOLUnitTypeRow* VictimRow = HeroId != 0 ? Units->FindTypeRow(Victim.Constants->TypeName) : nullptr;
+		if (!VictimRow)
+		{
+			return;
+		}
+		HOLHeroXP::FKillFacts Facts;
+		Facts.VictimValue = HOLHeroXP::GetValue(VictimRow->Cost);
+		Facts.bVictimHero = HOLIsHero(Victim.Constants->ArmorCategoryMask);
+		Facts.VictimLevel = Victim.Combat->Level;
+		Facts.bKilledByHero = KillerId == HeroId;
+		const int32 HeroIndex = FindFighter(Units->FindEntity(HeroId));
+		if (HeroIndex != INDEX_NONE)
+		{
+			const FFighter& HeroFighter = Fighters[HeroIndex];
+			Facts.HeroLevel = HeroFighter.Combat->Level;
+			Facts.bHeroAlive = HeroFighter.State->CurrentHealth > 0.f && HeroFighter.Combat->DeathStep < 0;
+			Facts.DistanceToHero = static_cast<float>(FVector::Dist2D(Victim.Location, HeroFighter.Location));
+		}
+		TOptional<EHOLXPSource> Source;
+		const int32 XP = HOLHeroXP::GetKillXP(Facts, Source);
+		if (Source.IsSet())
+		{
+			Heroes->AddXP(KillerPlayer, XP, Source.GetValue());
+		}
+	};
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
-	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer)
+	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer, const uint32 KillerId)
 	{
 		bDeathSincePlaces = true;
 		Touch(static_cast<int32>(&Victim - Fighters.GetData()));
@@ -825,6 +858,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Touch(FormerTarget);
 		}
 		KillUnit(World, *Units, Victim, StepIndex, KillerPlayer);
+		AwardKillXP(Victim, KillerPlayer, KillerId);
 	};
 
 	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).
@@ -931,7 +965,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				++Fighters[Shooter].Combat->Kills;
 			}
-			Kill(Enemy, Arrow.ShooterSlot);
+			Kill(Enemy, Arrow.ShooterSlot, Arrow.ShooterId);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
@@ -1970,7 +2004,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			++Combat.Kills;
 			++TotalKills;
-			Kill(Enemy, Fighter.State->OwnerPlayer);
+			Kill(Enemy, Fighter.State->OwnerPlayer, Fighter.UnitId);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
 			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.

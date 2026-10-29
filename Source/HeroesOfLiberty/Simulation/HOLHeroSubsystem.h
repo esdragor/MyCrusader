@@ -8,6 +8,7 @@
 #include "HOLHeroSubsystem.generated.h"
 
 class AHOLPlayerState;
+enum class EHOLXPSource : uint8;
 struct FHOLCombatFragment;
 struct FHOLUnitStateFragment;
 struct FHOLUnitTypeConstants;
@@ -36,6 +37,12 @@ public:
 
 	/** Makes every slot's sheet from its hero now and writes the copies that changed (the end of each step). */
 	void UpdateSheets();
+
+	/**
+	 * J8b.2: XP earned by the slot's side (a kill, a building finished; HOLHeroXP), added to his true sheet; the copies and
+	 * his body's level follow at the step's end (UpdateSheets). Nothing out of range, on a client, or for XP <= 0.
+	 */
+	void AddXP(int32 Slot, int32 XP, EHOLXPSource Source);
 
 	/** Development (hol.Hero.SetXP): the slot's XP set, its copies written at once. False out of range or on a client. */
 	bool SetXP(int32 Slot, int32 XP);

@@ -68,6 +68,17 @@ TOptional<EHOLXPSource> HOLHeroXP::GetKillSource(const bool bKilledByHero, const
 	return {};
 }
 
+int32 HOLHeroXP::GetKillXP(const FKillFacts& Facts, TOptional<EHOLXPSource>& OutSource)
+{
+	OutSource = GetKillSource(Facts.bKilledByHero, Facts.bHeroAlive, Facts.DistanceToHero);
+	if (!OutSource.IsSet())
+	{
+		return 0;
+	}
+	return Facts.bVictimHero ? GetHeroKillXP(Facts.VictimLevel, Facts.HeroLevel, OutSource.GetValue())
+		: GetXP(Facts.VictimValue, OutSource.GetValue());
+}
+
 int32 HOLHeroXP::GetLevelXP(const int32 Level)
 {
 	return LevelXP[ClampLevel(Level) - 1];
