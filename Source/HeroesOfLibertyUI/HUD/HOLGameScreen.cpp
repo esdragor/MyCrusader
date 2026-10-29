@@ -690,19 +690,23 @@ void UHOLGameScreen::HandleHeroLevelUp(const int32 HeroSlot, const int32 OldLeve
 	{
 		return;
 	}
-	for (const FHOLForumMessage& Message : HOLForumMessages::GetHeroLevelMessages(OldLevel, NewLevel))
+	const TArray<FHOLForumMessage> Messages = HOLForumMessages::GetHeroLevelMessages(OldLevel, NewLevel);
+	for (const FHOLForumMessage& Message : Messages)
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("%s (slot %d)"), *Message.Shown, HeroSlot);
 		MessageThread.Add(Message, World->GetRealTimeSeconds());
 	}
 	RebuildMessages();
-	// A minor alert with its sound (J8b-Q4), once for its lines; provisional, as the alerts' (FHOLForumAlert::SoundPath).
-	USoundBase* Sound = LoadObject<USoundBase>(nullptr, FHOLForumAlert::SoundPath);
+	// A minor alert with its sound (J8b-Q4), once for its lines: a fanfare (J8b.5), the tier's when a tier's line follows
+	// the level's; synthesised until real sounds come.
+	const bool bTier = Messages.Num() > 1;
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, bTier ? HOLForumMessages::HeroTierSoundPath : HOLForumMessages::HeroLevelSoundPath);
 	if (Sound)
 	{
 		UGameplayStatics::PlaySound2D(this, Sound);
 	}
-	UE_LOG(LogHOLUI, Display, TEXT("Hero level alert: slot %d level %d -> %d (sound%s)"), HeroSlot, OldLevel, NewLevel, Sound ? TEXT("") : TEXT(" missing"));
+	UE_LOG(LogHOLUI, Display, TEXT("Hero level alert: slot %d level %d -> %d (sound%s)%s"), HeroSlot, OldLevel, NewLevel, Sound ? TEXT("") : TEXT(" missing"),
+		bTier ? TEXT(" tier fanfare") : TEXT(""));
 }
 
 void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)

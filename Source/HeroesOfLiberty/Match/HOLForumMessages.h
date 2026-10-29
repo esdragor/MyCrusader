@@ -100,6 +100,13 @@ namespace HOLForumMessages
 	 */
 	HEROESOFLIBERTY_API TArray<FHOLForumMessage> GetHeroLevelMessages(int32 OldLevel, int32 NewLevel);
 
+	/**
+	 * J8b.5 (the trial's wish): the sounds of those alerts, fanfares (Tools/Editor/make_hero_fanfare.py), not the alerts' ping:
+	 * a short one for a level, a longer one when a tier is reached.
+	 */
+	inline constexpr const TCHAR* HeroLevelSoundPath = TEXT("/Game/Audio/SW_HeroLevelUp.SW_HeroLevelUp");
+	inline constexpr const TCHAR* HeroTierSoundPath = TEXT("/Game/Audio/SW_HeroTier.SW_HeroTier");
+
 	/** J8b.4: the levels opening a tier (D04: 3 and 6). */
 	constexpr int32 HeroTierLevels[] = { 3, 6 };
 
