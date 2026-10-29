@@ -223,4 +223,44 @@ namespace HOLPlayerOrders
 		Commands->IssueConstructionOrder(Command);
 		return true;
 	}
+
+	bool QueueProduction(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const FName TypeName)
+	{
+		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
+		if (!Commands || !Building)
+		{
+			return false;
+		}
+		// As AHOLPlayerController::ServerQueueProduction: the production checks the owner, the type, the queue and the stock.
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Queue;
+		Command.PlayerIndex = PlayerIndex;
+		Command.Building = Building;
+		Command.TypeName = TypeName;
+		Commands->IssueProductionOrder(Command);
+		return true;
+	}
+
+	bool SetRally(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site,
+		const bool bQueue)
+	{
+		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
+		if (!Commands || !Building)
+		{
+			return false;
+		}
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Rally;
+		Command.PlayerIndex = PlayerIndex;
+		Command.Building = Building;
+		Command.Location = Point;
+		// A source that is not standing (any more) is the ground (as the controller's RPC).
+		const UHOLSourceSubsystem* Sources = World.GetSubsystem<UHOLSourceSubsystem>();
+		Command.SourceIndex = Sources && Sources->GetSources().IsValidIndex(SourceIndex) && Sources->GetSources()[SourceIndex].IsStanding()
+			? SourceIndex : INDEX_NONE;
+		Command.RallySite = Site;
+		Command.bQueue = bQueue;
+		Commands->IssueProductionOrder(Command);
+		return true;
+	}
 }

@@ -2,7 +2,12 @@
 
 #include "AI/HOLAIOrders.h"
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionRules.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
+#include "EngineUtils.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
@@ -19,6 +24,30 @@ namespace
 			return nullptr;
 		}
 		return World;
+	}
+
+	/** PlayerIndex's building nearest Location, within 100 cm (a summary's FHOLAIBuilding::Location); null if none. */
+	AHOLBuilding* FindOwnBuilding(const UWorld& World, const int32 PlayerIndex, const FVector& Location)
+	{
+		AHOLBuilding* Nearest = nullptr;
+		double NearestDistance = 100.0;
+		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		{
+			const double Distance = FVector::Dist2D(It->GetActorLocation(), Location);
+			if (It->GetOwnerPlayer() == PlayerIndex && Distance <= NearestDistance)
+			{
+				Nearest = *It;
+				NearestDistance = Distance;
+			}
+		}
+		return Nearest;
+	}
+
+	/** A point of the footprint's middle on the ground. */
+	FVector ToPoint(const UWorld& World, const FBox2D& Footprint, const double DefaultZ)
+	{
+		const FVector2D Middle = Footprint.GetCenter();
+		return FVector(Middle, UHOLConstructionSubsystem::FindGroundZ(World, Middle, DefaultZ));
 	}
 
 	/** Script's int32 identifiers back to the simulation's uint32 (a negative one names no unit: 0). */
@@ -46,4 +75,95 @@ bool UHOLAIOrderLibrary::IssueAIMoveOrder(const UObject* WorldContextObject, con
 {
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
 	return World && HOLPlayerOrders::Move(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
+}
+
+int32 UHOLAIOrderLibrary::CheckAIPlacement(const UObject* WorldContextObject, const int32 PlayerIndex, const FName TypeName, const FVector Point)
+{
+	const UWorld* World = GetAuthorityWorld(WorldContextObject);
+	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
+	if (!World || !Type || !Type->IsBuildable())
+	{
+		return -1;
+	}
+	return static_cast<int32>(UHOLConstructionSubsystem::CheckPlacement(*World, UHOLConstructionSubsystem::SnapFootprint(*Type, Point), PlayerIndex));
+}
+
+bool UHOLAIOrderLibrary::FindAIPlacement(const UObject* WorldContextObject, const int32 PlayerIndex, const FName TypeName, const FVector Centre,
+	const int32 MaxRings, FVector& OutPoint)
+{
+	const UWorld* World = GetAuthorityWorld(WorldContextObject);
+	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
+	FBox2D Footprint;
+	if (!World || !Type || !Type->IsBuildable()
+		|| !UHOLConstructionSubsystem::FindRingFootprint(*World, *Type, FVector2D(Centre), PlayerIndex, MaxRings, {}, Footprint))
+	{
+		return false;
+	}
+	OutPoint = ToPoint(*World, Footprint, Centre.Z);
+	return true;
+}
+
+bool UHOLAIOrderLibrary::FindAIFarmBlock(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector Centre, const int32 MaxRings,
+	FVector& OutMill, TArray<FVector>& OutFarms)
+{
+	const UWorld* World = GetAuthorityWorld(WorldContextObject);
+	const FHOLBuildingTypeRow* MillType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Mill);
+	const FHOLBuildingTypeRow* FarmType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Farm);
+	FBox2D Mill;
+	TArray<FBox2D> Farms;
+	if (!World || !MillType || !FarmType
+		|| !UHOLConstructionSubsystem::FindFarmBlock(*World, *MillType, *FarmType, FVector2D(Centre), PlayerIndex, MaxRings, Mill, Farms))
+	{
+		return false;
+	}
+	OutMill = ToPoint(*World, Mill, Centre.Z);
+	OutFarms.Reset();
+	for (const FBox2D& Farm : Farms)
+	{
+		OutFarms.Add(ToPoint(*World, Farm, Centre.Z));
+	}
+	return true;
+}
+
+bool UHOLAIOrderLibrary::IssueAIPlaceOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FName TypeName, const FVector Point,
+	const TArray<int32>& UnitIds, const bool bQueue)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	if (!World || !HOLPlayerOrders::IsAccepted(PlayerIndex, 0))
+	{
+		return false;
+	}
+	// What the human's ghost shows before it sends the order: the placement checked here, the server (the construction at its
+	// step) checks it again and takes the cost.
+	const int32 Refusal = CheckAIPlacement(WorldContextObject, PlayerIndex, TypeName, Point);
+	if (Refusal != 0)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("AI order of slot %d: %s not placed at (%.0f, %.0f): %s"), PlayerIndex, *TypeName.ToString(), Point.X, Point.Y,
+			Refusal < 0 ? TEXT("not a building to place") : UHOLConstructionSubsystem::DescribeRefusal(static_cast<EHOLPlacementRefusal>(Refusal)));
+		return false;
+	}
+	return HOLPlayerOrders::Place(*World, PlayerIndex, TypeName, Point, ToUnitIds(UnitIds), bQueue);
+}
+
+bool UHOLAIOrderLibrary::IssueAIBuildOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector BuildingLocation,
+	const TArray<int32>& UnitIds, const bool bQueue)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
+	return Building && HOLPlayerOrders::Build(*World, PlayerIndex, ToUnitIds(UnitIds), Building, bQueue);
+}
+
+bool UHOLAIOrderLibrary::IssueAIProduceOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector BuildingLocation, const FName TypeName)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
+	return Building && HOLPlayerOrders::QueueProduction(*World, PlayerIndex, Building, TypeName);
+}
+
+bool UHOLAIOrderLibrary::IssueAISetRallyOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector BuildingLocation, const FVector Point,
+	const int32 SourceIndex)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
+	return Building && HOLPlayerOrders::SetRally(*World, PlayerIndex, Building, Point, SourceIndex);
 }
