@@ -78,7 +78,8 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double AuraRingWidth = 10.0;
 	const FLinearColor ReachRingColor(0.85f, 0.85f, 0.85f);
 	constexpr double ReachRingWidth = 6.0;
-	const FLinearColor AimRefusedColor(0.9f, 0.25f, 0.2f);
+	const FLinearColor AimRefusedColor(1.0f, 0.06f, 0.03f);
+	constexpr double AimRefusedWidth = 16.0;
 	constexpr int32 AuraRingPieces = 72;
 	constexpr double AuraRingOffset = 6.0;
 	/** The ground's height is looked for between these heights (cm). */
@@ -616,7 +617,7 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 			if (PlayerController->GetCursorGroundPoint(Aim))
 			{
 				const bool bInReach = HOLHeroAbility::CanPlantBanner(FVector2D::Distance(FVector2D(Aim), HeroPoint));
-				AddCircle(FVector2D(Aim), HOLHeroAbility::AuraRadius, AuraRingWidth, bInReach ? AuraRingColor : AimRefusedColor, Aim.Z);
+				AddCircle(FVector2D(Aim), HOLHeroAbility::AuraRadius, bInReach ? AuraRingWidth : AimRefusedWidth, bInReach ? AuraRingColor : AimRefusedColor, Aim.Z);
 				Parts.Add(FString::Printf(TEXT("aim (%.0f, %.0f) %s"), Aim.X, Aim.Y, bInReach ? TEXT("ok") : TEXT("out of reach")));
 			}
 		}

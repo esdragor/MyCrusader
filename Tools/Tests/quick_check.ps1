@@ -1775,9 +1775,9 @@ if ($Parts -contains "camera") {
                 "hol.Select.Report",
                 "hol.Select.Grid 1", "hol.Select.Grid 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
-                "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report",
-                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "hol.Camera.TestCursor off",
-                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report",
+                "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
+                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor off",
+                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "capture build_hero_banner_rings",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
