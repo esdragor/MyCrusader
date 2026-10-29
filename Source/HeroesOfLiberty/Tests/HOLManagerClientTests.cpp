@@ -340,6 +340,118 @@ bool FHOLManagerClientWriteTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// IA0.6 (L3): an AI on a lobby's slot (Manager/PROTOCOL.md, Q3 = A, Q4): read, the body of PUT slots, the rights and the launch.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerClientAITest, "HeroesOfLiberty.Net.ManagerClient.AI",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLManagerClientAITest::RunTest(const FString& Parameters)
+{
+	// The example of Manager/PROTOCOL.md (an AI on slot 2), its 8 slots written out; Bob leads and is you.
+	const FString State = TEXT(R"({
+  "id": "L7",
+  "name": "Salon de Bob",
+  "state": "lobby",
+  "minutes": null,
+  "leader": "Bob",
+  "you": "Bob",
+  "settings": { "map": "Plain", "nomad": false, "regicide": true, "catastrophe": false },
+  "maps": [ { "name": "Plain", "maxPlayers": 8 } ],
+  "slots": [
+    { "index": 0, "state": "player", "playerName": "Bob",   "colorIndex": 0, "team": 1, "faction": "DawnOrder", "ready": true },
+    { "index": 1, "state": "player", "playerName": "Alice", "colorIndex": 3, "team": 2, "faction": "DawnOrder", "ready": false },
+    { "index": 2, "state": "ai", "level": "Normal", "colorIndex": 2, "team": 0, "faction": "DawnOrder" },
+    { "index": 3, "state": "open" },
+    { "index": 4, "state": "closed" },
+    { "index": 5, "state": "open" }, { "index": 6, "state": "open" }, { "index": 7, "state": "open" }
+  ],
+  "match": null,
+  "notice": null
+})");
+	FHOLLobby Lobby;
+	TestTrue(TEXT("lobby with an AI read"), FHOLManagerClientRules::ParseLobby(State, Lobby));
+	if (TestEqual(TEXT("8 slots"), Lobby.Slots.Num(), 8))
+	{
+		const FHOLLobbySlot& AI = Lobby.Slots[2];
+		TestTrue(TEXT("slot 2 an AI"), AI.State == EHOLLobbySlotState::AI);
+		TestEqual(TEXT("AI index"), AI.Index, 2);
+		TestEqual(TEXT("AI colour"), AI.ColorIndex, 2);
+		TestEqual(TEXT("AI team"), AI.Team, 0);
+		TestTrue(TEXT("AI level Normal"), AI.Level == EHOLAIDifficulty::Normal);
+		TestEqual(TEXT("AI faction"), AI.Faction, FString(TEXT("DawnOrder")));
+		TestTrue(TEXT("AI without a player's name"), AI.PlayerName.IsEmpty());
+		TestFalse(TEXT("AI without Ready"), AI.bReady);
+		TestTrue(TEXT("slot 3 open"), Lobby.Slots[3].State == EHOLLobbySlotState::Open);
+		TestTrue(TEXT("slot 4 closed"), Lobby.Slots[4].State == EHOLLobbySlotState::Closed);
+	}
+	TestEqual(TEXT("an AI is not a player: 2 players"), Lobby.GetNumPlayers(), 2);
+	TestEqual(TEXT("1 AI"), Lobby.GetNumAIs(), 1);
+	TestEqual(TEXT("your slot (not the AI's)"), Lobby.FindYourSlot(), 0);
+
+	FHOLLobby Other;
+	TestTrue(TEXT("AI without a level read"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("level": "Normal", )"), TEXT("")), Other));
+	TestTrue(TEXT("AI without a level: Normal"), Other.Slots.IsValidIndex(2) && Other.Slots[2].Level == EHOLAIDifficulty::Normal);
+	TestTrue(TEXT("AI Hard read"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("level": "Normal")"), TEXT(R"("level": "Hard")")), Other));
+	TestTrue(TEXT("AI level Hard"), Other.Slots.IsValidIndex(2) && Other.Slots[2].Level == EHOLAIDifficulty::Hard);
+	FHOLLobby Bad;
+	TestFalse(TEXT("AI without a colour"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("colorIndex": 2, )"), TEXT("")), Bad));
+	TestFalse(TEXT("AI without a team"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("team": 0, )"), TEXT("")), Bad));
+
+	// PUT slots: { "state": "ai" } alone, or with the colour and the team given.
+	const TSharedPtr<FJsonObject> Put = ReadBody(FHOLManagerClientRules::MakeAISlotBody());
+	TestTrue(TEXT("ai alone"), Put.IsValid() && Put->Values.Num() == 1 && Put->GetStringField(TEXT("state")) == TEXT("ai"));
+	const TSharedPtr<FJsonObject> Coloured = ReadBody(FHOLManagerClientRules::MakeAISlotBody(5, 2));
+	if (TestTrue(TEXT("ai with colour and team JSON"), Coloured.IsValid()))
+	{
+		TestEqual(TEXT("ai with colour and team: 3 fields"), Coloured->Values.Num(), 3);
+		TestEqual(TEXT("ai state"), Coloured->GetStringField(TEXT("state")), FString(TEXT("ai")));
+		TestEqual(TEXT("ai colour"), static_cast<int32>(Coloured->GetNumberField(TEXT("colorIndex"))), 5);
+		TestEqual(TEXT("ai team"), static_cast<int32>(Coloured->GetNumberField(TEXT("team"))), 2);
+	}
+	const TSharedPtr<FJsonObject> ColourOnly = ReadBody(FHOLManagerClientRules::MakeAISlotBody(0, {}));
+	TestTrue(TEXT("ai colour 0 alone"), ColourOnly.IsValid() && ColourOnly->Values.Num() == 2 && ColourOnly->HasField(TEXT("colorIndex"))
+		&& !ColourOnly->HasField(TEXT("team")));
+	const TSharedPtr<FJsonObject> TeamOnly = ReadBody(FHOLManagerClientRules::MakeAISlotBody({}, 3));
+	TestTrue(TEXT("ai team alone"), TeamOnly.IsValid() && TeamOnly->Values.Num() == 2 && TeamOnly->HasField(TEXT("team"))
+		&& !TeamOnly->HasField(TEXT("colorIndex")));
+
+	// The rights: the leader opens or closes an AI's slot (the AI taken away), sets its colour and team; nobody else.
+	TestTrue(TEXT("Bob leads"), Lobby.IsYouLeader());
+	TestTrue(TEXT("Bob opens or closes the AI's slot"), Lobby.CanToggleSlot(2));
+	TestTrue(TEXT("Bob edits the AI"), Lobby.CanEditAISlot(2));
+	TestFalse(TEXT("an AI is not my line"), Lobby.CanEditSlot(2));
+	TestFalse(TEXT("not an open slot's AI"), Lobby.CanEditAISlot(3));
+	TestFalse(TEXT("not a player's line"), Lobby.CanEditAISlot(1));
+	TestFalse(TEXT("not out of range"), Lobby.CanEditAISlot(8));
+	FHOLLobby AsAlice = Lobby;
+	AsAlice.You = TEXT("Alice");
+	TestFalse(TEXT("Alice does not toggle the AI's slot"), AsAlice.CanToggleSlot(2));
+	TestFalse(TEXT("Alice does not edit the AI"), AsAlice.CanEditAISlot(2));
+
+	// The launch (Q3 = A): an AI counts in the 2 at least; it has no Ready, every player must be ready.
+	TestFalse(TEXT("Alice not ready, an AI: no start"), Lobby.CanStart());
+	FHOLLobby AllReady = Lobby;
+	AllReady.Slots[1].bReady = true;
+	TestTrue(TEXT("both players ready, an AI: start"), AllReady.CanStart());
+	FHOLLobby LeaderAndAI = Lobby;
+	LeaderAndAI.Slots[1] = FHOLLobbySlot();
+	LeaderAndAI.Slots[1].Index = 1;
+	TestEqual(TEXT("the leader alone with an AI: 1 player"), LeaderAndAI.GetNumPlayers(), 1);
+	TestTrue(TEXT("the leader ready alone with an AI: start"), LeaderAndAI.CanStart());
+	FHOLLobby LeaderNotReady = LeaderAndAI;
+	LeaderNotReady.Slots[0].bReady = false;
+	TestFalse(TEXT("the leader not ready with an AI: no start"), LeaderNotReady.CanStart());
+	FHOLLobby Alone = LeaderAndAI;
+	Alone.Slots[2] = FHOLLobbySlot();
+	Alone.Slots[2].Index = 2;
+	TestEqual(TEXT("no AI"), Alone.GetNumAIs(), 0);
+	TestFalse(TEXT("the leader alone, no AI: no start"), Alone.CanStart());
+	FHOLLobby TwoAIs = Alone;
+	TwoAIs.Slots[2].State = EHOLLobbySlotState::AI;
+	TwoAIs.Slots[3].State = EHOLLobbySlotState::AI;
+	TestEqual(TEXT("2 AIs"), TwoAIs.GetNumAIs(), 2);
+	TestTrue(TEXT("the leader ready with two AIs: start"), TwoAIs.CanStart());
+	return true;
+}
+
 // Toward the match (R4.7): the lobby's match, the address the client opens, the spectator's port.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerClientMatchTest, "HeroesOfLiberty.Net.ManagerClient.Match",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

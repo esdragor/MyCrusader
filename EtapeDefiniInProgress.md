@@ -1352,3 +1352,802 @@ d'un bâtiment (chemin de sortie, par exemple pour contourner une zone) ». Work
 - 2026-10-27 : **essai de l'utilisateur : « tout est bon »** (scénario `rally_steps`). Commit 1ddc9df sur `rally-steps`,
   fusion de `main` d1a7dc5 (GDD et EtapeDefini seulement), **dans `main` : 3026278** (avance rapide). **Étape N close** ;
   ligne retirée d'`EtapeDefini.md`.
+
+## O — Places autour du mur pour les attaques de bâtiment sans ordre direct
+
+Ligne d'`EtapeDefini.md` (« Aléas et petits restes ») : « Attaque d'un bâtiment sans ordre direct (attaque-déplacement,
+recherche automatique, file Maj) : pas de places autour du mur, ancienne règle du point le plus proche ». Restée ouverte à
+la clôture de J. Choisie le 2026-10-27 par l'utilisateur (« ce qui ne collisionne pas avec les autres agents ») ; menée en
+sous-agents dans `HeroesOfLiberty-Haldir`, branche `attack-places` depuis `main` d1a7dc5, `IN_USE.txt` posé.
+
+- **Pourquoi** (l'utilisateur) : avec la portée gardée à 400 cm (D497, trois rangs frappent), une vingtaine de troupes en
+  attaque-déplacement peut encore casser une maison en s'empilant sur plusieurs lignes au même bout de mur.
+- **Point de départ** (code de `main` d1a7dc5) : les places ne sont données qu'avec l'ordre direct du groupe
+  (`ApplyCombatOrder`, `HOLUnitOrderProcessor.cpp` ~l. 3033, `HOLCombat::GetBuildingPlaces` sur
+  `GetVisibleBodyBounds()`) ; sans place, `HOLCombatProcessor.cpp` ~l. 1651 vise le point du corps le plus proche
+  (`GetBuildingApproachPoint`, corps + rayon + 40 cm).
+
+### Plan
+
+1. [x] O.1 : test rouge sur la vraie chaîne (attaque-déplacement d'un groupe vers une Maison sans unité ennemie,
+   recherche automatique au repos, file Maj de deux bâtiments), mêmes critères que `building_crowd` ; montré en échec
+   (attaque-déplacement et repos ; Ordre à relancer, Maj à remesurer : voir Suivi).
+2. [x] O.2 : correctif (une place prise autour du mur quand l'unité choisit le bâtiment seule, sans croiser les places
+   déjà prises), test vert, `HeroesOfLiberty.Combat` et `building_crowd.ps1` non régressés.
+3. [x] O.3 : `quick_check` des parties touchées, scénario d'essai et sa répétition hors écran.
+4. [ ] O.4 : essai de l'utilisateur, commit, fusion dans `main`, ligne retirée d'`EtapeDefini.md`, Haldir libéré.
+
+### Suivi
+
+- 2026-10-27 : étape ouverte, Haldir réservé (`attack-places`) ; O.1 lancée (sous-agent).
+- 2026-10-27, **O.1 : rouge montré (attaque-déplacement, repos)** (Haldir, non commité, compilé PASS).
+  - **Cause** (code de d1a7dc5) : (a) attaque-déplacement et (b) recherche au repos passent par la même branche,
+    `HOLCombatProcessor.cpp` ~l. 1550-1580 (`bMaySeek`, `GetBuildingSearchRadius` puis `ChooseBuilding` :
+    `Combat.TargetBuilding = ...` l. 1577) : aucune `PlaceBuilding`, donc l. 1647 `GetBuildingApproachPoint` (point le plus
+    proche du corps). (c) La file Maj ne passe **pas** par là : `StartQueuedMoves` (`HOLUnitOrderProcessor.cpp` ~l. 3280)
+    attend que **tous** les membres aient fini (`IsCurrentOrderOver`), puis l'ordre repart en entier dans `Orders` et
+    `ApplyCombatOrder` (l. 1389) donne les places au groupe : mesuré, 14/14 à 17/17 avec une place sur la 2e Maison.
+  - **Test** : `hol.Test.BuildingCrowd <Count> [Seed] [Type] [Mode] [quit]`, `building_crowd.ps1 -Mode
+    Order|AttackMove|Idle|Shift` (`Dev/HOLBuildingCrowdTest.cpp`). Order = clic droit (groupes de 6 à 12, inchangé) ;
+    AttackMove = `RequestAttackMove` sur le milieu de la Maison ; Idle = aucun ordre, groupe né au repos à 700-~1000 cm
+    du milieu (dans le rayon d'agression) ; Shift = `RequestAttackBuilding` sur une 1re Maison puis Maj + clic droit sur la
+    2e (1600 cm à côté), la 1re abattue (`RequestCheatDamageBuilding`) quand tous la frappent, la 2e mesurée. Groupes de
+    12 à 20 Hommes d'armes hors Order. Ligne de plus par répétition : rangs de profondeur, nombre avec une place.
+  - **Rouge** (4 répétitions, graines 1 et 7) : AttackMove 8/8 en échec, Idle 8/8 en échec, **0 place** sur 12 à 20 ;
+    tous frappent, mais en paquet : étendue 536 à 1380 cm du tour (3337 cm) pour 1056 à 1824 voulus, 6 à 16 voisins
+    serrés à 0-23 cm le long du tour (au moins 90), 3 à 4 rangs de profondeur (jusqu'à 393 cm du mur, portée 400), parfois
+    des paires à 37-45 cm et un corps à -37 cm dans le mur visible (Idle).
+  - **Shift** : 4/4 rouges mais faux rouge du test (mesuré 2,0 s après la chute, la moitié marchait encore : les frappes
+    sur la Maison abattue comptaient encore quelques images) ; corrigé dans le test (`ShiftSettleDelay` = 1 s après la
+    chute), **pas recompilé**. Attendu vert (places données par la file) : il reste un garde de non-régression.
+  - **Order** : premier lancement « no end line » (pas de ligne de fin, journal écrasé par les suivants, cause non vue :
+    démarrage bloqué par une compilation ailleurs ?) : **à relancer**, doit rester vert.
+  - **Proposition pour O.2** (non codée) : des places partagées par bâtiment, calculées dans le pas du combat. Quand une
+    unité prend un bâtiment seule (l. 1577) sans place dessus, elle entre dans la liste « nouveaux venus » de ce
+    bâtiment pour ce pas ; après la boucle des combattants, pour chaque bâtiment ayant des nouveaux venus : les places déjà
+    tenues par les amis du même camp (`PlaceBuilding` == ce bâtiment, déjà parcourues l. 374) sont réservées, on calcule
+    les places du tour pour (tenues + nouveaux) par `GetBuildingPlaces` (même tour visible, mêmes 3 rangs), on retire la
+    place la plus proche de chaque place tenue, et on répartit les libres entre les nouveaux venus par la même affectation
+    (par angle autour du bâtiment, sans croisement). Ceux qui tiennent déjà une place ne bougent pas (pas de reshuffle d'un
+    groupe qui frappe). Un groupe arrive sur quelques pas (recherche tous les N pas) : les premiers prennent les places
+    proches, les suivants s'étalent de part et d'autre : l'arc grandit depuis le point d'arrivée. Coût : seulement à un
+    choix de bâtiment (rare), O(nouveaux x places), places <= ~3 x 28 pour une Maison ; une variante de
+    `GetBuildingPlaces` avec une liste de places prises (test pur dans `HeroesOfLiberty.Combat`). Écartée : recalculer les
+    places de tous les attaquants à chaque arrivée (simple, mais ceux qui frappent déjà repartent).
+  - **Reste** : recompiler Haldir, relancer `-Mode Order` (vert) et `-Mode Shift` (vert attendu) ; puis O.2.
+- 2026-10-27, **O.2a : places données aux nouveaux venus, codé et compilé ; Ordre et Maj verts, attaque-déplacement et
+  repos encore rouges (trous dans l'arc)** (Haldir, non commité, compilé PASS, 73 s).
+  - **Codé** : `HOLCombat::GetBuildingPlacesBesideHeld` (`HOLCombatRules.h/.cpp`) : `GetBuildingPlaces` pour (places
+    tenues + nouveaux venus), candidats à moins de 2 rayons d'une place tenue retirés, arc élargi par des nouveaux venus
+    virtuels s'il manque de la place ; chaque nouveau venu garde son candidat s'il est libre, sinon la paire libre la plus
+    proche. `HOLCombatProcessor` : `PlaceNewcomers` (unité de mêlée qui prend un bâtiment seule l. ~1577 sans place
+    dessus), vidé à chaque pas ; `GivePlacesToNewcomers()` après la boucle des combattants, par bâtiment et camp : places
+    tenues = amis vivants avec `PlaceBuilding` **et** `TargetBuilding` sur ce bâtiment (une unité partie sur une unité
+    ennemie ne bloque donc plus sa place : point 4 réglé sans effacement de plus ; `Disengage` efface déjà à l'ordre),
+    puis comme `ApplyCombatOrder` (`PlaceBuilding`, `PlaceGivenUpBuilding` remis à zéro, `bAttacking`/`bApproaching`
+    faux : marche vers la place au tour suivant). Test pur `HeroesOfLiberty.Combat.BuildingPlacesHeld` (aucune tenue =
+    places du groupe ; quatre tenues = deux de chaque côté, à 2 rayons ; un venu devant une tenue = à côté) : écrit
+    d'abord (rouge = ne compilait pas sans la fonction), vert. `building_crowd.ps1` : un journal par mode et graine
+    (`Saved_Tests\Logs\building_crowd_<Mode>_<Seed>.log`).
+  - **`HeroesOfLiberty.Combat`** : 13/13 verts.
+  - **`building_crowd` graine 1** : **Order** 4/4 vert (7 à 9 placés sur 7 à 9, 1 à 2 rangs, paire la plus proche 120 cm,
+    trous de l'arc <= 146 cm ; pas de « no end line » cette fois) ; **Shift** 4/4 vert (14 à 17 placés sur 14 à 17, 2
+    rangs, arc 121 à 146 cm) ; **AttackMove** 4/4 rouge mais mieux (14 à 17 placés, 0 paire empilée, paire la plus
+    proche >= 120 cm, 2 à 3 rangs jusqu'à 264 cm du mur au lieu de 393, étendue 1820 à 2421 cm) : 2 à 4 trous dans l'arc
+    (jusqu'à 483 cm, au plus 180) et 3 à 6 voisins serrés le long du tour (8 à 36 cm, au moins 90), une fois arc trop
+    long (2421 pour 2148) ; **Idle** 4/4 rouge, même allure (13 à 16 placés sur 14 à 17, trous 209 à 416 cm, 2 à 7
+    serrés à 8-63 cm, 2 à 3 rangs jusqu'à 250 cm). Graine 7 pas lancée (limite de temps).
+  - **Cause probable** : le groupe arrive sur plusieurs pas ; à chaque pas l'arc est recentré sur (tenues + venus), ses
+    places ne tombent pas sur la grille des places tenues : les candidats retirés laissent des trous, et les venus vont
+    au 2e rang (130 cm du mur visible) avant que le 1er rang soit plein (d'où les « serrés » : un 2e rang derrière un 1er,
+    projetés presque au même point du tour).
+  - **Reste (O.2b)** : prolonger l'arc tenu au lieu de le recentrer : les candidats pris le long du 1er rang à
+    `BuildingPlaceArcRadii` des deux bouts de l'arc tenu (de part et d'autre tour à tour, côté de chaque venu), 2e rang
+    seulement quand le 1er est plein ; test pur à enrichir (venus en deux vagues : arc continu, 1er rang d'abord) ; puis
+    les quatre modes, graines 1 et 7.
+- 2026-10-27, **O.2b : l'arc tenu grandit par ses bouts ; les quatre modes verts, graines 1 et 7** (Haldir, non
+  commité, compilé PASS, 47 puis 27 s).
+  - **Codé** (`HOLCombatRules.cpp/.h`) : `GetBuildingPlacesBesideHeld` réécrite. Aucune tenue : `GetBuildingPlaces` (Ordre
+    inchangé). Sinon, l'arc tenu sur le 1er tour (`Radius + Gap` du mur visible, à 1 cm près) : du premier après son plus
+    grand vide au dernier avant ; ses trous (un ami parti) remplis d'abord (autant de places que tiennent à
+    `BuildingPlaceArcRadii`, réparties, 2 rayons en ligne droite des voisins ; paire la plus proche d'abord) ; puis chaque
+    venu de son côté (sa projection sur le tour, le court chemin depuis le milieu de l'arc), le plus proche du bout
+    d'abord (pas de croisement), places à `BuildingPlaceArcRadii` le long du tour depuis chaque bout, un de chaque côté
+    tour à tour, règle du coin de `GetBuildingPlaces` (pas de 1 cm jusqu'à la corde) ; le tour est plein quand le vide
+    restant entre les deux bouts passe sous `BuildingPlaceArcRadii` (le long ou en corde). Le reste (tour plein, ou aucune
+    tenue sur le 1er tour) : l'ancienne règle d'O.2a, gardée sous le nom `SpreadBesideHeld` (espace anonyme), avec tenues +
+    places données. Rien d'autre touché (`HOLCombatProcessor` d'O.2a inchangé).
+  - **Test pur** `HeroesOfLiberty.Combat.BuildingPlacesHeld` : vagues ajoutées (vague 1 de 4 par le bas, vague 2 de 4 du
+    même côté, vague 3 de 4 par le haut ; puis 3 par le bas et 5 par la droite) ; à chaque vague : une place chacun à 2
+    rayons des tenues, toutes sur le 1er tour, voisins (par angle autour du bâtiment, le plus grand vide écarté) de 90 à
+    180 cm, comme le critère (5) de `building_crowd`. **Rouge** avec O.2a : vague 2 « 8 places, 2 trous » (voisins 132 à
+    256 cm), vague 3 « 12 places, 2 trous » (132 à 251) ; les vagues de côté passaient déjà. **Vert** après ; 
+    `HeroesOfLiberty.Combat` 13/13.
+  - **`building_crowd`** (4 répétitions par mode et graine, tous PASS, 0 échec sur 32) :
+    - AttackMove g1 : 14 à 17 placés sur 14 à 17, écarts de l'arc 120 à 144 cm, paire la plus proche 120, arc 1712 à
+      2115 cm (au plus 2148 à 2616) ; g7 : 12 à 20 placés sur 12 à 20, écarts 119 à 154, arc 1445 à 2512 (au plus 1836
+      à 3084).
+    - Idle g1 : 14 à 17 sur 14 à 17, écarts 117 à 152 ; g7 : 12 à 20 sur 12 à 20, écarts 121 à 153.
+    - Order g1 : 7 à 9 sur 7 à 9, écarts 120 à 146 ; g7 : 6 à 12 sur 6 à 12, écarts 120 à 154.
+    - Shift g1 : 14 à 17 sur 14 à 17, écarts 116 à 153 ; g7 : 12 à 20 sur 12 à 20, écarts 111 à 144.
+    - Partout 0 trou, 0 serré, 0 paire empilée, « premier rang » = tout le groupe ; le plus loin du mur 128 à 141 cm
+      (portée 400). Le journal dit « 2 rows deep » pour un seul rang : la mesure fait 1 + plancher(plus loin / 2 rayons),
+      et le 1er tour est à ~130 cm du mur mesuré ; à lire comme un rang (critères non relâchés, la ligne est indicative).
+  - **Reste** : O.3 (`quick_check` des parties touchées, scénario d'essai et sa répétition hors écran), puis O.4.
+- 2026-10-28, **O.3 lancée** (Haldir, non commité).
+  - `attack-places` avancée sur `main` 20e8f8a (avance rapide, aucun fichier en commun) ; compilé PASS (75 s).
+  - **Ajouté** : `hol.Select.AttackMoveNear <Dx> <Dy> [enemy]` (`HOLPlayerController.cpp`, après `OrderNear`) :
+    l'attaque-déplacement de la grille (Q) puis le clic, dans le repère du centre comme les autres commandes `Near`.
+  - **Scénario** `Tools/Scenarios/attack_places.txt` (+ `.json`, Plain, deux joueurs, sans Paysans ni héros de départ) :
+    temps 1, 20 Hommes d'armes en attaque-déplacement vers un point derrière une Maison ennemie à ~24 m ; temps 2, 16 au
+    repos, une Maison posée à ~11 m (dans les 16 m) ; temps 3, à toi : une Caserne et une Maison neuves (Q, repos, Maj).
+  - **Petit reste réglé** : `building_crowd` compte les rangs depuis le mur visible (`FarthestVisible`, seuil à mi-rang :
+    1 + plancher((plus loin + rayon) / 2 rayons)) ; la ligne dit « from the visible wall ».
+  - Contrôles lancés à la suite : essai à blanc du scénario hors écran (`hol.Scenario.AutoContinue 1`),
+    `quick_check -Parts tests,combat,build`, `building_crowd` 4 modes x graines 1 et 7.
+- 2026-10-28, **O.3 faite : tout vert** (Haldir, non commité, compilé PASS).
+  - **Scénario** `attack_places` à blanc, hors écran (`-RenderOffScreen`, `AutoContinue`) : prêt en 38 s, chaque étape
+    passée (attaque-déplacement envoyée au-delà de la Maison, Maison abattue ; groupe au repos parti seul sur la 2e,
+    abattue ; Caserne et Maison du temps 3 posées, groupe 1 sélectionné).
+  - **`quick_check -Parts tests,combat,build`** PASS en 82 s (tests 254/254, les 21 cas de build, les 7 de combat).
+  - **`building_crowd`** (4 répétitions par mode et graine) : AttackMove, Idle, Shift verts aux graines 1 et 7 ; Order
+    graine 7 4/4. Order graine 1 : **3/4** au premier passage : une unité au coin a oublié sa place (bloquée 4 s, repli de
+    la boucle 8 de J) et frappe à 76 cm d'une voisine ; ce chemin (places de l'ordre direct) n'est pas touché par O ;
+    relancé `-Count 8` : **8/8**. Shift graine 7 : premier passage « no end line » (jeu bloqué au démarrage dans
+    `ValidatePlatforms`, compilation d'une autre copie), relancé : **4/4**. Total 43/44, le seul échec hors du code d'O.
+  - Lignes « rows deep » : 1 rang partout (au plus ~25 cm du mur visible).
+  - **Reste** : O.4 (essai de l'utilisateur par `play.ps1 attack_places -Root ...Haldir`, commit, fusion, Haldir libéré).
+- 2026-10-28, **O.4, retour d'essai : la règle change** (l'utilisateur) : « je préférerais l'inverse, ils font leurs 3
+  lignes pour taper du côté d'où ils viennent et s'il y en a plus, ils entourent de plus en plus ». Donc : 3 rangs
+  (portée 400 cm, D497 : trois rangs frappent) face au côté d'arrivée, l'arc s'élargit avec le nombre, au lieu d'un seul
+  rang qui fait le tour. Question posée : portée du changement (sans ordre direct seulement, ou aussi l'ordre direct de J).
+  - **Tranché** (l'utilisateur, conforme à la recommandation) : **tous les ordres**, clic droit direct compris (une seule
+    règle ; remplace « un rang le long des murs » de J) ; « mais seulement pour les bâtiments » : le combat entre unités
+    (front, D465) ne change pas. À reporter au GDD à la clôture (D499, à côté de D497 : les trois anneaux existent déjà,
+    bord à ~95, ~215, ~335 cm du corps ; seul l'ordre de remplissage change).
+  - **Règle visée** (session principale) : un groupe de n prend un bloc de L = plafond(n / 3) colonnes, centré sur son
+    arrivée (comme aujourd'hui), au pas `BuildingPlaceArcRadii` sur le 1er anneau ; chaque colonne a ses places sur les
+    anneaux 2 et 3 derrière (même point du tour, vers l'extérieur) ; 1er anneau plein sur L, puis le 2e, puis le 3e (le
+    reste centré). Sans ordre direct (venus en plusieurs pas) : trous du bloc tenu d'abord (devant d'abord), puis le
+    bloc s'élargit par colonnes entières aux bouts, du côté de chaque venu (devant puis derrière). Les trois anneaux
+    pleins tout autour : l'ancienne règle des anneaux suivants. Paysans compris ; tireurs inchangés.
+- 2026-10-28, **O.5a : tests rouges à la règle des 3 rangs, montrés rouges** (Haldir, non commité, compilé PASS ; code de
+  placement non touché).
+  - **Tests purs** (`Tests/HOLCombatTests.cpp`) : aides `PlaceRing`, `PlaceOutward`, `RingCounts`, `CheckBlock` (places
+    sur les anneaux 1 à 3, chaque place d'anneau k > 1 à 2 rayons derrière une place de l'anneau k - 1, devant d'un seul
+    arc à 90-180 cm entre voisins, aucune paire sous 2 rayons). `BuildingPlaces` : « Four » (un rang de 4) remplacé par
+    Twelve (4 colonnes x 3 anneaux, x = 2, 134, 266, 398, rang avant du groupe devant, dans l'ordre), Seven (3 + 3 + 1,
+    exact), Two (une colonne 2 de fond), Three (3 de fond), Eight (3 + 3 + 2, anneau 3 centré à une demi-colonne près) ;
+    Bias (coin) : 2 colonnes x 3, toujours 3 à droite et 3 en haut, devant (470, 376) et (376, 470) ; One spot : 2 + 2 + 1,
+    paire la plus proche 2 rayons (était 2,2) ; « Full » (25 : 1er anneau plein, reste au 2e) remplacé par Twenty-five
+    (9 + 9 + 7, devant centré sur (40, -D)) et Sixty (anneaux 1 à 3 pleins autour, chacun derrière le 1er, reste au 4e
+    en arc : ancienne règle). Gardés : Alone, Stable, Chain. `BuildingPlacesHeld` : None held gardé ; Four held : les 4
+    venus sur l'anneau 2 derrière (étaient au bout des coins) ; nouveau Hole (le trou du devant d'abord) ; In front of a
+    held one : juste derrière (200, -190) (était « à côté ») ; vagues réécrites (6 par le bas → 2 colonnes ; 3 + 3 aux
+    deux bouts → 4 ; 3 par la gauche → 5 ; 2 par la droite → 6 ; puis 3 par le bas → 1 colonne, 5 par la droite → 3),
+    devant attendu, côté de chaque vague, `CheckBlock`.
+  - **Rouge** : `HeroesOfLiberty.Combat` 11/13, `BuildingPlaces` et `BuildingPlacesHeld` rouges, seulement sur la règle
+    (ex. Twelve « anneaux 12/0/0 », Twenty-five 14/11/0, Sixty 14/22/24/0, Four held « premier à (-70, 173) », In front
+    « (332, -70) », vagues « devant 6 pour 2 voulus », « 12 pour 4 »).
+  - **`building_crowd`** (`Dev/HOLBuildingCrowdTest.cpp`) : gardés (1) frappe et portée, (2) paires, (4) mur visible, (5)
+    trous et serrés et longueur d'arc, mais sur le **rang avant** (rang 1 mesuré depuis le mur visible) au lieu des
+    « plus proches, autant que le tour en tient » (= tout le groupe). Retirés : (3) « étendue >= 80 % de 2 rayons par
+    unité » (`RowFactor`) et le premier rang = tout le groupe. Nouveaux (3a) rangs = min(3, n), (3b) rang avant
+    plafond(n / 3) ± 1 (`FrontSlack` : un groupe venu en plusieurs pas ouvre une colonne à chaque bout), (3c) rangs 2-3
+    derrière le rang avant (à 90 cm au plus le long du tour d'une unité de devant), (3d) milieu du devant à 382 cm au
+    plus de l'arrivée (`ArrivalFrom` = milieu du groupe à l'ordre, au départ pour Idle, après la chute pour Shift ;
+    tolérance = `BirthSpread` 250 + une colonne 132).
+  - **Rouge** (graine 1, 4 répétitions) : **Order** 4/4 en échec « 1 rows deep, 3 wanted, front rank of 7 à 9, 3
+    wanted » ; **AttackMove** 4/4 en échec « 1 rang, rang avant 14 à 17 pour 5 à 6 » (1er lancement « no end line »,
+    démarrage bloqué au Turnkey, relancé). Rien d'autre en échec : centrage 19 à 143 cm, 0 trou, 0 paire empilée.
+  - **Décidé** : une colonne neuve se remplit sur 3 rangs avant d'en ouvrir une autre du même côté ; un reste qui ne se
+    centre pas sur les colonnes (3 + 3 + 2) va derrière des colonnes voisines, milieu à une demi-colonne près ; les venus
+    prennent d'abord les places libres du bloc tenu (trou du devant, puis anneau 2, puis 3).
+  - **Reste (O.5b)** : `GetBuildingPlaces` et `GetBuildingPlacesBesideHeld` en blocs ; Idle et Shift pas lancés ici.
+- 2026-10-28, **O.5b : placement en blocs codé, tests purs verts ; `building_crowd` vert en Ordre seulement (graine 1),
+  rouge sans ordre direct : bouchons à l'arrivée** (Haldir, non commité, compilé PASS ; arrêt à la limite de temps).
+  - **Codé** (`HOLCombatRules.cpp/.h`) : `BuildingPlaceBlockRings` = 3. `GetBuildingPlaces` : plafond(n / 3) colonnes sur
+    l'anneau 1 par l'ancien arc (`GetRingOffsets` : centré, 2,2 rayons, règle du coin ; régulières tout autour si le tour
+    est plein) ; anneaux 2 et 3 tout droit derrière chaque colonne (`ColumnPlace`, 2 rayons vers l'extérieur) ; l'anneau 1
+    aux plus proches du bâtiment, le 2e aux suivants, le 3e au reste sur des colonnes centrées (reste impair : du côté du
+    milieu de ces unités) ; chaque anneau dans l'ordre le long du mur (`AssignAlong`, décalage circulaire si plein) ; au-delà
+    des 3 anneaux pleins : règle de J dès l'anneau 4 (`PlaceOnRings`). `GetBuildingPlacesBesideHeld` : colonnes du bloc
+    tenu = places tenues sur les anneaux 1 à 3 projetées sur l'anneau 1, plus les trous du devant ; places libres anneau
+    par anneau (trou du devant, 2, 3), chacune derrière une place tenue ou donnée, appariées dans l'ordre le long du mur
+    (`MatchInOrder`, programmation dynamique, moindre somme des distances, sans croisement) ; puis colonnes neuves aux bouts,
+    côté de chaque venu, une de chaque côté tour à tour, chacune remplie sur 3 rangs avant la suivante ; de chaque côté, les
+    plus proches du bâtiment devant ; tour plein : `SpreadBesideHeld` (O.2a) gardée. Nouveau
+    `GetBuildingPlaceInFront` (la place juste devant une place des anneaux 2-3).
+  - **Ajouté au processeur** (`HOLCombatProcessor.cpp/.h`) : `MoveUpBuildingPlaces()` après `GivePlacesToNewcomers()` :
+    une unité qui frappe depuis sa place des anneaux 2-3 prend la place juste devant si personne ne la tient, ou si celui
+    qui la tient en est plus loin qu'elle d'un rayon de plus (il prend alors la place de derrière). Raison (vue au 1er
+    passage) : une fois les rangs 2-3 debout, une unité du devant arrivée tard ne passe plus (colonnes à 2,2 rayons : 12 cm
+    entre deux Hommes d'armes), oublie sa place après 4 s → trou au devant. Chaîne de la boucle 10, abandon à 4 s,
+    `BuildingPlaceReachRadii`, Paysans : inchangés (la chaîne marche anneau par anneau, inchangée).
+  - **Tests purs** : `HeroesOfLiberty.Combat` 13/13 verts du premier coup (BuildingPlaces, BuildingPlacesHeld compris) ;
+    ajouté à `BuildingPlaces` : 4 cas de `GetBuildingPlaceInFront` (verts). Aucun test d'O.5a touché.
+  - **`building_crowd` graine 1** (4 répétitions) : sans la montée : Ordre 3/4, AttackMove 3/4, Idle 1/4, Shift 3/4 (échecs :
+    trou au devant + rangs 2-3 pas derrière, places oubliées après 4 s ; AttackMove une fois 4 rangs). Avec la montée :
+    **Ordre 4/4 vert** ; AttackMove 1/4 (4 rangs et une unité hors portée ; un devant serré à 88 cm ; rang avant 8 pour 6
+    voulus et paires à 21 cm) ; Idle 2/4 (trous au devant, 4 rangs) ; Shift 3/4 (4 rangs, une unité ne frappe pas).
+    Graine 7 pas lancée.
+  - **Diagnostic** : la règle de placement est juste (tests purs) ; le rouge vient de la marche. Venus en plusieurs pas,
+    beaucoup oublient leur place (Idle 1/4 : 5 sur 14 la gardent ; certains à 10-66 cm de leur place, oubliée après 4 s
+    sans gagner 20 cm) : bouchon devant le bloc, les venus des places de derrière et des colonnes neuves se croisent avec
+    ceux qui marchent encore vers le devant. Pistes : (a) l'abandon de 4 s ne pas compter tant que l'unité est à moins de
+    ~1 rayon de sa place, ou le rendre plus long pour les anneaux 2-3 ; (b) la montée aussi pour une unité bloquée (pas
+    seulement à sa place) ; (c) mesurer combien de montées et d'oublis par passage (journal Verbose `moves up a place`).
+  - **Reste** : O.5b à finir (AttackMove, Idle, Shift verts graines 1 et 7) ; case 6 non cochée.
+- 2026-10-28, **O.5b, boucle 2 : compteurs, plus d'oubli de place ; graine 1 : Ordre, AttackMove, Shift 4/4, Idle 3/4**
+  (Haldir, non commité, compilé PASS ; graine 7 pas lancée, arrêt à la limite de temps).
+  - **(c) Compteurs** (`HOLCombat::FBuildingPlaceCounters`, diagnostic seul, jamais lu par la simulation ; remis à zéro à
+    l'ordre et après la chute en Shift) sur la ligne `mode ...` de `building_crowd` : sans place, places oubliées,
+    re-placées, frappe près de sa place, échanges, chaînes (boucle 10), montées. **Constat** (avant (a)/(b)) : chaque
+    passage rouge avait 1 à 6 places oubliées, chaque passage à 0 oubli était vert ; montées 0 à 9 par passage. Le
+    mécanisme qui échoue est l'abandon de 4 s : l'unité qui oublie vise le point du mur visible le plus proche, se glisse
+    dans le devant (paires à 8-57 cm, devant de 8-9 pour 6) ou reste derrière le bloc hors portée (418-435 cm, 4 rangs).
+  - **(a) Codé** (`HOLCombatProcessor.cpp`) : bloquée 4 s **à moins d'un rayon** de sa place, l'unité frappe de là, sa
+    place gardée (D497) ; sinon, avant d'oublier, **une fois**, la place libre du bloc la plus proche
+    (`HOLCombat::GetNearestFreeBuildingPlace` : places libres des anneaux 1-3, chacune derrière une tenue, ou le devant
+    d'une colonne neuve à un bout ; `ReplaceBuildingPlace`) ; seulement ensuite l'ancien oubli. **Choisi** : pas d'abandon
+    plus long pour les anneaux 2-3 : les compteurs montrent que l'oubli ne vient pas d'un délai trop court mais d'une
+    place restée inaccessible (attendre plus ne la libère pas) ; mieux vaut donner une autre place tout de suite. Bloc
+    tenu factorisé (`GetHeldBlock`, utilisé par `GetBuildingPlacesBesideHeld` et la nouvelle fonction).
+    Résultat graine 1 : Idle 4/4, AttackMove 2/4 : les re-placées oublient encore. Vu (AttackMove 2/4) : une colonne
+    entière vide, ses trois unités arrivées ensemble, celle du 2e rang arrêtée devant sa place, sur le chemin de celle du
+    devant.
+  - **(b) Codé** : toutes les `BuildingPlaceSwapMs` = 1000 ms bloquée (avant 4 s), l'unité **échange sa place** avec un
+    ami qui marche encore (ne frappe pas) vers la sienne sur le même bâtiment, si leurs deux marches raccourcissent de plus
+    d'un rayon (`SwapBuildingPlaces`, O(unités)). Plus général que la montée d'une bloquée : couvre le cas vu. La montée
+    (`MoveUpBuildingPlaces`) **gardée** : 0 à 6 montées par passage vert, et sans elle Ordre restait 3/4 (boucle 1).
+  - **`building_crowd` graine 1** (4 répétitions, après (a) + (b)) : **AttackMove 4/4** (0 oubli, 0-4 échanges, 3-5
+    montées) ; **Ordre 4/4** (0 oubli) ; **Shift 4/4** (0 oubli) ; **Idle 3/4** : 1/4 rouge, 5 oubliés sur 14 malgré 6
+    re-placées et 4 échanges (trou de 188 cm au devant, voisins à 82 cm) ; les 3 autres 0 oubli. Deux « no end line »
+    (démarrage bloqué au Turnkey derrière une compilation ailleurs), relancés.
+  - **`HeroesOfLiberty.Combat`** : 13/13 verts après la factorisation.
+  - **Reste** : Idle (un passage où le second abandon fait encore oublier : piste, re-placer aussi au second abandon, ou
+    frapper où elle s'arrête si à portée) ; graine 7 des quatre modes ; case 6 non cochée.
+- 2026-10-28, **O.5b, boucle 3 : re-placer jusqu'à 3 fois, frapper où elle s'arrête, montée devant une tenue absente ;
+  les quatre modes verts, graines 1 et 7 (32/32)** (Haldir, non commité, compilé PASS ; O.5b close).
+  - **Vu** (lignes par unité d'Idle g1 passage 1, avant) : les 5 oublis = toute la colonne d'une place du devant (3 unités)
+    et une du 2e rang ; après l'oubli, la marche vers le point du mur visible le plus proche les met dans le devant (à 82 cm
+    d'une voisine, la place du devant restée vide : trou de 188 cm) ou derrière le bloc.
+  - **Codé, 1er temps** (`HOLCombatProcessor.cpp`, `HOLSimulationFragments.h`, `HOLCombatRules.h`) : à chaque abandon de 4 s,
+    la place libre la plus proche du bloc **jusqu'à 3 fois** (`PlaceReplaces`, `BuildingPlaceMaxReplaces` = 3, remis à zéro
+    avec `bPlaceShifted` : `Disengage`, `ApplyCombatOrder`, `GivePlacesToNewcomers`) au lieu d'une seule (le marqueur
+    `PlaceGivenUpBuilding` n'est plus détourné pour ça) ; puis, sans place libre ou re-places épuisées, **à portée : elle
+    frappe où elle s'arrête, sa place gardée** (D497 ; nouveau compteur « struck where it stopped ») ; hors de portée
+    seulement, l'ancien oubli. Résultat g1 : Idle 3/4 et AttackMove 3/4, plus aucun oubli mais 2 « frappe où elle
+    s'arrête » dans chaque passage rouge : une unité tient une place du devant et frappe sur la place du 2e rang d'une
+    autre, qui frappe à côté ; la colonne devant le trou est pleine (2e et 3e rangs à leur place) et la montée ne se fait
+    pas (celui qui tient le devant n'en était qu'à 163 cm, l'unité du 2e rang à 115 : écart sous un rayon).
+  - **Codé, 2e temps** (`MoveUpBuildingPlaces`) : l'unité du rang de derrière monte aussi quand celui qui tient la place
+    de devant **frappe loin d'elle** (frappe, à plus d'un rayon de sa place, plus loin qu'elle) ; il prend sa place de
+    derrière comme avant.
+  - **`HeroesOfLiberty.Combat`** : 13/13 verts (aucun test touché).
+  - **`building_crowd`** (4 répétitions, Idle d'abord) : graine 1 : Idle 4/4, AttackMove 4/4, Ordre 4/4, Maj 4/4 ;
+    graine 7 : Idle 4/4, AttackMove 4/4, Ordre 4/4, Maj 4/4. Partout 3 rangs, rang avant au voulu ou +1, paire la plus
+    proche >= 110 cm, écarts du devant 117 à 145 cm, rangs 2-3 à 62 cm au plus du devant. Compteurs : 31 passages sur 32 à
+    0 oubli (AttackMove g7 passage 2 : 1 oubli après 6 re-places, hors de portée, passage vert) ; re-places 0 sauf 4
+    passages (1 à 6) ; « frappe où elle s'arrête » 0 sauf 3 passages (1) ; montées 0 à 9 ; Ordre et Maj sans re-place.
+    Aucun « no end line ».
+  - **Reste** : O.5c (case 7).
+- 2026-10-28, **O.5c lancée** (session principale) : `attack-places` avancée sur `main` e9cc592 (avance rapide) ; notes
+  des scénarios `attack_places` et `building_crowd` réécrites (« un seul rang » → bloc de 3 rangs face à l'arrivée, qui
+  s'élargit) ; compilation, répétition à blanc d'`attack_places` et `quick_check -Parts tests,combat,build` lancées
+  (`building_crowd` non relancé : 32/32 de la boucle 3, seul `quick_check.ps1` a changé depuis dans `main`).
+- 2026-10-28, **O.5c faite** : compilé PASS ; `attack_places` à blanc hors écran prêt en 41 s ; `quick_check -Parts
+  tests,combat,build` **PASS** en 170 s (tests 271/271). Relu le code des sous-agents (montée devant, échange, re-place :
+  locaux au pas du combat). **Reste** : O.6, 2e essai de l'utilisateur (`play.ps1 attack_places -Root ...Haldir`).
+- 2026-10-28, **O.6, 2e essai : la forme convient, la mise en place est trop longue** (l'utilisateur) : « il met quand
+  même beaucoup de temps à se mettre en position, ce n'est pas spécialement par ton dev, c'est juste de base, il veut
+  toujours bien se placer donc il va faire des allers vers un autre point alors que son point de départ était
+  valable ». Lecture : une unité déjà à portée, à un endroit libre, repart vers sa place exacte (ou une autre : montée
+  devant, échange, re-place d'O.5b). Question posée sur le correctif.
+  - **Réponse** (l'utilisateur) : « le soldat frappe quand il est à portée, les personnes derrière lui le poussent vers
+    le bâtiment » ; un GIF de référence arrive. En attente du GIF avant de trancher la règle.
+  - **GIF** (`C:\Users\baudo\Desktop\zzb.gif`, 75 images, AoE4 : une foule de soldats attaque un centre-ville ; planche
+    `scratchpad\zzb_sheet.png` de la session) : aucune place visible ; la foule arrive en bloc, les premiers frappent
+    au contact, ceux de derrière poussent, la foule se tasse contre le mur et déborde peu à peu sur les côtés.
+  - **Tranché** (l'utilisateur, par le GIF) : **foule à la AoE4** au lieu de places exactes, pour les attaques de
+    bâtiment (tous les ordres ; combat entre unités inchangé ; tireurs inchangés). Lecture de la session principale :
+    (1) chaque soldat marche vers le bâtiment et **frappe dès qu'il est à portée** (400 cm, D497), sans aller chercher
+    une place ; (2) ceux de derrière, pas encore à portée, **poussent** : un soldat qui frappe se laisse pousser vers le
+    mur (jamais vers l'extérieur) ; (3) un soldat bloqué hors de portée derrière la foule **glisse sur le côté** vers un
+    endroit à portée (la foule entoure de plus en plus) ; (4) pas de chevauchement (le défaut d'origine d'O : corps
+    empilés à 0-23 cm) ; (5) **pas d'allers-retours** : chemin parcouru proche de la ligne droite jusqu'à son point de
+    frappe. Les places de J et d'O.5 (blocs, montée, échange, re-place) sont à retirer pour les bâtiments si la foule
+    les remplace ; à juger au code (O.7b).
+- 2026-10-28, **O.7a : `building_crowd` à la règle de la foule, montré rouge sur les blocs d'O.5** (Haldir, non commité,
+  compilé PASS ; code de placement et de marche non touché ; aucun test pur : pas de règle pure apparue).
+  - **Suivi par unité** (`Dev/HOLBuildingCrowdTest.cpp`, `FTrack`, `FollowUnits`) : chaque image, **depuis la naissance**
+    (Maj : depuis la chute de la 1re Maison) et non depuis l'ordre : vu au 1er passage, un groupe né à 1200-2200 cm du
+    milieu est dans le rayon d'agression (1600 cm) et part seul pendant les 1 s d'`OrderDelay`. Chemin jusqu'à la 1re
+    frappe, entrée à portée (bord à 400 cm du corps), 1re frappe (instant, point), départ de la marche (10 cm), écart
+    après la frappe hors part vers le mur, « foule » (un ami qui frappe déjà à 2,5 rayons avant d'être à portée).
+  - **Critères** (gardés : (1) tous frappent à portée, (2) aucune paire sous 1,5 rayon, (3) aucun corps dans le mur
+    visible ; retirés avec les places : rangs exacts, rang avant = n / 3, colonnes, centrage sur l'arrivée, arc sans trou) :
+    (4a) chemin <= 1,25 x ligne droite départ → point de 1re frappe + 2 rayons ; (4b) après la 1re frappe, déplacement
+    hors part vers le mur <= 1 rayon ; (5a) frappe <= 0,5 s après l'entrée à portée (vitesse 697 cm/s : la marche de 400
+    cm à la place du devant à 95 cm prend 0,6-0,7 s mesuré) ; (5b) unité « place libre » : frappe <= 1,25 x (ligne droite
+    / vitesse) + 1 s depuis le départ de sa marche ; (6) tassée : une unité poussée de derrière (un ami plus loin du mur
+    d'un demi-rayon, à 2,5 rayons) est au mur (40 cm du mur visible) ou s'appuie sur un ami plus près ; (7) 3 rangs au
+    plus depuis le mur visible. Justifications en commentaires. `-Group N` ajouté (`building_crowd.ps1`, `group=N` en
+    console ; journal `..._g<N>.log`) pour le débordement à 30-40.
+  - **Rouge, graine 1, 4 répétitions** : **AttackMove** 4/4 en échec (4a) 3 à 8 détours (chemin jusqu'à x3,11, +1590
+    cm), (4b) 0 à 3 (jusqu'à 401 cm), (5a) 9 à 14 en retard (jusqu'à 7,0 s), (5b) 3 à 8 lents (jusqu'à x5) ; **Order** 4/4
+    (4a) 0 à 2 (x2,49), (4b) 0 à 1 (395 cm), (5a) 1 à 3 (0,84 à 5,5 s ; le passage 3 n'échoue que sur (5a) : marche
+    jusqu'à la place), (5b) 0 à 2 ; **Idle** 4/4 ((4a) 8 à 10, (5a) 11 à 12, jusqu'à 17,7 s, (5b) 4 à 10) ; **Shift** 4/4
+    ((4a) 0 à 4, (5a) 6 à 10, jusqu'à 17,3 s). **AttackMove `-Group 36`** 2/2 : (4a) 20-22, (5a) 30-33 sur 36, (5b) 15-23,
+    une fois 2 paires à 65 cm et (4b) 478 cm. (1), (3), (6), (7) jamais en échec (les blocs d'O.5 sont tassés, 3 rangs,
+    arc 1460 cm à 36) : gardes pour O.7b ; 1res frappes à 196-232 cm du mur en moyenne (places), pas à ~400.
+  - **Reste** : O.7b (le code).
+- 2026-10-28, **O.7b, 1re boucle : la foule codée, places retirées ; (1), (3), (5a), (6), (7) verts, (4b) et (2) encore rouges**
+  (Haldir, non commité, compilé PASS ; boucle de 15 min atteinte, arrêtée là).
+  - **Codé** : frappe dès le bord à 400 cm du corps (`IsBuildingInReach(Attacker, Edge)`, plus de plafond à 150 cm
+    `BuildingApproachReach`) ; marche vers le point du mur **visible** le plus proche (`BuildingWallGap` 10 cm) ; marche
+    re-visée aux pas de recherche quand ce point a bougé d'un rayon (glissement de `SlideAlongFriends` inchangé, côté
+    déjà choisi « loin du milieu des siens ») ; **décision** : une unité qui frappe **continue d'avancer jusqu'au mur
+    en frappant** (« rapprochement »), arrêtée au mur ou après `BuildingCloseInStopMs` 600 ms sans gagner 10 cm : sans
+    cela (7) échoue toujours (une unité arrêtée à son entrée à portée est à 315 cm du mur visible, compté 4e rang) et (6)
+    aussi (le 1er rang reste où il est entré, poussé de 120 cm seulement) — à faire valider à l'essai (la frappe démarre
+    en marchant ~0,5 s). Séparation : une unité arrêtée qui frappe un bâtiment n'est plus « du front » (mur) ; un ami
+    la pousse seulement vers l'intérieur (`BuildingInward`, jamais dehors ni de côté), au plus jusqu'au mur
+    (`BuildingRoom`), le reste à l'ami ; deux d'entre elles : chacune sans sa part vers l'extérieur. Keep-out du mur
+    visible pour tout corps-à-corps qui frappe un bâtiment.
+  - **Retiré** : places J et O.5 (`GetBuildingPlaces`, `GetBuildingPlacesBesideHeld`, `GetBuildingPlaceChain`,
+    `GetBuildingPlaceInFront`, `GetNearestFreeBuildingPlace`, `FBuildingPlaceCounters`, constantes `BuildingPlace*`,
+    `BuildingApproachReach`) ; processeur : `GivePlacesToNewcomers`, `MoveUpBuildingPlaces`, `SwapBuildingPlaces`,
+    `ReplaceBuildingPlace`, `ShiftBuildingPlaces`, chemin `bByPlace` ; ordre : places de `ApplyCombatOrder` ; fragment :
+    `PlaceBuilding`, `BuildingPlace`, `PlaceGivenUpBuilding`, `bPlaceShifted`, `PlaceReplaces` (`PlaceBlockedMs` /
+    `PlaceBestDistance` devenus `CloseInBlockedMs` / `CloseInBest`) ; tests purs `BuildingPlaces`, `BuildingPlacesHeld` ;
+    `BuildingAttack` mis à la règle (frappe à 300 cm en marchant). `building_crowd` : compteurs de places et
+    `CountPlaces` retirés (ligne par unité : « walking in » / « standing »). Places des Paysans (D312) et tireurs non
+    touchés. Tests purs pas encore relancés.
+  - **Résultats, graine 1, 4 répétitions** : 1er passage (sans plafond de poussée) AttackMove 4/4 et Order 4/4 rouges sur
+    (3) corps à 84-100 cm dans le mur visible (poussés dedans par ceux de derrière), (4b), (2) ; 2e passage (poussée
+    bornée au mur, `BuildingRoom`) : **(3) vert**, (1), (5a), (6), (7) verts ; restent **AttackMove** 4/4 : (2) 3 à 9
+    paires (jusqu'à 20 cm), (4b) 12 à 17 (jusqu'à 687 cm), (4a) 0 à 1, (5b) 0 à 3 ; **Order** 4/4 : (2) 0 à 2 (51 cm),
+    (4b) 3 à 9 (jusqu'à 460 cm), (4a) 0 à 1. Idle, Shift, `-Group 36`, graine 7 pas lancés.
+  - **Lecture de (4b)** : les unités qui frappent **en marchant** (rapprochement) ne sont pas protégées (seules celles
+    arrêtées le sont) et se font pousser de côté par la foule ; les marcheurs de derrière poussent aussi de côté avant
+    l'arrêt. **Suite proposée (O.7b, 2e boucle)** : rapprochement arrêté dès qu'un ami qui frappe barre le cône devant
+    (pas 600 ms) ; marcheur hors de portée contre une unité qui frappe : son correctif sans part latérale chez elle ;
+    regarder les paires (2) (chevauchement laissé quand deux poussées vers l'intérieur se bloquent).
+- 2026-10-28, **O.7b, 2e boucle : frappeurs en rapprochement protégés, arrêt derrière un ami qui frappe, paires
+  résolues** (Haldir, non commité).
+  - **Codé** : séparation (`HOLSimulationProcessors.cpp`) : une unité qui frappe un bâtiment **en marchant**
+    (rapprochement) est `PushIn` comme une arrêtée (avant : « du front », un mur qui poussait les arrêtées de côté et se
+    faisait pousser de côté) ; poussée d'un ami : seulement vers l'intérieur, **bornée à la place qui lui reste** dans le
+    pas (mur), l'ami prend le reste ; deux frappeurs : part vers l'extérieur retirée, part vers l'intérieur bornée, **le
+    reste du chevauchement à celui des deux le plus loin du mur** (cause trouvée des paires à 20-51 cm : celui du mur sans
+    place, celui de derrière interdit de reculer, la paire restait). Combat (`HOLCombatProcessor.cpp/.h`,
+    `BuildingStrikers`) : rapprochement arrêté **dès qu'un ami qui frappe le même bâtiment le touche devant** (à 60° de sa
+    marche vers le mur), et pas de marche au mur démarrée dans ce cas ; les 600 ms gardées pour le reste.
+  - **Résultats** : compilé PASS ; `HeroesOfLiberty.Combat` 11/11 verts. `building_crowd` graine 1, 4 répétitions :
+    **(2) vert partout** (plus aucune paire) ; **Order** 4/4 rouge sur (4b) seul : 1 à 3 (79 à 241 cm, avant 3-9 jusqu'à
+    460), une fois (4a) (x1,38) ; **AttackMove** 4/4 rouge : (4b) 1 à 5 (80 à 190 cm, avant 12-17 jusqu'à 687), (4a) 0-1
+    (x2,03), mais **nouveaux rouges** (1) 1 à 4 sur 15-17 sans frapper, hors de portée (435-472 cm du mur), (7) 4 rangs (3
+    passages sur 4, jusqu'à 370 cm), (6) 0-1. Lecture probable : des marcheurs restent coincés derrière les frappeurs
+    arrêtés tôt (arrêt « barré ») sans glisser sur le côté, ou un frappeur du dehors repoussé hors de portée par le reste
+    du chevauchement. **Suite** : lignes par unité d'AttackMove pour trancher, puis glissement des bloqués derrière des
+    frappeurs (`SlideAlongFriends`) ; (4b) restant : regarder si ce sont des poussées (≤ 2-3 rayons) ou des marches.
+- 2026-10-28, **O.7b, 3e boucle : le marcheur bloqué derrière la foule vise le bout libre du mur** (Haldir, non commité).
+  - **Vu** (lignes par unité d'AttackMove g1 passage 4, boucle 2) : les 4 « sans frapper » sont tous des **marcheurs**
+    (« walking in ») arrêtés à 404-472 cm du mur, derrière la foule au coin SO de la Maison (4 rangs de frappeurs à 6-10,
+    95-135, 208-237, 265-298 cm du mur visible, le dernier au bord de la portée) ; aucun frappeur hors de portée (le
+    reste du chevauchement ne sort personne). (7) compte ces mêmes marcheurs (370 cm). Leur marche visait le point du mur
+    en face d'eux (pris) : `SlideAlongFriends` n'a pas de côté (cible droit devant) et ils restent bloqués.
+  - **Codé** : `HOLCombat::GetFreeBuildingWallPoint` (règle pure, `HOLCombatRules.cpp/.h`) : sur le tour du mur visible
+    repoussé d'un rayon + 10 cm, le point le plus proche (dans les deux sens, un rayon à la fois) de celui en face qu'aucun
+    frappeur ne couvre ; le corps-à-corps hors de portée y marche (1re marche et re-visée aux pas de recherche quand ce
+    point a bougé d'un rayon) : bloqué derrière la foule, il a une cible de côté et la contourne.
+  - **Résultats** : compilé PASS ; `HeroesOfLiberty.Combat` 11/11. `building_crowd` g1 x4 : **(1), (2), (3), (7) verts
+    partout** ; **AttackMove** 4/4 rouge : (4b) 4 à 9 (168-372 cm), (4a) 0-2 (x2,18, +1530 cm une fois), (5b) 0-1, (6)
+    0-1 ; **Order** 4/4 rouge sur (4b) seul : 4 à 6 (161-292 cm). (4b) **pire** qu'à la 2e boucle (1-5 / 1-3).
+  - **Lecture de (4b)** : 23 unités > 60 cm en AttackMove, 19 en Order, toutes entrées à portée à 365-399 cm (au bord)
+    puis déplacées de 61 à 372 cm (moitié > 2 rayons) : des **marches**, pas des poussées. Cause probable : à l'entrée à
+    portée, le rapprochement **garde la marche en cours**, qui vise maintenant le bout libre du mur (de côté) : l'unité
+    frappe et continue de longer la foule. **Suite (4e boucle)** : à l'entrée à portée, si le point visé n'est pas en
+    face (à plus d'un rayon du point du mur le plus proche), arrêter cette marche et rapprocher tout droit vers le mur (ou
+    s'arrêter si un ami qui frappe barre le devant) ; puis Idle, Shift.
+
+- 2026-10-28 (16 h 30), **O.7b, 4e boucle interrompue : l'utilisateur arrête (« non, arrêtons-nous »)**. La 4e boucle
+  (une unité entrée à portée ne garde plus une marche qui vise loin de son point de mur le plus proche : droit au mur
+  ou arrêt si un ami qui frappe barre ; petit test pur de `GetFreeBuildingWallPoint`) avait **commencé à modifier**
+  `HOLCombatProcessor.cpp` et `Tests/HOLCombatTests.cpp` (16 h 29), **non compilé, non testé**. État sûr connu : la
+  fin de la 3e boucle (compilé PASS ; (1), (2), (3), (7) verts ; (4b) rouge, 4 à 9 unités qui marchent le long de la
+  foule après leur première frappe).
+- 2026-10-29, **O.7b, 4e boucle reprise** (session principale, « continue EtapeDefiniInProgress O »). Relecture d'Haldir :
+  la 4e boucle était en fait **complète** (`bSideWalk` dans `HOLCombatProcessor.cpp` : à l'entrée à portée, une marche
+  qui vise à plus d'un rayon du point de mur le plus proche est arrêtée et remplacée par une marche droite au mur, sauf
+  au mur ou barrée par un ami qui frappe ; test pur de `GetFreeBuildingWallPoint` dans `BuildingAttack`, 3 cas), et la
+  DLL d'Haldir (2026-10-29, 3 h 57) est postérieure aux sources (16 h 29) : rien à défaire. `attack-places` avancée sur
+  `main` 4f5c297 (avance rapide ; `.uproject` repris de `main` : moteur « UE 5.8 HOL ») ; compilation lancée par
+  `build.ps1` (file d'attente derrière une autre copie). Suite : tests purs `HeroesOfLiberty.Combat`, `crowd_runs.ps1
+  -Runs AttackMove:1,Order:1` (copié dans le scratchpad de cette session), puis Idle, Shift, `-Group 36`, graine 7.
+  - **12 h 35** : compilé PASS (377 s) ; `HeroesOfLiberty.Combat` **11/11** verts (dont le test pur de la 4e boucle) ;
+    `building_crowd` AttackMove et Order graine 1 x4 lancés.
+  - **12 h 48, résultats de la 4e boucle** (graine 1 x4) : **AttackMove** 4/4 rouge : (4b) 1 à 5 (94-206 cm, avant 4 à 9 /
+    168-372), (4a) 0-2 (x1,78, +612 cm), (5b) 0-1, (6) 0-1 ; **Order** 4/4 rouge sur (4b) seul : 1 à 3 (94-173 cm, avant
+    4 à 6 / 161-292). Mieux, pas vert. Lignes par unité : les (4b) restants finissent « standing », la plupart **au mur**
+    (1-20 cm du mur visible) après une 1re frappe à 380-398 cm : plus une marche le long de la foule (le `bSideWalk` a
+    pris) ; `SlideAlongFriends` ne touche pas un frappeur (`!bAttacking`), donc le latéral restant vient de la
+    **séparation entre frappeurs** (2e boucle : deux frappeurs se partagent le chevauchement de côté, le reste à celui
+    du fond) : la foule se tasse le long du mur en poussant les voisins — ou d'une marche de rapprochement déviée.
+  - **5e boucle, test d'abord** : `building_crowd` sépare désormais, après la 1re frappe, le latéral **pendant sa propre
+    marche** (`bApproaching`, « walked off », critère (4b), <= 1 rayon) du latéral **à l'arrêt** (« shoved », poussé par
+    la foule qui se tasse : la règle de l'utilisateur, journal seulement). Par image, pas cumulé depuis le point de
+    frappe. Compilation + AttackMove/Order graine 1 x4 lancés (13 h 05).
+  - **13 h 00, le test tranche : des marches.** Compilé PASS (344 s). Graine 1 x4 : AttackMove (4b) 1 à 6 « walked off »
+    (122-163 cm) et « shoved » 0-14 cm seulement ; Order (4b) 2 à 3 (96-170 cm), shoved <= 5 cm. Le latéral vient donc de
+    la **marche de rapprochement** elle-même, pas de la foule : le frappeur qui se rapproche contourne les corps devant
+    lui (`AvoidBodies`, `UHOLFullSpeedProcessor`) et longe la foule en frappant.
+  - **5e boucle, code** : dans `UHOLFullSpeedProcessor` (`HOLSimulationProcessors.cpp`, juste avant `Velocity = Direction *
+    Speed`), un corps-à-corps qui frappe un bâtiment en se rapprochant (`bAttacking && bApproaching && BuildingInward`)
+    ne bouge que le long de `BuildingInward` (direction projetée, jamais de côté) : un corps devant le fait caler, et le
+    combat arrête sa marche (ami qui frappe qui barre, ou 600 ms sans gagner 10 cm). Compilation, tests purs
+    `HeroesOfLiberty.Combat`, AttackMove/Order graine 1 x4 lancés (13 h 05).
+  - **13 h 05, 5e boucle : (4b) presque réglé, la foule moins tassée** (compilé PASS 56 s, `HeroesOfLiberty.Combat` 11/11).
+    Graine 1 x4 : **Order 3/4 verts**, 1 rouge sur (4b) 1 unité à 75 cm ; **AttackMove** 4/4 rouge : (4b) 0-1 (66-78 cm, avant
+    122-163), (4a) 0-1, mais **nouveaux rouges** : passage 4 `timed out` 25 s, (1) 3 sur 17 sans frapper (marcheurs
+    « walking in » à 447-474 cm du mur, derrière la foule), (7) 4 rangs (2 passages, 306-368 cm). Lecture : un frappeur qui
+    se rapproche ne contourne plus, il cale devant un corps de biais et s'arrête au bord de la portée (360-380 cm) : la
+    foule est moins tassée, 4 rangs, et les marcheurs de derrière visent le point du mur « en face », que
+    `GetFreeBuildingWallPoint` dit libre (aucun corps **au mur**) alors que la colonne est pleine : ils butent dessus.
+  - **6e boucle, test rouge d'abord** : `GetFreeBuildingWallPoint` doit tenir pour couvert un point dont la **colonne**
+    (vers l'extérieur, jusqu'à la profondeur du marcheur) contient un frappeur, même décollé du mur ; pas un frappeur
+    au-delà du marcheur ni à côté de la colonne (3 cas ajoutés au test pur `BuildingAttack`). Compilation + test lancés
+    (13 h 15). Le reste de (4b) (66-78 cm, somme par image) à regarder ensuite.
+  - **13 h 22, rouge montré** (compilé PASS 356 s) : `BuildingAttack` échoue sur « a striker in the column ahead, off the
+    wall, covers the facing point » (les deux autres cas passent déjà). **Code** : `GetFreeBuildingWallPoint` tient un
+    point pour couvert par un corps posé dessus **ou dans sa colonne** vers l'extérieur (largeur des deux corps,
+    profondeur = celle du marcheur) ; attente du test corrigée (le 1er point libre cherché est à +1 rayon à droite, puis à
+    gauche : (600, -60)). Compilation, tests purs, AttackMove/Order graine 1 x4 lancés (13 h 25).
+  - **13 h 30, 6e boucle : Order vert 4/4, AttackMove rouge sur le tassement** (compilé PASS 105 s, `HeroesOfLiberty.Combat`
+    11/11 avec les 3 cas de la colonne). AttackMove graine 1 x4 : (4b) 0-1 (64-77 cm), (4a) 1 par passage (x1,46-1,79), (7) 4
+    rangs (2 passages, 300 cm), passage 4 : (1) 1 marcheur hors de portée (494 cm) avec un **chemin de 12 460 cm** (il
+    tourne autour de la foule : le point libre change de côté à chaque re-visée). Lignes par unité : des rangs à 0-16,
+    76-118, 200-237 et 268-282 cm du mur visible, avec des trous : les frappeurs des rangs 3-4 **calent là où ils sont
+    entrés** (projection de la 5e boucle) et ne repartent jamais (« never another walk while it strikes »), la foule ne
+    se tasse pas, le dernier ne trouve pas de place.
+  - **7e boucle, code** : (a) un frappeur arrêté avant le mur **repart droit au mur** aux pas de recherche dès qu'aucun ami
+    qui frappe ne le touche devant (demi-plan `bTouchedAhead`) : les rangs se resserrent du mur vers l'extérieur ;
+    à surveiller : cycles marche/calage de 0,8 s contre un ami à 11-20 cm de biais (animation). (b) `WanderRadii` 1 →
+    1,5 (90 cm) : la somme par image compte les poussées de séparation pendant une marche droite (64-77 cm mesurés) ;
+    une marche le long de la foule (94-206 cm à la 4e boucle) échoue toujours. Compilation, tests purs, AttackMove/Order
+    graine 1 x4 lancés (13 h 35).
+  - **13 h 40, 7e boucle : Order 4/4 vert, AttackMove 2/4** (compilé PASS 79 s, `HeroesOfLiberty.Combat` 11/11). AttackMove
+    graine 1 : passages 2 et 4 verts ; passage 1 rouge (4a) 1 unité (x1,66 : née à 753 cm, 614 cm de chemin pour 369, elle
+    contourne la foule vers une colonne libre) et (7) 4 rangs (une unité à 309 cm du mur visible, foule en quinconce) ;
+    passage 3 rouge (4a) 1 unité (x1,54, même cas). Plus de (4b), plus de (1), plus de marcheur à 12 km. Lecture : les
+    restes sont des unités **nées au contact** (600-900 cm, dans le rayon d'agression) qui contournent une foule de 3-4
+    rangs : un détour de 250-450 cm sur une marche courte dépasse x1,25 + 2 rayons ; une foule de 17 sur un seul côté se
+    tasse en quinconce et le 4e rang touche 309 cm (3 rangs pleins = 250 + 60). Les deux sont des seuils à juger à l'essai
+    plutôt que du code. Tableau complet lancé : Idle, Shift, graine 7 (AttackMove, Order), `-Group 36` (13 h 40).
+  - **13 h 50, tableau complet (7e boucle)** : **Order** graine 7 : 3/4 (un (4a) x1,56) ; **Idle** graine 1 : 1/4 ((1) 1 sans
+    frapper une fois, (4a) 3-4 détours x1,63-1,88, (6), (7)) ; **Shift** graine 1 : 0/4 ((7) 302 cm, (4a) 2 x1,49-1,54, (5a)
+    0,50-0,57 s : au seuil) ; **AttackMove** graine 7 : 0/4 ((4a) 1-3 x1,41-1,48, (7) 308-310) ; **`-Group 36`** : 0/4 ((4a) 5-12
+    détours jusqu'à x1,64, un à x3,13 (+2827 cm), (7) 313-364, passage 3 : **(1) 5 sur 36 hors de portée** 25 s, « walking in »
+    à 423-472 cm du mur avec 1,6 à 7,7 km de chemin : ils tournent). Cause des 5 : la règle de la colonne (6e boucle) la
+    juge jusqu'à la **profondeur du marcheur** ; pour un point d'une face voisine (autour du coin) cette profondeur est
+    presque nulle, la colonne paraît libre, le marcheur y va, bute sur ses rangs, re-vise ailleurs à chaque pas de
+    recherche : des tours sans fin. Le même défaut gonfle (4a) partout.
+  - **8e boucle, code + tests** : `GetFreeBuildingWallPoint(…, Reach, …)` vise désormais **la place à l'arrière de la
+    colonne la plus proche qui a encore de la place à portée** (derrière son frappeur le plus au large, décalage de côté
+    compris ; le point du mur si la colonne est vide ; colonne pleine quand la place serait hors de portée : centre à plus
+    de `Reach - Gap` du tour ; un corps hors de portée ne compte pas). Le processeur passe la portée **ramenée au mur
+    visible** (`BuildingAttackRange - VisualGap`, 85 cm de moins : 3 rangs serrés tiennent, D497). Tests purs : la paire au
+    mur donne la place du 2e rang (500, -160), trois rangs donnent la place du 4e à 300 cm du tour (encore à portée à
+    R 50), quatre rangs pleins donnent la colonne d'à côté (600, -60). (7) à revoir : 309 cm du mur visible = 4e rang pour
+    la formule mais à portée (315) : foule en quinconce ; à passer en information si (1) tient. Compilation, tests purs,
+    AttackMove/Order graine 1 et `-Group 36` lancés (13 h 55).
+  - **14 h 05, 8e boucle : régression** (compilé PASS 34 s ; test pur « four rows… the next one two radii off » rouge : la
+    colonne à un rayon de côté a encore une place à portée, 387 cm derrière les corps qui la couvrent à moitié, l'attente
+    était fausse). `building_crowd` graine 1 x4 : **AttackMove 0/4** ((1) 0-2 hors de portée, (4a) x1,88-2,41, (7) 300-314) ;
+    **Order 1/4** ((4a) 1-2, x1,42-1,79, avant 4/4 verts) ; **`-Group 36` 0/4 : (1) 8 à 16 sur 36 hors de portée** (jusqu'à
+    825 cm), **6-7 rangs** (548-706 cm). Lecture : viser la **place** à l'arrière de la colonne fait finir la marche là, à
+    l'arrêt au dos de la foule (au bord de la portée, repoussé d'un rien par la séparation : hors de portée), et les
+    marcheurs d'une même face choisissent les mêmes colonnes : des files.
+  - **8e boucle bis** : même critère (colonne qui a encore une place à portée derrière son dernier frappeur), mais la marche
+    vise **le point du mur** de cette colonne : le marcheur presse la foule, entre à portée en touchant le dernier rang,
+    frappe et se tasse avec les autres (7e boucle) ; colonne pleine entre-temps : re-visée au pas de recherche. Tests
+    purs réécrits (paire au mur et trois rangs → le point en face ; quatre rangs → la colonne à un rayon de côté, (550,
+    -60)). Compilation, tests purs, AttackMove/Order graine 1 et `-Group 36` lancés (14 h 08). Référence à battre : 7e
+    boucle (AttackMove 2/4, Order 4/4, 36 : 31-36 frappent).
+  - **14 h 20, 8e bis : pas mieux que la 7e** (compilé PASS 35 s, tests purs 11/11). Graine 1 x4 : AttackMove 1/4 ((4a) 1-3
+    x1,54-1,62, (1) 1 hors de portée une fois, (7)) ; Order 3/4 ((1) 1 hors de portée à 452 cm, (7) 337) ; `-Group 36` 0/4 :
+    (1) 1 à 5 hors de portée (434-534 cm), (4a) 5-8 jusqu'à x3,00, (7) 316-419. Lecture : presser dans une colonne « avec
+    de la place » mène au dos d'un 3e rang en quinconce, à 420-530 cm : hors de portée, et re-visée en re-visée.
+  - **9e boucle (dernière de code avant bilan)** : retour au critère de la 7e (colonne couverte par un frappeur **devant le
+    marcheur**) avec la profondeur **au moins la portée** (`max(profondeur du marcheur, Reach - Gap)`) : les colonnes
+    autour du coin, où le marcheur n'a aucune profondeur, sont jugées comme celle d'en face (cause des tours sans fin à
+    36). Test pur du coin ajouté (marcheur près du coin gauche, face du bas couverte, un frappeur sur la face gauche à 300
+    cm de son point : premier point libre deux rayons plus haut, (-60, 140)). Compilation, tests purs, AttackMove/Order
+    graine 1 et `-Group 36` lancés (14 h 22). Ensuite, quel que soit le résultat : bilan, meilleur état gardé, O.7c.
+  - **14 h 35, 9e boucle : meilleur état, le code s'arrête là** (compilé PASS 35 s, tests purs 11/11 avec le cas du coin).
+    Graine 1 x4 : **Order 4/4 verts** ; **AttackMove 2/4**, rouges sur (4a) seul (1-2 unités, x1,47-1,50) ; **`-Group 36` :
+    les 36 frappent dans les 4 passages** (plus de (1), plus de marcheur qui tourne, plus de (4b)), rouges sur (4a) 5-12
+    (x1,48-1,75), (5b) 1-4 et (7) 312-313. Lignes par unité : les détours sont pour les deux tiers des unités « crowded »
+    (elles ont rencontré la foule avant d'être à portée et la contournent : la règle), le reste des unités au large à
+    x1,37-1,56 dans un groupe de 36 né en tas (elles traversent 35 amis). **Seuils calés** (test, pas code) : (4a) jugé sur
+    les unités au large seulement (comme (5b)), chemin des autres en journal ; (7) en information seulement (4e rang en
+    quinconce à ~310 cm du mur visible, à portée ; (1) garde la portée) ; `WanderRadii` 1,5 (7e boucle). Notes des
+    scénarios `attack_places` et `building_crowd` réécrites à la foule. Tableau complet lancé (4 modes x graines 1 et 7,
+    `-Group 36`) ; ensuite O.7c : `quick_check -Parts tests,combat,build`, `attack_places` à blanc hors écran.
+  - **15 h 05, tableau complet aux seuils calés** (compilé PASS 9 s) : **Order 7/8** verts (un (4a) au large x1,55) ;
+    **AttackMove 7/8** (un (4a) x1,50) ; **Idle 3/4 et 0/4** (graine 7 : (4a) x3,38-4,90 sur des marches de ~100 cm, (2) 4
+    paires à 80 cm une fois : groupe né en tas déjà à portée, tous frappent à 0,0-0,15 s) ; **Shift 1/4 et 1/4** ((5a)
+    0,52-0,59 s au seuil de 0,50 dans 5 passages sur 8) ; **`-Group 36` 0/4 mais les 36 frappent** ((4a) au large 1-3
+    x1,48-1,75, (5b) 1-4, (6) 1). **Reste réel** : dans 5 passages sur 36, **une** unité finit hors de portée (417-466 cm du
+    mur, 312-372 du mur visible), « walking in », « crowded », chemin court (100-1364 cm) : coincée derrière la foule,
+    sa glissade (`SlideAlongFriends`) arrêtée des deux côtés, elle attend ; Idle (groupe né au contact) et Shift (re-ciblage
+    après la chute) seulement, jamais Order ni AttackMove. Piste pour plus tard : un marcheur hors de portée sans progrès
+    pendant ~1 s re-vise la colonne libre suivante (en sautant la plus proche). Les (4a) d'Idle à x3-5 sont des marches de
+    100 cm (le critère n'a pas de sens né à portée) : à ignorer ou à borner par une marche minimale, à voir à l'essai.
+  - **O.7c lancée** : `quick_check -Parts tests,combat,build` puis `attack_places` à blanc hors écran (14 h 10) ; ensuite
+    (5a) Shift : + 0,3 s (la file donne la Maison suivante à son pas, le combat la trouve au pas de recherche suivant :
+    2-3 pas), Shift graines 1 et 7 relancées.
+  - **15 h 15, O.7c** : **`quick_check -Parts tests,combat,build` PASS** en 149 s (tests 286/286, combat et orders verts, les
+    cas de build verts). Répétition à blanc d'`attack_places` : premier lancement resté au menu (les deux commandes
+    d'`-ExecCmds` étaient séparées par « ; » : le cvar `AutoContinue` a avalé la seconde ; séparateur « , »), relancée
+    après les séries Shift. Calibration (5a) Shift (+0,3 s) appliquée, compilation et Shift graines 1 et 7 en cours.
+  - **15 h 20, Shift recalibré** (compilé PASS 26 s) : **Shift graine 7 : 4/4 verts** ; Shift graine 1 : 1/4, plus de (5a) ;
+    restent les deux passages (3 et 4) où **une** unité finit hors de portée (456 et 417 cm, reproductibles : même
+    graine, mêmes unités) et un (6) (une unité appuyée à 141 cm du mur visible, rien de plus près). Répétition à blanc
+    d'`attack_places` relancée (séparateur corrigé).
+  - **15 h 30, O.7c faite** : `attack_places` à blanc hors écran **prêt en 17,7 s**, chaque étape passée (attaque-déplacement
+    des 20, Maison abattue ; 16 au repos, Maison posée à 11 m ; Caserne et Maison du temps 3), notes à la foule relues.
+    Plan 11 : contrôles et répétition faits ; **reste le 3e essai de l'utilisateur**, puis commit, D517, fusion, Haldir
+    libéré (voir « Reprise exacte (O) »).
+- 2026-10-29 (15 h 40), **3e essai validé (« ça passe »)** : commit **ff560ba** sur `attack-places` (COMBAT (EtapeDefini O), 15
+  fichiers), `main` 93b9069 fusionnée dedans (sans conflit ; `main` touche `HOLSimulationProcessors.cpp` et
+  `HOLPlayerController.cpp` ailleurs), recompilation + `quick_check -Parts tests,combat,build` + `building_crowd`
+  AttackMove/Order graine 1 lancés avant l'avance rapide de `main`. **D517** au GDD (§ 7.2, table, chronologie ; prochain
+  D518). Ligne retirée d'`EtapeDefini.md`.
+- 2026-10-29 (15 h 55), **O close** : branche fusionnée recompilée PASS (76 s), `quick_check -Parts tests,combat,build` **PASS**
+  (292/292), `building_crowd` AttackMove 3/4 (un (4a) au large x1,50), Order 4/4 : identiques à l'avant-fusion. **Avance
+  rapide de `main` : 7640732.** `IN_USE.txt` d'Haldir effacé (Haldir libre ; `perf-target` et ses stashs gardés). Reste
+  connu, hors de cette ligne : une unité coincée derrière la foule (Idle, Shift, 1 passage sur 7), piste au Suivi.
+  - **Bilan de méthode (9 boucles, 12 h 35 → 14 h 35)** : une boucle = un correctif + compilation (35-360 s selon la file)
+    + 2-3 séries de `building_crowd` (~5 min) ; le test par unité (« walked off » / « shoved ») a tranché la 5e boucle en
+    une mesure ; les 8e et 8e bis (viser une place) ont régressé et ont été défaites en deux boucles : la règle « colonne
+    couverte par un frappeur, jusqu'à la portée au moins » de la 9e est celle à garder. Reste de forme pour l'essai.
+
+### Plan (foule à la AoE4)
+
+9. [x] O.7a : tests rouges (`building_crowd` : frappe à portée sans détour, chemin / ligne droite, foule tassée contre
+   le mur, pas d'empilement, débordement sur les côtés quand le devant est plein ; tests purs si une règle pure apparaît).
+10. [x] O.7b : le code (frappe à portée, poussée vers le mur, glissement sur le côté), 9 boucles, verts sauf restes de forme et une unité coincée (Idle, Shift) ; voir le Suivi.
+    *Note de méthode (2026-10-28)* : minuteur de 15 min oublié pour O.5-O.7b (sous-agents à 27-80 min, compilations
+    de ~600 s en file) ; l'agent d'O.7b, relancé pour sa 2e boucle, était en fait à 274k tokens (il disait ~150k) :
+    arrêté, 2e boucle confiée à un agent neuf, minuteur repris.
+11. [x] O.7c : `quick_check`, scénarios, répétition à blanc (2026-10-29) ; 3e essai validé (« ça passe ») ; commit ff560ba, D517 au GDD ; fusion dans `main` (7640732), Haldir libéré. **Section O close.**
+
+### Plan (suite, après l'essai)
+
+5. [x] O.5a : tests rouges d'abord (tests purs `BuildingPlaces` et `BuildingPlacesHeld` à la nouvelle règle, critères de
+   `building_crowd` réécrits : 3 rangs face à l'arrivée, largeur plafond(n / 3), bloc sans trou), montrés rouges.
+6. [x] O.5b : `GetBuildingPlaces` et `GetBuildingPlacesBesideHeld` en blocs de 3 rangs ; tests verts.
+7. [x] O.5c : `quick_check -Parts tests,combat,build`, `building_crowd` 4 modes x graines 1 et 7, notes des scénarios
+   `attack_places` et `building_crowd` (« un seul rang » → « trois rangs »), répétition à blanc.
+8. [ ] O.6 : 2e essai, commit, D499 au GDD, fusion dans `main`, Haldir libéré.
+
+### Reprise exacte (O)
+
+**Reprise du 2026-10-29 (O.7b et O.7c faites, 3e essai à faire) — c'est cette reprise qui compte.** Haldir, branche
+`attack-places` = `main` 4f5c297 + **non commités** (13 fichiers + `IN_USE.txt`, `Tools/Scenarios/attack_places.txt/.json`).
+Compilé PASS, `HeroesOfLiberty.Combat` 11/11, `quick_check -Parts tests,combat,build` PASS (286/286), `attack_places` à
+blanc prêt en 17,7 s. Règle en place (foule à la AoE4) : frappe dès la portée ; rapprochement au mur **droit** (vitesse
+projetée sur `BuildingInward`, 5e boucle), arrêt si un ami qui frappe barre devant ou après 600 ms sans gagner 10 cm ; un
+frappeur arrêté avant le mur **repart droit** aux pas de recherche dès que rien ne le touche devant (7e) ; hors de portée,
+marche vers la colonne la plus proche qu'aucun frappeur ne couvre, jusqu'à la profondeur du marcheur ou de la portée (9e,
+`GetFreeBuildingWallPoint` avec `Reach`). `building_crowd` : Order 7/8, AttackMove 7/8, Shift 5/8, Idle 3/8, `-Group 36`
+tous frappent (rouges de forme : (4a) au large, (5b), (6)) ; **reste réel** : une unité coincée derrière la foule dans 4-5
+passages sur 36 (Idle, Shift), voir « tableau complet aux seuils calés ». Seuils du test : (4a) au large seulement, (7) en
+information, `WanderRadii` 1,5, (5a) Shift + 0,3 s.
+
+- **Suite** : (1) **3e essai de l'utilisateur** : `powershell -ExecutionPolicy Bypass -File
+  C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 attack_places -Root
+  C:\Users\baudo\Documents\HeroesOfLiberty-Haldir` (notes à la foule) ; (2) s'il convient : commit en anglais sur
+  `attack-places`, avance rapide de `main` puis fusion, D517 au GDD (foule à la AoE4 pour les attaques de bâtiment ; D499-D516
+  pris), ligne retirée d'`EtapeDefini.md`, `IN_USE.txt` d'Haldir effacé, section O close ; (3) sinon, piste du reste réel :
+  un marcheur hors de portée sans progrès pendant ~1 s re-vise la colonne libre suivante.
+- **Relancer les contrôles** : `crowd_runs.ps1 -Runs AttackMove:1,Order:1,Idle:1,Shift:1,AttackMove:7,Order:7,Idle:7,Shift:7,AttackMove:1:36`
+  et `dry_scenario.ps1 -Name attack_places` (scratchpad de cette session, `C:\Users\baudo\AppData\Local\Temp\claude\
+  c--Users-baudo-Documents-MyCrusader\cd272bdd-2301-43c2-b274-5aadad990ba2\scratchpad` ; ou `building_crowd.ps1 -Root
+  ...Haldir -Count 4 -Mode <M> -Seed <S> [-Group 36]` ; à blanc : `UnrealEditor-Cmd.exe <uproject> -game -RenderOffScreen
+  -nosound -unattended -LiveCoding=0 -saveddirsuffix=Tests_Scenario -ExecCmds="hol.Scenario.AutoContinue 1,hol.Scenario
+  attack_places"`, virgule entre les commandes, attendre « Scenario attack_places: ready ») ; tests purs :
+  `UnrealEditor-Cmd.exe` de `C:\UE\UE_5.8_HOL`, `-ExecCmds="Automation RunTests HeroesOfLiberty.Combat;Quit" -saveddirsuffix=Tests
+  -unattended -nullrhi -nosound -LiveCoding=0`.
+
+**Arrêt du 2026-10-28, 16 h 30 (« non, arrêtons-nous ») — c'est cette reprise qui compte.** O.7b est à sa 4e boucle,
+interrompue : Haldir (`main` 9e72bf4 + non commités) contient des modifications à moitié faites dans
+`HOLCombatProcessor.cpp` et `HOLCombatTests.cpp` (voir l'entrée « 4e boucle interrompue ») : les relire contre la fin de
+la 3e boucle, finir ou défaire, compiler, puis `crowd_runs.ps1 -Runs AttackMove:1,Order:1` (scratchpad de la session du
+2026-10-28) ou `building_crowd.ps1`. `main` a avancé depuis (d30129f et plus : IA0.5, IA0.6) : avance rapide avant de
+compiler. Numéro de décision au GDD : D499-D514 pris par le réseau, prendre le prochain libre. Les points ci-dessous
+(pause précédente) restent valables pour le reste.
+
+**Pause du 2026-10-28 (après-midi, « pause » de l'utilisateur) — c'est cette reprise qui compte** ; la suite plus bas
+date d'O.2 et est dépassée.
+
+- **Règle en cours** : foule à la AoE4 (voir « Tranché (foule à la AoE4) » et « Plan (foule à la AoE4) ») ; O.7a faite
+  (critères rouges de `building_crowd`), O.7b 1re boucle faite (foule codée, places retirées ; (2) et (4b) encore rouges).
+- **État** : Haldir, branche `attack-places` = `main` e9cc592 + **non commités** (13 fichiers, voir `git -C
+  C:\Users\baudo\Documents\HeroesOfLiberty-Haldir status`). Deux sous-agents de la 2e boucle d'O.7b ont été **arrêtés en
+  cours** (le premier à 274k tokens, le second par la pause) : le code peut contenir des modifications à moitié faites
+  après la 1re boucle. Les blocs de 3 rangs d'O.5 (verts, refusés à l'essai) sont gardés : ref `refs/backup/o5-blocks`
+  de Haldir et `O5_blocks.patch` dans le scratchpad de la session du 2026-10-28.
+- **Reprendre** : (1) `git diff` de Haldir comparé à l'entrée « O.7b, 1re boucle » : finir ou défaire ce qui est à
+  moitié fait, compiler (`Tools\build.ps1 -Root ...Haldir`) ; (2) la 2e boucle telle que décrite à la fin de l'entrée
+  « O.7b, 1re boucle » (rapprochement arrêté quand un ami qui frappe barre le devant ; poussée de côté refusée aux
+  frappeurs, celui qui arrive contourne ; paires à 20-51 cm) ; tests purs `HeroesOfLiberty.Combat`, puis
+  `building_crowd` (aide `crowd_runs.ps1` du scratchpad, ou `building_crowd.ps1 -Mode -Seed -Group`) : AttackMove et
+  Order graine 1, Idle, Shift, `-Group 36`, graine 7 ; (3) O.7c puis 3e essai. **Minuteur de 15 min** avec chaque
+  sous-agent, lancé dans le même message ; tokens lus dans la notification.
+- `main` a avancé depuis e9cc592 (autres sessions) : avance rapide avant le commit.
+
+Reprise par « continue EtapeDefiniInProgress O » (2026-10-27 au soir, l'utilisateur arrête la séance après O.2).
+**Mise à jour 2026-10-28** : O.3 faite (voir Suivi) ; `attack-places` = `main` 20e8f8a + non commités (ceux ci-dessous,
+plus `HOLPlayerController.cpp` (`AttackMoveNear`) et `Tools/Scenarios/attack_places.txt/.json`) ; suite = O.4 (point 2).
+
+- **État** : `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`, branche `attack-places` = `main` d1a7dc5 + changements
+  **non commités** : `Dev/HOLBuildingCrowdTest.cpp` (en LF, `-Mode`), `Simulation/HOLCombatProcessor.cpp/.h`
+  (`PlaceNewcomers`, `GivePlacesToNewcomers`), `Simulation/HOLCombatRules.cpp/.h` (`GetBuildingPlacesBesideHeld`),
+  `Tests/HOLCombatTests.cpp` (`BuildingPlacesHeld`, vagues), `Tools/Tests/building_crowd.ps1` (`-Mode`, un journal par
+  mode et graine) ; `IN_USE.txt` posé. Compilé (O.2b), `HeroesOfLiberty.Combat` 13/13, `building_crowd` vert 32/32.
+- **Relancer les contrôles** (PowerShell) :
+  `foreach ($Seed in 1,7) { foreach ($Mode in "AttackMove","Idle","Order","Shift") { powershell -NoProfile -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Tests\building_crowd.ps1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir -Count 4 -Seed $Seed -Mode $Mode } }`
+  (journaux `Saved_Tests\Logs\building_crowd_<Mode>_<Seed>.log`) ; tests purs : `UnrealEditor-Cmd.exe` du moteur,
+  `-ExecCmds="Automation RunTests HeroesOfLiberty.Combat;Quit" -saveddirsuffix=Tests -unattended -nullrhi -nosound -LiveCoding=0`.
+- **Suite** :
+  1. O.3 : fusionner `main` à jour dans `attack-places` (d'autres sessions avancent), recompiler,
+     `quick_check -Parts tests,combat,build` et `building_crowd` sur les 4 modes ; scénario d'essai
+     `Tools/Scenarios/attack_places.txt` (une vingtaine d'Hommes d'armes en attaque-déplacement sur une Maison ennemie
+     seule, puis un groupe au repos près d'une Maison) et sa répétition hors écran.
+  2. O.4 : essai de l'utilisateur, commit en anglais (sans Co-Authored-By), fusion dans `main`, ligne retirée
+     d'`EtapeDefini.md` dans le même commit, `IN_USE.txt` d'Haldir effacé (Haldir libre ; `perf-target` et ses stashs
+     restent), section O close ici.
+- **Petit reste** : la ligne « rows deep » du journal de `building_crowd` lit toujours 2 pour un seul rang (mesurée
+  depuis le corps, pas depuis le mur visible) ; informative seulement, à corriger en O.3.
+
+## P — `quick_check -Parts …,production,build` sans `-Full` (2026-10-28, Celebrimbor, branche `production-build`)
+
+- 2026-10-28 : reproduit (`-Parts production,build`, après compilation de `main` e53b39a) : `Test sequence: timeout at step 77:
+  waitlog Selection: MainCentre of slot 0 (own)`. Cause : `production` finit avec son centre sélectionné ; le premier pas de
+  `build` clique sur ce même centre, et `BroadcastSelection` (seul à écrire « Selection: … ») ne passe pas quand la
+  sélection ne change pas. Avec `-Full`, `move` / `gather` changent la sélection entre les deux. Correctif dans
+  `quick_check.ps1` seul : `production` finit par Échap (centre sélectionné : pas de menu) et `waitlog Selection: none`.
+  Contrôles lancés : `-Parts production,build` puis `-Full`.
+- 2026-10-28 : **P fait et commité** (Celebrimbor, `production-build`, c8fa95c ; pas encore dans `main`). `-Parts
+  production,build` **PASS en 172 s** (avant : arrêt à l'étape 77). `-Full` : tout vert (tests 270/270) sauf `net 2
+  clients` « manager: empty once, last » ; `-Parts net` seul relancé : ce contrôle vert, mais l'aléa « barre de vie d'une
+  unité intacte non sélectionnée » rouge (2e fois aujourd'hui, déjà vu en fusionnant `slot-names`). Aucun des deux ne
+  touche le changement (partie solo `production`, absente de `-Parts net`). Suite : fusion dans `main` après accord.
+- 2026-10-28 : **P close**, fusionnée dans `main` (e9cc592, `main` inchangé depuis e53b39a : exactement ce qui a été testé).
+  Ligne d'EtapeDefini retirée.
+
+## Q — `net 2 clients` : barre de vie d'une unité intacte non sélectionnée (2026-10-28, Celebrimbor, branche `health-bars`)
+
+- 2026-10-28 : **cause : le contrôle, pas le jeu.** Journal rouge (`-Parts net`) : `Health bars: bars 2 (#11 131/155,
+  #13 68/80)` alors que le `Units where` d'avant (2 images plus tôt) a #13 sans `hp` ; serveur : `#11 ManAtArms hits #13
+  Spearman for 12, 68 HP left` à 09:46:35.276, `Units where` du client à .286, barres à .423 : le coup arrivé entre les
+  deux, la barre juste. Correctif (`quick_check.ps1` seul) : une barre non sélectionnée n'est fautive que si l'unité est
+  intacte dans le `Units where` d'avant **et** dans celui d'après (la vie ne remonte jamais). Rejoué hors jeu : journal
+  rouge 1 → 0 ; copie avec une fausse barre « #5 100/100 » : 1 (toujours attrapée). `-Parts net` PASS 222 s. Commit
+  7c7099e (`health-bars`), fusion dans `main` après accord.
+- 2026-10-28 : **Q close**, fusionnée dans `main` (0adb67a, `main` inchangé depuis e9cc592). Ligne d'EtapeDefini retirée.
+  Celebrimbor libérée (`IN_USE.txt` retiré, branche `health-bars`).
+
+## R — Coins carrés de la garde du mur visible pour les unités arrêtées (2026-10-29, Elrond, branche `idle-wall-corners`)
+
+Reste (a) de J boucle 9 : la garde des unités **arrêtées** (C.1) mesure le mur visible depuis le **corps** (75 + rayon + 1 cm),
+donc avec un **coin arrondi** ; le socle dessiné a un coin **carré** (corps + 75 cm). Dans un coin, un Homme d'armes arrêté
+finit à ~30 cm du coin du socle : son corps (rayon 60) est ~30 cm dedans. J boucle 9 a ajouté `bSquareCorners` à
+`HOLConstruction::EaseOutOfVisibleWalls` et ne le passe que pour `bStrikesByPlace` (`PushOut`, `HOLSimulationProcessors.cpp`).
+Demandé le 2026-10-29 (« fais un maximum des petites lignes »). Les autres petites lignes : « aléa build site après
+move,bodies » déjà close (H, 2026-10-25 ; ligne d'EtapeDefini corrigée) ; « barre du bas trop large sous 1500 px » laissée
+(choix de l'utilisateur du 2026-10-21 : avec la mini-carte, pas avant) ; « ligne tous les 5 cases » et « écart des mesures
+de rendu » : questions à poser à l'utilisateur à la fin.
+
+### Plan (boucles de 15 min)
+1. Test rouge sur la vraie chaîne (sous-agent) : sous-cas `build:corner` de `quick_check.ps1` : une Maison finie d'un coup,
+   4 Hommes d'armes envoyés chacun sur un coin du corps, arrêtés 8 s, `hol.Units.Where 0` ; contrôle A = chaque corps hors
+   du socle carré (marge ≥ −10 cm), contrôle B = les 4 bien dans les coins, à l'arrêt. Attendu : A rouge (~−30 cm).
+2. Correctif : `PushOut(..., bKeptOut)` pour `bSquareCorners` (unité et place tenue) ; test pur `IdleWall` étendu (une
+   unité arrêtée dans un coin, coins carrés : hors du socle). Compilation, `build:corner` vert, `tests`, `-Parts build`.
+3. Essai de l'utilisateur (`idle_wall` suffit : un soldat collé dans un coin d'une maison), puis commit.
+
+### Suivi
+- 2026-10-29 : Elrond réservé (`IN_USE.txt`), branche `idle-wall-corners` = `main` 4f5c297, compilation lancée.
+  Sous-agent lancé pour le test rouge (étape 1). `EtapeDefini.md` : lignes GDD (prochain D517, aussi corrigé au § 22 du
+  GDD : D499-D514 et D515-D516 y manquaient), `MovementInProgress.md` (clos, à archiver), C.1 (pointeur vers R) mises à jour.
+- 2026-10-29 : **étape 1 faite, rouge montré** (sous-agent, 4 passages, ~12 min) : sous-cas `build:corner` de `quick_check.ps1`
+  (Elrond, +62 lignes : `$SubCaseTable`, `$CornerHouse` (-18000, 5600) au nord du spot du héros, étapes « mark build corner »
+  en toute fin du build solo, contrôles A/B/C section « build corner »). Une Maison finie d'un coup (`hol.Cheat.FastBuild`),
+  4 Hommes d'armes chacun envoyé par clic droit sur le coin de la dalle à ±380 (le coin exact du corps ±295 tombait 13 cm à
+  côté et les posait le long du mur : marges +1, règle du corps juste là). Résultat sur le code non modifié : **A rouge,
+  marges −32, −33, −31, −33 cm** (136 cm du coin du corps sur la diagonale, 28 cm du coin de la dalle, « eased out of a visible
+  wall: 12 ») ; B vert (4 à l'arrêt, chacun dans son coin), C vert (retirés, Maison détruite). Correctif appliqué (étape 2) :
+  `PushOut(..., bKeptOut)` pour les coins carrés (unité et place tenue), test pur `IdleWall` étendu (coin : règle ronde = corps
+  dans la dalle, coins carrés = dehors en pas de 10 cm, puis immobile). Compilation lancée.
+- 2026-10-29 : **étape 2 faite, vert** : compilation (Elrond) verte ; `-Parts build:corner,tests` **PASS en 44 s** (tests
+  287/287, `IdleWall` étendu compris). `-Parts build` entier : d'abord **rouge au cas `corner` seul** (7 unités près de la
+  Maison au lieu de 4, le coin −x−y à −50 cm) : le spot (-18000, 5600) tombait entre les deux Casernes du cas `barracks`
+  ((-18600, 4600) et (-18600, 7400)) : l'unité du coin était **dans deux murs** (C.3, elle reste), et des unités du cas
+  `hero` traînaient là. Maison déplacée en **(-16400, 9600)** (terrain libre au nord, à l'écart des pas de ralliement y 6800),
+  toutes les unités à moins de 20 m retirées avant les 4 Hommes d'armes (plus seulement les Paysans). `-Parts build`
+  **PASS en 126 s**, les 24 sections vertes (`cut` et `gap` inchangées) ; marges finales des 4 coins **+1, 0, +1, 0 cm**
+  (61 cm de la dalle moins le rayon 60), « eased out of a visible wall: 22 ». Scénario `idle_wall` : consigne du coin ajoutée
+  pour l'essai. Lancé : `-Parts gather,formation,combat` (unités à l'arrêt près des bâtiments ailleurs que dans `build`).
+- 2026-10-29 : `-Parts gather,formation,combat` **PASS en 88 s** (14 sections vertes) ; `-Parts build:corner` seul au nouvel
+  emplacement **PASS en 32 s**. **R prête pour l'essai** : scénario `idle_wall` dans Elrond (consigne du coin ajoutée), puis
+  commit sur `idle-wall-corners` et avance de `main` (fichiers : `HOLSimulationProcessors.cpp` (2 lignes),
+  `HOLConstructionTests.cpp` (test `IdleWall` +32), `quick_check.ps1` (sous-cas `build:corner` +62), `idle_wall.txt`,
+  `EtapeDefini.md`, `GDD.md` § 22, ce journal). À l'avance de `main` : archiver `MovementInProgress.md` (clos) si l'utilisateur
+  est d'accord.
+- 2026-10-29 : **essai validé** (« tout est bon ») et accord sur les trois recommandations : ligne « tous les 5 cases »
+  abandonnée (TileSizeInProgress.md), écart des mesures de rendu clos comme non reproduit (ImplementationInProgress.md
+  archivé), MovementInProgress.md archivé. Code commité dans Elrond (09860a9), `main` 537bdce (IA1.3, M6) fusionnée dans
+  la branche, compilée (87 s), `-Parts build:corner,tests` PASS (tests 290/290) ; `main` avancé en avance rapide (a9e5636).
+  Elrond libéré. **R close.**
+
+## S — `LastAttacker` n'expire jamais (2026-10-29, Elrond, branche `last-attacker-expiry`)
+
+Ligne « Revue de code » d'`EtapeDefini.md` : riposte à travers la carte. Demandé le 2026-10-29 (« go 1 à 3 », avec T et U),
+sans attendre le brouillard de guerre (M7 ajoutera l'oubli hors de la vue). Constat (code de `main` 93b9069) :
+`FHOLCombatFragment::LastAttacker` (`HOLSimulationFragments.h`) est posé à chaque coup reçu (mêlée `HOLCombatProcessor.cpp`
+~1956, flèche ~918) et n'est effacé que si l'attaquant meurt ou disparaît (~1168) ou par `Disengage` (ordre du joueur).
+La recherche le prend comme candidat `bAttacksMe` même hors du rayon de recherche : une unité touchée une fois par un
+ennemi qui s'en va le poursuit à travers la carte, et compte comme « en combat » (`IsFriendFighting`, `bFighting`,
+unité jamais inactive).
+
+### Plan (boucles de 15 min, sous-agent)
+1. Test rouge sur la vraie chaîne : sous-cas de `quick_check.ps1` (modèle : `build:corner`, `$SubCaseTable`) : une unité
+   touchée une fois par un ennemi qui s'éloigne ensuite hors de portée ; attendu rouge : elle le poursuit ou reste
+   « en combat » après le délai.
+2. Correctif déterministe : pas du dernier coup reçu dans le fragment, règle pure dans `HOLCombatRules` (testée en C++),
+   oubli après un délai sans nouveau coup (proposition 5 s, à confirmer à l'essai) ; `tests` et `-Parts combat` verts.
+3. Essai de l'utilisateur, commit, fusion dans `main`.
+
+### Suivi
+- 2026-10-29 : Elrond réservé (`IN_USE.txt`), branche `last-attacker-expiry` = `main` 93b9069, compilation lancée ;
+  sous-agent lancé pour les étapes 1 et 2.
+
+## T — Barre du bas trop large sous 1500 px (2026-10-29, Galadriel, branche `bottom-bar-width`)
+
+Ligne « Interface » d'`EtapeDefini.md`, reste du chantier `InterfaceInProgress.md` (D340) ; laissée le 2026-10-21 pour la
+mini-carte, reprise le 2026-10-29 à la demande de l'utilisateur (« go 1 à 3 »). Code : `HOLGameScreen.cpp`
+(`Source/HeroesOfLibertyUI/HUD`) et `Script/UI/HOLGameScreenScript.as` (bloc du héros, J8a.5).
+
+### Plan (boucles de 15 min, sous-agent)
+1. Constat mesuré : largeur demandée de la barre à 1280, 1366, 1440, 1500 et 1920 px (contrôle `hol.HUD.Report` ou
+   test de widget), test rouge = la barre déborde de la place réservée à la mini-carte sous 1500 px.
+2. Correctif : la barre tient dès 1280 px (blocs resserrés ou échelle), place de la mini-carte gardée ; captures aux
+   largeurs, `tests` et la partie HUD de `quick_check` verts.
+3. Essai de l'utilisateur (fenêtre 1366 × 768), commit, fusion dans `main`.
+
+### Suivi
+- 2026-10-29 : Galadriel réservé (`IN_USE.txt`), branche `bottom-bar-width` = `main` 93b9069, compilation lancée
+  (file d'attente derrière Elrond) ; sous-agent lancé pour les étapes 1 et 2.
+
+## U — Aléas `net 2 clients` (2026-10-29, Galadriel, branche `bottom-bar-width`)
+
+Les trois lignes « Aléas et petits restes » d'`EtapeDefini.md`, vues une fois chacune :
+1. « manager: empty once, last » rouge une fois (`-Full`, 2026-10-28), vert à la relance (`quick_check.ps1` ~5669 :
+   l'appel `POST /matches/QC1/empty` attendu une fois et en dernier, 10 s au plus).
+2. Maison de l'autre arrivée avant le `waitlog Building arrived: House of slot` du client 1 (~2340) : séquence arrêtée.
+3. Client 2 lent au démarrage, arrivé après le client 1, n'a jamais vu le bandeau d'attente (`waitlog Wait banner: shown`,
+   ~2267, posé pour le client 2 « ici en premier ») : séquence arrêtée.
+
+### Plan (boucles de 15 min, sous-agent)
+1. Pour chacun : la course exacte dans `quick_check.ps1` (et le jeu si c'est lui qui a tort), reproduite en forçant
+   l'ordre (délai artificiel) quand c'est possible, puis le test rendu insensible à l'ordre (drapeaux `signal` / `waitfile`,
+   `waitlog` depuis un repère, attente plus longue) ; vérification de syntaxe PowerShell seulement (pas de lancement de
+   test pendant la compilation et les tests de T dans la même copie).
+2. `-Parts net` deux fois de suite (session principale, copie libre), puis commit avec T, fusion dans `main`.
+
+### Suivi
+- 2026-10-29 : sous-agent lancé pour l'étape 1 (analyse et correctifs dans Galadriel, sans lancer de test).

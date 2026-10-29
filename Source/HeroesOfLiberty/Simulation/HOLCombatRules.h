@@ -210,42 +210,31 @@ namespace HOLCombat
 	/** Edge gap (cm) from a body (Position, Radius) to a building's body box (D324): 0 or less when it touches it. */
 	HEROESOFLIBERTY_API double GetEdgeDistanceToBox(const FVector2D& Position, float Radius, const FBox2D& Box);
 
-	/**
-	 * A melee attacker walking to a building stops once this close (cm, its edge to the body), at most its building reach:
-	 * its reach of a tile (4 m) is kept while it strikes and when its walk ends short (the footprint keeps it off), so it
-	 * strikes from beside the wall, not from 4 m away.
-	 */
-	inline constexpr float BuildingApproachReach = 150.f;
-
-	/** D345.2b: a unit walking to strike a building aims this far (cm) beyond its radius off the body's box. */
+	/** D345.2b: a shooter walking to shoot a building aims this far (cm) beyond its radius off the body's box (it stops at its reach). */
 	inline constexpr double BuildingApproachGap = 40.0;
 
 	/**
-	 * EtapeDefini J loop 3: a melee with a place by the building's wall (FHOLCombatFragment::BuildingPlace) takes it on only
-	 * once within this many radii of its place. Loop 4: BuildingPlaceGiveUpMs without coming BuildingPlaceProgress (cm)
-	 * nearer its place than ever (whatever its walk does: blocked, pushed, ended short), it forgets it. Loop 12: 0.25 (~15 cm for a
-	 * Man-at-arms; the walk stops OrderArrivalTolerance = 5 cm short), so the rank stays straight, not zigzagging in depth.
+	 * EtapeDefini O.7 (the user's rule of 2026-10-28, from an AoE4 clip, replacing J's and O.5's places): a melee walks to the
+	 * visible wall's point nearest it (AHOLBuilding::GetVisibleBodyBounds), off it by its radius and this gap (cm): a
+	 * Man-at-arms' edge 95 cm off a House's body, clear of the navmesh's forbidden area. It strikes as soon as in reach
+	 * (IsBuildingInReach) and closes in to there while it strikes: the crowd packs against the wall.
 	 */
-	inline constexpr double BuildingPlaceReachRadii = 0.25;
-	inline constexpr int32 BuildingPlaceGiveUpMs = 4000;
-	inline constexpr double BuildingPlaceProgress = 20.0;
+	inline constexpr double BuildingWallGap = 10.0;
 	/**
-	 * Loop 8 (user's trial of 2026-10-26: units half in the House): the places' ring is off the building's visible wall
-	 * (AHOLBuilding::GetVisibleBodyBounds) by a unit's radius and this gap (cm): a Man-at-arms' middle 155 cm off a House's
-	 * body (its edge 95 cm: well within its building reach of 400 cm), clear of the navmesh's forbidden area.
+	 * EtapeDefini O.7: a melee closing in while it strikes stops its walk once BuildingCloseInStopMs (ms) without coming this
+	 * much (cm) nearer the visible wall (the friends in front hold it), or once within BuildingWallGap + this of it.
 	 */
-	inline constexpr double BuildingPlaceVisibleGap = 10.0;
-	/** Loop 12: the arc's places (GetBuildingPlaces, a group smaller than the ring's room) this many radii apart: 10 % air. */
-	inline constexpr double BuildingPlaceArcRadii = 2.2;
+	inline constexpr double BuildingCloseInProgress = 10.0;
+	inline constexpr int32 BuildingCloseInStopMs = 600;
 
-	/**
-	 * In reach of a building at EdgeDistance: within its building reach once striking, on hold, or when its walk ended
-	 * there; else (walking to it, or idle and taking it on) within BuildingApproachReach for a melee (a shooter, its reach).
-	 */
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 
-	HEROESOFLIBERTY_API bool IsBuildingInReach(const FHOLUnitTypeConstants& Attacker, double EdgeDistance, bool bStriking, bool bWalkEndedShort, bool bHold);
+	/**
+	 * In reach of a building at EdgeDistance (its edge to the body's box): within its building reach (D497: 400 cm for a
+	 * melee), walking or not. EtapeDefini O.7: no shorter reach on its way in, it strikes as soon as it comes within it.
+	 */
+	HEROESOFLIBERTY_API bool IsBuildingInReach(const FHOLUnitTypeConstants& Attacker, double EdgeDistance);
 
 	/**
 	 * Radius (cm, its edge to the box) within which the seeker takes on an enemy building by itself, when it found no enemy
@@ -270,30 +259,17 @@ namespace HOLCombat
 
 	/** Where a unit walks to strike a building: the box's point nearest it, pushed out by its radius and Gap (cm). */
 	HEROESOFLIBERTY_API FVector2D GetBuildingApproachPoint(const FVector2D& Position, float Radius, const FBox2D& Box, double Gap);
-
 	/**
-	 * EtapeDefini J: one place per unit of a group ordered to strike a building, given once with the order, on a ring about
-	 * the box (its sides off it by Radius + Gap, quarter arcs at the corners). Loop 11b (user's decision): at contact. The
-	 * ring's room: as many places as fit evenly all round with never two nearer than 2 radii in a straight line. A group
-	 * smaller than that: a continuous arc of places BuildingPlaceArcRadii (2.2) radii apart along the ring, centred on the projection of the group's
-	 * middle, one on each side in turn; round a corner a place moves on until it is 2 radii from the one before in a
-	 * straight line too (no hole). A group as big as the room or more: that ring full, evenly (spacing = length / places);
-	 * the farthest from the box go to a second ring 2 radii further (same rule), and so on. On each ring, the units sorted
-	 * by their projection on it (smallest Id on a tie) take the places in the same order (no crossing); on a full ring,
-	 * shifted round by the circular shift with the least sum of distances (the smallest shift on a tie): the same on every
-	 * machine. Box: the visible wall's (GetVisibleBodyBounds). OutPlaces[i] is the place of Positions[i]; O(n^2) a ring.
+	 * EtapeDefini O.7b loop 3 (the crowd wraps round, AoE4: "ils entourent de plus en plus"): where a melee out of reach walks
+	 * to strike a building: on the box pushed out by its radius and Gap (the round), the point along it nearest the one facing
+	 * it that no striking body (centres Bodies, radii BodyRadii) covers, searched both ways round a radius at a time; the
+	 * facing one when free, or when the whole round is covered. A body covers a point when on it, or (loop 6) in the column
+	 * out from it, as wide as the two bodies, as deep as the walker stands or as the reach goes (Reach: the edge's building
+	 * reach measured from Box; loop 9), whichever is deeper: the crowd's back rows bar the walk there as well, and the
+	 * columns round the corner are judged like the one ahead.
 	 */
-	HEROESOFLIBERTY_API void GetBuildingPlaces(TConstArrayView<FVector2D> Positions, TConstArrayView<uint32> Ids, float Radius, const FBox2D& Box,
-		double Gap, TArray<FVector2D>& OutPlaces);
-
-	/**
-	 * EtapeDefini J loop 10: a unit blocked on its way to its place (Place, on a ring about Box) by friends already on theirs
-	 * along the ring. OutChain: the indices of OtherPlaces on the same ring (within 1 cm) lying between From's projection and
-	 * Place, the short way round, nearest From first (the lower index on a tie). The caller shifts them one place on towards
-	 * Place: the unit takes the first, the last takes Place, so nobody has to walk behind a friend who strikes.
-	 */
-	HEROESOFLIBERTY_API void GetBuildingPlaceChain(const FVector2D& From, const FVector2D& Place, TConstArrayView<FVector2D> OtherPlaces,
-		const FBox2D& Box, TArray<int32>& OutChain);
+	HEROESOFLIBERTY_API FVector2D GetFreeBuildingWallPoint(const FVector2D& Position, float Radius, const FBox2D& Box, double Gap, double Reach,
+		TConstArrayView<FVector2D> Bodies, TConstArrayView<float> BodyRadii);
 
 	// Shots (J7c.2, J7c-Q1 to Q4). A shooter's hit is an arrow: released at the strike's moment of the gesture (the
 	// wind-up, the type's AttackWindUpPercent of the cadence, 12 % for the Archer), it flies the centre-to-centre
@@ -318,6 +294,21 @@ namespace HOLCombat
 
 	/** A friend fighting for ShouldComeToAid: striking, or taken on by an enemy (its attackers, or one that hit it). */
 	HEROESOFLIBERTY_API bool IsFriendFighting(bool bAttacking, int32 AttackerCount, bool bHasLastAttacker);
+
+	/**
+	 * How long (ms, simulation steps) a unit remembers the last enemy that hit it (FHOLCombatFragment::LastAttacker: the
+	 * riposte beyond its search radius) without a new hit (EtapeDefini S): past it, an attacker that walked off out of its
+	 * search radius is forgotten (no chase across the map, no "fighting" friend for the aid). The fog (M7) will add the
+	 * oblivion out of sight.
+	 */
+	inline constexpr int32 LastAttackerMemoryMs = 5000;
+
+	/**
+	 * Whether the last attacker is still remembered at StepIndex: its last hit (LastHitStep; -1: none) less than
+	 * LastAttackerMemoryMs ago, in whole steps of StepMs (100 steps at 20 Hz: forgotten at the 100th). A dead or gone
+	 * attacker is forgotten at once by the processor, whatever this says.
+	 */
+	HEROESOFLIBERTY_API bool KeepsLastAttacker(int64 StepIndex, int64 LastHitStep, int32 StepMs);
 
 	/**
 	 * Coming to a friend's aid (MV.4, choice C, AoE4): a melee soldier free to seek by itself (Auto: not on Hold nor an

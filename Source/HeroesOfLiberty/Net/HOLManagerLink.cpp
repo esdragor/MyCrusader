@@ -13,10 +13,6 @@
 
 namespace
 {
-	// R3.8: seconds after the match's end before the server quits with players left (R4.8 sends them to the lobby).
-	float QuitAfterFinished = 120.f;
-	FAutoConsoleVariableRef CVarQuitAfterFinished(TEXT("hol.Net.QuitAfterFinished"), QuitAfterFinished,
-		TEXT("R3.8: seconds after the match's end before a server launched by the manager quits"));
 	// R3.8: the longest wait for the manager's answer to "empty" before quitting.
 	float QuitEmptyWait = 2.f;
 	FAutoConsoleVariableRef CVarQuitEmptyWait(TEXT("hol.Net.QuitEmptyWait"), QuitEmptyWait,
@@ -46,18 +42,9 @@ FString FHOLManagerRules::MakeLeftBody(const FString& PlayerName)
 	return FString::Printf(TEXT("{\"playerName\":\"%s\"}"), *PlayerName.ReplaceCharWithEscapedChar());
 }
 
-FHOLManagerRules::EQuit FHOLManagerRules::ShouldQuit(const bool bManaged, const bool bStarted, const int32 PlayersLeft,
-	const double SecondsSinceFinished, const double FinishedDelay)
+FHOLManagerRules::EQuit FHOLManagerRules::ShouldQuit(const bool bManaged, const bool bStarted, const int32 PlayersLeft)
 {
-	if (!bManaged || !bStarted)
-	{
-		return EQuit::None;
-	}
-	if (PlayersLeft <= 0)
-	{
-		return EQuit::Empty;
-	}
-	return SecondsSinceFinished >= 0.0 && SecondsSinceFinished >= FinishedDelay ? EQuit::Finished : EQuit::None;
+	return bManaged && bStarted && PlayersLeft <= 0 ? EQuit::Empty : EQuit::None;
 }
 
 void UHOLManagerLink::Initialize(FSubsystemCollectionBase& Collection)
@@ -86,16 +73,26 @@ bool UHOLManagerLink::TickQuit(float)
 		return true;
 	}
 	const double Now = FPlatformTime::Seconds();
-	const FHOLManagerRules::EQuit Quit = FHOLManagerRules::ShouldQuit(IsActive(), bStartedSent, World->GetNumPlayerControllers(),
-		FinishedTime < 0.0 ? -1.0 : Now - FinishedTime, QuitAfterFinished);
-	if (Quit == FHOLManagerRules::EQuit::None
-		|| (Quit == FHOLManagerRules::EQuit::Empty && bEmptySent && !bEmptyAnswered && Now - EmptySentTime < QuitEmptyWait))
+	const FHOLManagerRules::EQuit Quit = FHOLManagerRules::ShouldQuit(IsActive(), bStartedSent, World->GetNumPlayerControllers());
+	if (Quit == FHOLManagerRules::EQuit::None)
+	{
+		EmptySeenTime = -1.0;
+		return true;
+	}
+	// "empty" last and before the quit (quick_check's "manager: empty once, last", 2026-10-28): the game mode asks it the
+	// frame after the last Logout (this ticker may run in between: waited for), it leaves once the "left" calls before it
+	// are answered (TrySendEmpty), and the quit waits for its answer; each wait at most hol.Net.QuitEmptyWait s.
+	if (EmptySeenTime < 0.0)
+	{
+		EmptySeenTime = Now;
+	}
+	TrySendEmpty(Now);
+	if ((!bEmptySent && Now - EmptySeenTime < QuitEmptyWait) || (bEmptySent && !bEmptyAnswered && Now - EmptySentTime < QuitEmptyWait))
 	{
 		return true;
 	}
 	bQuitting = true;
-	UE_LOG(LogHOLNet, Log, TEXT("Server quits: %s"), Quit == FHOLManagerRules::EQuit::Empty
-		? TEXT("empty after the match") : *FString::Printf(TEXT("%.0f s after the end of the match"), QuitAfterFinished));
+	UE_LOG(LogHOLNet, Log, TEXT("Server quits: empty after the match"));
 	RequestEngineExit(TEXT("HOLManagerLink R3.8"));
 	return true;
 }
@@ -119,7 +116,6 @@ void UHOLManagerLink::SendFinished(const TConstArrayView<int32> Winners)
 	if (!bFinishedSent)
 	{
 		bFinishedSent = true;
-		FinishedTime = FPlatformTime::Seconds();
 		Send(TEXT("finished"), FHOLManagerRules::MakeFinishedBody(Winners));
 	}
 }
@@ -136,12 +132,29 @@ void UHOLManagerLink::SendBack(const FString& PlayerName)
 
 void UHOLManagerLink::SendEmpty()
 {
-	if (!bEmptySent)
+	if (!bEmptyWanted)
 	{
-		bEmptySent = true;
-		EmptySentTime = FPlatformTime::Seconds();
-		Send(TEXT("empty"), FHOLManagerRules::MakeEmptyBody());
+		bEmptyWanted = true;
+		EmptyWantedTime = FPlatformTime::Seconds();
+		TrySendEmpty(EmptyWantedTime);
 	}
+}
+
+void UHOLManagerLink::TrySendEmpty(const double Now)
+{
+	// The calls before it (the last players' "left", sent the same frame or the one before) answered first: two requests
+	// in flight at once reach the manager in either order, and "empty" must be its last call (PROTOCOL.md).
+	if (!bEmptyWanted || bEmptySent || (PendingSends > 0 && Now - EmptyWantedTime < QuitEmptyWait))
+	{
+		return;
+	}
+	if (PendingSends > 0)
+	{
+		UE_LOG(LogHOLNet, Warning, TEXT("Manager: empty sent with %d calls still unanswered after %.1f s"), PendingSends, Now - EmptyWantedTime);
+	}
+	bEmptySent = true;
+	EmptySentTime = Now;
+	Send(TEXT("empty"), FHOLManagerRules::MakeEmptyBody());
 }
 
 void UHOLManagerLink::Send(const FString& Event, const FString& JsonBody)
@@ -158,6 +171,7 @@ void UHOLManagerLink::Send(const FString& Event, const FString& JsonBody)
 	Request->SetTimeout(10.f);
 	Request->OnProcessRequestComplete().BindWeakLambda(this, [this, Event, JsonBody](FHttpRequestPtr, const FHttpResponsePtr Response, const bool bConnected)
 	{
+		PendingSends = FMath::Max(0, PendingSends - 1);
 		bEmptyAnswered |= Event == TEXT("empty");
 		if (bConnected && Response.IsValid())
 		{
@@ -167,6 +181,9 @@ void UHOLManagerLink::Send(const FString& Event, const FString& JsonBody)
 		{
 			UE_LOG(LogHOLNet, Warning, TEXT("Manager: %s %s failed (no answer)"), *Event, *JsonBody);
 		}
+		// The "empty" waiting for this answer leaves now.
+		TrySendEmpty(FPlatformTime::Seconds());
 	});
+	++PendingSends;
 	Request->ProcessRequest();
 }

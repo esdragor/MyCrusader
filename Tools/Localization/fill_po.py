@@ -244,6 +244,16 @@ TRANSLATIONS = {
     "HOLHeroBlock,Return": ("Bring the hero back — {0} gold", "英雄を呼び戻す — {0} 金"),
     "HOLHeroBlock,NoGold": ("Not enough gold", "金が足りません"),
     "HOLHeroBlock,NoPlace": ("No Forum to return to", "帰還できる町の中心がありません"),
+    # P5 (D513): the limited pause, the Escape menu's button ({0} the pauses left) and the pause screen (Script/UI/
+    # HOLPauseScreen.as: {0} a name, the timer m:ss, a number).
+    "HOLGameMenu,Pause": ("Pause", "一時停止"),
+    "HOLGameMenu,PauseLeft": ("Pause ({0})", "一時停止（{0}）"),
+    "HOLPauseScreen,Title": ("Match paused", "一時停止中"),
+    "HOLPauseScreen,By": ("Paused by {0}", "{0} が一時停止しました"),
+    "HOLPauseScreen,TimerRunning": ("Anyone can resume in {0}", "{0} 後に誰でも再開できます"),
+    "HOLPauseScreen,TimerOver": ("Anyone can resume", "誰でも再開できます"),
+    "HOLPauseScreen,Left": ("Pauses left: {0}", "残りの一時停止：{0}"),
+    "HOLPauseScreen,Resume": ("Resume", "再開"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,AbsentLine": ("{Name}: connection lost — {Time}", "{Name}：接続が切れました — {Time}"),

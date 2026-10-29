@@ -3,6 +3,7 @@
 #include "AI/HOLAISummary.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionRules.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyGameModeBase.h"
@@ -113,8 +114,11 @@ bool FHOLAISummaryIdlePeasantsTest::RunTest(const FString& Parameters)
 	const FHOLAISummary Slot0 = HOLAISummary::Make(0, Units, {}, {}, {});
 	TestEqual(TEXT("slot 0's summary"), Slot0.PlayerIndex, 0);
 	TestEqual(TEXT("slot 0: its two idle Peasants, ascending"), JoinIds(Slot0.IdlePeasants), FString(TEXT("3 7")));
+	// IA1.5: all its Peasants, idle or not (the opening's builders), the dying, the soldier and slot 1's left out.
+	TestEqual(TEXT("slot 0: its six Peasants, ascending"), JoinIds(Slot0.PeasantIds), FString(TEXT("3 4 5 6 7 8")));
 	const FHOLAISummary Slot1 = HOLAISummary::Make(1, Units, {}, {}, {});
 	TestEqual(TEXT("slot 1: its own idle Peasant"), JoinIds(Slot1.IdlePeasants), FString(TEXT("9")));
+	TestEqual(TEXT("slot 1: its own Peasant"), JoinIds(Slot1.PeasantIds), FString(TEXT("9")));
 	const FHOLAISummary Slot2 = HOLAISummary::Make(2, Units, {}, {}, {});
 	TestEqual(TEXT("slot 2: none"), Slot2.IdlePeasants.Num(), 0);
 	return true;
@@ -392,6 +396,120 @@ bool FHOLAISummaryGatherableOnlyTest::RunTest(const FString& Parameters)
 				FString::Printf(TEXT("%d %d"), Berries, EnemyField));
 			AddInfo(FString::Printf(TEXT("%s | %s"), *Slot1.ToString(), *Slot0.ToString()));
 		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// IA1.3, the rule alone: the slot's own buildings and sites (by type name, then position), its queue, the population
+// figures and the Peasants by resource of its PlayerState, the centre.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAISummaryExtendedRuleTest, "HeroesOfLiberty.AI.Summary.ExtendedRule", UE::HeroesOfLiberty::Tests::AISummary::Flags)
+bool FHOLAISummaryExtendedRuleTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AISummary;
+	auto MakeBuilding = [](const int32 Owner, const FName Type, const EHOLConstructionState State, const FVector& Where, TArray<FName> Queue = {})
+	{
+		FHOLAIBuilding Building;
+		Building.OwnerPlayer = Owner;
+		Building.TypeName = Type;
+		Building.State = State;
+		Building.Location = Where;
+		Building.Queue = MoveTemp(Queue);
+		return Building;
+	};
+	const TArray<FHOLAIBuilding> Buildings = {
+		MakeBuilding(0, HOLBuildingTypeNames::LumberCamp, EHOLConstructionState::Foundation, FVector(4000, 0, 0)),
+		MakeBuilding(0, HOLBuildingTypeNames::MainCentre, EHOLConstructionState::Finished, FVector(0, 0, 0), { Peasant, Peasant, Spearman }),
+		MakeBuilding(1, HOLBuildingTypeNames::MainCentre, EHOLConstructionState::Finished, FVector(-9000, 0, 0), { Peasant }),
+		MakeBuilding(0, HOLBuildingTypeNames::LumberCamp, EHOLConstructionState::UnderConstruction, FVector(-3000, 0, 0)),
+	};
+	FHOLAIPlayerFigures Figures;
+	Figures.PopulationUsed = 12;
+	Figures.PopulationCap = 25;
+	Figures.Gatherers = FHOLResources(3, 4, 0, 1);
+
+	const FHOLAISummary Slot0 = HOLAISummary::Make(0, {}, {}, {}, {}, HOLAISummary::DefaultMaxSourcesPerResource, Buildings, Figures);
+	TestEqual(TEXT("slot 0: its three buildings, not slot 1's"), Slot0.Buildings.Num(), 3);
+	if (Slot0.Buildings.Num() == 3)
+	{
+		TestEqual(TEXT("by type name (LumberCamp before MainCentre), then by X"), Slot0.Buildings[0].Location.X, -3000.0);
+		TestEqual(TEXT("the site under construction"), Slot0.Buildings[0].State, EHOLConstructionState::UnderConstruction);
+		TestEqual(TEXT("the foundation"), Slot0.Buildings[1].State, EHOLConstructionState::Foundation);
+		TestEqual(TEXT("the centre last"), Slot0.Buildings[2].TypeName, HOLBuildingTypeNames::MainCentre);
+		TestEqual(TEXT("its queue"), Slot0.Buildings[2].Queue.Num(), 3);
+	}
+	TestTrue(TEXT("its centre"), Slot0.bHasCentre && Slot0.CentreLocation == FVector::ZeroVector);
+	TestEqual(TEXT("queued: its centre's three units"), Slot0.PopulationQueued, 3);
+	TestTrue(TEXT("population found"), Slot0.bHasPopulation);
+	TestEqual(TEXT("used"), Slot0.PopulationUsed, 12);
+	TestEqual(TEXT("cap"), Slot0.PopulationCap, 25);
+	TestEqual(TEXT("food Peasants"), Slot0.Food.Peasants, 3);
+	TestEqual(TEXT("wood Peasants"), Slot0.Wood.Peasants, 4);
+	TestEqual(TEXT("stone Peasants"), Slot0.Stone.Peasants, 0);
+	TestEqual(TEXT("gold Peasants"), Slot0.Gold.Peasants, 1);
+
+	const FHOLAISummary Slot1 = HOLAISummary::Make(1, {}, {}, {}, {}, HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {});
+	TestEqual(TEXT("slot 1: its centre"), Slot1.Buildings.Num(), 1);
+	TestTrue(TEXT("slot 1: centre at -9000"), Slot1.bHasCentre && Slot1.CentreLocation.X == -9000.0);
+	TestFalse(TEXT("slot 1: no PlayerState, no population"), Slot1.bHasPopulation);
+	TestEqual(TEXT("slot 1: zeros"), Slot1.PopulationUsed + Slot1.PopulationCap + Slot1.Wood.Peasants, 0);
+
+	const FHOLAISummary Slot2 = HOLAISummary::Make(2, {}, {}, {}, {}, HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {});
+	TestFalse(TEXT("slot 2: no centre"), Slot2.bHasCentre);
+	TestEqual(TEXT("slot 2: no building"), Slot2.Buildings.Num(), 0);
+	return true;
+}
+
+/**
+ * IA1.3 on the real chain: a test world, real buildings (Setup), a real production queue and a real PlayerState (its
+ * figures set by the setters the production and gather steps call), read by ReadAISummary.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAISummaryExtendedWorldTest, "HeroesOfLiberty.AI.Summary.ExtendedWorld", UE::HeroesOfLiberty::Tests::AISummary::Flags)
+bool FHOLAISummaryExtendedWorldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AISummary;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Player = World->SpawnActor<AHOLPlayerState>();
+	AHOLBuilding* Centre = World->SpawnActor<AHOLBuilding>(FVector(100.0, 200.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Camp = World->SpawnActor<AHOLBuilding>(FVector(4000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Other = World->SpawnActor<AHOLBuilding>(FVector(-10000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("state"), State) && TestNotNull(TEXT("player"), Player) && TestNotNull(TEXT("centre"), Centre)
+		&& TestNotNull(TEXT("camp"), Camp) && TestNotNull(TEXT("other"), Other))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index == 1 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+		}
+		State->InitVictory(Config);
+		Player->SetMatchSlot(0, 0);
+		Centre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Camp->Setup(HOLBuildingTypeNames::LumberCamp, 0, 0, EHOLConstructionState::Foundation);
+		Other->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		Centre->GetMutableProductionQueue().Add(FHOLProductionItem{ Peasant, FHOLProductionItem::NotStarted });
+		Centre->GetMutableProductionQueue().Add(FHOLProductionItem{ Peasant, FHOLProductionItem::NotStarted });
+		Player->SetPopulation(7, 20);
+		Player->SetGatherers(FHOLResources(2, 3, 0, 0));
+
+		const FHOLAISummary Summary = UHOLAISummaryLibrary::ReadAISummary(World, 0);
+		TestEqual(TEXT("two buildings of slot 0"), Summary.Buildings.Num(), 2);
+		TestTrue(TEXT("its centre at its place"), Summary.bHasCentre && Summary.CentreLocation.Equals(Centre->GetActorLocation(), 1.0));
+		const FHOLAIBuilding* Site = Summary.Buildings.FindByPredicate([](const FHOLAIBuilding& B) { return B.TypeName == HOLBuildingTypeNames::LumberCamp; });
+		TestTrue(TEXT("the camp site is a foundation, at 0 progress"), Site && Site->State == EHOLConstructionState::Foundation && Site->Progress == 0.f);
+		const FHOLAIBuilding* Main = Summary.Buildings.FindByPredicate([](const FHOLAIBuilding& B) { return B.TypeName == HOLBuildingTypeNames::MainCentre; });
+		TestTrue(TEXT("the centre is finished with two queued Peasants, none started"),
+			Main && Main->State == EHOLConstructionState::Finished && Main->Progress == 1.f && Main->Queue.Num() == 2 && !Main->bProducing);
+		TestEqual(TEXT("queued"), Summary.PopulationQueued, 2);
+		TestTrue(TEXT("population"), Summary.bHasPopulation && Summary.PopulationUsed == 7 && Summary.PopulationCap == 20);
+		TestEqual(TEXT("Peasants on food"), Summary.Food.Peasants, 2);
+		TestEqual(TEXT("Peasants on wood"), Summary.Wood.Peasants, 3);
+		AddInfo(Summary.ToString());
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

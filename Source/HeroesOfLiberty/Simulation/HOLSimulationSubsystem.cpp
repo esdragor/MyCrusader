@@ -148,6 +148,7 @@ namespace UE::HeroesOfLiberty::Simulation
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Kills));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Mode));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->DeathStep));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->LastHitStep));
 				MixInto(Parts->Combat, (Combat->bAttacking ? 1u : 0u) | (Combat->bApproaching ? 2u : 0u) | (Combat->bAttackMoveDetour ? 4u : 0u) | (Combat->bOrderedTarget ? 8u : 0u));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.X));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.Y));
@@ -293,9 +294,9 @@ void UHOLSimulationSubsystem::Deinitialize()
 
 void UHOLSimulationSubsystem::OnPrePhysicsPhaseStarted(const float DeltaSeconds)
 {
-	// R3.10: no step (movement, combat, production) while the match waits for its named players.
+	// R3.10: no step (movement, combat, production) while the match waits for its named players; P5 (D513): nor paused.
 	const AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-	if (GameState && GameState->IsWaitingForPlayers())
+	if (GameState && (GameState->IsWaitingForPlayers() || GameState->IsMatchPaused()))
 	{
 		Accumulator = 0.f;
 		return;

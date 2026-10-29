@@ -17,6 +17,10 @@ FString UHOLLocalPlayer::GetGameLoginOptions() const
 
 FString UHOLLocalPlayer::GetNickname() const
 {
+	if (!ChosenName.IsEmpty())
+	{
+		return FGenericPlatformHttp::UrlEncode(ChosenName);
+	}
 	FString Name;
 	return FParse::Value(FCommandLine::Get(), TEXT("PlayerName="), Name) ? FGenericPlatformHttp::UrlEncode(Name.TrimStartAndEnd()) : FString();
 }

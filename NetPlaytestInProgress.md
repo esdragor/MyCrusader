@@ -1769,3 +1769,211 @@ R8, R9.
   serveur cuit (cible Server, cache précompilé WindowsServer) et `-Parts lobby` ne sont pas vérifiés par elle** (verrou
   d'AutomationTool). À la reprise, l'étape (1) fusionne donc aussi aa0f11f : `-StageOnly` et `lobby` couvrent ce
   changement ; regarder la taille de `Servers\<v>\` à la publication r9.
+- 2026-10-28 ~14:30 : **reprise** : fusion de `main` a959e0e (J8a.5 bloc du héros, IA0.5-IA0.6) dans `net-playtest` →
+  **f59902d**, sans conflit, `Manager\` inchangé (pas de `build_manager.ps1`). Machine pas calme : ProjectShiva compile et
+  lance ses tests. Build PASS (158 s, en file derrière l'autre projet). En cours : `tests,net`.
+- 2026-10-28 ~14:40 : `tests,net` **PASS** (285/285, 227 s ; `net hero block` PASS) sur f59902d. `-StageOnly` **refusé en
+  6 s** : « UbaStorageServer - Needs exclusive access to storage … Another process is running » (compilation de
+  ProjectShiva en cours) : pas un défaut du code. En attente de la fin de cette compilation pour `-StageOnly`, puis `lobby`.
+- 2026-10-28 ~19:00 : `-StageOnly` toujours **FAIL**, cause trouvée : **le moteur `C:\UE\UE_5.8_AS_3` a été réinstallé
+  aujourd'hui à 15:40** par l'outil de ProjectShiva (`.shivaget-engine.json` : « installedAt 2026-10-28T14:40:44Z »,
+  revision 1) : **plus de cible Server** (pas de `Engine\Binaries\Win64\UnrealServer.target`, pas de ligne
+  `PlatformType="Server"` dans `BaseEngine.ini`) → UBT : « Server targets are not currently supported from this engine
+  distribution ». La fabrication du 2026-10-26 (avec Server) est écrasée. (Un premier essai a aussi planté UBT dans
+  `GitSourceFileWorkingSet`, une seule fois.) **Bloqué** : `-StageOnly`, `-Parts lobby`, publication r9, tout paquet
+  avec serveur. `net` (éditeur en mode serveur) et `tests` restent possibles. Question posée à l'utilisateur.
+- 2026-10-28 ~19:20 : **choix de l'utilisateur : reconstruire le moteur ici** (option 2). `C:\UE\Src` était vide (sources
+  du 2026-10-26 supprimées), plus de `C:\UE\Built`. Accès au dépôt Hazelight vérifié (`angelscript-master` 86158a2).
+  **M1 lancé** : clone `--depth 1` de `angelscript-master` dans `C:\UE\Src\HZ` (journal `C:\UE\Src\clone_HZ.log`).
+  Ensuite : M2 `Setup.bat` (dépendances), M3 BuildGraph « Make Installed Build Win64 » `-set:WithServer=true`
+  (Development + Shipping, ~10 h la dernière fois), M4 mise en place (aucun éditeur sur AS_3) + recompilation des copies.
+  Question à l'utilisateur : **ShivaGet a-t-il réinstallé AS_3 à sa demande ?** (sinon il recommencera) ; idée : moteur
+  reconstruit sous un autre nom. Pendant ce temps : P5 dans Glorfindel (build, `tests`, `net` sans cuisson).
+- 2026-10-28 ~19:50 : M1 fait (clone 86158a2, 5.8.4, 15 min). M2 `Setup.bat --force` en cours (31 Go de dépendances).
+  **P5.1 faite (règle pure)**, Glorfindel, non commitée : `Net\HOLPauseRules.h/.cpp` (`FState` : pauses restantes 3,
+  qui, quand ; `CanPause`, `CanResume`, `Pause`, `Resume`, `TimerLeft` 60 s ; solo sans limite ni minuteur ; joueurs
+  encore en partie seulement) ; test `HeroesOfLiberty.Net.PauseLimits` : **rouge** sur l'ébauche (285/286, « Expected
+  '3 pauses used' to be 0, but it was 3 », etc.) puis **vert** (286/286). Lancement du jeu de `quick_check` KO ×2
+  (« game launch ended by itself ») : ZenServer prêt en 30 s puis jeu muet jusqu'à la coupure de 120 s, disque saturé
+  par `Setup.bat` : à refaire après M2. Suivant : **P5.2** RPC serveur + état répliqué (compteur, qui, minuteur), le
+  monde figé côté serveur.
+- 2026-10-28 ~20:15 : **M2 fait** (`Setup.bat`, 31 Go). **M3 lancé à 19:53** : `C:\UE\Src\build_installed.cmd` (BuildGraph
+  « Make Installed Build Win64 », `HostPlatformOnly`, `WithServer=true`, `WithClient=false`, `WithDDC=false`,
+  `WithWin64NoPCH=false`, configurations du jeu par défaut Shipping / Development / DebugGame comme AS_3, sortie
+  `C:\UE\Built`), priorité basse, UBA coupé pour ce moteur seul (`C:\UE\Src\HZ\Engine\Saved\UnrealBuildTool\
+  BuildConfiguration.xml`) pour ne pas bloquer nos builds ; journal `C:\UE\Src\build_installed.log`.
+  **P5.2 faite** (Glorfindel, non commitée) : `AHOLGameState` : `PausesLeft`, `PausedBySlot`, `PausedByName`,
+  `PausedAtSeconds` répliqués (`OnPauseChanged`), `RequestPause` / `RequestResume` (règle P5.1 ; « joueur en partie » =
+  slot, pas spectateur, pas vaincu, partie pas finie), `hol.Match.PausesPerMatch` (3, lu au début de partie) ; pas de pas
+  de simulation ni d'ordre en pause (même garde que l'attente des joueurs) ; RPC `ServerRequestPause` / `ServerRequestResume`
+  du contrôleur ; commandes `hol.Match.Pause` / `hol.Match.Resume` ; `hol.Match.PauseReport` donne aussi la pause de la
+  partie. Partie `net` : Bob met en pause, Alice veut relancer (refusé : minuteur), Bob remet en pause (refusé : déjà),
+  le serveur fait deux rapports à 1 s, Bob relance, deux rapports. **Vert côté pause** : « slot 1 (Bob) paused, 2 left »,
+  « refused to Alice (slot 0): timer running », « refused to Bob (slot 1): already paused », pas figé à 71 sur les deux
+  rapports, « resumed by Bob », puis 91 → 112 ; tests 286/286. Seul KO : « client 2 (Alice) above her start before client
+  1's launch » (démarrage > 60 s, machine chargée par M3), pas la pause. **Rouge de bout en bout pas fait** (le code était
+  déjà là) : à faire avant le commit. Suivant : **P5.3** écran de pause (qui, minuteur, bouton « Pause » / « Reprendre »
+  du menu d'Échap, fr / en / ja) et entrées bloquées (caméra, sélection).
+- 2026-10-28 ~21:00 : **M3 arrêté à la demande de l'utilisateur** (« arrête de t'occuper de la fabrication du moteur avec
+  le serveur ») : arbre de processus de `build_installed.cmd` tué, plus rien sous `C:\UE\Src\HZ` ne tourne. Restent sur
+  le disque : sources `C:\UE\Src\HZ` (clone + `Setup.bat`, ~31 Go + sources), journaux `C:\UE\Src\*.log`. Le serveur
+  reste incuisable (AS_3 sans cible Server) : `-StageOnly`, `lobby`, publication r9 bloqués jusqu'à nouvel ordre.
+  P5.3 (écran de pause) en cours : build PASS ; `tests,net` lancé.
+- 2026-10-28 ~20:15 : **réponse de l'utilisateur : oui, ShivaGet a réinstallé AS_3 à sa demande** (obligatoire pour
+  ProjectShiva). AS_3 appartient donc à ProjectShiva et peut être réinstallé à nouveau : **ne pas écraser AS_3 à M4**. Le
+  moteur reconstruit (`C:\UE\Built`) sera installé **sous un autre nom** (proposé : `C:\UE\UE_5.8_HOL`, association
+  « UE 5.8 HOL » dans `HKCU\Software\Epic Games\Unreal Engine\Builds`), puis `EngineAssociation` du `.uproject` changé.
+  Nos scripts (`build.ps1`, `package.ps1`, `play.ps1`, tests) lisent l'association du `.uproject` puis le registre :
+  rien d'autre à changer. Ensuite : recompiler les copies (et supprimer `Intermediate\...\UHT` si C2440, comme le
+  2026-10-26).
+- 2026-10-28 ~21:10 : **P5.3 faite en grande partie** (Glorfindel, non commitée) : écran de pause en script
+  (`Script\UI\HOLPauseScreen.as` : vue pure + textes fr par clé `HOLPauseScreen,*` ; panneau dans `HOLGameScreenScript.as` :
+  calque sombre qui prend les clics, « Partie en pause », « Mise en pause par Bob », « Tout le monde pourra reprendre dans
+  0:58 » / « Tout le monde peut reprendre », « Pauses restantes : 2 », « Reprendre » grisé pour qui ne peut pas ; ligne
+  `HUD pause:` de `hol.HUD.Report`) ; `UHOLPauseLibrary` (`HOLPause::` en script) ; bouton « Pause » / « Pause (2) » du menu
+  d'Échap (`HOLGameMenu`, joueur encore en partie, grisé sans pause restante) ; `AHOLPlayerController::RequestPause` /
+  `RequestResume` / `IsInputFrozen` (caméra, sélection, ordres, touches de groupe ignorés en pause ; Échap libre).
+  `tests,net` **PASS** (286/286, 200 s) : Bob « paused by Bob, 60 s, 2 left, resume yes » puis « hidden », Alice « 58 s …
+  resume no » ; capture `Saved_Tests_Net2\Screenshots\WindowsEditor\HOL\qcnet_2_paused.png` vue (panneau centré, match
+  assombri). **Reste pour P5** : rouge de bout en bout (code retiré → KO), textes en / ja (`fill_po.py`, regroupement),
+  bouton « Pause » du menu et entrées bloquées non testés par script, solo (pause libre) non essayé, scénario d'essai pour
+  l'utilisateur (`Tools\Scenarios`), puis accord → commit. `net-playtest` hors de `main` tant que le serveur ne cuit pas.
+- 2026-10-28 ~21:15 : sources du moteur `C:\UE\Src\HZ` **gardées** (choix de l'utilisateur).
+- 2026-10-28 ~20:15 : l'utilisateur a arrêté la session réseau (M3 arrêtée à 94/9059) ; **le moteur passe à une autre
+  session** (chantier « moteur »). C: n'a que 331 Go libres (il en faut > 550 Go sources + sortie sur C:) : `HZ` (138 Go)
+  déplacé vers `D:\UE_src\HZ` (robocopy, journal `C:\UE\Src\move_HZ.log`), `build_installed.cmd` repointé (sources D:,
+  sortie `D:\UE\Built`), puis M3 relancée ; l'installation se fera dans `C:\UE\UE_5.8_HOL`.
+- 2026-10-28 ~21:35 : **rouge de bout en bout P5 fait** : serveur cassé exprès (`RequestPause` refuse toute pause en
+  réseau) → `net` **FAIL** sur les 4 contrôles de la pause seulement (« refused to Alice (slot 0): not paused | refused to
+  Bob (slot 1): not paused », « step 40 paused 0 … left 3 » ×6, écrans « hidden » partout) ; code remis, build, `net`
+  **PASS** (206 s). (Premier essai de rouge invalide : `return false;` en tête → C4702 « unreachable code », build en
+  échec, `net` passé sur l'ancien binaire : toujours lire la ligne du build avant le verdict.) Suivant : textes en / ja.
+- 2026-10-28 ~20:25 : D: est un **disque dur externe** (trop lent pour compiler) : déplacement arrêté à 4,6 Go et tout
+  ramené sur C: (fichiers absents seulement, `HZ` = 138,41 Go, git propre ; copie de D: supprimée). Plan : sources et
+  compilation sur C:, **seul le moteur fini sur `D:\UE\Built`** (copie d'un bloc à la fin), puis vider
+  `HZ\Engine\Intermediate` et recopier vers `C:\UE\UE_5.8_HOL`. **M3 relancée à 20:23** (priorité basse, PID 42344,
+  journal `C:\UE\Src\build_installed.log`, ancien `build_installed_run1.log`), place sur C: suivie dans
+  `C:\UE\Src\build_watch.log` (alerte sous 25 Go).
+- 2026-10-28 ~22:00 : **textes en / ja** : 8 clés (`HOLGameMenu,Pause|PauseLeft`, `HOLPauseScreen,*`) dans `fill_po.py`,
+  collecte ×2 autour (354 textes, 0 clé inconnue). **Solo vérifié par le vrai chemin** (scénario temporaire, retiré) :
+  `hol.UI.Open GameMenu` → focus `PauseButton` + Entrée → « Game menu: Pause », « slot 0 (257) paused, 3 left », figé au
+  pas 25, clic gauche → « Pause: selection ignored (match paused) », écran ja « 一時停止中 | 再開 » (capture vue), « Reprendre »
+  (`hol.HUD.Click`) → 45 → 65. Défaut corrigé : en solo le nom est celui du moteur (« 257 ») : ligne « Mise en pause par »
+  cachée en solo. **Scénario d'essai** `Tools\Scenarios\pause_solo.txt/.json` (solo ; le réseau ne peut pas être essayé
+  par l'utilisateur sans serveur cuit). Reste : essai de l'utilisateur, accord → commit sur `net-playtest`.
+- 2026-10-28 ~20:45 : place libérée sur C: (suppressions de l'utilisateur, puis `Saved\StagedBuilds`, `Saved_Tests\Logs`,
+  `Arwen\Saved\Packages` et la copie Celebrimbor retirée : 507 Go libres). **Sortie ramenée sur C:** : M3 arrêtée et
+  relancée à 20:45 (PID 85076, priorité basse) avec `BuiltDirectory=C:/UE/Built` ; à la fin, `C:\UE\Built\Windows` sera
+  renommé en `C:\UE\UE_5.8_HOL` (rien sur D:). Journaux : `build_installed.log` (`_run1`, `_run2` = essais arrêtés),
+  place suivie dans `build_watch.log`.
+- 2026-10-28 ~22:40 : **essai de l'utilisateur (scénario `pause_solo`)** : « les animations tournent toujours mais le reste
+  est bon ». Cause : la pause figeait la simulation, pas l'affichage ; animations des instances (`AnimSequenceTrackTime::
+  GetTime` = `World->GetTimeSeconds()`), chutes, flèches et corps vont à l'horloge du monde. **Corrigé** : à chaque
+  changement, une machine qui affiche (solo, client) met **son propre monde** en pause (`AWorldSettings::
+  SetPauserPlayerState`, local, une fois par changement : `bLocalPauseApplied`) ; le serveur dédié garde son horloge ; le
+  minuteur d'un client compte en temps réel depuis l'arrivée de la pause. Vérifs : solo, deux captures à 2 s d'écart en
+  pause **0 pixel changé** (après reprise : l'image bouge) ; `net` : contrôle « its world paused then running » sur les deux
+  clients (rouge d'abord sur 4 notifications par pause → corrigé), `tests,net` **PASS** (286/286, 206 s).
+  À l'utilisateur : refaire `pause_solo`.
+- 2026-10-28 ~21:00 : C: à 585 Go libres. **L'utilisateur part jusqu'au lendemain et donne son accord pour tout** : si C:
+  descend sous 25 Go, supprimer `AppData\Local\NVIDIA\DXCache`, `Temp\jszloabm`, `Temp\11f25m24` et `.nuget` ; à la fin
+  de M3 : M4 (renommer `C:\UE\Built\Windows` en `C:\UE\UE_5.8_HOL`, registre « UE 5.8 HOL », `.uproject` repointé dans
+  les copies, non commité), recompilation des copies, cuisson du serveur vérifiée (paquet + `packaged_smoke`) ; puis
+  **mettre le PC en veille prolongée** si tout est fini avant son retour.
+- 2026-10-28 ~22:55 : 2e essai `pause_solo` : « parfait » → **commit 5dd83fd** sur `net-playtest` (P5 pause limitée, D513).
+  `net-playtest` = 5dd83fd, **pas dans `main`** : `-StageOnly` / `lobby` impossibles tant qu'AS_3 n'a pas de cible Server
+  (reconstruction du moteur arrêtée par l'utilisateur, sources gardées dans `C:\UE\Src\HZ`). Reste du chantier : retour du
+  serveur cuisable → vérifs (`tests,net`, `-StageOnly`, `lobby`) et avance de `main` ; remesure de `MaxServers` (D502) et
+  publication r9 ; R8d / E5-E7 avec un ami.
+- 2026-10-28 ~23:00 : **pause du chantier** (demande de l'utilisateur) : **un autre agent fabrique le moteur avec la cible
+  Server** ; ne rien lancer sur AS_3 ni dans `C:\UE\Src` d'ici là. **Reprise exacte** (« continue NetPlaytestInProgress »,
+  quand l'utilisateur dit que le serveur est prêt) : (1) vérifier AS_3 : `Engine\Binaries\Win64\UnrealServer*.target` et
+  lignes `PlatformType="Server"` dans `Engine\Config\BaseEngine.ini` ; (2) Glorfindel, `net-playtest` = **5dd83fd** :
+  fusionner `main` si elle a avancé, `build.ps1` (si C2440 dans les `.gen.cpp` : supprimer le dossier UHT), `quick_check
+  -Parts tests,net` (286 tests ou plus), `net_match.ps1 -StageOnly`, `build_manager.ps1` si `Manager\` a changé,
+  `quick_check -Parts lobby` ; au vert : avance rapide de `main`, prévenir les sessions actives, retirer de `EtapeDefini.md`
+  la ligne « Partie de salon finie … 2 min », commit de doc ; (3) remesure de `MaxServers` (D502) et publication r9
+  (`publish.ps1 -Root Glorfindel -Version 2026-10-28-r9`, puis `-StageOnly`) au moment choisi par l'utilisateur ;
+  (4) R8d / E5-E7 avec un ami.
+- 2026-10-29 00:06 : M3 : éditeur fini (partie 2/10, 8944 actions, sans erreur), serveur en cours (3/10, 839/3688). C:
+  484 → 383 Go libres en 55 min : surveillance resserrée (chaque minute, alerte sous 50 Go) ; si besoin, les ~45 Go
+  autorisés (DXCache, Temp jszloabm / 11f25m24, .nuget). Si la copie finale manque de place : BuildGraph saute les
+  parties finies à la relance.
+- 2026-10-29 03:43 : **M3 PASS** (BuildGraph « Make Installed Build Win64 », 7 h 10, 0 erreur). **M4** : `C:\UE\Built\
+  Windows` renommé en **`C:\UE\UE_5.8_HOL`** (178,9 Go, 5.8.4, `UnrealServer.target` et lignes `PlatformType="Server"`
+  présentes), registre « UE 5.8 HOL » = `C:/UE/UE_5.8_HOL` ; `Intermediate` du moteur (`HZ\Engine` + plugins, ~184 Go)
+  supprimés, sources et `Binaries` gardés (C: 69 → 254 Go libres). `EngineAssociation` = « UE 5.8 HOL » dans les 7
+  copies (**non commité**, à commiter après validation). Éditeur de MyCrusader PASS (93 s). En cours : Server de
+  MyCrusader puis éditeur des 6 autres copies ; ensuite paquet complet + `packaged_smoke`.
+- 2026-10-29 04:05 : **cuisson du serveur dédié rétablie**, tout sur « UE 5.8 HOL » : Server de MyCrusader PASS (74 s),
+  éditeur PASS dans Arwen, Celeborn, Elrond, Galadriel, Glorfindel, Haldir (64-81 s, pas de C2440) ; **paquet complet
+  PASS** (`2026-10-29-a959e0e`, 3,4 min, Windows 1049 Mo, WindowsServer 985 Mo, `precompile_scripts` PASS 2 cibles) ;
+  **`packaged_smoke` PASS** (client 10 s, passage serveur ok en 2 s) ; `quick_check -Parts tests,aiserver` PASS (285/285,
+  49 s). Reste : **commiter le `.uproject` (« UE 5.8 HOL ») après validation de l'utilisateur** (7 copies modifiées) ;
+  la session réseau peut reprendre `-StageOnly`, `lobby`, r9. PC mis en veille prolongée (demande de l'utilisateur).
+- 2026-10-29 09:05 : validé par l'utilisateur, **`.uproject` → « UE 5.8 HOL » commité sur `main` (e6f1467)**. Les 6
+  worktrees ont la même modification non commitée : à leur prochaine fusion de `main`, si git refuse (« local changes
+  would be overwritten »), faire d'abord `git checkout -- HeroesOfLiberty.uproject` puis fusionner. Chantier moteur clos.
+- 2026-10-29 11:25 : **serveur de test cuit « pour tout le monde »** (demande de l'utilisateur, suite d'IA0.6-Q8) :
+  `net_match.ps1 -StageOnly` dans MyCrusader (`main` 8ea1b8e, « UE 5.8 HOL ») **PASS en 1,4 min** (binaire déjà à jour,
+  cuisson de 667 paquets : Plain, ses 5 tailles et StressTest ; `Version.txt` = dev ; 956 Mo). Copié (robocopy /MIR)
+  dans `Saved\StagedBuilds\WindowsServer` d'**Arwen, Celeborn, Elrond, Galadriel** (code serveur = `main` ; Arwen ne
+  diffère que par l'écran Nouvelle partie et les règles du client du gestionnaire). Pas dans Glorfindel (`net-playtest`
+  a son propre code serveur : recuire là-bas) ni Haldir (ancien). Le binaire garde sa date (03:50) : si une copie
+  recompile, le contrôle « cooked server newer than the code » de la partie `lobby` peut le signaler en cas d'échec.
+  **`quick_check -Parts lobby` impossible dans MyCrusader** : son `Saved\Manager` est le vrai gestionnaire du raccourci
+  (`latest.txt` = 2026-10-27-r8, qui l'emporte sur `--GameVersion=dev`) : 409 version_mismatch. Essai dans Elrond
+  (gestionnaire de test reconstruit, `build_manager.ps1 -Root <chemin absolu>` : un `-Root` relatif échoue) : FAIL
+  **sans rapport avec le serveur** : course au port 7790 avec le `lobby_match` d'Arwen lancé au même moment (la sonde
+  TCP passe, puis le gestionnaire d'Elrond ne peut pas s'y lier ; Alice et Bob d'Elrond vont dans le salon d'Arwen).
+  Session IA prévenue. Le serveur cuit a tout de même hébergé la partie d'Arwen (Dave refusé « The match is over »).
+  À refaire dans Elrond une fois le test d'Arwen fini. Défaut d'outil noté : `lobby_match.ps1` ne voit pas qu'un autre
+  gestionnaire a pris le port entre la sonde et le démarrage.
+- 2026-10-29 ~11:45 : test d'Arwen fini (session IA prévenue, elle a fini ses salons) → **`quick_check -Parts lobby`
+  PASS dans Elrond** avec le serveur cuit (181 s : salon, Prêt, partie, spectateur, abandon, retour au salon). Le
+  serveur de test est donc bon pour toutes les copies au code de `main`. La session IA signale l'autre sens de la
+  collision : une « Carol » d'une autre copie est entrée dans un serveur de partie d'Arwen (tous les serveurs de salon
+  partent du port UDP 7900, gestionnaire sondé depuis 7790). **À faire (outil, non corrigé)** : plages de ports par copie
+  dans `lobby_match.ps1` / `manager_client.ps1` (gestionnaire et `--FirstServerPort`), comme `Get-AITestPort` de
+  `quick_check`. Rien à commiter (seuls des fichiers de `Saved\` ont changé, plus `Elrond\Saved\Manager` reconstruit).
+- 2026-10-29 (session IA, Arwen `ai-ia1` d4ad92b, pas encore dans `main`) : **bug corrigé** : un joueur renommé sur l'écran
+  Multijoueur entrait dans la partie de son salon sous le nom de `-PlayerName=` (`GetNickname` remplaçait le `?Name=`),
+  donc en spectateur (vu à l'essai IA0.6). Correction : `UHOLLocalPlayer::SetChosenName` par `TakePlayerName`.
+  Concerne les `Joueur_<Nom>.bat` du paquet d'essai. Test : `lobby_match -AI` (Alice tape « Alicia »). Point ouvert
+  vu au même moment : ports des tests de salon entre copies (sonde 7790 du gestionnaire, serveurs depuis UDP 7900).
+- 2026-10-29 12:35 : **reprise du chantier (moteur « UE 5.8 HOL » prêt)** : Glorfindel, `.uproject` remis puis `main`
+  8ea1b8e fusionnée dans `net-playtest` (**f95c4e8** ; un conflit dans `quick_check.ps1` : la branche `hero` seule de
+  `main` et les étapes de pause limitée du serveur de la partie `net`, les deux gardées), `build.ps1` PASS (4 s, rien de
+  C++ dans les deux commits de `main`). `quick_check -Parts tests,net` lancé. **Défaut d'outil corrigé** (ports des tests
+  de salon entre copies) : nouveau `Tools/Tests/copy_ports.ps1` (`Get-CopyIndex`, `Get-FreeTcpPort`, même table de copies
+  que la partie `net` de `quick_check`) ; `lobby_match.ps1`, `manager_client.ps1` et `playtest_setup.ps1` prennent le
+  gestionnaire de test sur TCP 7790 + 10 × copie et les serveurs de partie sur UDP 7900 + 10 × copie (`manager_client`
+  passait avant `--FirstServerPort` par défaut, 7777). Non commité : vérifié par la partie `lobby` ensuite. Suite :
+  `net_match.ps1 -StageOnly`, `quick_check -Parts lobby`, puis avance de `main`.
+- 2026-10-29 13:05 : `tests,net` PASS (286/286, 234 s), `-StageOnly` PASS au 2e essai (le 1er : « conflicting instance
+  of AutomationTool », une autre session ; aucune ensuite), **`quick_check -Parts lobby` PASS** (223 s) avec les plages
+  par copie (gestionnaire sur TCP 7820, serveurs depuis UDP 7930 : Glorfindel = copie 3). Entre-temps `main` a avancé à
+  **4f5c297** (IA0.6 : IA au salon, L1-L5, D515-D516, `lobby_match -AI`, correctif du nom tapé à l'écran Multijoueur) :
+  correctif d'outil mis de côté (stash), `main` refusionnée (**eba5dc1**, sans conflit), stash remis sans conflit.
+  `Tools/Scenarios/ai_lobby.ps1` (essai IA au salon, venu de `main`) prenait 7850+ et 7960, dans les plages des tests :
+  passé sur une bande d'essai par copie (TCP 7590 + 10 × copie, UDP 8000 + 10 × copie, documentée dans
+  `copy_ports.ps1`). `build_manager.ps1` PASS (Manager/ a changé). En cours : `build.ps1` puis `-StageOnly` (code
+  serveur changé), puis `tests,net` et `lobby` à refaire avant l'avance de `main`.
+- 2026-10-29 13:40 : après eba5dc1 : `build.ps1` PASS (432 s), `build_manager` PASS, `-StageOnly` échoué 2 fois sur
+  « conflicting instance of Global\UnrealBuildTool_Mutex » (Celeborn compilait : UAT n'attend pas le verrou, lui) →
+  **outil corrigé** : `net_match.ps1` passe `-ubtargs=-WaitMutex` à BuildCookRun (comme `build.ps1`), 3e essai PASS
+  après attente ; `tests,net` PASS (288/288, 206 s), **`lobby` PASS** (220 s). `main` avait encore avancé (b032f0f :
+  partie `aiduel` de `quick_check`, rien de C++) : refusionnée (**2c02f5c**, sans conflit), `tests` PASS (288/288, 39 s).
+  **`main` avancée à 2c02f5c** (serveur gardé tant qu'il y a quelqu'un, pause limitée P5, moteur « UE 5.8 HOL ») ;
+  MyCrusader recompilée ; serveur cuit de Glorfindel (= `main` 2c02f5c, `Version.txt` dev) copié dans
+  `MyCrusader\Saved\StagedBuilds\WindowsServer` (les autres copies : recopier depuis Glorfindel ou recuire après leur
+  fusion de `main` : le serveur a changé, P5 et serveur gardé). Ligne « Partie de salon finie … 2 min » retirée
+  d'`EtapeDefini.md`. **Non commité, à valider par l'utilisateur** (dans Glorfindel) : `Tools/Tests/copy_ports.ps1`
+  (nouveau), `lobby_match.ps1`, `manager_client.ps1`, `playtest_setup.ps1`, `Tools/Scenarios/ai_lobby.ps1` (ports par
+  copie), `net_match.ps1` (`-WaitMutex`) ; vérifié par `lobby` PASS ×2 (gestionnaire 7820, serveurs 7930+). **Suite** :
+  commit de ces outils après validation (puis `main`), remesure de `MaxServers` (D502) et publication r9 au moment choisi
+  par l'utilisateur, R8d / E5-E7 avec un ami.
+- 2026-10-29 14:05 : validé par l'utilisateur (« go ») : **outils commités (c3d315f, `net-playtest`) et `main` avancée à
+  c3d315f** (ports par copie `copy_ports.ps1`, `-WaitMutex` de `net_match.ps1`). Glorfindel = `main`, gardé pour la suite
+  du chantier. **Reprise** : remesure de `MaxServers` (D502) et publication r9 (`publish.ps1 -Root Glorfindel -Version
+  2026-10-29-r9`, puis `-StageOnly`) au moment choisi par l'utilisateur ; R8d / E5-E7 avec un ami.

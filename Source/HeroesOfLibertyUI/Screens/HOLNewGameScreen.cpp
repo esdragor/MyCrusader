@@ -122,11 +122,14 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 		return Swatches;
 	}
 
-	/** A lobby slot's state (network mode). */
+	/** A lobby slot's state (network mode); IA0.6 L4: "IA" last (the leader's, LobbyAIState), shown with the AI's name. */
 	TArray<FText> LobbyStateNames()
 	{
-		return { LOCTEXT("Open", "Ouvert"), LOCTEXT("Closed", "Fermé"), LOCTEXT("NotReady", "Pas prêt"), LOCTEXT("Ready", "Prêt") };
+		return { LOCTEXT("Open", "Ouvert"), LOCTEXT("Closed", "Fermé"), LOCTEXT("NotReady", "Pas prêt"), LOCTEXT("Ready", "Prêt"), LOCTEXT("AI", "IA") };
 	}
+
+	/** IA0.6 L4: the value of "IA" in LobbyStateNames. */
+	constexpr int32 LobbyAIState = 4;
 
 	/** The lobby's state read twice a second (Manager/PROTOCOL.md). */
 	constexpr float ReadPeriod = 0.5f;
@@ -346,7 +349,7 @@ void UHOLNewGameScreen::NativeOnInitialized()
 
 		if (SlotStates[SlotIndex])
 		{
-			// IA0.6: "IA" is open in solo (the lobby has its own list, LobbyStateNames, without AI for now).
+			// IA0.6: "IA" in solo, and in the lobby for its leader (its own list, LobbyStateNames, L4).
 			SlotStates[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
 			{
 				HandleStateChosen(SlotIndex, Value);
@@ -536,13 +539,22 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 		FHOLMatchSlot& SlotConfig = Config.Slots[SlotIndex];
 		const FHOLLobbySlot* Row = Lobby.Slots.IsValidIndex(SlotIndex) ? &Lobby.Slots[SlotIndex] : nullptr;
 		const bool bPlayer = Row && Row->State == EHOLLobbySlotState::Player;
-		SlotConfig.State = bPlayer ? EHOLSlotState::Human : EHOLSlotState::Closed;
+		// IA0.6 L4: an AI holds its slot as in solo (colour, team, level), without a name.
+		const bool bAI = Row && Row->State == EHOLLobbySlotState::AI;
+		SlotConfig.State = bPlayer ? EHOLSlotState::Human : bAI ? EHOLSlotState::AI : EHOLSlotState::Closed;
 		SlotConfig.PlayerName = bPlayer ? Row->PlayerName : FString();
-		if (bPlayer)
+		if (bPlayer || bAI)
 		{
 			SlotConfig.ColorIndex = FMath::Clamp(Row->ColorIndex, 0, HOLPlayerColors::RandomColor);
 			SlotConfig.Team = FMath::Clamp(Row->Team, 0, FHOLMatchConfig::MaxTeams);
 			SlotConfig.Faction = Row->Faction == TEXT("BlackLegions") ? EHOLFaction::BlackLegions : EHOLFaction::DawnOrder;
+		}
+		if (bAI)
+		{
+			SlotConfig.Difficulty = Row->Level;
+		}
+		if (bPlayer)
+		{
 			Players.Add(Row->PlayerName);
 		}
 	}
@@ -557,35 +569,43 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	{
 		const FHOLLobbySlot* Row = Lobby.Slots.IsValidIndex(SlotIndex) ? &Lobby.Slots[SlotIndex] : nullptr;
 		const bool bPlayer = Row && Row->State == EHOLLobbySlotState::Player;
+		const bool bAI = Row && Row->State == EHOLLobbySlotState::AI;
 		const bool bMine = SlotIndex == Yours;
 		if (SlotNames[SlotIndex])
 		{
-			SlotNames[SlotIndex]->SetText(!bPlayer ? FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1)
+			// IA0.6 L4 (Q5): an AI's name is in its state list ("IA Normal 3"), as in solo.
+			SlotNames[SlotIndex]->SetText(bAI ? FText::GetEmpty() : !bPlayer ? FText::Format(LOCTEXT("PlayerN", "Joueur {0}"), SlotIndex + 1)
 				: Row->PlayerName == Lobby.Leader ? FText::Format(LOCTEXT("Leader", "♛ {0}"), FText::FromString(Row->PlayerName))
 				: FText::FromString(Row->PlayerName));
 		}
-		// Open, closed, not ready, ready (LobbyStateNames).
-		const int32 State = !Row || Row->State == EHOLLobbySlotState::Open ? 0 : !bPlayer ? 1 : Row->bReady ? 3 : 2;
-		// The leader opens and closes the slots nobody holds: Open and Closed only.
+		// Open, closed, not ready, ready, AI (LobbyStateNames).
+		const int32 State = !Row || Row->State == EHOLLobbySlotState::Open ? 0 : bAI ? LobbyAIState : !bPlayer ? 1 : Row->bReady ? 3 : 2;
+		const FText AIName = bAI ? HOLForumMessages::GetAIName(SlotIndex, Row->Level) : FText::GetEmpty();
+		// The leader opens and closes the slots no player holds, or puts an AI there (IA0.6 L4, Q4): Open, Closed and AI.
 		if (SlotStates[SlotIndex])
 		{
 			SlotStates[SlotIndex]->SetSelectedIndex(State);
 			SlotStates[SlotIndex]->SetIsEnabled(Lobby.CanToggleSlot(SlotIndex));
 			SlotStates[SlotIndex]->SetOptionEnabled(2, false);
 			SlotStates[SlotIndex]->SetOptionEnabled(3, false);
+			if (bAI)
+			{
+				SlotStates[SlotIndex]->SetShownText(AIName);
+			}
 		}
 		else if (SlotIndex == 0 && SlotYou)
 		{
-			SlotYou->SetText(LobbyStateNames()[State]);
+			SlotYou->SetText(bAI ? AIName : LobbyStateNames()[State]);
 		}
-		// Only my line is mine (M6-Q4); the faction is not changeable yet.
+		// Only my line is mine (M6-Q4), and an AI's is the leader's (IA0.6 L4); the faction is not changeable yet.
+		const bool bEditable = bMine || Lobby.CanEditAISlot(SlotIndex);
 		if (SlotColors[SlotIndex])
 		{
-			SlotColors[SlotIndex]->SetIsEnabled(bMine);
+			SlotColors[SlotIndex]->SetIsEnabled(bEditable);
 		}
 		if (SlotTeams[SlotIndex])
 		{
-			SlotTeams[SlotIndex]->SetIsEnabled(bMine);
+			SlotTeams[SlotIndex]->SetIsEnabled(bEditable);
 		}
 	}
 	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
@@ -624,7 +644,9 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	TArray<FString> SlotsShown;
 	for (const FHOLLobbySlot& Row : Lobby.Slots)
 	{
+		// IA0.6 L4: an AI "a<colour>" (no Ready).
 		SlotsShown.Add(Row.State == EHOLLobbySlotState::Open ? FString(TEXT("o")) : Row.State == EHOLLobbySlotState::Closed ? FString(TEXT("x"))
+			: Row.State == EHOLLobbySlotState::AI ? FString::Printf(TEXT("a%d"), Row.ColorIndex)
 			: FString::Printf(TEXT("c%d%s"), Row.ColorIndex, Row.bReady ? TEXT("r") : TEXT("")));
 	}
 	const FString Logged = FString::Printf(TEXT("%d players (%s), you %s, leader %s, %d/%d ready, launch %s, slots %s"), Players.Num(),
@@ -706,9 +728,11 @@ void UHOLNewGameScreen::Refresh()
 	}
 	// TC3 (TC-Q4): the slots past the places of the size are closed, not changeable (the lobby sets its own, loop 2).
 	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
-	// IA0.6 S2: the name column and "Emplacement" in a lobby only; the level column in solo only.
+	// IA0.6 S2: the name column and "Emplacement" in a lobby only; the level column in solo, and in a lobby with an AI
+	// (L4: a lobby without one keeps its width).
+	const bool bLevelColumn = !bLobby || Config.Slots.ContainsByPredicate([](const FHOLMatchSlot& Each) { return Each.State == EHOLSlotState::AI; });
 	ShowCell(HeadName, bLobby, false);
-	ShowCell(HeadLevel, !bLobby, false);
+	ShowCell(HeadLevel, bLevelColumn, false);
 	if (HeadSlot)
 	{
 		HeadSlot->SetText(bLobby ? LOCTEXT("Slot", "Emplacement") : LOCTEXT("Player", "Joueur"));
@@ -720,9 +744,10 @@ void UHOLNewGameScreen::Refresh()
 		const bool bAI = SlotConfig.State == EHOLSlotState::AI;
 		if (SlotStates[SlotIndex])
 		{
-			SlotStates[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.State));
+			// The lobby's list has its own values (LobbyStateNames), set by ShowLobby.
 			if (!bLobby)
 			{
+				SlotStates[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.State));
 				SlotStates[SlotIndex]->SetIsEnabled(SlotIndex < NumPlaces);
 				// IA0.6 S2 (Q1): the name the slot will have, as the game names it (GetAIName, GetSlotName); "Fermé" stays.
 				if (bAI)
@@ -739,7 +764,7 @@ void UHOLNewGameScreen::Refresh()
 		if (SlotLevels[SlotIndex])
 		{
 			SlotLevels[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.Difficulty));
-			ShowCell(SlotLevels[SlotIndex], !bLobby && bAI, !bLobby);
+			ShowCell(SlotLevels[SlotIndex], bLevelColumn && bAI, bLevelColumn);
 		}
 		if (SlotFactions[SlotIndex])
 		{
@@ -869,9 +894,36 @@ void UHOLNewGameScreen::SendSettings()
 	}
 }
 
+void UHOLNewGameScreen::SendSlotAI(const int32 SlotIndex, const TOptional<int32> ColorIndex, const TOptional<int32> Team)
+{
+	UHOLManagerClient* Client = GetClient();
+	if (!Client)
+	{
+		return;
+	}
+	// IA0.6 L4 (Q4): "slot 2 ai" puts the AI, "ai 2 colour 5" and "ai 2 team 2" change it.
+	const FString What = ColorIndex.IsSet() ? FString::Printf(TEXT("ai %d colour %d"), SlotIndex, ColorIndex.GetValue())
+		: Team.IsSet() ? FString::Printf(TEXT("ai %d team %d"), SlotIndex, Team.GetValue()) : FString::Printf(TEXT("slot %d ai"), SlotIndex);
+	UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
+	Client->SetSlotAI(SlotIndex, ColorIndex, Team, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
+	{
+		HandleWritten(Written, Error, What);
+	}));
+}
+
+bool UHOLNewGameScreen::IsLobbyAI(const int32 SlotIndex) const
+{
+	return bLobby && Lobby.Slots.IsValidIndex(SlotIndex) && Lobby.Slots[SlotIndex].State == EHOLLobbySlotState::AI;
+}
+
 void UHOLNewGameScreen::HandleTeamChosen(const int32 SlotIndex, const int32 Value)
 {
 	Config.Slots[SlotIndex].Team = Value;
+	if (IsLobbyAI(SlotIndex))
+	{
+		SendSlotAI(SlotIndex, {}, Value);
+		return;
+	}
 	if (UHOLManagerClient* Client = bLobby ? GetClient() : nullptr)
 	{
 		const FString What = FString::Printf(TEXT("team %d"), Value);
@@ -975,7 +1027,12 @@ void UHOLNewGameScreen::HandleStateChosen(const int32 SlotIndex, const int32 Val
 {
 	if (bLobby)
 	{
-		// Open (0) or closed (1), the leader's (LobbyStateNames); the next read puts back the manager's value.
+		// Open (0) or closed (1), or an AI (IA0.6 L4), the leader's (LobbyStateNames); the next read puts back the manager's value.
+		if (Value == UE::HeroesOfLiberty::UI::NewGame::LobbyAIState)
+		{
+			SendSlotAI(SlotIndex, {}, {});
+			return;
+		}
 		UHOLManagerClient* Client = GetClient();
 		if (Client && Value <= 1)
 		{
@@ -1011,6 +1068,11 @@ void UHOLNewGameScreen::HandleColorChosen(const int32 SlotIndex, const int32 Val
 	// A colour held by another occupied slot is greyed in the list: this one is free.
 	Config.Slots[SlotIndex].ColorIndex = Value;
 	Refresh();
+	if (IsLobbyAI(SlotIndex))
+	{
+		SendSlotAI(SlotIndex, Value, {});
+		return;
+	}
 	if (UHOLManagerClient* Client = bLobby ? GetClient() : nullptr)
 	{
 		const FString What = FString::Printf(TEXT("colour %d"), Value);

@@ -209,6 +209,128 @@ bool UHOLConstructionSubsystem::FindFreeFootprint(const UWorld& World, const FBo
 		[&Placement](const FBox2D& Candidate) { return Placement.IsOnNavMesh(Candidate); }, OutFootprint, &OutRing);
 }
 
+namespace UE::HeroesOfLiberty::Construction
+{
+	/** Whether Footprint may go with Planned built too: every rule of CheckPlacement, the navmesh included. */
+	bool IsFreeWith(FPlacementWorld& Placement, const FBox2D& Footprint, TConstArrayView<FBox2D> Planned)
+	{
+		const int32 Num = Placement.Buildings.Num();
+		Placement.Buildings.Append(Planned.GetData(), Planned.Num());
+		const FHOLPlacementQuery Query = Placement.MakeQuery(Footprint);
+		bool bFree = HOLConstruction::CheckPlacement(Query) == EHOLPlacementRefusal::None;
+		if (bFree && Placement.NavSystem)
+		{
+			bFree = Placement.IsOnNavMesh(Footprint);
+		}
+		Placement.Buildings.SetNum(Num, EAllowShrinking::No);
+		return bFree;
+	}
+
+	/** The footprints of Type's size in rings of tiles around Centre (ring 0 the snapped one), ring by ring, nearest Centre first. */
+	void EnumerateRings(const FHOLBuildingTypeRow& Type, const FVector2D& Centre, const int32 MaxRings, TArray<FBox2D>& OutBoxes)
+	{
+		const double Grid = UHOLBuildingSettings::GetTileSize();
+		const FBox2D Start = HOLConstruction::SnapToGrid(Centre, Type.Footprint, Grid);
+		for (int32 Ring = 0; Ring <= MaxRings; ++Ring)
+		{
+			TArray<FBox2D> InRing;
+			for (int32 Y = -Ring; Y <= Ring; ++Y)
+			{
+				for (int32 X = -Ring; X <= Ring; ++X)
+				{
+					if (FMath::Max(FMath::Abs(X), FMath::Abs(Y)) == Ring)
+					{
+						InRing.Add(Start.ShiftBy(FVector2D(X * Grid, Y * Grid)));
+					}
+				}
+			}
+			// Stable: the candidates were listed Y then X, a tie keeps that order.
+			InRing.StableSort([&Centre](const FBox2D& A, const FBox2D& B)
+			{
+				return FVector2D::DistSquared(A.GetCenter(), Centre) < FVector2D::DistSquared(B.GetCenter(), Centre);
+			});
+			OutBoxes.Append(InRing);
+		}
+	}
+}
+
+bool UHOLConstructionSubsystem::FindRingFootprint(const UWorld& World, const FHOLBuildingTypeRow& Type, const FVector2D& Centre, const int32 PlayerIndex,
+	const int32 MaxRings, const TConstArrayView<FBox2D> Planned, FBox2D& OutFootprint)
+{
+	using namespace UE::HeroesOfLiberty::Construction;
+
+	if (MaxRings < 0)
+	{
+		return false;
+	}
+	FPlacementWorld Placement;
+	Placement.Gather(World, PlayerIndex);
+	TArray<FBox2D> Candidates;
+	EnumerateRings(Type, Centre, MaxRings, Candidates);
+	for (const FBox2D& Candidate : Candidates)
+	{
+		if (IsFreeWith(Placement, Candidate, Planned))
+		{
+			OutFootprint = Candidate;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool UHOLConstructionSubsystem::FindFarmBlock(const UWorld& World, const FHOLBuildingTypeRow& MillType, const FHOLBuildingTypeRow& FarmType,
+	const FVector2D& Centre, const int32 PlayerIndex, const int32 MaxRings, FBox2D& OutMill, TArray<FBox2D>& OutFarms)
+{
+	using namespace UE::HeroesOfLiberty::Construction;
+
+	if (MaxRings < 0)
+	{
+		return false;
+	}
+	FPlacementWorld Placement;
+	Placement.Gather(World, PlayerIndex);
+	TArray<FBox2D> Candidates;
+	EnumerateRings(MillType, Centre, MaxRings, Candidates);
+	for (const FBox2D& MillBox : Candidates)
+	{
+		if (!IsFreeWith(Placement, MillBox, {}))
+		{
+			continue;
+		}
+		// The 3 x 3 cells: the mill in the middle, a farm in each of the 8 others, touching it.
+		TArray<FBox2D> Planned;
+		Planned.Add(MillBox);
+		const FVector2D Step = (FVector2D(MillType.Footprint) + FVector2D(FarmType.Footprint)) * 0.5;
+		bool bAll = true;
+		for (int32 Y = -1; Y <= 1 && bAll; ++Y)
+		{
+			for (int32 X = -1; X <= 1 && bAll; ++X)
+			{
+				if (X == 0 && Y == 0)
+				{
+					continue;
+				}
+				const FBox2D Farm = HOLConstruction::MakeFootprint(MillBox.GetCenter() + FVector2D(X * Step.X, Y * Step.Y), FVector2D(FarmType.Footprint));
+				if (IsFreeWith(Placement, Farm, Planned))
+				{
+					Planned.Add(Farm);
+				}
+				else
+				{
+					bAll = false;
+				}
+			}
+		}
+		if (bAll)
+		{
+			OutMill = MillBox;
+			OutFarms = TArray<FBox2D>(Planned.GetData() + 1, Planned.Num() - 1);
+			return true;
+		}
+	}
+	return false;
+}
+
 const TCHAR* UHOLConstructionSubsystem::DescribeRefusal(const EHOLPlacementRefusal Refusal)
 {
 	switch (Refusal)

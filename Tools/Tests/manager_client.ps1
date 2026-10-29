@@ -33,8 +33,13 @@
 # list with the red reason ("Multiplayer: lobby lost: ...", manager_client_killed.png); the time from the kill to the
 # game's "Manager: match lost" is printed. No HeroesOfLibertyServer of this copy is left.
 # -Case NameTaken: the game joins under the name "Alice": the red line "Ce nom est deja pris" is waited for and captured.
+# -Case AI (IA0.6 L4): as Leader; Alice ready by HTTP, Bob presses Ready (2/2), then puts an AI on slot 2 by its list
+# (hol.UI.Choose SlotState2 4, "IA"): the Ready are reset ("0/2 ready", slots "c0 c1 a2 ..."), the list shows "IA Normal 3"
+# (hol.UI.Text), the level list is shown greyed (hol.UI.Shown); Bob gives the AI the colour 5 and the team 2 by its lists,
+# the lobby is captured (manager_client_ai.png) and the manager read (slot 2 "ai", colour 5, team 2, nobody ready); Bob
+# closes the slot (AI taken away), Alice ready again, Bob ready, Launch sent (500 without a server, as Leader).
 # Prints one line PASS / FAIL; exit code 0 / 1. The manager is always stopped.
-param([string] $EngineDir = "", [switch] $Screen, [ValidateSet("", "Off", "OtherVersion", "Lobby", "NameTaken", "Ready", "Leader", "Match", "Return", "Killed")] [string] $Case = "")
+param([string] $EngineDir = "", [switch] $Screen, [ValidateSet("", "Off", "OtherVersion", "Lobby", "NameTaken", "Ready", "Leader", "Match", "Return", "Killed", "AI")] [string] $Case = "")
 if ($Case) { $Screen = $true }
 $ErrorCase = $Case -in @("Off", "OtherVersion")
 $LobbyCase = $Case -in @("Lobby", "NameTaken", "Ready")
@@ -57,11 +62,12 @@ $ManagerLog = Join-Path $Work "manager.log"
 New-Item -ItemType Directory -Force (Split-Path $GameLog) | Out-Null
 Remove-Item $GameLog, $ManagerLog -ErrorAction SilentlyContinue
 
-# A free TCP port from 7790 (another copy's manager may hold 7700).
-$Port = 7790
-while ($Port -lt 7890) {
-    try { $Probe = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port); $Probe.Start(); $Probe.Stop(); break } catch { $Port++ }
-}
+# This copy's own ports (copy_ports.ps1): its test manager on a free TCP port of its range (another copy's manager may
+# hold 7700, another copy's test runs in its own range), its match servers from its own UDP range.
+. (Join-Path $PSScriptRoot "copy_ports.ps1")
+$CopyIndex = Get-CopyIndex $Project
+$Port = Get-FreeTcpPort (7790 + 10 * $CopyIndex)
+$FirstServerPort = 7900 + 10 * $CopyIndex
 $Url = "http://127.0.0.1:${Port}"
 $LobbyName = "Salon R4 test"
 $Failure = $null
@@ -72,7 +78,8 @@ $ManagerArguments = "--urls $Url --GameVersion=$Served"
 if ($Case -in @("Match", "Return", "Killed")) {
     $ServerExe = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
     if (-not (Test-Path $ServerExe)) { Write-Host "manager_client : FAIL (no $ServerExe; run Tools\Tests\net_match.ps1 -Stage)"; exit 1 }
-    $ManagerArguments += " --ServerExe=`"$ServerExe`" --ManagerUrl=$Url"
+    # Its match servers from this copy's UDP range (not the manager's default 7777: another copy's lobby test or game).
+    $ManagerArguments += " --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort"
     # A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion): "dev" for the time of the
     # test, as the game in the editor (package.ps1 writes the real one into a package).
     $ServerVersion = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"
@@ -111,7 +118,7 @@ try {
             try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 }
         }
         if (-not $Status) { throw "the manager does not answer on $Url" }
-    if ($Case -in @("Leader", "Match", "Return", "Killed")) {
+    if ($Case -in @("Leader", "Match", "Return", "Killed", "AI")) {
         $IsMatch = $Case -in @("Match", "Return", "Killed")
         $AfterMatch = if ($Case -eq "Return") { @("wait 30", "wait 30", "wait 8", "hol.Victory.Surrender", "waitlog End banner: lobby match", "wait 1.5", "capture manager_client_return", "hol.UI.Focus ReturnButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitmap MainMenu", "waitlog Menu: back in lobby", "wait 3") }
             elseif ($Case -eq "Killed") { @("waitmap MainMenu", "waitui", "waitlog Multiplayer: lobby lost", "frames 10", "capture manager_client_killed", "wait 1") } else { @() }
@@ -122,6 +129,21 @@ try {
             "hol.UI.Focus ReadyButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog 2/2 ready", "wait 1",
             "capture manager_client_leader", "hol.UI.Focus LaunchButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15",
             "waitlog Lobby: start sent", $(if ($IsMatch) { "waitlog Lobby: joining match" } else { "wait 2" }), $(if ($IsMatch) { "waitmap Plain" } else { "wait 0" }), "wait 3") + $AfterMatch + @("quit") | Set-Content -Encoding utf8 $Sequence
+        if ($Case -eq "AI") {
+            # IA0.6 L4: the AI put, shown, changed, then taken away; the waits on the lobby's own line ("slots ...").
+            @("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3",
+                "hol.UI.Focus CreateButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog : 2 players (", "waitui", "wait 1",
+                "hol.UI.Focus ReadyButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog 2/2 ready", "wait 0.5",
+                "hol.UI.Choose SlotState2 4", "waitlog 0/2 ready, launch shown, slots c0 c1 a2 o o o o o", "wait 0.5",
+                "hol.UI.Text SlotState2 SlotName2", "hol.UI.Shown SlotLevel2 SlotLevel1 HeadLevel", "frames 2",
+                "hol.UI.Choose SlotColor2 5", "waitlog slots c0 c1 a5 o o o o o", "wait 0.5",
+                "hol.UI.Choose SlotTeam2 2", "waitlog Lobby: ai 2 team 2 accepted", "wait 1",
+                "capture manager_client_ai", "wait 2",
+                "hol.UI.Choose SlotState2 1", "waitlog Lobby: slot 2 closed accepted", "waitlog 1/2 ready", "wait 0.5",
+                "hol.UI.Focus ReadyButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog 2/2 ready", "wait 1",
+                "hol.UI.Focus LaunchButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15",
+                "waitlog Lobby: start sent", "wait 2", "wait 3", "quit") | Set-Content -Encoding utf8 $Sequence
+        }
         $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -saveddirsuffix=Tests " +
             "-PlayerName=Bob -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$GameLog`""
         $Game = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
@@ -162,7 +184,22 @@ try {
                 continue
             }
             $Read = Invoke-RestMethod "${Url}/lobbies/$($Alice.lobby.id)" -Headers @{ "X-Player-Token" = $Alice.token } -TimeoutSec 2
-            if (-not $AliceReady -and $Read.slots[2].state -eq "closed") {
+            if ($Case -eq "AI") {
+                # Alice ready at once, then again once the AI is taken away (closing its slot resets the Ready).
+                if (-not $AliceReadyFirst) {
+                    Invoke-RestMethod "${Url}/lobbies/$($Alice.lobby.id)/me" -Method Put -Body '{ "ready": true }' -ContentType "application/json" -Headers @{ "X-Player-Token" = $Alice.token } | Out-Null
+                    $AliceReadyFirst = $true; Write-Host "Alice ready"
+                }
+                if (-not $AIRead -and (Test-Path $GameLog) -and (Select-String -Path $GameLog -Pattern "Test capture: manager_client_ai" -Quiet)) {
+                    $AIRead = $Read; Write-Host "manager read with the AI"
+                }
+                if ($AIRead -and -not $AliceReady -and $Read.slots[2].state -eq "closed") {
+                    $AIClosedRead = $Read
+                    Invoke-RestMethod "${Url}/lobbies/$($Alice.lobby.id)/me" -Method Put -Body '{ "ready": true }' -ContentType "application/json" -Headers @{ "X-Player-Token" = $Alice.token } | Out-Null
+                    $AliceReady = $true; Write-Host "Alice ready again"
+                }
+            }
+            elseif (-not $AliceReady -and $Read.slots[2].state -eq "closed") {
                 Invoke-RestMethod "${Url}/lobbies/$($Alice.lobby.id)/me" -Method Put -Body '{ "ready": true }' -ContentType "application/json" -Headers @{ "X-Player-Token" = $Alice.token } | Out-Null
                 $AliceReady = $true
                 Write-Host "Alice ready"
@@ -175,13 +212,31 @@ try {
             }
         }
         if (-not $Game.HasExited) { Stop-Process -Id $Game.Id -Force -ErrorAction SilentlyContinue }
-        $Lines = if (Test-Path $GameLog) { @(Select-String -Path $GameLog -Encoding utf8 -Pattern "Multiplayer|LogHOLUI: Display: (Lobby|End banner|Menu)|Test capture|Test run|LogHOLNet: (Display: )?Manager" | ForEach-Object { $_.Line }) } else { @() }
+        $Lines = if (Test-Path $GameLog) { @(Select-String -Path $GameLog -Encoding utf8 -Pattern "Multiplayer|LogHOLUI: Display: (Lobby|End banner|Menu)|Test capture|Test run|LogHOLNet: (Display: )?Manager|LogHOLUI: Display: (Text|Shown) " | ForEach-Object { $_.Line }) } else { @() }
         $Lines | ForEach-Object { Write-Host "  $_" }
         Write-Host "  manager: state $($Read.state), slot 2 $($Read.slots[2].state)"
+        if ($Case -eq "AI") {
+            $AISlot = if ($AIRead) { $AIRead.slots[2] }
+            $AIReady = if ($AIRead) { @($AIRead.slots | Where-Object { $_.state -eq "player" -and $_.ready }).Count } else { -1 }
+            Write-Host "  manager with the AI: slot 2 $($AISlot.state) level $($AISlot.level) colour $($AISlot.colorIndex) team $($AISlot.team), players ready $AIReady; after closing: slot 2 $(if ($AIClosedRead) { $AIClosedRead.slots[2].state } else { 'not read' })"
+        }
         if (-not $Alice) { $Failure = "no lobby created by the game" }
         elseif (-not ($Lines -match "you Bob, leader Bob, .* launch shown")) { $Failure = "Bob, the leader, does not log 'launch shown'" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Lobby: slot 2 ai sent")) { $Failure = "no 'Lobby: slot 2 ai sent' (no IA in the slot list?)" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Lobby: slot 2 ai accepted")) { $Failure = "no 'Lobby: slot 2 ai accepted'" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "you Bob, leader Bob, 0/2 ready, launch shown, slots c0 c1 a2 o o o o o$")) { $Failure = "no lobby line '0/2 ready ... slots c0 c1 a2 o o o o o' (AI marker, Ready reset)" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Text SlotState2: IA Normal 3$")) { $Failure = "the slot list does not show 'IA Normal 3'" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Shown SlotLevel2: yes, greyed$")) { $Failure = "the AI's level list is not shown greyed" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Shown SlotLevel1: no")) { $Failure = "a player's line shows a level list" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Lobby: ai 2 colour 5 accepted")) { $Failure = "no 'Lobby: ai 2 colour 5 accepted'" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "slots c0 c1 a5 o o o o o$")) { $Failure = "no lobby line 'slots c0 c1 a5 ...'" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLUI: Display: Lobby: ai 2 team 2 accepted")) { $Failure = "no 'Lobby: ai 2 team 2 accepted'" }
+        elseif ($Case -eq "AI" -and (-not $AISlot -or $AISlot.state -ne "ai" -or $AISlot.colorIndex -ne 5 -or $AISlot.team -ne 2 -or $AISlot.level -ne "Normal")) { $Failure = "the manager does not have an AI Normal in colour 5, team 2 on slot 2" }
+        elseif ($Case -eq "AI" -and $AIReady -ne 0) { $Failure = "Ready not reset by the AI ($AIReady players ready)" }
+        elseif ($Case -eq "AI" -and -not ($Lines -match "LogHOLTest: Display: Test capture: manager_client_ai")) { $Failure = "no capture" }
+        elseif ($Case -eq "AI" -and (-not $AIClosedRead -or -not ($Lines -match "slots c0 c1 x o o o o o$"))) { $Failure = "the AI not taken away by Closed (manager or lobby line 'slots c0 c1 x ...')" }
         elseif (-not ($Lines -match "LogHOLUI: Display: Lobby: slot 2 closed accepted")) { $Failure = "no 'Lobby: slot 2 closed accepted'" }
-        elseif (-not ($Lines -match "LogHOLTest: Display: Test capture: manager_client_leader")) { $Failure = "no capture" }
+        elseif ($Case -ne "AI" -and -not ($Lines -match "LogHOLTest: Display: Test capture: manager_client_leader")) { $Failure = "no capture" }
         elseif (-not ($Lines -match "LogHOLUI: Display: Lobby: start sent")) { $Failure = "no 'Lobby: start sent'" }
         elseif ($Lines -match "LogHOLUI: Display: Lobby: start accepted \(HTTP 202\)") { $Started = "202, lobby $($Read.state)" }
         elseif ($Lines -match "LogHOLUI: Display: Lobby: start refused \(HTTP 500 server_start_failed") { $Started = "500 server_start_failed (no server), lobby $($Read.state)" }
@@ -340,6 +395,7 @@ if ($Case -eq "Lobby") { Write-Host "manager_client -Case Lobby : PASS (Bob join
 if ($Case -eq "Match") { Write-Host "manager_client -Case Match : PASS (Launch $Started, the game opened the match's server: $(@($Lines -match 'joining match')[0] -replace '.*Lobby: ', ''); $Url)"; exit 0 }
 if ($Case -eq "Return") { Write-Host "manager_client -Case Return : PASS (match from the lobby, Bob gave up, end banner captured, « Retour au salon »: Bob back in lobby $($Alice.lobby.id), state $($Back.state); no server left; $Url)"; exit 0 }
 if ($Case -eq "Killed") { Write-Host ("manager_client -Case Killed : PASS (match's server killed, the game back on the Multiplayer list with the red reason in {0:N1} s, captured; no server left; $Url)" -f $LostAfter); exit 0 }
+if ($Case -eq "AI") { Write-Host "manager_client -Case AI : PASS (Bob put an AI on slot 2 by its list (IA Normal 3, level greyed, Ready reset), gave it colour 5 and team 2, captured, closed the slot (AI taken away), Launch sent: $Started; $Url)"; exit 0 }
 if ($Case -eq "Leader") { Write-Host "manager_client -Case Leader : PASS (Bob created and led the lobby, closed slot 2, Ready, captured, Launch sent: $Started; $Url)"; exit 0 }
 if ($Case -eq "Ready") { Write-Host "manager_client -Case Ready : PASS (Bob took colour 5 and Ready, the manager has both, Launch hidden from him, captured; $Url)"; exit 0 }
 if ($Case -eq "NameTaken") { Write-Host "manager_client -Case NameTaken : PASS (joining as Alice refused in red, captured; $Url)"; exit 0 }

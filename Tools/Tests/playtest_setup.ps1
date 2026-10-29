@@ -79,8 +79,9 @@ if ($Extra.Count) { Fault "Manager\ has more: $(($Extra | ForEach-Object Name) -
 # 4. The manager starts and reads the version of the package.
 $Exe = Join-Path $Package "Manager\HOLManager.exe"
 if (Test-Path $Exe) {
-    $Port = 7790
-    while (Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue) { $Port++ }
+    # A free TCP port of this copy's own range (copy_ports.ps1: another copy's test manager in its own range).
+    . (Join-Path $PSScriptRoot "copy_ports.ps1")
+    $Port = Get-FreeTcpPort (7790 + 10 * (Get-CopyIndex (Resolve-Path "$PSScriptRoot\..\..").Path))
     $Manager = Start-Process -FilePath $Exe -ArgumentList "--urls=http://127.0.0.1:$Port" -WorkingDirectory (Split-Path $Exe) `
         -WindowStyle Hidden -PassThru
     try {

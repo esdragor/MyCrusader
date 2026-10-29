@@ -4,18 +4,21 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Match/HOLResources.h"
 #include "Simulation/HOLGatherRules.h"
 #include "HOLAISummary.generated.h"
 
 class UWorld;
+class AHOLBuilding;
 struct FHOLSource;
 struct FHOLUnitView;
 
 /**
  * The world as an AI slot reads it (IA-Q2, IA0.3): a summary per player slot, made in C++ (the 1 400 units are walked
- * here, not in script), read by the decisions (Angelscript, IA0.4). Made of three parts so far: the idle Peasants, the
- * sources near the slot's deposits, the stock. To come with their tranches: armies and their composition (IA2), threats
+ * here, not in script), read by the decisions (Angelscript, IA0.4). Made of these parts so far: the idle Peasants, the
+ * sources near the slot's deposits, the stock, the population, the slot's own buildings and sites, its Peasants by
+ * resource, its centre (IA1.3: what its player's HUD shows). To come with their tranches: armies and their composition (IA2), threats
  * near the base (IA2), forums (IA3); with M7, the reading goes through the slot's vision.
  * The fields the brain's rule reads are ScriptReadWrite (IA0.4-Q2 A): the script tests build summaries by hand
  * (Script/AI/HOLAIEconomy_Test.as); Blueprint still only reads them.
@@ -32,18 +35,18 @@ struct HEROESOFLIBERTY_API FHOLAISourceNear
 	int32 SourceIndex = INDEX_NONE;
 
 	/** Its ground point (cm). */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FVector Location = FVector::ZeroVector;
 
 	/** What it still holds. */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	int32 Remaining = 0;
 
 	/**
 	 * Distance (cm) from its ground point to the footprint of the slot's nearest deposit taking its resource
 	 * (HOLGather::GetDepositDistance): the length of a Peasant's round trip, give or take the bodies.
 	 */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	float DepositDistance = 0.f;
 };
 
@@ -52,6 +55,10 @@ USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLAIResourceSummary
 {
 	GENERATED_BODY()
+
+	/** Its Peasants gathering this resource, on their round trip or at the source (the HUD's count; IA1.3). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Peasants = 0;
 
 	/** The slot's stock of this resource (0 without a stock, see FHOLAISummary::bHasStock). */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
@@ -63,6 +70,41 @@ struct HEROESOFLIBERTY_API FHOLAIResourceSummary
 	 */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<FHOLAISourceNear> Sources;
+};
+
+/** A building or site of the slot (IA1.3): what its owner sees of it. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLAIBuilding
+{
+	GENERATED_BODY()
+
+	/** Its owner's slot. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 OwnerPlayer = INDEX_NONE;
+
+	/** Its type's row name (HOLBuildingTypeNames). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FName TypeName;
+
+	/** Foundation (placed and paid), UnderConstruction, Finished. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	EHOLConstructionState State = EHOLConstructionState::Finished;
+
+	/** Share of its construction done, 0 to 1 (1 once finished). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	float Progress = 0.f;
+
+	/** Its ground point (cm). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FVector Location = FVector::ZeroVector;
+
+	/** Its production queue, head first: the unit types waiting or in production (empty for a site). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FName> Queue;
+
+	/** The head of the queue is in production (not waiting for room in the population). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bProducing = false;
 };
 
 /** The summary of the world for one player slot (IA0.3). */
@@ -82,6 +124,13 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<int32> IdlePeasants;
 
+	/**
+	 * All its Peasants (IA1.5: the workers, idle or not, the dying left out), by identifier (ascending): the opening takes
+	 * its builders from them when none stands idle.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<int32> PeasantIds;
+
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Food;
 
@@ -97,6 +146,32 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	/** A stock was found for the slot (HOLAISummary::ReadStock: its PlayerState); without one, every Stock is 0. */
 	UPROPERTY(BlueprintReadOnly, Category = "AI")
 	bool bHasStock = false;
+
+	/** Population (IA1.3): places taken (units and units in production), places given by its finished buildings (175 at most). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 PopulationUsed = 0;
+
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 PopulationCap = 0;
+
+	/** Units in the production queues of its buildings, started or not. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 PopulationQueued = 0;
+
+	/** The population and the Peasants by resource were found for the slot (its PlayerState); without one they are 0. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bHasPopulation = false;
+
+	/** Its buildings and sites (foundations too: its owner sees them), by type name, then position. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FHOLAIBuilding> Buildings;
+
+	/** It has a main centre (any state) and where it stands (the first, by position, if it has several). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bHasCentre = false;
+
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FVector CentreLocation = FVector::ZeroVector;
 
 	/** The part of one resource. */
 	FHOLAIResourceSummary& Get(EHOLResource Resource);
@@ -117,6 +192,14 @@ struct FHOLAIDeposit
 	TArray<EHOLResource> Accepts;
 };
 
+/** The population and gatherers a slot's PlayerState holds (IA1.3). */
+struct FHOLAIPlayerFigures
+{
+	int32 PopulationUsed = 0;
+	int32 PopulationCap = 0;
+	FHOLResources Gatherers;
+};
+
 namespace HOLAISummary
 {
 	/** Sources kept per resource: enough to spread the Peasants, few enough for a script to walk at each thought. */
@@ -128,13 +211,20 @@ namespace HOLAISummary
 	 * false).
 	 */
 	HEROESOFLIBERTY_API FHOLAISummary Make(int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
-		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, int32 MaxSourcesPerResource = DefaultMaxSourcesPerResource);
+		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, int32 MaxSourcesPerResource = DefaultMaxSourcesPerResource,
+		TConstArrayView<FHOLAIBuilding> Buildings = {}, const TOptional<FHOLAIPlayerFigures>& Figures = {});
 
 	/**
 	 * The deposits of the world: the buildings that take deliveries (finished, a forum not down, D312, D351) and accept a
 	 * resource, as UHOLGatherProcessor::RefreshDeposits reads them.
 	 */
 	HEROESOFLIBERTY_API void GatherDeposits(const UWorld& World, TArray<FHOLAIDeposit>& OutDeposits);
+
+	/** Every building and site of the world as its owner sees it (IA1.3); Make keeps the slot's own. */
+	HEROESOFLIBERTY_API void GatherBuildings(const UWorld& World, TArray<FHOLAIBuilding>& OutBuildings);
+
+	/** The population and gatherers of a slot's PlayerState (as ReadStock), unset without one. */
+	HEROESOFLIBERTY_API TOptional<FHOLAIPlayerFigures> ReadFigures(const UWorld& World, int32 PlayerIndex);
 
 	/**
 	 * The stock of a slot: its AHOLPlayerState's (found by its index in the game state's PlayerArray), unset without one.

@@ -176,6 +176,13 @@ private:
 	void ToggleReady();
 	/** Network mode: the map and options sent (leader). */
 	void SendSettings();
+	/**
+	 * IA0.6 L4 (Q4): network mode, the leader puts an AI on a slot (nothing set), or changes an AI's colour or team
+	 * (UHOLManagerClient::SetSlotAI).
+	 */
+	void SendSlotAI(int32 SlotIndex, TOptional<int32> ColorIndex, TOptional<int32> Team);
+	/** IA0.6 L4: network mode, the slot holds an AI in the lobby read last. */
+	bool IsLobbyAI(int32 SlotIndex) const;
 	/** Network mode: "Lancer" sent (leader); what follows is B6. */
 	void StartMatch();
 	/** The answer of a change: the state shown, or the refusal in red (the next read shows the truth again). */

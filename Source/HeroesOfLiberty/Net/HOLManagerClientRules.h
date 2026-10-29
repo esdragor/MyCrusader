@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Map/HOLMapSizeRules.h"
+#include "Match/HOLMatchConfig.h"
 
 enum class EHOLMatchOrigin : uint8;
 
@@ -56,10 +57,10 @@ struct FHOLManagerError
 	bool IsError() const { return Kind != EKind::None; }
 };
 
-/** A slot's state in the lobby's state (GET /lobbies/{id}). */
-enum class EHOLLobbySlotState : uint8 { Open, Closed, Player };
+/** A slot's state in the lobby's state (GET /lobbies/{id}). IA0.6: AI, an AI the leader put there (not a player). */
+enum class EHOLLobbySlotState : uint8 { Open, Closed, Player, AI };
 
-/** A row of the lobby's state: the player's fields only for Player. */
+/** A row of the lobby's state: the player's fields only for Player; colour, team and level for AI (no name, no Ready). */
 struct FHOLLobbySlot
 {
 	int32 Index = 0;
@@ -70,6 +71,8 @@ struct FHOLLobbySlot
 	/** "DawnOrder", "BlackLegions"... (not changeable yet). */
 	FString Faction;
 	bool bReady = false;
+	/** IA0.6 (Q4): an AI's level, always Normal in the lobby; its name is the game's (HOLForumMessages::GetAIName). */
+	EHOLAIDifficulty Level = EHOLAIDifficulty::Normal;
 };
 
 /** The lobby's state (GET /lobbies/{id}, also in the answers of create and join). */
@@ -104,7 +107,10 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	/** "server_stopped", "leader_changed"; empty for null. */
 	FString Notice;
 
+	/** The players (humans); an AI is not one (PROTOCOL.md: not in players of GET /lobbies). */
 	int32 GetNumPlayers() const;
+	/** IA0.6: the AIs the leader put on slots. */
+	int32 GetNumAIs() const;
 	/** TC3: the lobby's size; None without one (an older manager, a map without sizes). */
 	EHOLMapSize GetMapSize() const;
 	/** TC3: the places of the lobby's map at its size; FHOLMatchConfig::MaxSlots without a size. */
@@ -116,9 +122,17 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	bool IsYouLeader() const;
 	/** A line's colour, team and Ready: only my own line (M6-Q4). */
 	bool CanEditSlot(int32 SlotIndex) const;
-	/** Opening or closing a slot: the leader's, on a slot nobody holds, within the places of the size (TC3). */
+	/**
+	 * Opening or closing a slot, or putting an AI on it: the leader's, on a slot no player holds, within the places of
+	 * the size (TC3). IA0.6: an AI's slot too (opening or closing it takes the AI away).
+	 */
 	bool CanToggleSlot(int32 SlotIndex) const;
-	/** Launch shown active: the leader's, 2 players at least, all Ready (the manager still decides). */
+	/** IA0.6: an AI's colour and team: the leader's, on an AI's slot. */
+	bool CanEditAISlot(int32 SlotIndex) const;
+	/**
+	 * Launch shown active: the leader's, 2 players and AIs at least (IA0.6 Q3 = A: an AI counts), every player Ready (an
+	 * AI has no Ready); the manager still decides.
+	 */
 	bool CanStart() const;
 };
 
@@ -170,6 +184,11 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 		TOptional<bool> bTeamsTogether = {});
 	/** PUT /lobbies/{id}/slots/{index}: { "state": "open" | "closed" }. */
 	static FString MakeSlotBody(bool bOpen);
+	/**
+	 * IA0.6 (Q4): PUT /lobbies/{id}/slots/{index}: { "state": "ai" }, then "colorIndex" and "team" when given (on an AI's
+	 * slot: changes its colour or team; on a new AI: the first free colour and team 0 otherwise).
+	 */
+	static FString MakeAISlotBody(TOptional<int32> ColorIndex = {}, TOptional<int32> Team = {});
 
 	/** GET /lobbies/{id}/watch: { matchId, port, minutes }; false without a port. */
 	static bool ParseWatch(const FString& Json, FString& OutMatchId, int32& OutPort);

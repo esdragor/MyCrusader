@@ -9,6 +9,8 @@
 class UHOLGameScreenScript : UHOLScriptScreen
 {
 	UBorder HeroPanel;
+	// Its place (EtapeDefini T): read anew on every refresh, the bottom bar's scale may change with the window.
+	UOverlaySlot HeroPanelSlot;
 	UButton HeroPortrait;
 	UBorder HeroPortraitFill;
 	UImage HeroPortraitEmblem;
@@ -29,6 +31,18 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	// The texts its widgets show, in the current language (Describe's second line, "hero texts: ...").
 	FString HeroTexts = "";
 
+	// The pause screen (P5, D513): a dim layer over the whole match (it takes the clicks: nothing reaches the game or the
+	// HUD under it) and a panel in the middle: the title, who paused, the timer, the pauses left, « Reprendre ».
+	UBorder PauseLayer;
+	UCommonTextBlock PauseTitleText;
+	UCommonTextBlock PauseByText;
+	UCommonTextBlock PauseTimerText;
+	UCommonTextBlock PauseLeftText;
+	UButton PauseResumeButton;
+	UCommonTextBlock PauseResumeLabel;
+	FHOLPauseScreenView PauseView;
+	FString PauseTexts = "";
+
 	// Sizes of the block (px at 1080p, the HUD's scale).
 	const float PortraitSize = 64.0;
 	// The column's width: the panel as wide as the selection's block under it, the return's button fitting in it.
@@ -41,6 +55,42 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
+		// Last: over the other blocks.
+		BuildPauseScreen(Frame);
+	}
+
+	void BuildPauseScreen(UOverlay Frame)
+	{
+		PauseLayer = Cast<UBorder>(ConstructWidget(UBorder, n"PauseLayer"));
+		PauseLayer.SetBrushColor(FLinearColor(0.0, 0.0, 0.0, 0.45));
+		PauseLayer.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		PauseLayer.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		PauseLayer.SetVisibility(ESlateVisibility::Collapsed);
+		UOverlaySlot LayerSlot = Frame.AddChildToOverlay(PauseLayer);
+		LayerSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+		LayerSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+
+		UBorder Panel = MakePanel(n"PausePanel");
+		PauseLayer.SetContent(Panel);
+		UVerticalBox Column = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"PauseColumn"));
+		Panel.SetContent(Column);
+		PauseTitleText = MakeText(n"PauseTitle", UHOLTextStyleHUD);
+		PauseTitleText.SetText(HOLPauseScreenText::PatternText(HOLPauseScreenText::Title));
+		Column.AddChildToVerticalBox(PauseTitleText).SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		PauseByText = MakeText(n"PauseBy", UHOLTextStyleHUDLabel);
+		Column.AddChildToVerticalBox(PauseByText).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		PauseTimerText = MakeText(n"PauseTimer", UHOLTextStyleHUDLabel);
+		Column.AddChildToVerticalBox(PauseTimerText).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		PauseLeftText = MakeText(n"PauseLeft", UHOLTextStyleHUDLabel);
+		Column.AddChildToVerticalBox(PauseLeftText).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		PauseResumeButton = MakeButton(n"PauseResumeButton");
+		PauseResumeButton.OnClicked.AddUFunction(this, n"HandlePauseResumeClicked");
+		UVerticalBoxSlot ButtonSlot = Column.AddChildToVerticalBox(PauseResumeButton);
+		ButtonSlot.SetPadding(FMargin(0.0, 12.0, 0.0, 0.0));
+		ButtonSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		PauseResumeLabel = MakeText(n"PauseResumeLabel", UHOLTextStyleHUDLabel);
+		PauseResumeLabel.SetText(HOLPauseScreenText::PatternText(HOLPauseScreenText::Resume));
+		PauseResumeButton.AddChild(PauseResumeLabel);
 	}
 
 	// The hero's block: a panel bottom left (UHOLScriptScreen::GetBottomLeftPlace), the portrait left of a column (level,
@@ -49,10 +99,10 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	{
 		HeroPanel = MakePanel(n"HeroPanel");
 		HeroPanel.SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(HeroPanel);
-		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
-		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
-		PanelSlot.SetPadding(GetBottomLeftPlace());
+		HeroPanelSlot = Frame.AddChildToOverlay(HeroPanel);
+		HeroPanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		HeroPanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 
 		UHorizontalBox Row = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroRow"));
 		HeroPanel.SetContent(Row);
@@ -143,7 +193,59 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	UFUNCTION(BlueprintOverride)
 	void Refresh()
 	{
+		// The block's place follows the bottom bar's scale (EtapeDefini T).
+		if (HeroPanelSlot != nullptr)
+			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
+		RefreshPause();
+	}
+
+	// The view (HOLPauseScreen::Make) from the game state's copy of the pause.
+	void RefreshPause()
+	{
+		const int PlayerSlot = GetLocalSlot();
+		ShowPause(HOLPauseScreen::Make(HOLPause::IsMatchPaused(), HOLPause::IsPauseFree(), HOLPause::GetPausedByName(),
+			HOLPause::GetTimerSecondsLeft(), HOLPause::GetPausesLeft(), HOLPause::CanResumeNow(PlayerSlot)));
+	}
+
+	void ShowPause(FHOLPauseScreenView View)
+	{
+		PauseView = View;
+		PauseTexts = "";
+		PauseLayer.SetVisibility(View.bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (!View.bVisible)
+			return;
+		const FString By = HOLPauseScreenText::ByText(View);
+		const FString Timer = HOLPauseScreenText::TimerText(View);
+		const FString Left = HOLPauseScreenText::LeftText(View);
+		PauseByText.SetText(FText::FromString(By));
+		PauseByText.SetVisibility(By.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		PauseTimerText.SetText(FText::FromString(Timer));
+		PauseTimerText.SetVisibility(Timer.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		PauseLeftText.SetText(FText::FromString(Left));
+		PauseLeftText.SetVisibility(Left.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+		PauseResumeLabel.SetColorAndOpacity(View.bCanResume ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+		UHOLScriptScreen::SetButtonGreyed(PauseResumeButton, !View.bCanResume);
+		PauseTexts = HOLPauseScreenText::Format(HOLPauseScreenText::Title) + " | " + By + " | " + Timer + " | " + Left + " | "
+			+ HOLPauseScreenText::Format(HOLPauseScreenText::Resume);
+	}
+
+	// A click on « Reprendre »: asked of the server (it decides). Hidden or greyed: nothing.
+	bool ClickPauseResume()
+	{
+		if (!PauseView.bVisible || !PauseView.bCanResume)
+			return false;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return false;
+		Controller.RequestResume();
+		return true;
+	}
+
+	UFUNCTION()
+	void HandlePauseResumeClicked()
+	{
+		ClickPauseResume();
 	}
 
 	// The view (HOLHeroBlock::Make) from the public sheet, the slot and the return's quote for an order sent now.
@@ -257,6 +359,8 @@ class UHOLGameScreenScript : UHOLScriptScreen
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")
 			return ClickReturn();
+		if (WidgetName == n"PauseResumeButton")
+			return ClickPauseResume();
 		return false;
 	}
 
@@ -264,6 +368,7 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	FString Describe() const
 	{
 		return "hero: " + HeroView.Describe + (HeroTexts.IsEmpty() ? "" : "\nhero texts: " + HeroTexts)
-			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "");
+			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
+			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

@@ -1,4 +1,5 @@
 #include "Blueprint/WidgetTree.h"
+#include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
 #include "Containers/Ticker.h"
 #include "Engine/World.h"
@@ -235,6 +236,26 @@ namespace UE::HeroesOfLiberty::UI
 		}
 	}
 
+	void TypeText(const TArray<FString>& Args, UWorld* World)
+	{
+		if (Args.Num() < 2)
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.UI.Type <TextBoxName> <Text>"));
+			return;
+		}
+		const UHOLRootLayout* Layout = UHOLRootLayout::Get(GetPlayer(World));
+		const UCommonActivatableWidget* Screen = Layout ? Layout->GetActiveMenu() : nullptr;
+		UEditableTextBox* Box = Screen ? Cast<UEditableTextBox>(Screen->WidgetTree->FindWidget(FName(*Args[0]))) : nullptr;
+		if (!Box)
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Type: no text box '%s' on the open menu screen"), *Args[0]);
+			return;
+		}
+		const FString Text = FString::Join(TArrayView<const FString>(Args).RightChop(1), TEXT(" "));
+		Box->SetText(FText::FromString(Text));
+		UE_LOG(LogHOLUI, Display, TEXT("Typed %s: %s"), *Args[0], *Text);
+	}
+
 	void SetLanguage(const TArray<FString>& Args)
 	{
 		if (Args.IsEmpty())
@@ -275,6 +296,11 @@ namespace UE::HeroesOfLiberty::UI
 		TEXT("hol.UI.Text"),
 		TEXT("hol.UI.Text <WidgetName>...: logs the text a label or a drop-down list of the open menu screen shows"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&LogText));
+
+	FAutoConsoleCommandWithWorldAndArgs TypeCommand(
+		TEXT("hol.UI.Type"),
+		TEXT("hol.UI.Type <TextBoxName> <Text>: puts a text in a text box of the open menu screen, as typed (the Multiplayer name)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&TypeText));
 
 	FAutoConsoleCommand LanguageCommand(
 		TEXT("hol.UI.Language"),

@@ -49,6 +49,13 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> ResumeButton;
 
+	/**
+	 * P5 (D513): « Pause » (« Pause (2) » in a networked match: the pauses left, shared by all), for a player still in
+	 * the match while it runs; greyed with none left. The server decides (AHOLPlayerController::RequestPause).
+	 */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<class UHOLButton> PauseButton;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> SurrenderButton;
 
@@ -66,6 +73,9 @@ protected:
 
 private:
 	void HandleSurrender();
+	void HandlePause();
+	/** « Pause » shown, its count and greyed state (RefreshSurrender's tick). */
+	void RefreshPause();
 	void HandleQuitToMenu();
 	void HandleReturnToLobby();
 	void HandleShowResult();

@@ -56,6 +56,11 @@ public:
 		const FString& Size = FString(), TOptional<bool> bTeamsTogether = {});
 	/** PUT /lobbies/{id}/slots/{index} (leader): opens or closes a slot nobody holds. */
 	void SetSlot(int32 SlotIndex, bool bOpen, FHOLManagerLobbyDone Done);
+	/**
+	 * IA0.6 (Q4): PUT /lobbies/{id}/slots/{index} { "state": "ai" } (leader): puts an AI (Normal) on a slot no player
+	 * holds, or changes an AI's colour or team; only the fields set. SetSlot open or closed takes it away.
+	 */
+	void SetSlotAI(int32 SlotIndex, TOptional<int32> ColorIndex, TOptional<int32> Team, FHOLManagerLobbyDone Done);
 	/** POST /lobbies/{id}/start (leader): 202 and the match's id, the lobby then "starting". */
 	void StartMatch(FHOLManagerStartDone Done);
 	/** GET /lobbies/{id}/watch (no token): the match's id and port of a lobby in_game (no_match otherwise). */

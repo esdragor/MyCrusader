@@ -118,4 +118,60 @@ bool FHOLMapSizeLobbyMatchConfigTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMapSizeLobbyAIMatchConfigTest, "HeroesOfLiberty.MapSize.Lobby.ManagerAIReference", UE::HeroesOfLiberty::Tests::MapSizeLobby::Flags)
+bool FHOLMapSizeLobbyAIMatchConfigTest::RunTest(const FString& Parameters)
+{
+	// IA0.6 L2: the match.json of a lobby with AIs (Manager/HOLManager.Tests, LobbyAIStartTests checks it against its own
+	// output): Bob (slot 0) and Alice (slot 2), team 1, against two AIs Normal, slot 1 (colour 6) and 3 (colour 4), team 2.
+	const FString Path = FPaths::Combine(FPaths::ProjectDir(), TEXT("Manager/HOLManager.Tests/Data/match_v3_ai_reference.json"));
+	FString Json;
+	if (!TestTrue(FString::Printf(TEXT("AI reference file read (%s)"), *Path), FFileHelper::LoadFileToString(Json, *Path)))
+	{
+		return false;
+	}
+	FHOLMatchConfig Read;
+	FString Error;
+	if (!TestTrue(FString::Printf(TEXT("AI reference parsed (%s)"), *Error), FHOLMatchConfig::FromJson(Json, Read, &Error)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("version 3"), Read.Version, 3);
+	TestEqual(TEXT("four slots held"), Read.GetNumOccupiedSlots(), 4);
+	const FHOLMatchSlot& Bob = Read.Slots[0];
+	TestTrue(TEXT("slot 0: Bob, human, colour 0, team 1"),
+		Bob.State == EHOLSlotState::Human && Bob.PlayerName == TEXT("Bob") && Bob.ColorIndex == 0 && Bob.Team == 1);
+	const FHOLMatchSlot& Alice = Read.Slots[2];
+	TestTrue(TEXT("slot 2: Alice, human, colour 3, team 1"),
+		Alice.State == EHOLSlotState::Human && Alice.PlayerName == TEXT("Alice") && Alice.ColorIndex == 3 && Alice.Team == 1);
+	struct FExpectedAI
+	{
+		int32 Index;
+		int32 ColorIndex;
+	};
+	const FExpectedAI ExpectedAIs[] = { { 1, 6 }, { 3, 4 } };
+	for (const FExpectedAI& Expected : ExpectedAIs)
+	{
+		const FHOLMatchSlot& AISlot = Read.Slots[Expected.Index];
+		const FString What = FString::Printf(TEXT("slot %d"), Expected.Index);
+		TestTrue(What + TEXT(": AI"), AISlot.State == EHOLSlotState::AI);
+		TestEqual(What + TEXT(": colour"), AISlot.ColorIndex, Expected.ColorIndex);
+		TestEqual(What + TEXT(": team 2"), AISlot.Team, 2);
+		TestTrue(What + TEXT(": Normal"), AISlot.Difficulty == EHOLAIDifficulty::Normal);
+		TestTrue(What + TEXT(": its brain thinks"), AISlot.bAIBrain);
+		TestTrue(What + TEXT(": DawnOrder, no player name"), AISlot.Faction == EHOLFaction::DawnOrder && AISlot.PlayerName.IsEmpty());
+	}
+	TestTrue(TEXT("slots 4 to 7 closed"), Read.Slots[4].State == EHOLSlotState::Closed && Read.Slots[7].State == EHOLSlotState::Closed);
+	TestTrue(TEXT("fits its map"), FHOLMapSizeRules::CheckPlaces(Read));
+
+	// The level is read from the manager's field name, not left at its default: the same file with "Hard" gives Hard.
+	FHOLMatchConfig Hard;
+	const FString HardJson = Json.Replace(TEXT("\"difficulty\": \"Normal\""), TEXT("\"difficulty\": \"Hard\""));
+	if (TestTrue(TEXT("the manager writes \"difficulty\": \"Normal\""), HardJson != Json)
+		&& TestTrue(TEXT("Hard copy parsed"), FHOLMatchConfig::FromJson(HardJson, Hard)))
+	{
+		TestTrue(TEXT("the field \"difficulty\" is the game's"), Hard.Slots[1].Difficulty == EHOLAIDifficulty::Hard);
+	}
+	return true;
+}
+
 #endif
