@@ -139,6 +139,7 @@ $SubCaseTable = @{
         shiftplace = @{ Marks = @("shiftplace", "shiftplace order"); Setup = @("hol.Cheat.Wood 1000") }
         shiftsite = @{ Marks = @("shiftsite", "shiftsite order", "shiftsite later"); Setup = @("hol.Cheat.Wood 1000") }
         rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
+        corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -827,6 +828,13 @@ $RallyStepsR2 = @(-15600, 5600)
 $RallyStepsGold = @(-11087, 4592)
 $RallyStepsR3 = @(-14000, 5200)
 $RallyStepsRow = @(for ($k = 0; $k -lt 9; $k++) { , @((-15200 + 300 * $k), 6800) })
+# A unit standing still in a corner of a house's visible wall (EtapeDefini C.1): house X on free ground north of slot 0's
+# centre, clear of every building of the cases before (the barracks at (-18600, 4600) and (-18600, 7400) wedged a corner's unit
+# between two walls at (-18000, 5600): C.3, it stays) and of the rally steps (y 6800); its builder made east of it; a Man-at-arms
+# made 8.5 m beyond each of its corners on the diagonal (the signs of the four corners), sent to the diagonal beyond that corner.
+$CornerHouse = @(-16400, 9600)
+$CornerBuilder = @(-15400, 9600)
+$CornerSigns = @(@{ X = -1; Y = -1 }, @{ X = 1; Y = -1 }, @{ X = -1; Y = 1 }, @{ X = 1; Y = 1 })
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
 # unload at the centre, 50 m away (M is farther); house K across their way, its builder made west of it. Then six Peasants
@@ -1819,6 +1827,30 @@ if ($Parts -contains "camera") {
             Step "mark build rallysteps nine", "hol.Camera.Focus $(-14000) $($RallyStepsRow[0][1])", "frames 3", "hol.Select.OrderGround $($RallyStepsRow[0] -join ' ')", $RallyStepsWaitRally
             for ($k = 1; $k -lt 9; $k++) { Step "hol.Select.OrderGround $($RallyStepsRow[$k] -join ' ') shift", $RallyStepsWaitRally }
             Step "frames 3", "hol.Select.Report", "hol.Prod.Rally -15000 0", $RallyStepsWaitRally, "hol.Prod.BuildTime 0", "hol.Units.Remove $($RallyStepsR2 -join ' ') 600 0"
+            Key Escape
+            Step "waitlog Selection: none"
+            # A unit standing still in a corner of a house's visible wall (EtapeDefini C.1): house X built at once by a Peasant
+            # (removed after); a Man-at-arms made beyond each corner on the diagonal, selected, sent by a right click onto the diagonal
+            # just beyond that corner of X's body (centre +- 380: the navmesh's edge, 85 cm off the body; sent onto the body's corner
+            # itself, the right click's ground point 13 cm off puts it against a side, not in the corner): it stops in the slab's corner, stands idle,
+            # and the still-unit rule eases it out of the visible wall. Where they are 4 s and 8 s after the last order, the
+            # footprint watch. The four removed and X destroyed (the parts after count slot 0's units and its population cap).
+            Step "mark build corner", "hol.Units.SpawnSeed 143", "hol.Cheat.Wood 1000", "hol.Cheat.FastBuild 1", "hol.Nav.Footprints on",
+                "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                "waitlog Selection: Peasant #", "hol.Camera.Focus $($CornerHouse -join ' ')", "frames 3", "hol.Build.Place House",
+                "waitlog Placement ghost: House at ($($CornerHouse -join ', ')) valid", "hol.Build.Click", "waitlog Construction: slot 0 finished House at ($($CornerHouse -join ', '))",
+                "hol.Cheat.FastBuild 0", "wait 0.3", "hol.Units.Remove $($CornerHouse -join ' ') 2000 0", "waitlog units of slot 0 within 2000 of ($($CornerHouse -join ', '))"
+            foreach ($S in $CornerSigns) {
+                $CornerFrom = @(($CornerHouse[0] + 850 * $S.X), ($CornerHouse[1] + 850 * $S.Y))
+                $CornerTo = @(($CornerHouse[0] + 380 * $S.X), ($CornerHouse[1] + 380 * $S.Y))
+                Step "hol.Units.Spawn 1 $($CornerFrom -join ' ') 0 ManAtArms 10", "wait 0.5", "hol.Camera.Focus $($CornerFrom -join ' ')", "frames 3", "hol.Select.ClickUnit -1",
+                    "waitlog Selection: ManAtArms #", "hol.Camera.Focus $($CornerTo -join ' ')", "frames 3", "hol.Select.OrderGround $($CornerTo -join ' ')", "waitlog Order: 1 units to ("
+            }
+            Step "wait 4", "hol.Units.Where 0", "wait 4", "hol.Units.Where 0", "hol.Nav.Footprints", "hol.Nav.Footprints off",
+                "hol.Units.Remove $($CornerHouse -join ' ') 1500 0 ManAtArms", "waitlog units of slot 0 within 1500 of ($($CornerHouse -join ', '))",
+                "hol.Cheat.DamageNear 99999 $($CornerHouse[0] - (Get-SlotStart 0)[0]) $($CornerHouse[1] - (Get-SlotStart 0)[1]) own melee",
+                "waitlog Building destroyed: House of slot 0 at ($($CornerHouse -join ', '))", "frames 3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
             Stop-CaseFilter
@@ -4275,6 +4307,37 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["(d) a right click then 8 Shift + right clicks: the 9th refused (refusals $RsDRefused), the flag at the 8th, 8 segments ($RsDSay)"] =
         ($RsDRefused -eq 1) -and (& $RsFlagAt $RsDSay $RallyStepsRow[7]) -and ($RsDLines[0] -eq 8) -and ($RsDLines[1] -eq 7)
     $AllOk = (Report "build rallysteps" $Checks) -and $AllOk
+    # EtapeDefini C.1, the corner: X's centre from its "finished" line, the four Men-at-arms from the last "Units where" of
+    # the section (slot 0's units within 8 m of X). In X's frame, each body's signed distance to the drawn slab (half 370 =
+    # 400 - VisualInset 30, square corners) less its radius (60): its margin. A: every body out of the slab (margin >= -10;
+    # the still-unit rule measured from the body with a round corner leaves ~30 cm of the body in the slab's corner).
+    # B: the case stands: four units, all idle, each within 250 cm of a different corner of the slab.
+    $Corner = @(Get-Section "build corner" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $CornerAt = [regex]::Match("$(& $Value $Corner "(Construction: slot 0 finished House at \(-?\d+, -?\d+\))")", "\((-?\d+), (-?\d+)\)")
+    $CornerX = if ($CornerAt.Success) { [double]$CornerAt.Groups[1].Value } else { $CornerHouse[0] }
+    $CornerY = if ($CornerAt.Success) { [double]$CornerAt.Groups[2].Value } else { $CornerHouse[1] }
+    $CornerWhere = "$(& $Value $Corner "Units where: (.*)$")"
+    $CornerUnits = @(foreach ($Part in (($CornerWhere -replace '^\d+ units: ', '') -split '; ')) {
+        if ($Part -match '^#(\d+) slot 0 at \((-?\d+), (-?\d+)\) (\w+)') {
+            $Ux = [double]$Matches[2] - $CornerX; $Uy = [double]$Matches[3] - $CornerY
+            if ([Math]::Sqrt($Ux * $Ux + $Uy * $Uy) -le 800) {
+                $Dx = [Math]::Abs($Ux) - 370; $Dy = [Math]::Abs($Uy) - 370
+                $Signed = if ($Dx -gt 0 -or $Dy -gt 0) { [Math]::Sqrt([Math]::Pow([Math]::Max($Dx, 0), 2) + [Math]::Pow([Math]::Max($Dy, 0), 2)) } else { [Math]::Max($Dx, $Dy) }
+                [pscustomobject]@{ Id = [int]$Matches[1]; Activity = $Matches[4]; Corner = "$(if ($Ux -lt 0) { '-x' } else { '+x' })$(if ($Uy -lt 0) { '-y' } else { '+y' })"
+                    Margin = [Math]::Round($Signed - 60); ToCorner = [Math]::Round([Math]::Sqrt($Dx * $Dx + $Dy * $Dy)) }
+            }
+        }
+    })
+    $CornerSay = @($CornerUnits | ForEach-Object { "$($_.Corner) $($_.Margin)" }) -join ', '
+    $Checks["every body out of the visible wall's corner (margin >= -10 cm; corner margin: $CornerSay)"] =
+        $CornerAt.Success -and ($CornerUnits.Count -eq 4) -and (@($CornerUnits | Where-Object { $_.Margin -lt -10 }).Count -eq 0)
+    $Checks["four Men-at-arms idle, each within 250 cm of a different corner of the slab (house at ($CornerX, $CornerY); $(@($CornerUnits | ForEach-Object { "$($_.Corner) $($_.Activity) $($_.ToCorner) cm" }) -join ', '))"] =
+        $CornerAt.Success -and ($CornerUnits.Count -eq 4) -and (@($CornerUnits | Where-Object { $_.Activity -eq 'Idle' }).Count -eq 4) -and
+        (@($CornerUnits | Select-Object -ExpandProperty Corner -Unique).Count -eq 4) -and (@($CornerUnits | Where-Object { $_.ToCorner -gt 250 }).Count -eq 0)
+    $Checks["the four removed, the house destroyed after"] = [bool]($Corner | Select-String -Pattern "Remove: 4 units of slot 0 within 1500" -Quiet) -and
+        [bool]($Corner | Select-String -SimpleMatch "Building destroyed: House of slot 0 at ($CornerX, $CornerY)" -Quiet)
+    $AllOk = (Report "build corner" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
