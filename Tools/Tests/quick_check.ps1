@@ -1773,7 +1773,7 @@ if ($Parts -contains "camera") {
             Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Report",
-                "hol.Select.Grid 1", "hol.Select.Grid 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
+                "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
                 "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor off",
@@ -4288,6 +4288,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         $Checks["planted: the hero's and the banner's circles, the aim gone ('$($AuraRings[3])')"] =
             $AuraRings[3] -match "^hero \(-?\d+, -?\d+\) 1200, banner \(-?\d+, -?\d+\) 1200$"
     }
+    # J8c.4 loop 5: the cry's white flash, on the units of his player within 12 m of him (at least his hero), once.
+    $CryFlashes = @($GridCase | Select-String -Pattern "Cry flash: slot 0, (\d+) units" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["the cry flashed once on at least his hero ($($CryFlashes -join ', ') units)"] = ($CryFlashes.Count -eq 1) -and ($CryFlashes[0] -ge 1)
     # J8c.4 loop 4: his planted banner drawn (hol.Hero.BannerDisplay), one standard of slot 0 10 m from his hero.
     $BannerShown = "$($GridCase | Select-String -Pattern "Banner display: (1 shown, slot 0 \(-?\d+, -?\d+, -?\d+\))" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
     $Checks["planted: one banner drawn at the place ('$BannerShown')"] =
@@ -6475,6 +6478,8 @@ if ($Parts -contains "net") {
         $AbChecks["client $N : Bob's cries and banner as the server's ($AbSheet)"] = ($AbSheet -ne "") -and ($AbSheet -eq $AbTrueSheet)
         $AbShown = "$($AbLines | Select-String -Pattern "Banner display: (1 shown, slot ${BobSlot} \(14665, 299, -?\d+\))" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $AbChecks["client $N : Bob's banner drawn where it stands ($AbShown)"] = $AbShown -ne ""
+        $AbCryFlashes = @($AbLines | Select-String -Pattern "Cry flash: slot ${BobSlot}, (\d+) units" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        $AbChecks["client $N : Bob's cry flashed once on his units ($($AbCryFlashes -join ', '))"] = $AbCryFlashes.Count -eq 1
         if ($N -eq 1) {
             $AbLocal = "$($AbLines | Select-String -Pattern "Hero private slot $BobSlot local: .* ready (\S+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
             $AbChecks["client $N (Bob): his ready steps as the server's ($AbLocal)"] = ($AbLocal -ne "") -and ($AbLocal -eq $AbTrueReady)

@@ -7,6 +7,8 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "HAL/IConsoleManager.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLMatchConfig.h"
 #include "Simulation/HOLHeroLibrary.h"
@@ -14,6 +16,7 @@
 namespace
 {
 	const TCHAR* BannerMeshPath = TEXT("/Game/Units/Props/SM_Banner.SM_Banner");
+	const TCHAR* BannerSoundPath = TEXT("/Game/Audio/SW_HeroBanner.SW_HeroBanner");
 	/** The trace for the ground: from high to low over the whole map (as the aura circles'). */
 	constexpr double GroundTraceHalfHeight = 100000.0;
 	/** The sway: the standard turns this far about its pole either way (degrees), once in this many seconds, each slot out
@@ -106,6 +109,23 @@ void UHOLBannerSubsystem::Tick(float DeltaTime)
 			Banner.Location = FVector(Place.X, Place.Y, Known->Value);
 		}
 	}
+	// A banner that appears is heard by all (J8c-Q4), the first frame seen aside.
+	TSet<int32> Slots;
+	bool bPlanted = false;
+	for (const FShown& Banner : Shown)
+	{
+		Slots.Add(Banner.Slot);
+		bPlanted |= !LastSlots.Contains(Banner.Slot);
+	}
+	if (bPlanted && bFirstFrameSeen)
+	{
+		if (USoundBase* Sound = LoadObject<USoundBase>(nullptr, BannerSoundPath))
+		{
+			UGameplayStatics::PlaySound2D(this, Sound);
+		}
+	}
+	LastSlots = MoveTemp(Slots);
+	bFirstFrameSeen = true;
 	if (Shown.IsEmpty() && (!Instances || Instances->GetInstanceCount() == 0))
 	{
 		return;

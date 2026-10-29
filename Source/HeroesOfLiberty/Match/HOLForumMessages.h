@@ -159,6 +159,19 @@ struct HEROESOFLIBERTY_API FHOLHeroLevelWatch
 	int32 Update(int32 Slot, int32 Level);
 };
 
+/**
+ * J8c.4 loop 5 (J8c-Q4): the heroes' cries as a machine saw them, slot by slot (the public sheet's count, which wraps at
+ * 256). Update tells whether the slot's hero has cried since the last look (his white flash on the units touched, the
+ * cry's sound, for every player): the first count seen (a machine arriving) is no cry, nor a count going back (the
+ * development cheat that resets the abilities). Pure.
+ */
+struct HEROESOFLIBERTY_API FHOLHeroCryWatch
+{
+	TArray<int32> Seen;
+
+	bool Update(int32 Slot, int32 Cries);
+};
+
 /** V4.2: a line of the thread of messages, and when it came (seconds, the HUD's real time). */
 struct FHOLForumThreadLine
 {

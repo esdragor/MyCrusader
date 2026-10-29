@@ -9,6 +9,8 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLForumRules.h"
@@ -91,6 +93,17 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double HeroFlashEndFactor = 7.0;
 	constexpr double HeroFlashStartStroke = 40.0;
 	constexpr double HeroFlashEndStroke = 8.0;
+	/**
+	 * J8c.4 loop 5 (J8c-Q4): the cry's flash, white and brief, on each unit it touches: a ring at its feet spreading out from
+	 * just wider than the unit and thinning.
+	 */
+	constexpr float CryFlashSeconds = 0.6f;
+	const FLinearColor CryFlashColor(1.0f, 1.0f, 1.0f);
+	constexpr double CryFlashStartFactor = 1.3;
+	constexpr double CryFlashEndFactor = 3.2;
+	constexpr double CryFlashStartStroke = 26.0;
+	constexpr double CryFlashEndStroke = 4.0;
+	const TCHAR* CrySoundPath = TEXT("/Game/Audio/SW_HeroCry.SW_HeroCry");
 	/** An attack order's ping (J7b.3): on its target, or an attack-move's point. */
 	const FLinearColor AttackPingColor(0.9f, 0.08f, 0.05f);
 	/** The places of a right-button drag's formation (J7a.4): thin rings, smaller than a unit's, in the ping's white. */
@@ -388,6 +401,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 		HOLUnitView::Gather(*World, Views);
 	}
 	UpdateHeroFlashes(DeltaSeconds);
+	UpdateCryFlashes(DeltaSeconds);
 	UpdateRings();
 	UpdateHealthBars();
 	UpdateOrderLines();
@@ -501,6 +515,23 @@ void AHOLSelectionMarkers::UpdateRings()
 			++HeroFlashRings;
 		}
 	}
+	// J8c.4 loop 5: the cries' white flashes, on the units they touched as drawn now.
+	CryFlashRings = 0;
+	for (const FCryFlash& Flash : CryFlashes)
+	{
+		const double Share = FMath::Clamp(static_cast<double>(Flash.Age / CryFlashSeconds), 0.0, 1.0);
+		const double Out = 1.0 - FMath::Square(1.0 - Share);
+		for (const FHOLUnitView& View : Views)
+		{
+			if (Flash.Units.Contains(View.UnitId))
+			{
+				const double Radius = View.Radius * FMath::Lerp(CryFlashStartFactor, CryFlashEndFactor, Out);
+				Transforms.Add(MarkerTransform(View.Location, Radius * 2.0, Radius * 2.0));
+				AddCustomData(CustomData, CryFlashColor, FMath::Lerp(CryFlashStartStroke, CryFlashEndStroke, Share) / Radius);
+				++CryFlashRings;
+			}
+		}
+	}
 	if (PingAge < PingSeconds)
 	{
 		const double Radius = FMath::Lerp(PingStartRadius, PingEndRadius, static_cast<double>(PingAge / PingSeconds));
@@ -531,6 +562,49 @@ void AHOLSelectionMarkers::UpdateHeroFlashes(const float DeltaSeconds)
 		{
 			HeroFlashes.Add(Slot, 0.f);
 			UE_LOG(LogHOLMatch, Display, TEXT("Hero flash: slot %d level %d -> %d"), Slot, OldLevel, Level);
+		}
+	}
+}
+
+void AHOLSelectionMarkers::UpdateCryFlashes(const float DeltaSeconds)
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+	for (int32 Index = CryFlashes.Num() - 1; Index >= 0; --Index)
+	{
+		CryFlashes[Index].Age += DeltaSeconds;
+		if (CryFlashes[Index].Age >= CryFlashSeconds)
+		{
+			CryFlashes.RemoveAtSwap(Index, EAllowShrinking::No);
+		}
+	}
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		if (!HeroCryWatch.Update(Slot, UHOLHeroLibrary::GetHeroCries(this, Slot)))
+		{
+			continue;
+		}
+		// The units of his player within 12 m of him, as drawn now (the hero's own body included).
+		FCryFlash& Flash = CryFlashes.AddDefaulted_GetRef();
+		Flash.Slot = Slot;
+		const FHOLUnitView* Hero = nullptr;
+		for (const FHOLUnitView& View : Views)
+		{
+			if (View.OwnerPlayer == Slot && View.TypeName == FHOLStartRules::HeroTypeName && (!Hero || View.UnitId < Hero->UnitId))
+			{
+				Hero = &View;
+			}
+		}
+		for (const FHOLUnitView& View : Views)
+		{
+			if (Hero && View.OwnerPlayer == Slot && FVector::Dist2D(View.Location, Hero->Location) <= HOLHeroAbility::AuraRadius)
+			{
+				Flash.Units.Add(View.UnitId);
+			}
+		}
+		UE_LOG(LogHOLMatch, Display, TEXT("Cry flash: slot %d, %d units"), Slot, Flash.Units.Num());
+		if (USoundBase* Sound = LoadObject<USoundBase>(nullptr, CrySoundPath))
+		{
+			UGameplayStatics::PlaySound2D(this, Sound);
 		}
 	}
 }
@@ -1070,7 +1144,7 @@ FString AHOLSelectionMarkers::Describe() const
 		Flags += FString::Printf(TEXT("%s(%.0f, %.0f)"), Index == 0 ? TEXT(" at ") : TEXT(" "), FlagFeet[Index].X, FlagFeet[Index].Y);
 	}
 	// The order lines drawn (D328): their segments and step points (quick_check's move part counts them).
-	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings - HeroFlashRings,
+	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings - HeroFlashRings - CryFlashRings,
 		Frames->GetInstanceCount(), *Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"),
 		OrderLines->GetInstanceCount(), OrderPoints->GetInstanceCount(), DimmedFrames);
 }

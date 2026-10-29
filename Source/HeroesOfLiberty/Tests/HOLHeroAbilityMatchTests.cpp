@@ -3,12 +3,14 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Match/HOLForumMessages.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Misc/AutomationTest.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Presentation/HOLBannerSubsystem.h"
+#include "Sound/SoundBase.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -244,6 +246,30 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroCryWatchTest, "HeroesOfLiberty.HeroAbility.CryWatch", UE::HeroesOfLiberty::Tests::HeroAbilityMatch::Flags)
+
+// J8c.4 loop 5: a machine tells a cry from the public count (256 and it wraps), once, never the first count it sees.
+bool FHOLHeroCryWatchTest::RunTest(const FString& Parameters)
+{
+	FHOLHeroCryWatch Watch;
+	TestFalse(TEXT("first seen at 0: no cry"), Watch.Update(0, 0));
+	TestTrue(TEXT("0 -> 1: a cry"), Watch.Update(0, 1));
+	TestFalse(TEXT("1 again: nothing"), Watch.Update(0, 1));
+	TestFalse(TEXT("another slot first seen at 3 (a machine arriving mid-match): nothing"), Watch.Update(5, 3));
+	TestTrue(TEXT("that slot 3 -> 4: a cry"), Watch.Update(5, 4));
+	TestFalse(TEXT("back to 0 (the abilities reset by a cheat): nothing"), Watch.Update(0, 0));
+	TestTrue(TEXT("0 -> 1 again: a cry"), Watch.Update(0, 1));
+	TestTrue(TEXT("1 -> 3 between two looks: a cry"), Watch.Update(0, 3));
+	FHOLHeroCryWatch Wrapping;
+	TestFalse(TEXT("first seen at 255"), Wrapping.Update(2, 255));
+	TestTrue(TEXT("255 -> 0: the count wrapped, a cry"), Wrapping.Update(2, 0));
+	TestFalse(TEXT("a slot out of range: nothing"), Wrapping.Update(-1, 4));
+	// The sounds the cry and the banner play (make_hero_fanfare.py), in the project.
+	TestNotNull(TEXT("the cry's sound"), LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/SW_HeroCry.SW_HeroCry")));
+	TestNotNull(TEXT("the banner's sound"), LoadObject<USoundBase>(nullptr, TEXT("/Game/Audio/SW_HeroBanner.SW_HeroBanner")));
 	return true;
 }
 

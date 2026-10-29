@@ -176,6 +176,23 @@ private:
 	/** The flash's rings drawn this frame (not counted as rings in Describe). */
 	int32 HeroFlashRings = 0;
 
+	/**
+	 * J8c.4 loop 5 (J8c-Q4): the heroes' cries, as this machine sees their public sheets (every player, spectators too): a
+	 * brief white flash on each unit of the hero's player within 12 m of him when he cried (the units as they were then,
+	 * followed as they are drawn), and the cry's sound.
+	 */
+	struct FCryFlash
+	{
+		int32 Slot = INDEX_NONE;
+		float Age = 0.f;
+		TArray<uint32> Units;
+	};
+	void UpdateCryFlashes(float DeltaSeconds);
+	FHOLHeroCryWatch HeroCryWatch;
+	TArray<FCryFlash> CryFlashes;
+	/** The flash's rings drawn this frame (not counted as rings in Describe). */
+	int32 CryFlashRings = 0;
+
 	UPROPERTY(Transient)
 	TObjectPtr<UInstancedStaticMeshComponent> AuraRings;
 	/** "hero (x, y) 1200, banner (x, y) 1200, reach 1600, aim (x, y) ok" or "none": what UpdateAuraRings drew last. */

@@ -51,6 +51,10 @@ private:
 	TObjectPtr<AActor> InstancesOwner;
 	UPROPERTY(Transient)
 	TObjectPtr<UInstancedStaticMeshComponent> Instances;
+	/** The slots whose banner was drawn at the last frame, and whether a frame has been seen (a machine arriving with a banner
+	 *  standing plants none: the sound is for a banner that appears). */
+	TSet<int32> LastSlots;
+	bool bFirstFrameSeen = false;
 	/** The ground height found under each slot's banner, kept while it stands in the same place. */
 	TMap<int32, TPair<FIntPoint, double>> GroundCache;
 };
