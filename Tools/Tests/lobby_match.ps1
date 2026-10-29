@@ -88,20 +88,22 @@ $AliceStayed = Join-Path $Work "alice_stayed.signal"
 Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp, $AliceStayed -ErrorAction SilentlyContinue
 $Colours = @{ Alice = 2; Bob = 5 }
 
-# A free TCP port from 7790 (another copy's manager may hold 7700).
-$Port = 7790
-while ($Port -lt 7890) {
-    try { $Probe = New-Object Net.Sockets.TcpListener([Net.IPAddress]::Loopback, $Port); $Probe.Start(); $Probe.Stop(); break } catch { $Port++ }
-}
+# This copy's own ports (copy_ports.ps1): its test manager on a free TCP port of its range (another copy's manager may
+# hold 7700, another copy's test runs in its own range), its match servers from its own UDP range.
+. (Join-Path $PSScriptRoot "copy_ports.ps1")
+$CopyIndex = Get-CopyIndex $Project
+$Port = Get-FreeTcpPort (7790 + 10 * $CopyIndex)
+$FirstServerPort = 7900 + 10 * $CopyIndex
 $Url = "http://127.0.0.1:${Port}"
 # A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion): "dev" for the time of the test.
 $ServerVersion = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"
 # -Rejoin and -AI run the editor as the server: no staged server to mark.
 $ServerVersionMade = (-not $Rejoin) -and (-not $AI) -and -not (Test-Path $ServerVersion)
 if ($ServerVersionMade) { [IO.File]::WriteAllText($ServerVersion, "dev", (New-Object Text.UTF8Encoding $false)) }
-# Servers from UDP 7900: out of quick_check's net range (7777-7876), whose clients would join a server of ours still
-# starting on 7777 (seen 2026-10-27: a second « Alice » and « Bob » from another copy in the match).
-$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=7900" `
+# Servers from this copy's UDP range (7900 and up): out of quick_check's net range (7800-7899), whose clients would join a
+# server of ours still starting (seen 2026-10-27: a second « Alice » and « Bob » from another copy in the match), and
+# out of the other copies' lobby tests (seen 2026-10-29: a « Carol » of another copy in Arwen's match).
+$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
     -WorkingDirectory $Work -PassThru -WindowStyle Hidden -RedirectStandardOutput $ManagerLog
 $Games = @{}
 $Failure = $null

@@ -66,10 +66,12 @@ if ($StageOnly) { $Stage = $true }
 if ($Stage) {
     # Server only, Plain, its five sizes (TC3: a lobby plays Plain_<Size>) and StressTest (S5); UAT's own log goes to Saved_Tests\Logs\net_stage.log. -pak: the cooked
     # data is staged with the server; without it the server streams it from the Zen server that ran at staging time, and
-    # waits forever once another Zen instance has replaced it (another editor started).
+    # waits forever once another Zen instance has replaced it (another editor started). -ubtargs=-WaitMutex: the build
+    # step queues behind a build of another copy on this engine instead of failing at once ("A conflicting instance of
+    # Global\UnrealBuildTool_Mutex", seen 2026-10-29 twice, Celeborn building), as Tools\build.ps1.
     $StageLog = Join-Path $Logs "net_stage.log"
     & (Join-Path $EngineDir "Build\BatchFiles\RunUAT.bat") BuildCookRun -project="$UProject" -noP4 -server -serverplatform=Win64 `
-        -noclient -build -cook -stage -pak -map=/Game/Maps/Plain+/Game/Maps/Plain_Small+/Game/Maps/Plain_Medium+/Game/Maps/Plain_Normal+/Game/Maps/Plain_Large+/Game/Maps/Plain_Huge+/Game/Maps/StressTest -serverconfig=Development -unattended -utf8output *> $StageLog
+        -noclient -build -cook -stage -pak -map=/Game/Maps/Plain+/Game/Maps/Plain_Small+/Game/Maps/Plain_Medium+/Game/Maps/Plain_Normal+/Game/Maps/Plain_Large+/Game/Maps/Plain_Huge+/Game/Maps/StressTest -serverconfig=Development -unattended -utf8output -ubtargs=-WaitMutex *> $StageLog
     if ($LASTEXITCODE -ne 0) { Write-Host "net_match : staging FAILED (see $StageLog)"; exit 1 }
 }
 $Server = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Binaries\Win64\HeroesOfLibertyServer.exe"
