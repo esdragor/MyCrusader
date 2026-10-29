@@ -35,7 +35,7 @@ struct HEROESOFLIBERTY_API FHOLAISourceNear
 	int32 SourceIndex = INDEX_NONE;
 
 	/** Its ground point (cm). */
-	UPROPERTY(BlueprintReadOnly, Category = "AI")
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FVector Location = FVector::ZeroVector;
 
 	/** What it still holds. */
@@ -123,6 +123,13 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	 */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<int32> IdlePeasants;
+
+	/**
+	 * All its Peasants (IA1.5: the workers, idle or not, the dying left out), by identifier (ascending): the opening takes
+	 * its builders from them when none stands idle.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<int32> PeasantIds;
 
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	FHOLAIResourceSummary Food;

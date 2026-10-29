@@ -6183,7 +6183,9 @@ if ($Parts -contains "aiserver") {
         [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[1\]"
     $Checks["AI slot 1 thinks (AI slot 1 step)"] = [bool](Find-AILine "AI slot 1 step \d+:")
     $Checks["5 idle -> gather"] = [bool](Find-AILine "AI slot 1 step \d+: 5 idle -> gather \w+ #\d+")
-    $Checks["Gather order of slot 1: 5 units to source"] = [bool](Find-AILine "Gather order of slot 1: 5 units to source")
+    # IA1.5: the 5 starting Peasants spread, 3 on the food and 2 on the wood (two orders).
+    $Checks["Gather order of slot 1: 3 units to source (food)"] = [bool](Find-AILine "Gather order of slot 1: 3 units to source")
+    $Checks["Gather order of slot 1: 2 units to source (wood)"] = [bool](Find-AILine "Gather order of slot 1: 2 units to source")
     # The report after 5 s: the Peasants sent are on their way, gathering or unloading (a starting hero, if any, stays
     # among the "not gathering").
     $GatherLine = Find-AILine "Gather: slot 1 to source \d+, gathering \d+, to deposit \d+, not gathering \d+"
@@ -6238,10 +6240,11 @@ if ($Parts -contains "aiduel") {
         $Run.Hashes = @($Text | Select-String -Pattern "Step hash: step (\d+) ([0-9a-f]{16})" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
         # The idle time: the reports are 2 s of game apart; per slot, the longest run of reports with a Peasant idle.
         $Reports = @{}
-        foreach ($Match in ($Text | Select-String -Pattern "Gather: slot (\d+) to source \d+, gathering \d+, to deposit \d+, not gathering (\d+)")) {
+        foreach ($Match in ($Text | Select-String -Pattern "Gather: slot (\d+) to source \d+, gathering \d+, to deposit \d+, not gathering (\d+) .*building (\d+)")) {
             $Slot = [int]$Match.Matches[0].Groups[1].Value
             if (-not $Reports.ContainsKey($Slot)) { $Reports[$Slot] = @() }
-            $Reports[$Slot] += [int]$Match.Matches[0].Groups[2].Value
+            # IA1.5: a Peasant on a building site is not idle (the opening's house, camp and mill).
+            $Reports[$Slot] += [int]$Match.Matches[0].Groups[2].Value - [int]$Match.Matches[0].Groups[3].Value
         }
         $Run.MaxIdle = 0.0
         $Run.NumReports = 0
@@ -6329,7 +6332,8 @@ if ($Parts -contains "netai") {
         # stays idle, the brain only sends Peasants).
         $Where = $ClientLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
         $AIUnits = @([regex]::Matches("$Where", "#\d+ slot 2 at \([^)]*\) (\w+)") | ForEach-Object { $_.Groups[1].Value })
-        $AIBusy = @($AIUnits | Where-Object { $_ -in "GatherTrip", "Gathering" }).Count
+        # IA1.5: one Peasant is on the opening's house site (Building) while the 4 others gather.
+        $AIBusy = @($AIUnits | Where-Object { $_ -in "GatherTrip", "Gathering", "Building" }).Count
         $Checks["client $N : the AI's 5 Peasants seen, at work ($AIBusy of $($AIUnits.Count): $(if ($Where) { $Where } else { 'no report' }))"] = $AIBusy -eq 5
         $ScriptErrors = @(Get-ScriptErrors $NetClient.Log)
         $Checks["client $N : scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
@@ -6351,7 +6355,8 @@ if ($Parts -contains "netai") {
         [bool]$Awake -and $Awake -match "net mode DedicatedServer, thinking slots \[2\]"
     $Checks["server : AI slot 2 thinks (AI slot 2 step)"] = [bool](Find-NetAILine "AI slot 2 step \d+:")
     $Checks["server : 5 idle -> gather"] = [bool](Find-NetAILine "AI slot 2 step \d+: 5 idle -> gather \w+ #\d+")
-    $Checks["server : Gather order of slot 2: 5 units to source"] = [bool](Find-NetAILine "Gather order of slot 2: 5 units to source")
+    $Checks["server : Gather order of slot 2: 3 units to source (food)"] = [bool](Find-NetAILine "Gather order of slot 2: 3 units to source")
+    $Checks["server : Gather order of slot 2: 2 units to source (wood)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source")
     # The humans' Peasants are theirs: the AI orders none of them.
     $HumanOrder = Find-NetAILine "Gather order of slot [01]:"
     $Checks["server : no gather order for the humans' slots ($(if ($HumanOrder) { ($HumanOrder -replace '^.*(Gather order)', '$1').Trim() } else { 'none' }))"] = -not $HumanOrder
