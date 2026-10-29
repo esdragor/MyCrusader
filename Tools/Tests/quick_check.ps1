@@ -132,7 +132,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero grid"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -1759,6 +1759,19 @@ if ($Parts -contains "camera") {
                 "waitlog Spearman for 10.2", "wait 0.5",
                 "hol.Units.Remove $($AuraHero -join ' ') 5000 1", "hol.Units.Remove $($AuraHero -join ' ') 5000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero",
                 "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "hol.Combat.LogHits 0", "hol.Combat.Enabled 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # J8c.4 loop 1: the hero's abilities from the grid (J8c-Q4), as the keys. His hero again, selected (F4): Z refused
+            # by the grid at level 1 (the banner opens at 4), A cries, A again refused by the grid (its cool-down, seconds
+            # told); at level 4 Z then a left click 10 m from him plants the banner (hol.Select.Banner). Then removed, his
+            # abilities reset, his XP back to 0, the centre selected then Escape.
+            Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #",
+                "hol.Select.Grid 1", "hol.Select.Grid 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Select.Grid 0",
+                "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
+                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3",
+                "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
@@ -4226,6 +4239,19 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
         [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
     $AllOk = (Report "build hero aura" $Checks) -and $AllOk
+    # J8c.4 loop 1: the abilities from the grid's keys (the grid refuses what is not ready, the server casts the rest).
+    $GridCase = @(Get-Section "build hero grid" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $Checks["level 1: Z refused by the grid (the banner opens at 4)"] = [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner not ready (0 s)" -Quiet)
+    $Checks["A: the cry sent and cast"] = [bool]($GridCase | Select-String -SimpleMatch "Grid: hero cry" -Quiet) -and
+        (@($GridCase | Select-String -SimpleMatch "Hero ability: slot 0 cries Serrez les rangs").Count -eq 1)
+    $CrySeconds = if (($GridCase -join "`n") -match "Grid: hero cry not ready \((\d+) s\)") { [int]$Matches[1] } else { -1 }
+    $Checks["A again: refused by the grid, $CrySeconds s left (59 or 60)"] = $CrySeconds -ge 59 -and $CrySeconds -le 60
+    $Planted = if (($GridCase -join "`n") -match "Hero ability: slot 0 plants his banner at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { $null }
+    $Checks["level 4: Z then a left click 10 m from him plants the banner there (at $($Planted -join ', '), 30 cm at most off)"] =
+        [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner, click on the ground" -Quiet) -and ($null -ne $Planted) -and
+        ([Math]::Abs($Planted[0] - ($BuildHero[0] + 1000)) -le 30) -and ([Math]::Abs($Planted[1] - $BuildHero[1]) -le 30)
+    $AllOk = (Report "build hero grid" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
     $DropOrder = @(Get-Section "build dropoff order" | ForEach-Object { $_ })

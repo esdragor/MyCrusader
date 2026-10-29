@@ -7,6 +7,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Match/HOLResources.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 
 /** What a cell of the command grid does (D30, D313). */
 enum class EHOLGridCommand : uint8
@@ -24,6 +25,11 @@ enum class EHOLGridCommand : uint8
 	Stop,
 	/** Hold position (J7b.3): stop, then only enemies in reach, never a chase, until a move order. */
 	Hold,
+	/**
+	 * A hero's ability (J8c.4, J8c-Q4): A Serrez les rangs (cast at once), Z Bannière de l'Aube (the next left click on the
+	 * ground plants it, 16 m at most from the hero).
+	 */
+	HeroAbility,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -34,6 +40,9 @@ struct FHOLGridCommand
 	/** Build: the age of its panel (0 to 3); bGreyed: an age the player has not reached, shown greyed, a press does nothing. */
 	int32 Age = INDEX_NONE;
 	bool bGreyed = false;
+	/** HeroAbility: which one; bGreyed while it is not open at the hero's level or cooling down (CooldownSeconds left). */
+	EHOLHeroAbility Ability = EHOLHeroAbility::Aura;
+	int32 CooldownSeconds = 0;
 
 	bool IsNone() const { return Command == EHOLGridCommand::None; }
 	bool operator==(const FHOLGridCommand& Other) const = default;
@@ -100,6 +109,14 @@ struct FHOLGridContext
 	 * others: the server then gives the King a plain move (HOLCombat::GetSearchRadius).
 	 */
 	bool bOnlyKings = false;
+	/**
+	 * The player's own hero is among the units commanded (J8c.4): his abilities on the grid on the right (HeroAbilityCell),
+	 * read from his level and the seconds left of each ability's cool-down (indexed by EHOLHeroAbility; the owner's private
+	 * sheet, J8-Q5).
+	 */
+	bool bHero = false;
+	int32 HeroLevel = 0;
+	int32 HeroCooldownSeconds[3] = {};
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
 	TArray<FHOLBuildable> Buildable;
 	/** The last age the player has reached (HOLCommandGrid::GetReachedAge): the panels after it greyed. */
@@ -231,6 +248,12 @@ namespace HOLCommandGrid
 	inline constexpr int32 HoldCell = 11;
 
 	/**
+	 * The hero's abilities on the grid on the right (J8c-Q4, the top row: the units' orders are on the left): A Serrez les
+	 * rangs, Z Bannière de l'Aube. INDEX_NONE for the passive aura (its box is the hero's block's alone).
+	 */
+	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
+
+	/**
 	 * The mouse cursor (the user's trial of A.2, AoE4's way): the red attack cursor (Crosshairs, SHOLAttackCursor) while
 	 * the attack-move waits for its point (Q), the default arrow otherwise, placement mode included (its ghost shows it).
 	 */
@@ -238,7 +261,7 @@ namespace HOLCommandGrid
 
 	/**
 	 * What Cell of the grid on the right does: the selected building's production (finished) or its cancel cell (a site);
-	 * else nothing (the builders' are the age panels': GetAgeBuilding; the units' orders the orders' panel's: GetOrder).
+	 * the hero's abilities when he is among the units commanded (greyed below their level or cooling down); else nothing (the builders' are the age panels': GetAgeBuilding; the units' orders the orders' panel's: GetOrder).
 	 */
 	HEROESOFLIBERTY_API FHOLGridCommand GetCommand(const FHOLGridContext& Context, int32 Cell);
 
@@ -265,7 +288,8 @@ namespace HOLCommandGrid
 	 * selected: the grid, no age. The builders' panels, no age chosen: A Z E R choose their age (one not reached: nothing),
 	 * Q S D F / W X C V the orders; an age chosen, every key of the grid starts the ghost of its building there (the user's
 	 * 3rd trial of G.1: A then A the house; an empty cell: nothing, never another age), the age kept until the ghost is
-	 * placed or cancelled (GetChosenAgeAfter): another key of it changes the ghost. Else: the orders.
+	 * placed or cancelled (GetChosenAgeAfter): another key of it changes the ghost. Else: the grid for the hero's
+	 * cells (A Z, the hero among the units commanded), the orders for the others.
 	 */
 	HEROESOFLIBERTY_API FHOLGridKeyResult PressKey(const FHOLGridContext& Context, int32 ChosenAge, int32 Cell);
 

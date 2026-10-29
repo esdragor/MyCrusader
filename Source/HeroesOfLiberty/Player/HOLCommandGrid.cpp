@@ -36,7 +36,25 @@ namespace HOLCommandGrid
 			}
 			return Result;
 		}
+		if (Context.bHero)
+		{
+			for (const EHOLHeroAbility Ability : { EHOLHeroAbility::CloseRanks, EHOLHeroAbility::Banner })
+			{
+				if (Cell == GetHeroAbilityCell(Ability))
+				{
+					Result.Command = EHOLGridCommand::HeroAbility;
+					Result.Ability = Ability;
+					Result.CooldownSeconds = FMath::Max(0, Context.HeroCooldownSeconds[static_cast<int32>(Ability)]);
+					Result.bGreyed = !HOLHeroAbility::IsUnlocked(Ability, Context.HeroLevel) || Result.CooldownSeconds > 0;
+				}
+			}
+		}
 		return Result;
+	}
+
+	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
+	{
+		return Ability == EHOLHeroAbility::CloseRanks ? 0 : Ability == EHOLHeroAbility::Banner ? 1 : INDEX_NONE;
 	}
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
@@ -111,7 +129,8 @@ namespace HOLCommandGrid
 		}
 		if (!IsBuildGrid(Context))
 		{
-			Result.Target = EHOLGridKeyTarget::Orders;
+			// The hero's cells (A Z) are the grid's; the other keys the orders'.
+			Result.Target = GetCommand(Context, Cell).Command == EHOLGridCommand::HeroAbility ? EHOLGridKeyTarget::Grid : EHOLGridKeyTarget::Orders;
 			return Result;
 		}
 		// No age chosen: A Z E R choose one (one not reached: nothing), the others are the orders'.

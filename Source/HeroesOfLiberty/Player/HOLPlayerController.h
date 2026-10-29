@@ -394,6 +394,15 @@ public:
 	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
 	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
+	/**
+	 * Banner aiming (J8c.4, the grid's Z with the hero commanded): the next left click on the ground plants it there (the
+	 * server checks the reach); a right click or Escape leaves it.
+	 */
+	bool IsBannerArmed() const { return bBannerArmed; }
+	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
+	void PlantBannerAt(const FVector2D& ViewportFraction);
+	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
+	uint32 GetCommandHero() const;
 	/** The selected units that are the player's own (an order moves only them). */
 	TArray<uint32> GetOwnSelectedUnits() const;
 	/** The player's own soldiers among the selection (every type but those that gather). */
@@ -768,6 +777,8 @@ private:
 	bool bOrderPressed = false;
 	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
 	bool bAttackMoveArmed = false;
+	/** Banner aiming (J8c.4): the next left click on the ground plants the hero's banner. */
+	bool bBannerArmed = false;
 	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
 	int32 ChosenAge = INDEX_NONE;
 	void SetChosenAge(int32 Age);
