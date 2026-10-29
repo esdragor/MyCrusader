@@ -3,12 +3,16 @@
 #include "Commands/HOLCommandSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "NavigationSystem.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 bool UHOLCommandSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
@@ -117,6 +121,16 @@ void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitId
 	{
 		return;
 	}
+	// F5: a player's attack on a unit its camp does not see (a modified client guessing an identifier).
+	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	FHOLUnitView Target;
+	if (Kind == EHOLOrderKind::Attack && PlayerIndex != INDEX_NONE && Vision && Units && Units->GetUnitView(TargetUnitId, Target)
+		&& !Vision->IsVisible(PlayerIndex, Target.Location))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Fog: attack of slot %d on hidden unit %u refused"), PlayerIndex, TargetUnitId);
+		return;
+	}
 	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();
 	Order.UnitIds = UnitIds;
 	Order.PlayerIndex = PlayerIndex;
@@ -153,6 +167,14 @@ void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32
 {
 	if (UnitIds.Num() == 0 || !Building || IsRefused(PlayerIndex))
 	{
+		return;
+	}
+	// F5: nor on a building out of its camp's sight (a ghost, D382).
+	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const FHOLBuildingTypeRow* Type = Building->GetType();
+	if (PlayerIndex != INDEX_NONE && Vision && Type && !Vision->IsAreaVisible(PlayerIndex, Building->GetActorLocation(), 0.5 * Type->Footprint))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Fog: attack of slot %d on hidden building %s refused"), PlayerIndex, *Building->GetName());
 		return;
 	}
 	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();

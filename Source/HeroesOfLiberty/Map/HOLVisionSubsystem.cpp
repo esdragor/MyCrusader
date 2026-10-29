@@ -257,6 +257,33 @@ EHOLCellVision UHOLVisionSubsystem::GetVision(const int32 Slot, const FVector& L
 	return Camp == INDEX_NONE ? EHOLCellVision::Unexplored : Map.GetVision(Camp, Map.GetGrid().ToCell(FVector2D(Location)));
 }
 
+bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center, const FVector2D& Extent) const
+{
+	if (Mode == EHOLFogMode::Disabled)
+	{
+		return true;
+	}
+	const int32 Camp = GetCampIndex(Slot);
+	if (Camp == INDEX_NONE)
+	{
+		return false;
+	}
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	const FIntPoint Low = Grid.ToCell(FVector2D(Center) - Extent);
+	const FIntPoint High = Grid.ToCell(FVector2D(Center) + Extent);
+	for (int32 Y = Low.Y; Y <= High.Y; ++Y)
+	{
+		for (int32 X = Low.X; X <= High.X; ++X)
+		{
+			if (Map.GetCount(Camp, FIntPoint(X, Y)) > 0)
+			{
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
 FString UHOLVisionSubsystem::MakeReport() const
 {
 	FString Report = FString::Printf(TEXT("Fog: mode %s, camps %d, observers %d"), GetModeName(Mode), Map.GetNumCamps(), Map.GetNumObservers());

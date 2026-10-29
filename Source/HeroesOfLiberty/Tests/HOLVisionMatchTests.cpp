@@ -2,6 +2,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Map/HOLVisionSubsystem.h"
@@ -260,6 +261,47 @@ bool FHOLVisionMatchGhostsTest::RunTest(const FString& Parameters)
 
 	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
 	TestNull(TEXT("no fog: no memory"), Match.Vision->GetGhosts(0));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchOrdersTest, "HeroesOfLiberty.Vision.Match.Orders", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchOrdersTest::RunTest(const FString& Parameters)
+{
+	// F5 (FogInProgress.md point 3): a player's attack on what its camp does not see is refused (a modified client, a ghost).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	UHOLCommandSubsystem* Commands = Match.World->GetSubsystem<UHOLCommandSubsystem>();
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady() && Commands != nullptr))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector Far(30000., 0., 0.);
+	const uint32 Mine = Match.Place(Peasant, 0, FVector::ZeroVector);
+	const uint32 Enemy = Match.Place(Peasant, 2, Far);
+	AHOLBuilding* House = Match.World->SpawnActor<AHOLBuilding>(Far + FVector(0., 2000., 0.), FRotator::ZeroRotator);
+	if (!TestTrue(TEXT("the units and the house"), Mine != 0 && Enemy != 0 && House != nullptr))
+	{
+		return false;
+	}
+	House->Setup(HOLBuildingTypeNames::House, 2, 2);
+	Match.Vision->Update();
+	const uint32 Attackers[] = { Mine };
+
+	const int32 Before = Commands->GetNumPendingOrders();
+	Commands->IssueCombatOrder(Attackers, EHOLOrderKind::Attack, Enemy, 0);
+	TestEqual(TEXT("a hidden unit: the attack refused"), Commands->GetNumPendingOrders(), Before);
+	Commands->IssueAttackBuildingOrder(Attackers, House, 0);
+	TestEqual(TEXT("a hidden building: the attack refused"), Commands->GetNumPendingOrders(), Before);
+	Commands->IssueCombatOrder(Attackers, EHOLOrderKind::Attack, Enemy, INDEX_NONE);
+	TestEqual(TEXT("the game's own order (no slot): taken"), Commands->GetNumPendingOrders(), Before + 1);
+
+	Match.Move(Mine, Far - FVector(1600., 0., 0.));
+	Match.Vision->Update();
+	Commands->IssueCombatOrder(Attackers, EHOLOrderKind::Attack, Enemy, 0);
+	TestEqual(TEXT("in sight: the attack taken"), Commands->GetNumPendingOrders(), Before + 2);
+	Commands->IssueAttackBuildingOrder(Attackers, House, 0);
+	TestEqual(TEXT("the building in sight: taken"), Commands->GetNumPendingOrders(), Before + 3);
 	return true;
 }
 

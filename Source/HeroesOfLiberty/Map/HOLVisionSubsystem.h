@@ -56,6 +56,9 @@ public:
 	EHOLCellVision GetVision(int32 Slot, const FVector& Location) const;
 	bool IsVisible(int32 Slot, const FVector& Location) const { return GetVision(Slot, Location) == EHOLCellVision::Visible; }
 
+	/** F5: some cell of an area (a building's footprint, Extent its half size) in sight of Slot's camp. */
+	bool IsAreaVisible(int32 Slot, const FVector& Center, const FVector2D& Extent) const;
+
 	const FHOLVisionMap& GetMap() const { return Map; }
 
 	/**
