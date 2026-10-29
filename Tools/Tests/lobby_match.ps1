@@ -158,7 +158,8 @@ function Test-Stats([string] $ServerFile) {
     return ""
 }
 
-# IA0.6 L5 (-AI): a lobby match against an AI, end to end. Alice creates the lobby, turns it to Petite (2 places), takes
+# IA0.6 L5 (-AI): a lobby match against an AI, end to end. Alice (launched as -PlayerName=Alice) types "Alicia" in the
+# name box of the Multiplayer screen (the user's trial, 2026-10-29: the typed name must win at the login), creates the lobby, turns it to Petite (2 places), takes
 # the colour 2, puts an AI on slot 1 by its list (hol.UI.Choose SlotState1 4: "IA Normal 2"; an AI counts in the 2
 # players, IA0.6-Q3 A), presses Ready (1/1) and Launch; she reaches Plain_Small, the AI's Peasants seen at work from her
 # side (hol.Units.Where 1); she gives up (hol.Victory.Surrender), gets her end banner and quits; the server quits once
@@ -169,7 +170,7 @@ if ($AI) {
         $Status = $null
         for ($i = 0; $i -lt 40 -and -not $Status; $i++) { try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 } }
         if (-not $Status) { throw "the manager does not answer on $Url" }
-        $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
+        $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3", "hol.UI.Type NameBox Alicia", "frames 2") +
             (& $Press CreateButton) + $ToSmall + @("waitui", "wait 1", "hol.UI.Choose SlotColor0 $($Colours.Alice)", "waitlog Lobby: colour $($Colours.Alice) accepted", "wait 0.5",
             "hol.UI.Choose SlotState1 4", "waitlog Lobby: slot 1 ai accepted", "wait 0.5", "hol.UI.Text SlotState1", "frames 2") +
             (& $Press ReadyButton) + @("waitlog Lobby: ready on accepted", "waitlog 1/1 ready", "wait 1", "capture lobby_match_ai_lobby") +
@@ -202,9 +203,9 @@ if ($AI) {
     if (-not $Failure) {
         if (-not ($L -match "LogHOLUI: Display: Lobby: slot 1 ai accepted")) { $Failure = "Alice : no 'Lobby: slot 1 ai accepted'" }
         elseif (-not ($L -match "Text SlotState1: IA Normal 2$")) { $Failure = "Alice : the slot list does not show 'IA Normal 2'" }
-        elseif (-not ($L -match "1 players \(Alice\), you Alice, leader Alice, 1/1 ready, launch shown, slots c$($Colours.Alice)r a\d x x x x x x$")) { $Failure = "Alice : no lobby line '1 players (Alice) ... 1/1 ready ... slots c$($Colours.Alice)r a<n> x x x x x x'" }
+        elseif (-not ($L -match "1 players \(Alicia\), you Alicia, leader Alicia, 1/1 ready, launch shown, slots c$($Colours.Alice)r a\d x x x x x x$")) { $Failure = "Alice : no lobby line '1 players (Alicia) ... 1/1 ready ... slots c$($Colours.Alice)r a<n> x x x x x x'" }
         elseif (-not ($L -match "Lobby: start accepted \(HTTP 202\)")) { $Failure = "Alice's Launch not accepted" }
-        elseif (-not ($L -match "LogHOLUI: Display: Lobby: joining match \S+ at 127\.0\.0\.1:\d+ as Alice")) { $Failure = "Alice : no 'Lobby: joining match ... as Alice'" }
+        elseif (-not ($L -match "LogHOLUI: Display: Lobby: joining match \S+ at 127\.0\.0\.1:\d+ as Alicia")) { $Failure = "Alice : no 'Lobby: joining match ... as Alicia'" }
         elseif (-not ($L -match "Players table: Vous, IA Normal 2$")) { $Failure = "Alice : the table of players is not 'Vous, IA Normal 2'" }
         elseif (-not ($L -match "Test capture: lobby_match_ai_match")) { $Failure = "Alice : no capture in the match" }
         elseif ($AIBusy -lt 5) { $Failure = "Alice : $AIBusy of the AI's Peasants seen at work, 5 wanted ($Where)" }
@@ -218,13 +219,13 @@ if ($AI) {
         elseif (-not ($S -match "AI brain \S+ awake, net mode DedicatedServer, thinking slots \[1\]")) { $Failure = "the server has no 'AI brain ... DedicatedServer, thinking slots [1]'" }
         elseif (-not ($S -match "AI slot 1 step \d+: 5 idle -> gather")) { $Failure = "the server has no 'AI slot 1 step N: 5 idle -> gather'" }
         elseif (-not ($S -match "Gather order of slot 1: 5 units to source")) { $Failure = "the server has no 'Gather order of slot 1: 5 units to source'" }
-        elseif (-not ($S -match "LogHOLMatch: Alice holds slot 0")) { $Failure = "the server has no 'Alice holds slot 0'" }
+        elseif (-not ($S -match "LogHOLMatch: Alicia holds slot 0")) { $Failure = "the server has no 'Alicia holds slot 0' (the name typed on the Multiplayer screen, over -PlayerName=Alice$(if ($S -match 'joined as a spectator') { '; she joined as a spectator' }))" }
         elseif (-not ($S -match [regex]::Escape("Victory: slot 0 defeated (Surrender)"))) { $Failure = "the server has no 'Victory: slot 0 defeated (Surrender)'" }
         elseif (@($S -match "LogNet: Join succeeded: ").Count -ne 1) { $Failure = "$(@($S -match 'LogNet: Join succeeded: ').Count) joins on the server, 1 expected" }
     }
     $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
     if ($Failure) { Write-Host "lobby_match : FAIL (ai: $Failure; log $($GameLogs.Alice); $Took)"; exit 1 }
-    Write-Host "lobby_match : PASS (ai: Alice created a Petite lobby, put an AI on slot 1 (IA Normal 2), 1/1 ready, Launch; match.json slot 1 AI Normal; the server's brain thought for slot 1 and sent its 5 Peasants to gather, seen at work by Alice ($AIBusy); table 'Vous, IA Normal 2'; Alice gave up, Defeat banner; no server left; $Took)"
+    Write-Host "lobby_match : PASS (ai: Alice, renamed Alicia on the screen, created a Petite lobby, put an AI on slot 1 (IA Normal 2), 1/1 ready, Launch; match.json slot 1 AI Normal; the server's brain thought for slot 1 and sent its 5 Peasants to gather, seen at work by Alice ($AIBusy); table 'Vous, IA Normal 2'; Alice gave up, Defeat banner; no server left; $Took)"
     exit 0
 }
 
