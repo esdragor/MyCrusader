@@ -1063,6 +1063,26 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** hol.Select.AttackMove in the scenarios' frame (step O: attack-move on a building without a direct order). */
+	FAutoConsoleCommand AttackMoveNearCommand(
+		TEXT("hol.Select.AttackMoveNear"),
+		TEXT("hol.Select.AttackMoveNear <Dx> <Dy> [enemy]: the grid's attack-move (Q) then a left click at the player's main centre (or an enemy's) plus (Dx, Dy) cm in its frame"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector Point;
+				FVector2D Fraction;
+				if (!GetPointNear(*Controller, Args, Point) || !ProjectGroundPoint(*Controller, Point.X, Point.Y, Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.AttackMoveNear: the point is not on the screen"));
+					continue;
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Attack-move near the centre at (%.0f, %.0f)"), Point.X, Point.Y);
+				Controller->AttackMoveAt(Fraction, false);
+			}
+		}));
+
 	FAutoConsoleCommand BuildPlaceAtSourceCommand(
 		TEXT("hol.Build.PlaceAtSource"),
 		TEXT("hol.Build.PlaceAtSource <Type> <X> <Y>: asks the server for a foundation on the standing resource source nearest that ground point (cm), whatever this machine thinks of it"),
