@@ -1,8 +1,9 @@
-// The AI slots' brain (IA0.4, IA1.5): the C++ base (UHOLAIBrainSubsystem) calls Think for each AI slot every
+// The AI slots' brain (IA0.4, IA1.5, IA1.6): the C++ base (UHOLAIBrainSubsystem) calls Think for each AI slot every
 // hol.AI.ThinkSteps steps, on the server only. Think reads the summary, asks the opening rules (HOLAIOpening.as, pure,
 // tested in script) what to build, queue and gather, and sends the orders (UHOLAIOrderLibrary, HOLAIOrder::): the next
 // building of the opening (house, lumber camp, mill) with one Peasant to build it, a Peasant queued at the centre with
-// its rally on the resource that lacks Peasants, and the idle Peasants spread over the resources by their weights.
+// its rally on the resource that lacks Peasants, and the idle Peasants spread over the resources by their needs
+// (HOLAINeeds.as: what the slot wants to spend over the minute, a source used up sending its Peasants on).
 class UHOLAIBrain : UHOLAIBrainSubsystem
 {
 	// Thoughts this brain ran, all slots together.
@@ -20,6 +21,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		NumScriptThoughts++;
 		FHOLAISummary Summary = HOLAISummary::ReadAISummary(PlayerIndex);
 		FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+		ReadFigures(Data);
 		const int64 Step = GetStepIndex();
 		const int NumIdle = Summary.IdlePeasants.Num();
 		TArray<int> Free = Summary.IdlePeasants;
@@ -68,7 +70,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 
-		// 3. The idle Peasants (the builder left out) spread by the weights, one gather order per resource.
+		// 3. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
 		{
 			return true;
@@ -99,6 +101,28 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		return true;
+	}
+
+	// The costs and rates of the data from the type tables (UnitTypes.csv, BuildingTypes.csv), over the values DefaultData holds as
+	// a fallback: nothing of the tables is copied in the script any more (IA1.6).
+	void ReadFigures(FHOLAIOpeningData& Data)
+	{
+		FHOLAITypeFigures Figures;
+		if (HOLAIOrder::ReadAIUnitFigures(n"Peasant", Figures))
+		{
+			Data.Peasant = Figures;
+		}
+		if (HOLAIOrder::ReadAIBuildingFigures(n"House", Figures))
+		{
+			Data.House = Figures;
+		}
+		for (int Index = 0; Index < Data.Steps.Num(); Index++)
+		{
+			if (HOLAIOrder::ReadAIBuildingFigures(Data.Steps[Index].Type, Figures))
+			{
+				Data.Steps[Index].WoodCost = Figures.CostWood;
+			}
+		}
 	}
 
 	// Writes the reason unless it is the one just written for this slot (the thought comes every few steps).

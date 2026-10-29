@@ -1,7 +1,7 @@
 // The opening of the AI brain (IA1.5), written as data and pure rules over a summary (IA1.3), tested alone in script
-// (HOLAIOpening_Test.as): how the starting Peasants spread, which building comes next and where, when a Peasant is queued
-// and where it is sent. The brain (HOLAIBrain.as) reads the summary, asks these rules and sends the orders (IA1.4).
-// IA1.6 (needs) and IA1.7 (buildings) take over from this opening.
+// (HOLAIOpening_Test.as): how the idle Peasants spread (by the needs of HOLAINeeds.as, IA1.6), which building comes next and
+// where, when a Peasant is queued and where it is sent. The brain (HOLAIBrain.as) reads the summary, asks these rules and
+// sends the orders (IA1.4). IA1.7 (buildings) takes over from this opening.
 
 // One building of the opening, in the order of the list.
 struct FHOLAIOpeningStep
@@ -23,7 +23,8 @@ struct FHOLAIOpeningStep
 // The numbers of the opening.
 struct FHOLAIOpeningData
 {
-	// Share of the Peasants per resource, in the order food, wood, stone, gold (provisional: IA4 tunes it on AI-only games).
+	// Share of the Peasants per resource, in the order food, wood, stone, gold: only when the needs (HOLAINeeds.as) ask for
+	// nothing from any resource that has a source (provisional: IA4 tunes it on AI-only games).
 	int WeightFood = 3;
 	int WeightWood = 2;
 	int WeightStone = 0;
@@ -32,11 +33,28 @@ struct FHOLAIOpeningData
 	// Peasants waiting in the centre's queue (the one in production counts).
 	int QueueLength = 2;
 
-	// Food of one Peasant (UnitTypes.csv).
-	int PeasantFood = 50;
+	// The Peasant and the House as the type tables give them (UnitTypes.csv, BuildingTypes.csv): DefaultData holds their
+	// values as a fallback, the brain reads the tables (HOLAIBrain.as ReadFigures) so that the costs are not copied.
+	FHOLAITypeFigures Peasant;
+	FHOLAITypeFigures House;
 
-	// Peasants (alive and queued) up to which the centre keeps producing (indicative: 80, GDD 5.3; IA1.6 decides).
+	// Peasants (alive and queued) up to which the centre keeps producing (indicative: 80, GDD 5.3: 70 to 90).
 	int PeasantTarget = 80;
+
+	// The needs (HOLAINeeds.as): the spending wanted over this many seconds ...
+	float WindowSeconds = 60.f;
+
+	// ... of which this share of the stock in hand is already paid for ...
+	float StockShare = 0.5f;
+
+	// ... but the sources are asked at least this share of the spending ...
+	float MinDemandShare = 0.25f;
+
+	// ... and this much more over the window for what is not planned yet (the next camps, farms and army: IA1.7, IA2).
+	float ReserveFood = 0.f;
+	float ReserveWood = 30.f;
+	float ReserveStone = 0.f;
+	float ReserveGold = 0.f;
 
 	// The house is placed when the places left (cap - used - waiting in a queue) fall to this.
 	int HouseMargin = 3;
@@ -94,6 +112,19 @@ namespace HOLAIOpening
 	FHOLAIOpeningData DefaultData()
 	{
 		FHOLAIOpeningData Data;
+		// The tables' values today (fallback of the brain's read).
+		Data.Peasant.CostFood = 50;
+		Data.Peasant.BuildTime = 20.f;
+		Data.Peasant.Population = 1;
+		Data.Peasant.Speed = 800.f;
+		Data.Peasant.CarryCapacity = 10;
+		Data.Peasant.GatherFood = 0.7f;
+		Data.Peasant.GatherWood = 0.7f;
+		Data.Peasant.GatherStone = 0.7f;
+		Data.Peasant.GatherGold = 0.7f;
+		Data.House.CostWood = 50;
+		Data.House.BuildTime = 20.f;
+		Data.House.Population = 10;
 		FHOLAIOpeningStep House;
 		House.Type = n"House";
 		House.WoodCost = 50;
@@ -196,33 +227,6 @@ namespace HOLAIOpening
 	int PlacesLeft(const FHOLAISummary& Summary)
 	{
 		return Summary.PopulationCap - Summary.PopulationUsed - WaitingInQueues(Summary);
-	}
-
-	// The resource with the biggest deficit of Peasants against its weight, over Total Peasants, among those with a weight and
-	// a source (a tie: the first in the order food, wood, stone, gold); -1 when none. Counts holds the Peasants per resource.
-	int MostLacking(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, const TArray<int>& Counts, int Total)
-	{
-		int SumWeights = 0;
-		for (int Resource = 0; Resource < 4; Resource++)
-		{
-			SumWeights += WeightOf(Data, Resource);
-		}
-		int Best = -1;
-		float BestDeficit = 0.f;
-		for (int Resource = 0; Resource < 4; Resource++)
-		{
-			if (WeightOf(Data, Resource) <= 0 || PartOf(Summary, Resource).Sources.Num() == 0)
-			{
-				continue;
-			}
-			const float Deficit = float(Total) * float(WeightOf(Data, Resource)) / float(SumWeights) - float(Counts[Resource]);
-			if (Best < 0 || Deficit > BestDeficit)
-			{
-				Best = Resource;
-				BestDeficit = Deficit;
-			}
-		}
-		return Best;
 	}
 
 	TArray<int> GatherersOf(const FHOLAISummary& Summary)
@@ -360,23 +364,12 @@ namespace HOLAIOpening
 			Choice.Nothing = "no room";
 			return Choice;
 		}
-		if (Summary.Food.Stock < Data.PeasantFood)
+		if (Summary.Food.Stock < Data.Peasant.CostFood)
 		{
 			Choice.Nothing = "no food";
 			return Choice;
 		}
-		int Queued = 0;
-		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
-		{
-			for (int InQueue = 0; InQueue < Summary.Buildings[Index].Queue.Num(); InQueue++)
-			{
-				if (Summary.Buildings[Index].Queue[InQueue] == n"Peasant")
-				{
-					Queued++;
-				}
-			}
-		}
-		if (Summary.PeasantIds.Num() + Queued >= Data.PeasantTarget)
+		if (HOLAINeeds::PeasantsCounted(Summary) >= Data.PeasantTarget)
 		{
 			Choice.Nothing = "target reached";
 			return Choice;
@@ -385,7 +378,8 @@ namespace HOLAIOpening
 		Choice.bProduce = true;
 		Choice.Centre = Centre.Location;
 		TArray<int> Counts = GatherersOf(Summary);
-		const int Resource = MostLacking(Summary, Data, Counts, SumOf(Counts) + 1);
+		const FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
+		const int Resource = HOLAINeeds::MostLacking(Needs, Counts, SumOf(Counts) + 1);
 		if (Resource >= 0)
 		{
 			const FHOLAISourceNear Source = PartOf(Summary, Resource).Sources[0];
@@ -411,9 +405,10 @@ namespace HOLAIOpening
 		Groups.Add(Group);
 	}
 
-	// The Peasants Free spread by the weights: each goes, in order, to the resource that lacks Peasants most (those already
-	// gathering and those sent before it counted), one group per resource with the nearest source. Without a weighted
-	// resource that has a source, all go to the lowest stock among those with one (the IA0.4 rule).
+	// The Peasants Free spread by the needs (HOLAINeeds.as): each goes, in order, to the resource that lacks Peasants most
+	// against its share (those already gathering and those sent before it counted), one group per resource with the nearest
+	// source. A source used up has left the summary: its Peasants, idle, come here and go to what is left. Without a share on
+	// any resource that has a source, all go to the lowest stock among those with one (the IA0.4 rule).
 	TArray<FHOLAIGatherGroup> SplitGather(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, const TArray<int>& Free)
 	{
 		TArray<FHOLAIGatherGroup> Groups;
@@ -423,7 +418,8 @@ namespace HOLAIOpening
 		}
 		TArray<int> Counts = GatherersOf(Summary);
 		const int Total = SumOf(Counts) + Free.Num();
-		if (MostLacking(Summary, Data, Counts, Total) < 0)
+		const FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
+		if (HOLAINeeds::MostLacking(Needs, Counts, Total) < 0)
 		{
 			FHOLAISummary Alone = Summary;
 			Alone.IdlePeasants = Free;
@@ -447,7 +443,7 @@ namespace HOLAIOpening
 		FHOLAIGatherGroup Per3;
 		for (int Index = 0; Index < Free.Num(); Index++)
 		{
-			const int Resource = MostLacking(Summary, Data, Counts, Total);
+			const int Resource = HOLAINeeds::MostLacking(Needs, Counts, Total);
 			Counts[Resource] = Counts[Resource] + 1;
 			if (Resource == 0)
 			{

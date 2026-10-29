@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AI/HOLAIBrain.h"
+#include "AI/HOLAIOrders.h"
 #include "AI/HOLAISummary.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
@@ -20,6 +21,7 @@
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -228,6 +230,108 @@ bool FHOLAIOpeningBuildingsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("one House still"), Test.CountBuildings(HOLBuildingTypeNames::House, 1), 1);
 	TestEqual(TEXT("one LumberCamp still"), Test.CountBuildings(HOLBuildingTypeNames::LumberCamp, 1), 1);
 	TestEqual(TEXT("one Mill still"), Test.CountBuildings(HOLBuildingTypeNames::Mill, 1), 1);
+	return true;
+}
+
+/**
+ * IA1.6, the figures: the brain's costs come from the type tables (UHOLAIOrderLibrary::ReadAIUnitFigures / ReadAIBuildingFigures),
+ * not from numbers copied into the script. The Peasant and the House as the tables have them; an unknown type is refused.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAINeedsFiguresTest, "HeroesOfLiberty.AI.Needs.Figures", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAINeedsFiguresTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const FHOLUnitTypeRow* PeasantRow = Test.World->GetSubsystem<UHOLUnitSubsystem>()->FindTypeRow(FName(TEXT("Peasant")));
+	const FHOLBuildingTypeRow* HouseRow = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
+	if (!TestNotNull(TEXT("the Peasant row"), PeasantRow) || !TestNotNull(TEXT("the House row"), HouseRow))
+	{
+		return false;
+	}
+	FHOLAITypeFigures Peasant;
+	TestTrue(TEXT("the Peasant is known"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, FName(TEXT("Peasant")), Peasant));
+	TestEqual(TEXT("Peasant food"), Peasant.CostFood, PeasantRow->Cost.Food);
+	TestTrue(TEXT("a Peasant costs food"), Peasant.CostFood > 0);
+	TestEqual(TEXT("Peasant build time"), Peasant.BuildTime, PeasantRow->BuildTime);
+	TestEqual(TEXT("Peasant population"), Peasant.Population, PeasantRow->Population);
+	TestEqual(TEXT("Peasant speed"), Peasant.Speed, PeasantRow->Speed);
+	TestEqual(TEXT("Peasant load"), Peasant.CarryCapacity, PeasantRow->CarryCapacity);
+	TestEqual(TEXT("Peasant wood rate"), Peasant.GatherWood, PeasantRow->GatherRates.Wood);
+	TestTrue(TEXT("a Peasant gathers"), Peasant.GatherFood > 0.f);
+	FHOLAITypeFigures House;
+	TestTrue(TEXT("the House is known"), UHOLAIOrderLibrary::ReadAIBuildingFigures(HOLBuildingTypeNames::House, House));
+	TestEqual(TEXT("House wood"), House.CostWood, HouseRow->Cost.Wood);
+	TestEqual(TEXT("House places"), House.Population, HouseRow->PopulationProvided);
+	TestTrue(TEXT("a House gives places"), House.Population > 0);
+	FHOLAITypeFigures Nothing;
+	// The table lookup logs an error for a name it does not know (the order library's other lookups do as well).
+	AddExpectedError(TEXT("No building type NoSuchBuilding"), EAutomationExpectedErrorFlags::Contains, 1);
+	TestFalse(TEXT("unknown unit"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, FName(TEXT("NoSuchUnit")), Nothing));
+	TestFalse(TEXT("unknown building"), UHOLAIOrderLibrary::ReadAIBuildingFigures(FName(TEXT("NoSuchBuilding")), Nothing));
+	return true;
+}
+
+/**
+ * IA1.6, the needs on the real chain: the starting stocks give the opening's 3 food for 2 wood, but with the wood gone and the
+ * food in plenty the same five Peasants go 1 to the berries, 4 to the tree. Red while the split follows the fixed weights.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAINeedsSpreadTest, "HeroesOfLiberty.AI.Needs.Spread", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAINeedsSpreadTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	Test.AIState->SetResources(FHOLResources(1000, 0, 0, 0));
+	TestTrue(TEXT("slot 1 thinks"), Test.Brain->ThinkNow(1));
+	TArray<FHOLGatherOrder> Orders;
+	Test.Commands->ConsumeGatherOrders(Orders);
+	if (TestEqual(TEXT("two gather orders"), Orders.Num(), 2))
+	{
+		TestEqual(TEXT("first: the berries"), Orders[0].SourceIndex, Test.Berries);
+		TestEqual(TEXT("one on the berries"), Orders[0].UnitIds.Num(), 1);
+		TestEqual(TEXT("second: the tree"), Orders[1].SourceIndex, Test.Tree);
+		TestEqual(TEXT("four on the tree"), Orders[1].UnitIds.Num(), 4);
+	}
+	Test.RunStep();
+	TestEqual(TEXT("the rally of the new Peasants: the tree, the wood being short"), Test.Centre->GetRallySource(), Test.Tree);
+	return true;
+}
+
+/**
+ * IA1.6, a source used up: its Peasants stand idle (the summary leaves it out) and the next thought sends them to what is
+ * left, all of them, the berries' Peasants included.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAINeedsUsedUpTest, "HeroesOfLiberty.AI.Needs.UsedUpSource", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAINeedsUsedUpTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	TestTrue(TEXT("thought 1"), Test.Brain->ThinkNow(1));
+	TArray<FHOLGatherOrder> Orders;
+	Test.Commands->ConsumeGatherOrders(Orders);
+	TestEqual(TEXT("the start: two gather orders"), Orders.Num(), 2);
+
+	UHOLSourceSubsystem* Sources = Test.World->GetSubsystem<UHOLSourceSubsystem>();
+	Sources->Take(Test.Berries, 100000);
+	Orders.Reset();
+	TestTrue(TEXT("thought 2"), Test.Brain->ThinkNow(1));
+	Test.Commands->ConsumeGatherOrders(Orders);
+	if (TestEqual(TEXT("one gather order: the tree"), Orders.Num(), 1))
+	{
+		TestEqual(TEXT("to the tree"), Orders[0].SourceIndex, Test.Tree);
+		TestEqual(TEXT("all five"), Orders[0].UnitIds.Num(), 5);
+	}
 	return true;
 }
 
