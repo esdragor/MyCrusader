@@ -80,6 +80,16 @@ public:
 	/** Born of a building (a farm field, IA1.2): no shape, no hole in the navmesh, not clicked. */
 	bool IsLinked(int32 SourceIndex) const;
 
+	/** F2 (D383): its type cuts the sight (FHOLSourceTypeRow::BlocksSight, the trees). */
+	bool BlocksSight(int32 SourceIndex) const;
+
+	/**
+	 * F2: a source entered this machine's map (true) or left it (false: used up, removed), on the server as on a client
+	 * (the chunks): the fog counts its trees per cell (FHOLVisionMap::AddBlocker / RemoveBlocker).
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnSourceStanding, int32 /*SourceIndex*/, bool /*bStanding*/);
+	FOnSourceStanding OnSourceStanding;
+
 	/**
 	 * IA1.2 F7: the standing linked source (a farm field) within Tolerance (cm, on the ground plane) of Location, its
 	 * building's centre, INDEX_NONE if none. Server and clients alike (the chunks bring type and place).

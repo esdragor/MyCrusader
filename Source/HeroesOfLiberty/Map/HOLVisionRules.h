@@ -54,6 +54,12 @@ struct HEROESOFLIBERTY_API FHOLVisionTuning
 	 */
 	double HeightBonusPerCm = 1.;
 	double MaxHeightBonus = 800.;
+
+	/**
+	 * F2 (D383): standing trees (a source type that BlocksSight) that make a cell forest (provisional: the woods are planted
+	 * 2.2 m apart, 3 or 4 trees a cell; the grove's 7 m apart, one at most: not a forest).
+	 */
+	int32 ForestTrees = 2;
 };
 
 namespace HOLVisionRules
@@ -89,7 +95,7 @@ namespace HOLVisionRules
 class HEROESOFLIBERTY_API FHOLVisionMap
 {
 public:
-	void Init(const FHOLVisionGrid& InGrid, int32 InNumCamps);
+	void Init(const FHOLVisionGrid& InGrid, int32 InNumCamps, const FHOLVisionTuning& InTuning = FHOLVisionTuning());
 
 	const FHOLVisionGrid& GetGrid() const { return Grid; }
 	int32 GetNumCamps() const { return NumCamps; }
@@ -100,6 +106,14 @@ public:
 	 */
 	bool SetBlocked(const FIntPoint& Cell, bool bBlocked);
 	bool IsBlocked(const FIntPoint& Cell) const;
+
+	/**
+	 * F2: a tree (a source that BlocksSight) stands at Position, or is gone (used up): its cell counts it; reaching
+	 * ForestTrees it turns forest, falling below it opens again (SetBlocked). Out of the grid: nothing.
+	 */
+	void AddBlocker(const FVector2D& Position);
+	void RemoveBlocker(const FVector2D& Position);
+	int32 GetBlockers(const FIntPoint& Cell) const;
 
 	/** A new observer of Camp at Position (world, X, Y) seeing Radius cm (GetSightRadius). Returns its handle. */
 	int32 AddObserver(int32 Camp, const FVector2D& Position, double Radius);
@@ -139,7 +153,10 @@ private:
 	void TakeOff(FObserver& Observer);
 
 	FHOLVisionGrid Grid;
+	FHOLVisionTuning Tuning;
 	int32 NumCamps = 0;
+	/** Per cell: standing trees (AddBlocker). */
+	TArray<uint16> Trees;
 	/** Per cell. */
 	TArray<bool> Blocked;
 	/** Per camp, then per cell: Counts[Camp * Grid.Num() + Index]. */

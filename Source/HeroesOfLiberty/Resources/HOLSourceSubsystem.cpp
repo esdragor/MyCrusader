@@ -273,6 +273,12 @@ bool UHOLSourceSubsystem::IsLinked(const int32 SourceIndex) const
 	return Type && Type->Linked;
 }
 
+bool UHOLSourceSubsystem::BlocksSight(const int32 SourceIndex) const
+{
+	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? GetType(Sources[SourceIndex].TypeIndex) : nullptr;
+	return Type && Type->BlocksSight;
+}
+
 int32 UHOLSourceSubsystem::FindLinkedSourceAt(const FVector& Location, const float Tolerance) const
 {
 	// IA1.2 F7: a farm field stands at its farm's centre (AHOLBuilding::UpdateLinkedSource); a client holds its place as
@@ -307,6 +313,7 @@ void UHOLSourceSubsystem::OnSourceAdded(const int32 SourceIndex)
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetSource(SourceIndex % AHOLSourceChunk::NumSlots, Source.TypeIndex,
 			Source.Location, Source.Remaining);
 	}
+	OnSourceStanding.Broadcast(SourceIndex, true);
 }
 
 void UHOLSourceSubsystem::OnSourceUsedUp(const int32 SourceIndex)
@@ -317,6 +324,7 @@ void UHOLSourceSubsystem::OnSourceUsedUp(const int32 SourceIndex)
 		Field->HideSource(SourceIndex);
 	}
 	UE_LOG(LogHOLMatch, Log, TEXT("Sources: source %d used up (%s)"), SourceIndex, bAuthority ? TEXT("server") : TEXT("client"));
+	OnSourceStanding.Broadcast(SourceIndex, false);
 }
 
 AHOLSourceChunk* UHOLSourceSubsystem::GetOrAddChunk(const int32 ChunkIndex)

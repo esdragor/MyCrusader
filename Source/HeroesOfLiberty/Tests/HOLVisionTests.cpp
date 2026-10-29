@@ -2,10 +2,15 @@
 
 #include "Buildings/HOLBuildingTypes.h"
 #include "Engine/DataTable.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Map/HOLVisionRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/ScopeExit.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -252,6 +257,99 @@ bool FHOLVisionSightRadiusTest::RunTest(const FString& Parameters)
 		const double HalfSide = 0.5 * FMath::Max(Row.Footprint.X, Row.Footprint.Y);
 		TestTrue(*FString::Printf(TEXT("%s sees (%.0f cm) beyond its walls by a tile"), *Name.ToString(), Row.SightRadius), Row.SightRadius >= HalfSide + Tile);
 	});
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionForestTreesTest, "HeroesOfLiberty.Vision.ForestTrees", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionForestTreesTest::RunTest(const FString& Parameters)
+{
+	// F2 (D383): a cell is forest from ForestTrees standing trees on; the last ones cut, it opens again.
+	using namespace UE::HeroesOfLiberty::Tests::Vision;
+	FHOLVisionMap Map;
+	Map.Init(MakeGrid(), 1);
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	const FHOLVisionTuning Tuning;
+	const FIntPoint Wood(8, 10);
+	const FVector2D Centre = Grid.GetCenter(Wood);
+	const int32 Eye = Map.AddObserver(0, Grid.GetCenter(FIntPoint(5, 10)), 3200.);
+	for (int32 Tree = 0; Tree < Tuning.ForestTrees - 1; ++Tree)
+	{
+		Map.AddBlocker(Centre + FVector2D(-150. + 100. * Tree, 120.));
+	}
+	TestEqual(TEXT("its trees counted"), Map.GetBlockers(Wood), Tuning.ForestTrees - 1);
+	TestFalse(TEXT("too few trees: open"), Map.IsBlocked(Wood));
+	TestEqual(TEXT("open: seen through"), Map.GetVision(0, FIntPoint(9, 10)), EHOLCellVision::Visible);
+
+	Map.AddBlocker(Centre + FVector2D(150., -150.));
+	TestTrue(TEXT("enough trees: forest"), Map.IsBlocked(Wood));
+	TestEqual(TEXT("forest: behind it hidden"), Map.GetVision(0, FIntPoint(9, 10)), EHOLCellVision::Explored);
+
+	Map.RemoveBlocker(Centre + FVector2D(150., -150.));
+	TestFalse(TEXT("a tree cut below the count: open again"), Map.IsBlocked(Wood));
+	TestEqual(TEXT("open again: seen through"), Map.GetVision(0, FIntPoint(9, 10)), EHOLCellVision::Visible);
+	TestEqual(TEXT("the trees left"), Map.GetBlockers(Wood), Tuning.ForestTrees - 1);
+
+	Map.AddBlocker(FVector2D(1.e6, 0.));
+	Map.RemoveBlocker(FVector2D(1.e6, 0.));
+	TestEqual(TEXT("out of the grid: nothing"), Map.GetBlockers(Wood), Tuning.ForestTrees - 1);
+	Map.RemoveObserver(Eye);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionSourceFeedTest, "HeroesOfLiberty.Vision.SourceFeed", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionSourceFeedTest::RunTest(const FString& Parameters)
+{
+	// F2 (D383): the forest is read from the source registry (the real table's trees), and opens as its trees are cut.
+	using namespace UE::HeroesOfLiberty::Tests::Vision;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	ON_SCOPE_EXIT
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
+	UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>();
+	if (!TestNotNull(TEXT("the source registry"), Sources))
+	{
+		return false;
+	}
+	Sources->OnWorldBeginPlay(*World);
+
+	FHOLVisionMap Map;
+	Map.Init(MakeGrid(), 1);
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	TArray<TPair<int32, bool>> Events;
+	Sources->OnSourceStanding.AddLambda([&Map, &Events, Sources](const int32 SourceIndex, const bool bStanding)
+	{
+		Events.Emplace(SourceIndex, bStanding);
+		if (Sources->BlocksSight(SourceIndex))
+		{
+			const FVector2D Position(Sources->GetSources()[SourceIndex].Location);
+			bStanding ? Map.AddBlocker(Position) : Map.RemoveBlocker(Position);
+		}
+	});
+
+	const FIntPoint Wood(12, 10);
+	const FVector Centre(Grid.GetCenter(Wood), 0.);
+	const int32 First = Sources->AddSource(HOLSourceTypeNames::Tree, Centre + FVector(-120., -120., 0.));
+	const int32 Bush = Sources->AddSource(HOLSourceTypeNames::BerryBush, Centre + FVector(0., 120., 0.));
+	TestTrue(TEXT("a tree cuts the sight"), Sources->BlocksSight(First));
+	TestFalse(TEXT("a berry bush does not"), Sources->BlocksSight(Bush));
+	TestEqual(TEXT("each source told"), Events.Num(), 2);
+	TestEqual(TEXT("one tree counted, not the bush"), Map.GetBlockers(Wood), 1);
+	TArray<int32> Trees = { First };
+	while (Map.GetBlockers(Wood) < FHOLVisionTuning().ForestTrees && Trees.Num() < 10)
+	{
+		Trees.Add(Sources->AddSource(HOLSourceTypeNames::Tree, Centre + FVector(120., -150. + 40. * Trees.Num(), 0.)));
+	}
+	TestTrue(TEXT("a wood: forest"), Map.IsBlocked(Wood));
+
+	const int32 Amount = Sources->GetSources()[First].Remaining;
+	TestEqual(TEXT("the first tree cut down"), Sources->Take(First, Amount), Amount);
+	TestTrue(TEXT("told gone"), Events.Num() > 0 && Events.Last() == TPair<int32, bool>(First, false));
+	TestFalse(TEXT("its last trees cut below the count: open"), Map.IsBlocked(Wood));
 	return true;
 }
 

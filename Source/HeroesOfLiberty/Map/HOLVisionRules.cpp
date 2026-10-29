@@ -105,11 +105,13 @@ TArray<FIntPoint> HOLVisionRules::GetSeenCells(const FHOLVisionGrid& Grid, TCons
 	return Seen;
 }
 
-void FHOLVisionMap::Init(const FHOLVisionGrid& InGrid, const int32 InNumCamps)
+void FHOLVisionMap::Init(const FHOLVisionGrid& InGrid, const int32 InNumCamps, const FHOLVisionTuning& InTuning)
 {
 	Grid = InGrid;
+	Tuning = InTuning;
 	NumCamps = FMath::Max(0, InNumCamps);
 	Blocked.Init(false, Grid.Num());
+	Trees.Init(0, Grid.Num());
 	Counts.Init(0, NumCamps * Grid.Num());
 	Explored.Init(false, NumCamps * Grid.Num());
 	Observers.Empty();
@@ -137,6 +139,34 @@ bool FHOLVisionMap::SetBlocked(const FIntPoint& Cell, const bool bBlocked)
 bool FHOLVisionMap::IsBlocked(const FIntPoint& Cell) const
 {
 	return Grid.IsInside(Cell) && Blocked[Grid.ToIndex(Cell)];
+}
+
+void FHOLVisionMap::AddBlocker(const FVector2D& Position)
+{
+	const FIntPoint Cell = Grid.ToCell(Position);
+	if (Grid.IsInside(Cell))
+	{
+		uint16& Count = Trees[Grid.ToIndex(Cell)];
+		ensure(Count < MAX_uint16);
+		++Count;
+		SetBlocked(Cell, Count >= Tuning.ForestTrees);
+	}
+}
+
+void FHOLVisionMap::RemoveBlocker(const FVector2D& Position)
+{
+	const FIntPoint Cell = Grid.ToCell(Position);
+	if (Grid.IsInside(Cell) && ensure(Trees[Grid.ToIndex(Cell)] > 0))
+	{
+		uint16& Count = Trees[Grid.ToIndex(Cell)];
+		--Count;
+		SetBlocked(Cell, Count >= Tuning.ForestTrees);
+	}
+}
+
+int32 FHOLVisionMap::GetBlockers(const FIntPoint& Cell) const
+{
+	return Grid.IsInside(Cell) ? Trees[Grid.ToIndex(Cell)] : 0;
 }
 
 int32 FHOLVisionMap::AddObserver(const int32 Camp, const FVector2D& Position, const double Radius)
