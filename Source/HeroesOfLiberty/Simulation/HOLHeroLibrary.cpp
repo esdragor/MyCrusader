@@ -14,6 +14,7 @@
 #include "Match/HOLStartRules.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -69,12 +70,17 @@ int32 UHOLHeroLibrary::GetHeroHealth(const UObject* WorldContextObject, const in
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Health;
 }
 
-int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject)
+int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject, const int32 Slot)
 {
 	const UWorld* World = GetWorldOf(WorldContextObject);
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(FHOLStartRules::HeroTypeName) : nullptr;
-	return Row ? Row->MaxHealth : 0;
+	if (!Row)
+	{
+		return 0;
+	}
+	const int32 Level = Slot >= 0 ? FMath::Max<int32>(GetPublicSheet(World, Slot).Level, 1) : 1;
+	return FMath::RoundToInt(HOLHeroXP::GetLevelStat(static_cast<float>(Row->MaxHealth), Level));
 }
 
 int32 UHOLHeroLibrary::GetHeroDeathStep(const UObject* WorldContextObject, const int32 Slot)

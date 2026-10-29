@@ -31,9 +31,12 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroHealth(const UObject* WorldContextObject, int32 Slot);
 
-	/** A hero's HP when whole: the Hero type's MaxHealth (450, J8a-Q1); 0 without the unit types (J8a.5: the hero's block). */
+	/**
+	 * A hero's HP when whole: the Hero type's MaxHealth (450, J8a-Q1) at the level of the slot's public sheet (J8b-Q3: 486
+	 * at level 2; level 1 for Slot -1 or no level yet); 0 without the unit types (J8a.5: the hero's block).
+	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
-	static int32 GetHeroMaxHealth(const UObject* WorldContextObject);
+	static int32 GetHeroMaxHealth(const UObject* WorldContextObject, int32 Slot = -1);
 
 	/**
 	 * The step the slot's hero fell at (-1 alive or without a hero): the true sheet on the server; on a client, the local

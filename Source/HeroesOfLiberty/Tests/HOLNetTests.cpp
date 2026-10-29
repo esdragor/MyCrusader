@@ -491,6 +491,59 @@ bool FHOLNetHeroSheetHealthTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetHeroLevelHealthTest, "HeroesOfLiberty.Net.HeroLevelHealth", UE::HeroesOfLiberty::Tests::Net::Flags)
+// J8b.3: a hero above level 1 (J8b-Q3, +8 % HP a level) seen on a client: the server sends his share of his maximum at his
+// level (HOLCombat::GetMaxHealth), the client takes that maximum from the level of his slot's public sheet (486 at level 2),
+// not from the table's 450. The real Hero row, Iris' serializer, the client's view as UHOLUnitReceptionSubsystem makes it.
+bool FHOLNetHeroLevelHealthTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Hero = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Hero"), TEXT("Net test")) : nullptr;
+	if (!TestNotNull(TEXT("Hero row"), Hero))
+	{
+		return false;
+	}
+	const FHOLUnitTypeConstants Constants = Hero->ToConstants(TEXT("Hero"));
+	// His level 2 body as the server sends it, at Health.
+	const auto Send = [this, &Constants](const float Health, FHOLNetUnitState& Back)
+	{
+		FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(700.0, -800.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Idle, 120);
+		State.SetCombat(HOLCombat::GetShownHealth(Health), HOLCombat::GetMaxHealth(Constants, 2), 0, false, 0.f, true);
+		return RoundTrip(*this, State, Back);
+	};
+	// His public sheet at 200 XP (level 2), alive at Health.
+	const auto SheetAt = [](const float Health)
+	{
+		FHOLHeroFacts Facts;
+		Facts.bPresent = true;
+		Facts.Health = Health;
+		FHOLHeroSheets Previous;
+		Previous.Private.XP = 200;
+		return HOLHeroSheet::Make(Facts, Previous).Public;
+	};
+	const FHOLHeroSheet Wounded = SheetAt(400.f);
+	TestEqual(TEXT("the sheet at 200 XP: level 2"), static_cast<int32>(Wounded.Level), 2);
+	FHOLNetUnitState Back;
+	if (Send(400.f, Back))
+	{
+		FHOLUnitView View;
+		HOLUnitView::SetReceivedHealth(View, Back.bFullHealth, Back.Health, Hero->MaxHealth, true, &Wounded);
+		TestEqual(TEXT("400 / 486: his maximum at level 2"), View.MaxHealth, 486);
+		TestEqual(TEXT("... the sheet's exact 400"), View.Health, 400);
+		TestEqual(TEXT("... the bar at the share of 486"), View.GetHealthShare(), static_cast<float>(Back.Health) / 255.f, 0.0001f);
+		TestTrue(TEXT("... the bar near 400 / 486"), FMath::Abs(View.GetHealthShare() - 400.f / 486.f) < 0.01f);
+	}
+	const FHOLHeroSheet Full = SheetAt(486.f);
+	if (Send(486.f, Back))
+	{
+		FHOLUnitView View;
+		HOLUnitView::SetReceivedHealth(View, Back.bFullHealth, Back.Health, Hero->MaxHealth, true, &Full);
+		TestTrue(TEXT("unhurt at level 2: 486 / 486, exact, the bar full"), View.bFullHealth && View.Health == 486 && View.MaxHealth == 486 && View.bHealthExact);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetUnwrapStepTest, "HeroesOfLiberty.Net.UnwrapStep", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
 {

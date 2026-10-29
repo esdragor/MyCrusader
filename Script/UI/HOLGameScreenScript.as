@@ -155,7 +155,7 @@ class UHOLGameScreenScript : UHOLScriptScreen
 			View = HOLHeroBlock::Make(true, false, EHOLHeroState::None, 0, 0, 0, -1, FHOLHeroReturnQuote());
 		else
 			View = HOLHeroBlock::Make(false, HOLHero::IsSlotDefeated(PlayerSlot), HOLHero::GetHeroState(PlayerSlot), HOLHero::GetHeroLevel(PlayerSlot),
-				HOLHero::GetHeroHealth(PlayerSlot), HOLHero::GetHeroMaxHealth(), -1, HOLHeroReturnQuote::ReadNow(PlayerSlot));
+				HOLHero::GetHeroHealth(PlayerSlot), HOLHero::GetHeroMaxHealth(PlayerSlot), -1, HOLHeroReturnQuote::ReadNow(PlayerSlot));
 		ShowHero(View);
 	}
 

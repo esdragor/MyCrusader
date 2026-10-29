@@ -34,6 +34,23 @@ void Test_HeroReturnPrice(FUnitTest& T)
 	T.AssertEquals(0, HOLHeroReturn::PriceAt(Ready + 5000, Death, 1), "0 after the end");
 }
 
+// J8b-Q5: the price starts at 100 + 50 x level (150 at level 1, 200 at level 2, 400 at level 6) and still drops to 0
+// in 60 s; the delay 30 s + 8 s x level (78 s = 1 560 steps at level 6).
+void Test_HeroReturnPriceByLevel(FUnitTest& T)
+{
+	const int Death = 1000;
+	T.AssertEquals(1560, HOLHeroReturn::DelaySteps(6), "delay at level 6");
+	const int Ready2 = HOLHeroReturn::ReadyStep(Death, 2);
+	T.AssertEquals(200, HOLHeroReturn::PriceAt(Ready2, Death, 2), "200 at the ready step, level 2");
+	T.AssertEquals(100, HOLHeroReturn::PriceAt(Ready2 + 600, Death, 2), "100 half-way, level 2");
+	T.AssertEquals(0, HOLHeroReturn::PriceAt(Ready2 + 1200, Death, 2), "0 at the end, level 2");
+	const int Ready6 = HOLHeroReturn::ReadyStep(Death, 6);
+	T.AssertEquals(400, HOLHeroReturn::PriceAt(Ready6, Death, 6), "400 at the ready step, level 6");
+	T.AssertEquals(200, HOLHeroReturn::PriceAt(Ready6 + 600, Death, 6), "200 half-way, level 6");
+	T.AssertEquals(1, HOLHeroReturn::PriceAt(Ready6 + 1199, Death, 6), "1 just before the end, level 6");
+	T.AssertTrue(HOLHeroReturn::ShouldAutoReturn(Ready6 + 1200, Death, 6), "back by itself at 0, level 6");
+}
+
 // The hero comes back by itself at price 0: 1 960 steps after death at level 1.
 void Test_HeroReturnByItself(FUnitTest& T)
 {
