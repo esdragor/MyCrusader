@@ -244,6 +244,22 @@ TRANSLATIONS = {
     "HOLHeroBlock,Return": ("Bring the hero back — {0} gold", "英雄を呼び戻す — {0} 金"),
     "HOLHeroBlock,NoGold": ("Not enough gold", "金が足りません"),
     "HOLHeroBlock,NoPlace": ("No Forum to return to", "帰還できる町の中心がありません"),
+    "HOLHeroBlock,AuraName": ("Aura of the Dawn", "暁のオーラ"),
+    "HOLHeroBlock,AuraEffect": ("Passive: −15 % damage taken for your units within 12 m of the hero", "常時：英雄から12 m以内の味方ユニットの被ダメージ −15 %"),
+    "HOLHeroBlock,CloseRanksName": ("Close Ranks (A)", "隊列を固めよ (A)"),
+    "HOLHeroBlock,CloseRanksEffect": ("−25 % damage taken for 15 s for your units within 12 m of the hero; cooldown 60 s", "英雄から12 m以内の味方ユニットの被ダメージ −25 %（15秒）；再使用 60秒"),
+    "HOLHeroBlock,BannerName": ("Banner of the Dawn (Z)", "暁の旗 (Z)"),
+    "HOLHeroBlock,BannerEffect": ("Planted up to 16 m from the hero: his aura there for 45 s; cooldown 120 s", "英雄から16 m以内に立てる：その場に45秒間オーラ；再使用 120秒"),
+    "HOLHeroBlock,AbilityLocked": ("Requires level {0}", "レベル {0} が必要"),
+    "HOLHeroBlock,AbilityCooldown": ("Ready in {0} s", "あと {0} 秒"),
+    "HOLGameScreen,CloseRanksShort": ("Ranks", "隊列"),
+    "HOLGameScreen,BannerShort": ("Banner", "旗"),
+    "HOLGameScreen,CloseRanksName": ("Close Ranks", "隊列を固めよ"),
+    "HOLGameScreen,BannerName": ("Banner of the Dawn", "暁の旗"),
+    "HOLGameScreen,CloseRanksEffect": ("−25 % damage taken for 15 s for your units within 12 m of the hero; cooldown 60 s", "英雄から12 m以内の味方ユニットの被ダメージ −25 %（15秒）；再使用 60秒"),
+    "HOLGameScreen,BannerEffect": ("Then click the ground, up to 16 m from the hero: his aura (−15 % damage taken within 12 m) for 45 s; cooldown 120 s", "続けて英雄から16 m以内の地面をクリック：45秒間オーラ（12 m以内の被ダメージ −15 %）；再使用 120秒"),
+    "HOLGameScreen,HeroAbilityLocked": ("Requires level {0}", "レベル {0} が必要"),
+    "HOLGameScreen,HeroAbilityCooldown": ("{0}\n{1} s", "{0}\n{1}秒"),
     # P5 (D513): the limited pause, the Escape menu's button ({0} the pauses left) and the pause screen (Script/UI/
     # HOLPauseScreen.as: {0} a name, the timer m:ss, a number).
     "HOLGameMenu,Pause": ("Pause", "一時停止"),
@@ -416,7 +432,7 @@ CULTURES = {"en": 0, "ja": 1}
 
 
 def po_escape(text):
-    return text.replace("\\", "\\\\").replace("\"", "\\\"")
+    return text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n")
 
 
 def fill(culture, column):

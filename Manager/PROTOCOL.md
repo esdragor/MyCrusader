@@ -413,7 +413,7 @@ HeroesOfLibertyServer.exe /Game/Maps/Plain -Port=7778 -MatchConfig="<dossier>\M2
   de partie : sa ligne de commande, avec `-HOLAccessKey=***`.
 
 `<dossier>` = `Saved\Matches\` à côté du gestionnaire. Réglages (`appsettings.json` ou `--Clé=Valeur`) :
-`ServerExe`, `ServersDir` (`Servers` : un dossier `<v>\` par version, D481), `MaxServers` (2), `FirstServerPort`
+`ServerExe`, `ServersDir` (`Servers` : un dossier `<v>\` par version, D481), `MaxServers` (4), `FirstServerPort`
 (7777), `MatchesDir` (`Saved\Matches`), `ManagerUrl` (`http://127.0.0.1:7700`), `LogDir` (`Logs` ; vide = pas de fichier). Le serveur appelle (corps JSON, réponse `204`, depuis
 `127.0.0.1` seulement ; erreurs `not_local`, `match_not_found`) :
 

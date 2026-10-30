@@ -18,7 +18,7 @@ import os
 import sys
 
 FOLDER = "/Game/Audio"
-SOUNDS = ["SW_HeroLevelUp", "SW_HeroTier"]
+SOUNDS = ["SW_HeroLevelUp", "SW_HeroTier", "SW_HeroCry", "SW_HeroBanner"]
 PROJECT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 SAVED = os.path.join(PROJECT, "Saved", "Audio")
 
@@ -73,8 +73,22 @@ TIER = (
        (2.4, 0.0, "", "gong", 0.6)]
 )
 
+# J8c.4 loop 5: the cry « Serrez les rangs » (a rallying call of low brass, a fifth leaping up, timpani and a crash) and the
+# banner's planting (a bright trumpet call over a timpani thud and a gong), both played to every player.
+CRY = (
+    chord(0.0, 0.32, 0.95, {"horn": ["D3", "A3"], "trombone": ["D3"], "tuba": ["D2"]}) + [(0.0, 0.0, "1", "timpani", 1.0)]
+    + chord(0.38, 0.7, 1.0, {"trumpet": ["A4", "D5"], "horn": ["A3", "D4"], "trombone": ["A2"], "tuba": ["A1"]})
+    + [(0.38, 0.0, "1", "timpani", 1.0), (0.38, 0.0, "", "crash", 0.6)]
+)
+BANNER = (
+    chord(0.0, 0.14, 0.8, {"trumpet_stac": ["D5"]}) + [(0.0, 0.0, "2", "timpani", 0.8)]
+    + chord(0.18, 0.9, 1.0, {"trumpet": ["A4", "F#5"], "horn": ["D4"], "violins": ["D5", "A5"]})
+    + [(0.18, 0.0, "1", "timpani", 0.9), (0.18, 0.0, "", "gong", 0.5)]
+)
+
 # Name -> (score, time scale, longest sound s): the tier's played twice as fast (the trial: « temps divisé par 2 »).
-SCORES = {"SW_HeroLevelUp": (LEVEL, 1.0, 4.2), "SW_HeroTier": (TIER, 0.5, 3.5)}
+SCORES = {"SW_HeroLevelUp": (LEVEL, 1.0, 4.2), "SW_HeroTier": (TIER, 0.5, 3.5), "SW_HeroCry": (CRY, 1.0, 2.4),
+          "SW_HeroBanner": (BANNER, 1.0, 2.4)}
 
 # Instrument -> (loudness, pan from -1 left to 1 right, release s, detuned copies in cents for a section).
 MIX = {

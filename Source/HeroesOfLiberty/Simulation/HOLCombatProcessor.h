@@ -137,6 +137,20 @@ protected:
 
 	/** The step's units in identifier order, and the index of each entity. */
 	TArray<FFighter> Fighters;
+
+	/** J8c.2: where a slot's aura covers this step (J8c-Q1, Q3): its living hero, its banner. */
+	struct FAuraSource
+	{
+		FVector2D Location = FVector2D::ZeroVector;
+		uint8 Owner = 0;
+		bool bHero = false;
+	};
+	TArray<FAuraSource> AuraSources;
+	/**
+	 * J8c.2: the share of a hit Victim takes (HOLHeroAbility::GetDamageTakenPercent): within an aura of its owner
+	 * (AuraSources), under its hero's cry (FHOLCombatFragment::CloseRanksMs).
+	 */
+	int32 GetDamageTakenPercent(const FFighter& Victim) const;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
 	/**
 	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry

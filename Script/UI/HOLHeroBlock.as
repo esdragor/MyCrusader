@@ -1,3 +1,18 @@
+// One of the hero's block's three abilities' boxes (J8c.4, J8c-Q4): its icon lit (the aura on, an ability ready) or dark;
+// locked below its level (the level in its tooltip); cooling down, the seconds left on it and a dark curtain over the
+// share of the cool-down left (J8-Q5: the owner's private sheet).
+struct FHOLHeroAbilityBox
+{
+	EHOLHeroAbility Ability = EHOLHeroAbility::Aura;
+	bool bLit = false;
+	bool bLocked = false;
+	int UnlockLevel = 1;
+	int SecondsLeft = 0;
+	float CooldownFraction = 0.0;
+	// "aura on", "aura off", "cry ready", "cry 42 s", "cry off", "banner locked 4", "banner 118 s".
+	FString Describe;
+}
+
 // The hero's block of the HUD as a view (J8a.5 loop 3): what it shows, from what it knows (pure, no world), applied to the
 // widgets by UHOLGameScreenScript. Texts are keys and numbers (HOLHeroBlockText turns them into the current language's
 // texts), Describe the stable line of the tests and hol.HUD.Report.
@@ -20,7 +35,8 @@ struct FHOLHeroBlockView
 	FString XPText;
 	FString XPDescribe = "xp unknown";
 	int NumAbilities = 3;
-	bool bAbilitiesGreyed = true;
+	// The abilities' boxes, aura, cry, banner (HOLHeroBlock::SetAbilities; empty: all dark).
+	TArray<FHOLHeroAbilityBox> Abilities;
 	// HOLHeroBlockText::ReadyIn ("Prêt dans m:ss", DelayClock the m:ss), Unknown ("…"), "" none.
 	FString DelayKey;
 	FString DelayClock;
@@ -128,6 +144,68 @@ namespace HOLHeroBlock
 		View.XPDescribe = f"xp {XP}/{View.XPNext}";
 	}
 
+	// The box of Ability for a hero alive or not (bAlive), of Level, the ability ready at ReadyStep (0 never cast), the
+	// server at ServerStep (-1 unknown: nothing counted), RateHz steps a second, CooldownSeconds its whole cool-down.
+	FHOLHeroAbilityBox MakeAbility(EHOLHeroAbility Ability, bool bAlive, int Level, int ReadyStep, int ServerStep, int RateHz, int CooldownSeconds)
+	{
+		FHOLHeroAbilityBox Box;
+		Box.Ability = Ability;
+		const FString Name = AbilityWord(Ability);
+		if (Ability == EHOLHeroAbility::Aura)
+		{
+			// Passive, on while he lives (§ 9.8).
+			Box.bLit = bAlive;
+			Box.Describe = Name + (bAlive ? " on" : " off");
+			return Box;
+		}
+		Box.UnlockLevel = HOLHero::GetHeroAbilityUnlockLevel(Ability);
+		if (Level < Box.UnlockLevel)
+		{
+			Box.bLocked = true;
+			Box.Describe = f"{Name} locked {Box.UnlockLevel}";
+			return Box;
+		}
+		// The steps left, rounded up to the second (one step left: 1 s); the server's step unknown: nothing counted.
+		const int StepsLeft = ServerStep >= 0 ? Math::Max(0, ReadyStep - ServerStep) : 0;
+		const int Rate = Math::Max(1, RateHz);
+		Box.SecondsLeft = Math::IntegerDivisionTrunc(StepsLeft + Rate - 1, Rate);
+		Box.CooldownFraction = CooldownSeconds > 0 ? Math::Clamp(float(StepsLeft) / float(CooldownSeconds * Rate), 0.0, 1.0) : 0.0;
+		Box.bLit = bAlive && Box.SecondsLeft == 0;
+		Box.Describe = Box.SecondsLeft > 0 ? f"{Name} {Box.SecondsLeft} s" : Name + (bAlive ? " ready" : " off");
+		return Box;
+	}
+
+	// The three boxes of the view (aura, cry, banner), ReadySteps indexed by EHOLHeroAbility.
+	void SetAbilities(FHOLHeroBlockView& View, bool bAlive, int Level, TArray<int> ReadySteps, int ServerStep, int RateHz)
+	{
+		View.Abilities.Reset();
+		for (int Index = 0; Index < 3; ++Index)
+		{
+			const EHOLHeroAbility Ability = AbilityAt(Index);
+			const int ReadyStep = ReadySteps.IsValidIndex(Index) ? ReadySteps[Index] : 0;
+			View.Abilities.Add(MakeAbility(Ability, bAlive, Level, ReadyStep, ServerStep, RateHz, HOLHero::GetHeroAbilityCooldownSeconds(Ability)));
+		}
+	}
+
+	// The ability of the box at Index: aura, cry, banner (EHOLHeroAbility's order).
+	EHOLHeroAbility AbilityAt(int Index)
+	{
+		return Index == 0 ? EHOLHeroAbility::Aura : Index == 1 ? EHOLHeroAbility::CloseRanks : EHOLHeroAbility::Banner;
+	}
+
+	// The word of the stable lines: aura, cry, banner.
+	FString AbilityWord(EHOLHeroAbility Ability)
+	{
+		return Ability == EHOLHeroAbility::Aura ? "aura" : Ability == EHOLHeroAbility::CloseRanks ? "cry" : "banner";
+	}
+
+	// The abilities' icons (Tools/Editor/make_ui_icons.py, cooked with /Game/UI/Icons), aura, cry, banner.
+	UTexture2D LoadAbilityIcon(EHOLHeroAbility Ability)
+	{
+		const FString Name = Ability == EHOLHeroAbility::Aura ? "T_Icon_Aura" : Ability == EHOLHeroAbility::CloseRanks ? "T_Icon_CloseRanks" : "T_Icon_Banner";
+		return Cast<UTexture2D>(LoadObject(nullptr, f"/Game/UI/Icons/{Name}.{Name}"));
+	}
+
 	// Seconds as m:ss (0:23, 1:01, 12:05).
 	FString Clock(int Seconds)
 	{
@@ -148,6 +226,14 @@ namespace HOLHeroBlockText
 	const FString Return = "HeroBlock.Return";
 	const FString NoGold = "HeroBlock.NoGold";
 	const FString NoPlace = "HeroBlock.NoPlace";
+	const FString AuraName = "HeroBlock.AuraName";
+	const FString AuraEffect = "HeroBlock.AuraEffect";
+	const FString CloseRanksName = "HeroBlock.CloseRanksName";
+	const FString CloseRanksEffect = "HeroBlock.CloseRanksEffect";
+	const FString BannerName = "HeroBlock.BannerName";
+	const FString BannerEffect = "HeroBlock.BannerEffect";
+	const FString AbilityLocked = "HeroBlock.AbilityLocked";
+	const FString AbilityCooldown = "HeroBlock.AbilityCooldown";
 
 	// The pattern of a key in the current language ("" for none or an unknown key). Localized texts of the game:
 	// French source here, gathered from the .as files by GatherText (Config/Localization/Game.ini, Script/), English and
@@ -161,6 +247,14 @@ namespace HOLHeroBlockText
 		if (Key == Return) return NSLOCTEXT("HOLHeroBlock", "Return", "Ramener le héros — {0} or");
 		if (Key == NoGold) return NSLOCTEXT("HOLHeroBlock", "NoGold", "Pas assez d'or");
 		if (Key == NoPlace) return NSLOCTEXT("HOLHeroBlock", "NoPlace", "Aucun forum pour revenir");
+		if (Key == AuraName) return NSLOCTEXT("HOLHeroBlock", "AuraName", "Aura de l'Aube");
+		if (Key == AuraEffect) return NSLOCTEXT("HOLHeroBlock", "AuraEffect", "Passive : −15 % de dégâts reçus pour vos unités à 12 m du héros");
+		if (Key == CloseRanksName) return NSLOCTEXT("HOLHeroBlock", "CloseRanksName", "Serrez les rangs (A)");
+		if (Key == CloseRanksEffect) return NSLOCTEXT("HOLHeroBlock", "CloseRanksEffect", "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s");
+		if (Key == BannerName) return NSLOCTEXT("HOLHeroBlock", "BannerName", "Bannière de l'Aube (Z)");
+		if (Key == BannerEffect) return NSLOCTEXT("HOLHeroBlock", "BannerEffect", "Plantée à 16 m du héros au plus : son aura pendant 45 s ; recharge 120 s");
+		if (Key == AbilityLocked) return NSLOCTEXT("HOLHeroBlock", "AbilityLocked", "Niveau {0} requis");
+		if (Key == AbilityCooldown) return NSLOCTEXT("HOLHeroBlock", "AbilityCooldown", "Prête dans {0} s");
 		return FText();
 	}
 
@@ -180,4 +274,17 @@ namespace HOLHeroBlockText
 	FString DelayText(FHOLHeroBlockView View) { return Format(View.DelayKey, View.DelayClock); }
 	FString ButtonText(FHOLHeroBlockView View) { return View.bButtonVisible ? Format(View.ButtonKey, f"{View.Price}") : ""; }
 	FString TooltipText(FHOLHeroBlockView View) { return Format(View.TooltipKey); }
+
+	// An ability's box's tooltip: its name, its effect, then locked or the seconds left.
+	FString AbilityTooltip(FHOLHeroAbilityBox Box)
+	{
+		const bool bAura = Box.Ability == EHOLHeroAbility::Aura;
+		const bool bCry = Box.Ability == EHOLHeroAbility::CloseRanks;
+		FString Text = Format(bAura ? AuraName : bCry ? CloseRanksName : BannerName) + "\n" + Format(bAura ? AuraEffect : bCry ? CloseRanksEffect : BannerEffect);
+		if (Box.bLocked)
+			Text += "\n" + Format(AbilityLocked, f"{Box.UnlockLevel}");
+		else if (Box.SecondsLeft > 0)
+			Text += "\n" + Format(AbilityCooldown, f"{Box.SecondsLeft}");
+		return Text;
+	}
 }

@@ -51,7 +51,7 @@ $Expected = [ordered]@{
         '  "ManagerUrl": "http://127.0.0.1:7700",'
         '  "ServerExe": "..\\WindowsServer\\HeroesOfLibertyServer.exe",'
         '  "GameVersion": "",'
-        '  "MaxServers": 2,'
+        '  "MaxServers": 4,'
         '  "FirstServerPort": 7777,'
         '  "MatchesDir": "Saved\\Matches",'
         '  "LogDir": "Logs"'

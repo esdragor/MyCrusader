@@ -525,6 +525,63 @@ bool FHOLCommandGridUnitOrdersTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridHeroAbilitiesTest, "HeroesOfLiberty.CommandGrid.HeroAbilities", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridHeroAbilitiesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;
+
+	// J8c.4 (J8c-Q4): the hero among the units commanded, his abilities on the grid on the right, A the cry, Z the banner;
+	// the passive aura has no cell.
+	TestEqual(TEXT("A: Serrez les rangs"), HOLCommandGrid::GetHeroAbilityCell(EHOLHeroAbility::CloseRanks), 0);
+	TestEqual(TEXT("Z: Bannière"), HOLCommandGrid::GetHeroAbilityCell(EHOLHeroAbility::Banner), 1);
+	TestEqual(TEXT("the aura: no cell"), HOLCommandGrid::GetHeroAbilityCell(EHOLHeroAbility::Aura), static_cast<int32>(INDEX_NONE));
+
+	// The hero alone at level 1: A the cry, ready; Z the banner, greyed (level 4); nothing else; the orders as soldiers'.
+	FHOLGridContext Hero;
+	Hero.bOwnUnits = true;
+	Hero.bSoldiers = true;
+	Hero.bHero = true;
+	Hero.HeroLevel = 1;
+	const FHOLGridCommand Cry = HOLCommandGrid::GetCommand(Hero, 0);
+	TestTrue(TEXT("level 1: A the cry, ready"), Cry.Command == EHOLGridCommand::HeroAbility && Cry.Ability == EHOLHeroAbility::CloseRanks && !Cry.bGreyed
+		&& Cry.CooldownSeconds == 0);
+	const FHOLGridCommand Banner = HOLCommandGrid::GetCommand(Hero, 1);
+	TestTrue(TEXT("level 1: Z the banner, greyed"), Banner.Command == EHOLGridCommand::HeroAbility && Banner.Ability == EHOLHeroAbility::Banner && Banner.bGreyed);
+	for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		TestTrue(*FString::Printf(TEXT("hero: grid cell %d empty"), Cell), HOLCommandGrid::GetCommand(Hero, Cell).IsNone());
+	}
+	TestTrue(TEXT("hero: Q attack-move"), HOLCommandGrid::GetOrder(Hero, HOLCommandGrid::AttackMoveCell).Command == EHOLGridCommand::AttackMove);
+	TestTrue(TEXT("hero: A no order"), HOLCommandGrid::GetOrder(Hero, 0).IsNone());
+
+	// The keys: A and Z to the grid, the others to the orders as before.
+	TestTrue(TEXT("hero: A to the grid"), HOLCommandGrid::PressKey(Hero, INDEX_NONE, 0).Target == EHOLGridKeyTarget::Grid);
+	TestTrue(TEXT("hero: Z to the grid"), HOLCommandGrid::PressKey(Hero, INDEX_NONE, 1).Target == EHOLGridKeyTarget::Grid);
+	TestTrue(TEXT("hero: E to the orders"), HOLCommandGrid::PressKey(Hero, INDEX_NONE, 2).Target == EHOLGridKeyTarget::Orders);
+	TestTrue(TEXT("hero: Q to the orders"), HOLCommandGrid::PressKey(Hero, INDEX_NONE, HOLCommandGrid::AttackMoveCell).Target == EHOLGridKeyTarget::Orders);
+
+	// Level 4: the banner open. Cooling down: greyed, the seconds left told.
+	Hero.HeroLevel = 4;
+	TestFalse(TEXT("level 4: Z ready"), HOLCommandGrid::GetCommand(Hero, 1).bGreyed);
+	Hero.HeroCooldownSeconds[static_cast<int32>(EHOLHeroAbility::CloseRanks)] = 42;
+	const FHOLGridCommand Cooling = HOLCommandGrid::GetCommand(Hero, 0);
+	TestTrue(TEXT("cry cooling down: greyed, 42 s"), Cooling.bGreyed && Cooling.CooldownSeconds == 42);
+	TestFalse(TEXT("the banner's cool-down is its own"), HOLCommandGrid::GetCommand(Hero, 1).bGreyed);
+
+	// No hero among the units commanded (soldiers alone, another subgroup): nothing on the right, A and Z to the orders.
+	FHOLGridContext Soldiers = Hero;
+	Soldiers.bHero = false;
+	TestTrue(TEXT("no hero: A empty"), HOLCommandGrid::GetCommand(Soldiers, 0).IsNone() && HOLCommandGrid::GetCommand(Soldiers, 1).IsNone());
+	TestTrue(TEXT("no hero: A to the orders"), HOLCommandGrid::PressKey(Soldiers, INDEX_NONE, 0).Target == EHOLGridKeyTarget::Orders);
+
+	// A building selected wins (never set together; the building's grid all the same).
+	FHOLGridContext Building = Hero;
+	Building.bOwnBuilding = true;
+	Building.bBuildingFinished = true;
+	TestTrue(TEXT("a building: no hero cell"), HOLCommandGrid::GetCommand(Building, 0).IsNone());
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridAgesTest, "HeroesOfLiberty.CommandGrid.Ages", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridAgesTest::RunTest(const FString& Parameters)
 {

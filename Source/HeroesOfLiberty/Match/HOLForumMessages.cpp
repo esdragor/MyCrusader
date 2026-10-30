@@ -205,6 +205,23 @@ int32 FHOLHeroLevelWatch::Update(const int32 Slot, const int32 Level)
 	return Before >= 1 && Level > Before ? Before : 0;
 }
 
+bool FHOLHeroCryWatch::Update(const int32 Slot, const int32 Cries)
+{
+	if (Slot < 0)
+	{
+		return false;
+	}
+	while (!Seen.IsValidIndex(Slot))
+	{
+		Seen.Add(INDEX_NONE);
+	}
+	const int32 Before = Seen[Slot];
+	Seen[Slot] = Cries;
+	// Forward of the count seen, within half the wrap of 256 (a count going back is a reset, not a cry).
+	const int32 Forward = (Cries - Before + 256) % 256;
+	return Before >= 0 && Forward >= 1 && Forward < 128;
+}
+
 bool FHOLHeroReadyWatch::Update(const int32 ViewerSlot, const EHOLHeroState State)
 {
 	// A spectator has no hero: never (its Seen forgotten).

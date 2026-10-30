@@ -39,9 +39,20 @@ struct FHOLHeroSheet
 	UPROPERTY()
 	EHOLHeroState State = EHOLHeroState::None;
 
+	/** J8c.3: his cries of Serrez les rangs so far (wraps at 256): one more, every machine shows the cry (J8c-Q4). */
+	UPROPERTY()
+	uint8 Cries = 0;
+
+	/** J8c.3: where his last banner was planted (cm), and the step it falls at (J8c-Q3); -1: never planted. */
+	UPROPERTY()
+	FIntPoint BannerLocation = FIntPoint::ZeroValue;
+	UPROPERTY()
+	int32 BannerEndStep = -1;
+
 	bool operator==(const FHOLHeroSheet& Other) const
 	{
-		return Level == Other.Level && Health == Other.Health && State == Other.State;
+		return Level == Other.Level && Health == Other.Health && State == Other.State && Cries == Other.Cries
+			&& BannerLocation == Other.BannerLocation && BannerEndStep == Other.BannerEndStep;
 	}
 	bool operator!=(const FHOLHeroSheet& Other) const { return !(*this == Other); }
 };
@@ -58,7 +69,7 @@ struct FHOLHeroPrivateSheet
 	UPROPERTY()
 	int32 XP = 0;
 
-	/** Step at which each ability is ready again, one per ability (none before the abilities). */
+	/** Step at which each ability is ready again, indexed by EHOLHeroAbility (J8c.3; empty before his first cast). */
 	UPROPERTY()
 	TArray<int32> CooldownEndSteps;
 
