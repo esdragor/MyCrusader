@@ -1,0 +1,19 @@
+# IA2.7 : toi contre une IA qui a une armée : Caserne et Champ de tir, unités choisies par les contres, défense de sa base, vague d'attaque et retraite
+# Plain, toi (slot 0) contre une IA (slot 1, « IA Normal 2 »), 5 Paysans de départ chacun, 1000 de chaque ressource pour que tu puisses vite bâtir (Caserne, maisons).
+# Elle monte son économie (16 fermes en deux blocs), puis arme : Caserne vers 5-6 min, soldats ensuite. Sa première vague part au plus tôt à 5 min (7 min si elle ne
+# t'a pas vu), avec au moins 8 soldats et un rapport de force >= 1,5 en sa faveur : garde peu de soldats pour la provoquer, beaucoup pour la faire hésiter.
+# Joue ta propre économie à côté, 10 à 15 min. Console ² : hol.Camera.FocusSlot 1 pour la suivre, FocusSlot 0 pour revenir.
+# À regarder :
+#  1. une Caserne et un Champ de tir posés entre son centre et le tien, les soldats rassemblés devant ; les types varient selon ce que tu as (contre des Archers : Homme d'armes + Arbalétrier) ;
+#  2. envoie 2-3 unités près de sa base : ses soldats les chassent (défense) puis rentrent au point de rassemblement ;
+#  3. sa vague : tous ses soldats vers ton centre ; attaque-t-elle tes bâtiments, pas seulement tes unités ? Retraite si tu l'emportes (rapport < 0,6 ou pertes > 60 %) ;
+#  4. à 5 et 10 min, note ses Paysans et ses soldats (ligne « status » du journal : army S M A C) ;
+#  5. aucun Paysan planté sans rien faire plus de 10 s.
+hol.Cheat.Resources 1000
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1: 
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Normal 2 » avec armée : Caserne, Champ de tir, défense, vague d'attaque et retraite. Laisse tourner 10 à 15 min.
+note Pour provoquer sa vague, garde peu de soldats ; pour tester la défense, envoie 2-3 unités près de sa base ; suis-la avec ² hol.Camera.FocusSlot 1.
