@@ -1,9 +1,23 @@
-// The AI slots' brain (IA0.4, IA1.5, IA1.6): the C++ base (UHOLAIBrainSubsystem) calls Think for each AI slot every
+// The AI slots' brain (IA0.4, IA1.5, IA1.6, IA1.7): the C++ base (UHOLAIBrainSubsystem) calls Think for each AI slot every
 // hol.AI.ThinkSteps steps, on the server only. Think reads the summary, asks the opening rules (HOLAIOpening.as, pure,
 // tested in script) what to build, queue and gather, and sends the orders (UHOLAIOrderLibrary, HOLAIOrder::): the next
-// building of the opening (house, lumber camp, mill) with one Peasant to build it, a Peasant queued at the centre with
+// building (the houses before the cap, lumber camp, mill, the camps where a massif is cut, the farm block when the berries
+// run low) with one Peasant to build it, a Peasant queued at the centre with
 // its rally on the resource that lacks Peasants, and the idle Peasants spread over the resources by their needs
 // (HOLAINeeds.as: what the slot wants to spend over the minute, a source used up sending its Peasants on).
+// The builders a slot has sent to sites not finished yet (IA1.7): not sent again, so that several sites go up at once.
+struct FHOLAIBuilders
+{
+	TArray<int> Ids;
+}
+
+// The military buildings of a slot whose rally was set (IA2.4), and the point it was set to (sent again when the point moves).
+struct FHOLAIRallied
+{
+	TArray<FVector> Buildings;
+	FVector Point;
+}
+
 class UHOLAIBrain : UHOLAIBrainSubsystem
 {
 	// Thoughts this brain ran, all slots together.
@@ -11,6 +25,32 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 	// The source each slot's centre rally was last set on (the order is sent again only when it changes).
 	TMap<int, int> RallySources;
+
+	// The farm block each slot is building (IA1.7: the spots of FindAIFarmBlock), and the builders it has sent to sites.
+	TMap<int, FHOLAIFarmPlan> FarmPlans;
+
+	// What each slot's Peasants' flight remembers (IA2.6f).
+	TMap<int, FHOLAIFlight> Flights;
+	TMap<int, FHOLAIBuilders> SentBuilders;
+
+	// The Peasants each slot has sent to rebuild its fallen forum (IA3.2), and when its King was last ordered (IA3.4).
+	TMap<int, FHOLAIForumMemory> Rebuilds;
+	TMap<int, FHOLAIKingMemory> Kings;
+
+	// The rally each slot's military buildings were last given.
+	TMap<int, FHOLAIRallied> Rallied;
+
+	// What each slot's defence remembers (IA2.5: defending or at home, the soldiers just sent back to the assembly point), and the orders
+	// it has given (regroup orders, defence orders: the status line shows them).
+	TMap<int, FHOLAIDefence> Defences;
+	TMap<int, int> RegroupCounts;
+	TMap<int, int> DefenceCounts;
+
+	// The attack wave of each slot (IA2.6: home, out or back, the soldiers it launched, the cooldown).
+	TMap<int, FHOLAIWave> Waves;
+
+	// The step of the last status line per slot.
+	TMap<int, int64> LastStatusStep;
 
 	// The last reason a building could not be placed, per slot (written again only when it changes).
 	TMap<int, FString> LastBuildReason;
@@ -23,15 +63,61 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
 		ReadFigures(Data);
 		const int64 Step = GetStepIndex();
+		Data.GameSeconds = float(Step) / 20.f;
+		LogStatus(PlayerIndex, Step, Summary);
 		const int NumIdle = Summary.IdlePeasants.Num();
 		TArray<int> Free = Summary.IdlePeasants;
 
-		// 1. The next building of the opening, placed beside its anchor, one Peasant sent to build it.
-		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data);
+		// 0. The forum fallen (IA3.2): Peasants go and rebuild it (all of them on the last life), and stay out of the ordinary work.
+		FHOLAIForumMemory Rebuild;
+		Rebuilds.Find(PlayerIndex, Rebuild);
+		const TArray<int> Rebuilders = HOLAIForum::RebuildOrders(Rebuild, Summary, HOLAIForum::DefaultData(), Data.GameSeconds);
+		Rebuilds.Add(PlayerIndex, Rebuild);
+		if (Rebuilders.Num() > 0)
+		{
+			if (HOLAIOrder::IssueAIBuildOrder(PlayerIndex, Summary.OwnForum.Location, Rebuilders))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Rebuilders.Num()} Peasants rebuild the forum ({Summary.OwnForum.Lives} lives left)");
+			}
+			else
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: rebuild order refused");
+			}
+		}
+		for (int Index = 0; Index < Rebuild.Sent.Num(); Index++)
+		{
+			Free.Remove(Rebuild.Sent[Index]);
+		}
+
+		// 1. The next building (house, camp, mill, farm block: HOLAIOpening::ChooseBuild), placed by the rules of its type, one
+		// Peasant sent to build it, not one already sent to another site.
+		FHOLAIFarmPlan Plan;
+		FarmPlans.Find(PlayerIndex, Plan);
+		FHOLAIBuilders Sent;
+		SentBuilders.Find(PlayerIndex, Sent);
+		if (HOLAIOpening::SitesUnderWay(Summary) == 0)
+		{
+			Sent.Ids.Empty();
+		}
+		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
+		if (Build.bPlanFarms)
+		{
+			Plan = PlanFarmBlock(PlayerIndex, Summary, Data);
+			if (Plan.bActive)
+			{
+				FarmPlans.Add(PlayerIndex, Plan);
+				Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
+			}
+		}
 		if (Build.bBuild)
 		{
-			FVector Spot;
-			if (!HOLAIOrder::FindAIPlacement(PlayerIndex, Build.Type, Build.Anchor, Data.Rings, Spot))
+			FVector Spot = Build.Spot;
+			bool bFound = true;
+			if (!Build.bAtSpot)
+			{
+				bFound = HOLAIOrder::FindAIPlacement(PlayerIndex, Build.Type, Build.Anchor, Data.Rings, Spot);
+			}
+			if (!bFound)
 			{
 				LogBuildOnce(PlayerIndex, Step, f"no spot for {Build.Type}");
 			}
@@ -43,13 +129,20 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				{
 					Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build {Build.Type} at ({Spot.X}, {Spot.Y}) by #{Build.Builder}");
 					Free.Remove(Build.Builder);
+					Sent.Ids.Add(Build.Builder);
 				}
 				else
 				{
 					LogBuildOnce(PlayerIndex, Step, f"build {Build.Type} refused");
+					if (Build.bAtSpot)
+					{
+						// The planned spot is not free any more (another building came): the block is planned again.
+						FarmPlans.Remove(PlayerIndex);
+					}
 				}
 			}
 		}
+		SentBuilders.Add(PlayerIndex, Sent);
 
 		// 2. A Peasant queued at the centre, new ones sent to the resource that lacks Peasants.
 		FHOLAIProduceChoice Produce = HOLAIOpening::ChooseProduction(Summary, Data);
@@ -70,7 +163,28 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 
-		// 3. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
+		// 3. The military buildings (IA2.4): a unit queued in each that can take one, their soldiers' rally on a point toward the enemy.
+		ThinkMilitary(PlayerIndex, Step, Summary, Data, Produce.bProduce ? 1 : 0);
+
+		// 3b. The army (IA2.5): the base defence when enemy soldiers come near, otherwise the regrouping at the assembly point.
+		ThinkArmy(PlayerIndex, Step, Summary, Data);
+
+		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
+		FHOLAIKingMemory KingMemory;
+		Kings.Find(PlayerIndex, KingMemory);
+		FVector KingWhere;
+		if (HOLAIForum::KingOrder(KingMemory, Summary, FHOLAIKingData(), Data.GameSeconds, KingWhere))
+		{
+			TArray<int> KingIds;
+			KingIds.Add(Summary.King.Id);
+			if (HOLAIOrder::IssueAIMoveOrder(PlayerIndex, KingIds, KingWhere))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: King goes to ({KingWhere.X}, {KingWhere.Y})");
+			}
+		}
+		Kings.Add(PlayerIndex, KingMemory);
+
+		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
 		{
 			return true;
@@ -103,6 +217,155 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		return true;
 	}
 
+	// The orders of HOLAIOpening::ChooseMilitary: the unit queued in each building, the rally set once per building (again when the point moves).
+	void ThinkMilitary(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, int Reserved)
+	{
+		const FHOLAIMilitaryChoice Military = HOLAIOpening::ChooseMilitary(Summary, Data, Reserved);
+		if (Military.Orders.Num() == 0)
+		{
+			return;
+		}
+		FHOLAIRallied Memory;
+		Rallied.Find(PlayerIndex, Memory);
+		FVector Moved = Memory.Point - Military.RallyPoint;
+		Moved.Z = 0;
+		if (Moved.Size() > 100.0)
+		{
+			Memory.Buildings.Empty();
+			Memory.Point = Military.RallyPoint;
+		}
+		for (int Index = 0; Index < Military.Orders.Num(); Index++)
+		{
+			const FHOLAIMilitaryOrder Order = Military.Orders[Index];
+			bool bKnown = false;
+			for (int Each = 0; Each < Memory.Buildings.Num(); Each++)
+			{
+				FVector Away = Memory.Buildings[Each] - Order.Location;
+				Away.Z = 0;
+				bKnown = bKnown || Away.Size() < 100.0;
+			}
+			if (!bKnown && HOLAIOrder::IssueAISetRallyOrder(PlayerIndex, Order.Location, Military.RallyPoint, -1))
+			{
+				Memory.Buildings.Add(Order.Location);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: rally of {Order.Building} on ({Military.RallyPoint.X}, {Military.RallyPoint.Y})");
+			}
+			if (Order.bQueue && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, Order.Location, Order.Unit))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: queue a {Order.Unit} at {Order.Building}");
+			}
+		}
+		Memory.Point = Military.RallyPoint;
+		Rallied.Add(PlayerIndex, Memory);
+	}
+
+	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
+	// within the defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent
+	// again every few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight
+	// on the way). The attack wave (HOLAIArmy::UpdateWave) goes out when the rules allow and the army is ahead, and falls back to the
+	// point (a move, not an attack-move) when the ratio near it collapses; while it is out the defence and the regrouping order the
+	// soldiers at home only, unless the threat is strong (AttackRecallCount enemies): then the wave is called back.
+	void ThinkArmy(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		const float Now = Data.GameSeconds;
+		FHOLAIDefence State;
+		Defences.Find(PlayerIndex, State);
+		FHOLAIWave Wave;
+		Waves.Find(PlayerIndex, Wave);
+		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
+		const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data.Army);
+		const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Wave);
+		const FHOLAIThreat Threat = HOLAIArmy::Threat(Rest, Data.Army);
+		const bool bWas = State.bDefending;
+		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly), Now, Data.Army);
+		if (State.bDefending != bWas)
+		{
+			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Change} ({Threat.Count} enemies, ratio {Threat.Ratio})");
+		}
+
+		// The wave: launched, kept on its way, called back or over.
+		FHOLAIForumMemory Rebuild;
+		Rebuilds.Find(PlayerIndex, Rebuild);
+		const bool bRecall = Whole.bThreatened && (Whole.Count >= Data.Army.AttackRecallCount || HOLAIForum::Emergency(Summary));
+		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
+		if (Wave_.bLaunched)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: attack launched with {Wave_.Left} soldiers, ratio {Wave_.Ratio}, toward ({Wave_.AttackTarget.X}, {Wave_.AttackTarget.Y})");
+		}
+		if (Wave_.bRetreat)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: retreat: ratio {Wave_.Ratio}, {Wave_.Left} left");
+		}
+		if (Wave_.bOver || Wave_.bHome)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: wave over, home");
+		}
+		if (Wave_.AttackIds.Num() > 0 && !HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Wave_.AttackIds, Wave_.AttackTarget))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: wave order refused");
+		}
+		if (Wave_.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Wave_.MoveIds, Assembly))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: retreat order refused");
+		}
+		Waves.Add(PlayerIndex, Wave);
+
+		// The soldiers at home (the whole army when no wave is out).
+		const FHOLAISummary Home = HOLAIArmy::WithoutWave(Summary, Wave);
+		if (State.bDefending)
+		{
+			const TArray<int> Ids = HOLAIArmy::DefenceOrders(State, Home, Data.Army, Threat, Now);
+			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Threat.Location))
+			{
+				int Count = 0;
+				DefenceCounts.Find(PlayerIndex, Count);
+				DefenceCounts.Add(PlayerIndex, Count + 1);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: defend with {Ids.Num()} soldiers toward ({Threat.Location.X}, {Threat.Location.Y})");
+			}
+		}
+		else
+		{
+			const TArray<int> Ids = HOLAIArmy::RegroupOrders(State, Home, Data.Army, Assembly, Now);
+			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Assembly))
+			{
+				int Count = 0;
+				RegroupCounts.Find(PlayerIndex, Count);
+				RegroupCounts.Add(PlayerIndex, Count + 1);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: regroup {Ids.Num()} soldiers to ({Assembly.X}, {Assembly.Y})");
+			}
+		}
+		Defences.Add(PlayerIndex, State);
+
+		// The Peasants near an enemy soldier run to the centre (IA2.6f); once there they are idle and the brain sends them to work again.
+		FHOLAIFlight Flight;
+		Flights.Find(PlayerIndex, Flight);
+		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, HOLAIForum::Calm(Summary, Rebuild), Data.Army, Now);
+		Flights.Add(PlayerIndex, Flight);
+		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to the centre");
+		}
+	}
+
+	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
+	// does not fit within the rings.
+	FHOLAIFarmPlan PlanFarmBlock(int PlayerIndex, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FHOLAIFarmPlan Plan;
+		FVector Mill;
+		TArray<FVector> Farms;
+		if (!HOLAIOrder::FindAIFarmBlock(PlayerIndex, Summary.CentreLocation, Data.FarmRings, Mill, Farms))
+		{
+			LogBuildOnce(PlayerIndex, GetStepIndex(), "no room for the farm block");
+			return Plan;
+		}
+		Plan.bActive = true;
+		Plan.Mill = Mill;
+		Plan.Farms = Farms;
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {GetStepIndex()}: farm block planned, mill at ({Mill.X}, {Mill.Y}), {Farms.Num()} farms");
+		return Plan;
+	}
+
 	// The costs and rates of the data from the type tables (UnitTypes.csv, BuildingTypes.csv), over the values DefaultData holds as
 	// a fallback: nothing of the tables is copied in the script any more (IA1.6).
 	void ReadFigures(FHOLAIOpeningData& Data)
@@ -116,6 +379,14 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			Data.House = Figures;
 		}
+		if (HOLAIOrder::ReadAIBuildingFigures(n"Farm", Figures))
+		{
+			Data.Farm = Figures;
+		}
+		if (HOLAIOrder::ReadAIBuildingFigures(n"MiningCamp", Figures))
+		{
+			Data.MiningCamp = Figures;
+		}
 		for (int Index = 0; Index < Data.Steps.Num(); Index++)
 		{
 			if (HOLAIOrder::ReadAIBuildingFigures(Data.Steps[Index].Type, Figures))
@@ -123,6 +394,80 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				Data.Steps[Index].WoodCost = Figures.CostWood;
 			}
 		}
+		for (int Index = 0; Index < Data.ArmySteps.Num(); Index++)
+		{
+			if (HOLAIOrder::ReadAIBuildingFigures(Data.ArmySteps[Index].Type, Figures))
+			{
+				Data.ArmySteps[Index].WoodCost = Figures.CostWood;
+			}
+		}
+		HOLAIArmy::LoadFigures(Data.Army);
+	}
+
+	// One line every 100 steps (5 s) per slot for the tests of the AI games (quick_check aiduel reads it): population, the queue
+	// of the centre, the four stocks, the Peasants and the buildings that matter.
+	void LogStatus(int PlayerIndex, int64 Step, const FHOLAISummary& Summary)
+	{
+		int64 Last = -1000;
+		LastStatusStep.Find(PlayerIndex, Last);
+		if (Step - Last < 100)
+		{
+			return;
+		}
+		LastStatusStep.Add(PlayerIndex, Step);
+		int Queued = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			Queued += Summary.Buildings[Index].Queue.Num();
+		}
+		const int Houses = HOLAIOpening::CountBuildings(Summary, n"House");
+		const int Camps = HOLAIOpening::CountBuildings(Summary, n"LumberCamp");
+		const int Mills = HOLAIOpening::CountBuildings(Summary, n"Mill");
+		const int Farms = HOLAIOpening::CountBuildings(Summary, n"Farm");
+		const int Spears = CountOfType(Summary, n"Spearman");
+		const int Men = CountOfType(Summary, n"ManAtArms");
+		const int Archers = CountOfType(Summary, n"Archer");
+		const int Crossbows = CountOfType(Summary, n"Crossbowman");
+		const int Barracks = HOLAIOpening::CountBuildings(Summary, n"Barracks");
+		const int Ranges = HOLAIOpening::CountBuildings(Summary, n"ArcheryRange");
+		const int BarracksQueue = QueueOf(Summary, n"Barracks");
+		const int RangeQueue = QueueOf(Summary, n"ArcheryRange");
+		FHOLAIDefence Defence;
+		Defences.Find(PlayerIndex, Defence);
+		int Regroups = 0;
+		RegroupCounts.Find(PlayerIndex, Regroups);
+		int Meetings = 0;
+		DefenceCounts.Find(PlayerIndex, Meetings);
+		const FString Stance = Defence.bDefending ? "defend" : "home";
+		FHOLAIWave Wave;
+		Waves.Find(PlayerIndex, Wave);
+		const FString WaveState = Wave.Phase == EHOLAIWavePhase::Out ? "out" : (Wave.Phase == EHOLAIWavePhase::Back ? "back" : "off");
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: status pop {Summary.PopulationUsed}/{Summary.PopulationCap} queued {Queued} stock {Summary.Food.Stock} {Summary.Wood.Stock} {Summary.Stone.Stock} {Summary.Gold.Stock} peasants {Summary.PeasantIds.Num()} houses {Houses} camps {Camps} mills {Mills} farms {Farms} army S{Spears} M{Men} A{Archers} C{Crossbows} barracks {Barracks} q{BarracksQueue} range {Ranges} q{RangeQueue} {Stance} regroups {Regroups} defences {Meetings} wave {WaveState} size {HOLAIArmy::WaveSize(Wave, Summary)}");
+	}
+
+	// The soldiers of a type alive (the army of the summary: those of the slot that do not gather).
+	int CountOfType(const FHOLAISummary& Summary, FName Type)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			Count += Summary.Army[Index].Type == Type ? 1 : 0;
+		}
+		return Count;
+	}
+
+	// The units waiting in the queues of the buildings of a type (the one in production included).
+	int QueueOf(const FHOLAISummary& Summary, FName Type)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == Type)
+			{
+				Count += Summary.Buildings[Index].Queue.Num();
+			}
+		}
+		return Count;
 	}
 
 	// Writes the reason unless it is the one just written for this slot (the thought comes every few steps).

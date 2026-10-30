@@ -9,6 +9,8 @@
 class UHOLGameScreenScript : UHOLScriptScreen
 {
 	UBorder HeroPanel;
+	// Its place (EtapeDefini T): read anew on every refresh, the bottom bar's scale may change with the window.
+	UOverlaySlot HeroPanelSlot;
 	UButton HeroPortrait;
 	UBorder HeroPortraitFill;
 	UImage HeroPortraitEmblem;
@@ -17,6 +19,9 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	UCommonTextBlock HeroHealthText;
 	UProgressBar HeroXPBar;
 	TArray<UBorder> HeroAbilities;
+	TArray<UImage> HeroAbilityIcons;
+	TArray<USizeBox> HeroAbilityCurtains;
+	TArray<UCommonTextBlock> HeroAbilitySeconds;
 	// The delay ("Prêt dans 0:23", "…").
 	UCommonTextBlock HeroStatusText;
 	// The return's button: its label and its price (red without the gold), its tooltip when it cannot be bought.
@@ -97,10 +102,10 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	{
 		HeroPanel = MakePanel(n"HeroPanel");
 		HeroPanel.SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(HeroPanel);
-		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
-		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
-		PanelSlot.SetPadding(GetBottomLeftPlace());
+		HeroPanelSlot = Frame.AddChildToOverlay(HeroPanel);
+		HeroPanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		HeroPanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 
 		UHorizontalBox Row = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroRow"));
 		HeroPanel.SetContent(Row);
@@ -142,11 +147,12 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		Column.AddChildToVerticalBox(SizedBar(n"HeroHealthBarBox", HeroHealthBar, 8.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 1.0));
 		HeroHealthText = MakeText(n"HeroHealth", UHOLTextStyleHUDLabel);
 		Column.AddChildToVerticalBox(HeroHealthText);
-		// The XP: empty and greyed until the levels have thresholds.
-		HeroXPBar = MakeBar(n"HeroXPBar", UHOLScriptScreen::GetMutedColor());
+		// The XP (J8b.4): gold, filled within the level, its numbers on hover; greyed while unknown.
+		HeroXPBar = MakeBar(n"HeroXPBar", FLinearColor(0.85, 0.65, 0.15, 1.0));
 		HeroXPBar.SetRenderOpacity(0.5);
 		Column.AddChildToVerticalBox(SizedBar(n"HeroXPBarBox", HeroXPBar, 5.0)).SetPadding(FMargin(0.0, 3.0, 0.0, 3.0));
-		// Three abilities' boxes, greyed, no text yet.
+		// Three abilities' boxes (J8c.4): aura, cry, banner; each its icon, a dark curtain from the top over the share of its
+		// cool-down left, the seconds left on it; its tooltip says what it does.
 		UHorizontalBox Abilities = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroAbilities"));
 		Column.AddChildToVerticalBox(Abilities);
 		for (int Index = 0; Index < 3; ++Index)
@@ -156,7 +162,35 @@ class UHOLGameScreenScript : UHOLScriptScreen
 			AbilityBox.SetHeightOverride(AbilitySize);
 			UBorder Ability = Cast<UBorder>(ConstructWidget(UBorder, FName(f"HeroAbility{Index}")));
 			Ability.SetBrushColor(FLinearColor(0.09, 0.09, 0.11, 1.0));
+			Ability.SetPadding(FMargin(0.0));
 			AbilityBox.SetContent(Ability);
+			UOverlay Layers = Cast<UOverlay>(ConstructWidget(UOverlay, FName(f"HeroAbilityLayers{Index}")));
+			Ability.SetContent(Layers);
+			UImage Icon = Cast<UImage>(ConstructWidget(UImage, FName(f"HeroAbilityIcon{Index}")));
+			UTexture2D IconTexture = HOLHeroBlock::LoadAbilityIcon(HOLHeroBlock::AbilityAt(Index));
+			if (IconTexture != nullptr)
+				Icon.SetBrushFromTexture(IconTexture, false);
+			else
+				Warning(f"Hero block: no icon for ability {Index}");
+			UOverlaySlot IconSlot = Layers.AddChildToOverlay(Icon);
+			IconSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+			IconSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+			IconSlot.SetPadding(FMargin(2.0));
+			USizeBox Curtain = Cast<USizeBox>(ConstructWidget(USizeBox, FName(f"HeroAbilityCurtain{Index}")));
+			Curtain.SetHeightOverride(0.0);
+			UBorder CurtainFill = Cast<UBorder>(ConstructWidget(UBorder, FName(f"HeroAbilityCurtainFill{Index}")));
+			CurtainFill.SetBrushColor(FLinearColor(0.0, 0.0, 0.0, 0.6));
+			Curtain.SetContent(CurtainFill);
+			UOverlaySlot CurtainSlot = Layers.AddChildToOverlay(Curtain);
+			CurtainSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+			CurtainSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
+			UCommonTextBlock Seconds = MakeText(FName(f"HeroAbilitySeconds{Index}"), UHOLTextStyleHUDLabel);
+			UOverlaySlot SecondsSlot = Layers.AddChildToOverlay(Seconds);
+			SecondsSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+			SecondsSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+			HeroAbilityIcons.Add(Icon);
+			HeroAbilityCurtains.Add(Curtain);
+			HeroAbilitySeconds.Add(Seconds);
 			Abilities.AddChildToHorizontalBox(AbilityBox).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
 			HeroAbilities.Add(Ability);
 		}
@@ -191,6 +225,9 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	UFUNCTION(BlueprintOverride)
 	void Refresh()
 	{
+		// The block's place follows the bottom bar's scale (EtapeDefini T).
+		if (HeroPanelSlot != nullptr)
+			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
 		RefreshPause();
 	}
@@ -251,8 +288,18 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		if (PlayerSlot < 0)
 			View = HOLHeroBlock::Make(true, false, EHOLHeroState::None, 0, 0, 0, -1, FHOLHeroReturnQuote());
 		else
+		{
 			View = HOLHeroBlock::Make(false, HOLHero::IsSlotDefeated(PlayerSlot), HOLHero::GetHeroState(PlayerSlot), HOLHero::GetHeroLevel(PlayerSlot),
-				HOLHero::GetHeroHealth(PlayerSlot), HOLHero::GetHeroMaxHealth(), -1, HOLHeroReturnQuote::ReadNow(PlayerSlot));
+				HOLHero::GetHeroHealth(PlayerSlot), HOLHero::GetHeroMaxHealth(PlayerSlot), HOLHero::GetHeroXP(PlayerSlot), HOLHeroReturnQuote::ReadNow(PlayerSlot));
+			// J8c.4: the abilities' boxes from the private sheet's ready steps (the owner's, J8-Q5) and the server's step.
+			TArray<int> ReadySteps;
+			ReadySteps.Add(0);
+			ReadySteps.Add(HOLHero::GetHeroAbilityReadyStep(PlayerSlot, EHOLHeroAbility::CloseRanks));
+			ReadySteps.Add(HOLHero::GetHeroAbilityReadyStep(PlayerSlot, EHOLHeroAbility::Banner));
+			if (View.bVisible)
+				HOLHeroBlock::SetAbilities(View, HOLHero::GetHeroState(PlayerSlot) == EHOLHeroState::Alive, View.Level, ReadySteps,
+					HOLHero::GetServerStep(), HOLHero::GetSimulationRateHz());
+		}
 		ShowHero(View);
 	}
 
@@ -276,10 +323,21 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		HeroHealthText.SetText(FText::FromString(HOLHeroBlockText::HealthText(View)));
 		HeroXPBar.SetPercent(View.XPFraction);
 		HeroXPBar.SetRenderOpacity(View.bXPGreyed ? 0.5 : 1.0);
+		HeroXPBar.SetToolTipText(FText::FromString(View.XPText));
 		for (int Index = 0; Index < HeroAbilities.Num(); ++Index)
 		{
 			HeroAbilities[Index].SetVisibility(Index < View.NumAbilities ? ESlateVisibility::Visible : ESlateVisibility::Hidden);
-			HeroAbilities[Index].SetRenderOpacity(View.bAbilitiesGreyed ? 0.6 : 1.0);
+			// No box known (never set): dark, as a locked one.
+			FHOLHeroAbilityBox Box;
+			Box.bLocked = true;
+			if (View.Abilities.IsValidIndex(Index))
+				Box = View.Abilities[Index];
+			// Lit: full; cooling down or off: dimmed; locked: faint.
+			const float Shade = Box.bLit ? 1.0 : Box.bLocked ? 0.3 : 0.55;
+			HeroAbilityIcons[Index].SetColorAndOpacity(FLinearColor(Shade, Shade, Shade, Box.bLocked ? 0.6 : 1.0));
+			HeroAbilityCurtains[Index].SetHeightOverride(AbilitySize * Box.CooldownFraction);
+			HeroAbilitySeconds[Index].SetText(FText::FromString(Box.SecondsLeft > 0 ? f"{Box.SecondsLeft}" : ""));
+			HeroAbilities[Index].SetToolTipText(FText::FromString(View.Abilities.IsValidIndex(Index) ? HOLHeroBlockText::AbilityTooltip(Box) : ""));
 		}
 
 		const FString Delay = HOLHeroBlockText::DelayText(View);
@@ -358,10 +416,23 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		return false;
 	}
 
+	// "aura on, cry 42 s, banner locked 4 | <the cry's tooltip, one line>" (hol.HUD.Report).
+	FString DescribeAbilities() const
+	{
+		FString Line;
+		for (int Index = 0; Index < HeroView.Abilities.Num(); ++Index)
+			Line += (Index > 0 ? ", " : "") + HeroView.Abilities[Index].Describe;
+		if (HeroView.Abilities.Num() > 1)
+			Line += " | " + HOLHeroBlockText::AbilityTooltip(HeroView.Abilities[1]).Replace("\n", " / ");
+		return Line;
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FString Describe() const
 	{
 		return "hero: " + HeroView.Describe + (HeroTexts.IsEmpty() ? "" : "\nhero texts: " + HeroTexts)
+			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
+			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

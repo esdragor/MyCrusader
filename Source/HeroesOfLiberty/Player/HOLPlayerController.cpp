@@ -44,6 +44,7 @@
 #include "Resources/HOLSourceTypes.h"
 #include "Settings/HOLGameUserSettings.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Simulation/HOLUnitView.h"
@@ -515,13 +516,65 @@ namespace UE::HeroesOfLiberty::Player
 						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
 					}
 				}
-				const TArray<uint32> Own = Controller->GetOwnSelectedUnits();
+				const TArray<uint32> Own = Controller->GetCommandUnits();
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u%s"), Own.Num(), TargetId, bQueue ? TEXT(", queued") : TEXT(""));
 				Controller->RequestAttackUnit(Own, TargetId, bQueue);
 				FHOLUnitView View;
 				if (HOLUnitView::Find(*Controller->GetWorld(), TargetId, View))
 				{
 					Controller->OnAttackOrderGiven.Broadcast(View.Location);
+				}
+			}
+		}));
+
+	/** J8c.4: the test cursor (hol.Camera.TestCursor) where a ground point (cm) is drawn: the banner's aim read there. */
+	FAutoConsoleCommand TestCursorGroundCommand(
+		TEXT("hol.Camera.TestCursorGround"),
+		TEXT("hol.Camera.TestCursorGround <X> <Y>: hol.Camera.TestCursor where that ground point (cm) is drawn (hol.Camera.TestCursor off to leave it)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Camera.TestCursorGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Camera.TestCursorGround: the point is not on the screen"));
+					continue;
+				}
+				// As typed in the console: a value set there before (hol.Camera.TestCursor) would win over a lower priority.
+				CVarTestCursor.AsVariable()->Set(*FString::Printf(TEXT("%.4f %.4f"), Fraction.X, Fraction.Y), ECVF_SetByConsole);
+				UE_LOG(LogHOLMatch, Display, TEXT("Test cursor on the ground at (%.3f, %.3f)"), Fraction.X, Fraction.Y);
+			}
+		}));
+
+	/** J8c.4: the grid's Z with the hero commanded, then a left click where that ground point (cm) is drawn. */
+	FAutoConsoleCommand BannerCommand(
+		TEXT("hol.Select.Banner"),
+		TEXT("hol.Select.Banner <X> <Y>: the grid's Z (the hero's banner, the hero commanded) then a left click where that ground point (cm) is drawn"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Banner <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.Banner: the point is not on the screen"));
+					continue;
+				}
+				Controller->PressGridKey(HOLCommandGrid::GetHeroAbilityCell(EHOLHeroAbility::Banner));
+				if (Controller->IsBannerArmed())
+				{
+					Controller->PlantBannerAt(Fraction);
 				}
 			}
 		}));
@@ -740,6 +793,7 @@ namespace UE::HeroesOfLiberty::Player
 				if (const AHOLSelectionMarkers* Markers = Controller->GetSelectionMarkers())
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Selection markers: %s"), *Markers->Describe());
+					UE_LOG(LogHOLMatch, Display, TEXT("Aura rings: %s"), *Markers->DescribeAuraRings());
 				}
 			}
 		}));
@@ -1274,6 +1328,25 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** J8c.3, until the interface's buttons: the local players cast their hero's cry or plant his banner (the server checks it). */
+	FAutoConsoleCommand HeroCastCommand(
+		TEXT("hol.Hero.Cast"),
+		TEXT("hol.Hero.Cast <CloseRanks|Banner> [X Y]: the local player casts its hero's cry, or plants his banner at X Y (cm) (J8c.3)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const bool bBanner = Args.Num() >= 3 && Args[0].Equals(TEXT("Banner"), ESearchCase::IgnoreCase);
+			if (!bBanner && !(Args.Num() >= 1 && Args[0].Equals(TEXT("CloseRanks"), ESearchCase::IgnoreCase)))
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Hero.Cast: CloseRanks, or Banner X Y"));
+				return;
+			}
+			const FVector Location = bBanner ? FVector(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.0) : FVector::ZeroVector;
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestHeroAbility(bBanner ? EHOLHeroAbility::Banner : EHOLHeroAbility::CloseRanks, Location);
+			}
+		}));
+
 #if !UE_BUILD_SHIPPING
 	/**
 	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
@@ -1568,6 +1641,11 @@ void AHOLPlayerController::BeginPlay()
 		if (bAttackMoveArmed && GetOwnSelectedSoldiers().IsEmpty())
 		{
 			bAttackMoveArmed = false;
+		}
+		// No hero commanded any more (J8c.4): no banner to plant.
+		if (bBannerArmed && GetCommandHero() == 0)
+		{
+			bBannerArmed = false;
 		}
 	});
 	if (!IsLocalController())
@@ -1910,12 +1988,16 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	// Allied combat: a target is a unit of another camp (an ally's is not, as my own).
 	const FHOLCampTable Camps = bHostileOnly ? FHOLCampTable::FromWorld(GetWorld()) : FHOLCampTable();
 
+	// F7 (D381): a unit out of sight of the player's camp is neither drawn nor picked.
+	const UHOLVisionSubsystem* Vision = GetWorld()->GetSubsystem<UHOLVisionSubsystem>();
+	const int32 ViewerSlot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
 	TArray<FHOLUnitView> Views;
 	HOLUnitView::Gather(*GetWorld(), Views);
 	for (const FHOLUnitView& View : Views)
 	{
 		if ((bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
-			|| (bHostileOnly && !Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex())))
+			|| (bHostileOnly && !Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex()))
+			|| (Vision && !Vision->IsUnitShown(ViewerSlot, View.OwnerPlayer, View.Location)))
 		{
 			continue;
 		}
@@ -2198,7 +2280,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	int32 SourceIndex = FindSourceAt(ViewportFraction);
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
-	const TArray<uint32> Own = GetOwnSelectedUnits();
+	// The units of the active subgroup (Tab), all of them for « Tous » (EtapeDefini, the user's remark of 2026-10-30).
+	const TArray<uint32> Own = GetCommandUnits();
 	// One of the player's sites not finished under the cursor (J6a.4, D312), or its main forum down (V2.2): its selected
 	// units go and help build it.
 	AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(ViewportFraction) : nullptr;
@@ -2421,6 +2504,7 @@ void AHOLPlayerController::CycleSubgroup()
 		const int32 Next = (Active + 1) % Subgroups.Num();
 		ActiveUnitType = Subgroups[Next].bAll ? NAME_None : Subgroups[Next].TypeName;
 		bAttackMoveArmed = false;
+		bBannerArmed = false;
 		UE_LOG(LogHOLMatch, Display, TEXT("Subgroup: %s (%d of %d)"), *DescribeSubgroup(), Next + 1, Subgroups.Num());
 		OnSelectionChanged.Broadcast();
 		return;
@@ -3048,7 +3132,9 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 
 void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 {
-	Context.ReachedAge = HOLCommandGrid::GetReachedAge();
+	// P3: the tier the hero's level opens (the server checks it again at the placement).
+	const AHOLGameState* TierState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	Context.ReachedAge = TierState && GetHOLPlayerState() ? TierState->GetTier(GetHOLPlayerState()->GetPlayerIndex()) : 0;
 	if (GetHOLPlayerState() && !SelectedUnits.IsEmpty())
 	{
 		// The units of the active subgroup (Tab, the user's trial of J7b; all of them for « Tous »). Builders: those that
@@ -3076,7 +3162,44 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
 		}
 		Context.bOwnUnits = !Units.IsEmpty();
+		// J8c.4: the hero commanded, his abilities on the grid (his level from the public sheet, the cool-downs from the
+		// private one: the seconds left to the step each is ready at, rounded up).
+		Context.bHero = GetCommandHero() != 0;
+		if (Context.bHero)
+		{
+			const int32 Slot = GetHOLPlayerState()->GetPlayerIndex();
+			Context.HeroLevel = UHOLHeroLibrary::GetHeroLevel(this, Slot);
+			const int32 Step = UHOLHeroLibrary::GetServerStep(this);
+			const int32 RateHz = FMath::Max(1, UHOLHeroLibrary::GetSimulationRateHz());
+			for (const EHOLHeroAbility Ability : { EHOLHeroAbility::CloseRanks, EHOLHeroAbility::Banner })
+			{
+				const int32 ReadyStep = UHOLHeroLibrary::GetHeroAbilityReadyStep(this, Slot, Ability);
+				Context.HeroCooldownSeconds[static_cast<int32>(Ability)] = Step >= 0 && ReadyStep > Step
+					? FMath::DivideAndRoundUp(ReadyStep - Step, RateHz) : 0;
+			}
+		}
 	}
+}
+
+uint32 AHOLPlayerController::GetCommandHero() const
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!HOLPlayerState || !Units || SelectedUnits.IsEmpty())
+	{
+		return 0;
+	}
+	for (const uint32 UnitId : GetCommandUnits())
+	{
+		FHOLUnitView View;
+		const FHOLUnitTypeRow* Row = HOLUnitView::Find(*GetWorld(), UnitId, View) && View.OwnerPlayer == HOLPlayerState->GetPlayerIndex()
+			? Units->FindTypeRow(View.TypeName) : nullptr;
+		if (Row && Row->HasArmorCategory(EHOLArmorCategory::Hero))
+		{
+			return UnitId;
+		}
+	}
+	return 0;
 }
 
 void AHOLPlayerController::GetOrderCommands(TArray<FHOLGridCommand>& OutCommands) const
@@ -3245,9 +3368,30 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		BeginPlacement(Command.TypeName);
 		return;
 	}
+	case EHOLGridCommand::HeroAbility:
+		// J8c.4: greyed (below its level, cooling down), nothing sent; the cry at once, the banner a left click on the ground
+		// (PlantBannerAt). The server checks it all again.
+		if (Command.bGreyed)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero %s not ready (%d s)"), Command.Ability == EHOLHeroAbility::Banner ? TEXT("banner") : TEXT("cry"),
+				Command.CooldownSeconds);
+			return;
+		}
+		if (Command.Ability == EHOLHeroAbility::CloseRanks)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero cry"));
+			RequestHeroAbility(EHOLHeroAbility::CloseRanks, FVector::ZeroVector);
+			return;
+		}
+		EndPlacement();
+		bAttackMoveArmed = false;
+		bBannerArmed = true;
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: hero banner, click on the ground"));
+		return;
 	case EHOLGridCommand::AttackMove:
 		// AoE4's way: the key, then a left click on the ground (AttackMoveAt).
 		EndPlacement();
+		bBannerArmed = false;
 		bAttackMoveArmed = true;
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: attack-move, click on the ground"));
 		return;
@@ -3390,6 +3534,31 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 	UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move to (%.0f, %.0f)%s"), Soldiers.Num(), Ground.X, Ground.Y, bQueue ? TEXT(", queued") : TEXT(""));
 	RequestAttackMove(Soldiers, Ground, bQueue);
 	OnAttackOrderGiven.Broadcast(Ground);
+}
+
+bool AHOLPlayerController::GetCursorGroundPoint(FVector& OutPoint) const
+{
+	FVector2D Fraction;
+	FVector Origin, Direction;
+	if (!RTSCamera || !GetCursorFraction(Fraction))
+	{
+		return false;
+	}
+	const FVector2D Pixels = ToPixels(Fraction);
+	return DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, OutPoint);
+}
+
+void AHOLPlayerController::PlantBannerAt(const FVector2D& ViewportFraction)
+{
+	bBannerArmed = false;
+	const FVector2D Pixels = ToPixels(ViewportFraction);
+	FVector Origin, Direction, Ground;
+	if (GetCommandHero() == 0 || !RTSCamera || !DeprojectScreenPositionToWorld(Pixels.X, Pixels.Y, Origin, Direction) || !RTSCamera->GetGroundPoint(Origin, Direction, Ground))
+	{
+		return;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Order: hero banner at (%.0f, %.0f)"), Ground.X, Ground.Y);
+	RequestHeroAbility(EHOLHeroAbility::Banner, Ground);
 }
 
 void AHOLPlayerController::RequestGatherUnits(const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
@@ -3575,7 +3744,7 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 	if (!TypeName.IsNone())
 	{
 		// The selected Peasants build it (J6a.4); the server keeps only the player's own that build.
-		const TArray<uint32> Builders = GetOwnSelectedUnits();
+		const TArray<uint32> Builders = GetCommandUnits();
 		if (!Builders.IsEmpty())
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build it%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
@@ -3968,6 +4137,28 @@ void AHOLPlayerController::ServerReturnHero_Implementation()
 	}
 }
 
+void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, const FVector Location)
+{
+	if (IsSpectator() || Ability == EHOLHeroAbility::Aura)
+	{
+		return;
+	}
+	ServerHeroAbility(Ability, Location);
+}
+
+void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
+{
+	// The player's own slot only (D288), an ability that is cast (not the aura, not a value out of the enum).
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands && (Ability == EHOLHeroAbility::CloseRanks || Ability == EHOLHeroAbility::Banner))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero ability order: slot %d %s queued"), HOLPlayerState->GetPlayerIndex(),
+			Ability == EHOLHeroAbility::CloseRanks ? TEXT("cry") : TEXT("banner"));
+		Commands->IssueHeroAbilityOrder(HOLPlayerState->GetPlayerIndex(), Ability, Location);
+	}
+}
+
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
 	ServerCheatDamageBuilding(Point, Amount, AttackType);
@@ -4230,7 +4421,7 @@ void AHOLPlayerController::HandleSelectStarted()
 		return;
 	}
 	// D357: defeated with a mode armed, the mode is left and the click only selects (to watch).
-	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || ChosenAge != INDEX_NONE))
+	if (IsSpectator() && (IsPlacing() || bAttackMoveArmed || bBannerArmed || ChosenAge != INDEX_NONE))
 	{
 		if (IsPlacing())
 		{
@@ -4238,6 +4429,7 @@ void AHOLPlayerController::HandleSelectStarted()
 		}
 		SetChosenAge(INDEX_NONE);
 		bAttackMoveArmed = false;
+		bBannerArmed = false;
 	}
 	// In placement mode a left click places (J6a.3): it never selects nor starts a box.
 	if (IsPlacing())
@@ -4252,6 +4444,13 @@ void AHOLPlayerController::HandleSelectStarted()
 	{
 		bSelectPressed = false;
 		AttackMoveAt(Cursor, bSelectAddHeld);
+		return;
+	}
+	// Banner aiming (J8c.4): a left click plants it, never selects.
+	if (bBannerArmed && GetCursorFraction(Cursor))
+	{
+		bSelectPressed = false;
+		PlantBannerAt(Cursor);
 		return;
 	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
@@ -4314,9 +4513,10 @@ void AHOLPlayerController::HandleOrder()
 		EndPlacement();
 		return;
 	}
-	if (bAttackMoveArmed)
+	if (bAttackMoveArmed || bBannerArmed)
 	{
 		bAttackMoveArmed = false;
+		bBannerArmed = false;
 		return;
 	}
 	// Resolved at the release (J7a.4): a click orders at the press, a drag along its line.
@@ -4345,7 +4545,7 @@ bool AHOLPlayerController::GetOrderLine(FVector& OutStart, FVector& OutEnd) cons
 {
 	FVector2D Cursor;
 	if (!bOrderPressed || !RTSCamera || IsPlacing() || !GetCursorFraction(Cursor)
-		|| !HOLUnitPicking::IsBox(ToPixels(OrderPressFraction), ToPixels(Cursor)) || GetOwnSelectedUnits().Num() < 2)
+		|| !HOLUnitPicking::IsBox(ToPixels(OrderPressFraction), ToPixels(Cursor)) || GetCommandUnits().Num() < 2)
 	{
 		return false;
 	}
@@ -4376,7 +4576,8 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 	// Ctrl (or a script's): the front's width too; Shift (or a script's): after the current move (the user's 1st trial).
 	const bool bWithWidth = bWidth || IsOrderWidthHeld();
 	const bool bShift = bQueue || bSelectAddHeld;
-	const TArray<uint32> Own = GetOwnSelectedUnits();
+	// The active subgroup's units (Tab), all of them for « Tous ».
+	const TArray<uint32> Own = GetCommandUnits();
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	const AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(Start) : nullptr;
 	const bool bOnSite = Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && Site->NeedsBuilders();
@@ -4407,7 +4608,7 @@ void AHOLPlayerController::HandleDeselect()
 	// placement mode first, the selection kept (D313), and closes the chosen age (the user's 1st trial of G.1: an age
 	// chosen without a ghost is closed alone), then the attack-move mode (J7b.3); then it deselects; with nothing
 	// selected, it opens the in-game menu.
-	switch (HOLGameMenuRules::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed, HasSelection()))
+	switch (HOLGameMenuRules::GetEscapeAction(bGameMenuOpen, IsPlacing() || ChosenAge != INDEX_NONE || bAttackMoveArmed || bBannerArmed, HasSelection()))
 	{
 	case EHOLEscapeAction::CloseMenu:
 		return;
@@ -4424,6 +4625,7 @@ void AHOLPlayerController::HandleDeselect()
 		else
 		{
 			bAttackMoveArmed = false;
+			bBannerArmed = false;
 		}
 		return;
 	case EHOLEscapeAction::Deselect:
@@ -4863,6 +5065,14 @@ void AHOLPlayerController::ClientReceiveMatchStats_Implementation(const FHOLMatc
 	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
 	{
 		MatchStats->ReceiveChunk(Chunk);
+	}
+}
+
+void AHOLPlayerController::ClientReceiveFogMemory_Implementation(const TArray<uint32>& ExploredRuns, const TArray<FHOLFogGhostNet>& BuildingGhosts)
+{
+	if (UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr)
+	{
+		Vision->ReceiveMemory(ExploredRuns, BuildingGhosts);
 	}
 }
 

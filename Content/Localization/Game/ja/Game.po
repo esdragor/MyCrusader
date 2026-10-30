@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-30 14:45\n"
-"PO-Revision-Date: 2026-10-30 14:45\n"
+"POT-Creation-Date: 2026-10-30 18:14\n"
+"PO-Revision-Date: 2026-10-30 18:14\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -14,53 +14,109 @@ msgstr ""
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #. Key:	Level
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(131)
-#: Script/UI/HOLHeroBlock.as(131)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(243)
+#: Script/UI/HOLHeroBlock.as(243)
 msgctxt "HOLHeroBlock,Level"
 msgid "Niveau {0}"
 msgstr "レベル {0}"
 
 #. Key:	Health
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(132)
-#: Script/UI/HOLHeroBlock.as(132)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(244)
+#: Script/UI/HOLHeroBlock.as(244)
 msgctxt "HOLHeroBlock,Health"
 msgid "PV {0} / {1}"
 msgstr "HP {0} / {1}"
 
 #. Key:	ReadyIn
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(133)
-#: Script/UI/HOLHeroBlock.as(133)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(245)
+#: Script/UI/HOLHeroBlock.as(245)
 msgctxt "HOLHeroBlock,ReadyIn"
 msgid "Prêt dans {0}"
 msgstr "帰還まで {0}"
 
 #. Key:	Unknown
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(134)
-#: Script/UI/HOLHeroBlock.as(134)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(246)
+#: Script/UI/HOLHeroBlock.as(246)
 msgctxt "HOLHeroBlock,Unknown"
 msgid "…"
 msgstr "…"
 
 #. Key:	Return
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(135)
-#: Script/UI/HOLHeroBlock.as(135)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(247)
+#: Script/UI/HOLHeroBlock.as(247)
 msgctxt "HOLHeroBlock,Return"
 msgid "Ramener le héros — {0} or"
 msgstr "英雄を呼び戻す — {0} 金"
 
 #. Key:	NoGold
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(136)
-#: Script/UI/HOLHeroBlock.as(136)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(248)
+#: Script/UI/HOLHeroBlock.as(248)
 msgctxt "HOLHeroBlock,NoGold"
 msgid "Pas assez d'or"
 msgstr "金が足りません"
 
 #. Key:	NoPlace
-#. SourceLocation:	Script/UI/HOLHeroBlock.as(137)
-#: Script/UI/HOLHeroBlock.as(137)
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(249)
+#: Script/UI/HOLHeroBlock.as(249)
 msgctxt "HOLHeroBlock,NoPlace"
 msgid "Aucun forum pour revenir"
 msgstr "帰還できる町の中心がありません"
+
+#. Key:	AuraName
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(250)
+#: Script/UI/HOLHeroBlock.as(250)
+msgctxt "HOLHeroBlock,AuraName"
+msgid "Aura de l'Aube"
+msgstr "暁のオーラ"
+
+#. Key:	AuraEffect
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(251)
+#: Script/UI/HOLHeroBlock.as(251)
+msgctxt "HOLHeroBlock,AuraEffect"
+msgid "Passive : −15 % de dégâts reçus pour vos unités à 12 m du héros"
+msgstr "常時：英雄から12 m以内の味方ユニットの被ダメージ −15 %"
+
+#. Key:	CloseRanksName
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(252)
+#: Script/UI/HOLHeroBlock.as(252)
+msgctxt "HOLHeroBlock,CloseRanksName"
+msgid "Serrez les rangs (A)"
+msgstr "隊列を固めよ (A)"
+
+#. Key:	CloseRanksEffect
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(253)
+#: Script/UI/HOLHeroBlock.as(253)
+msgctxt "HOLHeroBlock,CloseRanksEffect"
+msgid "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s"
+msgstr "英雄から12 m以内の味方ユニットの被ダメージ −25 %（15秒）；再使用 60秒"
+
+#. Key:	BannerName
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(254)
+#: Script/UI/HOLHeroBlock.as(254)
+msgctxt "HOLHeroBlock,BannerName"
+msgid "Bannière de l'Aube (Z)"
+msgstr "暁の旗 (Z)"
+
+#. Key:	BannerEffect
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(255)
+#: Script/UI/HOLHeroBlock.as(255)
+msgctxt "HOLHeroBlock,BannerEffect"
+msgid "Plantée à 16 m du héros au plus : son aura pendant 45 s ; recharge 120 s"
+msgstr "英雄から16 m以内に立てる：その場に45秒間オーラ；再使用 120秒"
+
+#. Key:	AbilityLocked
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(256)
+#: Script/UI/HOLHeroBlock.as(256)
+msgctxt "HOLHeroBlock,AbilityLocked"
+msgid "Niveau {0} requis"
+msgstr "レベル {0} が必要"
+
+#. Key:	AbilityCooldown
+#. SourceLocation:	Script/UI/HOLHeroBlock.as(257)
+#: Script/UI/HOLHeroBlock.as(257)
+msgctxt "HOLHeroBlock,AbilityCooldown"
+msgid "Prête dans {0} s"
+msgstr "あと {0} 秒"
 
 #. Key:	Title
 #. SourceLocation:	Script/UI/HOLPauseScreen.as(51)
@@ -140,74 +196,88 @@ msgid "{Name} : de retour"
 msgstr "{Name}：復帰しました"
 
 #. Key:	MessageOwnHeld
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(101)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(101)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(110)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(110)
 msgctxt "HOLGameScreen,MessageOwnHeld"
 msgid "{0} tient votre ruine"
 msgstr "{0}があなたの廃墟を占拠"
 
 #. Key:	MessageYouHold
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(106)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(106)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(115)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(115)
 msgctxt "HOLGameScreen,MessageYouHold"
 msgid "Vous tenez la ruine de {0}"
 msgstr "{0}の廃墟を占拠中"
 
 #. Key:	MessageHeld
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(111)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(111)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(120)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(120)
 msgctxt "HOLGameScreen,MessageHeld"
 msgid "{0} tient la ruine de {1}"
 msgstr "{0}が{1}の廃墟を占拠"
 
 #. Key:	MessageOwnRazed
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(120)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(120)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(129)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(129)
 msgctxt "HOLGameScreen,MessageOwnRazed"
 msgid "Vos fondations sont rasées — {0}"
 msgstr "あなたの基礎が破壊された — {0}"
 
 #. Key:	MessageRazed
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(124)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(124)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(133)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(133)
 msgctxt "HOLGameScreen,MessageRazed"
 msgid "Fondations de {0} rasées — {1}"
 msgstr "{0}の基礎が破壊された — {1}"
 
 #. Key:	MessageOwnKingDied
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(131)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(131)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(140)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(140)
 msgctxt "HOLGameScreen,MessageOwnKingDied"
 msgid "Votre Roi est mort"
 msgstr "あなたの王が死亡"
 
 #. Key:	MessageKingDied
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(135)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(135)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(144)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(144)
 msgctxt "HOLGameScreen,MessageKingDied"
 msgid "Le Roi de {0} est mort"
 msgstr "{0}の王が死亡"
 
 #. Key:	MessageOwnDefeated
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(143)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(143)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(152)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(152)
 msgctxt "HOLGameScreen,MessageOwnDefeated"
 msgid "Vous êtes vaincu"
 msgstr "あなたは敗退しました"
 
 #. Key:	MessageDefeated
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(147)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(147)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(156)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(156)
 msgctxt "HOLGameScreen,MessageDefeated"
 msgid "{0} est vaincu"
 msgstr "{0}が敗退"
 
 #. Key:	MessageHeroReady
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(159)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(159)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(168)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(168)
 msgctxt "HOLGameScreen,MessageHeroReady"
 msgid "Votre héros est prêt à revenir"
 msgstr "英雄の帰還準備が整った"
+
+#. Key:	MessageHeroLevel
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(181)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(181)
+msgctxt "HOLGameScreen,MessageHeroLevel"
+msgid "Paladin-Commandant : niveau {0}"
+msgstr "聖騎士団長：レベル {0}"
+
+#. Key:	MessageHeroTier
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(188)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(188)
+msgctxt "HOLGameScreen,MessageHeroTier"
+msgid "Palier {0} atteint"
+msgstr "段階{0}に到達"
 
 #. Key:	PlayerN
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(23)
@@ -259,29 +329,29 @@ msgid "IA {0} {1}"
 msgstr "AI {0} {1}"
 
 #. Key:	TableLife
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(79)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(79)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
 msgctxt "HOLGameScreen,TableLife"
 msgid "{0} vie"
 msgstr "ライフ{0}"
 
 #. Key:	TableLives
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(79)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(79)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
 msgctxt "HOLGameScreen,TableLives"
 msgid "{0} vies"
 msgstr "ライフ{0}"
 
 #. Key:	MessageOwnFell
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(86)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(86)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(95)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(95)
 msgctxt "HOLGameScreen,MessageOwnFell"
 msgid "Votre forum est tombé — {0}"
 msgstr "あなたの町の中心が陥落 — {0}"
 
 #. Key:	MessageFell
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(90)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(90)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(99)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(99)
 msgctxt "HOLGameScreen,MessageFell"
 msgid "Le forum de {0} est tombé — {1}"
 msgstr "{0}の町の中心が陥落 — {1}"
@@ -615,516 +685,572 @@ msgctxt "HOLGameNames,ArcheryRange"
 msgid "Champ de tir"
 msgstr "射撃場"
 
-#. Key:	GathererCount
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1120)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1120)
-msgctxt "HOLGameScreen,GathererCount"
-msgid "({0})"
-msgstr "（{0}）"
-
-#. Key:	PopulationEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(115)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(115)
-msgctxt "HOLGameScreen,PopulationEffect"
-msgid "+{0} population"
-msgstr "人口 +{0}"
-
-#. Key:	FoundationName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1156)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1156)
-msgctxt "HOLGameScreen,FoundationName"
-msgid "Fondation : {0}"
-msgstr "{0}（基礎）"
-
-#. Key:	SiteName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1157)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1157)
-msgctxt "HOLGameScreen,SiteName"
-msgid "Chantier : {0}"
-msgstr "{0}（建設中）"
-
-#. Key:	ProgressPercent
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1165)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1165)
-msgctxt "HOLGameScreen,ProgressPercent"
-msgid "{0} %"
-msgstr "{0}%"
-
-#. Key:	DepositEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(124)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(124)
-msgctxt "HOLGameScreen,DepositEffect"
-msgid "Dépôt : {0}"
-msgstr "集積所：{0}"
-
-#. Key:	ListSeparator
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(124)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(124)
-msgctxt "HOLGameScreen,ListSeparator"
-msgid ", "
-msgstr "、"
-
-#. Key:	SubgroupAll
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1284)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1284)
-msgctxt "HOLGameScreen,SubgroupAll"
-msgid "Tous ({0})"
-msgstr "すべて ({0})"
-
-#. Key:	ProducesEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(133)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(133)
-msgctxt "HOLGameScreen,ProducesEffect"
-msgid "Produit : {0}"
-msgstr "生産：{0}"
-
-#. Key:	GroupGathering
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1333)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1333)
-msgctxt "HOLGameScreen,GroupGathering"
-msgid "{0} en récolte"
-msgstr "採集中 {0}"
-
-#. Key:	GroupBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1337)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1337)
-msgctxt "HOLGameScreen,GroupBuilding"
-msgid "{0} en construction"
-msgstr "建設中 {0}"
-
-#. Key:	GroupFighting
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1341)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1341)
-msgctxt "HOLGameScreen,GroupFighting"
-msgid "{0} au combat"
-msgstr "戦闘中 {0}"
-
-#. Key:	GroupMoving
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1345)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1345)
-msgctxt "HOLGameScreen,GroupMoving"
-msgid "{0} en marche"
-msgstr "移動中 {0}"
-
-#. Key:	GroupIdle
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1349)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1349)
-msgctxt "HOLGameScreen,GroupIdle"
-msgid "{0} {0}|plural(one=inactif,other=inactifs)"
-msgstr "待機中 {0}"
-
-#. Key:	PeasantEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(142)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(142)
-msgctxt "HOLGameScreen,PeasantEffect"
-msgid "Récolte et bâtit"
-msgstr "採集と建設"
-
-#. Key:	SourceRemaining
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1508)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1508)
-msgctxt "HOLGameScreen,SourceRemaining"
-msgid "Reste : {0}"
-msgstr "残り：{0}"
-
-#. Key:	ActivityGathering
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1526)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1526)
-msgctxt "HOLGameScreen,ActivityGathering"
-msgid "Récolte"
-msgstr "採集中"
-
-#. Key:	ActivityBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1527)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1527)
-msgctxt "HOLGameScreen,ActivityBuilding"
-msgid "Construction"
-msgstr "建設中"
-
-#. Key:	ActivityAttacking
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1528)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1528)
-msgctxt "HOLGameScreen,ActivityAttacking"
-msgid "Attaque"
-msgstr "攻撃中"
-
-#. Key:	ActivityIdle
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1529)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1529)
-msgctxt "HOLGameScreen,ActivityIdle"
-msgid "Inactif"
-msgstr "待機中"
-
-#. Key:	ActivityMoving
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1529)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1529)
-msgctxt "HOLGameScreen,ActivityMoving"
-msgid "En marche"
-msgstr "移動中"
-
-#. Key:	ActivityWithLoad
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1531)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1531)
-msgctxt "HOLGameScreen,ActivityWithLoad"
-msgid "{0} — {1} {2}/{3}"
-msgstr "{0} — {1} {2}/{3}"
-
-#. Key:	IdleWorkers
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1586)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1586)
-msgctxt "HOLGameScreen,IdleWorkers"
-msgid "Inactifs : {0}"
-msgstr "待機中：{0}"
-
-#. Key:	ControlGroupSlot
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1669)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1669)
-msgctxt "HOLGameScreen,ControlGroupSlot"
-msgid "{0} · {1}"
-msgstr "{0} · {1}"
-
-#. Key:	ControlGroupTooltip
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1693)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1693)
-msgctxt "HOLGameScreen,ControlGroupTooltip"
-msgid "Groupe {0}"
-msgstr "グループ{0}"
-
-#. Key:	UnitCount
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1698)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1698)
-msgctxt "HOLGameScreen,UnitCount"
-msgid "{0} × {1}"
-msgstr "{0} × {1}"
-
-#. Key:	NotEnoughWood
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(178)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(178)
-msgctxt "HOLGameScreen,NotEnoughWood"
-msgid "Pas assez de bois"
-msgstr "木材が足りません"
-
-#. Key:	NotEnoughStone
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(179)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(179)
-msgctxt "HOLGameScreen,NotEnoughStone"
-msgid "Pas assez de pierre"
-msgstr "石材が足りません"
-
-#. Key:	NotEnoughGold
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(180)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(180)
-msgctxt "HOLGameScreen,NotEnoughGold"
-msgid "Pas assez d'or"
-msgstr "金が足りません"
-
-#. Key:	Cancel
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1800)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1800)
-msgctxt "HOLGameScreen,Cancel"
-msgid "Annuler"
-msgstr "キャンセル"
-
-#. Key:	CancelSite
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1801)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1801)
-msgctxt "HOLGameScreen,CancelSite"
-msgid "Annuler la construction"
-msgstr "建設をキャンセル"
-
-#. Key:	AttackMove
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1805)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1805)
-msgctxt "HOLGameScreen,AttackMove"
-msgid "Attaque"
-msgstr "攻撃"
-
-#. Key:	AttackMoveName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1806)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1806)
-msgctxt "HOLGameScreen,AttackMoveName"
-msgid "Attaque-déplacement"
-msgstr "攻撃移動"
-
-#. Key:	AttackMoveEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1807)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1807)
-msgctxt "HOLGameScreen,AttackMoveEffect"
-msgid "Puis clic au sol : attaque les ennemis en chemin"
-msgstr "続けて地面をクリック：途中の敵を攻撃"
-
-#. Key:	NotEnoughFood
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(181)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(181)
-msgctxt "HOLGameScreen,NotEnoughFood"
-msgid "Pas assez de nourriture"
-msgstr "食料が足りません"
-
-#. Key:	Stop
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1810)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1810)
-msgctxt "HOLGameScreen,Stop"
-msgid "Arrêt"
-msgstr "停止"
-
-#. Key:	StopEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1811)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1811)
-msgctxt "HOLGameScreen,StopEffect"
-msgid "Annule les ordres et le combat"
-msgstr "命令と戦闘を取り消す"
-
-#. Key:	StopName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1811)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1811)
-msgctxt "HOLGameScreen,StopName"
-msgid "Arrêt"
-msgstr "停止"
-
-#. Key:	Hold
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1814)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1814)
-msgctxt "HOLGameScreen,Hold"
-msgid "Tenir"
-msgstr "待機"
-
-#. Key:	HoldName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1815)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1815)
-msgctxt "HOLGameScreen,HoldName"
-msgid "Tenir la position"
-msgstr "位置を保持"
-
-#. Key:	HoldEffect
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1816)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1816)
-msgctxt "HOLGameScreen,HoldEffect"
-msgid "N'attaque qu'à portée, ne poursuit pas"
-msgstr "射程内のみ攻撃し、追跡しない"
-
-#. Key:	QueueFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(183)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(183)
-msgctxt "HOLGameScreen,QueueFull"
-msgid "File de production pleine"
-msgstr "生産キューが満杯です"
-
-#. Key:	PopulationMax
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(184)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(184)
-msgctxt "HOLGameScreen,PopulationMax"
-msgid "Population maximale — construisez des maisons"
-msgstr "人口が上限です — 家を建ててください"
-
-#. Key:	AgeHeaderName
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1869)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1869)
-msgctxt "HOLGameScreen,AgeHeaderName"
-msgid "Palier {0} — {1}"
-msgstr "段階{0}：{1}"
-
-#. Key:	AgeLocked
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1870)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1870)
-msgctxt "HOLGameScreen,AgeLocked"
-msgid "Palier non atteint"
-msgstr "未到達の段階"
-
-#. Key:	NoMilitaryBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(188)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(188)
-msgctxt "HOLGameScreen,NoMilitaryBuilding"
-msgid "Aucun bâtiment militaire"
-msgstr "軍事施設がありません"
-
-#. Key:	NoTechnologicalBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(189)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(189)
-msgctxt "HOLGameScreen,NoTechnologicalBuilding"
-msgid "Aucun bâtiment technologique"
-msgstr "技術施設がありません"
-
-#. Key:	NoEconomicBuilding
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(190)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(190)
-msgctxt "HOLGameScreen,NoEconomicBuilding"
-msgid "Aucun bâtiment économique"
-msgstr "経済施設がありません"
-
-#. Key:	PlacementOutOfMap
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(195)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(195)
-msgctxt "HOLGameScreen,PlacementOutOfMap"
-msgid "Hors de la carte"
-msgstr "マップの外です"
-
-#. Key:	PlacementEnemyCentre
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(196)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(196)
-msgctxt "HOLGameScreen,PlacementEnemyCentre"
-msgid "Trop près d'un centre ennemi"
-msgstr "敵の本拠地に近すぎます"
-
-#. Key:	PlacementNavMesh
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(197)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(197)
-msgctxt "HOLGameScreen,PlacementNavMesh"
-msgid "Terrain impraticable"
-msgstr "通行できない地形です"
-
-#. Key:	PlacementBlocked
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(198)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(198)
-msgctxt "HOLGameScreen,PlacementBlocked"
-msgid "Emplacement occupé"
-msgstr "場所がふさがっています"
-
-#. Key:	Population
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2501)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2501)
-msgctxt "HOLGameScreen,Population"
-msgid "Population"
-msgstr "人口"
-
-#. Key:	SelectionChip
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(271)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(271)
-msgctxt "HOLGameScreen,SelectionChip"
-msgid "{0} ({1})"
-msgstr "{0} ({1})"
-
-#. Key:	Health
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2767)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2767)
-msgctxt "HOLGameScreen,Health"
-msgid "Points de vie"
-msgstr "耐久力"
-
-#. Key:	Age0
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(278)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(278)
-msgctxt "HOLGameScreen,Age0"
-msgid "Fondation"
-msgstr "基盤"
-
-#. Key:	Age1
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(279)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(279)
-msgctxt "HOLGameScreen,Age1"
-msgid "Essor"
-msgstr "興隆"
-
-#. Key:	ForumLivesLabel
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2794)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2794)
-msgctxt "HOLGameScreen,ForumLivesLabel"
-msgid "Vies"
-msgstr "ライフ"
-
-#. Key:	Age2
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(280)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(280)
-msgctxt "HOLGameScreen,Age2"
-msgid "Puissance"
-msgstr "権勢"
-
-#. Key:	Age3
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(281)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(281)
-msgctxt "HOLGameScreen,Age3"
-msgid "Légende"
-msgstr "伝説"
-
-#. Key:	PopulationFull
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2858)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2858)
-msgctxt "HOLGameScreen,PopulationFull"
-msgid "Population pleine"
-msgstr "人口上限"
-
-#. Key:	CancelHint
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2864)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2864)
-msgctxt "HOLGameScreen,CancelHint"
-msgid "Clic : annuler"
-msgstr "クリック：キャンセル"
-
-#. Key:	Menu
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(397)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(397)
-msgctxt "HOLGameScreen,Menu"
-msgid "Menu"
-msgstr "メニュー"
-
-#. Key:	Stats
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(403)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(403)
-msgctxt "HOLGameScreen,Stats"
-msgid "Statistiques"
-msgstr "統計"
-
-#. Key:	Wood
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(83)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(83)
-msgctxt "HOLGameScreen,Wood"
-msgid "Bois"
-msgstr "木材"
-
-#. Key:	Stone
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(84)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(84)
-msgctxt "HOLGameScreen,Stone"
-msgid "Pierre"
-msgstr "石材"
-
-#. Key:	Gold
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(85)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(85)
-msgctxt "HOLGameScreen,Gold"
-msgid "Or"
-msgstr "金"
-
-#. Key:	Food
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(86)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(86)
-msgctxt "HOLGameScreen,Food"
-msgid "Nourriture"
-msgstr "食料"
-
-#. Key:	WoodInText
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(95)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(95)
-msgctxt "HOLGameScreen,WoodInText"
-msgid "bois"
-msgstr "木材"
-
 #. Key:	StoneInText
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(96)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(96)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(100)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(100)
 msgctxt "HOLGameScreen,StoneInText"
 msgid "pierre"
 msgstr "石材"
 
 #. Key:	GoldInText
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(97)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(97)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(101)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(101)
 msgctxt "HOLGameScreen,GoldInText"
 msgid "or"
 msgstr "金"
 
 #. Key:	FoodInText
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(98)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(98)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(102)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(102)
 msgctxt "HOLGameScreen,FoodInText"
 msgid "nourriture"
 msgstr "食料"
 
 #. Key:	WaitingFor
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(990)
-#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(990)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1040)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1040)
 msgctxt "HOLGameScreen,WaitingFor"
 msgid "En attente de {Players} ({Time})"
 msgstr "{Players}を待っています（{Time}）"
+
+#. Key:	GathererCount
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1170)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1170)
+msgctxt "HOLGameScreen,GathererCount"
+msgid "({0})"
+msgstr "（{0}）"
+
+#. Key:	PopulationEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(119)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(119)
+msgctxt "HOLGameScreen,PopulationEffect"
+msgid "+{0} population"
+msgstr "人口 +{0}"
+
+#. Key:	FoundationName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1206)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1206)
+msgctxt "HOLGameScreen,FoundationName"
+msgid "Fondation : {0}"
+msgstr "{0}（基礎）"
+
+#. Key:	SiteName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1207)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1207)
+msgctxt "HOLGameScreen,SiteName"
+msgid "Chantier : {0}"
+msgstr "{0}（建設中）"
+
+#. Key:	ProgressPercent
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1215)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1215)
+msgctxt "HOLGameScreen,ProgressPercent"
+msgid "{0} %"
+msgstr "{0}%"
+
+#. Key:	DepositEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(128)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(128)
+msgctxt "HOLGameScreen,DepositEffect"
+msgid "Dépôt : {0}"
+msgstr "集積所：{0}"
+
+#. Key:	ListSeparator
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(128)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(128)
+msgctxt "HOLGameScreen,ListSeparator"
+msgid ", "
+msgstr "、"
+
+#. Key:	SubgroupAll
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1334)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1334)
+msgctxt "HOLGameScreen,SubgroupAll"
+msgid "Tous ({0})"
+msgstr "すべて ({0})"
+
+#. Key:	ProducesEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(137)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(137)
+msgctxt "HOLGameScreen,ProducesEffect"
+msgid "Produit : {0}"
+msgstr "生産：{0}"
+
+#. Key:	GroupGathering
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1383)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1383)
+msgctxt "HOLGameScreen,GroupGathering"
+msgid "{0} en récolte"
+msgstr "採集中 {0}"
+
+#. Key:	GroupBuilding
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1387)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1387)
+msgctxt "HOLGameScreen,GroupBuilding"
+msgid "{0} en construction"
+msgstr "建設中 {0}"
+
+#. Key:	GroupFighting
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1391)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1391)
+msgctxt "HOLGameScreen,GroupFighting"
+msgid "{0} au combat"
+msgstr "戦闘中 {0}"
+
+#. Key:	GroupMoving
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1395)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1395)
+msgctxt "HOLGameScreen,GroupMoving"
+msgid "{0} en marche"
+msgstr "移動中 {0}"
+
+#. Key:	GroupIdle
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1399)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1399)
+msgctxt "HOLGameScreen,GroupIdle"
+msgid "{0} {0}|plural(one=inactif,other=inactifs)"
+msgstr "待機中 {0}"
+
+#. Key:	PeasantEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(146)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(146)
+msgctxt "HOLGameScreen,PeasantEffect"
+msgid "Récolte et bâtit"
+msgstr "採集と建設"
+
+#. Key:	SourceRemaining
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1558)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1558)
+msgctxt "HOLGameScreen,SourceRemaining"
+msgid "Reste : {0}"
+msgstr "残り：{0}"
+
+#. Key:	ActivityGathering
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1576)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1576)
+msgctxt "HOLGameScreen,ActivityGathering"
+msgid "Récolte"
+msgstr "採集中"
+
+#. Key:	ActivityBuilding
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1577)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1577)
+msgctxt "HOLGameScreen,ActivityBuilding"
+msgid "Construction"
+msgstr "建設中"
+
+#. Key:	ActivityAttacking
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1578)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1578)
+msgctxt "HOLGameScreen,ActivityAttacking"
+msgid "Attaque"
+msgstr "攻撃中"
+
+#. Key:	ActivityIdle
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1579)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1579)
+msgctxt "HOLGameScreen,ActivityIdle"
+msgid "Inactif"
+msgstr "待機中"
+
+#. Key:	ActivityMoving
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1579)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1579)
+msgctxt "HOLGameScreen,ActivityMoving"
+msgid "En marche"
+msgstr "移動中"
+
+#. Key:	ActivityWithLoad
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1581)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1581)
+msgctxt "HOLGameScreen,ActivityWithLoad"
+msgid "{0} — {1} {2}/{3}"
+msgstr "{0} — {1} {2}/{3}"
+
+#. Key:	IdleWorkers
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1636)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1636)
+msgctxt "HOLGameScreen,IdleWorkers"
+msgid "Inactifs : {0}"
+msgstr "待機中：{0}"
+
+#. Key:	ControlGroupSlot
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1719)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1719)
+msgctxt "HOLGameScreen,ControlGroupSlot"
+msgid "{0} · {1}"
+msgstr "{0} · {1}"
+
+#. Key:	ControlGroupTooltip
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1743)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1743)
+msgctxt "HOLGameScreen,ControlGroupTooltip"
+msgid "Groupe {0}"
+msgstr "グループ{0}"
+
+#. Key:	UnitCount
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1748)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1748)
+msgctxt "HOLGameScreen,UnitCount"
+msgid "{0} × {1}"
+msgstr "{0} × {1}"
+
+#. Key:	NotEnoughWood
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(182)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(182)
+msgctxt "HOLGameScreen,NotEnoughWood"
+msgid "Pas assez de bois"
+msgstr "木材が足りません"
+
+#. Key:	NotEnoughStone
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(183)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(183)
+msgctxt "HOLGameScreen,NotEnoughStone"
+msgid "Pas assez de pierre"
+msgstr "石材が足りません"
+
+#. Key:	NotEnoughGold
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(184)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(184)
+msgctxt "HOLGameScreen,NotEnoughGold"
+msgid "Pas assez d'or"
+msgstr "金が足りません"
+
+#. Key:	NotEnoughFood
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(185)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(185)
+msgctxt "HOLGameScreen,NotEnoughFood"
+msgid "Pas assez de nourriture"
+msgstr "食料が足りません"
+
+#. Key:	Cancel
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1852)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1852)
+msgctxt "HOLGameScreen,Cancel"
+msgid "Annuler"
+msgstr "キャンセル"
+
+#. Key:	CancelSite
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1853)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1853)
+msgctxt "HOLGameScreen,CancelSite"
+msgid "Annuler la construction"
+msgstr "建設をキャンセル"
+
+#. Key:	AttackMove
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1857)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1857)
+msgctxt "HOLGameScreen,AttackMove"
+msgid "Attaque"
+msgstr "攻撃"
+
+#. Key:	AttackMoveName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1858)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1858)
+msgctxt "HOLGameScreen,AttackMoveName"
+msgid "Attaque-déplacement"
+msgstr "攻撃移動"
+
+#. Key:	AttackMoveEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1859)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1859)
+msgctxt "HOLGameScreen,AttackMoveEffect"
+msgid "Puis clic au sol : attaque les ennemis en chemin"
+msgstr "続けて地面をクリック：途中の敵を攻撃"
+
+#. Key:	Stop
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1862)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1862)
+msgctxt "HOLGameScreen,Stop"
+msgid "Arrêt"
+msgstr "停止"
+
+#. Key:	StopEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1863)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1863)
+msgctxt "HOLGameScreen,StopEffect"
+msgid "Annule les ordres et le combat"
+msgstr "命令と戦闘を取り消す"
+
+#. Key:	StopName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1863)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1863)
+msgctxt "HOLGameScreen,StopName"
+msgid "Arrêt"
+msgstr "停止"
+
+#. Key:	Hold
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1866)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1866)
+msgctxt "HOLGameScreen,Hold"
+msgid "Tenir"
+msgstr "待機"
+
+#. Key:	HoldName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1867)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1867)
+msgctxt "HOLGameScreen,HoldName"
+msgid "Tenir la position"
+msgstr "位置を保持"
+
+#. Key:	HoldEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1868)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1868)
+msgctxt "HOLGameScreen,HoldEffect"
+msgid "N'attaque qu'à portée, ne poursuit pas"
+msgstr "射程内のみ攻撃し、追跡しない"
+
+#. Key:	QueueFull
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(187)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(187)
+msgctxt "HOLGameScreen,QueueFull"
+msgid "File de production pleine"
+msgstr "生産キューが満杯です"
+
+#. Key:	BannerShort
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1875)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1875)
+msgctxt "HOLGameScreen,BannerShort"
+msgid "Bannière"
+msgstr "旗"
+
+#. Key:	CloseRanksShort
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1875)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1875)
+msgctxt "HOLGameScreen,CloseRanksShort"
+msgid "Rangs"
+msgstr "隊列"
+
+#. Key:	BannerName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1876)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1876)
+msgctxt "HOLGameScreen,BannerName"
+msgid "Bannière de l'Aube"
+msgstr "暁の旗"
+
+#. Key:	CloseRanksName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1876)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1876)
+msgctxt "HOLGameScreen,CloseRanksName"
+msgid "Serrez les rangs"
+msgstr "隊列を固めよ"
+
+#. Key:	BannerEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1878)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1878)
+msgctxt "HOLGameScreen,BannerEffect"
+msgid "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s"
+msgstr "続けて英雄から16 m以内の地面をクリック：45秒間オーラ（12 m以内の被ダメージ −15 %）；再使用 120秒"
+
+#. Key:	CloseRanksEffect
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1879)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1879)
+msgctxt "HOLGameScreen,CloseRanksEffect"
+msgid "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s"
+msgstr "英雄から12 m以内の味方ユニットの被ダメージ −25 %（15秒）；再使用 60秒"
+
+#. Key:	PopulationMax
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(188)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(188)
+msgctxt "HOLGameScreen,PopulationMax"
+msgid "Population maximale — construisez des maisons"
+msgstr "人口が上限です — 家を建ててください"
+
+#. Key:	HeroAbilityLocked
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1884)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1884)
+msgctxt "HOLGameScreen,HeroAbilityLocked"
+msgid "Niveau {0} requis"
+msgstr "レベル {0} が必要"
+
+#. Key:	HeroAbilityCooldown
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1887)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1887)
+msgctxt "HOLGameScreen,HeroAbilityCooldown"
+msgid "{0}\n{1} s"
+msgstr "{0}\n{1}秒"
+
+#. Key:	NoMilitaryBuilding
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(192)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(192)
+msgctxt "HOLGameScreen,NoMilitaryBuilding"
+msgid "Aucun bâtiment militaire"
+msgstr "軍事施設がありません"
+
+#. Key:	NoTechnologicalBuilding
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(193)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(193)
+msgctxt "HOLGameScreen,NoTechnologicalBuilding"
+msgid "Aucun bâtiment technologique"
+msgstr "技術施設がありません"
+
+#. Key:	NoEconomicBuilding
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(194)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(194)
+msgctxt "HOLGameScreen,NoEconomicBuilding"
+msgid "Aucun bâtiment économique"
+msgstr "経済施設がありません"
+
+#. Key:	AgeHeaderName
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1944)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1944)
+msgctxt "HOLGameScreen,AgeHeaderName"
+msgid "Palier {0} — {1}"
+msgstr "段階{0}：{1}"
+
+#. Key:	AgeLocked
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1945)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1945)
+msgctxt "HOLGameScreen,AgeLocked"
+msgid "Palier non atteint"
+msgstr "未到達の段階"
+
+#. Key:	PlacementOutOfMap
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(199)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(199)
+msgctxt "HOLGameScreen,PlacementOutOfMap"
+msgid "Hors de la carte"
+msgstr "マップの外です"
+
+#. Key:	PlacementEnemyCentre
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(200)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(200)
+msgctxt "HOLGameScreen,PlacementEnemyCentre"
+msgid "Trop près d'un centre ennemi"
+msgstr "敵の本拠地に近すぎます"
+
+#. Key:	PlacementNavMesh
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(201)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(201)
+msgctxt "HOLGameScreen,PlacementNavMesh"
+msgid "Terrain impraticable"
+msgstr "通行できない地形です"
+
+#. Key:	PlacementBlocked
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(202)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(202)
+msgctxt "HOLGameScreen,PlacementBlocked"
+msgid "Emplacement occupé"
+msgstr "場所がふさがっています"
+
+#. Key:	Population
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2625)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2625)
+msgctxt "HOLGameScreen,Population"
+msgid "Population"
+msgstr "人口"
+
+#. Key:	SelectionChip
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(275)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(275)
+msgctxt "HOLGameScreen,SelectionChip"
+msgid "{0} ({1})"
+msgstr "{0} ({1})"
+
+#. Key:	Age0
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(282)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(282)
+msgctxt "HOLGameScreen,Age0"
+msgid "Fondation"
+msgstr "基盤"
+
+#. Key:	Age1
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(283)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(283)
+msgctxt "HOLGameScreen,Age1"
+msgid "Essor"
+msgstr "興隆"
+
+#. Key:	Age2
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(284)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(284)
+msgctxt "HOLGameScreen,Age2"
+msgid "Puissance"
+msgstr "権勢"
+
+#. Key:	Age3
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(285)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(285)
+msgctxt "HOLGameScreen,Age3"
+msgid "Légende"
+msgstr "伝説"
+
+#. Key:	Health
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2914)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2914)
+msgctxt "HOLGameScreen,Health"
+msgid "Points de vie"
+msgstr "耐久力"
+
+#. Key:	ForumLivesLabel
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2941)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(2941)
+msgctxt "HOLGameScreen,ForumLivesLabel"
+msgid "Vies"
+msgstr "ライフ"
+
+#. Key:	PopulationFull
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(3005)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(3005)
+msgctxt "HOLGameScreen,PopulationFull"
+msgid "Population pleine"
+msgstr "人口上限"
+
+#. Key:	CancelHint
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(3011)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(3011)
+msgctxt "HOLGameScreen,CancelHint"
+msgid "Clic : annuler"
+msgstr "クリック：キャンセル"
+
+#. Key:	Menu
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(401)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(401)
+msgctxt "HOLGameScreen,Menu"
+msgid "Menu"
+msgstr "メニュー"
+
+#. Key:	Stats
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(407)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(407)
+msgctxt "HOLGameScreen,Stats"
+msgid "Statistiques"
+msgstr "統計"
+
+#. Key:	Wood
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(87)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(87)
+msgctxt "HOLGameScreen,Wood"
+msgid "Bois"
+msgstr "木材"
+
+#. Key:	Stone
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(88)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(88)
+msgctxt "HOLGameScreen,Stone"
+msgid "Pierre"
+msgstr "石材"
+
+#. Key:	Gold
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(89)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(89)
+msgctxt "HOLGameScreen,Gold"
+msgid "Or"
+msgstr "金"
+
+#. Key:	Food
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(90)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(90)
+msgctxt "HOLGameScreen,Food"
+msgid "Nourriture"
+msgstr "食料"
+
+#. Key:	WoodInText
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(99)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(99)
+msgctxt "HOLGameScreen,WoodInText"
+msgid "bois"
+msgstr "木材"
 
 #. Key:	Unreachable
 #. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerErrorText.cpp(38)

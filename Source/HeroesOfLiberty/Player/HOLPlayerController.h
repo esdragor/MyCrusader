@@ -5,9 +5,11 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Match/HOLMatchStats.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
 #include "Player/HOLUnitPicking.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "HOLPlayerController.generated.h"
 
 class AHOLBuilding;
@@ -393,6 +395,17 @@ public:
 	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
 	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
+	/**
+	 * Banner aiming (J8c.4, the grid's Z with the hero commanded): the next left click on the ground plants it there (the
+	 * server checks the reach); a right click or Escape leaves it.
+	 */
+	bool IsBannerArmed() const { return bBannerArmed; }
+	/** The banner of the mode planted at a viewport point (a left click, or hol.Select.Banner). */
+	void PlantBannerAt(const FVector2D& ViewportFraction);
+	/** The player's own hero among the units commanded (the active subgroup's, J8c.4); 0 when he is not. */
+	uint32 GetCommandHero() const;
+	/** The ground point under the cursor (the test cursor when set): the banner's aim draws its aura there (J8c.4). */
+	bool GetCursorGroundPoint(FVector& OutPoint) const;
 	/** The selected units that are the player's own (an order moves only them). */
 	TArray<uint32> GetOwnSelectedUnits() const;
 	/** The player's own soldiers among the selection (every type but those that gather). */
@@ -459,6 +472,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestReturnHero();
 
+	/**
+	 * J8c.3: the player casts its hero's Ability (the cry; the banner on Location, cm). The order goes through the order
+	 * queue; at the next step the server checks it (alive, level, cool-down, the banner's reach: HOLHeroAbility) and casts
+	 * it, or refuses it. The aura (passive) is never sent.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
+	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
+
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
 	FOnGameMenuRequested OnGameMenuRequested;
@@ -506,6 +527,13 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void ClientMatchStatsRefused();
+
+	/**
+	 * F6e.3 (D520, R7): to a player who comes back, the cells his camp explored (run lengths, FHOLVisionMap::GetExploredRuns) and the
+	 * buildings it remembers; his client takes them into its own fog (UHOLVisionSubsystem::ReceiveMemory).
+	 */
+	UFUNCTION(Client, Reliable)
+	void ClientReceiveFogMemory(const TArray<uint32>& ExploredRuns, const TArray<FHOLFogGhostNet>& BuildingGhosts);
 
 	/**
 	 * P5 (D513): the Pause button of the Escape menu (and hol.Match.Pause / hol.Match.Resume): the server's game state
@@ -705,6 +733,10 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerReturnHero();
 
+	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
+	UFUNCTION(Server, Reliable)
+	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
+
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;
 
@@ -755,6 +787,8 @@ private:
 	bool bOrderPressed = false;
 	/** Attack-move mode (J7b.3): the next left click on the ground gives the order. */
 	bool bAttackMoveArmed = false;
+	/** Banner aiming (J8c.4): the next left click on the ground plants the hero's banner. */
+	bool bBannerArmed = false;
 	/** The builders' age chosen to the keys (the user's 1st trial of G.1; INDEX_NONE: none). */
 	int32 ChosenAge = INDEX_NONE;
 	void SetChosenAge(int32 Age);

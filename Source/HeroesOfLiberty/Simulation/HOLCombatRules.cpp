@@ -4,6 +4,7 @@
 
 #include "Algo/Sort.h"
 #include "HAL/IConsoleManager.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLUnitTypes.h"
 
 namespace HOLCombat
@@ -19,9 +20,9 @@ namespace HOLCombat
 		}
 	}
 
-	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender)
+	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel)
 	{
-		int32 Damage = Attacker.Attack;
+		int32 Damage = 0;
 		for (const FHOLAttackBonus& Bonus : Attacker.Bonuses)
 		{
 			if (Bonus.Damage > 0 && Defender.HasArmorCategory(Bonus.Category))
@@ -30,13 +31,19 @@ namespace HOLCombat
 			}
 		}
 		Damage -= GetArmor(Defender, Attacker.AttackType);
-		const float Hit = static_cast<float>(FMath::Max(Damage, 1));
+		// J8b.2: the attack at the attacker's level (exact at level 1: 30 x 100 / 100 = 30).
+		const float Hit = FMath::Max(HOLHeroXP::GetLevelStat(static_cast<float>(Attacker.Attack), AttackerLevel) + static_cast<float>(Damage), 1.f);
 		// D17: a hero takes HeroTroopDamageFactor of a troop's hit (any attacker but another hero), unrounded.
 		if (Defender.HasArmorCategory(EHOLArmorCategory::Hero) && !Attacker.HasArmorCategory(EHOLArmorCategory::Hero))
 		{
 			return Hit * HeroTroopDamageFactor;
 		}
 		return Hit;
+	}
+
+	int32 GetMaxHealth(const FHOLUnitTypeConstants& Type, const int32 Level)
+	{
+		return FMath::RoundToInt(HOLHeroXP::GetLevelStat(static_cast<float>(Type.MaxHealth), Level));
 	}
 
 	int32 GetHitsToKill(const float Health, const float Damage)
@@ -215,6 +222,11 @@ namespace HOLCombat
 	bool IsFriendFighting(const bool bAttacking, const int32 AttackerCount, const bool bHasLastAttacker)
 	{
 		return bAttacking || AttackerCount > 0 || bHasLastAttacker;
+	}
+
+	bool KeepsLastAttacker(const int64 StepIndex, const int64 LastHitStep, const int32 StepMs)
+	{
+		return LastHitStep >= 0 && (StepIndex - LastHitStep) * static_cast<int64>(FMath::Max(StepMs, 1)) < static_cast<int64>(LastAttackerMemoryMs);
 	}
 
 	bool ShouldComeToAid(const ESeekMode Mode, const bool bRanged, const float AggressionRadius, const bool bHasTarget, const double FightingFriendDistance, const float AidRadius)

@@ -239,7 +239,7 @@ int32 UHOLSourceSubsystem::Take(const int32 SourceIndex, const int32 Amount)
 	}
 	const int32 Taken = FMath::Min(Amount, Source.Remaining);
 	Source.Remaining -= Taken;
-	if (bReplicate)
+	if (bGlobalReplication)
 	{
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetRemaining(SourceIndex % AHOLSourceChunk::NumSlots, Source.Remaining);
 	}
@@ -259,7 +259,7 @@ bool UHOLSourceSubsystem::RemoveSource(const int32 SourceIndex)
 	// Like a used-up source: nothing left, the index kept (gatherers and chunks holding it see it gone).
 	FHOLSource& Source = Sources[SourceIndex];
 	Source.Remaining = 0;
-	if (bReplicate)
+	if (bGlobalReplication)
 	{
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetRemaining(SourceIndex % AHOLSourceChunk::NumSlots, 0);
 	}
@@ -271,6 +271,12 @@ bool UHOLSourceSubsystem::IsLinked(const int32 SourceIndex) const
 {
 	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? GetType(Sources[SourceIndex].TypeIndex) : nullptr;
 	return Type && Type->Linked;
+}
+
+bool UHOLSourceSubsystem::BlocksSight(const int32 SourceIndex) const
+{
+	const FHOLSourceTypeRow* Type = Sources.IsValidIndex(SourceIndex) ? GetType(Sources[SourceIndex].TypeIndex) : nullptr;
+	return Type && Type->BlocksSight;
 }
 
 int32 UHOLSourceSubsystem::FindLinkedSourceAt(const FVector& Location, const float Tolerance) const
@@ -302,10 +308,29 @@ void UHOLSourceSubsystem::OnSourceAdded(const int32 SourceIndex)
 	{
 		Field->ShowSource(SourceIndex, Source.TypeIndex, *TypeRows[Source.TypeIndex], Source.Location);
 	}
-	if (bReplicate)
+	if (bGlobalReplication)
 	{
 		GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetSource(SourceIndex % AHOLSourceChunk::NumSlots, Source.TypeIndex,
 			Source.Location, Source.Remaining);
+	}
+	OnSourceStanding.Broadcast(SourceIndex, true);
+}
+
+void UHOLSourceSubsystem::StartGlobalReplication()
+{
+	if (!bReplicate || bGlobalReplication)
+	{
+		return;
+	}
+	bGlobalReplication = true;
+	for (int32 SourceIndex = 0; SourceIndex < Sources.Num(); ++SourceIndex)
+	{
+		const FHOLSource& Source = Sources[SourceIndex];
+		if (Source.TypeIndex != FHOLSource::NoType)
+		{
+			GetOrAddChunk(SourceIndex / AHOLSourceChunk::NumSlots)->SetSource(SourceIndex % AHOLSourceChunk::NumSlots, Source.TypeIndex,
+				Source.Location, Source.Remaining);
+		}
 	}
 }
 
@@ -317,6 +342,7 @@ void UHOLSourceSubsystem::OnSourceUsedUp(const int32 SourceIndex)
 		Field->HideSource(SourceIndex);
 	}
 	UE_LOG(LogHOLMatch, Log, TEXT("Sources: source %d used up (%s)"), SourceIndex, bAuthority ? TEXT("server") : TEXT("client"));
+	OnSourceStanding.Broadcast(SourceIndex, false);
 }
 
 AHOLSourceChunk* UHOLSourceSubsystem::GetOrAddChunk(const int32 ChunkIndex)

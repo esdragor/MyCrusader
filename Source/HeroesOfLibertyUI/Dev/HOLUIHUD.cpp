@@ -1,11 +1,14 @@
 #include "Containers/Ticker.h"
 #include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLGameScreen.h"
 #include "HUD/HOLScenarioPanel.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLPlayerState.h"
 
 /**
  * The game HUD for the scripted checks (J3, D284): what it shows, and a click on it by the same path as the mouse.
@@ -13,6 +16,7 @@
  *   the grid shown, "HUD cells: A: Maison; ..." (what the cells write) and "HUD tooltips: A: Maison | W 50 | +10
  *   population; ..." (J6a.5); a group of buildings' selection ends with its active subgroup (Tab): "7 buildings (own):
  *   MainCentre x1 House x6, subgroup All (7)", the cells being that subgroup's
+ *   the "HUD fog" line (F7.3): the fog as the player has it, UHOLVisionSubsystem::MakeViewerLine
  *   hol.HUD.Click <WidgetName> [DelaySeconds=0]   clicks a cell of the command panel (GridCell00 to GridCell11, A to
  *   V: a building's production, a site's « Annuler » GridCell11; with the player's units their orders, GridCell04
  *   attack-move, GridCell05 stop, GridCell11 hold), with Peasants selected the buildings of the age panels
@@ -58,6 +62,15 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			UE_LOG(LogHOLUI, Display, TEXT("HUD messages: %s"), *Screen.DescribeMessages());
 			// The major alert's banner (V4.3), on its own line too.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD alert: %s"), *Screen.DescribeAlert());
+			// EtapeDefini T: the bottom bar against the minimap's place, in the window's width.
+			UE_LOG(LogHOLUI, Display, TEXT("HUD layout: %s"), *Screen.DescribeLayout());
+			// F7.3: the fog as the player has it (cells in sight, explored, units of others shown or hidden).
+			{
+				const APlayerController* Owner = Screen.GetOwningPlayer();
+				const AHOLPlayerState* OwnerState = Owner ? Owner->GetPlayerState<AHOLPlayerState>() : nullptr;
+				const UHOLVisionSubsystem* Vision = Screen.GetWorld() ? Screen.GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+				UE_LOG(LogHOLUI, Display, TEXT("HUD fog: %s"), Vision ? *Vision->MakeViewerLine(OwnerState ? OwnerState->GetPlayerIndex() : INDEX_NONE) : TEXT("none"));
+			}
 			// J8a.5: the part in script, a line per block ("HUD hero: ...").
 			TArray<FString> ScriptLines;
 			Screen.DescribeScript().ParseIntoArray(ScriptLines, TEXT("\n"));

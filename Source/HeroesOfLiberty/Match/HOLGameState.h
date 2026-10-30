@@ -203,12 +203,30 @@ public:
 	bool HasStartPlaces() const { return !StartPlaces.IsEmpty(); }
 
 	/**
+	 * F6e.4 (D353): the camp of ViewerSlot has some cell of ForumSlot's main forum in sight, on this machine (a client's own fog, the
+	 * server's or the solo game's for the slot). False without a fog (Sans brouillard: the alerts stay those of the camps), or for a
+	 * spectator.
+	 */
+	bool DoesViewerSeeForum(int32 ViewerSlot, int32 ForumSlot) const;
+
+	/**
+	 * F6e: the fog's mode of the match (EHOLFogMode as a number), decided by the server when its fog starts and replicated, so a
+	 * client computes its own fog with it (D525); below 0 while it is not known. Until F8 carries it in the configuration.
+	 */
+	int32 GetFogMode() const { return FogMode; }
+	void SetFogMode(const int32 Mode) { FogMode = static_cast<int8>(Mode); }
+
+	/**
 	 * V2 (D349-D353): each slot's main forum, public (every machine, the players' table of V2.4): its falls, its phase,
 	 * its ruin's steps left, its rebuilding's work. The default (standing, no fall) for a closed slot.
 	 */
 	const FHOLForumState& GetForumState(int32 Slot) const;
 	/** Lives left of a slot's main forum (D349: 1 + tier - falls; 0 once it fell for good). */
 	int32 GetLives(int32 Slot) const;
+	/** P3: the civilisation tier the slot's hero level opens (HOLHeroXP::GetTier; 0 without a hero), as the HUD and the rules read it. */
+	int32 GetTier(int32 Slot) const;
+	/** P2: the forum's values for a slot: the tier its hero's level opens (HOLHeroXP::GetTier), at least the setting's (tests). */
+	FHOLForumTuning GetForumTuning(int32 Slot) const;
 	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
 	bool IsForumDown(int32 Slot) const { return GetForumState(Slot).IsDown(); }
 	/** Share of its rebuilding done (0 to 1; 1 standing). */
@@ -368,6 +386,10 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_LaunchConfig)
 	FHOLMatchConfig LaunchConfig;
 
+	/** F6e: see GetFogMode. */
+	UPROPERTY(Replicated)
+	int8 FogMode = -1;
+
 	/** TC3: each slot's place, from LaunchConfig (UpdateStartPlaces), MaxSlots of them once known. */
 	TArray<int32> StartPlaces;
 
@@ -419,6 +441,14 @@ public:
 	DECLARE_MULTICAST_DELEGATE_OneParam(FOnHeroReadyMessage, const FHOLForumMessage& /*Message*/);
 	FOnHeroReadyMessage OnHeroReadyMessage;
 
+	/**
+	 * J8b.4 (J8b-Q4): every machine with a player, a slot's hero gone up from OldLevel to NewLevel in its public sheet
+	 * (FHOLHeroLevelWatch: not the first level seen). Logs "Hero level up: slot N level A -> B", then this: his golden flash
+	 * for all, the alerts for his owner (the HUD).
+	 */
+	DECLARE_MULTICAST_DELEGATE_ThreeParams(FOnHeroLevelUp, int32 /*Slot*/, int32 /*OldLevel*/, int32 /*NewLevel*/);
+	FOnHeroLevelUp OnHeroLevelUp;
+
 private:
 	UFUNCTION()
 	void OnRep_HeroSheets();
@@ -426,6 +456,10 @@ private:
 	/** J8a.4: before OnHeroSheetsChanged, the local player's hero ready (OnHeroReadyMessage). */
 	void NoteHeroReady();
 	FHOLHeroReadyWatch HeroReadyWatch;
+
+	/** J8b.4: before OnHeroSheetsChanged, the heroes gone up (OnHeroLevelUp). */
+	void NoteHeroLevels();
+	FHOLHeroLevelWatch HeroLevelWatch;
 
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)

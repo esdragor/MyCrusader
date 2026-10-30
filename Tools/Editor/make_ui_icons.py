@@ -3,6 +3,9 @@
   /Game/UI/Icons/T_Icon_Enemy   red crossed swords, before an enemy's name
   /Game/UI/Icons/T_Icon_HeroEmblem   the hero's portrait for now (J8a.5 loop 7): a white shield edged in gold with a gold
                                      sun (the paladin's kit), over the player's colour (the portrait button's background)
+  /Game/UI/Icons/T_Icon_Aura         the hero's abilities (J8c.4), on the hero's block's dark boxes: Aura de l'Aube, a gold
+  /Game/UI/Icons/T_Icon_CloseRanks   sun in a light halo; Serrez les rangs, three white shields edged in gold side by side;
+  /Game/UI/Icons/T_Icon_Banner       Bannière de l'Aube, a white swallow-tailed flag with a gold sun on a gold pole
 The PNGs (64x64, the emblem 128x128, transparent) are drawn here with PIL at 256 px then reduced, into Tools/Editor/Data/Icons, then
 imported as interface textures (UI group, no mipmaps, UserInterface2D compression, sRGB).
 Two steps (the editor's Python has no PIL):
@@ -29,7 +32,8 @@ GOLD = (232, 182, 48, 255)
 GOLD_DARK = (150, 100, 20, 255)
 WHITE = (244, 240, 228, 255)
 # Each icon's size in the PNG (and the texture).
-SIZES = {"T_Icon_Ally": 64, "T_Icon_Enemy": 64, "T_Icon_HeroEmblem": 128}
+SIZES = {"T_Icon_Ally": 64, "T_Icon_Enemy": 64, "T_Icon_HeroEmblem": 128, "T_Icon_Aura": 64, "T_Icon_CloseRanks": 64,
+         "T_Icon_Banner": 64}
 
 
 def shield_points(inset):
@@ -120,12 +124,70 @@ def draw_hero_emblem():
     return image
 
 
+def draw_aura():
+    """Aura de l'Aube: a gold sun of 12 rays in a pale gold halo ring (the aura around the hero)."""
+    from PIL import Image, ImageDraw
+    image = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    centre = (128, 128)
+    draw.ellipse((14, 14, 242, 242), outline=GOLD_DARK, width=18)
+    draw.ellipse((20, 20, 236, 236), outline=(250, 226, 140, 255), width=8)
+    draw.polygon(sun_points(centre, 48, 96, 12), fill=GOLD_DARK)
+    draw.polygon(sun_points(centre, 42, 86, 12), fill=GOLD)
+    draw.ellipse((centre[0] - 40, centre[1] - 40, centre[0] + 40, centre[1] + 40), fill=GOLD_DARK)
+    draw.ellipse((centre[0] - 33, centre[1] - 33, centre[0] + 33, centre[1] + 33), fill=WHITE)
+    return image
+
+
+def draw_close_ranks():
+    """Serrez les rangs: three heater shields side by side, the middle one in front (a shield wall)."""
+    from PIL import Image, ImageDraw
+    image = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+
+    def shield(dx, dy, scale):
+        def place(points):
+            return [(128 + (x - 128) * scale + dx, 128 + (y - 128) * scale + dy) for x, y in points]
+        draw.polygon(place(shield_points(0)), fill=EMBLEM_EDGE)
+        draw.polygon(place(shield_points(10)), fill=GOLD)
+        draw.polygon(place(shield_points(24)), fill=WHITE)
+        # A gold boss in the field.
+        cx, cy = 128 + dx, 112 * scale + 128 * (1 - scale) + dy
+        draw.ellipse((cx - 12 * scale * 2, cy - 12 * scale * 2, cx + 12 * scale * 2, cy + 12 * scale * 2), fill=GOLD)
+
+    shield(-62, 10, 0.62)
+    shield(62, 10, 0.62)
+    shield(0, 4, 0.74)
+    return image
+
+
+def draw_banner():
+    """Bannière de l'Aube: a gold pole with a gold finial, a white swallow-tailed flag edged dark with a gold sun."""
+    from PIL import Image, ImageDraw
+    image = Image.new("RGBA", (BIG, BIG), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(image)
+    draw.rectangle((50, 26, 70, 244), fill=EMBLEM_EDGE)
+    draw.rectangle((55, 30, 65, 240), fill=GOLD)
+    draw.ellipse((44, 10, 76, 42), fill=EMBLEM_EDGE)
+    draw.ellipse((50, 16, 70, 36), fill=GOLD)
+    flag = [(66, 40), (226, 40), (226, 184), (190, 150), (154, 184), (66, 184)]
+    draw.polygon(flag, fill=EMBLEM_EDGE)
+    inner = [(72, 48), (218, 48), (218, 166), (190, 138), (160, 166), (72, 166)]
+    draw.polygon(inner, fill=WHITE)
+    centre = (140, 102)
+    draw.polygon(sun_points(centre, 22, 44, 12), fill=GOLD_DARK)
+    draw.polygon(sun_points(centre, 18, 38, 12), fill=GOLD)
+    draw.ellipse((centre[0] - 16, centre[1] - 16, centre[0] + 16, centre[1] + 16), fill=GOLD)
+    return image
+
+
 def write_pngs():
     from PIL import Image
     os.makedirs(PNG_FOLDER, exist_ok=True)
     paths = {}
     for name, image in (("T_Icon_Ally", draw_ally()), ("T_Icon_Enemy", draw_enemy()),
-                        ("T_Icon_HeroEmblem", draw_hero_emblem())):
+                        ("T_Icon_HeroEmblem", draw_hero_emblem()), ("T_Icon_Aura", draw_aura()),
+                        ("T_Icon_CloseRanks", draw_close_ranks()), ("T_Icon_Banner", draw_banner())):
         path = os.path.join(PNG_FOLDER, name + ".png")
         image.resize((SIZES[name], SIZES[name]), Image.LANCZOS).save(path)
         paths[name] = path

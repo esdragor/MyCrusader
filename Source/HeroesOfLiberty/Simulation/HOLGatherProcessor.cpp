@@ -97,6 +97,8 @@ namespace UE::HeroesOfLiberty::Gather
 	 * in front is free (D309): the place of an order, among the units standing there.
 	 */
 	constexpr double StandBeforeGap = 150.;
+	/** IA2.6b: how long (s) a source a gatherer stood idle in front of for want of a spot is shown full to the AI's summary. */
+	constexpr double FullShownSeconds = 20.;
 	/**
 	 * Rows of points in front of a source where its idle gatherers stand, one per unit (D309, 3rd trial of J5b.2), looked
 	 * through so many at a time, farther out while none is free (D309 point 6: rows without limit).
@@ -185,6 +187,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	Step.StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 	// Spots taken since the last step, and spots left: every source may have room again (D309).
 	FullSources.Init(false, Step.Sources->GetSources().Num());
+	GameSeconds += Step.StepSeconds;
 
 	RefreshDeposits(*World);
 	LastWorld = World;
@@ -243,6 +246,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	});
 	PublishGathererCounts(Step);
+	PublishOccupants(Step);
 	SendDepositPopups(Step);
 }
 
@@ -723,6 +727,12 @@ void UHOLGatherProcessor::StandBeforeSource(const FStepContext& Step, FGatherer&
 		}
 		return;
 	}
+	// IA2.6b: the AI's summary shows the source full for a few seconds.
+	const int32 StoodSource = static_cast<int32>(&Source - Step.Sources->GetSources().GetData());
+	if (Step.Sources->GetSources().IsValidIndex(StoodSource))
+	{
+		LastNoRoom.Add(StoodSource, GameSeconds);
+	}
 	// In front of it as seen from the gatherer, its load kept: an idle worker (the HUD's counter, the "." key) the player
 	// sends elsewhere; it no longer waits there for a spot, unseen (D309).
 	FVector2D Away = FVector2D(Gatherer.Location) - FVector2D(Source.Location);
@@ -1152,11 +1162,17 @@ bool UHOLGatherProcessor::HasFreePlace(const FStepContext& Step, const int32 Sou
 	{
 		return true;
 	}
+	// Self's own is let go: it looks again.
+	PruneHolders(Step, SourceIndex, *Holders, Self.AsNumber());
+	return Holders->Num() < Type->Places;
+}
+
+void UHOLGatherProcessor::PruneHolders(const FStepContext& Step, const int32 SourceIndex, TArray<uint64>& Holders, const uint64 SelfNumber)
+{
 	// A holder keeps its place while its task is this source, on its way to the deposit too (it comes back to it, as a
-	// farmer in AoE IV); gone, dying, stopped or sent elsewhere, it lets it go. Self's own is let go: it looks again.
+	// farmer in AoE IV); gone, dying, stopped or sent elsewhere, it lets it go.
 	const FMassEntityManager& EntityManager = *Step.EntityManager;
-	const uint64 SelfNumber = Self.AsNumber();
-	Holders->RemoveAll([&EntityManager, SourceIndex, SelfNumber](const uint64 Owner)
+	Holders.RemoveAll([&EntityManager, SourceIndex, SelfNumber](const uint64 Owner)
 	{
 		if (Owner == SelfNumber)
 		{
@@ -1171,7 +1187,33 @@ bool UHOLGatherProcessor::HasFreePlace(const FStepContext& Step, const int32 Sou
 		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
 		return !Gather || !State || State->CurrentHealth <= 0 || Gather->Phase == EHOLGatherPhase::None || Gather->SourceIndex != SourceIndex;
 	});
-	return Holders->Num() < Type->Places;
+}
+
+void UHOLGatherProcessor::PublishOccupants(const FStepContext& Step)
+{
+	// IA1.7b: what the AI's summary shows of a farm field: the places held (a player sees a worker on it).
+	TArray<uint8> Occupants;
+	Occupants.SetNumZeroed(Step.Sources->GetSources().Num());
+	for (TPair<int32, TArray<uint64>>& Pair : PlaceHolders)
+	{
+		PruneHolders(Step, Pair.Key, Pair.Value, 0);
+		if (Occupants.IsValidIndex(Pair.Key))
+		{
+			Occupants[Pair.Key] = static_cast<uint8>(FMath::Min(Pair.Value.Num(), 255));
+		}
+	}
+	Step.Sources->SetOccupants(MoveTemp(Occupants));
+	// IA2.6b: the sources a gatherer stood idle in front of in the last FullShownSeconds.
+	TBitArray<> Full;
+	Full.Init(false, Step.Sources->GetSources().Num());
+	for (const TPair<int32, double>& Pair : LastNoRoom)
+	{
+		if (Full.IsValidIndex(Pair.Key) && GameSeconds - Pair.Value <= UE::HeroesOfLiberty::Gather::FullShownSeconds)
+		{
+			Full[Pair.Key] = true;
+		}
+	}
+	Step.Sources->SetFullSources(MoveTemp(Full));
 }
 
 void UHOLGatherProcessor::ClaimPlace(const FStepContext& Step, const int32 SourceIndex, const FMassEntityHandle Self)

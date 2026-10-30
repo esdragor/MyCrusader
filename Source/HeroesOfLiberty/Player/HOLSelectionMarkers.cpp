@@ -9,18 +9,24 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "Kismet/GameplayStatics.h"
+#include "Sound/SoundBase.h"
 #include "EngineUtils.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLStartRules.h"
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "HAL/IConsoleManager.h"
 #include "Simulation/HOLFormationRules.h"
+#include "Simulation/HOLHeroAbilityRules.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLOrderChainRules.h"
 #include "Simulation/HOLUnitView.h"
 
@@ -62,6 +68,43 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double PingEndRadius = 25.0;
 	constexpr double PingStroke = 8.0;
 	const FLinearColor PingColor(0.9f, 0.9f, 0.9f);
+	/**
+	 * J8b.4 (J8b-Q4): a hero's level up, a golden flash ~1 s on him, seen by all: a ring at his feet, bright then gone at
+	 * half the time, and a wider one going out from him and thinning.
+	 */
+	constexpr float HeroFlashSeconds = 1.0f;
+	/**
+	 * J8c.4 (J8c-Q4): the player's aura circles, light gold and thin (a frame, not a fill); the banner's reach while aimed,
+	 * a thinner white; its aura under the cursor, gold within reach, red beyond. Pieces of a circle, height above the ground.
+	 */
+	const FLinearColor AuraRingColor(1.0f, 0.82f, 0.35f);
+	constexpr double AuraRingWidth = 10.0;
+	const FLinearColor ReachRingColor(0.85f, 0.85f, 0.85f);
+	constexpr double ReachRingWidth = 6.0;
+	const FLinearColor AimRefusedColor(1.0f, 0.06f, 0.03f);
+	constexpr double AimRefusedWidth = 16.0;
+	constexpr int32 AuraRingPieces = 72;
+	constexpr double AuraRingOffset = 6.0;
+	/** The ground's height is looked for between these heights (cm). */
+	constexpr double AuraTraceHalfHeight = 100000.0;
+	const FLinearColor HeroFlashColor(1.0f, 0.75f, 0.15f);
+	constexpr double HeroFlashInnerFactor = 1.8;
+	constexpr double HeroFlashInnerStroke = 32.0;
+	constexpr double HeroFlashStartFactor = 2.0;
+	constexpr double HeroFlashEndFactor = 7.0;
+	constexpr double HeroFlashStartStroke = 40.0;
+	constexpr double HeroFlashEndStroke = 8.0;
+	/**
+	 * J8c.4 loop 5 (J8c-Q4): the cry's flash, white and brief, on each unit it touches: a ring at its feet spreading out from
+	 * just wider than the unit and thinning.
+	 */
+	constexpr float CryFlashSeconds = 0.6f;
+	const FLinearColor CryFlashColor(1.0f, 1.0f, 1.0f);
+	constexpr double CryFlashStartFactor = 1.3;
+	constexpr double CryFlashEndFactor = 3.2;
+	constexpr double CryFlashStartStroke = 26.0;
+	constexpr double CryFlashEndStroke = 4.0;
+	const TCHAR* CrySoundPath = TEXT("/Game/Audio/SW_HeroCry.SW_HeroCry");
 	/** An attack order's ping (J7b.3): on its target, or an attack-move's point. */
 	const FLinearColor AttackPingColor(0.9f, 0.08f, 0.05f);
 	/** The places of a right-button drag's formation (J7a.4): thin rings, smaller than a unit's, in the ping's white. */
@@ -245,7 +288,15 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
 	OrderLines = MakeMarkerComponent(*this, TEXT("OrderLines"));
 	OrderPoints = MakeMarkerComponent(*this, TEXT("OrderPoints"));
+	// F7.3 (the user's trial: the orders must be seen): the lines and the points of the orders write the custom stencil, which the
+	// fog's post process (M_FogPost) leaves unfogged, so a march into the black or toward an enemy out of sight shows to its end.
+	for (UInstancedStaticMeshComponent* Component : { OrderLines.Get(), OrderPoints.Get() })
+	{
+		Component->SetRenderCustomDepth(true);
+		Component->SetCustomDepthStencilValue(1);
+	}
 	ForumRings = MakeMarkerComponent(*this, TEXT("ForumRings"));
+	AuraRings = MakeMarkerComponent(*this, TEXT("AuraRings"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
 		GhostEdges.Add(MakeFlagComponent(*this, *FString::Printf(TEXT("GhostEdge%d"), Index)));
@@ -279,6 +330,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	OrderPoints->SetMaterial(0, Rings->GetMaterial(0));
 	ForumRings->SetStaticMesh(Plane);
 	ForumRings->SetMaterial(0, Frames->GetMaterial(0));
+	AuraRings->SetStaticMesh(Plane);
+	AuraRings->SetMaterial(0, Frames->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
 	CubeMesh = Cube;
@@ -354,11 +407,26 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	if (const UWorld* World = GetWorld())
 	{
 		HOLUnitView::Gather(*World, Views);
+		// F7.3 (D381): no ring, bar or line for a unit of another camp the player cannot see (it is not drawn either).
+		const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+		const AHOLPlayerController* PlayerController = Controller.Get();
+		const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetPlayerState<AHOLPlayerState>() : nullptr;
+		if (Vision && Vision->IsStarted() && Vision->GetMode() != EHOLFogMode::Disabled)
+		{
+			const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+			Views.RemoveAll([Vision, ViewerSlot](const FHOLUnitView& View)
+			{
+				return !Vision->IsUnitShown(ViewerSlot, View.OwnerPlayer, View.Location);
+			});
+		}
 	}
+	UpdateHeroFlashes(DeltaSeconds);
+	UpdateCryFlashes(DeltaSeconds);
 	UpdateRings();
 	UpdateHealthBars();
 	UpdateOrderLines();
 	UpdateForumRings();
+	UpdateAuraRings();
 	UpdateFrame();
 	UpdateFlag();
 	UpdateGhost();
@@ -442,6 +510,48 @@ void AHOLSelectionMarkers::UpdateRings()
 		Transforms.Add(MarkerTransform(Source.Location, Radius * 2.0, Radius * 2.0));
 		AddCustomData(CustomData, SelectionColor, SourceRingStroke / Radius);
 	}
+	// J8b.4: the heroes' golden flashes, on their bodies as drawn.
+	HeroFlashRings = 0;
+	for (const TPair<int32, float>& Flash : HeroFlashes)
+	{
+		for (const FHOLUnitView& View : Views)
+		{
+			if (View.OwnerPlayer != Flash.Key || View.TypeName != FHOLStartRules::HeroTypeName)
+			{
+				continue;
+			}
+			const double Share = FMath::Clamp(static_cast<double>(Flash.Value / HeroFlashSeconds), 0.0, 1.0);
+			if (Share < 0.5)
+			{
+				const double Inner = View.Radius * HeroFlashInnerFactor;
+				Transforms.Add(MarkerTransform(View.Location, Inner * 2.0, Inner * 2.0));
+				AddCustomData(CustomData, HeroFlashColor, HeroFlashInnerStroke / Inner);
+				++HeroFlashRings;
+			}
+			const double Out = 1.0 - FMath::Square(1.0 - Share);
+			const double Radius = View.Radius * FMath::Lerp(HeroFlashStartFactor, HeroFlashEndFactor, Out);
+			Transforms.Add(MarkerTransform(View.Location, Radius * 2.0, Radius * 2.0));
+			AddCustomData(CustomData, HeroFlashColor, FMath::Lerp(HeroFlashStartStroke, HeroFlashEndStroke, Share) / Radius);
+			++HeroFlashRings;
+		}
+	}
+	// J8c.4 loop 5: the cries' white flashes, on the units they touched as drawn now.
+	CryFlashRings = 0;
+	for (const FCryFlash& Flash : CryFlashes)
+	{
+		const double Share = FMath::Clamp(static_cast<double>(Flash.Age / CryFlashSeconds), 0.0, 1.0);
+		const double Out = 1.0 - FMath::Square(1.0 - Share);
+		for (const FHOLUnitView& View : Views)
+		{
+			if (Flash.Units.Contains(View.UnitId))
+			{
+				const double Radius = View.Radius * FMath::Lerp(CryFlashStartFactor, CryFlashEndFactor, Out);
+				Transforms.Add(MarkerTransform(View.Location, Radius * 2.0, Radius * 2.0));
+				AddCustomData(CustomData, CryFlashColor, FMath::Lerp(CryFlashStartStroke, CryFlashEndStroke, Share) / Radius);
+				++CryFlashRings;
+			}
+		}
+	}
 	if (PingAge < PingSeconds)
 	{
 		const double Radius = FMath::Lerp(PingStartRadius, PingEndRadius, static_cast<double>(PingAge / PingSeconds));
@@ -449,6 +559,165 @@ void AHOLSelectionMarkers::UpdateRings()
 		AddCustomData(CustomData, bAttackPing ? AttackPingColor : PingColor, PingStroke / Radius);
 	}
 	SetInstances(*Rings, Transforms, CustomData);
+}
+
+void AHOLSelectionMarkers::UpdateHeroFlashes(const float DeltaSeconds)
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+	for (auto It = HeroFlashes.CreateIterator(); It; ++It)
+	{
+		It.Value() += DeltaSeconds;
+		if (It.Value() >= HeroFlashSeconds)
+		{
+			It.RemoveCurrent();
+		}
+	}
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	for (int32 Slot = 0; GameState && Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		const int32 Level = GameState->GetHeroSheet(Slot).Level;
+		const int32 OldLevel = HeroLevelWatch.Update(Slot, Level);
+		if (OldLevel > 0)
+		{
+			HeroFlashes.Add(Slot, 0.f);
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero flash: slot %d level %d -> %d"), Slot, OldLevel, Level);
+		}
+	}
+}
+
+void AHOLSelectionMarkers::UpdateCryFlashes(const float DeltaSeconds)
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+	for (int32 Index = CryFlashes.Num() - 1; Index >= 0; --Index)
+	{
+		CryFlashes[Index].Age += DeltaSeconds;
+		if (CryFlashes[Index].Age >= CryFlashSeconds)
+		{
+			CryFlashes.RemoveAtSwap(Index, EAllowShrinking::No);
+		}
+	}
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		if (!HeroCryWatch.Update(Slot, UHOLHeroLibrary::GetHeroCries(this, Slot)))
+		{
+			continue;
+		}
+		// The units of his player within 12 m of him, as drawn now (the hero's own body included).
+		FCryFlash& Flash = CryFlashes.AddDefaulted_GetRef();
+		Flash.Slot = Slot;
+		const FHOLUnitView* Hero = nullptr;
+		for (const FHOLUnitView& View : Views)
+		{
+			if (View.OwnerPlayer == Slot && View.TypeName == FHOLStartRules::HeroTypeName && (!Hero || View.UnitId < Hero->UnitId))
+			{
+				Hero = &View;
+			}
+		}
+		for (const FHOLUnitView& View : Views)
+		{
+			if (Hero && View.OwnerPlayer == Slot && FVector::Dist2D(View.Location, Hero->Location) <= HOLHeroAbility::AuraRadius)
+			{
+				Flash.Units.Add(View.UnitId);
+			}
+		}
+		UE_LOG(LogHOLMatch, Display, TEXT("Cry flash: slot %d, %d units"), Slot, Flash.Units.Num());
+		if (USoundBase* Sound = LoadObject<USoundBase>(nullptr, CrySoundPath))
+		{
+			UGameplayStatics::PlaySound2D(this, Sound);
+		}
+	}
+}
+
+void AHOLSelectionMarkers::UpdateAuraRings()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	TArray<FString> Parts;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetHOLPlayerState() : nullptr;
+	UWorld* World = GetWorld();
+	if (World && PlayerState && !PlayerController->IsSpectator())
+	{
+		const int32 Slot = PlayerState->GetPlayerIndex();
+		// The lowest static surface under a point (a tree's crown is no ground), as the units' (UHOLUnitReceptionSubsystem).
+		const auto GroundAt = [World](const FVector2D& Point, const double Fallback)
+		{
+			TArray<FHitResult> Hits;
+			const FCollisionQueryParams Params(SCENE_QUERY_STAT(HOLAuraRing), false);
+			World->LineTraceMultiByObjectType(Hits, FVector(Point.X, Point.Y, AuraTraceHalfHeight), FVector(Point.X, Point.Y, -AuraTraceHalfHeight),
+				FCollisionObjectQueryParams(ECC_WorldStatic), Params);
+			double Height = TNumericLimits<double>::Max();
+			for (const FHitResult& Hit : Hits)
+			{
+				Height = FMath::Min(Height, Hit.ImpactPoint.Z);
+			}
+			return Hits.Num() > 0 ? Height : Fallback;
+		};
+		// A circle of strips, each end at the ground's height.
+		const auto AddCircle = [&](const FVector2D& Centre, const double Radius, const double Width, const FLinearColor& Color, const double FallbackHeight)
+		{
+			TArray<FVector, TInlineAllocator<AuraRingPieces + 1>> Points;
+			for (int32 Piece = 0; Piece <= AuraRingPieces; ++Piece)
+			{
+				const double Angle = UE_DOUBLE_TWO_PI * Piece / AuraRingPieces;
+				const FVector2D Point = Centre + Radius * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+				Points.Add(FVector(Point.X, Point.Y, GroundAt(Point, FallbackHeight) + AuraRingOffset));
+			}
+			for (int32 Piece = 0; Piece < AuraRingPieces; ++Piece)
+			{
+				const FVector Span = Points[Piece + 1] - Points[Piece];
+				const double Length = Span.Size();
+				Transforms.Add(FTransform(FRotationMatrix::MakeFromX(Span / Length).ToQuat(), (Points[Piece] + Points[Piece + 1]) * 0.5,
+					FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
+				CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+			}
+		};
+		// His living hero, as drawn (one a player, the oldest if a test made more).
+		const FHOLUnitView* Hero = nullptr;
+		if (UHOLHeroLibrary::GetHeroState(this, Slot) == EHOLHeroState::Alive)
+		{
+			for (const FHOLUnitView& View : Views)
+			{
+				if (View.OwnerPlayer == Slot && View.TypeName == FHOLStartRules::HeroTypeName && (!Hero || View.UnitId < Hero->UnitId))
+				{
+					Hero = &View;
+				}
+			}
+		}
+		const FVector2D HeroPoint = Hero ? FVector2D(Hero->Location) : FVector2D::ZeroVector;
+		if (Hero)
+		{
+			AddCircle(HeroPoint, HOLHeroAbility::AuraRadius, AuraRingWidth, AuraRingColor, Hero->Location.Z);
+			Parts.Add(FString::Printf(TEXT("hero (%.0f, %.0f) %.0f"), HeroPoint.X, HeroPoint.Y, HOLHeroAbility::AuraRadius));
+		}
+		// His banner while it stands (public sheet: its place and the step it falls at).
+		const int32 Step = UHOLHeroLibrary::GetServerStep(this);
+		if (Step >= 0 && UHOLHeroLibrary::GetHeroBannerEndStep(this, Slot) > Step)
+		{
+			const FIntPoint Banner = UHOLHeroLibrary::GetHeroBannerLocation(this, Slot);
+			const FVector2D BannerPoint(Banner.X, Banner.Y);
+			AddCircle(BannerPoint, HOLHeroAbility::AuraRadius, AuraRingWidth, AuraRingColor, GroundAt(BannerPoint, 0.0));
+			Parts.Add(FString::Printf(TEXT("banner (%d, %d) %.0f"), Banner.X, Banner.Y, HOLHeroAbility::AuraRadius));
+		}
+		// The banner aimed: its reach around the hero, its aura under the cursor (red out of reach: the server would refuse it).
+		FVector Aim;
+		if (Hero && PlayerController->IsBannerArmed())
+		{
+			AddCircle(HeroPoint, HOLHeroAbility::BannerPlantRange, ReachRingWidth, ReachRingColor, Hero->Location.Z);
+			Parts.Add(FString::Printf(TEXT("reach %.0f"), HOLHeroAbility::BannerPlantRange));
+			if (PlayerController->GetCursorGroundPoint(Aim))
+			{
+				const bool bInReach = HOLHeroAbility::CanPlantBanner(FVector2D::Distance(FVector2D(Aim), HeroPoint));
+				AddCircle(FVector2D(Aim), HOLHeroAbility::AuraRadius, bInReach ? AuraRingWidth : AimRefusedWidth, bInReach ? AuraRingColor : AimRefusedColor, Aim.Z);
+				Parts.Add(FString::Printf(TEXT("aim (%.0f, %.0f) %s"), Aim.X, Aim.Y, bInReach ? TEXT("ok") : TEXT("out of reach")));
+			}
+		}
+	}
+	AuraRingsDescription = Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT(", "));
+	SetInstances(*AuraRings, Transforms, CustomData);
 }
 
 bool AHOLSelectionMarkers::ShowsHealthBar(const bool bSelected, const bool bFullHealth)
@@ -683,6 +952,8 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 	if (World && PlayerState && !PlayerState->GetOrderChains().IsEmpty() && !PlayerController->GetSelectedUnits().IsEmpty())
 	{
 		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
+		const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+		const int32 ViewerSlot = PlayerState->GetPlayerIndex();
 		TMap<uint32, FVector> Displayed;
 		for (const FHOLNetOrderChain& Chain : PlayerState->GetOrderChains())
 		{
@@ -719,6 +990,11 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 				// An attack at its target as shown here (it walks), else where it stood.
 				FVector End;
 				AHOLPlayerState::LocateChainStep(*World, Step, End);
+				// F7.3: the line of an attack never follows an enemy out of sight (the step's own point, where it was seen).
+				if (Step.TargetId != 0 && Vision && Vision->IsStarted())
+				{
+					End = Vision->GetOrderLineEnd(ViewerSlot, FVector(Step.Location), End);
+				}
 				const FLinearColor& Color = GetOrderColor(Step.Kind);
 				AddLine(Start, End, Color);
 				PointTransforms.Add(FTransform(FQuat::Identity, End + FVector(0.0, 0.0, OrderPointOffset),
@@ -895,7 +1171,7 @@ FString AHOLSelectionMarkers::Describe() const
 		Flags += FString::Printf(TEXT("%s(%.0f, %.0f)"), Index == 0 ? TEXT(" at ") : TEXT(" "), FlagFeet[Index].X, FlagFeet[Index].Y);
 	}
 	// The order lines drawn (D328): their segments and step points (quick_check's move part counts them).
-	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings,
+	return FString::Printf(TEXT("rings %d, frame %d, flag %s, ghost %s, order lines %d, order points %d, frames dimmed %d"), Rings->GetInstanceCount() - NumPings - HeroFlashRings - CryFlashRings,
 		Frames->GetInstanceCount(), *Flags, ShownGhost == EGhost::None ? TEXT("none") : ShownGhost == EGhost::Valid ? TEXT("valid") : TEXT("refused"),
 		OrderLines->GetInstanceCount(), OrderPoints->GetInstanceCount(), DimmedFrames);
 }

@@ -817,6 +817,11 @@ int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner, const FName TypeNam
 
 int32 UHOLUnitSubsystem::ForEachLivingUnit(const TFunctionRef<void(uint8 Owner, const FVector& Location)> Visit) const
 {
+	return ForEachLivingUnitWithType([&Visit](uint32, FName, const uint8 Owner, const FVector& Location) { Visit(Owner, Location); });
+}
+
+int32 UHOLUnitSubsystem::ForEachLivingUnitWithType(const TFunctionRef<void(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location)> Visit) const
+{
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
 	if (!EntitySubsystem)
 	{
@@ -834,7 +839,7 @@ int32 UHOLUnitSubsystem::ForEachLivingUnit(const TFunctionRef<void(uint8 Owner, 
 		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Record.Entity);
 		if (State && Transform && State->CurrentHealth > 0 && State->Activity != EHOLUnitActivity::Dying)
 		{
-			Visit(Record.OwnerPlayer, Transform->GetTransform().GetLocation());
+			Visit(Unit.Key, Record.TypeName, Record.OwnerPlayer, Transform->GetTransform().GetLocation());
 		}
 	}
 	return Units.Num();
@@ -1017,9 +1022,12 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.bRanged = HOLCombat::IsRangedAttack(Constants->AttackRange);
 			OutView.bSiege = Constants->HasArmorCategory(EHOLArmorCategory::Siege);
 			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
-			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(Constants->MaxHealth);
+			OutView.bHero = Constants->HasArmorCategory(EHOLArmorCategory::Hero);
+			// J8b.2: the maximum at its level (the hero's grows).
+			const int32 MaxHealth = HOLCombat::GetMaxHealth(*Constants, Combat ? Combat->Level : 1);
+			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(MaxHealth);
 			OutView.Health = HOLCombat::GetShownHealth(State->CurrentHealth);
-			OutView.MaxHealth = Constants->MaxHealth;
+			OutView.MaxHealth = MaxHealth;
 			OutView.bHealthExact = true;
 		}
 		return true;

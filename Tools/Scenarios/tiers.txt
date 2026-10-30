@@ -1,0 +1,26 @@
+# Les paliers (P4) : le niveau du héros ouvre les médaillons d'âge du bâtisseur (II au niveau 3, III au niveau 6) et donne une vie de plus au forum (2, 3, 4)
+# Plain, toi (slot 0) contre une IA (slot 1), tiers.json (copie de hero.json) : 5 Paysans et un héros chacun, niveau 1 = palier 0.
+# Le niveau est monté par la console de développement (hol.Hero.SetXP 0 600 = niveau 3, 3300 = niveau 6) : en vrai, c'est l'expérience du héros qui le monte.
+# Chaque temps attend la touche Entrée (waitkey). Au prototype aucun bâtiment n'est d'âge II ou III : les médaillons s'ouvrent, leurs panneaux restent vides.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Palier 0 (héros niveau 1). Sélectionne un Paysan (clic ou double clic) : sous la barre du bas, 4 médaillons I à IV, seul I est ouvert (II, III, IV grisés, cadenas).
+note Sélectionne le forum : « 2 vies » dans le bloc et dans le tableau des joueurs, en haut à droite.
+waitkey Entrée : le héros passe niveau 3 (palier 1)
+hol.Hero.SetXP 0 600
+waitlog Hero level: slot 0 level 1 -> 3
+note 2. Niveau 3 = palier 1 : alerte « Palier 1 atteint ». Garde le Paysan sélectionné : le médaillon II s'ouvre sans rien refaire (panneau vide : pas encore de bâtiment d'âge II).
+note Le forum : « 3 vies » (bloc et tableau).
+waitkey Entrée : le héros passe niveau 6 (palier 2)
+hol.Hero.SetXP 0 3300
+waitlog Hero level: slot 0 level 3 -> 6
+note 3. Niveau 6 = palier 2 : alerte « Palier 2 atteint ». Le médaillon III s'ouvre ; IV reste fermé (palier 3 = niveau 9, hors prototype). Le forum : « 4 vies ».
+waitkey Entrée : ton forum tombe (triche) alors que tu es au palier 2
+hol.Camera.FocusNear -400 300
+frames 2
+hol.Victory.FallForum 0
+waitlog Victory: forum of slot 0 fell
+note 4. Le forum tombe : décombres 30 s ; il perd une vie, 4 -> 3 (2 + palier 2 - 1 chute) ; ton tableau : « 3 vies », « Ruine ». Vite : clic droit des Paysans sur les décombres pour le reconstruire.
+note Le palier ne baisse jamais : même si le héros tombe (console ² : hol.Hero.Kill 0), les médaillons et les vies restent.

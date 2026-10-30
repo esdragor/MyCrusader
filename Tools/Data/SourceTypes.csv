@@ -1,12 +1,12 @@
-Name,DisplayName,Resource,Amount,Radius,Height,Mesh,Places,RateScale,Endless,Linked
-Tree,Arbre,Wood,100,60,750,,0,1,False,False
-BerryBush,Buisson de baies,Food,200,110,160,,0,1,False,False
-StoneVein,Filon de pierre,Stone,2500,300,300,,0,1,False,False
-GoldVein,Filon d'or,Gold,2500,300,300,,0,1,False,False
-StoneVeinSmall,Petit filon de pierre,Stone,500,150,150,,0,1,False,False
-StoneVeinMedium,Filon de pierre moyen,Stone,1000,220,220,,0,1,False,False
-StoneVeinBig,Gros filon de pierre,Stone,5000,420,420,,0,1,False,False
-GoldVeinSmall,Petit filon d'or,Gold,500,150,150,,0,1,False,False
-GoldVeinMedium,Filon d'or moyen,Gold,1000,220,220,,0,1,False,False
-GoldVeinBig,Gros filon d'or,Gold,5000,420,420,,0,1,False,False
-FarmField,Champ,Food,1,100,20,,1,0.7857143,True,True
+Name,DisplayName,Resource,Amount,Radius,Height,Mesh,Places,RateScale,Endless,Linked,BlocksSight
+Tree,Arbre,Wood,100,60,750,,0,1,False,False,True
+BerryBush,Buisson de baies,Food,200,110,160,,0,1,False,False,False
+StoneVein,Filon de pierre,Stone,2500,300,300,,0,1,False,False,False
+GoldVein,Filon d'or,Gold,2500,300,300,,0,1,False,False,False
+StoneVeinSmall,Petit filon de pierre,Stone,500,150,150,,0,1,False,False,False
+StoneVeinMedium,Filon de pierre moyen,Stone,1000,220,220,,0,1,False,False,False
+StoneVeinBig,Gros filon de pierre,Stone,5000,420,420,,0,1,False,False,False
+GoldVeinSmall,Petit filon d'or,Gold,500,150,150,,0,1,False,False,False
+GoldVeinMedium,Filon d'or moyen,Gold,1000,220,220,,0,1,False,False,False
+GoldVeinBig,Gros filon d'or,Gold,5000,420,420,,0,1,False,False,False
+FarmField,Champ,Food,1,100,20,,1,0.7857143,True,True,False

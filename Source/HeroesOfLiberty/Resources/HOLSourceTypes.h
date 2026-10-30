@@ -72,6 +72,13 @@ struct HEROESOFLIBERTY_API FHOLSourceTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Source")
 	bool Linked = false;
 
+	/**
+	 * F2 (D383, D33): a forest of it cuts the sight behind its edge (the trees): a cell of the fog's grid holding
+	 * FHOLVisionTuning::ForestTrees standing ones is forest, open again once enough are cut.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Vision")
+	bool BlocksSight = false;
+
 	/** The rate (per second) a gatherer whose own rate for this resource is UnitRate gets on this source. */
 	float GatherRate(float UnitRate) const { return UnitRate * RateScale; }
 };

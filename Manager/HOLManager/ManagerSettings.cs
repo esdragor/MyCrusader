@@ -15,8 +15,8 @@ public sealed class ManagerSettings
     /** D481: one server per game version in <ServersDir>\<v>\HeroesOfLibertyServer.exe (relative: from the manager's folder). */
     public string ServersDir { get; init; } = "Servers";
 
-    /** Game servers running at once, at most (M6-Q6; measured in R5.5). */
-    public int MaxServers { get; init; } = 2;
+    /** Game servers running at once, at most (M6-Q6; D502, measured 2026-10-30). */
+    public int MaxServers { get; init; } = 4;
 
     /** Game servers listen on the first free UDP port from this one. */
     public int FirstServerPort { get; init; } = 7777;

@@ -448,6 +448,9 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	/** The last enemy that hit it: taken on by a riposte (HOLCombat::FCandidate::bAttacksMe) even beyond its search radius. */
 	FMassEntityHandle LastAttacker;
 
+	/** Step of the last hit it took (LastAttacker set then): forgotten HOLCombat::LastAttackerMemoryMs later without a new one (EtapeDefini S); -1: none. */
+	int64 LastHitStep = -1;
+
 	/** Where its target stood when it last walked towards it: a new walk once the target moved away from there. */
 	FVector2D ApproachPoint = FVector2D::ZeroVector;
 
@@ -474,11 +477,23 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 
 	EHOLCombatMode Mode = EHOLCombatMode::Normal;
 
+	/**
+	 * J8b.2: its level (the hero's, from his XP, set by UHOLHeroSubsystem at each step's end; 1 for every troop): its attack
+	 * and its maximum health grow with it (HOLCombat::GetDamage, GetMaxHealth). In the padding before DeathStep.
+	 */
+	uint8 Level = 1;
+
 	/** On an attack-move, a fight took it off its way (J7b.3): once no enemy is left, it walks on to AttackMoveGoal. */
 	bool bAttackMoveDetour = false;
 
 	/** Step it fell to 0 health at (J7b.4): destroyed HOLCombat::DyingSteps later; -1: alive. */
 	int64 DeathStep = -1;
+
+	/**
+	 * J8c.2: milliseconds it stays under its hero's cry (Serrez les rangs, J8c-Q2): HOLHeroAbility::CloseRanksDurationMs when
+	 * the cry reaches it, counted down each step by the combat processor; 0: not under it.
+	 */
+	int32 CloseRanksMs = 0;
 
 	/**
 	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
@@ -552,6 +567,7 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 		CloseInBest = MAX_flt;
 		BuildingInward = FVector2f::ZeroVector;
 		LastAttacker = FMassEntityHandle();
+		LastHitStep = -1;
 		bOrderedTarget = false;
 		bAttacking = false;
 		bApproaching = false;

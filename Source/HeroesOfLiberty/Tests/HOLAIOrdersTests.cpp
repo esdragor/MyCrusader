@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AI/HOLAIOrders.h"
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "Commands/HOLUnitOrderProcessor.h"
@@ -15,6 +17,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLGatherProcessor.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -228,6 +231,171 @@ bool FHOLAIOrdersCapTest::RunTest(const FString& Parameters)
 	Test.RunStep();
 	TestTrue(TEXT("some of the 200 on their way to the tree"), CountDoing(World, Most, EHOLUnitActivity::GatherTrip) > 0);
 	TestEqual(TEXT("the last one idle"), GetActivity(World, Crowd.Last()), EHOLUnitActivity::Idle);
+	return true;
+}
+
+namespace UE::HeroesOfLiberty::Tests::AIOrders
+{
+	/** The combat fragment of a unit (null if it has none). */
+	const FHOLCombatFragment* GetCombat(const FWorld& Test, const uint32 UnitId)
+	{
+		const FMassEntityHandle Entity = Test.Units->FindEntity(UnitId);
+		return Test.EntityManager->IsEntityValid(Entity) ? Test.EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+	}
+
+	/** How many of Ids are in this combat mode. */
+	int32 CountInMode(const FWorld& Test, const TArray<uint32>& Ids, const EHOLCombatMode Mode)
+	{
+		int32 Count = 0;
+		for (const uint32 Id : Ids)
+		{
+			const FHOLCombatFragment* Combat = GetCombat(Test, Id);
+			Count += (Combat && Combat->Mode == Mode) ? 1 : 0;
+		}
+		return Count;
+	}
+
+	/** How many of Ids were ordered to strike Building. */
+	int32 CountStriking(const FWorld& Test, const TArray<uint32>& Ids, const AHOLBuilding* Building)
+	{
+		int32 Count = 0;
+		for (const uint32 Id : Ids)
+		{
+			const FHOLCombatFragment* Combat = GetCombat(Test, Id);
+			Count += (Combat && Combat->OrderedBuilding.Get() == Building) ? 1 : 0;
+		}
+		return Count;
+	}
+
+	int32 IndexOf(const TArray<FName>& Names, const TCHAR* Name) { return Names.IndexOfByKey(FName(Name)); }
+}
+
+// IA2.2: an AI slot's attack-move goes through the same queue as a human's (HOLPlayerOrders::AttackMove): it enters the
+// queue, nothing changes in the frame, the next step puts slot 1's Spearmen walking in the attack-move mode; slot 0's
+// Spearman slipped into the list is refused (D288); the cap and no slot are refused like a move's.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIOrdersAttackMoveTest, "HeroesOfLiberty.AI.Orders.AttackMove", UE::HeroesOfLiberty::Tests::AIOrders::Flags)
+bool FHOLAIOrdersAttackMoveTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOrders;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const UWorld& World = *Test.World;
+	const TArray<uint32> Mine = PlaceUnits(*Test.Units, Spearman, 1, FVector(0.0, 800.0, 0.0), 2);
+	const TArray<uint32> Other = PlaceUnits(*Test.Units, Spearman, 0, FVector(0.0, -800.0, 0.0), 1);
+	const TArray<uint32> Crowd = PlaceUnits(*Test.Units, Peasant, 1, FVector(4000.0, 0.0, 0.0), HOLPlayerOrders::MaxOrderedUnits + 1);
+	TestTrue(TEXT("two Spearmen of slot 1, one of slot 0, 201 Peasants of slot 1"),
+		Mine.Num() == 2 && Other.Num() == 1 && Crowd.Num() == HOLPlayerOrders::MaxOrderedUnits + 1);
+
+	TArray<uint32> Named = Mine;
+	Named.Append(Other);
+	TestTrue(TEXT("the attack-move enters the queue"), UHOLAIOrderLibrary::IssueAIAttackMoveOrder(Test.World, 1, ToScript(Named), FVector(-1500.0, 800.0, 0.0)));
+	TestEqual(TEXT("not applied in the frame: slot 1's Spearmen idle"), CountDoing(World, Mine, EHOLUnitActivity::Idle), 2);
+	TestEqual(TEXT("not applied in the frame: still in the normal mode"), CountInMode(Test, Mine, EHOLCombatMode::Normal), 2);
+	TestFalse(TEXT("201 units: refused"), UHOLAIOrderLibrary::IssueAIAttackMoveOrder(Test.World, 1, ToScript(Crowd), FVector(0.0, 3000.0, 0.0)));
+	TestFalse(TEXT("no slot: refused"), UHOLAIOrderLibrary::IssueAIAttackMoveOrder(Test.World, INDEX_NONE, ToScript(Mine), FVector(0.0, 3000.0, 0.0)));
+
+	Test.RunStep();
+	TestEqual(TEXT("next step: slot 1's Spearmen walking"), CountDoing(World, Mine, EHOLUnitActivity::Moving), 2);
+	TestEqual(TEXT("next step: slot 1's Spearmen in the attack-move mode"), CountInMode(Test, Mine, EHOLCombatMode::AttackMove), 2);
+	TestEqual(TEXT("slot 0's Spearman refused, idle"), CountDoing(World, Other, EHOLUnitActivity::Idle), 1);
+	TestEqual(TEXT("slot 0's Spearman refused, normal mode"), CountInMode(Test, Other, EHOLCombatMode::Normal), 1);
+	TestEqual(TEXT("the refused crowd did not move"), CountDoing(World, Crowd, EHOLUnitActivity::Idle), Crowd.Num());
+	return true;
+}
+
+// IA2.2: an AI slot's order to attack a building, named by its ground point (any owner's building within 100 cm): the
+// enemy's House is struck by slot 1's Spearmen after the step; slot 0's own Spearman slipped in is refused; a point with no
+// building is refused; so is no slot.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIOrdersAttackBuildingTest, "HeroesOfLiberty.AI.Orders.AttackBuilding", UE::HeroesOfLiberty::Tests::AIOrders::Flags)
+bool FHOLAIOrdersAttackBuildingTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOrders;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const UWorld& World = *Test.World;
+	AHOLBuilding* EnemyHouse = Test.World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("an enemy House"), EnemyHouse))
+	{
+		return false;
+	}
+	EnemyHouse->Setup(HOLBuildingTypeNames::House, 0, 0);
+	const TArray<uint32> Mine = PlaceUnits(*Test.Units, Spearman, 1, FVector(0.0, 800.0, 0.0), 2);
+	const TArray<uint32> Other = PlaceUnits(*Test.Units, Spearman, 0, FVector(0.0, -800.0, 0.0), 1);
+	TestTrue(TEXT("two Spearmen of slot 1, one of slot 0"), Mine.Num() == 2 && Other.Num() == 1);
+
+	TArray<uint32> Named = Mine;
+	Named.Append(Other);
+	const FVector Near(3040.0, 30.0, 0.0);
+	TestFalse(TEXT("no building at that point: refused"), UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(Test.World, 1, ToScript(Mine), FVector(-5000.0, 0.0, 0.0)));
+	TestFalse(TEXT("a point 300 cm off the House: refused"), UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(Test.World, 1, ToScript(Mine), FVector(3300.0, 0.0, 0.0)));
+	TestFalse(TEXT("no slot: refused"), UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(Test.World, INDEX_NONE, ToScript(Mine), Near));
+	TestTrue(TEXT("the order on the House enters the queue"), UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(Test.World, 1, ToScript(Named), Near));
+	TestEqual(TEXT("not applied in the frame: nobody ordered on the House"), CountStriking(Test, Mine, EnemyHouse), 0);
+
+	Test.RunStep();
+	TestEqual(TEXT("next step: slot 1's two Spearmen ordered to strike the House"), CountStriking(Test, Mine, EnemyHouse), 2);
+	// The approach itself belongs to the combat processor (a played game, IA2.7): the test world only applies the order.
+	TestEqual(TEXT("slot 0's Spearman (its own House) refused"), CountStriking(Test, Other, EnemyHouse), 0);
+	TestEqual(TEXT("slot 0's Spearman idle"), CountDoing(World, Other, EHOLUnitActivity::Idle), 1);
+	return true;
+}
+
+// IA2.2: the combat figures of a unit type, read from the same row the combat code reads (FHOLUnitTypeRow / HOLCombat::GetDamage):
+// the numbers of the table, the bonuses as the flat damage a hit adds against a category.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIOrdersCombatFiguresTest, "HeroesOfLiberty.AI.Orders.CombatFigures", UE::HeroesOfLiberty::Tests::AIOrders::Flags)
+bool FHOLAIOrdersCombatFiguresTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOrders;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	FHOLAITypeFigures Spear, Heavy, Bow, Bolt, Worker, Nothing;
+	if (!TestTrue(TEXT("the Spearman is known"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, Spearman, Spear))
+		|| !TestTrue(TEXT("the Man-at-arms is known"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, FName(TEXT("ManAtArms")), Heavy))
+		|| !TestTrue(TEXT("the Archer is known"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, FName(TEXT("Archer")), Bow))
+		|| !TestTrue(TEXT("the Crossbowman is known"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, FName(TEXT("Crossbowman")), Bolt))
+		|| !TestTrue(TEXT("the Peasant is known"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, Peasant, Worker)))
+	{
+		return false;
+	}
+	TestFalse(TEXT("unknown unit"), UHOLAIOrderLibrary::ReadAIUnitFigures(Test.World, FName(TEXT("NoSuchUnit")), Nothing));
+
+	TestTrue(TEXT("Spearman: health > 0, damage > 0, a short reach"), Spear.Health > 0 && Spear.Damage > 0 && Spear.AttackRange > 0.f && Spear.AttackRange < 500.f);
+	TestTrue(TEXT("Spearman: a positive interval"), Spear.AttackInterval > 0.f);
+	TestFalse(TEXT("Spearman: melee"), Spear.bRanged);
+	TestTrue(TEXT("Spearman: LightInfantry"), IndexOf(Spear.ArmorCategories, TEXT("LightInfantry")) != INDEX_NONE);
+	const int32 VsCavalry = IndexOf(Spear.BonusCategories, TEXT("Cavalry"));
+	TestTrue(TEXT("Spearman: a bonus against Cavalry"), VsCavalry != INDEX_NONE && Spear.BonusDamage.IsValidIndex(VsCavalry) && Spear.BonusDamage[VsCavalry] > 0.f);
+	TestEqual(TEXT("bonus arrays are parallel"), Spear.BonusCategories.Num(), Spear.BonusDamage.Num());
+
+	TestTrue(TEXT("Man-at-arms: Heavy category"), IndexOf(Heavy.ArmorCategories, TEXT("Heavy")) != INDEX_NONE);
+	TestTrue(TEXT("Man-at-arms: more health than the Spearman"), Heavy.Health > Spear.Health);
+	TestTrue(TEXT("Man-at-arms: melee armour"), Heavy.MeleeArmor > Spear.MeleeArmor);
+
+	TestTrue(TEXT("Archer: ranged"), Bow.bRanged);
+	TestTrue(TEXT("Archer: a longer reach than the Spearman"), Bow.AttackRange > Spear.AttackRange);
+	TestTrue(TEXT("Archer: not Heavy"), IndexOf(Bow.ArmorCategories, TEXT("Heavy")) == INDEX_NONE);
+
+	TestTrue(TEXT("Crossbowman: ranged"), Bolt.bRanged);
+	const int32 VsHeavy = IndexOf(Bolt.BonusCategories, TEXT("Heavy"));
+	TestTrue(TEXT("Crossbowman: a bonus against Heavy"), VsHeavy != INDEX_NONE && Bolt.BonusDamage.IsValidIndex(VsHeavy) && Bolt.BonusDamage[VsHeavy] > 0.f);
+
+	TestEqual(TEXT("Peasant: the cost as before"), Worker.CostFood, 50);
+	TestTrue(TEXT("Peasant: the gathering as before"), Worker.CarryCapacity > 0 && Worker.GatherFood > 0.f);
+	TestEqual(TEXT("Peasant: no bonus"), Worker.BonusCategories.Num(), 0);
+	TestTrue(TEXT("Peasant: the Peasant category"), IndexOf(Worker.ArmorCategories, TEXT("Peasant")) != INDEX_NONE);
+
+	FHOLAITypeFigures House;
+	TestTrue(TEXT("a building: its figures"), UHOLAIOrderLibrary::ReadAIBuildingFigures(HOLBuildingTypeNames::House, House));
+	TestTrue(TEXT("a building: no combat figures"), House.Health == 0 && House.Damage == 0 && House.ArmorCategories.IsEmpty() && House.BonusCategories.IsEmpty());
 	return true;
 }
 

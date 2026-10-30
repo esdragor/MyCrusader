@@ -57,6 +57,8 @@ void UHOLUnitReceptionSubsystem::Deinitialize()
 {
 	bActive = false;
 	Slots.Reset();
+	DisplayOwners.Reset();
+	RemovedChunks.Reset();
 	Chunks.Reset();
 	NumDisplayed = 0;
 	Super::Deinitialize();
@@ -121,10 +123,12 @@ void UHOLUnitReceptionSubsystem::AddChunk(AHOLUnitChunk* Chunk)
 
 void UHOLUnitReceptionSubsystem::RemoveChunk(const AHOLUnitChunk* Chunk)
 {
-	// Its units stay displayed with their last state until the slots are read again (a chunk leaves with the match).
+	// F6b: a chunk the server stops sending (a connection that no longer receives its camp) takes its units with it: they
+	// are released at the next reading. At the end of the match nothing reads any more.
 	if (Chunks.IsValidIndex(Chunk->GetChunkIndex()) && Chunks[Chunk->GetChunkIndex()] == Chunk)
 	{
 		Chunks[Chunk->GetChunkIndex()] = nullptr;
+		RemovedChunks.AddUnique(Chunk->GetChunkIndex());
 	}
 }
 
@@ -220,6 +224,29 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 
 	TArray<int32> Arrivals;
 	TArray<FMassEntityHandle> Departures;
+	for (const int32 ChunkIndex : RemovedChunks)
+	{
+		const int32 FirstRemoved = ChunkIndex * AHOLUnitChunk::NumSlots;
+		for (int32 Index = FirstRemoved; Index < FMath::Min(FirstRemoved + AHOLUnitChunk::NumSlots, Slots.Num()); ++Index)
+		{
+			FSlot& Slot = Slots[Index];
+			if (Slot.UnitId == 0)
+			{
+				continue;
+			}
+			if (Slot.Entity.IsSet())
+			{
+				Departures.Add(Slot.Entity);
+			}
+			const int32 Promoted = DisplayOwners.Leave(Slot.UnitId, Index);
+			if (Promoted != INDEX_NONE)
+			{
+				Arrivals.AddUnique(Promoted);
+			}
+			Slot = FSlot();
+		}
+	}
+	RemovedChunks.Reset();
 	for (const TWeakObjectPtr<AHOLUnitChunk>& ChunkPtr : Chunks)
 	{
 		const AHOLUnitChunk* Chunk = ChunkPtr.Get();
@@ -244,19 +271,35 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 				{
 					Departures.Add(Slot.Entity);
 				}
+				if (Slot.UnitId != 0)
+				{
+					// A unit held by several slots (every camp's family received) is drawn by the next one when this one lets it go.
+					const int32 Promoted = DisplayOwners.Leave(Slot.UnitId, FirstSlot + Index);
+					if (Promoted != INDEX_NONE)
+					{
+						Arrivals.AddUnique(Promoted);
+					}
+				}
 				Slot = FSlot();
 				Slot.UnitId = Identity.UnitId;
 				Slot.TypeIndex = Identity.TypeIndex;
 				Slot.OwnerPlayer = Identity.OwnerPlayer;
 				Slot.State = State;
-				if (Slot.UnitId != 0)
+				if (Slot.UnitId != 0 && DisplayOwners.Arrive(Slot.UnitId, FirstSlot + Index))
 				{
-					Arrivals.Add(FirstSlot + Index);
+					Arrivals.AddUnique(FirstSlot + Index);
 				}
 				continue;
 			}
-			if (Slot.UnitId == 0 || !Slot.Entity.IsSet())
+			if (Slot.UnitId == 0)
 			{
+				continue;
+			}
+			if (!Slot.Entity.IsSet())
+			{
+				// Not drawn by this slot (shadowing another, or not arrived yet): it keeps the latest state for when it draws.
+				Slot.State = State;
+				Slot.OwnerPlayer = Identity.OwnerPlayer;
 				continue;
 			}
 			if (Identity.OwnerPlayer != Slot.OwnerPlayer)
@@ -290,6 +333,12 @@ void UHOLUnitReceptionSubsystem::ReadSlots(const double Now)
 		NumDisplayed -= Departures.Num();
 		Stats.NumDepartures += Departures.Num();
 	}
+	// A slot that changed hands again in the same pass, or whose unit another slot draws, has nothing to create.
+	Arrivals.RemoveAll([this](const int32 SlotIndex)
+	{
+		const FSlot& Slot = Slots[SlotIndex];
+		return Slot.UnitId == 0 || Slot.Entity.IsSet() || DisplayOwners.GetOwner(Slot.UnitId) != SlotIndex;
+	});
 	if (Arrivals.Num() > 0)
 	{
 		CreateEntities(Arrivals, Now);
@@ -493,6 +542,7 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.bRanged = HOLCombat::IsRangedAttack(Row->AttackRange);
 		OutView.bSiege = Row->HasArmorCategory(EHOLArmorCategory::Siege);
 		OutView.bKing = Row->HasArmorCategory(EHOLArmorCategory::King);
+		OutView.bHero = Row->HasArmorCategory(EHOLArmorCategory::Hero);
 		// J7b.5: the health received, exact (J7-Q5 revised); a hero's as a share (J8-Q5, J8a.3), his bar filled from it,
 		// his health points exact from his slot's public hero sheet once received and alive, drawn back from the share before.
 		static_assert(HOLUnitView::MaxWireHealthShare == FHOLNetUnitState::MaxWireHealth, "a hero's share is read in the wire's own steps");
@@ -511,7 +561,14 @@ uint32 UHOLUnitReceptionSubsystem::GetTargetUnitId(const FHOLNetUnitState& State
 
 FMassEntityHandle UHOLUnitReceptionSubsystem::GetTargetEntity(const FHOLNetUnitState& State) const
 {
-	return State.HasTargetSlot() && Slots.IsValidIndex(State.TargetSlot) ? Slots[State.TargetSlot].Entity : FMassEntityHandle();
+	if (!State.HasTargetSlot() || !Slots.IsValidIndex(State.TargetSlot))
+	{
+		return FMassEntityHandle();
+	}
+	// The target's slot in this family may only shadow the slot that draws it (every camp's family received).
+	const FSlot& Target = Slots[State.TargetSlot];
+	const int32 Drawing = Target.Entity.IsSet() || Target.UnitId == 0 ? INDEX_NONE : DisplayOwners.GetOwner(Target.UnitId);
+	return Slots.IsValidIndex(Drawing) ? Slots[Drawing].Entity : Target.Entity;
 }
 
 void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnits) const
@@ -528,8 +585,8 @@ void UHOLUnitReceptionSubsystem::GetDisplayedUnits(TArray<FHOLUnitView>& OutUnit
 
 bool UHOLUnitReceptionSubsystem::GetDisplayedUnit(const uint32 UnitId, FHOLUnitView& OutUnit) const
 {
-	const FSlot* Slot = UnitId != 0 ? Slots.FindByPredicate([UnitId](const FSlot& Each) { return Each.UnitId == UnitId && Each.Entity.IsSet(); }) : nullptr;
-	return Slot && MakeView(*Slot, OutUnit);
+	const int32 Drawing = UnitId != 0 ? DisplayOwners.GetOwner(UnitId) : INDEX_NONE;
+	return Slots.IsValidIndex(Drawing) && MakeView(Slots[Drawing], OutUnit);
 }
 
 void UHOLUnitReceptionSubsystem::SetWatchedLoad(const uint32 UnitId, const EHOLResource Resource, const int32 Amount)

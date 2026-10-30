@@ -31,9 +31,13 @@ namespace HOLCombat
 	 * Damage of one hit (D21, D345): Attack, plus each of the attacker's bonuses aimed at one of the defender's armour
 	 * categories (they add up), minus the defender's armour of the attacker's AttackType, 1 at least (a hit always hurts).
 	 * On a hero hit by anyone but a hero, then HeroTroopDamageFactor of that, unrounded (D17: 5 -> 1.5, 3 -> 0.9). The
-	 * hero's own weakness against buildings is his table's BuildingAttack.
+	 * hero's own weakness against buildings is his table's BuildingAttack. J8b.2: the attacker's level scales its Attack
+	 * (HOLHeroXP::GetLevelStat, +8 % a level, unrounded) before the bonuses and the armour; 1 for every troop.
 	 */
-	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender);
+	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1);
+
+	/** J8b.2: a unit's maximum health at its level (the hero's grows +8 % a level, J8b-Q3), rounded to nearest. */
+	HEROESOFLIBERTY_API int32 GetMaxHealth(const FHOLUnitTypeConstants& Type, int32 Level);
 
 	/**
 	 * Health as shown (HUD, bars) and sent (the wire's exact health, D455): the simulation's float health rounded up, so a
@@ -290,6 +294,21 @@ namespace HOLCombat
 
 	/** A friend fighting for ShouldComeToAid: striking, or taken on by an enemy (its attackers, or one that hit it). */
 	HEROESOFLIBERTY_API bool IsFriendFighting(bool bAttacking, int32 AttackerCount, bool bHasLastAttacker);
+
+	/**
+	 * How long (ms, simulation steps) a unit remembers the last enemy that hit it (FHOLCombatFragment::LastAttacker: the
+	 * riposte beyond its search radius) without a new hit (EtapeDefini S): past it, an attacker that walked off out of its
+	 * search radius is forgotten (no chase across the map, no "fighting" friend for the aid). The fog (M7) will add the
+	 * oblivion out of sight.
+	 */
+	inline constexpr int32 LastAttackerMemoryMs = 5000;
+
+	/**
+	 * Whether the last attacker is still remembered at StepIndex: its last hit (LastHitStep; -1: none) less than
+	 * LastAttackerMemoryMs ago, in whole steps of StepMs (100 steps at 20 Hz: forgotten at the 100th). A dead or gone
+	 * attacker is forgotten at once by the processor, whatever this says.
+	 */
+	HEROESOFLIBERTY_API bool KeepsLastAttacker(int64 StepIndex, int64 LastHitStep, int32 StepMs);
 
 	/**
 	 * Coming to a friend's aid (MV.4, choice C, AoE4): a melee soldier free to seek by itself (Auto: not on Hold nor an

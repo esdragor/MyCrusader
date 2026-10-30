@@ -193,6 +193,10 @@ private:
 	 * with places all around (Places 0): always true.
 	 */
 	bool HasFreePlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self);
+	/** Drops from Holders those that left SourceIndex (SelfNumber too: it looks again). */
+	void PruneHolders(const FStepContext& Step, int32 SourceIndex, TArray<uint64>& Holders, uint64 SelfNumber);
+	/** The places held of each source of few places, to the source registry (IA1.7b: the AI's summary). */
+	void PublishOccupants(const FStepContext& Step);
 	/** Self holds one of the few places of SourceIndex (nothing for a source with places all around). */
 	void ClaimPlace(const FStepContext& Step, int32 SourceIndex, FMassEntityHandle Self);
 	/**
@@ -232,6 +236,13 @@ private:
 	 * own source is never skipped this way: its own claim may be there.
 	 */
 	TBitArray<> FullSources;
+	/**
+	 * IA2.6b: the game time (s, summed from the steps) a gatherer last stood idle in front of each source for want of a spot; a
+	 * source is shown full to the AI's summary for FullShownSeconds after it. The vein of a camp holds a handful of gatherers:
+	 * the brain sent the others there again and again, each standing idle until its next thought.
+	 */
+	TMap<int32, double> LastNoRoom;
+	double GameSeconds = 0.;
 	/** A body at rest this step (not on a round trip, not at its source): what a gatherer stopped idle must not overlap. */
 	struct FRestingBody
 	{

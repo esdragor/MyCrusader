@@ -43,6 +43,8 @@ struct FHOLUnitView
 	bool bSiege = false;
 	/** The King of Regicide (V5.3): moves, stops and attacks on order only, no attack-move nor hold (HOLCommandGrid::GetOrder). */
 	bool bKing = false;
+	/** A hero (J8a.1: the Hero armour category). IA2.1: the AI's army leaves him out. */
+	bool bHero = false;
 	/** Unhurt (J7b.4): its health is its type's maximum. */
 	bool bFullHealth = true;
 	/**
@@ -110,7 +112,8 @@ namespace HOLUnitView
 	/**
 	 * A client's view health from the state received (UHOLUnitReceptionSubsystem): MaxHealth, Health, HealthShare and
 	 * bHealthExact. A troop's exact; a hero's (bHero, J8a.3) share drawn back, the share filling his bar, unless HeroSheet
-	 * (his slot's public sheet, null when not received) is Alive: its exact HP then, the share still filling the bar.
+	 * (his slot's public sheet, null when not received) is Alive: its exact HP then, the share still filling the bar. MaxHealth
+	 * the table's (level 1): a hero's taken at his sheet's level (J8b.3).
 	 */
 	HEROESOFLIBERTY_API void SetReceivedHealth(FHOLUnitView& View, bool bFullHealth, uint16 WireHealth, int32 MaxHealth, bool bHero,
 		const FHOLHeroSheet* HeroSheet = nullptr);

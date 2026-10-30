@@ -80,6 +80,16 @@ public:
 	/** Born of a building (a farm field, IA1.2): no shape, no hole in the navmesh, not clicked. */
 	bool IsLinked(int32 SourceIndex) const;
 
+	/** F2 (D383): its type cuts the sight (FHOLSourceTypeRow::BlocksSight, the trees). */
+	bool BlocksSight(int32 SourceIndex) const;
+
+	/**
+	 * F2: a source entered this machine's map (true) or left it (false: used up, removed), on the server as on a client
+	 * (the chunks): the fog counts its trees per cell (FHOLVisionMap::AddBlocker / RemoveBlocker).
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnSourceStanding, int32 /*SourceIndex*/, bool /*bStanding*/);
+	FOnSourceStanding OnSourceStanding;
+
 	/**
 	 * IA1.2 F7: the standing linked source (a farm field) within Tolerance (cm, on the ground plane) of Location, its
 	 * building's centre, INDEX_NONE if none. Server and clients alike (the chunks bring type and place).
@@ -93,6 +103,20 @@ public:
 	const TArray<FName>& GetTypeNames() const { return TypeNames; }
 	const FHOLSourceTypeRow* GetType(uint8 TypeIndex) const;
 
+	/**
+	 * Server: the places held of the sources of few places (a farm field, IA1.7b), by source index, as the gather processor
+	 * counted them at its last step; what the AI's summary shows of a field (a worker standing on it). Not replicated.
+	 */
+	void SetOccupants(TArray<uint8>&& InOccupants) { Occupants = MoveTemp(InOccupants); }
+	int32 GetOccupants(const int32 SourceIndex) const { return Occupants.IsValidIndex(SourceIndex) ? Occupants[SourceIndex] : 0; }
+
+	/**
+	 * Server: the sources a gatherer stood idle in front of, no spot free, in the last seconds (IA2.6b), by source index, as the
+	 * gather processor counted them at its last step; what the AI's summary shows of a vein with every spot taken. Not replicated.
+	 */
+	void SetFullSources(TBitArray<>&& InFull) { FullSources = MoveTemp(InFull); }
+	bool IsFull(const int32 SourceIndex) const { return FullSources.IsValidIndex(SourceIndex) && FullSources[SourceIndex]; }
+
 	/** Server: what a player's gatherers unloaded since the start (reports, stress test S7). */
 	void RecordDeposit(uint8 OwnerPlayer, EHOLResource Resource, int32 Amount);
 	FHOLResources GetDeposited(uint8 OwnerPlayer) const { return Deposited.FindRef(OwnerPlayer); }
@@ -104,6 +128,13 @@ public:
 	void AddChunk(AHOLSourceChunk* Chunk);
 	void RemoveChunk(AHOLSourceChunk* Chunk);
 	void ReadChunk(const AHOLSourceChunk& Chunk);
+
+	/**
+	 * Server of a networked match, once the fog's mode is known (UHOLFogNetSubsystem): every source so far, and the ones
+	 * added later, go into the chunks everybody receives. Not called when a fog hides the sources per camp (F6d, D524): the
+	 * fog's own chunks carry them.
+	 */
+	void StartGlobalReplication();
 
 	/** "Sources: 320 standing of 320 (Tree 320: 32000 wood left); shown 320, navmesh 320": for the scripted checks. */
 	FString MakeReport() const;
@@ -125,6 +156,8 @@ private:
 	TArray<FHOLSource> Sources;
 	int32 NumStanding = 0;
 	TMap<uint8, FHOLResources> Deposited;
+	TArray<uint8> Occupants;
+	TBitArray<> FullSources;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLSourceField> Field;
@@ -136,4 +169,6 @@ private:
 	bool bStarted = false;
 	bool bAuthority = false;
 	bool bReplicate = false;
+	/** F6d: the chunks everybody receives are in use (no fog, or the fog off). */
+	bool bGlobalReplication = false;
 };

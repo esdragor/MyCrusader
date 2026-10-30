@@ -107,6 +107,8 @@ public:
 	 * births waiting are not there yet. Returns how many units were walked (the dying included).
 	 */
 	int32 ForEachLivingUnit(TFunctionRef<void(uint8 Owner, const FVector& Location)> Visit) const;
+	/** F3: the same walk, with each unit's identifier and type (the fog's observers). */
+	int32 ForEachLivingUnitWithType(TFunctionRef<void(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location)> Visit) const;
 	/** Destroys the queued units; returns how many were destroyed. Called at the end of the fixed step. */
 	int32 FlushDestructions();
 

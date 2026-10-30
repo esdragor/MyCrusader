@@ -24,6 +24,7 @@
 #include "NavigationSystem.h"
 #include "ProfilingDebugging/MiscTrace.h"
 #include "RenderTimer.h"
+#include "Match/HOLStartRules.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "RHIStats.h"
@@ -670,6 +671,12 @@ void UHOLStressTestSubsystem::SpawnUnits()
 		// S3, S4: one request per type and side, each army's share split evenly between its types (the first ones take
 		// the remainder); slot 0 on the Y < 0 side, slot 1 facing it. Not one disc per player as the others: two players.
 		const TArray<FName> Types = GetBattleTypes();
+		// J8: one hero per army, born first, just ahead of the front edge of its melee (BattleHalfGap / 2 from the middle line);
+		// it is not counted in Count (Count soldiers, plus one hero per side).
+		for (int32 Side = 0; Side < 2; ++Side)
+		{
+			Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::HeroTypeName, 1, GetBattleHeroLocation(Side), 1.f, static_cast<uint8>(Side) });
+		}
 		for (int32 Side = 0; Side < 2; ++Side)
 		{
 			const int32 SideCount = Count / 2 + (Side < Count % 2 ? 1 : 0);
@@ -762,6 +769,12 @@ FVector UHOLStressTestSubsystem::GetBattleGroupCentre(const int32 Side, const in
 	return FVector(X, Facing * (BattleHalfGap + BattleDiscRadius), 0.);
 }
 
+FVector UHOLStressTestSubsystem::GetBattleHeroLocation(const int32 Side) const
+{
+	// Middle of the front line of its army, a quarter of the gap short of the middle line, in front of both melee discs.
+	return FVector(0., (Side == 0 ? -1. : 1.) * (UE::HeroesOfLiberty::StressTest::BattleHalfGap / 2.), 0.);
+}
+
 FVector UHOLStressTestSubsystem::GetArcherDiscCentre(const int32 Side, const int32 Disc) const
 {
 	using namespace UE::HeroesOfLiberty::StressTest;
@@ -790,7 +803,7 @@ void UHOLStressTestSubsystem::OrderCharge()
 		return;
 	}
 	Units->GetAllUnitIds(UnitIds);
-	if (UnitIds.Num() < Count && (UnitIds.IsEmpty() || Units->GetNumPendingBirths() > 0))
+	if (UnitIds.Num() < GetExpectedBattleUnits() && (UnitIds.IsEmpty() || Units->GetNumPendingBirths() > 0))
 	{
 		return;	// the births are served over a few steps (D224); a birth with no room on the navmesh is not waited for
 	}
@@ -804,13 +817,19 @@ void UHOLStressTestSubsystem::OrderCharge()
 	Groups.SetNum(2 * Types.Num());
 	TArray<TArray<uint32>> ArcherGroups;
 	ArcherGroups.SetNum(2 * BattleArcherDiscs);
+	TArray<TArray<uint32>> HeroGroups;	// J8: the hero of each side, a group of its own
+	HeroGroups.SetNum(2);
 	for (const uint32 UnitId : UnitIds)
 	{
 		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
 		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
 		const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity);
 		const int32 TypeIndex = Constants ? Types.IndexOfByKey(Constants->TypeName) : INDEX_NONE;
-		if (State && State->OwnerPlayer < 2 && TypeIndex >= 2)
+		if (State && State->OwnerPlayer < 2 && Constants && Constants->TypeName == FHOLStartRules::HeroTypeName)
+		{
+			HeroGroups[State->OwnerPlayer].Add(UnitId);
+		}
+		else if (State && State->OwnerPlayer < 2 && TypeIndex >= 2)
 		{
 			const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
 			const int32 Disc = GetArcherDisc(Transform ? Transform->GetTransform().GetLocation().X : 0.);
@@ -835,6 +854,12 @@ void UHOLStressTestSubsystem::OrderCharge()
 			Commands->IssueAttackMoveOrder(Group, Target);
 			++NumOrdersIssued;
 		}
+		// J8: the hero charges with the army, straight ahead of its birth place.
+		if (!HeroGroups[Side].IsEmpty())
+		{
+			Commands->IssueAttackMoveOrder(HeroGroups[Side], FVector(GetBattleHeroLocation(Side).X, (Side == 0 ? 1. : -1.) * BattleChargeDepth, 0.));
+			++NumOrdersIssued;
+		}
 		// S4's Archers: to the middle line straight ahead of their disc, the enemy melee's front; they stop at the first
 		// enemy in reach (the attack-move's target search).
 		for (int32 Disc = 0; Disc < BattleArcherDiscs; ++Disc)
@@ -850,8 +875,13 @@ void UHOLStressTestSubsystem::OrderCharge()
 	bChargeOrdered = true;
 	ChargeStep = PhaseSteps;
 	MeleeHitsAtCharge = UHOLCombatProcessor::GetTotalHits() - UHOLCombatProcessor::GetTotalArrowsReleased();
-	UE_LOG(LogHOLStressTest, Display, TEXT("%s: %d units charge, %d groups given an attack-move through the enemy army, at %.1f s from the start of the run"),
-		ToString(Scenario), UnitIds.Num(), 2 * (FMath::Min(Types.Num(), 2) + (Types.Num() > 2 ? BattleArcherDiscs : 0)), PhaseSteps * GetDefault<UHOLSimulationSettings>()->GetStepSeconds());
+	UE_LOG(LogHOLStressTest, Display, TEXT("%s: %d units charge, %d groups given an attack-move through the enemy army (the heroes' two included), at %.1f s from the start of the run"),
+		ToString(Scenario), UnitIds.Num(), 2 * (FMath::Min(Types.Num(), 2) + (Types.Num() > 2 ? BattleArcherDiscs : 0) + 1), PhaseSteps * GetDefault<UHOLSimulationSettings>()->GetStepSeconds());
+}
+
+int32 UHOLStressTestSubsystem::GetExpectedBattleUnits() const
+{
+	return Count + 2;	// the soldiers asked for, plus one hero per side (J8)
 }
 
 bool UHOLStressTestSubsystem::IsBattleJoined() const
@@ -897,8 +927,46 @@ void UHOLStressTestSubsystem::CountBattleAlive(int32 OutAlive[2]) const
 	{
 		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
 		const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
-		if (State && State->OwnerPlayer < 2 && State->Activity != EHOLUnitActivity::Dying)
+		const FHOLUnitTypeConstants* Constants = EntityManager.IsEntityValid(Entity) ? EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity) : nullptr;
+		if (State && State->OwnerPlayer < 2 && State->Activity != EHOLUnitActivity::Dying && !(Constants && Constants->TypeName == FHOLStartRules::HeroTypeName))
 		{
+			++OutAlive[State->OwnerPlayer];
+		}
+	}
+}
+
+void UHOLStressTestSubsystem::CountBattleHeroes(int32 OutAlive[2], float OutHealth[2]) const
+{
+	OutAlive[0] = OutAlive[1] = 0;
+	if (OutHealth)
+	{
+		OutHealth[0] = OutHealth[1] = 0.f;
+	}
+	const UWorld* World = GetWorld();
+	const UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = GetUnitSubsystem();
+	if (!EntitySubsystem || !Units)
+	{
+		return;
+	}
+	TArray<uint32> AllUnitIds;
+	Units->GetAllUnitIds(AllUnitIds);
+	const FMassEntityManager& EntityManager = EntitySubsystem->GetEntityManager();
+	for (const uint32 UnitId : AllUnitIds)
+	{
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		if (!EntityManager.IsEntityValid(Entity))
+		{
+			continue;
+		}
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity);
+		if (State && Constants && State->OwnerPlayer < 2 && State->Activity != EHOLUnitActivity::Dying && Constants->TypeName == FHOLStartRules::HeroTypeName)
+		{
+			if (OutHealth && OutAlive[State->OwnerPlayer] == 0)
+			{
+				OutHealth[State->OwnerPlayer] = State->CurrentHealth;
+			}
 			++OutAlive[State->OwnerPlayer];
 		}
 	}
@@ -915,6 +983,12 @@ void UHOLStressTestSubsystem::LogBattleSummary() const
 		: FString(TEXT("without the armies joined (longest warm-up)"));
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle (J7): measure begun %s; standing at the start of the measure %d against %d, at the end %d against %d (%d of %d requested still fighting)"),
 		*Start, AliveAtMeasureStart[0], AliveAtMeasureStart[1], Alive[0], Alive[1], Alive[0] + Alive[1], Count);
+	int32 HeroesAlive[2] = {};
+	float HeroHealth[2] = {};
+	CountBattleHeroes(HeroesAlive, HeroHealth);
+	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle heroes (J8): slot 0 %d, slot 1 %d standing at the start of the measure (health %.0f and %.0f); at the end %d and %d (health %.0f and %.0f)"),
+		HeroesAtMeasureStart[0], HeroesAtMeasureStart[1], HeroHealthAtMeasureStart[0], HeroHealthAtMeasureStart[1],
+		HeroesAlive[0], HeroesAlive[1], HeroHealth[0], HeroHealth[1]);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Battle during the measure: %lld hits (%.0f per second, %lld of them arrows released), %lld kills"),
 		Hits, Hits / Seconds, Released, UHOLCombatProcessor::GetTotalKills() - KillsAtMeasureStart);
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Arrows during the measure: %lld released (%.0f per second), %lld landed, %lld lost; in flight %.0f on average, %lld at most"),
@@ -1513,6 +1587,7 @@ void UHOLStressTestSubsystem::BeginMeasure()
 		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 		ContactSeconds = WarmedUpSteps < WarmUpSteps ? (WarmedUpSteps - ChargeStep) * StepSeconds : -1.f;
 		CountBattleAlive(AliveAtMeasureStart);
+		CountBattleHeroes(HeroesAtMeasureStart, HeroHealthAtMeasureStart);
 		HitsAtMeasureStart = UHOLCombatProcessor::GetTotalHits();
 		KillsAtMeasureStart = UHOLCombatProcessor::GetTotalKills();
 		ArrowsReleasedAtMeasureStart = UHOLCombatProcessor::GetTotalArrowsReleased();
@@ -1534,9 +1609,10 @@ void UHOLStressTestSubsystem::BeginMeasure()
 	{
 		Units->GetUnitIdsOfType(UnitTypeName, UnitIds);
 	}
-	if (UnitIds.Num() < Count)
+	const int32 ExpectedUnits = IsBattle() ? GetExpectedBattleUnits() : Count;
+	if (UnitIds.Num() < ExpectedUnits)
 	{
-		UE_LOG(LogHOLStressTest, Warning, TEXT("Only %d of the %d requested units exist at the start of the measure"), UnitIds.Num(), Count);
+		UE_LOG(LogHOLStressTest, Warning, TEXT("Only %d of the %d requested units exist at the start of the measure"), UnitIds.Num(), ExpectedUnits);
 	}
 	LocationsAtMeasureStart = GetUnitLocations();
 	CountInterpenetration(InterpenetrationAtMeasureStart, SmallestGapAtMeasureStart);
@@ -1771,7 +1847,7 @@ void UHOLStressTestSubsystem::LogUnitRegistrySummary() const
 		}
 	}
 	UE_LOG(LogHOLStressTest, Display, TEXT("  Unit registry (D223/D224): %d units of %d requested, %d births waiting, identifier table checked on %d units, %d mismatch"),
-		Units->GetNumUnits(), Count, Units->GetNumPendingBirths(), UnitIds.Num(), NumMismatched);
+		Units->GetNumUnits(), IsBattle() ? GetExpectedBattleUnits() : Count, Units->GetNumPendingBirths(), UnitIds.Num(), NumMismatched);
 }
 
 void UHOLStressTestSubsystem::FinishMeasure()

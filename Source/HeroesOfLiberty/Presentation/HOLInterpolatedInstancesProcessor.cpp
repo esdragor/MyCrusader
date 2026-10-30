@@ -26,6 +26,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Presentation/HOLCorpse.h"
@@ -267,6 +268,43 @@ UHOLInterpolatedInstancesProcessor::UHOLInterpolatedInstancesProcessor()
 	bRequiresGameThreadExecution = true;
 }
 
+namespace
+{
+	/**
+	 * F7.3 (D381): the fog of the player whose screen this is. A unit (or its body) of another camp out of sight of his camp is
+	 * not drawn: kept in the instances (Mass pairs the transform, the animation and the colour by position), but shrunk and
+	 * sunk far below the ground, so it is neither seen nor casting a shadow. Nothing is hidden without a fog, or for a
+	 * spectator (UHOLVisionSubsystem::IsUnitShown).
+	 */
+	struct FFogView
+	{
+		const UHOLVisionSubsystem* Vision = nullptr;
+		int32 ViewerSlot = INDEX_NONE;
+
+		explicit FFogView(const UWorld* World)
+		{
+			const UHOLVisionSubsystem* Subsystem = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+			if (Subsystem && Subsystem->IsStarted() && Subsystem->GetMode() != EHOLFogMode::Disabled)
+			{
+				Vision = Subsystem;
+				const APlayerController* Controller = World->GetFirstPlayerController();
+				const AHOLPlayerState* State = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+				ViewerSlot = State ? State->GetPlayerIndex() : INDEX_NONE;
+			}
+		}
+
+		/** Hides Drawn when the unit of OwnerPlayer standing at Location is out of the viewer's sight. */
+		void Apply(const uint8 OwnerPlayer, const FVector& Location, FTransform& Drawn) const
+		{
+			if (Vision && !Vision->IsUnitShown(ViewerSlot, OwnerPlayer, Location))
+			{
+				Drawn.SetScale3D(FVector(0.0001));
+				Drawn.AddToTranslation(FVector(0., 0., -100000.));
+			}
+		}
+	};
+}
+
 void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
 {
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
@@ -351,7 +389,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	// (AnimSequenceTrackTime::GetTime reads World->GetTimeSeconds()).
 	const double WorldSeconds = World ? World->GetTimeSeconds() : 0.;
 
-	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds](FMassExecutionContext& Context)
+	const FFogView Fog(World);
+	EntityQuery.ForEachEntityChunk(Context, [Alpha, StepSeconds, Sources, &Sites, &SlotColors, SpeedScale, WorldSeconds, &Fog](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -390,6 +429,8 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 				FQuat::Slerp(From.GetRotation(), To.GetRotation(), Alpha),
 				FMath::Lerp(From.GetLocation(), To.GetLocation(), Alpha),
 				To.GetScale3D() * Constants.MeshScale);
+			// F7.3: a unit of another camp out of sight is not drawn.
+			Fog.Apply(States[EntityIt].OwnerPlayer, To.GetLocation(), Drawn);
 
 			const FMassEntityHandle Entity = Context.GetEntity(EntityIt);
 			const FMassRepresentationLODFragment& RepresentationLOD = RepresentationLODs[EntityIt];
@@ -545,7 +586,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 	});
 
 	// The bodies (J7c, bodies kept 30 s): each ends its unit's fall, holds its last pose, then sinks (HOLCorpse).
-	CorpseQuery.ForEachEntityChunk(Context, [&SlotColors, WorldSeconds](FMassExecutionContext& Context)
+	CorpseQuery.ForEachEntityChunk(Context, [&SlotColors, WorldSeconds, &Fog](FMassExecutionContext& Context)
 	{
 		UMassRepresentationSubsystem* RepresentationSubsystem = Context.GetSharedFragment<FMassRepresentationSubsystemSharedFragment>().RepresentationSubsystem;
 		check(RepresentationSubsystem);
@@ -571,6 +612,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 			const double Age = WorldSeconds - Corpse.LaidAt;
 			FTransform Drawn = Corpse.Base;
 			Drawn.AddToTranslation(FVector(0., 0., -HOLCorpse::GetSinkOffset(Age)));
+			Fog.Apply(Corpse.OwnerPlayer, Corpse.Base.GetLocation(), Drawn);
 
 			const FMassEntityHandle Entity = Context.GetEntity(EntityIt);
 			const FMassRepresentationLODFragment& RepresentationLOD = RepresentationLODs[EntityIt];

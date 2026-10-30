@@ -28,7 +28,7 @@ struct FHOLHeroSheet
 {
 	GENERATED_BODY()
 
-	/** 1 from his birth on (levels come later); 0 without a hero. */
+	/** 1 to 6 from his XP (J8b.2, HOLHeroXP::GetLevel); 0 without a hero. */
 	UPROPERTY()
 	uint8 Level = 0;
 
@@ -39,9 +39,20 @@ struct FHOLHeroSheet
 	UPROPERTY()
 	EHOLHeroState State = EHOLHeroState::None;
 
+	/** J8c.3: his cries of Serrez les rangs so far (wraps at 256): one more, every machine shows the cry (J8c-Q4). */
+	UPROPERTY()
+	uint8 Cries = 0;
+
+	/** J8c.3: where his last banner was planted (cm), and the step it falls at (J8c-Q3); -1: never planted. */
+	UPROPERTY()
+	FIntPoint BannerLocation = FIntPoint::ZeroValue;
+	UPROPERTY()
+	int32 BannerEndStep = -1;
+
 	bool operator==(const FHOLHeroSheet& Other) const
 	{
-		return Level == Other.Level && Health == Other.Health && State == Other.State;
+		return Level == Other.Level && Health == Other.Health && State == Other.State && Cries == Other.Cries
+			&& BannerLocation == Other.BannerLocation && BannerEndStep == Other.BannerEndStep;
 	}
 	bool operator!=(const FHOLHeroSheet& Other) const { return !(*this == Other); }
 };
@@ -58,7 +69,7 @@ struct FHOLHeroPrivateSheet
 	UPROPERTY()
 	int32 XP = 0;
 
-	/** Step at which each ability is ready again, one per ability (none before the abilities). */
+	/** Step at which each ability is ready again, indexed by EHOLHeroAbility (J8c.3; empty before his first cast). */
 	UPROPERTY()
 	TArray<int32> CooldownEndSteps;
 
@@ -93,13 +104,13 @@ struct FHOLHeroSheets
 
 namespace HOLHeroSheet
 {
-	/** His level for now (levels come later). */
+	/** His level at birth, 0 XP (J8b.2: then HOLHeroXP::GetLevel of his XP). */
 	constexpr uint8 StartLevel = 1;
 
 	/**
-	 * The sheet from what the server knows (pure). Present and not dying: Alive, StartLevel, the shown HP, death step -1.
+	 * The sheet from what the server knows (pure). Present and not dying: Alive, the level of his XP (J8b.2), the shown HP, death step -1.
 	 * Present and dying (a death step, or no health left): Dead, 0 HP, its death step. Absent: Dead stays Dead with its
-	 * death step (the body destroyed after the fall); otherwise None (no hero yet). XP and cooldowns carry over from
+	 * death step and its level follows the XP (the body destroyed after the fall; D06); otherwise None (no hero yet). XP and cooldowns carry over from
 	 * Previous. ReadyToReturn (set by UHOLHeroSubsystem::SetReturnReady, J8a.4) is kept while dead, body there or not.
 	 */
 	HEROESOFLIBERTY_API FHOLHeroSheets Make(const FHOLHeroFacts& Facts, const FHOLHeroSheets& Previous);

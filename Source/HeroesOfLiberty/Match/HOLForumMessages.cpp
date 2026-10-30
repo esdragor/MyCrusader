@@ -59,7 +59,7 @@ FText HOLForumMessages::GetPlayerName(const FHOLMatchConfig& Config, const int32
 	return !Name.IsEmpty() ? FText::AsCultureInvariant(Name) : GetSlotName(Slot, ViewerSlot, Config);
 }
 
-FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, const int32 ViewerSlot)
+FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, const int32 ViewerSlot, const bool bSeesForum)
 {
 	FHOLForumMessage Message;
 	const int32 Slot = Event.Slot;
@@ -67,6 +67,15 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	// V4-Q3: its camp alone (itself and its allies) has the major alert; a spectator never.
 	const int32 Camp = HOLVictoryRules::GetCamp(Config, Slot);
 	Message.bAlert = ViewerSlot != INDEX_NONE && Camp != INDEX_NONE && HOLVictoryRules::GetCamp(Config, ViewerSlot) == Camp;
+	// F6e.4 (D353): the show follows the vision. Whoever sees the forum, or is the ally of the one who holds its ruin, has the alert too.
+	const bool bForumEvent = Event.Kind == EHOLForumEventKind::Fell || Event.Kind == EHOLForumEventKind::HoldStarted || Event.Kind == EHOLForumEventKind::Razed;
+	if (ViewerSlot != INDEX_NONE && bForumEvent)
+	{
+		const int32 ViewerCamp = HOLVictoryRules::GetCamp(Config, ViewerSlot);
+		const bool bAttackersAlly = Event.Kind == EHOLForumEventKind::HoldStarted && Event.OtherSlot != INDEX_NONE && Event.OtherSlot != ViewerSlot
+			&& ViewerCamp != INDEX_NONE && HOLVictoryRules::GetCamp(Config, Event.OtherSlot) == ViewerCamp;
+		Message.bAlert = Message.bAlert || bSeesForum || bAttackersAlly;
+	}
 	// V4.5b: no alert of its own loss (its defeat, its last life gone by a fall or a razing): its Defeat banner comes, the
 	// thread's line is enough, whatever the order the multicast and the end's state arrive in. An ally's loss stays an alert.
 	const bool bOwnLoss = Event.Kind == EHOLForumEventKind::Defeated || Event.Kind == EHOLForumEventKind::KingDied
@@ -161,7 +170,66 @@ FHOLForumMessage HOLForumMessages::GetHeroReadyMessage()
 	return Message;
 }
 
+TArray<FHOLForumMessage> HOLForumMessages::GetHeroLevelMessages(const int32 OldLevel, const int32 NewLevel)
+{
+	TArray<FHOLForumMessage> Messages;
+	if (NewLevel <= OldLevel)
+	{
+		return Messages;
+	}
+	FHOLForumMessage Level;
+	Level.Text = FText::Format(LOCTEXT("MessageHeroLevel", "Paladin-Commandant : niveau {0}"), FText::AsNumber(NewLevel));
+	Messages.Add(Level);
+	for (int32 Tier = 0; Tier < UE_ARRAY_COUNT(HeroTierLevels); ++Tier)
+	{
+		if (OldLevel < HeroTierLevels[Tier] && NewLevel >= HeroTierLevels[Tier])
+		{
+			FHOLForumMessage Reached;
+			Reached.Text = FText::Format(LOCTEXT("MessageHeroTier", "Palier {0} atteint"), FText::AsNumber(Tier + 1));
+			Messages.Add(Reached);
+		}
+	}
+	for (FHOLForumMessage& Message : Messages)
+	{
+		Message.Shown = FString::Printf(TEXT("Hero message: %s"), *Message.Text.ToString());
+	}
+	return Messages;
+}
+
 #undef LOCTEXT_NAMESPACE
+
+int32 FHOLHeroLevelWatch::Update(const int32 Slot, const int32 Level)
+{
+	if (Slot < 0)
+	{
+		return 0;
+	}
+	if (!Seen.IsValidIndex(Slot))
+	{
+		Seen.SetNumZeroed(Slot + 1);
+	}
+	const int32 Before = Seen[Slot];
+	Seen[Slot] = Level;
+	// Up from a level seen (1 at least); the first one seen, or none (0), is no level up.
+	return Before >= 1 && Level > Before ? Before : 0;
+}
+
+bool FHOLHeroCryWatch::Update(const int32 Slot, const int32 Cries)
+{
+	if (Slot < 0)
+	{
+		return false;
+	}
+	while (!Seen.IsValidIndex(Slot))
+	{
+		Seen.Add(INDEX_NONE);
+	}
+	const int32 Before = Seen[Slot];
+	Seen[Slot] = Cries;
+	// Forward of the count seen, within half the wrap of 256 (a count going back is a reset, not a cry).
+	const int32 Forward = (Cries - Before + 256) % 256;
+	return Before >= 0 && Forward >= 1 && Forward < 128;
+}
 
 bool FHOLHeroReadyWatch::Update(const int32 ViewerSlot, const EHOLHeroState State)
 {

@@ -1,0 +1,32 @@
+# Brouillard de guerre (F7) : carte noire, vue autour de mes unités, ennemis cachés ni dessinés ni choisis hors de la vue, ligne « Fog » du rapport
+# Plain, moi (slot 0) et un adversaire (slot 1, équipes séparées). Positions dans le repère du centre du joueur (cm), vue du centre 64 m.
+# Le brouillard s'allume par hol.Fog.Mode 2 (Normal) puis hol.Fog.Render 1 (dessin) : la carte est rechargée pour que la partie le prenne (F8 viendra en faire une option du menu).
+hol.Fog.Mode 2
+hol.Fog.Render 1
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Cheat.Resources 5000
+# Mes 4 Hommes d'armes devant le centre.
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+# 3 Lanciers ennemis à 35 m du centre : dans ma vue, dessinés, sélectionnables.
+hol.Camera.FocusNear 3500 0
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 250
+waitunits 7
+# 5 Lanciers ennemis à 100 m, hors de ma vue : cachés, on ne peut ni les cliquer, ni les entourer d'un cadre.
+hol.Camera.FocusNear 10000 0
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 350
+waitunits 12
+hol.Camera.FocusNear 0 0
+hol.Camera.Zoom -2
+frames 10
+hol.HUD.Report 1
+note Brouillard : noir hors de la vue de mes unités et de mon centre, les 3 Lanciers ennemis à 35 m sont dessinés et se sélectionnent (clic, cadre, double clic).
+note Mes 4 Hommes d'armes envoyés vers l'est (clic droit à 80 m, puis plus loin) : le noir recule, la zone parcourue reste grise (explorée), les 5 Lanciers apparaissent quand ils entrent dans la vue et disparaissent quand ils en sortent.
+note Dans la console (²), hol.HUD.Report puis le journal « HUD fog: » donne : cases en vue, explorées, unités des autres montrées et cachées. Limite connue : les fantômes de bâtiments teintés ne sont pas encore dessinés (F7.3).

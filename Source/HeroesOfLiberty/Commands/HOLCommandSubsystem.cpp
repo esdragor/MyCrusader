@@ -3,12 +3,16 @@
 #include "Commands/HOLCommandSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "NavigationSystem.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 bool UHOLCommandSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
@@ -53,6 +57,7 @@ void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
 	PendingConstructionOrders.RemoveAll(OfPlayer);
 	PendingBuildOrders.RemoveAll(OfPlayer);
 	PendingHeroReturnOrders.Remove(PlayerIndex);
+	PendingHeroAbilityOrders.RemoveAll(OfPlayer);
 }
 
 void UHOLCommandSubsystem::IssueHeroReturnOrder(const int32 PlayerIndex)
@@ -68,6 +73,21 @@ void UHOLCommandSubsystem::ConsumeHeroReturnOrders(TArray<int32>& OutPlayerIndic
 {
 	OutPlayerIndices.Reset();
 	Swap(OutPlayerIndices, PendingHeroReturnOrders);
+}
+
+void UHOLCommandSubsystem::IssueHeroAbilityOrder(const int32 PlayerIndex, const EHOLHeroAbility Ability, const FVector& Location)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingHeroAbilityOrders.Add(FHOLHeroAbilityOrder{ PlayerIndex, Ability, Location });
+}
+
+void UHOLCommandSubsystem::ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingHeroAbilityOrders);
 }
 
 void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask,
@@ -117,6 +137,16 @@ void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitId
 	{
 		return;
 	}
+	// F5: a player's attack on a unit its camp does not see (a modified client guessing an identifier).
+	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	FHOLUnitView Target;
+	if (Kind == EHOLOrderKind::Attack && PlayerIndex != INDEX_NONE && Vision && Units && Units->GetUnitView(TargetUnitId, Target)
+		&& !Vision->IsVisible(PlayerIndex, Target.Location))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Fog: attack of slot %d on hidden unit %u refused"), PlayerIndex, TargetUnitId);
+		return;
+	}
 	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();
 	Order.UnitIds = UnitIds;
 	Order.PlayerIndex = PlayerIndex;
@@ -153,6 +183,14 @@ void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32
 {
 	if (UnitIds.Num() == 0 || !Building || IsRefused(PlayerIndex))
 	{
+		return;
+	}
+	// F5: nor on a building out of its camp's sight (a ghost, D382).
+	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const FHOLBuildingTypeRow* Type = Building->GetType();
+	if (PlayerIndex != INDEX_NONE && Vision && Type && !Vision->IsAreaVisible(PlayerIndex, Building->GetActorLocation(), 0.5 * Type->Footprint))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Fog: attack of slot %d on hidden building %s refused"), PlayerIndex, *Building->GetName());
 		return;
 	}
 	FHOLMoveOrder& Order = PendingMoveOrders.AddDefaulted_GetRef();

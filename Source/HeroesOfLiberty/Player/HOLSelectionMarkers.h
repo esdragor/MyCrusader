@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Match/HOLForumMessages.h"
 #include "Simulation/HOLUnitView.h"
 #include "HOLSelectionMarkers.generated.h"
 
@@ -71,6 +72,12 @@ private:
 	void UpdateOrderLines();
 	/** V3.3 (V3-Q5): the hold's ring around each main forum down (HOLForumRules::GetRing), from the replicated state. */
 	void UpdateForumRings();
+	/**
+	 * J8c.4 (J8c-Q4): the player's own auras on the ground, to him alone: a light golden circle of 12 m around his living
+	 * hero and around his standing banner; while the banner is aimed, the 16 m of its reach around the hero and its aura
+	 * under the cursor (golden within reach, red beyond). Circles of strips, each at the ground's height (hills).
+	 */
+	void UpdateAuraRings();
 	/** A pole and its cloth more for the flags (one per building with a rally point), made the first time needed. */
 	void AddFlag();
 
@@ -158,4 +165,40 @@ private:
 	/** The last order's point, and the seconds since it was given (the ring shows while under PingSeconds). */
 	FVector PingPoint = FVector::ZeroVector;
 	float PingAge = TNumericLimits<float>::Max();
+
+	/**
+	 * J8b.4 (J8b-Q4): the heroes gone up, as this machine sees their public sheets (every player, spectators too): a slot's
+	 * golden flash on its hero, the seconds since it started (HeroFlashSeconds).
+	 */
+	void UpdateHeroFlashes(float DeltaSeconds);
+	FHOLHeroLevelWatch HeroLevelWatch;
+	TMap<int32, float> HeroFlashes;
+	/** The flash's rings drawn this frame (not counted as rings in Describe). */
+	int32 HeroFlashRings = 0;
+
+	/**
+	 * J8c.4 loop 5 (J8c-Q4): the heroes' cries, as this machine sees their public sheets (every player, spectators too): a
+	 * brief white flash on each unit of the hero's player within 12 m of him when he cried (the units as they were then,
+	 * followed as they are drawn), and the cry's sound.
+	 */
+	struct FCryFlash
+	{
+		int32 Slot = INDEX_NONE;
+		float Age = 0.f;
+		TArray<uint32> Units;
+	};
+	void UpdateCryFlashes(float DeltaSeconds);
+	FHOLHeroCryWatch HeroCryWatch;
+	TArray<FCryFlash> CryFlashes;
+	/** The flash's rings drawn this frame (not counted as rings in Describe). */
+	int32 CryFlashRings = 0;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> AuraRings;
+	/** "hero (x, y) 1200, banner (x, y) 1200, reach 1600, aim (x, y) ok" or "none": what UpdateAuraRings drew last. */
+	FString AuraRingsDescription = TEXT("none");
+
+public:
+	/** The player's aura circles drawn (hol.Select.Report's "Aura rings:" line). */
+	const FString& DescribeAuraRings() const { return AuraRingsDescription; }
 };

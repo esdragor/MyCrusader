@@ -9,11 +9,16 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/WorldSettings.h"
 #include "HeroesOfLibertyLog.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Map/HOLStartSlot.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLForumPresence.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/UnrealNetwork.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -43,6 +48,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, bMatchOver);
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
 	DOREPLIFETIME(AHOLGameState, LaunchConfig);
+	DOREPLIFETIME(AHOLGameState, FogMode);
 	DOREPLIFETIME(AHOLGameState, ForumStates);
 	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
@@ -164,14 +170,27 @@ const FHOLForumState& AHOLGameState::GetForumState(const int32 Slot) const
 	return ForumStates.IsValidIndex(Slot) ? ForumStates[Slot] : Standing;
 }
 
+int32 AHOLGameState::GetTier(const int32 Slot) const
+{
+	// The level is the public sheet's on a client as on the server (UHOLHeroLibrary), so the tier needs nothing sent more.
+	return HOLHeroXP::GetTier(UHOLHeroLibrary::GetHeroLevel(this, Slot));
+}
+
+FHOLForumTuning AHOLGameState::GetForumTuning(const int32 Slot) const
+{
+	FHOLForumTuning Tuning = FHOLForumTuning::FromSettings();
+	Tuning.Tier = FMath::Max(Tuning.Tier, GetTier(Slot));
+	return Tuning;
+}
+
 int32 AHOLGameState::GetLives(const int32 Slot) const
 {
-	return HOLForumRules::GetLives(GetForumState(Slot), FHOLForumTuning::FromSettings());
+	return HOLForumRules::GetLives(GetForumState(Slot), GetForumTuning(Slot));
 }
 
 float AHOLGameState::GetForumRebuildProgress(const int32 Slot) const
 {
-	return HOLForumRules::GetRebuildProgress(GetForumState(Slot), FHOLForumTuning::FromSettings());
+	return HOLForumRules::GetRebuildProgress(GetForumState(Slot), GetForumTuning(Slot));
 }
 
 void AHOLGameState::SetForumState(const int32 Slot, const FHOLForumState& State)
@@ -257,7 +276,7 @@ bool AHOLGameState::HandleForumFall(AHOLBuilding& Forum)
 		return false;
 	}
 	FHOLForumState State = ForumStates[Slot];
-	const int32 Lives = HOLForumRules::Fall(State, FHOLForumTuning::FromSettings());
+	const int32 Lives = HOLForumRules::Fall(State, GetForumTuning(Slot));
 	if (Lives == INDEX_NONE)
 	{
 		return false;
@@ -325,8 +344,6 @@ void AHOLGameState::AdvanceForums()
 	{
 		return;
 	}
-	FHOLForumTuning Tuning;
-	bool bTuning = false;
 	for (int32 Slot = 0; Slot < ForumStates.Num(); ++Slot)
 	{
 		// A forum that fell for good waits for its defeat, which destroys it.
@@ -334,11 +351,7 @@ void AHOLGameState::AdvanceForums()
 		{
 			continue;
 		}
-		if (!bTuning)
-		{
-			Tuning = FHOLForumTuning::FromSettings();
-			bTuning = true;
-		}
+		const FHOLForumTuning Tuning = GetForumTuning(Slot);
 		FHOLForumState State = ForumStates[Slot];
 		const FHOLForumState Old = State;
 		const EHOLForumPhase Before = State.Phase;
@@ -726,6 +739,19 @@ void AHOLGameState::SendForumEvent(const FHOLForumEvent& Event)
 	}
 }
 
+bool AHOLGameState::DoesViewerSeeForum(const int32 ViewerSlot, const int32 ForumSlot) const
+{
+	const UWorld* World = GetWorld();
+	const UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	if (!Vision || !Vision->IsStarted() || Vision->GetMode() == EHOLFogMode::Disabled || ViewerSlot == INDEX_NONE)
+	{
+		return false;
+	}
+	const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(World, ForumSlot);
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
+	return Start && Type && Vision->IsAreaVisible(ViewerSlot, Start->GetMainCentreLocation(), 0.5 * Type->Footprint);
+}
+
 void AHOLGameState::MulticastForumEvent_Implementation(const FHOLForumEvent& Event)
 {
 	const UWorld* World = GetWorld();
@@ -740,7 +766,7 @@ void AHOLGameState::MulticastForumEvent_Implementation(const FHOLForumEvent& Eve
 				ViewerSlot = PlayerState->GetPlayerIndex();
 			}
 		}
-		const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, LaunchConfig, ViewerSlot);
+		const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, LaunchConfig, ViewerSlot, DoesViewerSeeForum(ViewerSlot, Event.Slot));
 		UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Message.Shown);
 	}
 	OnForumEvent.Broadcast(Event);
@@ -877,6 +903,7 @@ bool AHOLGameState::SetHeroSheet(const int32 Slot, const FHOLHeroSheet& Sheet)
 	ForceNetUpdate();
 	// No OnRep on the server (listen or solo): its own player hears it here.
 	NoteHeroReady();
+	NoteHeroLevels();
 	OnHeroSheetsChanged.Broadcast();
 	return true;
 }
@@ -884,7 +911,27 @@ bool AHOLGameState::SetHeroSheet(const int32 Slot, const FHOLHeroSheet& Sheet)
 void AHOLGameState::OnRep_HeroSheets()
 {
 	NoteHeroReady();
+	NoteHeroLevels();
 	OnHeroSheetsChanged.Broadcast();
+}
+
+void AHOLGameState::NoteHeroLevels()
+{
+	const UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	for (int32 Slot = 0; Slot < HeroSheets.Num(); ++Slot)
+	{
+		const int32 Level = HeroSheets[Slot].Level;
+		const int32 OldLevel = HeroLevelWatch.Update(Slot, Level);
+		if (OldLevel > 0)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero level up: slot %d level %d -> %d"), Slot, OldLevel, Level);
+			OnHeroLevelUp.Broadcast(Slot, OldLevel, Level);
+		}
+	}
 }
 
 void AHOLGameState::NoteHeroReady()

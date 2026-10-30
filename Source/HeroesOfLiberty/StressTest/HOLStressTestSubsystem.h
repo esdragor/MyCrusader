@@ -110,6 +110,10 @@ private:
 	TArray<FName> GetBattleTypes() const;
 	/** S3, S4: where a group of an army is born (one disc per type and side), and where its attack-move leads. */
 	FVector GetBattleGroupCentre(int32 Side, int32 TypeIndex) const;
+	/** S3, S4 (J8): where the hero of a side is born: the middle of its front line, ahead of the melee. */
+	FVector GetBattleHeroLocation(int32 Side) const;
+	/** S3, S4 (J8): the units that exist once every birth is served: Count soldiers plus one hero per side. */
+	int32 GetExpectedBattleUnits() const;
 	/** S4: the Archers of an army are born in BattleArcherDiscs small discs side by side, a band just behind its melee. */
 	FVector GetArcherDiscCentre(int32 Side, int32 Disc) const;
 	/** S4: which of the Archer discs a point belongs to (by X). */
@@ -120,8 +124,10 @@ private:
 	bool IsBattleJoined() const;
 	/** S3, S4: the units of the run are every living unit (the dead leave: the identifiers are read again). */
 	void RefreshBattleUnitIds();
-	/** S3, S4: units standing (not dying) per side. */
+	/** S3, S4: soldiers standing (not dying) per side, the heroes (J8) left out. */
 	void CountBattleAlive(int32 OutAlive[2]) const;
+	/** S3, S4 (J8): heroes standing (not dying) per side, and the health of the first of each side (0 for none). */
+	void CountBattleHeroes(int32 OutAlive[2], float OutHealth[2] = nullptr) const;
 	/** S3, S4: survivors, hits, kills and arrows of the measure. */
 	void LogBattleSummary() const;
 
@@ -210,6 +216,8 @@ private:
 	int64 ArrowsLandedAtMeasureStart = 0;
 	int64 ArrowsLostAtMeasureStart = 0;
 	int32 AliveAtMeasureStart[2] = {};
+	int32 HeroesAtMeasureStart[2] = {};
+	float HeroHealthAtMeasureStart[2] = {};
 	float ContactSeconds = -1.f;
 	double ArrowsInFlightSum = 0.0;
 	int64 ArrowsInFlightMax = 0;

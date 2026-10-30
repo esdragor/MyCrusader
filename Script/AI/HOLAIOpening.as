@@ -12,12 +12,9 @@ struct FHOLAIOpeningStep
 	// Wood needed in stock to place it (its Cost in BuildingTypes.csv: the server refuses and logs the order otherwise).
 	int WoodCost = 0;
 
-	// Built beside the nearest source of this resource (0 food, 1 wood, 2 stone, 3 gold); -1: near the centre, on the side
-	// away from the nearest food and wood.
-	int NearResource = -1;
+	// Built beside the nearest source of this resource (0 food, 1 wood, 2 stone, 3 gold).
+	int NearResource = 0;
 
-	// Waits until the places left are few (HOLAIOpeningData::HouseMargin): the house.
-	bool bWhenRoomLow = false;
 }
 
 // The numbers of the opening.
@@ -56,8 +53,30 @@ struct FHOLAIOpeningData
 	float ReserveStone = 0.f;
 	float ReserveGold = 0.f;
 
-	// The house is placed when the places left (cap - used - waiting in a queue) fall to this.
-	int HouseMargin = 3;
+	// The house (IA1.7): placed when the places left (cap - used - waiting in a queue) plus the places of the houses under
+	// construction fall to the margin, which is what the producing buildings fill during the house's building time plus this
+	// walk of the builder (HouseMargin).
+	float HouseWalkSeconds = 5.f;
+
+	// The population the game allows (GDD): no house to go above it.
+	int MaxPopulation = 175;
+
+	// Sites (buildings not finished, the centre apart) under way at once: a house is not counted, the other buildings wait.
+	int MaxSites = 3;
+
+	// Peasants the slot must have for one to leave its work and build (a lone Peasant would stop the whole economy).
+	int MinPeasantsToBuild = 2;
+
+	// A camp comes again beside the nearest source of its resource when that source is this far (cm) from the nearest deposit
+	// taking it: the first massif is cut, the next one is reached by its edge.
+	float CampFarDistance = 1500.f;
+
+	// The farm block (a mill and FarmCount farms, FindAIFarmBlock) is begun when the berries left would last less than this
+	// many seconds at the pace of the Peasants on the food (about the time the block takes to build).
+	float FarmLeadSeconds = 240.f;
+
+	// Rings of tiles searched around the centre for the farm block.
+	int FarmRings = 10;
 
 	// Distance (cm) from the centre, on the side away from the sources, where the search for the house's spot starts.
 	float AwayDistance = 1500.f;
@@ -67,6 +86,81 @@ struct FHOLAIOpeningData
 
 	// The buildings, in order: the next one is the first whose type the slot has none of (in any state).
 	TArray<FHOLAIOpeningStep> Steps;
+
+	// Farms in the block, and the Farm as the table gives it (the brain reads it; DefaultData holds the fallback).
+	int FarmCount = 8;
+	FHOLAITypeFigures Farm;
+
+	// The mining camp (built again beside a far vein, not one of the Steps): its wood is checked before the order.
+	FHOLAITypeFigures MiningCamp;
+
+	// A second block (IA2.7) is begun when the first is all built, every field is held, and the food in stock is under this: the Peasants
+	// outnumber the places. At most MaxFarmBlocks blocks.
+	int MaxFarmBlocks = 2;
+	int SecondBlockFood = 150;
+
+	// The army (IA2.4). The rules and figures of HOLAIArmy.as (the brain loads the figures from the tables).
+	FHOLAIArmyData Army;
+
+	// The game's seconds, set by the brain each thought (the summary has no clock): the army share rises with it.
+	float GameSeconds = 0.f;
+
+	// Peasants (alive and queued) from which the military buildings are built, and from which the army spends and produces: the economy is
+	// established. Below, the army share is 0.
+	int ArmyBuildPeasants = 14;
+	int ArmyMinPeasants = 16;
+
+	// The wood is kept for the military building (IA2.7: the farms of the block spent it 75 at a time and the Barracks, 150, never came)
+	// while the food in stock is at least this: no mill or farm of the block is ordered until the military building is placed.
+	int SaveForArmyFood = 200;
+
+	// Share of the total spending (economy + army) that goes to the army once established: the base, rising linearly over ArmyRampSeconds of
+	// game to the max; plus the bump while the enemy's army seen is stronger than ours (HOLAIArmy::PowerRatio under 1); never over the cap.
+	float ArmyShareBase = 0.15f;
+	float ArmyShareMax = 0.45f;
+	float ArmyRampSeconds = 600.f;
+	float ArmyThreatBump = 0.15f;
+	float ArmyShareCap = 0.6f;
+
+	// Units waiting in one military building's queue at most (the one in production counts).
+	int MilitaryQueue = 2;
+
+	// Distances (cm) from the centre, toward the enemy centre (or +X when unknown): where the military buildings' spot search starts,
+	// and the rally point of the soldiers (a point, not a source).
+	float MilitaryDistance = 1500.f;
+	float RallyDistance = 1500.f;
+
+	// The military buildings, with their wood cost (the brain reads the tables; DefaultData holds the fallback). Their NearResource is unused.
+	TArray<FHOLAIOpeningStep> ArmySteps;
+}
+
+// What to do with one finished military building (IA2.4): the unit to queue (if any) and where its soldiers gather.
+struct FHOLAIMilitaryOrder
+{
+	// The building (its type name and its ground point, which names it to the order library).
+	FName Building;
+	FVector Location;
+
+	// A unit to queue (Unit), or not.
+	bool bQueue = false;
+	FName Unit;
+}
+
+// The military buildings' orders of one thought.
+struct FHOLAIMilitaryChoice
+{
+	TArray<FHOLAIMilitaryOrder> Orders;
+
+	// The soldiers' rally point (RallyPointOf).
+	FVector RallyPoint;
+}
+
+// The farm block the slot builds (IA1.7): the spots FindAIFarmBlock gave, kept by the brain from one thought to the next.
+struct FHOLAIFarmPlan
+{
+	bool bActive = false;
+	FVector Mill;
+	TArray<FVector> Farms;
 }
 
 // The building the opening wants now: where to look for its spot and who builds it.
@@ -78,7 +172,12 @@ struct FHOLAIBuildChoice
 	FVector Anchor;
 	// The Peasant sent to build it (an idle one first), -1 without an order.
 	int Builder = -1;
-	// Why nothing: "done", "not yet", "no wood", "no source", "no builder", "no centre"; empty with an order.
+	// The exact spot (a farm block's, already searched): no search around Anchor.
+	bool bAtSpot = false;
+	FVector Spot;
+	// Nothing to order yet: the farm block is to be planned (FindAIFarmBlock around the centre), then asked again.
+	bool bPlanFarms = false;
+	// Why nothing: "done", "not yet", "busy", "no wood", "no source", "no builder", "no centre"; empty with an order.
 	FString Nothing;
 }
 
@@ -107,7 +206,7 @@ struct FHOLAIGatherGroup
 
 namespace HOLAIOpening
 {
-	// The opening as the game plays it: house, then lumber camp near the wood, then mill near the food (costs from
+	// The opening as the game plays it: lumber camp near the wood, then mill near the food; the houses, the later camps and the farm block are rules of ChooseBuild (costs from
 	// BuildingTypes.csv).
 	FHOLAIOpeningData DefaultData()
 	{
@@ -123,13 +222,11 @@ namespace HOLAIOpening
 		Data.Peasant.GatherStone = 0.7f;
 		Data.Peasant.GatherGold = 0.7f;
 		Data.House.CostWood = 50;
-		Data.House.BuildTime = 20.f;
+		Data.House.BuildTime = 10.f;
 		Data.House.Population = 10;
-		FHOLAIOpeningStep House;
-		House.Type = n"House";
-		House.WoodCost = 50;
-		House.bWhenRoomLow = true;
-		Data.Steps.Add(House);
+		Data.Farm.CostWood = 75;
+		Data.Farm.BuildTime = 7.5f;
+		Data.MiningCamp.CostWood = 100;
 		FHOLAIOpeningStep Camp;
 		Camp.Type = n"LumberCamp";
 		Camp.WoodCost = 100;
@@ -140,6 +237,15 @@ namespace HOLAIOpening
 		Mill.WoodCost = 100;
 		Mill.NearResource = 0;
 		Data.Steps.Add(Mill);
+		Data.Army = HOLAIArmy::DefaultData();
+		FHOLAIOpeningStep Barracks;
+		Barracks.Type = n"Barracks";
+		Barracks.WoodCost = 150;
+		Data.ArmySteps.Add(Barracks);
+		FHOLAIOpeningStep Range;
+		Range.Type = n"ArcheryRange";
+		Range.WoodCost = 150;
+		Data.ArmySteps.Add(Range);
 		return Data;
 	}
 
@@ -244,9 +350,299 @@ namespace HOLAIOpening
 		return Counts[0] + Counts[1] + Counts[2] + Counts[3];
 	}
 
-	// The next building: the first of the list the slot has none of, when its turn has come, its wood is there, its anchor
-	// exists and a Peasant can build it. One decision, the builder an idle Peasant first, else the latest born.
-	FHOLAIBuildChoice ChooseBuild(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	// The buildings of a type the slot has (any state).
+	int CountBuildings(const FHOLAISummary& Summary, FName Type)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == Type)
+			{
+				Count++;
+			}
+		}
+		return Count;
+	}
+
+	// The slot has a building of this type (any state) within 100 cm of the point, on the ground plane.
+	bool HasBuildingAt(const FHOLAISummary& Summary, FName Type, FVector Point)
+	{
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			FVector Away = Summary.Buildings[Index].Location - Point;
+			Away.Z = 0;
+			if (Summary.Buildings[Index].TypeName == Type && Away.Size() < 100.0)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Sites under way: buildings not finished (the centre apart, it is not built by the AI).
+	int SitesUnderWay(const FHOLAISummary& Summary)
+	{
+		int Sites = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].State != EHOLConstructionState::Finished && Summary.Buildings[Index].TypeName != n"MainCentre")
+			{
+				Sites++;
+			}
+		}
+		return Sites;
+	}
+
+	// The places the houses under construction will give.
+	int PlacesComing(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		int Coming = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == n"House" && Summary.Buildings[Index].State != EHOLConstructionState::Finished)
+			{
+				Coming += Data.House.Population;
+			}
+		}
+		return Coming;
+	}
+
+	// The margin of places (IA1.7): what the buildings in production fill during a house's building time and its builder's
+	// walk. A producer is a building with a unit in production; the centre counts as one while none is.
+	int HouseMargin(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		int Producers = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].bProducing)
+			{
+				Producers++;
+			}
+		}
+		// The military buildings fill places like the centre does, once the economy stands (IA2.4): a finished one not producing now counts.
+		if (HOLAINeeds::ArmyEstablished(Summary, Data))
+		{
+			for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+			{
+				if (!Summary.Buildings[Index].bProducing && Summary.Buildings[Index].State == EHOLConstructionState::Finished
+					&& IsMilitaryType(Data, Summary.Buildings[Index].TypeName))
+				{
+					Producers++;
+				}
+			}
+		}
+		if (Producers == 0 && Summary.bHasCentre)
+		{
+			Producers = 1;
+		}
+		if (Data.Peasant.BuildTime <= 0.f)
+		{
+			return Producers;
+		}
+		const int PerProducer = Math::CeilToInt((Data.House.BuildTime + Data.HouseWalkSeconds) / Data.Peasant.BuildTime);
+		return Producers * Math::Max(1, PerProducer);
+	}
+
+	// A house is wanted when the places left, with the houses coming, are down to the margin and the game's population cap
+	// is not reached by what is already there and coming.
+	bool HouseWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (!Summary.bHasPopulation)
+		{
+			return false;
+		}
+		const int Coming = PlacesComing(Summary, Data);
+		if (Summary.PopulationCap + Coming >= Data.MaxPopulation)
+		{
+			return false;
+		}
+		return PlacesLeft(Summary) + Coming <= HouseMargin(Summary, Data);
+	}
+
+	// Seconds the berries (the food sources of the summary) last at the pace of the Peasants on the food: 0 with no source,
+	// a very long time with no pace to measure.
+	float FoodSecondsLeft(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (Summary.Food.Sources.Num() == 0)
+		{
+			return 0.f;
+		}
+		float Total = 0.f;
+		for (int Index = 0; Index < Summary.Food.Sources.Num(); Index++)
+		{
+			Total += float(Summary.Food.Sources[Index].Remaining);
+		}
+		const float Pace = HOLAINeeds::NetRate(Data, Summary, 0) * float(Math::Max(1, Summary.Food.Peasants));
+		if (Pace <= 0.f)
+		{
+			return 1000000.f;
+		}
+		return Total / Pace;
+	}
+
+	// The farms are wanted when the berries last less than the lead, or when the second block is (IA2.7: the food left on the fields
+	// says nothing of the places).
+	bool FarmsWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.bHasCentre && (FoodSecondsLeft(Summary, Data) < Data.FarmLeadSeconds || FarmTarget(Summary, Data) > Data.FarmCount);
+	}
+
+	// A second farm block is wanted (IA2.7: the Peasants outnumber the places): the first block is all built (FarmCount farms, none
+	// still a site), the food is short (stock under SecondBlockFood), and not one food source has room (every field held, no
+	// berries with places all around); under MaxFarmBlocks blocks.
+	bool SecondBlockWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (Data.MaxFarmBlocks < 2 || !Summary.bHasCentre || Summary.Food.Stock >= Data.SecondBlockFood)
+		{
+			return false;
+		}
+		int Farms = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == n"Farm")
+			{
+				if (Summary.Buildings[Index].State != EHOLConstructionState::Finished)
+				{
+					return false;
+				}
+				Farms++;
+			}
+		}
+		if (Farms < Data.FarmCount || Farms >= Data.FarmCount * Data.MaxFarmBlocks)
+		{
+			return false;
+		}
+		return OpenPartOf(Summary.Food).Sources.Num() == 0;
+	}
+
+	// The farms the slot is to have: one block's, two once a ninth farm stands (the second block is under way, kept to its end
+	// although its new fields are free) or when the second is wanted now.
+	int FarmTarget(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (Data.MaxFarmBlocks >= 2 && (CountBuildings(Summary, n"Farm") > Data.FarmCount || SecondBlockWanted(Summary, Data)))
+		{
+			return Data.FarmCount * Data.MaxFarmBlocks;
+		}
+		return Data.FarmCount;
+	}
+
+	// The plan's mill and farms all stand (any state).
+	bool PlanBuilt(const FHOLAISummary& Summary, const FHOLAIFarmPlan& Plan)
+	{
+		if (!HasBuildingAt(Summary, n"Mill", Plan.Mill))
+		{
+			return false;
+		}
+		for (int Index = 0; Index < Plan.Farms.Num(); Index++)
+		{
+			if (!HasBuildingAt(Summary, n"Farm", Plan.Farms[Index]))
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// The wood a type costs as the data holds it.
+	int WoodCostOf(const FHOLAIOpeningData& Data, FName Type)
+	{
+		if (Type == n"House")
+		{
+			return Data.House.CostWood;
+		}
+		if (Type == n"Farm")
+		{
+			return Data.Farm.CostWood;
+		}
+		if (Type == n"MiningCamp")
+		{
+			return Data.MiningCamp.CostWood;
+		}
+		for (int Index = 0; Index < Data.Steps.Num(); Index++)
+		{
+			if (Data.Steps[Index].Type == Type)
+			{
+				return Data.Steps[Index].WoodCost;
+			}
+		}
+		for (int Index = 0; Index < Data.ArmySteps.Num(); Index++)
+		{
+			if (Data.ArmySteps[Index].Type == Type)
+			{
+				return Data.ArmySteps[Index].WoodCost;
+			}
+		}
+		return 0;
+	}
+
+	// The Peasant sent to build: an idle one first, else the latest born, among those not sent to a site already.
+	int PickBuilder(const FHOLAISummary& Summary, const TArray<int>& Busy)
+	{
+		for (int Index = 0; Index < Summary.IdlePeasants.Num(); Index++)
+		{
+			if (!Busy.Contains(Summary.IdlePeasants[Index]))
+			{
+				return Summary.IdlePeasants[Index];
+			}
+		}
+		for (int Index = Summary.PeasantIds.Num() - 1; Index >= 0; Index--)
+		{
+			if (!Busy.Contains(Summary.PeasantIds[Index]))
+			{
+				return Summary.PeasantIds[Index];
+			}
+		}
+		return -1;
+	}
+
+	// An order for a type at an anchor (or at an exact spot), wood and builder checked.
+	FHOLAIBuildChoice OrderOf(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, FName Type, FVector Anchor, bool bAtSpot, const TArray<int>& Busy)
+	{
+		FHOLAIBuildChoice Choice;
+		if (Summary.PeasantIds.Num() < Data.MinPeasantsToBuild)
+		{
+			Choice.Nothing = "no builder";
+			return Choice;
+		}
+		if (Summary.Wood.Stock < WoodCostOf(Data, Type))
+		{
+			Choice.Nothing = "no wood";
+			return Choice;
+		}
+		const int Builder = PickBuilder(Summary, Busy);
+		if (Builder < 0)
+		{
+			Choice.Nothing = "no builder";
+			return Choice;
+		}
+		Choice.bBuild = true;
+		Choice.Type = Type;
+		Choice.Anchor = Anchor;
+		Choice.bAtSpot = bAtSpot;
+		if (bAtSpot)
+		{
+			Choice.Spot = Anchor;
+		}
+		Choice.Builder = Builder;
+		return Choice;
+	}
+
+	// The camp type of a resource: the lumber camp for wood, the mining camp for stone and gold (food has the mill).
+	FName CampOf(int Resource)
+	{
+		if (Resource == 1)
+		{
+			return n"LumberCamp";
+		}
+		return n"MiningCamp";
+	}
+
+	// The next building (IA1.7), one decision, in this order: a house when the room is low (before anything, and not held
+	// back by the sites); then, the sites under way being few (Data.MaxSites): the steps of the list (lumber camp, mill,
+	// each beside its source), a camp again where a massif is cut (the nearest source far from every deposit, the resource
+	// asked for), the farm block when the berries run low (its spots in Plan, asked for with bPlanFarms). Busy are the
+	// builders already sent to a site.
+	FHOLAIBuildChoice ChooseBuild(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, const FHOLAIFarmPlan& Plan, const TArray<int>& Busy)
 	{
 		FHOLAIBuildChoice Choice;
 		if (!Summary.bHasCentre)
@@ -254,46 +650,10 @@ namespace HOLAIOpening
 			Choice.Nothing = "no centre";
 			return Choice;
 		}
-		int StepIndex = -1;
-		for (int Index = 0; Index < Data.Steps.Num(); Index++)
-		{
-			if (!HasBuilding(Summary, Data.Steps[Index].Type))
-			{
-				StepIndex = Index;
-				break;
-			}
-		}
-		if (StepIndex < 0)
-		{
-			Choice.Nothing = "done";
-			return Choice;
-		}
-		const FHOLAIOpeningStep Step = Data.Steps[StepIndex];
-		if (Step.bWhenRoomLow && (!Summary.bHasPopulation || PlacesLeft(Summary) > Data.HouseMargin))
-		{
-			Choice.Nothing = "not yet";
-			return Choice;
-		}
-		if (Summary.Wood.Stock < Step.WoodCost)
-		{
-			Choice.Nothing = "no wood";
-			return Choice;
-		}
 
-		FVector Anchor;
-		if (Step.NearResource >= 0)
+		// 1. The house, on the side of the centre away from the nearest food and wood so it does not stand in the way.
+		if (HouseWanted(Summary, Data))
 		{
-			const FHOLAIResourceSummary Part = PartOf(Summary, Step.NearResource);
-			if (Part.Sources.Num() == 0)
-			{
-				Choice.Nothing = "no source";
-				return Choice;
-			}
-			Anchor = Part.Sources[0].Location;
-		}
-		else
-		{
-			// Away from the nearest food and wood, so the house does not stand in the Peasants' way.
 			FVector Toward = FVector(0, 0, 0);
 			if (Summary.Food.Sources.Num() > 0)
 			{
@@ -309,28 +669,227 @@ namespace HOLAIOpening
 			{
 				Away = Toward.GetSafeNormal() * -1.0;
 			}
-			Anchor = Summary.CentreLocation + Away * Data.AwayDistance;
+			return OrderOf(Summary, Data, n"House", Summary.CentreLocation + Away * Data.AwayDistance, false, Busy);
 		}
-
-		int Builder = -1;
-		if (Summary.IdlePeasants.Num() > 0)
+		if (SitesUnderWay(Summary) >= Data.MaxSites)
 		{
-			Builder = Summary.IdlePeasants[0];
-		}
-		else if (Summary.PeasantIds.Num() > 0)
-		{
-			Builder = Summary.PeasantIds[Summary.PeasantIds.Num() - 1];
-		}
-		if (Builder < 0)
-		{
-			Choice.Nothing = "no builder";
+			Choice.Nothing = "busy";
 			return Choice;
 		}
 
-		Choice.bBuild = true;
-		Choice.Type = Step.Type;
-		Choice.Anchor = Anchor;
-		Choice.Builder = Builder;
+		// 2. The steps: the first of the list the slot has none of. A step with no source waits for the next ones.
+		FString Skipped;
+		for (int Index = 0; Index < Data.Steps.Num(); Index++)
+		{
+			const FHOLAIOpeningStep Step = Data.Steps[Index];
+			if (HasBuilding(Summary, Step.Type))
+			{
+				continue;
+			}
+			const FHOLAIResourceSummary Part = PartOf(Summary, Step.NearResource);
+			if (Part.Sources.Num() == 0)
+			{
+				Skipped = "no source";
+				continue;
+			}
+			return OrderOf(Summary, Data, Step.Type, Part.Sources[0].Location, false, Busy);
+		}
+
+		// 2b. The military building the composition calls for (IA2.4: Barracks for Spearmen and Men-at-arms, Archery Range for Archers and
+		// Crossbowmen), on the enemy side of the centre, once the economy is far enough along and the wood is there; else the ranks below.
+		const FName Military = MilitaryBuildingWanted(Summary, Data);
+		bool bSaving = false;
+		if (Military != NAME_None && Summary.Wood.Stock >= WoodCostOf(Data, Military))
+		{
+			const FHOLAIBuildChoice Ordered = OrderOf(Summary, Data, Military, MilitaryAnchor(Summary, Data), false, Busy);
+			if (Ordered.bBuild)
+			{
+				return Ordered;
+			}
+		}
+		else if (Military != NAME_None && Summary.Food.Stock >= Data.SaveForArmyFood)
+		{
+			bSaving = true;
+		}
+
+		// 3. A camp again where the massif is cut: wood, stone and gold when the needs ask for them; one camp at a time.
+		FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
+		for (int Resource = 1; Resource < 4; Resource++)
+		{
+			const FHOLAIResourceSummary Part = PartOf(Summary, Resource);
+			if (Part.Sources.Num() == 0 || Needs.Share[Resource] <= 0.f || Part.Sources[0].DepositDistance <= Data.CampFarDistance)
+			{
+				continue;
+			}
+			bool bCampComing = false;
+			for (int Each = 0; Each < Summary.Buildings.Num(); Each++)
+			{
+				bCampComing = bCampComing || (Summary.Buildings[Each].TypeName == CampOf(Resource) && Summary.Buildings[Each].State != EHOLConstructionState::Finished);
+			}
+			if (bCampComing)
+			{
+				continue;
+			}
+			return OrderOf(Summary, Data, CampOf(Resource), Part.Sources[0].Location, false, Busy);
+		}
+
+		// 3b. The wood is kept for the military building while the food is comfortable.
+		if (bSaving)
+		{
+			Choice.Nothing = "saving wood";
+			return Choice;
+		}
+
+		// 4. The farm block: its mill and its farms in turn at the planned spots; planned first.
+		if (Plan.bActive && !PlanBuilt(Summary, Plan))
+		{
+			if (!HasBuildingAt(Summary, n"Mill", Plan.Mill))
+			{
+				return OrderOf(Summary, Data, n"Mill", Plan.Mill, true, Busy);
+			}
+			for (int Index = 0; Index < Plan.Farms.Num(); Index++)
+			{
+				if (!HasBuildingAt(Summary, n"Farm", Plan.Farms[Index]))
+				{
+					return OrderOf(Summary, Data, n"Farm", Plan.Farms[Index], true, Busy);
+				}
+			}
+		}
+		else if (FarmsWanted(Summary, Data) && CountBuildings(Summary, n"Farm") < FarmTarget(Summary, Data)
+			&& Summary.Wood.Stock >= WoodCostOf(Data, n"Mill") && PickBuilder(Summary, Busy) >= 0
+				&& Summary.PeasantIds.Num() >= Data.MinPeasantsToBuild)
+		{
+			Choice.bPlanFarms = true;
+			Choice.Nothing = "plan farms";
+			return Choice;
+		}
+
+		if (Skipped.Len() > 0)
+		{
+			Choice.Nothing = Skipped;
+			return Choice;
+		}
+		Choice.Nothing = "done";
+		return Choice;
+	}
+
+	// The same, without a farm block planned and no builder busy.
+	FHOLAIBuildChoice ChooseBuild(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FHOLAIFarmPlan NoPlan;
+		TArray<int> NoBusy;
+		return ChooseBuild(Summary, Data, NoPlan, NoBusy);
+	}
+
+	// The direction from the centre toward the enemy centre on the ground (+X when the enemy centre is unknown).
+	FVector TowardEnemy(const FHOLAISummary& Summary)
+	{
+		FVector Toward = FVector(1, 0, 0);
+		if (Summary.bHasEnemyCentre)
+		{
+			FVector Line = Summary.EnemyCentreLocation - Summary.CentreLocation;
+			Line.Z = 0;
+			if (Line.Size() > 1.0)
+			{
+				Toward = Line.GetSafeNormal();
+			}
+		}
+		return Toward;
+	}
+
+	// The soldiers' rally point (IA2.4): the centre plus RallyDistance toward the enemy centre (+X when unknown); a point, not a source.
+	FVector RallyPointOf(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.CentreLocation + TowardEnemy(Summary) * Data.RallyDistance;
+	}
+
+	// Where the search for a military building's spot starts: on the enemy side of the centre.
+	FVector MilitaryAnchor(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.CentreLocation + TowardEnemy(Summary) * Data.MilitaryDistance;
+	}
+
+	bool IsMilitaryType(const FHOLAIOpeningData& Data, FName Type)
+	{
+		return HOLAIArmy::BuildingsOf(Data.Army).Contains(Type);
+	}
+
+	// The military building the composition calls for that the slot has none of (any state): none (NAME_None) when it has it or the
+	// economy is not yet far enough along (ArmyBuildPeasants) or the first house, camp and mill are not all there.
+	FName MilitaryBuildingWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (PeasantsCountedOf(Summary) < Data.ArmyBuildPeasants || CountBuildings(Summary, n"House") < 1)
+		{
+			return NAME_None;
+		}
+		for (int Index = 0; Index < Data.Steps.Num(); Index++)
+		{
+			if (!HasBuilding(Summary, Data.Steps[Index].Type) && PartOf(Summary, Data.Steps[Index].NearResource).Sources.Num() > 0)
+			{
+				return NAME_None;
+			}
+		}
+		const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data.Army);
+		if (!Choice.bValid || Choice.Building == NAME_None || HasBuilding(Summary, Choice.Building))
+		{
+			return NAME_None;
+		}
+		return Choice.Building;
+	}
+
+	int PeasantsCountedOf(const FHOLAISummary& Summary)
+	{
+		return HOLAINeeds::PeasantsCounted(Summary);
+	}
+
+	// The orders of the finished military buildings (IA2.4), in the order of the summary: each gets its rally (the brain sends it when it
+	// is new) and, once the economy stands, a unit to queue when its queue is under MilitaryQueue, the composition restricted to it
+	// picks one, the stock pays it after the units chosen before in this thought, a place is left (Reserved: places taken by orders
+	// the brain gave in this thought before) and, a house being wanted, the wood left still pays it.
+	FHOLAIMilitaryChoice ChooseMilitary(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, int Reserved)
+	{
+		FHOLAIMilitaryChoice Choice;
+		Choice.RallyPoint = RallyPointOf(Summary, Data);
+		const bool bEstablished = HOLAINeeds::ArmyEstablished(Summary, Data);
+		const bool bHouse = HouseWanted(Summary, Data);
+		int Places = PlacesLeft(Summary) - Reserved;
+		int Food = Summary.Food.Stock;
+		int Wood = Summary.Wood.Stock;
+		int Stone = Summary.Stone.Stock;
+		int Gold = Summary.Gold.Stock;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Building = Summary.Buildings[Index];
+			if (Building.State != EHOLConstructionState::Finished || !IsMilitaryType(Data, Building.TypeName))
+			{
+				continue;
+			}
+			FHOLAIMilitaryOrder Order;
+			Order.Building = Building.TypeName;
+			Order.Location = Building.Location;
+			if (bEstablished && Building.Queue.Num() < Data.MilitaryQueue && Places > 0)
+			{
+				const FHOLAIComposition Pick = HOLAIArmy::ChooseComposition(Summary, Data.Army, Building.TypeName);
+				const FHOLAITypeFigures Unit = HOLAIArmy::FiguresOf(Data.Army, Pick.Type);
+				const bool bKnown = Pick.bValid && HOLAIArmy::TypeIndex(Data.Army, Pick.Type) >= 0;
+				bool bPays = bKnown && Food >= Unit.CostFood && Wood >= Unit.CostWood && Stone >= Unit.CostStone && Gold >= Unit.CostGold;
+				if (bPays && bHouse && Wood - Unit.CostWood < Data.House.CostWood)
+				{
+					bPays = false;
+				}
+				if (bPays)
+				{
+					Order.bQueue = true;
+					Order.Unit = Pick.Type;
+					Food -= Unit.CostFood;
+					Wood -= Unit.CostWood;
+					Stone -= Unit.CostStone;
+					Gold -= Unit.CostGold;
+					Places -= Math::Max(1, Unit.Population);
+				}
+			}
+			Choice.Orders.Add(Order);
+		}
 		return Choice;
 	}
 
@@ -378,11 +937,13 @@ namespace HOLAIOpening
 		Choice.bProduce = true;
 		Choice.Centre = Centre.Location;
 		TArray<int> Counts = GatherersOf(Summary);
-		const FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
+		// IA1.7b: the sources whose places are all held are left out (a new Peasant would stand idle in front of them).
+		const FHOLAISummary Open = WithoutHeldSources(Summary);
+		const FHOLAINeeds Needs = HOLAINeeds::Compute(Open, Data);
 		const int Resource = HOLAINeeds::MostLacking(Needs, Counts, SumOf(Counts) + 1);
 		if (Resource >= 0)
 		{
-			const FHOLAISourceNear Source = PartOf(Summary, Resource).Sources[0];
+			const FHOLAISourceNear Source = PartOf(Open, Resource).Sources[0];
 			Choice.RallyResource = Resource;
 			Choice.RallySource = Source.SourceIndex;
 			Choice.RallyPoint = Source.Location;
@@ -390,82 +951,158 @@ namespace HOLAIOpening
 		return Choice;
 	}
 
-	// Adds the group of a resource when it has Peasants: the resource's nearest source.
-	void AddGroup(TArray<FHOLAIGatherGroup>& Groups, const FHOLAISummary& Summary, int Resource, const FHOLAIGatherGroup& Per)
+	// A part without the sources whose places are all held (IA1.7b: a farm field has one) and those a Peasant has just stood idle
+	// in front of for want of a spot (IA2.6b, bFull: a vein of a few spots): a Peasant sent there would stand idle in front of
+	// them. The sources with places all around (Places 0) are held only when full.
+	FHOLAIResourceSummary OpenPartOf(const FHOLAIResourceSummary& Part)
 	{
-		if (Per.Peasants.Num() == 0)
+		FHOLAIResourceSummary Open = Part;
+		Open.Sources.Empty();
+		for (int Index = 0; Index < Part.Sources.Num(); Index++)
 		{
-			return;
+			if (!Part.Sources[Index].bFull && (Part.Sources[Index].Places <= 0 || Part.Sources[Index].Occupants < Part.Sources[Index].Places))
+			{
+				Open.Sources.Add(Part.Sources[Index]);
+			}
+		}
+		return Open;
+	}
+
+	// The summary as the Peasants to send see it: the held sources left out.
+	FHOLAISummary WithoutHeldSources(const FHOLAISummary& Summary)
+	{
+		FHOLAISummary Open = Summary;
+		Open.Food = OpenPartOf(Summary.Food);
+		Open.Wood = OpenPartOf(Summary.Wood);
+		Open.Stone = OpenPartOf(Summary.Stone);
+		Open.Gold = OpenPartOf(Summary.Gold);
+		return Open;
+	}
+
+	// How many of the Peasants sent in this thought (Taken: the source of each) go to SourceIndex.
+	int TakenOf(const TArray<int>& Taken, int SourceIndex)
+	{
+		int Count = 0;
+		for (int Index = 0; Index < Taken.Num(); Index++)
+		{
+			if (Taken[Index] == SourceIndex)
+			{
+				Count++;
+			}
+		}
+		return Count;
+	}
+
+	// The first source of the part (nearest first) with a place for one more Peasant, those Taken counted; -1 when all are held.
+	int FreeSourceOf(const FHOLAIResourceSummary& Part, const TArray<int>& Taken)
+	{
+		for (int Index = 0; Index < Part.Sources.Num(); Index++)
+		{
+			const FHOLAISourceNear Source = Part.Sources[Index];
+			if (Source.Places <= 0 || Source.Occupants + TakenOf(Taken, Source.SourceIndex) < Source.Places)
+			{
+				return Index;
+			}
+		}
+		return -1;
+	}
+
+	// The needs with the share of a resource put to 0 when its sources have no place left for one more Peasant.
+	FHOLAINeeds WithRoom(const FHOLAINeeds& Needs, const FHOLAISummary& Summary, const TArray<int>& Taken)
+	{
+		FHOLAINeeds Roomy = Needs;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			if (FreeSourceOf(PartOf(Summary, Resource), Taken) < 0)
+			{
+				Roomy.Share[Resource] = 0.f;
+			}
+		}
+		return Roomy;
+	}
+
+	// The resource with a place free and the lowest stock (a tie: food, wood, stone, gold), -1 when none (the IA0.4 rule).
+	int LowestStockWithRoom(const FHOLAISummary& Summary, const TArray<int>& Taken)
+	{
+		int Best = -1;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			if (FreeSourceOf(PartOf(Summary, Resource), Taken) < 0)
+			{
+				continue;
+			}
+			if (Best < 0 || PartOf(Summary, Resource).Stock < PartOf(Summary, Best).Stock)
+			{
+				Best = Resource;
+			}
+		}
+		return Best;
+	}
+
+	// Adds a Peasant to the group of its source (made when there is none yet).
+	void AddToGroup(TArray<FHOLAIGatherGroup>& Groups, int Resource, int SourceIndex, int Peasant)
+	{
+		for (int Index = 0; Index < Groups.Num(); Index++)
+		{
+			if (Groups[Index].SourceIndex == SourceIndex)
+			{
+				Groups[Index].Peasants.Add(Peasant);
+				return;
+			}
 		}
 		FHOLAIGatherGroup Group;
 		Group.Resource = Resource;
 		Group.ResourceName = NameOf(Resource);
-		Group.SourceIndex = PartOf(Summary, Resource).Sources[0].SourceIndex;
-		Group.Peasants = Per.Peasants;
+		Group.SourceIndex = SourceIndex;
+		Group.Peasants.Add(Peasant);
 		Groups.Add(Group);
 	}
 
 	// The Peasants Free spread by the needs (HOLAINeeds.as): each goes, in order, to the resource that lacks Peasants most
-	// against its share (those already gathering and those sent before it counted), one group per resource with the nearest
-	// source. A source used up has left the summary: its Peasants, idle, come here and go to what is left. Without a share on
-	// any resource that has a source, all go to the lowest stock among those with one (the IA0.4 rule).
+	// against its share (those already gathering and those sent before it counted), to the nearest source of that resource with
+	// a place for it (IA1.7b: a farm field has one; the held ones are left out, and a resource whose places are all taken has no
+	// share left). One group per source, in the order food, wood, stone, gold. A source used up has left the summary: its
+	// Peasants, idle, come here and go to what is left. Without a share on any resource with room, each goes to the lowest stock
+	// among those with room (the IA0.4 rule); with no room anywhere, it is not sent.
 	TArray<FHOLAIGatherGroup> SplitGather(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, const TArray<int>& Free)
 	{
+		TArray<FHOLAIGatherGroup> Found;
 		TArray<FHOLAIGatherGroup> Groups;
 		if (Free.Num() == 0)
 		{
 			return Groups;
 		}
+		const FHOLAISummary Open = WithoutHeldSources(Summary);
 		TArray<int> Counts = GatherersOf(Summary);
 		const int Total = SumOf(Counts) + Free.Num();
-		const FHOLAINeeds Needs = HOLAINeeds::Compute(Summary, Data);
-		if (HOLAINeeds::MostLacking(Needs, Counts, Total) < 0)
-		{
-			FHOLAISummary Alone = Summary;
-			Alone.IdlePeasants = Free;
-			FHOLAIGatherChoice Choice = HOLAIEconomy::ChooseGather(Alone);
-			if (Choice.bGather)
-			{
-				FHOLAIGatherGroup Group;
-				Group.Resource = Choice.Resource;
-				Group.ResourceName = Choice.ResourceName;
-				Group.SourceIndex = Choice.SourceIndex;
-				Group.Peasants = Choice.Peasants;
-				Groups.Add(Group);
-			}
-			return Groups;
-		}
-
-		// Script has no nested containers: a struct holds the four lists.
-		FHOLAIGatherGroup Per0;
-		FHOLAIGatherGroup Per1;
-		FHOLAIGatherGroup Per2;
-		FHOLAIGatherGroup Per3;
+		const FHOLAINeeds Needs = HOLAINeeds::Compute(Open, Data);
+		TArray<int> Taken;
 		for (int Index = 0; Index < Free.Num(); Index++)
 		{
-			const int Resource = HOLAINeeds::MostLacking(Needs, Counts, Total);
+			int Resource = HOLAINeeds::MostLacking(WithRoom(Needs, Open, Taken), Counts, Total);
+			if (Resource < 0)
+			{
+				Resource = LowestStockWithRoom(Open, Taken);
+			}
+			if (Resource < 0)
+			{
+				continue;
+			}
 			Counts[Resource] = Counts[Resource] + 1;
-			if (Resource == 0)
+			const int SourceIndex = PartOf(Open, Resource).Sources[FreeSourceOf(PartOf(Open, Resource), Taken)].SourceIndex;
+			Taken.Add(SourceIndex);
+			AddToGroup(Found, Resource, SourceIndex, Free[Index]);
+		}
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			for (int Index = 0; Index < Found.Num(); Index++)
 			{
-				Per0.Peasants.Add(Free[Index]);
-			}
-			else if (Resource == 1)
-			{
-				Per1.Peasants.Add(Free[Index]);
-			}
-			else if (Resource == 2)
-			{
-				Per2.Peasants.Add(Free[Index]);
-			}
-			else
-			{
-				Per3.Peasants.Add(Free[Index]);
+				if (Found[Index].Resource == Resource)
+				{
+					Groups.Add(Found[Index]);
+				}
 			}
 		}
-		AddGroup(Groups, Summary, 0, Per0);
-		AddGroup(Groups, Summary, 1, Per1);
-		AddGroup(Groups, Summary, 2, Per2);
-		AddGroup(Groups, Summary, 3, Per3);
 		return Groups;
 	}
 }

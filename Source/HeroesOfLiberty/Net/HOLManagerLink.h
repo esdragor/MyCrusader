@@ -34,7 +34,10 @@ struct HEROESOFLIBERTY_API FHOLManagerRules
 /**
  * The match server's link to the lobby manager (R3.6, R3.7): active only with -ManagerUrl= and -MatchId= on the command
  * line (the manager's launch); without them (solo, tests, net_match.ps1) nothing is sent. Each call is asynchronous,
- * logged with its answer, and never holds the match. Started, finished and empty are sent once each.
+ * logged with its answer, and never holds the match. Started, finished and empty are sent once each; empty is the last
+ * call: it leaves once every call before it (the players' "left") is answered, or hol.Net.QuitEmptyWait s after it was
+ * asked (two calls in flight at once reached the manager in either order, quick_check's "empty once, last" red on
+ * 2026-10-28).
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLManagerLink : public UGameInstanceSubsystem
@@ -61,16 +64,28 @@ public:
 	void Send(const FString& Event, const FString& JsonBody);
 
 private:
-	/** R3.8: quits the server by FHOLManagerRules::ShouldQuit; "empty" leaves first (answered, or hol.Net.QuitEmptyWait s). */
+	/**
+	 * R3.8: quits the server by FHOLManagerRules::ShouldQuit; "empty" leaves first: asked by the game mode (the frame after
+	 * the last Logout), sent once the calls before it are answered, then answered; each wait at most hol.Net.QuitEmptyWait s.
+	 */
 	bool TickQuit(float DeltaTime);
+	/** Sends the "empty" asked once no other call is in flight (or hol.Net.QuitEmptyWait s after it was asked). */
+	void TrySendEmpty(double Now);
 
 	FString ManagerUrl;
 	FString MatchId;
 	bool bStartedSent = false;
 	bool bFinishedSent = false;
+	/** SendEmpty was called; bEmptySent once the request left. */
+	bool bEmptyWanted = false;
 	bool bEmptySent = false;
 	bool bEmptyAnswered = false;
 	bool bQuitting = false;
+	double EmptyWantedTime = -1.0;
 	double EmptySentTime = -1.0;
+	/** When TickQuit first found the server empty after the start (the game mode's "empty" may not be asked yet). */
+	double EmptySeenTime = -1.0;
+	/** Calls sent and not answered yet (failed ones count as answered). */
+	int32 PendingSends = 0;
 	FTSTicker::FDelegateHandle QuitTicker;
 };

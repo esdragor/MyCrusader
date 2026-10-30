@@ -148,6 +148,7 @@ namespace UE::HeroesOfLiberty::Simulation
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Kills));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Mode));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->DeathStep));
+				MixInto(Parts->Combat, static_cast<uint64>(Combat->LastHitStep));
 				MixInto(Parts->Combat, (Combat->bAttacking ? 1u : 0u) | (Combat->bApproaching ? 2u : 0u) | (Combat->bAttackMoveDetour ? 4u : 0u) | (Combat->bOrderedTarget ? 8u : 0u));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.X));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.Y));

@@ -86,12 +86,31 @@ namespace HOLForumMessages
 
 	/**
 	 * The message of Event for the viewer at ViewerSlot (INDEX_NONE: a spectator, never alerted); the camps from Config
-	 * (HOLVictoryRules::GetCamp).
+	 * (HOLVictoryRules::GetCamp). F6e.4 (D353): the major alert of a forum's event (Fell, HoldStarted, Razed) goes also to whoever has
+	 * the vision of the forum (bSeesForum: a fog is on and the viewer's camp sees it) and, for a HoldStarted, to the allies of the
+	 * attacker; without bSeesForum the adversary only reads the message.
 	 */
-	HEROESOFLIBERTY_API FHOLForumMessage GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, int32 ViewerSlot);
+	HEROESOFLIBERTY_API FHOLForumMessage GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, int32 ViewerSlot, bool bSeesForum = false);
 
 	/** J8a.4 (D397, D202): the minor alert « Votre héros est prêt à revenir », a thread's line, no banner nor sound. */
 	HEROESOFLIBERTY_API FHOLForumMessage GetHeroReadyMessage();
+
+	/**
+	 * J8b.4 (J8b-Q4, D202): the minor alerts of the viewer's hero going up from OldLevel to NewLevel, in their order:
+	 * « Paladin-Commandant : niveau N », then « Palier 1 atteint » when level 3 is reached or passed, « Palier 2 atteint »
+	 * for level 6 (the tiers' content is another chapter). None when he does not go up.
+	 */
+	HEROESOFLIBERTY_API TArray<FHOLForumMessage> GetHeroLevelMessages(int32 OldLevel, int32 NewLevel);
+
+	/**
+	 * J8b.5 (the trial's wish): the sounds of those alerts, fanfares (Tools/Editor/make_hero_fanfare.py), not the alerts' ping:
+	 * a short one for a level, a longer one when a tier is reached.
+	 */
+	inline constexpr const TCHAR* HeroLevelSoundPath = TEXT("/Game/Audio/SW_HeroLevelUp.SW_HeroLevelUp");
+	inline constexpr const TCHAR* HeroTierSoundPath = TEXT("/Game/Audio/SW_HeroTier.SW_HeroTier");
+
+	/** J8b.4: the levels opening a tier (D04: 3 and 6). */
+	constexpr int32 HeroTierLevels[] = { 3, 6 };
 
 	HEROESOFLIBERTY_API const TCHAR* GetKindName(EHOLForumEventKind Kind);
 
@@ -128,6 +147,31 @@ struct HEROESOFLIBERTY_API FHOLHeroReadyWatch
 	EHOLHeroState Seen = EHOLHeroState::None;
 
 	bool Update(int32 ViewerSlot, EHOLHeroState State);
+};
+
+/**
+ * J8b.4 (J8b-Q4): the heroes' levels as a machine saw them, slot by slot. Update gives the level a slot's hero had before
+ * when it went up (his golden flash, his owner's alerts), 0 otherwise: the first level seen (a hero born, a machine
+ * arriving: level 0 before) is no level up, nor a level going down (development cheats). Pure.
+ */
+struct HEROESOFLIBERTY_API FHOLHeroLevelWatch
+{
+	TArray<int32> Seen;
+
+	int32 Update(int32 Slot, int32 Level);
+};
+
+/**
+ * J8c.4 loop 5 (J8c-Q4): the heroes' cries as a machine saw them, slot by slot (the public sheet's count, which wraps at
+ * 256). Update tells whether the slot's hero has cried since the last look (his white flash on the units touched, the
+ * cry's sound, for every player): the first count seen (a machine arriving) is no cry, nor a count going back (the
+ * development cheat that resets the abilities). Pure.
+ */
+struct HEROESOFLIBERTY_API FHOLHeroCryWatch
+{
+	TArray<int32> Seen;
+
+	bool Update(int32 Slot, int32 Cries);
 };
 
 /** V4.2: a line of the thread of messages, and when it came (seconds, the HUD's real time). */

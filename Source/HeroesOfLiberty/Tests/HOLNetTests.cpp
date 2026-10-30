@@ -492,6 +492,59 @@ bool FHOLNetHeroSheetHealthTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetHeroLevelHealthTest, "HeroesOfLiberty.Net.HeroLevelHealth", UE::HeroesOfLiberty::Tests::Net::Flags)
+// J8b.3: a hero above level 1 (J8b-Q3, +8 % HP a level) seen on a client: the server sends his share of his maximum at his
+// level (HOLCombat::GetMaxHealth), the client takes that maximum from the level of his slot's public sheet (486 at level 2),
+// not from the table's 450. The real Hero row, Iris' serializer, the client's view as UHOLUnitReceptionSubsystem makes it.
+bool FHOLNetHeroLevelHealthTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Hero = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Hero"), TEXT("Net test")) : nullptr;
+	if (!TestNotNull(TEXT("Hero row"), Hero))
+	{
+		return false;
+	}
+	const FHOLUnitTypeConstants Constants = Hero->ToConstants(TEXT("Hero"));
+	// His level 2 body as the server sends it, at Health.
+	const auto Send = [this, &Constants](const float Health, FHOLNetUnitState& Back)
+	{
+		FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(700.0, -800.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Idle, 120);
+		State.SetCombat(HOLCombat::GetShownHealth(Health), HOLCombat::GetMaxHealth(Constants, 2), 0, false, 0.f, true);
+		return RoundTrip(*this, State, Back);
+	};
+	// His public sheet at 200 XP (level 2), alive at Health.
+	const auto SheetAt = [](const float Health)
+	{
+		FHOLHeroFacts Facts;
+		Facts.bPresent = true;
+		Facts.Health = Health;
+		FHOLHeroSheets Previous;
+		Previous.Private.XP = 200;
+		return HOLHeroSheet::Make(Facts, Previous).Public;
+	};
+	const FHOLHeroSheet Wounded = SheetAt(400.f);
+	TestEqual(TEXT("the sheet at 200 XP: level 2"), static_cast<int32>(Wounded.Level), 2);
+	FHOLNetUnitState Back;
+	if (Send(400.f, Back))
+	{
+		FHOLUnitView View;
+		HOLUnitView::SetReceivedHealth(View, Back.bFullHealth, Back.Health, Hero->MaxHealth, true, &Wounded);
+		TestEqual(TEXT("400 / 486: his maximum at level 2"), View.MaxHealth, 486);
+		TestEqual(TEXT("... the sheet's exact 400"), View.Health, 400);
+		TestEqual(TEXT("... the bar at the share of 486"), View.GetHealthShare(), static_cast<float>(Back.Health) / 255.f, 0.0001f);
+		TestTrue(TEXT("... the bar near 400 / 486"), FMath::Abs(View.GetHealthShare() - 400.f / 486.f) < 0.01f);
+	}
+	const FHOLHeroSheet Full = SheetAt(486.f);
+	if (Send(486.f, Back))
+	{
+		FHOLUnitView View;
+		HOLUnitView::SetReceivedHealth(View, Back.bFullHealth, Back.Health, Hero->MaxHealth, true, &Full);
+		TestTrue(TEXT("unhurt at level 2: 486 / 486, exact, the bar full"), View.bFullHealth && View.Health == 486 && View.MaxHealth == 486 && View.bHealthExact);
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetUnwrapStepTest, "HeroesOfLiberty.Net.UnwrapStep", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
 {
@@ -506,6 +559,28 @@ bool FHOLNetUnwrapStepTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("63 steps ahead"), UnwrapStep(Low(5000 + 63), 5000), int64(5000 + 63));
 	TestTrue(TEXT("read right beyond the slow refresh (D343)"), (1 << (FHOLNetUnitState::StepBits - 1)) > 40 + 10);
 	TestEqual(TEXT("first steps of the match"), UnwrapStep(Low(3), 0), int64(3));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetDisplayOwnersTest, "HeroesOfLiberty.Net.DisplayOwners", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetDisplayOwnersTest::RunTest(const FString& Parameters)
+{
+	// F6b (D518): a client receiving several camps' families (a spectator) holds a unit in a slot of each family that sees it,
+	// and draws it once: the first slot draws, the others shadow it, and one takes over when the drawing slot lets it go.
+	FHOLDisplayOwners Owners;
+	TestTrue(TEXT("the first slot of a unit draws it"), Owners.Arrive(7, 100));
+	TestFalse(TEXT("the same unit in another family: shadowed"), Owners.Arrive(7, 300));
+	TestFalse(TEXT("and in a third"), Owners.Arrive(7, 500));
+	TestEqual(TEXT("the first draws"), Owners.GetOwner(7), 100);
+	TestTrue(TEXT("another unit is its own"), Owners.Arrive(8, 101));
+	TestEqual(TEXT("a shadow leaving changes nothing"), Owners.Leave(7, 300), int32(INDEX_NONE));
+	TestEqual(TEXT("the first still draws"), Owners.GetOwner(7), 100);
+	TestEqual(TEXT("the drawing slot leaves: the remaining shadow takes over"), Owners.Leave(7, 100), 500);
+	TestEqual(TEXT("it draws now"), Owners.GetOwner(7), 500);
+	TestEqual(TEXT("the last slot leaves: nobody"), Owners.Leave(7, 500), int32(INDEX_NONE));
+	TestEqual(TEXT("no owner left"), Owners.GetOwner(7), int32(INDEX_NONE));
+	TestEqual(TEXT("a lone unit leaving promotes nobody"), Owners.Leave(8, 101), int32(INDEX_NONE));
+	TestTrue(TEXT("a unit back after leaving is drawn again"), Owners.Arrive(7, 300));
 	return true;
 }
 

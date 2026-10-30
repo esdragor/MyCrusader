@@ -184,6 +184,64 @@ struct FHOLUnitSendRules
 	int32 RefreshSteps = 40;
 };
 
+/**
+ * F6b (D518): which slot draws a unit received in several (a client receiving every camp's family, a spectator, holds a unit
+ * once per camp that sees it). The first slot to arrive draws it, the others shadow it and keep its latest state; a shadow
+ * takes over when the drawing slot lets the unit go.
+ */
+struct FHOLDisplayOwners
+{
+	/** The unit arrives in a slot: true when this slot draws it, false when it shadows another. */
+	bool Arrive(uint32 UnitId, int32 SlotIndex)
+	{
+		if (Owners.Contains(UnitId))
+		{
+			Shadows.Add(UnitId, SlotIndex);
+			return false;
+		}
+		Owners.Add(UnitId, SlotIndex);
+		return true;
+	}
+
+	/** The unit leaves a slot; returns the shadowing slot that draws it from now on, INDEX_NONE when none does. */
+	int32 Leave(uint32 UnitId, int32 SlotIndex)
+	{
+		const int32* Owner = Owners.Find(UnitId);
+		if (Owner == nullptr || *Owner != SlotIndex)
+		{
+			Shadows.Remove(UnitId, SlotIndex);
+			return INDEX_NONE;
+		}
+		Owners.Remove(UnitId);
+		const int32* Next = Shadows.Find(UnitId);
+		if (Next == nullptr)
+		{
+			return INDEX_NONE;
+		}
+		const int32 Promoted = *Next;
+		Shadows.Remove(UnitId, Promoted);
+		Owners.Add(UnitId, Promoted);
+		return Promoted;
+	}
+
+	/** The slot that draws the unit, INDEX_NONE when none. */
+	int32 GetOwner(uint32 UnitId) const
+	{
+		const int32* Owner = Owners.Find(UnitId);
+		return Owner ? *Owner : INDEX_NONE;
+	}
+
+	void Reset()
+	{
+		Owners.Reset();
+		Shadows.Reset();
+	}
+
+private:
+	TMap<uint32, int32> Owners;
+	TMultiMap<uint32, int32> Shadows;
+};
+
 /** What the server keeps of the last state it sent of one unit. */
 struct FHOLUnitSentRecord
 {

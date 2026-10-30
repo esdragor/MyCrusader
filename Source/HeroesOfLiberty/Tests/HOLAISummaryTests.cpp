@@ -394,11 +394,46 @@ bool FHOLAISummaryGatherableOnlyTest::RunTest(const FString& Parameters)
 			TestFalse(TEXT("slot 0's food: slot 1's field left out"), bSlot0HasAIField);
 			TestEqual(TEXT("slot 0's food: the berries, then its own field"), JoinSources(Slot0.Food),
 				FString::Printf(TEXT("%d %d"), Berries, EnemyField));
+			// IA1.7b: a field has one place, the bushes places all around; nobody works the field here.
+			for (const FHOLAISourceNear& Near : Slot1.Food.Sources)
+			{
+				TestEqual(TEXT("slot 1's food: a field has one place, the berries none to count"), Near.Places, Near.SourceIndex == OwnField ? 1 : 0);
+				TestEqual(TEXT("slot 1's food: nobody on it"), Near.Occupants, 0);
+			}
 			AddInfo(FString::Printf(TEXT("%s | %s"), *Slot1.ToString(), *Slot0.ToString()));
 		}
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+// IA1.7b, the rule alone: the places and the places held of a source of few places come beside the sources, by source index.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAISummaryUsesTest, "HeroesOfLiberty.AI.Summary.Uses", UE::HeroesOfLiberty::Tests::AISummary::Flags)
+bool FHOLAISummaryUsesTest::RunTest(const FString& Parameters)
+{
+	FHOLSource Field;
+	Field.TypeIndex = 0;
+	Field.Resource = EHOLResource::Food;
+	Field.Location = FVector(1000.0, 0.0, 0.0);
+	Field.Remaining = 100;
+	FHOLSource Berries = Field;
+	Berries.Location = FVector(2000.0, 0.0, 0.0);
+	const TArray<FHOLSource> Sources = { Field, Berries };
+	FHOLAIDeposit Mill;
+	Mill.Footprint.Centre = FVector2D(0.0, 0.0);
+	Mill.Footprint.HalfExtent = FVector2D(100.0, 100.0);
+	Mill.OwnerPlayer = 0;
+	Mill.Accepts = { EHOLResource::Food };
+	const TArray<FHOLAISourceUse> Uses = { { 1, 1 }, { 0, 0 } };
+	const FHOLAISummary Summary = HOLAISummary::Make(0, {}, Sources, { Mill }, {}, HOLAISummary::DefaultMaxSourcesPerResource, {}, {}, Uses);
+	if (TestEqual(TEXT("two food sources"), Summary.Food.Sources.Num(), 2))
+	{
+		TestEqual(TEXT("the field: one place"), Summary.Food.Sources[0].Places, 1);
+		TestEqual(TEXT("the field: held"), Summary.Food.Sources[0].Occupants, 1);
+		TestEqual(TEXT("the berries: places all around"), Summary.Food.Sources[1].Places, 0);
+		TestEqual(TEXT("the berries: none counted"), Summary.Food.Sources[1].Occupants, 0);
+	}
 	return true;
 }
 
