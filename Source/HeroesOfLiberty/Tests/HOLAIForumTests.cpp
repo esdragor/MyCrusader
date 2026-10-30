@@ -197,12 +197,30 @@ bool FHOLAITeammatesRuleTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("the enemy centre is slot 2's, not the nearer teammate's"), Summary.bHasEnemyCentre && Summary.EnemyCentreLocation.Equals(FVector(-9000.0, 0.0, 0.0), 1.0));
 	TestTrue(TEXT("its own forum is still read"), Summary.bHasOwnForum);
+	// IA4 (D571): the teammate's unit and forum are exposed as allies (the enemy units and forums stay out of them).
+	TestEqual(TEXT("one allied unit (the teammate's)"), Summary.Allies.Num(), 1);
+	if (Summary.Allies.Num() == 1)
+	{
+		TestEqual(TEXT("it is unit 1"), static_cast<int32>(Summary.Allies[0].Id), 1);
+	}
+	TestEqual(TEXT("one allied forum"), Summary.AllyForums.Num(), 1);
+	if (Summary.AllyForums.Num() == 1)
+	{
+		TestEqual(TEXT("slot 1's forum"), Summary.AllyForums[0].Slot, 1);
+		TestTrue(TEXT("with its place"), Summary.AllyForums[0].bHasLocation && Summary.AllyForums[0].Location.Equals(FVector(1000.0, 0.0, 0.0), 1.0));
+	}
+	// A defeated teammate is no ally to help (slot 1 defeated: bit 1 of the mask).
+	const FHOLAISummary Beaten = HOLAISummary::Make(0, {}, {}, {}, TOptional<FHOLResources>(), HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {}, {},
+		Enemies, 1 << 1, Forums, false, Camps);
+	TestEqual(TEXT("defeated teammate: no allied unit"), Beaten.Allies.Num(), 0);
+	TestEqual(TEXT("defeated teammate: no allied forum"), Beaten.AllyForums.Num(), 0);
 
 	// Without a camp table (each owner alone): everyone else is an enemy, as before.
 	const FHOLAISummary Alone = HOLAISummary::Make(0, {}, {}, {}, TOptional<FHOLResources>(), HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {}, {},
 		Enemies, 0, Forums, false);
 	TestEqual(TEXT("alone: three enemy units"), Alone.Enemies.Num(), 3);
 	TestEqual(TEXT("alone: two enemy forums"), Alone.EnemyForums.Num(), 2);
+	TestEqual(TEXT("alone: no ally"), Alone.Allies.Num() + Alone.AllyForums.Num(), 0);
 	return true;
 }
 
@@ -243,6 +261,12 @@ bool FHOLAITeammatesReadTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("the enemy centre is slot 2's"), Slot0.bHasEnemyCentre && Slot0.EnemyCentreLocation.Equals(FVector(-10000.0, 0.0, 0.0), 1.0));
 		const FHOLAISummary Slot2 = HOLAISummary::Read(*World, 2);
 		TestEqual(TEXT("slot 2 sees both forums of the other team"), Slot2.EnemyForums.Num(), 2);
+		TestEqual(TEXT("slot 0 has slot 1's forum as an allied forum"), Slot0.AllyForums.Num(), 1);
+		if (Slot0.AllyForums.Num() == 1)
+		{
+			TestEqual(TEXT("it is slot 1's"), Slot0.AllyForums[0].Slot, 1);
+		}
+		TestEqual(TEXT("slot 2 has no teammate"), Slot2.AllyForums.Num(), 0);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

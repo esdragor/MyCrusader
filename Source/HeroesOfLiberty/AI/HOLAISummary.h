@@ -329,6 +329,17 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<FHOLAIForum> EnemyForums;
 
+	/**
+	 * The units of the slot's teammates (IA4, D571: the other slots of its team that are not defeated; the dying left out), by
+	 * identifier (ascending): what the AI reads to help a teammate; the same reading place as Enemies (the fog will cut both).
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FHOLAIUnit> Allies;
+
+	/** The main forums of the slot's teammates that are not defeated (IA4, D571), by slot (ascending). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FHOLAIForum> AllyForums;
+
 	/** Its King (IA3.1, Regicide): alive and not dying; he does not belong to the army. */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	bool bHasKing = false;

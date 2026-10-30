@@ -121,8 +121,15 @@ namespace HOLAISummary
 			{
 				Summary.Enemies.Add(MakeAIUnit(Unit));
 			}
+			// IA4 (D571): the units of the slot's teammates (another slot of its camp, not defeated, not dying) are what it may help.
+			else if (Unit.OwnerPlayer != PlayerIndex && !Camps.AreHostile(PlayerIndex, Unit.OwnerPlayer) && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer)
+				&& Unit.Activity != EHOLUnitActivity::Dying)
+			{
+				Summary.Allies.Add(MakeAIUnit(Unit));
+			}
 		}
 		Summary.Enemies.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
+		Summary.Allies.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
 
 		// Sources: each standing one the slot may gather (not another slot's farm field, IA1.2: the gather would refuse it,
 		// IA0.4 B4) measured from the slot's nearest deposit taking its resource. A few deposits per slot, a few hundred
@@ -269,8 +276,13 @@ namespace HOLAISummary
 				{
 					Summary.EnemyForums.Add(WithLocation(Forum));
 				}
+				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot))
+				{
+					Summary.AllyForums.Add(WithLocation(Forum));	// IA4 (D571): a teammate's (not hostile, not defeated)
+				}
 			}
 			Summary.EnemyForums.Sort([](const FHOLAIForum& A, const FHOLAIForum& B) { return A.Slot < B.Slot; });
+			Summary.AllyForums.Sort([](const FHOLAIForum& A, const FHOLAIForum& B) { return A.Slot < B.Slot; });
 			for (const FHOLUnitView& Unit : Units)
 			{
 				if (Unit.OwnerPlayer == PlayerIndex && Unit.bKing && Unit.Activity != EHOLUnitActivity::Dying)
