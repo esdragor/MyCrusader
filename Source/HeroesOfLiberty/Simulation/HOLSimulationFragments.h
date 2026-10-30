@@ -448,6 +448,9 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	/** The last enemy that hit it: taken on by a riposte (HOLCombat::FCandidate::bAttacksMe) even beyond its search radius. */
 	FMassEntityHandle LastAttacker;
 
+	/** Step of the last hit it took (LastAttacker set then): forgotten HOLCombat::LastAttackerMemoryMs later without a new one (EtapeDefini S); -1: none. */
+	int64 LastHitStep = -1;
+
 	/** Where its target stood when it last walked towards it: a new walk once the target moved away from there. */
 	FVector2D ApproachPoint = FVector2D::ZeroVector;
 
@@ -474,11 +477,23 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 
 	EHOLCombatMode Mode = EHOLCombatMode::Normal;
 
+	/**
+	 * J8b.2: its level (the hero's, from his XP, set by UHOLHeroSubsystem at each step's end; 1 for every troop): its attack
+	 * and its maximum health grow with it (HOLCombat::GetDamage, GetMaxHealth). In the padding before DeathStep.
+	 */
+	uint8 Level = 1;
+
 	/** On an attack-move, a fight took it off its way (J7b.3): once no enemy is left, it walks on to AttackMoveGoal. */
 	bool bAttackMoveDetour = false;
 
 	/** Step it fell to 0 health at (J7b.4): destroyed HOLCombat::DyingSteps later; -1: alive. */
 	int64 DeathStep = -1;
+
+	/**
+	 * J8c.2: milliseconds it stays under its hero's cry (Serrez les rangs, J8c-Q2): HOLHeroAbility::CloseRanksDurationMs when
+	 * the cry reaches it, counted down each step by the combat processor; 0: not under it.
+	 */
+	int32 CloseRanksMs = 0;
 
 	/**
 	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
@@ -495,25 +510,19 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	TWeakObjectPtr<AHOLBuilding> OrderedBuilding;
 
 	/**
-	 * EtapeDefini J: its place by the wall of PlaceBuilding, given with the group's order (HOLCombat::GetBuildingPlaces): its
-	 * walks to strike that building aim there, not at the wall's point nearest it. Unset (a building found by itself): none.
+	 * EtapeDefini O.7 (a crowd, AoE4): a melee striking a building walks on to its visible wall while it strikes (closing in);
+	 * how long (ms, simulation steps) it has not come HOLCombat::BuildingCloseInProgress nearer the wall than CloseInBest
+	 * (blocked by the friends in front): past HOLCombat::BuildingCloseInStopMs its walk stops, it strikes where it stands.
 	 */
-	TWeakObjectPtr<AHOLBuilding> PlaceBuilding;
-	FVector2D BuildingPlace = FVector2D::ZeroVector;
+	int32 CloseInBlockedMs = 0;
+	float CloseInBest = MAX_flt;
 	/**
-	 * EtapeDefini J loop 4: how long (ms, simulation steps) it has not come HOLCombat::BuildingPlaceProgress nearer its place
-	 * than PlaceBestDistance (blocked, pushed, walk ended short or going round in circles); past HOLCombat::BuildingPlaceGiveUpMs
-	 * it forgets its place (the wall's nearest point and the reach after a short walk again, a new walk at once).
+	 * EtapeDefini O.7: while it strikes a building (a melee), its way in (unit length, to the visible wall's nearest point):
+	 * the separation lets its friends push it only that way, never outwards (UHOLUnitSeparationProcessor). Zero: none.
 	 */
-	int32 PlaceBlockedMs = 0;
-	float PlaceBestDistance = MAX_flt;
-	/**
-	 * EtapeDefini J loop 8: the building whose place it forgot (PlaceBuilding reset after BuildingPlaceGiveUpMs): its walk
-	 * there still aims off the visible wall, and it is still kept out of that wall while it strikes it.
-	 */
-	TWeakObjectPtr<AHOLBuilding> PlaceGivenUpBuilding;
-	/** EtapeDefini J loop 10: blocked once on its way, it took a nearer place (HOLCombat::GetBuildingPlaceChain); blocked again, it forgets it. */
-	bool bPlaceShifted = false;
+	FVector2f BuildingInward = FVector2f::ZeroVector;
+	/** EtapeDefini O.7: how far (cm) it may still be pushed in along BuildingInward (to BuildingWallGap off the visible wall). */
+	float BuildingRoom = 0.f;
 
 	/** Its target was ordered (J7b.3): kept, never replaced by its own choice, until it dies. */
 	bool bOrderedTarget = false;
@@ -554,12 +563,11 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 		Target = FMassEntityHandle();
 		TargetBuilding.Reset();
 		OrderedBuilding.Reset();
-		PlaceBuilding.Reset();
-		PlaceGivenUpBuilding.Reset();
-		PlaceBlockedMs = 0;
-		bPlaceShifted = false;
-		PlaceBestDistance = MAX_flt;
+		CloseInBlockedMs = 0;
+		CloseInBest = MAX_flt;
+		BuildingInward = FVector2f::ZeroVector;
 		LastAttacker = FMassEntityHandle();
+		LastHitStep = -1;
 		bOrderedTarget = false;
 		bAttacking = false;
 		bApproaching = false;

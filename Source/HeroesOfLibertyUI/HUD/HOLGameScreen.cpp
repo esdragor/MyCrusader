@@ -1,5 +1,6 @@
 #include "HUD/HOLGameScreen.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "Buildings/HOLBuilding.h"
@@ -14,6 +15,8 @@
 #include "Components/Overlay.h"
 #include "Components/OverlaySlot.h"
 #include "Components/ProgressBar.h"
+#include "Components/ScaleBox.h"
+#include "Components/ScaleBoxSlot.h"
 #include "Components/SizeBox.h"
 #include "Components/SizeBoxSlot.h"
 #include "Components/Spacer.h"
@@ -40,6 +43,7 @@
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
@@ -540,6 +544,11 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		{
 			Refresh();
 		}
+		// J8c.4: the hero's cells (units selected: no building, no group) follow his cool-downs and his level.
+		else if (bHeroCellsShown)
+		{
+			RefreshGrid(nullptr, false, BoundPlayerState.Get());
+		}
 	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
 	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
@@ -651,11 +660,13 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
 		Previous->OnForumEvent.Remove(TableForumEventHandle);
 		Previous->OnHeroReadyMessage.Remove(TableHeroReadyHandle);
+		Previous->OnHeroLevelUp.Remove(TableHeroLevelHandle);
 	}
 	TableForumsHandle.Reset();
 	TableVictoryHandle.Reset();
 	TableForumEventHandle.Reset();
 	TableHeroReadyHandle.Reset();
+	TableHeroLevelHandle.Reset();
 	BoundTableState = GameState;
 	if (GameState)
 	{
@@ -666,6 +677,8 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		TableForumEventHandle = GameState->OnForumEvent.AddUObject(this, &UHOLGameScreen::HandleForumEvent);
 		// J8a.4: the local player's hero ready to return (its owner alone, once per death).
 		TableHeroReadyHandle = GameState->OnHeroReadyMessage.AddUObject(this, &UHOLGameScreen::HandleHeroReadyMessage);
+		// J8b.4: a hero gone up (every machine): the alerts for its owner alone.
+		TableHeroLevelHandle = GameState->OnHeroLevelUp.AddUObject(this, &UHOLGameScreen::HandleHeroLevelUp);
 	}
 }
 
@@ -676,6 +689,33 @@ void UHOLGameScreen::HandleHeroReadyMessage(const FHOLForumMessage& Message)
 		MessageThread.Add(Message, World->GetRealTimeSeconds());
 		RebuildMessages();
 	}
+}
+
+void UHOLGameScreen::HandleHeroLevelUp(const int32 HeroSlot, const int32 OldLevel, const int32 NewLevel)
+{
+	const UWorld* World = GetWorld();
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	if (!World || !PlayerState || PlayerState->GetPlayerIndex() != HeroSlot)
+	{
+		return;
+	}
+	const TArray<FHOLForumMessage> Messages = HOLForumMessages::GetHeroLevelMessages(OldLevel, NewLevel);
+	for (const FHOLForumMessage& Message : Messages)
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("%s (slot %d)"), *Message.Shown, HeroSlot);
+		MessageThread.Add(Message, World->GetRealTimeSeconds());
+	}
+	RebuildMessages();
+	// A minor alert with its sound (J8b-Q4), once for its lines: a fanfare (J8b.5), the tier's when a tier's line follows
+	// the level's; synthesised until real sounds come.
+	const bool bTier = Messages.Num() > 1;
+	USoundBase* Sound = LoadObject<USoundBase>(nullptr, bTier ? HOLForumMessages::HeroTierSoundPath : HOLForumMessages::HeroLevelSoundPath);
+	if (Sound)
+	{
+		UGameplayStatics::PlaySound2D(this, Sound);
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("Hero level alert: slot %d level %d -> %d (sound%s)%s"), HeroSlot, OldLevel, NewLevel, Sound ? TEXT("") : TEXT(" missing"),
+		bTier ? TEXT(" tier fanfare") : TEXT(""));
 }
 
 void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)
@@ -1738,6 +1778,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		PlayerController->GetOrderCommands(Orders);
 	}
 	bOrdersShown = Orders.ContainsByPredicate([](const FHOLGridCommand& Command) { return !Command.IsNone(); });
+	bHeroCellsShown = Commands.ContainsByPredicate([](const FHOLGridCommand& Command) { return Command.Command == EHOLGridCommand::HeroAbility; });
 	// Hidden, never collapsed: its place in the bottom bar kept (nothing moves from a selection to the next).
 	if (GridPanel)
 	{
@@ -1755,7 +1796,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
-		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName : Command.TypeName;
+		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
+			: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks")) : Command.TypeName;
 		if (ShownOrderTypes.IsValidIndex(Cell))
 		{
 			ShownOrderTypes[Cell] = Command.Command == EHOLGridCommand::AttackMove ? FName(TEXT("AttackMove"))
@@ -1815,6 +1857,28 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetTooltip(LOCTEXT("HoldName", "Tenir la position"), FHOLResources(), FHOLResources(),
 				LOCTEXT("HoldEffect", "N'attaque qu'à portée, ne poursuit pas"));
 			break;
+		case EHOLGridCommand::HeroAbility:
+		{
+			// J8c.4 (J8c-Q4): the hero's cry (A) and banner (Z). Greyed below its level (the level in its tooltip) or cooling
+			// down (the seconds left under its name, J8-Q5: the owner's alone); still clickable, the click does nothing.
+			const bool bBanner = Command.Ability == EHOLHeroAbility::Banner;
+			const FText Short = bBanner ? LOCTEXT("BannerShort", "Bannière") : LOCTEXT("CloseRanksShort", "Rangs");
+			const FText Name = bBanner ? LOCTEXT("BannerName", "Bannière de l'Aube") : LOCTEXT("CloseRanksName", "Serrez les rangs");
+			FText Effect = bBanner
+				? LOCTEXT("BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s")
+				: LOCTEXT("CloseRanksEffect", "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s");
+			const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
+				? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
+			if (bLocked)
+			{
+				Effect = FText::Format(LOCTEXT("HeroAbilityLocked", "Niveau {0} requis"), FText::AsNumber(HOLHeroAbility::GetUnlockLevel(Command.Ability)));
+			}
+			GridCell->SetCommand(Command.CooldownSeconds > 0 && !bLocked
+				? FText::Format(LOCTEXT("HeroAbilityCooldown", "{0}\n{1} s"), Short, FText::AsNumber(Command.CooldownSeconds)) : Short,
+				Command.bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), Effect);
+			break;
+		}
 		default:
 			// An empty cell stays, dark (disabled), at its key's place.
 			GridCell->ClearUnit();
@@ -2159,12 +2223,48 @@ FString UHOLGameScreen::DescribeScript() const
 	return ScriptScreen->Describe();
 }
 
-FMargin UHOLGameScreen::GetBottomLeftPlace()
+FString UHOLGameScreen::DescribeLayout() const
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
-	// The control groups' bar: its slots (QueueItemHeight * 0.8) and its panel's padding (4 above and below).
+	if (!BottomBar || !MinimapPlace)
+	{
+		return TEXT("none");
+	}
+	// The window's size in pixels and its DPI scale (the shortest side's curve): the HUD's widths are in Slate units.
+	const FVector2D Viewport = UWidgetLayoutLibrary::GetViewportSize(this);
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	const FGeometry& BarGeometry = BottomBar->GetCachedGeometry();
+	const FGeometry& PlaceGeometry = MinimapPlace->GetCachedGeometry();
+	const float BarDesired = BottomBar->GetDesiredSize().X;
+	const float BarShown = BarGeometry.GetAbsoluteSize().X / Dpi;
+	const float BarRight = (BarGeometry.GetAbsolutePosition().X + BarGeometry.GetAbsoluteSize().X) / Dpi;
+	const float PlaceLeft = PlaceGeometry.GetAbsolutePosition().X / Dpi;
+	return FString::Printf(TEXT("viewport %dx%d, dpi %.3f, width %d, bar %d shown %d (scale %.2f) right %d, minimap %d left %d, gap %d"),
+		FMath::RoundToInt(Viewport.X), FMath::RoundToInt(Viewport.Y), Dpi, FMath::RoundToInt(Viewport.X / Dpi),
+		FMath::RoundToInt(BarDesired), FMath::RoundToInt(BarShown), BarDesired > 0.f ? BarShown / BarDesired : 1.f, FMath::RoundToInt(BarRight),
+		FMath::RoundToInt(MinimapSize), FMath::RoundToInt(PlaceLeft), FMath::RoundToInt(PlaceLeft - BarRight));
+}
+
+float UHOLGameScreen::GetBottomScale() const
+{
+	if (!BottomBar)
+	{
+		return 1.f;
+	}
+	// The bar's layout scale over the window's DPI scale: the scale box's share; 1 before the first layout.
+	const FGeometry& BarGeometry = BottomBar->GetCachedGeometry();
+	const float Dpi = UWidgetLayoutLibrary::GetViewportScale(this);
+	const float Scale = BarGeometry.GetAccumulatedLayoutTransform().GetScale();
+	return BarGeometry.GetLocalSize().X > 0.f && Dpi > UE_KINDA_SMALL_NUMBER && Scale > UE_KINDA_SMALL_NUMBER ? FMath::Min(Scale / Dpi, 1.f) : 1.f;
+}
+
+FMargin UHOLGameScreen::GetBottomLeftPlace() const
+{
+	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+	// The control groups' bar: its slots (QueueItemHeight * 0.8) and its panel's padding (4 above and below); the column
+	// (bar, gap, groups) at the scale it is drawn at (EtapeDefini T).
 	constexpr float GroupsHeight = QueueItemHeight * 0.8f + 2.f * 4.f;
-	return FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + BarHeight + BarGap + GroupsHeight + BarGap);
+	return FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + GetBottomScale() * (BarHeight + BarGap + GroupsHeight) + BarGap);
 }
 
 bool UHOLGameScreen::ClickWidget(const FName Name)
@@ -2675,13 +2775,32 @@ void UHOLGameScreen::BuildLayout()
 
 	// The control groups' bar (J7a.5, D30), bottom left over the selection's block (the cheats' panel holds the top left):
 	// a slot per group not empty, « 1 · 9 », in the keys' order.
+	// EtapeDefini T: the groups' bar and the bottom bar under it, one column in a scale box given the width left of the
+	// minimap's place: too wide for the window (1500 px at 1080 high, a 4:3 window), the column is drawn smaller, as one,
+	// down only (never larger); from 1920x1080, and at 1600x900, its scale is 1 (the look validated at G.1). The box and
+	// the column let the clicks through where they are empty.
+	BottomScale = WidgetTree->ConstructWidget<UScaleBox>(UScaleBox::StaticClass(), TEXT("BottomScale"));
+	BottomScale->SetStretch(EStretch::ScaleToFitX);
+	BottomScale->SetStretchDirection(EStretchDirection::DownOnly);
+	BottomScale->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	UOverlaySlot* BottomScaleSlot = Frame->AddChildToOverlay(BottomScale);
+	BottomScaleSlot->SetHorizontalAlignment(HAlign_Fill);
+	BottomScaleSlot->SetVerticalAlignment(VAlign_Bottom);
+	BottomScaleSlot->SetPadding(FMargin(ScreenMargin, 0.f, ScreenMargin + MinimapSize + BarGap, ScreenMargin));
+	UVerticalBox* BottomLeft = MakeVerticalBox(TEXT("BottomLeft"));
+	BottomLeft->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	if (UScaleBoxSlot* ColumnSlot = Cast<UScaleBoxSlot>(BottomScale->AddChild(BottomLeft)))
+	{
+		ColumnSlot->SetHorizontalAlignment(HAlign_Left);
+		ColumnSlot->SetVerticalAlignment(VAlign_Bottom);
+	}
+
 	GroupsPanel = MakePanel(TEXT("GroupsPanel"));
 	GroupsPanel->SetPadding(FMargin(6.f, 4.f));
 	GroupsPanel->SetVisibility(ESlateVisibility::Collapsed);
-	UOverlaySlot* GroupsSlot = Frame->AddChildToOverlay(GroupsPanel);
+	UVerticalBoxSlot* GroupsSlot = BottomLeft->AddChildToVerticalBox(GroupsPanel);
 	GroupsSlot->SetHorizontalAlignment(HAlign_Left);
-	GroupsSlot->SetVerticalAlignment(VAlign_Bottom);
-	GroupsSlot->SetPadding(FMargin(ScreenMargin, 0.f, 0.f, ScreenMargin + BarHeight + BarGap));
+	GroupsSlot->SetPadding(FMargin(0.f, 0.f, 0.f, BarGap));
 	UHorizontalBox* GroupsRow = MakeHorizontalBox(TEXT("GroupsRow"));
 	GroupsPanel->SetContent(GroupsRow);
 	for (int32 Index = 1; Index <= AHOLPlayerController::NumControlGroups; ++Index)
@@ -2699,14 +2818,11 @@ void UHOLGameScreen::BuildLayout()
 
 	// The bottom bar, bottom left (the user's 2nd trial of G.1, AoE4's way, D201): the selection's block, the command
 	// panel, the builders' age panels, each at a fixed place whatever the selection (a block hidden keeps its place).
-	UHorizontalBox* BottomBar = MakeHorizontalBox(TEXT("BottomBar"));
-	UOverlaySlot* BottomBarSlot = Frame->AddChildToOverlay(BottomBar);
-	BottomBarSlot->SetHorizontalAlignment(HAlign_Left);
-	BottomBarSlot->SetVerticalAlignment(VAlign_Bottom);
-	BottomBarSlot->SetPadding(FMargin(ScreenMargin));
-	const auto AddToBar = [BottomBar](UWidget* Widget, const float LeftPadding)
+	BottomBar = MakeHorizontalBox(TEXT("BottomBar"));
+	BottomLeft->AddChildToVerticalBox(BottomBar)->SetHorizontalAlignment(HAlign_Left);
+	const auto AddToBar = [Bar = BottomBar.Get()](UWidget* Widget, const float LeftPadding)
 	{
-		UHorizontalBoxSlot* WidgetSlot = BottomBar->AddChildToHorizontalBox(Widget);
+		UHorizontalBoxSlot* WidgetSlot = Bar->AddChildToHorizontalBox(Widget);
 		WidgetSlot->SetVerticalAlignment(VAlign_Bottom);
 		WidgetSlot->SetPadding(FMargin(LeftPadding, 0.f, 0.f, 0.f));
 	};
@@ -2936,7 +3052,7 @@ void UHOLGameScreen::BuildLayout()
 	}
 
 	// The minimap's place, bottom right (D201): no minimap yet; nothing else goes there.
-	USizeBox* MinimapPlace = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MinimapPlace"));
+	MinimapPlace = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MinimapPlace"));
 	MinimapPlace->SetWidthOverride(MinimapSize);
 	MinimapPlace->SetHeightOverride(MinimapSize);
 	MinimapPlace->SetVisibility(ESlateVisibility::HitTestInvisible);

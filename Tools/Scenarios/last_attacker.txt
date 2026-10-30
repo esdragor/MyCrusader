@@ -1,0 +1,17 @@
+# Le dernier attaquant oublié (EtapeDefini S) : un Homme d'armes touché par un Archer ennemi qui s'en va le poursuit ~5 s après le coup, puis l'oublie (plus de cible, arrêté, au repos) au lieu de le suivre à travers la carte. Plain, deux joueurs (last_attacker.json, IA sans cervelle).
+# L'Archer (rouge) est à 19 m au sud de l'Homme d'armes : dans sa portée de 20 m, hors de l'agression de 16 m de l'Homme d'armes,
+# il tire de lui-même. Dès que sa flèche touche, il reçoit l'ordre de partir 51 m plus au sud (7,8 m/s contre 7 m/s : jamais rattrapé).
+# Avant : l'Homme d'armes le suivait tant que l'Archer vivait (et comptait « en combat ») ; maintenant il s'arrête 5 s après le
+# dernier coup reçu (HOLCombat::LastAttackerMemoryMs), là où il est. Le journal donne le pas du coup (« Combat: step … lands on »).
+hol.Combat.LogHits 1
+hol.Camera.Focus -2000 -7500
+hol.Camera.Zoom 6
+frames 2
+hol.Units.Spawn 1 -2000 -6000 0 ManAtArms 0
+hol.Units.Spawn 1 -2000 -7900 1 Archer 0
+waitunits 2
+waitlog Archer lands on #
+hol.Units.Move -2000 -13000 1
+note L'Homme d'armes, touché, poursuit l'Archer qui file vers le sud ; ~5 s après le coup il s'arrête et reste au repos (l'Archer continue seul, ~35 m plus loin).
+note Variante : console (²) « hol.Units.Move -2000 -6000 1 » ramène l'Archer ; en portée il retire : la poursuite repart 5 s après chaque coup, puis il l'oublie à nouveau.
+note Ralenti : console (²) puis « slomo 0.5 » (« slomo 1 » pour revenir). Rejouer : « hol.Scenario last_attacker ».

@@ -1,0 +1,67 @@
+# Bâtiment attaqué sans ordre direct (EtapeDefini O) : 20 Hommes d'armes en attaque-déplacement à travers une Maison ennemie, puis 16 au repos près d'une Maison, puis à toi : une foule à la AoE4 (chacun frappe dès qu'il est à portée, ceux de derrière poussent, la foule se tasse au mur et déborde sur les côtés)
+# Plain, deux joueurs (attack_places.json). Positions dans le repère du centre du joueur (X vers le milieu), comme
+# building_crowd. Les bâtiments ennemis (joueur 2, hol.Cheat.SpawnBuilding) : la Maison du temps 1 à ~24 m du groupe A,
+# hors du rayon d'agressivité (16 m) ; celle du temps 2 posée à ~11 m du groupe B, dedans : il part tout seul.
+# Une Maison tient ~3 s sous 20 Hommes d'armes : regarder surtout l'arrivée et les premiers coups.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 200
+# Groupe A (temps 1) : 20 Hommes d'armes, rangés dans le groupe 1.
+hol.Camera.FocusNear 4600 -1500
+frames 2
+hol.Units.SpawnHere 20 ManAtArms 0 400
+waitunits 20
+hol.Select.Army
+waitlog Selection: 20 units
+hol.Select.Group Add 1
+waitlog Group 1: created, 20 units
+# Groupe B (temps 2) : 16 Hommes d'armes plus au sud. Groupe 2 = tous, moins le groupe 1.
+hol.Camera.FocusNear 4600 3500
+frames 2
+hol.Units.SpawnHere 16 ManAtArms 0 350
+waitunits 36
+hol.Select.Army
+waitlog Selection: 36 units
+hol.Select.Group Add 2
+waitlog Group 2: created, 36 units
+hol.Select.Group Select 1
+hol.Select.Group Remove 2
+waitlog Group 2: removed, 16 units
+# La Maison du temps 1, sur le chemin de l'attaque-déplacement.
+hol.Cheat.SpawnBuilding House 1 7000 -1500
+waitlog Cheat: spawned House of slot 1
+# Temps 1 : attaque-déplacement (Q puis clic au sol) au-delà de la Maison.
+hol.Select.Group Select 1
+hol.Camera.FocusNear 6500 -1500
+frames 5
+note 1. Ces 20 Hommes d'armes (sélectionnés) vont recevoir une attaque-déplacement (Q) vers un point derrière la Maison ennemie.
+note    Regarde : en la croisant, ils l'attaquent d'eux-mêmes, en foule : chacun frappe dès qu'il est à portée, sans chercher de place ;
+note    ceux de derrière poussent, la foule se tasse contre le mur (3 rangs) et déborde sur les côtés ; personne ne longe la foule en frappant.
+waitkey Entrée : attaque-déplacement des 20 au-delà de la Maison (temps 1)
+hol.Select.Group Select 1
+# La caméra sur le point juste avant le clic : sinon « the point is not on the screen ».
+hol.Camera.FocusNear 8000 -1500
+frames 5
+hol.Select.AttackMoveNear 9000 -1500
+waitlog Building destroyed: House of slot 1
+# Temps 2 : au repos, une Maison posée dans le rayon d'agressivité.
+hol.Select.Group Select 2
+hol.Camera.FocusNear 5200 3500
+frames 5
+note 2. Ces 16 Hommes d'armes sont au repos, sans ordre. Une Maison ennemie va apparaître à ~11 m.
+note    Regarde : ils l'attaquent tout seuls, en foule eux aussi : frappe dès la portée, tassés au mur de leur côté, débordement sur les côtés.
+waitkey Entrée : une Maison ennemie près des 16 (temps 2)
+hol.Cheat.SpawnBuilding House 1 5700 3500
+waitlog Cheat: spawned House of slot 1
+waitlog Building destroyed: House of slot 1
+# Temps 3 : à toi. Une Caserne et une Maison neuves, à ~30 m et plus des deux groupes (hors des 16 m).
+waitkey Entrée : une Caserne et une Maison neuves, et c'est toi qui joues (temps 3)
+hol.Cheat.SpawnBuilding Barracks 1 9500 2500
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding House 1 12500 -500
+waitlog Cheat: spawned House of slot 1
+hol.Select.Group Select 1
+hol.Camera.FocusNear 9000 500
+frames 5
+note 3. À toi (touche 1 : les 20 du temps 1 ; touche 2 : les 16 du temps 2). Une Caserne et une Maison ennemies.
+note    Essaie : Q puis clic au sol derrière un bâtiment ; un groupe déplacé tout près (moins de 16 m) puis laissé au repos ;
+note    clic droit sur l'un puis Maj + clic droit sur l'autre. Chaque fois : une foule du côté d'arrivée, tassée au mur, qui déborde avec le nombre.

@@ -1,7 +1,7 @@
 // The hero's return after death (J8a.4): pure rules, integers only (D468 determinism), no world access.
 // After death the player waits (30 + 8 x level) seconds, then may pay to bring the hero back. The price starts at
-// 150 gold and goes down in a straight line to 0 over 60 s, rounded up to a whole gold at each step. At 0 the hero
-// comes back by itself (players, AI and absent players alike).
+// 100 + 50 x level gold (J8b-Q5: 150 at level 1, 400 at level 6) and goes down in a straight line to 0 over 60 s,
+// rounded up to a whole gold at each step. At 0 the hero comes back by itself (players, AI and absent players alike).
 namespace HOLHeroReturn
 {
 	// Simulation steps per second: UHOLSimulationSettings::SimulationRateHz (C++, D217), read through the bridge.
@@ -9,7 +9,8 @@ namespace HOLHeroReturn
 
 	const int BaseDelaySeconds = 30;
 	const int DelayPerLevelSeconds = 8;
-	const int StartPrice = 150;
+	const int BasePrice = 100;
+	const int PricePerLevel = 50;
 	const int PriceDropSeconds = 60;
 
 	// Price before the delay ends: no return can be bought yet.
@@ -61,6 +62,12 @@ namespace HOLHeroReturn
 		return Step >= ReadyStep(DeathStep, Level);
 	}
 
+	// The price at the ready step (J8b-Q5): 100 + 50 x level.
+	int StartPrice(int Level)
+	{
+		return BasePrice + PricePerLevel * Level;
+	}
+
 	// Gold to pay at this step, or PriceNotReady before the delay ends.
 	int PriceAt(int Step, int DeathStep, int Level)
 	{
@@ -70,8 +77,8 @@ namespace HOLHeroReturn
 		const int DropSteps = PriceDropSteps();
 		if (SinceReady >= DropSteps)
 			return 0;
-		// Straight line from StartPrice to 0, rounded up to a whole gold (1 just before the end).
-		return Math::IntegerDivisionTrunc(StartPrice * (DropSteps - SinceReady) + DropSteps - 1, DropSteps);
+		// Straight line from the start price to 0, rounded up to a whole gold (1 just before the end).
+		return Math::IntegerDivisionTrunc(StartPrice(Level) * (DropSteps - SinceReady) + DropSteps - 1, DropSteps);
 	}
 
 	// A paid return is allowed only once ready (the price is then whatever PriceAt says).

@@ -1,0 +1,1 @@
+{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "startingHero": 0, "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }

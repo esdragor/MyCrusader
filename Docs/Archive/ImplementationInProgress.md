@@ -854,3 +854,8 @@ du joueur dans `DefaultEngine.ini` (réglages au-dessus des niveaux de qualité,
 test changent** (nouvelle référence à prendre avec celle de D258). **Pour M2** : `M_UnitPlayerColor`
 (`Tools/Editor/make_skinned_mannequin.py`, rugosité 0,7 et brillance par défaut) est à rendre mat (spéculaire 0,
 rugosité 1) ; non modifié par l'autre chantier, ce script étant à M2.
+
+## Clôture de l'écart des mesures de rendu (2026-10-29)
+
+L'écart du 2026-10-11 (145-170 i/s) contre le 12 (247-258 i/s), mêmes conditions, n'a jamais été revu : toutes les mesures au
+repos depuis donnent 218 à 277 i/s. **Clos comme non reproduit** (accord de l'utilisateur), journal archivé.

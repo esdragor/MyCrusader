@@ -145,6 +145,11 @@ namespace UE::HeroesOfLiberty::Tests::AIBrain
 				}
 			}
 			Centre->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+			// Room to spare (IA1.5: the opening places its house when the places run low, and takes a Peasant to build it).
+			if (AIState)
+			{
+				AIState->SetPopulation(5, 100);
+			}
 
 			Sources->OnWorldBeginPlay(*World);
 			Berries = Sources->AddSource(HOLSourceTypeNames::BerryBush, FVector(0.0, 1800.0, 0.0));
@@ -328,10 +333,10 @@ bool FHOLAIBrainExistsTest::RunTest(const FString& Parameters)
 }
 
 /**
- * IA0.4 B2 (IA0.4-Q1 A): the real chain C++ -> script -> order -> queue -> processors. One thought of AI slot 1 sends its
- * idle Peasants to the nearest source of its lowest stock among the resources it has a source of (a tie: food, wood,
- * stone, gold), in one order applied at the next step. Case 1: the starting stock (all equal) -> the berries. Case 2:
- * more food than wood -> the tree. Case 3: no idle Peasant left -> no order in the queue. Slot 0's (human) Peasant never
+ * IA0.4 B2 (IA0.4-Q1 A, the spreading by IA1.5): the real chain C++ -> script -> order -> queue -> processors. One thought
+ * of AI slot 1 sends its idle Peasants to the nearest source of the resource that lacks Peasants by the opening's weights
+ * (3 food for 2 wood), in one order applied at the next step. Case 1: no gatherer yet -> the berries. Case 2: 3 on the food
+ * -> the tree. Case 3: no idle Peasant left -> no order in the queue. Slot 0's (human) Peasant never
  * gets an order. Red while the script's Think only counts.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIBrainGatherIdleTest, "HeroesOfLiberty.AI.Brain.GatherIdle", UE::HeroesOfLiberty::Tests::AIBrain::Flags)
@@ -374,7 +379,8 @@ bool FHOLAIBrainGatherIdleTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Case 3: the human Peasant still idle"), GetActivity(World, Test.HumanPeasants[0]), EHOLUnitActivity::Idle);
 	}
 
-	// Case 2: more food than wood (the rest equal to wood) -> wood is the lowest, first by the tie with stone and gold.
+	// Case 2 (IA1.5: the Peasants spread by the opening's weights, not by the stock): 3 already on the food and none on the
+	// wood -> the idle Peasant goes to the tree.
 	{
 		FBrainWorld Test;
 		if (!TestNotNull(TEXT("A brain in the second test world"), Test.Brain) || !TestTrue(TEXT("Second test world ready"), Test.IsReady()))
@@ -382,9 +388,7 @@ bool FHOLAIBrainGatherIdleTest::RunTest(const FString& Parameters)
 			return false;
 		}
 		const UWorld& World = *Test.World;
-		FHOLResources Stock = Test.AIState->GetResources();
-		Stock.Food += 100;
-		Test.AIState->SetResources(Stock);
+		Test.AIState->SetGatherers(FHOLResources(3, 0, 0, 0));
 
 		AddExpectedMessage(FString::Printf(TEXT("Gather order of slot 1: 1 units to source %d \\(Wood\\)"), Test.Tree),
 			EAutomationExpectedMessageFlags::Contains, 1);

@@ -877,6 +877,7 @@ bool AHOLGameState::SetHeroSheet(const int32 Slot, const FHOLHeroSheet& Sheet)
 	ForceNetUpdate();
 	// No OnRep on the server (listen or solo): its own player hears it here.
 	NoteHeroReady();
+	NoteHeroLevels();
 	OnHeroSheetsChanged.Broadcast();
 	return true;
 }
@@ -884,7 +885,27 @@ bool AHOLGameState::SetHeroSheet(const int32 Slot, const FHOLHeroSheet& Sheet)
 void AHOLGameState::OnRep_HeroSheets()
 {
 	NoteHeroReady();
+	NoteHeroLevels();
 	OnHeroSheetsChanged.Broadcast();
+}
+
+void AHOLGameState::NoteHeroLevels()
+{
+	const UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_DedicatedServer)
+	{
+		return;
+	}
+	for (int32 Slot = 0; Slot < HeroSheets.Num(); ++Slot)
+	{
+		const int32 Level = HeroSheets[Slot].Level;
+		const int32 OldLevel = HeroLevelWatch.Update(Slot, Level);
+		if (OldLevel > 0)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero level up: slot %d level %d -> %d"), Slot, OldLevel, Level);
+			OnHeroLevelUp.Broadcast(Slot, OldLevel, Level);
+		}
+	}
 }
 
 void AHOLGameState::NoteHeroReady()

@@ -119,7 +119,7 @@ protected:
 	{
 		AHOLBuilding* Building = nullptr;
 		FBox2D Box = FBox2D(ForceInit);
-		/** EtapeDefini J loop 8: its visible wall's box (AHOLBuilding::GetVisibleBodyBounds): the places and the fallback walk keep out of it. */
+		/** EtapeDefini J loop 8: its visible wall's box (AHOLBuilding::GetVisibleBodyBounds): a melee walks to it and is pushed in to it (O.7). */
 		FBox2D VisibleBox = FBox2D(ForceInit);
 		uint32 Id = 0;
 		uint8 OwnerPlayer = 0;
@@ -130,20 +130,27 @@ protected:
 	TArray<FStepBuilding> StepBuildings;
 	TArray<HOLCombat::FBuildingCandidate> BuildingCandidates;
 	TArray<int32> BuildingCandidateIndices;
-	/**
-	 * EtapeDefini J loop 10: Fighters[Index], at Position, blocked on its way to its place by Step: the living friends of its
-	 * camp with a place there between it and its own (HOLCombat::GetBuildingPlaceChain) each take the next one on, it takes
-	 * the nearest, and they walk again. False (nobody between): nothing changed. O(units) once, on giving up only.
-	 */
-	bool ShiftBuildingPlaces(int32 Index, const FVector2D& Position, const FStepBuilding& Step);
-	TArray<FVector2D> ChainPlaces;
-	TArray<int32> ChainFighters;
-	TArray<int32> Chain;
+	/** EtapeDefini O.7b: the fighters (indices) striking a building as melee at the step's start (a closing-in one stops behind them). */
+	TArray<int32> BuildingStrikers;
 	/** The step's entry of a building, INDEX_NONE if it is not one of them (gone, a foundation). */
 	int32 FindStepBuilding(const AHOLBuilding* Building) const;
 
 	/** The step's units in identifier order, and the index of each entity. */
 	TArray<FFighter> Fighters;
+
+	/** J8c.2: where a slot's aura covers this step (J8c-Q1, Q3): its living hero, its banner. */
+	struct FAuraSource
+	{
+		FVector2D Location = FVector2D::ZeroVector;
+		uint8 Owner = 0;
+		bool bHero = false;
+	};
+	TArray<FAuraSource> AuraSources;
+	/**
+	 * J8c.2: the share of a hit Victim takes (HOLHeroAbility::GetDamageTakenPercent): within an aura of its owner
+	 * (AuraSources), under its hero's cry (FHOLCombatFragment::CloseRanksMs).
+	 */
+	int32 GetDamageTakenPercent(const FFighter& Victim) const;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
 	/**
 	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry

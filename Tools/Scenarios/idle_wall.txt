@@ -47,4 +47,5 @@ hol.Camera.FocusNear -1400 1600
 frames 5
 note Paysans sélectionnés : clic droit sur la fondation. Les soldats sortent ; ceux que les bâtisseurs bousculent ensuite ressortent du mur doucement.
 note Envoie un soldat se coller contre une maison, puis laisse-le : arrêté, il glisse hors du mur visible (pas plus d'une seconde).
+note Envoie-en un sur un coin de la maison (clic droit sur l'angle de la dalle) : arrêté, il ressort aussi du coin, le corps entier hors de la dalle (EtapeDefini R).
 note Fais passer un Paysan entre les deux maisons collées : en marche, il garde « une épaule » dans les murs et passe toujours.

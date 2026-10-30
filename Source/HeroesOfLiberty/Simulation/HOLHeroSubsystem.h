@@ -8,6 +8,11 @@
 #include "HOLHeroSubsystem.generated.h"
 
 class AHOLPlayerState;
+enum class EHOLHeroAbility : uint8;
+enum class EHOLXPSource : uint8;
+struct FHOLCombatFragment;
+struct FHOLUnitStateFragment;
+struct FHOLUnitTypeConstants;
 
 /** J8a.4: a simulation step's end, the hero sheets already written (Step: UHOLSimulationSubsystem::GetStepIndex). */
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FHOLOnHeroStep, int32, Step);
@@ -33,6 +38,12 @@ public:
 
 	/** Makes every slot's sheet from its hero now and writes the copies that changed (the end of each step). */
 	void UpdateSheets();
+
+	/**
+	 * J8b.2: XP earned by the slot's side (a kill, a building finished; HOLHeroXP), added to his true sheet; the copies and
+	 * his body's level follow at the step's end (UpdateSheets). Nothing out of range, on a client, or for XP <= 0.
+	 */
+	void AddXP(int32 Slot, int32 XP, EHOLXPSource Source);
 
 	/** Development (hol.Hero.SetXP): the slot's XP set, its copies written at once. False out of range or on a client. */
 	bool SetXP(int32 Slot, int32 XP);
@@ -68,6 +79,33 @@ public:
 	 */
 	bool BuyReturn(int32 Slot, int32 PlaceIndex, int32 Price);
 
+	/**
+	 * J8c.2: the slot's hero cries Serrez les rangs (J8c-Q2): his cool-down starts, and at the next combat step his units
+	 * within HOLHeroAbility::AuraRadius of him are under the cry (ConsumeCloseRanks). False: on a client, out of range, the
+	 * hero not alive, or the cry not ready (HOLHeroAbility::CanCast).
+	 */
+	bool CastCloseRanks(int32 Slot);
+
+	/** J8c.2, the combat processor: whether the slot's hero cried since its last step (then forgotten). */
+	bool ConsumeCloseRanks(int32 Slot);
+
+	/**
+	 * J8c.2: the slot's hero plants his banner at Location (J8c-Q3): it gives his aura there for HOLHeroAbility::
+	 * BannerDurationMs, even once he is dead; one at a time, his cool-down starts. False: on a client, out of range, the
+	 * hero not alive, below level 4 or the banner not ready (HOLHeroAbility::CanCast), or Location farther than
+	 * HOLHeroAbility::BannerPlantRange from him.
+	 */
+	bool PlantBanner(int32 Slot, const FVector& Location);
+
+	/** J8c.2: where the slot's banner stands; false when it has none standing. */
+	bool GetBanner(int32 Slot, FVector& OutLocation) const;
+
+	/** J8c.2: milliseconds before the slot's hero can cast Ability again (0: ready; the aura: 0). */
+	int32 GetCooldownMs(int32 Slot, EHOLHeroAbility Ability) const;
+
+	/** J8c.2 (hol.Hero.ResetAbilities, tests): the slot's cool-downs over, its banner and a pending cry gone. False out of range or on a client. */
+	bool ResetAbilities(int32 Slot);
+
 	/** The slot's AHOLPlayerState in the game state's PlayerArray (as HOLAISummary::ReadStock); nullptr for an AI slot. */
 	static AHOLPlayerState* FindPlayerState(const UWorld& World, int32 Slot);
 
@@ -81,6 +119,8 @@ private:
 	void OnStepEnded(int64 StepIndex);
 	/** The slot's copies (game state, player state), each written only when it changed. */
 	void WriteCopies(int32 Slot) const;
+	/** J8b.2: his body brought to the level of his XP (attack, max health; the HP gained added), alive only. */
+	void ApplyLevel(int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const;
 	void UnbindSteps();
 
 	/** One per slot (FHOLMatchConfig::MaxSlots). */
@@ -88,4 +128,24 @@ private:
 	FDelegateHandle StepEndedHandle;
 	/** J8a.4: one bit per slot whose return was asked, until his new body is seen (UpdateSheets). */
 	uint8 PendingReturns = 0;
+
+	/** J8c.2: a slot's abilities where the simulation runs (cool-downs, banner), counted down at each step's end. */
+	struct FAbilities
+	{
+		int32 CloseRanksCooldownMs = 0;
+		int32 BannerCooldownMs = 0;
+		/** Milliseconds its banner still stands at BannerLocation; 0: none. */
+		int32 BannerMs = 0;
+		FVector BannerLocation = FVector::ZeroVector;
+		/** Cried since the combat processor's last step (ConsumeCloseRanks). */
+		bool bCloseRanksPending = false;
+	};
+	/** One per slot, as Sheets. */
+	TArray<FAbilities> Abilities;
+	/** J8c.2: the cool-downs and the banners counted down by a step (OnStepEnded). */
+	void TickAbilities();
+	/** J8c.3: the step Milliseconds from now (the simulation's step, rounded up to whole steps). */
+	int32 GetStepsFromNow(int32 Milliseconds) const;
+	/** J8c.3: the step the slot's Ability is ready again, in his private sheet (J8-Q5). */
+	void SetReadyStep(int32 Slot, EHOLHeroAbility Ability, int32 Step);
 };

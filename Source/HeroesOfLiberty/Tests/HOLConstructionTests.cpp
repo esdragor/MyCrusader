@@ -900,6 +900,38 @@ bool FHOLConstructionIdleWallTest::RunTest(const FString& Parameters)
 	const double AloneFrom = HOLConstruction::GetDistance(Body, Alone);
 	TestTrue(FString::Printf(TEXT("by one wall: eased out, %d steps, %.1f cm from the body"), AloneSteps, AloneFrom),
 		AloneSteps > 1 && AloneFrom >= VisualGap + Radius);
+
+	// EtapeDefini R (J loop 9's leftover): standing still in a corner of the slab (where the navmesh's edge leaves a walker
+	// sent on the body's corner). Measured from the body, round at its corners, the rule left its body in the slab's
+	// corner; square corners (the guard's for every unit kept out) put it wholly out, a step at a time.
+	const FVector2D Slab = Half + FVector2D(VisualGap);
+	const auto FromSlab = [Slab](const FVector2D& P)
+	{
+		const FVector2D Away = P.GetAbs() - Slab;
+		return Away.GetMax() <= 0. ? Away.GetMax() : FVector2D(FMath::Max(Away.X, 0.), FMath::Max(Away.Y, 0.)).Size();
+	};
+	const HOLConstruction::FWallBody One[] = { Left };
+	const FVector2D InCorner = Half + FVector2D(60.0, 60.0);
+	FVector2D Round = InCorner;
+	for (int32 Step = 0; Step < 100; ++Step)
+	{
+		HOLConstruction::EaseOutOfVisibleWalls(One, Radius, VisualGap, MaxStep, Round);
+	}
+	TestTrue(FString::Printf(TEXT("round corners: its body left in the slab's corner, %.1f cm from the slab < %.1f"), FromSlab(Round), Radius),
+		FromSlab(Round) < Radius);
+	FVector2D Square = InCorner;
+	int32 SquareSteps = 0;
+	double SquareLongest = 0.0;
+	for (int32 Step = 0; Step < 100; ++Step)
+	{
+		const FVector2D Before = Square;
+		SquareSteps += HOLConstruction::EaseOutOfVisibleWalls(One, Radius, VisualGap, MaxStep, Square, true) ? 1 : 0;
+		SquareLongest = FMath::Max(SquareLongest, FVector2D::Distance(Before, Square));
+	}
+	TestTrue(FString::Printf(TEXT("square corners: wholly out of the slab's corner, %.1f cm >= %.1f, %d steps of %.1f cm at most"), FromSlab(Square), Radius,
+		SquareSteps, SquareLongest), FromSlab(Square) >= Radius && SquareSteps > 1 && SquareLongest <= MaxStep + 0.01);
+	FVector2D SquareAgain = Square;
+	TestFalse(TEXT("square corners: out, it stays"), HOLConstruction::EaseOutOfVisibleWalls(One, Radius, VisualGap, MaxStep, SquareAgain, true));
 	return true;
 }
 

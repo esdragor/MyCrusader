@@ -53,6 +53,7 @@ void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
 	PendingConstructionOrders.RemoveAll(OfPlayer);
 	PendingBuildOrders.RemoveAll(OfPlayer);
 	PendingHeroReturnOrders.Remove(PlayerIndex);
+	PendingHeroAbilityOrders.RemoveAll(OfPlayer);
 }
 
 void UHOLCommandSubsystem::IssueHeroReturnOrder(const int32 PlayerIndex)
@@ -68,6 +69,21 @@ void UHOLCommandSubsystem::ConsumeHeroReturnOrders(TArray<int32>& OutPlayerIndic
 {
 	OutPlayerIndices.Reset();
 	Swap(OutPlayerIndices, PendingHeroReturnOrders);
+}
+
+void UHOLCommandSubsystem::IssueHeroAbilityOrder(const int32 PlayerIndex, const EHOLHeroAbility Ability, const FVector& Location)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingHeroAbilityOrders.Add(FHOLHeroAbilityOrder{ PlayerIndex, Ability, Location });
+}
+
+void UHOLCommandSubsystem::ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingHeroAbilityOrders);
 }
 
 void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds, const FVector& Target, const int32 PlayerIndex, const bool bFromTask,

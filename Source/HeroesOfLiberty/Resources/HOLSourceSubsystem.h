@@ -93,6 +93,13 @@ public:
 	const TArray<FName>& GetTypeNames() const { return TypeNames; }
 	const FHOLSourceTypeRow* GetType(uint8 TypeIndex) const;
 
+	/**
+	 * Server: the places held of the sources of few places (a farm field, IA1.7b), by source index, as the gather processor
+	 * counted them at its last step; what the AI's summary shows of a field (a worker standing on it). Not replicated.
+	 */
+	void SetOccupants(TArray<uint8>&& InOccupants) { Occupants = MoveTemp(InOccupants); }
+	int32 GetOccupants(const int32 SourceIndex) const { return Occupants.IsValidIndex(SourceIndex) ? Occupants[SourceIndex] : 0; }
+
 	/** Server: what a player's gatherers unloaded since the start (reports, stress test S7). */
 	void RecordDeposit(uint8 OwnerPlayer, EHOLResource Resource, int32 Amount);
 	FHOLResources GetDeposited(uint8 OwnerPlayer) const { return Deposited.FindRef(OwnerPlayer); }
@@ -125,6 +132,7 @@ private:
 	TArray<FHOLSource> Sources;
 	int32 NumStanding = 0;
 	TMap<uint8, FHOLResources> Deposited;
+	TArray<uint8> Occupants;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLSourceField> Field;

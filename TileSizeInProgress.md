@@ -50,4 +50,5 @@ sur 220 ». Session mycrusader-4b, worktree `HeroesOfLiberty-J5c`, branche `tile
 ## Reste
 
 - S5 (positions sur 13 bits) à mesurer à la prochaine série de mesures (doit baisser : 2 bits de moins par état).
-- Peut-être : une ligne plus marquée tous les 5 cases (20 m) si le sol de 4 m fait trop chargé vu de loin.
+- ~~Peut-être : une ligne plus marquée tous les 5 cases (20 m) si le sol de 4 m fait trop chargé vu de loin.~~ **Abandonnée le
+  2026-10-29** (accord de l'utilisateur sur la recommandation : à reprendre seulement si le sol de 4 m paraît chargé de loin).

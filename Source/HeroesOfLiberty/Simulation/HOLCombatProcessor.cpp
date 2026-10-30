@@ -11,6 +11,7 @@
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -20,6 +21,9 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLHeroAbilityRules.h"
+#include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLOrderChainRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -363,41 +367,6 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 	return Count;
 }
 
-bool UHOLCombatProcessor::ShiftBuildingPlaces(const int32 Index, const FVector2D& Position, const FStepBuilding& Step)
-{
-	FHOLCombatFragment& Combat = *Fighters[Index].Combat;
-	ChainPlaces.Reset();
-	ChainFighters.Reset();
-	for (int32 Other = 0; Other < Fighters.Num(); ++Other)
-	{
-		const FFighter& Friend = Fighters[Other];
-		if (Other != Index && Friend.Camp == Fighters[Index].Camp && Friend.State->CurrentHealth > 0 && Friend.Combat->PlaceBuilding.IsValid()
-			&& Friend.Combat->PlaceBuilding == Step.Building)
-		{
-			ChainPlaces.Add(Friend.Combat->BuildingPlace);
-			ChainFighters.Add(Other);
-		}
-	}
-	HOLCombat::GetBuildingPlaceChain(Position, Combat.BuildingPlace, ChainPlaces, Step.VisibleBox, Chain);
-	if (Chain.IsEmpty())
-	{
-		return false;
-	}
-	const FVector2D Last = Combat.BuildingPlace;
-	Combat.BuildingPlace = ChainPlaces[Chain[0]];
-	for (int32 Link = 0; Link < Chain.Num(); ++Link)
-	{
-		FHOLCombatFragment& Moved = *Fighters[ChainFighters[Chain[Link]]].Combat;
-		Moved.BuildingPlace = Link + 1 < Chain.Num() ? ChainPlaces[Chain[Link + 1]] : Last;
-		Moved.PlaceBlockedMs = 0;
-		Moved.PlaceBestDistance = MAX_flt;
-		Moved.bAttacking = false;
-		Moved.bApproaching = false;
-	}
-	UE_LOG(LogHOLSimulation, Verbose, TEXT("Unit %u blocked on its way to its place: %d friends shift one place on"), Fighters[Index].UnitId, Chain.Num());
-	return true;
-}
-
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
 {
 	// As the order processor's arrival (D290): stands dead where it is. Its order serial cleared, a path still to come for
@@ -489,6 +458,17 @@ uint64 UHOLCombatProcessor::HashArrows() const
 	return Hash;
 }
 
+int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
+{
+	bool bInAura = false;
+	for (const FAuraSource& Source : AuraSources)
+	{
+		bInAura |= Source.Owner == Victim.State->OwnerPlayer
+			&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(Source.Location, FVector2D(Victim.Location))));
+	}
+	return HOLHeroAbility::GetDamageTakenPercent(bInAura, Victim.Combat->CloseRanksMs > 0);
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -513,7 +493,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// reads them before), and whether any unit has a target (none: no attacker to count).
 	const bool bZeroAtGather = bFighting && SkipAttackerCount != 0;
 	bool bAnyTarget = false;
-	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable](FMassExecutionContext& Context)
+	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
+	AuraSources.Reset();
+	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
@@ -525,8 +507,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
+		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
+			HOLHeroAbility::Tick(Combats[EntityIt].CloseRanksMs, StepMs);
+			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
+			{
+				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
+				AuraSources.Add(FAuraSource{ FVector2D(Location), States[EntityIt].OwnerPlayer, true });
+			}
 			FFighter& Fighter = Fighters.AddDefaulted_GetRef();
 			Fighter.Entity = Context.GetEntity(EntityIt);
 			Fighter.UnitId = States[EntityIt].UnitId;
@@ -551,6 +540,42 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		TotalArrowsLost += Arrows.Num(); // no target left for any
 		Arrows.Reset();
 		return;
+	}
+	// J8c.2: the banners standing (J8c-Q3, even once their hero is dead), and the cries cast since the last step (J8c-Q2):
+	// each crying hero's living units within his aura's reach now are under it for its whole duration (refreshed).
+	if (UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>())
+	{
+		const int32 HeroSources = AuraSources.Num();
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			FVector BannerLocation;
+			if (Heroes->GetBanner(Slot, BannerLocation))
+			{
+				AuraSources.Add(FAuraSource{ FVector2D(BannerLocation), static_cast<uint8>(Slot), false });
+			}
+			if (!Heroes->ConsumeCloseRanks(Slot))
+			{
+				continue;
+			}
+			for (int32 Source = 0; Source < HeroSources; ++Source)
+			{
+				if (AuraSources[Source].Owner != Slot)
+				{
+					continue;
+				}
+				int32 Cried = 0;
+				for (FFighter& Fighter : Fighters)
+				{
+					if (Fighter.State->OwnerPlayer == Slot && Fighter.State->CurrentHealth > 0.f
+						&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(AuraSources[Source].Location, FVector2D(Fighter.Location)))))
+					{
+						Fighter.Combat->CloseRanksMs = HOLHeroAbility::CloseRanksDurationMs;
+						++Cried;
+					}
+				}
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld slot %d cries Serrez les rangs, %d unit(s) under it"), StepIndex, Slot, Cried);
+			}
+		}
 	}
 	if (!bFighting)
 	{
@@ -813,8 +838,39 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			SearchTouched[Other] = 1;
 		}
 	};
+	// J8b.2: the XP of a death for the killer side's hero (J8b-Q1, Q2, Q5): killed by him (combat), by one of his troops
+	// near him (command, the victim within HOLHeroXP::CommandRadius of him), nothing while he is dead (D06).
+	UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	const auto AwardKillXP = [&](const FFighter& Victim, const int32 KillerPlayer, const uint32 KillerId)
+	{
+		const uint32 HeroId = Heroes && KillerPlayer >= 0 ? Units->FindHeroUnit(KillerPlayer) : 0;
+		const FHOLUnitTypeRow* VictimRow = HeroId != 0 ? Units->FindTypeRow(Victim.Constants->TypeName) : nullptr;
+		if (!VictimRow)
+		{
+			return;
+		}
+		HOLHeroXP::FKillFacts Facts;
+		Facts.VictimValue = HOLHeroXP::GetValue(VictimRow->Cost);
+		Facts.bVictimHero = HOLIsHero(Victim.Constants->ArmorCategoryMask);
+		Facts.VictimLevel = Victim.Combat->Level;
+		Facts.bKilledByHero = KillerId == HeroId;
+		const int32 HeroIndex = FindFighter(Units->FindEntity(HeroId));
+		if (HeroIndex != INDEX_NONE)
+		{
+			const FFighter& HeroFighter = Fighters[HeroIndex];
+			Facts.HeroLevel = HeroFighter.Combat->Level;
+			Facts.bHeroAlive = HeroFighter.State->CurrentHealth > 0.f && HeroFighter.Combat->DeathStep < 0;
+			Facts.DistanceToHero = static_cast<float>(FVector::Dist2D(Victim.Location, HeroFighter.Location));
+		}
+		TOptional<EHOLXPSource> Source;
+		const int32 XP = HOLHeroXP::GetKillXP(Facts, Source);
+		if (Source.IsSet())
+		{
+			Heroes->AddXP(KillerPlayer, XP, Source.GetValue());
+		}
+	};
 	// A unit killed in the step: its own target loses an attacker at once (KillUnit disengages it), not at the next count.
-	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer)
+	const auto Kill = [&](FFighter& Victim, const int32 KillerPlayer, const uint32 KillerId)
 	{
 		bDeathSincePlaces = true;
 		Touch(static_cast<int32>(&Victim - Fighters.GetData()));
@@ -825,6 +881,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Touch(FormerTarget);
 		}
 		KillUnit(World, *Units, Victim, StepIndex, KillerPlayer);
+		AwardKillXP(Victim, KillerPlayer, KillerId);
 	};
 
 	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).
@@ -898,7 +955,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		const int32 Victim = FindFighter(Arrow.Target);
 		float Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0.f;
-		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Arrow.Damage);
+		// J8c.2: the morale effects where it lands, now (aura, cry), not where it was released.
+		const float Landed = Victim != INDEX_NONE ? HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Fighters[Victim])) : Arrow.Damage;
+		const HOLCombat::EArrowOutcome Outcome = HOLCombat::ResolveArrow(Victim != INDEX_NONE, Health, Landed);
 		if (Outcome == HOLCombat::EArrowOutcome::Lost)
 		{
 			++TotalArrowsLost;
@@ -916,12 +975,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		if (Shooter != INDEX_NONE)
 		{
 			Enemy.Combat->LastAttacker = Arrow.Shooter;
-			Fighters[Shooter].Combat->DamageDealt += Arrow.Damage;
+			Enemy.Combat->LastHitStep = StepIndex;
+			Fighters[Shooter].Combat->DamageDealt += Landed;
 		}
 		if (LogHits != 0)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld arrow of #%u %s lands on #%u %s for %g, %g HP left (released step %lld, %lld steps)"), StepIndex,
-				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Arrow.Damage), static_cast<double>(Health), Arrow.ReleaseStep,
+				Arrow.ShooterId, *Arrow.ShooterType.ToString(), Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Landed), static_cast<double>(Health), Arrow.ReleaseStep,
 				StepIndex - Arrow.ReleaseStep);
 		}
 		if (Outcome == HOLCombat::EArrowOutcome::Kill)
@@ -931,7 +991,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				++Fighters[Shooter].Combat->Kills;
 			}
-			Kill(Enemy, Arrow.ShooterSlot);
+			Kill(Enemy, Arrow.ShooterSlot, Arrow.ShooterId);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck, by arrow)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
@@ -1022,14 +1082,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 			const FVector2D Position(Fighter.Location);
-			// Its target and last attacker as its turn reads them (a dead one: none).
+			// Its target and last attacker as its turn reads them (a dead one: none; EtapeDefini S: a last attacker whose hit is
+			// HOLCombat::LastAttackerMemoryMs old, none).
 			int32 Target = FindFighter(Combat.Target);
 			if (Target != INDEX_NONE && Fighters[Target].State->CurrentHealth <= 0)
 			{
 				Target = INDEX_NONE;
 			}
 			int32 LastAttacker = FindFighter(Combat.LastAttacker);
-			if (LastAttacker != INDEX_NONE && Fighters[LastAttacker].State->CurrentHealth <= 0)
+			if (LastAttacker != INDEX_NONE && (Fighters[LastAttacker].State->CurrentHealth <= 0 || !HOLCombat::KeepsLastAttacker(StepIndex, Combat.LastHitStep, StepMs)))
 			{
 				LastAttacker = INDEX_NONE;
 			}
@@ -1095,6 +1156,19 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Search.bDone = true;
 		});
 		bTouchSearches = true;
+	}
+
+	// EtapeDefini O.7b loop 2: the melee striking a building at the step's start, for a closing-in one to see whether a
+	// striking friend bars its way in (only a building's attackers are looked at: a handful against all the units).
+	BuildingStrikers.Reset();
+	for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+	{
+		const FHOLCombatFragment& Combat = *Fighters[Index].Combat;
+		if (Combat.bAttacking && !Combat.Target.IsSet() && Combat.TargetBuilding.IsValid() && !Combat.BuildingInward.IsZero()
+			&& Fighters[Index].State->CurrentHealth > 0)
+		{
+			BuildingStrikers.Add(Index);
+		}
 	}
 
 	Deaths.Reset();
@@ -1164,11 +1238,14 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Target = INDEX_NONE;
 			bLost = true;
 		}
-		// Looked up once (J7c.4, S3): nothing below changes it before the search reads it.
+		// Looked up once (J7c.4, S3): nothing below changes it before the search reads it. Dead or gone, or its hit
+		// HOLCombat::LastAttackerMemoryMs old (EtapeDefini S: an attacker that walked off out of the search radius is no
+		// longer chased across the map, and this unit no longer counts as fighting): forgotten.
 		int32 LastAttacker = FindFighter(Combat.LastAttacker);
-		if (LastAttacker == INDEX_NONE || Fighters[LastAttacker].State->CurrentHealth <= 0)
+		if (LastAttacker == INDEX_NONE || Fighters[LastAttacker].State->CurrentHealth <= 0 || !HOLCombat::KeepsLastAttacker(StepIndex, Combat.LastHitStep, StepMs))
 		{
 			Combat.LastAttacker = FMassEntityHandle();
+			Combat.LastHitStep = -1;
 			LastAttacker = INDEX_NONE;
 		}
 
@@ -1585,84 +1662,161 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Combat.FlankWaitSeconds = 0.f;
 				FStepBuilding& Step = StepBuildings[BuildingIndex];
 				const bool bHold = Combat.Mode == EHOLCombatMode::Hold;
+				const bool bShot = HOLCombat::IsBuildingShot(Constants);
 				const double Edge = HOLCombat::GetEdgeDistanceToBox(Position, Constants.Radius, Step.Box);
-				const bool bWalkEndedShort = Combat.bApproaching && Fighter.Order->Phase == EHOLMovePhase::None;
-				// EtapeDefini J loop 3: a melee with a place there strikes only once by its place (not from the 2nd rank after a
-				// blocked walk). Loop 4: BuildingPlaceGiveUpMs without getting nearer its place (whatever its walk does), it forgets
-				// it and walks again at once by the rule before (the wall's nearest point), so it always ends up striking.
-				// Loop 5: on giving up, if already in reach as after a walk ended short (its building reach), it stops and
-				// strikes where it stands (no walk against the wall, between units already on their places).
-				bool bByPlace = Combat.PlaceBuilding.IsValid() && Combat.PlaceBuilding == Step.Building && !HOLCombat::IsBuildingShot(Constants)
-					&& !Combat.bAttacking && !bHold;
-				bool bStrikeWhereItStands = false;
-				if (bByPlace)
-				{
-					const double ToPlace = FVector2D::Distance(Position, Combat.BuildingPlace);
-					if (ToPlace + HOLCombat::BuildingPlaceProgress <= Combat.PlaceBestDistance)
-					{
-						Combat.PlaceBestDistance = float(ToPlace);
-						Combat.PlaceBlockedMs = 0;
-					}
-					else if ((Combat.PlaceBlockedMs += StepMs) >= HOLCombat::BuildingPlaceGiveUpMs && !Combat.bPlaceShifted
-						&& ShiftBuildingPlaces(Index, Position, Step))
-					{
-						// Loop 10: blocked by friends on their places between it and its own, it takes the nearest of theirs and
-						// they each move one place on towards its own (HOLCombat::GetBuildingPlaceChain). Once only: blocked again,
-						// it forgets its place as below.
-						Combat.bPlaceShifted = true;
-						Combat.PlaceBlockedMs = 0;
-						Combat.PlaceBestDistance = MAX_flt;
-						Combat.bApproaching = false;
-					}
-					else if (Combat.PlaceBlockedMs >= HOLCombat::BuildingPlaceGiveUpMs)
-					{
-						// Loop 8: remembered, so that its walk there still aims off the visible wall (below).
-						Combat.PlaceGivenUpBuilding = Combat.PlaceBuilding;
-						Combat.PlaceBuilding.Reset();
-						Combat.PlaceBlockedMs = 0;
-						Combat.PlaceBestDistance = MAX_flt;
-						Combat.bApproaching = false;
-						bByPlace = false;
-						bStrikeWhereItStands = HOLCombat::IsBuildingInReach(Constants, Edge, /*bStriking*/ false, /*bWalkEndedShort*/ true, bHold);
-					}
-				}
-				const bool bInReach = bByPlace
-					? FVector2D::Distance(Position, Combat.BuildingPlace) <= HOLCombat::BuildingPlaceReachRadii * Constants.Radius
-						&& Edge <= Constants.BuildingAttackRange
-					: bStrikeWhereItStands || HOLCombat::IsBuildingInReach(Constants, Edge, Combat.bAttacking, bWalkEndedShort, bHold);
+				// EtapeDefini O.7 (the user's rule of 2026-10-28, from an AoE4 clip; J's and O.5's places dropped): within its
+				// building reach (D497, 400 cm) it strikes at once, wherever it stands, whatever its walk. A melee walks to the
+				// visible wall's point nearest it (off it by its radius and BuildingWallGap, never into the House: a straight
+				// line), a shooter to the body's (it stops at its reach anyway).
+				const bool bInReach = HOLCombat::IsBuildingInReach(Constants, Edge);
+				const FVector2D WallPoint = bShot ? HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.Box, BuildingApproachGap)
+					: HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.VisibleBox, HOLCombat::BuildingWallGap);
 				if (!bInReach)
 				{
 					Combat.bAttacking = false;
+					Combat.BuildingInward = FVector2f::ZeroVector;
 					HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
 					if (bHold)
 					{
 						Combat.TargetBuilding.Reset(); // on hold, never a walk to it
 						continue;
 					}
-					// A walk beside its wall: the first, or again at the search rate once the last one ended short.
-					if (!Combat.bApproaching || (bSearchStep && Fighter.Order->Phase == EHOLMovePhase::None))
+					// A walk to its wall: the first; again at the search rate once the last one ended short, or (a melee) once the
+					// wall's point nearest it moved a radius off the one it walks to: slid sideways round the crowd's back
+					// (UHOLFullSpeedProcessor::SlideAlongFriends), it walks in from where it now stands, never back to the first one.
+					// O.7b loop 3: a melee walks to the wall's point nearest the one facing it that no striking friend covers (the
+					// crowd's nearer free end): blocked behind the crowd, it goes round it, its walk re-aimed from where it stands.
+					FVector2D WalkPoint = WallPoint;
+					if (!bShot && (!Combat.bApproaching || bSearchStep))
 					{
-						// EtapeDefini J: its place given with the order, else the wall's point nearest it. Loop 8: its place forgotten,
-						// the visible wall's point nearest it (off it by its radius and BuildingPlaceVisibleGap), never into the House.
-						const bool bHasPlace = Combat.PlaceBuilding.IsValid() && Combat.PlaceBuilding == Step.Building;
-						const bool bGaveUpPlace = !bHasPlace && Combat.PlaceGivenUpBuilding.IsValid() && Combat.PlaceGivenUpBuilding == Step.Building;
-						const FVector2D Point = bHasPlace ? Combat.BuildingPlace
-							: bGaveUpPlace ? HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.VisibleBox, HOLCombat::BuildingPlaceVisibleGap)
-							: HOLCombat::GetBuildingApproachPoint(Position, Constants.Radius, Step.Box, BuildingApproachGap);
-						Commands->IssueCombatWalk(Fighter.UnitId, FVector(Point.X, Point.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
-						Combat.ApproachPoint = Point;
+						TArray<FVector2D, TInlineAllocator<64>> Bodies;
+						TArray<float, TInlineAllocator<64>> BodyRadii;
+						for (const int32 Striker : BuildingStrikers)
+						{
+							const FFighter& Friend = Fighters[Striker];
+							if (Striker != Index && Friend.Camp == Fighter.Camp && Friend.Combat->TargetBuilding == Combat.TargetBuilding)
+							{
+								Bodies.Add(FVector2D(Friend.Location));
+								BodyRadii.Add(Friend.Constants->Radius);
+							}
+						}
+						// The reach is measured from the body box (IsBuildingInReach), the walk aimed at the visible one, wider: the
+						// reach off the visible box is that much shorter (loop 8).
+						const double VisualGap = Step.Box.Min.X - Step.VisibleBox.Min.X;
+						WalkPoint = HOLCombat::GetFreeBuildingWallPoint(Position, Constants.Radius, Step.VisibleBox, HOLCombat::BuildingWallGap, Constants.BuildingAttackRange - VisualGap, Bodies, BodyRadii);
+					}
+					if (!Combat.bApproaching || (bSearchStep && (Fighter.Order->Phase == EHOLMovePhase::None
+						|| (!bShot && FVector2D::Distance(WalkPoint, Combat.ApproachPoint) > Constants.Radius))))
+					{
+						Commands->IssueCombatWalk(Fighter.UnitId, FVector(WalkPoint.X, WalkPoint.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
+						Combat.ApproachPoint = WalkPoint;
 						Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
 						Combat.bApproaching = true;
 					}
 					continue;
 				}
-				// In reach: it stands and strikes, with its building attack.
-				if (Fighter.Order->Phase != EHOLMovePhase::None)
+				// In reach: it strikes, with its building attack.
+				if (bShot || bHold)
 				{
-					Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
-					StopWalk(*World, Fighter);
+					if (Fighter.Order->Phase != EHOLMovePhase::None)
+					{
+						Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
+						StopWalk(*World, Fighter);
+					}
+					Combat.bApproaching = false;
 				}
-				Combat.bApproaching = false;
+				else
+				{
+					// EtapeDefini O.7: a melee closes in to the visible wall while it strikes (the crowd packs against it, AoE4): its
+					// walk there goes on, or one starts as it comes in reach (another walk, an attack-move's, stopped first); it
+					// stops at the wall, or once BuildingCloseInStopMs without coming BuildingCloseInProgress nearer (friends in
+					// front: it strikes where it stands, pushed in by those behind, only along BuildingInward: the separation).
+					const double WallEdge = HOLCombat::GetEdgeDistanceToBox(Position, Constants.Radius, Step.VisibleBox);
+					const FVector2D Nearest(FMath::Clamp(Position.X, Step.VisibleBox.Min.X, Step.VisibleBox.Max.X), FMath::Clamp(Position.Y, Step.VisibleBox.Min.Y, Step.VisibleBox.Max.Y));
+					Combat.BuildingInward = FVector2f((Nearest - Position).GetSafeNormal());
+					Combat.BuildingRoom = float(FMath::Max(0., WallEdge - HOLCombat::BuildingWallGap));
+					const bool bAtWall = WallEdge <= HOLCombat::BuildingWallGap + HOLCombat::BuildingCloseInProgress;
+					if (!Combat.bAttacking)
+					{
+						Combat.CloseInBest = MAX_flt;
+						Combat.CloseInBlockedMs = 0;
+					}
+					// O.7b loop 2: a striking friend touching it ahead (within 60 degrees of its way in) bars the way: it stops at
+					// once (waiting BuildingCloseInStopMs, it shoved into the crowd and was pushed off sideways by it).
+					bool bBarred = false;
+					bool bTouchedAhead = false; // a striking friend touching it anywhere in front (loop 7: no walk in again then)
+					for (int32 Slot = 0; Slot < BuildingStrikers.Num() && !bBarred; ++Slot)
+					{
+						const FFighter& Friend = Fighters[BuildingStrikers[Slot]];
+						if (BuildingStrikers[Slot] == Index || Friend.Camp != Fighter.Camp || Friend.Combat->TargetBuilding != Combat.TargetBuilding)
+						{
+							continue;
+						}
+						const FVector2D Ahead = FVector2D(Friend.Location) - Position;
+						const double Contact = Constants.Radius + Friend.Constants->Radius + HOLCombat::BuildingCloseInProgress;
+						const double In = FVector2D::DotProduct(Ahead, FVector2D(Combat.BuildingInward));
+						const bool bTouching = Ahead.SizeSquared() <= FMath::Square(Contact);
+						bTouchedAhead |= bTouching && In > 0.;
+						bBarred = bTouching && In >= 0.5 * Ahead.Size();
+					}
+					// O.7b loop 4: coming in reach on a walk aimed more than a radius off its nearest wall point (to the crowd's free
+					// end, along it), that walk is dropped: it closes in straight to the wall (never along the crowd once striking).
+					const bool bSideWalk = !Combat.bAttacking && Combat.bApproaching && Fighter.Order->Phase != EHOLMovePhase::None
+						&& FVector2D::Distance(Combat.ApproachPoint, WallPoint) > Constants.Radius;
+					if (Combat.bApproaching && Fighter.Order->Phase != EHOLMovePhase::None && !bSideWalk)
+					{
+						if (WallEdge + HOLCombat::BuildingCloseInProgress <= Combat.CloseInBest)
+						{
+							Combat.CloseInBest = float(WallEdge);
+							Combat.CloseInBlockedMs = 0;
+						}
+						else
+						{
+							Combat.CloseInBlockedMs += StepMs;
+						}
+						if (bAtWall || bBarred || Combat.CloseInBlockedMs >= HOLCombat::BuildingCloseInStopMs)
+						{
+							StopWalk(*World, Fighter);
+						}
+					}
+					else if (!Combat.bAttacking)
+					{
+						if (Fighter.Order->Phase != EHOLMovePhase::None)
+						{
+							Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
+							StopWalk(*World, Fighter);
+						}
+						Combat.bApproaching = false;
+						if (!bAtWall && !bBarred)
+						{
+							Commands->IssueCombatWalk(Fighter.UnitId, FVector(WallPoint.X, WallPoint.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
+							Combat.ApproachPoint = WallPoint;
+							Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
+							Combat.bApproaching = true;
+						}
+					}
+					else if (Combat.bApproaching && Combat.CloseInBest < MAX_flt)
+					{
+						Combat.bApproaching = false; // its walk in ended (at the wall's point, or short of it)
+					}
+					else if (!Combat.bApproaching && Fighter.Order->Phase == EHOLMovePhase::None && bSearchStep && !bAtWall && !bTouchedAhead)
+					{
+						// O.7b loop 7 (the crowd packs against the wall, AoE4): stopped short of the wall (held by the friends in front),
+						// it walks in again, straight, at the search rate, once no striking friend touches it in front any more
+						// (those ahead went on to the wall): the rows close up from the wall outwards.
+						Commands->IssueCombatWalk(Fighter.UnitId, FVector(WallPoint.X, WallPoint.Y, Fighter.Location.Z), Combat.EngageSerial, /*bAttackMove*/ false);
+						Combat.ApproachPoint = WallPoint;
+						Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
+						Combat.bApproaching = true;
+						Combat.CloseInBest = MAX_flt;
+						Combat.CloseInBlockedMs = 0;
+					}
+					else if (!Combat.bApproaching && Fighter.Order->Phase != EHOLMovePhase::None)
+					{
+						StopWalk(*World, Fighter); // never another walk while it strikes
+					}
+				}
+
 				const int32 BuildingIntervalMs = HOLCombat::ToMilliseconds(Constants.BuildingAttackInterval);
 				if (!Combat.bAttacking)
 				{
@@ -1908,7 +2062,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants);
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level);
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight
@@ -1952,10 +2106,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// D468: the hits come off one after another in the fighters' order (this loop is sequential): with float health the
 		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
-		Enemy.State->CurrentHealth -= Damage;
+		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
+		const float Dealt = HOLHeroAbility::GetReducedDamage(Damage, GetDamageTakenPercent(Enemy));
+		Enemy.State->CurrentHealth -= Dealt;
 		Enemy.Combat->LastAttacker = Fighter.Entity;
+		Enemy.Combat->LastHitStep = StepIndex;
 		++Combat.Hits;
-		Combat.DamageDealt += Damage;
+		Combat.DamageDealt += Dealt;
 		++TotalHits;
 		if (Combat.FirstHitStep < 0)
 		{
@@ -1964,13 +2121,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		if (LogHits != 0)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s hits #%u %s for %g, %g HP left"), StepIndex, Fighter.UnitId, *Constants.TypeName.ToString(),
-				Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Damage), static_cast<double>(Enemy.State->CurrentHealth));
+				Enemy.UnitId, *Enemy.Constants->TypeName.ToString(), static_cast<double>(Dealt), static_cast<double>(Enemy.State->CurrentHealth));
 		}
 		if (Enemy.State->CurrentHealth <= 0)
 		{
 			++Combat.Kills;
 			++TotalKills;
-			Kill(Enemy, Fighter.State->OwnerPlayer);
+			Kill(Enemy, Fighter.State->OwnerPlayer, Fighter.UnitId);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u %s of slot %d killed by #%u %s of slot %d (%d hits struck)"), StepIndex, Enemy.UnitId,
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Fighter.UnitId, *Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Combat.Hits);
 			// Its target dead, an ordered one too (the review of J7b): it looks for enemies again and its queue goes on.

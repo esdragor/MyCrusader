@@ -258,6 +258,13 @@ protected:
 	/** J7c.4, loop 18 (hol.Simulation.FrontHoldsFriends): units that strike or touch an enemy, never pushed by a friend. */
 	TArray<bool> Front;
 	/**
+	 * EtapeDefini O.7 (a crowd, AoE4): a melee standing and striking a building, its way in (FHOLCombatFragment::
+	 * BuildingInward); zero for the others. Not of the front: a friend pushing it moves it only that way, never outwards.
+	 */
+	TArray<FVector2D> PushIn;
+	/** EtapeDefini O.7: how far (cm) each PushIn unit may be pushed in this step (FHOLCombatFragment::BuildingRoom). */
+	TArray<double> PushInRoom;
+	/**
 	 * J7c.4 loop 30 (hol.Simulation.FrontNeedsCombat): units concerned by a fight (a target, striking, approaching, on an
 	 * attack-move or its detour, flanking); an enemy contact makes the front only when one of the two is.
 	 */

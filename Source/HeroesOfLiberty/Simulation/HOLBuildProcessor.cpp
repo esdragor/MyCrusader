@@ -18,6 +18,8 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -970,6 +972,12 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 		// Finished: it serves (population, deposit; D312); its builders go on at the next step.
 		Site->SetConstructionState(EHOLConstructionState::Finished);
 		Site->SetBuildersAtWork(0);
+		// J8b.2: development, its cost x 0.5 to its owner's hero, dead or alive (J8b-Q1, Q2; D06).
+		if (UHOLHeroSubsystem* Heroes = World && Site->GetType() ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr)
+		{
+			Heroes->AddXP(Site->GetOwnerPlayer(), HOLHeroXP::GetXP(HOLHeroXP::GetValue(Site->GetType()->Cost), EHOLXPSource::Development),
+				EHOLXPSource::Development);
+		}
 		TArray<FString> ByBuilders;
 		for (int32 Index = 0; Index < UE_ARRAY_COUNT(Stats.StepsByBuilders); ++Index)
 		{

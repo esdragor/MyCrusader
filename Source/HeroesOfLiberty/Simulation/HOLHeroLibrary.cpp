@@ -13,7 +13,9 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -69,12 +71,88 @@ int32 UHOLHeroLibrary::GetHeroHealth(const UObject* WorldContextObject, const in
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Health;
 }
 
-int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject)
+int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject, const int32 Slot)
 {
 	const UWorld* World = GetWorldOf(WorldContextObject);
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(FHOLStartRules::HeroTypeName) : nullptr;
-	return Row ? Row->MaxHealth : 0;
+	if (!Row)
+	{
+		return 0;
+	}
+	const int32 Level = Slot >= 0 ? FMath::Max<int32>(GetPublicSheet(World, Slot).Level, 1) : 1;
+	return FMath::RoundToInt(HOLHeroXP::GetLevelStat(static_cast<float>(Row->MaxHealth), Level));
+}
+
+int32 UHOLHeroLibrary::GetHeroXP(const UObject* WorldContextObject, const int32 Slot)
+{
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	if (const UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(World))
+	{
+		return Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? Heroes->GetSheets(Slot).Private.XP : -1;
+	}
+	// A client knows its own private sheet only.
+	const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+	const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+	return Local && Local->GetPlayerIndex() == Slot ? Local->GetHeroPrivate().XP : -1;
+}
+
+int32 UHOLHeroLibrary::GetHeroAbilityReadyStep(const UObject* WorldContextObject, const int32 Slot, const EHOLHeroAbility Ability)
+{
+	const UWorld* World = GetWorldOf(WorldContextObject);
+	const FHOLHeroPrivateSheet* Private = nullptr;
+	if (const UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(World))
+	{
+		Private = Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? &Heroes->GetSheets(Slot).Private : nullptr;
+	}
+	else
+	{
+		// A client knows its own private sheet only.
+		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+		const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+		Private = Local && Local->GetPlayerIndex() == Slot ? &Local->GetHeroPrivate() : nullptr;
+	}
+	if (!Private)
+	{
+		return -1;
+	}
+	const int32 Index = static_cast<int32>(Ability);
+	return Private->CooldownEndSteps.IsValidIndex(Index) ? Private->CooldownEndSteps[Index] : 0;
+}
+
+int32 UHOLHeroLibrary::GetHeroAbilityUnlockLevel(const EHOLHeroAbility Ability)
+{
+	return HOLHeroAbility::GetUnlockLevel(Ability);
+}
+
+int32 UHOLHeroLibrary::GetHeroAbilityCooldownSeconds(const EHOLHeroAbility Ability)
+{
+	return HOLHeroAbility::GetCooldownMs(Ability) / 1000;
+}
+
+int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Cries;
+}
+
+int32 UHOLHeroLibrary::GetHeroBannerEndStep(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).BannerEndStep;
+}
+
+FIntPoint UHOLHeroLibrary::GetHeroBannerLocation(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).BannerLocation;
+}
+
+int32 UHOLHeroLibrary::GetLevelXP(const int32 Level)
+{
+	return HOLHeroXP::GetLevelXP(Level);
+}
+
+int32 UHOLHeroLibrary::GetMaxLevel()
+{
+	return HOLHeroXP::MaxLevel;
 }
 
 int32 UHOLHeroLibrary::GetHeroDeathStep(const UObject* WorldContextObject, const int32 Slot)

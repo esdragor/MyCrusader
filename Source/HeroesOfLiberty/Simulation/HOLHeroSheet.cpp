@@ -3,19 +3,32 @@
 #include "Simulation/HOLHeroSheet.h"
 
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLHeroXPRules.h"
 
 FHOLHeroSheets HOLHeroSheet::Make(const FHOLHeroFacts& Facts, const FHOLHeroSheets& Previous)
 {
 	FHOLHeroSheets Sheets;
 	Sheets.Private.XP = Previous.Private.XP;
 	Sheets.Private.CooldownEndSteps = Previous.Private.CooldownEndSteps;
+	// J8c.3: what his abilities left (the cries, his banner, standing even once he is dead).
+	Sheets.Public.Cries = Previous.Public.Cries;
+	Sheets.Public.BannerLocation = Previous.Public.BannerLocation;
+	Sheets.Public.BannerEndStep = Previous.Public.BannerEndStep;
 	if (!Facts.bPresent)
 	{
 		// His body destroyed after the fall: still dead, his death step kept. Never born: no hero.
 		const bool bWasDead = Previous.Public.State == EHOLHeroState::Dead || Previous.Public.State == EHOLHeroState::ReadyToReturn;
-		return bWasDead ? Previous : FHOLHeroSheets();
+		if (!bWasDead)
+		{
+			return FHOLHeroSheets();
+		}
+		// J8b.2: the XP of development still raises him while dead (D06).
+		Sheets = Previous;
+		Sheets.Public.Level = static_cast<uint8>(HOLHeroXP::GetLevel(Previous.Private.XP));
+		return Sheets;
 	}
-	Sheets.Public.Level = StartLevel;
+	// J8b.2: his level from his XP (J8b-Q2).
+	Sheets.Public.Level = static_cast<uint8>(HOLHeroXP::GetLevel(Previous.Private.XP));
 	if (Facts.DeathStep >= 0 || Facts.Health <= 0.f)
 	{
 		// J8a.4: ready to return stays so while his body still lies.
