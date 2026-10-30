@@ -1,0 +1,46 @@
+﻿# Brouillard (F7.3 b) : un bâtiment ennemi vu puis perdu de vue reste dessiné en gris (fantôme), un jamais vu n'est pas dessiné
+# Plain, moi (slot 0) et un adversaire (slot 1). Positions dans le repère de mon centre (cm). Deux maisons ennemies : une à 90 m à l'est (je l'ai vue), une à 90 m à l'ouest (jamais vue).
+hol.Fog.Mode 2
+hol.Fog.Render 1
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Cheat.SpawnBuilding House 1 9000 0
+hol.Cheat.SpawnBuilding House 1 -9000 0
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Units.SpeedScale 10
+hol.Select.Own
+waitlog Selection: 4 units (own)
+# Ils marchent jusqu'à 20 m de la maison de l'est (vue de 32 m) : elle est vue.
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -2
+frames 20
+hol.Select.OrderNear 7000 0
+wait 5
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Buildings.Report
+waitlog Building fog: House of slot 1 drawn live
+waitlog Building fog: House of slot 1 drawn not at all
+capture fogghost_a
+# Ils reviennent au centre : la maison de l'est sort de la vue, elle reste dessinée en mémoire.
+hol.Camera.FocusNear 4500 0
+frames 60
+hol.Select.OrderNear 3500 0
+wait 6
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Buildings.Report
+waitlog Building fog: House of slot 1 drawn from memory
+capture fogghost_b
+hol.Camera.FocusNear -9000 0
+frames 30
+capture fogghost_c
+hol.Camera.FocusNear 4500 0
+hol.HUD.Report 1
+note Brouillard : la maison ennemie à l'est (vue par mes soldats puis laissée à 90 m) reste dessinée en gris-bleu dans le noir explorée, sans clic possible ; celle de l'ouest, jamais vue, n'est pas dessinée.
+note Pour comparer la teinte : hol.Fog.GhostTint 0 (couleurs propres de la maison) à 1 (tout gris), puis renvoyer les soldats voir la maison (clic droit à 70 m) et les ramener.

@@ -463,7 +463,7 @@ uint64 UHOLCombatProcessor::HashArrows() const
 	return Hash;
 }
 
-int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
+bool UHOLCombatProcessor::IsInAura(const FFighter& Victim) const
 {
 	bool bInAura = false;
 	for (const FAuraSource& Source : AuraSources)
@@ -471,7 +471,18 @@ int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
 		bInAura |= Source.Owner == Victim.State->OwnerPlayer
 			&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(Source.Location, FVector2D(Victim.Location))));
 	}
-	return HOLHeroAbility::GetDamageTakenPercent(bInAura, Victim.Combat->CloseRanksMs > 0);
+	return bInAura;
+}
+
+int32 UHOLCombatProcessor::GetDamageTakenPercent(const FFighter& Victim) const
+{
+	return HOLHeroAbility::GetDamageTakenPercent(IsInAura(Victim), Victim.Combat->CloseRanksMs > 0);
+}
+
+int32 UHOLCombatProcessor::GetTalentArmorBonus(const FFighter& Victim) const
+{
+	const bool bShieldsUp = (ShieldsUpOwners & (1u << Victim.State->OwnerPlayer)) != 0;
+	return bShieldsUp && IsInAura(Victim) ? HOLHeroAbility::ShieldsUpArmorBonus : 0;
 }
 
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
@@ -510,6 +521,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	bool bAnyTarget = false;
 	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
 	AuraSources.Reset();
+	ShieldsUpOwners = 0;
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
@@ -563,6 +575,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const int32 HeroSources = AuraSources.Num();
 		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 		{
+			// T4: the talents that change a hit (Boucliers levees), from the hero sheets of this step.
+			ShieldsUpOwners |= HOLHeroTalent::GrantsAuraArmor(Heroes->GetSheets(Slot).Private.TalentPicks) ? (1u << Slot) : 0u;
 			FVector BannerLocation;
 			if (Heroes->GetBanner(Slot, BannerLocation))
 			{
@@ -2126,7 +2140,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level);
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy));
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

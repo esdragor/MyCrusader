@@ -397,6 +397,23 @@ bool FHOLVisionGhostsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionBuildingDrawTest, "HeroesOfLiberty.Vision.BuildingDraw", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionBuildingDrawTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (b): a building of another camp out of sight is drawn from the memory, or not at all if never seen.
+	using namespace HOLVisionRules;
+	TestFalse(TEXT("another camp's, in sight: as it is"), BuildingDrawsFromMemory(false, true));
+	TestTrue(TEXT("another camp's, out of sight: from the memory"), BuildingDrawsFromMemory(false, false));
+	TestFalse(TEXT("the viewer's own camp's, out of sight: as it is"), BuildingDrawsFromMemory(true, false));
+	TestFalse(TEXT("the viewer's own camp's, in sight: as it is"), BuildingDrawsFromMemory(true, true));
+
+	TestEqual(TEXT("in sight: live"), GetBuildingDraw(false, true, false), EHOLBuildingDraw::Live);
+	TestEqual(TEXT("own camp's: live, remembered or not"), GetBuildingDraw(true, false, false), EHOLBuildingDraw::Live);
+	TestEqual(TEXT("out of sight, remembered: memory"), GetBuildingDraw(false, false, true), EHOLBuildingDraw::Memory);
+	TestEqual(TEXT("out of sight, never seen: hidden"), GetBuildingDraw(false, false, false), EHOLBuildingDraw::Hidden);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionReceiversTest, "HeroesOfLiberty.Vision.Receivers", UE::HeroesOfLiberty::Tests::Vision::Flags)
 bool FHOLVisionReceiversTest::RunTest(const FString& Parameters)
 {

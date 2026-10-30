@@ -151,6 +151,12 @@ protected:
 	 * (AuraSources), under its hero's cry (FHOLCombatFragment::CloseRanksMs).
 	 */
 	int32 GetDamageTakenPercent(const FFighter& Victim) const;
+	/** T4: whether Victim stands within an aura of its owner (AuraSources). */
+	bool IsInAura(const FFighter& Victim) const;
+	/** T4: the armour Victim gets from its owner's talents (Boucliers levees: in the aura, HOLHeroAbility::ShieldsUpArmorBonus). */
+	int32 GetTalentArmorBonus(const FFighter& Victim) const;
+	/** T4: one bit per slot whose hero took a talent giving armour in the aura (read from the hero sheets, each step). */
+	uint32 ShieldsUpOwners = 0;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
 	/**
 	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry

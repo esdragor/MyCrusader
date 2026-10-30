@@ -49,6 +49,13 @@ namespace
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Building report: %s of slot %d, colour %d %s"), *It->GetTypeName().ToString(),
 						It->GetOwnerPlayer(), It->GetColorIndex(), ShowsItsColor(**It) ? TEXT("shown") : TEXT("not shown"));
+					// F7.3 (b), the fog's say on how this machine draws it, and how many pieces it made for that.
+					TArray<UStaticMeshComponent*> Pieces;
+					It->GetComponents(Pieces);
+					const EHOLBuildingDraw Draw = It->GetFogDraw();
+					UE_LOG(LogHOLMatch, Display, TEXT("Building fog: %s of slot %d drawn %s (remembered %d), %d pieces"), *It->GetTypeName().ToString(), It->GetOwnerPlayer(),
+						Draw == EHOLBuildingDraw::Live ? TEXT("live") : Draw == EHOLBuildingDraw::Memory ? TEXT("from memory") : TEXT("not at all"),
+						static_cast<int32>(It->GetRememberedState()), Pieces.Num());
 				}
 				UE_LOG(LogHOLMatch, Display, TEXT("Building report: %d buildings"), Count);
 			}
