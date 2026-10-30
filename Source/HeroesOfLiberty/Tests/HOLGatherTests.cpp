@@ -597,6 +597,13 @@ bool FHOLGatherTablesTest::RunTest(const FString& Parameters)
 		{ HOLSourceTypeNames::BerryBush, EHOLResource::Food, 200 },
 		{ HOLSourceTypeNames::StoneVein, EHOLResource::Stone, 2500 },
 		{ HOLSourceTypeNames::GoldVein, EHOLResource::Gold, 2500 },
+		// M-Q9: the veins in other sizes (small 500, medium 1 000, big 5 000), the same behaviour as the standard ones.
+		{ HOLSourceTypeNames::StoneVeinSmall, EHOLResource::Stone, 500 },
+		{ HOLSourceTypeNames::StoneVeinMedium, EHOLResource::Stone, 1000 },
+		{ HOLSourceTypeNames::StoneVeinBig, EHOLResource::Stone, 5000 },
+		{ HOLSourceTypeNames::GoldVeinSmall, EHOLResource::Gold, 500 },
+		{ HOLSourceTypeNames::GoldVeinMedium, EHOLResource::Gold, 1000 },
+		{ HOLSourceTypeNames::GoldVeinBig, EHOLResource::Gold, 5000 },
 	};
 	for (const FExpectedSource& Source : Expected)
 	{
@@ -665,6 +672,80 @@ bool FHOLGatherTablesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// M-Q9: each size of vein, placed by a map on the real source registry, holds its amount, is gathered load by load (the
+// Peasant's 10) down to nothing and then leaves the map: the whole amount comes out, no more.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherVeinSizesTest, "HeroesOfLiberty.Gather.VeinSizes", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherVeinSizesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Gather;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLSourceSubsystem* Registry = World->GetSubsystem<UHOLSourceSubsystem>();
+	AHOLSourceLayout* Layout = World->SpawnActor<AHOLSourceLayout>();
+	const FArrayProperty* LayoutSources = FindFProperty<FArrayProperty>(AHOLSourceLayout::StaticClass(), TEXT("Sources"));
+	if (TestNotNull(TEXT("source registry"), Registry) && TestNotNull(TEXT("map layout"), Layout) && TestNotNull(TEXT("the layout's source list"), LayoutSources))
+	{
+		struct FSize
+		{
+			FName Type;
+			EHOLResource Resource;
+			int32 Amount;
+		};
+		const FSize Sizes[] = {
+			{ HOLSourceTypeNames::StoneVeinSmall, EHOLResource::Stone, 500 }, { HOLSourceTypeNames::StoneVeinMedium, EHOLResource::Stone, 1000 },
+			{ HOLSourceTypeNames::StoneVein, EHOLResource::Stone, 2500 }, { HOLSourceTypeNames::StoneVeinBig, EHOLResource::Stone, 5000 },
+			{ HOLSourceTypeNames::GoldVeinSmall, EHOLResource::Gold, 500 }, { HOLSourceTypeNames::GoldVeinMedium, EHOLResource::Gold, 1000 },
+			{ HOLSourceTypeNames::GoldVein, EHOLResource::Gold, 2500 }, { HOLSourceTypeNames::GoldVeinBig, EHOLResource::Gold, 5000 },
+		};
+		TArray<FHOLPlacedSource>& Placed = *LayoutSources->ContainerPtrToValuePtr<TArray<FHOLPlacedSource>>(Layout);
+		for (int32 Number = 0; Number < UE_ARRAY_COUNT(Sizes); ++Number)
+		{
+			Placed.Add(FHOLPlacedSource{ Sizes[Number].Type, FVector(3000.0 * Number, 0.0, 0.0) });
+		}
+		Registry->OnWorldBeginPlay(*World);
+		TestEqual(TEXT("every vein placed"), Registry->GetSources().Num(), int32(UE_ARRAY_COUNT(Sizes)));
+		for (int32 Number = 0; Number < Registry->GetSources().Num() && Number < UE_ARRAY_COUNT(Sizes); ++Number)
+		{
+			const FHOLSource& Vein = Registry->GetSources()[Number];
+			const FString Name = Sizes[Number].Type.ToString();
+			TestEqual(*FString::Printf(TEXT("%s: resource"), *Name), int32(Vein.Resource), int32(Sizes[Number].Resource));
+			TestEqual(*FString::Printf(TEXT("%s: amount"), *Name), Vein.Remaining, Sizes[Number].Amount);
+			TestTrue(*FString::Printf(TEXT("%s stands"), *Name), Vein.IsStanding());
+			TestTrue(*FString::Printf(TEXT("%s: a bigger pile has a bigger body, up to the standard's"), *Name), Vein.Radius > 0.f);
+
+			// Gathered by loads of 10 (a Peasant), then by the processor's rule: the whole amount comes out, and the vein is used up.
+			int32 Taken = 0;
+			while (Registry->GetSources()[Number].IsStanding() && Taken <= Sizes[Number].Amount + 20)
+			{
+				Taken += Registry->Take(Number, 10);
+			}
+			TestEqual(*FString::Printf(TEXT("%s: all of it taken, no more"), *Name), Taken, Sizes[Number].Amount);
+			TestFalse(*FString::Printf(TEXT("%s: used up"), *Name), Registry->GetSources()[Number].IsStanding());
+
+			FHOLGatherLoad Load;
+			HOLGather::StartGathering(Load, Sizes[Number].Resource);
+			int32 Remaining = Sizes[Number].Amount;
+			int32 Gathered = 0;
+			for (int32 Step = 0; Step < 2000000 && Remaining > 0; ++Step)
+			{
+				Gathered += HOLGather::Gather(Load, Sizes[Number].Resource, 0.7f, StepSeconds, 10, Remaining);
+				if (HOLGather::IsFull(Load, 10))
+				{
+					Load = FHOLGatherLoad();
+					HOLGather::StartGathering(Load, Sizes[Number].Resource);
+				}
+			}
+			TestEqual(*FString::Printf(TEXT("%s: a Peasant gathers it to its end"), *Name), Gathered, Sizes[Number].Amount);
+			TestEqual(*FString::Printf(TEXT("%s: nothing left"), *Name), Remaining, 0);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
 
 // IA1.2 F2: a farm field on the real source registry, in a test world. Added by code with its owner, it has no shape and
 // no hole in the navmesh (its farm stands for it), the map never places one, gathering never counts it down, and

@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-29 15:02\n"
-"PO-Revision-Date: 2026-10-29 15:02\n"
+"POT-Creation-Date: 2026-10-30 14:45\n"
+"PO-Revision-Date: 2026-10-30 14:45\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -117,6 +117,13 @@ msgstr "Plaine"
 msgctxt "HOLMaps,Map_Steppe"
 msgid "La Steppe"
 msgstr "La Steppe"
+
+#. Key:	Map_Hinterland
+#. SourceLocation:	Source/HeroesOfLiberty/Map/HOLMapRules.cpp(18)
+#: Source/HeroesOfLiberty/Map/HOLMapRules.cpp(18)
+msgctxt "HOLMaps,Map_Hinterland"
+msgid "L'Arrière-pays"
+msgstr "L'Arrière-pays"
 
 #. Key:	AbsentLine
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDisconnectRules.cpp(70)
@@ -454,9 +461,51 @@ msgctxt "HOLGameNames,GoldVein"
 msgid "Filon d'or"
 msgstr "Filon d'or"
 
-#. Key:	FarmField
+#. Key:	StoneVeinSmall
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(122)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(122)
+msgctxt "HOLGameNames,StoneVeinSmall"
+msgid "Petit filon de pierre"
+msgstr "Petit filon de pierre"
+
+#. Key:	StoneVeinMedium
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(126)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(126)
+msgctxt "HOLGameNames,StoneVeinMedium"
+msgid "Filon de pierre moyen"
+msgstr "Filon de pierre moyen"
+
+#. Key:	StoneVeinBig
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(130)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(130)
+msgctxt "HOLGameNames,StoneVeinBig"
+msgid "Gros filon de pierre"
+msgstr "Gros filon de pierre"
+
+#. Key:	GoldVeinSmall
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(134)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(134)
+msgctxt "HOLGameNames,GoldVeinSmall"
+msgid "Petit filon d'or"
+msgstr "Petit filon d'or"
+
+#. Key:	GoldVeinMedium
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(138)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(138)
+msgctxt "HOLGameNames,GoldVeinMedium"
+msgid "Filon d'or moyen"
+msgstr "Filon d'or moyen"
+
+#. Key:	GoldVeinBig
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(142)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(142)
+msgctxt "HOLGameNames,GoldVeinBig"
+msgid "Gros filon d'or"
+msgstr "Gros filon d'or"
+
+#. Key:	FarmField
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(147)
+#: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(147)
 msgctxt "HOLGameNames,FarmField"
 msgid "Champ"
 msgstr "Champ"

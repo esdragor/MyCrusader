@@ -105,6 +105,16 @@ namespace HOLSourceTypeNames
 	inline const FName BerryBush(TEXT("BerryBush"));
 	inline const FName StoneVein(TEXT("StoneVein"));
 	inline const FName GoldVein(TEXT("GoldVein"));
+	/** The same veins in other sizes (M-Q9, the Cartes chantier): Small 500, Medium 1 000, Big 5 000; StoneVein and GoldVein (2 500) are the standard size. */
+	inline const FName StoneVeinSmall(TEXT("StoneVeinSmall"));
+	inline const FName StoneVeinMedium(TEXT("StoneVeinMedium"));
+	inline const FName StoneVeinBig(TEXT("StoneVeinBig"));
+	inline const FName GoldVeinSmall(TEXT("GoldVeinSmall"));
+	inline const FName GoldVeinMedium(TEXT("GoldVeinMedium"));
+	inline const FName GoldVeinBig(TEXT("GoldVeinBig"));
+	/** Whether a type is a vein of stone / of gold, of any size (the names all start with the standard one's). */
+	inline bool IsStoneVein(const FName TypeName) { return TypeName.ToString().StartsWith(TEXT("StoneVein")); }
+	inline bool IsGoldVein(const FName TypeName) { return TypeName.ToString().StartsWith(TEXT("GoldVein")); }
 	/** The field of a farm (IA1.2): endless, one place, linked to its building. */
 	inline const FName FarmField(TEXT("FarmField"));
 }

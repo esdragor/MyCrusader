@@ -116,6 +116,31 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("GoldVein", "Filon d'or");
 		}
+		// M-Q9: the veins in other sizes (the standard ones, 2 500, keep the plain names above).
+		if (TypeName == HOLSourceTypeNames::StoneVeinSmall)
+		{
+			return LOCTEXT("StoneVeinSmall", "Petit filon de pierre");
+		}
+		if (TypeName == HOLSourceTypeNames::StoneVeinMedium)
+		{
+			return LOCTEXT("StoneVeinMedium", "Filon de pierre moyen");
+		}
+		if (TypeName == HOLSourceTypeNames::StoneVeinBig)
+		{
+			return LOCTEXT("StoneVeinBig", "Gros filon de pierre");
+		}
+		if (TypeName == HOLSourceTypeNames::GoldVeinSmall)
+		{
+			return LOCTEXT("GoldVeinSmall", "Petit filon d'or");
+		}
+		if (TypeName == HOLSourceTypeNames::GoldVeinMedium)
+		{
+			return LOCTEXT("GoldVeinMedium", "Filon d'or moyen");
+		}
+		if (TypeName == HOLSourceTypeNames::GoldVeinBig)
+		{
+			return LOCTEXT("GoldVeinBig", "Gros filon d'or");
+		}
 		if (TypeName == HOLSourceTypeNames::FarmField)
 		{
 			// A farm's field (IA1.2 F8).
