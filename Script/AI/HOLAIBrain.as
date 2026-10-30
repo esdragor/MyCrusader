@@ -339,7 +339,19 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The Peasants near an enemy soldier run to the centre (IA2.6f); once there they are idle and the brain sends them to work again.
 		FHOLAIFlight Flight;
 		Flights.Find(PlayerIndex, Flight);
-		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, HOLAIForum::Calm(Summary, Rebuild), Data.Army, Now);
+		// A Peasant that wins its duel against a weakened soldier near it finishes it off instead (IA4, D572).
+		const FHOLAISummary CalmSummary = HOLAIForum::Calm(Summary, Rebuild);
+		const TArray<FHOLAIStrike> Strikes = HOLAIArmy::StrikeOrders(Flight, CalmSummary, Data.Army, Now);
+		for (int Each = 0; Each < Strikes.Num(); Each++)
+		{
+			TArray<int> One;
+			One.Add(Strikes[Each].PeasantId);
+			if (HOLAIOrder::IssueAIAttackUnitOrder(PlayerIndex, One, Strikes[Each].TargetId))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Peasant {Strikes[Each].PeasantId} finishes soldier {Strikes[Each].TargetId} off");
+			}
+		}
+		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, CalmSummary, Data.Army, Now);
 		Flights.Add(PlayerIndex, Flight);
 		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
 		{

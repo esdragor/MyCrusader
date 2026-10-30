@@ -1,0 +1,17 @@
+# Espacement des arbres (M-Q10c) : trois paquets de 14 arbres côte à côte, troncs à 1,4 / 1,6 / 1,9 m, pour juger quel resserrement garder
+# Configuration par défaut (un joueur, Plain), forum en (-14800, 0). Les trois paquets sont posés à 33 m à l'est du forum, à 15 m les uns des
+# autres le long de l'axe Y : y = -1500 (1,4 m, 1 Paysan à côté), y = 0 (1,6 m, valeur des cartes aujourd'hui, 2 Paysans), y = 1500 (1,9 m, 3 Paysans).
+# Même graine pour les trois : la même forme de paquet, seule la distance entre troncs change. Arbres normaux de la partie (100 de bois chacun).
+hol.Cheat.Population 165
+hol.Sources.Grove 140 -11500 -1500 14 7
+hol.Sources.Grove 160 -11500 0 14 7
+hol.Sources.Grove 190 -11500 1500 14 7
+hol.Camera.Focus -11500 0
+frames 2
+hol.Units.Spawn 1 -11500 -2700 0 Peasant 100
+hol.Units.Spawn 2 -11500 -1200 0 Peasant 100
+hol.Units.Spawn 3 -11500 300 0 Peasant 100
+waitunits 6
+frames 5
+note Espacement des arbres : trois paquets de 14 arbres, posés en ligne à 15 m les uns des autres. Troncs au moins à 1,4 m (1 Paysan à côté), 1,6 m (2 Paysans, la valeur des cartes) et 1,9 m (3 Paysans) ; même forme de paquet, seule la distance entre arbres change.
+note À faire : molette pour approcher ou reculer la caméra (distance de jeu normale puis plus loin), regarder les trois paquets. Lequel se lit comme un bois (ni trop touffu, ni trop clairsemé) ? Les Paysans passent-ils entre les arbres (clic droit au sol entre deux troncs) ? Réponse attendue : 1,4, 1,6 ou 1,9 m.

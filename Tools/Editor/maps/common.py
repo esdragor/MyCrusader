@@ -402,10 +402,10 @@ DECOR_CLUMPS = {
 FILL_STYLES = [("Thicket", "Boulder", "Boulder"), ("DryThicket", "SandBoulder", "SandBoulder"), ("Thicket", "MossBoulder", "Boulder"),
                ("DryThicket", "Boulder", "SandBoulder"), ("Thicket", "MossBoulder", "MossBoulder")]
 BIG_KINDS = ("Boulder", "Thicket")  # a kind whose name contains one of these is a landmark
-# M-Q7 (the user, 2026-10-30): no map is empty. No point of the square is farther than MAX_EMPTY_RADIUS (35 m, about a screen's width at the
-# camera's default height) from a landmark: a slot, a source, a rock, a Boulder or a Thicket (Map.Table measures it on the saved file, on a
-# grid of 20 m). fill_holes puts a cluster of the scenery's big pieces wherever a point of a 10 m grid is farther than FILL_RADIUS (30 m).
-MAX_EMPTY_RADIUS = 2800.0  # M-Q8: tightened from 35 m (the fill and the clumps hold 26 m)
+# M-Q7 (2026-10-30) asked that no point of the square be farther than MAX_EMPTY_RADIUS from a landmark; M-Q10b = A (D578) WITHDREW the rule
+# (large empty spaces are accepted; Map.Table only measures the largest empty circle). Only a map that still has a DECOR uses fill_holes, which puts
+# a cluster of the scenery's big pieces wherever a point of a 10 m grid is farther than FILL_RADIUS (26 m); the maps without DECOR are not filled.
+MAX_EMPTY_RADIUS = 2800.0  # kept only as the size fill_holes aims at (no test enforces it any more)
 FILL_RADIUS = 2600.0
 FILL_STEP = 1000.0
 
