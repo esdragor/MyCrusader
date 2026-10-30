@@ -4656,13 +4656,15 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudWidth = @(Get-Section "build barwidth" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $HudLayouts = @(foreach ($Line in $HudWidth) {
-        if ($Line -match "HUD layout: viewport (\d+x\d+), dpi ([\d.]+), width (\d+), bar (\d+) shown (\d+) \(scale ([\d.]+)\) right (\d+), minimap (\d+) left (\d+), gap (-?\d+)") {
-            [pscustomobject]@{ Size = $Matches[1]; Width = [int]$Matches[3]; Bar = [int]$Matches[4]; Shown = [int]$Matches[5]; Scale = [double]$Matches[6]; Gap = [int]$Matches[10] }
+        if ($Line -match "HUD layout: viewport (\d+x\d+), dpi ([\d.]+), width (\d+), bar (\d+) shown (\d+) \(scale ([\d.]+)\) right (\d+), minimap (\d+) left (\d+), gap (-?\d+), medallion (none|top -?\d+ clip -?\d+ cut (\d+))") {
+            [pscustomobject]@{ Size = $Matches[1]; Width = [int]$Matches[3]; Bar = [int]$Matches[4]; Shown = [int]$Matches[5]; Scale = [double]$Matches[6]; Gap = [int]$Matches[10]; Medallion = $Matches[11]; Cut = $(if ($Matches[12]) { [int]$Matches[12] } else { 0 }) }
         }
     })
     $HudSay = @($HudLayouts | ForEach-Object { "$($_.Size): width $($_.Width) bar $($_.Bar) shown $($_.Shown) gap $($_.Gap)" }) -join ', '
     $Checks["a layout line at each of the $($HudSizes.Count) sizes and back at 1600x900 ($HudSay)"] =
         ($HudLayouts.Count -eq $HudSizes.Count + 1) -and (@(Compare-Object ($HudSizes + "1600x900") @($HudLayouts | ForEach-Object { $_.Size }) -SyncWindow 0).Count -eq 0)
+    $Checks["the age medallions not cut by the scale box nor the window's top at any size (Peasant selected; $(($HudLayouts | ForEach-Object { "$($_.Size) $($_.Medallion)" }) -join ', '))"] =
+        ($HudLayouts.Count -gt 0) -and (@($HudLayouts | Where-Object { $_.Medallion -eq "none" -or $_.Cut -gt 0 }).Count -eq 0)
     $Checks["the bar left of the minimap's place at every size (gap >= 0)"] = ($HudLayouts.Count -gt 0) -and (@($HudLayouts | Where-Object { $_.Gap -lt 0 }).Count -eq 0)
     $Checks["the bar at its full size at 1920x1080 and 1600x900 (scale 1)"] =
         (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") }).Count -eq 2) -and
@@ -4682,6 +4684,11 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     })
     $Checks["the forum's lives follow the level, block / table: level 6 4, level 3 3, level 1 2 ($($TierLives -join '; '))"] =
         (($TierLives -join ";") -eq "4/4;3/3;2/2")
+    # The medallions (the tiers' tops, rising over the bar's top edge) drawn whole at each of the three levels (the user's trial:
+    # "the tiers are cut above"): the layout line read with each report of the Peasant selected, a cut of 0.
+    $TierCuts = @($Tiers | Select-String -Pattern "HUD layout: .*medallion top -?\d+ clip -?\d+ cut (\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["the age medallions drawn whole at levels 1, 3 and 6 (cut: $($TierCuts -join ', '))"] =
+        ($TierCuts.Count -eq 3) -and (@($TierCuts | Where-Object { [int]$_ -gt 0 }).Count -eq 0)
     $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
     $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
     $AllOk = (Report "build tiers" $Checks) -and $AllOk

@@ -2249,10 +2249,23 @@ FString UHOLGameScreen::DescribeLayout() const
 	const float BarShown = BarGeometry.GetAbsoluteSize().X / Dpi;
 	const float BarRight = (BarGeometry.GetAbsolutePosition().X + BarGeometry.GetAbsoluteSize().X) / Dpi;
 	const float PlaceLeft = PlaceGeometry.GetAbsolutePosition().X / Dpi;
-	return FString::Printf(TEXT("viewport %dx%d, dpi %.3f, width %d, bar %d shown %d (scale %.2f) right %d, minimap %d left %d, gap %d"),
+	// The age medallions rise over the bar's top edge: the first one's top against the scale box's top (the box clips its
+	// content to its own area) and the window's top; "cut" = what of it is out of the one or the other (0 = all drawn);
+	// "none" while the age panels are not shown.
+	FString Medallion = TEXT("none");
+	const UBorder* FirstMedallion = AgeMedallions.IsValidIndex(0) ? AgeMedallions[0].Get() : nullptr;
+	const UBorder* FirstPanel = AgePanels.IsValidIndex(0) ? AgePanels[0].Get() : nullptr;
+	if (FirstMedallion && FirstPanel && FirstPanel->GetVisibility() != ESlateVisibility::Collapsed && BottomScale)
+	{
+		const float MedallionTop = FirstMedallion->GetCachedGeometry().GetAbsolutePosition().Y / Dpi;
+		const float ClipTop = BottomScale->GetCachedGeometry().GetAbsolutePosition().Y / Dpi;
+		Medallion = FString::Printf(TEXT("top %d clip %d cut %d"), FMath::RoundToInt(MedallionTop), FMath::RoundToInt(ClipTop),
+			FMath::Max(0, FMath::Max(FMath::RoundToInt(ClipTop) - FMath::RoundToInt(MedallionTop), -FMath::RoundToInt(MedallionTop))));
+	}
+	return FString::Printf(TEXT("viewport %dx%d, dpi %.3f, width %d, bar %d shown %d (scale %.2f) right %d, minimap %d left %d, gap %d, medallion %s"),
 		FMath::RoundToInt(Viewport.X), FMath::RoundToInt(Viewport.Y), Dpi, FMath::RoundToInt(Viewport.X / Dpi),
 		FMath::RoundToInt(BarDesired), FMath::RoundToInt(BarShown), BarDesired > 0.f ? BarShown / BarDesired : 1.f, FMath::RoundToInt(BarRight),
-		FMath::RoundToInt(MinimapSize), FMath::RoundToInt(PlaceLeft), FMath::RoundToInt(PlaceLeft - BarRight));
+		FMath::RoundToInt(MinimapSize), FMath::RoundToInt(PlaceLeft), FMath::RoundToInt(PlaceLeft - BarRight), *Medallion);
 }
 
 float UHOLGameScreen::GetBottomScale() const
@@ -2804,6 +2817,13 @@ void UHOLGameScreen::BuildLayout()
 		ColumnSlot->SetHorizontalAlignment(HAlign_Left);
 		ColumnSlot->SetVerticalAlignment(VAlign_Bottom);
 	}
+	// The age medallions rise over the bar's top edge (MedallionRise), out of the column's own area; the scale box clips its
+	// content to its allotted area (ScaleToFitX), which cut them in half: the room above the column, a spacer in the box
+	// (the slot's padding is not used by a scale box).
+	USizeBox* MedallionRoom = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MedallionRoom"));
+	MedallionRoom->SetHeightOverride(MedallionRise);
+	MedallionRoom->SetVisibility(ESlateVisibility::HitTestInvisible);
+	BottomLeft->AddChildToVerticalBox(MedallionRoom);
 
 	GroupsPanel = MakePanel(TEXT("GroupsPanel"));
 	GroupsPanel->SetPadding(FMargin(6.f, 4.f));

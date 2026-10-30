@@ -99,7 +99,8 @@ public:
 	/**
 	 * EtapeDefini T: the bottom bar against the minimap's place, from the live geometry (Slate units, the window's DPI
 	 * scale taken out): "viewport 1600x900, dpi 0.833, width 1920, bar 1224 shown 1224 (scale 1.00) right 1240,
-	 * minimap 240 left 1664, gap 424" (the line "HUD layout" of hol.HUD.Report; a negative gap: the bar over the place).
+	 * minimap 240 left 1664, gap 424, medallion top 820 clip 800 cut 0" (the line "HUD layout" of hol.HUD.Report; a negative
+	 * gap: the bar over the place; a cut above 0: the age medallions clipped by the scale box or the window's top).
 	 */
 	FString DescribeLayout() const;
 
