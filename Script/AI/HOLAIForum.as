@@ -48,6 +48,31 @@ struct FHOLAIKingMemory
 	float LastOrder = -1000.f;
 }
 
+// What the weighing of the lives decides when the forum is attacked (D579): Fight = the army goes whatever the ratio (Easy); Rules = the
+// ratio rules decide (ShouldDefend), which is what Normal, Hard and Evolving do until their own weighing is written. The level is the C++ EHOLAIDifficulty (the slot's config).
+enum EHOLAILifeCall
+{
+	Rules,
+	Fight,
+}
+
+// A "forum attacked" situation: its lives, the power ratio of the army over the threatening enemies, and the decision.
+struct FHOLAIForumSituation
+{
+	bool bAttacked = false;
+	int Lives = 0;
+	float Ratio = 0.f;
+	int Count = 0;
+	EHOLAILifeCall Call = EHOLAILifeCall::Rules;
+}
+
+// The last situation written in the journal (the brain keeps one per slot): a line is written when it changes only.
+struct FHOLAIForumLogged
+{
+	bool bAttacked = false;
+	int Lives = 0;
+	EHOLAILifeCall Call = EHOLAILifeCall::Rules;
+}
 namespace HOLAIForum
 {
 	FHOLAIForumData DefaultData()
@@ -240,5 +265,78 @@ namespace HOLAIForum
 			}
 		}
 		return Best;
+	}
+
+	// The forum is attacked (D579): an enemy soldier stands within AttackedRadius of the forum, or the forum is down with enemy soldiers
+	// near the base. Judge reads the summary and the threat the brain already computed (no number of the combat is made here).
+	FHOLAIForumSituation Judge(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIThreat& Threat, EHOLAIDifficulty Level)
+	{
+		FHOLAIForumSituation Situation;
+		if (!Summary.bHasOwnForum || !Threat.bThreatened)
+		{
+			return Situation;
+		}
+		const FVector Place = Summary.OwnForum.bHasLocation ? Summary.OwnForum.Location : Summary.CentreLocation;
+		bool bAtForum = Summary.OwnForum.bDown;
+		for (int Index = 0; Index < Summary.Enemies.Num() && !bAtForum; Index++)
+		{
+			bAtForum = HOLAIArmy::IsThreatening(Summary.Enemies[Index]) && HOLAIArmy::FlatDistance(Summary.Enemies[Index].Location, Place) <= Data.AttackedRadius;
+		}
+		if (!bAtForum)
+		{
+			return Situation;
+		}
+		Situation.bAttacked = true;
+		Situation.Lives = Summary.OwnForum.Lives;
+		Situation.Ratio = Threat.Ratio;
+		Situation.Count = Threat.Count;
+		// Easy lives in the moment (D579): the army always goes, lost beforehand or not. Normal, Hard and Evolving: the ratio rules, for now.
+		Situation.Call = Level == EHOLAIDifficulty::Easy ? EHOLAILifeCall::Fight : EHOLAILifeCall::Rules;
+		return Situation;
+	}
+
+	// Whether the weighing sends the army whatever the ratio rules say (the brain adds it to ShouldDefend).
+	bool DefendAnyway(const FHOLAIForumSituation& Situation, const FHOLAIThreat& Threat)
+	{
+		return Situation.bAttacked && Situation.Call == EHOLAILifeCall::Fight && Threat.bThreatened;
+	}
+
+	FString LevelName(EHOLAIDifficulty Level)
+	{
+		if (Level == EHOLAIDifficulty::Easy)
+		{
+			return "Easy";
+		}
+		if (Level == EHOLAIDifficulty::Hard)
+		{
+			return "Hard";
+		}
+		if (Level == EHOLAIDifficulty::Evolving)
+		{
+			return "Evolving";
+		}
+		return "Normal";
+	}
+
+	// The journal line of a situation: lives left, enemies, the real power ratio, the level and the decision.
+	FString Describe(const FHOLAIForumSituation& Situation, EHOLAIDifficulty Level)
+	{
+		if (!Situation.bAttacked)
+		{
+			return "forum no longer attacked";
+		}
+		const FString Decision = Situation.Call == EHOLAILifeCall::Fight ? "fight, the army goes whatever the ratio" : "rules, the ratio decides";
+		return f"forum attacked: lives {Situation.Lives}, {Situation.Count} enemies, ratio {Situation.Ratio}, level {LevelName(Level)}, decision {Decision}";
+	}
+
+	// Whether the situation is written in the journal now: when it begins, when its lives or decision change, when it ends; Logged is updated.
+	bool ShouldLog(FHOLAIForumLogged& Logged, const FHOLAIForumSituation& Situation)
+	{
+		const bool bChanged = Logged.bAttacked != Situation.bAttacked
+			|| (Situation.bAttacked && (Logged.Lives != Situation.Lives || Logged.Call != Situation.Call));
+		Logged.bAttacked = Situation.bAttacked;
+		Logged.Lives = Situation.bAttacked ? Situation.Lives : 0;
+		Logged.Call = Situation.bAttacked ? Situation.Call : EHOLAILifeCall::Rules;
+		return bChanged;
 	}
 }
