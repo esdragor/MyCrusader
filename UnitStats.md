@@ -49,7 +49,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Paysan | 2 cases/s (8 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Piquier | 1,94 case/s (7,77 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Homme d'armes | 1,74 case/s (6,97 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
-| Roi | 1,94 case/s (7,77 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
+| Roi | 1,74 case/s (6,97 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Paladin-Commandant (héros) | 1,74 case/s (6,97 m/s) | 0,18 case (0,72 m) | 0,62 case (2,5 m) | 12 cases (48 m) |
 | Arbalétrier | 1,8 case/s (7,2 m/s) | 0,13 case (0,52 m) | 0,55 case (2,2 m) | 10 cases (40 m) |
 

@@ -96,7 +96,8 @@ bool FHOLRegicideKingTypeTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	TestEqual(TEXT("250 HP"), King->MaxHealth, 250);
-	TestEqual(TEXT("A Spearman's speed (777)"), King->Speed, Spearman->Speed);
+	TestEqual(TEXT("A Man-at-arms' speed (697, D562: slower than the Spearman so a chase can catch him)"), King->Speed, ManAtArms->Speed);
+	TestTrue(TEXT("... slower than the Spearman"), King->Speed < Spearman->Speed);
 	TestEqual(TEXT("50 of attack"), King->Attack, 50);
 	TestTrue(TEXT("A melee attack"), King->AttackType == EHOLAttackType::Melee);
 	TestEqual(TEXT("A Man-at-arms' interval"), King->AttackInterval, ManAtArms->AttackInterval);

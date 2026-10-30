@@ -110,6 +110,13 @@ public:
 	void SetOccupants(TArray<uint8>&& InOccupants) { Occupants = MoveTemp(InOccupants); }
 	int32 GetOccupants(const int32 SourceIndex) const { return Occupants.IsValidIndex(SourceIndex) ? Occupants[SourceIndex] : 0; }
 
+	/**
+	 * Server: the sources a gatherer stood idle in front of, no spot free, in the last seconds (IA2.6b), by source index, as the
+	 * gather processor counted them at its last step; what the AI's summary shows of a vein with every spot taken. Not replicated.
+	 */
+	void SetFullSources(TBitArray<>&& InFull) { FullSources = MoveTemp(InFull); }
+	bool IsFull(const int32 SourceIndex) const { return FullSources.IsValidIndex(SourceIndex) && FullSources[SourceIndex]; }
+
 	/** Server: what a player's gatherers unloaded since the start (reports, stress test S7). */
 	void RecordDeposit(uint8 OwnerPlayer, EHOLResource Resource, int32 Amount);
 	FHOLResources GetDeposited(uint8 OwnerPlayer) const { return Deposited.FindRef(OwnerPlayer); }
@@ -150,6 +157,7 @@ private:
 	int32 NumStanding = 0;
 	TMap<uint8, FHOLResources> Deposited;
 	TArray<uint8> Occupants;
+	TBitArray<> FullSources;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLSourceField> Field;

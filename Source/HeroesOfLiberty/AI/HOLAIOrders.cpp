@@ -28,21 +28,30 @@ namespace
 		return World;
 	}
 
-	/** PlayerIndex's building nearest Location, within 100 cm (a summary's FHOLAIBuilding::Location); null if none. */
-	AHOLBuilding* FindOwnBuilding(const UWorld& World, const int32 PlayerIndex, const FVector& Location)
+	/**
+	 * The building nearest Location, within 100 cm (a summary's FHOLAIBuilding::Location), of Owner's; of ANY owner when Owner is
+	 * INDEX_NONE (an enemy's, to attack it). Null if none.
+	 */
+	AHOLBuilding* FindBuildingAt(const UWorld& World, const int32 Owner, const FVector& Location)
 	{
 		AHOLBuilding* Nearest = nullptr;
 		double NearestDistance = 100.0;
 		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
 		{
 			const double Distance = FVector::Dist2D(It->GetActorLocation(), Location);
-			if (It->GetOwnerPlayer() == PlayerIndex && Distance <= NearestDistance)
+			if ((Owner == INDEX_NONE || It->GetOwnerPlayer() == Owner) && Distance <= NearestDistance)
 			{
 				Nearest = *It;
 				NearestDistance = Distance;
 			}
 		}
 		return Nearest;
+	}
+
+	/** PlayerIndex's building nearest Location, within 100 cm; null if none (and for no slot: INDEX_NONE would mean any owner's). */
+	AHOLBuilding* FindOwnBuilding(const UWorld& World, const int32 PlayerIndex, const FVector& Location)
+	{
+		return PlayerIndex == INDEX_NONE ? nullptr : FindBuildingAt(World, PlayerIndex, Location);
 	}
 
 	/** A point of the footprint's middle on the ground. */
@@ -78,7 +87,25 @@ bool UHOLAIOrderLibrary::IssueAIMoveOrder(const UObject* WorldContextObject, con
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
 	return World && HOLPlayerOrders::Move(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
 }
-
+
+
+bool UHOLAIOrderLibrary::IssueAIAttackMoveOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector Target,
+	const bool bQueue)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	return World && HOLPlayerOrders::AttackMove(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
+}
+
+bool UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds,
+	const FVector BuildingLocation, const bool bQueue)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	// An enemy's building as well as any other: the order's processor refuses one of the units' own camp. INDEX_NONE (the server's
+	// own orders every unit obeys) is refused by the queue's slot check, as for the other AI orders.
+	AHOLBuilding* Building = World ? FindBuildingAt(*World, INDEX_NONE, BuildingLocation) : nullptr;
+	return Building && HOLPlayerOrders::AttackBuilding(*World, PlayerIndex, ToUnitIds(UnitIds), Building, bQueue);
+}
+
 int32 UHOLAIOrderLibrary::CheckAIPlacement(const UObject* WorldContextObject, const int32 PlayerIndex, const FName TypeName, const FVector Point)
 {
 	const UWorld* World = GetAuthorityWorld(WorldContextObject);
@@ -192,6 +219,39 @@ bool UHOLAIOrderLibrary::ReadAIUnitFigures(const UObject* WorldContextObject, co
 	OutFigures.GatherWood = Row->GatherRates.Wood;
 	OutFigures.GatherStone = Row->GatherRates.Stone;
 	OutFigures.GatherGold = Row->GatherRates.Gold;
+	// Combat: the row's own values (the shared fragment of the combat code is copied from it, FHOLUnitTypeRow::ToConstants).
+	OutFigures.Health = Row->MaxHealth;
+	OutFigures.Damage = Row->Attack;
+	OutFigures.AttackInterval = Row->AttackInterval;
+	OutFigures.AttackRange = Row->AttackRange;
+	OutFigures.MeleeArmor = Row->MeleeArmor;
+	OutFigures.RangedArmor = Row->RangedArmor;
+	OutFigures.bRanged = Row->AttackType == EHOLAttackType::Ranged;
+	const UEnum* CategoryEnum = StaticEnum<EHOLArmorCategory>();
+	const auto NameOf = [CategoryEnum](const EHOLArmorCategory Category) { return FName(*CategoryEnum->GetNameStringByValue(static_cast<int64>(Category))); };
+	for (const EHOLArmorCategory Category : Row->ArmorCategories)
+	{
+		OutFigures.ArmorCategories.AddUnique(NameOf(Category));
+	}
+	// Each bonus adds its damage as is to a hit on a target of its category (HOLCombat::GetDamage): two bonuses of one category add up.
+	for (const FHOLAttackBonus& Bonus : Row->Bonuses)
+	{
+		if (Bonus.Damage <= 0)
+		{
+			continue;
+		}
+		const FName Category = NameOf(Bonus.Category);
+		const int32 Found = OutFigures.BonusCategories.IndexOfByKey(Category);
+		if (Found == INDEX_NONE)
+		{
+			OutFigures.BonusCategories.Add(Category);
+			OutFigures.BonusDamage.Add(static_cast<float>(Bonus.Damage));
+		}
+		else
+		{
+			OutFigures.BonusDamage[Found] += static_cast<float>(Bonus.Damage);
+		}
+	}
 	return true;
 }
 

@@ -251,6 +251,11 @@ bool HOLConstruction::FindFreeFootprint(const FHOLPlacementQuery& Query, const F
 	return false;
 }
 
+bool HOLConstruction::IsAgeOpen(const int32 BuildingAge, const int32 Tier)
+{
+	return BuildingAge <= FMath::Max(Tier, 0);
+}
+
 bool HOLConstruction::TryPay(FHOLResources& Stock, const FHOLResources& Cost)
 {
 	if (!Stock.Covers(Cost))

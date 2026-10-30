@@ -236,6 +236,13 @@ private:
 	 * own source is never skipped this way: its own claim may be there.
 	 */
 	TBitArray<> FullSources;
+	/**
+	 * IA2.6b: the game time (s, summed from the steps) a gatherer last stood idle in front of each source for want of a spot; a
+	 * source is shown full to the AI's summary for FullShownSeconds after it. The vein of a camp holds a handful of gatherers:
+	 * the brain sent the others there again and again, each standing idle until its next thought.
+	 */
+	TMap<int32, double> LastNoRoom;
+	double GameSeconds = 0.;
 	/** A body at rest this step (not on a round trip, not at its source): what a gatherer stopped idle must not overlap. */
 	struct FRestingBody
 	{

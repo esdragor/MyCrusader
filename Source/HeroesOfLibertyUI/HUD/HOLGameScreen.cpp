@@ -538,9 +538,10 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		RefreshAbsenceBanner();
 		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
-		// (the forum's state changes only at its phases): its block is read at the same pace.
+		// (the forum's state changes only at its phases): its block is read at the same pace. Standing too (tiers, P4): its
+		// lives follow the level of its player's hero, which moves without telling the forum's state.
 		const AHOLBuilding* SelectedBuilding = BoundBuilding.Get();
-		if (BoundForumState.IsValid() && SelectedBuilding && SelectedBuilding->IsForumDown())
+		if (BoundForumState.IsValid() && SelectedBuilding && (SelectedBuilding->IsForumDown() || SelectedBuilding->IsPrimaryForum()))
 		{
 			Refresh();
 		}
@@ -548,6 +549,12 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		else if (bHeroCellsShown)
 		{
 			RefreshGrid(nullptr, false, BoundPlayerState.Get());
+		}
+		// P4 (tiers): the builders' age panels follow the tier of the player's hero (his level moves without a delegate).
+		if (bAgesShown && BoundPlayerState.IsValid() && BoundTableState.IsValid()
+			&& BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) != ShownTier)
+		{
+			RefreshAges(BoundPlayerState.Get());
 		}
 	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
@@ -944,12 +951,14 @@ void UHOLGameScreen::RefreshPlayersTable()
 	if (GameState)
 	{
 		TArray<FHOLForumState> Forums;
+		TArray<int32> Tiers;
 		for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
 		{
 			Forums.Add(GameState->GetForumState(Seat));
+			Tiers.Add(GameState->GetForumTuning(Seat).Tier);
 		}
 		Rows = HOLForumRules::GetPlayersTable(GameState->GetLaunchConfig(), Forums, GameState->GetDefeatedMask(),
-			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings());
+			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers);
 	}
 	const FString Shown = FString::JoinBy(Rows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
 	if (Shown == ShownPlayersTable)
@@ -1904,6 +1913,7 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 	}
 	bAgesShown = HOLCommandGrid::IsBuildGrid(Context);
 	ShownChosenAge = bAgesShown && PlayerController ? PlayerController->GetChosenAge() : INDEX_NONE;
+	ShownTier = PlayerState && BoundTableState.IsValid() ? BoundTableState->GetTier(PlayerState->GetPlayerIndex()) : INDEX_NONE;
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
 	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
 	{
@@ -2240,10 +2250,23 @@ FString UHOLGameScreen::DescribeLayout() const
 	const float BarShown = BarGeometry.GetAbsoluteSize().X / Dpi;
 	const float BarRight = (BarGeometry.GetAbsolutePosition().X + BarGeometry.GetAbsoluteSize().X) / Dpi;
 	const float PlaceLeft = PlaceGeometry.GetAbsolutePosition().X / Dpi;
-	return FString::Printf(TEXT("viewport %dx%d, dpi %.3f, width %d, bar %d shown %d (scale %.2f) right %d, minimap %d left %d, gap %d"),
+	// The age medallions rise over the bar's top edge: the first one's top against the scale box's top (the box clips its
+	// content to its own area) and the window's top; "cut" = what of it is out of the one or the other (0 = all drawn);
+	// "none" while the age panels are not shown.
+	FString Medallion = TEXT("none");
+	const UBorder* FirstMedallion = AgeMedallions.IsValidIndex(0) ? AgeMedallions[0].Get() : nullptr;
+	const UBorder* FirstPanel = AgePanels.IsValidIndex(0) ? AgePanels[0].Get() : nullptr;
+	if (FirstMedallion && FirstPanel && FirstPanel->GetVisibility() != ESlateVisibility::Collapsed && BottomScale)
+	{
+		const float MedallionTop = FirstMedallion->GetCachedGeometry().GetAbsolutePosition().Y / Dpi;
+		const float ClipTop = BottomScale->GetCachedGeometry().GetAbsolutePosition().Y / Dpi;
+		Medallion = FString::Printf(TEXT("top %d clip %d cut %d"), FMath::RoundToInt(MedallionTop), FMath::RoundToInt(ClipTop),
+			FMath::Max(0, FMath::Max(FMath::RoundToInt(ClipTop) - FMath::RoundToInt(MedallionTop), -FMath::RoundToInt(MedallionTop))));
+	}
+	return FString::Printf(TEXT("viewport %dx%d, dpi %.3f, width %d, bar %d shown %d (scale %.2f) right %d, minimap %d left %d, gap %d, medallion %s"),
 		FMath::RoundToInt(Viewport.X), FMath::RoundToInt(Viewport.Y), Dpi, FMath::RoundToInt(Viewport.X / Dpi),
 		FMath::RoundToInt(BarDesired), FMath::RoundToInt(BarShown), BarDesired > 0.f ? BarShown / BarDesired : 1.f, FMath::RoundToInt(BarRight),
-		FMath::RoundToInt(MinimapSize), FMath::RoundToInt(PlaceLeft), FMath::RoundToInt(PlaceLeft - BarRight));
+		FMath::RoundToInt(MinimapSize), FMath::RoundToInt(PlaceLeft), FMath::RoundToInt(PlaceLeft - BarRight), *Medallion);
 }
 
 float UHOLGameScreen::GetBottomScale() const
@@ -2795,6 +2818,13 @@ void UHOLGameScreen::BuildLayout()
 		ColumnSlot->SetHorizontalAlignment(HAlign_Left);
 		ColumnSlot->SetVerticalAlignment(VAlign_Bottom);
 	}
+	// The age medallions rise over the bar's top edge (MedallionRise), out of the column's own area; the scale box clips its
+	// content to its allotted area (ScaleToFitX), which cut them in half: the room above the column, a spacer in the box
+	// (the slot's padding is not used by a scale box).
+	USizeBox* MedallionRoom = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass(), TEXT("MedallionRoom"));
+	MedallionRoom->SetHeightOverride(MedallionRise);
+	MedallionRoom->SetVisibility(ESlateVisibility::HitTestInvisible);
+	BottomLeft->AddChildToVerticalBox(MedallionRoom);
 
 	GroupsPanel = MakePanel(TEXT("GroupsPanel"));
 	GroupsPanel->SetPadding(FMargin(6.f, 4.f));

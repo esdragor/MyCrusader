@@ -516,7 +516,7 @@ namespace UE::HeroesOfLiberty::Player
 						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
 					}
 				}
-				const TArray<uint32> Own = Controller->GetOwnSelectedUnits();
+				const TArray<uint32> Own = Controller->GetCommandUnits();
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack #%u%s"), Own.Num(), TargetId, bQueue ? TEXT(", queued") : TEXT(""));
 				Controller->RequestAttackUnit(Own, TargetId, bQueue);
 				FHOLUnitView View;
@@ -2280,7 +2280,8 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 	int32 SourceIndex = FindSourceAt(ViewportFraction);
 	const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>();
 	const FHOLSource* Source = SourceIndex != INDEX_NONE && Sources ? &Sources->GetSources()[SourceIndex] : nullptr;
-	const TArray<uint32> Own = GetOwnSelectedUnits();
+	// The units of the active subgroup (Tab), all of them for « Tous » (EtapeDefini, the user's remark of 2026-10-30).
+	const TArray<uint32> Own = GetCommandUnits();
 	// One of the player's sites not finished under the cursor (J6a.4, D312), or its main forum down (V2.2): its selected
 	// units go and help build it.
 	AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(ViewportFraction) : nullptr;
@@ -3131,7 +3132,9 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 
 void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 {
-	Context.ReachedAge = HOLCommandGrid::GetReachedAge();
+	// P3: the tier the hero's level opens (the server checks it again at the placement).
+	const AHOLGameState* TierState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	Context.ReachedAge = TierState && GetHOLPlayerState() ? TierState->GetTier(GetHOLPlayerState()->GetPlayerIndex()) : 0;
 	if (GetHOLPlayerState() && !SelectedUnits.IsEmpty())
 	{
 		// The units of the active subgroup (Tab, the user's trial of J7b; all of them for « Tous »). Builders: those that
@@ -3741,7 +3744,7 @@ void AHOLPlayerController::RequestPlaceBuilding(const FName TypeName, const FVec
 	if (!TypeName.IsNone())
 	{
 		// The selected Peasants build it (J6a.4); the server keeps only the player's own that build.
-		const TArray<uint32> Builders = GetOwnSelectedUnits();
+		const TArray<uint32> Builders = GetCommandUnits();
 		if (!Builders.IsEmpty())
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Placement: %d units sent to build it%s"), Builders.Num(), bQueue ? TEXT(", queued") : TEXT(""));
@@ -4542,7 +4545,7 @@ bool AHOLPlayerController::GetOrderLine(FVector& OutStart, FVector& OutEnd) cons
 {
 	FVector2D Cursor;
 	if (!bOrderPressed || !RTSCamera || IsPlacing() || !GetCursorFraction(Cursor)
-		|| !HOLUnitPicking::IsBox(ToPixels(OrderPressFraction), ToPixels(Cursor)) || GetOwnSelectedUnits().Num() < 2)
+		|| !HOLUnitPicking::IsBox(ToPixels(OrderPressFraction), ToPixels(Cursor)) || GetCommandUnits().Num() < 2)
 	{
 		return false;
 	}
@@ -4573,7 +4576,8 @@ void AHOLPlayerController::OrderLineAt(const FVector2D& Start, const FVector2D& 
 	// Ctrl (or a script's): the front's width too; Shift (or a script's): after the current move (the user's 1st trial).
 	const bool bWithWidth = bWidth || IsOrderWidthHeld();
 	const bool bShift = bQueue || bSelectAddHeld;
-	const TArray<uint32> Own = GetOwnSelectedUnits();
+	// The active subgroup's units (Tab), all of them for « Tous ».
+	const TArray<uint32> Own = GetCommandUnits();
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	const AHOLBuilding* Site = !Own.IsEmpty() ? FindBuildingAt(Start) : nullptr;
 	const bool bOnSite = Site && HOLPlayerState && Site->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && Site->NeedsBuilders();

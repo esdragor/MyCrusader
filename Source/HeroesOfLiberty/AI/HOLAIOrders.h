@@ -56,6 +56,51 @@ struct HEROESOFLIBERTY_API FHOLAITypeFigures
 
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	float GatherGold = 0.f;
+
+	// IA2.2, combat (units only; 0 / empty for a building): the table's columns the combat code reads (FHOLUnitTypeConstants),
+	// for the script's counter rule.
+
+	/** Health points at birth (MaxHealth). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Health = 0;
+
+	/** Damage of one hit before bonus and armour (Attack). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Damage = 0;
+
+	/** Seconds between two hits. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	float AttackInterval = 0.f;
+
+	/** Reach (cm) between the edges of the two bodies. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	float AttackRange = 0.f;
+
+	/** Taken off each melee hit received / each ranged hit received. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 MeleeArmor = 0;
+
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 RangedArmor = 0;
+
+	/** Its attack is a ranged one (AttackType Ranged); false for melee, siege and hero attacks. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bRanged = false;
+
+	/** Its armour categories by name (LightInfantry, HeavyInfantry, Ranged, Cavalry, Siege, Peasant, GunpowderInfantry, Heavy, King, Hero). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FName> ArmorCategories;
+
+	/**
+	 * Its attack's bonuses, two parallel arrays: the FLAT damage added to each hit against a target of BonusCategories[i] (the table
+	 * stores an added value, not a multiplier, and the combat code adds it as is: HOLCombat::GetDamage). Bonuses of the same category
+	 * are summed; a bonus of 0 is left out.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FName> BonusCategories;
+
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<float> BonusDamage;
 };
 
 /**
@@ -79,6 +124,17 @@ public:
 	/** PlayerIndex's units go to Target, applied at the next step. Whether the order entered the queue. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);
+
+	/** PlayerIndex's units attack-move to Target (they take on the enemies met on the way), applied at the next step. Whether the order entered the queue. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIAttackMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);
+
+	/**
+	 * PlayerIndex's units attack the building nearest BuildingLocation (within 100 cm, of ANY owner: an enemy's; the order's processor
+	 * refuses a building of their own camp). False when no building stands there.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIAttackBuildingOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector BuildingLocation, bool bQueue = false);
 
 	// IA1.4: building, production. A building is named by its ground point (FHOLAIBuilding::Location): the summary gives no
 	// identifier, the nearest building of the slot within 100 cm is meant.

@@ -12,6 +12,7 @@
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -296,6 +297,178 @@ bool FHOLHeroResistanceInCombatTest::RunTest(const FString& Parameters)
 			// 450 - 3.6 = 446.4, shown rounded up (HOLCombat::GetShownHealth): 447.
 			TestEqual(TEXT("the Man-at-arms' first hit on the hero: 12 x 0.3 = 3.6, 446.4 shown 447"), HeroLoss, 3);
 			TestEqual(TEXT("the hero's first hit on the Man-at-arms: 30 - 2"), FoeLoss, 28);
+		}
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroSurplusAttackersTest, "HeroesOfLiberty.Hero.SurplusAttackers", UE::HeroesOfLiberty::Tests::Hero::Flags)
+
+// The J8a trial's defect (decided 2026-10-30, option A): Men-at-arms around the hero idle. Eight enemy Men-at-arms take on
+// the hero alone; the ring around him holds six (HOLCombat::MaxAttackers), the two others stand behind it out of reach, kept
+// on him while a place is left. Once the ring is full and another enemy stands within their aggression, they take that one
+// on instead of waiting behind the ring (the real combat processor, the real unit table; no movement, so the bodies stay
+// where they are placed).
+bool FHOLHeroSurplusAttackersTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		// As HeroResistanceInCombat: born again until its identifier is a multiple of 4 (a unit searches one step of 4).
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto TargetOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			const FHOLCombatFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+			return Fragment ? Fragment->Target : FMassEntityHandle();
+		};
+		const int32 Steps = FMath::CeilToInt(3.f / StepSeconds);
+
+		// The hero of slot 0 at the origin (radius 72); a Man-at-arms of slot 1 (radius 60) touches him at 140 cm.
+		const uint32 Hero = Place(FName(TEXT("Hero")), 0, FVector::ZeroVector);
+		TArray<uint32> Ring;
+		const auto AddToRing = [&](const double Degrees)
+		{
+			const double Radians = FMath::DegreesToRadians(Degrees);
+			Ring.Add(Place(FName(TEXT("ManAtArms")), 1, FVector(140.0 * FMath::Cos(Radians), 140.0 * FMath::Sin(Radians), 0.0)));
+		};
+		for (const double Degrees : { 0.0, 90.0, 180.0, 270.0 })
+		{
+			AddToRing(Degrees);
+		}
+		// Two more behind the ring on the +X side, out of reach (335 cm centre to centre: a 203 cm gap, reach 70).
+		const uint32 Surplus[] = { Place(FName(TEXT("ManAtArms")), 1, FVector(320.0, 100.0, 0.0)), Place(FName(TEXT("ManAtArms")), 1, FVector(320.0, -100.0, 0.0)) };
+		bool bAllBorn = Hero != 0 && Surplus[0] != 0 && Surplus[1] != 0;
+		for (const uint32 Id : Ring)
+		{
+			bAllBorn &= Id != 0;
+		}
+		if (TestTrue(TEXT("the hero, four Men-at-arms around him and two behind them born"), bAllBorn))
+		{
+			const FMassEntityHandle HeroEntity = Units->FindEntity(Hero);
+			for (int32 Index = 0; Index < Steps; ++Index)
+			{
+				RunStep();
+			}
+			TestTrue(TEXT("a place left around him: the first surplus Man-at-arms is on the hero"), TargetOf(Surplus[0]) == HeroEntity);
+			TestTrue(TEXT("... the second too"), TargetOf(Surplus[1]) == HeroEntity);
+
+			// The ring is full (six) and one of the hero's Peasants stands 7 m beyond them, in their aggression.
+			AddToRing(45.0);
+			AddToRing(225.0);
+			const uint32 Peasant = Place(FName(TEXT("Peasant")), 0, FVector(1000.0, 0.0, 0.0));
+			if (TestTrue(TEXT("two more around the hero and a Peasant born"), Ring.Last() != 0 && Ring[Ring.Num() - 2] != 0 && Peasant != 0))
+			{
+				const FMassEntityHandle PeasantEntity = Units->FindEntity(Peasant);
+				for (int32 Index = 0; Index < Steps; ++Index)
+				{
+					RunStep();
+				}
+				TestTrue(TEXT("a full ring: the first surplus Man-at-arms takes the Peasant on"), TargetOf(Surplus[0]) == PeasantEntity);
+				TestTrue(TEXT("... the second too"), TargetOf(Surplus[1]) == PeasantEntity);
+				TestTrue(TEXT("the Men-at-arms of the ring stay on the hero"), TargetOf(Ring[0]) == HeroEntity && TargetOf(Ring[1]) == HeroEntity);
+
+				// The user's order (right click on the hero): two more Men-at-arms ordered at him, behind the full ring. An ordered
+				// target is kept until it dies (HOLCombat::MaySeek), but a surplus one that cannot reach it leaves it for the
+				// Peasant (decision A of 2026-10-30), its order then over.
+				// The hero kills one now and then: three spare bodies keep the ring full whatever falls (they overlap, nothing moves).
+				AddToRing(135.0);
+				AddToRing(315.0);
+				AddToRing(15.0);
+				const uint32 Ordered[] = { Place(FName(TEXT("ManAtArms")), 1, FVector(320.0, 300.0, 0.0)), Place(FName(TEXT("ManAtArms")), 1, FVector(320.0, -300.0, 0.0)) };
+				if (TestTrue(TEXT("two ordered Men-at-arms born"), Ordered[0] != 0 && Ordered[1] != 0))
+				{
+					for (const uint32 Id : Ordered)
+					{
+						FHOLCombatFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Id));
+						if (TestNotNull(TEXT("combat fragment"), Fragment))
+						{
+							Fragment->Target = HeroEntity;
+							Fragment->bOrderedTarget = true;
+						}
+					}
+					// Before the fix (hol.Combat.SurplusReassign 0): they wait on the hero behind the ring.
+					IConsoleVariable* Reassign = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.SurplusReassign"));
+					if (TestNotNull(TEXT("hol.Combat.SurplusReassign"), Reassign))
+					{
+						Reassign->Set(0, ECVF_SetByCode);
+						for (int32 Index = 0; Index < Steps; ++Index)
+						{
+							RunStep();
+						}
+						TestTrue(TEXT("without the rule: both still on the hero, idle behind the ring"), TargetOf(Ordered[0]) == HeroEntity && TargetOf(Ordered[1]) == HeroEntity);
+						Reassign->Set(1, ECVF_SetByCode);
+					}
+					for (int32 Index = 0; Index < Steps; ++Index)
+					{
+						RunStep();
+					}
+					TestTrue(TEXT("ordered at a full ring: the first leaves the hero for the Peasant"), TargetOf(Ordered[0]) == PeasantEntity);
+					TestTrue(TEXT("... the second too"), TargetOf(Ordered[1]) == PeasantEntity);
+				}
+			}
 		}
 	}
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);

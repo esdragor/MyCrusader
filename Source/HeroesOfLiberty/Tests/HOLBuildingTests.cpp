@@ -146,7 +146,7 @@ bool FHOLBuildingArcheryRangeTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("1500 health points"), Range->MaxHealth, 1500);
 	TestEqual(TEXT("ranged armour 40"), Range->RangedArmor, 40);
 	TestEqual(TEXT("150 wood, nothing else"), Range->Cost.ToString(), FHOLResources(0, 150, 0, 0).ToString());
-	TestEqual(TEXT("built in 40 s"), Range->BuildTime, 40.f);
+	TestEqual(TEXT("built in 20 s"), Range->BuildTime, 20.f);
 	TestEqual(TEXT("queue of 5"), Range->MaxQueue, 5);
 	TestTrue(TEXT("military"), Range->Category == EHOLBuildingCategory::Military);
 	TestEqual(TEXT("age 0"), Range->Age, 0);

@@ -154,6 +154,23 @@ bool FHOLConstructionPlacementTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// P3 (D07): a building of an age the player's tier has not reached cannot be placed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionAgeTest, "HeroesOfLiberty.Construction.Age", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionAgeTest::RunTest(const FString& Parameters)
+{
+	for (int32 Age = 0; Age <= 3; ++Age)
+	{
+		for (int32 Tier = 0; Tier <= 3; ++Tier)
+		{
+			TestEqual(*FString::Printf(TEXT("Age %d at tier %d"), Age, Tier), HOLConstruction::IsAgeOpen(Age, Tier), Age <= Tier);
+		}
+	}
+	TestTrue(TEXT("Age 0 is always open"), HOLConstruction::IsAgeOpen(0, 0));
+	TestFalse(TEXT("Age 1 is shut at tier 0"), HOLConstruction::IsAgeOpen(1, 0));
+	TestTrue(TEXT("A negative tier is tier 0 for the age 0"), HOLConstruction::IsAgeOpen(0, -1));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionPaymentTest, "HeroesOfLiberty.Construction.Payment", UE::HeroesOfLiberty::Tests::Construction::Flags)
 bool FHOLConstructionPaymentTest::RunTest(const FString& Parameters)
 {
@@ -345,7 +362,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Barracks: Q of the Peasant's grid (slot 4, military row, D313)"), Barracks->BuildGridSlot, 4);
 		TestEqual(TEXT("Barracks: 3 x 3 tiles (12 m)"), Barracks->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
 		TestTrue(TEXT("Barracks: 150 wood"), Barracks->Cost == FHOLResources(0, 150, 0, 0));
-		TestEqual(TEXT("Barracks: 40 s for one builder"), Barracks->BuildTime, 40.f);
+		TestEqual(TEXT("Barracks: 20 s for one builder"), Barracks->BuildTime, 20.f);
 		TestEqual(TEXT("Barracks: 1 500 health"), Barracks->MaxHealth, 1500);
 		TestEqual(TEXT("Barracks: 6 m high"), Barracks->Height, 600.f);
 	}
@@ -383,7 +400,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Farm: economic"), int32(Farm->Category), int32(EHOLBuildingCategory::Economic));
 		TestEqual(TEXT("Farm: 2 x 2 tiles (8 m)"), Farm->Footprint, FVector2D(2.0 * Grid, 2.0 * Grid));
 		TestTrue(TEXT("Farm: 75 wood"), Farm->Cost == FHOLResources(0, 75, 0, 0));
-		TestEqual(TEXT("Farm: 15 s for one builder"), Farm->BuildTime, 15.f);
+		TestEqual(TEXT("Farm: 7.5 s for one builder"), Farm->BuildTime, 7.5f);
 		TestEqual(TEXT("Farm: no population"), Farm->PopulationProvided, 0);
 		TestTrue(TEXT("Farm: takes no resource (no deposit)"), Farm->Accepts.IsEmpty());
 		TestTrue(TEXT("Farm: produces nothing"), Farm->Produces.IsEmpty());

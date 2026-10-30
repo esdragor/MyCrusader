@@ -1,0 +1,32 @@
+# Ordres et pose de bâtiment après Tab : 3 Paysans + 3 Hommes d'armes + 3 Archers sélectionnés ensemble, arbre / or / pierre / maison ennemie / Lanciers ennemis / chantier autour
+# Plain, deux joueurs (tab.json). Positions dans le repère du centre du joueur (X vers le milieu de la carte) : le groupe est vers (2600, 0) ; l'arbre vers (115, -1781), l'or vers (3713, 4592),
+# la pierre vers (3713, -4592) ; 3 Lanciers ennemis et une maison ennemie à ~32 m à l'est (hors du rayon d'agression, 16 m) ; une fondation de maison à poser en bâtissant, à ~15 m au nord-ouest.
+# Le cadre est donné par le scénario (hol.Select.BoxGround en coordonnées du monde : centre du slot 0 = -14800, 0) ; « Relancer » rejoue tout.
+hol.Cheat.Resources 5000
+hol.Cheat.Population 165
+hol.Units.SpawnSeed 104
+# Une fondation de maison (non bâtie) au nord-ouest du groupe, une maison ennemie à l'est.
+hol.Build.PlaceNear House 1300 2200
+waitlog Construction: slot 0 placed House foundation
+hol.Cheat.SpawnBuilding House 1 5800 2600
+waitlog Cheat: spawned House of slot 1
+# Les ennemis : 3 Lanciers immobiles à l'est.
+hol.Camera.FocusNear 5800 0
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 150
+waitunits 3
+# Le groupe : 3 Paysans, 3 Hommes d'armes, 3 Archers au même endroit, puis un cadre autour d'eux.
+hol.Camera.FocusNear 2600 0
+frames 2
+hol.Units.SpawnHere 3 Peasant 0 150
+hol.Units.SpawnHere 3 ManAtArms 0 150
+hol.Units.SpawnHere 3 Archer 0 150
+waitunits 12
+hol.Camera.FocusNear 3200 600
+hol.Camera.Zoom -2
+frames 10
+hol.Select.BoxGround -12600 -700 -11600 700
+waitlog Selection: 9 units (own)
+note Tab : onglets Tous / Archers / Hommes d'armes / Paysans (9 unités sélectionnées au cadre). Chaque geste ne doit concerner que l'onglet actif ; « Tous » = les 9.
+note À essayer sur chaque onglet : clic droit au sol, ligne d'ordre (glisser le clic droit), clic droit sur l'arbre / l'or / la pierre, sur la maison ou un Lancier ennemi, sur la fondation de maison.
+note Pose de bâtiment (Paysans, ou « Tous ») : bâtis une maison ailleurs ; sur l'onglet Hommes d'armes ou Archers il n'y a pas de menu de bâtiment.

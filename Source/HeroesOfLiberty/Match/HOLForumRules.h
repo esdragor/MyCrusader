@@ -334,8 +334,9 @@ namespace HOLForumRules
 	/**
 	 * V2.4 (V2-Q4): the players' table, a row per occupied slot (human or AI; a closed slot has none): in slot order, grouped
 	 * by team when there are teams (team 1 first, the slots without a team last). Forums by slot (a missing one standing),
-	 * DefeatedMask's bit Slot a defeated slot, LocalSlot the machine's own (INDEX_NONE: none).
+	 * DefeatedMask's bit Slot a defeated slot, LocalSlot the machine's own (INDEX_NONE: none). Tiers by slot (P2: each
+	 * hero's; a missing one takes Tuning's) give the lives.
 	 */
 	HEROESOFLIBERTY_API TArray<FHOLPlayersTableRow> GetPlayersTable(const FHOLMatchConfig& Config, TConstArrayView<FHOLForumState> Forums,
-		uint8 DefeatedMask, int32 LocalSlot, const FHOLForumTuning& Tuning);
+		uint8 DefeatedMask, int32 LocalSlot, const FHOLForumTuning& Tuning, TConstArrayView<int32> Tiers = {});
 }

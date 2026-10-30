@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Engine/DataTable.h"
+#include "Match/HOLForumRules.h"
 #include "Match/HOLResources.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLCombatRules.h"
@@ -61,6 +62,26 @@ bool FHOLHeroXPSourcesTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("No command XP while dead"), HOLHeroXP::CountsWhileDead(EHOLXPSource::Command));
 	TestTrue(TEXT("Development XP while dead"), HOLHeroXP::CountsWhileDead(EHOLXPSource::Development));
 	TestTrue(TEXT("Exploration XP while dead"), HOLHeroXP::CountsWhileDead(EHOLXPSource::Exploration));
+	return true;
+}
+
+// P1 (D04): the hero's level opens the civilisation's tier, 3, 6 and 9 for tiers 1, 2 and 3.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPTiersTest, "HeroesOfLiberty.HeroXP.Tiers", UE::HeroesOfLiberty::Tests::HeroXP::Flags)
+
+bool FHOLHeroXPTiersTest::RunTest(const FString& Parameters)
+{
+	using namespace HOLHeroXP;
+	const int32 Expected[][2] = {{-1, 0}, {0, 0}, {1, 0}, {2, 0}, {3, 1}, {4, 1}, {5, 1}, {6, 2}, {7, 2}, {8, 2}, {9, 3}, {10, 3}};
+	for (const int32(&Pair)[2] : Expected)
+	{
+		TestEqual(FString::Printf(TEXT("Level %d: tier %d"), Pair[0], Pair[1]), GetTier(Pair[0]), Pair[1]);
+	}
+	// The prototype stops at level 6: the last tier it reaches is 2 (5 lives would need the level 9).
+	TestEqual(TEXT("The prototype's last level: tier 2"), GetTier(MaxLevel), 2);
+	// D349: 2 lives at tier 0, then one more a tier, a fall takes one.
+	TestEqual(TEXT("Tier 1, no fall: 3 lives"), HOLForumRules::GetLives(GetTier(3), 0), 3);
+	TestEqual(TEXT("Tier 2, one fall: 3 lives"), HOLForumRules::GetLives(GetTier(6), 1), 3);
+	TestEqual(TEXT("Tier 0, two falls: none"), HOLForumRules::GetLives(GetTier(2), 2), 0);
 	return true;
 }
 

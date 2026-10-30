@@ -425,6 +425,15 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
 		return;
 	}
+	// P3 (D07): a building of an age the player's tier (his hero's level) has not reached; the grid greys it, a client could still ask.
+	const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
+	const int32 Tier = GameState ? GameState->GetTier(Order.PlayerIndex) : 0;
+	if (!HOLConstruction::IsAgeOpen(Type->Age, Tier))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: age %d not reached (tier %d)"), Order.PlayerIndex,
+			*Order.TypeName.ToString(), Type->Age, Tier);
+		return;
+	}
 	const FBox2D Footprint = SnapFootprint(*Type, Order.Location);
 	const FVector2D Centre = Footprint.GetCenter();
 	const EHOLPlacementRefusal Refusal = CheckPlacement(*World, Footprint, Order.PlayerIndex);

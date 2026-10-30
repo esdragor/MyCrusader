@@ -1,0 +1,36 @@
+# Hommes d'armes en surnombre (J8 close) : un ennemi encerclé par 6 des tiens, 8 autres envoyés par clic droit sur lui ; ceux qui n'ont plus de place vont-ils frapper un autre ennemi au lieu d'attendre ?
+# Plain, toi (slot 0) contre une IA (slot 1), surplus.json : ton héros et ton forum (-15000, 0), pas de Paysans. Positions en monde (cm).
+# 1) un héros ennemi (niveau 4, plus d'endurance) naît à ~46 m de ton héros, vers le nord-est (-12800, 4500), avec un Homme d'armes ennemi libre 9 m derrière lui (-11900, 4500), hors de portée de ton héros ;
+# 2) 6 de tes Hommes d'armes naissent autour du héros ennemi et l'encerclent (tous les 6 places autour de lui sont prises) ;
+# 3) 8 autres de tes Hommes d'armes naissent à l'ouest de la scène (-16000, 4500), sont sélectionnés au cadre, puis clic droit sur le héros ennemi.
+# Comparaison : hol.Combat.SurplusReassign 1 (défaut, correctif) ou 0 (ancien comportement : le surplus attend derrière l'anneau) ; puis hol.Scenario surplus rejoue.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Camera.Focus -14500 3000
+frames 10
+note 1. Un héros ennemi (à ~46 m de ton héros, hors de sa portée) va être encerclé par 6 de tes Hommes d'armes ; 8 autres arrivent de l'ouest avec un clic droit sur lui ; un Homme d'armes ennemi attend 9 m derrière.
+note Console (²) : hol.Combat.SurplusReassign 1 = correctif (défaut) ; hol.Combat.SurplusReassign 0 = ancien comportement. Change-le AVANT d'appuyer sur Entrée, puis hol.Scenario surplus rejoue depuis le début.
+waitkey Entrée : l'ennemi encerclé par 6 des tiens, puis tes 8 renforts et le clic droit
+# Le héros ennemi d'abord, l'Homme d'armes libre en dernier : -2 = le héros, -1 = l'Homme d'armes libre parmi les unités ennemies.
+hol.Units.Spawn 1 -12800 4500 1 Hero 1
+hol.Units.Spawn 1 -11900 4500 1 ManAtArms 1
+hol.Hero.SetXP 1 1300
+wait 1
+# Les 6 qui l'encerclent.
+hol.Units.Spawn 6 -12600 4500 0 ManAtArms 150
+wait 4
+# Les 8 renforts, à l'est.
+hol.Units.Spawn 8 -16000 4500 0 ManAtArms 250
+wait 2
+hol.Camera.Focus -16000 4500
+frames 5
+hol.Select.BoxGround -16800 3500 -15200 5500
+waitlog Selection: 8 units (own)
+# La camera revient sur l'anneau, puis le clic droit sur le héros ennemi.
+hol.Camera.Focus -13200 4500
+frames 5
+hol.Select.ClickUnit -2 order enemy
+note 2. Clic droit donné sur le héros ennemi : tes 8 renforts marchent vers lui, mais ses 6 places sont prises par les 6 premiers (le héros ennemi tient plusieurs secondes).
+note AVEC le correctif (1) : les renforts qui n'ont plus de place quittent le héros pour l'Homme d'armes ennemi derrière lui (ou lui, s'il a une place) ; leur ordre est fini. SANS (0) : ils restent plantés derrière l'anneau, sans frapper.
+note À toi ensuite : sélectionne d'autres Hommes d'armes, reclique droit sur un ennemi encerclé (au besoin hol.Units.SpawnHere 6 ManAtArms 0 400 pour en refaire naître au centre de l'écran).

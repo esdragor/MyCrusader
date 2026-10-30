@@ -99,7 +99,8 @@ public:
 	/**
 	 * EtapeDefini T: the bottom bar against the minimap's place, from the live geometry (Slate units, the window's DPI
 	 * scale taken out): "viewport 1600x900, dpi 0.833, width 1920, bar 1224 shown 1224 (scale 1.00) right 1240,
-	 * minimap 240 left 1664, gap 424" (the line "HUD layout" of hol.HUD.Report; a negative gap: the bar over the place).
+	 * minimap 240 left 1664, gap 424, medallion top 820 clip 800 cut 0" (the line "HUD layout" of hol.HUD.Report; a negative
+	 * gap: the bar over the place; a cut above 0: the age medallions clipped by the scale box or the window's top).
 	 */
 	FString DescribeLayout() const;
 
@@ -572,6 +573,8 @@ private:
 	TArray<FName> ShownAgeTypes;
 	TArray<bool> ShownAgeReached;
 	int32 ShownChosenAge = INDEX_NONE;
+	/** The tier of the player's hero the age panels were written for (P4): they follow his level. */
+	int32 ShownTier = INDEX_NONE;
 	bool bQueueShown = false;
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
