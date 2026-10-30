@@ -37,6 +37,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIForumMemory> Rebuilds;
 	TMap<int, FHOLAIKingMemory> Kings;
 
+	// The last "forum attacked" situation written in the journal, per slot (IA4, D579).
+	TMap<int, FHOLAIForumLogged> ForumLogged;
+
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
 
@@ -258,6 +261,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Rallied.Add(PlayerIndex, Memory);
 	}
 
+	// The slot's level (D422). The brain cannot read the slot's config yet (a C++ read is next): every slot is Normal, as the menu and the lobby give.
+	EHOLAIDifficulty LevelOf(int PlayerIndex)
+	{
+		return EHOLAIDifficulty::Normal;
+	}
+
 	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
 	// within the defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent
 	// again every few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight
@@ -276,7 +285,17 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Wave);
 		const FHOLAIThreat Threat = HOLAIArmy::Threat(Rest, Data.Army);
 		const bool bWas = State.bDefending;
-		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly), Now, Data.Army);
+		// IA4 (D579): the forum attacked is weighed by the level; every situation is written down (lives, ratio, decision); Easy sends the army whatever the ratio.
+		const EHOLAIDifficulty Level = LevelOf(PlayerIndex);
+		const FHOLAIForumSituation Situation = HOLAIForum::Judge(Rest, Data.Army, Threat, Level);
+		FHOLAIForumLogged Logged;
+		ForumLogged.Find(PlayerIndex, Logged);
+		if (HOLAIForum::ShouldLog(Logged, Situation))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {HOLAIForum::Describe(Situation, Level)}");
+		}
+		ForumLogged.Add(PlayerIndex, Logged);
+		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly) || HOLAIForum::DefendAnyway(Situation, Threat), Now, Data.Army);
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
@@ -339,7 +358,19 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The Peasants near an enemy soldier run to the centre (IA2.6f); once there they are idle and the brain sends them to work again.
 		FHOLAIFlight Flight;
 		Flights.Find(PlayerIndex, Flight);
-		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, HOLAIForum::Calm(Summary, Rebuild), Data.Army, Now);
+		// A Peasant that wins its duel against a weakened soldier near it finishes it off instead (IA4, D572).
+		const FHOLAISummary CalmSummary = HOLAIForum::Calm(Summary, Rebuild);
+		const TArray<FHOLAIStrike> Strikes = HOLAIArmy::StrikeOrders(Flight, CalmSummary, Data.Army, Now);
+		for (int Each = 0; Each < Strikes.Num(); Each++)
+		{
+			TArray<int> One;
+			One.Add(Strikes[Each].PeasantId);
+			if (HOLAIOrder::IssueAIAttackUnitOrder(PlayerIndex, One, Strikes[Each].TargetId))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Peasant {Strikes[Each].PeasantId} finishes soldier {Strikes[Each].TargetId} off");
+			}
+		}
+		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, CalmSummary, Data.Army, Now);
 		Flights.Add(PlayerIndex, Flight);
 		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
 		{

@@ -77,16 +77,11 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	constexpr int32 MinMineralSources = 10;
 
 	/**
-	 * M-Q7 (the user, 2026-10-30): no map is empty, "better loaded than empty": wherever the camera goes, something is on screen. No point of
-	 * the playable square is farther than MaxEmptyRadius (35 m, about one screen width at the camera's default height) from a landmark: a
-	 * start slot, a resource source, a rock (a start's ridge, a wall) or one of the scenery's big pieces (the Boulder and Thicket kinds of
-	 * common.py DECOR_KINDS, no collision). The ground's colours and the small scenery (tufts, small stones) do not count. Measured on a grid
-	 * of EmptyGrid from the corner of the bounds (the recipe fills its holes on a finer grid of the same origin: common.py MAX_EMPTY_RADIUS).
-	 * Only the maps with the Budget `standard` must hold it (Plain, the test map, is to be redone like them); reported for every map.
+	 * M-Q7 (2026-10-30) asked that no point of the square be farther than 28 m from a landmark (start slot, source, rock, big scenery piece);
+	 * M-Q10b = A (D578) withdrew it: large empty spaces are accepted. The largest empty circle is only MEASURED and reported, on a grid
+	 * of EmptyGrid from the corner of the bounds, for every map; nothing is required.
 	 */
-	constexpr double MaxEmptyRadius = 2800.0; // M-Q8: tightened from 35 m, the recipes hold about 26 m
 	constexpr double EmptyGrid = 2000.0;
-	constexpr bool EmptyRuleHeld = false; // M-Q10b: waiting for the user's answer, see the test below
 
 	/**
 	 * M-Q8 (the user, 2026-10-30, after the Hinterland trial): the forests are PACKS of 14 trees, many small clumps scattered over the whole
@@ -327,16 +322,10 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						}
 					}
 				}
-				AddInfo(FString::Printf(TEXT("%s: largest empty circle %s%.1f m at %s (%d landmarks, limit %.0f m%s)"), *Name, Largest >= 8000.0 ? TEXT("over ") : TEXT(""), FMath::Min(Largest, 8000.0) / 100.0, *LargestAt.ToString(),
-					Landmarks.Num(), MaxEmptyRadius / 100.0, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget: not required")));
-				// M-Q10b (2026-10-30): the rule is NOT enforced for now. Without the scenery (M-Q10) the resources and the rocks alone leave circles of
-				// 54 to 75 m on the Steppe and, in the corners outside the belt, over 80 m on the Hinterland; the user is asked what to do (question
-				// M-Q10b in Auto_Journey_Retours.md). The size is reported above; set EmptyRuleHeld to true to enforce MaxEmptyRadius again.
-				if (MapInfo.bBudget && EmptyRuleHeld)
-				{
-					TestTrue(FString::Printf(TEXT("%s: the map is empty %s%.1f m round %s, over %.0f m (nothing in a screen's width: resources, trees, rocks, boulders; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name,
-						Largest >= 8000.0 ? TEXT("over ") : TEXT(""), Largest / 100.0, *LargestAt.ToString(), MaxEmptyRadius / 100.0, MapInfo.Key, Info.Key), Largest <= MaxEmptyRadius);
-				}
+				// M-Q10b = A (the user, 2026-10-30, D578): large empty spaces are accepted, the empty-circle rule is withdrawn. The size is only
+				// reported (to be discussed again once game animals and points of interest exist); nothing is asserted.
+				AddInfo(FString::Printf(TEXT("%s: largest empty circle %s%.1f m at %s (%d landmarks, measure only)"), *Name, Largest >= 8000.0 ? TEXT("over ") : TEXT(""), FMath::Min(Largest, 8000.0) / 100.0, *LargestAt.ToString(),
+					Landmarks.Num()));
 			}
 
 			// 5. The budget per player (M-Q4 = A): the sources of each territory (nearest slot, ties to the lowest index).

@@ -5,8 +5,9 @@
 #     Peasant, which they kill;
 #   - -Full (~530 s): every part below, the default before D327 (at a closure, or when a part's ground changed);
 #   - -Parts a,b,c: those parts alone (tests, smoke, menu, camera, production, move, sources, gather, build, anims,
-#     formation, combat, bodies, rocks, victory, sides, sizes, net, lobby, aiserver, netai, hero; bodies, rocks, lobby and hero only when asked, not in -Full;
+#     formation, combat, bodies, rocks, victory, sides, fogclick, sizes, net, lobby, aiserver, netai, hero; bodies, rocks, lobby and hero only when asked, not in -Full;
 #     "hero" (J8a.6, ~3 min): build:hero in solo and the net part cut to its hero phases (sheets, return, block);
+#     "fogclick" (F7.1a regression, ~25 s): a double click on an enemy Spearman takes only those in sight (fog 2), all of them without fog (control);
 #     "aiserver" (IA0.5 B1, ~40 s, last): the AI's brain on a dedicated server without client (slot 1 AI, 5 starting Peasants);
 #     "netai" (IA0.5 B2, ~60 s, after "aiserver"): the same server with Alice and Bob joined and the AI in slot 2, its
 #     Peasants seen gathering on each client;
@@ -122,7 +123,7 @@ $MapKeys = @(Import-Csv (Join-Path $PSScriptRoot "..\Data\Maps.csv") | ForEach-O
 $MapKey = $MapKeys | Where-Object { $_ -ieq $Map.Trim() } | Select-Object -First 1
 if (-not $MapKey) { Write-Host "quick_check : FAIL (unknown map '$Map'; Tools\Data\Maps.csv has: $($MapKeys -join ', '))"; exit 1 }
 # -Full (D327): every part, the default before D327 (~530 s).
-if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "sizes", "net", "aiserver", "netai") }
+if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "fogclick", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 # "hero" (J8a.6): the hero's checks alone, solo and 2 clients: the build part's hero cases (build:hero) and the net part
@@ -657,6 +658,28 @@ if ($Parts -contains "sides") {
     Step "mark sides end", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
+# The "fogclick" part (F7.1a regression, EtapeDefini Galadriel): a double click on an enemy Spearman takes only the enemy
+# Spearmen the player's camp can see. Solo on Plain, me (slot 0) and an AI (slot 1): my 4 Men-at-arms near my centre, 3 enemy
+# Spearmen 45 m out (in the centre's sight), 4 more 80 m out (out of every sight of mine), all on the screen (camera at 62 m,
+# zoomed out). With the fog Normal (hol.Fog.Mode 2): "3 units of type Spearman of slot 1"; the control, the fog off (mode 0):
+# "7 units", which shows the 4 hidden ones are on the screen and would have been taken.
+if ($Parts -contains "fogclick") {
+    $FogClickConfig = Join-Path $TestSaved "fogclick_2p.json"
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0, "team": 1 }, { "state": "AI", "colorIndex": 1, "team": 2 } ] }' |
+        Set-Content -Encoding ascii $FogClickConfig
+    Step "mark fogclick start", "hol.Camera.TestCursor 0.5 0.5", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
+    foreach ($FogClickCase in @(@{ Name = "fog"; Mode = 2 }, @{ Name = "clear"; Mode = 0 })) {
+        Step "mark fogclick $($FogClickCase.Name)", "hol.Fog.Mode $($FogClickCase.Mode)", "hol.UI.NewGame.Launch $FogClickConfig 0", "waitmap Plain", "frames 30",
+            "hol.Camera.FocusNear 800 0", "frames 2", "hol.Units.SpawnHere 4 ManAtArms 0 250",
+            "hol.Camera.FocusNear 4500 0", "frames 2", "hol.Units.SpawnHere 3 Spearman 1 250",
+            "hol.Camera.FocusNear 8000 0", "frames 2", "hol.Units.SpawnHere 4 Spearman 1 250", "waitunits 11",
+            "hol.Camera.FocusNear 6200 0", "hol.Camera.Zoom -2", "frames 10", "wait 2", "hol.HUD.Report", "capture qc_fogclick_$($FogClickCase.Name)",
+            "hol.Select.Click 0.03 0.05", "frames 2", "hol.Select.ClickUnit 0 double slot=1", "frames 3", "hol.Select.Report", "frames 2",
+            "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
+    }
+    Step "mark fogclick end", "hol.Fog.Mode 0"
+}
+
 # The "sizes" part (TC4, map sizes): $MapKey (-Map, Plain by default) at each size, opened from a v3 configuration file by hol.Match.Open (as a
 # server given -MatchConfig=: the game mode alone checks it), places drawn from a fixed seed. Each: the map of the size
 # loaded, one main centre per player on its drawn place (the circle of the size, radius 0.75 of the half side, place 0 at
@@ -880,8 +903,8 @@ $RallyStepsRow = @(for ($k = 0; $k -lt 9; $k++) { , @((-15200 + 300 * $k), 6800)
 $CornerHouse = @(-16400, 9600)
 $CornerBuilder = @(-15400, 9600)
 # The window sizes the bottom bar must fit at (EtapeDefini T, build:barwidth): the common 16:9 and 16:10 ones, a 4:3 one, and
-# 1500 wide at 1080 high (the HUD's scale 1, where it fell short before).
-$HudSizes = @("1280x720", "1280x1024", "1366x768", "1440x900", "1500x1080", "1920x1080")
+# 1500 wide at 1080 high (the HUD's scale 1, where it fell short before), and two small ones (800x600, 1024x768).
+$HudSizes = @("800x600", "1024x768", "1280x720", "1280x1024", "1366x768", "1440x900", "1500x1080", "1920x1080")
 $CornerSigns = @(@{ X = -1; Y = -1 }, @{ X = 1; Y = -1 }, @{ X = -1; Y = 1 }, @{ X = 1; Y = 1 })
 # Paths cut by a footprint (J6b.2): six Peasants made beside the vein north-east of slot 0 (at (-11087, 4592); a vein is
 # not used up in a minute, as a tree of the wood is: each tree felled forgets the kept paths around it) gather it and
@@ -3027,6 +3050,28 @@ if ($Parts -contains "sides") {
     $Checks["avoid. mine sent through a wall of the ally's: as through a wall of mine (mine: $($Own.Text); the ally's: $($Ally.Text))"] =
         $Own.Left.Count -eq 2 -and $Ally.Left.Count -eq 2 -and $Own.Left[1].N -eq 4 -and $Ally.Left[1].N -eq 4 -and [math]::Abs($Ally.Left[1].Sum - $Own.Left[1].Sum) -le 200 -and [math]::Abs($Ally.Moved - $Own.Moved) -le 2
     $AllOk = (Report "sides" $Checks) -and $AllOk
+}
+
+if ($Parts -contains "fogclick") {
+    $Checks = [ordered]@{}
+    # Per case: the double click's line ("Select: N units of type Spearman of slot 1 on the screen"), the selection report, the HUD's fog line.
+    function FogClickCase([string] $Name) {
+        $Section = Get-Section "fogclick $Name"
+        $Type = @($Section | Select-String -Pattern "Select: (\d+) units of type Spearman of slot 1 on the screen" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        $Sel = @($Section | Select-String -Pattern "Selection report: selected (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $Fog = @($Section | Select-String -Pattern "HUD fog: .*units of others (\d+) shown (\d+) hidden (\d+)" | ForEach-Object { $_.Matches[0] })
+        return @{
+            Taken = if ($Type.Count -eq 1) { $Type[0] } else { -1 }; Sel = if ($Sel.Count -ge 1) { $Sel[-1] } else { "" }
+            Shown = if ($Fog.Count -ge 1) { [int]$Fog[-1].Groups[2].Value } else { -1 }; Hidden = if ($Fog.Count -ge 1) { [int]$Fog[-1].Groups[3].Value } else { -1 }
+        }
+    }
+    $FogCase = FogClickCase "fog"; $ClearCase = FogClickCase "clear"
+    $Checks["fog. 3 of the 7 enemy Spearmen in sight, 4 hidden (HUD fog: shown $($FogCase.Shown), hidden $($FogCase.Hidden))"] = $FogCase.Shown -eq 3 -and $FogCase.Hidden -ge 4
+    $Checks["fog. a double click on an enemy Spearman takes the 3 in sight only (took $($FogCase.Taken), selection '$($FogCase.Sel)')"] =
+        $FogCase.Taken -eq 3 -and $FogCase.Sel -eq "3 units (other): Spearman x3"
+    $Checks["control, no fog. the same double click takes all 7: the hidden 4 were on the screen (took $($ClearCase.Taken), selection '$($ClearCase.Sel)')"] =
+        $ClearCase.Taken -eq 7 -and $ClearCase.Sel -eq "7 units (other): Spearman x7"
+    $AllOk = (Report "fogclick" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "sizes") {

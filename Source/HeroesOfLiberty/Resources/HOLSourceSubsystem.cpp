@@ -109,6 +109,54 @@ namespace UE::HeroesOfLiberty::Resources
 				}
 			});
 		}));
+
+		// M-Q10c: lets the user judge the spacing of the trees of a pack in the game (Tools/Scenarios/tree_spacing.txt): a pack of Count trees
+		// (14 by default) thrown in a disc like the map recipes do (common.py GROVE_SPACING: two trunks are at least Spacing apart, plus up to
+		// 14 cm), each a plain Tree source.
+		FAutoConsoleCommand CommandGrove(TEXT("hol.Sources.Grove"),
+			TEXT("hol.Sources.Grove Spacing X Y [Count] [Seed]: adds a pack of Count trees (14) at a ground point (cm), trunks at least Spacing cm apart (map recipes: 160)"),
+			FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+			{
+				if (Args.Num() < 3)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("Sources: usage hol.Sources.Grove Spacing X Y [Count] [Seed]"));
+					return;
+				}
+				const double Spacing = FCString::Atod(*Args[0]);
+				const FVector Centre(FCString::Atod(*Args[1]), FCString::Atod(*Args[2]), 0.);
+				const int32 Count = Args.Num() > 3 ? FMath::Clamp(FCString::Atoi(*Args[3]), 1, 200) : 14;
+				FRandomStream Random(Args.Num() > 4 ? FCString::Atoi(*Args[4]) : 7);
+				ForEachRegistry([&](UHOLSourceSubsystem& Registry)
+				{
+					if (!Registry.HasAuthority())
+					{
+						return;
+					}
+					// A disc whose area is that of Count trees at the recipes' density (29 600 cm2 each at 160 cm), grown until they fit.
+					double Radius = FMath::Sqrt(Count * 29600.0 * FMath::Square(Spacing / 160.0) / UE_DOUBLE_PI);
+					TArray<FVector2D> Trees;
+					for (int32 Attempt = 0; Attempt < 40 && Trees.Num() < Count; ++Attempt, Radius *= 1.05)
+					{
+						Trees.Reset();
+						for (int32 Dart = 0; Dart < 4000 && Trees.Num() < Count; ++Dart)
+						{
+							const double Angle = Random.FRand() * 2.0 * UE_DOUBLE_PI;
+							const double Distance = Radius * FMath::Sqrt(Random.FRand());
+							const FVector2D Point(Centre.X + Distance * FMath::Cos(Angle), Centre.Y + Distance * FMath::Sin(Angle));
+							const double Wanted = Spacing + 14.0 * FMath::Square(Random.FRand());
+							if (!Trees.ContainsByPredicate([&](const FVector2D& Other) { return FVector2D::Distance(Point, Other) < Wanted; }))
+							{
+								Trees.Add(Point);
+							}
+						}
+					}
+					for (const FVector2D& Tree : Trees)
+					{
+						Registry.AddSource(HOLSourceTypeNames::Tree, FVector(Tree.X, Tree.Y, 0.));
+					}
+					UE_LOG(LogHOLMatch, Display, TEXT("Sources: grove of %d trees, spacing %.0f cm, at (%.0f, %.0f), disc radius %.0f cm"), Trees.Num(), Spacing, Centre.X, Centre.Y, Radius);
+				});
+			}));
 #endif
 }
 
