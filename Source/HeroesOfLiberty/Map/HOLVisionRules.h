@@ -194,6 +194,14 @@ public:
 	/** D389 (« Carte explorée »): every cell of Camp explored from the start; in sight still only around its observers. */
 	void ExploreAll(int32 Camp);
 
+	/**
+	 * F6e.3 (D520, R7): the cells Camp explored as run lengths, for the server to send to a player who comes back: alternating
+	 * runs over the grid's cells in index order, the first of unexplored cells (0 if cell 0 is explored), summing to Grid.Num().
+	 */
+	TArray<uint32> GetExploredRuns(int32 Camp) const;
+	/** Marks explored (never takes back) the cells the runs say for Camp; false, nothing changed, when they do not sum to Grid.Num(). */
+	bool AddExploredRuns(int32 Camp, TConstArrayView<uint32> Runs);
+
 	/** Observers of Camp seeing Cell (0 out of the grid). */
 	int32 GetCount(int32 Camp, const FIntPoint& Cell) const;
 

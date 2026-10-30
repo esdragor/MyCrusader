@@ -282,6 +282,58 @@ void FHOLVisionMap::ExploreAll(const int32 Camp)
 	}
 }
 
+TArray<uint32> FHOLVisionMap::GetExploredRuns(const int32 Camp) const
+{
+	TArray<uint32> Runs;
+	if (Camp < 0 || Camp >= NumCamps)
+	{
+		return Runs;
+	}
+	// Alternating runs, the first of unexplored cells (empty when cell 0 is explored).
+	bool bRunExplored = false;
+	uint32 Length = 0;
+	for (int32 Index = Camp * Grid.Num(); Index < (Camp + 1) * Grid.Num(); ++Index)
+	{
+		if (Explored[Index] != bRunExplored)
+		{
+			Runs.Add(Length);
+			bRunExplored = !bRunExplored;
+			Length = 0;
+		}
+		++Length;
+	}
+	Runs.Add(Length);
+	return Runs;
+}
+
+bool FHOLVisionMap::AddExploredRuns(const int32 Camp, const TConstArrayView<uint32> Runs)
+{
+	if (Camp < 0 || Camp >= NumCamps)
+	{
+		return false;
+	}
+	int64 Total = 0;
+	for (const uint32 Run : Runs)
+	{
+		Total += Run;
+	}
+	if (Total != Grid.Num())
+	{
+		return false;
+	}
+	int32 Index = Camp * Grid.Num();
+	bool bRunExplored = false;
+	for (const uint32 Run : Runs)
+	{
+		for (uint32 Cell = 0; Cell < Run; ++Cell, ++Index)
+		{
+			Explored[Index] |= bRunExplored;
+		}
+		bRunExplored = !bRunExplored;
+	}
+	return true;
+}
+
 int32 FHOLVisionMap::GetCount(const int32 Camp, const FIntPoint& Cell) const
 {
 	return Camp >= 0 && Camp < NumCamps && Grid.IsInside(Cell) ? Counts[Camp * Grid.Num() + Grid.ToIndex(Cell)] : 0;

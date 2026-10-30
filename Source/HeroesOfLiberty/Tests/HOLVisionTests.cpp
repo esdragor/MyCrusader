@@ -413,4 +413,63 @@ bool FHOLVisionReceiversTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionExploredRunsTest, "HeroesOfLiberty.Vision.ExploredRuns", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionExploredRunsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Vision;
+	// F6e.3: what a camp explored goes to a player who comes back as run lengths, and is the same once read again.
+	FHOLVisionMap Map;
+	Map.Init(MakeGrid(), 2);
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	{
+		const TArray<uint32> Nothing = Map.GetExploredRuns(0);
+		TestEqual(TEXT("nothing explored: one run"), Nothing.Num(), 1);
+		TestEqual(TEXT("nothing explored: all the grid"), Nothing.IsEmpty() ? 0 : static_cast<int32>(Nothing[0]), Grid.Num());
+	}
+	const int32 Scout = Map.AddObserver(0, Grid.GetCenter(FIntPoint(5, 5)), 800.);
+	Map.MoveObserver(Scout, Grid.GetCenter(FIntPoint(12, 9)));
+	Map.RemoveObserver(Scout);
+	const TArray<uint32> Runs = Map.GetExploredRuns(0);
+	int64 Total = 0;
+	for (const uint32 Run : Runs)
+	{
+		Total += Run;
+	}
+	TestEqual(TEXT("the runs cover the grid"), Total, static_cast<int64>(Grid.Num()));
+	TestTrue(TEXT("two discs: far fewer runs than cells"), !Runs.IsEmpty() && Runs.Num() < Grid.Num() / 4);
+
+	FHOLVisionMap Other;
+	Other.Init(MakeGrid(), 2);
+	TestTrue(TEXT("read again"), Other.AddExploredRuns(0, Runs));
+	TestEqual(TEXT("the same cells explored"), Other.CountExplored(0), Map.CountExplored(0));
+	bool bSame = true;
+	for (int32 Y = 0; Y < Grid.Side; ++Y)
+	{
+		for (int32 X = 0; X < Grid.Side; ++X)
+		{
+			bSame &= Other.GetVision(0, FIntPoint(X, Y)) == Map.GetVision(0, FIntPoint(X, Y));
+		}
+	}
+	TestTrue(TEXT("cell by cell"), bSame);
+	TestEqual(TEXT("the other camp untouched"), Other.CountExplored(1), 0);
+	TestEqual(TEXT("explored, not in sight"), Other.CountVisible(0), 0);
+
+	// Never takes back; a wrong total changes nothing.
+	const TArray<uint32> Short = { 3, 4 };
+	TestFalse(TEXT("a wrong total is refused"), Other.AddExploredRuns(0, Short));
+	TestEqual(TEXT("and changes nothing"), Other.CountExplored(0), Map.CountExplored(0));
+	const TArray<uint32> Blank = { static_cast<uint32>(Grid.Num()) };
+	TestTrue(TEXT("an empty memory is read"), Other.AddExploredRuns(0, Blank));
+	TestEqual(TEXT("and takes nothing back"), Other.CountExplored(0), Map.CountExplored(0));
+
+	// All explored (D389): the first run of unexplored cells is 0.
+	FHOLVisionMap Full;
+	Full.Init(MakeGrid(), 1);
+	Full.ExploreAll(0);
+	const TArray<uint32> FullRuns = Full.GetExploredRuns(0);
+	TestEqual(TEXT("all explored: two runs"), FullRuns.Num(), 2);
+	TestEqual(TEXT("all explored: none unexplored first"), FullRuns.IsEmpty() ? 1 : static_cast<int32>(FullRuns[0]), 0);
+	return true;
+}
+
 #endif
