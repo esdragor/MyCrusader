@@ -83,6 +83,12 @@ namespace HOLHeroXP
 	/** The level of a total XP: the highest one reached, MaxLevel at most. */
 	HEROESOFLIBERTY_API int32 GetLevel(int32 XP);
 
+	/**
+	 * The civilisation tier a hero's level opens (D04): levels 3, 6 and 9 are tiers 1, 2 and 3, so 0 below level 3, 1 at
+	 * 3 to 5, 2 at 6 to 8, 3 from 9; 0 for level 0 (no hero). The levels never go down, so neither does the tier.
+	 */
+	HEROESOFLIBERTY_API int32 GetTier(int32 Level);
+
 	/** Stats at a level in percent of level 1's (J8b-Q3): +8 % a level, 140 at level 6. */
 	HEROESOFLIBERTY_API int32 GetStatPercent(int32 Level);
 

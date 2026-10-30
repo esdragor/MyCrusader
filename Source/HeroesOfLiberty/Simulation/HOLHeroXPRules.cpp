@@ -94,6 +94,12 @@ int32 HOLHeroXP::GetLevel(const int32 XP)
 	return Level;
 }
 
+int32 HOLHeroXP::GetTier(const int32 Level)
+{
+	// D04: the levels 3, 6 and 9 open the tiers 1, 2 and 3.
+	return FMath::Clamp(Level / 3, 0, 3);
+}
+
 int32 HOLHeroXP::GetStatPercent(const int32 Level)
 {
 	return 100 + StatPercentPerLevel * (ClampLevel(Level) - 1);
