@@ -91,6 +91,11 @@ struct FHOLAIOpeningData
 	int FarmCount = 8;
 	FHOLAITypeFigures Farm;
 
+	// A second block (IA2.7) is begun when the first is all built, every field is held, and the food in stock is under this: the Peasants
+	// outnumber the places. At most MaxFarmBlocks blocks.
+	int MaxFarmBlocks = 2;
+	int SecondBlockFood = 150;
+
 	// The army (IA2.4). The rules and figures of HOLAIArmy.as (the brain loads the figures from the tables).
 	FHOLAIArmyData Army;
 
@@ -467,10 +472,67 @@ namespace HOLAIOpening
 		return Total / Pace;
 	}
 
-	// The farms are wanted when the berries last less than the lead.
+	// The farms are wanted when the berries last less than the lead, or when the second block is (IA2.7: the food left on the fields
+	// says nothing of the places).
 	bool FarmsWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
-		return Summary.bHasCentre && FoodSecondsLeft(Summary, Data) < Data.FarmLeadSeconds;
+		return Summary.bHasCentre && (FoodSecondsLeft(Summary, Data) < Data.FarmLeadSeconds || FarmTarget(Summary, Data) > Data.FarmCount);
+	}
+
+	// A second farm block is wanted (IA2.7: the Peasants outnumber the places): the first block is all built (FarmCount farms, none
+	// still a site), the food is short (stock under SecondBlockFood), and not one food source has room (every field held, no
+	// berries with places all around); under MaxFarmBlocks blocks.
+	bool SecondBlockWanted(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (Data.MaxFarmBlocks < 2 || !Summary.bHasCentre || Summary.Food.Stock >= Data.SecondBlockFood)
+		{
+			return false;
+		}
+		int Farms = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == n"Farm")
+			{
+				if (Summary.Buildings[Index].State != EHOLConstructionState::Finished)
+				{
+					return false;
+				}
+				Farms++;
+			}
+		}
+		if (Farms < Data.FarmCount || Farms >= Data.FarmCount * Data.MaxFarmBlocks)
+		{
+			return false;
+		}
+		return OpenPartOf(Summary.Food).Sources.Num() == 0;
+	}
+
+	// The farms the slot is to have: one block's, two once a ninth farm stands (the second block is under way, kept to its end
+	// although its new fields are free) or when the second is wanted now.
+	int FarmTarget(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		if (Data.MaxFarmBlocks >= 2 && (CountBuildings(Summary, n"Farm") > Data.FarmCount || SecondBlockWanted(Summary, Data)))
+		{
+			return Data.FarmCount * Data.MaxFarmBlocks;
+		}
+		return Data.FarmCount;
+	}
+
+	// The plan's mill and farms all stand (any state).
+	bool PlanBuilt(const FHOLAISummary& Summary, const FHOLAIFarmPlan& Plan)
+	{
+		if (!HasBuildingAt(Summary, n"Mill", Plan.Mill))
+		{
+			return false;
+		}
+		for (int Index = 0; Index < Plan.Farms.Num(); Index++)
+		{
+			if (!HasBuildingAt(Summary, n"Farm", Plan.Farms[Index]))
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	// The wood a type costs as the data holds it.
@@ -655,7 +717,7 @@ namespace HOLAIOpening
 		}
 
 		// 4. The farm block: its mill and its farms in turn at the planned spots; planned first.
-		if (Plan.bActive)
+		if (Plan.bActive && !PlanBuilt(Summary, Plan))
 		{
 			if (!HasBuildingAt(Summary, n"Mill", Plan.Mill))
 			{
@@ -669,7 +731,7 @@ namespace HOLAIOpening
 				}
 			}
 		}
-		else if (FarmsWanted(Summary, Data) && CountBuildings(Summary, n"Farm") < Data.FarmCount
+		else if (FarmsWanted(Summary, Data) && CountBuildings(Summary, n"Farm") < FarmTarget(Summary, Data)
 			&& Summary.Wood.Stock >= WoodCostOf(Data, n"Mill") && PickBuilder(Summary, Busy) >= 0
 				&& Summary.PeasantIds.Num() >= Data.MinPeasantsToBuild)
 		{

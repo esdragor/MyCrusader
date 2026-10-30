@@ -119,7 +119,7 @@ namespace HOLAINeeds
 		// The farms of the block while the berries run low: the ones not built yet (IA1.7).
 		if (HOLAIOpening::FarmsWanted(Summary, Data))
 		{
-			const int Missing = Math::Max(0, Data.FarmCount - HOLAIOpening::CountBuildings(Summary, n"Farm"));
+			const int Missing = Math::Max(0, HOLAIOpening::FarmTarget(Summary, Data) - HOLAIOpening::CountBuildings(Summary, n"Farm"));
 			Spend[1] = Spend[1] + float(Missing * Data.Farm.CostWood);
 		}
 		AddArmySpend(Spend, Summary, Data);

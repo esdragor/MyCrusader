@@ -670,3 +670,89 @@ void Test_FullVeinSendsThemToTheWood(FUnitTest& T)
 	T.AssertEquals(0, SentTo(Groups, 30), "none to the full vein");
 	T.AssertEquals(5, SentTo(Groups, 11), "all five to the wood");
 }
+
+// IA2.7: a slot with its first block built (the mill and the 8 farms, all finished), no berries, every field held, the food short.
+FHOLAISummary SecondBlockSummary()
+{
+	FHOLAISummary Summary = OpeningSummary();
+	AddBuilding(Summary, n"LumberCamp", EHOLConstructionState::Finished);
+	AddBuilding(Summary, n"Mill", EHOLConstructionState::Finished);
+	FHOLAIFarmPlan Plan = MakePlan();
+	AddBuildingAt(Summary, n"Mill", EHOLConstructionState::Finished, Plan.Mill);
+	Summary.Food.Sources.Empty();
+	for (int Index = 0; Index < 8; Index++)
+	{
+		AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Finished, Plan.Farms[Index]);
+		Summary.Food.Sources.Add(OpeningField(20 + Index, Plan.Farms[Index], 1));
+	}
+	Summary.Food.Stock = 20;
+	Summary.Food.Peasants = 8;
+	Summary.Wood.Stock = 500;
+	return Summary;
+}
+
+// The Peasants outnumber the places: a second block is wanted once the first is built and every field is held with the food short.
+void Test_SecondBlockWhenEveryFieldIsHeld(FUnitTest& T)
+{
+	FHOLAISummary Summary = SecondBlockSummary();
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	T.AssertTrue(HOLAIOpening::SecondBlockWanted(Summary, Data), "all fields held, food short: a second block");
+	T.AssertEquals(16, HOLAIOpening::FarmTarget(Summary, Data), "sixteen farms are the target");
+	TArray<int> NoBusy;
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data, MakePlan(), NoBusy);
+	T.AssertTrue(Choice.bPlanFarms && !Choice.bBuild, "the first plan is built: a new block is to be planned");
+}
+
+void Test_NoSecondBlockWhileThereIsRoom(FUnitTest& T)
+{
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	FHOLAISummary Summary = SecondBlockSummary();
+	Summary.Food.Sources[3].Occupants = 0;
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "a field is free: no second block");
+	T.AssertEquals(8, HOLAIOpening::FarmTarget(Summary, Data), "eight farms");
+
+	Summary = SecondBlockSummary();
+	Summary.Food.Stock = 500;
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "plenty of food: no second block");
+
+	Summary = SecondBlockSummary();
+	Summary.Buildings[Summary.Buildings.Num() - 1].State = EHOLConstructionState::Foundation;
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "the first block is not finished");
+
+	Summary = SecondBlockSummary();
+	Summary.Food.Sources.Add(OpeningSource(40, FVector(900, 0, 0)));
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "a source with room all around (berries): not yet");
+}
+
+// Once the ninth farm stands the second block goes on to the end (the fields of the new block are free), and stops at two blocks.
+void Test_SecondBlockGoesOnAndStops(FUnitTest& T)
+{
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	FHOLAISummary Summary = SecondBlockSummary();
+	AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Foundation, FVector(0, 9000, 0));
+	Summary.Food.Sources[0].Occupants = 0;
+	T.AssertEquals(16, HOLAIOpening::FarmTarget(Summary, Data), "a ninth farm: the second block is under way");
+	for (int Index = 1; Index < 16; Index++)
+	{
+		AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Finished, FVector(float(Index) * 1000.f, 9000, 0));
+	}
+	T.AssertEquals(16, HOLAIOpening::FarmTarget(Summary, Data), "sixteen farms: still the target");
+	for (int Index = 0; Index < 8; Index++)
+	{
+		Summary.Food.Sources[Index].Occupants = 1;
+	}
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "two blocks are the most");
+	TArray<int> NoBusy;
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data, MakePlan(), NoBusy);
+	T.AssertFalse(Choice.bPlanFarms, "no third block");
+}
+
+// The farms of the second block count in the spending too.
+void Test_SecondBlockCountsInTheSpending(FUnitTest& T)
+{
+	FHOLAISummary Summary = SecondBlockSummary();
+	TArray<float> Held = HOLAINeeds::SpendOf(Summary, HOLAIOpening::DefaultData());
+	Summary.Food.Sources[0].Occupants = 0;
+	TArray<float> Free = HOLAINeeds::SpendOf(Summary, HOLAIOpening::DefaultData());
+	T.AssertTrue(OpeningNear(Held[1] - Free[1], 600.f), "8 more farms of 75 wood once the second block is wanted");
+}
