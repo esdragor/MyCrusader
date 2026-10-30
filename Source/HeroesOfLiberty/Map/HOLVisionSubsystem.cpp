@@ -180,7 +180,7 @@ void UHOLVisionSubsystem::ObserveUnit(const uint32 UnitId, const FName TypeName,
 	}
 }
 
-void UHOLVisionSubsystem::ObserveBuilding(const AHOLBuilding& Building)
+void UHOLVisionSubsystem::ObserveBuilding(const AHOLBuilding& Building, const bool bObserve)
 {
 	const FHOLBuildingTypeRow* Type = Building.GetType();
 	const int32 Camp = Type ? GetCampIndex(Building.GetOwnerPlayer()) : INDEX_NONE;
@@ -196,6 +196,10 @@ void UHOLVisionSubsystem::ObserveBuilding(const AHOLBuilding& Building)
 	const double Radius = HOLVisionRules::GetBuildingSight(Type->SightRadius, State);
 	Present.Add(FHOLGhost{ HOLVisionRules::MakeGhostKey(false, Building.GetUniqueID()), Building.GetTypeName(), Building.GetOwnerPlayer(),
 		FVector2D(Building.GetActorLocation()), State, 0 });
+	if (!bObserve)
+	{
+		return;
+	}
 	if (FTracked* Tracked = BuildingObservers.Find(Building.GetUniqueID()))
 	{
 		if (Tracked->Radius != Radius)
@@ -211,7 +215,7 @@ void UHOLVisionSubsystem::ObserveBuilding(const AHOLBuilding& Building)
 	}
 }
 
-void UHOLVisionSubsystem::EndPass(const bool bGhosts)
+void UHOLVisionSubsystem::EndPass(const bool bGhosts, const int32 OnlyCamp)
 {
 	// Dead, destroyed or gone since the last pass: their cells counted off, still explored.
 	for (TMap<uint32, FTracked>* Observers : { &UnitObservers, &BuildingObservers })
@@ -244,6 +248,10 @@ void UHOLVisionSubsystem::EndPass(const bool bGhosts)
 	}
 	for (int32 Camp = 0; Camp < Ghosts.Num(); ++Camp)
 	{
+		if (OnlyCamp != INDEX_NONE && Camp != OnlyCamp)
+		{
+			continue;
+		}
 		if (HOLVisionRules::UpdateGhosts(Ghosts[Camp], Present,
 			[this, Camp](const FVector2D& Position) { return Map.GetCount(Camp, Map.GetGrid().ToCell(Position)) > 0; }))
 		{
@@ -270,7 +278,7 @@ void UHOLVisionSubsystem::Update()
 	{
 		if (IsValid(*It))
 		{
-			ObserveBuilding(**It);
+			ObserveBuilding(**It, true);
 		}
 	}
 	EndPass(true);
@@ -304,14 +312,15 @@ bool UHOLVisionSubsystem::UpdateClient()
 			ObserveUnit(View.UnitId, View.TypeName, View.OwnerPlayer, View.Location);
 		}
 	}
+	// All the buildings it holds are present for its memory (F6e.2: an enemy's it sees now, until the server stops sending it); its camp's observe.
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
-		if (IsValid(*It) && GetCampIndex(It->GetOwnerPlayer()) == ClientCamp)
+		if (IsValid(*It))
 		{
-			ObserveBuilding(**It);
+			ObserveBuilding(**It, GetCampIndex(It->GetOwnerPlayer()) == ClientCamp);
 		}
 	}
-	EndPass(false);
+	EndPass(true, ClientCamp);
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 	return true;
 }
@@ -420,8 +429,17 @@ FString UHOLVisionSubsystem::MakeReport() const
 				Slots.Add(FString::FromInt(Slot));
 			}
 		}
-		Report += FString::Printf(TEXT(", camp %d (slots %s) visible %d explored %d ghosts %d"), Camp, *FString::Join(Slots, TEXT(" ")),
-			Map.CountVisible(Camp), Map.CountExplored(Camp), Ghosts.IsValidIndex(Camp) ? Ghosts[Camp].Num() : 0);
+		// F6e.2: among its ghosts, the buildings of other camps (what it remembers of the enemy's).
+		int32 Others = 0;
+		if (Ghosts.IsValidIndex(Camp))
+		{
+			for (const TPair<uint64, FHOLGhost>& Pair : Ghosts[Camp])
+			{
+				Others += (Pair.Key >> 32) == 0 && GetCampIndex(Pair.Value.Owner) != Camp ? 1 : 0;
+			}
+		}
+		Report += FString::Printf(TEXT(", camp %d (slots %s) visible %d explored %d ghosts %d (buildings of others %d)"), Camp, *FString::Join(Slots, TEXT(" ")),
+			Map.CountVisible(Camp), Map.CountExplored(Camp), Ghosts.IsValidIndex(Camp) ? Ghosts[Camp].Num() : 0, Others);
 	}
 	return Report + FString::Printf(TEXT("; step %.3f ms"), LastUpdateMs);
 }

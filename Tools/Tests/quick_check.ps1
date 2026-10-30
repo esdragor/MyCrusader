@@ -6818,8 +6818,9 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
     Remove-Item $NetFogServerLog, (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client*.log"), (Join-Path $TestSaved "quick_${NetFogPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $NetFogConfig @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
-    # F6b: after 10 s Alice's units march (fast) to 52 m from Bob's forum, inside its sight (D523: 6400 cm), stay, and come home.
-    @("waitplayers 2", "mark $NetFogPart", "wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 10000 0 0", "wait 14", "hol.Units.Move -15200 0 0", "wait 16",
+    # F6b: after 10 s Alice's units march (fast) to 27 m from Bob's forum, inside its sight (D523: 6400 cm) and theirs (3200 cm, F6e.2:
+    # they see his centre), stay, and come home.
+    @("waitplayers 2", "mark $NetFogPart", "wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0", "wait 14", "hol.Units.Move -15200 0 0", "wait 16",
         "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
     $NetFogPort = Get-AITestPort
@@ -6842,7 +6843,7 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
             }
             $ClientSequence = Join-Path $TestSaved "quick_${NetFogPart}_client$Client.seq"
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
-            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report" })
+            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report" }) + @("hol.Fog.Report")
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
                 @("signal $($NetFogDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
@@ -6873,7 +6874,14 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
         $ClientSources[$N] = if ($SourcesLine) { [int]$SourcesLine.Matches[0].Groups[1].Value } else { -1 }
         # F6e: its own fog, computed from what it received (D525), read at 6 s (the units idle): the cells in sight and explored of its camp.
         $ClientFogLine = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Fog: mode (\w+)," | Select-Object -First 1
-        $ClientFog[$N] = @{ Held = $Held; Line = if ($ClientFogLine) { $ClientFogLine.Line } else { "" } }
+        $ClientFogLast = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Fog: mode (\w+)," | Select-Object -Last 1
+        $ClientFog[$N] = @{ Held = $Held; Line = if ($ClientFogLine) { $ClientFogLine.Line } else { "" }; Last = if ($ClientFogLast) { $ClientFogLast.Line } else { "" } }
+        # F6e.2: at the end, once the march is over, what its camp remembers of the other's buildings: Alice's units saw Bob's centre (and left),
+        # so her client keeps it as a ghost; Bob's never saw Alice's.
+        $OthersGhosts = if ("$($ClientFog[$N].Last)" -match "camp \d+ \(slots $Held\) visible \d+ explored \d+ ghosts \d+ \(buildings of others (\d+)\)") { [int]$Matches[1] } else { -1 }
+        if ($NetFogOn) {
+            $Checks["client $N : remembers $(if ($Held -eq 0) { 'the other''s centre as a ghost' } else { 'no building of the other' }) ($OthersGhosts)"] = $(if ($Held -eq 0) { $OthersGhosts -ge 1 } else { $OthersGhosts -eq 0 })
+        }
         # F6b: the units it holds (the last "Units report", "client, 6 displayed: Peasant of slot 0 x5, ..."): its own slot's only in
         # Normal, both slots' without fog.
         $UnitsShown = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }

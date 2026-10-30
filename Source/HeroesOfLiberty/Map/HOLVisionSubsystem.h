@@ -108,8 +108,10 @@ private:
 	/** One pass over the observers: BeginPass, the Observe calls, then EndPass (those not seen again are removed; the memory is refreshed). */
 	void BeginPass();
 	void ObserveUnit(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location);
-	void ObserveBuilding(const class AHOLBuilding& Building);
-	void EndPass(bool bGhosts);
+	/** Present in the memory; bObserve: its cells counted too (the buildings of the camp whose fog this is). */
+	void ObserveBuilding(const class AHOLBuilding& Building, bool bObserve);
+	/** bGhosts: the memory refreshed (OnlyCamp: a client's own camp's, INDEX_NONE: every camp's). */
+	void EndPass(bool bGhosts, int32 OnlyCamp = INDEX_NONE);
 	void OnSourceStanding(int32 SourceIndex, bool bStanding);
 	void OnStepEnded(int64 StepIndex);
 	double GetUnitSight(FName TypeName);
