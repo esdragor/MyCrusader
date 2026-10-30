@@ -29,4 +29,4 @@ frames 10
 hol.HUD.Report 1
 note Brouillard : noir hors de la vue de mes unités et de mon centre, les 3 Lanciers ennemis à 35 m sont dessinés et se sélectionnent (clic, cadre, double clic).
 note Mes 4 Hommes d'armes envoyés vers l'est (clic droit à 80 m, puis plus loin) : le noir recule, la zone parcourue reste grise (explorée), les 5 Lanciers apparaissent quand ils entrent dans la vue et disparaissent quand ils en sortent.
-note Dans la console (²), hol.HUD.Report puis le journal « HUD fog: » donne : cases en vue, explorées, unités des autres montrées et cachées. Limites connues : les anneaux et barres de vie des cachés et les fantômes teintés ne sont pas encore faits (F7.3).
+note Dans la console (²), hol.HUD.Report puis le journal « HUD fog: » donne : cases en vue, explorées, unités des autres montrées et cachées. Limite connue : les fantômes de bâtiments teintés ne sont pas encore dessinés (F7.3).

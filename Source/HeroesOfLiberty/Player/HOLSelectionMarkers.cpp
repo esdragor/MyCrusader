@@ -17,6 +17,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -399,6 +400,18 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	if (const UWorld* World = GetWorld())
 	{
 		HOLUnitView::Gather(*World, Views);
+		// F7.3 (D381): no ring, bar or line for a unit of another camp the player cannot see (it is not drawn either).
+		const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+		const AHOLPlayerController* PlayerController = Controller.Get();
+		const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetPlayerState<AHOLPlayerState>() : nullptr;
+		if (Vision && Vision->IsStarted() && Vision->GetMode() != EHOLFogMode::Disabled)
+		{
+			const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+			Views.RemoveAll([Vision, ViewerSlot](const FHOLUnitView& View)
+			{
+				return !Vision->IsUnitShown(ViewerSlot, View.OwnerPlayer, View.Location);
+			});
+		}
 	}
 	UpdateHeroFlashes(DeltaSeconds);
 	UpdateCryFlashes(DeltaSeconds);
