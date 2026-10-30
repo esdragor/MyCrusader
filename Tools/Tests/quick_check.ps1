@@ -3661,7 +3661,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ([int]$Matches[1] -ge 10) -and ([int]$Matches[1] -le 90)
     $FinishedA = & $Value $Site "(Construction: slot 0 finished House at \($($BuildA -join ', ')\) .*)$"
     $StepsA = if ([string]$FinishedA -match "after (\d+) steps") { [int]$Matches[1] } else { -1 }
-    $Checks["A finished by one builder in the table's time, 20 s at speed 2: 200 steps ($FinishedA)"] = [bool]($FinishedA -match "after 200 steps of work \(by builders: 1 x200\), speed 2$")
+    $Checks["A finished by one builder in the table's time, 10 s at speed 2: 100 steps ($FinishedA)"] = [bool]($FinishedA -match "after 100 steps of work \(by builders: 1 x100\), speed 2$")
     $Prods = @($Site | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Huds = @($Site | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["population cap 10 -> 20 when A is finished, the HUD too ($(($Prods | ForEach-Object { & $Cap $_ }) -join ' -> '); HUD $(($Huds | ForEach-Object { & $Cap $_ }) -join ' -> '))"] =

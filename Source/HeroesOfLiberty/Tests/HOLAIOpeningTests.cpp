@@ -194,9 +194,9 @@ bool FHOLAIOpeningBuildingsTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	Test.AIState->SetPopulation(8, 10);
+	Test.AIState->SetPopulation(9, 10);
 
-	// The house: 2 places left.
+	// The house: 1 place left.
 	const int32 WoodBefore = Test.AIState->GetResources().Wood;
 	TestTrue(TEXT("thought 1"), Test.Brain->ThinkNow(1));
 	Test.RunStep();
@@ -261,7 +261,7 @@ bool FHOLAIBuildingsHousesTest::RunTest(const FString& Parameters)
 		}
 		Building->Setup(Type, 1, 1);
 	}
-	Test.AIState->SetPopulation(18, 20);
+	Test.AIState->SetPopulation(19, 20);
 	const FHOLResources Before = Test.AIState->GetResources();
 	TestTrue(TEXT("thought 1"), Test.Brain->ThinkNow(1));
 	Test.RunStep();

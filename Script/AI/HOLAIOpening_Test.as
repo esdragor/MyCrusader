@@ -138,36 +138,36 @@ void Test_SplitNothingWithoutFreePeasant(FUnitTest& T)
 	T.AssertEquals(0, HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants).Num(), "no source, no group");
 }
 
-// The margin is what the production brings in during the house's building: one producer, 20 s of house and 5 s of walk at
-// 20 s a Peasant = 2 places; two producers, 4.
+// The margin is what the production brings in during the house's building: one producer, 10 s of house and 5 s of walk at
+// 20 s a Peasant = 1 place; two producers, 2.
 void Test_HouseMarginFollowsProduction(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
-	T.AssertEquals(2, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre alone: 2");
+	T.AssertEquals(1, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre alone: 1");
 	Summary.Buildings[0].bProducing = true;
-	T.AssertEquals(2, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre producing: 2");
+	T.AssertEquals(1, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre producing: 1");
 	AddBuilding(Summary, n"Barracks", EHOLConstructionState::Finished);
 	Summary.Buildings[1].bProducing = true;
-	T.AssertEquals(4, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "two producing: 4");
+	T.AssertEquals(2, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "two producing: 2");
 }
 
-// The house waits until the places left fall to the margin (2); the places left count the Peasants waiting in a queue.
+// The house waits until the places left fall to the margin (1); the places left count the Peasants waiting in a queue.
 void Test_HouseWaitsForLowRoom(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
-	Summary.PopulationUsed = 7;
-	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
-	T.AssertFalse(Choice.bBuild && Choice.Type == n"House", "3 places left: no house yet");
-
-	// 8 used (one in production), none waiting: 2 left.
 	Summary.PopulationUsed = 8;
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
+	T.AssertFalse(Choice.bBuild && Choice.Type == n"House", "2 places left: no house yet");
+
+	// 9 used (one in production), none waiting: 1 left.
+	Summary.PopulationUsed = 9;
 	Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
-	T.AssertTrue(Choice.bBuild, "2 places left: the house");
+	T.AssertTrue(Choice.bBuild, "1 place left: the house");
 	T.AssertTrue(Choice.Type == n"House", "a house");
 	T.AssertEquals(1, Choice.Builder, "built by the first idle Peasant");
 
-	// 7 used, one more waiting in the queue behind the one in production: 10 - 7 - 1 = 2 left.
-	Summary.PopulationUsed = 7;
+	// 8 used, one more waiting in the queue behind the one in production: 10 - 8 - 1 = 1 left.
+	Summary.PopulationUsed = 8;
 	Summary.Buildings[0].Queue.Add(n"Peasant");
 	Summary.Buildings[0].Queue.Add(n"Peasant");
 	Summary.Buildings[0].bProducing = true;
@@ -182,7 +182,7 @@ void Test_HousesRepeat(FUnitTest& T)
 	FHOLAISummary Summary = OpeningSummary();
 	AddBuilding(Summary, n"House", EHOLConstructionState::Finished);
 	Summary.PopulationCap = 20;
-	Summary.PopulationUsed = 18;
+	Summary.PopulationUsed = 19;
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
 	T.AssertTrue(Choice.bBuild && Choice.Type == n"House", "a second house when the room is low again");
 
@@ -210,7 +210,7 @@ void Test_HouseAwayFromSources(FUnitTest& T)
 	FHOLAISummary Summary = OpeningSummary();
 	Summary.Food.Sources[0].Location = FVector(1000, 0, 0);
 	Summary.Wood.Sources[0].Location = FVector(1000, 0, 0);
-	Summary.PopulationUsed = 8;
+	Summary.PopulationUsed = 9;
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
 	T.AssertTrue(Choice.bBuild, "the house");
 	T.AssertTrue(Math::Abs(Choice.Anchor.X + 1500.0) < 1.0, "1500 cm to the -X side");
@@ -228,7 +228,7 @@ void Test_HouseAwayFromSources(FUnitTest& T)
 void Test_HouseNeedsWood(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
-	Summary.PopulationUsed = 8;
+	Summary.PopulationUsed = 9;
 	Summary.Wood.Stock = 49;
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
 	T.AssertFalse(Choice.bBuild, "49 wood: no house");

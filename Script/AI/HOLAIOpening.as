@@ -222,10 +222,10 @@ namespace HOLAIOpening
 		Data.Peasant.GatherStone = 0.7f;
 		Data.Peasant.GatherGold = 0.7f;
 		Data.House.CostWood = 50;
-		Data.House.BuildTime = 20.f;
+		Data.House.BuildTime = 10.f;
 		Data.House.Population = 10;
 		Data.Farm.CostWood = 75;
-		Data.Farm.BuildTime = 15.f;
+		Data.Farm.BuildTime = 7.5f;
 		Data.MiningCamp.CostWood = 100;
 		FHOLAIOpeningStep Camp;
 		Camp.Type = n"LumberCamp";

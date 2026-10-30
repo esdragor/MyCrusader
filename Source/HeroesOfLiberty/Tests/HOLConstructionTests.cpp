@@ -345,7 +345,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Barracks: Q of the Peasant's grid (slot 4, military row, D313)"), Barracks->BuildGridSlot, 4);
 		TestEqual(TEXT("Barracks: 3 x 3 tiles (12 m)"), Barracks->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
 		TestTrue(TEXT("Barracks: 150 wood"), Barracks->Cost == FHOLResources(0, 150, 0, 0));
-		TestEqual(TEXT("Barracks: 40 s for one builder"), Barracks->BuildTime, 40.f);
+		TestEqual(TEXT("Barracks: 20 s for one builder"), Barracks->BuildTime, 20.f);
 		TestEqual(TEXT("Barracks: 1 500 health"), Barracks->MaxHealth, 1500);
 		TestEqual(TEXT("Barracks: 6 m high"), Barracks->Height, 600.f);
 	}
@@ -383,7 +383,7 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Farm: economic"), int32(Farm->Category), int32(EHOLBuildingCategory::Economic));
 		TestEqual(TEXT("Farm: 2 x 2 tiles (8 m)"), Farm->Footprint, FVector2D(2.0 * Grid, 2.0 * Grid));
 		TestTrue(TEXT("Farm: 75 wood"), Farm->Cost == FHOLResources(0, 75, 0, 0));
-		TestEqual(TEXT("Farm: 15 s for one builder"), Farm->BuildTime, 15.f);
+		TestEqual(TEXT("Farm: 7.5 s for one builder"), Farm->BuildTime, 7.5f);
 		TestEqual(TEXT("Farm: no population"), Farm->PopulationProvided, 0);
 		TestTrue(TEXT("Farm: takes no resource (no deposit)"), Farm->Accepts.IsEmpty());
 		TestTrue(TEXT("Farm: produces nothing"), Farm->Produces.IsEmpty());
