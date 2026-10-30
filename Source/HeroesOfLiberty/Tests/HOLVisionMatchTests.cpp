@@ -564,4 +564,40 @@ bool FHOLVisionMatchShownTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchViewerLineTest, "HeroesOfLiberty.Vision.Match.ViewerLine", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchViewerLineTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	// F7.3: the "Fog" line of hol.HUD.Report, for the viewer's slot.
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const uint32 Scout = Match.Place(Peasant, 0, FVector::ZeroVector);
+	const uint32 NearEnemy = Match.Place(Peasant, 2, FVector(1000., 0., 0.));
+	const uint32 FarEnemy = Match.Place(Peasant, 2, FVector(5000., 0., 0.));
+	if (!TestTrue(TEXT("units born"), Scout != 0 && NearEnemy != 0 && FarEnemy != 0))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	const FString Line = Match.Vision->MakeViewerLine(0);
+	const FHOLVisionMap& Map = Match.Vision->GetMap();
+	const int32 Camp = Match.Vision->GetCampIndex(0);
+	TestTrue(TEXT("the mode and the camp: ") + Line, Line.StartsWith(FString::Printf(TEXT("mode Normal, camp %d, "), Camp)));
+	TestTrue(TEXT("the cells in sight: ") + Line, Line.Contains(FString::Printf(TEXT("in sight %d, "), Map.CountVisible(Camp))));
+	TestTrue(TEXT("the cells explored of the grid: ") + Line, Line.Contains(FString::Printf(TEXT("explored %d of %d cells"), Map.CountExplored(Camp), Map.GetGrid().Num())));
+	TestTrue(TEXT("the enemy in sight shown, the one out of sight hidden: ") + Line, Line.EndsWith(TEXT("units of others 2 shown 1 hidden 1")));
+	const FString EnemyLine = Match.Vision->MakeViewerLine(2);
+	TestTrue(TEXT("the enemy's unit 10 m away sees the scout (units of others: his one): ") + EnemyLine, EnemyLine.EndsWith(TEXT("units of others 1 shown 1 hidden 0")));
+	const FString SpectatorLine = Match.Vision->MakeViewerLine(INDEX_NONE);
+	TestTrue(TEXT("a spectator has no camp: ") + SpectatorLine, SpectatorLine.Contains(TEXT("no camp, everything in sight")));
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestEqual(TEXT("no fog"), Match.Vision->MakeViewerLine(0), FString(TEXT("mode Disabled, everything in sight")));
+	return true;
+}
+
 #endif

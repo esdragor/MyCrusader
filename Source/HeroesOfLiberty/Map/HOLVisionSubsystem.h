@@ -138,6 +138,13 @@ public:
 	 */
 	FString MakeLeakReport() const;
 
+	/**
+	 * F7.3 (the HUD report's "Fog" line): what ViewerSlot's player has of the fog, in one line: "mode Normal, camp 0, in sight 812,
+	 * explored 1650 of 48400 cells, building ghosts 3, units of others 5 shown 2 hidden 3". Without a fog, or before it started:
+	 * "mode Disabled, everything in sight"; a slot with no camp (a spectator): "mode Normal, no camp, everything in sight".
+	 */
+	FString MakeViewerLine(int32 ViewerSlot) const;
+
 	/** "Fog: mode Normal, camps 2, observers 12, camp 0 (slots 0) visible 812 explored 1650, ...; step 0.08 ms". */
 	FString MakeReport() const;
 

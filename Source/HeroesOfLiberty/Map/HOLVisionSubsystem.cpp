@@ -513,6 +513,45 @@ FString UHOLVisionSubsystem::MakeReport() const
 	return Report + FString::Printf(TEXT("; step %.3f ms"), LastUpdateMs);
 }
 
+FString UHOLVisionSubsystem::MakeViewerLine(const int32 ViewerSlot) const
+{
+	if (!bStarted || Mode == EHOLFogMode::Disabled)
+	{
+		return FString::Printf(TEXT("mode %s, everything in sight"), GetModeName(bStarted ? Mode : EHOLFogMode::Disabled));
+	}
+	const int32 Camp = GetCampIndex(ViewerSlot);
+	if (Camp == INDEX_NONE)
+	{
+		return FString::Printf(TEXT("mode %s, no camp, everything in sight"), GetModeName(Mode));
+	}
+	int32 BuildingGhosts = 0;
+	if (Ghosts.IsValidIndex(Camp))
+	{
+		for (const TPair<uint64, FHOLGhost>& Pair : Ghosts[Camp])
+		{
+			BuildingGhosts += (Pair.Key >> 32) == 0 && GetCampIndex(Pair.Value.Owner) != Camp ? 1 : 0;
+		}
+	}
+	// The units of the other camps, as the game draws them (IsUnitShown): the ones in sight, the ones hidden.
+	int32 Others = 0;
+	int32 Shown = 0;
+	if (const UWorld* World = GetWorld())
+	{
+		TArray<FHOLUnitView> Views;
+		HOLUnitView::Gather(*World, Views);
+		for (const FHOLUnitView& View : Views)
+		{
+			if (GetCampIndex(View.OwnerPlayer) != Camp)
+			{
+				++Others;
+				Shown += IsUnitShown(ViewerSlot, View.OwnerPlayer, View.Location) ? 1 : 0;
+			}
+		}
+	}
+	return FString::Printf(TEXT("mode %s, camp %d, in sight %d, explored %d of %d cells, building ghosts %d, units of others %d shown %d hidden %d"),
+		GetModeName(Mode), Camp, Map.CountVisible(Camp), Map.CountExplored(Camp), Map.GetGrid().Num(), BuildingGhosts, Others, Shown, Others - Shown);
+}
+
 FString UHOLVisionSubsystem::MakeLeakReport() const
 {
 	const UHOLUnitReceptionSubsystem* Reception = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
