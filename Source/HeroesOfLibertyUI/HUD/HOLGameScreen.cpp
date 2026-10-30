@@ -728,7 +728,8 @@ void UHOLGameScreen::HandleForumEvent(const FHOLForumEvent& Event)
 		return;
 	}
 	// As the players' table: the local player's slot, INDEX_NONE for a spectator.
-	const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, GameState->GetLaunchConfig(), PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE);
+	const int32 ViewerSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, GameState->GetLaunchConfig(), ViewerSlot, GameState->DoesViewerSeeForum(ViewerSlot, Event.Slot));
 	MessageThread.Add(Message, World->GetRealTimeSeconds(), Event.Slot);
 	RebuildMessages();
 	// V4.3: an alert, the banner and its sound too.

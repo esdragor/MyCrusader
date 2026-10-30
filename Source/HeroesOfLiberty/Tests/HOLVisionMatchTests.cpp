@@ -7,7 +7,9 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLGameState.h"
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
@@ -482,6 +484,47 @@ bool FHOLVisionMatchAISourcesTest::RunTest(const FString& Parameters)
 	Match.Vision->Start(MakeTeams(), EHOLFogMode::Explored);
 	Match.Vision->Update();
 	TestTrue(TEXT("explored map: the far tree known"), Knows(Far));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchForumSightTest, "HeroesOfLiberty.Vision.Match.ForumSight", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchForumSightTest::RunTest(const FString& Parameters)
+{
+	// F6e.4 (D353): who has the vision of a slot's main forum, as the forum's alert asks it (AHOLGameState::DoesViewerSeeForum).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	AHOLStartSlot* Start = Match.World->SpawnActor<AHOLStartSlot>(FVector(30000., 0., 0.), FRotator::ZeroRotator);
+	AHOLGameState* State = Match.World->SpawnActor<AHOLGameState>();
+	if (!TestNotNull(TEXT("the start of slot 0"), Start) || !TestNotNull(TEXT("the game state"), State))
+	{
+		return false;
+	}
+	Start->SetSlotIndex(0);
+	const FVector Forum = Start->GetMainCentreLocation();
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	Match.Vision->Update();
+	TestFalse(TEXT("nobody near: the adversary does not see it"), State->DoesViewerSeeForum(2, 0));
+	TestFalse(TEXT("a spectator never does"), State->DoesViewerSeeForum(INDEX_NONE, 0));
+
+	const uint32 Scout = Match.Place(Peasant, 2, Forum + FVector(-1600., 0., 0.));
+	if (!TestNotEqual(TEXT("the adversary's scout"), Scout, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	TestTrue(TEXT("a scout beside it: its camp sees it"), State->DoesViewerSeeForum(2, 0));
+	TestFalse(TEXT("the other camp still does not"), State->DoesViewerSeeForum(0, 0));
+	Match.Move(Scout, FVector(-30000., 0., 0.));
+	Match.Vision->Update();
+	TestFalse(TEXT("the scout gone: no more (the cells stay explored, not in sight)"), State->DoesViewerSeeForum(2, 0));
+
+	// Without a fog the alerts stay those of the camps.
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestFalse(TEXT("no fog: no vision to count"), State->DoesViewerSeeForum(2, 0));
 	return true;
 }
 

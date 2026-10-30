@@ -9,6 +9,9 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/WorldSettings.h"
 #include "HeroesOfLibertyLog.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Map/HOLStartSlot.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLForumPresence.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
@@ -727,6 +730,19 @@ void AHOLGameState::SendForumEvent(const FHOLForumEvent& Event)
 	}
 }
 
+bool AHOLGameState::DoesViewerSeeForum(const int32 ViewerSlot, const int32 ForumSlot) const
+{
+	const UWorld* World = GetWorld();
+	const UHOLVisionSubsystem* Vision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	if (!Vision || !Vision->IsStarted() || Vision->GetMode() == EHOLFogMode::Disabled || ViewerSlot == INDEX_NONE)
+	{
+		return false;
+	}
+	const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(World, ForumSlot);
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
+	return Start && Type && Vision->IsAreaVisible(ViewerSlot, Start->GetMainCentreLocation(), 0.5 * Type->Footprint);
+}
+
 void AHOLGameState::MulticastForumEvent_Implementation(const FHOLForumEvent& Event)
 {
 	const UWorld* World = GetWorld();
@@ -741,7 +757,7 @@ void AHOLGameState::MulticastForumEvent_Implementation(const FHOLForumEvent& Eve
 				ViewerSlot = PlayerState->GetPlayerIndex();
 			}
 		}
-		const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, LaunchConfig, ViewerSlot);
+		const FHOLForumMessage Message = HOLForumMessages::GetMessage(Event, LaunchConfig, ViewerSlot, DoesViewerSeeForum(ViewerSlot, Event.Slot));
 		UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Message.Shown);
 	}
 	OnForumEvent.Broadcast(Event);

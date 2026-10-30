@@ -86,9 +86,11 @@ namespace HOLForumMessages
 
 	/**
 	 * The message of Event for the viewer at ViewerSlot (INDEX_NONE: a spectator, never alerted); the camps from Config
-	 * (HOLVictoryRules::GetCamp).
+	 * (HOLVictoryRules::GetCamp). F6e.4 (D353): the major alert of a forum's event (Fell, HoldStarted, Razed) goes also to whoever has
+	 * the vision of the forum (bSeesForum: a fog is on and the viewer's camp sees it) and, for a HoldStarted, to the allies of the
+	 * attacker; without bSeesForum the adversary only reads the message.
 	 */
-	HEROESOFLIBERTY_API FHOLForumMessage GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, int32 ViewerSlot);
+	HEROESOFLIBERTY_API FHOLForumMessage GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, int32 ViewerSlot, bool bSeesForum = false);
 
 	/** J8a.4 (D397, D202): the minor alert « Votre héros est prêt à revenir », a thread's line, no banner nor sound. */
 	HEROESOFLIBERTY_API FHOLForumMessage GetHeroReadyMessage();

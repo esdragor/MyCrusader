@@ -355,4 +355,31 @@ bool FHOLVictoryMessagesAlertTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryMessagesVisionTest, "HeroesOfLiberty.Victory.Messages.Vision", UE::HeroesOfLiberty::Tests::ForumMessages::Flags)
+bool FHOLVictoryMessagesVisionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ForumMessages;
+	// F6e.4 (D353): who has the vision of a forum gets the major alert, its adversary included; who does not, the message only.
+	FHOLMatchConfig Teams = MakeTeams();
+	Teams.Slots[3].State = EHOLSlotState::AI;
+	Teams.Slots[3].Team = 2;
+	const FHOLForumEvent Fell = FHOLForumEvent::Make(EHOLForumEventKind::Fell, 0, INDEX_NONE, 1);
+	TestFalse(TEXT("the adversary, no vision: the message only"), HOLForumMessages::GetMessage(Fell, Teams, 2, false).bAlert);
+	TestTrue(TEXT("the adversary, with the vision: the alert"), HOLForumMessages::GetMessage(Fell, Teams, 2, true).bAlert);
+	TestEqual(TEXT("the text is the same"), TextOf(HOLForumMessages::GetMessage(Fell, Teams, 2, true)), TextOf(HOLForumMessages::GetMessage(Fell, Teams, 2, false)));
+	TestTrue(TEXT("Razed, with the vision"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Razed, 0, INDEX_NONE, 1), Teams, 2, true).bAlert);
+	TestTrue(TEXT("HoldStarted, with the vision"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 0, 2), Teams, 3, true).bAlert);
+	TestFalse(TEXT("a spectator is never alerted"), HOLForumMessages::GetMessage(Fell, Teams, INDEX_NONE, true).bAlert);
+	TestFalse(TEXT("a defeat is no forum to see"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, 0), Teams, 2, true).bAlert);
+	TestFalse(TEXT("nor a King's death"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, 0), Teams, 2, true).bAlert);
+	TestFalse(TEXT("its own loss stays without alert"), HOLForumMessages::GetMessage(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 0, INDEX_NONE, 0), Teams, 0, true).bAlert);
+
+	// The ally of the one who holds the ruin (D353), without the vision; the one who holds it has the vision or not as any other.
+	const FHOLForumEvent Hold = FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 0, 2);
+	TestTrue(TEXT("the attacker's ally: the alert"), HOLForumMessages::GetMessage(Hold, Teams, 3, false).bAlert);
+	TestFalse(TEXT("the attacker himself, no vision: as before"), HOLForumMessages::GetMessage(Hold, Teams, 2, false).bAlert);
+	TestFalse(TEXT("a Fell has no attacker: its adversary's ally has no alert"), HOLForumMessages::GetMessage(Fell, Teams, 3, false).bAlert);
+	return true;
+}
+
 #endif

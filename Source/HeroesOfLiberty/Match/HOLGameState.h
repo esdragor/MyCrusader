@@ -203,6 +203,13 @@ public:
 	bool HasStartPlaces() const { return !StartPlaces.IsEmpty(); }
 
 	/**
+	 * F6e.4 (D353): the camp of ViewerSlot has some cell of ForumSlot's main forum in sight, on this machine (a client's own fog, the
+	 * server's or the solo game's for the slot). False without a fog (Sans brouillard: the alerts stay those of the camps), or for a
+	 * spectator.
+	 */
+	bool DoesViewerSeeForum(int32 ViewerSlot, int32 ForumSlot) const;
+
+	/**
 	 * F6e: the fog's mode of the match (EHOLFogMode as a number), decided by the server when its fog starts and replicated, so a
 	 * client computes its own fog with it (D525); below 0 while it is not known. Until F8 carries it in the configuration.
 	 */
