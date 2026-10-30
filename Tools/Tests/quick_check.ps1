@@ -6809,9 +6809,13 @@ function Get-MarkedLines($Lines, [string] $Mark) {
         if ($Inside) { $Line }
     }
 }
-foreach ($NetFogPart in "netfog", "netfogoff") {
+# F6e.3 "netfogback" (R7): the same match, but after her march Alice's game closes and she comes back under the same name (within the
+# server's absence window): her client begins with a black map, the server sends back what her camp explored and the buildings it
+# remembers (ClientReceiveFogMemory): her second game must hold them, not only what her units see now.
+foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     if (-not ($Parts -contains $NetFogPart)) { continue }
-    $NetFogOn = $NetFogPart -eq "netfog"
+    $NetFogOn = $NetFogPart -ne "netfogoff"
+    $NetFogBack = $NetFogPart -eq "netfogback"
     $NetFogServerLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_server.log"
     $NetFogConfig = Join-Path $TestSaved "quick_$NetFogPart.json"
     $NetFogServerSequence = Join-Path $TestSaved "quick_${NetFogPart}_server.seq"
@@ -6845,7 +6849,7 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
             $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report" }) + @("hol.Fog.Report")
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
-                @("signal $($NetFogDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
+                @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetFogPort} -PlayerName=Bob" } else { "127.0.0.1:${NetFogPort}?Name=Alice" }
@@ -6898,6 +6902,21 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
                 if ($NetFogOn) { $Pattern -match "^-+A+-+$" } else { $Pattern -match "^A+$" })
         }
     }
+    # F6e.3: Alice's second game (same saved folder, same name), 6 s in the match then it reports and tells the server it is done.
+    $BackLines = @()
+    if ($NetFogBack -and $NetFogListening) {
+        $BackSequence = Join-Path $TestSaved "quick_${NetFogPart}_back.seq"
+        @("waitmap Plain", "waitlog Camera above the start", "mark ${NetFogPart}back", "wait 6", "hol.Buildings.Report", "hol.Fog.Report", "signal $($NetFogDone[1])", "mark end", "quit") |
+            Set-Content -Encoding utf8 $BackSequence
+        $BackLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_back.log"
+        Remove-Item $BackLog -ErrorAction SilentlyContinue
+        $BackArguments = "`"$UProject`" 127.0.0.1:${NetFogPort}?Name=Alice -game $(if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=4900 -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }) -saveddirsuffix=Tests_Net2 -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$BackLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $BackSequence`""
+        $BackProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $BackArguments -PassThru
+        $BackTimedOut = -not $BackProcess.WaitForExit(240000)
+        if ($BackTimedOut) { Stop-Process -Id $BackProcess.Id -Force -ErrorAction SilentlyContinue }
+        $BackLines = if (Test-Path $BackLog) { Get-Content $BackLog } else { @() }
+        $Checks["client 2 back : sequence done"] = (-not $BackTimedOut) -and [bool]($BackLines | Select-String -Pattern "Test mark: end" -Quiet)
+    }
     $NetFogServerTimedOut = -not $NetFogServer.WaitForExit($(if ($NetFogClients.Count) { 30000 } else { 1000 }))
     if ($NetFogServerTimedOut) { Stop-Process -Id $NetFogServer.Id -Force -ErrorAction SilentlyContinue }
     $Checks["server quit by itself"] = -not $NetFogServerTimedOut
@@ -6919,7 +6938,24 @@ foreach ($NetFogPart in "netfog", "netfogoff") {
         $Checks["client $N : its own fog $(if ($NetFogOn) { 'within 1 % of the server''s for its camp' } else { 'off' }) (visible $($Mine[0]) explored $($Mine[1]); server: visible $($Theirs[0]) explored $($Theirs[1]))"] =
             $(if ($NetFogOn) { $FogClose } else { $ClientFog[$N].Line -match "mode Disabled" })
     }
-    $FogNet = $NetFogLog | Select-String -Pattern "Fog net: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+    if ($NetFogBack) {
+        # Her second game: the memory taken in, then her own fog read 6 s later; the server's last report is of her camp at the end of the march.
+        $Memory = $BackLines | Select-String -Pattern "Fog: memory received, (\w+), (\d+) explored cells, (\d+) building ghosts" | Select-Object -First 1
+        $BackFog = Get-MarkedLines $BackLines "${NetFogPart}back" | Select-String -Pattern "Fog: mode (\w+)," | Select-Object -Last 1
+        $ServerLastFog = $NetFogLog | Select-String -Pattern "Fog: mode (\w+)," | Select-Object -Last 1
+        $Back = if ("$($BackFog.Line)" -match "camp \d+ \(slots 0\) visible (\d+) explored (\d+) ghosts \d+ \(buildings of others (\d+)\)") { @([int]$Matches[1], [int]$Matches[2], [int]$Matches[3]) } else { @(-1, -1, -1) }
+        $Then = if ("$($ServerLastFog.Line)" -match "camp \d+ \(slots 0\) visible (\d+) explored (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+        $MemoryText = if ($Memory) { "$($Memory.Matches[0].Groups[1].Value), $($Memory.Matches[0].Groups[2].Value) cells, $($Memory.Matches[0].Groups[3].Value) buildings" } else { "none received" }
+        $Checks["client 2 back : the server's memory taken in ($MemoryText)"] =
+            [bool]$Memory -and $Memory.Matches[0].Groups[1].Value -eq "taken" -and [int]$Memory.Matches[0].Groups[2].Value -gt 0
+        $Checks["client 2 back : holds what her camp explored, not only what she sees (explored $($Back[1]) of $($Then[1]), in sight $($Back[0]))"] =
+            $Then[1] -gt 0 -and $Back[1] * 100 -ge $Then[1] * 95 -and $Back[1] -gt $Back[0] * 2
+        $Checks["client 2 back : remembers the other's centre ($($Back[2]))"] = $Back[2] -ge 1
+    }
+    # (First in the back case: the last is read once a player has left.)
+    $FogNetLines = @($NetFogLog | Select-String -Pattern "Fog net: (.*)$")
+    $FogNetPick = if ($NetFogBack) { @{ First = 1 } } else { @{ Last = 1 } }
+    $FogNet = $(if ($NetFogBack) { $FogNetLines | Where-Object { $_.Matches[0].Groups[1].Value -match "^active, groups [1-9]" } } else { $FogNetLines }) | Select-Object @FogNetPick | ForEach-Object { $_.Matches[0].Groups[1].Value }
     $Checks["server : fog net $(if ($NetFogOn) { 'active, a group per set of camps' } else { 'off' }) ($FogNet)"] = [bool]$FogNet -and $(if ($NetFogOn) { $FogNet -match "^active, groups [1-9]" } else { $FogNet -match "^off" })
     $AllOk = (Report $NetFogPart $Checks) -and $AllOk
 }

@@ -285,6 +285,32 @@ void UHOLVisionSubsystem::Update()
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 }
 
+bool UHOLVisionSubsystem::MakeMemoryFor(const int32 Slot, TArray<uint32>& OutRuns, TArray<FHOLFogGhostNet>& OutGhosts) const
+{
+	const int32 Camp = bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(Slot) : INDEX_NONE;
+	if (Camp == INDEX_NONE || !Ghosts.IsValidIndex(Camp) || Map.CountExplored(Camp) == 0)
+	{
+		return false;
+	}
+	OutRuns = Map.GetExploredRuns(Camp);
+	OutGhosts.Reset();
+	for (const TPair<uint64, FHOLGhost>& Pair : Ghosts[Camp])
+	{
+		if ((Pair.Key >> 32) == 0)
+		{
+			OutGhosts.Add(FHOLFogGhostNet{ Pair.Value.TypeName, Pair.Value.Owner, Pair.Value.Position, static_cast<uint8>(Pair.Value.State) });
+		}
+	}
+	return true;
+}
+
+void UHOLVisionSubsystem::ReceiveMemory(const TArray<uint32>& Runs, const TArray<FHOLFogGhostNet>& BuildingGhosts)
+{
+	PendingRuns = Runs;
+	PendingGhosts = BuildingGhosts;
+	bMemoryPending = true;
+}
+
 bool UHOLVisionSubsystem::UpdateClient()
 {
 	const UHOLUnitReceptionSubsystem* Reception = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
@@ -299,6 +325,24 @@ bool UHOLVisionSubsystem::UpdateClient()
 	if (ClientCamp == INDEX_NONE)
 	{
 		return false;
+	}
+	if (bMemoryPending)
+	{
+		// F6e.3: what the server kept for this player, who comes back: the cells explored, and the buildings seen (keys of their own, made here).
+		bMemoryPending = false;
+		const bool bRead = Map.AddExploredRuns(ClientCamp, PendingRuns);
+		for (int32 Index = 0; bRead && Index < PendingGhosts.Num(); ++Index)
+		{
+			const FHOLFogGhostNet& Net = PendingGhosts[Index];
+			const FHOLGhost Ghost{ HOLVisionRules::MakeGhostKey(false, 0x40000000u + Index), Net.TypeName, Net.Owner, Net.Position,
+				static_cast<EHOLBuildingSight>(Net.State), 0 };
+			Ghosts[ClientCamp].Add(Ghost.Key, Ghost);
+		}
+		++GhostVersions[ClientCamp];
+		UE_LOG(LogHOLMatch, Display, TEXT("Fog: memory received, %s, %d explored cells, %d building ghosts"), bRead ? TEXT("taken") : TEXT("refused"),
+			Map.CountExplored(ClientCamp), PendingGhosts.Num());
+		PendingRuns.Reset();
+		PendingGhosts.Reset();
 	}
 	const double StartSeconds = FPlatformTime::Seconds();
 	BeginPass();

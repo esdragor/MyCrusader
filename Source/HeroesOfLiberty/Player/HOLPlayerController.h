@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
 #include "Match/HOLMatchStats.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
 #include "Player/HOLUnitPicking.h"
@@ -526,6 +527,13 @@ public:
 
 	UFUNCTION(Client, Reliable)
 	void ClientMatchStatsRefused();
+
+	/**
+	 * F6e.3 (D520, R7): to a player who comes back, the cells his camp explored (run lengths, FHOLVisionMap::GetExploredRuns) and the
+	 * buildings it remembers; his client takes them into its own fog (UHOLVisionSubsystem::ReceiveMemory).
+	 */
+	UFUNCTION(Client, Reliable)
+	void ClientReceiveFogMemory(const TArray<uint32>& ExploredRuns, const TArray<FHOLFogGhostNet>& BuildingGhosts);
 
 	/**
 	 * P5 (D513): the Pause button of the Escape menu (and hol.Match.Pause / hol.Match.Resume): the server's game state

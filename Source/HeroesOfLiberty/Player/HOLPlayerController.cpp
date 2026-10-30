@@ -5060,6 +5060,14 @@ void AHOLPlayerController::ClientReceiveMatchStats_Implementation(const FHOLMatc
 	}
 }
 
+void AHOLPlayerController::ClientReceiveFogMemory_Implementation(const TArray<uint32>& ExploredRuns, const TArray<FHOLFogGhostNet>& BuildingGhosts)
+{
+	if (UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr)
+	{
+		Vision->ReceiveMemory(ExploredRuns, BuildingGhosts);
+	}
+}
+
 void AHOLPlayerController::ClientMatchStatsRefused_Implementation()
 {
 	UE_LOG(LogHOLMatch, Display, TEXT("Stats: the server refused the statistics (a player during the match, M6-Q11)"));

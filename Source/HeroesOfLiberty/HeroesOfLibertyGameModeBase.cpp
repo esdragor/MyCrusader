@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Map/HOLMapSizeRules.h"
 #include "Map/HOLStartSlot.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "EngineUtils.h"
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLForumMessages.h"
@@ -277,6 +278,18 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 		PlayerState->SetResources(GetDefault<UHOLMatchSettings>()->StartingResources);
 	}
 	AssignBuildingOwners(Slot);
+	// F6e.3 (D520, R7): a player who comes back to a match in progress gets what his camp explored and the buildings it remembers (his client
+	// begins with a black map); nothing at the very start (nothing explored yet).
+	if (const UHOLVisionSubsystem* Vision = GetWorld()->GetSubsystem<UHOLVisionSubsystem>())
+	{
+		TArray<uint32> ExploredRuns;
+		TArray<FHOLFogGhostNet> BuildingGhosts;
+		if (AHOLPlayerController* Controller = Cast<AHOLPlayerController>(NewPlayer); Controller && Vision->MakeMemoryFor(Slot, ExploredRuns, BuildingGhosts))
+		{
+			Controller->ClientReceiveFogMemory(ExploredRuns, BuildingGhosts);
+			UE_LOG(LogHOLMatch, Log, TEXT("Fog: memory of slot %d sent (%d runs, %d building ghosts)"), Slot, ExploredRuns.Num(), BuildingGhosts.Num());
+		}
+	}
 	if (MatchConfig.HasPlayerNames())
 	{
 		UpdateStartWait();

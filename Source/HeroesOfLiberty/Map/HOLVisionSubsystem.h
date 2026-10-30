@@ -21,6 +21,23 @@ enum class EHOLFogMode : uint8
 	Normal,
 };
 
+/** F6e.3: a building a camp remembers, as the server sends it to a player who comes back (the key is made again by the client). */
+USTRUCT()
+struct FHOLFogGhostNet
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	FName TypeName;
+	UPROPERTY()
+	uint8 Owner = 0;
+	UPROPERTY()
+	FVector2D Position = FVector2D::ZeroVector;
+	/** EHOLBuildingSight. */
+	UPROPERTY()
+	uint8 State = 0;
+};
+
 /**
  * F3 (FogInProgress.md, D381-D383, D521): the fog of every camp of the match, on the server and in a solo game (a client
  * computes its own from what it receives, F6e). Its observers are the living units (UHOLUnitSubsystem) and, later (F3.2),
@@ -99,6 +116,15 @@ public:
 	const TMap<uint64, FHOLGhost>& GetCampGhosts(int32 Camp) const { return Ghosts[Camp]; }
 	uint32 GetGhostVersion(int32 Camp) const { return GhostVersions.IsValidIndex(Camp) ? GhostVersions[Camp] : 0; }
 
+	/**
+	 * F6e.3 (D520, R7), server: what Slot's camp explored and remembers of the buildings, for a player who comes back
+	 * (his client begins with a black map). False when there is nothing to send (no fog, not started, nothing explored).
+	 */
+	bool MakeMemoryFor(int32 Slot, TArray<uint32>& OutRuns, TArray<FHOLFogGhostNet>& OutGhosts) const;
+
+	/** F6e.3, client: the memory the server sent; taken into the client's own camp as soon as its fog runs (UpdateClient). */
+	void ReceiveMemory(const TArray<uint32>& Runs, const TArray<FHOLFogGhostNet>& BuildingGhosts);
+
 	/** "Fog: mode Normal, camps 2, observers 12, camp 0 (slots 0) visible 812 explored 1650, ...; step 0.08 ms". */
 	FString MakeReport() const;
 
@@ -130,6 +156,10 @@ private:
 	bool bClient = false;
 	int32 ClientCamp = INDEX_NONE;
 	float ClientSeconds = 0.f;
+	/** F6e.3: the memory received and not taken in yet. */
+	bool bMemoryPending = false;
+	TArray<uint32> PendingRuns;
+	TArray<FHOLFogGhostNet> PendingGhosts;
 	/** Per slot: its camp's index in Map (INDEX_NONE: closed). */
 	TArray<int32> CampOfSlot;
 	/** The living units seen as observers, by identifier; Stamp: the last Update that walked them. */
