@@ -101,6 +101,24 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroAbilityReadyStep(const UObject* WorldContextObject, int32 Slot, EHOLHeroAbility Ability);
 
+	/** T3: the number of talents the slot's hero took (private sheet: the owner's slot only on a client); -1 unknown. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroTalentCount(const UObject* WorldContextObject, int32 Slot);
+
+	/** T3: the family of the slot's hero's Index-th talent (the row 2 + Index), -1 none or unknown. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroTalentFamily(const UObject* WorldContextObject, int32 Slot, int32 Index);
+
+	/** T3: the families holding a seal / a key talent (one bit each, public sheet), 0 unknown. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroTalentSeals(const UObject* WorldContextObject, int32 Slot);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroTalentKeys(const UObject* WorldContextObject, int32 Slot);
+
+	/** T3: the server's rule (HOLHeroTalent::CanPick), here so the script's own rules are checked against it. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static bool CanPickTalent(int32 Level, int32 NumPicks, int32 Family);
+
 	/** J8c.3: the level the hero's Ability opens at (D52: 1, the banner 4). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static int32 GetHeroAbilityUnlockLevel(EHOLHeroAbility Ability);

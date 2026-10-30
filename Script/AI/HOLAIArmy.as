@@ -82,6 +82,16 @@ struct FHOLAIArmyData
 	float FleeRadius = 1500.f;
 	float FleeEvery = 4.f;
 
+	// A Peasant strikes an enemy soldier only when the duel is won with this margin (IA4, D572 confirmed, option A): the one-on-one
+	// matchup (Matchup, the building block of the power ratio, D553) at the units' REMAINING health is at least StrikeMargin. A Spearman
+	// down to 5 health is finished off (matchup ~1.9), a sound soldier never (well under 1). The Peasant looks for such a soldier within
+	// FleeRadius; ordered again at most every StrikeEvery seconds. Provisional: tuned on AI-only games.
+	float StrikeMargin = 1.5f;
+	float StrikeEvery = 4.f;
+
+	// The Peasant's own figures (LoadFigures reads the table); empty (no health) = a Peasant never strikes.
+	FHOLAITypeFigures PeasantFigures;
+
 	// Attack wave and retreat (IA2.6), provisional (IA4 'Normal' curve).
 	// No wave before this game time when enemy soldiers have been seen (s); and when none has been seen (s).
 	float AttackMinSeconds = 420.f;
@@ -185,6 +195,16 @@ struct FHOLAIThreat
 struct FHOLAIFlight
 {
 	TMap<int, float> LastOrder;
+
+	// When each Peasant was last ordered to strike a soldier (IA4, D572).
+	TMap<int, float> LastStrike;
+}
+
+// A Peasant ordered to finish an enemy soldier off (IA4, D572).
+struct FHOLAIStrike
+{
+	int PeasantId = -1;
+	int TargetId = -1;
 }
 
 // What the defence remembers between two thoughts of a slot (the brain keeps one per slot).
@@ -243,6 +263,7 @@ namespace HOLAIArmy
 			HOLAIOrder::ReadAIUnitFigures(Data.Types[Index], Figures);
 			Data.Figures.Add(Figures);
 		}
+		HOLAIOrder::ReadAIUnitFigures(n"Peasant", Data.PeasantFigures);
 	}
 
 	// The index of a type in the data, -1 when it has no usable figures (unknown, or no health).
@@ -648,6 +669,75 @@ namespace HOLAIArmy
 		return Result;
 	}
 
+	// How a Peasant fares one on one against an enemy soldier, at the health each has NOW (IA4, D572): the matchup of the figures
+	// (damage per second x health over the other's), the Peasant's health and the soldier's remaining health in place of the maximum.
+	// 0 for a Peasant without figures or a type the data does not know.
+	float DuelRatio(const FHOLAIArmyData& Data, const FHOLAIUnit& Peasant, const FHOLAIUnit& Enemy)
+	{
+		const int At = TypeIndex(Data, Enemy.Type);
+		if (At < 0 || Data.PeasantFigures.Health <= 0 || Peasant.Health <= 0 || Enemy.Health <= 0)
+		{
+			return 0.f;
+		}
+		FHOLAITypeFigures Mine = Data.PeasantFigures;
+		Mine.Health = Math::Min(Peasant.Health, Mine.Health);
+		FHOLAITypeFigures Theirs = Data.Figures[At];
+		Theirs.Health = Math::Min(Enemy.Health, Theirs.Health);
+		return Matchup(Data, Mine, Theirs);
+	}
+
+	// The soldier a Peasant may finish off: the nearest enemy soldier within FleeRadius whose duel is won with the margin; -1 for none.
+	int StrikeTargetFor(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIUnit& Peasant)
+	{
+		int Best = -1;
+		float BestDistance = 0.f;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Enemy = Summary.Enemies[Index];
+			if (!IsThreatening(Enemy))
+			{
+				continue;
+			}
+			const float Distance = FlatDistance(Enemy.Location, Peasant.Location);
+			if (Distance > Data.FleeRadius || DuelRatio(Data, Peasant, Enemy) < Data.StrikeMargin)
+			{
+				continue;
+			}
+			if (Best < 0 || Distance < BestDistance)
+			{
+				Best = Enemy.Id;
+				BestDistance = Distance;
+			}
+		}
+		return Best;
+	}
+
+	// The Peasants to send to finish a soldier off now (IA4, D572), not ordered in the last StrikeEvery seconds.
+	TArray<FHOLAIStrike> StrikeOrders(FHOLAIFlight& State, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, float Now)
+	{
+		TArray<FHOLAIStrike> Strikes;
+		for (int Each = 0; Each < Summary.Peasants.Num(); Each++)
+		{
+			const FHOLAIUnit Peasant = Summary.Peasants[Each];
+			float Last = -1000.f;
+			State.LastStrike.Find(Peasant.Id, Last);
+			if (Now - Last < Data.StrikeEvery)
+			{
+				continue;
+			}
+			const int Target = StrikeTargetFor(Summary, Data, Peasant);
+			if (Target >= 0)
+			{
+				FHOLAIStrike Strike;
+				Strike.PeasantId = Peasant.Id;
+				Strike.TargetId = Target;
+				Strikes.Add(Strike);
+				State.LastStrike.Add(Peasant.Id, Now);
+			}
+		}
+		return Strikes;
+	}
+
 	// The Peasants to send running to the centre now (IA2.6f): those within FleeRadius of an enemy soldier, not sent in the last FleeEvery seconds.
 	TArray<int> FleeOrders(FHOLAIFlight& State, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, float Now)
 	{
@@ -658,6 +748,11 @@ namespace HOLAIArmy
 			float Last = -1000.f;
 			State.LastOrder.Find(Peasant.Id, Last);
 			if (Now - Last < Data.FleeEvery)
+			{
+				continue;
+			}
+			// IA4 (D572): a Peasant that wins its duel against a soldier near it strikes, it does not run.
+			if (StrikeTargetFor(Summary, Data, Peasant) >= 0)
 			{
 				continue;
 			}

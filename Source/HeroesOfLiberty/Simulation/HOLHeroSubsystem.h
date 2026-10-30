@@ -86,6 +86,13 @@ public:
 	 */
 	bool CastCloseRanks(int32 Slot);
 
+	/**
+	 * T3: the slot's hero takes the talent of Family in his next row (D105: a point kept in reserve may be spent when the
+	 * player wants, even dead). Checked by HOLHeroTalent::CanPick against his level; written to his true sheet, the copies
+	 * at once. False: on a client, out of range, no hero yet, no point in reserve, no row left or no such family.
+	 */
+	bool PickTalent(int32 Slot, int32 Family);
+
 	/** J8c.2, the combat processor: whether the slot's hero cried since its last step (then forgotten). */
 	bool ConsumeCloseRanks(int32 Slot);
 

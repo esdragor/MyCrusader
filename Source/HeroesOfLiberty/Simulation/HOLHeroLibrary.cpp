@@ -130,6 +130,51 @@ int32 UHOLHeroLibrary::GetHeroAbilityCooldownSeconds(const EHOLHeroAbility Abili
 	return HOLHeroAbility::GetCooldownMs(Ability) / 1000;
 }
 
+namespace
+{
+	/** T3: the slot's private sheet as GetHeroAbilityReadyStep reads it (the server's true one, a client's own); nullptr unknown. */
+	const FHOLHeroPrivateSheet* FindPrivateSheet(const UWorld* World, const int32 Slot)
+	{
+		if (const UHOLHeroSubsystem* Heroes = World ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr)
+		{
+			if (World->GetNetMode() != NM_Client)
+			{
+				return Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? &Heroes->GetSheets(Slot).Private : nullptr;
+			}
+		}
+		const APlayerController* Controller = World ? World->GetFirstPlayerController() : nullptr;
+		const AHOLPlayerState* Local = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+		return Local && Local->GetPlayerIndex() == Slot ? &Local->GetHeroPrivate() : nullptr;
+	}
+}
+
+int32 UHOLHeroLibrary::GetHeroTalentCount(const UObject* WorldContextObject, const int32 Slot)
+{
+	const FHOLHeroPrivateSheet* Private = FindPrivateSheet(GetWorldOf(WorldContextObject), Slot);
+	return Private ? Private->TalentPicks.Num() : -1;
+}
+
+int32 UHOLHeroLibrary::GetHeroTalentFamily(const UObject* WorldContextObject, const int32 Slot, const int32 Index)
+{
+	const FHOLHeroPrivateSheet* Private = FindPrivateSheet(GetWorldOf(WorldContextObject), Slot);
+	return Private && Private->TalentPicks.IsValidIndex(Index) ? static_cast<int32>(Private->TalentPicks[Index]) : -1;
+}
+
+int32 UHOLHeroLibrary::GetHeroTalentSeals(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).TalentSeals;
+}
+
+int32 UHOLHeroLibrary::GetHeroTalentKeys(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).TalentKeys;
+}
+
+bool UHOLHeroLibrary::CanPickTalent(const int32 Level, const int32 NumPicks, const int32 Family)
+{
+	return HOLHeroTalent::CanPick(Level, NumPicks, Family);
+}
+
 int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int32 Slot)
 {
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Cries;

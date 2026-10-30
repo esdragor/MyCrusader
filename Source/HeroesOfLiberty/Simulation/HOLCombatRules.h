@@ -32,9 +32,10 @@ namespace HOLCombat
 	 * categories (they add up), minus the defender's armour of the attacker's AttackType, 1 at least (a hit always hurts).
 	 * On a hero hit by anyone but a hero, then HeroTroopDamageFactor of that, unrounded (D17: 5 -> 1.5, 3 -> 0.9). The
 	 * hero's own weakness against buildings is his table's BuildingAttack. J8b.2: the attacker's level scales its Attack
-	 * (HOLHeroXP::GetLevelStat, +8 % a level, unrounded) before the bonuses and the armour; 1 for every troop.
+	 * (HOLHeroXP::GetLevelStat, +8 % a level, unrounded) before the bonuses and the armour; 1 for every troop. T4:
+	 * DefenderArmorBonus is armour added to the defender's (a talent in the aura), 0 by default.
 	 */
-	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1);
+	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1, int32 DefenderArmorBonus = 0);
 
 	/** J8b.2: a unit's maximum health at its level (the hero's grows +8 % a level, J8b-Q3), rounded to nearest. */
 	HEROESOFLIBERTY_API int32 GetMaxHealth(const FHOLUnitTypeConstants& Type, int32 Level);

@@ -96,6 +96,13 @@ bool UHOLAIOrderLibrary::IssueAIAttackMoveOrder(const UObject* WorldContextObjec
 	return World && HOLPlayerOrders::AttackMove(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
 }
 
+bool UHOLAIOrderLibrary::IssueAIAttackUnitOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const int32 TargetUnitId,
+	const bool bQueue)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	return World && TargetUnitId >= 0 && HOLPlayerOrders::Attack(*World, PlayerIndex, ToUnitIds(UnitIds), static_cast<uint32>(TargetUnitId), bQueue);
+}
+
 bool UHOLAIOrderLibrary::IssueAIAttackBuildingOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds,
 	const FVector BuildingLocation, const bool bQueue)
 {

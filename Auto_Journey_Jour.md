@@ -22,6 +22,7 @@ Chaque agent ajoute/complète SA ligne ; la session principale ne recopie pas le
 
 | Heure | Worktree / branche | Tâche (ligne de la file) | État | Commits | Non vérifié |
 |---|---|---|---|---|---|
+| 20:15 | Glorfindel / `net-playtest` | Technologies (GDD § 11) : T0 relevé, plan T1-T8, T1 table CSV + test | T0, T1, T2 faits (20:52) ; T-Q1 à T-Q6 posées dans Retours ; build PASS, rouge puis vert, `quick_check -Parts tests` 536/536 | 0ad1d13 sur `net-playtest` (pas dans `main`) | `make_technologies.py` jamais lancé (asset non créé) ; `main` (7e6778a) fusionné dans la branche APRÈS le vert, sans recompiler : fusion dans `main` non faite |
 | | | | | | |
 
 ## Programme de la journée (ordre proposé)
@@ -31,12 +32,12 @@ Créneau 2, en parallèle (un sous-agent par chantier, compilations en file) :
 
 | Worktree | Branche | Chantier | Travail prévu |
 |---|---|---|---|
-| Celeborn | `hero-j8-close` | J8 clôture | commit de C1 et C3 (déjà faits) ; correctif des Hommes d'armes inactifs autour du héros (test rouge d'abord) |
-| Faramir | `fog` | Brouillard | F7 : plan dédié (F-Q3 = A), unités cachées non dessinées, fantômes teintés, ligne « Fog » de `hol.HUD.Report` ; puis texture et lecteur de cases pour la mini-carte |
-| Arwen | `ai-ia1` | IA3 | IA3.3 (attaque de la ruine), IA3.4 (Régicide), IA3.5 (scénario `ai_forum`), IA3.6 (clôture) |
-| Haldir | `maps` | Cartes | types « petit filon » (M-Q9), reprise de C2/M-Q8 selon l'essai, puis C3 (El Dorado) avec M-Q2 = A ; Plaine remise au budget |
-| Elrond | `tiers` | Paliers | selon les réponses aux questions des paliers (à poser) |
-| Galadriel | libre | Divers | texte du GDD § 7.2 (Lanciers), recalage de la numérotation des décisions, reste d'`EtapeDefini` |
+| Celeborn | `hero-j8-close` | J8 clôture | commit de C1 et C3 (déjà faits) ; correctif des Hommes d'armes inactifs autour du héros (test rouge d'abord) ; 20:30 : glissement du rang D577 codé et commité (`hol.Combat.RankSlide`, test, scénario `rank_slide`), tests/combat/hero verts, `move,formation,combat` verts, merge de `main` 1ff1ad5 testé 544/544 ; fusion dans `main` non faite (main a avancé, GDD.md non commité dans son arbre) ; Celeborn libre à 20:45, branche 678a7ac |
+| Faramir | `fog` | Brouillard | F7.3 (b) fantômes de bâtiments faits et commités (b5c3a1f, 87368e4, 20:44, solo/hôte) ; reste (c) arbres coupés hors de vue, fantômes chez un client réseau ; puis texture et lecteur de cases pour la mini-carte |
+| Arwen | `ai-ia1` | IA4 / Volcan | Test 2 (20:08-20:40) : Volcan V3 faite (d7e78d0) ; IA4 Paysans faite (5cf3d39) ; fusion dans `main` voir AIInProgress.md ; IA4 D579 sous-étape 1 faite (20:50, 9d69bd1 = main, 564/564) ; reste Normal/Difficile, lecture du niveau (C++), Volcan V4 |
+| Haldir | `maps` | Cartes | 20:52 fait : Plaine (5 tailles) au budget standard et sol uniforme, `Map.Table` rouge puis vert, tests 543/543, sizes PASS, commité sur `maps` ; reste C3 (El Dorado), chemins/crossings/aiduel de Plaine non revérifiés |
+| Elrond | `tiers` (= main 436096c) | Paliers puis Talents | 20:25 : P5 faite (D569), `victory` et `build:tiers` verts ; V4 déjà close, question posée (Retours) ; reste `net` (3 vies client 2). Talents (`TalentsInProgress.md`) : T0, T1 (règles pures en script) et T2 (table CSV des 24 talents) faites, `tests` 543/543, dans `main` 1ff1ad5 (20:24) ; TQ1 posée ; **T3 faite 20:40** (choix de talent par la chaîne d'ordres + fiche, baafc55 sur `tiers`, `tests` 545/545) ; TQ2 posée (Pas de l'Aube) ; **T4 : *Boucliers levés* faite 20:47** (798e38f, rouge puis vert, `tests` 546/546) ; **dans `main` cd1b64d 20:55** (`tests` 569/569 ; `combat` et `hero` verts avant les 3 dernières fusions de main) ; arrêt 20:58 |
+| Galadriel | `galadriel-tab` (= main 7293e52) | Marché | 20:36 : chapitre ouvert (`MarketInProgress.md`), M0 relevé, M1 règle pure en script faite (7be2ba9, 554/554, dans main) ; question MK-Q1 posée (Retours) ; suivant M2/M3 après réponse (arrêt dur 20:58) |
 | Glorfindel | `net-playtest` | Réseau | rien d'ouvert avant l'essai E5 avec un ami ; seulement si un reste apparaît |
 
 Créneau 3, machine calme (fin de journée) : **paquet et serveur à recuire** (C4 de J8), seul ; puis `quick_check` des parties touchées.
@@ -73,6 +74,30 @@ Relevé rapide, pas un audit : « aucun code » = aucun fichier ne porte le nom 
 
 - 16:57 Celeborn/J8 : C1 commité (b297add) ; correctif des Hommes d'armes en surnombre (dd16203, `hol.Combat.SurplusReassign`, test `Hero.SurplusAttackers`, 359/359, `-Parts tests,combat` vert, `-Parts hero` non lancé) ; Paysan sans agression ne se rabat pas ; pas d'essai joueur. Tous les agents ont rendu leur rapport avant 17:00.
 
+- 20:17 Faramir/Fog (agent n°4, bug « le brouillard disparaît ») : cause = le scénario `fog_orders` coupait lui-même le brouillard (`hol.Fog.Render 0`) ; rouge d'abord par `waitlog Fog render: mode 1` en fin de scénario (timeout), vert après correction ; essai `fog_orders` posé dans Retours ; commit 062c70e fusionné dans `main` ; `-Parts tests,smoke` vert (530/530) ; aucun code C++ touché.
+
 ## Bilan
 
-(à générer à la fin depuis le tableau des agents : fait, bloqué, commits par worktree, état de main, anomalies du processus, améliorations proposées)
+### Test 2 : 2026-10-30 20:06-20:58 (une heure, mesures au repos et paquet sautés)
+
+**Lancés : 12 agents** (étape 0, 7 en parallèle au pic, relances d'Elrond x2, Faramir, Haldir, Arwen, Galadriel, fusion Celeborn). Tous ont rendu leur rapport avant l'arrêt dur de 20:58.
+
+| Worktree | Fait | Dans main ? |
+|---|---|---|
+| Arwen / ai-ia1 | Volcan V3 (tirage libre, hash de graine) ; IA4 Paysans (marge 1,5) ; IA4 vies D579 sous-étape 1 (Facile, journal « forum attaqué ») | oui, 7e6778a |
+| Faramir / fog | cause du « bug brouillard » = le scénario `fog_orders` coupait le rendu (corrigé, essai refait) ; F7.3 (b) fantômes de bâtiments teintés | oui, 561837c |
+| Elrond / tiers | P5 (D569 au GDD) ; **chapitre Talents ouvert** : T1 règles, T2 table 24 talents, T3 choix par ordre réseau, T4a Boucliers levés | oui, cd1b64d |
+| Galadriel / galadriel-tab | barre du bas déjà bonne (garde-fou élargi) ; test `fogclick` ; **chapitre Marché ouvert** : M1 règle d'échange | oui, 7293e52 |
+| Haldir / maps | règle du cercle vide retirée ; commande `hol.Sources.Grove` + essai `tree_spacing` ; Plaine au budget standard | règle et essai oui (8069e95) ; **Plaine (91cf604) non fusionnée** |
+| Celeborn / hero-j8-close | glissement du rang D577 (`hol.Combat.RankSlide`), essai `rank_slide` | **non** : `GDD.md` non commité de la copie principale bloque le fast-forward (branche prête, 2080c26, tests verts) |
+| Glorfindel / net-playtest | **chapitre Technologies ouvert** : T1 table 27 lignes, T2 règle ; 6 questions | **non** (0ad1d13 + merge de main non compilé) |
+
+**Quatre choses apprises**
+1. L'étape 0 a écarté Glorfindel (« rien d'ouvert ») : contraire à la procédure. Corrigé en séance (chapitre Technologies). L'énoncé de l'étape 0 doit dire : worktree sans tâche = chapitre du GDD non commencé.
+2. La limite de 4 agents était arbitraire : 7 en parallèle ont tenu, la file de build a attendu 3 à 9 minutes (jamais bloquante). La limite devient « 6 à 7, les agents de docs d'abord ».
+3. **Goulot de fin de séance : les fusions.** `main` bouge pendant les tests (3 refusions chez plusieurs agents), et le `GDD.md` non commité de la copie principale bloque tout fast-forward d'une branche qui le touche. Proposition : commiter `GDD.md` (avec votre accord) avant la journée, ou un seul agent de fusion en fin de créneau.
+4. Un agent qui se croit au bout (Elrond à 20:25, 33 min avant l'arrêt) doit être relancé : le veilleur le fait si la file a une ligne `[ ]`. Deux faux verts évités : `quick_check` ne compile pas (build d'abord) ; les chaînes PowerShell entre guillemets doubles mangent les backticks.
+
+**Non vérifié (global)** : aucun rendu sur votre écran ; Volcan, Paysans IA, vies Facile, talents, Marché et Technologies jamais joués en partie (règles seulement) ; `net` non rejoué ; mesures S1-S7 et paquet sautés comme prévu.
+- 20:44 Faramir/Fog (agent n°5, F7.3 b) : fantômes de bâtiments teintés en solo/hôte, rouge d'abord (530/532 puis 532/532), preuve du dessin par captures hors écran (`fog_ghosts`), commits b5c3a1f, 87368e4 sur `fog` ; essai et question de teinte (`hol.Fog.GhostTint`) dans Retours ; (c) arbres non commencé ; pas de fantôme chez un client réseau. Anomalie : `quick_check` ne compile pas (première exécution sans `build.ps1` = 530/530 sans mes tests, faux vert) ; un scénario échoué laisse l'éditeur ouvert (verrouille le journal, à tuer).
+- 21:4x Auto_Journey (agent de docs, 10 réponses de l'utilisateur enregistrées, aucun code, aucun commit) : réponses reportées dans `FogInProgress.md`, `MapsInProgress.md`, `JourneyInProgress.md`, `AIInProgress.md`, `TalentsInProgress.md`, `MarketInProgress.md`, `TechnologiesInProgress.md`, `VictoryInProgress.md` ; GDD D581 à D585 (prochain D586), § 5.5 et § 11 ; lignes `[ ]` en tête des files de Faramir, Haldir, Arwen (x3), Elrond (x2), Galadriel, Glorfindel ; `Auto_Journey_Retours.md` ne garde que l'essai `fog_ghosts` et la section 3.

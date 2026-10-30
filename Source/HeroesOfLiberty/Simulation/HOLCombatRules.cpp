@@ -20,7 +20,7 @@ namespace HOLCombat
 		}
 	}
 
-	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel)
+	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel, const int32 DefenderArmorBonus)
 	{
 		int32 Damage = 0;
 		for (const FHOLAttackBonus& Bonus : Attacker.Bonuses)
@@ -30,7 +30,7 @@ namespace HOLCombat
 				Damage += Bonus.Damage;
 			}
 		}
-		Damage -= GetArmor(Defender, Attacker.AttackType);
+		Damage -= GetArmor(Defender, Attacker.AttackType) + DefenderArmorBonus;
 		// J8b.2: the attack at the attacker's level (exact at level 1: 30 x 100 / 100 = 30).
 		const float Hit = FMath::Max(HOLHeroXP::GetLevelStat(static_cast<float>(Attacker.Attack), AttackerLevel) + static_cast<float>(Damage), 1.f);
 		// D17: a hero takes HeroTroopDamageFactor of a troop's hit (any attacker but another hero), unrounded.

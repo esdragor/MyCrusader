@@ -346,6 +346,45 @@ bool FHOLAIOrdersAttackBuildingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// IA4 (D572): an AI slot's order to attack one unit (a Peasant finishing a weakened soldier) goes through the same queue as a human's:
+// after the step slot 1's Peasants have the enemy Spearman as their ordered target; a Spearman of their own camp is refused by the
+// processor; a crowd over the cap and no slot are refused.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIOrdersAttackUnitTest, "HeroesOfLiberty.AI.Orders.AttackUnit", UE::HeroesOfLiberty::Tests::AIOrders::Flags)
+bool FHOLAIOrdersAttackUnitTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOrders;
+	FWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	const TArray<uint32> Mine = PlaceUnits(*Test.Units, Peasant, 1, FVector(0.0, 800.0, 0.0), 2);
+	const TArray<uint32> Foe = PlaceUnits(*Test.Units, Spearman, 0, FVector(0.0, -800.0, 0.0), 1);
+	const TArray<uint32> Crowd = PlaceUnits(*Test.Units, Peasant, 1, FVector(4000.0, 0.0, 0.0), HOLPlayerOrders::MaxOrderedUnits + 1);
+	if (!TestTrue(TEXT("units placed"), Mine.Num() == 2 && Foe.Num() == 1 && Crowd.Num() == HOLPlayerOrders::MaxOrderedUnits + 1))
+	{
+		return false;
+	}
+	auto CountOrdered = [&Test](const TArray<uint32>& Ids)
+	{
+		int32 Count = 0;
+		for (const uint32 Id : Ids)
+		{
+			const FHOLCombatFragment* Combat = GetCombat(Test, Id);
+			Count += (Combat && Combat->bOrderedTarget && Combat->Target.IsSet()) ? 1 : 0;
+		}
+		return Count;
+	};
+	TestFalse(TEXT("no slot: refused"), UHOLAIOrderLibrary::IssueAIAttackUnitOrder(Test.World, INDEX_NONE, ToScript(Mine), static_cast<int32>(Foe[0])));
+	TestFalse(TEXT("201 units: refused"), UHOLAIOrderLibrary::IssueAIAttackUnitOrder(Test.World, 1, ToScript(Crowd), static_cast<int32>(Foe[0])));
+	TestTrue(TEXT("the order on the Spearman enters the queue"), UHOLAIOrderLibrary::IssueAIAttackUnitOrder(Test.World, 1, ToScript(Mine), static_cast<int32>(Foe[0])));
+	TestEqual(TEXT("not applied in the frame"), CountOrdered(Mine), 0);
+	Test.RunStep();
+	TestEqual(TEXT("next step: both Peasants have the enemy Spearman as ordered target"), CountOrdered(Mine), 2);
+
+	return true;
+}
+
 // IA2.2: the combat figures of a unit type, read from the same row the combat code reads (FHOLUnitTypeRow / HOLCombat::GetDamage):
 // the numbers of the table, the bonuses as the flat damage a hit adds against a category.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIOrdersCombatFiguresTest, "HeroesOfLiberty.AI.Orders.CombatFigures", UE::HeroesOfLiberty::Tests::AIOrders::Flags)

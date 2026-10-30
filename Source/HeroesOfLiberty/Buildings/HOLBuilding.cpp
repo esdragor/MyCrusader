@@ -12,6 +12,7 @@
 #include "Engine/StaticMesh.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
+#include "HAL/IConsoleManager.h"
 #include "HOLCollision.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLGameState.h"
@@ -28,6 +29,20 @@
 #include "Net/Iris/ReplicationSystem/EngineReplicationBridge.h"
 #include "Net/Iris/ReplicationSystem/ReplicationSystemUtil.h"
 #endif
+
+namespace
+{
+	// F7.3 (b): a building remembered, out of sight, is drawn toward this blue-grey by hol.Fog.GhostTint (0: its own colours, the fog
+	// darkens it alone; 1: all grey). The default is provisional, the user's to choose (Auto_Journey_Retours.md).
+	const FLinearColor MemoryGrey(0.40f, 0.43f, 0.50f);
+	TAutoConsoleVariable<float> CVarFogGhostTint(TEXT("hol.Fog.GhostTint"), 0.6f,
+		TEXT("How far toward grey a building remembered out of sight is painted, 0 (its colours) to 1 (grey). Applies to the next rebuilt building."));
+
+	float GetMemoryTint()
+	{
+		return FMath::Clamp(CVarFogGhostTint.GetValueOnGameThread(), 0.f, 1.f);
+	}
+}
 
 namespace UE::HeroesOfLiberty::Buildings
 {
@@ -166,6 +181,17 @@ bool AHOLBuilding::IsSeenHere() const
 	}
 	const APlayerController* Controller = Cast<APlayerController>(GetOwner());
 	return Controller && Controller->IsLocalController();
+}
+
+void AHOLBuilding::SetFogDraw(const EHOLBuildingDraw Draw, const EHOLBuildingSight InRememberedState)
+{
+	if (FogDraw == Draw && (Draw != EHOLBuildingDraw::Memory || RememberedState == InRememberedState))
+	{
+		return;
+	}
+	FogDraw = Draw;
+	RememberedState = InRememberedState;
+	MarkAppearanceDirty();
 }
 
 void AHOLBuilding::ApplyRelevancy()
@@ -630,7 +656,16 @@ FHOLForumLookChoice AHOLBuilding::GetForumLook() const
 
 float AHOLBuilding::GetTargetRise() const
 {
-	const FHOLForumLookChoice Forum = GetForumLook();
+	FHOLForumLookChoice Forum = GetForumLook();
+	if (FogDraw == EHOLBuildingDraw::Memory)
+	{
+		// F7.3 (b): as remembered, nothing rising: whole, or a site just begun (its progress was not learned).
+		if (RememberedState != EHOLBuildingSight::Rubble)
+		{
+			return RememberedState == EHOLBuildingSight::Site ? MinRiseRatio : 1.f;
+		}
+		Forum.Look = EHOLForumLook::Rubble;
+	}
 	if (Forum.Look == EHOLForumLook::Rubble)
 	{
 		// Its heap's height (the health bar over it).
@@ -688,11 +723,15 @@ void AHOLBuilding::RefreshVisuals()
 	// A bare foundation is a ghost its owner alone sees (J6a.4); a site, the foundation's slab under the building rising
 	// with its work; then the building.
 	// A main forum down (V2.3a, V2-Q1): rubble through the ruin, then any site's look while it rises again.
+	// F7.3 (b): another camp's, out of sight, as its viewer's camp last saw it (RememberedState), or nothing if never seen.
 	const FHOLForumLookChoice Forum = GetForumLook();
-	const ELook Look = Forum.Look == EHOLForumLook::Rubble ? ELook::Rubble : Forum.Look == EHOLForumLook::Site ? ELook::Site
+	const bool bMemory = FogDraw == EHOLBuildingDraw::Memory;
+	const ELook Look = FogDraw == EHOLBuildingDraw::Hidden ? ELook::Hidden
+		: bMemory ? (RememberedState == EHOLBuildingSight::Rubble ? ELook::Rubble : RememberedState == EHOLBuildingSight::Site ? ELook::Site : ELook::Finished)
+		: Forum.Look == EHOLForumLook::Rubble ? ELook::Rubble : Forum.Look == EHOLForumLook::Site ? ELook::Site
 		: IsFinished() ? ELook::Finished : !IsFoundation() ? ELook::Site : IsSeenHere() ? ELook::Ghost : ELook::Hidden;
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	if (BuiltTypeName != TypeName || BuiltLook != Look)
+	if (BuiltTypeName != TypeName || BuiltLook != Look || bBuiltFromMemory != bMemory)
 	{
 		for (UStaticMeshComponent* Piece : Pieces)
 		{
@@ -704,6 +743,7 @@ void AHOLBuilding::RefreshVisuals()
 		OwnerWhitens.Reset();
 		BuiltTypeName = TypeName;
 		BuiltLook = Look;
+		bBuiltFromMemory = bMemory;
 
 		if (!Type)
 		{
@@ -739,6 +779,14 @@ void AHOLBuilding::RefreshVisuals()
 			}
 			PieceParent = nullptr;
 		}
+		if (bMemory)
+		{
+			// A memory is looked at, not touched: no piece answers a click (the real building's health would show through it).
+			for (UStaticMeshComponent* Piece : Pieces)
+			{
+				Piece->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			}
+		}
 	}
 	UpdateRise();
 	ApplyColors();
@@ -766,6 +814,10 @@ void AHOLBuilding::ApplyColors()
 	for (int32 Index = 0; Index < OwnerMaterials.Num(); ++Index)
 	{
 		FLinearColor Shown = FMath::Lerp(OwnerColor * OwnerTones[Index], FLinearColor::White, OwnerWhitens[Index]);
+		if (FogDraw == EHOLBuildingDraw::Memory)
+		{
+			Shown = FMath::Lerp(Shown, MemoryGrey, GetMemoryTint());
+		}
 		Shown.A = 1.f;
 		OwnerMaterials[Index]->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Shown);
 	}
@@ -1063,7 +1115,9 @@ UStaticMeshComponent* AHOLBuilding::AddPiece(UStaticMesh* Mesh, const FVector& S
 	Piece->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Piece->SetGenerateOverlapEvents(false);
 	UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Piece);
-	Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Color);
+	// F7.3 (b): a building remembered, not seen, is greyed (the owner's colours in ApplyColors).
+	const FLinearColor Painted = FogDraw == EHOLBuildingDraw::Memory && !bOwnerColor ? FMath::Lerp(Color, MemoryGrey, GetMemoryTint()) : Color;
+	Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter, Painted);
 	Piece->SetMaterial(0, Material);
 	Piece->SetupAttachment(PieceParent ? PieceParent : RootComponent.Get());
 	Piece->RegisterComponent();
