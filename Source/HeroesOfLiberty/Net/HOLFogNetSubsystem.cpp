@@ -317,6 +317,29 @@ void UHOLFogNetSubsystem::RefreshConnections()
 #endif
 }
 
+bool UHOLFogNetSubsystem::CountSentSources(const int32 Camp, int32& OutSent, int32& OutUnexplored) const
+{
+	OutSent = 0;
+	OutUnexplored = 0;
+	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Vision || !Sources || !SourceCamps.IsValidIndex(Camp))
+	{
+		return false;
+	}
+	const FHOLVisionMap& Map = Vision->GetMap();
+	for (const TPair<int32, int32>& Sent : SourceCamps[Camp].Sent)
+	{
+		++OutSent;
+		if (Sources->GetSources().IsValidIndex(Sent.Key) &&
+			Map.GetVision(Camp, Map.GetGrid().ToCell(FVector2D(Sources->GetSources()[Sent.Key].Location))) == EHOLCellVision::Unexplored)
+		{
+			++OutUnexplored;
+		}
+	}
+	return true;
+}
+
 FString UHOLFogNetSubsystem::MakeReport() const
 {
 	TArray<FString> Lines;

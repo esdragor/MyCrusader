@@ -44,6 +44,12 @@ public:
 	/** "Fog net: active, groups 3, connections 2 (1: camps 0x1, 2: camps 0x2), objects 12". */
 	FString MakeReport() const;
 
+	/**
+	 * F6f, the leak test: the sources sent to Camp (OutSent), and among them the ones on a cell the camp never explored
+	 * (OutUnexplored, always 0 if the memory is what it saw). False for a camp with nothing sent yet.
+	 */
+	bool CountSentSources(int32 Camp, int32& OutSent, int32& OutUnexplored) const;
+
 private:
 	void OnStepEnded(int64 StepIndex);
 	/** F6c: each building in the group of the camps that see it (its owner's always), the ones gone forgotten. */

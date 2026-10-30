@@ -6847,7 +6847,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
             }
             $ClientSequence = Join-Path $TestSaved "quick_${NetFogPart}_client$Client.seq"
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
-            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report" }) + @("hol.Fog.Report")
+            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report" } }) + @("hol.Fog.Report")
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
                 @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
@@ -6861,10 +6861,12 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     $Checks["server listening"] = $NetFogListening
     $ClientSources = @{}
     $ClientFog = @{}
+    $NetFogClientLogs = @{}
     foreach ($NetClient in $NetFogClients) {
         $ClientTimedOut = -not $NetClient.Process.WaitForExit(240000)
         if ($ClientTimedOut) { Stop-Process -Id $NetClient.Process.Id -Force -ErrorAction SilentlyContinue }
         $N = $NetClient.Client
+        $NetFogClientLogs[$N] = $NetClient.Log
         $ClientLines = if (Test-Path $NetClient.Log) { Get-Content $NetClient.Log } else { @() }
         $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
         $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
@@ -6925,6 +6927,23 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     foreach ($N in $ClientSources.Keys | Sort-Object) {
         $Checks["client $N : sources $(if ($NetFogOn) { 'of its explored cells only' } else { 'all' }) ($($ClientSources[$N]) of $ServerSources)"] =
             $ServerSources -gt 0 -and $(if ($NetFogOn) { $ClientSources[$N] -gt 0 -and $ClientSources[$N] -lt $ServerSources } else { $ClientSources[$N] -eq $ServerSources })
+    }
+    # F6f, the leak test: what each client holds beyond its camp's reach (counted by the client's own fog, "Fog leaks:" at 6 s and at the end,
+    # the units home and the grace over) is nothing, and the sources it holds are exactly the ones the server sent to its camp ("Fog sources:"),
+    # none of them on a cell the camp never explored.
+    $ServerSentLine = $NetFogLog | Select-String -Pattern "Fog sources: (.*)$" | Select-Object -First 1
+    foreach ($N in $ClientFog.Keys | Sort-Object) {
+        if (-not $NetFogOn) { continue }
+        $LeakLines = @(Get-MarkedLines (Get-Content $NetFogClientLogs[$N]) $NetFogPart | Select-String -Pattern "Fog leaks: camp \d+, sources (\d+) held (\d+) on unexplored cells, units of others (\d+) held (\d+) out of sight, buildings of others (\d+) held (\d+) out of sight")
+        # Beyond its reach only when it stays so over two reports in a row: what the server sends reaches the client a moment before the
+        # client's own fog has caught up (a unit goes out of sight 0.5 s after the server stopped sending it, D526); a leak does not go away.
+        $Stays = { param($Index) @(1..([Math]::Max($LeakLines.Count - 1, 1)) | Where-Object { $_ -lt $LeakLines.Count -and [int]$LeakLines[$_ - 1].Matches[0].Groups[$Index].Value -gt 0 -and [int]$LeakLines[$_].Matches[0].Groups[$Index].Value -gt 0 }).Count }
+        $LeakTexts = @(& $Stays 2) + @(& $Stays 4) + @(& $Stays 6) | Where-Object { $_ -ne 0 }
+        $UnitsSeen = ($LeakLines | ForEach-Object { [int]$_.Matches[0].Groups[3].Value } | Measure-Object -Maximum).Maximum
+        if ($N -eq 1) { $Checks["client $N : saw Alice's units in its view while they marched, held none out of it (most $UnitsSeen)"] = $UnitsSeen -ge 1 }
+        $Checks["client $N : nothing held beyond its camp's reach ($($LeakLines.Count) reports$(if ($LeakLines.Count) { ', last: ' + ($LeakLines[-1].Line -replace '^.*Fog leaks: ', '') }))"] = $LeakLines.Count -ge 2 -and $LeakTexts.Count -eq 0
+        $Sent = if ("$($ServerSentLine.Line)" -match "camp $($ClientFog[$N].Held) sent (\d+) \(on unexplored cells (\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+        $Checks["client $N : holds the $($Sent[0]) sources sent to its camp, none on unexplored cells ($($ClientSources[$N]); unexplored $($Sent[1]))"] = $Sent[0] -gt 0 -and $ClientSources[$N] -eq $Sent[0] -and $Sent[1] -eq 0
     }
     # F6e: each client's cells in sight and explored (its camp's line of "Fog: mode ..."), equal to the server's for that camp (the server's
     # first report is at 8 s, the clients' at 6 s: the units are idle in both).

@@ -49,6 +49,21 @@ namespace
 				if (const UHOLFogNetSubsystem* FogNet = Vision && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLFogNetSubsystem>() : nullptr)
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("%s"), *FogNet->MakeReport());
+					// F6f: what the server sent of the sources to each camp, for the leak test to set against the client's.
+					TArray<FString> Sent;
+					for (int32 Camp = 0; Camp < Vision->GetNumCamps(); ++Camp)
+					{
+						int32 NumSent = 0;
+						int32 NumUnexplored = 0;
+						FogNet->CountSentSources(Camp, NumSent, NumUnexplored);
+						Sent.Add(FString::Printf(TEXT("camp %d sent %d (on unexplored cells %d)"), Camp, NumSent, NumUnexplored));
+					}
+					UE_LOG(LogHOLMatch, Display, TEXT("Fog sources: %s"), *FString::Join(Sent, TEXT(", ")));
+				}
+				const FString Leaks = Vision ? Vision->MakeLeakReport() : FString();
+				if (!Leaks.IsEmpty())
+				{
+					UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Leaks);
 				}
 			}
 		}));
@@ -486,6 +501,65 @@ FString UHOLVisionSubsystem::MakeReport() const
 			Map.CountVisible(Camp), Map.CountExplored(Camp), Ghosts.IsValidIndex(Camp) ? Ghosts[Camp].Num() : 0, Others);
 	}
 	return Report + FString::Printf(TEXT("; step %.3f ms"), LastUpdateMs);
+}
+
+FString UHOLVisionSubsystem::MakeLeakReport() const
+{
+	const UHOLUnitReceptionSubsystem* Reception = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
+	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!bClient || !bStarted || ClientCamp == INDEX_NONE || !Reception || !Sources)
+	{
+		return FString();
+	}
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	int32 NumSources = 0;
+	int32 SourcesOut = 0;
+	for (const FHOLSource& Source : Sources->GetSources())
+	{
+		if (Source.IsStanding())
+		{
+			++NumSources;
+			SourcesOut += Map.GetVision(ClientCamp, Grid.ToCell(FVector2D(Source.Location))) == EHOLCellVision::Unexplored ? 1 : 0;
+		}
+	}
+	TArray<FHOLUnitView> Views;
+	Reception->GetDisplayedUnits(Views);
+	int32 NumUnits = 0;
+	int32 UnitsOut = 0;
+	for (const FHOLUnitView& View : Views)
+	{
+		if (GetCampIndex(View.OwnerPlayer) != ClientCamp)
+		{
+			++NumUnits;
+			UnitsOut += Map.GetVision(ClientCamp, Grid.ToCell(FVector2D(View.Location))) == EHOLCellVision::Visible ? 0 : 1;
+		}
+	}
+	int32 NumBuildings = 0;
+	int32 BuildingsOut = 0;
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		const FHOLBuildingTypeRow* Type = IsValid(*It) && GetCampIndex(It->GetOwnerPlayer()) != ClientCamp ? It->GetType() : nullptr;
+		if (!Type)
+		{
+			continue;
+		}
+		++NumBuildings;
+		const FVector2D Center(It->GetActorLocation());
+		const FVector2D Extent = 0.5 * Type->Footprint;
+		const FIntPoint Low = Grid.ToCell(Center - Extent);
+		const FIntPoint High = Grid.ToCell(Center + Extent);
+		bool bSeen = false;
+		for (int32 Y = Low.Y; Y <= High.Y && !bSeen; ++Y)
+		{
+			for (int32 X = Low.X; X <= High.X && !bSeen; ++X)
+			{
+				bSeen = Map.GetCount(ClientCamp, FIntPoint(X, Y)) > 0;
+			}
+		}
+		BuildingsOut += bSeen ? 0 : 1;
+	}
+	return FString::Printf(TEXT("Fog leaks: camp %d, sources %d held %d on unexplored cells, units of others %d held %d out of sight, buildings of others %d held %d out of sight"),
+		ClientCamp, NumSources, SourcesOut, NumUnits, UnitsOut, NumBuildings, BuildingsOut);
 }
 
 const TCHAR* UHOLVisionSubsystem::GetModeName(const EHOLFogMode InMode)

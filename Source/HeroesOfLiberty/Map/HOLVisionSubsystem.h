@@ -125,6 +125,13 @@ public:
 	/** F6e.3, client: the memory the server sent; taken into the client's own camp as soon as its fog runs (UpdateClient). */
 	void ReceiveMemory(const TArray<uint32>& Runs, const TArray<FHOLFogGhostNet>& BuildingGhosts);
 
+	/**
+	 * F6f, the leak test, client: what this machine holds beyond its camp's reach, by the camp's own fog (D525): "Fog leaks:
+	 * camp 0, sources 240 held 0 on unexplored cells, units of others 3 held 0 out of sight, buildings of others 1 held 0 out of sight".
+	 * Empty on the server, or before the client's camp is known.
+	 */
+	FString MakeLeakReport() const;
+
 	/** "Fog: mode Normal, camps 2, observers 12, camp 0 (slots 0) visible 812 explored 1650, ...; step 0.08 ms". */
 	FString MakeReport() const;
 
