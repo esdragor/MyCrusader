@@ -91,6 +91,9 @@ struct FHOLAIOpeningData
 	int FarmCount = 8;
 	FHOLAITypeFigures Farm;
 
+	// The mining camp (built again beside a far vein, not one of the Steps): its wood is checked before the order.
+	FHOLAITypeFigures MiningCamp;
+
 	// A second block (IA2.7) is begun when the first is all built, every field is held, and the food in stock is under this: the Peasants
 	// outnumber the places. At most MaxFarmBlocks blocks.
 	int MaxFarmBlocks = 2;
@@ -219,6 +222,7 @@ namespace HOLAIOpening
 		Data.House.Population = 10;
 		Data.Farm.CostWood = 75;
 		Data.Farm.BuildTime = 15.f;
+		Data.MiningCamp.CostWood = 100;
 		FHOLAIOpeningStep Camp;
 		Camp.Type = n"LumberCamp";
 		Camp.WoodCost = 100;
@@ -545,6 +549,10 @@ namespace HOLAIOpening
 		if (Type == n"Farm")
 		{
 			return Data.Farm.CostWood;
+		}
+		if (Type == n"MiningCamp")
+		{
+			return Data.MiningCamp.CostWood;
 		}
 		for (int Index = 0; Index < Data.Steps.Num(); Index++)
 		{

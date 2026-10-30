@@ -328,6 +328,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			Data.Farm = Figures;
 		}
+		if (HOLAIOrder::ReadAIBuildingFigures(n"MiningCamp", Figures))
+		{
+			Data.MiningCamp = Figures;
+		}
 		for (int Index = 0; Index < Data.Steps.Num(); Index++)
 		{
 			if (HOLAIOrder::ReadAIBuildingFigures(Data.Steps[Index].Type, Figures))

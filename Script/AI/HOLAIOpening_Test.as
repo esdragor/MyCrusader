@@ -756,3 +756,15 @@ void Test_SecondBlockCountsInTheSpending(FUnitTest& T)
 	TArray<float> Free = HOLAINeeds::SpendOf(Summary, HOLAIOpening::DefaultData());
 	T.AssertTrue(OpeningNear(Held[1] - Free[1], 600.f), "8 more farms of 75 wood once the second block is wanted");
 }
+
+// A mining camp costs its wood like the other buildings (100): an order is not sent while the wood is short (it was, at 0 wood, every
+// quarter second, a different Peasant each time, all refused by the server).
+void Test_MiningCampNeedsItsWood(FUnitTest& T)
+{
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	T.AssertEquals(100, HOLAIOpening::WoodCostOf(Data, n"MiningCamp"), "the mining camp's wood");
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Wood.Stock = 30;
+	TArray<int> NoBusy;
+	T.AssertEquals("no wood", HOLAIOpening::OrderOf(Summary, Data, n"MiningCamp", FVector(5000, 0, 0), false, NoBusy).Nothing, "30 wood: no order for a mining camp");
+}
