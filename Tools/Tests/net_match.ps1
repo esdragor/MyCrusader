@@ -15,7 +15,8 @@
 # 1000 in melee, the worst case for the health sent per hit, ~590 hits per second; its measure begins once the armies
 # are joined, ~5 s after the charge, up to 40 s of warm-up, and lasts -Seconds, 20 by default) or S4 (mixed armies:
 # the arrows are deduced by the clients, no extra bits). S3 and S4 turn the combat on themselves (hol.Combat.Enabled 1).
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Test S2|S3|S4] [-Seconds 40] [-Keep]]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\net_match.ps1 [-Stage] [-Clients 2] [-Units 2000 [-Test S2|S3|S4] [-Seconds 40] [-Keep]] [-Headless] [-Port 7930 -Tag A]
+# -Headless: light clients without renderer, sound or window (D502 remeasure, max_servers_measure.ps1), no captures.
 # -StageOnly: the staging alone (for quick_check's lobby part), no match started afterwards.
 param(
     [switch] $Stage,
@@ -42,6 +43,10 @@ param(
     # match config and client settings apart (net_server<Tag>.log, Saved_Tests_Net<Tag><N>).
     [int] $Port = 0,
     [string] $Tag = "",
+    # Light clients (D502 remeasure, max_servers_measure.ps1): no renderer, no sound, no window (-nullrhi -nosound),
+    # and no capture in their sequence (a capture waits for drawn frames, which never come without a renderer). They
+    # join and receive the match like a player's game, at a fraction of its cost: what a measure of the servers wants.
+    [switch] $Headless,
     [string] $EngineDir = ""
 )
 if ($Units -gt 0 -and -not $PSBoundParameters.ContainsKey('Map')) { $Map = "/Game/Maps/StressTest" }
@@ -131,10 +136,15 @@ $ClientLogs = @()
 for ($Client = 1; $Client -le $Clients; $Client++) {
     $ClientLog = Join-Path $Logs "net_client$Tag$Client.log"
     $Sequence = Join-Path $TestSaved "net_client$Tag$Client.seq"
-    if ($Units -gt 0) {
+    if ($Units -gt 0 -and $Headless) {
+        @("waitmap $(Split-Path $Map -Leaf)", "wait 20") | Set-Content -Encoding utf8 $Sequence
+    } elseif ($Units -gt 0) {
         # The stress test starts once both clients are in: a capture while the units walk (S2) or fight (S3, S4: the
         # armies are joined ~5 s after their birth).
         @("waitmap $(Split-Path $Map -Leaf)", "wait 20", "capture net_client$Client") | Set-Content -Encoding utf8 $Sequence
+    } elseif ($Headless) {
+        @("waitmap $(Split-Path $Map -Leaf)", "waitlog Camera above the start", "hol.Camera.TestCursor 0.5 0.5",
+            "hol.Select.Click 0.5 0.5", "waitlog Selection:", "hol.Select.Report", "hol.Camera.TestCursor off") | Set-Content -Encoding utf8 $Sequence
     } else {
         @("waitmap $(Split-Path $Map -Leaf)", "waitlog Camera above the start", "frames 60", "capture net_client$Client",
             "hol.Camera.TestCursor 0.5 0.5", "hol.Select.Click 0.5 0.5", "waitlog Selection:", "hol.Select.Report",
@@ -149,8 +159,16 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
         -replace '^(ResolutionSizeY|LastUserConfirmedResolutionSizeY)=.*', '$1=1000' `
         -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
     $X = 3840 + ($Client - 1) * $Width
-    $Arguments = "`"$UProject`" $Address -game -windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40 -saveddirsuffix=Tests_Net$Tag$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$(($NetCommands + "hol.Test.Run $Sequence") -join ',')`""
-    $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru
+    $Display = if ($Headless) { "-nullrhi -nosound -unattended" } else { "-windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40" }
+    # A light client capped at 60 frames per second (a player's game): without a renderer nothing paces it (600-690 fps) and it burnt more than a
+    # processor each (248 % of one core for two, 2026-10-29) in a measure that wants the servers' load, not theirs.
+    $ClientCommands = $NetCommands + $(if ($Headless) { @("t.MaxFPS 60") } else { @() }) + "hol.Test.Run $Sequence"
+    $Arguments = "`"$UProject`" $Address -game $Display -saveddirsuffix=Tests_Net$Tag$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$($ClientCommands -join ',')`""
+    $ClientProcess = if ($Headless) {
+        Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
+    } else {
+        Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru
+    }
     $ClientProcesses += $ClientProcess
     $ClientLogs += $ClientLog
     Write-Host "client $Client : pid $($ClientProcess.Id), log $ClientLog"
