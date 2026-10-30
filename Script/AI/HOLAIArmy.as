@@ -573,6 +573,11 @@ namespace HOLAIArmy
 		{
 			Guarded.Add(Summary.CentreLocation);
 		}
+		// IA3.4: in Regicide the King's place is guarded too (the army comes to the soldiers that near him).
+		if (Summary.bRegicide && Summary.bHasKing)
+		{
+			Guarded.Add(Summary.King.Location);
+		}
 		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
 		{
 			Guarded.Add(Summary.Buildings[Index].Location);

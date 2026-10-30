@@ -8,6 +8,11 @@ struct FHOLAIForumData
 
 	// The Peasants for the rebuilding are chosen at most this often (s).
 	float OrderEvery = 4.f;
+
+	// Nothing is built in the ruin (D352): a Peasant leaves his work only when he would reach the forum as the ruin ends (his distance over
+	// PeasantSpeed (cm/s), plus ArriveMargin seconds for the detours), not to wait in front of it.
+	float PeasantSpeed = 800.f;
+	float ArriveMargin = 5.f;
 }
 
 // What the slot remembers of its rebuilding between two thoughts (the brain keeps one per slot).
@@ -20,7 +25,7 @@ struct FHOLAIForumMemory
 	float LastOrder = -1000.f;
 }
 
-// The King in Regicide (IA3.4): he stays behind the forum, away from the enemy, and runs from the enemy soldiers that come near him.
+// The King in Regicide (IA3.4): he stays behind the forum, away from the enemy, and falls back there when enemy soldiers come near him.
 struct FHOLAIKingData
 {
 	// His post: this far behind the main forum, on the side away from the enemy centre (cm).
@@ -29,9 +34,9 @@ struct FHOLAIKingData
 	// He is back at his post within this (cm).
 	float PostRadius = 500.f;
 
-	// An enemy soldier this near makes him run (cm), this far from the soldier along the line away from it (cm).
-	float DangerRadius = 2500.f;
-	float RunDistance = 3000.f;
+	// An enemy soldier this near makes him fall back to his post (cm), when the post is on the safe side of him; he never runs into the
+	// open: at his post, or with the enemy between him and it, he stays and the army comes (Threat counts his place as guarded).
+	float DangerRadius = 1800.f;
 
 	// His orders are given at most this often (s).
 	float OrderEvery = 3.f;
@@ -89,7 +94,8 @@ namespace HOLAIForum
 		TArray<int> Left;
 		for (int Index = 0; Index < Summary.Peasants.Num(); Index++)
 		{
-			if (!Memory.Sent.Contains(Summary.Peasants[Index].Id))
+			const float Distance = HOLAIArmy::FlatDistance(Summary.Peasants[Index].Location, Summary.OwnForum.Location);
+			if (!Memory.Sent.Contains(Summary.Peasants[Index].Id) && Distance / Data.PeasantSpeed + Data.ArriveMargin >= Summary.OwnForum.RuinSecondsLeft)
 			{
 				Left.Add(Index);
 			}
@@ -184,7 +190,8 @@ namespace HOLAIForum
 		return Summary.CentreLocation + Away * Data.PostDistance;
 	}
 
-	// Where the King goes now (Regicide only): away from an enemy soldier within DangerRadius, else to his post when he stands idle off it.
+	// Where the King goes now (Regicide only): to his post when an enemy soldier within DangerRadius is farther from it than he is, else to
+	// his post when he stands idle off it; he stays when cornered.
 	// False when he stays; Memory throttles the orders.
 	bool KingOrder(FHOLAIKingMemory& Memory, const FHOLAISummary& Summary, const FHOLAIKingData& Data, float Now, FVector& Where)
 	{
@@ -192,27 +199,23 @@ namespace HOLAIForum
 		{
 			return false;
 		}
-		// The nearest enemy soldier within the danger radius: he runs from it, along the line away from it.
-		int Nearest = -1;
+		const FVector Post = KingPost(Summary, Data);
+		// An enemy soldier within the danger radius: he falls back to his post if the soldier is farther from it than he is, else he stays.
 		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
 		{
 			const FHOLAIUnit Enemy = Summary.Enemies[Index];
-			if (HOLAIArmy::IsThreatening(Enemy) && HOLAIArmy::FlatDistance(Enemy.Location, Summary.King.Location) <= Data.DangerRadius
-				&& (Nearest < 0 || HOLAIArmy::FlatDistance(Enemy.Location, Summary.King.Location) < HOLAIArmy::FlatDistance(Summary.Enemies[Nearest].Location, Summary.King.Location)))
+			if (HOLAIArmy::IsThreatening(Enemy) && HOLAIArmy::FlatDistance(Enemy.Location, Summary.King.Location) <= Data.DangerRadius)
 			{
-				Nearest = Index;
+				if (HOLAIArmy::FlatDistance(Summary.King.Location, Post) > Data.PostRadius
+					&& HOLAIArmy::FlatDistance(Enemy.Location, Post) > HOLAIArmy::FlatDistance(Summary.King.Location, Post))
+				{
+					Where = Post;
+					Memory.LastOrder = Now;
+					return true;
+				}
+				return false;
 			}
 		}
-		if (Nearest >= 0)
-		{
-			FVector Line = Summary.King.Location - Summary.Enemies[Nearest].Location;
-			Line.Z = 0;
-			const FVector Away = Line.Size() > 1.f ? Line / Line.Size() : FVector(1, 0, 0);
-			Where = Summary.King.Location + Away * Data.RunDistance;
-			Memory.LastOrder = Now;
-			return true;
-		}
-		const FVector Post = KingPost(Summary, Data);
 		if (Summary.King.bIdle && HOLAIArmy::FlatDistance(Summary.King.Location, Post) > Data.PostRadius)
 		{
 			Where = Post;

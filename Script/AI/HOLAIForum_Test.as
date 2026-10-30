@@ -342,19 +342,61 @@ void Test_KingAtHisPostStays(FUnitTest& T)
 	T.AssertFalse(HOLAIForum::KingOrder(Memory, FrmKingSummary(FVector(-450, 0, 0), false), FHOLAIKingData(), 200.f, Where), "on the move: not ordered over his walk");
 }
 
-void Test_KingRunsFromTheEnemySoldier(FUnitTest& T)
+void Test_KingFallsBackToHisPostFromTheEnemySoldier(FUnitTest& T)
 {
 	FHOLAIKingMemory Memory;
-	FHOLAISummary Summary = FrmKingSummary(FVector(2500, 0, 0), true);
-	FrmAdd(Summary.Enemies, 50, n"Spearman", 1, FVector(1000, 0, 0), 1, false, -1);
+	FHOLAISummary Summary = FrmKingSummary(FVector(-450, 0, 0), false);
+	FrmAdd(Summary.Enemies, 50, n"Spearman", 1, FVector(-1500, 0, 0), 1, false, -1);
 	FVector Where;
-	T.AssertTrue(HOLAIForum::KingOrder(Memory, Summary, FHOLAIKingData(), 100.f, Where), "an enemy soldier 1500 cm away: he runs");
-	T.AssertTrue((Where - FVector(5500, 0, 0)).Size() < 1.f, "along the line away from the soldier, RunDistance far");
+	T.AssertTrue(HOLAIForum::KingOrder(Memory, Summary, FHOLAIKingData(), 100.f, Where), "an enemy soldier 1050 cm away, the post on the safe side: he falls back");
+	T.AssertTrue((Where - FVector(2500, 0, 0)).Size() < 1.f, "to his post, not away into the open");
 
 	FHOLAIKingMemory Other;
-	FHOLAISummary Peasants = FrmKingSummary(FVector(2500, 0, 0), true);
-	FrmAdd(Peasants.Enemies, 50, n"Peasant", 3, FVector(1000, 0, 0), 1, false, -1);
-	T.AssertFalse(HOLAIForum::KingOrder(Other, Peasants, FHOLAIKingData(), 100.f, Where), "enemy Peasants frighten nobody");
+	FHOLAISummary Peasants = FrmKingSummary(FVector(-450, 0, 0), false);
+	FrmAdd(Peasants.Enemies, 50, n"Peasant", 3, FVector(-1500, 0, 0), 1, false, -1);
+	T.AssertFalse(HOLAIForum::KingOrder(Other, Peasants, FHOLAIKingData(), 100.f, Where), "enemy Peasants frighten nobody (he is on the move)");
+}
+
+void Test_KingStaysWhenCorneredOrAtHisPost(FUnitTest& T)
+{
+	FVector Where;
+	FHOLAIKingMemory AtPost;
+	FHOLAISummary Summary = FrmKingSummary(FVector(2500, 0, 0), true);
+	FrmAdd(Summary.Enemies, 50, n"Spearman", 1, FVector(1000, 0, 0), 1, false, -1);
+	T.AssertFalse(HOLAIForum::KingOrder(AtPost, Summary, FHOLAIKingData(), 100.f, Where), "at his post with a soldier near: he stays (no running into the open)");
+
+	FHOLAIKingMemory Between;
+	FHOLAISummary Cut = FrmKingSummary(FVector(-450, 0, 0), false);
+	FrmAdd(Cut.Enemies, 50, n"Spearman", 1, FVector(800, 0, 0), 1, false, -1);
+	T.AssertFalse(HOLAIForum::KingOrder(Between, Cut, FHOLAIKingData(), 100.f, Where), "the soldier is between him and the post: he does not run into him");
+}
+
+void Test_ArmyDefendsTheKingInRegicide(FUnitTest& T)
+{
+	const FHOLAIArmyData Army = FrmData();
+	FHOLAISummary Summary = FrmKingSummary(FVector(0, 9000, 0), true);
+	FrmAdd(Summary.Army, 1, n"Spearman", 8, FrmPoint(), 0, true, -1);
+	FrmAdd(Summary.Enemies, 50, n"Spearman", 2, FVector(500, 9000, 0), 1, false, -1);
+	T.AssertTrue(HOLAIArmy::Threat(Summary, Army).bThreatened, "Regicide: two soldiers next to the King are a threat");
+	Summary.bRegicide = false;
+	T.AssertFalse(HOLAIArmy::Threat(Summary, Army).bThreatened, "no Regicide: far from every guarded place, no threat");
+}
+
+void Test_PeasantsKeepWorkingDuringTheRuin(FUnitTest& T)
+{
+	FHOLAIForumMemory Memory;
+	const FHOLAIForumData Data = HOLAIForum::DefaultData();
+	FHOLAISummary Summary = FrmSummary(1, true, 4);
+	// The Peasants stand 1000, 2000, 3000 and 4000 cm from the forum: with 800 cm/s and 5 s of margin they are called 6.25, 7.5, 8.75 and 10 s (walk plus margin) before the end.
+	Summary.OwnForum.RuinSecondsLeft = 60.f;
+	T.AssertEquals(0, HOLAIForum::RebuildOrders(Memory, Summary, Data, 50.f).Num(), "a long ruin ahead: nobody leaves his work");
+	Summary.OwnForum.RuinSecondsLeft = 8.f;
+	const TArray<int> Early = HOLAIForum::RebuildOrders(Memory, Summary, Data, 60.f);
+	T.AssertTrue(Early.Num() == 2 && Early.Contains(102) && Early.Contains(103), "8 s left: only the two whose walk takes that long go");
+	Summary.OwnForum.RuinSecondsLeft = 0.f;
+	Summary.OwnForum.bRuin = false;
+	Summary.OwnForum.bRebuilding = true;
+	T.AssertEquals(2, HOLAIForum::RebuildOrders(Memory, Summary, Data, 70.f).Num(), "the rebuilding begun: the two others go");
 }
 
 void Test_WaveAimsAtTheEnemyKingInRegicide(FUnitTest& T)
