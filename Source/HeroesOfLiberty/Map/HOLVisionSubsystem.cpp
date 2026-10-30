@@ -9,17 +9,21 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformTime.h"
+#include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLMapBounds.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
 #include "Match/HOLVictoryRules.h"
 #include "Net/HOLFogNetSubsystem.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLUnitView.h"
 
 namespace
 {
@@ -58,8 +62,9 @@ bool UHOLVisionSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType)
 void UHOLVisionSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
-	// A client computes its fog from what it receives (F6e, D525).
-	UHOLSimulationSubsystem* Simulation = InWorld.GetNetMode() != NM_Client ? InWorld.GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	// A client computes its fog from what it receives (F6e, D525), each frame (Tick).
+	bClient = InWorld.GetNetMode() == NM_Client;
+	UHOLSimulationSubsystem* Simulation = !bClient ? InWorld.GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
 	if (Simulation && !StepHandle.IsValid())
 	{
 		StepHandle = Simulation->GetOnStepEnded().AddUObject(this, &UHOLVisionSubsystem::OnStepEnded);
@@ -150,67 +155,65 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 		Map.GetGrid().Side, Map.GetGrid().Side, Map.GetGrid().CellSize);
 }
 
-void UHOLVisionSubsystem::Update()
+void UHOLVisionSubsystem::BeginPass()
 {
-	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
-	if (!bStarted || Mode == EHOLFogMode::Disabled || !Units)
+	++Stamp;
+	Present.Reset();
+}
+
+void UHOLVisionSubsystem::ObserveUnit(const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
+{
+	const int32 Camp = GetCampIndex(Owner);
+	if (Camp == INDEX_NONE)
 	{
 		return;
 	}
-	const double StartSeconds = FPlatformTime::Seconds();
-	++Stamp;
-	Present.Reset();
-	Units->ForEachLivingUnitWithType([this](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
+	const FVector2D Position(Location);
+	if (FTracked* Tracked = UnitObservers.Find(UnitId))
 	{
-		const int32 Camp = GetCampIndex(Owner);
-		if (Camp == INDEX_NONE)
-		{
-			return;
-		}
-		const FVector2D Position(Location);
-		if (FTracked* Tracked = UnitObservers.Find(UnitId))
-		{
-			Map.MoveObserver(Tracked->Handle, Position);
-			Tracked->Stamp = Stamp;
-		}
-		else
-		{
-			UnitObservers.Add(UnitId, FTracked{ Map.AddObserver(Camp, Position, GetUnitSight(TypeName)), Stamp });
-		}
-	});
-	// F3.2: the buildings, a site half as far, a forum in ruin blind (its sight counted again only when it changes).
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
-	{
-		const AHOLBuilding* Building = *It;
-		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;
-		const int32 Camp = Type ? GetCampIndex(Building->GetOwnerPlayer()) : INDEX_NONE;
-		if (Camp == INDEX_NONE)
-		{
-			continue;
-		}
-		EHOLBuildingSight State = Building->IsFinished() ? EHOLBuildingSight::Standing : EHOLBuildingSight::Site;
-		if (Building->IsPrimaryForum() && Building->IsForumDown())
-		{
-			State = Building->GetShownLook() == EHOLForumLook::Rubble ? EHOLBuildingSight::Rubble : EHOLBuildingSight::Site;
-		}
-		const double Radius = HOLVisionRules::GetBuildingSight(Type->SightRadius, State);
-		Present.Add(FHOLGhost{ HOLVisionRules::MakeGhostKey(false, Building->GetUniqueID()), Building->GetTypeName(), Building->GetOwnerPlayer(),
-			FVector2D(Building->GetActorLocation()), State, 0 });
-		if (FTracked* Tracked = BuildingObservers.Find(Building->GetUniqueID()))
-		{
-			if (Tracked->Radius != Radius)
-			{
-				Map.SetObserverRadius(Tracked->Handle, Radius);
-				Tracked->Radius = Radius;
-			}
-			Tracked->Stamp = Stamp;
-		}
-		else
-		{
-			BuildingObservers.Add(Building->GetUniqueID(), FTracked{ Map.AddObserver(Camp, FVector2D(Building->GetActorLocation()), Radius), Stamp, Radius });
-		}
+		Map.MoveObserver(Tracked->Handle, Position);
+		Tracked->Stamp = Stamp;
 	}
-	// Dead, destroyed or gone since the last step: their cells counted off, still explored.
+	else
+	{
+		UnitObservers.Add(UnitId, FTracked{ Map.AddObserver(Camp, Position, GetUnitSight(TypeName)), Stamp });
+	}
+}
+
+void UHOLVisionSubsystem::ObserveBuilding(const AHOLBuilding& Building)
+{
+	const FHOLBuildingTypeRow* Type = Building.GetType();
+	const int32 Camp = Type ? GetCampIndex(Building.GetOwnerPlayer()) : INDEX_NONE;
+	if (Camp == INDEX_NONE)
+	{
+		return;
+	}
+	EHOLBuildingSight State = Building.IsFinished() ? EHOLBuildingSight::Standing : EHOLBuildingSight::Site;
+	if (Building.IsPrimaryForum() && Building.IsForumDown())
+	{
+		State = Building.GetShownLook() == EHOLForumLook::Rubble ? EHOLBuildingSight::Rubble : EHOLBuildingSight::Site;
+	}
+	const double Radius = HOLVisionRules::GetBuildingSight(Type->SightRadius, State);
+	Present.Add(FHOLGhost{ HOLVisionRules::MakeGhostKey(false, Building.GetUniqueID()), Building.GetTypeName(), Building.GetOwnerPlayer(),
+		FVector2D(Building.GetActorLocation()), State, 0 });
+	if (FTracked* Tracked = BuildingObservers.Find(Building.GetUniqueID()))
+	{
+		if (Tracked->Radius != Radius)
+		{
+			Map.SetObserverRadius(Tracked->Handle, Radius);
+			Tracked->Radius = Radius;
+		}
+		Tracked->Stamp = Stamp;
+	}
+	else
+	{
+		BuildingObservers.Add(Building.GetUniqueID(), FTracked{ Map.AddObserver(Camp, FVector2D(Building.GetActorLocation()), Radius), Stamp, Radius });
+	}
+}
+
+void UHOLVisionSubsystem::EndPass(const bool bGhosts)
+{
+	// Dead, destroyed or gone since the last pass: their cells counted off, still explored.
 	for (TMap<uint32, FTracked>* Observers : { &UnitObservers, &BuildingObservers })
 	{
 		for (auto It = Observers->CreateIterator(); It; ++It)
@@ -221,6 +224,10 @@ void UHOLVisionSubsystem::Update()
 				It.RemoveCurrent();
 			}
 		}
+	}
+	if (!bGhosts)
+	{
+		return;
 	}
 	// F4: each camp's memory of the buildings and sources (a farm's field stands with its farm, not on its own).
 	if (const UHOLSourceSubsystem* Sources = GetWorld()->GetSubsystem<UHOLSourceSubsystem>())
@@ -243,7 +250,86 @@ void UHOLVisionSubsystem::Update()
 			++GhostVersions[Camp];
 		}
 	}
+}
+
+void UHOLVisionSubsystem::Update()
+{
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!bStarted || Mode == EHOLFogMode::Disabled || !Units)
+	{
+		return;
+	}
+	const double StartSeconds = FPlatformTime::Seconds();
+	BeginPass();
+	Units->ForEachLivingUnitWithType([this](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
+	{
+		ObserveUnit(UnitId, TypeName, Owner, Location);
+	});
+	// F3.2: the buildings, a site half as far, a forum in ruin blind (its sight counted again only when it changes).
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		if (IsValid(*It))
+		{
+			ObserveBuilding(**It);
+		}
+	}
+	EndPass(true);
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
+}
+
+bool UHOLVisionSubsystem::UpdateClient()
+{
+	const UHOLUnitReceptionSubsystem* Reception = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitReceptionSubsystem>() : nullptr;
+	if (!bStarted || Mode == EHOLFogMode::Disabled || !Reception)
+	{
+		return false;
+	}
+	// Its own camp: the slot of the local player (INDEX_NONE until its state has come).
+	const APlayerController* Controller = GetWorld()->GetFirstPlayerController();
+	const AHOLPlayerState* PlayerState = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
+	ClientCamp = PlayerState ? GetCampIndex(PlayerState->GetPlayerIndex()) : INDEX_NONE;
+	if (ClientCamp == INDEX_NONE)
+	{
+		return false;
+	}
+	const double StartSeconds = FPlatformTime::Seconds();
+	BeginPass();
+	// The units of its camp only (an ally's too): the others it holds are the ones it sees, and they see nothing for it.
+	TArray<FHOLUnitView> Views;
+	Reception->GetDisplayedUnits(Views);
+	for (const FHOLUnitView& View : Views)
+	{
+		if (GetCampIndex(View.OwnerPlayer) == ClientCamp)
+		{
+			ObserveUnit(View.UnitId, View.TypeName, View.OwnerPlayer, View.Location);
+		}
+	}
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		if (IsValid(*It) && GetCampIndex(It->GetOwnerPlayer()) == ClientCamp)
+		{
+			ObserveBuilding(**It);
+		}
+	}
+	EndPass(false);
+	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
+	return true;
+}
+
+void UHOLVisionSubsystem::Tick(const float DeltaTime)
+{
+	// D521: a client's observers are walked 20 times a second (the cells change slowly).
+	ClientSeconds += DeltaTime;
+	if (ClientSeconds >= 0.05f && TryStart())
+	{
+		ClientSeconds = 0.f;
+		UpdateClient();
+	}
+}
+
+TStatId UHOLVisionSubsystem::GetStatId() const
+{
+	RETURN_QUICK_DECLARE_CYCLE_STAT(UHOLVisionSubsystem, STATGROUP_Tickables);
 }
 
 const TMap<uint64, FHOLGhost>* UHOLVisionSubsystem::GetGhosts(const int32 Slot) const
@@ -370,7 +456,18 @@ bool UHOLVisionSubsystem::TryStart()
 		{
 			return false;
 		}
-		Start(State->GetLaunchConfig(), static_cast<EHOLFogMode>(FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2)));
+		// The server decides the mode and tells its clients (F6e); a client waits for it.
+		int32 ModeValue = State->GetFogMode();
+		if (!bClient)
+		{
+			ModeValue = FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2);
+			GetWorld()->GetGameState<AHOLGameState>()->SetFogMode(ModeValue);
+		}
+		else if (ModeValue < 0)
+		{
+			return false;
+		}
+		Start(State->GetLaunchConfig(), static_cast<EHOLFogMode>(FMath::Clamp(ModeValue, 0, 2)));
 	}
 	return true;
 }

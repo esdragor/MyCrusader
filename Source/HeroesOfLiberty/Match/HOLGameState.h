@@ -203,6 +203,13 @@ public:
 	bool HasStartPlaces() const { return !StartPlaces.IsEmpty(); }
 
 	/**
+	 * F6e: the fog's mode of the match (EHOLFogMode as a number), decided by the server when its fog starts and replicated, so a
+	 * client computes its own fog with it (D525); below 0 while it is not known. Until F8 carries it in the configuration.
+	 */
+	int32 GetFogMode() const { return FogMode; }
+	void SetFogMode(const int32 Mode) { FogMode = static_cast<int8>(Mode); }
+
+	/**
 	 * V2 (D349-D353): each slot's main forum, public (every machine, the players' table of V2.4): its falls, its phase,
 	 * its ruin's steps left, its rebuilding's work. The default (standing, no fall) for a closed slot.
 	 */
@@ -367,6 +374,10 @@ private:
 	 */
 	UPROPERTY(ReplicatedUsing = OnRep_LaunchConfig)
 	FHOLMatchConfig LaunchConfig;
+
+	/** F6e: see GetFogMode. */
+	UPROPERTY(Replicated)
+	int8 FogMode = -1;
 
 	/** TC3: each slot's place, from LaunchConfig (UpdateStartPlaces), MaxSlots of them once known. */
 	TArray<int32> StartPlaces;

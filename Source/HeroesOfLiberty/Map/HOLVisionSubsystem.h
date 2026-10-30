@@ -28,7 +28,7 @@ enum class EHOLFogMode : uint8
  * changed cell are counted again. The forest is the source registry's trees (FHOLVisionMap::AddBlocker).
  */
 UCLASS()
-class HEROESOFLIBERTY_API UHOLVisionSubsystem : public UWorldSubsystem
+class HEROESOFLIBERTY_API UHOLVisionSubsystem : public UTickableWorldSubsystem
 {
 	GENERATED_BODY()
 
@@ -36,6 +36,12 @@ public:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
+
+	// UTickableWorldSubsystem: a client's fog is computed each frame from what it received (F6e); the server's and the solo
+	// game's follow the fixed step (OnStepEnded).
+	virtual void Tick(float DeltaTime) override;
+	virtual TStatId GetStatId() const override;
+	virtual bool IsTickable() const override { return bClient; }
 
 	/**
 	 * The match starts (OnWorldBeginPlay, or a test): its camps from Config, the largest grid (D344) centred on the origin,
@@ -52,6 +58,17 @@ public:
 
 	/** One step (after the simulation's, UHOLSimulationSubsystem::GetOnStepEnded): the observers that moved, came or went. */
 	void Update();
+
+	/**
+	 * F6e (D525): a client's step, from what it received: its camp's displayed units (UHOLUnitReceptionSubsystem) and
+	 * buildings are the observers, the trees of its source registry the forest. False while it cannot tell its camp yet.
+	 */
+	bool UpdateClient();
+
+	/** F6e: this machine is a client (its fog is computed from what the server sends). */
+	bool IsClient() const { return bClient; }
+	/** F6e: the camp (an index of GetMap) whose fog this client computes; INDEX_NONE on the server, or before its slot is known. */
+	int32 GetClientCamp() const { return ClientCamp; }
 
 	EHOLFogMode GetMode() const { return Mode; }
 	bool IsStarted() const { return bStarted; }
@@ -88,6 +105,11 @@ public:
 	static const TCHAR* GetModeName(EHOLFogMode InMode);
 
 private:
+	/** One pass over the observers: BeginPass, the Observe calls, then EndPass (those not seen again are removed; the memory is refreshed). */
+	void BeginPass();
+	void ObserveUnit(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location);
+	void ObserveBuilding(const class AHOLBuilding& Building);
+	void EndPass(bool bGhosts);
 	void OnSourceStanding(int32 SourceIndex, bool bStanding);
 	void OnStepEnded(int64 StepIndex);
 	double GetUnitSight(FName TypeName);
@@ -102,6 +124,10 @@ private:
 	FHOLVisionMap Map;
 	EHOLFogMode Mode = EHOLFogMode::Disabled;
 	bool bStarted = false;
+	/** F6e: this machine is a client; ClientCamp: the camp of its local player's slot (INDEX_NONE until known). */
+	bool bClient = false;
+	int32 ClientCamp = INDEX_NONE;
+	float ClientSeconds = 0.f;
 	/** Per slot: its camp's index in Map (INDEX_NONE: closed). */
 	TArray<int32> CampOfSlot;
 	/** The living units seen as observers, by identifier; Stamp: the last Update that walked them. */
