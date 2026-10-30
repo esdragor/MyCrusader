@@ -23,11 +23,15 @@ hol.Select.OrderNear 6500 0
 frames 5
 hol.Select.OrderGround -9000 3000 shift
 frames 5
-frames 40
-frames 10
+# Les hommes marchent : le brouillard doit rester dessine (mode 1) apres les ordres, pendant la marche et a la fin (retour de l'utilisateur 2026-10-30 : le scenario le coupait lui-meme).
+wait 3
+hol.Fog.RenderReport
+waitlog Fog render: mode 1
 hol.HUD.Report 1
 capture fogord_a
-hol.Fog.Render 0
-frames 20
+wait 3
+hol.Fog.RenderReport
+waitlog Fog render: mode 1
 capture fogord_b
 note Deux deplacements en file (jaune) vers le noir : leurs lignes et leurs points se voient jusqu'au bout. Maj + clic droit pour en ajouter ; le serveur refuse d'attaquer un ennemi hors de vue.
+note Le brouillard reste en place pendant et apres la marche (le scenario ne le coupe plus). hol.Fog.Render 0 / 1 dans la console pour le comparer.
