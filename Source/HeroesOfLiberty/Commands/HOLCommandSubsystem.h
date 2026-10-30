@@ -36,6 +36,14 @@ struct FHOLHeroAbilityOrder
 	FVector Location = FVector::ZeroVector;
 };
 
+/** T3: a player's talent pick asked (UHOLCommandSubsystem::IssueHeroTalentOrder). */
+struct FHOLHeroTalentOrder
+{
+	int32 PlayerIndex = INDEX_NONE;
+	/** The family of the talent to take in the next row (0 to HOLHeroTalent::FamilyCount - 1). */
+	int32 Family = INDEX_NONE;
+};
+
 /**
  * The order queue (D216, D226): orders are queued here and applied by the order processor at the next fixed
  * step, never in the frame that issued them. The destination is brought back to the navmesh when the order is
@@ -177,6 +185,14 @@ public:
 	/** Takes the hero ability orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
 	void ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>& OutOrders);
 
+	/**
+	 * T3: PlayerIndex's player takes the talent of Family in the next row of its hero (ServerHeroTalent), applied at the end of
+	 * the next step by the hero subsystem, which checks it (HOLHeroTalent::CanPick). Refused here as the ability orders.
+	 */
+	void IssueHeroTalentOrder(int32 PlayerIndex, int32 Family);
+	/** Takes the hero talent orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
+	void ConsumeHeroTalentOrders(TArray<FHOLHeroTalentOrder>& OutOrders);
+
 	/** D358: drops every order of PlayerIndex still waiting (a slot just defeated). */
 	void DropOrdersOf(int32 PlayerIndex);
 
@@ -204,6 +220,8 @@ private:
 	TArray<int32> PendingHeroReturnOrders;
 	/** J8c.3: the hero abilities asked, in the order given. */
 	TArray<FHOLHeroAbilityOrder> PendingHeroAbilityOrders;
+	/** T3: the talent picks asked, in the order given. */
+	TArray<FHOLHeroTalentOrder> PendingHeroTalentOrders;
 	TArray<FBox> PendingNavigationChanges;
 	TArray<FHOLBlockedFootprint> PendingBlockedFootprints;
 };

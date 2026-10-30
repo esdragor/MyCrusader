@@ -480,6 +480,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
 
+	/**
+	 * T3: the player takes the talent of Family (0 Guardian, 1 Captain, 2 Champion for the Dawn Order) in the next row of its hero.
+	 * The order goes through the order queue; at the next step the server checks it (HOLHeroTalent::CanPick) and writes it, or refuses it.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
+	void RequestHeroTalent(int32 Family);
+
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
 	FOnGameMenuRequested OnGameMenuRequested;
@@ -736,6 +743,10 @@ private:
 	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
 	UFUNCTION(Server, Reliable)
 	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
+
+	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. */
+	UFUNCTION(Server, Reliable)
+	void ServerHeroTalent(int32 Family);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

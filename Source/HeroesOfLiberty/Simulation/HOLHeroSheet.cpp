@@ -14,6 +14,10 @@ FHOLHeroSheets HOLHeroSheet::Make(const FHOLHeroFacts& Facts, const FHOLHeroShee
 	Sheets.Public.Cries = Previous.Public.Cries;
 	Sheets.Public.BannerLocation = Previous.Public.BannerLocation;
 	Sheets.Public.BannerEndStep = Previous.Public.BannerEndStep;
+	// T3: his picks stay, the seals and keys they give (all the families' bits).
+	Sheets.Private.TalentPicks = Previous.Private.TalentPicks;
+	Sheets.Public.TalentSeals = HOLHeroTalent::FamiliesAtLeast(Sheets.Private.TalentPicks, HOLHeroTalent::SealThreshold);
+	Sheets.Public.TalentKeys = HOLHeroTalent::FamiliesAtLeast(Sheets.Private.TalentPicks, HOLHeroTalent::KeyThreshold);
 	if (!Facts.bPresent)
 	{
 		// His body destroyed after the fall: still dead, his death step kept. Never born: no hero.

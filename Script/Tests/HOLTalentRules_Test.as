@@ -155,3 +155,23 @@ void Test_TalentAdvisedFamily(FUnitTest& T)
 	T.AssertEquals(1, HOLTalent::AdvisedFamily(TalentPicks(0, 0, 1, 1)), "a tie: the latest one's family");
 	T.AssertEquals(0, HOLTalent::AdvisedFamily(TalentPicks(0, 1, 2, 0)), "0 leads over a tie of 1 and 2");
 }
+
+// T3: the server (C++, HOLHeroTalent::CanPick) and the screen's rules (this script) must agree, for every level, number of
+// picks and family; the C++ one is read through the hero bridge, the script's by the pure rules.
+void Test_TalentServerAndScriptRulesAgree(FUnitTest& T)
+{
+	for (int Level = 0; Level <= 10; Level++)
+	{
+		for (int Count = 0; Count <= HOLTalent::RowCount + 1; Count++)
+		{
+			TArray<int> Picks;
+			for (int Index = 0; Index < Count; Index++)
+				Picks.Add(0);
+			for (int Family = -1; Family <= HOLTalent::FamilyCount; Family++)
+			{
+				T.AssertEquals(HOLTalent::CanPick(Level, Picks, Family), HOLHero::CanPickTalent(Level, Count, Family),
+					"the server and the script agree: level " + Level + ", " + Count + " taken, family " + Family);
+			}
+		}
+	}
+}

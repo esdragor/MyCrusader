@@ -49,10 +49,17 @@ struct FHOLHeroSheet
 	UPROPERTY()
 	int32 BannerEndStep = -1;
 
+	/** T3: the families holding a seal (3 talents) and a key talent (5), one bit per family (D103, shown to the scouting adversary, D203). */
+	UPROPERTY()
+	uint8 TalentSeals = 0;
+	UPROPERTY()
+	uint8 TalentKeys = 0;
+
 	bool operator==(const FHOLHeroSheet& Other) const
 	{
 		return Level == Other.Level && Health == Other.Health && State == Other.State && Cries == Other.Cries
-			&& BannerLocation == Other.BannerLocation && BannerEndStep == Other.BannerEndStep;
+			&& BannerLocation == Other.BannerLocation && BannerEndStep == Other.BannerEndStep
+			&& TalentSeals == Other.TalentSeals && TalentKeys == Other.TalentKeys;
 	}
 	bool operator!=(const FHOLHeroSheet& Other) const { return !(*this == Other); }
 };
@@ -77,9 +84,13 @@ struct FHOLHeroPrivateSheet
 	UPROPERTY()
 	int32 DeathStep = -1;
 
+	/** T3: the family of each talent taken, the row 2 first (the row of the n-th pick is 2 + n); the points not spent stay in reserve (D105). */
+	UPROPERTY()
+	TArray<uint8> TalentPicks;
+
 	bool operator==(const FHOLHeroPrivateSheet& Other) const
 	{
-		return XP == Other.XP && DeathStep == Other.DeathStep && CooldownEndSteps == Other.CooldownEndSteps;
+		return XP == Other.XP && DeathStep == Other.DeathStep && CooldownEndSteps == Other.CooldownEndSteps && TalentPicks == Other.TalentPicks;
 	}
 	bool operator!=(const FHOLHeroPrivateSheet& Other) const { return !(*this == Other); }
 };
@@ -101,6 +112,48 @@ struct FHOLHeroSheets
 	FHOLHeroSheet Public;
 	FHOLHeroPrivateSheet Private;
 };
+
+/**
+ * T3: the talent tree's rules where the simulation runs (the server checks a pick). The same rules as Script/Talents/HOLTalentRules.as
+ * (the screen reads those); a script test checks both agree (HOLHero::CanPickTalent). One point a level from 2 to 9, rows in order,
+ * one family of FamilyCount per pick (GDD 9.6, D103-D105).
+ */
+namespace HOLHeroTalent
+{
+	constexpr int32 FirstRow = 2;
+	constexpr int32 LastRow = 9;
+	constexpr int32 FamilyCount = 3;
+	constexpr int32 SealThreshold = 3;
+	constexpr int32 KeyThreshold = 5;
+
+	/** A talent of Family can be taken by a hero of Level who took NumPicks already: a family of the row, a row left, a point in reserve. */
+	inline bool CanPick(const int32 Level, const int32 NumPicks, const int32 Family)
+	{
+		const int32 Earned = FMath::Clamp(Level - FirstRow + 1, 0, LastRow - FirstRow + 1);
+		return Family >= 0 && Family < FamilyCount && NumPicks < LastRow - FirstRow + 1 && Earned > NumPicks;
+	}
+
+	inline int32 CountOf(const TArray<uint8>& Picks, const int32 Family)
+	{
+		int32 Count = 0;
+		for (const uint8 Pick : Picks)
+		{
+			Count += Pick == Family ? 1 : 0;
+		}
+		return Count;
+	}
+
+	/** One bit per family having at least Threshold talents. */
+	inline uint8 FamiliesAtLeast(const TArray<uint8>& Picks, const int32 Threshold)
+	{
+		uint8 Mask = 0;
+		for (int32 Family = 0; Family < FamilyCount; ++Family)
+		{
+			Mask |= CountOf(Picks, Family) >= Threshold ? static_cast<uint8>(1 << Family) : 0;
+		}
+		return Mask;
+	}
+}
 
 namespace HOLHeroSheet
 {
