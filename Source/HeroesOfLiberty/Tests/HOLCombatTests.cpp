@@ -8,12 +8,22 @@
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
+#include "MassEntitySubsystem.h"
+#include "MassExecutor.h"
+#include "MassNavigationFragments.h"
+#include "MassProcessingContext.h"
 #include "Math/RandomStream.h"
 #include "Misc/AutomationTest.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLSimulationProcessors.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Simulation/HOLUnitView.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -631,6 +641,154 @@ bool FHOLCombatPushTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("pushed by its own side into a standing enemy: it takes it all"), HOLCombat::GetOverlapShare(true, false, false), 1.);
 	TestEqual(TEXT("an enemy walker against a standing unit: the walker takes it all"), HOLCombat::GetOverlapShare(true, false, true), 0.);
 	TestEqual(TEXT("two enemies walking into each other: half each"), HOLCombat::GetOverlapShare(true, true, true), 0.5);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatRankSlideTest, "HeroesOfLiberty.Combat.RankSlide", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+// D577 (the user's rule after the `surplus` trial): the rank does not stand like a statue. A soldier walking to fight, pressing on
+// a friend that strikes, slides it along its enemy (never in, never out of the fight, only while a place is left around the
+// enemy) so that the half places beside it become one; the real separation processor on the real unit table. Case A: an enemy E
+// at the origin, a striker F touching it with a half place (60 cm) between F and its neighbour G; a walking friend R overlaps F
+// from behind and beside. Before (hol.Combat.RankSlide 0) F is a wall; after, F slides toward G. Case B: F at the edge of its
+// reach, any slide would take it out of the fight: it stays. Case C: six bodies round E, no place left: nobody slides.
+bool FHOLCombatRankSlideTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* Slide = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.RankSlide"));
+	if (!TestNotNull(TEXT("hol.Combat.RankSlide"), Slide))
+	{
+		return false;
+	}
+	const int32 FormerSlide = Slide->GetInt();
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLUnitSeparationProcessor* Separation = NewObject<UHOLUnitSeparationProcessor>(Simulation);
+		Separation->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const auto Place = [Units](const int32 Owner, const FVector2D& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("ManAtArms"));
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = FVector(Location.X, Location.Y, 0.0);
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		// Fighting: its target, striking (a striker, of the front) or walking to it (Move action, approaching).
+		const auto Fight = [Units, &EntityManager, World](const uint32 Id, const uint32 Target, const bool bWalking)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			FHOLCombatFragment* Combat = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+			if (!Combat)
+			{
+				return;
+			}
+			Combat->Target = Units->FindEntity(Target);
+			Combat->bAttacking = !bWalking;
+			Combat->bApproaching = bWalking;
+			if (bWalking)
+			{
+				EntityManager->GetFragmentDataPtr<FMassMoveTargetFragment>(Entity)->CreateNewAction(EMassMovementAction::Move, *World);
+			}
+		};
+		const auto Where = [Units](const uint32 Id)
+		{
+			FHOLUnitView View;
+			Units->GetUnitView(Id, View);
+			return FVector2D(View.Location.X, View.Location.Y);
+		};
+		const auto Run = [&]
+		{
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Separation, ProcessingContext);
+		};
+		struct FCase
+		{
+			uint32 Foe = 0, Front = 0, Next = 0, Rear = 0;
+		};
+		// Bodies of 60 cm radius, a striker 125 cm from the foe's centre (5 cm of gap, within the contact gap of 10).
+		const auto Build = [&](const FVector2D& Origin, const double FrontDistance, const bool bNext)
+		{
+			FCase Case;
+			Case.Foe = Place(1, Origin);
+			Case.Front = Place(0, Origin + FVector2D(FrontDistance, 0.0));
+			// 91.5 degrees on: 180 cm between the two centres, a half place (60 cm) between the bodies.
+			Case.Next = bNext ? Place(0, Origin + FVector2D(-3.3, 124.9)) : 0u;
+			Case.Rear = Place(0, Origin + FVector2D(200.0, -75.0));
+			Fight(Case.Foe, Case.Front, false);
+			Fight(Case.Front, Case.Foe, false);
+			if (Case.Next != 0)
+			{
+				Fight(Case.Next, Case.Foe, false);
+			}
+			Fight(Case.Rear, Case.Foe, true);
+			return Case;
+		};
+
+		// Before: the front is a wall (hol.Combat.RankSlide 0).
+		Slide->Set(0, ECVF_SetByCode);
+		const FVector2D OriginOld(0.0, 0.0);
+		const FCase Old = Build(OriginOld, 125.0, true);
+		if (TestTrue(TEXT("the units of the old case born"), Old.Foe != 0 && Old.Front != 0 && Old.Next != 0 && Old.Rear != 0))
+		{
+			Run();
+			TestTrue(TEXT("before (RankSlide 0): the striker is a wall, it does not move along its enemy"), FMath::Abs(Where(Old.Front).Y - OriginOld.Y) < 0.01);
+		}
+
+		// After.
+		Slide->Set(1, ECVF_SetByCode);
+		const FVector2D OriginA(0.0, 30000.0);
+		const FCase A = Build(OriginA, 125.0, true);
+		const FVector2D OriginB(30000.0, 30000.0);
+		const FCase B = Build(OriginB, 129.9, false);
+		const FVector2D OriginC(0.0, 60000.0);
+		FCase C = Build(OriginC, 125.0, false);
+		TArray<uint32> Ring;
+		for (const double Degrees : { 60.0, 120.0, 180.0, 240.0, 300.0 })
+		{
+			const double Radians = FMath::DegreesToRadians(Degrees);
+			const uint32 Id = Place(0, OriginC + FVector2D(125.0 * FMath::Cos(Radians), 125.0 * FMath::Sin(Radians)));
+			Fight(Id, C.Foe, false);
+			Ring.Add(Id);
+		}
+		if (TestTrue(TEXT("the units of the cases A, B and C born"), A.Foe != 0 && A.Front != 0 && A.Next != 0 && A.Rear != 0 && B.Front != 0 && B.Rear != 0 && C.Front != 0 && C.Rear != 0 && !Ring.Contains(0u)))
+		{
+			Run();
+			const FVector2D Front = Where(A.Front);
+			TestTrue(*FString::Printf(TEXT("A: the striker slides toward its neighbour (y %.1f)"), Front.Y - OriginA.Y), Front.Y - OriginA.Y > 1.0);
+			TestTrue(TEXT("A: it still touches its enemy (centres 130 cm apart at most)"), FVector2D::Distance(Front, Where(A.Foe)) <= 130.0 + 0.01);
+			TestTrue(TEXT("A: the enemy is not moved"), FVector2D::Distance(Where(A.Foe), OriginA) < 0.01);
+			TestTrue(TEXT("A: the two friends are parted"), FVector2D::Distance(Front, Where(A.Rear)) >= 119.5);
+			TestTrue(TEXT("A: the pusher does not take the striker's place (no nearer the enemy than before)"), FVector2D::Distance(Where(A.Rear), Where(A.Foe)) >= FVector2D::Distance(OriginA + FVector2D(200.0, -75.0), OriginA) - 0.01);
+			TestTrue(TEXT("B: a slide would take the striker out of the fight: it stays"), FMath::Abs(Where(B.Front).Y - OriginB.Y) < 0.01);
+			TestTrue(TEXT("B: the friends are parted anyway (the pusher took it all)"), FVector2D::Distance(Where(B.Front), Where(B.Rear)) >= 119.5);
+			TestTrue(TEXT("C: six bodies round the enemy, no place left: the striker stays"), FMath::Abs(Where(C.Front).Y - OriginC.Y) < 0.01);
+		}
+	}
+	Slide->Set(FormerSlide, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
 	return true;
 }
 

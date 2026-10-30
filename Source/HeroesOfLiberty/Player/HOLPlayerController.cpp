@@ -4159,6 +4159,26 @@ void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbilit
 	}
 }
 
+void AHOLPlayerController::RequestHeroTalent(const int32 Family)
+{
+	if (!IsSpectator())
+	{
+		ServerHeroTalent(Family);
+	}
+}
+
+void AHOLPlayerController::ServerHeroTalent_Implementation(const int32 Family)
+{
+	// The player's own slot only (D288); the family is checked by the rules at the step's end.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Hero talent order: slot %d family %d queued"), HOLPlayerState->GetPlayerIndex(), Family);
+		Commands->IssueHeroTalentOrder(HOLPlayerState->GetPlayerIndex(), Family);
+	}
+}
+
 void AHOLPlayerController::RequestCheatDamageBuilding(const FVector& Point, const int32 Amount, const uint8 AttackType)
 {
 	ServerCheatDamageBuilding(Point, Amount, AttackType);

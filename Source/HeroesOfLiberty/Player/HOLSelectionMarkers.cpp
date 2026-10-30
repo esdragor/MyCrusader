@@ -790,7 +790,7 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 			const AHOLBuilding* Building = *It;
 			const FHOLBuildingTypeRow* Type = Building->GetType();
 			const bool bRecentlyHit = Building->GetLastHitTime() >= 0.0 && Now - Building->GetLastHitTime() <= BuildingBarAfterHitSeconds;
-			if (!Type || !Building->IsSeenHere() || (Building != SelectedBuilding && !bRecentlyHit) || Building->GetMaxHealth() <= 0)
+			if (!Type || !Building->IsSeenHere() || Building->GetFogDraw() != EHOLBuildingDraw::Live || (Building != SelectedBuilding && !bRecentlyHit) || Building->GetMaxHealth() <= 0)
 			{
 				continue;
 			}

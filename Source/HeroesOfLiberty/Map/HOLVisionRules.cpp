@@ -77,6 +77,20 @@ bool HOLVisionRules::UpdateGhosts(TMap<uint64, FHOLGhost>& Ghosts, TConstArrayVi
 	return bChanged;
 }
 
+bool HOLVisionRules::BuildingDrawsFromMemory(const bool bOwnCamp, const bool bInSight)
+{
+	return !bOwnCamp && !bInSight;
+}
+
+EHOLBuildingDraw HOLVisionRules::GetBuildingDraw(const bool bOwnCamp, const bool bInSight, const bool bRemembered)
+{
+	if (!BuildingDrawsFromMemory(bOwnCamp, bInSight))
+	{
+		return EHOLBuildingDraw::Live;
+	}
+	return bRemembered ? EHOLBuildingDraw::Memory : EHOLBuildingDraw::Hidden;
+}
+
 TArray<FIntPoint> HOLVisionRules::GetDisc(const FHOLVisionGrid& Grid, const FIntPoint& Cell, const double Radius)
 {
 	TArray<FIntPoint> Disc;

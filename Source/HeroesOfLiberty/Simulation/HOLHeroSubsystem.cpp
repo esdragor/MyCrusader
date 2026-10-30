@@ -249,6 +249,15 @@ void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 			UE_LOG(LogHOLMatch, Display, TEXT("Hero ability order: slot %d %s at step %d %s"), Order.PlayerIndex, bBanner ? TEXT("banner") : TEXT("cry"),
 				static_cast<int32>(StepIndex), bCast ? TEXT("cast") : TEXT("refused"));
 		}
+		// T3: the players' talent picks, after the sheets of this step (their level), in the order given.
+		TArray<FHOLHeroTalentOrder> TalentOrders;
+		Commands->ConsumeHeroTalentOrders(TalentOrders);
+		for (const FHOLHeroTalentOrder& Order : TalentOrders)
+		{
+			const bool bTaken = PickTalent(Order.PlayerIndex, Order.Family);
+			UE_LOG(LogHOLMatch, Display, TEXT("Hero talent order: slot %d family %d at step %d %s"), Order.PlayerIndex, Order.Family,
+				static_cast<int32>(StepIndex), bTaken ? TEXT("taken") : TEXT("refused"));
+		}
 	}
 	// J8a.4 loop 3: the return decision (script), called here so it always reads the sheets this step wrote.
 	if (Return)
@@ -331,6 +340,24 @@ bool UHOLHeroSubsystem::SetXP(const int32 Slot, const int32 XP)
 		return false;
 	}
 	Sheets[Slot].Private.XP = FMath::Max(XP, 0);
+	WriteCopies(Slot);
+	return true;
+}
+
+bool UHOLHeroSubsystem::PickTalent(const int32 Slot, const int32 Family)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	FHOLHeroSheets& Sheet = Sheets[Slot];
+	if (Sheet.Public.State == EHOLHeroState::None || !HOLHeroTalent::CanPick(Sheet.Public.Level, Sheet.Private.TalentPicks.Num(), Family))
+	{
+		return false;
+	}
+	Sheet.Private.TalentPicks.Add(static_cast<uint8>(Family));
+	Sheet.Public.TalentSeals = HOLHeroTalent::FamiliesAtLeast(Sheet.Private.TalentPicks, HOLHeroTalent::SealThreshold);
+	Sheet.Public.TalentKeys = HOLHeroTalent::FamiliesAtLeast(Sheet.Private.TalentPicks, HOLHeroTalent::KeyThreshold);
 	WriteCopies(Slot);
 	return true;
 }

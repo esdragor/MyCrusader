@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionRules.h"
 #include "GameFramework/Actor.h"
+#include "Map/HOLVisionRules.h"
 #include "HOLBuilding.generated.h"
 
 enum class EHOLForumLook : uint8;
@@ -101,6 +102,13 @@ public:
 	 * J6a.4); on another (a solo match's computer players, a listen server), it is not drawn and cannot be clicked.
 	 */
 	bool IsSeenHere() const;
+	/**
+	 * F7.3 (b), the fog: how this machine draws it (UHOLVisionSubsystem::RefreshBuildingMemory). Live: as it is. Memory: as its
+	 * viewer's camp last saw it (RememberedState), tinted, no piece clickable, nothing rising. Hidden: never seen, no piece.
+	 */
+	void SetFogDraw(EHOLBuildingDraw Draw, EHOLBuildingSight RememberedState);
+	EHOLBuildingDraw GetFogDraw() const { return FogDraw; }
+	EHOLBuildingSight GetRememberedState() const { return RememberedState; }
 	/**
 	 * Server only (J6a.4): its state, its work. The look and the navmesh follow on every machine (the footprint blocks
 	 * from UnderConstruction on).
@@ -489,6 +497,10 @@ private:
 	/** The type the pieces were built for, and their look: the look is rebuilt only when either changes. */
 	FName BuiltTypeName;
 	ELook BuiltLook = ELook::None;
+	/** F7.3 (b): the fog's say on how it is drawn here, and the state the viewer's camp remembers; BuiltFromMemory: what the pieces were built as. */
+	EHOLBuildingDraw FogDraw = EHOLBuildingDraw::Live;
+	EHOLBuildingSight RememberedState = EHOLBuildingSight::Standing;
+	bool bBuiltFromMemory = false;
 
 	/** The building above its foundation, squashed to a site's progress (J6a.4); scale 1 once finished. */
 	UPROPERTY(VisibleAnywhere)

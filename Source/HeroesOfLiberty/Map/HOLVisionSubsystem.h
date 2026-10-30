@@ -119,6 +119,12 @@ public:
 	const FHOLVisionMap& GetMap() const { return Map; }
 
 	/**
+	 * F7.3 (b): tells each building how ViewerSlot's machine draws it (AHOLBuilding::SetFogDraw): live in sight or when its
+	 * camp's; out of sight, as ViewerSlot's camp last saw it, or not at all if never seen. Without a fog, everything live.
+	 */
+	void RefreshBuildingMemory(int32 ViewerSlot);
+
+	/**
 	 * F4 (D382, D520): what Slot's camp remembers of the buildings and sources it saw (HOLVisionRules::UpdateGhosts), kept
 	 * by the server for the reconnection (F6e); null for a slot with no camp, or no fog.
 	 */

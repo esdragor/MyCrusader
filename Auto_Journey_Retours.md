@@ -1,8 +1,8 @@
 # Auto_Journey : ce qui attend l'utilisateur
 
-Dernière mise à jour : 2026-10-30 19:00 (réponses de l'utilisateur enregistrées par Auto_Journey).
+Dernière mise à jour : 2026-10-30 21:45 (réponses de l'utilisateur enregistrées dans leurs chantiers).
 
-**À faire par vous :** 0 essai prêt · questions : épaisseur des lignes d'ordre (brouillard, en attente de la correction du bug), M-Q10c arbres (à juger en jeu) · fusions : toutes faites (section 3) · 1 lot de docs à commiter.
+**À faire par vous :** 1 essai prêt (`fog_ghosts`) · aucune question en attente (section 2) · **fusions : 3 branches attendent (section 3)** · 1 lot de docs à commiter dont `GDD.md`.
 
 **Manière de faire (confirmée le 2026-10-30)**
 - Vous répondez **en ligne**, sous chaque item, par `Reponse: ...`. Les sous-agents y ajoutent leurs lignes (essai prêt, question posée), jamais ailleurs.
@@ -16,25 +16,22 @@ Dernière mise à jour : 2026-10-30 19:00 (réponses de l'utilisateur enregistr�
 
 Format de chaque essai : titre · commande · quoi regarder · état · ligne `Reponse:`.
 
-Aucun essai prêt pour l'instant : `tiers`, `tab`, `surplus` et `fog` ont été faits et reportés dans leurs chantiers (2026-10-30). Prochains essais : `fog_orders` à refaire après la correction du bug du brouillard ; `surplus` après le glissement du rang (D577).
+### Essai `fog_ghosts` (brouillard : un bâtiment ennemi vu puis perdu de vue reste dessiné en gris, un jamais vu n'est pas dessiné)
+- Commande (PowerShell) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 fog_ghosts`
+- Le scénario envoie vos 4 Hommes d'armes à 20 m d'une maison ennemie située à 90 m à l'est (elle se dessine en rouge), puis les ramène : la maison reste dessinée, teintée de gris-bleu dans la zone explorée (grise), sans clic possible ; une seconde maison ennemie à 90 m à l'ouest, jamais vue, n'est pas dessinée. Vérifié hors écran : `hol.Buildings.Report` dit « drawn live » puis « drawn from memory » pour la maison vue et « drawn not at all » pour l'autre ; captures `fogghost_a` (rouge) et `fogghost_b` (grise).
+- À regarder : (1) la maison grise est bien là quand vous revenez au centre, cliquer dessus ne fait rien ; (2) un bâtiment jamais vu n'apparaît pas ; (3) la teinte (B, 0,6, tranchée ; dites seulement si elle ne vous convient pas) : `hol.Fog.GhostTint 0` à `1` dans la console (²) puis renvoyer les soldats voir la maison et les ramener (la teinte ne change qu'à la reconstruction du bâtiment). Limites : en partie réseau, un client ne dessine pas encore de fantôme (l'acteur n'existe plus chez lui hors de la vue) ; les arbres coupés hors de vue ne sont pas encore traités.
+- État : scénario démarré hors écran sans erreur, `scenario fog_ghosts ready` (2026-10-30 20:41). Non vérifié sur votre écran (rendu réel).
+Reponse: 
+
+Autres essais : `surplus` (la cible encerclée à 6 : le changement de cible de dd16203, inchangé) et `rank_slide` (glissement du rang, accepté) restent utilisables ; `fog_orders` et `tree_spacing` seront refaits après leur correction (lignes en tête des files de Faramir et de Haldir).
 
 ## 2. Questions
 
-### Brouillard
-- **Question à vous : les lignes d'ordre sont-elles assez épaisses sous le brouillard ?** Les lignes d'ordre font 6,25 cm de large (réduites deux fois à vos essais) : à la caméra du jeu elles font 1 à 2 pixels. Sous le brouillard elles sortent maintenant du noir, mais restent fines. Options : A) garder 6,25 cm ; B) 12,5 cm seulement quand le brouillard est actif ; C) 12,5 cm partout. Recommandation : A tant que vous ne dites pas que c'est encore trop discret (réglable à chaud : `hol.Orders.LineWidth`). Fichiers : `FogInProgress.md`, `Source/HeroesOfLiberty/Player/HOLSelectionMarkers.cpp`.
-(Essai impossible tant que le bug du brouillard n'est pas corrigé, voir la file de Faramir : la question sera reposée avec un essai `fog_orders` refait.)
-Reponse:
-
-### Cartes
-- **M-Q10c : jusqu'où resserrer les arbres ?** (ne se tranche que dans le jeu, pas sur une capture)
-  Contexte : les troncs d'un bosquet sont à 1,6 m les uns des autres (avant 2,2 m) ; une unité ne passe plus entre deux arbres d'un paquet. Vous ne pouvez pas lire une capture : il faut le voir dans le jeu. Un scénario ou essai in-game (arbres à 1,4 / 1,6 / 1,9 m côte à côte) est en file pour Haldir ; **la question reste en attente jusqu'à cet essai**.
-  - A. Garder 1,6 m. En jeu : bosquets denses, bien lisibles.
-  - B. Resserrer encore (1,4 m) : bosquets presque pleins, plus de place pour d'autres bosquets, Immense pourrait atteindre 450 arbres.
-  - C. Revenir à 1,9 m : plus aéré, mais Immense reste à 360 et Normal / Grande ont moins de bosquets.
-  Recommandation : A, à confirmer en jeu. Fichier : `Tools/Editor/maps/common.py` (`GROVE_SPACING`).
-Reponse:
+Aucune question en attente : toutes les réponses du 2026-10-30 sont enregistrées dans leur chantier (journaux `*InProgress.md`, GDD D581 à D585, lignes `[ ]` de `Auto_Journey_File.md`). Une vraie question sera posée ici si la correction des arbres met en jeu le passage des unités ou les budgets de D564.
 
 ## 3. Commits et fusions à valider
+
+- **Fusions en attente (test 2, 2026-10-30 20:58)** : `hero-j8-close` (glissement du rang, 2080c26, tests verts) est **bloquée par le `GDD.md` non commité de la copie principale** (le fast-forward l'écraserait) : il faut commiter `GDD.md` (votre accord) ou le mettre à l'abri, puis `git merge --ff-only hero-j8-close`. `maps` (Plaine au budget standard, 91cf604) : chemins, `crossings.ps1` et `aiduel` sur la Plaine à rejouer avant. `net-playtest` (Technologies T1-T2, 0ad1d13) : recompiler et `-Parts tests` après le merge de `main`. Les autres branches sont dans `main` (cd1b64d).
 
 - **À commiter dans la copie principale** (`C:\Users\baudo\Documents\MyCrusader`) : `GDD.md` (§ 7.2 aligné, D564-D575, prochain **D576** ; contient aussi D558-D563 d'autres sessions), `EtapeDefini.md`, les `*InProgress.md`, les `Auto_Journey*.md`, `FogInProgress.md`, `MapsInProgress.md`, `VolcanoInProgress.md`, `Tools\AutoJourney\status.ps1` (non suivis). Ils mêlent plusieurs sessions.
 - **Fusions dans `main`** : les six branches (`ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps`) sont fusionnées en avance rapide (2026-10-30 soir, `main` = f0c7b06), `quick_check` par défaut (530/530) et `-Parts victory` verts sur `main`. Rien d'ouvert ici. À noter : `maps` portait déjà M-Q10 / M-Q10b commité (0ae2591, plus de décor, herbe uniforme) quand elle a été fusionnée ; `net-playtest` (Glorfindel) n'est pas à fusionner.

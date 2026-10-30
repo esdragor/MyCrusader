@@ -13,6 +13,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 
 ## Tests d'une heure
 
+Test 2 : 2026-10-30 20:06-20:58 (bilan dans `Auto_Journey_Jour.md`) ; ses leçons sont intégrées ci-dessous (marquées « test 2 »).
 Test 1 : 2026-10-30 16:01-17:05 (archivé dans `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`). Test 2 : **préparé le 2026-10-30, à lancer seulement quand l'utilisateur le demande** ; mêmes règles que ci-dessous, mesures au repos et paquet sautés. **Autorisé (confirmé par l'utilisateur le 2026-10-30) : commits sur les branches des worktrees ET fusions dans `main` (agent de fusion, `quick_check` des parties touchées vert avant) ; jamais de push.** Les agents du 17:50 ont tous fini et les six branches sont fusionnées dans main (e547b2f, 2026-10-30 19:30) : tous les worktrees sont libres et à jour avec main pour le départ du test 2 (lancé par l'utilisateur dans un autre agent).
 
 ## Règles de conduite (réécrites après le test d'1 h du 2026-10-30)
@@ -45,6 +46,7 @@ Test 1 : 2026-10-30 16:01-17:05 (archivé dans `Docs/Archive/Auto_Journey_Test1_
 - **Une réponse n'enclenche pas de travail.** On enregistre la réponse dans les docs de chantier (`*InProgress.md`, GDD, `EtapeDefini.md`), on repose des questions si elles émergent, et la correction ou la suite de la feature (ex. « arbres trop espacés ») attend dans la file du chantier. **Elle ne se fait qu'au prochain « commence ton Auto_Journey ».**
 
 ### Pièges techniques rencontrés
+- **Test 2** : `quick_check` **ne compile pas** (faux vert 530/530 sans les nouveaux tests : `Tools\build.ps1` d'abord) ; les chaînes PowerShell entre guillemets doubles mangent les backticks (relire les lignes écrites par script) ; `IN_USE.txt` écrit **sans accents** (mélange UTF-8/ANSI) ; un scénario échoué laisse l'éditeur ouvert et verrouille `-abslog` (le tuer) ; `make_maps.ps1 -Sizes` ne marche qu'en appel direct `& ...` ; un `git commit`/`merge` qui affiche un avertissement LF/CRLF peut rendre un code non nul alors qu'il a réussi (vérifier `git log -1`) ; les heredocs Python imbriqués dans Bash échouent (Edit/Write ou fichier script). Certaines lignes de la file étaient périmées : voir « Plan de lancement ».
 - L'horloge de Git Bash retarde de 5 minutes sur PowerShell. Les chemins `\` sont mangés dans Bash (12 minutes perdues) : **PowerShell pour tout chemin Windows**.
 - Ne pas mélanger `victory` et `build:*` dans un même passage de `quick_check` (faux échec en cascade). Le message « game launch ended by itself » cache souvent une étape expirée plus haut.
 - Le premier build après modification d'un header prend ~200 s (autres éditeurs ouverts), les suivants 20 s.
@@ -64,13 +66,15 @@ Historique : `Docs/Archive/Auto_Journey_Test1_2026-10-30.md` (journal et bilan c
 
 ## Plan de lancement (sortie de l'étape 0)
 
-L'étape 0 lance `Tools\AutoJourney\status.ps1`, lit la file (`Auto_Journey_File.md`) et rend **un plan de lancement : une ligne par worktree**, soit « lancer <tâche de la file> », soit « ne pas lancer parce que <raison précise : file vide, tout attend l'utilisateur, ou session réellement active> ». **« Pris » n'est pas une raison.** La session principale lance ce plan sans le réinterpréter ; toute exception est écrite dans `Auto_Journey_Jour.md` avec sa raison.
+L'étape 0 lance `Tools\AutoJourney\status.ps1`, lit la file (`Auto_Journey_File.md`) et rend **un plan de lancement : une ligne par worktree**, soit « lancer <tâche de la file> », soit « ne pas lancer parce que <raison précise : file vide, tout attend l'utilisateur, ou session réellement active> ». **« Pris » n'est pas une raison.** **Test 2 : « rien d'ouvert » non plus** : un worktree sans tâche prend un chapitre du GDD non commencé (section de `Auto_Journey_Jour.md`), l'étape 0 doit donc proposer ce chapitre. **L'étape 0 confronte aussi chaque ligne de la file au git** (commits, `EtapeDefini.md`) et marque les lignes périmées (V4 close, « non commité » déjà commité...) pour que les agents ne perdent pas leur temps à les vérifier. La session principale lance ce plan en le **relisant contre la procédure** (deux erreurs du test 2 sont passées faute de relecture) ; toute exception est écrite dans `Auto_Journey_Jour.md` avec sa raison.
 
 ## La file de travail (`Auto_Journey_File.md`)
 
 Une liste ordonnée par worktree, de tâches **déjà préparées** (une phrase, le fichier journal à lire, le premier test rouge, 15-30 min). États : `[ ]` à faire, `[~]` en cours (agent X, heure), `[x]` faite (commit), `[?]` attend une réponse de l'utilisateur (renvoi vers `Auto_Journey_Retours.md`), `[B]` bloquée par une autre tâche. L'agent qui finit une tâche **ajoute la suivante** qu'il voit venir et coche la sienne. Une correction demandée par l'utilisateur (`Reponse:`) devient une ligne `[ ]` en tête de file. **Quand un agent finit, la session principale lance l'agent suivant du même worktree sans réfléchir : première ligne `[ ]` de sa file.**
 
 ## Le veilleur (un seul, pas de minuteur par agent)
+
+**Test 2 : le veilleur de 20 min n'a rien trouvé à faire en 2 passages** (les notifications de fin d'agent suffisent et la session principale relance). Il reste utile **uniquement comme filet** : toutes les **30 min**, signaler un agent sans commit depuis 45 min ; il ne lance rien de lui-même.
 
 Au démarrage la session principale crée **un seul rappel récurrent toutes les 20 min** (prompt : « veilleur Auto_Journey : lance `Tools\AutoJourney\status.ps1`, relance tout worktree libre qui a une tâche `[ ]` dans la file, signale tout agent sans commit depuis 45 min »). Les notifications de fin d'agent réveillent déjà la session : les minuteurs « point de 15 min » par agent sont **supprimés** (au test ils tombaient presque tous après le rapport). Le veilleur est la seule sécurité contre un agent bloqué ou une session qui dort. Un rappel disparaît à la fin de la session : le recréer à chaque « commence ton Auto_Journey ».
 
@@ -85,7 +89,7 @@ Ne tranche aucun design : pose-le dans Auto_Journey_Retours.md section 2 en VRAI
 avec leurs conséquences en jeu, recommandation). Si une question bloque la tâche et que les deux options sont peu coûteuses,
 prépare les deux derrière un réglage (cvar/option) et passe à la suite.
 Un essai n'est listé dans Auto_Journey_Retours.md section 1 que si son scénario Tools/Scenarios/<nom>.txt existe et démarre hors écran.
-Commits verts sur ta branche (anglais, sans Co-Authored-By, jamais de push). Fusion dans main : <interdite | autorisée si quick_check vert>.
+Commits verts sur ta branche (anglais, sans Co-Authored-By, jamais de push). Fusion dans main : interdite (l'agent de fusion s'en charge ; dis dans ton rapport que la branche est prête). Au plus 2 questions, regroupées.
 Tiens à jour EtapeDefini.md (relis avant, tes lignes seulement), ton *InProgress.md, Auto_Journey_File.md (ta ligne), ta ligne du tableau
 des agents de Auto_Journey_Jour.md, IN_USE.txt à l'entrée et à la sortie. PowerShell pour tout chemin Windows.
 ARRÊT DUR à <HH:MM> (Get-Date PowerShell) ou ~250k tokens. RAPPORT de 10 lignes MAX, dans cet ordre :
@@ -94,9 +98,13 @@ fait / tests / commit / reste / NON VÉRIFIÉ (obligatoire : ce qui n'a pas de t
 
 ## Builds : ne pas saturer la file
 
-Un premier build après un header prend ~200 s et la file de `Tools\build.ps1` est le goulot. **Au plus 4 agents lancés en même temps ; les suivants sont lancés par le veilleur à mesure que les premiers finissent**, de préférence en alternant les agents qui compilent et ceux qui font des docs, scénarios ou du GDD.
+Un premier build après un header prend ~200 s et la file de `Tools\build.ps1` est le goulot. **Test 2 : 6 à 7 agents en même temps ont tenu** (attente de build de 3 à 9 min, jamais bloquante) ; on lance tous les worktrees d'emblée, les agents de docs/GDD et ceux qui ne compilent pas tout de suite, les autres sans se soucier de la file. Un agent qui finit tôt est **relancé immédiatement** (première ligne `[ ]` de sa file, sinon un chapitre du GDD) tant qu'il reste plus de 15 min avant l'arrêt dur ; en dessous, on le laisse libre. Dans l'énoncé : « c'est l'heure d'arrêt qui compte, pas ton sentiment d'avoir fini » (Elrond s'était arrêté 33 min trop tôt).
+
+**Plafond de questions (test 2)** : le temps de lecture de l'utilisateur est le vrai goulot (le test a posé une quinzaine de questions en 1 h, dont 6 pour la seule ouverture de Technologies). Un agent pose **au plus 2 questions par chantier et par séance**, regroupées, classées par ce qu'elles débloquent ; le reste est préparé derrière un réglage ou noté dans le journal. Un chapitre ouvert sans question tranchée s'arrête au plan et aux règles pures (pas de bâtiment, pas d'écran).
 
 ## Fusions dans `main` (agent dédié)
+
+**Test 2, leçon : les fusions sont le goulot de fin de séance.** `main` bouge pendant les tests (3 refusions + rebuilds chez plusieurs agents) et le `GDD.md` non commité de la copie principale bloque tout fast-forward d'une branche qui le touche (3 branches sur 7 non fusionnées). Donc : (1) **avant la journée, commiter `GDD.md` avec l'accord de l'utilisateur** (ou lui demander de le mettre à l'abri) ; (2) les agents **ne fusionnent pas eux-mêmes** : ils commitent sur leur branche et le disent ; (3) **un seul agent de fusion** en fin de créneau (ou toutes les heures), dans l'ordre fixe, qui refusionne `main` en dernier juste avant chaque fast-forward ; (4) un chantier qui change des chemins/cartes ne se fusionne qu'après ses vérifications (chemins, `crossings.ps1`, `aiduel` pour les cartes).
 
 Autorisé le jour d'absence (décision A du 2026-10-30) et pour le test 2 (confirmé le 2026-10-30) ; sinon seulement si l'énoncé les autorise. Un **agent de fusion**, seul, après chaque fin d'agent ou toutes les heures : dans l'ordre fixe de `Auto_Journey_Retours.md` section 3 (`ai-ia1` d'abord), pour chaque branche dont le `quick_check` des parties touchées est vert : `git merge` dans le worktree de la branche (jamais dans la copie principale, qui porte des docs non commités), `quick_check -Parts` des parties touchées, puis fast-forward de `main`. Une correction du **script de test** qui fait échouer les autres branches (ex. `victory`) passe en premier. Rien n'est poussé.
 
