@@ -153,7 +153,7 @@ void Test_ForumRebuildersAreNotSentAgain(FUnitTest& T)
 
 	// Two Peasants are born: sent after the delay, not before. One of the first dies: not counted any more.
 	FHOLAISummary Later = FrmSummary(1, true, 10);
-	T.AssertEquals(0, HOLAIForum::RebuildOrders(Memory, Later, Data, 51.f).Num(), "not within the delay of the last choice");
+	T.AssertEquals(0, HOLAIForum::RebuildOrders(Memory, Later, Data, 50.f + 0.5f * Data.OrderEvery).Num(), "not within the delay of the last choice");
 	T.AssertEquals(2, HOLAIForum::RebuildOrders(Memory, Later, Data, 50.f + 2.f * Data.OrderEvery).Num(), "the two new ones go");
 	T.AssertEquals(10, Memory.Sent.Num(), "ten are sent");
 
@@ -387,12 +387,12 @@ void Test_PeasantsKeepWorkingDuringTheRuin(FUnitTest& T)
 	FHOLAIForumMemory Memory;
 	const FHOLAIForumData Data = HOLAIForum::DefaultData();
 	FHOLAISummary Summary = FrmSummary(1, true, 4);
-	// The Peasants stand 1000, 2000, 3000 and 4000 cm from the forum: with 800 cm/s and 5 s of margin they are called 6.25, 7.5, 8.75 and 10 s (walk plus margin) before the end.
+	// The Peasants stand 1000, 2000, 3000 and 4000 cm from the forum: with 800 cm/s and 1.5 s of margin they are called 2.75, 4, 5.25 and 6.5 s (walk plus margin) before the end.
 	Summary.OwnForum.RuinSecondsLeft = 60.f;
 	T.AssertEquals(0, HOLAIForum::RebuildOrders(Memory, Summary, Data, 50.f).Num(), "a long ruin ahead: nobody leaves his work");
-	Summary.OwnForum.RuinSecondsLeft = 8.f;
+	Summary.OwnForum.RuinSecondsLeft = 5.f;
 	const TArray<int> Early = HOLAIForum::RebuildOrders(Memory, Summary, Data, 60.f);
-	T.AssertTrue(Early.Num() == 2 && Early.Contains(102) && Early.Contains(103), "8 s left: only the two whose walk takes that long go");
+	T.AssertTrue(Early.Num() == 2 && Early.Contains(102) && Early.Contains(103), "5 s left: only the two whose walk takes that long go");
 	Summary.OwnForum.RuinSecondsLeft = 0.f;
 	Summary.OwnForum.bRuin = false;
 	Summary.OwnForum.bRebuilding = true;

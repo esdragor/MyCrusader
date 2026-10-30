@@ -6,13 +6,13 @@ struct FHOLAIForumData
 	// Peasants sent to rebuild while the slot has more than one life left (it can give a life up and keep its economy going).
 	int RebuildersSpare = 5;
 
-	// The Peasants for the rebuilding are chosen at most this often (s).
-	float OrderEvery = 4.f;
+	// The Peasants for the rebuilding are chosen at most this often (s): the ruin's end is met within this, so it is short.
+	float OrderEvery = 1.f;
 
 	// Nothing is built in the ruin (D352): a Peasant leaves his work only when he would reach the forum as the ruin ends (his distance over
-	// PeasantSpeed (cm/s), plus ArriveMargin seconds for the detours), not to wait in front of it.
+	// PeasantSpeed (cm/s), plus ArriveMargin seconds for the detours; trial: 5 s made them stand 6-7 s in front of the ruin), not to wait in front of it.
 	float PeasantSpeed = 800.f;
-	float ArriveMargin = 5.f;
+	float ArriveMargin = 1.5f;
 }
 
 // What the slot remembers of its rebuilding between two thoughts (the brain keeps one per slot).
