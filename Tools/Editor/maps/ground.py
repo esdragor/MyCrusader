@@ -21,11 +21,12 @@ def color(r, g, b):
 # BWidth, CFrom and CWidth: where the noise turns the ground into B / C and how crisp the edge is, see make_ground_materials.py).
 # M-Q8 (the user, with a reference minimap): patches of a CLEARLY different colour, sandy / orange and dark mud, as irregular blobs (linear
 # values; M_MatteGround is a grey of 0.16).
+# M-Q10 (the user, 2026-10-30): no patches of sand or mud, a uniform grass: BFrom / CFrom 2.0, out of the noise's reach (0 to 1).
 # The Steppe: yellow-green grass, orange sand, dark mud.
 GROUNDS = {
-    "MI_Ground_Steppe": (color(0.115, 0.145, 0.055), color(0.300, 0.200, 0.085), color(0.060, 0.045, 0.030), 2200.0, 0.69, 0.04, 0.72, 0.04),
+    "MI_Ground_Steppe": (color(0.115, 0.145, 0.055), color(0.300, 0.200, 0.085), color(0.060, 0.045, 0.030), 2200.0, 2.0, 0.04, 2.0, 0.04),
     # The Hinterland (C2): a dark moss green, ochre sand and stony earth, grey-brown mud; smaller patches than the Steppe.
-    "MI_Ground_Hinterland": (color(0.080, 0.115, 0.050), color(0.260, 0.170, 0.080), color(0.070, 0.062, 0.055), 2000.0, 0.69, 0.04, 0.72, 0.04),
+    "MI_Ground_Hinterland": (color(0.080, 0.115, 0.050), color(0.260, 0.170, 0.080), color(0.070, 0.062, 0.055), 2000.0, 2.0, 0.04, 2.0, 0.04),
 }
 
 

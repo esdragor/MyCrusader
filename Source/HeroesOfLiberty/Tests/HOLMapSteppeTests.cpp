@@ -85,8 +85,8 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	/** Sources closer than this are one deposit: a wood is 2.2 m between trees, berry bushes 3 m apart. */
 	constexpr double SameDeposit = 1000.0;
 
-	/** Two deposits are at least this far apart, from source to source (25 m: a Peasant can work one in peace). */
-	constexpr double DepositGap = 2500.0;
+	/** Two deposits are at least this far apart, from source to source (18 m, M-Q10b: it was 25 m; a Peasant can work one in peace). */
+	constexpr double DepositGap = 1800.0;  // M-Q10b: it was 25 m, the packs are tighter and twice as many
 
 	/** M-Q9: between a pile of gold or stone and another deposit the gap is 18 m (the piles are small bodies, a territory holds 14 of them). */
 	constexpr double PileGap = 1800.0;
@@ -105,7 +105,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	{
 		if (Type == TEXT("Tree"))
 		{
-			return Size == 12 || Size == 14 || Size == 16;  // M-Q8: packs of 14, 12 or 16 where the room asks
+			return Size == 12 || Size == 14 || Size == 16 || Size == 18;  // M-Q8: packs of 14, 12 or 16 where the room asks; M-Q10b: 18 on Huge
 		}
 		return Type == TEXT("BerryBush") ? Size >= 3 && Size <= 5 : Size == 1;
 	}
@@ -525,13 +525,12 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 			}
 		}
 		const double Hectares = FMath::Square(2.0 * Area.Max.X) / 1.0e8;
-		TestTrue(FString::Printf(TEXT("%s: no scenery (instanced meshes) in the map"), Info.Key), DecorInstances > 0);
+		// M-Q10 (the user, 2026-10-30): nothing without a strategic, economic or military interest, unless it is the map's identity (sand by a
+		// sea, reeds by a river); the Steppe has no water: no scenery at all (the checks below stay for a map that would bring some back).
+		TestEqual(FString::Printf(TEXT("%s: %d scenery instances in the map (M-Q10: none on a map without water)"), Info.Key, DecorInstances), DecorInstances, 0);
 		TestEqual(FString::Printf(TEXT("%s: scenery within 8 m of a slot, a source or a rock"), Info.Key), DecorTooNear, 0);
 		TestEqual(FString::Printf(TEXT("%s: scenery outside the ground"), Info.Key), DecorOutside, 0);
 		TestTrue(FString::Printf(TEXT("%s: %d scenery instances, over %d (a few thousand at most)"), Info.Key, DecorInstances, DecorMax), DecorInstances <= DecorMax);
-		TestTrue(FString::Printf(TEXT("%s: %d scenery instances on %.1f ha, under %d per hectare"), Info.Key, DecorInstances, Hectares, DecorMinPerHectare),
-			DecorInstances >= DecorMinPerHectare * Hectares);
-		TestTrue(FString::Printf(TEXT("%s: %d scenery instances in the corners (outer quarter of both sides)"), Info.Key, DecorInCorners), DecorInCorners > 0);
 		AddInfo(FString::Printf(TEXT("%s: scenery %d instances in %d components (%.0f per hectare, %d in the corners)"), Info.Key, DecorInstances, DecorComponents, DecorInstances / Hectares, DecorInCorners));
 
 		// 10. No blank: the largest empty circle of the square, on a grid of 20 m, from the nearest source or slot, at most 90 m.

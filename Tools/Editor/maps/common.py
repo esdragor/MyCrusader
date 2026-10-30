@@ -665,10 +665,10 @@ def wood(centre, along_axis, side_axis, rows, columns, first_side):
 # ---- Natural-looking groves and patches (C1c). Plain keeps its grid wood above; a map that wants organic woods (the
 # Steppe) uses these. Everything is deterministic from integers: a small xorshift generator written here (no `random`, no
 # state shared with anything), so a map file made twice, on any Python, is the same file.
-GROVE_SPACING = 220.0  # cm: the closest two neighbouring trunks of a grove (60 cm radius) get: with a unit's 60 cm, a wall
+GROVE_SPACING = 160.0  # cm: M-Q10b (the user: "tighten the trees"; it was 220): the closest two neighbouring trunks of a grove (60 cm radius) get: with a unit's 60 cm, a wall
 GROVE_SPACING_SLACK = 14.0  # the spacing asked of a candidate tree is GROVE_SPACING plus up to this much
 GROVE_NEVER = 130.0  # no two trees closer than this, whatever (trunks of 60 cm would overlap)
-GROVE_AREA = 56000.0  # cm2 a tree takes up in a blob (a dense random packing of trunks 2.2 to 2.4 m apart)
+GROVE_AREA = 29600.0  # cm2 a tree takes up in a blob (a dense random packing of trunks 1.6 to 1.75 m apart; it was 56 000 at 2.2 to 2.4 m)
 GLADE_RADIUS = (250.0, 380.0)
 PATH_HALF_WIDTH = 150.0  # a path: no trunk centre within this of its axis, so 3 m between the centres, 1.8 m between the trunks
 BERRY_MIN = 300.0  # cm between the centres of two bushes of 1.1 m radius: 80 cm between the edges, closed to a unit

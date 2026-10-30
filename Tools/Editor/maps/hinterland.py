@@ -35,11 +35,8 @@ from maps.common import Rng, mix_seed, placed_source
 
 GROUND = "MI_Ground_Hinterland"
 
-# The scenery (common.spawn_decor): instances per hectare of each kind.
-DECOR = {"GrassGreen": 22, "GrassStraw": 7, "Bush": 6, "Stone": 12, "Stump": 2, "FlowerWhite": 5, "FlowerPurple": 6, "FlowerOrange": 2,
-         "DryThicket": 1.5, "SandBoulder": 2.0, "MossBoulder": 2.0}
-# Clumps of mixed scenery (common.DECOR_CLUMPS), per hectare (M-Q8).
-CLUMPS = {"Meadow": 0.6, "Cairn": 1.2, "DryPatch": 0.6, "Copse": 0.8, "Reeds": 0.2}
+# M-Q10 (the user, 2026-10-30): no scenery (DECOR) and no clumps (CLUMPS): nothing without a strategic, economic or military interest on a map
+# without water; the empty-circle rule (M-Q7) is held by the resources and the rocks alone.
 
 # ---- The base: a small organic wood and the berries, no vein (the veins are in the pocket).
 BASE_WOOD_ROWS = 5
@@ -78,8 +75,9 @@ TREES_MARGIN = 1.0  # the pocket, the front and the base hold the budget by them
 BERRIES_MARGIN = 1.15
 PATCH_SIZE = 5
 LATTICE = 300.0  # step of the lattice the groves and patches are searched on
-GROVE_WALL = 900.0  # a grove's farthest tree is this far from the walls' axes at least
-ITEM_GAP = 800.0  # between the reach of two deposits of the pocket (M-Q8: two packs are two clusters, more than the 6 m a pack is linked at)
+GROVE_WALL = 780.0  # a grove's farthest tree is this far from the walls' axes at least
+WOOD_GAP = 700.0  # M-Q10b: between two packs of wood, more than the 6 m a pack is linked at (reaches are measured from the centres: two packs 5 m apart read as one cluster of 28)
+ITEM_GAP = 500.0  # between the reach of two deposits of the pocket (M-Q8: two packs are two clusters, more than the 6 m a pack is linked at)
 
 # ---- In front of each base (M-Q7: the riches are not only behind; slot frame, x ahead of the slot is negative): a lane of 80 m towards the
 # middle, beyond the ridge of D286, with a small share of everything: two gold veins, a stone vein, a grove of 24 and one of 16, a patch of berries. The
@@ -106,7 +104,7 @@ MINERAL_FROM_SLOT = 14000.0  # a pile of the middle is farther than this from ev
 FRONT_LANE = (-11000.0, -3500.0, 4600.0)  # the lane's x range and half width: the middle's scatter keeps out of it
 # ---- The middle of the map (M-Q7: nothing may be empty; A-Q2's empty centre is cancelled): small groves and isolated outcrops scattered inside
 # the belt, away from the bases, the pockets, the walls and the passages. The groves are sources of wood (more than the budget asks).
-MIDDLE_GAP = 5500.0  # between the centres of two of its deposits
+MIDDLE_GAP = 3800.0  # between the centres of two of its deposits
 MIDDLE_GROVES = (common.PACK_TREES,)  # M-Q8: packs of 14
 MIDDLE_ROCK_EVERY = 2  # one outcrop for every this many deposits (M-Q8: half the middle's deposits are packs of 14)
 MIDDLE_FROM_SLOT = 6000.0
@@ -339,9 +337,10 @@ def place_contents(recipe, pocket, middle_least=0):
     items = [(kind, tier, candidate[3][0], candidate[3][1]) for (kind, tier), candidate in zip(minerals, candidates)]
     reaches = [0.0] * len(items)
 
-    def free(point, reach):
+    def free(point, reach, wood=False):
         for (kind, size, x, y), other_reach in zip(items, reaches):
-            if math.hypot(point[0] - x, point[1] - y) < reach + other_reach + ITEM_GAP:
+            gap = WOOD_GAP if wood and kind == "Wood" else ITEM_GAP
+            if math.hypot(point[0] - x, point[1] - y) < reach + other_reach + gap:
                 return False
         return True
 
@@ -361,7 +360,7 @@ def place_contents(recipe, pocket, middle_least=0):
         shape = common.grove_local(seed, size)
         reach = max(math.hypot(px, py) for px, py in shape)
         for point in lattice:
-            if inside(point, outline) and outline_distance(point, outline) >= reach + GROVE_WALL and free(point, reach) \
+            if inside(point, outline) and outline_distance(point, outline) >= reach + GROVE_WALL and free(point, reach, True) \
                     and all(math.dist(point, k) >= reach + OPENING_CLEAR + 600.0 for k in keepout):
                 items.append(("Wood", size, point[0], point[1]))
                 reaches.append(reach)

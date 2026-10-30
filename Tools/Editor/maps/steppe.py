@@ -18,7 +18,7 @@ Tools/Data/Maps.csv says Budget = standard for the Steppe and Map.Table checks i
 Nothing is on a grid and nothing is random from one run to the next (C1c): every number comes from a small generator seeded by
 recipe.layout_seed (common.Rng; 1 is the layout made now, another seed is a variant of the same map, `py create_match_map.py
 Steppe Small seed=3`). The shapes: the groves are irregular blobs (common.grove_points: a ragged outline, some stretched or bent,
-trees thrown in with a spacing of 2.2 m, denser in the middle, a few lone trees and clumps outside, a glade or a path of 3 m in
+trees thrown in with a spacing of 1.6 m, denser in the middle, a few lone trees and clumps outside, a glade or a path of 3 m in
 the bigger ones), the berry patches small irregular clusters (common.berry_points), a vein is alone.
 
 The deposits:
@@ -38,7 +38,7 @@ The deposits:
 No point of the square is farther than ~90 m from a source or a slot (tested by Map.Steppe, and checked here on the layout
 itself: layout retries with tighter holes until it holds).
 
-The rules, in cm: a deposit is at least DEPOSIT_GAP (25 m) from any other, source to source; at least common.BASE_REACH
+The rules, in cm: a deposit is at least DEPOSIT_GAP (18 m) from any other, source to source; at least common.BASE_REACH
 (60 m) from every slot, a vein VEIN_FROM_SLOT (110 m); at least CENTRE_CLEAR (20 m) from the map's centre; inside the bounds
 with a 15 m margin; the veins of one kind of one territory VEIN_SPREAD (60 m) apart; the far deposits NEAR_REACH from every
 slot at least, and the far veins farther than the 3rd nearest near vein of their type (the fairness).
@@ -54,11 +54,8 @@ from maps.common import placed_source, Rng, Noise, mix_seed
 # Tools/Editor/make_ground_materials.py).
 GROUND = "MI_Ground_Steppe"
 
-# The scenery (common.spawn_decor): instances per hectare of each kind, a few thousand at the biggest size (58 per ha).
-DECOR = {"GrassGreen": 26, "GrassStraw": 18, "Bush": 5, "Stone": 8, "Stump": 1, "FlowerWhite": 8, "FlowerPurple": 6, "FlowerOrange": 5,
-         "DryThicket": 1.5, "SandBoulder": 1.2, "MossBoulder": 1.0}
-# Clumps of mixed scenery (common.DECOR_CLUMPS), per hectare (M-Q8: many small different clumps, not a few big forests).
-CLUMPS = {"Meadow": 1.0, "Cairn": 0.8, "DryPatch": 0.8, "Copse": 0.6, "Reeds": 0.4}
+# M-Q10 (the user, 2026-10-30): no scenery (DECOR) and no clumps (CLUMPS): nothing without a strategic, economic or military interest on a map
+# without water; the empty-circle rule (M-Q7) is held by the resources and the rocks alone.
 
 # S-Q1 = A: the base's wood, 4 x 5 = 20 trees (Plain: 40), its 6 berry bushes, and no veins.
 BASE_WOOD_ROWS = 4
@@ -71,7 +68,7 @@ BASE_BERRIES = common.BERRY_ROWS * common.BERRY_COLUMNS
 # whose games are longer, 1.5 times that), and what a territory comes to: a margin above it. The gold and the stone are a VALUE budget in
 # a mix of sizes (M-Q9: common.MINERAL_MIX, 10 000 gold and 5 000 stone, Huge 15 000 / 7 500), exact, with no margin. Map.Table checks the
 # budget with the same numbers (HOLMapTableTests.cpp).
-BUDGET = {"default": (150, 15), "Huge": (225, 23)}
+BUDGET = {"default": (300, 15), "Huge": (360, 23)}  # M-Q10b (the user: "double the trees"): 300, it was 150; Huge 360 (225 doubled = 450 does not fit: the far layer of a Huge territory holds 23 packs at the least, 360 is the most it holds)
 TREES_MARGIN = 1.04
 BERRIES_MARGIN = 1.2
 NEAR_VEINS = 3  # of each resource in the near layer: the fairness reads the 3 nearest (their sizes: common.MINERAL_NEAR)
@@ -80,12 +77,12 @@ NEAR_VEINS = 3  # of each resource in the near layer: the fairness reads the 3 n
 # (common.berry_points); a vein is alone. GROVE_CYCLE: the sizes first given to the groves of a territory (shuffled), then
 # adjusted up or down to the territory's target.
 # M-Q8 (the user: "make the forests packs of 14 trees"): every grove is a PACK of 14 trees, 12 or 16 where the room asks for it.
-GROVE_LADDER = [12, 14, 16]
+GROVE_LADDER = [12, 14, 16, 18]  # M-Q10b: 18 for Huge, whose territories hold few points for 360 trees
 GROVE_CYCLE = [14, 14, 12, 14, 16, 14, 14, 12, 14, 16]
 BERRY_SIZES = [4, 3, 5]
 
 # Distances (cm).
-DEPOSIT_GAP = 2500.0
+DEPOSIT_GAP = 1800.0  # M-Q10b: it was 25 m; with tighter packs and twice as many, 18 m between two deposits
 VEIN_GAP = 1800.0  # M-Q9: between a pile and another deposit (source to source): the piles are small bodies and a territory holds 14 of them
 VEIN_FROM_SLOT = 11000.0
 VEIN_SPREAD = 4000.0  # M-Q9: veins of one resource this far apart (was 60 m with 4 and 2 veins a territory; now 14 piles, many of them small)
@@ -94,9 +91,9 @@ EDGE_MARGIN = 1500.0
 NEAR_REACH = 7500.0  # no far deposit's source closer than this to a slot: the near layer is the same around every slot
 FAR_GAP_START = 8000.0  # between the centres of two deposits of the far layer (the smallest territory's), thrown at first
 FAR_GAP_STEP = 300.0
-FAR_GAP_MIN = 3300.0  # 33 m: the deposits' sizes are capped by the room they have, so that DEPOSIT_GAP is kept between sources
+FAR_GAP_MIN = 2700.0  # 27 m (M-Q10b: it was 33 m): the deposits' sizes are capped by the room they have, so that DEPOSIT_GAP is kept between sources
 GRID_STEP = 1000.0  # the grid that measures a territory's room
-GROVE_MEANS = [14.0, 15.0, 16.0]  # the mean grove a territory is asked to be comfortable with, the smallest that works
+GROVE_MEANS = [14.0, 15.0, 16.0, 17.0, 18.0]  # the mean grove a territory is asked to be comfortable with, the smallest that works
 BERRY_FROM_BERRY = 12000.0  # a territory's berry patches are spread at least this far apart
 VEIN_SLACK = 100.0  # a far vein is this much farther than the 3rd nearest near vein of its type
 NEAR_VEIN_END = 13000.0  # and at least this far from every slot: the veins within it are all near ones (tested by Map.Steppe)
