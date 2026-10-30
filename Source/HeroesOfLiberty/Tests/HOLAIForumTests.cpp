@@ -7,6 +7,7 @@
 #include "Engine/World.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLVictoryRules.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLUnitView.h"
 
@@ -151,6 +152,121 @@ bool FHOLAIForumReadTest::RunTest(const FString& Parameters)
 		const FHOLAISummary Rebuilding = HOLAISummary::Read(*World, 1);
 		TestTrue(TEXT("rebuilding: down, not in ruin"), Rebuilding.OwnForum.bDown && !Rebuilding.OwnForum.bRuin && Rebuilding.OwnForum.bRebuilding);
 		TestTrue(TEXT("rebuilding: not done yet"), Rebuilding.OwnForum.RebuildProgress < 1.f);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// IA4: a teammate is not an enemy. The rule alone (Make with the camp table of a configuration: team 1 = slots 0 and 1, slot 2 alone),
+// then read from a test world with the same configuration (forums and centre).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAITeammatesRuleTest, "HeroesOfLiberty.AI.Summary.TeammatesRule", UE::HeroesOfLiberty::Tests::AIForum::Flags)
+bool FHOLAITeammatesRuleTest::RunTest(const FString& Parameters)
+{
+	FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+	for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+	{
+		Config.Slots[Index].State = Index < 3 ? EHOLSlotState::AI : EHOLSlotState::Closed;
+		Config.Slots[Index].Team = Index < 2 ? 1 : 0;
+	}
+	const FHOLCampTable Camps(Config);
+
+	TArray<FHOLUnitView> Enemies;
+	for (uint32 Id = 1; Id <= 3; ++Id)
+	{
+		FHOLUnitView Unit;
+		Unit.UnitId = Id;
+		Unit.OwnerPlayer = static_cast<uint8>(Id);	// Ids 1 and 2: owners 1 (teammate) and 2 (enemy); id 3: owner 3 (closed slot, alone)
+		Unit.Health = 50;
+		Enemies.Add(Unit);
+	}
+	TArray<FHOLAIBuilding> Buildings = { UE::HeroesOfLiberty::Tests::AIForum::MakeCentre(1, 1000.0, 0.0), UE::HeroesOfLiberty::Tests::AIForum::MakeCentre(2, -9000.0, 0.0) };
+	TArray<FHOLAIForum> Forums = { UE::HeroesOfLiberty::Tests::AIForum::MakeForum(0, 2), UE::HeroesOfLiberty::Tests::AIForum::MakeForum(1, 2), UE::HeroesOfLiberty::Tests::AIForum::MakeForum(2, 2) };
+
+	const FHOLAISummary Summary = HOLAISummary::Make(0, {}, {}, {}, TOptional<FHOLResources>(), HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {}, {},
+		Enemies, 0, Forums, false, Camps);
+	TestEqual(TEXT("the teammate's unit is not an enemy"), Summary.Enemies.Num(), 2);
+	for (const FHOLAIUnit& Enemy : Summary.Enemies)
+	{
+		TestTrue(TEXT("no unit of slot 1 among the enemies"), Enemy.Id != 1);
+	}
+	TestEqual(TEXT("the teammate's forum is not an enemy forum"), Summary.EnemyForums.Num(), 1);
+	if (Summary.EnemyForums.Num() == 1)
+	{
+		TestEqual(TEXT("slot 2's forum"), Summary.EnemyForums[0].Slot, 2);
+	}
+	TestTrue(TEXT("the enemy centre is slot 2's, not the nearer teammate's"), Summary.bHasEnemyCentre && Summary.EnemyCentreLocation.Equals(FVector(-9000.0, 0.0, 0.0), 1.0));
+	TestTrue(TEXT("its own forum is still read"), Summary.bHasOwnForum);
+	// IA4 (D571): the teammate's unit and forum are exposed as allies (the enemy units and forums stay out of them).
+	TestEqual(TEXT("one allied unit (the teammate's)"), Summary.Allies.Num(), 1);
+	if (Summary.Allies.Num() == 1)
+	{
+		TestEqual(TEXT("it is unit 1"), static_cast<int32>(Summary.Allies[0].Id), 1);
+	}
+	TestEqual(TEXT("one allied forum"), Summary.AllyForums.Num(), 1);
+	if (Summary.AllyForums.Num() == 1)
+	{
+		TestEqual(TEXT("slot 1's forum"), Summary.AllyForums[0].Slot, 1);
+		TestTrue(TEXT("with its place"), Summary.AllyForums[0].bHasLocation && Summary.AllyForums[0].Location.Equals(FVector(1000.0, 0.0, 0.0), 1.0));
+	}
+	// A defeated teammate is no ally to help (slot 1 defeated: bit 1 of the mask).
+	const FHOLAISummary Beaten = HOLAISummary::Make(0, {}, {}, {}, TOptional<FHOLResources>(), HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {}, {},
+		Enemies, 1 << 1, Forums, false, Camps);
+	TestEqual(TEXT("defeated teammate: no allied unit"), Beaten.Allies.Num(), 0);
+	TestEqual(TEXT("defeated teammate: no allied forum"), Beaten.AllyForums.Num(), 0);
+
+	// Without a camp table (each owner alone): everyone else is an enemy, as before.
+	const FHOLAISummary Alone = HOLAISummary::Make(0, {}, {}, {}, TOptional<FHOLResources>(), HOLAISummary::DefaultMaxSourcesPerResource, Buildings, {}, {},
+		Enemies, 0, Forums, false);
+	TestEqual(TEXT("alone: three enemy units"), Alone.Enemies.Num(), 3);
+	TestEqual(TEXT("alone: two enemy forums"), Alone.EnemyForums.Num(), 2);
+	TestEqual(TEXT("alone: no ally"), Alone.Allies.Num() + Alone.AllyForums.Num(), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAITeammatesReadTest, "HeroesOfLiberty.AI.Summary.TeammatesRead", UE::HeroesOfLiberty::Tests::AIForum::Flags)
+bool FHOLAITeammatesReadTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLBuilding* Centre0 = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Centre1 = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Centre2 = World->SpawnActor<AHOLBuilding>(FVector(-10000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("centre 0"), Centre0) && TestNotNull(TEXT("centre 1"), Centre1) && TestNotNull(TEXT("centre 2"), Centre2))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index < 3 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+			Config.Slots[Index].Team = Index < 2 ? 1 : 2;
+		}
+		State->InitVictory(Config);
+		Centre0->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Centre1->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		Centre2->Setup(HOLBuildingTypeNames::MainCentre, 2, 2);
+		Centre0->SetPrimaryForum(true);
+		Centre1->SetPrimaryForum(true);
+		Centre2->SetPrimaryForum(true);
+
+		const FHOLAISummary Slot0 = HOLAISummary::Read(*World, 0);
+		TestEqual(TEXT("slot 0 sees slot 2's forum only (slot 1 is its teammate)"), Slot0.EnemyForums.Num(), 1);
+		if (Slot0.EnemyForums.Num() == 1)
+		{
+			TestEqual(TEXT("it is slot 2's"), Slot0.EnemyForums[0].Slot, 2);
+		}
+		TestTrue(TEXT("the enemy centre is slot 2's"), Slot0.bHasEnemyCentre && Slot0.EnemyCentreLocation.Equals(FVector(-10000.0, 0.0, 0.0), 1.0));
+		const FHOLAISummary Slot2 = HOLAISummary::Read(*World, 2);
+		TestEqual(TEXT("slot 2 sees both forums of the other team"), Slot2.EnemyForums.Num(), 2);
+		TestEqual(TEXT("slot 0 has slot 1's forum as an allied forum"), Slot0.AllyForums.Num(), 1);
+		if (Slot0.AllyForums.Num() == 1)
+		{
+			TestEqual(TEXT("it is slot 1's"), Slot0.AllyForums[0].Slot, 1);
+		}
+		TestEqual(TEXT("slot 2 has no teammate"), Slot2.AllyForums.Num(), 0);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

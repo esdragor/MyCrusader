@@ -67,7 +67,7 @@ namespace HOLAISummary
 	FHOLAISummary Make(const int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, const int32 MaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses,
-		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide)
+		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide, const FHOLCampTable& Camps)
 	{
 		FHOLAISummary Summary;
 		Summary.PlayerIndex = PlayerIndex;
@@ -113,15 +113,23 @@ namespace HOLAISummary
 		Summary.Peasants.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
 
 		// IA2.1: the enemies, as GatherEnemies read them (the one place; the fog will cut them there): another slot's, not
-		// defeated, not dying, by identifier.
+		// defeated, not dying, not of the slot's own team (IA4: Camps), by identifier.
 		for (const FHOLUnitView& Unit : Enemies)
 		{
-			if (Unit.OwnerPlayer != PlayerIndex && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer) && Unit.Activity != EHOLUnitActivity::Dying)
+			if (Unit.OwnerPlayer != PlayerIndex && Camps.AreHostile(PlayerIndex, Unit.OwnerPlayer) && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer)
+				&& Unit.Activity != EHOLUnitActivity::Dying)
 			{
 				Summary.Enemies.Add(MakeAIUnit(Unit));
 			}
+			// IA4 (D571): the units of the slot's teammates (another slot of its camp, not defeated, not dying) are what it may help.
+			else if (Unit.OwnerPlayer != PlayerIndex && !Camps.AreHostile(PlayerIndex, Unit.OwnerPlayer) && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer)
+				&& Unit.Activity != EHOLUnitActivity::Dying)
+			{
+				Summary.Allies.Add(MakeAIUnit(Unit));
+			}
 		}
 		Summary.Enemies.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
+		Summary.Allies.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
 
 		// Sources: each standing one the slot may gather (not another slot's farm field, IA1.2: the gather would refuse it,
 		// IA0.4 B4) measured from the slot's nearest deposit taking its resource. A few deposits per slot, a few hundred
@@ -217,7 +225,7 @@ namespace HOLAISummary
 			for (const FHOLAIBuilding& Building : Buildings)
 			{
 				if (Building.OwnerPlayer == PlayerIndex || Building.TypeName != HOLBuildingTypeNames::MainCentre
-					|| IsSlotDefeated(DefeatedMask, Building.OwnerPlayer))
+					|| IsSlotDefeated(DefeatedMask, Building.OwnerPlayer) || !Camps.AreHostile(PlayerIndex, Building.OwnerPlayer))
 				{
 					continue;
 				}
@@ -264,12 +272,17 @@ namespace HOLAISummary
 					Summary.bHasOwnForum = true;
 					Summary.OwnForum = WithLocation(Forum);
 				}
-				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot))
+				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot) && Camps.AreHostile(PlayerIndex, Forum.Slot))
 				{
 					Summary.EnemyForums.Add(WithLocation(Forum));
 				}
+				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot))
+				{
+					Summary.AllyForums.Add(WithLocation(Forum));	// IA4 (D571): a teammate's (not hostile, not defeated)
+				}
 			}
 			Summary.EnemyForums.Sort([](const FHOLAIForum& A, const FHOLAIForum& B) { return A.Slot < B.Slot; });
+			Summary.AllyForums.Sort([](const FHOLAIForum& A, const FHOLAIForum& B) { return A.Slot < B.Slot; });
 			for (const FHOLUnitView& Unit : Units)
 			{
 				if (Unit.OwnerPlayer == PlayerIndex && Unit.bKing && Unit.Activity != EHOLUnitActivity::Dying)
@@ -451,7 +464,7 @@ namespace HOLAISummary
 		GatherForums(World, Forums);
 		return Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
 			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0, Forums,
-			GameState && GameState->GetLaunchConfig().bRegicide);
+			GameState && GameState->GetLaunchConfig().bRegicide, FHOLCampTable::FromWorld(&World));
 	}
 }
 

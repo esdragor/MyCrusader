@@ -112,6 +112,11 @@ struct FHOLAIArmyData
 
 	// A defence against at least this many enemy soldiers near the base calls the wave back.
 	int AttackRecallCount = 3;
+
+	// Helping a teammate (IA4, D571): the army goes to hold a teammate's fallen forum when its power over the enemy soldiers within
+	// AllyHelpRadius of the ruin (cm) is at least AllyHelpMinRatio, the rule of its own ruin: on the spot, at least even.
+	float AllyHelpMinRatio = 1.f;
+	float AllyHelpRadius = 3000.f;
 }
 
 // Where the attack wave is (HOLAIArmy::UpdateWave).
@@ -840,17 +845,58 @@ namespace HOLAIArmy
 		return Sum / float(Units.Num());
 	}
 
-	// Whether a wave may be launched now: at home, not defending, the cooldown over, an enemy centre to go to, enough soldiers, late
-	// enough (earlier when no enemy soldier has been seen: the ratio is then the large value) and our army ahead by the margin.
+	// The power ratio of the slot's army over the enemy soldiers within AllyHelpRadius of a place (the large value when none is there).
+	float RatioAt(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, FVector Place)
+	{
+		FHOLAISummary Local;
+		Local.Army = Summary.Army;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (IsThreatening(Summary.Enemies[Index]) && FlatDistance(Summary.Enemies[Index].Location, Place) <= Data.AllyHelpRadius)
+			{
+				Local.Enemies.Add(Summary.Enemies[Index]);
+			}
+		}
+		return PowerRatio(Data, Local);
+	}
+
+	// IA4 (D571): the place of the teammate's fallen forum (in ruin or rising again, with a known place) nearest to From where the army
+	// holds its own against the enemy soldiers on the spot (RatioAt at least AllyHelpMinRatio); bFound false without one (From then).
+	FVector AllyHelpTarget(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, FVector From, bool& bFound)
+	{
+		bFound = false;
+		FVector Best = From;
+		for (int Index = 0; Index < Summary.AllyForums.Num(); Index++)
+		{
+			const FHOLAIForum Forum = Summary.AllyForums[Index];
+			if (Forum.bDown && Forum.bHasLocation && (!bFound || FlatDistance(Forum.Location, From) < FlatDistance(Best, From))
+				&& RatioAt(Summary, Data, Forum.Location) >= Data.AllyHelpMinRatio)
+			{
+				bFound = true;
+				Best = Forum.Location;
+			}
+		}
+		return Best;
+	}
+
+	// Whether a wave may be launched now: at home, not defending, the cooldown over, an enemy centre to go to (or a teammate's ruin to help
+	// hold, IA4: then the minimum time does not count and the ratio is that of the spot), enough soldiers, late enough (earlier when no
+	// enemy soldier has been seen: the ratio is then the large value) and our army ahead by the margin.
 	bool CanLaunch(const FHOLAIWave& Wave, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, bool bDefending, float Now)
 	{
-		if (Wave.Phase != EHOLAIWavePhase::Home || bDefending || Now < Wave.NextLaunch || !Summary.bHasEnemyCentre)
+		bool bHelp = false;
+		AllyHelpTarget(Summary, Data, Summary.CentreLocation, bHelp);
+		if (Wave.Phase != EHOLAIWavePhase::Home || bDefending || Now < Wave.NextLaunch || (!Summary.bHasEnemyCentre && !bHelp))
 		{
 			return false;
 		}
 		if (SoldierIds(Summary).Num() < Data.AttackMinSoldiers)
 		{
 			return false;
+		}
+		if (bHelp)
+		{
+			return true;
 		}
 		const bool bSeen = EnemyValue(Data, Summary) > 0.f;
 		// IA3.3: an enemy forum lies fallen: the window is open, the minimum time does not count (the ratio and the soldiers still do).
@@ -878,11 +924,18 @@ namespace HOLAIArmy
 		return PowerRatio(Data, Local);
 	}
 
-	// Where the wave's idle soldiers go: a fallen enemy forum to hold (IA3.3), else the enemy centre, or when it is gone the enemy unit
+	// Where the wave's idle soldiers go: a teammate's fallen forum to help hold (IA4), a fallen enemy forum to hold (IA3.3), else the enemy centre, or when it is gone the enemy unit
 	// nearest to the wave (bFound false without).
-	FVector WaveTarget(const FHOLAISummary& Summary, FVector From, bool& bFound)
+	FVector WaveTarget(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, FVector From, bool& bFound)
 	{
 		bFound = true;
+		// IA4: a teammate's fallen forum the army can hold comes first (a life of the team is at stake).
+		bool bHelp = false;
+		const FVector Help = AllyHelpTarget(Summary, Data, From, bHelp);
+		if (bHelp)
+		{
+			return Help;
+		}
 		bool bRuin = false;
 		const FVector Ruin = HOLAIForum::RuinTarget(Summary, From, bRuin);
 		if (bRuin)
@@ -930,7 +983,7 @@ namespace HOLAIArmy
 				Step.bLaunched = true;
 				Step.AttackIds = Wave.Ids;
 				bool bFound = false;
-				Step.AttackTarget = WaveTarget(Summary, Summary.CentreLocation, bFound);
+				Step.AttackTarget = WaveTarget(Summary, Data, Summary.CentreLocation, bFound);
 				Step.Ratio = PowerRatio(Data, Summary);
 				Step.Left = Wave.Ids.Num();
 			}
@@ -965,7 +1018,7 @@ namespace HOLAIArmy
 			else if (Now - Wave.LastOrder >= Data.AttackReissue)
 			{
 				bool bFound = false;
-				const FVector Target = WaveTarget(Summary, CentroidOf(Alive), bFound);
+				const FVector Target = WaveTarget(Summary, Data, CentroidOf(Alive), bFound);
 				for (int Index = 0; bFound && Index < Alive.Num(); Index++)
 				{
 					if (Alive[Index].bIdle && Alive[Index].TargetId < 0)

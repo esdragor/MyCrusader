@@ -1977,3 +1977,85 @@ R8, R9.
   c3d315f** (ports par copie `copy_ports.ps1`, `-WaitMutex` de `net_match.ps1`). Glorfindel = `main`, gardé pour la suite
   du chantier. **Reprise** : remesure de `MaxServers` (D502) et publication r9 (`publish.ps1 -Root Glorfindel -Version
   2026-10-29-r9`, puis `-StageOnly`) au moment choisi par l'utilisateur ; R8d / E5-E7 avec un ami.
+- 2026-10-29 13:20 : **remesure de `MaxServers` (D502) : outil fait, mesure en attente d'une machine calme** (Glorfindel,
+  non commité). `net_match.ps1 -Headless` : clients légers sans rendu, son ni fenêtre (`-nullrhi -nosound`, plafonnés à
+  60 i/s par `t.MaxFPS` : sans rendu ils tournaient à 600-690 i/s et brûlaient 248 % d'un cœur à deux, 115 % plafonnés),
+  séquence sans capture (une capture attend des images dessinées qui ne viennent jamais). Nouveau
+  `Tools/Tests/max_servers_measure.ps1` : pour X = 1, 2, 3, 4 (`-Counts`), X serveurs à la fois en bataille S3 (2000 unités,
+  1000 contre 1000, 20 s), 2 clients légers chacun, ports UDP de la bande salon de la copie (`copy_ports.ps1`, Glorfindel
+  7930+), échantillons toutes les 2 s (processeur du PC, mémoire libre, serveurs et clients : mémoire, secondes
+  processeur) ; par serveur : pas de simulation (moyenne, max), réplication, Ko/s par client (D450), part de processeur sur
+  ses 30 dernières secondes ; par X : « tient » si tous les S5 PASS, pas moyen ≤ 25 ms (`-StepBudget`, la moitié du pas de
+  50 ms) et PC sans les clients légers ≤ 70 % (`-CpuBudget`, le reste = la partie de l'utilisateur) ; recommandation = le
+  plus grand X qui tient, décision à l'utilisateur. Machine calme exigée (`-Force` sinon), re-cuisson si le serveur cuit est
+  plus vieux que les DLL. **Chaîne prouvée** : `-Quick -Force` (1 serveur, 200 unités, 10 s) PASS ×2 (serveur 0,8-1,2 ms/pas,
+  S5 PASS, rapport `Saved_Tests\Logs\max_servers_1029_1313_quick.txt`). La machine n'est pas calme (compilation
+  ProjectShiva, éditeurs d'autres sessions, 65-100 %) : un guetteur attend trois minutes calmes d'affilée (≤ 150 min) puis
+  lance la mesure complète (journal `Glorfindel\Saved_Tests\Logs\max_servers_wait.log`). Suite : lire le rapport,
+  proposer `MaxServers` à l'utilisateur (D502 à figer au GDD), commit des outils après validation, publication r9.
+- 2026-10-29 14:05 : la machine n'a jamais été calme (éditeur ProjectShiva ouvert, tests Unreal de Haldir, 20-100 %) :
+  **guetteur arrêté, mesure reportée à ce soir** (choix de l'utilisateur). **Reprise** : le soir, machine calme (fermer
+  l'éditeur ProjectShiva, aucune autre session Unreal) : `powershell -ExecutionPolicy Bypass -File
+  C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Tests\max_servers_measure.ps1` (1 à 4 serveurs, ~12 min ;
+  rapport `Saved_Tests\Logs\max_servers_<date>.txt`), puis proposer `MaxServers` (D502 au GDD, `ManagerSettings.cs`,
+  `playtest_setup.ps1`, appsettings du gestionnaire du raccourci), commit des outils (Glorfindel, non commités :
+  `net_match.ps1 -Headless`, `max_servers_measure.ps1`) après validation, publication r9.
+- 2026-10-30 08:12 : **mesure de `MaxServers` faite** (l'utilisateur, `max_servers_measure.ps1`, 4,1 min, Glorfindel copie 3,
+  serveur cuit à jour ; PC « presque calme » : 13 % au départ pour une limite de 15 %, Discord, DriverBooster, IMF, Edge,
+  ShivaGet ouverts). Rapport `Glorfindel\Saved_Tests\Logs\max_servers_1030_0812.txt` (+ `.csv`). **1, 2, 3 et 4 parties
+  en bataille S3 (2000 unités) TIENNENT toutes** (S5 PASS partout) : pas de simulation moyen 8,1 / 8,3 / 8,7 / 9,2 ms (max
+  ≤ 25 ms) pour un budget de 25 ms ; réplication 0,2-0,25 ms ; 20-25 Ko/s par client ; ~420 Mo par serveur ; un serveur
+  = ~40-47 % d'un cœur (4 serveurs = 180 % d'un cœur = 11 % du PC de 16 processeurs logiques) ; PC sans les clients légers
+  19 / 23 / 23 / 36 % (budget 70 %) ; mémoire libre minimale 30 Go. Recommandation de l'outil : **4**, mais 4 est le plafond
+  des essais (`-Counts 1,2,3,4`), pas une limite trouvée : la marge est large (la pente est ~3 points de PC par partie).
+  **Reste à décider (utilisateur)** : valeur de `MaxServers` (D502 à figer au GDD, `ManagerSettings.cs`, `playtest_setup.ps1`,
+  `appsettings` du gestionnaire du raccourci, `PROTOCOL.md` l. 416, `LobbyRoutesTests`), éventuellement remesure à 5-8 ;
+  commit des outils non commités (`net_match.ps1 -Headless`, `max_servers_measure.ps1`) ; publication r9.
+- 2026-10-30 ~08:40 : **MaxServers = 4 choisi par l'utilisateur** (conforme à la recommandation). Fait (Glorfindel, **non
+  commité**, en attente de « go ») : `ManagerSettings.cs` (défaut 4), `playtest_setup.ps1` et `Tools/Package/Playtest/
+  appsettings.json` (4), `PROTOCOL.md` (4), `StatusTests` (4, rouge d'abord : l'ancien 2 en dur) ; `build_manager.ps1 -Test`
+  PASS (297 tests gestionnaire). **GDD** (copie principale, non commité) : D502 réécrit (4, mesure du 2026-10-30) et § 16.4.
+  Outils déjà non commités : `net_match.ps1 -Headless`, `max_servers_measure.ps1`. **Attention** : le gestionnaire du
+  raccourci (`MyCrusader\Saved\Manager`) n'a pas `MaxServers` dans son `appsettings.json` et prend donc le défaut compilé
+  (2) : il ne passera à 4 qu'avec la **publication r9** (`publish.ps1 -Root Glorfindel -Version 2026-10-30-r9`, puis
+  `-StageOnly`), au moment choisi par l'utilisateur. Suite : « go » → commit sur `net-playtest`, `main` avancée, puis r9.
+- 2026-10-30 ~09:00 : « go » de l'utilisateur : **commit d560019** sur `net-playtest` (MaxServers 4, `max_servers_measure.ps1`,
+  `net_match -Headless`), `main` 6e37139 fusionnée (**bcb1453**, sans conflit, aucun C++ de ma part : build Unreal et
+  `tests,net` non refaits, seul `build_manager -Test` PASS après fusion), **`main` avancée à bcb1453**. GDD (D502, § 16.4)
+  et journaux restent non commités dans la copie principale (mêlés aux modifications des autres sessions). **Reste** :
+  publication r9 (`publish.ps1 -Root Glorfindel -Version 2026-10-30-r9`, puis `-StageOnly`) pour que le gestionnaire du
+  raccourci passe à 4, au moment choisi par l'utilisateur ; R8d avec un ami. Glorfindel garde `net-playtest` = `main`.
+- 2026-10-30 : « continue » → l'utilisateur choisit la **publication r9** maintenant. **Lancée** (tâche de fond) :
+  `publish.ps1 -Root Glorfindel -Version 2026-10-30-r9` (journal `Glorfindel\Saved\Logs\publish.log`), un éditeur Unreal
+  d'une autre session est ouvert. Si cette ligne n'a pas de suite « rendue », la publication a été coupée : relire le
+  journal, relancer ; puis `-StageOnly` (gestionnaire du raccourci à `MaxServers` 4).
+- 2026-10-30 10:25 : **r9 publiée, rendue.** Le 1er `publish.ps1` (paquet 14,4 min, attente du verrou d'UBT, jeu 1052 Mo,
+  serveur 987 Mo) est allé par défaut dans `Glorfindel\Saved\Manager` (pas le vrai gestionnaire) : republié avec
+  `-Archive Glorfindel\Saved\Packages\2026-10-30-r9 -VersionsDir MyCrusader\Saved\Manager\Versions -ServersDir
+  MyCrusader\Saved\Manager\Servers` (HOLPublish 390 s, 38 correctifs, 59,7 Mo) : `latest.txt` = 2026-10-30-r9, versions
+  r8 / r9 / L11-v1 (1196 Mo), `Servers\2026-10-30-r9\` présent. `build_manager.ps1 -Root MyCrusader` PASS : le
+  gestionnaire du raccourci (arrêté ; le HOLManager qui tourne est celui d'Arwen) prend **MaxServers 4** (défaut compilé,
+  non revérifié par `/status`). Pas de notes de version. L'archive (2 Go) reste dans `Glorfindel\Saved\Packages\
+  2026-10-30-r9` (à supprimer à la main) ; `Glorfindel\Saved\Manager\Versions` porte une copie r9 de trop. **Reste** :
+  R8d / E5 avec un ami.
+- 2026-10-30 10:40 : « go » → **préparation de l'essai E5 vérifiée** (rien publié de plus). Gestionnaire du raccourci lancé 6 s
+  en local (port 7791, arrêté) : `/status` = `gameVersion` 2026-10-30-r9, `maxServers` 4. Kit
+  `MyCrusader\Saved\Kit\HOLLauncher-kit.zip` (63,4 Mo, 2026-10-25) : `servers.json` →
+  `http://heroesofliberty.duckdns.org:7700` + clé, `LISEZMOI.txt` (dézipper, Installer le jeu ~350 Mo, Jouer, SmartScreen),
+  `HOLLauncher.exe`, `hpatchz.exe` ; le nom DuckDNS résout vers 90.55.168.58 = IP publique du jour ; tâche « HOL DuckDNS »
+  prête. Non vérifié : les UDP des parties (7777-7799) par la box (jamais essayés depuis l'extérieur), le lanceur d'un
+  ami qui passerait de r8 à r9 (correctif) ; LISEZMOI ne parle pas de Visual C++ ni de Tailscale (le lanceur a remplacé
+  R8.1-R8.5). **Mise à jour r8 → r9 vérifiée en local** (10:55, kit du zip, gestionnaire réel sur 127.0.0.1:7792, `latest.txt`
+  mis à r8 puis rendu à r9, dossier jetable) : installation r8 en 15 s, `--update` vers r9 en 9 s, `Version.txt` = r9.
+  **« fait tout ça » (11:10)** : (1) LISEZMOI du kit : ajout de Visual C++ (`Engine\Extras\Redist\en-us\vc_redist.x64.exe`,
+  présent dans le manifeste r9) dans `Tools/Package/make_kit.ps1` (**non commité**, copie principale) ; kit refait
+  (`make_kit.ps1 -Force`, même clé, même adresse DuckDNS), copié aussi sur le bureau. (2) Nettoyage Glorfindel : archive
+  `Saved\Packages\2026-10-30-r9` (2 Go), copies `Saved\Manager\Versions` et `Servers` de r9 supprimées. (3) **4 parties en
+  parallèle avec le vrai gestionnaire et le serveur cuit de r9** (127.0.0.1:7793, salons 1 joueur + 1 IA par HTTP) :
+  « Lancer » ×4 = 202, le 5e = 503 `max_servers` (« 4 game servers already run (at most 4) »), `/status` servers 4,
+  4 serveurs chargent `Plain_Large` (~375 Mo chacun). Les salons restent `starting` : le serveur rappelle le
+  gestionnaire sur le port 7700 en dur (mon port de test 7793) — pas un défaut sur 7700 ; serveurs tués à la main (arrêt du
+  gestionnaire par `Stop-Process -Force` les laisse orphelins, normal) ; dossiers de parties de l'essai supprimés.
+  `make_kit.ps1` **commité b33c434** sur `main` (« go » de l'utilisateur) ; l'essai E5 est noté dans `EtapeDefini.md`
+  (Réseau). **Pour l'essai** : lancer `Gestionnaire HOL.bat` (bureau), envoyer le zip du kit à l'ami, jouer.
+
