@@ -102,6 +102,16 @@ namespace HOLAISummary
 		}
 		Summary.Army.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
 
+		// IA2.6f: its Peasants as units (place and health), the dying left out.
+		for (const FHOLUnitView& Unit : Units)
+		{
+			if (Unit.OwnerPlayer == PlayerIndex && Unit.CarryCapacity > 0 && Unit.Activity != EHOLUnitActivity::Dying)
+			{
+				Summary.Peasants.Add(MakeAIUnit(Unit));
+			}
+		}
+		Summary.Peasants.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
+
 		// IA2.1: the enemies, as GatherEnemies read them (the one place; the fog will cut them there): another slot's, not
 		// defeated, not dying, by identifier.
 		for (const FHOLUnitView& Unit : Enemies)

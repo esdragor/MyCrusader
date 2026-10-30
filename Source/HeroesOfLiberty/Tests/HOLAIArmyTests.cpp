@@ -104,6 +104,7 @@ bool FHOLAIArmyRuleTest::RunTest(const FString& Parameters)
 	const FHOLAISummary Slot0 = HOLAISummary::Make(0, Units, {}, {}, {});
 	TestEqual(TEXT("slot 0's army: its three soldiers, ascending, no Peasant, King, hero, dying nor slot 1's"), JoinUnits(Slot0.Army), FString(TEXT("4 9 12")));
 	TestEqual(TEXT("slot 0's army: the types"), JoinTypes(Slot0.Army), FString(TEXT("Spearman ManAtArms Archer")));
+	TestEqual(TEXT("slot 0's Peasants as units: its one Peasant"), JoinUnits(Slot0.Peasants), FString(TEXT("3")));
 	if (Slot0.Army.Num() == 3)
 	{
 		TestEqual(TEXT("the Spearman: its owner"), Slot0.Army[0].OwnerSlot, 0);

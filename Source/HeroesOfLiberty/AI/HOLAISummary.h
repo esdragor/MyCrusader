@@ -238,6 +238,13 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	TArray<FHOLAIUnit> Army;
 
 	/**
+	 * Its Peasants as units (IA2.6f): where each stands and its health, the dying left out, by identifier (ascending), the
+	 * same workers as PeasantIds: the brain makes the ones near an enemy soldier flee.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<FHOLAIUnit> Peasants;
+
+	/**
 	 * The units of every other slot that is not defeated (IA2.1; in the prototype every other slot is an enemy), Peasants,
 	 * King and hero included (Type tells), the dying left out, by identifier (ascending). Read in one place,
 	 * HOLAISummary::GatherEnemies: that is where the fog (M7) will cut the list to what the slot's vision shows.

@@ -74,6 +74,14 @@ struct FHOLAIArmyData
 	// Below this power ratio of our army over the threatening enemies, the army does not go to meet them (it holds the assembly point).
 	float DefenceMinRatio = 0.3f;
 
+	// An enemy soldier this close to a building is taken to attack it (cm): the army then meets it from a lower ratio, the base being hit.
+	float AttackedRadius = 800.f;
+	float DefenceMinRatioAttacked = 0.05f;
+
+	// Peasants (IA2.6f): one within this of an enemy soldier runs to the centre (cm), ordered again at most this often (s).
+	float FleeRadius = 1500.f;
+	float FleeEvery = 4.f;
+
 	// Attack wave and retreat (IA2.6), provisional (IA4 'Normal' curve).
 	// No wave before this game time when enemy soldiers have been seen (s); and when none has been seen (s).
 	float AttackMinSeconds = 420.f;
@@ -163,6 +171,15 @@ struct FHOLAIThreat
 
 	// The threatening enemies.
 	int Count = 0;
+
+	// A threatening enemy stands within AttackedRadius of a building or of the centre: the base is being hit (IA2.6e).
+	bool bAttackingBuilding = false;
+}
+
+// What the Peasants' flight remembers between two thoughts of a slot: when each Peasant was last sent running (IA2.6f).
+struct FHOLAIFlight
+{
+	TMap<int, float> LastOrder;
 }
 
 // What the defence remembers between two thoughts of a slot (the brain keeps one per slot).
@@ -603,11 +620,48 @@ namespace HOLAIArmy
 		FHOLAISummary Subset;
 		Subset.Army = Summary.Army;
 		Subset.Enemies = Near;
+		for (int Index = 0; Index < Near.Num() && !Result.bAttackingBuilding; Index++)
+		{
+			for (int Place = 0; Place < Guarded.Num(); Place++)
+			{
+				if (FlatDistance(Near[Index].Location, Guarded[Place]) <= Data.AttackedRadius)
+				{
+					Result.bAttackingBuilding = true;
+					break;
+				}
+			}
+		}
 		Result.bThreatened = true;
 		Result.Location = Sum / float(InGroup);
 		Result.Ratio = PowerRatio(Data, Subset);
 		Result.Count = Near.Num();
 		return Result;
+	}
+
+	// The Peasants to send running to the centre now (IA2.6f): those within FleeRadius of an enemy soldier, not sent in the last FleeEvery seconds.
+	TArray<int> FleeOrders(FHOLAIFlight& State, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, float Now)
+	{
+		TArray<int> Ids;
+		for (int Each = 0; Each < Summary.Peasants.Num(); Each++)
+		{
+			const FHOLAIUnit Peasant = Summary.Peasants[Each];
+			float Last = -1000.f;
+			State.LastOrder.Find(Peasant.Id, Last);
+			if (Now - Last < Data.FleeEvery)
+			{
+				continue;
+			}
+			for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+			{
+				if (IsThreatening(Summary.Enemies[Index]) && FlatDistance(Summary.Enemies[Index].Location, Peasant.Location) <= Data.FleeRadius)
+				{
+					Ids.Add(Peasant.Id);
+					State.LastOrder.Add(Peasant.Id, Now);
+					break;
+				}
+			}
+		}
+		return Ids;
 	}
 
 	// Whether the army goes to meet the threat: a threat, and either the army is not far behind (ratio at least DefenceMinRatio) or an
@@ -618,7 +672,7 @@ namespace HOLAIArmy
 		{
 			return false;
 		}
-		if (Threat.Ratio >= Data.DefenceMinRatio)
+		if (Threat.Ratio >= Data.DefenceMinRatio || (Threat.bAttackingBuilding && Threat.Ratio >= Data.DefenceMinRatioAttacked))
 		{
 			return true;
 		}

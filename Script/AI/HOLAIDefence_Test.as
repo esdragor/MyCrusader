@@ -343,3 +343,57 @@ void Test_RegroupOnlyTheNewOnesWhenSomeWereSent(FUnitTest& T)
 	T.AssertEquals(1, Ids.Num(), "a new soldier is sent, the first waits");
 	T.AssertTrue(Ids.Contains(2), "the new one");
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// A building under attack (IA2.6e) and the Peasants' flight (IA2.6f).
+
+// An enemy soldier at a building's foot hits it: the base is under attack, and the weak army goes to meet it all the same (below the usual
+// ratio, above the attacked one); the same enemy 2000 cm off only threatens; with no soldier at all the ratio is 0: nothing to send.
+void Test_DefenceBuildingUnderAttackIsMetEvenWhenWeak(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = DefData();
+	FHOLAISummary Summary = DefSummary();
+	DefAdd(Summary.Army, 1, n"Spearman", 1, DefPoint(), 1, true, -1);
+	DefAdd(Summary.Enemies, 50, n"Spearman", 8, FVector(1900, 0, 0), 0, false, -1);
+	FHOLAIThreat Threat = HOLAIArmy::Threat(Summary, Data);
+	T.AssertTrue(Threat.bAttackingBuilding, "400 cm from the House: it is being attacked");
+	T.AssertTrue(Threat.Ratio < Data.DefenceMinRatio && Threat.Ratio >= Data.DefenceMinRatioAttacked, "weak, but not hopeless");
+	T.AssertTrue(HOLAIArmy::ShouldDefend(Summary, Data, Threat, DefPoint()), "the building is hit: the army meets them");
+
+	FHOLAISummary Far = DefSummary();
+	DefAdd(Far.Army, 1, n"Spearman", 1, DefPoint(), 1, true, -1);
+	DefAdd(Far.Enemies, 50, n"Spearman", 8, FVector(3500, 0, 0), 0, false, -1);
+	Threat = HOLAIArmy::Threat(Far, Data);
+	T.AssertTrue(Threat.bThreatened && !Threat.bAttackingBuilding, "2000 cm off: a threat, no attack");
+	T.AssertFalse(HOLAIArmy::ShouldDefend(Far, Data, Threat, DefPoint()), "not hit yet: the weak army holds the point");
+
+	FHOLAISummary NoSoldier = DefSummary();
+	DefAdd(NoSoldier.Enemies, 50, n"Spearman", 8, FVector(1900, 0, 0), 0, false, -1);
+	Threat = HOLAIArmy::Threat(NoSoldier, Data);
+	T.AssertTrue(Threat.bAttackingBuilding, "attacked all the same");
+	T.AssertFalse(HOLAIArmy::ShouldDefend(NoSoldier, Data, Threat, DefPoint()), "no soldier to send");
+}
+
+// Peasants within FleeRadius of an enemy soldier run; the far ones stay; enemy Peasants frighten nobody; not again at once.
+void Test_PeasantsFleeFromEnemySoldiers(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = DefData();
+	FHOLAISummary Summary = DefSummary();
+	DefAdd(Summary.Peasants, 10, n"Peasant", 2, FVector(1000, 0, 0), 1, false, -1);
+	DefAdd(Summary.Peasants, 20, n"Peasant", 2, FVector(-5000, 0, 0), 1, false, -1);
+	FHOLAIFlight State;
+	T.AssertEquals(0, HOLAIArmy::FleeOrders(State, Summary, Data, 100.f).Num(), "no enemy: nobody runs");
+
+	DefAdd(Summary.Enemies, 50, n"Spearman", 1, FVector(2000, 0, 0), 0, false, -1);
+	TArray<int> Ids = HOLAIArmy::FleeOrders(State, Summary, Data, 100.f);
+	T.AssertEquals(2, Ids.Num(), "the two Peasants 1000 cm from the Spearman run");
+	T.AssertTrue(Ids.Contains(10) && Ids.Contains(11), "the near ones");
+	T.AssertEquals(0, HOLAIArmy::FleeOrders(State, Summary, Data, 101.f).Num(), "not sent again at once");
+	T.AssertEquals(2, HOLAIArmy::FleeOrders(State, Summary, Data, 100.f + Data.FleeEvery).Num(), "again after the delay, still there");
+
+	FHOLAISummary PeasantOnly = DefSummary();
+	DefAdd(PeasantOnly.Peasants, 10, n"Peasant", 2, FVector(1000, 0, 0), 1, false, -1);
+	DefAdd(PeasantOnly.Enemies, 50, n"Peasant", 3, FVector(1200, 0, 0), 0, false, -1);
+	FHOLAIFlight Fresh;
+	T.AssertEquals(0, HOLAIArmy::FleeOrders(Fresh, PeasantOnly, Data, 100.f).Num(), "enemy Peasants frighten nobody");
+}

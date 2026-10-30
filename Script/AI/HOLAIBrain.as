@@ -28,6 +28,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 	// The farm block each slot is building (IA1.7: the spots of FindAIFarmBlock), and the builders it has sent to sites.
 	TMap<int, FHOLAIFarmPlan> FarmPlans;
+
+	// What each slot's Peasants' flight remembers (IA2.6f).
+	TMap<int, FHOLAIFlight> Flights;
 	TMap<int, FHOLAIBuilders> SentBuilders;
 
 	// The rally each slot's military buildings were last given.
@@ -290,6 +293,16 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		Defences.Add(PlayerIndex, State);
+
+		// The Peasants near an enemy soldier run to the centre (IA2.6f); once there they are idle and the brain sends them to work again.
+		FHOLAIFlight Flight;
+		Flights.Find(PlayerIndex, Flight);
+		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, Summary, Data.Army, Now);
+		Flights.Add(PlayerIndex, Flight);
+		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to the centre");
+		}
 	}
 
 	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
