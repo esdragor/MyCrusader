@@ -15,6 +15,8 @@
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
+#include "Simulation/HOLOrderChainRules.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -597,6 +599,52 @@ bool FHOLVisionMatchViewerLineTest::RunTest(const FString& Parameters)
 
 	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
 	TestEqual(TEXT("no fog"), Match.Vision->MakeViewerLine(0), FString(TEXT("mode Disabled, everything in sight")));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchOrderLineTest, "HeroesOfLiberty.Vision.Match.OrderLine", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchOrderLineTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	// F7.3 (the user's trial): the order lines of his own units stay (a queue's attack on an enemy out of sight too), but the line to
+	// an enemy does not follow it out of his sight: it ends where he saw it when he gave the order. The real chain: an order step
+	// built as the processor's, located by AHOLPlayerState::LocateChainStep (the target's place in the simulation).
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const uint32 Scout = Match.Place(Peasant, 0, FVector::ZeroVector);
+	const uint32 NearEnemy = Match.Place(Peasant, 2, FVector(1000., 0., 0.));
+	const uint32 FarEnemy = Match.Place(Peasant, 2, FVector(5000., 0., 0.));
+	if (!TestTrue(TEXT("units born"), Scout != 0 && NearEnemy != 0 && FarEnemy != 0))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	const auto EndOf = [&Match](const uint32 Target, const FVector& Recorded, FVector& OutReal)
+	{
+		FHOLNetChainStep Step;
+		Step.Kind = static_cast<uint8>(HOLOrderChain::EStepKind::Attack);
+		Step.TargetId = Target;
+		Step.Location = Recorded;
+		AHOLPlayerState::LocateChainStep(*Match.World, Step, OutReal);
+		return Match.Vision->GetOrderLineEnd(0, Recorded, OutReal);
+	};
+	FVector Real = FVector::ZeroVector;
+	const FVector RecordedNear(900., 0., 0.);
+	const FVector RecordedFar(4000., 0., 0.);
+	const FVector NearEnd = EndOf(NearEnemy, RecordedNear, Real);
+	TestEqual(TEXT("the enemy in sight: the line follows it"), NearEnd, Real);
+	TestTrue(TEXT("(the step located the enemy in the simulation)"), Real.Equals(FVector(1000., 0., 0.), 100.));
+	const FVector HiddenEnd = EndOf(FarEnemy, RecordedFar, Real);
+	TestTrue(TEXT("(the step located the hidden enemy too)"), Real.Equals(FVector(5000., 0., 0.), 100.));
+	TestEqual(TEXT("the enemy out of sight: the line ends where he saw it"), HiddenEnd, RecordedFar);
+	TestEqual(TEXT("a spectator has no camp: the line follows"), Match.Vision->GetOrderLineEnd(INDEX_NONE, RecordedFar, Real), Real);
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestEqual(TEXT("no fog: the line follows"), Match.Vision->GetOrderLineEnd(0, RecordedFar, Real), Real);
 	return true;
 }
 

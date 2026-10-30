@@ -103,6 +103,13 @@ public:
 	 */
 	bool IsUnitShown(int32 ViewerSlot, int32 OwnerSlot, const FVector& Location) const;
 
+	/**
+	 * F7.3 (the user's trial): where the line of an attack order ends for ViewerSlot's player. The order is his own and stays shown, but
+	 * the line must not follow an enemy out of his sight: the target's position (TargetLocation) when that cell is in sight (or without
+	 * a fog, or for a viewer with no camp), else the position the step recorded (StepLocation, where he saw it when he gave the order).
+	 */
+	FVector GetOrderLineEnd(int32 ViewerSlot, const FVector& StepLocation, const FVector& TargetLocation) const;
+
 	/** F5: some cell of an area (a building's footprint, Extent its half size) in sight of Slot's camp. */
 	bool IsAreaVisible(int32 Slot, const FVector& Center, const FVector2D& Extent) const;
 

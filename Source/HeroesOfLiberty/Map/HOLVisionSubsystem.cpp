@@ -431,6 +431,17 @@ bool UHOLVisionSubsystem::IsUnitShown(const int32 ViewerSlot, const int32 OwnerS
 	return Map.GetVision(ViewerCamp, Map.GetGrid().ToCell(FVector2D(Location))) == EHOLCellVision::Visible;
 }
 
+FVector UHOLVisionSubsystem::GetOrderLineEnd(const int32 ViewerSlot, const FVector& StepLocation, const FVector& TargetLocation) const
+{
+	const int32 ViewerCamp = GetCampIndex(ViewerSlot);
+	if (!bStarted || Mode == EHOLFogMode::Disabled || ViewerCamp == INDEX_NONE
+		|| Map.GetVision(ViewerCamp, Map.GetGrid().ToCell(FVector2D(TargetLocation))) == EHOLCellVision::Visible)
+	{
+		return TargetLocation;
+	}
+	return StepLocation;
+}
+
 bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center, const FVector2D& Extent) const
 {
 	if (Mode == EHOLFogMode::Disabled)

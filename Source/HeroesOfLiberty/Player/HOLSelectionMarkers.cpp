@@ -288,6 +288,13 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	GhostFrames = MakeMarkerComponent(*this, TEXT("GhostFrames"));
 	OrderLines = MakeMarkerComponent(*this, TEXT("OrderLines"));
 	OrderPoints = MakeMarkerComponent(*this, TEXT("OrderPoints"));
+	// F7.3 (the user's trial: the orders must be seen): the lines and the points of the orders write the custom stencil, which the
+	// fog's post process (M_FogPost) leaves unfogged, so a march into the black or toward an enemy out of sight shows to its end.
+	for (UInstancedStaticMeshComponent* Component : { OrderLines.Get(), OrderPoints.Get() })
+	{
+		Component->SetRenderCustomDepth(true);
+		Component->SetCustomDepthStencilValue(1);
+	}
 	ForumRings = MakeMarkerComponent(*this, TEXT("ForumRings"));
 	AuraRings = MakeMarkerComponent(*this, TEXT("AuraRings"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
@@ -945,6 +952,8 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 	if (World && PlayerState && !PlayerState->GetOrderChains().IsEmpty() && !PlayerController->GetSelectedUnits().IsEmpty())
 	{
 		const TArray<uint32>& Selected = PlayerController->GetSelectedUnits();
+		const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+		const int32 ViewerSlot = PlayerState->GetPlayerIndex();
 		TMap<uint32, FVector> Displayed;
 		for (const FHOLNetOrderChain& Chain : PlayerState->GetOrderChains())
 		{
@@ -981,6 +990,11 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 				// An attack at its target as shown here (it walks), else where it stood.
 				FVector End;
 				AHOLPlayerState::LocateChainStep(*World, Step, End);
+				// F7.3: the line of an attack never follows an enemy out of sight (the step's own point, where it was seen).
+				if (Step.TargetId != 0 && Vision && Vision->IsStarted())
+				{
+					End = Vision->GetOrderLineEnd(ViewerSlot, FVector(Step.Location), End);
+				}
 				const FLinearColor& Color = GetOrderColor(Step.Kind);
 				AddLine(Start, End, Color);
 				PointTransforms.Add(FTransform(FQuat::Identity, End + FVector(0.0, 0.0, OrderPointOffset),
