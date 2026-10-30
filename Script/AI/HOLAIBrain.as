@@ -33,6 +33,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIFlight> Flights;
 	TMap<int, FHOLAIBuilders> SentBuilders;
 
+	// The Peasants each slot has sent to rebuild its fallen forum (IA3.2), and when its King was last ordered (IA3.4).
+	TMap<int, FHOLAIForumMemory> Rebuilds;
+	TMap<int, FHOLAIKingMemory> Kings;
+
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
 
@@ -63,6 +67,27 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		LogStatus(PlayerIndex, Step, Summary);
 		const int NumIdle = Summary.IdlePeasants.Num();
 		TArray<int> Free = Summary.IdlePeasants;
+
+		// 0. The forum fallen (IA3.2): Peasants go and rebuild it (all of them on the last life), and stay out of the ordinary work.
+		FHOLAIForumMemory Rebuild;
+		Rebuilds.Find(PlayerIndex, Rebuild);
+		const TArray<int> Rebuilders = HOLAIForum::RebuildOrders(Rebuild, Summary, HOLAIForum::DefaultData(), Data.GameSeconds);
+		Rebuilds.Add(PlayerIndex, Rebuild);
+		if (Rebuilders.Num() > 0)
+		{
+			if (HOLAIOrder::IssueAIBuildOrder(PlayerIndex, Summary.OwnForum.Location, Rebuilders))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Rebuilders.Num()} Peasants rebuild the forum ({Summary.OwnForum.Lives} lives left)");
+			}
+			else
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: rebuild order refused");
+			}
+		}
+		for (int Index = 0; Index < Rebuild.Sent.Num(); Index++)
+		{
+			Free.Remove(Rebuild.Sent[Index]);
+		}
 
 		// 1. The next building (house, camp, mill, farm block: HOLAIOpening::ChooseBuild), placed by the rules of its type, one
 		// Peasant sent to build it, not one already sent to another site.
@@ -143,6 +168,21 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 		// 3b. The army (IA2.5): the base defence when enemy soldiers come near, otherwise the regrouping at the assembly point.
 		ThinkArmy(PlayerIndex, Step, Summary, Data);
+
+		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
+		FHOLAIKingMemory KingMemory;
+		Kings.Find(PlayerIndex, KingMemory);
+		FVector KingWhere;
+		if (HOLAIForum::KingOrder(KingMemory, Summary, FHOLAIKingData(), Data.GameSeconds, KingWhere))
+		{
+			TArray<int> KingIds;
+			KingIds.Add(Summary.King.Id);
+			if (HOLAIOrder::IssueAIMoveOrder(PlayerIndex, KingIds, KingWhere))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: King goes to ({KingWhere.X}, {KingWhere.Y})");
+			}
+		}
+		Kings.Add(PlayerIndex, KingMemory);
 
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
@@ -244,11 +284,13 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 
 		// The wave: launched, kept on its way, called back or over.
-		const bool bRecall = Whole.bThreatened && Whole.Count >= Data.Army.AttackRecallCount;
+		FHOLAIForumMemory Rebuild;
+		Rebuilds.Find(PlayerIndex, Rebuild);
+		const bool bRecall = Whole.bThreatened && (Whole.Count >= Data.Army.AttackRecallCount || HOLAIForum::Emergency(Summary));
 		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
 		if (Wave_.bLaunched)
 		{
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: attack launched with {Wave_.Left} soldiers, ratio {Wave_.Ratio}");
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: attack launched with {Wave_.Left} soldiers, ratio {Wave_.Ratio}, toward ({Wave_.AttackTarget.X}, {Wave_.AttackTarget.Y})");
 		}
 		if (Wave_.bRetreat)
 		{
@@ -297,7 +339,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The Peasants near an enemy soldier run to the centre (IA2.6f); once there they are idle and the brain sends them to work again.
 		FHOLAIFlight Flight;
 		Flights.Find(PlayerIndex, Flight);
-		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, Summary, Data.Army, Now);
+		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, HOLAIForum::Calm(Summary, Rebuild), Data.Army, Now);
 		Flights.Add(PlayerIndex, Flight);
 		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
 		{

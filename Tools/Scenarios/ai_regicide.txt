@@ -1,0 +1,14 @@
+# IA3.4 : Regicide contre l'IA : son Roi se met a l'abri derriere son forum et fuit tes soldats ; sa vague vise ton Roi
+# Plain, toi (slot 0) contre une IA (slot 1, « IA Normal 2 »), option Regicide, 5 Paysans de depart. Chaque camp a un Roi (250 PV, 50 d'attaque, ne prend jamais de cible de lui-meme).
+# A regarder (FocusSlot 1 pour la suivre) :
+#  1. au depart son Roi va se placer derriere son forum, du cote oppose a ton centre ; il y reste ;
+#  2. envoie 2-3 unites pres de son Roi (hol.Units.SpawnHere 3 Spearman 0 ...) : il s'eloigne de tes soldats (3 s entre deux ordres) ;
+#  3. sa vague (au plus tot 5 min) vise ton Roi (pas ton forum) : garde-le derriere tes soldats ; s'il meurt, c'est la defaite ;
+#  4. tuer son Roi (clic droit de tes soldats) te donne la victoire.
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+hol.Cheat.Resources 1000
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Normal 2 » en Regicide. Son Roi se met a l'abri derriere son forum ; sa vague vise ton Roi. Suis-la avec ² hol.Camera.FocusSlot 1.
+note Pour voir sa fuite : envoie 2-3 Piquiers pres de son Roi. Pour te defendre : garde ton Roi derriere tes soldats.

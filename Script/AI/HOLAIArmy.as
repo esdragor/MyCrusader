@@ -573,6 +573,11 @@ namespace HOLAIArmy
 		{
 			Guarded.Add(Summary.CentreLocation);
 		}
+		// IA3.4: in Regicide the King's place is guarded too (the army comes to the soldiers that near him).
+		if (Summary.bRegicide && Summary.bHasKing)
+		{
+			Guarded.Add(Summary.King.Location);
+		}
 		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
 		{
 			Guarded.Add(Summary.Buildings[Index].Location);
@@ -673,6 +678,11 @@ namespace HOLAIArmy
 			return false;
 		}
 		if (Threat.Ratio >= Data.DefenceMinRatio || (Threat.bAttackingBuilding && Threat.Ratio >= Data.DefenceMinRatioAttacked))
+		{
+			return true;
+		}
+		// IA3.2: the forum is down on its last life, the next fall is the defeat: the army fights for it whatever the ratio.
+		if (Summary.bHasOwnForum && Summary.OwnForum.bDown && Summary.OwnForum.Lives <= 1)
 		{
 			return true;
 		}
@@ -843,7 +853,8 @@ namespace HOLAIArmy
 			return false;
 		}
 		const bool bSeen = EnemyValue(Data, Summary) > 0.f;
-		if (Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
+		// IA3.3: an enemy forum lies fallen: the window is open, the minimum time does not count (the ratio and the soldiers still do).
+		if (!HOLAIForum::EnemyRuin(Summary) && Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
 		{
 			return false;
 		}
@@ -867,10 +878,24 @@ namespace HOLAIArmy
 		return PowerRatio(Data, Local);
 	}
 
-	// Where the wave's idle soldiers go: the enemy centre, or when it is gone the enemy unit nearest to the wave (bFound false without).
+	// Where the wave's idle soldiers go: a fallen enemy forum to hold (IA3.3), else the enemy centre, or when it is gone the enemy unit
+	// nearest to the wave (bFound false without).
 	FVector WaveTarget(const FHOLAISummary& Summary, FVector From, bool& bFound)
 	{
 		bFound = true;
+		bool bRuin = false;
+		const FVector Ruin = HOLAIForum::RuinTarget(Summary, From, bRuin);
+		if (bRuin)
+		{
+			return Ruin;
+		}
+		// IA3.4: in Regicide, the enemy King (his death defeats his slot).
+		bool bKing = false;
+		const FVector King = HOLAIForum::KingTarget(Summary, From, bKing);
+		if (Summary.bRegicide && bKing)
+		{
+			return King;
+		}
 		if (Summary.bHasEnemyCentre)
 		{
 			return Summary.EnemyCentreLocation;
@@ -904,7 +929,8 @@ namespace HOLAIArmy
 				Wave.NextLaunch = Now + Data.AttackCooldown;
 				Step.bLaunched = true;
 				Step.AttackIds = Wave.Ids;
-				Step.AttackTarget = Summary.EnemyCentreLocation;
+				bool bFound = false;
+				Step.AttackTarget = WaveTarget(Summary, Summary.CentreLocation, bFound);
 				Step.Ratio = PowerRatio(Data, Summary);
 				Step.Left = Wave.Ids.Num();
 			}

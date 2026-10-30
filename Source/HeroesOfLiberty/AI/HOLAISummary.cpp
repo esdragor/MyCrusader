@@ -67,7 +67,7 @@ namespace HOLAISummary
 	FHOLAISummary Make(const int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, const int32 MaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses,
-		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask)
+		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide)
 	{
 		FHOLAISummary Summary;
 		Summary.PlayerIndex = PlayerIndex;
@@ -238,6 +238,49 @@ namespace HOLAISummary
 				Summary.EnemyCentreLocation = Best->Location;
 			}
 		}
+		// IA3.1: the forums (the state is public, D353; the place comes from the slot's main centre, whatever its state, the
+		// first by position), its own and the other slots' that are not defeated, by slot; its King; the Regicide flag.
+		{
+			const auto WithLocation = [&Buildings](FHOLAIForum Forum)
+			{
+				const FHOLAIBuilding* Centre = nullptr;
+				for (const FHOLAIBuilding& Building : Buildings)
+				{
+					if (Building.OwnerPlayer == Forum.Slot && Building.TypeName == HOLBuildingTypeNames::MainCentre
+						&& (!Centre || Building.Location.X < Centre->Location.X
+							|| (Building.Location.X == Centre->Location.X && Building.Location.Y < Centre->Location.Y)))
+					{
+						Centre = &Building;
+					}
+				}
+				Forum.bHasLocation = Centre != nullptr;
+				Forum.Location = Centre ? Centre->Location : FVector::ZeroVector;
+				return Forum;
+			};
+			for (const FHOLAIForum& Forum : Forums)
+			{
+				if (Forum.Slot == PlayerIndex)
+				{
+					Summary.bHasOwnForum = true;
+					Summary.OwnForum = WithLocation(Forum);
+				}
+				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot))
+				{
+					Summary.EnemyForums.Add(WithLocation(Forum));
+				}
+			}
+			Summary.EnemyForums.Sort([](const FHOLAIForum& A, const FHOLAIForum& B) { return A.Slot < B.Slot; });
+			for (const FHOLUnitView& Unit : Units)
+			{
+				if (Unit.OwnerPlayer == PlayerIndex && Unit.bKing && Unit.Activity != EHOLUnitActivity::Dying)
+				{
+					Summary.bHasKing = true;
+					Summary.King = MakeAIUnit(Unit);
+					break;
+				}
+			}
+			Summary.bRegicide = bRegicide;
+		}
 		if (Figures.IsSet())
 		{
 			Summary.bHasPopulation = true;
@@ -304,6 +347,36 @@ namespace HOLAISummary
 				Out.Queue.Add(Item.TypeName);
 			}
 			Out.bProducing = !Building->GetProductionQueue().IsEmpty() && Building->GetProductionQueue()[0].IsStarted();
+		}
+	}
+
+	void GatherForums(const UWorld& World, TArray<FHOLAIForum>& OutForums)
+	{
+		OutForums.Reset();
+		const AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
+		if (!GameState)
+		{
+			return;
+		}
+		const FHOLForumTuning Tuning = FHOLForumTuning::FromSettings();
+		const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+		for (int32 Slot = 0; Slot < Config.Slots.Num() && Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			if (Config.Slots[Slot].State == EHOLSlotState::Closed)
+			{
+				continue;
+			}
+			const FHOLForumState& State = GameState->GetForumState(Slot);
+			FHOLAIForum& Forum = OutForums.AddDefaulted_GetRef();
+			Forum.Slot = Slot;
+			Forum.Lives = HOLForumRules::GetLives(State, Tuning);
+			Forum.bDown = State.IsDown();
+			Forum.bRuin = State.Phase == EHOLForumPhase::Ruin;
+			Forum.bRebuilding = State.Phase == EHOLForumPhase::Rebuilding;
+			Forum.RuinSecondsLeft = Forum.bRuin ? State.RuinStepsLeft * Tuning.StepSeconds : 0.f;
+			Forum.RebuildProgress = HOLForumRules::GetRebuildProgress(State, Tuning);
+			Forum.HoldProgress = HOLForumRules::GetHoldProgress(State, Tuning);
+			Forum.bContested = State.IsContested();
 		}
 	}
 
@@ -374,8 +447,11 @@ namespace HOLAISummary
 		TArray<FHOLUnitView> Enemies;
 		GatherEnemies(World, PlayerIndex, Enemies);
 		const AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
+		TArray<FHOLAIForum> Forums;
+		GatherForums(World, Forums);
 		return Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
-			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0);
+			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0, Forums,
+			GameState && GameState->GetLaunchConfig().bRegicide);
 	}
 }
 
