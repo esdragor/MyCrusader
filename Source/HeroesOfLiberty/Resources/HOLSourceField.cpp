@@ -161,8 +161,10 @@ TArray<AHOLSourceField::FPiece> AHOLSourceField::MakeProvisionalPieces(const EHO
 	case EHOLResource::Wood:
 		// D297: a trunk and a green cone; the cone is wider than the body, so that a forest reads as one canopy, and starts
 		// above a Peasant's head (2.7 m), so that one gathering at its foot is seen under it.
-		Add(CylinderMesh, FVector2D::ZeroVector, FVector(0.5f, 0.5f, 0.45f), 0.f, 0.f, TrunkColor);
-		Add(ConeMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 0.6f), 0.4f, 0.f, CrownColor);
+		// M-Q10 (the user, 2026-10-30): a third lower than before (trunk 0.45 -> 0.30, crown 0.6 -> 0.40, its base 0.4 -> 0.27), as wide as
+		// M-Q9 left it (crown 2 radii, trunk 0.5): thin little trees, many of them.
+		Add(CylinderMesh, FVector2D::ZeroVector, FVector(0.5f, 0.5f, 0.30f), 0.f, 0.f, TrunkColor);
+		Add(ConeMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 0.40f), 0.27f, 0.f, CrownColor);
 		break;
 	case EHOLResource::Food:
 		// A bush with red berries on top.
