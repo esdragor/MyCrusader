@@ -493,3 +493,11 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   clos sauf l'essai avec un ami** (reporté par l'utilisateur ; marche à suivre plus haut). Non vu : le grisage de
   « Créer un salon » dans le jeu lancé (règle testée seulement) ; cible serveur non recompilée depuis L13b (rien de
   serveur n'a changé).
+- 2026-10-27 : **Vérification** (« tout est bon au niveau du launcher ? ») : `dotnet test` sur `main` vert (27 + 252 +
+  24 + 141) ; kit, clé, `Versions\L11-v1` et raccourci du bureau en place ; tâche « HOL DuckDNS » active, nom →
+  90.55.168.58 = adresse publique du jour. **Défaut corrigé** dans `Saved\DuckDNS\update.ps1` (hors git) : un journal
+  d'une ligne n'était plus une liste (`$Old = if … { @(…) }`), chaque passage se collait au bout de la même ligne et la
+  limite de 200 lignes ne jouait pas ; `@()` mis autour du `if`, journal existant recoupé en 200 lignes, deux passages
+  vérifiés. À savoir avant l'essai avec un ami : le kit (25/10 22:12) précède L13a (22:26), son lanceur n'a pas le
+  message « Le jeu est installé » (sans gravité) ; L11-v1 est d'avant J8a et le moteur Hazelight, la prochaine
+  publication sera un gros téléchargement (moteur changé).
