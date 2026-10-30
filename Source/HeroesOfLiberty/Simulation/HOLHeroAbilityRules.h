@@ -41,6 +41,9 @@ namespace HOLHeroAbility
 	/** Damage taken less under the cry (J8c-Q2), in percent. */
 	constexpr int32 CloseRanksReductionPercent = 25;
 
+	/** T4: armour added to the units in the aura by Boucliers levees (row 2, Captain, D111). */
+	constexpr int32 ShieldsUpArmorBonus = 1;
+
 	/** Cap of the morale effects' damage reduction, all added up (D74, J8c-Q2), in percent. */
 	constexpr int32 MoraleReductionCapPercent = 50;
 

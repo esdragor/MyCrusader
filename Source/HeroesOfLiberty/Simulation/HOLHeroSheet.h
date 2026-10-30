@@ -126,6 +126,17 @@ namespace HOLHeroTalent
 	constexpr int32 SealThreshold = 3;
 	constexpr int32 KeyThreshold = 5;
 
+	/** The Dawn Order's families, the column of each row (D106): Oaths of the Guardian, the Captain, the Champion. */
+	constexpr int32 FamilyGuardian = 0;
+	constexpr int32 FamilyCaptain = 1;
+	constexpr int32 FamilyChampion = 2;
+
+	/** T4: Boucliers levees (row 2, Captain, D111): +1 armour for the units in the Dawn Aura. */
+	inline bool GrantsAuraArmor(const TArray<uint8>& Picks)
+	{
+		return Picks.Num() > 0 && Picks[0] == FamilyCaptain;
+	}
+
 	/** A talent of Family can be taken by a hero of Level who took NumPicks already: a family of the row, a row left, a point in reserve. */
 	inline bool CanPick(const int32 Level, const int32 NumPicks, const int32 Family)
 	{
