@@ -13,7 +13,7 @@ namespace UE::HeroesOfLiberty::Map
 	TConstArrayView<FHOLMapInfo> MakeMaps()
 	{
 		static const FHOLMapInfo Maps[] = {
-			{ TEXT("Plain"), NSLOCTEXT("HOLMaps", "Map_Plain", "Plaine"), false },
+			{ TEXT("Plain"), NSLOCTEXT("HOLMaps", "Map_Plain", "Plaine"), true },
 			{ TEXT("Steppe"), NSLOCTEXT("HOLMaps", "Map_Steppe", "La Steppe"), true },
 			{ TEXT("Hinterland"), NSLOCTEXT("HOLMaps", "Map_Hinterland", "L'Arrière-pays"), true },
 		};

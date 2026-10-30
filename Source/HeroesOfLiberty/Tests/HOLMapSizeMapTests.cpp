@@ -19,15 +19,6 @@ namespace UE::HeroesOfLiberty::Tests::MapSizeMaps
 
 	const TCHAR* PlainPath = TEXT("/Game/Maps/Plain.Plain");
 
-	/** The base of each slot (create_match_map.py): its wood of 40 trees within 30 m, its 6 bushes within 25 m. */
-	constexpr double WoodReach = 3000.0;
-	constexpr int32 WoodTrees = 40;
-	constexpr double BerryReach = 2500.0;
-	constexpr int32 BerryBushes = 6;
-
-	/** Its two veins, stone and gold, ~60 m away, as on /Game/Maps/Plain (the user's brief of TC2). */
-	constexpr double VeinReach = 6500.0;
-
 	/** Past this distance from every slot, a source is neutral (TC-Q7 = B: more of them on the larger sizes). */
 	constexpr double BaseReach = 7000.0;
 }
@@ -103,24 +94,8 @@ bool FHOLMapPlainSizesTest::RunTest(const FString& Parameters)
 				FMath::IsNearlyEqual(FMath::Abs(FMath::FindDeltaAngleDegrees(Yaws[Slot], Angle(Slot))), 180.0, 1.0));
 		}
 
-		// The base of each slot, the same at every size.
+		// The content of a base and of a territory is the standard budget (D564, D576): Map.Table checks it for Plain as for every other map.
 		const TArray<FHOLPlacedSource>& Sources = Layout->GetSources();
-		for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
-		{
-			int32 Trees = 0, Bushes = 0, Stone = 0, Gold = 0;
-			for (const FHOLPlacedSource& Source : Sources)
-			{
-				const double Distance = FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]);
-				Trees += Source.Type == TEXT("Tree") && Distance < WoodReach;
-				Bushes += Source.Type == TEXT("BerryBush") && Distance < BerryReach;
-				Stone += Source.Type == TEXT("StoneVein") && Distance < VeinReach;
-				Gold += Source.Type == TEXT("GoldVein") && Distance < VeinReach;
-			}
-			TestEqual(FString::Printf(TEXT("%s: slot %d's wood"), Info.Key, Slot), Trees, WoodTrees);
-			TestEqual(FString::Printf(TEXT("%s: slot %d's berries"), Info.Key, Slot), Bushes, BerryBushes);
-			TestEqual(FString::Printf(TEXT("%s: slot %d's stone vein"), Info.Key, Slot), Stone, 1);
-			TestEqual(FString::Printf(TEXT("%s: slot %d's gold vein"), Info.Key, Slot), Gold, 1);
-		}
 
 		// Symmetric (TC-Q7, § 8.1): turned by one place, every source lands on a source of its type.
 		int32 Unmatched = 0;
