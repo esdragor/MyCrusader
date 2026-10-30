@@ -292,3 +292,91 @@ void Test_WaveGoesToTheRuinNotTheCentre(FUnitTest& T)
 	const FHOLAIWaveStep Risen = HOLAIArmy::UpdateWave(Wave, Summary, FrmData(), false, false, FrmPoint(), 112.f);
 	T.AssertTrue((Risen.AttackTarget - FVector(-8000, 0, 0)).Size() < 1.f, "the forum stands again: the enemy centre");
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// The King (IA3.4, Regicide).
+
+FHOLAISummary FrmKingSummary(FVector Where, bool bIdle)
+{
+	FHOLAISummary Summary = FrmBase();
+	Summary.bRegicide = true;
+	Summary.bHasKing = true;
+	Summary.King.Id = 20;
+	Summary.King.OwnerSlot = 0;
+	Summary.King.Type = n"King";
+	Summary.King.Health = 250;
+	Summary.King.Location = Where;
+	Summary.King.bIdle = bIdle;
+	return Summary;
+}
+
+void Test_KingOnlyInRegicide(FUnitTest& T)
+{
+	FHOLAIKingMemory Memory;
+	FHOLAISummary Summary = FrmKingSummary(FVector(-450, 0, 0), true);
+	Summary.bRegicide = false;
+	FVector Where;
+	T.AssertFalse(HOLAIForum::KingOrder(Memory, Summary, FHOLAIKingData(), 100.f, Where), "no Regicide: the order is not given");
+	Summary = FrmKingSummary(FVector(-450, 0, 0), true);
+	Summary.bHasKing = false;
+	T.AssertFalse(HOLAIForum::KingOrder(Memory, Summary, FHOLAIKingData(), 100.f, Where), "no King: nothing");
+}
+
+void Test_KingGoesBehindTheForum(FUnitTest& T)
+{
+	FHOLAIKingMemory Memory;
+	const FHOLAIKingData Data;
+	const FHOLAISummary Summary = FrmKingSummary(FVector(-450, 0, 0), true);
+	T.AssertTrue((HOLAIForum::KingPost(Summary, Data) - FVector(2500, 0, 0)).Size() < 1.f, "the post: behind the forum, away from the enemy centre (-8000, 0)");
+	FVector Where;
+	T.AssertTrue(HOLAIForum::KingOrder(Memory, Summary, Data, 100.f, Where), "the King in front of the forum goes to his post");
+	T.AssertTrue((Where - FVector(2500, 0, 0)).Size() < 1.f, "to the post");
+	T.AssertFalse(HOLAIForum::KingOrder(Memory, Summary, Data, 101.f, Where), "not again within OrderEvery");
+}
+
+void Test_KingAtHisPostStays(FUnitTest& T)
+{
+	FHOLAIKingMemory Memory;
+	FVector Where;
+	T.AssertFalse(HOLAIForum::KingOrder(Memory, FrmKingSummary(FVector(2300, 100, 0), true), FHOLAIKingData(), 100.f, Where), "at his post: he stays");
+	T.AssertFalse(HOLAIForum::KingOrder(Memory, FrmKingSummary(FVector(-450, 0, 0), false), FHOLAIKingData(), 200.f, Where), "on the move: not ordered over his walk");
+}
+
+void Test_KingRunsFromTheEnemySoldier(FUnitTest& T)
+{
+	FHOLAIKingMemory Memory;
+	FHOLAISummary Summary = FrmKingSummary(FVector(2500, 0, 0), true);
+	FrmAdd(Summary.Enemies, 50, n"Spearman", 1, FVector(1000, 0, 0), 1, false, -1);
+	FVector Where;
+	T.AssertTrue(HOLAIForum::KingOrder(Memory, Summary, FHOLAIKingData(), 100.f, Where), "an enemy soldier 1500 cm away: he runs");
+	T.AssertTrue((Where - FVector(5500, 0, 0)).Size() < 1.f, "along the line away from the soldier, RunDistance far");
+
+	FHOLAIKingMemory Other;
+	FHOLAISummary Peasants = FrmKingSummary(FVector(2500, 0, 0), true);
+	FrmAdd(Peasants.Enemies, 50, n"Peasant", 3, FVector(1000, 0, 0), 1, false, -1);
+	T.AssertFalse(HOLAIForum::KingOrder(Other, Peasants, FHOLAIKingData(), 100.f, Where), "enemy Peasants frighten nobody");
+}
+
+void Test_WaveAimsAtTheEnemyKingInRegicide(FUnitTest& T)
+{
+	FHOLAISummary Summary = FrmReady();
+	FrmAdd(Summary.Enemies, 70, n"King", 1, FVector(-9500, 1500, 0), 1, false, -1);
+	bool bFound = false;
+	HOLAIForum::KingTarget(Summary, FVector(0, 0, 0), bFound);
+	T.AssertTrue(bFound, "the enemy King is known");
+
+	FHOLAIWave Wave;
+	FHOLAIWaveStep Step = HOLAIArmy::UpdateWave(Wave, Summary, FrmData(), false, false, FrmPoint(), 500.f);
+	T.AssertTrue(Step.bLaunched && (Step.AttackTarget - FVector(-8000, 0, 0)).Size() < 1.f, "no Regicide: the enemy centre");
+
+	Summary.bRegicide = true;
+	FHOLAIWave Other;
+	Step = HOLAIArmy::UpdateWave(Other, Summary, FrmData(), false, false, FrmPoint(), 500.f);
+	T.AssertTrue(Step.bLaunched && (Step.AttackTarget - FVector(-9500, 1500, 0)).Size() < 1.f, "Regicide: the enemy King");
+
+	// A fallen forum comes first.
+	Summary.EnemyForums.Add(FrmEnemyForum(2, 1, true, FVector(3000, 9000, 0)));
+	FHOLAIWave Third;
+	Step = HOLAIArmy::UpdateWave(Third, Summary, FrmData(), false, false, FrmPoint(), 500.f);
+	T.AssertTrue(Step.bLaunched && (Step.AttackTarget - FVector(3000, 9000, 0)).Size() < 1.f, "a ruin to hold before the King");
+}

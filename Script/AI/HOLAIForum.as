@@ -20,6 +20,29 @@ struct FHOLAIForumMemory
 	float LastOrder = -1000.f;
 }
 
+// The King in Regicide (IA3.4): he stays behind the forum, away from the enemy, and runs from the enemy soldiers that come near him.
+struct FHOLAIKingData
+{
+	// His post: this far behind the main forum, on the side away from the enemy centre (cm).
+	float PostDistance = 2500.f;
+
+	// He is back at his post within this (cm).
+	float PostRadius = 500.f;
+
+	// An enemy soldier this near makes him run (cm), this far from the soldier along the line away from it (cm).
+	float DangerRadius = 2500.f;
+	float RunDistance = 3000.f;
+
+	// His orders are given at most this often (s).
+	float OrderEvery = 3.f;
+}
+
+// What the slot remembers of its King's orders between two thoughts.
+struct FHOLAIKingMemory
+{
+	float LastOrder = -1000.f;
+}
+
 namespace HOLAIForum
 {
 	FHOLAIForumData DefaultData()
@@ -140,6 +163,77 @@ namespace HOLAIForum
 			{
 				bFound = true;
 				Best = Forum.Location;
+			}
+		}
+		return Best;
+	}
+
+	// The King's post: behind the main forum, away from the enemy centre (the births side is the enemy's: the King starts in front).
+	FVector KingPost(const FHOLAISummary& Summary, const FHOLAIKingData& Data)
+	{
+		FVector Away = FVector(1, 0, 0);
+		if (Summary.bHasEnemyCentre)
+		{
+			FVector Line = Summary.CentreLocation - Summary.EnemyCentreLocation;
+			Line.Z = 0;
+			if (Line.Size() > 1.f)
+			{
+				Away = Line / Line.Size();
+			}
+		}
+		return Summary.CentreLocation + Away * Data.PostDistance;
+	}
+
+	// Where the King goes now (Regicide only): away from an enemy soldier within DangerRadius, else to his post when he stands idle off it.
+	// False when he stays; Memory throttles the orders.
+	bool KingOrder(FHOLAIKingMemory& Memory, const FHOLAISummary& Summary, const FHOLAIKingData& Data, float Now, FVector& Where)
+	{
+		if (!Summary.bRegicide || !Summary.bHasKing || !Summary.bHasCentre || Now - Memory.LastOrder < Data.OrderEvery)
+		{
+			return false;
+		}
+		// The nearest enemy soldier within the danger radius: he runs from it, along the line away from it.
+		int Nearest = -1;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Enemy = Summary.Enemies[Index];
+			if (HOLAIArmy::IsThreatening(Enemy) && HOLAIArmy::FlatDistance(Enemy.Location, Summary.King.Location) <= Data.DangerRadius
+				&& (Nearest < 0 || HOLAIArmy::FlatDistance(Enemy.Location, Summary.King.Location) < HOLAIArmy::FlatDistance(Summary.Enemies[Nearest].Location, Summary.King.Location)))
+			{
+				Nearest = Index;
+			}
+		}
+		if (Nearest >= 0)
+		{
+			FVector Line = Summary.King.Location - Summary.Enemies[Nearest].Location;
+			Line.Z = 0;
+			const FVector Away = Line.Size() > 1.f ? Line / Line.Size() : FVector(1, 0, 0);
+			Where = Summary.King.Location + Away * Data.RunDistance;
+			Memory.LastOrder = Now;
+			return true;
+		}
+		const FVector Post = KingPost(Summary, Data);
+		if (Summary.King.bIdle && HOLAIArmy::FlatDistance(Summary.King.Location, Post) > Data.PostRadius)
+		{
+			Where = Post;
+			Memory.LastOrder = Now;
+			return true;
+		}
+		return false;
+	}
+
+	// The enemy King, alive and known: where to send the wave in Regicide (bFound false without; From then).
+	FVector KingTarget(const FHOLAISummary& Summary, FVector From, bool& bFound)
+	{
+		bFound = false;
+		FVector Best = From;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Enemy = Summary.Enemies[Index];
+			if (Enemy.Type == n"King" && Enemy.Health > 0 && (!bFound || HOLAIArmy::FlatDistance(Enemy.Location, From) < HOLAIArmy::FlatDistance(Best, From)))
+			{
+				bFound = true;
+				Best = Enemy.Location;
 			}
 		}
 		return Best;

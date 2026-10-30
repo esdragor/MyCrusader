@@ -884,6 +884,13 @@ namespace HOLAIArmy
 		{
 			return Ruin;
 		}
+		// IA3.4: in Regicide, the enemy King (his death defeats his slot).
+		bool bKing = false;
+		const FVector King = HOLAIForum::KingTarget(Summary, From, bKing);
+		if (Summary.bRegicide && bKing)
+		{
+			return King;
+		}
 		if (Summary.bHasEnemyCentre)
 		{
 			return Summary.EnemyCentreLocation;

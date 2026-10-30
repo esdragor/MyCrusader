@@ -33,8 +33,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIFlight> Flights;
 	TMap<int, FHOLAIBuilders> SentBuilders;
 
-	// The Peasants each slot has sent to rebuild its fallen forum (IA3.2).
+	// The Peasants each slot has sent to rebuild its fallen forum (IA3.2), and when its King was last ordered (IA3.4).
 	TMap<int, FHOLAIForumMemory> Rebuilds;
+	TMap<int, FHOLAIKingMemory> Kings;
 
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
@@ -167,6 +168,21 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 		// 3b. The army (IA2.5): the base defence when enemy soldiers come near, otherwise the regrouping at the assembly point.
 		ThinkArmy(PlayerIndex, Step, Summary, Data);
+
+		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
+		FHOLAIKingMemory KingMemory;
+		Kings.Find(PlayerIndex, KingMemory);
+		FVector KingWhere;
+		if (HOLAIForum::KingOrder(KingMemory, Summary, FHOLAIKingData(), Data.GameSeconds, KingWhere))
+		{
+			TArray<int> KingIds;
+			KingIds.Add(Summary.King.Id);
+			if (HOLAIOrder::IssueAIMoveOrder(PlayerIndex, KingIds, KingWhere))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: King goes to ({KingWhere.X}, {KingWhere.Y})");
+			}
+		}
+		Kings.Add(PlayerIndex, KingMemory);
 
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
