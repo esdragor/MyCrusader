@@ -528,4 +528,40 @@ bool FHOLVisionMatchForumSightTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchShownTest, "HeroesOfLiberty.Vision.Match.UnitShown", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchShownTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	// F7 (D381): a unit of another camp is drawn, picked and hovered only in sight of the viewer's camp; his own camp's, always.
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const uint32 Scout = Match.Place(Peasant, 0, FVector::ZeroVector);
+	if (!TestNotEqual(TEXT("a Peasant born"), Scout, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	const FVector Near(1000., 0., 0.);
+	const FVector Far(5000., 0., 0.);
+	TestTrue(TEXT("an enemy in sight is shown"), Match.Vision->IsUnitShown(0, 2, Near));
+	TestFalse(TEXT("an enemy out of sight is not"), Match.Vision->IsUnitShown(0, 2, Far));
+	TestTrue(TEXT("his ally's unit, in sight or not"), Match.Vision->IsUnitShown(0, 1, Far));
+	TestTrue(TEXT("his own unit, in sight or not"), Match.Vision->IsUnitShown(0, 0, Far));
+	TestTrue(TEXT("what his ally sees, he is shown"), Match.Vision->IsUnitShown(1, 2, Near));
+	TestFalse(TEXT("the enemy, who sees nothing there, is not shown the first camp's unit"), Match.Vision->IsUnitShown(2, 0, Near));
+	TestTrue(TEXT("a spectator has no camp: everything (D376)"), Match.Vision->IsUnitShown(INDEX_NONE, 2, Far));
+
+	Match.Move(Scout, FVector(-30000., 0., 0.));
+	Match.Vision->Update();
+	TestFalse(TEXT("the scout gone: the enemy leaves the view (the cell stays explored, not in sight)"), Match.Vision->IsUnitShown(0, 2, Near));
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	TestTrue(TEXT("no fog: everything is shown"), Match.Vision->IsUnitShown(0, 2, Far));
+	return true;
+}
+
 #endif

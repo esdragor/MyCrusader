@@ -97,6 +97,12 @@ public:
 	EHOLCellVision GetVision(int32 Slot, const FVector& Location) const;
 	bool IsVisible(int32 Slot, const FVector& Location) const { return GetVision(Slot, Location) == EHOLCellVision::Visible; }
 
+	/**
+	 * F7 (D381): a unit of OwnerSlot at Location is drawn, picked and hovered by ViewerSlot's player: his camp's always, the others'
+	 * in sight of his camp only. Everything without a fog, before it started, or for a viewer with no camp (a spectator, D376).
+	 */
+	bool IsUnitShown(int32 ViewerSlot, int32 OwnerSlot, const FVector& Location) const;
+
 	/** F5: some cell of an area (a building's footprint, Extent its half size) in sight of Slot's camp. */
 	bool IsAreaVisible(int32 Slot, const FVector& Center, const FVector2D& Extent) const;
 

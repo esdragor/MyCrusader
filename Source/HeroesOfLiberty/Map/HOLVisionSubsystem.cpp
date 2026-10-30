@@ -421,6 +421,16 @@ EHOLCellVision UHOLVisionSubsystem::GetVision(const int32 Slot, const FVector& L
 	return Camp == INDEX_NONE ? EHOLCellVision::Unexplored : Map.GetVision(Camp, Map.GetGrid().ToCell(FVector2D(Location)));
 }
 
+bool UHOLVisionSubsystem::IsUnitShown(const int32 ViewerSlot, const int32 OwnerSlot, const FVector& Location) const
+{
+	const int32 ViewerCamp = GetCampIndex(ViewerSlot);
+	if (!bStarted || Mode == EHOLFogMode::Disabled || ViewerCamp == INDEX_NONE || ViewerCamp == GetCampIndex(OwnerSlot))
+	{
+		return true;
+	}
+	return Map.GetVision(ViewerCamp, Map.GetGrid().ToCell(FVector2D(Location))) == EHOLCellVision::Visible;
+}
+
 bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center, const FVector2D& Extent) const
 {
 	if (Mode == EHOLFogMode::Disabled)

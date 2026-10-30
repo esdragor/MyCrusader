@@ -1988,12 +1988,16 @@ void AHOLPlayerController::GatherPickCandidates(const bool bOwnOnly, TArray<FHOL
 	// Allied combat: a target is a unit of another camp (an ally's is not, as my own).
 	const FHOLCampTable Camps = bHostileOnly ? FHOLCampTable::FromWorld(GetWorld()) : FHOLCampTable();
 
+	// F7 (D381): a unit out of sight of the player's camp is neither drawn nor picked.
+	const UHOLVisionSubsystem* Vision = GetWorld()->GetSubsystem<UHOLVisionSubsystem>();
+	const int32 ViewerSlot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
 	TArray<FHOLUnitView> Views;
 	HOLUnitView::Gather(*GetWorld(), Views);
 	for (const FHOLUnitView& View : Views)
 	{
 		if ((bOwnOnly && View.OwnerPlayer != HOLPlayerState->GetPlayerIndex())
-			|| (bHostileOnly && !Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex())))
+			|| (bHostileOnly && !Camps.AreHostile(View.OwnerPlayer, HOLPlayerState->GetPlayerIndex()))
+			|| (Vision && !Vision->IsUnitShown(ViewerSlot, View.OwnerPlayer, View.Location)))
 		{
 			continue;
 		}
