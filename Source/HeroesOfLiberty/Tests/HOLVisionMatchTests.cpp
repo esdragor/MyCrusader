@@ -295,6 +295,65 @@ bool FHOLVisionMatchGhostsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchBuildingMemoryTest, "HeroesOfLiberty.Vision.Match.BuildingMemory", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchBuildingMemoryTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (b): on the real chain (real buildings, real sight, real memory), how the viewer's machine draws each building.
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector SeenPlace(30000., 0., 0.);
+	const FVector UnseenPlace(-30000., 0., 0.);
+	const FVector OwnPlace(0., 30000., 0.);
+	AHOLBuilding* Seen = Match.World->SpawnActor<AHOLBuilding>(SeenPlace, FRotator::ZeroRotator);
+	AHOLBuilding* Unseen = Match.World->SpawnActor<AHOLBuilding>(UnseenPlace, FRotator::ZeroRotator);
+	AHOLBuilding* Own = Match.World->SpawnActor<AHOLBuilding>(OwnPlace, FRotator::ZeroRotator);
+	if (!TestTrue(TEXT("three buildings"), Seen && Unseen && Own))
+	{
+		return false;
+	}
+	Seen->Setup(HOLBuildingTypeNames::House, 2, 2);
+	Unseen->Setup(HOLBuildingTypeNames::House, 2, 2);
+	Own->Setup(HOLBuildingTypeNames::House, 1, 1);
+	Seen->SetConstructionState(EHOLConstructionState::UnderConstruction);
+	const uint32 Scout = Match.Place(Peasant, 0, SeenPlace + FVector(-1600., 0., 0.));
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	Match.Vision->RefreshBuildingMemory(0);
+	TestEqual(TEXT("in sight: live"), Seen->GetFogDraw(), EHOLBuildingDraw::Live);
+	TestEqual(TEXT("never seen, far: hidden"), Unseen->GetFogDraw(), EHOLBuildingDraw::Hidden);
+	TestEqual(TEXT("the ally's own, far: live"), Own->GetFogDraw(), EHOLBuildingDraw::Live);
+
+	Match.Move(Scout, OwnPlace);
+	Match.Vision->Update();
+	Seen->SetConstructionState(EHOLConstructionState::Finished);
+	Match.Vision->Update();
+	Match.Vision->RefreshBuildingMemory(0);
+	TestEqual(TEXT("seen then left: from the memory"), Seen->GetFogDraw(), EHOLBuildingDraw::Memory);
+	TestEqual(TEXT("as it was when seen (a site), not as it is now"), Seen->GetRememberedState(), EHOLBuildingSight::Site);
+	TestEqual(TEXT("never seen: still hidden"), Unseen->GetFogDraw(), EHOLBuildingDraw::Hidden);
+
+	Match.Move(Scout, SeenPlace + FVector(-1600., 0., 0.));
+	Match.Vision->Update();
+	Match.Vision->RefreshBuildingMemory(0);
+	TestEqual(TEXT("back in sight: live again"), Seen->GetFogDraw(), EHOLBuildingDraw::Live);
+
+	Match.Vision->RefreshBuildingMemory(2);
+	TestEqual(TEXT("the enemy's viewer: his own camp's is live"), Seen->GetFogDraw(), EHOLBuildingDraw::Live);
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	Match.Vision->RefreshBuildingMemory(0);
+	TestEqual(TEXT("no fog: everything live"), Unseen->GetFogDraw(), EHOLBuildingDraw::Live);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchCampsSeeingTest, "HeroesOfLiberty.Vision.Match.CampsSeeing", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
 bool FHOLVisionMatchCampsSeeingTest::RunTest(const FString& Parameters)
 {

@@ -297,6 +297,12 @@ void UHOLVisionSubsystem::Update()
 		}
 	}
 	EndPass(true);
+	// F7.3 (b): the machine's own player (none on a dedicated server) sees the others' buildings from its camp's memory when out of sight.
+	const APlayerController* Local = GetWorld()->GetNetMode() == NM_DedicatedServer ? nullptr : GetWorld()->GetFirstPlayerController();
+	if (const AHOLPlayerState* LocalState = Local && Local->IsLocalController() ? Local->GetPlayerState<AHOLPlayerState>() : nullptr)
+	{
+		RefreshBuildingMemory(LocalState->GetPlayerIndex());
+	}
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 }
 
@@ -467,6 +473,30 @@ bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center,
 		}
 	}
 	return false;
+}
+
+void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
+{
+	const int32 ViewerCamp = bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
+	const TMap<uint64, FHOLGhost>* Memory = Ghosts.IsValidIndex(ViewerCamp) ? &Ghosts[ViewerCamp] : nullptr;
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	{
+		AHOLBuilding* Building = *It;
+		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;
+		if (!Type)
+		{
+			continue;
+		}
+		if (!Memory)
+		{
+			Building->SetFogDraw(EHOLBuildingDraw::Live, EHOLBuildingSight::Standing);
+			continue;
+		}
+		const bool bOwnCamp = GetCampIndex(Building->GetOwnerPlayer()) == ViewerCamp;
+		const bool bInSight = IsAreaVisible(ViewerSlot, Building->GetActorLocation(), 0.5 * Type->Footprint);
+		const FHOLGhost* Ghost = Memory->Find(HOLVisionRules::MakeGhostKey(false, Building->GetUniqueID()));
+		Building->SetFogDraw(HOLVisionRules::GetBuildingDraw(bOwnCamp, bInSight, Ghost != nullptr), Ghost ? Ghost->State : EHOLBuildingSight::Standing);
+	}
 }
 
 uint32 UHOLVisionSubsystem::GetCampsSeeing(const FVector& Center, const FVector2D& Extent) const

@@ -73,6 +73,14 @@ enum class EHOLBuildingSight : uint8
 	Rubble,
 };
 
+/** F7.3 (b): how a viewer's machine draws a building: as it is, as its camp last saw it (grey), or not at all (never seen). */
+enum class EHOLBuildingDraw : uint8
+{
+	Live,
+	Memory,
+	Hidden,
+};
+
 /**
  * F4 (D382, D520): what a camp remembers of a building or a source it saw, as at its last look: shown in the fog (grey),
  * sometimes already gone. Never a unit.
@@ -122,6 +130,15 @@ namespace HOLVisionRules
 	 * destruction is learned by going back). Returns true when the memory changed.
 	 */
 	HEROESOFLIBERTY_API bool UpdateGhosts(TMap<uint64, FHOLGhost>& Ghosts, TConstArrayView<FHOLGhost> Present, TFunctionRef<bool(const FVector2D&)> IsVisible);
+
+	/**
+	 * F7.3 (b): a building of another camp (bOwnCamp false: the viewer's camp is its owner's or its ally's) out of the viewer's
+	 * sight is drawn from the memory, not as it is now.
+	 */
+	HEROESOFLIBERTY_API bool BuildingDrawsFromMemory(bool bOwnCamp, bool bInSight);
+
+	/** F7.3 (b): Live when it is the viewer's camp's or in sight; else Memory when its camp remembers it (bRemembered), else Hidden. */
+	HEROESOFLIBERTY_API EHOLBuildingDraw GetBuildingDraw(bool bOwnCamp, bool bInSight, bool bRemembered);
 
 	/** F3.2 (D523): a building's sight from its type's SightRadius: whole standing, half a site, none in ruin. */
 	HEROESOFLIBERTY_API double GetBuildingSight(double SightRadius, EHOLBuildingSight State);
