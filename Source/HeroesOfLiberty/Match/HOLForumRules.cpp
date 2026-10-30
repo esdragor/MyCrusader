@@ -436,7 +436,7 @@ FHOLForumBlock HOLForumRules::GetSelectionBlock(const FHOLForumState* State, con
 }
 
 TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig& Config, const TConstArrayView<FHOLForumState> Forums,
-	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning)
+	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers)
 {
 	// The occupied slots, in their order; grouped by team when there are teams (no team last).
 	TArray<int32> Slots;
@@ -461,7 +461,7 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 	{
 		const FHOLMatchSlot& MatchSlot = Config.Slots[Slot];
 		const FHOLForumState State = Forums.IsValidIndex(Slot) ? Forums[Slot] : FHOLForumState();
-		const int32 Lives = GetLives(State, Tuning);
+		const int32 Lives = GetLives(Tiers.IsValidIndex(Slot) ? Tiers[Slot] : Tuning.Tier, State.Falls);
 		const bool bLocal = Slot == LocalSlot;
 		const bool bDefeated = (DefeatedMask & (1 << Slot)) != 0;
 

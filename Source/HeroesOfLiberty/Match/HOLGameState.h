@@ -209,6 +209,8 @@ public:
 	const FHOLForumState& GetForumState(int32 Slot) const;
 	/** Lives left of a slot's main forum (D349: 1 + tier - falls; 0 once it fell for good). */
 	int32 GetLives(int32 Slot) const;
+	/** P2: the forum's values for a slot: the tier its hero's level opens (HOLHeroXP::GetTier), at least the setting's (tests). */
+	FHOLForumTuning GetForumTuning(int32 Slot) const;
 	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
 	bool IsForumDown(int32 Slot) const { return GetForumState(Slot).IsDown(); }
 	/** Share of its rebuilding done (0 to 1; 1 standing). */

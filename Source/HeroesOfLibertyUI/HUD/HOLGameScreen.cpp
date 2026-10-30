@@ -943,12 +943,14 @@ void UHOLGameScreen::RefreshPlayersTable()
 	if (GameState)
 	{
 		TArray<FHOLForumState> Forums;
+		TArray<int32> Tiers;
 		for (int32 Seat = 0; Seat < FHOLMatchConfig::MaxSlots; ++Seat)
 		{
 			Forums.Add(GameState->GetForumState(Seat));
+			Tiers.Add(GameState->GetForumTuning(Seat).Tier);
 		}
 		Rows = HOLForumRules::GetPlayersTable(GameState->GetLaunchConfig(), Forums, GameState->GetDefeatedMask(),
-			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings());
+			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers);
 	}
 	const FString Shown = FString::JoinBy(Rows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
 	if (Shown == ShownPlayersTable)
