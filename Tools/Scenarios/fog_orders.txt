@@ -1,4 +1,4 @@
-# Brouillard (F7.3) : les lignes d'ordre restent visibles sous le noir (deplacement, attaque d'un ennemi hors de vue)
+# Brouillard (F7.3) : les lignes d'ordre restent visibles sous le noir (deux deplacements en file vers l'inexplore)
 # Plain, moi (slot 0) et un adversaire (slot 1). Positions dans le repere du centre du joueur (cm).
 hol.Fog.Mode 2
 hol.Fog.Render 1
@@ -23,7 +23,6 @@ hol.Select.OrderNear 6500 0
 frames 5
 hol.Select.OrderGround -9000 3000 shift
 frames 5
-hol.Select.Attack slot=1 shift
 frames 40
 frames 10
 hol.HUD.Report 1
@@ -31,4 +30,4 @@ capture fogord_a
 hol.Fog.Render 0
 frames 20
 capture fogord_b
-note Ordres en file sous le noir : un deplacement (jaune), un autre (jaune), une attaque sur un ennemi cache (rouge).
+note Deux deplacements en file (jaune) vers le noir : leurs lignes et leurs points se voient jusqu'au bout. Maj + clic droit pour en ajouter ; le serveur refuse d'attaquer un ennemi hors de vue.
