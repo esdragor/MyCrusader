@@ -162,6 +162,12 @@ namespace HOLConstruction
 	HEROESOFLIBERTY_API bool FindFreeFootprint(const FHOLPlacementQuery& Query, const FBox2D& Obstacle, const FVector2D& Aim, double Grid, int32 MaxRings,
 		TFunctionRef<bool(const FBox2D&)> IsOnNavMesh, FBox2D& OutFootprint, int32* OutRing = nullptr);
 
+	/**
+	 * P3 (D07): a building of age BuildingAge (0 to 3, its panel in the builders' grid) may be placed once the player's
+	 * tier (the hero's level, HOLHeroXP::GetTier) has reached it: the tier is at least the age.
+	 */
+	HEROESOFLIBERTY_API bool IsAgeOpen(int32 BuildingAge, int32 Tier);
+
 	/** Takes Cost from Stock if it covers all of it; otherwise leaves Stock unchanged (D311: never reserve more than owned). */
 	HEROESOFLIBERTY_API bool TryPay(FHOLResources& Stock, const FHOLResources& Cost);
 

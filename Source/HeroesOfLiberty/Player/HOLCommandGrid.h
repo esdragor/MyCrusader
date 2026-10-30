@@ -119,7 +119,7 @@ struct FHOLGridContext
 	int32 HeroCooldownSeconds[3] = {};
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
 	TArray<FHOLBuildable> Buildable;
-	/** The last age the player has reached (HOLCommandGrid::GetReachedAge): the panels after it greyed. */
+	/** The last age the player has reached (P3: AHOLGameState::GetTier, the tier his hero level opens): the panels after it greyed. */
 	int32 ReachedAge = 0;
 };
 
@@ -270,9 +270,6 @@ namespace HOLCommandGrid
 
 	/** The builders' age panels are shown: builders selected, no soldier among them, no building. */
 	HEROESOFLIBERTY_API bool IsBuildGrid(const FHOLGridContext& Context);
-
-	/** The last age the player has reached: 0 (Fondation) until the ages come (GDD § 11.1). */
-	HEROESOFLIBERTY_API int32 GetReachedAge();
 
 	/** Age (0 to 3) is reached: its panel's buildings may be placed. */
 	HEROESOFLIBERTY_API bool IsAgeReached(const FHOLGridContext& Context, int32 Age);

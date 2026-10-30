@@ -154,6 +154,23 @@ bool FHOLConstructionPlacementTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// P3 (D07): a building of an age the player's tier has not reached cannot be placed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionAgeTest, "HeroesOfLiberty.Construction.Age", UE::HeroesOfLiberty::Tests::Construction::Flags)
+bool FHOLConstructionAgeTest::RunTest(const FString& Parameters)
+{
+	for (int32 Age = 0; Age <= 3; ++Age)
+	{
+		for (int32 Tier = 0; Tier <= 3; ++Tier)
+		{
+			TestEqual(*FString::Printf(TEXT("Age %d at tier %d"), Age, Tier), HOLConstruction::IsAgeOpen(Age, Tier), Age <= Tier);
+		}
+	}
+	TestTrue(TEXT("Age 0 is always open"), HOLConstruction::IsAgeOpen(0, 0));
+	TestFalse(TEXT("Age 1 is shut at tier 0"), HOLConstruction::IsAgeOpen(1, 0));
+	TestTrue(TEXT("A negative tier is tier 0 for the age 0"), HOLConstruction::IsAgeOpen(0, -1));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionPaymentTest, "HeroesOfLiberty.Construction.Payment", UE::HeroesOfLiberty::Tests::Construction::Flags)
 bool FHOLConstructionPaymentTest::RunTest(const FString& Parameters)
 {

@@ -166,11 +166,16 @@ const FHOLForumState& AHOLGameState::GetForumState(const int32 Slot) const
 	return ForumStates.IsValidIndex(Slot) ? ForumStates[Slot] : Standing;
 }
 
-FHOLForumTuning AHOLGameState::GetForumTuning(const int32 Slot) const
+int32 AHOLGameState::GetTier(const int32 Slot) const
 {
 	// The level is the public sheet's on a client as on the server (UHOLHeroLibrary), so the tier needs nothing sent more.
+	return HOLHeroXP::GetTier(UHOLHeroLibrary::GetHeroLevel(this, Slot));
+}
+
+FHOLForumTuning AHOLGameState::GetForumTuning(const int32 Slot) const
+{
 	FHOLForumTuning Tuning = FHOLForumTuning::FromSettings();
-	Tuning.Tier = FMath::Max(Tuning.Tier, HOLHeroXP::GetTier(UHOLHeroLibrary::GetHeroLevel(this, Slot)));
+	Tuning.Tier = FMath::Max(Tuning.Tier, GetTier(Slot));
 	return Tuning;
 }
 

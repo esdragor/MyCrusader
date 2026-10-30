@@ -3127,7 +3127,9 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 
 void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 {
-	Context.ReachedAge = HOLCommandGrid::GetReachedAge();
+	// P3: the tier the hero's level opens (the server checks it again at the placement).
+	const AHOLGameState* TierState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	Context.ReachedAge = TierState && GetHOLPlayerState() ? TierState->GetTier(GetHOLPlayerState()->GetPlayerIndex()) : 0;
 	if (GetHOLPlayerState() && !SelectedUnits.IsEmpty())
 	{
 		// The units of the active subgroup (Tab, the user's trial of J7b; all of them for « Tous »). Builders: those that
