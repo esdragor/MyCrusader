@@ -538,9 +538,10 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		RefreshAbsenceBanner();
 		RefreshStatsButton();
 		// V2.3c: a selected main forum on the ground, its ruin's seconds and its rebuilding's percent move with time alone
-		// (the forum's state changes only at its phases): its block is read at the same pace.
+		// (the forum's state changes only at its phases): its block is read at the same pace. Standing too (tiers, P4): its
+		// lives follow the level of its player's hero, which moves without telling the forum's state.
 		const AHOLBuilding* SelectedBuilding = BoundBuilding.Get();
-		if (BoundForumState.IsValid() && SelectedBuilding && SelectedBuilding->IsForumDown())
+		if (BoundForumState.IsValid() && SelectedBuilding && (SelectedBuilding->IsForumDown() || SelectedBuilding->IsPrimaryForum()))
 		{
 			Refresh();
 		}
@@ -548,6 +549,12 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		else if (bHeroCellsShown)
 		{
 			RefreshGrid(nullptr, false, BoundPlayerState.Get());
+		}
+		// P4 (tiers): the builders' age panels follow the tier of the player's hero (his level moves without a delegate).
+		if (bAgesShown && BoundPlayerState.IsValid() && BoundTableState.IsValid()
+			&& BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) != ShownTier)
+		{
+			RefreshAges(BoundPlayerState.Get());
 		}
 	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
@@ -1905,6 +1912,7 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 	}
 	bAgesShown = HOLCommandGrid::IsBuildGrid(Context);
 	ShownChosenAge = bAgesShown && PlayerController ? PlayerController->GetChosenAge() : INDEX_NONE;
+	ShownTier = PlayerState && BoundTableState.IsValid() ? BoundTableState->GetTier(PlayerState->GetPlayerIndex()) : INDEX_NONE;
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
 	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
 	{

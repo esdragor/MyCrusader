@@ -142,6 +142,7 @@ $SubCaseTable = @{
         rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
         barwidth = @{ Marks = @("barwidth"); Setup = @() }
+        tiers = @{ Marks = @("tiers"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -1983,6 +1984,24 @@ if ($Parts -contains "camera") {
             }
             Step "r.SetRes 1600x900w", "frames 8", "hol.HUD.Report", "hol.Units.Remove $($CornerBuilder -join ' ') 600 0 Peasant",
                 "waitlog units of slot 0 within 600 of ($($CornerBuilder -join ', '))"
+            Key Escape
+            Step "waitlog Selection: none"
+            # The civilisation tier from the hero's level (P4, the tiers chantier): the hero born (level 1: tier 0), a Peasant
+            # selected (the builders' age panels): II locked. His XP to 600 (level 3, tier 1) while the Peasant stays selected:
+            # II opens; to 3300 (level 6, tier 2): III opens, IV stays locked (the screen follows the level, nothing re-selected).
+            # Then the main forum selected: its lives follow the hero's level (4 at level 6, 3 at level 3, 2 at level 1), in its
+            # block and in the players' table. The Peasant and the hero removed, his XP back to 0.
+            Step "mark build tiers", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')",
+                "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 1 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 3 -> 6", "wait 0.6", "frames 3", "hol.HUD.Report", "capture build_tiers_ages",
+                "hol.Units.Remove $($CornerBuilder -join ' ') 600 0 Peasant", "waitlog units of slot 0 within 600 of ($($CornerBuilder -join ', '))"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 6 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 0", "waitlog Hero level: slot 0 level 3 -> 1", "wait 0.6", "frames 3", "hol.HUD.Report",
+                "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3"
             Key Escape
             Step "waitlog Selection: none"
             Stop-CaseFilter
@@ -4649,6 +4668,23 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") }).Count -eq 2) -and
         (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") -and ($_.Scale -lt 0.995 -or $_.Shown -ne $_.Bar) }).Count -eq 0)
     $AllOk = (Report "build barwidth" $Checks) -and $AllOk
+    # The tiers (P4): the age panels follow the hero's level (II opens at level 3, III at level 6, IV stays locked), the
+    # main forum's lives too (2, 3, 4), in its block and in the players' table, as the simulation and the screen write them.
+    $Tiers = @(Get-Section "build tiers" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $TierAges = @($Tiers | Select-String -Pattern "HUD report: .*, grid ages (I=\w+) \[[^\]]*\] (II=\w+) \[[^\]]*\] (III=\w+) \[[^\]]*\] (IV=\w+) " |
+        ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value) $($_.Matches[0].Groups[3].Value) $($_.Matches[0].Groups[4].Value)" })
+    $Checks["the age panels follow the level: level 1 II locked, level 3 II open, level 6 III open and IV locked ($($TierAges -join '; '))"] =
+        (($TierAges -join ";") -eq "I=open II=locked III=locked IV=locked;I=open II=open III=locked IV=locked;I=open II=open III=open IV=locked")
+    $TierLives = @($Tiers | Select-String -Pattern "HUD forum: selection, lives (\d+), players \[([^\]]*)\]" | ForEach-Object {
+        $Row = @($_.Matches[0].Groups[2].Value -split " \| " | Where-Object { $_ -match "^slot 0 " }) | Select-Object -First 1
+        "$($_.Matches[0].Groups[1].Value)/$(if ("$Row" -match 'lives (\d+) standing$') { $Matches[1] } else { '?' })"
+    })
+    $Checks["the forum's lives follow the level, block / table: level 6 4, level 3 3, level 1 2 ($($TierLives -join '; '))"] =
+        (($TierLives -join ";") -eq "4/4;3/3;2/2")
+    $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
+    $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
+    $AllOk = (Report "build tiers" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

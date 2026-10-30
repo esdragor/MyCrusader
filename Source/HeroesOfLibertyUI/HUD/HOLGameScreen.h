@@ -572,6 +572,8 @@ private:
 	TArray<FName> ShownAgeTypes;
 	TArray<bool> ShownAgeReached;
 	int32 ShownChosenAge = INDEX_NONE;
+	/** The tier of the player's hero the age panels were written for (P4): they follow his level. */
+	int32 ShownTier = INDEX_NONE;
 	bool bQueueShown = false;
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
