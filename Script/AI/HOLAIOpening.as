@@ -107,8 +107,12 @@ struct FHOLAIOpeningData
 
 	// Peasants (alive and queued) from which the military buildings are built, and from which the army spends and produces: the economy is
 	// established. Below, the army share is 0.
-	int ArmyBuildPeasants = 16;
-	int ArmyMinPeasants = 20;
+	int ArmyBuildPeasants = 14;
+	int ArmyMinPeasants = 16;
+
+	// The wood is kept for the military building (IA2.7: the farms of the block spent it 75 at a time and the Barracks, 150, never came)
+	// while the food in stock is at least this: no mill or farm of the block is ordered until the military building is placed.
+	int SaveForArmyFood = 200;
 
 	// Share of the total spending (economy + army) that goes to the army once established: the base, rising linearly over ArmyRampSeconds of
 	// game to the max; plus the bump while the enemy's army seen is stronger than ours (HOLAIArmy::PowerRatio under 1); never over the cap.
@@ -694,6 +698,7 @@ namespace HOLAIOpening
 		// 2b. The military building the composition calls for (IA2.4: Barracks for Spearmen and Men-at-arms, Archery Range for Archers and
 		// Crossbowmen), on the enemy side of the centre, once the economy is far enough along and the wood is there; else the ranks below.
 		const FName Military = MilitaryBuildingWanted(Summary, Data);
+		bool bSaving = false;
 		if (Military != NAME_None && Summary.Wood.Stock >= WoodCostOf(Data, Military))
 		{
 			const FHOLAIBuildChoice Ordered = OrderOf(Summary, Data, Military, MilitaryAnchor(Summary, Data), false, Busy);
@@ -701,6 +706,10 @@ namespace HOLAIOpening
 			{
 				return Ordered;
 			}
+		}
+		else if (Military != NAME_None && Summary.Food.Stock >= Data.SaveForArmyFood)
+		{
+			bSaving = true;
 		}
 
 		// 3. A camp again where the massif is cut: wood, stone and gold when the needs ask for them; one camp at a time.
@@ -722,6 +731,13 @@ namespace HOLAIOpening
 				continue;
 			}
 			return OrderOf(Summary, Data, CampOf(Resource), Part.Sources[0].Location, false, Busy);
+		}
+
+		// 3b. The wood is kept for the military building while the food is comfortable.
+		if (bSaving)
+		{
+			Choice.Nothing = "saving wood";
+			return Choice;
 		}
 
 		// 4. The farm block: its mill and its farms in turn at the planned spots; planned first.

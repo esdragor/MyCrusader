@@ -177,14 +177,19 @@ void Test_ArmyShareNoneBeforeTheEconomyStands(FUnitTest& T)
 	FHOLAISummary Summary = PlanSummary();
 	FHOLAIOpeningData Data = PlanData();
 	Data.GameSeconds = 400.f;
-	T.AssertTrue(HOLAINeeds::ArmyEstablished(Summary, Data), "20 Peasants: the economy stands");
+	Summary.PeasantIds.Empty();
+	for (int Id = 1; Id <= Data.ArmyMinPeasants; Id++)
+	{
+		Summary.PeasantIds.Add(Id);
+	}
+	T.AssertTrue(HOLAINeeds::ArmyEstablished(Summary, Data), "enough Peasants: the economy stands");
 	T.AssertTrue(PlanNear(HOLAINeeds::ArmyShareOf(Summary, Data), 0.15f + 0.30f * 400.f / 600.f), "the base plus two thirds of the ramp");
-	Summary.PeasantIds.RemoveAt(19);
-	T.AssertFalse(HOLAINeeds::ArmyEstablished(Summary, Data), "19 Peasants: not yet");
+	Summary.PeasantIds.RemoveAt(Data.ArmyMinPeasants - 1);
+	T.AssertFalse(HOLAINeeds::ArmyEstablished(Summary, Data), "one Peasant short: not yet");
 	T.AssertTrue(PlanNear(HOLAINeeds::ArmyShareOf(Summary, Data), 0.f), "no share before the economy stands, however late");
 	// Peasants waiting in the centre's queue count (alive + queued).
 	Summary.Buildings[0].Queue.Add(n"Peasant");
-	T.AssertTrue(HOLAINeeds::ArmyEstablished(Summary, Data), "19 alive + 1 queued");
+	T.AssertTrue(HOLAINeeds::ArmyEstablished(Summary, Data), "one short + 1 queued");
 }
 
 void Test_ArmyShareRisesWithTimeAndThreat(FUnitTest& T)
@@ -225,9 +230,9 @@ void Test_ArmyAsksTheResourcesOfItsUnits(FUnitTest& T)
 	T.AssertTrue(PlanNear(Needs.Share[3], 0.f), "so no Peasant for the gold");
 
 	// The same slot with no army share: the spending of the economy alone, smaller.
-	FHOLAISummary Young = PlanSummary();
-	Young.PeasantIds.RemoveAt(19);
-	FHOLAINeeds Economy = HOLAINeeds::Compute(Young, Data);
+	FHOLAIOpeningData NoArmyData = Data;
+	NoArmyData.ArmyMinPeasants = 99;
+	FHOLAINeeds Economy = HOLAINeeds::Compute(Summary, NoArmyData);
 	T.AssertTrue(Needs.Spend[0] + Needs.Spend[1] > Economy.Spend[0] + Economy.Spend[1], "the army adds to the spending");
 
 	// Enemy Archers: Man-at-arms (20 gold) at the Barracks and Crossbowman (40 gold) at the Archery Range: gold is asked of the Peasants.
@@ -271,19 +276,45 @@ void Test_BarracksWaitsForTheWood(FUnitTest& T)
 
 }
 
-void Test_NoBarracksUnderSixteenPeasants(FUnitTest& T)
+void Test_NoBarracksUnderFourteenPeasants(FUnitTest& T)
 {
 	FHOLAIOpeningData Data = PlanData();
+	T.AssertEquals(14, Data.ArmyBuildPeasants, "the Barracks from 14 Peasants");
 	FHOLAISummary Few = PlanSummary();
-	for (int Cut = 0; Cut < 5; Cut++)
+	while (Few.PeasantIds.Num() > Data.ArmyBuildPeasants - 1)
 	{
-		Few.PeasantIds.RemoveAt(10);
+		Few.PeasantIds.RemoveAt(Few.PeasantIds.Num() - 1);
 	}
-	T.AssertEquals(15, Few.PeasantIds.Num(), "15 Peasants");
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Few, Data);
-	T.AssertFalse(Choice.bBuild && (Choice.Type == n"Barracks" || Choice.Type == n"ArcheryRange"), "under 16 Peasants: no military building");
+	T.AssertFalse(Choice.bBuild && (Choice.Type == n"Barracks" || Choice.Type == n"ArcheryRange"), "under 14 Peasants: no military building");
 	Few.PeasantIds.Add(99);
-	T.AssertTrue(HOLAIOpening::ChooseBuild(Few, Data).Type == n"Barracks", "16 Peasants: the Barracks");
+	T.AssertTrue(HOLAIOpening::ChooseBuild(Few, Data).Type == n"Barracks", "14 Peasants: the Barracks");
+}
+
+// The wood is kept for the military building (the farms of the block would spend it 75 at a time, the Barracks needing 150 never came):
+// with the food comfortable (stock >= SaveForArmyFood), no farm is ordered while the Barracks is wanted and the wood short; with the food
+// short, the farm goes on.
+void Test_FarmsWaitWhileTheWoodIsKeptForTheBarracks(FUnitTest& T)
+{
+	FHOLAIOpeningData Data = PlanData();
+	FHOLAISummary Summary = PlanSummary();
+	Summary.Wood.Stock = 100;
+	Summary.Food.Sources[0].Remaining = 50;
+	TArray<int> NoBusy;
+	FHOLAIFarmPlan Plan;
+	Plan.bActive = true;
+	Plan.Mill = FVector(0, 4000, 0);
+	Plan.Farms.Add(FVector(-3500, 5000, 0));
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy);
+	T.AssertFalse(Choice.bBuild, "food in stock, the Barracks wanted, 100 wood: saving, no mill or farm");
+	T.AssertEquals("saving wood", Choice.Nothing, "saving wood");
+	Summary.Wood.Stock = 150;
+	Choice = HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy);
+	T.AssertTrue(Choice.bBuild && Choice.Type == n"Barracks", "150 wood: the Barracks");
+	Summary.Wood.Stock = 100;
+	Summary.Food.Stock = 50;
+	Choice = HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy);
+	T.AssertTrue(Choice.bBuild && (Choice.Type == n"Mill" || Choice.Type == n"Farm"), "the food is short: the block goes on");
 }
 
 void Test_ArcheryRangeWhenTheCompositionWantsArchers(FUnitTest& T)
@@ -463,11 +494,14 @@ void Test_ProductionNeedsStockAndRoom(FUnitTest& T)
 void Test_NoProductionBeforeTheEconomyStands(FUnitTest& T)
 {
 	FHOLAISummary Summary = PlanWithBothBuildings();
-	Summary.PeasantIds.RemoveAt(19);
+	while (Summary.PeasantIds.Num() >= PlanData().ArmyMinPeasants)
+	{
+		Summary.PeasantIds.RemoveAt(Summary.PeasantIds.Num() - 1);
+	}
 	FHOLAIMilitaryChoice Choice = HOLAIOpening::ChooseMilitary(Summary, PlanData(), 0);
 	for (int Index = 0; Index < Choice.Orders.Num(); Index++)
 	{
-		T.AssertFalse(Choice.Orders[Index].bQueue, "19 Peasants: no soldier yet");
+		T.AssertFalse(Choice.Orders[Index].bQueue, "under the minimum: no soldier yet");
 	}
 	T.AssertEquals(2, Choice.Orders.Num(), "the buildings still get their rally");
 }
@@ -500,7 +534,10 @@ void Test_HouseMarginCountsMilitaryProducers(FUnitTest& T)
 	PlanAddBuilding(Summary, n"Barracks", EHOLConstructionState::Finished, FVector(-1500, 0, 0));
 	PlanAddBuilding(Summary, n"ArcheryRange", EHOLConstructionState::Finished, FVector(-1500, 1500, 0));
 	T.AssertEquals(Alone * 2, HOLAIOpening::HouseMargin(Summary, Data), "the Barracks and the Range are two producers (the centre alone before)");
-	Summary.PeasantIds.RemoveAt(19);
+	while (Summary.PeasantIds.Num() >= Data.ArmyMinPeasants)
+	{
+		Summary.PeasantIds.RemoveAt(Summary.PeasantIds.Num() - 1);
+	}
 	T.AssertEquals(Alone, HOLAIOpening::HouseMargin(Summary, Data), "before the economy stands they produce nothing: the centre alone");
 }
 
