@@ -422,3 +422,80 @@ void Test_WaveAimsAtTheEnemyKingInRegicide(FUnitTest& T)
 	Step = HOLAIArmy::UpdateWave(Third, Summary, FrmData(), false, false, FrmPoint(), 500.f);
 	T.AssertTrue(Step.bLaunched && (Step.AttackTarget - FVector(3000, 9000, 0)).Size() < 1.f, "a ruin to hold before the King");
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// Helping a teammate (IA4, D571): the army goes and holds a teammate's fallen forum when it dominates on the spot (ratio at least 1).
+
+void Test_TeammateRuinIsHelpedWhenTheArmyHoldsItsOwnThere(FUnitTest& T)
+{
+	FHOLAISummary Summary = FrmReady();
+	bool bFound = true;
+	HOLAIArmy::AllyHelpTarget(Summary, FrmData(), FVector(0, 0, 0), bFound);
+	T.AssertFalse(bFound, "no teammate: nowhere to help");
+	Summary.AllyForums.Add(FrmEnemyForum(2, 2, false, FVector(3000, 9000, 0)));
+	HOLAIArmy::AllyHelpTarget(Summary, FrmData(), FVector(0, 0, 0), bFound);
+	T.AssertFalse(bFound, "the teammate's forum stands: nothing to help");
+	Summary.AllyForums[0].bDown = true;
+	Summary.AllyForums[0].bRuin = true;
+	const FVector Target = HOLAIArmy::AllyHelpTarget(Summary, FrmData(), FVector(0, 0, 0), bFound);
+	T.AssertTrue(bFound && (Target - FVector(3000, 9000, 0)).Size() < 1.f, "the teammate's ruin, nobody there: the army can hold it");
+
+	FHOLAIWave Wave;
+	T.AssertTrue(HOLAIArmy::CanLaunch(Wave, Summary, FrmData(), false, 100.f), "a teammate's ruin to hold: the minimum time does not count");
+	Summary.AllyForums[0].bDown = false;
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, Summary, FrmData(), false, 100.f), "the same, the forum standing: too early as before");
+}
+
+void Test_TeammateRuinWithAStrongEnemyOnTheSpotIsLeftAlone(FUnitTest& T)
+{
+	FHOLAISummary Summary = FrmReady();
+	Summary.AllyForums.Add(FrmEnemyForum(2, 1, true, FVector(3000, 9000, 0)));
+	// Nine Men-at-arms stand at the ruin against our ten Spearmen: under 1 on the spot.
+	FrmAdd(Summary.Enemies, 70, n"ManAtArms", 9, FVector(3000, 8500, 0), 1, false, -1);
+	bool bFound = true;
+	HOLAIArmy::AllyHelpTarget(Summary, FrmData(), FVector(0, 0, 0), bFound);
+	T.AssertTrue(HOLAIArmy::RatioAt(Summary, FrmData(), FVector(3000, 9000, 0)) < 1.f, "the ratio on the spot is under 1");
+	T.AssertFalse(bFound, "a crushing enemy at the teammate's ruin: the army does not go");
+	FHOLAIWave Wave;
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, Summary, FrmData(), false, 100.f), "and no launch for it (the minimum time still counts)");
+
+	// The same enemy far from the ruin does not count there.
+	Summary.Enemies.Empty();
+	FrmAdd(Summary.Enemies, 70, n"ManAtArms", 9, FVector(-8000, 0, 0), 1, false, -1);
+	HOLAIArmy::AllyHelpTarget(Summary, FrmData(), FVector(0, 0, 0), bFound);
+	T.AssertTrue(bFound, "the enemy army is elsewhere: only the soldiers on the spot count");
+}
+
+void Test_TeammateRuinStillNeedsTheSoldiersAndNoDefence(FUnitTest& T)
+{
+	FHOLAISummary Few = FrmBase();
+	FrmAdd(Few.Army, 1, n"Spearman", 5, FrmPoint(), 0, true, -1);
+	Few.AllyForums.Add(FrmEnemyForum(2, 1, true, FVector(3000, 9000, 0)));
+	FHOLAIWave Wave;
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, Few, FrmData(), false, 100.f), "too few soldiers");
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, FrmReady(), FrmData(), true, 100.f), "not while defending");
+
+	// Without an enemy centre known, a teammate's ruin is still a place to go.
+	FHOLAISummary NoCentre = FrmReady();
+	NoCentre.bHasEnemyCentre = false;
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, NoCentre, FrmData(), false, 100.f), "no enemy centre and no ruin: nowhere to go");
+	NoCentre.AllyForums.Add(FrmEnemyForum(2, 1, true, FVector(3000, 9000, 0)));
+	T.AssertTrue(HOLAIArmy::CanLaunch(Wave, NoCentre, FrmData(), false, 100.f), "a teammate's ruin to help hold");
+}
+
+void Test_WaveGoesToTheTeammateRuinBeforeTheEnemyRuin(FUnitTest& T)
+{
+	FHOLAISummary Summary = FrmReady();
+	Summary.EnemyForums.Add(FrmEnemyForum(3, 1, true, FVector(-9000, 3000, 0)));
+	Summary.AllyForums.Add(FrmEnemyForum(2, 1, true, FVector(3000, 9000, 0)));
+	FHOLAIWave Wave;
+	const FHOLAIWaveStep Step = HOLAIArmy::UpdateWave(Wave, Summary, FrmData(), false, false, FrmPoint(), 100.f);
+	T.AssertTrue(Step.bLaunched, "launched at 100 s");
+	T.AssertTrue((Step.AttackTarget - FVector(3000, 9000, 0)).Size() < 1.f, "to the teammate's ruin, before the enemy's");
+
+	// With a strong enemy on the teammate's ruin the wave takes the enemy's ruin as before.
+	FrmAdd(Summary.Enemies, 70, n"ManAtArms", 9, FVector(3000, 8500, 0), 1, false, -1);
+	bool bFound = false;
+	const FVector Where = HOLAIArmy::WaveTarget(Summary, FrmData(), FrmPoint(), bFound);
+	T.AssertTrue(bFound && (Where - FVector(-9000, 3000, 0)).Size() < 1.f, "the teammate's ruin is out of reach: the enemy's ruin");
+}

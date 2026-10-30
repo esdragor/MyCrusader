@@ -493,7 +493,7 @@ if ($Parts -contains "menu") {
 # an order of the fallen player refused by the server (D358); then a second match where the AI is defeated (hol.Victory.Defeat 1): Victory, "Quitter vers le menu", the menu again.
 if ($Parts -contains "victory") {
     $VictoryConfig = Join-Path $TestSaved "victory_1v1.json"
-    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $VictoryConfig
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1, "aiBrain": false } ] }' | Set-Content -Encoding ascii $VictoryConfig
     Step "mark victory surrender", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60"
     Key Escape
     Step "waitlog Game menu: opened", "frames 5", "hol.UI.Focus SurrenderButton", "frames 3"

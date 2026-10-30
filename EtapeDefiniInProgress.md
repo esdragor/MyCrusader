@@ -2115,6 +2115,24 @@ unité jamais inactive).
 ### Suivi
 - 2026-10-29 : Elrond réservé (`IN_USE.txt`), branche `last-attacker-expiry` = `main` 93b9069, compilation lancée ;
   sous-agent lancé pour les étapes 1 et 2.
+- 2026-10-29 : **étapes 1 et 2 faites, rouge puis vert** (sous-agent, ~24 min, 203k tokens, rien commité). Test rouge d'abord :
+  sous-cas **`combat:forget`** de `quick_check.ps1` (`$SubCaseTable.combat`, `Start-CaseFilter "combat"`, 22-31 s) : Homme d'armes
+  slot 0 à (-2000, -6000), Archer slot 1 à (-2000, -7900) (19 m : dans sa portée, hors de l'agression 16 m de l'Homme d'armes) ;
+  `hol.Combat.LogHits 1`, `waitlog Archer lands on #` puis `hol.Units.Move -2000 -13000 1` (l'Archer, 7,8 m/s contre 7, n'est
+  jamais rattrapé) ; `hol.Combat.Report` + `hol.Units.Where` toutes les 0,5 s pendant 11 s. Contrôles (pas du premier coup) :
+  riposte dans les 4 s (cible = l'Archer), puis dès +110 pas cible 0, immobile (< 30 cm), Idle. **Rouge** (code d'avant) : cible 2
+  de +115 à +228 pas, 29 m parcourus de 5,5 s à la fin, « Moving ×9, Attacking ×3 » (l'Archer arrivé reprend l'Homme d'armes et
+  retire : poursuite sans fin). Correctif déterministe : `HOLCombat::LastAttackerMemoryMs = 5000` et
+  `KeepsLastAttacker(StepIndex, LastHitStep, StepMs)` (`HOLCombatRules.h/.cpp`) ; `int64 LastHitStep = -1` dans
+  `FHOLCombatFragment` (remis à −1 par `Disengage`), posé aux deux coups (flèche, mêlée), lu à la recherche anticipée (~1031) et à
+  l'oubli séquentiel (~1168) ; mêlé à l'empreinte (`HOLSimulationSubsystem.cpp`) ; test C++ `HeroesOfLiberty.Combat.LastAttacker`
+  (9 cas). **Vert** : cible et Moving de +12 à +94 pas (riposte gardée, 34 m), au pas +104 (5,2 s) cible 0, « fighting 0 », Idle,
+  arrêté à (-2002, -9416) ; l'Archer finit Idle à 36 m. Compilation PASS (232 s) ; **`-Parts tests,combat` PASS en 38 s (tests
+  294/294)**. Scénario d'essai `Tools/Scenarios/last_attacker.txt` + `.json` (Plain, Humain + IA `aiBrain:false`) :
+  `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 last_attacker` ;
+  variante console `hol.Units.Move -2000 -6000 1` pour ramener l'Archer (retire, 5 s de poursuite, oubli à nouveau). **À voir à
+  l'essai** : 5 s au ressenti (constante unique) ; le Roi (riposte seule, V5.1) oublie aussi après 5 s ; l'aide (MV.4) ne vient plus
+  à un ami dont le dernier coup date de plus de 5 s ; cosmétique : ligne « combat anims: » vide en mode sous-cas.
 
 ## T — Barre du bas trop large sous 1500 px (2026-10-29, Galadriel, branche `bottom-bar-width`)
 
@@ -2132,6 +2150,28 @@ mini-carte, reprise le 2026-10-29 à la demande de l'utilisateur (« go 1 à 3 �
 ### Suivi
 - 2026-10-29 : Galadriel réservé (`IN_USE.txt`), branche `bottom-bar-width` = `main` 93b9069, compilation lancée
   (file d'attente derrière Elrond) ; sous-agent lancé pour les étapes 1 et 2.
+- 2026-10-29 : **étapes 1 et 2 faites, rouge puis vert** (sous-agent, ~21 min, 184k tokens, rien commité). Cause : la barre du bas
+  (`BottomBar`, HorizontalBox bas-gauche à largeur désirée) demande **1304 px Slate** avec un Paysan sélectionné (sélection 340 +
+  grille 332 + palier I à 4 colonnes + 3 paliers vides + interstices), la place de la mini-carte 240 + 2 × 16 à droite : **1512 px
+  Slate** nécessaires. Nuance : le HUD suit la courbe DPI d'Unreal (côté court, 1080 → 1), donc 1280 × 720, 1366 × 768 et 1440 × 900
+  donnent 1922 / 1922 / 1729 px Slate et **tenaient déjà** ; ce qui débordait : 1080 de haut sous 1512 px (1500 × 1080) et le 4:3
+  (1280 × 1024, échelle 0,948 → 1350 px Slate). Mesure sur la vraie chaîne : ligne `HUD layout: viewport WxH, dpi D, width W,
+  bar B shown S (scale K) right R, minimap 240 left L, gap G` dans `hol.HUD.Report` (`UHOLGameScreen::DescribeLayout`) ; sous-cas
+  **`build:barwidth`** de `quick_check.ps1` (`$HudSizes`, `r.SetRes` à 1280 × 720, 1280 × 1024, 1366 × 768, 1440 × 900, 1500 × 1080,
+  1920 × 1080, retour 1600 × 900 ; captures `qc_hud_1366`, `qc_hud_1500`, `qc_hud_1920` ; contrôles : gap ≥ 0 partout, échelle 1 à
+  1920 × 1080 et 1600 × 900). **Rouge** : gap 1280 × 1024 **−226**, 1500 × 1080 **−76** (les autres +153 à +346). Correctif (sans
+  refonte) : barre des groupes + barre du bas dans une colonne `BottomLeft` dans un **`UScaleBox` `BottomScale`** (`ScaleToFitX`,
+  `DownOnly`, bas-gauche, `SelfHitTestInvisible`), slot `HAlign_Fill` / `VAlign_Bottom`, marge droite `ScreenMargin + MinimapSize +
+  BarGap` : trop large, le bloc est dessiné plus petit d'un tenant, jamais agrandi. Le bloc du héros suit : `GetBottomLeftPlace()`
+  d'instance × `GetBottomScale()`, lu par `UHOLScriptScreen` (outer), padding du `HeroPanelSlot` reposé à chaque `Refresh()` du
+  script. **Vert** : 1280 × 1024 gap +6 (barre 1072, échelle 0,82), 1500 × 1080 gap +6 (barre 1222, échelle 0,94), les autres
+  inchangés à l'échelle 1. Fichiers (Galadriel) : `HOLGameScreen.h/.cpp`, `HOLScriptScreen.cpp`, `Dev/HOLUIHUD.cpp`,
+  `Script/UI/HOLGameScreenScript.as`, `quick_check.ps1`. Compilation PASS (98 s) ; `-Parts build:barwidth` rouge sur l'ancien code
+  puis PASS ; `-Parts tests,build` **PASS en 156 s (293/293**, `build hud`, `build hero`, `build corner`, `build barwidth` verts).
+  Captures vues : 1366 et 1920 inchangées, 1500 lisible (0,94, 6 px avant la place de la mini-carte). **À voir à l'essai** : le bloc
+  du héros au-dessus d'une barre réduite, le clic sur une cellule de la barre réduite (hit-test du ScaleBox), la lisibilité à 0,82
+  en 4:3 ; essai en fenêtre 1500 × 1080 ou 1280 × 1024 (les 1366 × 768 tenaient déjà).
+
 
 ## U — Aléas `net 2 clients` (2026-10-29, Galadriel, branche `bottom-bar-width`)
 
@@ -2151,3 +2191,49 @@ Les trois lignes « Aléas et petits restes » d'`EtapeDefini.md`, vues une fois
 
 ### Suivi
 - 2026-10-29 : sous-agent lancé pour l'étape 1 (analyse et correctifs dans Galadriel, sans lancer de test).
+- 2026-10-29 : **étape 1 faite** (sous-agent, ~15 min, 189k tokens ; aucun journal rouge du 28 ne subsistait, raisonnement sur le
+  script et le code, journaux verts du 29 relus). Rien compilé ni lancé encore.
+  1. « empty once, last » : **le serveur a tort**. Au dernier Logout, `left {Bob}` part et, au tick suivant, `SendEmptyIfNobodyLeft`
+     envoie `empty` : deux requêtes HTTP en vol en même temps (`UHOLManagerLink::Send`, asynchrone), arrivées dans un ordre
+     quelconque ; `empty` avant `left` = « last » faux (pas « once » : `bEmptySent` interdit le doublon). Cas voisin : `TickQuit`
+     (0,25 s) voyant 0 joueur avant le `SendEmpty` du tick suivant quittait sans `empty`. Correctif C++ (`Net/HOLManagerLink.cpp/.h`,
+     +56/−8) : `empty` demandé (`bEmptyWanted`) ne part que quand plus aucun appel n'est en vol (`PendingSends`, décrémenté au
+     retour de chaque requête qui relance `TrySendEmpty`), ou après `hol.Net.QuitEmptyWait` (2 s, Warning) ; `TickQuit` attend
+     que `empty` soit parti (≤ 2 s depuis le premier constat « 0 joueur ») puis répondu (≤ 2 s). Coût ~70 ms à la fin de partie.
+  2. Maison de l'autre avant le `waitlog` : `waitlog` lit depuis la dernière commande `hol.*` (`HOLTestSequence.cpp` ~286 ;
+     `frames`/`capture`/`wait` ne posent pas le repère) ; entre `waitfile placed` et le `waitlog` venaient deux captures et deux
+     `FocusSlot` : une arrivée pendant la capture `build0` était perdue (60 s puis arrêt). Possible parce que les deux clients
+     avaient dérivé de plusieurs secondes depuis la pause (le Paysan en avance avait fait une bonne part de ses ~39 m à 3 m/s).
+     Correctif script (~2352-2370) : drapeaux `quick_net_placing<N>.flag` juste avant `hol.Build.PlaceNear` (placements à une
+     image près), captures `build0`/`build1` déplacées **avant** `hol.Build.Report`/`hol.Prod.Report`, `waitlog` collé au
+     `hol.Prod.Report` (fenêtre restante : quelques ms entre deux rapports, contre ≥ 13 s de marche) ; contrôles `Reports[0..2]`,
+     `Woods[0..2]` inchangés.
+  3. Client 2 lent : Bob était lancé après la ligne « Camera above the start » d'Alice **ou au bout de 60 s** (« launched anyway ») ;
+     une Alice lente (lancement Unreal retenu par la compilation d'une autre copie) arrivait après Bob, le serveur ayant fini ses
+     60 s (`hol.Match.StartWaitSeconds`) : plus de bandeau. Correctif script : Alice pose `quick_net_alice_wait.flag` après
+     `capture qcnet_2_wait` (~2291) ; le lancement de Bob attend ce drapeau (~2487-2494, 120 s au plus, message explicite) ;
+     serveur de test à `hol.Match.StartWaitSeconds 120` (~377) et bandeau accepté jusqu'à `2:00` (~5833) — **à valider par
+     l'utilisateur** (ou revenir à 60 s : un mot ligne ~377 + la regex). Limite restante : Bob doit rejoindre dans les 60 s du
+     `waitplayers 2` d'Alice, chaque client tué à 300 s.
+  Parse PowerShell : 0 erreur. Suite (session principale) : compiler Galadriel (avec T), `quick_check -Parts net,build` deux fois.
+- 2026-10-29 : Galadriel compilée (le build de T incluait déjà le C++ de U). **`-Parts net,build` passage 1 : PASS en 234 s**, appels
+  du gestionnaire `listening | started | left Alice | left Bob | empty` (`empty` en dernier), `net 2 clients`, `net hero *`, les 24
+  sections `build` (dont `barwidth`, `corner`) vertes. Passage 2 lancé.
+- 2026-10-29 : **passage 2 : PASS en 239 s**, appels `listening | started | left Bob | left Alice | empty` (ordre des `left` inversé,
+  `empty` toujours en dernier). **U faite** ; reste la validation de l'utilisateur (dont `hol.Match.StartWaitSeconds 120` dans le
+  serveur de test) et le commit avec T (même branche `bottom-bar-width`, Galadriel).
+
+- 2026-10-29 : **essai validé par l'utilisateur** (« ça a l'air bon le playtest »). Commits : S `15bd75b` (Elrond,
+  `last-attacker-expiry`), U `ede7bf6` et T `20cf1f2` (Galadriel, `bottom-bar-width` ; découpage de `quick_check.ps1` par
+  l'index, U garde deux lignes à une place voisine que T déplace, sans effet). `main` avait avancé (IA1.6, 4ce6df2) : `main`
+  fusionnée dans les deux branches, Elrond recompilé et `-Parts tests,combat` PASS (323/323, `forget` vert) ; S fusionnée dans
+  `bottom-bar-width` (propre), compilation puis `-Parts tests,combat,build,net` lancés dans Galadriel ; `main` avancera à cette
+  fusion.
+
+### Reprise exacte (S, T, U)
+- **Closes le 2026-10-29**, dans `main` 29e5522 après l'essai de l'utilisateur : S `15bd75b`, U `ede7bf6`, T `20cf1f2`.
+  `-Parts tests,combat,build,net` PASS (275 s, 323/323). Elrond et Galadriel libres (HEAD détachée
+  sur `main`), branches `last-attacker-expiry` et `bottom-bar-width` supprimées. Les `.md` de cette séance (`EtapeDefini.md`, ce journal, `InterfaceInProgress.md`)
+  ne sont pas commités (mêlés aux éditions d'autres sessions).
+- Reste d'EtapeDefini non pris : nouvelles cartes du prototype (D498, chantier à ouvrir, `MapsInProgress.md` non suivi existe déjà
+  dans la copie principale), mini-carte, courbe d'XP (Q04). Reprise : « continue EtapeDefiniInProgress ».
