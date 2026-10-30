@@ -109,6 +109,8 @@ $Readme = @(
     "3. Ensuite, à chaque fois : lancez HOLLauncher.exe et cliquez « Jouer » (« Mettre à jour le jeu » d'abord s'il le propose)."
     ""
     "Si Windows affiche « Windows a protégé votre ordinateur » : « Informations complémentaires » puis « Exécuter quand même » (le lanceur n'est pas signé)."
+    ""
+    "Si le jeu ne démarre pas (message sur VCRUNTIME140.dll ou MSVCP140.dll) : installez Visual C++ en lançant Engine\Extras\Redist\en-us\vc_redist.x64.exe, dans le dossier du jeu, puis relancez."
 ) -join "`r`n"
 [IO.File]::WriteAllText((Join-Path $Stage "LISEZMOI.txt"), $Readme + "`r`n", (New-Object Text.UTF8Encoding $true))
 New-Item -ItemType Directory -Force (Split-Path $Out) | Out-Null
