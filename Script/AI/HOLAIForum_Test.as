@@ -207,3 +207,88 @@ void Test_ForumLastLifeRebuildersDoNotFlee(FUnitTest& T)
 	FHOLAIFlight Other;
 	T.AssertTrue(HOLAIArmy::FleeOrders(Other, HOLAIForum::Calm(Spare, SpareMemory), Army, 10.f).Num() > 0, "with lives to spare they run as the others");
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------
+// The enemy ruin (IA3.3): the wave goes and holds a fallen enemy forum.
+
+FHOLAIForum FrmEnemyForum(int Slot, int Lives, bool bDown, FVector Where)
+{
+	FHOLAIForum Forum;
+	Forum.Slot = Slot;
+	Forum.Lives = Lives;
+	Forum.bDown = bDown;
+	Forum.bRuin = bDown;
+	Forum.bHasLocation = true;
+	Forum.Location = Where;
+	return Forum;
+}
+
+// Ten idle Spearmen at the assembly point, two enemy Spearmen near the enemy centre (-8000, 0).
+FHOLAISummary FrmReady()
+{
+	FHOLAISummary Summary = FrmBase();
+	FrmAdd(Summary.Army, 1, n"Spearman", 10, FrmPoint(), 0, true, -1);
+	FrmAdd(Summary.Enemies, 50, n"Spearman", 2, FVector(-8000, 500, 0), 1, false, -1);
+	Summary.EnemyForums.Add(FrmEnemyForum(1, 2, false, FVector(-8000, 0, 0)));
+	return Summary;
+}
+
+void Test_RuinTargetIsTheNearestFallenEnemyForum(FUnitTest& T)
+{
+	FHOLAISummary Summary = FrmReady();
+	bool bFound = true;
+	HOLAIForum::RuinTarget(Summary, FVector(0, 0, 0), bFound);
+	T.AssertFalse(bFound, "every enemy forum stands: no ruin to hold");
+	T.AssertFalse(HOLAIForum::EnemyRuin(Summary), "no enemy ruin");
+
+	Summary.EnemyForums.Add(FrmEnemyForum(2, 1, true, FVector(9000, 0, 0)));
+	Summary.EnemyForums.Add(FrmEnemyForum(3, 1, true, FVector(3000, 3000, 0)));
+	const FVector Target = HOLAIForum::RuinTarget(Summary, FVector(0, 0, 0), bFound);
+	T.AssertTrue(bFound && HOLAIForum::EnemyRuin(Summary), "a ruin");
+	T.AssertTrue((Target - FVector(3000, 3000, 0)).Size() < 1.f, "the nearest fallen forum to the wave");
+}
+
+void Test_AttackStartsEarlyOnARuin(FUnitTest& T)
+{
+	FHOLAIWave Wave;
+	FHOLAISummary Summary = FrmReady();
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, Summary, FrmData(), false, 100.f), "no ruin: 100 s is too early");
+	Summary.EnemyForums[0].bDown = true;
+	Summary.EnemyForums[0].bRuin = true;
+	T.AssertTrue(HOLAIArmy::CanLaunch(Wave, Summary, FrmData(), false, 100.f), "a ruin to hold: the minimum time does not count");
+}
+
+void Test_AttackOnARuinStillNeedsTheRatioAndTheSoldiers(FUnitTest& T)
+{
+	FHOLAIWave Wave;
+	FHOLAISummary Weak = FrmReady();
+	Weak.EnemyForums[0].bDown = true;
+	FrmAdd(Weak.Enemies, 70, n"ManAtArms", 9, FVector(-8000, 0, 0), 1, false, -1);
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, Weak, FrmData(), false, 100.f), "a crushing enemy at the ruin: the army does not go");
+
+	FHOLAISummary Few = FrmBase();
+	FrmAdd(Few.Army, 1, n"Spearman", 5, FrmPoint(), 0, true, -1);
+	Few.EnemyForums.Add(FrmEnemyForum(1, 1, true, FVector(-8000, 0, 0)));
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, Few, FrmData(), false, 100.f), "too few soldiers");
+	T.AssertFalse(HOLAIArmy::CanLaunch(Wave, FrmReady(), FrmData(), true, 500.f), "not while defending");
+}
+
+void Test_WaveGoesToTheRuinNotTheCentre(FUnitTest& T)
+{
+	FHOLAISummary Summary = FrmReady();
+	Summary.EnemyForums.Add(FrmEnemyForum(2, 1, true, FVector(3000, 9000, 0)));
+	FHOLAIWave Wave;
+	const FHOLAIWaveStep Step = HOLAIArmy::UpdateWave(Wave, Summary, FrmData(), false, false, FrmPoint(), 100.f);
+	T.AssertTrue(Step.bLaunched, "launched at 100 s: a ruin is there");
+	T.AssertTrue((Step.AttackTarget - FVector(3000, 9000, 0)).Size() < 1.f, "toward the ruin, not the nearest centre");
+
+	// On its way, the idle soldiers are ordered again toward the ruin.
+	const FHOLAIWaveStep Later = HOLAIArmy::UpdateWave(Wave, Summary, FrmData(), false, false, FrmPoint(), 106.f);
+	T.AssertEquals(10, Later.AttackIds.Num(), "the idle soldiers are ordered again");
+	T.AssertTrue((Later.AttackTarget - FVector(3000, 9000, 0)).Size() < 1.f, "still toward the ruin");
+
+	// The ruin risen: the centre again.
+	Summary.EnemyForums[1].bDown = false;
+	const FHOLAIWaveStep Risen = HOLAIArmy::UpdateWave(Wave, Summary, FrmData(), false, false, FrmPoint(), 112.f);
+	T.AssertTrue((Risen.AttackTarget - FVector(-8000, 0, 0)).Size() < 1.f, "the forum stands again: the enemy centre");
+}

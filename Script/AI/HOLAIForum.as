@@ -114,4 +114,34 @@ namespace HOLAIForum
 		}
 		return Result;
 	}
+
+	// Whether an enemy forum lies fallen (in ruin or rising again) with a known place: the wave can go and hold it.
+	bool EnemyRuin(const FHOLAISummary& Summary)
+	{
+		for (int Index = 0; Index < Summary.EnemyForums.Num(); Index++)
+		{
+			if (Summary.EnemyForums[Index].bDown && Summary.EnemyForums[Index].bHasLocation)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// The place of the fallen enemy forum nearest to From (bFound false without one; From then).
+	FVector RuinTarget(const FHOLAISummary& Summary, FVector From, bool& bFound)
+	{
+		bFound = false;
+		FVector Best = From;
+		for (int Index = 0; Index < Summary.EnemyForums.Num(); Index++)
+		{
+			const FHOLAIForum Forum = Summary.EnemyForums[Index];
+			if (Forum.bDown && Forum.bHasLocation && (!bFound || HOLAIArmy::FlatDistance(Forum.Location, From) < HOLAIArmy::FlatDistance(Best, From)))
+			{
+				bFound = true;
+				Best = Forum.Location;
+			}
+		}
+		return Best;
+	}
 }

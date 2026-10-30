@@ -848,7 +848,8 @@ namespace HOLAIArmy
 			return false;
 		}
 		const bool bSeen = EnemyValue(Data, Summary) > 0.f;
-		if (Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
+		// IA3.3: an enemy forum lies fallen: the window is open, the minimum time does not count (the ratio and the soldiers still do).
+		if (!HOLAIForum::EnemyRuin(Summary) && Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
 		{
 			return false;
 		}
@@ -872,10 +873,17 @@ namespace HOLAIArmy
 		return PowerRatio(Data, Local);
 	}
 
-	// Where the wave's idle soldiers go: the enemy centre, or when it is gone the enemy unit nearest to the wave (bFound false without).
+	// Where the wave's idle soldiers go: a fallen enemy forum to hold (IA3.3), else the enemy centre, or when it is gone the enemy unit
+	// nearest to the wave (bFound false without).
 	FVector WaveTarget(const FHOLAISummary& Summary, FVector From, bool& bFound)
 	{
 		bFound = true;
+		bool bRuin = false;
+		const FVector Ruin = HOLAIForum::RuinTarget(Summary, From, bRuin);
+		if (bRuin)
+		{
+			return Ruin;
+		}
 		if (Summary.bHasEnemyCentre)
 		{
 			return Summary.EnemyCentreLocation;
@@ -909,7 +917,8 @@ namespace HOLAIArmy
 				Wave.NextLaunch = Now + Data.AttackCooldown;
 				Step.bLaunched = true;
 				Step.AttackIds = Wave.Ids;
-				Step.AttackTarget = Summary.EnemyCentreLocation;
+				bool bFound = false;
+				Step.AttackTarget = WaveTarget(Summary, Summary.CentreLocation, bFound);
 				Step.Ratio = PowerRatio(Data, Summary);
 				Step.Left = Wave.Ids.Num();
 			}
