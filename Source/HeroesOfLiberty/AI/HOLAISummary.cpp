@@ -67,7 +67,7 @@ namespace HOLAISummary
 	FHOLAISummary Make(const int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, const int32 MaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses,
-		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide)
+		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide, const FHOLCampTable& Camps)
 	{
 		FHOLAISummary Summary;
 		Summary.PlayerIndex = PlayerIndex;
@@ -113,10 +113,11 @@ namespace HOLAISummary
 		Summary.Peasants.Sort([](const FHOLAIUnit& A, const FHOLAIUnit& B) { return A.Id < B.Id; });
 
 		// IA2.1: the enemies, as GatherEnemies read them (the one place; the fog will cut them there): another slot's, not
-		// defeated, not dying, by identifier.
+		// defeated, not dying, not of the slot's own team (IA4: Camps), by identifier.
 		for (const FHOLUnitView& Unit : Enemies)
 		{
-			if (Unit.OwnerPlayer != PlayerIndex && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer) && Unit.Activity != EHOLUnitActivity::Dying)
+			if (Unit.OwnerPlayer != PlayerIndex && Camps.AreHostile(PlayerIndex, Unit.OwnerPlayer) && !IsSlotDefeated(DefeatedMask, Unit.OwnerPlayer)
+				&& Unit.Activity != EHOLUnitActivity::Dying)
 			{
 				Summary.Enemies.Add(MakeAIUnit(Unit));
 			}
@@ -217,7 +218,7 @@ namespace HOLAISummary
 			for (const FHOLAIBuilding& Building : Buildings)
 			{
 				if (Building.OwnerPlayer == PlayerIndex || Building.TypeName != HOLBuildingTypeNames::MainCentre
-					|| IsSlotDefeated(DefeatedMask, Building.OwnerPlayer))
+					|| IsSlotDefeated(DefeatedMask, Building.OwnerPlayer) || !Camps.AreHostile(PlayerIndex, Building.OwnerPlayer))
 				{
 					continue;
 				}
@@ -264,7 +265,7 @@ namespace HOLAISummary
 					Summary.bHasOwnForum = true;
 					Summary.OwnForum = WithLocation(Forum);
 				}
-				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot))
+				else if (!IsSlotDefeated(DefeatedMask, Forum.Slot) && Camps.AreHostile(PlayerIndex, Forum.Slot))
 				{
 					Summary.EnemyForums.Add(WithLocation(Forum));
 				}
@@ -451,7 +452,7 @@ namespace HOLAISummary
 		GatherForums(World, Forums);
 		return Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
 			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0, Forums,
-			GameState && GameState->GetLaunchConfig().bRegicide);
+			GameState && GameState->GetLaunchConfig().bRegicide, FHOLCampTable::FromWorld(&World));
 	}
 }
 

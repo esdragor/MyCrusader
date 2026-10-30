@@ -6,6 +6,7 @@
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Match/HOLResources.h"
+#include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLGatherRules.h"
 #include "HOLAISummary.generated.h"
 
@@ -384,13 +385,14 @@ namespace HOLAISummary
 	 * (the used-up and unused ones left out), the deposits (the slot's own only) and its stock (none: zeros, bHasStock
 	 * false). IA2.1: its army comes from Units (its soldiers); the Enemies come ONLY from the Enemies argument (what
 	 * GatherEnemies read: Make keeps the units of a slot other than PlayerIndex, not defeated (bit of DefeatedMask), not
-	 * dying), and the enemy centre from the Buildings of those slots.
+	 * dying), and the enemy centre from the Buildings of those slots. IA4: Camps (the launch configuration's, each owner alone by
+	 * default) leaves out of the Enemies, the EnemyForums and the enemy centre the slots of the slot's own team: a teammate is not an enemy.
 	 */
 	HEROESOFLIBERTY_API FHOLAISummary Make(int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, int32 MaxSourcesPerResource = DefaultMaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings = {}, const TOptional<FHOLAIPlayerFigures>& Figures = {},
 		TConstArrayView<FHOLAISourceUse> Uses = {}, TConstArrayView<FHOLUnitView> Enemies = {}, uint8 DefeatedMask = 0,
-		TConstArrayView<FHOLAIForum> Forums = {}, bool bRegicide = false);
+		TConstArrayView<FHOLAIForum> Forums = {}, bool bRegicide = false, const FHOLCampTable& Camps = FHOLCampTable());
 
 	/**
 	 * The deposits of the world: the buildings that take deliveries (finished, a forum not down, D312, D351) and accept a
