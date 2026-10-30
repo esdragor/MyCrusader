@@ -9,10 +9,10 @@
 #  3. sa vague : tous ses soldats vers ton centre ; attaque-t-elle tes bâtiments, pas seulement tes unités ? Retraite si tu l'emportes (rapport < 0,6 ou pertes > 60 %) ;
 #  4. à 5 et 10 min, note ses Paysans et ses soldats (ligne « status » du journal : army S M A C) ;
 #  5. aucun Paysan planté sans rien faire plus de 10 s.
-hol.Cheat.Resources 1000
 waitlog AI brain HOLAIBrain awake
 waitlog AI slot 1 step
 waitlog Gather order of slot 1: 
+hol.Cheat.Resources 1000
 hol.Camera.FocusSlot 0
 frames 2
 note IA « Normal 2 » avec armée : Caserne, Champ de tir, défense, vague d'attaque et retraite. Laisse tourner 10 à 15 min.
