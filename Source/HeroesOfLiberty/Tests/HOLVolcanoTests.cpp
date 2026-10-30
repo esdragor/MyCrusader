@@ -146,4 +146,57 @@ bool FHOLVolcanoEruptionLengthTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The direction of an eruption (V3, D379, V-Q2 = B): drawn freely among the site's flows, no memory, no side favoured.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoDrawFlowTest, "HeroesOfLiberty.Volcano.DrawFlow", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoDrawFlowTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("no flow: nothing to draw"), HOLVolcano::DrawFlow(3, 0, 0), static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("one flow: always that one"), HOLVolcano::DrawFlow(3, 5, 1), 0);
+
+	// Four flows (two symmetrical pairs, say): 4000 draws over many seeds and cycles, each flow about a quarter of them.
+	const int32 FlowCount = 4;
+	int32 Counts[FlowCount] = {};
+	int32 Repeats = 0;
+	int32 Pairs = 0;
+	bool bInRange = true;
+	bool bStable = true;
+	for (int32 Seed = 1; Seed <= 1000; ++Seed)
+	{
+		int32 Previous = INDEX_NONE;
+		for (int32 Index = 0; Index < 4; ++Index)
+		{
+			const int32 Flow = HOLVolcano::DrawFlow(Seed, Index, FlowCount);
+			bInRange &= Flow >= 0 && Flow < FlowCount;
+			bStable &= Flow == HOLVolcano::DrawFlow(Seed, Index, FlowCount);
+			if (Flow >= 0 && Flow < FlowCount)
+			{
+				++Counts[Flow];
+			}
+			if (Previous != INDEX_NONE)
+			{
+				++Pairs;
+				Repeats += Flow == Previous ? 1 : 0;
+			}
+			Previous = Flow;
+		}
+	}
+	TestTrue(TEXT("always one of the site's flows"), bInRange);
+	TestTrue(TEXT("same seed and cycle, same flow (every machine agrees)"), bStable);
+	for (int32 Flow = 0; Flow < FlowCount; ++Flow)
+	{
+		TestTrue(FString::Printf(TEXT("flow %d is drawn about a quarter of the time (got %d of 4000)"), Flow, Counts[Flow]),
+			Counts[Flow] > 850 && Counts[Flow] < 1150);
+	}
+	// V-Q2 = B: no memory, so the same flow twice in a row happens about once in four.
+	TestTrue(FString::Printf(TEXT("no memory: the same flow twice in a row happens (%d of %d pairs)"), Repeats, Pairs),
+		Repeats > Pairs * 15 / 100 && Repeats < Pairs * 35 / 100);
+
+	// The draw does not move the cycle's dates (a stream of its own).
+	const FHOLVolcanoSettings Settings;
+	const HOLVolcano::FCycle Before = HOLVolcano::MakeCycle(9, 1, 100.f, Settings);
+	HOLVolcano::DrawFlow(9, 1, FlowCount);
+	TestEqual(TEXT("the dates of a cycle do not depend on the draw"), HOLVolcano::MakeCycle(9, 1, 100.f, Settings).EruptAt, Before.EruptAt);
+	return true;
+}
+
 #endif
