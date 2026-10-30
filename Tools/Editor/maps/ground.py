@@ -17,10 +17,15 @@ def color(r, g, b):
     return unreal.LinearColor(r, g, b, 1.0)
 
 
-# name -> (ColorA the main ground, ColorB the wide patches, ColorC the rarer ones, NoiseScale in cm: the size of a patch).
-# The Steppe: yellow-green grass, dry straw, ochre earth; muted (linear values; M_MatteGround is a grey of 0.16).
+# name -> (ColorA the main ground, ColorB the wide patches, ColorC the rarer ones, NoiseScale in cm: the size of a patch, BFrom and
+# BWidth, CFrom and CWidth: where the noise turns the ground into B / C and how crisp the edge is, see make_ground_materials.py).
+# M-Q8 (the user, with a reference minimap): patches of a CLEARLY different colour, sandy / orange and dark mud, as irregular blobs (linear
+# values; M_MatteGround is a grey of 0.16).
+# The Steppe: yellow-green grass, orange sand, dark mud.
 GROUNDS = {
-    "MI_Ground_Steppe": (color(0.115, 0.145, 0.055), color(0.190, 0.170, 0.090), color(0.165, 0.120, 0.070), 4000.0),
+    "MI_Ground_Steppe": (color(0.115, 0.145, 0.055), color(0.300, 0.200, 0.085), color(0.060, 0.045, 0.030), 2200.0, 0.69, 0.04, 0.72, 0.04),
+    # The Hinterland (C2): a dark moss green, ochre sand and stony earth, grey-brown mud; smaller patches than the Steppe.
+    "MI_Ground_Hinterland": (color(0.080, 0.115, 0.050), color(0.260, 0.170, 0.080), color(0.070, 0.062, 0.055), 2000.0, 0.69, 0.04, 0.72, 0.04),
 }
 
 
@@ -42,6 +47,7 @@ def instance(name):
     lib.set_material_instance_parent(material, parent)
     for parameter, value in zip(("ColorA", "ColorB", "ColorC"), colors_and_scale[:3]):
         lib.set_material_instance_vector_parameter_value(material, parameter, value)
-    lib.set_material_instance_scalar_parameter_value(material, "NoiseScale", colors_and_scale[3])
+    for parameter, value in zip(("NoiseScale", "BFrom", "BWidth", "CFrom", "CWidth"), colors_and_scale[3:]):
+        lib.set_material_instance_scalar_parameter_value(material, parameter, value)
     unreal.EditorAssetLibrary.save_loaded_asset(material)
     return material

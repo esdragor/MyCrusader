@@ -11,7 +11,8 @@ test map: only Plain has one, D494).
 
 The resources hold the budget per player of M-Q4 = A (farms left out): 150 trees, 4 gold veins, 2 stone veins and 15 berry
 bushes in each player's territory (the sources whose nearest slot is his), so that nobody runs out before 3/4 of a 30 min
-game; the recipe aims a little above (targets_of: TREES_MARGIN, NEAR_VEINS + one gold more than the budget, NEAR_VEINS + STONE_FAR, BERRIES_MARGIN).
+game; the recipe aims a little above for the trees and the berries (targets_of: TREES_MARGIN, BERRIES_MARGIN); the gold and the stone are a VALUE in a
+mix of sizes (M-Q9: common.MINERAL_MIX, 14 piles of 500, 1 000, 2 500 or 5 000 per territory, exactly 10 000 gold and 5 000 stone, Huge 15 000 / 7 500).
 Tools/Data/Maps.csv says Budget = standard for the Steppe and Map.Table checks it on the saved files at every size.
 
 Nothing is on a grid and nothing is random from one run to the next (C1c): every number comes from a small generator seeded by
@@ -54,34 +55,40 @@ from maps.common import placed_source, Rng, Noise, mix_seed
 GROUND = "MI_Ground_Steppe"
 
 # The scenery (common.spawn_decor): instances per hectare of each kind, a few thousand at the biggest size (58 per ha).
-DECOR = {"GrassGreen": 26, "GrassStraw": 18, "Bush": 5, "Stone": 8, "Stump": 1}
+DECOR = {"GrassGreen": 26, "GrassStraw": 18, "Bush": 5, "Stone": 8, "Stump": 1, "FlowerWhite": 8, "FlowerPurple": 6, "FlowerOrange": 5,
+         "DryThicket": 1.5, "SandBoulder": 1.2, "MossBoulder": 1.0}
+# Clumps of mixed scenery (common.DECOR_CLUMPS), per hectare (M-Q8: many small different clumps, not a few big forests).
+CLUMPS = {"Meadow": 1.0, "Cairn": 0.8, "DryPatch": 0.8, "Copse": 0.6, "Reeds": 0.4}
 
 # S-Q1 = A: the base's wood, 4 x 5 = 20 trees (Plain: 40), its 6 berry bushes, and no veins.
 BASE_WOOD_ROWS = 4
 BASE_WOOD_COLUMNS = 5
 BASE_TREES = BASE_WOOD_ROWS * BASE_WOOD_COLUMNS
+BASE_PACKS = [common.PACK_TREES, BASE_TREES - common.PACK_TREES]  # M-Q8: the base's 20 trees are a pack of 14 and a small one of 6
 BASE_BERRIES = common.BERRY_ROWS * common.BERRY_COLUMNS
 
-# The budget per player (M-Q4 = A, M-Q4b: from Small to Large 150 trees, 4 gold veins, 2 stone veins, 15 berry bushes; Huge,
-# whose room per player is the same but whose games are longer, 1.5 times that), and what a territory comes to: a margin
-# above it. Map.Table checks the budget with the same table (HOLMapTableTests.cpp).
-BUDGET = {"default": (150, 4, 2, 15), "Huge": (225, 6, 3, 23)}
+# The budget per player (M-Q4 = A, M-Q4b: from Small to Large 150 trees and 15 berry bushes; Huge, whose room per player is the same but
+# whose games are longer, 1.5 times that), and what a territory comes to: a margin above it. The gold and the stone are a VALUE budget in
+# a mix of sizes (M-Q9: common.MINERAL_MIX, 10 000 gold and 5 000 stone, Huge 15 000 / 7 500), exact, with no margin. Map.Table checks the
+# budget with the same numbers (HOLMapTableTests.cpp).
+BUDGET = {"default": (150, 15), "Huge": (225, 23)}
 TREES_MARGIN = 1.04
 BERRIES_MARGIN = 1.2
-STONE_FAR = 1  # far stone veins for each player, beside the NEAR_VEINS of the near layer
-NEAR_VEINS = 3  # of each type: the fairness reads the 3 nearest
+NEAR_VEINS = 3  # of each resource in the near layer: the fairness reads the 3 nearest (their sizes: common.MINERAL_NEAR)
 
 # The deposits' shapes. A grove is GROVE_LADDER trees (common.grove_points), by size; a berry patch is BERRY_SIZES bushes
 # (common.berry_points); a vein is alone. GROVE_CYCLE: the sizes first given to the groves of a territory (shuffled), then
 # adjusted up or down to the territory's target.
-GROVE_LADDER = [8, 10, 12, 16, 24]
-GROVE_CYCLE = [12, 8, 16, 10, 12, 16, 8, 24, 10, 12]
+# M-Q8 (the user: "make the forests packs of 14 trees"): every grove is a PACK of 14 trees, 12 or 16 where the room asks for it.
+GROVE_LADDER = [12, 14, 16]
+GROVE_CYCLE = [14, 14, 12, 14, 16, 14, 14, 12, 14, 16]
 BERRY_SIZES = [4, 3, 5]
 
 # Distances (cm).
 DEPOSIT_GAP = 2500.0
+VEIN_GAP = 1800.0  # M-Q9: between a pile and another deposit (source to source): the piles are small bodies and a territory holds 14 of them
 VEIN_FROM_SLOT = 11000.0
-VEIN_SPREAD = 6000.0
+VEIN_SPREAD = 4000.0  # M-Q9: veins of one resource this far apart (was 60 m with 4 and 2 veins a territory; now 14 piles, many of them small)
 CENTRE_CLEAR = 2000.0
 EDGE_MARGIN = 1500.0
 NEAR_REACH = 7500.0  # no far deposit's source closer than this to a slot: the near layer is the same around every slot
@@ -89,7 +96,7 @@ FAR_GAP_START = 8000.0  # between the centres of two deposits of the far layer (
 FAR_GAP_STEP = 300.0
 FAR_GAP_MIN = 3300.0  # 33 m: the deposits' sizes are capped by the room they have, so that DEPOSIT_GAP is kept between sources
 GRID_STEP = 1000.0  # the grid that measures a territory's room
-GROVE_MEANS = [12.0, 14.0, 16.0, 20.0, 24.0]  # the mean grove a territory is asked to be comfortable with, the smallest that works
+GROVE_MEANS = [14.0, 15.0, 16.0]  # the mean grove a territory is asked to be comfortable with, the smallest that works
 BERRY_FROM_BERRY = 12000.0  # a territory's berry patches are spread at least this far apart
 VEIN_SLACK = 100.0  # a far vein is this much farther than the 3rd nearest near vein of its type
 NEAR_VEIN_END = 13000.0  # and at least this far from every slot: the veins within it are all near ones (tested by Map.Steppe)
@@ -104,8 +111,9 @@ DIP_DEPTH = 0.42
 DIP_SIGMA = 2600.0
 # No point of the square (grid of EMPTY_STEP, as Map.Steppe measures it) farther than HOLE_LIMIT from a source or a slot: the far
 # layer's holes are filled down to the first of HOLE_CENTRES (from a deposit's centre) that makes the measured one at most that.
-HOLE_CENTRES = [8200.0, 7600.0, 7000.0, 6400.0, 5800.0]
-HOLE_LIMIT = 8500.0
+# M-Q8: the scenery fills the rest (M-Q7: common.fill_holes, 35 m); the deposits are the budget in packs of 14, not more of them to cover the square.
+HOLE_CENTRES = [12000.0, 11000.0, 10000.0, 9000.0]
+HOLE_LIMIT = 14000.0
 EMPTY_STEP = 2000.0
 # The far veins are placed first, one by one: the best of VEIN_CHOICE places drawn, the one farthest from the territory's veins.
 VEIN_CHOICE = 5
@@ -115,8 +123,8 @@ VEIN_DRAWS = 4000
 # end before NEAR_VEIN_END. Each item draws its position from its own seeded generator.
 NEAR = [("GoldVein", 1, 11000.0, 12500.0), ("StoneVein", 1, 11000.0, 12500.0), ("GoldVein", 1, 11000.0, 12500.0),
         ("StoneVein", 1, 11000.0, 12500.0), ("GoldVein", 1, 11000.0, 12500.0), ("StoneVein", 1, 11000.0, 12500.0),
-        ("Wood", 12, 7000.0, 10500.0), ("BerryBush", 4, 7000.0, 10500.0), ("Wood", 12, 7500.0, 10500.0),
-        ("Wood", 10, 7500.0, 10500.0)]
+        ("Wood", 14, 7000.0, 10500.0), ("BerryBush", 4, 7000.0, 10500.0), ("Wood", 14, 7500.0, 10500.0),
+        ("Wood", 14, 7500.0, 10500.0)]
 MAX_ATTEMPTS = 3000
 FAR_CANDIDATES = 40000
 
@@ -161,7 +169,7 @@ def rotate(point, angle):
 
 
 class Deposit:
-    """One deposit: its kind (Wood, BerryBush, GoldVein, StoneVein), its size, its centre, its frame (a unit vector
+    """One deposit: its kind (Wood, BerryBush, GoldVein, StoneVein), its size (a vein's: the tier name of common.MINERAL_AMOUNTS), its centre, its frame (a unit vector
     radial), the seed of its shape and the room it was given (how far its farthest source may be from its centre: a grove stretches
     or bends when it has the room, never beyond; None = the reach every grove of its size keeps to)."""
 
@@ -190,8 +198,15 @@ class Deposit:
             self.cached = group_points(self.kind, self.size, self.at, self.radial, self.seed, reach)
         return self.cached
 
+    @property
+    def source_type(self):
+        """The source type of the deposit's sources: a tree, a berry bush, or the vein of its resource and size (size = the tier name, M-Q9)."""
+        if self.kind == "Wood":
+            return "Tree"
+        return common.mineral_type(self.kind[:-len("Vein")], self.size) if self.is_vein else self.kind
+
     def sources(self):
-        return [placed_source("Tree" if self.kind == "Wood" else self.kind, x, y) for x, y in self.points()]
+        return [placed_source(self.source_type, x, y) for x, y in self.points()]
 
 
 def nearest(point, slots):
@@ -219,7 +234,10 @@ def near_layer(recipe):
     ahead = (-recipe.slot(0)[1][0], -recipe.slot(0)[1][1])  # slot 0's direction towards the centre
     placed = []  # (kind, size, copies as xy points)
     pattern = []  # (kind, size, point of slot 0, seed of the shape)
+    tiers = {resource + "Vein": iter(common.mineral_near(recipe)[resource]) for resource in common.MINERAL_RESOURCES}  # M-Q9: the veins' sizes, in order
     for number, (kind, size, nearest_from, farthest_from) in enumerate(NEAR):
+        if kind.endswith("Vein"):
+            size = next(tiers[kind])
         rng = Rng(recipe.layout_seed, SALT_NEAR, number)
         reach = near_room(kind, size)
         slot_gap = max(VEIN_FROM_SLOT if kind.endswith("Vein") else common.BASE_REACH + reach, nearest_from)
@@ -258,14 +276,14 @@ def near_layer(recipe):
 
 
 def budget_of(recipe):
-    """(trees, gold, stone, berries) of the budget for a recipe's size (BUDGET)."""
+    """(trees, berries) of the budget for a recipe's size (BUDGET); the gold and the stone are a value, common.mineral_value."""
     return BUDGET.get(recipe.size_key, BUDGET["default"])
 
 
 def targets_of(recipe):
-    """What each territory comes to, a margin above the budget: (trees, far gold veins, far stone veins, berries)."""
-    trees, gold, _, berries = budget_of(recipe)
-    return math.ceil(trees * TREES_MARGIN), gold + 1 - NEAR_VEINS, STONE_FAR, math.ceil(berries * BERRIES_MARGIN)
+    """What each territory comes to, a margin above the budget: (trees, berries)."""
+    trees, berries = budget_of(recipe)
+    return math.ceil(trees * TREES_MARGIN), math.ceil(berries * BERRIES_MARGIN)
 
 
 def territory_scales(recipe, slots):
@@ -312,45 +330,48 @@ def far_allowed(recipe, slots, point):
 
 
 def far_veins(recipe, near):
-    """The far veins (targets_of: gold and stone beside the near layer's), placed before every other far deposit, territory by
-    territory, in a drawn order of kinds: each at the best of VEIN_CHOICE drawn places, the one farthest from the veins the territory
-    already has, so gold and stone do not sit on one side. Each is farther than the 3rd nearest near vein of its type from every
-    slot (the fairness), VEIN_SPREAD from the others of its type, DEPOSIT_GAP from every other deposit, off the centre, inside the margin."""
+    """The far veins (M-Q9: common.mineral_far, the piles of the mix beyond the near layer: a few big ones, a medium, many small ones), placed
+    before every other far deposit, territory by territory (each its own seeded draws: the territories do NOT look alike, M-Q6), biggest
+    first, every territory with the same list, so that the value budget is exact. Each pile is at the best of VEIN_CHOICE places drawn that keep
+    the rules: farther than the 3rd nearest near vein of its resource from every slot (the fairness, the near layer being the same around every
+    slot), inside the margin, off the centre, VEIN_GAP from every other deposit, VEIN_SPREAD from the others of its resource; a big pile prefers
+    the far reaches of the territory (far from the slot and from the other piles), the others spread out (so some land near the middle)."""
     slots = slot_positions(recipe)
-    _, gold_far, stone_far, _ = targets_of(recipe)
     edge = recipe.bounds_half - EDGE_MARGIN
     third = {}
-    for kind in ("GoldVein", "StoneVein"):
+    for resource in common.MINERAL_RESOURCES:
+        kind = resource + "Vein"
         distances = sorted(math.dist(deposit.at, slots[0]) for deposit in near if deposit.kind == kind)
-        third[kind] = max(distances[NEAR_VEINS - 1] + VEIN_SLACK, NEAR_VEIN_END)
-    placed = []
+        third[kind] = max(distances[NEAR_VEINS - 1] + VEIN_SLACK, NEAR_VEIN_END, VEIN_FROM_SLOT)
+    placed = list(near)
     for index in range(len(slots)):
         rng = Rng(recipe.layout_seed, SALT_VEINS, index)
-        order = rng.shuffle(["GoldVein"] * gold_far + ["StoneVein"] * stone_far)
-        for kind in order:
+        for number, (resource, tier) in enumerate(common.mineral_far(recipe)):
+            kind = resource + "Vein"
             best = None
             valid = 0
             for _ in range(VEIN_DRAWS):
                 point = (rng.range(-edge, edge), rng.range(-edge, edge))
                 if nearest(point, slots) != index or math.hypot(*point) < CENTRE_CLEAR:
                     continue
-                if any(math.dist(point, slot) < max(VEIN_FROM_SLOT, third[kind]) for slot in slots):
+                if any(math.dist(point, slot) < third[kind] for slot in slots):
                     continue
-                if any(math.dist(point, deposit.at) < DEPOSIT_GAP + deposit.reach for deposit in near + placed):
+                if any(math.dist(point, deposit.at) < VEIN_GAP + deposit.reach for deposit in placed):
                     continue
-                if any(math.dist(point, deposit.at) < VEIN_SPREAD for deposit in near + placed if deposit.kind == kind):
+                if any(math.dist(point, deposit.at) < VEIN_SPREAD for deposit in placed if deposit.kind == kind):
                     continue
-                own = [deposit.at for deposit in near + placed if deposit.is_vein and nearest(deposit.at, slots) == index]
-                score = min([math.dist(point, other) for other in own] + [1.0e9])
+                own = [deposit.at for deposit in placed if deposit.is_vein and nearest(deposit.at, slots) == index]
+                apart = min([math.dist(point, other) for other in own] + [1.0e9])
+                score = math.dist(point, slots[index]) + 0.5 * apart if tier == "Big" else apart
                 if best is None or score > best[0]:
                     best = (score, point)
                 valid += 1
                 if valid >= VEIN_CHOICE:
                     break
             if best is None:
-                raise RoomError("Steppe: no place for a far %s in the territory of slot %d" % (kind, index))
-            placed.append(Deposit(kind, 1, best[1], (1.0, 0.0), 0))
-    return placed
+                raise RoomError("Steppe: no place for a far %s %s pile (number %d) in the territory of slot %d" % (tier, kind, number, index))
+            placed.append(Deposit(kind, tier, best[1], (1.0, 0.0), 0))
+    return placed[len(near):]
 
 
 def far_points(recipe, near, veins, gap, scales, factor):
@@ -368,7 +389,7 @@ def far_points(recipe, near, veins, gap, scales, factor):
         return any(math.dist(point, other) < 0.5 * (own + other_gap) for dx in (-1, 0, 1) for dy in (-1, 0, 1)
                    for other, other_gap in grid.get((cx + dx, cy + dy), ()))
 
-    near_gaps = [(deposit.at, DEPOSIT_GAP + deposit.reach + MIN_EXTENT) for deposit in near + veins]
+    near_gaps = [(deposit.at, (VEIN_GAP if deposit.is_vein else DEPOSIT_GAP) + deposit.reach + MIN_EXTENT) for deposit in near + veins]
     points = []
     for _ in range(FAR_CANDIDATES):
         point = ((2 * rng.uniform() - 1) * half, (2 * rng.uniform() - 1) * half)
@@ -444,7 +465,7 @@ def fill_holes(recipe, fixed, points, hole):
 def needed_points(recipe, owned_near, grove_mean):
     """How many far deposits (not counting the far veins, placed first) a territory needs to be comfortable: its berry patches, and
     wood groves of about grove_mean trees for the rest of its trees."""
-    trees, _, _, berries = targets_of(recipe)
+    trees, berries = targets_of(recipe)
     patches = max(0, math.ceil((berries - BASE_BERRIES - sum(d.size for d in owned_near if d.kind == "BerryBush")) / 4.0))
     wanted = trees - BASE_TREES - sum(d.size for d in owned_near if d.kind == "Wood")
     return patches + math.ceil(wanted / grove_mean)
@@ -464,7 +485,7 @@ def room_caps(recipe, fixed, points):
     caps = []
     for index, point in enumerate(points):
         room = min([0.5 * (math.dist(point, other) - DEPOSIT_GAP) for other_index, other in enumerate(points) if other_index != index]
-                   + [math.dist(point, deposit.at) - deposit.reach - DEPOSIT_GAP for deposit in fixed]
+                   + [math.dist(point, deposit.at) - deposit.reach - (VEIN_GAP if deposit.is_vein else DEPOSIT_GAP) for deposit in fixed]
                    + [edge - abs(point[0]), edge - abs(point[1]), math.hypot(*point) - CENTRE_CLEAR]
                    + [math.dist(point, slot) - NEAR_REACH for slot in slots])
         caps.append(room)
@@ -484,7 +505,7 @@ def give_kinds(recipe, fixed, points):
     sizes shuffled)."""
     slots = slot_positions(recipe)
     places = len(slots)
-    trees_target, _, _, berries_target = targets_of(recipe)
+    trees_target, berries_target = targets_of(recipe)
     territories = [[] for _ in range(places)]
     for index, point in enumerate(points):
         territories[nearest(point, slots)].append((index, point))
@@ -519,8 +540,13 @@ def give_kinds(recipe, fixed, points):
             have += size
             chosen.append((entry[0], entry[1], "BerryBush", size))
         # Wood on all the rest: the sizes of the groves, first a shuffled cycle, then to the territory's target.
-        free.sort()
         wanted = trees_target - BASE_TREES - sum(d.size for d in own if d.kind == "Wood")
+        # M-Q8: the points the territory has beyond the packs of PACK_TREES its budget needs are let go (the scenery fills them, M-Q7), the most
+        # crowded first (the nearest to another point of the territory), so that the packs stay 14 and the trees stay at the budget.
+        while len(free) > math.ceil(wanted / common.PACK_TREES):
+            others = lambda entry: [o[1] for o in free if o is not entry] + [c[1] for c in chosen] + [d.at for d in own]
+            free.remove(min(free, key=lambda entry: min(math.dist(entry[1], o) for o in others(entry))))
+        free.sort()
         cycle = rng.shuffle(list(GROVE_CYCLE))
         sizes = [fit_size("Wood", cycle[number % len(cycle)], caps[entry[0]]) for number, entry in enumerate(free)]
         while sum(sizes) < wanted:
@@ -554,7 +580,7 @@ def give_kinds(recipe, fixed, points):
 def base_sources(recipe):
     """The bases' sources, as (type, x, y)."""
     return [(str(source.get_editor_property("type")), source.get_editor_property("location").x, source.get_editor_property("location").y)
-            for source in common.base_sources(recipe, BASE_WOOD_ROWS, BASE_WOOD_COLUMNS, veins=False, organic=True)]
+            for source in common.base_sources(recipe, BASE_WOOD_ROWS, BASE_WOOD_COLUMNS, veins=False, organic=True, wood_packs=BASE_PACKS)]
 
 
 def base_points(recipe):
@@ -564,15 +590,24 @@ def base_points(recipe):
 
 def holds_budget(recipe, base, deposits):
     """Whether every territory holds the budget, counting source by source as Map.Table does (a source belongs to the slot nearest
-    to it: a grove on the border between two territories gives to both). base: the base's sources as (type, x, y)."""
+    to it: a grove on the border between two territories gives to both): the trees and the berries by number, the gold and the stone by
+    value (M-Q9: exactly the mix's). base: the base's sources as (type, x, y)."""
     slots = slot_positions(recipe)
     counts = [{} for _ in slots]
-    sources = base + [("Tree" if deposit.kind == "Wood" else deposit.kind, x, y) for deposit in deposits for x, y in deposit.points()]
+    sources = base + [(deposit.source_type, x, y) for deposit in deposits for x, y in deposit.points()]
     for kind, x, y in sources:
         owner = nearest((x, y), slots)
         counts[owner][kind] = counts[owner].get(kind, 0) + 1
-    needs = dict(zip(("Tree", "GoldVein", "StoneVein", "BerryBush"), budget_of(recipe)))
-    return all(count.get(kind, 0) >= needed for count in counts for kind, needed in needs.items())
+    trees, berries = budget_of(recipe)
+    needs = {"Tree": trees, "BerryBush": berries}
+    amounts = {common.mineral_type(resource, tier): amount for resource in common.MINERAL_RESOURCES for tier, amount in common.MINERAL_AMOUNTS.items()}
+    for count in counts:
+        if any(count.get(kind, 0) < needed for kind, needed in needs.items()):
+            return False
+        for resource in common.MINERAL_RESOURCES:
+            if sum(amount * count.get(kind, 0) for kind, amount in amounts.items() if kind.startswith(resource + "Vein")) != common.mineral_value(recipe, resource):
+                return False
+    return True
 
 
 def empty_circle(recipe, points):
@@ -636,7 +671,7 @@ def obstacles(recipe):
 
 def sources(recipe):
     """The sources of the match (D297), as AHOLSourceLayout data: the reduced bases, then the deposits, each in turn."""
-    placed = common.base_sources(recipe, BASE_WOOD_ROWS, BASE_WOOD_COLUMNS, veins=False, organic=True)
+    placed = common.base_sources(recipe, BASE_WOOD_ROWS, BASE_WOOD_COLUMNS, veins=False, organic=True, wood_packs=BASE_PACKS)
     deposits = layout(recipe)
     for deposit in deposits:
         placed += deposit.sources()

@@ -31,10 +31,12 @@ assets = unreal.EditorAssetLibrary
 GRID_CELL = 400.0  # cm: UHOLBuildingSettings::TileSize (D344)
 GRID_LINE = 0.015  # fraction of a cell, each side of the line: 12 cm wide
 LINE_DARKEN = 0.62  # the line is the ground's colour times this (M_MatteGround: line 0.09 over ground 0.16)
-# Patches: the noise (0 to 1, mostly 0.3 to 0.7) goes from ColorA to ColorB between B_FROM and B_TO, a second noise from
-# that to ColorC between C_FROM and C_TO (rarer).
-B_FROM, B_TO = 0.40, 0.62
-C_FROM, C_TO = 0.58, 0.72
+# Patches (M-Q8, the user: ground patches of a clearly different colour, as the reference minimap shows): the noise (0 to 1, mostly 0.3 to
+# 0.7) goes from ColorA to ColorB from BFrom over BWidth (a narrow width: a crisp edge, an irregular blob), a second noise from that to
+# ColorC from CFrom over CWidth (rarer). The four numbers are PARAMETERS of the material (defaults here), set by each map's instance
+# (maps/ground.py GROUNDS), so that tuning the patches is editing GROUNDS and running this script, not remaking the parent.
+B_FROM, B_WIDTH = 0.60, 0.05
+C_FROM, C_WIDTH = 0.62, 0.05
 SECOND_SCALE = 1.7  # the second noise is this much wider
 SECOND_OFFSET = 71234.0  # cm: and elsewhere in the world
 
@@ -66,10 +68,13 @@ def noise(material, y, scale, offset):
     return node
 
 
-def ramp(material, source, low, high, x, y):
-    """smoothstep(low, high, source): saturate((source - low) / (high - low)), then 3t^2 - 2t^3: a soft transition."""
-    sub = expression(material, unreal.MaterialExpressionSubtract, x, y, const_b=low)
-    mul = expression(material, unreal.MaterialExpressionMultiply, x + 150, y, const_b=1.0 / (high - low))
+def ramp(material, source, low, width, x, y):
+    """smoothstep(low, low + width, source): saturate((source - low) / width), then 3t^2 - 2t^3: a transition of the given width.
+    low and width are nodes (the instance's parameters)."""
+    sub = expression(material, unreal.MaterialExpressionSubtract, x, y)
+    mul = expression(material, unreal.MaterialExpressionDivide, x + 150, y)
+    connect(low, sub, "B")
+    connect(width, mul, "B")
     sat = expression(material, unreal.MaterialExpressionSaturate, x + 300, y)
     square = expression(material, unreal.MaterialExpressionMultiply, x + 450, y - 60)
     double = expression(material, unreal.MaterialExpressionMultiply, x + 450, y + 60, const_b=2.0)
@@ -130,8 +135,12 @@ def make_varied():
     connect(scale, wider, "A")
     first = noise(material, 0, scale, 0.0)
     second = noise(material, 500, wider, SECOND_OFFSET)
-    to_b = ramp(material, first, B_FROM, B_TO, -1200, 0)
-    to_c = ramp(material, second, C_FROM, C_TO, -1200, 500)
+    b_from = expression(material, unreal.MaterialExpressionScalarParameter, -1500, -300, parameter_name="BFrom", default_value=B_FROM)
+    b_width = expression(material, unreal.MaterialExpressionScalarParameter, -1500, -200, parameter_name="BWidth", default_value=B_WIDTH)
+    c_from = expression(material, unreal.MaterialExpressionScalarParameter, -1500, 800, parameter_name="CFrom", default_value=C_FROM)
+    c_width = expression(material, unreal.MaterialExpressionScalarParameter, -1500, 900, parameter_name="CWidth", default_value=C_WIDTH)
+    to_b = ramp(material, first, b_from, b_width, -1200, 0)
+    to_c = ramp(material, second, c_from, c_width, -1200, 500)
     patch_b = expression(material, unreal.MaterialExpressionLinearInterpolate, 400, -400)
     connect(color_a, patch_b, "A")
     connect(color_b, patch_b, "B")

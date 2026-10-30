@@ -15,6 +15,7 @@ namespace UE::HeroesOfLiberty::Map
 		static const FHOLMapInfo Maps[] = {
 			{ TEXT("Plain"), NSLOCTEXT("HOLMaps", "Map_Plain", "Plaine"), false },
 			{ TEXT("Steppe"), NSLOCTEXT("HOLMaps", "Map_Steppe", "La Steppe"), true },
+			{ TEXT("Hinterland"), NSLOCTEXT("HOLMaps", "Map_Hinterland", "L'Arrière-pays"), true },
 		};
 		return Maps;
 	}

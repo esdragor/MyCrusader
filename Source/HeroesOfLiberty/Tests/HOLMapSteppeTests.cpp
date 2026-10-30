@@ -10,6 +10,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceLayout.h"
+#include "Resources/HOLSourceTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -22,10 +23,10 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	/**
-	 * S-Q1 = A, the reduced base (C1c: organic): a small irregular wood of 20 trees within 36 m of the slot (its trees 17 m to 35 m from
+	 * S-Q1 = A, the reduced base (C1c: organic; M-Q8: a pack of 14 trees and a small one of 6): a wood of 20 trees within 46 m of the slot (its trees 17 m to 45 m from
 	 * it, out of the way of the Peasants born at the centre's foot), the 6 berry bushes of one patch within 29 m.
 	 */
-	constexpr double WoodReach = 3600.0;
+	constexpr double WoodReach = 4600.0;  // M-Q8: two packs, 14 and 6 (the second 24 m ahead of the first)
 	constexpr int32 WoodTrees = 20;
 	constexpr double BerryReach = 2900.0;
 	constexpr int32 BerryBushes = 6;
@@ -52,7 +53,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	 * square, none within 8 m of a slot, a source or a rock, at most a few thousand, and cheap (no shadow, a cull distance).
 	 */
 	constexpr double DecorClear = 800.0;
-	constexpr int32 DecorMax = 6000;
+	constexpr int32 DecorMax = 14000;  // M-Q8: flowers and clumps on top of the first scenery
 	constexpr int32 DecorMinPerHectare = 20;
 	constexpr double DecorCullMax = 15000.0;  // 150 m: farther away the instances are not drawn
 	constexpr double RidgeAhead = 3000.0;     // common.RIDGE_AHEAD
@@ -87,21 +88,24 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	/** Two deposits are at least this far apart, from source to source (25 m: a Peasant can work one in peace). */
 	constexpr double DepositGap = 2500.0;
 
+	/** M-Q9: between a pile of gold or stone and another deposit the gap is 18 m (the piles are small bodies, a territory holds 14 of them). */
+	constexpr double PileGap = 1800.0;
+
 	/** The scattered deposits keep 15 m from the edge of the bounds. */
 	constexpr double EdgeMargin = 1500.0;
 
-	/** The veins of one kind of one player are at least this far apart (60 m): they do not sit in one corner of its territory. */
-	constexpr double VeinSpread = 6000.0;
+	/** The veins of one kind of one player are at least this far apart (M-Q9: 40 m, it was 60 m with 4 and 2 veins): they do not sit in one corner of its territory. */
+	constexpr double VeinSpread = 4000.0;
 
 	/**
-	 * What a deposit is made of: many small ones. A grove of 8 to 16 trees (a few of 24), whatever its shape (an irregular blob, with lone
+	 * What a deposit is made of: many small ones. A pack of 12, 14 or 16 trees (M-Q8), whatever its shape (an irregular blob, with lone
 	 * trees and clumps of 2 or 3 just outside: they are within 10 m of it, so one deposit), a patch of 3 to 5 berry bushes, one vein.
 	 */
 	bool IsWholeDeposit(const FName Type, const int32 Size)
 	{
 		if (Type == TEXT("Tree"))
 		{
-			return Size == 8 || Size == 10 || Size == 12 || Size == 16 || Size == 24;
+			return Size == 12 || Size == 14 || Size == 16;  // M-Q8: packs of 14, 12 or 16 where the room asks
 		}
 		return Type == TEXT("BerryBush") ? Size >= 3 && Size <= 5 : Size == 1;
 	}
@@ -167,8 +171,8 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 				Trees += Source.Type == TEXT("Tree") && Distance < WoodReach;
 				Bushes += Source.Type == TEXT("BerryBush") && Distance < BerryReach;
 				InBase += Distance < BaseReach;
-				NearestStone = Source.Type == TEXT("StoneVein") ? FMath::Min(NearestStone, Distance) : NearestStone;
-				NearestGold = Source.Type == TEXT("GoldVein") ? FMath::Min(NearestGold, Distance) : NearestGold;
+				NearestStone = HOLSourceTypeNames::IsStoneVein(Source.Type) ? FMath::Min(NearestStone, Distance) : NearestStone;
+				NearestGold = HOLSourceTypeNames::IsGoldVein(Source.Type) ? FMath::Min(NearestGold, Distance) : NearestGold;
 			}
 			TestEqual(FString::Printf(TEXT("%s: slot %d's wood of 20 trees"), Info.Key, Slot), Trees, WoodTrees);
 			TestEqual(FString::Printf(TEXT("%s: slot %d's berries"), Info.Key, Slot), Bushes, BerryBushes);
@@ -242,10 +246,10 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 				Entry.Value.Num()), IsWholeDeposit(Type, Entry.Value.Num()));
 			Sizes.FindOrAdd(Type == TEXT("Tree") ? Entry.Value.Num() : (Type == TEXT("BerryBush") ? 100 + Entry.Value.Num() : 1000))++;
 			PerPlayer.FindOrAdd(NearestSlot(First))++;
-			if (Type == TEXT("StoneVein") || Type == TEXT("GoldVein"))
+			if (HOLSourceTypeNames::IsStoneVein(Type) || HOLSourceTypeNames::IsGoldVein(Type))
 			{
-				(Type == TEXT("StoneVein") ? Stone : Gold).FindOrAdd(NearestSlot(First))++;
-				Veins.FindOrAdd(NearestSlot(First) * 2 + (Type == TEXT("StoneVein") ? 0 : 1)).Add(First);
+				(HOLSourceTypeNames::IsStoneVein(Type) ? Stone : Gold).FindOrAdd(NearestSlot(First))++;
+				Veins.FindOrAdd(NearestSlot(First) * 2 + (HOLSourceTypeNames::IsStoneVein(Type) ? 0 : 1)).Add(First);
 			}
 			for (const int32 Index : Entry.Value)
 			{
@@ -262,10 +266,12 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 					for (const int32 OtherIndex : Other.Value)
 					{
 						const double Gap = FVector2D::Distance(At, FVector2D(Sources[OtherIndex].Location));
-						if (Gap < DepositGap)
+						const bool bPile = HOLSourceTypeNames::IsStoneVein(Type) || HOLSourceTypeNames::IsGoldVein(Type) || HOLSourceTypeNames::IsStoneVein(Sources[OtherIndex].Type)
+							|| HOLSourceTypeNames::IsGoldVein(Sources[OtherIndex].Type);
+						if (Gap < (bPile ? PileGap : DepositGap))
 						{
 							AddError(FString::Printf(TEXT("%s: deposits at %s and %s are %.0f cm apart, under %.0f"), Info.Key, *At.ToString(),
-								*FVector2D(Sources[OtherIndex].Location).ToString(), Gap, DepositGap));
+								*FVector2D(Sources[OtherIndex].Location).ToString(), Gap, bPile ? PileGap : DepositGap));
 							break;
 						}
 					}
@@ -286,8 +292,8 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 			for (const FHOLPlacedSource& Source : Sources)
 			{
 				const double Distance = FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]);
-				NearestStone = Source.Type == TEXT("StoneVein") ? FMath::Min(NearestStone, Distance) : NearestStone;
-				NearestGold = Source.Type == TEXT("GoldVein") ? FMath::Min(NearestGold, Distance) : NearestGold;
+				NearestStone = HOLSourceTypeNames::IsStoneVein(Source.Type) ? FMath::Min(NearestStone, Distance) : NearestStone;
+				NearestGold = HOLSourceTypeNames::IsGoldVein(Source.Type) ? FMath::Min(NearestGold, Distance) : NearestGold;
 			}
 			TestTrue(FString::Printf(TEXT("%s: slot %d's nearest stone %.0f cm and gold %.0f cm, over %.0f"), Info.Key, Slot, NearestStone, NearestGold, VeinStartReach),
 				NearestStone <= VeinStartReach && NearestGold <= VeinStartReach);
@@ -316,7 +322,7 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 			for (const FHOLPlacedSource& Source : Sources)
 			{
 				const FVector2D At(Source.Location);
-				const bool bVein = Source.Type == TEXT("StoneVein") || Source.Type == TEXT("GoldVein");
+				const bool bVein = HOLSourceTypeNames::IsStoneVein(Source.Type) || HOLSourceTypeNames::IsGoldVein(Source.Type);
 				if (FVector2D::Distance(At, Starts[0]) >= (bVein ? NearVeinReach : NearReach))
 				{
 					continue;
@@ -554,9 +560,9 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("%s: a blank of %.0f m radius at %s (over %.0f m): corners or sides without a deposit"), Info.Key, Largest / 100.0, *LargestAt.ToString(),
 			LargestEmptyCircle / 100.0), Largest <= LargestEmptyCircle);
 
-		AddInfo(FString::Printf(TEXT("%s: %d places, %d deposits per player (slot 0: %d stone, %d gold), nearest source %.0f cm from the centre, largest empty circle %.1f m, groves of 8/10/12/16/24: %d/%d/%d/%d/%d, berry patches of 3/4/5: %d/%d/%d"),
-			Info.Key, Info.NumPlaces, PerPlayer.FindRef(0), Stone.FindRef(0), Gold.FindRef(0), Closest, Largest / 100.0, Sizes.FindRef(8), Sizes.FindRef(10), Sizes.FindRef(12), Sizes.FindRef(16),
-			Sizes.FindRef(24), Sizes.FindRef(103), Sizes.FindRef(104), Sizes.FindRef(105)));
+		AddInfo(FString::Printf(TEXT("%s: %d places, %d deposits per player (slot 0: %d stone, %d gold), nearest source %.0f cm from the centre, largest empty circle %.1f m, groves of 12/14/16: %d/%d/%d, berry patches of 3/4/5: %d/%d/%d"),
+			Info.Key, Info.NumPlaces, PerPlayer.FindRef(0), Stone.FindRef(0), Gold.FindRef(0), Closest, Largest / 100.0, Sizes.FindRef(12), Sizes.FindRef(14), Sizes.FindRef(16),
+			Sizes.FindRef(103), Sizes.FindRef(104), Sizes.FindRef(105)));
 	}
 	return true;
 }

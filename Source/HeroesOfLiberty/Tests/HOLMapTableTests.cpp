@@ -2,6 +2,9 @@
 
 #include "Buildings/HOLBuildingTypes.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/StaticMeshActor.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
 #include "HAL/FileManager.h"
@@ -13,6 +16,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Resources/HOLSourceLayout.h"
+#include "Resources/HOLSourceTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -45,10 +49,54 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	};
 	constexpr FBudgetLine Budget[] = {
 		{ TEXT("Tree"), TEXT("wood"), 150, 225 },
-		{ TEXT("GoldVein"), TEXT("gold"), 4, 6 },
-		{ TEXT("StoneVein"), TEXT("stone"), 2, 3 },
 		{ TEXT("BerryBush"), TEXT("berries"), 15, 23 },
 	};
+
+	/**
+	 * M-Q9 (the user, 2026-10-30: "I did not ask for cosmetics", "small AND big"): the gold and the stone are counted in VALUE, not in veins. The
+	 * total per territory is the M-Q4 one (4 gold veins of 2 500 = 10 000 gold, 2 stone veins of 2 500 = 5 000 stone; Huge x1.5 as the other lines) but
+	 * it comes as a MIX of sizes (the source types of Tools/Data/SourceTypes.csv: Small 500, Medium 1 000, Standard 2 500, Big 5 000): the sum of
+	 * the Amounts of a territory's sources of a resource is at least the target and at most ValueMargin times it (the recipes are exact, the margin is
+	 * for a recipe that aims a little above, like the trees), the territory holds at least MinMineralSources mineral sources and each resource is
+	 * made of at least MinMineralSizes different sizes. Territories are read as the other budget lines (nearest slot).
+	 */
+	struct FValueLine
+	{
+		EHOLResource Resource;
+		const TCHAR* Name;
+		int32 Needed;
+		int32 NeededHuge;
+	};
+	constexpr FValueLine MineralValue[] = {
+		{ EHOLResource::Gold, TEXT("gold"), 10000, 15000 },
+		{ EHOLResource::Stone, TEXT("stone"), 5000, 7500 },
+	};
+	constexpr double ValueMargin = 1.10;
+	constexpr int32 MinMineralSizes = 3;
+	constexpr int32 MinMineralSources = 10;
+
+	/**
+	 * M-Q7 (the user, 2026-10-30): no map is empty, "better loaded than empty": wherever the camera goes, something is on screen. No point of
+	 * the playable square is farther than MaxEmptyRadius (35 m, about one screen width at the camera's default height) from a landmark: a
+	 * start slot, a resource source, a rock (a start's ridge, a wall) or one of the scenery's big pieces (the Boulder and Thicket kinds of
+	 * common.py DECOR_KINDS, no collision). The ground's colours and the small scenery (tufts, small stones) do not count. Measured on a grid
+	 * of EmptyGrid from the corner of the bounds (the recipe fills its holes on a finer grid of the same origin: common.py MAX_EMPTY_RADIUS).
+	 * Only the maps with the Budget `standard` must hold it (Plain, the test map, is to be redone like them); reported for every map.
+	 */
+	constexpr double MaxEmptyRadius = 2800.0; // M-Q8: tightened from 35 m, the recipes hold about 26 m
+	constexpr double EmptyGrid = 2000.0;
+
+	/**
+	 * M-Q8 (the user, 2026-10-30, after the Hinterland trial): the forests are PACKS of 14 trees, many small clumps scattered over the whole
+	 * map, not a few big forests ("the map looks desolate"). Trees closer than PackLink (6 m, trunks 60 cm: two neighbours of a grove are 2.2 to
+	 * 2.4 m apart) are one pack; no pack has more than MaxPackTrees (14 plus a little: a base's wood may be two packs), and every territory
+	 * (the trees whose nearest slot is the player's) holds at least ceil(budget / PackTrees) - PackSlack packs of at least MinPackTrees trees.
+	 */
+	constexpr double PackLink = 600.0;
+	constexpr int32 PackTrees = 14;
+	constexpr int32 MaxPackTrees = 20;
+	constexpr int32 MinPackTrees = 10;
+	constexpr int32 PackSlack = 2;
 
 	/** Whether Config/DefaultGame.ini carries this line (a commented line does not count). */
 	bool IsCooked(const TArray<FString>& IniLines, const FString& Line)
@@ -139,41 +187,58 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			// places are compared with each other, never with a constant: a recipe may leave a type out of the bases (the same
 			// for every place) or put it in them.
 			const TArray<FHOLPlacedSource>& Sources = Layout->GetSources();
-			TSet<FName> Types;
+			// The fairness is read per RESOURCE (M-Q9: gold comes in several types, one per size): the 3 nearest sources of the resource, each as a
+			// (distance, amount) pair, are the same at every place.
+			const auto Kind = [](const FName Type)
+			{
+				const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(Type);
+				return Row ? Row->Resource : EHOLResource::Wood;
+			};
+			const auto Amount = [](const FName Type)
+			{
+				const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(Type);
+				return Row ? Row->Amount : 0;
+			};
+			TSet<EHOLResource> Kinds;
 			for (const FHOLPlacedSource& Source : Sources)
 			{
-				Types.Add(Source.Type);
+				Kinds.Add(Kind(Source.Type));
 			}
-			for (const FName Type : Types)
+			for (const EHOLResource Resource : Kinds)
 			{
-				TArray<double> First;
+				const TCHAR* ResourceName = Resource == EHOLResource::Gold ? TEXT("gold") : Resource == EHOLResource::Stone ? TEXT("stone") : Resource == EHOLResource::Wood ? TEXT("wood") : TEXT("food");
+				TArray<TPair<double, int32>> First;
 				double Spread = 0.0;
+				bool bSameAmounts = true;
 				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 				{
-					TArray<double> Distances;
+					TArray<TPair<double, int32>> Nearest;
 					for (const FHOLPlacedSource& Source : Sources)
 					{
-						if (Source.Type == Type)
+						if (Kind(Source.Type) == Resource)
 						{
-							Distances.Add(FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]));
+							Nearest.Add(TPair<double, int32>(FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]), Amount(Source.Type)));
 						}
 					}
-					Distances.Sort();
-					Distances.SetNum(FMath::Min(Distances.Num(), FairnessSources));
+					Nearest.Sort([](const TPair<double, int32>& A, const TPair<double, int32>& B) { return A.Key < B.Key; });
+					Nearest.SetNum(FMath::Min(Nearest.Num(), FairnessSources));
 					if (Slot == 0)
 					{
-						First = Distances;
+						First = Nearest;
 						continue;
 					}
-					for (int32 Rank = 0; Rank < Distances.Num(); ++Rank)
+					for (int32 Rank = 0; Rank < Nearest.Num(); ++Rank)
 					{
-						Spread = FMath::Max(Spread, FMath::Abs(Distances[Rank] - First[Rank]));
+						Spread = FMath::Max(Spread, FMath::Abs(Nearest[Rank].Key - First[Rank].Key));
+						bSameAmounts &= Nearest[Rank].Value == First[Rank].Value;
 					}
 				}
-				AddInfo(FString::Printf(TEXT("%s: %s, nearest %d from slot 0: %.0f / %.0f / %.0f cm, spread between places %.1f cm"), *Name, *Type.ToString(), First.Num(),
-					First.IsValidIndex(0) ? First[0] : 0.0, First.IsValidIndex(1) ? First[1] : 0.0, First.IsValidIndex(2) ? First[2] : 0.0, Spread));
-				TestTrue(FString::Printf(TEXT("%s: %s unfair between places (the 3 nearest differ by %.1f cm, over %.0f cm)"), *Name, *Type.ToString(), Spread, FairnessTolerance),
+				AddInfo(FString::Printf(TEXT("%s: %s, nearest %d from slot 0: %.0f (%d) / %.0f (%d) / %.0f (%d) cm, spread between places %.1f cm"), *Name, ResourceName, First.Num(),
+					First.IsValidIndex(0) ? First[0].Key : 0.0, First.IsValidIndex(0) ? First[0].Value : 0, First.IsValidIndex(1) ? First[1].Key : 0.0, First.IsValidIndex(1) ? First[1].Value : 0,
+					First.IsValidIndex(2) ? First[2].Key : 0.0, First.IsValidIndex(2) ? First[2].Value : 0, Spread));
+				TestTrue(FString::Printf(TEXT("%s: %s unfair between places (the 3 nearest differ by %.1f cm, over %.0f cm)"), *Name, ResourceName, Spread, FairnessTolerance),
 					Spread <= FairnessTolerance);
+				TestTrue(FString::Printf(TEXT("%s: %s unfair between places (the 3 nearest do not hold the same amounts)"), *Name, ResourceName), bSameAmounts);
 			}
 
 			// 6. Scenery never gets in the way (M-Q5, any map): every instanced mesh in a map file has no collision and no navigation.
@@ -191,6 +256,84 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				}
 			}
 
+			// 7. No empty place (M-Q7): the largest empty circle of the square, from the nearest landmark.
+			{
+				TArray<FVector2D> Landmarks;
+				for (const TPair<int32, FVector2D>& Start : Starts)
+				{
+					Landmarks.Add(Start.Value);
+				}
+				for (const FHOLPlacedSource& Source : Sources)
+				{
+					Landmarks.Add(FVector2D(Source.Location));
+				}
+				for (const AActor* Actor : Map->PersistentLevel->Actors)
+				{
+					if (!Actor || !Actor->GetRootComponent())
+					{
+						continue;
+					}
+					if (const AStaticMeshActor* Mesh = Cast<AStaticMeshActor>(Actor))
+					{
+						const UStaticMesh* Shape = Mesh->GetStaticMeshComponent() ? Mesh->GetStaticMeshComponent()->GetStaticMesh() : nullptr;
+						if (Shape && Shape->GetName() == TEXT("Sphere"))
+						{
+							Landmarks.Add(FVector2D(Actor->GetRootComponent()->GetRelativeLocation()));
+						}
+					}
+					TArray<UInstancedStaticMeshComponent*> Meshes;
+					Actor->GetComponents(Meshes);
+					for (const UInstancedStaticMeshComponent* Mesh : Meshes)
+					{
+						if (Mesh->GetName().Contains(TEXT("Boulder")) || Mesh->GetName().Contains(TEXT("Thicket")))
+						{
+							for (int32 Instance = 0; Instance < Mesh->GetInstanceCount(); ++Instance)
+							{
+								FTransform Transform;
+								Mesh->GetInstanceTransform(Instance, Transform, true);
+								Landmarks.Add(FVector2D(Transform.GetLocation()));
+							}
+						}
+					}
+				}
+				// The distance to the nearest landmark of each grid point, exact up to 4 cells (80 m), beyond that "far".
+				const int32 Cells = FMath::FloorToInt((Area.Max.X - Area.Min.X) / EmptyGrid) + 1;
+				TArray<float> Nearest;
+				Nearest.Init(1.0e9f, Cells * Cells);
+				for (const FVector2D& Landmark : Landmarks)
+				{
+					const int32 CX = FMath::RoundToInt((Landmark.X - Area.Min.X) / EmptyGrid), CY = FMath::RoundToInt((Landmark.Y - Area.Min.Y) / EmptyGrid);
+					for (int32 Y = FMath::Max(0, CY - 4); Y <= FMath::Min(Cells - 1, CY + 4); ++Y)
+					{
+						for (int32 X = FMath::Max(0, CX - 4); X <= FMath::Min(Cells - 1, CX + 4); ++X)
+						{
+							const float Distance = FVector2D::Distance(Landmark, FVector2D(Area.Min.X + X * EmptyGrid, Area.Min.Y + Y * EmptyGrid));
+							Nearest[Y * Cells + X] = FMath::Min(Nearest[Y * Cells + X], Distance);
+						}
+					}
+				}
+				double Largest = 0.0;
+				FVector2D LargestAt = FVector2D::ZeroVector;
+				for (int32 Y = 0; Y < Cells; ++Y)
+				{
+					for (int32 X = 0; X < Cells; ++X)
+					{
+						if (Nearest[Y * Cells + X] > Largest)
+						{
+							Largest = Nearest[Y * Cells + X];
+							LargestAt = FVector2D(Area.Min.X + X * EmptyGrid, Area.Min.Y + Y * EmptyGrid);
+						}
+					}
+				}
+				AddInfo(FString::Printf(TEXT("%s: largest empty circle %s%.1f m at %s (%d landmarks, limit %.0f m%s)"), *Name, Largest >= 8000.0 ? TEXT("over ") : TEXT(""), FMath::Min(Largest, 8000.0) / 100.0, *LargestAt.ToString(),
+					Landmarks.Num(), MaxEmptyRadius / 100.0, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget: not required")));
+				if (MapInfo.bBudget)
+				{
+					TestTrue(FString::Printf(TEXT("%s: the map is empty %s%.1f m round %s, over %.0f m (nothing in a screen's width: resources, trees, rocks, boulders; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name,
+						Largest >= 8000.0 ? TEXT("over ") : TEXT(""), Largest / 100.0, *LargestAt.ToString(), MaxEmptyRadius / 100.0, MapInfo.Key, Info.Key), Largest <= MaxEmptyRadius);
+				}
+			}
+
 			// 5. The budget per player (M-Q4 = A): the sources of each territory (nearest slot, ties to the lowest index).
 			TArray<TMap<FName, int32>> Territories;
 			Territories.SetNum(Info.NumPlaces);
@@ -202,6 +345,58 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					Owner = FVector2D::DistSquared(FVector2D(Source.Location), Starts[Slot]) < FVector2D::DistSquared(FVector2D(Source.Location), Starts[Owner]) ? Slot : Owner;
 				}
 				Territories[Owner].FindOrAdd(Source.Type)++;
+			}
+			// 9. The value budget of the minerals (M-Q9): the sum of the amounts per resource and territory, the number of mineral sources, the sizes.
+			{
+				for (const FValueLine& Line : MineralValue)
+				{
+					const int32 Needed = Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed;
+					int32 LeastValue = MAX_int32, MostValue = 0, LeastSizes = MAX_int32;
+					for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
+					{
+						int32 Value = 0;
+						TSet<int32> Sizes;
+						for (const TPair<FName, int32>& Held : Territories[Slot])
+						{
+							const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(Held.Key);
+							if (Row && Row->Resource == Line.Resource)
+							{
+								Value += Row->Amount * Held.Value;
+								Sizes.Add(Row->Amount);
+							}
+						}
+						LeastValue = FMath::Min(LeastValue, Value);
+						MostValue = FMath::Max(MostValue, Value);
+						LeastSizes = FMath::Min(LeastSizes, Sizes.Num());
+						if (MapInfo.bBudget)
+						{
+							TestTrue(FString::Printf(TEXT("%s: slot %d's territory holds %d %s in value, not %d to %d (the budget of M-Q4 as a mix of sizes, M-Q9; Tools\\make_maps.ps1 -Map %s -Sizes %s)"),
+								*Name, Slot, Value, Line.Name, Needed, FMath::FloorToInt(Needed * ValueMargin), MapInfo.Key, Info.Key), Value >= Needed && Value <= FMath::FloorToInt(Needed * ValueMargin));
+							TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d different sizes of %s sources, under %d (small AND big piles, M-Q9)"), *Name, Slot, Sizes.Num(), Line.Name, MinMineralSizes),
+								Sizes.Num() >= MinMineralSizes);
+						}
+					}
+					AddInfo(FString::Printf(TEXT("%s: %s value per territory %d to %d (needed %d to %d), at least %d different sizes%s"), *Name, Line.Name, LeastValue, MostValue, Needed,
+						FMath::FloorToInt(Needed * ValueMargin), LeastSizes == MAX_int32 ? 0 : LeastSizes, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
+				}
+				int32 FewestMinerals = MAX_int32, MostMinerals = 0;
+				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
+				{
+					int32 Minerals = 0;
+					for (const TPair<FName, int32>& Held : Territories[Slot])
+					{
+						const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(Held.Key);
+						Minerals += Row && (Row->Resource == EHOLResource::Gold || Row->Resource == EHOLResource::Stone) ? Held.Value : 0;
+					}
+					FewestMinerals = FMath::Min(FewestMinerals, Minerals);
+					MostMinerals = FMath::Max(MostMinerals, Minerals);
+					if (MapInfo.bBudget)
+					{
+						TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d gold and stone sources, under %d (many piles of different values, M-Q9)"), *Name, Slot, Minerals, MinMineralSources),
+							Minerals >= MinMineralSources);
+					}
+				}
+				AddInfo(FString::Printf(TEXT("%s: gold and stone sources per territory %d to %d (needed %d%s)"), *Name, FewestMinerals, MostMinerals, MinMineralSources, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
 			}
 			for (const FBudgetLine& Line : Budget)
 			{
@@ -219,6 +414,86 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					}
 				}
 				AddInfo(FString::Printf(TEXT("%s: budget %s per territory %d to %d (needed %d%s)"), *Name, Line.Type, Least, Most, Needed, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
+
+				// 8. The forests are packs of PackTrees (M-Q8): the trees closer than PackLink make a pack.
+				{
+					TArray<FVector2D> Trees;
+					for (const FHOLPlacedSource& Source : Sources)
+					{
+						if (Source.Type == TEXT("Tree"))
+						{
+							Trees.Add(FVector2D(Source.Location));
+						}
+					}
+					TArray<int32> Pack;
+					Pack.Init(INDEX_NONE, Trees.Num());
+					TArray<int32> PackSizes;
+					TArray<FVector2D> PackSums;
+					for (int32 Seed = 0; Seed < Trees.Num(); ++Seed)
+					{
+						if (Pack[Seed] != INDEX_NONE)
+						{
+							continue;
+						}
+						const int32 Number = PackSizes.Add(0);
+						PackSums.Add(FVector2D::ZeroVector);
+						TArray<int32> Open = { Seed };
+						Pack[Seed] = Number;
+						while (!Open.IsEmpty())
+						{
+							const int32 Tree = Open.Pop();
+							++PackSizes[Number];
+							PackSums[Number] += Trees[Tree];
+							for (int32 Other = 0; Other < Trees.Num(); ++Other)
+							{
+								if (Pack[Other] == INDEX_NONE && FVector2D::DistSquared(Trees[Tree], Trees[Other]) <= FMath::Square(PackLink))
+								{
+									Pack[Other] = Number;
+									Open.Add(Other);
+								}
+							}
+						}
+					}
+					TArray<int32> PacksOf;
+					PacksOf.Init(0, Info.NumPlaces);
+					int32 Biggest = 0, Packs = 0, Smallest = MAX_int32;
+					for (int32 Number = 0; Number < PackSizes.Num(); ++Number)
+					{
+						Biggest = FMath::Max(Biggest, PackSizes[Number]);
+						if (PackSizes[Number] < MinPackTrees)
+						{
+							continue;
+						}
+						++Packs;
+						Smallest = FMath::Min(Smallest, PackSizes[Number]);
+						const FVector2D Centre = PackSums[Number] / PackSizes[Number];
+						int32 Owner = 0;
+						for (int32 Slot = 1; Slot < Info.NumPlaces; ++Slot)
+						{
+							Owner = FVector2D::DistSquared(Centre, Starts[Slot]) < FVector2D::DistSquared(Centre, Starts[Owner]) ? Slot : Owner;
+						}
+						++PacksOf[Owner];
+					}
+					const int32 Budgeted = Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed;
+					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, PackTrees) - PackSlack;
+					int32 LeastPacks = MAX_int32;
+					for (const int32 Held : PacksOf)
+					{
+						LeastPacks = FMath::Min(LeastPacks, Held);
+					}
+					AddInfo(FString::Printf(TEXT("%s: %d trees in %d packs of %d trees or more (smallest %d, biggest cluster %d trees), per territory %d at least (needed %d%s)"), *Name, Trees.Num(),
+						Packs, MinPackTrees, Packs ? Smallest : 0, Biggest, LeastPacks == MAX_int32 ? 0 : LeastPacks, PacksNeeded, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
+					if (MapInfo.bBudget)
+					{
+						TestTrue(FString::Printf(TEXT("%s: a cluster of %d trees, over %d: the forests are packs of %d trees (M-Q8; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, Biggest, MaxPackTrees, PackTrees, MapInfo.Key, Info.Key),
+							Biggest <= MaxPackTrees);
+						for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
+						{
+							TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d packs of %d trees or more, under %d (the budget of %d trees in packs of %d, less %d: many small forests, M-Q8)"), *Name, Slot, PacksOf[Slot],
+								MinPackTrees, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded);
+						}
+					}
+				}
 			}
 		}
 	}

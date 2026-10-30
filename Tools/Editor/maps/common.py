@@ -242,6 +242,125 @@ def spawn_ridges(recipe):
     return len(recipe.angles) * len(RIDGE_BOULDERS)
 
 
+# ---- Long rock walls (C2, L'Arriere-pays): irregular outcrops, not straight lines. A wall is a polyline of vertices (a pocket's
+# boundary, the belt): it is cut into straight pieces of WALL_PIECE, each vertex pushed sideways by a smooth wobble (WALL_WOBBLE),
+# every piece carrying a chain of flattened rocks (the engine's sphere, as the ridges) that overlap by a metre or more, and one
+# NavArea_Null volume (the rocks' footprint plus a margin, so that a unit never stands in a rock). Gaps (the openings of a pocket, the
+# passages of the belt) are free stretches of the wall of a given width between rock ends. Pure geometry: rock_wall returns the data,
+# spawn_rock_wall puts it in the level. Deterministic from the integers it is seeded with (Rng).
+WALL_PIECE = 2000.0  # cm: one straight piece of a wall, and one navigation volume
+WALL_STEP = 330.0  # cm between two rocks of a chain
+WALL_WOBBLE = 420.0  # cm: how far the wall wanders off its straight line
+WALL_WAVELENGTH = (5500.0, 11000.0)
+WALL_JITTER = 70.0  # cm: a rock's offset from the chain's axis
+WALL_ROCK_ALONG = (6.6, 9.0)  # scale of the 1 m sphere along the wall: 6.6 to 9 m long
+WALL_ROCK_ACROSS = (4.6, 6.0)
+WALL_ROCK_HEIGHT = (3.4, 5.4)
+WALL_YAW_JITTER = 8.0  # degrees off the chain's direction
+WALL_HALF_LENGTH = 450.0  # cm: the farthest a rock of a chain reaches along it beyond its centre
+WALL_NAV_HALF_WIDTH = 520.0  # cm: half the width of a piece's NavArea_Null volume (rock reach across + margin)
+
+
+def polyline_length(points):
+    return sum(math.dist(points[index], points[index + 1]) for index in range(len(points) - 1))
+
+
+def point_along(points, distance):
+    """The point of a polyline at an arc length, and the unit direction there."""
+    for index in range(len(points) - 1):
+        length = math.dist(points[index], points[index + 1])
+        if distance <= length or index == len(points) - 2:
+            t = min(1.0, distance / length) if length > 0.0 else 0.0
+            direction = ((points[index + 1][0] - points[index][0]) / length, (points[index + 1][1] - points[index][1]) / length)
+            return (points[index][0] + direction[0] * length * t, points[index][1] + direction[1] * length * t), direction
+        distance -= length
+    return points[-1], (1.0, 0.0)
+
+
+def rock_wall(seed, points, gaps=()):
+    """The rocks and navigation volumes of one wall along the polyline points (world xy, cm). gaps: (centre, width) pairs by arc
+    length along the polyline: the wall is left open for width cm around centre (a unit-wide gap with rounded rock ends: the rocks
+    stop WALL_HALF_LENGTH short of the gap's edges). Returns (rocks, volumes): rocks are (x, y, scale x, scale y, scale z, yaw)
+    with x along the wall; volumes are (x, y, length, half width, yaw) of straight pieces (a box centred there, turned by yaw)."""
+    rng = Rng(seed, 2)
+    total = polyline_length(points)
+    # The wobble: two cosines of the arc length, zero at the vertices of the polyline (they stay where they are).
+    waves = [(rng.range(*WALL_WAVELENGTH), rng.range(0.0, 2 * math.pi), rng.range(0.6, 1.0)) for _ in range(2)]
+
+    corners = [0.0, total]
+    run = 0.0
+    for index in range(len(points) - 1):
+        run += math.dist(points[index], points[index + 1])
+        corners.append(run)
+
+    def wobble(distance):
+        # Straight at a vertex and at a gap (the gap's marker and the wall's ends are where the recipe says), wandering between.
+        nearest = min([abs(distance - corner) for corner in corners] + [max(0.0, abs(distance - centre) - width / 2.0) for centre, width in gaps])
+        ends = min(1.0, nearest / 1500.0)
+        return WALL_WOBBLE * ends * sum(a * math.cos(2 * math.pi * distance / w + p) for w, p, a in waves) / 1.6
+
+    pieces = max(1, int(round(total / WALL_PIECE)))
+    cuts = [total * index / pieces for index in range(pieces + 1)]
+    # Vertices of the polyline are cuts too, so that a corner is a joint, not a wobble.
+    run = 0.0
+    for index in range(len(points) - 1):
+        run += math.dist(points[index], points[index + 1])
+        if 100.0 < run < total - 100.0:
+            cuts.append(run)
+    cuts = sorted(cuts)
+    kept = []
+    for cut in cuts:
+        if not kept or cut - kept[-1] > 300.0:
+            kept.append(cut)
+    cuts = kept
+
+    def pushed(distance):
+        point, direction = point_along(points, distance)
+        shift = wobble(distance)
+        return (point[0] - direction[1] * shift, point[1] + direction[0] * shift)
+
+    open_ranges = [(centre - width / 2.0 - WALL_HALF_LENGTH, centre + width / 2.0 + WALL_HALF_LENGTH) for centre, width in gaps]
+    rocks, volumes = [], []
+    for index in range(len(cuts) - 1):
+        start, end = cuts[index], cuts[index + 1]
+        # The stretches of this piece outside the gaps' ranges.
+        stretches = [(start, end)]
+        for low, high in open_ranges:
+            stretches = [part for lo, hi in stretches for part in ((lo, min(hi, low)), (max(lo, high), hi)) if part[1] - part[0] > 1.0]
+        for lo, hi in stretches:
+            a, b = pushed(lo), pushed(hi)
+            length = math.dist(a, b)
+            yaw = math.degrees(math.atan2(b[1] - a[1], b[0] - a[0]))
+            ends_open = (lo > start + 1.0) or (hi < end - 1.0)
+            count = max(1, int(math.ceil(length / WALL_STEP)))
+            # A stretch that ends at a gap (or a short one) has a rock at both ends; inside a wall the rocks sit half a step in
+            # from the joints, so that the chain goes on from one piece to the next one step apart.
+            both_ends = ends_open or length < WALL_STEP
+            for number in range(count + 1 if both_ends else count):
+                t = (number if both_ends else number + 0.5) / count
+                x = a[0] + (b[0] - a[0]) * t
+                y = a[1] + (b[1] - a[1]) * t
+                side = rng.range(-WALL_JITTER, WALL_JITTER)
+                rocks.append((x - math.sin(math.radians(yaw)) * side, y + math.cos(math.radians(yaw)) * side,
+                              rng.range(*WALL_ROCK_ALONG), rng.range(*WALL_ROCK_ACROSS), rng.range(*WALL_ROCK_HEIGHT),
+                              yaw + rng.range(-WALL_YAW_JITTER, WALL_YAW_JITTER)))
+            # The volume covers the chain with the rocks' reach beyond its ends.
+            volumes.append(((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0, length + 2 * WALL_HALF_LENGTH, WALL_NAV_HALF_WIDTH, yaw))
+    return rocks, volumes
+
+
+def spawn_rock_wall(rocks, volumes, material, name):
+    """The rocks (StaticMeshActors of the engine's sphere, half buried, no shadow) and the NavArea_Null volumes of rock_wall."""
+    for number, (x, y, scale_x, scale_y, scale_z, yaw) in enumerate(rocks):
+        spawn_shape("/Engine/BasicShapes/Sphere", unreal.Vector(x, y, 0), unreal.Vector(scale_x, scale_y, scale_z), "%sRock%d" % (name, number), material, yaw=yaw)
+    for number, (x, y, length, half_width, yaw) in enumerate(volumes):
+        volume = spawn(unreal.NavModifierVolume, unreal.Vector(x, y, (ROCK_NULL_BOTTOM + ROCK_NULL_TOP) / 2), unreal.Rotator(roll=0, pitch=0, yaw=yaw),
+                       "%sNoNav%d" % (name, number))
+        volume.set_area_class(unreal.NavArea_Null)
+        volume.set_actor_scale3d(unreal.Vector(length / 2.0 / 100.0, half_width / 100.0, (ROCK_NULL_TOP - ROCK_NULL_BOTTOM) / 200))
+    return len(rocks) + len(volumes)
+
+
 # Scenery (C1b, M-Q5: for every map; the map module opts in with DECOR = {kind: instances per hectare}): non-colliding
 # low meshes of the engine's basic shapes (no new art), scattered over the whole bounded square, the corners too, none within
 # DECOR_CLEAR of a slot, a source or a rock. One actor, one instanced mesh component per kind (one draw call each), no
@@ -255,7 +374,40 @@ DECOR_KINDS = {
     "Bush": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.11, 0.09, 0.04, 1.0), (1.50, 1.50, 0.70), 0.3),
     "Stone": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.27, 0.255, 0.23, 1.0), (0.70, 0.55, 0.35), 0.2),
     "Stump": ("/Engine/BasicShapes/Cylinder", unreal.LinearColor(0.11, 0.075, 0.045, 1.0), (0.50, 0.50, 0.45), 1.0),
+    # The big pieces, seen from the camera's height (M-Q7: nothing may be empty): a boulder 2.6 m long, a thicket 3.6 m across. They are
+    # what fill_holes puts where a map has nothing within MAX_EMPTY_RADIUS; a map's DECOR may ask for some too.
+    "Boulder": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.24, 0.23, 0.21, 1.0), (2.60, 2.00, 1.50), 0.35),
+    "Thicket": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.045, 0.080, 0.028, 1.0), (3.60, 3.20, 1.60), 0.35),
+    # M-Q8 (the user: "the map looks desolate", a reference minimap full of small different clumps): more kinds, none a resource (nothing the
+    # players could take for gold, stone or berries: no yellow lumps, no red bushes). Their names carry Boulder / Thicket when they are big
+    # pieces: Map.Table counts those as landmarks (M-Q7), like the first two.
+    "DryThicket": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.150, 0.100, 0.040, 1.0), (3.20, 2.80, 1.30), 0.35),
+    "SandBoulder": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.330, 0.230, 0.110, 1.0), (2.40, 1.90, 1.30), 0.35),
+    "MossBoulder": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.100, 0.140, 0.070, 1.0), (2.80, 2.20, 1.40), 0.35),
+    "FlowerWhite": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.450, 0.450, 0.400, 1.0), (0.45, 0.45, 0.28), 0.5),
+    "FlowerPurple": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.220, 0.070, 0.300, 1.0), (0.45, 0.45, 0.28), 0.5),
+    "FlowerOrange": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.550, 0.180, 0.030, 1.0), (0.45, 0.45, 0.28), 0.5),
+    "Reed": ("/Engine/BasicShapes/Cylinder", unreal.LinearColor(0.120, 0.140, 0.050, 1.0), (0.14, 0.14, 1.60), 1.0),
 }
+# The clumps (M-Q8): small mixed groups of scenery, a few metres across, scattered over the map like the reference minimap's patches of
+# bushes, stones, flowers: name -> (radius in cm, [(kind, how many)]). A map module opts in with CLUMPS = {name: clumps per hectare}.
+DECOR_CLUMPS = {
+    "Meadow": (800.0, [("FlowerWhite", 8), ("FlowerPurple", 7), ("FlowerOrange", 5), ("GrassGreen", 7)]),
+    "Cairn": (500.0, [("SandBoulder", 1), ("Boulder", 1), ("Stone", 5)]),
+    "DryPatch": (700.0, [("DryThicket", 2), ("GrassStraw", 9), ("Stump", 2)]),
+    "Copse": (650.0, [("MossBoulder", 1), ("Thicket", 1), ("GrassGreen", 6), ("Bush", 2)]),
+    "Reeds": (600.0, [("Reed", 14), ("GrassGreen", 5), ("Stone", 2)]),
+}
+# fill_holes' clusters (M-Q7), by turns: the three big pieces of each.
+FILL_STYLES = [("Thicket", "Boulder", "Boulder"), ("DryThicket", "SandBoulder", "SandBoulder"), ("Thicket", "MossBoulder", "Boulder"),
+               ("DryThicket", "Boulder", "SandBoulder"), ("Thicket", "MossBoulder", "MossBoulder")]
+BIG_KINDS = ("Boulder", "Thicket")  # a kind whose name contains one of these is a landmark
+# M-Q7 (the user, 2026-10-30): no map is empty. No point of the square is farther than MAX_EMPTY_RADIUS (35 m, about a screen's width at the
+# camera's default height) from a landmark: a slot, a source, a rock, a Boulder or a Thicket (Map.Table measures it on the saved file, on a
+# grid of 20 m). fill_holes puts a cluster of the scenery's big pieces wherever a point of a 10 m grid is farther than FILL_RADIUS (30 m).
+MAX_EMPTY_RADIUS = 2800.0  # M-Q8: tightened from 35 m (the fill and the clumps hold 26 m)
+FILL_RADIUS = 2600.0
+FILL_STEP = 1000.0
 
 
 def ridge_points(recipe):
@@ -309,17 +461,94 @@ def add_component(actor, component_class):
     return component
 
 
-def spawn_decor(recipe, density, sources):
+def fill_holes(recipe, landmarks):
+    """The clusters that make the map hold M-Q7: a sweep of the square on a grid of FILL_STEP from the corner of the bounds, a cluster
+    (a thicket and two boulders) at the first point farther than FILL_RADIUS from every landmark, and from the clusters already made. Returns
+    {kind: [(x, y, turn, size)]}."""
+    half = recipe.bounds_half
+    cells = int((2 * half) // FILL_STEP) + 1
+    reach = int(FILL_RADIUS // FILL_STEP) + 1
+    near = [[math.inf] * cells for _ in range(cells)]
+
+    def add(point):
+        i0 = int(round((point[0] + half) / FILL_STEP))
+        j0 = int(round((point[1] + half) / FILL_STEP))
+        for i in range(max(0, i0 - reach), min(cells, i0 + reach + 1)):
+            for j in range(max(0, j0 - reach), min(cells, j0 + reach + 1)):
+                d = math.hypot(i * FILL_STEP - half - point[0], j * FILL_STEP - half - point[1])
+                if d < near[i][j]:
+                    near[i][j] = d
+
+    for point in landmarks:
+        add(point)
+    rng = Rng(recipe.layout_seed, 91)
+    made = {}
+    for i in range(cells):
+        for j in range(cells):
+            if near[i][j] <= FILL_RADIUS:
+                continue
+            x = max(-half + 200.0, min(half - 200.0, i * FILL_STEP - half + rng.range(-300.0, 300.0)))
+            y = max(-half + 200.0, min(half - 200.0, j * FILL_STEP - half + rng.range(-300.0, 300.0)))
+            style = FILL_STYLES[rng.below(len(FILL_STYLES))]
+            made.setdefault(style[0], []).append((x, y, rng.uniform(), rng.uniform()))
+            for kind in style[1:]:
+                angle = rng.range(0.0, 2 * math.pi)
+                made.setdefault(kind, []).append((max(-half + 200.0, min(half - 200.0, x + 450.0 * math.cos(angle))), max(-half + 200.0, min(half - 200.0, y + 450.0 * math.sin(angle))),
+                                                  rng.uniform(), rng.uniform()))
+            add((x, y))
+    return made
+
+
+def clump_transforms(recipe, avoid, per_hectare, salt, name):
+    """The members of the clumps of one kind of DECOR_CLUMPS (per_hectare of them per hectare, centres drawn like decor_transforms'), as
+    {kind: [(x, y, turn, size)]}: each member at a drawn offset within the clump's radius, none within DECOR_CLEAR of an avoid point."""
+    radius, members = DECOR_CLUMPS[name]
+    rng = Rng(recipe.layout_seed, 73, salt)
+    half = recipe.bounds_half
+    grid = {}
+    for point in avoid:
+        grid.setdefault((int(point[0] // DECOR_CLEAR), int(point[1] // DECOR_CLEAR)), []).append(point)
+    made = {}
+    for cx, cy, _, _ in decor_transforms(recipe, avoid, per_hectare, salt):
+        for kind, count in members:
+            for _ in range(count):
+                angle = rng.range(0.0, 2 * math.pi)
+                distance = radius * math.sqrt(rng.uniform())
+                x, y = cx + distance * math.cos(angle), cy + distance * math.sin(angle)
+                if abs(x) > half - 100.0 or abs(y) > half - 100.0:
+                    continue
+                gx, gy = int(x // DECOR_CLEAR), int(y // DECOR_CLEAR)
+                if any(math.hypot(x - px, y - py) < DECOR_CLEAR for dx in (-1, 0, 1) for dy in (-1, 0, 1) for px, py in grid.get((gx + dx, gy + dy), ())):
+                    continue
+                made.setdefault(kind, []).append((x, y, rng.uniform(), rng.uniform()))
+    return made
+
+
+def is_big(kind):
+    return any(word in kind for word in BIG_KINDS)
+
+
+def spawn_decor(recipe, density, sources, extra_avoid=(), clumps=None):
     """The scenery of a map (density: kind -> instances per hectare, keys of DECOR_KINDS): one actor, one instanced mesh
-    component per kind, no collision, no navigation, no shadow, a cull distance. Returns {kind: instances}."""
-    avoid = [recipe.slot(index)[0] for index in range(len(recipe.angles))] + ridge_points(recipe)
+    component per kind, no collision, no navigation, no shadow, a cull distance; then the clusters of Boulders and Thickets that fill
+    the holes (fill_holes, M-Q7). Returns {kind: instances}. extra_avoid: more points to keep clear (a map's own rocks) and that count
+    as landmarks."""
+    avoid = [recipe.slot(index)[0] for index in range(len(recipe.angles))] + ridge_points(recipe) + list(extra_avoid)
     avoid += [(source.get_editor_property("location").x, source.get_editor_property("location").y) for source in sources]
     actor = spawn(unreal.StaticMeshActor, label="Decor")
     actor.get_editor_property("static_mesh_component").set_mobility(unreal.ComponentMobility.STATIC)
-    made = {}
+    places = {}
     for number, kind in enumerate(sorted(density)):
+        places[kind] = decor_transforms(recipe, avoid, density[kind], 1000 * (number + 1))
+    for number, name in enumerate(sorted(clumps or {})):
+        for kind, members in clump_transforms(recipe, avoid, clumps[name], 5000 + 100 * number, name).items():
+            places[kind] = places.get(kind, []) + members
+    landmarks = list(avoid) + [(x, y) for kind in places if is_big(kind) for x, y, _, _ in places[kind]]
+    for kind, extra in fill_holes(recipe, landmarks).items():
+        places[kind] = places.get(kind, []) + extra
+    made = {}
+    for kind in sorted(places):
         mesh, color, scale, lift = DECOR_KINDS[kind]
-        places = decor_transforms(recipe, avoid, density[kind], 1000 * (number + 1))
         component = add_component(actor, unreal.HierarchicalInstancedStaticMeshComponent)
         component.rename("Decor_" + kind)
         component.set_static_mesh(unreal.load_asset(mesh))
@@ -333,7 +562,7 @@ def spawn_decor(recipe, density, sources):
         component.set_editor_property("instance_start_cull_distance", int(DECOR_CULL * 2 / 3))
         component.set_editor_property("instance_end_cull_distance", int(DECOR_CULL))
         transforms = []
-        for x, y, turn, size in places:
+        for x, y, turn, size in places[kind]:
             grow = 0.75 + 0.5 * size  # 0.75 to 1.25 of the kind's scale
             height = scale[2] * grow
             transforms.append(unreal.Transform(unreal.Vector(x, y, 50.0 * height * lift),
@@ -356,6 +585,60 @@ def placed_source(type_name, x, y):
     source.set_editor_property("type", type_name)
     source.set_editor_property("location", unreal.Vector(x, y, 0))
     return source
+
+
+# ---- Gold and stone veins in several sizes (M-Q9, the user, 2026-10-30: "small AND big", real game things in the middle, not decor).
+# Four sizes of a vein, each a row of Tools/Data/SourceTypes.csv: Small 500, Medium 1 000, Standard 2 500 (the former GoldVein / StoneVein),
+# Big 5 000. The value of a territory is the M-Q4 one (4 gold veins of 2 500 = 10 000 gold, 2 stone veins of 2 500 = 5 000 stone; Huge x1.5,
+# M-Q4b) but it comes as a MIX of sizes, so that a territory holds MINERAL_MIX piles: a few big ones far out, mediums, many small ones near
+# the middle and the belts. Map.Table checks the value, the number of piles and the variety on the saved files (HOLMapTableTests.cpp).
+MINERAL_AMOUNTS = {"Small": 500, "Medium": 1000, "Standard": 2500, "Big": 5000}
+MINERAL_RESOURCES = ("Gold", "Stone")
+MINERAL_MIX = {
+    "default": {"Gold": ["Big", "Medium", "Medium"] + ["Small"] * 6, "Stone": ["Standard", "Medium"] + ["Small"] * 3},   # 10 000 gold, 5 000 stone
+    "Huge": {"Gold": ["Big", "Big", "Medium", "Medium"] + ["Small"] * 6, "Stone": ["Big", "Medium"] + ["Small"] * 3},    # 15 000 gold, 7 500 stone
+}
+# The tiers of the three veins of each resource nearest a base (the near layer, 110 m to 125 m: the "protected start"), the same at every place.
+MINERAL_NEAR = {
+    "default": {"Gold": ["Medium", "Small", "Small"], "Stone": ["Standard", "Small", "Small"]},
+    "Huge": {"Gold": ["Medium", "Small", "Small"], "Stone": ["Medium", "Small", "Small"]},
+}
+
+
+def mineral_type(resource, tier):
+    """The source type of a vein: GoldVeinSmall, StoneVeinMedium, GoldVein (the standard size), StoneVeinBig..."""
+    return resource + "Vein" + ("" if tier == "Standard" else tier)
+
+
+def mineral_mix(recipe):
+    """{"Gold": tiers, "Stone": tiers}: the piles of each territory, by size (the value budget of M-Q9)."""
+    return MINERAL_MIX["Huge" if recipe.size_key == "Huge" else "default"]
+
+
+def mineral_near(recipe):
+    """{"Gold": tiers, "Stone": tiers}: the sizes of the three veins of each resource nearest a base."""
+    return MINERAL_NEAR["Huge" if recipe.size_key == "Huge" else "default"]
+
+
+def mineral_far(recipe):
+    """[(resource, tier)] of the piles of a territory beyond the near layer, biggest first: the mix less the near ones."""
+    far = []
+    for resource in MINERAL_RESOURCES:
+        left = list(mineral_mix(recipe)[resource])
+        for tier in mineral_near(recipe)[resource]:
+            left.remove(tier)
+        far += [(resource, tier) for tier in left]
+    return sorted(far, key=lambda item: (-MINERAL_AMOUNTS[item[1]], item[0]))
+
+
+def mineral_value(recipe, resource):
+    """The value (amount of gold or of stone) a territory holds by its mix."""
+    return sum(MINERAL_AMOUNTS[tier] for tier in mineral_mix(recipe)[resource])
+
+
+def turn(point, angle):
+    """A point turned by angle (radians) round the map's centre."""
+    return (point[0] * math.cos(angle) - point[1] * math.sin(angle), point[0] * math.sin(angle) + point[1] * math.cos(angle))
 
 
 def wood_points(centre, along_axis, side_axis, rows, columns, first_side):
@@ -692,19 +975,26 @@ def berry_points(seed, centre, count, axis=(1.0, 0.0), reach=None):
     return [(centre[0] + x, centre[1] + y) for x, y in rotate_local(berry_local(seed, count, reach), axis)]
 
 
-def base_sources(recipe, wood_rows=WOOD_ROWS, wood_columns=WOOD_COLUMNS, veins=True, organic=False):
+PACK_TREES = 14  # M-Q8 (the user): a forest is a pack of this many trees (a few more or less); the budget is spread in many packs
+BASE_PACK_STEP = 2400.0  # cm: a base's second pack is this much further ahead (towards the middle) than its first, 24 m between the centres
+
+
+def base_sources(recipe, wood_rows=WOOD_ROWS, wood_columns=WOOD_COLUMNS, veins=True, organic=False, wood_packs=None):
     """Each player's base (D295), the same at every size: the woods first (source 0 is the first tree of slot 0's
     wood, the scripted checks use it), then the berries, then the veins. wood_rows x wood_columns trees in each wood
     (Plain: 5 x 8, 40 trees; a map with poorer bases, the Steppe's 4 x 5, says less); veins=False leaves the two veins
     out (a map that keeps its stone and gold away from the bases). organic (C1c): the wood is one irregular grove of
     wood_rows x wood_columns trees and the berries one irregular patch, the same shapes for every slot (seeded by
-    recipe.layout_seed, drawn once and placed in each slot's frame), not a grid."""
+    recipe.layout_seed, drawn once and placed in each slot's frame), not a grid. wood_packs (organic only, M-Q8): the sizes of the base's
+    wood as packs instead of one grove of wood_rows x wood_columns trees, e.g. [14, 6]: each its own grove on the wood's side of the slot, the
+    next BASE_PACK_STEP further ahead of the first, so that two packs are two clusters."""
     sources = []
     for index in range(len(recipe.angles)):
         slot, radial, left = recipe.slot(index)
         if organic:
-            at = (slot[0] + left[0] * ORGANIC_WOOD_SIDE, slot[1] + left[1] * ORGANIC_WOOD_SIDE)
-            sources += [placed_source("Tree", x, y) for x, y in grove_points(mix_seed(recipe.layout_seed, 1), at, wood_rows * wood_columns, radial, ORGANIC_WOOD_REACH)]
+            for number, count in enumerate(wood_packs or [wood_rows * wood_columns]):
+                at = (slot[0] + left[0] * ORGANIC_WOOD_SIDE - radial[0] * BASE_PACK_STEP * number, slot[1] + left[1] * ORGANIC_WOOD_SIDE - radial[1] * BASE_PACK_STEP * number)
+                sources += [placed_source("Tree", x, y) for x, y in grove_points(mix_seed(recipe.layout_seed, 1, number) if number else mix_seed(recipe.layout_seed, 1), at, count, radial, ORGANIC_WOOD_REACH)]
         else:
             sources += wood(slot, radial, left, wood_rows, wood_columns, WOOD_NEAR)
     for index in range(len(recipe.angles)):
@@ -794,7 +1084,8 @@ def make_map(recipe, module, on_saved):
 
     # Scenery, if the map wants some (DECOR in its module): no collision, nothing the navmesh or a click can touch.
     density = getattr(module, "DECOR", None)
-    scenery = spawn_decor(recipe, density, sources) if density else None
+    avoid = module.avoid_points(recipe) if hasattr(module, "avoid_points") else ()  # a map's own rocks (C2)
+    scenery = spawn_decor(recipe, density, sources, avoid, getattr(module, "CLUMPS", None)) if density else None
 
     places = len(recipe.angles)
     neighbours = 2 * recipe.slot_radius * math.sin(math.pi / places) if places > 2 else 2 * recipe.slot_radius
