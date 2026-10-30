@@ -676,6 +676,11 @@ namespace HOLAIArmy
 		{
 			return true;
 		}
+		// IA3.2: the forum is down on its last life, the next fall is the defeat: the army fights for it whatever the ratio.
+		if (Summary.bHasOwnForum && Summary.OwnForum.bDown && Summary.OwnForum.Lives <= 1)
+		{
+			return true;
+		}
 		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
 		{
 			if (IsThreatening(Summary.Enemies[Index]) && FlatDistance(Summary.Enemies[Index].Location, AssemblyPoint) <= Data.AssemblyRadius)
