@@ -1751,7 +1751,7 @@ if ($Parts -contains "camera") {
             # (21 m from him): -15 %, the Man-at-arms' 12 on the Spearman 10.2 (on the hero, D17, 3.06), the Archer's 10 on it
             # (5 and its bonus against light infantry) 8.5. Those gone, a new Spearman cried over with him (Serrez les rangs),
             # the cry refused again (its cool-down), then hit: -40 %, 7.2 (on the hero 2.16) and arrows of 6. His XP to
-            # level 4, his banner refused 17 m from him, planted 16 m away; a Spearman 6 m beyond it (22 m from him) hit by a
+            # level 4, his banner refused 30 m from him, planted 15 m away (not on the 16 m edge: in a long run he has drifted a metre while fighting, 17 m was planted and the 16 m one refused, the waitlog then missed the line); a Spearman 6 m beyond it (22 m from him) hit by a
             # Man-at-arms: 10.2. Then all removed, his abilities reset (the banner gone), his XP back to 0, the centre selected
             # then Escape (as the cases before).
             $AuraHero = $BuildHero
@@ -1766,7 +1766,7 @@ if ($Parts -contains "camera") {
                 "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
                 "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
-                "hol.Hero.Banner 0 $($AuraHero[0] + 1700) $($AuraHero[1])", "hol.Hero.Banner 0 $($AuraHero[0] + 1600) $($AuraHero[1])", "waitlog plants his banner",
+                "hol.Hero.Banner 0 $($AuraHero[0] + 3000) $($AuraHero[1])", "hol.Hero.Banner 0 $($AuraHero[0] + 1500) $($AuraHero[1])", "waitlog plants his banner",
                 "hol.Units.Spawn 1 $($AuraHero[0] + 2200) $($AuraHero[1]) 0 Spearman 10", "hol.Units.Spawn 1 $($AuraHero[0] + 2350) $($AuraHero[1]) 1 ManAtArms 10",
                 "waitlog Spearman for 10.2", "wait 0.5",
                 "hol.Units.Remove $($AuraHero -join ' ') 5000 1", "hol.Units.Remove $($AuraHero -join ' ') 5000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero",
@@ -1788,7 +1788,7 @@ if ($Parts -contains "camera") {
                 "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
-                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor off",
+                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor 0.5 0.5",
                 "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "hol.Hero.BannerDisplay", "capture build_hero_banner_rings", "hol.Camera.Focus $($AuraHero[0] + 1000) $($AuraHero[1])", "hol.Camera.Zoom 12", "frames 3", "capture build_hero_banner", "hol.Camera.Zoom -12", "hol.Camera.Focus $($AuraHero -join ' ')",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
@@ -4267,9 +4267,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["under aura and cry: hits Spearman 7.2 or Hero 2.16, arrows 6 (hits $($AuraHits[1] -join ', '); arrows $($AuraArrows[1] -join ', '))"] =
         ($AuraHits[1].Count -ge 1) -and (@($AuraHits[1] | Where-Object { $_ -notin @("Spearman 7.2", "Hero 2.16") }).Count -eq 0) -and
         ($AuraArrows[1].Count -ge 1) -and (@($AuraArrows[1] | Where-Object { $_ -ne "6" }).Count -eq 0)
-    $Checks["level 4: the banner refused 17 m away, planted 16 m away"] =
-        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1700), $($BuildHero[1])) refused" -Quiet) -and
-        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1600), $($BuildHero[1])) planted" -Quiet)
+    $Checks["level 4: the banner refused 30 m away, planted 15 m away"] =
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 3000), $($BuildHero[1])) refused" -Quiet) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1500), $($BuildHero[1])) planted" -Quiet)
     $Checks["22 m from him, 6 m from his banner: hits 10.2 ($($AuraHits[2] -join ', ')); the abilities reset at the end"] =
         ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
         [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
