@@ -1146,6 +1146,18 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Orders.Chains 0" }
             # Taken away at the end, around L3 (waited for without its count, checked by the analysis).
             Step "mark move lines end", "hol.Units.Remove $($LinesL3 -join ' ') 800 0", "waitlog units of slot 0 within 800 of ($($LinesL3 -join ', '))", "frames 3"
+            # Orders and Tab (EtapeDefini, the user's 2026-10-30 remark): 3 Peasants + 2 Men-at-arms + 3 Archers boxed, Tab to
+            # the Men-at-arms (All, Archer, ManAtArms), a right click 10 m north: only the 2 Men-at-arms are ordered and move;
+            # then Tab to Peasants and to All, a right click on the same point: the 8 go (« Tous »). Taken away at the end.
+            Step "hol.Units.SpawnSeed 103", "hol.Units.Spawn 3 $($LinesFrom -join ' ') 0 Peasant 150", "hol.Units.Spawn 2 $($LinesFrom -join ' ') 0 ManAtArms 150",
+                "hol.Units.Spawn 3 $($LinesFrom -join ' ') 0 Archer 150", "wait 0.5", "hol.Camera.Focus $($LinesFrom -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($LinesFrom[0] - 400) $($LinesFrom[1] - 400) $($LinesFrom[0] + 400) $($LinesFrom[1] + 400)",
+                "waitlog Selection: 8 units (own)", "mark move tab", "hol.Units.Where 0", "hol.Select.Subgroup", "waitlog Subgroup: Archer x3",
+                "hol.Select.Subgroup", "waitlog Subgroup: ManAtArms x2", "hol.Select.OrderGround $($LinesL1 -join ' ')", "wait 4", "hol.Units.Where 0",
+                "mark move tab all", "hol.Select.Subgroup", "waitlog Subgroup: Peasant x3", "hol.Select.Subgroup", "waitlog Subgroup: All (8)",
+                "hol.Select.OrderGround $($LinesL1 -join ' ')", "wait 6", "hol.Units.Where 0"
+            Step "mark move tab end", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Units.Remove $($LinesL1 -join ' ') 800 0",
+                "waitlog units of slot 0 within 800 of ($($LinesL1 -join ', '))", "frames 3"
             # Born on a rock (the user's trial melee_reinforce): a Man-at-arms made at the middle boulder of slot 0's ridge
             # (-12000, 0), boxed and sent 17 m beyond it; it must leave the rock and reach the point (sampled every 0.5 s).
             Step "hol.Units.SpawnSeed 103", "hol.Units.Spawn 1 $($RockAt -join ' ') 0 ManAtArms 30", "wait 0.5", "mark move rock", "hol.Units.Where 0", "hol.Nav.Units",
@@ -3323,6 +3335,22 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
         ($LinesMarkers.Count -eq 2) -and ($LinesMarkers[1] -match "^rings 0,.*, order lines 0, order points 0,") -and ($LinesReceived.Count -ge 2) -and ($LinesReceived[1].Count -eq 1)
     $LinesRemoved = @(Get-Section "move lines end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
     $Checks["lines: its 3 Men-at-arms taken away at the end ($($LinesRemoved -join ', '))"] = ($LinesRemoved.Count -eq 1) -and ($LinesRemoved[0] -eq 3)
+    # Orders and Tab: on the Men-at-arms' tab only the 2 Men-at-arms are ordered and move (10 m north); on « Tous », the 8.
+    $TabLog = @(Get-Section "move tab")
+    $TabOrders = @($TabLog | Select-String -Pattern "Order: (\d+) units to \(" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $TabAllOrders = @(Get-Section "move tab all" | Select-String -Pattern "Order: (\d+) units to \(" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["tab: the Men-at-arms' tab orders its 2 units alone ($($TabOrders -join ', '))"] = ($TabOrders.Count -ge 1) -and ($TabOrders[0] -eq 2)
+    $Checks["tab: « Tous » orders the 8 ($($TabAllOrders -join ', '))"] = ($TabAllOrders.Count -eq 1) -and ($TabAllOrders[0] -eq 8)
+    $TabWhere = @($TabLog | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}; foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) {
+        $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }; , $Units })
+    if ($TabWhere.Count -ge 2) {
+        $TabNear = @($TabWhere[0].Keys | Where-Object { [Math]::Abs($TabWhere[0][$_][0] - $LinesFrom[0]) -le 600 -and [Math]::Abs($TabWhere[0][$_][1] - $LinesFrom[1]) -le 600 })
+        $TabMoved = @($TabNear | Where-Object { $TabWhere[1].ContainsKey($_) -and $TabWhere[1][$_][1] - $TabWhere[0][$_][1] -ge 500 })
+        $Checks["tab: of the 8 at the start, only 2 walked north on the Men-at-arms' tab (near $($TabNear.Count), moved $($TabMoved.Count))"] = ($TabNear.Count -eq 8) -and ($TabMoved.Count -eq 2)
+    }
+    else { $Checks["tab: its 2 unit reports ($($TabWhere.Count))"] = $false }
+    $TabRemoved = @(Get-Section "move tab end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["tab: its 8 units taken away at the end ($($TabRemoved -join ', '))"] = ($TabRemoved.Count -eq 1) -and ($TabRemoved[0] -eq 8)
     # Born on a rock: the Man-at-arms made at the boulder (put on the ground beside it, within 6 m) leaves it and reaches its point (within 3 m) in 12 s.
     $RockWhere = @(Get-Section "move rock" | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}; foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) {
         $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }; , $Units })
