@@ -1294,11 +1294,186 @@ conforme à la recommandation ; calqué sur le Roi de V5).
 | J8a.3 Fiche réseau | Fiche du héros (J8-Q5 : niveau, PV, état pour tous ; XP, recharges, heure de la mort au propriétaire) ; barre en proportion sur 8 bits | oui | **fait** (2026-10-27 ; de72042, 75a0667, 4c8b82b ; recopie au retour par R7.10 a416b75) |
 | J8a.4 Mort et retour | **Premier fichier en Angelscript** (D483) : délai 38 s, 150 or qui baissent en 60 s, paiement, forum ou ruine, alerte (J8a-Q5) ; test en script rouge d'abord, qui rend `quick_check` rouge (D484) | oui | **fait** (2026-10-27 ; 7263184 : règles et décision en script, achat `hol.Hero.Return`, `net hero return`, alerte ; essai validé) |
 | J8a.5 Bloc du héros | Portrait, niveau, PV, retour (J8a-Q4) ; textes fr / en / ja ; captures hors écran | oui | **fait** (2026-10-28 ; aa0f11f : écran de jeu en script `UHOLScriptScreen`, module d’interface Runtime, bloc en bas à gauche, `NSLOCTEXT` en script ; essai validé) |
-| J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | — |
+| J8a.6 Vérification | Partie `hero` de `quick_check` (solo, 2 clients), scénario `hero`, **essai de l'utilisateur** | oui | **fait** (2026-10-29 ; 8ea1b8e : `-Parts hero` PASS 129 s, scénario `hero` ; essai validé, défaut noté : des Hommes d'armes inactifs autour du héros). **J8a close** |
 
 - Écartés : **deux essais** (scénario de plus, pause au milieu) ; **le retour en Angelscript d'abord** (bouchons partout,
   le retour n'a de sens qu'avec un héros qui meurt).
 - Numéros de décision : à la clôture de J8 (J8-Q1 à Q6, J8a-Q1 à Q6 ; prochain D485 au 2026-10-26).
+
+### Questions de J8b — XP et niveaux
+
+Ouvertes le 2026-10-29, après la clôture de J8a. Une à la fois, options A / B / C. Repères : D04 (niveaux 1 à 6 au
+prototype, paliers 3 et 6), D05 (développement ~35 %, territoire ~15 %, combat + commandement ~35 %, exploration +
+événements ~15 % ; rattrapage entre héros), D06 (pendant la mort : civilisation oui, combat et commandement non), § 9.5
+(un niveau toutes les 2 à 3 min ; niveau 3 vers 6-8 min, 4 vers 9-11 min, 6 vers 13-15 min), D25 (délai 30 s + 8 s ×
+niveau, prix selon le niveau), [Q04] (courbe à régler en test), J8-Q4 (XP et niveau dans la simulation C++), J8-Q5
+(niveau public, XP au propriétaire seul). Pas encore en jeu : relais et centres secondaires (territoire), brouillard
+(exploration), événements, technologies, talents.
+
+| # | Question | État |
+|---|---|---|
+| J8b-Q1 | **Sources d'XP** au prototype, avec ce qui existe en jeu. | **tranché** : combat, commandement, développement |
+| J8b-Q2 | **Courbe d'XP** des niveaux 1 à 6 et quantités par source. | **tranché** : l'XP vaut le coût, pondérée par source (militaire > économie > exploration) |
+| J8b-Q3 | **Statistiques par niveau** (PV, attaque, autres). | **tranché** : +8 % de PV et d'attaque par niveau |
+| J8b-Q4 | **Montée de niveau** vue par le joueur : barre d'XP, annonce, paliers 3 et 6 marqués sans contenu, points de talent. | **tranché** : barre d'XP, alerte, éclat doré, paliers annoncés |
+| J8b-Q5 | **Niveau et retour** : délai (D25), prix par niveau, rattrapage pour un héros tué (D05). | **tranché** : 30 s + 8 s × niveau, 100 + 50 × niveau or |
+| J8b-Q6 | **Découpage** de J8b en sous-étapes et vérification. | **tranché** : J8b.1 à J8b.6, un essai à la fin |
+
+**Tranché — J8b-Q1 Combat, commandement et développement** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation).
+- **Combat** : XP quand le héros tue une unité ; un héros ennemi rapporte beaucoup plus, selon l'écart de niveau
+  (rattrapage, D05).
+- **Commandement** : XP quand une unité ennemie meurt près du héros, tuée par ses troupes (rayon provisoire, futur
+  rayon de l'aura de J8c).
+- **Développement** : XP à chaque bâtiment achevé, selon son coût.
+- Pendant la mort, seul le développement continue (D06). Territoire, exploration et événements viendront avec leurs
+  systèmes (relais et centres secondaires, brouillard M7, événements) : ~70 % de la répartition de D05 couverte.
+- Écartés : **combat et commandement seuls** (un joueur qui ne se bat pas reste niveau 1, contraire à D05) ; **une XP
+  au fil du temps** en plus (source provisoire à retirer, courbe à refaire).
+
+**Tranché — J8b-Q2 L'XP vaut le coût, pondérée par source** (2026-10-29 ; A de la recommandation, **amendée par
+l'utilisateur** : « à quantité équivalente, l'explo donne moins que l'économie qui donne moins que le militaire »).
+- Base : le **coût en ressources** de ce qui est tué ou bâti (Paysan 50, Piquier et Archer 80, Homme d'armes 120 ; Maison
+  50, camps 100, Caserne 150), multiplié par le **poids de la source** (indicatif, à régler en test) :
+  **combat ×1** (unité tuée par le héros) ; **commandement ×0,75** (ennemi tué par ses troupes à 3 cases, 12 m, ou
+  moins du héros) ; **développement ×0,5** (bâtiment achevé) ; plus tard **exploration et territoire ×0,25**.
+- **Héros ennemi tué** : 300 × (niveau de l'ennemi / niveau du héros) (rattrapage, D05).
+- **Seuils cumulés** (indicatifs) : niveau 2 = 200, 3 = 600, 4 = 1 300, 5 = 2 200, 6 = 3 300.
+- Lecture : développement seul ≈ 450 XP à 7 min (≈ 900 de bâtiments), niveau 3 vers 9-10 min ; un joueur qui se bat
+  y arrive vers 6-7 min. **Infléchit D05** (développement ~35 % = combat + commandement ~35 %, paliers « à l'heure » en
+  se développant) : le militaire pèse plus, le joueur pacifique ouvre ses paliers un peu plus tard. À reporter au GDD à
+  la clôture de J8.
+- Écartés : **points fixes par événement** (un Paysan vaut un Homme d'armes, un chiffre par nouvelle unité) ; **XP aux
+  dégâts infligés** (XP par petits bouts à chaque coup ; le commandement couvre le cas des troupes qui achèvent).
+
+**Tranché — J8b-Q3 +8 % de PV et d'attaque par niveau** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation ; indicatif, à régler en test).
+- Linéaire sur la base du niveau 1 : niveau N = base × (1 + 0,08 × (N − 1)) ; niveau 6 : **630 PV, attaque 42** (tient
+  tête à ~7-8 unités, proche de D17 ; les troupes progresseront avec les paliers). Dégâts aux bâtiments inchangés.
+- Au passage de niveau, les PV gagnés s'ajoutent aussi aux PV actuels. Vitesse, portée, cadence et armures fixes.
+- Écartés : **PV seuls +10 %** (montée peu sensible) ; **+15 %** (boule de neige, loin de D17).
+
+**Tranché — J8b-Q4 Barre d'XP, annonce, éclat sur le héros, paliers annoncés** (2026-10-29, A, choix de
+l'utilisateur, conforme à la recommandation).
+- **Bloc du héros** : fine barre d'XP sous le portrait (« 420 / 600 » au survol), au propriétaire seul (J8-Q5).
+- **Montée de niveau** : alerte mineure (D202) « Paladin-Commandant : niveau N » avec un son ; **éclat doré** bref sur
+  le héros (~1 s), vu de tous.
+- **Niveaux 3 et 6** : alerte « Palier 1 atteint » / « Palier 2 atteint », sans contenu (les paliers sont un autre
+  chapitre).
+- **Talents** : rien d'affiché avant l'arbre.
+- Écartés : **barre et annonce seules** (montée invisible à l'adversaire, paliers inaperçus) ; **compteur de talents
+  grisé et niveau au-dessus du héros** (compteur inutile sans arbre, écran chargé).
+
+**Tranché — J8b-Q5 Délai de D25, prix qui monte doucement** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation ; indicatif, à régler en test).
+- **Délai** : 30 s + 8 s × niveau (38 s au niveau 1, 78 s au niveau 6), sans rachat.
+- **Prix** : 100 + 50 × niveau or (150 au niveau 1, 400 au niveau 6), baisse jusqu'à 0 en 60 s inchangée.
+- **Héros ennemi tué** : 300 × (niveau de l'ennemi / niveau du tueur), × poids de la source (×1 tué par le héros,
+  ×0,75 par ses troupes près de lui).
+- Écartés : **prix fixe de 150 or** (la mort d'un niveau 6 ne coûte que du temps) ; **150 × niveau** (900 or au
+  niveau 6, contraire au « modéré » de D25).
+
+**Tranché — J8b-Q6 Six sous-étapes, un essai à la fin** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation).
+
+| Sous-étape | Contenu | Moteur | État |
+|---|---|---|---|
+| J8b.1 Règles pures | XP = coût × poids de la source (J8b-Q2), seuils, niveau, +8 % PV et attaque par niveau (J8b-Q3), XP d'un héros tué (J8b-Q5) ; tests C++ rouges d'abord | oui | **fait** (2026-10-29 ; 239d10e : `HOLHeroXPRules`, `HeroesOfLiberty.HeroXP.*` rouges puis verts, tests 289/289) |
+| J8b.2 XP dans la partie | Attribution : héros (combat), troupes à 12 m ou moins du héros (commandement), bâtiment achevé (développement) ; seul le développement pendant la mort (D06) ; montée de niveau, PV gagnés ajoutés ; triche `hol.Hero.XP` | oui | **fait** (2026-10-29 ; 585d49c, dc9b3c5, 78d5608 : niveau sur le corps, XP des morts et bâtiments, cas `build hero xp` ; triche = `hol.Hero.SetXP` existante) |
+| J8b.3 Réseau et retour | Niveau dans la fiche publique, XP dans la fiche du propriétaire (J8-Q5) ; délai et prix par niveau dans le script du retour (J8b-Q5) ; contrôle `net hero xp` | oui | **fait** (2026-10-29 ; b92195a, ef696cd : prix par niveau, PV max au niveau chez le client et dans le bloc, `net hero xp`) |
+| J8b.4 Présentation | Barre d'XP, alertes de niveau et de palier, éclat doré (J8b-Q4) ; textes fr / en / ja ; captures hors écran | oui | **fait** (2026-10-29 ; 75ef3f8, 23c0e85) |
+| J8b.5 Vérification | Partie `hero` de `quick_check` étendue, scénario `hero_xp` (bâtir, combattre, monter, mourir, revenir plus tard et plus cher), **essai de l'utilisateur** | oui | **fait** (2026-10-29 ; 0204eb9 : scénario `hero_xp`, essai validé ; fanfares de niveau et de palier af074ed) |
+| J8b.6 Part de l'IA | Rien à coder (mêmes règles) ; vérifiée dans le scénario | non | **fait** (2026-10-29 ; 2a4ea0e : partie 8 de `hero_xp`). **J8b close** |
+
+- Écartés : **un essai de plus après J8b.2** (scénario de plus, pause au milieu) ; **quatre sous-étapes** (boucles plus
+  longues, rouge plus dur à situer).
+- **Questions de J8b closes.** Numéros de décision à la clôture de J8.
+
+### Questions de J8c — l'aura et les capacités
+
+Ouvertes le 2026-10-29, après la clôture de J8b (J8b dans `main`). Une à la fois, options A / B / C. Repères : D12 et
+§ 13.2 (*Aura de l'Aube* : large aura défensive, armure et moral ; *Serrez les rangs* : cri qui réduit les dégâts reçus
+et met les unités en formation défensive ; *Bannière de l'Aube* : point de commandement fixe qui prolonge l'aura), D26
+(+10 à 15 % sur 1 ou 2 statistiques, rayon d'un groupe de bataille de ~20 à 30 unités), D42 et D52 (aura + *Serrez les
+rangs* au niveau 1, *Bannière* au niveau 4), D74 (moral = effets nommés et temporaires, sans jauge, plafond global),
+§ 9.3 (recharges : pas d'enchaînement), § 9.8 (mort : ni aura ni capacités), D425 (IA prudente, dans le rayon d'aura),
+J8-Q4 (aura et effets en C++, déclenchement en Angelscript), J8-Q5 (recharges au propriétaire seul), J8b-Q1 (rayon du
+commandement 12 m, « futur rayon de l'aura »), J8a5-Q8 (3 cases de capacités grisées dans le bloc). Chiffres en jeu :
+armures 0 sauf l'Homme d'armes (4 / 4) ; attaques 3 (Paysan) à 12 (Homme d'armes, Arbalétrier), santé en float.
+
+| # | Question | État |
+|---|---|---|
+| J8c-Q1 | ***Aura de l'Aube*** : effet, force, rayon, qui en profite. | **tranché** : −15 % de dégâts reçus à 12 m |
+| J8c-Q2 | ***Serrez les rangs*** : effet, durée, recharge, formation défensive. | **tranché** : −25 % 15 s, unités libres, recharge 60 s |
+| J8c-Q3 | ***Bannière de l'Aube*** : pose, durée, recharge, rayon, peut-on l'abattre. | **tranché** : plantée à 4 cases, 45 s, invulnérable, recharge 120 s |
+| J8c-Q4 | **Commande et présentation** : boutons du bloc, touches, cercle d'aura, icônes sur les unités, ce que voit l'ennemi. | **tranché** : bloc et grille (A, Z), cercle au propriétaire, éclat du cri et bannière vus de tous |
+| J8c-Q5 | **Part de l'IA** : quand elle lance ses capacités. | **tranché** : rien en J8c, reporté au chantier de l'IA |
+| J8c-Q6 | **Découpage** de J8c en sous-étapes et vérification. | **tranché** : J8c.1 à J8c.5, un essai à la fin, puis clôture de J8 |
+
+**Tranché — J8c-Q1 −15 % de dégâts reçus à 12 m** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation ; indicatif, à régler en test).
+- **Passive** dès le niveau 1, coupée pendant la mort du héros (§ 9.8). Les unités du joueur à **12 m (3 cases)** ou
+  moins du héros, **héros compris**, subissent **15 % de dégâts en moins**, quelle que soit l'arme (dans la santé en
+  float, après l'armure et le ×0,3 de D17).
+- Effet de moral (D74) : ne se cumule pas avec lui-même (deux héros alliés plus tard : un seul compte), s'additionne aux
+  autres effets dans le plafond global. Même rayon que le commandement de J8b (J8b-Q1).
+- Écartés : **+1 armure** (fidèle au mot du GDD, mais −20 % contre l'Archer, −8 % contre l'Homme d'armes, −33 % contre
+  le Paysan) ; **−10 % de dégâts et +10 % d'attaque** (offensive, bonus plutôt des Légions).
+
+**Tranché — J8c-Q2 −25 % pendant 15 s, unités libres** (2026-10-29, B, choix de l'utilisateur ; recommandation A :
+−30 % 10 s en « tenir la position » ; indicatif, à régler en test).
+- **Cri instantané** (capacité active du niveau 1) : les unités du joueur à **12 m** ou moins du héros, héros compris,
+  subissent **25 % de dégâts en moins** pendant **15 s** ; elles gardent leurs ordres et peuvent marcher. **Recharge
+  60 s** (comptée dès le cri). Effet de moral (D74), rafraîchi s'il est relancé, additionné à l'aura (−40 % ensemble),
+  plafond global de moral **50 %** (indicatif).
+- Pas de « formation défensive » au prototype : le talent *Pas de l'Aube* (§ 13.2, avancer sans perdre la réduction) est
+  à revoir quand l'arbre viendra.
+- Écartés : **−30 % 10 s en tenant la position** (recommandé ; l'ordre de marche retirait l'effet) ; **−40 % 8 s en rangs
+  serrés** (nouvelle forme de rangs, bloc fragile aux dégâts de zone absents).
+
+**Tranché — J8c-Q3 Plantée à 4 cases, 45 s** (2026-10-29, A, choix de l'utilisateur, conforme à la recommandation ;
+indicatif, à régler en test).
+- Capacité du **niveau 4** : le joueur vise un point à **4 cases (16 m)** ou moins du héros ; une bannière y apparaît et
+  donne **l'aura** (−15 %, 12 m, J8c-Q1) pendant **45 s**, sans se cumuler avec l'aura du héros (même effet). **Une
+  seule à la fois**, **recharge 120 s** (dès la pose).
+- **Invulnérable** ; elle **reste si le héros meurt** (elle est plantée) jusqu'à la fin de ses 45 s.
+- Écartés : **aux pieds du héros, 30 s** (pas de pose sur un autre front sans y mener le héros) ; **jusqu'à abattue**
+  (300 PV, nouvelle sorte d'entité à cibler, envoyer et montrer).
+
+**Tranché — J8c-Q4 Bloc et grille, cercle au propriétaire, éclat et bannière vus de tous** (2026-10-29, A, choix de
+l'utilisateur, conforme à la recommandation).
+- **Bloc du héros** : ses 3 cases = *Aura de l'Aube* (passive), *Serrez les rangs*, *Bannière de l'Aube* (grisée
+  « niveau 4 » avant) ; recharge en secteur sombre avec les secondes restantes (recharges au propriétaire seul, J8-Q5).
+- **Grille** (D30, ligne dédiée) quand le héros est sélectionné : **A** = *Serrez les rangs*, **Z** = *Bannière*
+  (visée au clic, 4 cases au plus).
+- **Au sol** : cercle doré léger à 12 m autour du héros et de la bannière, **pour le propriétaire seul**.
+- **Cri** : un son et un bref éclat blanc sur les unités touchées, **vus de tous**. **Bannière** : étendard blanc et or
+  (pièce `banner` de J8a.0 à reprendre), **vu de tous**.
+- Écartés : **boutons seuls** (le joueur ne sait pas qui est dans l'aura) ; **tout visible de tous** (cercle ennemi et
+  icône par unité sous effet : écran chargé, effets à envoyer à tous).
+
+**Tranché — J8c-Q5 Rien en J8c, reporté au chantier de l'IA** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation).
+- L'aura, passive, profite déjà à l'IA (mêmes règles). Le lancement de *Serrez les rangs* et de la *Bannière* va au
+  chantier de l'IA, quand son cerveau commandera une armée et son héros (D425) ; noté dans `AIInProgress.md`.
+- Vérifié dans le scénario : l'aura protège les unités de l'IA près de son héros.
+- Écartés : **règle simple maintenant** (à refaire quand l'IA mènera une armée ; script d'un chantier en cours) ; **dès
+  que prêt en combat** (cri gaspillé sur un seul ennemi).
+
+**Tranché — J8c-Q6 Cinq sous-étapes, un essai à la fin** (2026-10-29, A, choix de l'utilisateur, conforme à la
+recommandation).
+
+| Sous-étape | Contenu | Moteur | État |
+|---|---|---|---|
+| J8c.1 Règles pures | Aura −15 % (J8c-Q1), cri −25 % 15 s (J8c-Q2), plafond de moral 50 %, rayon 12 m, recharges 60 s / 120 s, bannière 45 s à 4 cases (J8c-Q3), déblocage niveaux 1 et 4 ; tests C++ rouges d'abord | oui | à faire |
+| J8c.2 Effets dans la simulation | Dégâts reçus réduits dans le processeur de combat (aura du héros et de la bannière, cri), coupés à la mort du héros ; bannière côté serveur ; triches ; cas de `quick_check` | oui | à faire |
+| J8c.3 Lancement | Ordres réseau (cri, bannière visée) vérifiés par le serveur ; déclenchement en Angelscript (J8-Q4) ; recharges dans la fiche du propriétaire (J8-Q5) ; contrôle `net hero abilities` | oui | à faire |
+| J8c.4 Présentation | Cases du bloc, grille A / Z, visée de la bannière, cercle au propriétaire, éclat du cri, étendard, sons, textes fr / en / ja, captures (J8c-Q4) | oui | à faire |
+| J8c.5 Vérification | Partie `hero` de `quick_check` étendue, scénario `hero_abilities` (aura de l'IA comprise, J8c-Q5), **essai de l'utilisateur** | oui | à faire |
+
+- Puis **clôture de J8** : S3 et S4 avec un héros par camp, S5 (J8-Q6) ; numéros de décision au GDD.
+- Écartés : **deux essais** (scénario et pause de plus) ; **trois sous-étapes** (boucles longues, rouge dur à situer).
+- **Questions de J8c closes.** Numéros de décision à la clôture de J8.
 
 ## Décisions du chantier (à reporter au § 21 du GDD)
 
@@ -7937,3 +8112,325 @@ d'épée).
   recuire et vérifier (cible Server qui lie l'interface, `precompile_scripts.ps1` WindowsServer, `-Parts lobby`) ; IA et
   joueur absent en réseau ; niveau > 1 (pas d'XP) ; ligne du fil qui garde sa langue ; « Triches + » non traduit.
   Celeborn reste à la session Héros (hero-j8a3 = main aa0f11f).
+- (J8a.6, 2026-10-29) **J8a.6 lancée** (session Héros, Celeborn = main e6f1467, moteur UE 5.8 HOL, compilé) : partie
+  **`hero`** de `quick_check` = `build:hero` en solo (cas `build hero`, `build hero return`, `build hero texts`) + la
+  partie net **coupée à ses phases du héros** (`$NetHeroOnly` : chaque client va de son départ au signal `done`, le
+  serveur lève le refus des triches puis attend les deux `done` avant de faire naître les héros ; rapport `net 2 clients`
+  réduit aux contrôles d'arrivée et du serveur ; `net hero sheets`, `net hero return`, `net hero block` entiers). Avec
+  `net` demandée aussi : la partie net entière. Scénario **`hero`** (`hero.txt` + `.json`, copie de `hero_block.json`) :
+  F4 et portrait, 2 Hommes d'armes ennemis qui le blessent, 8 qui le tuent, retour payé, héros de l'IA tué qui revient
+  seul. Premier passage de `-Parts hero` en cours.
+- (J8a.6, 2026-10-29) **`quick_check -Parts hero` PASS du premier coup en 129 s** (`build hero`, `build hero return`,
+  `build hero texts`, `net 2 clients` réduit, `net hero sheets`, `net hero return`, `net hero block`). **Scénario `hero`
+  vérifié hors écran** (log `Saved_Tests\Logs\scen_hero.log`) : le héros tue les 2 Hommes d'armes (le 2e 15 s après leur
+  arrivée : note 2 repoussée, `wait 18`), puis 4 des 8 avant de tomber (~35 s de combat), prêt 19 s après,
+  « Scenario hero: ready » à ~106 s. `-Parts tests,net` en cours (la séquence du serveur net a changé de forme).
+- (J8a.6, 2026-10-29) `-Parts tests,net` **PASS en 195 s** (tests 285/285, partie net entière inchangée). Rien commité.
+  **Essai de l'utilisateur demandé** : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 hero -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`.
+  S'il valide : commit en anglais sur hero-j8a3 (`quick_check.ps1`, `hero.txt`, `hero.json`, sans `IN_USE.txt`), main
+  avancé dessus ; **J8a close** : reporter au GDD J8a4-Q1 à Q7, J8a5-Q1, J8a5-Q3, Q4 à Q9 ; ligne J8a.6 de la table.
+- (J8a.6, 2026-10-29) **Essai validé par l'utilisateur** (scénario `hero` : « sinon tout est bon »). **Défaut noté** :
+  « lorsqu'il s'est battu avec 8 hommes d'armes, certains ne faisaient rien » (les 8 apparus ensemble à 6 m du héros :
+  une partie reste sans frapper ; à voir avec la foule de mêlée du chantier O, Haldir, qui ne vise encore que les
+  bâtiments). **Commit 8ea1b8e** sur hero-j8a3 (Celeborn, 3 fichiers, sans `IN_USE.txt`), main avancé dessus en avance
+  rapide. **J8a.6 close, J8a close.** GDD inchangé : la règle du plan de J8 reporte J8-Q1 à Q6, J8a-Q1 à Q6, J8a4-Q1 à
+  Q7, J8a5-Q1 à Q9 à la **clôture de J8**. Suite : **plan de J8b** (XP et niveaux), à ouvrir. Restes connus : serveur
+  empaqueté à recuire (il lie l'interface) ; IA et joueur absent en réseau ; ligne du fil qui garde sa langue ;
+  « Triches + » non traduit ; mêlée inactive autour d'une cible unique.
+- (J8b, 2026-10-29) **Questions de J8b ouvertes** (Q1 à Q6, section « Questions de J8b ») ; J8b-Q1 (sources d'XP) posée
+  à l'utilisateur. Rien à coder avant les réponses.
+- (J8b, 2026-10-29) **J8b-Q1 tranchée** (A) : combat, commandement, développement ; développement seul pendant la mort.
+  J8b-Q2 (courbe et quantités) posée.
+- (J8b, 2026-10-29) **J8b-Q2 tranchée** (A amendée : poids combat ×1, commandement ×0,75, développement ×0,5, plus tard
+  exploration ×0,25 ; seuils 200 / 600 / 1 300 / 2 200 / 3 300 ; infléchit D05). J8b-Q3 (statistiques par niveau) posée.
+- (J8b, 2026-10-29) **J8b-Q3 tranchée** (A : +8 % de PV et d'attaque par niveau, PV gagnés ajoutés aux actuels).
+  J8b-Q4 (montée de niveau vue par le joueur) posée.
+- (J8b, 2026-10-29) **J8b-Q4 tranchée** (A : barre d'XP au propriétaire, alerte et son, éclat doré vu de tous,
+  paliers 3 et 6 annoncés sans contenu, pas de talents). J8b-Q5 (niveau et retour) posée.
+- (J8b, 2026-10-29) **J8b-Q5 tranchée** (A : délai 30 s + 8 s × niveau, prix 100 + 50 × niveau or, héros tué
+  300 × rapport des niveaux × poids). J8b-Q6 (découpage) posée.
+- (J8b, 2026-10-29) **J8b-Q6 tranchée** (A : J8b.1 à J8b.6, un essai à la fin). **Questions de J8b closes.** Suivant :
+  J8b.1 (règles pures), dans Celeborn.
+- (J8b.1, 2026-10-29) **J8b.1 faite** (Celeborn, hero-j8a3) : `Simulation/HOLHeroXPRules.h/.cpp` (namespace `HOLHeroXP` :
+  poids des sources, valeur = coût, XP arrondie vers le bas, XP d'un héros tué en une seule division, `CountsWhileDead`,
+  `GetKillSource` avec `CommandRadius` 12 m, seuils et niveau 1 à 6, +8 % par niveau, PV gagnés ajoutés, mort reste
+  à 0) ; `Tests/HOLHeroXPTests.cpp` (4 tests : Sources, KillSource, Levels, Stats) **montrés rouges** sur des bouchons,
+  puis verts ; `quick_check -Parts tests` PASS 289/289 en 40 s. **Commit 239d10e** sur hero-j8a3 (pas dans `main`).
+  Suivant : J8b.2 (XP dans la partie).
+- (J8b.2, 2026-10-29) **J8b.2 ouverte, repérage** (Celeborn) : l'XP existe déjà dans la fiche privée
+  (`FHOLHeroPrivateSheet::XP`, `UHOLHeroSubsystem::SetXP`, `hol.Hero.SetXP`) ; `HOLHeroSheet::Make` met `Level` à
+  `StartLevel`. PV max et attaque viennent du type (`FHOLUnitTypeConstants`, partagé) : lus par `HOLCombat::GetDamage`,
+  la vue (`bFullHealth`, barres), la réplication (part de PV du héros sur `Constants.MaxHealth`) et la réception
+  (`Row->MaxHealth`). Morts : `UHOLCombatProcessor::Kill` (mêlée, ligne ~1973 ; flèche, ~934, `Arrow.Shooter`).
+  **Boucles prévues** : (1) niveau sur l'unité du héros (champ de combat), PV max et attaque au niveau dans la
+  simulation, `Make` lit le niveau de l'XP, montée de niveau qui ajoute les PV ; test rouge d'abord ; (2) attribution
+  des morts (héros = combat, troupe à 12 m ou moins du héros vivant = commandement, héros tué = rapport des niveaux) et
+  bâtiment achevé (développement, même mort) ; (3) triche et cas `build hero xp` dans `quick_check`. La part de PV
+  envoyée aux clients au niveau > 1 relève de J8b.3.
+- (J8b.2, 2026-10-29) **Boucle 1 faite** : niveau sur le corps du héros. `HOLHeroSheet::Make` tire le niveau de l'XP (aussi
+  mort, corps disparu : D06) ; `FHOLCombatFragment::Level` (uint8, dans le bourrage avant `DeathStep`) ;
+  `UHOLHeroSubsystem::ApplyLevel` à chaque fin de pas, héros vivant seulement : attaque au niveau
+  (`HOLCombat::GetDamage(..., AttackerLevel)`, exacte au niveau 1), PV max `HOLCombat::GetMaxHealth` (vue, barres, part
+  envoyée), PV gagnés ajoutés (héros revenu : plein au niveau dès son premier pas) ; journal « Hero level: slot N level
+  A -> B, hp X / Y » ; `hol.Hero.SetXP` le fait donc monter. Test `HeroXP.Chain` **rouge** sur bouchons puis vert ;
+  `quick_check -Parts tests` PASS 290/290. **Commit 585d49c** (hero-j8a3). Reste de J8b.2 : boucle 2 (attribution des
+  morts, héros tué, bâtiment achevé), boucle 3 (cas `build hero xp`). Note pour J8b.3 : la réception client lit encore
+  `Row->MaxHealth` pour la part de PV du héros.
+- (J8b.2, 2026-10-29) **Boucle 2 faite** : XP donnée en partie. Règle pure `HOLHeroXP::GetKillXP(FKillFacts, Source)`
+  (source par `GetKillSource`, unité = coût × poids, héros = 300 × rapport des niveaux × poids) ; lue dans les morts du
+  processeur de combat (mêlée et flèches, tueur par son identifiant : le héros du camp du tueur, vivant, la victime à
+  12 m ou moins de lui) ; bâtiment achevé dans `HOLBuildProcessor` : coût × 0,5 au héros du propriétaire, mort ou vivant
+  (D06). `UHOLHeroSubsystem::AddXP` (journal « Hero XP: slot N +X (source), xp T »), copies et niveau du corps en fin de
+  pas. Tests `HeroXP.Kill`, `HeroXP.KillInMatch` (Peasant tué par un Homme d'armes à 7,5 m : 37 ; à 50 m : rien ; par
+  le héros : 50 ; héros ennemi à 1 PV : 300 ; 387, niveau 2, 456 / 486 PV) et `HeroXP.Building` (Maison : 25, sans
+  héros) **montrés rouges** sur bouchon, puis verts ; `quick_check -Parts tests` PASS 293/293. **Commit dc9b3c5**
+  (hero-j8a3). Suivant : boucle 3 (cas `build hero xp` dans `quick_check`). Note : lancer les tests à la main avec le
+  moteur `C:\UE\UE_5.8_HOL` (celui du registre), pas `UE_5.8_AS_3`.
+- (J8b.2, 2026-10-29) **Boucle 3 faite, J8b.2 close** : cas `build hero xp` dans la partie `build` de `quick_check`
+  (rangé dans `build:hero`) : son héros à 150 XP tue un Paysan de l'emplacement 1 (combat +50 = 200, niveau 2,
+  486 / 486) ; tué (délais à 20 %, prêt 184 pas après), une Maison achevée pendant sa mort (développement +25 = 225,
+  fiche toujours niveau 2) ; retour acheté : niveau 2 à pleins PV (486 / 486). Valeurs vues dans le journal du jeu.
+  `quick_check -Parts build:hero` PASS (4 cas du héros), `-Parts combat,victory` PASS. **Commit 78d5608** (hero-j8a3).
+  Triche du plan (`hol.Hero.XP`) : la `hol.Hero.SetXP` existante suffit, pas de nouvelle commande. Le prix du retour
+  reste 150 au niveau 2 (J8b.3). Suivant : **J8b.3** (niveau dans la fiche publique, XP au propriétaire, délai et prix
+  par niveau dans le script du retour, contrôle `net hero xp` ; la réception client lit encore `Row->MaxHealth`).
+- (J8b.3, 2026-10-29) **J8b.3 ouverte, repérage** (Celeborn) : le niveau est déjà dans la fiche publique et l'XP dans la
+  fiche privée (copies écrites depuis J8a.3, `COND_OwnerOnly`) ; le délai du retour suit déjà le niveau
+  (`HOLHeroReturn::DelaySteps`). Restait : le prix (150 fixe), le maximum de PV d'un héros au-dessus du niveau 1 chez un
+  client (`Row->MaxHealth`) et dans son bloc (`GetHeroMaxHealth()` : un niveau 2 affiché 450/450). **Boucles** :
+  (1) prix et maximum ; (2) contrôle `net hero xp` à 2 clients (niveau vu des deux, XP du propriétaire seul, PV sur 486,
+  retour plus cher) et contrôle du bloc dans `build hero xp`.
+- (J8b.3, 2026-10-29) **Boucle 1 faite** : `HOLHeroReturn::StartPrice(Level)` = 100 + 50 × niveau, baisse jusqu'à 0 en
+  60 s inchangée ; `HOLUnitView::SetReceivedHealth` prend le maximum d'un héros au niveau de sa fiche publique (table,
+  niveau 1, avant la fiche) ; `HOLHero::GetHeroMaxHealth(Slot)` au niveau (bloc du héros). Tests
+  `Test_HeroReturnPriceByLevel` (Angelscript : 200 / 100 / 0 au niveau 2, 400 / 200 / 1 au niveau 6, délai 1 560 pas au
+  niveau 6) et `HeroesOfLiberty.Net.HeroLevelHealth` (400 / 486 exact, plein 486 / 486) **montrés rouges** puis verts ;
+  `quick_check -Parts tests` PASS 295/295. **Commit b92195a** (hero-j8a3). Suivant : boucle 2.
+- (J8b.3, 2026-10-29) **Boucle 2 faite, J8b.3 close** : phase `net hero xp` de la partie `net` (après le retour des
+  deux héros : XP de Bob à 220, niveau 2, un Homme d'armes le frappe 3 s) : serveur « level 1 -> 2, hp 486 / 486 » puis
+  479 ; les deux clients voient la fiche publique de Bob niveau 2 hp 479 et son héros « hp 479/486 share 252/255 » ;
+  Bob voit son XP 220 et son bloc « alive level 2 hp 479/486 », Alice l'XP de Bob cachée (0). Dans `build hero xp`
+  (solo) : retour au niveau 2 acheté 200 or, bloc « alive level 2 hp 486/486 ». **Effet de J8b.2 vu en réseau** : dans
+  `net hero sheets`, le héros de Bob tue un des Hommes d'armes qui le frappent (+120, XP 127) ; le contrôle accepte
+  7 + 120 × tués (sous 200, niveau 1). `quick_check -Parts hero` PASS, `-Parts net` PASS (200 s). **Commit ef696cd**
+  (hero-j8a3). Suivant : **J8b.4** (présentation : barre d'XP, alertes de niveau et de palier, éclat doré, textes
+  fr / en / ja, captures).
+- (J8b.4, 2026-10-29) **Boucle 1 faite** (75ef3f8) : barre d'XP du bloc du héros (dorée, remplie dans le niveau, du seuil
+  au suivant, pleine au niveau 6 ; « 420 / 600 » au survol ; montrée aussi mort, D06 ; grisée si inconnue). Pont
+  `HOLHero::GetHeroXP(Slot)` (fiche vraie au serveur, copie privée du joueur local chez un client, -1 sinon),
+  `GetLevelXP`, `GetMaxLevel` ; `hol.HUD.Report` ajoute « hero xp: xp 225/600 bar 6% ». `Test_HeroBlockXP` rouge puis vert.
+- (J8b.4, 2026-10-29) **Boucles 2 et 3 faites, J8b.4 close** (23c0e85) : `FHOLHeroLevelWatch` (niveau public d'un
+  emplacement qui monte, pas le premier vu) ; `AHOLGameState::OnHeroLevelUp` sur chaque machine avec un joueur
+  (« Hero level up: ... ») ; le HUD du propriétaire ajoute au fil « Paladin-Commandant : niveau N » et, aux niveaux 3 et
+  6, « Palier 1 / 2 atteint » (`HOLForumMessages::GetHeroLevelMessages`), un son (celui provisoire des alertes) ;
+  éclat doré sur le héros vu de tous (`AHOLSelectionMarkers` : deux anneaux dorés au sol ~1 s, l'un qui s'élargit de 2× à
+  7× le rayon ; agrandi après la 1re capture, trop discret de loin). en « Paladin-Commander: level {0} », « Tier {0}
+  reached » ; ja 「聖騎士団長：レベル {0}」「段階{0}に到達」 ; collecte 348 textes. Test `HeroXP.LevelAlerts` rouge puis
+  vert. `build hero xp` étendu (barre aux 5 moments, alertes fr / en / ja et sons, éclats 1→2, 2→3, 3→4, 4→6, aucun au
+  retour ; captures `build_hero_flash`, `build_hero_tier`, `build_hero_tier_ja`) ; `net hero xp` : éclat chez les deux
+  clients, alerte, son et barre « xp 220/600 bar 5% » chez Bob seul. Le contrôle « alerte vue une fois » de `net hero
+  return` ignore désormais les lignes de niveau. `-Parts hero,tests` PASS (297/297), `menu` PASS. À juger à l'essai :
+  l'éclat (anneaux au sol, pas de lumière sur le corps), le son provisoire. Défaut connu inchangé : une ligne du fil garde
+  sa langue. Suivant : **J8b.5** (scénario `hero_xp`, essai de l'utilisateur).
+- (J8b.5, 2026-10-29) **J8b.5 lancée** (Celeborn, hero-j8a3 23c0e85) : scénario **`hero_xp`** (`hero_xp.txt` + `.json`, copie de
+  `hero.json`) : Maison bâtie (+25 développement), 2 Hommes d'armes tués par le héros (niveau 2, alerte, éclat), 6 des
+  siens contre 5 ennemis (commandement, niveau 3, palier 1), `hol.Hero.Kill 0`, 2e Maison pendant la mort (+25), retour
+  au niveau 3 (27 s à 50 %, 250 or). La partie `hero` de `quick_check` couvre déjà l'XP (`build hero xp`, `net hero xp`).
+  **Vérifié hors écran** (log `Saved_Tests\Logs\scen_hero_xp.log`, « ready » en 106 s) : XP 25, puis +120 +120 = 265
+  (niveau 2, hp 432 / 486, éclat), +120 et 3 × +90 commandement = 655 (niveau 3, hp 422 / 522, éclat), +120 = 775, mort,
+  2e Maison +25 pendant la mort = 800, prêt à revenir. Rien commité. **Essai de l'utilisateur demandé** :
+  `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 hero_xp -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`.
+  S'il valide : commit (`hero_xp.txt`, `hero_xp.json`) sur hero-j8a3, J8b.5 close, suivant J8b.6 (IA : rien à coder).
+- (J8b.5, 2026-10-29) **Essai validé par l'utilisateur** (« tout est bon »). **Commit 0204eb9** sur hero-j8a3 (Celeborn,
+  `hero_xp.txt`, `hero_xp.json`). **J8b.5 close.** Demande de l'essai : le son de montée de niveau « serait mieux en mode
+  chœur ou cor de guerre » (aujourd'hui `1kSineTonePing` du moteur, le même que les alertes ; le projet n'a encore aucun
+  son à lui). Question posée : d'où vient le son. Suivant : **J8b.6** (IA : rien à coder).
+- (J8b.5, 2026-10-29) **Son de niveau : cor synthétisé** (choix de l'utilisateur, contre un fichier fourni ou un report à
+  l'audio). `Tools/Editor/make_hero_horn.py` (Python pur, sans numpy) : appel de cuivre grave, la2 puis mi3 (quinte),
+  attaque qui glisse vers la note, plus brillant en enflant, souffle, petite salle de Schroeder ; 2,77 s, crête 0,7.
+  Importé par l'éditeur sans fenêtre en `/Game/Audio/SW_HeroLevelUp` (classe SC_Effects, dossier toujours cuit).
+  `HOLForumMessages::HeroLevelSoundPath` ; `UHOLGameScreen::HandleHeroLevelUp` le joue au lieu du ping des alertes
+  (qui le gardent). Éditeur compilé ; `quick_check -Parts hero` **PASS en 109 s** (« Hero level alert … (sound) » 1→2,
+  2→3, 3→4, 4→6). Rien commité : l'utilisateur écoute d'abord le .wav.
+- (J8b.5, 2026-10-29) **Premier cor refusé** (« pas vraiment ça »). Exemples de l'utilisateur : cor du Rohan (guerrier :
+  grave, long, rauque) et cor de la Lórien / Fondcombe (plus alerte : clair, doux). Script refait : deux sons, une note
+  tenue chacun (glissé d'attaque, résonances du pavillon, souffle, instabilité, grande salle) : `SW_HeroLevelUp` (ré3
+  147 Hz, 2,1 s + queue, d'après le cor elfe) pour chaque niveau, `SW_HeroTier` (fa2 87 Hz, 3,6 s + queue, grondement
+  à l'octave basse, d'après le cor du Rohan) quand un palier est atteint (`HOLForumMessages::HeroTierSoundPath`,
+  choisi quand une ligne de palier suit celle du niveau ; journal « … (sound) tier horn »). Écoute de l'utilisateur demandée.
+- (J8b.5, 2026-10-29) Écoute : « plus court moins grave ». Niveau : sol3 196 Hz, 1,2 s tenue + 1 s de queue ; palier :
+  do3 131 Hz, 2 s + 1,3 s. `quick_check -Parts hero` PASS (90 s, version d'avant : « (sound) tier horn » à 2→3 et 4→6) ;
+  version courte importée (`SW_HeroLevelUp`, `SW_HeroTier`). Nouvelle écoute demandée, rien commité.
+- (J8b.5, 2026-10-29) Écoute : « plus de notes, plus d'instruments, des voix… là c'est triste, le héros vient de monter
+  de niveau et de palier, ça doit être épique ». Script renommé **`Tools/Editor/make_hero_fanfare.py`** : partitions
+  jouées par quatre instruments synthétisés (cuivres en tables d'onde aux résonances du pavillon, chœur « ah » à trois
+  voix désaccordées par note, timbales, cymbale), salle. **Niveau** (`SW_HeroLevelUp`, 3,0 s) : appel ré-ré-ré puis
+  accord de ré majeur (la4 en haut, cuivres graves, chœur, timbale, cymbale). **Palier** (`SW_HeroTier`, 5,3 s) : appel
+  qui monte la-ré-fa# en tierces sur un roulement de timbales et une cymbale qui enfle, puis cadence héroïque ré, si♭,
+  do, ré (mélodie ré5, ré5, mi5, fa#5), chœur, timbales, deux coups de cymbale. Journal « … (sound) tier fanfare ».
+  Écoute de l'utilisateur demandée ; compilation et import en cours.
+- (J8b.5, 2026-10-29) Écoute des fanfares synthétisées : « beaucoup mieux mais ça fait jeu des années 2000 (sûrement
+  le synthé) … regarde le passage d'âge d'AOE4 ». `quick_check -Parts hero` PASS (96 s, « tier fanfare » à 2→3 et 4→6).
+  **Choix de l'utilisateur : échantillons libres.** Banque **VSCO 2 Community Edition** (Versilian Studios, **CC0**,
+  github.com/sgossner/VSCO-2-CE) : `Tools/Audio/vsco_samples.py` télécharge une fois ~200 Mo (trompettes tenues et
+  piquées, cor, trombone, tuba, pupitres de violons, altos, violoncelles, contrebasse, 5 timbales et leurs roulements,
+  cymbale, cymbale qui enfle, gong) dans `Saved/Audio/VSCO` (hors dépôt), mesure la hauteur de chaque échantillon
+  (la banque nomme ses octaves à sa façon) ; timbales sans hauteur (fût choisi par la partition). `make_hero_fanfare.py`
+  (numpy) rejoue les partitions réarrangées pour orchestre (cordes à la place du chœur synthétique, que la banque n'a pas
+  enregistré), pupitres épaissis par copies désaccordées, placés de gauche à droite, salle par convolution, limiteur doux,
+  stéréo : niveau 4,2 s, palier 7,1 s (queue du gong comprise). Deux temps : rendu en Python, import par l'éditeur.
+  Écoute de l'utilisateur demandée.
+- (J8b.5, 2026-10-29) Écoute des fanfares orchestrales : « temps du hero tier divisé par 2 et on verra plus tard, il
+  faudra noter de refaire tous les sons ». Palier joué deux fois plus vite (échelle de temps 0,5), coupé à 3,5 s avec
+  0,4 s de fondu (le gong) ; niveau inchangé (4,2 s). Noté dans EtapeDefini, nouvelle section « Sons » : refaire tous
+  les sons du jeu (alertes, héraut, fanfares ; référence : passage d'âge d'AOE4). `quick_check -Parts hero` : 1er
+  passage FAIL sur `net 2 clients` seul (cas du héros et sons verts ; détail non gardé), 2e PASS entier (111 s) : aléa,
+  noté. **Commit af074ed** sur hero-j8a3 (`Tools/Audio/vsco_samples.py`, `Tools/Editor/make_hero_fanfare.py`, les deux
+  `SW_Hero*.uasset`, `HOLForumMessages.h`, `HOLGameScreen.cpp` ; échantillons hors dépôt). **J8b.5 close.** Suivant :
+  **J8b.6** (IA : rien à coder), puis clôture de J8b.
+- (J8b.6, 2026-10-29) Fichiers du scénario : « vachement bien », suite demandée. **J8b.6** : rien à coder, mais le
+  scénario ne la vérifiait pas (l'IA ne finit aucun bâtiment en 106 s, son héros ne combat pas). Partie 8 ajoutée à
+  `hero_xp` : 2 Hommes d'armes du joueur nés à 8 m du héros de l'IA (14065, 300) ; hors écran (121 s) : « Hero XP:
+  slot 1 +120 (combat) » deux fois, « Hero level: slot 1 level 1 -> 2, hp 432 / 486 », éclat ; aucune alerte de niveau
+  chez le joueur. **Commit 2a4ea0e** (hero-j8a3). **J8b.6 close, J8b close.** GDD inchangé (règle du plan de J8 :
+  J8b-Q1 à Q6 numérotées à la clôture de J8 ; J8b-Q2 seuils et poids de mon cru, à signaler). Suivant : **J8c**
+  (aura et capacités), plan à ouvrir. hero-j8a3 pas encore dans `main` depuis J8a (8ea1b8e) : fusion à proposer.
+- (J8b, 2026-10-29) **Fusion de `main` dans hero-j8a3** (choix de l'utilisateur : fusionner avant J8c ; main 93b9069,
+  40 commits d'avance). Conflits : `Script/UI/HOLGameScreenScript.as` (`Describe` : ligne « hero xp » du héros et ligne
+  « pause » de P5 gardées toutes deux) ; textes traduits (`Content/Localization/Game`) pris de `main` puis régénérés :
+  éditeur compilé, collecte, `fill_po.py` (en / ja : 356 textes, 0 clé inconnue), collecte. `quick_check -Full` PASS
+  (395 s), `-Parts hero` PASS (97 s). Commits faacbce (fusion) et 4e64685 (textes recollectés), **`main` avancé** sur
+  hero-j8a3 en avance rapide (4e64685). Toute J8b est dans `main`. Suivant : **plan de J8c** (aura et capacités).
+- (J8c, 2026-10-29) **Questions de J8c ouvertes** (Q1 à Q6, section « Questions de J8c ») ; J8c-Q1 (*Aura de l'Aube*)
+  posée. Suivant : réponse à J8c-Q1.
+- (J8c, 2026-10-29) **J8c-Q1 tranchée** (A) : *Aura de l'Aube* passive, −15 % de dégâts reçus pour les unités du
+  joueur à 12 m du héros, héros compris. Suivant : J8c-Q2 (*Serrez les rangs*).
+- (J8c, 2026-10-29) **J8c-Q2 tranchée** (B, l'utilisateur ; A recommandé) : *Serrez les rangs* −25 % de dégâts reçus
+  pendant 15 s à 12 m, unités libres, recharge 60 s, plafond de moral 50 %. Suivant : J8c-Q3 (*Bannière de l'Aube*).
+- (J8c, 2026-10-29) **J8c-Q3 tranchée** (A) : *Bannière de l'Aube* plantée à 4 cases, aura 45 s, invulnérable, reste
+  à la mort du héros, recharge 120 s. Suivant : J8c-Q4 (commande et présentation).
+- (J8c, 2026-10-29) **J8c-Q4 tranchée** (A) : bloc et grille (A = *Serrez les rangs*, Z = *Bannière*), cercle de 12 m
+  au propriétaire, éclat du cri et bannière vus de tous. Suivant : J8c-Q5 (part de l'IA).
+- (J8c, 2026-10-29) **J8c-Q5 tranchée** (A) : l'IA ne lance pas les capacités en J8c (reporté au chantier de l'IA,
+  D425) ; l'aura passive lui profite. Suivant : J8c-Q6 (découpage).
+- (J8c, 2026-10-29) **J8c-Q6 tranchée** (A) : J8c.1 à J8c.5, un essai à la fin, puis clôture de J8. **Questions de
+  J8c closes.** Suivant : **J8c.1** (règles pures).
+- (J8c.1, 2026-10-29) **J8c.1 ouverte** (Celeborn, nouvelle branche `hero-j8c` partie de `main` 1911c5a) :
+  `Simulation/HOLHeroAbilityRules.h/.cpp` (namespace `HOLHeroAbility`, `EHOLHeroAbility` Aura / CloseRanks / Banner :
+  rayon 12 m, bannière à 16 m au plus, −15 % / −25 %, plafond 50 %, 15 s / 45 s, recharges 60 s / 120 s, déblocage 1 et
+  4, `CanCast`, `Tick`, `GetDamageTakenPercent`, `GetReducedDamage`) en **bouchons**, `Tests/HOLHeroAbilityTests.cpp`
+  (Unlock, Cast, Damage). Repère pour J8c.2 : les coups portés se retirent à `HOLCombatProcessor.cpp` (« Enemy.State->
+  CurrentHealth -= Damage ») et les flèches à l'arrivée (`ResolveArrow`) : réduire à l'impact, pas au départ.
+- (J8c.1, 2026-10-29) **J8c.1 faite** (Celeborn, `hero-j8c`) : tests `HeroesOfLiberty.HeroAbility.Unlock`, `Cast`,
+  `Damage` **montrés rouges** sur les bouchons (350/353), puis vrais calculs : verts, `quick_check -Parts tests` PASS
+  353/353 en 36 s. **Commit cc7c2e6** sur `hero-j8c` (pas dans `main`). Suivant : **J8c.2** (effets dans la simulation).
+- (J8c.2, 2026-10-29) **J8c.2 boucle 1 faite** (Celeborn, `hero-j8c`) : dans `HOLCombatProcessor`, les héros vivants et
+  les bannières debout sont des sources d'aura de leur propriétaire (−15 % à 12 m, une seule aura compte) ; le cri met
+  les unités vivantes du joueur à 12 m du héros sous *Serrez les rangs* 15 s (`FHOLCombatFragment::CloseRanksMs`,
+  décompté à chaque pas, même combat coupé) ; coups de mêlée et flèches (à l'impact) réduits par `HOLHeroAbility`.
+  `UHOLHeroSubsystem::CastCloseRanks`, `PlantBanner` (niveau 4, 16 m, 45 s, reste à la mort du héros), `GetBanner`,
+  `GetCooldownMs`, recharges décomptées en fin de pas ; triches `hol.Hero.CloseRanks [Slot]`, `hol.Hero.Banner <Slot>
+  <X> <Y>`. Test `HeroesOfLiberty.HeroAbility.InMatch` (12 loin, 10,2 dans l'aura, 7,2 aura + cri, bannière, refus,
+  mort du héros, bannière tombée à 45 s) **montré rouge** sur bouchons, puis vert : 354/354 ; `quick_check -Parts
+  combat,hero` PASS (96 s). **Commit 38f7a03**. Suivant : J8c.2 boucle 2 (cas de `quick_check` en partie réelle).
+- (J8c.2, 2026-10-29) **J8c.2 boucle 2 faite, J8c.2 close** (Celeborn, `hero-j8c`) : cas `build hero aura` de
+  `quick_check` (sous `build:hero`, coups journalisés par `hol.Combat.LogHits`) : dans l'aura, le 12 de l'Homme d'armes
+  arrive à 10,2 sur un Piquier (3,06 sur le héros, D17), le 10 de l'Archer (5 + bonus contre l'infanterie légère) à 8,5 ;
+  sous aura et cri 7,2 (2,16 sur le héros) et 6 ; cri refusé pendant sa recharge ; au niveau 4, bannière refusée à 17 m,
+  plantée à 16 m, 10,2 sur un Piquier à 22 m du héros et 6 m de la bannière ; triche `hol.Hero.ResetAbilities` (recharges
+  finies, bannière retirée) en fin de cas. Premier essai rouge à cause de mes attentes (flèches à 4,25 sans compter le
+  bonus de l'Archer ; l'Homme d'armes a frappé le héros au lieu du Piquier) : le jeu était juste, le cas corrigé.
+  `quick_check -Parts tests,hero` PASS (354/354, 100 s). **Commit 85ec509**. Suivant : **J8c.3** (lancement : ordres
+  réseau, déclenchement en Angelscript, recharges dans la fiche du propriétaire, contrôle `net hero abilities`).
+- (J8c.3, 2026-10-29) **J8c.3 boucle 1 faite** (Celeborn, `hero-j8c`) : ordres des joueurs —
+  `AHOLPlayerController::RequestHeroAbility` (appelable du script) / `ServerHeroAbility` (son propre emplacement, cri ou
+  bannière seulement), console `hol.Hero.Cast <CloseRanks|Banner X Y>`, file `IssueHeroAbilityOrder` /
+  `ConsumeHeroAbilityOrders` (refus comme le retour : pas d'emplacement, vaincu, partie en attente ou en pause), vérifiés
+  et lancés en fin de pas par `UHOLHeroSubsystem`. Fiches : la privée porte le pas où chaque capacité est prête
+  (`CooldownEndSteps` indexé par `EHOLHeroAbility`, devenu `UENUM`), la publique le compte des cris (`Cries`) et la
+  bannière (lieu, pas de fin), gardés par `HOLHeroSheet::Make`. `UHOLHeroLibrary` : `GetHeroAbilityReadyStep`,
+  `GetHeroAbilityUnlockLevel`, `GetHeroCries`, `GetHeroBannerEndStep`, `GetHeroBannerLocation` pour le script de J8c.4.
+  Test `HeroesOfLiberty.HeroAbility.Orders` **rouge** d'abord (ordres jamais consommés), puis vert : 355/355 ;
+  `quick_check -Parts tests,hero` PASS. **Commit da282d5**. Interprétation de J8-Q4 (« déclenchement en Angelscript ») :
+  les boutons et touches du bloc (script, J8c.4) appellent `RequestHeroAbility` ; la vérification reste en C++ (règles
+  pures de J8c.1, D484). Suivant : J8c.3 boucle 2 (contrôle `net hero abilities` à 2 clients).
+- (J8c.3, 2026-10-29) **J8c.3 boucle 2 faite, J8c.3 close** (Celeborn, `hero-j8c`) : contrôle `net hero abilities` de
+  `quick_check` (2 clients, parties `hero` et `net`) : Bob au niveau 4 crie deux fois et plante sa bannière par
+  `hol.Hero.Cast` ; le serveur lance le cri (1 unité dessous : son héros), refuse le second (recharge), plante la
+  bannière à (14665, 299) ; les pas où ses capacités sont prêtes (« ready 0,2292,3503 ») arrivent chez Bob seul (Alice :
+  « cooldowns 0 »), les cris et la bannière (« cries 1 banner 14665 299 until 2003 ») chez les deux clients comme au
+  serveur. `hol.Hero.Report` montre ces champs. `quick_check -Parts tests,hero` PASS (355/355, 104 s). **Commit
+  9cce086**. Suivant : **J8c.4** (présentation : cases du bloc, grille A / Z, visée de la bannière, cercle au
+  propriétaire, éclat du cri, étendard, sons, textes fr / en / ja, captures).
+- (J8c.4, 2026-10-29) **J8c.4 ouverte, plan en boucles** (Celeborn, `hero-j8c`) : boucle 1 règles de la grille (C++ pur,
+  tests rouges d'abord : A = *Serrez les rangs*, Z = *Bannière* sur la grille de droite quand le héros du joueur est
+  parmi les unités commandées ; Z grisée sous le niveau 4 ; touches A / Z vers la grille) et contrôleur (A lance le cri,
+  Z arme la visée, clic gauche au sol plante, Échap / clic droit annule) ; boucle 2 cases de la grille (icônes, recharge
+  en secteur sombre, infobulles) et 3 cases du bloc du héros (script), textes fr / en / ja ; boucle 3 cercle doré de 12 m
+  au propriétaire (héros, bannière) et portée de 16 m pendant la visée ; boucle 4 étendard (maillage Python, **aperçus à
+  valider par l'utilisateur**) vu de tous ; boucle 5 éclat blanc du cri (compteur public `Cries`) et sons ; boucle 6
+  contrôles de `quick_check` et captures. Suivant : boucle 1.
+- (J8c.4, 2026-10-29) **J8c.4 boucle 1 faite** (Celeborn, `hero-j8c`) : capacités du héros sur la grille de commande.
+  `HOLCommandGrid` : commande `HeroAbility` (A = *Serrez les rangs*, Z = *Bannière*, `GetHeroAbilityCell`) sur la grille
+  de droite quand le héros du joueur est parmi les unités commandées (sous-groupe actif) ; grisée sous son niveau ou
+  pendant sa recharge (secondes restantes tirées de la fiche privée et du pas du serveur) ; A et Z vont à la grille, les
+  autres touches aux ordres comme avant. Contrôleur : A crie, Z arme la visée (clic gauche au sol plante ; clic droit,
+  Échap, Tab ou une sélection sans le héros la quittent), triche `hol.Select.Banner <X> <Y>` (Z puis clic). Test
+  `HeroesOfLiberty.CommandGrid.HeroAbilities` **rouge** sur bouchons (7 échecs), puis vert ; cas `build hero grid` de
+  `quick_check` (Z refusée au niveau 1, A crie, A refusée « 60 s », bannière plantée à 11 cm du clic) ; `quick_check
+  -Parts tests,hero` PASS (356/356, 101 s). **Commit fe8213f**. Le curseur ne change pas pendant la visée (la portée de
+  16 m viendra en boucle 3). Suivant : boucle 2 (cases de la grille et du bloc du héros, textes fr / en / ja).
+- (J8c.4, 2026-10-29) **J8c.4 boucle 2 faite** (Celeborn, `hero-j8c`) : capacités montrées. **Grille** (`HOLGameScreen`) :
+  cases A « Rangs » et Z « Bannière », secondes restantes sous le nom pendant la recharge, infobulle nom et effet,
+  « Niveau 4 requis » tant que verrouillée ; relue 4 fois par seconde tant qu'elle les montre (sans cela, la grille restait
+  figée : vu au premier passage du cas, rouge). **Bloc du héros** (script) : `HOLHeroBlock::MakeAbility` / `SetAbilities`
+  (aura allumée ou éteinte à la mort, cri et bannière prêts, verrouillés ou en recharge) ; chaque case : icône, **volet
+  sombre** depuis le haut sur la part de recharge restante (pas un secteur circulaire : il faudrait un matériau), secondes,
+  infobulle ; ligne « hero abilities » de `hol.HUD.Report`. Icônes `T_Icon_Aura` (soleil dans un halo), `T_Icon_CloseRanks`
+  (mur de trois boucliers), `T_Icon_Banner` (drapeau à queue d'aronde au soleil) par `make_ui_icons.py`.
+  `UHOLHeroLibrary::GetHeroAbilityCooldownSeconds`. Textes fr / en / ja rassemblés (`fill_po.py` échappe désormais les
+  retours à la ligne). Pas de clic sur les cases du bloc (les touches et la grille lancent). Test script
+  `Test_HeroBlockAbilities` **rouge** sur bouchons, puis vert ; cas `build hero grid` : HUD relu à 4 moments (sélection,
+  après le cri « Rangs 60 s », niveau 4 « banner ready », bannière posée « banner 120 s ») ; `quick_check -Parts
+  tests,hero` PASS (357/357, 97 s). **Commit 9267316**. Suivant : boucle 3 (cercle de 12 m au propriétaire, portée de 16 m
+  pendant la visée).
+- (J8c.4, 2026-10-29) **J8c.4 boucle 3 faite** (Celeborn, `hero-j8c`) : cercles au sol, au propriétaire seul
+  (`AHOLSelectionMarkers::UpdateAuraRings`) : 12 m dorés autour du héros vivant et de la bannière debout ; pendant la visée,
+  portée de 16 m en blanc fin autour du héros et aura sous le curseur (dorée à portée, rouge vif au-delà) ; cercles de 72
+  segments posés chacun à la hauteur du sol. `hol.Select.Report` écrit « Aura rings: ... » ; `hol.Camera.TestCursorGround
+  <X> <Y>` (réglé avec la priorité de la console : sinon une valeur tapée avant gagne, cause du premier échec). Cas
+  `build hero grid` : cercle du héros, visée à 10 m « ok », à 18 m « out of reach », cercle de la bannière posée ;
+  captures `build_hero_aim`, `build_hero_aim_far`, `build_hero_banner_rings` (rendu vérifié à l'œil). `tests,hero` PASS
+  357/357. **Commits c67b4d3** et suivant (rouge plus vif). `net hero abilities` a manqué une fois le relevé d'Alice
+  (« cooldowns » vide), passé au passage suivant : instable, à surveiller. Suivant : **boucle 4** (étendard, aperçus à valider).
+- (J8c.4, 2026-10-29) **J8c.4 boucle 4 commencée : dessin et aperçus de l'étendard** (Celeborn, `hero-j8c`, Python seul, **rien commité, aperçus à valider par l'utilisateur**). `Tools/Editor/banner_prims.py` : l'étendard en primitives de `peasant_props` (pur Python, partagé par l'aperçu et le fabricant), cadre des pièces (X avant, Y droite, Z haut, origine au pied de la hampe), ~3,7 m (le héros ~2,2 m) : hampe de bois sombre sur un petit socle de pierre, collier et fer de lance dorés, traverse avec un pommeau doré à chaque bout, étoffe blanche à queue d'aronde (104 × 158 cm, deux moitiés convexes) à ourlet, côtés et queue dorés, **soleil doré** (disque et douze rayons) traversant l'étoffe, vu des deux faces. L'étoffe fait face à -X : la caméra RTS ne tourne jamais (D254) et regarde vers +X ; la hampe est 5 cm derrière l'étoffe (cachée par elle, le soleil est entier). `Tools/Editor/preview_banner.py` : z-buffer maison (PIL + numpy, hors Unreal) : de face, de profil, vue RTS à 55° et à la taille de l'écran (héros ~40 px) → `Saved/AnimPreview/Banner_preview.png` (358 triangles). `Tools/Editor/make_banner_mesh.py` écrit (pas encore lancé) : `/Game/Units/Props/SM_Banner`, 4 emplacements `M_MatteColor` (blanc, or, bois, pierre), sans collision. Suivant : validation des aperçus par l'utilisateur, puis lancer le fabricant, puis l'affichage pour tous (instances, une par bannière plantée, lue dans la fiche publique, balancement léger) et son test rouge d'abord.
+- (J8c.4, 2026-10-29) **J8c.4 boucle 4 faite : l'étendard** (Celeborn, `hero-j8c`). Aperçus (`Saved/AnimPreview/Banner_preview.png`) **validés par l'utilisateur** (« très bien »). `Tools/Editor/make_banner_mesh.py` : `/Game/Units/Props/SM_Banner` (358 triangles, 4 emplacements `MI_BannerWhite / Gold / Wood / Stone` sur `M_MatteColor`, sans collision) ; couleurs converties du sRGB au linéaire (au premier essai, données telles quelles, le soleil était délavé, vu sur capture) ; les instances de matériau sont mises à jour sur place (supprimer un asset dans le commandlet l'a bloqué 46 min : à éviter). **Affichage pour tous** : `UHOLBannerSubsystem` (Presentation, machines qui affichent seulement) lit chaque frame la fiche publique de chaque place (`GetHeroBannerEndStep` contre `GetServerStep`, `GetHeroBannerLocation`), une instance de `SM_Banner` par bannière debout, sans ombre, posée à la hauteur du sol (plus basse surface statique, gardée tant que la place ne change pas), balancement de ±5° autour de la hampe (période 5 s, déphasée par place) ; rien n'est envoyé. `hol.Hero.BannerDisplay` écrit « Banner display: N shown, slot S (x, y, z) ». **Test rouge d'abord** : `HeroAbility.InMatch` étendu (une bannière affichée à 16 m, place 0, sans ombre ; plus aucune une fois tombée), rouge sur le squelette (0 au lieu de 1), puis vert ; le test cale l'indice de pas de la simulation sur son compteur (`AdvanceStepIndexForTests`) car son `RunStep` ne l'avance pas. `quick_check` : cas `build hero grid` (affichage lu, place à 20 cm près du clic, captures `build_hero_banner_rings` et `build_hero_banner` au plan rapproché) et `net hero abilities` (chaque client affiche la bannière de Bob en (14665, 299)). `-Parts tests` 357/357 et `-Parts hero` PASS. **Limite** : l'étendard fait face à -X, vu de derrière (autre côté de la carte) la hampe est devant l'étoffe, soleil des deux faces ; la caméra ne tourne pas. Suivant : **boucle 5** (éclat blanc du cri sur les unités touchées, vu de tous, compteur public `Cries` ; sons), puis boucle 6.
+- (J8c.4, 2026-10-29) **J8c.4 boucle 5 faite : éclat blanc du cri et sons** (Celeborn, `hero-j8c`). **Éclat** : `FHOLHeroCryWatch` (pur, `HOLForumMessages`) dit, place par place, qu'un cri vient d'être lancé d'après le compteur public `Cries` (modulo 256 ; le premier compte vu, ou un compte qui recule par la triche de remise à zéro, n'est pas un cri) ; test `HeroAbility.CryWatch` **rouge** sur squelette, puis vert. `AHOLSelectionMarkers::UpdateCryFlashes` (toutes les machines, spectateurs compris) : à chaque cri, les unités du joueur à 12 m du héros tel qu'il est dessiné (lui compris) sont retenues, chacune reçoit 0,6 s un anneau blanc à ses pieds qui s'élargit (×1,3 à ×3,2 du rayon) et s'amincit ; journal « Cry flash: slot N, M units ». **Sons** (`make_hero_fanfare.py`, mêmes instruments VSCO, mêmes réglages) : `SW_HeroCry` (appel grave de cors, trombone et tuba, une quinte qui monte vers les trompettes, timbales et cymbale, 2,4 s) et `SW_HeroBanner` (trompette claire sur coup de timbale et gong, 2,4 s), classe `SC_Effects`, joués en 2D chez tous les joueurs (le cri par les marqueurs ; la bannière par `UHOLBannerSubsystem` quand une bannière apparaît, pas à la première image vue d'une machine qui arrive avec une bannière debout). Le test `CryWatch` vérifie que les deux sons se chargent. `quick_check` : cas `build hero grid` (« Cry flash: slot 0 » une fois, au moins le héros ; capture `build_hero_cry`) et `net hero abilities` (chaque client voit un éclat du cri de Bob). `tests,hero` PASS (358/358). **À écouter par l'utilisateur** (les sons sont provisoires comme les fanfares : jugés à l'essai de J8c.5). Suivant : **boucle 6** (contrôles de `quick_check` et captures).
+- (J8c.4 / J8c.5, 2026-10-29) **Boucle 5 commitée (41fbb9d), boucle 6 close, J8c.4 close ; J8c.5 : scénario écrit** (Celeborn, `hero-j8c`). Les contrôles et captures de la boucle 6 ont été ajoutés boucle par boucle (cas `build hero grid` : HUD à 4 moments, cercles, visée à portée et hors portée, étendard, éclat du cri, 6 captures `build_hero_aim`, `build_hero_aim_far`, `build_hero_banner_rings`, `build_hero_banner`, `build_hero_cry` ; cas `net hero abilities` : étendard et éclat chez les deux clients) ; dernier passage `-Parts tests,hero` PASS (358/358). Les captures d'avant le rouge renforcé de la boucle 3 n'étaient plus là : regardé de nouveau, le rouge de `build_hero_aim_far` reste à voir à l'essai. **J8c.5** : `Tools/Scenarios/hero_abilities.txt` et `.json` (copie de `hero_xp.json`) : héros, cercle de 12 m, 6 Hommes d'armes contre 6 ennemis, le cri (A), niveau 4 par `hol.Hero.SetXP 0 1300`, la bannière (Z), la même aura chez l'IA (J8c-Q5). **Pas encore lancé** (l'utilisateur était absent) : à lancer par `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 hero_abilities -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`. Reste : **essai de l'utilisateur** (sons à écouter, forme de l'étendard dans le jeu, éclat, cercles), corrections, fusion dans `main` (après `git merge main` dans `hero-j8c`, recompiler, `quick_check -Parts tests,hero`), clôture de J8c et de J8.
+- (J8c.5, 2026-10-29) **Essai de l'utilisateur : « ça fonctionne » ; J8c close, `hero-j8c` fusionnée dans `main` (6e37139).** `git merge main` dans `hero-j8c` n'a ramené que `AIInProgress.md` (aucun code : pas de recompilation, derniers contrôles `-Parts tests,hero` 358/358 PASS valables), un `.pyc` perdu committé avec les fanfares retiré (6e37139), puis avance rapide de `main`. Sons du cri et de la bannière restés provisoires (à refaire avec « refaire tous les sons du jeu »). Celeborn libéré. Reste de J8 : clôture du chapitre (mesures de fin de chapitre, paquet à recuire, serveur empaqueté).
+- (Clôture de J8, 2026-10-30) **Clôture de J8 ouverte** (session principale, Celeborn réservé, branche `hero-j8-close` = main 6e37139). Reste, dans l'ordre : **C1** un héros par camp dans S3 et S4 (J8-Q6 : aujourd'hui `HOLStressTestSubsystem` ne pose aucun héros ; un héros de plus par côté devant la ligne, dans la charge, ligne « Heroes » au rapport de la bataille ; rouge d'abord : 0 / 0 avant, 1 / 1 après, sur un S3 court) ; **C2** mesures au repos par `Tools\Tests\rest_measures.ps1` (S1, S2, S7, S3, S4 x2, S5, S5 combat), **à lancer par l'utilisateur machine calme** ; **C3** décisions de J8 au GDD (numéros à partir de D532 : J8-Q1 à Q6, J8a-Q1 à Q6, J8a4-Q1 à Q7, J8a5-Q1…, J8b-Q1 à Q6, J8c-Q1 à Q6 ; § 21 et paragraphe « Parcours J8 » au § 16.6) ; **C4** paquet et serveur à recuire (machine calme : un paquet bloque les autres sessions). Suivant : C1 par un sous-agent.
+- (Clôture de J8 — C3, 2026-10-30) **Décisions de J8 reportées au GDD** (sous-agent, documentation seule, rien commité) : **D533 à D551** (19 décisions, § 21, après D532 ; compteur à **D552**, ligne « Héros, clôture de J8 » ajoutée au § 22) et paragraphe **« Parcours J8 : le héros »** au § 16.6, à la suite de « Parcours J7 » (le tableau des jalons n'a pas de ligne J8 : rien changé ; la ligne M5 ne parle pas du héros). Mesures de fin de chapitre (S3 / S4 avec un héros par camp, S5) : ligne « à compléter » dans le paragraphe, à remplir par la session principale (C1, C2). Numéros et questions couvertes :
+  - **D533** périmètre et découpage de J8 : J8-Q1, J8-Q2.
+  - **D534** le Paladin-Commandant et ses chiffres de départ : J8-Q3, J8a-Q1.
+  - **D535** modèle technique et Angelscript : J8-Q4, J8a4-Q6, J8a5-Q3, Q3b, Q3c.
+  - **D536** naissance et contrôle : J8a-Q2, J8a-Q4.
+  - **D537** allure provisoire (version révisée, sans étendard) : J8a-Q3.
+  - **D538** réseau, corps et fiche du héros : J8-Q5, J8a3-Q1, J8a3-Q2, J8a5-Q9.
+  - **D539** retour, délai et prix : J8a-Q5, J8a4-Q3, J8b-Q5.
+  - **D540** retour, lieu, retour seul, alerte : J8a4-Q1, Q2, Q4, Q5, Q7.
+  - **D541** le bloc du héros : J8a5-Q1, Q2, Q4, Q5, Q6, Q7, Q8.
+  - **D542** sources d'XP : J8b-Q1.
+  - **D543** courbe d'XP et quantités : J8b-Q2 (et la part « héros tué » de J8b-Q5).
+  - **D544** statistiques par niveau : J8b-Q3.
+  - **D545** montée de niveau vue par le joueur (sons précisés à l'essai) : J8b-Q4.
+  - **D546** *Aura de l'Aube* : J8c-Q1.
+  - **D547** *Serrez les rangs* : J8c-Q2.
+  - **D548** *Bannière de l'Aube* : J8c-Q3.
+  - **D549** commande et présentation des capacités : J8c-Q4.
+  - **D550** le héros de l'IA : J8c-Q5, J8a4-Q4, J8a4-Q5, J8b.6.
+  - **D551** découpage et vérification : J8-Q6, J8a-Q6, J8b-Q6, J8c-Q6.
+  Points à savoir : (1) J8a-Q5 disait « ruine au clic (D351) », remplacé par J8a4-Q2 (forum principal, sinon le plus proche, sinon pas de retour) : D540 donne la valeur finale. (2) J8c-Q4 prévoyait de reprendre la pièce `banner` de J8a.0 ; l'étendard réel est `SM_Banner` (banner_prims.py, aperçus validés), repris dans D549. (3) J8c-Q4 disait « secteur sombre » ; le jeu fait un volet sombre depuis le haut (D549). (4) J8b-Q4 disait « éclat doré bref » : ce sont deux anneaux dorés au sol (~1 s), et le son est devenu les fanfares VSCO (D545). (5) Le plan écrit « Piquier », le GDD (D452) « Lancier » : D543 dit Lancier, D534 garde « Piquier » pour la reprise de D17. (6) Le tableau de J8c-Q6 du plan montre encore « à faire » (périmé : J8c close). (7) La note d'ouverture de la clôture disait « numéros à partir de D532 » : D532 était pris par le brouillard, la plage commence à D533. (8) J8b-Q2 n'indiquait pas le poids pour le héros tué, ajouté par J8b-Q5 (×1 / ×0,75) : D543 le dit une fois. (9) Dates des lignes = date de la décision dans le journal (D533 2026-10-25 à D551 2026-10-30). Suivant : C1 et C2 (mesures), C4 (paquet).
+- (Clôture de J8 — C1, 2026-10-30) **C1 faite : un héros par camp dans S3 et S4** (sous-agent, Celeborn `hero-j8-close`, **non commité**, `HOLStressTestSubsystem.cpp` / `.h`). `SpawnUnits` pose un `Hero` par camp en (X 0, Y ∓400 cm) devant les disques de mêlée (`GetBattleHeroLocation`), né avant les soldats ; `OrderCharge` lui donne un groupe et un ordre d'attaque-déplacement comme à l'armée (6 groupes, « 2002 units charge ») ; `GetExpectedBattleUnits()` (Count + 2) remplace `Count` pour l'attente des naissances, l'avertissement « Only N of M » et la ligne du registre ; `CountBattleAlive` laisse les héros de côté (la ligne J7 « 1000 contre 1000 » garde son sens), `CountBattleHeroes` les compte à part. Ligne ajoutée au rapport : `Battle heroes (J8): slot 0 N, slot 1 M standing at the start of the measure (health a and b); at the end X and Y (...)`. **Rouge** (binaire sans héros) : `0 et 0` ; **vert** S3 : `1 et 1` (PV 436 / 430 → 409 / 400 : ils se battent) ; S4 : `1 et 1`, les deux morts avant la fin des 10 s (flèches). Le hash de fin de bataille couvre maintenant les héros (1976 unités) : non comparable aux anciens. Tests 358/358. Simulation S3 12,99 ms / S4 10,00 ms, **machine chargée (CPU 23-59 %, autres sessions)** : sans valeur, à mesurer au repos (C2). À noter : 18 lignes « LogAutomationTest: Error: Condition failed » au démarrage des stress tests, déjà là avant ; un `Tools/Audio/__pycache__/` traîne dans Celeborn (non commité, à ne pas ajouter). Suivant : **C2** (l'utilisateur lance `rest_measures.ps1` machine calme, après fusion de `hero-j8-close` dans `main` ou depuis Celeborn), **C4** paquet et serveur.
+- (Cloture de J8 - C1, 2026-10-30 16:3x) **C1 commitee** (Celeborn, branche `hero-j8-close`, **b297add**) : build PASS, `quick_check -Parts tests` 358/358 PASS (47 s) avant le commit. Suite : correctif des Hommes d'armes inactifs autour du heros (decision A), test rouge d'abord `HeroesOfLiberty.Hero.SurplusAttackers` (`HOLHeroTests.cpp`, vraie chaine : processeur de combat, table des unites).
+- (Cloture de J8, 2026-10-30 16:5x) **Correctif des Hommes d'armes inactifs autour du heros : fait et commite** (Celeborn, hero-j8-close). Constat : le cas non ordonne marchait deja (la recherche prefere un ennemi avec une place libre, PreferFreeTarget) ; le defaut est la cible **ordonnee** (clic droit) : jamais remplacee (MaySeek), les attaquants en trop attendent derriere l'anneau de 6. Correctif (HOLCombatProcessor.cpp, cvar hol.Combat.SurplusReassign, defaut 1) : une melee ordonnee sur une cible hors d'atteinte dont les 6 places sont prises prend l'ennemi le plus proche dans son rayon d'aggression ayant une place libre (ordre fini, marche refaite). Test Hero.SurplusAttackers (vraie chaine : processeur de combat + table des unites) : avant (cvar 0) les deux ordonnes restent sur le heros, apres (cvar 1) ils prennent le Paysan ; tests 359/359, quick_check -Parts tests,combat PASS. Limite : un Paysan (aggression 0) ou l'absence d'autre ennemi a 16 m laisse l'attente ; pas d'essai joueur. Pas de fusion (a faire par la session principale).
+- (Cloture de J8, 2026-10-30 17:1x) **Scenario d'essai `surplus` et `quick_check -Parts hero` PASS (123 s)** (Celeborn, hero-j8-close). `Tools/Scenarios/surplus.txt/.json` : heros ennemi niveau 4 encercle par 6 Hommes d'armes du joueur, 8 renforts avec clic droit, un Homme d'armes ennemi libre derriere ; compare `hol.Combat.SurplusReassign` 1 / 0 (mesure hors ecran : avec 1, 4 des 8 renforts sur l'ennemi libre apres 7 s ; avec 0, tous sur le heros, certains inactifs). Commande dans `Auto_Journey_Retours.md` section 1. Reste : essai de l'utilisateur, puis fusion de hero-j8-close par la session principale.
