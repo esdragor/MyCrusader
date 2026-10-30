@@ -130,6 +130,13 @@ public:
 	static bool IssueAIAttackMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);
 
 	/**
+	 * PlayerIndex's units attack the unit TargetUnitId (IA4, D572: a Peasant finishing a weakened soldier), applied at the next step.
+	 * Whether the order entered the queue; the order's processor refuses a unit of their own camp.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIAttackUnitOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, int32 TargetUnitId, bool bQueue = false);
+
+	/**
 	 * PlayerIndex's units attack the building nearest BuildingLocation (within 100 cm, of ANY owner: an enemy's; the order's processor
 	 * refuses a building of their own camp). False when no building stands there.
 	 */

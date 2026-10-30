@@ -88,6 +88,13 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API FCycle MakeCycle(int32 Seed, int32 Index, float PreviousReArmAt, const FHOLVolcanoSettings& Settings, float EruptionLength = 0.f);
 
+	/**
+	 * Which of the site's FlowCount flows the eruption of cycle Index takes (V3, D379, V-Q2 = B of the user): drawn freely, every flow with
+	 * the same chance, no memory of the previous eruption (fairness comes from the symmetrical flows of the map's recipe, not from the draw).
+	 * A function of the seed and the cycle only, same on every machine and independent of the cycle's dates; INDEX_NONE without flow.
+	 */
+	HEROESOFLIBERTY_API int32 DrawFlow(int32 Seed, int32 Index, int32 FlowCount);
+
 	/** Phase at Now (seconds): always Dormant without the Catastrophe option (D398). EruptionLength as in MakeCycle. */
 	HEROESOFLIBERTY_API EHOLVolcanoPhase GetPhase(bool bCatastrophe, int32 Seed, float Now, const FHOLVolcanoSettings& Settings, float EruptionLength = 0.f);
 }

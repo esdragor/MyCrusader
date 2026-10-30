@@ -1,0 +1,25 @@
+Row,Family,Id,NameFr,Target,Effect,Decision
+2,Guardian,HarvestBlessed,Moisson bénie,Sanctuary,radius +25%,D111
+2,Captain,ShieldsUp,Boucliers levés,Dawn Aura,+1 armor in the aura,D111
+2,Champion,BlessedBlade,Lame bénie,Paladin,outside a duel ~1 melee attack in 4 against the Paladin is parried,D111
+3,Guardian,DawnWatch,Vigie de l'Aube,Towers,+15% vision and +10% range,D111
+3,Captain,HealersHands,Mains du guérisseur,Monks in the aura,+20% healing,D111
+3,Champion,CrusadersEndurance,Endurance du croisé,Paladin,+10% HP and out-of-combat regeneration doubled,D111
+4,Guardian,RampartStandard,Étendard du rempart,Banner,walls and towers in the Banner's zone gain armor and towers are faster,D111
+4,Captain,DawnStep,Pas de l'Aube,Close Ranks,the formation advances at reduced speed without losing its damage reduction,D111
+4,Champion,ChallengeCry,Cri du défi,Challenge,issuing a challenge gives 1 Fervor stack (~15 s) to nearby allies whatever the answer,D111
+5,Guardian,RampartsOfLight,Remparts de lumière,Blessed Rampart,also protects the adjacent segments and towers,D111
+5,Captain,AbundantGrace,Grâce abondante,Sacred Light,a second charge,D111
+5,Champion,PerfectCounter,Contre parfait,Duel riposte,a riposte on an announced strong attack stuns ~0.5 s and counts double for Ordeal,D111
+6,Guardian,DoubleStandard,Double étendard,Banner,two Banners at the same time,D111
+6,Captain,BrothersInArms,Frères d'armes,Knight's Challenge passive,in the aura redirects twice as much damage,D111
+6,Champion,ChampionsEscort,Escorte du champion,Dawn Reinforcements,the Knights arrive beside the Paladin,D111
+7,Guardian,BlessedBanner,Bannière bénie,Banner,out of combat allies in its zone slowly regenerate HP,D195
+7,Captain,DisciplinedCharge,Charge disciplinée,Dawn Charge,units that followed the charge take ~-15% damage for ~8 s after the impact,D195
+7,Champion,Spearhead,Fer de lance,Dawn Charge,the Paladin's impact +30% damage,D195
+8,Guardian,EternalRampart,Rempart éternel,Blessed Rampart,duration +30%,D195
+8,Captain,TightOrder,Ordre serré,Close Ranks,cooldown -20%,D195
+8,Champion,PublicSentence,Sentence publique,Duel Sentence,each Fault consumed gives a little Honor,D195
+9,Guardian,SiegebreakersJudgement,Jugement des assiégeants,Judgement,+50% damage to siege engines,D195
+9,Captain,SeasonedReinforcements,Renforts aguerris,Dawn Reinforcements,+1 Virtuous Knight in the squad,D195
+9,Champion,VerdictOfArms,Verdict des armes,Judgement,cast within ~30 s of a won duel costs ~50% less Honor,D195

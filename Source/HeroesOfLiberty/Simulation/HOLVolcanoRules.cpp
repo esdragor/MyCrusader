@@ -68,6 +68,18 @@ HOLVolcano::FCycle HOLVolcano::MakeCycle(const int32 Seed, const int32 Index, co
 	return Cycle;
 }
 
+int32 HOLVolcano::DrawFlow(const int32 Seed, const int32 Index, const int32 FlowCount)
+{
+	if (FlowCount <= 0)
+	{
+		return INDEX_NONE;
+	}
+	// A stream of its own (another salt than the cycle's dates): drawing a flow never moves a date. No memory of the previous eruption.
+	// The seed is hashed first: the stream's generator is linear, so neighbouring seeds (cycle 0, cycle 1) would draw alike otherwise.
+	FRandomStream Stream(static_cast<int32>(MurmurFinalize32(HashCombineFast(MurmurFinalize32(static_cast<uint32>(Seed)), MurmurFinalize32(static_cast<uint32>(Index) + 31337u)))));
+	return Stream.RandRange(0, FlowCount - 1);
+}
+
 EHOLVolcanoPhase HOLVolcano::GetPhase(const bool bCatastrophe, const int32 Seed, const float Now, const FHOLVolcanoSettings& Settings, const float EruptionLength)
 {
 	if (!bCatastrophe)
