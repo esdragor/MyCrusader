@@ -1,0 +1,19 @@
+# IA3.2 : le forum de l'IA tombe : ses Paysans le reconstruisent (tous, c'est sa derniere vie), son armee le defend, puis elle reprend le travail
+# Plain, toi (slot 0) contre une IA (slot 1, « IA Normal 2 »). Au bout d'une minute son forum est abattu par la triche : ruine ~30 s, puis reconstruction.
+# Avec la triche d'abord, puis a toi de jouer : envoie quelques soldats pres de sa ruine (SpawnHere) pour voir sa defense, et ne la laisse pas reconstruire si tu veux
+# la battre : 60 s de ruine tenue, et c'est la defaite.
+# A regarder (FocusSlot 1) :
+#  1. ses Paysans (tous) vont autour des decombres et attendent, puis ils bâtissent quand la reconstruction commence ; aucun ne fuit s'il n'y a pas d'ennemi ;
+#  2. forum debout : ils reprennent le travail (recolte, chantiers), personne ne reste plante ;
+#  3. des soldats ennemis (les tiens) a la ruine : son armee accourt meme si elle est plus faible, ses Paysans de reconstruction restent.
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+hol.Camera.FocusSlot 1
+frames 2
+wait 60
+note 1. Dans une seconde, la triche abat le forum de l'IA (hol.Victory.FallForum 1) : une vie de moins, decombres, ses Paysans viennent le reconstruire.
+hol.Victory.FallForum 1
+waitlog Victory: forum of slot 1 fell
+waitlog Peasants rebuild the forum
+note 2. Ses Paysans rebatissent le forum. Pour voir sa defense : hol.Units.SpawnHere 4 Spearman 0 ... pres de sa ruine (FocusSlot 1 d'abord).
+note 3. Reconstruit, ses Paysans reprennent la recolte. Laisse tourner, ou abats-le encore (hol.Victory.FallForum 1) : c'est sa derniere vie.

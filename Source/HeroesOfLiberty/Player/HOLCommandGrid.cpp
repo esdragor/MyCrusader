@@ -78,11 +78,6 @@ namespace HOLCommandGrid
 		return !Context.bOwnBuilding && Context.bBuilders && !Context.bSoldiers;
 	}
 
-	int32 GetReachedAge()
-	{
-		return 0;
-	}
-
 	bool IsAgeReached(const FHOLGridContext& Context, const int32 Age)
 	{
 		return Age >= 0 && Age < NumAges && Age <= Context.ReachedAge;

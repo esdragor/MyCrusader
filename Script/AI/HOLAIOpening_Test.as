@@ -138,36 +138,36 @@ void Test_SplitNothingWithoutFreePeasant(FUnitTest& T)
 	T.AssertEquals(0, HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants).Num(), "no source, no group");
 }
 
-// The margin is what the production brings in during the house's building: one producer, 20 s of house and 5 s of walk at
-// 20 s a Peasant = 2 places; two producers, 4.
+// The margin is what the production brings in during the house's building: one producer, 10 s of house and 5 s of walk at
+// 20 s a Peasant = 1 place; two producers, 2.
 void Test_HouseMarginFollowsProduction(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
-	T.AssertEquals(2, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre alone: 2");
+	T.AssertEquals(1, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre alone: 1");
 	Summary.Buildings[0].bProducing = true;
-	T.AssertEquals(2, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre producing: 2");
+	T.AssertEquals(1, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "the centre producing: 1");
 	AddBuilding(Summary, n"Barracks", EHOLConstructionState::Finished);
 	Summary.Buildings[1].bProducing = true;
-	T.AssertEquals(4, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "two producing: 4");
+	T.AssertEquals(2, HOLAIOpening::HouseMargin(Summary, HOLAIOpening::DefaultData()), "two producing: 2");
 }
 
-// The house waits until the places left fall to the margin (2); the places left count the Peasants waiting in a queue.
+// The house waits until the places left fall to the margin (1); the places left count the Peasants waiting in a queue.
 void Test_HouseWaitsForLowRoom(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
-	Summary.PopulationUsed = 7;
-	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
-	T.AssertFalse(Choice.bBuild && Choice.Type == n"House", "3 places left: no house yet");
-
-	// 8 used (one in production), none waiting: 2 left.
 	Summary.PopulationUsed = 8;
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
+	T.AssertFalse(Choice.bBuild && Choice.Type == n"House", "2 places left: no house yet");
+
+	// 9 used (one in production), none waiting: 1 left.
+	Summary.PopulationUsed = 9;
 	Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
-	T.AssertTrue(Choice.bBuild, "2 places left: the house");
+	T.AssertTrue(Choice.bBuild, "1 place left: the house");
 	T.AssertTrue(Choice.Type == n"House", "a house");
 	T.AssertEquals(1, Choice.Builder, "built by the first idle Peasant");
 
-	// 7 used, one more waiting in the queue behind the one in production: 10 - 7 - 1 = 2 left.
-	Summary.PopulationUsed = 7;
+	// 8 used, one more waiting in the queue behind the one in production: 10 - 8 - 1 = 1 left.
+	Summary.PopulationUsed = 8;
 	Summary.Buildings[0].Queue.Add(n"Peasant");
 	Summary.Buildings[0].Queue.Add(n"Peasant");
 	Summary.Buildings[0].bProducing = true;
@@ -182,7 +182,7 @@ void Test_HousesRepeat(FUnitTest& T)
 	FHOLAISummary Summary = OpeningSummary();
 	AddBuilding(Summary, n"House", EHOLConstructionState::Finished);
 	Summary.PopulationCap = 20;
-	Summary.PopulationUsed = 18;
+	Summary.PopulationUsed = 19;
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
 	T.AssertTrue(Choice.bBuild && Choice.Type == n"House", "a second house when the room is low again");
 
@@ -210,7 +210,7 @@ void Test_HouseAwayFromSources(FUnitTest& T)
 	FHOLAISummary Summary = OpeningSummary();
 	Summary.Food.Sources[0].Location = FVector(1000, 0, 0);
 	Summary.Wood.Sources[0].Location = FVector(1000, 0, 0);
-	Summary.PopulationUsed = 8;
+	Summary.PopulationUsed = 9;
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
 	T.AssertTrue(Choice.bBuild, "the house");
 	T.AssertTrue(Math::Abs(Choice.Anchor.X + 1500.0) < 1.0, "1500 cm to the -X side");
@@ -228,7 +228,7 @@ void Test_HouseAwayFromSources(FUnitTest& T)
 void Test_HouseNeedsWood(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
-	Summary.PopulationUsed = 8;
+	Summary.PopulationUsed = 9;
 	Summary.Wood.Stock = 49;
 	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, OpeningDataWithSteps());
 	T.AssertFalse(Choice.bBuild, "49 wood: no house");
@@ -634,4 +634,137 @@ void Test_RallySkipsHeldFields(FUnitTest& T)
 	Summary.Food.Sources.Add(OpeningField(21, FVector(1000, 300, 0), 1));
 	Choice = HOLAIOpening::ChooseProduction(Summary, HOLAIOpening::DefaultData());
 	T.AssertEquals(-1, Choice.RallyResource, "every field held: no rally");
+}
+
+// IA2.6b: a source that has just turned a Peasant away for want of room (a vein with every spot taken, bFull) is not sent to
+// again: with the food held and the wood used up, the five idle Peasants get no order instead of the same one every thought.
+void Test_FullVeinGetsNoPeasant(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	Summary.Wood.Sources.Empty();
+	Summary.Gold.Stock = 100;
+	FHOLAISourceNear Vein = OpeningSource(30, FVector(2000, 0, 0));
+	Vein.bFull = true;
+	Summary.Gold.Sources.Add(Vein);
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants);
+	T.AssertEquals(0, Groups.Num(), "no order to a full vein, nowhere else with room");
+}
+
+// The same vein not full takes them; full, the Peasants go to the wood that has room.
+void Test_FullVeinSendsThemToTheWood(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Gold.Stock = 100;
+	FHOLAISourceNear Vein = OpeningSource(30, FVector(2000, 0, 0));
+	Summary.Gold.Sources.Add(Vein);
+	Summary.Food.Sources.Empty();
+	Summary.Food.Sources.Add(OpeningField(20, FVector(1000, 0, 0), 1));
+	FHOLAISummary NoWood = Summary;
+	NoWood.Wood.Sources.Empty();
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(NoWood, HOLAIOpening::DefaultData(), NoWood.IdlePeasants);
+	T.AssertTrue(SentTo(Groups, 30) > 0, "the open vein, the only room, takes Peasants");
+	Summary.Gold.Sources[0].bFull = true;
+	Groups = HOLAIOpening::SplitGather(Summary, HOLAIOpening::DefaultData(), Summary.IdlePeasants);
+	T.AssertEquals(0, SentTo(Groups, 30), "none to the full vein");
+	T.AssertEquals(5, SentTo(Groups, 11), "all five to the wood");
+}
+
+// IA2.7: a slot with its first block built (the mill and the 8 farms, all finished), no berries, every field held, the food short.
+FHOLAISummary SecondBlockSummary()
+{
+	FHOLAISummary Summary = OpeningSummary();
+	AddBuilding(Summary, n"LumberCamp", EHOLConstructionState::Finished);
+	AddBuilding(Summary, n"Mill", EHOLConstructionState::Finished);
+	FHOLAIFarmPlan Plan = MakePlan();
+	AddBuildingAt(Summary, n"Mill", EHOLConstructionState::Finished, Plan.Mill);
+	Summary.Food.Sources.Empty();
+	for (int Index = 0; Index < 8; Index++)
+	{
+		AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Finished, Plan.Farms[Index]);
+		Summary.Food.Sources.Add(OpeningField(20 + Index, Plan.Farms[Index], 1));
+	}
+	Summary.Food.Stock = 20;
+	Summary.Food.Peasants = 8;
+	Summary.Wood.Stock = 500;
+	return Summary;
+}
+
+// The Peasants outnumber the places: a second block is wanted once the first is built and every field is held with the food short.
+void Test_SecondBlockWhenEveryFieldIsHeld(FUnitTest& T)
+{
+	FHOLAISummary Summary = SecondBlockSummary();
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	T.AssertTrue(HOLAIOpening::SecondBlockWanted(Summary, Data), "all fields held, food short: a second block");
+	T.AssertEquals(16, HOLAIOpening::FarmTarget(Summary, Data), "sixteen farms are the target");
+	TArray<int> NoBusy;
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data, MakePlan(), NoBusy);
+	T.AssertTrue(Choice.bPlanFarms && !Choice.bBuild, "the first plan is built: a new block is to be planned");
+}
+
+void Test_NoSecondBlockWhileThereIsRoom(FUnitTest& T)
+{
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	FHOLAISummary Summary = SecondBlockSummary();
+	Summary.Food.Sources[3].Occupants = 0;
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "a field is free: no second block");
+	T.AssertEquals(8, HOLAIOpening::FarmTarget(Summary, Data), "eight farms");
+
+	Summary = SecondBlockSummary();
+	Summary.Food.Stock = 500;
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "plenty of food: no second block");
+
+	Summary = SecondBlockSummary();
+	Summary.Buildings[Summary.Buildings.Num() - 1].State = EHOLConstructionState::Foundation;
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "the first block is not finished");
+
+	Summary = SecondBlockSummary();
+	Summary.Food.Sources.Add(OpeningSource(40, FVector(900, 0, 0)));
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "a source with room all around (berries): not yet");
+}
+
+// Once the ninth farm stands the second block goes on to the end (the fields of the new block are free), and stops at two blocks.
+void Test_SecondBlockGoesOnAndStops(FUnitTest& T)
+{
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	FHOLAISummary Summary = SecondBlockSummary();
+	AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Foundation, FVector(0, 9000, 0));
+	Summary.Food.Sources[0].Occupants = 0;
+	T.AssertEquals(16, HOLAIOpening::FarmTarget(Summary, Data), "a ninth farm: the second block is under way");
+	for (int Index = 1; Index < 16; Index++)
+	{
+		AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Finished, FVector(float(Index) * 1000.f, 9000, 0));
+	}
+	T.AssertEquals(16, HOLAIOpening::FarmTarget(Summary, Data), "sixteen farms: still the target");
+	for (int Index = 0; Index < 8; Index++)
+	{
+		Summary.Food.Sources[Index].Occupants = 1;
+	}
+	T.AssertFalse(HOLAIOpening::SecondBlockWanted(Summary, Data), "two blocks are the most");
+	TArray<int> NoBusy;
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data, MakePlan(), NoBusy);
+	T.AssertFalse(Choice.bPlanFarms, "no third block");
+}
+
+// The farms of the second block count in the spending too.
+void Test_SecondBlockCountsInTheSpending(FUnitTest& T)
+{
+	FHOLAISummary Summary = SecondBlockSummary();
+	TArray<float> Held = HOLAINeeds::SpendOf(Summary, HOLAIOpening::DefaultData());
+	Summary.Food.Sources[0].Occupants = 0;
+	TArray<float> Free = HOLAINeeds::SpendOf(Summary, HOLAIOpening::DefaultData());
+	T.AssertTrue(OpeningNear(Held[1] - Free[1], 600.f), "8 more farms of 75 wood once the second block is wanted");
+}
+
+// A mining camp costs its wood like the other buildings (100): an order is not sent while the wood is short (it was, at 0 wood, every
+// quarter second, a different Peasant each time, all refused by the server).
+void Test_MiningCampNeedsItsWood(FUnitTest& T)
+{
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	T.AssertEquals(100, HOLAIOpening::WoodCostOf(Data, n"MiningCamp"), "the mining camp's wood");
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.Wood.Stock = 30;
+	TArray<int> NoBusy;
+	T.AssertEquals("no wood", HOLAIOpening::OrderOf(Summary, Data, n"MiningCamp", FVector(5000, 0, 0), false, NoBusy).Nothing, "30 wood: no order for a mining camp");
 }

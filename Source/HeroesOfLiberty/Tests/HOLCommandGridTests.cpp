@@ -592,7 +592,6 @@ bool FHOLCommandGridAgesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Builders = MakeBuilders();
 	Builders.bOwnUnits = true;
 	Builders.Buildable.Add({ HOLBuildingTypeNames::Barracks, 4, 1 });
-	TestEqual(TEXT("the age reached: I for now"), HOLCommandGrid::GetReachedAge(), 0);
 	for (int32 Age = 0; Age < HOLCommandGrid::NumAges; ++Age)
 	{
 		TestEqual(*FString::Printf(TEXT("age %d reached: I only"), Age), HOLCommandGrid::IsAgeReached(Builders, Age), Age == 0);

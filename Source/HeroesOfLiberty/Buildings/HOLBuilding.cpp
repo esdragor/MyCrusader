@@ -302,7 +302,8 @@ FHOLForumBlock AHOLBuilding::GetForumBlock(const bool bOwn) const
 {
 	const UWorld* World = GetWorld();
 	const AHOLGameState* GameState = bPrimaryForum && World ? World->GetGameState<AHOLGameState>() : nullptr;
-	return HOLForumRules::GetSelectionBlock(GameState ? &GameState->GetForumState(OwnerPlayer) : nullptr, FHOLForumTuning::FromSettings(), bOwn,
+	return HOLForumRules::GetSelectionBlock(GameState ? &GameState->GetForumState(OwnerPlayer) : nullptr,
+		GameState ? GameState->GetForumTuning(OwnerPlayer) : FHOLForumTuning::FromSettings(), bOwn,
 		BuildersAtWork);
 }
 
@@ -624,7 +625,7 @@ FHOLForumLookChoice AHOLBuilding::GetForumLook() const
 	const UWorld* World = GetWorld();
 	const AHOLGameState* GameState = bPrimaryForum && World ? World->GetGameState<AHOLGameState>() : nullptr;
 	return GameState && GameState->IsForumDown(OwnerPlayer)
-		? HOLForumRules::GetLook(GameState->GetForumState(OwnerPlayer), FHOLForumTuning::FromSettings()) : FHOLForumLookChoice();
+		? HOLForumRules::GetLook(GameState->GetForumState(OwnerPlayer), GameState->GetForumTuning(OwnerPlayer)) : FHOLForumLookChoice();
 }
 
 float AHOLBuilding::GetTargetRise() const

@@ -142,6 +142,7 @@ $SubCaseTable = @{
         rallysteps = @{ Marks = @("rallysteps", "rallysteps source", "rallysteps replace", "rallysteps nine"); Setup = @() }
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
         barwidth = @{ Marks = @("barwidth"); Setup = @() }
+        tiers = @{ Marks = @("tiers"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -493,7 +494,7 @@ if ($Parts -contains "menu") {
 # an order of the fallen player refused by the server (D358); then a second match where the AI is defeated (hol.Victory.Defeat 1): Victory, "Quitter vers le menu", the menu again.
 if ($Parts -contains "victory") {
     $VictoryConfig = Join-Path $TestSaved "victory_1v1.json"
-    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1 } ] }' | Set-Content -Encoding ascii $VictoryConfig
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0 }, { "state": "AI", "colorIndex": 1, "aiBrain": false } ] }' | Set-Content -Encoding ascii $VictoryConfig
     Step "mark victory surrender", "hol.UI.NewGame.Launch $VictoryConfig 0", "waitmap Plain", "frames 60"
     Key Escape
     Step "waitlog Game menu: opened", "frames 5", "hol.UI.Focus SurrenderButton", "frames 3"
@@ -1146,6 +1147,18 @@ if ($Parts -contains "camera") {
             for ($i = 0; $i -lt 24; $i++) { Step "wait 0.5", "hol.Orders.Chains 0" }
             # Taken away at the end, around L3 (waited for without its count, checked by the analysis).
             Step "mark move lines end", "hol.Units.Remove $($LinesL3 -join ' ') 800 0", "waitlog units of slot 0 within 800 of ($($LinesL3 -join ', '))", "frames 3"
+            # Orders and Tab (EtapeDefini, the user's 2026-10-30 remark): 3 Peasants + 2 Men-at-arms + 3 Archers boxed, Tab to
+            # the Men-at-arms (All, Archer, ManAtArms), a right click 10 m north: only the 2 Men-at-arms are ordered and move;
+            # then Tab to Peasants and to All, a right click on the same point: the 8 go (« Tous »). Taken away at the end.
+            Step "hol.Units.SpawnSeed 103", "hol.Units.Spawn 3 $($LinesFrom -join ' ') 0 Peasant 150", "hol.Units.Spawn 2 $($LinesFrom -join ' ') 0 ManAtArms 150",
+                "hol.Units.Spawn 3 $($LinesFrom -join ' ') 0 Archer 150", "wait 0.5", "hol.Camera.Focus $($LinesFrom -join ' ')", "frames 3",
+                "hol.Select.BoxGround $($LinesFrom[0] - 400) $($LinesFrom[1] - 400) $($LinesFrom[0] + 400) $($LinesFrom[1] + 400)",
+                "waitlog Selection: 8 units (own)", "mark move tab", "hol.Units.Where 0", "hol.Select.Subgroup", "waitlog Subgroup: Archer x3",
+                "hol.Select.Subgroup", "waitlog Subgroup: ManAtArms x2", "hol.Select.OrderGround $($LinesL1 -join ' ')", "wait 4", "hol.Units.Where 0",
+                "mark move tab all", "hol.Select.Subgroup", "waitlog Subgroup: Peasant x3", "hol.Select.Subgroup", "waitlog Subgroup: All (8)",
+                "hol.Select.OrderGround $($LinesL1 -join ' ')", "wait 6", "hol.Units.Where 0"
+            Step "mark move tab end", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Units.Remove $($LinesL1 -join ' ') 800 0",
+                "waitlog units of slot 0 within 800 of ($($LinesL1 -join ', '))", "frames 3"
             # Born on a rock (the user's trial melee_reinforce): a Man-at-arms made at the middle boulder of slot 0's ridge
             # (-12000, 0), boxed and sent 17 m beyond it; it must leave the rock and reach the point (sampled every 0.5 s).
             Step "hol.Units.SpawnSeed 103", "hol.Units.Spawn 1 $($RockAt -join ' ') 0 ManAtArms 30", "wait 0.5", "mark move rock", "hol.Units.Where 0", "hol.Nav.Units",
@@ -1739,7 +1752,7 @@ if ($Parts -contains "camera") {
             # (21 m from him): -15 %, the Man-at-arms' 12 on the Spearman 10.2 (on the hero, D17, 3.06), the Archer's 10 on it
             # (5 and its bonus against light infantry) 8.5. Those gone, a new Spearman cried over with him (Serrez les rangs),
             # the cry refused again (its cool-down), then hit: -40 %, 7.2 (on the hero 2.16) and arrows of 6. His XP to
-            # level 4, his banner refused 17 m from him, planted 16 m away; a Spearman 6 m beyond it (22 m from him) hit by a
+            # level 4, his banner refused 30 m from him, planted 15 m away (not on the 16 m edge: in a long run he has drifted a metre while fighting, 17 m was planted and the 16 m one refused, the waitlog then missed the line); a Spearman 6 m beyond it (22 m from him) hit by a
             # Man-at-arms: 10.2. Then all removed, his abilities reset (the banner gone), his XP back to 0, the centre selected
             # then Escape (as the cases before).
             $AuraHero = $BuildHero
@@ -1754,7 +1767,7 @@ if ($Parts -contains "camera") {
                 "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
                 "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
-                "hol.Hero.Banner 0 $($AuraHero[0] + 1700) $($AuraHero[1])", "hol.Hero.Banner 0 $($AuraHero[0] + 1600) $($AuraHero[1])", "waitlog plants his banner",
+                "hol.Hero.Banner 0 $($AuraHero[0] + 3000) $($AuraHero[1])", "hol.Hero.Banner 0 $($AuraHero[0] + 1500) $($AuraHero[1])", "waitlog plants his banner",
                 "hol.Units.Spawn 1 $($AuraHero[0] + 2200) $($AuraHero[1]) 0 Spearman 10", "hol.Units.Spawn 1 $($AuraHero[0] + 2350) $($AuraHero[1]) 1 ManAtArms 10",
                 "waitlog Spearman for 10.2", "wait 0.5",
                 "hol.Units.Remove $($AuraHero -join ' ') 5000 1", "hol.Units.Remove $($AuraHero -join ' ') 5000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero",
@@ -1776,7 +1789,7 @@ if ($Parts -contains "camera") {
                 "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
-                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor off",
+                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor 0.5 0.5",
                 "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "hol.Hero.BannerDisplay", "capture build_hero_banner_rings", "hol.Camera.Focus $($AuraHero[0] + 1000) $($AuraHero[1])", "hol.Camera.Zoom 12", "frames 3", "capture build_hero_banner", "hol.Camera.Zoom -12", "hol.Camera.Focus $($AuraHero -join ' ')",
                 "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
@@ -1983,6 +1996,24 @@ if ($Parts -contains "camera") {
             }
             Step "r.SetRes 1600x900w", "frames 8", "hol.HUD.Report", "hol.Units.Remove $($CornerBuilder -join ' ') 600 0 Peasant",
                 "waitlog units of slot 0 within 600 of ($($CornerBuilder -join ', '))"
+            Key Escape
+            Step "waitlog Selection: none"
+            # The civilisation tier from the hero's level (P4, the tiers chantier): the hero born (level 1: tier 0), a Peasant
+            # selected (the builders' age panels): II locked. His XP to 600 (level 3, tier 1) while the Peasant stays selected:
+            # II opens; to 3300 (level 6, tier 2): III opens, IV stays locked (the screen follows the level, nothing re-selected).
+            # Then the main forum selected: its lives follow the hero's level (4 at level 6, 3 at level 3, 2 at level 1), in its
+            # block and in the players' table. The Peasant and the hero removed, his XP back to 0.
+            Step "mark build tiers", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')",
+                "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 1 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 3 -> 6", "wait 0.6", "frames 3", "hol.HUD.Report", "capture build_tiers_ages",
+                "hol.Units.Remove $($CornerBuilder -join ' ') 600 0 Peasant", "waitlog units of slot 0 within 600 of ($($CornerBuilder -join ', '))"
+            Key Escape
+            Step "waitlog Selection: none", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 6 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 0", "waitlog Hero level: slot 0 level 3 -> 1", "wait 0.6", "frames 3", "hol.HUD.Report",
+                "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3"
             Key Escape
             Step "waitlog Selection: none"
             Stop-CaseFilter
@@ -3323,6 +3354,22 @@ if (($Parts -contains "move") -and ($Parts -contains "camera")) {
         ($LinesMarkers.Count -eq 2) -and ($LinesMarkers[1] -match "^rings 0,.*, order lines 0, order points 0,") -and ($LinesReceived.Count -ge 2) -and ($LinesReceived[1].Count -eq 1)
     $LinesRemoved = @(Get-Section "move lines end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
     $Checks["lines: its 3 Men-at-arms taken away at the end ($($LinesRemoved -join ', '))"] = ($LinesRemoved.Count -eq 1) -and ($LinesRemoved[0] -eq 3)
+    # Orders and Tab: on the Men-at-arms' tab only the 2 Men-at-arms are ordered and move (10 m north); on « Tous », the 8.
+    $TabLog = @(Get-Section "move tab")
+    $TabOrders = @($TabLog | Select-String -Pattern "Order: (\d+) units to \(" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $TabAllOrders = @(Get-Section "move tab all" | Select-String -Pattern "Order: (\d+) units to \(" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["tab: the Men-at-arms' tab orders its 2 units alone ($($TabOrders -join ', '))"] = ($TabOrders.Count -ge 1) -and ($TabOrders[0] -eq 2)
+    $Checks["tab: « Tous » orders the 8 ($($TabAllOrders -join ', '))"] = ($TabAllOrders.Count -eq 1) -and ($TabAllOrders[0] -eq 8)
+    $TabWhere = @($TabLog | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}; foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) {
+        $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }; , $Units })
+    if ($TabWhere.Count -ge 2) {
+        $TabNear = @($TabWhere[0].Keys | Where-Object { [Math]::Abs($TabWhere[0][$_][0] - $LinesFrom[0]) -le 600 -and [Math]::Abs($TabWhere[0][$_][1] - $LinesFrom[1]) -le 600 })
+        $TabMoved = @($TabNear | Where-Object { $TabWhere[1].ContainsKey($_) -and $TabWhere[1][$_][1] - $TabWhere[0][$_][1] -ge 500 })
+        $Checks["tab: of the 8 at the start, only 2 walked north on the Men-at-arms' tab (near $($TabNear.Count), moved $($TabMoved.Count))"] = ($TabNear.Count -eq 8) -and ($TabMoved.Count -eq 2)
+    }
+    else { $Checks["tab: its 2 unit reports ($($TabWhere.Count))"] = $false }
+    $TabRemoved = @(Get-Section "move tab end" | Select-String -Pattern "Remove: (\d+) units of slot 0 within 800 of" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["tab: its 8 units taken away at the end ($($TabRemoved -join ', '))"] = ($TabRemoved.Count -eq 1) -and ($TabRemoved[0] -eq 8)
     # Born on a rock: the Man-at-arms made at the boulder (put on the ground beside it, within 6 m) leaves it and reaches its point (within 3 m) in 12 s.
     $RockWhere = @(Get-Section "move rock" | Select-String -Pattern "Units where: (.*)$" | ForEach-Object { $Units = @{}; foreach ($M in [regex]::Matches($_.Matches[0].Groups[1].Value, "#(\d+) slot 0 at \((-?\d+), (-?\d+)\)")) {
         $Units[[int]$M.Groups[1].Value] = @([double]$M.Groups[2].Value, [double]$M.Groups[3].Value) }; , $Units })
@@ -3661,7 +3708,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ([int]$Matches[1] -ge 10) -and ([int]$Matches[1] -le 90)
     $FinishedA = & $Value $Site "(Construction: slot 0 finished House at \($($BuildA -join ', ')\) .*)$"
     $StepsA = if ([string]$FinishedA -match "after (\d+) steps") { [int]$Matches[1] } else { -1 }
-    $Checks["A finished by one builder in the table's time, 20 s at speed 2: 200 steps ($FinishedA)"] = [bool]($FinishedA -match "after 200 steps of work \(by builders: 1 x200\), speed 2$")
+    $Checks["A finished by one builder in the table's time, 10 s at speed 2: 100 steps ($FinishedA)"] = [bool]($FinishedA -match "after 100 steps of work \(by builders: 1 x100\), speed 2$")
     $Prods = @($Site | Select-String -Pattern "Production report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Huds = @($Site | Select-String -Pattern "HUD report: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["population cap 10 -> 20 when A is finished, the HUD too ($(($Prods | ForEach-Object { & $Cap $_ }) -join ' -> '); HUD $(($Huds | ForEach-Object { & $Cap $_ }) -join ' -> '))"] =
@@ -4239,9 +4286,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["under aura and cry: hits Spearman 7.2 or Hero 2.16, arrows 6 (hits $($AuraHits[1] -join ', '); arrows $($AuraArrows[1] -join ', '))"] =
         ($AuraHits[1].Count -ge 1) -and (@($AuraHits[1] | Where-Object { $_ -notin @("Spearman 7.2", "Hero 2.16") }).Count -eq 0) -and
         ($AuraArrows[1].Count -ge 1) -and (@($AuraArrows[1] | Where-Object { $_ -ne "6" }).Count -eq 0)
-    $Checks["level 4: the banner refused 17 m away, planted 16 m away"] =
-        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1700), $($BuildHero[1])) refused" -Quiet) -and
-        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1600), $($BuildHero[1])) planted" -Quiet)
+    $Checks["level 4: the banner refused 30 m away, planted 15 m away"] =
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 3000), $($BuildHero[1])) refused" -Quiet) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1500), $($BuildHero[1])) planted" -Quiet)
     $Checks["22 m from him, 6 m from his banner: hits 10.2 ($($AuraHits[2] -join ', ')); the abilities reset at the end"] =
         ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
         [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
@@ -4637,18 +4684,42 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudWidth = @(Get-Section "build barwidth" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $HudLayouts = @(foreach ($Line in $HudWidth) {
-        if ($Line -match "HUD layout: viewport (\d+x\d+), dpi ([\d.]+), width (\d+), bar (\d+) shown (\d+) \(scale ([\d.]+)\) right (\d+), minimap (\d+) left (\d+), gap (-?\d+)") {
-            [pscustomobject]@{ Size = $Matches[1]; Width = [int]$Matches[3]; Bar = [int]$Matches[4]; Shown = [int]$Matches[5]; Scale = [double]$Matches[6]; Gap = [int]$Matches[10] }
+        if ($Line -match "HUD layout: viewport (\d+x\d+), dpi ([\d.]+), width (\d+), bar (\d+) shown (\d+) \(scale ([\d.]+)\) right (\d+), minimap (\d+) left (\d+), gap (-?\d+), medallion (none|top -?\d+ clip -?\d+ cut (\d+))") {
+            [pscustomobject]@{ Size = $Matches[1]; Width = [int]$Matches[3]; Bar = [int]$Matches[4]; Shown = [int]$Matches[5]; Scale = [double]$Matches[6]; Gap = [int]$Matches[10]; Medallion = $Matches[11]; Cut = $(if ($Matches[12]) { [int]$Matches[12] } else { 0 }) }
         }
     })
     $HudSay = @($HudLayouts | ForEach-Object { "$($_.Size): width $($_.Width) bar $($_.Bar) shown $($_.Shown) gap $($_.Gap)" }) -join ', '
     $Checks["a layout line at each of the $($HudSizes.Count) sizes and back at 1600x900 ($HudSay)"] =
         ($HudLayouts.Count -eq $HudSizes.Count + 1) -and (@(Compare-Object ($HudSizes + "1600x900") @($HudLayouts | ForEach-Object { $_.Size }) -SyncWindow 0).Count -eq 0)
+    $Checks["the age medallions not cut by the scale box nor the window's top at any size (Peasant selected; $(($HudLayouts | ForEach-Object { "$($_.Size) $($_.Medallion)" }) -join ', '))"] =
+        ($HudLayouts.Count -gt 0) -and (@($HudLayouts | Where-Object { $_.Medallion -eq "none" -or $_.Cut -gt 0 }).Count -eq 0)
     $Checks["the bar left of the minimap's place at every size (gap >= 0)"] = ($HudLayouts.Count -gt 0) -and (@($HudLayouts | Where-Object { $_.Gap -lt 0 }).Count -eq 0)
     $Checks["the bar at its full size at 1920x1080 and 1600x900 (scale 1)"] =
         (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") }).Count -eq 2) -and
         (@($HudLayouts | Where-Object { $_.Size -in @("1920x1080", "1600x900") -and ($_.Scale -lt 0.995 -or $_.Shown -ne $_.Bar) }).Count -eq 0)
     $AllOk = (Report "build barwidth" $Checks) -and $AllOk
+    # The tiers (P4): the age panels follow the hero's level (II opens at level 3, III at level 6, IV stays locked), the
+    # main forum's lives too (2, 3, 4), in its block and in the players' table, as the simulation and the screen write them.
+    $Tiers = @(Get-Section "build tiers" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $TierAges = @($Tiers | Select-String -Pattern "HUD report: .*, grid ages (I=\w+) \[[^\]]*\] (II=\w+) \[[^\]]*\] (III=\w+) \[[^\]]*\] (IV=\w+) " |
+        ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value) $($_.Matches[0].Groups[3].Value) $($_.Matches[0].Groups[4].Value)" })
+    $Checks["the age panels follow the level: level 1 II locked, level 3 II open, level 6 III open and IV locked ($($TierAges -join '; '))"] =
+        (($TierAges -join ";") -eq "I=open II=locked III=locked IV=locked;I=open II=open III=locked IV=locked;I=open II=open III=open IV=locked")
+    $TierLives = @($Tiers | Select-String -Pattern "HUD forum: selection, lives (\d+), players \[([^\]]*)\]" | ForEach-Object {
+        $Row = @($_.Matches[0].Groups[2].Value -split " \| " | Where-Object { $_ -match "^slot 0 " }) | Select-Object -First 1
+        "$($_.Matches[0].Groups[1].Value)/$(if ("$Row" -match 'lives (\d+) standing$') { $Matches[1] } else { '?' })"
+    })
+    $Checks["the forum's lives follow the level, block / table: level 6 4, level 3 3, level 1 2 ($($TierLives -join '; '))"] =
+        (($TierLives -join ";") -eq "4/4;3/3;2/2")
+    # The medallions (the tiers' tops, rising over the bar's top edge) drawn whole at each of the three levels (the user's trial:
+    # "the tiers are cut above"): the layout line read with each report of the Peasant selected, a cut of 0.
+    $TierCuts = @($Tiers | Select-String -Pattern "HUD layout: .*medallion top -?\d+ clip -?\d+ cut (\d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Checks["the age medallions drawn whole at levels 1, 3 and 6 (cut: $($TierCuts -join ', '))"] =
+        ($TierCuts.Count -eq 3) -and (@($TierCuts | Where-Object { [int]$_ -gt 0 }).Count -eq 0)
+    $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
+    $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
+    $AllOk = (Report "build tiers" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -6654,6 +6725,14 @@ if ($Parts -contains "aiduel") {
             # IA1.5: a Peasant on a building site is not idle (the opening's house, camp and mill).
             $Reports[$Slot] += [int]$Match.Matches[0].Groups[2].Value - [int]$Match.Matches[0].Groups[3].Value
         }
+        # IA2.4: the soldiers do not gather either: per slot, the army alive at each status line (every 5 s), taken for the reports 2 s apart (the larger of the two lines around it: a soldier born between two lines is not an idle Peasant).
+        $ArmyOf = @{}
+        foreach ($Match in ($Text | Select-String -Pattern "AI slot (\d+) step \d+: status .* army S(\d+) M(\d+) A(\d+) C(\d+)")) {
+            $G = $Match.Matches[0].Groups
+            $Slot = [int]$G[1].Value
+            if (-not $ArmyOf.ContainsKey($Slot)) { $ArmyOf[$Slot] = @() }
+            $ArmyOf[$Slot] += [int]$G[2].Value + [int]$G[3].Value + [int]$G[4].Value + [int]$G[5].Value
+        }
         $Run.MaxIdle = 0.0
         $Run.NumReports = 0
         foreach ($Slot in $Reports.Keys) {
@@ -6661,8 +6740,13 @@ if ($Parts -contains "aiduel") {
             $Streak = 0
             # The starting hero is among the "not gathering": the Peasants idle are the ones above it.
             $Heroes = @($Text | Select-String -Pattern "Starting hero of slot $Slot spawned").Count
+            $ReportIndex = 0
             foreach ($NotGathering in $Reports[$Slot]) {
-                $Streak = if ($NotGathering -gt $Heroes) { $Streak + 1 } else { 0 }
+                $Soldiers = 0
+                if ($ArmyOf.ContainsKey($Slot) -and $ArmyOf[$Slot].Count -gt 0) { $At = [int][Math]::Floor($ReportIndex * 2 / 5); $Soldiers = [Math]::Max($ArmyOf[$Slot][[Math]::Min($At, $ArmyOf[$Slot].Count - 1)], $ArmyOf[$Slot][[Math]::Min($At + 1, $ArmyOf[$Slot].Count - 1)]) }
+                $ReportIndex++
+                # IA2.6: two units of slack: a soldier born between two status lines (5 s) is not yet in the army read, and the idle Peasants it hides are few; a real idle group (the gold mine with no room) is bigger and lasts.
+                $Streak = if (($NotGathering - $Soldiers) -gt ($Heroes + 2)) { $Streak + 1 } else { 0 }
                 $Run.MaxIdle = [Math]::Max($Run.MaxIdle, 2.0 * $Streak)
             }
         }

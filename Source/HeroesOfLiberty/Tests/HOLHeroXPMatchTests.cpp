@@ -296,6 +296,63 @@ bool FHOLHeroXPBuildingTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// P2 (D349, D04): a forum's lives follow the tier its hero's level opens - 2 at tiers 0, 3 at level 3, 4 at level 6 -
+// slot by slot, through the game state the HUD and the rules read.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPForumLivesTest, "HeroesOfLiberty.HeroXP.ForumLives", UE::HeroesOfLiberty::Tests::HeroXPMatch::Flags)
+
+bool FHOLHeroXPForumLivesTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	if (TestTrue(TEXT("test world ready"), State && Heroes && Units && Simulation))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index == 1 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+		}
+		State->InitVictory(Config);
+		// The two heroes born, their sheets written at a step's end: before that a slot has no hero, so no level and no tier.
+		Heroes->BindSteps();
+		for (int32 Slot = 0; Slot < 2; ++Slot)
+		{
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = UE::HeroesOfLiberty::Tests::HeroXPMatch::Hero;
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Slot);
+			Request.Center = FVector(Slot * 5000.0, 0.0, 0.0);
+			Units->RequestUnits(Request);
+		}
+		Units->ServeBirthRequests();
+		int64 Step = 0;
+		const auto EndStep = [Simulation, &Step] { Simulation->GetOnStepEnded().Broadcast(++Step); };
+		EndStep();
+		TestEqual(TEXT("level 1: 2 lives"), State->GetLives(0), 2);
+		TestTrue(TEXT("XP set for level 3"), Heroes->SetXP(0, HOLHeroXP::GetLevelXP(3)));
+		EndStep();
+		TestEqual(TEXT("level 3 (tier 1): 3 lives"), State->GetLives(0), 3);
+		TestEqual(TEXT("the other slot's forum is its own: 2 lives"), State->GetLives(1), 2);
+		TestTrue(TEXT("XP set for level 5"), Heroes->SetXP(0, HOLHeroXP::GetLevelXP(5)));
+		EndStep();
+		TestEqual(TEXT("level 5 (still tier 1): 3 lives"), State->GetLives(0), 3);
+		TestTrue(TEXT("XP set for level 6"), Heroes->SetXP(0, HOLHeroXP::GetLevelXP(6)));
+		EndStep();
+		TestEqual(TEXT("level 6 (tier 2): 4 lives"), State->GetLives(0), 4);
+		TestTrue(TEXT("XP set for slot 1's level 3"), Heroes->SetXP(1, HOLHeroXP::GetLevelXP(3)));
+		EndStep();
+		TestEqual(TEXT("slot 1's forum rose with its own hero: 3 lives"), State->GetLives(1), 3);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroXPLevelAlertsTest, "HeroesOfLiberty.HeroXP.LevelAlerts", UE::HeroesOfLiberty::Tests::HeroXPMatch::Flags)
 
 // J8b.4 (J8b-Q4): the alerts of a level up, in French (the source), and when a machine sees a hero go up.
