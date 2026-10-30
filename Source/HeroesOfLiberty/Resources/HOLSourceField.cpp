@@ -143,7 +143,7 @@ int32 AHOLSourceField::GetNumNavCylinders() const
 float AHOLSourceField::GetDrawnRadius(const FHOLSourceTypeRow& Type)
 {
 	// The widest piece of the provisional shapes below (a final mesh is drawn about as wide as its body).
-	const float WidthInRadii = Type.Mesh.IsNull() && Type.Resource == EHOLResource::Wood ? 4.8f : 2.f;
+	const float WidthInRadii = 2.f;
 	return Type.Radius * WidthInRadii * 0.5f;
 }
 
@@ -161,8 +161,8 @@ TArray<AHOLSourceField::FPiece> AHOLSourceField::MakeProvisionalPieces(const EHO
 	case EHOLResource::Wood:
 		// D297: a trunk and a green cone; the cone is wider than the body, so that a forest reads as one canopy, and starts
 		// above a Peasant's head (2.7 m), so that one gathering at its foot is seen under it.
-		Add(CylinderMesh, FVector2D::ZeroVector, FVector(1.f, 1.f, 0.45f), 0.f, 0.f, TrunkColor);
-		Add(ConeMesh, FVector2D::ZeroVector, FVector(4.8f, 4.8f, 0.6f), 0.4f, 0.f, CrownColor);
+		Add(CylinderMesh, FVector2D::ZeroVector, FVector(0.5f, 0.5f, 0.45f), 0.f, 0.f, TrunkColor);
+		Add(ConeMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 0.6f), 0.4f, 0.f, CrownColor);
 		break;
 	case EHOLResource::Food:
 		// A bush with red berries on top.
