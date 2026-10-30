@@ -100,6 +100,10 @@ namespace UE::HeroesOfLiberty::Combat
 	float RearTargetKeep = 200.f;
 	FAutoConsoleVariableRef CVarRearTargetKeep(TEXT("hol.Combat.RearTargetKeep"), RearTargetKeep,
 		TEXT("cm (default 200, with hol.Combat.PreferFreeTarget): a melee out of reach of its target and of the new one found keeps its target, alive with a free place around it, unless the new one is this much nearer (edge to edge); 0: as before"));
+	/** J8 close (decision A of 2026-10-30, the J8a trial: Men-at-arms idle round the hero): a surplus attacker of an encircled ordered target takes another enemy. */
+	int32 SurplusReassign = 1;
+	FAutoConsoleVariableRef CVarSurplusReassign(TEXT("hol.Combat.SurplusReassign"), SurplusReassign,
+		TEXT("1 (default, with hol.Combat.PreferFreeTarget): a melee ordered at a target it cannot reach, every place around it taken (MaxAttackers bodies), takes the nearest enemy within its aggression radius that has a place left, its order over; 0: it waits behind the crowd, as before"));
 	/** MV.4, choice C (AoE4): an idle melee soldier comes to the aid of a friend fighting within this radius (HOLCombat::ShouldComeToAid). */
 	float AidRadius = HOLCombat::DefaultAidRadius;
 	FAutoConsoleVariableRef CVarAidRadius(TEXT("hol.Combat.AidRadius"), AidRadius,
@@ -1593,6 +1597,51 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Combat.Target = Fighters[Touched].Entity;
 				Combat.bAttacking = false;
 				Target = Touched;
+			}
+		}
+
+		// J8 close (decision A of 2026-10-30, the J8a trial: Men-at-arms idle round the hero): a melee ordered at a target it cannot
+		// reach, every place around it taken (MaxAttackers bodies touching it), leaves it for the nearest enemy within its aggression
+		// radius that has a place left; its order is then over (as when its target dies) and it fights as a free unit. An unordered
+		// one already does so in its search (PreferFreeTarget).
+		if (SurplusReassign != 0 && bPreferFree && bSearchStep && Combat.bOrderedTarget && Target != INDEX_NONE && Constants.AggressionRadius > 0.f
+			&& !HOLCombat::IsRangedAttack(Constants.AttackRange) && Combat.TargetBuilding.IsExplicitlyNull() && Combat.OrderedBuilding.IsExplicitlyNull()
+			&& !HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange)
+			&& PlacesAround(Target) >= HOLCombat::MaxAttackers)
+		{
+			GatherNearby(Index, Constants.AggressionRadius + Constants.Radius + MaxRadius, Nearby);
+			int32 Spare = INDEX_NONE;
+			double SpareDistance = 0.0;
+			for (const int32 Other : Nearby)
+			{
+				const FFighter& Enemy = Fighters[Other];
+				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0)
+				{
+					continue;
+				}
+				const double Distance = HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius);
+				if (Distance > Constants.AggressionRadius || PlacesAround(Other) >= HOLCombat::MaxAttackers)
+				{
+					continue;
+				}
+				if (Spare == INDEX_NONE || Distance < SpareDistance || (Distance == SpareDistance && Enemy.UnitId < Fighters[Spare].UnitId))
+				{
+					Spare = Other;
+					SpareDistance = Distance;
+				}
+			}
+			if (Spare != INDEX_NONE)
+			{
+				--Fighters[Target].Combat->AttackerCount;
+				++Fighters[Spare].Combat->AttackerCount;
+				Touch(Target);
+				Touch(Spare);
+				Touch(Index);
+				Combat.Target = Fighters[Spare].Entity;
+				Combat.bOrderedTarget = false;
+				Combat.bAttacking = false;
+				Target = Spare;
+				bZoneTaken = true; // walked to at once
 			}
 		}
 
