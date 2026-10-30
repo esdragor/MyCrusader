@@ -13,7 +13,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 
 ## Tests d'une heure
 
-Test 1 : 2026-10-30 16:01-17:05 (archivé dans `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`). Test 2 : **préparé le 2026-10-30, à lancer seulement quand l'utilisateur le demande** ; mêmes règles que ci-dessous, mesures au repos et paquet sautés. **Autorisé (confirmé par l'utilisateur le 2026-10-30) : commits sur les branches des worktrees ET fusions dans `main` (agent de fusion, `quick_check` des parties touchées vert avant) ; jamais de push.** Le test 2 ne démarre qu'après la fin des agents lancés le 17:50.
+Test 1 : 2026-10-30 16:01-17:05 (archivé dans `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`). Test 2 : **préparé le 2026-10-30, à lancer seulement quand l'utilisateur le demande** ; mêmes règles que ci-dessous, mesures au repos et paquet sautés. **Autorisé (confirmé par l'utilisateur le 2026-10-30) : commits sur les branches des worktrees ET fusions dans `main` (agent de fusion, `quick_check` des parties touchées vert avant) ; jamais de push.** Les agents du 17:50 ont tous fini et les six branches sont fusionnées dans main (e547b2f, 2026-10-30 19:30) : tous les worktrees sont libres et à jour avec main pour le départ du test 2 (lancé par l'utilisateur dans un autre agent).
 
 ## Règles de conduite (réécrites après le test d'1 h du 2026-10-30)
 
