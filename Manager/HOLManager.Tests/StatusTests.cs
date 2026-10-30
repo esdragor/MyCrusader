@@ -17,7 +17,7 @@ public class StatusTests(WebApplicationFactory<Program> factory) : IClassFixture
         var response = await client.GetAsync("/status");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var status = await response.Content.ReadFromJsonAsync<Status>();
-        Assert.Equal(new Status(1, "2026-10-23-test", 0, 0, 2), status);
+        Assert.Equal(new Status(1, "2026-10-23-test", 0, 0, 4), status);
     }
 
     [Fact]

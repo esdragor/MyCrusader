@@ -132,7 +132,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero grid"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -289,6 +289,8 @@ if ($Parts -contains "net") {
     $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
     $NetHeroBornFlag = Join-Path $TestSaved "quick_net_hero_born.flag"
     $NetHeroXPFlag = Join-Path $TestSaved "quick_net_hero_xp.flag"
+    $NetHeroAbilitiesFlag = Join-Path $TestSaved "quick_net_hero_abilities.flag"
+    $NetHeroCastFlag = Join-Path $TestSaved "quick_net_hero_cast.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
@@ -343,6 +345,13 @@ if ($Parts -contains "net") {
             "mark net hero xp", "hol.Hero.SetXP 1 220", "wait 1", "hol.Units.Spawn 1 14300 300 0 ManAtArms 10", "wait 3",
             "hol.Units.Remove 14200 300 2000 0 ManAtArms", "wait 2", "hol.Hero.Report", "signal $NetHeroXPFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_xp1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_xp2.flag") 120",
+            # J8c.3: Bob's XP to 1 300 (level 4: the banner open); Bob casts his cry twice (the second refused, its cool-down)
+            # and plants his banner by his forum (hol.Hero.Cast); the server's report once he has, the clients' signal; his
+            # abilities reset after.
+            "mark net hero abilities", "hol.Hero.SetXP 1 1300", "wait 1", "signal $NetHeroAbilitiesFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_cast1.flag") 120", "wait 1", "hol.Hero.Report", "signal $NetHeroCastFlag",
+            "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities2.flag") 120",
+            "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
@@ -1725,6 +1734,54 @@ if ($Parts -contains "camera") {
                 "hol.Combat.Enabled 0", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
+            # J8c.2 loop 2: the hero's aura, cry and banner in a match (J8c-Q1 to Q3), the hits logged (hol.Combat.LogHits). His
+            # hero again, a Spearman of slot 0 6 m from him, a Man-at-arms of slot 1 beside it and an Archer of slot 1 15 m off
+            # (21 m from him): -15 %, the Man-at-arms' 12 on the Spearman 10.2 (on the hero, D17, 3.06), the Archer's 10 on it
+            # (5 and its bonus against light infantry) 8.5. Those gone, a new Spearman cried over with him (Serrez les rangs),
+            # the cry refused again (its cool-down), then hit: -40 %, 7.2 (on the hero 2.16) and arrows of 6. His XP to
+            # level 4, his banner refused 17 m from him, planted 16 m away; a Spearman 6 m beyond it (22 m from him) hit by a
+            # Man-at-arms: 10.2. Then all removed, his abilities reset (the banner gone), his XP back to 0, the centre selected
+            # then Escape (as the cases before).
+            $AuraHero = $BuildHero
+            $AuraSpot = @($AuraHero[0], ($AuraHero[1] + 600))
+            Step "mark build hero aura", "hol.Combat.Enabled 1", "hol.Combat.LogHits 1", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($AuraSpot[0] + 150) $($AuraSpot[1]) 1 ManAtArms 10",
+                "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
+                "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
+                "hol.Units.Spawn 1 $($AuraSpot -join ' ') 0 Spearman 10", "wait 0.3", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,",
+                "hol.Hero.CloseRanks 0", "hol.Units.Spawn 1 $($AuraSpot[0] + 150) $($AuraSpot[1]) 1 ManAtArms 10",
+                "hol.Units.Spawn 1 $($AuraSpot[0]) $($AuraSpot[1] + 1500) 1 Archer 10", "waitlog ManAtArms hits #", "wait 3",
+                "hol.Units.Remove $($AuraHero -join ' ') 4000 1", "hol.Units.Remove $($AuraHero -join ' ') 4000 0 Spearman", "wait 0.3",
+                "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
+                "hol.Hero.Banner 0 $($AuraHero[0] + 1700) $($AuraHero[1])", "hol.Hero.Banner 0 $($AuraHero[0] + 1600) $($AuraHero[1])", "waitlog plants his banner",
+                "hol.Units.Spawn 1 $($AuraHero[0] + 2200) $($AuraHero[1]) 0 Spearman 10", "hol.Units.Spawn 1 $($AuraHero[0] + 2350) $($AuraHero[1]) 1 ManAtArms 10",
+                "waitlog Spearman for 10.2", "wait 0.5",
+                "hol.Units.Remove $($AuraHero -join ' ') 5000 1", "hol.Units.Remove $($AuraHero -join ' ') 5000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "hol.Combat.LogHits 0", "hol.Combat.Enabled 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # J8c.4 loop 1: the hero's abilities from the grid (J8c-Q4), as the keys. His hero again, selected (F4): Z refused
+            # by the grid at level 1 (the banner opens at 4), A cries, A again refused by the grid (its cool-down, seconds
+            # told); at level 4 Z then a left click 10 m from him plants the banner (hol.Select.Banner). Then removed, his
+            # abilities reset, his XP back to 0, the centre selected then Escape. J8c.4 loop 2: the HUD read (hol.HUD.Report) once
+            # he is selected, after the cry, at level 4 and once the banner is planted: the grid's A and Z cells, their
+            # tooltips, the hero's block's three boxes. J8c.4 loop 3: the aura circles drawn for the player (hol.Select.Report,
+            # "Aura rings:"): his hero's once selected; at level 4 the banner aimed (Z) with the test cursor 10 m from him (its
+            # reach and its aura there, in reach), then 18 m (out of reach); once planted, the hero's and the banner's.
+            Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #", "wait 0.3", "hol.HUD.Report",
+                "hol.Select.Report",
+                "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
+                "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
+                "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor off",
+                "hol.Select.Banner $($AuraHero[0] + 1000) $($AuraHero[1])", "waitlog plants his banner", "wait 0.3", "hol.HUD.Report", "hol.Select.Report", "hol.Hero.BannerDisplay", "capture build_hero_banner_rings", "hol.Camera.Focus $($AuraHero[0] + 1000) $($AuraHero[1])", "hol.Camera.Zoom 12", "frames 3", "capture build_hero_banner", "hol.Camera.Zoom -12", "hol.Camera.Focus $($AuraHero -join ' ')",
+                "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
             # A right click on a finished deposit (L.1, D485): lumber camp D built at its first blow; three Peasants gather
             # the tree nearest CampTree for a few seconds (partly loaded, the forum nearer them than D), a fourth made empty
             # beside them; the four selected through group 3 (a box near the wood would take the camp case's gatherers too), a right click on D's centre: the three unload their wood at D (not at the
@@ -2506,6 +2563,12 @@ if ($NetListening) {
         # J8b.3: Bob's hero at level 2 (the server's signal): the sheets, the units and the block as this client has them.
         $NetSteps += "mark hero xp", "waitfile $NetHeroXPFlag 120", "wait 1", "hol.Hero.Report", "hol.Units.Where", "hol.HUD.Report",
             "signal $(Join-Path $TestSaved "quick_net_hero_xp$Client.flag")"
+        # J8c.3: Bob (client 1) at level 4 casts his cry twice (the second refused at the server) and plants his banner 6 m
+        # from his forum's return place (~(14065, 299)); then both report the sheets as they have them.
+        $NetSteps += "mark hero abilities", "waitfile $NetHeroAbilitiesFlag 120"
+        if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
+            "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
+        $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "hol.Hero.BannerDisplay", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -4150,6 +4213,89 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hero xp" $Checks) -and $AllOk
+    # J8c.2 loop 2: the aura, the cry and the banner in a match, read from the hits (hol.Combat.LogHits: "... ManAtArms hits
+    # #N Spearman for D", "arrow of #N Archer lands on #N Spearman for D"), in three phases: before the cry, from the cry to
+    # level 4, after it (the banner).
+    $Aura = @(Get-Section "build hero aura" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $CryAt = -1; $BannerAt = -1
+    for ($i = 0; $i -lt $Aura.Count; $i++) {
+        if ($CryAt -lt 0 -and $Aura[$i] -match "slot 0 cries Serrez les rangs, ") { $CryAt = $i }
+        if ($BannerAt -lt 0 -and $Aura[$i] -match "Hero level: slot 0 level 1 -> 4") { $BannerAt = $i }
+    }
+    $AuraPhases = @(
+        , @(if ($CryAt -gt 0) { $Aura[0..($CryAt - 1)] })
+        , @(if ($CryAt -ge 0 -and $BannerAt -gt $CryAt) { $Aura[$CryAt..($BannerAt - 1)] })
+        , @(if ($BannerAt -ge 0) { $Aura[$BannerAt..($Aura.Count - 1)] }))
+    $AuraHits = @($AuraPhases | ForEach-Object { , @($_ | Select-String -Pattern "ManAtArms hits #\d+ (Spearman|Hero) for ([\d.]+)," | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" }) })
+    $AuraArrows = @($AuraPhases | ForEach-Object { , @($_ | Select-String -Pattern "Archer lands on #\d+ Spearman for ([\d.]+)," | ForEach-Object { $_.Matches[0].Groups[1].Value }) })
+    $Checks["in his aura: the Man-at-arms' hits Spearman 10.2 or Hero 3.06, the arrows 8.5 (hits $($AuraHits[0] -join ', '); arrows $($AuraArrows[0] -join ', '))"] =
+        ($AuraHits[0].Count -ge 1) -and (@($AuraHits[0] | Where-Object { $_ -notin @("Spearman 10.2", "Hero 3.06") }).Count -eq 0) -and
+        ($AuraArrows[0].Count -ge 1) -and (@($AuraArrows[0] | Where-Object { $_ -ne "8.5" }).Count -eq 0)
+    $Cried = if ($CryAt -ge 0 -and $Aura[$CryAt] -match "cries Serrez les rangs, (\d+) unit") { [int]$Matches[1] } else { -1 }
+    $Checks["the cry: him and the Spearman under it ($Cried units), refused again during its cool-down"] =
+        ($Cried -ge 2) -and (@($Aura | Select-String -SimpleMatch "Hero ability: slot 0 cries Serrez les rangs").Count -eq 1) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.CloseRanks: slot 0 refused" -Quiet)
+    $Checks["under aura and cry: hits Spearman 7.2 or Hero 2.16, arrows 6 (hits $($AuraHits[1] -join ', '); arrows $($AuraArrows[1] -join ', '))"] =
+        ($AuraHits[1].Count -ge 1) -and (@($AuraHits[1] | Where-Object { $_ -notin @("Spearman 7.2", "Hero 2.16") }).Count -eq 0) -and
+        ($AuraArrows[1].Count -ge 1) -and (@($AuraArrows[1] | Where-Object { $_ -ne "6" }).Count -eq 0)
+    $Checks["level 4: the banner refused 17 m away, planted 16 m away"] =
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1700), $($BuildHero[1])) refused" -Quiet) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.Banner: slot 0 at ($($BuildHero[0] + 1600), $($BuildHero[1])) planted" -Quiet)
+    $Checks["22 m from him, 6 m from his banner: hits 10.2 ($($AuraHits[2] -join ', ')); the abilities reset at the end"] =
+        ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
+        [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
+    $AllOk = (Report "build hero aura" $Checks) -and $AllOk
+    # J8c.4 loop 1: the abilities from the grid's keys (the grid refuses what is not ready, the server casts the rest).
+    $GridCase = @(Get-Section "build hero grid" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $Checks["level 1: Z refused by the grid (the banner opens at 4)"] = [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner not ready (0 s)" -Quiet)
+    $Checks["A: the cry sent and cast"] = [bool]($GridCase | Select-String -SimpleMatch "Grid: hero cry" -Quiet) -and
+        (@($GridCase | Select-String -SimpleMatch "Hero ability: slot 0 cries Serrez les rangs").Count -eq 1)
+    $CrySeconds = if (($GridCase -join "`n") -match "Grid: hero cry not ready \((\d+) s\)") { [int]$Matches[1] } else { -1 }
+    $Checks["A again: refused by the grid, $CrySeconds s left (59 or 60)"] = $CrySeconds -ge 59 -and $CrySeconds -le 60
+    $Planted = if (($GridCase -join "`n") -match "Hero ability: slot 0 plants his banner at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { $null }
+    $Checks["level 4: Z then a left click 10 m from him plants the banner there (at $($Planted -join ', '), 30 cm at most off)"] =
+        [bool]($GridCase | Select-String -SimpleMatch "Grid: hero banner, click on the ground" -Quiet) -and ($null -ne $Planted) -and
+        ([Math]::Abs($Planted[0] - ($BuildHero[0] + 1000)) -le 30) -and ([Math]::Abs($Planted[1] - $BuildHero[1]) -le 30)
+    # J8c.4 loop 2: the HUD at the four reports (selected, after the cry, level 4, banner planted).
+    $GridReports = @($GridCase | Select-String -SimpleMatch "HUD report:" | ForEach-Object { $_.Line })
+    $GridCells = @($GridCase | Select-String -SimpleMatch "HUD cells:" | ForEach-Object { $_.Line })
+    $GridTips = @($GridCase | Select-String -SimpleMatch "HUD tooltips:" | ForEach-Object { $_.Line })
+    $GridBoxes = @($GridCase | Select-String -SimpleMatch "HUD hero abilities:" | ForEach-Object { $_.Line -replace '^.*HUD hero abilities: ', '' })
+    $Checks["4 reports ($($GridReports.Count), block lines $($GridBoxes.Count))"] = $GridReports.Count -eq 4 -and $GridBoxes.Count -eq 4
+    if ($GridReports.Count -eq 4 -and $GridBoxes.Count -eq 4) {
+        $Checks["selected, level 1: grid A=CloseRanks enabled Z=Banner greyed, the banner's tooltip 'Niveau 4 requis'; block '$($GridBoxes[0])'"] =
+            $GridReports[0].Contains("A=CloseRanks enabled Z=Banner greyed") -and $GridTips[0].Contains("Bannière de l'Aube") -and
+            $GridTips[0].Contains("Niveau 4 requis") -and $GridBoxes[0].StartsWith("aura on, cry ready, banner locked 4 | Serrez les rangs (A) / ")
+        $Checks["after the cry: A greyed, 'Rangs 59/60 s' on it; block '$($GridBoxes[1])'"] =
+            $GridReports[1].Contains("A=CloseRanks greyed") -and ($GridCells[1] -match "A: Rangs (59|60) s") -and
+            ($GridBoxes[1] -match "^aura on, cry (59|60) s, banner locked 4 \| Serrez les rangs \(A\) / .+ / Prête dans (59|60) s$")
+        $Checks["level 4: Z=Banner enabled; block '$($GridBoxes[2])'"] =
+            $GridReports[2].Contains("Z=Banner enabled") -and ($GridBoxes[2] -match "^aura on, cry \d+ s, banner ready")
+        $Checks["banner planted: Z greyed; block '$($GridBoxes[3])'"] =
+            $GridReports[3].Contains("Z=Banner greyed") -and ($GridBoxes[3] -match "^aura on, cry \d+ s, banner (119|120) s")
+    }
+    # J8c.4 loop 3: the aura circles, the player's alone (hol.Select.Report's "Aura rings:" at the 4 points).
+    $AuraRings = @($GridCase | Select-String -SimpleMatch "Aura rings:" | ForEach-Object { $_.Line -replace '^.*Aura rings: ', '' })
+    $Checks["4 aura ring lines ($($AuraRings.Count))"] = $AuraRings.Count -eq 4
+    if ($AuraRings.Count -eq 4) {
+        $Checks["selected: his hero's circle of 12 m ('$($AuraRings[0])')"] = $AuraRings[0] -match "^hero \(-?\d+, -?\d+\) 1200$"
+        $Checks["aimed 10 m away: the reach of 16 m, the aura there in reach ('$($AuraRings[1])')"] =
+            $AuraRings[1] -match "^hero \(-?\d+, -?\d+\) 1200, reach 1600, aim \(-?\d+, -?\d+\) ok$"
+        $Checks["aimed 18 m away: out of reach ('$($AuraRings[2])')"] =
+            $AuraRings[2] -match "^hero \(-?\d+, -?\d+\) 1200, reach 1600, aim \(-?\d+, -?\d+\) out of reach$"
+        $Checks["planted: the hero's and the banner's circles, the aim gone ('$($AuraRings[3])')"] =
+            $AuraRings[3] -match "^hero \(-?\d+, -?\d+\) 1200, banner \(-?\d+, -?\d+\) 1200$"
+    }
+    # J8c.4 loop 5: the cry's white flash, on the units of his player within 12 m of him (at least his hero), once.
+    $CryFlashes = @($GridCase | Select-String -Pattern "Cry flash: slot 0, (\d+) units" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+    $Checks["the cry flashed once on at least his hero ($($CryFlashes -join ', ') units)"] = ($CryFlashes.Count -eq 1) -and ($CryFlashes[0] -ge 1)
+    # J8c.4 loop 4: his planted banner drawn (hol.Hero.BannerDisplay), one standard of slot 0 10 m from his hero.
+    $BannerShown = "$($GridCase | Select-String -Pattern "Banner display: (1 shown, slot 0 \(-?\d+, -?\d+, -?\d+\))" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+    $Checks["planted: one banner drawn at the place ('$BannerShown')"] =
+        ($BannerShown -match "^1 shown, slot 0 \((-?\d+), (-?\d+), -?\d+\)$") -and ([math]::Abs([int]$Matches[1] - ($AuraHero[0] + 1000)) -le 20) -and ([math]::Abs([int]$Matches[2] - $AuraHero[1]) -le 20)
+    $AllOk = (Report "build hero grid" $Checks) -and $AllOk
     # L.1 (D485): a right click on a finished deposit. The units of hol.Units.Where (before the order, 10 s and 13 s
     # after): the four selected are the four newest (three gatherers, then the empty one); the unloads after the order.
     $DropOrder = @(Get-Section "build dropoff order" | ForEach-Object { $_ })
@@ -6313,6 +6459,37 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero xp" $XPChecks) -and $AllOk
+    # J8c.3: Bob's abilities over the network (J8-Q5): the server casts his cry once (the second refused) and plants his
+    # banner; his ready steps reach Bob alone, the cries and the banner both clients, as the server has them.
+    $AbChecks = [ordered]@{}
+    $AbServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net hero abilities")
+    $AbOrders = @($AbServerLines | Select-String -Pattern "Hero ability order: slot $BobSlot (cry|banner) at step \d+ (cast|refused)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
+    $AbTrueReady = "$($AbServerLines | Select-String -Pattern "Hero true slot ${BobSlot}: .* ready (\S+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+    $AbTrueSheet = "$($AbServerLines | Select-String -Pattern "Hero sheet slot ${BobSlot}: .* (cries \d+ banner \S+ \S+ until -?\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+    $AbReadySteps = @("$AbTrueReady" -split "," | ForEach-Object { [int]$_ })
+    $AbChecks["server: the cry cast, refused again, the banner cast ($($AbOrders -join ', ')); ready $AbTrueReady; $AbTrueSheet"] =
+        (($AbOrders -join ",") -eq "cry cast,cry refused,banner cast") -and ($AbReadySteps.Count -eq 3) -and ($AbReadySteps[0] -eq 0) -and
+        ($AbReadySteps[1] -gt 1200) -and ($AbReadySteps[2] -gt 2400) -and ($AbTrueSheet -match "^cries 1 banner 14665 299 until (\d+)$") -and
+        ([int]$Matches[1] -eq $AbReadySteps[2] - 1500)
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $AbLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "hero abilities")
+        $AbSheet = "$($AbLines | Select-String -Pattern "Hero sheet slot ${BobSlot}: .* (cries \d+ banner \S+ \S+ until -?\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $AbChecks["client $N : Bob's cries and banner as the server's ($AbSheet)"] = ($AbSheet -ne "") -and ($AbSheet -eq $AbTrueSheet)
+        $AbShown = "$($AbLines | Select-String -Pattern "Banner display: (1 shown, slot ${BobSlot} \(14665, 299, -?\d+\))" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $AbChecks["client $N : Bob's banner drawn where it stands ($AbShown)"] = $AbShown -ne ""
+        $AbCryFlashes = @($AbLines | Select-String -Pattern "Cry flash: slot ${BobSlot}, (\d+) units" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value })
+        $AbChecks["client $N : Bob's cry flashed once on his units ($($AbCryFlashes -join ', '))"] = $AbCryFlashes.Count -eq 1
+        if ($N -eq 1) {
+            $AbLocal = "$($AbLines | Select-String -Pattern "Hero private slot $BobSlot local: .* ready (\S+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+            $AbChecks["client $N (Bob): his ready steps as the server's ($AbLocal)"] = ($AbLocal -ne "") -and ($AbLocal -eq $AbTrueReady)
+        }
+        else {
+            $AbOther = "$($AbLines | Select-String -Pattern "Hero private slot $BobSlot other: .* cooldowns (\d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+            $AbChecks["client $N (Alice): Bob's cool-downs hidden (cooldowns $AbOther)"] = $AbOther -eq "0"
+        }
+    }
+    $AllOk = (Report "net hero abilities" $AbChecks) -and $AllOk
 }
 
 if ($TestsProcess) {

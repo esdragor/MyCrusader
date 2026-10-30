@@ -22,7 +22,7 @@ void Test_HeroBlockAlive(FUnitTest& T)
 	T.AssertTrue(View.bXPGreyed, "XP greyed");
 	T.AssertTrue(View.XPFraction == 0.0, "XP empty");
 	T.AssertEquals(3, View.NumAbilities, "3 abilities");
-	T.AssertTrue(View.bAbilitiesGreyed, "abilities greyed");
+	T.AssertEquals(0, View.Abilities.Num(), "their boxes set apart (SetAbilities)");
 	T.AssertEquals("", View.DelayKey, "no delay");
 	T.AssertFalse(View.bButtonVisible, "no button");
 	T.AssertEquals("alive level 1 hp 300/450", View.Describe, "described");
@@ -183,4 +183,50 @@ void Test_HeroBlockXP(FUnitTest& T)
 	const FHOLHeroBlockView Unknown = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 2, 486, 486, -1, Alive);
 	T.AssertTrue(Unknown.bXPGreyed && Unknown.XPFraction == 0.0, "unknown: greyed, empty");
 	T.AssertEquals("xp unknown", Unknown.XPDescribe, "described");
+}
+
+// J8c.4 (J8c-Q4): the abilities' boxes. 20 steps a second; the cry's cool-down 60 s, the banner's 120 s.
+void Test_HeroBlockAbilities(FUnitTest& T)
+{
+	// Level 1, alive, nothing cast: the aura on, the cry ready, the banner locked (level 4).
+	const FHOLHeroAbilityBox Aura = HOLHeroBlock::MakeAbility(EHOLHeroAbility::Aura, true, 1, 0, 1000, 20, 0);
+	T.AssertTrue(Aura.bLit, "the aura lit");
+	T.AssertEquals("aura on", Aura.Describe, "aura on");
+	const FHOLHeroAbilityBox Cry = HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, true, 1, 0, 1000, 20, 60);
+	T.AssertTrue(Cry.bLit && !Cry.bLocked && Cry.SecondsLeft == 0 && Cry.CooldownFraction == 0.0, "the cry ready");
+	T.AssertEquals("cry ready", Cry.Describe, "cry ready");
+	const FHOLHeroAbilityBox Locked = HOLHeroBlock::MakeAbility(EHOLHeroAbility::Banner, true, 1, 0, 1000, 20, 120);
+	T.AssertTrue(!Locked.bLit && Locked.bLocked && Locked.UnlockLevel == 4, "the banner locked until level 4");
+	T.AssertEquals("banner locked 4", Locked.Describe, "banner locked 4");
+
+	// The cry cast: ready at 2 000, the server at 1 160: 840 steps, 42 s, 0.7 of the cool-down; 1 step left: 1 s.
+	const FHOLHeroAbilityBox Cooling = HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, true, 1, 2000, 1160, 20, 60);
+	T.AssertTrue(!Cooling.bLit, "cooling down: dark");
+	T.AssertEquals(42, Cooling.SecondsLeft, "42 s left");
+	T.AssertTrue(Math::Abs(Cooling.CooldownFraction - 0.7) < 0.001, "0.7 of the curtain");
+	T.AssertEquals("cry 42 s", Cooling.Describe, "cry 42 s");
+	T.AssertEquals(1, HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, true, 1, 2000, 1999, 20, 60).SecondsLeft, "one step left: 1 s");
+	T.AssertTrue(HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, true, 1, 2000, 2000, 20, 60).bLit, "at its step: ready");
+	T.AssertTrue(HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, true, 1, 2000, -1, 20, 60).bLit, "the server's step unknown: nothing counted");
+
+	// Level 4: the banner open; cooling 118 s.
+	T.AssertEquals("banner ready", HOLHeroBlock::MakeAbility(EHOLHeroAbility::Banner, true, 4, 0, 1000, 20, 120).Describe, "banner ready");
+	T.AssertEquals("banner 118 s", HOLHeroBlock::MakeAbility(EHOLHeroAbility::Banner, true, 4, 3360, 1000, 20, 120).Describe, "banner 118 s");
+
+	// Dead: all dark (the aura off, § 9.8), the cool-down still counted.
+	T.AssertEquals("aura off", HOLHeroBlock::MakeAbility(EHOLHeroAbility::Aura, false, 1, 0, 1000, 20, 0).Describe, "aura off");
+	T.AssertEquals("cry off", HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, false, 1, 0, 1000, 20, 60).Describe, "cry off");
+	T.AssertEquals("cry 42 s", HOLHeroBlock::MakeAbility(EHOLHeroAbility::CloseRanks, false, 1, 2000, 1160, 20, 60).Describe, "dead, cry 42 s");
+
+	// The view's three boxes in order, from the ready steps indexed by EHOLHeroAbility.
+	const FHOLHeroReturnQuote Alive = HOLHeroReturnQuote::Compute(500, EHOLHeroState::Alive, -1, 1, 500, true, false);
+	FHOLHeroBlockView View = HOLHeroBlock::Make(false, false, EHOLHeroState::Alive, 1, 450, 450, -1, Alive);
+	TArray<int> ReadySteps;
+	ReadySteps.Add(0);
+	ReadySteps.Add(2000);
+	ReadySteps.Add(0);
+	HOLHeroBlock::SetAbilities(View, true, 1, ReadySteps, 1160, 20);
+	T.AssertEquals(3, View.Abilities.Num(), "three boxes");
+	if (View.Abilities.Num() == 3)
+		T.AssertEquals("aura on, cry 42 s, banner locked 4", View.Abilities[0].Describe + ", " + View.Abilities[1].Describe + ", " + View.Abilities[2].Describe, "in order");
 }

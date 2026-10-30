@@ -43,6 +43,7 @@
 #include "Player/HOLPlayerController.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
@@ -542,6 +543,11 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		if (BoundForumState.IsValid() && SelectedBuilding && SelectedBuilding->IsForumDown())
 		{
 			Refresh();
+		}
+		// J8c.4: the hero's cells (units selected: no building, no group) follow his cool-downs and his level.
+		else if (bHeroCellsShown)
+		{
+			RefreshGrid(nullptr, false, BoundPlayerState.Get());
 		}
 	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
@@ -1772,6 +1778,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		PlayerController->GetOrderCommands(Orders);
 	}
 	bOrdersShown = Orders.ContainsByPredicate([](const FHOLGridCommand& Command) { return !Command.IsNone(); });
+	bHeroCellsShown = Commands.ContainsByPredicate([](const FHOLGridCommand& Command) { return Command.Command == EHOLGridCommand::HeroAbility; });
 	// Hidden, never collapsed: its place in the bottom bar kept (nothing moves from a selection to the next).
 	if (GridPanel)
 	{
@@ -1789,7 +1796,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
-		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName : Command.TypeName;
+		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
+			: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks")) : Command.TypeName;
 		if (ShownOrderTypes.IsValidIndex(Cell))
 		{
 			ShownOrderTypes[Cell] = Command.Command == EHOLGridCommand::AttackMove ? FName(TEXT("AttackMove"))
@@ -1849,6 +1857,28 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetTooltip(LOCTEXT("HoldName", "Tenir la position"), FHOLResources(), FHOLResources(),
 				LOCTEXT("HoldEffect", "N'attaque qu'à portée, ne poursuit pas"));
 			break;
+		case EHOLGridCommand::HeroAbility:
+		{
+			// J8c.4 (J8c-Q4): the hero's cry (A) and banner (Z). Greyed below its level (the level in its tooltip) or cooling
+			// down (the seconds left under its name, J8-Q5: the owner's alone); still clickable, the click does nothing.
+			const bool bBanner = Command.Ability == EHOLHeroAbility::Banner;
+			const FText Short = bBanner ? LOCTEXT("BannerShort", "Bannière") : LOCTEXT("CloseRanksShort", "Rangs");
+			const FText Name = bBanner ? LOCTEXT("BannerName", "Bannière de l'Aube") : LOCTEXT("CloseRanksName", "Serrez les rangs");
+			FText Effect = bBanner
+				? LOCTEXT("BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s")
+				: LOCTEXT("CloseRanksEffect", "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s");
+			const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
+				? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
+			if (bLocked)
+			{
+				Effect = FText::Format(LOCTEXT("HeroAbilityLocked", "Niveau {0} requis"), FText::AsNumber(HOLHeroAbility::GetUnlockLevel(Command.Ability)));
+			}
+			GridCell->SetCommand(Command.CooldownSeconds > 0 && !bLocked
+				? FText::Format(LOCTEXT("HeroAbilityCooldown", "{0}\n{1} s"), Short, FText::AsNumber(Command.CooldownSeconds)) : Short,
+				Command.bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), Effect);
+			break;
+		}
 		default:
 			// An empty cell stays, dark (disabled), at its key's place.
 			GridCell->ClearUnit();

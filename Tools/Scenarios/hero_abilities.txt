@@ -1,0 +1,35 @@
+# Les capacités du héros de bout en bout (J8c.5, essai de J8c) : l'aura de l'Aube, le cri Serrez les rangs (A), la Bannière de l'Aube (Z, niveau 4), cercles au sol, éclat blanc, étendard, sons ; l'aura profite aussi au héros de l'IA
+# Plain, toi (slot 0) contre une IA (slot 1), hero_abilities.json (copie de hero_xp.json) : 5 Paysans et un héros chacun.
+# Aura (J8c-Q1) : -15 % de dégâts reçus pour tes unités à 12 m du héros (lui compris). Cri (J8c-Q2) : -25 % pendant 15 s à 12 m, recharge 60 s.
+# Bannière (J8c-Q3) : niveau 4, plantée à 16 m au plus, aura 45 s, une seule, recharge 120 s. L'IA ne lance rien (J8c-Q5), son aura passive joue.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Ton héros derrière le forum. F4 le sélectionne : un cercle doré léger de 12 m (son aura) l'entoure, visible de toi seul.
+note Bloc du héros (en bas à gauche) : 3 cases, aura allumée, Serrez les rangs prête, Bannière grisée « niveau 4 ». Grille de droite : A = Rangs, Z = Bannière (grisée).
+wait 8
+note 2. 6 de tes Hommes d'armes se rangent près de lui, 6 ennemis arrivent : les tiens dans le cercle reçoivent 15 % de moins.
+hol.Units.Spawn 6 -15900 900 0 ManAtArms 250
+wait 3
+hol.Units.Spawn 6 -17200 300 1 ManAtArms 200
+wait 4
+note 3. Pendant le combat, F4 puis A (ou clic sur la case Rangs) : un cri, un son de cors, un éclat blanc sur tes unités à 12 m ; la case grise, les secondes (60 s) descendent, volet sombre dans le bloc.
+note Tes unités encaissent 25 % de moins pendant 15 s (en plus de l'aura : 40 %). Un deuxième A : refusé tant que la recharge dure.
+wait 25
+note 4. Niveau 4 (hol.Hero.SetXP 0 1300) : la Bannière s'ouvre. F4, Z : un cercle blanc fin de 16 m (la portée) autour de lui, un cercle sous le curseur : doré à portée, rouge vif au-delà.
+hol.Hero.SetXP 0 1300
+wait 1
+note Clic gauche au sol à portée : l'étendard blanc et or est planté (son de trompette), un cercle doré de 12 m autour de lui (toi seul) ; clic droit ou Échap annule la visée. Il tient 45 s et reste si le héros meurt.
+note Les ennemis le voient aussi (l'étendard et le son sont pour tous, pas le cercle). Recharge 120 s : un 2e Z pendant ce temps est refusé (case grise).
+wait 5
+hol.Camera.FocusNear -900 300
+note 5. L'IA : la même aura passive protège son héros et ses troupes ; elle ne lance ni cri ni bannière (reporté au chantier de l'IA). Caméra chez elle : F4 deux fois puis le raccourci de l'ennemi.
+hol.Camera.Focus 14065 300
+frames 3
+hol.Units.Spawn 6 13265 300 1 ManAtArms 200
+wait 2
+hol.Units.Spawn 6 12000 300 0 ManAtArms 200
+note Ses 6 Hommes d'armes près de son héros reçoivent 15 % de moins que tes 6 attaquants (la partie est lente, regarde les PV).
+note Ensuite, console (²) : hol.Hero.ResetAbilities 0 remet ses recharges à zéro pour recommencer ; hol.Hero.SetXP 0 0 revient au niveau 1.
