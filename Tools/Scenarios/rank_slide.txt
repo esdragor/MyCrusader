@@ -1,0 +1,33 @@
+# Glissement du rang (D577) : un ennemi encerclé par 5 des tiens (des demi-places entre eux), 6 autres envoyés par clic droit ; le rang glisse-t-il pour leur faire une place ?
+# Plain, toi (slot 0) contre une IA (slot 1), rank_slide.json : ton héros et ton forum (-15000, 0), pas de Paysans. Positions en monde (cm).
+# 1) un héros ennemi (niveau 4, plus d'endurance) naît à ~46 m de ton héros, vers le nord-est (-12800, 4500), avec un Homme d'armes ennemi libre 9 m derrière lui (-11900, 4500) ;
+# 2) 5 de tes Hommes d'armes naissent autour du héros ennemi et le serrent : il reste ~1 corps de libre, éparpillé en demi-places entre eux ;
+# 3) 6 autres de tes Hommes d'armes naissent à l'ouest (-16000, 4500), sont sélectionnés au cadre, puis clic droit sur le héros ennemi.
+# Comparaison : hol.Combat.RankSlide 1 (défaut, D577) : les renforts de derrière poussent le rang qui glisse le long de l'ennemi, les demi-places deviennent une place, un 6e frappe ;
+# hol.Combat.RankSlide 0 (avant) : le rang est un mur, personne ne se pousse, les demi-places restent perdues. Garde-fou : un frappeur n'est jamais poussé hors de portée de l'ennemi.
+# hol.Combat.SurplusReassign reste à 1 (ceux qui n'ont pas de place prennent l'Homme d'armes libre). Après un changement de réglage : hol.Scenario rank_slide rejoue depuis le début.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Camera.Focus -14500 3000
+frames 10
+note 1. Un héros ennemi (à ~46 m de ton héros) va être serré par 5 de tes Hommes d'armes ; 6 autres arrivent de l'ouest avec un clic droit sur lui ; un Homme d'armes ennemi attend 9 m derrière.
+note Console (²) : hol.Combat.RankSlide 1 = glissement du rang (défaut) ; hol.Combat.RankSlide 0 = l'ancien mur. Change-le AVANT d'appuyer sur Entrée, puis hol.Scenario rank_slide rejoue.
+waitkey Entrée : l'ennemi serré par 5 des tiens, puis tes 6 renforts et le clic droit
+hol.Units.Spawn 1 -12800 4500 1 Hero 1
+hol.Units.Spawn 1 -11900 4500 1 ManAtArms 1
+hol.Hero.SetXP 1 1300
+wait 1
+hol.Units.Spawn 5 -12600 4500 0 ManAtArms 150
+wait 4
+hol.Units.Spawn 6 -16000 4500 0 ManAtArms 250
+wait 2
+hol.Camera.Focus -16000 4500
+frames 5
+hol.Select.BoxGround -16800 3500 -15200 5500
+waitlog Selection: 6 units (own)
+hol.Camera.Focus -13200 4500
+frames 5
+hol.Select.ClickUnit -2 order enemy
+note 2. Clic droit donné sur le héros ennemi. Regarde le rang autour de lui : AVEC RankSlide 1, les soldats de derrière s'insèrent et le rang glisse (quelques secondes) pour faire une place ; aucun frappeur n'est chassé du combat. SANS (0) : ils restent plantés derrière.
+note À toi ensuite : sélectionne d'autres Hommes d'armes, reclique droit sur un ennemi serré (au besoin hol.Units.SpawnHere 6 ManAtArms 0 400 pour en refaire naître au centre de l'écran).

@@ -1336,6 +1336,10 @@ namespace UE::HeroesOfLiberty::Simulation
 		TEXT("1 (default): the separation's front (FrontHoldsFriends) found in parallel; 0: in one pass, the same flags"));
 	/** An enemy this close (cm, edge to edge) makes a unit of the front. */
 	constexpr double FrontContactGap = 10.0;
+	/** D577: the rank behind slides the front along its enemy, never out of the fight (the separation's front is no longer a pure wall). */
+	int32 RankSlide = 1;
+	FAutoConsoleVariableRef CVarRankSlide(TEXT("hol.Combat.RankSlide"), RankSlide,
+		TEXT("1 (default, with hol.Simulation.FrontHoldsFriends): a soldier walking to fight, pressing on a friend that strikes, slides it along its enemy (not in, not out of reach of any enemy, and only while fewer than 6 bodies touch that enemy) so the half places around it become one; 0: the front is a wall, as before (D577)"));
 
 	/** J7c.4 loop 30 (the rule since loop 32): the front only where a fight is; a unit brushing an enemy on a walk is not of it. */
 	int32 FrontNeedsCombat = 1;
@@ -1805,8 +1809,102 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 			ToLook.Add(Index);
 		}
 	}
+	// D577 (hol.Combat.RankSlide): the units in the cell of Unit and those within Range cells around it (Unit itself included), by Fn(index).
+	const auto ForNear = [&](const int32 Unit, const int32 Range, const auto& Fn)
+	{
+		for (int32 DY = -Range; DY <= Range; ++DY)
+		{
+			for (int32 DX = -Range; DX <= Range; ++DX)
+			{
+				const FIntPoint Cell(Cells[Unit].X + DX, Cells[Unit].Y + DY);
+				if (bDense)
+				{
+					const int32 X = Cell.X - MinCell.X;
+					const int32 Y = Cell.Y - MinCell.Y;
+					if (X < 0 || X >= GridWidth || Y < 0 || Y >= GridHeight)
+					{
+						continue;
+					}
+					const int32 DenseCell = Y * static_cast<int32>(GridWidth) + X;
+					for (int32 Slot = CellStarts[DenseCell]; Slot < CellStarts[DenseCell + 1]; ++Slot)
+					{
+						Fn(CellUnits[Slot]);
+					}
+					continue;
+				}
+				for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
+				{
+					if (Cells[Other] == Cell)
+					{
+						Fn(Other);
+					}
+				}
+			}
+		}
+	};
+	const bool bRankSlide = RankSlide != 0 && bHoldFront;
+	// D577: a soldier of the front, pushed by a friend from behind (Rear, walking to fight), slides along its enemy (Foe)
+	// without giving up its place: only the part of the push across the line to Foe, so Rear never takes its place. Only
+	// while a place is left around Foe (fewer than MaxAttackers bodies touch it) and only if it still touches an enemy
+	// after the slide (a striker is never pushed out of the fight, even to change target). Returns whether it moved it.
+	const auto SlideFront = [&](const int32 Hold, const FVector2D& Away, const double Overlap, FVector2D& OutMove)
+	{
+		const FVector2D HoldPosition = Corrections[Hold];
+		int32 Foe = INDEX_NONE;
+		double FoeGap = 0.;
+		ForNear(Hold, 1, [&](const int32 Near)
+		{
+			if (Near == Hold || Ghosts[Near] || !CampTable.AreHostile(Owners[Near], Owners[Hold]))
+			{
+				return;
+			}
+			const double Gap = FVector2D::Distance(HoldPosition, Corrections[Near]) - Radii[Hold] - Radii[Near];
+			if (Gap <= FrontContactGap && (Foe == INDEX_NONE || Gap < FoeGap || (Gap == FoeGap && Near < Foe)))
+			{
+				Foe = Near;
+				FoeGap = Gap;
+			}
+		});
+		if (Foe == INDEX_NONE)
+		{
+			return false;
+		}
+		const FVector2D Radial = (Corrections[Foe] - HoldPosition).GetSafeNormal();
+		if (Radial.IsNearlyZero())
+		{
+			return false;
+		}
+		const FVector2D Tangent(-Radial.Y, Radial.X);
+		const double Along = FVector2D::DotProduct(Away * Overlap, Tangent);
+		if (FMath::Abs(Along) < 0.01)
+		{
+			return false;
+		}
+		int32 Around = 0;
+		ForNear(Foe, 2, [&](const int32 Near)
+		{
+			Around += Near != Foe && !Ghosts[Near] && FVector2D::Distance(Corrections[Foe], Corrections[Near]) - Radii[Foe] - Radii[Near] <= FrontContactGap ? 1 : 0;
+		});
+		if (Around >= HOLCombat::MaxAttackers)
+		{
+			return false;
+		}
+		const FVector2D Slid = HoldPosition + Tangent * Along;
+		bool bTouches = false;
+		ForNear(Hold, 1, [&](const int32 Near)
+		{
+			bTouches |= Near != Hold && !Ghosts[Near] && CampTable.AreHostile(Owners[Near], Owners[Hold])
+				&& FVector2D::Distance(Slid, Corrections[Near]) - Radii[Hold] - Radii[Near] <= FrontContactGap;
+		});
+		if (!bTouches)
+		{
+			return false;
+		}
+		OutMove = Tangent * Along;
+		return true;
+	};
 	// A pair met by the unit that looks (Index), in its cell or one around it.
-	const auto Undo = [this, Slop, AtSourceDistance, bHoldFront, bSideGuard](const int32 Index, const int32 Other)
+	const auto Undo = [this, Slop, AtSourceDistance, bHoldFront, bSideGuard, bRankSlide, &SlideFront](const int32 Index, const int32 Other)
 	{
 		// Two units of one order forming up in different kinds of rows, of one block's re-forming, or a
 		// straggler walking into its slot (J7a.4, J7b note 1: CanPassThrough): through each other, the ways to the
@@ -1867,6 +1965,27 @@ void UHOLUnitSeparationProcessor::Execute(FMassEntityManager& EntityManager, FMa
 		if (!bEnemies && bHoldFront && Front[Index] != Front[Other])
 		{
 			Share = Front[Other] ? 1. : 0.;
+			// D577 (the user's rule after the `surplus` trial): the rank behind does not stand like a statue; pressing on a
+			// striker, it slides it along its enemy (not out of the fight), the half places on either side becoming one place.
+			const int32 Hold = Front[Index] ? Index : Other;
+			const int32 Rear = Front[Index] ? Other : Index;
+			FVector2D HoldMove;
+			if (bRankSlide && Soldiers[Rear] && Soldiers[Hold] && Walking[Rear] && Engaged[Rear] && PushIn[Hold].IsZero()
+				&& SlideFront(Hold, Hold == Index ? Normal : -Normal, Overlap, HoldMove))
+			{
+				// The pair still parts by the whole overlap: Hold's slide, Rear the rest (the part across the line).
+				const FVector2D Apart = Normal * Overlap; // Index's move less Other's
+				const FVector2D IndexMove = Hold == Index ? HoldMove : Apart + HoldMove;
+				const FVector2D OtherMove = IndexMove - Apart;
+				Corrections[Index] += IndexMove;
+				Corrections[Other] += OtherMove;
+				if (!Queued[Hold])
+				{
+					Queued[Hold] = true;
+					ToLook.Add(Hold);
+				}
+				return;
+			}
 		}
 		// EtapeDefini O.7 (a crowd, AoE4: "les personnes derrière le poussent vers le bâtiment"): a melee striking a building
 		// (PushIn) is moved by a friend only along its way in, never outwards nor sideways, and no farther in than the room it
