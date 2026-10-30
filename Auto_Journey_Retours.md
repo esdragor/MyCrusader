@@ -2,7 +2,7 @@
 
 Dernière mise à jour : 2026-10-30 19:00 (réponses de l'utilisateur enregistrées par Auto_Journey).
 
-**À faire par vous :** 0 essai prêt · questions : épaisseur des lignes d'ordre (brouillard, en attente de la correction du bug), M-Q10c arbres (à juger en jeu), 2 « A trancher » (D426, V-Q1) · 6 fusions à valider · 1 lot de docs à commiter.
+**À faire par vous :** 0 essai prêt · questions : épaisseur des lignes d'ordre (brouillard, en attente de la correction du bug), M-Q10c arbres (à juger en jeu) · fusions : toutes faites (section 3) · 1 lot de docs à commiter.
 
 **Manière de faire (confirmée le 2026-10-30)**
 - Vous répondez **en ligne**, sous chaque item, par `Reponse: ...`. Les sous-agents y ajoutent leurs lignes (essai prêt, question posée), jamais ailleurs.
@@ -25,10 +25,6 @@ Aucun essai prêt pour l'instant : `tiers`, `tab`, `surplus` et `fog` ont été 
 (Essai impossible tant que le bug du brouillard n'est pas corrigé, voir la file de Faramir : la question sera reposée avec un essai `fog_orders` refait.)
 Reponse:
 
-### IA (IA4)
-- **Arbitrage des vies (D426)** : utile seulement avec des vies d'avance (donc des paliers) ; à quel rapport l'IA sacrifie-t-elle une vie plutôt que de défendre ? `AIInProgress.md`.
-Reponse: A trancher
-
 ### Cartes
 - **M-Q10c : jusqu'où resserrer les arbres ?** (ne se tranche que dans le jeu, pas sur une capture)
   Contexte : les troncs d'un bosquet sont à 1,6 m les uns des autres (avant 2,2 m) ; une unité ne passe plus entre deux arbres d'un paquet. Vous ne pouvez pas lire une capture : il faut le voir dans le jeu. Un scénario ou essai in-game (arbres à 1,4 / 1,6 / 1,9 m côte à côte) est en file pour Haldir ; **la question reste en attente jusqu'à cet essai**.
@@ -38,18 +34,7 @@ Reponse: A trancher
   Recommandation : A, à confirmer en jeu. Fichier : `Tools/Editor/maps/common.py` (`GROVE_SPACING`).
 Reponse:
 
-### Volcan / Catastrophe
-- **V-Q1** (fenêtres de Catastrophe, D208 sans chiffres) : A première fenêtre 6e-9e min, repos 6-8 min, 3-4 éruptions ; B 8e-12e min. Recommandation A, réglable. `VolcanoInProgress.md`.
-Reponse : A trancher
-
 ## 3. Commits et fusions à valider
 
 - **À commiter dans la copie principale** (`C:\Users\baudo\Documents\MyCrusader`) : `GDD.md` (§ 7.2 aligné, D564-D575, prochain **D576** ; contient aussi D558-D563 d'autres sessions), `EtapeDefini.md`, les `*InProgress.md`, les `Auto_Journey*.md`, `FogInProgress.md`, `MapsInProgress.md`, `VolcanoInProgress.md`, `Tools\AutoJourney\status.ps1` (non suivis). Ils mêlent plusieurs sessions.
-- **Fusions dans `main`** (aucune faite), ordre conseillé :
-  1. `ai-ia1` (c806fd8, 3f5f58a, b8bfb9e, 2665240) en premier : corrige le `quick_check -Parts victory` rouge de `main`.
-  2. `galadriel-tab` (5e4da9f, 97bbe4b, d4fadd0) : Tab + `quick_check -Parts build` vert + scénario `tab`.
-  3. `tiers` (48e3244, 1093e52 ; main déjà fusionné dedans).
-  4. `hero-j8-close` (b297add, dd16203) : `-Parts hero` à lancer avant.
-  5. `fog` (a94304b, 648da21, 84386a7, 30b5a0c).
-  6. `maps` (c3579ba, 3594b4f, 533f480, 89ce28f) : **sans M-Q10 non commité** ; ne pas faire `git checkout` des `.umap` du worktree Haldir (ramènerait les cartes avec décor).
-- Chaque fusion : `quick_check` des parties touchées vert avant ; `git checkout -- HeroesOfLiberty.uproject` si la fusion refuse ; recompiler après.
+- **Fusions dans `main`** : les six branches (`ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps`) sont fusionnées en avance rapide (2026-10-30 soir, `main` = f0c7b06), `quick_check` par défaut (530/530) et `-Parts victory` verts sur `main`. Rien d'ouvert ici. À noter : `maps` portait déjà M-Q10 / M-Q10b commité (0ae2591, plus de décor, herbe uniforme) quand elle a été fusionnée ; `net-playtest` (Glorfindel) n'est pas à fusionner.

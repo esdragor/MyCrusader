@@ -7,9 +7,10 @@ Une tâche = une phrase, le journal à lire, le premier test rouge, 15-30 min. L
 ## Arwen — `ai-ia1` — IA et Volcan (journaux : `AIInProgress.md`, `VolcanoInProgress.md`)
 - [x] Réponses IA/Volcan enregistrées (D571-D575 au GDD, prochain **D576**) ; aide aux coéquipiers (2665240, testée en règle, aucune partie 2v2 jouée) ; Volcan V2 (ae476b5, 493/493)
 - [ ] Volcan V3 (tirage libre, tracés symétriques ; V-Q2 = B, débloquée), puis V4 et suivantes du plan V0-V12 qui ne demandent pas d'essai
-- [?] Volcan V-Q1 (fenêtres de Catastrophe) : « A trancher », à discuter avec l'utilisateur
-- [?] IA4 arbitrage des vies D426 : « A trancher »
+- [x] Volcan V-Q1 = A (D580, valeurs provisoires, à régler en vraie partie)
+- [x] IA4 arbitrage des vies D426 : tranché, D579 (voir la tâche suivante)
 - [ ] IA4 Paysans (D572 **CONFIRMÉE**, option A, 2026-10-30) : un Paysan achève un soldat ennemi seulement si le duel (rapport de force D553, PV restants compris) est gagné avec une marge >= 1,5 (un Lancier à 5 PV oui, un soldat sain jamais) ; sinon il fuit ou travaille ; test rouge d'abord sur la vraie chaîne (AIInProgress.md)
+- [ ] IA4 arbitrage des vies selon la difficulté (D579) : Facile = sacrifie toujours l'armée ; Normal = feintes, sauve l'économie, refait plus loin dès qu'elle sait perdre ; Difficile = snipe, évalue sa perte, peut laisser la seconde vie pour écraser avant la capture puis punir chez l'attaquant ; journaliser chaque situation « forum attaqué » (vies, rapport de force, décision) ; réglages à régler en test (AIInProgress.md)
 - [ ] Technologies (GDD § 11) ou Arbre de talents (§ 9.6) : ouvrir le `*InProgress.md` et le plan si la file se vide
 
 ## Faramir — `fog` — Brouillard (`FogInProgress.md`)
@@ -54,4 +55,4 @@ Une tâche = une phrase, le journal à lire, le premier test rouge, 15-30 min. L
 - Rien d'ouvert avant l'essai E5 avec un ami ; seulement si un reste apparaît (remesure MaxServers D502, r9, R8d).
 
 ## Fusions (agent de fusion, seulement si l'énoncé les autorise)
-- [ ] Ordre : `ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps` (détail dans `Auto_Journey_Retours.md`, section 3)
+- [x] Fusions faites le 2026-10-30 (19:20) : `ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps` toutes dans `main` (f0c7b06), tests verts ; prochaines fusions : seulement les nouveaux commits de ces branches (ordre `ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps`)
