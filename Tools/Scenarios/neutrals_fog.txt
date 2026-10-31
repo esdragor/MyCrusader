@@ -5,35 +5,47 @@ open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+# Passifs au repos (N4) : un camp (hol.Camp.Aggro 1, il ne bouge que si on l attaque) a un Paysan de mon camp a 3 m de son poste : personne ne frappe, le camp reste au poste.
+hol.Camp.Aggro 1
+hol.Camp.Add 0 -9000 3 Spearman
+waitlog Camp 0: 3 Spearman at
+frames 30
+hol.Units.Spawn 1 0 -8700 0 Peasant 50
+waitlog Spawn: 1 Peasant
+frames 100
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+hol.Camp.Report
+waitlog Camp 0 at (0, -9000): guarding, members 3 of 3, hits taken 0
 hol.Camp.Aggro 0
 hol.Camp.Credit 2
 hol.Units.SpeedScale 5
 hol.Camp.Add 0 0 3 Spearman
-waitlog Camp 0: 3 Spearman at
+waitlog Camp 1: 3 Spearman at
 frames 30
 hol.Units.Spawn 6 -4000 0 0 ManAtArms 200
 waitlog Spawn: 6 ManAtArms
 frames 40
 hol.Camp.Report
-waitlog Camp 0 at (0, 0): guarding, members 3 of 3, hits taken 0
+waitlog Camp 1 at (0, 0): guarding, members 3 of 3, hits taken 0
 # Au repos : rien ne bouge tant que personne n est a 15 m ; puis mes soldats entrent dans le rayon.
 hol.Units.Move -1000 0 0 a
-waitlog Camp 0: fighting
-waitlog Camp 0: cleared for good
-waitlog Camp 0 reward: slot 0 +100 XP
+waitlog Camp 1: fighting
+waitlog Camp 1: cleared for good
+waitlog Camp 1 reward: slot 0 +100 XP
 hol.Camp.Report
-waitlog Camp 0 at (0, 0): cleared
+waitlog Camp 1 at (0, 0): cleared
 # NQ1, l autre branche : seulement quand on l attaque (hol.Camp.Aggro 1). Les soldats s arretent a 13 m du poste (dans le rayon de 15 m) sans le toucher : le camp ne bouge pas ; puis ils attaquent.
 hol.Camp.Aggro 1
 hol.Camp.Add 0 8000 3 Spearman
-waitlog Camp 1: 3 Spearman at
+waitlog Camp 2: 3 Spearman at
 frames 30
 hol.Units.Move 0 6700 0
 frames 100
 hol.Camp.Report
-waitlog Camp 1 at (0, 8000): guarding, members 3 of 3, hits taken 0
+waitlog Camp 2 at (0, 8000): guarding, members 3 of 3, hits taken 0
 hol.Units.Move 0 7500 0 a
-waitlog Camp 1: fighting
-waitlog Camp 1: cleared for good
-waitlog Camp 1 reward: slot 0 +100 XP
-note Camp neutre : 3 Lanciers neutres au centre de la carte. Mes 6 Hommes d armes entrent dans leur rayon (15 m), le camp charge, est detruit, et mon heros gagne 100 XP (journal : Camp 0 reward).
+waitlog Camp 2: fighting
+waitlog Camp 2: cleared for good
+waitlog Camp 2 reward: slot 0 +100 XP
+note Camp neutre : 3 Lanciers neutres au centre de la carte. Mes 6 Hommes d armes entrent dans leur rayon (15 m), le camp charge, est detruit, et mon heros gagne 100 XP (journal : Camp 1 reward).
