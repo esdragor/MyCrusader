@@ -61,6 +61,7 @@ TRANSLATIONS = {
     "HOLMaps,Map_Plain": ("Plain", "平原"),
     "HOLMaps,Map_Steppe": ("The Steppe", "ステップ"),
     "HOLMaps,Map_Hinterland": ("The Hinterland", "奥地"),
+    "HOLMaps,Map_ElDorado": ("El Dorado", "エルドラド"),
     "HOLNewGameScreen,Map": ("Map", "マップ"),
     "HOLNewGameScreen,Size": ("Size", "サイズ"),
     "HOLNewGameScreen,Size_Small": ("Small", "小"),

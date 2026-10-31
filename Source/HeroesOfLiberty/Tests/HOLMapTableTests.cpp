@@ -12,6 +12,8 @@
 #include "Map/HOLMapRules.h"
 #include "Map/HOLMapSizeRules.h"
 #include "Map/HOLStartSlot.h"
+#include "Map/HOLTerrainLayout.h"
+#include "Map/HOLTerrainRules.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -25,6 +27,14 @@
 namespace UE::HeroesOfLiberty::Tests::MapTable
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
+
+	/** C3 (El Dorado): no gold vein within 100 m of a slot (the Steppe's nearest is 110 m), all of it within 100 m of the middle of the map (the cluster is 23 to 51 m across). */
+	constexpr double GoldFromSlot = 10000.0;
+	constexpr double GoldClusterReach = 10000.0;
+
+	/** C3c: the marsh is a ring of at least this many round zones, and its edge no nearer than 50 m to a slot (the bases are 165 m or more from the middle). */
+	constexpr int32 MinMarshZones = 8;
+	constexpr double MarshFromSlot = 5000.0;
 
 	/** D493 (GDD 8.1, fairness between places): the sources nearest each place are the same distance away, to within 1 m. */
 	constexpr double FairnessTolerance = 100.0;
@@ -150,8 +160,15 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			int32 NumBounds = 0, NumLayouts = 0, NumStarts = 0;
 			const AHOLMapBounds* Bounds = nullptr;
 			const AHOLSourceLayout* Layout = nullptr;
+			TArray<FHOLPlacedTerrainZone> TerrainZones;
+			int32 NumTerrainLayouts = 0;
 			for (const AActor* Actor : Map->PersistentLevel->Actors)
 			{
+				if (const AHOLTerrainLayout* Terrain = Cast<AHOLTerrainLayout>(Actor))
+				{
+					TerrainZones.Append(Terrain->GetZones());
+					++NumTerrainLayouts;
+				}
 				if (const AHOLStartSlot* Start = Cast<AHOLStartSlot>(Actor))
 				{
 					++NumStarts;
@@ -393,6 +410,68 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					}
 				}
 				AddInfo(FString::Printf(TEXT("%s: gold and stone sources per territory %d to %d (needed %d%s)"), *Name, FewestMinerals, MostMinerals, MinMineralSources, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
+			}
+			// 10. The gold at the centre (C3, GDD 8.5, the Budget `centre`): none in the bases, all of it in one cluster round the middle of the map, and
+			// the whole of the gold budget there (each place's share is what its territory holds, tested above).
+			if (!MapInfo.bGoldAtCentre)
+			{
+				TestEqual(FString::Printf(TEXT("%s: %d terrain layouts on a map without marsh"), *Name, NumTerrainLayouts), NumTerrainLayouts, 0);
+			}
+			if (MapInfo.bGoldAtCentre)
+			{
+				int32 GoldNearSlot = 0, GoldFarFromCentre = 0, GoldTotal = 0, GoldVeins = 0;
+				double FarthestGold = 0.0;
+				for (const FHOLPlacedSource& Source : Sources)
+				{
+					const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(Source.Type);
+					if (!Row || Row->Resource != EHOLResource::Gold)
+					{
+						continue;
+					}
+					++GoldVeins;
+					GoldTotal += Row->Amount;
+					for (const TPair<int32, FVector2D>& Start : Starts)
+					{
+						GoldNearSlot += FVector2D::Distance(FVector2D(Source.Location), Start.Value) < GoldFromSlot ? 1 : 0;
+					}
+					const double FromCentre = FVector2D(Source.Location).Size();
+					FarthestGold = FMath::Max(FarthestGold, FromCentre);
+					GoldFarFromCentre += FromCentre > GoldClusterReach ? 1 : 0;
+				}
+				const int32 GoldBudget = (Info.Size == EHOLMapSize::Huge ? MineralValue[0].NeededHuge : MineralValue[0].Needed) * Info.NumPlaces;
+				// The marsh (C3c): one terrain layout, a ring of round zones round the cluster, none on a base; the gold is in the clear in the middle.
+				TestEqual(FString::Printf(TEXT("%s: %d terrain layouts (one: the marsh zones)"), *Name, NumTerrainLayouts), NumTerrainLayouts, 1);
+				TestTrue(FString::Printf(TEXT("%s: %d marsh zones, under %d (a ring)"), *Name, TerrainZones.Num(), MinMarshZones), TerrainZones.Num() >= MinMarshZones);
+				int32 ZonesNearSlot = 0, GoldInMarsh = 0, OthersInMarsh = 0;
+				double NearestZoneEdge = 1.0e9;
+				for (const FHOLPlacedTerrainZone& Zone : TerrainZones)
+				{
+					TestEqual(FString::Printf(TEXT("%s: a zone is a marsh"), *Name), Zone.Kind, HOLTerrainKind::Marsh);
+					for (const TPair<int32, FVector2D>& Start : Starts)
+					{
+						const double Edge = FVector2D::Distance(FVector2D(Zone.Location), Start.Value) - Zone.Radius;
+						NearestZoneEdge = FMath::Min(NearestZoneEdge, Edge);
+						ZonesNearSlot += Edge < MarshFromSlot ? 1 : 0;
+					}
+				}
+				for (const FHOLPlacedSource& Source : Sources)
+				{
+					const FHOLSourceTypeRow* Row = UHOLSourceSettings::FindType(Source.Type);
+					bool bIn = false;
+					for (const FHOLPlacedTerrainZone& Zone : TerrainZones)
+					{
+						bIn |= FVector2D::Distance(FVector2D(Source.Location), FVector2D(Zone.Location)) <= Zone.Radius;
+					}
+					(Row && Row->Resource == EHOLResource::Gold ? GoldInMarsh : OthersInMarsh) += bIn ? 1 : 0;
+				}
+				TestEqual(FString::Printf(TEXT("%s: %d marsh zones within %.0f m of a start slot (nearest edge %.0f m)"), *Name, ZonesNearSlot, MarshFromSlot / 100.0, NearestZoneEdge / 100.0), ZonesNearSlot, 0);
+				TestEqual(FString::Printf(TEXT("%s: %d gold veins in the marsh (the cluster is in the clear)"), *Name, GoldInMarsh), GoldInMarsh, 0);
+				TestEqual(FString::Printf(TEXT("%s: %d trees, berries or stone veins in the marsh (nothing to gather there: the Steppe's far layer keeps out of the ring)"), *Name, OthersInMarsh), OthersInMarsh, 0);
+				AddInfo(FString::Printf(TEXT("%s: %d marsh zones, nearest edge to a slot %.0f m"), *Name, TerrainZones.Num(), NearestZoneEdge / 100.0));
+				TestEqual(FString::Printf(TEXT("%s: %d gold veins within %.0f m of a start slot (GDD 8.5: no gold in the bases)"), *Name, GoldNearSlot, GoldFromSlot / 100.0), GoldNearSlot, 0);
+				TestEqual(FString::Printf(TEXT("%s: %d gold veins farther than %.0f m from the middle (all the gold is in the cluster; the farthest %.0f m)"), *Name, GoldFarFromCentre, GoldClusterReach / 100.0, FarthestGold / 100.0), GoldFarFromCentre, 0);
+				TestEqual(FString::Printf(TEXT("%s: the cluster holds %d gold in %d veins, not the whole budget of %d"), *Name, GoldTotal, GoldVeins, GoldBudget), GoldTotal, GoldBudget);
+				AddInfo(FString::Printf(TEXT("%s: gold at the centre: %d veins, %d gold, the farthest %.0f m from the middle, none within %.0f m of a slot"), *Name, GoldVeins, GoldTotal, FarthestGold / 100.0, GoldFromSlot / 100.0));
 			}
 			for (const FBudgetLine& Line : Budget)
 			{

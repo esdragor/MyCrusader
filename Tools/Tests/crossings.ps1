@@ -3,7 +3,8 @@
 # (hol.Test.Crossings, Source/HeroesOfLiberty/Dev/HOLCrossingTest.cpp). Each crossing checked every frame: no unit in a
 # rock, no stall (half the walking units not moving), every unit standing near the point in time.
 # Off screen, no window (the user works on the machine meanwhile). Run from Windows PowerShell:
-#   powershell -ExecutionPolicy Bypass -File Tools\Tests\crossings.ps1 [-Count 100] [-Seed 1] [-Units 50] [-Type ManAtArms] [-Root <copy>]
+#   powershell -ExecutionPolicy Bypass -File Tools\Tests\crossings.ps1 [-Count 100] [-Seed 1] [-Units 50] [-Type ManAtArms] [-Map Plain] [-Root <copy>]
+# -Map: the map file under /Game/Maps (Plain, the fixed test map, or a sized one such as Steppe_Normal: the ridge in front of its slot 0).
 # Prints each failed crossing, then one line PASS / FAIL; exit code 0 / 1. Log: <copy>\Saved_Tests\Logs\crossings.log
 # (~7 s of game a crossing).
 param(
@@ -11,6 +12,7 @@ param(
     [int] $Seed = 1,
     [int] $Units = 50,
     [string] $Type = "ManAtArms",
+    [string] $Map = "Plain",
     [string] $Root = "",
     [string] $EngineDir = ""
 )
@@ -29,9 +31,9 @@ $Sequence = Join-Path $Saved "crossings.seq"
 $Config = Join-Path $Saved "crossings.json"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
 Remove-Item $Log -ErrorAction SilentlyContinue
-'{ "map": "/Game/Maps/Plain.Plain", "startingPeasants": 0, "startingHero": 0, "slots": [ { "state": "Human", "colorIndex": 0 } ] }' | Set-Content -Encoding ascii $Config
+('{ "map": "/Game/Maps/' + $Map + '.' + $Map + '", "startingPeasants": 0, "startingHero": 0, "slots": [ { "state": "Human", "colorIndex": 0 } ] }') | Set-Content -Encoding ascii $Config
 @(
-    "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $($Config -replace '\\', '/') 0", "waitmap Plain",
+    "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $($Config -replace '\\', '/') 0", "waitmap $Map",
     "waitlog Camera above the start of slot", "frames 5", "hol.Test.Crossings $Count $Seed $Units $Type quit"
 ) | Set-Content -Encoding ascii $Sequence
 

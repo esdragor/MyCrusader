@@ -1032,6 +1032,38 @@ def map_file(recipe):
     return os.path.join(unreal.Paths.project_content_dir(), "Maps", recipe.map_path.rsplit("/", 1)[1] + ".umap")
 
 
+# ---- Terrain zones (C3, El Dorado's marsh): round zones that change the walkers' speed (HOLTerrainRules), as data for the server plus a flat
+# disc drawn on the ground over each. The module's zones(recipe) gives [(kind, x, y, radius)] (kind 0: marsh); its ZONE_COLORS {kind: (r, g, b)}
+# says how a kind is drawn. The discs have no collision and no navigation (the zone is not an obstacle), 3 cm above the ground.
+ZONE_COLORS = {0: (0.020, 0.052, 0.040)}
+ZONE_HEIGHT = 3.0
+ZONE_NAMES = {0: "Marsh"}
+
+
+def spawn_zones(zones, colors=None):
+    layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLTerrainLayout")
+    if layout_class is None:
+        raise RuntimeError("Missing HOLTerrainLayout (is the HeroesOfLiberty module compiled?)")
+    colors = dict(ZONE_COLORS, **(colors or {}))
+    layout = spawn(layout_class, label="TerrainLayout")
+    placed = []
+    for kind, x, y, radius in zones:
+        zone = unreal.HOLPlacedTerrainZone()
+        zone.set_editor_property("kind", kind)
+        zone.set_editor_property("location", unreal.Vector(x, y, 0))
+        zone.set_editor_property("radius", radius)
+        placed.append(zone)
+    layout.set_editor_property("zones", placed)
+    materials = {kind: matte_instance("MI_Zone_" + ZONE_NAMES.get(kind, str(kind)), unreal.LinearColor(*colors[kind], 1.0)) for kind in set(z[0] for z in zones)}
+    for index, (kind, x, y, radius) in enumerate(zones):
+        # The engine's cylinder is 1 m across and 1 m high: a flat disc of the zone's radius, its top ZONE_HEIGHT above the ground.
+        scale = unreal.Vector(radius / 50.0, radius / 50.0, 0.04)
+        disc = spawn_shape("/Engine/BasicShapes/Cylinder", unreal.Vector(x, y, ZONE_HEIGHT - 2.0), scale, "%s%d" % (ZONE_NAMES.get(kind, "Zone"), index), materials[kind])
+        component = disc.get_editor_property("static_mesh_component")
+        component.set_collision_enabled(unreal.CollisionEnabled.NO_COLLISION)
+        component.set_editor_property("can_ever_affect_navigation", False)
+
+
 def make_map(recipe, module, on_saved):
     """One map file: the shared pieces, then the map module's obstacles and sources, then the navmesh and the save."""
     slot_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLStartSlot")
@@ -1083,6 +1115,14 @@ def make_map(recipe, module, on_saved):
     sources, groups = module.sources(recipe)
     layout.set_editor_property("sources", sources)
 
+    # Terrain zones (C3): data read by the server (the walkers' speed), and the ground drawn under them (zones(recipe) of the module).
+    zones = module.zones(recipe) if hasattr(module, "zones") else ()
+    if zones:
+        spawn_zones(zones, getattr(module, "ZONE_COLORS", None))
+        summary_zones = ", %d terrain zones" % len(zones)
+    else:
+        summary_zones = ""
+
     # Scenery, if the map wants some (DECOR in its module): no collision, nothing the navmesh or a click can touch.
     density = getattr(module, "DECOR", None)
     avoid = module.avoid_points(recipe) if hasattr(module, "avoid_points") else ()  # a map's own rocks (C2)
@@ -1091,8 +1131,8 @@ def make_map(recipe, module, on_saved):
     places = len(recipe.angles)
     neighbours = 2 * recipe.slot_radius * math.sin(math.pi / places) if places > 2 else 2 * recipe.slot_radius
     summary = ("Match map created at %s: %d start slots on a %.0f m circle (neighbours %.0f m apart), bounds %.0f m, %d obstacles, "
-               "%d sources (%d neutral groups per player), navmesh built") % (
-        recipe.map_path, places, recipe.slot_radius / 100, neighbours / 100, 2 * recipe.bounds_half / 100, obstacles, len(sources), groups)
+               "%d sources (%d neutral groups per player)%s, navmesh built") % (
+        recipe.map_path, places, recipe.slot_radius / 100, neighbours / 100, 2 * recipe.bounds_half / 100, obstacles, len(sources), groups, summary_zones)
     # The navmesh is built once the editor lets it (it locks building for ~2 s after loading), then saved.
     if scenery:
         summary += ", scenery %d instances (%s)" % (sum(scenery.values()), ", ".join("%s %d" % item for item in sorted(scenery.items())))

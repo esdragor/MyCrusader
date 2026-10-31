@@ -1,0 +1,10 @@
+# El Dorado Petite (2 joueurs, 440 m) : le marais autour de l'amas d'or du milieu, 10 Hommes d'armes pour le traverser
+hol.Camera.Zoom -7
+frames 5
+hol.Cheat.Resources 2000
+hol.Units.SpawnHere 10 ManAtArms 3000 0
+waitunits 15
+hol.Terrain.Report
+note El Dorado Petite : 2 joueurs, 440 m de côté. PAS D'OR CHEZ MOI : l'or est en un amas de filons au MILIEU de la carte, entouré d'une couronne de MARAIS (disque sombre bleu-vert posé sur l'herbe). Les 10 Hommes d'armes sont devant mon centre, vers le milieu de la carte.
+note ESSAI : sélectionne-les (double clic sur l'un d'eux) et envoie-les d'un clic droit AU MILIEU de la carte, à travers la couronne : ils doivent ralentir nettement dans le marais (60 % de leur vitesse, valeur provisoire) et reprendre leur allure de l'autre côté. Traverse aussi le marais en passant d'un côté à l'autre autour de l'amas, sans entrer au milieu : compare le temps d'un contournement et d'une traversée.
+note Pour changer la force du marais pendant l'essai (console ²) : hol.Terrain.MarshSpeedPercent 75 (ou 100 = pas de ralentissement), puis hol.Terrain.Report. À regarder : le marais se lit-il bien du premier coup d'oeil ? le ralentissement est-il assez fort / trop fort ? l'amas d'or au milieu est-il assez grand, assez loin des deux bases ? Le marais n'empêche pas encore la charge de cavalerie (elle n'existe pas) ni les tirs ; seule la vitesse de marche est branchée (M-Q2 = A : seulement les effets visibles).

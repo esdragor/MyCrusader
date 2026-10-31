@@ -1,6 +1,6 @@
 """El Dorado (chantier Cartes, C3; GDD 8.5, D496): no gold in the bases, a cluster of gold veins in the middle of the map, ringed
-with marsh. NOT YET REGISTERED in Tools/Data/Maps.csv (2026-10-31): the recipe is prepared and measured offline, waiting for the
-user's answers to CQ2 (Auto_Journey_Retours.md) and for the marsh (C3b-C3d: speed hook, zones in the level, drawing).
+with marsh. Registered in Tools/Data/Maps.csv with the Budget `centre` (C3e, 2026-10-31); the values wait for the user's answers to
+CQ2 (Auto_Journey_Retours.md): HOL_ELDORADO_GOLD and HOL_MARSH_WIDTH below, and hol.Terrain.MarshSpeedPercent (60) in the game.
 
 The map is the Steppe's (steppe.sources) with every gold vein taken out of the territories and put in the middle; the bases, the wood,
 the berries and the stone are the Steppe's. The middle holds the gold of the Steppe's budget (common.mineral_mix: 10 000 per player,
@@ -12,17 +12,21 @@ Settings (the user's answer to CQ2b picks one; the default is the recommendation
   HOL_ELDORADO_GOLD  "all" (default: every vein of the territories goes to the middle), "half" (every other vein of the mix, the value
                      halved), "keep_near" (the nearest veins of each base stay at home, the rest goes to the middle).
   HOL_MARSH_WIDTH    cm of marsh round the cluster (default 3000).
-The marsh is a list of round zones (marsh_zones): the rule is in Script/Terrain/HOLTerrainRules.as; the level will carry them (C3c).
+The marsh is a list of round zones (marsh_zones, handed to the level by zones(): an AHOLTerrainLayout the server reads for the walkers'
+speed, and a flat dark disc drawn on the ground over each, common.spawn_zones). The rule is in Script/Terrain/HOLTerrainRules.as (script)
+and Map/HOLTerrainRules.cpp (server), checked against each other.
 """
 import math
 import os
 
 from maps import common, steppe
 
+GROUND = steppe.GROUND  # the Steppe's grass; the marsh is drawn over it (common.spawn_zones)
 GOLD_MODE = os.environ.get("HOL_ELDORADO_GOLD", "all")
 MARSH_WIDTH = float(os.environ.get("HOL_MARSH_WIDTH", "3000"))
 CLUSTER_GAP = 500.0  # cm between the edges of two veins of the cluster (a Peasant: 60 cm radius, 2 m free to walk round)
 HOME_RADIUS = 13000.0  # cm: a gold vein closer than this to a place is one of its near veins (the near layer is 110 to 125 m)
+MARSH_CLEAR_MARGIN = 300.0  # cm between the marsh's outer edge and the nearest deposit's centre (the deposit's extent comes on top)
 RADIAL_STEP = 100.0
 ANGULAR_STEPS = 48
 RADIUS = {"Small": 150.0, "Medium": 220.0, "Standard": 300.0, "Big": 420.0}
@@ -117,9 +121,26 @@ def marsh_zones(recipe):
     return [(middle * math.cos(2.0 * math.pi * i / count), middle * math.sin(2.0 * math.pi * i / count), 0.5 * width) for i in range(count)]
 
 
+def marsh_outer(recipe):
+    """The radius of the marsh ring's outer edge: the zones' centres' circle plus their radius."""
+    return max(math.hypot(x, y) + radius for x, y, radius in marsh_zones(recipe))
+
+
 def sources(recipe):
     """The Steppe's sources less its gold (all, half or the far ones, GOLD_MODE) plus the cluster in the middle."""
-    placed, groups = steppe.sources(recipe)
+    # Nothing of the Steppe's far layer in the marsh nor in the middle: its "clear centre" grows to the marsh's outer edge (the deposits' own
+    # extent is added by the Steppe's rules).
+    # Without its gold either (unless GOLD_MODE keeps the near veins home): the Steppe would place the gold piles of its far layer for
+    # nothing, and the room they take is what the marsh needs.
+    clear, near, resources = steppe.CENTRE_CLEAR, steppe.NEAR, common.MINERAL_RESOURCES
+    steppe.CENTRE_CLEAR = marsh_outer(recipe) + MARSH_CLEAR_MARGIN
+    if GOLD_MODE != "keep_near":
+        steppe.NEAR = [row for row in near if row[0] != "GoldVein"]
+        common.MINERAL_RESOURCES = ("Stone",)
+    try:
+        placed, groups = steppe.sources(recipe)
+    finally:
+        steppe.CENTRE_CLEAR, steppe.NEAR, common.MINERAL_RESOURCES = clear, near, resources
     if GOLD_MODE == "keep_near":
         slots = [recipe.slot(i)[0] for i in range(len(recipe.angles))]
         placed = [s for s in placed if not is_gold(s) or any(math.dist((s.get_editor_property("location").x, s.get_editor_property("location").y), slot) < HOME_RADIUS for slot in slots)]
@@ -127,3 +148,13 @@ def sources(recipe):
         placed = [s for s in placed if not is_gold(s)]
     placed += [common.placed_source(name, x, y) for name, x, y in cluster(recipe)]
     return placed, groups
+
+
+def obstacles(recipe):
+    """The Steppe's ridges, nothing else; the number of actors spawned."""
+    return steppe.obstacles(recipe)
+
+
+def zones(recipe):
+    """[(kind, x, y, radius)] for common.spawn_zones: the marsh ring (kind 0)."""
+    return [(0, x, y, radius) for x, y, radius in marsh_zones(recipe)]
