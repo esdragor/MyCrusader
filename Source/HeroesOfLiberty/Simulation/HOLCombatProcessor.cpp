@@ -22,6 +22,7 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLCampSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
@@ -554,7 +555,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.MoveTarget = &MoveTargets[EntityIt];
 			Fighter.Movement = &Movements[EntityIt];
 			Fighter.Constants = &Constants;
-			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding();
+			// N4: a neutral camp's member at its post or walking back is left out of the fight as a worker at its task is (it answers a blow by its camp's thought).
+			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding()
+				|| (States[EntityIt].OwnerPlayer == FHOLMatchConfig::NeutralOwner && HOLCamps::IsPassive(Fighter.UnitId));
 			if (bZeroAtGather)
 			{
 				bAnyTarget |= Combats[EntityIt].Target.IsSet();
@@ -1005,6 +1008,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			Enemy.Combat->LastAttacker = Arrow.Shooter;
 			Enemy.Combat->LastHitStep = StepIndex;
+			if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
+			{
+				HOLCamps::NoteHit(Enemy.UnitId, Fighters[Shooter].State->OwnerPlayer, Landed);
+			}
 			Fighters[Shooter].Combat->DamageDealt += Landed;
 		}
 		if (LogHits != 0)
@@ -2187,6 +2194,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
 		const float Dealt = HOLHeroAbility::GetReducedDamage(Damage, GetDamageTakenPercent(Enemy));
 		Enemy.State->CurrentHealth -= Dealt;
+		if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
+		{
+			HOLCamps::NoteHit(Enemy.UnitId, Fighter.State->OwnerPlayer, Dealt);
+		}
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		Enemy.Combat->LastHitStep = StepIndex;
 		++Combat.Hits;

@@ -103,6 +103,9 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	/** Format version: a file of an older version is read with defaults for its missing fields. */
 	static constexpr int32 CurrentVersion = 3;
 	static constexpr int32 MaxSlots = 8;
+	/** The owner of the neutral units (camps, NeutralsInProgress.md N3): the first number out of the slots, hostile to every slot (HOLCampTable, D401); no slot, no player, no vision. */
+	static constexpr int32 NeutralOwner = MaxSlots;
+	static bool IsNeutralOwner(const int32 Owner) { return Owner == NeutralOwner; }
 	static constexpr int32 MaxTeams = 4;
 
 	UPROPERTY()
