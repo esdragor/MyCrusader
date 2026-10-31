@@ -489,4 +489,64 @@ bool FHOLVisionExploredRunsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// F7 / F8: the fog's picture, the bytes the post process and the minimap read.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionPictureTest, "HeroesOfLiberty.Vision.Picture", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionPictureTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Vision;
+	FHOLVisionMap Map;
+	Map.Init(MakeGrid(), 2);
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+
+	const int32 Scout = Map.AddObserver(0, Grid.GetCenter(FIntPoint(10, 10)), 800.);
+	Map.MoveObserver(Scout, Grid.GetCenter(FIntPoint(14, 10)));
+
+	TArray<uint8> Bytes;
+	int32 NumVisible = -1;
+	int32 NumExplored = -1;
+	HOLFogPicture::Fill(Map, 0, Bytes, NumVisible, NumExplored);
+	TestEqual(TEXT("one byte a cell"), Bytes.Num(), Grid.Num());
+	TestEqual(TEXT("the cells in sight counted"), NumVisible, Map.CountVisible(0));
+	TestEqual(TEXT("the cells ever seen counted"), NumExplored, Map.CountExplored(0));
+	if (Bytes.Num() == Grid.Num())
+	{
+		TestEqual(TEXT("in sight: 255"), Bytes[Grid.ToIndex(FIntPoint(16, 10))], HOLFogPicture::VisibleByte);
+		TestEqual(TEXT("left behind: explored"), Bytes[Grid.ToIndex(FIntPoint(8, 10))], HOLFogPicture::ExploredByte);
+		TestEqual(TEXT("never seen: 0"), Bytes[Grid.ToIndex(FIntPoint(0, 0))], HOLFogPicture::UnexploredByte);
+		// A row of the picture is one Y: a cell high up the grid is not read for one on its right.
+		TestEqual(TEXT("(10, 17) never seen: 0"), Bytes[Grid.ToIndex(FIntPoint(10, 17))], HOLFogPicture::UnexploredByte);
+	}
+
+	TestEqual(TEXT("read in sight (a point of the cell)"), HOLFogPicture::Read(Grid, Bytes, Grid.GetCenter(FIntPoint(16, 10)) + FVector2D(120., -80.)), EHOLCellVision::Visible);
+	TestEqual(TEXT("read explored"), HOLFogPicture::Read(Grid, Bytes, Grid.GetCenter(FIntPoint(8, 10))), EHOLCellVision::Explored);
+	TestEqual(TEXT("read black"), HOLFogPicture::Read(Grid, Bytes, Grid.GetCenter(FIntPoint(1, 18))), EHOLCellVision::Unexplored);
+	TestEqual(TEXT("read outside the grid: black"), HOLFogPicture::Read(Grid, Bytes, FVector2D(99999., 0.)), EHOLCellVision::Unexplored);
+	TestEqual(TEXT("read agrees with the map"), HOLFogPicture::Read(Grid, Bytes, Grid.GetCenter(FIntPoint(12, 9))), Map.GetVision(0, FIntPoint(12, 9)));
+
+	for (const EHOLCellVision Vision : { EHOLCellVision::Unexplored, EHOLCellVision::Explored, EHOLCellVision::Visible })
+	{
+		TestEqual(TEXT("a byte comes back to its state"), HOLFogPicture::FromByte(HOLFogPicture::ToByte(Vision)), Vision);
+	}
+	TestEqual(TEXT("a filtered byte: nearly in sight"), HOLFogPicture::FromByte(230), EHOLCellVision::Visible);
+	TestEqual(TEXT("a filtered byte: nearly black"), HOLFogPicture::FromByte(30), EHOLCellVision::Unexplored);
+
+	const double Half = 0.5 * Grid.Side * Grid.CellSize;
+	TestTrue(TEXT("the lower corner is (0, 0)"), HOLFogPicture::ToUV(Grid, FVector2D(-Half, -Half)).Equals(FVector2D(0., 0.), 1e-6));
+	TestTrue(TEXT("the centre is (0.5, 0.5)"), HOLFogPicture::ToUV(Grid, FVector2D::ZeroVector).Equals(FVector2D(0.5, 0.5), 1e-6));
+	TestTrue(TEXT("the upper corner is (1, 1)"), HOLFogPicture::ToUV(Grid, FVector2D(Half, Half)).Equals(FVector2D(1., 1.), 1e-6));
+
+	TArray<uint8> Other;
+	HOLFogPicture::Fill(Map, 1, Other, NumVisible, NumExplored);
+	TestEqual(TEXT("the other camp: nothing in sight"), NumVisible, 0);
+	TestEqual(TEXT("the other camp: nothing seen"), NumExplored, 0);
+	TestEqual(TEXT("the other camp: black"), Other.Num() == Grid.Num() ? Other[Grid.ToIndex(FIntPoint(16, 10))] : uint8(7), HOLFogPicture::UnexploredByte);
+
+	TArray<uint8> NoFog;
+	HOLFogPicture::Fill(Map, INDEX_NONE, NoFog, NumVisible, NumExplored);
+	TestEqual(TEXT("without fog: everything in sight"), NumVisible, Grid.Num());
+	TestEqual(TEXT("without fog: everything seen"), NumExplored, Grid.Num());
+	TestEqual(TEXT("without fog: 255 everywhere"), NoFog.Num() == Grid.Num() ? NoFog[Grid.ToIndex(FIntPoint(0, 0))] : uint8(7), HOLFogPicture::VisibleByte);
+	return true;
+}
+
 #endif

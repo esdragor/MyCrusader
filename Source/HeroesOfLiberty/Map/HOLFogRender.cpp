@@ -27,10 +27,12 @@ namespace
 		TEXT("How the fog is drawn on this machine's screen (F7, F-Q3): 0 not drawn, 1 post process (D562)."),
 		ECVF_Default);
 
-	/** What a cell of each state is worth in the texture: black, dim, clear. */
-	constexpr uint8 UnexploredValue = 0;
-	constexpr uint8 ExploredValue = 115;
-	constexpr uint8 VisibleValue = 255;
+	TAutoConsoleVariable<float> CVarFogOrderMask(
+		TEXT("hol.Fog.OrderMask"),
+		0.f,
+		TEXT("How far the unfogged halo of the order lines spreads (F7.3): the share of the 3 x 3 pixels around a pixel marked by the stencil, "
+			 "times this, clears the fog there (0: the hard 1-pixel mask, as before; 1.5: a pixel of halo, to try against the flicker). Read each frame."),
+		ECVF_Default);
 
 	constexpr float RefreshSeconds = 0.1f;
 
@@ -91,14 +93,21 @@ int32 UHOLFogRenderSubsystem::GetViewerCamp() const
 
 void UHOLFogRenderSubsystem::Tick(const float DeltaTime)
 {
-	const int32 Wanted = CVarFogRender.GetValueOnGameThread();
-	const int32 Camp = Wanted > 0 ? GetViewerCamp() : INDEX_NONE;
+	// The picture is kept as long as the viewer has a camp under a fog (the minimap reads it, F8 / F9); only the post process
+	// depends on hol.Fog.Render.
+	const int32 Camp = GetViewerCamp();
 	if (Camp == INDEX_NONE)
 	{
-		if (AppliedMode != 0)
+		if (bHasPicture)
 		{
-			Remove();
+			bHasPicture = false;
+			Cells.Reset();
+			NumVisible = 0;
+			NumExplored = 0;
+			++Version;
+			OnPictureChanged.Broadcast();
 		}
+		Remove();
 		return;
 	}
 	Seconds += DeltaTime;
@@ -107,48 +116,41 @@ void UHOLFogRenderSubsystem::Tick(const float DeltaTime)
 		Seconds = 0.f;
 		RefreshTexture(Camp);
 	}
-	if (AppliedMode != 1)
+	if (CVarFogRender.GetValueOnGameThread() > 0 && Texture)
 	{
-		Apply();
+		if (AppliedMode != 1)
+		{
+			Apply();
+		}
+		SendCamera();
 	}
-	SendCamera();
+	else if (AppliedMode != 0)
+	{
+		Remove();
+	}
+}
+
+EHOLCellVision UHOLFogRenderSubsystem::GetCellVision(const FVector2D& Point) const
+{
+	return bHasPicture ? HOLFogPicture::Read(Grid, Cells, Point) : EHOLCellVision::Visible;
 }
 
 void UHOLFogRenderSubsystem::RefreshTexture(const int32 Camp)
 {
 	const UHOLVisionSubsystem* Vision = GetWorld()->GetSubsystem<UHOLVisionSubsystem>();
 	const FHOLVisionMap& Map = Vision->GetMap();
-	const FHOLVisionGrid& Grid = Map.GetGrid();
-	if (Grid.Side <= 0)
+	const FHOLVisionGrid& MapGrid = Map.GetGrid();
+	if (MapGrid.Side <= 0)
 	{
 		return;
 	}
 	TArray<uint8> Now;
-	Now.SetNumUninitialized(Grid.Num());
-	NumVisible = 0;
-	NumExplored = 0;
-	for (int32 Index = 0; Index < Grid.Num(); ++Index)
-	{
-		switch (Map.GetVision(Camp, Grid.ToCell(Index)))
-		{
-		case EHOLCellVision::Visible:
-			Now[Index] = VisibleValue;
-			++NumVisible;
-			++NumExplored;
-			break;
-		case EHOLCellVision::Explored:
-			Now[Index] = ExploredValue;
-			++NumExplored;
-			break;
-		default:
-			Now[Index] = UnexploredValue;
-			break;
-		}
-	}
-	if (Texture && Now == Cells)
+	HOLFogPicture::Fill(Map, Camp, Now, NumVisible, NumExplored);
+	if (Texture && bHasPicture && Now == Cells)
 	{
 		return;
 	}
+	Grid = MapGrid;
 	if (!Texture || Texture->GetSizeX() != Grid.Side)
 	{
 		Texture = UTexture2D::CreateTransient(Grid.Side, Grid.Side, PF_G8);
@@ -168,6 +170,9 @@ void UHOLFogRenderSubsystem::RefreshTexture(const int32 Camp)
 	FMemory::Memcpy(Data, Cells.GetData(), Cells.Num());
 	Mip.BulkData.Unlock();
 	Texture->UpdateResource();
+	bHasPicture = true;
+	++Version;
+	OnPictureChanged.Broadcast();
 }
 
 void UHOLFogRenderSubsystem::Apply()
@@ -179,8 +184,6 @@ void UHOLFogRenderSubsystem::Apply()
 		UE_LOG(LogHOLMatch, Error, TEXT("Fog render: material %s missing (Tools/Editor/make_fog_materials.py)"), PostMaterialPath);
 		return;
 	}
-	const UHOLVisionSubsystem* Vision = GetWorld()->GetSubsystem<UHOLVisionSubsystem>();
-	const FHOLVisionGrid& Grid = Vision->GetMap().GetGrid();
 	const double Side = Grid.Side * Grid.CellSize;
 	Material = UMaterialInstanceDynamic::Create(Parent, this);
 	Material->SetTextureParameterValue(TEXT("FogTexture"), Texture);
@@ -224,11 +227,13 @@ void UHOLFogRenderSubsystem::SendCamera()
 	Send(TEXT("CamRight"), Quat.GetRightVector());
 	Send(TEXT("CamUp"), Quat.GetUpVector());
 	Send(TEXT("CamTan"), FVector(TanX, TanY, 0.));
+	Material->SetScalarParameterValue(TEXT("MaskGain"), CVarFogOrderMask.GetValueOnGameThread());
 }
 
 FString UHOLFogRenderSubsystem::MakeReport() const
 {
 	const TCHAR* Names[] = { TEXT("not drawn"), TEXT("post process") };
-	return FString::Printf(TEXT("Fog render: mode %d (%s), texture %d x %d, cells in sight %d explored %d"), AppliedMode,
-		Names[FMath::Clamp(AppliedMode, 0, 1)], Texture ? Texture->GetSizeX() : 0, Texture ? Texture->GetSizeY() : 0, NumVisible, NumExplored);
+	return FString::Printf(TEXT("Fog render: mode %d (%s), texture %d x %d, cells in sight %d explored %d, picture %s version %u"), AppliedMode,
+		Names[FMath::Clamp(AppliedMode, 0, 1)], Texture ? Texture->GetSizeX() : 0, Texture ? Texture->GetSizeY() : 0, NumVisible, NumExplored,
+		bHasPicture ? TEXT("kept") : TEXT("none"), Version);
 }

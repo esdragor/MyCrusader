@@ -417,3 +417,58 @@ void FHOLVisionMap::TakeOff(FObserver& Observer)
 	}
 	Observer.Seen.Reset();
 }
+
+uint8 HOLFogPicture::ToByte(const EHOLCellVision Vision)
+{
+	switch (Vision)
+	{
+	case EHOLCellVision::Visible:
+		return VisibleByte;
+	case EHOLCellVision::Explored:
+		return ExploredByte;
+	default:
+		return UnexploredByte;
+	}
+}
+
+EHOLCellVision HOLFogPicture::FromByte(const uint8 Byte)
+{
+	// Halfway between the bytes of two states: a blurred byte takes the nearer state.
+	constexpr uint8 VisibleFrom = (ExploredByte + VisibleByte) / 2 + 1;
+	constexpr uint8 ExploredFrom = ExploredByte / 2 + 1;
+	return Byte >= VisibleFrom ? EHOLCellVision::Visible : (Byte >= ExploredFrom ? EHOLCellVision::Explored : EHOLCellVision::Unexplored);
+}
+
+void HOLFogPicture::Fill(const FHOLVisionMap& Map, const int32 Camp, TArray<uint8>& Bytes, int32& NumVisible, int32& NumExplored)
+{
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	NumVisible = 0;
+	NumExplored = 0;
+	if (Camp < 0)
+	{
+		Bytes.Init(VisibleByte, Grid.Num());
+		NumVisible = Grid.Num();
+		NumExplored = Grid.Num();
+		return;
+	}
+	Bytes.SetNumUninitialized(Grid.Num());
+	for (int32 Index = 0; Index < Grid.Num(); ++Index)
+	{
+		const EHOLCellVision Vision = Map.GetVision(Camp, Grid.ToCell(Index));
+		Bytes[Index] = ToByte(Vision);
+		NumVisible += Vision == EHOLCellVision::Visible ? 1 : 0;
+		NumExplored += Vision != EHOLCellVision::Unexplored ? 1 : 0;
+	}
+}
+
+EHOLCellVision HOLFogPicture::Read(const FHOLVisionGrid& Grid, const TConstArrayView<uint8> Bytes, const FVector2D& Point)
+{
+	const FIntPoint Cell = Grid.ToCell(Point);
+	return Grid.IsInside(Cell) && Bytes.IsValidIndex(Grid.ToIndex(Cell)) ? FromByte(Bytes[Grid.ToIndex(Cell)]) : EHOLCellVision::Unexplored;
+}
+
+FVector2D HOLFogPicture::ToUV(const FHOLVisionGrid& Grid, const FVector2D& Point)
+{
+	const double Side = Grid.Side * Grid.CellSize;
+	return Side > 0. ? (Point + FVector2D(0.5 * Side, 0.5 * Side)) / Side : FVector2D::ZeroVector;
+}
