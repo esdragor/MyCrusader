@@ -15,6 +15,7 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLHeroReturnSubsystem.h"
@@ -263,6 +264,11 @@ void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 	if (Return)
 	{
 		Return->DecideNow(static_cast<int32>(StepIndex));
+	}
+	// D5: the duels advance with the heroes' health of this step (script book), where the simulation runs.
+	if (UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(GetWorld()))
+	{
+		Duels->TickNow(static_cast<int32>(StepIndex));
 	}
 }
 

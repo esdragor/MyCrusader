@@ -22,6 +22,7 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
@@ -510,6 +511,36 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		return !Vision || Vision->IsVisible(Seeker.State->OwnerPlayer, Other.Location);
 	};
+	// D5 (DuelInProgress.md; GDD 10.2, D18): while a duel is on, a hero in it is hit by his adversary only and hits nobody else.
+	// The script book (HOLDuel::BookCanHit) answers, once a step, for every pair (attacker hero slot, victim hero slot), -1 for
+	// anything that is not a hero; the pass below only reads that table. A unit never aims at, nor strikes, a protected hero.
+	constexpr int32 DuelStride = FHOLMatchConfig::MaxSlots + 1;
+	TArray<uint8> DuelHits;
+	UHOLDuelSubsystem* Book = UHOLDuelSubsystem::Find(World);
+	const bool bDuelOn = Book && Book->IsDuelOn();
+	if (bDuelOn)
+	{
+		DuelHits.SetNumZeroed(DuelStride * DuelStride);
+		for (int32 Attacker = -1; Attacker < FHOLMatchConfig::MaxSlots; ++Attacker)
+		{
+			for (int32 Victim = -1; Victim < FHOLMatchConfig::MaxSlots; ++Victim)
+			{
+				DuelHits[(Attacker + 1) * DuelStride + Victim + 1] = Book->CanHitNow(Attacker, Victim) ? 1 : 0;
+			}
+		}
+	}
+	const auto HeroSlotOf = [](const FFighter& Fighter)
+	{
+		return HOLIsHero(Fighter.Constants->ArmorCategoryMask) ? static_cast<int32>(Fighter.State->OwnerPlayer) : INDEX_NONE;
+	};
+	const auto CanHitSlots = [&DuelHits, bDuelOn](const int32 AttackerHero, const int32 VictimHero)
+	{
+		return !bDuelOn || DuelHits[(AttackerHero + 1) * DuelStride + VictimHero + 1] != 0;
+	};
+	const auto CanTouch = [&](const FFighter& Attacker, const FFighter& Victim)
+	{
+		return !bDuelOn || CanHitSlots(HeroSlotOf(Attacker), HeroSlotOf(Victim));
+	};
 
 	// The step's units, in identifier order (the outcome does not depend on the chunks). Each one's camp read once here.
 	const FHOLCampTable CampTable = FHOLCampTable::FromWorld(World);
@@ -982,7 +1013,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 			continue;
 		}
-		const int32 Victim = FindFighter(Arrow.Target);
+		int32 Victim = FindFighter(Arrow.Target);
+		if (bDuelOn && Victim != INDEX_NONE)
+		{
+			// D5: an arrow that reaches a protected hero (the duel began in its flight, or it comes from another hero's side) is lost.
+			const int32 ShooterIndex = FindFighter(Arrow.Shooter);
+			if (!CanHitSlots(ShooterIndex != INDEX_NONE ? HeroSlotOf(Fighters[ShooterIndex]) : INDEX_NONE, HeroSlotOf(Fighters[Victim])))
+			{
+				Victim = INDEX_NONE;
+			}
+		}
 		float Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0.f;
 		// J8c.2: the morale effects where it lands, now (aura, cry), not where it was released.
 		const float Landed = Victim != INDEX_NONE ? HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Fighters[Victim])) : Arrow.Damage;
@@ -1258,6 +1298,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// Its target, if it still stands.
 		int32 Target = FindFighter(Combat.Target);
 		bool bLost = false;
+		// D5: a target that became a protected hero (a duel began) is let go; the hero's own aim at anything but his adversary too.
+		if (bDuelOn && Target != INDEX_NONE && Fighters[Target].State->CurrentHealth > 0 && !CanTouch(Fighter, Fighters[Target]))
+		{
+			--Fighters[Target].Combat->AttackerCount;
+			Touch(Target);
+			Combat.Disengage();
+			Touch(Index);
+			Target = INDEX_NONE;
+		}
 		if (Combat.Target.IsSet() && (Target == INDEX_NONE || Fighters[Target].State->CurrentHealth <= 0))
 		{
 			Touch(Index);
@@ -1302,7 +1351,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// give up at its start, and returns at it (in reach and current), the only candidate that can return early, the
 			// ones before it only ranked. So the scan is spared; it changes nothing (the candidates are the step's scratch).
 			const bool bKeepTarget = bFast && Target != INDEX_NONE && SearchRadius > 0.f
-				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && IsSeenBy(Fighter, Fighters[Target])
+				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && IsSeenBy(Fighter, Fighters[Target]) && CanTouch(Fighter, Fighters[Target])
 				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange);
 			int32 NewTarget = Target;
 			if (!bKeepTarget)
@@ -1323,7 +1372,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				const auto AddCandidate = [&](const int32 Other)
 				{
 					const FFighter& Enemy = Fighters[Other];
-					if (!IsSeenBy(Fighter, Enemy))
+					if (!IsSeenBy(Fighter, Enemy) || !CanTouch(Fighter, Enemy))
 					{
 						return;
 					}
@@ -1525,7 +1574,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (const FMassEntityHandle Foe : { NearCombat.Target, NearCombat.LastAttacker })
 					{
 						const int32 Other = FindFighter(Foe);
-						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp)
+						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp || !CanTouch(Fighter, Fighters[Other]))
 						{
 							continue;
 						}
@@ -1584,7 +1633,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			for (const int32 Other : Contacts)
 			{
 				const FFighter& Enemy = Fighters[Other];
-				if (Enemy.State->CurrentHealth <= 0)
+				if (Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy))
 				{
 					continue;
 				}
@@ -1644,7 +1693,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			for (const int32 Other : Nearby)
 			{
 				const FFighter& Enemy = Fighters[Other];
-				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0)
+				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy))
 				{
 					continue;
 				}
@@ -1733,6 +1782,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						Combat.bAttacking = false;
 					}
 				}
+			}
+			// D5: a hero in a duel touches nothing but his adversary: no building (its target kept for after the duel).
+			if (BuildingIndex != INDEX_NONE && !CanHitSlots(HeroSlotOf(Fighter), INDEX_NONE))
+			{
+				Combat.bAttacking = false;
+				BuildingIndex = INDEX_NONE;
 			}
 			if (BuildingIndex != INDEX_NONE && World)
 			{
@@ -2045,7 +2100,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						for (const int32 Other : Nearby)
 						{
 							const FFighter& Near = Fighters[Other];
-							if (Near.State->CurrentHealth <= 0)
+							if (Near.State->CurrentHealth <= 0 || !CanTouch(Fighter, Near))
 							{
 								continue;
 							}
@@ -2102,6 +2157,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 
 		FFighter& Enemy = Fighters[Target];
+		if (!CanTouch(Fighter, Enemy))
+		{
+			// D5: the last gate before a blow or an arrow (the target was taken above in the step): nothing is struck.
+			--Enemy.Combat->AttackerCount;
+			Touch(Target);
+			Combat.Disengage();
+			Touch(Index);
+			continue;
+		}
 		const FVector2D EnemyPosition(Enemy.Location);
 		if (!HOLCombat::IsInRange(Position, Constants.Radius, EnemyPosition, Enemy.Constants->Radius, Constants.AttackRange))
 		{
