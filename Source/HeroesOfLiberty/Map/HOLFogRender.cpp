@@ -158,7 +158,9 @@ void UHOLFogRenderSubsystem::RefreshTexture(const int32 Camp)
 		Texture->Filter = TF_Bilinear;
 		Texture->AddressX = TA_Clamp;
 		Texture->AddressY = TA_Clamp;
-		Texture->MipGenSettings = TMGS_NoMipmaps;
+#if WITH_EDITORONLY_DATA
+		Texture->MipGenSettings = TMGS_NoMipmaps; // editor-only property; CreateTransient already has a single mip
+#endif
 		if (Material)
 		{
 			Material->SetTextureParameterValue(TEXT("FogTexture"), Texture);

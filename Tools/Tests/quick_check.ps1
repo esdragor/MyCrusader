@@ -620,7 +620,7 @@ $SidesMine = @(-10800, 0); $SidesEnemy = @(-8000, -1900); $SidesEnemyArchers = @
 $SidesAlly = @(-8000, 1900); $SidesAllyArchers = @(-7400, 1900)
 if ($Parts -contains "sides") {
     $SidesConfig = Join-Path $TestSaved "sides_3p.json"
-    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0, "team": 1 }, { "state": "AI", "colorIndex": 1, "team": 2 }, { "state": "AI", "colorIndex": 2, "team": 1 } ] }' |
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0, "team": 1 }, { "state": "AI", "colorIndex": 1, "team": 2, "aiBrain": false }, { "state": "AI", "colorIndex": 2, "team": 1, "aiBrain": false } ] }' |
         Set-Content -Encoding ascii $SidesConfig
     # A ground box around the points (cm), and the reports after it.
     function SidesBox([double] $X1, [double] $Y1, [double] $X2, [double] $Y2, [string] $Add = "") { Step "hol.Select.BoxGround $X1 $Y1 $X2 $Y2 $Add".Trim() }
