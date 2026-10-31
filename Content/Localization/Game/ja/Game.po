@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-31 07:10\n"
-"PO-Revision-Date: 2026-10-31 07:10\n"
+"POT-Creation-Date: 2026-10-31 07:53\n"
+"PO-Revision-Date: 2026-10-31 07:53\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -115,8 +115,8 @@ msgstr "隊列を固めよ (A)"
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(253)
 #: Script/UI/HOLHeroBlock.as(253)
 msgctxt "HOLHeroBlock,CloseRanksEffect"
-msgid "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s"
-msgstr "英雄から12 m以内の味方ユニットの被ダメージ −25 %（15秒）；再使用 60秒"
+msgid "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgstr "防御陣形（15秒）：英雄から12 m以内の味方ユニットはその場に留まり、被ダメージ −25 %；再使用 60秒"
 
 #. Key:	BannerName
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(254)
@@ -1074,8 +1074,8 @@ msgstr "続けて英雄から16 m以内の地面をクリック：45秒間オー
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1879)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1879)
 msgctxt "HOLGameScreen,CloseRanksEffect"
-msgid "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s"
-msgstr "英雄から12 m以内の味方ユニットの被ダメージ −25 %（15秒）；再使用 60秒"
+msgid "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgstr "防御陣形（15秒）：英雄から12 m以内の味方ユニットはその場に留まり、被ダメージ −25 %；再使用 60秒"
 
 #. Key:	PopulationMax
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(188)
