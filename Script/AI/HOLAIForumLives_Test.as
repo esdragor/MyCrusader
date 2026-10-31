@@ -134,3 +134,51 @@ void Test_LivesTheJournalLine(FUnitTest& T)
 	T.AssertTrue(HOLAIForum::ShouldLog(Logged, Over), "the attack ends: written");
 	T.AssertFalse(HOLAIForum::ShouldLog(Logged, Over), "quiet: nothing");
 }
+
+// D585 (answer B): a wave out is called back when the forum is attacked, for Easy only; Normal and Hard keep the old rule (AttackRecallCount
+// enemies at home, or the fallen forum). Real tables; the wave is the real UpdateWave on the real WaveRecalled.
+void Test_LivesEasyRecallsTheWave(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = LivesData();
+	FHOLAISummary Summary = LivesSummary(Data, 2, false, 0, 2, 300.f);
+	for (int Index = 0; Index < 10; Index++)
+	{
+		Summary.Army.Add(LivesUnit(1 + Index, n"Spearman", LivesHealthOf(Data, n"Spearman"), FVector(-6000, 100.f * float(Index), 0), 0));
+	}
+	FHOLAIWave Out;
+	Out.Phase = EHOLAIWavePhase::Out;
+	Out.Ids = HOLAIArmy::SoldierIds(Summary);
+	Out.LaunchedSize = Out.Ids.Num();
+	Out.PhaseStart = 500.f;
+	Out.LastOrder = 500.f;
+	Out.NextLaunch = 590.f;
+
+	const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Out);
+	const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data);
+	const FHOLAIThreat Home = HOLAIArmy::Threat(Rest, Data);
+	T.AssertTrue(Whole.bThreatened && Whole.Count < Data.AttackRecallCount, "two enemies at the forum: under the old recall count");
+	T.AssertFalse(HOLAIForum::Emergency(Summary), "the forum stands: no emergency");
+
+	const FHOLAIForumSituation Easy = HOLAIForum::Judge(Rest, Data, Home, EHOLAIDifficulty::Easy);
+	const FHOLAIForumSituation Normal = HOLAIForum::Judge(Rest, Data, Home, EHOLAIDifficulty::Normal);
+	T.AssertTrue(Easy.bAttacked && Normal.bAttacked, "the forum is attacked");
+	T.AssertTrue(HOLAIForum::WaveRecalled(Summary, Data, Whole, Easy), "Easy calls the wave back");
+	T.AssertFalse(HOLAIForum::WaveRecalled(Summary, Data, Whole, Normal), "Normal keeps its wave out");
+
+	FHOLAIWave EasyWave = Out;
+	const FHOLAIWaveStep EasyStep = HOLAIArmy::UpdateWave(EasyWave, Summary, Data, true, HOLAIForum::WaveRecalled(Summary, Data, Whole, Easy), FVector(-1500, 0, 0), 510.f);
+	T.AssertTrue(EasyStep.bRetreat && EasyWave.Phase == EHOLAIWavePhase::Back, "Easy: the wave falls back");
+	FHOLAIWave NormalWave = Out;
+	const FHOLAIWaveStep NormalStep = HOLAIArmy::UpdateWave(NormalWave, Summary, Data, true, HOLAIForum::WaveRecalled(Summary, Data, Whole, Normal), FVector(-1500, 0, 0), 510.f);
+	T.AssertFalse(NormalStep.bRetreat, "Normal: the wave stays out");
+
+	// No enemy at the forum: nobody is recalled, whatever the level.
+	const FHOLAISummary Quiet = LivesSummary(Data, 2, false, 0, 0, 300.f);
+	const FHOLAIThreat QuietThreat = HOLAIArmy::Threat(Quiet, Data);
+	T.AssertFalse(HOLAIForum::WaveRecalled(Quiet, Data, QuietThreat, HOLAIForum::Judge(Quiet, Data, QuietThreat, EHOLAIDifficulty::Easy)), "no threat: no recall");
+
+	// The old rule still recalls Normal: AttackRecallCount enemies at home.
+	const FHOLAISummary Strong = LivesSummary(Data, 2, false, 0, Data.AttackRecallCount, 300.f);
+	const FHOLAIThreat StrongThreat = HOLAIArmy::Threat(Strong, Data);
+	T.AssertTrue(HOLAIForum::WaveRecalled(Strong, Data, StrongThreat, HOLAIForum::Judge(Strong, Data, StrongThreat, EHOLAIDifficulty::Normal)), "Normal: three enemies at home still recall the wave");
+}
