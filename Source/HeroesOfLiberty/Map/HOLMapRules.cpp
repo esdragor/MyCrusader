@@ -17,6 +17,7 @@ namespace UE::HeroesOfLiberty::Map
 			{ TEXT("Steppe"), NSLOCTEXT("HOLMaps", "Map_Steppe", "La Steppe"), true },
 			{ TEXT("Hinterland"), NSLOCTEXT("HOLMaps", "Map_Hinterland", "L'Arrière-pays"), true },
 			{ TEXT("ElDorado"), NSLOCTEXT("HOLMaps", "Map_ElDorado", "El Dorado"), true, true },
+			{ TEXT("Cols"), NSLOCTEXT("HOLMaps", "Map_Cols", "Les Cols"), true },
 		};
 		return Maps;
 	}

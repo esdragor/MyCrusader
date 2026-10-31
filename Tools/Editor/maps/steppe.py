@@ -88,6 +88,7 @@ VEIN_GAP = 1800.0  # M-Q9: between a pile and another deposit (source to source)
 VEIN_FROM_SLOT = 11000.0
 VEIN_SPREAD = 4000.0  # M-Q9: veins of one resource this far apart (was 60 m with 4 and 2 veins a territory; now 14 piles, many of them small)
 CENTRE_CLEAR = 2000.0
+KEEP_OUT = None  # C4 (Les Cols): a map module may set a function (x, y) -> True for a point where no far deposit may be (a range of mountains)
 EDGE_MARGIN = 1500.0
 NEAR_REACH = 7500.0  # no far deposit's source closer than this to a slot: the near layer is the same around every slot
 FAR_GAP_START = 8000.0  # between the centres of two deposits of the far layer (the smallest territory's), thrown at first
@@ -250,6 +251,8 @@ def near_layer(recipe):
             copies = [rotate(point, turn * step) for turn in range(places)]
             if any(math.dist(copy, slot) < slot_gap for copy in copies for slot in slots):
                 continue
+            if KEEP_OUT is not None and any(KEEP_OUT(copy) for copy in copies):
+                continue
             fits = True
             for other_kind, other_size, other_copies in placed + [(kind, size, copies[1:])]:
                 gap = DEPOSIT_GAP + reach + near_room(other_kind, other_size)
@@ -324,6 +327,8 @@ def far_allowed(recipe, slots, point):
         return False
     if math.hypot(*point) < CENTRE_CLEAR + MIN_EXTENT:
         return False
+    if KEEP_OUT is not None and KEEP_OUT(point):
+        return False
     return not any(math.dist(point, slot) < NEAR_REACH + MIN_EXTENT for slot in slots)
 
 
@@ -351,6 +356,8 @@ def far_veins(recipe, near):
             for _ in range(VEIN_DRAWS):
                 point = (rng.range(-edge, edge), rng.range(-edge, edge))
                 if nearest(point, slots) != index or math.hypot(*point) < CENTRE_CLEAR:
+                    continue
+                if KEEP_OUT is not None and KEEP_OUT(point):
                     continue
                 if any(math.dist(point, slot) < third[kind] for slot in slots):
                     continue
