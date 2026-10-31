@@ -88,6 +88,10 @@ struct FHOLAIArmyData
 	// FleeRadius; ordered again at most every StrikeEvery seconds. Provisional: tuned on AI-only games.
 	float StrikeMargin = 1.5f;
 	float StrikeEvery = 4.f;
+	// D584 (user's answer B): a Peasant finishes the wounded off only when it is ISOLATED: no other enemy soldier that is itself sound (one whose
+	// duel the Peasant would not win with the margin) stands within this of the wounded one (cm, about 5 m). Stragglers and fugitives, not the
+	// wounded in the middle of their army. Provisional, a setting.
+	float StrikeIsolation = 500.f;
 
 	// The Peasant's own figures (LoadFigures reads the table); empty (no health) = a Peasant never strikes.
 	FHOLAITypeFigures PeasantFigures;
@@ -686,7 +690,26 @@ namespace HOLAIArmy
 		return Matchup(Data, Mine, Theirs);
 	}
 
-	// The soldier a Peasant may finish off: the nearest enemy soldier within FleeRadius whose duel is won with the margin; -1 for none.
+	// D584: the wounded soldier stands alone when no OTHER enemy soldier that is sound for this Peasant (its duel under the margin) is within
+	// StrikeIsolation of it. Another wounded one (that the Peasant would also win against) is no escort.
+	bool IsIsolated(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIUnit& Peasant, const FHOLAIUnit& Wounded)
+	{
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Other = Summary.Enemies[Index];
+			if (Other.Id == Wounded.Id || !IsThreatening(Other))
+			{
+				continue;
+			}
+			if (FlatDistance(Other.Location, Wounded.Location) <= Data.StrikeIsolation && DuelRatio(Data, Peasant, Other) < Data.StrikeMargin)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// The soldier a Peasant may finish off: the nearest enemy soldier within FleeRadius whose duel is won with the margin and who is isolated (D584); -1 for none.
 	int StrikeTargetFor(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIUnit& Peasant)
 	{
 		int Best = -1;
@@ -703,7 +726,7 @@ namespace HOLAIArmy
 			{
 				continue;
 			}
-			if (Best < 0 || Distance < BestDistance)
+			if ((Best < 0 || Distance < BestDistance) && IsIsolated(Summary, Data, Peasant, Enemy))
 			{
 				Best = Enemy.Id;
 				BestDistance = Distance;
