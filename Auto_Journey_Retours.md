@@ -1,8 +1,8 @@
-# Auto_Journey : ce qui attend l'utilisateur
+﻿# Auto_Journey : ce qui attend l'utilisateur
 
-Dernière mise à jour : 2026-10-30 21:45 (réponses de l'utilisateur enregistrées dans leurs chantiers).
+Dernière mise à jour : 2026-10-31 14:00 (PQ1 ajoutée : seuils S3 et S4 avec le héros).
 
-**À faire par vous :** aucun essai prêt (`fog_ghosts` validé) · aucune question en attente (section 2) · **fusions : aucune en attente (section 3)** · docs de la copie principale commités (cfd73b0).
+**À faire par vous :** **14 essais prêts (`duel_challenge`, `duel_challenge_accept`, le défi de duel PROVISOIRE ; `neutrals`, camps neutres ; `fog_trees`, brouillard au menu et arbres gardés ; `market`, le Marché ; `map_eldorado`, marais d'El Dorado ; `ai_easy`, IA Facile ; `ai_normal`, `ai_hard` et `ai_evolving`, IA4 D579 ; `talents`, rappel et cri ; `relays`, relais neutres et anneau de prise ; `tree_spacing`, bosquets compacts ; `tech`, recherches par la file ; `fog_orders`, lignes d'ordre sous le brouillard)** · **27 questions en attente (section 2, Performance PQ1, Brouillard FQ-L, Talents TQ3 et TQ4, Technologies T-Q7 à T-Q11, Sanctuaire et Chapelle SC-Q1 et SC-Q2, Duel DU-Q1, DU-Q2 et DU-Q3, Cartes CQ1, CQ2, CQ4, CQ5 et CQ6, Marché MK-Q2 et MK-Q3, Volcan V4-Q1 et V4-Q2, +2 d'Arwen, IA4-Q1 et IA4-Q2, Relais RQ1 à RQ3, Neutres NQ1, NQ2 et NQ3)** · **fusions : aucune en attente (section 3)** · docs de la copie principale commités (2026-10-31 14:10).
 
 **Manière de faire (confirmée le 2026-10-30)**
 - Vous répondez **en ligne**, sous chaque item, par `Reponse: ...`. Les sous-agents y ajoutent leurs lignes (essai prêt, question posée), jamais ailleurs.
@@ -16,17 +16,391 @@ Dernière mise à jour : 2026-10-30 21:45 (réponses de l'utilisateur enregistr�
 
 Format de chaque essai : titre · commande · quoi regarder · état · ligne `Reponse:`.
 
-Aucun essai prêt : `fog_ghosts` validé (« works ») et reporté dans `FogInProgress.md`. Prochains essais : `fog_orders` après le correctif du grésillement, `tree_spacing` après les bosquets compacts.
+**Essai `duel_challenge` et `duel_challenge_accept` (le défi de duel, D4 : défier et répondre ; **RÉGLAGES PROVISOIRES** : DU-Q2 = A par défaut, rayon de la zone anti-forum 2500 cm = DU-Q3 ; Celeborn, `hero-j8-close`, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 duel_challenge -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn` puis `... play.ps1 duel_challenge_accept -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn` · à regarder : (1) tes Paysans et ton héros marchent au centre avec ceux de l'IA (~80 s) ; (2) dans la console (²) tape `hol.Duel.Challenge 1` si le scénario ne l'a pas déjà fait : une petite fenêtre en haut au centre dit « Défi envoyé au héros du joueur 2 » avec la barre et les secondes qui descendent, sans bouton ; (3) `duel_challenge` : l'IA répond après 2-3 s, presque toujours par un refus à forces égales (ligne `AI duel answer: refuse (odds 50 ...)` dans le journal), la fenêtre disparaît ; `duel_challenge_accept` : la réponse d'acceptation est donnée d'office (`hol.Duel.ForceAnswer 1 1`), le duel commence, les deux héros se frappent seuls (personne d'autre ne les touche), jusqu'à `Duel ended`. **Limites connues** : pas de cercle dessiné ; la fenêtre avec « Accepter / Refuser » (défi reçu) n'est pas montrée (aucun scénario où l'IA te défie) ; pas de bouton « défier » (console) ; pas de Hésitation / Triomphe / XP à la fin ; textes de la fenêtre non traduits · état : les deux scénarios PASS en `check.ps1` (hors écran), jamais vus à l'écran · 
+Reponse:
 
-Autres essais : `surplus` (la cible encerclée à 6 : le changement de cible de dd16203, inchangé) et `rank_slide` (glissement du rang, accepté) restent utilisables ; `fog_orders` et `tree_spacing` seront refaits après leur correction (lignes en tête des files de Faramir et de Haldir).
+**Essai `neutrals` (camps neutres : passifs au repos, charge à vue, nettoyés pour toujours, XP du héros, Arwen, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 neutrals -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` (variante sous brouillard : `neutrals_fog`) · le scénario joue seul (une dizaine de secondes, accéléré) : 3 Lanciers neutres au centre de la carte, 6 Hommes d'armes à 40 m ; à regarder : (1) les Lanciers neutres restent immobiles au poste tant que personne n'est à moins de 15 m ; (2) mes soldats entrent dans le rayon : tout le camp charge (branche NQ1 = à vue), le camp est détruit, le journal (Saved/Logs) dit `Camp 0: fighting`, `cleared for good`, `Camp 0 reward: slot 0 +100 XP` ; (3) deuxième camp avec `hol.Camp.Aggro 1` (seulement quand on l'attaque, à 80 m au nord) : mes soldats s'arrêtent à 13 m sans le toucher et il ne bouge pas ; puis ils l'attaquent et il se défend. Pour jouer à la main dans la console (²) : `hol.Camp.Add X Y 4 Spearman`, `hol.Camp.Report`, `hol.Camp.Aggro 0|1`, `hol.Camp.Credit 0|1|2` (NQ2 : dernier coup, plus de dégâts, au prorata) · état : démarré hors écran sans erreur et joué jusqu'au bout par `check.ps1` (neutrals et neutrals_fog PASS, les deux camps nettoyés, XP reçue) ; tests C++ `Neutrals.CampRules` et `Neutrals.Owner` (633/633) ; **non vu à l'écran** : l'aspect des unités neutres (leur couleur est un numéro hors des joueurs), ni en réseau à 2 clients ; les unités neutres sont des Lanciers ordinaires tant que les créatures ne sont pas définies · ligne `Reponse:` attendue : le camp se lit-il comme un camp (immobile, charge, retour), ce qui gêne.
+Reponse:
+
+**Essai `ai_easy` (IA Facile : défend son forum avec toute son armée et rappelle sa vague, Arwen, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 ai_easy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` · à regarder : (1) tu joues contre « IA Facile 2 » ; construis une Caserne, fais 3-4 Lanciers et pose-les devant son forum (moins de 8 m du mur) : toute son armée vient les chasser même si elle est plus faible ou plus forte (le journal dit `forum attacked ... level Easy, decision fight`) ; (2) attends que sa vague parte vers ton camp (voir `ai_army`), puis envoie 2-3 unités devant son forum : sa vague doit faire demi-tour. Comparer avec `ai_army` (Normal), qui ne rappelle la vague que si 3 ennemis ou plus sont chez elle · état : démarré hors écran sans erreur (`level Easy` lu) ; la défense du forum a été vue en partie sans fenêtre (4 Lanciers, ligne `forum attacked` puis `defence begins`) après la correction d'un bug (le mur du Centre principal n'était pas compté) ; le rappel de la vague n'a pas été vu en partie · ligne `Reponse:` attendue : elle défend / elle rappelle sa vague / ce qui cloche.
+Reponse:
+
+**Essai `ai_normal` (IA Normale : quand son forum est attaqué et qu'elle sait perdre, elle feinte et garde son économie, Arwen, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 ai_normal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` · à regarder : (1) tu joues contre « IA Normal 2 » ; construis une Caserne, fais 3-4 Lanciers et pose-les devant son Centre alors qu'elle a peu d'armée : elle ne se jette pas dessus, son armée recule d'une quarantaine de mètres derrière son Centre, puis contourne vos soldats par le côté, puis frappe ; (2) ses Paysans proches de vos soldats courent vers un refuge derrière son Centre et non vers le Centre attaqué ; (3) le journal (Saved/Logs) dit `forum attacked ... decision feint`, `feint, phase 1 / 2 / 3`, `Peasants run to the refuge` ; (4) à sa dernière vie : tout sur la ruine, aucune feinte. Les durées et distances sont des réglages provisoires : dites ce qui est trop long ou trop court · état : démarré hors écran sans erreur, et joué hors écran avec 4 Lanciers de l'IA contre 6 Hommes d'armes du joueur au forum : `feint, phase 1` à 0 s, `2` à 6 s, `3` à 16 s, puis défense ; ses 5 Paysans ont survécu (2026-10-31) ; le mouvement n'a pas été vu à l'écran.
+Reponse:
+
+**Essai `ai_hard` (IA Difficile : évalue sa perte, peut laisser une vie pour garder son armée, punit chez vous, Arwen, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 ai_hard -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` · à regarder : (1) tu joues contre « IA Difficile 2 » ; envoie un petit groupe frapper son Centre alors que son armée est médiocre : si le combat lui coûterait plus de la moitié de son armée et que son armée suffit à écraser votre camp, elle ne défend pas, laisse son forum devenir une ruine (une vie de moins) et part en vague sur votre Centre ; (2) entre deux vagues, ses soldats vont tuer vos blessés isolés ; (3) le journal dit `forum attacked ... decision let the life go, the army is kept (loss ..., over the home ...)`, `punishes the attacker's home`, `snipes enemy` ; (4) à sa dernière vie : tout sur la ruine. Questions liées : IA4-Q2 (section 2) · état : démarré hors écran sans erreur, et joué hors écran : `let the life go` puis une seule vague de 4 soldats vers votre Centre (une boucle départ/recul toutes les 5 s a été trouvée dans la première sonde et corrigée) ; le snipe n'a pas été vu en vraie partie.
+Reponse:
+
+**Essai `ai_evolving` (IA Évolutive : Facile, puis Normale à 600 s, puis Difficile à 1500 s, Arwen, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 ai_evolving -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` · à regarder : le journal (Saved/Logs) dit `evolving, plays Easy now` au début, `plays Normal now` à 10 minutes de jeu, `plays Hard now` à 25 minutes ; la décision `forum attacked` suit le niveau du moment ; seule la gestion du forum attaqué suit la courbe pour l'instant (la macro, l'agression, la micro et les pouvoirs de D329 restent à faire) · état : démarré hors écran sans erreur (`level Evolving`, `plays Easy now`, 2026-10-31) ; les changements de niveau à 600 s et 1500 s ne sont testés qu'en script (tables réelles), pas vus en vraie partie.
+Reponse:
+
+**Essai `market` (le Marché : vendre et acheter au cours commun, Galadriel, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 market -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel` · à regarder : (1) le Marché terminé est sélectionné (posé par triche près de ton forum, 2000 de chaque ressource) : la grille en bas à droite montre A Z E = vendre 100 de nourriture, bois, pierre, et Q S D = acheter 100 ; chaque case écrit la ressource et le gain (+56) ou le coût (-104), l'info-bulle le prix après l'échange ; (2) vends du bois plusieurs fois : le gain baisse (56, 53, 51...) et le cours baisse de 3 points par lot ; achète de la pierre : son prix monte ; Maj + case = 500 d'un coup ; une case que le stock ne paie pas est grisée et le clic dit ce qui manque ; (3) laisse passer 30 s : les cours remontent d'1 point toutes les 10 s ; (4) l'IA n'utilise pas encore le Marché (elle ne le construit pas : MK-Q3) · état : démarré hors écran sans erreur (23 étapes, Marché posé et sélectionné, notes affichées, 2026-10-31) ; la chaîne ordre -> stock -> cours est testée (`Market.Chain`) et la vente d'un lot de bois à 56 or vue en partie sans fenêtre (`quick_check -Parts build:market` PASS) ; l'aspect des cases (libellé sur deux lignes, grisé) n'a pas été vu à l'écran, ni l'essai à deux joueurs réseau · ligne `Reponse:` attendue : lisible / ce qui cloche (libellés, prix, Maj).
+Reponse:
+
+**Essai `tree_spacing` (bosquets compacts, Haldir, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 tree_spacing` · à regarder : trois paquets de 14 arbres côte à côte, troncs à 1,2 m (ils se touchent, 1 Paysan à côté), 1,3 m (2 Paysans) et 1,4 m (3 Paysans, l'essai précédent) ; molette pour approcher/reculer, puis clic droit sur un arbre du milieu avec un Paysan : lequel se lit comme un bois compact, sans blanc, sans que les troncs se mélangent en un bloc ? · état : démarré hors écran sans erreur (« Scenario tree_spacing: ready », 3 paquets lus au journal, 2026-10-31) ; les cartes Plaine, Steppe et Arrière-pays sont refaites aux 5 tailles à 1,25 à 1,35 m (branche `maps`, 4d26fbd) · ligne `Reponse:` attendue : 1,2, 1,3 ou 1,4 m.
+Reponse:
+
+**Essai `tech` (Technologies : recherche dans la file d'un bâtiment, Glorfindel, 2026-10-31, optionnel : pas encore de case dans la grille)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 tech` · le scénario joue seul (≈ 25 s, recherches de 2 s) : une Ferme, le héros monte au niveau 3 puis 6, la Charrue I et II et la Brouette I et II se cherchent par la file de la Ferme, avec leurs refus (palier trop bas, déjà en file, Brouette refusée au Centre principal, Charrue II sans palier 2, Brouette II sans Brouette I) ; regarder le panneau du scénario et le journal (² puis `hol.Tech.Report` : « gathering food +20% », le total de la ligne et non 10 + 20). Pour jouer à la main : `hol.Prod.Queue PloughI Farm` (la Ferme sélectionnée), `hol.Hero.SetXP 0 600` pour le palier 1. État : vérifié hors écran sans erreur (`Tools\Scenarios\check.ps1 tech` : PASS). L'effet réel sur la vitesse de récolte n'est pas mesuré.
+Reponse:
+
+**Essai `talents` (rappel des talents, cri en formation défensive, Pas de l'Aube, Elrond, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 talents` · le scénario joue seul puis laisse la partie ouverte ; les notes du panneau disent quoi faire. À regarder : (1) sous les capacités du héros (bloc en bas à gauche), la ligne « Talents à dépenser : N » quand un point est gardé, bouton gris tant qu'aucun talent n'est pris ; (2) trois boutons « Gardien / Capitaine / Champion » sous le rappel (choix du tout premier talent, **PROVISOIRE : option B de TQ4 construite par défaut, TQ4 non tranchée**, réglage `hol.UI.TalentFirstChoice` 0/1/2) : clique « Capitaine », puis « — choix conseillé » et le bouton actif : un clic prend le talent du Capitaine ; (3) F4 puis A (le cri) puis un clic droit de tes 6 Hommes d'armes à 25 m à l'est : ils restent sur place 15 s (formation défensive) ; (4) avec 3 talents du Capitaine (Pas de l'Aube), `hol.Hero.ResetAbilities 0`, le cri, le clic droit : ils avancent à demi-vitesse pendant le cri · état : démarré hors écran sans erreur (« Scenario talents: ready », 7 notes, 1er talent pris, 2026-10-31) ; les mêmes effets sont vérifiés par `quick_check -Parts build:hero` (cas `hero hold` et `hero dawn`). Question liée : TQ3 (valeur du cri). L'infobulle du cri dit encore seulement « −25 % ». · ligne `Reponse:` attendue : ça se lit bien / ce qui gêne.
+**Essai `relays` (relais neutres : réplication et anneau de prise, Elrond, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 relays` · le scénario pose un relais à 65 m à l'est de ton centre (délai de prise 20 s) et 6 Hommes d'armes à ton centre ; les notes du panneau disent quoi faire. À regarder : (1) un cercle mince et sombre au sol = le relais neutre ; (2) sélectionne les 6 Hommes d'armes, clic droit au centre du cercle : dès qu'ils y sont, un arc épais de ta couleur monte depuis le haut, dans le sens des aiguilles d'une montre, en 20 s ; (3) plein : tout le cercle prend ta couleur et ton héros gagne +1 XP environ toutes les 6 s ; (4) console `hol.Units.Spawn 3 -10000 3000 1 Spearman 100` : trois Lanciers ennemis dans le cercle gèlent le décompte tant que tes soldats y sont, et le reprennent (arc de leur couleur) si tu les retires · état : démarré hors écran sans erreur (« Scenario relays: ready », 5 notes, 2026-10-31) ; l'anneau (arc et cercle propriétaire) est vérifié par `quick_check -Parts build:relay` (captures `build_relay_fill` et `build_relay_owned`) ; **non vérifié : la réplication à un client réseau** (le serveur écrit l'état dans le game state, aucun passage `net` à 2 clients) · lié : RQ1 (XP) et RQ2 (deux camps) ; les relais ne viennent pas encore des cartes · ligne `Reponse:` attendue : l'anneau se lit-il bien (épaisseur, couleurs) / ce qui gêne.
+Reponse:
+
+**Essai `fog_orders` (lignes d'ordre sous le brouillard, plus épaisses, Faramir, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 fog_orders -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` · à regarder : les Hommes d'armes ont deux déplacements en file vers le noir ; les lignes jaunes font maintenant 12,5 cm (au lieu de 6,25) : grésillent-elles encore, la ligne ou les points, dans la zone claire ET dans le noir ? Puis dans la console du jeu (²) : `hol.Fog.OrderMask 1.5` (halo d'un pixel autour des lignes) et `hol.Orders.LineWidthFog 6.25` / `25` pour comparer ; et vérifier que le brouillard reste en place quand les unités marchent (le bug corrigé le 2026-10-30 n'a pas eu de retour de votre part) · état : démarré hors écran sans erreur (« Scenario fog_orders: ready », notes lues au journal, 2026-10-31) ; la mesure automatique des images n'a pas pu trancher (écarts dans le bruit), seul votre œil le peut · ligne `Reponse:` attendue : grésille encore / ne grésille plus, et avec quel réglage.
+Reponse:
+
+**Essai `fog_trees` (brouillard choisi au menu, bosquet coupé hors de vue qui reste dessiné, liste « Brouillard », Faramir, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 fog_trees -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` · le scénario joue seul (≈ 1 min) : un bosquet de 10 arbres à 90 m à l'est, mes 4 Hommes d'armes vont le voir puis reviennent, le bosquet est coupé pendant qu'ils sont loin, ils retournent le voir ; il passe par l'écran Nouvelle partie avec le brouillard **Normal** de la configuration (rien n'est réglé à la console : c'est le vrai chemin du menu, qui jusqu'ici ne dessinait aucun noir) · à regarder : (1) la partie démarre dans le noir avec ma vue autour du centre ; (2) quand les soldats sont revenus au centre, la caméra sur le bosquet montre **les 10 arbres encore dessinés** dans le gris de l'exploré (ce que vous saviez), pas de trou ; (3) quand les soldats reviennent à 70 m, **les arbres disparaissent** ; (4) Échap, Menu, quitter vers le menu, Nouvelle partie : à droite de « Carte », la liste **« Brouillard »** (Normal, Carte explorée, Sans brouillard), assez large, la flèche visible, navigable au clavier ; choisissez « Sans brouillard » puis Lancer : plus de noir ; « Carte explorée » : tout est vu (D389) mais les unités cachées le restent selon la règle · état : prêt, démarré hors écran jusqu'à « ready » sans erreur ; captures de contrôle `fogtrees_b` / `fogtrees_c` (solo) et `fogclient_ghost` (chez un client, forum ennemi en fantôme gris) ; **non prouvé** : les arbres gardés chez un client réseau, le coût GPU du brouillard à l'écran
+Reponse:
+
+**Essai `map_eldorado` (El Dorado Petite, marais, Haldir, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 map_eldorado` · à regarder : pas d'or chez moi, un amas de 18 filons d'or au milieu entouré d'une couronne de marais (disques sombres bleu-vert sur l'herbe) ; sélectionner les 10 Hommes d'armes devant mon centre (double clic) et les envoyer d'un clic droit au milieu de la carte, à travers la couronne : ils doivent ralentir nettement dans le marais (60 % de la vitesse, valeur provisoire) puis reprendre leur allure ; le marais se lit-il du premier coup d'oeil, le ralentissement est-il trop fort ou trop faible (console ², `hol.Terrain.MarshSpeedPercent 75`, puis `hol.Terrain.Report`) ? · état : démarré hors écran sans erreur (« Scenario map_eldorado: ready » ; le journal lit « 12 terrain zones placed by the map, marsh speed 60 % ») ; mesuré dans le vrai jeu (scénario `marsh_speed`, un Homme d'armes traverse la couronne) : 350 cm par demi-seconde hors du marais (697 cm/s), 210 cm dans le marais (420 cm/s = 60 %), puis plein régime · ligne `Reponse:` attendue : le marais trop fort / bien / trop faible, et ce que tu vois d'étrange.
+Reponse:
+
+**Essai `map_cols` (Les Cols Grande, 8 joueurs, 4 contre 4, Haldir, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 map_cols` · à regarder : une chaîne de montagnes (roche grise, 20 m) entre chaque paire de bases voisines, du bord jusqu'à une place centrale libre, 2 cols de 16 m par chaîne ; envoie 10 unités groupées par un col puis par la place centrale : passent-elles en formation ? les cols sont-ils trop nombreux / trop étroits ? l'IA contourne-t-elle les chaînes ? (forme provisoire, question CQ4 plus haut ; réglages `HOL_COLS_PASSES`, `HOL_COLS_PLAZA`) · état : démarré hors écran sans erreur (« Scenario map_cols: ready », 2026-10-31) ; navmesh : chaque col se traverse en ligne droite (rapport 1,00 à 1,02) et traverser la montagne ailleurs force un détour de 2,3 à 2,9 fois la ligne droite ; `aiduel` sur Cols PASS ; **non vu à l'écran** · ligne `Reponse:` attendue : lisible / ce qui cloche.
+Reponse:
+
+`fog_ghosts` est validé (« works ») et reporté dans `FogInProgress.md`. Prochain essai : `fog_orders` après le correctif du grésillement.
+
+Autres essais : `surplus` (la cible encerclée à 6 : le changement de cible de dd16203, inchangé) et `rank_slide` (glissement du rang, accepté) restent utilisables ; `fog_orders` sera refait après sa correction (ligne en tête de la file de Faramir).
+
+**Essai `minimap` (la mini-carte du prototype : camps en couleurs, brouillard, sources explorées, cadre de la caméra, clic gauche = caméra, clic droit = ordre, alertes qui clignotent, Galadriel, 2026-10-31)** · commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 minimap -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel` · à regarder : (1) en bas à droite, la mini-carte : noir = jamais vu, gris sombre = vu puis quitté, vert clair = en vue ; points bleus = toi (le gros carré = ton forum), rouge = ennemis seulement quand ils sont en vue ; petits points jaune (or), gris (pierre), vert (bois), rose (baies) = ressources déjà explorées ; le cadre blanc = ce que montre la caméra ; (2) CLIC GAUCHE sur la mini-carte, puis bouton maintenu et glissé : la caméra y va et suit ; (3) tes 4 Hommes d'armes sont sélectionnés : CLIC DROIT sur la mini-carte à l'est de ton forum (les 3 Lanciers rouges) : ils marchent là-bas, sans bouger la caméra ; (4) pendant le combat un carré rouge clignote sur la mini-carte à l'endroit des coups reçus (6 s) ; (5) sans rien de sélectionné, le clic droit ne fait rien · état : démarré hors écran sans erreur (journal `HUD minimap`, captures regardées : brouillard, sources, cadre, alerte rouge, fusion avec `fog` vue à l'écran) ; la chaîne image -> ordre / caméra est testée (`quick_check -Parts build:minimap`, rouge d'abord) ; **jamais vu : un vrai clic de souris (seul le chemin à partir du point de l'image est testé), le rendu aux autres tailles de fenêtre, 1 400 unités, le réseau** · ligne `Reponse:` attendue : lisible / ce qui cloche (couleurs, tailles, alerte, glisser).
+Reponse:
 
 ## 2. Questions
 
-Aucune question en attente : toutes les réponses du 2026-10-30 sont enregistrées dans leur chantier (journaux `*InProgress.md`, GDD D581 à D585, lignes `[ ]` de `Auto_Journey_File.md`). Une vraie question sera posée ici si la correction des arbres met en jeu le passage des unités ou les budgets de D564.
+### Performance : seuils S3 et S4 avec le héros dans la mêlée (`Docs/Mesures_2026-10-31.md`, « Isolation S2-S4 », Elrond, 2026-10-31)
+
+**PQ1 : que fait-on du reste au-dessus du seuil de S3 et S4 (D342), maintenant qu'un héros par camp est dans la bataille ?**
+Contexte : j'ai retiré le plus gros coût sans rien changer au jeu (S4 7,29 -> 6,37 ms par pas, empreintes de bataille identiques, fusionné dans `main` 0defad4) ; il reste S3 6,30 et S4 6,37 pour un seuil de 6, dont environ 0,2 ms viennent du héros (rayon 72 cm contre 60 : la grille de la séparation a des cases plus grandes pour toutes les unités). S2 3,25 contre 3,0 n'est pas le code : l'ancienne version de référence, rejouée aujourd'hui sur la même machine, donne 3,15 (la machine est plus lente qu'au 24/25 octobre de 0,2 à 0,45 ms).
+- **A** : relever le seuil de S3 et S4 à 6,5 ms (celui de S2 reste 3 en attendant une mesure de la machine à froid). En jeu : rien ne change ; le seuil dit « une bataille de 2000 avec ses deux héros ».
+- **B** : retirer le coût du héros dans la grille (cases réglées sur le rayon des soldats, le héros cherché sur deux cases). En jeu : aucune différence visible, mais l'ordre de traitement des paires de la séparation change, donc toutes les empreintes de bataille (S3, S4, tests de duel) sont à refaire, et ~0,2 ms de gagné.
+- **C** : ne rien faire de plus et garder les seuils rouges tels quels (les mesures de clôture afficheront FAIL tant que la machine ou le code ne descend pas).
+Recommandation : **A** (le héros est dans toute vraie partie ; B est un vrai risque pour un gain de 0,2 ms, à garder pour si le jeu devient lent avec le héros). Fichiers : `Docs/Mesures_2026-10-31.md`, `Tools/Tests/chapter_measures.ps1` (`$BattleStepMs`), `Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp` (ligne 1534).
+Reponse:
+
+### Brouillard : lignes d'ordre (`FogInProgress.md`, Faramir, 2026-10-31)
+
+**FQ-L : quelle épaisseur pour les lignes d'ordre, et garde-t-on le halo ?**
+Contexte : les lignes d'ordre (jaune, rouge...) grésillent sous le brouillard ; vous avez demandé « plus épais ». Les options sont codées derrière des réglages de la console (rien à recoder) : il suffit de dire laquelle devient la valeur par défaut. La mesure automatique n'est pas concluante : votre œil sur l'essai `fog_orders` décide.
+- **A** : retour à 6,25 cm (déjà écarté par vous).
+- **B** (valeur actuelle) : 12,5 cm seulement quand le brouillard est actif, 6,25 cm sinon. En jeu : en mode « Sans brouillard » les lignes restent fines comme vous les aviez réglées ; avec brouillard elles sont deux fois plus larges (2 pixels au lieu de 1).
+- **C** : 12,5 cm partout. En jeu : plus aucune différence entre les modes, mais des lignes plus épaisses aussi sans brouillard (que vous aviez voulues fines).
+Deuxième réglage, indépendant : le **halo** `hol.Fog.OrderMask 1.5` (0 aujourd'hui) éclaircit le contour des lignes d'un pixel pour cacher le va-et-vient du masque ; en jeu, une très fine auréole claire autour des lignes dans le noir. Dites si vous le voulez par défaut (oui / non).
+Recommandation : **B**, halo **non** (le halo ne se garde que si l'essai grésille encore avec 12,5 cm). Fichier : `FogInProgress.md`.
+Reponse:
+
+### Talents : le cri *Serrez les rangs* en formation défensive (`TalentsInProgress.md`, D581, Elrond, 2026-10-31)
+
+**TQ3 : que fait exactement le cri pour les unités qu'il touche ?**
+Contexte : D581 dit « immobiles ou vitesse réduite » sans choisir. C'est codé et testé (la vitesse est un réglage `hol.Hero.CloseRanksSpeed`, en % de la marche, valeur par défaut 0) ; il suffit de dire quelle valeur garder. *Pas de l'Aube* (Capitaine, rangée 4) fait avancer à 50 % la formation, réduction de dégâts gardée, dans tous les cas.
+- **A** (valeur actuelle, 0) : les unités touchées s'immobilisent 15 s (elles reprennent leur ordre de marche après), même celles qui marchaient au combat. En jeu : le cri sert à tenir une ligne sur place ; lancé en pleine marche il fige l'armée, et *Pas de l'Aube* devient le talent qui permet de tenir ET d'avancer.
+- **B** (par ex. 40 %) : elles ralentissent mais avancent. En jeu : le cri peut accompagner une avance prudente ; *Pas de l'Aube* ne change plus que de 40 à 50 % (talent presque sans effet : il faudrait lui donner autre chose).
+- **C** (100 %) : le cri ne ralentit personne (retour au comportement d'avant D581) ; *Pas de l'Aube* n'a alors aucun effet.
+Recommandation : **A** (c'est ce qui donne un sens au talent et à « formation défensive »). À noter : l'infobulle du cri dit encore seulement « −25 % de dégâts reçus pendant 15 s » ; elle dira « immobilise » une fois la valeur choisie (textes fr/en/ja à mettre à jour).
+Reponse :
+
+**TQ4 : où le joueur choisit-il son tout premier talent ?** (`TalentsInProgress.md`, T5)
+Contexte : le GDD (D105) prévoit seulement un rappel « point non dépensé » et un bouton « choix conseillé » qui prend la famille la plus remplie ; or avant le premier talent aucune famille n'est remplie. Le rappel et le bouton sont faits dans le bloc du héros (le bouton reste grisé tant que rien n'est pris), il manque l'endroit où l'on choisit parmi les trois.
+- **A** : une petite fenêtre d'arbre ouverte par le rappel (ou la touche T), cinq rangées de trois cases (Gardien / Capitaine / Champion), noms et effets des talents au survol. En jeu : un vrai écran à lire pendant la partie, la partie continue derrière ; plus de travail (textes des 24 talents en fr/en/ja).
+- **B** : trois petits boutons de famille dans le bloc du héros, sous le rappel, avec le nom du talent de la rangée en cours au survol. En jeu : un choix en deux clics sans quitter l'écran, mais pas de vue d'ensemble de l'arbre (sceaux et clés à part).
+- **C** : le bouton « choix conseillé » choisit la famille du premier talent par défaut (le Capitaine, la seule famille dont le prototype a des effets). En jeu : aucun écran de plus, mais aucun vrai choix avant l'arbre.
+Recommandation : **B** pour le prototype (peu de travail, un vrai choix), l'arbre complet A avec le prochain héros.
+*Construit PROVISOIREMENT derrière `hol.UI.TalentFirstChoice` (2026-10-31, a47d20c) : 1 = B par défaut (trois boutons Gardien / Capitaine / Champion, le survol dit la rangée mais pas encore le nom du talent : pas de pont vers la table), 2 = C (le bouton conseillé prend le Capitaine), 0 = A (fenêtre d'arbre : PAS construite, affiche B). Ce n'est pas trancher.*
+Reponse :
+
+### Centres secondaires et relais neutres (`RelaysInProgress.md`, GDD § 9.4, D388, Elrond, 2026-10-31)
+
+**RQ1 : combien d'XP par minute un relais, et un centre secondaire, donnent-ils au héros ?**
+Contexte : D388 dit « XP par minute seulement » et « ~15 % de l'XP d'une partie à régler en test » ; il faut un premier chiffre. Une partie de 30 minutes mène un héros du niveau 1 au niveau 6 (3 300 XP) ; 15 % font environ 500 XP, soit à peu près 3 relais tenus la moitié de la partie. Les règles sont codées et testées avec 10 XP par minute par relais et par centre (`Script/Relays/HOLRelayRules.as`, constantes), c'est le chiffre à confirmer ou changer.
+- **A** : 10 XP par minute pour un relais et pour un centre secondaire. En jeu : tenir 3 relais pendant 15 minutes vaut 450 XP (le niveau 2 passé, le 3 en vue) ; le territoire compte sans remplacer le combat ni le développement.
+- **B** : 20 XP par minute. En jeu : deux relais tenus dix minutes valent 400 XP (le niveau 2 et la moitié du suivant) : les relais deviennent une course dès le début, et le joueur qui les tient « s'envole » (contraire à D05).
+- **C** : 5 XP par minute. En jeu : les relais ne changent presque rien au niveau du héros ; il faudrait compter sur le seul attrait d'avoir le point.
+Recommandation : **A** (valeur de départ, le réglage se fait ensuite en test).
+Reponse:
+
+**RQ2 : que devient la prise d'un relais quand deux camps adverses (non alliés) s'y tiennent en même temps ?**
+Contexte : la règle de la ruine ne connaît qu'un attaquant et un défenseur ; dans une partie à plusieurs camps, deux ennemis l'un de l'autre peuvent se retrouver dans le même relais. Aujourd'hui codé : A. (Un allié du propriétaire n'est jamais un ennemi.)
+- **A** : le décompte est gelé tant que deux camps adverses s'y tiennent (ils doivent d'abord se départager à l'épée). En jeu : un relais en milieu de carte devient un lieu de bataille à trois sans prise possible à la dérobée.
+- **B** : le camp avec le plus d'unités continue le décompte, l'autre est ignoré. En jeu : un petit groupe peut s'y glisser derrière deux armées qui se battent, mais le plus nombreux gagne le relais sans avoir tué l'autre.
+- **C** : chacun compte contre le propriétaire seulement (comme les attaquants d'une ruine) : les deux camps remplissent ensemble le même décompte, le plus nombreux prend. En jeu : deux ennemis l'un de l'autre se « coopèrent » sans le vouloir pour prendre le relais.
+Recommandation : **A** (le plus lisible : le relais ne change pas de main pendant un combat qui s'y déroule).
+Reponse:
+
+**RQ3 : que fait l'IA des relais ?** (`RelaysInProgress.md`, R6)
+Contexte : le GDD ne dit rien de l'IA face aux relais ; sans règle elle les ignore, et le joueur seul gagne l'XP de territoire contre elle. Le code des relais est prêt (R3 à R5) ; je n'ai pas codé l'IA pour ne pas inventer le comportement. Rien n'est préparé derrière un réglage tant que l'option n'est pas choisie.
+- **A** : l'IA ignore les relais. En jeu : contre l'IA, tu prends les relais sans opposition (XP de territoire gratuite) ; une partie à plusieurs IA est sans relais disputés.
+- **B** : par niveau (D579) : Facile ne s'en occupe pas ; Normal envoie un petit détachement (le quart de ses soldats) au relais le plus proche qui n'est pas à elle, quand son forum n'est pas attaqué, et le rappelle si le forum est attaqué ; Difficile fait pareil et reprend aussi les relais qu'on lui prend. En jeu : les relais deviennent des lieux d'escarmouche contre une IA Normale ou Difficile, avec des détachements à intercepter.
+- **C** : toute l'armée enchaîne les relais avant d'attaquer. En jeu : l'IA est plus lente à attaquer mais prend l'XP ; ses vagues sont plus lisibles (elle passe par les relais).
+Recommandation : **B** (cohérent avec les niveaux de D579 ; le détachement donne des cibles sans paralyser l'attaque).
+*Construit PROVISOIREMENT derrière `hol.AI.RelayMode` (2026-10-31, d1af509) : 0 = A, 1 = B par défaut, 2 = C. Lecture de B à confirmer : Normal ne va qu'aux relais neutres, Difficile à tout relais qui n'est pas à elle (ceux qu'on lui a pris d'abord). Ce n'est pas trancher.*
+Reponse:
+
+### Duel de héros (`DuelInProgress.md`, GDD § 10, Celeborn, 2026-10-31)
+
+**DU-Q1 : si les deux héros tombent exactement au même instant, que se passe-t-il ?**
+Contexte : le GDD dit « victoire = héros adverse mort » et « temps écoulé = les deux survivent sans récompense », mais rien pour deux morts simultanées. Les deux options sont codées derrière un réglage (`bDoubleKnockOutBothFall`), il suffit de choisir.
+- **A** : les deux héros meurent, tous deux en récupération, personne n'a de *Triomphe*, d'XP de duel ni d'effet de faction. En jeu : un duel perdu des deux côtés, l'armée de chacun n'en tire rien ; la prise de risque reste punie.
+- **B** : personne ne meurt, les deux héros sont remis à 1 PV, comme un temps écoulé. En jeu : le duel se termine en match nul sans mort ; on ne peut pas « tuer en échangeant » son héros contre celui de l'autre.
+- **C** : le dernier à avoir touché gagne (l'autre est tombé une fraction avant). En jeu : toujours un vainqueur, mais un résultat qui dépend d'un détail invisible au joueur.
+Recommandation : **A** (cohérent avec « le duel est risqué », l'échange de deux héros est un vrai coût et reste lisible). Fichier : `DuelInProgress.md`, `Script/Duel/HOLDuelRules.as`.
+Reponse:
+
+**DU-Q2 : si le héros défié se met à l'abri pendant les 5 à 8 s de réponse (il entre dans le rayon d'un forum, ou sort de la vue du défieur), le défi tient-il quand même ?**
+Contexte : les conditions du défi (distance, vue, hors forum) sont contrôlées à l'envoi. Rien n'est dit sur ce qui arrive si elles cessent d'être vraies avant la réponse. Non codé : en attente de votre choix.
+- **A** : le défi tombe sans coût pour personne (ni *Hésitation* ni Honneur pour le défié), mais la recharge du défieur reste consommée. En jeu : fuir ou se replier vers son forum annule le défi ; le défieur est puni d'avoir mal choisi son moment.
+- **B** : le défi tient toujours, le duel commence là où ils sont à l'acceptation. En jeu : on ne peut pas se dérober par le déplacement ; mais un duel peut démarrer sous les tours d'un forum, ce que D403 voulait éviter.
+- **C** : le défi tient, mais si une condition est fausse à l'acceptation, la réponse est comptée comme refus avec ses coûts. En jeu : se réfugier ne sauve pas, mais ne dispense pas non plus.
+Recommandation : **A** (simple, protège la règle du forum, ne fait payer personne pour un hasard de déplacement). Fichier : `DuelInProgress.md`. **Construit avec A par défaut (PROVISOIRE)** : D4 est faite, les trois voies restent derrière `FHOLDuelSettings.LostConditions`.
+Reponse:
+
+**DU-Q3 : quel est le « rayon de défense » du forum principal où l'on ne peut pas dueller (D403) ?**
+Contexte : le GDD interdit le duel dans le rayon de défense du forum principal de n'importe quel joueur, sans donner de nombre ; le jeu n'a pas de rayon de défense. J'ai mis **25 m (2500 cm)** en réglage provisoire (`FHOLDuelSettings.ForumZoneRadiusCm`), autour du forum principal, même en ruine ; les héros du prototype partent à ~16 m de leur forum (donc dans la zone au début).
+- **A** : 25 m (provisoire). En jeu : on ne défie qu'à plus de 25 m de tout forum principal ; la plupart des affrontements autour des bases sont à l'abri des défis.
+- **B** : 15 m (juste la portée des tours/du forum). En jeu : les défis sont possibles plus près des bases, donc plus souvent dans une bataille de siège.
+- **C** : la portée de tir réelle du forum le jour où le forum tirera (valeur liée au bâtiment). En jeu : zone cohérente avec ce que les tours défendent, mais le forum n'a pas encore de tir.
+Recommandation : **C** à terme, **A** en attendant (aucun code de plus). Fichier : `DuelInProgress.md`, `Script/Duel/HOLDuelRules.as`.
+Reponse:
+
+### Cartes (`MapsInProgress.md`, Haldir, `maps`, 2026-10-31)
+
+**CQ1 : les bosquets sont maintenant compacts (troncs qui se touchent) : que garder du blanc et du nombre d'arbres ?**
+Contexte : à 1,25-1,35 m les troncs (60 cm de rayon) se touchent presque ; un bosquet est un mur d'arbres, pour les unités comme avant (à 1,6 m il était déjà fermé : le navmesh est coupé entre les troncs, on ne coupe qu'en partant du bord). Deux réglages du générateur, prêts, sans code à écrire (il faut seulement refaire les cartes, ~10 min).
+*CQ1a, le blanc dans les bosquets :* aujourd'hui chaque bosquet de 12 arbres ou plus a une clairière ou un chemin de 3 m de large (`HOL_GROVE_GLADES`).
+- **A** (état actuel) : garder les clairières et chemins. En jeu : les bûcherons atteignent les arbres du milieu, une armée peut traverser un bois par ses chemins ; mais ce sont des trous visibles dans un bois « qui se touche ».
+- **B** : bosquets pleins (`HOL_GROVE_GLADES=0`), un bloc d'arbres sans blanc. En jeu : un mur de 12 à 18 arbres (environ 8 sur 6 m) à contourner, jamais traversé ; les arbres du milieu ne se coupent qu'en rongeant depuis le bord (comme AoE) ; plus de passage tactique à travers un bois.
+- **C** : chemins gardés seulement dans les gros bosquets (16 arbres et plus). En jeu : les petits bosquets sont des blocs, les gros ont un passage.
+*CQ1b, l'Immense (D564, ×1,5) :* à 1,6 m l'Immense ne tenait que 360 arbres par joueur (le double de 225 demandé : 450 ne rentrait pas) ; troncs collés, 450 tient (mesuré hors éditeur : Steppe 461 à 471 par territoire, Arrière-pays 456 à 504).
+- **A** : rester à 360 (état actuel). En jeu : 3 365 sources sur la Steppe Immense, mesures S1/S2 inchangées ; l'Immense a ×1,2 de bois seulement au lieu de ×1,5.
+- **B** : passer à 450 (`HOL_HUGE_TREES=450`, le ×1,5 de la règle et votre « doublez leur quantité »). En jeu : environ 4 100 sources, un tiers de plus (un trou de navmesh chacun), S1/S2 à remesurer à la clôture.
+Recommandation : **CQ1a = C** (le blanc se limite à un chemin de 3 m dans les gros bosquets ; B donne le bois le plus plein mais des blocs infranchissables qui isolent les ressources) et **CQ1b = B** (c'est votre demande d'origine et plus rien ne l'empêche). C n'est pas encore un réglage : si vous le choisissez, un seuil de plus à coder (`GROVE_GLADE_MIN`), 5 min. Fichiers : `Tools/Editor/maps/common.py`, `steppe.py`, `plain.py`.
+Reponse:
+
+**CQ2 : El Dorado, le marais ralentit de combien, et combien d'or au centre ?**
+Contexte : D33 dit seulement « le marais ralentit tout le monde et empêche la charge » (M-Q2 = A : on code ce qui se voit). La règle est écrite et testée en script (`Script/Terrain/HOLTerrainRules.as`, zones rondes, vitesse en %, deux préréglages) ; il manque les valeurs, puis le branchement dans la marche et la carte (une dizaine d'étapes de 15 min). GDD § 8.5 : « pas d'or dans les bases, un amas de filons d'or au centre, entouré de marais ».
+*CQ2a, la force du marais :*
+- **A** (préréglage 0, recommandé) : 60 % de la vitesse. En jeu : un homme d'armes qui traverse 30 m de marais met 1,7 fois plus longtemps ; une armée qui y entre se fait tirer dessus ; on choisit de contourner ou de risquer.
+- **B** (préréglage 1) : 75 %. En jeu : un ralentissement net mais court (1,3 fois), le marais protège moins l'amas d'or.
+- **C** : autre valeur, à dire (la règle prend n'importe quel pourcentage).
+*CQ2b, l'or du centre (aucun or dans les bases) :*
+- **A** (recommandé) : tout l'or du budget standard au centre, 10 000 par joueur (15 000 à l'Immense), en un amas de filons de tailles variées. En jeu : 20 000 d'or à 2 joueurs, 80 000 à 8 ; personne n'a d'or chez soi, la partie se joue pour le centre dès le début (on y envoie des Paysans et une armée tôt).
+- **B** : moitié (5 000 par joueur). En jeu : l'or est plus rare, la partie bascule vers la pierre et le marché.
+- **C** : un peu d'or (le quart) dans chaque base pour démarrer, le reste au centre. En jeu : un début de partie normal, mais ce n'est plus tout à fait « pas d'or dans les bases » (GDD § 8.5).
+Dans tous les cas El Dorado n'a pas le budget `standard` de `Map.Table` pour l'or (l'amas du centre n'appartient à aucun joueur) : le test contrôlera le total au centre et l'équité de l'amas autour des places. Fichier : `MapsInProgress.md` (C3). *État (Haldir, 2026-10-31) : tout est codé et mesuré avec les valeurs provisoires CQ2a option A (60 %, `hol.Terrain.MarshSpeedPercent`) et CQ2b option A (tout l'or au centre, `HOL_ELDORADO_GOLD=all`) ; ta réponse change seulement ces deux réglages, puis `Tools\make_maps.ps1 -Map ElDorado` pour l'or.*
+Reponse:
+
+**CQ4 : Les Cols, quelle forme pour les couloirs entre les bases ?**
+Contexte : GDD § 8.5 dit « des montagnes découpent la carte en 2 ou 3 couloirs entre les bases, chacun avec ses ressources et ses hauteurs », sans la forme. J'ai codé une forme provisoire, la plus simple avec les pièces d'aujourd'hui (rochers infranchissables, hauteurs hors prototype, M-Q2 = A) : pas de décor, des réglages prêts.
+- **A** (état actuel, recommandé) : une chaîne de montagnes (20 m de roche) entre chaque paire de places voisines, du bord de carte jusqu'à une place centrale libre (20 % du demi-côté), avec 2 cols de 16 m par chaîne. En jeu : chaque base a son vallon avec ses ressources ; pour aller chez le voisin, 3 couloirs (la place centrale et les 2 cols de la chaîne qui les sépare) ; on tient un col pour fermer un côté ; 8 joueurs = 16 cols.
+- **B** : un seul massif en anneau autour du centre, bases à l'extérieur, 2 ou 3 cols vers le centre. En jeu : les bases voisines se rejoignent librement par l'extérieur, les cols ne mènent qu'au centre ; moins « des couloirs entre les bases ».
+- **C** : 1 ou 2 chaînes qui traversent la carte (donc 2 ou 3 couloirs comme le texte). En jeu : lecture simple à 2 joueurs, mais à 6 ou 8 places en cercle une chaîne sépare des alliés « ensemble » (D492) et ne laisse que 2-3 passages pour toute l'armée.
+Recommandation : **A** (la seule forme équitable pour toute place avec les mêmes passages autour de chacune). Réglages déjà prêts : `HOL_COLS_PASSES` (1 à 3 cols par chaîne), `HOL_COLS_PLAZA` (taille de la place centrale). Fichier : `Tools/Editor/maps/cols.py`.
+Reponse:
+
+**CQ5 : Les Gués, de quelle forme est la rivière ?** *(Haldir, 2026-10-31 ; M-Q3 = A est déjà tranchée : le pont tombé devient un chantier qu'un Paysan relève sans coût)*
+Contexte : GDD § 8.5 dit « une rivière coupe la carte » avec des gués (file) et un pont large au milieu, sans la forme. Les places sont en cercle (2 à 8) et chacune doit avoir exactement les mêmes passages (équité, D493) ; rien n'est codé.
+- **A** : un **anneau d'eau** autour du centre (comme les chaînes des Cols, la même forme tournée sur chaque place) : les bases sont à l'extérieur, le centre riche est de l'autre côté de l'eau, un **gué par base** et un **pont large** devant chacune. En jeu : toutes les bases ont exactement le même accès, mais ce n'est plus « une rivière qui coupe la carte » ; on se dispute le centre, les voisins se rejoignent librement par l'extérieur.
+- **B** : une **rivière droite** qui traverse le centre et coupe la carte en deux moitiés (2 joueurs : un de chaque côté ; 4 à 8 : la moitié des places de chaque côté, alliés ensemble du même côté par défaut). Un pont large au milieu, 2 gués de part et d'autre. En jeu : c'est la lecture du GDD, mais l'équité n'est parfaite que par symétrie axiale (les places près de la rivière et celles qui en sont loin n'ont pas le même détour : à 6 ou 8 joueurs on tire des places qui ne se valent pas).
+- **C** : A pour 4 à 8 joueurs (anneau), B à 2 joueurs (rivière droite). En jeu : la lecture du GDD là où elle est équitable (2 places face à face), un anneau ailleurs.
+Recommandation : **C**. Fichier : `Tools/Editor/maps/` (module `fords.py` à écrire), `MapsInProgress.md` (C7).
+Reponse:
+
+**CQ6 : Forêt profonde (C5) et Couronne (C6) : les règles du terrain qui n'existent pas encore.** *(Haldir, 2026-10-31)*
+Contexte : M-Q2 = A ne code que le visible. La forêt « ralentit la cavalerie et le siège » : il n'y a ni cavalerie ni siège dans le prototype. La route « augmente la vitesse » : de combien ? La Couronne est faite de « plateaux » : la hauteur n'existe pas (M-Q2 = A).
+*CQ6a, routes de la Forêt profonde :* les routes sont des zones de terrain comme le marais (règle déjà branchée dans la marche).
+- **A** : routes à **130 %** de la vitesse, zones rondes alignées en couloir de 8 m de large, sans effet sur la forêt (bosquets compacts seuls, comme les cartes d'aujourd'hui). En jeu : on traverse la forêt 30 % plus vite par la route ; le ralentissement cavalerie/siège attend leur arrivée.
+- **B** : routes à **150 %**. En jeu : le détour par la forêt n'a de sens que par la route, très exposée.
+- **C** : pas de routes avant la cavalerie (la carte n'est que bosquets, clairières et chemins libres). En jeu : la carte est plus proche de la Steppe.
+*CQ6b, plateaux de la Couronne :*
+- **A** : **sans hauteur**, la Couronne est un anneau de falaises de roche (comme les Cols) autour de chaque base, avec **une rampe de 16 m** par base vers une cuvette centrale riche : l'effet de plateau est le seul blocage. En jeu : chaque base est un fortin à une porte, la cuvette est à tenir ; pas de bonus de hauteur des tireurs (D23) avant le relief.
+- **B** : attendre le relief (après le prototype) et ne pas faire la Couronne maintenant. En jeu : 6 cartes sur 7 dans le prototype.
+Recommandation : **CQ6a = A** et **CQ6b = A**. Fichiers : `Tools/Editor/maps/` (`deepforest.py`, `crown.py` à écrire), `Source/HeroesOfLiberty/Map/HOLTerrainRules.*` (zone « route »).
+Reponse:
+
+Hors Duel, Talents et Cartes : aucune question en attente : toutes les réponses du 2026-10-30 sont enregistrées dans leur chantier (journaux `*InProgress.md`, GDD D581 à D585, lignes `[ ]` de `Auto_Journey_File.md`).
+
+### Technologies (`TechnologiesInProgress.md`, GDD § 11, Glorfindel, 2026-10-31)
+
+**T-Q7 : peut-on mettre la Charrue II (ou la Brouette II) en file derrière la I ?**
+Contexte : une recherche passe par la file du bâtiment (T-Q6, jusqu'à 5). La règle codée refuse un niveau II tant que le niveau I n'est pas *fait*. À la Ferme il n'y a que 4 recherches (Charrue I et II, Brouette I et II) : avec cette règle la file de 5 n'y tient jamais plus de 2 choses d'avance.
+- **A** : refuser le II tant que le I n'est pas fait (actuel). En jeu : on revient 30 s plus tard lancer le II ; aucun coût pris d'avance, rien à défaire si on annule.
+- **B** : accepter le II dès que le I est en file, derrière lui. En jeu : on lance les deux d'un coup (les deux coûts sont pris tout de suite) ; annuler le I annule aussi le II (et rembourse), un peu plus de code et de cas à l'écran.
+Recommandation : **A** (c'est la règle d'AoE4, rien à annuler en cascade). Fichiers : `Source/HeroesOfLiberty/Technologies/HOLTechnologyRules.cpp` (`Check`, `bRequiresDone`), `Buildings/HOLProductionSubsystem.cpp`.
+Reponse:
+
+**T-Q8 : une recherche retient-elle la production d'unités du même bâtiment ?**
+Contexte : T-Q6 = A met les recherches dans la même file que les unités. Donc *Hallebardes trempées* (30 s) à la Caserne retient les Lanciers derrière elle 30 s, et *Milice de défense* (30 s) au Centre principal retient les Paysans 30 s.
+- **A** : file unique (actuel, comme AoE4). En jeu : une vraie décision (chercher quand la Caserne est calme) ; même interface que la production.
+- **B** : la recherche tourne à part, en parallèle de la file d'unités (une à la fois, sa propre barre). En jeu : la Caserne produit pendant la recherche, plus confortable ; mais une seconde barre à l'écran et un second emplacement de file à coder (et à répliquer).
+Recommandation : **A** (déjà votre choix T-Q6 ; à revoir seulement si l'essai montre le blocage pénible). Fichier : `Buildings/HOLProductionSubsystem.cpp`.
+Reponse:
+
+**T-Q9 : que fait la *Milice de défense* (Centre principal, palier 1) ?**
+Contexte : le GDD dit « les travailleurs se défendent mieux près des centres », sans dire comment. Rien n'est codé : un travailleur n'a ni armure ni attaque propre qui bouge aujourd'hui.
+- **A** : les Paysans à 12 m d'un de vos Centres reçoivent 10 % de dégâts en moins (20 % au niveau II). En jeu : une raid sur vos champs coûte plus cher à l'ennemi près du Centre ; rien à voir en dehors.
+- **B** : les Paysans frappent 10 % plus fort (20 %) près des centres. En jeu : ils font un peu plus mal, mais fuir reste l'ordre normal ; moins lisible.
+- **C** : les Paysans ont 10 % de PV en plus (20 %) partout. En jeu : plus simple à voir (barre plus longue), mais « près des centres » du GDD disparait.
+Recommandation : **A** (le texte du GDD, et un nombre simple à afficher dans l'infobulle). Fichiers : `Tools/Data/Technologies.csv` (`DefenceMilitia`, stat `WorkerDefence`), `Source/HeroesOfLiberty/Simulation` (calcul des dégâts).
+Reponse:
+
+**T-Q10 : que fait la *Cloche d'alarme améliorée* (Centre principal, palier 2, « garnison plus rapide ») alors que la garnison n'existe pas ?**
+Contexte : aucun code de garnison dans le jeu (les Paysans ne rentrent pas dans le Centre), mais la technologie est dans les 11 jouables : on peut la payer et elle ne ferait rien.
+- **A** : la laisser achetable, sans effet pour l'instant. En jeu : 300 bois + 200 pierre perdus sans le savoir ; simple pour nous.
+- **B** : la griser jusqu'à l'arrivée de la garnison (« Bientôt »), la table la garde. En jeu : la case est là mais on ne peut pas la lancer ; 10 lignes de code.
+- **C** : la lire autrement : les Paysans rentrent plus vite au Centre le plus proche quand on les rappelle (vitesse +20 %, comme la Brouette). En jeu : un vrai effet, mais ce n'est pas le texte du GDD.
+Recommandation : **B**. Fichiers : `Tools/Data/Technologies.csv` (`ImprovedAlarmBell`), `HOLTechnologyRules.cpp` (`IsPlayable`).
+Reponse:
+
+**T-Q11 : les technologies jouables dont l'effet n'est pas codé restent-elles achetables ?**
+Contexte : à part la récolte, la charge et la vitesse des travailleurs (faites), les autres technologies jouables n'ont encore aucun effet : *Hallebardes trempées* (Caserne, la seule vraiment sans effet en ce moment), *Milice de défense* (T-Q9) et *Cloche d'alarme améliorée* (T-Q10). On peut les payer sans rien obtenir.
+- **A** : les laisser achetables, l'infobulle dit l'effet prévu. En jeu : on peut perdre 100 nourriture et 100 bois sans le voir ; rien à coder.
+- **B** : les griser avec « Bientôt » tant que leur effet n'existe pas (une colonne Implemented dans la table, 10 lignes de code). En jeu : la case est là, on voit ce qui viendra, on ne gaspille rien ; elles s'ouvrent une à une quand leur effet arrive.
+- **C** : les retirer des cellules jusqu'à leur arrivée. En jeu : la grille est plus courte mais on ne sait pas ce qui vient.
+Recommandation : **B** (même réponse que T-Q10, appliquée à toutes). Fichiers : `Tools/Data/Technologies.csv`, `HOLTechnologyRules.cpp` (`IsPlayable`), `HOLCommandGrid.cpp` (`CheckResearch`).
+Reponse:
+**SC-Q1 : combien coûte le Sanctuaire de l'Aube, quelle taille, et de combien augmente-t-il les fermes ?**
+Contexte : le GDD donne son rôle (palier 0, les fermes dans son rayon produisent plus, D67 et D390) mais ni le coût, ni la taille, ni le rayon, ni le pourcentage. Sans eux je n'ajoute pas le bâtiment, et *Liturgie* et *Bénédiction des armes* (technologies de l'Aube, qui s'y cherchent) restent injouables (« Sanctuaire absent »).
+- **A** : 150 bois, 2 x 2 cases (8 m), 20 s pour un Paysan, 1 000 PV, rayon 20 m, fermes +20 % de nourriture. En jeu : un petit bâtiment qu'on pose au milieu de 4 à 6 fermes ; facile à protéger, bon marché.
+- **B** : 250 bois, 3 x 3 cases (12 m), 30 s, 1 500 PV, rayon 30 m, fermes +15 %. En jeu : plus cher et plus visible, il couvre plus de fermes d'un coup ; plus risqué à perdre.
+- **C** : vos valeurs (coût, taille, rayon, pourcentage).
+Recommandation : **A** (même ordre qu'une ferme ou un camp, on règle à l'essai : ce sont des valeurs de table). Le bâtiment se pose d'abord ; l'effet sur les fermes (un rayon) est un second pas. Fichiers : `Tools/Data/BuildingTypes.csv`, `Tools/Editor/make_building_types.py`.
+Reponse:
+
+**SC-Q2 : la Chapelle (palier 1) : coût, taille, et que fait-elle tant que le Moine n'existe pas ?**
+Contexte : le GDD donne son rôle (palier 1, forme le Moine, absente chez les Légions, D211 et D212) mais ni coût ni taille, et le Moine n'est pas dans le jeu : une Chapelle ne produirait rien. Seule *Vœu de pauvreté* (Aube, palier 2) s'y cherche, sans effet sans Moine.
+- **A** : l'ajouter maintenant, 200 bois, 3 x 3 cases (12 m), 30 s, 1 500 PV, sans production ni effet, avec *Vœu de pauvreté* grisée. En jeu : un bâtiment de plus à construire qui ne sert encore à rien.
+- **B** : l'ajouter avec le Moine (chantier des soigneurs), *Vœu de pauvreté* reste injouable. En jeu : rien ne change pour l'instant.
+Recommandation : **B** (un bâtiment sans usage serait seulement du bruit à l'essai). Fichiers : `Tools/Data/BuildingTypes.csv`, `Tools/Data/Technologies.csv` (`VowOfPoverty`).
+Reponse:
+
+### Marché (`MarketInProgress.md`, GDD § 5.5, Galadriel, 2026-10-31)
+
+**MK-Q2 : combien coûte le Marché, et quelle taille ?**
+Contexte : le GDD donne les prix d'échange (D582) mais ni le coût ni la taille du bâtiment. Le Marché est construit par les Paysans au palier II (case A de la page II) ; j'ai mis des valeurs provisoires dans `Tools/Data/BuildingTypes.csv`.
+- **A** (valeur actuelle) : 150 bois, 3 x 3 cases (12 m), 20 s pour un Paysan, 1 500 PV, comme la Caserne. En jeu : un bâtiment visible sur la carte, qu'on peut protéger ou raser ; un investissement net au palier II.
+- **B** : 175 bois, 25 s, 3 x 3 cases (le Marché d'AoE2, un peu plus cher). En jeu : on le retarde un peu, on l'attaque plus volontiers.
+- **C** : 100 bois, 2 x 2 cases (8 m), 15 s. En jeu : on le pose partout, presque comme une maison ; la carte en compte plus.
+Recommandation : **A** (même ordre que la Caserne, rien à retenir de plus ; on règle à l'essai, c'est une valeur de table).
+Reponse:
+
+**MK-Q3 : quand l'IA vend-elle ou achète-t-elle ?**
+Contexte : GDD § 5.5 « l'IA doit savoir s'en servir ». L'IA du prototype n'a pas encore de Marché dans son ordre de construction. Une règle simple : un surplus d'une ressource sert à acheter celle qui manque (se branche sur `HOLAINeeds.as`).
+- **A** : l'IA construit un Marché au palier II seulement quand un besoin manque depuis plus d'une minute, vend alors par lots de 100 ce qui dépasse 600 (réserve de 300 gardée) pour acheter ce qui manque. En jeu : elle ne reste plus bloquée faute de pierre ou de bois, mais fait baisser les cours que vous utilisez aussi.
+- **B** : l'IA n'utilise pas le Marché au prototype. En jeu : rien ne change pour vous, le cours ne bouge que par vos ordres ; l'IA peut rester coincée sans une ressource.
+- **C** : comme A, mais à Difficile seulement (Facile et Normal n'y touchent pas). En jeu : un cran de difficulté de plus, le cours bouge peu contre les IA faciles.
+Recommandation : **C** (le Marché est un outil d'un joueur qui optimise, l'IA facile n'en a pas besoin ; on voit l'effet du cours commun sans bruit au début). Fichier : `Script/AI/HOLAINeeds.as`.
+Reponse:
+### Volcan (`VolcanoInProgress.md`, V4, Arwen, `ai-ia1`, 2026-10-31)
+
+**V4-Q1 : où vit un site de volcan (sa position et ses tracés de lave) ?**
+Contexte : l'état d'un site (alerte, lave, refroidissement) est prêt et testé (V4a), mais aucune carte ne dit encore où est le cratère ni quels tracés la lave peut prendre. Il faut un endroit pour le dire, et les cartes de Haldir sont en cours.
+- **A** : dans la recette de carte (le script Python des cartes, comme les arbres et les ors), avec les tracés symétriques par construction. En jeu : un volcan sur une carte = une ligne de recette ; l'équité entre côtés (D573) vient du dessin symétrique, vérifiable par un contrôle automatique ; on ne retouche pas à la main.
+- **B** : des acteurs posés à la main dans le niveau de la carte (un cratère, des tracés dessinés à la souris). En jeu : plus libre à dessiner et à ajuster à l'oeil, mais la symétrie n'est plus garantie ni testable, et chaque carte retouchée à la main peut dériver.
+- **C** : un fichier de données par carte (`Tools/Data/Volcano.csv` : carte, cratère, points de chaque tracé). En jeu : comme A pour l'équité (le contrôle lit le fichier) mais sans toucher à la recette ; deux sources à tenir d'accord avec la carte.
+Recommandation : **A** (une seule source pour tout le décor, symétrie contrôlée comme pour les arbres). Fichiers : `Tools/Editor/maps/`, `Simulation/HOLVolcanoRules.h`.
+Reponse:
+
+**V4-Q2 : d'où vient la graine du volcan, et l'horloge ?**
+Contexte : l'éruption (quand, quel tracé) dépend d'une graine du match ; la config actuelle n'en porte pas. Si le serveur la fixe au départ et l'envoie aux joueurs avec l'heure de début, chacun calcule la même éruption sans rien recevoir d'autre (rien à répliquer ensuite).
+- **A** : le serveur tire la graine au lancement du match et la publie dans l'état du match (un nombre) ; en solo, la partie la tire elle-même. En jeu : deux parties d'une même carte n'ont pas la même éruption ; on ne peut pas la connaître d'avance.
+- **B** : la graine est dans la config du match (champ `seed` du `.json`, tirée par le salon). En jeu : on peut rejouer exactement la même partie volcanique (utile pour tester et pour les scénarios), au prix d'un champ de plus dans le salon.
+- **C** : comme B, mais le salon la tire au hasard sauf si l'on en impose une (option cachée). En jeu : A pour les joueurs, B pour les essais.
+Recommandation : **C** (même résultat que A pour vous, et les scénarios d'essai peuvent fixer l'éruption). Fichiers : `Match/HOLMatchConfig.h`, `Match/HOLGameState`.
+Reponse:
+
+### IA4 (`AIInProgress.md`, D579, Arwen, `ai-ia1`, 2026-10-31)
+
+**IA4-Q1 : que veut dire « refait son économie et son armée plus loin » pour l'IA Normale ?**
+Contexte : D579 dit que l'IA Normale, dès qu'elle sait perdre, refait son économie et son armée plus loin. Mais la table des bâtiments n'a que le Centre principal (pas de centre secondaire, D384) : elle ne peut pas bâtir un second centre. Le code fait déjà la feinte de l'armée (reculer puis contourner) ; reste ce qui arrive à ses Paysans (réglage `LossPlan` de `FHOLAILivesData`).
+- **A** : *Withdraw* (déjà codé, valeur actuelle). Les Paysans menacés courent vers un refuge à 40 m derrière son Centre, à l'opposé des attaquants, au lieu de courir vers le Centre attaqué ; aucune construction ailleurs. En jeu : elle perd moins de Paysans et l'économie reprend après, mais rien n'est reconstruit « plus loin ».
+- **B** : attendre le Centre secondaire (D384) : quand il existera, l'IA Normale en bâtira un au refuge dès qu'elle sait perdre, et y renverra ses Paysans et la production. En jeu : aujourd'hui comme C ; plus tard, la vraie reconstruction ailleurs.
+- **C** : *StayAndFlee* (déjà codé, ancien comportement) : seule l'armée feinte ; les Paysans courent au Centre attaqué comme avant. En jeu : l'IA Normale perd plus de Paysans.
+Recommandation : **A** (garde l'économie sans demander un bâtiment qui n'existe pas ; B s'ajoute quand D384 est faite). Fichiers : `Script/AI/HOLAILives.as` (`FleeTarget`, `RefugePoint`), `Script/AI/HOLAIBrain.as`.
+Reponse:
+
+**IA4-Q2 : l'IA Difficile laisse-t-elle tomber un forum volontairement ?**
+Contexte : D579 : l'IA Difficile « peut laisser sa seconde vie si cela lui garde assez d'armée pour écraser l'adversaire avant la capture, puis punit chez l'attaquant ». Laisser tomber un forum est un vrai risque (une vie de moins). Le code a les deux façons derrière le réglage `bHardLetsLifeGo` ; elle ne le fait qu'avec au moins 2 vies, jamais à la dernière. (La vague de punition prend toute l'armée restée à la maison : le snipe n'a lieu qu'entre deux vagues.)
+- **A** : oui (déjà codé, valeur actuelle). Si le combat lui coûterait plus de la moitié de son armée (formule du carré de Lanchester sur le rapport de force) ET que son armée suffit à écraser le camp du joueur (1,5 fois sa garde restée chez lui), elle ne défend pas : le forum devient une ruine, ses soldats achèvent vos blessés isolés, et toute son armée part en vague sur votre Centre. En jeu : une IA Difficile peut abandonner un forum et contre-attaquer chez vous ; si votre armée l'attend, elle perd une vie sans rien gagner.
+- **B** : non. L'IA Difficile défend toujours selon le rapport de force comme l'IA Normale (sans la feinte) ; elle évalue sa perte et achève les faibles, mais ne cède jamais une vie. En jeu : plus prévisible, moins dangereuse en contre-attaque.
+Recommandation : **A** (c'est la lettre de D579 ; les seuils 0,5 et 1,5 se règlent en essai). Fichiers : `Script/AI/HOLAILives.as` (`Weigh`), `FHOLAILivesData`.
+Reponse:
+
+### Unités neutres et camps (`NeutralsInProgress.md`, GDD § 8.4, D32, Arwen, `ai-ia1`, 2026-10-31)
+
+**NQ1 : un camp neutre attaque-t-il ceux qui passent près de lui, ou seulement ceux qui l'attaquent ?**
+Contexte : D32 dit que les camps gardent un gisement ou un passage, sans dire s'ils chargent une armée qui passe à 15 m. Les deux comportements sont codés derrière un réglage (`Aggro`) ; il faut choisir celui du jeu.
+- **A** : à vue. Dès qu'une unité adverse entre à ~15 m du poste, tout le camp charge, et rentre quand la menace est partie (laisse ~30 m). En jeu : un camp est un obstacle actif, on l'évite ou on le prépare ; l'éclaireur isolé se fait tuer ; un passage gardé est vraiment fermé.
+- **B** : seulement quand on l'attaque. Le camp reste immobile tant qu'on ne le touche pas. En jeu : on peut passer devant sans risque, le camp est un objectif qu'on choisit d'attaquer ; un « passage gardé » ne ferme rien (on le traverse en file), et l'IA peut ignorer les camps sans les craindre.
+- **C** : à vue pour les armées, pas pour une unité seule (éclaireur). Pas codé (une règle de plus à définir : combien d'unités ?) ; à demander seulement si A et B ne conviennent pas.
+Recommandation : **A** (« garde » = barrer l'accès à ce qui est précieux, D32 ; avec B le gisement riche et le passage ne seraient gardés que de nom). Fichiers : `Script/Neutrals/HOLCampRules.as` (`EHOLCampAggro`).
+Reponse:
+
+**NQ2 : à qui va l'XP d'un camp nettoyé ?**
+Contexte : l'XP du camp (modérée, famille « Exploration + Événements », D05) est donnée au héros de celui qui le nettoie. Quand deux joueurs se battent contre le même camp (ou l'un finit ce que l'autre a entamé), il faut dire qui la reçoit. Les trois règles sont codées derrière un réglage (`Credit`).
+- **A** : le dernier coup. Tout à celui qui tue le dernier membre. En jeu : on peut « voler » un camp presque nettoyé ; simple à comprendre.
+- **B** : le plus de dégâts. Tout à celui qui a fait le plus de dégâts au camp (au plus petit numéro de joueur si égalité). En jeu : le vol ne paie plus, mais un joueur qui a fait 40 % et un autre 60 % : l'un prend tout.
+- **C** : partagée au prorata des dégâts. Chacun reçoit sa part (les points perdus à l'arrondi vont au plus gros). En jeu : personne n'est volé ni ne perd tout ; coalitions et alliés profitent des deux côtés ; un peu plus difficile à lire dans le journal de partie.
+Recommandation : **C** (la plus juste pour une XP modérée et la plus tolérante au vol ; l'écran peut afficher la part gagnée). Fichiers : `Script/Neutrals/HOLCampRules.as` (`EHOLCampCredit`).
+Reponse:
+### Siège (`SiegeInProgress.md`, GDD § 6.1, D23, D77, Faramir, `fog`, 2026-10-31)
+
+**SQ1 : que frappent le Bélier et le Mangonneau ?**
+Contexte : le GDD dit « Bélier : bâtiments et portes » et « Mangonneau : groupes et murs, longue portée », sans dire si le Bélier peut aussi blesser des soldats ni si le Mangonneau fait des dégâts de zone sur les unités. Aujourd'hui aucune unité de siège n'existe ; la règle décide de la table et de la chaîne de dégâts (étape S4).
+- **A** : Bélier = bâtiments seulement (ne peut pas viser une unité) ; Mangonneau = un seul coup sur une cible, unité ou bâtiment, sans zone. En jeu : simple à lire ; le Bélier est inoffensif contre une armée, donc il faut l'escorter ; le Mangonneau ne fait pas « anti-groupes ».
+- **B** : Bélier = bâtiments seulement ; Mangonneau = dégâts de zone (petit rayon) sur les unités, un seul coup sur un bâtiment. En jeu : le Mangonneau punit les formations serrées (matrice § 7.2 « anti-groupes ») et se protège derrière les tireurs ; il faut une règle de tir allié (pas de dégâts aux alliés) à coder.
+- **C** : comme B, et le Bélier frappe aussi les unités au contact, faiblement. En jeu : le Bélier seul se défend un peu, mais le Cavalier léger et la mêlée restent ses contres ; un peu plus de valeurs à régler.
+Recommandation : **B** (c'est la lecture du tableau § 6.1 et § 7.2 ; le tir allié se règle par un test). Fichiers : `SiegeInProgress.md` (S4), futurs `Tools/Data/UnitTypes.csv` et `HOLCombatRules`.
+Reponse:
+
+**SQ2 : les chiffres de départ et l'Atelier de siège : je les propose, d'accord ?**
+Contexte : pour avancer sans vous attendre, je mettrais des valeurs provisoires (à régler en test, comme les autres chantiers), dans les tables, jamais dans le code. Proposition (échelle des unités actuelles : Lancier 100 PV, 300 cm/s ; Maison 600 PV ; Caserne 1500 PV) : **Bélier** 400 PV, 220 cm/s, 60 de dégâts de siège toutes les 2,5 s au contact, 150 bois + 75 or, 3 places de population ; **Mangonneau** 200 PV, 180 cm/s, 45 de dégâts de siège toutes les 5 s à 3000 cm (zone 250 cm si SQ1 = B), 200 bois + 150 or, 4 places ; **Atelier de siège** 3 x 3 cases comme la Caserne, 175 bois, 25 s, 1500 PV, âge 1. En jeu : un Bélier rase une Maison en ~25 s et la Caserne en ~1 min 5 s ; huit Lanciers le tuent en quelques secondes.
+- **A** : d'accord, ces valeurs provisoires. Je les mets dans les tables (S2) et vous les réglez à l'essai.
+- **B** : vous donnez d'autres ordres de grandeur (ou « plus lent », « plus cher »), et je les reprends.
+- **C** : on attend le chantier des stats des unités (D345) pour tout caler d'un coup ; S2 reste en veille.
+Recommandation : **A** (les valeurs ne sont jamais définitives et le test les montre mieux qu'une discussion). Fichiers : futurs `Tools/Data/UnitTypes.csv`, `Tools/Data/BuildingTypes.csv`.
+Reponse:
+**NQ3 : de quoi est fait un camp neutre ?** (`NeutralsInProgress.md`, N2/N7, Arwen, 2026-10-31)
+Contexte : le camp existe dans la simulation (il garde son poste, charge, se fait nettoyer, donne de l'XP), mais ses unités sont pour l'instant des Lanciers ordinaires du propriétaire neutre : il n'y a ni créature ni type de monstre dans les données. Il faut dire ce qu'on pose sur les cartes.
+- **A** : des soldats « brigands » : les types existants (Lancier, Homme d'armes, Archer, Arbalétrier) mais appartenant au neutre, couleur grise. En jeu : aucun nouveau modèle à faire, on voit tout de suite un camp ; un camp ressemble à une petite armée ennemie, ce qui colle à « garde un passage » mais pas à « monstres ».
+- **B** : de vraies créatures (loups, ogres...) avec leurs stats et modèles. En jeu : un camp se lit tout de suite comme un danger neutre (pas une armée de plus) ; il faut dessiner les créatures, régler leurs stats et leurs animations (chantier de plusieurs jours, après le prototype).
+- **C** : A pour le prototype, B après (les camps sont une liste de types dans une table `Tools/Data/Camps.csv`, on y met les créatures le jour où elles existent). En jeu : camps jouables dès maintenant, sans rien refaire plus tard.
+Recommandation : **C** (le code des camps ne dépend pas du type ; rien n'est jeté). Fichiers : `NeutralsInProgress.md`, `Tools/Data/UnitTypes.csv`.
+Reponse:
 
 ## 3. Commits et fusions à valider
+- **Fusion faite (Elrond, perf, 2026-10-31 13:5x)** : `tiers` fusionnée dans `main` (= 0defad4, avance rapide) : le bloc de marche ne construit plus la liste de mêlée pour un bloc d'attaque-déplacement (S4 7,29 -> 6,37 ms par pas). Vert : `tests,aiserver,aiduel`, `combat,hero,move`, `net` séparément ; empreintes de bataille S3 et S4 inchangées. Rien à valider.
+- **Verifications finales de main (agent de fusion, 2026-10-31 11:5x, main = 02059a1, lancees dans le worktree Celeborn, identique a main)** : `-Parts net` PASS (dont net 2 clients, net hero * et net technologies, qui n'a pas rechute) ; `-Parts build` PASS. Les quatre branches (`ai-ia1` 6bfb76e, `tiers` 040c26d, `maps` 8379e0a, `hero-j8-close` 02059a1) sont fusionnees en avance rapide, rien n'est pousse.
+- **Fusion faite (agent de fusion, 2026-10-31 11:5x)** : `hero-j8-close` (Celeborn : Duel D4, IA du duel, fenetre du duel ; reglages DU-Q2 = A et DU-Q3 PROVISOIRES) fusionnee dans `main` (= 02059a1, avance rapide apres `git merge main`). Conflit resolu sans perte : `Script/UI/HOLGameScreenScript.as` (BuildDuelWindow et BuildMinimap ; clics DuelAccept/Refuse et HeroTalentFamily0-2 ; Describe : mini-carte, talents avec boutons de famille, fenetre de duel). Build PASS ; quick_check tests,aiserver,aiduel PASS (757/757) ; combat,hero PASS. Verifications finales de main : voir la puce suivante.
+- **Fusion faite (agent de fusion, 2026-10-31 11:4x)** : `maps` (Haldir : Les Cols, El Dorado, bosquets compacts, marais, cols_paths.ps1, scenario map_cols) fusionnee dans `main` (= 8379e0a, avance rapide apres `git merge main`). Conflits : les 10 fichiers de localisation seulement (version de main reprise, build, GatherText, `fill_po.py` 456 textes 0 cle inconnue, GatherText ; les 4 textes du menu Brouillard sont couverts) ; `fill_po.py` s'est fusionne sans conflit. `MI_Ground_Steppe.uasset` non touche. Build PASS ; quick_check tests,aiserver,aiduel PASS (751/751) ; sizes,move PASS ; `crossings.ps1 -Map Cols -Size Normal -Count 10` PASS (0 echec) ; `aiduel -Map Cols` PASS.
+- **Fusion faite (agent de fusion, 2026-10-31 11:3x)** : `tiers` (Elrond : Relais R5/R6, Talents T5/TQ4, journaux RelaysInProgress et TalentsInProgress ; R6 et TQ4 PROVISOIRES) fusionnee dans `main` (= 040c26d, avance rapide apres `git merge main`). Conflit resolu sans perte : `Script/UI/HOLGameScreenScript.as` (Describe : ligne mini-carte de main + ligne talents avec boutons de famille de tiers, les deux gardees). Build PASS ; quick_check tests,aiserver,aiduel PASS (743/743) ; victory PASS ; build:tiers,build:relay,hero,combat,move,menu PASS.
+- **Fusion faite (agent de fusion, 2026-10-31 11:3x)** : `ai-ia1` (Arwen : neutres N3-N5, IA4 Normal/Difficile/Evolutive, scenario prelude des camps passifs) fusionnee dans `main` (= 6bfb76e, avance rapide apres `git merge main`). Conflit resolu sans perte : `HOLCombatProcessor.cpp` (les deux includes gardes, HOLCampSubsystem et HOLDuelSubsystem). Build PASS ; quick_check tests,aiserver,aiduel PASS (734/734).
+- **Fusion faite (agent de fusion, 2026-10-31 11:2x)** : `net-playtest` (Glorfindel : Technologies T6 côté dégâts, pourcentage d'attaque par joueur dans la chaîne de combat, scénario tech_attack, test net technologies rendu fiable) fusionnée dans `main` (= ae3baeb, avance rapide après `git merge main` dans le worktree). Conflits résolus sans perte : `HOLCombatProcessor.h` et `.cpp` (les champs et la lecture T6 `MeleeAttackPercent`/`RangedAttackPercent` gardés avec `DawnStepOwners` de D581, les deux blocs conservés). Build PASS ; `quick_check -Parts tests,aiserver,aiduel` PASS (732/732) ; `-Parts production,gather,build` PASS ; `-Parts combat` PASS. Rien d'ouvert ici.
+- **Fusion faite (agent de fusion, 2026-10-31 11:1x)** : `galadriel-tab` (Galadriel : mini-carte du prototype, règles des tributs D372 en script, scénario minimap) fusionnée dans `main` (= 71f4951, avance rapide après `git merge main` dans le worktree, sans conflit). Build PASS, `quick_check -Parts tests,aiserver,aiduel` PASS (732/732, aiserver, aiduel), `-Parts build` PASS (dont build minimap, market). Rien d'ouvert ici.
+- **Fusion faite (agent de fusion, 2026-10-31 11:0x)** : `fog` (Faramir : Siège S0/S1/S1b, règles en script et copie C++ `HOLSiegeRules`, tests contre la vraie table des technologies) fusionnée dans `main` (= 88e5241, avance rapide après `git merge main` dans le worktree, sans conflit). Build PASS, `quick_check -Parts tests,aiserver,aiduel` PASS (722/722, aiserver, aiduel), `-Parts smoke` PASS. Rien d'ouvert ici.
+- **Fusion faite (agent de fusion, 2026-10-31 10:4x)** : `hero-j8-close` (Celeborn : chapitre Duel D6, DU-Q2 en trois 
+voies, D120, règles D8 et D9, scénario duel) fusionnée dans `main` (= 47cd800, avance rapide après `git merge main` sans 
+conflit). Build PASS, `quick_check -Parts tests,aiserver,aiduel` PASS (713/713, aiserver, aiduel), `-Parts combat,hero` 
+PASS ; le fichier `DuelInProgress.md` vide (0 octet, non suivi) de la copie principale a été supprimé car il bloquait l'avance rapide. Sur `main` final (47cd800) : `-Parts net` PASS (dont net technologies) et `-Parts build` entier PASS (dont build market, tiers, relay). Rien d'ouvert ici.
+- **Fusion faite (agent de fusion, 2026-10-31 10:3x)** : `tiers` (Elrond : paliers P1-P5, Talents, Relais R1-R5, scénarios 
+relays et talents) fusionnée dans `main` (= f24610c, avance rapide après `git merge main`). Conflits résolus sans perte : 
+les 10 fichiers de localisation (version de main reprise puis GatherText, `fill_po.py`, GatherText : 450 textes, 0 clé 
+inconnue ; les 4 textes du menu Brouillard de `fog` manquaient à `fill_po.py` et ont été ajoutés en en/ja) et 
+`quick_check.ps1` (cas relay et market gardés tous les deux). Build PASS ; `-Parts tests,aiserver,aiduel` PASS (654/654), 
+`-Parts victory` PASS, `build:tiers,build:relay,hero,combat,move` PASS après correction du **script de test** (« net 
+technologies » cherchait une caserne que `-Parts hero` seul ne construit pas : ignoré dans ce cas). Rien d'ouvert ici.
+- **Fusion faite (agent de fusion, 2026-10-31 10:3x)** : `fog` (Faramir : brouillard F7.x, lignes d'ordre, essai 
+fog_trees, aiduel DuelFog) fusionnée dans `main` (= a5add7e, avance rapide après `git merge main` sans conflit). Build 
+PASS, `quick_check -Parts tests,aiserver,aiduel` PASS (631/631), `-Parts smoke,netfog,netfogoff` PASS. Rien d'ouvert ici.
+- **Fusion faite (agent de fusion, 2026-10-31 10:2x)** : `ai-ia1` (Arwen : test du regroupement tenu, chapitre Neutres 
+N1/N1b, journaux) fusionnée dans `main` (= 906bff9, avance rapide après `git merge main` sans conflit). Build PASS, 
+`quick_check -Parts tests,aiserver,aiduel` PASS (624/624, aiserver, aiduel). Rien d'ouvert ici.
 
 - **Fusions faites (agent de fusion, 2026-10-30 22:0x)** : `hero-j8-close` (e00f7c0), `net-playtest` (96f2710) et `maps` (0346286) fusionnées en avance rapide dans `main` (= 0346286), docs commités avant (7aa15b4, cfd73b0 avec GDD D581-D585), builds PASS, `-Parts tests` verts (570/576/576), `combat` (hero-j8-close), `sizes`, `hinterland_paths` et `crossings` (100/100) PASS pour maps. **ROUGE préexistant, non causé par ces branches : `quick_check -Parts aiduel` échoue (« the two runs' step hashes are the same » = non-déterminisme entre les deux parties, sans erreur de partie) aussi sur `hero-j8-close` seule (état de main avant fusion) ; à instruire (IA/déterminisme), `maps` fusionnée malgré tout parce que l'échec ne vient pas d'elle. Rien d'ouvert ici.
+
+- **Fusion faite (agent de fusion, 2026-10-31 08:5x)** : `ai-ia1` (Arwen, 7 commits : aiduel corrigé, IA4 niveau/Paysans D584/Facile D585, Volcan V4a, bug du mur du forum) fusionnée en avance rapide dans `main` (= 00318c6, `main` n'avait pas bougé depuis bb15394). Build PASS, `quick_check -Parts tests,aiserver,aiduel` PASS (581/581, aiserver, aiduel : le rouge aiduel signalé plus haut est corrigé). Rien d'ouvert ici.
+
+- **Fusion faite (agent de fusion, 2026-10-31 09:5x)** : galadriel-tab (Galadriel : Marché M4c, M5, IA du Marché, scénario market) fusionnée dans main (= 8d96983, avance rapide après git merge main dans le worktree). Un conflit dans Script/AI/HOLAIBrain.as : ThinkMarket (galadriel) gardé, LevelOf retiré (main lit Summary.Level), ThinkMarket utilise désormais Summary.Level. Build PASS, quick_check -Parts tests,aiserver,aiduel PASS (597/597, aiserver, aiduel), -Parts build PASS (dont build market). Rien d'ouvert ici.
+
+- **Fusion faite (agent de fusion, 2026-10-31 10:1x)** : `net-playtest` (Glorfindel : Technologies T1-T5, WorkerSpeed, T8, cellule Rechercher, correctif de `$WhereMap` dans quick_check, partie `net technologies`, `check.ps1`) fusionnée dans `main` (= 53653a8, avance rapide après `git merge main` dans le worktree). Conflits résolus sans perte : `HOLCommandGrid.h` (les commandes `Research` et `Trade` coexistent), `HOLPlayerController.cpp` (cas `Research` et `Trade`), `HOLUnitOrderProcessor.cpp` (WorkerSpeed puis SyncNavBuild) ; `BuildingTypes.uasset` réimporté depuis le CSV fusionné (`make_building_types.py`), localisation régénérée (GatherText, `fill_po.py` 442 textes 0 clé inconnue, GatherText). Build PASS ; `quick_check -Parts tests,production,gather,aiserver,aiduel` PASS (601/601) ; `-Parts net` PASS (dont net 2 clients et net technologies) ; `-Parts build` : 2 rouges venus du **script de test** (les contrôles de cellules de `build hud` Tab et `build barracks` attendaient exactement `A: Paysan` / `A: Lancier; Z: Homme d'armes`, alors que la rangée des technologies W X C V s'y ajoute) corrigés dans `quick_check.ps1` (53653a8), puis `-Parts build` PASS (dont build market). Rien d'ouvert ici.
 
 - **Docs de la copie principale** : commités (7aa15b4 docs de séance, cfd73b0 `GDD.md`) ; ce qui a bougé depuis (`FogInProgress.md`, ce fichier) appartient aux autres sessions.
 - **Fusions dans `main`** : les six branches (`ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps`) sont fusionnées en avance rapide (2026-10-30 soir, `main` = f0c7b06), `quick_check` par défaut (530/530) et `-Parts victory` verts sur `main`. Rien d'ouvert ici. À noter : `maps` portait déjà M-Q10 / M-Q10b commité (0ae2591, plus de décor, herbe uniforme) quand elle a été fusionnée ; `net-playtest` (Glorfindel) n'est pas à fusionner.
