@@ -29,7 +29,21 @@ enum EHOLDuelEnd
 	// Both fell in the same step (DU-Q1).
 	DoubleKnockOut,
 	// A hero fell during the response window: nobody refused, nobody fought.
-	Cancelled
+	Cancelled,
+	// The conditions of the challenge ceased to hold before the answer (DU-Q2 = A): the challenge falls, free for the target.
+	Dropped
+}
+
+// DU-Q2, the three ways ready until the user answers: what a challenge becomes when its conditions (near, in sight, outside
+// the forum zone) cease to hold before the answer.
+enum EHOLDuelLostConditions
+{
+	// A: the challenge falls without cost for the target (no Hesitation, no Honour); the challenger's cooldown stays spent.
+	DropsFree,
+	// B: the challenge stands, the duel begins where the heroes are when accepted.
+	Holds,
+	// C: the challenge stands, but an acceptance with a false condition counts as a refusal, with its costs.
+	CountsAsRefusal
 }
 
 // The numbers of the duel, one place. The GDD gives ranges marked "indicative, to be tuned in tests"; the preset takes the
@@ -57,6 +71,9 @@ struct FHOLDuelSettings
 	// DU-Q1 (both heroes fall in the same step), both ways ready until the user answers: true = A (both fall, in recovery,
 	// no reward); false = B (nobody falls, both are left at one health, as for a time up).
 	bool bDoubleKnockOutBothFall = true;
+
+	// DU-Q2, the three ways ready until the user answers; the preset takes A (the recommendation, not a decision).
+	EHOLDuelLostConditions LostConditions = EHOLDuelLostConditions::DropsFree;
 }
 
 // One duel's state, handed from call to call; every function returns a new one and leaves the one given alone.
@@ -210,6 +227,30 @@ namespace HOLDuel
 			D.Phase = EHOLDuelPhase::Over;
 			D.End = EHOLDuelEnd::TimedOut;
 		}
+		return D;
+	}
+
+	// DU-Q2: the target answers (accept or refuse) while the conditions of the challenge hold or not (bConditionsHold).
+	FHOLDuel RespondChecked(const FHOLDuelSettings& S, const FHOLDuel& Duel, bool bAccept, bool bConditionsHold)
+	{
+		if (Duel.Phase != EHOLDuelPhase::Pending || bConditionsHold)
+			return Respond(S, Duel, bAccept);
+		if (S.LostConditions == EHOLDuelLostConditions::DropsFree)
+			return Recheck(S, Duel, false);
+		// Holds: the answer is the target's own; CountsAsRefusal: an acceptance is a refusal, with its costs.
+		const bool bAcceptNow = bAccept && S.LostConditions == EHOLDuelLostConditions::Holds;
+		return Respond(S, Duel, bAcceptNow);
+	}
+
+	// DU-Q2: the conditions are read again while the challenge waits; only a Pending duel can fall (DropsFree).
+	FHOLDuel Recheck(const FHOLDuelSettings& S, const FHOLDuel& Duel, bool bConditionsHold)
+	{
+		FHOLDuel D = Duel;
+		if (D.Phase != EHOLDuelPhase::Pending || bConditionsHold || S.LostConditions != EHOLDuelLostConditions::DropsFree)
+			return D;
+		D.Phase = EHOLDuelPhase::Over;
+		D.End = EHOLDuelEnd::Dropped;
+		D.WindowLeftMs = 0;
 		return D;
 	}
 
@@ -418,6 +459,35 @@ namespace HOLDuel
 			{
 				Book.Duels[Index] = Respond(S, Book.Duels[Index], bAccept);
 				return true;
+			}
+		}
+		return false;
+	}
+
+	// DU-Q2: the answer of the slot with the conditions read at that instant. False when no pending challenge is addressed to it.
+	bool AnswerChecked(const FHOLDuelSettings& S, FHOLDuelBook& Book, int TargetSlot, bool bAccept, bool bConditionsHold)
+	{
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (Book.Duels[Index].Phase == EHOLDuelPhase::Pending && Book.Duels[Index].Target == TargetSlot)
+			{
+				Book.Duels[Index] = RespondChecked(S, Book.Duels[Index], bAccept, bConditionsHold);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// DU-Q2: the conditions read again for the challenge addressed to this slot; whether a challenge fell (it leaves the book
+	// at the next Tick, reported with its effects).
+	bool BookRecheck(const FHOLDuelSettings& S, FHOLDuelBook& Book, int TargetSlot, bool bConditionsHold)
+	{
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (Book.Duels[Index].Phase == EHOLDuelPhase::Pending && Book.Duels[Index].Target == TargetSlot)
+			{
+				Book.Duels[Index] = Recheck(S, Book.Duels[Index], bConditionsHold);
+				return Book.Duels[Index].Phase == EHOLDuelPhase::Over;
 			}
 		}
 		return false;

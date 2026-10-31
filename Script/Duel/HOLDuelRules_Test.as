@@ -473,3 +473,114 @@ void Test_DuelBookProtectedHits(FUnitTest& T)
 	T.AssertTrue(HOLDuel::BookCanHit(Book, 2, 3), "each pair hits its own");
 	T.AssertTrue(HOLDuel::BookCanHit(Book, -1, -1), "the rest of the battle goes on");
 }
+
+// ---- DU-Q2: what a challenge becomes when its conditions cease to hold before the answer (three ways, one setting) ----
+
+FHOLDuelSettings DuelSettingsLost(EHOLDuelLostConditions Mode)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	S.LostConditions = Mode;
+	return S;
+}
+
+// A: the conditions lost, the challenge falls at once, free for the target; the challenger's cooldown stays spent.
+void Test_DuelLostConditionsDropsFree(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettingsLost(EHOLDuelLostConditions::DropsFree);
+	FHOLDuel D = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	T.AssertTrue(HOLDuel::Recheck(S, D, true).Phase == EHOLDuelPhase::Pending, "the conditions hold: the challenge waits");
+	FHOLDuel Fallen = HOLDuel::Recheck(S, D, false);
+	T.AssertTrue(Fallen.Phase == EHOLDuelPhase::Over, "the conditions lost: over");
+	T.AssertTrue(Fallen.End == EHOLDuelEnd::Dropped, "dropped");
+	FHOLDuelEffects E = HOLDuel::Effects(S, Fallen);
+	T.AssertEquals(-1, E.HesitationSlot, "no Hesitation for the target");
+	T.AssertFalse(E.bRefusalCost, "no Honour lost");
+	T.AssertEquals(DuelAlice, E.ChallengeCooldownSlot, "the challenger's cooldown stays spent");
+	T.AssertEquals(S.ChallengeCooldownMs, E.ChallengeCooldownMs, "the whole cooldown");
+	T.AssertTrue(HOLDuel::Respond(S, Fallen, true).Phase == EHOLDuelPhase::Over, "no accepting a fallen challenge");
+	// An answer given at the instant the conditions are false falls the same way, whatever the answer.
+	T.AssertTrue(HOLDuel::RespondChecked(S, D, true, false).End == EHOLDuelEnd::Dropped, "accepted with the conditions lost: dropped");
+	T.AssertTrue(HOLDuel::RespondChecked(S, D, false, false).End == EHOLDuelEnd::Dropped, "refused with the conditions lost: dropped, free");
+	// With the conditions true, it is the plain answer.
+	T.AssertTrue(HOLDuel::RespondChecked(S, D, true, true).Phase == EHOLDuelPhase::Active, "accepted with the conditions true: the duel begins");
+	T.AssertTrue(HOLDuel::RespondChecked(S, D, false, true).End == EHOLDuelEnd::Refused, "refused with the conditions true: refused");
+}
+
+// Only a challenge waiting can fall: an Active duel is not touched by the conditions (the arena is set at the acceptance).
+void Test_DuelLostConditionsOnlyPendingFalls(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettingsLost(EHOLDuelLostConditions::DropsFree);
+	FHOLDuel Active = DuelActive(S);
+	T.AssertTrue(HOLDuel::Recheck(S, Active, false).Phase == EHOLDuelPhase::Active, "an active duel stays active");
+	FHOLDuel Over = HOLDuel::Respond(S, HOLDuel::Challenge(S, DuelAlice, DuelBob), false);
+	T.AssertTrue(HOLDuel::Recheck(S, Over, false).End == EHOLDuelEnd::Refused, "an over duel is unchanged");
+}
+
+// B: the challenge stands whatever the conditions; the duel begins at the acceptance.
+void Test_DuelLostConditionsHolds(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettingsLost(EHOLDuelLostConditions::Holds);
+	FHOLDuel D = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	T.AssertTrue(HOLDuel::Recheck(S, D, false).Phase == EHOLDuelPhase::Pending, "the challenge stands");
+	T.AssertTrue(HOLDuel::RespondChecked(S, D, true, false).Phase == EHOLDuelPhase::Active, "accepted from shelter: the duel begins");
+	FHOLDuel Refused = HOLDuel::RespondChecked(S, D, false, false);
+	T.AssertTrue(Refused.End == EHOLDuelEnd::Refused, "refused from shelter: a plain refusal");
+	T.AssertTrue(HOLDuel::Effects(S, Refused).bRefusalCost, "with its costs");
+}
+
+// C: the challenge stands; an acceptance with a false condition is counted as a refusal, with its costs.
+void Test_DuelLostConditionsCountsAsRefusal(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettingsLost(EHOLDuelLostConditions::CountsAsRefusal);
+	FHOLDuel D = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	T.AssertTrue(HOLDuel::Recheck(S, D, false).Phase == EHOLDuelPhase::Pending, "the challenge stands until the answer");
+	FHOLDuel Counted = HOLDuel::RespondChecked(S, D, true, false);
+	T.AssertTrue(Counted.Phase == EHOLDuelPhase::Over, "accepted from shelter: no duel");
+	T.AssertTrue(Counted.End == EHOLDuelEnd::Refused, "counted as a refusal");
+	FHOLDuelEffects E = HOLDuel::Effects(S, Counted);
+	T.AssertEquals(DuelBob, E.HesitationSlot, "Hesitation on the target");
+	T.AssertTrue(E.bRefusalCost, "with the faction's price");
+	T.AssertTrue(HOLDuel::RespondChecked(S, D, true, true).Phase == EHOLDuelPhase::Active, "accepted with the conditions true: the duel begins");
+}
+
+// In the book: the same three ways, by the target's slot; a fallen challenge leaves at the next Tick with its effects, once.
+void Test_DuelBookLostConditions(FUnitTest& T)
+{
+	FHOLDuelHero Hero;
+	FHOLDuelPlace Place;
+	TArray<int> Health;
+	Health.Add(100);
+	Health.Add(100);
+	// A: Recheck drops it; the Tick reports it with no refusal cost and the cooldown spent.
+	FHOLDuelSettings A = DuelSettingsLost(EHOLDuelLostConditions::DropsFree);
+	FHOLDuelBook Book = HOLDuel::NewBook(2);
+	T.AssertEquals("", HOLDuel::Start(A, Book, DuelAlice, DuelBob, Hero, Hero, Place), "the challenge starts");
+	T.AssertFalse(HOLDuel::BookRecheck(A, Book, DuelAlice, false), "nothing is addressed to the challenger");
+	T.AssertTrue(HOLDuel::BookRecheck(A, Book, DuelBob, false), "the conditions lost: the challenge fell");
+	TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(A, Book, 50, Health);
+	T.AssertEquals(1, Ended.Num(), "reported once");
+	if (Ended.Num() == 1)
+	{
+		T.AssertTrue(Ended[0].Duel.End == EHOLDuelEnd::Dropped, "dropped");
+		T.AssertFalse(Ended[0].Effects.bRefusalCost, "free");
+	}
+	T.AssertEquals(0, HOLDuel::Tick(A, Book, 50, Health).Num(), "not reported again");
+	T.AssertFalse(HOLDuel::BookInDuel(Book, DuelBob), "nobody is in a duel any more");
+	// C: the answer with a false condition is a refusal with costs.
+	FHOLDuelSettings C = DuelSettingsLost(EHOLDuelLostConditions::CountsAsRefusal);
+	FHOLDuelBook BookC = HOLDuel::NewBook(2);
+	HOLDuel::Start(C, BookC, DuelAlice, DuelBob, Hero, Hero, Place);
+	T.AssertFalse(HOLDuel::BookRecheck(C, BookC, DuelBob, false), "C: the challenge stands");
+	T.AssertTrue(HOLDuel::AnswerChecked(C, BookC, DuelBob, true, false), "the answer is taken");
+	TArray<FHOLDuelEnded> EndedC = HOLDuel::Tick(C, BookC, 50, Health);
+	T.AssertEquals(1, EndedC.Num(), "C: reported once");
+	if (EndedC.Num() == 1)
+		T.AssertTrue(EndedC[0].Effects.bRefusalCost, "C: with its costs");
+	// B: the answer from shelter starts the duel.
+	FHOLDuelSettings B = DuelSettingsLost(EHOLDuelLostConditions::Holds);
+	FHOLDuelBook BookB = HOLDuel::NewBook(2);
+	HOLDuel::Start(B, BookB, DuelAlice, DuelBob, Hero, Hero, Place);
+	T.AssertTrue(HOLDuel::AnswerChecked(B, BookB, DuelBob, true, false), "B: taken");
+	T.AssertTrue(HOLDuel::BookCanHit(BookB, DuelAlice, DuelBob), "B: the duel is on");
+	T.AssertFalse(HOLDuel::BookCanHit(BookB, DuelAlice, 5), "B: protected");
+}
