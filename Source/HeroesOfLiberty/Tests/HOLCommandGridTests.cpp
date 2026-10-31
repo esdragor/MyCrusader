@@ -344,7 +344,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("seven buildable types"), Context.Buildable.Num(), 7);
+	TestEqual(TEXT("eight buildable types (the Market of age II, M3, joined the seven of age I)"), Context.Buildable.Num(), 8);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
@@ -363,13 +363,23 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("W with age I chosen: builds the farm"), HOLCommandGrid::PressKey(Context, 0, FarmCell).Target == EHOLGridKeyTarget::Build
 		&& HOLCommandGrid::PressKey(Context, 0, FarmCell).TypeName == HOLBuildingTypeNames::Farm);
 	// The other cells of panel I unchanged: D F and X C V empty.
+	// M3: the Market, A of page II (economic row), greyed while age II is not reached; the other cells of page II empty.
+	const FHOLGridCommand MarketCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 0);
+	TestTrue(TEXT("II A: the Market, a build command, greyed (age II not reached)"), MarketCell.TypeName == HOLBuildingTypeNames::Market
+		&& MarketCell.Command == EHOLGridCommand::Build && MarketCell.Age == 1 && MarketCell.bGreyed);
+	for (const int32 Cell : { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 })
+	{
+		TestTrue(*FString::Printf(TEXT("page II, cell %d: no building yet"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 1, Cell).IsNone());
+	}
 	for (const int32 Cell : { 6, 7, 9, 10, 11 })
 	{
 		TestTrue(*FString::Printf(TEXT("panel I, cell %d: no building"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 0, Cell).IsNone());
 	}
 	for (const FHOLBuildable& Buildable : Context.Buildable)
 	{
-		TestEqual(*FString::Printf(TEXT("%s: age I"), *Buildable.TypeName.ToString()), Buildable.Age, 0);
+		// M3: the Market alone is of age II (page II, A: the economic row of its page); every other type is of age I.
+		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market;
+		TestEqual(*FString::Printf(TEXT("%s: %s"), *Buildable.TypeName.ToString(), bMarket ? TEXT("age II") : TEXT("age I")), Buildable.Age, bMarket ? 1 : 0);
 		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology;
 		// the farm alone stands on the third row (IA1.2-Q1: the economic row of age I is full).
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(Buildable.TypeName);

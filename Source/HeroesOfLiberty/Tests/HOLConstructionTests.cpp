@@ -376,6 +376,26 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Archery range: age I"), ArcheryRange->Age, 0);
 	}
 
+	// M3 (GDD 5.5, 11.1, D569): the Market, economic, age II (palier 1, Essor), built by Peasants on A of page II. Its size, cost
+	// and health are provisional (MarketInProgress.md, question MK-Q2): 3 x 3 tiles like the Barracks, 150 wood, 20 s.
+	const FHOLBuildingTypeRow* Market = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Market);
+	if (TestNotNull(TEXT("Market in the building type table"), Market))
+	{
+		TestTrue(TEXT("Market: built by Peasants"), Market->IsBuildable());
+		TestEqual(TEXT("Market: A of the Peasant's grid (slot 0, economic row)"), Market->BuildGridSlot, 0);
+		TestEqual(TEXT("Market: age II"), Market->Age, 1);
+		TestEqual(TEXT("Market: economic"), int32(Market->Category), int32(EHOLBuildingCategory::Economic));
+		TestEqual(TEXT("Market: 3 x 3 tiles"), Market->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestTrue(TEXT("Market: costs wood only"), Market->Cost.Food == 0 && Market->Cost.Stone == 0 && Market->Cost.Gold == 0 && Market->Cost.Wood > 0);
+		TestTrue(TEXT("Market: a build time"), Market->BuildTime > 0.f);
+		TestEqual(TEXT("Market: no population"), Market->PopulationProvided, 0);
+		TestTrue(TEXT("Market: produces nothing"), Market->Produces.IsEmpty());
+		TestTrue(TEXT("Market: takes no resource (it is not a deposit)"), Market->Accepts.IsEmpty());
+		TestFalse(TEXT("Market: not walkable"), Market->Walkable);
+		TestTrue(TEXT("Market: no source of its own"), Market->Source.IsNone());
+		TestTrue(TEXT("Market: sees at least as far as a house"), Market->SightRadius >= 2000.f);
+	}
+
 	// IA1.2 (F4): every building so far blocks the way and has no source of its own.
 	for (const FName Name : { HOLBuildingTypeNames::MainCentre, HOLBuildingTypeNames::House, HOLBuildingTypeNames::LumberCamp,
 		HOLBuildingTypeNames::MiningCamp, HOLBuildingTypeNames::Mill, HOLBuildingTypeNames::Barracks,

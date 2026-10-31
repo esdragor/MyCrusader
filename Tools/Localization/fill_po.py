@@ -302,6 +302,7 @@ TRANSLATIONS = {
     # IA1.2 F8: the farm and its field.
     "HOLGameNames,Farm": ("Farm", "農場"),
     "HOLGameNames,ArcheryRange": ("Archery Range", "射撃場"),
+    "HOLGameNames,Market": ("Market", "市場"),
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
     "HOLGameNames,Archer": ("Archer", "弓兵"),

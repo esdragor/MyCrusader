@@ -91,6 +91,11 @@ namespace HOLGameNames
 			// AR7b, translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("ArcheryRange", "Champ de tir");
 		}
+		if (TypeName == HOLBuildingTypeNames::Market)
+		{
+			// M3, translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Market", "Marché");
+		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
 			return Row->DisplayName;
