@@ -24,6 +24,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
 }
 
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
@@ -159,4 +160,20 @@ bool AHOLPlayerState::SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate)
 void AHOLPlayerState::OnRep_HeroPrivate()
 {
 	OnHeroPrivateChanged.Broadcast();
+}
+
+bool AHOLPlayerState::AddTechnology(const FName Technology)
+{
+	if (!Technologies.Add(Technology))
+	{
+		return false;
+	}
+	OnTechnologiesChanged.Broadcast();
+	ForceNetUpdate();
+	return true;
+}
+
+void AHOLPlayerState::OnRep_Technologies()
+{
+	OnTechnologiesChanged.Broadcast();
 }

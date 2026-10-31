@@ -13,9 +13,12 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Technologies/HOLTechnologyRules.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -42,6 +45,22 @@ namespace UE::HeroesOfLiberty::Production
 		case EHOLProductionRefusal::NotProducible: return TEXT("not produced here");
 		case EHOLProductionRefusal::QueueFull: return TEXT("queue full");
 		case EHOLProductionRefusal::NotEnoughResources: return TEXT("not enough resources");
+		default: return TEXT("none");
+		}
+	}
+
+	/** Why a research is refused, for the log (and the grid's message to come, T4). */
+	const TCHAR* DescribeBlock(const HOLTechnology::EBlock Block)
+	{
+		switch (Block)
+		{
+		case HOLTechnology::EBlock::AlreadyResearched: return TEXT("already researched");
+		case HOLTechnology::EBlock::AlreadyQueued: return TEXT("already queued");
+		case HOLTechnology::EBlock::TierTooLow: return TEXT("tier too low");
+		case HOLTechnology::EBlock::HeroLevelTooLow: return TEXT("hero level too low");
+		case HOLTechnology::EBlock::RequiresMissing: return TEXT("requires missing");
+		case HOLTechnology::EBlock::NoBuilding: return TEXT("no building");
+		case HOLTechnology::EBlock::CannotPay: return TEXT("cannot pay");
 		default: return TEXT("none");
 		}
 	}
@@ -113,6 +132,16 @@ FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName) const
 		Cost.Resources = Row->Cost;
 		Cost.BuildSteps = GetBuildSteps(*Row, StepSeconds);
 		Cost.Population = Row->Population;
+	}
+	// A technology (T3, T-Q6 = A): an item of the same queue, no population place.
+	else if (const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(TypeName))
+	{
+		Cost = HOLTechnology::MakeCost(*Technology, StepSeconds);
+		const float Override = UE::HeroesOfLiberty::Production::CVarBuildTime.GetValueOnGameThread();
+		if (Override > 0.f)
+		{
+			Cost.BuildSteps = FMath::Max(1, FMath::RoundToInt(Override / FMath::Max(StepSeconds, UE_KINDA_SMALL_NUMBER)));
+		}
 	}
 	return Cost;
 }
@@ -251,6 +280,43 @@ void UHOLProductionSubsystem::ApplyOrders()
 		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
 		if (Order.Kind == FHOLProductionCommand::EKind::Queue)
 		{
+			// A technology (T3, T-Q6 = A) goes through the same queue as the units, after the rules of GDD 11.
+			const FHOLTechnologyRow* Technology = Type->Produces.Contains(Order.TypeName) ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
+			if (Technology)
+			{
+				const FHOLProductionCost Cost = GetCost(Order.TypeName);
+				HOLTechnology::FFacts Facts;
+				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+				Facts.HeroTier = HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0;
+				Facts.HeroLevel = UHOLHeroLibrary::GetHeroLevel(this, Order.PlayerIndex);
+				Facts.bRequiresDone = Technology->Requires.IsNone() || PlayerState->GetTechnologies().Has(Technology->Requires);
+				Facts.bBuildingFinished = Building->GetTypeName() == Technology->Building;
+				Facts.bCanPay = Stock.Covers(Cost.Resources);
+				Facts.bResearched = PlayerState->GetTechnologies().Has(Order.TypeName);
+				for (TActorIterator<AHOLBuilding> It(GetWorld()); It && !Facts.bQueued; ++It)
+				{
+					Facts.bQueued = It->GetOwnerPlayer() == Order.PlayerIndex && HOLTechnology::IsQueued(It->GetProductionQueue(), Order.TypeName);
+				}
+				const HOLTechnology::EBlock Block = HOLTechnology::Check(*Technology, Facts);
+				if (Block != HOLTechnology::EBlock::None)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), DescribeBlock(Block));
+					continue;
+				}
+				const EHOLProductionRefusal Refusal = HOLProduction::TryEnqueue(Queue, Order.TypeName, Cost, Type->MaxQueue, Stock);
+				if (Refusal != EHOLProductionRefusal::None)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), DescribeRefusal(Refusal));
+					continue;
+				}
+				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued research %s (%d in the queue, %s)"), Order.PlayerIndex,
+					*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
+				PlayerState->SetResources(Stock);
+				Building->NotifyProductionChanged();
+				continue;
+			}
 			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
 				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName), Type->MaxQueue, Stock)
 				: EHOLProductionRefusal::NotProducible;
@@ -335,6 +401,17 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		HOLProduction::Advance(Queue, StepIndex, GetCostOf, FreePopulation.FindOrAdd(Building->GetOwnerPlayer()), Done);
 		for (const FName TypeName : Done)
 		{
+			// A research done (T3): his player has it, nothing is born.
+			if (!Units->FindTypeRow(TypeName) && UHOLTechnologySettings::FindTechnology(TypeName))
+			{
+				if (AHOLPlayerState* Researcher = FindPlayerState(Building->GetOwnerPlayer()))
+				{
+					Researcher->AddTechnology(TypeName);
+				}
+				UE_LOG(LogHOLCommands, Display, TEXT("Technology: slot %d researched %s at step %lld"), Building->GetOwnerPlayer(),
+					*TypeName.ToString(), StepIndex);
+				continue;
+			}
 			int32& NumBorn = NumBirths.FindOrAdd(Building);
 			// A tiny radius: the unit is put on the navmesh right under the point (FHOLUnitSpawnRequest).
 			FHOLUnitSpawnRequest Request{ TypeName, 1, GetBirthLocation(*Building, NumBorn), 1.f, Building->GetOwnerPlayer() };

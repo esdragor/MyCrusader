@@ -1,0 +1,50 @@
+# Technologies (T3/T4, GDD 11) : rechercher une technologie dans la file d'un bâtiment (la même que celle des unités) ; refus (palier, bâtiment, déjà en file), coût pris puis recherche faite
+# Plain, toi (slot 0) contre une IA (slot 1), hero_xp.json : un héros niveau 1. La Charrue se cherche à la Ferme (D583). Ce scénario est aussi le test de la chaîne : chaque waitlog doit arriver.
+# Recherche de 2 s au lieu de 30 s (hol.Prod.BuildTime 2) ; hol.Hero.SetXP 0 600 = niveau 3 = palier 1, 3300 = niveau 6 = palier 2.
+waitlog Starting hero of slot 0 spawned at
+hol.Cheat.Resources 5000
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Farm 0 2500 2500
+waitlog Cheat: spawned Farm of slot 0
+note 1. Une Ferme, un héros niveau 1 : la Charrue demande le palier 1 (niveau 3).
+# Palier 0 : refusée.
+hol.Prod.Queue PloughI Farm
+waitlog Production: slot 0 cannot research PloughI (tier too low)
+# Palier 1 : acceptée, coût pris, file de la Ferme.
+hol.Hero.SetXP 0 600
+waitlog Hero level up: slot 0 level 1 -> 3
+frames 4
+hol.Prod.Queue PloughI Farm
+waitlog Production: slot 0 queued research PloughI
+# Déjà en file : refusée.
+hol.Prod.Queue PloughI Farm
+waitlog Production: slot 0 cannot research PloughI (already queued)
+# Charrue II : le palier 2 manque, et la Charrue I n'est pas faite.
+hol.Prod.Queue PloughII Farm
+waitlog Production: slot 0 cannot research PloughII (tier too low)
+# Pas au bon bâtiment : la Brouette se cherche à la Ferme, pas au Centre principal.
+hol.Prod.Queue WheelbarrowI MainCentre
+waitlog Production: slot 0 cannot research WheelbarrowI (no building)
+note 2. Charrue en file (2 s) : refusée deux fois (déjà en file, Charrue II trop tôt), Brouette refusée au Centre.
+waitlog Technology: slot 0 researched PloughI
+# Faite : ne se refait pas ; Charrue II veut le palier 2.
+hol.Prod.Queue PloughI Farm
+waitlog Production: slot 0 cannot research PloughI (already researched)
+hol.Hero.SetXP 0 3300
+waitlog Hero level up: slot 0 level 3 -> 6
+frames 4
+hol.Prod.Queue PloughII Farm
+waitlog Production: slot 0 queued research PloughII
+waitlog Technology: slot 0 researched PloughII
+# La Brouette II demande la Brouette I : refusée tant que la I n'est pas faite (la file de 5 est testée dans Technologies.Rules).
+hol.Prod.Queue WheelbarrowI Farm
+waitlog Production: slot 0 queued research WheelbarrowI
+hol.Prod.Queue WheelbarrowII Farm
+waitlog Production: slot 0 cannot research WheelbarrowII (requires missing)
+waitlog Technology: slot 0 researched WheelbarrowI
+hol.Prod.Queue WheelbarrowII Farm
+waitlog Production: slot 0 queued research WheelbarrowII
+waitlog Technology: slot 0 researched WheelbarrowII
+note Charrue I et II, Brouette I et II faites : l'état du joueur les garde (journal : Technology: slot 0 researched ...).

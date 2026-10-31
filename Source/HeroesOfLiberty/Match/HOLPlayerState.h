@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Match/HOLResources.h"
 #include "Simulation/HOLHeroSheet.h"
+#include "Technologies/HOLTechnologyRules.h"
 #include "Engine/NetSerialization.h"
 #include "HOLPlayerState.generated.h"
 
@@ -124,6 +125,15 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnHeroPrivateChanged);
 	FOnHeroPrivateChanged OnHeroPrivateChanged;
 
+	/** T3 (GDD 11): the technologies this player has researched, set by the server alone, replicated to this player only. */
+	const FHOLTechnologyState& GetTechnologies() const { return Technologies; }
+	/** Server only: a technology researched (true when it is new). */
+	bool AddTechnology(FName Technology);
+
+	/** The technologies changed: on the server when set, on the owner's machine when they arrive. For the grid and the effects. */
+	DECLARE_MULTICAST_DELEGATE(FOnTechnologiesChanged);
+	FOnTechnologiesChanged OnTechnologiesChanged;
+
 	/** "F 200 W 200 S 200 G 200, population 0/10": for the logs of the scripted checks. */
 	FString DescribeEconomy() const;
 
@@ -161,4 +171,10 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_HeroPrivate)
 	FHOLHeroPrivateSheet HeroPrivate;
+
+	UFUNCTION()
+	void OnRep_Technologies();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Technologies)
+	FHOLTechnologyState Technologies;
 };
