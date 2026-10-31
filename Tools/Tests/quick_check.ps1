@@ -495,6 +495,8 @@ if ($Parts -contains "menu") {
     Open NewGame
     Step "mark menu ailaunch", "hol.UI.Choose SlotState1 2", "frames 3", "hol.UI.NewGame.Launch - 0", "waitlog Main centre of slot 1",
         "hol.Units.Spawn 5 0 0 1 Peasant", "waitlog AI slot 1 step",
+        "hol.Units.Spawn 1 0 0 1 Hero 100", "wait 0.5", "hol.Hero.SetXP 1 3300", "waitlog Hero level: slot 1 level 1 -> 6", "waitlog AI slot 1 step",
+        "wait 4",
         "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
@@ -3263,6 +3265,13 @@ if ($Parts -contains "menu") {
     $Gather = @($Launch | Select-String -Pattern "AI slot 1 step \d+: (\d+) idle -> gather \w+ #\d+$") | Select-Object -First 1
     $Idle = if ($Gather) { [int]$Gather.Matches[0].Groups[1].Value } else { 0 }
     $Checks["its 5 Peasants sent to gather ($Idle)"] = $Idle -eq 5
+    # T6 (D424): the AI's hero (level 6 given to him) has its five points spent by the brain on its main family, the Captain's, one order a
+    # row, rows 2 to 6, each one taken by the server.
+    $AITalents = @($Launch | Select-String -Pattern "AI slot 1 step \d+: talent of family (\d) in row (\d)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)@$($_.Matches[0].Groups[2].Value)" })
+    $Checks["the AI draws its main family (the Captain, 1)"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: talent profile main family 1$" -Quiet)
+    $Checks["its hero at level 6 takes the Captain in rows 2 to 6, in order ($($AITalents -join ' '))"] = ($AITalents -join " ") -eq "1@2 1@3 1@4 1@5 1@6"
+    $Checks["the server took the five ($(@($Launch | Select-String -Pattern 'Hero talent order: slot 1 family 1 at step \d+ taken').Count))"] =
+        @($Launch | Select-String -Pattern "Hero talent order: slot 1 family 1 at step \d+ taken").Count -eq 5
     $AllOk = (Report "menu ailaunch" $Checks) -and $AllOk
 }
 

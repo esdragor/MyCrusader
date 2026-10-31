@@ -143,6 +143,16 @@ namespace HOLHeroTalent
 		return Picks.Num() > 2 && Picks[2] == FamilyCaptain;
 	}
 
+	/**
+	 * T6: whether the talent of Family in Row has an effect in the game (the table the AI draws its main family from, D424; the
+	 * others are named in Talents.csv and counted for seals and keys, but do nothing yet, D194). One line per effect coded:
+	 * GrantsAuraArmor and GrantsDawnStep above, the test HeroTalent.EffectTable keeps the two in step.
+	 */
+	inline bool HasEffect(const int32 Row, const int32 Family)
+	{
+		return Family == FamilyCaptain && (Row == FirstRow || Row == FirstRow + 2);
+	}
+
 	/** A talent of Family can be taken by a hero of Level who took NumPicks already: a family of the row, a row left, a point in reserve. */
 	inline bool CanPick(const int32 Level, const int32 NumPicks, const int32 Family)
 	{

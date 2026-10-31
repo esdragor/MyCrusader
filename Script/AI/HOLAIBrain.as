@@ -37,6 +37,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIForumMemory> Rebuilds;
 	TMap<int, FHOLAIKingMemory> Kings;
 
+	// The main talent family each slot drew at its first thought (T6, D424).
+	TMap<int, int> TalentMains;
+
 	// The last "forum attacked" situation written in the journal, per slot (IA4, D579).
 	TMap<int, FHOLAIForumLogged> ForumLogged;
 
@@ -187,6 +190,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		Kings.Add(PlayerIndex, KingMemory);
 
+		// 3d. The hero's talent points (T6, D424): spent on the main family drawn at the start, in order.
+		ThinkTalent(PlayerIndex, Step);
+
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
 		{
@@ -218,6 +224,34 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		return true;
+	}
+
+	// The hero's point, if one is in reserve (HOLAITalent::Choose): the order of the talent of the main family, the same order a player's button sends.
+	// The main family is drawn once per slot from its index (HOLAITalent::DrawMain; the prototype has one family with effects, so the roll is moot).
+	void ThinkTalent(int PlayerIndex, int64 Step)
+	{
+		const int Count = HOLHero::GetHeroTalentCount(PlayerIndex);
+		if (Count < 0)
+		{
+			return;
+		}
+		int Main = HOLAITalent::FamilyNone;
+		if (!TalentMains.Find(PlayerIndex, Main))
+		{
+			Main = HOLAITalent::DrawMain(PlayerIndex);
+			TalentMains.Add(PlayerIndex, Main);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent profile main family {Main}");
+		}
+		TArray<int> Picks;
+		for (int Index = 0; Index < Count; Index++)
+		{
+			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerIndex, Index));
+		}
+		const int Family = HOLAITalent::Choose(HOLHero::GetHeroLevel(PlayerIndex), Picks, Main);
+		if (Family != HOLAITalent::FamilyNone && HOLAIOrder::IssueAITalentOrder(PlayerIndex, Family))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent of family {Family} in row {HOLTalent::FirstRow + Count}");
+		}
 	}
 
 	// The orders of HOLAIOpening::ChooseMilitary: the unit queued in each building, the rally set once per building (again when the point moves).
