@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLConstructionSubsystem.h"
+#include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "EngineUtils.h"
 #include "Engine/Engine.h"
@@ -14,6 +15,7 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLMatchConfig.h"
 
 namespace
 {
@@ -89,6 +91,19 @@ bool UHOLAIOrderLibrary::IssueAIMoveOrder(const UObject* WorldContextObject, con
 	return World && HOLPlayerOrders::Move(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
 }
 
+
+bool UHOLAIOrderLibrary::IssueAITalentOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const int32 Family)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands || PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots)
+	{
+		return false;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero talent order: slot %d family %d queued (AI)"), PlayerIndex, Family);
+	Commands->IssueHeroTalentOrder(PlayerIndex, Family);
+	return true;
+}
 
 bool UHOLAIOrderLibrary::IssueAIAttackMoveOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector Target,
 	const bool bQueue)

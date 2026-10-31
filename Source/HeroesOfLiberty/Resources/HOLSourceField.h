@@ -34,8 +34,14 @@ public:
 	/** A source enters the map (or reaches this client). */
 	void ShowSource(int32 SourceIndex, uint8 TypeIndex, const FHOLSourceTypeRow& Type, const FVector& Location);
 
-	/** The source is used up: it leaves the map. */
-	void HideSource(int32 SourceIndex);
+	/**
+	 * The source is used up: it leaves the map (the navmesh at once). bKeepDrawn (F7.3 c, a tree cut out of the viewer's sight):
+	 * its instances stay until EraseDrawing.
+	 */
+	void HideSource(int32 SourceIndex, bool bKeepDrawn = false);
+
+	/** The source's instances shrunk to nothing (HideSource, or the fog's memory forgetting a cut tree). */
+	void EraseDrawing(int32 SourceIndex);
 
 	/** The first sources are placed: the navigation takes them all at once (server, solo). */
 	void RegisterNavigation();

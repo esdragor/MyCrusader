@@ -1,0 +1,25 @@
+# Les talents du Capitaine (T4/T5, D581, TQ2 = A) : le rappel d'un point non dépensé, le bouton « choix conseillé », le cri qui met la formation en défensive, Pas de l'Aube qui la fait avancer à demi-vitesse
+# Plain, toi (slot 0) contre une IA (slot 1), talents.json (copie de hero_abilities.json) : 5 Paysans et un héros chacun. Le tout premier talent se prend à la console (hol.Hero.PickTalent 1) : son écran de choix n'existe pas encore (question TQ4).
+# Rappel (D105) : tant qu'un point est gardé, une ligne « Talents à dépenser : N » sous les capacités du héros ; « — choix conseillé » et le bouton actif quand une famille est déjà la plus remplie (ici le Capitaine, famille 1).
+# Cri (D581) : les unités à 12 m du héros restent sur place 15 s (formation défensive, réglage hol.Hero.CloseRanksSpeed 0) ; avec Pas de l'Aube (3e talent du Capitaine, niveau 4) elles avancent à 50 %.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Ton héros est au niveau 1 : pas de talent, aucune ligne de rappel (il en gagne un par niveau, à partir du niveau 2).
+hol.Hero.SetXP 0 600
+wait 1
+note 2. Niveau 3 : deux points. Sous les capacités du héros (bloc en bas à gauche) : « Talents à dépenser : 2 », bouton gris (aucune famille encore conseillée). Pas d'écran de choix : console, hol.Hero.PickTalent 1 (Capitaine).
+hol.Hero.PickTalent 1
+wait 1
+note 3. Un talent pris (Boucliers levés : +1 armure dans l'aura). Le bouton devient actif : « Talents à dépenser : 1 — choix conseillé ». Clique-le : il prend le talent de la famille la plus remplie (Capitaine) comme un choix normal.
+wait 6
+note 4. Niveau 4 : un point de plus. Clique le bouton une fois encore : 3 talents du Capitaine, dont Pas de l'Aube (rangée 4). Les 3 sceaux : le 3e talent d'une famille donne son sceau.
+hol.Hero.SetXP 0 1300
+wait 1
+hol.Units.Spawn 6 -15900 900 0 ManAtArms 250
+wait 8
+note 5. Avant d'avoir Pas de l'Aube, lance le cri (F4 puis A) puis envoie tes 6 Hommes d'armes au loin (clic droit à 25 m à l'est) : ils restent sur place tant que le cri dure (15 s), puis repartent.
+note Avec Pas de l'Aube (3 talents du Capitaine pris), au prochain cri (hol.Hero.ResetAbilities 0 pour ne pas attendre 60 s) ils avancent à demi-vitesse pendant le cri, avec leur -25 % de dégâts.
+note Console utile : hol.Hero.ResetTalents 0 rend les talents ; hol.Hero.CloseRanksSpeed 40 fait avancer la formation à 40 % même sans le talent (question TQ3).

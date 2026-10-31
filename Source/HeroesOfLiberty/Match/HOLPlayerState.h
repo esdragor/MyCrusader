@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerState.h"
 #include "Match/HOLResources.h"
 #include "Simulation/HOLHeroSheet.h"
+#include "Technologies/HOLTechnologyRules.h"
 #include "Engine/NetSerialization.h"
 #include "HOLPlayerState.generated.h"
 
@@ -124,6 +125,18 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnHeroPrivateChanged);
 	FOnHeroPrivateChanged OnHeroPrivateChanged;
 
+	/** T3 (GDD 11): the technologies this player has researched, set by the server alone, replicated to this player only. */
+	const FHOLTechnologyState& GetTechnologies() const { return Technologies; }
+	/** Server only: a technology researched (true when it is new). */
+	bool AddTechnology(FName Technology);
+
+	/** T5: the percent a statistic gains from the player's technologies (HOLTechnology::GetBonusPercent), kept until they change. */
+	int32 GetTechnologyBonusPercent(FName Stat) const;
+
+	/** The technologies changed: on the server when set, on the owner's machine when they arrive. For the grid and the effects. */
+	DECLARE_MULTICAST_DELEGATE(FOnTechnologiesChanged);
+	FOnTechnologiesChanged OnTechnologiesChanged;
+
 	/** "F 200 W 200 S 200 G 200, population 0/10": for the logs of the scripted checks. */
 	FString DescribeEconomy() const;
 
@@ -161,4 +174,13 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_HeroPrivate)
 	FHOLHeroPrivateSheet HeroPrivate;
+
+	UFUNCTION()
+	void OnRep_Technologies();
+
+	UPROPERTY(ReplicatedUsing = OnRep_Technologies)
+	FHOLTechnologyState Technologies;
+
+	/** Percent by statistic, filled as asked and emptied when the technologies change. */
+	mutable TMap<FName, int32> TechnologyBonus;
 };

@@ -155,6 +155,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 			return TEXT("NotEnough") + StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Feedback.Resource));
 		case EHOLCommandFeedback::QueueFull: return TEXT("QueueFull");
 		case EHOLCommandFeedback::PopulationFull: return TEXT("PopulationFull");
+		case EHOLCommandFeedback::ResearchRefused: return TEXT("ResearchRefused");
 		case EHOLCommandFeedback::NoBuilding:
 			return TEXT("No") + StaticEnum<EHOLBuildingCategory>()->GetNameStringByValue(static_cast<int64>(Feedback.Category)) + TEXT("Building");
 		case EHOLCommandFeedback::PlacementRefused:
@@ -168,6 +169,21 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 			default: return TEXT("Placement");
 			}
 		default: return FString();
+		}
+	}
+
+	/** Why a technology cannot be researched now (T4): the short message of a refused cell, and its tooltip's effect line. */
+	FText GetResearchBlockText(const HOLTechnology::EBlock Block)
+	{
+		switch (Block)
+		{
+		case HOLTechnology::EBlock::AlreadyResearched: return LOCTEXT("ResearchDone", "Déjà recherchée");
+		case HOLTechnology::EBlock::AlreadyQueued: return LOCTEXT("ResearchQueued", "Déjà en cours de recherche");
+		case HOLTechnology::EBlock::TierTooLow: return LOCTEXT("ResearchTier", "Palier supérieur requis");
+		case HOLTechnology::EBlock::HeroLevelTooLow: return LOCTEXT("ResearchHeroLevel", "Niveau de héros insuffisant");
+		case HOLTechnology::EBlock::RequiresMissing: return LOCTEXT("ResearchRequires", "Recherchez d'abord le niveau précédent");
+		case HOLTechnology::EBlock::NoBuilding: return LOCTEXT("ResearchBuilding", "Bâtiment manquant");
+		default: return FText::GetEmpty();
 		}
 	}
 
@@ -186,6 +202,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 			}
 		case EHOLCommandFeedback::QueueFull: return LOCTEXT("QueueFull", "File de production pleine");
 		case EHOLCommandFeedback::PopulationFull: return LOCTEXT("PopulationMax", "Population maximale — construisez des maisons");
+		case EHOLCommandFeedback::ResearchRefused: return GetResearchBlockText(Feedback.Block);
 		case EHOLCommandFeedback::NoBuilding:
 			switch (Feedback.Category)
 			{
@@ -1837,6 +1854,31 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetTooltip(Name, Cost, Missing, GetUnitEffect(Command.TypeName));
 			break;
 		}
+		case EHOLGridCommand::Research:
+		{
+			// A technology (T4, GDD 11): its name on the cell, its cost in the tooltip; greyed when the rules, the stock or the queue
+			// would refuse it (still clickable, the click says why), the reason under its name in the tooltip.
+			const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(Command.TypeName);
+			const FHOLResources Cost = Technology ? Technology->Cost : FHOLResources();
+			const FHOLResources Missing = GetMissing(Stock, Cost);
+			const FText Name = HOLGameNames::GetTechnologyName(Command.TypeName, Technology);
+			bool bAny = false;
+			const AHOLBuilding* Researcher = PlayerController ? PlayerController->FindProductionBuilding(Command.TypeName, &bAny) : nullptr;
+			FHOLCommandFeedback Feedback;
+			if (Researcher)
+			{
+				Feedback = PlayerController->CheckResearchAt(Command.TypeName, Researcher);
+			}
+			else if (bAny)
+			{
+				Feedback.Kind = EHOLCommandFeedback::QueueFull;
+			}
+			const FText Effect = Feedback.Kind == EHOLCommandFeedback::ResearchRefused ? GetResearchBlockText(Feedback.Block)
+				: Technology ? HOLGameNames::GetTechnologyEffect(*Technology) : FText();
+			GridCell->SetCommand(Name, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			GridCell->SetTooltip(Name, Cost, Missing, Effect);
+			break;
+		}
 		case EHOLGridCommand::Build:
 		{
 			// The builders' grid (D313): greyed when the stock does not cover the cost (in red in the tooltip).
@@ -1919,7 +1961,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FText Name = bBanner ? LOCTEXT("BannerName", "Bannière de l'Aube") : LOCTEXT("CloseRanksName", "Serrez les rangs");
 			FText Effect = bBanner
 				? LOCTEXT("BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s")
-				: LOCTEXT("CloseRanksEffect", "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s");
+				: LOCTEXT("CloseRanksEffect", "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
 			const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
 				? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
 			if (bLocked)
@@ -2071,7 +2113,10 @@ void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
 		SetShown(Item, bShown, ESlateVisibility::Visible);
 		if (Item && bShown)
 		{
-			Item->SetLabel(HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index])));
+			// A research waits in the queue as a unit does (T6): its name, not the type's key.
+			const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(ShownQueueTypes[Index]);
+			Item->SetLabel(Research ? HOLGameNames::GetTechnologyName(ShownQueueTypes[Index], Research)
+				: HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index])));
 		}
 	}
 }

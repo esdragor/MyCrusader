@@ -794,6 +794,7 @@ namespace UE::HeroesOfLiberty::Player
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Selection markers: %s"), *Markers->Describe());
 					UE_LOG(LogHOLMatch, Display, TEXT("Aura rings: %s"), *Markers->DescribeAuraRings());
+					UE_LOG(LogHOLMatch, Display, TEXT("Relay rings: %s"), *Markers->DescribeRelayRings());
 				}
 			}
 		}));
@@ -1257,6 +1258,51 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->RequestCancelProduction(Index);
+			}
+		}));
+
+	/** T3/T5: what the local players have researched and what it gives, for the scripted checks. */
+	FAutoConsoleCommand TechnologyReportCommand(
+		TEXT("hol.Tech.Report"),
+		TEXT("hol.Tech.Report: logs the technologies the local player has researched and the percent they give to each gathering"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				if (!PlayerState)
+				{
+					continue;
+				}
+				TArray<FString> Names;
+				for (const FName Name : PlayerState->GetTechnologies().Done)
+				{
+					Names.Add(Name.ToString());
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Technology report: slot %d researched [%s], gathering food +%d%% wood +%d%% stone +%d%% gold +%d%%"),
+					PlayerState->GetPlayerIndex(), *FString::Join(Names, TEXT(", ")),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Food)),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Wood)),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Stone)),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Gold)));
+				// Every player state as it reached this machine (the research is replicated to its owner alone, COND_OwnerOnly):
+				// "Technology state slot 1 local: researched [..]", "... other: researched []" for the others.
+				if (const AGameStateBase* GameState = Controller->GetWorld() ? Controller->GetWorld()->GetGameState() : nullptr)
+				{
+					for (const APlayerState* Other : GameState->PlayerArray)
+					{
+						if (const AHOLPlayerState* OtherState = Cast<AHOLPlayerState>(Other))
+						{
+							TArray<FString> OtherNames;
+							for (const FName Name : OtherState->GetTechnologies().Done)
+							{
+								OtherNames.Add(Name.ToString());
+							}
+							UE_LOG(LogHOLMatch, Display, TEXT("Technology state slot %d %s: researched [%s]"), OtherState->GetPlayerIndex(),
+								OtherState == PlayerState ? TEXT("local") : TEXT("other"), *FString::Join(OtherNames, TEXT(", ")));
+						}
+					}
+				}
 			}
 		}));
 
@@ -3080,6 +3126,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		if (Type)
 		{
 			Context.Produces = Type->Produces;
+			UHOLTechnologySettings::GetBuildingTechnologies(Building->GetTypeName(), Context.Researches);
 		}
 	}
 	else if (HasBuildingGroup())
@@ -3112,6 +3159,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			if (Type)
 			{
 				One.Produces = Type->Produces;
+				UHOLTechnologySettings::GetBuildingTechnologies(Group[Member]->GetTypeName(), One.Researches);
 			}
 			for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
 			{
@@ -3353,6 +3401,36 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		return;
 	}
+	case EHOLGridCommand::Research:
+	{
+		// A technology (T4, GDD 11): at the building of its type that takes it (the next of a group's even spread). What the
+		// rules, the stock or the queue refuse is told and not sent; the server checks it all again.
+		bool bAny = false;
+		AHOLBuilding* Building = FindProductionBuilding(Command.TypeName, &bAny);
+		if (!bAny)
+		{
+			return;
+		}
+		FHOLCommandFeedback Feedback;
+		if (Building)
+		{
+			Feedback = CheckResearchAt(Command.TypeName, Building);
+		}
+		else
+		{
+			Feedback.Kind = EHOLCommandFeedback::QueueFull;
+		}
+		if (!Feedback.IsNone())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: %s not researched"), *Command.TypeName.ToString());
+			NotifyFeedback(Feedback);
+			return;
+		}
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: research %s at %s (#%u)"), *Command.TypeName.ToString(), *DescribeBuilding(Building), Building->GetUniqueID());
+		LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
+		ServerQueueProduction(Building, Command.TypeName);
+		return;
+	}
 	case EHOLGridCommand::Trade:
 	{
 		// M5: 100 goods (Shift: 500) at the selected Market, or at the first finished one of the group. What the server would
@@ -3473,11 +3551,13 @@ AHOLBuilding* AHOLPlayerController::FindProductionBuilding(const FName TypeName,
 	GetCommandBuildings(Buildings);
 	TArray<AHOLBuilding*> Producers;
 	TArray<FHOLQueueChoice> Choices;
+	// A technology (T4) is "produced" by the buildings of the type its row names, in the same queue as the units.
+	const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(TypeName);
 	for (AHOLBuilding* Building : Buildings)
 	{
 		// A building under construction produces nothing (D312), nor a main forum down (V2.3a).
 		const FHOLBuildingTypeRow* Type = Building->IsFinished() && !Building->IsForumDown() ? Building->GetType() : nullptr;
-		if (Type && Type->Produces.Contains(TypeName))
+		if (Type && (Type->Produces.Contains(TypeName) || (Technology && Technology->Building == Building->GetTypeName())))
 		{
 			Producers.Add(Building);
 			Choices.Add({ Building->GetProductionQueue().Num(), Type->MaxQueue, Building->GetUniqueID() });
@@ -3490,6 +3570,30 @@ AHOLBuilding* AHOLPlayerController::FindProductionBuilding(const FName TypeName,
 	const uint32* LastKey = LastProductionBuilding.Find(TypeName);
 	const int32 Index = HOLCommandGrid::PickEvenly(Choices, LastKey ? *LastKey : 0);
 	return Index == INDEX_NONE ? nullptr : Producers[Index];
+}
+
+FHOLCommandFeedback AHOLPlayerController::CheckResearchAt(const FName Technology, const AHOLBuilding* Building) const
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	const FHOLBuildingTypeRow* Type = Building ? Building->GetType() : nullptr;
+	if (!HOLPlayerState || !Row || !Type)
+	{
+		return FHOLCommandFeedback();
+	}
+	const int32 Slot = HOLPlayerState->GetPlayerIndex();
+	const AHOLGameState* TierState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	HOLTechnology::FFacts Facts;
+	Facts.HeroTier = TierState ? TierState->GetTier(Slot) : 0;
+	Facts.HeroLevel = UHOLHeroLibrary::GetHeroLevel(this, Slot);
+	Facts.bRequiresDone = Row->Requires.IsNone() || HOLPlayerState->GetTechnologies().Has(Row->Requires);
+	Facts.bBuildingFinished = Building->IsFinished() && Building->GetTypeName() == Row->Building;
+	Facts.bResearched = HOLPlayerState->GetTechnologies().Has(Technology);
+	for (TActorIterator<AHOLBuilding> It(GetWorld()); It && !Facts.bQueued; ++It)
+	{
+		Facts.bQueued = It->GetOwnerPlayer() == Slot && HOLTechnology::IsQueued(It->GetProductionQueue(), Technology);
+	}
+	return HOLCommandGrid::CheckResearch(*Row, Facts, HOLPlayerState->GetResources(), Building->GetProductionQueue().Num(), Type->MaxQueue);
 }
 
 void AHOLPlayerController::NotifyFeedback(const FHOLCommandFeedback& Feedback)

@@ -28,6 +28,12 @@ class UHOLGameScreenScript : UHOLScriptScreen
 	UButton HeroReturnButton;
 	UCommonTextBlock HeroReturnLabel;
 	UCommonTextBlock HeroReturnPrice;
+// T5: the reminder of a talent point not spent, a button taking the advised choice (D105).
+UButton HeroTalentButton;
+UCommonTextBlock HeroTalentLabel;
+// What the talent line shows (HOLTalentPanel::Make), and its texts for hol.HUD.Report.
+FHOLTalentPanelView TalentView;
+FString TalentTexts = "";
 
 	// What the hero's block shows (the view applied last); Describe writes its line.
 	FHOLHeroBlockView HeroView;
@@ -230,6 +236,15 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		ReturnRow.AddChildToHorizontalBox(HeroReturnLabel);
 		HeroReturnPrice = MakeText(n"HeroReturnPrice", UHOLTextStyleHUDLabel);
 		ReturnRow.AddChildToHorizontalBox(HeroReturnPrice);
+
+		// T5: the talent point's reminder under the abilities, a button while the advised choice exists; hidden with no point.
+		HeroTalentButton = MakeButton(n"HeroTalentButton");
+		HeroTalentButton.SetVisibility(ESlateVisibility::Collapsed);
+		HeroTalentButton.OnClicked.AddUFunction(this, n"HandleTalentClicked");
+		Column.AddChildToVerticalBox(HeroTalentButton).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		HeroTalentLabel = MakeText(n"HeroTalentLabel", UHOLTextStyleHUDLabel);
+		HeroTalentLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+		HeroTalentButton.AddChild(HeroTalentLabel);
 	}
 
 	// A bar in a box of the block's width and of Height.
@@ -482,6 +497,33 @@ class UHOLGameScreenScript : UHOLScriptScreen
 					HOLHero::GetServerStep(), HOLHero::GetSimulationRateHz());
 		}
 		ShowHero(View);
+		ShowTalents(PlayerSlot, View);
+	}
+
+	// T5: the talent point's reminder (HOLTalentPanel::Make from the level and the picks the sheet knows: -1 picks, unknown here, shows
+	// nothing); a button taking the advised choice while a point is kept and a first talent exists (D105).
+	void ShowTalents(int PlayerSlot, FHOLHeroBlockView View)
+	{
+		TalentView = FHOLTalentPanelView();
+		TalentTexts = "";
+		const int Count = PlayerSlot >= 0 ? HOLHero::GetHeroTalentCount(PlayerSlot) : -1;
+		if (!View.bVisible || Count < 0)
+		{
+			HeroTalentButton.SetVisibility(ESlateVisibility::Collapsed);
+			return;
+		}
+		TArray<int> Picks;
+		for (int Index = 0; Index < Count; ++Index)
+			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerSlot, Index));
+		TalentView = HOLTalentPanel::Make(View.Level, Picks);
+		HeroTalentButton.SetVisibility(TalentView.bReminder ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (!TalentView.bReminder)
+			return;
+		TalentTexts = HOLTalentText::ReminderText(TalentView);
+		HeroTalentLabel.SetText(FText::FromString(TalentTexts));
+		HeroTalentLabel.SetColorAndOpacity(TalentView.bAdviceEnabled ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+		UHOLScriptScreen::SetButtonGreyed(HeroTalentButton, !TalentView.bAdviceEnabled);
+		HeroTalentButton.SetToolTipText(FText::FromString(HOLTalentText::TooltipText(TalentView)));
 	}
 
 	// The view applied to the block's widgets.
@@ -583,6 +625,24 @@ class UHOLGameScreenScript : UHOLScriptScreen
 		ClickReturn();
 	}
 
+	// A click on the talent line (D105): the advised choice taken, the order sent (the server checks it). Hidden or greyed: nothing.
+	bool ClickTalent()
+	{
+		if (!TalentView.bReminder || !TalentView.bAdviceEnabled)
+			return false;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return false;
+		Controller.RequestHeroTalent(TalentView.AdvisedFamily);
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleTalentClicked()
+	{
+		ClickTalent();
+	}
+
 	UFUNCTION(BlueprintOverride)
 	bool ClickWidget(FName WidgetName)
 	{
@@ -594,6 +654,8 @@ class UHOLGameScreenScript : UHOLScriptScreen
 			return ClickReturn();
 		if (ClickMinimapName(WidgetName))
 			return true;
+		if (WidgetName == n"HeroTalentButton")
+			return ClickTalent();
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		return false;
@@ -626,6 +688,7 @@ class UHOLGameScreenScript : UHOLScriptScreen
 			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
 			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
 			+ (Minimap != nullptr ? "\n" + Minimap.Describe() + f", lit {MinimapLitAlerts}, alerts {MinimapAlerts.Num()}, area x {Math::RoundToInt(MinimapFrame.MinX)}..{Math::RoundToInt(MinimapFrame.MaxX)} y {Math::RoundToInt(MinimapFrame.MinY)}..{Math::RoundToInt(MinimapFrame.MaxY)}, last click {MinimapLastClick}, camera " + DescribeMinimapCamera() : "")
+			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

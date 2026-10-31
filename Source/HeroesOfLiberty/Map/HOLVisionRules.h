@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Map/HOLFogMode.h"
 #include "Containers/SparseArray.h"
 
 /**
@@ -140,6 +141,24 @@ namespace HOLVisionRules
 	/** F7.3 (b): Live when it is the viewer's camp's or in sight; else Memory when its camp remembers it (bRemembered), else Hidden. */
 	HEROESOFLIBERTY_API EHOLBuildingDraw GetBuildingDraw(bool bOwnCamp, bool bInSight, bool bRemembered);
 
+	/**
+	 * F8 (D522): the fog a match starts with: the console's hol.Fog.Mode (CVarValue 0 to 2) when set, else the configuration's (the menu's,
+	 * the lobby's); -1 follows the configuration.
+	 */
+	HEROESOFLIBERTY_API EHOLFogMode ResolveFogMode(int32 CVarValue, EHOLFogMode ConfigMode);
+
+	/**
+	 * F7.3 (c): a source used up (a tree cut) stays drawn on the viewer's machine while its camp remembers it standing (bRemembered)
+	 * and its place is out of sight (bInSight false): the cut is learned by looking at the place again (D382).
+	 */
+	HEROESOFLIBERTY_API bool SourceStaysDrawn(bool bRemembered, bool bInSight);
+
+	/**
+	 * F7.3 (b), a client: the actor of a remembered building is drawn (a ghost actor made here, the server no longer sends the
+	 * real one out of the camp's sight) only while its place is out of sight and no real building stands there.
+	 */
+	HEROESOFLIBERTY_API bool GhostActorWanted(bool bInSight, bool bRealPresent);
+
 	/** F3.2 (D523): a building's sight from its type's SightRadius: whole standing, half a site, none in ruin. */
 	HEROESOFLIBERTY_API double GetBuildingSight(double SightRadius, EHOLBuildingSight State);
 
@@ -254,3 +273,26 @@ private:
 	TArray<bool> Explored;
 	TSparseArray<FObserver> Observers;
 };
+
+/**
+ * F7 / F8 (FogInProgress.md): the fog's picture of one camp, what the post process (UHOLFogRenderSubsystem) and the minimap
+ * (Galadriel) both read: one byte a cell of the grid, in the grid's order (index = Y * Side + X: a row of the picture is one Y, so
+ * its lower corner is the grid's), 0 unexplored, ExploredByte explored, 255 in sight. A picture without fog (Camp INDEX_NONE:
+ * mode Disabled, a spectator) is everything in sight.
+ */
+namespace HOLFogPicture
+{
+	constexpr uint8 UnexploredByte = 0;
+	constexpr uint8 ExploredByte = 115;
+	constexpr uint8 VisibleByte = 255;
+
+	HEROESOFLIBERTY_API uint8 ToByte(EHOLCellVision Vision);
+	/** The state of a byte, which may have been filtered (blurred): in sight from 200, explored from 60, else unexplored. */
+	HEROESOFLIBERTY_API EHOLCellVision FromByte(uint8 Byte);
+	/** Fills Bytes (Grid.Num() of them) from Map for Camp, counts the cells in sight and the cells ever seen. */
+	HEROESOFLIBERTY_API void Fill(const FHOLVisionMap& Map, int32 Camp, TArray<uint8>& Bytes, int32& NumVisible, int32& NumExplored);
+	/** The state of the cell under a point of the ground (X, Y in cm) read from the bytes; a point out of the grid: unexplored. */
+	HEROESOFLIBERTY_API EHOLCellVision Read(const FHOLVisionGrid& Grid, TConstArrayView<uint8> Bytes, const FVector2D& Point);
+	/** The point's place in the picture, (0, 0) at the grid's lower corner (-X, -Y) and (1, 1) at the upper one; out of [0, 1] outside the grid. */
+	HEROESOFLIBERTY_API FVector2D ToUV(const FHOLVisionGrid& Grid, const FVector2D& Point);
+}

@@ -91,6 +91,8 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	FString Size;
 	/** TC3 (TC-Q6): "Équipes ensemble"; true when the manager does not say. */
 	bool bTeamsTogether = true;
+	/** F8 (D522): the fog's mode by name (Normal, Explored, Disabled); empty when the manager does not say (shown as Normal). */
+	FString Fog;
 	bool bNomad = false;
 	bool bRegicide = false;
 	bool bCatastrophe = false;
@@ -113,6 +115,8 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	int32 GetNumAIs() const;
 	/** TC3: the lobby's size; None without one (an older manager, a map without sizes). */
 	EHOLMapSize GetMapSize() const;
+	/** F8: the lobby's fog (Normal when the manager does not say, or says an unknown name). */
+	EHOLFogMode GetFogMode() const;
 	/** TC3: the places of the lobby's map at its size; FHOLMatchConfig::MaxSlots without a size. */
 	int32 GetNumPlaces() const;
 	/** The slot of the token's player; INDEX_NONE without one. */
@@ -181,7 +185,7 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	 * "teamsTogether" when given.
 	 */
 	static FString MakeSettingsBody(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, const FString& Size = FString(),
-		TOptional<bool> bTeamsTogether = {});
+		TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString());
 	/** PUT /lobbies/{id}/slots/{index}: { "state": "open" | "closed" }. */
 	static FString MakeSlotBody(bool bOpen);
 	/**

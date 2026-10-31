@@ -13,8 +13,8 @@ MinerPicksI,Pics de mineur,Economy,Common,MiningCamp,1,0,"(Food=100,Wood=100,Sto
 MinerPicksII,Pics de mineur II,Economy,Common,MiningCamp,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,MinerPicksI,"(GatherStone,GatherGold)",20
 PloughI,Charrue,Economy,Common,Farm,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,(GatherFood),10
 PloughII,Charrue II,Economy,Common,Farm,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,PloughI,(GatherFood),20
-WheelbarrowI,Brouette,Economy,Common,MainCentre,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(WorkerSpeed,WorkerCarry)",10
-WheelbarrowII,Brouette II,Economy,Common,MainCentre,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,WheelbarrowI,"(WorkerSpeed,WorkerCarry)",20
+WheelbarrowI,Brouette,Economy,Common,Farm,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(WorkerSpeed,WorkerCarry)",10
+WheelbarrowII,Brouette II,Economy,Common,Farm,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,WheelbarrowI,"(WorkerSpeed,WorkerCarry)",20
 DefenceMilitia,Milice de défense,Infrastructure,Common,MainCentre,1,0,"(Food=0,Wood=150,Stone=100,Gold=0)",30,,(WorkerDefence),10
 ImprovedAlarmBell,Cloche d'alarme améliorée,Infrastructure,Common,MainCentre,2,0,"(Food=0,Wood=300,Stone=200,Gold=0)",45,,(GarrisonSpeed),20
 Masonry,Maçonnerie,Infrastructure,Common,Academy,2,0,"(Food=0,Wood=300,Stone=200,Gold=0)",45,,(WallTowerHealth),20

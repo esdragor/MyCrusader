@@ -157,6 +157,8 @@ protected:
 	int32 GetTalentArmorBonus(const FFighter& Victim) const;
 	/** T4: one bit per slot whose hero took a talent giving armour in the aura (read from the hero sheets, each step). */
 	uint32 ShieldsUpOwners = 0;
+	/** D581: one bit per slot whose hero took Pas de l'Aube (the formation under the cry advances at reduced speed). */
+	uint32 DawnStepOwners = 0;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
 	/**
 	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry

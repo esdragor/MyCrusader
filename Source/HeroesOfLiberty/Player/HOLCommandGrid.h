@@ -8,6 +8,7 @@
 #include "Buildings/HOLConstructionRules.h"
 #include "Match/HOLResources.h"
 #include "Simulation/HOLHeroAbilityRules.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 /** What a cell of the command grid does (D30, D313). */
 enum class EHOLGridCommand : uint8
@@ -30,6 +31,8 @@ enum class EHOLGridCommand : uint8
 	 * ground plants it, 16 m at most from the hero).
 	 */
 	HeroAbility,
+	/** Researches a technology at the player's selected building (T4, GDD 11): the technology row on W X C V, through the building's queue. */
+	Research,
 	/**
 	 * M5 (Market, GDD 5.5): the selected finished Market sells or buys 100 of Resource (Shift: 500) at the common book's price;
 	 * sell on A Z E (food, wood, stone), buy on Q S D (HOLCommandGrid::GetTradeCell).
@@ -70,6 +73,8 @@ enum class EHOLCommandFeedback : uint8
 	PlacementRefused,
 	/** An F key (D30) while the player has no building of its category (« Aucun bâtiment militaire »): nothing selected. */
 	NoBuilding,
+	/** A technology the rules of GDD 11 refuse (Block): nothing queued. The stock and the full queue have their own kinds. */
+	ResearchRefused,
 };
 
 struct FHOLCommandFeedback
@@ -81,6 +86,8 @@ struct FHOLCommandFeedback
 	EHOLPlacementRefusal Refusal = EHOLPlacementRefusal::None;
 	/** NoBuilding: the category of the F key. */
 	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
+	/** ResearchRefused: why. */
+	HOLTechnology::EBlock Block = HOLTechnology::EBlock::None;
 
 	bool IsNone() const { return Kind == EHOLCommandFeedback::None; }
 	bool operator==(const FHOLCommandFeedback& Other) const = default;
@@ -102,6 +109,8 @@ struct FHOLGridContext
 	/** M5: the building is a Market (HOLBuildingTypeNames::Market): finished, its cells are the trades' (GetTradeCell). */
 	bool bMarket = false;
 	TArray<FName> Produces;
+	/** The technologies the building researches (T4), in the order of the technology table: its research row, from ResearchFirstCell. */
+	TArray<FName> Researches;
 	/**
 	 * The player's own selected units count at least one builder (a unit that gathers, CarryCapacity > 0: what the
 	 * server checks for a build order, J6a.4).
@@ -234,6 +243,8 @@ namespace HOLCommandGrid
 	inline constexpr int32 NumCells = 12;
 	/** The cell of a selected site's « Annuler » (V, bottom right: far from the keys that build). */
 	inline constexpr int32 CancelCell = 11;
+	/** The first cell of a building's research row (W X C V, the technology row of D30): its technologies follow, in table order. */
+	inline constexpr int32 ResearchFirstCell = 8;
 	/**
 	 * The builders' panels (the user's trials of G.1, AoE4's way): the 4 ages side by side (I to IV, ages 0 to 3: Fondation,
 	 * Essor, Puissance, Légende), each a medallion (its numeral, its key A Z E R) over its buildings at the places of their
@@ -326,6 +337,14 @@ namespace HOLCommandGrid
 	 */
 	HEROESOFLIBERTY_API FHOLCommandFeedback CheckProduction(const FHOLResources& Stock, const FHOLResources& Cost, int32 QueueLength, int32 MaxQueue,
 		int32 PopulationUsed, int32 PopulationCap, int32 Places);
+
+	/**
+	 * A technology asked at a building (T4): the rules of GDD 11 in their order (HOLTechnology::Check; Facts.bCanPay is read from
+	 * Stock and the row's cost here), an unpaid cost as NotEnoughResources (the first resource missing), then the queue full
+	 * (the server refuses in that order). None: it goes through.
+	 */
+	HEROESOFLIBERTY_API FHOLCommandFeedback CheckResearch(const FHOLTechnologyRow& Row, HOLTechnology::FFacts Facts, const FHOLResources& Stock,
+		int32 QueueLength, int32 MaxQueue);
 
 	/** A building asked (D313): its cost, taken at its placement (D311). */
 	HEROESOFLIBERTY_API FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost);

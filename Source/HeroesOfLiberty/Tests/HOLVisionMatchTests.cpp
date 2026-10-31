@@ -5,8 +5,10 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
+#include "EngineUtils.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Map/HOLFogRender.h"
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
@@ -351,6 +353,178 @@ bool FHOLVisionMatchBuildingMemoryTest::RunTest(const FString& Parameters)
 	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
 	Match.Vision->RefreshBuildingMemory(0);
 	TestEqual(TEXT("no fog: everything live"), Unseen->GetFogDraw(), EHOLBuildingDraw::Live);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchSourceMemoryTest, "HeroesOfLiberty.Vision.Match.SourceMemory", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchSourceMemoryTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (c): on the real chain (real trees, real sight, real memory), a tree cut out of sight stays drawn until its place is seen again.
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector SeenPlace(30000., 0., 0.);
+	const FVector UnseenPlace(-30000., 0., 0.);
+	const FVector AwayPlace(0., 30000., 0.);
+	const int32 Seen = Match.Sources->AddSource(HOLSourceTypeNames::Tree, SeenPlace);
+	const int32 SeenNear = Match.Sources->AddSource(HOLSourceTypeNames::Tree, SeenPlace + FVector(500., 500., 0.));
+	const int32 Unseen = Match.Sources->AddSource(HOLSourceTypeNames::Tree, UnseenPlace);
+	const uint32 Scout = Match.Place(Peasant, 0, SeenPlace + FVector(-1600., 0., 0.));
+	if (!TestTrue(TEXT("trees and a scout"), Seen != INDEX_NONE && SeenNear != INDEX_NONE && Unseen != INDEX_NONE && Scout != 0))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	TestTrue(TEXT("seen: remembered"), Match.Vision->GetGhosts(0)->Contains(HOLVisionRules::MakeGhostKey(true, Seen)));
+
+	Match.Sources->Take(SeenNear, 1000000);
+	TestFalse(TEXT("cut in sight: gone at once"), Match.Sources->IsDrawn(SeenNear));
+
+	Match.Move(Scout, AwayPlace);
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	Match.Sources->Take(Seen, 1000000);
+	Match.Sources->Take(Unseen, 1000000);
+	TestTrue(TEXT("cut out of sight, seen before: still drawn"), Match.Sources->IsDrawn(Seen));
+	TestFalse(TEXT("cut out of sight, never seen: not drawn"), Match.Sources->IsDrawn(Unseen));
+	TestFalse(TEXT("but not standing: the sim has it cut"), Match.Sources->GetSources()[Seen].IsStanding());
+
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	TestTrue(TEXT("still away: still drawn"), Match.Sources->IsDrawn(Seen));
+
+	Match.Move(Scout, SeenPlace + FVector(-1600., 0., 0.));
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	TestFalse(TEXT("back in sight: the cut is learned, gone"), Match.Sources->IsDrawn(Seen));
+	TestEqual(TEXT("nothing kept"), Match.Sources->GetKeptDrawn().Num(), 0);
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	const int32 NoFog = Match.Sources->AddSource(HOLSourceTypeNames::Tree, UnseenPlace + FVector(0., 5000., 0.));
+	Match.Sources->Take(NoFog, 1000000);
+	TestFalse(TEXT("no fog: a cut tree is gone at once"), Match.Sources->IsDrawn(NoFog));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchGhostActorsTest, "HeroesOfLiberty.Vision.Match.GhostActors", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchGhostActorsTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (b), a client: the real building goes (the server stops sending it out of sight), the camp's memory draws it with an actor of its own.
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector HousePlace(30000., 0., 0.);
+	const FVector AwayPlace(0., 30000., 0.);
+	AHOLBuilding* House = Match.World->SpawnActor<AHOLBuilding>(HousePlace, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the enemy's house"), House))
+	{
+		return false;
+	}
+	House->Setup(HOLBuildingTypeNames::House, 2, 2);
+	const uint32 Scout = Match.Place(Peasant, 0, HousePlace + FVector(-1600., 0., 0.));
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	TestEqual(TEXT("in sight: no actor of the memory"), Match.Vision->SyncGhostActors(0), 0);
+
+	Match.Move(Scout, AwayPlace);
+	Match.Vision->Update();
+	TestEqual(TEXT("out of sight, the real one still here: no double"), Match.Vision->SyncGhostActors(0), 0);
+
+	House->Destroy();
+	Match.Vision->Update();
+	TestEqual(TEXT("out of sight, the real one gone: one actor from the memory"), Match.Vision->SyncGhostActors(0), 1);
+	int32 NumGhostActors = 0;
+	for (TActorIterator<AHOLBuilding> It(Match.World); It; ++It)
+	{
+		if (It->IsFogGhostActor())
+		{
+			++NumGhostActors;
+			TestEqual(TEXT("drawn from the memory"), It->GetFogDraw(), EHOLBuildingDraw::Memory);
+			TestEqual(TEXT("a house"), It->GetTypeName(), HOLBuildingTypeNames::House);
+			TestEqual(TEXT("the enemy's"), static_cast<int32>(It->GetOwnerPlayer()), 2);
+		}
+	}
+	TestEqual(TEXT("one such actor in the world"), NumGhostActors, 1);
+	Match.Vision->Update();
+	TestEqual(TEXT("it is no one's memory: the next step keeps one"), Match.Vision->SyncGhostActors(0), 1);
+	TestEqual(TEXT("and still one in the memory of buildings of others"), Match.Vision->GetGhosts(0)->Num(), 1);
+
+	Match.Move(Scout, HousePlace + FVector(-1600., 0., 0.));
+	Match.Vision->Update();
+	TestEqual(TEXT("back in sight, nothing there: forgotten, no actor"), Match.Vision->SyncGhostActors(0), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchMinimapReaderTest, "HeroesOfLiberty.Vision.Match.MinimapReader", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchMinimapReaderTest::RunTest(const FString& Parameters)
+{
+	// The contract with the minimap (Galadriel, InterfaceInProgress.md): what it reads of the fog's picture, as it will read it (texture,
+	// cell reader, version and delegate), on the real chain (real unit, real sight).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	// Not the world's own: the tests run without rendering, where it is not created; this one is only asked for its picture.
+	UHOLFogRenderSubsystem* Picture = NewObject<UHOLFogRenderSubsystem>(Match.World);
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady() && Picture))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	TestFalse(TEXT("before the first picture: no fog to draw, the minimap draws everything"), Picture->IsFogActive());
+	TestEqual(TEXT("... every point in sight"), Picture->GetCellVision(FVector2D(1000., 1000.)), EHOLCellVision::Visible);
+	TestNull(TEXT("... and no texture"), Picture->GetTexture());
+
+	const FVector Start(2000., -3000., 0.);
+	const uint32 Scout = Match.Place(Peasant, 0, Start);
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u))
+	{
+		return false;
+	}
+	int32 NumChanges = 0;
+	const FDelegateHandle Handle = Picture->OnPictureChanged.AddLambda([&NumChanges]() { ++NumChanges; });
+	Match.Vision->Update();
+	Picture->RefreshTexture(0);
+	const uint32 First = Picture->GetVersion();
+	TestTrue(TEXT("the fog is active"), Picture->IsFogActive());
+	TestEqual(TEXT("the delegate fired once"), NumChanges, 1);
+	const FHOLVisionGrid& Grid = Picture->GetGrid();
+	if (!TestNotNull(TEXT("the texture"), Picture->GetTexture()) || !TestEqual(TEXT("one byte a cell"), Picture->GetBytes().Num(), Grid.Side * Grid.Side))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the texture is the grid"), Picture->GetTexture()->GetSizeX(), Grid.Side);
+	TestEqual(TEXT("under the scout: in sight"), Picture->GetCellVision(FVector2D(Start)), EHOLCellVision::Visible);
+	TestEqual(TEXT("far away: black"), Picture->GetCellVision(FVector2D(-40000., 40000.)), EHOLCellVision::Unexplored);
+
+	// The texel the minimap samples at ToPictureUV is the cell's byte (U along +X, V along +Y, lower corner first).
+	const FVector2D UV = Picture->ToPictureUV(FVector2D(Start));
+	const FIntPoint Texel(FMath::FloorToInt32(UV.X * Grid.Side), FMath::FloorToInt32(UV.Y * Grid.Side));
+	TestEqual(TEXT("the texel of the UV is the scout's cell"), Texel, Grid.ToCell(FVector2D(Start)));
+	TestEqual(TEXT("its byte is the in-sight byte"), Picture->GetBytes()[Texel.Y * Grid.Side + Texel.X], HOLFogPicture::ToByte(EHOLCellVision::Visible));
+
+	Picture->RefreshTexture(0);
+	TestEqual(TEXT("nothing changed: same version"), Picture->GetVersion(), First);
+	TestEqual(TEXT("... no delegate"), NumChanges, 1);
+
+	Match.Move(Scout, FVector(30000., 30000., 0.));
+	Match.Vision->Update();
+	Picture->RefreshTexture(0);
+	TestTrue(TEXT("it moved: the version went on"), Picture->GetVersion() > First);
+	TestEqual(TEXT("... the delegate fired again"), NumChanges, 2);
+	TestEqual(TEXT("where it was: explored, grey"), Picture->GetCellVision(FVector2D(Start)), EHOLCellVision::Explored);
+	TestEqual(TEXT("... the byte of the grey"), Picture->GetBytes()[Texel.Y * Grid.Side + Texel.X], HOLFogPicture::ToByte(EHOLCellVision::Explored));
+	Picture->OnPictureChanged.Remove(Handle);
 	return true;
 }
 

@@ -28,6 +28,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 namespace UE::HeroesOfLiberty::Gather
 {
@@ -464,6 +465,9 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 {
 	using namespace UE::HeroesOfLiberty::Gather;
 	FHOLGatherFragment& Gather = Gatherer.Gather;
+	// T5: the owner's technologies (the Wheelbarrow) raise what a worker carries before it goes to the deposit.
+	const AHOLPlayerState* Owner = Step.Production ? Step.Production->FindPlayerState(Gatherer.OwnerPlayer) : nullptr;
+	const int32 CarryCapacity = HOLTechnology::ScaleByPercent(Gatherer.Constants.CarryCapacity, Owner ? Owner->GetTechnologyBonusPercent(HOLTechnology::WorkerCarryStat) : 0);
 	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
 	const bool bHasSource = Sources.IsValidIndex(Gather.SourceIndex);
 	const FHOLSource* Source = bHasSource ? &Sources[Gather.SourceIndex] : nullptr;
@@ -511,7 +515,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			OnSourceGone(Step, Gatherer);
 			return;
 		}
-		if (HOLGather::IsFullOf(Gather.Load, Source->Resource, Gatherer.Constants.CarryCapacity))
+		if (HOLGather::IsFullOf(Gather.Load, Source->Resource, CarryCapacity))
 		{
 			WalkToDeposit(Step, Gatherer);
 			return;
@@ -588,9 +592,11 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		const EHOLResource Carried = Gather.Load.Resource;
 		int32 Lost = 0;
 		const float UnitRate = Gatherer.Constants.GatherRates[Resource];
-		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f);
+		// T5: the owner's technologies (the Plough, the Double axes, the Miner picks) raise the rate of their resource.
+		const float TechnologyScale = Owner ? 1.f + 0.01f * Owner->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(Resource)) : 1.f;
+		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f) * TechnologyScale;
 		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Rate, Step.StepSeconds,
-			Gatherer.Constants.CarryCapacity, Remaining, &Lost);
+			CarryCapacity, Remaining, &Lost);
 		if (Taken > 0)
 		{
 			// The registry's own count (it leaves the map at 0); Source is changed in place.
@@ -601,7 +607,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 			UE_LOG(LogHOLSimulation, Display, TEXT("Gather: slot %d gathered its first %s, %d %s carried lost"), Gatherer.OwnerPlayer,
 				GetResourceName(Resource), Lost, GetResourceName(Carried));
 		}
-		if (HOLGather::IsFullOf(Gather.Load, Resource, Gatherer.Constants.CarryCapacity))
+		if (HOLGather::IsFullOf(Gather.Load, Resource, CarryCapacity))
 		{
 			WalkToDeposit(Step, Gatherer);
 		}

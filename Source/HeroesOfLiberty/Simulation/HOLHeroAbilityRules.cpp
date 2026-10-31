@@ -49,6 +49,16 @@ int32 HOLHeroAbility::GetDamageTakenPercent(const bool bInAura, const bool bClos
 	return 100 - FMath::Min(Reduction, MoraleReductionCapPercent);
 }
 
+int32 HOLHeroAbility::GetCloseRanksSpeedPercent(const bool bUnderCry, const bool bDawnStep, const int32 BasePercent)
+{
+	if (!bUnderCry)
+	{
+		return 100;
+	}
+	const int32 Base = FMath::Clamp(BasePercent, 0, 100);
+	return bDawnStep ? FMath::Max(Base, DawnStepSpeedPercent) : Base;
+}
+
 float HOLHeroAbility::GetReducedDamage(const float Damage, const int32 DamageTakenPercent)
 {
 	return Damage * static_cast<float>(DamageTakenPercent) / 100.f;

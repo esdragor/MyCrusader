@@ -104,12 +104,20 @@ void AHOLSourceField::ShowSource(const int32 SourceIndex, const uint8 TypeIndex,
 	++NumShown;
 }
 
-void AHOLSourceField::HideSource(const int32 SourceIndex)
+void AHOLSourceField::HideSource(const int32 SourceIndex, const bool bKeepDrawn)
 {
 	if (Navigation)
 	{
 		Navigation->RemoveSource(SourceIndex);
 	}
+	if (!bKeepDrawn)
+	{
+		EraseDrawing(SourceIndex);
+	}
+}
+
+void AHOLSourceField::EraseDrawing(const int32 SourceIndex)
+{
 	if (!InstanceOfSource.IsValidIndex(SourceIndex) || InstanceOfSource[SourceIndex] == INDEX_NONE)
 	{
 		return;

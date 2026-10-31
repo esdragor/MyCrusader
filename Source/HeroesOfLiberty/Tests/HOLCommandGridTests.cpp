@@ -715,4 +715,97 @@ bool FHOLCommandGridMouseCursorTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// T4 (GDD 11): the research row of a building on the grid (W X C V, its technologies in table order), what a press tells the
+// player when the rules refuse a research (the order of the server's reasons), read from the real technology table.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridResearchTest, "HeroesOfLiberty.CommandGrid.Research", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridResearchTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;
+
+	// The table's side: what each building researches, in the order of the table.
+	const auto Researches = [](const TCHAR* Building) { TArray<FName> Names; UHOLTechnologySettings::GetBuildingTechnologies(FName(Building), Names); return Names; };
+	TestTrue(TEXT("the Farm researches the Plough and the Wheelbarrow, I then II"),
+		Researches(TEXT("Farm")) == TArray<FName>({ FName(TEXT("PloughI")), FName(TEXT("PloughII")), FName(TEXT("WheelbarrowI")), FName(TEXT("WheelbarrowII")) }));
+	TestTrue(TEXT("the main centre researches the militia and the alarm bell"),
+		Researches(TEXT("MainCentre")) == TArray<FName>({ FName(TEXT("DefenceMilitia")), FName(TEXT("ImprovedAlarmBell")) }));
+	TestTrue(TEXT("the Barracks research the halberds"), Researches(TEXT("Barracks")) == TArray<FName>({ FName(TEXT("TemperedHalberds")) }));
+	TestTrue(TEXT("the House researches nothing"), Researches(TEXT("House")).IsEmpty());
+
+	// The rule's side: a finished building gives its research row from W, after its production on A; a site, a forum down, builders: none.
+	FHOLGridContext Farm;
+	Farm.bOwnBuilding = true;
+	Farm.bBuildingFinished = true;
+	Farm.Researches = Researches(TEXT("Farm"));
+	TestEqual(TEXT("the research row starts on W"), HOLCommandGrid::ResearchFirstCell, 8);
+	for (int32 Cell = 0; Cell < HOLCommandGrid::NumCells; ++Cell)
+	{
+		const FHOLGridCommand Command = HOLCommandGrid::GetCommand(Farm, Cell);
+		const int32 Index = Cell - HOLCommandGrid::ResearchFirstCell;
+		if (Index >= 0 && Index < Farm.Researches.Num())
+		{
+			TestTrue(*FString::Printf(TEXT("Farm cell %d researches %s"), Cell, *Farm.Researches[Index].ToString()),
+				Command.Command == EHOLGridCommand::Research && Command.TypeName == Farm.Researches[Index]);
+		}
+		else
+		{
+			TestTrue(*FString::Printf(TEXT("Farm cell %d empty"), Cell), Command.IsNone());
+		}
+	}
+	FHOLGridContext Centre;
+	Centre.bOwnBuilding = true;
+	Centre.bBuildingFinished = true;
+	Centre.Produces = { Peasant };
+	Centre.Researches = Researches(TEXT("MainCentre"));
+	TestTrue(TEXT("centre: A still produces a Peasant"), HOLCommandGrid::GetCommand(Centre, 0).Command == EHOLGridCommand::Produce);
+	TestTrue(TEXT("centre: W the militia, X the alarm bell"), HOLCommandGrid::GetCommand(Centre, 8).TypeName == FName(TEXT("DefenceMilitia"))
+		&& HOLCommandGrid::GetCommand(Centre, 9).TypeName == FName(TEXT("ImprovedAlarmBell")) && HOLCommandGrid::GetCommand(Centre, 10).IsNone());
+	FHOLGridContext Site = Farm;
+	Site.bBuildingFinished = false;
+	TestTrue(TEXT("a site researches nothing"), HOLCommandGrid::GetCommand(Site, 8).IsNone());
+	TestTrue(TEXT("a site keeps its cancel on V"), HOLCommandGrid::GetCommand(Site, HOLCommandGrid::CancelCell).Command == EHOLGridCommand::CancelConstruction);
+	FHOLGridContext Down = Centre;
+	Down.bForumDown = true;
+	TestTrue(TEXT("a forum down researches nothing"), HOLCommandGrid::GetCommand(Down, 8).IsNone());
+	TestTrue(TEXT("every key of a building is the grid's"), HOLCommandGrid::PressKey(Farm, INDEX_NONE, 8).Target == EHOLGridKeyTarget::Grid);
+
+	// What a press tells (the order of the server's reasons, then the stock, then the queue).
+	const FHOLTechnologyRow* Plough1 = UHOLTechnologySettings::FindTechnology(TEXT("PloughI"));
+	const FHOLTechnologyRow* Plough2 = UHOLTechnologySettings::FindTechnology(TEXT("PloughII"));
+	if (!TestNotNull(TEXT("PloughI in the table"), Plough1) || !TestNotNull(TEXT("PloughII in the table"), Plough2))
+	{
+		return false;
+	}
+	const FHOLResources Rich(5000, 5000, 5000, 5000);
+	HOLTechnology::FFacts Facts;
+	Facts.HeroTier = 1;
+	Facts.bBuildingFinished = true;
+	TestTrue(TEXT("tier 1, rich, room: goes through"), HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 0, 5).IsNone());
+	Facts.HeroTier = 0;
+	const FHOLCommandFeedback Tier = HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 0, 5);
+	TestTrue(TEXT("tier 0: refused, the tier"), Tier.Kind == EHOLCommandFeedback::ResearchRefused && Tier.Block == HOLTechnology::EBlock::TierTooLow && HOLCommandGrid::Blocks(Tier));
+	TestEqual(TEXT("the tier is logged"), HOLCommandGrid::Describe(Tier), FString(TEXT("research refused (tier too low)")));
+	Facts.HeroTier = 1;
+	Facts.bResearched = true;
+	TestTrue(TEXT("done already"), HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 0, 5).Block == HOLTechnology::EBlock::AlreadyResearched);
+	Facts.bResearched = false;
+	Facts.bQueued = true;
+	TestTrue(TEXT("already in a queue"), HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 0, 5).Block == HOLTechnology::EBlock::AlreadyQueued);
+	Facts.bQueued = false;
+	Facts.bRequiresDone = false;
+	Facts.HeroTier = 2;
+	TestTrue(TEXT("level II before level I"), HOLCommandGrid::CheckResearch(*Plough2, Facts, Rich, 0, 5).Block == HOLTechnology::EBlock::RequiresMissing);
+	Facts.bRequiresDone = true;
+	Facts.bBuildingFinished = false;
+	TestTrue(TEXT("no finished building"), HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 0, 5).Block == HOLTechnology::EBlock::NoBuilding);
+	Facts.bBuildingFinished = true;
+	const FHOLCommandFeedback Poor = HOLCommandGrid::CheckResearch(*Plough1, Facts, FHOLResources(Plough1->Cost.Food - 1, 5000, 5000, 5000), 0, 5);
+	TestTrue(TEXT("one food short: not enough food, blocks"), Poor.Kind == EHOLCommandFeedback::NotEnoughResources && Poor.Resource == EHOLResource::Food && HOLCommandGrid::Blocks(Poor));
+	const FHOLCommandFeedback Full = HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 5, 5);
+	TestTrue(TEXT("5 of 5 in the queue: queue full, blocks"), Full.Kind == EHOLCommandFeedback::QueueFull && HOLCommandGrid::Blocks(Full));
+	Facts.HeroTier = 0;
+	TestTrue(TEXT("the rules before the queue"), HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 5, 5).Block == HOLTechnology::EBlock::TierTooLow);
+	TestTrue(TEXT("the rules before the stock"), HOLCommandGrid::CheckResearch(*Plough1, Facts, FHOLResources(), 0, 5).Block == HOLTechnology::EBlock::TierTooLow);
+	return true;
+}
+
 #endif

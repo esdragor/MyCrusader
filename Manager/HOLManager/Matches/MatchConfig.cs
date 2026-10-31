@@ -25,6 +25,9 @@ public sealed class MatchConfig
 
     /** Version 3 (TC-Q6): "Équipes ensemble". */
     [JsonPropertyName("bTeamsTogether")] public bool TeamsTogether { get; init; } = true;
+
+    /** F8 (D522, EHOLFogMode by name): the fog of the match; a file without it is "Disabled" (the test scenarios), a lobby sets it. */
+    [JsonPropertyName("fogMode")] public string FogMode { get; init; } = "Disabled";
     [JsonPropertyName("slots")] public IReadOnlyList<MatchSlot> Slots { get; init; } = [];
     [JsonPropertyName("mode")] public string Mode { get; init; } = "Standard";
     [JsonPropertyName("bNomad")] public bool Nomad { get; init; }
@@ -54,6 +57,7 @@ public sealed class MatchConfig
             MapSize = map.FindSize(lobby.Settings.Size)?.Key ?? "None",
             DrawPlaces = true,
             TeamsTogether = lobby.Settings.TeamsTogether,
+            FogMode = lobby.Settings.Fog,
             Slots = lobby.Slots.Select((slot, position) => slot.Player is { } p
                 ? new MatchSlot { State = MatchSlot.Human, Faction = p.Faction, ColorIndex = colors[position]!.Value, Team = p.Team, PlayerName = p.Name }
                 : slot.AI is { } ai

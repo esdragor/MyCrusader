@@ -3,23 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Map/HOLFogMode.h"
 #include "Map/HOLVisionRules.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLVisionSubsystem.generated.h"
 
 struct FHOLMatchConfig;
-
-/** D522: the fog of a match (the menu offers the three). */
-UENUM()
-enum class EHOLFogMode : uint8
-{
-	/** Everything in sight (« Sans brouillard »): the trials, the measures, the tests' default. */
-	Disabled,
-	/** D389: the map explored from the start (terrain and resources), the enemy's units and buildings hidden out of sight. */
-	Explored,
-	/** D381: the map black at the start. The game's default (F8). */
-	Normal,
-};
 
 /** F6e.3: a building a camp remembers, as the server sends it to a player who comes back (the key is made again by the client). */
 USTRUCT()
@@ -125,6 +114,19 @@ public:
 	void RefreshBuildingMemory(int32 ViewerSlot);
 
 	/**
+	 * F7.3 (c): ViewerSlot's machine draws a tree cut out of its camp's sight as it was last seen (UHOLSourceSubsystem::SetKeepDrawnRule):
+	 * sets the viewer, and lets go of the cut trees whose place is back in sight (the camp learned the cut) or forgotten.
+	 */
+	void RefreshSourceMemory(int32 ViewerSlot);
+
+	/**
+	 * F7.3 (b), a client: a building its camp remembers (ViewerSlot's) and whose place is out of sight has no actor here (the server stops
+	 * sending it): one is made from the memory, drawn grey (AHOLBuilding::MarkFogGhostActor), and removed when the place is seen again
+	 * or the real building is back. Returns how many such actors exist after the pass.
+	 */
+	int32 SyncGhostActors(int32 ViewerSlot);
+
+	/**
 	 * F4 (D382, D520): what Slot's camp remembers of the buildings and sources it saw (HOLVisionRules::UpdateGhosts), kept
 	 * by the server for the reconnection (F6e); null for a slot with no camp, or no fog.
 	 */
@@ -172,6 +174,8 @@ private:
 	/** bGhosts: the memory refreshed (OnlyCamp: a client's own camp's, INDEX_NONE: every camp's). */
 	void EndPass(bool bGhosts, int32 OnlyCamp = INDEX_NONE);
 	void OnSourceStanding(int32 SourceIndex, bool bStanding);
+	/** F7.3 (c): the source just used up is kept drawn for the viewer's camp. */
+	bool KeepSourceDrawn(int32 SourceIndex) const;
 	void OnStepEnded(int64 StepIndex);
 	double GetUnitSight(FName TypeName);
 
@@ -209,5 +213,9 @@ private:
 	uint32 Stamp = 0;
 	double LastUpdateMs = 0.;
 	FDelegateHandle SourceHandle;
+	/** F7.3 (c): the camp of the machine's own player, whose memory keeps the cut trees drawn (INDEX_NONE: none). */
+	int32 SourceViewerCamp = INDEX_NONE;
+	/** F7.3 (b), a client: the actors made for the remembered buildings, by ghost key. */
+	TMap<uint64, TWeakObjectPtr<class AHOLBuilding>> GhostActors;
 	FDelegateHandle StepHandle;
 };

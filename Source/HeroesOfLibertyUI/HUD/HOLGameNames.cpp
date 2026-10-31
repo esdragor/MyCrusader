@@ -3,6 +3,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyTypes.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameNames"
 
@@ -156,6 +157,223 @@ namespace HOLGameNames
 			return Row->DisplayName;
 		}
 		return FText::FromName(TypeName);
+	}
+
+	FText GetTechnologyName(const FName TypeName, const FHOLTechnologyRow* Row)
+	{
+		if (TypeName == FName(TEXT("MeleeAttackI")))
+		{
+			return LOCTEXT("TechMeleeAttackI", "Lames affûtées");
+		}
+		if (TypeName == FName(TEXT("MeleeAttackII")))
+		{
+			return LOCTEXT("TechMeleeAttackII", "Lames affûtées II");
+		}
+		if (TypeName == FName(TEXT("RangedAttackI")))
+		{
+			return LOCTEXT("TechRangedAttackI", "Empennage");
+		}
+		if (TypeName == FName(TEXT("RangedAttackII")))
+		{
+			return LOCTEXT("TechRangedAttackII", "Empennage II");
+		}
+		if (TypeName == FName(TEXT("InfantryArmorI")))
+		{
+			return LOCTEXT("TechInfantryArmorI", "Maille");
+		}
+		if (TypeName == FName(TEXT("InfantryArmorII")))
+		{
+			return LOCTEXT("TechInfantryArmorII", "Maille II");
+		}
+		if (TypeName == FName(TEXT("CavalryArmorI")))
+		{
+			return LOCTEXT("TechCavalryArmorI", "Barde");
+		}
+		if (TypeName == FName(TEXT("CavalryArmorII")))
+		{
+			return LOCTEXT("TechCavalryArmorII", "Barde II");
+		}
+		if (TypeName == FName(TEXT("DoubleAxesI")))
+		{
+			return LOCTEXT("TechDoubleAxesI", "Haches doubles");
+		}
+		if (TypeName == FName(TEXT("DoubleAxesII")))
+		{
+			return LOCTEXT("TechDoubleAxesII", "Haches doubles II");
+		}
+		if (TypeName == FName(TEXT("MinerPicksI")))
+		{
+			return LOCTEXT("TechMinerPicksI", "Pics de mineur");
+		}
+		if (TypeName == FName(TEXT("MinerPicksII")))
+		{
+			return LOCTEXT("TechMinerPicksII", "Pics de mineur II");
+		}
+		if (TypeName == FName(TEXT("PloughI")))
+		{
+			return LOCTEXT("TechPloughI", "Charrue");
+		}
+		if (TypeName == FName(TEXT("PloughII")))
+		{
+			return LOCTEXT("TechPloughII", "Charrue II");
+		}
+		if (TypeName == FName(TEXT("WheelbarrowI")))
+		{
+			return LOCTEXT("TechWheelbarrowI", "Brouette");
+		}
+		if (TypeName == FName(TEXT("WheelbarrowII")))
+		{
+			return LOCTEXT("TechWheelbarrowII", "Brouette II");
+		}
+		if (TypeName == FName(TEXT("DefenceMilitia")))
+		{
+			return LOCTEXT("TechDefenceMilitia", "Milice de défense");
+		}
+		if (TypeName == FName(TEXT("ImprovedAlarmBell")))
+		{
+			return LOCTEXT("TechImprovedAlarmBell", "Cloche d'alarme améliorée");
+		}
+		if (TypeName == FName(TEXT("Masonry")))
+		{
+			return LOCTEXT("TechMasonry", "Maçonnerie");
+		}
+		if (TypeName == FName(TEXT("Veterans")))
+		{
+			return LOCTEXT("TechVeterans", "Vétérans");
+		}
+		if (TypeName == FName(TEXT("Logistics")))
+		{
+			return LOCTEXT("TechLogistics", "Logistique");
+		}
+		if (TypeName == FName(TEXT("ReinforcedRam")))
+		{
+			return LOCTEXT("TechReinforcedRam", "Bélier renforcé");
+		}
+		if (TypeName == FName(TEXT("HeavyMunitions")))
+		{
+			return LOCTEXT("TechHeavyMunitions", "Munitions lourdes");
+		}
+		if (TypeName == FName(TEXT("Liturgy")))
+		{
+			return LOCTEXT("TechLiturgy", "Liturgie");
+		}
+		if (TypeName == FName(TEXT("TemperedHalberds")))
+		{
+			return LOCTEXT("TechTemperedHalberds", "Hallebardes trempées");
+		}
+		if (TypeName == FName(TEXT("BlessingOfArms")))
+		{
+			return LOCTEXT("TechBlessingOfArms", "Bénédiction des armes");
+		}
+		if (TypeName == FName(TEXT("VowOfPoverty")))
+		{
+			return LOCTEXT("TechVowOfPoverty", "Vœu de pauvreté");
+		}
+		if (Row && !Row->DisplayName.IsEmpty())
+		{
+			return Row->DisplayName;
+		}
+		return FText::FromName(TypeName);
+	}
+
+	/** The name of a statistic a technology changes, as a title (T8). */
+	static FText GetTechnologyStatName(const FName Stat)
+	{
+		if (Stat == FName(TEXT("MeleeAttack")))
+		{
+			return LOCTEXT("TechStatMeleeAttack", "Dégâts de mêlée");
+		}
+		if (Stat == FName(TEXT("RangedAttack")))
+		{
+			return LOCTEXT("TechStatRangedAttack", "Dégâts à distance");
+		}
+		if (Stat == FName(TEXT("InfantryArmor")))
+		{
+			return LOCTEXT("TechStatInfantryArmor", "Armure de l'infanterie");
+		}
+		if (Stat == FName(TEXT("CavalryArmor")))
+		{
+			return LOCTEXT("TechStatCavalryArmor", "Armure de la cavalerie");
+		}
+		if (Stat == FName(TEXT("GatherWood")))
+		{
+			return LOCTEXT("TechStatGatherWood", "Récolte du bois");
+		}
+		if (Stat == FName(TEXT("GatherStone")))
+		{
+			return LOCTEXT("TechStatGatherStone", "Récolte de la pierre");
+		}
+		if (Stat == FName(TEXT("GatherGold")))
+		{
+			return LOCTEXT("TechStatGatherGold", "Récolte de l'or");
+		}
+		if (Stat == FName(TEXT("GatherFood")))
+		{
+			return LOCTEXT("TechStatGatherFood", "Récolte de nourriture");
+		}
+		if (Stat == FName(TEXT("WorkerSpeed")))
+		{
+			return LOCTEXT("TechStatWorkerSpeed", "Vitesse des travailleurs");
+		}
+		if (Stat == FName(TEXT("WorkerCarry")))
+		{
+			return LOCTEXT("TechStatWorkerCarry", "Charge des travailleurs");
+		}
+		if (Stat == FName(TEXT("WorkerDefence")))
+		{
+			return LOCTEXT("TechStatWorkerDefence", "Défense des travailleurs");
+		}
+		if (Stat == FName(TEXT("GarrisonSpeed")))
+		{
+			return LOCTEXT("TechStatGarrisonSpeed", "Vitesse de garnison");
+		}
+		if (Stat == FName(TEXT("WallTowerHealth")))
+		{
+			return LOCTEXT("TechStatWallTowerHealth", "Points de vie des murs et des tours");
+		}
+		if (Stat == FName(TEXT("CoreUnitHealth")))
+		{
+			return LOCTEXT("TechStatCoreUnitHealth", "Points de vie des unités de base");
+		}
+		if (Stat == FName(TEXT("ArmyMarchSpeed")))
+		{
+			return LOCTEXT("TechStatArmyMarchSpeed", "Vitesse de marche de l'armée");
+		}
+		if (Stat == FName(TEXT("RamHealth")))
+		{
+			return LOCTEXT("TechStatRamHealth", "Points de vie du bélier");
+		}
+		if (Stat == FName(TEXT("MangonelDamage")))
+		{
+			return LOCTEXT("TechStatMangonelDamage", "Dégâts du mangonneau");
+		}
+		if (Stat == FName(TEXT("HonourGain")))
+		{
+			return LOCTEXT("TechStatHonourGain", "Gain d'Honneur");
+		}
+		if (Stat == FName(TEXT("HalberdierBonusVsHeavyInfantry")))
+		{
+			return LOCTEXT("TechStatHalberdierBonusVsHeavyInfantry", "Bonus du hallebardier contre l'infanterie lourde");
+		}
+		if (Stat == FName(TEXT("KnightAndHalberdierBonusVsProfane")))
+		{
+			return LOCTEXT("TechStatKnightAndHalberdierBonusVsProfane", "Bonus du chevalier et du hallebardier contre les profanes");
+		}
+		if (Stat == FName(TEXT("MonkCostDiscount")))
+		{
+			return LOCTEXT("TechStatMonkCostDiscount", "Réduction du coût des moines");
+		}
+		return FText::FromName(Stat);
+	}
+
+	FText GetTechnologyEffect(const FHOLTechnologyRow& Row)
+	{
+		TArray<FText> Lines;
+		for (const FName Stat : Row.Stats)
+		{
+			Lines.Add(FText::Format(LOCTEXT("TechEffectLine", "{0} +{1} %"), GetTechnologyStatName(Stat), FText::AsNumber(Row.Percent)));
+		}
+		return FText::Join(FText::FromString(TEXT("\n")), Lines);
 	}
 }
 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Math/RandomStream.h"
+#include "Map/HOLFogMode.h"
 #include "Map/HOLMapSizeRules.h"
 #include "UObject/SoftObjectPath.h"
 #include "HOLMatchConfig.generated.h"
@@ -133,6 +134,14 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	/** TC1 (version 3, TC-Q6): with bDrawPlaces, the allies on neighbouring places ("Équipes ensemble", ticked by default). */
 	UPROPERTY()
 	bool bTeamsTogether = true;
+
+	/**
+	 * F8 (D522): the fog of the match (its list "Brouillard"). Disabled (no such field in the file: the test scenarios, quick_check,
+	 * older files) = everything in sight; the menu and the lobby offer Normal by default. hol.Fog.Mode >= 0 overrides it
+	 * (HOLVisionRules::ResolveFogMode).
+	 */
+	UPROPERTY()
+	EHOLFogMode FogMode = EHOLFogMode::Disabled;
 
 	/** Always MaxSlots after Normalize(). */
 	UPROPERTY()

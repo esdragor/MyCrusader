@@ -160,6 +160,15 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		6.25f,
 		TEXT("Width (cm) of the lines drawn on the ground between the queued orders (Shift) of the selected units (D328)."));
 	/**
+	 * The same width (cm) while the fog is drawn (F7.3, the user's trial 2026-10-30: the thin lines flicker under the fog, "essayons
+	 * plus épais"): 12.5 cm = option B (thicker only under an active fog). Set it equal to hol.Orders.LineWidth for option A (no
+	 * change), and both to 12.5 for option C (thicker everywhere).
+	 */
+	TAutoConsoleVariable<float> CVarOrderLineWidthFog(
+		TEXT("hol.Orders.LineWidthFog"),
+		12.5f,
+		TEXT("Width (cm) of the order lines while the fog of war is active (hol.Orders.LineWidth otherwise; F7.3)."));
+	/**
 	 * Below the selection's rings and the flag's foot (GroundOffset): the lines, and the step discs just above them,
 	 * so that neither hides a ring.
 	 */
@@ -202,6 +211,12 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double ForumRingPieces = 128.0;
 	constexpr double ForumRingOffset = 2.0;
 	const FLinearColor ForumRingRestColor(0.12f, 0.12f, 0.12f);
+	/** R5: a relay's ring, the owner's outline and the capture's arc (cm; the forum's ring is 28 and 120), the pieces a whole circle is cut in. */
+	constexpr double RelayRingRestWidth = 30.0;
+	constexpr double RelayRingFillWidth = 110.0;
+	constexpr int32 RelayRingPieces = 96;
+	constexpr double RelayRingTraceHalfHeight = 20000.0;
+	constexpr double RelayRingOffset = 4.0;
 
 	UStaticMesh* LoadMesh(const TCHAR* Path)
 	{
@@ -296,6 +311,7 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 		Component->SetCustomDepthStencilValue(1);
 	}
 	ForumRings = MakeMarkerComponent(*this, TEXT("ForumRings"));
+	RelayRings = MakeMarkerComponent(*this, TEXT("RelayRings"));
 	AuraRings = MakeMarkerComponent(*this, TEXT("AuraRings"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
@@ -330,6 +346,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	OrderPoints->SetMaterial(0, Rings->GetMaterial(0));
 	ForumRings->SetStaticMesh(Plane);
 	ForumRings->SetMaterial(0, Frames->GetMaterial(0));
+	RelayRings->SetStaticMesh(Plane);
+	RelayRings->SetMaterial(0, Frames->GetMaterial(0));
 	AuraRings->SetStaticMesh(Plane);
 	AuraRings->SetMaterial(0, Frames->GetMaterial(0));
 
@@ -426,6 +444,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	UpdateHealthBars();
 	UpdateOrderLines();
 	UpdateForumRings();
+	UpdateRelayRings();
 	UpdateAuraRings();
 	UpdateFrame();
 	UpdateFlag();
@@ -883,6 +902,83 @@ void AHOLSelectionMarkers::UpdateForumRings()
 	SetInstances(*ForumRings, Transforms, CustomData);
 }
 
+void AHOLSelectionMarkers::UpdateRelayRings()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	FString Line;
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (GameState)
+	{
+		const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+		const TArray<FHOLRelayView>& RelayViews = GameState->GetRelayViews();
+		const auto SlotColor = [&Config](const int32 Slot, const FLinearColor& Fallback)
+		{
+			if (!Config.Slots.IsValidIndex(Slot))
+			{
+				return Fallback;
+			}
+			const FVector3f& Linear = HOLPlayerColors::GetLinearColor(Config.Slots[Slot].ColorIndex);
+			return FLinearColor(Linear.X, Linear.Y, Linear.Z);
+		};
+		// The lowest static surface under a point (a tree's crown is no ground), as the aura rings'.
+		const auto GroundAt = [World](const FVector2D& Point)
+		{
+			TArray<FHitResult> Hits;
+			const FCollisionQueryParams Params(SCENE_QUERY_STAT(HOLRelayRing), false);
+			World->LineTraceMultiByObjectType(Hits, FVector(Point.X, Point.Y, RelayRingTraceHalfHeight), FVector(Point.X, Point.Y, -RelayRingTraceHalfHeight),
+				FCollisionObjectQueryParams(ECC_WorldStatic), Params);
+			double Height = TNumericLimits<double>::Max();
+			for (const FHitResult& Hit : Hits)
+			{
+				Height = FMath::Min(Height, Hit.ImpactPoint.Z);
+			}
+			return Hits.Num() > 0 ? Height : 0.0;
+		};
+		Line = FString::Printf(TEXT("%d |"), RelayViews.Num());
+		for (int32 Index = 0; Index < RelayViews.Num(); ++Index)
+		{
+			const FHOLRelayView& View = RelayViews[Index];
+			Line += FString::Printf(TEXT(" #%d %s "), Index, *View.Describe());
+			const FVector2D Centre(View.X, View.Y);
+			// Point at Share of the circle, from the top (+X), clockwise seen from above (+Y to the right of the top: as the forum's ring).
+			const auto PointAt = [&Centre, &View, &GroundAt](const double Share)
+			{
+				const double Angle = UE_DOUBLE_TWO_PI * Share;
+				const FVector2D Point = Centre + View.Radius * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+				return FVector(Point.X, Point.Y, GroundAt(Point) + RelayRingOffset);
+			};
+			const auto AddArc = [&](const double From, const double To, const double Width, const FLinearColor& Color)
+			{
+				const int32 Pieces = FMath::CeilToInt((To - From) * RelayRingPieces);
+				for (int32 Piece = 0; Piece < Pieces; ++Piece)
+				{
+					const FVector Start = PointAt(FMath::Lerp(From, To, static_cast<double>(Piece) / Pieces));
+					const FVector End = PointAt(FMath::Lerp(From, To, static_cast<double>(Piece + 1) / Pieces));
+					const FVector Span = End - Start;
+					const double Length = Span.Size();
+					if (Length > UE_KINDA_SMALL_NUMBER)
+					{
+						Transforms.Add(FTransform(FRotationMatrix::MakeFromX(Span / Length).ToQuat(), (Start + End) * 0.5, FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
+						CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+					}
+				}
+			};
+			const double Fill = View.FillPercent / 100.0;
+			AddArc(0.0, 1.0, RelayRingRestWidth, SlotColor(View.Owner, ForumRingRestColor));
+			if (Fill > 0.0)
+			{
+				AddArc(0.0, Fill, RelayRingFillWidth, SlotColor(View.Taker, ForumRingRestColor));
+			}
+		}
+	}
+	RelayRingsDescription = Line.IsEmpty() ? FString(TEXT("0")) : Line;
+	SetInstances(*RelayRings, Transforms, CustomData);
+}
+
 void AHOLSelectionMarkers::UpdateOrderLines()
 {
 	using namespace UE::HeroesOfLiberty::SelectionMarkers;
@@ -894,7 +990,9 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetHOLPlayerState() : nullptr;
 	const UWorld* World = GetWorld();
-	const double Width = FMath::Max(1.0, static_cast<double>(CVarOrderLineWidth.GetValueOnGameThread()));
+	const UHOLVisionSubsystem* FogVision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const bool bFogActive = FogVision && FogVision->IsStarted() && FogVision->GetMode() != EHOLFogMode::Disabled;
+	const double Width = FMath::Max(1.0, static_cast<double>(bFogActive ? CVarOrderLineWidthFog.GetValueOnGameThread() : CVarOrderLineWidth.GetValueOnGameThread()));
 	// A filled strip from one point to the next, tilted with the ground between them (X along it, Y level).
 	const auto AddLine = [&LineTransforms, &LineData, Width](const FVector& Start, const FVector& End, const FLinearColor& Color)
 	{
