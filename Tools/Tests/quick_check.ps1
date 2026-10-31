@@ -6653,8 +6653,10 @@ if ($Parts -contains "net") {
     $AllOk = (Report "net hero abilities" $AbChecks) -and $AllOk
     # T4: the research asked by client 1 (Bob, slot 1), done on the server (its lines), reaching Bob alone.
     $TechChecks = [ordered]@{}
-    $TechServer = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net tech")
-    $TechQueued = @(@(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
+    # Both lines are read from the whole server log, not after its "net tech" mark: with FastBuild on, the client's order can be
+    # queued AND done (one step) before the server's own sequence reaches that mark (seen once in three runs, 2026-10-31).
+    $TechServer = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $TechQueued = @($TechServer | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
     $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched TemperedHalberds")
     $TechChecks["server: Bob's Tempered Halberds queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
     foreach ($NetClient in $NetClients) {
