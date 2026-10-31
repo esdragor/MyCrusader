@@ -72,3 +72,30 @@ void Test_DuelCommandRefusedReason(FUnitTest& T)
 	T.AssertEquals(0, Book.Duels.Num(), "no duel in the book");
 	T.AssertEquals(0, Book.CooldownLeftMs[0], "no cooldown spent");
 }
+
+// The client's view (from the sheet's code and the time left) is the one the book gives the server (D8): same kind, seconds, bar and flash.
+void Test_DuelWindowViewFromSheetAgreesWithBook(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuelBook Book = HOLDuel::NewBook(8);
+	TArray<int> Forums;
+	HOLDuel::BookStartChallenge(S, Book, 0, 1, Facts_All, 0, 0, 300, 0, Forums);
+	for (int Elapsed = 0; Elapsed <= S.ResponseMs; Elapsed += 1300)
+	{
+		FHOLDuel Duel = Book.Duels[0];
+		Duel.WindowLeftMs = S.ResponseMs - Elapsed;
+		for (int Viewer = 0; Viewer < 3; Viewer++)
+		{
+			FHOLDuelWindowView FromBook = HOLDuel::WindowView(S, Duel, Viewer);
+			FHOLDuelView Shown = HOLDuel::BookViewOf(Book, Viewer);
+			FHOLDuelWindowView FromSheet = HOLDuel::SheetWindowView(S, Shown.Code, Shown.Opponent, Duel.WindowLeftMs);
+			T.AssertEquals(int(FromBook.Kind), int(FromSheet.Kind), "same kind, viewer " + Viewer + " at " + Elapsed);
+			T.AssertEquals(FromBook.OpponentSlot, FromSheet.OpponentSlot, "same opponent");
+			T.AssertEquals(FromBook.SecondsLeft, FromSheet.SecondsLeft, "same seconds");
+			T.AssertEquals(FromBook.FillPermille, FromSheet.FillPermille, "same bar");
+			T.AssertEquals(FromBook.bUrgent, FromSheet.bUrgent, "same flash");
+			T.AssertEquals(FromBook.bCanAnswer, FromSheet.bCanAnswer, "same buttons");
+		}
+	}
+	T.AssertEquals(int(EHOLDuelWindowKind::None), int(HOLDuel::SheetWindowView(S, 3, 1, 5000).Kind), "a duel on shows no window");
+}

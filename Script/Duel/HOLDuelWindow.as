@@ -57,6 +57,23 @@ namespace HOLDuel
 		return V;
 	}
 
+	// The same view from what a CLIENT knows: the public hero sheet of the viewer (HOLHero::GetHeroDuelCode: 1 a challenge sent waits, 2 one
+	// received waits, 3 a duel on), the other hero and the time left (the sheet's end step less the server's step, in ms). The book lives on
+	// the server only; this view must agree with WindowView (the tests compare them).
+	FHOLDuelWindowView SheetWindowView(const FHOLDuelSettings& S, int Code, int OpponentSlot, int LeftMs)
+	{
+		FHOLDuelWindowView V;
+		if (Code != 1 && Code != 2)
+			return V;
+		V.Kind = Code == 2 ? EHOLDuelWindowKind::Incoming : EHOLDuelWindowKind::Sent;
+		V.OpponentSlot = OpponentSlot;
+		V.bCanAnswer = Code == 2;
+		V.SecondsLeft = Math::IntegerDivisionTrunc(LeftMs + 999, 1000);
+		V.FillPermille = S.ResponseMs > 0 ? Math::Clamp(Math::IntegerDivisionTrunc(LeftMs * 1000, S.ResponseMs), 0, 1000) : 0;
+		V.bUrgent = LeftMs <= S.WindowUrgentMs;
+		return V;
+	}
+
 	// The view for a viewer across the whole book: the first challenge waiting that concerns him.
 	FHOLDuelWindowView BookWindowView(const FHOLDuelSettings& S, const FHOLDuelBook& Book, int ViewerSlot)
 	{

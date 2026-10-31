@@ -52,6 +52,20 @@ FString TalentTexts = "";
 	FHOLPauseScreenView PauseView;
 	FString PauseTexts = "";
 
+	// The duel's challenge window (D8, D117; DuelInProgress.md): top centre, no dim layer, the game goes on under it. A challenge received shows the
+	// challenger, the countdown (a bar and the seconds, flashing in the last instants) and « Accepter » / « Refuser »; a challenge sent shows
+	// « Défi envoyé » and the same countdown, with no button (the challenger cannot cancel, D80). Read from the local hero's public sheet; the
+	// rules are HOLDuel::SheetWindowView. Its texts are not localised yet (provisional, like the hero block's).
+	UBorder DuelPanel;
+	UCommonTextBlock DuelTitleText;
+	UCommonTextBlock DuelTimerText;
+	UProgressBar DuelBar;
+	UHorizontalBox DuelButtons;
+	UButton DuelAcceptButton;
+	UButton DuelRefuseButton;
+	FHOLDuelWindowView DuelView;
+	FString DuelTexts = "";
+
 	// Sizes of the block (px at 1080p, the HUD's scale).
 	const float PortraitSize = 64.0;
 	// The column's width: the panel as wide as the selection's block under it, the return's button fitting in it.
@@ -64,8 +78,101 @@ FString TalentTexts = "";
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
+		BuildDuelWindow(Frame);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
+	}
+
+	void BuildDuelWindow(UOverlay Frame)
+	{
+		DuelPanel = MakePanel(n"DuelPanel");
+		DuelPanel.SetVisibility(ESlateVisibility::Collapsed);
+		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(DuelPanel);
+		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
+		PanelSlot.SetPadding(FMargin(0.0, 140.0, 0.0, 0.0));
+		UVerticalBox Column = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"DuelColumn"));
+		DuelPanel.SetContent(Column);
+		DuelTitleText = MakeText(n"DuelTitle", UHOLTextStyleHUD);
+		Column.AddChildToVerticalBox(DuelTitleText).SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		DuelBar = MakeBar(n"DuelBar", FLinearColor(0.85, 0.65, 0.15, 1.0));
+		Column.AddChildToVerticalBox(SizedBar(n"DuelBarBox", DuelBar, 10.0)).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		DuelTimerText = MakeText(n"DuelTimer", UHOLTextStyleHUDLabel);
+		Column.AddChildToVerticalBox(DuelTimerText).SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		DuelButtons = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DuelButtons"));
+		Column.AddChildToVerticalBox(DuelButtons).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		DuelAcceptButton = MakeButton(n"DuelAcceptButton");
+		DuelAcceptButton.OnClicked.AddUFunction(this, n"HandleDuelAcceptClicked");
+		DuelButtons.AddChildToHorizontalBox(DuelAcceptButton).SetPadding(FMargin(0.0, 0.0, 8.0, 0.0));
+		UCommonTextBlock AcceptLabel = MakeText(n"DuelAcceptLabel", UHOLTextStyleHUDLabel);
+		AcceptLabel.SetText(FText::FromString("Accepter"));
+		DuelAcceptButton.AddChild(AcceptLabel);
+		DuelRefuseButton = MakeButton(n"DuelRefuseButton");
+		DuelRefuseButton.OnClicked.AddUFunction(this, n"HandleDuelRefuseClicked");
+		DuelButtons.AddChildToHorizontalBox(DuelRefuseButton);
+		UCommonTextBlock RefuseLabel = MakeText(n"DuelRefuseLabel", UHOLTextStyleHUDLabel);
+		RefuseLabel.SetText(FText::FromString("Refuser"));
+		DuelRefuseButton.AddChild(RefuseLabel);
+	}
+
+	// The window from the local hero's sheet (HOLDuel::SheetWindowView); nothing for a spectator, a defeated player or a hero in no challenge.
+	void RefreshDuel()
+	{
+		const int PlayerSlot = GetLocalSlot();
+		FHOLDuelWindowView View;
+		int LeftMs = 0;
+		if (PlayerSlot >= 0 && !HOLHero::IsSlotDefeated(PlayerSlot))
+		{
+			const int Rate = Math::Max(1, HOLHero::GetSimulationRateHz());
+			LeftMs = Math::Max(0, HOLHero::GetHeroDuelEndStep(PlayerSlot) - HOLHero::GetServerStep()) * 1000 / Rate;
+			View = HOLDuel::SheetWindowView(HOLDuel::Preset(), HOLHero::GetHeroDuelCode(PlayerSlot), HOLHero::GetHeroDuelOpponent(PlayerSlot), LeftMs);
+		}
+		ShowDuel(View, LeftMs);
+	}
+
+	void ShowDuel(FHOLDuelWindowView View, int LeftMs)
+	{
+		DuelView = View;
+		DuelTexts = "";
+		const bool bShown = View.Kind != EHOLDuelWindowKind::None;
+		DuelPanel.SetVisibility(bShown ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (!bShown)
+			return;
+		const FString Who = f"joueur {View.OpponentSlot + 1}";
+		const FString Title = View.Kind == EHOLDuelWindowKind::Incoming ? f"Le héros du {Who} te défie en duel" : f"Défi envoyé au héros du {Who}";
+		const FString Timer = f"{View.SecondsLeft} s";
+		DuelTitleText.SetText(FText::FromString(Title));
+		// D117: the last instants flash, so that the window cannot be missed.
+		const bool bFlashOff = View.bUrgent && ((LeftMs / 250) % 2) == 1;
+		DuelTitleText.SetColorAndOpacity(bFlashOff ? FLinearColor(0.9, 0.2, 0.15, 1.0) : UHOLScriptScreen::GetTextColor());
+		DuelTimerText.SetText(FText::FromString(Timer));
+		DuelBar.SetPercent(float(View.FillPermille) / 1000.0);
+		DuelButtons.SetVisibility(View.bCanAnswer ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		DuelTexts = Title + " | " + Timer + " | " + (View.bCanAnswer ? "Accepter / Refuser" : "sans bouton");
+	}
+
+	// A click on « Accepter » or « Refuser »: the answer sent (the server decides, D80: final). No window to answer: nothing.
+	bool ClickDuelAnswer(bool bAccept)
+	{
+		if (DuelView.Kind != EHOLDuelWindowKind::Incoming || !DuelView.bCanAnswer)
+			return false;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return false;
+		Controller.RequestDuelAnswer(bAccept);
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleDuelAcceptClicked()
+	{
+		ClickDuelAnswer(true);
+	}
+
+	UFUNCTION()
+	void HandleDuelRefuseClicked()
+	{
+		ClickDuelAnswer(false);
 	}
 
 	void BuildPauseScreen(UOverlay Frame)
@@ -244,6 +351,7 @@ FString TalentTexts = "";
 		if (HeroPanelSlot != nullptr)
 			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
+		RefreshDuel();
 		RefreshPause();
 	}
 
@@ -473,6 +581,10 @@ FString TalentTexts = "";
 			return ClickReturn();
 		if (WidgetName == n"HeroTalentButton")
 			return ClickTalent();
+		if (WidgetName == n"DuelAcceptButton")
+			return ClickDuelAnswer(true);
+		if (WidgetName == n"DuelRefuseButton")
+			return ClickDuelAnswer(false);
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		return false;
@@ -496,6 +608,7 @@ FString TalentTexts = "";
 			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
 			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
 			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) : "")
+			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

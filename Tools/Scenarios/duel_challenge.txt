@@ -19,6 +19,9 @@ hol.Duel.Challenge 1
 waitlog challenges slot 1 at step
 waitlog made
 hol.Combat.Enabled 1
-note 3. Le défi est parti : le serveur l'a pris dans la file d'ordres et l'a accepté (ligne "Duel order: slot 0 challenges slot 1 ... made" dans le journal). L'IA répond après son temps de réaction (2 à 3 s), avec sa décision dans le journal ("AI duel answer: accept|refuse (odds ..., bar ...)").
+wait 0.6
+hol.HUD.Report
+waitlog duel window: Défi envoyé au héros du joueur 2
+note 3. Une petite fenêtre en haut au centre montre "Défi envoyé au héros du joueur 2", la barre et les secondes qui descendent (D8 : le jeu ne s'arrête pas, aucun bouton pour celui qui défie). Le défi est parti : le serveur l'a pris dans la file d'ordres et l'a accepté (ligne "Duel order: slot 0 challenges slot 1 ... made" dans le journal). L'IA répond après son temps de réaction (2 à 3 s), avec sa décision dans le journal ("AI duel answer: accept|refuse (odds ..., bar ...)").
 waitlog AI duel answer:
 note 4. À forces égales l'IA Normale refuse presque toujours (elle exige 60 % de chances, 48 à 52 % ici) : le héros de l'IA hésite (l'Hésitation sur ses troupes n'est pas encore branchée, D7). Pour voir l'acceptation, lance le scénario duel_challenge_accept.
