@@ -1,0 +1,31 @@
+# RelaysInProgress.md : centres secondaires et relais neutres, XP de territoire (GDD § 6, § 9.4, D384, D388 ; règle de la ruine D348, de l'autel D380)
+
+Ouvert le 2026-10-31 (journée autonome, Elrond, branche `tiers`). Règle D483 : le neuf en Angelscript (règles pures, tests), le C++ pour la simulation (présence des unités, état répliqué, XP du héros).
+
+## Ce que le GDD tranche déjà (donc pas de question)
+
+- **Relais** (nom provisoire, D388) : lieux **neutres posés par la carte** (placement symétrique, nombre : level design), façon bâtiments capturables de BFME. Pris **en s'y tenant sans ennemi** (règle de la ruine D348 et de l'autel D380), gardés par leur preneur **jusqu'à ce qu'un ennemi les reprenne**. Ils donnent de l'**XP par minute** au héros, **rien d'autre** (pas de vision, pas d'effet trop fort).
+- **Règle de la ruine** (D348, V3) : attaquants dans la zone sans défenseur = le décompte monte (60 s, `ForumHoldTime`) ; **une seule unité du défenseur gèle** le décompte ; plus d'attaquant = il redescend (`ForumHoldDecay`, 2 s par seconde) ; zone = 12 m depuis le bord (`ForumHoldRadius`). Code existant : `Source/HeroesOfLiberty/Match/HOLForumRules.h` (C++, `EHOLForumHold`).
+- **Centre secondaire** (D384) : un vrai forum de plus (Paysans, dépôt, garnison, population), pas de vies, pas de zone anti-construction ; **compte pour l'XP de territoire** (D388). Aucun code de centre secondaire n'existe encore (`SecondaryCentre` : aucune occurrence dans `Source/`).
+- **XP de territoire** : famille « Territoire » ~15 % de l'XP d'une partie (D05, § 9.4), **part de chaque source à régler en test**. D542 : territoire à venir « avec ses systèmes (relais et centres secondaires) ».
+- **XP du héros** : `HOLHeroXPRules.h` (`EHOLXPSource::Exploration` = « exploration et territoire », poids 25 %, compte pendant la mort du héros, D06). Une mention seulement a été ajoutée dans ce fichier.
+
+## Plan (étapes de 15 min)
+
+- **R0 relevé** : FAIT (ce fichier). Aucune occurrence de « relay » dans `Source/` ni `Script/` avant cette étape.
+- **R1 règles pures en script** : FAIT (voir « Suivi »). `Script/Relays/HOLRelayRules.as` : prise par présence, propriétaire, gel, recul, preneur, XP de territoire (relais et centres secondaires), et `Script/Tests/HOLRelayRules_Test.as` (6 tests, rouge d'abord).
+- **R2 données** : où les cartes posent leurs relais (type de point dans les données de carte, placement symétrique, nombre : level design avec le chantier cartes, `MapsInProgress.md`) ; un relais est un lieu avec position et rayon de zone (rayon provisoire : celui de la ruine).
+- **R3 simulation (C++)** : `AHOLRelay` (ou état dans `AHOLGameState`), comptage des unités vivantes par camp dans la zone à chaque pas, appel de la règle (doublon C++ de `HOLRelay::Step` avec test d'accord, comme `HOLHeroTalent::CanPick`), état répliqué à tous (propriétaire, décompte, preneur : D203 style public).
+- **R4 XP** : le propriétaire de chaque relais reçoit `HOLRelay::TerritoryXP` dans le héros (source Exploration, SetXP/AddXP du sous-système du héros) ; reste à trancher si l'XP de territoire continue pendant la mort du héros (D06 compte l'exploration, D542 dit que seul le développement continue : à lire avant de coder).
+- **R5 affichage** : anneau de prise (réutiliser l'anneau de la ruine V3.3), couleur du propriétaire, mini-carte plus tard.
+- **R6 IA** : l'armée de l'IA va tenir les relais proches (après le chantier IA4).
+- **R7 vérification** : cas `quick_check`, scénario `relays`, essai de l'utilisateur, mesures au repos seulement à la clôture.
+
+## Questions (réponses dans `Auto_Journey_Retours.md`, section 2)
+
+- RQ1 : combien d'XP par minute pour un relais et pour un centre secondaire ? Provisoire codé : 10 et 10 (constantes de `HOLRelayRules.as`).
+- RQ2 : que devient la prise quand deux camps adverses (non alliés) sont dans le relais en même temps ? Provisoire codé : le décompte est gelé (A).
+
+## Suivi
+
+- 2026-10-31 (Elrond, `tiers`) : **chapitre ouvert, R0 et R1 faits.** R1 : règle pure `HOLRelay::Step(État, unités par camp, équipes)` (propriétaire, preneur, décompte ; 60 s = `ForumHoldTime`, recul 2 pas par pas = `ForumHoldDecay`, constantes de la ruine ; le pas de simulation vient du pont réel `HOLHero::GetSimulationRateHz`) et `HOLRelay::TerritoryXP` (report des fractions : une minute d'un relais donne exactement son taux, quel que soit le taux de simulation). **Rouge d'abord** : « Namespace 'HOLRelay' doesn't exist » (0 test), vert ensuite `tests` 596/596. Limites assumées : la règle ne connaît ni la position ni le rayon (R2/R3) ; l'alliance partage l'absence d'ennemi mais l'XP va au seul preneur (un seul camp, pas de partage entre alliés : à confirmer avec RQ2) ; l'XP pendant la mort du héros n'est pas tranchée (voir R4). Questions RQ1 et RQ2 posées dans Retours. Aucun code C++ de simulation, aucun scénario, aucun essai.
