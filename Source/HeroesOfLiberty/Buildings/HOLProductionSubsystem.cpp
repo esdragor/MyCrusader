@@ -48,22 +48,6 @@ namespace UE::HeroesOfLiberty::Production
 		default: return TEXT("none");
 		}
 	}
-
-	/** Why a research is refused, for the log (and the grid's message to come, T4). */
-	const TCHAR* DescribeBlock(const HOLTechnology::EBlock Block)
-	{
-		switch (Block)
-		{
-		case HOLTechnology::EBlock::AlreadyResearched: return TEXT("already researched");
-		case HOLTechnology::EBlock::AlreadyQueued: return TEXT("already queued");
-		case HOLTechnology::EBlock::TierTooLow: return TEXT("tier too low");
-		case HOLTechnology::EBlock::HeroLevelTooLow: return TEXT("hero level too low");
-		case HOLTechnology::EBlock::RequiresMissing: return TEXT("requires missing");
-		case HOLTechnology::EBlock::NoBuilding: return TEXT("no building");
-		case HOLTechnology::EBlock::CannotPay: return TEXT("cannot pay");
-		default: return TEXT("none");
-		}
-	}
 }
 
 bool UHOLProductionSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -301,7 +285,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 				if (Block != HOLTechnology::EBlock::None)
 				{
 					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
-						*Order.TypeName.ToString(), DescribeBlock(Block));
+						*Order.TypeName.ToString(), HOLTechnology::DescribeBlock(Block));
 					continue;
 				}
 				const EHOLProductionRefusal Refusal = HOLProduction::TryEnqueue(Queue, Order.TypeName, Cost, Type->MaxQueue, Stock);

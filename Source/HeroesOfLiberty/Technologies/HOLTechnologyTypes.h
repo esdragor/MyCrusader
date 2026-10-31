@@ -91,4 +91,7 @@ public:
 
 	/** A row of the table, or null. */
 	static const FHOLTechnologyRow* FindTechnology(FName Name);
+
+	/** The technologies researched in a building type (T4), in the order of the table: what its research row of the grid shows. */
+	static void GetBuildingTechnologies(FName Building, TArray<FName>& OutNames);
 };

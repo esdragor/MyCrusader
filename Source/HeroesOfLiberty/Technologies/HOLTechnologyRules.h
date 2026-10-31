@@ -73,6 +73,9 @@ namespace HOLTechnology
 
 	HEROESOFLIBERTY_API EBlock Check(const FHOLTechnologyRow& Row, const FFacts& Facts);
 
+	/** The words of a block for the logs ("tier too low", "requires missing"...), the same as the server's. */
+	HEROESOFLIBERTY_API const TCHAR* DescribeBlock(EBlock Block);
+
 	/** True when a technology can be researched in the game as it is: its building is a type that exists (T-Q4 = A). */
 	HEROESOFLIBERTY_API bool IsPlayable(const FHOLTechnologyRow& Row, TFunctionRef<bool(FName)> BuildingTypeExists);
 

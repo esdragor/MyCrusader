@@ -264,6 +264,12 @@ public:
 	 */
 	AHOLBuilding* FindProductionBuilding(FName TypeName, bool* bOutAny = nullptr) const;
 	/**
+	 * What the rules tell of researching Technology at Building (T4): the facts of this player as this machine knows them
+	 * (the tier, the hero level, his technologies, the research queued anywhere, his stock), through HOLCommandGrid::CheckResearch;
+	 * None when the server would take it. The grid greys the cell and the click says why from this.
+	 */
+	FHOLCommandFeedback CheckResearchAt(FName Technology, const AHOLBuilding* Building) const;
+	/**
 	 * A cell of the grid, by its key or a click on the HUD: asks the server to produce its unit type, starts the
 	 * placement of its building (D313), or asks the server to cancel the selected site (D311). What does not go
 	 * through (not enough resources, queue full) or waits (population full) is told (OnCommandFeedback).

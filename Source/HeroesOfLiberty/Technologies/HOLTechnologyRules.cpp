@@ -45,6 +45,21 @@ HOLTechnology::EBlock HOLTechnology::Check(const FHOLTechnologyRow& Row, const F
 	return EBlock::None;
 }
 
+const TCHAR* HOLTechnology::DescribeBlock(const EBlock Block)
+{
+	switch (Block)
+	{
+	case EBlock::AlreadyResearched: return TEXT("already researched");
+	case EBlock::AlreadyQueued: return TEXT("already queued");
+	case EBlock::TierTooLow: return TEXT("tier too low");
+	case EBlock::HeroLevelTooLow: return TEXT("hero level too low");
+	case EBlock::RequiresMissing: return TEXT("requires missing");
+	case EBlock::NoBuilding: return TEXT("no building");
+	case EBlock::CannotPay: return TEXT("cannot pay");
+	default: return TEXT("none");
+	}
+}
+
 bool HOLTechnology::IsPlayable(const FHOLTechnologyRow& Row, TFunctionRef<bool(FName)> BuildingTypeExists)
 {
 	return BuildingTypeExists(Row.Building);
