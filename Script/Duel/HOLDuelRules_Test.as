@@ -640,3 +640,61 @@ void Test_DuelBookArena(FUnitTest& T)
 	T.AssertEquals(DuelBob, HOLDuel::BookAdversaryOf(Book, DuelAlice), "the book's adversary");
 	T.AssertEquals(-1, HOLDuel::BookAdversaryOf(Book, 3), "none for a bystander");
 }
+// The challenge window's view, alone (DuelInProgress.md D8; GDD D117): every number is read from the preset or the duel.
+
+// The target sees the window that asks; the challenger the indicator; a third hero nothing; nobody once it is answered.
+void Test_DuelWindowWhoSeesWhat(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel D = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	FHOLDuelWindowView Target = HOLDuel::WindowView(S, D, DuelBob);
+	T.AssertTrue(Target.Kind == EHOLDuelWindowKind::Incoming, "the target gets the window");
+	T.AssertEquals(DuelAlice, Target.OpponentSlot, "it shows the challenger");
+	T.AssertTrue(Target.bCanAnswer, "with live buttons");
+	FHOLDuelWindowView Challenger = HOLDuel::WindowView(S, D, DuelAlice);
+	T.AssertTrue(Challenger.Kind == EHOLDuelWindowKind::Sent, "the challenger gets the indicator");
+	T.AssertEquals(DuelBob, Challenger.OpponentSlot, "it shows the target");
+	T.AssertFalse(Challenger.bCanAnswer, "no button: the challenger cannot cancel (D80)");
+	T.AssertTrue(HOLDuel::WindowView(S, D, 5).Kind == EHOLDuelWindowKind::None, "a third hero sees nothing");
+	T.AssertTrue(HOLDuel::WindowView(S, HOLDuel::Respond(S, D, true), DuelBob).Kind == EHOLDuelWindowKind::None, "answered: closed");
+	T.AssertTrue(HOLDuel::WindowView(S, HOLDuel::Respond(S, D, false), DuelBob).Kind == EHOLDuelWindowKind::None, "refused: closed");
+}
+
+// The countdown: the whole window at the start, seconds rounded up, the bar emptying to zero, urgent at the end.
+void Test_DuelWindowCountdown(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel D = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	FHOLDuelWindowView Start = HOLDuel::WindowView(S, D, DuelBob);
+	T.AssertEquals(1000, Start.FillPermille, "full bar at the start");
+	T.AssertEquals(Math::IntegerDivisionTrunc(S.ResponseMs + 999, 1000), Start.SecondsLeft, "seconds left, rounded up");
+	T.AssertFalse(Start.bUrgent, "not urgent at the start");
+	FHOLDuel Half = HOLDuel::Advance(S, D, S.ResponseMs / 2, 100, 100);
+	FHOLDuelWindowView Mid = HOLDuel::WindowView(S, Half, DuelBob);
+	T.AssertTrue(Mid.FillPermille < Start.FillPermille && Mid.FillPermille > 0, "the bar empties");
+	T.AssertTrue(Mid.SecondsLeft < Start.SecondsLeft, "the seconds go down");
+	FHOLDuel Last = HOLDuel::Advance(S, D, S.ResponseMs - 1, 100, 100);
+	FHOLDuelWindowView End = HOLDuel::WindowView(S, Last, DuelBob);
+	T.AssertEquals(1, End.SecondsLeft, "the last second reads 1 until the window ends");
+	T.AssertTrue(End.bUrgent, "the last instants are urgent");
+	T.AssertTrue(End.FillPermille >= 0 && End.FillPermille < Mid.FillPermille, "the bar is nearly empty");
+	T.AssertTrue(HOLDuel::WindowView(S, HOLDuel::Advance(S, D, S.ResponseMs, 100, 100), DuelBob).Kind == EHOLDuelWindowKind::None, "the window ran out: closed (silence is a refusal)");
+	// The sent indicator counts down the same.
+	T.AssertEquals(Mid.SecondsLeft, HOLDuel::WindowView(S, Half, DuelAlice).SecondsLeft, "the challenger sees the same countdown");
+}
+
+// In the book: the window of the viewer's own challenge; none once the duel is on.
+void Test_DuelBookWindow(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuelHero Hero;
+	FHOLDuelPlace Place;
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	T.AssertTrue(HOLDuel::BookWindowView(S, Book, DuelBob).Kind == EHOLDuelWindowKind::None, "an empty book: nothing");
+	HOLDuel::Start(S, Book, DuelAlice, DuelBob, Hero, Hero, Place);
+	T.AssertTrue(HOLDuel::BookWindowView(S, Book, DuelBob).Kind == EHOLDuelWindowKind::Incoming, "the target's window");
+	T.AssertTrue(HOLDuel::BookWindowView(S, Book, DuelAlice).Kind == EHOLDuelWindowKind::Sent, "the challenger's indicator");
+	T.AssertTrue(HOLDuel::BookWindowView(S, Book, 3).Kind == EHOLDuelWindowKind::None, "nothing for a bystander");
+	HOLDuel::Answer(S, Book, DuelBob, true);
+	T.AssertTrue(HOLDuel::BookWindowView(S, Book, DuelBob).Kind == EHOLDuelWindowKind::None, "the duel is on: the window is closed");
+}

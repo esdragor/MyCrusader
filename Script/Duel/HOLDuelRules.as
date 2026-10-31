@@ -72,6 +72,9 @@ struct FHOLDuelSettings
 	// no reward); false = B (nobody falls, both are left at one health, as for a time up).
 	bool bDoubleKnockOutBothFall = true;
 
+	// D117: the window flashes in its last instants, ms (presentation detail, indicative, to be tuned in tests).
+	int WindowUrgentMs = 0;
+
 	// DU-Q2, the three ways ready until the user answers; the preset takes A (the recommendation, not a decision).
 	EHOLDuelLostConditions LostConditions = EHOLDuelLostConditions::DropsFree;
 }
@@ -139,6 +142,7 @@ namespace HOLDuel
 		S.HesitationMs = 25000;
 		S.TriumphMs = 40000;
 		S.ArenaRadiusCm = 600;
+		S.WindowUrgentMs = 2000;
 		S.bDoubleKnockOutBothFall = true;
 		return S;
 	}
