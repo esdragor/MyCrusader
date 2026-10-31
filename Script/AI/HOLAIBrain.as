@@ -328,7 +328,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: feint order refused");
 		}
-		const bool bHeld = HOLAILives::HoldsBack(Situation) && !FeintNow.bStrike;
+		const bool bHeld = HOLAILives::ArmyHeld(Situation, FeintNow);
 		HOLAIArmy::UpdateDefence(State, (HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly) && !bHeld) || HOLAIForum::DefendAnyway(Situation, Threat), Now, Data.Army);
 		FHOLAISnipeMemory SnipeMemory;
 		Snipes.Find(PlayerIndex, SnipeMemory);
@@ -400,11 +400,11 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: defend with {Ids.Num()} soldiers toward ({Threat.Location.X}, {Threat.Location.Y})");
 			}
 		}
-		else if (!bHeld)
+		else
 		{
 			// (Not while the army is held back, D579: the feint's retreat and the soldiers kept out of the fight are not sent back to the assembly
 			// point, which stands by the attackers: found in a real game, the regroup order undid the feint's first order in the same thought.)
-			const TArray<int> Ids = HOLAIArmy::RegroupOrders(State, Home, Data.Army, Assembly, Now);
+			const TArray<int> Ids = HOLAILives::RegroupUnlessHeld(State, Home, Data.Army, Assembly, bHeld, Now);
 			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Assembly))
 			{
 				int Count = 0;

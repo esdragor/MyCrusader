@@ -290,6 +290,53 @@ void Test_LivesHardPunishingWaveLeaves(FUnitTest& T)
 	T.AssertTrue(HOLAIArmy::CanLaunch(Cooling, Lost, Data, false, 100.f), "forced, the cooldown is over");
 }
 
+// Found in a real game (probe on ai_normal, 2026-10-31): the feint's first order (fall back to the refuge) was undone in the same thought by
+// the regroup order (back to the assembly point, which stands by the attackers). No regroup while the army is held back (the feint before its
+// strike, the life let go); the soldiers are not marked as sent; once the strike begins, or when nothing holds the army, the regroup works.
+// The held state is read from the real chain (Judge -> FeintStep -> ArmyHeld), idle soldiers far from the assembly point.
+void Test_LivesNoRegroupWhileTheArmyIsHeld(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = LvData();
+	const FHOLAISummary Lost = LostSummary(Data, 2);
+	const FHOLAIThreat Threat = HOLAIArmy::Threat(Lost, Data);
+	const FVector Assembly = FVector(-3000, 0, 0);
+	T.AssertTrue(HOLAIArmy::FlatDistance(Lost.Army[0].Location, Assembly) > Data.AssemblyRadius, "the soldiers are far from the assembly point");
+
+	// Normal feints: the fall back (phase Back) and the go-round (phase Around) hold the army.
+	const FHOLAIForumSituation Feint = HOLAIForum::Judge(Lost, Data, Threat, EHOLAIDifficulty::Normal);
+	T.AssertTrue(Feint.Call == EHOLAILifeCall::Feint, "Normal feints");
+	FHOLAIFeintMemory Memory;
+	const FHOLAIFeintStep Back = HOLAILives::FeintStep(Memory, Lost, Data, Threat, Feint, 100.f);
+	T.AssertTrue(HOLAILives::ArmyHeld(Feint, Back), "falling back: the army is held");
+	FHOLAIDefence State;
+	T.AssertEquals(0, HOLAILives::RegroupUnlessHeld(State, Lost, Data, Assembly, HOLAILives::ArmyHeld(Feint, Back), 100.f).Num(), "falling back: no regroup");
+	T.AssertEquals(0, State.RegroupIds.Num(), "and nobody is marked as sent");
+	const FHOLAIFeintStep Round = HOLAILives::FeintStep(Memory, Lost, Data, Threat, Feint, 100.f + Data.Lives.FeintBackSeconds);
+	T.AssertEquals(0, HOLAILives::RegroupUnlessHeld(State, Lost, Data, Assembly, HOLAILives::ArmyHeld(Feint, Round), 100.f + Data.Lives.FeintBackSeconds).Num(), "going round: no regroup");
+
+	// The strike releases the army: the regroup works again (and sends the idle soldiers far from the point).
+	const float StrikeAt = 100.f + Data.Lives.FeintBackSeconds + Data.Lives.FeintAroundSeconds;
+	const FHOLAIFeintStep Strike = HOLAILives::FeintStep(Memory, Lost, Data, Threat, Feint, StrikeAt);
+	T.AssertTrue(Strike.bStrike && !HOLAILives::ArmyHeld(Feint, Strike), "the strike: the army is no longer held");
+	T.AssertEquals(Lost.Army.Num(), HOLAILives::RegroupUnlessHeld(State, Lost, Data, Assembly, HOLAILives::ArmyHeld(Feint, Strike), StrikeAt).Num(), "the strike: the regroup works");
+
+	// Hard that lets the life go keeps its army out of the fight and away from the regroup.
+	const FHOLAIForumSituation Let = HOLAIForum::Judge(Lost, Data, Threat, EHOLAIDifficulty::Hard);
+	T.AssertTrue(Let.Call == EHOLAILifeCall::Let, "Hard lets the life go");
+	FHOLAIFeintMemory NoFeint;
+	const FHOLAIFeintStep None = HOLAILives::FeintStep(NoFeint, Lost, Data, Threat, Let, 100.f);
+	FHOLAIDefence HardState;
+	T.AssertEquals(0, HOLAILives::RegroupUnlessHeld(HardState, Lost, Data, Assembly, HOLAILives::ArmyHeld(Let, None), 100.f).Num(), "the life let go: no regroup");
+
+	// Nothing holds the army (Easy, or a forum not attacked): the regroup works.
+	const FHOLAIForumSituation Free = HOLAIForum::Judge(Lost, Data, Threat, EHOLAIDifficulty::Easy);
+	FHOLAIDefence FreeState;
+	T.AssertEquals(Lost.Army.Num(), HOLAILives::RegroupUnlessHeld(FreeState, Lost, Data, Assembly, HOLAILives::ArmyHeld(Free, None), 100.f).Num(), "not held: the regroup works");
+	const FHOLAIForumSituation Quiet;
+	FHOLAIDefence QuietState;
+	T.AssertEquals(Lost.Army.Num(), HOLAILives::RegroupUnlessHeld(QuietState, Lost, Data, Assembly, HOLAILives::ArmyHeld(Quiet, None), 100.f).Num(), "forum not attacked: the regroup works");
+}
+
 // Evolving: Easy, then Normal, then Hard with the time; the other levels do not move. Through the real chain: the same lost forum is given
 // away (Easy), feinted (Normal) and let go (Hard).
 void Test_LivesEvolvingPassesFromEasyToHard(FUnitTest& T)

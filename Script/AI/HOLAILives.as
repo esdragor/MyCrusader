@@ -164,6 +164,25 @@ namespace HOLAILives
 		return Situation.bAttacked && (Situation.Call == EHOLAILifeCall::Feint || Situation.Call == EHOLAILifeCall::Let);
 	}
 
+	// The army is still held back this thought: held by the decision, and the feint has not reached its strike.
+	bool ArmyHeld(const FHOLAIForumSituation& Situation, const FHOLAIFeintStep& Feint)
+	{
+		return HoldsBack(Situation) && !Feint.bStrike;
+	}
+
+	// The soldiers to send back to the assembly point (RegroupOrders), except while the army is held back: the feint's retreat and the
+	// soldiers kept out of the fight must not be sent back to the assembly point, which stands by the attackers (found in a real game: the
+	// regroup order undid the feint's first order in the same thought). Nothing is marked as sent when held.
+	TArray<int> RegroupUnlessHeld(FHOLAIDefence& State, const FHOLAISummary& Summary, const FHOLAIArmyData& Data, FVector AssemblyPoint, bool bHeld, float Now)
+	{
+		TArray<int> Held;
+		if (bHeld)
+		{
+			return Held;
+		}
+		return HOLAIArmy::RegroupOrders(State, Summary, Data, AssemblyPoint, Now);
+	}
+
 	// The refuge: from the centre, away from the attackers, RefugeDistance far (the origin side when they stand on the centre).
 	FVector RefugePoint(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIThreat& Threat)
 	{
