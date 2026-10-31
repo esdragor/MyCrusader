@@ -182,3 +182,23 @@ void Test_LivesEasyRecallsTheWave(FUnitTest& T)
 	const FHOLAIThreat StrongThreat = HOLAIArmy::Threat(Strong, Data);
 	T.AssertTrue(HOLAIForum::WaveRecalled(Strong, Data, StrongThreat, HOLAIForum::Judge(Strong, Data, StrongThreat, EHOLAIDifficulty::Normal)), "Normal: three enemies at home still recall the wave");
 }
+
+// Found in a real game (probe on ai_easy, 2026-10-31): the main centre is 1600 cm wide, so soldiers hitting its WALL stand ~900 cm from its
+// point, past AttackedRadius (800): the forum under attack was not seen as attacked. The radius counts from the wall (ForumHalfSize added).
+void Test_LivesTheForumWallIsAttacked(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = LivesData();
+	T.AssertEquals(800.f, Data.ForumHalfSize, "half of the main centre's 1600 cm footprint");
+	// Men-at-arms at 1100 cm from the centre's point: at the wall (800 from the point to the wall, 300 beyond), past the old 800 cm radius.
+	const FHOLAISummary Summary = LivesSummary(Data, 2, false, 2, 3, 1100.f);
+	const FHOLAIThreat Threat = HOLAIArmy::Threat(Summary, Data);
+	T.AssertTrue(Threat.bThreatened, "the Men-at-arms are near the base");
+	T.AssertTrue(Threat.bAttackingBuilding, "at the centre's wall: the building is attacked");
+	const FHOLAIForumSituation Situation = HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Easy);
+	T.AssertTrue(Situation.bAttacked, "the forum is attacked");
+
+	// Still not attacked when they are beyond the wall's reach (AttackedRadius past the wall).
+	const FHOLAISummary Away = LivesSummary(Data, 2, false, 2, 3, Data.ForumHalfSize + Data.AttackedRadius + 300.f);
+	T.AssertFalse(HOLAIForum::Judge(Away, Data, HOLAIArmy::Threat(Away, Data), EHOLAIDifficulty::Easy).bAttacked, "farther than the wall's reach: not attacked");
+	T.AssertFalse(HOLAIArmy::Threat(Away, Data).bAttackingBuilding, "no building attacked either");
+}

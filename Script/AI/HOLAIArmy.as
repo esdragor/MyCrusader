@@ -77,6 +77,10 @@ struct FHOLAIArmyData
 	// An enemy soldier this close to a building is taken to attack it (cm): the army then meets it from a lower ratio, the base being hit.
 	float AttackedRadius = 800.f;
 	float DefenceMinRatioAttacked = 0.05f;
+	// The main centre's half width (cm): its footprint is 1600 cm (BuildingTypes.csv), so a soldier hitting its wall stands ~800 cm from the
+	// centre's point, past AttackedRadius. Added to AttackedRadius for the centre only (found in a real game, 2026-10-31: the forum under
+	// attack was not seen as attacked). Set to 0 first (red test), then 800.
+	float ForumHalfSize = 800.f;
 
 	// Peasants (IA2.6f): one within this of an enemy soldier runs to the centre (cm), ordered again at most this often (s).
 	float FleeRadius = 1500.f;
@@ -599,18 +603,22 @@ namespace HOLAIArmy
 	{
 		FHOLAIThreat Result;
 		TArray<FVector> Guarded;
+		TArray<float> Reach;
 		if (Summary.bHasCentre)
 		{
 			Guarded.Add(Summary.CentreLocation);
+			Reach.Add(Data.AttackedRadius + Data.ForumHalfSize);
 		}
 		// IA3.4: in Regicide the King's place is guarded too (the army comes to the soldiers that near him).
 		if (Summary.bRegicide && Summary.bHasKing)
 		{
 			Guarded.Add(Summary.King.Location);
+			Reach.Add(Data.AttackedRadius);
 		}
 		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
 		{
 			Guarded.Add(Summary.Buildings[Index].Location);
+			Reach.Add(Data.AttackedRadius);
 		}
 		TArray<FHOLAIUnit> Near;
 		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
@@ -659,7 +667,7 @@ namespace HOLAIArmy
 		{
 			for (int Place = 0; Place < Guarded.Num(); Place++)
 			{
-				if (FlatDistance(Near[Index].Location, Guarded[Place]) <= Data.AttackedRadius)
+				if (FlatDistance(Near[Index].Location, Guarded[Place]) <= Reach[Place])
 				{
 					Result.bAttackingBuilding = true;
 					break;

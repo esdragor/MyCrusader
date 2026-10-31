@@ -280,7 +280,8 @@ namespace HOLAIForum
 		bool bAtForum = Summary.OwnForum.bDown;
 		for (int Index = 0; Index < Summary.Enemies.Num() && !bAtForum; Index++)
 		{
-			bAtForum = HOLAIArmy::IsThreatening(Summary.Enemies[Index]) && HOLAIArmy::FlatDistance(Summary.Enemies[Index].Location, Place) <= Data.AttackedRadius;
+			// From the forum's wall, not its point: the main centre is 1600 cm wide (Data.ForumHalfSize).
+			bAtForum = HOLAIArmy::IsThreatening(Summary.Enemies[Index]) && HOLAIArmy::FlatDistance(Summary.Enemies[Index].Location, Place) <= Data.AttackedRadius + Data.ForumHalfSize;
 		}
 		if (!bAtForum)
 		{
