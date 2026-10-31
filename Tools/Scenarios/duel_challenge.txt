@@ -1,0 +1,24 @@
+﻿# Le défi de duel (Duel D4) : ton héros défie celui de l'IA par la vraie commande (console hol.Duel.Challenge 1), l'IA répond selon son estimation (HOLAIDuel). RÉGLAGE PROVISOIRE : DU-Q2 (que devient le défi si les conditions cessent d'être vraies pendant la réponse) = A par défaut, et le rayon de la zone anti-forum (2500 cm) est un chiffre provisoire (DU-Q3)
+# Plain, toi (slot 0) contre une IA (slot 1), duel_challenge.json (copie de duel.json) : 5 Paysans et un héros chacun. Les deux armées marchent au centre de la carte (hol.Units.Move) pour que les héros soient à courte distance, hors de la zone des forums.
+# Ce que ce scénario montre : la commande de défi (D4), la réponse de l'IA (accepte ou refuse selon ses chances, avec sa ligne de journal), et l'état du duel répliqué. La fenêtre de défi à l'écran (D8) et le cercle dessiné ne sont pas dans ce scénario.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+hol.Combat.Enabled 0
+note 1. Ton héros et celui de l'IA marchent vers le centre de la carte avec leurs Paysans (hol.Units.Move). Attends environ une minute.
+hol.Units.Move -300 300 0
+hol.Units.Move 300 300 1
+wait 40
+wait 40
+hol.Camera.FocusNear 0 300
+frames 10
+note 2. Les deux héros sont face à face au centre. Dans 3 s ton héros défie le héros de l'IA (console hol.Duel.Challenge 1, comme le fera le bouton).
+wait 3
+hol.Duel.Challenge 1
+waitlog challenges slot 1 at step
+waitlog made
+hol.Combat.Enabled 1
+note 3. Le défi est parti : le serveur l'a pris dans la file d'ordres et l'a accepté (ligne "Duel order: slot 0 challenges slot 1 ... made" dans le journal). L'IA répond après son temps de réaction (2 à 3 s), avec sa décision dans le journal ("AI duel answer: accept|refuse (odds ..., bar ...)").
+waitlog AI duel answer:
+note 4. À forces égales l'IA Normale refuse presque toujours (elle exige 60 % de chances, 48 à 52 % ici) : le héros de l'IA hésite (l'Hésitation sur ses troupes n'est pas encore branchée, D7). Pour voir l'acceptation, lance le scénario duel_challenge_accept.
