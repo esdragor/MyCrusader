@@ -4,14 +4,42 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-30 18:14\n"
-"PO-Revision-Date: 2026-10-30 18:14\n"
+"POT-Creation-Date: 2026-10-31 07:10\n"
+"PO-Revision-Date: 2026-10-31 07:10\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#. Key:	ReminderAdvised
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(80)
+#: Script/Talents/HOLTalentPanel.as(80)
+msgctxt "HOLTalentPanel,ReminderAdvised"
+msgid "Talents à dépenser : {0} — choix conseillé"
+msgstr "Talents à dépenser : {0} — choix conseillé"
+
+#. Key:	Reminder
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(81)
+#: Script/Talents/HOLTalentPanel.as(81)
+msgctxt "HOLTalentPanel,Reminder"
+msgid "Talents à dépenser : {0}"
+msgstr "Talents à dépenser : {0}"
+
+#. Key:	TooltipAdvised
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(87)
+#: Script/Talents/HOLTalentPanel.as(87)
+msgctxt "HOLTalentPanel,TooltipAdvised"
+msgid "Prend le talent de la famille la plus remplie"
+msgstr "Prend le talent de la famille la plus remplie"
+
+#. Key:	TooltipFirst
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(88)
+#: Script/Talents/HOLTalentPanel.as(88)
+msgctxt "HOLTalentPanel,TooltipFirst"
+msgid "Choisissez d'abord un premier talent : l'arbre arrive"
+msgstr "Choisissez d'abord un premier talent : l'arbre arrive"
 
 #. Key:	Level
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(243)
@@ -195,166 +223,166 @@ msgctxt "HOLGameScreen,BackLine"
 msgid "{Name} : de retour"
 msgstr "{Name} : de retour"
 
-#. Key:	MessageOwnHeld
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(110)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(110)
-msgctxt "HOLGameScreen,MessageOwnHeld"
-msgid "{0} tient votre ruine"
-msgstr "{0} tient votre ruine"
-
-#. Key:	MessageYouHold
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(115)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(115)
-msgctxt "HOLGameScreen,MessageYouHold"
-msgid "Vous tenez la ruine de {0}"
-msgstr "Vous tenez la ruine de {0}"
-
-#. Key:	MessageHeld
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(120)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(120)
-msgctxt "HOLGameScreen,MessageHeld"
-msgid "{0} tient la ruine de {1}"
-msgstr "{0} tient la ruine de {1}"
-
-#. Key:	MessageOwnRazed
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(129)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(129)
-msgctxt "HOLGameScreen,MessageOwnRazed"
-msgid "Vos fondations sont rasées — {0}"
-msgstr "Vos fondations sont rasées — {0}"
-
-#. Key:	MessageRazed
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(133)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(133)
-msgctxt "HOLGameScreen,MessageRazed"
-msgid "Fondations de {0} rasées — {1}"
-msgstr "Fondations de {0} rasées — {1}"
-
-#. Key:	MessageOwnKingDied
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(140)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(140)
-msgctxt "HOLGameScreen,MessageOwnKingDied"
-msgid "Votre Roi est mort"
-msgstr "Votre Roi est mort"
-
-#. Key:	MessageKingDied
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(144)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(144)
-msgctxt "HOLGameScreen,MessageKingDied"
-msgid "Le Roi de {0} est mort"
-msgstr "Le Roi de {0} est mort"
-
-#. Key:	MessageOwnDefeated
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(152)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(152)
-msgctxt "HOLGameScreen,MessageOwnDefeated"
-msgid "Vous êtes vaincu"
-msgstr "Vous êtes vaincu"
-
-#. Key:	MessageDefeated
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(156)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(156)
-msgctxt "HOLGameScreen,MessageDefeated"
-msgid "{0} est vaincu"
-msgstr "{0} est vaincu"
-
-#. Key:	MessageHeroReady
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(168)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(168)
-msgctxt "HOLGameScreen,MessageHeroReady"
-msgid "Votre héros est prêt à revenir"
-msgstr "Votre héros est prêt à revenir"
-
-#. Key:	MessageHeroLevel
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(181)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(181)
-msgctxt "HOLGameScreen,MessageHeroLevel"
-msgid "Paladin-Commandant : niveau {0}"
-msgstr "Paladin-Commandant : niveau {0}"
-
-#. Key:	MessageHeroTier
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(188)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(188)
-msgctxt "HOLGameScreen,MessageHeroTier"
-msgid "Palier {0} atteint"
-msgstr "Palier {0} atteint"
-
-#. Key:	PlayerN
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(23)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(23)
-msgctxt "HOLGameScreen,PlayerN"
-msgid "Joueur {0}"
-msgstr "Joueur {0}"
-
-#. Key:	You
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(23)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(23)
-msgctxt "HOLGameScreen,You"
-msgid "Vous"
-msgstr "Vous"
-
-#. Key:	AIEasy
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(30)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(30)
-msgctxt "HOLGameScreen,AIEasy"
-msgid "Facile"
-msgstr "Facile"
-
-#. Key:	AIHard
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(31)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(31)
-msgctxt "HOLGameScreen,AIHard"
-msgid "Difficile"
-msgstr "Difficile"
-
-#. Key:	AIEvolving
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(32)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(32)
-msgctxt "HOLGameScreen,AIEvolving"
-msgid "Évolutive"
-msgstr "Évolutive"
-
-#. Key:	AINormal
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(33)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(33)
-msgctxt "HOLGameScreen,AINormal"
-msgid "Normal"
-msgstr "Normal"
-
-#. Key:	AIName
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(39)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(39)
-msgctxt "HOLGameScreen,AIName"
-msgid "IA {0} {1}"
-msgstr "IA {0} {1}"
-
 #. Key:	TableLife
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(136)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(136)
 msgctxt "HOLGameScreen,TableLife"
 msgid "{0} vie"
 msgstr "{0} vie"
 
 #. Key:	TableLives
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(88)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(136)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(136)
 msgctxt "HOLGameScreen,TableLives"
 msgid "{0} vies"
 msgstr "{0} vies"
 
 #. Key:	MessageOwnFell
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(95)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(95)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(157)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(157)
 msgctxt "HOLGameScreen,MessageOwnFell"
 msgid "Votre forum est tombé — {0}"
 msgstr "Votre forum est tombé — {0}"
 
 #. Key:	MessageFell
-#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(99)
-#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(99)
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(161)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(161)
 msgctxt "HOLGameScreen,MessageFell"
 msgid "Le forum de {0} est tombé — {1}"
 msgstr "Le forum de {0} est tombé — {1}"
+
+#. Key:	MessageOwnHeld
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(172)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(172)
+msgctxt "HOLGameScreen,MessageOwnHeld"
+msgid "{0} tient votre ruine"
+msgstr "{0} tient votre ruine"
+
+#. Key:	MessageYouHold
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(177)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(177)
+msgctxt "HOLGameScreen,MessageYouHold"
+msgid "Vous tenez la ruine de {0}"
+msgstr "Vous tenez la ruine de {0}"
+
+#. Key:	MessageHeld
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(182)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(182)
+msgctxt "HOLGameScreen,MessageHeld"
+msgid "{0} tient la ruine de {1}"
+msgstr "{0} tient la ruine de {1}"
+
+#. Key:	MessageOwnRazed
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(191)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(191)
+msgctxt "HOLGameScreen,MessageOwnRazed"
+msgid "Vos fondations sont rasées — {0}"
+msgstr "Vos fondations sont rasées — {0}"
+
+#. Key:	MessageRazed
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(195)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(195)
+msgctxt "HOLGameScreen,MessageRazed"
+msgid "Fondations de {0} rasées — {1}"
+msgstr "Fondations de {0} rasées — {1}"
+
+#. Key:	MessageOwnKingDied
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(202)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(202)
+msgctxt "HOLGameScreen,MessageOwnKingDied"
+msgid "Votre Roi est mort"
+msgstr "Votre Roi est mort"
+
+#. Key:	MessageKingDied
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(206)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(206)
+msgctxt "HOLGameScreen,MessageKingDied"
+msgid "Le Roi de {0} est mort"
+msgstr "Le Roi de {0} est mort"
+
+#. Key:	MessageOwnDefeated
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(214)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(214)
+msgctxt "HOLGameScreen,MessageOwnDefeated"
+msgid "Vous êtes vaincu"
+msgstr "Vous êtes vaincu"
+
+#. Key:	MessageDefeated
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(218)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(218)
+msgctxt "HOLGameScreen,MessageDefeated"
+msgid "{0} est vaincu"
+msgstr "{0} est vaincu"
+
+#. Key:	MessageHeroReady
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(230)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(230)
+msgctxt "HOLGameScreen,MessageHeroReady"
+msgid "Votre héros est prêt à revenir"
+msgstr "Votre héros est prêt à revenir"
+
+#. Key:	MessageHeroLevel
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(243)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(243)
+msgctxt "HOLGameScreen,MessageHeroLevel"
+msgid "Paladin-Commandant : niveau {0}"
+msgstr "Paladin-Commandant : niveau {0}"
+
+#. Key:	MessageHeroTier
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(250)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(250)
+msgctxt "HOLGameScreen,MessageHeroTier"
+msgid "Palier {0} atteint"
+msgstr "Palier {0} atteint"
+
+#. Key:	PlayerN
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(26)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(26)
+msgctxt "HOLGameScreen,PlayerN"
+msgid "Joueur {0}"
+msgstr "Joueur {0}"
+
+#. Key:	You
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(26)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(26)
+msgctxt "HOLGameScreen,You"
+msgid "Vous"
+msgstr "Vous"
+
+#. Key:	AIEasy
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(33)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(33)
+msgctxt "HOLGameScreen,AIEasy"
+msgid "Facile"
+msgstr "Facile"
+
+#. Key:	AIHard
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(34)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(34)
+msgctxt "HOLGameScreen,AIHard"
+msgid "Difficile"
+msgstr "Difficile"
+
+#. Key:	AIEvolving
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(35)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(35)
+msgctxt "HOLGameScreen,AIEvolving"
+msgid "Évolutive"
+msgstr "Évolutive"
+
+#. Key:	AINormal
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(36)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(36)
+msgctxt "HOLGameScreen,AINormal"
+msgid "Normal"
+msgstr "Normal"
+
+#. Key:	AIName
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(42)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(42)
+msgctxt "HOLGameScreen,AIName"
+msgid "IA {0} {1}"
+msgstr "IA {0} {1}"
 
 #. Key:	ForumRuin
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(408)

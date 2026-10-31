@@ -4326,6 +4326,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         (($XPSounds -join ",") -eq "1 -> 2,2 -> 3,3 -> 4,4 -> 6")
     $XPFlashes = @($HeroXP | Select-String -Pattern "Hero flash: slot (\d) level (\d -> \d)" | ForEach-Object { "slot $($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
     $Checks["his golden flash at each level up, none at his return ($($XPFlashes -join '; '))"] = (($XPFlashes -join ";") -eq "slot 0 1 -> 2;slot 0 2 -> 3;slot 0 3 -> 4;slot 0 4 -> 6")
+    # T5: the talent point's reminder follows the level (a point a level from 2, none taken): 1 at level 2, 2 at level 3, 3 at level 4, 5 at
+    # level 6, with the line « Talents à dépenser : N » and no advice before a first talent.
+    $XPTalents = @($HeroXP | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| Talents à dépenser : (\d+)$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
+    $Checks["the talent reminder: points $($TalentPoints -join ',') (1,1,2,3,5), no advice before a first talent ($($XPTalents.Count) lines)"] =
+        (($TalentPoints -join ",") -eq "1,1,2,3,5") -and ($XPTalents.Count -eq 5)
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hero xp" $Checks) -and $AllOk

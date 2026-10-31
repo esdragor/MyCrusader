@@ -69,3 +69,33 @@ namespace HOLTalentPanel
 		return View;
 	}
 }
+
+// The panel's texts by key, in French (source of the gathered texts, GatherText; English and Japanese in Tools/Localization/fill_po.py, keys
+// "HOLTalentPanel,<Name>"). Literals only in these calls. {0} is the points kept.
+namespace HOLTalentText
+{
+	FText ReminderPattern(bool bAdvised)
+	{
+		if (bAdvised)
+			return NSLOCTEXT("HOLTalentPanel", "ReminderAdvised", "Talents à dépenser : {0} — choix conseillé");
+		return NSLOCTEXT("HOLTalentPanel", "Reminder", "Talents à dépenser : {0}");
+	}
+
+	FText TooltipPattern(bool bAdvised)
+	{
+		if (bAdvised)
+			return NSLOCTEXT("HOLTalentPanel", "TooltipAdvised", "Prend le talent de la famille la plus remplie");
+		return NSLOCTEXT("HOLTalentPanel", "TooltipFirst", "Choisissez d'abord un premier talent : l'arbre arrive");
+	}
+
+	// The reminder's line: "Talents à dépenser : 2 — choix conseillé".
+	FString ReminderText(FHOLTalentPanelView View)
+	{
+		return ReminderPattern(View.bAdviceEnabled).ToString().Replace("{0}", f"{View.Points}");
+	}
+
+	FString TooltipText(FHOLTalentPanelView View)
+	{
+		return TooltipPattern(View.bAdviceEnabled).ToString();
+	}
+}
