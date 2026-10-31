@@ -98,6 +98,25 @@ void Test_CampLeashAndReturn(FUnitTest& T)
 	T.AssertTrue(Back.State == EHOLCampState::Fighting, "an intruder in aggro while returning: fighting again");
 }
 
+// A blow from beyond the leash radius (an archer far off) draws no camp and does not hold a fight: the camp does not chase, nor fall back
+// and come out again, for what it cannot reach (both aggro modes).
+void Test_CampIgnoresWhatItCannotReach(FUnitTest& T)
+{
+	for (int Mode = 0; Mode < 2; Mode++)
+	{
+		FHOLCampSettings S;
+		S.Aggro = Mode == 0 ? EHOLCampAggro::OnSight : EHOLCampAggro::OnAttack;
+		const TArray<FHOLCampMember> Members = CampMembers(3, CampPost);
+		FHOLCampMemory Memory;
+		HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(S.LeashRadius + 1.f), true);
+		T.AssertTrue(Memory.State == EHOLCampState::Guarding, f"mode {Mode}: a blow from beyond the leash does not draw the camp");
+
+		Memory.State = EHOLCampState::Fighting;
+		FHOLCampStep Gone = HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(S.LeashRadius + 1.f), true);
+		T.AssertTrue(Memory.State == EHOLCampState::Returning && Gone.ReturnIds.Num() == Members.Num(), f"mode {Mode}: and a fight against what stands out of reach ends in the return");
+	}
+}
+
 // The camp is cleared when its last member dies, once; it never comes back (D32: no respawn), whatever is listed afterwards.
 void Test_CampClearedForGood(FUnitTest& T)
 {
