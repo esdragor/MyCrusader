@@ -1,0 +1,18 @@
+# Les relais neutres (R5, GDD 9.4, D388) : un lieu neutre pris en s'y tenant sans ennemi, son anneau de prise, l'XP de territoire du hÃ©ros
+# Plain, toi (slot 0) contre une IA (slot 1), relays.json (copie de talents.json) : 5 Paysans et un hÃ©ros chacun. Un relais est posÃ© par console (hol.Relay.Add : les cartes n'en posent pas encore, R2) Ã  5 000 cm de ton centre.
+# RÃ¨gle (copie de la ruine, D348) : seuls tes soldats dans la zone (rayon 12 m), sans ennemi, remplissent l'anneau (60 s, ici 20 s) ; une unitÃ© ennemie dans la zone gÃ¨le le dÃ©compte ; plus personne, il redescend ; pris, le relais reste Ã  toi jusqu'Ã  ce qu'un ennemi le reprenne.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Relay.Clear
+hol.Relay.HoldSeconds 20
+hol.Relay.Add -10000 3000 1200
+hol.Camera.Focus -10000 3000
+frames 10
+note 1. Au centre de l'Ã©cran, un cercle sombre et mince : le relais, neutre. Rien n'y est encore ; son anneau ne se remplit que si des soldats s'y tiennent.
+hol.Units.Spawn 6 -15900 900 0 ManAtArms 250
+wait 4
+note 2. SÃ©lectionne tes 6 Hommes d'armes (Tab ou boÃ®te) Ã  ton centre et envoie-les dans le cercle (clic droit au centre du cercle, 50 m Ã  l'est). Ã€ regarder : dÃ¨s qu'ils y sont, un arc Ã©pais de ta couleur monte depuis le haut du cercle, dans le sens des aiguilles d'une montre (20 s).
+note 3. Plein, le cercle entier prend ta couleur (mince) : le relais est Ã  toi, et ton hÃ©ros gagne de l'XP de territoire par minute (10 par minute : environ +1 toutes les 6 s, regarde la barre d'XP du hÃ©ros ; l'XP du hÃ©ros va avec l'autre XP).
+note 4. Reprise : console hol.Units.Spawn 3 -10000 3000 1 Spearman 100 pose 3 Lanciers ennemis dans le cercle ; si tes soldats sont partis, un arc de la couleur de l'ennemi monte et le relais passe Ã  lui (en 20 s). Si tes soldats y sont encore, le dÃ©compte est gelÃ© tant que les deux camps s'y tiennent.
+note 5. Console utile : hol.Relay.Report (Ã©tat de chaque relais), hol.Relay.HoldSeconds 60 (la durÃ©e voulue par dÃ©faut), hol.Relay.Add <X> <Y> [rayon] (un autre relais), hol.Relay.Clear.
