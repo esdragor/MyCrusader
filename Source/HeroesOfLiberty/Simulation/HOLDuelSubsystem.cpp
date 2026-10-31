@@ -50,6 +50,17 @@ bool UHOLDuelSubsystem::BeginDuelNow(const int32 Challenger, const int32 Target)
 	return bBegan;
 }
 
+bool UHOLDuelSubsystem::SetPostureNow(const int32 Slot, const int32 Posture)
+{
+	const UWorld* World = GetWorld();
+	return World && World->GetNetMode() != NM_Client && bDuelOn && SetPosture(Slot, Posture);
+}
+
+int32 UHOLDuelSubsystem::GetDamagePercentNow(const int32 Slot)
+{
+	return bDuelOn ? DamagePercent(Slot) : 100;
+}
+
 bool UHOLDuelSubsystem::TickNow(const int32 Step)
 {
 	const UWorld* World = GetWorld();

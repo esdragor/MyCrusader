@@ -516,11 +516,17 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// anything that is not a hero; the pass below only reads that table. A unit never aims at, nor strikes, a protected hero.
 	constexpr int32 DuelStride = FHOLMatchConfig::MaxSlots + 1;
 	TArray<uint8> DuelHits;
+	// D6: the percent of his damage each duellist deals (his posture), by hero slot; 100 for anyone else.
+	TArray<int32> DuelDamagePercent;
 	UHOLDuelSubsystem* Book = UHOLDuelSubsystem::Find(World);
 	const bool bDuelOn = Book && Book->IsDuelOn();
 	if (bDuelOn)
 	{
 		DuelHits.SetNumZeroed(DuelStride * DuelStride);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			DuelDamagePercent.Add(Book->GetDamagePercentNow(Slot));
+		}
 		for (int32 Attacker = -1; Attacker < FHOLMatchConfig::MaxSlots; ++Attacker)
 		{
 			for (int32 Victim = -1; Victim < FHOLMatchConfig::MaxSlots; ++Victim)
@@ -540,6 +546,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	const auto CanTouch = [&](const FFighter& Attacker, const FFighter& Victim)
 	{
 		return !bDuelOn || CanHitSlots(HeroSlotOf(Attacker), HeroSlotOf(Victim));
+	};
+	// D6: a duellist's damage follows his posture (HOLDuelKit); whole percents, the same on every machine.
+	const auto DuelScaled = [&](const FFighter& Attacker, const float Damage)
+	{
+		const int32 HeroSlot = bDuelOn ? HeroSlotOf(Attacker) : INDEX_NONE;
+		return HeroSlot != INDEX_NONE && DuelDamagePercent.IsValidIndex(HeroSlot) ? Damage * static_cast<float>(DuelDamagePercent[HeroSlot]) * 0.01f : Damage;
 	};
 
 	// The step's units, in identifier order (the outcome does not depend on the chunks). Each one's camp read once here.
@@ -2217,7 +2229,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Arrow.TargetId = Enemy.UnitId;
 			Arrow.ShooterType = Constants.TypeName;
 			Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
-			Arrow.Damage = Damage;
+			Arrow.Damage = DuelScaled(Fighter, Damage);
 			Arrow.ReleaseStep = StepIndex;
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++Combat.Hits;
@@ -2249,7 +2261,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// D468: the hits come off one after another in the fighters' order (this loop is sequential): with float health the
 		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
 		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
-		const float Dealt = HOLHeroAbility::GetReducedDamage(Damage, GetDamageTakenPercent(Enemy));
+		const float Dealt = HOLHeroAbility::GetReducedDamage(DuelScaled(Fighter, Damage), GetDamageTakenPercent(Enemy));
 		Enemy.State->CurrentHealth -= Dealt;
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		Enemy.Combat->LastHitStep = StepIndex;

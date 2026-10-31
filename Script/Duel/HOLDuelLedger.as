@@ -7,13 +7,34 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	FHOLDuelSettings Settings;
 	bool bReady = false;
 
+	// D6: each slot's kit state (posture, parry), reset when its duel begins.
+	FHOLDuelKitSettings KitSettings;
+	TArray<FHOLDuelKit> Kits;
+
 	void EnsureBook()
 	{
 		if (bReady)
 			return;
 		Settings = HOLDuel::Preset();
-		Book = HOLDuel::NewBook(Math::Max(HOLHero::GetNumSlots(), 8));
+		KitSettings = HOLDuelKit::Preset();
+		int NumSlots = Math::Max(HOLHero::GetNumSlots(), 8);
+		Book = HOLDuel::NewBook(NumSlots);
+		for (int Slot = 0; Slot < NumSlots; Slot++)
+		{
+			Kits.Add(FHOLDuelKit());
+		}
 		bReady = true;
+	}
+
+	// True when the slot is in a duel that is on (Active): the kit exists only then.
+	bool InActiveDuel(int Slot)
+	{
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (Book.Duels[Index].Phase == EHOLDuelPhase::Active && HOLDuel::InDuel(Book.Duels[Index], Slot))
+				return true;
+		}
+		return false;
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -44,13 +65,40 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		if (Challenger == Target || HOLDuel::BookInDuel(Book, Challenger) || HOLDuel::BookInDuel(Book, Target))
 			return false;
 		Book.Duels.Add(HOLDuel::Respond(Settings, HOLDuel::Challenge(Settings, Challenger, Target), true));
+		if (Challenger >= 0 && Challenger < Kits.Num())
+			Kits[Challenger] = FHOLDuelKit();
+		if (Target >= 0 && Target < Kits.Num())
+			Kits[Target] = FHOLDuelKit();
 		return true;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool SetPosture(int Slot, int Posture)
+	{
+		EnsureBook();
+		if (Slot < 0 || Slot >= Kits.Num() || Posture < 0 || Posture > int(EHOLDuelPosture::Defensive) || !InActiveDuel(Slot))
+			return false;
+		Kits[Slot] = HOLDuelKit::SetPosture(Kits[Slot], EHOLDuelPosture(Posture));
+		return true;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int DamagePercent(int Slot)
+	{
+		EnsureBook();
+		if (Slot < 0 || Slot >= Kits.Num() || !InActiveDuel(Slot))
+			return 100;
+		return HOLDuelKit::DamagePercentOf(KitSettings, Kits[Slot].Posture);
 	}
 
 	UFUNCTION(BlueprintOverride)
 	int AdvanceDuels(int DeltaMs, const TArray<int>& Health)
 	{
 		EnsureBook();
+		for (int Slot = 0; Slot < Kits.Num(); Slot++)
+		{
+			Kits[Slot] = HOLDuelKit::Tick(Kits[Slot], DeltaMs);
+		}
 		TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(Settings, Book, DeltaMs, Health);
 		for (int Index = 0; Index < Ended.Num(); Index++)
 		{

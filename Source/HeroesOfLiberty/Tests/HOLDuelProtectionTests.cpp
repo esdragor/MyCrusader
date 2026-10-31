@@ -234,4 +234,118 @@ bool FHOLDuelProtectedInMatchTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDuelPostureInMatchTest, "HeroesOfLiberty.Duel.PostureInMatch", UE::HeroesOfLiberty::Tests::DuelProtection::Flags)
+
+// D6 (GDD 10.3, D118): the posture changes what a duellist deals, in the real chain. Two heroes side by side in a duel, one
+// offensive and one defensive: in the same time the defensive one loses more health than the offensive one (the other deals
+// more), both are hurt, and a slot in no duel cannot take a posture. Nothing typed in: only the two health losses compared.
+bool FHOLDuelPostureInMatchTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::DuelProtection;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(World);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("the script book of duels"), Duels))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 FiveSeconds = FMath::CeilToInt(5.f / StepSeconds);
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			return State ? State->CurrentHealth : -1.f;
+		};
+
+		const uint32 HeroA = Place(Hero, 0, FVector(0.0, 0.0, 0.0));
+		const uint32 HeroC = Place(Hero, 2, FVector(150.0, 0.0, 0.0));
+		if (TestTrue(TEXT("two heroes born"), HeroA != 0 && HeroC != 0))
+		{
+			RunStep();
+			TestFalse(TEXT("no posture while no duel is on"), Duels->SetPostureNow(0, 0));
+			TestTrue(TEXT("the duel begins"), Duels->BeginDuelNow(0, 2));
+			TestTrue(TEXT("slot 0 offensive (0)"), Duels->SetPostureNow(0, 0));
+			TestTrue(TEXT("slot 2 defensive (2)"), Duels->SetPostureNow(2, 2));
+			TestFalse(TEXT("a slot in no duel takes no posture"), Duels->SetPostureNow(5, 0));
+			TestTrue(TEXT("the offensive hero deals more than the balanced reference"), Duels->GetDamagePercentNow(0) > 100);
+			TestTrue(TEXT("the defensive hero deals less"), Duels->GetDamagePercentNow(2) < 100);
+			const float AAtStart = HealthOf(HeroA);
+			const float CAtStart = HealthOf(HeroC);
+			for (int32 Index = 0; Index < FiveSeconds; ++Index)
+			{
+				RunStep();
+			}
+			const float LostByOffensive = AAtStart - HealthOf(HeroA);
+			const float LostByDefensive = CAtStart - HealthOf(HeroC);
+			TestTrue(TEXT("both heroes were hurt"), LostByOffensive > 0.f && LostByDefensive > 0.f);
+			TestTrue(TEXT("the defensive hero lost more than the offensive one (he was hit harder than he hit)"), LostByDefensive > LostByOffensive);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

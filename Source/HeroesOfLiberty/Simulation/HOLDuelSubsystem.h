@@ -43,6 +43,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
 	bool TickNow(int32 Step);
 
+	/**
+	 * D6: the slot's posture in its duel (EHOLDuelPosture: 0 offensive, 1 balanced, 2 defensive), changed at once (D118).
+	 * Whether it was taken (false on a client, or when the slot is in no duel on).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	bool SetPostureNow(int32 Slot, int32 Posture);
+
+	/** D6, the combat processor: the percent of its damage the slot's hero deals in his duel (100 outside one, or without a script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	int32 GetDamagePercentNow(int32 Slot);
+
 	/** Duels ended so far (a test reads it). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Duel")
 	int32 GetNumEnded() const { return NumEnded; }
@@ -66,6 +77,16 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
 	bool BeginDuel(int32 Challenger, int32 Target);
 	virtual bool BeginDuel_Implementation(int32 Challenger, int32 Target) { return false; }
+
+	/** The slot's posture in its duel, overridden in script. The C++ base takes none. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool SetPosture(int32 Slot, int32 Posture);
+	virtual bool SetPosture_Implementation(int32 Slot, int32 Posture) { return false; }
+
+	/** The percent of its damage the slot's hero deals in his duel, overridden in script (100 outside one). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	int32 DamagePercent(int32 Slot);
+	virtual int32 DamagePercent_Implementation(int32 Slot) { return 100; }
 
 	/** DeltaMs go by, Health the health of every slot's hero (0 dead or none); returns the number of duels that ended. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
