@@ -51,6 +51,9 @@ struct FHOLDuelSettings
 	// Triumph for the winner's troops and Demoralised for the loser's (D35: 30 to 45 s).
 	int TriumphMs = 0;
 
+	// The arena circle's radius, cm (10.2: "short radius"; indicative, to be tuned in tests, GDD 10.2 gives no number).
+	int ArenaRadiusCm = 0;
+
 	// DU-Q1 (both heroes fall in the same step), both ways ready until the user answers: true = A (both fall, in recovery,
 	// no reward); false = B (nobody falls, both are left at one health, as for a time up).
 	bool bDoubleKnockOutBothFall = true;
@@ -114,6 +117,7 @@ namespace HOLDuel
 		S.MaxDurationMs = 90000;
 		S.HesitationMs = 25000;
 		S.TriumphMs = 40000;
+		S.ArenaRadiusCm = 600;
 		S.bDoubleKnockOutBothFall = true;
 		return S;
 	}
