@@ -82,6 +82,11 @@ bool HOLVisionRules::BuildingDrawsFromMemory(const bool bOwnCamp, const bool bIn
 	return !bOwnCamp && !bInSight;
 }
 
+EHOLFogMode HOLVisionRules::ResolveFogMode(const int32 CVarValue, const EHOLFogMode ConfigMode)
+{
+	return CVarValue < 0 ? ConfigMode : static_cast<EHOLFogMode>(FMath::Clamp(CVarValue, 0, 2));
+}
+
 bool HOLVisionRules::GhostActorWanted(const bool bInSight, const bool bRealPresent)
 {
 	return !bInSight && !bRealPresent;

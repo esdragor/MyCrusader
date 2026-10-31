@@ -115,7 +115,9 @@ param(
     [double] $GameFps = 20,
     [switch] $RealTime,
     [string] $GameExec = "",
-    [int] $DuelSeconds = 120
+    [int] $DuelSeconds = 120,
+    # F9 (D522): the "aiduel" part under a fog, "Normal" or "Explored" (the configuration's fogMode); empty = no fog, as always.
+    [string] $DuelFog = ""
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
@@ -6752,6 +6754,9 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
         $DuelMap = "/Game/Maps/${MapKey}_Small"
         Write-AIMatchConfig $Config $DuelStates @() $MapKey "Small"
     }
+    if ($DuelFog) {
+        (Get-Content $Config -Raw) -replace '"slots"', "`"fogMode`": `"$DuelFog`", `"slots`"" | Set-Content -Encoding utf8 $Config
+    }
     $Lines = @("hol.Simulation.StepHashes 1")
     for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
     $Lines += @("hol.Gather.Report", "quit")
@@ -6781,6 +6786,9 @@ if ($Parts -contains "aiduel") {
         $Checks["run $($Run.Log | Split-Path -Leaf): scripts compiled"] = $ScriptErrors.Count -eq 0
         $Timeout = $Text | Select-String -Pattern "Test sequence: timeout at step" | Select-Object -First 1
         $Checks["run $($Run.Log | Split-Path -Leaf): sequence ran to its end"] = -not $Timeout
+        if ($DuelFog) {
+            $Checks["run $($Run.Log | Split-Path -Leaf): the fog started in mode $DuelFog (from the configuration)"] = [bool]($Text | Select-String -Pattern "Fog: started, mode $DuelFog," -Quiet)
+        }
         $Checks["run $($Run.Log | Split-Path -Leaf): thinking slots [0, 1]"] = [bool]($Text | Select-String -Pattern "thinking slots \[0, ?1\]" -Quiet)
         $Run.Hashes = @($Text | Select-String -Pattern "Step hash: step (\d+) ([0-9a-f]{16})" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
         # The idle time: the reports are 2 s of game apart; per slot, the longest run of reports with a Peasant idle.

@@ -30,8 +30,8 @@ namespace
 	/** D522: the fog of the matches started from now on; Disabled until the match's configuration carries it (F8). */
 	TAutoConsoleVariable<int32> CVarFogMode(
 		TEXT("hol.Fog.Mode"),
-		0,
-		TEXT("Fog of war of the next match (F3, D522): 0 none (everything in sight), 1 explored map, 2 normal (black map)."),
+		-1,
+		TEXT("Fog of war of the next match (F3, D522): 0 none (everything in sight), 1 explored map, 2 normal (black map); -1 (default) follows the match's configuration (F8)."),
 		ECVF_Default);
 
 	FAutoConsoleCommandWithWorldAndArgs FogReportCommand(TEXT("hol.Fog.Report"),
@@ -806,7 +806,7 @@ bool UHOLVisionSubsystem::TryStart()
 		int32 ModeValue = State->GetFogMode();
 		if (!bClient)
 		{
-			ModeValue = FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2);
+			ModeValue = static_cast<int32>(HOLVisionRules::ResolveFogMode(CVarFogMode.GetValueOnGameThread(), State->GetLaunchConfig().FogMode));
 			GetWorld()->GetGameState<AHOLGameState>()->SetFogMode(ModeValue);
 		}
 		else if (ModeValue < 0)

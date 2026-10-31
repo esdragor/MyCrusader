@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Map/HOLFogMode.h"
 #include "Containers/SparseArray.h"
 
 /**
@@ -139,6 +140,12 @@ namespace HOLVisionRules
 
 	/** F7.3 (b): Live when it is the viewer's camp's or in sight; else Memory when its camp remembers it (bRemembered), else Hidden. */
 	HEROESOFLIBERTY_API EHOLBuildingDraw GetBuildingDraw(bool bOwnCamp, bool bInSight, bool bRemembered);
+
+	/**
+	 * F8 (D522): the fog a match starts with: the console's hol.Fog.Mode (CVarValue 0 to 2) when set, else the configuration's (the menu's,
+	 * the lobby's); -1 follows the configuration.
+	 */
+	HEROESOFLIBERTY_API EHOLFogMode ResolveFogMode(int32 CVarValue, EHOLFogMode ConfigMode);
 
 	/**
 	 * F7.3 (c): a source used up (a tree cut) stays drawn on the viewer's machine while its camp remembers it standing (bRemembered)

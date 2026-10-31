@@ -85,6 +85,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLDropdown> TeamsTogetherDropdown;
 
+	/** F8 (D522): the fog of the match; the list's index is 2 - EHOLFogMode (Normal first, then "Carte explorée", "Sans brouillard"). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHOLDropdown> FogDropdown;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLDropdown> ModeDropdown;
 
@@ -164,6 +168,8 @@ private:
 	void HandleMapChosen(int32 Value);
 	void HandleSizeChosen(int32 Value);
 	void HandleTeamsTogetherChosen(int32 Value);
+	/** F8: the fog's list. */
+	void HandleFogChosen(int32 Value);
 	/**
 	 * TC3: the menu's size (FHOLMapSizeRules::FitSlotsToSize: the slots past its places closed, a player past them moved
 	 * below), places drawn at the launch; false (nothing changed) when the players do not fit it.

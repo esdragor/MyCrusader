@@ -5,6 +5,8 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Map/HOLVisionRules.h"
+#include "Match/HOLMatchConfig.h"
+#include "Net/HOLManagerClientRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Misc/AutomationTest.h"
@@ -435,6 +437,40 @@ bool FHOLVisionGhostActorTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("in sight: the server sends the real one, or it is gone"), GhostActorWanted(true, false));
 	TestFalse(TEXT("out of sight but the real one still here: no double"), GhostActorWanted(false, true));
 	TestFalse(TEXT("in sight and real"), GhostActorWanted(true, true));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionFogModeConfigTest, "HeroesOfLiberty.Vision.FogModeConfig", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionFogModeConfigTest::RunTest(const FString& Parameters)
+{
+	// F8 (D522): the fog's mode travels with the match's configuration; hol.Fog.Mode >= 0 overrides it.
+	using namespace HOLVisionRules;
+	TestEqual(TEXT("console at -1: the configuration's"), ResolveFogMode(-1, EHOLFogMode::Explored), EHOLFogMode::Explored);
+	TestEqual(TEXT("console at -1: the configuration's, Normal"), ResolveFogMode(-1, EHOLFogMode::Normal), EHOLFogMode::Normal);
+	TestEqual(TEXT("console set: it wins"), ResolveFogMode(0, EHOLFogMode::Normal), EHOLFogMode::Disabled);
+	TestEqual(TEXT("console set to Normal over a configuration Disabled"), ResolveFogMode(2, EHOLFogMode::Disabled), EHOLFogMode::Normal);
+	TestEqual(TEXT("console beyond the range: clamped"), ResolveFogMode(9, EHOLFogMode::Disabled), EHOLFogMode::Normal);
+
+	FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+	TestEqual(TEXT("a configuration without the field: no fog (the scenarios, the tests)"), Config.FogMode, EHOLFogMode::Disabled);
+	Config.FogMode = EHOLFogMode::Normal;
+	FHOLMatchConfig Read;
+	FString Error;
+	TestTrue(TEXT("the configuration is read back"), FHOLMatchConfig::FromJson(Config.ToJson(), Read, &Error));
+	TestEqual(TEXT("the fog survives the file"), Read.FogMode, EHOLFogMode::Normal);
+	FHOLMatchConfig FromManager;
+	TestTrue(TEXT("the manager's match.json"), FHOLMatchConfig::FromJson(TEXT("{\"version\": 3, \"map\": \"/Game/Maps/Plain.Plain\", \"fogMode\": \"Explored\"}"), FromManager, &Error));
+	TestEqual(TEXT("... its fogMode by name"), FromManager.FogMode, EHOLFogMode::Explored);
+	TestTrue(TEXT("a file without it"), FHOLMatchConfig::FromJson(TEXT("{\"version\": 3, \"map\": \"/Game/Maps/Plain.Plain\"}"), FromManager, &Error));
+	TestEqual(TEXT("... is without fog"), FromManager.FogMode, EHOLFogMode::Disabled);
+
+	FHOLLobby Lobby;
+	TestTrue(TEXT("the lobby's state"), FHOLManagerClientRules::ParseLobby(TEXT("{\"id\": \"a\", \"name\": \"Salon\", \"state\": \"lobby\", \"slots\": [{\"index\": 0, \"state\": \"open\"}, {\"index\": 1, \"state\": \"open\"}, {\"index\": 2, \"state\": \"open\"}, {\"index\": 3, \"state\": \"open\"}, {\"index\": 4, \"state\": \"open\"}, {\"index\": 5, \"state\": \"open\"}, {\"index\": 6, \"state\": \"open\"}, {\"index\": 7, \"state\": \"open\"}], \"settings\": {\"map\": \"Plain\", \"fog\": \"Disabled\"}}"), Lobby));
+	TestEqual(TEXT("the lobby's fog"), Lobby.GetFogMode(), EHOLFogMode::Disabled);
+	FHOLLobby OlderManager;
+	TestTrue(TEXT("an older manager's lobby"), FHOLManagerClientRules::ParseLobby(TEXT("{\"id\": \"a\", \"name\": \"Salon\", \"state\": \"lobby\", \"slots\": [{\"index\": 0, \"state\": \"open\"}, {\"index\": 1, \"state\": \"open\"}, {\"index\": 2, \"state\": \"open\"}, {\"index\": 3, \"state\": \"open\"}, {\"index\": 4, \"state\": \"open\"}, {\"index\": 5, \"state\": \"open\"}, {\"index\": 6, \"state\": \"open\"}, {\"index\": 7, \"state\": \"open\"}], \"settings\": {\"map\": \"Plain\"}}"), OlderManager));
+	TestEqual(TEXT("... shows Normal"), OlderManager.GetFogMode(), EHOLFogMode::Normal);
+	TestTrue(TEXT("the settings body carries the fog"), FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, FString(), {}, TEXT("Explored")).Contains(TEXT("\"fog\":\"Explored\"")));
 	return true;
 }
 

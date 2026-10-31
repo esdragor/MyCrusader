@@ -135,6 +135,12 @@ namespace UE::HeroesOfLiberty::UI::NewGame
 	/** The lobby's state read twice a second (Manager/PROTOCOL.md). */
 	constexpr float ReadPeriod = 0.5f;
 
+	/** F8 (D522): the fog's list, Normal first (index = 2 - EHOLFogMode). */
+	TArray<FText> FogNames()
+	{
+		return { LOCTEXT("FogNormal", "Normal"), LOCTEXT("FogExplored", "Carte explorée"), LOCTEXT("FogDisabled", "Sans brouillard") };
+	}
+
 	TArray<FText> OffOn()
 	{
 		return { LOCTEXT("Off", "Non"), LOCTEXT("On", "Oui") };
@@ -255,6 +261,9 @@ void UHOLNewGameScreen::BuildLayout()
 	UHorizontalBox* MapLine = AddLine(0.f);
 	AddCell(MapLine, MakeText(LOCTEXT("Map", "Carte"), UHOLTextStyleBody::StaticClass()), NameWidth);
 	MapDropdown = AddDropdown(MapLine, TEXT("MapDropdown"), MapNames, 0, StateWidth + FactionWidth + 8.f);
+	// F8: the fog on the map's line, over the "Équipes ensemble" of the line below.
+	AddCell(MapLine, MakeText(LOCTEXT("Fog", "Brouillard"), UHOLTextStyleBody::StaticClass()), TeamsTogetherLabelWidth);
+	FogDropdown = AddDropdown(MapLine, TEXT("FogDropdown"), FogNames(), 0, TeamWidth);
 
 	// TC3: the size under the map, then "Équipes ensemble" (the places are drawn at the launch).
 	UHorizontalBox* SizeLine = AddLine(0.f);
@@ -397,6 +406,10 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	{
 		TeamsTogetherDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleTeamsTogetherChosen);
 	}
+	if (FogDropdown)
+	{
+		FogDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleFogChosen);
+	}
 	for (UHOLDropdown* Option : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
 		if (Option)
@@ -534,6 +547,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	// TC3 loop 2: the lobby's size and "Équipes ensemble", the places drawn by the server at the launch.
 	Config.MapSize = Lobby.GetMapSize();
 	Config.bTeamsTogether = Lobby.bTeamsTogether;
+	Config.FogMode = Lobby.GetFogMode();
 	Config.bDrawPlaces = true;
 	TArray<FString> Players;
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
@@ -612,7 +626,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	}
 	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
 	const bool bLeader = Lobby.IsYouLeader();
-	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(),
+	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), FogDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(),
 		CatastropheDropdown.Get() })
 	{
 		if (Setting)
@@ -684,6 +698,8 @@ void UHOLNewGameScreen::SetConfig(const FHOLMatchConfig& InConfig)
 	if (!Maps.IsEmpty() && !Maps.Contains(Config.Map))
 	{
 		Config.Map = Maps[0];
+		// F8 (D522): the game's fog, Normal, offered by default (a test configuration has none).
+		Config.FogMode = EHOLFogMode::Normal;
 		// TC3: the menu's own configuration: the smallest size that holds the players, places drawn.
 		if (Config.MapSize == EHOLMapSize::None)
 		{
@@ -727,6 +743,10 @@ void UHOLNewGameScreen::Refresh()
 	if (TeamsTogetherDropdown)
 	{
 		TeamsTogetherDropdown->SetSelectedIndex(Config.bTeamsTogether ? 1 : 0);
+	}
+	if (FogDropdown)
+	{
+		FogDropdown->SetSelectedIndex(2 - static_cast<int32>(Config.FogMode));
 	}
 	// TC3 (TC-Q4): the slots past the places of the size are closed, not changeable (the lobby sets its own, loop 2).
 	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
@@ -862,6 +882,17 @@ void UHOLNewGameScreen::HandleTeamsTogetherChosen(const int32 Value)
 	Refresh();
 }
 
+void UHOLNewGameScreen::HandleFogChosen(const int32 Value)
+{
+	Config.FogMode = static_cast<EHOLFogMode>(FMath::Clamp(2 - Value, 0, 2));
+	UE_LOG(LogHOLUI, Display, TEXT("New game: fog %s"), *StaticEnum<EHOLFogMode>()->GetNameStringByValue(static_cast<int64>(Config.FogMode)));
+	if (bLobby)
+	{
+		SendSettings();
+	}
+	Refresh();
+}
+
 void UHOLNewGameScreen::HandleOptionChosen(int32)
 {
 	if (!bLobby)
@@ -892,7 +923,7 @@ void UHOLNewGameScreen::SendSettings()
 		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
 		Client->UpdateSettings(Config.Map.GetAssetName(), Config.bNomad, Config.bRegicide, Config.bCatastrophe,
 			FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error) { HandleWritten(Written, Error, What); }),
-			SizeKey, Config.bTeamsTogether);
+			SizeKey, Config.bTeamsTogether, StaticEnum<EHOLFogMode>()->GetNameStringByValue(static_cast<int64>(Config.FogMode)));
 	}
 }
 
