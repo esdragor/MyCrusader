@@ -28,6 +28,7 @@ namespace UE::HeroesOfLiberty::Tests::DuelProtection
 	const FName Hero(TEXT("Hero"));
 	const FName Spearman(TEXT("Spearman"));
 	const FName ManAtArms(TEXT("ManAtArms"));
+	const FName ArcherType(TEXT("Archer"));
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDuelProtectedInMatchTest, "HeroesOfLiberty.Duel.ProtectedInMatch", UE::HeroesOfLiberty::Tests::DuelProtection::Flags)
@@ -190,13 +191,23 @@ bool FHOLDuelProtectedInMatchTest::RunTest(const FString& Parameters)
 					}
 					TestTrue(TEXT("the duellists hurt each other"), bHeroHit);
 					TestTrue(TEXT("the battle goes on around: the Man-at-arms hurts the Spearman"), bFriendHit);
-					// A duellist hurts nobody else: a Spearman of slot 4 beside hero 2, nearer to him (1 m) than hero 0 is (1.5 m), alone
+					// A duellist hurts nobody else: a Spearman of slot 3 (an enemy of both) beside hero 2, nearer to him (1 m) than hero 0 is (1.5 m), alone
 						// (nobody else of the battle left near), is not touched by either hero in 5 s, while they still hurt each other.
 						(void)bGuardHit; // not asserted: the Spearman friend of slot 0 fights the Man-at-arms
 						Remove({ Guard2, Friend });
-						const uint32 Bystander = Place(Spearman, 4, FVector(-150.0, 100.0, 0.0));
-						if (TestTrue(TEXT("a bystander of slot 4 born"), Bystander != 0))
+						const uint32 Bystander = Place(Spearman, 3, FVector(-150.0, 100.0, 0.0));
+						if (TestTrue(TEXT("a bystander of slot 3 born"), Bystander != 0))
 						{
+							// Both duellists look for a target afresh (not held on each other from before): the bystander is the nearest to hero 2,
+							// so only the protection keeps him out of reach (a mutation of the rule makes this phase red).
+							for (const uint32 Duellist : { HeroA, HeroC })
+							{
+								const FMassEntityHandle DuellistEntity = Units->FindEntity(Duellist);
+								if (FHOLCombatFragment* DuellistCombat = DuellistEntity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(DuellistEntity) : nullptr)
+								{
+									DuellistCombat->Disengage();
+								}
+							}
 							const float BystanderAtStart = HealthOf(Bystander);
 							const float HeroCAtStart = HealthOf(HeroC);
 							const float HeroAMid = HealthOf(HeroA);
@@ -468,6 +479,261 @@ bool FHOLDuelContactInMatchTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("the duellist is brought back to his adversary (no free movement)"), CombatA && CombatA->Target == Units->FindEntity(HeroC));
 			TestTrue(TEXT("the adversary aims at him: contact is automatic"), CombatC && CombatC->Target == Units->FindEntity(HeroA));
 			TestTrue(TEXT("the aim is kept, not looked for again (ordered)"), CombatA && CombatA->bOrderedTarget);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDuelArrowsInMatchTest, "HeroesOfLiberty.Duel.ArrowsInMatch", UE::HeroesOfLiberty::Tests::DuelProtection::Flags)
+
+// Arrows against a duellist (GDD 10.2, D18, D5): an Archer of another side hurts a hero outside a duel, but once he is in a duel its arrows
+// never touch him (the ones in flight when the duel begins are lost), while it still hurts a Spearman standing by him (the battle goes on).
+// A hero shooting is not tested: the only hero of the prototype fights in melee (the arrow's posture scaling, D6, is untested for want of one).
+bool FHOLDuelArrowsInMatchTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::DuelProtection;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(World);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("the script book of duels"), Duels))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto CombatOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+		};
+
+		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			return State ? State->CurrentHealth : -1.f;
+		};
+		const int32 SixSeconds = FMath::CeilToInt(6.f / StepSeconds);
+
+		// An Archer of slot 3 15 m from hero A (slot 0) and a Spearman of slot 0 beside the hero.
+		const uint32 HeroA = Place(Hero, 0, FVector(0.0, 0.0, 0.0));
+		const uint32 Shooter = Place(ArcherType, 3, FVector(1500.0, 0.0, 0.0));
+		if (TestTrue(TEXT("a hero and an Archer born"), HeroA != 0 && Shooter != 0))
+		{
+			const float BeforeA = HealthOf(HeroA);
+			for (int32 Index = 0; Index < SixSeconds; ++Index)
+			{
+				RunStep();
+			}
+			TestTrue(TEXT("no duel: the Archer's arrows hurt the hero"), HealthOf(HeroA) < BeforeA);
+
+			// The hero in a duel with a far hero of slot 2: nothing of slot 3 touches him, an arrow in flight is lost.
+			const uint32 HeroC = Place(Hero, 2, FVector(-3000.0, 0.0, 0.0));
+			const uint32 Friend = Place(Spearman, 0, FVector(200.0, 0.0, 0.0));
+			if (TestTrue(TEXT("hero C and a Spearman born"), HeroC != 0 && Friend != 0))
+			{
+				RunStep();
+				TestTrue(TEXT("the duel begins"), Duels->BeginDuelNow(0, 2));
+				const float DuelStartA = HealthOf(HeroA);
+				const float FriendAtStart = HealthOf(Friend);
+				for (int32 Index = 0; Index < SixSeconds; ++Index)
+				{
+					RunStep();
+				}
+				TestTrue(TEXT("in the duel, the Archer's arrows no longer touch the hero (hero C is far, nobody else hurts him)"), HealthOf(HeroA) >= DuelStartA);
+				TestTrue(TEXT("the battle goes on: the Archer still hurts the Spearman beside the hero"), HealthOf(Friend) < FriendAtStart);
+			}
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDuelNobodyElseInMatchTest, "HeroesOfLiberty.Duel.NobodyElseInMatch", UE::HeroesOfLiberty::Tests::DuelProtection::Flags)
+
+// Phase "a duellist touches nobody else" (GDD 10.2, D18) on its own: the adversary is out of reach (40 m, nothing moves in this world), so
+// the only enemy a duellist has within his reach is a bystander; he must not hurt him. Red under a mutation of the rule (a duellist
+// may hit a non-duellist) once the automatic contact is off, which is what makes it proof of the protection and not of the contact.
+bool FHOLDuelNobodyElseInMatchTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::DuelProtection;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(World);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("the script book of duels"), Duels))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto CombatOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+		};
+
+		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			return State ? State->CurrentHealth : -1.f;
+		};
+		const int32 FiveSeconds = FMath::CeilToInt(5.f / StepSeconds);
+		const uint32 HeroA = Place(Hero, 0, FVector(0.0, 0.0, 0.0));
+		const uint32 HeroC = Place(Hero, 2, FVector(4000.0, 0.0, 0.0));
+		const uint32 Bystander = Place(Spearman, 3, FVector(4000.0, 100.0, 0.0));
+		if (TestTrue(TEXT("two heroes and a bystander of slot 3 born"), HeroA != 0 && HeroC != 0 && Bystander != 0))
+		{
+			RunStep();
+			// Before the duel, hero C hurts the bystander (the setup lands blows: he is an enemy within reach).
+			const float BeforeDuel = HealthOf(Bystander);
+			bool bHurtOutsideTheDuel = false;
+			for (int32 Index = 0; Index < FiveSeconds && !bHurtOutsideTheDuel; ++Index)
+			{
+				RunStep();
+				bHurtOutsideTheDuel = HealthOf(Bystander) < BeforeDuel;
+			}
+			TestTrue(TEXT("no duel: hero C hurts the enemy beside him"), bHurtOutsideTheDuel);
+			Units->RequestDestroyUnits(TArray<uint32>({ Bystander }));
+			Units->FlushDestructions();
+			const uint32 Second = Place(Spearman, 3, FVector(4000.0, 100.0, 0.0));
+			if (TestTrue(TEXT("a second bystander born"), Second != 0))
+			{
+				RunStep();
+				TestTrue(TEXT("the duel begins"), Duels->BeginDuelNow(0, 2));
+				const float AtStart = HealthOf(Second);
+				bool bHurt = false;
+				for (int32 Index = 0; Index < FiveSeconds; ++Index)
+				{
+					RunStep();
+					bHurt |= HealthOf(Second) < AtStart;
+				}
+				TestFalse(TEXT("in the duel, hero C does not touch the bystander beside him"), bHurt);
+			}
 		}
 	}
 
