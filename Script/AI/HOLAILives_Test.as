@@ -253,6 +253,43 @@ void Test_LivesHardPunishesTheHome(FUnitTest& T)
 	T.AssertTrue(Wave.bPunishing && !Wave.bForce, "it is the punishing wave, the request is consumed");
 }
 
+// Found in a real game (probe on ai_hard, 2026-10-31): the punishing wave left the base at once, saw the attackers beside it (a low ratio),
+// fell back, and was launched again five seconds later, over and over. It must not fall back on the ratio while it is still at our base
+// (the enemies it sees are the ones it leaves behind), and a forced launch obeys the cooldown (twice as long after a retreat).
+void Test_LivesHardPunishingWaveLeaves(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = LvData();
+	const FHOLAISummary Lost = LostSummary(Data, 2);
+	FHOLAIWave Punishing;
+	Punishing.bForce = true;
+	T.AssertTrue(HOLAIArmy::UpdateWave(Punishing, Lost, Data, false, false, FVector(-1500, 0, 0), 30.f).bLaunched, "the punishing wave leaves");
+	FHOLAIWave Plain = Punishing;
+	Plain.bPunishing = false;
+
+	const FHOLAIWaveStep Stays = HOLAIArmy::UpdateWave(Punishing, Lost, Data, false, false, FVector(-1500, 0, 0), 31.f);
+	T.AssertTrue(HOLAIArmy::WaveRatio(Punishing, Lost, Data) < Data.AttackRetreatRatio, "the attackers beside it: the ratio is under the retreat ratio");
+	T.AssertFalse(Stays.bRetreat, "the punishing wave does not fall back while it is at our base");
+	const FHOLAIWaveStep Control = HOLAIArmy::UpdateWave(Plain, Lost, Data, false, false, FVector(-1500, 0, 0), 31.f);
+	T.AssertTrue(Control.bRetreat, "a plain wave in the same place does fall back");
+
+	// Far from the base the usual rules apply again.
+	FHOLAISummary Away = Lost;
+	for (int Index = 0; Index < Away.Army.Num(); Index++)
+	{
+		Away.Army[Index].Location = FVector(-9000, 100.f * float(Index), 0);
+	}
+	Away.Enemies.Add(LvUnit(300, n"ManAtArms", LvHealthOf(Data, n"ManAtArms"), FVector(-9500, 0, 0), 1));
+	Away.Enemies.Add(LvUnit(301, n"ManAtArms", LvHealthOf(Data, n"ManAtArms"), FVector(-9500, 100, 0), 1));
+	T.AssertTrue(HOLAIArmy::UpdateWave(Punishing, Away, Data, false, false, FVector(-1500, 0, 0), 40.f).bRetreat, "away from the base, a lost fight still calls it back");
+
+	// The forced launch waits for the cooldown.
+	FHOLAIWave Cooling;
+	Cooling.bForce = true;
+	Cooling.NextLaunch = 100.f;
+	T.AssertFalse(HOLAIArmy::CanLaunch(Cooling, Lost, Data, false, 50.f), "forced, but the cooldown is not over");
+	T.AssertTrue(HOLAIArmy::CanLaunch(Cooling, Lost, Data, false, 100.f), "forced, the cooldown is over");
+}
+
 // Evolving: Easy, then Normal, then Hard with the time; the other levels do not move. Through the real chain: the same lost forum is given
 // away (Easy), feinted (Normal) and let go (Hard).
 void Test_LivesEvolvingPassesFromEasyToHard(FUnitTest& T)
