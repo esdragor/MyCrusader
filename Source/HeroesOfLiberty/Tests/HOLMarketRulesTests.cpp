@@ -1,7 +1,16 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLProductionCommand.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
+#include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 #include "Match/HOLGameState.h"
@@ -177,6 +186,138 @@ bool FHOLMarketBookStateTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("a set book is read back: wood at 77"), State->GetMarketBook().Prices[1], 77);
 			TestEqual(TEXT("... the others untouched: stone at 120"), State->GetMarketBook().Prices[2], 120);
 		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// M4c: the exchange order's whole chain on the server's real path: the order queue (UHOLCommandSubsystem, as ServerMarketTrade
+// fills it), the production subsystem's step (owner, finished Market, resource, lots), the player's stock, the game state's
+// common book, and the book's way back to rest on the fixed step. The figures are the table's (Market.csv, MK-Q1 = C).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMarketChainTest, "HeroesOfLiberty.Market.Chain",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLMarketChainTest::RunTest(const FString& Parameters)
+{
+	HOLMarket::FSettings S;
+	if (!TestTrue(TEXT("the Standard row of /Game/Match/MarketRates loads"), HOLMarket::LoadStandardSettings(S)))
+	{
+		return false;
+	}
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Player = World->SpawnActor<AHOLPlayerState>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLBuilding* Market = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Site = World->SpawnActor<AHOLBuilding>(FVector(5000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(FVector(0.0, 5000.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Enemy = World->SpawnActor<AHOLBuilding>(FVector(0.0, -5000.0, 0.0), FRotator::ZeroRotator);
+	const bool bReady = State && Player && Commands && Production && Simulation && Market && Site && Forum && Enemy;
+	if (TestTrue(TEXT("test world ready"), bReady))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index <= 2 ? EHOLSlotState::Human : EHOLSlotState::Closed;
+			Config.Slots[Index].Team = 0;
+		}
+		State->InitVictory(Config);
+		State->ResetMarketBook();
+		Player->SetMatchSlot(0, 0);
+		State->AddPlayerState(Player);
+		Market->Setup(HOLBuildingTypeNames::Market, 0, 0);
+		Site->Setup(HOLBuildingTypeNames::Market, 0, 0, EHOLConstructionState::Foundation);
+		Forum->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Enemy->Setup(HOLBuildingTypeNames::Market, 1, 1);
+		Production->OnWorldBeginPlay(*World);
+
+		int64 StepCount = 0;
+		const auto RunStep = [&]() { Simulation->GetOnStepStarted().Broadcast(++StepCount); };
+		const auto Order = [&](AHOLBuilding* At, const int32 Resource, const int32 Lots, const bool bBuy)
+		{
+			FHOLProductionCommand Command;
+			Command.Kind = FHOLProductionCommand::EKind::Trade;
+			Command.PlayerIndex = 0;
+			Command.Building = At;
+			Command.Resource = Resource;
+			Command.Lots = Lots;
+			Command.bBuy = bBuy;
+			Commands->IssueProductionOrder(Command);
+		};
+		const int32 Food = static_cast<int32>(EHOLResource::Food);
+		const int32 Wood = static_cast<int32>(EHOLResource::Wood);
+		const int32 Stone = static_cast<int32>(EHOLResource::Stone);
+		const int32 Gold = static_cast<int32>(EHOLResource::Gold);
+
+		// 1. Two lots of wood sold: queued, applied at the next step (stock and common book).
+		Player->SetResources(FHOLResources(500, 300, 0, 50));
+		Order(Market, Wood, 2, false);
+		TestTrue(TEXT("queued only: the stock has not moved"), Player->GetResources() == FHOLResources(500, 300, 0, 50));
+		RunStep();
+		TestTrue(TEXT("sold at the next step: wood 100, gold 50 + 56 + 53"), Player->GetResources() == FHOLResources(500, 100, 0, 159));
+		TestEqual(TEXT("the common wood price falls to 74"), State->GetMarketBook().Prices[Wood], 74);
+		TestEqual(TEXT("... stone untouched at 120"), State->GetMarketBook().Prices[Stone], 120);
+
+		// 2. A lot of stone bought with that gold, at the lowered book's other price.
+		Order(Market, Stone, 1, true);
+		RunStep();
+		TestTrue(TEXT("bought: stone 100, gold 159 - 156"), Player->GetResources() == FHOLResources(500, 100, 100, 3));
+		TestEqual(TEXT("the common stone price rises to 123"), State->GetMarketBook().Prices[Stone], 123);
+
+		// 3. Every refusal changes nothing: the stock, the book.
+		const FHOLResources Before = Player->GetResources();
+		const HOLMarket::FBook BookBefore = State->GetMarketBook();
+		Order(Market, Wood, 4, false);       // not enough wood (100)
+		Order(Market, Stone, 1, true);       // not enough gold (3)
+		Order(Market, Gold, 1, false);       // gold is the money
+		Order(Market, Gold, 1, true);
+		Order(Market, INDEX_NONE, 1, false); // no such resource
+		Order(Market, 7, 1, false);
+		Order(Market, Wood, 0, false);       // no lots
+		Order(Market, Wood, -3, false);
+		Order(Market, Wood, 100000, false);  // far too many at once
+		Order(Site, Wood, 1, false);         // a Market not finished
+		Order(Enemy, Wood, 1, false);        // another player's Market
+		Order(Forum, Wood, 1, false);        // not a Market
+		Order(nullptr, Wood, 1, false);      // no building
+		RunStep();
+		TestTrue(TEXT("thirteen refused orders: the stock has not moved"), Player->GetResources() == Before);
+		bool bBookSame = true;
+		for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+		{
+			bBookSame &= State->GetMarketBook().Prices[Resource] == BookBefore.Prices[Resource];
+		}
+		TestTrue(TEXT("... nor the book"), bBookSame);
+
+		// 4. The way back to rest: one point toward the base every RecoverEverySeconds, none earlier.
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int64 RecoverSteps = FMath::Max(1, FMath::RoundToInt(static_cast<float>(S.RecoverEverySeconds) / StepSeconds));
+		while (StepCount < RecoverSteps - 1)
+		{
+			RunStep();
+		}
+		TestEqual(TEXT("one step before the interval: wood still 74"), State->GetMarketBook().Prices[Wood], 74);
+		RunStep();
+		TestEqual(TEXT("at the interval: wood back to 75"), State->GetMarketBook().Prices[Wood], 75);
+		TestEqual(TEXT("... stone back to 122"), State->GetMarketBook().Prices[Stone], 122);
+		TestEqual(TEXT("... food (at its base) unmoved"), State->GetMarketBook().Prices[Food], S.BasePrices[Food]);
+		for (int64 Index = 0; Index < RecoverSteps; ++Index)
+		{
+			RunStep();
+		}
+		TestEqual(TEXT("one interval later: wood 76"), State->GetMarketBook().Prices[Wood], 76);
+		TestEqual(TEXT("... stone 121"), State->GetMarketBook().Prices[Stone], 121);
+		for (int64 Index = 0; Index < RecoverSteps * 10; ++Index)
+		{
+			RunStep();
+		}
+		TestEqual(TEXT("long after: wood at its base 80, not past it"), State->GetMarketBook().Prices[Wood], S.BasePrices[Wood]);
+		TestEqual(TEXT("... stone at its base 120"), State->GetMarketBook().Prices[Stone], S.BasePrices[Stone]);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);

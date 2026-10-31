@@ -472,6 +472,8 @@ public:
 	 * (the exchange order, the way back to rest), replicated to everyone. Resources by index: food, wood, stone, gold.
 	 */
 	HOLMarket::FBook GetMarketBook() const;
+	/** Whether the book has been set (a match started); until then GetMarketBook gives a book of 100s that nothing should trade at. */
+	bool HasMarketBook() const { return MarketPrices.Num() == HOLMarket::BookSize; }
 	/** Server only. */
 	void SetMarketBook(const HOLMarket::FBook& InBook);
 	/** Server only, at the start of the match: every price at its base (the Standard row of /Game/Match/MarketRates). */

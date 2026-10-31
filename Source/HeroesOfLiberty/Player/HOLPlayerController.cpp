@@ -3472,6 +3472,18 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 }
 
+void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 Lots, const bool bBuy)
+{
+	if (IsSpectator())
+	{
+		return;
+	}
+	if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		ServerMarketTrade(Building, Resource, Lots, bBuy);
+	}
+}
+
 void AHOLPlayerController::RequestMoveUnits(const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
 {
 	if (UnitIds.Num() > 0)
@@ -4356,6 +4368,23 @@ void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* B
 		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
 		Command.Building = Building;
 		Command.Index = Index;
+		Commands->IssueProductionOrder(Command);
+	}
+}
+
+void AHOLPlayerController::ServerMarketTrade_Implementation(AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Trade;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Command.Resource = Resource;
+		Command.Lots = Lots;
+		Command.bBuy = bBuy;
 		Commands->IssueProductionOrder(Command);
 	}
 }

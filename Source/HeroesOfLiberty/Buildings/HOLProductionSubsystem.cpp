@@ -13,6 +13,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -144,6 +145,66 @@ void UHOLProductionSubsystem::OnStepStarted(const int64 StepIndex)
 {
 	ApplyOrders();
 	AdvanceQueues(StepIndex);
+	RecoverMarketBook();
+}
+
+bool UHOLProductionSubsystem::EnsureMarketSettings()
+{
+	if (!bMarketSettingsLoaded)
+	{
+		bMarketSettingsLoaded = HOLMarket::LoadStandardSettings(MarketSettings);
+	}
+	return bMarketSettingsLoaded;
+}
+
+void UHOLProductionSubsystem::RecoverMarketBook()
+{
+	AHOLGameState* GameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!GameState || !GameState->HasMarketBook() || !EnsureMarketSettings())
+	{
+		return;
+	}
+	const int32 IntervalSteps = FMath::Max(1, FMath::RoundToInt(static_cast<float>(MarketSettings.RecoverEverySeconds) / FMath::Max(StepSeconds, UE_KINDA_SMALL_NUMBER)));
+	if (++StepsSinceMarketRecover >= IntervalSteps)
+	{
+		StepsSinceMarketRecover = 0;
+		GameState->SetMarketBook(HOLMarket::Recover(MarketSettings, GameState->GetMarketBook(), 1));
+	}
+}
+
+void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& PlayerState)
+{
+	// A client could send anything: only a Market, and only whole lots of the three tradable goods, up to a sane count.
+	constexpr int32 MaxLotsAnOrder = 50;
+	AHOLGameState* GameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (Building.GetTypeName() != HOLBuildingTypeNames::Market)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d trade ignored: %s is not a Market"), Order.PlayerIndex, *Building.GetTypeName().ToString());
+		return;
+	}
+	if (!GameState || !GameState->HasMarketBook() || !EnsureMarketSettings())
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d trade ignored: no book of prices"), Order.PlayerIndex);
+		return;
+	}
+	if (Order.Resource < 0 || Order.Resource >= HOLMarket::TradableResources || Order.Lots <= 0 || Order.Lots > MaxLotsAnOrder)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d trade ignored: resource %d, %d lots"), Order.PlayerIndex, Order.Resource, Order.Lots);
+		return;
+	}
+	FHOLResources After;
+	const HOLMarket::FTrade Trade = HOLMarket::Apply(MarketSettings, GameState->GetMarketBook(), PlayerState.GetResources(),
+		static_cast<EHOLResource>(Order.Resource), Order.Lots, Order.bBuy, MarketSettings.FeePercent, After);
+	if (!Trade.bOk)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d cannot %s %d lots of resource %d (%s)"), Order.PlayerIndex,
+			Order.bBuy ? TEXT("buy") : TEXT("sell"), Order.Lots, Order.Resource, *Trade.Reason.ToString());
+		return;
+	}
+	PlayerState.SetResources(After);
+	GameState->SetMarketBook(Trade.Book);
+	UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d %s %d lots of resource %d for %d gold (price now %d, %s)"), Order.PlayerIndex,
+		Order.bBuy ? TEXT("bought") : TEXT("sold"), Order.Lots, Order.Resource, Trade.Gold, Trade.Book.Prices[Order.Resource], *After.ToString());
 }
 
 void UHOLProductionSubsystem::ApplyOrders()
@@ -244,6 +305,13 @@ void UHOLProductionSubsystem::ApplyOrders()
 						*Building->GetTypeName().ToString(), Point.X, Point.Y, *OnWhat);
 				}
 			}
+			continue;
+		}
+
+		// M4c: an exchange at a Market, not a queue item.
+		if (Order.Kind == FHOLProductionCommand::EKind::Trade)
+		{
+			ApplyMarketTrade(Order, *Building, *PlayerState);
 			continue;
 		}
 
