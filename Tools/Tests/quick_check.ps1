@@ -362,6 +362,10 @@ if ($Parts -contains "net") {
             "mark net hero abilities", "hol.Hero.SetXP 1 1300", "wait 1", "signal $NetHeroAbilitiesFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_cast1.flag") 120", "wait 1", "hol.Hero.Report", "signal $NetHeroCastFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities2.flag") 120",
+            # T4 (the research cell over the network): Bob's hero is level 4 (tier 1): client 1 asks the research of Tempered Halberds
+            # at its barracks (the real command, FastBuild on for the 3 s), the server's lines (queued, researched), then
+            # both clients' reports; the hero stays until they have signalled.
+            "mark net tech", "waitfile $(Join-Path $TestSaved "quick_net_tech_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120",
             "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
@@ -2632,6 +2636,15 @@ if ($NetListening) {
         if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
             "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
         $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "hol.Hero.BannerDisplay", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
+        # T4: Bob (client 1, tier 1 with his level 4 hero) researches Tempered Halberds at his barracks (the army phase built them; the camps are the "build" part's); both then report the
+        # technologies of every player state as they have them (the research reaches its owner alone).
+        $TechAskedFlag = Join-Path $TestSaved "quick_net_tech_asked.flag"
+        $NetSteps += "mark tech"
+        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.FastBuild 1", "hol.Prod.Queue TemperedHalberds Barracks", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
+        else { $NetSteps += "waitfile $TechAskedFlag 120", "wait 1", "hol.Tech.Report" }
+        # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120" }
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -6615,6 +6628,26 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero abilities" $AbChecks) -and $AllOk
+    # T4: the research asked by client 1 (Bob, slot 1), done on the server (its lines), reaching Bob alone.
+    $TechChecks = [ordered]@{}
+    $TechServer = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net tech")
+    $TechQueued = @(@(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
+    $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched TemperedHalberds")
+    $TechChecks["server: Bob's Tempered Halberds queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $TechLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "tech")
+        $TechBob = "$($TechLines | Select-String -Pattern "Technology state slot $BobSlot (local|other): researched \[(.*)\]" | Select-Object -Last 1 | ForEach-Object { "$($_.Matches[0].Groups[1].Value) [$($_.Matches[0].Groups[2].Value)]" })"
+        $TechAlice = "$($TechLines | Select-String -Pattern "Technology state slot $AliceSlot (local|other): researched \[(.*)\]" | Select-Object -Last 1 | ForEach-Object { "$($_.Matches[0].Groups[1].Value) [$($_.Matches[0].Groups[2].Value)]" })"
+        if ($N -eq 1) {
+            $TechChecks["client $N (Bob): his own research received (Bob $TechBob), Alice's hidden (Alice $TechAlice)"] =
+                $TechBob -eq "local [TemperedHalberds]" -and $TechAlice -eq "other []"
+        }
+        else {
+            $TechChecks["client $N (Alice): Bob's research hidden (Bob $TechBob), her own empty (Alice $TechAlice)"] = $TechBob -eq "other []" -and $TechAlice -eq "local []"
+        }
+    }
+    $AllOk = (Report "net technologies" $TechChecks) -and $AllOk
 }
 
 if ($TestsProcess) {

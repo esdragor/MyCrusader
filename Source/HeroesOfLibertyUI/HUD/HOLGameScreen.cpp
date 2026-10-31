@@ -1858,7 +1858,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(Command.TypeName);
 			const FHOLResources Cost = Technology ? Technology->Cost : FHOLResources();
 			const FHOLResources Missing = GetMissing(Stock, Cost);
-			const FText Name = Technology ? Technology->DisplayName : FText::FromName(Command.TypeName);
+			const FText Name = HOLGameNames::GetTechnologyName(Command.TypeName, Technology);
 			bool bAny = false;
 			const AHOLBuilding* Researcher = PlayerController ? PlayerController->FindProductionBuilding(Command.TypeName, &bAny) : nullptr;
 			FHOLCommandFeedback Feedback;
@@ -1871,7 +1871,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				Feedback.Kind = EHOLCommandFeedback::QueueFull;
 			}
 			const FText Effect = Feedback.Kind == EHOLCommandFeedback::ResearchRefused ? GetResearchBlockText(Feedback.Block)
-				: Technology ? FText::Format(LOCTEXT("ResearchEffect", "+{0} %"), Technology->Percent) : FText();
+				: Technology ? HOLGameNames::GetTechnologyEffect(*Technology) : FText();
 			GridCell->SetCommand(Name, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
 			GridCell->SetTooltip(Name, Cost, Missing, Effect);
 			break;
@@ -2070,7 +2070,10 @@ void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
 		SetShown(Item, bShown, ESlateVisibility::Visible);
 		if (Item && bShown)
 		{
-			Item->SetLabel(HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index])));
+			// A research waits in the queue as a unit does (T6): its name, not the type's key.
+			const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(ShownQueueTypes[Index]);
+			Item->SetLabel(Research ? HOLGameNames::GetTechnologyName(ShownQueueTypes[Index], Research)
+				: HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index])));
 		}
 	}
 }

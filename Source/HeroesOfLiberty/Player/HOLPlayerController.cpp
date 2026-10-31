@@ -1284,6 +1284,24 @@ namespace UE::HeroesOfLiberty::Player
 					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Wood)),
 					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Stone)),
 					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Gold)));
+				// Every player state as it reached this machine (the research is replicated to its owner alone, COND_OwnerOnly):
+				// "Technology state slot 1 local: researched [..]", "... other: researched []" for the others.
+				if (const AGameStateBase* GameState = Controller->GetWorld() ? Controller->GetWorld()->GetGameState() : nullptr)
+				{
+					for (const APlayerState* Other : GameState->PlayerArray)
+					{
+						if (const AHOLPlayerState* OtherState = Cast<AHOLPlayerState>(Other))
+						{
+							TArray<FString> OtherNames;
+							for (const FName Name : OtherState->GetTechnologies().Done)
+							{
+								OtherNames.Add(Name.ToString());
+							}
+							UE_LOG(LogHOLMatch, Display, TEXT("Technology state slot %d %s: researched [%s]"), OtherState->GetPlayerIndex(),
+								OtherState == PlayerState ? TEXT("local") : TEXT("other"), *FString::Join(OtherNames, TEXT(", ")));
+						}
+					}
+				}
 			}
 		}));
 
