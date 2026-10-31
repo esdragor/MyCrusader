@@ -328,6 +328,23 @@ bool FHOLTechnologyRulesTest::RunTest(const FString& Parameters)
 	HOLProduction::Advance(Solo, 600, GetCost, FreePopulation, Done);
 	TestTrue(TEXT("done after 600 steps"), Done.Num() == 1 && Done[0] == FName(TEXT("PloughI")) && Solo.IsEmpty());
 
+	// T5: the effects. A line's percent is its TOTAL (T-Q2): I then II gives II's, not I + II. Other lines on a statistic add up.
+	const auto Find = [Techs](const FName Name) { return Techs->FindRow<FHOLTechnologyRow>(Name, TEXT("technology"), false); };
+	TArray<FName> Researched;
+	TestEqual(TEXT("nothing researched: no bonus"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), 0);
+	Researched.Add(TEXT("PloughI"));
+	TestEqual(TEXT("Plough I: +10 % food"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough1->Percent);
+	TestEqual(TEXT("Plough I: nothing for wood"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherWood"), Find), 0);
+	Researched.Add(TEXT("PloughII"));
+	TestEqual(TEXT("Plough I and II: II's total, not the sum"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough2->Percent);
+	TestTrue(TEXT("II gives more than I"), Plough2->Percent > Plough1->Percent);
+	Researched.Add(TEXT("MinerPicksI"));
+	const FHOLTechnologyRow* Picks = Find(TEXT("MinerPicksI"));
+	TestEqual(TEXT("Miner picks: stone"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherStone"), Find), Picks ? Picks->Percent : -1);
+	TestEqual(TEXT("Miner picks: gold"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherGold"), Find), Picks ? Picks->Percent : -1);
+	TestEqual(TEXT("the plough still gives food only"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough2->Percent);
+	TestEqual(TEXT("an unknown technology gives nothing"), HOLTechnology::GetBonusPercent(TArray<FName>{ TEXT("Nothing") }, TEXT("GatherFood"), Find), 0);
+
 	// The player's state: a technology is researched once.
 	FHOLTechnologyState State;
 	TestFalse(TEXT("none yet"), State.Has(TEXT("PloughI")));

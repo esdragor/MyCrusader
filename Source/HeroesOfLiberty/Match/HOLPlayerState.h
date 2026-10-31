@@ -130,6 +130,9 @@ public:
 	/** Server only: a technology researched (true when it is new). */
 	bool AddTechnology(FName Technology);
 
+	/** T5: the percent a statistic gains from the player's technologies (HOLTechnology::GetBonusPercent), kept until they change. */
+	int32 GetTechnologyBonusPercent(FName Stat) const;
+
 	/** The technologies changed: on the server when set, on the owner's machine when they arrive. For the grid and the effects. */
 	DECLARE_MULTICAST_DELEGATE(FOnTechnologiesChanged);
 	FOnTechnologiesChanged OnTechnologiesChanged;
@@ -177,4 +180,7 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Technologies)
 	FHOLTechnologyState Technologies;
+
+	/** Percent by statistic, filled as asked and emptied when the technologies change. */
+	mutable TMap<FName, int32> TechnologyBonus;
 };

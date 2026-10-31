@@ -63,3 +63,38 @@ bool HOLTechnology::IsQueued(const TArray<FHOLProductionItem>& Queue, const FNam
 {
 	return Queue.ContainsByPredicate([Technology](const FHOLProductionItem& Item) { return Item.TypeName == Technology; });
 }
+
+int32 HOLTechnology::GetBonusPercent(const TArray<FName>& Done, const FName Stat, TFunctionRef<const FHOLTechnologyRow*(FName)> Find)
+{
+	int32 Total = 0;
+	for (const FName Name : Done)
+	{
+		const FHOLTechnologyRow* Row = Find(Name);
+		if (!Row || !Row->Stats.Contains(Stat))
+		{
+			continue;
+		}
+		// The row's percent is its line's total: only what it adds to the technology it follows counts.
+		int32 Gain = Row->Percent;
+		if (!Row->Requires.IsNone() && Done.Contains(Row->Requires))
+		{
+			if (const FHOLTechnologyRow* Before = Find(Row->Requires))
+			{
+				Gain -= Before->Percent;
+			}
+		}
+		Total += Gain;
+	}
+	return Total;
+}
+
+FName HOLTechnology::GetGatherStat(const EHOLResource Resource)
+{
+	switch (Resource)
+	{
+	case EHOLResource::Food: return TEXT("GatherFood");
+	case EHOLResource::Wood: return TEXT("GatherWood");
+	case EHOLResource::Stone: return TEXT("GatherStone");
+	default: return TEXT("GatherGold");
+	}
+}

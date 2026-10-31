@@ -47,4 +47,7 @@ waitlog Technology: slot 0 researched WheelbarrowI
 hol.Prod.Queue WheelbarrowII Farm
 waitlog Production: slot 0 queued research WheelbarrowII
 waitlog Technology: slot 0 researched WheelbarrowII
+# T5 : la Charrue II donne +20 % (le total de sa ligne, pas 10 + 20) à la récolte de nourriture ; rien aux autres.
+hol.Tech.Report
+waitlog gathering food +20% wood +0% stone +0% gold +0%
 note Charrue I et II, Brouette I et II faites : l'état du joueur les garde (journal : Technology: slot 0 researched ...).

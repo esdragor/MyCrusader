@@ -79,6 +79,16 @@ namespace HOLTechnology
 	/** What a research takes as an item of the production queue: its cost, its time in steps (at least 1), no population place. */
 	HEROESOFLIBERTY_API FHOLProductionCost MakeCost(const FHOLTechnologyRow& Row, float StepSeconds);
 
+	/**
+	 * T5: the percent a statistic gains from the technologies Done. The Percent of a row is the TOTAL of its line (T-Q2: level II
+	 * = level I and more), so each technology adds its Percent minus the one of the technology it follows when that one is done:
+	 * level I and II together give level II's percent, not the sum. Lines of different technologies on one statistic add up.
+	 */
+	HEROESOFLIBERTY_API int32 GetBonusPercent(const TArray<FName>& Done, FName Stat, TFunctionRef<const FHOLTechnologyRow*(FName)> Find);
+
+	/** The statistic a gathering technology changes for a resource (GatherFood...). */
+	HEROESOFLIBERTY_API FName GetGatherStat(EHOLResource Resource);
+
 	/** True when a queue holds an item for this technology, started or not. */
 	HEROESOFLIBERTY_API bool IsQueued(const TArray<FHOLProductionItem>& Queue, FName Technology);
 }

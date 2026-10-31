@@ -1260,6 +1260,33 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** T3/T5: what the local players have researched and what it gives, for the scripted checks. */
+	FAutoConsoleCommand TechnologyReportCommand(
+		TEXT("hol.Tech.Report"),
+		TEXT("hol.Tech.Report: logs the technologies the local player has researched and the percent they give to each gathering"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				if (!PlayerState)
+				{
+					continue;
+				}
+				TArray<FString> Names;
+				for (const FName Name : PlayerState->GetTechnologies().Done)
+				{
+					Names.Add(Name.ToString());
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Technology report: slot %d researched [%s], gathering food +%d%% wood +%d%% stone +%d%% gold +%d%%"),
+					PlayerState->GetPlayerIndex(), *FString::Join(Names, TEXT(", ")),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Food)),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Wood)),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Stone)),
+					PlayerState->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Gold)));
+			}
+		}));
+
 	FAutoConsoleCommand ProductionReportCommand(
 		TEXT("hol.Prod.Report"),
 		TEXT("hol.Prod.Report: logs the local player's economy and the queue of its selected building"),

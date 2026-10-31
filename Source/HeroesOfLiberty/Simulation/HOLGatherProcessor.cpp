@@ -28,6 +28,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 namespace UE::HeroesOfLiberty::Gather
 {
@@ -588,7 +589,10 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		const EHOLResource Carried = Gather.Load.Resource;
 		int32 Lost = 0;
 		const float UnitRate = Gatherer.Constants.GatherRates[Resource];
-		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f);
+		// T5: the owner's technologies (the Plough, the Double axes, the Miner picks) raise the rate of their resource.
+		const AHOLPlayerState* Owner = Step.Production ? Step.Production->FindPlayerState(Gatherer.OwnerPlayer) : nullptr;
+		const float TechnologyScale = Owner ? 1.f + 0.01f * Owner->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(Resource)) : 1.f;
+		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f) * TechnologyScale;
 		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Rate, Step.StepSeconds,
 			Gatherer.Constants.CarryCapacity, Remaining, &Lost);
 		if (Taken > 0)
