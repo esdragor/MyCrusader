@@ -13,9 +13,12 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Technologies/HOLTechnologyRules.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 
@@ -114,6 +117,16 @@ FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName) const
 		Cost.BuildSteps = GetBuildSteps(*Row, StepSeconds);
 		Cost.Population = Row->Population;
 	}
+	// A technology (T3, T-Q6 = A): an item of the same queue, no population place.
+	else if (const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(TypeName))
+	{
+		Cost = HOLTechnology::MakeCost(*Technology, StepSeconds);
+		const float Override = UE::HeroesOfLiberty::Production::CVarBuildTime.GetValueOnGameThread();
+		if (Override > 0.f)
+		{
+			Cost.BuildSteps = FMath::Max(1, FMath::RoundToInt(Override / FMath::Max(StepSeconds, UE_KINDA_SMALL_NUMBER)));
+		}
+	}
 	return Cost;
 }
 
@@ -144,6 +157,66 @@ void UHOLProductionSubsystem::OnStepStarted(const int64 StepIndex)
 {
 	ApplyOrders();
 	AdvanceQueues(StepIndex);
+	RecoverMarketBook();
+}
+
+bool UHOLProductionSubsystem::EnsureMarketSettings()
+{
+	if (!bMarketSettingsLoaded)
+	{
+		bMarketSettingsLoaded = HOLMarket::LoadStandardSettings(MarketSettings);
+	}
+	return bMarketSettingsLoaded;
+}
+
+void UHOLProductionSubsystem::RecoverMarketBook()
+{
+	AHOLGameState* GameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!GameState || !GameState->HasMarketBook() || !EnsureMarketSettings())
+	{
+		return;
+	}
+	const int32 IntervalSteps = FMath::Max(1, FMath::RoundToInt(static_cast<float>(MarketSettings.RecoverEverySeconds) / FMath::Max(StepSeconds, UE_KINDA_SMALL_NUMBER)));
+	if (++StepsSinceMarketRecover >= IntervalSteps)
+	{
+		StepsSinceMarketRecover = 0;
+		GameState->SetMarketBook(HOLMarket::Recover(MarketSettings, GameState->GetMarketBook(), 1));
+	}
+}
+
+void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& PlayerState)
+{
+	// A client could send anything: only a Market, and only whole lots of the three tradable goods, up to a sane count.
+	constexpr int32 MaxLotsAnOrder = 50;
+	AHOLGameState* GameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (Building.GetTypeName() != HOLBuildingTypeNames::Market)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d trade ignored: %s is not a Market"), Order.PlayerIndex, *Building.GetTypeName().ToString());
+		return;
+	}
+	if (!GameState || !GameState->HasMarketBook() || !EnsureMarketSettings())
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d trade ignored: no book of prices"), Order.PlayerIndex);
+		return;
+	}
+	if (Order.Resource < 0 || Order.Resource >= HOLMarket::TradableResources || Order.Lots <= 0 || Order.Lots > MaxLotsAnOrder)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d trade ignored: resource %d, %d lots"), Order.PlayerIndex, Order.Resource, Order.Lots);
+		return;
+	}
+	FHOLResources After;
+	const HOLMarket::FTrade Trade = HOLMarket::Apply(MarketSettings, GameState->GetMarketBook(), PlayerState.GetResources(),
+		static_cast<EHOLResource>(Order.Resource), Order.Lots, Order.bBuy, MarketSettings.FeePercent, After);
+	if (!Trade.bOk)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d cannot %s %d lots of resource %d (%s)"), Order.PlayerIndex,
+			Order.bBuy ? TEXT("buy") : TEXT("sell"), Order.Lots, Order.Resource, *Trade.Reason.ToString());
+		return;
+	}
+	PlayerState.SetResources(After);
+	GameState->SetMarketBook(Trade.Book);
+	UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d %s %d lots of resource %d for %d gold (price now %d, %s)"), Order.PlayerIndex,
+		Order.bBuy ? TEXT("bought") : TEXT("sold"), Order.Lots, Order.Resource, Trade.Gold, Trade.Book.Prices[Order.Resource], *After.ToString());
 }
 
 void UHOLProductionSubsystem::ApplyOrders()
@@ -247,10 +320,54 @@ void UHOLProductionSubsystem::ApplyOrders()
 			continue;
 		}
 
+		// M4c: an exchange at a Market, not a queue item.
+		if (Order.Kind == FHOLProductionCommand::EKind::Trade)
+		{
+			ApplyMarketTrade(Order, *Building, *PlayerState);
+			continue;
+		}
+
 		FHOLResources Stock = PlayerState->GetResources();
 		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
 		if (Order.Kind == FHOLProductionCommand::EKind::Queue)
 		{
+			// A technology (T3, T-Q6 = A) goes through the same queue as the units, after the rules of GDD 11.
+			const FHOLTechnologyRow* Technology = Type->Produces.Contains(Order.TypeName) ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
+			if (Technology)
+			{
+				const FHOLProductionCost Cost = GetCost(Order.TypeName);
+				HOLTechnology::FFacts Facts;
+				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+				Facts.HeroTier = HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0;
+				Facts.HeroLevel = UHOLHeroLibrary::GetHeroLevel(this, Order.PlayerIndex);
+				Facts.bRequiresDone = Technology->Requires.IsNone() || PlayerState->GetTechnologies().Has(Technology->Requires);
+				Facts.bBuildingFinished = Building->GetTypeName() == Technology->Building;
+				Facts.bCanPay = Stock.Covers(Cost.Resources);
+				Facts.bResearched = PlayerState->GetTechnologies().Has(Order.TypeName);
+				for (TActorIterator<AHOLBuilding> It(GetWorld()); It && !Facts.bQueued; ++It)
+				{
+					Facts.bQueued = It->GetOwnerPlayer() == Order.PlayerIndex && HOLTechnology::IsQueued(It->GetProductionQueue(), Order.TypeName);
+				}
+				const HOLTechnology::EBlock Block = HOLTechnology::Check(*Technology, Facts);
+				if (Block != HOLTechnology::EBlock::None)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), HOLTechnology::DescribeBlock(Block));
+					continue;
+				}
+				const EHOLProductionRefusal Refusal = HOLProduction::TryEnqueue(Queue, Order.TypeName, Cost, Type->MaxQueue, Stock);
+				if (Refusal != EHOLProductionRefusal::None)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (%s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), DescribeRefusal(Refusal));
+					continue;
+				}
+				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d queued research %s (%d in the queue, %s)"), Order.PlayerIndex,
+					*Order.TypeName.ToString(), Queue.Num(), *Stock.ToString());
+				PlayerState->SetResources(Stock);
+				Building->NotifyProductionChanged();
+				continue;
+			}
 			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
 				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName), Type->MaxQueue, Stock)
 				: EHOLProductionRefusal::NotProducible;
@@ -335,6 +452,17 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		HOLProduction::Advance(Queue, StepIndex, GetCostOf, FreePopulation.FindOrAdd(Building->GetOwnerPlayer()), Done);
 		for (const FName TypeName : Done)
 		{
+			// A research done (T3): his player has it, nothing is born.
+			if (!Units->FindTypeRow(TypeName) && UHOLTechnologySettings::FindTechnology(TypeName))
+			{
+				if (AHOLPlayerState* Researcher = FindPlayerState(Building->GetOwnerPlayer()))
+				{
+					Researcher->AddTechnology(TypeName);
+				}
+				UE_LOG(LogHOLCommands, Display, TEXT("Technology: slot %d researched %s at step %lld"), Building->GetOwnerPlayer(),
+					*TypeName.ToString(), StepIndex);
+				continue;
+			}
 			int32& NumBorn = NumBirths.FindOrAdd(Building);
 			// A tiny radius: the unit is put on the navmesh right under the point (FHOLUnitSpawnRequest).
 			FHOLUnitSpawnRequest Request{ TypeName, 1, GetBirthLocation(*Building, NumBorn), 1.f, Building->GetOwnerPlayer() };

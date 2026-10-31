@@ -20,6 +20,8 @@ namespace HOLTechnologyRules
 	const int NoBuilding = 5;
 	// The stock does not cover the cost.
 	const int CannotPay = 6;
+	// Already in a production queue of its owner (CheckQueued; the C++ rule refuses it right after the researched one).
+	const int AlreadyQueued = 7;
 
 	// Why a technology cannot be started now, or Available. HeroTier is the tier the hero's level has opened (HOLHeroXP::GetTier
 	// in C++), HeroLevel his level (0 without a hero); MinTier and MinHeroLevel the row's (MinHeroLevel 0: the tier alone).
@@ -45,5 +47,16 @@ namespace HOLTechnologyRules
 	bool IsAvailable(int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched)
 	{
 		return Check(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched) == Available;
+	}
+
+	// The same with the production queue known (the C++ rule's order, HOLTechnology::Check, which the simulation applies): a technology
+	// already in a queue of its owner is refused right after the researched one.
+	int CheckQueued(int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched, bool bQueued)
+	{
+		if (bResearched)
+			return AlreadyResearched;
+		if (bQueued)
+			return AlreadyQueued;
+		return Check(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched);
 	}
 }
