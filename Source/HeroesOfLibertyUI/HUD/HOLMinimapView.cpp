@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/GameStateBase.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLFogRender.h"
 #include "Map/HOLMapBounds.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerColors.h"
@@ -28,16 +29,17 @@ namespace
 	constexpr int32 BuildingIdBit = 0x40000000;
 
 	/**
-	 * THE ONE PLACE the minimap reads the fog (see the class comment): what ViewerSlot's camp knows of a ground point. A viewer with no
-	 * slot (a spectator) sees all; without a fog the vision subsystem says Visible.
+	 * THE ONE PLACE the minimap reads the fog: what the local viewer's camp knows of a ground point, from the fog render's picture
+	 * (UHOLFogRenderSubsystem, FogInProgress.md section 10, the same picture the screen is darkened by). Everything in sight when there is no fog
+	 * (mode Disabled, a spectator, the picture not made yet).
 	 */
-	EHOLCellVision ReadVision(const UHOLVisionSubsystem* Vision, const int32 ViewerSlot, const FVector& Point)
+	EHOLCellVision ReadVision(const UHOLFogRenderSubsystem* Fog, const FVector& Point)
 	{
-		if (!Vision || ViewerSlot < 0 || !Vision->IsStarted())
+		if (!Fog || !Fog->IsFogActive())
 		{
 			return EHOLCellVision::Visible;
 		}
-		return Vision->GetVision(ViewerSlot, Point);
+		return Fog->GetCellVision(FVector2D(Point.X, Point.Y));
 	}
 
 	FColor ResourceColor(const EHOLResource Resource)
@@ -238,7 +240,7 @@ FVector2D UHOLMinimapView::GetCameraFocus() const
 	return Camera ? FVector2D(Camera->GetFocus()) : FVector2D::ZeroVector;
 }
 
-void UHOLMinimapView::RefreshTerrain(const int32 ViewerSlot)
+void UHOLMinimapView::RefreshTerrain(const int32 /*ViewerSlot: the fog render knows the local viewer*/)
 {
 	const UWorld* World = GetWorld();
 	if (!World)
@@ -258,7 +260,7 @@ void UHOLMinimapView::RefreshTerrain(const int32 ViewerSlot)
 		Terrain->NeverStream = true;
 		Terrain->UpdateResource();
 	}
-	const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+	const UHOLFogRenderSubsystem* Fog = World->GetSubsystem<UHOLFogRenderSubsystem>();
 	const double Width = FrameMax.Y - FrameMin.Y;
 	const double Height = FrameMax.X - FrameMin.X;
 	if (Width <= 0.0 || Height <= 0.0)
@@ -283,7 +285,7 @@ void UHOLMinimapView::RefreshTerrain(const int32 ViewerSlot)
 			const double WorldY = FrameMin.Y + (Tx + 0.5) / TerrainSide * Width;
 			const double WorldX = FrameMax.X - (Ty + 0.5) / TerrainSide * Height;
 			FColor Color;
-			switch (ReadVision(Vision, ViewerSlot, FVector(WorldX, WorldY, 0.0)))
+			switch (ReadVision(Fog, FVector(WorldX, WorldY, 0.0)))
 			{
 			case EHOLCellVision::Unexplored: Color = FColor(0, 0, 0, 255); break;
 			case EHOLCellVision::Explored: Color = FColor(26, 40, 26, 255); break;
@@ -301,7 +303,7 @@ void UHOLMinimapView::RefreshTerrain(const int32 ViewerSlot)
 			int32 Tx = 0;
 			int32 Ty = 0;
 			if (!Source.IsStanding() || !TexelOf(Source.Location.X, Source.Location.Y, Tx, Ty)
-				|| ReadVision(Vision, ViewerSlot, Source.Location) == EHOLCellVision::Unexplored)
+				|| ReadVision(Fog, Source.Location) == EHOLCellVision::Unexplored)
 			{
 				continue;
 			}
@@ -342,6 +344,7 @@ void UHOLMinimapView::GatherEntities(const int32 ViewerSlot, TArray<FHOLMinimapE
 		return;
 	}
 	const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+	const UHOLFogRenderSubsystem* Fog = World->GetSubsystem<UHOLFogRenderSubsystem>();
 	auto ColorOf = [World](const int32 OwnerSlot)
 	{
 		const int32 ColorIndex = OwnerSlot >= 0 ? AHOLPlayerState::FindColorIndex(*World, OwnerSlot) : INDEX_NONE;
@@ -369,7 +372,7 @@ void UHOLMinimapView::GatherEntities(const int32 ViewerSlot, TArray<FHOLMinimapE
 		const AHOLBuilding* Building = *It;
 		const int32 OwnerSlot = Building->GetOwnerPlayer();
 		const FVector Place = Building->GetActorLocation();
-		if (Building->GetHealth() <= 0 || (OwnerSlot != ViewerSlot && ReadVision(Vision, ViewerSlot, Place) == EHOLCellVision::Unexplored))
+		if (Building->GetHealth() <= 0 || (OwnerSlot != ViewerSlot && ReadVision(Fog, Place) == EHOLCellVision::Unexplored))
 		{
 			continue;
 		}

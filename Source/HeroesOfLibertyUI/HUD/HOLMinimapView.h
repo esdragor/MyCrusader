@@ -62,9 +62,9 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FHOLMinimapTicked);
  * camera's frame) over a terrain layer it builds itself (RefreshTerrain: the explored sources and the fog of the viewer's camp), and
  * (4) tells the script where it was pressed (OnPressed, in pixels).
  *
- * THE FOG. The terrain layer reads the viewer's vision cell by cell (UHOLVisionSubsystem::GetVision) a couple of times a second:
- * black where unexplored, dim where explored, clear in sight; sources only where explored. When the fog branch (UHOLFogRenderSubsystem,
- * FogInProgress.md section 10) is in main, ReadVision is the one place to swap for its GetCellVision / GetTexture.
+ * THE FOG. The terrain layer reads the picture of UHOLFogRenderSubsystem (FogInProgress.md section 10, GetCellVision: the same picture that
+ * darkens the screen) cell by cell a couple of times a second: black where unexplored, dim where explored, clear in sight; sources only
+ * where explored. ReadVision (cpp) is the one place that reads it. Units of the others come through UHOLVisionSubsystem::IsUnitShown.
  */
 UCLASS()
 class HEROESOFLIBERTYUI_API UHOLMinimapView : public UWidget
@@ -92,7 +92,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	FVector2D GetCameraFocus() const;
 
-	/** The terrain layer made again for ViewerSlot's camp (a spectator or INDEX_NONE: all in sight). Costs ~50 000 reads: twice a second. */
+	/** The terrain layer made again from the fog render's picture (the argument is the local slot, not used: all in sight without a fog). ~40 000 reads: twice a second. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	void RefreshTerrain(int32 ViewerSlot);
 
