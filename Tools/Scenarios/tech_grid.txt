@@ -46,3 +46,8 @@ waitlog Technology: slot 0 researched WheelbarrowII
 hol.Tech.Report
 waitlog gathering food +10% wood +0% stone +0% gold +0%
 note Fait : Charrue I (+10 % de recolte de nourriture) et Brouette I et II ; la Charrue II n'a pas ete cherchee.
+note 4. Brouette II faite (+20 %) : un Paysan coupe du bois et en depose 12 d'un coup au lieu de 10 (la charge des travailleurs, T5).
+hol.Gather.LogDeposits 1
+hol.Gather.SpeedScale 5
+hol.Units.Gather -14221 -1816 0
+waitlog Gather: slot 0 unloaded 12 Wood

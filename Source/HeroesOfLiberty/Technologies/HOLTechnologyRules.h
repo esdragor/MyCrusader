@@ -89,6 +89,13 @@ namespace HOLTechnology
 	 */
 	HEROESOFLIBERTY_API int32 GetBonusPercent(const TArray<FName>& Done, FName Stat, TFunctionRef<const FHOLTechnologyRow*(FName)> Find);
 
+	/** The statistics the Wheelbarrow changes (T5, GDD 11.1: speed and capacity of the workers). */
+	inline const FName WorkerCarryStat(TEXT("WorkerCarry"));
+	inline const FName WorkerSpeedStat(TEXT("WorkerSpeed"));
+
+	/** A whole quantity (a carrying capacity) raised by Percent: Base + Base * Percent / 100, rounded to the nearest whole unit, never below Base. */
+	HEROESOFLIBERTY_API int32 ScaleByPercent(int32 Base, int32 Percent);
+
 	/** The statistic a gathering technology changes for a resource (GatherFood...). */
 	HEROESOFLIBERTY_API FName GetGatherStat(EHOLResource Resource);
 

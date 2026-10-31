@@ -345,6 +345,20 @@ bool FHOLTechnologyRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("the plough still gives food only"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough2->Percent);
 	TestEqual(TEXT("an unknown technology gives nothing"), HOLTechnology::GetBonusPercent(TArray<FName>{ TEXT("Nothing") }, TEXT("GatherFood"), Find), 0);
 
+	// T5: the Wheelbarrow raises what a worker carries (a whole quantity, 10 at the Peasant): both of its stats are the line's.
+	Researched = { TEXT("WheelbarrowI") };
+	const FHOLTechnologyRow* Barrow1 = Find(TEXT("WheelbarrowI"));
+	const FHOLTechnologyRow* Barrow2 = Find(TEXT("WheelbarrowII"));
+	TestEqual(TEXT("Wheelbarrow I: carry +10 %"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::WorkerCarryStat, Find), Barrow1 ? Barrow1->Percent : -1);
+	Researched.Add(TEXT("WheelbarrowII"));
+	TestEqual(TEXT("Wheelbarrow I and II: speed +20 % (the line's total)"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::WorkerSpeedStat, Find), Barrow2 ? Barrow2->Percent : -1);
+	TestEqual(TEXT("10 carried, +0 %: 10"), HOLTechnology::ScaleByPercent(10, 0), 10);
+	TestEqual(TEXT("10 carried, +10 %: 11"), HOLTechnology::ScaleByPercent(10, 10), 11);
+	TestEqual(TEXT("10 carried, +20 %: 12"), HOLTechnology::ScaleByPercent(10, 20), 12);
+	TestEqual(TEXT("3 carried, +10 %: still 3 (a third of a unit is not one)"), HOLTechnology::ScaleByPercent(3, 10), 3);
+	TestEqual(TEXT("nothing carried: nothing"), HOLTechnology::ScaleByPercent(0, 20), 0);
+	TestEqual(TEXT("a negative percent never lowers it"), HOLTechnology::ScaleByPercent(10, -50), 10);
+
 	// The player's state: a technology is researched once.
 	FHOLTechnologyState State;
 	TestFalse(TEXT("none yet"), State.Has(TEXT("PloughI")));

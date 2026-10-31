@@ -103,6 +103,11 @@ int32 HOLTechnology::GetBonusPercent(const TArray<FName>& Done, const FName Stat
 	return Total;
 }
 
+int32 HOLTechnology::ScaleByPercent(const int32 Base, const int32 Percent)
+{
+	return Base + FMath::RoundToInt(static_cast<double>(Base) * FMath::Max(Percent, 0) / 100.0);
+}
+
 FName HOLTechnology::GetGatherStat(const EHOLResource Resource)
 {
 	switch (Resource)
