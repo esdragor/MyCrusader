@@ -3,6 +3,8 @@
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
+#include "Internationalization/Culture.h"
+#include "Internationalization/Internationalization.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -34,6 +36,18 @@ namespace UE::HeroesOfLiberty::Tests::ForumMessages
 	{
 		return Message.Text.BuildSourceString();
 	}
+
+	/** The game's language for a test, the machine's put back after. */
+	struct FScopedLanguage
+	{
+		FString Previous;
+		explicit FScopedLanguage(const TCHAR* Culture)
+		{
+			Previous = FInternationalization::Get().GetCurrentCulture()->GetName();
+			FInternationalization::Get().SetCurrentCulture(Culture);
+		}
+		~FScopedLanguage() { FInternationalization::Get().SetCurrentCulture(Previous); }
+	};
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryMessagesFellTest, "HeroesOfLiberty.Victory.Messages.Fell", UE::HeroesOfLiberty::Tests::ForumMessages::Flags)
@@ -254,6 +268,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryMessagesLobbyNamesTest, "HeroesOfLib
 bool FHOLVictoryMessagesLobbyNamesTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::ForumMessages;
+	// Not French: the patterns stay as they are (the elision, test Elision, is French only).
+	const FScopedLanguage English(TEXT("en"));
 	FHOLMatchConfig Lobby = MakeTeams();
 	Lobby.Slots[0].PlayerName = TEXT("Aragorn");
 	Lobby.Slots[1].State = EHOLSlotState::Human;
@@ -279,6 +295,65 @@ bool FHOLVictoryMessagesLobbyNamesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("attacker slot"), Pieces[0].Slot, 2);
 		TestEqual(TEXT("owner, named"), Pieces[2].Text, FString(TEXT("Boromir")));
 		TestEqual(TEXT("owner slot"), Pieces[2].Slot, 1);
+	}
+	return true;
+}
+
+// V4 (answer B, 2026-10-30): the French elision, « de » + a vowel or a silent h -> « d' », French only; the real messages, not a string by hand.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVictoryMessagesElisionTest, "HeroesOfLiberty.Victory.Messages.Elision", UE::HeroesOfLiberty::Tests::ForumMessages::Flags)
+bool FHOLVictoryMessagesElisionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::ForumMessages;
+	// The pure rule.
+	for (const TCHAR* Name : { TEXT("Aragorn"), TEXT("Elrond"), TEXT("Ulf"), TEXT("Ivar"), TEXT("Olaf"), TEXT("Yvain"), TEXT("Éowyn"), TEXT("Œdipe"), TEXT("Hugo"), TEXT("Héloïse"), TEXT("aragorn"), TEXT("IA Facile 2") })
+	{
+		TestTrue(FString::Printf(TEXT("%s elides"), Name), HOLForumMessages::ElidesDe(Name));
+	}
+	for (const TCHAR* Name : { TEXT("Bob"), TEXT("Joueur 2"), TEXT("Gimli"), TEXT("Hans"), TEXT("Harald"), TEXT("Hr"), TEXT("8"), TEXT(""), TEXT("-x") })
+	{
+		TestFalse(FString::Printf(TEXT("%s does not"), Name), HOLForumMessages::ElidesDe(Name));
+	}
+	TestEqual(TEXT("pattern"), HOLForumMessages::ElidePattern(TEXT("{0} tient la ruine de {1}"), 1, TEXT("Elrond")), FString(TEXT("{0} tient la ruine d'{1}")));
+	TestEqual(TEXT("pattern, a consonant"), HOLForumMessages::ElidePattern(TEXT("{0} tient la ruine de {1}"), 1, TEXT("Bob")), FString(TEXT("{0} tient la ruine de {1}")));
+	TestEqual(TEXT("pattern, the other argument"), HOLForumMessages::ElidePattern(TEXT("{0} tient la ruine de {1}"), 0, TEXT("Elrond")), FString(TEXT("{0} tient la ruine de {1}")));
+
+	// The messages, in French.
+	const FScopedLanguage French(TEXT("fr"));
+	FHOLMatchConfig Lobby = MakeTeams();
+	Lobby.Slots[0].PlayerName = TEXT("Aragorn");
+	Lobby.Slots[1].State = EHOLSlotState::Human;
+	Lobby.Slots[1].PlayerName = TEXT("Bob");
+	Lobby.Slots[3].State = EHOLSlotState::Human;
+	Lobby.Slots[3].PlayerName = TEXT("Elrond");
+	const auto MessageOf = [&Lobby](const FHOLForumEvent& Event, const int32 Viewer) { return HOLForumMessages::GetMessage(Event, Lobby, Viewer); };
+	TestEqual(TEXT("fell"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 0, INDEX_NONE, 1), 1).Text.ToString(), FString(TEXT("Le forum d'Aragorn est tombé — 1 vie")));
+	TestEqual(TEXT("fell, a consonant"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 1, INDEX_NONE, 2), 0).Text.ToString(), FString(TEXT("Le forum de Bob est tombé — 2 vies")));
+	TestEqual(TEXT("you hold"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 0, 1), 1).Text.ToString(), FString(TEXT("Vous tenez la ruine d'Aragorn")));
+	TestEqual(TEXT("held"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 3, 1), 2).Text.ToString(), FString(TEXT("Bob tient la ruine d'Elrond")));
+	TestEqual(TEXT("held, the attacker is Elrond"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 1, 3), 2).Text.ToString(), FString(TEXT("Elrond tient la ruine de Bob")));
+	TestEqual(TEXT("razed"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::Razed, 0, INDEX_NONE, 1), 1).Text.ToString(), FString(TEXT("Fondations d'Aragorn rasées — 1 vie")));
+	TestEqual(TEXT("king died"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, 0), 1).Text.ToString(), FString(TEXT("Le Roi d'Aragorn est mort")));
+	TestEqual(TEXT("king died, a consonant"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, 1), 0).Text.ToString(), FString(TEXT("Le Roi de Bob est mort")));
+	// An AI's name starts with « IA »: « d'IA Facile 3 ».
+	TestTrue(TEXT("an AI"), MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, 2), 0).Text.ToString().StartsWith(TEXT("Le Roi d'IA ")));
+	// The names stay cut for their colours.
+	const FHOLForumMessage Held = MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::HoldStarted, 3, 1), 2);
+	const TArray<HOLForumMessages::FPiece> Pieces = HOLForumMessages::SplitNames(Held, 2, Lobby);
+	TestEqual(TEXT("three pieces"), Pieces.Num(), 3);
+	if (Pieces.Num() == 3)
+	{
+		TestEqual(TEXT("the owner is the last piece"), Pieces[2].Text, FString(TEXT("Elrond")));
+		TestEqual(TEXT("its slot"), Pieces[2].Slot, 3);
+	}
+
+	// Not French: nothing changes.
+	{
+		const FScopedLanguage English(TEXT("en"));
+		TestEqual(TEXT("English, no elision"), TextOf(MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::Fell, 0, INDEX_NONE, 1), 1)), FString(TEXT("Le forum de Aragorn est tombé — 1 vie")));
+	}
+	{
+		const FScopedLanguage Japanese(TEXT("ja"));
+		TestEqual(TEXT("Japanese, no elision"), TextOf(MessageOf(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, 0), 1)), FString(TEXT("Le Roi de Aragorn est mort")));
 	}
 	return true;
 }

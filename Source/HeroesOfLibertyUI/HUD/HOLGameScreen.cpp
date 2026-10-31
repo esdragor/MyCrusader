@@ -1961,7 +1961,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FText Name = bBanner ? LOCTEXT("BannerName", "Bannière de l'Aube") : LOCTEXT("CloseRanksName", "Serrez les rangs");
 			FText Effect = bBanner
 				? LOCTEXT("BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s")
-				: LOCTEXT("CloseRanksEffect", "−25 % de dégâts reçus pendant 15 s pour vos unités à 12 m du héros ; recharge 60 s");
+				: LOCTEXT("CloseRanksEffect", "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
 			const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
 				? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
 			if (bLocked)
