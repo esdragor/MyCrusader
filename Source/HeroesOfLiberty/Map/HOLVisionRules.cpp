@@ -82,6 +82,11 @@ bool HOLVisionRules::BuildingDrawsFromMemory(const bool bOwnCamp, const bool bIn
 	return !bOwnCamp && !bInSight;
 }
 
+bool HOLVisionRules::GhostActorWanted(const bool bInSight, const bool bRealPresent)
+{
+	return !bInSight && !bRealPresent;
+}
+
 bool HOLVisionRules::SourceStaysDrawn(const bool bRemembered, const bool bInSight)
 {
 	return bRemembered && !bInSight;

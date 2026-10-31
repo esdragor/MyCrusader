@@ -7038,6 +7038,11 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
         if ($NetFogOn) {
             $Checks["client $N : remembers $(if ($Held -eq 0) { 'the other''s centre as a ghost' } else { 'no building of the other' }) ($OthersGhosts)"] = $(if ($Held -eq 0) { $OthersGhosts -ge 1 } else { $OthersGhosts -eq 0 })
         }
+        # F7.3 (b), a client: what it remembers of the other's buildings is drawn by actors of its own (grey), since the server stops sending the real ones.
+        $GhostActors = if ("$($ClientFog[$N].Last)" -match "ghost actors (\d+)") { [int]$Matches[1] } else { -1 }
+        if ($NetFogOn) {
+            $Checks["client $N : $(if ($Held -eq 0) { 'draws the other''s centre by a ghost actor' } else { 'no ghost actor' }) ($GhostActors)"] = $(if ($Held -eq 0) { $GhostActors -ge 1 } else { $GhostActors -eq 0 })
+        }
         # F6b: the units it holds (the last "Units report", "client, 6 displayed: Peasant of slot 0 x5, ..."): its own slot's only in
         # Normal, both slots' without fog.
         $UnitsShown = Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }

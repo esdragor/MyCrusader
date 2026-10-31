@@ -422,13 +422,14 @@ bool UHOLVisionSubsystem::UpdateClient()
 	// All the buildings it holds are present for its memory (F6e.2: an enemy's it sees now, until the server stops sending it); its camp's observe.
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
-		if (IsValid(*It))
+		if (IsValid(*It) && !It->IsFogGhostActor())
 		{
 			ObserveBuilding(**It, GetCampIndex(It->GetOwnerPlayer()) == ClientCamp);
 		}
 	}
 	EndPass(true, ClientCamp);
 	RefreshSourceMemory(PlayerState->GetPlayerIndex());
+	SyncGhostActors(PlayerState->GetPlayerIndex());
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 	return true;
 }
@@ -518,6 +519,78 @@ bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center,
 	return false;
 }
 
+int32 UHOLVisionSubsystem::SyncGhostActors(const int32 ViewerSlot)
+{
+	UWorld* World = GetWorld();
+	const int32 ViewerCamp = World && bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
+	if (!World || !Ghosts.IsValidIndex(ViewerCamp))
+	{
+		return 0;
+	}
+	const TMap<uint64, FHOLGhost>& Memory = Ghosts[ViewerCamp];
+	// The real buildings held here, by type and place.
+	TArray<const AHOLBuilding*> Real;
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		if (IsValid(*It) && !It->IsFogGhostActor())
+		{
+			Real.Add(*It);
+		}
+	}
+	const AHOLGameState* State = World->GetGameState<AHOLGameState>();
+	TSet<uint64> Wanted;
+	for (const TPair<uint64, FHOLGhost>& Pair : Memory)
+	{
+		const FHOLGhost& Ghost = Pair.Value;
+		const FHOLBuildingTypeRow* Type = (Pair.Key >> 32) == 0 ? UHOLBuildingSettings::FindType(Ghost.TypeName) : nullptr;
+		if (!Type)
+		{
+			continue;
+		}
+		const FVector Place(Ghost.Position, 0.);
+		const bool bInSight = IsAreaVisible(ViewerSlot, Place, 0.5 * Type->Footprint);
+		const bool bRealPresent = Real.ContainsByPredicate([&Ghost](const AHOLBuilding* Building)
+		{
+			return Building->GetTypeName() == Ghost.TypeName && FVector2D::DistSquared(FVector2D(Building->GetActorLocation()), Ghost.Position) < 100. * 100.;
+		});
+		if (!HOLVisionRules::GhostActorWanted(bInSight, bRealPresent))
+		{
+			continue;
+		}
+		Wanted.Add(Pair.Key);
+		TWeakObjectPtr<AHOLBuilding>& Slot = GhostActors.FindOrAdd(Pair.Key);
+		AHOLBuilding* Actor = Slot.Get();
+		if (!Actor)
+		{
+			const int32 Color = State && State->GetLaunchConfig().Slots.IsValidIndex(Ghost.Owner) ? State->GetLaunchConfig().Slots[Ghost.Owner].ColorIndex : Ghost.Owner;
+			FActorSpawnParameters Parameters;
+			Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			Actor = World->SpawnActor<AHOLBuilding>(Place, FRotator::ZeroRotator, Parameters);
+			if (!Actor)
+			{
+				continue;
+			}
+			Actor->SetReplicates(false);
+			Actor->MarkFogGhostActor();
+			Actor->Setup(Ghost.TypeName, Ghost.Owner, static_cast<uint8>(Color));
+			Slot = Actor;
+		}
+		Actor->SetFogDraw(EHOLBuildingDraw::Memory, Ghost.State);
+	}
+	for (auto It = GhostActors.CreateIterator(); It; ++It)
+	{
+		if (!Wanted.Contains(It.Key()))
+		{
+			if (AHOLBuilding* Actor = It.Value().Get())
+			{
+				Actor->Destroy();
+			}
+			It.RemoveCurrent();
+		}
+	}
+	return GhostActors.Num();
+}
+
 void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
 {
 	const int32 ViewerCamp = bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
@@ -525,7 +598,7 @@ void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
-		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;
+		const FHOLBuildingTypeRow* Type = IsValid(Building) && !Building->IsFogGhostActor() ? Building->GetType() : nullptr;
 		if (!Type)
 		{
 			continue;
@@ -593,6 +666,10 @@ FString UHOLVisionSubsystem::MakeReport() const
 		}
 		Report += FString::Printf(TEXT(", camp %d (slots %s) visible %d explored %d ghosts %d (buildings of others %d)"), Camp, *FString::Join(Slots, TEXT(" ")),
 			Map.CountVisible(Camp), Map.CountExplored(Camp), Ghosts.IsValidIndex(Camp) ? Ghosts[Camp].Num() : 0, Others);
+	}
+	if (bClient)
+	{
+		Report += FString::Printf(TEXT(", ghost actors %d"), GhostActors.Num());
 	}
 	return Report + FString::Printf(TEXT("; step %.3f ms"), LastUpdateMs);
 }
@@ -671,7 +748,7 @@ FString UHOLVisionSubsystem::MakeLeakReport() const
 	int32 BuildingsOut = 0;
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
-		const FHOLBuildingTypeRow* Type = IsValid(*It) && GetCampIndex(It->GetOwnerPlayer()) != ClientCamp ? It->GetType() : nullptr;
+		const FHOLBuildingTypeRow* Type = IsValid(*It) && !It->IsFogGhostActor() && GetCampIndex(It->GetOwnerPlayer()) != ClientCamp ? It->GetType() : nullptr;
 		if (!Type)
 		{
 			continue;

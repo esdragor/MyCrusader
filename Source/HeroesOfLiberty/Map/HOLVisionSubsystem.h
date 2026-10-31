@@ -131,6 +131,13 @@ public:
 	void RefreshSourceMemory(int32 ViewerSlot);
 
 	/**
+	 * F7.3 (b), a client: a building its camp remembers (ViewerSlot's) and whose place is out of sight has no actor here (the server stops
+	 * sending it): one is made from the memory, drawn grey (AHOLBuilding::MarkFogGhostActor), and removed when the place is seen again
+	 * or the real building is back. Returns how many such actors exist after the pass.
+	 */
+	int32 SyncGhostActors(int32 ViewerSlot);
+
+	/**
 	 * F4 (D382, D520): what Slot's camp remembers of the buildings and sources it saw (HOLVisionRules::UpdateGhosts), kept
 	 * by the server for the reconnection (F6e); null for a slot with no camp, or no fog.
 	 */
@@ -219,5 +226,7 @@ private:
 	FDelegateHandle SourceHandle;
 	/** F7.3 (c): the camp of the machine's own player, whose memory keeps the cut trees drawn (INDEX_NONE: none). */
 	int32 SourceViewerCamp = INDEX_NONE;
+	/** F7.3 (b), a client: the actors made for the remembered buildings, by ghost key. */
+	TMap<uint64, TWeakObjectPtr<class AHOLBuilding>> GhostActors;
 	FDelegateHandle StepHandle;
 };

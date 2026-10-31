@@ -146,6 +146,12 @@ namespace HOLVisionRules
 	 */
 	HEROESOFLIBERTY_API bool SourceStaysDrawn(bool bRemembered, bool bInSight);
 
+	/**
+	 * F7.3 (b), a client: the actor of a remembered building is drawn (a ghost actor made here, the server no longer sends the
+	 * real one out of the camp's sight) only while its place is out of sight and no real building stands there.
+	 */
+	HEROESOFLIBERTY_API bool GhostActorWanted(bool bInSight, bool bRealPresent);
+
 	/** F3.2 (D523): a building's sight from its type's SightRadius: whole standing, half a site, none in ruin. */
 	HEROESOFLIBERTY_API double GetBuildingSight(double SightRadius, EHOLBuildingSight State);
 

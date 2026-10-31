@@ -108,6 +108,12 @@ public:
 	 */
 	void SetFogDraw(EHOLBuildingDraw Draw, EHOLBuildingSight RememberedState);
 	EHOLBuildingDraw GetFogDraw() const { return FogDraw; }
+	/**
+	 * F7.3 (b), a client: this actor was made here to draw a building its camp remembers (UHOLVisionSubsystem::SyncGhostActors), not
+	 * sent by the server: it is no observer, nobody's memory, nobody's leak.
+	 */
+	void MarkFogGhostActor() { bFogGhostActor = true; }
+	bool IsFogGhostActor() const { return bFogGhostActor; }
 	EHOLBuildingSight GetRememberedState() const { return RememberedState; }
 	/**
 	 * Server only (J6a.4): its state, its work. The look and the navmesh follow on every machine (the footprint blocks
@@ -501,6 +507,7 @@ private:
 	EHOLBuildingDraw FogDraw = EHOLBuildingDraw::Live;
 	EHOLBuildingSight RememberedState = EHOLBuildingSight::Standing;
 	bool bBuiltFromMemory = false;
+	bool bFogGhostActor = false;
 
 	/** The building above its foundation, squashed to a site's progress (J6a.4); scale 1 once finished. */
 	UPROPERTY(VisibleAnywhere)

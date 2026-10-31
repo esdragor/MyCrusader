@@ -5,6 +5,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/Engine.h"
+#include "EngineUtils.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "Map/HOLStartSlot.h"
@@ -406,6 +407,62 @@ bool FHOLVisionMatchSourceMemoryTest::RunTest(const FString& Parameters)
 	const int32 NoFog = Match.Sources->AddSource(HOLSourceTypeNames::Tree, UnseenPlace + FVector(0., 5000., 0.));
 	Match.Sources->Take(NoFog, 1000000);
 	TestFalse(TEXT("no fog: a cut tree is gone at once"), Match.Sources->IsDrawn(NoFog));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchGhostActorsTest, "HeroesOfLiberty.Vision.Match.GhostActors", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchGhostActorsTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (b), a client: the real building goes (the server stops sending it out of sight), the camp's memory draws it with an actor of its own.
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector HousePlace(30000., 0., 0.);
+	const FVector AwayPlace(0., 30000., 0.);
+	AHOLBuilding* House = Match.World->SpawnActor<AHOLBuilding>(HousePlace, FRotator::ZeroRotator);
+	if (!TestNotNull(TEXT("the enemy's house"), House))
+	{
+		return false;
+	}
+	House->Setup(HOLBuildingTypeNames::House, 2, 2);
+	const uint32 Scout = Match.Place(Peasant, 0, HousePlace + FVector(-1600., 0., 0.));
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	TestEqual(TEXT("in sight: no actor of the memory"), Match.Vision->SyncGhostActors(0), 0);
+
+	Match.Move(Scout, AwayPlace);
+	Match.Vision->Update();
+	TestEqual(TEXT("out of sight, the real one still here: no double"), Match.Vision->SyncGhostActors(0), 0);
+
+	House->Destroy();
+	Match.Vision->Update();
+	TestEqual(TEXT("out of sight, the real one gone: one actor from the memory"), Match.Vision->SyncGhostActors(0), 1);
+	int32 NumGhostActors = 0;
+	for (TActorIterator<AHOLBuilding> It(Match.World); It; ++It)
+	{
+		if (It->IsFogGhostActor())
+		{
+			++NumGhostActors;
+			TestEqual(TEXT("drawn from the memory"), It->GetFogDraw(), EHOLBuildingDraw::Memory);
+			TestEqual(TEXT("a house"), It->GetTypeName(), HOLBuildingTypeNames::House);
+			TestEqual(TEXT("the enemy's"), static_cast<int32>(It->GetOwnerPlayer()), 2);
+		}
+	}
+	TestEqual(TEXT("one such actor in the world"), NumGhostActors, 1);
+	Match.Vision->Update();
+	TestEqual(TEXT("it is no one's memory: the next step keeps one"), Match.Vision->SyncGhostActors(0), 1);
+	TestEqual(TEXT("and still one in the memory of buildings of others"), Match.Vision->GetGhosts(0)->Num(), 1);
+
+	Match.Move(Scout, HousePlace + FVector(-1600., 0., 0.));
+	Match.Vision->Update();
+	TestEqual(TEXT("back in sight, nothing there: forgotten, no actor"), Match.Vision->SyncGhostActors(0), 0);
 	return true;
 }
 

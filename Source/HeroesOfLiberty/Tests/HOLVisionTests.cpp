@@ -426,6 +426,18 @@ bool FHOLVisionSourceDrawTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionGhostActorTest, "HeroesOfLiberty.Vision.GhostActor", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionGhostActorTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (b), a client: the actor of a remembered building exists only out of sight and when the real one is not there.
+	using namespace HOLVisionRules;
+	TestTrue(TEXT("out of sight, the real one gone: an actor from the memory"), GhostActorWanted(false, false));
+	TestFalse(TEXT("in sight: the server sends the real one, or it is gone"), GhostActorWanted(true, false));
+	TestFalse(TEXT("out of sight but the real one still here: no double"), GhostActorWanted(false, true));
+	TestFalse(TEXT("in sight and real"), GhostActorWanted(true, true));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionReceiversTest, "HeroesOfLiberty.Vision.Receivers", UE::HeroesOfLiberty::Tests::Vision::Flags)
 bool FHOLVisionReceiversTest::RunTest(const FString& Parameters)
 {
