@@ -8,6 +8,7 @@
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Map/HOLFogRender.h"
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
@@ -463,6 +464,67 @@ bool FHOLVisionMatchGhostActorsTest::RunTest(const FString& Parameters)
 	Match.Move(Scout, HousePlace + FVector(-1600., 0., 0.));
 	Match.Vision->Update();
 	TestEqual(TEXT("back in sight, nothing there: forgotten, no actor"), Match.Vision->SyncGhostActors(0), 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchMinimapReaderTest, "HeroesOfLiberty.Vision.Match.MinimapReader", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchMinimapReaderTest::RunTest(const FString& Parameters)
+{
+	// The contract with the minimap (Galadriel, InterfaceInProgress.md): what it reads of the fog's picture, as it will read it (texture,
+	// cell reader, version and delegate), on the real chain (real unit, real sight).
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	// Not the world's own: the tests run without rendering, where it is not created; this one is only asked for its picture.
+	UHOLFogRenderSubsystem* Picture = NewObject<UHOLFogRenderSubsystem>(Match.World);
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady() && Picture))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	TestFalse(TEXT("before the first picture: no fog to draw, the minimap draws everything"), Picture->IsFogActive());
+	TestEqual(TEXT("... every point in sight"), Picture->GetCellVision(FVector2D(1000., 1000.)), EHOLCellVision::Visible);
+	TestNull(TEXT("... and no texture"), Picture->GetTexture());
+
+	const FVector Start(2000., -3000., 0.);
+	const uint32 Scout = Match.Place(Peasant, 0, Start);
+	if (!TestNotEqual(TEXT("the scout"), Scout, 0u))
+	{
+		return false;
+	}
+	int32 NumChanges = 0;
+	const FDelegateHandle Handle = Picture->OnPictureChanged.AddLambda([&NumChanges]() { ++NumChanges; });
+	Match.Vision->Update();
+	Picture->RefreshTexture(0);
+	const uint32 First = Picture->GetVersion();
+	TestTrue(TEXT("the fog is active"), Picture->IsFogActive());
+	TestEqual(TEXT("the delegate fired once"), NumChanges, 1);
+	const FHOLVisionGrid& Grid = Picture->GetGrid();
+	if (!TestNotNull(TEXT("the texture"), Picture->GetTexture()) || !TestEqual(TEXT("one byte a cell"), Picture->GetBytes().Num(), Grid.Side * Grid.Side))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the texture is the grid"), Picture->GetTexture()->GetSizeX(), Grid.Side);
+	TestEqual(TEXT("under the scout: in sight"), Picture->GetCellVision(FVector2D(Start)), EHOLCellVision::Visible);
+	TestEqual(TEXT("far away: black"), Picture->GetCellVision(FVector2D(-40000., 40000.)), EHOLCellVision::Unexplored);
+
+	// The texel the minimap samples at ToPictureUV is the cell's byte (U along +X, V along +Y, lower corner first).
+	const FVector2D UV = Picture->ToPictureUV(FVector2D(Start));
+	const FIntPoint Texel(FMath::FloorToInt32(UV.X * Grid.Side), FMath::FloorToInt32(UV.Y * Grid.Side));
+	TestEqual(TEXT("the texel of the UV is the scout's cell"), Texel, Grid.ToCell(FVector2D(Start)));
+	TestEqual(TEXT("its byte is the in-sight byte"), Picture->GetBytes()[Texel.Y * Grid.Side + Texel.X], HOLFogPicture::ToByte(EHOLCellVision::Visible));
+
+	Picture->RefreshTexture(0);
+	TestEqual(TEXT("nothing changed: same version"), Picture->GetVersion(), First);
+	TestEqual(TEXT("... no delegate"), NumChanges, 1);
+
+	Match.Move(Scout, FVector(30000., 30000., 0.));
+	Match.Vision->Update();
+	Picture->RefreshTexture(0);
+	TestTrue(TEXT("it moved: the version went on"), Picture->GetVersion() > First);
+	TestEqual(TEXT("... the delegate fired again"), NumChanges, 2);
+	TestEqual(TEXT("where it was: explored, grey"), Picture->GetCellVision(FVector2D(Start)), EHOLCellVision::Explored);
+	TestEqual(TEXT("... the byte of the grey"), Picture->GetBytes()[Texel.Y * Grid.Side + Texel.X], HOLFogPicture::ToByte(EHOLCellVision::Explored));
+	Picture->OnPictureChanged.Remove(Handle);
 	return true;
 }
 

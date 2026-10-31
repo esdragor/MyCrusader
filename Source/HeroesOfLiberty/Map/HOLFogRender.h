@@ -71,10 +71,12 @@ public:
 	/** "Fog render: mode 1 (post process), texture 220 x 220, cells in sight 812 explored 1650". */
 	FString MakeReport() const;
 
+	/** The picture of Camp's fog made again now (Tick does it 10 times a second for the viewer's camp; the tests call it). */
+	void RefreshTexture(int32 Camp);
+
 private:
 	/** The camp whose fog this machine shows (a client's own; a solo or host game's local player's); INDEX_NONE if none. */
 	int32 GetViewerCamp() const;
-	void RefreshTexture(int32 Camp);
 	void Apply();
 	void Remove();
 	void SendCamera();
