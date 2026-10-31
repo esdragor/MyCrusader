@@ -685,8 +685,9 @@ void UHOLNewGameScreen::GetColumns(TArray<TArray<UWidget*>>& OutColumns) const
 	States.Add(ModeDropdown);
 	OutColumns.Emplace(SlotFactions);
 	OutColumns.Emplace(SlotColors);
-	// "Équipes ensemble" stands over the team column.
+	// F8: "Brouillard", then "Équipes ensemble", stand over the team column.
 	TArray<UWidget*>& Teams = OutColumns.AddDefaulted_GetRef();
+	Teams.Add(FogDropdown);
 	Teams.Add(TeamsTogetherDropdown);
 	Teams.Append(SlotTeams);
 }
