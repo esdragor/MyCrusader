@@ -273,4 +273,36 @@ bool FHOLAITeammatesReadTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// IA4 (D579): the summary carries the slot's level from the launch configuration (the .json "difficulty" field).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAILevelReadTest, "HeroesOfLiberty.AI.Summary.LevelRead", UE::HeroesOfLiberty::Tests::AIForum::Flags)
+bool FHOLAILevelReadTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	if (TestNotNull(TEXT("game state"), State))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index < 4 ? EHOLSlotState::AI : EHOLSlotState::Closed);
+		}
+		Config.Slots[1].Difficulty = EHOLAIDifficulty::Easy;
+		Config.Slots[2].Difficulty = EHOLAIDifficulty::Hard;
+		Config.Slots[3].Difficulty = EHOLAIDifficulty::Evolving;
+		State->InitVictory(Config);
+		TestTrue(TEXT("slot 1 reads Easy"), HOLAISummary::Read(*World, 1).Level == EHOLAIDifficulty::Easy);
+		TestTrue(TEXT("slot 2 reads Hard"), HOLAISummary::Read(*World, 2).Level == EHOLAIDifficulty::Hard);
+		TestTrue(TEXT("slot 3 reads Evolving"), HOLAISummary::Read(*World, 3).Level == EHOLAIDifficulty::Evolving);
+		TestTrue(TEXT("slot 0 (human) reads Normal"), HOLAISummary::Read(*World, 0).Level == EHOLAIDifficulty::Normal);
+		TestTrue(TEXT("a slot out of the table reads Normal"), HOLAISummary::Read(*World, 12).Level == EHOLAIDifficulty::Normal);
+		TestTrue(TEXT("the rule alone: Normal by default"), HOLAISummary::Make(1, {}, {}, {}, {}).Level == EHOLAIDifficulty::Normal);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

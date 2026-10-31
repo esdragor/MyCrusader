@@ -1,0 +1,17 @@
+# IA4 D579 / D585 : toi contre une IA Facile ; quand son forum est attaque, elle donne toute son armee (meme perdue d'avance) et rappelle sa vague
+# Plain, toi (slot 0) contre une IA Facile (slot 1, « IA Facile 2 »), 5 Paysans de depart chacun, 1000 de chaque ressource pour bâtir vite une Caserne.
+# Meme jeu que le scenario ai_army (economie, Caserne, armee, vague), mais le niveau Facile est lu depuis la configuration : ligne du journal « AI slot 1 step N: level Easy ».
+# Il y a aussi un journal de chaque situation « forum attaque » : « forum attacked: lives N, X enemies, ratio R, level Easy, decision fight ».
+# A regarder :
+#  1. fais 3-4 soldats (Lanciers) et envoie-les devant son forum, a moins de 8 m : toute son armee vient les chasser, meme si elle est bien plus faible ou plus forte ;
+#  2. attends que sa vague soit partie vers toi (voir ai_army), puis envoie 2-3 unites devant son forum : sa vague fait demi-tour au lieu de continuer (Facile rappelle la vague des que le forum est attaque) ;
+#  3. compare avec le scenario ai_army (Normal) : l'IA Normale ne rappelle sa vague que si au moins 3 soldats ennemis sont chez elle ;
+#  4. le journal (Saved/Logs) dit « forum attacked ... decision fight » pour Facile (« rules » pour Normal).
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1:
+hol.Cheat.Resources 1000
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Facile 2 » : sacrifie l'armee pour defendre son forum, rappelle sa vague. Laisse tourner 10 a 15 min ; suis-la avec ² hol.Camera.FocusSlot 1.
+note Envoie 3-4 soldats pres de son forum pour la defense, 2-3 unites apres le depart de sa vague pour le rappel.
