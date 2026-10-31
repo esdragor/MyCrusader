@@ -43,3 +43,12 @@ void Test_TechnologyReasonOrder(FUnitTest& T)
 	T.AssertEquals(HOLTechnologyRules::NoBuilding, HOLTechnologyRules::Check(2, 6, 2, 5, true, false, false, false), "then the building");
 	T.AssertEquals(HOLTechnologyRules::CannotPay, HOLTechnologyRules::Check(2, 6, 2, 5, true, true, false, false), "then the cost");
 }
+
+// A technology in a queue is refused (as the C++ rule: researched, queued, tier, level, chain, building, cost).
+void Test_TechnologyQueued(FUnitTest& T)
+{
+	T.AssertEquals(HOLTechnologyRules::AlreadyQueued, HOLTechnologyRules::CheckQueued(1, 3, 1, 0, true, true, true, false, true), "queued");
+	T.AssertEquals(HOLTechnologyRules::AlreadyResearched, HOLTechnologyRules::CheckQueued(1, 3, 1, 0, true, true, true, true, true), "researched wins");
+	T.AssertEquals(HOLTechnologyRules::AlreadyQueued, HOLTechnologyRules::CheckQueued(0, 0, 2, 5, false, false, false, false, true), "queued before the tier");
+	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckQueued(1, 3, 1, 0, true, true, true, false, false), "not queued: available");
+}

@@ -160,6 +160,15 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		6.25f,
 		TEXT("Width (cm) of the lines drawn on the ground between the queued orders (Shift) of the selected units (D328)."));
 	/**
+	 * The same width (cm) while the fog is drawn (F7.3, the user's trial 2026-10-30: the thin lines flicker under the fog, "essayons
+	 * plus épais"): 12.5 cm = option B (thicker only under an active fog). Set it equal to hol.Orders.LineWidth for option A (no
+	 * change), and both to 12.5 for option C (thicker everywhere).
+	 */
+	TAutoConsoleVariable<float> CVarOrderLineWidthFog(
+		TEXT("hol.Orders.LineWidthFog"),
+		12.5f,
+		TEXT("Width (cm) of the order lines while the fog of war is active (hol.Orders.LineWidth otherwise; F7.3)."));
+	/**
 	 * Below the selection's rings and the flag's foot (GroundOffset): the lines, and the step discs just above them,
 	 * so that neither hides a ring.
 	 */
@@ -981,7 +990,9 @@ void AHOLSelectionMarkers::UpdateOrderLines()
 	const AHOLPlayerController* PlayerController = Controller.Get();
 	const AHOLPlayerState* PlayerState = PlayerController ? PlayerController->GetHOLPlayerState() : nullptr;
 	const UWorld* World = GetWorld();
-	const double Width = FMath::Max(1.0, static_cast<double>(CVarOrderLineWidth.GetValueOnGameThread()));
+	const UHOLVisionSubsystem* FogVision = World ? World->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
+	const bool bFogActive = FogVision && FogVision->IsStarted() && FogVision->GetMode() != EHOLFogMode::Disabled;
+	const double Width = FMath::Max(1.0, static_cast<double>(bFogActive ? CVarOrderLineWidthFog.GetValueOnGameThread() : CVarOrderLineWidth.GetValueOnGameThread()));
 	// A filled strip from one point to the next, tilted with the ground between them (X along it, Y level).
 	const auto AddLine = [&LineTransforms, &LineData, Width](const FVector& Start, const FVector& End, const FLinearColor& Color)
 	{

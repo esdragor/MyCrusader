@@ -165,7 +165,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
 
     /** PUT /lobbies/{id}/settings (leader): only the given fields change; a change resets every "Ready". */
     public Lobby UpdateSettings(string lobbyId, string? token, string? map = null, bool? nomad = null, bool? regicide = null,
-        bool? catastrophe = null, string? size = null, bool? teamsTogether = null)
+        bool? catastrophe = null, string? size = null, bool? teamsTogether = null, string? fog = null)
     {
         lock (gate)
         {
@@ -177,6 +177,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var newSize = size != null
                 ? mapInfo.FindSize(size)?.Key ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown size: '{size}'.")
                 : mapInfo.FindSize(settings.Size)?.Key ?? DefaultSize(mapInfo);
+            // F8: the fog's mode asked (by name, case ignored), else the current one.
+            var newFog = fog != null
+                ? LobbyRules.FogModes.FirstOrDefault(f => string.Equals(f, fog, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown fog mode: '{fog}'.")
+                : settings.Fog;
             var oldPlaces = Places(lobby);
             var places = mapInfo.Places(newSize);
             var extraSlots = lobby.Slots.Skip(places).ToList();
@@ -192,13 +197,14 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var sizeChanged = newSize != settings.Size;
             var changed = mapInfo.Name != settings.Map || sizeChanged || (nomad ?? settings.Nomad) != settings.Nomad
                 || (regicide ?? settings.Regicide) != settings.Regicide || (catastrophe ?? settings.Catastrophe) != settings.Catastrophe
-                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || extraSlots.Any(s => !s.Closed);
+                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || newFog != settings.Fog || extraSlots.Any(s => !s.Closed);
             settings.Map = mapInfo.Name;
             settings.Size = newSize;
             settings.Nomad = nomad ?? settings.Nomad;
             settings.Regicide = regicide ?? settings.Regicide;
             settings.Catastrophe = catastrophe ?? settings.Catastrophe;
             settings.TeamsTogether = teamsTogether ?? settings.TeamsTogether;
+            settings.Fog = newFog;
             // TC3 (FHOLMapSizeRules::FitSlotsToSize): each player or AI past the places onto the first free slot below, in order.
             foreach (var from in moving)
             {

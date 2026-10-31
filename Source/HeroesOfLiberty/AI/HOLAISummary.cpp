@@ -479,9 +479,15 @@ namespace HOLAISummary
 		const AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
 		TArray<FHOLAIForum> Forums;
 		GatherForums(World, Forums);
-		return Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
+		FHOLAISummary Summary = Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
 			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0, Forums,
 			GameState && GameState->GetLaunchConfig().bRegicide, FHOLCampTable::FromWorld(&World));
+		// IA4 (D579): the slot's level, from the launch configuration (Normal for a slot out of its table).
+		if (GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(PlayerIndex))
+		{
+			Summary.Level = GameState->GetLaunchConfig().Slots[PlayerIndex].Difficulty;
+		}
+		return Summary;
 	}
 }
 

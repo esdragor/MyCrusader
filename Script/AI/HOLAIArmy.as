@@ -77,6 +77,10 @@ struct FHOLAIArmyData
 	// An enemy soldier this close to a building is taken to attack it (cm): the army then meets it from a lower ratio, the base being hit.
 	float AttackedRadius = 800.f;
 	float DefenceMinRatioAttacked = 0.05f;
+	// The main centre's half width (cm): its footprint is 1600 cm (BuildingTypes.csv), so a soldier hitting its wall stands ~800 cm from the
+	// centre's point, past AttackedRadius. Added to AttackedRadius for the centre only (found in a real game, 2026-10-31: the forum under
+	// attack was not seen as attacked). Set to 0 first (red test), then 800.
+	float ForumHalfSize = 800.f;
 
 	// Peasants (IA2.6f): one within this of an enemy soldier runs to the centre (cm), ordered again at most this often (s).
 	float FleeRadius = 1500.f;
@@ -88,6 +92,10 @@ struct FHOLAIArmyData
 	// FleeRadius; ordered again at most every StrikeEvery seconds. Provisional: tuned on AI-only games.
 	float StrikeMargin = 1.5f;
 	float StrikeEvery = 4.f;
+	// D584 (user's answer B): a Peasant finishes the wounded off only when it is ISOLATED: no other enemy soldier that is itself sound (one whose
+	// duel the Peasant would not win with the margin) stands within this of the wounded one (cm, about 5 m). Stragglers and fugitives, not the
+	// wounded in the middle of their army. Provisional, a setting.
+	float StrikeIsolation = 500.f;
 
 	// The Peasant's own figures (LoadFigures reads the table); empty (no health) = a Peasant never strikes.
 	FHOLAITypeFigures PeasantFigures;
@@ -127,6 +135,9 @@ struct FHOLAIArmyData
 	// AllyHelpRadius of the ruin (cm) is at least AllyHelpMinRatio, the rule of its own ruin: on the spot, at least even.
 	float AllyHelpMinRatio = 1.f;
 	float AllyHelpRadius = 3000.f;
+
+	// The weighing of the lives by level (IA4, D579, D329): Normal's feint, Hard's loss and snipe, Evolving's curve (HOLAILives.as).
+	FHOLAILivesData Lives;
 }
 
 // Where the attack wave is (HOLAIArmy::UpdateWave).
@@ -152,6 +163,11 @@ struct FHOLAIWave
 	// Game time the phase began (s), and of the last order given to the wave (s).
 	float PhaseStart = 0.f;
 	float LastOrder = -1000.f;
+
+	// Hard (D579): the brain asks for a launch now whatever the ratio and the time (the attacker's home is punished); and the wave is that one
+	// (it is not called back by the enemies at home: the army has gone on purpose).
+	bool bForce = false;
+	bool bPunishing = false;
 }
 
 // What the wave does now (HOLAIArmy::UpdateWave): the orders to send and what changed, for the brain's orders and log.
@@ -595,18 +611,22 @@ namespace HOLAIArmy
 	{
 		FHOLAIThreat Result;
 		TArray<FVector> Guarded;
+		TArray<float> Reach;
 		if (Summary.bHasCentre)
 		{
 			Guarded.Add(Summary.CentreLocation);
+			Reach.Add(Data.AttackedRadius + Data.ForumHalfSize);
 		}
 		// IA3.4: in Regicide the King's place is guarded too (the army comes to the soldiers that near him).
 		if (Summary.bRegicide && Summary.bHasKing)
 		{
 			Guarded.Add(Summary.King.Location);
+			Reach.Add(Data.AttackedRadius);
 		}
 		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
 		{
 			Guarded.Add(Summary.Buildings[Index].Location);
+			Reach.Add(Data.AttackedRadius);
 		}
 		TArray<FHOLAIUnit> Near;
 		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
@@ -655,7 +675,7 @@ namespace HOLAIArmy
 		{
 			for (int Place = 0; Place < Guarded.Num(); Place++)
 			{
-				if (FlatDistance(Near[Index].Location, Guarded[Place]) <= Data.AttackedRadius)
+				if (FlatDistance(Near[Index].Location, Guarded[Place]) <= Reach[Place])
 				{
 					Result.bAttackingBuilding = true;
 					break;
@@ -686,7 +706,26 @@ namespace HOLAIArmy
 		return Matchup(Data, Mine, Theirs);
 	}
 
-	// The soldier a Peasant may finish off: the nearest enemy soldier within FleeRadius whose duel is won with the margin; -1 for none.
+	// D584: the wounded soldier stands alone when no OTHER enemy soldier that is sound for this Peasant (its duel under the margin) is within
+	// StrikeIsolation of it. Another wounded one (that the Peasant would also win against) is no escort.
+	bool IsIsolated(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIUnit& Peasant, const FHOLAIUnit& Wounded)
+	{
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Other = Summary.Enemies[Index];
+			if (Other.Id == Wounded.Id || !IsThreatening(Other))
+			{
+				continue;
+			}
+			if (FlatDistance(Other.Location, Wounded.Location) <= Data.StrikeIsolation && DuelRatio(Data, Peasant, Other) < Data.StrikeMargin)
+			{
+				return false;
+			}
+		}
+		return true;
+	}
+
+	// The soldier a Peasant may finish off: the nearest enemy soldier within FleeRadius whose duel is won with the margin and who is isolated (D584); -1 for none.
 	int StrikeTargetFor(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIUnit& Peasant)
 	{
 		int Best = -1;
@@ -703,7 +742,7 @@ namespace HOLAIArmy
 			{
 				continue;
 			}
-			if (Best < 0 || Distance < BestDistance)
+			if ((Best < 0 || Distance < BestDistance) && IsIsolated(Summary, Data, Peasant, Enemy))
 			{
 				Best = Enemy.Id;
 				BestDistance = Distance;
@@ -981,6 +1020,11 @@ namespace HOLAIArmy
 	{
 		bool bHelp = false;
 		AllyHelpTarget(Summary, Data, Summary.CentreLocation, bHelp);
+		// Hard's punishing wave (D579) obeys the cooldown too (found in a real game: it left, fell back and left again every 5 s).
+		if (Wave.bForce && Wave.Phase == EHOLAIWavePhase::Home && Now >= Wave.NextLaunch && Summary.bHasEnemyCentre && SoldierIds(Summary).Num() > 0)
+		{
+			return true;
+		}
 		if (Wave.Phase != EHOLAIWavePhase::Home || bDefending || Now < Wave.NextLaunch || (!Summary.bHasEnemyCentre && !bHelp))
 		{
 			return false;
@@ -1069,6 +1113,8 @@ namespace HOLAIArmy
 		{
 			if (CanLaunch(Wave, Summary, Data, bDefending, Now))
 			{
+				Wave.bPunishing = Wave.bForce;
+				Wave.bForce = false;
 				Wave.Phase = EHOLAIWavePhase::Out;
 				Wave.Ids = SoldierIds(Summary);
 				Wave.LaunchedSize = Wave.Ids.Num();
@@ -1091,7 +1137,9 @@ namespace HOLAIArmy
 			const int Lost = Wave.LaunchedSize - Alive.Num();
 			const bool bLosses = float(Lost) > Data.AttackLossShare * float(Wave.LaunchedSize) + 0.001f;
 			Step.Ratio = WaveRatio(Wave, Summary, Data);
-			if (bRecall || bLosses || Step.Ratio < Data.AttackRetreatRatio)
+			// A punishing wave (Hard, D579) that is still at our base sees the attackers it leaves behind: the ratio does not call it back there.
+			const bool bLeaving = Wave.bPunishing && Summary.bHasCentre && FlatDistance(CentroidOf(Alive), Summary.CentreLocation) <= Data.DefenceRadius;
+			if (bRecall || bLosses || (Step.Ratio < Data.AttackRetreatRatio && !bLeaving))
 			{
 				Wave.Phase = EHOLAIWavePhase::Back;
 				Wave.PhaseStart = Now;

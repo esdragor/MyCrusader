@@ -87,6 +87,19 @@ def fog_value(material, world_xy):
     return smooth
 
 
+SOFT_MASK = """float2 uv0 = GetDefaultSceneTextureUV(Parameters, STENCIL_ID);
+float2 inv = View.BufferSizeAndInvSize.zw;
+float hard = step(0.5, SceneTextureLookup(uv0, STENCIL_ID, false).r);
+float sum = 0.0;
+for (int y = -1; y <= 1; y++)
+{
+    for (int x = -1; x <= 1; x++)
+    {
+        sum += step(0.5, SceneTextureLookup(uv0 + float2(x, y) * inv, STENCIL_ID, false).r);
+    }
+}
+return saturate(max(hard, sum / 9.0 * Gain));"""
+
 WORLD_FROM_DEPTH = """float2 ndc = float2(UV.x * 2.0 - 1.0, 1.0 - UV.y * 2.0);
 float3 dir = Fwd.xyz + Right.xyz * (ndc.x * Tan.x) + Up.xyz * (ndc.y * Tan.y);
 return Pos.xyz + dir * Depth;"""
@@ -123,14 +136,18 @@ def make_post():
     xy = expression(material, unreal.MaterialExpressionComponentMask, -1300, 300, r=True, g=True, b=False, a=False)
     connect(world, xy)
     value = fog_value(material, xy)
-    # What the player must see through the fog (the order lines and their points) writes the custom stencil: no fog there.
-    stencil = expression(material, unreal.MaterialExpressionSceneTexture, -1900, -450, scene_texture_id=unreal.SceneTextureId.PPI_CUSTOM_STENCIL)
-    stencil_value = expression(material, unreal.MaterialExpressionComponentMask, -1700, -450, r=True, g=False, b=False, a=False)
-    connect(stencil, stencil_value, "", "Color")
-    marked = expression(material, unreal.MaterialExpressionCustom, -1400, -450, code="return step(0.5, S);", description="Marked",
+    # What the player must see through the fog (the order lines and their points) writes the custom stencil: no fog there. The
+    # stencil is a hard 1-bit mask drawn at the internal resolution with the frame's jitter, while the scene colour is the
+    # temporal upscaler's smooth result: read as is, a 1-2 pixel line flickers in and out of the fog from one frame to the next
+    # (the user's "ça grésille", 2026-10-30). So the mask is read on 3 x 3 pixels and spread: the line's own pixels clear, its
+    # neighbours up to MaskGain / ... of a tap's share (MaskGain 0: the old hard mask).
+    stencil_id = int(unreal.SceneTextureId.PPI_CUSTOM_STENCIL.value)
+    soft_code = SOFT_MASK.replace("STENCIL_ID", str(stencil_id))
+    marked = expression(material, unreal.MaterialExpressionCustom, -1400, -450, code=soft_code, description="SoftMask",
                         output_type=unreal.CustomMaterialOutputType.CMOT_FLOAT1)
-    marked.set_editor_property("inputs", [custom_input("S")])
-    connect(stencil_value, marked, "S")
+    marked.set_editor_property("inputs", [custom_input("Gain")])
+    gain = expression(material, unreal.MaterialExpressionScalarParameter, -1700, -450, parameter_name="MaskGain", default_value=0.0)
+    connect(gain, marked, "Gain")
     clear = expression(material, unreal.MaterialExpressionLinearInterpolate, -400, 0)
     connect(value, clear, "A")
     connect(expression(material, unreal.MaterialExpressionConstant, -600, 100, r=1.0), clear, "B")

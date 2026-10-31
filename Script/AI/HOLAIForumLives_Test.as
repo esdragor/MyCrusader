@@ -1,7 +1,6 @@
 // The weighing of the lives when the forum is attacked (IA4, D579): the Easy level always gives the army ("sacrifices the army, even lost
 // beforehand"), and every situation is written down (lives, power ratio, decision). Played on the REAL type tables (HOLAIArmy::LoadFigures):
-// the ratios come from the real combat figures, no number of the combat is typed in. Normal and Hard are not written yet: they keep the
-// ratio rules (decision "Rules").
+// the ratios come from the real combat figures, no number of the combat is typed in. Normal, Hard and Evolving are in HOLAILives_Test.as.
 
 FHOLAIUnit LivesUnit(int Id, FName Type, int Health, FVector Where, int Slot)
 {
@@ -72,8 +71,8 @@ void Test_LivesEasyAlwaysGivesTheArmy(FUnitTest& T)
 	T.AssertTrue(HOLAIForum::DefendAnyway(Easy, Threat), "Easy sends the army");
 	T.AssertEquals(Threat.Ratio, Easy.Ratio, "the situation carries the real power ratio");
 
-	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal).Call == EHOLAILifeCall::Rules, "Normal: the ratio rules, for now");
-	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Hard).Call == EHOLAILifeCall::Rules, "Hard: the ratio rules, for now");
+	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal).Call == EHOLAILifeCall::Feint, "Normal: knows it loses, feints (HOLAILives_Test.as)");
+	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Hard).Call == EHOLAILifeCall::Let, "Hard: lets the life go and keeps its army (HOLAILives_Test.as)");
 	T.AssertFalse(HOLAIForum::DefendAnyway(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal), Threat), "Normal adds nothing");
 }
 
@@ -121,7 +120,10 @@ void Test_LivesTheJournalLine(FUnitTest& T)
 	T.AssertTrue(Line.Contains("Easy"), "the level: " + Line);
 	T.AssertTrue(Line.Contains("fight"), "the decision: " + Line);
 
-	T.AssertTrue(HOLAIForum::Describe(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal), EHOLAIDifficulty::Normal).Contains("rules"), "Normal: the decision is the rules");
+	const FHOLAISummary Strong = LivesSummary(Data, 2, false, 14, 2, 300.f);
+	const FHOLAIThreat StrongThreat = HOLAIArmy::Threat(Strong, Data);
+	T.AssertTrue(HOLAIForum::Describe(HOLAIForum::Judge(Strong, Data, StrongThreat, EHOLAIDifficulty::Normal), EHOLAIDifficulty::Normal).Contains("rules"), "Normal with the stronger army: the decision is the rules");
+	T.AssertTrue(HOLAIForum::Describe(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal), EHOLAIDifficulty::Normal).Contains("feint"), "Normal that loses: the decision is the feint");
 
 	// Written when it begins, not again while it is the same, again when the lives or the decision change, once more when it ends.
 	FHOLAIForumLogged Logged;
@@ -133,4 +135,72 @@ void Test_LivesTheJournalLine(FUnitTest& T)
 	FHOLAIForumSituation Over;
 	T.AssertTrue(HOLAIForum::ShouldLog(Logged, Over), "the attack ends: written");
 	T.AssertFalse(HOLAIForum::ShouldLog(Logged, Over), "quiet: nothing");
+}
+
+// D585 (answer B): a wave out is called back when the forum is attacked, for Easy only; Normal and Hard keep the old rule (AttackRecallCount
+// enemies at home, or the fallen forum). Real tables; the wave is the real UpdateWave on the real WaveRecalled.
+void Test_LivesEasyRecallsTheWave(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = LivesData();
+	FHOLAISummary Summary = LivesSummary(Data, 2, false, 0, 2, 300.f);
+	for (int Index = 0; Index < 10; Index++)
+	{
+		Summary.Army.Add(LivesUnit(1 + Index, n"Spearman", LivesHealthOf(Data, n"Spearman"), FVector(-6000, 100.f * float(Index), 0), 0));
+	}
+	FHOLAIWave Out;
+	Out.Phase = EHOLAIWavePhase::Out;
+	Out.Ids = HOLAIArmy::SoldierIds(Summary);
+	Out.LaunchedSize = Out.Ids.Num();
+	Out.PhaseStart = 500.f;
+	Out.LastOrder = 500.f;
+	Out.NextLaunch = 590.f;
+
+	const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Out);
+	const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data);
+	const FHOLAIThreat Home = HOLAIArmy::Threat(Rest, Data);
+	T.AssertTrue(Whole.bThreatened && Whole.Count < Data.AttackRecallCount, "two enemies at the forum: under the old recall count");
+	T.AssertFalse(HOLAIForum::Emergency(Summary), "the forum stands: no emergency");
+
+	const FHOLAIForumSituation Easy = HOLAIForum::Judge(Rest, Data, Home, EHOLAIDifficulty::Easy);
+	const FHOLAIForumSituation Normal = HOLAIForum::Judge(Rest, Data, Home, EHOLAIDifficulty::Normal);
+	T.AssertTrue(Easy.bAttacked && Normal.bAttacked, "the forum is attacked");
+	T.AssertTrue(HOLAIForum::WaveRecalled(Summary, Data, Whole, Easy), "Easy calls the wave back");
+	T.AssertFalse(HOLAIForum::WaveRecalled(Summary, Data, Whole, Normal), "Normal keeps its wave out");
+
+	FHOLAIWave EasyWave = Out;
+	const FHOLAIWaveStep EasyStep = HOLAIArmy::UpdateWave(EasyWave, Summary, Data, true, HOLAIForum::WaveRecalled(Summary, Data, Whole, Easy), FVector(-1500, 0, 0), 510.f);
+	T.AssertTrue(EasyStep.bRetreat && EasyWave.Phase == EHOLAIWavePhase::Back, "Easy: the wave falls back");
+	FHOLAIWave NormalWave = Out;
+	const FHOLAIWaveStep NormalStep = HOLAIArmy::UpdateWave(NormalWave, Summary, Data, true, HOLAIForum::WaveRecalled(Summary, Data, Whole, Normal), FVector(-1500, 0, 0), 510.f);
+	T.AssertFalse(NormalStep.bRetreat, "Normal: the wave stays out");
+
+	// No enemy at the forum: nobody is recalled, whatever the level.
+	const FHOLAISummary Quiet = LivesSummary(Data, 2, false, 0, 0, 300.f);
+	const FHOLAIThreat QuietThreat = HOLAIArmy::Threat(Quiet, Data);
+	T.AssertFalse(HOLAIForum::WaveRecalled(Quiet, Data, QuietThreat, HOLAIForum::Judge(Quiet, Data, QuietThreat, EHOLAIDifficulty::Easy)), "no threat: no recall");
+
+	// The old rule still recalls Normal: AttackRecallCount enemies at home.
+	const FHOLAISummary Strong = LivesSummary(Data, 2, false, 0, Data.AttackRecallCount, 300.f);
+	const FHOLAIThreat StrongThreat = HOLAIArmy::Threat(Strong, Data);
+	T.AssertTrue(HOLAIForum::WaveRecalled(Strong, Data, StrongThreat, HOLAIForum::Judge(Strong, Data, StrongThreat, EHOLAIDifficulty::Normal)), "Normal: three enemies at home still recall the wave");
+}
+
+// Found in a real game (probe on ai_easy, 2026-10-31): the main centre is 1600 cm wide, so soldiers hitting its WALL stand ~900 cm from its
+// point, past AttackedRadius (800): the forum under attack was not seen as attacked. The radius counts from the wall (ForumHalfSize added).
+void Test_LivesTheForumWallIsAttacked(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = LivesData();
+	T.AssertEquals(800.f, Data.ForumHalfSize, "half of the main centre's 1600 cm footprint");
+	// Men-at-arms at 1100 cm from the centre's point: at the wall (800 from the point to the wall, 300 beyond), past the old 800 cm radius.
+	const FHOLAISummary Summary = LivesSummary(Data, 2, false, 2, 3, 1100.f);
+	const FHOLAIThreat Threat = HOLAIArmy::Threat(Summary, Data);
+	T.AssertTrue(Threat.bThreatened, "the Men-at-arms are near the base");
+	T.AssertTrue(Threat.bAttackingBuilding, "at the centre's wall: the building is attacked");
+	const FHOLAIForumSituation Situation = HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Easy);
+	T.AssertTrue(Situation.bAttacked, "the forum is attacked");
+
+	// Still not attacked when they are beyond the wall's reach (AttackedRadius past the wall).
+	const FHOLAISummary Away = LivesSummary(Data, 2, false, 2, 3, Data.ForumHalfSize + Data.AttackedRadius + 300.f);
+	T.AssertFalse(HOLAIForum::Judge(Away, Data, HOLAIArmy::Threat(Away, Data), EHOLAIDifficulty::Easy).bAttacked, "farther than the wall's reach: not attacked");
+	T.AssertFalse(HOLAIArmy::Threat(Away, Data).bAttackingBuilding, "no building attacked either");
 }

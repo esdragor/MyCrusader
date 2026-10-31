@@ -24,6 +24,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
 }
 
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
@@ -159,4 +160,38 @@ bool AHOLPlayerState::SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate)
 void AHOLPlayerState::OnRep_HeroPrivate()
 {
 	OnHeroPrivateChanged.Broadcast();
+}
+
+bool AHOLPlayerState::AddTechnology(const FName Technology)
+{
+	if (!Technologies.Add(Technology))
+	{
+		return false;
+	}
+	TechnologyBonus.Reset();
+	OnTechnologiesChanged.Broadcast();
+	ForceNetUpdate();
+	return true;
+}
+
+void AHOLPlayerState::OnRep_Technologies()
+{
+	TechnologyBonus.Reset();
+	OnTechnologiesChanged.Broadcast();
+}
+
+int32 AHOLPlayerState::GetTechnologyBonusPercent(const FName Stat) const
+{
+	if (Technologies.Done.IsEmpty())
+	{
+		return 0;
+	}
+	if (const int32* Known = TechnologyBonus.Find(Stat))
+	{
+		return *Known;
+	}
+	const int32 Percent = HOLTechnology::GetBonusPercent(Technologies.Done, Stat,
+		[](const FName Name) { return UHOLTechnologySettings::FindTechnology(Name); });
+	TechnologyBonus.Add(Stat, Percent);
+	return Percent;
 }

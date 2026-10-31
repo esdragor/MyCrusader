@@ -1,0 +1,11 @@
+# IA4 D329/D579 : toi contre une IA Evolutive ; elle joue Facile, puis Normale (600 s), puis Difficile (1500 s) pour la gestion des vies
+# Plain, toi (slot 0) contre une IA Evolutive (slot 1), 5 Paysans de depart chacun, 1000 de chaque ressource pour batir vite une Caserne.
+# Les durees (FHOLAILivesData.EvolveNormalAt / EvolveHardAt) sont des reglages provisoires ; seule la gestion du forum attaque suit la courbe pour l'instant.
+# A regarder : le journal (Saved/Logs) dit « evolving, plays Easy/Normal/Hard now » aux changements de niveau, et la decision du forum attaque suit le niveau du moment.
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1:
+hol.Cheat.Resources 1000
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Evolutive 2 » : Facile puis Normale (600 s) puis Difficile (1500 s). Laisse tourner 25+ min en accelere ; suis la ligne « evolving, plays ... » du journal.

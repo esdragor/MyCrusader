@@ -155,6 +155,8 @@ void AHeroesOfLibertyGameModeBase::InitGameState()
 	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
 	{
 		HOLGameState->InitVictory(MatchConfig);
+		// M4c: the Market's common prices, every one at its base (server and solo; replicated to the clients).
+		HOLGameState->ResetMarketBook();
 	}
 }
 

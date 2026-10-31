@@ -42,6 +42,8 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
+#include "Match/HOLMatchConfig.h"
 
 namespace UE::HeroesOfLiberty::Orders
 {
@@ -110,16 +112,26 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr float MinSpeedScale = 0.1f;
 	constexpr float MaxSpeedScale = 10.f;
 
-	/** A unit's walking speed (cm/s): its type's, times hol.Units.SpeedScale. */
-	float GetWalkSpeed(const FHOLUnitTypeConstants& Constants)
+	/** T5 (WorkerSpeed, the Wheelbarrow): the percent each slot's technologies add to its workers' walk, read once a step from the players' states. */
+	int32 WorkerSpeedPercent[FHOLMatchConfig::MaxSlots] = {};
+
+	/** The speed of a unit of this type owned by this slot, before hol.Units.SpeedScale: its type's, a worker's (CarryCapacity > 0) plus its owner's WorkerSpeed percent. */
+	float GetTypeSpeed(const FHOLUnitTypeConstants& Constants, const int32 Owner)
 	{
-		return Constants.Speed * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+		const int32 Percent = Constants.CarryCapacity > 0 && Owner >= 0 && Owner < FHOLMatchConfig::MaxSlots ? WorkerSpeedPercent[Owner] : 0;
+		return Constants.Speed * (1.f + 0.01f * static_cast<float>(Percent));
+	}
+
+	/** A unit's walking speed (cm/s): its type's (its owner's technologies included), times hol.Units.SpeedScale. */
+	float GetWalkSpeed(const FHOLUnitTypeConstants& Constants, const int32 Owner)
+	{
+		return GetTypeSpeed(Constants, Owner) * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
 	}
 
 	/** Its speed in its order (cm/s): in a group's formation, no faster than the slowest of the group's walkers (J7a.4). */
-	float GetOrderWalkSpeed(const FHOLUnitTypeConstants& Constants, const FHOLMoveOrderFragment& Order)
+	float GetOrderWalkSpeed(const FHOLUnitTypeConstants& Constants, const int32 Owner, const FHOLMoveOrderFragment& Order)
 	{
-		return HOLFormation::GetMarchSpeed(Constants.Speed, Order.bFormation ? Order.MarchSpeed : 0.f) * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+		return HOLFormation::GetMarchSpeed(GetTypeSpeed(Constants, Owner), Order.bFormation ? Order.MarchSpeed : 0.f) * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
 	}
 
 	/** A walk is a detour for hol.Units.LogDetours when longer than this share of the straight line, plus DetourSlack. */
@@ -161,6 +173,15 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr uint32 ReuseSweepSteps = 200;
 	/** Steps (5 s) during which a path found across a changed area is not kept: the tiles there are being rebuilt. */
 	constexpr uint32 NavChangeSettleSteps = 100;
+	/**
+	 * Determinism (aiduel): the navmesh's tiles are rebuilt on worker threads, so the step that sees them rebuilt (and the walkers
+	 * given a new path then) depended on the wall clock. 1: every order step first waits for the rebuilds under way, so a tile
+	 * submitted by one step's navigation tick is always seen rebuilt by the next order step. For tests on a fixed time step; a
+	 * real game keeps it at 0 (the wait is a hitch).
+	 */
+	int32 SyncNavBuild = 0;
+	FAutoConsoleVariableRef CVarSyncNavBuild(TEXT("hol.Simulation.SyncNavBuild"), SyncNavBuild,
+		TEXT("1: each order step waits for the navmesh tiles under rebuild (reproducible runs, for tests); 0: asynchronous (the game)"));
 	/** Margin (cm) around a kept path within which a change of the navmesh forgets it: half the corridor and more. */
 	constexpr double ReuseBoundsMargin = 400.;
 
@@ -390,7 +411,7 @@ namespace UE::HeroesOfLiberty::Orders
 	}
 
 	/** From where it is straight to its slot, standing there (the M1 move of D228, now the end of every order). */
-	void StartFinalLeg(const UWorld& World, const FTransformFragment& Transform, const FHOLUnitTypeConstants& Constants, FHOLMoveOrderFragment& Order,
+	void StartFinalLeg(const UWorld& World, const FTransformFragment& Transform, const FHOLUnitTypeConstants& Constants, const uint8 Owner, FHOLMoveOrderFragment& Order,
 		FMassMoveTargetFragment& MoveTarget, FMassNavMeshShortPathFragment& ShortPath, FMassNavMeshCachedPathFragment& CachedPath)
 	{
 		ShortPath.Reset();
@@ -407,7 +428,7 @@ namespace UE::HeroesOfLiberty::Orders
 		MoveTarget.EntityDistanceToGoal = FMassMoveTargetFragment::UnsetDistance;
 		MoveTarget.SlackRadius = 0.f;
 		MoveTarget.IntentAtGoal = EMassMovementAction::Stand; // Slow down on approach, stand at the slot.
-		MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order));
+		MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Owner, Order));
 		MoveTarget.CreateNewAction(EMassMovementAction::Move, World);
 
 		Order.Phase = EHOLMovePhase::FinalLeg;
@@ -603,6 +624,27 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
 	const double StartSeconds = FPlatformTime::Seconds();
 	++StepCount;
+	// T5 (WorkerSpeed): each slot's percent from the player states this machine has (the server's, the walks being the server's).
+	for (int32& Percent : WorkerSpeedPercent)
+	{
+		Percent = 0;
+	}
+	if (const AGameStateBase* GameState = World ? World->GetGameState() : nullptr)
+	{
+		for (const APlayerState* PlayerState : GameState->PlayerArray)
+		{
+			const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+			const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+			if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)
+			{
+				WorkerSpeedPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::WorkerSpeedStat);
+			}
+		}
+	}
+	if (SyncNavBuild != 0 && NavData)
+	{
+		const_cast<ANavigationData*>(NavData)->EnsureBuildCompletion();
+	}
 	if (UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
 	{
 		ForgetChangedPaths(*Commands);
@@ -2111,7 +2153,8 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			Request.Entities.Add(Entity);
 			return;
 		}
-		StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity), Order,
+		StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity),
+			EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order,
 			EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity),
 			EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Entity));
 	};
@@ -2595,7 +2638,8 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 					Request.Entities.Add(Entity);
 					continue;
 				}
-				StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity), Order,
+				StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity),
+					EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order,
 					EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity),
 					EntityManager.GetFragmentDataChecked<FMassNavMeshCachedPathFragment>(Entity));
 			}
@@ -2718,7 +2762,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				const double Room = FMath::Max(Back.Size() - Constants.Radius, 0.);
 				Slot = FVector(Point + Back.GetSafeNormal() * Room, Z);
 			}
-			const float WalkSpeed = GetWalkSpeed(Constants);
+			const float WalkSpeed = GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer);
 			if (Block.bBlending)
 			{
 				// Re-forming: straight to its slot sliding to its place (a member at most BlockCatchUpShare of the pace).
@@ -2834,7 +2878,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				}
 				Order->MarchSpeed = Block.Pace;
 				Order->MarchSlot = FVector2f(FVector2D(Target));
-				const float Speed = FMath::Min(GetWalkSpeed(Constants), static_cast<float>(Block.Pace * Scale * HOLFormation::BlockCatchUpShare));
+				const float Speed = FMath::Min(GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Straggler.Entity).OwnerPlayer), static_cast<float>(Block.Pace * Scale * HOLFormation::BlockCatchUpShare));
 				SteerOnMarch(Straggler.Entity, *Order, Target, Speed, Block.Pace * Scale, Direction, static_cast<float>(Block.Length - Block.Progress));
 				++Block.Report.JoinedStragglers;
 				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sa straggler joined the block after %d steps of march, %.0f cm from its slot, %s, pace %.0f cm/s"),
@@ -2847,7 +2891,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			// Ahead of it (a straggler that started ahead of the block), never turning back either (SteerOnMarch).
 			Order->Phase = EHOLMovePhase::Block;
 			Order->MarchSlot = FVector2f(FVector2D(Target));
-			const float OwnSpeed = GetWalkSpeed(Constants);
+			const float OwnSpeed = GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Straggler.Entity).OwnerPlayer);
 			const float Speed = Straggler.bQueued && Distance <= HOLFormation::BlockSoftHoldDistance
 				? FMath::Min(OwnSpeed, static_cast<float>(Pace * HOLFormation::BlockCatchUpShare)) : OwnSpeed;
 			SteerOnMarch(Straggler.Entity, *Order, Target, Speed, Pace, Direction, static_cast<float>(Block.Length - Block.Progress));
@@ -3539,7 +3583,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			if (!bFollowPath && !bOwnWayBlocked)
 			{
 				// A straight path, or none (start off the navmesh, already there): straight to the slot.
-				StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+				StartFinalLeg(*World, Transform, Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 				continue;
 			}
 			CachedPath.NavPath = Path;
@@ -3551,7 +3595,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			ShortPath.MoveTargetProgressDistance = FMath::Clamp(GetProgressAt(ShortPath, Transform.GetTransform().GetLocation()), 0.f,
 				FMath::Max(LastDistance - EndReachedDistance * 2.f, 0.f));
 
-			MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order));
+			MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order));
 			// The slot comes after the path: no slowing down at its end.
 			MoveTarget.IntentAtGoal = EMassMovementAction::Move;
 			MoveTarget.SlackRadius = 0.f;
@@ -3619,7 +3663,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			}
 			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && MoveTarget.DesiredSpeed.Get() > 0.f)
 			{
-				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order));
+				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, States[EntityIt].OwnerPlayer, Order));
 			}
 
 			// Its way crosses a building the navmesh did not show yet when its path was found (S7's first paths, a building
@@ -3667,7 +3711,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 					// for 15 s, a new path each 3 s): it stands where it is, as the final leg does near a slot it cannot reach.
 					if (FVector2f::Distance(Here, FVector2f(FVector2D(Order.Slot))) <= StuckCountDistance)
 					{
-						StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+						StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 						Order.StuckSteps = static_cast<uint16>(FMath::Max(StuckLimit, 1));
 						Order.LastSlotDistance = 0.f;
 						Order.ObstaclePushes = 0;
@@ -3696,7 +3740,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				}
 				else
 				{
-					StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+					StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 				}
 				continue;
 			}
@@ -3712,7 +3756,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				if (FVector::DistSquared2D(Location, PathEnd) <= FMath::Square(LeaveDistance)
 					&& !NavData->Raycast(Location, Order.Slot, Hit, NavData->GetDefaultQueryFilter()))
 				{
-					StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+					StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 				}
 				continue;
 			}
@@ -3741,7 +3785,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 						else
 						{
 							Order.bShortOfSlot = false;
-							StartFinalLeg(*World, Transform, Constants, Order, MoveTarget, ShortPath, CachedPath);
+							StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 							States[EntityIt].Activity = EHOLUnitActivity::Moving;
 							++TotalPlaceReturns;
 						}
@@ -4233,7 +4277,7 @@ namespace UE::HeroesOfLiberty::Orders
 					const FVector2D Shown = bMarching ? FVector2D(Order->MarchSlot) : FVector2D(Order->Slot);
 					Lines.Add(FString::Printf(TEXT("#%u %s at (%.0f, %.0f) yaw %.1f speed %.0f own %.0f march %.0f front %.1f faces %d held %d returning %d place (%.0f, %.0f) off %.0f"),
 						UnitId, *Constants->TypeName.ToString(), Location.X, Location.Y, Transform->GetTransform().Rotator().Yaw,
-						Velocity ? Velocity->Value.Size2D() : -1., GetWalkSpeed(*Constants), Order->bFormation ? GetOrderWalkSpeed(*Constants, *Order) : 0.f,
+						Velocity ? Velocity->Value.Size2D() : -1., GetWalkSpeed(*Constants, State->OwnerPlayer), Order->bFormation ? GetOrderWalkSpeed(*Constants, State->OwnerPlayer, *Order) : 0.f,
 						Order->FrontYaw, Order->bFacesFront ? 1 : 0, Order->PlaceHold.bHeld ? 1 : 0, Order->PlaceHold.bReturning ? 1 : 0,
 						Shown.X, Shown.Y, FVector2D::Distance(Shown, FVector2D(Location))) + FString::Printf(TEXT(" phase %s"),
 						Order->Phase == EHOLMovePhase::Block && Order->bReforming ? TEXT("Reform") : *StaticEnum<EHOLMovePhase>()->GetNameStringByValue(static_cast<int64>(Order->Phase))));

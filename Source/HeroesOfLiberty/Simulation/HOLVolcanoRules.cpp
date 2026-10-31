@@ -80,6 +80,66 @@ int32 HOLVolcano::DrawFlow(const int32 Seed, const int32 Index, const int32 Flow
 	return Stream.RandRange(0, FlowCount - 1);
 }
 
+int32 HOLVolcano::SiteSeed(const int32 MatchSeed, const int32 SiteIndex)
+{
+	// Hashed, not added: the cycles' streams are linear in the seed, so neighbouring seeds would erupt alike.
+	return static_cast<int32>(HashCombineFast(MurmurFinalize32(static_cast<uint32>(MatchSeed)), MurmurFinalize32(static_cast<uint32>(SiteIndex) + 977u)));
+}
+
+HOLVolcano::FSiteState HOLVolcano::SiteStateAt(const bool bCatastrophe, const int32 MatchSeed, const int32 SiteIndex, const FSite& Site, const float Now,
+	const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed)
+{
+	FSiteState State;
+	if (!bCatastrophe)
+	{
+		return State;
+	}
+	const int32 Seed = SiteSeed(MatchSeed, SiteIndex);
+	const float Speed = Settings.LavaSpeed(ManAtArmsSpeed);
+	float ReArmAt = 0.f;
+	// Cycles follow one another; a match lasts well under an hour, so a few turns of the loop at most.
+	for (int32 Index = 0; Index < 64; ++Index)
+	{
+		const int32 FlowIndex = DrawFlow(Seed, Index, Site.Flows.Num());
+		const FFlow* Flow = FlowIndex != INDEX_NONE ? &Site.Flows[FlowIndex] : nullptr;
+		const FCycle Cycle = MakeCycle(Seed, Index, ReArmAt, Settings, Flow ? EruptionDuration(*Flow, Speed) : 0.f);
+		if (Now >= Cycle.ReArmAt)
+		{
+			ReArmAt = Cycle.ReArmAt;
+			continue;
+		}
+		State.CycleIndex = Index;
+		State.FlowIndex = FlowIndex;
+		State.WarningAt = Cycle.WarningAt;
+		State.EruptAt = Cycle.EruptAt;
+		if (Now < Cycle.WarningAt)
+		{
+			State.Phase = EHOLVolcanoPhase::Armed;
+		}
+		else if (Now < Cycle.EruptAt)
+		{
+			State.Phase = EHOLVolcanoPhase::Warning;
+			State.SecondsToErupt = Cycle.EruptAt - Now;
+		}
+		else if (Now < Cycle.EruptEndAt)
+		{
+			State.Phase = EHOLVolcanoPhase::Erupting;
+		}
+		else
+		{
+			State.Phase = Now < Cycle.CooledAt ? EHOLVolcanoPhase::Cooling : EHOLVolcanoPhase::Rest;
+		}
+		if (Flow)
+		{
+			State.FrontDistance = FrontDistance(*Flow, Now, Cycle.EruptAt, Speed);
+			State.FrontPoint = PointAt(*Flow, State.FrontDistance);
+		}
+		return State;
+	}
+	State.Phase = EHOLVolcanoPhase::Rest;
+	return State;
+}
+
 EHOLVolcanoPhase HOLVolcano::GetPhase(const bool bCatastrophe, const int32 Seed, const float Now, const FHOLVolcanoSettings& Settings, const float EruptionLength)
 {
 	if (!bCatastrophe)

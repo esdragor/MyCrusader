@@ -29,10 +29,28 @@ namespace HOLCommandGrid
 				}
 				return Result;
 			}
+			// M5: a Market produces nothing; its cells are the trades (sales on the top row, purchases on the second).
+			if (Context.bMarket)
+			{
+				const int32 Good = Cell % GridColumns;
+				if (Cell < 2 * GridColumns && Good < TradableGoods)
+				{
+					Result.Command = EHOLGridCommand::Trade;
+					Result.Resource = static_cast<EHOLResource>(Good);
+					Result.bBuy = Cell >= GridColumns;
+				}
+				return Result;
+			}
 			if (Context.Produces.IsValidIndex(Cell))
 			{
 				Result.Command = EHOLGridCommand::Produce;
 				Result.TypeName = Context.Produces[Cell];
+			}
+			else if (Cell >= ResearchFirstCell && Context.Researches.IsValidIndex(Cell - ResearchFirstCell))
+			{
+				// The technology row (W X C V, D30): the building's technologies in table order, after its units.
+				Result.Command = EHOLGridCommand::Research;
+				Result.TypeName = Context.Researches[Cell - ResearchFirstCell];
 			}
 			return Result;
 		}
@@ -55,6 +73,16 @@ namespace HOLCommandGrid
 	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
 	{
 		return Ability == EHOLHeroAbility::CloseRanks ? 0 : Ability == EHOLHeroAbility::Banner ? 1 : INDEX_NONE;
+	}
+
+	int32 GetTradeCell(const EHOLResource Resource, const bool bBuy)
+	{
+		const int32 Good = static_cast<int32>(Resource);
+		if (Good < 0 || Good >= TradableGoods)
+		{
+			return INDEX_NONE;
+		}
+		return (bBuy ? GridColumns : 0) + Good;
 	}
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
@@ -203,6 +231,29 @@ namespace HOLCommandGrid
 		return Feedback;
 	}
 
+	FHOLCommandFeedback CheckResearch(const FHOLTechnologyRow& Row, HOLTechnology::FFacts Facts, const FHOLResources& Stock,
+		const int32 QueueLength, const int32 MaxQueue)
+	{
+		FHOLCommandFeedback Feedback;
+		Facts.bCanPay = Stock.Covers(Row.Cost);
+		const HOLTechnology::EBlock Block = HOLTechnology::Check(Row, Facts);
+		if (Block == HOLTechnology::EBlock::CannotPay)
+		{
+			FindMissingResource(Stock, Row.Cost, Feedback.Resource);
+			Feedback.Kind = EHOLCommandFeedback::NotEnoughResources;
+		}
+		else if (Block != HOLTechnology::EBlock::None)
+		{
+			Feedback.Kind = EHOLCommandFeedback::ResearchRefused;
+			Feedback.Block = Block;
+		}
+		else if (QueueLength >= MaxQueue)
+		{
+			Feedback.Kind = EHOLCommandFeedback::QueueFull;
+		}
+		return Feedback;
+	}
+
 	FHOLCommandFeedback CheckBuild(const FHOLResources& Stock, const FHOLResources& Cost)
 	{
 		FHOLCommandFeedback Feedback;
@@ -216,7 +267,7 @@ namespace HOLCommandGrid
 	bool Blocks(const FHOLCommandFeedback& Feedback)
 	{
 		return Feedback.Kind == EHOLCommandFeedback::NotEnoughResources || Feedback.Kind == EHOLCommandFeedback::QueueFull
-			|| Feedback.Kind == EHOLCommandFeedback::PlacementRefused;
+			|| Feedback.Kind == EHOLCommandFeedback::PlacementRefused || Feedback.Kind == EHOLCommandFeedback::ResearchRefused;
 	}
 
 	bool IsPopulationBlocked(const int32 PopulationUsed, const int32 PopulationCap, const int32 Places)
@@ -232,6 +283,7 @@ namespace HOLCommandGrid
 			return FString::Printf(TEXT("not enough %s"), *StaticEnum<EHOLResource>()->GetNameStringByValue(static_cast<int64>(Feedback.Resource)));
 		case EHOLCommandFeedback::QueueFull: return TEXT("queue full");
 		case EHOLCommandFeedback::PopulationFull: return TEXT("population full");
+		case EHOLCommandFeedback::ResearchRefused: return FString::Printf(TEXT("research refused (%s)"), HOLTechnology::DescribeBlock(Feedback.Block));
 		case EHOLCommandFeedback::PlacementRefused:
 			// The words of UHOLConstructionSubsystem::DescribeRefusal (the server's log).
 			switch (Feedback.Refusal)
