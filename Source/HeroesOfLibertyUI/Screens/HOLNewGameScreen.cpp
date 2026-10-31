@@ -263,7 +263,8 @@ void UHOLNewGameScreen::BuildLayout()
 	MapDropdown = AddDropdown(MapLine, TEXT("MapDropdown"), MapNames, 0, StateWidth + FactionWidth + 8.f);
 	// F8: the fog on the map's line, over the "Équipes ensemble" of the line below.
 	AddCell(MapLine, MakeText(LOCTEXT("Fog", "Brouillard"), UHOLTextStyleBody::StaticClass()), TeamsTogetherLabelWidth);
-	FogDropdown = AddDropdown(MapLine, TEXT("FogDropdown"), FogNames(), 0, TeamWidth);
+	// Wider than the team lists: "Carte explorée" and "Sans brouillard" did not fit in TeamWidth (the arrow was cut, capture of 2026-10-31); nothing sits right of it on this line.
+	FogDropdown = AddDropdown(MapLine, TEXT("FogDropdown"), FogNames(), 0, TeamWidth + 60.f);
 
 	// TC3: the size under the map, then "Équipes ensemble" (the places are drawn at the launch).
 	UHorizontalBox* SizeLine = AddLine(0.f);

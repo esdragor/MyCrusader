@@ -23,8 +23,8 @@ namespace
 {
 	TAutoConsoleVariable<int32> CVarFogRender(
 		TEXT("hol.Fog.Render"),
-		0,
-		TEXT("How the fog is drawn on this machine's screen (F7, F-Q3): 0 not drawn, 1 post process (D562)."),
+		1,
+		TEXT("How the fog is drawn on this machine's screen (F7, F-Q3): 0 not drawn, 1 post process (D562, the default since F8: a match from the menu under a fog must show it)."),
 		ECVF_Default);
 
 	TAutoConsoleVariable<float> CVarFogOrderMask(
