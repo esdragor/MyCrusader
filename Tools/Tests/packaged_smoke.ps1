@@ -156,7 +156,7 @@ if (-not $SkipServer) {
         # The lines come in the first seconds of the match: read the log until the gather order (no test sequence).
         $Deadline = $ServerStart.AddSeconds($ServerTimeoutSeconds)
         while ((Get-Date) -lt $Deadline -and -not $ServerProcess.HasExited) {
-            if ((Test-Path $ServerLog) -and (Select-String -Path $ServerLog -SimpleMatch "Gather order of slot 1: 5 units to source" -Quiet)) { break }
+            if ((Test-Path $ServerLog) -and (Select-String -Path $ServerLog -Pattern "Gather order of slot 1: 2 units to source \d+ \(Wood\)" -Quiet)) { break }
             Start-Sleep -Milliseconds 500
         }
         $ServerExited = $ServerProcess.HasExited
@@ -178,7 +178,9 @@ if (-not $SkipServer) {
         elseif ($Awake -notmatch "net mode DedicatedServer, thinking slots \[1\]") { $ServerFaults.Add("brain not thinking for slot 1 on the dedicated server ('$($Awake -replace '^.*(AI brain )', '$1')')") }
         if (-not (Find-ServerLine "AI slot 1 step \d+:")) { $ServerFaults.Add("no 'AI slot 1 step'") }
         if (-not (Find-ServerLine "AI slot 1 step \d+: 5 idle -> gather \w+ #\d+")) { $ServerFaults.Add("no '5 idle -> gather'") }
-        if (-not (Find-ServerLine "Gather order of slot 1: 5 units to source")) { $ServerFaults.Add("no 'Gather order of slot 1: 5 units to source'") }
+        # Since IA1 the 5 Peasants are split: 2 to Food, 2 to Wood (quick_check's aiserver part).
+        if (-not (Find-ServerLine "Gather order of slot 1: 2 units to source \d+ \(Food\)")) { $ServerFaults.Add("no 'Gather order of slot 1: 2 units to source (Food)'") }
+        if (-not (Find-ServerLine "Gather order of slot 1: 2 units to source \d+ \(Wood\)")) { $ServerFaults.Add("no 'Gather order of slot 1: 2 units to source (Wood)'") }
         $ServerScriptErrors = @(Get-ScriptFileErrors $ServerLog)
         if ($ServerScriptErrors.Count) { $ServerFaults.Add("script errors: $($ServerScriptErrors -join ' ')") }
         $ServerFatal = @($ServerLines | Select-String -Pattern "Fatal error|Unhandled Exception|Assertion failed|=== Critical error ===" | ForEach-Object { $_.Line.Trim() })
