@@ -37,6 +37,7 @@ Chantier **Duel de héros** (GDD § 10, D14, D16, D17, D18, D35, D43, D80, D117-
 - **D0** relevé (ci-dessus) : **fait**.
 - **D1** état et issue en script (`Script/Duel/HOLDuelRules.as`) : phases Idle / Pending / Active / Over, `Challenge`, `Respond`, `Advance` (silence = refus,
   temps écoulé, chute d'un héros, double chute), `Effects` (Hésitation, Triomphe / Démoralisé, XP, effet de faction, morts, recharge) ; test rouge d'abord.
+- **D1 faite** (c88435b), **D2, D3 faites** (bb2f235), **D3b faite** (cb86e48 : livre des duels, plusieurs duels à la fois, un par héros, recharges, fins rendues une fois, protection d'ensemble).
 - **D2** conditions du défi en script (`CanChallenge` : vivants, récupération, recharge, duel en cours, ennemis, distance, visibilité, zone du forum, effet bloquant) + recharge.
 - **D3** duel protégé en script (`CanHit` : seuls les deux duellistes se touchent, D18) et un seul duel par héros.
 - **D4** pont C++ : état du duel dans la partie (serveur autoritaire, répliqué), commande « défier » / « répondre » client vers serveur, test de la chaîne. *Demande DU-Q2.*
@@ -48,3 +49,4 @@ Chantier **Duel de héros** (GDD § 10, D14, D16, D17, D18, D35, D43, D80, D117-
 ## Suivi
 
 - 2026-10-31 07:4x : chapitre ouvert, D0 faite, plan D1-D10. D1 : tests écrits d'abord contre une coquille vide.
+- 2026-10-31 07:4x : **D1, D2, D3 et D3b faites** : règles pures de l'état du duel (Script/Duel/HOLDuelRules.as : phases, issues, Preset au milieu des fourchettes du GDD, Challenge / Respond / Advance / Effects, CanChallenge, InDuel, CanHit, FHOLDuelBook avec Start / Answer / Tick / BookCanHit). Tests Script/Duel/HOLDuelRules_Test.as (26 cas), **rouge d'abord à chaque étape** (coquille vide : 13 en échec pour D1, 4 pour D2-D3, 6 pour D3b), puis vert ; quick_check -Parts tests 602/602 PASS. Commits c88435b (D1), bb2f235 (D2-D3), cb86e48 (D3b). **Arrêt aux règles pures** (consigne : pas de pont C++ ni d'écran sans question tranchée) ; DU-Q1 et DU-Q2 posées dans Auto_Journey_Retours.md section 2. Suite : D4 (pont C++, état répliqué, commande defier / repondre) après DU-Q2 ; D5 (arène, cible protégée dans le processeur de combat) peut partir de CanHit / BookCanHit.
