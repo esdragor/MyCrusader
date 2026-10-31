@@ -158,4 +158,152 @@ bool FHOLHeroTalentShieldsUpTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D581 (TQ2 = A): the cry Serrez les rangs puts the units in a defensive formation: held in place (hol.Hero.CloseRanksSpeed, default 0 %)
+// while it lasts; the Captain's row-4 talent Pas de l'Aube lets them advance at reduced speed (50 %) with their damage reduction. The
+// combat processor writes the speed part of each unit (FHOLCombatFragment::CloseRanksSpeedPercent) that the movement processor applies.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroTalentDawnStepTest, "HeroesOfLiberty.HeroTalent.DawnStep", UE::HeroesOfLiberty::Tests::HeroTalentEffect::Flags)
+
+bool FHOLHeroTalentDawnStepTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::HeroTalentEffect;
+	// The pure rule.
+	TestEqual(TEXT("no cry: the whole speed"), HOLHeroAbility::GetCloseRanksSpeedPercent(false, false, 0), 100);
+	TestEqual(TEXT("no cry, the talent: the whole speed"), HOLHeroAbility::GetCloseRanksSpeedPercent(false, true, 0), 100);
+	TestEqual(TEXT("under the cry: held (the base setting)"), HOLHeroAbility::GetCloseRanksSpeedPercent(true, false, 0), 0);
+	TestEqual(TEXT("under the cry, a base of 40 %"), HOLHeroAbility::GetCloseRanksSpeedPercent(true, false, 40), 40);
+	TestEqual(TEXT("under the cry with Pas de l'Aube: half speed"), HOLHeroAbility::GetCloseRanksSpeedPercent(true, true, 0), HOLHeroAbility::DawnStepSpeedPercent);
+	TestEqual(TEXT("... never below the base"), HOLHeroAbility::GetCloseRanksSpeedPercent(true, true, 80), 80);
+	TestEqual(TEXT("a base of more than 100 % is 100"), HOLHeroAbility::GetCloseRanksSpeedPercent(true, false, 250), 100);
+
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	IConsoleVariable* BaseSpeed = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Hero.CloseRanksSpeed"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !TestNotNull(TEXT("hol.Hero.CloseRanksSpeed"), BaseSpeed))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	const int32 FormerBase = BaseSpeed->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	BaseSpeed->Set(0, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto CombatOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+		};
+		// The cry cast, then the speed part of a Spearman 11 m and one 13 m from the hero, read after the step of the cry.
+		const auto Cry = [&](int32& OutNear, int32& OutFar, int32& OutAfter)
+		{
+			const uint32 Near = Place(Spearman, 0, FVector(0.0, -1100.0, 0.0));
+			const uint32 Far = Place(Spearman, 0, FVector(0.0, -1300.0, 0.0));
+			Heroes->ResetAbilities(0);
+			TestTrue(TEXT("the cry cast"), Heroes->CastCloseRanks(0));
+			RunStep();
+			const FHOLCombatFragment* NearCombat = CombatOf(Near);
+			const FHOLCombatFragment* FarCombat = CombatOf(Far);
+			OutNear = NearCombat ? NearCombat->CloseRanksSpeedPercent : -1;
+			OutFar = FarCombat ? FarCombat->CloseRanksSpeedPercent : -1;
+			// Its 15 s over: the whole speed again.
+			for (int32 Steps = 0; Steps < FMath::CeilToInt(HOLHeroAbility::CloseRanksDurationMs / 1000.f / StepSeconds) + 2; ++Steps)
+			{
+				RunStep();
+			}
+			OutAfter = NearCombat ? NearCombat->CloseRanksSpeedPercent : -1;
+			const uint32 Gone[] = { Near, Far };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+		};
+
+		const uint32 HeroId = Place(Hero, 0, FVector(0.0, 0.0, 0.0));
+		if (TestTrue(TEXT("slot 0's hero born"), HeroId != 0))
+		{
+			RunStep();
+			int32 Near = -2, Far = -2, After = -2;
+			Cry(Near, Far, After);
+			TestEqual(TEXT("no talent: the unit at 11 m under the cry is held"), Near, 0);
+			TestEqual(TEXT("... the one at 13 m walks as ever"), Far, 100);
+			TestEqual(TEXT("... the cry over, the whole speed again"), After, 100);
+			BaseSpeed->Set(40, ECVF_SetByCode);
+			Cry(Near, Far, After);
+			TestEqual(TEXT("a base setting of 40 %: 40 under the cry"), Near, 40);
+			BaseSpeed->Set(0, ECVF_SetByCode);
+			// Level 4, the Captain's talents of rows 2 to 4 (family 1): Boucliers levés, Mains du guérisseur, Pas de l'Aube.
+			Heroes->SetXP(0, HOLHeroXP::GetLevelXP(4));
+			RunStep();
+			TestTrue(TEXT("row 2"), Heroes->PickTalent(0, 1));
+			TestTrue(TEXT("row 3"), Heroes->PickTalent(0, 1));
+			Cry(Near, Far, After);
+			TestEqual(TEXT("two Captain talents, not yet Pas de l'Aube: held"), Near, 0);
+			TestTrue(TEXT("row 4, Pas de l'Aube"), Heroes->PickTalent(0, 1));
+			Cry(Near, Far, After);
+			TestEqual(TEXT("Pas de l'Aube: the unit at 11 m under the cry advances at half speed"), Near, HOLHeroAbility::DawnStepSpeedPercent);
+			TestEqual(TEXT("... the one at 13 m walks as ever"), Far, 100);
+			TestEqual(TEXT("... the cry over, the whole speed again"), After, 100);
+		}
+	}
+	BaseSpeed->Set(FormerBase, ECVF_SetByCode);
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif

@@ -496,6 +496,12 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	int32 CloseRanksMs = 0;
 
 	/**
+	 * D581: the share of its walk it takes, in percent (HOLHeroAbility::GetCloseRanksSpeedPercent): 100, but under its hero's cry
+	 * (0 held in place, Pas de l'Aube 50). Written by the combat processor each step; the movement processor (UHOLFullSpeedProcessor) applies it.
+	 */
+	uint8 CloseRanksSpeedPercent = 100;
+
+	/**
 	 * The enemy building it attacks (D345.2b), with its building attack (FHOLUnitTypeConstants::BuildingAttack): by order,
 	 * on an attack-move with no enemy unit found, or at rest within its aggression radius. Only while it has no unit
 	 * target: an enemy unit it takes on makes it drop the building (one taken on by itself: an ordered one, never). Unset: none.

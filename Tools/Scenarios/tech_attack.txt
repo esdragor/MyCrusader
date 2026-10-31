@@ -1,0 +1,28 @@
+# Technologies (T6) : les technologies d'attaque du joueur (Lames affutees, Empennage) multiplient l'attaque de ses seuls soldats, par type d'attaque
+# Plain, toi (slot 0) contre une IA passive (slot 1). 1 Homme d'armes et 1 Archer contre 5 Lanciers. Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# hol.Combat.LogHits donne chaque coup : melee 12 (Homme d'armes sur Lancier, armure 0), fleche 10 (5 + 5 contre l'infanterie legere).
+# hol.Cheat.Technology donne la technologie d'un coup (la Forge n'existe pas encore).
+waitlog Starting hero of slot 0 spawned at
+hol.Cheat.Resources 5000
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 200
+hol.Units.SpawnHere 1 Archer 0 400
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 150
+waitunits 7
+note 1. Sans technologie : l'Homme d'armes frappe un Lancier pour 12, l'Archer pour 10.
+waitlog Spearman for 12,
+waitlog Spearman for 10,
+hol.Cheat.Technology MeleeAttackII
+waitlog Technology: slot 0 researched MeleeAttackII (cheat)
+note 2. Lames affutees II (+20 % melee) : l'Homme d'armes frappe pour 14.4 (12 x 1.2).
+waitlog Spearman for 14.4,
+hol.Cheat.Technology RangedAttackI
+waitlog Technology: slot 0 researched RangedAttackI (cheat)
+note 3. Empennage I (+10 % a distance) : la fleche de l'Archer arrive pour 10.5 (5 x 1.1 + 5).
+waitlog Spearman for 10.5,
+note 4. Les ennemis ne gagnent rien : un Lancier frappe toujours l'Homme d'armes pour 4 (8 - 4).
+waitlog ManAtArms for 4,

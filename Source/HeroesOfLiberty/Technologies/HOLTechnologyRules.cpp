@@ -2,6 +2,8 @@
 
 #include "Technologies/HOLTechnologyRules.h"
 
+#include "Simulation/HOLUnitTypes.h"
+
 bool FHOLTechnologyState::Add(const FName Technology)
 {
 	if (Technology.IsNone() || Done.Contains(Technology))
@@ -116,5 +118,14 @@ FName HOLTechnology::GetGatherStat(const EHOLResource Resource)
 	case EHOLResource::Wood: return TEXT("GatherWood");
 	case EHOLResource::Stone: return TEXT("GatherStone");
 	default: return TEXT("GatherGold");
+	}
+}
+FName HOLTechnology::GetAttackStat(const EHOLAttackType AttackType)
+{
+	switch (AttackType)
+	{
+	case EHOLAttackType::Melee: return MeleeAttackStat;
+	case EHOLAttackType::Ranged: return RangedAttackStat;
+	default: return NAME_None;
 	}
 }

@@ -20,7 +20,7 @@ namespace HOLCombat
 		}
 	}
 
-	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel, const int32 DefenderArmorBonus)
+	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel, const int32 DefenderArmorBonus, const int32 AttackerAttackPercent)
 	{
 		int32 Damage = 0;
 		for (const FHOLAttackBonus& Bonus : Attacker.Bonuses)
@@ -32,7 +32,9 @@ namespace HOLCombat
 		}
 		Damage -= GetArmor(Defender, Attacker.AttackType) + DefenderArmorBonus;
 		// J8b.2: the attack at the attacker's level (exact at level 1: 30 x 100 / 100 = 30).
-		const float Hit = FMath::Max(HOLHeroXP::GetLevelStat(static_cast<float>(Attacker.Attack), AttackerLevel) + static_cast<float>(Damage), 1.f);
+		// T6: then the percent the attacker's player gained by technologies (exact at 0: x 1.f), on the attack alone (not the bonuses).
+		const float Attack = HOLHeroXP::GetLevelStat(static_cast<float>(Attacker.Attack), AttackerLevel) * (1.f + 0.01f * static_cast<float>(FMath::Max(AttackerAttackPercent, 0)));
+		const float Hit = FMath::Max(Attack + static_cast<float>(Damage), 1.f);
 		// D17: a hero takes HeroTroopDamageFactor of a troop's hit (any attacker but another hero), unrounded.
 		if (Defender.HasArmorCategory(EHOLArmorCategory::Hero) && !Attacker.HasArmorCategory(EHOLArmorCategory::Hero))
 		{

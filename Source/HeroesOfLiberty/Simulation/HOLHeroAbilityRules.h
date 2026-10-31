@@ -44,6 +44,13 @@ namespace HOLHeroAbility
 	/** T4: armour added to the units in the aura by Boucliers levees (row 2, Captain, D111). */
 	constexpr int32 ShieldsUpArmorBonus = 1;
 
+	/**
+	 * D581 (TQ2 = A): the speed of a unit under the cry, in percent of its walk, setting hol.Hero.CloseRanksSpeed (default 0: the defensive
+	 * formation holds in place). Pas de l'Aube (Captain, row 4) lets it advance at DawnStepSpeedPercent, its damage reduction kept.
+	 */
+	constexpr int32 CloseRanksSpeedPercent = 0;
+	constexpr int32 DawnStepSpeedPercent = 50;
+
 	/** Cap of the morale effects' damage reduction, all added up (D74, J8c-Q2), in percent. */
 	constexpr int32 MoraleReductionCapPercent = 50;
 
@@ -83,6 +90,12 @@ namespace HOLHeroAbility
 	 * MoraleReductionCapPercent at most.
 	 */
 	HEROESOFLIBERTY_API int32 GetDamageTakenPercent(bool bInAura, bool bCloseRanks);
+
+	/**
+	 * D581: the share of its walk a unit takes, in percent (100: all of it). bUnderCry: under Serrez les rangs; bDawnStep: its hero has
+	 * Pas de l'Aube. Under the cry: BasePercent (0 to 100), at least DawnStepSpeedPercent with the talent.
+	 */
+	HEROESOFLIBERTY_API int32 GetCloseRanksSpeedPercent(bool bUnderCry, bool bDawnStep, int32 BasePercent);
 
 	/** A hit's damage after the morale effects (DamageTakenPercent of it), unrounded: health is a float. */
 	HEROESOFLIBERTY_API float GetReducedDamage(float Damage, int32 DamageTakenPercent);

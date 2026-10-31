@@ -119,6 +119,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static bool CanPickTalent(int32 Level, int32 NumPicks, int32 Family);
 
+	/** T6: whether the talent of Family in Row (2 to 9) has an effect in the game (HOLHeroTalent::HasEffect). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static bool TalentHasEffect(int32 Row, int32 Family);
+
 	/** J8c.3: the level the hero's Ability opens at (D52: 1, the banner 4). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static int32 GetHeroAbilityUnlockLevel(EHOLHeroAbility Ability);

@@ -15,7 +15,7 @@ enum class EHOLXPSource : uint8
 	Command,
 	/** One of his player's buildings finished. */
 	Development,
-	/** Exploration and territory (relays, secondary centres, fog: later). */
+	/** Exploration and territory (relays, secondary centres, fog: later). Territory: the rules are in Script/Relays/HOLRelayRules.as (D388, RelaysInProgress.md); not wired to the hero yet. */
 	Exploration,
 };
 

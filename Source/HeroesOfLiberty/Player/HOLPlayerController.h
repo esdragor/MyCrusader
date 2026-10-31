@@ -451,6 +451,8 @@ public:
 	void RequestCheatResources(const FHOLResources& Amount);
 	void RequestCheatFastBuild(bool bOn);
 	void RequestCheatPopulation(int32 Places);
+	/** T6, scenarios: the local player has Technology researched at once, free, its building or not (hol.Cheat.Technology). */
+	void RequestCheatTechnology(FName Technology);
 	void RequestCheatUnitSpeed(float Scale);
 	void RequestCheatGatherSpeed(float Scale);
 	/**
@@ -723,6 +725,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatPopulation(int32 Places);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatTechnology(FName Technology);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatUnitSpeed(float Scale);
