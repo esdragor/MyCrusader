@@ -1,0 +1,15 @@
+﻿# Le duel de héros, version développement (Duel D120) : tes deux héros (toi, slot 0, et l'IA, slot 1) sont mis en duel d'office par `hol.Duel.Begin 0 1`, la vraie commande de défi n'existe pas encore (D4)
+# Plain, toi (slot 0) contre une IA (slot 1), duel.json (copie de hero.json) : 5 Paysans et un héros chacun.
+# Ce que ce scénario montre : le contact automatique (D120) : les deux héros marchent l'un vers l'autre sans ordre, restent au corps à corps, et personne d'autre ne les touche (D18). Le cercle n'est pas encore dessiné.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Ton héros est derrière le forum avec 5 Paysans. Dans 3 s le duel commence d'office entre ton héros et celui de l'IA.
+wait 3
+hol.Duel.Begin 0 1
+waitlog hol.Duel.Begin: slot 0 against slot 1 began
+note 2. Sans que tu donnes un ordre, ton héros se met en marche vers le héros ennemi (et lui vers le tien). Donne-lui un ordre de déplacement (clic droit ailleurs) : il l'ignore et repart vers son adversaire.
+note 3. Au corps à corps, seuls les deux héros se frappent ; une troupe qui passe à côté ne touche pas un duelliste.
+waitlog Duel ended: slots 0 and 1
+note 4. Le duel est fini (un héros est tombé, ou 90 s de jeu sans vainqueur) : l'autre reprend ses ordres normaux.

@@ -1,0 +1,46 @@
+# Siège in progress
+
+Chantier **Siège** (GDD § 6.1, D23, D77, D180 ; § 5.2 Ressources spéciales relevé en une ligne ci-dessous ; § 6.2 hauteur exclue du prototype pour les effets de terrain, M-Q2 = A : ne pas coder la hauteur).
+Ouvert le 2026-10-31 par la journée autonome (Faramir, branche `fog` = `main` a5add7e, agent n°7). D483 : le neuf en Angelscript sauf Mass / simulation / réseau / rendu.
+
+## Ce que dit le GDD (tranché)
+
+- **Siège léger façon AoE4 réduit** (D23). Prototype : **Bélier (palier 1) + Mangonneau (palier 2)** seulement (D77) ; Trébuchet et Canon (palier 3, D180 : débloqués avec le palier, sans recherche) viennent après.
+- **Atelier de siège** : un bâtiment de production par catégorie (D128), palier 1 (« Essor ») au § 11.1 ; technologies communes : *Bélier renforcé* (palier 1, PV du Bélier) et *Munitions lourdes* (palier 2, dégâts du Mangonneau) : déjà dans `Tools/Data/Technologies.csv`.
+- Rôles : Bélier = bâtiments et portes, vulnérable au corps à corps ; Mangonneau = groupes et murs, longue portée, vulnérable au Cavalier léger et au corps à corps. Matrice § 7.2 : le siège est « anti-bâtiments, anti-groupes », le Cavalier léger a un bonus contre le siège.
+- Dégâts : une attaque de type **Siège** retire l'**armure Siège** de la cible (D345) ; les bâtiments n'ont d'armure que contre la Distance (40) ; les héros reçoivent les dégâts de siège **sans** le ×0,3 (D17, D345) ; les murs, portes et tours sont solides.
+- Arbitrage économique : le bois et l'or du siège ne vont pas dans l'armée (coûts).
+- Siège convertible par le Cercle de l'Ombre (D63), après le prototype.
+- § 5.2 Ressources spéciales : « pas de ressource spéciale par défaut » : rien à coder, pas un chapitre.
+
+## Pas tranché (voir `Auto_Journey_Retours.md`, section 2, « Siège »)
+
+SQ1 : ce que le Bélier et le Mangonneau frappent (unités ? zone ?) ; SQ2 : les chiffres de départ (PV, dégâts, cadence, portée, vitesse, coût, population) et la forme de l'Atelier. Les règles pures du palier et de la disponibilité (S1) n'en dépendent pas.
+
+## Relevé de l'existant (S0, 2026-10-31, recherche dans `Source/`, `Script/`, `Tools/Data/`)
+
+- **Aucune unité de siège, aucun Atelier de siège** : `Tools/Data/UnitTypes.csv` (LightInfantry, LightInfantryNanite, Archer, Peasant, Spearman, ManAtArms, King, Hero, Crossbowman) et `Tools/Data/BuildingTypes.csv` (MainCentre, House, LumberCamp, MiningCamp, Mill, Barracks, Farm, ArcheryRange, Market) n'ont ni Bélier, ni Mangonneau, ni `SiegeWorkshop`. Pas de murs, de portes ni de tours non plus (palier 1 du § 11.1 : autre chapitre, non couvert ; les remparts praticables D24 demandent la navigation à deux niveaux, M8).
+- **Déjà là pour le siège** (chantier stats D345) : `EHOLArmorCategory::Siege` et `EHOLAttackType::Siege` (`Source/HeroesOfLiberty/Simulation/HOLUnitTypes.h`), colonne `SiegeArmor` (0 partout), `HOLCombat` : l'armure du type de l'attaque ; `HOLConstruction::GetBuildingDamage` : une attaque de siège (comme la mêlée et le héros) ne rencontre aucune armure de bâtiment ; attaque contre bâtiment par unité (`BuildingAttackType/Attack/Interval/Range`) ; les héros reçoivent le siège sans ×0,3 (D345 : `UnitStatsInProgress.md`) ; cheat `hol.Cheat.DamageNear ... siege` et `DamageSelected ... siege`.
+- **Formation** : `HOLFormation::GetRowPriority(..., bSiege)` met le siège en lignes à lui derrière les tireurs (`SiegeRowPriority` 5), `bSiege` dans la vue des unités (`HOLUnitView.h`) ; jamais exercé : aucune unité de siège.
+- **Technologies** : `ReinforcedRam` (palier 1) et `HeavyMunitions` (palier 2) pointent vers un bâtiment `SiegeWorkshop` listé comme « prévu » dans `Source/HeroesOfLiberty/Tests/HOLTechnologyTableTests.cpp`, et vers les stats `RamHealth` et `MangonelDamage` (noms dans `HOLGameNames.cpp`) : rien ne les lit.
+- **Palier des unités** : les unités n'ont aucune porte de palier aujourd'hui (l'Arbalétrier, palier 1 au GDD, sort de la Caserne sans condition) ; seul le **bâtiment** a un âge (`Age` de `BuildingTypes.csv`, D569). Le Bélier (palier 1) suit donc l'âge de l'Atelier ; le Mangonneau (palier 2) demande une porte de palier **par unité**, qui n'existe pas : S1 la fournit en règle pure, le branchement dans la production viendra avec S3.
+- **IA** : aucune trace de siège dans le cerveau (`Script/AI`) ; l'IA attaque les bâtiments avec ses soldats (IA2.2).
+- **Rien d'autre à relever** : aucun fichier `Siege*` dans `Source/`, `Script/`, `Tools/`.
+
+## Plan (étapes de 15 min)
+
+- **S0** relevé de l'existant : **fait** (ci-dessus).
+- **S1** règles pures en script (`Script/Siege/HOLSiegeRules.as`) : liste des engins, palier de chacun (Bélier 1, Mangonneau 2, Trébuchet et Canon 3), ensemble du prototype (D77), engins ouverts par un palier, raison de refus (hors prototype, palier trop bas, pas d'Atelier fini, pas de quoi payer) ; test rouge d'abord (`Script/Siege/HOLSiegeRules_Test.as`), `quick_check -Parts tests`.
+- **S2** (après SQ2) table : lignes `Ram` et `Mangonel` de `UnitTypes.csv` (catégorie d'armure Siège, attaque de type Siège), ligne `SiegeWorkshop` de `BuildingTypes.csv` (âge 1) ; test C++ de cohérence avec `Technologies.csv` (`ReinforcedRam` / `HeavyMunitions`) et avec les paliers de S1.
+- **S3** production : l'Atelier produit les engins, porte de palier par unité (copie C++ de la règle de S1 pour la simulation, D483), grille de commandes, refus avec raison, réseau (commande déjà générique) ; cas `build:` de `quick_check`.
+- **S4** combat : le Bélier ne frappe que des bâtiments (si SQ1 = A), le Mangonneau en zone (si SQ1 = B) ; bonus du Cavalier léger contre le siège (ligne de `Bonuses`) ; test rouge sur la vraie chaîne de dégâts.
+- **S5** technologies : `RamHealth` et `MangonelDamage` lues par la recherche (suite de `TechnologiesInProgress.md`).
+- **S6** IA : l'IA construit l'Atelier, produit des engins quand l'ennemi a des bâtiments ou une ruine à tenir, les escorte (se branche sur `HOLAIArmy.as`).
+- **S7** interface et textes : fr / en / ja, icônes, infobulles, alerte « engin attaqué ».
+- **S8** scénario d'essai `siege` (Tools/Scenarios), un seul essai à la fin, GDD (nouvelles décisions), clôture.
+- Hors chapitre : murs / portes / remparts (D24, M8), Trébuchet et Canon (après le prototype), conversion du siège (D63).
+
+## Suivi
+
+- 2026-10-31 10:4x (Faramir, `fog`) : chapitre ouvert, **S0 faite** (relevé ci-dessus). Questions SQ1 et SQ2 posées dans Retours. S1 : test écrit d'abord (`Script/Siege/HOLSiegeRules_Test.as`).
+- 2026-10-31 10:5x : **S1 faite et S1b faite** (commits sur `fog`). S1 : `Script/Siege/HOLSiegeRules.as` (engins, palier de chacun, ensemble du prototype D77, engins ouverts par un palier, `Check` avec raisons ordonnées : hors prototype, palier, Atelier, coût), 7 tests rouge d'abord (espace de noms absent) puis vert, mutation du palier du Mangonneau attrapée par 3 tests. S1b : copie C++ `Source/HeroesOfLiberty/Siege/HOLSiegeRules.{h,cpp}` (D483 : la simulation lit le C++, l'interface et l'IA le script) et deux tests `Siege.Tiers` et `Siege.Technologies` ; le second lit la **vraie** table `Tools/Data/Technologies.csv` : `ReinforcedRam` (palier 1) = palier du Bélier, `HeavyMunitions` (palier 2) = palier du Mangonneau, et ils sont les deux seules technologies de l'Atelier ; rouge d'abord (`Siege/HOLSiegeRules.h` absent, build FAIL), puis `tests,aiserver,aiduel` 640/640 PASS, mutation du palier attrapée par les deux tests C++. **Rien d'autre n'est codable sans SQ2** (lignes de tables, forme de l'Atelier) ni SQ1 (cibles du Bélier et du Mangonneau) ; suite = S2, S3, S4 après les réponses.

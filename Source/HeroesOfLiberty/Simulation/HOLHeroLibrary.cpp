@@ -22,6 +22,10 @@
 
 namespace
 {
+	int32 TalentFirstChoiceMode = 1;
+	FAutoConsoleVariableRef CVarTalentFirstChoice(TEXT("hol.UI.TalentFirstChoice"), TalentFirstChoiceMode,
+		TEXT("Where the first talent is chosen (TQ4, PROVISIONAL, not decided): 0 a tree window (not built: shows B), 1 three family buttons (B, default), 2 the advised button takes the Captain (C)"));
+
 	/**
 	 * J8a.4 loop 5: the hero's return times (the delay and the price's drop) at this percent of the rules', for the
 	 * network test (quick_check's net hero phase). 100, the default: the real rules. The price keeps its formula.
@@ -173,6 +177,11 @@ int32 UHOLHeroLibrary::GetHeroTalentKeys(const UObject* WorldContextObject, cons
 bool UHOLHeroLibrary::CanPickTalent(const int32 Level, const int32 NumPicks, const int32 Family)
 {
 	return HOLHeroTalent::CanPick(Level, NumPicks, Family);
+}
+
+bool UHOLHeroLibrary::TalentHasEffect(const int32 Row, const int32 Family)
+{
+	return HOLHeroTalent::HasEffect(Row, Family);
 }
 
 int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int32 Slot)
@@ -329,4 +338,9 @@ bool UHOLHeroLibrary::BuyHeroReturn(const UObject* WorldContextObject, const int
 {
 	UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(GetWorldOf(WorldContextObject));
 	return Heroes && Heroes->BuyReturn(Slot, PlaceIndex, Price);
+}
+
+int32 UHOLHeroLibrary::GetTalentFirstChoiceMode()
+{
+	return FMath::Clamp(TalentFirstChoiceMode, 0, 2);
 }

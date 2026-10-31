@@ -7,12 +7,14 @@
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -22,6 +24,8 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLCampSubsystem.h"
+#include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
@@ -30,6 +34,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 int64 UHOLCombatProcessor::TotalHits = 0;
 int64 UHOLCombatProcessor::TotalKills = 0;
@@ -55,6 +60,10 @@ namespace UE::HeroesOfLiberty::Combat
 	constexpr double MaxPlaceReach = 200.0;
 	constexpr double BuildingApproachGap = HOLCombat::BuildingApproachGap;
 
+	/** D581 (TQ2 = A): the speed of a unit under Serrez les rangs, percent of its walk; 0 holds the formation in place. */
+	int32 CloseRanksSpeed = HOLHeroAbility::CloseRanksSpeedPercent;
+	FAutoConsoleVariableRef CVarCloseRanksSpeed(TEXT("hol.Hero.CloseRanksSpeed"), CloseRanksSpeed,
+		TEXT("Speed of the units under the cry Serrez les rangs, in percent of their walk (default 0: held in place, 1-100: slowed; Pas de l'Aube lets them advance at 50 % at least)"));
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
 	int32 Enabled = 1;
@@ -485,6 +494,21 @@ int32 UHOLCombatProcessor::GetTalentArmorBonus(const FFighter& Victim) const
 	return bShieldsUp && IsInAura(Victim) ? HOLHeroAbility::ShieldsUpArmorBonus : 0;
 }
 
+int32 UHOLCombatProcessor::GetTechnologyAttackPercent(const FFighter& Attacker) const
+{
+	const int32 Slot = Attacker.State->OwnerPlayer;
+	if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+	{
+		return 0;
+	}
+	switch (Attacker.Constants->AttackType)
+	{
+	case EHOLAttackType::Melee: return MeleeAttackPercent[Slot];
+	case EHOLAttackType::Ranged: return RangedAttackPercent[Slot];
+	default: return 0;
+	}
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -510,6 +534,51 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		return !Vision || Vision->IsVisible(Seeker.State->OwnerPlayer, Other.Location);
 	};
+	// D5 (DuelInProgress.md; GDD 10.2, D18): while a duel is on, a hero in it is hit by his adversary only and hits nobody else.
+	// The script book (HOLDuel::BookCanHit) answers, once a step, for every pair (attacker hero slot, victim hero slot), -1 for
+	// anything that is not a hero; the pass below only reads that table. A unit never aims at, nor strikes, a protected hero.
+	constexpr int32 DuelStride = FHOLMatchConfig::MaxSlots + 1;
+	TArray<uint8> DuelHits;
+	// D6: the percent of his damage each duellist deals (his posture), by hero slot; 100 for anyone else.
+	TArray<int32> DuelDamagePercent;
+	// D120: each duellist's adversary by hero slot (-1 for anyone else): the contact is automatic.
+	TArray<int32> DuelAdversary;
+	UHOLDuelSubsystem* Book = UHOLDuelSubsystem::Find(World);
+	const bool bDuelOn = Book && Book->IsDuelOn();
+	if (bDuelOn)
+	{
+		DuelHits.SetNumZeroed(DuelStride * DuelStride);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			DuelDamagePercent.Add(Book->GetDamagePercentNow(Slot));
+			DuelAdversary.Add(Book->GetAdversaryNow(Slot));
+		}
+		for (int32 Attacker = -1; Attacker < FHOLMatchConfig::MaxSlots; ++Attacker)
+		{
+			for (int32 Victim = -1; Victim < FHOLMatchConfig::MaxSlots; ++Victim)
+			{
+				DuelHits[(Attacker + 1) * DuelStride + Victim + 1] = Book->CanHitNow(Attacker, Victim) ? 1 : 0;
+			}
+		}
+	}
+	const auto HeroSlotOf = [](const FFighter& Fighter)
+	{
+		return HOLIsHero(Fighter.Constants->ArmorCategoryMask) ? static_cast<int32>(Fighter.State->OwnerPlayer) : INDEX_NONE;
+	};
+	const auto CanHitSlots = [&DuelHits, bDuelOn](const int32 AttackerHero, const int32 VictimHero)
+	{
+		return !bDuelOn || DuelHits[(AttackerHero + 1) * DuelStride + VictimHero + 1] != 0;
+	};
+	const auto CanTouch = [&](const FFighter& Attacker, const FFighter& Victim)
+	{
+		return !bDuelOn || CanHitSlots(HeroSlotOf(Attacker), HeroSlotOf(Victim));
+	};
+	// D6: a duellist's damage follows his posture (HOLDuelKit); whole percents, the same on every machine.
+	const auto DuelScaled = [&](const FFighter& Attacker, const float Damage)
+	{
+		const int32 HeroSlot = bDuelOn ? HeroSlotOf(Attacker) : INDEX_NONE;
+		return HeroSlot != INDEX_NONE && DuelDamagePercent.IsValidIndex(HeroSlot) ? Damage * static_cast<float>(DuelDamagePercent[HeroSlot]) * 0.01f : Damage;
+	};
 
 	// The step's units, in identifier order (the outcome does not depend on the chunks). Each one's camp read once here.
 	const FHOLCampTable CampTable = FHOLCampTable::FromWorld(World);
@@ -522,6 +591,26 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
 	AuraSources.Reset();
 	ShieldsUpOwners = 0;
+	// T6: each slot's attack technologies, from the player states (the server has them all; a technology is read as the gather's).
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		MeleeAttackPercent[Slot] = 0;
+		RangedAttackPercent[Slot] = 0;
+	}
+	if (const AGameStateBase* GameState = World ? World->GetGameState() : nullptr)
+	{
+		for (const APlayerState* PlayerState : GameState->PlayerArray)
+		{
+			const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+			const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+			if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)
+			{
+				MeleeAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Melee));
+				RangedAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Ranged));
+			}
+		}
+	}
+	DawnStepOwners = 0;
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
@@ -554,7 +643,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.MoveTarget = &MoveTargets[EntityIt];
 			Fighter.Movement = &Movements[EntityIt];
 			Fighter.Constants = &Constants;
-			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding();
+			// N4: a neutral camp's member at its post or walking back is left out of the fight as a worker at its task is (it answers a blow by its camp's thought).
+			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding()
+				|| (States[EntityIt].OwnerPlayer == FHOLMatchConfig::NeutralOwner && HOLCamps::IsPassive(Fighter.UnitId));
 			if (bZeroAtGather)
 			{
 				bAnyTarget |= Combats[EntityIt].Target.IsSet();
@@ -577,6 +668,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			// T4: the talents that change a hit (Boucliers levees), from the hero sheets of this step.
 			ShieldsUpOwners |= HOLHeroTalent::GrantsAuraArmor(Heroes->GetSheets(Slot).Private.TalentPicks) ? (1u << Slot) : 0u;
+			DawnStepOwners |= HOLHeroTalent::GrantsDawnStep(Heroes->GetSheets(Slot).Private.TalentPicks) ? (1u << Slot) : 0u;
 			FVector BannerLocation;
 			if (Heroes->GetBanner(Slot, BannerLocation))
 			{
@@ -605,6 +697,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld slot %d cries Serrez les rangs, %d unit(s) under it"), StepIndex, Slot, Cried);
 			}
 		}
+	}
+	// D581: the speed of each unit under a cry, for the movement processor (a formation held in place, or slowed with Pas de l'Aube).
+	for (FFighter& Fighter : Fighters)
+	{
+		Fighter.Combat->CloseRanksSpeedPercent = static_cast<uint8>(HOLHeroAbility::GetCloseRanksSpeedPercent(
+			Fighter.Combat->CloseRanksMs > 0, (DawnStepOwners & (1u << Fighter.State->OwnerPlayer)) != 0, CloseRanksSpeed));
 	}
 	if (!bFighting)
 	{
@@ -982,7 +1080,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			}
 			continue;
 		}
-		const int32 Victim = FindFighter(Arrow.Target);
+		int32 Victim = FindFighter(Arrow.Target);
+		if (bDuelOn && Victim != INDEX_NONE)
+		{
+			// D5: an arrow that reaches a protected hero (the duel began in its flight, or it comes from another hero's side) is lost.
+			const int32 ShooterIndex = FindFighter(Arrow.Shooter);
+			if (!CanHitSlots(ShooterIndex != INDEX_NONE ? HeroSlotOf(Fighters[ShooterIndex]) : INDEX_NONE, HeroSlotOf(Fighters[Victim])))
+			{
+				Victim = INDEX_NONE;
+			}
+		}
 		float Health = Victim != INDEX_NONE ? Fighters[Victim].State->CurrentHealth : 0.f;
 		// J8c.2: the morale effects where it lands, now (aura, cry), not where it was released.
 		const float Landed = Victim != INDEX_NONE ? HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Fighters[Victim])) : Arrow.Damage;
@@ -1005,6 +1112,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			Enemy.Combat->LastAttacker = Arrow.Shooter;
 			Enemy.Combat->LastHitStep = StepIndex;
+			if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
+			{
+				HOLCamps::NoteHit(Enemy.UnitId, Fighters[Shooter].State->OwnerPlayer, Landed);
+			}
 			Fighters[Shooter].Combat->DamageDealt += Landed;
 		}
 		if (LogHits != 0)
@@ -1211,6 +1322,40 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			FinishDying(World, *Units, Fighter, StepIndex);
 			continue;
 		}
+		// D120 (GDD 10.3): contact automatique. A hero in a duel has no free movement: he aims at his adversary, whatever his
+		// player ordered (a walk, an attack on another, a hold), and walks to him as to an ordered target; the pair stay together
+		// in their circle. Before the fast idle test below, which would let a far, idle hero stand.
+		if (bDuelOn && HOLIsHero(Constants.ArmorCategoryMask))
+		{
+			const int32 AdversarySlot = DuelAdversary.IsValidIndex(Fighter.State->OwnerPlayer) ? DuelAdversary[Fighter.State->OwnerPlayer] : INDEX_NONE;
+			const uint32 AdversaryId = AdversarySlot >= 0 && Units ? Units->FindHeroUnit(AdversarySlot) : 0u;
+			const FMassEntityHandle AdversaryEntity = AdversaryId != 0 ? Units->FindEntity(AdversaryId) : FMassEntityHandle();
+			const int32 Adversary = AdversaryEntity.IsSet() ? FindFighter(AdversaryEntity) : INDEX_NONE;
+			if (Adversary != INDEX_NONE && Fighters[Adversary].State->CurrentHealth > 0)
+			{
+				if (Combat.Target != AdversaryEntity)
+				{
+					const int32 Former = FindFighter(Combat.Target);
+					if (Former != INDEX_NONE)
+					{
+						--Fighters[Former].Combat->AttackerCount;
+						Touch(Former);
+					}
+					Combat.Disengage();
+					Combat.Target = AdversaryEntity;
+					++Fighters[Adversary].Combat->AttackerCount;
+					Touch(Adversary);
+					Touch(Index);
+				}
+				Combat.bOrderedTarget = true;
+				Combat.Mode = EHOLCombatMode::Normal;
+				// A walk of his player's (neither the combat's own approach nor over): stopped, the approach below takes over.
+				if (World && Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching)
+				{
+					StopWalk(*World, Fighter);
+				}
+			}
+		}
 		// J7c.4, S2 (hol.Combat.FastIdleUnit): hol.Combat.FastIdle's test, on this unit alone and by its state now (a unit
 		// before it may have taken it as target or struck it: then a last attacker, the whole turn). Such a unit's turn below
 		// is its idle tick only: busy, nothing to disengage (TickIdle); else no target to look up nor lose, no last attacker
@@ -1258,6 +1403,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// Its target, if it still stands.
 		int32 Target = FindFighter(Combat.Target);
 		bool bLost = false;
+		// D5: a target that became a protected hero (a duel began) is let go; the hero's own aim at anything but his adversary too.
+		if (bDuelOn && Target != INDEX_NONE && Fighters[Target].State->CurrentHealth > 0 && !CanTouch(Fighter, Fighters[Target]))
+		{
+			--Fighters[Target].Combat->AttackerCount;
+			Touch(Target);
+			Combat.Disengage();
+			Touch(Index);
+			Target = INDEX_NONE;
+		}
 		if (Combat.Target.IsSet() && (Target == INDEX_NONE || Fighters[Target].State->CurrentHealth <= 0))
 		{
 			Touch(Index);
@@ -1302,7 +1456,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// give up at its start, and returns at it (in reach and current), the only candidate that can return early, the
 			// ones before it only ranked. So the scan is spared; it changes nothing (the candidates are the step's scratch).
 			const bool bKeepTarget = bFast && Target != INDEX_NONE && SearchRadius > 0.f
-				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && IsSeenBy(Fighter, Fighters[Target])
+				&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && IsSeenBy(Fighter, Fighters[Target]) && CanTouch(Fighter, Fighters[Target])
 				&& HOLCombat::IsInRange(Position, Seeker.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Seeker.AttackRange);
 			int32 NewTarget = Target;
 			if (!bKeepTarget)
@@ -1323,7 +1477,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				const auto AddCandidate = [&](const int32 Other)
 				{
 					const FFighter& Enemy = Fighters[Other];
-					if (!IsSeenBy(Fighter, Enemy))
+					if (!IsSeenBy(Fighter, Enemy) || !CanTouch(Fighter, Enemy))
 					{
 						return;
 					}
@@ -1525,7 +1679,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (const FMassEntityHandle Foe : { NearCombat.Target, NearCombat.LastAttacker })
 					{
 						const int32 Other = FindFighter(Foe);
-						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp)
+						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp || !CanTouch(Fighter, Fighters[Other]))
 						{
 							continue;
 						}
@@ -1584,7 +1738,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			for (const int32 Other : Contacts)
 			{
 				const FFighter& Enemy = Fighters[Other];
-				if (Enemy.State->CurrentHealth <= 0)
+				if (Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy))
 				{
 					continue;
 				}
@@ -1644,7 +1798,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			for (const int32 Other : Nearby)
 			{
 				const FFighter& Enemy = Fighters[Other];
-				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0)
+				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy))
 				{
 					continue;
 				}
@@ -1733,6 +1887,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						Combat.bAttacking = false;
 					}
 				}
+			}
+			// D5: a hero in a duel touches nothing but his adversary: no building (its target kept for after the duel).
+			if (BuildingIndex != INDEX_NONE && !CanHitSlots(HeroSlotOf(Fighter), INDEX_NONE))
+			{
+				Combat.bAttacking = false;
+				BuildingIndex = INDEX_NONE;
 			}
 			if (BuildingIndex != INDEX_NONE && World)
 			{
@@ -2045,7 +2205,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						for (const int32 Other : Nearby)
 						{
 							const FFighter& Near = Fighters[Other];
-							if (Near.State->CurrentHealth <= 0)
+							if (Near.State->CurrentHealth <= 0 || !CanTouch(Fighter, Near))
 							{
 								continue;
 							}
@@ -2102,6 +2262,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 
 		FFighter& Enemy = Fighters[Target];
+		if (!CanTouch(Fighter, Enemy))
+		{
+			// D5: the last gate before a blow or an arrow (the target was taken above in the step): nothing is struck.
+			--Enemy.Combat->AttackerCount;
+			Touch(Target);
+			Combat.Disengage();
+			Touch(Index);
+			continue;
+		}
 		const FVector2D EnemyPosition(Enemy.Location);
 		if (!HOLCombat::IsInRange(Position, Constants.Radius, EnemyPosition, Enemy.Constants->Radius, Constants.AttackRange))
 		{
@@ -2140,7 +2309,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy));
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter));
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight
@@ -2153,7 +2322,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Arrow.TargetId = Enemy.UnitId;
 			Arrow.ShooterType = Constants.TypeName;
 			Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
-			Arrow.Damage = Damage;
+			Arrow.Damage = DuelScaled(Fighter, Damage);
 			Arrow.ReleaseStep = StepIndex;
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++Combat.Hits;
@@ -2185,8 +2354,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// D468: the hits come off one after another in the fighters' order (this loop is sequential): with float health the
 		// order of the subtractions matters, so applying them from a parallel loop would break the reproducibility.
 		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
-		const float Dealt = HOLHeroAbility::GetReducedDamage(Damage, GetDamageTakenPercent(Enemy));
+		const float Dealt = HOLHeroAbility::GetReducedDamage(DuelScaled(Fighter, Damage), GetDamageTakenPercent(Enemy));
 		Enemy.State->CurrentHealth -= Dealt;
+		if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
+		{
+			HOLCamps::NoteHit(Enemy.UnitId, Fighter.State->OwnerPlayer, Dealt);
+		}
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		Enemy.Combat->LastHitStep = StepIndex;
 		++Combat.Hits;

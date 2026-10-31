@@ -7,6 +7,8 @@
 #include "Technologies/HOLTechnologyTypes.h"
 #include "HOLTechnologyRules.generated.h"
 
+enum class EHOLAttackType : uint8;
+
 /**
  * The technologies a player has researched (T3, GDD 11): the names of the rows of the technology table, in the order they
  * were finished. Set by the server alone (the production at the end of a research), replicated to its player only (like the
@@ -92,6 +94,13 @@ namespace HOLTechnology
 	/** The statistics the Wheelbarrow changes (T5, GDD 11.1: speed and capacity of the workers). */
 	inline const FName WorkerCarryStat(TEXT("WorkerCarry"));
 	inline const FName WorkerSpeedStat(TEXT("WorkerSpeed"));
+
+	/** T6: the statistics the Forge's attack technologies change (MeleeAttack, RangedAttack of the table): a hit's base attack, by the attack's type. */
+	inline const FName MeleeAttackStat(TEXT("MeleeAttack"));
+	inline const FName RangedAttackStat(TEXT("RangedAttack"));
+
+	/** T6: the statistic that raises the hits of this attack type (Melee, Ranged), NAME_None for the others (siege, hero: no technology yet). */
+	HEROESOFLIBERTY_API FName GetAttackStat(EHOLAttackType AttackType);
 
 	/** A whole quantity (a carrying capacity) raised by Percent: Base + Base * Percent / 100, rounded to the nearest whole unit, never below Base. */
 	HEROESOFLIBERTY_API int32 ScaleByPercent(int32 Base, int32 Percent);
