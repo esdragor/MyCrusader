@@ -7,6 +7,7 @@
 #include "Misc/Paths.h"
 #include "Buildings/HOLProductionRules.h"
 #include "Technologies/HOLTechnologyRules.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Technologies/HOLTechnologyTypes.h"
 #include "UObject/Package.h"
 
@@ -358,6 +359,24 @@ bool FHOLTechnologyRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("3 carried, +10 %: still 3 (a third of a unit is not one)"), HOLTechnology::ScaleByPercent(3, 10), 3);
 	TestEqual(TEXT("nothing carried: nothing"), HOLTechnology::ScaleByPercent(0, 20), 0);
 	TestEqual(TEXT("a negative percent never lowers it"), HOLTechnology::ScaleByPercent(10, -50), 10);
+
+	// T6: the Forge's attack lines raise a hit's base attack by the attack's type; melee and ranged are separate lines.
+	TestEqual(TEXT("melee hits are raised by MeleeAttack"), HOLTechnology::GetAttackStat(EHOLAttackType::Melee), HOLTechnology::MeleeAttackStat);
+	TestEqual(TEXT("ranged hits are raised by RangedAttack"), HOLTechnology::GetAttackStat(EHOLAttackType::Ranged), HOLTechnology::RangedAttackStat);
+	TestEqual(TEXT("siege hits: no technology yet"), HOLTechnology::GetAttackStat(EHOLAttackType::Siege), FName(NAME_None));
+	TestEqual(TEXT("hero hits: no technology"), HOLTechnology::GetAttackStat(EHOLAttackType::Hero), FName(NAME_None));
+	const FHOLTechnologyRow* Blades1 = Find(TEXT("MeleeAttackI"));
+	const FHOLTechnologyRow* Blades2 = Find(TEXT("MeleeAttackII"));
+	TestTrue(TEXT("the table has Lames affutees I and II"), Blades1 && Blades2);
+	Researched = { TEXT("MeleeAttackI") };
+	TestEqual(TEXT("Lames affutees I: melee +10 %"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Melee), Find), Blades1 ? Blades1->Percent : -1);
+	TestEqual(TEXT("Lames affutees I: nothing for the ranged"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Ranged), Find), 0);
+	Researched.Add(TEXT("MeleeAttackII"));
+	TestEqual(TEXT("Lames affutees I and II: II's total"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Melee), Find), Blades2 ? Blades2->Percent : -1);
+	Researched = { TEXT("RangedAttackI") };
+	const FHOLTechnologyRow* Fletching1 = Find(TEXT("RangedAttackI"));
+	TestEqual(TEXT("Empennage I: ranged +10 %"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Ranged), Find), Fletching1 ? Fletching1->Percent : -1);
+	TestEqual(TEXT("Empennage I: nothing for the melee"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Melee), Find), 0);
 
 	// The player's state: a technology is researched once.
 	FHOLTechnologyState State;

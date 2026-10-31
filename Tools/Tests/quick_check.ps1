@@ -157,6 +157,7 @@ $SubCaseTable = @{
         tiers = @{ Marks = @("tiers"); Setup = @() }
         relay = @{ Marks = @("relay"); Setup = @() }
         market = @{ Marks = @("market"); Setup = @() }
+        minimap = @{ Marks = @("minimap"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -2105,6 +2106,14 @@ if ($Parts -contains "camera") {
                 "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
+            # The minimap (InterfaceInProgress.md): a Peasant selected, the picture read (HUD minimap line), a right click on its middle orders
+            # the Peasant to the map's centre (the real chain from the picture point: ToWorld, ClickAction, OrderMove), a left click near its
+            # upper left corner puts the camera there (the line says where). The Peasant is then taken away.
+            Step "mark build minimap", "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')",
+                "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "frames 3", "hol.HUD.Report",
+                "hol.HUD.Click MinimapClickR120x120", "waitlog Minimap order: 1 units to", "frames 3", "hol.HUD.Report",
+                "hol.HUD.Click MinimapClickL30x30", "frames 5", "hol.HUD.Report", "capture build_minimap",
+                "hol.Units.Remove 0 0 60000 0 Peasant", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -4927,6 +4936,26 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($MarketReports[0] -match "grid A=SellFood \w+ Z=SellWood \w+ E=SellStone \w+ Q=BuyFood \w+ S=BuyWood \w+ D=BuyStone \w+,") -and
         [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 56 gold \(price now 77,")
     $AllOk = (Report "build market" $Checks) -and $AllOk
+
+    # The minimap: the picture read with a Peasant selected (marks, camera frame of four points, the map's area), a right click on its middle
+    # sent the Peasant to the area's centre, a left click at (30, 30) px put the camera at the ground of that point.
+    $HudMinimap = Get-Section "build minimap"
+    $MmLines = @($HudMinimap | Select-String -Pattern "HUD minimap: " | ForEach-Object { $_.Line })
+    $MmOrder = & $Value $HudMinimap "Minimap order: 1 units to \(([-\d]+, [-\d]+)\)"
+    $MmArea = if ($MmLines.Count -gt 0 -and $MmLines[0] -match "area x (-?\d+)\.\.(-?\d+) y (-?\d+)\.\.(-?\d+)") { @([double]$Matches[1], [double]$Matches[2], [double]$Matches[3], [double]$Matches[4]) } else { $null }
+    $MmCentre = if ($MmArea) { @((($MmArea[0] + $MmArea[1]) / 2), (($MmArea[2] + $MmArea[3]) / 2)) } else { @(1e9, 1e9) }
+    $MmCorner = if ($MmArea) { @(($MmArea[1] - 30 / 240 * ($MmArea[1] - $MmArea[0])), ($MmArea[2] + 30 / 240 * ($MmArea[3] - $MmArea[2]))) } else { @(1e9, 1e9) }
+    $MmWent = if ("$MmOrder" -match "^(-?\d+), (-?\d+)$") { @([double]$Matches[1], [double]$Matches[2]) } else { @(-1e9, -1e9) }
+    $MmCam = if ($MmLines.Count -gt 0 -and $MmLines[-1] -match "last click camera (-?\d+) (-?\d+)") { @([double]$Matches[1], [double]$Matches[2]) } else { @(-1e9, -1e9) }
+    $Checks = [ordered]@{}
+    $Checks["the picture read: marks, a camera frame of 4 points, the map's area ($($MmLines[0] -replace '^.*HUD minimap: ', ''))"] = ($MmLines.Count -ge 2) -and
+        ($MmLines[0] -match "minimap: 240 px, [1-9]\d* marks, \d+ alerts lit, camera frame 4 points, terrain 200 x 200") -and ($null -ne $MmArea)
+    $Checks["a right click on the middle sent the Peasant to the area's centre (order to $MmOrder, centre $([int]$MmCentre[0]), $([int]$MmCentre[1]))"] =
+        ([Math]::Abs($MmWent[0] - $MmCentre[0]) -le 1) -and ([Math]::Abs($MmWent[1] - $MmCentre[1]) -le 1)
+    $Checks["a left click at (30, 30) px put the camera on that ground (line: camera $($MmCam -join ' '), expected $([int]$MmCorner[0]) $([int]$MmCorner[1]))"] =
+        ([Math]::Abs($MmCam[0] - $MmCorner[0]) -le 1) -and ([Math]::Abs($MmCam[1] - $MmCorner[1]) -le 1)
+    $Checks["capture"] = Test-Path (Join-Path $Shots "build_minimap.png")
+    $AllOk = (Report "build minimap" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -6772,8 +6801,10 @@ if ($Parts -contains "net") {
     $AllOk = (Report "net hero abilities" $AbChecks) -and $AllOk
     # T4: the research asked by client 1 (Bob, slot 1), done on the server (its lines), reaching Bob alone.
     $TechChecks = [ordered]@{}
-    $TechServer = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net tech")
-    $TechQueued = @(@(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
+    # Both lines are read from the whole server log, not after its "net tech" mark: with FastBuild on, the client's order can be
+    # queued AND done (one step) before the server's own sequence reaches that mark (seen once in three runs, 2026-10-31).
+    $TechServer = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+    $TechQueued = @($TechServer | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
     $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched TemperedHalberds")
     $TechChecks["server: Bob's Tempered Halberds queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
     foreach ($NetClient in $NetClients) {

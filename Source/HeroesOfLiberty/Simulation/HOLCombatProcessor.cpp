@@ -7,12 +7,14 @@
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -22,6 +24,7 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Simulation/HOLCampSubsystem.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -31,6 +34,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 int64 UHOLCombatProcessor::TotalHits = 0;
 int64 UHOLCombatProcessor::TotalKills = 0;
@@ -490,6 +494,21 @@ int32 UHOLCombatProcessor::GetTalentArmorBonus(const FFighter& Victim) const
 	return bShieldsUp && IsInAura(Victim) ? HOLHeroAbility::ShieldsUpArmorBonus : 0;
 }
 
+int32 UHOLCombatProcessor::GetTechnologyAttackPercent(const FFighter& Attacker) const
+{
+	const int32 Slot = Attacker.State->OwnerPlayer;
+	if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+	{
+		return 0;
+	}
+	switch (Attacker.Constants->AttackType)
+	{
+	case EHOLAttackType::Melee: return MeleeAttackPercent[Slot];
+	case EHOLAttackType::Ranged: return RangedAttackPercent[Slot];
+	default: return 0;
+	}
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -572,6 +591,25 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
 	AuraSources.Reset();
 	ShieldsUpOwners = 0;
+	// T6: each slot's attack technologies, from the player states (the server has them all; a technology is read as the gather's).
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		MeleeAttackPercent[Slot] = 0;
+		RangedAttackPercent[Slot] = 0;
+	}
+	if (const AGameStateBase* GameState = World ? World->GetGameState() : nullptr)
+	{
+		for (const APlayerState* PlayerState : GameState->PlayerArray)
+		{
+			const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+			const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+			if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)
+			{
+				MeleeAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Melee));
+				RangedAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Ranged));
+			}
+		}
+	}
 	DawnStepOwners = 0;
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
@@ -605,7 +643,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.MoveTarget = &MoveTargets[EntityIt];
 			Fighter.Movement = &Movements[EntityIt];
 			Fighter.Constants = &Constants;
-			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding();
+			// N4: a neutral camp's member at its post or walking back is left out of the fight as a worker at its task is (it answers a blow by its camp's thought).
+			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding()
+				|| (States[EntityIt].OwnerPlayer == FHOLMatchConfig::NeutralOwner && HOLCamps::IsPassive(Fighter.UnitId));
 			if (bZeroAtGather)
 			{
 				bAnyTarget |= Combats[EntityIt].Target.IsSet();
@@ -1072,6 +1112,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			Enemy.Combat->LastAttacker = Arrow.Shooter;
 			Enemy.Combat->LastHitStep = StepIndex;
+			if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
+			{
+				HOLCamps::NoteHit(Enemy.UnitId, Fighters[Shooter].State->OwnerPlayer, Landed);
+			}
 			Fighters[Shooter].Combat->DamageDealt += Landed;
 		}
 		if (LogHits != 0)
@@ -2265,7 +2309,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy));
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter));
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight
@@ -2312,6 +2356,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// J8c.2: less under the morale effects of its side (aura, cry; J8c-Q1, Q2).
 		const float Dealt = HOLHeroAbility::GetReducedDamage(DuelScaled(Fighter, Damage), GetDamageTakenPercent(Enemy));
 		Enemy.State->CurrentHealth -= Dealt;
+		if (Enemy.State->OwnerPlayer == FHOLMatchConfig::NeutralOwner)
+		{
+			HOLCamps::NoteHit(Enemy.UnitId, Fighter.State->OwnerPlayer, Dealt);
+		}
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		Enemy.Combat->LastHitStep = StepIndex;
 		++Combat.Hits;

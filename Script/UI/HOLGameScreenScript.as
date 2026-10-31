@@ -62,12 +62,32 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 	const float BarWidth = 240.0;
 	const float AbilitySize = 26.0;
 
+	// The minimap (InterfaceInProgress.md, the prototype's, AoE4's manner): bottom right in the place MinimapPlace keeps in the
+	// C++ screen. The rules are HOLMinimapRules.as; UHOLMinimapView reads the game, acts and paints.
+	UHOLMinimapView Minimap;
+	FHOLMinimapFrame MinimapFrame;
+	bool bMinimapFrame = false;
+	// The own things as the last refresh saw them (the alerts compare two readings), the alerts, the time of the last refresh.
+	TArray<FHOLMinimapSeen> MinimapSeenBefore;
+	TArray<FHOLMinimapAlert> MinimapAlerts;
+	// The camera's footprint on the ground at the last refresh and the focus then.
+	TArray<FVector2D> MinimapQuad;
+	FVector2D MinimapQuadFocus;
+	float MinimapLastTime = -1.0;
+	int MinimapTerrainWait = 0;
+	int MinimapLitAlerts = 0;
+	FString MinimapLastClick = "none";
+	// The picture's side (px at 1080p) and the margin of the screen, as the C++ screen's MinimapPlace.
+	const float MinimapSize = 240.0;
+	const float MinimapMargin = 16.0;
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
+		BuildMinimap(Frame);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
 	}
@@ -265,8 +285,169 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
 		RefreshPause();
+		RefreshMinimap();
 	}
 
+	void BuildMinimap(UOverlay Frame)
+	{
+		Minimap = Cast<UHOLMinimapView>(ConstructWidget(UHOLMinimapView, n"Minimap"));
+		Minimap.SetSide(MinimapSize);
+		Minimap.SetVisibility(ESlateVisibility::Collapsed);
+		Minimap.OnPressed.AddUFunction(this, n"HandleMinimapPressed");
+		Minimap.OnTicked.AddUFunction(this, n"HandleMinimapTicked");
+		UOverlaySlot MinimapSlot = Frame.AddChildToOverlay(Minimap);
+		MinimapSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Right);
+		MinimapSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Bottom);
+		MinimapSlot.SetPadding(FMargin(MinimapMargin));
+	}
+
+	// The picture again from the game: the terrain (the fog, the explored sources) twice a second, the dots, the alerts and the
+	// camera's frame at every refresh. Hidden when the map has no bounds.
+	void RefreshMinimap()
+	{
+		if (Minimap == nullptr)
+			return;
+		FVector2D Low;
+		FVector2D High;
+		if (!Minimap.GetMapArea(Low, High))
+		{
+			Minimap.SetVisibility(ESlateVisibility::Collapsed);
+			return;
+		}
+		if (!bMinimapFrame || MinimapFrame.MinX != Low.X || MinimapFrame.MaxX != High.X || MinimapFrame.MinY != Low.Y || MinimapFrame.MaxY != High.Y)
+		{
+			MinimapFrame = HOLMinimap::MakeFrame(Low.X, Low.Y, High.X, High.Y, MinimapSize);
+			Minimap.SetFrame(Low, High);
+			bMinimapFrame = true;
+			MinimapTerrainWait = 0;
+		}
+		Minimap.SetVisibility(ESlateVisibility::Visible);
+		const int PlayerSlot = GetLocalSlot();
+		if (MinimapTerrainWait <= 0)
+		{
+			Minimap.RefreshTerrain(PlayerSlot);
+			MinimapTerrainWait = 2;
+		}
+		MinimapTerrainWait -= 1;
+
+		TArray<FHOLMinimapEntity> Entities;
+		Minimap.GatherEntities(PlayerSlot, Entities);
+		TArray<FHOLMinimapMark> Marks;
+		TArray<FHOLMinimapSeen> Seen;
+		// Buildings first, the units over them.
+		for (int Pass = 0; Pass < 2; Pass++)
+		{
+			for (int Index = 0; Index < Entities.Num(); Index++)
+			{
+				FHOLMinimapEntity Entity = Entities[Index];
+				if (Entity.bBuilding != (Pass == 0))
+					continue;
+				FHOLMinimapMark Mark;
+				Mark.Position = HOLMinimap::ToPicture(MinimapFrame, Entity.Location);
+				Mark.Color = Entity.Color;
+				Mark.Size = Entity.bBuilding ? 6.0 : 3.0;
+				Marks.Add(Mark);
+				if (Entity.bOwn)
+				{
+					FHOLMinimapSeen Own;
+					Own.Id = Entity.Id;
+					Own.X = Entity.Location.X;
+					Own.Y = Entity.Location.Y;
+					Own.Health = Entity.Health;
+					Seen.Add(Own);
+				}
+			}
+		}
+		// The alerts: what lost health since the last reading, aged by the game's clock.
+		const float Now = Gameplay::GetTimeSeconds();
+		HOLMinimap::Age(MinimapAlerts, MinimapLastTime < 0.0 ? 0.0 : Math::Max(0.0, Now - MinimapLastTime));
+		MinimapLastTime = Now;
+		HOLMinimap::Detect(MinimapSeenBefore, Seen, MinimapAlerts);
+		MinimapSeenBefore = Seen;
+		TArray<FVector2D> Lit;
+		for (int Index = 0; Index < MinimapAlerts.Num(); Index++)
+		{
+			if (HOLMinimap::IsLit(MinimapAlerts[Index]))
+				Lit.Add(HOLMinimap::ToPicture(MinimapFrame, FVector2D(MinimapAlerts[Index].X, MinimapAlerts[Index].Y)));
+		}
+		MinimapLitAlerts = Lit.Num();
+		Minimap.SetLayers(Marks, Lit);
+		// The camera's ground as the view sees it now (the frame then follows the focus every frame, HandleMinimapTicked).
+		MinimapQuad.Reset();
+		if (Minimap.GetCameraGround(MinimapQuad))
+			MinimapQuadFocus = Minimap.GetCameraFocus();
+		else
+			MinimapQuad.Reset();
+		HandleMinimapTicked();
+	}
+
+	// Every frame: the camera's frame is the last measured ground quad moved by what the focus has moved since (the camera has no
+	// rotation and keeps its height between two refreshes, so its footprint only slides: edge scrolling, a drag, a click).
+	UFUNCTION()
+	void HandleMinimapTicked()
+	{
+		if (Minimap == nullptr || !bMinimapFrame || MinimapQuad.Num() != 4)
+			return;
+		const FVector2D Shift = Minimap.GetCameraFocus() - MinimapQuadFocus;
+		TArray<FVector2D> Moved;
+		for (int Index = 0; Index < MinimapQuad.Num(); Index++)
+			Moved.Add(MinimapQuad[Index] + Shift);
+		Minimap.SetCameraFrame(HOLMinimap::ToPictureAll(MinimapFrame, Moved));
+	}
+
+	// A press on the picture (Position in px from its upper left): left, the camera goes there (held and dragged, it follows);
+	// right, the selected units go there (HOLMinimap::ClickAction). The same function serves hol.HUD.Click (MinimapClick...).
+	UFUNCTION()
+	void HandleMinimapPressed(FVector2D Position, bool bRight, bool bDrag)
+	{
+		if (Minimap == nullptr || !bMinimapFrame || (bRight && bDrag))
+			return;
+		const int Action = HOLMinimap::ClickAction(bRight, Minimap.HasOrderableSelection());
+		const FVector2D Ground = HOLMinimap::ToWorld(MinimapFrame, Position);
+		if (Action == HOLMinimap::ClickCamera)
+		{
+			Minimap.FocusCamera(Ground);
+			MinimapLastClick = f"camera {Math::RoundToInt(Ground.X)} {Math::RoundToInt(Ground.Y)}";
+		}
+		else if (Action == HOLMinimap::ClickMove)
+		{
+			Minimap.OrderMove(Ground);
+			MinimapLastClick = f"move {Math::RoundToInt(Ground.X)} {Math::RoundToInt(Ground.Y)}";
+		}
+		else
+			MinimapLastClick = "nothing";
+	}
+
+	// A whole number written in digits ("120"); anything else counts as 0.
+	float ParseWhole(FString Digits)
+	{
+		float Value = 0.0;
+		for (int Index = 0; Index < Digits.Len(); Index++)
+		{
+			const int Digit = FString("0123456789").Find(Digits.Mid(Index, 1));
+			if (Digit < 0)
+				return 0.0;
+			Value = Value * 10.0 + Digit;
+		}
+		return Value;
+	}
+
+	// hol.HUD.Click "MinimapClickL120x80" / "MinimapClickR120x80": a press at that picture point (px), the left or the right button.
+	bool ClickMinimapName(FName WidgetName)
+	{
+		FString Text = WidgetName.ToString();
+		if (!Text.StartsWith("MinimapClick") || Text.Len() < 15)
+			return false;
+		const bool bRight = Text.Mid(12, 1) == "R";
+		FString Rest = Text.Mid(13);
+		int XAt = Rest.Find("x");
+		if (XAt <= 0)
+			return false;
+		const float Px = ParseWhole(Rest.Left(XAt));
+		const float Py = ParseWhole(Rest.Mid(XAt + 1));
+		HandleMinimapPressed(FVector2D(Px, Py), bRight, false);
+		return true;
+	}
 	// The view (HOLPauseScreen::Make) from the game state's copy of the pause.
 	void RefreshPause()
 	{
@@ -529,6 +710,8 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 			return ClickPortrait();
 		if (WidgetName == n"HeroReturnButton")
 			return ClickReturn();
+		if (ClickMinimapName(WidgetName))
+			return true;
 		if (WidgetName == n"HeroTalentButton")
 			return ClickTalent();
 		if (WidgetName == n"HeroTalentFamily0")
@@ -543,6 +726,15 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 	}
 
 	// "aura on, cry 42 s, banner locked 4 | <the cry's tooltip, one line>" (hol.HUD.Report).
+	// "focus (-14000, 0), ground [(x, y) x4]": where the camera looks and the ground its four corners reach (the frame's source).
+	FString DescribeMinimapCamera() const
+	{
+		FString Line = f"focus ({Math::RoundToInt(MinimapQuadFocus.X)}, {Math::RoundToInt(MinimapQuadFocus.Y)}), ground";
+		for (int Index = 0; Index < MinimapQuad.Num(); Index++)
+			Line += f" ({Math::RoundToInt(MinimapQuad[Index].X)}, {Math::RoundToInt(MinimapQuad[Index].Y)})";
+		return Line;
+	}
+
 	FString DescribeAbilities() const
 	{
 		FString Line;
@@ -559,6 +751,7 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 		return "hero: " + HeroView.Describe + (HeroTexts.IsEmpty() ? "" : "\nhero texts: " + HeroTexts)
 			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
 			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
+			+ (Minimap != nullptr ? "\n" + Minimap.Describe() + f", lit {MinimapLitAlerts}, alerts {MinimapAlerts.Num()}, area x {Math::RoundToInt(MinimapFrame.MinX)}..{Math::RoundToInt(MinimapFrame.MaxX)} y {Math::RoundToInt(MinimapFrame.MinY)}..{Math::RoundToInt(MinimapFrame.MaxY)}, last click {MinimapLastClick}, camera " + DescribeMinimapCamera() : "")
 			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + (TalentView.bFamilyButtons ? f" | family buttons row {TalentView.NextRow}" : "") : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}

@@ -1,0 +1,31 @@
+# Mini-carte (en bas a droite) : camps en couleurs, sources explorees, cadre de la camera, clic gauche = camera, clic droit = ordre de deplacement, alertes qui clignotent
+# Plain, toi (slot 0, bleu) et une IA (slot 1) ; brouillard Normal (hol.Fog.Mode 2) : la mini-carte est noire hors de ce que tes unites ont vu, grise ou tu es passe.
+# Tes 4 Hommes d'armes sont devant le centre (selectionnes), 3 Lanciers ennemis a 35 m (dans la vue du centre), 5 autres a 100 m (caches : pas de point rouge tant que tu ne les vois pas).
+hol.Fog.Mode 2
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Camera.FocusNear 3500 0
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 250
+waitunits 7
+hol.Camera.FocusNear 10000 0
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 350
+waitunits 12
+hol.Camera.FocusNear 800 0
+hol.Camera.Zoom -2
+frames 10
+hol.Select.BoxGround -14600 -900 -13400 900
+waitlog Selection: 4 units (own)
+frames 30
+hol.HUD.Report 1
+note Mini-carte : tes points sont bleus (batiments plus gros), les ennemis en rouge seulement quand tu les vois ; le cadre blanc est ce que montre la camera.
+note CLIC GAUCHE sur la mini-carte : la camera va la (maintenu, elle suit). CLIC DROIT : tes Hommes d'armes selectionnes marchent la. Envoie-les vers les 3 Lanciers rouges (a l'est du centre) : quand l'un est blesse, un carre rouge clignote a l'endroit du combat pendant 6 s.
+note Le noir est ce que tu n'as jamais vu, le gris ce que tu as vu puis quitte ; les petits points colores (jaune or, gris pierre, vert bois, rose baies) sont les ressources deja explorees.

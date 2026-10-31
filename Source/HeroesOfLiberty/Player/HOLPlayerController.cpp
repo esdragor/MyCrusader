@@ -1456,6 +1456,22 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand CheatTechnologyCommand(
+		TEXT("hol.Cheat.Technology"),
+		TEXT("hol.Cheat.Technology <Name>: the local player has that technology researched at once, free, without its building (development only; Technologies.csv names, e.g. MeleeAttackI)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.Technology <Name>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatTechnology(FName(*Args[0]));
+			}
+		}));
+
 	FAutoConsoleCommand CheatUnitSpeedCommand(
 		TEXT("hol.Cheat.UnitSpeed"),
 		TEXT("hol.Cheat.UnitSpeed [Scale=1]: every unit of every player walks Scale times as fast (0.1 to 10; 1: the table's speeds; development only)"),
@@ -4021,6 +4037,11 @@ void AHOLPlayerController::RequestCheatFastBuild(const bool bOn)
 	ServerCheatFastBuild(bOn);
 }
 
+void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
+{
+	ServerCheatTechnology(Technology);
+}
+
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
 	ServerCheatPopulation(Places);
@@ -4076,6 +4097,25 @@ void AHOLPlayerController::ServerCheatFastBuild_Implementation(const bool bOn)
 	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d fast build %s"), HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE, bOn ? TEXT("on") : TEXT("off"));
+#endif
+}
+
+void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Technology)
+{
+#if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("technology")))
+	{
+		return;
+	}
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (HOLPlayerState && UHOLTechnologySettings::FindTechnology(Technology) && HOLPlayerState->AddTechnology(Technology))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Technology: slot %d researched %s (cheat)"), HOLPlayerState->GetPlayerIndex(), *Technology.ToString());
+	}
+	else
+	{
+		UE_LOG(LogHOLCommands, Warning, TEXT("Cheat: technology %s unknown or already researched"), *Technology.ToString());
+	}
 #endif
 }
 
