@@ -200,3 +200,33 @@ void Test_RelayScriptAndSimulationRulesAgree(FUnitTest& T)
 	T.AssertEquals(3 * 4 * 3 * 81, Cases, "every case compared");
 	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
 }
+
+// The provisional values and the territory XP of the simulation (C++) are the script's.
+void Test_RelayConstantsAndXPAgreeWithTheSimulation(FUnitTest& T)
+{
+	T.AssertEquals(HOLRelay::HoldSeconds, HOLRelayRules::GetHoldSeconds(), "the capture time");
+	T.AssertEquals(HOLRelay::DecaySteps, HOLRelayRules::GetDecaySteps(), "the recession");
+	T.AssertEquals(HOLRelay::RelayXPPerMinute, HOLRelayRules::GetRelayXPPerMinute(), "the relay's rate");
+	T.AssertEquals(HOLRelay::CentreXPPerMinute, HOLRelayRules::GetCentreXPPerMinute(), "the centre's rate");
+	HOLRelay::FHOLTerritoryCarry Script;
+	int SimCarry = 0;
+	int Differences = 0;
+	int ScriptTotal = 0;
+	int SimTotal = 0;
+	for (int Step = 0; Step < 3000; Step++)
+	{
+		const int Relays = (Step / 700) % 4;
+		const int Centres = (Step / 900) % 3;
+		const int ScriptXP = HOLRelay::TerritoryXP(Script, Relays, Centres);
+		int NewCarry = 0;
+		const int SimXP = HOLRelayRules::TerritoryXPStep(SimCarry, Relays, Centres, HOLRelay::StepsPerSecond, NewCarry);
+		SimCarry = NewCarry;
+		ScriptTotal += ScriptXP;
+		SimTotal += SimXP;
+		if (ScriptXP != SimXP)
+			Differences++;
+	}
+	T.AssertEquals(0, Differences, "the same XP at every step");
+	T.AssertEquals(ScriptTotal, SimTotal, "the same total");
+	T.AssertTrue(ScriptTotal > 0, "the case does give XP");
+}

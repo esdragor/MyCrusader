@@ -16,3 +16,29 @@ void UHOLRelayRulesLibrary::StepRelay(const int32 Owner, const int32 Taker, cons
 	OutTaker = Next.Taker;
 	OutHeld = Next.Held;
 }
+
+int32 UHOLRelayRulesLibrary::GetHoldSeconds()
+{
+	return FMath::RoundToInt(HOLRelay::DefaultHoldSeconds);
+}
+
+int32 UHOLRelayRulesLibrary::GetDecaySteps()
+{
+	return HOLRelay::DefaultDecaySteps;
+}
+
+int32 UHOLRelayRulesLibrary::GetRelayXPPerMinute()
+{
+	return HOLRelay::RelayXPPerMinute;
+}
+
+int32 UHOLRelayRulesLibrary::GetCentreXPPerMinute()
+{
+	return HOLRelay::CentreXPPerMinute;
+}
+
+int32 UHOLRelayRulesLibrary::TerritoryXPStep(const int32 Carry, const int32 Relays, const int32 Centres, const int32 StepsPerSecond, int32& OutCarry)
+{
+	OutCarry = Carry;
+	return HOLRelay::TerritoryXP(OutCarry, Relays, Centres, StepsPerSecond);
+}

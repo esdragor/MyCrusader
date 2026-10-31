@@ -20,4 +20,18 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
 	static void StepRelay(int32 Owner, int32 Taker, int32 Held, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot, int32 HoldSteps,
 		int32 DecaySteps, int32& OutOwner, int32& OutTaker, int32& OutHeld);
+
+	/** The provisional values of the simulation's rules (HOLRelay), so that the script's are checked against them. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
+	static int32 GetHoldSeconds();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
+	static int32 GetDecaySteps();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
+	static int32 GetRelayXPPerMinute();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
+	static int32 GetCentreXPPerMinute();
+
+	/** HOLRelay::TerritoryXP: the carry in and out, the whole XP given this step. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
+	static int32 TerritoryXPStep(int32 Carry, int32 Relays, int32 Centres, int32 StepsPerSecond, int32& OutCarry);
 };

@@ -23,6 +23,18 @@ struct FHOLRelayState
 
 namespace HOLRelay
 {
+	/** Provisional values (D388: to tune in test), the same as Script/Relays/HOLRelayRules.as (the script test compares them): the capture time, the recession and the XP by the minute. */
+	constexpr float DefaultHoldSeconds = 60.f;
+	constexpr int32 DefaultDecaySteps = 2;
+	constexpr int32 RelayXPPerMinute = 10;
+	constexpr int32 CentreXPPerMinute = 10;
+
+	/**
+	 * Territory XP of one step for a side holding Relays relays and Centres secondary centres: the whole XP to give now. Carry holds the
+	 * fractions from step to step (rate x holdings, in XP x steps), so that a minute of one relay gives exactly its rate.
+	 */
+	HEROESOFLIBERTY_API int32 TerritoryXP(int32& Carry, int32 Relays, int32 Centres, int32 StepsPerSecond);
+
 	/**
 	 * The relay after one step. UnitsBySlot: the living units of each slot in the zone; TeamBySlot: each slot's team (equal teams are allies).
 	 * One adverse side alone (no unit of the owner's team): the count goes up and, full (HoldSteps), the relay goes to the taker. A unit of the

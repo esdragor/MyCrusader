@@ -153,6 +153,7 @@ $SubCaseTable = @{
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
         barwidth = @{ Marks = @("barwidth"); Setup = @() }
         tiers = @{ Marks = @("tiers"); Setup = @() }
+        relay = @{ Marks = @("relay"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -2081,6 +2082,11 @@ if ($Parts -contains "camera") {
                 "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3"
             Key Escape
             Step "waitlog Selection: none"
+            # R3/R4 (D388): a neutral relay where three of slot 0's Spearmen stand (hol.Relay.Add, 4 s to take): slot 0 takes it from nobody,
+            # then its hero is given territory XP by the minute (Exploration; 10 a minute: +1 every 6 s). Removed and the settings back.
+            Step "mark build relay", "hol.Relay.Clear", "hol.Relay.HoldSeconds 4", "hol.Relay.Add $($BuildHero -join ' ') 1200",
+                "hol.Units.Spawn 3 $($BuildHero -join ' ') 0 Spearman 100", "waitlog Relay 0: slot 0 takes it from slot -1", "waitlog (exploration)", "hol.Relay.Report",
+                "hol.Units.Remove $($BuildHero -join ' ') 2000 0 Spearman", "hol.Relay.Clear", "hol.Relay.HoldSeconds 60", "hol.Hero.SetXP 0 0", "wait 0.3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -4867,6 +4873,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
     $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
     $AllOk = (Report "build tiers" $Checks) -and $AllOk
+    # R3/R4: the relay taken by the units standing in it, then the owner's territory XP.
+    $Relay = @(Get-Section "build relay" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $Checks["slot 0 takes the neutral relay by standing in it"] = [bool]($Relay | Select-String -SimpleMatch "Relay 0: slot 0 takes it from slot -1" -Quiet)
+    $Checks["its hero is given territory XP by the minute (Exploration)"] = [bool]($Relay | Select-String -Pattern "Hero XP: slot 0 \+\d+ \(exploration\)" -Quiet)
+    $Checks["the report shows slot 0 as the owner"] = [bool]($Relay | Select-String -Pattern "Relay report: 1 relay\(s\) \| #0 owner 0 " -Quiet)
+    $AllOk = (Report "build relay" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

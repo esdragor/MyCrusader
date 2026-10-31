@@ -60,3 +60,12 @@ FHOLRelayState HOLRelay::Step(const FHOLRelayState& State, const TArray<int32>& 
 	}
 	return Next;
 }
+
+int32 HOLRelay::TerritoryXP(int32& Carry, const int32 Relays, const int32 Centres, const int32 StepsPerSecond)
+{
+	const int32 StepsPerMinute = 60 * FMath::Max(1, StepsPerSecond);
+	Carry += FMath::Max(0, Relays) * RelayXPPerMinute + FMath::Max(0, Centres) * CentreXPPerMinute;
+	const int32 Award = Carry / StepsPerMinute;
+	Carry -= Award * StepsPerMinute;
+	return Award;
+}
