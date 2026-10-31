@@ -1,7 +1,6 @@
 // The weighing of the lives when the forum is attacked (IA4, D579): the Easy level always gives the army ("sacrifices the army, even lost
 // beforehand"), and every situation is written down (lives, power ratio, decision). Played on the REAL type tables (HOLAIArmy::LoadFigures):
-// the ratios come from the real combat figures, no number of the combat is typed in. Normal and Hard are not written yet: they keep the
-// ratio rules (decision "Rules").
+// the ratios come from the real combat figures, no number of the combat is typed in. Normal, Hard and Evolving are in HOLAILives_Test.as.
 
 FHOLAIUnit LivesUnit(int Id, FName Type, int Health, FVector Where, int Slot)
 {
@@ -72,8 +71,8 @@ void Test_LivesEasyAlwaysGivesTheArmy(FUnitTest& T)
 	T.AssertTrue(HOLAIForum::DefendAnyway(Easy, Threat), "Easy sends the army");
 	T.AssertEquals(Threat.Ratio, Easy.Ratio, "the situation carries the real power ratio");
 
-	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal).Call == EHOLAILifeCall::Rules, "Normal: the ratio rules, for now");
-	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Hard).Call == EHOLAILifeCall::Rules, "Hard: the ratio rules, for now");
+	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal).Call == EHOLAILifeCall::Feint, "Normal: knows it loses, feints (HOLAILives_Test.as)");
+	T.AssertTrue(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Hard).Call == EHOLAILifeCall::Let, "Hard: lets the life go and keeps its army (HOLAILives_Test.as)");
 	T.AssertFalse(HOLAIForum::DefendAnyway(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal), Threat), "Normal adds nothing");
 }
 
@@ -121,7 +120,10 @@ void Test_LivesTheJournalLine(FUnitTest& T)
 	T.AssertTrue(Line.Contains("Easy"), "the level: " + Line);
 	T.AssertTrue(Line.Contains("fight"), "the decision: " + Line);
 
-	T.AssertTrue(HOLAIForum::Describe(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal), EHOLAIDifficulty::Normal).Contains("rules"), "Normal: the decision is the rules");
+	const FHOLAISummary Strong = LivesSummary(Data, 2, false, 14, 2, 300.f);
+	const FHOLAIThreat StrongThreat = HOLAIArmy::Threat(Strong, Data);
+	T.AssertTrue(HOLAIForum::Describe(HOLAIForum::Judge(Strong, Data, StrongThreat, EHOLAIDifficulty::Normal), EHOLAIDifficulty::Normal).Contains("rules"), "Normal with the stronger army: the decision is the rules");
+	T.AssertTrue(HOLAIForum::Describe(HOLAIForum::Judge(Summary, Data, Threat, EHOLAIDifficulty::Normal), EHOLAIDifficulty::Normal).Contains("feint"), "Normal that loses: the decision is the feint");
 
 	// Written when it begins, not again while it is the same, again when the lives or the decision change, once more when it ends.
 	FHOLAIForumLogged Logged;

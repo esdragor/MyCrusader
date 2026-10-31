@@ -43,6 +43,13 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The slots whose level was written in the journal (once, at the first army thought).
 	TMap<int, bool> LevelLogged;
 
+	// What each slot's feint (Normal) and snipes (Hard) remember (IA4, D579).
+	TMap<int, FHOLAIFeintMemory> Feints;
+	TMap<int, FHOLAISnipeMemory> Snipes;
+
+	// The level each slot plays now, to write its change (Evolving passes from one to the next).
+	TMap<int, EHOLAIDifficulty> LevelsNow;
+
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
 
@@ -284,11 +291,20 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const bool bWas = State.bDefending;
 		// IA4 (D579): the forum attacked is weighed by the level; every situation is written down (lives, ratio, decision); Easy sends the army whatever the ratio.
 		// The slot's level (D422) is read from its config into the summary (C++ Read, D579).
-		const EHOLAIDifficulty Level = Summary.Level;
+		const EHOLAIDifficulty Level = HOLAILives::Effective(Summary.Level, Now, Data.Army.Lives);
 		if (!LevelLogged.Contains(PlayerIndex))
 		{
 			LevelLogged.Add(PlayerIndex, true);
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: level {HOLAIForum::LevelName(Level)}");
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: level {HOLAIForum::LevelName(Summary.Level)}");
+		}
+		EHOLAIDifficulty Played = Level;
+		if (!LevelsNow.Find(PlayerIndex, Played) || Played != Level)
+		{
+			LevelsNow.Add(PlayerIndex, Level);
+			if (Summary.Level == EHOLAIDifficulty::Evolving)
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: evolving, plays {HOLAIForum::LevelName(Level)} now");
+			}
 		}
 		const FHOLAIForumSituation Situation = HOLAIForum::Judge(Rest, Data.Army, Threat, Level);
 		FHOLAIForumLogged Logged;
@@ -298,7 +314,35 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {HOLAIForum::Describe(Situation, Level)}");
 		}
 		ForumLogged.Add(PlayerIndex, Logged);
-		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly) || HOLAIForum::DefendAnyway(Situation, Threat), Now, Data.Army);
+		// The feint (Normal): falls back, goes round, then the rules meet the attackers; the life let go (Hard): the army is held back.
+		FHOLAIFeintMemory Feint;
+		Feints.Find(PlayerIndex, Feint);
+		const FHOLAISummary Soldiers = HOLAIArmy::WithoutWave(Summary, Wave);
+		const FHOLAIFeintStep FeintNow = HOLAILives::FeintStep(Feint, Soldiers, Data.Army, Threat, Situation, Now);
+		Feints.Add(PlayerIndex, Feint);
+		if (FeintNow.bPhaseChanged)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: feint, phase {int(Feint.Phase)} (1 back, 2 round, 3 strike), {Soldiers.Army.Num()} soldiers");
+		}
+		if (FeintNow.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIMoveOrder(PlayerIndex, FeintNow.MoveIds, FeintNow.Where))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: feint order refused");
+		}
+		const bool bHeld = HOLAILives::HoldsBack(Situation) && !FeintNow.bStrike;
+		HOLAIArmy::UpdateDefence(State, (HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly) && !bHeld) || HOLAIForum::DefendAnyway(Situation, Threat), Now, Data.Army);
+		FHOLAISnipeMemory SnipeMemory;
+		Snipes.Find(PlayerIndex, SnipeMemory);
+		const TArray<FHOLAISnipe> Sniped = HOLAILives::SnipeOrders(SnipeMemory, Soldiers, Data.Army, Situation, Now);
+		Snipes.Add(PlayerIndex, SnipeMemory);
+		for (int Each = 0; Each < Sniped.Num(); Each++)
+		{
+			TArray<int> One;
+			One.Add(Sniped[Each].SoldierId);
+			if (HOLAIOrder::IssueAIAttackUnitOrder(PlayerIndex, One, Sniped[Each].TargetId))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: soldier {Sniped[Each].SoldierId} snipes enemy {Sniped[Each].TargetId}");
+			}
+		}
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
@@ -308,10 +352,21 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The wave: launched, kept on its way, called back or over.
 		FHOLAIForumMemory Rebuild;
 		Rebuilds.Find(PlayerIndex, Rebuild);
-		const bool bRecall = HOLAIForum::WaveRecalled(Summary, Data.Army, Whole, Situation);
+		// Hard (D579): the life is let go and the army is enough to crush the attacker's home: the wave goes now, and is not called back by the
+		// enemies at our base (it went on purpose).
+		if (Wave.Phase == EHOLAIWavePhase::Home)
+		{
+			Wave.bPunishing = false;
+		}
+		Wave.bForce = Situation.Call == EHOLAILifeCall::Let && Wave.Phase == EHOLAIWavePhase::Home;
+		const bool bRecall = HOLAIForum::WaveRecalled(Summary, Data.Army, Whole, Situation) && !Wave.bPunishing;
 		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
 		if (Wave_.bLaunched)
 		{
+			if (Wave.bPunishing)
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: punishes the attacker's home, the life is let go");
+			}
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: attack launched with {Wave_.Left} soldiers, ratio {Wave_.Ratio}, toward ({Wave_.AttackTarget.X}, {Wave_.AttackTarget.Y})");
 		}
 		if (Wave_.bRetreat)
@@ -375,9 +430,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, CalmSummary, Data.Army, Now);
 		Flights.Add(PlayerIndex, Flight);
-		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
+		// Normal that knows it loses keeps its economy: the Peasants run to the refuge, not to the attacked centre (HOLAILives::FleeTarget).
+		const FVector FleeTo = HOLAILives::FleeTarget(Summary, Data.Army, Situation, Threat);
+		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, FleeTo))
 		{
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to the centre");
+			const FString Where = (FleeTo - Summary.CentreLocation).Size() < 1.f ? "the centre" : "the refuge";
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to {Where}");
 		}
 	}
 
