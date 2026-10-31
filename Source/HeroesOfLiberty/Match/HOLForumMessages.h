@@ -85,6 +85,15 @@ namespace HOLForumMessages
 	HEROESOFLIBERTY_API FText GetPlayerName(const FHOLMatchConfig& Config, int32 Slot, int32 ViewerSlot);
 
 	/**
+	 * V4 (answer B, 2026-10-30): the French elision. True when « de » before Name is written « d' »: its first letter is a vowel
+	 * (accents, y and the ligature included) or a silent h (every h, but the few aspirated names listed in the cpp). Pure.
+	 */
+	HEROESOFLIBERTY_API bool ElidesDe(const FString& Name);
+
+	/** The French pattern with its « de {NameIndex} » written « d'{NameIndex} » when Name takes the elision; else Pattern as it is. */
+	HEROESOFLIBERTY_API FString ElidePattern(const FString& Pattern, int32 NameIndex, const FString& Name);
+
+	/**
 	 * The message of Event for the viewer at ViewerSlot (INDEX_NONE: a spectator, never alerted); the camps from Config
 	 * (HOLVictoryRules::GetCamp). F6e.4 (D353): the major alert of a forum's event (Fell, HoldStarted, Razed) goes also to whoever has
 	 * the vision of the forum (bSeesForum: a fog is on and the viewer's camp sees it) and, for a HoldStarted, to the allies of the

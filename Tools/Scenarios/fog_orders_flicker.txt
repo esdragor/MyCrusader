@@ -1,0 +1,46 @@
+# Brouillard (F7.3) : MESURE du grésillement des lignes d'ordre (images successives, camera fixe) ; Tools/Tests/fog_flicker.ps1 le lance hors ecran et compare
+# Plain, deux deplacements en file vers l'inexplore ; unites ralenties pour que les lignes soient fixes ; 8 captures de suite.
+hol.Fog.Mode 2
+hol.Fog.Render 1
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Camera.FocusNear 10000 0
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 350
+waitunits 9
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -1
+frames 30
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Select.OrderNear 6500 0
+frames 5
+hol.Select.OrderGround -9000 3000 shift
+frames 5
+hol.Units.SpeedScale 0.1
+wait 6
+hol.Fog.RenderReport
+waitlog Fog render: mode 1
+capture flick_00
+frames 1
+capture flick_01
+frames 1
+capture flick_02
+frames 1
+capture flick_03
+frames 1
+capture flick_04
+frames 1
+capture flick_05
+frames 1
+capture flick_06
+frames 1
+capture flick_07
+frames 1
+mark flicker done

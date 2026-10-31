@@ -7,7 +7,9 @@
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
+#include "Match/HOLMarketRules.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLRelayView.h"
 #include "Match/HOLVictoryRules.h"
 #include "Net/HOLPauseRules.h"
 #include "Simulation/HOLHeroSheet.h"
@@ -144,6 +146,14 @@ public:
 
 	/** R7.5, every machine (replicated): the players gone and those just back, for the banner. */
 	const TArray<FHOLAbsentNotice>& GetAbsentNotices() const { return AbsentNotices; }
+
+	/**
+	 * R5: the neutral relays as every machine knows them (position, zone, owner, taker, share of the capture); the server writes them
+	 * (UHOLRelaySubsystem, each step, only when they changed), the markers draw the rings from them.
+	 */
+	const TArray<FHOLRelayView>& GetRelayViews() const { return RelayViews; }
+	/** Server or solo only. */
+	void SetRelayViews(const TArray<FHOLRelayView>& Views);
 	/**
 	 * R7.5: the banner's lines at the server time Now (GetServerWorldTimeSeconds), one per notice, in the order of the
 	 * departures: « Bob : connexion perdue — 2:41 » while away, « Bob : de retour » BackNoticeSeconds after his return.
@@ -345,6 +355,10 @@ private:
 	 */
 	UPROPERTY(Replicated)
 	TArray<FHOLAbsentNotice> AbsentNotices;
+
+	/** R5: the neutral relays, public. */
+	UPROPERTY(Replicated)
+	TArray<FHOLRelayView> RelayViews;
 	/** The stock kept for slot Slot while its player is away; nullptr: not absent (or no game state of ours). */
 	static FHOLResources* FindAbsentStock(const UWorld& World, int32 Slot);
 
@@ -464,6 +478,24 @@ private:
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)
 	TArray<FHOLHeroSheet> HeroSheets;
+
+public:
+	/**
+	 * M4c (Market, GDD 5.5, D84): the one list of prices every player trades at, allies and enemies alike; set by the server alone
+	 * (the exchange order, the way back to rest), replicated to everyone. Resources by index: food, wood, stone, gold.
+	 */
+	HOLMarket::FBook GetMarketBook() const;
+	/** Whether the book has been set (a match started); until then GetMarketBook gives a book of 100s that nothing should trade at. */
+	bool HasMarketBook() const { return MarketPrices.Num() == HOLMarket::BookSize; }
+	/** Server only. */
+	void SetMarketBook(const HOLMarket::FBook& InBook);
+	/** Server only, at the start of the match: every price at its base (the Standard row of /Game/Match/MarketRates). */
+	void ResetMarketBook();
+
+private:
+	/** The four prices of the book (HOLMarket::FBook): replicated to everyone; empty until the match starts. */
+	UPROPERTY(Replicated)
+	TArray<int32> MarketPrices;
 
 public:
 	/**

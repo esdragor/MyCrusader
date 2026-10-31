@@ -6,13 +6,16 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLConstructionSubsystem.h"
+#include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "EngineUtils.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Match/HOLGameState.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLMatchConfig.h"
 
 namespace
 {
@@ -88,6 +91,19 @@ bool UHOLAIOrderLibrary::IssueAIMoveOrder(const UObject* WorldContextObject, con
 	return World && HOLPlayerOrders::Move(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
 }
 
+
+bool UHOLAIOrderLibrary::IssueAITalentOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const int32 Family)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands || PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots)
+	{
+		return false;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Hero talent order: slot %d family %d queued (AI)"), PlayerIndex, Family);
+	Commands->IssueHeroTalentOrder(PlayerIndex, Family);
+	return true;
+}
 
 bool UHOLAIOrderLibrary::IssueAIAttackMoveOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector Target,
 	const bool bQueue)
@@ -202,6 +218,31 @@ bool UHOLAIOrderLibrary::IssueAISetRallyOrder(const UObject* WorldContextObject,
 	UWorld* World = GetAuthorityWorld(WorldContextObject);
 	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
 	return Building && HOLPlayerOrders::SetRally(*World, PlayerIndex, Building, Point, SourceIndex);
+}
+
+bool UHOLAIOrderLibrary::IssueAIMarketOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const FVector BuildingLocation, const int32 Resource,
+	const int32 Lots, const bool bBuy)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	AHOLBuilding* Building = World ? FindOwnBuilding(*World, PlayerIndex, BuildingLocation) : nullptr;
+	return Building && HOLPlayerOrders::MarketTrade(*World, PlayerIndex, Building, Resource, Lots, bBuy);
+}
+
+bool UHOLAIOrderLibrary::ReadAIMarketBook(const UObject* WorldContextObject, TArray<int32>& OutPrices)
+{
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const AHOLGameState* State = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!State || !State->HasMarketBook())
+	{
+		return false;
+	}
+	const HOLMarket::FBook Book = State->GetMarketBook();
+	OutPrices.Reset();
+	for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+	{
+		OutPrices.Add(Book.Prices[Resource]);
+	}
+	return true;
 }
 
 bool UHOLAIOrderLibrary::ReadAIUnitFigures(const UObject* WorldContextObject, const FName TypeName, FHOLAITypeFigures& OutFigures)

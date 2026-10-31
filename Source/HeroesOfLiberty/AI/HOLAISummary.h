@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLResources.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLGatherRules.h"
@@ -350,6 +351,10 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	/** The match is Regicide (a dead King defeats his slot, D355). */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	bool bRegicide = false;
+
+	/** The slot's level (IA4, D579, D422): the launch configuration's difficulty for this slot (Normal when unknown). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	EHOLAIDifficulty Level = EHOLAIDifficulty::Normal;
 
 	/** The part of one resource. */
 	FHOLAIResourceSummary& Get(EHOLResource Resource);

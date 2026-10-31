@@ -289,4 +289,6 @@ namespace HOLBuildingTypeNames
 	inline const FName Farm(TEXT("Farm"));
 	/** Military (AR-Q2a): the Barracks' double, its provisional shape a range (AR-Q2b). */
 	inline const FName ArcheryRange(TEXT("ArcheryRange"));
+	/** Economic, age II (M3, GDD 5.5): exchanges food, wood and stone for gold at the common rate; on A of the Peasant's grid, page II. */
+	inline const FName Market(TEXT("Market"));
 }

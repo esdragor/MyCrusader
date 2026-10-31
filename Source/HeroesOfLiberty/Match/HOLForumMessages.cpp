@@ -2,6 +2,9 @@
 
 #include "Match/HOLForumMessages.h"
 
+#include "Internationalization/Culture.h"
+#include "Internationalization/Internationalization.h"
+
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
@@ -59,6 +62,51 @@ FText HOLForumMessages::GetPlayerName(const FHOLMatchConfig& Config, const int32
 	return !Name.IsEmpty() ? FText::AsCultureInvariant(Name) : GetSlotName(Slot, ViewerSlot, Config);
 }
 
+namespace
+{
+	bool IsFrenchVowel(const TCHAR Letter)
+	{
+		return FString(TEXT("aeiouyàâäéèêëîïôöùûüÿœæ")).Contains(FString::Chr(FChar::ToLower(Letter)), ESearchCase::CaseSensitive)
+			|| FString(TEXT("ÀÂÄÉÈÊËÎÏÔÖÙÛÜŸŒÆ")).Contains(FString::Chr(Letter), ESearchCase::CaseSensitive);
+	}
+
+	/** The names starting with an aspirated h (no elision: « de Hans »); every other h is silent. */
+	bool IsAspiratedH(const FString& Name)
+	{
+		static const TCHAR* const Aspirated[] = { TEXT("hans"), TEXT("harald"), TEXT("harold"), TEXT("hagen"), TEXT("hulk") };
+		for (const TCHAR* Word : Aspirated)
+		{
+			if (Name.StartsWith(Word, ESearchCase::IgnoreCase))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+}
+
+bool HOLForumMessages::ElidesDe(const FString& Name)
+{
+	if (Name.IsEmpty())
+	{
+		return false;
+	}
+	if (FChar::ToLower(Name[0]) == TEXT('h'))
+	{
+		return Name.Len() > 1 && IsFrenchVowel(Name[1]) && !IsAspiratedH(Name);
+	}
+	return IsFrenchVowel(Name[0]);
+}
+
+FString HOLForumMessages::ElidePattern(const FString& Pattern, const int32 NameIndex, const FString& Name)
+{
+	if (!ElidesDe(Name))
+	{
+		return Pattern;
+	}
+	return Pattern.Replace(*FString::Printf(TEXT(" de {%d}"), NameIndex), *FString::Printf(TEXT(" d'{%d}"), NameIndex), ESearchCase::CaseSensitive);
+}
+
 FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, const int32 ViewerSlot, const bool bSeesForum)
 {
 	FHOLForumMessage Message;
@@ -87,6 +135,20 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	// The singular for exactly 1, the plural for 0 (as the players' table, V2.3d).
 	const FText Lives = FText::Format(Event.Lives == 1 ? LOCTEXT("TableLife", "{0} vie") : LOCTEXT("TableLives", "{0} vies"), Event.Lives);
 	const FText Name = GetPlayerName(Config, Slot, ViewerSlot);
+	// V4 (answer B): « de {NameIndex} » before a name starting with a vowel or a silent h is « d'... », in French only (English and Japanese patterns have no « de »).
+	const bool bFrench = FInternationalization::Get().GetCurrentLanguage()->GetTwoLetterISOLanguageName() == TEXT("fr");
+	const auto FormatDe = [bFrench](const FText& Pattern, const int32 NameIndex, const FText& NameShown, FFormatOrderedArguments Args)
+	{
+		if (bFrench)
+		{
+			const FString Elided = ElidePattern(Pattern.ToString(), NameIndex, NameShown.ToString());
+			if (Elided != Pattern.ToString())
+			{
+				return FText::Format(FText::FromString(Elided), Args);
+			}
+		}
+		return FText::Format(Pattern, Args);
+	};
 	switch (Event.Kind)
 	{
 	case EHOLForumEventKind::Fell:
@@ -96,7 +158,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 		}
 		else
 		{
-			Message.Text = FText::Format(LOCTEXT("MessageFell", "Le forum de {0} est tombé — {1}"), Name, Lives);
+			Message.Text = FormatDe(LOCTEXT("MessageFell", "Le forum de {0} est tombé — {1}"), 0, Name, { Name, Lives });
 			Message.NamedSlots.Add(Slot);
 		}
 		break;
@@ -112,12 +174,12 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 		}
 		else if (bAttacker)
 		{
-			Message.Text = FText::Format(LOCTEXT("MessageYouHold", "Vous tenez la ruine de {0}"), Name);
+			Message.Text = FormatDe(LOCTEXT("MessageYouHold", "Vous tenez la ruine de {0}"), 0, Name, { Name });
 			Message.NamedSlots.Add(Slot);
 		}
 		else
 		{
-			Message.Text = FText::Format(LOCTEXT("MessageHeld", "{0} tient la ruine de {1}"), AttackerName, Name);
+			Message.Text = FormatDe(LOCTEXT("MessageHeld", "{0} tient la ruine de {1}"), 1, Name, { AttackerName, Name });
 			Message.NamedSlots.Add(Attacker);
 			Message.NamedSlots.Add(Slot);
 		}
@@ -130,7 +192,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 		}
 		else
 		{
-			Message.Text = FText::Format(LOCTEXT("MessageRazed", "Fondations de {0} rasées — {1}"), Name, Lives);
+			Message.Text = FormatDe(LOCTEXT("MessageRazed", "Fondations de {0} rasées — {1}"), 0, Name, { Name, Lives });
 			Message.NamedSlots.Add(Slot);
 		}
 		break;
@@ -141,7 +203,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 		}
 		else
 		{
-			Message.Text = FText::Format(LOCTEXT("MessageKingDied", "Le Roi de {0} est mort"), Name);
+			Message.Text = FormatDe(LOCTEXT("MessageKingDied", "Le Roi de {0} est mort"), 0, Name, { Name });
 			Message.NamedSlots.Add(Slot);
 		}
 		break;

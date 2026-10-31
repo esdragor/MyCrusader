@@ -1,0 +1,2 @@
+Name,FoodPrice,WoodPrice,StonePrice,GoldPrice,FeePercent,Step,MinPrice,MaxPrice,RecoverPoints,RecoverEverySeconds
+Standard,80,80,120,100,30,3,20,300,1,10

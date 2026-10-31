@@ -115,7 +115,9 @@ param(
     [double] $GameFps = 20,
     [switch] $RealTime,
     [string] $GameExec = "",
-    [int] $DuelSeconds = 120
+    [int] $DuelSeconds = 120,
+    # F9 (D522): the "aiduel" part under a fog, "Normal" or "Explored" (the configuration's fogMode); empty = no fog, as always.
+    [string] $DuelFog = ""
 )
 # C0.5: -Map checked against Tools/Data/Maps.csv before anything starts. $MapKey keeps the table's spelling; the name Map
 # itself is reused by the parts below as a local variable.
@@ -142,7 +144,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero grid"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero hold", "hero dawn", "hero grid"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -153,6 +155,8 @@ $SubCaseTable = @{
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
         barwidth = @{ Marks = @("barwidth"); Setup = @() }
         tiers = @{ Marks = @("tiers"); Setup = @() }
+        relay = @{ Marks = @("relay"); Setup = @() }
+        market = @{ Marks = @("market"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -362,6 +366,10 @@ if ($Parts -contains "net") {
             "mark net hero abilities", "hol.Hero.SetXP 1 1300", "wait 1", "signal $NetHeroAbilitiesFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_cast1.flag") 120", "wait 1", "hol.Hero.Report", "signal $NetHeroCastFlag",
             "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_hero_abilities2.flag") 120",
+            # T4 (the research cell over the network): Bob's hero is level 4 (tier 1): client 1 asks the research of Tempered Halberds
+            # at its barracks (the real command, FastBuild on for the 3 s), the server's lines (queued, researched), then
+            # both clients' reports; the hero stays until they have signalled.
+            "mark net tech", "waitfile $(Join-Path $TestSaved "quick_net_tech_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120",
             "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
@@ -495,6 +503,8 @@ if ($Parts -contains "menu") {
     Open NewGame
     Step "mark menu ailaunch", "hol.UI.Choose SlotState1 2", "frames 3", "hol.UI.NewGame.Launch - 0", "waitlog Main centre of slot 1",
         "hol.Units.Spawn 5 0 0 1 Peasant", "waitlog AI slot 1 step",
+        "hol.Units.Spawn 1 0 0 1 Hero 100", "wait 0.5", "hol.Hero.SetXP 1 3300", "waitlog Hero level: slot 1 level 1 -> 6", "waitlog AI slot 1 step",
+        "wait 4",
         "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui"
 }
 
@@ -1807,6 +1817,37 @@ if ($Parts -contains "camera") {
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
+            # D581 (TQ2 = A): the cry puts the units in a defensive formation (held in place while it lasts, hol.Hero.CloseRanksSpeed
+            # 0 by default), the movement processor applies it. His hero again, a Spearman 6 m from him (under the cry) and one
+            # 14 m on the other side (out of it), the cry, a move order of the slot 15 m east: 5 s later the first has not moved,
+            # the second has walked on; the cry over (15 s), the first walks on too. Then removed, his abilities reset.
+            $HoldSpot = @($AuraHero[0], ($AuraHero[1] + 600))
+            $HoldFar = @($AuraHero[0], ($AuraHero[1] - 1400))
+            Step "mark build hero hold", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
+                "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500", "wait 12", "hol.Units.Report 500",
+                "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # T4/T5: Pas de l'Aube in a match and the talent line. His hero again at level 4 with three Captain talents (hol.Hero.PickTalent
+            # 1, the third being Pas de l'Aube): no point left, no reminder; level 6: two points, the reminder with the advised choice (the
+            # Captain), the click of the button takes one (the order queue, the server); then the cry as above: the Spearman under it is not
+            # held but walks at half speed (more than 250 cm in 5 s, less than the one out of the cry). Then the talents given back.
+            Step "mark build hero dawn", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
+                "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "waitlog hol.Hero.PickTalent: slot 0 family 1 taken", "wait 0.5", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 4 -> 6", "wait 0.5", "hol.HUD.Report",
+                "hol.HUD.Click HeroTalentButton", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.HUD.Report",
+                "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
+                "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500",
+                "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
             # J8c.4 loop 1: the hero's abilities from the grid (J8c-Q4), as the keys. His hero again, selected (F4): Z refused
             # by the grid at level 1 (the banner opens at 4), A cries, A again refused by the grid (its cool-down, seconds
             # told); at level 4 Z then a left click 10 m from him plants the banner (hol.Select.Banner). Then removed, his
@@ -1818,7 +1859,7 @@ if ($Parts -contains "camera") {
             Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Report",
-                "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
+                "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "wait 0.5", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
                 "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor 0.5 0.5",
@@ -2046,6 +2087,21 @@ if ($Parts -contains "camera") {
                 "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 6 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
                 "hol.Hero.SetXP 0 0", "waitlog Hero level: slot 0 level 3 -> 1", "wait 0.6", "frames 3", "hol.HUD.Report",
                 "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3"
+            Key Escape
+            Step "waitlog Selection: none"
+            # R3/R4 (D388): a neutral relay where three of slot 0's Spearmen stand (hol.Relay.Add, 4 s to take): slot 0 takes it from nobody,
+            # then its hero is given territory XP by the minute (Exploration; 10 a minute: +1 every 6 s). Removed and the settings back.
+            Step "mark build relay", "hol.Relay.Clear", "hol.Relay.HoldSeconds 4", "hol.Relay.Add $($BuildHero -join ' ') 1200",
+                "hol.Units.Spawn 3 $($BuildHero -join ' ') 0 Spearman 100", "wait 2", "hol.Select.Report", "hol.Camera.Focus $($BuildHero -join ' ')", "frames 4", "capture build_relay_fill", "waitlog Relay 0: slot 0 takes it from slot -1", "waitlog (exploration)", "hol.Relay.Report", "hol.Select.Report", "frames 4", "capture build_relay_owned",
+                "hol.Units.Remove $($BuildHero -join ' ') 2000 0 Spearman", "hol.Relay.Clear", "hol.Relay.HoldSeconds 60", "hol.Hero.SetXP 0 0", "wait 0.3"
+            # M5 (Market): a finished Market of slot 0 selected: the grid's trades (sales A Z E, purchases Q S D) read from the common book;
+            # Z sells a lot of wood at the server's price (80 -> 56 gold, the book at 77); the Market is then taken down (a cheat), the centre selected
+            # again and cleared by Escape. Last of the cases: a Market standing or just fallen is nobody's business but its own.
+            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
+                "hol.Camera.FocusNear 1500 3000", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: Market of slot 0 (own)", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Cheat.DamageSelected 100000 siege", "waitlog Building destroyed: Market of slot 0", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
+                "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
             Stop-CaseFilter
@@ -2632,6 +2688,17 @@ if ($NetListening) {
         if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
             "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
         $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "hol.Hero.BannerDisplay", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
+        # T4: Bob (client 1, tier 1 with his level 4 hero) researches Tempered Halberds at his barracks (the army phase built them; the camps are the "build" part's); both then report the
+        # technologies of every player state as they have them (the research reaches its owner alone).
+        $TechAskedFlag = Join-Path $TestSaved "quick_net_tech_asked.flag"
+        $NetSteps += "mark tech"
+        # ("hero" alone plays no army phase: no barracks to research at, the report and the flags only.)
+        if ($Client -eq 1 -and $NetHeroOnly) { $NetSteps += "hol.Tech.Report", "signal $TechAskedFlag" }
+        elseif ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.FastBuild 1", "hol.Prod.Queue TemperedHalberds Barracks", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
+        else { $NetSteps += "waitfile $TechAskedFlag 120", "wait 1", "hol.Tech.Report" }
+        # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120" }
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -2895,7 +2962,7 @@ if ($Parts -contains "victory") {
     # V4.5: the AI's fall, the message alone (another camp): no alert.
     $Section = @(Get-Section "victory forum other")
     $OtherFell = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de IA Normal 2 est tombé — 1 vie"
+    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum d'IA Normal 2 est tombé — 1 vie"
     $OtherAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["FallForum 1: no Alert, HUD alert: none ($OtherAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$OtherAlert" -eq "none"
     $Section = Get-Section "victory forum defeat"
@@ -2953,7 +3020,7 @@ if ($Parts -contains "victory") {
     $Checks["my King alive (no death of slot 0)"] = -not (@(Get-Section "victory regicide") + @(Get-Section "victory regicide pass") + @(Get-Section "victory regicide riposte") + $Section |
         Select-String -SimpleMatch "Regicide: king of slot 0 died" -Quiet)
     $KingMessages = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de IA Normal 2 est mort|IA Normal 2 est vaincu"
+    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi d'IA Normal 2 est mort|IA Normal 2 est vaincu"
     $KingAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["no alert (HUD alert: $KingAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$KingAlert" -eq "none"
     $AllOk = (Report "victory regicide" $Checks) -and $AllOk
@@ -3232,6 +3299,13 @@ if ($Parts -contains "menu") {
     $Gather = @($Launch | Select-String -Pattern "AI slot 1 step \d+: (\d+) idle -> gather \w+ #\d+$") | Select-Object -First 1
     $Idle = if ($Gather) { [int]$Gather.Matches[0].Groups[1].Value } else { 0 }
     $Checks["its 5 Peasants sent to gather ($Idle)"] = $Idle -eq 5
+    # T6 (D424): the AI's hero (level 6 given to him) has its five points spent by the brain on its main family, the Captain's, one order a
+    # row, rows 2 to 6, each one taken by the server.
+    $AITalents = @($Launch | Select-String -Pattern "AI slot 1 step \d+: talent of family (\d) in row (\d)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)@$($_.Matches[0].Groups[2].Value)" })
+    $Checks["the AI draws its main family (the Captain, 1)"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: talent profile main family 1$" -Quiet)
+    $Checks["its hero at level 6 takes the Captain in rows 2 to 6, in order ($($AITalents -join ' '))"] = ($AITalents -join " ") -eq "1@2 1@3 1@4 1@5 1@6"
+    $Checks["the server took the five ($(@($Launch | Select-String -Pattern 'Hero talent order: slot 1 family 1 at step \d+ taken').Count))"] =
+        @($Launch | Select-String -Pattern "Hero talent order: slot 1 family 1 at step \d+ taken").Count -eq 5
     $AllOk = (Report "menu ailaunch" $Checks) -and $AllOk
 }
 
@@ -3844,12 +3918,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
     $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed\] II=locked \[A=Market greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; II Z: Palier II \S+ Essor \| Palier non atteint; II A: March.+ \| W 150 missing \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -3915,7 +3989,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["Tab: All, then the centre, then the houses, then F2 anew on All ($TabSaid; cells $($TabCells -join ' | '))"] = ($TabHud.Count -eq 5) -and ($TabCells.Count -eq 5) -and
         ($TabHud[0].Groups[2].Value -eq "All ($($Owned.Count))") -and ($TabHud[1].Groups[2].Value -eq "All ($($Owned.Count))") -and
         ($TabHud[2].Groups[2].Value -eq "MainCentre") -and ($TabHud[3].Groups[2].Value -match "^House x\d+$") -and ($TabHud[4].Groups[2].Value -eq "All ($($Owned.Count))") -and
-        ($TabCells[0] -eq "A: Paysan") -and ($TabCells[2] -eq "A: Paysan") -and ($TabCells[3] -eq "none") -and ($TabCells[4] -eq "A: Paysan")
+        ($TabCells[0] -match "^A: Paysan(; |$)") -and ($TabCells[2] -match "^A: Paysan(; |$)") -and ($TabCells[3] -eq "none") -and ($TabCells[4] -match "^A: Paysan(; |$)")
     $Queued = & $Value $HudTab "(Grid: Peasant queued at .*)$"
     $Checks["Tous: the key A queues the Peasant at the centre ($Queued)"] = [bool]($Queued -match "^Grid: Peasant queued at MainCentre of slot 0 \(own\).*, subgroup All \(\d+\)$")
     $TabMarkers = @($HudTab | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
@@ -4089,14 +4163,14 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir, W = Ferme ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir; I W: Ferme$") -and
+    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir, W = Ferme ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+$") -and
         [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["the barracks selected: A Lancier, Z Homme d'armes, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
-        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes$")
+        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes(; W: .+)?$")
     # The ground point under the cursor, a few cm off the camera's focus (as the group's rally point of J6a.5).
     $RallyAt = if ([string](& $Value $Barracks "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
     $Checks["its rally point by a right click ($($RallyAt -join ', '))"] = ($RallyAt.Count -eq 2) -and ([Math]::Abs($RallyAt[0] - $BarracksRally[0]) -le 50) -and
@@ -4311,6 +4385,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         (($XPSounds -join ",") -eq "1 -> 2,2 -> 3,3 -> 4,4 -> 6")
     $XPFlashes = @($HeroXP | Select-String -Pattern "Hero flash: slot (\d) level (\d -> \d)" | ForEach-Object { "slot $($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
     $Checks["his golden flash at each level up, none at his return ($($XPFlashes -join '; '))"] = (($XPFlashes -join ";") -eq "slot 0 1 -> 2;slot 0 2 -> 3;slot 0 3 -> 4;slot 0 4 -> 6")
+    # T5: the talent point's reminder follows the level (a point a level from 2, none taken): 1 at level 2, 2 at level 3, 3 at level 4, 5 at
+    # level 6, with its line « Talents à dépenser : N » (in the language of the moment: fr, en, ja) and no advice before a first talent.
+    $XPTalents = @($HeroXP | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| \D*(\d+)$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
+    $Checks["the talent reminder: points $($TalentPoints -join ',') (1,1,2,3,5), no advice before a first talent ($($XPTalents.Count) lines)"] =
+        (($TalentPoints -join ",") -eq "1,1,2,3,5") -and ($XPTalents.Count -eq 5)
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
     $Checks["captures (missing: $($Missing -join ', '))"] = $Missing.Count -eq 0
     $AllOk = (Report "build hero xp" $Checks) -and $AllOk
@@ -4347,6 +4427,53 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
         [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
     $AllOk = (Report "build hero aura" $Checks) -and $AllOk
+    # D581: the cry holds the units under it in place (the movement processor applies CloseRanksSpeedPercent), the others walk.
+    $Hold = @(Get-Section "build hero hold" | ForEach-Object { $_ })
+    $HoldReports = @($Hold | Where-Object { $_ -match "Units report: " })
+    $HoldSpears = @($HoldReports | ForEach-Object { , @([regex]::Matches($_, "#(\d+) Spearman slot 0 at \((-?\d+), (-?\d+), ") | ForEach-Object { [pscustomobject]@{ Id = $_.Groups[1].Value; X = [int]$_.Groups[2].Value; Y = [int]$_.Groups[3].Value } }) })
+    $Checks = [ordered]@{}
+    $HeldMoves = @(-1, -1); $FarMoves = @(-1, -1)
+    if ($HoldSpears.Count -ge 3 -and $HoldSpears[0].Count -eq 2) {
+        $HeldAt = @($HoldSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
+        $FarAt = @($HoldSpears[0] | Where-Object { $_.Y -lt $BuildHero[1] })[0]
+        for ($r = 1; $r -le 2; $r++) {
+            $HeldNow = @($HoldSpears[$r] | Where-Object { $_.Id -eq $HeldAt.Id })[0]
+            $FarNow = @($HoldSpears[$r] | Where-Object { $_.Id -eq $FarAt.Id })[0]
+            if ($HeldNow) { $HeldMoves[$r - 1] = [int][math]::Sqrt([math]::Pow($HeldNow.X - $HeldAt.X, 2) + [math]::Pow($HeldNow.Y - $HeldAt.Y, 2)) }
+            if ($FarNow) { $FarMoves[$r - 1] = [int][math]::Sqrt([math]::Pow($FarNow.X - $FarAt.X, 2) + [math]::Pow($FarNow.Y - $FarAt.Y, 2)) }
+        }
+    }
+    $Checks["three reports of the two Spearmen ($($HoldSpears.Count) reports, $(@($HoldSpears | ForEach-Object { $_.Count }) -join '/') Spearmen)"] =
+        ($HoldSpears.Count -eq 3) -and (@($HoldSpears | Where-Object { $_.Count -ne 2 }).Count -eq 0)
+    $Checks["under the cry, ordered 15 m away: 5 s later it has not moved ($($HeldMoves[0]) cm, 150 at most), the one out of the cry has walked ($($FarMoves[0]) cm, 800 at least)"] =
+        ($HeldMoves[0] -ge 0) -and ($HeldMoves[0] -le 150) -and ($FarMoves[0] -ge 800)
+    $Checks["the cry over (17 s), the held one walks on ($($HeldMoves[1]) cm, 300 at least)"] = ($HeldMoves[1] -ge 300)
+    $AllOk = (Report "build hero hold" $Checks) -and $AllOk
+    # T4/T5: Pas de l'Aube in a match (half speed under the cry) and the talent line (reminder, advised choice, the click).
+    $Dawn = @(Get-Section "build hero dawn" | ForEach-Object { $_ })
+    $DawnTalents = @($Dawn | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $DawnReports = @($Dawn | Where-Object { $_ -match "Units report: " })
+    $DawnSpears = @($DawnReports | ForEach-Object { , @([regex]::Matches($_, "#(\d+) Spearman slot 0 at \((-?\d+), (-?\d+), ") | ForEach-Object { [pscustomobject]@{ Id = $_.Groups[1].Value; X = [int]$_.Groups[2].Value; Y = [int]$_.Groups[3].Value } }) })
+    $Checks = [ordered]@{}
+    $Checks["three Captain talents at level 4: no reminder, the advice is the Captain, a seal ($($DawnTalents | Select-Object -First 1))"] =
+        ($DawnTalents.Count -ge 1) -and ($DawnTalents[0] -eq "points 0 | 1 1 1 w . | advised 1 | seals 1 keys 0")
+    $Checks["level 6: two points, the reminder with the advised choice ($($DawnTalents | Select-Object -Skip 1 -First 1))"] =
+        ($DawnTalents.Count -ge 2) -and ($DawnTalents[1] -eq "points 2 | 1 1 1 n . | advised 1 | seals 1 keys 0 | Talents à dépenser : 2 — choix conseillé")
+    $Checks["the button's click took the advised talent by the order queue ($($DawnTalents | Select-Object -Skip 2 -First 1))"] =
+        [bool]($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued" -Quiet) -and ($DawnTalents.Count -ge 3) -and
+        ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé")
+    $DawnMoves = @(-1, -1)
+    if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
+        $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
+        $FarAt = @($DawnSpears[0] | Where-Object { $_.Y -lt $BuildHero[1] })[0]
+        $HeldNow = @($DawnSpears[1] | Where-Object { $_.Id -eq $HeldAt.Id })[0]
+        $FarNow = @($DawnSpears[1] | Where-Object { $_.Id -eq $FarAt.Id })[0]
+        if ($HeldNow) { $DawnMoves[0] = [int][math]::Sqrt([math]::Pow($HeldNow.X - $HeldAt.X, 2) + [math]::Pow($HeldNow.Y - $HeldAt.Y, 2)) }
+        if ($FarNow) { $DawnMoves[1] = [int][math]::Sqrt([math]::Pow($FarNow.X - $FarAt.X, 2) + [math]::Pow($FarNow.Y - $FarAt.Y, 2)) }
+    }
+    $Checks["Pas de l'Aube: the Spearman under the cry walks on at half speed ($($DawnMoves[0]) cm in 5 s, more than 250), less than the one out of the cry ($($DawnMoves[1]) cm)"] =
+        ($DawnMoves[0] -gt 250) -and ($DawnMoves[0] -lt $DawnMoves[1])
+    $AllOk = (Report "build hero dawn" $Checks) -and $AllOk
     # J8c.4 loop 1: the abilities from the grid's keys (the grid refuses what is not ready, the server casts the rest).
     $GridCase = @(Get-Section "build hero grid" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
@@ -4774,6 +4901,26 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
     $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
     $AllOk = (Report "build tiers" $Checks) -and $AllOk
+    # R3/R4: the relay taken by the units standing in it, then the owner's territory XP.
+    $Relay = @(Get-Section "build relay" | ForEach-Object { $_ })
+    $Checks = [ordered]@{}
+    $Checks["slot 0 takes the neutral relay by standing in it"] = [bool]($Relay | Select-String -SimpleMatch "Relay 0: slot 0 takes it from slot -1" -Quiet)
+    $Checks["its hero is given territory XP by the minute (Exploration)"] = [bool]($Relay | Select-String -Pattern "Hero XP: slot 0 \+\d+ \(exploration\)" -Quiet)
+    $Checks["the report shows slot 0 as the owner"] = [bool]($Relay | Select-String -Pattern "Relay report: 1 relay\(s\) \| #0 owner 0 " -Quiet)
+    # R5: what the markers draw, read from the game state the clients replicate: during the capture the arc is slot 0's and partly filled, then the ring is owned by slot 0 with no arc.
+    $Checks["the ring is drawn filling in slot 0's colour during the capture"] = [bool]($Relay | Select-String -Pattern "Relay rings: 1 \| #0 \(.*\) r1200 owner -1 taker 0 fill ([1-9]\d?) " -Quiet)
+    $Checks["the ring is drawn owned by slot 0 once taken"] = [bool]($Relay | Select-String -Pattern "Relay rings: 1 \| #0 \(.*\) r1200 owner 0 taker -1 fill 0 " -Quiet)
+    $AllOk = (Report "build relay" $Checks) -and $AllOk
+
+    # M5 (Market): the selected Market's grid is the trades' (A Z E sell food, wood, stone; Q S D buy them), and Z sold a lot of wood at 80 less 30 %.
+    $HudMarket = Get-Section "build market"
+    $MarketReports = @($HudMarket | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
+    $Checks = [ordered]@{}
+    $Checks["the Market selected: the trades on A Z E / Q S D, the sale of a lot of wood at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
+        ($MarketReports[0] -match "grid A=SellFood \w+ Z=SellWood \w+ E=SellStone \w+ Q=BuyFood \w+ S=BuyWood \w+ D=BuyStone \w+,") -and
+        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 56 gold \(price now 77,")
+    $AllOk = (Report "build market" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -5973,13 +6120,13 @@ if ($Parts -contains "net") {
     # The army's march (J7a.6): each client's 10 units where the server has them (the server's last report with them
     # all), each slot's 5 around its right click (frame (0, 30 m) of its centre), no two of a slot overlapping.
     $ServerWheres = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
-    $ParseWhere = { param($Text) $Map = @{}; foreach ($M in [regex]::Matches([string]$Text, "#(\d+) slot (\d) at \((-?\d+), (-?\d+)\)")) { $Map[$M.Groups[1].Value] = @([int]$M.Groups[2].Value, [double]$M.Groups[3].Value, [double]$M.Groups[4].Value) }; $Map }
+    $ParseWhere = { param($Text) $WhereMap = @{}; foreach ($M in [regex]::Matches([string]$Text, "#(\d+) slot (\d) at \((-?\d+), (-?\d+)\)")) { $WhereMap[$M.Groups[1].Value] = @([int]$M.Groups[2].Value, [double]$M.Groups[3].Value, [double]$M.Groups[4].Value) }; $WhereMap }
     foreach ($NetClient in $NetClients) {
         $N = $NetClient.Client
         $ArmyLines = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "army")
         $Seen = & $ParseWhere ($ArmyLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Server = $null
-        foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Seen.Count -ge 10 -and @($Seen.Keys | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
+        foreach ($Report in $ServerWheres) { $WhereMap = & $ParseWhere $Report; if ($Seen.Count -ge 10 -and @($Seen.Keys | Where-Object { -not $WhereMap.ContainsKey($_) }).Count -eq 0) { $Server = $WhereMap } }
         $Gaps = @(if ($Server) { foreach ($Id in $Seen.Keys) { [Math]::Sqrt([Math]::Pow($Seen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($Seen[$Id][2] - $Server[$Id][2], 2)) } })
         $MaxGap = if ($Gaps.Count) { [Math]::Round(($Gaps | Measure-Object -Maximum).Maximum) } else { -1 }
         $Checks["client $N : the 10 units where the server has them ($($Seen.Count) seen, at most $MaxGap cm off)"] = ($Seen.Count -eq 10) -and ($Gaps.Count -eq 10) -and ($MaxGap -ge 0) -and ($MaxGap -le 100)
@@ -6053,7 +6200,7 @@ if ($Parts -contains "net") {
             @{ Ok = $LastShown -eq $LastSent; Text = "#$Id $(if ($LastShown -eq $Unhurt) { 'full' } else { $LastShown }) (server $(if ($LastSent -eq $Unhurt) { 'full' } else { $LastSent }))" } })
         $Checks["client 1 : the Men-at-arms' last health the server's exactly ($(($Finals | ForEach-Object { $_.Text }) -join ', '))"] = ($Finals.Count -eq 2) -and (@($Finals | Where-Object { -not $_.Ok }).Count -eq 0)
         $Server = $null
-        foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Left.Count -and @($Left | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0 -and @($Spears | Where-Object { $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
+        foreach ($Report in $ServerWheres) { $WhereMap = & $ParseWhere $Report; if ($Left.Count -and @($Left | Where-Object { -not $WhereMap.ContainsKey($_) }).Count -eq 0 -and @($Spears | Where-Object { $WhereMap.ContainsKey($_) }).Count -eq 0) { $Server = $WhereMap } }
         $Gaps = @(if ($Server) { foreach ($Id in $Left) { [Math]::Sqrt([Math]::Pow($LastSeen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($LastSeen[$Id][2] - $Server[$Id][2], 2)) } })
         $MaxGap = if ($Gaps.Count) { [Math]::Round(($Gaps | Measure-Object -Maximum).Maximum) } else { -1 }
         $Checks["client 1 : the Men-at-arms where the server has them (at most $MaxGap cm off)"] = ($Gaps.Count -eq 2) -and ($MaxGap -ge 0) -and ($MaxGap -le 100)
@@ -6319,7 +6466,9 @@ if ($Parts -contains "net") {
         $LoserName = if ($null -ne $Loser) { $NetNames[[int]$Loser] } else { "" }; $WinnerName = if ($null -ne $Winner) { $NetNames[[int]$Winner] } else { "" }
         # V5.5a: its King's death before its defeat, no alert for either (its own loss; another camp's for client 2).
         $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Votre Roi est mort|Vous êtes vaincu"
-        $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|Le Roi de $LoserName est mort|$LoserName est vaincu"
+        # French elision (V4, answer B): « de » + a vowel is « d' » (Alice); Bob keeps « de ».
+        $De = if ($LoserName -match "^[AEIOUYaeiouyÀ-ÿ]") { "d'" } else { "de " }
+        $Wanted2 = "Le forum $De$LoserName est tombé — 1 vie|Vous tenez la ruine $De$LoserName|Le Roi $De$LoserName est mort|$LoserName est vaincu"
         $Checks["victory: client 1's messages, with the alert ($($Messages[1] -join '; '))"] = ($null -ne $Loser) -and ($Messages[1] -join '|') -eq $Wanted1
         $Checks["victory: client 2's messages, without alert ($($Messages[2] -join '; '))"] = ($null -ne $Loser) -and ($Messages[2] -join '|') -eq $Wanted2
         $Alert1 = @(Get-ClientSection @(if ($Client1Log) { Get-Content $Client1Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1
@@ -6615,6 +6764,26 @@ if ($Parts -contains "net") {
         }
     }
     $AllOk = (Report "net hero abilities" $AbChecks) -and $AllOk
+    # T4: the research asked by client 1 (Bob, slot 1), done on the server (its lines), reaching Bob alone.
+    $TechChecks = [ordered]@{}
+    $TechServer = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net tech")
+    $TechQueued = @(@(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
+    $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched TemperedHalberds")
+    $TechChecks["server: Bob's Tempered Halberds queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $TechLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "tech")
+        $TechBob = "$($TechLines | Select-String -Pattern "Technology state slot $BobSlot (local|other): researched \[(.*)\]" | Select-Object -Last 1 | ForEach-Object { "$($_.Matches[0].Groups[1].Value) [$($_.Matches[0].Groups[2].Value)]" })"
+        $TechAlice = "$($TechLines | Select-String -Pattern "Technology state slot $AliceSlot (local|other): researched \[(.*)\]" | Select-Object -Last 1 | ForEach-Object { "$($_.Matches[0].Groups[1].Value) [$($_.Matches[0].Groups[2].Value)]" })"
+        if ($N -eq 1) {
+            $TechChecks["client $N (Bob): his own research received (Bob $TechBob), Alice's hidden (Alice $TechAlice)"] =
+                $TechBob -eq "local [TemperedHalberds]" -and $TechAlice -eq "other []"
+        }
+        else {
+            $TechChecks["client $N (Alice): Bob's research hidden (Bob $TechBob), her own empty (Alice $TechAlice)"] = $TechBob -eq "other []" -and $TechAlice -eq "local []"
+        }
+    }
+    if (-not $NetHeroOnly) { $AllOk = (Report "net technologies" $TechChecks) -and $AllOk }
 }
 
 if ($TestsProcess) {
@@ -6682,9 +6851,10 @@ function Get-AITestPort {
 # The 8 slots of a version 2 match config on Plain: the states given, slots 0 and 1 named when names are given.
 # C0.5: with -Size (a map other than the test map Plain, whose files are sized) the version 3 form: the map's file of that size,
 # fixed places (slot i at place i).
-function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "") {
+function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "", [string[]] $Levels = @()) {
     $Slots = for ($i = 0; $i -lt 8; $i++) {
         $Name = if ($i -lt $Names.Count) { ", `"playerName`": `"$($Names[$i])`"" } else { "" }
+        if ($i -lt $Levels.Count -and $Levels[$i]) { $Name += ", `"difficulty`": `"$($Levels[$i])`"" }
         "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Name }"
     }
     $Head = if ($Size) { "`"version`": 3, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`", `"mapSize`": `"$Size`", `"bDrawPlaces`": false" } else { "`"version`": 2, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`"" }
@@ -6696,7 +6866,8 @@ if ($Parts -contains "aiserver") {
     $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
     $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
     Remove-Item $AIServerLog -ErrorAction SilentlyContinue
-    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    # IA4 (D579): the AI slot is Easy in the configuration; the brain must say so (the level read through the whole chain).
+    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("", "Easy")
     @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
         Set-Content -Encoding utf8 $AIServerSequence
     # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
@@ -6729,6 +6900,7 @@ if ($Parts -contains "aiserver") {
     $Busy = 0
     if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
     $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
+    $Checks["slot 1's level read from the configuration: Easy"] = [bool](Find-AILine "AI slot 1 step \d+: level Easy")
     $AllOk = (Report "aiserver" $Checks) -and $AllOk
 }
 
@@ -6752,7 +6924,12 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
         $DuelMap = "/Game/Maps/${MapKey}_Small"
         Write-AIMatchConfig $Config $DuelStates @() $MapKey "Small"
     }
-    $Lines = @("hol.Simulation.StepHashes 1")
+    if ($DuelFog) {
+        (Get-Content $Config -Raw) -replace '"slots"', "`"fogMode`": `"$DuelFog`", `"slots`"" | Set-Content -Encoding utf8 $Config
+    }
+    # The navmesh's tiles are rebuilt on worker threads: without this wait the step that sees a new building's tiles rebuilt
+    # (and the walkers given a new path then) depends on the wall clock, and the two runs part (found 2026-10-31).
+    $Lines = @("hol.Simulation.SyncNavBuild 1", "hol.Simulation.StepHashes 1")
     for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence
@@ -6781,6 +6958,9 @@ if ($Parts -contains "aiduel") {
         $Checks["run $($Run.Log | Split-Path -Leaf): scripts compiled"] = $ScriptErrors.Count -eq 0
         $Timeout = $Text | Select-String -Pattern "Test sequence: timeout at step" | Select-Object -First 1
         $Checks["run $($Run.Log | Split-Path -Leaf): sequence ran to its end"] = -not $Timeout
+        if ($DuelFog) {
+            $Checks["run $($Run.Log | Split-Path -Leaf): the fog started in mode $DuelFog (from the configuration)"] = [bool]($Text | Select-String -Pattern "Fog: started, mode $DuelFog," -Quiet)
+        }
         $Checks["run $($Run.Log | Split-Path -Leaf): thinking slots [0, 1]"] = [bool]($Text | Select-String -Pattern "thinking slots \[0, ?1\]" -Quiet)
         $Run.Hashes = @($Text | Select-String -Pattern "Step hash: step (\d+) ([0-9a-f]{16})" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
         # The idle time: the reports are 2 s of game apart; per slot, the longest run of reports with a Peasant idle.
@@ -7037,6 +7217,11 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
         $OthersGhosts = if ("$($ClientFog[$N].Last)" -match "camp \d+ \(slots $Held\) visible \d+ explored \d+ ghosts \d+ \(buildings of others (\d+)\)") { [int]$Matches[1] } else { -1 }
         if ($NetFogOn) {
             $Checks["client $N : remembers $(if ($Held -eq 0) { 'the other''s centre as a ghost' } else { 'no building of the other' }) ($OthersGhosts)"] = $(if ($Held -eq 0) { $OthersGhosts -ge 1 } else { $OthersGhosts -eq 0 })
+        }
+        # F7.3 (b), a client: what it remembers of the other's buildings is drawn by actors of its own (grey), since the server stops sending the real ones.
+        $GhostActors = if ("$($ClientFog[$N].Last)" -match "ghost actors (\d+)") { [int]$Matches[1] } else { -1 }
+        if ($NetFogOn) {
+            $Checks["client $N : $(if ($Held -eq 0) { 'draws the other''s centre by a ghost actor' } else { 'no ghost actor' }) ($GhostActors)"] = $(if ($Held -eq 0) { $GhostActors -ge 1 } else { $GhostActors -eq 0 })
         }
         # F6b: the units it holds (the last "Units report", "client, 6 displayed: Peasant of slot 0 x5, ..."): its own slot's only in
         # Normal, both slots' without fog.

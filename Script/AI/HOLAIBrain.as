@@ -37,8 +37,21 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIForumMemory> Rebuilds;
 	TMap<int, FHOLAIKingMemory> Kings;
 
+	// The main talent family each slot drew at its first thought (T6, D424).
+	TMap<int, int> TalentMains;
+
 	// The last "forum attacked" situation written in the journal, per slot (IA4, D579).
 	TMap<int, FHOLAIForumLogged> ForumLogged;
+
+	// The slots whose level was written in the journal (once, at the first army thought).
+	TMap<int, bool> LevelLogged;
+
+	// What each slot's feint (Normal) and snipes (Hard) remember (IA4, D579).
+	TMap<int, FHOLAIFeintMemory> Feints;
+	TMap<int, FHOLAISnipeMemory> Snipes;
+
+	// The level each slot plays now, to write its change (Evolving passes from one to the next).
+	TMap<int, EHOLAIDifficulty> LevelsNow;
 
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
@@ -51,6 +64,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 	// The attack wave of each slot (IA2.6: home, out or back, the soldiers it launched, the cooldown).
 	TMap<int, FHOLAIWave> Waves;
+
+	// The step of each slot's last Market trade (M6).
+	TMap<int, int64> MarketSteps;
 
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
@@ -172,6 +188,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// 3b. The army (IA2.5): the base defence when enemy soldiers come near, otherwise the regrouping at the assembly point.
 		ThinkArmy(PlayerIndex, Step, Summary, Data);
 
+		// 3b2. The Market (M6, MK-Q3 provisional): with a finished one, a surplus buys what is missing (HOLAIMarket::Choose).
+		ThinkMarket(PlayerIndex, Step, Summary, Data);
+
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
 		Kings.Find(PlayerIndex, KingMemory);
@@ -186,6 +205,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		Kings.Add(PlayerIndex, KingMemory);
+
+		// 3d. The hero's talent points (T6, D424): spent on the main family drawn at the start, in order.
+		ThinkTalent(PlayerIndex, Step);
 
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
@@ -218,6 +240,34 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		return true;
+	}
+
+	// The hero's point, if one is in reserve (HOLAITalent::Choose): the order of the talent of the main family, the same order a player's button sends.
+	// The main family is drawn once per slot from its index (HOLAITalent::DrawMain; the prototype has one family with effects, so the roll is moot).
+	void ThinkTalent(int PlayerIndex, int64 Step)
+	{
+		const int Count = HOLHero::GetHeroTalentCount(PlayerIndex);
+		if (Count < 0)
+		{
+			return;
+		}
+		int Main = HOLAITalent::FamilyNone;
+		if (!TalentMains.Find(PlayerIndex, Main))
+		{
+			Main = HOLAITalent::DrawMain(PlayerIndex);
+			TalentMains.Add(PlayerIndex, Main);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent profile main family {Main}");
+		}
+		TArray<int> Picks;
+		for (int Index = 0; Index < Count; Index++)
+		{
+			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerIndex, Index));
+		}
+		const int Family = HOLAITalent::Choose(HOLHero::GetHeroLevel(PlayerIndex), Picks, Main);
+		if (Family != HOLAITalent::FamilyNone && HOLAIOrder::IssueAITalentOrder(PlayerIndex, Family))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent of family {Family} in row {HOLTalent::FirstRow + Count}");
+		}
 	}
 
 	// The orders of HOLAIOpening::ChooseMilitary: the unit queued in each building, the rally set once per building (again when the point moves).
@@ -261,10 +311,59 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Rallied.Add(PlayerIndex, Memory);
 	}
 
-	// The slot's level (D422). The brain cannot read the slot's config yet (a C++ read is next): every slot is Normal, as the menu and the lobby give.
-	EHOLAIDifficulty LevelOf(int PlayerIndex)
+	// The Market (M6, MK-Q3): one trade at a time, at most one every MarketGapSteps steps (20 s). The brain does not build the Market
+	// yet (the opening's steps and the AI's reaching tier II come with the answer to MK-Q3): this serves a slot that has a finished one.
+	// The numbers of the rule are HOLAIMarket's (MinDifficulty is the answer to MK-Q3, 0 for now: every level).
+	void ThinkMarket(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
-		return EHOLAIDifficulty::Normal;
+		FVector MarketAt;
+		bool bReady = false;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Each = Summary.Buildings[Index];
+			if (Each.TypeName == n"Market" && Each.State == EHOLConstructionState::Finished)
+			{
+				MarketAt = Each.Location;
+				bReady = true;
+				break;
+			}
+		}
+		if (!bReady)
+		{
+			return;
+		}
+		int64 Last = -100000;
+		MarketSteps.Find(PlayerIndex, Last);
+		if (Step - Last < 400)
+		{
+			return;
+		}
+		TArray<int> Prices;
+		if (!HOLAIOrder::ReadAIMarketBook(Prices))
+		{
+			return;
+		}
+		FHOLMarketBook Book;
+		Book.Prices = Prices;
+		const TArray<float> Spend = HOLAINeeds::SpendOf(Summary, Data);
+		TArray<int> Stock;
+		TArray<int> Wanted;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			Stock.Add(HOLAIOpening::PartOf(Summary, Resource).Stock);
+			Wanted.Add(int(Spend[Resource]));
+		}
+		const FHOLAIMarketChoice Choice = HOLAIMarket::Choose(HOLMarket::DefaultSettings(), Book, FHOLAIMarketSettings(), Stock, Wanted, true, int(Summary.Level));
+		if (!Choice.bTrade)
+		{
+			return;
+		}
+		MarketSteps.Add(PlayerIndex, Step);
+		if (HOLAIOrder::IssueAIMarketOrder(PlayerIndex, MarketAt, Choice.Resource, Choice.Lots, Choice.bBuy))
+		{
+			const FString Side = Choice.bBuy ? "buy" : "sell";
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Market {Side} {Choice.Lots} lots of resource {Choice.Resource} ({Choice.Reason})");
+		}
 	}
 
 	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
@@ -286,7 +385,22 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const FHOLAIThreat Threat = HOLAIArmy::Threat(Rest, Data.Army);
 		const bool bWas = State.bDefending;
 		// IA4 (D579): the forum attacked is weighed by the level; every situation is written down (lives, ratio, decision); Easy sends the army whatever the ratio.
-		const EHOLAIDifficulty Level = LevelOf(PlayerIndex);
+		// The slot's level (D422) is read from its config into the summary (C++ Read, D579).
+		const EHOLAIDifficulty Level = HOLAILives::Effective(Summary.Level, Now, Data.Army.Lives);
+		if (!LevelLogged.Contains(PlayerIndex))
+		{
+			LevelLogged.Add(PlayerIndex, true);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: level {HOLAIForum::LevelName(Summary.Level)}");
+		}
+		EHOLAIDifficulty Played = Level;
+		if (!LevelsNow.Find(PlayerIndex, Played) || Played != Level)
+		{
+			LevelsNow.Add(PlayerIndex, Level);
+			if (Summary.Level == EHOLAIDifficulty::Evolving)
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: evolving, plays {HOLAIForum::LevelName(Level)} now");
+			}
+		}
 		const FHOLAIForumSituation Situation = HOLAIForum::Judge(Rest, Data.Army, Threat, Level);
 		FHOLAIForumLogged Logged;
 		ForumLogged.Find(PlayerIndex, Logged);
@@ -295,7 +409,35 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {HOLAIForum::Describe(Situation, Level)}");
 		}
 		ForumLogged.Add(PlayerIndex, Logged);
-		HOLAIArmy::UpdateDefence(State, HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly) || HOLAIForum::DefendAnyway(Situation, Threat), Now, Data.Army);
+		// The feint (Normal): falls back, goes round, then the rules meet the attackers; the life let go (Hard): the army is held back.
+		FHOLAIFeintMemory Feint;
+		Feints.Find(PlayerIndex, Feint);
+		const FHOLAISummary Soldiers = HOLAIArmy::WithoutWave(Summary, Wave);
+		const FHOLAIFeintStep FeintNow = HOLAILives::FeintStep(Feint, Soldiers, Data.Army, Threat, Situation, Now);
+		Feints.Add(PlayerIndex, Feint);
+		if (FeintNow.bPhaseChanged)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: feint, phase {int(Feint.Phase)} (1 back, 2 round, 3 strike), {Soldiers.Army.Num()} soldiers");
+		}
+		if (FeintNow.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIMoveOrder(PlayerIndex, FeintNow.MoveIds, FeintNow.Where))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: feint order refused");
+		}
+		const bool bHeld = HOLAILives::ArmyHeld(Situation, FeintNow);
+		HOLAIArmy::UpdateDefence(State, (HOLAIArmy::ShouldDefend(Rest, Data.Army, Threat, Assembly) && !bHeld) || HOLAIForum::DefendAnyway(Situation, Threat), Now, Data.Army);
+		FHOLAISnipeMemory SnipeMemory;
+		Snipes.Find(PlayerIndex, SnipeMemory);
+		const TArray<FHOLAISnipe> Sniped = HOLAILives::SnipeOrders(SnipeMemory, Soldiers, Data.Army, Situation, Now);
+		Snipes.Add(PlayerIndex, SnipeMemory);
+		for (int Each = 0; Each < Sniped.Num(); Each++)
+		{
+			TArray<int> One;
+			One.Add(Sniped[Each].SoldierId);
+			if (HOLAIOrder::IssueAIAttackUnitOrder(PlayerIndex, One, Sniped[Each].TargetId))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: soldier {Sniped[Each].SoldierId} snipes enemy {Sniped[Each].TargetId}");
+			}
+		}
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
@@ -305,10 +447,21 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The wave: launched, kept on its way, called back or over.
 		FHOLAIForumMemory Rebuild;
 		Rebuilds.Find(PlayerIndex, Rebuild);
-		const bool bRecall = Whole.bThreatened && (Whole.Count >= Data.Army.AttackRecallCount || HOLAIForum::Emergency(Summary));
+		// Hard (D579): the life is let go and the army is enough to crush the attacker's home: the wave goes now, and is not called back by the
+		// enemies at our base (it went on purpose).
+		if (Wave.Phase == EHOLAIWavePhase::Home)
+		{
+			Wave.bPunishing = false;
+		}
+		Wave.bForce = Situation.Call == EHOLAILifeCall::Let && Wave.Phase == EHOLAIWavePhase::Home;
+		const bool bRecall = HOLAIForum::WaveRecalled(Summary, Data.Army, Whole, Situation) && !Wave.bPunishing;
 		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
 		if (Wave_.bLaunched)
 		{
+			if (Wave.bPunishing)
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: punishes the attacker's home, the life is let go");
+			}
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: attack launched with {Wave_.Left} soldiers, ratio {Wave_.Ratio}, toward ({Wave_.AttackTarget.X}, {Wave_.AttackTarget.Y})");
 		}
 		if (Wave_.bRetreat)
@@ -344,7 +497,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		else
 		{
-			const TArray<int> Ids = HOLAIArmy::RegroupOrders(State, Home, Data.Army, Assembly, Now);
+			// (Not while the army is held back, D579: the feint's retreat and the soldiers kept out of the fight are not sent back to the assembly
+			// point, which stands by the attackers: found in a real game, the regroup order undid the feint's first order in the same thought.)
+			const TArray<int> Ids = HOLAILives::RegroupUnlessHeld(State, Home, Data.Army, Assembly, bHeld, Now);
 			if (Ids.Num() > 0 && HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Ids, Assembly))
 			{
 				int Count = 0;
@@ -372,9 +527,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		const TArray<int> Runners = HOLAIArmy::FleeOrders(Flight, CalmSummary, Data.Army, Now);
 		Flights.Add(PlayerIndex, Flight);
-		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, Summary.CentreLocation))
+		// Normal that knows it loses keeps its economy: the Peasants run to the refuge, not to the attacked centre (HOLAILives::FleeTarget).
+		const FVector FleeTo = HOLAILives::FleeTarget(Summary, Data.Army, Situation, Threat);
+		if (Runners.Num() > 0 && Summary.bHasCentre && HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Runners, FleeTo))
 		{
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to the centre");
+			const FString Where = (FleeTo - Summary.CentreLocation).Size() < 1.f ? "the centre" : "the refuge";
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to {Where}");
 		}
 	}
 

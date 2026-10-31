@@ -125,6 +125,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);
 
+	/**
+	 * T6: PlayerIndex's hero takes the talent of Family in the next row of its tree, applied at the end of the next step (the order a
+	 * player's button sends, HOLHeroTalent::CanPick refuses what is not allowed there). Whether the order entered the queue.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAITalentOrder(const UObject* WorldContextObject, int32 PlayerIndex, int32 Family);
+
 	/** PlayerIndex's units attack-move to Target (they take on the enemies met on the way), applied at the next step. Whether the order entered the queue. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIAttackMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);
@@ -178,6 +185,17 @@ public:
 	static bool IssueAISetRallyOrder(const UObject* WorldContextObject, int32 PlayerIndex, FVector BuildingLocation, FVector Point, int32 SourceIndex = -1);
 
 	// IA1.6: the type tables, read as the human's panels read them.
+
+	/**
+	 * M6 (Market, MK-Q3): a trade of Lots lots of Resource (0 food, 1 wood, 2 stone) at the finished Market of PlayerIndex at BuildingLocation;
+	 * true when the order is queued (the production checks the stock and the price at its step).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIMarketOrder(const UObject* WorldContextObject, int32 PlayerIndex, FVector BuildingLocation, int32 Resource, int32 Lots, bool bBuy);
+
+	/** The common book of prices (food, wood, stone, gold) as the game state holds it; false before a match has set it. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool ReadAIMarketBook(const UObject* WorldContextObject, TArray<int32>& OutPrices);
 
 	/** The figures of a unit type (UnitTypes.csv); false for an unknown type. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))

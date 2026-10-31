@@ -106,4 +106,29 @@ bool FHOLHeroTalentOrdersTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+
+// T6: the table of talents having an effect (HOLHeroTalent::HasEffect, drawn on by the AI) stays in step with the two effects coded: for
+// every row and family, the table says yes exactly where the picks of a hero who took that talent make GrantsAuraArmor / GrantsDawnStep true.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroTalentEffectTableTest, "HeroesOfLiberty.HeroTalent.EffectTable", UE::HeroesOfLiberty::Tests::HeroTalentOrders::Flags)
+bool FHOLHeroTalentEffectTableTest::RunTest(const FString& Parameters)
+{
+	int32 Effects = 0;
+	for (int32 Row = HOLHeroTalent::FirstRow; Row <= HOLHeroTalent::LastRow; ++Row)
+	{
+		for (int32 Family = 0; Family < HOLHeroTalent::FamilyCount; ++Family)
+		{
+			// A hero who took only this family up to this row: its row's talent is the last pick.
+			TArray<uint8> Picks;
+			Picks.Init(static_cast<uint8>(Family), Row - HOLHeroTalent::FirstRow + 1);
+			const bool bCoded = (Row == HOLHeroTalent::FirstRow && HOLHeroTalent::GrantsAuraArmor(Picks)) || (Row == HOLHeroTalent::FirstRow + 2 && HOLHeroTalent::GrantsDawnStep(Picks));
+			TestEqual(*FString::Printf(TEXT("row %d family %d: the table says what the code does"), Row, Family), HOLHeroTalent::HasEffect(Row, Family), bCoded);
+			Effects += HOLHeroTalent::HasEffect(Row, Family) ? 1 : 0;
+		}
+	}
+	TestEqual(TEXT("two talents have an effect: Boucliers levés and Pas de l'Aube"), Effects, 2);
+	TestFalse(TEXT("no row 1"), HOLHeroTalent::HasEffect(1, HOLHeroTalent::FamilyCaptain));
+	TestFalse(TEXT("no family 3"), HOLHeroTalent::HasEffect(2, 3));
+	return true;
+}
+
 #endif

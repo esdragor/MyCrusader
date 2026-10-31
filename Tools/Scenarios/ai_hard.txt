@@ -1,0 +1,17 @@
+# IA4 D579 : toi contre une IA Difficile ; son forum attaque, elle evalue sa perte, peut laisser la vie pour garder son armee, snipe les faibles et punit chez toi
+# Plain, toi (slot 0) contre une IA Difficile (slot 1), 5 Paysans de depart chacun, 1000 de chaque ressource pour batir vite une Caserne.
+# Les valeurs (HOLAILives.as, FHOLAILivesData) sont des reglages provisoires : on les regle d'apres ce que tu vois.
+# A regarder :
+#  1. envoie un petit groupe frapper son Centre alors que son armee est mediocre : si le combat lui coute plus de la moitie de son armee et que son armee suffit a ecraser ton camp,
+#     elle ne se bat pas, laisse tomber la vie (le forum devient une ruine) et part en vague sur ton Centre (« punishes the attacker's home ») ;
+#  2. pendant ce temps ses soldats vont tuer tes soldats blesses et isoles (« snipes enemy ») ;
+#  3. le journal dit « forum attacked ... decision let the life go, the army is kept (loss L, over the home R) » ;
+#  4. sur la derniere vie : tout sur la ruine (regle commune).
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1:
+hol.Cheat.Resources 1000
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Difficile 2 » : evalue sa perte, peut laisser une vie pour garder son armee, snipe les blesses, punit chez toi. Laisse tourner 10 a 15 min ; suis-la avec ² hol.Camera.FocusSlot 1.
+note Envoie un petit groupe pres de son forum alors qu'elle a peu d'armee.

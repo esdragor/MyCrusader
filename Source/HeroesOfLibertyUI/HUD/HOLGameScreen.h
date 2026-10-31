@@ -5,6 +5,7 @@
 #include "Components/SlateWrapperTypes.h"
 #include "Input/UIActionBindingHandle.h"
 #include "Match/HOLForumMessages.h"
+#include "Match/HOLMarketRules.h"
 #include "Match/HOLResources.h"
 #include "Player/HOLCommandGrid.h"
 #include "HOLGameScreen.generated.h"
@@ -564,6 +565,10 @@ private:
 	FString ShownForum;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
+	/** M5: the Market's numbers (the Standard row), read once to quote the trades' cells. */
+	HOLMarket::FSettings MarketSettings;
+	bool bMarketSettingsTried = false;
+	bool bMarketSettingsLoaded = false;
 	bool bOrdersShown = false;
 	/** The hero's abilities on the grid (J8c.4): their cool-downs and level move with time alone, read four times a second. */
 	bool bHeroCellsShown = false;

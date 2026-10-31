@@ -241,6 +241,25 @@ namespace HOLPlayerOrders
 		return true;
 	}
 
+	bool MarketTrade(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+	{
+		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, 0);
+		if (!Commands || !Building)
+		{
+			return false;
+		}
+		// As AHOLPlayerController::ServerMarketTrade: the production checks the owner, the Market, the lots and the stock.
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Trade;
+		Command.PlayerIndex = PlayerIndex;
+		Command.Building = Building;
+		Command.Resource = Resource;
+		Command.Lots = Lots;
+		Command.bBuy = bBuy;
+		Commands->IssueProductionOrder(Command);
+		return true;
+	}
+
 	bool SetRally(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building, const FVector& Point, const int32 SourceIndex, AHOLBuilding* Site,
 		const bool bQueue)
 	{

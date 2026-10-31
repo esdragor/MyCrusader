@@ -30,8 +30,8 @@ namespace
 	/** D522: the fog of the matches started from now on; Disabled until the match's configuration carries it (F8). */
 	TAutoConsoleVariable<int32> CVarFogMode(
 		TEXT("hol.Fog.Mode"),
-		0,
-		TEXT("Fog of war of the next match (F3, D522): 0 none (everything in sight), 1 explored map, 2 normal (black map)."),
+		-1,
+		TEXT("Fog of war of the next match (F3, D522): 0 none (everything in sight), 1 explored map, 2 normal (black map); -1 (default) follows the match's configuration (F8)."),
 		ECVF_Default);
 
 	FAutoConsoleCommandWithWorldAndArgs FogReportCommand(TEXT("hol.Fog.Report"),
@@ -91,6 +91,7 @@ void UHOLVisionSubsystem::Deinitialize()
 	if (UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr)
 	{
 		Sources->OnSourceStanding.Remove(SourceHandle);
+		Sources->SetKeepDrawnRule(nullptr);
 	}
 	if (UHOLSimulationSubsystem* Simulation = GetWorld() ? GetWorld()->GetSubsystem<UHOLSimulationSubsystem>() : nullptr)
 	{
@@ -136,8 +137,15 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 	{
 		Sources->OnSourceStanding.Remove(SourceHandle);
 		SourceHandle.Reset();
+		SourceViewerCamp = INDEX_NONE;
+		for (const int32 Kept : TSet<int32>(Sources->GetKeptDrawn()))
+		{
+			Sources->EraseKept(Kept);
+		}
+		Sources->SetKeepDrawnRule(nullptr);
 		if (Mode != EHOLFogMode::Disabled)
 		{
+			Sources->SetKeepDrawnRule([this](const int32 SourceIndex) { return KeepSourceDrawn(SourceIndex); });
 			for (int32 Index = 0; Index < Sources->GetSources().Num(); ++Index)
 			{
 				if (Sources->GetSources()[Index].IsStanding())
@@ -302,8 +310,42 @@ void UHOLVisionSubsystem::Update()
 	if (const AHOLPlayerState* LocalState = Local && Local->IsLocalController() ? Local->GetPlayerState<AHOLPlayerState>() : nullptr)
 	{
 		RefreshBuildingMemory(LocalState->GetPlayerIndex());
+		RefreshSourceMemory(LocalState->GetPlayerIndex());
 	}
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
+}
+
+bool UHOLVisionSubsystem::KeepSourceDrawn(const int32 SourceIndex) const
+{
+	if (SourceViewerCamp == INDEX_NONE || !Ghosts.IsValidIndex(SourceViewerCamp))
+	{
+		return false;
+	}
+	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || !Sources->GetSources().IsValidIndex(SourceIndex))
+	{
+		return false;
+	}
+	const bool bRemembered = Ghosts[SourceViewerCamp].Contains(HOLVisionRules::MakeGhostKey(true, SourceIndex));
+	const bool bInSight = Map.GetCount(SourceViewerCamp, Map.GetGrid().ToCell(FVector2D(Sources->GetSources()[SourceIndex].Location))) > 0;
+	return HOLVisionRules::SourceStaysDrawn(bRemembered, bInSight);
+}
+
+void UHOLVisionSubsystem::RefreshSourceMemory(const int32 ViewerSlot)
+{
+	SourceViewerCamp = Mode == EHOLFogMode::Disabled || !bStarted ? INDEX_NONE : GetCampIndex(ViewerSlot);
+	UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || Sources->GetKeptDrawn().IsEmpty())
+	{
+		return;
+	}
+	for (const int32 Kept : TSet<int32>(Sources->GetKeptDrawn()))
+	{
+		if (!KeepSourceDrawn(Kept))
+		{
+			Sources->EraseKept(Kept);
+		}
+	}
 }
 
 bool UHOLVisionSubsystem::MakeMemoryFor(const int32 Slot, TArray<uint32>& OutRuns, TArray<FHOLFogGhostNet>& OutGhosts) const
@@ -380,12 +422,14 @@ bool UHOLVisionSubsystem::UpdateClient()
 	// All the buildings it holds are present for its memory (F6e.2: an enemy's it sees now, until the server stops sending it); its camp's observe.
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
-		if (IsValid(*It))
+		if (IsValid(*It) && !It->IsFogGhostActor())
 		{
 			ObserveBuilding(**It, GetCampIndex(It->GetOwnerPlayer()) == ClientCamp);
 		}
 	}
 	EndPass(true, ClientCamp);
+	RefreshSourceMemory(PlayerState->GetPlayerIndex());
+	SyncGhostActors(PlayerState->GetPlayerIndex());
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 	return true;
 }
@@ -475,6 +519,78 @@ bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center,
 	return false;
 }
 
+int32 UHOLVisionSubsystem::SyncGhostActors(const int32 ViewerSlot)
+{
+	UWorld* World = GetWorld();
+	const int32 ViewerCamp = World && bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
+	if (!World || !Ghosts.IsValidIndex(ViewerCamp))
+	{
+		return 0;
+	}
+	const TMap<uint64, FHOLGhost>& Memory = Ghosts[ViewerCamp];
+	// The real buildings held here, by type and place.
+	TArray<const AHOLBuilding*> Real;
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		if (IsValid(*It) && !It->IsFogGhostActor())
+		{
+			Real.Add(*It);
+		}
+	}
+	const AHOLGameState* State = World->GetGameState<AHOLGameState>();
+	TSet<uint64> Wanted;
+	for (const TPair<uint64, FHOLGhost>& Pair : Memory)
+	{
+		const FHOLGhost& Ghost = Pair.Value;
+		const FHOLBuildingTypeRow* Type = (Pair.Key >> 32) == 0 ? UHOLBuildingSettings::FindType(Ghost.TypeName) : nullptr;
+		if (!Type)
+		{
+			continue;
+		}
+		const FVector Place(Ghost.Position, 0.);
+		const bool bInSight = IsAreaVisible(ViewerSlot, Place, 0.5 * Type->Footprint);
+		const bool bRealPresent = Real.ContainsByPredicate([&Ghost](const AHOLBuilding* Building)
+		{
+			return Building->GetTypeName() == Ghost.TypeName && FVector2D::DistSquared(FVector2D(Building->GetActorLocation()), Ghost.Position) < 100. * 100.;
+		});
+		if (!HOLVisionRules::GhostActorWanted(bInSight, bRealPresent))
+		{
+			continue;
+		}
+		Wanted.Add(Pair.Key);
+		TWeakObjectPtr<AHOLBuilding>& Slot = GhostActors.FindOrAdd(Pair.Key);
+		AHOLBuilding* Actor = Slot.Get();
+		if (!Actor)
+		{
+			const int32 Color = State && State->GetLaunchConfig().Slots.IsValidIndex(Ghost.Owner) ? State->GetLaunchConfig().Slots[Ghost.Owner].ColorIndex : Ghost.Owner;
+			FActorSpawnParameters Parameters;
+			Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			Actor = World->SpawnActor<AHOLBuilding>(Place, FRotator::ZeroRotator, Parameters);
+			if (!Actor)
+			{
+				continue;
+			}
+			Actor->SetReplicates(false);
+			Actor->MarkFogGhostActor();
+			Actor->Setup(Ghost.TypeName, Ghost.Owner, static_cast<uint8>(Color));
+			Slot = Actor;
+		}
+		Actor->SetFogDraw(EHOLBuildingDraw::Memory, Ghost.State);
+	}
+	for (auto It = GhostActors.CreateIterator(); It; ++It)
+	{
+		if (!Wanted.Contains(It.Key()))
+		{
+			if (AHOLBuilding* Actor = It.Value().Get())
+			{
+				Actor->Destroy();
+			}
+			It.RemoveCurrent();
+		}
+	}
+	return GhostActors.Num();
+}
+
 void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
 {
 	const int32 ViewerCamp = bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
@@ -482,7 +598,7 @@ void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
-		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;
+		const FHOLBuildingTypeRow* Type = IsValid(Building) && !Building->IsFogGhostActor() ? Building->GetType() : nullptr;
 		if (!Type)
 		{
 			continue;
@@ -550,6 +666,10 @@ FString UHOLVisionSubsystem::MakeReport() const
 		}
 		Report += FString::Printf(TEXT(", camp %d (slots %s) visible %d explored %d ghosts %d (buildings of others %d)"), Camp, *FString::Join(Slots, TEXT(" ")),
 			Map.CountVisible(Camp), Map.CountExplored(Camp), Ghosts.IsValidIndex(Camp) ? Ghosts[Camp].Num() : 0, Others);
+	}
+	if (bClient)
+	{
+		Report += FString::Printf(TEXT(", ghost actors %d"), GhostActors.Num());
 	}
 	return Report + FString::Printf(TEXT("; step %.3f ms"), LastUpdateMs);
 }
@@ -628,7 +748,7 @@ FString UHOLVisionSubsystem::MakeLeakReport() const
 	int32 BuildingsOut = 0;
 	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
 	{
-		const FHOLBuildingTypeRow* Type = IsValid(*It) && GetCampIndex(It->GetOwnerPlayer()) != ClientCamp ? It->GetType() : nullptr;
+		const FHOLBuildingTypeRow* Type = IsValid(*It) && !It->IsFogGhostActor() && GetCampIndex(It->GetOwnerPlayer()) != ClientCamp ? It->GetType() : nullptr;
 		if (!Type)
 		{
 			continue;
@@ -686,7 +806,7 @@ bool UHOLVisionSubsystem::TryStart()
 		int32 ModeValue = State->GetFogMode();
 		if (!bClient)
 		{
-			ModeValue = FMath::Clamp(CVarFogMode.GetValueOnGameThread(), 0, 2);
+			ModeValue = static_cast<int32>(HOLVisionRules::ResolveFogMode(CVarFogMode.GetValueOnGameThread(), State->GetLaunchConfig().FogMode));
 			GetWorld()->GetGameState<AHOLGameState>()->SetFogMode(ModeValue);
 		}
 		else if (ModeValue < 0)

@@ -56,6 +56,10 @@ namespace UE::HeroesOfLiberty::Combat
 	constexpr double MaxPlaceReach = 200.0;
 	constexpr double BuildingApproachGap = HOLCombat::BuildingApproachGap;
 
+	/** D581 (TQ2 = A): the speed of a unit under Serrez les rangs, percent of its walk; 0 holds the formation in place. */
+	int32 CloseRanksSpeed = HOLHeroAbility::CloseRanksSpeedPercent;
+	FAutoConsoleVariableRef CVarCloseRanksSpeed(TEXT("hol.Hero.CloseRanksSpeed"), CloseRanksSpeed,
+		TEXT("Speed of the units under the cry Serrez les rangs, in percent of their walk (default 0: held in place, 1-100: slowed; Pas de l'Aube lets them advance at 50 % at least)"));
 	int32 LogHits = 0;
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
 	int32 Enabled = 1;
@@ -568,6 +572,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
 	AuraSources.Reset();
 	ShieldsUpOwners = 0;
+	DawnStepOwners = 0;
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
@@ -623,6 +628,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			// T4: the talents that change a hit (Boucliers levees), from the hero sheets of this step.
 			ShieldsUpOwners |= HOLHeroTalent::GrantsAuraArmor(Heroes->GetSheets(Slot).Private.TalentPicks) ? (1u << Slot) : 0u;
+			DawnStepOwners |= HOLHeroTalent::GrantsDawnStep(Heroes->GetSheets(Slot).Private.TalentPicks) ? (1u << Slot) : 0u;
 			FVector BannerLocation;
 			if (Heroes->GetBanner(Slot, BannerLocation))
 			{
@@ -651,6 +657,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld slot %d cries Serrez les rangs, %d unit(s) under it"), StepIndex, Slot, Cried);
 			}
 		}
+	}
+	// D581: the speed of each unit under a cry, for the movement processor (a formation held in place, or slowed with Pas de l'Aube).
+	for (FFighter& Fighter : Fighters)
+	{
+		Fighter.Combat->CloseRanksSpeedPercent = static_cast<uint8>(HOLHeroAbility::GetCloseRanksSpeedPercent(
+			Fighter.Combat->CloseRanksMs > 0, (DawnStepOwners & (1u << Fighter.State->OwnerPlayer)) != 0, CloseRanksSpeed));
 	}
 	if (!bFighting)
 	{

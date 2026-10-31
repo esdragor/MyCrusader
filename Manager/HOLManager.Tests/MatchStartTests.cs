@@ -44,7 +44,7 @@ public class MatchStartTests
     {
         var (lobby, _, _, _) = ReferenceLobby();
         var json = JsonNode.Parse(MatchConfig.FromLobby(lobby, store.Maps[0], seed: 1).ToJson())!.AsObject();
-        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "slots", "mode", "bNomad", "bRegicide", "bCatastrophe"],
+        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "fogMode", "slots", "mode", "bNomad", "bRegicide", "bCatastrophe"],
             json.Select(p => p.Key));
         Assert.Equal(["state", "faction", "colorIndex", "team", "playerName"],
             json["slots"]![0]!.AsObject().Select(p => p.Key));

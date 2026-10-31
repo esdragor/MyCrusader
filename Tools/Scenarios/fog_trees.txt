@@ -1,0 +1,61 @@
+﻿# Brouillard (F7.3 c, F8) : un bosquet coupé pendant que je ne le vois pas reste dessiné ; la liste « Brouillard » de l'écran Nouvelle partie
+# Configuration par défaut du menu (un joueur, Plain, brouillard Normal : F8), forum en (-14800, 0). Le scénario ne règle ni hol.Fog.Mode ni hol.Fog.Render : c'est le chemin du menu.
+# Un bosquet de 10 arbres posé à 90 m à l'est du forum ; mes 4 Hommes d'armes vont le voir (20 m), reviennent au centre ; pendant ce temps le bosquet est coupé d'un coup (cheat, comme si
+# un ennemi le coupait loin de moi) : il doit rester dessiné (c'est l'ancien état connu). Quand on le revoit, il disparaît.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Sources.Grove 160 -5800 0 10 7
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Units.SpeedScale 10
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Fog.RenderReport
+waitlog Fog render: mode 1 (post process)
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -2
+frames 20
+hol.Select.OrderNear 7000 0
+wait 5
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Sources.Report
+capture fogtrees_a
+# Ils reviennent au centre : le bosquet sort de la vue, puis il est coupé sans que je le voie.
+hol.Camera.FocusNear 4500 0
+frames 60
+hol.Select.OrderNear 3500 0
+wait 6
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Sources.Report
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+frames 30
+hol.Sources.Report
+capture fogtrees_b
+# Les soldats retournent le voir : les arbres disparaissent.
+hol.Camera.FocusNear 4500 0
+frames 60
+hol.Select.OrderNear 7000 0
+wait 5
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Sources.Report
+capture fogtrees_c
+hol.Camera.FocusNear 4500 0
+hol.HUD.Report 1
+note Brouillard : le bosquet de 10 arbres à 90 m à l'est a été vu puis coupé pendant que mes soldats étaient au centre. Il doit rester dessiné (dans le gris de l'exploré) tant que vous ne le revoyez pas ; dès que les soldats reviennent à 70 m, les arbres disparaissent.
+note A regarder aussi : Echap, Menu, quitter vers le menu, puis Nouvelle partie : la ligne de la carte porte une liste « Brouillard » (Normal par défaut, Carte explorée, Sans brouillard), accessible aussi au clavier. Choisir « Sans brouillard » puis Lancer : plus de noir, plus de masquage.

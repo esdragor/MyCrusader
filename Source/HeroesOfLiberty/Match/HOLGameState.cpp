@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Match/HOLGameState.h"
 
@@ -44,6 +44,8 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 	// J8a.3: the heroes' public sheets (kept apart from the list below, which other work items extend).
 	DOREPLIFETIME(AHOLGameState, HeroSheets);
+	// M4c: the Market's common prices.
+	DOREPLIFETIME(AHOLGameState, MarketPrices);
 	DOREPLIFETIME(AHOLGameState, SlotDefeats);
 	DOREPLIFETIME(AHOLGameState, bMatchOver);
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
@@ -54,6 +56,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
 	DOREPLIFETIME(AHOLGameState, AbsentNotices);
+	DOREPLIFETIME(AHOLGameState, RelayViews);
 	DOREPLIFETIME(AHOLGameState, PausesLeft);
 	DOREPLIFETIME(AHOLGameState, PausedBySlot);
 	DOREPLIFETIME(AHOLGameState, PausedByName);
@@ -162,6 +165,14 @@ void AHOLGameState::OnStepStarted(const int64 StepIndex)
 void AHOLGameState::OnStepEnded(const int64 StepIndex)
 {
 	ApplyPendingDefeats();
+}
+
+void AHOLGameState::SetRelayViews(const TArray<FHOLRelayView>& Views)
+{
+	if (HasAuthority() && RelayViews != Views)
+	{
+		RelayViews = Views;
+	}
 }
 
 const FHOLForumState& AHOLGameState::GetForumState(const int32 Slot) const
@@ -1049,4 +1060,35 @@ bool AHOLGameState::RequestResume(const AHOLPlayerState& Requester, const double
 void AHOLGameState::OnRep_Pause()
 {
 	NotifyPauseChanged();
+}
+
+HOLMarket::FBook AHOLGameState::GetMarketBook() const
+{
+	HOLMarket::FBook Book;
+	if (MarketPrices.Num() == HOLMarket::BookSize)
+	{
+		for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+		{
+			Book.Prices[Resource] = MarketPrices[Resource];
+		}
+	}
+	return Book;
+}
+
+void AHOLGameState::SetMarketBook(const HOLMarket::FBook& InBook)
+{
+	MarketPrices.SetNum(HOLMarket::BookSize);
+	for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+	{
+		MarketPrices[Resource] = InBook.Prices[Resource];
+	}
+}
+
+void AHOLGameState::ResetMarketBook()
+{
+	HOLMarket::FSettings Settings;
+	if (HOLMarket::LoadStandardSettings(Settings))
+	{
+		SetMarketBook(HOLMarket::NewBook(Settings));
+	}
 }
