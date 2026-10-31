@@ -32,20 +32,21 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 		{ TEXT("RangedAttackI"), 1, TEXT("Forge") }, { TEXT("RangedAttackII"), 2, TEXT("Forge") },
 		{ TEXT("InfantryArmorI"), 1, TEXT("Forge") }, { TEXT("InfantryArmorII"), 2, TEXT("Forge") },
 		{ TEXT("CavalryArmorI"), 1, TEXT("Forge") }, { TEXT("CavalryArmorII"), 2, TEXT("Forge") },
-		// Camps and farm: the buildings are left to T-Q3.
-		{ TEXT("DoubleAxesI"), 1, TEXT("") }, { TEXT("DoubleAxesII"), 2, TEXT("") },
-		{ TEXT("MinerPicksI"), 1, TEXT("") }, { TEXT("MinerPicksII"), 2, TEXT("") },
-		{ TEXT("PloughI"), 1, TEXT("") }, { TEXT("PloughII"), 2, TEXT("") },
-		{ TEXT("WheelbarrowI"), 1, TEXT("") }, { TEXT("WheelbarrowII"), 2, TEXT("") },
+		// Camps and farm (T-Q3 = A, D583): the Wheelbarrow is researched at the Farm, with the Plough, not at the main centre.
+		{ TEXT("DoubleAxesI"), 1, TEXT("LumberCamp") }, { TEXT("DoubleAxesII"), 2, TEXT("LumberCamp") },
+		{ TEXT("MinerPicksI"), 1, TEXT("MiningCamp") }, { TEXT("MinerPicksII"), 2, TEXT("MiningCamp") },
+		{ TEXT("PloughI"), 1, TEXT("Farm") }, { TEXT("PloughII"), 2, TEXT("Farm") },
+		{ TEXT("WheelbarrowI"), 1, TEXT("Farm") }, { TEXT("WheelbarrowII"), 2, TEXT("Farm") },
 		// Main centre.
 		{ TEXT("DefenceMilitia"), 1, TEXT("MainCentre") }, { TEXT("ImprovedAlarmBell"), 2, TEXT("MainCentre") },
 		// Academy (tier 2 only).
 		{ TEXT("Masonry"), 2, TEXT("Academy") }, { TEXT("Veterans"), 2, TEXT("Academy") }, { TEXT("Logistics"), 2, TEXT("Academy") },
 		// Siege workshop.
 		{ TEXT("ReinforcedRam"), 1, TEXT("SiegeWorkshop") }, { TEXT("HeavyMunitions"), 2, TEXT("SiegeWorkshop") },
-		// The Dawn's own (D27, 11.1): the buildings are left to T-Q3.
-		{ TEXT("Liturgy"), 1, TEXT("") }, { TEXT("TemperedHalberds"), 1, TEXT("") },
-		{ TEXT("BlessingOfArms"), 2, TEXT("") }, { TEXT("VowOfPoverty"), 2, TEXT("") },
+		// The Dawn's own (D27, 11.1; T-Q3 = A, D583): Liturgy and Blessing of Arms at the Sanctuary, Tempered Halberds at the
+		// Barracks, Vow of Poverty at the Chapel.
+		{ TEXT("Liturgy"), 1, TEXT("Sanctuary") }, { TEXT("TemperedHalberds"), 1, TEXT("Barracks") },
+		{ TEXT("BlessingOfArms"), 2, TEXT("Sanctuary") }, { TEXT("VowOfPoverty"), 2, TEXT("Chapel") },
 	};
 
 	/** The Dawn's own technologies of the grid (the others are common, D27). */
@@ -139,7 +140,7 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 
 		// Condition 1: the hero (a tier of the prototype, 1 or 2; a level only as the stricter rule).
 		TestTrue(FString::Printf(TEXT("%s: tier 1 or 2 (the tier 3 of GDD 11.2 is not in the table, T-Q5)"), *Name), Row.MinTier >= 1 && Row.MinTier <= 2);
-		TestTrue(FString::Printf(TEXT("%s: hero level 0 (the tier only) or 1 to 6 (the prototype)"), *Name), Row.MinHeroLevel >= 0 && Row.MinHeroLevel <= 6);
+		TestEqual(FString::Printf(TEXT("%s: the tier alone decides (T-Q1 = A, D583): hero level 0"), *Name), Row.MinHeroLevel, 0);
 		// Condition 2: a building that is in BuildingTypes.csv or planned.
 		const bool bKnownBuilding = Buildings->FindRow<FHOLBuildingTypeRow>(Row.Building, TEXT("building"), false) != nullptr
 			|| Contains(PlannedBuildings, Row.Building.ToString());
