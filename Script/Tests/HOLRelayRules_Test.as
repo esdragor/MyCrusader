@@ -23,6 +23,16 @@ TArray<int> RelayUnits(int U0 = 0, int U1 = 0, int U2 = 0, int U3 = 0)
 	return Units;
 }
 
+// The arrangements of the four slots' teams the agreement test goes through.
+TArray<int> RelayArrangement(int Index)
+{
+	if (Index == 1)
+		return RelayTeams(0, 0, 1, 1);
+	if (Index == 2)
+		return RelayTeams(0, 1, 0, 1);
+	return RelayTeams();
+}
+
 HOLRelay::FHOLRelayState RelayRun(const HOLRelay::FHOLRelayState& From, const TArray<int>& Units, const TArray<int>& Teams, int Steps)
 {
 	HOLRelay::FHOLRelayState State = From;
@@ -138,4 +148,55 @@ void Test_RelayTerritoryXP(FUnitTest& T)
 		Total += HOLRelay::TerritoryXP(None, -3, -1);
 	}
 	T.AssertEquals(0, Total, "nothing held: no XP (a negative count is no holding)");
+}
+
+// The simulation's copy of the rules (C++, HOLRelay::Step) gives the same relay as the script's on every case: each owner, taker and count,
+// each presence of the four slots (none, one unit, three units), three arrangements of the teams.
+void Test_RelayScriptAndSimulationRulesAgree(FUnitTest& T)
+{
+	TArray<int> Owners;
+	Owners.Add(-1);
+	Owners.Add(0);
+	Owners.Add(2);
+	TArray<int> Helds;
+	Helds.Add(0);
+	Helds.Add(1);
+	Helds.Add(100);
+	Helds.Add(HOLRelay::HoldSteps() - 1);
+	int Cases = 0;
+	int Differences = 0;
+	for (int O = 0; O < Owners.Num(); O++)
+	{
+		for (int H = 0; H < Helds.Num(); H++)
+		{
+			for (int A = 0; A < 3; A++)
+			{
+				for (int Presence = 0; Presence < 81; Presence++)
+				{
+					TArray<int> Units;
+					int Rest = Presence;
+					for (int Slot = 0; Slot < 4; Slot++)
+					{
+						const int Digit = Rest % 3;
+						Rest = Rest / 3;
+						Units.Add(Digit == 0 ? 0 : Digit == 1 ? 1 : 3);
+					}
+					HOLRelay::FHOLRelayState State;
+					State.Owner = Owners[O];
+					State.Taker = Helds[H] > 0 ? 1 : -1;
+					State.Held = Helds[H];
+					const HOLRelay::FHOLRelayState Script = HOLRelay::Step(State, Units, RelayArrangement(A));
+					int OwnerOut = -9;
+					int TakerOut = -9;
+					int HeldOut = -9;
+					HOLRelayRules::StepRelay(State.Owner, State.Taker, State.Held, Units, RelayArrangement(A), HOLRelay::HoldSteps(), HOLRelay::DecaySteps, OwnerOut, TakerOut, HeldOut);
+					Cases++;
+					if (Script.Owner != OwnerOut || Script.Taker != TakerOut || Script.Held != HeldOut)
+						Differences++;
+				}
+			}
+		}
+	}
+	T.AssertEquals(3 * 4 * 3 * 81, Cases, "every case compared");
+	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
 }
