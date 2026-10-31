@@ -54,6 +54,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
 	int32 GetDamagePercentNow(int32 Slot);
 
+	/** D120: the slot's adversary in the duel that is on; -1 outside one (or without a script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	int32 GetAdversaryNow(int32 Slot);
+
+	/** D120: the circle of the slot's duel, X and Y its centre and Z its radius (cm); Z -1 when the slot is in no duel on. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	FVector GetArenaNow(int32 Slot);
+
 	/** Duels ended so far (a test reads it). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Duel")
 	int32 GetNumEnded() const { return NumEnded; }
@@ -73,10 +81,20 @@ protected:
 	bool CanHit(int32 AttackerHeroSlot, int32 VictimHeroSlot);
 	virtual bool CanHit_Implementation(int32 AttackerHeroSlot, int32 VictimHeroSlot) { return true; }
 
-	/** A duel of Challenger and Target begun and accepted, overridden in script. The C++ base begins none. */
+	/** A duel of Challenger and Target begun and accepted, the two heroes at (AX, AY) and (BX, BY) cm (the circle's centre is the middle), overridden in script. The C++ base begins none. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
-	bool BeginDuel(int32 Challenger, int32 Target);
-	virtual bool BeginDuel_Implementation(int32 Challenger, int32 Target) { return false; }
+	bool BeginDuel(int32 Challenger, int32 Target, int32 AX, int32 AY, int32 BX, int32 BY);
+	virtual bool BeginDuel_Implementation(int32 Challenger, int32 Target, int32 AX, int32 AY, int32 BX, int32 BY) { return false; }
+
+	/** The slot's adversary in its duel on, overridden in script (-1 outside one). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	int32 Adversary(int32 Slot);
+	virtual int32 Adversary_Implementation(int32 Slot) { return -1; }
+
+	/** The circle of the slot's duel on (X, Y centre, Z radius), overridden in script; Z -1 outside one. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	FVector ArenaOf(int32 Slot);
+	virtual FVector ArenaOf_Implementation(int32 Slot) { return FVector(0.0, 0.0, -1.0); }
 
 	/** The slot's posture in its duel, overridden in script. The C++ base takes none. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")

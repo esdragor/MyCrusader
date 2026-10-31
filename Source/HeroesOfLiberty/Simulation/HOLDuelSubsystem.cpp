@@ -3,9 +3,12 @@
 #include "Simulation/HOLDuelSubsystem.h"
 
 #include "Engine/World.h"
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
 #include "Match/HOLMatchConfig.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitSubsystem.h"
 
 UHOLDuelSubsystem* UHOLDuelSubsystem::Find(const UWorld* World)
 {
@@ -45,7 +48,20 @@ bool UHOLDuelSubsystem::BeginDuelNow(const int32 Challenger, const int32 Target)
 	{
 		return false;
 	}
-	const bool bBegan = BeginDuel(Challenger, Target);
+	// Where the two heroes stand now (the circle is centred between them); (0, 0) for a hero not on the map.
+	const auto LocationOf = [World](const int32 Slot)
+	{
+		const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		UMassEntitySubsystem* Entities = World->GetSubsystem<UMassEntitySubsystem>();
+		const uint32 HeroId = Units ? Units->FindHeroUnit(Slot) : 0;
+		const FMassEntityHandle Entity = HeroId != 0 ? Units->FindEntity(HeroId) : FMassEntityHandle();
+		FMassEntityManager* Manager = Entities ? &Entities->GetMutableEntityManager() : nullptr;
+		const FTransformFragment* Transform = Manager && Entity.IsSet() && Manager->IsEntityValid(Entity) ? Manager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+		return Transform ? Transform->GetTransform().GetLocation() : FVector::ZeroVector;
+	};
+	const FVector A = LocationOf(Challenger);
+	const FVector B = LocationOf(Target);
+	const bool bBegan = BeginDuel(Challenger, Target, FMath::RoundToInt32(A.X), FMath::RoundToInt32(A.Y), FMath::RoundToInt32(B.X), FMath::RoundToInt32(B.Y));
 	bDuelOn = AnyDuelOn();
 	return bBegan;
 }
@@ -54,6 +70,16 @@ bool UHOLDuelSubsystem::SetPostureNow(const int32 Slot, const int32 Posture)
 {
 	const UWorld* World = GetWorld();
 	return World && World->GetNetMode() != NM_Client && bDuelOn && SetPosture(Slot, Posture);
+}
+
+int32 UHOLDuelSubsystem::GetAdversaryNow(const int32 Slot)
+{
+	return bDuelOn ? Adversary(Slot) : -1;
+}
+
+FVector UHOLDuelSubsystem::GetArenaNow(const int32 Slot)
+{
+	return bDuelOn ? ArenaOf(Slot) : FVector(0.0, 0.0, -1.0);
 }
 
 int32 UHOLDuelSubsystem::GetDamagePercentNow(const int32 Slot)

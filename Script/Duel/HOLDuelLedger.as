@@ -1,4 +1,4 @@
-﻿// The match's book of duels (DuelInProgress.md D5), the script side of UHOLDuelSubsystem: the C++ part gives the step
+// The match's book of duels (DuelInProgress.md D5), the script side of UHOLDuelSubsystem: the C++ part gives the step
 // and the heroes' health and asks, once a combat step, which pairs of heroes may touch each other; the rules are
 // HOLDuelRules.as (HOLDuel::BookCanHit, Tick). Server and solo only (the C++ base never calls it on a client).
 class UHOLDuelLedger : UHOLDuelSubsystem
@@ -59,17 +59,35 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 	// A challenge accepted at once, the conditions of the challenge not checked (the development door; the command of D4
 	// checks them through HOLDuel::Start). A hero already in a duel is refused.
 	UFUNCTION(BlueprintOverride)
-	bool BeginDuel(int Challenger, int Target)
+	bool BeginDuel(int Challenger, int Target, int AX, int AY, int BX, int BY)
 	{
 		EnsureBook();
 		if (Challenger == Target || HOLDuel::BookInDuel(Book, Challenger) || HOLDuel::BookInDuel(Book, Target))
 			return false;
 		Book.Duels.Add(HOLDuel::Respond(Settings, HOLDuel::Challenge(Settings, Challenger, Target), true));
+		HOLDuel::BookSetArena(Book, Challenger, Target, HOLDuel::MakeArena(Settings, AX, AY, BX, BY));
 		if (Challenger >= 0 && Challenger < Kits.Num())
 			Kits[Challenger] = FHOLDuelKit();
 		if (Target >= 0 && Target < Kits.Num())
 			Kits[Target] = FHOLDuelKit();
 		return true;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int Adversary(int Slot)
+	{
+		EnsureBook();
+		return HOLDuel::BookAdversaryOf(Book, Slot);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FVector ArenaOf(int Slot)
+	{
+		EnsureBook();
+		FHOLDuelArena Arena;
+		if (!HOLDuel::BookArenaOf(Book, Slot, Arena))
+			return FVector(0, 0, -1);
+		return FVector(Arena.CenterX, Arena.CenterY, Arena.RadiusCm);
 	}
 
 	UFUNCTION(BlueprintOverride)

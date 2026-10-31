@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -339,6 +339,135 @@ bool FHOLDuelPostureInMatchTest::RunTest(const FString& Parameters)
 			const float LostByDefensive = CAtStart - HealthOf(HeroC);
 			TestTrue(TEXT("both heroes were hurt"), LostByOffensive > 0.f && LostByDefensive > 0.f);
 			TestTrue(TEXT("the defensive hero lost more than the offensive one (he was hit harder than he hit)"), LostByDefensive > LostByOffensive);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDuelContactInMatchTest, "HeroesOfLiberty.Duel.ContactInMatch", UE::HeroesOfLiberty::Tests::DuelProtection::Flags)
+
+// D120 (GDD 10.3): contact automatique. Two heroes far apart (out of any acquisition radius) in a duel aim at each other by
+// themselves, and a duellist whose aim was turned to a bystander (a player's order) is brought back to his adversary: he
+// has no free movement. Before the duel, nothing of the sort. Through the real combat processor and the script book.
+bool FHOLDuelContactInMatchTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::DuelProtection;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(World);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("the script book of duels"), Duels))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto CombatOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+		};
+
+		// Far apart: 40 m, out of every acquisition radius.
+		const FVector StartA(0.0, 0.0, 0.0);
+		const FVector StartC(4000.0, 0.0, 0.0);
+		const uint32 HeroA = Place(Hero, 0, StartA);
+		const uint32 HeroC = Place(Hero, 2, StartC);
+		const uint32 Bystander = Place(Spearman, 4, FVector(-200.0, 0.0, 0.0));
+		FHOLCombatFragment* CombatA = CombatOf(HeroA);
+		FHOLCombatFragment* CombatC = CombatOf(HeroC);
+		if (TestTrue(TEXT("two heroes and a bystander born"), HeroA != 0 && HeroC != 0 && Bystander != 0) && TestNotNull(TEXT("combat fragments"), CombatA)
+			&& TestNotNull(TEXT("combat of hero C"), CombatC))
+		{
+			for (int32 Index = 0; Index < 4; ++Index)
+			{
+				RunStep();
+			}
+			TestFalse(TEXT("before the duel, a hero far from the enemy aims at nobody by himself"), CombatA->Target == Units->FindEntity(HeroC));
+			TestTrue(TEXT("the duel begins"), Duels->BeginDuelNow(0, 2));
+			// The circle is centred between the two heroes where they stood, the same for both, and nobody else has one.
+			const FVector ArenaA = Duels->GetArenaNow(0);
+			const FVector ArenaC = Duels->GetArenaNow(2);
+			TestEqual(TEXT("hero A's adversary"), Duels->GetAdversaryNow(0), 2);
+			TestEqual(TEXT("hero C's adversary"), Duels->GetAdversaryNow(2), 0);
+			TestEqual(TEXT("a bystander's slot has no adversary"), Duels->GetAdversaryNow(4), -1);
+			TestTrue(TEXT("the circle has a radius"), ArenaA.Z > 0.0);
+			TestTrue(TEXT("both duellists share it"), ArenaA == ArenaC);
+			TestTrue(TEXT("it is centred between them (the middle of the two positions read from the heroes)"), FMath::IsNearlyEqual(ArenaA.X, 0.5 * (StartA.X + StartC.X), 1.0));
+			TestTrue(TEXT("a slot in no duel has no circle"), Duels->GetArenaNow(4).Z < 0.0);
+			// A player's order turns hero A's aim to the bystander (as an attack order does).
+			CombatA->Target = Units->FindEntity(Bystander);
+			CombatA->bOrderedTarget = true;
+			for (int32 Index = 0; Index < 4; ++Index)
+			{
+				RunStep();
+			}
+			CombatA = CombatOf(HeroA);
+			CombatC = CombatOf(HeroC);
+			TestTrue(TEXT("the duellist is brought back to his adversary (no free movement)"), CombatA && CombatA->Target == Units->FindEntity(HeroC));
+			TestTrue(TEXT("the adversary aims at him: contact is automatic"), CombatC && CombatC->Target == Units->FindEntity(HeroA));
+			TestTrue(TEXT("the aim is kept, not looked for again (ordered)"), CombatA && CombatA->bOrderedTarget);
 		}
 	}
 

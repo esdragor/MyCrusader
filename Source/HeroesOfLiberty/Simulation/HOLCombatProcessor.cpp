@@ -518,6 +518,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	TArray<uint8> DuelHits;
 	// D6: the percent of his damage each duellist deals (his posture), by hero slot; 100 for anyone else.
 	TArray<int32> DuelDamagePercent;
+	// D120: each duellist's adversary by hero slot (-1 for anyone else): the contact is automatic.
+	TArray<int32> DuelAdversary;
 	UHOLDuelSubsystem* Book = UHOLDuelSubsystem::Find(World);
 	const bool bDuelOn = Book && Book->IsDuelOn();
 	if (bDuelOn)
@@ -526,6 +528,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 		{
 			DuelDamagePercent.Add(Book->GetDamagePercentNow(Slot));
+			DuelAdversary.Add(Book->GetAdversaryNow(Slot));
 		}
 		for (int32 Attacker = -1; Attacker < FHOLMatchConfig::MaxSlots; ++Attacker)
 		{
@@ -1262,6 +1265,40 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			FinishDying(World, *Units, Fighter, StepIndex);
 			continue;
+		}
+		// D120 (GDD 10.3): contact automatique. A hero in a duel has no free movement: he aims at his adversary, whatever his
+		// player ordered (a walk, an attack on another, a hold), and walks to him as to an ordered target; the pair stay together
+		// in their circle. Before the fast idle test below, which would let a far, idle hero stand.
+		if (bDuelOn && HOLIsHero(Constants.ArmorCategoryMask))
+		{
+			const int32 AdversarySlot = DuelAdversary.IsValidIndex(Fighter.State->OwnerPlayer) ? DuelAdversary[Fighter.State->OwnerPlayer] : INDEX_NONE;
+			const uint32 AdversaryId = AdversarySlot >= 0 && Units ? Units->FindHeroUnit(AdversarySlot) : 0u;
+			const FMassEntityHandle AdversaryEntity = AdversaryId != 0 ? Units->FindEntity(AdversaryId) : FMassEntityHandle();
+			const int32 Adversary = AdversaryEntity.IsSet() ? FindFighter(AdversaryEntity) : INDEX_NONE;
+			if (Adversary != INDEX_NONE && Fighters[Adversary].State->CurrentHealth > 0)
+			{
+				if (Combat.Target != AdversaryEntity)
+				{
+					const int32 Former = FindFighter(Combat.Target);
+					if (Former != INDEX_NONE)
+					{
+						--Fighters[Former].Combat->AttackerCount;
+						Touch(Former);
+					}
+					Combat.Disengage();
+					Combat.Target = AdversaryEntity;
+					++Fighters[Adversary].Combat->AttackerCount;
+					Touch(Adversary);
+					Touch(Index);
+				}
+				Combat.bOrderedTarget = true;
+				Combat.Mode = EHOLCombatMode::Normal;
+				// A walk of his player's (neither the combat's own approach nor over): stopped, the approach below takes over.
+				if (World && Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching)
+				{
+					StopWalk(*World, Fighter);
+				}
+			}
 		}
 		// J7c.4, S2 (hol.Combat.FastIdleUnit): hol.Combat.FastIdle's test, on this unit alone and by its state now (a unit
 		// before it may have taken it as target or struck it: then a last attacker, the whole turn). Such a unit's turn below
