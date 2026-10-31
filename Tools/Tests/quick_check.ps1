@@ -3939,7 +3939,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["Tab: All, then the centre, then the houses, then F2 anew on All ($TabSaid; cells $($TabCells -join ' | '))"] = ($TabHud.Count -eq 5) -and ($TabCells.Count -eq 5) -and
         ($TabHud[0].Groups[2].Value -eq "All ($($Owned.Count))") -and ($TabHud[1].Groups[2].Value -eq "All ($($Owned.Count))") -and
         ($TabHud[2].Groups[2].Value -eq "MainCentre") -and ($TabHud[3].Groups[2].Value -match "^House x\d+$") -and ($TabHud[4].Groups[2].Value -eq "All ($($Owned.Count))") -and
-        ($TabCells[0] -eq "A: Paysan") -and ($TabCells[2] -eq "A: Paysan") -and ($TabCells[3] -eq "none") -and ($TabCells[4] -eq "A: Paysan")
+        ($TabCells[0] -match "^A: Paysan(; |$)") -and ($TabCells[2] -match "^A: Paysan(; |$)") -and ($TabCells[3] -eq "none") -and ($TabCells[4] -match "^A: Paysan(; |$)")
     $Queued = & $Value $HudTab "(Grid: Peasant queued at .*)$"
     $Checks["Tous: the key A queues the Peasant at the centre ($Queued)"] = [bool]($Queued -match "^Grid: Peasant queued at MainCentre of slot 0 \(own\).*, subgroup All \(\d+\)$")
     $TabMarkers = @($HudTab | Select-String -Pattern "Selection markers: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
@@ -4120,7 +4120,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         [bool]($Barracks | Select-String -Pattern "Build order of slot 0: 3 units to $At$" -Quiet) -and [bool]($Barracks | Select-String -Pattern "Construction: slot 0 finished $At" -Quiet)
     $BarracksCells = @($Barracks | Select-String -Pattern "HUD cells: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["the barracks selected: A Lancier, Z Homme d'armes, no Archer (AR-Q2) ($(@($BarracksCells | Select-Object -Last 1)))"] = ($BarracksCells.Count -ge 2) -and
-        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes$")
+        [bool]($BarracksCells[-1] -match "^A: Lancier; Z: Homme d'armes(; W: .+)?$")
     # The ground point under the cursor, a few cm off the camera's focus (as the group's rally point of J6a.5).
     $RallyAt = if ([string](& $Value $Barracks "(Rally: slot 0 set the rally point of Barracks at .*)$") -match "at \((-?\d+), (-?\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @() }
     $Checks["its rally point by a right click ($($RallyAt -join ', '))"] = ($RallyAt.Count -eq 2) -and ([Math]::Abs($RallyAt[0] - $BarracksRally[0]) -le 50) -and
