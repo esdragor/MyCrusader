@@ -2926,7 +2926,7 @@ if ($Parts -contains "victory") {
     # V4.5: the AI's fall, the message alone (another camp): no alert.
     $Section = @(Get-Section "victory forum other")
     $OtherFell = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum de IA Normal 2 est tombé — 1 vie"
+    $Checks["FallForum 1: message alone ($($OtherFell -join '; '))"] = ($OtherFell -join '|') -eq "Le forum d'IA Normal 2 est tombé — 1 vie"
     $OtherAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["FallForum 1: no Alert, HUD alert: none ($OtherAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$OtherAlert" -eq "none"
     $Section = Get-Section "victory forum defeat"
@@ -2984,7 +2984,7 @@ if ($Parts -contains "victory") {
     $Checks["my King alive (no death of slot 0)"] = -not (@(Get-Section "victory regicide") + @(Get-Section "victory regicide pass") + @(Get-Section "victory regicide riposte") + $Section |
         Select-String -SimpleMatch "Regicide: king of slot 0 died" -Quiet)
     $KingMessages = @($Section | Select-String -Pattern "Message: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi de IA Normal 2 est mort|IA Normal 2 est vaincu"
+    $Checks["messages: the King's death, then the defeat, no (alert) ($($KingMessages -join '; '))"] = ($KingMessages -join '|') -eq "Le Roi d'IA Normal 2 est mort|IA Normal 2 est vaincu"
     $KingAlert = @($Section | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -Last 1
     $Checks["no alert (HUD alert: $KingAlert)"] = -not ($Section | Select-String -CaseSensitive -SimpleMatch "Alert: " -Quiet) -and "$KingAlert" -eq "none"
     $AllOk = (Report "victory regicide" $Checks) -and $AllOk
@@ -6403,7 +6403,9 @@ if ($Parts -contains "net") {
         $LoserName = if ($null -ne $Loser) { $NetNames[[int]$Loser] } else { "" }; $WinnerName = if ($null -ne $Winner) { $NetNames[[int]$Winner] } else { "" }
         # V5.5a: its King's death before its defeat, no alert for either (its own loss; another camp's for client 2).
         $Wanted1 = "Votre forum est tombé — 1 vie (alert)|$WinnerName tient votre ruine (alert)|Votre Roi est mort|Vous êtes vaincu"
-        $Wanted2 = "Le forum de $LoserName est tombé — 1 vie|Vous tenez la ruine de $LoserName|Le Roi de $LoserName est mort|$LoserName est vaincu"
+        # French elision (V4, answer B): « de » + a vowel is « d' » (Alice); Bob keeps « de ».
+        $De = if ($LoserName -match "^[AEIOUYaeiouyÀ-ÿ]") { "d'" } else { "de " }
+        $Wanted2 = "Le forum $De$LoserName est tombé — 1 vie|Vous tenez la ruine $De$LoserName|Le Roi $De$LoserName est mort|$LoserName est vaincu"
         $Checks["victory: client 1's messages, with the alert ($($Messages[1] -join '; '))"] = ($null -ne $Loser) -and ($Messages[1] -join '|') -eq $Wanted1
         $Checks["victory: client 2's messages, without alert ($($Messages[2] -join '; '))"] = ($null -ne $Loser) -and ($Messages[2] -join '|') -eq $Wanted2
         $Alert1 = @(Get-ClientSection @(if ($Client1Log) { Get-Content $Client1Log -ErrorAction SilentlyContinue }) "victory" | Select-String -Pattern "HUD alert: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value }) | Select-Object -First 1
