@@ -6752,7 +6752,9 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
         $DuelMap = "/Game/Maps/${MapKey}_Small"
         Write-AIMatchConfig $Config $DuelStates @() $MapKey "Small"
     }
-    $Lines = @("hol.Simulation.StepHashes 1")
+    # The navmesh's tiles are rebuilt on worker threads: without this wait the step that sees a new building's tiles rebuilt
+    # (and the walkers given a new path then) depends on the wall clock, and the two runs part (found 2026-10-31).
+    $Lines = @("hol.Simulation.SyncNavBuild 1", "hol.Simulation.StepHashes 1")
     for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence
