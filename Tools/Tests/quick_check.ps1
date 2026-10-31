@@ -142,7 +142,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero grid"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero hold", "hero grid"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -1807,6 +1807,21 @@ if ($Parts -contains "camera") {
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
+            # D581 (TQ2 = A): the cry puts the units in a defensive formation (held in place while it lasts, hol.Hero.CloseRanksSpeed
+            # 0 by default), the movement processor applies it. His hero again, a Spearman 6 m from him (under the cry) and one
+            # 14 m on the other side (out of it), the cry, a move order of the slot 15 m east: 5 s later the first has not moved,
+            # the second has walked on; the cry over (15 s), the first walks on too. Then removed, his abilities reset.
+            $HoldSpot = @($AuraHero[0], ($AuraHero[1] + 600))
+            $HoldFar = @($AuraHero[0], ($AuraHero[1] - 1400))
+            Step "mark build hero hold", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5",
+                "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
+                "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500", "wait 12", "hol.Units.Report 500",
+                "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
             # J8c.4 loop 1: the hero's abilities from the grid (J8c-Q4), as the keys. His hero again, selected (F4): Z refused
             # by the grid at level 1 (the banner opens at 4), A cries, A again refused by the grid (its cool-down, seconds
             # told); at level 4 Z then a left click 10 m from him plants the banner (hol.Select.Banner). Then removed, his
@@ -1818,7 +1833,7 @@ if ($Parts -contains "camera") {
             Step "mark build hero grid", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Select.Hero", "waitlog Select hero: selected #", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Report",
-                "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.HUD.Report", "hol.Select.Grid 0",
+                "hol.Select.Grid 1", "hol.Camera.Zoom 12", "frames 3", "hol.Select.Grid 0", "waitlog Cry flash: slot 0,", "frames 2", "capture build_hero_cry", "hol.Camera.Zoom -12", "wait 0.5", "hol.HUD.Report", "hol.Select.Grid 0",
                 "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4", "wait 0.3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "hol.Camera.TestCursorGround $($AuraHero[0] + 1000) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim",
                 "hol.Camera.TestCursorGround $($AuraHero[0] + 1800) $($AuraHero[1])", "frames 3", "hol.Select.Report", "capture build_hero_aim_far", "hol.Camera.TestCursor 0.5 0.5",
@@ -4347,6 +4362,28 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($AuraHits[2].Count -ge 1) -and (@($AuraHits[2] | Where-Object { $_ -ne "Spearman 10.2" }).Count -eq 0) -and
         [bool]($Aura | Select-String -SimpleMatch "hol.Hero.ResetAbilities: slot 0 reset" -Quiet)
     $AllOk = (Report "build hero aura" $Checks) -and $AllOk
+    # D581: the cry holds the units under it in place (the movement processor applies CloseRanksSpeedPercent), the others walk.
+    $Hold = @(Get-Section "build hero hold" | ForEach-Object { $_ })
+    $HoldReports = @($Hold | Where-Object { $_ -match "Units report: " })
+    $HoldSpears = @($HoldReports | ForEach-Object { , @([regex]::Matches($_, "#(\d+) Spearman slot 0 at \((-?\d+), (-?\d+), ") | ForEach-Object { [pscustomobject]@{ Id = $_.Groups[1].Value; X = [int]$_.Groups[2].Value; Y = [int]$_.Groups[3].Value } }) })
+    $Checks = [ordered]@{}
+    $HeldMoves = @(-1, -1); $FarMoves = @(-1, -1)
+    if ($HoldSpears.Count -ge 3 -and $HoldSpears[0].Count -eq 2) {
+        $HeldAt = @($HoldSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
+        $FarAt = @($HoldSpears[0] | Where-Object { $_.Y -lt $BuildHero[1] })[0]
+        for ($r = 1; $r -le 2; $r++) {
+            $HeldNow = @($HoldSpears[$r] | Where-Object { $_.Id -eq $HeldAt.Id })[0]
+            $FarNow = @($HoldSpears[$r] | Where-Object { $_.Id -eq $FarAt.Id })[0]
+            if ($HeldNow) { $HeldMoves[$r - 1] = [int][math]::Sqrt([math]::Pow($HeldNow.X - $HeldAt.X, 2) + [math]::Pow($HeldNow.Y - $HeldAt.Y, 2)) }
+            if ($FarNow) { $FarMoves[$r - 1] = [int][math]::Sqrt([math]::Pow($FarNow.X - $FarAt.X, 2) + [math]::Pow($FarNow.Y - $FarAt.Y, 2)) }
+        }
+    }
+    $Checks["three reports of the two Spearmen ($($HoldSpears.Count) reports, $(@($HoldSpears | ForEach-Object { $_.Count }) -join '/') Spearmen)"] =
+        ($HoldSpears.Count -eq 3) -and (@($HoldSpears | Where-Object { $_.Count -ne 2 }).Count -eq 0)
+    $Checks["under the cry, ordered 15 m away: 5 s later it has not moved ($($HeldMoves[0]) cm, 150 at most), the one out of the cry has walked ($($FarMoves[0]) cm, 800 at least)"] =
+        ($HeldMoves[0] -ge 0) -and ($HeldMoves[0] -le 150) -and ($FarMoves[0] -ge 800)
+    $Checks["the cry over (17 s), the held one walks on ($($HeldMoves[1]) cm, 300 at least)"] = ($HeldMoves[1] -ge 300)
+    $AllOk = (Report "build hero hold" $Checks) -and $AllOk
     # J8c.4 loop 1: the abilities from the grid's keys (the grid refuses what is not ready, the server casts the rest).
     $GridCase = @(Get-Section "build hero grid" | ForEach-Object { $_ })
     $Checks = [ordered]@{}

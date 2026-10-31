@@ -137,6 +137,12 @@ namespace HOLHeroTalent
 		return Picks.Num() > 0 && Picks[0] == FamilyCaptain;
 	}
 
+	/** D581: Pas de l'Aube (row 4, Captain, D111): the formation under Serrez les rangs advances at reduced speed, its damage reduction kept. */
+	inline bool GrantsDawnStep(const TArray<uint8>& Picks)
+	{
+		return Picks.Num() > 2 && Picks[2] == FamilyCaptain;
+	}
+
 	/** A talent of Family can be taken by a hero of Level who took NumPicks already: a family of the row, a row left, a point in reserve. */
 	inline bool CanPick(const int32 Level, const int32 NumPicks, const int32 Family)
 	{
