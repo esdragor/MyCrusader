@@ -1,0 +1,6 @@
+# Les Cols Grande (8 joueurs, 808 m) : chaines de montagnes entre les bases voisines, 2 cols de 16 m par chaine, place centrale libre
+hol.Camera.Zoom -7
+frames 5
+note Les Cols Grande : 808 m de cote, 8 bases en cercle, 4 contre 4. Entre deux bases voisines, une CHAINE DE MONTAGNES (20 m de roche grise) va du bord de la carte jusqu'a une place centrale libre ; chaque chaine a 2 COLS de 16 m. Chaque base a donc son vallon avec ses ressources (les memes que sur la Steppe) ; pour aller chez le voisin il y a 3 couloirs : la place centrale et les 2 cols.
+note FORME PROVISOIRE (question CQ4, Auto_Journey_Retours.md) : le GDD dit seulement 'des montagnes decoupent la carte en 2 ou 3 couloirs entre les bases'. A regarder : un col de 16 m laisse-t-il passer une armee (envoie 10 unites groupees par un col) ? les cols sont-ils assez nombreux / trop nombreux ? la place centrale est-elle assez grande ? les montagnes se lisent-elles comme des montagnes (sans hauteur ni decor) ? l'IA contourne-t-elle les chaines ? Reglages : HOL_COLS_PASSES (1 a 3 cols par chaine), HOL_COLS_PLAZA (fraction du demi-cote), puis Tools\make_maps.ps1 -Map Cols.
+note Relance (² puis hol.Scenario map_cols) : la place tiree change.

@@ -37,6 +37,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIForumMemory> Rebuilds;
 	TMap<int, FHOLAIKingMemory> Kings;
 
+	// What each slot's relay detachment remembers (R6, RQ3 provisional).
+	TMap<int, FHOLAIRelayMemory> RelayMemories;
+
 	// The main talent family each slot drew at its first thought (T6, D424).
 	TMap<int, int> TalentMains;
 
@@ -476,13 +479,16 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// on the way). The attack wave (HOLAIArmy::UpdateWave) goes out when the rules allow and the army is ahead, and falls back to the
 	// point (a move, not an attack-move) when the ratio near it collapses; while it is out the defence and the regrouping order the
 	// soldiers at home only, unless the threat is strong (AttackRecallCount enemies): then the wave is called back.
-	void ThinkArmy(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	void ThinkArmy(int PlayerIndex, int64 Step, const FHOLAISummary& FullSummary, const FHOLAIOpeningData& Data)
 	{
 		const float Now = Data.GameSeconds;
 		FHOLAIDefence State;
 		Defences.Find(PlayerIndex, State);
 		FHOLAIWave Wave;
 		Waves.Find(PlayerIndex, Wave);
+		// The relays (R6, RQ3 PROVISIONAL: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
+		// of the army the other rules see below (defence, regrouping, waves) while it is away.
+		const FHOLAISummary Summary = ThinkRelays(PlayerIndex, Step, FullSummary, Data, Wave, State);
 		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
 		const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data.Army);
 		const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Wave);
@@ -640,6 +646,38 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 	}
 
+	// The AI and the relays (R6): see Script/AI/HOLAIRelay.as. Returns the summary without the detached soldiers.
+	FHOLAISummary ThinkRelays(int PlayerIndex, int64 Step, const FHOLAISummary& FullSummary, const FHOLAIOpeningData& Data, const FHOLAIWave& Wave, const FHOLAIDefence& State)
+	{
+		FHOLAIRelayMemory Memory;
+		RelayMemories.Find(PlayerIndex, Memory);
+		Memory.Slot = PlayerIndex;
+		const int Mode = HOLRelayRules::GetAIRelayMode();
+		TArray<FHOLAIRelay> Relays;
+		if (Mode != HOLAIRelay::ModeIgnore || Memory.Ids.Num() > 0)
+		{
+			HOLRelayRules::ReadAIRelays(Relays);
+		}
+		if (Relays.Num() == 0 && Memory.Ids.Num() == 0)
+		{
+			return FullSummary;
+		}
+		const float Now = Data.GameSeconds;
+		const EHOLAIDifficulty Level = HOLAILives::Effective(FullSummary.Level, Now, Data.Army.Lives);
+		const bool bAttacked = HOLAIArmy::Threat(FullSummary, Data.Army).bThreatened || State.bDefending;
+		const FVector From = FullSummary.bHasCentre ? FullSummary.CentreLocation : FVector(0, 0, 0);
+		const FHOLAIRelayStep Result = HOLAIRelay::Step(Memory, Mode, Level, HOLAIArmy::WithoutWave(FullSummary, Wave), Relays, bAttacked, Now, From, FHOLAIRelayData());
+		RelayMemories.Add(PlayerIndex, Memory);
+		if (Result.Reason.Len() > 0)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: relay: {Result.Reason}");
+		}
+		if (Result.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Result.MoveIds, Result.Where))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: relay order refused");
+		}
+		return HOLAIRelay::Without(FullSummary, Memory);
+	}
 	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
 	// does not fit within the rings.
 	FHOLAIFarmPlan PlanFarmBlock(int PlayerIndex, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)

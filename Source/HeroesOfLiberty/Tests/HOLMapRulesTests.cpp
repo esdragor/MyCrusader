@@ -54,9 +54,11 @@ bool FHOLMapCsvTest::RunTest(const FString& Parameters)
 		TestTrue(FString::Printf(TEXT("line %d in order"), Index), Maps.IsValidIndex(Index - 1) && &Maps[Index - 1] == Info);
 		TestEqual(FString::Printf(TEXT("%s display name"), *Cells[0]), SourceOf(Info->DisplayName), Cells[1]);
 		TestTrue(FString::Printf(TEXT("%s recipe, lower case"), *Cells[0]), !Cells[2].IsEmpty() && Cells[2] == Cells[2].ToLower());
-		// C1b: the Budget column, `standard` (the map holds the per-player budget of Map.Table) or `none`.
-		TestTrue(FString::Printf(TEXT("%s budget is standard or none (%s)"), *Cells[0], *Cells[3]), Cells[3] == TEXT("standard") || Cells[3] == TEXT("none"));
-		TestEqual(FString::Printf(TEXT("%s budget"), *Cells[0]), Info->bBudget, Cells[3] == TEXT("standard"));
+		// C1b: the Budget column, `standard` (the map holds the per-player budget of Map.Table), `centre` (C3: the same, the gold in the
+		// middle of the map) or `none`.
+		TestTrue(FString::Printf(TEXT("%s budget is standard, centre or none (%s)"), *Cells[0], *Cells[3]), Cells[3] == TEXT("standard") || Cells[3] == TEXT("centre") || Cells[3] == TEXT("none"));
+		TestEqual(FString::Printf(TEXT("%s budget"), *Cells[0]), Info->bBudget, Cells[3] == TEXT("standard") || Cells[3] == TEXT("centre"));
+		TestEqual(FString::Printf(TEXT("%s gold at the centre"), *Cells[0]), Info->bGoldAtCentre, Cells[3] == TEXT("centre"));
 	}
 	return true;
 }

@@ -11,6 +11,7 @@ navmesh, start slots, each player's base). Made by create_match_map.py as /Game/
                sources). Uniform ground (no GROUND: the grey M_MatteGround), no scenery.
 """
 import math
+import os
 
 import unreal
 
@@ -36,11 +37,12 @@ CROWN_COLOR = unreal.LinearColor(0.10, 0.22, 0.08, 1.0)
 # packs of PACK_SIDE x PACK_SIDE trees (a grid with the jitter of common.WOOD_JITTER, turned by a random yaw), berry patches and the far
 # veins, each thrown on the cell of a 6 m grid of the territory nearest to the distance asked of it (growing outwards), CLEAR from
 # everything else.
-BUDGET_TREES = {"default": 300, "Huge": 360}
+BUDGET_TREES = {"default": 300, "Huge": int(os.environ.get("HOL_HUGE_TREES", "360"))}  # HOL_HUGE_TREES=450 (the formula 1.5 x 300): the same setting as the Steppe's
 BUDGET_BERRIES = {"default": 15, "Huge": 23}
 BASE_PACKS = [16, 16]
 PACK_SIDE = 4
-PACK_SPACING = 170.0  # cm between neighbouring trunks: Map.Table's tightness (200 cm on average) holds with the jitter
+PACK_SPACING = 140.0  # cm between neighbouring trunks (2026-10-31, the user: "trees that touch"; it was 170): the trunks (60 cm radius) touch at 120, the jitter (PACK_JITTER of common.WOOD_JITTER) never takes two below it
+PACK_JITTER = 0.35
 BERRY_PATCHES = {"default": [5, 4], "Huge": [6, 6, 5]}  # on top of the base's 6 bushes: 15 and 23 asked
 MINERAL_RADIUS = {"Small": 150.0, "Medium": 220.0, "Standard": 300.0, "Big": 420.0}
 CLEAR = 800.0
@@ -87,8 +89,8 @@ def pack_points(centre, yaw):
     for row in range(PACK_SIDE):
         for column in range(PACK_SIDE):
             jitter = common.WOOD_JITTER[(row * PACK_SIDE + column) % len(common.WOOD_JITTER)]
-            x = (column - (PACK_SIDE - 1) / 2.0) * PACK_SPACING + jitter[0]
-            y = (row - (PACK_SIDE - 1) / 2.0) * PACK_SPACING + jitter[1]
+            x = (column - (PACK_SIDE - 1) / 2.0) * PACK_SPACING + jitter[0] * PACK_JITTER
+            y = (row - (PACK_SIDE - 1) / 2.0) * PACK_SPACING + jitter[1] * PACK_JITTER
             points.append((centre[0] + x * math.cos(yaw) - y * math.sin(yaw), centre[1] + x * math.sin(yaw) + y * math.cos(yaw)))
     return points
 

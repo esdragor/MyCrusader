@@ -303,6 +303,16 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Archer on Man-at-arms: 5 - 4 (ranged armour)"), HOLCombat::GetDamage(Archer, ManAtArms), 1.f);
 	TestEqual(TEXT("Archer on Archer: no bonus on Ranged"), HOLCombat::GetDamage(Archer, Archer), 5.f);
 
+	// T6: the percent an attacker's player gained on its attack scales the Attack before the bonuses and the armour; 0 changes nothing.
+	TestEqual(TEXT("+0 %: the same hit"), HOLCombat::GetDamage(ManAtArms, Spearman, 1, 0, 0), 12.f);
+	TestEqual(TEXT("Man-at-arms +10 % on Spearman: 12 x 1.1"), HOLCombat::GetDamage(ManAtArms, Spearman, 1, 0, 10), 13.2f, 0.001f);
+	TestEqual(TEXT("Man-at-arms +20 % on Spearman: 12 x 1.2"), HOLCombat::GetDamage(ManAtArms, Spearman, 1, 0, 20), 14.4f, 0.001f);
+	TestEqual(TEXT("Spearman +20 % on Man-at-arms: 8 x 1.2 - 4 (the armour is not scaled)"), HOLCombat::GetDamage(Spearman, ManAtArms, 1, 0, 20), 5.6f, 0.001f);
+	TestEqual(TEXT("Spearman +20 % on cavalry: 8 x 1.2 + 17 - 2 (the bonus is not scaled)"), HOLCombat::GetDamage(Spearman, Horseman, 1, 0, 20), 24.6f, 0.001f);
+	TestEqual(TEXT("Archer +10 % on Spearman: 5 x 1.1 + 5"), HOLCombat::GetDamage(Archer, Spearman, 1, 0, 10), 10.5f, 0.001f);
+	TestEqual(TEXT("+20 % with the level and the armour bonus together"), HOLCombat::GetDamage(ManAtArms, Spearman, 1, 3, 20), 11.4f, 0.001f);
+	TestEqual(TEXT("Peasant +20 % on Man-at-arms: still 1 at least"), HOLCombat::GetDamage(Peasant, ManAtArms, 1, 0, 20), 1.f);
+
 	// The armour taken off is the one of the attack's type (D345), whatever the reach.
 	FHOLUnitTypeConstants Typed = Spearman;
 	TestEqual(TEXT("melee hit: melee armour"), HOLCombat::GetDamage(Typed, Horseman), static_cast<float>(8 + 17 - 2));

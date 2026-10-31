@@ -44,6 +44,7 @@ with a 15 m margin; the veins of one kind of one territory VEIN_SPREAD (60 m) ap
 slot at least, and the far veins farther than the 3rd nearest near vein of their type (the fairness).
 """
 import math
+import os
 
 import unreal
 
@@ -68,7 +69,7 @@ BASE_BERRIES = common.BERRY_ROWS * common.BERRY_COLUMNS
 # whose games are longer, 1.5 times that), and what a territory comes to: a margin above it. The gold and the stone are a VALUE budget in
 # a mix of sizes (M-Q9: common.MINERAL_MIX, 10 000 gold and 5 000 stone, Huge 15 000 / 7 500), exact, with no margin. Map.Table checks the
 # budget with the same numbers (HOLMapTableTests.cpp).
-BUDGET = {"default": (300, 15), "Huge": (360, 23)}  # M-Q10b (the user: "double the trees"): 300, it was 150; Huge 360 (225 doubled = 450 does not fit: the far layer of a Huge territory holds 23 packs at the least, 360 is the most it holds)
+BUDGET = {"default": (300, 15), "Huge": (int(os.environ.get("HOL_HUGE_TREES", "360")), 23)}  # M-Q10b (the user: "double the trees"): 300, it was 150; Huge 360 (225 doubled = 450 does not fit: the far layer of a Huge territory holds 23 packs at the least, 360 was the most it held at 1.6 m; at 1.25 m (2026-10-31) 450 fits: HOL_HUGE_TREES=450 makes it, QUESTION in Auto_Journey_Retours.md)
 TREES_MARGIN = 1.04
 BERRIES_MARGIN = 1.2
 NEAR_VEINS = 3  # of each resource in the near layer: the fairness reads the 3 nearest (their sizes: common.MINERAL_NEAR)
@@ -87,6 +88,7 @@ VEIN_GAP = 1800.0  # M-Q9: between a pile and another deposit (source to source)
 VEIN_FROM_SLOT = 11000.0
 VEIN_SPREAD = 4000.0  # M-Q9: veins of one resource this far apart (was 60 m with 4 and 2 veins a territory; now 14 piles, many of them small)
 CENTRE_CLEAR = 2000.0
+KEEP_OUT = None  # C4 (Les Cols): a map module may set a function (x, y) -> True for a point where no far deposit may be (a range of mountains)
 EDGE_MARGIN = 1500.0
 NEAR_REACH = 7500.0  # no far deposit's source closer than this to a slot: the near layer is the same around every slot
 FAR_GAP_START = 8000.0  # between the centres of two deposits of the far layer (the smallest territory's), thrown at first
@@ -249,6 +251,8 @@ def near_layer(recipe):
             copies = [rotate(point, turn * step) for turn in range(places)]
             if any(math.dist(copy, slot) < slot_gap for copy in copies for slot in slots):
                 continue
+            if KEEP_OUT is not None and any(KEEP_OUT(copy) for copy in copies):
+                continue
             fits = True
             for other_kind, other_size, other_copies in placed + [(kind, size, copies[1:])]:
                 gap = DEPOSIT_GAP + reach + near_room(other_kind, other_size)
@@ -323,6 +327,8 @@ def far_allowed(recipe, slots, point):
         return False
     if math.hypot(*point) < CENTRE_CLEAR + MIN_EXTENT:
         return False
+    if KEEP_OUT is not None and KEEP_OUT(point):
+        return False
     return not any(math.dist(point, slot) < NEAR_REACH + MIN_EXTENT for slot in slots)
 
 
@@ -350,6 +356,8 @@ def far_veins(recipe, near):
             for _ in range(VEIN_DRAWS):
                 point = (rng.range(-edge, edge), rng.range(-edge, edge))
                 if nearest(point, slots) != index or math.hypot(*point) < CENTRE_CLEAR:
+                    continue
+                if KEEP_OUT is not None and KEEP_OUT(point):
                     continue
                 if any(math.dist(point, slot) < third[kind] for slot in slots):
                     continue

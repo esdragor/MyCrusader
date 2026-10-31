@@ -18,10 +18,16 @@ struct FHOLMapInfo
 	FText DisplayName;
 
 	/**
-	 * The Budget column: true for `standard`, the map holds the resources per player of the Map.Table test (M-Q4 = A: no
+	 * The Budget column: true for `standard` and `centre`, the map holds the resources per player of the Map.Table test (M-Q4 = A: no
 	 * resource problem before 3/4 of a classic 30 min game); false for `none`, a map that says otherwise.
 	 */
 	bool bBudget = false;
+
+	/**
+	 * C3 (El Dorado, GDD 8.5): the Budget `centre`. Same budget per player, but the gold is one cluster in the middle of the map (each
+	 * place's share of it is what its territory holds): no gold in the bases, the cluster as far from every place as from any other.
+	 */
+	bool bGoldAtCentre = false;
 };
 
 /** C0.1: pure rules of the match maps, for the menu, the list of lobbies and the manager client (one table, Maps.csv). */
