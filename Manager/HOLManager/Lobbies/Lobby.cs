@@ -126,6 +126,9 @@ public sealed class LobbySettings
 
     /** TC3 (TC-Q6): "Équipes ensemble", the allies on neighbouring places when the places are drawn. */
     public bool TeamsTogether { get; internal set; } = LobbyRules.DefaultTeamsTogether;
+
+    /** F8 (D522, FogInProgress.md): the fog of war, EHOLFogMode by name: "Normal", "Explored" or "Disabled". */
+    public string Fog { get; internal set; } = LobbyRules.DefaultFog;
     public bool Nomad { get; internal set; }
     public bool Regicide { get; internal set; }
     public bool Catastrophe { get; internal set; }

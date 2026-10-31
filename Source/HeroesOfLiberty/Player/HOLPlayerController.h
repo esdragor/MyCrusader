@@ -264,6 +264,12 @@ public:
 	 */
 	AHOLBuilding* FindProductionBuilding(FName TypeName, bool* bOutAny = nullptr) const;
 	/**
+	 * What the rules tell of researching Technology at Building (T4): the facts of this player as this machine knows them
+	 * (the tier, the hero level, his technologies, the research queued anywhere, his stock), through HOLCommandGrid::CheckResearch;
+	 * None when the server would take it. The grid greys the cell and the click says why from this.
+	 */
+	FHOLCommandFeedback CheckResearchAt(FName Technology, const AHOLBuilding* Building) const;
+	/**
 	 * A cell of the grid, by its key or a click on the HUD: asks the server to produce its unit type, starts the
 	 * placement of its building (D313), or asks the server to cancel the selected site (D311). What does not go
 	 * through (not enough resources, queue full) or waits (population full) is told (OnCommandFeedback).
@@ -372,6 +378,11 @@ public:
 	void RequestProduction(FName TypeName);
 	/** Asks the server to cancel the item at Index of the selected building's queue (its own). */
 	void RequestCancelProduction(int32 Index);
+	/**
+	 * M4c/M5 (Market, GDD 5.5): asks the server to trade Lots lots (100 goods each) of Resource (0 food, 1 wood, 2 stone) at the
+	 * selected Market (its own, finished): sold for gold, or bought with gold when bBuy. The server prices it at the common book.
+	 */
+	void RequestMarketTrade(int32 Resource, int32 Lots, bool bBuy);
 	/**
 	 * Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. bQueue
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
@@ -645,6 +656,10 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelProduction(AHOLBuilding* Building, int32 Index);
+
+	/** M4c: an exchange at a Market (UHOLProductionSubsystem::ApplyMarketTrade checks the owner, the Market, the lots and the stock). */
+	UFUNCTION(Server, Reliable)
+	void ServerMarketTrade(AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 
 	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
 	UFUNCTION(Server, Reliable)

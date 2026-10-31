@@ -166,8 +166,8 @@ public class LobbyMapSizeTests
             (config.Version, config.Map, config.MapSize, config.DrawPlaces, config.TeamsTogether));
         Assert.Equal("/Game/Maps/Plain_Small", launcher.Map!.PackagePath);
         var json = JsonNode.Parse(config.ToJson())!.AsObject();
-        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "slots", "mode", "bNomad", "bRegicide",
-            "bCatastrophe"], json.Select(p => p.Key));
+        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "fogMode", "slots", "mode", "bNomad",
+            "bRegicide", "bCatastrophe"], json.Select(p => p.Key));
     }
 
     [Fact]

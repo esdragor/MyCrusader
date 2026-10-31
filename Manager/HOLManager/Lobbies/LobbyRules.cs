@@ -92,6 +92,11 @@ public static class LobbyRules
     /** TC3 (TC-Q6): "Équipes ensemble", ticked in a new lobby. */
     public const bool DefaultTeamsTogether = true;
 
+    /** F8 (D522): the fog's modes, EHOLFogMode by name (Source/HeroesOfLiberty/Map/HOLFogMode.h): Normal is the game's. */
+    public static readonly IReadOnlyList<string> FogModes = ["Normal", "Explored", "Disabled"];
+
+    public const string DefaultFog = "Normal";
+
     /**
      * C0.2 (Cartes): the match maps, in the order of Tools/Data/Maps.csv (checked by a test, as FHOLMapRules in the game),
      * each in the five sizes (TC-Q11: the map itself, /Game/Maps/Plain, is the test map, not offered).

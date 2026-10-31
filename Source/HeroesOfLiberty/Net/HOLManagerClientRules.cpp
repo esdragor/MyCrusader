@@ -187,6 +187,12 @@ FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, co
 	return WriteBody(Object);
 }
 
+EHOLFogMode FHOLLobby::GetFogMode() const
+{
+	const int64 Value = StaticEnum<EHOLFogMode>()->GetValueByNameString(Fog);
+	return Value == INDEX_NONE ? EHOLFogMode::Normal : static_cast<EHOLFogMode>(Value);
+}
+
 EHOLMapSize FHOLLobby::GetMapSize() const
 {
 	return FHOLMapSizeRules::FindByKey(Size);
@@ -199,7 +205,7 @@ int32 FHOLLobby::GetNumPlaces() const
 }
 
 FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe,
-	const FString& Size, const TOptional<bool> bTeamsTogether)
+	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("map"), Map);
@@ -214,6 +220,11 @@ FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool 
 	if (bTeamsTogether.IsSet())
 	{
 		Object->SetBoolField(TEXT("teamsTogether"), bTeamsTogether.GetValue());
+	}
+	// F8: the fog's mode, only when given.
+	if (!Fog.IsEmpty())
+	{
+		Object->SetStringField(TEXT("fog"), Fog);
 	}
 	return WriteBody(Object);
 }
@@ -287,6 +298,7 @@ namespace
 		// TC3: absent from an older manager (no size, teams together).
 		(*Settings)->TryGetStringField(TEXT("size"), Out.Size);
 		(*Settings)->TryGetBoolField(TEXT("teamsTogether"), Out.bTeamsTogether);
+		(*Settings)->TryGetStringField(TEXT("fog"), Out.Fog);
 		const TArray<TSharedPtr<FJsonValue>>* Maps = nullptr;
 		if (Object.TryGetArrayField(TEXT("maps"), Maps))
 		{

@@ -1,9 +1,10 @@
 Name,DisplayName,Footprint,Height,MaxHealth,RangedArmor,Mesh,PopulationProvided,Produces,MaxQueue,Accepts,Cost,BuildTime,BuildGridSlot,Age,Category,Walkable,Source,Shape,SightRadius
 MainCentre,Centre principal,"(X=1600.0,Y=1600.0)",1000,2400,40,,10,"(""Peasant"")",5,"(Food,Wood,Stone,Gold)","(Food=0,Wood=0,Stone=0,Gold=0)",0,-1,0,Economic,False,,BlockAndTower,6400
 House,Maison,"(X=800.0,Y=800.0)",400,600,40,,10,,1,,"(Food=0,Wood=50,Stone=0,Gold=0)",10,0,0,Economic,False,,BlockAndTower,2000
-LumberCamp,Camp de bûcherons,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,(Wood),"(Food=0,Wood=100,Stone=0,Gold=0)",12.5,1,0,Economic,False,,BlockAndTower,2000
-MiningCamp,Camp de mineurs,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,"(Stone,Gold)","(Food=0,Wood=100,Stone=0,Gold=0)",12.5,2,0,Economic,False,,BlockAndTower,2000
+LumberCamp,Camp de bûcherons,"(X=800.0,Y=800.0)",400,1000,40,,0,,5,(Wood),"(Food=0,Wood=100,Stone=0,Gold=0)",12.5,1,0,Economic,False,,BlockAndTower,2000
+MiningCamp,Camp de mineurs,"(X=800.0,Y=800.0)",400,1000,40,,0,,5,"(Stone,Gold)","(Food=0,Wood=100,Stone=0,Gold=0)",12.5,2,0,Economic,False,,BlockAndTower,2000
 Mill,Moulin,"(X=800.0,Y=800.0)",400,1000,40,,0,,1,(Food),"(Food=0,Wood=100,Stone=0,Gold=0)",12.5,3,0,Economic,False,,BlockAndTower,2000
 Barracks,Caserne,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Spearman"",""ManAtArms"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,4,0,Military,False,,BlockAndTower,3200
-Farm,Ferme,"(X=800.0,Y=800.0)",20,1000,40,,0,,1,,"(Food=0,Wood=75,Stone=0,Gold=0)",7.5,8,0,Economic,True,FarmField,BlockAndTower,2000
+Farm,Ferme,"(X=800.0,Y=800.0)",20,1000,40,,0,,5,,"(Food=0,Wood=75,Stone=0,Gold=0)",7.5,8,0,Economic,True,FarmField,BlockAndTower,2000
 ArcheryRange,Champ de tir,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Archer"",""Crossbowman"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,5,0,Military,False,,Range,3200
+Market,Marché,"(X=1200.0,Y=1200.0)",500,1500,40,,0,,1,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,0,1,Economic,False,,BlockAndTower,2000

@@ -382,12 +382,25 @@ void UHOLSourceSubsystem::StartGlobalReplication()
 	}
 }
 
+void UHOLSourceSubsystem::EraseKept(const int32 SourceIndex)
+{
+	if (KeptDrawn.Remove(SourceIndex) > 0 && Field)
+	{
+		Field->EraseDrawing(SourceIndex);
+	}
+}
+
 void UHOLSourceSubsystem::OnSourceUsedUp(const int32 SourceIndex)
 {
 	--NumStanding;
 	if (Field && !IsLinked(SourceIndex))
 	{
-		Field->HideSource(SourceIndex);
+		const bool bKeep = KeepDrawnRule && KeepDrawnRule(SourceIndex);
+		Field->HideSource(SourceIndex, bKeep);
+		if (bKeep)
+		{
+			KeptDrawn.Add(SourceIndex);
+		}
 	}
 	UE_LOG(LogHOLMatch, Log, TEXT("Sources: source %d used up (%s)"), SourceIndex, bAuthority ? TEXT("server") : TEXT("client"));
 	OnSourceStanding.Broadcast(SourceIndex, false);

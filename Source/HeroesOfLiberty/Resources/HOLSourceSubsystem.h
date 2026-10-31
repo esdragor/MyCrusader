@@ -96,6 +96,17 @@ public:
 	 */
 	int32 FindLinkedSourceAt(const FVector& Location, float Tolerance = 10.f) const;
 
+	/**
+	 * F7.3 (c): asked when a source is used up on a machine that draws: true keeps it drawn (a tree cut out of the viewer's sight, the
+	 * fog's memory: UHOLVisionSubsystem), until EraseKept. Not set: a used-up source leaves the display at once.
+	 */
+	void SetKeepDrawnRule(TFunction<bool(int32 /*SourceIndex*/)> Rule) { KeepDrawnRule = MoveTemp(Rule); }
+	/** F7.3 (c): the used-up source's instances go (the memory learned the cut). */
+	void EraseKept(int32 SourceIndex);
+	const TSet<int32>& GetKeptDrawn() const { return KeptDrawn; }
+	/** F7.3 (c): standing, or used up and still drawn from the memory. */
+	bool IsDrawn(const int32 SourceIndex) const { return (Sources.IsValidIndex(SourceIndex) && Sources[SourceIndex].IsStanding()) || KeptDrawn.Contains(SourceIndex); }
+
 	const TArray<FHOLSource>& GetSources() const { return Sources; }
 	int32 GetNumStanding() const { return NumStanding; }
 
@@ -154,6 +165,8 @@ private:
 	TArray<const FHOLSourceTypeRow*> TypeRows;
 
 	TArray<FHOLSource> Sources;
+	TFunction<bool(int32)> KeepDrawnRule;
+	TSet<int32> KeptDrawn;
 	int32 NumStanding = 0;
 	TMap<uint8, FHOLResources> Deposited;
 	TArray<uint8> Occupants;
