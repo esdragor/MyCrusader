@@ -2126,26 +2126,33 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 	TArray<FMeleePoint> MeleePoints;
 	// One camp (FHOLCampTable): an ally's unit is a friend, like one's own (enemy or fighting friend by camp).
 	const FHOLCampTable Camps = FHOLCampTable::FromWorld(World);
-	if (const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>())
+	// Built on the first block that asks (a plain move's: an attack-move's block never breaks up, so a step with attack-moves only skips
+	// this pass over every unit; S3 / S4, perf isolation of 2026-10-31).
+	bool bMeleePointsBuilt = false;
+	const auto BuildMeleePoints = [&]()
 	{
-		TArray<uint32> UnitIds;
-		Units->GetAllUnitIds(UnitIds);
-		UnitIds.Sort();
-		for (const uint32 UnitId : UnitIds)
+		bMeleePointsBuilt = true;
+		if (const UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>())
 		{
-			const FMassEntityHandle Entity = Units->FindEntity(UnitId);
-			const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
-			const FTransformFragment* Transform = State ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
-			if (!Transform || State->CurrentHealth <= 0)
+			TArray<uint32> UnitIds;
+			Units->GetAllUnitIds(UnitIds);
+			UnitIds.Sort();
+			for (const uint32 UnitId : UnitIds)
 			{
-				continue;
+				const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+				const FHOLUnitStateFragment* State = EntityManager.IsEntityValid(Entity) ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+				const FTransformFragment* Transform = State ? EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+				if (!Transform || State->CurrentHealth <= 0)
+				{
+					continue;
+				}
+				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+				const FHOLMoveOrderFragment* Order = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+				MeleePoints.Add({FVector2D(Transform->GetTransform().GetLocation()), State->OwnerPlayer, Combat && HOLFormation::IsFightingFriend(Combat->bAttacking, Combat->bApproaching, Combat->Target.IsSet()),
+					Order ? Order->OrderSerial : 0u});
 			}
-			const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
-			const FHOLMoveOrderFragment* Order = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
-			MeleePoints.Add({FVector2D(Transform->GetTransform().GetLocation()), State->OwnerPlayer, Combat && HOLFormation::IsFightingFriend(Combat->bAttacking, Combat->bApproaching, Combat->Target.IsSet()),
-				Order ? Order->OrderSerial : 0u});
 		}
-	}
+	};
 	// A member leaving its block to end alone (MV.4.4): its final leg to its place, a path there if the line is cut.
 	const auto ToFinalLeg = [this, World, &EntityManager, NavData](const uint32 Serial, const FMassEntityHandle Entity, const FVector& Place)
 	{
@@ -2380,14 +2387,27 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		{
 			// A plain move (MV.4.4): no member on an attack-move.
 			bool bPlainMove = true;
-			double ClosestEnemy = -1.;
-			double ClosestFighting = -1.;
 			for (const FMassEntityHandle Entity : Block.Entities)
 			{
-				const FVector2D Location(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation());
-				const uint8 Owner = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer;
 				const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
 				bPlainMove &= !(Combat && Combat->Mode == EHOLCombatMode::AttackMove);
+			}
+			// An attack-move's block never breaks up (ShouldBreakBlock): no distance to the melee is worth measuring for it, nor the
+			// melee list worth building for it.
+			double ClosestEnemy = -1.;
+			double ClosestFighting = -1.;
+			if (bPlainMove && !bMeleePointsBuilt)
+			{
+				BuildMeleePoints();
+			}
+			for (const FMassEntityHandle Entity : Block.Entities)
+			{
+				if (!bPlainMove)
+				{
+					break;
+				}
+				const FVector2D Location(EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation());
+				const uint8 Owner = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer;
 				for (const FMeleePoint& Point : MeleePoints)
 				{
 					// A friend of its camp (own or ally's) not fighting never breaks it, nor its own order's units (an attack-move's
