@@ -280,7 +280,8 @@ namespace HOLAIForum
 		bool bAtForum = Summary.OwnForum.bDown;
 		for (int Index = 0; Index < Summary.Enemies.Num() && !bAtForum; Index++)
 		{
-			bAtForum = HOLAIArmy::IsThreatening(Summary.Enemies[Index]) && HOLAIArmy::FlatDistance(Summary.Enemies[Index].Location, Place) <= Data.AttackedRadius;
+			// From the forum's wall, not its point: the main centre is 1600 cm wide (Data.ForumHalfSize).
+			bAtForum = HOLAIArmy::IsThreatening(Summary.Enemies[Index]) && HOLAIArmy::FlatDistance(Summary.Enemies[Index].Location, Place) <= Data.AttackedRadius + Data.ForumHalfSize;
 		}
 		if (!bAtForum)
 		{
@@ -299,6 +300,14 @@ namespace HOLAIForum
 	bool DefendAnyway(const FHOLAIForumSituation& Situation, const FHOLAIThreat& Threat)
 	{
 		return Situation.bAttacked && Situation.Call == EHOLAILifeCall::Fight && Threat.bThreatened;
+	}
+
+	// Whether the attack wave is called back to the base now (IA2.6, D585): a threat at home (Whole: the threat read on the whole summary) with
+	// AttackRecallCount enemy soldiers or more, or the fallen forum's emergency (IA3), or, for the level that gives the army whatever the ratio
+	// (Easy), the forum attacked at all (D585, answer B: "sacrifices the army to defend", the wave included).
+	bool WaveRecalled(const FHOLAISummary& Summary, const FHOLAIArmyData& Data, const FHOLAIThreat& Whole, const FHOLAIForumSituation& Situation)
+	{
+		return Whole.bThreatened && (Whole.Count >= Data.AttackRecallCount || Emergency(Summary) || DefendAnyway(Situation, Whole));
 	}
 
 	FString LevelName(EHOLAIDifficulty Level)

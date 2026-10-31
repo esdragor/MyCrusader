@@ -95,6 +95,40 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API int32 DrawFlow(int32 Seed, int32 Index, int32 FlowCount);
 
+	/** A site as the map gives it (V4): its flows, the crater being the first point of each. Several sites may share a match. */
+	struct FSite
+	{
+		TArray<FFlow> Flows;
+	};
+
+	/** What a site is doing at one instant (V4): everything the alert, the lava, the damage and the obstacle need. */
+	struct FSiteState
+	{
+		EHOLVolcanoPhase Phase = EHOLVolcanoPhase::Dormant;
+		/** The cycle in progress (0 first); the dates of the one whose phase this is. */
+		int32 CycleIndex = 0;
+		/** The flow this cycle's eruption takes (V3's draw); INDEX_NONE for a dormant site or a site without flow. */
+		int32 FlowIndex = INDEX_NONE;
+		float WarningAt = 0.f;
+		float EruptAt = 0.f;
+		/** Seconds left before the lava starts, during the alert only; negative otherwise. */
+		float SecondsToErupt = -1.f;
+		/** The front along the flow (cm) and its place; 0 and the crater before the eruption, the end of the flow once it has arrived. */
+		float FrontDistance = 0.f;
+		FVector FrontPoint = FVector::ZeroVector;
+	};
+
+	/** The seed of one site: the match's seed and the site's index mixed, so two sites never erupt alike. */
+	HEROESOFLIBERTY_API int32 SiteSeed(int32 MatchSeed, int32 SiteIndex);
+
+	/**
+	 * V4: the whole state of a site at Now (seconds since the match start), a function of the options, the match seed, the site and
+	 * the time only, so every machine reads the same without anything replicated but the clock. The cycles follow one another: each
+	 * draws its flow (DrawFlow) and lasts as long as its lava needs (EruptionDuration at LavaSpeed of ManAtArmsSpeed, the unit table's).
+	 * Dormant without Catastrophe (D398).
+	 */
+	HEROESOFLIBERTY_API FSiteState SiteStateAt(bool bCatastrophe, int32 MatchSeed, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed);
+
 	/** Phase at Now (seconds): always Dormant without the Catastrophe option (D398). EruptionLength as in MakeCycle. */
 	HEROESOFLIBERTY_API EHOLVolcanoPhase GetPhase(bool bCatastrophe, int32 Seed, float Now, const FHOLVolcanoSettings& Settings, float EruptionLength = 0.f);
 }

@@ -171,6 +171,15 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr uint32 ReuseSweepSteps = 200;
 	/** Steps (5 s) during which a path found across a changed area is not kept: the tiles there are being rebuilt. */
 	constexpr uint32 NavChangeSettleSteps = 100;
+	/**
+	 * Determinism (aiduel): the navmesh's tiles are rebuilt on worker threads, so the step that sees them rebuilt (and the walkers
+	 * given a new path then) depended on the wall clock. 1: every order step first waits for the rebuilds under way, so a tile
+	 * submitted by one step's navigation tick is always seen rebuilt by the next order step. For tests on a fixed time step; a
+	 * real game keeps it at 0 (the wait is a hitch).
+	 */
+	int32 SyncNavBuild = 0;
+	FAutoConsoleVariableRef CVarSyncNavBuild(TEXT("hol.Simulation.SyncNavBuild"), SyncNavBuild,
+		TEXT("1: each order step waits for the navmesh tiles under rebuild (reproducible runs, for tests); 0: asynchronous (the game)"));
 	/** Margin (cm) around a kept path within which a change of the navmesh forgets it: half the corridor and more. */
 	constexpr double ReuseBoundsMargin = 400.;
 
@@ -613,6 +622,10 @@ void UHOLUnitOrderProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
 	const double StartSeconds = FPlatformTime::Seconds();
 	++StepCount;
+	if (SyncNavBuild != 0 && NavData)
+	{
+		const_cast<ANavigationData*>(NavData)->EnsureBuildCompletion();
+	}
 	if (UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
 	{
 		ForgetChangedPaths(*Commands);

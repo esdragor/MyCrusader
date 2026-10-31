@@ -6682,9 +6682,10 @@ function Get-AITestPort {
 # The 8 slots of a version 2 match config on Plain: the states given, slots 0 and 1 named when names are given.
 # C0.5: with -Size (a map other than the test map Plain, whose files are sized) the version 3 form: the map's file of that size,
 # fixed places (slot i at place i).
-function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "") {
+function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "", [string[]] $Levels = @()) {
     $Slots = for ($i = 0; $i -lt 8; $i++) {
         $Name = if ($i -lt $Names.Count) { ", `"playerName`": `"$($Names[$i])`"" } else { "" }
+        if ($i -lt $Levels.Count -and $Levels[$i]) { $Name += ", `"difficulty`": `"$($Levels[$i])`"" }
         "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Name }"
     }
     $Head = if ($Size) { "`"version`": 3, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`", `"mapSize`": `"$Size`", `"bDrawPlaces`": false" } else { "`"version`": 2, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`"" }
@@ -6696,7 +6697,8 @@ if ($Parts -contains "aiserver") {
     $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
     $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
     Remove-Item $AIServerLog -ErrorAction SilentlyContinue
-    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    # IA4 (D579): the AI slot is Easy in the configuration; the brain must say so (the level read through the whole chain).
+    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("", "Easy")
     @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
         Set-Content -Encoding utf8 $AIServerSequence
     # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
@@ -6729,6 +6731,7 @@ if ($Parts -contains "aiserver") {
     $Busy = 0
     if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
     $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
+    $Checks["slot 1's level read from the configuration: Easy"] = [bool](Find-AILine "AI slot 1 step \d+: level Easy")
     $AllOk = (Report "aiserver" $Checks) -and $AllOk
 }
 
@@ -6752,7 +6755,9 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
         $DuelMap = "/Game/Maps/${MapKey}_Small"
         Write-AIMatchConfig $Config $DuelStates @() $MapKey "Small"
     }
-    $Lines = @("hol.Simulation.StepHashes 1")
+    # The navmesh's tiles are rebuilt on worker threads: without this wait the step that sees a new building's tiles rebuilt
+    # (and the walkers given a new path then) depends on the wall clock, and the two runs part (found 2026-10-31).
+    $Lines = @("hol.Simulation.SyncNavBuild 1", "hol.Simulation.StepHashes 1")
     for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence
