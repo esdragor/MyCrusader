@@ -55,11 +55,11 @@ void Test_PeasantStrikesOnlyAWonDuel(FUnitTest& T)
 	Summary.Enemies.Add(StrikeUnit(50, n"Spearman", Full, FVector(600, 0, 0), 0));
 	T.AssertEquals(-1, HOLAIArmy::StrikeTargetFor(Summary, Data, Peasant), "a sound Spearman: never");
 
-	Summary.Enemies.Add(StrikeUnit(51, n"Spearman", 5, FVector(1000, 0, 0), 0));
-	T.AssertEquals(51, HOLAIArmy::StrikeTargetFor(Summary, Data, Peasant), "a Spearman at 5 health: finished off");
+	Summary.Enemies.Add(StrikeUnit(51, n"Spearman", 5, FVector(1400, 0, 0), 0));
+	T.AssertEquals(51, HOLAIArmy::StrikeTargetFor(Summary, Data, Peasant), "a Spearman at 5 health, alone (the sound one is 800 cm from it): finished off");
 
-	Summary.Enemies.Add(StrikeUnit(52, n"Spearman", 3, FVector(800, 0, 0), 0));
-	T.AssertEquals(52, HOLAIArmy::StrikeTargetFor(Summary, Data, Peasant), "two weak ones: the nearest");
+	Summary.Enemies.Add(StrikeUnit(52, n"Spearman", 3, FVector(1250, 0, 0), 0));
+	T.AssertEquals(52, HOLAIArmy::StrikeTargetFor(Summary, Data, Peasant), "two weak ones side by side: the nearest");
 
 	FHOLAISummary Far;
 	Far.Peasants.Add(Peasant);
@@ -70,6 +70,53 @@ void Test_PeasantStrikesOnlyAWonDuel(FUnitTest& T)
 	Workers.Peasants.Add(Peasant);
 	Workers.Enemies.Add(StrikeUnit(54, n"Peasant", 5, FVector(600, 0, 0), 0));
 	T.AssertEquals(-1, HOLAIArmy::StrikeTargetFor(Workers, Data, Peasant), "an enemy Peasant is no soldier");
+}
+
+// D584 (answer B): the wounded is finished off only when isolated; a sound soldier within StrikeIsolation of it forbids the strike.
+void Test_PeasantStrikesOnlyAnIsolatedWounded(FUnitTest& T)
+{
+	const FHOLAIArmyData Data = StrikeData();
+	T.AssertEquals(500.f, Data.StrikeIsolation, "about 5 m by default");
+	const int Full = StrikeHealthOf(Data, n"Spearman");
+	const FHOLAIUnit Peasant = StrikeUnit(10, n"Peasant", Data.PeasantFigures.Health, FVector(0, 0, 0), 1);
+
+	// Isolated: a wounded Spearman, the only soldier around.
+	FHOLAISummary Alone;
+	Alone.Peasants.Add(Peasant);
+	Alone.Enemies.Add(StrikeUnit(51, n"Spearman", 5, FVector(1000, 0, 0), 0));
+	T.AssertEquals(51, HOLAIArmy::StrikeTargetFor(Alone, Data, Peasant), "a wounded Spearman alone: finished off");
+
+	// In the middle of three sound soldiers (all within 500 cm of it): not struck.
+	FHOLAISummary Crowd = Alone;
+	Crowd.Enemies.Add(StrikeUnit(60, n"Spearman", Full, FVector(1200, 0, 0), 0));
+	Crowd.Enemies.Add(StrikeUnit(61, n"Spearman", Full, FVector(1000, 300, 0), 0));
+	Crowd.Enemies.Add(StrikeUnit(62, n"Spearman", Full, FVector(800, -200, 0), 0));
+	T.AssertEquals(-1, HOLAIArmy::StrikeTargetFor(Crowd, Data, Peasant), "a wounded Spearman among three sound ones: not struck");
+
+	// A single sound one close enough is enough.
+	FHOLAISummary One = Alone;
+	One.Enemies.Add(StrikeUnit(60, n"Spearman", Full, FVector(1450, 0, 0), 0));
+	T.AssertEquals(-1, HOLAIArmy::StrikeTargetFor(One, Data, Peasant), "one sound Spearman at 450 cm: not struck");
+
+	// A sound one farther than the isolation radius does not count (550 cm from the wounded).
+	FHOLAISummary Far = Alone;
+	Far.Enemies.Add(StrikeUnit(60, n"Spearman", Full, FVector(1550, 0, 0), 0));
+	T.AssertEquals(51, HOLAIArmy::StrikeTargetFor(Far, Data, Peasant), "a sound Spearman at 550 cm: the wounded is still isolated");
+
+	// Another wounded one beside it is no escort (it could be finished too).
+	FHOLAISummary Pair = Alone;
+	Pair.Enemies.Add(StrikeUnit(61, n"Spearman", 4, FVector(1100, 100, 0), 0));
+	T.AssertTrue(HOLAIArmy::StrikeTargetFor(Pair, Data, Peasant) >= 0, "two wounded side by side: one is finished off");
+
+	// An enemy Peasant beside it is no soldier either.
+	FHOLAISummary Worker = Alone;
+	Worker.Enemies.Add(StrikeUnit(62, n"Peasant", Data.PeasantFigures.Health, FVector(1100, 0, 0), 0));
+	T.AssertEquals(51, HOLAIArmy::StrikeTargetFor(Worker, Data, Peasant), "an enemy Peasant is no escort");
+
+	// The radius is a setting.
+	FHOLAIArmyData Wide = Data;
+	Wide.StrikeIsolation = 700.f;
+	T.AssertEquals(-1, HOLAIArmy::StrikeTargetFor(Far, Wide, Peasant), "with 700 cm, the Spearman at 550 cm counts");
 }
 
 // The orders: one per Peasant that can win, not again at once, and the Peasant that strikes does not run; the others run.

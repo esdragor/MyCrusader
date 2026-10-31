@@ -40,6 +40,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The last "forum attacked" situation written in the journal, per slot (IA4, D579).
 	TMap<int, FHOLAIForumLogged> ForumLogged;
 
+	// The slots whose level was written in the journal (once, at the first army thought).
+	TMap<int, bool> LevelLogged;
+
 	// The rally each slot's military buildings were last given.
 	TMap<int, FHOLAIRallied> Rallied;
 
@@ -261,12 +264,6 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Rallied.Add(PlayerIndex, Memory);
 	}
 
-	// The slot's level (D422). The brain cannot read the slot's config yet (a C++ read is next): every slot is Normal, as the menu and the lobby give.
-	EHOLAIDifficulty LevelOf(int PlayerIndex)
-	{
-		return EHOLAIDifficulty::Normal;
-	}
-
 	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
 	// within the defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent
 	// again every few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight
@@ -286,7 +283,13 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const FHOLAIThreat Threat = HOLAIArmy::Threat(Rest, Data.Army);
 		const bool bWas = State.bDefending;
 		// IA4 (D579): the forum attacked is weighed by the level; every situation is written down (lives, ratio, decision); Easy sends the army whatever the ratio.
-		const EHOLAIDifficulty Level = LevelOf(PlayerIndex);
+		// The slot's level (D422) is read from its config into the summary (C++ Read, D579).
+		const EHOLAIDifficulty Level = Summary.Level;
+		if (!LevelLogged.Contains(PlayerIndex))
+		{
+			LevelLogged.Add(PlayerIndex, true);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: level {HOLAIForum::LevelName(Level)}");
+		}
 		const FHOLAIForumSituation Situation = HOLAIForum::Judge(Rest, Data.Army, Threat, Level);
 		FHOLAIForumLogged Logged;
 		ForumLogged.Find(PlayerIndex, Logged);
@@ -305,7 +308,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The wave: launched, kept on its way, called back or over.
 		FHOLAIForumMemory Rebuild;
 		Rebuilds.Find(PlayerIndex, Rebuild);
-		const bool bRecall = Whole.bThreatened && (Whole.Count >= Data.Army.AttackRecallCount || HOLAIForum::Emergency(Summary));
+		const bool bRecall = HOLAIForum::WaveRecalled(Summary, Data.Army, Whole, Situation);
 		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
 		if (Wave_.bLaunched)
 		{
