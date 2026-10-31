@@ -1,4 +1,4 @@
-// The market's exchange rule (MarketInProgress.md M1, GDD 5.5, D70, D84): pure functions of a settings struct and a book of
+﻿// The market's exchange rule (MarketInProgress.md M1, GDD 5.5, D70, D84): pure functions of a settings struct and a book of
 // prices, tested alone in script (HOLMarketRules_Test.as). Whole numbers only, so that the server and the clients agree
 // to the last gold piece. Resources by index as everywhere in script: 0 food, 1 wood, 2 stone, 3 gold (gold is the
 // money: it has no price). The book is the game's single common price list (D84, one for every player, allies and
@@ -59,8 +59,12 @@ namespace HOLMarket
 	// The goods that can be traded: food, wood, stone (index 0 to 2); gold is what they trade against.
 	const int TradableResources = 3;
 
-	// The values of MK-Q1: option 0 = A (AoE2 style: tax 30 %, 3 points a lot, 1 point back every 10 s), 1 = B (gentler:
-	// tax 20 %, 2 points a lot, 1 point back every 5 s). Anything else: A.
+	// The preset nobody asked for by name: C (MK-Q1 = C, D582).
+	const int DefaultOption = 2;
+
+	// The values of MK-Q1: option 0 = A (AoE2 style: every base price 100, tax 30 %, 3 points a lot, 1 point back every 10 s),
+	// 1 = B (gentler: base 100, tax 20 %, 2 points a lot, 1 point back every 5 s), 2 = C (the user's answer, D582: base
+	// prices food 80, wood 80, stone 120, gold 100, then as A). Anything else: C, the default.
 	FHOLMarketSettings Preset(int Option)
 	{
 		FHOLMarketSettings Settings;
@@ -82,10 +86,21 @@ namespace HOLMarket
 			Settings.FeePercent = 30;
 			Settings.Step = 3;
 			Settings.RecoverEverySeconds = 10;
+			if (Option != 0)
+			{
+				Settings.BasePrices[0] = 80;
+				Settings.BasePrices[1] = 80;
+				Settings.BasePrices[2] = 120;
+			}
 		}
 		return Settings;
 	}
 
+	// The settings the match plays with.
+	FHOLMarketSettings DefaultSettings()
+	{
+		return Preset(DefaultOption);
+	}
 	// A book at rest: every price at its base.
 	FHOLMarketBook NewBook(const FHOLMarketSettings& Settings)
 	{

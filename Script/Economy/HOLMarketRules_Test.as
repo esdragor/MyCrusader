@@ -1,4 +1,4 @@
-// The market's exchange rule, alone (MarketInProgress.md M1, GDD 5.5, D70, D84): books and stocks built from the preset
+﻿// The market's exchange rule, alone (MarketInProgress.md M1, GDD 5.5, D70, D84): books and stocks built from the preset
 // (never numbers typed in the expectations when the preset says them), HOLMarket::Sell / Buy / Recover asked.
 // Resources by index as everywhere in script: 0 food, 1 wood, 2 stone, 3 gold.
 
@@ -7,10 +7,10 @@ const int MarketWood = 1;
 const int MarketStone = 2;
 const int MarketGold = 3;
 
-// The default preset (option A of MK-Q1) and its fresh book.
+// The default preset (C of MK-Q1, D582).
 FHOLMarketSettings MarketSettings()
 {
-	return HOLMarket::Preset(0);
+	return HOLMarket::DefaultSettings();
 }
 
 // Every price of the book at its base; the preset's own numbers are read, not retyped.
@@ -196,4 +196,71 @@ void Test_MarketPresets(FUnitTest& T)
 		T.AssertTrue(A.BasePrices[Resource] >= A.MinPrice && A.BasePrices[Resource] <= A.MaxPrice, f"A: base {Resource} within the bounds");
 		T.AssertTrue(B.BasePrices[Resource] >= B.MinPrice && B.BasePrices[Resource] <= B.MaxPrice, f"B: base {Resource} within the bounds");
 	}
+}
+
+// MK-Q1 = C (D582): base prices 80 food, 80 wood, 120 stone, 100 gold; the rest as A (tax 30 %, 3 points a lot, 1 point
+// back every 10 s, bounds 20 to 300). The numbers are the user's answer, so they are typed here on purpose.
+void Test_MarketPresetCNumbers(FUnitTest& T)
+{
+	FHOLMarketSettings C = HOLMarket::Preset(2);
+	T.AssertEquals(4, C.BasePrices.Num(), "C: one base price per resource");
+	T.AssertEquals(80, C.BasePrices[MarketFood], "C: food base");
+	T.AssertEquals(80, C.BasePrices[MarketWood], "C: wood base");
+	T.AssertEquals(120, C.BasePrices[MarketStone], "C: stone base");
+	T.AssertEquals(100, C.BasePrices[MarketGold], "C: gold base");
+	T.AssertEquals(30, C.FeePercent, "C: tax 30 %");
+	T.AssertEquals(3, C.Step, "C: 3 points a lot");
+	T.AssertEquals(1, C.RecoverPoints, "C: 1 point back");
+	T.AssertEquals(10, C.RecoverEverySeconds, "C: every 10 s");
+	T.AssertEquals(20, C.MinPrice, "C: floor 20");
+	T.AssertEquals(300, C.MaxPrice, "C: cap 300");
+}
+
+// C is the default: an option nobody names (and the named default) gives C; A and B stay reachable by 0 and 1.
+void Test_MarketDefaultIsC(FUnitTest& T)
+{
+	FHOLMarketSettings C = HOLMarket::Preset(2);
+	FHOLMarketSettings Unnamed = HOLMarket::Preset(-1);
+	FHOLMarketSettings Far = HOLMarket::Preset(99);
+	T.AssertEquals(80, Unnamed.BasePrices[MarketFood], "unnamed option: food at 80");
+	T.AssertEquals(120, Far.BasePrices[MarketStone], "far option: stone at 120");
+	for (int Resource = 0; Resource < 4; Resource++)
+	{
+		T.AssertEquals(C.BasePrices[Resource], Unnamed.BasePrices[Resource], f"unnamed option: base {Resource} as C");
+		T.AssertEquals(C.BasePrices[Resource], Far.BasePrices[Resource], f"far option: base {Resource} as C");
+	}
+	T.AssertEquals(100, HOLMarket::Preset(0).BasePrices[MarketFood], "A is still option 0 (food 100)");
+	T.AssertEquals(100, HOLMarket::Preset(1).BasePrices[MarketStone], "B is still option 1 (stone 100)");
+}
+
+// A round trip with C, by the figures: 1 lot of wood sold at 80 pays 56 (80 minus 30 %), the price falls to 77, buying a lot
+// back costs 101 (77 plus 30 %, rounded up) and the price returns to 80; stone, 1 lot sold at 120 pays 84, bought back at 117 costs 153.
+void Test_MarketRoundTripC(FUnitTest& T)
+{
+	FHOLMarketSettings C = HOLMarket::Preset(2);
+	FHOLMarketBook Book = HOLMarket::NewBook(C);
+	T.AssertEquals(80, Book.Prices[MarketWood], "C: fresh book, wood at 80");
+	FHOLMarketTrade Sold = HOLMarket::Sell(C, Book, MarketWood, 1, 100, C.FeePercent);
+	T.AssertEquals(56, Sold.Gold, "C: a lot of wood at 80 pays 56");
+	T.AssertEquals(77, Sold.Book.Prices[MarketWood], "C: wood falls to 77");
+	FHOLMarketTrade Bought = HOLMarket::Buy(C, Sold.Book, MarketWood, 1, 1000, C.FeePercent);
+	T.AssertEquals(101, Bought.Gold, "C: a lot of wood at 77 costs 101");
+	T.AssertEquals(80, Bought.Book.Prices[MarketWood], "C: wood back at 80");
+
+	FHOLMarketTrade StoneSold = HOLMarket::Sell(C, Book, MarketStone, 1, 100, C.FeePercent);
+	T.AssertEquals(84, StoneSold.Gold, "C: a lot of stone at 120 pays 84");
+	FHOLMarketTrade StoneBought = HOLMarket::Buy(C, StoneSold.Book, MarketStone, 1, 1000, C.FeePercent);
+	T.AssertEquals(153, StoneBought.Gold, "C: a lot of stone at 117 costs 153");
+}
+
+// Recovery with C: wood sold down to 71 comes back one point per interval, to 80 after 9 intervals and no further.
+void Test_MarketRecoverC(FUnitTest& T)
+{
+	FHOLMarketSettings C = HOLMarket::Preset(2);
+	FHOLMarketBook Book = HOLMarket::NewBook(C);
+	FHOLMarketTrade Sold = HOLMarket::Sell(C, Book, MarketWood, 3, 300, C.FeePercent);
+	T.AssertEquals(71, Sold.Book.Prices[MarketWood], "C: three lots sold, wood at 71");
+	T.AssertEquals(75, HOLMarket::Recover(C, Sold.Book, 4).Prices[MarketWood], "C: 4 intervals, wood at 75");
+	T.AssertEquals(80, HOLMarket::Recover(C, Sold.Book, 9).Prices[MarketWood], "C: 9 intervals, wood back at 80");
+	T.AssertEquals(80, HOLMarket::Recover(C, Sold.Book, 50).Prices[MarketWood], "C: no further than 80");
 }
