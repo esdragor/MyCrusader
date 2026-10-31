@@ -73,6 +73,11 @@ private:
 	/** V3.3 (V3-Q5): the hold's ring around each main forum down (HOLForumRules::GetRing), from the replicated state. */
 	void UpdateForumRings();
 	/**
+	 * R5: the ring of each neutral relay (AHOLGameState::GetRelayViews, replicated): the zone's outline thin in its owner's colour (dark while nobody
+	 * owns it), the capture's arc thick from the top, clockwise, in the taker's colour. To everyone, at the ground's height.
+	 */
+	void UpdateRelayRings();
+	/**
 	 * J8c.4 (J8c-Q4): the player's own auras on the ground, to him alone: a light golden circle of 12 m around his living
 	 * hero and around his standing banner; while the banner is aimed, the 16 m of its reach around the hero and its aura
 	 * under the cursor (golden within reach, red beyond). Circles of strips, each at the ground's height (hills).
@@ -87,6 +92,11 @@ private:
 	 */
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UInstancedStaticMeshComponent> ForumRings;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> RelayRings;
+	/** "1 | #0 (x, y) r1200 owner 0 taker -1 fill 0 ": what UpdateRelayRings drew last (the views it read), "0" without relay. */
+	FString RelayRingsDescription = TEXT("0");
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UInstancedStaticMeshComponent> Rings;
@@ -201,4 +211,6 @@ private:
 public:
 	/** The player's aura circles drawn (hol.Select.Report's "Aura rings:" line). */
 	const FString& DescribeAuraRings() const { return AuraRingsDescription; }
+	/** The relay rings drawn (hol.Select.Report's "Relay rings:" line). */
+	const FString& DescribeRelayRings() const { return RelayRingsDescription; }
 };

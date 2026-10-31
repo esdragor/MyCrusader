@@ -1,0 +1,88 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Simulation/HOLRelayRules.h"
+
+FHOLRelayState HOLRelay::Step(const FHOLRelayState& State, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot, const int32 HoldSteps,
+	const int32 DecaySteps)
+{
+	FHOLRelayState Next = State;
+	const int32 Slots = FMath::Min(UnitsBySlot.Num(), TeamBySlot.Num());
+	const int32 OwnerTeam = (State.Owner >= 0 && State.Owner < TeamBySlot.Num()) ? TeamBySlot[State.Owner] : -1;
+	bool bDefenders = false;
+	int32 AdverseTeam = -1;
+	int32 AdverseTeams = 0;
+	int32 Taker = INDEX_NONE;
+	int32 TakerUnits = 0;
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		if (UnitsBySlot[Slot] <= 0)
+		{
+			continue;
+		}
+		const int32 Team = TeamBySlot[Slot];
+		if (State.Owner >= 0 && Team == OwnerTeam)
+		{
+			bDefenders = true;
+			continue;
+		}
+		if (Team != AdverseTeam)
+		{
+			AdverseTeam = Team;
+			++AdverseTeams;
+		}
+		// The most units, the lowest slot on a tie.
+		if (UnitsBySlot[Slot] > TakerUnits)
+		{
+			Taker = Slot;
+			TakerUnits = UnitsBySlot[Slot];
+		}
+	}
+	if (AdverseTeams == 0)
+	{
+		Next.Held = FMath::Max(0, State.Held - DecaySteps);
+		if (Next.Held == 0)
+		{
+			Next.Taker = INDEX_NONE;
+		}
+		return Next;
+	}
+	if (bDefenders || AdverseTeams > 1)
+	{
+		return Next;
+	}
+	Next.Taker = Taker;
+	Next.Held = State.Held + 1;
+	if (Next.Held >= HoldSteps)
+	{
+		Next.Owner = Taker;
+		Next.Taker = INDEX_NONE;
+		Next.Held = 0;
+	}
+	return Next;
+}
+
+int32 HOLRelay::TerritoryXP(int32& Carry, const int32 Relays, const int32 Centres, const int32 StepsPerSecond)
+{
+	const int32 StepsPerMinute = 60 * FMath::Max(1, StepsPerSecond);
+	Carry += FMath::Max(0, Relays) * RelayXPPerMinute + FMath::Max(0, Centres) * CentreXPPerMinute;
+	const int32 Award = Carry / StepsPerMinute;
+	Carry -= Award * StepsPerMinute;
+	return Award;
+}
+
+int32 HOLRelay::FillPercent(const FHOLRelayState& State, const int32 HoldSteps)
+{
+	return HoldSteps > 0 ? FMath::Clamp(static_cast<int32>(static_cast<int64>(State.Held) * 100 / HoldSteps), 0, 99) : 0;
+}
+
+FHOLRelayView HOLRelay::MakeView(const FVector2D& Location, const float Radius, const FHOLRelayState& State, const int32 HoldSteps)
+{
+	FHOLRelayView View;
+	View.X = static_cast<float>(Location.X);
+	View.Y = static_cast<float>(Location.Y);
+	View.Radius = Radius;
+	View.Owner = static_cast<int8>(State.Owner);
+	View.Taker = static_cast<int8>(State.Taker);
+	View.FillPercent = static_cast<uint8>(FillPercent(State, HoldSteps));
+	return View;
+}

@@ -1,0 +1,117 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Subsystems/WorldSubsystem.h"
+#include "HOLDuelSubsystem.generated.h"
+
+/**
+ * The hero duel's book where the simulation runs (DuelInProgress.md D5, GDD 10.2, D18; D483: the rules live in script).
+ * The C++ part is the thinnest bridge: it gives the step, the heroes' health and the cached "a duel is on", and the
+ * combat processor asks it, once a step, which (attacker, victim) pairs of heroes may touch each other. The rules (the
+ * book, who may hit whom, when a duel ends) are in Script/Duel (HOLDuelRules.as, HOLDuelBook.as). Abstract: only a
+ * script subclass is born, in each game or PIE world (as UHOLHeroReturnSubsystem). A client never decides.
+ */
+UCLASS(Abstract)
+class HEROESOFLIBERTY_API UHOLDuelSubsystem : public UWorldSubsystem
+{
+	GENERATED_BODY()
+
+public:
+	/** The world's duel book (its script subclass), or null (no script compiled, or no world). */
+	static UHOLDuelSubsystem* Find(const UWorld* World);
+
+	/** Whether a duel is on (Active), cached at the end of every change: the combat processor reads it each step. */
+	bool IsDuelOn() const { return bDuelOn; }
+
+	/**
+	 * Whether a blow of the hero AttackerHeroSlot lands on the hero VictimHeroSlot (-1: not a hero: a unit, a tower, a power,
+	 * an event), the script's HOLDuel::BookCanHit. True without a script or while no duel is on.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	bool CanHitNow(int32 AttackerHeroSlot, int32 VictimHeroSlot);
+
+	/**
+	 * The development door and the later command's end (D4): a challenge of Challenger at Target, accepted at once, the
+	 * conditions of the challenge not checked. Whether the duel began (false on a client, or when one hero is in a duel already).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	bool BeginDuelNow(int32 Challenger, int32 Target);
+
+	/** The end of simulation step Step (UHOLHeroSubsystem calls it, after the sheets): the duels advance with the heroes' health. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	bool TickNow(int32 Step);
+
+	/**
+	 * D6: the slot's posture in its duel (EHOLDuelPosture: 0 offensive, 1 balanced, 2 defensive), changed at once (D118).
+	 * Whether it was taken (false on a client, or when the slot is in no duel on).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	bool SetPostureNow(int32 Slot, int32 Posture);
+
+	/** D6, the combat processor: the percent of its damage the slot's hero deals in his duel (100 outside one, or without a script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	int32 GetDamagePercentNow(int32 Slot);
+
+	/** D120: the slot's adversary in the duel that is on; -1 outside one (or without a script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	int32 GetAdversaryNow(int32 Slot);
+
+	/** D120: the circle of the slot's duel, X and Y its centre and Z its radius (cm); Z -1 when the slot is in no duel on. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	FVector GetArenaNow(int32 Slot);
+
+	/** Duels ended so far (a test reads it). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Duel")
+	int32 GetNumEnded() const { return NumEnded; }
+
+	virtual bool ShouldCreateSubsystem(UObject* Outer) const override;
+
+protected:
+	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
+
+	/** The book has a duel on, overridden in script. The C++ base has none. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool AnyDuelOn();
+	virtual bool AnyDuelOn_Implementation() { return false; }
+
+	/** The book's HOLDuel::BookCanHit, overridden in script. The C++ base lets every blow land. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool CanHit(int32 AttackerHeroSlot, int32 VictimHeroSlot);
+	virtual bool CanHit_Implementation(int32 AttackerHeroSlot, int32 VictimHeroSlot) { return true; }
+
+	/** A duel of Challenger and Target begun and accepted, the two heroes at (AX, AY) and (BX, BY) cm (the circle's centre is the middle), overridden in script. The C++ base begins none. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool BeginDuel(int32 Challenger, int32 Target, int32 AX, int32 AY, int32 BX, int32 BY);
+	virtual bool BeginDuel_Implementation(int32 Challenger, int32 Target, int32 AX, int32 AY, int32 BX, int32 BY) { return false; }
+
+	/** The slot's adversary in its duel on, overridden in script (-1 outside one). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	int32 Adversary(int32 Slot);
+	virtual int32 Adversary_Implementation(int32 Slot) { return -1; }
+
+	/** The circle of the slot's duel on (X, Y centre, Z radius), overridden in script; Z -1 outside one. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	FVector ArenaOf(int32 Slot);
+	virtual FVector ArenaOf_Implementation(int32 Slot) { return FVector(0.0, 0.0, -1.0); }
+
+	/** The slot's posture in its duel, overridden in script. The C++ base takes none. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool SetPosture(int32 Slot, int32 Posture);
+	virtual bool SetPosture_Implementation(int32 Slot, int32 Posture) { return false; }
+
+	/** The percent of its damage the slot's hero deals in his duel, overridden in script (100 outside one). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	int32 DamagePercent(int32 Slot);
+	virtual int32 DamagePercent_Implementation(int32 Slot) { return 100; }
+
+	/** DeltaMs go by, Health the health of every slot's hero (0 dead or none); returns the number of duels that ended. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	int32 AdvanceDuels(int32 DeltaMs, const TArray<int32>& Health);
+	virtual int32 AdvanceDuels_Implementation(int32 DeltaMs, const TArray<int32>& Health) { return 0; }
+
+private:
+	bool bDuelOn = false;
+	int32 NumEnded = 0;
+};

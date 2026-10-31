@@ -15,6 +15,7 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLHeroReturnSubsystem.h"
@@ -122,6 +123,26 @@ namespace UE::HeroesOfLiberty::Hero
 			const bool bPlanted = Heroes && Heroes->PlantBanner(Slot, Location);
 			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.Banner: slot %d at (%.0f, %.0f) %s"), Slot, Location.X, Location.Y, bPlanted ? TEXT("planted")
 				: TEXT("refused (client, <Slot> <X> <Y>, no living hero, below level 4, not ready, or farther than 16 m)"));
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CommandPickTalent(TEXT("hol.Hero.PickTalent"),
+		TEXT("hol.Hero.PickTalent <Family> [Slot=0]: the slot's hero takes the next row's talent of Family (0 Guardian, 1 Captain, 2 Champion) at once, server or solo (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLHeroSubsystem* Heroes = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+			const int32 Family = Args.IsEmpty() ? INDEX_NONE : FCString::Atoi(*Args[0]);
+			const int32 Slot = Args.Num() >= 2 ? FCString::Atoi(*Args[1]) : 0;
+			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.PickTalent: slot %d family %d %s"), Slot, Family, Heroes && Heroes->PickTalent(Slot, Family) ? TEXT("taken")
+				: TEXT("refused (client, <Family> [Slot], no hero, no point in reserve, no row left)"));
+		}));
+
+	FAutoConsoleCommandWithWorldAndArgs CommandResetTalents(TEXT("hol.Hero.ResetTalents"),
+		TEXT("hol.Hero.ResetTalents [Slot=0]: the slot's hero gives his talents back, server or solo (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLHeroSubsystem* Heroes = World && World->GetNetMode() != NM_Client ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+			const int32 Slot = Args.IsEmpty() ? 0 : FCString::Atoi(*Args[0]);
+			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.ResetTalents: slot %d %s"), Slot, Heroes && Heroes->ResetTalents(Slot) ? TEXT("reset") : TEXT("refused (client or no such slot)"));
 		}));
 
 	FAutoConsoleCommandWithWorldAndArgs CommandResetAbilities(TEXT("hol.Hero.ResetAbilities"),
@@ -264,6 +285,11 @@ void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 	{
 		Return->DecideNow(static_cast<int32>(StepIndex));
 	}
+	// D5: the duels advance with the heroes' health of this step (script book), where the simulation runs.
+	if (UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(GetWorld()))
+	{
+		Duels->TickNow(static_cast<int32>(StepIndex));
+	}
 }
 
 const FHOLHeroSheets& UHOLHeroSubsystem::GetSheets(const int32 Slot) const
@@ -358,6 +384,20 @@ bool UHOLHeroSubsystem::PickTalent(const int32 Slot, const int32 Family)
 	Sheet.Private.TalentPicks.Add(static_cast<uint8>(Family));
 	Sheet.Public.TalentSeals = HOLHeroTalent::FamiliesAtLeast(Sheet.Private.TalentPicks, HOLHeroTalent::SealThreshold);
 	Sheet.Public.TalentKeys = HOLHeroTalent::FamiliesAtLeast(Sheet.Private.TalentPicks, HOLHeroTalent::KeyThreshold);
+	WriteCopies(Slot);
+	return true;
+}
+
+bool UHOLHeroSubsystem::ResetTalents(const int32 Slot)
+{
+	if (!Sheets.IsValidIndex(Slot) || !GetWorld() || GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	FHOLHeroSheets& Sheet = Sheets[Slot];
+	Sheet.Private.TalentPicks.Reset();
+	Sheet.Public.TalentSeals = 0;
+	Sheet.Public.TalentKeys = 0;
 	WriteCopies(Slot);
 	return true;
 }

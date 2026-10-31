@@ -166,6 +166,8 @@ protected:
 	int32 RangedAttackPercent[FHOLMatchConfig::MaxSlots] = {};
 	/** T6: the percent the technologies of Attacker's player add to its attack, by the attack's type. */
 	int32 GetTechnologyAttackPercent(const FFighter& Attacker) const;
+	/** D581: one bit per slot whose hero took Pas de l'Aube (the formation under the cry advances at reduced speed). */
+	uint32 DawnStepOwners = 0;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
 	/**
 	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry

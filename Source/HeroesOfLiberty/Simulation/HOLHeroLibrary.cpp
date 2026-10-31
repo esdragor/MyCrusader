@@ -175,6 +175,11 @@ bool UHOLHeroLibrary::CanPickTalent(const int32 Level, const int32 NumPicks, con
 	return HOLHeroTalent::CanPick(Level, NumPicks, Family);
 }
 
+bool UHOLHeroLibrary::TalentHasEffect(const int32 Row, const int32 Family)
+{
+	return HOLHeroTalent::HasEffect(Row, Family);
+}
+
 int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int32 Slot)
 {
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Cries;
