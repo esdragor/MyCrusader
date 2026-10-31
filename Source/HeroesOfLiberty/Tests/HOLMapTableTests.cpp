@@ -100,8 +100,10 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	 * M-Q10b (the user, 2026-10-30, after the Hinterland trial: "tighten the trees"): the trees of a pack are closer than they were (2.2 to 2.4 m
 	 * between trunks): the mean distance from a tree to its nearest tree is at most MeanTreeSpacing (1.6 to 1.74 m asked of the generator, 10 to 20 cm more
 	 * for the trees at the edge of a pack).
+	 * 2026-10-31 (the user, after the tree_spacing trial: "a forest is trees that touch, compact, a minimum of white"): the trunks (60 cm radius)
+	 * nearly touch: 1.25 to 1.35 m asked of the generator; the mean is 1.34 to 1.37 m on Plain and Hinterland, 1.50 to 1.55 m on the Steppe (its lone trees and clumps), at most 1.6 m.
 	 */
-	constexpr double MeanTreeSpacing = 200.0;
+	constexpr double MeanTreeSpacing = 160.0;
 
 	/** Whether Config/DefaultGame.ini carries this line (a commented line does not count). */
 	bool IsCooked(const TArray<FString>& IniLines, const FString& Line)

@@ -44,6 +44,7 @@ with a 15 m margin; the veins of one kind of one territory VEIN_SPREAD (60 m) ap
 slot at least, and the far veins farther than the 3rd nearest near vein of their type (the fairness).
 """
 import math
+import os
 
 import unreal
 
@@ -68,7 +69,7 @@ BASE_BERRIES = common.BERRY_ROWS * common.BERRY_COLUMNS
 # whose games are longer, 1.5 times that), and what a territory comes to: a margin above it. The gold and the stone are a VALUE budget in
 # a mix of sizes (M-Q9: common.MINERAL_MIX, 10 000 gold and 5 000 stone, Huge 15 000 / 7 500), exact, with no margin. Map.Table checks the
 # budget with the same numbers (HOLMapTableTests.cpp).
-BUDGET = {"default": (300, 15), "Huge": (360, 23)}  # M-Q10b (the user: "double the trees"): 300, it was 150; Huge 360 (225 doubled = 450 does not fit: the far layer of a Huge territory holds 23 packs at the least, 360 is the most it holds)
+BUDGET = {"default": (300, 15), "Huge": (int(os.environ.get("HOL_HUGE_TREES", "360")), 23)}  # M-Q10b (the user: "double the trees"): 300, it was 150; Huge 360 (225 doubled = 450 does not fit: the far layer of a Huge territory holds 23 packs at the least, 360 was the most it held at 1.6 m; at 1.25 m (2026-10-31) 450 fits: HOL_HUGE_TREES=450 makes it, QUESTION in Auto_Journey_Retours.md)
 TREES_MARGIN = 1.04
 BERRIES_MARGIN = 1.2
 NEAR_VEINS = 3  # of each resource in the near layer: the fairness reads the 3 nearest (their sizes: common.MINERAL_NEAR)

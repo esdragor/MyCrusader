@@ -665,10 +665,11 @@ def wood(centre, along_axis, side_axis, rows, columns, first_side):
 # ---- Natural-looking groves and patches (C1c). Plain keeps its grid wood above; a map that wants organic woods (the
 # Steppe) uses these. Everything is deterministic from integers: a small xorshift generator written here (no `random`, no
 # state shared with anything), so a map file made twice, on any Python, is the same file.
-GROVE_SPACING = 160.0  # cm: M-Q10b (the user: "tighten the trees"; it was 220): the closest two neighbouring trunks of a grove (60 cm radius) get: with a unit's 60 cm, a wall
-GROVE_SPACING_SLACK = 14.0  # the spacing asked of a candidate tree is GROVE_SPACING plus up to this much
-GROVE_NEVER = 130.0  # no two trees closer than this, whatever (trunks of 60 cm would overlap)
-GROVE_AREA = 29600.0  # cm2 a tree takes up in a blob (a dense random packing of trunks 1.6 to 1.75 m apart; it was 56 000 at 2.2 to 2.4 m)
+GROVE_SPACING = float(os.environ.get("HOL_GROVE_SPACING", "125"))  # cm: 2026-10-31 (the user, after the tree_spacing trial: "a forest is trees that touch, compact, a minimum of white"; it was 160, 220 before): the closest two neighbouring trunks of a grove (60 cm radius, so they touch at 120) get; HOL_GROVE_SPACING sets it for the variants
+GROVE_SPACING_SLACK = 10.0  # the spacing asked of a candidate tree is GROVE_SPACING plus up to this much
+GROVE_NEVER = 120.0  # no two trees closer than this, whatever (trunks of 60 cm touch at 120)
+GROVE_AREA = 1.09 * (GROVE_SPACING + GROVE_SPACING_SLACK / 3.0) ** 2  # cm2 a tree takes up in a blob (a dense random packing of trunks GROVE_SPACING apart: 29 600 at 1.6 to 1.74 m, 56 000 at 2.2 to 2.4 m)
+GROVE_GLADES = os.environ.get("HOL_GROVE_GLADES", "1") != "0"  # a grove of 12 or more has a glade or a 3 m path through it (the default); HOL_GROVE_GLADES=0 makes them solid blocks of trees (question in Auto_Journey_Retours.md, 2026-10-31)
 GLADE_RADIUS = (250.0, 380.0)
 PATH_HALF_WIDTH = 150.0  # a path: no trunk centre within this of its axis, so 3 m between the centres, 1.8 m between the trunks
 BERRY_MIN = 300.0  # cm between the centres of two bushes of 1.1 m radius: 80 cm between the edges, closed to a unit
@@ -793,7 +794,7 @@ def grove_attempt(rng, count, compact):
     # What is cut out of the blob (a glade, a path) is made up for with a bigger blob.
     glades, paths = [], []
     cut_area = 0.0
-    if not compact and count >= 12:
+    if not compact and count >= 12 and GROVE_GLADES:
         for _ in range(1 + (1 if count >= 16 and rng.chance(0.4) else 0)):
             if rng.chance(0.5):
                 glades.append((rng.range(0.0, 0.4), rng.range(0.0, 2 * math.pi), rng.range(*GLADE_RADIUS) * (0.8 if count < 16 else 1.0)))
