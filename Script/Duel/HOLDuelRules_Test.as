@@ -217,3 +217,135 @@ void Test_DuelOverStaysOver(FUnitTest& T)
 	T.AssertEquals(D.ElapsedMs, After.ElapsedMs, "the clock stops");
 	T.AssertTrue(After.End == EHOLDuelEnd::Won, "still won");
 }
+
+// ---- D2: the conditions of a challenge (GDD 10.1, 10.2, D16, D18, D80, D403) ----
+
+FHOLDuelHero DuelReadyHero()
+{
+	FHOLDuelHero H;
+	return H;
+}
+
+FHOLDuelPlace DuelFairPlace()
+{
+	FHOLDuelPlace P;
+	return P;
+}
+
+// Two heroes alive, free, enemies, near, in sight, away from every main forum: the challenge goes (empty reason).
+void Test_DuelChallengeAllowed(FUnitTest& T)
+{
+	T.AssertTrue(HOLDuel::CanChallenge(DuelReadyHero(), DuelReadyHero(), DuelFairPlace()).IsEmpty(), "allowed");
+}
+
+// Each condition alone refuses, with its own reason.
+void Test_DuelChallengeRefusals(FUnitTest& T)
+{
+	FHOLDuelHero Ok = DuelReadyHero();
+	FHOLDuelPlace Fair = DuelFairPlace();
+
+	FHOLDuelPlace Allies = Fair;
+	Allies.bEnemies = false;
+	T.AssertEquals("not_enemy", HOLDuel::CanChallenge(Ok, Ok, Allies), "only an adverse hero");
+
+	FHOLDuelHero Dead = Ok;
+	Dead.bAlive = false;
+	T.AssertEquals("challenger_unavailable", HOLDuel::CanChallenge(Dead, Ok, Fair), "dead challenger");
+	T.AssertEquals("target_unavailable", HOLDuel::CanChallenge(Ok, Dead, Fair), "dead target");
+
+	FHOLDuelHero Recovering = Ok;
+	Recovering.bRecovering = true;
+	T.AssertEquals("challenger_unavailable", HOLDuel::CanChallenge(Recovering, Ok, Fair), "challenger in recovery");
+	T.AssertEquals("target_unavailable", HOLDuel::CanChallenge(Ok, Recovering, Fair), "target in recovery");
+
+	FHOLDuelHero Tired = Ok;
+	Tired.ChallengeCooldownLeftMs = 1;
+	T.AssertEquals("cooldown", HOLDuel::CanChallenge(Tired, Ok, Fair), "challenge cooldown not over (D16)");
+	// The target's own cooldown does not matter: it only limits the challenges one makes.
+	T.AssertTrue(HOLDuel::CanChallenge(Ok, Tired, Fair).IsEmpty(), "the target's cooldown is not in the way");
+
+	FHOLDuelHero Busy = Ok;
+	Busy.bInDuel = true;
+	T.AssertEquals("challenger_in_duel", HOLDuel::CanChallenge(Busy, Ok, Fair), "challenger already in a duel");
+	T.AssertEquals("target_in_duel", HOLDuel::CanChallenge(Ok, Busy, Fair), "target already in a duel (no 2 against 1)");
+
+	FHOLDuelPlace Far = Fair;
+	Far.bNear = false;
+	T.AssertEquals("too_far", HOLDuel::CanChallenge(Ok, Ok, Far), "too far");
+
+	FHOLDuelPlace Hidden = Fair;
+	Hidden.bSeeEachOther = false;
+	T.AssertEquals("not_visible", HOLDuel::CanChallenge(Ok, Ok, Hidden), "not in sight of each other");
+
+	FHOLDuelPlace Forum = Fair;
+	Forum.bInMainForumRadius = true;
+	T.AssertEquals("forum_zone", HOLDuel::CanChallenge(Ok, Ok, Forum), "inside a main forum's radius (D403)");
+
+	FHOLDuelPlace Blocked = Fair;
+	Blocked.bBlockedByEffect = true;
+	T.AssertEquals("blocked", HOLDuel::CanChallenge(Ok, Ok, Blocked), "an effect forbids duels");
+}
+
+// A challenge spends the cooldown: with the effects of the pending duel, the challenger cannot challenge again until
+// it is over; this is what the match writes into FHOLDuelHero.ChallengeCooldownLeftMs.
+void Test_DuelCooldownBlocksTheNextChallenge(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuel Pending = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	FHOLDuelEffects E = HOLDuel::Effects(S, Pending);
+	FHOLDuelHero Alice = DuelReadyHero();
+	Alice.ChallengeCooldownLeftMs = E.ChallengeCooldownMs;
+	T.AssertEquals("cooldown", HOLDuel::CanChallenge(Alice, DuelReadyHero(), DuelFairPlace()), "cooldown spent by the challenge");
+	Alice.ChallengeCooldownLeftMs = Math::Max(0, Alice.ChallengeCooldownLeftMs - S.ChallengeCooldownMs);
+	T.AssertTrue(HOLDuel::CanChallenge(Alice, DuelReadyHero(), DuelFairPlace()).IsEmpty(), "challenge again once it is over");
+}
+
+// ---- D3: the protected duel (GDD 10.2, D18) ----
+
+// A pending challenge protects nobody; an active duel does; an over duel no longer.
+void Test_DuelInDuelOnlyWhenPendingOrActive(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuel Idle;
+	T.AssertFalse(HOLDuel::InDuel(Idle, DuelAlice), "idle: nobody");
+	FHOLDuel Pending = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	T.AssertTrue(HOLDuel::InDuel(Pending, DuelAlice), "pending: the challenger is committed (one duel at a time)");
+	T.AssertTrue(HOLDuel::InDuel(Pending, DuelBob), "pending: the target too");
+	T.AssertFalse(HOLDuel::InDuel(Pending, 2), "a third hero is not");
+	FHOLDuel Active = HOLDuel::Respond(S, Pending, true);
+	T.AssertTrue(HOLDuel::InDuel(Active, DuelBob), "active: yes");
+	FHOLDuel Over = HOLDuel::Respond(S, Pending, false);
+	T.AssertFalse(HOLDuel::InDuel(Over, DuelAlice), "over: no longer");
+}
+
+// Only the two duellists can hit each other; nothing else can touch them, and they can touch nothing else.
+// Attacker / victim are hero slots, -1 for what is not a hero (a unit, a tower, a power, a world event).
+void Test_DuelProtectedHits(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuel Active = DuelActive(S);
+	const int Third = 2;
+	T.AssertTrue(HOLDuel::CanHit(Active, DuelAlice, DuelBob), "challenger hits target");
+	T.AssertTrue(HOLDuel::CanHit(Active, DuelBob, DuelAlice), "target hits challenger");
+	T.AssertFalse(HOLDuel::CanHit(Active, -1, DuelBob), "a unit, tower, power or event cannot touch a duellist");
+	T.AssertFalse(HOLDuel::CanHit(Active, -1, DuelAlice), "same for the challenger");
+	T.AssertFalse(HOLDuel::CanHit(Active, Third, DuelBob), "a third hero cannot touch a duellist (no 2 against 1)");
+	T.AssertFalse(HOLDuel::CanHit(Active, DuelAlice, -1), "a duellist cannot hit a unit meanwhile");
+	T.AssertFalse(HOLDuel::CanHit(Active, DuelBob, Third), "nor a third hero");
+	T.AssertTrue(HOLDuel::CanHit(Active, Third, -1), "the battle goes on around: a third hero hits units");
+	T.AssertTrue(HOLDuel::CanHit(Active, -1, Third), "a unit hits a third hero");
+	T.AssertTrue(HOLDuel::CanHit(Active, Third, 3), "two other heroes fight on");
+}
+
+// Before the answer and after the end nothing is protected (the protection is the duel's, D18).
+void Test_DuelNoProtectionOutsideTheDuel(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuel Pending = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	T.AssertTrue(HOLDuel::CanHit(Pending, -1, DuelBob), "pending: the target can still be hit");
+	T.AssertTrue(HOLDuel::CanHit(Pending, DuelAlice, -1), "pending: the challenger can still fight");
+	FHOLDuel Over = HOLDuel::Respond(S, Pending, false);
+	T.AssertTrue(HOLDuel::CanHit(Over, -1, DuelBob), "over: hittable again");
+	FHOLDuel Idle;
+	T.AssertTrue(HOLDuel::CanHit(Idle, -1, DuelBob), "idle: hittable");
+}

@@ -250,3 +250,93 @@ namespace HOLDuel
 		return E;
 	}
 }
+
+// ---- D2: the conditions of a challenge (GDD 10.1, 10.2, D16, D80, D403) ----
+
+// What the rule needs to know about one hero; the match fills it in from the hero's state.
+struct FHOLDuelHero
+{
+	bool bAlive = true;
+
+	// Dead and waiting to come back, or any other recovery (10.1: a hero in recovery cannot challenge).
+	bool bRecovering = false;
+
+	// In a duel already, pending or active: see HOLDuel::InDuel.
+	bool bInDuel = false;
+
+	// The time left on the hero's own challenge cooldown (D16); it limits the challenges the hero MAKES, not the ones it receives.
+	int ChallengeCooldownLeftMs = 0;
+}
+
+// What the rule needs to know about the two heroes together; the match measures it (distance, sight, the main forums'
+// defence radius of every player, D403) and the rule decides.
+struct FHOLDuelPlace
+{
+	// The two heroes are on opposite sides: a duel is against an adverse hero.
+	bool bEnemies = true;
+
+	// Close enough (the radius of "short distance" is a match matter, not a rule's) and in sight of each other.
+	bool bNear = true;
+	bool bSeeEachOther = true;
+
+	// Inside the defence radius of the main forum of ANY player (D403), ruined or not; secondary centres do not count.
+	bool bInMainForumRadius = false;
+
+	// An ability or event forbids duels for the moment (10.1).
+	bool bBlockedByEffect = false;
+}
+
+namespace HOLDuel
+{
+	// "" when the challenge can be made, else the first reason it cannot: not_enemy, challenger_unavailable,
+	// target_unavailable, cooldown, challenger_in_duel, target_in_duel, too_far, not_visible, forum_zone, blocked.
+	FString CanChallenge(const FHOLDuelHero& Challenger, const FHOLDuelHero& Target, const FHOLDuelPlace& Place)
+	{
+		if (!Place.bEnemies)
+			return "not_enemy";
+		if (!Challenger.bAlive || Challenger.bRecovering)
+			return "challenger_unavailable";
+		if (!Target.bAlive || Target.bRecovering)
+			return "target_unavailable";
+		if (Challenger.ChallengeCooldownLeftMs > 0)
+			return "cooldown";
+		if (Challenger.bInDuel)
+			return "challenger_in_duel";
+		if (Target.bInDuel)
+			return "target_in_duel";
+		if (!Place.bNear)
+			return "too_far";
+		if (!Place.bSeeEachOther)
+			return "not_visible";
+		if (Place.bInMainForumRadius)
+			return "forum_zone";
+		if (Place.bBlockedByEffect)
+			return "blocked";
+		return "";
+	}
+
+	// ---- D3: the protected duel (GDD 10.2, D18) ----
+
+	// This hero is committed to the duel: its challenge waits for the answer, or the duel is on. A hero is in one duel at
+	// a time, and no third hero can step in (no 2 against 1).
+	bool InDuel(const FHOLDuel& Duel, int Slot)
+	{
+		if (Duel.Phase != EHOLDuelPhase::Pending && Duel.Phase != EHOLDuelPhase::Active)
+			return false;
+		return Slot == Duel.Challenger || Slot == Duel.Target;
+	}
+
+	// Whether a blow can land. Attacker and victim are HERO slots, -1 for anything that is not a hero (a unit, a tower, a
+	// power, a world event). While the duel is ON (Active, not before the answer) the two duellists can be touched by each
+	// other only, and touch nothing else; the battle around goes on for everybody else.
+	bool CanHit(const FHOLDuel& Duel, int AttackerHeroSlot, int VictimHeroSlot)
+	{
+		if (Duel.Phase != EHOLDuelPhase::Active)
+			return true;
+		const bool bAttackerFights = AttackerHeroSlot >= 0 && (AttackerHeroSlot == Duel.Challenger || AttackerHeroSlot == Duel.Target);
+		const bool bVictimFights = VictimHeroSlot >= 0 && (VictimHeroSlot == Duel.Challenger || VictimHeroSlot == Duel.Target);
+		if (!bAttackerFights && !bVictimFights)
+			return true;
+		return bAttackerFights && bVictimFights && AttackerHeroSlot != VictimHeroSlot;
+	}
+}
