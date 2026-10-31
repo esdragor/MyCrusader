@@ -349,3 +349,127 @@ void Test_DuelNoProtectionOutsideTheDuel(FUnitTest& T)
 	FHOLDuel Idle;
 	T.AssertTrue(HOLDuel::CanHit(Idle, -1, DuelBob), "idle: hittable");
 }
+// ---- D3b: the match's book of duels (several duels at once, one per hero, cooldowns, the ones that end) ----
+
+// Health of the four slots, all standing, as the match would hand it over.
+TArray<int> DuelHealths(int A, int B, int C, int D)
+{
+	TArray<int> H;
+	H.Add(A);
+	H.Add(B);
+	H.Add(C);
+	H.Add(D);
+	return H;
+}
+
+// Starting a duel through the book: the book holds the pending duel, the cooldown is spent, the two heroes are committed.
+void Test_DuelBookStartSpendsTheCooldown(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	T.AssertEquals(4, Book.CooldownLeftMs.Num(), "one cooldown per slot");
+	FString Reason = HOLDuel::Start(S, Book, 0, 1, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	T.AssertTrue(Reason.IsEmpty(), "started");
+	T.AssertEquals(1, Book.Duels.Num(), "one duel in the book");
+	T.AssertEquals(S.ChallengeCooldownMs, Book.CooldownLeftMs[0], "the challenger's cooldown is spent");
+	T.AssertEquals(0, Book.CooldownLeftMs[1], "the target's is not");
+	T.AssertTrue(HOLDuel::BookInDuel(Book, 0), "challenger committed");
+	T.AssertTrue(HOLDuel::BookInDuel(Book, 1), "target committed");
+	T.AssertFalse(HOLDuel::BookInDuel(Book, 2), "a third hero is free");
+}
+
+// The book fills the hero's duel state and cooldown itself: whatever the caller says, a committed hero or a hero in
+// cooldown is refused (the book is the one truth).
+void Test_DuelBookRefusesWhatItKnows(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	HOLDuel::Start(S, Book, 0, 1, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	T.AssertEquals("cooldown", HOLDuel::Start(S, Book, 0, 2, DuelReadyHero(), DuelReadyHero(), DuelFairPlace()), "same challenger again");
+	T.AssertEquals("target_in_duel", HOLDuel::Start(S, Book, 2, 1, DuelReadyHero(), DuelReadyHero(), DuelFairPlace()), "a third hero cannot challenge a duellist");
+	T.AssertEquals("challenger_in_duel", HOLDuel::Start(S, Book, 1, 2, DuelReadyHero(), DuelReadyHero(), DuelFairPlace()), "a duellist cannot challenge a third hero");
+	T.AssertEquals(1, Book.Duels.Num(), "nothing was added by the refusals");
+	// Another pair can duel meanwhile.
+	T.AssertTrue(HOLDuel::Start(S, Book, 2, 3, DuelReadyHero(), DuelReadyHero(), DuelFairPlace()).IsEmpty(), "a second duel elsewhere");
+	T.AssertEquals(2, Book.Duels.Num(), "two duels at once");
+	// The place's refusals pass through.
+	FHOLDuelBook Other = HOLDuel::NewBook(4);
+	FHOLDuelPlace Forum = DuelFairPlace();
+	Forum.bInMainForumRadius = true;
+	T.AssertEquals("forum_zone", HOLDuel::Start(S, Other, 0, 1, DuelReadyHero(), DuelReadyHero(), Forum), "forum zone");
+	T.AssertEquals(0, Other.Duels.Num(), "no duel, and no cooldown spent by a refused challenge");
+	T.AssertEquals(0, Other.CooldownLeftMs[0], "cooldown untouched");
+}
+
+// The answer is the target's, to a pending challenge: accepting makes the duel active; a wrong slot or a second answer does nothing.
+void Test_DuelBookAnswer(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	HOLDuel::Start(S, Book, 0, 1, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	T.AssertFalse(HOLDuel::Answer(S, Book, 0, true), "the challenger cannot answer its own challenge");
+	T.AssertFalse(HOLDuel::Answer(S, Book, 2, true), "a stranger cannot");
+	T.AssertTrue(HOLDuel::Answer(S, Book, 1, true), "the target accepts");
+	T.AssertTrue(Book.Duels[0].Phase == EHOLDuelPhase::Active, "active");
+	T.AssertFalse(HOLDuel::Answer(S, Book, 1, false), "no taking it back (D80)");
+	T.AssertTrue(Book.Duels[0].Phase == EHOLDuelPhase::Active, "still active");
+}
+
+// Tick: cooldowns run down, a duel that ends leaves the book once with its effects, the heroes are free again.
+void Test_DuelBookTickEndsDuels(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	HOLDuel::Start(S, Book, 0, 1, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	HOLDuel::Answer(S, Book, 1, true);
+	TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(S, Book, 1000, DuelHealths(50, 50, 50, 50));
+	T.AssertEquals(0, Ended.Num(), "nobody ended");
+	T.AssertEquals(S.ChallengeCooldownMs - 1000, Book.CooldownLeftMs[0], "the cooldown runs down");
+	Ended = HOLDuel::Tick(S, Book, 50, DuelHealths(50, 0, 50, 50));
+	T.AssertEquals(1, Ended.Num(), "one duel ended");
+	if (Ended.Num() == 1)
+	{
+		T.AssertTrue(Ended[0].Duel.End == EHOLDuelEnd::Won, "won");
+		T.AssertEquals(0, Ended[0].Duel.Winner, "by the challenger");
+		T.AssertEquals(1, Ended[0].Effects.FallenSlots.Num(), "one hero falls");
+	}
+	T.AssertEquals(0, Book.Duels.Num(), "the book let it go");
+	T.AssertFalse(HOLDuel::BookInDuel(Book, 0), "the heroes are free");
+	TArray<FHOLDuelEnded> Again = HOLDuel::Tick(S, Book, 50, DuelHealths(50, 0, 50, 50));
+	T.AssertEquals(0, Again.Num(), "an ended duel is reported once");
+	T.AssertTrue(Book.CooldownLeftMs[0] > 0, "the cooldown still runs after the duel (D16)");
+}
+
+// A silent target: the window closes inside Tick and the effects name the refuser.
+void Test_DuelBookSilenceInTick(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	HOLDuel::Start(S, Book, 2, 3, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	TArray<FHOLDuelEnded> Ended = HOLDuel::Tick(S, Book, S.ResponseMs, DuelHealths(50, 50, 50, 50));
+	T.AssertEquals(1, Ended.Num(), "ended");
+	if (Ended.Num() == 1)
+	{
+		T.AssertTrue(Ended[0].Duel.End == EHOLDuelEnd::Ignored, "ignored");
+		T.AssertEquals(3, Ended[0].Effects.HesitationSlot, "the silent one hesitates");
+	}
+}
+
+// The book's protection: with a duel on, its two heroes touch each other only; with another duel on elsewhere, the
+// four heroes are paired; a pending challenge protects nobody.
+void Test_DuelBookProtectedHits(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	HOLDuel::Start(S, Book, 0, 1, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	T.AssertTrue(HOLDuel::BookCanHit(Book, -1, 1), "pending: no protection yet");
+	HOLDuel::Answer(S, Book, 1, true);
+	T.AssertFalse(HOLDuel::BookCanHit(Book, -1, 1), "active: a unit cannot hit a duellist");
+	T.AssertTrue(HOLDuel::BookCanHit(Book, 0, 1), "the duellists hit each other");
+	T.AssertFalse(HOLDuel::BookCanHit(Book, 2, 1), "a third hero cannot");
+	HOLDuel::Start(S, Book, 2, 3, DuelReadyHero(), DuelReadyHero(), DuelFairPlace());
+	HOLDuel::Answer(S, Book, 3, true);
+	T.AssertFalse(HOLDuel::BookCanHit(Book, 2, 1), "heroes of two different duels cannot touch each other");
+	T.AssertTrue(HOLDuel::BookCanHit(Book, 2, 3), "each pair hits its own");
+	T.AssertTrue(HOLDuel::BookCanHit(Book, -1, -1), "the rest of the battle goes on");
+}

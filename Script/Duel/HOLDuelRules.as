@@ -340,3 +340,130 @@ namespace HOLDuel
 		return bAttackerFights && bVictimFights && AttackerHeroSlot != VictimHeroSlot;
 	}
 }
+// ---- D3b: the match's book of duels (DuelInProgress.md D3b) ----
+// Several duels can be on at once in a match with more than two players, one per hero (10.2). The book is the one truth
+// of "who is in a duel" and "whose challenge cooldown runs": the match hands it the clock and the heroes' health, asks
+// it to start a duel or to take an answer, and reads the duels that ended (each reported once, then forgotten).
+
+struct FHOLDuelBook
+{
+	// The duels in progress: Pending or Active (an Over duel leaves the book at once, in Tick).
+	TArray<FHOLDuel> Duels;
+
+	// By slot: the time left on the slot's challenge cooldown (D16).
+	TArray<int> CooldownLeftMs;
+}
+
+// A duel that just ended, with what its end changes.
+struct FHOLDuelEnded
+{
+	FHOLDuel Duel;
+	FHOLDuelEffects Effects;
+}
+
+namespace HOLDuel
+{
+	// An empty book for a match of NumSlots slots.
+	FHOLDuelBook NewBook(int NumSlots)
+	{
+		FHOLDuelBook Book;
+		for (int Slot = 0; Slot < NumSlots; Slot++)
+		{
+			Book.CooldownLeftMs.Add(0);
+		}
+		return Book;
+	}
+
+	// True when the slot is in a duel of the book (pending or active).
+	bool BookInDuel(const FHOLDuelBook& Book, int Slot)
+	{
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (InDuel(Book.Duels[Index], Slot))
+				return true;
+		}
+		return false;
+	}
+
+	// A challenge: "" and the duel (Pending) in the book, the challenger's cooldown spent; or the reason of CanChallenge
+	// and the book untouched. The heroes' alive / recovering state and the place come from the match; whether each is in
+	// a duel, and the challenger's cooldown, come from the book (whatever the hero structs say).
+	FString Start(const FHOLDuelSettings& S, FHOLDuelBook& Book, int Challenger, int Target, const FHOLDuelHero& ChallengerHero, const FHOLDuelHero& TargetHero, const FHOLDuelPlace& Place)
+	{
+		FHOLDuelHero Mine = ChallengerHero;
+		FHOLDuelHero Theirs = TargetHero;
+		Mine.bInDuel = BookInDuel(Book, Challenger);
+		Theirs.bInDuel = BookInDuel(Book, Target);
+		Mine.ChallengeCooldownLeftMs = Challenger >= 0 && Challenger < Book.CooldownLeftMs.Num() ? Book.CooldownLeftMs[Challenger] : 0;
+		FString Reason = CanChallenge(Mine, Theirs, Place);
+		if (!Reason.IsEmpty())
+			return Reason;
+		Book.Duels.Add(Challenge(S, Challenger, Target));
+		if (Challenger >= 0 && Challenger < Book.CooldownLeftMs.Num())
+			Book.CooldownLeftMs[Challenger] = S.ChallengeCooldownMs;
+		return "";
+	}
+
+	// The target's answer to the challenge waiting for it (D80: final). False when no pending challenge is addressed to
+	// this slot (the challenger cannot answer its own challenge; a second answer finds nothing pending).
+	bool Answer(const FHOLDuelSettings& S, FHOLDuelBook& Book, int TargetSlot, bool bAccept)
+	{
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (Book.Duels[Index].Phase == EHOLDuelPhase::Pending && Book.Duels[Index].Target == TargetSlot)
+			{
+				Book.Duels[Index] = Respond(S, Book.Duels[Index], bAccept);
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Health of a slot in the array the match hands over (a slot it does not list counts as standing).
+	int HealthOf(const TArray<int>& Health, int Slot)
+	{
+		if (Slot < 0 || Slot >= Health.Num())
+			return 1;
+		return Health[Slot];
+	}
+
+	// Time goes by: every cooldown runs down, every duel advances with the heroes' health (by slot); the duels that ended
+	// leave the book and are returned, once, with their effects.
+	TArray<FHOLDuelEnded> Tick(const FHOLDuelSettings& S, FHOLDuelBook& Book, int DeltaMs, const TArray<int>& Health)
+	{
+		for (int Slot = 0; Slot < Book.CooldownLeftMs.Num(); Slot++)
+		{
+			Book.CooldownLeftMs[Slot] = Math::Max(0, Book.CooldownLeftMs[Slot] - DeltaMs);
+		}
+		TArray<FHOLDuelEnded> Ended;
+		TArray<FHOLDuel> Kept;
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			FHOLDuel Next = Advance(S, Book.Duels[Index], DeltaMs, HealthOf(Health, Book.Duels[Index].Challenger), HealthOf(Health, Book.Duels[Index].Target));
+			if (Next.Phase == EHOLDuelPhase::Over)
+			{
+				FHOLDuelEnded Done;
+				Done.Duel = Next;
+				Done.Effects = Effects(S, Next);
+				Ended.Add(Done);
+			}
+			else
+			{
+				Kept.Add(Next);
+			}
+		}
+		Book.Duels = Kept;
+		return Ended;
+	}
+
+	// CanHit for the whole book: every duel on must agree (the heroes of two different duels cannot touch each other).
+	bool BookCanHit(const FHOLDuelBook& Book, int AttackerHeroSlot, int VictimHeroSlot)
+	{
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (!CanHit(Book.Duels[Index], AttackerHeroSlot, VictimHeroSlot))
+				return false;
+		}
+		return true;
+	}
+}
