@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-30 18:14\n"
-"PO-Revision-Date: 2026-10-30 18:14\n"
+"POT-Creation-Date: 2026-10-31 08:28\n"
+"PO-Revision-Date: 2026-10-31 08:28\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -180,6 +180,13 @@ msgstr "The Steppe"
 msgctxt "HOLMaps,Map_Hinterland"
 msgid "L'Arrière-pays"
 msgstr "The Hinterland"
+
+#. Key:	Map_ElDorado
+#. SourceLocation:	Source/HeroesOfLiberty/Map/HOLMapRules.cpp(19)
+#: Source/HeroesOfLiberty/Map/HOLMapRules.cpp(19)
+msgctxt "HOLMaps,Map_ElDorado"
+msgid "El Dorado"
+msgstr "El Dorado"
 
 #. Key:	AbsentLine
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDisconnectRules.cpp(70)
