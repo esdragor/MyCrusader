@@ -77,6 +77,9 @@ struct FHOLDuelSettings
 
 	// DU-Q2, the three ways ready until the user answers; the preset takes A (the recommendation, not a decision).
 	EHOLDuelLostConditions LostConditions = EHOLDuelLostConditions::DropsFree;
+
+	// D403, the anti-duel zone around the MAIN forum of any player, cm. PROVISIONAL (DU-Q3): the GDD says "defence radius" without a number.
+	int ForumZoneRadiusCm = 0;
 }
 
 // One duel's state, handed from call to call; every function returns a new one and leaves the one given alone.
@@ -144,6 +147,7 @@ namespace HOLDuel
 		S.ArenaRadiusCm = 600;
 		S.WindowUrgentMs = 2000;
 		S.bDoubleKnockOutBothFall = true;
+		S.ForumZoneRadiusCm = 2500;
 		return S;
 	}
 

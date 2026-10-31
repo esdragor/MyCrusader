@@ -129,6 +129,8 @@ private:
 	void OnStepEnded(int64 StepIndex);
 	/** The slot's copies (game state, player state), each written only when it changed. */
 	void WriteCopies(int32 Slot) const;
+	/** D4: the slot's duel (the script book's view) copied into its public sheet, the end step from the clock. */
+	void CopyDuelView(int32 Slot);
 	/** J8b.2: his body brought to the level of his XP (attack, max health; the HP gained added), alive only. */
 	void ApplyLevel(int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const;
 	void UnbindSteps();

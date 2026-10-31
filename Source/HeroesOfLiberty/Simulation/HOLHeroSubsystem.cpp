@@ -280,6 +280,42 @@ void UHOLHeroSubsystem::OnStepEnded(const int64 StepIndex)
 				static_cast<int32>(StepIndex), bTaken ? TEXT("taken") : TEXT("refused"));
 		}
 	}
+	// D4: the players' duel commands (challenge, answer), after the sheets of this step, in the order given.
+	if (UHOLCommandSubsystem* DuelCommands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+	{
+		TArray<FHOLDuelOrder> DuelOrders;
+		DuelCommands->ConsumeDuelOrders(DuelOrders);
+		UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(GetWorld());
+		for (const FHOLDuelOrder& Order : DuelOrders)
+		{
+			if (!Duels)
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d at step %d refused (no book of duels)"), Order.PlayerIndex, static_cast<int32>(StepIndex));
+			}
+			else if (Order.Kind == EHOLDuelOrderKind::Challenge)
+			{
+				const FString Reason = Duels->ChallengeNow(Order.PlayerIndex, Order.OtherSlot);
+				UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenges slot %d at step %d %s"), Order.PlayerIndex, Order.OtherSlot,
+					static_cast<int32>(StepIndex), Reason.IsEmpty() ? TEXT("made") : *FString::Printf(TEXT("refused (%s)"), *Reason));
+			}
+			else
+			{
+				const bool bAccept = Order.Kind == EHOLDuelOrderKind::Accept;
+				const bool bTaken = Duels->AnswerNow(Order.PlayerIndex, bAccept);
+				UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d %s at step %d %s"), Order.PlayerIndex, bAccept ? TEXT("accepts") : TEXT("refuses"),
+					static_cast<int32>(StepIndex), bTaken ? TEXT("taken") : TEXT("refused (no challenge waiting)"));
+			}
+		}
+		if (DuelOrders.Num() > 0)
+		{
+			// The sheets show the new state at once, not a step late.
+			for (int32 Slot = 0; Slot < Sheets.Num(); ++Slot)
+			{
+				CopyDuelView(Slot);
+				WriteCopies(Slot);
+			}
+		}
+	}
 	// J8a.4 loop 3: the return decision (script), called here so it always reads the sheets this step wrote.
 	if (Return)
 	{
@@ -324,10 +360,40 @@ void UHOLHeroSubsystem::UpdateSheets()
 			Facts.DeathStep = Combat ? Combat->DeathStep : -1;
 		}
 		Sheets[Slot] = HOLHeroSheet::Make(Facts, Sheets[Slot]);
+		CopyDuelView(Slot);
 		WriteCopies(Slot);
 	}
 	// J8a.4: the returns asked were born at this step's start (or failed): they may be asked again.
 	PendingReturns = 0;
+}
+
+void UHOLHeroSubsystem::CopyDuelView(const int32 Slot)
+{
+	// D4: the slot's duel in its public sheet (the window, the circle), from the script book; nothing without one.
+	FHOLHeroSheet& Public = Sheets[Slot].Public;
+	Public.DuelCode = 0;
+	Public.DuelOpponent = 255;
+	Public.DuelEndStep = -1;
+	Public.DuelCenter = FIntPoint::ZeroValue;
+	Public.DuelRadius = 0;
+	UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(GetWorld());
+	if (!Duels)
+	{
+		return;
+	}
+	const FHOLDuelView View = Duels->GetViewNow(Slot);
+	if (View.Code <= 0)
+	{
+		return;
+	}
+	Public.DuelCode = static_cast<uint8>(View.Code);
+	Public.DuelOpponent = static_cast<uint8>(FMath::Clamp(View.Opponent, 0, 254));
+	Public.DuelEndStep = GetStepsFromNow(View.LeftMs);
+	if (View.Code == 3)
+	{
+		Public.DuelCenter = FIntPoint(View.CenterX, View.CenterY);
+		Public.DuelRadius = static_cast<uint16>(FMath::Clamp(View.RadiusCm, 0, 65535));
+	}
 }
 
 void UHOLHeroSubsystem::ApplyLevel(const int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const

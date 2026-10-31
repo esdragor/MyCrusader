@@ -498,6 +498,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestHeroTalent(int32 Family);
 
+	/**
+	 * D4: the player's hero challenges the hero of TargetSlot to a duel (GDD 10.1). Through the order queue; at the next step the
+	 * server has the duel book check the conditions (HOLDuel::CanChallenge) and makes the challenge, or refuses it.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	void RequestDuelChallenge(int32 TargetSlot);
+
+	/** D4: the player answers the challenge waiting for his hero: accepted or refused (D80: final; the silence counts as a refusal). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
+	void RequestDuelAnswer(bool bAccept);
+
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
 	FOnGameMenuRequested OnGameMenuRequested;
@@ -762,6 +773,12 @@ private:
 	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. */
 	UFUNCTION(Server, Reliable)
 	void ServerHeroTalent(int32 Family);
+
+	/** D4: the player's own slot's challenge / answer, queued (UHOLCommandSubsystem::IssueDuelOrder); the server checks the rest. */
+	UFUNCTION(Server, Reliable)
+	void ServerDuelChallenge(int32 TargetSlot);
+	UFUNCTION(Server, Reliable)
+	void ServerDuelAnswer(bool bAccept);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

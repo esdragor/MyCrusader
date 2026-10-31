@@ -59,6 +59,22 @@ void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
 	PendingHeroReturnOrders.Remove(PlayerIndex);
 	PendingHeroAbilityOrders.RemoveAll(OfPlayer);
 	PendingHeroTalentOrders.RemoveAll(OfPlayer);
+	PendingDuelOrders.RemoveAll(OfPlayer);
+}
+
+void UHOLCommandSubsystem::IssueDuelOrder(const int32 PlayerIndex, const EHOLDuelOrderKind Kind, const int32 OtherSlot)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingDuelOrders.Add(FHOLDuelOrder{ PlayerIndex, Kind, OtherSlot });
+}
+
+void UHOLCommandSubsystem::ConsumeDuelOrders(TArray<FHOLDuelOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingDuelOrders);
 }
 
 void UHOLCommandSubsystem::IssueHeroReturnOrder(const int32 PlayerIndex)

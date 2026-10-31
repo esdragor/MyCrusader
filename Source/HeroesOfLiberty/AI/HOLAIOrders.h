@@ -132,6 +132,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAITalentOrder(const UObject* WorldContextObject, int32 PlayerIndex, int32 Family);
 
+	/**
+	 * D4/D9: PlayerIndex's hero challenges the hero of TargetSlot to a duel, applied at the end of the next step (the order a player's
+	 * command sends: the duel book checks the conditions). Whether the order entered the queue.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIDuelChallenge(const UObject* WorldContextObject, int32 PlayerIndex, int32 TargetSlot);
+
+	/** D4/D9: PlayerIndex's hero answers the challenge waiting for it (accepted or refused), applied at the end of the next step. Whether the order entered the queue. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static bool IssueAIDuelAnswer(const UObject* WorldContextObject, int32 PlayerIndex, bool bAccept);
+
 	/** PlayerIndex's units attack-move to Target (they take on the enemies met on the way), applied at the next step. Whether the order entered the queue. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIAttackMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);

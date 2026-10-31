@@ -73,6 +73,80 @@ class UHOLDuelLedger : UHOLDuelSubsystem
 		return true;
 	}
 
+	// D4, the challenge command: "" and the challenge Pending, or the reason it cannot be made (HOLDuel::CanChallenge's).
+	UFUNCTION(BlueprintOverride)
+	FString StartChallenge(int Challenger, int Target, int Facts, int AX, int AY, int BX, int BY, const TArray<int>& ForumXY)
+	{
+		EnsureBook();
+		return HOLDuel::BookStartChallenge(Settings, Book, Challenger, Target, Facts, AX, AY, BX, BY, ForumXY);
+	}
+
+	// D4, the answer command: whether a challenge addressed to the slot was waiting. The conditions are read now (DU-Q2); an
+	// acceptance that stands begins the duel with its circle where the heroes are, the kits fresh.
+	UFUNCTION(BlueprintOverride)
+	bool AnswerChallenge(int Slot, bool bAccept, int Facts, int AX, int AY, int BX, int BY, const TArray<int>& ForumXY)
+	{
+		EnsureBook();
+		int Challenger = -1;
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (Book.Duels[Index].Phase == EHOLDuelPhase::Pending && Book.Duels[Index].Target == Slot)
+				Challenger = Book.Duels[Index].Challenger;
+		}
+		if (!HOLDuel::AnswerChecked(Settings, Book, Slot, bAccept, HOLDuel::ConditionsHold(Settings, Facts, AX, AY, BX, BY, ForumXY)))
+			return false;
+		if (HOLDuel::BookInDuel(Book, Slot) && HOLDuel::BookAdversaryOf(Book, Slot) == Challenger)
+		{
+			HOLDuel::BookSetArena(Book, Challenger, Slot, HOLDuel::MakeArena(Settings, AX, AY, BX, BY));
+			if (Challenger >= 0 && Challenger < Kits.Num())
+				Kits[Challenger] = FHOLDuelKit();
+			if (Slot >= 0 && Slot < Kits.Num())
+				Kits[Slot] = FHOLDuelKit();
+		}
+		return true;
+	}
+
+	// D4: the challenges waiting, as (challenger, target) pairs: the match reads the conditions again for each (DU-Q2).
+	UFUNCTION(BlueprintOverride)
+	TArray<int> PendingPairs()
+	{
+		EnsureBook();
+		TArray<int> Pairs;
+		for (int Index = 0; Index < Book.Duels.Num(); Index++)
+		{
+			if (Book.Duels[Index].Phase == EHOLDuelPhase::Pending)
+			{
+				Pairs.Add(Book.Duels[Index].Challenger);
+				Pairs.Add(Book.Duels[Index].Target);
+			}
+		}
+		return Pairs;
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool RecheckChallenge(int Target, int Facts, int AX, int AY, int BX, int BY, const TArray<int>& ForumXY)
+	{
+		EnsureBook();
+		return HOLDuel::BookRecheck(Settings, Book, Target, HOLDuel::ConditionsHold(Settings, Facts, AX, AY, BX, BY, ForumXY));
+	}
+
+	// D4: the slot's duel as its hero sheet shows it: code (0 none, 1 sent, 2 incoming, 3 on), the other hero, the time left,
+	// the circle (centre X, Y, radius).
+	UFUNCTION(BlueprintOverride)
+	TArray<int> ViewOf(int Slot)
+	{
+		EnsureBook();
+		FHOLDuelView View = HOLDuel::BookViewOf(Book, Slot);
+		TArray<int> Out;
+		Out.Add(View.Code);
+		Out.Add(View.Opponent);
+		Out.Add(View.LeftMs);
+		Out.Add(View.CenterX);
+		Out.Add(View.CenterY);
+		Out.Add(View.RadiusCm);
+		return Out;
+	}
+
 	UFUNCTION(BlueprintOverride)
 	int Adversary(int Slot)
 	{

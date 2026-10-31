@@ -105,6 +105,32 @@ bool UHOLAIOrderLibrary::IssueAITalentOrder(const UObject* WorldContextObject, c
 	return true;
 }
 
+bool UHOLAIOrderLibrary::IssueAIDuelChallenge(const UObject* WorldContextObject, const int32 PlayerIndex, const int32 TargetSlot)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands || PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots)
+	{
+		return false;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenge at slot %d queued (AI)"), PlayerIndex, TargetSlot);
+	Commands->IssueDuelOrder(PlayerIndex, EHOLDuelOrderKind::Challenge, TargetSlot);
+	return true;
+}
+
+bool UHOLAIOrderLibrary::IssueAIDuelAnswer(const UObject* WorldContextObject, const int32 PlayerIndex, const bool bAccept)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands || PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots)
+	{
+		return false;
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d %s queued (AI)"), PlayerIndex, bAccept ? TEXT("accept") : TEXT("refuse"));
+	Commands->IssueDuelOrder(PlayerIndex, bAccept ? EHOLDuelOrderKind::Accept : EHOLDuelOrderKind::Refuse, INDEX_NONE);
+	return true;
+}
+
 bool UHOLAIOrderLibrary::IssueAIAttackMoveOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const TArray<int32>& UnitIds, const FVector Target,
 	const bool bQueue)
 {

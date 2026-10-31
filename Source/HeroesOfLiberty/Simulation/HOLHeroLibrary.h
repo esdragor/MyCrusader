@@ -135,6 +135,20 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroCries(const UObject* WorldContextObject, int32 Slot);
 
+	/**
+	 * D4: the slot's hero's duel as the public sheet shows it (every machine): the code (0 none, 1 a challenge sent waits, 2 one
+	 * received waits, 3 a duel is on), the other hero's slot (-1 none) and the step the window closes or the duel times out at (-1 none).
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroDuelCode(const UObject* WorldContextObject, int32 Slot);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroDuelOpponent(const UObject* WorldContextObject, int32 Slot);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static int32 GetHeroDuelEndStep(const UObject* WorldContextObject, int32 Slot);
+	/** D4: the circle of the slot's duel on (cm): centre X, Y and the radius in Z; Z 0 when none. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static FVector GetHeroDuelArena(const UObject* WorldContextObject, int32 Slot);
+
 	/** J8c.3: the step the slot's last banner falls at (public sheet; -1 never planted), and where it stands (cm). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
 	static int32 GetHeroBannerEndStep(const UObject* WorldContextObject, int32 Slot);

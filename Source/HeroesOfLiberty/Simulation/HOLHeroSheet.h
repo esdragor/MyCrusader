@@ -55,11 +55,29 @@ struct FHOLHeroSheet
 	UPROPERTY()
 	uint8 TalentKeys = 0;
 
+	/**
+	 * D4: his duel as every machine shows it (the challenge window, the circle): 0 none, 1 a challenge he sent waits, 2 one
+	 * sent to him waits (his window), 3 a duel is on. The other hero's slot (255: none), the step the window closes or the duel
+	 * times out at (-1: none), and the circle while on (cm, radius 0: none).
+	 */
+	UPROPERTY()
+	uint8 DuelCode = 0;
+	UPROPERTY()
+	uint8 DuelOpponent = 255;
+	UPROPERTY()
+	int32 DuelEndStep = -1;
+	UPROPERTY()
+	FIntPoint DuelCenter = FIntPoint::ZeroValue;
+	UPROPERTY()
+	uint16 DuelRadius = 0;
+
 	bool operator==(const FHOLHeroSheet& Other) const
 	{
 		return Level == Other.Level && Health == Other.Health && State == Other.State && Cries == Other.Cries
 			&& BannerLocation == Other.BannerLocation && BannerEndStep == Other.BannerEndStep
-			&& TalentSeals == Other.TalentSeals && TalentKeys == Other.TalentKeys;
+			&& TalentSeals == Other.TalentSeals && TalentKeys == Other.TalentKeys
+			&& DuelCode == Other.DuelCode && DuelOpponent == Other.DuelOpponent && DuelEndStep == Other.DuelEndStep
+			&& DuelCenter == Other.DuelCenter && DuelRadius == Other.DuelRadius;
 	}
 	bool operator!=(const FHOLHeroSheet& Other) const { return !(*this == Other); }
 };

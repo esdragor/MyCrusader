@@ -185,6 +185,28 @@ int32 UHOLHeroLibrary::GetHeroCries(const UObject* WorldContextObject, const int
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).Cries;
 }
 
+int32 UHOLHeroLibrary::GetHeroDuelCode(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).DuelCode;
+}
+
+int32 UHOLHeroLibrary::GetHeroDuelOpponent(const UObject* WorldContextObject, const int32 Slot)
+{
+	const FHOLHeroSheet Sheet = GetPublicSheet(GetWorldOf(WorldContextObject), Slot);
+	return Sheet.DuelCode > 0 ? static_cast<int32>(Sheet.DuelOpponent) : -1;
+}
+
+int32 UHOLHeroLibrary::GetHeroDuelEndStep(const UObject* WorldContextObject, const int32 Slot)
+{
+	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).DuelEndStep;
+}
+
+FVector UHOLHeroLibrary::GetHeroDuelArena(const UObject* WorldContextObject, const int32 Slot)
+{
+	const FHOLHeroSheet Sheet = GetPublicSheet(GetWorldOf(WorldContextObject), Slot);
+	return FVector(Sheet.DuelCenter.X, Sheet.DuelCenter.Y, Sheet.DuelCode == 3 ? Sheet.DuelRadius : 0);
+}
+
 int32 UHOLHeroLibrary::GetHeroBannerEndStep(const UObject* WorldContextObject, const int32 Slot)
 {
 	return GetPublicSheet(GetWorldOf(WorldContextObject), Slot).BannerEndStep;

@@ -36,6 +36,23 @@ struct FHOLHeroAbilityOrder
 	FVector Location = FVector::ZeroVector;
 };
 
+/** D4: what a player's duel command is: a challenge at OtherSlot's hero, or the answer to the challenge waiting for him. */
+enum class EHOLDuelOrderKind : uint8
+{
+	Challenge,
+	Accept,
+	Refuse,
+};
+
+/** D4: a player's duel command asked (UHOLCommandSubsystem::IssueDuelOrder). */
+struct FHOLDuelOrder
+{
+	int32 PlayerIndex = INDEX_NONE;
+	EHOLDuelOrderKind Kind = EHOLDuelOrderKind::Challenge;
+	/** Challenge: the slot of the hero challenged; unused for an answer. */
+	int32 OtherSlot = INDEX_NONE;
+};
+
 /** T3: a player's talent pick asked (UHOLCommandSubsystem::IssueHeroTalentOrder). */
 struct FHOLHeroTalentOrder
 {
@@ -193,6 +210,15 @@ public:
 	/** Takes the hero talent orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
 	void ConsumeHeroTalentOrders(TArray<FHOLHeroTalentOrder>& OutOrders);
 
+	/**
+	 * D4: PlayerIndex's player challenges OtherSlot's hero (ServerDuelChallenge, hol.Duel.Challenge) or answers the challenge
+	 * waiting for him (ServerDuelAnswer, hol.Duel.Accept / Refuse), applied at the end of the next step by the hero subsystem,
+	 * which has the duel book check it (HOLDuel::CanChallenge). Refused here as the ability orders (no player's slot, a defeated one).
+	 */
+	void IssueDuelOrder(int32 PlayerIndex, EHOLDuelOrderKind Kind, int32 OtherSlot);
+	/** Takes the duel orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
+	void ConsumeDuelOrders(TArray<FHOLDuelOrder>& OutOrders);
+
 	/** D358: drops every order of PlayerIndex still waiting (a slot just defeated). */
 	void DropOrdersOf(int32 PlayerIndex);
 
@@ -222,6 +248,8 @@ private:
 	TArray<FHOLHeroAbilityOrder> PendingHeroAbilityOrders;
 	/** T3: the talent picks asked, in the order given. */
 	TArray<FHOLHeroTalentOrder> PendingHeroTalentOrders;
+	/** D4: the duel commands asked, in the order given. */
+	TArray<FHOLDuelOrder> PendingDuelOrders;
 	TArray<FBox> PendingNavigationChanges;
 	TArray<FHOLBlockedFootprint> PendingBlockedFootprints;
 };

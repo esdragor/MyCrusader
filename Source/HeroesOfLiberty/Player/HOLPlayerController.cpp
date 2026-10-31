@@ -1393,6 +1393,43 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** D4, until the interface's buttons: the local players challenge a hero to a duel, or answer the challenge waiting for them (the server checks it). */
+	FAutoConsoleCommand DuelChallengeCommand(
+		TEXT("hol.Duel.Challenge"),
+		TEXT("hol.Duel.Challenge <TargetSlot>: the local player's hero challenges the hero of that slot to a duel (D4)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 1)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Duel.Challenge <TargetSlot>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestDuelChallenge(FCString::Atoi(*Args[0]));
+			}
+		}));
+	FAutoConsoleCommand DuelAcceptCommand(
+		TEXT("hol.Duel.Accept"),
+		TEXT("hol.Duel.Accept: the local player accepts the duel challenge waiting for his hero (D4)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestDuelAnswer(true);
+			}
+		}));
+	FAutoConsoleCommand DuelRefuseCommand(
+		TEXT("hol.Duel.Refuse"),
+		TEXT("hol.Duel.Refuse: the local player refuses the duel challenge waiting for his hero (D4, D80: final)"),
+		FConsoleCommandDelegate::CreateLambda([]
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestDuelAnswer(false);
+			}
+		}));
+
 #if !UE_BUILD_SHIPPING
 	/**
 	 * Development cheats (the user's trials of J4): console commands, sent to the server by the local players'
@@ -4338,6 +4375,45 @@ void AHOLPlayerController::ServerHeroTalent_Implementation(const int32 Family)
 	{
 		UE_LOG(LogHOLMatch, Display, TEXT("Hero talent order: slot %d family %d queued"), HOLPlayerState->GetPlayerIndex(), Family);
 		Commands->IssueHeroTalentOrder(HOLPlayerState->GetPlayerIndex(), Family);
+	}
+}
+
+void AHOLPlayerController::RequestDuelChallenge(const int32 TargetSlot)
+{
+	if (!IsSpectator())
+	{
+		ServerDuelChallenge(TargetSlot);
+	}
+}
+
+void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
+{
+	if (!IsSpectator())
+	{
+		ServerDuelAnswer(bAccept);
+	}
+}
+
+void AHOLPlayerController::ServerDuelChallenge_Implementation(const int32 TargetSlot)
+{
+	// The player's own slot only (D288); the target and the conditions are checked by the rules at the step's end.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d challenge at slot %d queued"), HOLPlayerState->GetPlayerIndex(), TargetSlot);
+		Commands->IssueDuelOrder(HOLPlayerState->GetPlayerIndex(), EHOLDuelOrderKind::Challenge, TargetSlot);
+	}
+}
+
+void AHOLPlayerController::ServerDuelAnswer_Implementation(const bool bAccept)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Duel order: slot %d %s queued"), HOLPlayerState->GetPlayerIndex(), bAccept ? TEXT("accept") : TEXT("refuse"));
+		Commands->IssueDuelOrder(HOLPlayerState->GetPlayerIndex(), bAccept ? EHOLDuelOrderKind::Accept : EHOLDuelOrderKind::Refuse, INDEX_NONE);
 	}
 }
 

@@ -40,6 +40,11 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The main talent family each slot drew at its first thought (T6, D424).
 	TMap<int, int> TalentMains;
 
+	// The duel (D4, D9): the game second each slot first saw a challenge waiting for it (its reaction time runs from there), and the
+	// game second of its last challenge sent (it asks again only after DuelAskEvery).
+	TMap<int, float> DuelSeen;
+	TMap<int, float> DuelAsked;
+
 	// The last "forum attacked" situation written in the journal, per slot (IA4, D579).
 	TMap<int, FHOLAIForumLogged> ForumLogged;
 
@@ -209,6 +214,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// 3d. The hero's talent points (T6, D424): spent on the main family drawn at the start, in order.
 		ThinkTalent(PlayerIndex, Step);
 
+		// 3e. The duel (D4, D9): the answer to a challenge received, or a challenge when a fight is near.
+		ThinkDuel(PlayerIndex, Step, Summary, Data);
+
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
 		if (NumIdle == 0)
 		{
@@ -267,6 +275,102 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		if (Family != HOLAITalent::FamilyNone && HOLAIOrder::IssueAITalentOrder(PlayerIndex, Family))
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent of family {Family} in row {HOLTalent::FirstRow + Count}");
+		}
+	}
+
+	// The percent of a hero's health (his slot's sheet), 100 when his maximum is unknown.
+	int HeroHealthPercent(int Slot)
+	{
+		const int MaxHealth = HOLHero::GetHeroMaxHealth(Slot);
+		if (MaxHealth <= 0)
+			return 100;
+		return Math::Clamp(Math::IntegerDivisionTrunc(HOLHero::GetHeroHealth(Slot) * 100, MaxHealth), 0, 100);
+	}
+
+	// What the AI sees of a duel with the enemy hero of EnemySlot standing at EnemyWhere: the two heroes' level and health, and the moment
+	// (its soldiers within 15 m of him, some of them fighting). The kit is not in the game yet (D6): counted ready.
+	FHOLAIDuelView DuelViewOf(int PlayerIndex, int EnemySlot, const FVector& EnemyWhere, const FHOLAISummary& Summary)
+	{
+		FHOLAIDuelView View;
+		View.MyLevel = Math::Max(1, HOLHero::GetHeroLevel(PlayerIndex));
+		View.EnemyLevel = Math::Max(1, HOLHero::GetHeroLevel(EnemySlot));
+		View.MyHealthPercent = HeroHealthPercent(PlayerIndex);
+		View.EnemyHealthPercent = HeroHealthPercent(EnemySlot);
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			FVector Away = Summary.Army[Index].Location - EnemyWhere;
+			Away.Z = 0;
+			if (Away.Size() <= 1500.0)
+			{
+				View.TroopsNearMe++;
+				View.bBattleNear = View.bBattleNear || Summary.Army[Index].TargetId != -1;
+			}
+		}
+		View.bMyHeroInDanger = View.bBattleNear && View.MyHealthPercent <= 30;
+		return View;
+	}
+
+	// The duel (D4, D9): a challenge waiting for the slot is answered after the AI's reaction time (HOLAIDuel::Answer); with none, and
+	// an enemy hero within the arena's reach of its soldiers, it may challenge (HOLAIDuel::Challenge). The orders are those a player's
+	// commands send; the rules of the book refuse what is not allowed.
+	void ThinkDuel(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		const int Code = HOLHero::GetHeroDuelCode(PlayerIndex);
+		const FHOLAIDuelSettings Settings = HOLAIDuel::Preset(Summary.Level);
+		// The error of its estimate, drawn from the slot and the second (the rules are pure: the draw is here), -100..100.
+		const int Noise = ((PlayerIndex * 37 + int(Data.GameSeconds) * 53) % 201) - 100;
+		if (Code == 2)
+		{
+			float Seen = Data.GameSeconds;
+			if (!DuelSeen.Find(PlayerIndex, Seen))
+			{
+				Seen = Data.GameSeconds;
+				DuelSeen.Add(PlayerIndex, Seen);
+			}
+			if (Data.GameSeconds - Seen < float(Settings.ReactionMs) / 1000.f)
+				return;
+			const int Other = HOLHero::GetHeroDuelOpponent(PlayerIndex);
+			FVector Where = FVector::ZeroVector;
+			for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+			{
+				if (Summary.Enemies[Index].OwnerSlot == Other && Summary.Enemies[Index].Type == n"Hero")
+					Where = Summary.Enemies[Index].Location;
+			}
+			const FHOLAIDuelDecision Decision = HOLAIDuel::Answer(Settings, DuelViewOf(PlayerIndex, Other, Where, Summary), Noise);
+			if (HOLAIOrder::IssueAIDuelAnswer(PlayerIndex, Decision.bYes))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: " + HOLAIDuel::Describe("answer", Decision));
+				DuelSeen.Remove(PlayerIndex);
+			}
+			return;
+		}
+		DuelSeen.Remove(PlayerIndex);
+		float Asked = -1000.f;
+		DuelAsked.Find(PlayerIndex, Asked);
+		if (Code != 0 || HOLHero::GetHeroState(PlayerIndex) != EHOLHeroState::Alive || Data.GameSeconds - Asked < 20.f)
+			return;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			const FHOLAIUnit Enemy = Summary.Enemies[Index];
+			if (Enemy.Type != n"Hero" || HOLHero::GetHeroState(Enemy.OwnerSlot) != EHOLHeroState::Alive)
+				continue;
+			// Within the arena's reach of some soldier of its own (its hero marches with them).
+			bool bNear = false;
+			for (int Each = 0; Each < Summary.Army.Num() && !bNear; Each++)
+			{
+				FVector Away = Summary.Army[Each].Location - Enemy.Location;
+				Away.Z = 0;
+				bNear = Away.Size() <= 1200.0;
+			}
+			if (!bNear)
+				continue;
+			const FHOLAIDuelDecision Decision = HOLAIDuel::Challenge(Settings, DuelViewOf(PlayerIndex, Enemy.OwnerSlot, Enemy.Location, Summary), true, Noise);
+			if (Decision.bYes && HOLAIOrder::IssueAIDuelChallenge(PlayerIndex, Enemy.OwnerSlot))
+			{
+				DuelAsked.Add(PlayerIndex, Data.GameSeconds);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: challenge slot {Enemy.OwnerSlot}: " + HOLAIDuel::Describe("challenge", Decision));
+				return;
+			}
 		}
 	}
 

@@ -13,6 +13,17 @@
  * book, who may hit whom, when a duel ends) are in Script/Duel (HOLDuelRules.as, HOLDuelBook.as). Abstract: only a
  * script subclass is born, in each game or PIE world (as UHOLHeroReturnSubsystem). A client never decides.
  */
+/** D4: a slot's duel as its hero sheet shows it (the script's HOLDuel::BookViewOf): Code 0 none, 1 a challenge sent, 2 one received, 3 a duel on. */
+struct FHOLDuelView
+{
+	int32 Code = 0;
+	int32 Opponent = -1;
+	int32 LeftMs = 0;
+	int32 CenterX = 0;
+	int32 CenterY = 0;
+	int32 RadiusCm = 0;
+};
+
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLDuelSubsystem : public UWorldSubsystem
 {
@@ -38,6 +49,23 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
 	bool BeginDuelNow(int32 Challenger, int32 Target);
+
+	/**
+	 * D4, the challenge command (server or solo; the order queue calls it at a step's end): Challenger's hero challenges Target's.
+	 * The match measures the facts (enemies, alive, in sight of each other, the main forums' places) and the script's rules
+	 * decide (HOLDuel::CanChallenge). Returns "" when the challenge is made (the target has the window to answer), else the
+	 * reason it is refused (not_enemy, too_far, forum_zone...; "no_script" without the book, "client" on a client).
+	 */
+	FString ChallengeNow(int32 Challenger, int32 Target);
+
+	/**
+	 * D4, the answer command: the slot's pending challenge accepted or refused (D80: final), the conditions read now (DU-Q2).
+	 * Whether a challenge addressed to the slot was waiting.
+	 */
+	bool AnswerNow(int32 Slot, bool bAccept);
+
+	/** D4: the slot's duel as its sheet shows it (the hero subsystem copies it into the public sheet each step). */
+	FHOLDuelView GetViewNow(int32 Slot);
 
 	/** The end of simulation step Step (UHOLHeroSubsystem calls it, after the sheets): the duels advance with the heroes' health. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
@@ -86,6 +114,31 @@ protected:
 	bool BeginDuel(int32 Challenger, int32 Target, int32 AX, int32 AY, int32 BX, int32 BY);
 	virtual bool BeginDuel_Implementation(int32 Challenger, int32 Target, int32 AX, int32 AY, int32 BX, int32 BY) { return false; }
 
+	/** D4: a challenge, overridden in script ("" made, else the reason). Facts: HOLDuelFact bits; AX..BY the heroes' places (cm); ForumXY the main forums' places (X, Y pairs). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	FString StartChallenge(int32 Challenger, int32 Target, int32 Facts, int32 AX, int32 AY, int32 BX, int32 BY, const TArray<int32>& ForumXY);
+	virtual FString StartChallenge_Implementation(int32 Challenger, int32 Target, int32 Facts, int32 AX, int32 AY, int32 BX, int32 BY, const TArray<int32>& ForumXY) { return TEXT("no_script"); }
+
+	/** D4: an answer, overridden in script (whether a challenge was waiting for the slot). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool AnswerChallenge(int32 Slot, bool bAccept, int32 Facts, int32 AX, int32 AY, int32 BX, int32 BY, const TArray<int32>& ForumXY);
+	virtual bool AnswerChallenge_Implementation(int32 Slot, bool bAccept, int32 Facts, int32 AX, int32 AY, int32 BX, int32 BY, const TArray<int32>& ForumXY) { return false; }
+
+	/** D4: the challenges waiting as (challenger, target) pairs, overridden in script. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	TArray<int32> PendingPairs();
+	virtual TArray<int32> PendingPairs_Implementation() { return TArray<int32>(); }
+
+	/** D4 (DU-Q2): the conditions of the challenge addressed to Target read again, overridden in script (whether the challenge fell). */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	bool RecheckChallenge(int32 Target, int32 Facts, int32 AX, int32 AY, int32 BX, int32 BY, const TArray<int32>& ForumXY);
+	virtual bool RecheckChallenge_Implementation(int32 Target, int32 Facts, int32 AX, int32 AY, int32 BX, int32 BY, const TArray<int32>& ForumXY) { return false; }
+
+	/** D4: the slot's duel as the sheet shows it, overridden in script: code, opponent, time left, circle X, Y, radius. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
+	TArray<int32> ViewOf(int32 Slot);
+	virtual TArray<int32> ViewOf_Implementation(int32 Slot) { return TArray<int32>(); }
+
 	/** The slot's adversary in its duel on, overridden in script (-1 outside one). */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Duel")
 	int32 Adversary(int32 Slot);
@@ -112,6 +165,8 @@ protected:
 	virtual int32 AdvanceDuels_Implementation(int32 DeltaMs, const TArray<int32>& Health) { return 0; }
 
 private:
+	/** D4: what only the match can see of a challenge of Challenger at Target: the HOLDuelFact bits, the two heroes' places, the main forums' places. */
+	void MeasureFacts(int32 Challenger, int32 Target, int32& OutFacts, FVector& OutA, FVector& OutB, TArray<int32>& OutForumXY) const;
 	bool bDuelOn = false;
 	int32 NumEnded = 0;
 };
