@@ -97,7 +97,7 @@ namespace HOLAIDuel
 	int Strength(int Level, int HealthPercent, int KitReadyPercent)
 	{
 		// Level 1 counts 10 and each level above adds 1 (a stat edge only, D43); the kit counts from half (never ready) to the whole.
-		return HealthPercent * (9 + Level) * (50 + KitReadyPercent / 2);
+		return HealthPercent * (9 + Level) * (50 + Math::IntegerDivisionTrunc(KitReadyPercent, 2));
 	}
 
 	// The true chance of winning, percent (0..100), from the two heroes.

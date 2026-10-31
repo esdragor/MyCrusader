@@ -3,6 +3,8 @@
 #include "Simulation/HOLDuelSubsystem.h"
 
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
+#include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
 #include "Match/HOLMatchConfig.h"
@@ -104,4 +106,24 @@ bool UHOLDuelSubsystem::TickNow(const int32 Step)
 	NumEnded += AdvanceDuels(StepMs, Health);
 	bDuelOn = AnyDuelOn();
 	return true;
+}
+
+namespace
+{
+	// The development door of the duel (D4's command will replace it): a duel accepted at once, the conditions of the challenge not checked.
+	FAutoConsoleCommandWithWorldAndArgs CommandBegin(TEXT("hol.Duel.Begin"),
+		TEXT("hol.Duel.Begin <Challenger> <Target>: a duel of the two slots' heroes, accepted at once, server or solo (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			UHOLDuelSubsystem* Duels = World ? UHOLDuelSubsystem::Find(World) : nullptr;
+			if (!Duels || Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Duel.Begin <Challenger> <Target>: on the server or in solo, two slots"));
+				return;
+			}
+			const int32 Challenger = FCString::Atoi(*Args[0]);
+			const int32 Target = FCString::Atoi(*Args[1]);
+			const bool bBegan = Duels->BeginDuelNow(Challenger, Target);
+			UE_LOG(LogHOLMatch, Display, TEXT("hol.Duel.Begin: slot %d against slot %d %s"), Challenger, Target, bBegan ? TEXT("began") : TEXT("refused"));
+		}));
 }
