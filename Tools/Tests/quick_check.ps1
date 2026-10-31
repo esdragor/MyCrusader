@@ -2692,7 +2692,9 @@ if ($NetListening) {
         # technologies of every player state as they have them (the research reaches its owner alone).
         $TechAskedFlag = Join-Path $TestSaved "quick_net_tech_asked.flag"
         $NetSteps += "mark tech"
-        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.FastBuild 1", "hol.Prod.Queue TemperedHalberds Barracks", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
+        # ("hero" alone plays no army phase: no barracks to research at, the report and the flags only.)
+        if ($Client -eq 1 -and $NetHeroOnly) { $NetSteps += "hol.Tech.Report", "signal $TechAskedFlag" }
+        elseif ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.FastBuild 1", "hol.Prod.Queue TemperedHalberds Barracks", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
         else { $NetSteps += "waitfile $TechAskedFlag 120", "wait 1", "hol.Tech.Report" }
         # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
@@ -6781,7 +6783,7 @@ if ($Parts -contains "net") {
             $TechChecks["client $N (Alice): Bob's research hidden (Bob $TechBob), her own empty (Alice $TechAlice)"] = $TechBob -eq "other []" -and $TechAlice -eq "local []"
         }
     }
-    $AllOk = (Report "net technologies" $TechChecks) -and $AllOk
+    if (-not $NetHeroOnly) { $AllOk = (Report "net technologies" $TechChecks) -and $AllOk }
 }
 
 if ($TestsProcess) {
