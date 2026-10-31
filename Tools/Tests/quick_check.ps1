@@ -2085,7 +2085,7 @@ if ($Parts -contains "camera") {
             # R3/R4 (D388): a neutral relay where three of slot 0's Spearmen stand (hol.Relay.Add, 4 s to take): slot 0 takes it from nobody,
             # then its hero is given territory XP by the minute (Exploration; 10 a minute: +1 every 6 s). Removed and the settings back.
             Step "mark build relay", "hol.Relay.Clear", "hol.Relay.HoldSeconds 4", "hol.Relay.Add $($BuildHero -join ' ') 1200",
-                "hol.Units.Spawn 3 $($BuildHero -join ' ') 0 Spearman 100", "waitlog Relay 0: slot 0 takes it from slot -1", "waitlog (exploration)", "hol.Relay.Report",
+                "hol.Units.Spawn 3 $($BuildHero -join ' ') 0 Spearman 100", "wait 2", "hol.Select.Report", "hol.Camera.Focus $($BuildHero -join ' ')", "frames 4", "capture build_relay_fill", "waitlog Relay 0: slot 0 takes it from slot -1", "waitlog (exploration)", "hol.Relay.Report", "hol.Select.Report", "frames 4", "capture build_relay_owned",
                 "hol.Units.Remove $($BuildHero -join ' ') 2000 0 Spearman", "hol.Relay.Clear", "hol.Relay.HoldSeconds 60", "hol.Hero.SetXP 0 0", "wait 0.3"
             Stop-CaseFilter
         }
@@ -4879,6 +4879,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["slot 0 takes the neutral relay by standing in it"] = [bool]($Relay | Select-String -SimpleMatch "Relay 0: slot 0 takes it from slot -1" -Quiet)
     $Checks["its hero is given territory XP by the minute (Exploration)"] = [bool]($Relay | Select-String -Pattern "Hero XP: slot 0 \+\d+ \(exploration\)" -Quiet)
     $Checks["the report shows slot 0 as the owner"] = [bool]($Relay | Select-String -Pattern "Relay report: 1 relay\(s\) \| #0 owner 0 " -Quiet)
+    # R5: what the markers draw, read from the game state the clients replicate: during the capture the arc is slot 0's and partly filled, then the ring is owned by slot 0 with no arc.
+    $Checks["the ring is drawn filling in slot 0's colour during the capture"] = [bool]($Relay | Select-String -Pattern "Relay rings: 1 \| #0 \(.*\) r1200 owner -1 taker 0 fill ([1-9]\d?) " -Quiet)
+    $Checks["the ring is drawn owned by slot 0 once taken"] = [bool]($Relay | Select-String -Pattern "Relay rings: 1 \| #0 \(.*\) r1200 owner 0 taker -1 fill 0 " -Quiet)
     $AllOk = (Report "build relay" $Checks) -and $AllOk
 }
 

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLRelayView.h"
 
 /**
  * One neutral relay (R3; GDD 9.4, D388, D348, D380): its owner (a slot), who is filling its count and the count of steps held toward its
@@ -42,4 +43,10 @@ namespace HOLRelay
 	 */
 	HEROESOFLIBERTY_API FHOLRelayState Step(const FHOLRelayState& State, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot, int32 HoldSteps,
 		int32 DecaySteps);
+
+	/** R5: the share of the capture held, 0 to 99 (the ring is full only by the change of owner); 0 with no hold steps. */
+	HEROESOFLIBERTY_API int32 FillPercent(const FHOLRelayState& State, int32 HoldSteps);
+
+	/** R5: what the server replicates of a relay at Location with a zone of Radius cm. */
+	HEROESOFLIBERTY_API FHOLRelayView MakeView(const FVector2D& Location, float Radius, const FHOLRelayState& State, int32 HoldSteps);
 }

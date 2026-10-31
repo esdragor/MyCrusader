@@ -794,6 +794,7 @@ namespace UE::HeroesOfLiberty::Player
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Selection markers: %s"), *Markers->Describe());
 					UE_LOG(LogHOLMatch, Display, TEXT("Aura rings: %s"), *Markers->DescribeAuraRings());
+					UE_LOG(LogHOLMatch, Display, TEXT("Relay rings: %s"), *Markers->DescribeRelayRings());
 				}
 			}
 		}));

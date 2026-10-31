@@ -8,6 +8,7 @@
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLRelayView.h"
 #include "Match/HOLVictoryRules.h"
 #include "Net/HOLPauseRules.h"
 #include "Simulation/HOLHeroSheet.h"
@@ -144,6 +145,14 @@ public:
 
 	/** R7.5, every machine (replicated): the players gone and those just back, for the banner. */
 	const TArray<FHOLAbsentNotice>& GetAbsentNotices() const { return AbsentNotices; }
+
+	/**
+	 * R5: the neutral relays as every machine knows them (position, zone, owner, taker, share of the capture); the server writes them
+	 * (UHOLRelaySubsystem, each step, only when they changed), the markers draw the rings from them.
+	 */
+	const TArray<FHOLRelayView>& GetRelayViews() const { return RelayViews; }
+	/** Server or solo only. */
+	void SetRelayViews(const TArray<FHOLRelayView>& Views);
 	/**
 	 * R7.5: the banner's lines at the server time Now (GetServerWorldTimeSeconds), one per notice, in the order of the
 	 * departures: « Bob : connexion perdue — 2:41 » while away, « Bob : de retour » BackNoticeSeconds after his return.
@@ -345,6 +354,10 @@ private:
 	 */
 	UPROPERTY(Replicated)
 	TArray<FHOLAbsentNotice> AbsentNotices;
+
+	/** R5: the neutral relays, public. */
+	UPROPERTY(Replicated)
+	TArray<FHOLRelayView> RelayViews;
 	/** The stock kept for slot Slot while its player is away; nullptr: not absent (or no game state of ours). */
 	static FHOLResources* FindAbsentStock(const UWorld& World, int32 Slot);
 

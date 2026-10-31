@@ -114,6 +114,7 @@ int32 UHOLRelaySubsystem::AddRelay(const FVector2D& Location, const float Radius
 	FRelaySite& Site = Relays.AddDefaulted_GetRef();
 	Site.Location = Location;
 	Site.Radius = FMath::Max(1.f, Radius);
+	PublishViews();
 	return Relays.Num() - 1;
 }
 
@@ -121,6 +122,24 @@ void UHOLRelaySubsystem::ClearRelays()
 {
 	Relays.Reset();
 	FMemory::Memzero(Carries);
+	PublishViews();
+}
+
+void UHOLRelaySubsystem::PublishViews()
+{
+	UWorld* World = GetWorld();
+	AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(HoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	TArray<FHOLRelayView> Views;
+	for (const FRelaySite& Site : Relays)
+	{
+		Views.Add(HOLRelay::MakeView(Site.Location, Site.Radius, Site.State, HoldSteps));
+	}
+	GameState->SetRelayViews(Views);
 }
 
 int32 UHOLRelaySubsystem::CountOwned(const int32 Slot) const
@@ -186,6 +205,8 @@ void UHOLRelaySubsystem::OnStepEnded(const int64 StepIndex)
 			UE_LOG(LogHOLMatch, Display, TEXT("Relay %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
 		}
 	}
+
+	PublishViews();
 
 	// Territory XP by the minute to the owners' heroes (D388; no secondary centre in the game yet).
 	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();

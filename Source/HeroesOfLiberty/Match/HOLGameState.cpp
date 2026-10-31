@@ -54,6 +54,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
 	DOREPLIFETIME(AHOLGameState, AbsentNotices);
+	DOREPLIFETIME(AHOLGameState, RelayViews);
 	DOREPLIFETIME(AHOLGameState, PausesLeft);
 	DOREPLIFETIME(AHOLGameState, PausedBySlot);
 	DOREPLIFETIME(AHOLGameState, PausedByName);
@@ -162,6 +163,14 @@ void AHOLGameState::OnStepStarted(const int64 StepIndex)
 void AHOLGameState::OnStepEnded(const int64 StepIndex)
 {
 	ApplyPendingDefeats();
+}
+
+void AHOLGameState::SetRelayViews(const TArray<FHOLRelayView>& Views)
+{
+	if (HasAuthority() && RelayViews != Views)
+	{
+		RelayViews = Views;
+	}
 }
 
 const FHOLForumState& AHOLGameState::GetForumState(const int32 Slot) const
