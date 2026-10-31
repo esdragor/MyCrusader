@@ -5973,13 +5973,13 @@ if ($Parts -contains "net") {
     # The army's march (J7a.6): each client's 10 units where the server has them (the server's last report with them
     # all), each slot's 5 around its right click (frame (0, 30 m) of its centre), no two of a slot overlapping.
     $ServerWheres = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value } })
-    $ParseWhere = { param($Text) $Map = @{}; foreach ($M in [regex]::Matches([string]$Text, "#(\d+) slot (\d) at \((-?\d+), (-?\d+)\)")) { $Map[$M.Groups[1].Value] = @([int]$M.Groups[2].Value, [double]$M.Groups[3].Value, [double]$M.Groups[4].Value) }; $Map }
+    $ParseWhere = { param($Text) $WhereMap = @{}; foreach ($M in [regex]::Matches([string]$Text, "#(\d+) slot (\d) at \((-?\d+), (-?\d+)\)")) { $WhereMap[$M.Groups[1].Value] = @([int]$M.Groups[2].Value, [double]$M.Groups[3].Value, [double]$M.Groups[4].Value) }; $WhereMap }
     foreach ($NetClient in $NetClients) {
         $N = $NetClient.Client
         $ArmyLines = @(Get-ClientSection (Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "army")
         $Seen = & $ParseWhere ($ArmyLines | Select-String -Pattern "Units where: (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Server = $null
-        foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Seen.Count -ge 10 -and @($Seen.Keys | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
+        foreach ($Report in $ServerWheres) { $WhereMap = & $ParseWhere $Report; if ($Seen.Count -ge 10 -and @($Seen.Keys | Where-Object { -not $WhereMap.ContainsKey($_) }).Count -eq 0) { $Server = $WhereMap } }
         $Gaps = @(if ($Server) { foreach ($Id in $Seen.Keys) { [Math]::Sqrt([Math]::Pow($Seen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($Seen[$Id][2] - $Server[$Id][2], 2)) } })
         $MaxGap = if ($Gaps.Count) { [Math]::Round(($Gaps | Measure-Object -Maximum).Maximum) } else { -1 }
         $Checks["client $N : the 10 units where the server has them ($($Seen.Count) seen, at most $MaxGap cm off)"] = ($Seen.Count -eq 10) -and ($Gaps.Count -eq 10) -and ($MaxGap -ge 0) -and ($MaxGap -le 100)
@@ -6053,7 +6053,7 @@ if ($Parts -contains "net") {
             @{ Ok = $LastShown -eq $LastSent; Text = "#$Id $(if ($LastShown -eq $Unhurt) { 'full' } else { $LastShown }) (server $(if ($LastSent -eq $Unhurt) { 'full' } else { $LastSent }))" } })
         $Checks["client 1 : the Men-at-arms' last health the server's exactly ($(($Finals | ForEach-Object { $_.Text }) -join ', '))"] = ($Finals.Count -eq 2) -and (@($Finals | Where-Object { -not $_.Ok }).Count -eq 0)
         $Server = $null
-        foreach ($Report in $ServerWheres) { $Map = & $ParseWhere $Report; if ($Left.Count -and @($Left | Where-Object { -not $Map.ContainsKey($_) }).Count -eq 0 -and @($Spears | Where-Object { $Map.ContainsKey($_) }).Count -eq 0) { $Server = $Map } }
+        foreach ($Report in $ServerWheres) { $WhereMap = & $ParseWhere $Report; if ($Left.Count -and @($Left | Where-Object { -not $WhereMap.ContainsKey($_) }).Count -eq 0 -and @($Spears | Where-Object { $WhereMap.ContainsKey($_) }).Count -eq 0) { $Server = $WhereMap } }
         $Gaps = @(if ($Server) { foreach ($Id in $Left) { [Math]::Sqrt([Math]::Pow($LastSeen[$Id][1] - $Server[$Id][1], 2) + [Math]::Pow($LastSeen[$Id][2] - $Server[$Id][2], 2)) } })
         $MaxGap = if ($Gaps.Count) { [Math]::Round(($Gaps | Measure-Object -Maximum).Maximum) } else { -1 }
         $Checks["client 1 : the Men-at-arms where the server has them (at most $MaxGap cm off)"] = ($Gaps.Count -eq 2) -and ($MaxGap -ge 0) -and ($MaxGap -le 100)
