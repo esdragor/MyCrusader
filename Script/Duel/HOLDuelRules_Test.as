@@ -584,3 +584,59 @@ void Test_DuelBookLostConditions(FUnitTest& T)
 	T.AssertTrue(HOLDuel::BookCanHit(BookB, DuelAlice, DuelBob), "B: the duel is on");
 	T.AssertFalse(HOLDuel::BookCanHit(BookB, DuelAlice, 5), "B: protected");
 }
+
+// ---- D120: contact and hold in the circle ----
+
+// The adversary of a duellist, only while the duel is on.
+void Test_DuelAdversary(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuel Pending = HOLDuel::Challenge(S, DuelAlice, DuelBob);
+	T.AssertEquals(-1, HOLDuel::AdversaryOf(Pending, DuelAlice), "pending: no contact yet");
+	FHOLDuel Active = HOLDuel::Respond(S, Pending, true);
+	T.AssertEquals(DuelBob, HOLDuel::AdversaryOf(Active, DuelAlice), "Alice fights Bob");
+	T.AssertEquals(DuelAlice, HOLDuel::AdversaryOf(Active, DuelBob), "Bob fights Alice");
+	T.AssertEquals(-1, HOLDuel::AdversaryOf(Active, 5), "a third hero fights nobody");
+	T.AssertEquals(-1, HOLDuel::AdversaryOf(HOLDuel::Advance(S, Active, S.MaxDurationMs, 100, 100), DuelAlice), "over: no contact");
+}
+
+// A point outside is brought back to the nearest point of the circle; a point inside or on the edge is left alone.
+void Test_DuelClampToArena(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuelArena Arena = HOLDuel::MakeArena(S, -100, 0, 100, 0);
+	FHOLDuelPoint Inside = HOLDuel::ClampToArena(Arena, 50, 20);
+	T.AssertEquals(50, Inside.X, "inside: X unchanged");
+	T.AssertEquals(20, Inside.Y, "inside: Y unchanged");
+	FHOLDuelPoint Edge = HOLDuel::ClampToArena(Arena, Arena.CenterX + Arena.RadiusCm, Arena.CenterY);
+	T.AssertEquals(Arena.CenterX + Arena.RadiusCm, Edge.X, "on the edge: unchanged");
+	FHOLDuelPoint Far = HOLDuel::ClampToArena(Arena, Arena.CenterX + 10 * Arena.RadiusCm, Arena.CenterY);
+	T.AssertEquals(Arena.CenterX + Arena.RadiusCm, Far.X, "far on the right: brought to the edge");
+	T.AssertEquals(Arena.CenterY, Far.Y, "same line");
+	FHOLDuelPoint Diagonal = HOLDuel::ClampToArena(Arena, Arena.CenterX + 5 * Arena.RadiusCm, Arena.CenterY + 5 * Arena.RadiusCm);
+	T.AssertTrue(HOLDuel::InArena(Arena, Diagonal.X, Diagonal.Y) || HOLDuel::InArena(Arena, Diagonal.X - 1, Diagonal.Y - 1), "diagonal: back at the circle (rounding aside)");
+	T.AssertTrue(Diagonal.X > Arena.CenterX && Diagonal.Y > Arena.CenterY, "diagonal: the same side");
+	T.AssertEquals(Diagonal.X - Arena.CenterX, Diagonal.Y - Arena.CenterY, "diagonal: the same direction");
+}
+
+// The book keeps the circle of each duel on, by the duellists' slots.
+void Test_DuelBookArena(FUnitTest& T)
+{
+	FHOLDuelSettings S = HOLDuel::Preset();
+	FHOLDuelHero Hero;
+	FHOLDuelPlace Place;
+	FHOLDuelBook Book = HOLDuel::NewBook(4);
+	HOLDuel::Start(S, Book, DuelAlice, DuelBob, Hero, Hero, Place);
+	FHOLDuelArena Arena = HOLDuel::MakeArena(S, 0, 0, 200, 0);
+	T.AssertFalse(HOLDuel::BookSetArena(Book, DuelAlice, DuelBob, Arena), "a challenge waiting has no circle yet");
+	T.AssertTrue(HOLDuel::Answer(S, Book, DuelBob, true), "accepted");
+	T.AssertTrue(HOLDuel::BookSetArena(Book, DuelAlice, DuelBob, Arena), "the circle is set at the acceptance");
+	FHOLDuelArena Got;
+	T.AssertTrue(HOLDuel::BookArenaOf(Book, DuelBob, Got), "Bob finds it");
+	T.AssertEquals(Arena.CenterX, Got.CenterX, "same centre X");
+	T.AssertEquals(Arena.RadiusCm, Got.RadiusCm, "same radius");
+	T.AssertTrue(HOLDuel::BookArenaOf(Book, DuelAlice, Got), "Alice finds it");
+	T.AssertFalse(HOLDuel::BookArenaOf(Book, 2, Got), "a third slot has none");
+	T.AssertEquals(DuelBob, HOLDuel::BookAdversaryOf(Book, DuelAlice), "the book's adversary");
+	T.AssertEquals(-1, HOLDuel::BookAdversaryOf(Book, 3), "none for a bystander");
+}

@@ -94,6 +94,10 @@ struct FHOLDuel
 	// Set when the duel ended in a victory; -1 otherwise.
 	int Winner = -1;
 	int Loser = -1;
+
+	// D120: the circle, set where the duel began (HOLDuel::BookSetArena); none before.
+	bool bHasArena = false;
+	FHOLDuelArena Arena;
 }
 
 // What the end of a duel changes, read from an Over duel: the match applies it (morale effects on the troops around, the
