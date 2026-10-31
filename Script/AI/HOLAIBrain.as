@@ -52,6 +52,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The attack wave of each slot (IA2.6: home, out or back, the soldiers it launched, the cooldown).
 	TMap<int, FHOLAIWave> Waves;
 
+	// The step of each slot's last Market trade (M6).
+	TMap<int, int64> MarketSteps;
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -172,6 +175,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// 3b. The army (IA2.5): the base defence when enemy soldiers come near, otherwise the regrouping at the assembly point.
 		ThinkArmy(PlayerIndex, Step, Summary, Data);
 
+		// 3b2. The Market (M6, MK-Q3 provisional): with a finished one, a surplus buys what is missing (HOLAIMarket::Choose).
+		ThinkMarket(PlayerIndex, Step, Summary, Data);
+
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
 		Kings.Find(PlayerIndex, KingMemory);
@@ -259,6 +265,61 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 		Memory.Point = Military.RallyPoint;
 		Rallied.Add(PlayerIndex, Memory);
+	}
+
+	// The Market (M6, MK-Q3): one trade at a time, at most one every MarketGapSteps steps (20 s). The brain does not build the Market
+	// yet (the opening's steps and the AI's reaching tier II come with the answer to MK-Q3): this serves a slot that has a finished one.
+	// The numbers of the rule are HOLAIMarket's (MinDifficulty is the answer to MK-Q3, 0 for now: every level).
+	void ThinkMarket(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FVector MarketAt;
+		bool bReady = false;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Each = Summary.Buildings[Index];
+			if (Each.TypeName == n"Market" && Each.State == EHOLConstructionState::Finished)
+			{
+				MarketAt = Each.Location;
+				bReady = true;
+				break;
+			}
+		}
+		if (!bReady)
+		{
+			return;
+		}
+		int64 Last = -100000;
+		MarketSteps.Find(PlayerIndex, Last);
+		if (Step - Last < 400)
+		{
+			return;
+		}
+		TArray<int> Prices;
+		if (!HOLAIOrder::ReadAIMarketBook(Prices))
+		{
+			return;
+		}
+		FHOLMarketBook Book;
+		Book.Prices = Prices;
+		const TArray<float> Spend = HOLAINeeds::SpendOf(Summary, Data);
+		TArray<int> Stock;
+		TArray<int> Wanted;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			Stock.Add(HOLAIOpening::PartOf(Summary, Resource).Stock);
+			Wanted.Add(int(Spend[Resource]));
+		}
+		const FHOLAIMarketChoice Choice = HOLAIMarket::Choose(HOLMarket::DefaultSettings(), Book, FHOLAIMarketSettings(), Stock, Wanted, true, int(LevelOf(PlayerIndex)));
+		if (!Choice.bTrade)
+		{
+			return;
+		}
+		MarketSteps.Add(PlayerIndex, Step);
+		if (HOLAIOrder::IssueAIMarketOrder(PlayerIndex, MarketAt, Choice.Resource, Choice.Lots, Choice.bBuy))
+		{
+			const FString Side = Choice.bBuy ? "buy" : "sell";
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Market {Side} {Choice.Lots} lots of resource {Choice.Resource} ({Choice.Reason})");
+		}
 	}
 
 	// The slot's level (D422). The brain cannot read the slot's config yet (a C++ read is next): every slot is Normal, as the menu and the lobby give.

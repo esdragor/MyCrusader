@@ -1807,7 +1807,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
 		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
-			: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks")) : Command.TypeName;
+			: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
+			: Command.Command == EHOLGridCommand::Trade ? FName(*FString::Printf(TEXT("%s%s"), Command.bBuy ? TEXT("Buy") : TEXT("Sell"),
+				Command.Resource == EHOLResource::Wood ? TEXT("Wood") : Command.Resource == EHOLResource::Stone ? TEXT("Stone") : TEXT("Food")))
+			: Command.TypeName;
 		if (ShownOrderTypes.IsValidIndex(Cell))
 		{
 			ShownOrderTypes[Cell] = Command.Command == EHOLGridCommand::AttackMove ? FName(TEXT("AttackMove"))
@@ -1843,6 +1846,46 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FText Name = HOLGameNames::GetBuildingName(Command.TypeName, BuildType);
 			GridCell->SetCommand(Name, Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
 			GridCell->SetTooltip(Name, Cost, Missing, GetBuildingEffect(BuildType));
+			break;
+		}
+		case EHOLGridCommand::Trade:
+		{
+			// M5 (Market, GDD 5.5): a lot of 100 goods sold or bought at the common book's price (the lot's quote on the cell, the
+			// price after it in the tooltip); greyed when the stock would not pay it (still clickable, the click says why).
+			if (!bMarketSettingsTried)
+			{
+				bMarketSettingsTried = true;
+				bMarketSettingsLoaded = HOLMarket::LoadStandardSettings(MarketSettings);
+			}
+			const int32 Good = static_cast<int32>(Command.Resource);
+			FText Label = GetResourceName(Command.Resource);
+			FText Name = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyName", "Acheter 100 {0}") : LOCTEXT("MarketSellName", "Vendre 100 {0}"),
+				GetResourceNameInText(Command.Resource));
+			FText Effect = LOCTEXT("MarketNoBook", "Le cours n'est pas encore connu");
+			FHOLResources Cost;
+			bool bGreyed = true;
+			if (bMarketSettingsLoaded && BoundTableState.IsValid() && BoundTableState->HasMarketBook() && Good >= 0 && Good < HOLMarket::TradableResources)
+			{
+				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
+				const int32 Huge = 1000000;
+				const HOLMarket::FTrade Quote = Command.bBuy ? HOLMarket::Buy(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent)
+					: HOLMarket::Sell(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent);
+				if (Command.bBuy)
+				{
+					Cost.Gold = Quote.Gold;
+				}
+				else
+				{
+					Cost[Command.Resource] = HOLMarket::Lot;
+				}
+				Label = FText::Format(LOCTEXT("MarketCell", "{0}\n{1}"), Label, FText::FromString(FString::Printf(TEXT("%s%d"), Command.bBuy ? TEXT("-") : TEXT("+"), Quote.Gold)));
+				Effect = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyEffect", "Coûte {0} or, taxe comprise ; le cours monte à {1}. Maj : 500 d'un coup")
+					: LOCTEXT("MarketSellEffect", "Rapporte {0} or, taxe déduite ; le cours baisse à {1}. Maj : 500 d'un coup"),
+					FText::AsNumber(Quote.Gold), FText::AsNumber(Quote.Book.Prices[Good]));
+				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
+			}
+			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, Cost, GetMissing(Stock, Cost), Effect);
 			break;
 		}
 		case EHOLGridCommand::CancelConstruction:

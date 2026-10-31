@@ -69,6 +69,8 @@ namespace HOLPlayerOrders
 	HEROESOFLIBERTY_API bool Place(UWorld& World, int32 PlayerIndex, FName TypeName, const FVector& Point, TConstArrayView<uint32> UnitIds, bool bQueue = false);
 	/** Queue one unit of TypeName at Building (J3, D282): paid and born by the production at a step; the owner's building only. */
 	HEROESOFLIBERTY_API bool QueueProduction(UWorld& World, int32 PlayerIndex, AHOLBuilding* Building, FName TypeName);
+	/** M4c/M6: a trade of Lots lots (100 goods each) of Resource (0 food, 1 wood, 2 stone) at Building, a Market of the player's; checked, priced and paid by the production at a step. */
+	HEROESOFLIBERTY_API bool MarketTrade(UWorld& World, int32 PlayerIndex, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 	/**
 	 * Set Building's rally point (J4, D288): Point on the ground, or SourceIndex a standing source (J5, D298), or Site one of the
 	 * player's sites not finished (they gather, they build); bQueue (Shift) adds a step. The production checks the owner.

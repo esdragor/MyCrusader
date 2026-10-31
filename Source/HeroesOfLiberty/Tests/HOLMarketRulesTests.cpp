@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "AI/HOLAIOrders.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionSubsystem.h"
@@ -318,6 +319,19 @@ bool FHOLMarketChainTest::RunTest(const FString& Parameters)
 		}
 		TestEqual(TEXT("long after: wood at its base 80, not past it"), State->GetMarketBook().Prices[Wood], S.BasePrices[Wood]);
 		TestEqual(TEXT("... stone at its base 120"), State->GetMarketBook().Prices[Stone], S.BasePrices[Stone]);
+
+		// 5. The AI's way (M6): the book read by the brain's binding, the order through UHOLAIOrderLibrary at the Market's place.
+		TArray<int32> Prices;
+		if (TestTrue(TEXT("the AI reads the book"), UHOLAIOrderLibrary::ReadAIMarketBook(World, Prices)) && TestEqual(TEXT("... four prices"), Prices.Num(), 4))
+		{
+			TestEqual(TEXT("... wood at 80, stone at 120"), Prices[Wood] * 1000 + Prices[Stone], 80 * 1000 + 120);
+		}
+		const FHOLResources BeforeAI = Player->GetResources();
+		TestTrue(TEXT("the AI's order for a lot of food is queued"), UHOLAIOrderLibrary::IssueAIMarketOrder(World, 0, Market->GetActorLocation(), Food, 1, false));
+		TestFalse(TEXT("an AI order at a place with no Market of the slot is refused"), UHOLAIOrderLibrary::IssueAIMarketOrder(World, 0, FVector(900000.0, 0.0, 0.0), Food, 1, false));
+		RunStep();
+		TestTrue(TEXT("... sold at the next step: food 100 less, gold 56 more"),
+			Player->GetResources() == FHOLResources(BeforeAI.Food - 100, BeforeAI.Wood, BeforeAI.Stone, BeforeAI.Gold + 56));
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);

@@ -153,6 +153,7 @@ $SubCaseTable = @{
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
         barwidth = @{ Marks = @("barwidth"); Setup = @() }
         tiers = @{ Marks = @("tiers"); Setup = @() }
+        market = @{ Marks = @("market"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -2046,6 +2047,16 @@ if ($Parts -contains "camera") {
                 "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 6 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
                 "hol.Hero.SetXP 0 0", "waitlog Hero level: slot 0 level 3 -> 1", "wait 0.6", "frames 3", "hol.HUD.Report",
                 "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3"
+            Key Escape
+            Step "waitlog Selection: none"
+            # M5 (Market): a finished Market of slot 0 selected: the grid's trades (sales A Z E, purchases Q S D) read from the common book;
+            # Z sells a lot of wood at the server's price (80 -> 56 gold, the book at 77); the Market is then taken down (a cheat), the centre selected
+            # again and cleared by Escape. Last of the cases: a Market standing or just fallen is nobody's business but its own.
+            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
+                "hol.Camera.FocusNear 1500 3000", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: Market of slot 0 (own)", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Cheat.DamageSelected 100000 siege", "waitlog Building destroyed: Market of slot 0", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
+                "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
             Stop-CaseFilter
@@ -4774,6 +4785,16 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
     $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
     $AllOk = (Report "build tiers" $Checks) -and $AllOk
+
+    # M5 (Market): the selected Market's grid is the trades' (A Z E sell food, wood, stone; Q S D buy them), and Z sold a lot of wood at 80 less 30 %.
+    $HudMarket = Get-Section "build market"
+    $MarketReports = @($HudMarket | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
+    $Checks = [ordered]@{}
+    $Checks["the Market selected: the trades on A Z E / Q S D, the sale of a lot of wood at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
+        ($MarketReports[0] -match "grid A=SellFood \w+ Z=SellWood \w+ E=SellStone \w+ Q=BuyFood \w+ S=BuyWood \w+ D=BuyStone \w+,") -and
+        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 56 gold \(price now 77,")
+    $AllOk = (Report "build market" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

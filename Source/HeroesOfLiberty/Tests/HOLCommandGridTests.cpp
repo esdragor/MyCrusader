@@ -25,7 +25,47 @@ namespace UE::HeroesOfLiberty::Tests::CommandGrid
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridCommandsTest, "HeroesOfLiberty.CommandGrid.Commands", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+// M5 (Market, GDD 5.5): the selected finished Market gives the grid its trades, sales on A Z E (food, wood, stone), purchases on Q S D;
+// nothing for gold (the money), a site, a Market in a group of several (cells merged as any), or a building that is no Market.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridMarketTest, "HeroesOfLiberty.CommandGrid.Market", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridMarketTest::RunTest(const FString& Parameters)
+{
+	FHOLGridContext Market;
+	Market.bOwnBuilding = true;
+	Market.bBuildingFinished = true;
+	Market.bMarket = true;
+	const EHOLResource Goods[] = { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone };
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		const EHOLResource Good = Goods[Index];
+		TestEqual(*FString::Printf(TEXT("sell good %d: cell %d (A Z E)"), Index, Index), HOLCommandGrid::GetTradeCell(Good, false), Index);
+		TestEqual(*FString::Printf(TEXT("buy good %d: cell %d (Q S D)"), Index, 4 + Index), HOLCommandGrid::GetTradeCell(Good, true), 4 + Index);
+		const FHOLGridCommand Sell = HOLCommandGrid::GetCommand(Market, Index);
+		TestTrue(*FString::Printf(TEXT("Market, cell %d: sells good %d"), Index, Index), Sell.Command == EHOLGridCommand::Trade && Sell.Resource == Good && !Sell.bBuy);
+		const FHOLGridCommand Buy = HOLCommandGrid::GetCommand(Market, 4 + Index);
+		TestTrue(*FString::Printf(TEXT("Market, cell %d: buys good %d"), 4 + Index, Index), Buy.Command == EHOLGridCommand::Trade && Buy.Resource == Good && Buy.bBuy);
+	}
+	TestEqual(TEXT("gold has no sale cell"), HOLCommandGrid::GetTradeCell(EHOLResource::Gold, false), static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("gold has no purchase cell"), HOLCommandGrid::GetTradeCell(EHOLResource::Gold, true), static_cast<int32>(INDEX_NONE));
+	for (const int32 Cell : { 3, 7, 8, 9, 10, 11 })
+	{
+		TestTrue(*FString::Printf(TEXT("Market, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Market, Cell).IsNone());
+	}
+	TestTrue(TEXT("a key on a Market goes to the grid"), HOLCommandGrid::PressKey(Market, INDEX_NONE, 0).Target == EHOLGridKeyTarget::Grid);
+
+	FHOLGridContext Site = Market;
+	Site.bBuildingFinished = false;
+	TestTrue(TEXT("a Market site: no trade, only its cancel cell"), HOLCommandGrid::GetCommand(Site, 0).IsNone() && HOLCommandGrid::GetCommand(Site, 4).IsNone()
+		&& HOLCommandGrid::GetCommand(Site, HOLCommandGrid::CancelCell).Command == EHOLGridCommand::CancelConstruction);
+
+	FHOLGridContext House;
+	House.bOwnBuilding = true;
+	House.bBuildingFinished = true;
+	TestTrue(TEXT("another building: no trade"), HOLCommandGrid::GetCommand(House, 0).IsNone() && HOLCommandGrid::GetCommand(House, 4).IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridCommandsTest,"HeroesOfLiberty.CommandGrid.Commands", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridCommandsTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;

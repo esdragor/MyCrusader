@@ -3076,6 +3076,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		Context.bOwnBuilding = Type != nullptr;
 		Context.bBuildingFinished = Building->IsFinished();
 		Context.bForumDown = Building->IsForumDown();
+		Context.bMarket = Building->GetTypeName() == HOLBuildingTypeNames::Market;
 		if (Type)
 		{
 			Context.Produces = Type->Produces;
@@ -3107,6 +3108,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			One.bBuildingGroup = bSeveral;
 			One.bBuildingFinished = Group[Member]->IsFinished();
 			One.bForumDown = Group[Member]->IsForumDown();
+			One.bMarket = Group[Member]->GetTypeName() == HOLBuildingTypeNames::Market;
 			if (Type)
 			{
 				One.Produces = Type->Produces;
@@ -3349,6 +3351,50 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 			LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
 			ServerQueueProduction(Building, Command.TypeName);
 		}
+		return;
+	}
+	case EHOLGridCommand::Trade:
+	{
+		// M5: 100 goods (Shift: 500) at the selected Market, or at the first finished one of the group. What the server would
+		// refuse for the stock is told and not sent, the price being the book's as this machine has it (the server prices it).
+		AHOLBuilding* Market = GetOwnSelection();
+		if (!Market || Market->GetTypeName() != HOLBuildingTypeNames::Market)
+		{
+			TArray<AHOLBuilding*> Group;
+			GetSelectedBuildings(Group);
+			Market = nullptr;
+			for (AHOLBuilding* Each : Group)
+			{
+				if (Each->GetTypeName() == HOLBuildingTypeNames::Market && Each->IsFinished())
+				{
+					Market = Each;
+					break;
+				}
+			}
+		}
+		const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+		HOLMarket::FSettings Settings;
+		if (!Market || !HOLPlayerState || !HOLGameState || !HOLGameState->HasMarketBook() || !HOLMarket::LoadStandardSettings(Settings))
+		{
+			return;
+		}
+		const int32 Lots = IsInputKeyDown(EKeys::LeftShift) || IsInputKeyDown(EKeys::RightShift) ? 5 : 1;
+		FHOLResources Unused;
+		const HOLMarket::FTrade Quote = HOLMarket::Apply(Settings, HOLGameState->GetMarketBook(), HOLPlayerState->GetResources(), Command.Resource, Lots,
+			Command.bBuy, Settings.FeePercent, Unused);
+		if (!Quote.bOk)
+		{
+			FHOLCommandFeedback Feedback;
+			Feedback.Kind = EHOLCommandFeedback::NotEnoughResources;
+			Feedback.Resource = Quote.Reason == FName(TEXT("gold")) ? EHOLResource::Gold : Command.Resource;
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: Market %s %d lots of resource %d refused (%s)"), Command.bBuy ? TEXT("buy") : TEXT("sell"), Lots,
+				static_cast<int32>(Command.Resource), *Quote.Reason.ToString());
+			NotifyFeedback(Feedback);
+			return;
+		}
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: Market %s %d lots of resource %d for %d gold"), Command.bBuy ? TEXT("buy") : TEXT("sell"), Lots,
+			static_cast<int32>(Command.Resource), Quote.Gold);
+		RequestMarketTrade(static_cast<int32>(Command.Resource), Lots, Command.bBuy);
 		return;
 	}
 	case EHOLGridCommand::Build:

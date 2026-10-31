@@ -24,6 +24,12 @@ TRANSLATIONS = {
     "HOLGameScreen,HoldName": ("Hold position", "位置を保持"),
     "HOLGameScreen,HoldEffect": ("Attacks only in range, never chases", "射程内のみ攻撃し、追跡しない"),
     "HOLGameScreen,ActivityAttacking": ("Attacking", "攻撃中"),
+    "HOLGameScreen,MarketBuyName": ("Buy 100 {0}", "{0}を100購入"),
+    "HOLGameScreen,MarketSellName": ("Sell 100 {0}", "{0}を100売却"),
+    "HOLGameScreen,MarketNoBook": ("The price is not known yet", "相場はまだ不明です"),
+    "HOLGameScreen,MarketCell": ("{0}\n{1}", "{0}\n{1}"),
+    "HOLGameScreen,MarketBuyEffect": ("Costs {0} gold, tax included; the price rises to {1}. Shift: 500 at once", "税込み{0}ゴールド。相場は{1}に上昇。Shift：一度に500"),
+    "HOLGameScreen,MarketSellEffect": ("Earns {0} gold, tax deducted; the price falls to {1}. Shift: 500 at once", "税引き後{0}ゴールド。相場は{1}に下落。Shift：一度に500"),
 
     "HOLPlayerColors,Blue": ("Blue", "青"),
     "HOLPlayerColors,Red": ("Red", "赤"),
