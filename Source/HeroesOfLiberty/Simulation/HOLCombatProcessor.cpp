@@ -7,12 +7,14 @@
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
+#include "GameFramework/GameStateBase.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
 #include "Match/HOLVictoryRules.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -30,6 +32,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 int64 UHOLCombatProcessor::TotalHits = 0;
 int64 UHOLCombatProcessor::TotalKills = 0;
@@ -485,6 +488,21 @@ int32 UHOLCombatProcessor::GetTalentArmorBonus(const FFighter& Victim) const
 	return bShieldsUp && IsInAura(Victim) ? HOLHeroAbility::ShieldsUpArmorBonus : 0;
 }
 
+int32 UHOLCombatProcessor::GetTechnologyAttackPercent(const FFighter& Attacker) const
+{
+	const int32 Slot = Attacker.State->OwnerPlayer;
+	if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+	{
+		return 0;
+	}
+	switch (Attacker.Constants->AttackType)
+	{
+	case EHOLAttackType::Melee: return MeleeAttackPercent[Slot];
+	case EHOLAttackType::Ranged: return RangedAttackPercent[Slot];
+	default: return 0;
+	}
+}
+
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	using namespace UE::HeroesOfLiberty::Combat;
@@ -522,6 +540,25 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	// J8c.2: the living heroes are aura sources (J8c-Q1); the cries count down on every unit, whether combat is on or not.
 	AuraSources.Reset();
 	ShieldsUpOwners = 0;
+	// T6: each slot's attack technologies, from the player states (the server has them all; a technology is read as the gather's).
+	for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		MeleeAttackPercent[Slot] = 0;
+		RangedAttackPercent[Slot] = 0;
+	}
+	if (const AGameStateBase* GameState = World ? World->GetGameState() : nullptr)
+	{
+		for (const APlayerState* PlayerState : GameState->PlayerArray)
+		{
+			const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
+			const int32 Slot = HOLPlayerState ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+			if (Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots)
+			{
+				MeleeAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Melee));
+				RangedAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Ranged));
+			}
+		}
+	}
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
@@ -2140,7 +2177,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy));
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter));
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
+#include "Match/HOLMatchConfig.h"
 #include "Simulation/HOLCombatRules.h"
 #include "HOLCombatProcessor.generated.h"
 
@@ -157,6 +158,14 @@ protected:
 	int32 GetTalentArmorBonus(const FFighter& Victim) const;
 	/** T4: one bit per slot whose hero took a talent giving armour in the aura (read from the hero sheets, each step). */
 	uint32 ShieldsUpOwners = 0;
+	/**
+	 * T6: the percent each slot's technologies add to the attack of its melee and ranged units (Lames affutees, Empennage),
+	 * read from the player states of this machine (the server's: it has them all) once a step.
+	 */
+	int32 MeleeAttackPercent[FHOLMatchConfig::MaxSlots] = {};
+	int32 RangedAttackPercent[FHOLMatchConfig::MaxSlots] = {};
+	/** T6: the percent the technologies of Attacker's player add to its attack, by the attack's type. */
+	int32 GetTechnologyAttackPercent(const FFighter& Attacker) const;
 	TMap<FMassEntityHandle, int32> IndexOfEntity;
 	/**
 	 * The fast paths' index of each entity (J7c.4, S3, hol.Combat.FastPaths): a flat table by the entity's index, an entry
