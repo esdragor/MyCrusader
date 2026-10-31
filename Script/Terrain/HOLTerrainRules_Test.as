@@ -61,3 +61,28 @@ void Test_TerrainMarshStopsCharge(FUnitTest& T)
 	S.bMarshStopsCharge = false;
 	T.AssertFalse(HOLTerrain::StopsCharge(S, Zones, 100, 100), "the setting turned off");
 }
+
+// The server (C++, FHOLTerrainRules) and this script's rule must agree: the same preset 0, the same percent on a grid of points of a
+// zone (inside, on the edge, one centimetre out, far), the same scaled speeds.
+void Test_TerrainServerAndScriptRulesAgree(FUnitTest& T)
+{
+	FHOLTerrainSettings S = HOLTerrain::Preset(0);
+	T.AssertEquals(HOLTerrain::GetServerDefaultMarshPercent(), S.MarshSpeedPercent, "the server and the script start with the same marsh strength");
+	TArray<FHOLTerrainZone> Zones;
+	Zones.Add(MarshZone(1000, -2000, 500));
+	for (int X = -1000; X <= 3000; X += 250)
+	{
+		for (int Y = -3000; Y <= 0; Y += 250)
+		{
+			T.AssertEquals(HOLTerrain::ServerSpeedPercent(S.MarshSpeedPercent, 1000, -2000, 500, X, Y), HOLTerrain::SpeedPercentAt(S, Zones, X, Y),
+				"the server and the script agree at (" + X + ", " + Y + ")");
+		}
+	}
+	T.AssertEquals(HOLTerrain::ServerSpeedPercent(S.MarshSpeedPercent, 1000, -2000, 500, 1500, -2000), HOLTerrain::SpeedPercentAt(S, Zones, 1500, -2000), "on the edge");
+	T.AssertEquals(HOLTerrain::ServerSpeedPercent(S.MarshSpeedPercent, 1000, -2000, 500, 1501, -2000), HOLTerrain::SpeedPercentAt(S, Zones, 1501, -2000), "one centimetre out");
+	for (int Speed = 0; Speed <= 700; Speed += 97)
+	{
+		T.AssertEquals(HOLTerrain::ServerScaledSpeed(Speed, S.MarshSpeedPercent), HOLTerrain::ScaledSpeed(Speed, S.MarshSpeedPercent), "the scaled speed " + Speed);
+	}
+	T.AssertEquals(HOLTerrain::ServerScaledSpeed(1, 10), HOLTerrain::ScaledSpeed(1, 10), "a walker never reaches 0");
+}

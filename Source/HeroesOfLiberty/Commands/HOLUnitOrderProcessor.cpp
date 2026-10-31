@@ -16,6 +16,7 @@
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLTerrainSubsystem.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
 #include "MassEntitySubsystem.h"
@@ -120,6 +121,15 @@ namespace UE::HeroesOfLiberty::Orders
 	float GetOrderWalkSpeed(const FHOLUnitTypeConstants& Constants, const FHOLMoveOrderFragment& Order)
 	{
 		return HOLFormation::GetMarchSpeed(Constants.Speed, Order.bFormation ? Order.MarchSpeed : 0.f) * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+	}
+
+	/**
+	 * C3 (El Dorado): the share of its speed a walker standing at Location walks at, from the terrain zones of the map (a marsh slows
+	 * everybody, MapsInProgress.md, M-Q2 = A): 1 outside every zone and on a map without zones.
+	 */
+	float GetTerrainShare(const UHOLTerrainSubsystem* Terrain, const FVector& Location)
+	{
+		return Terrain ? static_cast<float>(Terrain->GetSpeedPercentAt(Location)) / 100.f : 1.f;
 	}
 
 	/** A walk is a detour for hol.Units.LogDetours when longer than this share of the straight line, plus DetourSlack. */
@@ -407,7 +417,7 @@ namespace UE::HeroesOfLiberty::Orders
 		MoveTarget.EntityDistanceToGoal = FMassMoveTargetFragment::UnsetDistance;
 		MoveTarget.SlackRadius = 0.f;
 		MoveTarget.IntentAtGoal = EMassMovementAction::Stand; // Slow down on approach, stand at the slot.
-		MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order));
+		MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order) * GetTerrainShare(World.GetSubsystem<UHOLTerrainSubsystem>(), Location));
 		MoveTarget.CreateNewAction(EMassMovementAction::Move, World);
 
 		Order.Phase = EHOLMovePhase::FinalLeg;
@@ -2062,6 +2072,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		return;
 	}
 	const float Scale = FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+	const UHOLTerrainSubsystem* Terrain = World->GetSubsystem<UHOLTerrainSubsystem>();
 	// The melee (MV.4.4, reinforcements): the units alive, by their ids (D231: a stable order), with whether they fight.
 	struct FMeleePoint
 	{
@@ -2379,7 +2390,9 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		}
 		++Block.Steps;
 		const FVector2D Fallback = HOLFormation::GetDirectionOnLine(Block.Path, 0., HOLFormation::BlockTurnWindow, FVector2D(1., 0.));
-		const double Pace = Block.Pace * Scale;
+		// C3: the ground under the block's point (a marsh) takes its share of the pace; the members follow their slots.
+		const double Pace = Block.Pace * Scale
+			* GetTerrainShare(Terrain, FVector(Block.Progress < 0. ? Block.Path[0] : HOLFormation::GetPointOnLine(Block.Path, Block.Progress), 0.));
 
 		// The march: the block's point never waits (playtest note 1 of J7b, the user's 3rd trial: no waiting, no slowing
 		// down), nor does any member (the user's 5th trial: each at the block's pace, its depth its own, sliding to its
@@ -3338,6 +3351,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 	}
 	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 	const int32 Budget = PathBudgetOverride >= 0 ? PathBudgetOverride : Settings->PathRequestsPerStep;
+	const UHOLTerrainSubsystem* Terrain = World->GetSubsystem<UHOLTerrainSubsystem>();
 
 	int32 Served = 0;
 	int32 Next = 0;
@@ -3551,7 +3565,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			ShortPath.MoveTargetProgressDistance = FMath::Clamp(GetProgressAt(ShortPath, Transform.GetTransform().GetLocation()), 0.f,
 				FMath::Max(LastDistance - EndReachedDistance * 2.f, 0.f));
 
-			MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order));
+			MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation()));
 			// The slot comes after the path: no slowing down at its end.
 			MoveTarget.IntentAtGoal = EMassMovementAction::Move;
 			MoveTarget.SlackRadius = 0.f;
@@ -3578,8 +3592,9 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 	const float Tolerance = Settings->OrderArrivalTolerance;
 	const int32 StuckLimit = Settings->FinalLegStuckSteps;
 	const int32 FirstNewPath = PendingPaths.Num();
+	const UHOLTerrainSubsystem* Terrain = World->GetSubsystem<UHOLTerrainSubsystem>();
 
-	EntityQuery.ForEachEntityChunk(Context, [this, World, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [this, World, Terrain, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
 		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
@@ -3619,7 +3634,8 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			}
 			if (MoveTarget.GetCurrentAction() == EMassMovementAction::Move && MoveTarget.DesiredSpeed.Get() > 0.f)
 			{
-				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order));
+				// C3: and the ground under it (a marsh) takes its share of that speed, step after step as it walks in and out.
+				MoveTarget.DesiredSpeed.Set(GetOrderWalkSpeed(Constants, Order) * GetTerrainShare(Terrain, Transform.GetTransform().GetLocation()));
 			}
 
 			// Its way crosses a building the navmesh did not show yet when its path was found (S7's first paths, a building
