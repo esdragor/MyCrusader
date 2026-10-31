@@ -82,6 +82,11 @@ bool HOLVisionRules::BuildingDrawsFromMemory(const bool bOwnCamp, const bool bIn
 	return !bOwnCamp && !bInSight;
 }
 
+bool HOLVisionRules::SourceStaysDrawn(const bool bRemembered, const bool bInSight)
+{
+	return bRemembered && !bInSight;
+}
+
 EHOLBuildingDraw HOLVisionRules::GetBuildingDraw(const bool bOwnCamp, const bool bInSight, const bool bRemembered)
 {
 	if (!BuildingDrawsFromMemory(bOwnCamp, bInSight))

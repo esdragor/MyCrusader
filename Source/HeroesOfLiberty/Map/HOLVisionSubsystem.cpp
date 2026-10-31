@@ -91,6 +91,7 @@ void UHOLVisionSubsystem::Deinitialize()
 	if (UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr)
 	{
 		Sources->OnSourceStanding.Remove(SourceHandle);
+		Sources->SetKeepDrawnRule(nullptr);
 	}
 	if (UHOLSimulationSubsystem* Simulation = GetWorld() ? GetWorld()->GetSubsystem<UHOLSimulationSubsystem>() : nullptr)
 	{
@@ -136,8 +137,15 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 	{
 		Sources->OnSourceStanding.Remove(SourceHandle);
 		SourceHandle.Reset();
+		SourceViewerCamp = INDEX_NONE;
+		for (const int32 Kept : TSet<int32>(Sources->GetKeptDrawn()))
+		{
+			Sources->EraseKept(Kept);
+		}
+		Sources->SetKeepDrawnRule(nullptr);
 		if (Mode != EHOLFogMode::Disabled)
 		{
+			Sources->SetKeepDrawnRule([this](const int32 SourceIndex) { return KeepSourceDrawn(SourceIndex); });
 			for (int32 Index = 0; Index < Sources->GetSources().Num(); ++Index)
 			{
 				if (Sources->GetSources()[Index].IsStanding())
@@ -302,8 +310,42 @@ void UHOLVisionSubsystem::Update()
 	if (const AHOLPlayerState* LocalState = Local && Local->IsLocalController() ? Local->GetPlayerState<AHOLPlayerState>() : nullptr)
 	{
 		RefreshBuildingMemory(LocalState->GetPlayerIndex());
+		RefreshSourceMemory(LocalState->GetPlayerIndex());
 	}
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
+}
+
+bool UHOLVisionSubsystem::KeepSourceDrawn(const int32 SourceIndex) const
+{
+	if (SourceViewerCamp == INDEX_NONE || !Ghosts.IsValidIndex(SourceViewerCamp))
+	{
+		return false;
+	}
+	const UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || !Sources->GetSources().IsValidIndex(SourceIndex))
+	{
+		return false;
+	}
+	const bool bRemembered = Ghosts[SourceViewerCamp].Contains(HOLVisionRules::MakeGhostKey(true, SourceIndex));
+	const bool bInSight = Map.GetCount(SourceViewerCamp, Map.GetGrid().ToCell(FVector2D(Sources->GetSources()[SourceIndex].Location))) > 0;
+	return HOLVisionRules::SourceStaysDrawn(bRemembered, bInSight);
+}
+
+void UHOLVisionSubsystem::RefreshSourceMemory(const int32 ViewerSlot)
+{
+	SourceViewerCamp = Mode == EHOLFogMode::Disabled || !bStarted ? INDEX_NONE : GetCampIndex(ViewerSlot);
+	UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!Sources || Sources->GetKeptDrawn().IsEmpty())
+	{
+		return;
+	}
+	for (const int32 Kept : TSet<int32>(Sources->GetKeptDrawn()))
+	{
+		if (!KeepSourceDrawn(Kept))
+		{
+			Sources->EraseKept(Kept);
+		}
+	}
 }
 
 bool UHOLVisionSubsystem::MakeMemoryFor(const int32 Slot, TArray<uint32>& OutRuns, TArray<FHOLFogGhostNet>& OutGhosts) const
@@ -386,6 +428,7 @@ bool UHOLVisionSubsystem::UpdateClient()
 		}
 	}
 	EndPass(true, ClientCamp);
+	RefreshSourceMemory(PlayerState->GetPlayerIndex());
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 	return true;
 }

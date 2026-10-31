@@ -125,6 +125,12 @@ public:
 	void RefreshBuildingMemory(int32 ViewerSlot);
 
 	/**
+	 * F7.3 (c): ViewerSlot's machine draws a tree cut out of its camp's sight as it was last seen (UHOLSourceSubsystem::SetKeepDrawnRule):
+	 * sets the viewer, and lets go of the cut trees whose place is back in sight (the camp learned the cut) or forgotten.
+	 */
+	void RefreshSourceMemory(int32 ViewerSlot);
+
+	/**
 	 * F4 (D382, D520): what Slot's camp remembers of the buildings and sources it saw (HOLVisionRules::UpdateGhosts), kept
 	 * by the server for the reconnection (F6e); null for a slot with no camp, or no fog.
 	 */
@@ -172,6 +178,8 @@ private:
 	/** bGhosts: the memory refreshed (OnlyCamp: a client's own camp's, INDEX_NONE: every camp's). */
 	void EndPass(bool bGhosts, int32 OnlyCamp = INDEX_NONE);
 	void OnSourceStanding(int32 SourceIndex, bool bStanding);
+	/** F7.3 (c): the source just used up is kept drawn for the viewer's camp. */
+	bool KeepSourceDrawn(int32 SourceIndex) const;
 	void OnStepEnded(int64 StepIndex);
 	double GetUnitSight(FName TypeName);
 
@@ -209,5 +217,7 @@ private:
 	uint32 Stamp = 0;
 	double LastUpdateMs = 0.;
 	FDelegateHandle SourceHandle;
+	/** F7.3 (c): the camp of the machine's own player, whose memory keeps the cut trees drawn (INDEX_NONE: none). */
+	int32 SourceViewerCamp = INDEX_NONE;
 	FDelegateHandle StepHandle;
 };

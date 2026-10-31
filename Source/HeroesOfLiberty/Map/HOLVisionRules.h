@@ -140,6 +140,12 @@ namespace HOLVisionRules
 	/** F7.3 (b): Live when it is the viewer's camp's or in sight; else Memory when its camp remembers it (bRemembered), else Hidden. */
 	HEROESOFLIBERTY_API EHOLBuildingDraw GetBuildingDraw(bool bOwnCamp, bool bInSight, bool bRemembered);
 
+	/**
+	 * F7.3 (c): a source used up (a tree cut) stays drawn on the viewer's machine while its camp remembers it standing (bRemembered)
+	 * and its place is out of sight (bInSight false): the cut is learned by looking at the place again (D382).
+	 */
+	HEROESOFLIBERTY_API bool SourceStaysDrawn(bool bRemembered, bool bInSight);
+
 	/** F3.2 (D523): a building's sight from its type's SightRadius: whole standing, half a site, none in ruin. */
 	HEROESOFLIBERTY_API double GetBuildingSight(double SightRadius, EHOLBuildingSight State);
 

@@ -414,6 +414,18 @@ bool FHOLVisionBuildingDrawTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionSourceDrawTest, "HeroesOfLiberty.Vision.SourceDraw", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionSourceDrawTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (c): a tree cut out of sight stays drawn while the camp remembers it standing and its place is out of sight.
+	using namespace HOLVisionRules;
+	TestTrue(TEXT("remembered, out of sight: still drawn"), SourceStaysDrawn(true, false));
+	TestFalse(TEXT("remembered, in sight: the cut is seen"), SourceStaysDrawn(true, true));
+	TestFalse(TEXT("never seen, out of sight: nothing to show"), SourceStaysDrawn(false, false));
+	TestFalse(TEXT("never remembered, in sight: gone"), SourceStaysDrawn(false, true));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionReceiversTest, "HeroesOfLiberty.Vision.Receivers", UE::HeroesOfLiberty::Tests::Vision::Flags)
 bool FHOLVisionReceiversTest::RunTest(const FString& Parameters)
 {

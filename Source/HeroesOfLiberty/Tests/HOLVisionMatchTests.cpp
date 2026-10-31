@@ -354,6 +354,61 @@ bool FHOLVisionMatchBuildingMemoryTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchSourceMemoryTest, "HeroesOfLiberty.Vision.Match.SourceMemory", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
+bool FHOLVisionMatchSourceMemoryTest::RunTest(const FString& Parameters)
+{
+	// F7.3 (c): on the real chain (real trees, real sight, real memory), a tree cut out of sight stays drawn until its place is seen again.
+	using namespace UE::HeroesOfLiberty::Tests::VisionMatch;
+	FVisionWorld Match;
+	if (!TestTrue(TEXT("the match's subsystems"), Match.IsReady()))
+	{
+		return false;
+	}
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Normal);
+	const FVector SeenPlace(30000., 0., 0.);
+	const FVector UnseenPlace(-30000., 0., 0.);
+	const FVector AwayPlace(0., 30000., 0.);
+	const int32 Seen = Match.Sources->AddSource(HOLSourceTypeNames::Tree, SeenPlace);
+	const int32 SeenNear = Match.Sources->AddSource(HOLSourceTypeNames::Tree, SeenPlace + FVector(500., 500., 0.));
+	const int32 Unseen = Match.Sources->AddSource(HOLSourceTypeNames::Tree, UnseenPlace);
+	const uint32 Scout = Match.Place(Peasant, 0, SeenPlace + FVector(-1600., 0., 0.));
+	if (!TestTrue(TEXT("trees and a scout"), Seen != INDEX_NONE && SeenNear != INDEX_NONE && Unseen != INDEX_NONE && Scout != 0))
+	{
+		return false;
+	}
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	TestTrue(TEXT("seen: remembered"), Match.Vision->GetGhosts(0)->Contains(HOLVisionRules::MakeGhostKey(true, Seen)));
+
+	Match.Sources->Take(SeenNear, 1000000);
+	TestFalse(TEXT("cut in sight: gone at once"), Match.Sources->IsDrawn(SeenNear));
+
+	Match.Move(Scout, AwayPlace);
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	Match.Sources->Take(Seen, 1000000);
+	Match.Sources->Take(Unseen, 1000000);
+	TestTrue(TEXT("cut out of sight, seen before: still drawn"), Match.Sources->IsDrawn(Seen));
+	TestFalse(TEXT("cut out of sight, never seen: not drawn"), Match.Sources->IsDrawn(Unseen));
+	TestFalse(TEXT("but not standing: the sim has it cut"), Match.Sources->GetSources()[Seen].IsStanding());
+
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	TestTrue(TEXT("still away: still drawn"), Match.Sources->IsDrawn(Seen));
+
+	Match.Move(Scout, SeenPlace + FVector(-1600., 0., 0.));
+	Match.Vision->Update();
+	Match.Vision->RefreshSourceMemory(0);
+	TestFalse(TEXT("back in sight: the cut is learned, gone"), Match.Sources->IsDrawn(Seen));
+	TestEqual(TEXT("nothing kept"), Match.Sources->GetKeptDrawn().Num(), 0);
+
+	Match.Vision->Start(MakeTeams(), EHOLFogMode::Disabled);
+	const int32 NoFog = Match.Sources->AddSource(HOLSourceTypeNames::Tree, UnseenPlace + FVector(0., 5000., 0.));
+	Match.Sources->Take(NoFog, 1000000);
+	TestFalse(TEXT("no fog: a cut tree is gone at once"), Match.Sources->IsDrawn(NoFog));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionMatchCampsSeeingTest, "HeroesOfLiberty.Vision.Match.CampsSeeing", UE::HeroesOfLiberty::Tests::VisionMatch::Flags)
 bool FHOLVisionMatchCampsSeeingTest::RunTest(const FString& Parameters)
 {
