@@ -7,6 +7,7 @@
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
+#include "Match/HOLMarketRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Net/HOLPauseRules.h"
@@ -464,6 +465,22 @@ private:
 	/** One per slot (MaxSlots), public (J8-Q5). */
 	UPROPERTY(ReplicatedUsing = OnRep_HeroSheets)
 	TArray<FHOLHeroSheet> HeroSheets;
+
+public:
+	/**
+	 * M4c (Market, GDD 5.5, D84): the one list of prices every player trades at, allies and enemies alike; set by the server alone
+	 * (the exchange order, the way back to rest), replicated to everyone. Resources by index: food, wood, stone, gold.
+	 */
+	HOLMarket::FBook GetMarketBook() const;
+	/** Server only. */
+	void SetMarketBook(const HOLMarket::FBook& InBook);
+	/** Server only, at the start of the match: every price at its base (the Standard row of /Game/Match/MarketRates). */
+	void ResetMarketBook();
+
+private:
+	/** The four prices of the book (HOLMarket::FBook): replicated to everyone; empty until the match starts. */
+	UPROPERTY(Replicated)
+	TArray<int32> MarketPrices;
 
 public:
 	/**

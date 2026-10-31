@@ -1,6 +1,10 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Engine/DataTable.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Net/UnrealNetwork.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLMarketRules.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
@@ -130,6 +134,52 @@ bool FHOLMarketApplyTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a lot of stone with 50 gold: refused (gold)"), !TooPoor.bOk && TooPoor.Reason == FName(TEXT("gold")) && Same == Stock);
 	const HOLMarket::FTrade ForGold = HOLMarket::Apply(S, Book, Stock, EHOLResource::Gold, 1, false, S.FeePercent, Same);
 	TestTrue(TEXT("gold sold: refused (resource)"), !ForGold.bOk && ForGold.Reason == FName(TEXT("resource")) && Same == Stock);
+	return true;
+}
+// M4c (first part): the common book lives in the game state and is replicated to everyone (D84: one list of prices, allies and
+// enemies alike); a start puts every price at its base from the table, a change is read back.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMarketBookStateTest, "HeroesOfLiberty.Market.BookState",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLMarketBookStateTest::RunTest(const FString& Parameters)
+{
+	const FProperty* Prices = AHOLGameState::StaticClass()->FindPropertyByName(TEXT("MarketPrices"));
+	if (!TestNotNull(TEXT("the game state has the MarketPrices property"), Prices))
+	{
+		return false;
+	}
+	TestTrue(TEXT("MarketPrices is replicated"), Prices->HasAnyPropertyFlags(CPF_Net));
+
+	TArray<FLifetimeProperty> Lifetime;
+	GetDefault<AHOLGameState>()->GetLifetimeReplicatedProps(Lifetime);
+	TestTrue(TEXT("MarketPrices is in the replication list"), Lifetime.ContainsByPredicate([Prices](const FLifetimeProperty& Item)
+	{
+		return Item.RepIndex == Prices->RepIndex;
+	}));
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	if (TestNotNull(TEXT("game state spawned"), State))
+	{
+		State->ResetMarketBook();
+		HOLMarket::FSettings S;
+		if (TestTrue(TEXT("the Standard settings load"), HOLMarket::LoadStandardSettings(S)))
+		{
+			const HOLMarket::FBook Fresh = State->GetMarketBook();
+			for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+			{
+				TestEqual(*FString::Printf(TEXT("after a reset, resource %d at its base"), Resource), Fresh.Prices[Resource], S.BasePrices[Resource]);
+			}
+			const HOLMarket::FTrade Sold = HOLMarket::Sell(S, Fresh, 1, 1, 100, S.FeePercent);
+			State->SetMarketBook(Sold.Book);
+			TestEqual(TEXT("a set book is read back: wood at 77"), State->GetMarketBook().Prices[1], 77);
+			TestEqual(TEXT("... the others untouched: stone at 120"), State->GetMarketBook().Prices[2], 120);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
 	return true;
 }
 #endif // WITH_DEV_AUTOMATION_TESTS
