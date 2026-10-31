@@ -25,7 +25,47 @@ namespace UE::HeroesOfLiberty::Tests::CommandGrid
 	}
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridCommandsTest, "HeroesOfLiberty.CommandGrid.Commands", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+// M5 (Market, GDD 5.5): the selected finished Market gives the grid its trades, sales on A Z E (food, wood, stone), purchases on Q S D;
+// nothing for gold (the money), a site, a Market in a group of several (cells merged as any), or a building that is no Market.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridMarketTest, "HeroesOfLiberty.CommandGrid.Market", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridMarketTest::RunTest(const FString& Parameters)
+{
+	FHOLGridContext Market;
+	Market.bOwnBuilding = true;
+	Market.bBuildingFinished = true;
+	Market.bMarket = true;
+	const EHOLResource Goods[] = { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone };
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		const EHOLResource Good = Goods[Index];
+		TestEqual(*FString::Printf(TEXT("sell good %d: cell %d (A Z E)"), Index, Index), HOLCommandGrid::GetTradeCell(Good, false), Index);
+		TestEqual(*FString::Printf(TEXT("buy good %d: cell %d (Q S D)"), Index, 4 + Index), HOLCommandGrid::GetTradeCell(Good, true), 4 + Index);
+		const FHOLGridCommand Sell = HOLCommandGrid::GetCommand(Market, Index);
+		TestTrue(*FString::Printf(TEXT("Market, cell %d: sells good %d"), Index, Index), Sell.Command == EHOLGridCommand::Trade && Sell.Resource == Good && !Sell.bBuy);
+		const FHOLGridCommand Buy = HOLCommandGrid::GetCommand(Market, 4 + Index);
+		TestTrue(*FString::Printf(TEXT("Market, cell %d: buys good %d"), 4 + Index, Index), Buy.Command == EHOLGridCommand::Trade && Buy.Resource == Good && Buy.bBuy);
+	}
+	TestEqual(TEXT("gold has no sale cell"), HOLCommandGrid::GetTradeCell(EHOLResource::Gold, false), static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("gold has no purchase cell"), HOLCommandGrid::GetTradeCell(EHOLResource::Gold, true), static_cast<int32>(INDEX_NONE));
+	for (const int32 Cell : { 3, 7, 8, 9, 10, 11 })
+	{
+		TestTrue(*FString::Printf(TEXT("Market, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Market, Cell).IsNone());
+	}
+	TestTrue(TEXT("a key on a Market goes to the grid"), HOLCommandGrid::PressKey(Market, INDEX_NONE, 0).Target == EHOLGridKeyTarget::Grid);
+
+	FHOLGridContext Site = Market;
+	Site.bBuildingFinished = false;
+	TestTrue(TEXT("a Market site: no trade, only its cancel cell"), HOLCommandGrid::GetCommand(Site, 0).IsNone() && HOLCommandGrid::GetCommand(Site, 4).IsNone()
+		&& HOLCommandGrid::GetCommand(Site, HOLCommandGrid::CancelCell).Command == EHOLGridCommand::CancelConstruction);
+
+	FHOLGridContext House;
+	House.bOwnBuilding = true;
+	House.bBuildingFinished = true;
+	TestTrue(TEXT("another building: no trade"), HOLCommandGrid::GetCommand(House, 0).IsNone() && HOLCommandGrid::GetCommand(House, 4).IsNone());
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridCommandsTest,"HeroesOfLiberty.CommandGrid.Commands", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridCommandsTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::CommandGrid;
@@ -344,7 +384,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("seven buildable types"), Context.Buildable.Num(), 7);
+	TestEqual(TEXT("eight buildable types (the Market of age II, M3, joined the seven of age I)"), Context.Buildable.Num(), 8);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
@@ -363,13 +403,23 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("W with age I chosen: builds the farm"), HOLCommandGrid::PressKey(Context, 0, FarmCell).Target == EHOLGridKeyTarget::Build
 		&& HOLCommandGrid::PressKey(Context, 0, FarmCell).TypeName == HOLBuildingTypeNames::Farm);
 	// The other cells of panel I unchanged: D F and X C V empty.
+	// M3: the Market, A of page II (economic row), greyed while age II is not reached; the other cells of page II empty.
+	const FHOLGridCommand MarketCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 0);
+	TestTrue(TEXT("II A: the Market, a build command, greyed (age II not reached)"), MarketCell.TypeName == HOLBuildingTypeNames::Market
+		&& MarketCell.Command == EHOLGridCommand::Build && MarketCell.Age == 1 && MarketCell.bGreyed);
+	for (const int32 Cell : { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 })
+	{
+		TestTrue(*FString::Printf(TEXT("page II, cell %d: no building yet"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 1, Cell).IsNone());
+	}
 	for (const int32 Cell : { 6, 7, 9, 10, 11 })
 	{
 		TestTrue(*FString::Printf(TEXT("panel I, cell %d: no building"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 0, Cell).IsNone());
 	}
 	for (const FHOLBuildable& Buildable : Context.Buildable)
 	{
-		TestEqual(*FString::Printf(TEXT("%s: age I"), *Buildable.TypeName.ToString()), Buildable.Age, 0);
+		// M3: the Market alone is of age II (page II, A: the economic row of its page); every other type is of age I.
+		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market;
+		TestEqual(*FString::Printf(TEXT("%s: %s"), *Buildable.TypeName.ToString(), bMarket ? TEXT("age II") : TEXT("age I")), Buildable.Age, bMarket ? 1 : 0);
 		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology;
 		// the farm alone stands on the third row (IA1.2-Q1: the economic row of age I is full).
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(Buildable.TypeName);

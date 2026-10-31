@@ -33,6 +33,11 @@ enum class EHOLGridCommand : uint8
 	HeroAbility,
 	/** Researches a technology at the player's selected building (T4, GDD 11): the technology row on W X C V, through the building's queue. */
 	Research,
+	/**
+	 * M5 (Market, GDD 5.5): the selected finished Market sells or buys 100 of Resource (Shift: 500) at the common book's price;
+	 * sell on A Z E (food, wood, stone), buy on Q S D (HOLCommandGrid::GetTradeCell).
+	 */
+	Trade,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -46,6 +51,9 @@ struct FHOLGridCommand
 	/** HeroAbility: which one; bGreyed while it is not open at the hero's level or cooling down (CooldownSeconds left). */
 	EHOLHeroAbility Ability = EHOLHeroAbility::Aura;
 	int32 CooldownSeconds = 0;
+	/** Trade: the good (food, wood or stone) and the side (bBuy: bought with gold, else sold for gold). */
+	EHOLResource Resource = EHOLResource::Food;
+	bool bBuy = false;
 
 	bool IsNone() const { return Command == EHOLGridCommand::None; }
 	bool operator==(const FHOLGridCommand& Other) const = default;
@@ -98,6 +106,8 @@ struct FHOLGridContext
 	bool bBuildingFinished = false;
 	/** V2.3a: the main forum down (ruin or rebuilding): it produces nothing, nothing to cancel; its cells are empty. */
 	bool bForumDown = false;
+	/** M5: the building is a Market (HOLBuildingTypeNames::Market): finished, its cells are the trades' (GetTradeCell). */
+	bool bMarket = false;
 	TArray<FName> Produces;
 	/** The technologies the building researches (T4), in the order of the technology table: its research row, from ResearchFirstCell. */
 	TArray<FName> Researches;
@@ -244,6 +254,8 @@ namespace HOLCommandGrid
 	inline constexpr int32 NumAges = 4;
 	inline constexpr int32 GridColumns = 4;
 	inline constexpr int32 NumGridRows = NumCells / GridColumns;
+	/** M5: the goods a Market trades against gold, food, wood, stone (the first three EHOLResource). */
+	inline constexpr int32 TradableGoods = 3;
 
 	/**
 	 * The row of the builders' panels where the buildings of Category stand: 0 economic, 1 military, 2 technology. One
@@ -263,6 +275,12 @@ namespace HOLCommandGrid
 	 * rangs, Z Bannière de l'Aube. INDEX_NONE for the passive aura (its box is the hero's block's alone).
 	 */
 	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
+
+	/**
+	 * The cell of the Market's trade of Resource (food, wood, stone): the sales on the top row, A Z E, the purchases below, Q S D
+	 * (the same keys as the units' orders on the left, another panel); INDEX_NONE for gold, which is the money.
+	 */
+	HEROESOFLIBERTY_API int32 GetTradeCell(EHOLResource Resource, bool bBuy);
 
 	/**
 	 * The mouse cursor (the user's trial of A.2, AoE4's way): the red attack cursor (Crosshairs, SHOLAttackCursor) while

@@ -4,11 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Buildings/HOLProductionRules.h"
+#include "Match/HOLMarketRules.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLProductionSubsystem.generated.h"
 
 class AHOLBuilding;
 class AHOLPlayerState;
+struct FHOLProductionCommand;
 struct FHOLUnitTypeRow;
 
 /**
@@ -50,6 +52,12 @@ private:
 	void OnStepStarted(int64 StepIndex);
 	void ApplyOrders();
 	void AdvanceQueues(int64 StepIndex);
+	/** M4c: one Trade order (owner, finished Market, resource, lots checked here; the price and the stock by HOLMarket::Apply). */
+	void ApplyMarketTrade(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& PlayerState);
+	/** M4c: the common book one step nearer to rest, one HOLMarket::Recover every RecoverEverySeconds. */
+	void RecoverMarketBook();
+	/** The Standard row of the Market table, read once at the first use. */
+	bool EnsureMarketSettings();
 	/** Where the Index-th unit born at Building stands: an arc below it on the screen (the camera's side). */
 	FVector GetBirthLocation(const AHOLBuilding& Building, int32 Index) const;
 
@@ -59,4 +67,8 @@ private:
 	TMap<TWeakObjectPtr<AHOLBuilding>, int32> NumBirths;
 	/** Places each player's cheats added to its cap (AddCheatPopulation). */
 	TMap<int32, int32> CheatPopulation;
+	/** M4c: the Market's numbers (loaded at the first trade or return to rest), and the steps since the book last moved back. */
+	HOLMarket::FSettings MarketSettings;
+	bool bMarketSettingsLoaded = false;
+	int32 StepsSinceMarketRecover = 0;
 };

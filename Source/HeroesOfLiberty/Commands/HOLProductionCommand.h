@@ -18,6 +18,8 @@ struct FHOLProductionCommand
 		Cancel,
 		/** The building's rally point (J4, D288), or none when Location is on the building itself. */
 		Rally,
+		/** M4c (Market, GDD 5.5, D84): a trade of Lots lots of Resource at the player's finished Market (Building), bought or sold. */
+		Trade,
 	};
 
 	EKind Kind = EKind::Queue;
@@ -39,4 +41,10 @@ struct FHOLProductionCommand
 	TWeakObjectPtr<AHOLBuilding> RallySite;
 	/** Rally with Shift (EtapeDefini N.1): a step added at the end of the rally point, not the rally point replaced. */
 	bool bQueue = false;
+	/** Trade: the resource (EHOLResource as an index: 0 food, 1 wood, 2 stone; gold is the money, never traded). */
+	int32 Resource = INDEX_NONE;
+	/** Trade: whole lots of HOLMarket::Lot (100) goods. */
+	int32 Lots = 0;
+	/** Trade: true to buy the goods with gold, false to sell them for gold. */
+	bool bBuy = false;
 };

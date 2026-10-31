@@ -199,4 +199,109 @@ bool FHOLVolcanoDrawFlowTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The whole state of a site at an instant (V4): flows drawn per cycle, lava per flow, no replication but the clock.
+namespace UE::HeroesOfLiberty::Tests
+{
+	/** The Man-at-arms' speed from the unit type table (the real chain), 0 if the table has none. */
+	float ManAtArmsSpeedFromTable()
+	{
+		const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+		const FHOLUnitTypeRow* ManAtArms = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("ManAtArms"), TEXT("Volcano test"), false) : nullptr;
+		return ManAtArms ? ManAtArms->Speed : 0.f;
+	}
+
+	/** A site with three straight flows from the crater (0, 0): east 4000 cm, north 7000 cm, west 9000 cm. */
+	HOLVolcano::FSite MakeThreeFlowSite()
+	{
+		HOLVolcano::FSite Site;
+		const FVector Ends[3] = { FVector(4000.0, 0.0, 0.0), FVector(0.0, 7000.0, 0.0), FVector(-9000.0, 0.0, 0.0) };
+		for (const FVector& End : Ends)
+		{
+			HOLVolcano::FFlow Flow;
+			Flow.Points = { FVector::ZeroVector, End };
+			Site.Flows.Add(Flow);
+		}
+		return Site;
+	}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoSiteStateTest, "HeroesOfLiberty.Volcano.SiteState", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoSiteStateTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests;
+	const float ManSpeed = ManAtArmsSpeedFromTable();
+	if (!TestTrue(TEXT("the table gives a Man-at-arms' speed"), ManSpeed > 0.f))
+	{
+		return false;
+	}
+	const FHOLVolcanoSettings Settings;
+	const float Speed = Settings.LavaSpeed(ManSpeed);
+	const HOLVolcano::FSite Site = MakeThreeFlowSite();
+
+	// Without Catastrophe the site never moves (D398), whatever the time.
+	bool bDormant = true;
+	for (float Now = 0.f; Now <= 3600.f; Now += 7.f)
+	{
+		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateAt(false, 5, 0, Site, Now, Settings, ManSpeed);
+		bDormant &= State.Phase == EHOLVolcanoPhase::Dormant && State.FlowIndex == INDEX_NONE && State.FrontDistance == 0.f;
+	}
+	TestTrue(TEXT("no Catastrophe: dormant for an hour, no flow, no front"), bDormant);
+
+	for (int32 MatchSeed = 1; MatchSeed <= 12; ++MatchSeed)
+	{
+		const FString Tag = FString::Printf(TEXT("seed %d"), MatchSeed);
+		const int32 SeedOfSite = HOLVolcano::SiteSeed(MatchSeed, 0);
+		const int32 Flow0 = HOLVolcano::DrawFlow(SeedOfSite, 0, Site.Flows.Num());
+		const float Length0 = HOLVolcano::EruptionDuration(Site.Flows[Flow0], Speed);
+		const HOLVolcano::FCycle Cycle0 = HOLVolcano::MakeCycle(SeedOfSite, 0, 0.f, Settings, Length0);
+
+		const HOLVolcano::FSiteState Armed = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, 1.f, Settings, ManSpeed);
+		TestTrue(Tag + TEXT(": armed at the start, cycle 0, the flow of the draw"), Armed.Phase == EHOLVolcanoPhase::Armed && Armed.CycleIndex == 0 && Armed.FlowIndex == Flow0);
+
+		const HOLVolcano::FSiteState Warning = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Cycle0.WarningAt + 5.f, Settings, ManSpeed);
+		TestTrue(Tag + TEXT(": alert"), Warning.Phase == EHOLVolcanoPhase::Warning && Warning.FlowIndex == Flow0);
+		TestEqual(Tag + TEXT(": the countdown to the lava"), Warning.SecondsToErupt, Cycle0.EruptAt - (Cycle0.WarningAt + 5.f), 0.01f);
+		TestEqual(Tag + TEXT(": the front waits at the crater"), Warning.FrontDistance, 0.f);
+
+		const float Probe = Length0 * 0.5f; // the shortest flow lasts 8 s: half of the drawn flow's time, whichever it is
+		const HOLVolcano::FSiteState Erupting = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Cycle0.EruptAt + Probe, Settings, ManSpeed);
+		TestTrue(Tag + TEXT(": erupting"), Erupting.Phase == EHOLVolcanoPhase::Erupting);
+		TestEqual(Tag + TEXT(": half the flow's time of lava"), Erupting.FrontDistance, Probe * Speed, 0.5f);
+		TestTrue(Tag + TEXT(": the front point is on the drawn flow"), Erupting.FrontPoint.Equals(HOLVolcano::PointAt(Site.Flows[Flow0], Probe * Speed), 1.0));
+		TestEqual(Tag + TEXT(": no countdown once it flows"), Erupting.SecondsToErupt, -1.f);
+
+		const HOLVolcano::FSiteState Cooling = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Cycle0.EruptEndAt + 1.f, Settings, ManSpeed);
+		TestTrue(Tag + TEXT(": cooling, the lava at the end of its flow"), Cooling.Phase == EHOLVolcanoPhase::Cooling && FMath::IsNearlyEqual(Cooling.FrontDistance, Site.Flows[Flow0].Length(), 0.5f));
+
+		const HOLVolcano::FSiteState Rest = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Cycle0.CooledAt + 1.f, Settings, ManSpeed);
+		TestTrue(Tag + TEXT(": basalt, resting"), Rest.Phase == EHOLVolcanoPhase::Rest);
+
+		// The next cycle: its own flow, its window after the first one re-armed.
+		const int32 Flow1 = HOLVolcano::DrawFlow(SeedOfSite, 1, Site.Flows.Num());
+		const HOLVolcano::FCycle Cycle1 = HOLVolcano::MakeCycle(SeedOfSite, 1, Cycle0.ReArmAt, Settings, HOLVolcano::EruptionDuration(Site.Flows[Flow1], Speed));
+		const HOLVolcano::FSiteState Next = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Cycle1.EruptAt + 3.f, Settings, ManSpeed);
+		TestTrue(Tag + TEXT(": the second eruption, cycle 1, its own flow"), Next.Phase == EHOLVolcanoPhase::Erupting && Next.CycleIndex == 1 && Next.FlowIndex == Flow1);
+		TestTrue(Tag + TEXT(": the second window opens after the first rest"), Cycle1.WarningAt > Cycle0.ReArmAt);
+
+		// The phase agrees with the single-cycle function where the flow is the same length for all cycles.
+		TestTrue(Tag + TEXT(": same machine, same state"), HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Cycle0.EruptAt + Probe, Settings, ManSpeed).FrontPoint.Equals(Erupting.FrontPoint, 0.001));
+	}
+
+	// Two sites of one match do not erupt on the same dates (their seeds differ), and the seed depends on both numbers.
+	int32 Different = 0;
+	for (int32 MatchSeed = 1; MatchSeed <= 12; ++MatchSeed)
+	{
+		Different += HOLVolcano::SiteSeed(MatchSeed, 0) != HOLVolcano::SiteSeed(MatchSeed, 1) ? 1 : 0;
+	}
+	TestEqual(TEXT("the seed of site 1 is never site 0's"), Different, 12);
+	TestTrue(TEXT("another match, another seed"), HOLVolcano::SiteSeed(1, 0) != HOLVolcano::SiteSeed(2, 0));
+
+	// A site without any flow still goes through its cycle (the placeholder length), with nothing to draw.
+	const HOLVolcano::FSite Bare;
+	const HOLVolcano::FCycle BareCycle = HOLVolcano::MakeCycle(HOLVolcano::SiteSeed(3, 0), 0, 0.f, Settings);
+	const HOLVolcano::FSiteState BareState = HOLVolcano::SiteStateAt(true, 3, 0, Bare, BareCycle.EruptAt + 5.f, Settings, ManSpeed);
+	TestTrue(TEXT("no flow: erupting by the placeholder, nothing drawn, the front stays"), BareState.Phase == EHOLVolcanoPhase::Erupting && BareState.FlowIndex == INDEX_NONE && BareState.FrontDistance == 0.f);
+	return true;
+}
+
 #endif

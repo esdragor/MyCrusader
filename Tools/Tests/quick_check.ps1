@@ -153,6 +153,7 @@ $SubCaseTable = @{
         corner = @{ Marks = @("corner"); Setup = @("hol.Cheat.Wood 1000") }
         barwidth = @{ Marks = @("barwidth"); Setup = @() }
         tiers = @{ Marks = @("tiers"); Setup = @() }
+        market = @{ Marks = @("market"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -2052,6 +2053,16 @@ if ($Parts -contains "camera") {
                 "hol.Units.Remove 0 0 60000 0 Hero", "wait 0.3"
             Key Escape
             Step "waitlog Selection: none"
+            # M5 (Market): a finished Market of slot 0 selected: the grid's trades (sales A Z E, purchases Q S D) read from the common book;
+            # Z sells a lot of wood at the server's price (80 -> 56 gold, the book at 77); the Market is then taken down (a cheat), the centre selected
+            # again and cleared by Escape. Last of the cases: a Market standing or just fallen is nobody's business but its own.
+            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
+                "hol.Camera.FocusNear 1500 3000", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: Market of slot 0 (own)", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Cheat.DamageSelected 100000 siege", "waitlog Building destroyed: Market of slot 0", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
+                "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -3857,12 +3868,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
     $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed\] II=locked \[\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed\] II=locked \[A=Market greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; II Z: Palier II \S+ Essor \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; II Z: Palier II \S+ Essor \| Palier non atteint; II A: March.+ \| W 150 missing \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -4102,7 +4113,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir, W = Ferme ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir; I W: Ferme$") -and
+    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir, W = Ferme ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+$") -and
         [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
@@ -4787,6 +4798,16 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $TierMissing = @("ages" | Where-Object { -not (Test-Path (Join-Path $Shots "build_tiers_$_.png")) })
     $Checks["capture (missing: $($TierMissing -join ', '))"] = $TierMissing.Count -eq 0
     $AllOk = (Report "build tiers" $Checks) -and $AllOk
+
+    # M5 (Market): the selected Market's grid is the trades' (A Z E sell food, wood, stone; Q S D buy them), and Z sold a lot of wood at 80 less 30 %.
+    $HudMarket = Get-Section "build market"
+    $MarketReports = @($HudMarket | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
+    $Checks = [ordered]@{}
+    $Checks["the Market selected: the trades on A Z E / Q S D, the sale of a lot of wood at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
+        ($MarketReports[0] -match "grid A=SellFood \w+ Z=SellWood \w+ E=SellStone \w+ Q=BuyFood \w+ S=BuyWood \w+ D=BuyStone \w+,") -and
+        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 56 gold \(price now 77,")
+    $AllOk = (Report "build market" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -6715,9 +6736,10 @@ function Get-AITestPort {
 # The 8 slots of a version 2 match config on Plain: the states given, slots 0 and 1 named when names are given.
 # C0.5: with -Size (a map other than the test map Plain, whose files are sized) the version 3 form: the map's file of that size,
 # fixed places (slot i at place i).
-function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "") {
+function Write-AIMatchConfig([string] $Path, [string[]] $States, [string[]] $Names = @(), [string] $MapAsset = "Plain", [string] $Size = "", [string[]] $Levels = @()) {
     $Slots = for ($i = 0; $i -lt 8; $i++) {
         $Name = if ($i -lt $Names.Count) { ", `"playerName`": `"$($Names[$i])`"" } else { "" }
+        if ($i -lt $Levels.Count -and $Levels[$i]) { $Name += ", `"difficulty`": `"$($Levels[$i])`"" }
         "{ `"state`": `"$($States[$i])`", `"colorIndex`": $i$Name }"
     }
     $Head = if ($Size) { "`"version`": 3, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`", `"mapSize`": `"$Size`", `"bDrawPlaces`": false" } else { "`"version`": 2, `"map`": `"/Game/Maps/$MapAsset.$MapAsset`"" }
@@ -6729,7 +6751,8 @@ if ($Parts -contains "aiserver") {
     $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
     $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
     Remove-Item $AIServerLog -ErrorAction SilentlyContinue
-    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
+    # IA4 (D579): the AI slot is Easy in the configuration; the brain must say so (the level read through the whole chain).
+    Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("", "Easy")
     @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
         Set-Content -Encoding utf8 $AIServerSequence
     # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
@@ -6762,6 +6785,7 @@ if ($Parts -contains "aiserver") {
     $Busy = 0
     if ($GatherLine -match "Gather: slot 1 to source (\d+), gathering (\d+), to deposit (\d+)") { $Busy = [int]$Matches[1] + [int]$Matches[2] + [int]$Matches[3] }
     $Checks["slot 1's Peasants at work ($(if ($GatherLine) { ($GatherLine -replace '^.*(Gather: slot 1)', '$1').Trim() } else { 'no report' }))"] = $Busy -ge 1
+    $Checks["slot 1's level read from the configuration: Easy"] = [bool](Find-AILine "AI slot 1 step \d+: level Easy")
     $AllOk = (Report "aiserver" $Checks) -and $AllOk
 }
 
@@ -6785,7 +6809,9 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
         $DuelMap = "/Game/Maps/${MapKey}_Small"
         Write-AIMatchConfig $Config $DuelStates @() $MapKey "Small"
     }
-    $Lines = @("hol.Simulation.StepHashes 1")
+    # The navmesh's tiles are rebuilt on worker threads: without this wait the step that sees a new building's tiles rebuilt
+    # (and the walkers given a new path then) depends on the wall clock, and the two runs part (found 2026-10-31).
+    $Lines = @("hol.Simulation.SyncNavBuild 1", "hol.Simulation.StepHashes 1")
     for ($Second = 0; $Second -lt $GameSeconds; $Second += 2) { $Lines += @("hol.Gather.Report", "wait 2") }
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence

@@ -29,6 +29,18 @@ namespace HOLCommandGrid
 				}
 				return Result;
 			}
+			// M5: a Market produces nothing; its cells are the trades (sales on the top row, purchases on the second).
+			if (Context.bMarket)
+			{
+				const int32 Good = Cell % GridColumns;
+				if (Cell < 2 * GridColumns && Good < TradableGoods)
+				{
+					Result.Command = EHOLGridCommand::Trade;
+					Result.Resource = static_cast<EHOLResource>(Good);
+					Result.bBuy = Cell >= GridColumns;
+				}
+				return Result;
+			}
 			if (Context.Produces.IsValidIndex(Cell))
 			{
 				Result.Command = EHOLGridCommand::Produce;
@@ -61,6 +73,16 @@ namespace HOLCommandGrid
 	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
 	{
 		return Ability == EHOLHeroAbility::CloseRanks ? 0 : Ability == EHOLHeroAbility::Banner ? 1 : INDEX_NONE;
+	}
+
+	int32 GetTradeCell(const EHOLResource Resource, const bool bBuy)
+	{
+		const int32 Good = static_cast<int32>(Resource);
+		if (Good < 0 || Good >= TradableGoods)
+		{
+			return INDEX_NONE;
+		}
+		return (bBuy ? GridColumns : 0) + Good;
 	}
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
