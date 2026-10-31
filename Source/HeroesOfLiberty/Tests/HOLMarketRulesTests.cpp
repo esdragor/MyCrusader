@@ -90,4 +90,46 @@ bool FHOLMarketRulesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// M4b: one trade on a stock, the end of the order's chain: a sale takes the goods and gives the gold, a purchase the opposite,
+// the book moves, a refusal changes nothing. The figures are the round trip's (wood 80 sells 56 then 53).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMarketApplyTest, "HeroesOfLiberty.Market.Apply",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLMarketApplyTest::RunTest(const FString& Parameters)
+{
+	// The settings come from the table asset the game reads (make_market.py): the real chain, no number typed in the rule.
+	HOLMarket::FSettings S;
+	if (!TestTrue(TEXT("the Standard row of /Game/Match/MarketRates loads"), HOLMarket::LoadStandardSettings(S)))
+	{
+		return false;
+	}
+	TestEqual(TEXT("loaded: wood base 80"), S.BasePrices[1], 80);
+	TestEqual(TEXT("loaded: stone base 120"), S.BasePrices[2], 120);
+	TestEqual(TEXT("loaded: tax 30"), S.FeePercent, 30);
+
+	const HOLMarket::FBook Book = HOLMarket::NewBook(S);
+	const FHOLResources Stock(500, 300, 0, 50);
+	FHOLResources After;
+
+	const HOLMarket::FTrade Sale = HOLMarket::Apply(S, Book, Stock, EHOLResource::Wood, 2, false, S.FeePercent, After);
+	TestTrue(TEXT("two lots of wood sold"), Sale.bOk);
+	TestTrue(TEXT("the stock after the sale: wood 100, gold 50 + 56 + 53"), After == FHOLResources(500, 100, 0, 159));
+	TestEqual(TEXT("wood falls to 74"), Sale.Book.Prices[1], 74);
+
+	FHOLResources Later;
+	const HOLMarket::FTrade Purchase = HOLMarket::Apply(S, Sale.Book, After, EHOLResource::Stone, 1, true, S.FeePercent, Later);
+	TestTrue(TEXT("a lot of stone bought with that gold"), Purchase.bOk);
+	TestEqual(TEXT("it costs 156 (120 plus 30 %)"), Purchase.Gold, 156);
+	TestTrue(TEXT("the stock after the purchase: stone 100, gold 3"), Later == FHOLResources(500, 100, 100, 3));
+	TestEqual(TEXT("stone rises to 123"), Purchase.Book.Prices[2], 123);
+
+	// Refusals: the stock out is the stock in.
+	FHOLResources Same;
+	const HOLMarket::FTrade TooMuch = HOLMarket::Apply(S, Book, Stock, EHOLResource::Wood, 4, false, S.FeePercent, Same);
+	TestTrue(TEXT("four lots from 300 wood: refused (stock)"), !TooMuch.bOk && TooMuch.Reason == FName(TEXT("stock")) && Same == Stock);
+	const HOLMarket::FTrade TooPoor = HOLMarket::Apply(S, Book, Stock, EHOLResource::Stone, 1, true, S.FeePercent, Same);
+	TestTrue(TEXT("a lot of stone with 50 gold: refused (gold)"), !TooPoor.bOk && TooPoor.Reason == FName(TEXT("gold")) && Same == Stock);
+	const HOLMarket::FTrade ForGold = HOLMarket::Apply(S, Book, Stock, EHOLResource::Gold, 1, false, S.FeePercent, Same);
+	TestTrue(TEXT("gold sold: refused (resource)"), !ForGold.bOk && ForGold.Reason == FName(TEXT("resource")) && Same == Stock);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

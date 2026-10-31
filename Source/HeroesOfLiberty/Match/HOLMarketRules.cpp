@@ -2,6 +2,8 @@
 
 #include "Match/HOLMarketRules.h"
 
+#include "Engine/DataTable.h"
+
 namespace HOLMarket
 {
 	namespace
@@ -111,6 +113,33 @@ namespace HOLMarket
 		Trade.Units = Lots * Lot;
 		Trade.bOk = true;
 		return Trade;
+	}
+
+	FTrade Apply(const FSettings& Settings, const FBook& Book, const FHOLResources& Stock, const EHOLResource Resource, const int32 Lots, const bool bBuy, const int32 FeePercent, FHOLResources& OutStock)
+	{
+		OutStock = Stock;
+		const int32 Index = static_cast<int32>(Resource);
+		FTrade Trade = bBuy ? Buy(Settings, Book, Index, Lots, Stock.Gold, FeePercent) : Sell(Settings, Book, Index, Lots, Stock[Resource], FeePercent);
+		if (!Trade.bOk)
+		{
+			return Trade;
+		}
+		OutStock[Resource] += bBuy ? Trade.Units : -Trade.Units;
+		OutStock.Gold += bBuy ? -Trade.Gold : Trade.Gold;
+		return Trade;
+	}
+
+	bool LoadStandardSettings(FSettings& OutSettings)
+	{
+		const UDataTable* Table = LoadObject<UDataTable>(nullptr, TEXT("/Game/Match/MarketRates.MarketRates"));
+		const FHOLMarketRow* Row = Table ? Table->FindRow<FHOLMarketRow>(TEXT("Standard"), TEXT("market rates"), false) : nullptr;
+		if (!Row)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Market: /Game/Match/MarketRates or its Standard row is missing (run Tools/Editor/make_market.py)"));
+			return false;
+		}
+		OutSettings = SettingsFromRow(*Row);
+		return true;
 	}
 
 	FBook Recover(const FSettings& Settings, const FBook& Book, const int32 Intervals)

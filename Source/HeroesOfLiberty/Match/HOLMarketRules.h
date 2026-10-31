@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLMarketTypes.h"
+#include "Match/HOLResources.h"
 
 /**
  * The Market's exchange rule where the simulation runs (M4a, GDD 5.5, D70, D84, D582): the server prices every trade here.
@@ -57,6 +58,16 @@ namespace HOLMarket
 	HEROESOFLIBERTY_API FTrade Sell(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 Stock, int32 FeePercent);
 	/** Buys Lots lots of Resource with GoldStock gold, at the tax FeePercent. */
 	HEROESOFLIBERTY_API FTrade Buy(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 GoldStock, int32 FeePercent);
+	/**
+	 * One trade on a player's stock (M4b): the order's end of the chain. A sale takes Lots lots of Resource from Stock and gives the gold;
+	 * a purchase takes the gold and gives the goods; OutStock is Stock changed (Stock itself when refused). The server calls it for a
+	 * player who owns a finished Market (that check, and the book kept for the match, are the caller's).
+	 */
+	HEROESOFLIBERTY_API FTrade Apply(const FSettings& Settings, const FBook& Book, const FHOLResources& Stock, EHOLResource Resource, int32 Lots, bool bBuy, int32 FeePercent, FHOLResources& OutStock);
+
+	/** The Standard row of /Game/Match/MarketRates (make_market.py), as settings; false (logged) if the table or the row is missing. */
+	HEROESOFLIBERTY_API bool LoadStandardSettings(FSettings& OutSettings);
+
 	/** After Intervals intervals every price has moved RecoverPoints per interval toward its base, never past it. */
 	HEROESOFLIBERTY_API FBook Recover(const FSettings& Settings, const FBook& Book, int32 Intervals);
 }
