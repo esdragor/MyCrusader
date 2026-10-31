@@ -135,6 +135,9 @@ struct FHOLAIArmyData
 	// AllyHelpRadius of the ruin (cm) is at least AllyHelpMinRatio, the rule of its own ruin: on the spot, at least even.
 	float AllyHelpMinRatio = 1.f;
 	float AllyHelpRadius = 3000.f;
+
+	// The weighing of the lives by level (IA4, D579, D329): Normal's feint, Hard's loss and snipe, Evolving's curve (HOLAILives.as).
+	FHOLAILivesData Lives;
 }
 
 // Where the attack wave is (HOLAIArmy::UpdateWave).
@@ -160,6 +163,11 @@ struct FHOLAIWave
 	// Game time the phase began (s), and of the last order given to the wave (s).
 	float PhaseStart = 0.f;
 	float LastOrder = -1000.f;
+
+	// Hard (D579): the brain asks for a launch now whatever the ratio and the time (the attacker's home is punished); and the wave is that one
+	// (it is not called back by the enemies at home: the army has gone on purpose).
+	bool bForce = false;
+	bool bPunishing = false;
 }
 
 // What the wave does now (HOLAIArmy::UpdateWave): the orders to send and what changed, for the brain's orders and log.
@@ -1012,6 +1020,11 @@ namespace HOLAIArmy
 	{
 		bool bHelp = false;
 		AllyHelpTarget(Summary, Data, Summary.CentreLocation, bHelp);
+		// Hard's punishing wave (D579) obeys the cooldown too (found in a real game: it left, fell back and left again every 5 s).
+		if (Wave.bForce && Wave.Phase == EHOLAIWavePhase::Home && Now >= Wave.NextLaunch && Summary.bHasEnemyCentre && SoldierIds(Summary).Num() > 0)
+		{
+			return true;
+		}
 		if (Wave.Phase != EHOLAIWavePhase::Home || bDefending || Now < Wave.NextLaunch || (!Summary.bHasEnemyCentre && !bHelp))
 		{
 			return false;
@@ -1100,6 +1113,8 @@ namespace HOLAIArmy
 		{
 			if (CanLaunch(Wave, Summary, Data, bDefending, Now))
 			{
+				Wave.bPunishing = Wave.bForce;
+				Wave.bForce = false;
 				Wave.Phase = EHOLAIWavePhase::Out;
 				Wave.Ids = SoldierIds(Summary);
 				Wave.LaunchedSize = Wave.Ids.Num();
@@ -1122,7 +1137,9 @@ namespace HOLAIArmy
 			const int Lost = Wave.LaunchedSize - Alive.Num();
 			const bool bLosses = float(Lost) > Data.AttackLossShare * float(Wave.LaunchedSize) + 0.001f;
 			Step.Ratio = WaveRatio(Wave, Summary, Data);
-			if (bRecall || bLosses || Step.Ratio < Data.AttackRetreatRatio)
+			// A punishing wave (Hard, D579) that is still at our base sees the attackers it leaves behind: the ratio does not call it back there.
+			const bool bLeaving = Wave.bPunishing && Summary.bHasCentre && FlatDistance(CentroidOf(Alive), Summary.CentreLocation) <= Data.DefenceRadius;
+			if (bRecall || bLosses || (Step.Ratio < Data.AttackRetreatRatio && !bLeaving))
 			{
 				Wave.Phase = EHOLAIWavePhase::Back;
 				Wave.PhaseStart = Now;

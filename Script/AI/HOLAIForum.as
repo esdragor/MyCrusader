@@ -49,11 +49,15 @@ struct FHOLAIKingMemory
 }
 
 // What the weighing of the lives decides when the forum is attacked (D579): Fight = the army goes whatever the ratio (Easy); Rules = the
-// ratio rules decide (ShouldDefend), which is what Normal, Hard and Evolving do until their own weighing is written. The level is the C++ EHOLAIDifficulty (the slot's config).
+// ratio rules decide (ShouldDefend); Feint = Normal knows it loses with a life to spare: the army falls back and goes round, the economy
+// is kept (HOLAILives.as); Let = Hard lets the life go to keep its army, snipes the weak and punishes the attacker's home. The level is the
+// C++ EHOLAIDifficulty (the slot's config), Evolving resolved to its current level by HOLAILives::Effective.
 enum EHOLAILifeCall
 {
 	Rules,
 	Fight,
+	Feint,
+	Let,
 }
 
 // A "forum attacked" situation: its lives, the power ratio of the army over the threatening enemies, and the decision.
@@ -64,6 +68,9 @@ struct FHOLAIForumSituation
 	float Ratio = 0.f;
 	int Count = 0;
 	EHOLAILifeCall Call = EHOLAILifeCall::Rules;
+	// The share of the army a straight fight would cost (HOLAILives::ExpectedLoss), and (Hard) the army's power over the attacker's home.
+	float Loss = 0.f;
+	float HomeRatio = 0.f;
 }
 
 // The last situation written in the journal (the brain keeps one per slot): a line is written when it changes only.
@@ -291,8 +298,17 @@ namespace HOLAIForum
 		Situation.Lives = Summary.OwnForum.Lives;
 		Situation.Ratio = Threat.Ratio;
 		Situation.Count = Threat.Count;
-		// Easy lives in the moment (D579): the army always goes, lost beforehand or not. Normal, Hard and Evolving: the ratio rules, for now.
-		Situation.Call = Level == EHOLAIDifficulty::Easy ? EHOLAILifeCall::Fight : EHOLAILifeCall::Rules;
+		// Easy lives in the moment (D579): the army always goes, lost beforehand or not. Normal feints and Hard weighs its loss (HOLAILives::Weigh);
+		// an Evolving level is resolved by the caller (HOLAILives::Effective) and is the ratio rules here.
+		if (Level == EHOLAIDifficulty::Easy)
+		{
+			Situation.Call = EHOLAILifeCall::Fight;
+			Situation.Loss = HOLAILives::ExpectedLoss(Threat.Ratio);
+		}
+		else
+		{
+			HOLAILives::Weigh(Situation, Level, Summary, Data, Threat);
+		}
 		return Situation;
 	}
 
@@ -334,7 +350,19 @@ namespace HOLAIForum
 		{
 			return "forum no longer attacked";
 		}
-		const FString Decision = Situation.Call == EHOLAILifeCall::Fight ? "fight, the army goes whatever the ratio" : "rules, the ratio decides";
+		FString Decision = "rules, the ratio decides";
+		if (Situation.Call == EHOLAILifeCall::Fight)
+		{
+			Decision = "fight, the army goes whatever the ratio";
+		}
+		else if (Situation.Call == EHOLAILifeCall::Feint)
+		{
+			Decision = "feint, the army falls back and goes round, the economy is kept";
+		}
+		else if (Situation.Call == EHOLAILifeCall::Let)
+		{
+			Decision = f"let the life go, the army is kept (loss {Situation.Loss}, over the home {Situation.HomeRatio})";
+		}
 		return f"forum attacked: lives {Situation.Lives}, {Situation.Count} enemies, ratio {Situation.Ratio}, level {LevelName(Level)}, decision {Decision}";
 	}
 

@@ -1,0 +1,21 @@
+# Le Marché (M5) : vendre et acheter 100 de nourriture, bois ou pierre contre de l'or, au cours commun (D84, D582)
+# Plain, toi (slot 0) contre une IA (slot 1), market.json (copie de tiers.json) : 5 Paysans et un héros chacun. Un Marché terminé t'est posé près du forum (triche), et 2000 de chaque ressource.
+# Cours de départ (tableau Market.csv, MK-Q1 = C) : nourriture 80, bois 80, pierre 120, or 100 ; taxe 30 % ; le cours bouge de 3 points par lot de 100 et revient d'1 point toutes les 10 s.
+# Chaque temps attend la touche Entrée (waitkey). L'IA n'utilise pas encore le Marché (question MK-Q3).
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 2000
+hol.Cheat.SpawnBuilding Market 0 1500 3000
+waitlog Cheat: spawned Market of slot 0
+hol.Camera.FocusNear 1500 3000
+frames 10
+hol.Select.Click 0.5 0.5
+waitlog Selection: Market of slot 0 (own)
+note 1. Le Marché est sélectionné : la grille de commandes (en bas à droite) montre ses échanges. Ligne du haut A Z E = VENDRE 100 de nourriture, bois, pierre ; ligne du dessous Q S D = ACHETER 100.
+note Chaque case écrit la ressource et le gain (+56) ou le coût (-104) en or ; l'info-bulle donne le prix après l'échange. Le bois se vend 56 (80 moins 30 % de taxe), la pierre s'achète 156 (120 plus 30 %).
+waitkey Entrée : à toi, vends du bois (Z, ou clic sur la case)
+note 2. Vends du bois plusieurs fois de suite : le gain par lot baisse (56, 53, 51...) et le cours du bois baisse de 3 points par lot (lis-le dans l'info-bulle de Z). Maj + case = 500 d'un coup (5 lots).
+note Achète de la pierre (D) : son prix monte à chaque lot. Un échange que le stock ne paie pas : case grisée, et le clic dit ce qui manque.
+waitkey Entrée : laisse passer 30 s sans rien toucher
+note 3. Les cours reviennent vers leur base d'1 point toutes les 10 s : après 30 s, le bois vendu remonte de 3 points (relis l'info-bulle de Z).
+note Hors scénario : il faut un Marché terminé (palier 1 = niveau 3 du héros, 150 de bois, case A de la page II des Paysans). Un Marché en chantier n'a que « Annuler ».

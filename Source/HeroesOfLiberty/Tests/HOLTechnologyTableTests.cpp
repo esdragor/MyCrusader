@@ -5,6 +5,8 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
+#include "Buildings/HOLProductionRules.h"
+#include "Technologies/HOLTechnologyRules.h"
 #include "Technologies/HOLTechnologyTypes.h"
 #include "UObject/Package.h"
 
@@ -32,20 +34,21 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 		{ TEXT("RangedAttackI"), 1, TEXT("Forge") }, { TEXT("RangedAttackII"), 2, TEXT("Forge") },
 		{ TEXT("InfantryArmorI"), 1, TEXT("Forge") }, { TEXT("InfantryArmorII"), 2, TEXT("Forge") },
 		{ TEXT("CavalryArmorI"), 1, TEXT("Forge") }, { TEXT("CavalryArmorII"), 2, TEXT("Forge") },
-		// Camps and farm: the buildings are left to T-Q3.
-		{ TEXT("DoubleAxesI"), 1, TEXT("") }, { TEXT("DoubleAxesII"), 2, TEXT("") },
-		{ TEXT("MinerPicksI"), 1, TEXT("") }, { TEXT("MinerPicksII"), 2, TEXT("") },
-		{ TEXT("PloughI"), 1, TEXT("") }, { TEXT("PloughII"), 2, TEXT("") },
-		{ TEXT("WheelbarrowI"), 1, TEXT("") }, { TEXT("WheelbarrowII"), 2, TEXT("") },
+		// Camps and farm (T-Q3 = A, D583): the Wheelbarrow is researched at the Farm, with the Plough, not at the main centre.
+		{ TEXT("DoubleAxesI"), 1, TEXT("LumberCamp") }, { TEXT("DoubleAxesII"), 2, TEXT("LumberCamp") },
+		{ TEXT("MinerPicksI"), 1, TEXT("MiningCamp") }, { TEXT("MinerPicksII"), 2, TEXT("MiningCamp") },
+		{ TEXT("PloughI"), 1, TEXT("Farm") }, { TEXT("PloughII"), 2, TEXT("Farm") },
+		{ TEXT("WheelbarrowI"), 1, TEXT("Farm") }, { TEXT("WheelbarrowII"), 2, TEXT("Farm") },
 		// Main centre.
 		{ TEXT("DefenceMilitia"), 1, TEXT("MainCentre") }, { TEXT("ImprovedAlarmBell"), 2, TEXT("MainCentre") },
 		// Academy (tier 2 only).
 		{ TEXT("Masonry"), 2, TEXT("Academy") }, { TEXT("Veterans"), 2, TEXT("Academy") }, { TEXT("Logistics"), 2, TEXT("Academy") },
 		// Siege workshop.
 		{ TEXT("ReinforcedRam"), 1, TEXT("SiegeWorkshop") }, { TEXT("HeavyMunitions"), 2, TEXT("SiegeWorkshop") },
-		// The Dawn's own (D27, 11.1): the buildings are left to T-Q3.
-		{ TEXT("Liturgy"), 1, TEXT("") }, { TEXT("TemperedHalberds"), 1, TEXT("") },
-		{ TEXT("BlessingOfArms"), 2, TEXT("") }, { TEXT("VowOfPoverty"), 2, TEXT("") },
+		// The Dawn's own (D27, 11.1; T-Q3 = A, D583): Liturgy and Blessing of Arms at the Sanctuary, Tempered Halberds at the
+		// Barracks, Vow of Poverty at the Chapel.
+		{ TEXT("Liturgy"), 1, TEXT("Sanctuary") }, { TEXT("TemperedHalberds"), 1, TEXT("Barracks") },
+		{ TEXT("BlessingOfArms"), 2, TEXT("Sanctuary") }, { TEXT("VowOfPoverty"), 2, TEXT("Chapel") },
 	};
 
 	/** The Dawn's own technologies of the grid (the others are common, D27). */
@@ -139,7 +142,7 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 
 		// Condition 1: the hero (a tier of the prototype, 1 or 2; a level only as the stricter rule).
 		TestTrue(FString::Printf(TEXT("%s: tier 1 or 2 (the tier 3 of GDD 11.2 is not in the table, T-Q5)"), *Name), Row.MinTier >= 1 && Row.MinTier <= 2);
-		TestTrue(FString::Printf(TEXT("%s: hero level 0 (the tier only) or 1 to 6 (the prototype)"), *Name), Row.MinHeroLevel >= 0 && Row.MinHeroLevel <= 6);
+		TestEqual(FString::Printf(TEXT("%s: the tier alone decides (T-Q1 = A, D583): hero level 0"), *Name), Row.MinHeroLevel, 0);
 		// Condition 2: a building that is in BuildingTypes.csv or planned.
 		const bool bKnownBuilding = Buildings->FindRow<FHOLBuildingTypeRow>(Row.Building, TEXT("building"), false) != nullptr
 			|| Contains(PlannedBuildings, Row.Building.ToString());
@@ -175,6 +178,194 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 			}
 		}
 	}
+	return true;
+}
+
+// T3/T4 (T-Q4 = A, D583): of the 27 technologies of the table, the ones the game can play now are those whose building is a
+// type of BuildingTypes.csv: the camps, the farm and the main centre (10), plus the Dawn's Tempered Halberds at the Barracks
+// (11). The others (Forge, Academy, Siege workshop, Sanctuary, Chapel) wait for their buildings.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTechnologyPlayableTest, "HeroesOfLiberty.Technologies.Playable", UE::HeroesOfLiberty::Tests::TechnologyTable::Flags)
+bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::TechnologyTable;
+
+	UDataTable* Techs = nullptr;
+	UDataTable* Buildings = nullptr;
+	if (!Import(*this, TEXT("Technologies.csv"), FHOLTechnologyRow::StaticStruct(), Techs) || !Import(*this, TEXT("BuildingTypes.csv"), FHOLBuildingTypeRow::StaticStruct(), Buildings))
+	{
+		return false;
+	}
+	const auto BuildingExists = [Buildings](const FName Building) { return Buildings->FindRow<FHOLBuildingTypeRow>(Building, TEXT("building"), false) != nullptr; };
+
+	const TSet<FName> Expected = {
+		TEXT("DoubleAxesI"), TEXT("DoubleAxesII"), TEXT("MinerPicksI"), TEXT("MinerPicksII"), TEXT("PloughI"), TEXT("PloughII"),
+		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("DefenceMilitia"), TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"),
+	};
+	TSet<FName> Playable;
+	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
+	{
+		const FHOLTechnologyRow& Row = *reinterpret_cast<const FHOLTechnologyRow*>(Pair.Value);
+		if (HOLTechnology::IsPlayable(Row, BuildingExists))
+		{
+			Playable.Add(Pair.Key);
+		}
+	}
+	TestEqual(TEXT("11 technologies are playable"), Playable.Num(), 11);
+	for (const FName Name : Expected)
+	{
+		TestTrue(FString::Printf(TEXT("%s is playable"), *Name.ToString()), Playable.Contains(Name));
+	}
+	for (const FName Name : Playable)
+	{
+		TestTrue(FString::Printf(TEXT("%s is expected to be playable"), *Name.ToString()), Expected.Contains(Name));
+	}
+
+	// T-Q6 = A: the file of 5 (D283) of every building that researches one is the production queue's.
+	for (const FName Name : Expected)
+	{
+		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Name, TEXT("technology"), false);
+		const FHOLBuildingTypeRow* Building = Row ? Buildings->FindRow<FHOLBuildingTypeRow>(Row->Building, TEXT("building"), false) : nullptr;
+		if (TestNotNull(FString::Printf(TEXT("%s: its building is there"), *Name.ToString()), Building))
+		{
+			TestEqual(FString::Printf(TEXT("%s: %s researches in a queue of 5"), *Name.ToString(), *Row->Building.ToString()), Building->MaxQueue, 5);
+		}
+	}
+	return true;
+}
+
+// T3/T4: the rules (order of the reasons, as the script's), the cost of a research as a queue item, the state of the player.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTechnologyRulesTest, "HeroesOfLiberty.Technologies.Rules", UE::HeroesOfLiberty::Tests::TechnologyTable::Flags)
+bool FHOLTechnologyRulesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::TechnologyTable;
+	using HOLTechnology::EBlock;
+
+	UDataTable* Techs = nullptr;
+	if (!Import(*this, TEXT("Technologies.csv"), FHOLTechnologyRow::StaticStruct(), Techs))
+	{
+		return false;
+	}
+	const FHOLTechnologyRow* Plough1 = Techs->FindRow<FHOLTechnologyRow>(TEXT("PloughI"), TEXT("technology"), false);
+	const FHOLTechnologyRow* Plough2 = Techs->FindRow<FHOLTechnologyRow>(TEXT("PloughII"), TEXT("technology"), false);
+	if (!TestNotNull(TEXT("PloughI"), Plough1) || !TestNotNull(TEXT("PloughII"), Plough2))
+	{
+		return false;
+	}
+
+	HOLTechnology::FFacts Ready;
+	Ready.HeroTier = 1;
+	Ready.HeroLevel = 3;
+	Ready.bBuildingFinished = true;
+	Ready.bCanPay = true;
+	TestEqual(TEXT("level I, tier 1, farm, paid: available"), int32(HOLTechnology::Check(*Plough1, Ready)), int32(EBlock::None));
+
+	HOLTechnology::FFacts Facts = Ready;
+	Facts.HeroTier = 0;
+	TestEqual(TEXT("no tier yet"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::TierTooLow));
+	Facts = Ready;
+	TestEqual(TEXT("level II at tier 1"), int32(HOLTechnology::Check(*Plough2, Facts)), int32(EBlock::TierTooLow));
+	Facts.HeroTier = 2;
+	Facts.bRequiresDone = false;
+	TestEqual(TEXT("level II without level I"), int32(HOLTechnology::Check(*Plough2, Facts)), int32(EBlock::RequiresMissing));
+	Facts.bRequiresDone = true;
+	TestEqual(TEXT("level II at tier 2 with level I"), int32(HOLTechnology::Check(*Plough2, Facts)), int32(EBlock::None));
+	Facts = Ready;
+	Facts.bBuildingFinished = false;
+	TestEqual(TEXT("no finished building"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::NoBuilding));
+	Facts = Ready;
+	Facts.bCanPay = false;
+	TestEqual(TEXT("cannot pay"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::CannotPay));
+	Facts = Ready;
+	Facts.bQueued = true;
+	TestEqual(TEXT("already queued"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::AlreadyQueued));
+	Facts.bResearched = true;
+	TestEqual(TEXT("researched wins over queued"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::AlreadyResearched));
+
+	// T-Q1 = A: the tier alone decides while MinHeroLevel is 0; a row that asks a level too (the stricter holds) is refused below it.
+	FHOLTechnologyRow Strict = *Plough1;
+	Strict.MinHeroLevel = 5;
+	Facts = Ready;
+	TestEqual(TEXT("tier open, level 3 < 5"), int32(HOLTechnology::Check(Strict, Facts)), int32(EBlock::HeroLevelTooLow));
+	Facts.HeroLevel = 5;
+	TestEqual(TEXT("level 5"), int32(HOLTechnology::Check(Strict, Facts)), int32(EBlock::None));
+	Facts = Ready;
+	Facts.HeroLevel = 0;
+	TestEqual(TEXT("MinHeroLevel 0: the tier alone, whatever the level"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::None));
+
+	// A research is an item of the production queue (T-Q6 = A): cost taken at the order, given back in full at the cancel, no population.
+	const float StepSeconds = 0.05f;
+	const FHOLProductionCost Cost = HOLTechnology::MakeCost(*Plough1, StepSeconds);
+	TestTrue(TEXT("the cost is the row's"), Cost.Resources == Plough1->Cost);
+	TestEqual(TEXT("30 s = 600 steps of 0.05 s"), Cost.BuildSteps, 600);
+	TestEqual(TEXT("no population place"), Cost.Population, 0);
+
+	TArray<FHOLProductionItem> Queue;
+	FHOLResources Stock(1000, 1000, 1000, 1000);
+	TestFalse(TEXT("not queued yet"), HOLTechnology::IsQueued(Queue, TEXT("PloughI")));
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		const FName Name = Index == 0 ? FName(TEXT("PloughI")) : FName(*FString::Printf(TEXT("Other%d"), Index));
+		TestEqual(FString::Printf(TEXT("research %d queued"), Index), int32(HOLProduction::TryEnqueue(Queue, Name, Cost, 5, Stock)), int32(EHOLProductionRefusal::None));
+	}
+	TestEqual(TEXT("the sixth is refused: a file of 5"), int32(HOLProduction::TryEnqueue(Queue, TEXT("PloughII"), Cost, 5, Stock)), int32(EHOLProductionRefusal::QueueFull));
+	TestTrue(TEXT("queued"), HOLTechnology::IsQueued(Queue, TEXT("PloughI")));
+	TestFalse(TEXT("another one is not"), HOLTechnology::IsQueued(Queue, TEXT("PloughII")));
+	TestEqual(TEXT("five costs taken"), Stock.Food, 1000 - 5 * Plough1->Cost.Food);
+	TestTrue(TEXT("cancel gives it back in full"), HOLProduction::Cancel(Queue, 0, Cost, Stock));
+	TestEqual(TEXT("four costs taken"), Stock.Food, 1000 - 4 * Plough1->Cost.Food);
+	TestFalse(TEXT("no longer queued"), HOLTechnology::IsQueued(Queue, TEXT("PloughI")));
+
+	// A research needs no population place: a player over his cap (a house lost) still finishes it.
+	TArray<FHOLProductionItem> Solo;
+	FHOLResources Rich(1000, 1000, 1000, 1000);
+	HOLProduction::TryEnqueue(Solo, TEXT("PloughI"), Cost, 5, Rich);
+	int32 FreePopulation = -3;
+	TArray<FName> Done;
+	const auto GetCost = [&Cost](FName) { return Cost; };
+	HOLProduction::Advance(Solo, 0, GetCost, FreePopulation, Done);
+	TestTrue(TEXT("started although the population is over its cap"), Solo.Num() == 1 && Solo[0].IsStarted());
+	TestEqual(TEXT("the population is left alone"), FreePopulation, -3);
+	HOLProduction::Advance(Solo, 600, GetCost, FreePopulation, Done);
+	TestTrue(TEXT("done after 600 steps"), Done.Num() == 1 && Done[0] == FName(TEXT("PloughI")) && Solo.IsEmpty());
+
+	// T5: the effects. A line's percent is its TOTAL (T-Q2): I then II gives II's, not I + II. Other lines on a statistic add up.
+	const auto Find = [Techs](const FName Name) { return Techs->FindRow<FHOLTechnologyRow>(Name, TEXT("technology"), false); };
+	TArray<FName> Researched;
+	TestEqual(TEXT("nothing researched: no bonus"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), 0);
+	Researched.Add(TEXT("PloughI"));
+	TestEqual(TEXT("Plough I: +10 % food"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough1->Percent);
+	TestEqual(TEXT("Plough I: nothing for wood"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherWood"), Find), 0);
+	Researched.Add(TEXT("PloughII"));
+	TestEqual(TEXT("Plough I and II: II's total, not the sum"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough2->Percent);
+	TestTrue(TEXT("II gives more than I"), Plough2->Percent > Plough1->Percent);
+	Researched.Add(TEXT("MinerPicksI"));
+	const FHOLTechnologyRow* Picks = Find(TEXT("MinerPicksI"));
+	TestEqual(TEXT("Miner picks: stone"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherStone"), Find), Picks ? Picks->Percent : -1);
+	TestEqual(TEXT("Miner picks: gold"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherGold"), Find), Picks ? Picks->Percent : -1);
+	TestEqual(TEXT("the plough still gives food only"), HOLTechnology::GetBonusPercent(Researched, TEXT("GatherFood"), Find), Plough2->Percent);
+	TestEqual(TEXT("an unknown technology gives nothing"), HOLTechnology::GetBonusPercent(TArray<FName>{ TEXT("Nothing") }, TEXT("GatherFood"), Find), 0);
+
+	// T5: the Wheelbarrow raises what a worker carries (a whole quantity, 10 at the Peasant): both of its stats are the line's.
+	Researched = { TEXT("WheelbarrowI") };
+	const FHOLTechnologyRow* Barrow1 = Find(TEXT("WheelbarrowI"));
+	const FHOLTechnologyRow* Barrow2 = Find(TEXT("WheelbarrowII"));
+	TestEqual(TEXT("Wheelbarrow I: carry +10 %"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::WorkerCarryStat, Find), Barrow1 ? Barrow1->Percent : -1);
+	Researched.Add(TEXT("WheelbarrowII"));
+	TestEqual(TEXT("Wheelbarrow I and II: speed +20 % (the line's total)"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::WorkerSpeedStat, Find), Barrow2 ? Barrow2->Percent : -1);
+	TestEqual(TEXT("10 carried, +0 %: 10"), HOLTechnology::ScaleByPercent(10, 0), 10);
+	TestEqual(TEXT("10 carried, +10 %: 11"), HOLTechnology::ScaleByPercent(10, 10), 11);
+	TestEqual(TEXT("10 carried, +20 %: 12"), HOLTechnology::ScaleByPercent(10, 20), 12);
+	TestEqual(TEXT("3 carried, +10 %: still 3 (a third of a unit is not one)"), HOLTechnology::ScaleByPercent(3, 10), 3);
+	TestEqual(TEXT("nothing carried: nothing"), HOLTechnology::ScaleByPercent(0, 20), 0);
+	TestEqual(TEXT("a negative percent never lowers it"), HOLTechnology::ScaleByPercent(10, -50), 10);
+
+	// The player's state: a technology is researched once.
+	FHOLTechnologyState State;
+	TestFalse(TEXT("none yet"), State.Has(TEXT("PloughI")));
+	TestTrue(TEXT("added"), State.Add(TEXT("PloughI")));
+	TestTrue(TEXT("has it"), State.Has(TEXT("PloughI")));
+	TestFalse(TEXT("added once"), State.Add(TEXT("PloughI")));
+	TestEqual(TEXT("one entry"), State.Done.Num(), 1);
 	return true;
 }
 

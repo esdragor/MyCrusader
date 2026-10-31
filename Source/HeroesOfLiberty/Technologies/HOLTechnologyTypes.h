@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Engine/DataTable.h"
+#include "Engine/DeveloperSettings.h"
 #include "Match/HOLResources.h"
 #include "HOLTechnologyTypes.generated.h"
 
@@ -72,4 +73,25 @@ struct HEROESOFLIBERTY_API FHOLTechnologyRow : public FTableRowBase
 	/** The change of those statistics, in percent of the base value, TOTAL of the line (level II = level I and more, T-Q2). */
 	UPROPERTY(EditAnywhere, Category = "Effect", meta = (ClampMin = "0"))
 	int32 Percent = 10;
+};
+
+/** Where the technology table lives (DefaultGame.ini), like the building type table. */
+UCLASS(config = Game, defaultconfig, meta = (DisplayName = "HeroesOfLiberty Technologies"))
+class HEROESOFLIBERTY_API UHOLTechnologySettings : public UDeveloperSettings
+{
+	GENERATED_BODY()
+
+public:
+	/** Technology table (T1): one row per technology, imported from Tools/Data/Technologies.csv by Tools/Editor/make_technologies.py. */
+	UPROPERTY(config, EditAnywhere, Category = "Technologies")
+	TSoftObjectPtr<UDataTable> TechnologiesTable;
+
+	/** The loaded table, or null (the asset is not created yet): the game then has no technology. */
+	static const UDataTable* GetTable();
+
+	/** A row of the table, or null. */
+	static const FHOLTechnologyRow* FindTechnology(FName Name);
+
+	/** The technologies researched in a building type (T4), in the order of the table: what its research row of the grid shows. */
+	static void GetBuildingTechnologies(FName Building, TArray<FName>& OutNames);
 };

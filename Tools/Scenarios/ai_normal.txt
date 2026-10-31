@@ -1,0 +1,17 @@
+# IA4 D579 : toi contre une IA Normale ; quand son forum est attaque et qu'elle sait perdre, elle feinte (recule, contourne) et garde son economie
+# Plain, toi (slot 0) contre une IA Normale (slot 1), 5 Paysans de depart chacun, 1000 de chaque ressource pour batir vite une Caserne.
+# Les valeurs (HOLAILives.as, FHOLAILivesData) sont des reglages provisoires : on les regle d'apres ce que tu vois.
+# A regarder :
+#  1. fais 3-4 soldats (Lanciers) et envoie-les frapper son Centre (a moins de 8 m) alors qu'elle n'a presque pas d'armee : une IA Normale ne se jette pas dessus,
+#     elle recule (vers un refuge derriere son centre), puis contourne a 25 m de tes soldats, puis frappe ;
+#  2. ses Paysans proches de tes soldats courent vers le refuge et non vers le centre attaque ;
+#  3. le journal (Saved/Logs) dit « forum attacked ... decision feint, ... » puis « feint, phase 1 (back) / 2 (round) / 3 (strike) » et « Peasants run to the refuge » ;
+#  4. sur la derniere vie : tout sur la ruine, aucune feinte (regle commune).
+waitlog AI brain HOLAIBrain awake
+waitlog AI slot 1 step
+waitlog Gather order of slot 1:
+hol.Cheat.Resources 1000
+hol.Camera.FocusSlot 0
+frames 2
+note IA « Normale 2 » : feinte quand elle sait perdre (recule, contourne), garde son economie. Laisse tourner 10 a 15 min ; suis-la avec ² hol.Camera.FocusSlot 1.
+note Envoie 3-4 soldats pres de son forum alors qu'elle a peu d'armee.

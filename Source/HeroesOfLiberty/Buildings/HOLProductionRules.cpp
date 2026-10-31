@@ -45,7 +45,8 @@ void HOLProduction::Advance(TArray<FHOLProductionItem>& Queue, const int64 Step,
 		const FHOLProductionCost Cost = GetCost(Head.TypeName);
 		if (!Head.IsStarted())
 		{
-			if (FreePopulation < Cost.Population)
+			// A research (T3, no place) starts whatever the population: a player over his cap still finishes it.
+			if (Cost.Population > 0 && FreePopulation < Cost.Population)
 			{
 				return;
 			}
