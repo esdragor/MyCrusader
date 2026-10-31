@@ -119,6 +119,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static bool CanPickTalent(int32 Level, int32 NumPicks, int32 Family);
 
+	/**
+	 * T5, TQ4 PROVISIONAL (not decided): where the very first talent is chosen. 0 = A, a tree window (NOT BUILT yet: shows B); 1 = B, three family
+	 * buttons in the hero's block (default, the question's recommendation); 2 = C, the advised-choice button takes a default family (the Captain)
+	 * when none is taken yet. The console variable hol.UI.TalentFirstChoice.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static int32 GetTalentFirstChoiceMode();
+
 	/** T6: whether the talent of Family in Row (2 to 9) has an effect in the game (HOLHeroTalent::HasEffect). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static bool TalentHasEffect(int32 Row, int32 Family);

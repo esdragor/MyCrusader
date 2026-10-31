@@ -84,3 +84,25 @@ void Test_TalentPanelKeyReach(FUnitTest& T)
 	T.AssertFalse(Lost.FamilyKeyReachable[0], "one Guardian, one Captain: neither reaches five in 5 points");
 	T.AssertFalse(Lost.FamilyKeyReachable[1], "... nor the Captain");
 }
+
+// TQ4 (PROVISIONAL, not decided): where the very first talent is chosen. Option B (default, read from the game's setting): three family buttons while a
+// point is kept, the advised button still waiting for a first talent. Option C: the advised button takes the Captain (the family with effects).
+void Test_TalentPanelFirstChoiceOptions(FUnitTest& T)
+{
+	T.AssertEquals(HOLTalentPanel::ModeButtons, HOLHero::GetTalentFirstChoiceMode(), "the setting's default is B, three buttons");
+	const FHOLTalentPanelView Buttons = HOLTalentPanel::MakeFor(2, PanelPicks(), HOLTalentPanel::ModeButtons);
+	T.AssertTrue(Buttons.bFamilyButtons, "B: the three buttons while a point is kept");
+	T.AssertFalse(Buttons.bAdviceEnabled, "B: no advice before a first talent");
+	T.AssertEquals(2, Buttons.NextRow, "the first talent fills row 2");
+	T.AssertFalse(HOLTalentPanel::MakeFor(1, PanelPicks(), HOLTalentPanel::ModeButtons).bFamilyButtons, "no point, no buttons");
+	const FHOLTalentPanelView Default = HOLTalentPanel::MakeFor(2, PanelPicks(), HOLTalentPanel::ModeDefault);
+	T.AssertFalse(Default.bFamilyButtons, "C: no family buttons");
+	T.AssertTrue(Default.bAdviceEnabled, "C: the advised button is on");
+	T.AssertEquals(1, Default.AdvisedFamily, "C: the Captain, the family with effects in the game");
+	T.AssertEquals(HOLAITalent::EffectFamilies()[0], Default.AdvisedFamily, "the same family the AI draws from");
+	const FHOLTalentPanelView After = HOLTalentPanel::MakeFor(3, PanelPicks(0), HOLTalentPanel::ModeDefault);
+	T.AssertEquals(0, After.AdvisedFamily, "C: once a talent is taken the most filled family wins");
+	T.AssertEquals(HOLTalentPanel::Make(2, PanelPicks()).Describe, Buttons.Describe, "Make is option B");
+	T.AssertTrue(HOLTalentText::FamilyTooltip(Buttons, 0).Contains("2"), "the tooltip names the row");
+	T.AssertTrue(HOLTalentText::FamilyName(0) != HOLTalentText::FamilyName(1), "three distinct names");
+}

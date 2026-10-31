@@ -1839,8 +1839,8 @@ if ($Parts -contains "camera") {
             # held but walks at half speed (more than 250 cm in 5 s, less than the one out of the cry). Then the talents given back.
             Step "mark build hero dawn", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
-                "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "waitlog hol.Hero.PickTalent: slot 0 family 1 taken", "wait 0.5", "hol.HUD.Report",
-                "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 4 -> 6", "wait 0.5", "hol.HUD.Report",
+                "hol.HUD.Click HeroTalentFamily1", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "waitlog hol.Hero.PickTalent: slot 0 family 1 taken", "wait 0.5", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 4 -> 6", "wait 0.5", "hol.HUD.Report", "frames 8", "capture build_hero_family",
                 "hol.HUD.Click HeroTalentButton", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.HUD.Report",
                 "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
                 "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
@@ -4392,7 +4392,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     # T5: the talent point's reminder follows the level (a point a level from 2, none taken): 1 at level 2, 2 at level 3, 3 at level 4, 5 at
     # level 6, with its line « Talents à dépenser : N » (in the language of the moment: fr, en, ja) and no advice before a first talent.
     $XPTalents = @($HeroXP | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
-    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| \D*(\d+)$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
+    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| \D*(\d+) \| family buttons row 2$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
     $Checks["the talent reminder: points $($TalentPoints -join ',') (1,1,2,3,5), no advice before a first talent ($($XPTalents.Count) lines)"] =
         (($TalentPoints -join ",") -eq "1,1,2,3,5") -and ($XPTalents.Count -eq 5)
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
@@ -4462,10 +4462,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks["three Captain talents at level 4: no reminder, the advice is the Captain, a seal ($($DawnTalents | Select-Object -First 1))"] =
         ($DawnTalents.Count -ge 1) -and ($DawnTalents[0] -eq "points 0 | 1 1 1 w . | advised 1 | seals 1 keys 0")
     $Checks["level 6: two points, the reminder with the advised choice ($($DawnTalents | Select-Object -Skip 1 -First 1))"] =
-        ($DawnTalents.Count -ge 2) -and ($DawnTalents[1] -eq "points 2 | 1 1 1 n . | advised 1 | seals 1 keys 0 | Talents à dépenser : 2 — choix conseillé")
+        ($DawnTalents.Count -ge 2) -and ($DawnTalents[1] -eq "points 2 | 1 1 1 n . | advised 1 | seals 1 keys 0 | Talents à dépenser : 2 — choix conseillé | family buttons row 5")
     $Checks["the button's click took the advised talent by the order queue ($($DawnTalents | Select-Object -Skip 2 -First 1))"] =
         [bool]($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued" -Quiet) -and ($DawnTalents.Count -ge 3) -and
-        ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé")
+        ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé | family buttons row 6")
+    # TQ4 (PROVISIONAL, option B by default): with a point kept and no talent yet, the Captain button of the three family buttons takes the first talent by the order queue (a hidden or greyed button would take nothing); then the advised button took one more.
+    $Checks["the family button took the first talent, the advised button another (queued orders: $(@($Dawn | Select-String -SimpleMatch 'Hero talent order: slot 0 family 1 queued').Count))"] = @($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued").Count -ge 2
     $DawnMoves = @(-1, -1)
     if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
         $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]

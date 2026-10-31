@@ -34,6 +34,10 @@ UCommonTextBlock HeroTalentLabel;
 // What the talent line shows (HOLTalentPanel::Make), and its texts for hol.HUD.Report.
 FHOLTalentPanelView TalentView;
 FString TalentTexts = "";
+// TQ4 (PROVISIONAL, hol.UI.TalentFirstChoice, option B): three family buttons under the reminder while a point is kept.
+UHorizontalBox HeroFamilyRow;
+TArray<UButton> HeroFamilyButtons;
+TArray<UCommonTextBlock> HeroFamilyLabels;
 
 	// What the hero's block shows (the view applied last); Describe writes its line.
 	FHOLHeroBlockView HeroView;
@@ -225,6 +229,22 @@ FString TalentTexts = "";
 		HeroTalentLabel = MakeText(n"HeroTalentLabel", UHOLTextStyleHUDLabel);
 		HeroTalentLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
 		HeroTalentButton.AddChild(HeroTalentLabel);
+
+		// TQ4 (option B): the three families of the first choice, hidden unless a point is kept.
+		HeroFamilyRow = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroFamilyRow"));
+		HeroFamilyRow.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(HeroFamilyRow).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		for (int Family = 0; Family < 3; ++Family)
+		{
+			UButton Button = MakeButton(Family == 0 ? n"HeroTalentFamily0" : Family == 1 ? n"HeroTalentFamily1" : n"HeroTalentFamily2");
+			Button.OnClicked.AddUFunction(this, Family == 0 ? n"HandleFamily0" : Family == 1 ? n"HandleFamily1" : n"HandleFamily2");
+			UCommonTextBlock Label = MakeText(Family == 0 ? n"HeroTalentFamilyLabel0" : Family == 1 ? n"HeroTalentFamilyLabel1" : n"HeroTalentFamilyLabel2", UHOLTextStyleHUDLabel);
+			Label.SetVisibility(ESlateVisibility::HitTestInvisible);
+			Button.AddChild(Label);
+			HeroFamilyRow.AddChildToHorizontalBox(Button).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
+			HeroFamilyButtons.Add(Button);
+			HeroFamilyLabels.Add(Label);
+		}
 	}
 
 	// A bar in a box of the block's width and of Height.
@@ -329,13 +349,21 @@ FString TalentTexts = "";
 		if (!View.bVisible || Count < 0)
 		{
 			HeroTalentButton.SetVisibility(ESlateVisibility::Collapsed);
+			HeroFamilyRow.SetVisibility(ESlateVisibility::Collapsed);
 			return;
 		}
 		TArray<int> Picks;
 		for (int Index = 0; Index < Count; ++Index)
 			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerSlot, Index));
-		TalentView = HOLTalentPanel::Make(View.Level, Picks);
+		TalentView = HOLTalentPanel::MakeFor(View.Level, Picks, HOLHero::GetTalentFirstChoiceMode());
 		HeroTalentButton.SetVisibility(TalentView.bReminder ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		HeroFamilyRow.SetVisibility(TalentView.bFamilyButtons ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		for (int Family = 0; Family < HeroFamilyButtons.Num(); ++Family)
+		{
+			HeroFamilyLabels[Family].SetText(FText::FromString(HOLTalentText::FamilyName(Family)));
+			HeroFamilyLabels[Family].SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
+			HeroFamilyButtons[Family].SetToolTipText(FText::FromString(HOLTalentText::FamilyTooltip(TalentView, Family)));
+		}
 		if (!TalentView.bReminder)
 			return;
 		TalentTexts = HOLTalentText::ReminderText(TalentView);
@@ -462,6 +490,36 @@ FString TalentTexts = "";
 		ClickTalent();
 	}
 
+	// A click on one of the three family buttons (TQ4, option B): the first (or any) talent of that family, the order sent (the server checks it).
+	bool ClickFamily(int Family)
+	{
+		if (!TalentView.bFamilyButtons)
+			return false;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return false;
+		Controller.RequestHeroTalent(Family);
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleFamily0()
+	{
+		ClickFamily(0);
+	}
+
+	UFUNCTION()
+	void HandleFamily1()
+	{
+		ClickFamily(1);
+	}
+
+	UFUNCTION()
+	void HandleFamily2()
+	{
+		ClickFamily(2);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	bool ClickWidget(FName WidgetName)
 	{
@@ -473,6 +531,12 @@ FString TalentTexts = "";
 			return ClickReturn();
 		if (WidgetName == n"HeroTalentButton")
 			return ClickTalent();
+		if (WidgetName == n"HeroTalentFamily0")
+			return ClickFamily(0);
+		if (WidgetName == n"HeroTalentFamily1")
+			return ClickFamily(1);
+		if (WidgetName == n"HeroTalentFamily2")
+			return ClickFamily(2);
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		return false;
@@ -495,7 +559,7 @@ FString TalentTexts = "";
 		return "hero: " + HeroView.Describe + (HeroTexts.IsEmpty() ? "" : "\nhero texts: " + HeroTexts)
 			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
 			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
-			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) : "")
+			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + (TalentView.bFamilyButtons ? f" | family buttons row {TalentView.NextRow}" : "") : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }
