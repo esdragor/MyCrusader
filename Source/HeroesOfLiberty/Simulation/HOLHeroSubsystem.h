@@ -93,6 +93,9 @@ public:
 	 */
 	bool PickTalent(int32 Slot, int32 Family);
 
+	/** Development (hol.Hero.ResetTalents, tests): the slot's talents given back, every point in reserve again. False on a client or out of range. */
+	bool ResetTalents(int32 Slot);
+
 	/** J8c.2, the combat processor: whether the slot's hero cried since its last step (then forgotten). */
 	bool ConsumeCloseRanks(int32 Slot);
 

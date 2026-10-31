@@ -142,7 +142,7 @@ $SubCaseTable = @{
     build = [ordered]@{
         cut = @{ Marks = @("cut", "cut move"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         gap = @{ Marks = @("gap", "gap one", "gap two", "wall"); Setup = @("hol.Cheat.Wood 1000") }
-        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero hold", "hero grid"); Setup = @() }
+        hero = @{ Marks = @("hero", "hero return", "hero texts", "hero xp", "hero aura", "hero hold", "hero dawn", "hero grid"); Setup = @() }
         dropoff = @{ Marks = @("dropoff camp", "dropoff", "dropoff order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffshift = @{ Marks = @("dropoff camp", "dropoffshift", "dropoffshift order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
         dropoffmove = @{ Marks = @("dropoff camp", "dropoffmove", "dropoffmove order"); Setup = @("hol.Cheat.Wood 1000", "hol.Gather.LogDeposits 1") }
@@ -1819,6 +1819,22 @@ if ($Parts -contains "camera") {
                 "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
                 "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500", "wait 12", "hol.Units.Report 500",
                 "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.SetXP 0 0", "wait 0.3",
+                "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
+            Key Escape
+            Step "waitlog Selection: none"
+            # T4/T5: Pas de l'Aube in a match and the talent line. His hero again at level 4 with three Captain talents (hol.Hero.PickTalent
+            # 1, the third being Pas de l'Aube): no point left, no reminder; level 6: two points, the reminder with the advised choice (the
+            # Captain), the click of the button takes one (the order queue, the server); then the cry as above: the Spearman under it is not
+            # held but walks at half speed (more than 250 cm in 5 s, less than the one out of the cry). Then the talents given back.
+            Step "mark build hero dawn", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
+                "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
+                "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "waitlog hol.Hero.PickTalent: slot 0 family 1 taken", "wait 0.5", "hol.HUD.Report",
+                "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 4 -> 6", "wait 0.5", "hol.HUD.Report",
+                "hol.HUD.Click HeroTalentButton", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.HUD.Report",
+                "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
+                "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
+                "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500",
+                "hol.Units.Remove $($AuraHero -join ' ') 6000 0 Spearman", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Hero.ResetAbilities 0", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 0", "wait 0.3",
                 "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
             Step "waitlog Selection: none"
@@ -4327,9 +4343,9 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $XPFlashes = @($HeroXP | Select-String -Pattern "Hero flash: slot (\d) level (\d -> \d)" | ForEach-Object { "slot $($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" })
     $Checks["his golden flash at each level up, none at his return ($($XPFlashes -join '; '))"] = (($XPFlashes -join ";") -eq "slot 0 1 -> 2;slot 0 2 -> 3;slot 0 3 -> 4;slot 0 4 -> 6")
     # T5: the talent point's reminder follows the level (a point a level from 2, none taken): 1 at level 2, 2 at level 3, 3 at level 4, 5 at
-    # level 6, with the line « Talents à dépenser : N » and no advice before a first talent.
+    # level 6, with its line « Talents à dépenser : N » (in the language of the moment: fr, en, ja) and no advice before a first talent.
     $XPTalents = @($HeroXP | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
-    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| Talents à dépenser : (\d+)$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
+    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| \D*(\d+)$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
     $Checks["the talent reminder: points $($TalentPoints -join ',') (1,1,2,3,5), no advice before a first talent ($($XPTalents.Count) lines)"] =
         (($TalentPoints -join ",") -eq "1,1,2,3,5") -and ($XPTalents.Count -eq 5)
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
@@ -4390,6 +4406,31 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($HeldMoves[0] -ge 0) -and ($HeldMoves[0] -le 150) -and ($FarMoves[0] -ge 800)
     $Checks["the cry over (17 s), the held one walks on ($($HeldMoves[1]) cm, 300 at least)"] = ($HeldMoves[1] -ge 300)
     $AllOk = (Report "build hero hold" $Checks) -and $AllOk
+    # T4/T5: Pas de l'Aube in a match (half speed under the cry) and the talent line (reminder, advised choice, the click).
+    $Dawn = @(Get-Section "build hero dawn" | ForEach-Object { $_ })
+    $DawnTalents = @($Dawn | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $DawnReports = @($Dawn | Where-Object { $_ -match "Units report: " })
+    $DawnSpears = @($DawnReports | ForEach-Object { , @([regex]::Matches($_, "#(\d+) Spearman slot 0 at \((-?\d+), (-?\d+), ") | ForEach-Object { [pscustomobject]@{ Id = $_.Groups[1].Value; X = [int]$_.Groups[2].Value; Y = [int]$_.Groups[3].Value } }) })
+    $Checks = [ordered]@{}
+    $Checks["three Captain talents at level 4: no reminder, the advice is the Captain, a seal ($($DawnTalents | Select-Object -First 1))"] =
+        ($DawnTalents.Count -ge 1) -and ($DawnTalents[0] -eq "points 0 | 1 1 1 w . | advised 1 | seals 1 keys 0")
+    $Checks["level 6: two points, the reminder with the advised choice ($($DawnTalents | Select-Object -Skip 1 -First 1))"] =
+        ($DawnTalents.Count -ge 2) -and ($DawnTalents[1] -eq "points 2 | 1 1 1 n . | advised 1 | seals 1 keys 0 | Talents à dépenser : 2 — choix conseillé")
+    $Checks["the button's click took the advised talent by the order queue ($($DawnTalents | Select-Object -Skip 2 -First 1))"] =
+        [bool]($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued" -Quiet) -and ($DawnTalents.Count -ge 3) -and
+        ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé")
+    $DawnMoves = @(-1, -1)
+    if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
+        $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
+        $FarAt = @($DawnSpears[0] | Where-Object { $_.Y -lt $BuildHero[1] })[0]
+        $HeldNow = @($DawnSpears[1] | Where-Object { $_.Id -eq $HeldAt.Id })[0]
+        $FarNow = @($DawnSpears[1] | Where-Object { $_.Id -eq $FarAt.Id })[0]
+        if ($HeldNow) { $DawnMoves[0] = [int][math]::Sqrt([math]::Pow($HeldNow.X - $HeldAt.X, 2) + [math]::Pow($HeldNow.Y - $HeldAt.Y, 2)) }
+        if ($FarNow) { $DawnMoves[1] = [int][math]::Sqrt([math]::Pow($FarNow.X - $FarAt.X, 2) + [math]::Pow($FarNow.Y - $FarAt.Y, 2)) }
+    }
+    $Checks["Pas de l'Aube: the Spearman under the cry walks on at half speed ($($DawnMoves[0]) cm in 5 s, more than 250), less than the one out of the cry ($($DawnMoves[1]) cm)"] =
+        ($DawnMoves[0] -gt 250) -and ($DawnMoves[0] -lt $DawnMoves[1])
+    $AllOk = (Report "build hero dawn" $Checks) -and $AllOk
     # J8c.4 loop 1: the abilities from the grid's keys (the grid refuses what is not ready, the server casts the rest).
     $GridCase = @(Get-Section "build hero grid" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
