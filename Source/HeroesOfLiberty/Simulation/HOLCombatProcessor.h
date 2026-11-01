@@ -106,6 +106,10 @@ protected:
 		/** D345.2b: an arrow at a building (Target unset): its damage of BuildingAttackType through DamageBuilding when it lands. */
 		TWeakObjectPtr<AHOLBuilding> TargetBuilding;
 		uint8 BuildingAttackType = 0;
+		/** S4 (SQ1 = B): the area (cm) around the unit it lands on within which the shooter's enemies take the same blow (the Mangonel's 250); 0: none. */
+		float AreaRadius = 0.f;
+		/** The shooter's camp: who is an enemy of the area. */
+		int32 ShooterCamp = INDEX_NONE;
 	};
 	/** In release order (the outcome does not depend on the chunks). */
 	TArray<FArrow> Arrows;

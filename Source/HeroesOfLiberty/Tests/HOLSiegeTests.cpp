@@ -6,6 +6,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Siege/HOLSiegeRules.h"
+#include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Technologies/HOLTechnologyTypes.h"
@@ -122,6 +123,35 @@ bool FHOLSiegeTechnologiesTest::RunTest(const FString& Parameters)
 				Workshop->Produces.Contains(Line.Engine == HOLSiege::EEngine::Ram ? FName(TEXT("Ram")) : FName(TEXT("Mangonel"))));
 		}
 	}
+	return true;
+}
+
+// S4 (SQ1 = B, D614): the Ram takes no unit on by itself (a seeker that cannot attack units chooses nobody, a unit before a building
+// or not), the Mangonel's blow reaches the units within its area around the target and only those (the edge of the circle is in).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiegeCombatTest, "HeroesOfLiberty.Siege.Combat", UE::HeroesOfLiberty::Tests::Siege::Flags)
+bool FHOLSiegeCombatTest::RunTest(const FString& Parameters)
+{
+	HOLCombat::FSeeker Seeker;
+	Seeker.Position = FVector2D::ZeroVector;
+	Seeker.AttackRange = 50.f;
+	Seeker.Mode = HOLCombat::ESeekMode::AttackMove;
+	HOLCombat::FCandidate Enemy;
+	Enemy.Id = 1;
+	Enemy.Position = FVector2D(300.0, 0.0);
+	const HOLCombat::FCandidate Candidates[] = { Enemy };
+	TestEqual(TEXT("a unit that attacks units takes the enemy on, on an attack-move"), HOLCombat::ChooseTarget(Seeker, Candidates), 0);
+	Seeker.bCanAttackUnits = false;
+	TestEqual(TEXT("the Ram (no attack on units) takes nobody on, on an attack-move"), HOLCombat::ChooseTarget(Seeker, Candidates), static_cast<int32>(INDEX_NONE));
+	Seeker.Mode = HOLCombat::ESeekMode::Hold;
+	TestEqual(TEXT("nor on hold"), HOLCombat::ChooseTarget(Seeker, Candidates), static_cast<int32>(INDEX_NONE));
+
+	// The area: centre to centre, the circle's edge in.
+	const FVector2D Centre(1000.0, 1000.0);
+	TestTrue(TEXT("on the target"), HOLCombat::IsInArea(Centre, Centre, 250.f));
+	TestTrue(TEXT("249 cm: in"), HOLCombat::IsInArea(Centre, Centre + FVector2D(249.0, 0.0), 250.f));
+	TestTrue(TEXT("250 cm: the edge is in"), HOLCombat::IsInArea(Centre, Centre + FVector2D(150.0, 200.0), 250.f));
+	TestFalse(TEXT("251 cm: out"), HOLCombat::IsInArea(Centre, Centre + FVector2D(0.0, 251.0), 250.f));
+	TestFalse(TEXT("no area (0): nobody but the target itself, never another"), HOLCombat::IsInArea(Centre, Centre + FVector2D(1.0, 0.0), 0.f));
 	return true;
 }
 
