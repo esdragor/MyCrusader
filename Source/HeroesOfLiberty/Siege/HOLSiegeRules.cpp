@@ -41,4 +41,29 @@ namespace HOLSiege
 		}
 		return EBlock::None;
 	}
+
+	bool FindEngine(const FName TypeName, EEngine& OutEngine)
+	{
+		static const FName Ram(TEXT("Ram"));
+		static const FName Mangonel(TEXT("Mangonel"));
+		static const FName Trebuchet(TEXT("Trebuchet"));
+		static const FName Cannon(TEXT("Cannon"));
+		if (TypeName == Ram) { OutEngine = EEngine::Ram; return true; }
+		if (TypeName == Mangonel) { OutEngine = EEngine::Mangonel; return true; }
+		if (TypeName == Trebuchet) { OutEngine = EEngine::Trebuchet; return true; }
+		if (TypeName == Cannon) { OutEngine = EEngine::Cannon; return true; }
+		return false;
+	}
+
+	const TCHAR* DescribeBlock(const EBlock Block)
+	{
+		switch (Block)
+		{
+		case EBlock::NotInPrototype: return TEXT("not in the prototype");
+		case EBlock::TierTooLow: return TEXT("tier too low");
+		case EBlock::NoWorkshop: return TEXT("no workshop");
+		case EBlock::CannotPay: return TEXT("cannot pay");
+		default: return TEXT("none");
+		}
+	}
 }

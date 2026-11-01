@@ -1,0 +1,27 @@
+﻿# Siege S4 (SQ1 = B, D614) : le Mangonneau frappe en zone (250 cm) les unites ennemies autour de la cible, jamais les siennes ; le Belier ne s'en prend pas aux unites
+# Plain, toi (slot 0) contre une IA (slot 1), hero_xp.json. Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# Un Mangonneau et un Belier (ordre : attaque-deplacement), 2 Lanciers ennemis cote a cote et un Paysan allie au meme point, a 12 m.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 4300 0
+frames 2
+hol.Units.SpawnHere 1 Mangonel 0 50
+hol.Units.SpawnHere 1 Ram 0 50
+waitunits 8
+hol.Select.Army
+waitlog Selection:
+hol.Camera.FocusNear 5500 0
+frames 2
+hol.Units.SpawnHere 2 Spearman 1 100
+hol.Units.SpawnHere 1 Peasant 0 100
+waitunits 11
+note 1. Mangonneau et Belier ordonnes vers 2 Lanciers ennemis serres l'un contre l'autre, un Paysan allie au milieu.
+hol.Select.AttackMoveNear 5500 0
+# Le premier tir du Mangonneau : la cible et UN autre Lancier (zone de 250 cm), pas le Paysan allie.
+waitlog area of
+waitlog 1 other units hit within 250 cm
+note 2. Le tir du Mangonneau touche les deux Lanciers (zone), pas le Paysan allie ; le Belier ne s'en prend pas aux Lanciers.
+

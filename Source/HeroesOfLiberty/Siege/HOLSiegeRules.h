@@ -44,4 +44,10 @@ namespace HOLSiege
 
 	/** Why an engine cannot be queued now, or None. HeroTier: the tier the hero's level has opened (HOLHeroXP::GetTier). */
 	HEROESOFLIBERTY_API EBlock Check(EEngine Engine, int32 HeroTier, bool bWorkshopFinished, bool bCanPay);
+
+	/** The engine a unit type is, by the name of its row (Ram, Mangonel, Trebuchet, Cannon); false for any other type (S3). */
+	HEROESOFLIBERTY_API bool FindEngine(FName TypeName, EEngine& OutEngine);
+
+	/** The words of a block in the log of the production ("tier too low"), the same family as HOLTechnology::DescribeBlock (S3). */
+	HEROESOFLIBERTY_API const TCHAR* DescribeBlock(EBlock Block);
 }

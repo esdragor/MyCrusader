@@ -364,6 +364,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	float BuildingAttackInterval = 2.1f;
 	UPROPERTY()
 	float BuildingAttackRange = 400.f;
+
+	/** S2 (D614): radius (cm) of the blow's area on units, around the target (the Mangonel's 250); 0: a single target. Read by S4. */
+	UPROPERTY()
+	float AreaRadius = 0.f;
 };
 
 /**
@@ -617,6 +621,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	float BuildingAttackRange = 400.f;
 
 	/**
+	 * Area of the attack on units (S2, SQ1 = B, D614): the radius (cm) around the unit hit within which the units without
+	 * allied fire also take the blow (the Mangonel: 250). 0: a single target. A building takes one blow, never an area.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float AreaRadius = 0.f;
+
+	/**
 	 * The projectile drawn in flight for its shots (AR9, AR-Q5): SM_Arrow for the Archer, SM_Bolt for the Crossbowman, the
 	 * same flight for both. Read by the arrow display only (UHOLArrowSubsystem, by the shooter's type), never by the
 	 * simulation; empty (the melee types): SM_Arrow.
@@ -679,5 +690,6 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.BuildingAttack = BuildingAttack;
 	Constants.BuildingAttackInterval = BuildingAttackInterval;
 	Constants.BuildingAttackRange = BuildingAttackRange;
+	Constants.AreaRadius = AreaRadius;
 	return Constants;
 }

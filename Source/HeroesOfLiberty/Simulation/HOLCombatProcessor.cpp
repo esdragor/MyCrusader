@@ -923,6 +923,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			HOLCombat::FSeeker Seeker;
 			Seeker.AttackRange = Constants.AttackRange;
 			Seeker.AggressionRadius = Constants.AggressionRadius;
+			Seeker.bCanAttackUnits = Constants.Attack > 0; // S4 (SQ1 = B): the Ram takes no unit on by itself
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
 			const float SearchRadius = HOLCombat::GetSearchRadius(Seeker);
@@ -1136,6 +1137,47 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				*Enemy.Constants->TypeName.ToString(), Enemy.State->OwnerPlayer, Arrow.ShooterId, *Arrow.ShooterType.ToString(), Arrow.ShooterSlot,
 				Shooter != INDEX_NONE ? Fighters[Shooter].Combat->Hits : 0);
 		}
+		// S4 (SQ1 = B, D614): an area (the Mangonel's 250 cm) on a unit hit: the enemies of the shooter's camp around the target (centre to
+		// centre, the circle's edge in) take the same blow, none of its own camp (no friendly fire), in the fighters' order (the hits come
+		// off one after another, D468). The target itself was struck above.
+		if (Arrow.AreaRadius > 0.f)
+		{
+			const FVector2D Centre(Enemy.Location);
+			const int32 ShooterHero = Shooter != INDEX_NONE ? HeroSlotOf(Fighters[Shooter]) : INDEX_NONE;
+			int32 NumSplashed = 0;
+			for (int32 Other = 0; Other < Fighters.Num(); ++Other)
+			{
+				FFighter& Around = Fighters[Other];
+				if (Other == Victim || Around.Camp == Arrow.ShooterCamp || Around.State->CurrentHealth <= 0
+					|| !HOLCombat::IsInArea(Centre, FVector2D(Around.Location), Arrow.AreaRadius) || !CanHitSlots(ShooterHero, HeroSlotOf(Around)))
+				{
+					continue;
+				}
+				const float Splash = HOLHeroAbility::GetReducedDamage(Arrow.Damage, GetDamageTakenPercent(Around));
+				Around.State->CurrentHealth -= Splash;
+				++NumSplashed;
+				Around.Combat->LastAttacker = Arrow.Shooter;
+				Around.Combat->LastHitStep = StepIndex;
+				if (Shooter != INDEX_NONE)
+				{
+					Fighters[Shooter].Combat->DamageDealt += Splash;
+				}
+				if (Around.State->CurrentHealth <= 0)
+				{
+					++TotalKills;
+					if (Shooter != INDEX_NONE)
+					{
+						++Fighters[Shooter].Combat->Kills;
+					}
+					Kill(Around, Arrow.ShooterSlot, Arrow.ShooterId);
+				}
+			}
+			if (LogHits != 0)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld area of #%u %s around #%u: %d other units hit within %.0f cm"), StepIndex, Arrow.ShooterId,
+					*Arrow.ShooterType.ToString(), Arrow.TargetId, NumSplashed, static_cast<double>(Arrow.AreaRadius));
+			}
+		}
 	}
 	Arrows.SetNum(Kept, EAllowShrinking::No);
 
@@ -1240,6 +1282,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.Radius = Constants.Radius;
 			Seeker.AttackRange = Constants.AttackRange;
 			Seeker.AggressionRadius = Constants.AggressionRadius;
+			Seeker.bCanAttackUnits = Constants.Attack > 0; // S4 (SQ1 = B): the Ram takes no unit on by itself
 			Seeker.bRanged = HOLCombat::IsRangedAttack(Constants.AttackRange);
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 				: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
@@ -1446,6 +1489,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Seeker.Radius = Constants.Radius;
 			Seeker.AttackRange = Constants.AttackRange;
 			Seeker.AggressionRadius = Constants.AggressionRadius;
+			Seeker.bCanAttackUnits = Constants.Attack > 0; // S4 (SQ1 = B): the Ram takes no unit on by itself
 			Seeker.bRanged = HOLCombat::IsRangedAttack(Constants.AttackRange);
 			Seeker.bRipostes = Constants.bRipostes;
 			Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
@@ -2291,6 +2335,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			continue;
 		}
 
+		// S4 (SQ1 = B, D614): an engine with no attack on units (the Ram) never strikes one, even ordered: it drops the target.
+		if (Constants.Attack <= 0)
+		{
+			--Enemy.Combat->AttackerCount;
+			Touch(Target);
+			Combat.Disengage();
+			Combat.bOrderedTarget = false;
+			Touch(Index);
+			continue;
+		}
 		// In reach: it stands and strikes.
 		if (Fighter.Order->Phase != EHOLMovePhase::None && World)
 		{
@@ -2323,6 +2377,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Arrow.ShooterType = Constants.TypeName;
 			Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
 			Arrow.Damage = DuelScaled(Fighter, Damage);
+			Arrow.AreaRadius = Constants.AreaRadius; // S4 (SQ1 = B): the Mangonel's blow reaches the enemies around the target
+			Arrow.ShooterCamp = Fighter.Camp;
 			Arrow.ReleaseStep = StepIndex;
 			Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 			++Combat.Hits;

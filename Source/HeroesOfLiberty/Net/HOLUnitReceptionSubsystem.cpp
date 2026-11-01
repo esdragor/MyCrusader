@@ -547,8 +547,10 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		// his health points exact from his slot's public hero sheet once received and alive, drawn back from the share before.
 		static_assert(HOLUnitView::MaxWireHealthShare == FHOLNetUnitState::MaxWireHealth, "a hero's share is read in the wire's own steps");
 		const bool bHero = Row->HasArmorCategory(EHOLArmorCategory::Hero);
+		// A share also for a type too large for the wire's exact health bits (the siege engines, S2): no hero sheet for it.
+		const bool bShare = HOLUnitReplication::UsesHealthShare(bHero, Row->MaxHealth);
 		const AHOLGameState* GameState = bHero ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-		HOLUnitView::SetReceivedHealth(OutView, Slot.State.bFullHealth, Slot.State.Health, Row->MaxHealth, bHero,
+		HOLUnitView::SetReceivedHealth(OutView, Slot.State.bFullHealth, Slot.State.Health, Row->MaxHealth, bShare,
 			GameState ? &GameState->GetHeroSheet(Slot.OwnerPlayer) : nullptr);
 	}
 	return true;
