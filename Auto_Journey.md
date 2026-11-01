@@ -134,6 +134,16 @@ Autorisé le jour d'absence (décision A du 2026-10-30) et pour le test 2 (confi
 
 `GDD.md`, `EtapeDefini.md` et les journaux mêlent plusieurs sessions. La session principale commite en fin de boucle **seulement les fichiers qu'elle a elle-même touchés** (`git add <fichier>` précis, jamais `-A`) ; `GDD.md` ne se commite qu'avec l'accord de l'utilisateur (il contient le travail d'autres sessions).
 
+## Mode interactif (à ESSAYER au prochain test, demandé par l'utilisateur le 2026-11-01 ; jamais par défaut)
+
+Lancé seulement par « commence ton Auto_Journey interactif » (ou à la demande pour un test d'1 h). **But : fermer une boucle (question ou essai -> réponse -> correction relancée) en minutes au lieu d'un jour.** Ce mode **suspend, pour sa durée seulement**, la règle « une réponse n'enclenche pas de travail » : l'utilisateur est présent et répond pendant la séance.
+- **Marqueurs dans `Auto_Journey_Retours.md`** : un agent qui pose une question la titre `[À RÉPONDRE]` ; un essai qui passe le pré-vol est titré `[À ESSAYER]` (statut `VU À L'ÉCRAN` obligatoire). L'en-tête compte les deux marqueurs (« N à répondre, M à essayer »). Un agent **n'attend jamais** une réponse : il prépare le provisoire derrière un réglage et passe à la ligne suivante de sa file.
+- **Où l'utilisateur répond** : en ligne dans le fichier (`Reponse: OK` / `BUG: ...` / `REGLAGE: ...` / `A trancher`) **ou dans la conversation** (la session principale l'écrit dans le fichier). Une réponse = une ligne, sans réécrire un bloc, pour ne pas entrer en conflit avec les agents qui éditent le fichier (outil Edit, lignes précises).
+- **Le veilleur passe toutes les 5 minutes** (au lieu de 20) : il cherche les `[À RÉPONDRE]` / `[À ESSAYER]` dont la `Reponse:` est devenue non vide, puis pour chacune : (1) enregistre la réponse dans le chantier (`*InProgress.md`, GDD, `EtapeDefini.md`) et retire le marqueur ; (2) `OK` : l'item est rangé et supprimé de Retours ; (3) `BUG:` / `REGLAGE:` / une décision qui demande du travail : ligne `[ ]` en tête de la file **et relance immédiate de l'agent du worktree** avec cette ligne ; (4) `A trancher` : l'item reste, rien n'est décidé.
+- **Prévenir l'utilisateur** : à chaque `[À RÉPONDRE]` ou `[À ESSAYER]` nouveau, la session principale l'écrit dans la conversation (une ligne : quoi, la commande `play.ps1` pour un essai), et groupe les messages (au plus un toutes les 10 minutes).
+- **Limites inchangées** : au plus 2 questions par chantier ; essais de 3 min ; ~6 essais par jour ; pas de fusion ni de push sans accord explicite.
+- **Mesures du test** (à écrire au bilan) : délai entre `[À RÉPONDRE]`/`[À ESSAYER]` et la réponse ; délai entre la réponse et la relance de l'agent ; nombre de boucles fermées par heure ; nombre de fois où l'utilisateur a été dérangé ; conflits d'édition sur Retours.
+
 ## Au démarrage : « commence ton Auto_Journey »
 
 L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase. Les chantiers auront avancé depuis la dernière fois. Sans poser de question déjà tranchée :
