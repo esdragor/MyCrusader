@@ -107,6 +107,49 @@ namespace HOLAILives
 		return EHOLAIDifficulty::Easy;
 	}
 
+	// The level an AI plays now: Effective over the times of the data, or over the times the trial tool set (hol.AI.SetEvolveTimes, D620:
+	// the stage changes on demand, the clock does not move). The brain and the HUD both ask this.
+	EHOLAIDifficulty Played(EHOLAIDifficulty Level, float Now, const FHOLAILivesData& Data)
+	{
+		FHOLAILivesData Times = Data;
+		if (HOLAITools::HasEvolveTimes())
+		{
+			Times.EvolveNormalAt = HOLAITools::GetEvolveNormalAt();
+			Times.EvolveHardAt = HOLAITools::GetEvolveHardAt();
+		}
+		return Effective(Level, Now, Times);
+	}
+
+	// The French name of a level, for the HUD.
+	FString LevelNameFr(EHOLAIDifficulty Level)
+	{
+		if (Level == EHOLAIDifficulty::Easy)
+		{
+			return "Facile";
+		}
+		if (Level == EHOLAIDifficulty::Hard)
+		{
+			return "Difficile";
+		}
+		if (Level == EHOLAIDifficulty::Evolving)
+		{
+			return "Évolutive";
+		}
+		return "Normal";
+	}
+
+	// The HUD line of an AI's level (D620): "IA 2 : Difficile"; an Evolving one tells the stage it plays now ("IA 3 : Évolutive, joue Normal").
+	// The AI's number is its slot + 1, as in its name.
+	FString LevelLine(int Slot, EHOLAIDifficulty Configured, EHOLAIDifficulty PlayedNow)
+	{
+		FString Line = f"IA {Slot + 1} : {LevelNameFr(Configured)}";
+		if (Configured == EHOLAIDifficulty::Evolving)
+		{
+			Line += f", joue {LevelNameFr(PlayedNow)}";
+		}
+		return Line;
+	}
+
 	// The share of the army a straight fight costs at a power ratio (ours over theirs): Lanchester's square law, the survivors being
 	// sqrt(1 - 1/R^2) of the army for R >= 1; at an even ratio or below the army is lost.
 	float ExpectedLoss(float Ratio)

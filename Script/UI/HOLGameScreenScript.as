@@ -81,6 +81,12 @@ FString TalentTipTexts = "";
 	FHOLDuelWindowView DuelView;
 	FString DuelTexts = "";
 
+	// The AI level line (EV-Q1 = B, D620; AIInProgress.md), top left under the top bar: one line per AI slot, "IA 3 : Évolutive, joue Normal".
+	// A trial tool: shown only while the times of the Evolving AI are set (hol.AI.SetEvolveTimes), so that a trial reads the stage on the screen.
+	UBorder AILevelPanel;
+	UCommonTextBlock AILevelText;
+	FString AILevelTexts = "";
+
 	// Sizes of the block (px at 1080p, the HUD's scale).
 	const float PortraitSize = 64.0;
 	// The column's width: the panel as wide as the selection's block under it, the return's button fitting in it.
@@ -113,6 +119,7 @@ FString TalentTipTexts = "";
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
 		BuildDuelWindow(Frame);
+		BuildAILevelLine(Frame);
 		BuildMinimap(Frame);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
@@ -208,6 +215,41 @@ FString TalentTipTexts = "";
 	void HandleDuelRefuseClicked()
 	{
 		ClickDuelAnswer(false);
+	}
+
+	void BuildAILevelLine(UOverlay Frame)
+	{
+		AILevelPanel = MakePanel(n"AILevelPanel");
+		AILevelPanel.SetVisibility(ESlateVisibility::Collapsed);
+		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(AILevelPanel);
+		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
+		PanelSlot.SetPadding(FMargin(16.0, 72.0, 0.0, 0.0));
+		AILevelText = MakeText(n"AILevelText", UHOLTextStyleHUDLabel);
+		AILevelPanel.SetContent(AILevelText);
+	}
+
+	// One line per AI slot: its level, and for an Evolving one the stage it plays now (HOLAILives::Played, the brain's own rule, from the match's
+	// clock). Hidden unless the trial tool set the times, and when the match has no AI.
+	void RefreshAILevel()
+	{
+		FString Text = "";
+		if (HOLAITools::HasEvolveTimes())
+		{
+			const float Now = float(Math::Max(0, HOLHero::GetServerStep())) / float(Math::Max(1, HOLHero::GetSimulationRateHz()));
+			const FHOLAILivesData Times;
+			for (int Slot = 0; Slot < 8; Slot++)
+			{
+				const int Code = HOLAITools::GetSlotLevel(Slot);
+				if (Code < 0)
+					continue;
+				const EHOLAIDifficulty Configured = EHOLAIDifficulty(Code);
+				Text += (Text.IsEmpty() ? "" : "\n") + HOLAILives::LevelLine(Slot, Configured, HOLAILives::Played(Configured, Now, Times));
+			}
+		}
+		AILevelTexts = Text.Replace("\n", " / ");
+		AILevelPanel.SetVisibility(Text.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		AILevelText.SetText(FText::FromString(Text));
 	}
 
 	void BuildPauseScreen(UOverlay Frame)
@@ -421,6 +463,7 @@ FString TalentTipTexts = "";
 			HeroPanelSlot.SetPadding(GetBottomLeftPlace());
 		RefreshHero();
 		RefreshDuel();
+		RefreshAILevel();
 		RefreshPause();
 		RefreshMinimap();
 	}
@@ -926,6 +969,7 @@ FString TalentTipTexts = "";
 			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + (TalentView.bFamilyButtons ? f" | family buttons row {TalentView.NextRow}" : "") : "")
 			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\nhero talent texts: list " + TalentListText + " | notice " + TalentNoticeText + " | tips " + TalentTipTexts : "")
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
+			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }
