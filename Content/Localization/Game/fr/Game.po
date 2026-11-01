@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-10-31 10:37\n"
-"PO-Revision-Date: 2026-10-31 10:37\n"
+"POT-Creation-Date: 2026-11-01 11:39\n"
+"PO-Revision-Date: 2026-11-01 11:39\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -13,61 +13,418 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
+#. Key:	Effect80
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(100)
+#: Script/Talents/HOLTalentNames.as(100)
+msgctxt "HOLTalentNames,Effect80"
+msgid "Rempart béni : durée +30 %"
+msgstr "Rempart béni : durée +30 %"
+
+#. Key:	Effect81
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(102)
+#: Script/Talents/HOLTalentNames.as(102)
+msgctxt "HOLTalentNames,Effect81"
+msgid "Serrez les rangs : recharge −20 %"
+msgstr "Serrez les rangs : recharge −20 %"
+
+#. Key:	Effect82
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(104)
+#: Script/Talents/HOLTalentNames.as(104)
+msgctxt "HOLTalentNames,Effect82"
+msgid "Chaque Faute consommée rapporte un peu d'Honneur"
+msgstr "Chaque Faute consommée rapporte un peu d'Honneur"
+
+#. Key:	Effect90
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(106)
+#: Script/Talents/HOLTalentNames.as(106)
+msgctxt "HOLTalentNames,Effect90"
+msgid "Jugement : +50 % de dégâts aux engins de siège"
+msgstr "Jugement : +50 % de dégâts aux engins de siège"
+
+#. Key:	Effect91
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(108)
+#: Script/Talents/HOLTalentNames.as(108)
+msgctxt "HOLTalentNames,Effect91"
+msgid "Renforts de l'Aube : +1 Chevalier Vertueux dans l'escouade"
+msgstr "Renforts de l'Aube : +1 Chevalier Vertueux dans l'escouade"
+
+#. Key:	Name20
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(11)
+#: Script/Talents/HOLTalentNames.as(11)
+msgctxt "HOLTalentNames,Name20"
+msgid "Moisson bénie"
+msgstr "Moisson bénie"
+
+#. Key:	Effect92
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(110)
+#: Script/Talents/HOLTalentNames.as(110)
+msgctxt "HOLTalentNames,Effect92"
+msgid "Jugement lancé dans les ~30 s d'un duel gagné : ~50 % d'Honneur en moins"
+msgstr "Jugement lancé dans les ~30 s d'un duel gagné : ~50 % d'Honneur en moins"
+
+#. Key:	NoEffectYet
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(117)
+#: Script/Talents/HOLTalentNames.as(117)
+msgctxt "HOLTalentNames,NoEffectYet"
+msgid "pas encore actif dans ce prototype"
+msgstr "pas encore actif dans ce prototype"
+
+#. Key:	Name21
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(13)
+#: Script/Talents/HOLTalentNames.as(13)
+msgctxt "HOLTalentNames,Name21"
+msgid "Boucliers levés"
+msgstr "Boucliers levés"
+
+#. Key:	Name22
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(15)
+#: Script/Talents/HOLTalentNames.as(15)
+msgctxt "HOLTalentNames,Name22"
+msgid "Lame bénie"
+msgstr "Lame bénie"
+
+#. Key:	Name30
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(17)
+#: Script/Talents/HOLTalentNames.as(17)
+msgctxt "HOLTalentNames,Name30"
+msgid "Vigie de l'Aube"
+msgstr "Vigie de l'Aube"
+
+#. Key:	Name31
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(19)
+#: Script/Talents/HOLTalentNames.as(19)
+msgctxt "HOLTalentNames,Name31"
+msgid "Mains du guérisseur"
+msgstr "Mains du guérisseur"
+
+#. Key:	Name32
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(21)
+#: Script/Talents/HOLTalentNames.as(21)
+msgctxt "HOLTalentNames,Name32"
+msgid "Endurance du croisé"
+msgstr "Endurance du croisé"
+
+#. Key:	Name40
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(23)
+#: Script/Talents/HOLTalentNames.as(23)
+msgctxt "HOLTalentNames,Name40"
+msgid "Étendard du rempart"
+msgstr "Étendard du rempart"
+
+#. Key:	Name41
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(25)
+#: Script/Talents/HOLTalentNames.as(25)
+msgctxt "HOLTalentNames,Name41"
+msgid "Pas de l'Aube"
+msgstr "Pas de l'Aube"
+
+#. Key:	Name42
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(27)
+#: Script/Talents/HOLTalentNames.as(27)
+msgctxt "HOLTalentNames,Name42"
+msgid "Cri du défi"
+msgstr "Cri du défi"
+
+#. Key:	Name50
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(29)
+#: Script/Talents/HOLTalentNames.as(29)
+msgctxt "HOLTalentNames,Name50"
+msgid "Remparts de lumière"
+msgstr "Remparts de lumière"
+
+#. Key:	Name51
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(31)
+#: Script/Talents/HOLTalentNames.as(31)
+msgctxt "HOLTalentNames,Name51"
+msgid "Grâce abondante"
+msgstr "Grâce abondante"
+
+#. Key:	Name52
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(33)
+#: Script/Talents/HOLTalentNames.as(33)
+msgctxt "HOLTalentNames,Name52"
+msgid "Contre parfait"
+msgstr "Contre parfait"
+
+#. Key:	Name60
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(35)
+#: Script/Talents/HOLTalentNames.as(35)
+msgctxt "HOLTalentNames,Name60"
+msgid "Double étendard"
+msgstr "Double étendard"
+
+#. Key:	Name61
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(37)
+#: Script/Talents/HOLTalentNames.as(37)
+msgctxt "HOLTalentNames,Name61"
+msgid "Frères d'armes"
+msgstr "Frères d'armes"
+
+#. Key:	Name62
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(39)
+#: Script/Talents/HOLTalentNames.as(39)
+msgctxt "HOLTalentNames,Name62"
+msgid "Escorte du champion"
+msgstr "Escorte du champion"
+
+#. Key:	Name70
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(41)
+#: Script/Talents/HOLTalentNames.as(41)
+msgctxt "HOLTalentNames,Name70"
+msgid "Bannière bénie"
+msgstr "Bannière bénie"
+
+#. Key:	Name71
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(43)
+#: Script/Talents/HOLTalentNames.as(43)
+msgctxt "HOLTalentNames,Name71"
+msgid "Charge disciplinée"
+msgstr "Charge disciplinée"
+
+#. Key:	Name72
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(45)
+#: Script/Talents/HOLTalentNames.as(45)
+msgctxt "HOLTalentNames,Name72"
+msgid "Fer de lance"
+msgstr "Fer de lance"
+
+#. Key:	Name80
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(47)
+#: Script/Talents/HOLTalentNames.as(47)
+msgctxt "HOLTalentNames,Name80"
+msgid "Rempart éternel"
+msgstr "Rempart éternel"
+
+#. Key:	Name81
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(49)
+#: Script/Talents/HOLTalentNames.as(49)
+msgctxt "HOLTalentNames,Name81"
+msgid "Ordre serré"
+msgstr "Ordre serré"
+
+#. Key:	Name82
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(51)
+#: Script/Talents/HOLTalentNames.as(51)
+msgctxt "HOLTalentNames,Name82"
+msgid "Sentence publique"
+msgstr "Sentence publique"
+
+#. Key:	Name90
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(53)
+#: Script/Talents/HOLTalentNames.as(53)
+msgctxt "HOLTalentNames,Name90"
+msgid "Jugement des assiégeants"
+msgstr "Jugement des assiégeants"
+
+#. Key:	Name91
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(55)
+#: Script/Talents/HOLTalentNames.as(55)
+msgctxt "HOLTalentNames,Name91"
+msgid "Renforts aguerris"
+msgstr "Renforts aguerris"
+
+#. Key:	Name92
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(57)
+#: Script/Talents/HOLTalentNames.as(57)
+msgctxt "HOLTalentNames,Name92"
+msgid "Verdict des armes"
+msgstr "Verdict des armes"
+
+#. Key:	Effect20
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(64)
+#: Script/Talents/HOLTalentNames.as(64)
+msgctxt "HOLTalentNames,Effect20"
+msgid "Rayon du Sanctuaire +25 %"
+msgstr "Rayon du Sanctuaire +25 %"
+
+#. Key:	Effect21
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(66)
+#: Script/Talents/HOLTalentNames.as(66)
+msgctxt "HOLTalentNames,Effect21"
+msgid "+1 armure aux unités dans l'Aura de l'Aube"
+msgstr "+1 armure aux unités dans l'Aura de l'Aube"
+
+#. Key:	Effect22
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(68)
+#: Script/Talents/HOLTalentNames.as(68)
+msgctxt "HOLTalentNames,Effect22"
+msgid "Hors duel, environ 1 attaque de mêlée sur 4 contre le Paladin est parée"
+msgstr "Hors duel, environ 1 attaque de mêlée sur 4 contre le Paladin est parée"
+
+#. Key:	Effect30
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(70)
+#: Script/Talents/HOLTalentNames.as(70)
+msgctxt "HOLTalentNames,Effect30"
+msgid "Tours : +15 % de vision et +10 % de portée"
+msgstr "Tours : +15 % de vision et +10 % de portée"
+
+#. Key:	Effect31
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(72)
+#: Script/Talents/HOLTalentNames.as(72)
+msgctxt "HOLTalentNames,Effect31"
+msgid "Moines dans l'aura : soins +20 %"
+msgstr "Moines dans l'aura : soins +20 %"
+
+#. Key:	Effect32
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(74)
+#: Script/Talents/HOLTalentNames.as(74)
+msgctxt "HOLTalentNames,Effect32"
+msgid "Paladin : +10 % de PV, régénération hors combat doublée"
+msgstr "Paladin : +10 % de PV, régénération hors combat doublée"
+
+#. Key:	Effect40
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(76)
+#: Script/Talents/HOLTalentNames.as(76)
+msgctxt "HOLTalentNames,Effect40"
+msgid "Murs et tours dans la zone de la Bannière : plus d'armure, tours plus rapides"
+msgstr "Murs et tours dans la zone de la Bannière : plus d'armure, tours plus rapides"
+
+#. Key:	Effect41
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(78)
+#: Script/Talents/HOLTalentNames.as(78)
+msgctxt "HOLTalentNames,Effect41"
+msgid "Sous Serrez les rangs, la formation avance à 50 % de sa vitesse au lieu de rester sur place, sans perdre sa réduction de dégâts"
+msgstr "Sous Serrez les rangs, la formation avance à 50 % de sa vitesse au lieu de rester sur place, sans perdre sa réduction de dégâts"
+
+#. Key:	Effect42
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(80)
+#: Script/Talents/HOLTalentNames.as(80)
+msgctxt "HOLTalentNames,Effect42"
+msgid "Lancer un défi donne 1 charge de Ferveur (~15 s) aux alliés proches, quelle que soit la réponse"
+msgstr "Lancer un défi donne 1 charge de Ferveur (~15 s) aux alliés proches, quelle que soit la réponse"
+
+#. Key:	Effect50
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(82)
+#: Script/Talents/HOLTalentNames.as(82)
+msgctxt "HOLTalentNames,Effect50"
+msgid "Le Rempart béni protège aussi les segments et tours voisins"
+msgstr "Le Rempart béni protège aussi les segments et tours voisins"
+
+#. Key:	Effect51
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(84)
+#: Script/Talents/HOLTalentNames.as(84)
+msgctxt "HOLTalentNames,Effect51"
+msgid "Lumière sacrée : une seconde charge"
+msgstr "Lumière sacrée : une seconde charge"
+
+#. Key:	Effect52
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(86)
+#: Script/Talents/HOLTalentNames.as(86)
+msgctxt "HOLTalentNames,Effect52"
+msgid "Une riposte sur une attaque forte annoncée étourdit ~0,5 s et compte double pour l'Épreuve"
+msgstr "Une riposte sur une attaque forte annoncée étourdit ~0,5 s et compte double pour l'Épreuve"
+
+#. Key:	Effect60
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(88)
+#: Script/Talents/HOLTalentNames.as(88)
+msgctxt "HOLTalentNames,Effect60"
+msgid "Deux Bannières en même temps"
+msgstr "Deux Bannières en même temps"
+
+#. Key:	Effect61
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(90)
+#: Script/Talents/HOLTalentNames.as(90)
+msgctxt "HOLTalentNames,Effect61"
+msgid "Défi du Chevalier (passif) : dans l'aura, redirige deux fois plus de dégâts"
+msgstr "Défi du Chevalier (passif) : dans l'aura, redirige deux fois plus de dégâts"
+
+#. Key:	Effect62
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(92)
+#: Script/Talents/HOLTalentNames.as(92)
+msgctxt "HOLTalentNames,Effect62"
+msgid "Renforts de l'Aube : les Chevaliers arrivent à côté du Paladin"
+msgstr "Renforts de l'Aube : les Chevaliers arrivent à côté du Paladin"
+
+#. Key:	Effect70
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(94)
+#: Script/Talents/HOLTalentNames.as(94)
+msgctxt "HOLTalentNames,Effect70"
+msgid "Hors combat, les alliés dans la zone de la Bannière régénèrent lentement"
+msgstr "Hors combat, les alliés dans la zone de la Bannière régénèrent lentement"
+
+#. Key:	Effect71
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(96)
+#: Script/Talents/HOLTalentNames.as(96)
+msgctxt "HOLTalentNames,Effect71"
+msgid "Les unités qui ont suivi la charge subissent ~−15 % de dégâts pendant ~8 s après l'impact"
+msgstr "Les unités qui ont suivi la charge subissent ~−15 % de dégâts pendant ~8 s après l'impact"
+
+#. Key:	Effect72
+#. SourceLocation:	Script/Talents/HOLTalentNames.as(98)
+#: Script/Talents/HOLTalentNames.as(98)
+msgctxt "HOLTalentNames,Effect72"
+msgid "Impact de la charge du Paladin : +30 % de dégâts"
+msgstr "Impact de la charge du Paladin : +30 % de dégâts"
+
 #. Key:	ReminderAdvised
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(108)
-#: Script/Talents/HOLTalentPanel.as(108)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(109)
+#: Script/Talents/HOLTalentPanel.as(109)
 msgctxt "HOLTalentPanel,ReminderAdvised"
 msgid "Talents à dépenser : {0} — choix conseillé"
 msgstr "Talents à dépenser : {0} — choix conseillé"
 
 #. Key:	Reminder
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(109)
-#: Script/Talents/HOLTalentPanel.as(109)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(110)
+#: Script/Talents/HOLTalentPanel.as(110)
 msgctxt "HOLTalentPanel,Reminder"
 msgid "Talents à dépenser : {0}"
 msgstr "Talents à dépenser : {0}"
 
-#. Key:	TooltipAdvised
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(115)
-#: Script/Talents/HOLTalentPanel.as(115)
-msgctxt "HOLTalentPanel,TooltipAdvised"
-msgid "Prend le talent de la famille la plus remplie"
-msgstr "Prend le talent de la famille la plus remplie"
-
-#. Key:	TooltipFirst
+#. Key:	TooltipAdvisedTalent
 #. SourceLocation:	Script/Talents/HOLTalentPanel.as(116)
 #: Script/Talents/HOLTalentPanel.as(116)
+msgctxt "HOLTalentPanel,TooltipAdvisedTalent"
+msgid "Prend le talent de la famille la plus remplie : {0} — {1}"
+msgstr "Prend le talent de la famille la plus remplie : {0} — {1}"
+
+#. Key:	TooltipFirst
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(117)
+#: Script/Talents/HOLTalentPanel.as(117)
 msgctxt "HOLTalentPanel,TooltipFirst"
 msgid "Choisissez d'abord un premier talent : l'arbre arrive"
 msgstr "Choisissez d'abord un premier talent : l'arbre arrive"
 
 #. Key:	FamilyGuardian
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(128)
-#: Script/Talents/HOLTalentPanel.as(128)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(129)
+#: Script/Talents/HOLTalentPanel.as(129)
 msgctxt "HOLTalentPanel,FamilyGuardian"
 msgid "Gardien"
 msgstr "Gardien"
 
 #. Key:	FamilyCaptain
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(130)
-#: Script/Talents/HOLTalentPanel.as(130)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(131)
+#: Script/Talents/HOLTalentPanel.as(131)
 msgctxt "HOLTalentPanel,FamilyCaptain"
 msgid "Capitaine"
 msgstr "Capitaine"
 
 #. Key:	FamilyChampion
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(131)
-#: Script/Talents/HOLTalentPanel.as(131)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(132)
+#: Script/Talents/HOLTalentPanel.as(132)
 msgctxt "HOLTalentPanel,FamilyChampion"
 msgid "Champion"
 msgstr "Champion"
 
-#. Key:	FamilyTip
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(142)
-#: Script/Talents/HOLTalentPanel.as(142)
-msgctxt "HOLTalentPanel,FamilyTip"
-msgid "Rangée {0} : prendre le talent de la famille {1}"
-msgstr "Rangée {0} : prendre le talent de la famille {1}"
+#. Key:	FamilyTipTalent
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(152)
+#: Script/Talents/HOLTalentPanel.as(152)
+msgctxt "HOLTalentPanel,FamilyTipTalent"
+msgid "{0}, rangée {1} : {2} — {3}"
+msgstr "{0}, rangée {1} : {2} — {3}"
+
+#. Key:	Notice
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(173)
+#: Script/Talents/HOLTalentPanel.as(173)
+msgctxt "HOLTalentPanel,Notice"
+msgid "Talent pris : {0} — {1}"
+msgstr "Talent pris : {0} — {1}"
+
+#. Key:	List
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(184)
+#: Script/Talents/HOLTalentPanel.as(184)
+msgctxt "HOLTalentPanel,List"
+msgid "Talents pris ({0}) : {1}"
+msgstr "Talents pris ({0}) : {1}"
 
 #. Key:	Level
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(243)
@@ -143,8 +500,8 @@ msgstr "Serrez les rangs (A)"
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(253)
 #: Script/UI/HOLHeroBlock.as(253)
 msgctxt "HOLHeroBlock,CloseRanksEffect"
-msgid "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
-msgstr "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgid "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgstr "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
 
 #. Key:	BannerName
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(254)
@@ -1515,8 +1872,8 @@ msgstr "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dég�
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1964)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1964)
 msgctxt "HOLGameScreen,CloseRanksEffect"
-msgid "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
-msgstr "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgid "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
+msgstr "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s"
 
 #. Key:	HeroAbilityLocked
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1969)
