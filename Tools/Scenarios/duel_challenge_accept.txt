@@ -27,11 +27,13 @@ wait 3
 hol.Camera.Focus 0 300
 frames 10
 capture duel_heroes_face
-note 2. Les deux héros sont face à face au centre, avec leurs Paysans. Appuie sur Entrée quand tu veux : ton héros défie celui de l'IA (console hol.Duel.Challenge 1, comme le fera le bouton).
+note 2. Les deux héros sont face à face au centre, avec leurs Paysans. Appuie sur Entrée quand tu veux : ton héros défie celui de l'IA (console hol.Duel.Challenge 1, comme le fera le bouton). Ce panneau se cache alors pour laisser voir la fenêtre de défi, en haut au centre, il revient quand le duel commence.
 waitkey Entrée : ton héros défie le héros de l'IA
+panel hide
 hol.Duel.Challenge 1
 waitlog challenges slot 1 at step
 waitlog made
+hol.Camera.Focus 0 300
 hol.Combat.Enabled 1
 wait 0.6
 hol.HUD.Report
@@ -39,8 +41,10 @@ waitlog duel window: Défi envoyé au héros du joueur 2
 capture duel_window
 hol.Duel.ForceAnswer 1 1
 waitlog slot 1 accepts at step
+hol.Camera.Focus 0 300
 wait 2
 capture duel_started
+panel show
 note 3. Le défi est parti ; l'acceptation de l'IA est donnée d'office (hol.Duel.ForceAnswer 1 1, développement). Le duel commence : les deux héros se frappent seuls (D18), personne d'autre ne les touche.
 waitlog Duel ended: slots
 note 4. Le duel est fini (un héros est tombé, ou 90 s sans vainqueur). Les récompenses (Triomphe, XP, effet de faction) ne sont pas encore branchées (D7).
