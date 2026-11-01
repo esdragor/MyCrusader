@@ -2099,9 +2099,10 @@ if ($Parts -contains "camera") {
             # M5 (Market): a finished Market of slot 0 selected: the grid's trades (sales A Z E, purchases Q S D) read from the common book;
             # Z sells a lot of wood at the server's price (80 -> 56 gold, the book at 77); the Market is then taken down (a cheat), the centre selected
             # again and cleared by Escape. Last of the cases: a Market standing or just fallen is nobody's business but its own.
-            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
+            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.Gold 500","hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
                 "hol.Camera.FocusNear 1500 3000", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: Market of slot 0 (own)", "frames 3", "hol.HUD.Report",
-                "hol.Select.Grid 1", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Market: slot 0 bought 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 5", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
                 "hol.Cheat.DamageSelected 100000 siege", "waitlog Building destroyed: Market of slot 0", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
                 "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -4477,6 +4478,15 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé | family buttons row 6")
     # TQ4 (PROVISIONAL, option B by default): with a point kept and no talent yet, the Captain button of the three family buttons takes the first talent by the order queue (a hidden or greyed button would take nothing); then the advised button took one more.
     $Checks["the family button took the first talent, the advised button another (queued orders: $(@($Dawn | Select-String -SimpleMatch 'Hero talent order: slot 0 family 1 queued').Count))"] = @($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued").Count -ge 2
+    # The trial of 2026-10-31 ("a spent point changed nothing the eye could see, the names are not the same everywhere"): the notice, the list and
+    # the tooltips all name the talents from HOLTalentNames, the one table (HOLTalentNames_Test.as compares it with Talents.csv).
+    $DawnTexts = @($Dawn | Select-String -Pattern "HUD hero talent texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $Checks["three talents: the notice names the last, the list names the three ($($DawnTexts | Select-Object -First 1))"] =
+        ($DawnTexts.Count -ge 1) -and $DawnTexts[0].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[0].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube")
+    $Checks["level 6: the three family buttons' tooltips name the talents of row 5 ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
+        ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("Gardien, rangée 5 : Remparts de lumière — ") -and $DawnTexts[1].Contains("Capitaine, rangée 5 : Grâce abondante — ") -and $DawnTexts[1].Contains("Champion, rangée 5 : Contre parfait — ")
+    $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 2 -First 1))"] =
+        ($DawnTexts.Count -ge 3) -and $DawnTexts[2].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[2].Contains("pas encore actif dans ce prototype")
     $DawnMoves = @(-1, -1)
     if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
         $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
@@ -4930,11 +4940,20 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     # M5 (Market): the selected Market's grid is the trades' (A Z E sell food, wood, stone; Q S D buy them), and Z sold a lot of wood at 80 less 30 %.
     $HudMarket = Get-Section "build market"
     $MarketReports = @($HudMarket | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $MarketBuy = & $Value $HudMarket "(Market: slot 0 bought 1 lots of resource 1 .*)$"
     $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
     $Checks = [ordered]@{}
-    $Checks["the Market selected: the trades on A Z E / Q S D, the sale of a lot of wood at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
-        ($MarketReports[0] -match "grid A=SellFood \w+ Z=SellWood \w+ E=SellStone \w+ Q=BuyFood \w+ S=BuyWood \w+ D=BuyStone \w+,") -and
-        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 56 gold \(price now 77,")
+    # The text drawn on the cells, always for 100 of what is given up (user's correction 2026-11-01): buying "100 or = X", selling "100 = Y or",
+    # read again after each trade (the book moves: wood 80 -> 83 after the purchase, back to 80 after the sale).
+    $Checks["the cells say the rate for 100: 96 / 96 / 64 bought and 56 / 56 / 84 sold at the start ($($MarketReports[0] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
+        ($MarketReports[0] -match "trades A=\S+ 100 or = 96 \| Z=\S+ 100 or = 96 \| E=\S+ 100 or = 64 \| Q=\S+ 100 = 56 or \| S=\S+ 100 = 56 or \| D=\S+ 100 = 84 or$")
+    $Checks["the cells follow the book after each trade: wood 92 bought / 58 sold after the purchase, 96 / 56 after the sale ($($MarketReports[1] -replace '^.*trades ','') // $($MarketReports[2] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
+        ($MarketReports[1] -match "\| Z=\S+ 100 or = 92 \|") -and ($MarketReports[1] -match "\| S=\S+ 100 = 58 or \|") -and
+        ($MarketReports[2] -match "\| Z=\S+ 100 or = 96 \|") -and ($MarketReports[2] -match "\| S=\S+ 100 = 56 or \|")
+    $Checks["the Market selected: the trades on A Z E (buy) / Q S D (sell), 100 gold spent on wood ($MarketBuy) then a lot of wood sold at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
+        ($MarketReports[0] -match "grid A=BuyFood \w+ Z=BuyWood \w+ E=BuyStone \w+ Q=SellFood \w+ S=SellWood \w+ D=SellStone \w+,") -and
+        [bool]($MarketBuy -match "^Market: slot 0 bought 1 lots of resource 1 for 100 gold \(price now 83,") -and
+        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 58 gold \(price now 80,")
     $AllOk = (Report "build market" $Checks) -and $AllOk
 
     # The minimap: the picture read with a Peasant selected (marks, camera frame of four points, the map's area), a right click on its middle

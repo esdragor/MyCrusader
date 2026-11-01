@@ -34,8 +34,8 @@ enum class EHOLGridCommand : uint8
 	/** Researches a technology at the player's selected building (T4, GDD 11): the technology row on W X C V, through the building's queue. */
 	Research,
 	/**
-	 * M5 (Market, GDD 5.5): the selected finished Market sells or buys 100 of Resource (Shift: 500) at the common book's price;
-	 * sell on A Z E (food, wood, stone), buy on Q S D (HOLCommandGrid::GetTradeCell).
+	 * M5 (Market, GDD 5.5): the selected finished Market sells 100 of Resource or buys with 100 gold (Shift: 500) at the common book's price;
+	 * buy on A Z E (food, wood, stone), sell on Q S D (HOLCommandGrid::GetTradeCell).
 	 */
 	Trade,
 };

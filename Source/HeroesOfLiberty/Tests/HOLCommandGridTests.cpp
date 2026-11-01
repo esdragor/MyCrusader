@@ -25,7 +25,7 @@ namespace UE::HeroesOfLiberty::Tests::CommandGrid
 	}
 }
 
-// M5 (Market, GDD 5.5): the selected finished Market gives the grid its trades, sales on A Z E (food, wood, stone), purchases on Q S D;
+// M5 (Market, GDD 5.5): the selected finished Market gives the grid its trades, PURCHASES on A Z E (food, wood, stone), SALES on Q S D (user's correction, 2026-11-01);
 // nothing for gold (the money), a site, a Market in a group of several (cells merged as any), or a building that is no Market.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridMarketTest, "HeroesOfLiberty.CommandGrid.Market", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
 bool FHOLCommandGridMarketTest::RunTest(const FString& Parameters)
@@ -38,12 +38,12 @@ bool FHOLCommandGridMarketTest::RunTest(const FString& Parameters)
 	for (int32 Index = 0; Index < 3; ++Index)
 	{
 		const EHOLResource Good = Goods[Index];
-		TestEqual(*FString::Printf(TEXT("sell good %d: cell %d (A Z E)"), Index, Index), HOLCommandGrid::GetTradeCell(Good, false), Index);
-		TestEqual(*FString::Printf(TEXT("buy good %d: cell %d (Q S D)"), Index, 4 + Index), HOLCommandGrid::GetTradeCell(Good, true), 4 + Index);
-		const FHOLGridCommand Sell = HOLCommandGrid::GetCommand(Market, Index);
-		TestTrue(*FString::Printf(TEXT("Market, cell %d: sells good %d"), Index, Index), Sell.Command == EHOLGridCommand::Trade && Sell.Resource == Good && !Sell.bBuy);
-		const FHOLGridCommand Buy = HOLCommandGrid::GetCommand(Market, 4 + Index);
-		TestTrue(*FString::Printf(TEXT("Market, cell %d: buys good %d"), 4 + Index, Index), Buy.Command == EHOLGridCommand::Trade && Buy.Resource == Good && Buy.bBuy);
+		TestEqual(*FString::Printf(TEXT("buy good %d: cell %d (A Z E)"), Index, Index), HOLCommandGrid::GetTradeCell(Good, true), Index);
+		TestEqual(*FString::Printf(TEXT("sell good %d: cell %d (Q S D)"), Index, 4 + Index), HOLCommandGrid::GetTradeCell(Good, false), 4 + Index);
+		const FHOLGridCommand Buy = HOLCommandGrid::GetCommand(Market, Index);
+		TestTrue(*FString::Printf(TEXT("Market, cell %d (A Z E): buys good %d"), Index, Index), Buy.Command == EHOLGridCommand::Trade && Buy.Resource == Good && Buy.bBuy);
+		const FHOLGridCommand Sell = HOLCommandGrid::GetCommand(Market, 4 + Index);
+		TestTrue(*FString::Printf(TEXT("Market, cell %d (Q S D): sells good %d"), 4 + Index, Index), Sell.Command == EHOLGridCommand::Trade && Sell.Resource == Good && !Sell.bBuy);
 	}
 	TestEqual(TEXT("gold has no sale cell"), HOLCommandGrid::GetTradeCell(EHOLResource::Gold, false), static_cast<int32>(INDEX_NONE));
 	TestEqual(TEXT("gold has no purchase cell"), HOLCommandGrid::GetTradeCell(EHOLResource::Gold, true), static_cast<int32>(INDEX_NONE));

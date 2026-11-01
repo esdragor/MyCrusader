@@ -99,7 +99,8 @@ namespace HOLTalentPanel
 }
 
 // The panel's texts by key, in French (source of the gathered texts, GatherText; English and Japanese in Tools/Localization/fill_po.py, keys
-// "HOLTalentPanel,<Name>"). Literals only in these calls. {0} is the points kept.
+// "HOLTalentPanel,<Name>"). Literals only in these calls. {0} is the points kept. The talents' own names and effects come from ONE table,
+// HOLTalentNames (HOLTalentNames.as): no text here spells a talent's name (HOLTalentNames_Test.as keeps it so).
 namespace HOLTalentText
 {
 	FText ReminderPattern(bool bAdvised)
@@ -112,7 +113,7 @@ namespace HOLTalentText
 	FText TooltipPattern(bool bAdvised)
 	{
 		if (bAdvised)
-			return NSLOCTEXT("HOLTalentPanel", "TooltipAdvised", "Prend le talent de la famille la plus remplie");
+			return NSLOCTEXT("HOLTalentPanel", "TooltipAdvisedTalent", "Prend le talent de la famille la plus remplie : {0} — {1}");
 		return NSLOCTEXT("HOLTalentPanel", "TooltipFirst", "Choisissez d'abord un premier talent : l'arbre arrive");
 	}
 
@@ -137,19 +138,64 @@ namespace HOLTalentText
 		return FamilyPattern(Family).ToString();
 	}
 
+	// What a talent does, as the screen says it: its effect, and when the prototype cannot show it yet, that too (D194).
+	FString EffectText(int Row, int Family)
+	{
+		FString Effect = HOLTalentNames::Effect(Row, Family).ToString();
+		if (!HOLHero::TalentHasEffect(Row, Family))
+			Effect += " (" + HOLTalentNames::NoEffectYet().ToString() + ")";
+		return Effect;
+	}
+
 	FText FamilyTipPattern()
 	{
-		return NSLOCTEXT("HOLTalentPanel", "FamilyTip", "Rangée {0} : prendre le talent de la famille {1}");
+		return NSLOCTEXT("HOLTalentPanel", "FamilyTipTalent", "{0}, rangée {1} : {2} — {3}");
 	}
 
-	// The family button's tooltip: the row it fills and the family (the talent's own name needs the table's bridge: not shown yet).
+	// The family button's tooltip: the talent the click takes (the next row of that family), by its name and its effect.
 	FString FamilyTooltip(FHOLTalentPanelView View, int Family)
 	{
-		return FamilyTipPattern().ToString().Replace("{0}", f"{View.NextRow}").Replace("{1}", FamilyName(Family));
+		return FamilyTipPattern().ToString().Replace("{0}", FamilyName(Family)).Replace("{1}", f"{View.NextRow}")
+			.Replace("{2}", HOLTalentNames::Name(View.NextRow, Family).ToString()).Replace("{3}", EffectText(View.NextRow, Family));
 	}
 
+	// The advised button's tooltip: the talent it takes, or why it cannot yet.
 	FString TooltipText(FHOLTalentPanelView View)
 	{
-		return TooltipPattern(View.bAdviceEnabled).ToString();
+		if (!View.bAdviceEnabled)
+			return TooltipPattern(false).ToString();
+		return TooltipPattern(true).ToString().Replace("{0}", HOLTalentNames::Name(View.NextRow, View.AdvisedFamily).ToString())
+			.Replace("{1}", EffectText(View.NextRow, View.AdvisedFamily));
+	}
+
+	FText NoticePattern()
+	{
+		return NSLOCTEXT("HOLTalentPanel", "Notice", "Talent pris : {0} — {1}");
+	}
+
+	// The notice that shows for a few seconds when a point is spent: "Talent pris : Boucliers levés — +1 armure ...".
+	FString NoticeText(int Row, int Family)
+	{
+		return NoticePattern().ToString().Replace("{0}", HOLTalentNames::Name(Row, Family).ToString()).Replace("{1}", EffectText(Row, Family));
+	}
+
+	FText ListPattern()
+	{
+		return NSLOCTEXT("HOLTalentPanel", "List", "Talents pris ({0}) : {1}");
+	}
+
+	// The talents taken, by name, in the order of the rows (row 2 first); empty with none.
+	FString ListText(const TArray<int>& Picks)
+	{
+		if (Picks.Num() == 0)
+			return "";
+		FString Names = "";
+		for (int Index = 0; Index < Picks.Num(); Index++)
+		{
+			if (Index > 0)
+				Names += ", ";
+			Names += HOLTalentNames::Name(HOLTalent::FirstRow + Index, Picks[Index]).ToString();
+		}
+		return ListPattern().ToString().Replace("{0}", f"{Picks.Num()}").Replace("{1}", Names);
 	}
 }

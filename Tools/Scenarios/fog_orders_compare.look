@@ -1,0 +1,2 @@
+fogcmp_above | La ligne jaune d'ordre (deux segments, points aux bouts) traverse le noir du brouillard, nette et sans strie noire
+fogcmp_old | Meme scene avec le brouillard apres le tonemapper : ancien rendu, a comparer (la strie se voit en mouvement, pas sur une image fixe)

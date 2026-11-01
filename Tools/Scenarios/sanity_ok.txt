@@ -1,0 +1,15 @@
+# hol.Test.Sanity, case sain (chaine reelle) : des Lanciers marchent droit vers un point, un Homme d armes reste immobile : Sanity: OK attendu.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+hol.Sanity.Watch 1
+frames 5
+hol.Units.Spawn 3 -3000 0 0 Spearman 200
+waitlog Spawn: 3 Spearman
+hol.Units.Spawn 1 0 3000 0 ManAtArms 50
+waitlog Spawn: 1 ManAtArms
+wait 0.5
+hol.Units.Move 2000 0 0
+wait 6
+hol.Test.Sanity
+waitlog Sanity: OK

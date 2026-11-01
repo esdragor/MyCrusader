@@ -8,6 +8,11 @@
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
 #include "HAL/PlatformTime.h"
+#include "Kismet/GameplayStatics.h"
+#include "Match/HOLForumMessages.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Sound/SoundBase.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
@@ -360,6 +365,33 @@ bool UHOLHeroLibrary::BuyHeroReturn(const UObject* WorldContextObject, const int
 {
 	UHOLHeroSubsystem* Heroes = GetAuthorityHeroes(GetWorldOf(WorldContextObject));
 	return Heroes && Heroes->BuyReturn(Slot, PlaceIndex, Price);
+}
+
+FString UHOLHeroLibrary::GetTalentCsvName(const int32 Row, const int32 Family)
+{
+	// Lines: header, then rows 2 to 9 of three families, Guardian, Captain, Champion (HeroesOfLiberty.Talents.Csv keeps that shape).
+	TArray<FString> Lines;
+	if (Family < 0 || Family > 2 || Row < 2 || Row > 9 || !FFileHelper::LoadFileToStringArray(Lines, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/Data/Talents.csv"))))
+	{
+		return FString();
+	}
+	Lines.RemoveAll([](const FString& Line) { return Line.TrimStartAndEnd().IsEmpty(); });
+	const int32 Index = 1 + (Row - 2) * 3 + Family;
+	TArray<FString> Cells;
+	if (!Lines.IsValidIndex(Index))
+	{
+		return FString();
+	}
+	Lines[Index].TrimStartAndEnd().ParseIntoArray(Cells, TEXT(","), false);
+	return Cells.IsValidIndex(3) ? Cells[3] : FString();
+}
+
+void UHOLHeroLibrary::PlayTalentTakenSound(const UObject* WorldContextObject)
+{
+	if (USoundBase* Sound = LoadObject<USoundBase>(nullptr, HOLForumMessages::HeroLevelSoundPath))
+	{
+		UGameplayStatics::PlaySound2D(WorldContextObject, Sound);
+	}
 }
 
 int32 UHOLHeroLibrary::GetTalentFirstChoiceMode()

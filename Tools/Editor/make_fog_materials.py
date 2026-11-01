@@ -1,4 +1,4 @@
-﻿"""Creates the material the fog is drawn with (F7, D562, D381): /Game/Rendering/M_FogPost, a post process that multiplies the scene
+"""Creates the material the fog is drawn with (F7, D562, D381): /Game/Rendering/M_FogPost, a post process that multiplies the scene
 colour by the fog texture, read as a cubic B-spline so the edges are round (UHOLFogRenderSubsystem: one byte a cell, 0 unexplored, ~0.45 explored, 1 in sight) at the world position
 of each pixel, rebuilt from the scene depth and the camera the C++ side sends (CamPos, CamFwd, CamRight, CamUp, CamTan).
 Parameters: FogRect (x, y: the grid's lower corner in cm; z: its side in cm), FogTexture.
@@ -111,12 +111,16 @@ def custom_input(name):
     return item
 
 
-def make_post():
-    material = new_material("M_FogPost")
+def make_post(name, location, fog_power):
+    """The fog post process at a place of the frame. BEFORE_DOF (the default, M_FogPost) is before the temporal upscaler: the stencil,
+    the depth and the colour are all of the same jittered frame, so the upscaler resolves the fog's edges and the unfogged order
+    lines together (flicker of the lines 0.05, as with no fog). AFTER_TONEMAPPING (M_FogPostLate, hol.Fog.Late 1, kept only to
+    compare, F7.3 / FQ-L) is the upscaler's smooth result multiplied by a jittered stencil and depth: the lines flicker (0.45)."""
+    material = new_material(name)
     if material is None:
         return
     material.set_editor_property("material_domain", unreal.MaterialDomain.MD_POST_PROCESS)
-    material.set_editor_property("blendable_location", unreal.BlendableLocation.BL_SCENE_COLOR_AFTER_TONEMAPPING)
+    material.set_editor_property("blendable_location", getattr(unreal.BlendableLocation, location))
     scene = expression(material, unreal.MaterialExpressionSceneTexture, -1900, -200, scene_texture_id=unreal.SceneTextureId.PPI_POST_PROCESS_INPUT0)
     depth = expression(material, unreal.MaterialExpressionSceneTexture, -1900, 100, scene_texture_id=unreal.SceneTextureId.PPI_SCENE_DEPTH)
     depth_value = expression(material, unreal.MaterialExpressionComponentMask, -1700, 100, r=True, g=False, b=False, a=False)
@@ -136,6 +140,12 @@ def make_post():
     xy = expression(material, unreal.MaterialExpressionComponentMask, -1300, 300, r=True, g=True, b=False, a=False)
     connect(world, xy)
     value = fog_value(material, xy)
+    if fog_power != 1.0:
+        # Before the tonemapper the multiplication is in linear light, and the tonemapper's shoulder squeezes the bright things back up (a tree
+        # stays bright at 0.45): the fog is raised to a power so the displayed picture is dimmed by about the fog value (0 and 1 are kept).
+        powered = expression(material, unreal.MaterialExpressionPower, -1000, 0, const_exponent=fog_power)
+        connect(value, powered, "Base")
+        value = powered
     # What the player must see through the fog (the order lines and their points) writes the custom stencil: no fog there. The
     # stencil is a hard 1-bit mask drawn at the internal resolution with the frame's jitter, while the scene colour is the
     # temporal upscaler's smooth result: read as is, a 1-2 pixel line flickers in and out of the fog from one frame to the next
@@ -161,4 +171,5 @@ def make_post():
     unreal.log("Material %s made" % material.get_path_name())
 
 
-make_post()
+make_post("M_FogPost", "BL_SCENE_COLOR_BEFORE_DOF", 1.6)
+make_post("M_FogPostLate", "BL_SCENE_COLOR_AFTER_TONEMAPPING", 1.0)

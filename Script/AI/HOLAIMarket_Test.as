@@ -25,7 +25,7 @@ void Test_AIMarketBuysWhatIsMissingWithGold(FUnitTest& T)
 	T.AssertTrue(Choice.bTrade, "a trade");
 	T.AssertTrue(Choice.bBuy, "a purchase");
 	T.AssertEquals(AIMarketStone, Choice.Resource, "stone");
-	T.AssertEquals(1, Choice.Lots, "one lot covers the 80 missing");
+	T.AssertEquals(2, Choice.Lots, "a lot of 100 gold buys 64 stone at 120 (156 per 100): two lots (126 stone) cover the 80 missing");
 }
 
 // Gold is short for the lots wanted: it buys as many as the gold pays for.
@@ -34,10 +34,10 @@ void Test_AIMarketBuysOnlyWhatGoldPays(FUnitTest& T)
 	FHOLMarketSettings M = HOLMarket::DefaultSettings();
 	FHOLMarketBook Book = HOLMarket::NewBook(M);
 	FHOLAIMarketSettings Rule;
-	// 400 stone missing = 4 lots; the first lot at 120 costs 156, the second at 123 costs 160: 330 gold pays two.
+	// 400 stone missing = more than 5 lots of 100 gold (64 stone each, MaxLots 5 at most): 330 gold pays three lots of 100.
 	FHOLAIMarketChoice Choice = HOLAIMarket::Choose(M, Book, Rule, AIMarketStock(0, 0, 0, 330), AIMarketStock(0, 0, 400, 0), true, 2);
 	T.AssertTrue(Choice.bTrade && Choice.bBuy, "a purchase");
-	T.AssertEquals(2, Choice.Lots, "two lots");
+	T.AssertEquals(3, Choice.Lots, "three lots of 100 gold");
 }
 
 // No gold to buy even one lot: it sells the surplus instead (wood over 600, keeping its reserve).
@@ -79,6 +79,19 @@ void Test_AIMarketNoTradeWhenNotNeeded(FUnitTest& T)
 	T.AssertTrue(HOLAIMarket::Choose(M, Book, Rule, AIMarketStock(0, 0, 0, 900), AIMarketStock(0, 0, 100, 0), true, 2).bTrade, "hard does");
 	Rule.MinDifficulty = 3;
 	T.AssertFalse(HOLAIMarket::Choose(M, Book, Rule, AIMarketStock(0, 0, 0, 900), AIMarketStock(0, 0, 100, 0), true, 2).bTrade, "MK-Q3 B: nobody uses it");
+}
+
+// MK-Q3 = C (the user's answer, 2026-10-31): the rule as it stands (no value touched) is used by Hard only; Easy and Normal leave the Market alone.
+void Test_AIMarketDefaultRuleIsHardOnly(FUnitTest& T)
+{
+	FHOLMarketSettings M = HOLMarket::DefaultSettings();
+	FHOLMarketBook Book = HOLMarket::NewBook(M);
+	FHOLAIMarketSettings Rule;
+	TArray<int> Stock = AIMarketStock(0, 0, 0, 900);
+	TArray<int> Wanted = AIMarketStock(0, 0, 100, 0);
+	T.AssertFalse(HOLAIMarket::Choose(M, Book, Rule, Stock, Wanted, true, 0).bTrade, "easy does not use the Market");
+	T.AssertFalse(HOLAIMarket::Choose(M, Book, Rule, Stock, Wanted, true, 1).bTrade, "normal does not use the Market");
+	T.AssertTrue(HOLAIMarket::Choose(M, Book, Rule, Stock, Wanted, true, 2).bTrade, "hard does");
 }
 
 // Gold is what is missing: it sells the surplus for it.

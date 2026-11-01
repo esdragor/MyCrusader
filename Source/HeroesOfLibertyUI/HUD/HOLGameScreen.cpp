@@ -574,6 +574,20 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			RefreshAges(BoundPlayerState.Get());
 		}
 	}
+	// M5: a Market's trade cells quote the common book; another player's trade, the book's way back to rest or a client's
+	// late replication moves it without telling this HUD: the cells are drawn again as soon as it differs from the quoted one.
+	if (bGridShown && !ShownMarketPrices.IsEmpty() && BoundTableState.IsValid() && BoundTableState->HasMarketBook())
+	{
+		const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
+		for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+		{
+			if (ShownMarketPrices.IsValidIndex(Resource) && ShownMarketPrices[Resource] != Book.Prices[Resource])
+			{
+				Refresh();
+				break;
+			}
+		}
+	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
 	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
 	// followed without their delegates. The other blocks follow their delegates.
@@ -1819,6 +1833,9 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
+	ShownTradeLabels.Reset();
+	ShownTradeLabels.SetNum(GridCells.Num());
+	ShownMarketPrices.Reset();
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
@@ -1901,7 +1918,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 			const int32 Good = static_cast<int32>(Command.Resource);
 			FText Label = GetResourceName(Command.Resource);
-			FText Name = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyName", "Acheter 100 {0}") : LOCTEXT("MarketSellName", "Vendre 100 {0}"),
+			FText Name = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyName", "Acheter : {0}") : LOCTEXT("MarketSellName", "Vendre : {0}"),
 				GetResourceNameInText(Command.Resource));
 			FText Effect = LOCTEXT("MarketNoBook", "Le cours n'est pas encore connu");
 			FHOLResources Cost;
@@ -1909,23 +1926,33 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			if (bMarketSettingsLoaded && BoundTableState.IsValid() && BoundTableState->HasMarketBook() && Good >= 0 && Good < HOLMarket::TradableResources)
 			{
 				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
+				ShownMarketPrices.Reset();
+				ShownMarketPrices.Append(Book.Prices, HOLMarket::BookSize);
 				const int32 Huge = 1000000;
-				const HOLMarket::FTrade Quote = Command.bBuy ? HOLMarket::Buy(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent)
+				// The rate is always for 100 of what is given up (the user's correction, 2026-11-01): buying, 100 gold against X of
+				// the good; selling, 100 of the good against Y gold. The same lot the click sends (BuyWithGold / Sell, one lot).
+				const HOLMarket::FTrade Quote = Command.bBuy ? HOLMarket::BuyWithGold(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent)
 					: HOLMarket::Sell(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent);
+				const int32 Received = Command.bBuy ? Quote.Units : Quote.Gold;
 				if (Command.bBuy)
 				{
-					Cost.Gold = Quote.Gold;
+					Cost.Gold = HOLMarket::Lot;
 				}
 				else
 				{
 					Cost[Command.Resource] = HOLMarket::Lot;
 				}
-				Label = FText::Format(LOCTEXT("MarketCell", "{0}\n{1}"), Label, FText::FromString(FString::Printf(TEXT("%s%d"), Command.bBuy ? TEXT("-") : TEXT("+"), Quote.Gold)));
-				Effect = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyEffect", "Coûte {0} or, taxe comprise ; le cours monte à {1}. Maj : 500 d'un coup")
-					: LOCTEXT("MarketSellEffect", "Rapporte {0} or, taxe déduite ; le cours baisse à {1}. Maj : 500 d'un coup"),
-					FText::AsNumber(Quote.Gold), FText::AsNumber(Quote.Book.Prices[Good]));
+				Label = Command.bBuy
+					? FText::Format(LOCTEXT("MarketBuyCell", "{0}\n100 or = {1}"), Label, FText::AsNumber(Received))
+					: FText::Format(LOCTEXT("MarketSellCell", "{0}\n100 = {1} or"), Label, FText::AsNumber(Received));
+				Effect = Command.bBuy
+					? FText::Format(LOCTEXT("MarketBuyEffect", "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"),
+						FText::AsNumber(Received), GetResourceNameInText(Command.Resource), FText::AsNumber(Quote.Book.Prices[Good]))
+					: FText::Format(LOCTEXT("MarketSellEffect", "100 {0} contre {1} or, taxe déduite ; le cours baisse à {2}. Maj : 500 {0} d'un coup"),
+						GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
 				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 			}
+			ShownTradeLabels[Cell] = Label.ToString().Replace(TEXT("\n"), TEXT(" "));
 			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
 			GridCell->SetTooltip(Name, Cost, GetMissing(Stock, Cost), Effect);
 			break;
@@ -1961,7 +1988,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FText Name = bBanner ? LOCTEXT("BannerName", "Bannière de l'Aube") : LOCTEXT("CloseRanksName", "Serrez les rangs");
 			FText Effect = bBanner
 				? LOCTEXT("BannerEffect", "Puis clic au sol, à 16 m du héros au plus : son aura (−15 % de dégâts reçus à 12 m) pendant 45 s ; recharge 120 s")
-				: LOCTEXT("CloseRanksEffect", "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
+				: LOCTEXT("CloseRanksEffect", "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
 			const bool bLocked = !HOLHeroAbility::IsUnlocked(Command.Ability, PlayerState
 				? UHOLHeroLibrary::GetHeroLevel(PlayerController, PlayerState->GetPlayerIndex()) : 0);
 			if (bLocked)
@@ -2551,10 +2578,20 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
+	// M5: the text drawn on a Market's trade cells, last on the line ("trades A=Nourriture 100 or = 96 | Z=...").
+	TArray<FString> Trades;
+	for (int32 Cell = 0; bGridShown && Cell < ShownTradeLabels.Num(); ++Cell)
+	{
+		if (!ShownTradeLabels[Cell].IsEmpty())
+		{
+			Trades.Add(FString::Printf(TEXT("%s=%s"), GridKeys[Cell], *ShownTradeLabels[Cell]));
+		}
+	}
+	const FString TradeText = Trades.IsEmpty() ? FString() : FString::Printf(TEXT(", trades %s"), *FString::Join(Trades, TEXT(" | ")));
 	// A main forum's lives and state (V2.3b) and the players' table (V2.4): on their own line (DescribeForum).
 	const FString Activity = !ShownForum.IsEmpty() && ShownActivity == ShownForum ? FString() : ShownActivity;
-	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
-		*Message, *Workers);
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
+		*Message, *Workers, *TradeText);
 }
 
 FString UHOLGameScreen::DescribeForum() const

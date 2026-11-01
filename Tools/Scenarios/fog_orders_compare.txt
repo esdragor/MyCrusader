@@ -1,0 +1,45 @@
+# Brouillard (F7.3, FQ-L) : COMPARAISON des lignes d'ordre au-dessus du brouillard (nouveau, defaut) et apres le tonemapper (ancien)
+# Plain, deux deplacements en file vers l'inexplore, unites ralenties (les lignes restent tout le long de l'essai). Entree = option suivante.
+hol.Fog.Mode 2
+hol.Fog.Render 1
+hol.Fog.Late 0
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Camera.FocusNear 10000 0
+frames 2
+hol.Units.SpawnHere 5 Spearman 1 350
+waitunits 9
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -1
+frames 30
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Select.OrderNear 6500 0
+frames 5
+hol.Select.OrderGround -9000 3000 shift
+frames 5
+hol.Units.SpeedScale 0.05
+wait 3
+hol.Fog.RenderReport
+waitlog Fog render: mode 1
+note Option 1 sur 2 : lignes AU-DESSUS du brouillard (nouveau, par defaut). Regarde la ligne jaune et ses deux points dans le noir et dans la zone claire : stable, sans strie noire. Molette / fleches pour la voir sous d'autres angles.
+frames 30
+capture fogcmp_above
+waitkey Option 1/2 : AU-DESSUS du brouillard (nouveau, par defaut). Regarde les lignes jaunes dans le noir et dans la zone claire. Entree pour l'option 2
+hol.Fog.Late 1
+frames 30
+hol.Fog.RenderReport
+waitlog Fog render: mode 1
+note Option 2 sur 2 : ANCIEN rendu (hol.Fog.Late 1, brouillard apres le tonemapper) : la ligne gresille, striee de noir. hol.Fog.Late 0 pour revenir au nouveau.
+frames 30
+capture fogcmp_old
+waitkey Option 2/2 : ANCIEN rendu (brouillard apres le tonemapper). La ligne gresille comme avant. Entree pour finir (hol.Fog.Late 0 remet le nouveau)
+hol.Fog.Late 0
+frames 30
+note Fin : le nouveau rendu est le defaut (hol.Fog.Late 0). Le brouillard reste en place pendant que les hommes marchent.

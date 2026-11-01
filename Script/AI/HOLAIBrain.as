@@ -79,6 +79,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
+	// What each slot remembers of its sites under way, to build again the ones whose builder left (HOLAIOpening::ResumeSite).
+	TMap<int, FHOLAISiteMemory> SiteMemories;
+
 	// The last reason a building could not be placed, per slot (written again only when it changes).
 	TMap<int, FString> LastBuildReason;
 
@@ -125,6 +128,24 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		if (HOLAIOpening::SitesUnderWay(Summary) == 0)
 		{
 			Sent.Ids.Empty();
+		}
+
+		// 0b. A site whose builder left it (ran from a soldier) is built again by another Peasant.
+		FHOLAISiteMemory Sites;
+		SiteMemories.Find(PlayerIndex, Sites);
+		FVector ResumedSite;
+		const int Resumer = HOLAIOpening::ResumeSite(Sites, Summary, Sent.Ids, Data.GameSeconds, ResumedSite);
+		SiteMemories.Add(PlayerIndex, Sites);
+		if (Resumer >= 0)
+		{
+			TArray<int> One;
+			One.Add(Resumer);
+			if (HOLAIOrder::IssueAIBuildOrder(PlayerIndex, ResumedSite, One))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Peasant {Resumer} builds the abandoned site at ({ResumedSite.X}, {ResumedSite.Y}) again");
+				Free.Remove(Resumer);
+				Sent.Ids.Add(Resumer);
+			}
 		}
 		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
 		if (Build.bPlanFarms)
@@ -420,7 +441,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 	// The Market (M6, MK-Q3): one trade at a time, at most one every MarketGapSteps steps (20 s). The brain does not build the Market
 	// yet (the opening's steps and the AI's reaching tier II come with the answer to MK-Q3): this serves a slot that has a finished one.
-	// The numbers of the rule are HOLAIMarket's (MinDifficulty is the answer to MK-Q3, 0 for now: every level).
+	// The numbers of the rule are HOLAIMarket's (MinDifficulty is the answer to MK-Q3 = C: 2, Hard only; Easy and Normal never touch the Market).
 	void ThinkMarket(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
 		FVector MarketAt;

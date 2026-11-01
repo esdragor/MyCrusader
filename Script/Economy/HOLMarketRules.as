@@ -208,6 +208,35 @@ namespace HOLMarket
 		return Trade;
 	}
 
+	// Buys Lots lots of 100 GOLD of Resource (what the interface shows: "100 gold for X goods"; the user's correction of
+	// 2026-11-01), at the tax FeePercent. Each lot gives Lot * Lot / (the lot's price plus the tax) goods, rounded down, at
+	// the price the one before left, and raises it by a step. Gold = 100 per lot, Units = the goods that arrive.
+	FHOLMarketTrade BuyWithGold(const FHOLMarketSettings& Settings, const FHOLMarketBook& Book, int Resource, int Lots,
+		int GoldStock, int FeePercent)
+	{
+		FString Bad = CheckRequest(Resource, Lots);
+		if (!Bad.IsEmpty())
+		{
+			return Refuse(Book, Bad);
+		}
+		if (GoldStock < Lots * Lot)
+		{
+			return Refuse(Book, "gold");
+		}
+
+		FHOLMarketTrade Trade;
+		Trade.Book = Book;
+		for (int Index = 0; Index < Lots; Index++)
+		{
+			int Price = Trade.Book.Prices[Resource];
+			Trade.Units += Lot * Lot / PurchaseGold(Price, FeePercent);
+			Trade.Book.Prices[Resource] = ClampPrice(Settings, Price + Settings.Step);
+		}
+		Trade.Gold = Lots * Lot;
+		Trade.bOk = true;
+		return Trade;
+	}
+
 	// The way back to rest: after Intervals intervals (RecoverEverySeconds seconds each) every price has moved
 	// RecoverPoints per interval toward its base, never past it.
 	FHOLMarketBook Recover(const FHOLMarketSettings& Settings, const FHOLMarketBook& Book, int Intervals)

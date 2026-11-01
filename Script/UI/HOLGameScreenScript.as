@@ -1,4 +1,4 @@
-// The game screen's part in script (J8a.5 loop 2): made by UHOLGameScreen (UHOLScriptScreen::FindScriptClass) over its
+﻿// The game screen's part in script (J8a.5 loop 2): made by UHOLGameScreen (UHOLScriptScreen::FindScriptClass) over its
 // whole frame; the HUD's blocks move here one by one. First of them, the hero's block, bottom left above the selection's
 // block and the control groups' bar (J8a.5 loop 5): his portrait (the emblem over the player's colour, loop 7; a click: as F4), his level, his HP's bar, his XP's bar
 // and three abilities' boxes (greyed until they exist); dead the delay, ready the return's button (a click buys it);
@@ -38,6 +38,17 @@ FString TalentTexts = "";
 UHorizontalBox HeroFamilyRow;
 TArray<UButton> HeroFamilyButtons;
 TArray<UCommonTextBlock> HeroFamilyLabels;
+// T5 (the trial of 2026-10-31: a point spent changed nothing the eye could see): the talents taken by name, and a notice in the accent colour
+// for a few seconds when one is taken (with a sound), both from HOLTalentNames' one table.
+UCommonTextBlock HeroTalentListLabel;
+UCommonTextBlock HeroTalentNoticeLabel;
+// The talents the sheet showed at the last refresh (-1: not seen yet, a hero seen for the first time raises no notice), the server step the
+// notice lasts until, and the texts of both lines and of the family buttons' tooltips, for hol.HUD.Report.
+int TalentSeenCount = -1;
+int TalentNoticeUntilStep = 0;
+FString TalentListText = "";
+FString TalentNoticeText = "";
+FString TalentTipTexts = "";
 
 	// What the hero's block shows (the view applied last); Describe writes its line.
 	FHOLHeroBlockView HeroView;
@@ -372,6 +383,24 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 			HeroFamilyButtons.Add(Button);
 			HeroFamilyLabels.Add(Label);
 		}
+		// The notice and the list wrap at the block's width (a long effect would otherwise widen the whole block when a talent is taken).
+		HeroTalentNoticeLabel = MakeText(n"HeroTalentNoticeLabel", UHOLTextStyleHUDLabel);
+		HeroTalentNoticeLabel.SetVisibility(ESlateVisibility::Collapsed);
+		HeroTalentNoticeLabel.SetWrapTextAt(BarWidth);
+		Column.AddChildToVerticalBox(WrappedBox(n"HeroTalentNoticeBox", HeroTalentNoticeLabel)).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		HeroTalentListLabel = MakeText(n"HeroTalentListLabel", UHOLTextStyleHUDLabel);
+		HeroTalentListLabel.SetVisibility(ESlateVisibility::Collapsed);
+		HeroTalentListLabel.SetWrapTextAt(BarWidth);
+		Column.AddChildToVerticalBox(WrappedBox(n"HeroTalentListBox", HeroTalentListLabel)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+	}
+
+	// A text in a box no wider than the block's bars (BarWidth), so that it wraps there.
+	USizeBox WrappedBox(FName BoxName, UCommonTextBlock Text)
+	{
+		USizeBox Box = Cast<USizeBox>(ConstructWidget(USizeBox, BoxName));
+		Box.SetMaxDesiredWidth(BarWidth);
+		Box.SetContent(Text);
+		return Box;
 	}
 
 	// A bar in a box of the block's width and of Height.
@@ -634,16 +663,21 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 	{
 		TalentView = FHOLTalentPanelView();
 		TalentTexts = "";
+		TalentListText = "";
+		TalentTipTexts = "";
 		const int Count = PlayerSlot >= 0 ? HOLHero::GetHeroTalentCount(PlayerSlot) : -1;
 		if (!View.bVisible || Count < 0)
 		{
 			HeroTalentButton.SetVisibility(ESlateVisibility::Collapsed);
 			HeroFamilyRow.SetVisibility(ESlateVisibility::Collapsed);
+			HeroTalentListLabel.SetVisibility(ESlateVisibility::Collapsed);
+			HeroTalentNoticeLabel.SetVisibility(ESlateVisibility::Collapsed);
 			return;
 		}
 		TArray<int> Picks;
 		for (int Index = 0; Index < Count; ++Index)
 			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerSlot, Index));
+		ShowTalentFeedback(PlayerSlot, Count, Picks);
 		TalentView = HOLTalentPanel::MakeFor(View.Level, Picks, HOLHero::GetTalentFirstChoiceMode());
 		HeroTalentButton.SetVisibility(TalentView.bReminder ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		HeroFamilyRow.SetVisibility(TalentView.bFamilyButtons ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -652,6 +686,7 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 			HeroFamilyLabels[Family].SetText(FText::FromString(HOLTalentText::FamilyName(Family)));
 			HeroFamilyLabels[Family].SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
 			HeroFamilyButtons[Family].SetToolTipText(FText::FromString(HOLTalentText::FamilyTooltip(TalentView, Family)));
+			TalentTipTexts += (Family > 0 ? " || " : "") + HOLTalentText::FamilyTooltip(TalentView, Family);
 		}
 		if (!TalentView.bReminder)
 			return;
@@ -660,6 +695,30 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 		HeroTalentLabel.SetColorAndOpacity(TalentView.bAdviceEnabled ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
 		UHOLScriptScreen::SetButtonGreyed(HeroTalentButton, !TalentView.bAdviceEnabled);
 		HeroTalentButton.SetToolTipText(FText::FromString(HOLTalentText::TooltipText(TalentView)));
+	}
+
+	// T5: what a spent point shows. The talents taken, by name, stay under the reminder; a talent taken since the last refresh raises a notice
+	// "Talent pris : <name> — <effect>" in the accent colour for 8 s and a sound (the hero's own slot only: the sheet of an adversary's picks
+	// is not sent). Names and effects: HOLTalentNames, the one table.
+	void ShowTalentFeedback(int PlayerSlot, int Count, const TArray<int>& Picks)
+	{
+		if (TalentSeenCount >= 0 && Count > TalentSeenCount)
+		{
+			TalentNoticeText = HOLTalentText::NoticeText(HOLTalent::FirstRow + Count - 1, Picks[Count - 1]);
+			TalentNoticeUntilStep = HOLHero::GetServerStep() + 8 * HOLHero::GetSimulationRateHz();
+			HOLHero::PlayTalentTakenSound();
+		}
+		TalentSeenCount = Count;
+		TalentListText = HOLTalentText::ListText(Picks);
+		HeroTalentListLabel.SetVisibility(Count > 0 ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		HeroTalentListLabel.SetText(FText::FromString(TalentListText));
+		HeroTalentListLabel.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+		const bool bNotice = !TalentNoticeText.IsEmpty() && HOLHero::GetServerStep() < TalentNoticeUntilStep;
+		if (!bNotice)
+			TalentNoticeText = "";
+		HeroTalentNoticeLabel.SetVisibility(bNotice ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		HeroTalentNoticeLabel.SetText(FText::FromString(TalentNoticeText));
+		HeroTalentNoticeLabel.SetColorAndOpacity(FLinearColor(1.0, 0.82, 0.25, 1.0));
 	}
 
 	// The view applied to the block's widgets.
@@ -865,6 +924,7 @@ TArray<UCommonTextBlock> HeroFamilyLabels;
 			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
 			+ (Minimap != nullptr ? "\n" + Minimap.Describe() + f", lit {MinimapLitAlerts}, alerts {MinimapAlerts.Num()}, area x {Math::RoundToInt(MinimapFrame.MinX)}..{Math::RoundToInt(MinimapFrame.MaxX)} y {Math::RoundToInt(MinimapFrame.MinY)}..{Math::RoundToInt(MinimapFrame.MaxY)}, last click {MinimapLastClick}, camera " + DescribeMinimapCamera() : "")
 			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + (TalentView.bFamilyButtons ? f" | family buttons row {TalentView.NextRow}" : "") : "")
+			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\nhero talent texts: list " + TalentListText + " | notice " + TalentNoticeText + " | tips " + TalentTipTexts : "")
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
