@@ -1,23 +1,39 @@
 ﻿# Le défi de duel (Duel D4), acceptation d'office : comme duel_challenge, mais l'IA est forcée d'accepter (hol.Duel.ForceAnswer). Marche de 25 s, Entrée = défier.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
-hol.Camera.FocusNear -900 300
+hol.Camera.Focus -15600 400
 frames 10
 hol.Combat.Enabled 0
 note 1. Ton héros et celui de l'IA marchent vers le centre de la carte avec leurs 5 Paysans (environ 25 s, rien à faire). Regarde les unités autour de ton héros : elles ne doivent pas trembler.
 hol.Units.Move -300 300 0
 hol.Units.Move 300 300 1
-wait 6
+# La caméra suit la marche (les héros partent à -15900, vitesse 697 cm/s) : l'utilisateur voit les unités autour du héros.
+wait 3
+hol.Camera.Focus -13500 400
+wait 3
+hol.Camera.Focus -11400 400
 hol.Test.SanityMotion 8
-wait 18
-hol.Camera.FocusNear 0 300
+wait 3
+hol.Camera.Focus -9300 400
+wait 3
+hol.Camera.Focus -7200 400
+wait 3
+hol.Camera.Focus -5100 400
+wait 3
+hol.Camera.Focus -3000 400
+wait 3
+hol.Camera.Focus -900 400
+wait 3
+hol.Camera.Focus 0 300
 frames 10
 capture duel_heroes_face
-note 2. Les deux héros sont face à face au centre, avec leurs Paysans. Appuie sur Entrée quand tu veux : ton héros défie celui de l'IA (console hol.Duel.Challenge 1, comme le fera le bouton).
+note 2. Les deux héros sont face à face au centre, avec leurs Paysans. Appuie sur Entrée quand tu veux : ton héros défie celui de l'IA (console hol.Duel.Challenge 1, comme le fera le bouton). Ce panneau se cache alors pour laisser voir la fenêtre de défi, en haut au centre, il revient quand le duel commence.
 waitkey Entrée : ton héros défie le héros de l'IA
+panel hide
 hol.Duel.Challenge 1
 waitlog challenges slot 1 at step
 waitlog made
+hol.Camera.Focus 0 300
 hol.Combat.Enabled 1
 wait 0.6
 hol.HUD.Report
@@ -25,8 +41,10 @@ waitlog duel window: Défi envoyé au héros du joueur 2
 capture duel_window
 hol.Duel.ForceAnswer 1 1
 waitlog slot 1 accepts at step
+hol.Camera.Focus 0 300
 wait 2
 capture duel_started
+panel show
 note 3. Le défi est parti ; l'acceptation de l'IA est donnée d'office (hol.Duel.ForceAnswer 1 1, développement). Le duel commence : les deux héros se frappent seuls (D18), personne d'autre ne les touche.
 waitlog Duel ended: slots
 note 4. Le duel est fini (un héros est tombé, ou 90 s sans vainqueur). Les récompenses (Triomphe, XP, effet de faction) ne sont pas encore branchées (D7).

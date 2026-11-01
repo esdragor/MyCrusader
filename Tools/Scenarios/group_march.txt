@@ -1,0 +1,14 @@
+﻿# Marche de groupe a la vitesse du plus lent (D617) : le heros (697 cm/s) et ses 5 Paysans (800 cm/s) marchent vers le centre ; l'audit
+# hol.Test.SanityMotion (lance 3 s apres l'ordre : le depart, ou chacun se tourne, est laisse de cote) ne doit voir aucun tremblement.
+# Test de la vraie chaine, sans fenetre : check.ps1 group_march, puis chercher "Sanity: OK" dans Saved_Tests\Logs\scenario_group_march.log.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+frames 10
+hol.Combat.Enabled 0
+hol.Units.Move -300 300 0
+hol.Units.Move 300 300 1
+wait 3
+hol.Test.SanityMotion 8
+wait 4
+hol.Units.Formation 0
+wait 6
