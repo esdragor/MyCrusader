@@ -1,5 +1,5 @@
-﻿# <nom de capture> | ce que l'utilisateur doit voir
+# <nom de capture> | ce que l'utilisateur doit voir
 ai_evolving_base | une Caserne et une Archerie de l'IA debout, 6 Lanciers de l'IA pres de son forum
-ai_evolving_easy | stade 1 : les soldats de l'IA au contact des 8 Hommes d'armes du joueur pres de son forum
-ai_evolving_normal | stade 2 : 35 Hommes d'armes du joueur pres du forum de l'IA (qui a maintenant beaucoup de maisons), combat autour des batiments
-ai_evolving_hard | stade 3 : 20 Hommes d'armes du joueur au milieu des batiments de l'IA, les soldats de l'IA dispersés
+ai_evolving_easy | stade 1 (ligne en haut a gauche : IA 2 : Evolutive, joue Facile) : les soldats de l'IA au contact des 8 Hommes d'armes du joueur pres de son forum
+ai_evolving_normal | stade 2 (ligne : joue Normal) : 35 Hommes d'armes du joueur pres du forum de l'IA (qui a maintenant beaucoup de maisons), combat autour des batiments
+ai_evolving_hard | stade 3 (ligne : joue Difficile) : 20 Hommes d'armes du joueur au milieu des batiments de l'IA, les soldats de l'IA dispersés
