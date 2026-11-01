@@ -28,11 +28,8 @@ struct FHOLTalentPanelView
 	int Seals = 0;
 	int Keys = 0;
 	TArray<bool> FamilyKeyReachable;
-	// TQ4 (PROVISIONAL, not decided, hol.UI.TalentFirstChoice): the row the next talent fills, and the three family buttons (B) shown while a point is kept.
-	// In C the advised button takes a default family when none is taken yet; in A (a tree window, not built) the buttons stand in.
+	// The row the next talent fills (HOLTalent::NextRow).
 	int NextRow = 0;
-	bool bFamilyButtons = false;
-	int FirstChoiceMode = 1;
 	// The stable line of the tests and hol.HUD.Report: "points 1 | 1 n . . . | advised 1 | seals 0 keys 0" (a family digit: taken;
 	// n: next row, a point to take it; w: next row, waiting for a point; .: a later row).
 	FString Describe;
@@ -40,26 +37,8 @@ struct FHOLTalentPanelView
 
 namespace HOLTalentPanel
 {
-	// The options of TQ4 (where the first talent is chosen): A a tree window (not built), B three family buttons (default), C a default family.
-	const int ModeTree = 0;
-	const int ModeButtons = 1;
-	const int ModeDefault = 2;
-
-	// The panel in the default option (B).
+	// The panel of a hero of Level who took Picks (the families, row 2 first).
 	FHOLTalentPanelView Make(int Level, const TArray<int>& Picks)
-	{
-		return MakeFor(Level, Picks, ModeButtons);
-	}
-
-	// The family option C advises when none is taken yet: the first with an effect in the game (the Captain in the prototype).
-	int DefaultFamily()
-	{
-		const TArray<int> Families = HOLAITalent::EffectFamilies();
-		return Families.Num() > 0 ? Families[0] : HOLTalent::FamilyNone;
-	}
-
-	// The panel of a hero of Level who took Picks (the families, row 2 first), for one option of TQ4.
-	FHOLTalentPanelView MakeFor(int Level, const TArray<int>& Picks, int Mode)
 	{
 		FHOLTalentPanelView View;
 		View.Points = HOLTalent::PointsAvailable(Level, Picks);
@@ -82,11 +61,7 @@ namespace HOLTalentPanel
 			Cells += Row.bTaken ? f"{Row.Family}" : Row.bCanPick ? "n" : Row.bNext ? "w" : ".";
 		}
 		View.AdvisedFamily = HOLTalent::AdvisedFamily(Picks);
-		View.FirstChoiceMode = Mode;
 		View.NextRow = NextRow;
-		if (Mode == ModeDefault && View.AdvisedFamily == HOLTalent::FamilyNone)
-			View.AdvisedFamily = DefaultFamily();
-		View.bFamilyButtons = View.Points > 0 && Mode != ModeDefault;
 		View.bAdviceEnabled = View.Points > 0 && View.AdvisedFamily != HOLTalent::FamilyNone;
 		View.Seals = HOLTalent::SealCount(Picks);
 		View.Keys = HOLTalent::KeyCount(Picks);
@@ -103,24 +78,48 @@ namespace HOLTalentPanel
 // HOLTalentNames (HOLTalentNames.as): no text here spells a talent's name (HOLTalentNames_Test.as keeps it so).
 namespace HOLTalentText
 {
-	FText ReminderPattern(bool bAdvised)
+	FText ReminderPattern()
 	{
-		if (bAdvised)
-			return NSLOCTEXT("HOLTalentPanel", "ReminderAdvised", "Talents à dépenser : {0} — choix conseillé");
 		return NSLOCTEXT("HOLTalentPanel", "Reminder", "Talents à dépenser : {0}");
+	}
+
+	// The tree window's texts (TQ4 = A): its title, its close button, a row's label, the advised choice's button, the reminder's tooltip.
+	FText WindowTitle()
+	{
+		return NSLOCTEXT("HOLTalentPanel", "WindowTitle", "Arbre de talents");
+	}
+
+	FText CloseLabel()
+	{
+		return NSLOCTEXT("HOLTalentPanel", "Close", "Fermer");
+	}
+
+	FString RowLabel(int Row)
+	{
+		return NSLOCTEXT("HOLTalentPanel", "RowLabel", "Rangée {0}").ToString().Replace("{0}", f"{Row}");
+	}
+
+	FText AdvisedLabel()
+	{
+		return NSLOCTEXT("HOLTalentPanel", "AdvisedButton", "Choix conseillé");
+	}
+
+	FText OpenTooltip()
+	{
+		return NSLOCTEXT("HOLTalentPanel", "OpenTooltip", "Ouvrir l'arbre des talents (T)");
 	}
 
 	FText TooltipPattern(bool bAdvised)
 	{
 		if (bAdvised)
 			return NSLOCTEXT("HOLTalentPanel", "TooltipAdvisedTalent", "Prend le talent de la famille la plus remplie : {0} — {1}");
-		return NSLOCTEXT("HOLTalentPanel", "TooltipFirst", "Choisissez d'abord un premier talent : l'arbre arrive");
+		return NSLOCTEXT("HOLTalentPanel", "TooltipFirst", "Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser");
 	}
 
-	// The reminder's line: "Talents à dépenser : 2 — choix conseillé".
+	// The reminder's line: "Talents à dépenser : 2".
 	FString ReminderText(FHOLTalentPanelView View)
 	{
-		return ReminderPattern(View.bAdviceEnabled).ToString().Replace("{0}", f"{View.Points}");
+		return ReminderPattern().ToString().Replace("{0}", f"{View.Points}");
 	}
 
 	FText FamilyPattern(int Family)
@@ -145,18 +144,6 @@ namespace HOLTalentText
 		if (!HOLHero::TalentHasEffect(Row, Family))
 			Effect += " (" + HOLTalentNames::NoEffectYet().ToString() + ")";
 		return Effect;
-	}
-
-	FText FamilyTipPattern()
-	{
-		return NSLOCTEXT("HOLTalentPanel", "FamilyTipTalent", "{0}, rangée {1} : {2} — {3}");
-	}
-
-	// The family button's tooltip: the talent the click takes (the next row of that family), by its name and its effect.
-	FString FamilyTooltip(FHOLTalentPanelView View, int Family)
-	{
-		return FamilyTipPattern().ToString().Replace("{0}", FamilyName(Family)).Replace("{1}", f"{View.NextRow}")
-			.Replace("{2}", HOLTalentNames::Name(View.NextRow, Family).ToString()).Replace("{3}", EffectText(View.NextRow, Family));
 	}
 
 	// The advised button's tooltip: the talent it takes, or why it cannot yet.

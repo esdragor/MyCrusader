@@ -1840,9 +1840,9 @@ if ($Parts -contains "camera") {
             # held but walks at half speed (more than 250 cm in 5 s, less than the one out of the cry). Then the talents given back.
             Step "mark build hero dawn", "hol.Camera.Focus $($AuraHero -join ' ')", "frames 3",
                 "hol.Units.Spawn 1 $($AuraHero -join ' ') 0 Hero 100", "wait 0.5", "hol.Hero.ResetTalents 0", "hol.Hero.SetXP 0 1300", "waitlog Hero level: slot 0 level 1 -> 4",
-                "hol.HUD.Click HeroTalentFamily1", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "waitlog hol.Hero.PickTalent: slot 0 family 1 taken", "wait 0.5", "hol.HUD.Report",
+                "hol.HUD.Click HeroTalentButton", "hol.HUD.Report", "hol.HUD.Click HeroTalentCell_2_1", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.Hero.PickTalent 1", "hol.Hero.PickTalent 1", "waitlog hol.Hero.PickTalent: slot 0 family 1 taken", "wait 0.5", "hol.HUD.Report",
                 "hol.Hero.SetXP 0 3300", "waitlog Hero level: slot 0 level 4 -> 6", "wait 0.5", "hol.HUD.Report", "frames 8", "capture build_hero_family",
-                "hol.HUD.Click HeroTalentButton", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.HUD.Report",
+                "hol.HUD.Click TalentWindowAdvised", "waitlog Hero talent order: slot 0 family 1 at step", "wait 0.5", "hol.HUD.Report", "hol.HUD.Click TalentKey", "hol.HUD.Report",
                 "hol.Units.Spawn 1 $($HoldSpot -join ' ') 0 Spearman 10", "hol.Units.Spawn 1 $($HoldFar -join ' ') 0 Spearman 10", "wait 0.5",
                 "hol.Hero.ResetAbilities 0", "hol.Hero.CloseRanks 0", "waitlog cries Serrez les rangs,", "wait 0.3", "hol.Units.Report 500",
                 "hol.Units.Move $($AuraHero[0] + 1500) $($AuraHero[1]) 0", "wait 5", "hol.Units.Report 500",
@@ -4402,7 +4402,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     # T5: the talent point's reminder follows the level (a point a level from 2, none taken): 1 at level 2, 2 at level 3, 3 at level 4, 5 at
     # level 6, with its line « Talents à dépenser : N » (in the language of the moment: fr, en, ja) and no advice before a first talent.
     $XPTalents = @($HeroXP | Select-String -Pattern "HUD hero talents: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
-    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| \D*(\d+) \| family buttons row 2$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
+    $TalentPoints = @($XPTalents | Where-Object { $_ -match "^points (\d+) \| n \. \. \. \. \| advised none \| seals 0 keys 0 \| \D*(\d+) \| next row 2$" -and $Matches[1] -eq $Matches[2] } | ForEach-Object { ($_ -split " ")[1] })
     $Checks["the talent reminder: points $($TalentPoints -join ',') (1,1,2,3,5), no advice before a first talent ($($XPTalents.Count) lines)"] =
         (($TalentPoints -join ",") -eq "1,1,2,3,5") -and ($XPTalents.Count -eq 5)
     $Missing = @("flash", "tier", "tier_ja" | Where-Object { -not (Test-Path (Join-Path $Shots "build_hero_$_.png")) })
@@ -4469,24 +4469,30 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $DawnReports = @($Dawn | Where-Object { $_ -match "Units report: " })
     $DawnSpears = @($DawnReports | ForEach-Object { , @([regex]::Matches($_, "#(\d+) Spearman slot 0 at \((-?\d+), (-?\d+), ") | ForEach-Object { [pscustomobject]@{ Id = $_.Groups[1].Value; X = [int]$_.Groups[2].Value; Y = [int]$_.Groups[3].Value } }) })
     $Checks = [ordered]@{}
-    $Checks["three Captain talents at level 4: no reminder, the advice is the Captain, a seal ($($DawnTalents | Select-Object -First 1))"] =
-        ($DawnTalents.Count -ge 1) -and ($DawnTalents[0] -eq "points 0 | 1 1 1 w . | advised 1 | seals 1 keys 0")
-    $Checks["level 6: two points, the reminder with the advised choice ($($DawnTalents | Select-Object -Skip 1 -First 1))"] =
-        ($DawnTalents.Count -ge 2) -and ($DawnTalents[1] -eq "points 2 | 1 1 1 n . | advised 1 | seals 1 keys 0 | Talents à dépenser : 2 — choix conseillé | family buttons row 5")
-    $Checks["the button's click took the advised talent by the order queue ($($DawnTalents | Select-Object -Skip 2 -First 1))"] =
-        [bool]($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued" -Quiet) -and ($DawnTalents.Count -ge 3) -and
-        ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé | family buttons row 6")
-    # TQ4 (PROVISIONAL, option B by default): with a point kept and no talent yet, the Captain button of the three family buttons takes the first talent by the order queue (a hidden or greyed button would take nothing); then the advised button took one more.
-    $Checks["the family button took the first talent, the advised button another (queued orders: $(@($Dawn | Select-String -SimpleMatch 'Hero talent order: slot 0 family 1 queued').Count))"] = @($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued").Count -ge 2
+    # TQ4 = A: the tree window. The reminder opens it (the first talent is chosen there, by a click on the Captain's cell of row 2), the icons of the
+    # talents taken list them (TQ5 = A), the advised choice is at its foot, the T key (the same function as the key's) closes it.
+    $Checks["the reminder opens the tree: three points, row 2 open, no advice yet ($($DawnTalents | Select-Object -First 1))"] =
+        ($DawnTalents.Count -ge 1) -and ($DawnTalents[0] -eq "points 3 | n . . . . | advised none | seals 0 keys 0 | Talents à dépenser : 3 | next row 2")
+    $Checks["three Captain talents at level 4: no reminder, the advice is the Captain, a seal ($($DawnTalents | Select-Object -Skip 1 -First 1))"] =
+        ($DawnTalents.Count -ge 2) -and ($DawnTalents[1] -eq "points 0 | 1 1 1 w . | advised 1 | seals 1 keys 0 | next row 5")
+    $Checks["level 6: two points, the reminder ($($DawnTalents | Select-Object -Skip 2 -First 1))"] =
+        ($DawnTalents.Count -ge 3) -and ($DawnTalents[2] -eq "points 2 | 1 1 1 n . | advised 1 | seals 1 keys 0 | Talents à dépenser : 2 | next row 5")
+    $Checks["the advised button of the window took the advised talent by the order queue ($($DawnTalents | Select-Object -Skip 3 -First 1))"] =
+        [bool]($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued" -Quiet) -and ($DawnTalents.Count -ge 4) -and
+        ($DawnTalents[3] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 | next row 6")
+    $Checks["the cell of the window took the first talent, the advised button another (queued orders: $(@($Dawn | Select-String -SimpleMatch 'Hero talent order: slot 0 family 1 queued').Count))"] = @($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued").Count -ge 2
+    $DawnWindow = @($Dawn | Select-String -Pattern "HUD talent window: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $Checks["the window rows follow the picks: open at row 2, row 5 waiting, row 5 open at level 6, closed by the T key ($(($DawnWindow | ForEach-Object { $_.Substring(0, [math]::Min(60, $_.Length)) }) -join ' // '))"] =
+        ($DawnWindow.Count -ge 5) -and $DawnWindow[0].Contains("open | Talents à dépenser : 3 | row 2: P P P | row 3: l l l") -and $DawnWindow[1].Contains("row 4: . T . | row 5: w w w") -and
+        $DawnWindow[2].Contains("row 5: P P P | row 6: l l l") -and $DawnWindow[3].Contains("row 5: . T . | row 6: P P P") -and ($DawnWindow[4] -eq "closed")
     # The trial of 2026-10-31 ("a spent point changed nothing the eye could see, the names are not the same everywhere"): the notice, the list and
-    # the tooltips all name the talents from HOLTalentNames, the one table (HOLTalentNames_Test.as compares it with Talents.csv).
+    # the hovers all name the talents from HOLTalentNames, the one table (HOLTalentNames_Test.as compares it with Talents.csv).
     $DawnTexts = @($Dawn | Select-String -Pattern "HUD hero talent texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
-    $Checks["three talents: the notice names the last, the list names the three ($($DawnTexts | Select-Object -First 1))"] =
-        ($DawnTexts.Count -ge 1) -and $DawnTexts[0].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[0].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube")
-    $Checks["level 6: the three family buttons' tooltips name the talents of row 5 ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
-        ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("Gardien, rangée 5 : Remparts de lumière — ") -and $DawnTexts[1].Contains("Capitaine, rangée 5 : Grâce abondante — ") -and $DawnTexts[1].Contains("Champion, rangée 5 : Contre parfait — ")
-    $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 2 -First 1))"] =
-        ($DawnTexts.Count -ge 3) -and $DawnTexts[2].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[2].Contains("pas encore actif dans ce prototype")
+    $Checks["three talents: the notice names the last, the list names the three, one icon each with its hover ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
+        ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[1].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube") -and
+        $DawnTexts[1].Contains("icons B = Boucliers levés — ") -and $DawnTexts[1].Contains(" || M = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || P = Pas de l'Aube — ") -and $DawnTexts[1].Contains("(pas encore actif dans ce prototype)")
+    $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 3 -First 1))"] =
+        ($DawnTexts.Count -ge 4) -and $DawnTexts[3].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[3].Contains("pas encore actif dans ce prototype") -and $DawnTexts[3].Contains(" || G = Grâce abondante — ")
     $DawnMoves = @(-1, -1)
     if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
         $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
