@@ -1,10 +1,24 @@
-# El Dorado Petite (2 joueurs, 440 m) : le marais autour de l'amas d'or du milieu, 10 Hommes d'armes pour le traverser
+﻿# El Dorado Petite (2 joueurs, 440 m) : le marais autour de l'amas d'or du milieu, 10 Hommes d'armes DE MON CAMP pour le traverser
+# Correction du 2026-11-01 : l'ancienne ligne `hol.Units.SpawnHere 10 ManAtArms 3000 0` donnait 3000 comme NUMERO DE JOUEUR (les arguments sont
+# Count Type Slot Radius) : 3000 modulo 256 = joueur 184, qui n'existe pas, donc des soldats ni a moi ni neutres, hostiles, empiles (rayon 0) sur mon forum.
+# Ici : joueur 0 (moi), 30 m devant mon forum, rayon 6 m, et le journal doit dire « of slot 0 » (waitlog) : sinon le scenario echoue.
 hol.Camera.Zoom -7
 frames 5
 hol.Cheat.Resources 2000
-hol.Units.SpawnHere 10 ManAtArms 3000 0
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Units.SpawnHere 10 ManAtArms 0 600
+waitlog SpawnHere: 10 ManAtArms of slot 0
 waitunits 15
+hol.Units.Where 0
 hol.Terrain.Report
-note El Dorado Petite : 2 joueurs, 440 m de côté. PAS D'OR CHEZ MOI : l'or est en un amas de filons au MILIEU de la carte, entouré d'une couronne de MARAIS (disque sombre bleu-vert posé sur l'herbe). Les 10 Hommes d'armes sont devant mon centre, vers le milieu de la carte.
-note ESSAI : sélectionne-les (double clic sur l'un d'eux) et envoie-les d'un clic droit AU MILIEU de la carte, à travers la couronne : ils doivent ralentir nettement dans le marais (60 % de leur vitesse, valeur provisoire) et reprendre leur allure de l'autre côté. Traverse aussi le marais en passant d'un côté à l'autre autour de l'amas, sans entrer au milieu : compare le temps d'un contournement et d'une traversée.
-note Pour changer la force du marais pendant l'essai (console ²) : hol.Terrain.MarshSpeedPercent 75 (ou 100 = pas de ralentissement), puis hol.Terrain.Report. À regarder : le marais se lit-il bien du premier coup d'oeil ? le ralentissement est-il assez fort / trop fort ? l'amas d'or au milieu est-il assez grand, assez loin des deux bases ? Le marais n'empêche pas encore la charge de cavalerie (elle n'existe pas) ni les tirs ; seule la vitesse de marche est branchée (M-Q2 = A : seulement les effets visibles).
+frames 20
+capture eldorado_army
+hol.Camera.FocusNear 16400 0
+frames 20
+capture eldorado_middle
+hol.Camera.FocusNear 3000 0
+frames 5
+note El Dorado Petite : 2 joueurs, 440 m de côté. PAS D'OR CHEZ MOI : l'or est en un amas de filons au MILIEU de la carte, entouré d'une couronne de MARAIS (disque sombre bleu-vert posé sur l'herbe). Les 10 Hommes d'armes (à ma couleur) sont devant mon centre, vers le milieu de la carte.
+note ESSAI : sélectionne-les (double clic sur l'un d'eux) et envoie-les d'un clic droit AU MILIEU de la carte, à travers la couronne : ils doivent ralentir nettement dans le marais (60 % de leur vitesse, valeur provisoire) et reprendre leur allure de l'autre côté. Compare le temps d'un contournement et d'une traversée.
+note Pour changer la force du marais pendant l'essai (console ²) : hol.Terrain.MarshSpeedPercent 75 (ou 100 = pas de ralentissement), puis hol.Terrain.Report. Le marais n'empêche pas encore la charge de cavalerie ni les tirs ; seule la vitesse de marche est branchée.

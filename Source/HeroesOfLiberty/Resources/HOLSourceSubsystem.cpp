@@ -4,6 +4,7 @@
 
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
+#include "Components/TextRenderComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
@@ -155,6 +156,46 @@ namespace UE::HeroesOfLiberty::Resources
 						Registry.AddSource(HOLSourceTypeNames::Tree, FVector(Tree.X, Tree.Y, 0.));
 					}
 					UE_LOG(LogHOLMatch, Display, TEXT("Sources: grove of %d trees, spacing %.0f cm, at (%.0f, %.0f), disc radius %.0f cm"), Trees.Num(), Spacing, Centre.X, Centre.Y, Radius);
+				});
+			}));
+
+		// Scenario labels (tree_spacing): a text lying on the ground, readable from the top-down camera, so that a sweep of values is named on the
+		// screen itself. Dev only, nothing is replicated or saved.
+		FAutoConsoleCommand CommandLabel(TEXT("hol.Sources.Label"),
+			TEXT("hol.Sources.Label X Y Size Yaw Text...: writes Text flat on the ground at a point (cm), letters Size cm high, reading along Yaw degrees (0 = along +Y) (scenario labels)"),
+			FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+			{
+				if (Args.Num() < 5)
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("Sources: usage hol.Sources.Label X Y Size Yaw Text..."));
+					return;
+				}
+				FString Text = Args[4];
+				for (int32 Index = 5; Index < Args.Num(); ++Index)
+				{
+					Text += TEXT(" ") + Args[Index];
+				}
+				const FVector Point(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 25.);
+				const float Size = FCString::Atof(*Args[2]);
+				const double Yaw = FCString::Atod(*Args[3]);
+				ForEachRegistry([&](UHOLSourceSubsystem& Registry)
+				{
+					UWorld* World = Registry.GetWorld();
+					if (!Registry.HasAuthority() || !World)
+					{
+						return;
+					}
+					AActor* Label = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform(FRotator(90., Yaw, 0.), Point));
+					UTextRenderComponent* Render = NewObject<UTextRenderComponent>(Label, TEXT("Text"));
+					Label->SetRootComponent(Render);
+					Render->SetText(FText::FromString(Text));
+					Render->SetWorldSize(Size);
+					Render->SetTextRenderColor(FColor::White);
+					Render->SetHorizontalAlignment(EHTA_Center);
+					Render->SetVerticalAlignment(EVRTA_TextCenter);
+					Render->RegisterComponent();
+					Label->SetActorTransform(FTransform(FRotator(90., Yaw, 0.), Point));
+					UE_LOG(LogHOLMatch, Display, TEXT("Sources: label '%s' at (%.0f, %.0f)"), *Text, Point.X, Point.Y);
 				});
 			}));
 #endif

@@ -1,18 +1,49 @@
-# Espacement des arbres, bosquets compacts : trois paquets de 14 arbres côte à côte, troncs à 1,2 / 1,3 / 1,4 m (le tronc a 60 cm de rayon : à 1,2 m les troncs se touchent)
-# Réponse de l'utilisateur à l'essai précédent : « 1,4 est mieux mais une forêt doit être comme tous les arbres qui se touchent, compacte, un minimum de blanc ».
-# Configuration par défaut (un joueur, Plain), forum en (-14800, 0). Les trois paquets sont posés à 33 m à l'est du forum, à 15 m les uns des
-# autres le long de l'axe Y : y = -1500 (1,2 m, 1 Paysan à côté), y = 0 (1,3 m, 2 Paysans), y = 1500 (1,4 m, 3 Paysans ; la valeur de l'essai précédent).
-# Même graine pour les trois : la même forme de paquet, seule la distance entre troncs change. Arbres normaux de la partie (100 de bois chacun).
+﻿# Espacement des arbres : balayage de 10 paquets de 14 arbres, de 0,2 a 1,2 m entre troncs (pas de 0,1 m), nommes au sol (regle 6 de Qualite des essais)
+# Reponse de l'utilisateur a l'essai a trois valeurs : "1,2 mieux mais pas encore ca, fais un echantillon de 10 pour aller plus vite (de 0,2 a 1,2)".
+# Configuration par defaut (un joueur, Plain), forum en (-14800, 0). Dix paquets (0,2 a 1,2 m sans 1,1 m) alignes le long de l'axe Y a x = -5500, tous les 10 m (y = -4500 a 4500, sans 1,1 m),
+# meme graine : meme forme de paquet, seule la distance entre troncs change. Chaque paquet est nomme par un texte pose au sol, du cote x = -4500.
 hol.Cheat.Population 165
-hol.Sources.Grove 120 -11500 -1500 14 7
-hol.Sources.Grove 130 -11500 0 14 7
-hol.Sources.Grove 140 -11500 1500 14 7
-hol.Camera.Focus -11500 0
-frames 2
-hol.Units.Spawn 1 -11500 -2700 0 Peasant 100
-hol.Units.Spawn 2 -11500 -1200 0 Peasant 100
-hol.Units.Spawn 3 -11500 300 0 Peasant 100
-waitunits 6
+hol.Sources.Grove 20 -5500 -4500 14 7
+hol.Sources.Label -4500 -4500 220 180 0,2 m
+hol.Sources.Grove 30 -5500 -3500 14 7
+hol.Sources.Label -4500 -3500 220 180 0,3 m
+hol.Sources.Grove 40 -5500 -2500 14 7
+hol.Sources.Label -4500 -2500 220 180 0,4 m
+hol.Sources.Grove 50 -5500 -1500 14 7
+hol.Sources.Label -4500 -1500 220 180 0,5 m
+hol.Sources.Grove 60 -5500 -500 14 7
+hol.Sources.Label -4500 -500 220 180 0,6 m
+hol.Sources.Grove 70 -5500 500 14 7
+hol.Sources.Label -4500 500 220 180 0,7 m
+hol.Sources.Grove 80 -5500 1500 14 7
+hol.Sources.Label -4500 1500 220 180 0,8 m
+hol.Sources.Grove 90 -5500 2500 14 7
+hol.Sources.Label -4500 2500 220 180 0,9 m
+hol.Sources.Grove 100 -5500 3500 14 7
+hol.Sources.Label -4500 3500 220 180 1,0 m
+hol.Sources.Grove 120 -5500 4500 14 7
+hol.Sources.Label -4500 4500 220 180 1,2 m
+hol.Camera.Focus -5200 -2500
 frames 5
-note Espacement des arbres : trois paquets de 14 arbres, posés en ligne à 15 m les uns des autres. Troncs au moins à 1,2 m (ils se touchent, 1 Paysan à côté), 1,3 m (2 Paysans) et 1,4 m (3 Paysans, l'essai précédent) ; même forme de paquet, seule la distance entre arbres change.
-note À faire : molette pour approcher ou reculer la caméra (distance de jeu normale puis plus loin), regarder les trois paquets. Lequel se lit comme un bois compact, sans blanc entre les arbres, sans que les troncs se mélangent en un bloc ? Un Paysan peut-il couper les arbres du milieu (clic droit sur un arbre intérieur) ? Réponse attendue : 1,2, 1,3 ou 1,4 m.
+hol.Units.Spawn 1 -4700 3000 0 Peasant 100
+waitunits 1
+frames 20
+capture tree_spacing_a
+hol.Camera.Focus -5200 2500
+frames 20
+capture tree_spacing_b
+hol.Camera.Focus -5200 4000
+hol.Camera.Zoom 3
+frames 20
+capture tree_spacing_c
+hol.Camera.Zoom -3
+hol.Camera.Focus -5200 -2500
+frames 5
+note Espacement des arbres : 10 paquets de 14 arbres alignes, de 0,2 m (tout a gauche) a 1,2 m entre troncs, pas de 0,1 m ; le nom de chaque paquet est ecrit au sol a cote. Meme forme de paquet, seule la distance change. Le tronc fait 1,2 m de large : sous 1,2 m les troncs se chevauchent.
+note A faire : molette pour approcher ou reculer, fleches ou bord d'ecran pour passer des 5 premiers (0,2 a 0,6 m) aux 5 derniers (0,7 a 1,2 m). Reponse attendue : la valeur (ou l'intervalle) qui se lit comme un bois compact, sans blanc, sans bloc confus.
+
+
+
+
+
+

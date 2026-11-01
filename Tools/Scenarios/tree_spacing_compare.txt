@@ -1,0 +1,59 @@
+﻿# Espacement des arbres, comparaison un par un : les memes 10 paquets que tree_spacing, la camera en gros plan sur UN paquet, Entree = paquet suivant (0,2 puis 0,3 ... jusqu'a 1,2 m)
+# Meme disposition que tree_spacing.txt (x = -5500, y = -4500 a 4500, tous les 10 m, meme graine), camera zoomee de 3 crans.
+hol.Cheat.Population 165
+hol.Sources.Grove 20 -5500 -4500 14 7
+hol.Sources.Label -4500 -4500 220 180 0,2 m
+hol.Sources.Grove 30 -5500 -3500 14 7
+hol.Sources.Label -4500 -3500 220 180 0,3 m
+hol.Sources.Grove 40 -5500 -2500 14 7
+hol.Sources.Label -4500 -2500 220 180 0,4 m
+hol.Sources.Grove 50 -5500 -1500 14 7
+hol.Sources.Label -4500 -1500 220 180 0,5 m
+hol.Sources.Grove 60 -5500 -500 14 7
+hol.Sources.Label -4500 -500 220 180 0,6 m
+hol.Sources.Grove 70 -5500 500 14 7
+hol.Sources.Label -4500 500 220 180 0,7 m
+hol.Sources.Grove 80 -5500 1500 14 7
+hol.Sources.Label -4500 1500 220 180 0,8 m
+hol.Sources.Grove 90 -5500 2500 14 7
+hol.Sources.Label -4500 2500 220 180 0,9 m
+hol.Sources.Grove 100 -5500 3500 14 7
+hol.Sources.Label -4500 3500 220 180 1,0 m
+hol.Sources.Grove 120 -5500 4500 14 7
+hol.Sources.Label -4500 4500 220 180 1,2 m
+hol.Camera.Focus -5200 -4500
+hol.Camera.Zoom 3
+frames 20
+capture tree_compare_first
+hol.Camera.Focus -5200 -4500
+frames 10
+waitkey Paquet 0,2 m (14 arbres, troncs a 0,2 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 -3500
+frames 10
+waitkey Paquet 0,3 m (14 arbres, troncs a 0,3 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 -2500
+frames 10
+waitkey Paquet 0,4 m (14 arbres, troncs a 0,4 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 -1500
+frames 10
+waitkey Paquet 0,5 m (14 arbres, troncs a 0,5 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 -500
+frames 10
+waitkey Paquet 0,6 m (14 arbres, troncs a 0,6 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 500
+frames 10
+waitkey Paquet 0,7 m (14 arbres, troncs a 0,7 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 1500
+frames 10
+waitkey Paquet 0,8 m (14 arbres, troncs a 0,8 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 2500
+frames 10
+waitkey Paquet 0,9 m (14 arbres, troncs a 0,9 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 3500
+frames 10
+waitkey Paquet 1,0 m (14 arbres, troncs a 1,0 m) : Entree = paquet suivant
+hol.Camera.Focus -5200 4500
+frames 10
+capture tree_compare_last
+waitkey Paquet 1,2 m (14 arbres, troncs a 1,2 m) : Entree = paquet suivant
+note Comparaison un par un : 10 paquets de 14 arbres, gros plan sur chacun, de 0,2 a 1,2 m entre troncs ; Entree passe au paquet suivant (le nom est ecrit au sol). Dis quelle valeur se lit comme un bois compact sans blanc.
