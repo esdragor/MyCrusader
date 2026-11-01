@@ -816,6 +816,36 @@ void Test_NoGatheringAtTheSourceAnEnemyStandsBy(FUnitTest& T)
 	T.AssertTrue(Groups.Num() > 0 && Groups[0].SourceIndex == 10, "enemy far, or a Peasant: the food is gathered again");
 }
 
+// CURRENT behaviour pinned, NOT a decision (question in Auto_Journey_Retours.md, "IA : Paysans quand toutes les sources sont sous l'ennemi"):
+// when every source is within FleeRadius + 300 cm of an enemy soldier (soldiers at the berries AND at the wood), OpenSummary leaves no
+// source, SplitGather gives no group, and the idle Peasants wait where they are (brain log "idle -> no source") for as long as the enemy
+// stays; as soon as one source is clear again (the soldier leaves, or dies) they go back to work. If the answer changes the behaviour,
+// this test changes with it.
+void Test_AllSourcesUnderTheEnemyLeavesThePeasantsIdle(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	const float Reach = Data.Army.FleeRadius + 300.f;
+	// One soldier by the food (#10 at 1000, 0), one by the wood (#11 at 1000, 500): both just inside the reach.
+	Summary.Enemies.Add(OpeningEnemy(50, n"Spearman", FVector(1000, -Reach + 100.f, 0)));
+	Summary.Enemies.Add(OpeningEnemy(51, n"Spearman", FVector(1000, 500 + Reach - 100.f, 0)));
+	const FHOLAISummary Open = HOLAIOpening::OpenSummary(Summary, Data);
+	T.AssertEquals(0, Open.Food.Sources.Num(), "no food source left open");
+	T.AssertEquals(0, Open.Wood.Sources.Num(), "no wood source left open");
+	T.AssertEquals(0, HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants).Num(), "current behaviour: no group, the idle Peasants wait");
+
+	// The wood soldier dies: the Peasants work again, on the wood only (the food is still watched).
+	Summary.Enemies.RemoveAt(1);
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants);
+	int Sent = 0;
+	for (int Index = 0; Index < Groups.Num(); Index++)
+	{
+		Sent += Groups[Index].Peasants.Num();
+		T.AssertEquals(11, Groups[Index].SourceIndex, "only the wood is open");
+	}
+	T.AssertEquals(5, Sent, "all five go back to work on the wood");
+}
+
 // A site whose builder left it (it ran from a soldier) is built again: the foundation counted as a house coming for ever, so no other house was
 // asked, the population stayed at its cap and the AI never reached the Peasants a Barracks wants. A site whose progress has not moved for
 // StalledSeconds gets a Peasant (build order), not twice in a row.
