@@ -1,4 +1,4 @@
-﻿"""Fills the English and Japanese translations of the Game localization target (D245, front-end step 5).
+"""Fills the English and Japanese translations of the Game localization target (D245, front-end step 5).
 
 Provisional translations written by the assistant, keyed by "Namespace,Key" (the msgctxt of the .po files). The .po
 files stay the reference a translator works in; this table only fills the msgstr of the keys it knows, and lists the
@@ -69,6 +69,7 @@ TRANSLATIONS = {
     "HOLMaps,Map_Hinterland": ("The Hinterland", "奥地"),
     "HOLMaps,Map_ElDorado": ("El Dorado", "エルドラド"),
     "HOLMaps,Map_Cols": ("The Cols", "峠"),
+    "HOLMaps,Map_Forest": ("The Deep Forest", "深い森"),
     "HOLNewGameScreen,Map": ("Map", "マップ"),
     "HOLNewGameScreen,Size": ("Size", "サイズ"),
     "HOLNewGameScreen,Size_Small": ("Small", "小"),

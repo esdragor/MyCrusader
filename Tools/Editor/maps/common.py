@@ -1035,16 +1035,16 @@ def map_file(recipe):
 # ---- Terrain zones (C3, El Dorado's marsh): round zones that change the walkers' speed (HOLTerrainRules), as data for the server plus a flat
 # disc drawn on the ground over each. The module's zones(recipe) gives [(kind, x, y, radius)] (kind 0: marsh); its ZONE_COLORS {kind: (r, g, b)}
 # says how a kind is drawn. The discs have no collision and no navigation (the zone is not an obstacle), 3 cm above the ground.
-ZONE_COLORS = {0: (0.020, 0.052, 0.040)}
+ZONE_COLORS = {0: (0.020, 0.052, 0.040), 1: (0.36, 0.29, 0.17)}  # 0 marsh, 1 road (C5, packed earth)
 ZONE_HEIGHT = 3.0
-ZONE_NAMES = {0: "Marsh"}
+ZONE_NAMES = {0: "Marsh", 1: "Road"}
 
 
 def spawn_zones(zones, colors=None):
     layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLTerrainLayout")
     if layout_class is None:
         raise RuntimeError("Missing HOLTerrainLayout (is the HeroesOfLiberty module compiled?)")
-    colors = dict(ZONE_COLORS, **(colors or {}))
+    colors = {**ZONE_COLORS, **(colors or {})}  # (dict(a, **b) refuses integer keys)
     layout = spawn(layout_class, label="TerrainLayout")
     placed = []
     for kind, x, y, radius in zones:

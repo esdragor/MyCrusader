@@ -20,6 +20,14 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
 	static int32 ServerSpeedPercent(int32 MarshPercent, int32 ZoneX, int32 ZoneY, int32 ZoneRadius, int32 X, int32 Y);
 
+	/** The server percent of speed at (X, Y) for one ROAD zone of speed RoadPercent (C5). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
+	static int32 ServerRoadSpeedPercent(int32 RoadPercent, int32 ZoneX, int32 ZoneY, int32 ZoneRadius, int32 X, int32 Y);
+
+	/** The road speed the server starts with (percent). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
+	static int32 GetServerDefaultRoadPercent();
+
 	/** The server scaled speed. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Terrain")
 	static int32 ServerScaledSpeed(int32 Speed, int32 Percent);

@@ -10,17 +10,22 @@ bool FHOLTerrainRules::Contains(const FHOLTerrainZone& Zone, const int32 X, cons
 	return DX * DX + DY * DY <= R * R;
 }
 
-int32 FHOLTerrainRules::GetSpeedPercentAt(const int32 MarshSpeedPercent, const TConstArrayView<FHOLTerrainZone> Zones, const int32 X, const int32 Y)
+int32 FHOLTerrainRules::GetSpeedPercentAt(const int32 MarshSpeedPercent, const TConstArrayView<FHOLTerrainZone> Zones, const int32 X, const int32 Y, const int32 RoadSpeedPercent)
 {
 	int32 Percent = 100;
+	bool bOnRoad = false;
 	for (const FHOLTerrainZone& Zone : Zones)
 	{
 		if (Zone.Kind == HOLTerrainKind::Marsh && MarshSpeedPercent < Percent && Contains(Zone, X, Y))
 		{
 			Percent = MarshSpeedPercent;
 		}
+		else if (Zone.Kind == HOLTerrainKind::Road && !bOnRoad && Contains(Zone, X, Y))
+		{
+			bOnRoad = true;
+		}
 	}
-	return Percent;
+	return Percent == 100 && bOnRoad ? RoadSpeedPercent : Percent;
 }
 
 int32 FHOLTerrainRules::GetScaledSpeed(const int32 Speed, const int32 Percent)

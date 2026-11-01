@@ -20,6 +20,8 @@ namespace HOLTerrainKind
 {
 	/** A marsh slows every walker (and, later, stops a charge, D345.3). */
 	constexpr int32 Marsh = 0;
+	/** A road speeds every walker up (C5, La Forêt profonde, CQ6a = A: 130 %); a marsh under it wins (the slowing zone first). */
+	constexpr int32 Road = 1;
 }
 
 /**
@@ -37,8 +39,14 @@ struct HEROESOFLIBERTY_API FHOLTerrainRules
 	/** Whether the point is in the zone (its edge counts in). */
 	static bool Contains(const FHOLTerrainZone& Zone, int32 X, int32 Y);
 
-	/** The speed, in percent of normal, of a walker standing at (X, Y): the slowest of the zones that hold the point, 100 outside all. */
-	static int32 GetSpeedPercentAt(int32 MarshSpeedPercent, TConstArrayView<FHOLTerrainZone> Zones, int32 X, int32 Y);
+	/** A walker's speed on a road, in percent of its normal speed (C5, CQ6a = A: 130). hol.Terrain.RoadSpeedPercent sets it on a server. */
+	static constexpr int32 DefaultRoadSpeedPercent = 130;
+
+	/**
+	 * The speed, in percent of normal, of a walker standing at (X, Y): the slowest of the slowing zones that hold the point; else the
+	 * road's percent if a road zone holds it; 100 outside all.
+	 */
+	static int32 GetSpeedPercentAt(int32 MarshSpeedPercent, TConstArrayView<FHOLTerrainZone> Zones, int32 X, int32 Y, int32 RoadSpeedPercent = DefaultRoadSpeedPercent);
 
 	/** A speed (cm/s) scaled by a percent, never below 1 cm/s for a walker that walks. */
 	static int32 GetScaledSpeed(int32 Speed, int32 Percent);

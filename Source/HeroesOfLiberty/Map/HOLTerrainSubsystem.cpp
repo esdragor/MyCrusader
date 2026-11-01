@@ -16,6 +16,11 @@ namespace UE::HeroesOfLiberty::Terrain
 		TEXT("A walker's speed in a marsh, in percent of its normal speed, on this server (C3, El Dorado; CQ2a is not settled: 60 is the ")
 		TEXT("recommendation, 75 the other preset). Read at each step. 100: the marsh does not slow"));
 
+	int32 RoadSpeedPercent = FHOLTerrainRules::DefaultRoadSpeedPercent;
+	FAutoConsoleVariableRef CVarRoadSpeedPercent(TEXT("hol.Terrain.RoadSpeedPercent"), RoadSpeedPercent,
+		TEXT("A walker's speed on a road, in percent of its normal speed, on this server (C5, La Foret profonde; CQ6a = A: 130). Read at each ")
+		TEXT("step. 100: the road does not speed up"));
+
 	FAutoConsoleCommand CommandReport(TEXT("hol.Terrain.Report"),
 		TEXT("The terrain zones of the match (C3): how many, the marsh's strength"),
 		FConsoleCommandDelegate::CreateLambda([]()
@@ -25,7 +30,13 @@ namespace UE::HeroesOfLiberty::Terrain
 				UWorld* World = Context.World();
 				if (const UHOLTerrainSubsystem* Terrain = World && World->IsGameWorld() ? World->GetSubsystem<UHOLTerrainSubsystem>() : nullptr)
 				{
-					UE_LOG(LogHOLMatch, Display, TEXT("Terrain: %d zones, marsh speed %d %%"), Terrain->GetZones().Num(), UHOLTerrainSubsystem::GetMarshSpeedPercent());
+					int32 Roads = 0;
+					for (const FHOLTerrainZone& Zone : Terrain->GetZones())
+					{
+						Roads += Zone.Kind == HOLTerrainKind::Road ? 1 : 0;
+					}
+					UE_LOG(LogHOLMatch, Display, TEXT("Terrain: %d zones (%d road), marsh speed %d %%, road speed %d %%"), Terrain->GetZones().Num(), Roads,
+						UHOLTerrainSubsystem::GetMarshSpeedPercent(), UHOLTerrainSubsystem::GetRoadSpeedPercent());
 				}
 			}
 		}));
@@ -77,12 +88,17 @@ int32 UHOLTerrainSubsystem::GetSpeedPercentAt(const FVector2D& Location) const
 	{
 		return 100;
 	}
-	return FHOLTerrainRules::GetSpeedPercentAt(GetMarshSpeedPercent(), Zones, FMath::RoundToInt(Location.X), FMath::RoundToInt(Location.Y));
+	return FHOLTerrainRules::GetSpeedPercentAt(GetMarshSpeedPercent(), Zones, FMath::RoundToInt(Location.X), FMath::RoundToInt(Location.Y), GetRoadSpeedPercent());
 }
 
 int32 UHOLTerrainSubsystem::GetSpeedPercentAt(const FVector& Location) const
 {
 	return GetSpeedPercentAt(FVector2D(Location.X, Location.Y));
+}
+
+int32 UHOLTerrainSubsystem::GetRoadSpeedPercent()
+{
+	return FMath::Clamp(UE::HeroesOfLiberty::Terrain::RoadSpeedPercent, 100, 300);
 }
 
 int32 UHOLTerrainSubsystem::GetMarshSpeedPercent()

@@ -33,6 +33,9 @@ public:
 	/** The marsh's strength now (percent), the cvar held to 1..100. */
 	static int32 GetMarshSpeedPercent();
 
+	/** The road's speed now (percent), the cvar held to 100..300 (C5). */
+	static int32 GetRoadSpeedPercent();
+
 private:
 	TArray<FHOLTerrainZone> Zones;
 };

@@ -11,6 +11,9 @@ struct FHOLTerrainSettings
 
 	// Whether a charge (heavy cavalry, D345.3) is stopped in a marsh (GDD 5.4). Read by the charge when it exists.
 	bool bMarshStopsCharge = true;
+
+	// A walker's speed on a road, in percent of its normal speed (C5, La Foret profonde, CQ6a = A: 130). Read as the marsh's.
+	int RoadSpeedPercent = 130;
 }
 
 // One round zone of the map: its centre and radius in centimetres, and its kind.
@@ -26,6 +29,8 @@ namespace HOLTerrain
 {
 	// The kinds of zone the maps can lay (by index as everywhere in script: 0 marsh).
 	const int Marsh = 0;
+	// 1 road: speeds the walkers up (CQ6a = A); a marsh under it wins (the slowing zone first).
+	const int Road = 1;
 
 	// The presets: 0 the marsh slows to 60 % (the unit loses 2 cm in 5, clearly felt), 1 to 75 % (felt, a crossing is not a stop). Neither is
 	// a decision: the user picks (Auto_Journey_Retours.md, C3-Q1).
@@ -50,6 +55,7 @@ namespace HOLTerrain
 	int SpeedPercentAt(const FHOLTerrainSettings& Settings, const TArray<FHOLTerrainZone>& Zones, int X, int Y)
 	{
 		int Percent = 100;
+		bool bOnRoad = false;
 		for (int Index = 0; Index < Zones.Num(); Index++)
 		{
 			if (!Contains(Zones[Index], X, Y))
@@ -60,8 +66,12 @@ namespace HOLTerrain
 			{
 				Percent = Settings.MarshSpeedPercent;
 			}
+			else if (Zones[Index].Kind == Road)
+			{
+				bOnRoad = true;
+			}
 		}
-		return Percent;
+		return (Percent == 100 && bOnRoad) ? Settings.RoadSpeedPercent : Percent;
 	}
 
 	// A speed (cm/s) scaled by a percent, never below 1 cm/s for a walker that walks.

@@ -62,6 +62,30 @@ void Test_TerrainMarshStopsCharge(FUnitTest& T)
 	T.AssertFalse(HOLTerrain::StopsCharge(S, Zones, 100, 100), "the setting turned off");
 }
 
+// C5 (La Foret profonde, CQ6a = A): a road speeds up the walker, the edge counts in, a marsh over a road wins, the script and the server agree.
+void Test_TerrainRoadSpeedsUp(FUnitTest& T)
+{
+	FHOLTerrainSettings S = HOLTerrain::Preset(0);
+	T.AssertTrue(S.RoadSpeedPercent > 100, "the road speeds up");
+	T.AssertEquals(HOLTerrain::GetServerDefaultRoadPercent(), S.RoadSpeedPercent, "the server and the script start with the same road speed");
+	TArray<FHOLTerrainZone> Zones;
+	FHOLTerrainZone Road;
+	Road.Kind = HOLTerrain::Road;
+	Road.X = 5000;
+	Road.Y = 0;
+	Road.Radius = 400;
+	Zones.Add(Road);
+	T.AssertEquals(S.RoadSpeedPercent, HOLTerrain::SpeedPercentAt(S, Zones, 5000, 0), "on the road");
+	T.AssertEquals(S.RoadSpeedPercent, HOLTerrain::SpeedPercentAt(S, Zones, 5400, 0), "on the road's edge");
+	T.AssertEquals(100, HOLTerrain::SpeedPercentAt(S, Zones, 5401, 0), "one centimetre off the road");
+	T.AssertEquals(HOLTerrain::ServerRoadSpeedPercent(S.RoadSpeedPercent, 5000, 0, 400, 5400, 0), HOLTerrain::SpeedPercentAt(S, Zones, 5400, 0), "server and script on the edge");
+	T.AssertEquals(HOLTerrain::ServerRoadSpeedPercent(S.RoadSpeedPercent, 5000, 0, 400, 5401, 0), HOLTerrain::SpeedPercentAt(S, Zones, 5401, 0), "server and script off the edge");
+	Zones.Add(MarshZone(5000, 0, 200));
+	T.AssertEquals(S.MarshSpeedPercent, HOLTerrain::SpeedPercentAt(S, Zones, 5000, 0), "a marsh over a road slows");
+	T.AssertEquals(S.RoadSpeedPercent, HOLTerrain::SpeedPercentAt(S, Zones, 5300, 0), "beside the marsh, still the road");
+	T.AssertEquals(130 * 100 / 100, HOLTerrain::ScaledSpeed(100, 130), "a scaled speed above 100 percent");
+}
+
 // The server (C++, FHOLTerrainRules) and this script's rule must agree: the same preset 0, the same percent on a grid of points of a
 // zone (inside, on the edge, one centimetre out, far), the same scaled speeds.
 void Test_TerrainServerAndScriptRulesAgree(FUnitTest& T)

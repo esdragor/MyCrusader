@@ -101,7 +101,7 @@ public static class LobbyRules
      * C0.2 (Cartes): the match maps, in the order of Tools/Data/Maps.csv (checked by a test, as FHOLMapRules in the game),
      * each in the five sizes (TC-Q11: the map itself, /Game/Maps/Plain, is the test map, not offered).
      */
-    public static readonly IReadOnlyList<MapInfo> Maps = [new("Plain", SlotCount) { Sizes = MapSizes }, new("Steppe", SlotCount) { Sizes = MapSizes }, new("Hinterland", SlotCount) { Sizes = MapSizes }, new("ElDorado", SlotCount) { Sizes = MapSizes }, new("Cols", SlotCount) { Sizes = MapSizes }];
+    public static readonly IReadOnlyList<MapInfo> Maps = [new("Plain", SlotCount) { Sizes = MapSizes }, new("Steppe", SlotCount) { Sizes = MapSizes }, new("Hinterland", SlotCount) { Sizes = MapSizes }, new("ElDorado", SlotCount) { Sizes = MapSizes }, new("Cols", SlotCount) { Sizes = MapSizes }, new("Forest", SlotCount) { Sizes = MapSizes }];
 
     /** Maps served; the first one is the default of a new lobby. */
     public static readonly IReadOnlyList<MapInfo> DefaultMaps = Maps;

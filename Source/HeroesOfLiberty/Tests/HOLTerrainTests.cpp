@@ -56,6 +56,19 @@ bool FHOLTerrainRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("no zone, full speed"), FHOLTerrainRules::GetSpeedPercentAt(Strength, TConstArrayView<FHOLTerrainZone>(), 0, 0), 100);
 	const TArray<FHOLTerrainZone> Two{ MakeMarsh(0, 0, 800), MakeMarsh(300, 0, 800) };
 	TestEqual(TEXT("in both marshes: slowed once"), FHOLTerrainRules::GetSpeedPercentAt(Strength, Two, 200, 0), Strength);
+	// C5 (La Foret profonde, CQ6a = A): a road speeds the walker up to the road's percent, edge in; a marsh over a road wins.
+	const int32 Road = FHOLTerrainRules::DefaultRoadSpeedPercent;
+	TestTrue(TEXT("the road speeds up"), Road > 100);
+	FHOLTerrainZone RoadZone = MakeMarsh(5000, 0, 400);
+	RoadZone.Kind = HOLTerrainKind::Road;
+	const TArray<FHOLTerrainZone> OneRoad{ RoadZone };
+	TestEqual(TEXT("on the road"), FHOLTerrainRules::GetSpeedPercentAt(Strength, OneRoad, 5000, 0), Road);
+	TestEqual(TEXT("on the road's edge"), FHOLTerrainRules::GetSpeedPercentAt(Strength, OneRoad, 5400, 0), Road);
+	TestEqual(TEXT("one centimetre off the road"), FHOLTerrainRules::GetSpeedPercentAt(Strength, OneRoad, 5401, 0), 100);
+	TestEqual(TEXT("the road's own percent is read"), FHOLTerrainRules::GetSpeedPercentAt(Strength, OneRoad, 5000, 0, 150), 150);
+	const TArray<FHOLTerrainZone> RoadUnderMarsh{ RoadZone, MakeMarsh(5000, 0, 200) };
+	TestEqual(TEXT("a marsh over a road slows"), FHOLTerrainRules::GetSpeedPercentAt(Strength, RoadUnderMarsh, 5000, 0), Strength);
+	TestEqual(TEXT("the road part of the same zones"), FHOLTerrainRules::GetSpeedPercentAt(Strength, RoadUnderMarsh, 5300, 0), Road);
 	TestEqual(TEXT("a walker never reaches 0"), FHOLTerrainRules::GetScaledSpeed(1, 10), 1);
 	TestEqual(TEXT("a unit that does not walk stays still"), FHOLTerrainRules::GetScaledSpeed(0, Strength), 0);
 	TestEqual(TEXT("the percent of the speed"), FHOLTerrainRules::GetScaledSpeed(500, Strength), 500 * Strength / 100);

@@ -413,7 +413,8 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			}
 			// 10. The gold at the centre (C3, GDD 8.5, the Budget `centre`): none in the bases, all of it in one cluster round the middle of the map, and
 			// the whole of the gold budget there (each place's share is what its territory holds, tested above).
-			if (!MapInfo.bGoldAtCentre)
+			// C5 (La Foret profonde): its roads are zones too, checked by its own test (Map.Forest).
+			if (!MapInfo.bGoldAtCentre && FCString::Strcmp(MapInfo.Key, TEXT("Forest")) != 0)
 			{
 				TestEqual(FString::Printf(TEXT("%s: %d terrain layouts on a map without marsh"), *Name, NumTerrainLayouts), NumTerrainLayouts, 0);
 			}
