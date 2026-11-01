@@ -517,7 +517,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const bool bWas = State.bDefending;
 		// IA4 (D579): the forum attacked is weighed by the level; every situation is written down (lives, ratio, decision); Easy sends the army whatever the ratio.
 		// The slot's level (D422) is read from its config into the summary (C++ Read, D579).
-		const EHOLAIDifficulty Level = HOLAILives::Effective(Summary.Level, Now, Data.Army.Lives);
+		const EHOLAIDifficulty Level = HOLAILives::Played(Summary.Level, Now, Data.Army.Lives);
 		if (!LevelLogged.Contains(PlayerIndex))
 		{
 			LevelLogged.Add(PlayerIndex, true);
@@ -684,7 +684,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			return FullSummary;
 		}
 		const float Now = Data.GameSeconds;
-		const EHOLAIDifficulty Level = HOLAILives::Effective(FullSummary.Level, Now, Data.Army.Lives);
+		const EHOLAIDifficulty Level = HOLAILives::Played(FullSummary.Level, Now, Data.Army.Lives);
 		const bool bAttacked = HOLAIArmy::Threat(FullSummary, Data.Army).bThreatened || State.bDefending;
 		const FVector From = FullSummary.bHasCentre ? FullSummary.CentreLocation : FVector(0, 0, 0);
 		const FHOLAIRelayStep Result = HOLAIRelay::Step(Memory, Mode, Level, HOLAIArmy::WithoutWave(FullSummary, Wave), Relays, bAttacked, Now, From, FHOLAIRelayData());
