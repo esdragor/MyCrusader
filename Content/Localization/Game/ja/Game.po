@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-01 14:01\n"
-"PO-Revision-Date: 2026-11-01 14:01\n"
+"POT-Creation-Date: 2026-11-01 14:21\n"
+"PO-Revision-Date: 2026-11-01 14:21\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -614,6 +614,13 @@ msgstr "エルドラド"
 msgctxt "HOLMaps,Map_Cols"
 msgid "Les Cols"
 msgstr "峠"
+
+#. Key:	Map_Forest
+#. SourceLocation:	Source/HeroesOfLiberty/Map/HOLMapRules.cpp(21)
+#: Source/HeroesOfLiberty/Map/HOLMapRules.cpp(21)
+msgctxt "HOLMaps,Map_Forest"
+msgid "La Forêt profonde"
+msgstr "深い森"
 
 #. Key:	AbsentLine
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDisconnectRules.cpp(70)
