@@ -76,6 +76,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The step of each slot's last Market trade (M6).
 	TMap<int, int64> MarketSteps;
 
+	// Since when each slot has a need missing without a break (to build its Market after a minute, MK-Q3 C).
+	TMap<int, FHOLAIMarketBuildMemory> MarketBuilds;
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -219,6 +222,11 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 		// 3b2. The Market (M6, MK-Q3 provisional): with a finished one, a surplus buys what is missing (HOLAIMarket::Choose).
 		ThinkMarket(PlayerIndex, Step, Summary, Data);
+		const int MarketBuilder = ThinkMarketBuild(PlayerIndex, Step, Summary, Data);
+		if (MarketBuilder >= 0)
+		{
+			Free.Remove(MarketBuilder);
+		}
 
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
@@ -492,6 +500,58 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			const FString Side = Choice.bBuy ? "buy" : "sell";
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Market {Side} {Choice.Lots} lots of resource {Choice.Resource} ({Choice.Reason})");
 		}
+	}
+
+	// The Market's construction (MK-Q3 C, D605): Hard only builds one, at the tier where it opens, when a need has been missing for more than a
+	// minute (HOLAIMarket::WantsMarket); behind the centre, away from the enemy; one Peasant sent, not one already sent to a site. Returns that Peasant (-1: none).
+	int ThinkMarketBuild(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		bool bHasMarket = false;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			bHasMarket = bHasMarket || Summary.Buildings[Index].TypeName == n"Market";
+		}
+		const TArray<float> Spend = HOLAINeeds::SpendOf(Summary, Data);
+		TArray<int> Stock;
+		TArray<int> Wanted;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			Stock.Add(HOLAIOpening::PartOf(Summary, Resource).Stock);
+			Wanted.Add(int(Spend[Resource]));
+		}
+		FHOLAIMarketBuildMemory Memory;
+		MarketBuilds.Find(PlayerIndex, Memory);
+		const bool bWants = HOLAIMarket::WantsMarket(FHOLAIMarketSettings(), Memory, Stock, Wanted, Data.GameSeconds, int(Summary.Level), Summary.Tier, bHasMarket);
+		MarketBuilds.Add(PlayerIndex, Memory);
+		FHOLAITypeFigures Figures;
+		if (!bWants || !Summary.bHasCentre || !HOLAIOrder::ReadAIBuildingFigures(n"Market", Figures) || Summary.Wood.Stock < Figures.CostWood)
+		{
+			return -1;
+		}
+		FHOLAIBuilders Sent;
+		SentBuilders.Find(PlayerIndex, Sent);
+		const int Builder = HOLAIOpening::PickBuilder(Summary, Sent.Ids);
+		if (Builder < 0 || Summary.PeasantIds.Num() < Data.MinPeasantsToBuild || HOLAIOpening::SitesUnderWay(Summary) >= Data.MaxSites)
+		{
+			return -1;
+		}
+		FVector Spot;
+		if (!HOLAIOrder::FindAIPlacement(PlayerIndex, n"Market", Summary.CentreLocation - HOLAIOpening::TowardEnemy(Summary) * Data.AwayDistance, Data.Rings, Spot))
+		{
+			LogBuildOnce(PlayerIndex, Step, "no spot for Market");
+			return -1;
+		}
+		TArray<int> Builders;
+		Builders.Add(Builder);
+		if (!HOLAIOrder::IssueAIPlaceOrder(PlayerIndex, n"Market", Spot, Builders))
+		{
+			LogBuildOnce(PlayerIndex, Step, "build Market refused");
+			return -1;
+		}
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build Market at ({Spot.X}, {Spot.Y}) by #{Builder} (a need missing for over a minute)");
+		Sent.Ids.Add(Builder);
+		SentBuilders.Add(PlayerIndex, Sent);
+		return Builder;
 	}
 
 	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
