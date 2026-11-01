@@ -185,3 +185,13 @@ namespace HOLMarket
 		return Later;
 	}
 }
+
+int32 HOLTribute::Received(const int32 Sent, const int32 TaxPercent)
+{
+	if (Sent <= 0)
+	{
+		return 0;
+	}
+	const int32 Tax = (Sent * FMath::Clamp(TaxPercent, 0, 100)) / 100;
+	return Sent - Tax;
+}

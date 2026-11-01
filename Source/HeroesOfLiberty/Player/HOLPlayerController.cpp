@@ -1331,6 +1331,31 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** D372, scripted: a tribute from the local player's finished Market (the panel Diplomatie, D387, will call RequestTribute). */
+	FAutoConsoleCommand TributeCommand(
+		TEXT("hol.Tribute"),
+		TEXT("hol.Tribute <Slot> <food|wood|stone|gold> <Amount>: asks the server to give Amount of that resource to the player at Slot, from the local player's own Market (taxed 30 %)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Tribute <Slot> <food|wood|stone|gold> <Amount>"));
+				return;
+			}
+			const int32 Resource = Args[1].Equals(TEXT("food"), ESearchCase::IgnoreCase) ? 0 : Args[1].Equals(TEXT("wood"), ESearchCase::IgnoreCase) ? 1
+				: Args[1].Equals(TEXT("stone"), ESearchCase::IgnoreCase) ? 2 : Args[1].Equals(TEXT("gold"), ESearchCase::IgnoreCase) ? 3 : INDEX_NONE;
+			if (Resource == INDEX_NONE)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Tribute: unknown resource %s"), *Args[1]);
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SetSelection(FindOwnBuilding(*Controller, FName(TEXT("Market"))));
+				Controller->RequestTribute(FCString::Atoi(*Args[0]), Resource, FCString::Atoi(*Args[2]));
+			}
+		}));
+
 	/** M6: the common book of prices and the local players' stocks as this machine has them (a dedicated server too: the book alone). */
 	FAutoConsoleCommandWithWorld MarketReportCommand(
 		TEXT("hol.Market.Report"),
@@ -3737,6 +3762,18 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 }
 
+void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	if (IsSpectator())
+	{
+		return;
+	}
+	if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		ServerTribute(Building, Receiver, Resource, Amount);
+	}
+}
+
 void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	if (IsSpectator())
@@ -4696,6 +4733,23 @@ void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* B
 		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
 		Command.Building = Building;
 		Command.Index = Index;
+		Commands->IssueProductionOrder(Command);
+	}
+}
+
+void AHOLPlayerController::ServerTribute_Implementation(AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Tribute;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Command.Receiver = Receiver;
+		Command.Resource = Resource;
+		Command.Amount = Amount;
 		Commands->IssueProductionOrder(Command);
 	}
 }

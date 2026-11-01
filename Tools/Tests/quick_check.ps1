@@ -2719,6 +2719,7 @@ if ($NetListening) {
         # M6: the Market (see the server's sequence): client 1 spawns it, reports, sells 2 lots of wood, reports; client 2 reports after.
         $NetSteps += "mark market"
         if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.SpawnBuilding Market 1 1500 3000", "wait 2", "hol.Market.Report", "hol.Market.Trade wood 2 sell", "wait 2", "hol.Market.Report",
+            "hol.Tribute 0 gold 100", "wait 2", "hol.Market.Report",
             "signal $(Join-Path $TestSaved "quick_net_market_asked.flag")", "waitfile $(Join-Path $TestSaved "quick_net_market_server.flag") 120", "wait 1", "hol.Market.Report" }
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 3", "hol.Market.Report" }
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_market_done$Client.flag")"
@@ -6860,7 +6861,11 @@ if ($Parts -contains "net") {
         $MarketServerAll = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
         $MarketSold = @($MarketServerAll | Select-String -SimpleMatch "Market: slot $BobSlot sold 2 lots of resource 1")
         $MarketChecks["server: Bob's sale of 2 lots of wood done ($($MarketSold.Count))"] = $MarketSold.Count -eq 1
+        # D372 (tributes): Bob gives 100 gold to Alice from his Market: 70 arrive (30 % kept), on the server and in Alice's own stock.
+        $MarketGave = @($MarketServerAll | Select-String -SimpleMatch "Tribute: slot $BobSlot gave 100 of resource 3 to slot $AliceSlot, 70 arrived (tax 30)")
+        $MarketChecks["server: Bob's tribute of 100 gold to Alice done, 70 arrived ($($MarketGave.Count))"] = $MarketGave.Count -eq 1
         $MarketServerLines = @(Get-ClientSection $MarketServerAll "net market")
+        $AliceServerStock = "$($MarketServerLines | Select-String -Pattern "Market stock slot ${AliceSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $ServerBook = "$($MarketServerLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $ServerStock = "$($MarketServerLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $MarketChecks["server: the book ($ServerBook) and Bob's stock ($ServerStock) reported"] = $ServerBook -ne "" -and $ServerStock -ne ""
@@ -6876,6 +6881,10 @@ if ($Parts -contains "net") {
                 $MarketChecks["client $N (Bob): the sale moved the book (before $($Books[0]), after $($Books[-1]))"] = $Books.Count -ge 3 -and $Books[0] -ne $Books[1]
                 $OwnStock = "$($MarketLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
                 $MarketChecks["client $N (Bob): his stock ($OwnStock) is the server's ($ServerStock)"] = $OwnStock -ne "" -and $OwnStock -eq $ServerStock
+            }
+            else {
+                $AliceOwn = "$($MarketLines | Select-String -Pattern "Market stock slot ${AliceSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+                $MarketChecks["client $N (Alice): her stock after the tribute ($AliceOwn) is the server's ($AliceServerStock)"] = $AliceOwn -ne "" -and $AliceOwn -eq $AliceServerStock
             }
         }
         $AllOk = (Report "net market" $MarketChecks) -and $AllOk

@@ -353,4 +353,104 @@ bool FHOLMarketChainTest::RunTest(const FString& Parameters)
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
 	return true;
 }
+// D372 (tributes): the order's whole chain on the server's real path, like Market.Chain: the order queue, the production step (owner,
+// finished Market), the giver's stock, the receiver's stock, the tax. The 30 % is the rule's (HOLTribute::DefaultTaxPercent), as the script's.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTributeChainTest, "HeroesOfLiberty.Market.Tribute",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLTributeChainTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("the tax is 30 % by default"), HOLTribute::DefaultTaxPercent, 30);
+	TestEqual(TEXT("100 sent: 70 arrive"), HOLTribute::Received(100, 30), 70);
+	TestEqual(TEXT("1 sent: the tax rounds down, the gift is not eaten"), HOLTribute::Received(1, 30), 1);
+	TestEqual(TEXT("a tax over 100 % is bounded"), HOLTribute::Received(100, 250), 0);
+	TestEqual(TEXT("nothing sent: nothing arrives"), HOLTribute::Received(0, 30), 0);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Giver = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Taker = World->SpawnActor<AHOLPlayerState>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLBuilding* Market = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Site = World->SpawnActor<AHOLBuilding>(FVector(5000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(FVector(0.0, 5000.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Enemy = World->SpawnActor<AHOLBuilding>(FVector(0.0, -5000.0, 0.0), FRotator::ZeroRotator);
+	if (TestTrue(TEXT("test world ready"), State && Giver && Taker && Commands && Production && Simulation && Market && Site && Forum && Enemy))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Index <= 2 ? EHOLSlotState::Human : EHOLSlotState::Closed;
+			Config.Slots[Index].Team = 0;
+		}
+		State->InitVictory(Config);
+		State->ResetMarketBook();
+		Giver->SetMatchSlot(0, 0);
+		Taker->SetMatchSlot(1, 1);
+		State->AddPlayerState(Giver);
+		State->AddPlayerState(Taker);
+		Market->Setup(HOLBuildingTypeNames::Market, 0, 0);
+		Site->Setup(HOLBuildingTypeNames::Market, 0, 0, EHOLConstructionState::Foundation);
+		Forum->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Enemy->Setup(HOLBuildingTypeNames::Market, 1, 1);
+		Production->OnWorldBeginPlay(*World);
+
+		int64 StepCount = 0;
+		const auto RunStep = [&]() { Simulation->GetOnStepStarted().Broadcast(++StepCount); };
+		const auto Order = [&](AHOLBuilding* At, const int32 From, const int32 To, const int32 Resource, const int32 Amount)
+		{
+			FHOLProductionCommand Command;
+			Command.Kind = FHOLProductionCommand::EKind::Tribute;
+			Command.PlayerIndex = From;
+			Command.Building = At;
+			Command.Receiver = To;
+			Command.Resource = Resource;
+			Command.Amount = Amount;
+			Commands->IssueProductionOrder(Command);
+		};
+		const int32 Food = static_cast<int32>(EHOLResource::Food);
+		const int32 Wood = static_cast<int32>(EHOLResource::Wood);
+		const int32 Gold = static_cast<int32>(EHOLResource::Gold);
+
+		// 1. 200 wood given from the finished Market: queued, applied at the next step; 140 arrive (30 % kept by the Market).
+		Giver->SetResources(FHOLResources(500, 300, 0, 50));
+		Taker->SetResources(FHOLResources(10, 20, 30, 40));
+		Order(Market, 0, 1, Wood, 200);
+		TestTrue(TEXT("queued only: nothing has moved"), Giver->GetResources() == FHOLResources(500, 300, 0, 50) && Taker->GetResources() == FHOLResources(10, 20, 30, 40));
+		RunStep();
+		TestTrue(TEXT("the giver pays 200 wood"), Giver->GetResources() == FHOLResources(500, 100, 0, 50));
+		TestTrue(TEXT("the receiver gets 140 wood"), Taker->GetResources() == FHOLResources(10, 160, 30, 40));
+
+		// 2. Gold is given too (a tribute is not an exchange: no book, no lots).
+		Order(Market, 0, 1, Gold, 50);
+		RunStep();
+		TestTrue(TEXT("50 gold given: 35 arrive"), Giver->GetResources() == FHOLResources(500, 100, 0, 0) && Taker->GetResources() == FHOLResources(10, 160, 30, 75));
+
+		// 3. Every refusal changes nothing.
+		const FHOLResources GiverBefore = Giver->GetResources();
+		const FHOLResources TakerBefore = Taker->GetResources();
+		Order(Market, 0, 1, Wood, 101);      // more than the stock
+		Order(Market, 0, 1, Wood, 0);        // nothing
+		Order(Market, 0, 1, Wood, -5);
+		Order(Market, 0, 0, Food, 10);       // oneself
+		Order(Market, 0, 7, Food, 10);       // nobody at that slot
+		Order(Market, 0, INDEX_NONE, Food, 10);
+		Order(Market, 0, 1, 9, 10);          // no such resource
+		Order(Market, 0, 1, INDEX_NONE, 10);
+		Order(Site, 0, 1, Food, 10);         // a Market not finished
+		Order(Enemy, 0, 1, Food, 10);        // another player's Market
+		Order(Forum, 0, 1, Food, 10);        // not a Market
+		Order(nullptr, 0, 1, Food, 10);      // no building
+		RunStep();
+		TestTrue(TEXT("twelve refused orders: the giver's stock has not moved"), Giver->GetResources() == GiverBefore);
+		TestTrue(TEXT("... nor the receiver's"), Taker->GetResources() == TakerBefore);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS

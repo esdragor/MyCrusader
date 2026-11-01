@@ -220,6 +220,34 @@ void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Orde
 		Order.bBuy ? TEXT("bought") : TEXT("sold"), Order.Lots, Order.Resource, Trade.Gold, Trade.Book.Prices[Order.Resource], *After.ToString());
 }
 
+void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& Giver)
+{
+	// A client could send anything: only from a Market, to another player of the match, one of the four resources, a positive amount in stock.
+	AHOLPlayerState* Taker = Order.Receiver != Order.PlayerIndex ? FindPlayerState(Order.Receiver) : nullptr;
+	const bool bResource = Order.Resource >= 0 && Order.Resource <= static_cast<int32>(EHOLResource::Gold);
+	if (Building.GetTypeName() != HOLBuildingTypeNames::Market || !Taker || !bResource || Order.Amount <= 0)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d to slot %d ignored (%s, resource %d, amount %d)"), Order.PlayerIndex, Order.Receiver,
+			*Building.GetTypeName().ToString(), Order.Resource, Order.Amount);
+		return;
+	}
+	const EHOLResource Resource = static_cast<EHOLResource>(Order.Resource);
+	FHOLResources GiverStock = Giver.GetResources();
+	if (GiverStock[Resource] < Order.Amount)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d cannot give %d of resource %d (stock %d)"), Order.PlayerIndex, Order.Amount, Order.Resource, GiverStock[Resource]);
+		return;
+	}
+	const int32 Arrives = HOLTribute::Received(Order.Amount, HOLTribute::DefaultTaxPercent);
+	FHOLResources TakerStock = Taker->GetResources();
+	GiverStock[Resource] -= Order.Amount;
+	TakerStock[Resource] += Arrives;
+	Giver.SetResources(GiverStock);
+	Taker->SetResources(TakerStock);
+	UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d gave %d of resource %d to slot %d, %d arrived (tax %d)"), Order.PlayerIndex, Order.Amount, Order.Resource,
+		Order.Receiver, Arrives, Order.Amount - Arrives);
+}
+
 void UHOLProductionSubsystem::ApplyOrders()
 {
 	using namespace UE::HeroesOfLiberty::Production;
@@ -325,6 +353,11 @@ void UHOLProductionSubsystem::ApplyOrders()
 		if (Order.Kind == FHOLProductionCommand::EKind::Trade)
 		{
 			ApplyMarketTrade(Order, *Building, *PlayerState);
+			continue;
+		}
+		if (Order.Kind == FHOLProductionCommand::EKind::Tribute)
+		{
+			ApplyTribute(Order, *Building, *PlayerState);
 			continue;
 		}
 
