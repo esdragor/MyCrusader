@@ -1,17 +1,41 @@
-# IA4 D579 : toi contre une IA Normale ; quand son forum est attaque et qu'elle sait perdre, elle feinte (recule, contourne) et garde son economie
-# Plain, toi (slot 0) contre une IA Normale (slot 1), 5 Paysans de depart chacun, 1000 de chaque ressource pour batir vite une Caserne.
-# Les valeurs (HOLAILives.as, FHOLAILivesData) sont des reglages provisoires : on les regle d'apres ce que tu vois.
-# A regarder :
-#  1. fais 3-4 soldats (Lanciers) et envoie-les frapper son Centre (a moins de 8 m) alors qu'elle n'a presque pas d'armee : une IA Normale ne se jette pas dessus,
-#     elle recule (vers un refuge derriere son centre), puis contourne a 25 m de tes soldats, puis frappe ;
-#  2. ses Paysans proches de tes soldats courent vers le refuge et non vers le centre attaque ;
-#  3. le journal (Saved/Logs) dit « forum attacked ... decision feint, ... » puis « feint, phase 1 (back) / 2 (round) / 3 (strike) » et « Peasants run to the refuge » ;
-#  4. sur la derniere vie : tout sur la ruine, aucune feinte (regle commune).
+# IA4 D579 (essai de 3 min) : IA Normale, son forum est attaqué et elle sait qu'elle perd : elle FEINTE (recule, contourne, frappe) au lieu de charger
+# Plain, toi (slot 0) contre une IA Normale (slot 1). Le scénario pose d'office chez elle une Caserne, une Archerie et une PETITE armée (3 Lanciers).
+# À ton Entrée, 10 Hommes d'armes (à toi) arrivent à ~8 m de son forum : rapport de force très en ta faveur (< 0,3), elle ne se jette pas dessus.
+# Point 1 : capture ai_normal_base (ses bâtiments, sa petite armée). Point 2 : capture ai_normal_back (son armée recule derrière son forum, phase 1).
+# Point 3 : capture ai_normal_round (elle contourne tes soldats par le côté, phase 2). Journal : « decision feint », « feint, phase 1 / 2 / 3 ».
 waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
 waitlog AI slot 1 step
-waitlog Gather order of slot 1:
 hol.Cheat.Resources 1000
-hol.Camera.FocusSlot 0
+hol.Cheat.Population 200
+hol.Cheat.SpawnBuilding Barracks 1 2800 2600 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding ArcheryRange 1 2800 -2600 enemy
+waitlog Cheat: spawned ArcheryRange of slot 1
+hol.Camera.FocusNear 2800 0 enemy
 frames 2
-note IA « Normale 2 » : feinte quand elle sait perdre (recule, contourne), garde son economie. Laisse tourner 10 a 15 min ; suis-la avec ² hol.Camera.FocusSlot 1.
-note Envoie 3-4 soldats pres de son forum alors qu'elle a peu d'armee.
+hol.Units.SpawnHere 3 Spearman 1 500
+waitunits 12
+hol.Camera.FocusNear 1800 0 enemy
+frames 30
+capture ai_normal_base
+hol.Test.Sanity
+note 1. Devant le forum de « IA Normal 2 » : une Caserne, une Archerie, et seulement 3 Lanciers (elle est faible).
+note 2. Appuie sur Entrée : 10 Hommes d'armes (à toi) arrivent à ~8 m de son forum. Elle ne charge pas : son armée recule d'une quarantaine de mètres derrière son forum, puis contourne tes soldats par le côté, puis frappe.
+waitkey Entrée : j'envoie 10 Hommes d'armes devant son forum
+hol.Camera.FocusNear 1500 0 enemy
+frames 2
+hol.Units.SpawnHere 10 ManAtArms 0 250
+hol.Camera.FocusNear 800 0 enemy
+waitlog decision feint
+waitlog feint, phase 1
+wait 3
+hol.Camera.FocusNear -1200 0 enemy
+frames 3
+capture ai_normal_back
+waitlog feint, phase 2
+wait 2
+hol.Camera.FocusNear -600 0 enemy
+frames 3
+capture ai_normal_round
+note 3. Phase 1 : elle recule. Phase 2 : elle contourne. Phase 3 : elle frappe (le journal le dit : « feint, phase 1 / 2 / 3 »). ² hol.Camera.FocusSlot 1 recentre sur son forum.

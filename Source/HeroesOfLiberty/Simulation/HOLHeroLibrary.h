@@ -131,6 +131,15 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static bool TalentHasEffect(int32 Row, int32 Family);
 
+	/** T5: the name of the talent of Family in Row, as Tools/Data/Talents.csv (the dev table, GDD 13.2) spells it; empty when the file is missing (a package).
+	 * Only the test that keeps the game's names (HOLTalentNames.as) equal to the table reads it. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
+	static FString GetTalentCsvName(int32 Row, int32 Family);
+
+	/** T5: the sound that tells a talent point was just spent (the hero's level-up sound for now, 2D, locally). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero", meta = (WorldContext = "WorldContextObject"))
+	static void PlayTalentTakenSound(const UObject* WorldContextObject);
+
 	/** J8c.3: the level the hero's Ability opens at (D52: 1, the banner 4). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Hero")
 	static int32 GetHeroAbilityUnlockLevel(EHOLHeroAbility Ability);

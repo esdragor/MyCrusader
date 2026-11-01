@@ -79,6 +79,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
+	// What each slot remembers of its sites under way, to build again the ones whose builder left (HOLAIOpening::ResumeSite).
+	TMap<int, FHOLAISiteMemory> SiteMemories;
+
 	// The last reason a building could not be placed, per slot (written again only when it changes).
 	TMap<int, FString> LastBuildReason;
 
@@ -125,6 +128,24 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		if (HOLAIOpening::SitesUnderWay(Summary) == 0)
 		{
 			Sent.Ids.Empty();
+		}
+
+		// 0b. A site whose builder left it (ran from a soldier) is built again by another Peasant.
+		FHOLAISiteMemory Sites;
+		SiteMemories.Find(PlayerIndex, Sites);
+		FVector ResumedSite;
+		const int Resumer = HOLAIOpening::ResumeSite(Sites, Summary, Sent.Ids, Data.GameSeconds, ResumedSite);
+		SiteMemories.Add(PlayerIndex, Sites);
+		if (Resumer >= 0)
+		{
+			TArray<int> One;
+			One.Add(Resumer);
+			if (HOLAIOrder::IssueAIBuildOrder(PlayerIndex, ResumedSite, One))
+			{
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: Peasant {Resumer} builds the abandoned site at ({ResumedSite.X}, {ResumedSite.Y}) again");
+				Free.Remove(Resumer);
+				Sent.Ids.Add(Resumer);
+			}
 		}
 		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
 		if (Build.bPlanFarms)

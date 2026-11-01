@@ -4478,6 +4478,15 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ($DawnTalents[2] -eq "points 1 | 1 1 1 1 n | advised 1 | seals 1 keys 0 | Talents à dépenser : 1 — choix conseillé | family buttons row 6")
     # TQ4 (PROVISIONAL, option B by default): with a point kept and no talent yet, the Captain button of the three family buttons takes the first talent by the order queue (a hidden or greyed button would take nothing); then the advised button took one more.
     $Checks["the family button took the first talent, the advised button another (queued orders: $(@($Dawn | Select-String -SimpleMatch 'Hero talent order: slot 0 family 1 queued').Count))"] = @($Dawn | Select-String -SimpleMatch "Hero talent order: slot 0 family 1 queued").Count -ge 2
+    # The trial of 2026-10-31 ("a spent point changed nothing the eye could see, the names are not the same everywhere"): the notice, the list and
+    # the tooltips all name the talents from HOLTalentNames, the one table (HOLTalentNames_Test.as compares it with Talents.csv).
+    $DawnTexts = @($Dawn | Select-String -Pattern "HUD hero talent texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
+    $Checks["three talents: the notice names the last, the list names the three ($($DawnTexts | Select-Object -First 1))"] =
+        ($DawnTexts.Count -ge 1) -and $DawnTexts[0].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[0].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube")
+    $Checks["level 6: the three family buttons' tooltips name the talents of row 5 ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
+        ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("Gardien, rangée 5 : Remparts de lumière — ") -and $DawnTexts[1].Contains("Capitaine, rangée 5 : Grâce abondante — ") -and $DawnTexts[1].Contains("Champion, rangée 5 : Contre parfait — ")
+    $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 2 -First 1))"] =
+        ($DawnTexts.Count -ge 3) -and $DawnTexts[2].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[2].Contains("pas encore actif dans ce prototype")
     $DawnMoves = @(-1, -1)
     if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
         $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
