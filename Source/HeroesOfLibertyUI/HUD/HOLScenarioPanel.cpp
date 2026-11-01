@@ -84,7 +84,7 @@ void UHOLScenarioPanel::Refresh()
 	using namespace UE::HeroesOfLiberty::UI::ScenarioPanel;
 
 	const FDisplay& Display = HOLTestHooks::GetScenarioDisplay();
-	const bool bShown = !Display.Name.IsEmpty() && !Display.bClosed;
+	const bool bShown = !Display.Name.IsEmpty() && !Display.bClosed && !Display.bHidden;
 	if (Panel)
 	{
 		Panel->SetVisibility(bShown ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);

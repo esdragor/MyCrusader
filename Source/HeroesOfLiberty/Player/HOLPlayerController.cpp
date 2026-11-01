@@ -1306,6 +1306,93 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** M6 (Market over the network), scripted: a trade at the local player's finished Market, through the real order (RequestMarketTrade). */
+	FAutoConsoleCommand MarketTradeCommand(
+		TEXT("hol.Market.Trade"),
+		TEXT("hol.Market.Trade <food|wood|stone> <Lots> <buy|sell>: asks the server for a trade at the local player's own Market (lots of 100 gold to buy, of 100 of the resource to sell)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Market.Trade <food|wood|stone> <Lots> <buy|sell>"));
+				return;
+			}
+			const int32 Resource = Args[0].Equals(TEXT("food"), ESearchCase::IgnoreCase) ? 0 : Args[0].Equals(TEXT("wood"), ESearchCase::IgnoreCase) ? 1
+				: Args[0].Equals(TEXT("stone"), ESearchCase::IgnoreCase) ? 2 : INDEX_NONE;
+			if (Resource == INDEX_NONE)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Market.Trade: unknown resource %s"), *Args[0]);
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SetSelection(FindOwnBuilding(*Controller, FName(TEXT("Market"))));
+				Controller->RequestMarketTrade(Resource, FCString::Atoi(*Args[1]), Args[2].Equals(TEXT("buy"), ESearchCase::IgnoreCase));
+			}
+		}));
+
+	/** D372, scripted: a tribute from the local player's finished Market (the panel Diplomatie, D387, will call RequestTribute). */
+	FAutoConsoleCommand TributeCommand(
+		TEXT("hol.Tribute"),
+		TEXT("hol.Tribute <Slot> <food|wood|stone|gold> <Amount>: asks the server to give Amount of that resource to the player at Slot, from the local player's own Market (taxed 30 %)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Tribute <Slot> <food|wood|stone|gold> <Amount>"));
+				return;
+			}
+			const int32 Resource = Args[1].Equals(TEXT("food"), ESearchCase::IgnoreCase) ? 0 : Args[1].Equals(TEXT("wood"), ESearchCase::IgnoreCase) ? 1
+				: Args[1].Equals(TEXT("stone"), ESearchCase::IgnoreCase) ? 2 : Args[1].Equals(TEXT("gold"), ESearchCase::IgnoreCase) ? 3 : INDEX_NONE;
+			if (Resource == INDEX_NONE)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Tribute: unknown resource %s"), *Args[1]);
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->SetSelection(FindOwnBuilding(*Controller, FName(TEXT("Market"))));
+				Controller->RequestTribute(FCString::Atoi(*Args[0]), Resource, FCString::Atoi(*Args[2]));
+			}
+		}));
+
+	/** M6: the common book of prices and the local players' stocks as this machine has them (a dedicated server too: the book alone). */
+	FAutoConsoleCommandWithWorld MarketReportCommand(
+		TEXT("hol.Market.Report"),
+		TEXT("hol.Market.Report: logs the Market's prices (food wood stone gold) as this machine has them, and each player state's stock"),
+		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
+		{
+			const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+			if (!GameState)
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Market report: no game state"));
+				return;
+			}
+			const HOLMarket::FBook Book = GameState->GetMarketBook();
+			UE_LOG(LogHOLMatch, Display, TEXT("Market report: net mode %d, book %s, prices %d %d %d %d"), static_cast<int32>(World->GetNetMode()),
+				GameState->HasMarketBook() ? TEXT("set") : TEXT("not set"), Book.Prices[0], Book.Prices[1], Book.Prices[2], Book.Prices[3]);
+			int32 Markets = 0;
+			for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+			{
+				if (It->GetTypeName() == FName(TEXT("Market")))
+				{
+					++Markets;
+					UE_LOG(LogHOLMatch, Display, TEXT("Market report: a Market of slot %d, %s"), static_cast<int32>(It->GetOwnerPlayer()),
+						It->IsFinished() ? TEXT("finished") : TEXT("not finished"));
+				}
+			}
+			UE_LOG(LogHOLMatch, Display, TEXT("Market report: %d Markets"), Markets);
+			for (const APlayerState* PlayerState : GameState->PlayerArray)
+			{
+				if (const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState))
+				{
+					const FHOLResources Stock = HOLPlayerState->GetResources();
+					UE_LOG(LogHOLMatch, Display, TEXT("Market stock slot %d: food %d wood %d stone %d gold %d"), HOLPlayerState->GetPlayerIndex(), Stock.Food, Stock.Wood,
+						Stock.Stone, Stock.Gold);
+				}
+			}
+		}));
+
 	FAutoConsoleCommand ProductionReportCommand(
 		TEXT("hol.Prod.Report"),
 		TEXT("hol.Prod.Report: logs the local player's economy and the queue of its selected building"),
@@ -3686,6 +3773,18 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 }
 
+void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	if (IsSpectator())
+	{
+		return;
+	}
+	if (AHOLBuilding* Building = GetOwnSelection())
+	{
+		ServerTribute(Building, Receiver, Resource, Amount);
+	}
+}
+
 void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	if (IsSpectator())
@@ -4645,6 +4744,23 @@ void AHOLPlayerController::ServerCancelProduction_Implementation(AHOLBuilding* B
 		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
 		Command.Building = Building;
 		Command.Index = Index;
+		Commands->IssueProductionOrder(Command);
+	}
+}
+
+void AHOLPlayerController::ServerTribute_Implementation(AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (Building && HOLPlayerState && Commands)
+	{
+		FHOLProductionCommand Command;
+		Command.Kind = FHOLProductionCommand::EKind::Tribute;
+		Command.PlayerIndex = HOLPlayerState->GetPlayerIndex();
+		Command.Building = Building;
+		Command.Receiver = Receiver;
+		Command.Resource = Resource;
+		Command.Amount = Amount;
 		Commands->IssueProductionOrder(Command);
 	}
 }

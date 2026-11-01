@@ -44,6 +44,7 @@
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
  *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
  *                        "Scenario note: Text" (what a scenario asks to try)
+ *   panel hide|show      hides the scenario's panel (top centre, over the game's own windows) / shows it again
  *   waitkey [Text]       waits for the user to press the continue key (Enter, in game), Text (else « Entrée : étape
  *                        suivante ») shown on the panel in its own colour meanwhile; no timeout. Logs "Scenario waits
  *                        for the key: Text", then "Scenario key: go on (key|auto)". Goes on by itself after
@@ -352,6 +353,13 @@ namespace UE::HeroesOfLiberty::Dev
 			else if (Verb == TEXT("mark"))
 			{
 				UE_LOG(LogHOLTest, Display, TEXT("Test mark: %s"), *Rest);
+			}
+			else if (Verb == TEXT("panel"))
+			{
+				// panel hide | panel show: the scenario's panel sits at the top centre, where the game's own windows (the duel's) are.
+				HOLTestHooks::GetScenarioDisplay().bHidden = Rest.TrimStartAndEnd().Equals(TEXT("hide"), ESearchCase::IgnoreCase);
+				UE_LOG(LogHOLTest, Display, TEXT("Scenario panel: %s"), HOLTestHooks::GetScenarioDisplay().bHidden ? TEXT("hidden") : TEXT("shown"));
+				HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
 			}
 			else if (Verb == TEXT("note"))
 			{

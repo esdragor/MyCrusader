@@ -20,6 +20,8 @@ struct FHOLProductionCommand
 		Rally,
 		/** M4c (Market, GDD 5.5, D84): a trade of Lots lots of Resource at the player's finished Market (Building), bought or sold. */
 		Trade,
+		/** D372 (tributes): Amount of Resource (0 food, 1 wood, 2 stone, 3 gold) given to the player at slot Receiver, from the player's finished Market (Building), taxed. */
+		Tribute,
 	};
 
 	EKind Kind = EKind::Queue;
@@ -47,4 +49,8 @@ struct FHOLProductionCommand
 	int32 Lots = 0;
 	/** Trade: true to buy the goods with gold, false to sell them for gold. */
 	bool bBuy = false;
+	/** Tribute: the slot that receives. */
+	int32 Receiver = INDEX_NONE;
+	/** Tribute: what leaves the giver's stock (the receiver gets less, the tax is kept by the Market). */
+	int32 Amount = 0;
 };

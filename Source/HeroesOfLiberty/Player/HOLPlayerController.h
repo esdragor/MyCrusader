@@ -383,6 +383,8 @@ public:
 	 * selected Market (its own, finished): sold for gold, or bought with gold when bBuy. The server prices it at the common book.
 	 */
 	void RequestMarketTrade(int32 Resource, int32 Lots, bool bBuy);
+	/** D372: asks the server to give Amount of Resource (0 food, 1 wood, 2 stone, 3 gold) to the player at slot Receiver, from the selected Market (its own, finished); taxed. */
+	void RequestTribute(int32 Receiver, int32 Resource, int32 Amount);
 	/**
 	 * Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. bQueue
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
@@ -673,6 +675,10 @@ private:
 	/** M4c: an exchange at a Market (UHOLProductionSubsystem::ApplyMarketTrade checks the owner, the Market, the lots and the stock). */
 	UFUNCTION(Server, Reliable)
 	void ServerMarketTrade(AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
+
+	/** D372: a tribute from a Market (UHOLProductionSubsystem::ApplyTribute checks the owner, the Market, the receiver, the resource and the stock). */
+	UFUNCTION(Server, Reliable)
+	void ServerTribute(AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
 
 	/** The units' identifiers (D223) and the ground point: ~4 bytes a unit, a player's selection at most (D288). */
 	UFUNCTION(Server, Reliable)

@@ -34,8 +34,8 @@ enum EHOLDuelEnd
 	Dropped
 }
 
-// DU-Q2, the three ways ready until the user answers: what a challenge becomes when its conditions (near, in sight, outside
-// the forum zone) cease to hold before the answer.
+// DU-Q2 (settled, GDD D591: A): what a challenge becomes when its conditions (near, in sight, outside the forum zone) cease to
+// hold before the answer. The three ways stay behind the setting, only A (DropsFree) is the game's.
 enum EHOLDuelLostConditions
 {
 	// A: the challenge falls without cost for the target (no Hesitation, no Honour); the challenger's cooldown stays spent.
@@ -68,17 +68,17 @@ struct FHOLDuelSettings
 	// The arena circle's radius, cm (10.2: "short radius"; indicative, to be tuned in tests, GDD 10.2 gives no number).
 	int ArenaRadiusCm = 0;
 
-	// DU-Q1 (both heroes fall in the same step), both ways ready until the user answers: true = A (both fall, in recovery,
-	// no reward); false = B (nobody falls, both are left at one health, as for a time up).
+	// DU-Q1 (both heroes fall in the same step; settled, GDD D590: A): true = A (both fall, in recovery, no reward);
+	// false = B (nobody falls, both are left at one health, as for a time up), kept behind the setting but no longer under study.
 	bool bDoubleKnockOutBothFall = true;
 
 	// D117: the window flashes in its last instants, ms (presentation detail, indicative, to be tuned in tests).
 	int WindowUrgentMs = 0;
 
-	// DU-Q2, the three ways ready until the user answers; the preset takes A (the recommendation, not a decision).
+	// DU-Q2 (settled, GDD D591: A, DropsFree); B (Holds) and C (CountsAsRefusal) stay behind the setting, no longer under study.
 	EHOLDuelLostConditions LostConditions = EHOLDuelLostConditions::DropsFree;
 
-	// D403, the anti-duel zone around the MAIN forum of any player, cm. PROVISIONAL (DU-Q3): the GDD says "defence radius" without a number.
+	// D403, the anti-duel zone around the MAIN forum of any player, cm (DU-Q3 settled, GDD D592: A, 25 m = 2 500).
 	int ForumZoneRadiusCm = 0;
 }
 
