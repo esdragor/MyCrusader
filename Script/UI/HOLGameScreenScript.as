@@ -383,12 +383,24 @@ FString TalentTipTexts = "";
 			HeroFamilyButtons.Add(Button);
 			HeroFamilyLabels.Add(Label);
 		}
+		// The notice and the list wrap at the block's width (a long effect would otherwise widen the whole block when a talent is taken).
 		HeroTalentNoticeLabel = MakeText(n"HeroTalentNoticeLabel", UHOLTextStyleHUDLabel);
 		HeroTalentNoticeLabel.SetVisibility(ESlateVisibility::Collapsed);
-		Column.AddChildToVerticalBox(HeroTalentNoticeLabel).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		HeroTalentNoticeLabel.SetWrapTextAt(BarWidth);
+		Column.AddChildToVerticalBox(WrappedBox(n"HeroTalentNoticeBox", HeroTalentNoticeLabel)).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
 		HeroTalentListLabel = MakeText(n"HeroTalentListLabel", UHOLTextStyleHUDLabel);
 		HeroTalentListLabel.SetVisibility(ESlateVisibility::Collapsed);
-		Column.AddChildToVerticalBox(HeroTalentListLabel).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		HeroTalentListLabel.SetWrapTextAt(BarWidth);
+		Column.AddChildToVerticalBox(WrappedBox(n"HeroTalentListBox", HeroTalentListLabel)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+	}
+
+	// A text in a box no wider than the block's bars (BarWidth), so that it wraps there.
+	USizeBox WrappedBox(FName BoxName, UCommonTextBlock Text)
+	{
+		USizeBox Box = Cast<USizeBox>(ConstructWidget(USizeBox, BoxName));
+		Box.SetMaxDesiredWidth(BarWidth);
+		Box.SetContent(Text);
+		return Box;
 	}
 
 	// A bar in a box of the block's width and of Height.
