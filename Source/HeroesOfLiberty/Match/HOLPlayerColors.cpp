@@ -45,6 +45,21 @@ namespace HOLPlayerColors
 		return Linear[Wrap(ColorIndex)];
 	}
 
+	FVector3f GetOwnerLinearColor(const int32 OwnerPlayer, const TConstArrayView<uint8> SlotColorIndices)
+	{
+		if (SlotColorIndices.IsValidIndex(OwnerPlayer))
+		{
+			return GetLinearColor(SlotColorIndices[OwnerPlayer]);
+		}
+		// Out of the slots (the neutral owner): grey, as on the minimap, not the palette (an index would wrap onto a player's colour).
+		static const FVector3f Neutral = []
+		{
+			const FLinearColor Converted(FColor(135, 135, 135));
+			return FVector3f(Converted.R, Converted.G, Converted.B);
+		}();
+		return Neutral;
+	}
+
 	FText GetColorName(const int32 ColorIndex)
 	{
 		// Source texts in French, the source language (D245).

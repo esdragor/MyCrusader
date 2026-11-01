@@ -26,6 +26,13 @@ namespace HOLPlayerColors
 	/** Linear base colour, written into an instance's custom data 0-2 (M_UnitPlayerColor). */
 	HEROESOFLIBERTY_API const FVector3f& GetLinearColor(int32 ColorIndex);
 
+	/**
+	 * The linear colour a unit of OwnerPlayer is drawn with, the one the renderer writes into its custom data (HOL
+	 * interpolated instances): SlotColorIndices[Slot] is the colour each slot chose; an owner out of the slots (the
+	 * neutral owner, FHOLMatchConfig::NeutralOwner) is none of them.
+	 */
+	HEROESOFLIBERTY_API FVector3f GetOwnerLinearColor(int32 OwnerPlayer, TConstArrayView<uint8> SlotColorIndices);
+
 	/** Localised name shown in the menu (D245). */
 	HEROESOFLIBERTY_API FText GetColorName(int32 ColorIndex);
 }
