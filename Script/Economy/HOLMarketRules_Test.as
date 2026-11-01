@@ -56,6 +56,27 @@ void Test_MarketBuyOneLot(FUnitTest& T)
 	T.AssertEquals(Base + S.Step, Trade.Book.Prices[MarketStone], "the price rises by one step");
 }
 
+// The interface's purchase (user's correction 2026-11-01): 100 gold buys X goods, lot by lot; X is read from the preset, not typed.
+void Test_MarketBuyWithGold(FUnitTest& T)
+{
+	FHOLMarketSettings S = MarketSettings();
+	FHOLMarketBook Book = HOLMarket::NewBook(S);
+	int Price = Book.Prices[MarketWood];
+	FHOLMarketTrade One = HOLMarket::BuyWithGold(S, Book, MarketWood, 1, 1000, S.FeePercent);
+	T.AssertTrue(One.bOk, "purchase accepted");
+	T.AssertEquals(100, One.Gold, "a lot spends 100 gold");
+	T.AssertEquals(HOLMarket::Lot * HOLMarket::Lot / HOLMarket::PurchaseGold(Price, S.FeePercent), One.Units, "goods = 100 gold over the price of 100 goods");
+	T.AssertEquals(96, One.Units, "wood at 80, tax 30 %: 96 wood for 100 gold");
+	T.AssertEquals(Price + S.Step, One.Book.Prices[MarketWood], "the price rises by a step");
+	FHOLMarketTrade Two = HOLMarket::BuyWithGold(S, Book, MarketWood, 2, 1000, S.FeePercent);
+	T.AssertEquals(200, Two.Gold, "two lots: 200 gold");
+	T.AssertEquals(96 + 92, Two.Units, "the second lot at the price the first left (83)");
+	T.AssertEquals(64, HOLMarket::BuyWithGold(S, Book, MarketStone, 1, 1000, S.FeePercent).Units, "stone at 120: 64");
+	T.AssertEquals("gold", HOLMarket::BuyWithGold(S, Book, MarketWood, 1, 99, S.FeePercent).Reason, "99 gold: refused");
+	T.AssertEquals("resource", HOLMarket::BuyWithGold(S, Book, MarketGold, 1, 1000, S.FeePercent).Reason, "gold is not bought");
+	T.AssertEquals("lots", HOLMarket::BuyWithGold(S, Book, MarketWood, 0, 1000, S.FeePercent).Reason, "no lots");
+}
+
 // Several lots: each one is paid at the price the one before left (the price moves lot by lot).
 void Test_MarketSellSeveralLotsLotByLot(FUnitTest& T)
 {

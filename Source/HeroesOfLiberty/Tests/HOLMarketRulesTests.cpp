@@ -90,6 +90,20 @@ bool FHOLMarketRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a lot with 10 gold"), Poor.Reason, FName(TEXT("gold")));
 	TestTrue(TEXT("a refusal moves nothing"), !Poor.bOk && Poor.Gold == 0 && Poor.Units == 0 && Poor.Book.Prices[Stone] == 120);
 
+	// A purchase by lots of 100 gold (what the interface shows: 100 gold for X goods), each lot at the price the one before left.
+	const HOLMarket::FTrade Gold1 = HOLMarket::BuyWithGold(S, Book, Wood, 1, 1000, S.FeePercent);
+	TestTrue(TEXT("100 gold spent on wood"), Gold1.bOk);
+	TestEqual(TEXT("it spends 100 gold"), Gold1.Gold, 100);
+	TestEqual(TEXT("it brings 96 wood (80 plus 30 % = 104 per 100 wood)"), Gold1.Units, 96);
+	TestEqual(TEXT("wood rises to 83"), Gold1.Book.Prices[Wood], 83);
+	const HOLMarket::FTrade Gold2 = HOLMarket::BuyWithGold(S, Book, Wood, 2, 1000, S.FeePercent);
+	TestEqual(TEXT("two lots of gold: 200 gold"), Gold2.Gold, 200);
+	TestEqual(TEXT("two lots of gold: 96 + 92 wood (83 plus 30 % = 108)"), Gold2.Units, 96 + 92);
+	TestEqual(TEXT("two lots of gold: wood at 86"), Gold2.Book.Prices[Wood], 86);
+	TestEqual(TEXT("100 gold on stone brings 64"), HOLMarket::BuyWithGold(S, Book, Stone, 1, 1000, S.FeePercent).Units, 64);
+	TestEqual(TEXT("with 99 gold: refused (gold)"), HOLMarket::BuyWithGold(S, Book, Wood, 1, 99, S.FeePercent).Reason, FName(TEXT("gold")));
+	TestEqual(TEXT("gold is not bought with gold"), HOLMarket::BuyWithGold(S, Book, Gold, 1, 1000, S.FeePercent).Reason, FName(TEXT("resource")));
+
 	// The bounds, and the way back.
 	HOLMarket::FBook Low = Book;
 	Low.Prices[Wood] = S.MinPrice + 1;
@@ -131,9 +145,11 @@ bool FHOLMarketApplyTest::RunTest(const FString& Parameters)
 
 	FHOLResources Later;
 	const HOLMarket::FTrade Purchase = HOLMarket::Apply(S, Sale.Book, After, EHOLResource::Stone, 1, true, S.FeePercent, Later);
-	TestTrue(TEXT("a lot of stone bought with that gold"), Purchase.bOk);
-	TestEqual(TEXT("it costs 156 (120 plus 30 %)"), Purchase.Gold, 156);
-	TestTrue(TEXT("the stock after the purchase: stone 100, gold 3"), Later == FHOLResources(500, 100, 100, 3));
+	// A purchase is made of lots of 100 GOLD (the interface says "100 gold for X stone"): 100 gold at 120 plus 30 % = 156 per 100 stone buy 64.
+	TestTrue(TEXT("a lot of 100 gold spent on stone with that gold"), Purchase.bOk);
+	TestEqual(TEXT("it spends 100 gold"), Purchase.Gold, 100);
+	TestEqual(TEXT("it brings 64 stone (100 gold at 156 per 100)"), Purchase.Units, 64);
+	TestTrue(TEXT("the stock after the purchase: stone 64, gold 59"), Later == FHOLResources(500, 100, 64, 59));
 	TestEqual(TEXT("stone rises to 123"), Purchase.Book.Prices[2], 123);
 
 	// Refusals: the stock out is the stock in.
@@ -141,7 +157,7 @@ bool FHOLMarketApplyTest::RunTest(const FString& Parameters)
 	const HOLMarket::FTrade TooMuch = HOLMarket::Apply(S, Book, Stock, EHOLResource::Wood, 4, false, S.FeePercent, Same);
 	TestTrue(TEXT("four lots from 300 wood: refused (stock)"), !TooMuch.bOk && TooMuch.Reason == FName(TEXT("stock")) && Same == Stock);
 	const HOLMarket::FTrade TooPoor = HOLMarket::Apply(S, Book, Stock, EHOLResource::Stone, 1, true, S.FeePercent, Same);
-	TestTrue(TEXT("a lot of stone with 50 gold: refused (gold)"), !TooPoor.bOk && TooPoor.Reason == FName(TEXT("gold")) && Same == Stock);
+	TestTrue(TEXT("a lot of 100 gold with 50 gold: refused (gold)"), !TooPoor.bOk && TooPoor.Reason == FName(TEXT("gold")) && Same == Stock);
 	const HOLMarket::FTrade ForGold = HOLMarket::Apply(S, Book, Stock, EHOLResource::Gold, 1, false, S.FeePercent, Same);
 	TestTrue(TEXT("gold sold: refused (resource)"), !ForGold.bOk && ForGold.Reason == FName(TEXT("resource")) && Same == Stock);
 	return true;
@@ -267,14 +283,14 @@ bool FHOLMarketChainTest::RunTest(const FString& Parameters)
 		// 2. A lot of stone bought with that gold, at the lowered book's other price.
 		Order(Market, Stone, 1, true);
 		RunStep();
-		TestTrue(TEXT("bought: stone 100, gold 159 - 156"), Player->GetResources() == FHOLResources(500, 100, 100, 3));
+		TestTrue(TEXT("bought with 100 gold: stone 64, gold 159 - 100"), Player->GetResources() == FHOLResources(500, 100, 64, 59));
 		TestEqual(TEXT("the common stone price rises to 123"), State->GetMarketBook().Prices[Stone], 123);
 
 		// 3. Every refusal changes nothing: the stock, the book.
 		const FHOLResources Before = Player->GetResources();
 		const HOLMarket::FBook BookBefore = State->GetMarketBook();
 		Order(Market, Wood, 4, false);       // not enough wood (100)
-		Order(Market, Stone, 1, true);       // not enough gold (3)
+		Order(Market, Stone, 1, true);       // not enough gold (59 for a lot of 100)
 		Order(Market, Gold, 1, false);       // gold is the money
 		Order(Market, Gold, 1, true);
 		Order(Market, INDEX_NONE, 1, false); // no such resource

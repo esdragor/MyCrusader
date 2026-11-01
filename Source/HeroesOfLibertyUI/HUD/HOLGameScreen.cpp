@@ -1901,7 +1901,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 			const int32 Good = static_cast<int32>(Command.Resource);
 			FText Label = GetResourceName(Command.Resource);
-			FText Name = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyName", "Acheter 100 {0}") : LOCTEXT("MarketSellName", "Vendre 100 {0}"),
+			FText Name = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyName", "Acheter : {0}") : LOCTEXT("MarketSellName", "Vendre : {0}"),
 				GetResourceNameInText(Command.Resource));
 			FText Effect = LOCTEXT("MarketNoBook", "Le cours n'est pas encore connu");
 			FHOLResources Cost;
@@ -1910,20 +1910,27 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			{
 				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
 				const int32 Huge = 1000000;
-				const HOLMarket::FTrade Quote = Command.bBuy ? HOLMarket::Buy(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent)
+				// The rate is always for 100 of what is given up (the user's correction, 2026-11-01): buying, 100 gold against X of
+				// the good; selling, 100 of the good against Y gold. The same lot the click sends (BuyWithGold / Sell, one lot).
+				const HOLMarket::FTrade Quote = Command.bBuy ? HOLMarket::BuyWithGold(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent)
 					: HOLMarket::Sell(MarketSettings, Book, Good, 1, Huge, MarketSettings.FeePercent);
+				const int32 Received = Command.bBuy ? Quote.Units : Quote.Gold;
 				if (Command.bBuy)
 				{
-					Cost.Gold = Quote.Gold;
+					Cost.Gold = HOLMarket::Lot;
 				}
 				else
 				{
 					Cost[Command.Resource] = HOLMarket::Lot;
 				}
-				Label = FText::Format(LOCTEXT("MarketCell", "{0}\n{1}"), Label, FText::FromString(FString::Printf(TEXT("%s%d"), Command.bBuy ? TEXT("-") : TEXT("+"), Quote.Gold)));
-				Effect = FText::Format(Command.bBuy ? LOCTEXT("MarketBuyEffect", "Coûte {0} or, taxe comprise ; le cours monte à {1}. Maj : 500 d'un coup")
-					: LOCTEXT("MarketSellEffect", "Rapporte {0} or, taxe déduite ; le cours baisse à {1}. Maj : 500 d'un coup"),
-					FText::AsNumber(Quote.Gold), FText::AsNumber(Quote.Book.Prices[Good]));
+				Label = Command.bBuy
+					? FText::Format(LOCTEXT("MarketBuyCell", "{0}\n100 or = {1}"), Label, FText::AsNumber(Received))
+					: FText::Format(LOCTEXT("MarketSellCell", "{0}\n100 = {1} or"), Label, FText::AsNumber(Received));
+				Effect = Command.bBuy
+					? FText::Format(LOCTEXT("MarketBuyEffect", "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"),
+						FText::AsNumber(Received), GetResourceNameInText(Command.Resource), FText::AsNumber(Quote.Book.Prices[Good]))
+					: FText::Format(LOCTEXT("MarketSellEffect", "100 {0} contre {1} or, taxe déduite ; le cours baisse à {2}. Maj : 500 {0} d'un coup"),
+						GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
 				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 			}
 			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);

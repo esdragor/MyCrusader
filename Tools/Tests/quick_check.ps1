@@ -2099,9 +2099,10 @@ if ($Parts -contains "camera") {
             # M5 (Market): a finished Market of slot 0 selected: the grid's trades (sales A Z E, purchases Q S D) read from the common book;
             # Z sells a lot of wood at the server's price (80 -> 56 gold, the book at 77); the Market is then taken down (a cheat), the centre selected
             # again and cleared by Escape. Last of the cases: a Market standing or just fallen is nobody's business but its own.
-            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
+            Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.Gold 500","hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
                 "hol.Camera.FocusNear 1500 3000", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: Market of slot 0 (own)", "frames 3", "hol.HUD.Report",
-                "hol.Select.Grid 1", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 1", "waitlog Market: slot 0 bought 1 lots of resource 1", "frames 3", "hol.HUD.Report",
+                "hol.Select.Grid 5", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3",
                 "hol.Cheat.DamageSelected 100000 siege", "waitlog Building destroyed: Market of slot 0", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
                 "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -4930,11 +4931,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     # M5 (Market): the selected Market's grid is the trades' (A Z E sell food, wood, stone; Q S D buy them), and Z sold a lot of wood at 80 less 30 %.
     $HudMarket = Get-Section "build market"
     $MarketReports = @($HudMarket | Select-String -Pattern "HUD report: " | ForEach-Object { $_.Line })
+    $MarketBuy = & $Value $HudMarket "(Market: slot 0 bought 1 lots of resource 1 .*)$"
     $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
     $Checks = [ordered]@{}
-    $Checks["the Market selected: the trades on A Z E / Q S D, the sale of a lot of wood at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
-        ($MarketReports[0] -match "grid A=SellFood \w+ Z=SellWood \w+ E=SellStone \w+ Q=BuyFood \w+ S=BuyWood \w+ D=BuyStone \w+,") -and
-        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 56 gold \(price now 77,")
+    $Checks["the Market selected: the trades on A Z E (buy) / Q S D (sell), 100 gold spent on wood ($MarketBuy) then a lot of wood sold at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
+        ($MarketReports[0] -match "grid A=BuyFood \w+ Z=BuyWood \w+ E=BuyStone \w+ Q=SellFood \w+ S=SellWood \w+ D=SellStone \w+,") -and
+        [bool]($MarketBuy -match "^Market: slot 0 bought 1 lots of resource 1 for 100 gold \(price now 83,") -and
+        [bool]($MarketSale -match "^Market: slot 0 sold 1 lots of resource 1 for 58 gold \(price now 80,")
     $AllOk = (Report "build market" $Checks) -and $AllOk
 
     # The minimap: the picture read with a Peasant selected (marks, camera frame of four points, the map's area), a right click on its middle

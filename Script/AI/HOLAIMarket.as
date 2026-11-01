@@ -37,8 +37,8 @@ namespace HOLAIMarket
 	}
 
 	// The one trade the AI wants now, or none. Stock and Wanted are by resource (what it holds, what it wants to hold over its
-	// next window: the brain fills them from its needs, HOLAINeeds.as). The resource most missing is bought with gold (as many
-	// lots as the gold pays for, MaxLots at most); with too little gold, or when gold itself is missing, the biggest surplus
+	// next window: the brain fills them from its needs, HOLAINeeds.as). The resource most missing is bought with gold (lots of 100
+	// gold, as many as the gold pays for, MaxLots at most); with too little gold, or when gold itself is missing, the biggest surplus
 	// (above SellAbove, keeping the reserve and what it wants of it) is sold; the resource that is missing is never the one sold.
 	FHOLAIMarketChoice Choose(const FHOLMarketSettings& Market, const FHOLMarketBook& Book, const FHOLAIMarketSettings& Rule,
 		const TArray<int>& Stock, const TArray<int>& Wanted, bool bMarketReady, int Difficulty)
@@ -72,10 +72,14 @@ namespace HOLAIMarket
 		// Buy it with the gold there is.
 		if (Needed < HOLMarket::TradableResources)
 		{
-			int Lots = Math::Min(Rule.MaxLots, (Missing + HOLMarket::Lot - 1) / HOLMarket::Lot);
+			// A purchase is made of lots of 100 gold (what the interface shows): the lots needed at today's price, as many as the
+			// gold pays for.
+			FHOLMarketTrade One = HOLMarket::BuyWithGold(Market, Book, Needed, 1, HOLMarket::Lot, Market.FeePercent);
+			int PerLot = Math::Max(1, One.Units);
+			int Lots = Math::Min(Rule.MaxLots, (Missing + PerLot - 1) / PerLot);
 			while (Lots >= 1)
 			{
-				FHOLMarketTrade Trade = HOLMarket::Buy(Market, Book, Needed, Lots, Stock[3], Market.FeePercent);
+				FHOLMarketTrade Trade = HOLMarket::BuyWithGold(Market, Book, Needed, Lots, Stock[3], Market.FeePercent);
 				if (Trade.bOk)
 				{
 					FHOLAIMarketChoice Choice;
