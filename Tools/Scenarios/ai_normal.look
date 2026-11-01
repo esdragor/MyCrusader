@@ -1,0 +1,4 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+ai_normal_base | une Caserne et une Archerie de l'IA debout, seulement 3 Lanciers de l'IA pres de son forum
+ai_normal_back | derriere le forum de l'IA : ses soldats rouges reculent (a distance des 10 Hommes d'armes bleus devant le forum)
+ai_normal_round | les soldats rouges de l'IA qui contournent par le cote du forum, pas au contact des Hommes d'armes bleus

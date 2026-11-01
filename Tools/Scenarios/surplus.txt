@@ -5,6 +5,7 @@
 # 3) 8 autres de tes Hommes d'armes naissent à l'ouest de la scène (-16000, 4500), sont sélectionnés au cadre, puis clic droit sur le héros ennemi.
 # Comparaison : hol.Combat.SurplusReassign 1 (défaut, correctif) ou 0 (ancien comportement : le surplus attend derrière l'anneau) ; puis hol.Scenario surplus rejoue.
 waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
 waitlog Starting hero of slot 1 spawned at
 hol.Cheat.Resources 1000
 hol.Camera.Focus -14500 3000
@@ -34,3 +35,5 @@ hol.Select.ClickUnit -2 order enemy
 note 2. Clic droit donné sur le héros ennemi : tes 8 renforts marchent vers lui, mais ses 6 places sont prises par les 6 premiers (le héros ennemi tient plusieurs secondes).
 note AVEC le correctif (1) : les renforts qui n'ont plus de place quittent le héros pour l'Homme d'armes ennemi derrière lui (ou lui, s'il a une place) ; leur ordre est fini. SANS (0) : ils restent plantés derrière l'anneau, sans frapper.
 note À toi ensuite : sélectionne d'autres Hommes d'armes, reclique droit sur un ennemi encerclé (au besoin hol.Units.SpawnHere 6 ManAtArms 0 400 pour en refaire naître au centre de l'écran).
+# Audit du jeu (Auto_Journey, Qualite des essais) : couleur des neutres, unites qui tournent ou tremblent. Lu par preflight.ps1.
+hol.Test.Sanity

@@ -1,0 +1,32 @@
+# hol.Test.Sanity, cas defectueux (chaine reelle) : des Lanciers recoivent un nouvel ordre vers l autre cote toutes les 0,4 s, ils font des allers-retours sans avancer : Sanity: FAIL ... spins attendu.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+hol.Sanity.Watch 1
+frames 5
+hol.Units.Spawn 3 0 0 0 Spearman 100
+waitlog Spawn: 3 Spearman
+wait 0.5
+hol.Units.Move 2000 0 0
+wait 0.4
+hol.Units.Move -2000 0 0
+wait 0.4
+hol.Units.Move 2000 0 0
+wait 0.4
+hol.Units.Move -2000 0 0
+wait 0.4
+hol.Units.Move 2000 0 0
+wait 0.4
+hol.Units.Move -2000 0 0
+wait 0.4
+hol.Units.Move 2000 0 0
+wait 0.4
+hol.Units.Move -2000 0 0
+wait 0.4
+hol.Units.Move 2000 0 0
+wait 0.4
+hol.Units.Move -2000 0 0
+wait 0.4
+hol.Test.Sanity
+waitlog Sanity: FAIL unit #
+waitlog spins

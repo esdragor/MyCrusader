@@ -1,17 +1,36 @@
-# IA4 D579 / D585 : toi contre une IA Facile ; quand son forum est attaque, elle donne toute son armee (meme perdue d'avance) et rappelle sa vague
-# Plain, toi (slot 0) contre une IA Facile (slot 1, « IA Facile 2 »), 5 Paysans de depart chacun, 1000 de chaque ressource pour bâtir vite une Caserne.
-# Meme jeu que le scenario ai_army (economie, Caserne, armee, vague), mais le niveau Facile est lu depuis la configuration : ligne du journal « AI slot 1 step N: level Easy ».
-# Il y a aussi un journal de chaque situation « forum attaque » : « forum attacked: lives N, X enemies, ratio R, level Easy, decision fight ».
-# A regarder :
-#  1. fais 3-4 soldats (Lanciers) et envoie-les devant son forum, a moins de 8 m : toute son armee vient les chasser, meme si elle est bien plus faible ou plus forte ;
-#  2. attends que sa vague soit partie vers toi (voir ai_army), puis envoie 2-3 unites devant son forum : sa vague fait demi-tour au lieu de continuer (Facile rappelle la vague des que le forum est attaque) ;
-#  3. compare avec le scenario ai_army (Normal) : l'IA Normale ne rappelle sa vague que si au moins 3 soldats ennemis sont chez elle ;
-#  4. le journal (Saved/Logs) dit « forum attacked ... decision fight » pour Facile (« rules » pour Normal).
+# IA4 D579 / D585 (essai de 3 min) : IA Facile, son forum est attaqué : elle donne TOUTE son armée, même perdue d'avance
+# Plain, toi (slot 0) contre une IA Facile (slot 1). Le scénario pose d'office chez elle une Caserne, une Archerie et une armée de 12 soldats
+# (Lanciers, Hommes d'armes, Archers) : pas besoin d'attendre sa partie naturelle. Toi : 10 Hommes d'armes que tu envoies toi-même.
+# Point 1 : le scénario t'amène devant son forum, tu vois ses bâtiments et son armée (capture ai_easy_base).
+# Point 2 : à ton Entrée, 10 Hommes d'armes arrivent à ~8 m de son forum : toute son armée sort les chasser (capture ai_easy_defence).
+# Limite connue : le rappel de la vague (Facile rappelle sa vague dès que le forum est attaqué) ne se joue pas en 3 min : une vague ne part qu'après 5 min de jeu.
 waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
 waitlog AI slot 1 step
-waitlog Gather order of slot 1:
 hol.Cheat.Resources 1000
-hol.Camera.FocusSlot 0
+hol.Cheat.Population 200
+hol.Cheat.SpawnBuilding Barracks 1 2800 2600 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding ArcheryRange 1 2800 -2600 enemy
+waitlog Cheat: spawned ArcheryRange of slot 1
+hol.Camera.FocusNear 2800 0 enemy
 frames 2
-note IA « Facile 2 » : sacrifie l'armee pour defendre son forum, rappelle sa vague. Laisse tourner 10 a 15 min ; suis-la avec ² hol.Camera.FocusSlot 1.
-note Envoie 3-4 soldats pres de son forum pour la defense, 2-3 unites apres le depart de sa vague pour le rappel.
+hol.Units.SpawnHere 5 Spearman 1 500
+hol.Units.SpawnHere 4 ManAtArms 1 500
+hol.Units.SpawnHere 3 Archer 1 500
+waitunits 20
+hol.Camera.FocusNear 1800 0 enemy
+frames 30
+capture ai_easy_base
+hol.Test.Sanity
+note 1. Devant le forum de « IA Facile 2 » : à droite une Caserne et une Archerie qu'elle a déjà, et 12 soldats rassemblés devant son forum (sa défense).
+note 2. Appuie sur Entrée : 10 Hommes d'armes (à toi) arrivent à ~8 m de son forum. Regarde toute son armée sortir les chasser, même si elle est plus faible.
+waitkey Entrée : j'envoie 10 Hommes d'armes devant son forum
+hol.Camera.FocusNear 1500 0 enemy
+frames 2
+hol.Units.SpawnHere 10 ManAtArms 0 250
+hol.Camera.FocusNear 800 0 enemy
+waitlog forum attacked
+wait 6
+capture ai_easy_defence
+note 3. Son armée fonce sur tes 10 Hommes d'armes. Journal : « forum attacked ... level Easy, decision fight ». ² hol.Camera.FocusSlot 1 recentre sur son forum.
