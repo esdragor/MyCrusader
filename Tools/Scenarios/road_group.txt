@@ -1,0 +1,68 @@
+# TEST ROUGE (route + groupe) : 10 Hommes d'armes en bloc (ordre de marche du joueur, formation) sur la route de la Foret profonde, vitesse de route a 1, 100, 130, 10000 % : la distance faite en 3 s doit suivre le reglage (1 = 100 car borne, 10000 = 300).
+hol.Camera.Zoom -7
+frames 5
+hol.Cheat.Resources 2000
+hol.Camera.FocusNear 7000 0
+frames 2
+hol.Units.SpawnHere 10 ManAtArms 0 600
+waitlog SpawnHere: 10 ManAtArms of slot 0
+waitunits 10
+frames 20
+hol.Terrain.RoadSpeedPercent 1
+note PHASE route=1
+hol.Units.Where 0
+hol.Units.Move -2000 0 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 300
+hol.Units.Move -9500 0 0
+wait 9
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 100
+note PHASE route=100
+hol.Units.Where 0
+hol.Units.Move -2000 0 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 300
+hol.Units.Move -9500 0 0
+wait 9
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 130
+note PHASE route=130
+hol.Units.Where 0
+hol.Units.Move -2000 0 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 300
+hol.Units.Move -9500 0 0
+wait 9
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 10000
+note PHASE route=10000
+hol.Units.Where 0
+hol.Units.Move -2000 0 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 300
+hol.Units.Move -9500 0 0
+wait 9
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 130
+note ROAD_GROUP_DONE
