@@ -76,6 +76,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The step of each slot's last Market trade (M6).
 	TMap<int, int64> MarketSteps;
 
+	// Since when the idle Peasants of each slot have had no safe source (IAQ-S, D619).
+	TMap<int, FHOLAIStranded> Strandeds;
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -242,11 +245,22 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		ThinkDuel(PlayerIndex, Step, Summary, Data);
 
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
+		FHOLAIStranded Stranded;
+		Strandeds.Find(PlayerIndex, Stranded);
 		if (NumIdle == 0)
 		{
+			Stranded.Since = -1.f;
+			Strandeds.Add(PlayerIndex, Stranded);
 			return true;
 		}
-		TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, Data, Free);
+		// IAQ-S (D619): with every source under an enemy soldier the Peasants wait 30 s, then go to the source farthest from any soldier.
+		const bool bWaited = Stranded.Since >= 0.f;
+		TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::StrandedGroups(Stranded, Summary, Data, Free, Data.GameSeconds);
+		Strandeds.Add(PlayerIndex, Stranded);
+		if (bWaited && Groups.Num() > 0 && Stranded.Since == Data.GameSeconds)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: every source is under an enemy soldier, {Free.Num()} idle Peasants leave after 30 s for the source farthest from them");
+		}
 		if (Groups.Num() == 0)
 		{
 			if (Free.Num() > 0)

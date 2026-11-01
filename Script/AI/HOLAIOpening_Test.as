@@ -816,34 +816,47 @@ void Test_NoGatheringAtTheSourceAnEnemyStandsBy(FUnitTest& T)
 	T.AssertTrue(Groups.Num() > 0 && Groups[0].SourceIndex == 10, "enemy far, or a Peasant: the food is gathered again");
 }
 
-// CURRENT behaviour pinned, NOT a decision (question in Auto_Journey_Retours.md, "IA : Paysans quand toutes les sources sont sous l'ennemi"):
-// when every source is within FleeRadius + 300 cm of an enemy soldier (soldiers at the berries AND at the wood), OpenSummary leaves no
-// source, SplitGather gives no group, and the idle Peasants wait where they are (brain log "idle -> no source") for as long as the enemy
-// stays; as soon as one source is clear again (the soldier leaves, or dies) they go back to work. If the answer changes the behaviour,
-// this test changes with it.
-void Test_AllSourcesUnderTheEnemyLeavesThePeasantsIdle(FUnitTest& T)
+// IAQ-S, precision 1/4 = B (D619, the user's answer of 2026-11-01): when every source is within FleeRadius + 300 cm of an enemy soldier (soldiers at
+// the berries AND at the wood), OpenSummary leaves no source and SplitGather gives no group; the idle Peasants no longer wait without limit: after
+// StrandedSeconds (30 s) of inactivity they go to the source FARTHEST from any enemy soldier (here the food: its nearest soldier is farther than the
+// wood's). Before the 30 s they stay idle. As soon as one source is clear again they go back to work as usual (and the wait starts over).
+void Test_AllSourcesUnderTheEnemySendsThePeasantsToTheFarthestSourceAfter30Seconds(FUnitTest& T)
 {
 	FHOLAISummary Summary = OpeningSummary();
 	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
 	const float Reach = Data.Army.FleeRadius + 300.f;
-	// One soldier by the food (#10 at 1000, 0), one by the wood (#11 at 1000, 500): both just inside the reach.
+	// One soldier 100 cm inside the reach of the food (#10 at 1000, 0), one 500 cm inside the reach of the wood (#11 at 1000, 500).
 	Summary.Enemies.Add(OpeningEnemy(50, n"Spearman", FVector(1000, -Reach + 100.f, 0)));
-	Summary.Enemies.Add(OpeningEnemy(51, n"Spearman", FVector(1000, 500 + Reach - 100.f, 0)));
-	const FHOLAISummary Open = HOLAIOpening::OpenSummary(Summary, Data);
-	T.AssertEquals(0, Open.Food.Sources.Num(), "no food source left open");
-	T.AssertEquals(0, Open.Wood.Sources.Num(), "no wood source left open");
-	T.AssertEquals(0, HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants).Num(), "current behaviour: no group, the idle Peasants wait");
+	Summary.Enemies.Add(OpeningEnemy(51, n"Spearman", FVector(1000, 500 + Reach - 500.f, 0)));
+	T.AssertEquals(0, HOLAIOpening::OpenSummary(Summary, Data).Food.Sources.Num(), "no food source left open");
+	T.AssertEquals(0, HOLAIOpening::OpenSummary(Summary, Data).Wood.Sources.Num(), "no wood source left open");
+	T.AssertEquals(0, HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants).Num(), "no group by the usual rules");
 
-	// The wood soldier dies: the Peasants work again, on the wood only (the food is still watched).
-	Summary.Enemies.RemoveAt(1);
-	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants);
+	FHOLAIStranded Memory;
+	T.AssertEquals(0, HOLAIOpening::StrandedGroups(Memory, Summary, Data, Summary.IdlePeasants, 100.f).Num(), "first seen stranded: they wait");
+	T.AssertEquals(0, HOLAIOpening::StrandedGroups(Memory, Summary, Data, Summary.IdlePeasants, 100.f + HOLAIOpening::StrandedSeconds - 1.f).Num(), "29 s later: still waiting");
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::StrandedGroups(Memory, Summary, Data, Summary.IdlePeasants, 100.f + HOLAIOpening::StrandedSeconds);
 	int Sent = 0;
+	for (int Index = 0; Index < Groups.Num(); Index++)
+	{
+		Sent += Groups[Index].Peasants.Num();
+		T.AssertEquals(10, Groups[Index].SourceIndex, "after 30 s: the source farthest from any soldier, the food");
+	}
+	T.AssertEquals(5, Sent, "all five go");
+	// They run again from the soldier; the wait starts over, 30 s again.
+	T.AssertEquals(0, HOLAIOpening::StrandedGroups(Memory, Summary, Data, Summary.IdlePeasants, 100.f + HOLAIOpening::StrandedSeconds + 1.f).Num(), "idle again: the wait starts over");
+
+	// The wood soldier dies: the usual rules work again, on the wood only (the food is still watched), and the wait is forgotten.
+	Summary.Enemies.RemoveAt(1);
+	Groups = HOLAIOpening::StrandedGroups(Memory, Summary, Data, Summary.IdlePeasants, 200.f);
+	Sent = 0;
 	for (int Index = 0; Index < Groups.Num(); Index++)
 	{
 		Sent += Groups[Index].Peasants.Num();
 		T.AssertEquals(11, Groups[Index].SourceIndex, "only the wood is open");
 	}
 	T.AssertEquals(5, Sent, "all five go back to work on the wood");
+	T.AssertTrue(Memory.Since < 0.f, "the wait is forgotten");
 }
 
 // A site whose builder left it (it ran from a soldier) is built again: the foundation counted as a house coming for ever, so no other house was

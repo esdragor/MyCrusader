@@ -204,6 +204,12 @@ struct FHOLAIGatherGroup
 	TArray<int> Peasants;
 }
 
+// IAQ-S (D619): since when (game seconds) the idle Peasants of a slot have had no source to go to (every source under an enemy soldier); -1 none.
+struct FHOLAIStranded
+{
+	float Since = -1.f;
+}
+
 // What the brain remembers of the sites under way of a slot, to find the abandoned ones (ResumeSite): each site's place, the progress last
 // seen, since when (game seconds) it has not moved, and when a Peasant was last sent to it.
 struct FHOLAISiteMemory
@@ -218,6 +224,89 @@ namespace HOLAIOpening
 {
 	// A site whose progress has not moved for this long (game seconds) has no builder any more; one is sent again at most this often.
 	const float StalledSeconds = 20.f;
+
+	// IAQ-S, D619: the idle Peasants with no safe source leave after this long (s) for the source farthest from any enemy soldier.
+	const float StrandedSeconds = 30.f;
+
+	// The distance (cm) from a source to the nearest enemy soldier; a large number when none is seen.
+	float EnemyDistanceOf(const FHOLAISummary& Summary, FVector Where)
+	{
+		float Nearest = 1000000.f;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (HOLAIArmy::IsThreatening(Summary.Enemies[Index]))
+			{
+				Nearest = Math::Min(Nearest, HOLAIArmy::FlatDistance(Summary.Enemies[Index].Location, Where));
+			}
+		}
+		return Nearest;
+	}
+
+	// The Free Peasants sent to the sources in order of their distance to the nearest enemy soldier, the farthest first, each source taking
+	// as many as it has places (the held ones left out): the way out of a siege (D619). The resources of a source are the ones of its part.
+	TArray<FHOLAIGatherGroup> FarthestGroups(const FHOLAISummary& Summary, const TArray<int>& Free)
+	{
+		const FHOLAISummary Held = WithoutHeldSources(Summary);
+		TArray<int> Resources;
+		TArray<FHOLAISourceNear> Sources;
+		TArray<float> Distances;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			const FHOLAIResourceSummary Part = PartOf(Held, Resource);
+			for (int Index = 0; Index < Part.Sources.Num(); Index++)
+			{
+				const float Distance = EnemyDistanceOf(Summary, Part.Sources[Index].Location);
+				int At = Sources.Num();
+				while (At > 0 && Distances[At - 1] < Distance)
+				{
+					At--;
+				}
+				Resources.Insert(Resource, At);
+				Sources.Insert(Part.Sources[Index], At);
+				Distances.Insert(Distance, At);
+			}
+		}
+		TArray<FHOLAIGatherGroup> Groups;
+		TArray<int> Taken;
+		for (int Peasant = 0; Peasant < Free.Num(); Peasant++)
+		{
+			for (int Index = 0; Index < Sources.Num(); Index++)
+			{
+				const FHOLAISourceNear Source = Sources[Index];
+				if (Source.Places <= 0 || Source.Occupants + TakenOf(Taken, Source.SourceIndex) < Source.Places)
+				{
+					Taken.Add(Source.SourceIndex);
+					AddToGroup(Groups, Resources[Index], Source.SourceIndex, Free[Peasant]);
+					break;
+				}
+			}
+		}
+		return Groups;
+	}
+
+	// The gather orders of the idle Peasants, with the way out of a siege (IAQ-S, D619): the usual rules (SplitGather) when a source is safe,
+	// and the wait forgotten; with none, the Peasants wait StrandedSeconds from the moment they are first seen without a source, then go to the
+	// source farthest from any enemy soldier (the wait then starts over). Nothing to send: no group.
+	TArray<FHOLAIGatherGroup> StrandedGroups(FHOLAIStranded& Memory, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data, const TArray<int>& Free, float Now)
+	{
+		TArray<FHOLAIGatherGroup> Groups = SplitGather(Summary, Data, Free);
+		if (Groups.Num() > 0 || Free.Num() == 0)
+		{
+			Memory.Since = -1.f;
+			return Groups;
+		}
+		if (Memory.Since < 0.f)
+		{
+			Memory.Since = Now;
+			return Groups;
+		}
+		if (Now - Memory.Since < StrandedSeconds)
+		{
+			return Groups;
+		}
+		Memory.Since = Now;
+		return FarthestGroups(Summary, Free);
+	}
 
 	// The site to build again (Site) and the Peasant to send to it, or -1: a site under way (the main centre apart) whose progress has not
 	// moved for StalledSeconds has lost its builder (it ran from a soldier, or was killed): the foundation counted as a house coming for
