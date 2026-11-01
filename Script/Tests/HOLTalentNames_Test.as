@@ -1,5 +1,5 @@
 ﻿// One table of talent names (user's trial of 2026-10-31: "the names are not the same everywhere"): every place that shows a talent
-// (the family buttons' tooltips, the notice "Talent pris", the list of the talents taken, the reminder's tooltip) takes its name from
+// (the tree window's cells and the icons' hovers, the notice "Talent pris", the list of the talents taken, the reminder's tooltip) takes its name from
 // HOLTalentNames (HOLTalentNames.as), and that table is the one of Tools/Data/Talents.csv (read by HOLHero::GetTalentCsvName, the
 // dev table of GDD 13.2). Families: 0 Guardian, 1 Captain, 2 Champion; rows 2 to 9.
 
@@ -22,7 +22,7 @@ void Test_TalentNamesAreTheTablesNames(FUnitTest& T)
 	}
 }
 
-// The names the hero's block shows come from that same table: the tooltip of a family button names the talent it takes (the next row), the
+// The names the hero's block shows come from that same table: the hover of a cell of the tree names its talent, the
 // notice names the one just taken, the list names all of them in order, the advised button's tooltip names the one it takes.
 void Test_TalentTextsShowTheTablesNames(FUnitTest& T)
 {
@@ -31,10 +31,12 @@ void Test_TalentTextsShowTheTablesNames(FUnitTest& T)
 	Picks.Add(1);
 	const FHOLTalentPanelView View = HOLTalentPanel::Make(5, Picks);
 	T.AssertEquals(4, View.NextRow, "the next row after two talents is row 4");
-	for (int Family = 0; Family < HOLTalent::FamilyCount; Family++)
+	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::Make(5, Picks);
+	for (int Index = 0; Index < Cells.Num(); Index++)
 	{
-		const FString Name = HOLTalentNames::Name(View.NextRow, Family).ToString();
-		T.AssertTrue(HOLTalentText::FamilyTooltip(View, Family).Contains(Name), f"the tooltip of family {Family} names {Name}");
+		const FString Name = HOLTalentNames::Name(Cells[Index].Row, Cells[Index].Family).ToString();
+		T.AssertTrue(Cells[Index].Tooltip.Contains(Name), f"the hover of the cell row {Cells[Index].Row} family {Cells[Index].Family} names {Name}");
+		T.AssertEquals(Name, Cells[Index].Name, "and its label is the same name");
 	}
 	const FString Notice = HOLTalentText::NoticeText(2, 1);
 	T.AssertTrue(Notice.Contains(HOLTalentNames::Name(2, 1).ToString()), "the notice names Boucliers levés");

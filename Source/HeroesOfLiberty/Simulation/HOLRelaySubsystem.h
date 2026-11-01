@@ -10,9 +10,9 @@
 /**
  * The neutral relays of a match (R3, R4; GDD 9.4, D388): where the simulation runs (solo, server), each step it counts the living units of
  * each slot in each relay's zone, applies HOLRelay::Step and gives the owner's hero its territory XP by the minute (the Exploration source).
- * The relays are laid by the map (R2, not done yet: for now hol.Relay.Add, development only). R5: each step the server writes what every machine
+ * The relays are laid by the map (R2: AHOLRelayLayout, read by LoadLayout; the maps do not lay any yet; hol.Relay.Add stays for development). R5: each step the server writes what every machine
  * should know of them into the game state (FHOLRelayView, replicated: AHOLGameState::SetRelayViews); the markers draw the rings from it.
- * Not decided yet (RelaysInProgress.md): the rates and several adverse sides (provisional values in HOLRelayRules.h), whether the XP goes on
+ * Decided: the XP rate (RQ1 = A, D587) and two adverse sides freezing the count (RQ2 = A, D588). Not decided yet (RelaysInProgress.md): whether the XP goes on
  * while the hero is dead (here it does), neutral units (they never take a relay), secondary centres (none in the game yet: 0 counted).
  */
 UCLASS()
@@ -32,6 +32,8 @@ public:
 	/** A relay at Location with a zone of Radius cm; its index. Server or solo only (INDEX_NONE on a client). */
 	int32 AddRelay(const FVector2D& Location, float Radius);
 	void ClearRelays();
+	/** R2: the relays the map lays (AHOLRelayLayout, data of the map) replace the list; no layout in the world = the list is left as it is. Server or solo only. Done as the match begins. */
+	void LoadLayout();
 	const TArray<FRelaySite>& GetRelays() const { return Relays; }
 	/** Relays the slot owns. */
 	int32 CountOwned(int32 Slot) const;

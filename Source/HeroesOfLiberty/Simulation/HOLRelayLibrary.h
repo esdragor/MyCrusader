@@ -63,7 +63,7 @@ public:
 	static void ReadAIRelays(const UObject* WorldContextObject, TArray<FHOLAIRelay>& OutRelays);
 
 	/**
-	 * R6, RQ3 PROVISIONAL (not decided): what the AI does with the relays. 0 = A, it ignores them; 1 = B, a detachment by level (default, the
+	 * R6, RQ3 = B (D589): what the AI does with the relays. 0 = A, it ignores them; 1 = B, a detachment by level (default, the
 	 * recommendation); 2 = C, the whole army chains the relays before attacking. The console variable hol.AI.RelayMode.
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Relay")
