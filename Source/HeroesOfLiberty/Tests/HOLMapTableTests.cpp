@@ -112,8 +112,10 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	 * for the trees at the edge of a pack).
 	 * 2026-10-31 (the user, after the tree_spacing trial: "a forest is trees that touch, compact, a minimum of white"): the trunks (60 cm radius)
 	 * nearly touch: 1.25 to 1.35 m asked of the generator; the mean is 1.34 to 1.37 m on Plain and Hinterland, 1.50 to 1.55 m on the Steppe (its lone trees and clumps), at most 1.6 m.
+	 * 2026-11-01 (the user, after the tree_spacing_compare trial: REGLAGE 0.8 m): the trunks may overlap (60 cm radius, 80 cm between the centres):
+	 * 0.8 to 0.9 m asked of the generator (GROVE_SPACING 80), the mean over the groves, lone trees and clumps is measured below, at most 1.2 m.
 	 */
-	constexpr double MeanTreeSpacing = 160.0;
+	constexpr double MeanTreeSpacing = 120.0;
 
 	/** Whether Config/DefaultGame.ini carries this line (a commented line does not count). */
 	bool IsCooked(const TArray<FString>& IniLines, const FString& Line)
