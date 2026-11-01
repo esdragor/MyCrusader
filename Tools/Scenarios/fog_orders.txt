@@ -35,5 +35,4 @@ waitlog Fog render: mode 1
 capture fogord_b
 note Deux deplacements en file (jaune) vers le noir : leurs lignes et leurs points se voient jusqu'au bout. Maj + clic droit pour en ajouter ; le serveur refuse d'attaquer un ennemi hors de vue.
 note Le brouillard reste en place pendant et apres la marche (le scenario ne le coupe plus). hol.Fog.Render 0 / 1 dans la console pour le comparer.
-note Epaisseur (option B, par defaut) : 12,5 cm sous brouillard actif, 6,25 cm sans brouillard. Console : hol.Orders.LineWidthFog 6.25 (A, comme avant) / 12.5 (B) / 25 ; hol.Orders.LineWidth 12.5 (C : plus epais aussi sans brouillard).
-note Halo anti-gresillement (essai) : hol.Fog.OrderMask 1.5 etale le masque du pochoir d'un pixel autour des lignes ; 0 = comme avant. Dis lequel grésille le moins.
+note Lignes d'ordre AU-DESSUS du brouillard (FQ-L) : le brouillard est dessine avant le lissage temporel, les lignes y restent nettes (mesure : 0,05 contre 0,45). Console : hol.Fog.Late 1 remet l'ancien rendu pour comparer ; Fog_orders_compare les montre cote a cote.

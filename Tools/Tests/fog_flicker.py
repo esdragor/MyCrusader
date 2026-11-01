@@ -49,6 +49,19 @@ flicker = float(np.mean(churn)) / max(mean_energy, 1.0)
 wobble = float(np.std(energy)) / max(mean_energy, 1.0)
 coverage = np.mean([yellow(f).sum() for f in frames])
 ok = flicker <= limit and mask.sum() > 20
-print("fog_flicker : %s %s (churn/energy %.3f, wobble %.3f, line pixels %d, mean yellow pixels %d, limit %.2f)"
-      % ("PASS" if ok else "FAIL", tag, flicker, wobble, mask.sum(), coverage, limit))
+# The rest of the picture (trees, ground, the grey zone: "tout ce qui est dans le gris grésille"): the mean frame-to-frame change of
+# the luminance outside the lines, relative to the mean luminance there (units barely move: SpeedScale 0.1), so two runs with
+# different fog settings can be compared.
+rest = ~dilate(mask, 6)
+if len(sys.argv) > 4:
+    # An optional window x0,y0,x1,y1 (1280 x 720 capture): the scene in the grey zone, e.g. the trees of fog_gray_flicker "560,480,720,600".
+    x0, y0, x1, y1 = [int(v) for v in sys.argv[4].split(",")]
+    window2 = np.zeros_like(rest)
+    window2[y0:y1, x0:x1] = True
+    rest &= window2
+lums = [lum(f) for f in frames]
+rest_mean = float(np.mean([l[rest].mean() for l in lums]))
+rest_churn = float(np.mean([np.abs(lums[i + 1] - lums[i])[rest].mean() for i in range(7)])) / max(rest_mean, 1.0)
+print("fog_flicker : %s %s (churn/energy %.3f, wobble %.3f, line pixels %d, mean yellow pixels %d, limit %.2f) REST churn/lum %.4f lum %.1f"
+      % ("PASS" if ok else "FAIL", tag, flicker, wobble, mask.sum(), coverage, limit, rest_churn, rest_mean))
 sys.exit(0 if ok else 1)

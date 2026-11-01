@@ -34,9 +34,18 @@ namespace
 			 "times this, clears the fog there (0: the hard 1-pixel mask, as before; 1.5: a pixel of halo, to try against the flicker). Read each frame."),
 		ECVF_Default);
 
+	TAutoConsoleVariable<int32> CVarFogLate(
+		TEXT("hol.Fog.Late"),
+		0,
+		TEXT("Where the fog post process sits in the frame (F7.3, FQ-L): 0 before the temporal upscaler (the default: the order lines drawn above the fog do not flicker), "
+			 "1 after the tonemapper (the first version, kept to compare: the lines flicker). Read each frame."),
+		ECVF_Default);
+
 	constexpr float RefreshSeconds = 0.1f;
 
 	const TCHAR* PostMaterialPath = TEXT("/Game/Rendering/M_FogPost");
+	const TCHAR* LatePostMaterialPath = TEXT("/Game/Rendering/M_FogPostLate");
+	int32 AppliedLate = 0;
 
 	FAutoConsoleCommandWithWorldAndArgs FogRenderReportCommand(TEXT("hol.Fog.RenderReport"),
 		TEXT("hol.Fog.RenderReport: logs how the fog is drawn on this machine (mode, texture, cells)"),
@@ -118,7 +127,7 @@ void UHOLFogRenderSubsystem::Tick(const float DeltaTime)
 	}
 	if (CVarFogRender.GetValueOnGameThread() > 0 && Texture)
 	{
-		if (AppliedMode != 1)
+		if (AppliedMode != 1 || AppliedLate != (CVarFogLate.GetValueOnGameThread() > 0 ? 1 : 0))
 		{
 			Apply();
 		}
@@ -180,10 +189,12 @@ void UHOLFogRenderSubsystem::RefreshTexture(const int32 Camp)
 void UHOLFogRenderSubsystem::Apply()
 {
 	Remove();
-	UMaterialInterface* Parent = LoadObject<UMaterialInterface>(nullptr, PostMaterialPath);
+	AppliedLate = CVarFogLate.GetValueOnGameThread() > 0 ? 1 : 0;
+	const TCHAR* Path = AppliedLate ? LatePostMaterialPath : PostMaterialPath;
+	UMaterialInterface* Parent = LoadObject<UMaterialInterface>(nullptr, Path);
 	if (!Parent || !Texture)
 	{
-		UE_LOG(LogHOLMatch, Error, TEXT("Fog render: material %s missing (Tools/Editor/make_fog_materials.py)"), PostMaterialPath);
+		UE_LOG(LogHOLMatch, Error, TEXT("Fog render: material %s missing (Tools/Editor/make_fog_materials.py)"), Path);
 		return;
 	}
 	const double Side = Grid.Side * Grid.CellSize;
