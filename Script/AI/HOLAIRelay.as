@@ -1,16 +1,15 @@
-// What the AI does with the neutral relays (R6; RelaysInProgress.md, RQ3 NOT DECIDED): pure rules, no world access, tested in
-// HOLAIRelay_Test.as. PROVISIONAL: the three options of the question are built behind one setting (the console variable hol.AI.RelayMode,
-// HOLRelayRules::GetAIRelayMode), the default being the question's recommendation (B). Building them is not choosing.
+// What the AI does with the neutral relays (R6; RelaysInProgress.md, RQ3 = B, D589): pure rules, no world access, tested in
+// HOLAIRelay_Test.as. RQ3 is decided (B, by level); the three options of the question stay built behind one setting (the console variable
+// hol.AI.RelayMode, HOLRelayRules::GetAIRelayMode) for a later test, the default being the decision (B).
 //   Mode 0 (A): the AI ignores the relays.
-//   Mode 1 (B, default): by level (D579). Easy does not care. Normal sends a small detachment (a quarter of its soldiers) to the nearest relay
+//   Mode 1 (B, default, decided: D589): by level (D579). Easy does not care. Normal sends a small detachment (a quarter of its soldiers) to the nearest relay
 //     that belongs to nobody, when its forum is not attacked, and calls it back when the forum is attacked. Hard does the same and also goes
 //     for the relays held by others, those taken from it first.
 //   Mode 2 (C): the whole army chains the relays (every relay not its own, the nearest first) before the attack wave, whatever the level.
 // The brain reads the relays (HOLRelayRules::ReadAIRelays), asks Step each thought, sends the move orders it returns and leaves the detached
 // soldiers out of the army its other rules see (Without), so that the regrouping and the waves do not take them back. Every send, recall
 // and end is a reason line for the decision journal. The numbers are a starting point, in one place (FHOLAIRelayData).
-// The reading of "the nearest relay that is not hers" for Normal (only the neutral ones) is mine: the question's text does not separate
-// Normal from Hard on that point except by "also retakes the relays taken from it".
+// Normal goes only for the neutral relays; Hard also for those held by others, the ones taken from it first (D589).
 
 namespace HOLAIRelay
 {

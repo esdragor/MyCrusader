@@ -24,7 +24,7 @@ struct FHOLRelayState
 
 namespace HOLRelay
 {
-	/** Provisional values (D388: to tune in test), the same as Script/Relays/HOLRelayRules.as (the script test compares them): the capture time, the recession and the XP by the minute. */
+	/** Values to tune in test (D388), the same as Script/Relays/HOLRelayRules.as (the script test compares them): the capture time and the recession; the XP by the minute is decided (RQ1 = A, D587). */
 	constexpr float DefaultHoldSeconds = 60.f;
 	constexpr int32 DefaultDecaySteps = 2;
 	constexpr int32 RelayXPPerMinute = 10;

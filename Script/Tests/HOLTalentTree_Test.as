@@ -53,3 +53,41 @@ void Test_TalentTreeCellsSayWhetherTheyWork(FUnitTest& T)
 	T.AssertTrue(Cells[4].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "and its hover says so");
 	T.AssertFalse(Cells[1].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Boucliers levés' hover does not");
 }
+
+// A click on a cell (the window's, TQ4 = A): only a pickable cell sends a request, with its own family column; every other state sends nothing.
+void Test_TalentTreeClickRequestsOnlyAPickableCell(FUnitTest& T)
+{
+	// Level 4, two taken (Captain, Captain): row 4 is open, rows 2 and 3 are filled, rows 5 and 6 are later.
+	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::Make(4, TreePicks(1, 1));
+	T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(Cells, 2, 1), "a taken cell sends nothing");
+	T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(Cells, 2, 0), "a passed cell sends nothing");
+	T.AssertEquals(0, HOLTalentTree::ClickedFamily(Cells, 4, 0), "row 4, Guardian column: asks for the Guardian");
+	T.AssertEquals(1, HOLTalentTree::ClickedFamily(Cells, 4, 1), "row 4, Captain column: asks for the Captain");
+	T.AssertEquals(2, HOLTalentTree::ClickedFamily(Cells, 4, 2), "row 4, Champion column: asks for the Champion");
+	T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(Cells, 5, 1), "a later row sends nothing");
+	T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(Cells, 9, 1), "a row outside the window sends nothing");
+	// No point in reserve: the next row waits and sends nothing.
+	T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(HOLTalentTree::Make(3, TreePicks(1, 1)), 4, 1), "waiting for a point: nothing");
+}
+
+// The talents taken stay listed and readable after the purchase (TQ5 = A, D618): one entry per talent taken, in the order of the rows, each with a
+// glyph for its icon, its family and the same hover text as its cell in the tree (name and effect, and "pas encore actif" when it has none).
+void Test_TalentTakenEntriesOnePerTalentWithAHover(FUnitTest& T)
+{
+	T.AssertEquals(0, HOLTalentTree::TakenEntries(1, TreePicks()).Num(), "nothing taken, nothing listed");
+	const TArray<int> Picks = TreePicks(1, 1, 1);
+	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::Make(6, Picks);
+	const TArray<FHOLTalentCellView> Taken = HOLTalentTree::TakenEntries(6, Picks);
+	T.AssertEquals(3, Taken.Num(), "one entry per talent taken");
+	for (int Index = 0; Index < Taken.Num(); Index++)
+	{
+		T.AssertEquals(HOLTalent::FirstRow + Index, Taken[Index].Row, f"entry {Index}: the rows in order");
+		T.AssertEquals(1, Taken[Index].Family, f"entry {Index}: its family");
+		T.AssertTrue(Taken[Index].State == EHOLTalentCellState::Taken, f"entry {Index}: taken");
+		T.AssertFalse(Taken[Index].Glyph.IsEmpty(), f"entry {Index}: it has an icon glyph");
+		T.AssertEquals(Cells[Index * 3 + 1].Tooltip, Taken[Index].Tooltip, f"entry {Index}: the same hover as its cell in the tree");
+		T.AssertTrue(Taken[Index].Tooltip.Contains(Taken[Index].Name), f"entry {Index}: the hover names the talent");
+	}
+	T.AssertTrue(Taken[1].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Mains du guerisseur says it has no effect yet");
+	T.AssertFalse(Taken[0].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Boucliers leves does not");
+}

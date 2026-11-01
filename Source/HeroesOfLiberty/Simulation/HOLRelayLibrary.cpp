@@ -13,7 +13,7 @@ namespace
 {
 	int32 AIRelayMode = 1;
 	FAutoConsoleVariableRef CVarAIRelayMode(TEXT("hol.AI.RelayMode"), AIRelayMode,
-		TEXT("What the AI does with the relays (RQ3, PROVISIONAL, not decided): 0 ignores them (A), 1 a detachment by level (B, default), 2 the whole army (C)"));
+		TEXT("What the AI does with the relays (RQ3 = B, D589): 0 ignores them (A), 1 a detachment by level (B, default), 2 the whole army (C)"));
 }
 
 void UHOLRelayRulesLibrary::StepRelay(const int32 Owner, const int32 Taker, const int32 Held, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot,

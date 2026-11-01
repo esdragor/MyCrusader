@@ -27,10 +27,6 @@
 
 namespace
 {
-	int32 TalentFirstChoiceMode = 1;
-	FAutoConsoleVariableRef CVarTalentFirstChoice(TEXT("hol.UI.TalentFirstChoice"), TalentFirstChoiceMode,
-		TEXT("Where the first talent is chosen (TQ4, PROVISIONAL, not decided): 0 a tree window (not built: shows B), 1 three family buttons (B, default), 2 the advised button takes the Captain (C)"));
-
 	/**
 	 * J8a.4 loop 5: the hero's return times (the delay and the price's drop) at this percent of the rules', for the
 	 * network test (quick_check's net hero phase). 100, the default: the real rules. The price keeps its formula.
@@ -392,9 +388,4 @@ void UHOLHeroLibrary::PlayTalentTakenSound(const UObject* WorldContextObject)
 	{
 		UGameplayStatics::PlaySound2D(WorldContextObject, Sound);
 	}
-}
-
-int32 UHOLHeroLibrary::GetTalentFirstChoiceMode()
-{
-	return FMath::Clamp(TalentFirstChoiceMode, 0, 2);
 }

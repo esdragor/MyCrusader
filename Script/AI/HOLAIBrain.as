@@ -37,7 +37,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIForumMemory> Rebuilds;
 	TMap<int, FHOLAIKingMemory> Kings;
 
-	// What each slot's relay detachment remembers (R6, RQ3 provisional).
+	// What each slot's relay detachment remembers (R6, RQ3 = B, D589).
 	TMap<int, FHOLAIRelayMemory> RelayMemories;
 
 	// The main talent family each slot drew at its first thought (T6, D424).
@@ -78,6 +78,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 	// Since when each slot has a need missing without a break (to build its Market after a minute, MK-Q3 C).
 	TMap<int, FHOLAIMarketBuildMemory> MarketBuilds;
+
+	// What each slot's farm block stood like (IAQ-S-2, D621), to tell when its mill or a farm is destroyed.
+	TMap<int, FHOLAIBlockSeen> BlockSeens;
+
+	// Since when the idle Peasants of each slot have had no safe source (IAQ-S, D619).
+	TMap<int, FHOLAIStranded> Strandeds;
 
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
@@ -150,6 +156,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				Sent.Ids.Add(Resumer);
 			}
 		}
+		// 0c. IAQ-S-2 (D621): the mill or a farm destroyed is built again near the refuge (40 m behind the centre), at the normal cost.
+		Plan = RelocateDestroyed(PlayerIndex, Step, Summary, Data, Plan);
+		FarmPlans.Add(PlayerIndex, Plan);
 		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
 		if (Build.bPlanFarms)
 		{
@@ -250,11 +259,22 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		ThinkDuel(PlayerIndex, Step, Summary, Data);
 
 		// 4. The idle Peasants (the builder left out) spread by the needs, one gather order per resource.
+		FHOLAIStranded Stranded;
+		Strandeds.Find(PlayerIndex, Stranded);
 		if (NumIdle == 0)
 		{
+			Stranded.Since = -1.f;
+			Strandeds.Add(PlayerIndex, Stranded);
 			return true;
 		}
-		TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, Data, Free);
+		// IAQ-S (D619): with every source under an enemy soldier the Peasants wait 30 s, then go to the source farthest from any soldier.
+		const bool bWaited = Stranded.Since >= 0.f;
+		TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::StrandedGroups(Stranded, Summary, Data, Free, Data.GameSeconds);
+		Strandeds.Add(PlayerIndex, Stranded);
+		if (bWaited && Groups.Num() > 0 && Stranded.Since == Data.GameSeconds)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: every source is under an enemy soldier, {Free.Num()} idle Peasants leave after 30 s for the source farthest from them");
+		}
 		if (Groups.Num() == 0)
 		{
 			if (Free.Num() > 0)
@@ -567,7 +587,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Defences.Find(PlayerIndex, State);
 		FHOLAIWave Wave;
 		Waves.Find(PlayerIndex, Wave);
-		// The relays (R6, RQ3 PROVISIONAL: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
+		// The relays (R6, RQ3 = B, D589: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
 		// of the army the other rules see below (defence, regrouping, waves) while it is away.
 		const FHOLAISummary Summary = ThinkRelays(PlayerIndex, Step, FullSummary, Data, Wave, State);
 		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
@@ -577,7 +597,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const bool bWas = State.bDefending;
 		// IA4 (D579): the forum attacked is weighed by the level; every situation is written down (lives, ratio, decision); Easy sends the army whatever the ratio.
 		// The slot's level (D422) is read from its config into the summary (C++ Read, D579).
-		const EHOLAIDifficulty Level = HOLAILives::Effective(Summary.Level, Now, Data.Army.Lives);
+		const EHOLAIDifficulty Level = HOLAILives::Played(Summary.Level, Now, Data.Army.Lives);
 		if (!LevelLogged.Contains(PlayerIndex))
 		{
 			LevelLogged.Add(PlayerIndex, true);
@@ -744,7 +764,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			return FullSummary;
 		}
 		const float Now = Data.GameSeconds;
-		const EHOLAIDifficulty Level = HOLAILives::Effective(FullSummary.Level, Now, Data.Army.Lives);
+		const EHOLAIDifficulty Level = HOLAILives::Played(FullSummary.Level, Now, Data.Army.Lives);
 		const bool bAttacked = HOLAIArmy::Threat(FullSummary, Data.Army).bThreatened || State.bDefending;
 		const FVector From = FullSummary.bHasCentre ? FullSummary.CentreLocation : FVector(0, 0, 0);
 		const FHOLAIRelayStep Result = HOLAIRelay::Step(Memory, Mode, Level, HOLAIArmy::WithoutWave(FullSummary, Wave), Relays, bAttacked, Now, From, FHOLAIRelayData());
@@ -761,6 +781,33 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	}
 	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
 	// does not fit within the rings.
+	// The mill or the farms of the planned block that stood and are gone (BlockLoss) get new spots around the refuge (FindAIFarmBlock there);
+	// the opening is told that the slot had a mill and has none (the next one goes near the refuge too). Nothing destroyed: the plan as it was.
+	FHOLAIFarmPlan RelocateDestroyed(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, FHOLAIOpeningData& Data, FHOLAIFarmPlan Planned)
+	{
+		FHOLAIFarmPlan Plan = Planned;
+		FHOLAIBlockSeen Seen;
+		BlockSeens.Find(PlayerIndex, Seen);
+		const FHOLAIBlockLoss Loss = HOLAIOpening::BlockLoss(Seen, Summary, Plan);
+		Data.bMillLost = Seen.bAnyMill && !HOLAIOpening::HasBuilding(Summary, n"Mill");
+		if (Loss.bMill || Loss.Farms.Num() > 0)
+		{
+			FVector NewMill;
+			TArray<FVector> NewFarms;
+			if (HOLAIOrder::FindAIFarmBlock(PlayerIndex, HOLAIOpening::RefugeCentreOf(Summary, Data), Data.FarmRings, NewMill, NewFarms))
+			{
+				HOLAIOpening::RelocateLost(Plan, Seen, Loss, NewMill, NewFarms);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: farm block destroyed (mill {Loss.bMill}, {Loss.Farms.Num()} farms), built again near the refuge ({NewMill.X}, {NewMill.Y})");
+			}
+			else
+			{
+				LogBuildOnce(PlayerIndex, Step, "no room near the refuge for the farm block");
+			}
+		}
+		BlockSeens.Add(PlayerIndex, Seen);
+		return Plan;
+	}
+
 	FHOLAIFarmPlan PlanFarmBlock(int PlayerIndex, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
 		FHOLAIFarmPlan Plan;
