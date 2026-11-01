@@ -768,3 +768,87 @@ void Test_MiningCampNeedsItsWood(FUnitTest& T)
 	TArray<int> NoBusy;
 	T.AssertEquals("no wood", HOLAIOpening::OrderOf(Summary, Data, n"MiningCamp", FVector(5000, 0, 0), false, NoBusy).Nothing, "30 wood: no order for a mining camp");
 }
+
+// ----- IA fix (2026-11-01): the economy under an enemy at the berries (found in a real game of ai_easy) -----
+
+FHOLAIUnit OpeningEnemy(int Id, FName Type, FVector Where)
+{
+	FHOLAIUnit Unit;
+	Unit.Id = Id;
+	Unit.OwnerSlot = 0;
+	Unit.Type = Type;
+	Unit.Health = 100;
+	Unit.Location = Where;
+	Unit.TargetId = -1;
+	return Unit;
+}
+
+// A source with an enemy soldier within reach of its Peasants (they would run again, the FleeRadius of HOLAIArmy) is not given to
+// the idle Peasants: they went back to the berries the soldiers stood at, ran again, and so on in a loop; none of the AI's buildings
+// followed. The food source #10 has an enemy Spearman beside it: nobody goes there, all go to the wood (#11), the rally neither.
+void Test_NoGatheringAtTheSourceAnEnemyStandsBy(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	const FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	// 1640 cm from the food (within the Peasants' reach), 2060 cm from the wood (outside it).
+	Summary.Enemies.Add(OpeningEnemy(50, n"Spearman", FVector(2000, -1300, 0)));
+	TArray<FHOLAIGatherGroup> Groups = HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants);
+	int OnFood = 0;
+	int Sent = 0;
+	for (int Index = 0; Index < Groups.Num(); Index++)
+	{
+		Sent += Groups[Index].Peasants.Num();
+		if (Groups[Index].SourceIndex == 10)
+		{
+			OnFood += Groups[Index].Peasants.Num();
+		}
+	}
+	T.AssertEquals(0, OnFood, "nobody sent to the food an enemy soldier stands by");
+	T.AssertEquals(5, Sent, "the five go to the wood");
+	const FHOLAIProduceChoice Produce = HOLAIOpening::ChooseProduction(Summary, Data);
+	T.AssertTrue(Produce.RallySource != 10, "the new Peasants' rally is not on that source either");
+
+	// Far from the source (beyond the reach, and an enemy Peasant is no threat): back to normal.
+	Summary.Enemies.Empty();
+	Summary.Enemies.Add(OpeningEnemy(51, n"Spearman", FVector(1000 + Data.Army.FleeRadius + 2500, 0, 0)));
+	Summary.Enemies.Add(OpeningEnemy(52, n"Peasant", FVector(1000, 100, 0)));
+	Groups = HOLAIOpening::SplitGather(Summary, Data, Summary.IdlePeasants);
+	T.AssertTrue(Groups.Num() > 0 && Groups[0].SourceIndex == 10, "enemy far, or a Peasant: the food is gathered again");
+}
+
+// A site whose builder left it (it ran from a soldier) is built again: the foundation counted as a house coming for ever, so no other house was
+// asked, the population stayed at its cap and the AI never reached the Peasants a Barracks wants. A site whose progress has not moved for
+// StalledSeconds gets a Peasant (build order), not twice in a row.
+void Test_AbandonedSiteIsBuiltAgain(FUnitTest& T)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	FHOLAIBuilding House;
+	House.TypeName = n"House";
+	House.State = EHOLConstructionState::Foundation;
+	House.Progress = 0.f;
+	House.Location = FVector(-2000, 500, 0);
+	Summary.Buildings.Add(House);
+	TArray<int> NoBusy;
+	FHOLAISiteMemory Memory;
+	FVector Site;
+	T.AssertEquals(-1, HOLAIOpening::ResumeSite(Memory, Summary, NoBusy, 100.f, Site), "first seen: nobody sent");
+	T.AssertEquals(-1, HOLAIOpening::ResumeSite(Memory, Summary, NoBusy, 105.f, Site), "5 s later, still: nobody yet");
+	const int Builder = HOLAIOpening::ResumeSite(Memory, Summary, NoBusy, 100.f + HOLAIOpening::StalledSeconds + 1.f, Site);
+	T.AssertTrue(Builder >= 1 && Builder <= 5, "stalled: a Peasant is sent");
+	T.AssertTrue((Site - House.Location).Size() < 1.f, "to that site");
+	T.AssertEquals(-1, HOLAIOpening::ResumeSite(Memory, Summary, NoBusy, 100.f + HOLAIOpening::StalledSeconds + 2.f, Site), "not twice in a row");
+
+	// A site that rises is not stalled.
+	FHOLAISiteMemory Rising;
+	for (int Second = 0; Second < 40; Second += 5)
+	{
+		Summary.Buildings[Summary.Buildings.Num() - 1].Progress = float(Second) / 100.f;
+		T.AssertEquals(-1, HOLAIOpening::ResumeSite(Rising, Summary, NoBusy, 200.f + Second, Site), "a site that rises is being built");
+	}
+
+	// A finished building, or the main centre, is never resumed.
+	Summary.Buildings[Summary.Buildings.Num() - 1].State = EHOLConstructionState::Finished;
+	FHOLAISiteMemory Done;
+	HOLAIOpening::ResumeSite(Done, Summary, NoBusy, 0.f, Site);
+	T.AssertEquals(-1, HOLAIOpening::ResumeSite(Done, Summary, NoBusy, 500.f, Site), "finished: nothing to resume");
+}
