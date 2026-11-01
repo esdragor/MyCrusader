@@ -305,6 +305,8 @@ if ($Parts -contains "net") {
     $NetHeroBackFlag = Join-Path $TestSaved "quick_net_hero_back.flag"
     $NetHeroBornFlag = Join-Path $TestSaved "quick_net_hero_born.flag"
     $NetHeroXPFlag = Join-Path $TestSaved "quick_net_hero_xp.flag"
+    # The server's heroes removed (the end of its hero phases): with the forum's lives following the hero's tier (P2), the victory part's forum strike waits for it.
+    $NetHeroesGoneFlag = Join-Path $TestSaved "quick_net_heroes_gone.flag"
     $NetHeroAbilitiesFlag = Join-Path $TestSaved "quick_net_hero_abilities.flag"
     $NetHeroCastFlag = Join-Path $TestSaved "quick_net_hero_cast.flag"
     $NetServerSequence = Join-Path $TestSaved "quick_net_server.seq"
@@ -372,7 +374,7 @@ if ($Parts -contains "net") {
             # both clients' reports; the hero stays until they have signalled.
             "mark net tech", "waitfile $(Join-Path $TestSaved "quick_net_tech_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120",
             "hol.Hero.ResetAbilities 1",
-            "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero") +
+            "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero", "wait 0.5", "signal $NetHeroesGoneFlag") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
         # (client 2 Alice in slot 0, client 1 Bob in slot 1, R3.2), then, once both clients have shown them, client 1's King
         # (slot 1) killed: its defeat (King) ends the match in place of V1.4c's surrender.
@@ -2734,7 +2736,7 @@ if ($NetListening) {
                     "waitfile $KingSeen 120", "signal $NetKingKillFlag", "waitlog End banner: Defeat", "waitfile $VictoryDone"
             }
             else {
-                $NetSteps += "mark victory", "hol.Units.Report", "signal $VictoryReady", "waitfile $ForumFell", "wait 1", "hol.HUD.Report", "signal $ForumSeen",
+                $NetSteps += "mark victory", "hol.Units.Report", "waitfile $NetHeroesGoneFlag 120", "signal $VictoryReady", "waitfile $ForumFell", "wait 1", "hol.HUD.Report", "signal $ForumSeen",
                     "waitfile $NetKingBornFlag 300", "wait 1.5", "hol.Units.Report", "signal $KingSeen", "waitlog End banner: Victory"
                 for ($i = 0; $i -lt 5; $i++) { $NetSteps += "wait 1", "hol.Units.Report" }
                 $NetSteps += "signal $VictoryDone"
