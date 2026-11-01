@@ -2851,7 +2851,10 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			{
 				bAllInFiles = false;
 			}
-			SteerInFile(Entity, Order, Across, WalkSpeed, Pace, Direction, ToGo, Block.Offsets[Unit].X + DepthShift - Block.Depths[Unit]);
+			// Just pushed out of a fixed obstacle: along the march, not across into it again (ObstacleHold).
+				const bool bHolding = Order.ObstacleHold > 0;
+				Order.ObstacleHold = bHolding ? Order.ObstacleHold - 1 : 0;
+				SteerInFile(Entity, Order, bHolding ? 0. : Across, WalkSpeed, Pace, Direction, ToGo, Block.Offsets[Unit].X + DepthShift - Block.Depths[Unit]);
 		}
 		// Every unit of the body in its file: its files formed on the move.
 		if (bAllInFiles && Block.Report.JoinSteps < 0)
