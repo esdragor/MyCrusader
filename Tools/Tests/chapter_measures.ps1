@@ -23,8 +23,8 @@ $LogDir = Join-Path $Project "Saved_Tests\Logs"
 New-Item -ItemType Directory -Force $LogDir | Out-Null
 $Stamp = if ($Tag) { $Tag } else { Get-Date -Format "MMdd_HHmm" }
 $Thresholds = @{ StepMs = 3.0; Fps = 144.0 }
-# The battles S3 and S4 have their own simulation threshold (D342).
-$BattleStepMs = @{ S3 = 6.0; S4 = 6.0 }
+# The battles S3 and S4 have their own simulation threshold (D342, raised from 6.0 to 6.5 ms by PQ1 = A, D586).
+$BattleStepMs = @{ S3 = 6.5; S4 = 6.5 }
 function Get-StepThreshold([string] $Scenario) { if ($BattleStepMs.ContainsKey($Scenario)) { $BattleStepMs[$Scenario] } else { $Thresholds.StepMs } }
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 
