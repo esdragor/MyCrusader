@@ -12,7 +12,7 @@
  * each slot in each relay's zone, applies HOLRelay::Step and gives the owner's hero its territory XP by the minute (the Exploration source).
  * The relays are laid by the map (R2, not done yet: for now hol.Relay.Add, development only). R5: each step the server writes what every machine
  * should know of them into the game state (FHOLRelayView, replicated: AHOLGameState::SetRelayViews); the markers draw the rings from it.
- * Not decided yet (RelaysInProgress.md): the rates and several adverse sides (provisional values in HOLRelayRules.h), whether the XP goes on
+ * Decided: the XP rate (RQ1 = A, D587) and two adverse sides freezing the count (RQ2 = A, D588). Not decided yet (RelaysInProgress.md): whether the XP goes on
  * while the hero is dead (here it does), neutral units (they never take a relay), secondary centres (none in the game yet: 0 counted).
  */
 UCLASS()

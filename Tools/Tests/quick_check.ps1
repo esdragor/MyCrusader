@@ -3317,7 +3317,7 @@ if ($Parts -contains "menu") {
     $Checks["its hero at level 6 takes the Captain in rows 2 to 6, in order ($($AITalents -join ' '))"] = ($AITalents -join " ") -eq "1@2 1@3 1@4 1@5 1@6"
     $Checks["the server took the five ($(@($Launch | Select-String -Pattern 'Hero talent order: slot 1 family 1 at step \d+ taken').Count))"] =
         @($Launch | Select-String -Pattern "Hero talent order: slot 1 family 1 at step \d+ taken").Count -eq 5
-    # R6 (RQ3 provisional, B by default): 8 Spearmen of slot 1 and a neutral relay 30 m away: the Normal AI sends a quarter of them (2 of 8).
+    # R6 (RQ3 = B, D589): 8 Spearmen of slot 1 and a neutral relay 30 m away: the Normal AI sends a quarter of them (2 of 8).
     $Checks["the AI (Normal, option B) sends 2 of its 8 soldiers to the neutral relay"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: relay: sends 2 of 8 soldiers to relay 0, mode B detachment by level" -Quiet)
     $Checks["the detached soldiers walk there and take it (Relay 0: slot 1 takes it)"] = [bool]($Launch | Select-String -SimpleMatch "Relay 0: slot 1 takes it from slot -1" -Quiet)
     $AllOk = (Report "menu ailaunch" $Checks) -and $AllOk
