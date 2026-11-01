@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-01 16:25\n"
-"PO-Revision-Date: 2026-11-01 16:25\n"
+"POT-Creation-Date: 2026-11-01 16:29\n"
+"PO-Revision-Date: 2026-11-01 16:29\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -377,10 +377,10 @@ msgctxt "HOLTalentPanel,TooltipAdvisedTalent"
 msgid "Prend le talent de la famille la plus remplie : {0} — {1}"
 msgstr "Takes the talent of the most filled family: {0} — {1}"
 
-#. Key:	TooltipFirst
+#. Key:	TooltipNoAdvice
 #. SourceLocation:	Script/Talents/HOLTalentPanel.as(116)
 #: Script/Talents/HOLTalentPanel.as(116)
-msgctxt "HOLTalentPanel,TooltipFirst"
+msgctxt "HOLTalentPanel,TooltipNoAdvice"
 msgid "Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser"
 msgstr "No advised choice until a talent is taken or while no point is kept"
 

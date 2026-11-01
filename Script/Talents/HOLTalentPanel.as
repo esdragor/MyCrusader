@@ -113,7 +113,7 @@ namespace HOLTalentText
 	{
 		if (bAdvised)
 			return NSLOCTEXT("HOLTalentPanel", "TooltipAdvisedTalent", "Prend le talent de la famille la plus remplie : {0} — {1}");
-		return NSLOCTEXT("HOLTalentPanel", "TooltipFirst", "Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser");
+		return NSLOCTEXT("HOLTalentPanel", "TooltipNoAdvice", "Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser");
 	}
 
 	// The reminder's line: "Talents à dépenser : 2".

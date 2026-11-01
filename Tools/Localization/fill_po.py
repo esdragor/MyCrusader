@@ -266,7 +266,7 @@ TRANSLATIONS = {
     "HOLHeroBlock,AbilityCooldown": ("Ready in {0} s", "あと {0} 秒"),
     "HOLTalentPanel,Reminder": ("Talents to spend: {0}", "未使用のタレント：{0}"),
     "HOLTalentPanel,TooltipAdvisedTalent": ("Takes the talent of the most filled family: {0} — {1}", "最も多く取得した系統のタレントを取る：{0} — {1}"),
-    "HOLTalentPanel,TooltipFirst": ("No advised choice until a talent is taken or while no point is kept", "タレントを取得するまで、またはポイントがない間はおすすめはありません"),
+    "HOLTalentPanel,TooltipNoAdvice": ("No advised choice until a talent is taken or while no point is kept", "タレントを取得するまで、またはポイントがない間はおすすめはありません"),
     "HOLTalentPanel,WindowTitle": ("Talent tree", "タレントツリー"),
     "HOLTalentPanel,Close": ("Close", "閉じる"),
     "HOLTalentPanel,RowLabel": ("Row {0}", "段{0}"),
