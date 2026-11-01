@@ -29,7 +29,8 @@ namespace HOLCommandGrid
 				}
 				return Result;
 			}
-			// M5: a Market produces nothing; its cells are the trades (sales on the top row, purchases on the second).
+			// M5: a Market produces nothing; its cells are the trades (PURCHASES on the top row A Z E, SALES on the second Q S D:
+		// the user's correction of 2026-11-01).
 			if (Context.bMarket)
 			{
 				const int32 Good = Cell % GridColumns;
@@ -37,7 +38,7 @@ namespace HOLCommandGrid
 				{
 					Result.Command = EHOLGridCommand::Trade;
 					Result.Resource = static_cast<EHOLResource>(Good);
-					Result.bBuy = Cell >= GridColumns;
+					Result.bBuy = Cell < GridColumns;
 				}
 				return Result;
 			}
@@ -82,7 +83,7 @@ namespace HOLCommandGrid
 		{
 			return INDEX_NONE;
 		}
-		return (bBuy ? GridColumns : 0) + Good;
+		return (bBuy ? 0 : GridColumns) + Good;
 	}
 
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)

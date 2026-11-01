@@ -250,7 +250,7 @@ namespace HOLHeroBlockText
 		if (Key == AuraName) return NSLOCTEXT("HOLHeroBlock", "AuraName", "Aura de l'Aube");
 		if (Key == AuraEffect) return NSLOCTEXT("HOLHeroBlock", "AuraEffect", "Passive : −15 % de dégâts reçus pour vos unités à 12 m du héros");
 		if (Key == CloseRanksName) return NSLOCTEXT("HOLHeroBlock", "CloseRanksName", "Serrez les rangs (A)");
-		if (Key == CloseRanksEffect) return NSLOCTEXT("HOLHeroBlock", "CloseRanksEffect", "Formation défensive pendant 15 s : vos unités à 12 m du héros restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
+		if (Key == CloseRanksEffect) return NSLOCTEXT("HOLHeroBlock", "CloseRanksEffect", "Immobilise 15 s les unités à 12 m du héros (formation défensive) : elles restent sur place et reçoivent −25 % de dégâts ; recharge 60 s");
 		if (Key == BannerName) return NSLOCTEXT("HOLHeroBlock", "BannerName", "Bannière de l'Aube (Z)");
 		if (Key == BannerEffect) return NSLOCTEXT("HOLHeroBlock", "BannerEffect", "Plantée à 16 m du héros au plus : son aura pendant 45 s ; recharge 120 s");
 		if (Key == AbilityLocked) return NSLOCTEXT("HOLHeroBlock", "AbilityLocked", "Niveau {0} requis");

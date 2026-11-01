@@ -5,6 +5,7 @@ open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+hol.Sanity.Watch 1
 # Passifs au repos (N4) : un camp (hol.Camp.Aggro 1, il ne bouge que si on l attaque) a un Paysan de mon camp a 3 m de son poste : personne ne frappe, le camp reste au poste.
 hol.Camp.Aggro 1
 hol.Camp.Add 0 -9000 3 Spearman
@@ -49,3 +50,5 @@ waitlog Camp 2: fighting
 waitlog Camp 2: cleared for good
 waitlog Camp 2 reward: slot 0 +100 XP
 note Camp neutre : 3 Lanciers neutres au centre de la carte. Mes 6 Hommes d armes entrent dans leur rayon (15 m), le camp charge, est detruit, et mon heros gagne 100 XP (journal : Camp 1 reward).
+# Audit du jeu (Auto_Journey, Qualite des essais) : couleur des neutres, unites qui tournent ou tremblent. Lu par preflight.ps1.
+hol.Test.Sanity

@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+talents_points | Sous les capacités du héros : « Talents à dépenser : 2 » et trois boutons Gardien / Capitaine / Champion
+talents_first | Après le clic sur Capitaine : ligne dorée « Talent pris : Boucliers levés — +1 armure aux unités dans l'Aura de l'Aube » et dessous « Talents pris (1) : Boucliers levés »
+talents_second | Après le bouton conseillé : « Talent pris : Mains du guérisseur — ... (pas encore actif dans ce prototype) » et la liste de deux noms
+talents_dawn | Au niveau 4 : « Talent pris : Pas de l'Aube — ... » et la liste des trois noms dans l'ordre
+talents_cry | Après le cri : les Hommes d'armes arrêtés en colonne contre le mur du forum (ils ne marchent pas vers l'est), le cercle d'aura au sol, la case du cri en recharge (56) dans le bloc du héros

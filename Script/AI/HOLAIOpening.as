@@ -204,8 +204,77 @@ struct FHOLAIGatherGroup
 	TArray<int> Peasants;
 }
 
+// What the brain remembers of the sites under way of a slot, to find the abandoned ones (ResumeSite): each site's place, the progress last
+// seen, since when (game seconds) it has not moved, and when a Peasant was last sent to it.
+struct FHOLAISiteMemory
+{
+	TArray<FVector> Locations;
+	TArray<float> Progress;
+	TArray<float> Since;
+	TArray<float> LastSent;
+}
+
 namespace HOLAIOpening
 {
+	// A site whose progress has not moved for this long (game seconds) has no builder any more; one is sent again at most this often.
+	const float StalledSeconds = 20.f;
+
+	// The site to build again (Site) and the Peasant to send to it, or -1: a site under way (the main centre apart) whose progress has not
+	// moved for StalledSeconds has lost its builder (it ran from a soldier, or was killed): the foundation counted as a house coming for
+	// ever, no other house was asked, the population stayed at its cap and the army's buildings never came (found in a real game: ai_easy,
+	// no Barracks in 10 min). Not the same site twice in StalledSeconds. Busy: the Peasants not to pick (sent to a site already).
+	int ResumeSite(FHOLAISiteMemory& Memory, const FHOLAISummary& Summary, const TArray<int>& Busy, float Now, FVector& Site)
+	{
+		FHOLAISiteMemory Next;
+		int Builder = -1;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Building = Summary.Buildings[Index];
+			if (Building.State == EHOLConstructionState::Finished || Building.TypeName == n"MainCentre")
+			{
+				continue;
+			}
+			int Seen = -1;
+			for (int Each = 0; Each < Memory.Locations.Num() && Seen < 0; Each++)
+			{
+				FVector Away = Memory.Locations[Each] - Building.Location;
+				Away.Z = 0;
+				if (Away.Size() < 100.0)
+				{
+					Seen = Each;
+				}
+			}
+			float Progress = Building.Progress;
+			float Since = Now;
+			float LastSent = -1000.f;
+			if (Seen >= 0)
+			{
+				LastSent = Memory.LastSent[Seen];
+				if (Building.Progress <= Memory.Progress[Seen] + 0.0001f)
+				{
+					Progress = Memory.Progress[Seen];
+					Since = Memory.Since[Seen];
+				}
+			}
+			if (Builder < 0 && Seen >= 0 && Now - Since >= StalledSeconds && Now - LastSent >= StalledSeconds)
+			{
+				const int Pick = PickBuilder(Summary, Busy);
+				if (Pick >= 0)
+				{
+					Builder = Pick;
+					Site = Building.Location;
+					LastSent = Now;
+				}
+			}
+			Next.Locations.Add(Building.Location);
+			Next.Progress.Add(Progress);
+			Next.Since.Add(Since);
+			Next.LastSent.Add(LastSent);
+		}
+		Memory = Next;
+		return Builder;
+	}
+
 	// The opening as the game plays it: lumber camp near the wood, then mill near the food; the houses, the later camps and the farm block are rules of ChooseBuild (costs from
 	// BuildingTypes.csv).
 	FHOLAIOpeningData DefaultData()
@@ -938,7 +1007,7 @@ namespace HOLAIOpening
 		Choice.Centre = Centre.Location;
 		TArray<int> Counts = GatherersOf(Summary);
 		// IA1.7b: the sources whose places are all held are left out (a new Peasant would stand idle in front of them).
-		const FHOLAISummary Open = WithoutHeldSources(Summary);
+		const FHOLAISummary Open = OpenSummary(Summary, Data);
 		const FHOLAINeeds Needs = HOLAINeeds::Compute(Open, Data);
 		const int Resource = HOLAINeeds::MostLacking(Needs, Counts, SumOf(Counts) + 1);
 		if (Resource >= 0)
@@ -976,6 +1045,40 @@ namespace HOLAIOpening
 		Open.Wood = OpenPartOf(Summary.Wood);
 		Open.Stone = OpenPartOf(Summary.Stone);
 		Open.Gold = OpenPartOf(Summary.Gold);
+		return Open;
+	}
+
+	// A part without the sources an enemy soldier stands within Reach of: the Peasants there would run from it (HOLAIArmy::FleeOrders), come
+	// back idle, be sent to the same source again, and so on in a loop (found in a real game: ai_easy, soldiers at the berries).
+	FHOLAIResourceSummary SafePartOf(const FHOLAIResourceSummary& Part, const FHOLAISummary& Summary, float Reach)
+	{
+		FHOLAIResourceSummary Safe = Part;
+		Safe.Sources.Empty();
+		for (int Index = 0; Index < Part.Sources.Num(); Index++)
+		{
+			bool bSafe = true;
+			for (int Each = 0; Each < Summary.Enemies.Num() && bSafe; Each++)
+			{
+				bSafe = !HOLAIArmy::IsThreatening(Summary.Enemies[Each]) || HOLAIArmy::FlatDistance(Summary.Enemies[Each].Location, Part.Sources[Index].Location) > Reach;
+			}
+			if (bSafe)
+			{
+				Safe.Sources.Add(Part.Sources[Index]);
+			}
+		}
+		return Safe;
+	}
+
+	// The summary as the Peasants to send see it: the held sources left out, and those an enemy soldier stands by (the Peasants' flight
+	// radius, and a margin for the width of the source).
+	FHOLAISummary OpenSummary(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FHOLAISummary Open = WithoutHeldSources(Summary);
+		const float Reach = Data.Army.FleeRadius + 300.f;
+		Open.Food = SafePartOf(Open.Food, Summary, Reach);
+		Open.Wood = SafePartOf(Open.Wood, Summary, Reach);
+		Open.Stone = SafePartOf(Open.Stone, Summary, Reach);
+		Open.Gold = SafePartOf(Open.Gold, Summary, Reach);
 		return Open;
 	}
 
@@ -1072,7 +1175,7 @@ namespace HOLAIOpening
 		{
 			return Groups;
 		}
-		const FHOLAISummary Open = WithoutHeldSources(Summary);
+		const FHOLAISummary Open = OpenSummary(Summary, Data);
 		TArray<int> Counts = GatherersOf(Summary);
 		const int Total = SumOf(Counts) + Free.Num();
 		const FHOLAINeeds Needs = HOLAINeeds::Compute(Open, Data);

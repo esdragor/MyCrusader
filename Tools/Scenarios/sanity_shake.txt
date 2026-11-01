@@ -1,0 +1,13 @@
+# hol.Test.Sanity, cas defectueux (chaine reelle) : des Hommes d armes sans ordre sont secoues de 3 cm a chaque pas (hol.Sanity.Shake) : Sanity: FAIL ... shakes attendu.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+hol.Sanity.Watch 1
+frames 5
+hol.Units.Spawn 3 0 0 0 ManAtArms 100
+waitlog Spawn: 3 ManAtArms
+hol.Sanity.Shake 3
+wait 4
+hol.Test.Sanity
+waitlog Sanity: FAIL unit #
+waitlog shakes

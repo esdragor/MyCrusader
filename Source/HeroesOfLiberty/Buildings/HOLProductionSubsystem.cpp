@@ -213,8 +213,9 @@ void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Orde
 			Order.bBuy ? TEXT("buy") : TEXT("sell"), Order.Lots, Order.Resource, *Trade.Reason.ToString());
 		return;
 	}
-	PlayerState.SetResources(After);
+	// The book first: the stock's change refreshes the HUD, whose Market cells quote the book (they showed the one before).
 	GameState->SetMarketBook(Trade.Book);
+	PlayerState.SetResources(After);
 	UE_LOG(LogHOLCommands, Display, TEXT("Market: slot %d %s %d lots of resource %d for %d gold (price now %d, %s)"), Order.PlayerIndex,
 		Order.bBuy ? TEXT("bought") : TEXT("sold"), Order.Lots, Order.Resource, Trade.Gold, Trade.Book.Prices[Order.Resource], *After.ToString());
 }

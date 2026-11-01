@@ -102,15 +102,16 @@ namespace UE::HeroesOfLiberty::Presentation
 			}
 		}
 
-		int32 Get(const uint8 OwnerPlayer) const
+		/** The colour a unit of OwnerPlayer is drawn with (HOLPlayerColors::GetOwnerLinearColor). */
+		FVector3f GetLinear(const uint8 OwnerPlayer) const
 		{
-			return OwnerPlayer < FHOLMatchConfig::MaxSlots ? ColorIndices[OwnerPlayer] : OwnerPlayer;
+			return HOLPlayerColors::GetOwnerLinearColor(OwnerPlayer, TConstArrayView<uint8>(ColorIndices.GetData(), FHOLMatchConfig::MaxSlots));
 		}
 	};
 
-	FUnitCustomData GetCustomData(const int32 ColorIndex, const uint8 Prop)
+	FUnitCustomData GetCustomData(const FVector3f& Color, const uint8 Prop)
 	{
-		return { HOLPlayerColors::GetLinearColor(ColorIndex), static_cast<float>(Prop) };
+		return { Color, static_cast<float>(Prop) };
 	}
 
 	/** Start offset (s) of a unit in a sequence: stable per unit and sequence, so 2 000 units do not step in time. */
@@ -575,7 +576,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
-					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.Get(State.OwnerPlayer), Choice.Prop), RepresentationLOD.LODSignificance,
+					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.GetLinear(State.OwnerPlayer), Choice.Prop), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}
@@ -648,7 +649,7 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
-					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.Get(Corpse.OwnerPlayer), Corpse.Prop), RepresentationLOD.LODSignificance,
+					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.GetLinear(Corpse.OwnerPlayer), Corpse.Prop), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}

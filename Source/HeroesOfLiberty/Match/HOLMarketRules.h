@@ -58,9 +58,11 @@ namespace HOLMarket
 	HEROESOFLIBERTY_API FTrade Sell(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 Stock, int32 FeePercent);
 	/** Buys Lots lots of Resource with GoldStock gold, at the tax FeePercent. */
 	HEROESOFLIBERTY_API FTrade Buy(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 GoldStock, int32 FeePercent);
+	/** Buys Lots lots of 100 GOLD of Resource (the interface: "100 gold for X goods"): each lot gives 100 * 100 / (the lot's price plus the tax) goods, rounded down, at the price the one before left, and raises it by a step. Units = the goods, Gold = 100 per lot. */
+	HEROESOFLIBERTY_API FTrade BuyWithGold(const FSettings& Settings, const FBook& Book, int32 Resource, int32 Lots, int32 GoldStock, int32 FeePercent);
 	/**
 	 * One trade on a player's stock (M4b): the order's end of the chain. A sale takes Lots lots of Resource from Stock and gives the gold;
-	 * a purchase takes the gold and gives the goods; OutStock is Stock changed (Stock itself when refused). The server calls it for a
+	 * a purchase takes Lots lots of 100 GOLD and gives the goods (BuyWithGold); OutStock is Stock changed (Stock itself when refused). The server calls it for a
 	 * player who owns a finished Market (that check, and the book kept for the match, are the caller's).
 	 */
 	HEROESOFLIBERTY_API FTrade Apply(const FSettings& Settings, const FBook& Book, const FHOLResources& Stock, EHOLResource Resource, int32 Lots, bool bBuy, int32 FeePercent, FHOLResources& OutStock);

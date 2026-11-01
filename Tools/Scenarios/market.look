@@ -1,0 +1,4 @@
+# Points à regarder de l'essai market (preflight.ps1) : <nom de capture> | ce que l'utilisateur doit voir
+market_grid | Le Marché est sélectionné ; la grille en bas à droite : ligne du haut A Z E = Acheter (nourriture, bois, pierre) avec « 100 or = X », ligne du dessous Q S D = Vendre avec « 100 = Y or » ; stock de 2000 de chaque ressource en haut
+market_bought | Après l'achat de bois par 100 d'or (Z) : l'or du stock a baissé de 100, le bois a monté, la case Acheter bois affiche un X plus petit (cours monté)
+market_sold | Après la vente de 100 de bois (S) : le bois a baissé de 100, l'or a monté, la case Vendre bois affiche le nouveau gain
