@@ -1,56 +1,49 @@
-# La Foret profonde Petite (2 joueurs, 440 m) : la route de 8 m qui va de ma base au milieu, vitesse de marche a 130 % (CQ6a = A), mesuree au journal
-# Coordonnees du MONDE (hol.Units.Move, hol.Units.Where) : ma base est en (-16500, 0), la route va de x = -10000 a x = -1200 (forest.py ROAD_START, CENTRE_STOP).
-# Mesure : un Homme d'armes seul, meme trajet de 75 m sur la route, a 130 % (phase A) puis a 100 % (phase B, hol.Terrain.RoadSpeedPercent 100) ; la distance parcourue en 6 s se lit dans les lignes hol.Units.Where.
-hol.Camera.Zoom -7
-frames 5
-hol.Terrain.Report
-hol.Camera.FocusNear 7000 0
-frames 2
-hol.Units.SpawnHere 1 ManAtArms 0 0
-waitunits 1
-note PHASE A (route a 130 %) : un Homme d'armes seul part sur la route.
-hol.Units.Where 0
-hol.Units.Move -2000 0 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-hol.Terrain.RoadSpeedPercent 100
-note PHASE B (route a 100 %, la regle coupee) : meme trajet, retour.
-hol.Units.Move -9500 0 0
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-wait 1
-hol.Units.Where 0
-hol.Terrain.RoadSpeedPercent 130
-hol.Terrain.Report
-hol.Cheat.Resources 2000
-hol.Camera.FocusNear 9000 0
-frames 20
-capture forest_road
-hol.Camera.FocusNear 7000 0
-hol.Units.SpawnHere 10 ManAtArms 0 600
-waitlog SpawnHere: 10 ManAtArms of slot 0
-waitunits 11
-frames 20
-capture forest_army
-note La Foret profonde Petite : 2 joueurs, 440 m. Les bosquets sont ceux de la Steppe (meme budget, pas plus denses : voir la question CQ7), une ROUTE de 8 m (bande claire de terre battue) relie ma base au milieu. 10 Hommes d'armes (ma couleur) sont au debut de la route.
-note ESSAI : selectionne-les (double clic sur l'un d'eux) et envoie-les d'un clic droit vers le milieu de la carte en suivant la route, puis refais le meme trajet a cote, dans les arbres : sur la route ils vont a 130 % de leur vitesse. Pour couper la regle : console ² puis hol.Terrain.RoadSpeedPercent 100.
-
+# La Foret profonde Petite (2 joueurs, 440 m) : la route de 8 m qui va de ma base au milieu ; un GROUPE de 10 Hommes d'armes y marche a 130 % puis a 100 % (CQ6a = A), distance mesuree au journal (hol.Units.Where)
+# Coordonnees du MONDE (hol.Units.Move, hol.Units.Where) : ma base est en (-16500, 0), la route va de x = -10000 a x = -1200 (forest.py ROAD_START, CENTRE_STOP).
+# Mesure : le meme ordre de marche de joueur (hol.Units.Move = un groupe en formation) sur la route, a 130 % (phase A) puis a 100 % (phase B, hol.Terrain.RoadSpeedPercent 100) ; Tools/Tests/road_group.ps1 est le test chiffre.
+hol.Camera.Zoom -7
+frames 5
+hol.Terrain.Report
+hol.Camera.FocusNear 7000 0
+frames 2
+hol.Cheat.Resources 2000
+hol.Units.SpawnHere 10 ManAtArms 0 600
+waitlog SpawnHere: 10 ManAtArms of slot 0
+waitunits 10
+frames 20
+capture forest_army
+note PHASE A (route a 130 %) : le groupe de 10 part en formation sur la route.
+hol.Units.Where 0
+hol.Units.Move -2000 0 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Camera.FocusNear 9000 0
+frames 2
+capture forest_road
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 300
+hol.Units.Move -9500 0 0
+wait 8
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 100
+note PHASE B (route a 100 %, la regle coupee) : meme trajet, meme groupe.
+hol.Units.Move -2000 0 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+wait 1
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 300
+hol.Units.Move -9500 0 0
+wait 8
+hol.Units.Where 0
+hol.Terrain.RoadSpeedPercent 130
+hol.Terrain.Report
+hol.Camera.FocusNear 7000 0
+frames 20
+note La Foret profonde Petite : 2 joueurs, 440 m. Les bosquets sont ceux de la Steppe (meme budget : voir la question CQ7), une ROUTE de 8 m (bande claire de terre battue) relie ma base au milieu. 10 Hommes d'armes (ma couleur) sont au debut de la route.
+note ESSAI : selectionne-les (double clic sur l'un d'eux) et envoie-les d'un clic droit vers le milieu de la carte en suivant la route, puis refais le meme trajet a cote, dans les arbres : sur la route le GROUPE va a 130 % de sa vitesse. Pour couper la regle : console ² puis hol.Terrain.RoadSpeedPercent 100 (jusqu'a 300), la difference se voit.
