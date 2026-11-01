@@ -18,7 +18,7 @@ namespace UE::HeroesOfLiberty::Map
 			{ TEXT("Hinterland"), NSLOCTEXT("HOLMaps", "Map_Hinterland", "L'Arrière-pays"), true },
 			{ TEXT("ElDorado"), NSLOCTEXT("HOLMaps", "Map_ElDorado", "El Dorado"), true, true },
 			{ TEXT("Cols"), NSLOCTEXT("HOLMaps", "Map_Cols", "Les Cols"), true },
-			{ TEXT("Forest"), NSLOCTEXT("HOLMaps", "Map_Forest", "La Forêt profonde"), true },
+			{ TEXT("Forest"), NSLOCTEXT("HOLMaps", "Map_Forest", "La Forêt profonde"), true, false, true },
 		};
 		return Maps;
 	}

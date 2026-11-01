@@ -28,6 +28,16 @@ void Test_DuelPresetInTheGddRanges(FUnitTest& T)
 	T.AssertTrue(S.HesitationMs < S.TriumphMs, "Hesitation weaker than Demoralised (D16: shorter)");
 }
 
+// The three questions of the user (GDD D590 to D592, answered 2026-11-01, all A) fix the game's defaults: the numbers are typed
+// in on purpose here, a change of one of them is a change of a decision.
+void Test_DuelDecidedDefaults(FUnitTest& T)
+{
+	FHOLDuelSettings S = DuelSettings();
+	T.AssertTrue(S.LostConditions == EHOLDuelLostConditions::DropsFree, "DU-Q2 = A: a challenge whose conditions are lost falls free (D591)");
+	T.AssertEquals(2500, S.ForumZoneRadiusCm, "DU-Q3 = A: 25 m around a main forum (D592)");
+	T.AssertTrue(S.bDoubleKnockOutBothFall, "DU-Q1 = A: two simultaneous falls, both heroes fall (D590)");
+}
+
 // A challenge waits for the answer: Pending, the window full, nobody has won, the two slots remembered.
 void Test_DuelChallengeWaitsForTheAnswer(FUnitTest& T)
 {
@@ -173,7 +183,7 @@ void Test_DuelBlowOnTheLastStepCounts(FUnitTest& T)
 	T.AssertEquals(DuelAlice, D.Winner, "winner");
 }
 
-// Both fall in the same step (question DU-Q1, A by default): both fall, no winner, no reward; with B, nobody falls.
+// Both fall in the same step (DU-Q1 = A, GDD D590): both fall, no winner, no reward; with B, nobody falls.
 void Test_DuelDoubleKnockOut(FUnitTest& T)
 {
 	FHOLDuelSettings S = DuelSettings();

@@ -4,8 +4,8 @@
 // of an ally) freezes it; nobody adverse makes it recede; the count full, the relay goes to the slot with the most units there, and stays
 // its own until an enemy takes it back the same way. Territory gives XP by the minute and nothing else (no sight): each relay held and each
 // secondary centre (D384) a rate. Values are indicative, to tune in test (D388: the territory share is about 15 % of a game's XP).
-// Not decided (questions in Auto_Journey_Retours.md, RelaysInProgress.md): the rates, the capture time, several adverse sides in the zone
-// (frozen here), whether allies share the XP.
+// Decided: the rate, 10 XP a minute (RQ1 = A, D587); two adverse sides in the zone freeze the count (RQ2 = A, D588). Still to tune in test: the
+// capture time; whether allies share the XP.
 namespace HOLRelay
 {
 	// Simulation steps per second (the bridge, as the hero's return).
@@ -19,7 +19,7 @@ namespace HOLRelay
 	// Steps of count given back each step with nobody adverse in the zone (the ruin's recession, ForumHoldDecay 2 s a second, V3-Q3; provisional).
 	const int DecaySteps = 2;
 
-	// XP a minute for each relay held and each secondary centre held, the weight of the source already in (provisional).
+	// XP a minute for each relay held and each secondary centre held, the weight of the source already in (RQ1 = A, D587: 10 XP a minute each).
 	const int RelayXPPerMinute = 10;
 	const int CentreXPPerMinute = 10;
 

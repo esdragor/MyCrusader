@@ -15,6 +15,17 @@ struct FHOLAIMarketSettings
 
 	// MK-Q3 C (the user's answer): the lowest difficulty (0 easy, 1 normal, 2 hard) that uses the Market; 0 = every difficulty (A), 3 = none (B).
 	int MinDifficulty = 2;
+
+	// MK-Q3 C: it builds the Market when a need has been missing for MORE than LackSeconds, from the tier BuildTier on (the Market is an age 1
+	// building: tier 1 = the second page of the Peasants' grid, "palier II" of D604).
+	float LackSeconds = 60.f;
+	int BuildTier = 1;
+}
+
+// What the brain remembers, per slot, to build the Market: since when a need has been missing without a break (-1 = none missing).
+struct FHOLAIMarketBuildMemory
+{
+	float LackSince = -1.f;
 }
 
 // What the AI wants to do.
@@ -34,6 +45,41 @@ namespace HOLAIMarket
 		FHOLAIMarketChoice Choice;
 		Choice.Reason = Reason;
 		return Choice;
+	}
+
+	// The resource most missing (wanted above the stock, the greatest lack), or -1.
+	int MostMissing(const TArray<int>& Stock, const TArray<int>& Wanted)
+	{
+		int Missing = 0;
+		int Needed = -1;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			int Lack = Wanted[Resource] - Stock[Resource];
+			if (Lack > Missing)
+			{
+				Missing = Lack;
+				Needed = Resource;
+			}
+		}
+		return Needed;
+	}
+
+	// Whether the slot builds its Market now (MK-Q3 C, D605): only the difficulties from Rule.MinDifficulty up (Hard), the tier open, no Market yet
+	// (finished or under way), and a need missing without a break for more than Rule.LackSeconds. Memory keeps since when; a need met resets it.
+	// Called at every thought, also to keep the memory while the other conditions do not hold.
+	bool WantsMarket(const FHOLAIMarketSettings& Rule, FHOLAIMarketBuildMemory& Memory, const TArray<int>& Stock, const TArray<int>& Wanted,
+		float Now, int Difficulty, int Tier, bool bHasMarket)
+	{
+		if (MostMissing(Stock, Wanted) < 0)
+		{
+			Memory.LackSince = -1.f;
+			return false;
+		}
+		if (Memory.LackSince < 0.f)
+		{
+			Memory.LackSince = Now;
+		}
+		return !bHasMarket && Difficulty >= Rule.MinDifficulty && Tier >= Rule.BuildTier && Now - Memory.LackSince > Rule.LackSeconds;
 	}
 
 	// The one trade the AI wants now, or none. Stock and Wanted are by resource (what it holds, what it wants to hold over its

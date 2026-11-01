@@ -13,6 +13,7 @@
 #include "Match/HOLPlayerState.h"
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
+#include "MassMovementFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -49,6 +50,9 @@ namespace UE::HeroesOfLiberty::Dev
 			int64 VerdictAtSteps = 0;
 		};
 		FSanityWatch Watch;
+		/** hol.Sanity.DumpUnit <UnitId>: the log line of that unit at every step (position, velocity, order), -1 none. */
+		int32 DumpUnit = -1;
+		FAutoConsoleVariableRef CVarDumpUnit(TEXT("hol.Sanity.DumpUnit"), DumpUnit, TEXT("Log the position, velocity and order of this unit at every watched step (-1: none)."));
 
 		void Sanity(const TArray<FString>& Args);
 
@@ -104,6 +108,15 @@ namespace UE::HeroesOfLiberty::Dev
 					Transform->GetMutableTransform().SetLocation(Location);
 				}
 				const FVector Where = Transform->GetTransform().GetLocation();
+				if (static_cast<int32>(UnitId) == DumpUnit)
+				{
+					const FMassVelocityFragment* Velocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
+					const FHOLMoveOrderFragment* DumpOrder = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+					UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u step %lld at (%.1f, %.1f) vel (%.0f, %.0f) yaw %.1f phase %d slot (%.0f, %.0f) march (%.0f, %.0f) marchspeed %.0f"),
+						UnitId, StepIndex, Where.X, Where.Y, Velocity ? Velocity->Value.X : 0., Velocity ? Velocity->Value.Y : 0., Transform->GetTransform().Rotator().Yaw,
+						DumpOrder ? static_cast<int32>(DumpOrder->Phase) : -1, DumpOrder ? DumpOrder->Slot.X : 0., DumpOrder ? DumpOrder->Slot.Y : 0.,
+						DumpOrder ? DumpOrder->MarchSlot.X : 0., DumpOrder ? DumpOrder->MarchSlot.Y : 0., DumpOrder ? DumpOrder->MarchSpeed : 0.);
+				}
 				HOLSanity::FUnitTrack& Track = Watch.Tracks.FindOrAdd(UnitId);
 				Track.Add(Time, FVector2D(Where.X, Where.Y), Motion, Watch.Rules);
 				if (!Watch.Faults.Contains(UnitId))

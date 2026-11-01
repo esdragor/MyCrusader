@@ -2485,7 +2485,7 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 					States[EntityIt].UnitId, Location.X, Location.Y, Position.X, Position.Y);
 				Transform.SetLocation(FVector(Position.X, Position.Y, Location.Z));
 				++OutOfObstacles;
-				Order.ObstaclePushes = static_cast<uint8>(FMath::Min<int32>(Order.ObstaclePushes + 1, MAX_uint8));
+				Order.ObstaclePushes = static_cast<uint8>(FMath::Min<int32>(Order.ObstaclePushes + 1, MAX_uint8)); Order.ObstacleHold = 20;
 			}
 			else if (Order.ObstaclePushes != 0)
 			{

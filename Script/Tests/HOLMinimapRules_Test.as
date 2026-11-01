@@ -101,7 +101,7 @@ void Test_MinimapAlertsMerge(FUnitTest& T)
 	HOLMinimap::Detect(Before, After, Alerts);
 	T.AssertEquals(2, Alerts.Num(), "two places");
 	// Hit again later in the same place: the alert is renewed, not doubled.
-	HOLMinimap::Age(Alerts, 3.0);
+	HOLMinimap::Age(Alerts, 3.0, HOLMinimap::AlertSeconds);
 	T.AssertEquals(3.0, Alerts[0].Age, "aged");
 	TArray<FHOLMinimapSeen> Later;
 	Later.Add(MinimapSeen(1, 0.0, 0.0, 60));
@@ -120,16 +120,46 @@ void Test_MinimapAlertBlink(FUnitTest& T)
 	A.X = 0.0;
 	A.Y = 0.0;
 	Alerts.Add(A);
-	T.AssertTrue(HOLMinimap::IsLit(Alerts[0]), "lit at once");
-	HOLMinimap::Age(Alerts, HOLMinimap::BlinkSeconds + 0.01);
+	T.AssertTrue(HOLMinimap::IsLit(Alerts[0], HOLMinimap::BlinkSeconds), "lit at once");
+	HOLMinimap::Age(Alerts, HOLMinimap::BlinkSeconds + 0.01, HOLMinimap::AlertSeconds);
 	T.AssertEquals(1, Alerts.Num(), "still there");
-	T.AssertFalse(HOLMinimap::IsLit(Alerts[0]), "dark in the second half-period");
-	HOLMinimap::Age(Alerts, HOLMinimap::BlinkSeconds);
-	T.AssertTrue(HOLMinimap::IsLit(Alerts[0]), "lit again");
-	HOLMinimap::Age(Alerts, HOLMinimap::AlertSeconds);
+	T.AssertFalse(HOLMinimap::IsLit(Alerts[0], HOLMinimap::BlinkSeconds), "dark in the second half-period");
+	HOLMinimap::Age(Alerts, HOLMinimap::BlinkSeconds, HOLMinimap::AlertSeconds);
+	T.AssertTrue(HOLMinimap::IsLit(Alerts[0], HOLMinimap::BlinkSeconds), "lit again");
+	HOLMinimap::Age(Alerts, HOLMinimap::AlertSeconds, HOLMinimap::AlertSeconds);
 	T.AssertEquals(0, Alerts.Num(), "gone after its time");
 }
 
+// The settings (hol.Minimap.AlertSeconds, hol.Minimap.AlertBlink): an alert lives as long as asked and blinks at the asked pace;
+// a silly value (0, negative, huge) is brought back to a sane one, never a division by zero.
+void Test_MinimapAlertSettings(FUnitTest& T)
+{
+	TArray<FHOLMinimapAlert> Alerts;
+	FHOLMinimapAlert A;
+	Alerts.Add(A);
+	// A long half-period (1.5 s): still lit at 0.7 s, dark at 1.7 s; the default 0.5 s would be dark at 0.7 s.
+	HOLMinimap::Age(Alerts, 0.7, 10.0);
+	T.AssertTrue(HOLMinimap::IsLit(Alerts[0], 1.5), "lit at 0.7 s with a 1.5 s half-period");
+	T.AssertFalse(HOLMinimap::IsLit(Alerts[0], 0.5), "dark at 0.7 s with the default half-period");
+	HOLMinimap::Age(Alerts, 1.0, 10.0);
+	T.AssertFalse(HOLMinimap::IsLit(Alerts[0], 1.5), "dark at 1.7 s with a 1.5 s half-period");
+	// A short life (2 s): gone at 2.5 s; a long one (20 s): there at 15 s.
+	HOLMinimap::Age(Alerts, 0.9, 2.0);
+	T.AssertEquals(0, Alerts.Num(), "gone after a 2 s life");
+	TArray<FHOLMinimapAlert> Long;
+	Long.Add(A);
+	HOLMinimap::Age(Long, 15.0, 20.0);
+	T.AssertEquals(1, Long.Num(), "a 20 s alert is still there at 15 s");
+	// Sane values.
+	T.AssertEquals(0.5, HOLMinimap::SaneLifetime(0.0), "a life of 0 s is 0.5 s");
+	T.AssertEquals(60.0, HOLMinimap::SaneLifetime(1000.0), "a life of 1000 s is 60 s");
+	T.AssertEquals(6.0, HOLMinimap::SaneLifetime(6.0), "6 s stays");
+	T.AssertEquals(0.1, HOLMinimap::SaneBlink(0.0), "a half-period of 0 is 0.1 s");
+	T.AssertEquals(0.1, HOLMinimap::SaneBlink(-3.0), "a negative one is 0.1 s");
+	T.AssertEquals(10.0, HOLMinimap::SaneBlink(99.0), "99 s is 10 s");
+	FHOLMinimapAlert Fresh;
+	T.AssertTrue(HOLMinimap::IsLit(Fresh, 0.0), "a 0 half-period does not divide by zero");
+}
 // The camera's frame: four ground points become four picture points in the same order.
 void Test_MinimapCameraFrame(FUnitTest& T)
 {

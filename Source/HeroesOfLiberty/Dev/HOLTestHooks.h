@@ -39,6 +39,8 @@ namespace HOLTestHooks
 		FString WaitingForKey;
 		/** The player closed the panel: hidden until the next scenario. */
 		bool bClosed = false;
+		/** A scenario step hid the panel (panel hide), shown again by panel show: the game's own top-centre windows stay visible meanwhile. */
+		bool bHidden = false;
 	};
 
 	/** The scenario started last; an empty Name before any. */

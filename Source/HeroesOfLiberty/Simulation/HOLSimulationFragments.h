@@ -162,6 +162,14 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	 */
 	uint8 ObstaclePushes = 0;
 
+	/**
+	 * Steps left during which a block member pushed out of a fixed obstacle does not slide across towards its file again (D617:
+	 * its file runs along the obstacle, the slide put it back into it at every other step, the "shakes" of group_march). Set by
+	 * UHOLFootprintKeepOutProcessor, run down by the block march (SteerInFile's caller). Pushed step after step (the way runs into
+	 * the obstacle, not along it), ObstaclePushes still takes it out of the block.
+	 */
+	uint8 ObstacleHold = 0;
+
 	EHOLMovePhase Phase = EHOLMovePhase::None;
 
 	/** Its order is a group's move in formation (J7a.4): it ends holding its place (PlaceHold), the group marches at MarchSpeed. */

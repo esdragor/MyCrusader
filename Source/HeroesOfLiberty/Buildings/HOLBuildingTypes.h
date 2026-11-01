@@ -291,4 +291,6 @@ namespace HOLBuildingTypeNames
 	inline const FName ArcheryRange(TEXT("ArcheryRange"));
 	/** Economic, age II (M3, GDD 5.5): exchanges food, wood and stone for gold at the common rate; on A of the Peasant's grid, page II. */
 	inline const FName Market(TEXT("Market"));
+	/** Military, age II (S2, GDD 6.1, 11.1): produces the Ram and the Mangonel; on Q of the Peasant's grid, page II. */
+	inline const FName SiegeWorkshop(TEXT("SiegeWorkshop"));
 }

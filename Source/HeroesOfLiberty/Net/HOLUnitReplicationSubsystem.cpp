@@ -334,7 +334,8 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			const int32 ShownHealth = HOLCombat::GetShownHealth(State.CurrentHealth);
 			const int32 MaxHealth = HOLCombat::GetMaxHealth(Constants, Combat.Level);
 			const bool bFacesFront = Order.bFacesFront && Order.Phase == EHOLMovePhase::None;
-			const bool bHero = HOLIsHero(Constants.ArmorCategoryMask);
+			// The hero's, and any type whose table maximum does not fit the wire's health bits (the siege engines, S2).
+			const bool bHero = HOLUnitReplication::UsesHealthShare(HOLIsHero(Constants.ArmorCategoryMask), Constants.MaxHealth);
 
 			FUnitRecord* Record = Records.Find(State.UnitId);
 			if (Record == nullptr)

@@ -16,6 +16,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Siege/HOLSiegeRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Technologies/HOLTechnologyRules.h"
@@ -220,6 +221,39 @@ void UHOLProductionSubsystem::ApplyMarketTrade(const FHOLProductionCommand& Orde
 		Order.bBuy ? TEXT("bought") : TEXT("sold"), Order.Lots, Order.Resource, Trade.Gold, Trade.Book.Prices[Order.Resource], *After.ToString());
 }
 
+void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& Giver)
+{
+	// A client could send anything: only from a Market, to another player of the match, one of the four resources, a positive amount in stock.
+	AHOLPlayerState* Taker = Order.Receiver != Order.PlayerIndex ? FindPlayerState(Order.Receiver) : nullptr;
+	const bool bResource = Order.Resource >= 0 && Order.Resource <= static_cast<int32>(EHOLResource::Gold);
+	if (Building.GetTypeName() != HOLBuildingTypeNames::Market || !Taker || !bResource || Order.Amount <= 0)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d to slot %d ignored (%s, resource %d, amount %d)"), Order.PlayerIndex, Order.Receiver,
+			*Building.GetTypeName().ToString(), Order.Resource, Order.Amount);
+		return;
+	}
+	const EHOLResource Resource = static_cast<EHOLResource>(Order.Resource);
+	FHOLResources GiverStock = Giver.GetResources();
+	if (GiverStock[Resource] < Order.Amount)
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d cannot give %d of resource %d (stock %d)"), Order.PlayerIndex, Order.Amount, Order.Resource, GiverStock[Resource]);
+		return;
+	}
+	const int32 Arrives = HOLTribute::Received(Order.Amount, HOLTribute::DefaultTaxPercent);
+	FHOLResources TakerStock = Taker->GetResources();
+	GiverStock[Resource] -= Order.Amount;
+	TakerStock[Resource] += Arrives;
+	Giver.SetResources(GiverStock);
+	Taker->SetResources(TakerStock);
+	UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d gave %d of resource %d to slot %d, %d arrived (tax %d)"), Order.PlayerIndex, Order.Amount, Order.Resource,
+		Order.Receiver, Arrives, Order.Amount - Arrives);
+	// Only the receiver is told (TB-Q1).
+	if (AHOLGameState* State = GetWorld()->GetGameState<AHOLGameState>())
+	{
+		State->NoteTributeReceived(Order.PlayerIndex, Order.Receiver, Order.Resource, Arrives, Order.Amount - Arrives);
+	}
+}
+
 void UHOLProductionSubsystem::ApplyOrders()
 {
 	using namespace UE::HeroesOfLiberty::Production;
@@ -327,6 +361,11 @@ void UHOLProductionSubsystem::ApplyOrders()
 			ApplyMarketTrade(Order, *Building, *PlayerState);
 			continue;
 		}
+		if (Order.Kind == FHOLProductionCommand::EKind::Tribute)
+		{
+			ApplyTribute(Order, *Building, *PlayerState);
+			continue;
+		}
 
 		FHOLResources Stock = PlayerState->GetResources();
 		TArray<FHOLProductionItem>& Queue = Building->GetMutableProductionQueue();
@@ -368,6 +407,20 @@ void UHOLProductionSubsystem::ApplyOrders()
 				PlayerState->SetResources(Stock);
 				Building->NotifyProductionChanged();
 				continue;
+			}
+			// S3 (GDD 6.1, D614): a siege engine opens at its tier (Ram 1, Mangonel 2), by the rules of Siege/HOLSiegeRules; the
+			// building is finished (a site produces nothing) and the payment is the queue's own check below.
+			HOLSiege::EEngine Engine;
+			if (Type->Produces.Contains(Order.TypeName) && HOLSiege::FindEngine(Order.TypeName, Engine))
+			{
+				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+				const HOLSiege::EBlock Block = HOLSiege::Check(Engine, HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0, true, true);
+				if (Block != HOLSiege::EBlock::None)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (%s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), HOLSiege::DescribeBlock(Block));
+					continue;
+				}
 			}
 			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
 				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName), Type->MaxQueue, Stock)

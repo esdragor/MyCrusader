@@ -152,7 +152,15 @@ namespace HOLCombat
 		 * only). Without it, such a unit takes on nobody by itself.
 		 */
 		bool bRipostes = false;
+		/** S4 (SQ1 = B, D614): false for the Ram (no attack on units): it never takes a unit on by itself, only buildings. */
+		bool bCanAttackUnits = true;
 	};
+
+	/** S4 (D614): whether Other lies within an area of Radius cm around Centre (centre to centre, the circle's edge in). */
+	inline bool IsInArea(const FVector2D& Centre, const FVector2D& Other, const float Radius)
+	{
+		return FVector2D::DistSquared(Centre, Other) <= FMath::Square(Radius);
+	}
 
 	/** One enemy the grid found near the seeker (the processor fills them). */
 	struct FCandidate

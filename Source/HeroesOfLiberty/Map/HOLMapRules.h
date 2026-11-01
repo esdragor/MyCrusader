@@ -28,6 +28,12 @@ struct FHOLMapInfo
 	 * place's share of it is what its territory holds): no gold in the bases, the cluster as far from every place as from any other.
 	 */
 	bool bGoldAtCentre = false;
+
+	/**
+	 * C5 (La Foret profonde, CQ7 = B, GDD D598): the Budget `dense`. The same budget per player, except the wood: twice the Steppe's trees
+	 * (Map.Table), in groves of 30 to 40.
+	 */
+	bool bDenseWood = false;
 };
 
 /** C0.1: pure rules of the match maps, for the menu, the list of lobbies and the manager client (one table, Maps.csv). */
