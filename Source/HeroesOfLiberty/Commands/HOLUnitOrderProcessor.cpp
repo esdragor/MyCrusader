@@ -219,6 +219,21 @@ namespace UE::HeroesOfLiberty::Orders
 	constexpr double BlockCrawlShare = 0.25;
 	/** While its rear rows round the path's last corner, the re-forming block slows down for them to this share at most (ridge_army). */
 	constexpr double BlockCornerShare = 0.5;
+	/**
+	 * D617 (a group walks at its slowest member's speed): a member of a marching block keeps its place in DEPTH too, relatively to
+	 * the others, so that two files side by side are never closer than the bodies (the Peasants round the hero: the files of a
+	 * honeycomb are 75-90 cm apart across and 180 cm deep, the members left at their own, equal, depths pushed each other
+	 * every step, hol.Test.Sanity "shakes"). A faster member catches up with the spare of its speed, any member drops back by
+	 * BlockDepthDropShare of the pace at most (above BlockSlowedShare: never a slowed step); within BlockDepthDeadband it is in place.
+	 */
+	constexpr double BlockDepthGain = 2.;
+	constexpr double BlockSlideSteps = 4.;
+	constexpr double BlockDepthDropShare = 0.;
+	/** The catch-up adds this share of the pace at most (the march's rule: nobody walks 10 % faster than the slowest, the file slide takes the rest). */
+	constexpr double BlockDepthCatchUpShare = 0.03;
+	/** A member farther than this from its depth (a straggler that joined, a unit round an obstacle) is not asked to catch up or drop back. */
+	constexpr double BlockDepthMaxGap = 300.;
+	constexpr double BlockDepthDeadband = 20.;
 	/** Steps (3 s) a unit following its path may stay within PathStuckDistance of one spot before it gets a new path (J6b.3). */
 	constexpr uint16 PathStuckSteps = 60;
 	/** Distance (cm) a unit following its path must move away from its anchor to count as moving on (J6b.3). */
@@ -2215,7 +2230,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 	// a hook) and no more than it is off; the slowest kind loses only what the slide takes of its speed. Never against
 	// the march (the user's 4th trial), never stopping.
 	const auto SteerInFile = [&EntityManager, World, DeltaTime](const FMassEntityHandle Entity, FHOLMoveOrderFragment& Order, const double Across,
-		const float Speed, const double Pace, const FVector2D& Direction, const float DistanceToGoal)
+		const float Speed, const double Pace, const FVector2D& Direction, const float DistanceToGoal, const double DepthGap)
 	{
 		const FTransformFragment& Transform = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity);
 		FMassMoveTargetFragment& MoveTarget = EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity);
@@ -2223,8 +2238,15 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		const double Step = FMath::Clamp(static_cast<double>(DeltaTime), 0.001, 0.1);
 		const double Angle = FMath::DegreesToRadians(HOLFormation::FileSlideMaxAngle);
 		const double MaxSide = FMath::Min(Pace * FMath::Tan(Angle), Speed * FMath::Sin(Angle));
-		const double Side = FMath::Min(FMath::Abs(Across) / Step, MaxSide);
-		const double Along = FMath::Min(Pace, FMath::Sqrt(FMath::Max(FMath::Square(static_cast<double>(Speed)) - FMath::Square(Side), 0.)));
+		// Across closed in BlockSlideSteps steps, not in one: at one step a member in its file (a few cm off it) went out and back
+		// every step, one step behind its own velocity (the "shakes" of hol.Test.Sanity, the Peasants round the hero).
+		const double Side = FMath::Min(FMath::Abs(Across) / (Step * BlockSlideSteps), MaxSide);
+		const double Room = FMath::Sqrt(FMath::Max(FMath::Square(static_cast<double>(Speed)) - FMath::Square(Side), 0.));
+		// D617: at the block's pace (the slowest member's), a little more to catch up with its place in depth (the spare of its
+		// own speed), a little less to drop back to it (BlockDepthDropShare of the pace at most).
+		const double Gap = FMath::Abs(DepthGap) > BlockDepthMaxGap ? 0. : FMath::Max(FMath::Abs(DepthGap) - BlockDepthDeadband, 0.) * (DepthGap < 0. ? -1. : 1.);
+		const double Adjust = FMath::Clamp(Gap * BlockDepthGain, -Pace * BlockDepthDropShare, Pace * BlockDepthCatchUpShare);
+		const double Along = FMath::Min(Pace + Adjust, Room);
 		// Where it would be in a second.
 		const FVector2D Ahead(Along, Across < 0. ? -Side : Side);
 		Order.MarchDirection = FVector2f(Direction);
@@ -2768,6 +2790,14 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		const float ToGo = static_cast<float>(Block.Length - Block.Progress);
 		bool bAllInFiles = true;
 		double RearDepth = TNumericLimits<double>::Max();
+		// D617: the block's members keep their formation's depths relatively to each other (the mean depth they stand at less the
+		// mean of their offsets' depths is the block's own shift, none of them is asked to hold the block back or push it on).
+		double DepthShift = 0.;
+		for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
+		{
+			DepthShift += Block.Depths[Unit] - Block.Offsets[Unit].X;
+		}
+		DepthShift /= FMath::Max(Block.Entities.Num(), 1);
 		for (int32 Unit = 0; Unit < Block.Entities.Num(); ++Unit)
 		{
 			const FMassEntityHandle Entity = Block.Entities[Unit];
@@ -2821,7 +2851,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			{
 				bAllInFiles = false;
 			}
-			SteerInFile(Entity, Order, Across, WalkSpeed, Pace, Direction, ToGo);
+			SteerInFile(Entity, Order, Across, WalkSpeed, Pace, Direction, ToGo, Block.Offsets[Unit].X + DepthShift - Block.Depths[Unit]);
 		}
 		// Every unit of the body in its file: its files formed on the move.
 		if (bAllInFiles && Block.Report.JoinSteps < 0)
