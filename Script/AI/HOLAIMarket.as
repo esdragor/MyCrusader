@@ -13,8 +13,8 @@ struct FHOLAIMarketSettings
 	// Lots in one trade at most.
 	int MaxLots = 5;
 
-	// MK-Q3 C: the lowest difficulty (0 easy, 1 normal, 2 hard) that uses the Market; 0 = every difficulty (A), 3 = none (B).
-	int MinDifficulty = 0;
+	// MK-Q3 C (the user's answer): the lowest difficulty (0 easy, 1 normal, 2 hard) that uses the Market; 0 = every difficulty (A), 3 = none (B).
+	int MinDifficulty = 2;
 }
 
 // What the AI wants to do.

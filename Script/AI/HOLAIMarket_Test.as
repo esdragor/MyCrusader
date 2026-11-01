@@ -81,6 +81,19 @@ void Test_AIMarketNoTradeWhenNotNeeded(FUnitTest& T)
 	T.AssertFalse(HOLAIMarket::Choose(M, Book, Rule, AIMarketStock(0, 0, 0, 900), AIMarketStock(0, 0, 100, 0), true, 2).bTrade, "MK-Q3 B: nobody uses it");
 }
 
+// MK-Q3 = C (the user's answer, 2026-10-31): the rule as it stands (no value touched) is used by Hard only; Easy and Normal leave the Market alone.
+void Test_AIMarketDefaultRuleIsHardOnly(FUnitTest& T)
+{
+	FHOLMarketSettings M = HOLMarket::DefaultSettings();
+	FHOLMarketBook Book = HOLMarket::NewBook(M);
+	FHOLAIMarketSettings Rule;
+	TArray<int> Stock = AIMarketStock(0, 0, 0, 900);
+	TArray<int> Wanted = AIMarketStock(0, 0, 100, 0);
+	T.AssertFalse(HOLAIMarket::Choose(M, Book, Rule, Stock, Wanted, true, 0).bTrade, "easy does not use the Market");
+	T.AssertFalse(HOLAIMarket::Choose(M, Book, Rule, Stock, Wanted, true, 1).bTrade, "normal does not use the Market");
+	T.AssertTrue(HOLAIMarket::Choose(M, Book, Rule, Stock, Wanted, true, 2).bTrade, "hard does");
+}
+
 // Gold is what is missing: it sells the surplus for it.
 void Test_AIMarketSellsForGold(FUnitTest& T)
 {

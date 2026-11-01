@@ -420,7 +420,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 
 	// The Market (M6, MK-Q3): one trade at a time, at most one every MarketGapSteps steps (20 s). The brain does not build the Market
 	// yet (the opening's steps and the AI's reaching tier II come with the answer to MK-Q3): this serves a slot that has a finished one.
-	// The numbers of the rule are HOLAIMarket's (MinDifficulty is the answer to MK-Q3, 0 for now: every level).
+	// The numbers of the rule are HOLAIMarket's (MinDifficulty is the answer to MK-Q3 = C: 2, Hard only; Easy and Normal never touch the Market).
 	void ThinkMarket(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
 		FVector MarketAt;
