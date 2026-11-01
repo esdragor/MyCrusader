@@ -12,6 +12,16 @@
  * that the server and the clients agree to the last gold piece; both are tested on the same figures (the Market.csv ones).
  * Resources by index: 0 food, 1 wood, 2 stone, 3 gold (gold is the money, it has no tradable price).
  */
+/** D372 (tributes, GDD 5.5): what a gift reaches the receiver as, the Market keeping the tax. The script's rule (Script/Economy/HOLTributeRules.as) has the same figures. */
+namespace HOLTribute
+{
+	/** About 30 % (D372, indicative, to be tuned in play). */
+	constexpr int32 DefaultTaxPercent = 30;
+
+	/** What reaches the receiver of Sent at TaxPercent: the tax rounded down (a gift of 1 is not eaten), bounded to 0..100 %. */
+	HEROESOFLIBERTY_API int32 Received(int32 Sent, int32 TaxPercent);
+}
+
 namespace HOLMarket
 {
 	/** Goods in one lot: trades are made of whole lots. */

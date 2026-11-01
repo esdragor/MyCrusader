@@ -12,6 +12,7 @@
 #     "netai" (IA0.5 B2, ~60 s, after "aiserver"): the same server with Alice and Bob joined and the AI in slot 2, its
 #     Peasants seen gathering on each client;
 #     "sizes" (TC4, ~15 s): <Map> (-Map, Plain by default) at its five sizes and a refused configuration, in the menu's game launch;
+#     "aimarket" (M6 MK-Q3 C, ~3 min): a Hard and a Normal AI on Plain with a tier 2 hero; only Hard builds and uses a Market;
 #     "aiduel" (IA0.7, ~5 min): two AI slots against each other, twice, on Plain (the fixed test map) or, with -Map <Key>, on that
 #     map's Small file; -Map <Key> takes a map of Tools/Data/Maps.csv (C0.5), an unknown one stops with a FAIL line). The solo parts (production to combat) run in the camera part's 2-player match, so the
 #     camera part comes with them; each one counts what the parts before it left (Peasants, sources used up). "net" runs
@@ -158,6 +159,7 @@ $SubCaseTable = @{
         relay = @{ Marks = @("relay"); Setup = @() }
         market = @{ Marks = @("market"); Setup = @() }
         minimap = @{ Marks = @("minimap"); Setup = @() }
+        minalert = @{ Marks = @("minalert"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -373,6 +375,11 @@ if ($Parts -contains "net") {
             # at its barracks (the real command, FastBuild on for the 3 s), the server's lines (queued, researched), then
             # both clients' reports; the hero stays until they have signalled.
             "mark net tech", "waitfile $(Join-Path $TestSaved "quick_net_tech_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120",
+            # M6 (the Market over the network): client 1 (Bob, slot 1) has a finished Market (hol.Cheat.SpawnBuilding, the server's)
+            # and sells wood there (hol.Market.Trade, the real order); the server's book and stocks, then the clients' (the book is common).
+            "mark net market", "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 1", "hol.Market.Report",
+            "signal $(Join-Path $TestSaved "quick_net_market_server.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_market_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_market_done2.flag") 120",
             "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero", "wait 0.5", "signal $NetHeroesGoneFlag") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
@@ -2117,6 +2124,15 @@ if ($Parts -contains "camera") {
                 "hol.HUD.Click MinimapClickR120x120", "waitlog Minimap order: 1 units to", "frames 3", "hol.HUD.Report",
                 "hol.HUD.Click MinimapClickL30x30", "frames 5", "hol.HUD.Report", "capture build_minimap",
                 "hol.Units.Remove 0 0 60000 0 Peasant", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3"
+            # The minimap's alerts (D386, the settings hol.Minimap.AlertSeconds / AlertBlink): a House of slot 0 is hit by one attack (the cheat goes
+            # through the building's health, the alert reads it): an alert (lit, with a half-period of 10 s so that it is still lit when read)
+            # at the House; with a life of 0.5 s the alert is gone a second later; the House then falls and the settings go back to theirs.
+            Step "mark build minalert", "hol.Minimap.AlertBlink 10", "hol.Minimap.AlertSeconds 30", "hol.Cheat.SpawnBuilding House 0 2500 2500",
+                "waitlog Cheat: spawned House of slot 0", "wait 1", "hol.HUD.Report",
+                "hol.Cheat.DamageNear 100 2500 2500 own melee", "wait 1", "hol.HUD.Report", "capture build_minalert",
+                "hol.Minimap.AlertSeconds 0.5", "wait 1.5", "hol.HUD.Report",
+                "hol.Minimap.AlertSeconds 6", "hol.Minimap.AlertBlink 0.5",
+                "hol.Cheat.DamageNear 99999 2500 2500 own melee", "waitlog Building destroyed: House of slot 0", "frames 3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -2712,6 +2728,14 @@ if ($NetListening) {
         # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120" }
+        # M6: the Market (see the server's sequence): client 1 spawns it, reports, sells 2 lots of wood, reports; client 2 reports after.
+        $NetSteps += "mark market"
+        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.SpawnBuilding Market 1 1500 3000", "wait 2", "hol.Market.Report", "hol.Market.Trade wood 2 sell", "wait 2", "hol.Market.Report",
+            "hol.Tribute 0 gold 100", "wait 2", "hol.Market.Report",
+            "signal $(Join-Path $TestSaved "quick_net_market_asked.flag")", "waitfile $(Join-Path $TestSaved "quick_net_market_server.flag") 120", "wait 1", "hol.Market.Report" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 3", "hol.Market.Report" }
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_market_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_done2.flag") 120" }
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -4983,6 +5007,18 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ([Math]::Abs($MmCam[0] - $MmCorner[0]) -le 1) -and ([Math]::Abs($MmCam[1] - $MmCorner[1]) -le 1)
     $Checks["capture"] = Test-Path (Join-Path $Shots "build_minimap.png")
     $AllOk = (Report "build minimap" $Checks) -and $AllOk
+
+    # The alerts of a building hit and the settings: the second reading (after the hit, half-period 10 s) has an alert, lit; the third (life of 0.5 s,
+    # 1.5 s later) has none.
+    $HudAlert = Get-Section "build minalert"
+    $AlLines = @($HudAlert | Select-String -Pattern "HUD minimap: " | ForEach-Object { $_.Line })
+    $AlHit = if ($AlLines.Count -ge 2 -and $AlLines[1] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+    $AlGone = if ($AlLines.Count -ge 3 -and $AlLines[2] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+    $Checks = [ordered]@{}
+    $Checks["a House of mine hit: an alert, lit (lit $($AlHit[0]), alerts $($AlHit[1]))"] = ($AlHit[0] -ge 1) -and ($AlHit[1] -ge 1)
+    $Checks["with a life of 0.5 s the alert is gone 1.5 s later (lit $($AlGone[0]), alerts $($AlGone[1]))"] = ($AlGone[1] -eq 0) -and ($AlGone[0] -eq 0)
+    $Checks["capture"] = Test-Path (Join-Path $Shots "build_minalert.png")
+    $AllOk = (Report "build minalert" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {
@@ -6848,6 +6884,41 @@ if ($Parts -contains "net") {
         }
     }
     if (-not $NetHeroOnly) { $AllOk = (Report "net technologies" $TechChecks) -and $AllOk }
+    # M6: the Market over the network. Client 1's Market (finished, replicated), its sale of 2 lots of wood done by the server, the book moved
+    # and the same on the server and on both clients (the common price), client 1's stock as the server's.
+    if (-not $NetHeroOnly) {
+        $MarketChecks = [ordered]@{}
+        $MarketServerAll = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
+        $MarketSold = @($MarketServerAll | Select-String -SimpleMatch "Market: slot $BobSlot sold 2 lots of resource 1")
+        $MarketChecks["server: Bob's sale of 2 lots of wood done ($($MarketSold.Count))"] = $MarketSold.Count -eq 1
+        # D372 (tributes): Bob gives 100 gold to Alice from his Market: 70 arrive (30 % kept), on the server and in Alice's own stock.
+        $MarketGave = @($MarketServerAll | Select-String -SimpleMatch "Tribute: slot $BobSlot gave 100 of resource 3 to slot $AliceSlot, 70 arrived (tax 30)")
+        $MarketChecks["server: Bob's tribute of 100 gold to Alice done, 70 arrived ($($MarketGave.Count))"] = $MarketGave.Count -eq 1
+        $MarketServerLines = @(Get-ClientSection $MarketServerAll "net market")
+        $AliceServerStock = "$($MarketServerLines | Select-String -Pattern "Market stock slot ${AliceSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $ServerBook = "$($MarketServerLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $ServerStock = "$($MarketServerLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        $MarketChecks["server: the book ($ServerBook) and Bob's stock ($ServerStock) reported"] = $ServerBook -ne "" -and $ServerStock -ne ""
+        foreach ($NetClient in $NetClients) {
+            $N = $NetClient.Client
+            $MarketLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "market")
+            $Books = @($MarketLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $Seen = @($MarketLines | Select-String -Pattern "Market report: a Market of slot (\d+), finished" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $LastBook = if ($Books.Count) { $Books[-1] } else { "" }
+            $MarketChecks["client $N : the finished Market of slot $BobSlot seen ($($Seen -join ','))"] = ($Seen | Where-Object { $_ -eq "$BobSlot" }).Count -ge 1
+            $MarketChecks["client $N : the last book ($LastBook) is the server's ($ServerBook)"] = $LastBook -ne "" -and $LastBook -eq $ServerBook
+            if ($N -eq 1) {
+                $MarketChecks["client $N (Bob): the sale moved the book (before $($Books[0]), after $($Books[-1]))"] = $Books.Count -ge 3 -and $Books[0] -ne $Books[1]
+                $OwnStock = "$($MarketLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+                $MarketChecks["client $N (Bob): his stock ($OwnStock) is the server's ($ServerStock)"] = $OwnStock -ne "" -and $OwnStock -eq $ServerStock
+            }
+            else {
+                $AliceOwn = "$($MarketLines | Select-String -Pattern "Market stock slot ${AliceSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+                $MarketChecks["client $N (Alice): her stock after the tribute ($AliceOwn) is the server's ($AliceServerStock)"] = $AliceOwn -ne "" -and $AliceOwn -eq $AliceServerStock
+            }
+        }
+        $AllOk = (Report "net market" $MarketChecks) -and $AllOk
+    }
 }
 
 if ($TestsProcess) {
@@ -7097,6 +7168,38 @@ if ($Parts -contains "aiduel") {
     $Speed = if ($First.WallSeconds -gt 0) { [Math]::Round($DuelSeconds / $First.WallSeconds, 2) } else { 0 }
     $Checks["speed: $DuelSeconds s of game in $([Math]::Round($First.WallSeconds, 1)) s of wall (x$Speed, with the engine's start) and $([Math]::Round($DuelRuns[1].WallSeconds, 1)) s"] = $true
     $AllOk = (Report "aiduel" $Checks) -and $AllOk
+}
+
+# The "aimarket" part (MarketInProgress.md M6, MK-Q3 C = D605, ~3 min): Hard and Normal AI slots on Plain (fixed time step, no window),
+# both with a hero at tier 2; only the Hard one builds a Market (a need missing for more than a minute) and trades there; the Normal one never
+# touches it. The brain's lines "AI slot N step S: build Market at" / "Market buy|sell" are read from the server's log.
+if ($Parts -contains "aimarket") {
+    $MarketLog = Join-Path $TestSaved "Logs\quick_aimarket.log"
+    $MarketConfig = Join-Path $TestSaved "quick_aimarket.json"
+    $MarketSequence = Join-Path $TestSaved "quick_aimarket.seq"
+    Remove-Item $MarketLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $MarketConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
+    $MarketLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300")
+    for ($Second = 0; $Second -lt 360; $Second += 10) { $MarketLines += "wait 10" }
+    $MarketLines += "quit"
+    $MarketLines | Set-Content -Encoding utf8 $MarketSequence
+    $MarketPort = Get-AITestPort
+    $MarketArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$MarketPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$MarketConfig`" -abslog=`"$MarketLog`" -ExecCmds=`"hol.Test.Run $MarketSequence`""
+    $MarketProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $MarketArguments -PassThru -WindowStyle Hidden
+    $MarketTimedOut = -not $MarketProcess.WaitForExit(420000)
+    if ($MarketTimedOut) { Stop-Process -Id $MarketProcess.Id -Force -ErrorAction SilentlyContinue }
+    $MarketText = if (Test-Path $MarketLog) { Get-Content $MarketLog } else { @() }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself"] = -not $MarketTimedOut
+    $Checks["scripts compiled"] = @(Get-ScriptErrors $MarketLog).Count -eq 0
+    $Checks["sequence ran to its end"] = -not ($MarketText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
+    $Checks["slot 0 is Hard, slot 1 Normal (levels read from the configuration)"] = [bool]($MarketText | Select-String -Pattern "AI slot 0 step \d+: level Hard" -Quiet) -and [bool]($MarketText | Select-String -Pattern "AI slot 1 step \d+: level Normal" -Quiet)
+    $HardBuilt = @($MarketText | Select-String -Pattern "AI slot 0 step \d+: build Market at")
+    $Checks["Hard builds its Market ($($HardBuilt.Count) order)"] = $HardBuilt.Count -eq 1
+    $Checks["Hard's Market is finished (a trade line follows)"] = [bool]($MarketText | Select-String -Pattern "AI slot 0 step \d+: Market (buy|sell) \d+ lots" -Quiet)
+    $Checks["Normal never builds a Market"] = -not ($MarketText | Select-String -Pattern "AI slot 1 step \d+: build Market" -Quiet)
+    $Checks["Normal never trades"] = -not ($MarketText | Select-String -Pattern "AI slot 1 step \d+: Market (buy|sell)" -Quiet)
+    $AllOk = (Report "aimarket" $Checks) -and $AllOk
 }
 
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
