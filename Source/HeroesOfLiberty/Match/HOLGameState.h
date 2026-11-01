@@ -456,6 +456,17 @@ public:
 	FOnHeroReadyMessage OnHeroReadyMessage;
 
 	/**
+	 * D372 amended (TB-Q1): a tribute applied (server, ApplyTribute): the message for its RECEIVER alone (HOLForumMessages::GetTributeMessage),
+	 * the receiver's slot first. The HUD of the machine whose player is that slot shows it in its thread; nobody else is told (not the giver).
+	 * Logs "Tribute message: <text> (slot N)". Delivery to a remote client's machine (a client RPC to the receiver) is not made yet.
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnTributeMessage, int32 /*ReceiverSlot*/, const FHOLForumMessage& /*Message*/);
+	FOnTributeMessage OnTributeMessage;
+
+	/** Server: a tribute from GiverSlot to ReceiverSlot arrived (Arrives after the tax Tax) of Resource (an EHOLResource's value). */
+	void NoteTributeReceived(int32 GiverSlot, int32 ReceiverSlot, int32 Resource, int32 Arrives, int32 Tax);
+
+	/**
 	 * J8b.4 (J8b-Q4): every machine with a player, a slot's hero gone up from OldLevel to NewLevel in its public sheet
 	 * (FHOLHeroLevelWatch: not the first level seen). Logs "Hero level up: slot N level A -> B", then this: his golden flash
 	 * for all, the alerts for his owner (the HUD).

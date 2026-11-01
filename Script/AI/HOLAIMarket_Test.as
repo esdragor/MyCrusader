@@ -104,3 +104,57 @@ void Test_AIMarketSellsForGold(FUnitTest& T)
 	T.AssertTrue(Choice.bTrade && !Choice.bBuy, "a sale");
 	T.AssertEquals(AIMarketStone, Choice.Resource, "stone, the surplus");
 }
+// MK-Q3 = C (D605): the Market is BUILT by Hard only, at tier II (age 1), when a need has been missing for more than a minute, and only one.
+void Test_AIMarketBuildOnlyAfterAMinuteOfLack(FUnitTest& T)
+{
+	FHOLAIMarketSettings Rule;
+	FHOLAIMarketBuildMemory Memory;
+	TArray<int> Stock = AIMarketStock(0, 0, 20, 500);
+	TArray<int> Wish = AIMarketStock(0, 0, 100, 0);
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 100.f, 2, 1, false), "the lack starts now: not yet");
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 159.f, 2, 1, false), "59 s of lack: not yet");
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 160.f, 2, 1, false), "exactly a minute is not MORE than a minute");
+	T.AssertTrue(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 161.f, 2, 1, false), "more than a minute of lack: build the Market");
+}
+
+void Test_AIMarketBuildNeverForEasyAndNormal(FUnitTest& T)
+{
+	FHOLAIMarketSettings Rule;
+	FHOLAIMarketBuildMemory Easy;
+	FHOLAIMarketBuildMemory Normal;
+	FHOLAIMarketBuildMemory Hard;
+	TArray<int> Stock = AIMarketStock(0, 0, 20, 500);
+	TArray<int> Wish = AIMarketStock(0, 0, 100, 0);
+	HOLAIMarket::WantsMarket(Rule, Easy, Stock, Wish, 0.f, 0, 1, false);
+	HOLAIMarket::WantsMarket(Rule, Normal, Stock, Wish, 0.f, 1, 1, false);
+	HOLAIMarket::WantsMarket(Rule, Hard, Stock, Wish, 0.f, 2, 1, false);
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Easy, Stock, Wish, 600.f, 0, 1, false), "Easy never builds the Market, whatever the lack");
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Normal, Stock, Wish, 600.f, 1, 1, false), "Normal never builds the Market");
+	T.AssertTrue(HOLAIMarket::WantsMarket(Rule, Hard, Stock, Wish, 600.f, 2, 1, false), "Hard does");
+}
+
+void Test_AIMarketBuildWaitsForTierAndBuildsOnlyOne(FUnitTest& T)
+{
+	FHOLAIMarketSettings Rule;
+	FHOLAIMarketBuildMemory Memory;
+	TArray<int> Stock = AIMarketStock(0, 0, 20, 500);
+	TArray<int> Wish = AIMarketStock(0, 0, 100, 0);
+	HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 0.f, 2, 0, false);
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 600.f, 2, 0, false), "tier 0: the age 1 Market is not open yet");
+	T.AssertTrue(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 601.f, 2, 1, false), "tier 1 reached after a long lack: build at once");
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Stock, Wish, 700.f, 2, 1, true), "one Market (finished or under way) is enough");
+}
+
+void Test_AIMarketBuildLackMustBeUnbroken(FUnitTest& T)
+{
+	FHOLAIMarketSettings Rule;
+	FHOLAIMarketBuildMemory Memory;
+	TArray<int> Missing = AIMarketStock(0, 0, 20, 500);
+	TArray<int> Wish = AIMarketStock(0, 0, 100, 0);
+	TArray<int> Enough = AIMarketStock(0, 0, 150, 500);
+	HOLAIMarket::WantsMarket(Rule, Memory, Missing, Wish, 0.f, 2, 1, false);
+	HOLAIMarket::WantsMarket(Rule, Memory, Enough, Wish, 50.f, 2, 1, false);
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Missing, Wish, 100.f, 2, 1, false), "the need was met at 50 s: the minute starts again at 100 s");
+	T.AssertFalse(HOLAIMarket::WantsMarket(Rule, Memory, Missing, Wish, 160.f, 2, 1, false), "60 s since 100 s: not more than a minute");
+	T.AssertTrue(HOLAIMarket::WantsMarket(Rule, Memory, Missing, Wish, 161.f, 2, 1, false), "more than a minute since the lack came back");
+}

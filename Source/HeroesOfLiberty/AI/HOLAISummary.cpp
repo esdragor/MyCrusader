@@ -487,6 +487,10 @@ namespace HOLAISummary
 		{
 			Summary.Level = GameState->GetLaunchConfig().Slots[PlayerIndex].Difficulty;
 		}
+		if (GameState)
+		{
+			Summary.Tier = GameState->GetTier(PlayerIndex);
+		}
 		return Summary;
 	}
 }

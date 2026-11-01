@@ -54,6 +54,8 @@ private:
 	void AdvanceQueues(int64 StepIndex);
 	/** M4c: one Trade order (owner, finished Market, resource, lots checked here; the price and the stock by HOLMarket::Apply). */
 	void ApplyMarketTrade(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& PlayerState);
+	/** D372: one Tribute order (owner and finished Market checked by ApplyOrders; the receiver, the resource and the stock here). */
+	void ApplyTribute(const FHOLProductionCommand& Order, const AHOLBuilding& Building, AHOLPlayerState& Giver);
 	/** M4c: the common book one step nearer to rest, one HOLMarket::Recover every RecoverEverySeconds. */
 	void RecoverMarketBook();
 	/** The Standard row of the Market table, read once at the first use. */

@@ -356,6 +356,10 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	EHOLAIDifficulty Level = EHOLAIDifficulty::Normal;
 
+	/** The civilisation tier the slot's hero level opens (AHOLGameState::GetTier, 0 without a hero): the Market (age 1) is built from tier 1 (MK-Q3 C). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	int32 Tier = 0;
+
 	/** The part of one resource. */
 	FHOLAIResourceSummary& Get(EHOLResource Resource);
 	const FHOLAIResourceSummary& Get(const EHOLResource Resource) const { return const_cast<FHOLAISummary&>(*this).Get(Resource); }
