@@ -574,6 +574,20 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			RefreshAges(BoundPlayerState.Get());
 		}
 	}
+	// M5: a Market's trade cells quote the common book; another player's trade, the book's way back to rest or a client's
+	// late replication moves it without telling this HUD: the cells are drawn again as soon as it differs from the quoted one.
+	if (bGridShown && !ShownMarketPrices.IsEmpty() && BoundTableState.IsValid() && BoundTableState->HasMarketBook())
+	{
+		const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
+		for (int32 Resource = 0; Resource < HOLMarket::BookSize; ++Resource)
+		{
+			if (ShownMarketPrices.IsValidIndex(Resource) && ShownMarketPrices[Resource] != Book.Prices[Resource])
+			{
+				Refresh();
+				break;
+			}
+		}
+	}
 	// A gatherer selected alone: its line follows it at every change (D303); a group's activities four times a second; a
 	// source's amount at every change (J5b); a group of buildings (an F key) four times a second, its sites and queues
 	// followed without their delegates. The other blocks follow their delegates.
@@ -1819,6 +1833,9 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 
 	// Only a site of the player's own, selected alone (or alone in a group's subgroup), has « Annuler » (HOLCommandGrid::GetCommand).
 	const FHOLResources Stock = PlayerState ? PlayerState->GetResources() : FHOLResources();
+	ShownTradeLabels.Reset();
+	ShownTradeLabels.SetNum(GridCells.Num());
+	ShownMarketPrices.Reset();
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
@@ -1909,6 +1926,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			if (bMarketSettingsLoaded && BoundTableState.IsValid() && BoundTableState->HasMarketBook() && Good >= 0 && Good < HOLMarket::TradableResources)
 			{
 				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
+				ShownMarketPrices.Reset();
+				ShownMarketPrices.Append(Book.Prices, HOLMarket::BookSize);
 				const int32 Huge = 1000000;
 				// The rate is always for 100 of what is given up (the user's correction, 2026-11-01): buying, 100 gold against X of
 				// the good; selling, 100 of the good against Y gold. The same lot the click sends (BuyWithGold / Sell, one lot).
@@ -1933,6 +1952,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 						GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
 				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 			}
+			ShownTradeLabels[Cell] = Label.ToString().Replace(TEXT("\n"), TEXT(" "));
 			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
 			GridCell->SetTooltip(Name, Cost, GetMissing(Stock, Cost), Effect);
 			break;
@@ -2558,10 +2578,20 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
+	// M5: the text drawn on a Market's trade cells, last on the line ("trades A=Nourriture 100 or = 96 | Z=...").
+	TArray<FString> Trades;
+	for (int32 Cell = 0; bGridShown && Cell < ShownTradeLabels.Num(); ++Cell)
+	{
+		if (!ShownTradeLabels[Cell].IsEmpty())
+		{
+			Trades.Add(FString::Printf(TEXT("%s=%s"), GridKeys[Cell], *ShownTradeLabels[Cell]));
+		}
+	}
+	const FString TradeText = Trades.IsEmpty() ? FString() : FString::Printf(TEXT(", trades %s"), *FString::Join(Trades, TEXT(" | ")));
 	// A main forum's lives and state (V2.3b) and the players' table (V2.4): on their own line (DescribeForum).
 	const FString Activity = !ShownForum.IsEmpty() && ShownActivity == ShownForum ? FString() : ShownActivity;
-	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
-		*Message, *Workers);
+	return FString::Printf(TEXT("resources %s, selection %s%s%s, grid %s, queue %s%s%s%s"), *Economy, *ShownSelection, *Activity, *ShownHealth, *Grid, *Queue,
+		*Message, *Workers, *TradeText);
 }
 
 FString UHOLGameScreen::DescribeForum() const

@@ -565,6 +565,9 @@ private:
 	FString ShownForum;
 	bool bGridShown = false;
 	TArray<FName> ShownGridTypes;
+	/** M5: the text on each trade cell as drawn (one line, by cell; empty for the others), and the book it was quoted from (empty without a Market selected). */
+	TArray<FString> ShownTradeLabels;
+	TArray<int32> ShownMarketPrices;
 	/** M5: the Market's numbers (the Standard row), read once to quote the trades' cells. */
 	HOLMarket::FSettings MarketSettings;
 	bool bMarketSettingsTried = false;

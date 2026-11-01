@@ -2102,7 +2102,7 @@ if ($Parts -contains "camera") {
             Step "mark build market", "hol.Cheat.Wood 500", "hol.Cheat.Gold 500","hol.Cheat.SpawnBuilding Market 0 1500 3000", "waitlog Cheat: spawned Market of slot 0",
                 "hol.Camera.FocusNear 1500 3000", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: Market of slot 0 (own)", "frames 3", "hol.HUD.Report",
                 "hol.Select.Grid 1", "waitlog Market: slot 0 bought 1 lots of resource 1", "frames 3", "hol.HUD.Report",
-                "hol.Select.Grid 5", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3",
+                "hol.Select.Grid 5", "waitlog Market: slot 0 sold 1 lots of resource 1", "frames 3", "hol.HUD.Report",
                 "hol.Cheat.DamageSelected 100000 siege", "waitlog Building destroyed: Market of slot 0", "hol.Camera.FocusSlot 0", "frames 3", "hol.Select.Click 0.5 0.5",
                 "waitlog Selection: MainCentre of slot 0 (own)"
             Key Escape
@@ -4934,6 +4934,13 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $MarketBuy = & $Value $HudMarket "(Market: slot 0 bought 1 lots of resource 1 .*)$"
     $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
     $Checks = [ordered]@{}
+    # The text drawn on the cells, always for 100 of what is given up (user's correction 2026-11-01): buying "100 or = X", selling "100 = Y or",
+    # read again after each trade (the book moves: wood 80 -> 83 after the purchase, back to 80 after the sale).
+    $Checks["the cells say the rate for 100: 96 / 96 / 64 bought and 56 / 56 / 84 sold at the start ($($MarketReports[0] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
+        ($MarketReports[0] -match "trades A=\S+ 100 or = 96 \| Z=\S+ 100 or = 96 \| E=\S+ 100 or = 64 \| Q=\S+ 100 = 56 or \| S=\S+ 100 = 56 or \| D=\S+ 100 = 84 or$")
+    $Checks["the cells follow the book after each trade: wood 92 bought / 58 sold after the purchase, 96 / 56 after the sale ($($MarketReports[1] -replace '^.*trades ','') // $($MarketReports[2] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
+        ($MarketReports[1] -match "\| Z=\S+ 100 or = 92 \|") -and ($MarketReports[1] -match "\| S=\S+ 100 = 58 or \|") -and
+        ($MarketReports[2] -match "\| Z=\S+ 100 or = 96 \|") -and ($MarketReports[2] -match "\| S=\S+ 100 = 56 or \|")
     $Checks["the Market selected: the trades on A Z E (buy) / Q S D (sell), 100 gold spent on wood ($MarketBuy) then a lot of wood sold at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
         ($MarketReports[0] -match "grid A=BuyFood \w+ Z=BuyWood \w+ E=BuyStone \w+ Q=SellFood \w+ S=SellWood \w+ D=SellStone \w+,") -and
         [bool]($MarketBuy -match "^Market: slot 0 bought 1 lots of resource 1 for 100 gold \(price now 83,") -and

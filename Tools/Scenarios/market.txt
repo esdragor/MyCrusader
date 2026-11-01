@@ -1,7 +1,7 @@
-# Le Marché (M5) : vendre et acheter 100 de nourriture, bois ou pierre contre de l'or, au cours commun (D84, D582)
+# Le Marché (M5) : A Z E = ACHETER nourriture, bois, pierre avec 100 d'or ; Q S D = VENDRE 100 de nourriture, bois, pierre contre de l'or (retour de l'utilisateur 2026-11-01), au cours commun (D84, D582)
 # Plain, toi (slot 0) contre une IA (slot 1), market.json (copie de tiers.json) : 5 Paysans et un héros chacun. Un Marché terminé t'est posé près du forum (triche), et 2000 de chaque ressource.
 # Cours de départ (tableau Market.csv, MK-Q1 = C) : nourriture 80, bois 80, pierre 120, or 100 ; taxe 30 % ; le cours bouge de 3 points par lot de 100 et revient d'1 point toutes les 10 s.
-# Chaque temps attend la touche Entrée (waitkey). L'IA n'utilise pas encore le Marché (question MK-Q3).
+# Chaque case affiche toujours 100 de ce qu'on donne : acheter = « 100 or = X » (X = ressource reçue), vendre = « 100 = Y or ». Chaque temps attend la touche Entrée (waitkey).
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Cheat.Resources 2000
@@ -11,11 +11,20 @@ hol.Camera.FocusNear 1500 3000
 frames 10
 hol.Select.Click 0.5 0.5
 waitlog Selection: Market of slot 0 (own)
-note 1. Le Marché est sélectionné : la grille de commandes (en bas à droite) montre ses échanges. Ligne du haut A Z E = VENDRE 100 de nourriture, bois, pierre ; ligne du dessous Q S D = ACHETER 100.
-note Chaque case écrit la ressource et le gain (+56) ou le coût (-104) en or ; l'info-bulle donne le prix après l'échange. Le bois se vend 56 (80 moins 30 % de taxe), la pierre s'achète 156 (120 plus 30 %).
-waitkey Entrée : à toi, vends du bois (Z, ou clic sur la case)
-note 2. Vends du bois plusieurs fois de suite : le gain par lot baisse (56, 53, 51...) et le cours du bois baisse de 3 points par lot (lis-le dans l'info-bulle de Z). Maj + case = 500 d'un coup (5 lots).
-note Achète de la pierre (D) : son prix monte à chaque lot. Un échange que le stock ne paie pas : case grisée, et le clic dit ce qui manque.
-waitkey Entrée : laisse passer 30 s sans rien toucher
-note 3. Les cours reviennent vers leur base d'1 point toutes les 10 s : après 30 s, le bois vendu remonte de 3 points (relis l'info-bulle de Z).
-note Hors scénario : il faut un Marché terminé (palier 1 = niveau 3 du héros, 150 de bois, case A de la page II des Paysans). Un Marché en chantier n'a que « Annuler ».
+frames 10
+capture market_grid
+note 1. Le Marché est sélectionné : la grille en bas à droite montre ses échanges. Ligne du haut A Z E = ACHETER nourriture, bois, pierre : la case dit « 100 or = X » (X = ce qu'on reçoit pour 100 d'or). Ligne du dessous Q S D = VENDRE : « 100 = Y or » (Y = l'or reçu pour 100 de la ressource).
+note Au départ : acheter du bois ou de la nourriture, 100 or = 96 ; de la pierre, 100 or = 64 ; vendre 100 de bois ou de nourriture = 56 or, 100 de pierre = 84 or. L'info-bulle donne la phrase complète et le cours après l'échange.
+# Le scénario fait lui-même un achat puis une vente de bois, pour montrer l'effet à l'écran (stock en haut, cours dans la case).
+hol.Select.Grid 1
+waitlog Market: slot 0 bought 1 lots of resource 1
+frames 10
+capture market_bought
+hol.Select.Grid 5
+waitlog Market: slot 0 sold 1 lots of resource 1
+frames 10
+capture market_sold
+note 2. Le scénario vient d'acheter du bois avec 100 d'or (Z) puis d'en vendre 100 (S) : le stock du haut a bougé, et les cases de bois ont changé (le cours monte quand on achète, baisse quand on vend).
+waitkey Entrée : à toi, essaie A Z E (acheter) et Q S D (vendre), ou clique sur les cases
+note 3. Achète plusieurs fois du bois (Z) : chaque achat de 100 d'or rapporte un peu moins de bois (96, 92, 88...). Vends du bois (S) plusieurs fois : le gain baisse (56, 53, 51...). Maj + case = 500 d'un coup (5 lots). Une case que le stock ne paie pas est grisée et le clic dit ce qui manque.
+note Les cours reviennent vers leur base d'1 point toutes les 10 s (relis l'info-bulle plus tard). Hors scénario : il faut un Marché terminé (palier 1 = niveau 3 du héros, 150 de bois, case A de la page II des Paysans). Un Marché en chantier n'a que « Annuler ».
