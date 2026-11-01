@@ -177,6 +177,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	{
 		switch (Block)
 		{
+		case HOLTechnology::EBlock::NotImplemented: return LOCTEXT("ResearchSoon", "Bientôt");
 		case HOLTechnology::EBlock::AlreadyResearched: return LOCTEXT("ResearchDone", "Déjà recherchée");
 		case HOLTechnology::EBlock::AlreadyQueued: return LOCTEXT("ResearchQueued", "Déjà en cours de recherche");
 		case HOLTechnology::EBlock::TierTooLow: return LOCTEXT("ResearchTier", "Palier supérieur requis");
@@ -1882,7 +1883,13 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			bool bAny = false;
 			const AHOLBuilding* Researcher = PlayerController ? PlayerController->FindProductionBuilding(Command.TypeName, &bAny) : nullptr;
 			FHOLCommandFeedback Feedback;
-			if (Researcher)
+			if (Technology && !Technology->Implemented)
+			{
+				// T-Q10/T-Q11 = B (D601): no effect coded yet, greyed "Bientôt" whatever the building, the tier or the stock.
+				Feedback.Kind = EHOLCommandFeedback::ResearchRefused;
+				Feedback.Block = HOLTechnology::EBlock::NotImplemented;
+			}
+			else if (Researcher)
 			{
 				Feedback = PlayerController->CheckResearchAt(Command.TypeName, Researcher);
 			}
@@ -1892,7 +1899,9 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 			const FText Effect = Feedback.Kind == EHOLCommandFeedback::ResearchRefused ? GetResearchBlockText(Feedback.Block)
 				: Technology ? HOLGameNames::GetTechnologyEffect(*Technology) : FText();
-			GridCell->SetCommand(Name, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			const FText CellName = Feedback.Kind == EHOLCommandFeedback::ResearchRefused && Feedback.Block == HOLTechnology::EBlock::NotImplemented
+				? FText::Format(LOCTEXT("ResearchSoonCell", "{0}\nBientôt"), Name) : Name;
+			GridCell->SetCommand(CellName, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
 			GridCell->SetTooltip(Name, Cost, Missing, Effect);
 			break;
 		}

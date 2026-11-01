@@ -40,8 +40,8 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 		{ TEXT("MinerPicksI"), 1, TEXT("MiningCamp") }, { TEXT("MinerPicksII"), 2, TEXT("MiningCamp") },
 		{ TEXT("PloughI"), 1, TEXT("Farm") }, { TEXT("PloughII"), 2, TEXT("Farm") },
 		{ TEXT("WheelbarrowI"), 1, TEXT("Farm") }, { TEXT("WheelbarrowII"), 2, TEXT("Farm") },
-		// Main centre.
-		{ TEXT("DefenceMilitia"), 1, TEXT("MainCentre") }, { TEXT("ImprovedAlarmBell"), 2, TEXT("MainCentre") },
+		// Main centre: the Defence Militia is dropped (T-Q9, "On oublie", D600); only the alarm bell stays.
+		{ TEXT("ImprovedAlarmBell"), 2, TEXT("MainCentre") },
 		// Academy (tier 2 only).
 		{ TEXT("Masonry"), 2, TEXT("Academy") }, { TEXT("Veterans"), 2, TEXT("Academy") }, { TEXT("Logistics"), 2, TEXT("Academy") },
 		// Siege workshop.
@@ -55,14 +55,20 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 	/** The Dawn's own technologies of the grid (the others are common, D27). */
 	constexpr const TCHAR* DawnOwn[] = { TEXT("Liturgy"), TEXT("TemperedHalberds"), TEXT("BlessingOfArms"), TEXT("VowOfPoverty") };
 
-	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. */
-	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("SiegeWorkshop"), TEXT("Sanctuary"), TEXT("Chapel") };
+	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. The Sanctuary is a type since SC-Q1 = B (D602). */
+	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("SiegeWorkshop"), TEXT("Chapel") };
+
+	/** The statistics some code applies today (T5 gathering and workers, T6 melee and ranged attack): a row whose statistics are all here is Implemented, any other is "Soon" (D601). */
+	constexpr const TCHAR* CodedStats[] = {
+		TEXT("MeleeAttack"), TEXT("RangedAttack"),
+		TEXT("GatherWood"), TEXT("GatherStone"), TEXT("GatherGold"), TEXT("GatherFood"), TEXT("WorkerSpeed"), TEXT("WorkerCarry"),
+	};
 
 	/** The statistics the effects code (T5) will read; a new one is added here with its code. */
 	constexpr const TCHAR* KnownStats[] = {
 		TEXT("MeleeAttack"), TEXT("RangedAttack"), TEXT("InfantryArmor"), TEXT("CavalryArmor"),
 		TEXT("GatherWood"), TEXT("GatherStone"), TEXT("GatherGold"), TEXT("GatherFood"), TEXT("WorkerSpeed"), TEXT("WorkerCarry"),
-		TEXT("WorkerDefence"), TEXT("GarrisonSpeed"), TEXT("WallTowerHealth"), TEXT("CoreUnitHealth"), TEXT("ArmyMarchSpeed"),
+		TEXT("GarrisonSpeed"), TEXT("WallTowerHealth"), TEXT("CoreUnitHealth"), TEXT("ArmyMarchSpeed"),
 		TEXT("RamHealth"), TEXT("MangonelDamage"), TEXT("HonourGain"), TEXT("HalberdierBonusVsHeavyInfantry"),
 		TEXT("KnightAndHalberdierBonusVsProfane"), TEXT("MonkCostDiscount"),
 	};
@@ -160,6 +166,13 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 			TestTrue(FString::Printf(TEXT("%s: statistic %s is one the effects code knows"), *Name, *Stat.ToString()), Contains(KnownStats, Stat.ToString()));
 		}
 		TestTrue(FString::Printf(TEXT("%s: changes by a positive percent"), *Name), Row.Percent > 0);
+		// T-Q10/T-Q11 = B (D601): the column Implemented says whether some code applies the effect; "Soon" otherwise.
+		bool bAllCoded = true;
+		for (const FName Stat : Row.Stats)
+		{
+			bAllCoded &= Contains(CodedStats, Stat.ToString());
+		}
+		TestEqual(FString::Printf(TEXT("%s: Implemented tells whether its statistics are applied by code"), *Name), Row.Implemented, bAllCoded);
 
 		// The chain: a level II asks for the level I of its line (same building and statistics, one tier below, a smaller effect).
 		if (Name.EndsWith(TEXT("II")))
@@ -182,9 +195,10 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// T3/T4 (T-Q4 = A, D583): of the 27 technologies of the table, the ones the game can play now are those whose building is a
-// type of BuildingTypes.csv: the camps, the farm and the main centre (10), plus the Dawn's Tempered Halberds at the Barracks
-// (11). The others (Forge, Academy, Siege workshop, Sanctuary, Chapel) wait for their buildings.
+// T3/T4 (T-Q4 = A, D583; T-Q10/T-Q11 = B, D601): of the 26 technologies of the table (the Militia is dropped, D600), the ones
+// the game can play now are those whose building is a type of BuildingTypes.csv AND whose effect is coded (Implemented): the
+// camps and the farm (8). The Improved Alarm Bell (main centre) and the Tempered Halberds (Barracks) have their building but no
+// effect yet: greyed "Soon". The others (Forge, Academy, Siege workshop, Chapel) wait for their buildings.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTechnologyPlayableTest, "HeroesOfLiberty.Technologies.Playable", UE::HeroesOfLiberty::Tests::TechnologyTable::Flags)
 bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 {
@@ -200,7 +214,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 
 	const TSet<FName> Expected = {
 		TEXT("DoubleAxesI"), TEXT("DoubleAxesII"), TEXT("MinerPicksI"), TEXT("MinerPicksII"), TEXT("PloughI"), TEXT("PloughII"),
-		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("DefenceMilitia"), TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"),
+		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"),
 	};
 	TSet<FName> Playable;
 	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
@@ -211,7 +225,16 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 			Playable.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("11 technologies are playable"), Playable.Num(), 11);
+	TestEqual(TEXT("8 technologies are playable"), Playable.Num(), 8);
+	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds") })
+	{
+		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Soon, TEXT("technology"), false);
+		if (TestNotNull(FString::Printf(TEXT("%s is in the table"), Soon), Row))
+		{
+			TestTrue(FString::Printf(TEXT("%s: its building exists (it is greyed Soon, not missing)"), Soon), BuildingExists(Row->Building));
+			TestFalse(FString::Printf(TEXT("%s is not playable: no effect coded (D601)"), Soon), HOLTechnology::IsPlayable(*Row, BuildingExists));
+		}
+	}
 	for (const FName Name : Expected)
 	{
 		TestTrue(FString::Printf(TEXT("%s is playable"), *Name.ToString()), Playable.Contains(Name));
@@ -281,6 +304,16 @@ bool FHOLTechnologyRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("already queued"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::AlreadyQueued));
 	Facts.bResearched = true;
 	TestEqual(TEXT("researched wins over queued"), int32(HOLTechnology::Check(*Plough1, Facts)), int32(EBlock::AlreadyResearched));
+
+	// T-Q11 = B (D601): a technology with no coded effect is refused "Soon" before every other reason, and the log says so.
+	FHOLTechnologyRow Soon = *Plough1;
+	Soon.Implemented = false;
+	TestEqual(TEXT("not implemented, everything else ready"), int32(HOLTechnology::Check(Soon, Ready)), int32(EBlock::NotImplemented));
+	Facts = Ready;
+	Facts.HeroTier = 0;
+	Facts.bResearched = true;
+	TestEqual(TEXT("not implemented wins over the tier and the rest"), int32(HOLTechnology::Check(Soon, Facts)), int32(EBlock::NotImplemented));
+	TestEqual(TEXT("the log says soon"), FString(HOLTechnology::DescribeBlock(EBlock::NotImplemented)), FString(TEXT("soon")));
 
 	// T-Q1 = A: the tier alone decides while MinHeroLevel is 0; a row that asks a level too (the stricter holds) is refused below it.
 	FHOLTechnologyRow Strict = *Plough1;

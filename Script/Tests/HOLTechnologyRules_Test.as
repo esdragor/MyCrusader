@@ -52,3 +52,12 @@ void Test_TechnologyQueued(FUnitTest& T)
 	T.AssertEquals(HOLTechnologyRules::AlreadyQueued, HOLTechnologyRules::CheckQueued(0, 0, 2, 5, false, false, false, false, true), "queued before the tier");
 	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckQueued(1, 3, 1, 0, true, true, true, false, false), "not queued: available");
 }
+
+// T-Q11 = B (D601): a technology whose effect is not coded is refused first, whatever the rest (the C++ rule's order).
+void Test_TechnologyNotImplemented(FUnitTest& T)
+{
+	T.AssertEquals(HOLTechnologyRules::NotImplemented, HOLTechnologyRules::CheckImplemented(false, 1, 3, 1, 0, true, true, true, false, false), "not implemented, everything ready");
+	T.AssertEquals(HOLTechnologyRules::NotImplemented, HOLTechnologyRules::CheckImplemented(false, 0, 0, 2, 5, false, false, false, true, true), "before every other reason");
+	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(true, 1, 3, 1, 0, true, true, true, false, false), "implemented: available");
+	T.AssertEquals(HOLTechnologyRules::AlreadyQueued, HOLTechnologyRules::CheckImplemented(true, 1, 3, 1, 0, true, true, true, false, true), "implemented and queued: the queue rule");
+}

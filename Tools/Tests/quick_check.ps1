@@ -2699,13 +2699,13 @@ if ($NetListening) {
         if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
             "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
         $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "hol.Hero.BannerDisplay", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
-        # T4: Bob (client 1, tier 1 with his level 4 hero) researches Tempered Halberds at his barracks (the army phase built them; the camps are the "build" part's); both then report the
+        # T4: Bob (client 1, tier 1 with his level 4 hero) researches Double Axes I at a lumber camp (the army phase has no camp: the cheat spawns a finished one, D601: Tempered Halberds at the barracks are greyed "Soon", no effect coded yet); both then report the
         # technologies of every player state as they have them (the research reaches its owner alone).
         $TechAskedFlag = Join-Path $TestSaved "quick_net_tech_asked.flag"
         $NetSteps += "mark tech"
         # ("hero" alone plays no army phase: no barracks to research at, the report and the flags only.)
         if ($Client -eq 1 -and $NetHeroOnly) { $NetSteps += "hol.Tech.Report", "signal $TechAskedFlag" }
-        elseif ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.FastBuild 1", "hol.Prod.Queue TemperedHalberds Barracks", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
+        elseif ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.SpawnBuilding LumberCamp 1 -1800 -1600", "wait 1", "hol.Cheat.FastBuild 1", "hol.Prod.Queue DoubleAxesI LumberCamp", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
         else { $NetSteps += "waitfile $TechAskedFlag 120", "wait 1", "hol.Tech.Report" }
         # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
@@ -3932,7 +3932,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
     $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed\] II=locked \[A=Market greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed X=Sanctuary greyed\] II=locked \[A=Market greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+$") -and -not ($Cells -match "\d")
@@ -6823,9 +6823,9 @@ if ($Parts -contains "net") {
     # Both lines are read from the whole server log, not after its "net tech" mark: with FastBuild on, the client's order can be
     # queued AND done (one step) before the server's own sequence reaches that mark (seen once in three runs, 2026-10-31).
     $TechServer = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
-    $TechQueued = @($TechServer | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
-    $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched TemperedHalberds")
-    $TechChecks["server: Bob's Tempered Halberds queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
+    $TechQueued = @($TechServer | Select-String -SimpleMatch "Production: slot $BobSlot queued research DoubleAxesI")
+    $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched DoubleAxesI")
+    $TechChecks["server: Bob's Double Axes I queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
     foreach ($NetClient in $NetClients) {
         $N = $NetClient.Client
         $TechLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "tech")
@@ -6833,7 +6833,7 @@ if ($Parts -contains "net") {
         $TechAlice = "$($TechLines | Select-String -Pattern "Technology state slot $AliceSlot (local|other): researched \[(.*)\]" | Select-Object -Last 1 | ForEach-Object { "$($_.Matches[0].Groups[1].Value) [$($_.Matches[0].Groups[2].Value)]" })"
         if ($N -eq 1) {
             $TechChecks["client $N (Bob): his own research received (Bob $TechBob), Alice's hidden (Alice $TechAlice)"] =
-                $TechBob -eq "local [TemperedHalberds]" -and $TechAlice -eq "other []"
+                $TechBob -eq "local [DoubleAxesI]" -and $TechAlice -eq "other []"
         }
         else {
             $TechChecks["client $N (Alice): Bob's research hidden (Bob $TechBob), her own empty (Alice $TechAlice)"] = $TechBob -eq "other []" -and $TechAlice -eq "local []"
