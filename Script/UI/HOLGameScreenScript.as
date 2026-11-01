@@ -1,4 +1,4 @@
-﻿// The game screen's part in script (J8a.5 loop 2): made by UHOLGameScreen (UHOLScriptScreen::FindScriptClass) over its
+// The game screen's part in script (J8a.5 loop 2): made by UHOLGameScreen (UHOLScriptScreen::FindScriptClass) over its
 // whole frame; the HUD's blocks move here one by one. First of them, the hero's block, bottom left above the selection's
 // block and the control groups' bar (J8a.5 loop 5): his portrait (the emblem over the player's colour, loop 7; a click: as F4), his level, his HP's bar, his XP's bar
 // and three abilities' boxes (greyed until they exist); dead the delay, ready the return's button (a click buys it);
@@ -830,7 +830,7 @@ FString TalentTipTexts = "";
 			if (!bShown)
 				continue;
 			TalentIconLabels[Index].SetText(FText::FromString(Taken[Index].Glyph));
-			TalentIconLabels[Index].SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
+			TalentIconLabels[Index].SetColorAndOpacity(TalentFamilyColour(Taken[Index].Family));
 			TalentIconButtons[Index].SetBackgroundColor(TalentFamilyColour(Taken[Index].Family));
 			TalentIconButtons[Index].SetToolTipText(FText::FromString(Taken[Index].Tooltip));
 			TalentIconTexts += (Index > 0 ? " || " : "") + Taken[Index].Glyph + " = " + Taken[Index].Tooltip;
