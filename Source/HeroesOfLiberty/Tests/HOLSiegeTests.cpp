@@ -206,6 +206,7 @@ bool FHOLSiegeTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Ram: no attack on units (SQ1 = B)"), Ram->Attack, 0);
 		TestEqual(TEXT("Ram: no area"), Ram->AreaRadius, 0.f);
 		TestTrue(TEXT("Ram: a production time"), Ram->BuildTime > 0.f);
+		TestTrue(TEXT("Ram: ranged armour above 0 (SQ3: every siege engine has some, 20 provisional)"), Ram->RangedArmor > 0);
 		TestTrue(TEXT("Ram: armours not negative"), Ram->MeleeArmor >= 0 && Ram->RangedArmor >= 0 && Ram->SiegeArmor >= 0 && Ram->HeroArmor >= 0);
 		TestTrue(TEXT("Ram: sees at least a tile beyond its reach"), Ram->SightRadius >= Ram->BuildingAttackRange + 400.f);
 	}
@@ -229,6 +230,7 @@ bool FHOLSiegeTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Mangonel: a building every 5 s"), Mangonel->BuildingAttackInterval, 5.f);
 		TestEqual(TEXT("Mangonel: 3 000 cm reach on a building"), Mangonel->BuildingAttackRange, 3000.f);
 		TestTrue(TEXT("Mangonel: a production time"), Mangonel->BuildTime > 0.f);
+		TestTrue(TEXT("Mangonel: ranged armour above 0 (SQ3: every siege engine has some, 20 provisional)"), Mangonel->RangedArmor > 0);
 		TestTrue(TEXT("Mangonel: armours not negative"), Mangonel->MeleeArmor >= 0 && Mangonel->RangedArmor >= 0 && Mangonel->SiegeArmor >= 0 && Mangonel->HeroArmor >= 0);
 		TestTrue(TEXT("Mangonel: sees at least a tile beyond its reach"), Mangonel->SightRadius >= Mangonel->AttackRange + 400.f);
 	}

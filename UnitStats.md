@@ -15,8 +15,8 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Roi | 250 | 50 | — | 1,375 s | 43,6 | 36,36 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Roi | aucun (riposte seulement) |
 | Paladin-Commandant (héros) | 450 | 30 | — | 1,25 s | 48 | 24 | 50 % (0,625 s) | Héros | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Héros | 4 cases (16 m) |
 | Arbalétrier | 80 | 12 | +10 contre Lourd | 2,125 s | 28,2 | 5,65 | 12 % (0,255 s) | Distance (tir) | 5 cases (20 m) | 0 | 0 | 0 | 0 | Distance | 5,33 cases (21,33 m) |
-| Bélier | 400 | 0 | — | 2,5 s | 24 | 0 | 50 % (1,25 s) | Siège | 0,12 case (0,5 m) | 0 | 0 | 0 | 0 | Siège | aucun (seulement sur ordre) |
-| Mangonneau | 200 | 45 | — | 5 s | 12 | 9 | 50 % (2,5 s) | Siège (tir) | 7,5 cases (30 m) | 0 | 0 | 0 | 0 | Siège | aucun (seulement sur ordre) |
+| Bélier | 400 | 0 | — | 2,5 s | 24 | 0 | 50 % (1,25 s) | Siège | 0,12 case (0,5 m) | 0 | 20 | 0 | 0 | Siège | aucun (seulement sur ordre) |
+| Mangonneau | 200 | 45 | — | 5 s | 12 | 9 | 50 % (2,5 s) | Siège (tir) | 7,5 cases (30 m) | 0 | 20 | 0 | 0 | Siège | aucun (seulement sur ordre) |
 
 - Dégâts d'un coup = attaque + chaque bonus visant une des catégories de la cible (ils s'additionnent) − armure de la cible du type de l'attaque (mêlée, distance, siège ou héros), 1 au moins.
 - Cadence : temps entre deux coups. Élan : part de la cadence qu'attend le premier coup sur une cible.
@@ -85,13 +85,13 @@ Ligne = l'attaquant, colonne = la cible. Chaque case : dégâts d'un coup · cou
 | Attaquant \ Cible | Infanterie légère | Archer | Paysan | Piquier | Homme d'armes | Roi | Paladin-Commandant (héros) | Arbalétrier | Bélier | Mangonneau |
 |---|---|---|---|---|---|---|---|---|---|---|
 | **Infanterie légère** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s | 8 · 10 · 17,8 s | 8 · 50 · 92,8 s | 8 · 25 · 45,9 s |
-| **Archer** | 10 · 10 · 14,8 s | 5 · 14 · 21,3 s | 5 · 10 · 14,8 s | 10 · 8 · 11,6 s | 1 · 155 · 250,4 s | 5 · 50 · 79,8 s | 1,5 · 300 · 486,1 s | 5 · 16 · 24,6 s | 5 · 80 · 128,6 s | 5 · 40 · 63,6 s |
+| **Archer** | 10 · 10 · 14,8 s | 5 · 14 · 21,3 s | 5 · 10 · 14,8 s | 10 · 8 · 11,6 s | 1 · 155 · 250,4 s | 5 · 50 · 79,8 s | 1,5 · 300 · 486,1 s | 5 · 16 · 24,6 s | 1 · 400 · 648,6 s | 1 · 200 · 323,6 s |
 | **Paysan** | 3 · 34 · 124 s | 3 · 24 · 87 s | 3 · 17 · 61,1 s | 3 · 27 · 98 s | 1 · 155 · 571,7 s | 3 · 84 · 309 s | 0,9 · 501 · 1851,8 s | 3 · 27 · 98 s | 3 · 134 · 494 s | 3 · 67 · 246,1 s |
 | **Piquier** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s | 8 · 10 · 17,8 s | 8 · 50 · 92,8 s | 8 · 25 · 45,9 s |
 | **Homme d'armes** | 12 · 9 · 11,7 s | 12 · 6 · 7,6 s | 12 · 5 · 6,2 s | 12 · 7 · 8,9 s | 8 · 20 · 26,8 s | 12 · 21 · 28,2 s | 3,6 · 125 · 171,2 s | 12 · 7 · 8,9 s | 12 · 34 · 46,1 s | 12 · 17 · 22,7 s |
 | **Roi** | 50 · 2 · 2,1 s | 50 · 2 · 2,1 s | 50 · 1 · 0,7 s | 50 · 2 · 2,1 s | 46 · 4 · 4,8 s | 50 · 5 · 6,2 s | 15 · 30 · 40,6 s | 50 · 2 · 2,1 s | 50 · 8 · 10,3 s | 50 · 4 · 4,8 s |
 | **Paladin-Commandant (héros)** | 30 · 4 · 4,4 s | 30 · 3 · 3,1 s | 30 · 2 · 1,9 s | 30 · 3 · 3,1 s | 28 · 6 · 6,9 s | 30 · 9 · 10,6 s | 30 · 15 · 18,1 s | 30 · 3 · 3,1 s | 30 · 14 · 16,9 s | 30 · 7 · 8,1 s |
-| **Arbalétrier** | 12 · 9 · 17,3 s | 12 · 6 · 10,9 s | 12 · 5 · 8,8 s | 12 · 7 · 13 s | 18 · 9 · 17,3 s | 12 · 21 · 42,8 s | 3,6 · 125 · 263,8 s | 12 · 7 · 13 s | 12 · 34 · 70,4 s | 12 · 17 · 34,3 s |
+| **Arbalétrier** | 12 · 9 · 17,3 s | 12 · 6 · 10,9 s | 12 · 5 · 8,8 s | 12 · 7 · 13 s | 18 · 9 · 17,3 s | 12 · 21 · 42,8 s | 3,6 · 125 · 263,8 s | 12 · 7 · 13 s | 1 · 400 · 848,1 s | 1 · 200 · 423,1 s |
 | **Bélier** | 1 · 100 · 248,8 s | 1 · 70 · 173,8 s | 1 · 50 · 123,8 s | 1 · 80 · 198,8 s | 1 · 155 · 386,2 s | 1 · 250 · 623,8 s | 0,3 · 1501 · 3751,2 s | 1 · 80 · 198,8 s | 1 · 400 · 998,8 s | 1 · 200 · 498,8 s |
 | **Mangonneau** | 45 · 3 · 12,5 s | 45 · 2 · 7,5 s | 45 · 2 · 7,5 s | 45 · 2 · 7,5 s | 45 · 4 · 17,5 s | 45 · 6 · 27,5 s | 13,5 · 34 · 167,5 s | 45 · 2 · 7,5 s | 45 · 9 · 42,5 s | 45 · 5 · 22,5 s |
 
