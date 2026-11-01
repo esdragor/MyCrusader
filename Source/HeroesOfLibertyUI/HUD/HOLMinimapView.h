@@ -92,7 +92,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	FVector2D GetCameraFocus() const;
 
-	/** The terrain layer made again from the fog render's picture (the argument is the local slot, not used: all in sight without a fog). ~40 000 reads: twice a second. */
+	/** The terrain layer made again from the fog render's picture (the argument is the local slot, not used: all in sight without a fog). 480 x 480 texels (the fog's cells blurred once, then blended between their centres: soft edges), twice a second. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	void RefreshTerrain(int32 ViewerSlot);
 

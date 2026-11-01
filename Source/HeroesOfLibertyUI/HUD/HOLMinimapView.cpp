@@ -9,7 +9,9 @@
 #include "GameFramework/GameStateBase.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLFogRender.h"
+#include "Brushes/SlateRoundedBoxBrush.h"
 #include "Map/HOLMapBounds.h"
+#include "Map/HOLVisionRules.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
@@ -36,8 +38,8 @@ static TAutoConsoleVariable<float> CVarMinimapAlertShrink(TEXT("hol.Minimap.Aler
 	TEXT("The circle alert (shape 0) shrinks from AlertSize to 8 px in that many seconds, then starts again while the alert lasts (0.2 to 10)."), ECVF_Default);
 namespace
 {
-	/** Pixels a side of the terrain layer: 200 for a map of up to 880 m (4.4 m a pixel), enough for a 240 px picture. */
-	constexpr int32 TerrainSide = 200;
+	/** Pixels a side of the terrain layer: 480, twice the 240 px picture (sharp on a screen of dpi 2), the fog's 4 m cells blended between their centres (no block edges). */
+	constexpr int32 TerrainSide = 480;
 	constexpr int32 BuildingIdBit = 0x40000000;
 
 	/**
@@ -52,6 +54,26 @@ namespace
 			return EHOLCellVision::Visible;
 		}
 		return Fog->GetCellVision(FVector2D(Point.X, Point.Y));
+	}
+
+	/** The smooth reading of the same picture, 0 (unexplored) to 1 (in sight): the terrain's soft edges. 1 everywhere when there is no fog. */
+	float ReadVisionSmooth(const UHOLFogRenderSubsystem* Fog, TConstArrayView<uint8> Blurred, const FVector2D& Point)
+	{
+		if (!Fog || !Fog->IsFogActive())
+		{
+			return 1.f;
+		}
+		return HOLFogPicture::ReadSmooth(Fog->GetGrid(), Blurred, Point);
+	}
+
+	/** The terrain's colour for a smooth fog value: black, then the dim green of explored ground (the byte 115), then the clear green of the ground in sight. */
+	FLinearColor TerrainColor(const float Vision)
+	{
+		const FLinearColor Black(0.f, 0.f, 0.f, 1.f);
+		const FLinearColor Explored(26.f / 255.f, 40.f / 255.f, 26.f / 255.f, 1.f);
+		const FLinearColor Clear(46.f / 255.f, 74.f / 255.f, 44.f / 255.f, 1.f);
+		const float ExploredAt = HOLFogPicture::ExploredByte / 255.f;
+		return Vision < ExploredAt ? FMath::Lerp(Black, Explored, Vision / ExploredAt) : FMath::Lerp(Explored, Clear, (Vision - ExploredAt) / (1.f - ExploredAt));
 	}
 
 	FColor ResourceColor(const EHOLResource Resource)
@@ -116,12 +138,16 @@ public:
 			FSlateDrawElement::MakeBox(OutDrawElements, LayerId + 1, Whole, &Brush, ESlateDrawEffect::None, FLinearColor::White);
 		}
 		int32 Layer = LayerId + 2;
+		// Rounded, anti-aliased marks (a signed distance in the shader, not the hard squares of the white brush): the small ones (the
+		// units) are discs, the bigger ones (the buildings) squares with a slight round of the corners.
+		const FSlateRoundedBoxBrush Disc(FLinearColor::White);
+		const FSlateRoundedBoxBrush Block(FLinearColor::White, FVector4(1.5, 1.5, 1.5, 1.5));
 		for (const FHOLMinimapMark& Mark : View->GetMarks())
 		{
 			const FVector2f Half(Mark.Size * 0.5f, Mark.Size * 0.5f);
 			const FVector2f At = FVector2f(Mark.Position) - Half;
-			FSlateDrawElement::MakeBox(OutDrawElements, Layer, AllottedGeometry.ToPaintGeometry(FVector2f(Mark.Size, Mark.Size), FSlateLayoutTransform(At)), White,
-				ESlateDrawEffect::None, Mark.Color);
+			FSlateDrawElement::MakeBox(OutDrawElements, Layer, AllottedGeometry.ToPaintGeometry(FVector2f(Mark.Size, Mark.Size), FSlateLayoutTransform(At)),
+				Mark.Size <= 4.f ? &Disc : &Block, ESlateDrawEffect::None, Mark.Color);
 		}
 		++Layer;
 		// The alerts (shape, size: console settings, see above): red, big enough to see from a distance.
@@ -335,29 +361,34 @@ void UHOLMinimapView::RefreshTerrain(const int32 /*ViewerSlot: the fog render kn
 		return OutX >= 0 && OutX < TerrainSide && OutY >= 0 && OutY < TerrainSide;
 	};
 
+	// The cells blurred once (1-2-1), then blended between their centres at each texel: the edge of what is seen is a soft slope a few
+	// pixels wide, not the 4 m steps of the grid (which are 1 to 2 px of the picture on a 400 m map).
+	TArray<uint8> Blurred;
+	if (Fog && Fog->IsFogActive())
+	{
+		HOLFogPicture::Blur(Fog->GetGrid(), Fog->GetBytes(), Blurred);
+	}
 	TArray<FColor> Pixels;
 	Pixels.SetNumUninitialized(TerrainSide * TerrainSide);
 	NumInSight = 0;
+	// A texel is "in sight" from halfway between the explored and the in-sight bytes (as HOLFogPicture::FromByte).
+	const float InSightFrom = (HOLFogPicture::ExploredByte + HOLFogPicture::VisibleByte) / 2.f / 255.f;
 	for (int32 Ty = 0; Ty < TerrainSide; ++Ty)
 	{
 		for (int32 Tx = 0; Tx < TerrainSide; ++Tx)
 		{
 			const double WorldY = FrameMin.Y + (Tx + 0.5) / TerrainSide * Width;
 			const double WorldX = FrameMax.X - (Ty + 0.5) / TerrainSide * Height;
-			FColor Color;
-			switch (ReadVision(Fog, FVector(WorldX, WorldY, 0.0)))
-			{
-			case EHOLCellVision::Unexplored: Color = FColor(0, 0, 0, 255); break;
-			case EHOLCellVision::Explored: Color = FColor(26, 40, 26, 255); break;
-			default: Color = FColor(46, 74, 44, 255); ++NumInSight; break;
-			}
-			Pixels[Ty * TerrainSide + Tx] = Color;
+			const float Vision = ReadVisionSmooth(Fog, Blurred, FVector2D(WorldX, WorldY));
+			NumInSight += Vision >= InSightFrom ? 1 : 0;
+			Pixels[Ty * TerrainSide + Tx] = TerrainColor(Vision).ToFColor(false);
 		}
 	}
-	// The sources the camp has explored: a dot each (two texels), in their resource's colour.
+	// The sources the camp has explored: a round dot each (about 3 texels across), in their resource's colour, its edge blended into the ground.
 	NumSourcesDrawn = 0;
 	if (const UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>())
 	{
+		constexpr float DotRadius = 3.2f;
 		for (const FHOLSource& Source : Sources->GetSources())
 		{
 			int32 Tx = 0;
@@ -368,14 +399,26 @@ void UHOLMinimapView::RefreshTerrain(const int32 /*ViewerSlot: the fog render kn
 				continue;
 			}
 			const FColor Color = ResourceColor(Source.Resource);
-			for (int32 Dy = 0; Dy < 2; ++Dy)
+			const int32 Reach = FMath::CeilToInt(DotRadius) + 1;
+			for (int32 Dy = -Reach; Dy <= Reach; ++Dy)
 			{
-				for (int32 Dx = 0; Dx < 2; ++Dx)
+				for (int32 Dx = -Reach; Dx <= Reach; ++Dx)
 				{
-					if (Tx + Dx < TerrainSide && Ty + Dy < TerrainSide)
+					const int32 X = Tx + Dx;
+					const int32 Y = Ty + Dy;
+					if (X < 0 || Y < 0 || X >= TerrainSide || Y >= TerrainSide)
 					{
-						Pixels[(Ty + Dy) * TerrainSide + Tx + Dx] = Color;
+						continue;
 					}
+					// Coverage falls from 1 to 0 across the dot's last texel.
+					const float Coverage = FMath::Clamp(DotRadius + 0.5f - FMath::Sqrt(static_cast<float>(Dx * Dx + Dy * Dy)), 0.f, 1.f);
+					if (Coverage <= 0.f)
+					{
+						continue;
+					}
+					FColor& Pixel = Pixels[Y * TerrainSide + X];
+					Pixel = FColor(static_cast<uint8>(FMath::Lerp<float>(Pixel.R, Color.R, Coverage)), static_cast<uint8>(FMath::Lerp<float>(Pixel.G, Color.G, Coverage)),
+						static_cast<uint8>(FMath::Lerp<float>(Pixel.B, Color.B, Coverage)), 255);
 				}
 			}
 			++NumSourcesDrawn;
@@ -549,7 +592,7 @@ bool UHOLMinimapView::OrderMove(const FVector2D World)
 
 FString UHOLMinimapView::Describe() const
 {
-	return FString::Printf(TEXT("minimap: %.0f px, %d marks, %d alerts lit, camera frame %d points, terrain %d x %d (sources %d, in sight %d cells)"),
+	return FString::Printf(TEXT("minimap: %.0f px, %d marks, %d alerts lit, camera frame %d points, terrain %d x %d (sources %d, in sight %d texels)"),
 		Side, Marks.Num(), Alerts.Num(), CameraFrame.Num(), Terrain ? TerrainSide : 0, Terrain ? TerrainSide : 0, NumSourcesDrawn, NumInSight);
 }
 

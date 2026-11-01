@@ -293,6 +293,10 @@ namespace HOLFogPicture
 	HEROESOFLIBERTY_API void Fill(const FHOLVisionMap& Map, int32 Camp, TArray<uint8>& Bytes, int32& NumVisible, int32& NumExplored);
 	/** The state of the cell under a point of the ground (X, Y in cm) read from the bytes; a point out of the grid: unexplored. */
 	HEROESOFLIBERTY_API EHOLCellVision Read(const FHOLVisionGrid& Grid, TConstArrayView<uint8> Bytes, const FVector2D& Point);
+	/** The bytes interpolated bilinearly between the cells' centres, 0 (unexplored) to 1 (in sight): a soft edge for a picture finer than the grid (the minimap). Outside the grid or without bytes: 0. */
+	HEROESOFLIBERTY_API float ReadSmooth(const FHOLVisionGrid& Grid, TConstArrayView<uint8> Bytes, const FVector2D& Point);
+	/** OutBytes = Bytes smoothed by a 1-2-1 by 1-2-1 kernel (edge cells repeat themselves): a field with no step, for ReadSmooth to blend when the picture is finer than the cells (the minimap). A uniform field stays itself. */
+	HEROESOFLIBERTY_API void Blur(const FHOLVisionGrid& Grid, TConstArrayView<uint8> Bytes, TArray<uint8>& OutBytes);
 	/** The point's place in the picture, (0, 0) at the grid's lower corner (-X, -Y) and (1, 1) at the upper one; out of [0, 1] outside the grid. */
 	HEROESOFLIBERTY_API FVector2D ToUV(const FHOLVisionGrid& Grid, const FVector2D& Point);
 }
