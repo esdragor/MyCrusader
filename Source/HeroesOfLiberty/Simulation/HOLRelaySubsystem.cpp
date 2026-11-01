@@ -3,8 +3,10 @@
 #include "Simulation/HOLRelaySubsystem.h"
 
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLRelayLayout.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
@@ -74,6 +76,33 @@ void UHOLRelaySubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
 	BindSteps();
+	LoadLayout();
+}
+
+void UHOLRelaySubsystem::LoadLayout()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	TArray<FHOLPlacedRelay> Placed;
+	bool bAnyLayout = false;
+	for (TActorIterator<AHOLRelayLayout> It(World); It; ++It)
+	{
+		bAnyLayout = true;
+		Placed.Append(It->GetRelays());
+	}
+	if (!bAnyLayout)
+	{
+		return;
+	}
+	ClearRelays();
+	for (const FHOLPlacedRelay& Relay : Placed)
+	{
+		AddRelay(FVector2D(Relay.Location.X, Relay.Location.Y), Relay.Radius);
+	}
+	UE_LOG(LogHOLMatch, Log, TEXT("%d relays placed by the map"), Relays.Num());
 }
 
 void UHOLRelaySubsystem::Deinitialize()
