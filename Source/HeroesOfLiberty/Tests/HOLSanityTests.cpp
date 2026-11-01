@@ -7,7 +7,7 @@
 
 namespace
 {
-	constexpr double StepSeconds = 1. / 30.;
+	constexpr double SanityStepSeconds = 1. / 30.;
 
 	/** Judges the track of a unit whose place at Time (s) is Place(Time), over Seconds, with the given motion. */
 	FString JudgeTrack(const HOLSanity::EUnitMotion Motion, const double Seconds, const TFunctionRef<FVector2D(double)> Place)
@@ -15,7 +15,7 @@ namespace
 		const HOLSanity::FSanityRules Rules;
 		HOLSanity::FUnitTrack Track;
 		FString Last;
-		for (double Time = 0.; Time <= Seconds; Time += StepSeconds)
+		for (double Time = 0.; Time <= Seconds; Time += SanityStepSeconds)
 		{
 			Track.Add(Time, Place(Time), Motion, Rules);
 			const FString Fault = Track.Judge(Rules);
