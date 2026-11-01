@@ -246,6 +246,11 @@ void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, c
 	Taker->SetResources(TakerStock);
 	UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d gave %d of resource %d to slot %d, %d arrived (tax %d)"), Order.PlayerIndex, Order.Amount, Order.Resource,
 		Order.Receiver, Arrives, Order.Amount - Arrives);
+	// Only the receiver is told (TB-Q1).
+	if (AHOLGameState* State = GetWorld()->GetGameState<AHOLGameState>())
+	{
+		State->NoteTributeReceived(Order.PlayerIndex, Order.Receiver, Order.Resource, Arrives, Order.Amount - Arrives);
+	}
 }
 
 void UHOLProductionSubsystem::ApplyOrders()

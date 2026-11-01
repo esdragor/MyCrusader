@@ -224,6 +224,31 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	return Message;
 }
 
+FHOLForumMessage HOLForumMessages::GetTributeMessage(const int32 GiverSlot, const int32 Resource, const int32 Arrives, const int32 Tax, const FHOLMatchConfig& Config, const int32 ReceiverSlot)
+{
+	FText Name;
+	switch (Resource)
+	{
+	case 0:
+		Name = LOCTEXT("TributeFood", "nourriture");
+		break;
+	case 1:
+		Name = LOCTEXT("TributeWood", "bois");
+		break;
+	case 2:
+		Name = LOCTEXT("TributeStone", "pierre");
+		break;
+	default:
+		Name = LOCTEXT("TributeGold", "or");
+		break;
+	}
+	FHOLForumMessage Message;
+	Message.Text = FText::Format(LOCTEXT("MessageTribute", "{0} vous a offert {1} {2} (taxe {3})"), GetPlayerName(Config, GiverSlot, ReceiverSlot), Arrives, Name, Tax);
+	Message.NamedSlots.Add(GiverSlot);
+	Message.Shown = FString::Printf(TEXT("Tribute message: %s"), *Message.Text.ToString());
+	return Message;
+}
+
 FHOLForumMessage HOLForumMessages::GetHeroReadyMessage()
 {
 	FHOLForumMessage Message;

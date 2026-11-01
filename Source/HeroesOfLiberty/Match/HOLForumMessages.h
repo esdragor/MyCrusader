@@ -101,6 +101,12 @@ namespace HOLForumMessages
 	 */
 	HEROESOFLIBERTY_API FHOLForumMessage GetMessage(const FHOLForumEvent& Event, const FHOLMatchConfig& Config, int32 ViewerSlot, bool bSeesForum = false);
 
+	/**
+	 * D372 amended (TB-Q1, 2026-11-01: only the receiver is told): the minor alert of a tribute for ReceiverSlot alone, with what arrived
+	 * after the tax: « Joueur 1 vous a offert 70 or (taxe 30) ». Resource is an EHOLResource's value. NamedSlots holds the giver.
+	 */
+	HEROESOFLIBERTY_API FHOLForumMessage GetTributeMessage(int32 GiverSlot, int32 Resource, int32 Arrives, int32 Tax, const FHOLMatchConfig& Config, int32 ReceiverSlot);
+
 	/** J8a.4 (D397, D202): the minor alert « Votre héros est prêt à revenir », a thread's line, no banner nor sound. */
 	HEROESOFLIBERTY_API FHOLForumMessage GetHeroReadyMessage();
 

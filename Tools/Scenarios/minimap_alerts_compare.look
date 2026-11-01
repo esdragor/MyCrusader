@@ -1,5 +1,0 @@
-# <nom de capture> | ce que l'utilisateur doit voir
-minimap_alerts_cmp_A | la mini-carte avec l'alerte de l'option A sur la Maison : carre rouge (contour + coeur), clignote vite (0,5 s), dure 6 s : le reglage actuel
-minimap_alerts_cmp_B | la mini-carte avec l'alerte de l'option B sur la Maison : carre rouge plein, plus petit, clignote tres vite (0,3 s), dure 10 s
-minimap_alerts_cmp_C | la mini-carte avec l'alerte de l'option C sur la Maison : deux carres emboites, plus grands (20 px), clignotent a 0,5 s, durent 6 s
-minimap_alerts_cmp_D | la mini-carte avec l'alerte de l'option D sur la Maison : croix rouge de 24 px, clignote lentement (1 s), dure 15 s

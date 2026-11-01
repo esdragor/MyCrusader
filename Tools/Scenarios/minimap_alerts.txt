@@ -1,8 +1,8 @@
-# Alertes de la mini-carte (D386, essai de 3 min) : quand une chose a toi (batiment ou unite) est attaquee et perd des PV, un carre rouge clignote a cet endroit de la mini-carte.
+# Alertes de la mini-carte (D386, essai de 3 min) : quand une chose a toi (batiment ou unite) est attaquee et perd des PV, un cercle rouge qui se resserre a cet endroit de la mini-carte.
 # Plain, toi (slot 0, bleu) et une IA (slot 1) ; brouillard Normal. Une Maison a toi a 35 m du Centre, 4 Hommes d'armes pres du Centre. Rien n'est attaque tant que tu n'as pas appuye sur Entree.
-# Point 1 : capture minimap_alerts_calm (mini-carte calme, aucune alerte). Point 2 : capture minimap_alerts_house (apres ton Entree : la Maison est frappee, carre rouge sur la mini-carte a sa place).
-# Point 3 : capture minimap_alerts_units (apres le 2e Entree : des Lanciers attaquent tes Hommes d'armes, 2e carre rouge plus pres du Centre).
-# Les captures sont prises avec le clignotement fige allume (hol.Minimap.AlertBlink 10) ; en jeu il clignote comme les reglages le disent (hol.Minimap.AlertSeconds 6, hol.Minimap.AlertBlink 0.5, hol.Minimap.AlertShape 0-3, hol.Minimap.AlertSize).
+# Point 1 : capture minimap_alerts_calm (mini-carte calme, aucune alerte). Point 2 : capture minimap_alerts_house (apres ton Entree : la Maison est frappee, cercle rouge qui se resserre sur la mini-carte a sa place).
+# Point 3 : capture minimap_alerts_units (apres le 2e Entree : des Lanciers attaquent tes Hommes d'armes, 2e cercle rouge plus pres du Centre).
+# L'alerte est un cercle rouge de 24 px qui se resserre vers 8 px chaque seconde pendant 6 s (MM-Q1) : reglages hol.Minimap.AlertShape (0 cercle), AlertSize, AlertShrinkSeconds, AlertSeconds ; 3 captures espacees de 0,3 s montrent le rayon qui change.
 hol.Fog.Mode 2
 open /Game/Maps/Plain
 waitmap Plain
@@ -26,21 +26,21 @@ frames 30
 capture minimap_alerts_calm
 hol.Test.Sanity
 note Mini-carte en bas a droite : tes points sont bleus (la Maison est le point plus gros a droite du Centre). Aucune alerte pour l'instant.
-note 1. Entree : la Maison est frappee. Un carre rouge clignote sur la mini-carte a sa place, 6 s ; clique dessus (clic gauche sur la mini-carte) : la camera y va.
-note 2. Entree : des Lanciers ennemis attaquent tes Hommes d'armes pres du Centre : un 2e carre rouge a cet endroit.
+note 1. Entree : la Maison est frappee. Un cercle rouge qui se resserre sur la mini-carte a sa place, 6 s ; clique dessus (clic gauche sur la mini-carte) : la camera y va.
+note 2. Entree : des Lanciers ennemis attaquent tes Hommes d'armes pres du Centre : un 2e cercle rouge a cet endroit.
 waitkey Entree : frapper la Maison
-hol.Minimap.AlertBlink 10
 hol.Cheat.DamageNear 25 3500 3500 own melee
 wait 1.2
-capture minimap_alerts_house
-hol.Minimap.AlertBlink 0.5
+capture minimap_alerts_house_a
+wait 0.3
+capture minimap_alerts_house_b
+wait 0.3
+capture minimap_alerts_house_c
 hol.Cheat.DamageNear 25 3500 3500 own melee
 waitkey Entree : envoyer des Lanciers sur tes Hommes d'armes
 hol.Camera.FocusNear 800 0
 frames 3
 hol.Units.SpawnHere 3 Spearman 1 250
 waitunits 7
-hol.Minimap.AlertBlink 10
 wait 2
 capture minimap_alerts_units
-hol.Minimap.AlertBlink 0.5

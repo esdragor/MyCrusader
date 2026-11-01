@@ -14,6 +14,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
+#include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMarketRules.h"
 #include "Misc/AutomationTest.h"
@@ -416,6 +417,18 @@ bool FHOLTributeChainTest::RunTest(const FString& Parameters)
 		const int32 Wood = static_cast<int32>(EHOLResource::Wood);
 		const int32 Gold = static_cast<int32>(EHOLResource::Gold);
 
+		// TB-Q1 (2026-11-01): only the receiver is told, with what arrives after the tax; the giver and the others read nothing.
+		TArray<int32> MessageReceivers;
+		TArray<FString> MessageTexts;
+		State->OnTributeMessage.AddLambda([&](const int32 Receiver, const FHOLForumMessage& Message)
+		{
+			MessageReceivers.Add(Receiver);
+			MessageTexts.Add(Message.Text.ToString());
+		});
+		const FHOLForumMessage Pure = HOLForumMessages::GetTributeMessage(0, static_cast<int32>(EHOLResource::Gold), 70, 30, Config, 1);
+		TestTrue(TEXT("the pure message names what arrives and the tax"), Pure.Text.ToString().Contains(TEXT("70")) && Pure.Text.ToString().Contains(TEXT("30")));
+		TestTrue(TEXT("the pure message names the giver"), Pure.NamedSlots.Contains(0));
+
 		// 1. 200 wood given from the finished Market: queued, applied at the next step; 140 arrive (30 % kept by the Market).
 		Giver->SetResources(FHOLResources(500, 300, 0, 50));
 		Taker->SetResources(FHOLResources(10, 20, 30, 40));
@@ -424,6 +437,9 @@ bool FHOLTributeChainTest::RunTest(const FString& Parameters)
 		RunStep();
 		TestTrue(TEXT("the giver pays 200 wood"), Giver->GetResources() == FHOLResources(500, 100, 0, 50));
 		TestTrue(TEXT("the receiver gets 140 wood"), Taker->GetResources() == FHOLResources(10, 160, 30, 40));
+		TestEqual(TEXT("one message, for the receiver alone"), MessageReceivers.Num(), 1);
+		TestTrue(TEXT("it is for slot 1"), MessageReceivers.Num() == 1 && MessageReceivers[0] == 1);
+		TestTrue(TEXT("it says 140 arrived and 60 was taxed"), MessageTexts.Num() == 1 && MessageTexts[0].Contains(TEXT("140")) && MessageTexts[0].Contains(TEXT("60")));
 
 		// 2. Gold is given too (a tribute is not an exchange: no book, no lots).
 		Order(Market, 0, 1, Gold, 50);

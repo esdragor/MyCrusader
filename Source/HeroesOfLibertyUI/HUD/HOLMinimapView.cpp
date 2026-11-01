@@ -26,12 +26,14 @@
 // setting, tried with the scenario minimap_alerts_compare.
 static TAutoConsoleVariable<float> CVarMinimapAlertSeconds(TEXT("hol.Minimap.AlertSeconds"), 6.f,
 	TEXT("How long an alert of the minimap (something of yours hit) blinks, seconds (0.5 to 60)."), ECVF_Default);
-static TAutoConsoleVariable<float> CVarMinimapAlertBlink(TEXT("hol.Minimap.AlertBlink"), 0.5f,
-	TEXT("Half-period of the minimap alerts' blink, seconds: lit that long, dark that long (0.1 to 10)."), ECVF_Default);
+static TAutoConsoleVariable<float> CVarMinimapAlertBlink(TEXT("hol.Minimap.AlertBlink"), 10.f,
+	TEXT("Half-period of the minimap alerts' blink, seconds: lit that long, dark that long (0.1 to 10). 10 (the default) = no blink within an alert's life: the circle (shape 0) shrinks instead; 0.5 blinks as the square shapes did."), ECVF_Default);
 static TAutoConsoleVariable<int32> CVarMinimapAlertShape(TEXT("hol.Minimap.AlertShape"), 0,
-	TEXT("Shape of a minimap alert: 0 a red square outline with a core, 1 a filled red disc-like square, 2 two nested outlines, 3 a cross."), ECVF_Default);
-static TAutoConsoleVariable<float> CVarMinimapAlertSize(TEXT("hol.Minimap.AlertSize"), 16.f,
-	TEXT("Side of a minimap alert, pixels of the picture (6 to 60)."), ECVF_Default);
+	TEXT("Shape of a minimap alert: 0 a red circle (the user's choice, MM-Q1, 2026-11-01) with a core, 1 a red square outline with a core, 2 a filled red square, 3 two nested squares, 4 a cross."), ECVF_Default);
+static TAutoConsoleVariable<float> CVarMinimapAlertSize(TEXT("hol.Minimap.AlertSize"), 24.f,
+	TEXT("Size of a minimap alert, pixels of the picture (6 to 60): the circle's starting diameter, the square shapes' side."), ECVF_Default);
+static TAutoConsoleVariable<float> CVarMinimapAlertShrink(TEXT("hol.Minimap.AlertShrinkSeconds"), 1.f,
+	TEXT("The circle alert (shape 0) shrinks from AlertSize to 8 px in that many seconds, then starts again while the alert lasts (0.2 to 10)."), ECVF_Default);
 namespace
 {
 	/** Pixels a side of the terrain layer: 200 for a map of up to 880 m (4.4 m a pixel), enough for a 240 px picture. */
@@ -143,22 +145,44 @@ public:
 				FSlateDrawElement::MakeBox(OutDrawElements, Layer, AllottedGeometry.ToPaintGeometry(FVector2f(Side, Side), FSlateLayoutTransform(Centre - FVector2f(Side * 0.5f, Side * 0.5f))),
 					White, ESlateDrawEffect::None, AlertRed);
 			};
+			// A circle of 24 segments around the alert's centre, Radius px, as a line.
+			auto Circle = [&](const float Radius, const float Thickness)
+			{
+				TArray<FVector2f> Points;
+				for (int32 Step = 0; Step <= 24; ++Step)
+				{
+					const float Angle = Step * UE_TWO_PI / 24.f;
+					Points.Add(Centre + FVector2f(FMath::Cos(Angle), FMath::Sin(Angle)) * Radius);
+				}
+				FSlateDrawElement::MakeLines(OutDrawElements, Layer, Whole, Points, ESlateDrawEffect::None, AlertRed, true, Thickness);
+			};
 			switch (Shape)
 			{
 			case 1:
-				Fill(Ring);
+				Outline(Ring, 2.5f);
+				Fill(6.f);
 				break;
 			case 2:
+				Fill(Ring);
+				break;
+			case 3:
 				Outline(Ring, 2.5f);
 				Outline(Ring * 0.55f, 2.5f);
 				break;
-			case 3:
+			case 4:
 				FSlateDrawElement::MakeLines(OutDrawElements, Layer, Whole, TArray<FVector2f>{ Centre - FVector2f(Ring * 0.5f, 0.f), Centre + FVector2f(Ring * 0.5f, 0.f) }, ESlateDrawEffect::None, AlertRed, true, 3.f);
 				FSlateDrawElement::MakeLines(OutDrawElements, Layer, Whole, TArray<FVector2f>{ Centre - FVector2f(0.f, Ring * 0.5f), Centre + FVector2f(0.f, Ring * 0.5f) }, ESlateDrawEffect::None, AlertRed, true, 3.f);
 				break;
 			default:
-				Outline(Ring, 2.5f);
-				Fill(6.f);
+				// 0: the circle (MM-Q1): a ring of the alert's size and a round core.
+				{
+					// MM-Q1 (2026-11-01): a circle that tightens on the struck point, again and again (the ping / radar manner).
+					const float Period = FMath::Clamp(CVarMinimapAlertShrink.GetValueOnGameThread(), 0.2f, 10.f);
+					const float Phase = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), Period) / Period;
+					const float Diameter = FMath::Lerp(Ring, 8.f, Phase);
+					Circle(Diameter * 0.5f, 3.f);
+					Circle(1.5f, 3.f);
+				}
 				break;
 			}
 		}		++Layer;
