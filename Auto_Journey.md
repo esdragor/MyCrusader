@@ -21,6 +21,11 @@ Test 1 : 2026-10-30 16:01-17:05 (archivé dans `Docs/Archive/Auto_Journey_Test1_
 ### La session principale est le chef d'orchestre
 - **Économiser ses tokens** (demande de l'utilisateur) : les sous-agents font tout le travail (code, tests, compilation, journal, commit, `EtapeDefini.md`). La session principale lance, lit des rapports de 10 lignes, tient ce fichier et `Auto_Journey_Retours.md`. Pas de gros fichiers lus en direct, pas de recherche dans le code, pas de relecture de ce qu'un agent vient d'écrire.
 - **L'étape 0 est un sous-agent en lecture seule** (test : 70k tokens, 72 s) qui lance `Tools\AutoJourney\status.ps1` et rend le **plan de lancement** (voir ce titre). Le programme de `Auto_Journey_Jour.md` est celui d'hier soir, pas une vérité.
+- **Avant de relayer une consigne entre deux agents, comparer ce que chacun doit produire** (test 3) pour éviter les doublons : si deux agents touchent au même fichier ou à la même question, répartir avant de lancer.
+- **Recouper chaque affirmation de l'étape 0 avec le fichier concerné avant de la mettre dans un énoncé** (test 3) : le plan de lancement est un résumé ; un état « libre », « fusionné » ou « fait » se vérifie dans le fichier d'origine (`IN_USE.txt`, `git log`, journal du chantier).
+- **Lancer un script une fois de bout en bout avant de dire qu'il est prêt** (test 3) : un script jamais exécuté jusqu'au bout n'est pas prêt.
+- **Corriger l'outil partagé (`preflight.ps1`, `check.ps1`) au lieu d'en garder une copie privée, et le dire dans le rapport** (test 3) : une copie privée corrigée laisse le défaut au prochain agent.
+- **Ne modifier `Auto_Journey_Retours.md` qu'avec l'outil Edit sur des lignes précises** (pas de script de remplacement, le fichier est en CRLF et édité en parallèle par plusieurs agents), et **recompter l'en-tête à chaque modification**.
 
 ### Qui travaille, et sur quoi
 - **Un agent par worktree, tous les chantiers du tableau lancés dès le départ, en parallèle.** Au test, 4 chantiers sur 6 avaient été écartés à tort, et il a fallu que l'utilisateur le remarque.
