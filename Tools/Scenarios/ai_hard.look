@@ -1,4 +1,4 @@
 ﻿# <nom de capture> | ce que l'utilisateur doit voir
-ai_hard_base | le forum de l'IA, son Archerie, et 6 Lanciers de l'IA rassembles pres de l'Archerie
-ai_hard_letgo | 8 Hommes d'armes du joueur devant le forum de l'IA, les Lanciers de l'IA ne sont pas en train de se battre contre eux (ils partent ou restent a l'ecart)
-ai_hard_punish | les soldats de l'IA en marche loin de leur forum, en colonne
+ai_hard_base | le forum de l'IA et 6 Lanciers de l'IA rassembles devant lui
+ai_hard_letgo | les Lanciers de l'IA (rouges) s'eloignent du forum ; les Hommes d'armes du joueur (bleus, en haut pres du forum) ne sont pas attaques
+ai_hard_punish | les 6 Lanciers rouges en marche en colonne loin de leur forum, aucun combat
