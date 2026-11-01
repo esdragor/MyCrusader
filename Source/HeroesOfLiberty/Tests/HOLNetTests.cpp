@@ -209,7 +209,9 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		UnitTypes->ForeachRow<FHOLUnitTypeRow>(TEXT("Net test"), [&](const FName& Name, const FHOLUnitTypeRow& Row)
 		{
 			// The hero (J8-Q5, J8a.3): his wounded health goes as a share, whatever his maximum; one point off it, at 1, dead.
-			if (Row.HasArmorCategory(EHOLArmorCategory::Hero))
+			// S2: and a type whose maximum does not fit the wire's 8 bits (the Ram's 400), the same way.
+			const bool bHero = Row.HasArmorCategory(EHOLArmorCategory::Hero);
+			if (HOLUnitReplication::UsesHealthShare(bHero, Row.MaxHealth))
 			{
 				for (const int32 Health : { Row.MaxHealth - 1, 1, 0 })
 				{
@@ -225,7 +227,13 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 			AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 100), 1, Row.MaxHealth, 0, false, 0.f));
 		});
 	}
-	TestTrue(*FString::Printf(TEXT("the table's largest maximum (%d) is the one the bits are set for: 8 bits while it is at most 256"), TableMaxHealth),
+	// S2: who is sent as a share (the exact numbers of the rule, not read from the table).
+	TestTrue(TEXT("the Ram (400) goes as a share"), HOLUnitReplication::UsesHealthShare(false, 400));
+	TestTrue(TEXT("257 goes as a share"), HOLUnitReplication::UsesHealthShare(false, 257));
+	TestFalse(TEXT("256 fits the 8 bits (one point off is 255)"), HOLUnitReplication::UsesHealthShare(false, 256));
+	TestFalse(TEXT("the Man-at-arms (155) goes exact"), HOLUnitReplication::UsesHealthShare(false, 155));
+	TestTrue(TEXT("the hero goes as a share whatever his maximum"), HOLUnitReplication::UsesHealthShare(true, 50));
+	TestTrue(*FString::Printf(TEXT("the largest maximum of the exact types (%d) is the one the bits are set for: 8 bits while it is at most 256"), TableMaxHealth),
 		TableMaxHealth > 1 && HOLUnitReplication::FitsWireHealth(TableMaxHealth) && (TableMaxHealth > 256 || FHOLNetUnitState::HealthBits == 8));
 	for (const FHOLNetUnitState& State : AllStates)
 	{

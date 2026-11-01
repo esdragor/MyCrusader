@@ -29,6 +29,8 @@ NAMES = {
     "LightInfantryNanite": "Infanterie légère (essai Nanite)",
     "Archer": "Archer",
     "Crossbowman": "Arbalétrier",
+    "Ram": "Bélier",
+    "Mangonel": "Mangonneau",
     "Peasant": "Paysan",
     "Spearman": "Piquier",
     "ManAtArms": "Homme d'armes",
@@ -152,7 +154,7 @@ def load():
             for k in ("Radius", "Speed", "MaxHealth", "AvoidanceDistance", "BuildTime", "Population",
                       "CarryCapacity", "Attack", "AttackInterval", "AttackWindUpPercent", "AttackRange",
                       "MeleeArmor", "RangedArmor", "SiegeArmor", "HeroArmor", "AggressionRadius",
-                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange", "SightRadius"):
+                      "BuildingAttack", "BuildingAttackInterval", "BuildingAttackRange", "SightRadius", "AreaRadius"):
                 u[k] = float(row[k])
             u["ArmorCategories"] = parse_list(row["ArmorCategories"])
             u["Bonuses"] = parse_bonuses(row["Bonuses"])
@@ -208,6 +210,9 @@ def main():
              f"(flèche à {num(ARROW_SPEED / 100)} m/s, qui touche toujours) ; l'armure retirée vient du type d'attaque.")
     L.append(f"- Rayon d'agressivité : riposte et prise de cible automatiques, de bord à bord. Sur attaque-déplacement, "
              f"une unité qui n'en a pas cherche à {metres(ATTACK_MOVE_RADIUS)}.")
+    L.append("- Siège (S2, D614, D615) : le Bélier n'attaque que des bâtiments (attaque contre unités nulle) ; le Mangonneau "
+             f"fait des dégâts de zone de {metres(250)} de rayon sur les unités (rayon : colonne AreaRadius), un coup unique "
+             "sur un bâtiment. Armures, temps de production et vue de ces deux lignes : provisoires (SQ3).")
     L.append(f"- Au plus {MAX_ATTACKERS} attaquants de mêlée vont sur une même cible hors de portée ; les autres en "
              f"prennent une moins entourée.")
     L.append(f"- Une unité à 0 PV reste {DYING_STEPS} pas ({num(DYING_STEPS / STEP_HZ)} s à {STEP_HZ} Hz) pour sa chute.")

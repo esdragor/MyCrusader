@@ -56,7 +56,7 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 	constexpr const TCHAR* DawnOwn[] = { TEXT("Liturgy"), TEXT("TemperedHalberds"), TEXT("BlessingOfArms"), TEXT("VowOfPoverty") };
 
 	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. */
-	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("SiegeWorkshop"), TEXT("Sanctuary"), TEXT("Chapel") };
+	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("Sanctuary"), TEXT("Chapel") };
 
 	/** The statistics the effects code (T5) will read; a new one is added here with its code. */
 	constexpr const TCHAR* KnownStats[] = {
@@ -201,6 +201,9 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 	const TSet<FName> Expected = {
 		TEXT("DoubleAxesI"), TEXT("DoubleAxesII"), TEXT("MinerPicksI"), TEXT("MinerPicksII"), TEXT("PloughI"), TEXT("PloughII"),
 		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("DefenceMilitia"), TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"),
+		// S2: the siege workshop is a type of the table, so the two technologies it researches are playable (their effects,
+		// RamHealth and MangonelDamage, are read at S5).
+		TEXT("ReinforcedRam"), TEXT("HeavyMunitions"),
 	};
 	TSet<FName> Playable;
 	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
@@ -211,7 +214,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 			Playable.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("11 technologies are playable"), Playable.Num(), 11);
+	TestEqual(TEXT("13 technologies are playable"), Playable.Num(), 13);
 	for (const FName Name : Expected)
 	{
 		TestTrue(FString::Printf(TEXT("%s is playable"), *Name.ToString()), Playable.Contains(Name));
