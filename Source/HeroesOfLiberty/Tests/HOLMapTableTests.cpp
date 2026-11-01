@@ -104,6 +104,10 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	constexpr int32 MaxPackTrees = 20;
 	constexpr int32 MinPackTrees = 10;
 	constexpr int32 PackSlack = 2;
+	/** C5 (CQ7 = B, 2026-11-01): the Forest's groves are 30 to 40 trees (steppe.py GROVE_LADDER overridden in forest.py): a cluster has at most 45, a pack counts from 25. */
+	constexpr int32 DenseMaxPackTrees = 45;
+	constexpr int32 DenseMinPackTrees = 25;
+	constexpr int32 DenseBiggestPackTrees = 40;
 	/** M-Q10b: the biggest pack a recipe makes (the Steppe's ladder is 12, 14, 16, 18) and the packs a territory needs are counted with it. */
 	constexpr int32 BiggestPackTrees = 18;
 	/**
@@ -478,7 +482,9 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			}
 			for (const FBudgetLine& Line : Budget)
 			{
-				const int32 Needed = Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed;
+				// C5 (CQ7 = B): the Budget `dense` holds twice the wood.
+				const int32 WoodFactor = MapInfo.bDenseWood && FCString::Strcmp(Line.Type, TEXT("Tree")) == 0 ? 2 : 1;
+				const int32 Needed = (Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed) * WoodFactor;
 				int32 Least = MAX_int32, Most = 0;
 				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 				{
@@ -558,7 +564,7 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					for (int32 Number = 0; Number < PackSizes.Num(); ++Number)
 					{
 						Biggest = FMath::Max(Biggest, PackSizes[Number]);
-						if (PackSizes[Number] < MinPackTrees)
+						if (PackSizes[Number] < MapMinPack)
 						{
 							continue;
 						}
@@ -572,23 +578,26 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						}
 						++PacksOf[Owner];
 					}
-					const int32 Budgeted = Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed;
-					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, BiggestPackTrees) - PackSlack;
+					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
+					const int32 MapMinPack = MapInfo.bDenseWood ? DenseMinPackTrees : MinPackTrees;
+					const int32 MapMaxPack = MapInfo.bDenseWood ? DenseMaxPackTrees : MaxPackTrees;
+					const int32 Budgeted = (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed) * (MapInfo.bDenseWood ? 2 : 1);
+					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, MapInfo.bDenseWood ? DenseBiggestPackTrees : BiggestPackTrees) - PackSlack;
 					int32 LeastPacks = MAX_int32;
 					for (const int32 Held : PacksOf)
 					{
 						LeastPacks = FMath::Min(LeastPacks, Held);
 					}
 					AddInfo(FString::Printf(TEXT("%s: %d trees in %d packs of %d trees or more (smallest %d, biggest cluster %d trees), per territory %d at least (needed %d%s)"), *Name, Trees.Num(),
-						Packs, MinPackTrees, Packs ? Smallest : 0, Biggest, LeastPacks == MAX_int32 ? 0 : LeastPacks, PacksNeeded, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
+						Packs, MapMinPack, Packs ? Smallest : 0, Biggest, LeastPacks == MAX_int32 ? 0 : LeastPacks, PacksNeeded, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
 					if (MapInfo.bBudget)
 					{
-						TestTrue(FString::Printf(TEXT("%s: a cluster of %d trees, over %d: the forests are packs of %d trees (M-Q8; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, Biggest, MaxPackTrees, PackTrees, MapInfo.Key, Info.Key),
-							Biggest <= MaxPackTrees);
+						TestTrue(FString::Printf(TEXT("%s: a cluster of %d trees, over %d: the forests are packs of %d trees (M-Q8; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, Biggest, MapMaxPack, PackTrees, MapInfo.Key, Info.Key),
+							Biggest <= MapMaxPack);
 						for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 						{
 							TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d packs of %d trees or more, under %d (the budget of %d trees in packs of %d, less %d: many small forests, M-Q8)"), *Name, Slot, PacksOf[Slot],
-								MinPackTrees, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded);
+								MapMinPack, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded);
 						}
 					}
 				}
