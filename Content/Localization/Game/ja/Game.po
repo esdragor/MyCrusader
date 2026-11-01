@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-01 11:39\n"
-"PO-Revision-Date: 2026-11-01 11:39\n"
+"POT-Creation-Date: 2026-11-01 12:01\n"
+"PO-Revision-Date: 2026-11-01 12:01\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -425,6 +425,13 @@ msgstr "タレント取得：{0} — {1}"
 msgctxt "HOLTalentPanel,List"
 msgid "Talents pris ({0}) : {1}"
 msgstr "取得したタレント（{0}）：{1}"
+
+#. Key:	Hover
+#. SourceLocation:	Script/Talents/HOLTalentTree.as(33)
+#: Script/Talents/HOLTalentTree.as(33)
+msgctxt "HOLTalentTree,Hover"
+msgid "{0} — {1}"
+msgstr "{0} — {1}"
 
 #. Key:	Level
 #. SourceLocation:	Script/UI/HOLHeroBlock.as(243)
