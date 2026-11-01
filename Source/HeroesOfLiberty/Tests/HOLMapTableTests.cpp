@@ -120,6 +120,8 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	 * 0.8 to 0.9 m asked of the generator (GROVE_SPACING 80), the mean over the groves, lone trees and clumps is measured below, at most 1.2 m.
 	 */
 	constexpr double MeanTreeSpacing = 120.0;
+	/** Plain's wood is a grid (wood_points, 134 cm between neighbours), not a grove: its limit is the old one. */
+	constexpr double MeanTreeSpacingGrid = 160.0;
 
 	/** Whether Config/DefaultGame.ini carries this line (a commented line does not count). */
 	bool IsCooked(const TArray<FString>& IniLines, const FString& Line)
@@ -556,8 +558,11 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					if (MapInfo.bBudget)
 					{
 						TestTrue(FString::Printf(TEXT("%s: the trees are %.0f cm from their nearest tree on average, over %.0f (M-Q10b: tighten the trees, GROVE_SPACING in Tools/Editor/maps/common.py; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, MeanSpacing,
-							MeanTreeSpacing, MapInfo.Key, Info.Key), MeanSpacing <= MeanTreeSpacing);
+							MeanTreeSpacing, MapInfo.Key, Info.Key), MeanSpacing <= (FCString::Strcmp(MapInfo.Key, TEXT("Plain")) == 0 ? MeanTreeSpacingGrid : MeanTreeSpacing));
 					}
+					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
+					const int32 MapMinPack = MapInfo.bDenseWood ? DenseMinPackTrees : MinPackTrees;
+					const int32 MapMaxPack = MapInfo.bDenseWood ? DenseMaxPackTrees : MaxPackTrees;
 					TArray<int32> PacksOf;
 					PacksOf.Init(0, Info.NumPlaces);
 					int32 Biggest = 0, Packs = 0, Smallest = MAX_int32;
@@ -579,8 +584,6 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						++PacksOf[Owner];
 					}
 					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
-					const int32 MapMinPack = MapInfo.bDenseWood ? DenseMinPackTrees : MinPackTrees;
-					const int32 MapMaxPack = MapInfo.bDenseWood ? DenseMaxPackTrees : MaxPackTrees;
 					const int32 Budgeted = (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed) * (MapInfo.bDenseWood ? 2 : 1);
 					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, MapInfo.bDenseWood ? DenseBiggestPackTrees : BiggestPackTrees) - PackSlack;
 					int32 LeastPacks = MAX_int32;
