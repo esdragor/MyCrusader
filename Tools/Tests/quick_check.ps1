@@ -159,6 +159,7 @@ $SubCaseTable = @{
         relay = @{ Marks = @("relay"); Setup = @() }
         market = @{ Marks = @("market"); Setup = @() }
         minimap = @{ Marks = @("minimap"); Setup = @() }
+        minalert = @{ Marks = @("minalert"); Setup = @() }
     }
     formation = [ordered]@{
         regroup = @{ Marks = @("regroup", "regroup end", "regroup spear", "regroup spear end", "regroup formed", "regroup formed end",
@@ -2121,6 +2122,15 @@ if ($Parts -contains "camera") {
                 "hol.HUD.Click MinimapClickR120x120", "waitlog Minimap order: 1 units to", "frames 3", "hol.HUD.Report",
                 "hol.HUD.Click MinimapClickL30x30", "frames 5", "hol.HUD.Report", "capture build_minimap",
                 "hol.Units.Remove 0 0 60000 0 Peasant", "wait 0.3", "hol.Camera.FocusSlot 0", "frames 3"
+            # The minimap's alerts (D386, the settings hol.Minimap.AlertSeconds / AlertBlink): a House of slot 0 is hit by one attack (the cheat goes
+            # through the building's health, the alert reads it): an alert (lit, with a half-period of 10 s so that it is still lit when read)
+            # at the House; with a life of 0.5 s the alert is gone a second later; the House then falls and the settings go back to theirs.
+            Step "mark build minalert", "hol.Minimap.AlertBlink 10", "hol.Minimap.AlertSeconds 30", "hol.Cheat.SpawnBuilding House 0 2500 2500",
+                "waitlog Cheat: spawned House of slot 0", "wait 1", "hol.HUD.Report",
+                "hol.Cheat.DamageNear 100 2500 2500 own melee", "wait 1", "hol.HUD.Report", "capture build_minalert",
+                "hol.Minimap.AlertSeconds 0.5", "wait 1.5", "hol.HUD.Report",
+                "hol.Minimap.AlertSeconds 6", "hol.Minimap.AlertBlink 0.5",
+                "hol.Cheat.DamageNear 99999 2500 2500 own melee", "waitlog Building destroyed: House of slot 0", "frames 3"
             Stop-CaseFilter
         }
         if (($Parts -contains "anims") -and $Case.Name -eq "2p") {
@@ -4989,6 +4999,18 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
         ([Math]::Abs($MmCam[0] - $MmCorner[0]) -le 1) -and ([Math]::Abs($MmCam[1] - $MmCorner[1]) -le 1)
     $Checks["capture"] = Test-Path (Join-Path $Shots "build_minimap.png")
     $AllOk = (Report "build minimap" $Checks) -and $AllOk
+
+    # The alerts of a building hit and the settings: the second reading (after the hit, half-period 10 s) has an alert, lit; the third (life of 0.5 s,
+    # 1.5 s later) has none.
+    $HudAlert = Get-Section "build minalert"
+    $AlLines = @($HudAlert | Select-String -Pattern "HUD minimap: " | ForEach-Object { $_.Line })
+    $AlHit = if ($AlLines.Count -ge 2 -and $AlLines[1] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+    $AlGone = if ($AlLines.Count -ge 3 -and $AlLines[2] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+    $Checks = [ordered]@{}
+    $Checks["a House of mine hit: an alert, lit (lit $($AlHit[0]), alerts $($AlHit[1]))"] = ($AlHit[0] -ge 1) -and ($AlHit[1] -ge 1)
+    $Checks["with a life of 0.5 s the alert is gone 1.5 s later (lit $($AlGone[0]), alerts $($AlGone[1]))"] = ($AlGone[1] -eq 0) -and ($AlGone[0] -eq 0)
+    $Checks["capture"] = Test-Path (Join-Path $Shots "build_minalert.png")
+    $AllOk = (Report "build minalert" $Checks) -and $AllOk
 }
 
 if (($Parts -contains "anims") -and ($Parts -contains "camera")) {

@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+minimap_alerts_calm | la mini-carte en bas a droite, points bleus (la Maison a droite du Centre), aucun carre rouge
+minimap_alerts_house | la mini-carte avec un carre rouge (contour et coeur) a l'emplacement de la Maison (a droite du Centre)
+minimap_alerts_units | la mini-carte avec 2 carres rouges : celui de la Maison et un 2e pres du Centre ou les Lanciers attaquent tes Hommes d'armes

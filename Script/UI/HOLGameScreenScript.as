@@ -497,14 +497,14 @@ FString TalentTipTexts = "";
 		}
 		// The alerts: what lost health since the last reading, aged by the game's clock.
 		const float Now = Gameplay::GetTimeSeconds();
-		HOLMinimap::Age(MinimapAlerts, MinimapLastTime < 0.0 ? 0.0 : Math::Max(0.0, Now - MinimapLastTime));
+		HOLMinimap::Age(MinimapAlerts, MinimapLastTime < 0.0 ? 0.0 : Math::Max(0.0, Now - MinimapLastTime), Minimap.GetAlertSeconds());
 		MinimapLastTime = Now;
 		HOLMinimap::Detect(MinimapSeenBefore, Seen, MinimapAlerts);
 		MinimapSeenBefore = Seen;
 		TArray<FVector2D> Lit;
 		for (int Index = 0; Index < MinimapAlerts.Num(); Index++)
 		{
-			if (HOLMinimap::IsLit(MinimapAlerts[Index]))
+			if (HOLMinimap::IsLit(MinimapAlerts[Index], Minimap.GetAlertBlink()))
 				Lit.Add(HOLMinimap::ToPicture(MinimapFrame, FVector2D(MinimapAlerts[Index].X, MinimapAlerts[Index].Y)));
 		}
 		MinimapLitAlerts = Lit.Num();

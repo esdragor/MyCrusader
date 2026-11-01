@@ -139,21 +139,34 @@ namespace HOLMinimap
 		}
 	}
 
-	// Time passes: the alerts age, those past AlertSeconds go.
-	void Age(TArray<FHOLMinimapAlert>& Alerts, float Seconds)
+	// The console settings (hol.Minimap.AlertSeconds, hol.Minimap.AlertBlink), kept sane: an alert lives 0.5 to 60 s, a half-period
+	// lasts 0.1 to 10 s (0 would divide by zero in IsLit).
+	float SaneLifetime(float Seconds)
 	{
+		return Math::Clamp(Seconds, 0.5, 60.0);
+	}
+
+	float SaneBlink(float Seconds)
+	{
+		return Math::Clamp(Seconds, 0.1, 10.0);
+	}
+
+	// Time passes: the alerts age, those past Lifetime go.
+	void Age(TArray<FHOLMinimapAlert>& Alerts, float Seconds, float Lifetime)
+	{
+		const float Limit = SaneLifetime(Lifetime);
 		for (int I = Alerts.Num() - 1; I >= 0; I--)
 		{
 			Alerts[I].Age += Seconds;
-			if (Alerts[I].Age >= AlertSeconds)
+			if (Alerts[I].Age >= Limit)
 				Alerts.RemoveAt(I);
 		}
 	}
 
-	// Lit in the first half-period, dark in the next, lit again...
-	bool IsLit(FHOLMinimapAlert Alert)
+	// Lit in the first half-period (Blink seconds), dark in the next, lit again...
+	bool IsLit(FHOLMinimapAlert Alert, float Blink)
 	{
-		int Phase = Math::FloorToInt(Alert.Age / BlinkSeconds);
+		int Phase = Math::FloorToInt(Alert.Age / SaneBlink(Blink));
 		return (Phase % 2) == 0;
 	}
 }

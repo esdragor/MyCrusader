@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -120,6 +120,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	bool OrderMove(FVector2D World);
 
+	/** hol.Minimap.AlertSeconds: how long an alert blinks, seconds (not yet made sane: HOLMinimap::SaneLifetime does it in the script). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
+	float GetAlertSeconds() const;
+
+	/** hol.Minimap.AlertBlink: the half-period of the blink, seconds (lit that long, dark that long). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
+	float GetAlertBlink() const;
 	/** One line of what the picture holds, for hol.HUD.Report: "minimap: 240 px, 1380 marks, 2 alerts, terrain 220 x 220 (sources 640, in sight 3100)". */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	FString Describe() const;
