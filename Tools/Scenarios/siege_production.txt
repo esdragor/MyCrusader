@@ -1,0 +1,39 @@
+﻿# Siege S3 (GDD 6.1, D614, D615) : l'Atelier de siege produit le Belier (palier 1) et le Mangonneau (palier 2) ; refus par palier, cout pris, engin ne apres 2 s
+# Plain, toi (slot 0) contre une IA (slot 1), hero_xp.json : un heros niveau 1 (palier 0). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# Production de 2 s au lieu de 30 s (hol.Prod.BuildTime 2) ; hol.Hero.SetXP 0 600 = niveau 3 = palier 1, 3300 = niveau 6 = palier 2.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+hol.Cheat.Resources 5000
+# 3 + 4 places de population : le plafond de depart (centre) ne suffit pas a un Belier et un Mangonneau avec les Paysans.
+hol.Cheat.Population 40
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding SiegeWorkshop 0 2500 2500
+waitlog Cheat: spawned SiegeWorkshop of slot 0
+note 1. Un Atelier de siege, un heros niveau 1 (palier 0) : ni Belier ni Mangonneau.
+# Palier 0 : les deux refuses.
+hol.Prod.Queue Ram SiegeWorkshop
+waitlog Production: slot 0 cannot queue Ram (tier too low)
+hol.Prod.Queue Mangonel SiegeWorkshop
+waitlog Production: slot 0 cannot queue Mangonel (tier too low)
+# Palier 1 : le Belier passe (cout pris), le Mangonneau veut le palier 2.
+hol.Hero.SetXP 0 600
+waitlog Hero level up: slot 0 level 1 -> 3
+frames 4
+hol.Prod.Queue Ram SiegeWorkshop
+waitlog Production: slot 0 queued Ram
+hol.Prod.Queue Mangonel SiegeWorkshop
+waitlog Production: slot 0 cannot queue Mangonel (tier too low)
+waitlog Production: Ram of slot 0 done at step
+# Palier 2 : le Mangonneau passe, cout pris (200 bois, 150 or).
+hol.Hero.SetXP 0 3300
+waitlog Hero level up: slot 0 level 3 -> 6
+frames 4
+hol.Prod.Queue Mangonel SiegeWorkshop
+waitlog Production: slot 0 queued Mangonel
+waitlog Production: Mangonel of slot 0 done at step
+# Pas d'engin ailleurs : le Centre principal ne produit ni Belier ni Mangonneau.
+hol.Prod.Queue Ram MainCentre
+waitlog Production: slot 0 cannot queue Ram (not produced here)
+note 2. Belier (palier 1) et Mangonneau (palier 2) faits, couts pris : 150 bois + 75 or, 200 bois + 150 or.

@@ -16,6 +16,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Siege/HOLSiegeRules.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Technologies/HOLTechnologyRules.h"
@@ -368,6 +369,20 @@ void UHOLProductionSubsystem::ApplyOrders()
 				PlayerState->SetResources(Stock);
 				Building->NotifyProductionChanged();
 				continue;
+			}
+			// S3 (GDD 6.1, D614): a siege engine opens at its tier (Ram 1, Mangonel 2), by the rules of Siege/HOLSiegeRules; the
+			// building is finished (a site produces nothing) and the payment is the queue's own check below.
+			HOLSiege::EEngine Engine;
+			if (Type->Produces.Contains(Order.TypeName) && HOLSiege::FindEngine(Order.TypeName, Engine))
+			{
+				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+				const HOLSiege::EBlock Block = HOLSiege::Check(Engine, HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0, true, true);
+				if (Block != HOLSiege::EBlock::None)
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (%s)"), Order.PlayerIndex,
+						*Order.TypeName.ToString(), HOLSiege::DescribeBlock(Block));
+					continue;
+				}
 			}
 			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
 				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName), Type->MaxQueue, Stock)

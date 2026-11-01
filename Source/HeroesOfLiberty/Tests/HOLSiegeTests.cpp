@@ -49,6 +49,16 @@ bool FHOLSiegeTiersTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("then the tier"), Check(EEngine::Mangonel, 0, false, false) == EBlock::TierTooLow);
 	TestTrue(TEXT("then the workshop"), Check(EEngine::Mangonel, 2, false, false) == EBlock::NoWorkshop);
 	TestTrue(TEXT("then the cost"), Check(EEngine::Mangonel, 2, true, false) == EBlock::CannotPay);
+
+	// S3: a unit type name is an engine only for the four of GDD 6.1; the words the production logs.
+	EEngine Found = EEngine::Cannon;
+	TestTrue(TEXT("Ram is the Ram"), FindEngine(FName(TEXT("Ram")), Found) && Found == EEngine::Ram);
+	TestTrue(TEXT("Mangonel is the Mangonel"), FindEngine(FName(TEXT("Mangonel")), Found) && Found == EEngine::Mangonel);
+	TestTrue(TEXT("Trebuchet is the Trebuchet"), FindEngine(FName(TEXT("Trebuchet")), Found) && Found == EEngine::Trebuchet);
+	TestTrue(TEXT("Cannon is the Cannon"), FindEngine(FName(TEXT("Cannon")), Found) && Found == EEngine::Cannon);
+	TestFalse(TEXT("the Spearman is no engine"), FindEngine(FName(TEXT("Spearman")), Found));
+	TestFalse(TEXT("no name is no engine"), FindEngine(NAME_None, Found));
+	TestEqual(TEXT("tier words"), FString(DescribeBlock(EBlock::TierTooLow)), FString(TEXT("tier too low")));
 	return true;
 }
 
