@@ -54,9 +54,9 @@ hol.Camera.FocusNear 1500 0 enemy
 frames 2
 hol.Units.SpawnHere 20 ManAtArms 0 400
 hol.Camera.FocusNear 800 0 enemy
-waitlog level Hard
+wait 6
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
 capture ai_evolving_hard
-note 5. Journal (Saved/Logs) : « evolving, plays Easy / Normal / Hard now » et « forum attacked ... level ... decision ... ».
+note 5. (Stade 3 : la décision de l'IA Difficile n'est pas attendue : le forum peut n'avoir plus de vie à perdre ; la ligne HUD montre le stade.) Journal (Saved/Logs) : « evolving, plays Easy / Normal / Hard now » et « forum attacked ... level ... decision ... ».
