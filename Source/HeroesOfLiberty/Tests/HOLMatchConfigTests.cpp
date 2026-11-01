@@ -221,6 +221,35 @@ bool FHOLPlayerColorsTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Neutral units (owner 8) were drawn in the colour of the player whose palette index wraps to the same (blue, index 0):
+// the colour the renderer writes for the neutral owner must be the colour of no slot, whatever the slots chose.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNeutralUnitColorTest, "HeroesOfLiberty.Match.NeutralUnitColor", UE::HeroesOfLiberty::Tests::Flags)
+bool FHOLNeutralUnitColorTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slots = FHOLMatchConfig::MaxSlots;
+	// The default assignment (slot i, colour i) and a shuffled one: both use the whole palette.
+	for (int32 Variant = 0; Variant < 2; ++Variant)
+	{
+		TArray<uint8> SlotColors;
+		for (int32 Slot = 0; Slot < Slots; ++Slot)
+		{
+			SlotColors.Add(static_cast<uint8>(Variant == 0 ? Slot : (Slot * 3 + 1) % HOLPlayerColors::NumColors));
+		}
+		const FVector3f Neutral = HOLPlayerColors::GetOwnerLinearColor(FHOLMatchConfig::NeutralOwner, SlotColors);
+		for (int32 Color = 0; Color < HOLPlayerColors::NumColors; ++Color)
+		{
+			TestFalse(*FString::Printf(TEXT("variant %d: neutral colour is not palette colour %d"), Variant, Color),
+				Neutral.Equals(HOLPlayerColors::GetLinearColor(Color), 0.001f));
+		}
+		for (int32 Slot = 0; Slot < Slots; ++Slot)
+		{
+			TestTrue(*FString::Printf(TEXT("variant %d: slot %d keeps its chosen colour"), Variant, Slot),
+				HOLPlayerColors::GetOwnerLinearColor(Slot, SlotColors) == HOLPlayerColors::GetLinearColor(SlotColors[Slot]));
+		}
+	}
+	return true;
+}
+
 // E2-2: "Aléatoire" in the menu; at launch each such slot gets a colour no other occupied slot has, chosen or drawn.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMatchConfigRandomColorsTest, "HeroesOfLiberty.Match.RandomColors", UE::HeroesOfLiberty::Tests::Flags)
 bool FHOLMatchConfigRandomColorsTest::RunTest(const FString& Parameters)
