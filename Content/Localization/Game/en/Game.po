@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-01 16:32\n"
-"PO-Revision-Date: 2026-11-01 16:32\n"
+"POT-Creation-Date: 2026-11-01 17:30\n"
+"PO-Revision-Date: 2026-11-01 17:30\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
@@ -356,79 +356,100 @@ msgctxt "HOLTalentNames,Effect72"
 msgid "Impact de la charge du Paladin : +30 % de dégâts"
 msgstr "The Paladin's charge impact: +30% damage"
 
-#. Key:	ReminderAdvised
+#. Key:	AdvisedButton
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(104)
+#: Script/Talents/HOLTalentPanel.as(104)
+msgctxt "HOLTalentPanel,AdvisedButton"
+msgid "Choix conseillé"
+msgstr "Advised choice"
+
+#. Key:	OpenTooltip
 #. SourceLocation:	Script/Talents/HOLTalentPanel.as(109)
 #: Script/Talents/HOLTalentPanel.as(109)
-msgctxt "HOLTalentPanel,ReminderAdvised"
-msgid "Talents à dépenser : {0} — choix conseillé"
-msgstr "Talents to spend: {0} — advised choice"
-
-#. Key:	Reminder
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(110)
-#: Script/Talents/HOLTalentPanel.as(110)
-msgctxt "HOLTalentPanel,Reminder"
-msgid "Talents à dépenser : {0}"
-msgstr "Talents to spend: {0}"
+msgctxt "HOLTalentPanel,OpenTooltip"
+msgid "Ouvrir l'arbre des talents (T)"
+msgstr "Open the talent tree (T)"
 
 #. Key:	TooltipAdvisedTalent
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(116)
-#: Script/Talents/HOLTalentPanel.as(116)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(115)
+#: Script/Talents/HOLTalentPanel.as(115)
 msgctxt "HOLTalentPanel,TooltipAdvisedTalent"
 msgid "Prend le talent de la famille la plus remplie : {0} — {1}"
 msgstr "Takes the talent of the most filled family: {0} — {1}"
 
-#. Key:	TooltipFirst
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(117)
-#: Script/Talents/HOLTalentPanel.as(117)
-msgctxt "HOLTalentPanel,TooltipFirst"
-msgid "Choisissez d'abord un premier talent : l'arbre arrive"
-msgstr "Pick a first talent first: the tree is coming"
+#. Key:	TooltipNoAdvice
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(116)
+#: Script/Talents/HOLTalentPanel.as(116)
+msgctxt "HOLTalentPanel,TooltipNoAdvice"
+msgid "Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser"
+msgstr "No advised choice until a talent is taken or while no point is kept"
 
 #. Key:	FamilyGuardian
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(129)
-#: Script/Talents/HOLTalentPanel.as(129)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(128)
+#: Script/Talents/HOLTalentPanel.as(128)
 msgctxt "HOLTalentPanel,FamilyGuardian"
 msgid "Gardien"
 msgstr "Guardian"
 
 #. Key:	FamilyCaptain
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(131)
-#: Script/Talents/HOLTalentPanel.as(131)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(130)
+#: Script/Talents/HOLTalentPanel.as(130)
 msgctxt "HOLTalentPanel,FamilyCaptain"
 msgid "Capitaine"
 msgstr "Captain"
 
 #. Key:	FamilyChampion
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(132)
-#: Script/Talents/HOLTalentPanel.as(132)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(131)
+#: Script/Talents/HOLTalentPanel.as(131)
 msgctxt "HOLTalentPanel,FamilyChampion"
 msgid "Champion"
 msgstr "Champion"
 
-#. Key:	FamilyTipTalent
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(152)
-#: Script/Talents/HOLTalentPanel.as(152)
-msgctxt "HOLTalentPanel,FamilyTipTalent"
-msgid "{0}, rangée {1} : {2} — {3}"
-msgstr "{0}, row {1}: {2} — {3}"
-
 #. Key:	Notice
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(173)
-#: Script/Talents/HOLTalentPanel.as(173)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(160)
+#: Script/Talents/HOLTalentPanel.as(160)
 msgctxt "HOLTalentPanel,Notice"
 msgid "Talent pris : {0} — {1}"
 msgstr "Talent taken: {0} — {1}"
 
 #. Key:	List
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(184)
-#: Script/Talents/HOLTalentPanel.as(184)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(171)
+#: Script/Talents/HOLTalentPanel.as(171)
 msgctxt "HOLTalentPanel,List"
 msgid "Talents pris ({0}) : {1}"
 msgstr "Talents taken ({0}): {1}"
 
+#. Key:	Reminder
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(83)
+#: Script/Talents/HOLTalentPanel.as(83)
+msgctxt "HOLTalentPanel,Reminder"
+msgid "Talents à dépenser : {0}"
+msgstr "Talents to spend: {0}"
+
+#. Key:	WindowTitle
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(89)
+#: Script/Talents/HOLTalentPanel.as(89)
+msgctxt "HOLTalentPanel,WindowTitle"
+msgid "Arbre de talents"
+msgstr "Talent tree"
+
+#. Key:	Close
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(94)
+#: Script/Talents/HOLTalentPanel.as(94)
+msgctxt "HOLTalentPanel,Close"
+msgid "Fermer"
+msgstr "Close"
+
+#. Key:	RowLabel
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(99)
+#: Script/Talents/HOLTalentPanel.as(99)
+msgctxt "HOLTalentPanel,RowLabel"
+msgid "Rangée {0}"
+msgstr "Row {0}"
+
 #. Key:	Hover
-#. SourceLocation:	Script/Talents/HOLTalentTree.as(33)
-#: Script/Talents/HOLTalentTree.as(33)
+#. SourceLocation:	Script/Talents/HOLTalentTree.as(35)
+#: Script/Talents/HOLTalentTree.as(35)
 msgctxt "HOLTalentTree,Hover"
 msgid "{0} — {1}"
 msgstr "{0} — {1}"

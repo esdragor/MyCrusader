@@ -1,4 +1,4 @@
-﻿// The game screen's part in script (J8a.5 loop 2): made by UHOLGameScreen (UHOLScriptScreen::FindScriptClass) over its
+// The game screen's part in script (J8a.5 loop 2): made by UHOLGameScreen (UHOLScriptScreen::FindScriptClass) over its
 // whole frame; the HUD's blocks move here one by one. First of them, the hero's block, bottom left above the selection's
 // block and the control groups' bar (J8a.5 loop 5): his portrait (the emblem over the player's colour, loop 7; a click: as F4), his level, his HP's bar, his XP's bar
 // and three abilities' boxes (greyed until they exist); dead the delay, ready the return's button (a click buys it);
@@ -34,10 +34,28 @@ UCommonTextBlock HeroTalentLabel;
 // What the talent line shows (HOLTalentPanel::Make), and its texts for hol.HUD.Report.
 FHOLTalentPanelView TalentView;
 FString TalentTexts = "";
-// TQ4 (PROVISIONAL, hol.UI.TalentFirstChoice, option B): three family buttons under the reminder while a point is kept.
-UHorizontalBox HeroFamilyRow;
-TArray<UButton> HeroFamilyButtons;
-TArray<UCommonTextBlock> HeroFamilyLabels;
+// TQ4 = A: the talent tree window (5 rows x 3 cells, Guardian / Captain / Champion, names and effects on hover), opened by the reminder, the icons
+// of the talents taken or the T key; a click on a pickable cell sends RequestHeroTalent. TQ5 = A (D618): one icon per talent taken under the list, its
+// hover the talent's name and effect. The views are HOLTalentTree's.
+UBorder TalentWindow;
+UCommonTextBlock TalentWindowTitle;
+UCommonTextBlock TalentWindowPoints;
+UButton TalentWindowClose;
+UCommonTextBlock TalentWindowCloseLabel;
+UButton TalentWindowAdvised;
+UCommonTextBlock TalentWindowAdvisedLabel;
+TArray<UCommonTextBlock> TalentWindowFamilyHeads;
+TArray<UCommonTextBlock> TalentWindowRowLabels;
+TArray<UButton> TalentCellButtons;
+TArray<UCommonTextBlock> TalentCellLabels;
+UHorizontalBox HeroTalentIcons;
+TArray<UButton> TalentIconButtons;
+TArray<UCommonTextBlock> TalentIconLabels;
+TArray<FHOLTalentCellView> TalentCells;
+bool bTalentWindowOpen = false;
+FString TalentWindowTexts = "";
+FString TalentIconTexts = "";
+const float TalentCellWidth = 170.0;
 // T5 (the trial of 2026-10-31: a point spent changed nothing the eye could see): the talents taken by name, and a notice in the accent colour
 // for a few seconds when one is taken (with a sound), both from HOLTalentNames' one table.
 UCommonTextBlock HeroTalentListLabel;
@@ -121,6 +139,7 @@ FString TalentTipTexts = "";
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
 		BuildMinimap(Frame);
+		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
 		BuildPauseScreen(Frame);
 	}
@@ -410,21 +429,6 @@ FString TalentTipTexts = "";
 		HeroTalentLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
 		HeroTalentButton.AddChild(HeroTalentLabel);
 
-		// TQ4 (option B): the three families of the first choice, hidden unless a point is kept.
-		HeroFamilyRow = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroFamilyRow"));
-		HeroFamilyRow.SetVisibility(ESlateVisibility::Collapsed);
-		Column.AddChildToVerticalBox(HeroFamilyRow).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
-		for (int Family = 0; Family < 3; ++Family)
-		{
-			UButton Button = MakeButton(Family == 0 ? n"HeroTalentFamily0" : Family == 1 ? n"HeroTalentFamily1" : n"HeroTalentFamily2");
-			Button.OnClicked.AddUFunction(this, Family == 0 ? n"HandleFamily0" : Family == 1 ? n"HandleFamily1" : n"HandleFamily2");
-			UCommonTextBlock Label = MakeText(Family == 0 ? n"HeroTalentFamilyLabel0" : Family == 1 ? n"HeroTalentFamilyLabel1" : n"HeroTalentFamilyLabel2", UHOLTextStyleHUDLabel);
-			Label.SetVisibility(ESlateVisibility::HitTestInvisible);
-			Button.AddChild(Label);
-			HeroFamilyRow.AddChildToHorizontalBox(Button).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
-			HeroFamilyButtons.Add(Button);
-			HeroFamilyLabels.Add(Label);
-		}
 		// The notice and the list wrap at the block's width (a long effect would otherwise widen the whole block when a talent is taken).
 		HeroTalentNoticeLabel = MakeText(n"HeroTalentNoticeLabel", UHOLTextStyleHUDLabel);
 		HeroTalentNoticeLabel.SetVisibility(ESlateVisibility::Collapsed);
@@ -434,6 +438,125 @@ FString TalentTipTexts = "";
 		HeroTalentListLabel.SetVisibility(ESlateVisibility::Collapsed);
 		HeroTalentListLabel.SetWrapTextAt(BarWidth);
 		Column.AddChildToVerticalBox(WrappedBox(n"HeroTalentListBox", HeroTalentListLabel)).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		// TQ5 = A: one icon per talent taken (a click opens the tree), its hover the talent's name and effect.
+		HeroTalentIcons = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"HeroTalentIcons"));
+		HeroTalentIcons.SetVisibility(ESlateVisibility::Collapsed);
+		Column.AddChildToVerticalBox(HeroTalentIcons).SetPadding(FMargin(0.0, 3.0, 0.0, 0.0));
+		const int IconCount = HOLTalent::PointsEarned(HOLHero::GetMaxLevel());
+		for (int Index = 0; Index < IconCount; ++Index)
+		{
+			USizeBox IconBox = Cast<USizeBox>(ConstructWidget(USizeBox, FName(f"HeroTalentIconBox{Index}")));
+			IconBox.SetWidthOverride(AbilitySize);
+			IconBox.SetHeightOverride(AbilitySize);
+			UButton Icon = MakeButton(FName(f"HeroTalentIcon{Index}"));
+			Icon.OnClicked.AddUFunction(this, n"HandleTalentClicked");
+			Icon.SetVisibility(ESlateVisibility::Collapsed);
+			IconBox.SetContent(Icon);
+			UCommonTextBlock Glyph = MakeText(FName(f"HeroTalentIconGlyph{Index}"), UHOLTextStyleHUD);
+			Glyph.SetVisibility(ESlateVisibility::HitTestInvisible);
+			Icon.AddChild(Glyph);
+			HeroTalentIcons.AddChildToHorizontalBox(IconBox).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
+			TalentIconButtons.Add(Icon);
+			TalentIconLabels.Add(Glyph);
+		}
+	}
+
+	// The tree window (TQ4 = A): a panel in the middle of the screen, no dim layer (the game goes on under it, only the panel takes the clicks). A
+	// title and a close button, the points kept, the three family heads, then 5 rows of 3 cells (the row's number at the left); each cell a button
+	// whose label is the talent's name and whose hover is its name and effect; the advised choice (D105) at the foot.
+	void BuildTalentWindow(UOverlay Frame)
+	{
+		TalentWindow = MakePanel(n"TalentWindow");
+		TalentWindow.SetVisibility(ESlateVisibility::Collapsed);
+		UOverlaySlot WindowSlot = Frame.AddChildToOverlay(TalentWindow);
+		WindowSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		WindowSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		UVerticalBox Column = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"TalentWindowColumn"));
+		TalentWindow.SetContent(Column);
+
+		UHorizontalBox Head = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"TalentWindowHead"));
+		Column.AddChildToVerticalBox(Head);
+		TalentWindowTitle = MakeText(n"TalentWindowTitle", UHOLTextStyleHUD);
+		Head.AddChildToHorizontalBox(TalentWindowTitle).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		TalentWindowPoints = MakeText(n"TalentWindowPoints", UHOLTextStyleHUDLabel);
+		UHorizontalBoxSlot PointsSlot = Head.AddChildToHorizontalBox(TalentWindowPoints);
+		PointsSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		PointsSlot.SetPadding(FMargin(24.0, 0.0, 24.0, 0.0));
+		TalentWindowClose = MakeButton(n"TalentWindowClose");
+		TalentWindowClose.OnClicked.AddUFunction(this, n"HandleTalentWindowClose");
+		Head.AddChildToHorizontalBox(TalentWindowClose);
+		TalentWindowCloseLabel = MakeText(n"TalentWindowCloseLabel", UHOLTextStyleHUDLabel);
+		TalentWindowCloseLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+		TalentWindowClose.AddChild(TalentWindowCloseLabel);
+
+		// The family heads, over the columns (after the width of the row label).
+		UHorizontalBox Heads = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"TalentWindowHeads"));
+		Column.AddChildToVerticalBox(Heads).SetPadding(FMargin(0.0, 10.0, 0.0, 2.0));
+		Heads.AddChildToHorizontalBox(TalentRowLabelBox(n"TalentWindowHeadsPad", nullptr));
+		for (int Family = 0; Family < HOLTalent::FamilyCount; ++Family)
+		{
+			UCommonTextBlock FamilyHead = MakeText(FName(f"TalentWindowFamily{Family}"), UHOLTextStyleHUD);
+			FamilyHead.SetJustification(ETextJustify::Center);
+			USizeBox HeadBox = Cast<USizeBox>(ConstructWidget(USizeBox, FName(f"TalentWindowFamilyBox{Family}")));
+			HeadBox.SetWidthOverride(TalentCellWidth);
+			HeadBox.SetContent(FamilyHead);
+			Heads.AddChildToHorizontalBox(HeadBox).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
+			TalentWindowFamilyHeads.Add(FamilyHead);
+		}
+
+		const int Rows = HOLTalent::PointsEarned(HOLHero::GetMaxLevel());
+		for (int Index = 0; Index < Rows; ++Index)
+		{
+			const int Row = HOLTalent::FirstRow + Index;
+			UHorizontalBox RowBox = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"TalentWindowRow{Row}")));
+			Column.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 3.0, 0.0, 0.0));
+			UCommonTextBlock RowLabel = MakeText(FName(f"TalentWindowRowLabel{Row}"), UHOLTextStyleHUDLabel);
+			RowBox.AddChildToHorizontalBox(TalentRowLabelBox(FName(f"TalentWindowRowLabelBox{Row}"), RowLabel)).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+			TalentWindowRowLabels.Add(RowLabel);
+			for (int Family = 0; Family < HOLTalent::FamilyCount; ++Family)
+			{
+				USizeBox CellBox = Cast<USizeBox>(ConstructWidget(USizeBox, FName(f"HeroTalentCellBox_{Row}_{Family}")));
+				CellBox.SetWidthOverride(TalentCellWidth);
+				CellBox.SetMinDesiredHeight(40.0);
+				UButton Cell = MakeButton(TalentCellName(Row, Family));
+				// One handler a cell (a button's click does not say which): HandleCell0 .. HandleCell14, the row and the column from the number.
+				Cell.OnClicked.AddUFunction(this, FName(f"HandleCell{Index * HOLTalent::FamilyCount + Family}"));
+				CellBox.SetContent(Cell);
+				UCommonTextBlock CellLabel = MakeText(FName(f"HeroTalentCellLabel_{Row}_{Family}"), UHOLTextStyleHUDLabel);
+				CellLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+				CellLabel.SetJustification(ETextJustify::Center);
+				CellLabel.SetWrapTextAt(TalentCellWidth - 20.0);
+				Cell.AddChild(CellLabel);
+				RowBox.AddChildToHorizontalBox(CellBox).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
+				TalentCellButtons.Add(Cell);
+				TalentCellLabels.Add(CellLabel);
+			}
+		}
+
+		TalentWindowAdvised = MakeButton(n"TalentWindowAdvised");
+		TalentWindowAdvised.OnClicked.AddUFunction(this, n"HandleTalentAdvisedClicked");
+		UVerticalBoxSlot AdvisedSlot = Column.AddChildToVerticalBox(TalentWindowAdvised);
+		AdvisedSlot.SetPadding(FMargin(0.0, 10.0, 0.0, 0.0));
+		AdvisedSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Center);
+		TalentWindowAdvisedLabel = MakeText(n"TalentWindowAdvisedLabel", UHOLTextStyleHUDLabel);
+		TalentWindowAdvisedLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
+		TalentWindowAdvised.AddChild(TalentWindowAdvisedLabel);
+	}
+
+	// The room at the left of a row (its number) and of the family heads: the same width.
+	USizeBox TalentRowLabelBox(FName BoxName, UCommonTextBlock Label)
+	{
+		USizeBox Box = Cast<USizeBox>(ConstructWidget(USizeBox, BoxName));
+		Box.SetWidthOverride(80.0);
+		if (Label != nullptr)
+			Box.SetContent(Label);
+		return Box;
+	}
+
+	// The name of a cell's button (hol.HUD.Click): HeroTalentCell_<row>_<family>.
+	FName TalentCellName(int Row, int Family) const
+	{
+		return FName(f"HeroTalentCell_{Row}_{Family}");
 	}
 
 	// A text in a box no wider than the block's bars (BarWidth), so that it wraps there.
@@ -701,43 +824,108 @@ FString TalentTipTexts = "";
 	}
 
 	// T5: the talent point's reminder (HOLTalentPanel::Make from the level and the picks the sheet knows: -1 picks, unknown here, shows
-	// nothing); a button taking the advised choice while a point is kept and a first talent exists (D105).
+	// nothing); a button opening the tree while a point is kept (D105, TQ4 = A), the tree window and the icons of the talents taken (TQ5 = A).
 	void ShowTalents(int PlayerSlot, FHOLHeroBlockView View)
 	{
 		TalentView = FHOLTalentPanelView();
 		TalentTexts = "";
 		TalentListText = "";
-		TalentTipTexts = "";
+		TalentWindowTexts = "";
+		TalentIconTexts = "";
 		const int Count = PlayerSlot >= 0 ? HOLHero::GetHeroTalentCount(PlayerSlot) : -1;
 		if (!View.bVisible || Count < 0)
 		{
 			HeroTalentButton.SetVisibility(ESlateVisibility::Collapsed);
-			HeroFamilyRow.SetVisibility(ESlateVisibility::Collapsed);
 			HeroTalentListLabel.SetVisibility(ESlateVisibility::Collapsed);
 			HeroTalentNoticeLabel.SetVisibility(ESlateVisibility::Collapsed);
+			HeroTalentIcons.SetVisibility(ESlateVisibility::Collapsed);
+			bTalentWindowOpen = false;
+			TalentWindow.SetVisibility(ESlateVisibility::Collapsed);
 			return;
 		}
 		TArray<int> Picks;
 		for (int Index = 0; Index < Count; ++Index)
 			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerSlot, Index));
 		ShowTalentFeedback(PlayerSlot, Count, Picks);
-		TalentView = HOLTalentPanel::MakeFor(View.Level, Picks, HOLHero::GetTalentFirstChoiceMode());
+		TalentView = HOLTalentPanel::Make(View.Level, Picks);
+		TalentCells = HOLTalentTree::Make(View.Level, Picks);
+		ShowTalentIcons(View.Level, Picks);
+		ShowTalentWindow();
 		HeroTalentButton.SetVisibility(TalentView.bReminder ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		HeroFamilyRow.SetVisibility(TalentView.bFamilyButtons ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
-		for (int Family = 0; Family < HeroFamilyButtons.Num(); ++Family)
-		{
-			HeroFamilyLabels[Family].SetText(FText::FromString(HOLTalentText::FamilyName(Family)));
-			HeroFamilyLabels[Family].SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
-			HeroFamilyButtons[Family].SetToolTipText(FText::FromString(HOLTalentText::FamilyTooltip(TalentView, Family)));
-			TalentTipTexts += (Family > 0 ? " || " : "") + HOLTalentText::FamilyTooltip(TalentView, Family);
-		}
 		if (!TalentView.bReminder)
 			return;
 		TalentTexts = HOLTalentText::ReminderText(TalentView);
 		HeroTalentLabel.SetText(FText::FromString(TalentTexts));
-		HeroTalentLabel.SetColorAndOpacity(TalentView.bAdviceEnabled ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
-		UHOLScriptScreen::SetButtonGreyed(HeroTalentButton, !TalentView.bAdviceEnabled);
-		HeroTalentButton.SetToolTipText(FText::FromString(HOLTalentText::TooltipText(TalentView)));
+		HeroTalentLabel.SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
+		UHOLScriptScreen::SetButtonGreyed(HeroTalentButton, false);
+		HeroTalentButton.SetToolTipText(HOLTalentText::OpenTooltip());
+	}
+
+	// TQ5 = A (D618): one icon per talent taken, in the order of the rows; the glyph over the family's colour, the hover the name and effect.
+	void ShowTalentIcons(int Level, const TArray<int>& Picks)
+	{
+		const TArray<FHOLTalentCellView> Taken = HOLTalentTree::TakenEntries(Level, Picks);
+		HeroTalentIcons.SetVisibility(Taken.Num() > 0 ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		for (int Index = 0; Index < TalentIconButtons.Num(); ++Index)
+		{
+			const bool bShown = Index < Taken.Num();
+			TalentIconButtons[Index].SetVisibility(bShown ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+			if (!bShown)
+				continue;
+			TalentIconLabels[Index].SetText(FText::FromString(Taken[Index].Glyph));
+			TalentIconLabels[Index].SetColorAndOpacity(TalentFamilyColour(Taken[Index].Family));
+			TalentIconButtons[Index].SetBackgroundColor(TalentFamilyColour(Taken[Index].Family));
+			TalentIconButtons[Index].SetToolTipText(FText::FromString(Taken[Index].Tooltip));
+			TalentIconTexts += (Index > 0 ? " || " : "") + Taken[Index].Glyph + " = " + Taken[Index].Tooltip;
+		}
+	}
+
+	// A colour for each family column (Guardian, Captain, Champion), over the buttons' dark: icons and taken cells.
+	FLinearColor TalentFamilyColour(int Family) const
+	{
+		if (Family == 0)
+			return FLinearColor(0.35, 0.6, 1.0, 1.0);
+		if (Family == 1)
+			return FLinearColor(1.0, 0.8, 0.3, 1.0);
+		return FLinearColor(1.0, 0.45, 0.4, 1.0);
+	}
+
+	// The tree window as the cells say (HOLTalentTree::Make): shown while open (the hero shown), every cell its name, its colour by state, its hover.
+	void ShowTalentWindow()
+	{
+		TalentWindow.SetVisibility(bTalentWindowOpen ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (!bTalentWindowOpen)
+			return;
+		TalentWindowTitle.SetText(HOLTalentText::WindowTitle());
+		TalentWindowPoints.SetText(FText::FromString(HOLTalentText::ReminderText(TalentView)));
+		TalentWindowPoints.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+		TalentWindowCloseLabel.SetText(HOLTalentText::CloseLabel());
+		TalentWindowCloseLabel.SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
+		for (int Family = 0; Family < TalentWindowFamilyHeads.Num(); ++Family)
+		{
+			TalentWindowFamilyHeads[Family].SetText(FText::FromString(HOLTalentText::FamilyName(Family)));
+			TalentWindowFamilyHeads[Family].SetColorAndOpacity(TalentFamilyColour(Family));
+		}
+		for (int Index = 0; Index < TalentWindowRowLabels.Num(); ++Index)
+		{
+			TalentWindowRowLabels[Index].SetText(FText::FromString(HOLTalentText::RowLabel(HOLTalent::FirstRow + Index)));
+			TalentWindowRowLabels[Index].SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+		}
+		for (int Index = 0; Index < TalentCellButtons.Num() && Index < TalentCells.Num(); ++Index)
+		{
+			const FHOLTalentCellView Cell = TalentCells[Index];
+			const bool bTaken = Cell.State == EHOLTalentCellState::Taken;
+			TalentCellLabels[Index].SetText(FText::FromString(Cell.Name));
+			TalentCellLabels[Index].SetColorAndOpacity(bTaken || Cell.bPickable ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+			TalentCellButtons[Index].SetBackgroundColor(bTaken ? TalentFamilyColour(Cell.Family) : FLinearColor(1.0, 1.0, 1.0, 1.0));
+			UHOLScriptScreen::SetButtonGreyed(TalentCellButtons[Index], !bTaken && !Cell.bPickable);
+			TalentCellButtons[Index].SetToolTipText(FText::FromString(Cell.Tooltip));
+		}
+		TalentWindowAdvisedLabel.SetText(HOLTalentText::AdvisedLabel());
+		TalentWindowAdvisedLabel.SetColorAndOpacity(TalentView.bAdviceEnabled ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+		UHOLScriptScreen::SetButtonGreyed(TalentWindowAdvised, !TalentView.bAdviceEnabled);
+		TalentWindowAdvised.SetToolTipText(FText::FromString(HOLTalentText::TooltipText(TalentView)));
+		TalentWindowTexts = HOLTalentText::ReminderText(TalentView) + " | " + HOLTalentTree::Describe(TalentCells);
 	}
 
 	// T5: what a spent point shows. The talents taken, by name, stay under the reminder; a talent taken since the last refresh raises a notice
@@ -863,15 +1051,13 @@ FString TalentTipTexts = "";
 		ClickReturn();
 	}
 
-	// A click on the talent line (D105): the advised choice taken, the order sent (the server checks it). Hidden or greyed: nothing.
+	// A click on the talent line, an icon of a talent taken, or the T key (TQ4 = A): the tree opens, or closes if it was open. Nothing without a hero.
 	bool ClickTalent()
 	{
-		if (!TalentView.bReminder || !TalentView.bAdviceEnabled)
+		if (!HeroView.bVisible || TalentSeenCount < 0)
 			return false;
-		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
-		if (Controller == nullptr)
-			return false;
-		Controller.RequestHeroTalent(TalentView.AdvisedFamily);
+		bTalentWindowOpen = !bTalentWindowOpen;
+		ShowTalentWindow();
 		return true;
 	}
 
@@ -881,34 +1067,150 @@ FString TalentTipTexts = "";
 		ClickTalent();
 	}
 
-	// A click on one of the three family buttons (TQ4, option B): the first (or any) talent of that family, the order sent (the server checks it).
-	bool ClickFamily(int Family)
+	bool ClickTalentClose()
 	{
-		if (!TalentView.bFamilyButtons)
+		if (!bTalentWindowOpen)
 			return false;
-		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
-		if (Controller == nullptr)
-			return false;
-		Controller.RequestHeroTalent(Family);
+		bTalentWindowOpen = false;
+		ShowTalentWindow();
 		return true;
 	}
 
 	UFUNCTION()
-	void HandleFamily0()
+	void HandleTalentWindowClose()
 	{
-		ClickFamily(0);
+		ClickTalentClose();
+	}
+
+	// A click on the cell (Row, Family): only a pickable cell asks, for its own family (HOLTalentTree::ClickedFamily); the server checks it.
+	bool ClickTalentCell(int Row, int Family)
+	{
+		if (!bTalentWindowOpen)
+			return false;
+		const int Asked = HOLTalentTree::ClickedFamily(TalentCells, Row, Family);
+		if (Asked == HOLTalent::FamilyNone)
+			return false;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return false;
+		Controller.RequestHeroTalent(Asked);
+		return true;
 	}
 
 	UFUNCTION()
-	void HandleFamily1()
+	void HandleCell0()
 	{
-		ClickFamily(1);
+		ClickTalentCell(HOLTalent::FirstRow + 0, 0);
 	}
 
 	UFUNCTION()
-	void HandleFamily2()
+	void HandleCell1()
 	{
-		ClickFamily(2);
+		ClickTalentCell(HOLTalent::FirstRow + 0, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell2()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 0, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell3()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 1, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell4()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 1, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell5()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 1, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell6()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 2, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell7()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 2, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell8()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 2, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell9()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 3, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell10()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 3, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell11()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 3, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell12()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 4, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell13()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 4, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell14()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 4, 2);
+	}
+
+	// The advised choice (D105), now at the foot of the window: the family most filled, the order sent. Greyed or closed: nothing.
+	bool ClickTalentAdvised()
+	{
+		if (!bTalentWindowOpen || !TalentView.bAdviceEnabled)
+			return false;
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Controller == nullptr)
+			return false;
+		Controller.RequestHeroTalent(TalentView.AdvisedFamily);
+		return true;
+	}
+
+	UFUNCTION()
+	void HandleTalentAdvisedClicked()
+	{
+		ClickTalentAdvised();
+	}
+
+	// The T key (read in UHOLScriptScreen::NativeTick).
+	UFUNCTION(BlueprintOverride)
+	void KeyPressed(FName KeyName)
+	{
+		if (KeyName == n"T")
+			ClickTalent();
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -922,18 +1224,29 @@ FString TalentTipTexts = "";
 			return ClickReturn();
 		if (ClickMinimapName(WidgetName))
 			return true;
-		if (WidgetName == n"HeroTalentButton")
+		if (WidgetName == n"HeroTalentButton" || WidgetName == n"TalentKey")
 			return ClickTalent();
+		if (WidgetName == n"TalentWindowClose")
+			return ClickTalentClose();
+		if (WidgetName == n"TalentWindowAdvised")
+			return ClickTalentAdvised();
+		for (int Index = 0; Index < TalentIconButtons.Num(); ++Index)
+		{
+			if (WidgetName == FName(f"HeroTalentIcon{Index}"))
+				return TalentIconButtons[Index].IsVisible() && ClickTalent();
+		}
+		for (int Row = HOLTalent::FirstRow; Row < HOLTalent::FirstRow + TalentWindowRowLabels.Num(); ++Row)
+		{
+			for (int Family = 0; Family < HOLTalent::FamilyCount; ++Family)
+			{
+				if (WidgetName == TalentCellName(Row, Family))
+					return ClickTalentCell(Row, Family);
+			}
+		}
 		if (WidgetName == n"DuelAcceptButton")
 			return ClickDuelAnswer(true);
 		if (WidgetName == n"DuelRefuseButton")
 			return ClickDuelAnswer(false);
-		if (WidgetName == n"HeroTalentFamily0")
-			return ClickFamily(0);
-		if (WidgetName == n"HeroTalentFamily1")
-			return ClickFamily(1);
-		if (WidgetName == n"HeroTalentFamily2")
-			return ClickFamily(2);
 		if (WidgetName == n"PauseResumeButton")
 			return ClickPauseResume();
 		return false;
@@ -966,8 +1279,9 @@ FString TalentTipTexts = "";
 			+ (HeroView.bVisible ? "\nhero xp: " + HeroView.XPDescribe + f" bar {Math::RoundToInt(HeroView.XPFraction * 100.0)}%" : "")
 			+ (HeroView.Abilities.Num() > 0 ? "\nhero abilities: " + DescribeAbilities() : "")
 			+ (Minimap != nullptr ? "\n" + Minimap.Describe() + f", lit {MinimapLitAlerts}, alerts {MinimapAlerts.Num()}, area x {Math::RoundToInt(MinimapFrame.MinX)}..{Math::RoundToInt(MinimapFrame.MaxX)} y {Math::RoundToInt(MinimapFrame.MinY)}..{Math::RoundToInt(MinimapFrame.MaxY)}, last click {MinimapLastClick}, camera " + DescribeMinimapCamera() : "")
-			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + (TalentView.bFamilyButtons ? f" | family buttons row {TalentView.NextRow}" : "") : "")
-			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\nhero talent texts: list " + TalentListText + " | notice " + TalentNoticeText + " | tips " + TalentTipTexts : "")
+			+ (HeroView.bVisible && TalentView.Rows.Num() > 0 ? "\nhero talents: " + TalentView.Describe + (TalentTexts.IsEmpty() ? "" : " | " + TalentTexts) + f" | next row {TalentView.NextRow}" : "")
+			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\nhero talent texts: list " + TalentListText + " | notice " + TalentNoticeText + " | icons " + TalentIconTexts : "")
+			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\ntalent window: " + (bTalentWindowOpen ? "open | " + TalentWindowTexts : "closed") : "")
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);

@@ -1,4 +1,6 @@
 #include "HUD/HOLScriptScreen.h"
+#include "GameFramework/PlayerController.h"
+#include "InputCoreTypes.h"
 
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
@@ -172,6 +174,14 @@ void UHOLScriptScreen::NativeConstruct()
 void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDeltaTime)
 {
 	Super::NativeTick(MyGeometry, InDeltaTime);
+	// The T key (the talent tree, TQ4 = A): the viewport's key state, as the Enter of a test scenario; the console open or a focused menu keeps it.
+	if (const APlayerController* Controller = GetOwningPlayer())
+	{
+		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::T))
+		{
+			KeyPressed(TEXT("T"));
+		}
+	}
 	RefreshLeft -= InDeltaTime;
 	if (RefreshLeft <= 0.f)
 	{

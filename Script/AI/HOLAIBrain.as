@@ -37,7 +37,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAIForumMemory> Rebuilds;
 	TMap<int, FHOLAIKingMemory> Kings;
 
-	// What each slot's relay detachment remembers (R6, RQ3 provisional).
+	// What each slot's relay detachment remembers (R6, RQ3 = B, D589).
 	TMap<int, FHOLAIRelayMemory> RelayMemories;
 
 	// The main talent family each slot drew at its first thought (T6, D424).
@@ -527,7 +527,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Defences.Find(PlayerIndex, State);
 		FHOLAIWave Wave;
 		Waves.Find(PlayerIndex, Wave);
-		// The relays (R6, RQ3 PROVISIONAL: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
+		// The relays (R6, RQ3 = B, D589: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
 		// of the army the other rules see below (defence, regrouping, waves) while it is away.
 		const FHOLAISummary Summary = ThinkRelays(PlayerIndex, Step, FullSummary, Data, Wave, State);
 		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
