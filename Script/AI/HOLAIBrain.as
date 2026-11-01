@@ -76,6 +76,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// The step of each slot's last Market trade (M6).
 	TMap<int, int64> MarketSteps;
 
+	// What each slot's farm block stood like (IAQ-S-2, D621), to tell when its mill or a farm is destroyed.
+	TMap<int, FHOLAIBlockSeen> BlockSeens;
+
 	// Since when the idle Peasants of each slot have had no safe source (IAQ-S, D619).
 	TMap<int, FHOLAIStranded> Strandeds;
 
@@ -150,6 +153,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				Sent.Ids.Add(Resumer);
 			}
 		}
+		// 0c. IAQ-S-2 (D621): the mill or a farm destroyed is built again near the refuge (40 m behind the centre), at the normal cost.
+		Plan = RelocateDestroyed(PlayerIndex, Step, Summary, Data, Plan);
+		FarmPlans.Add(PlayerIndex, Plan);
 		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
 		if (Build.bPlanFarms)
 		{
@@ -715,6 +721,33 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	}
 	// The farm block around the slot's centre: the mill and the farms where they fit (FindAIFarmBlock); not active when it
 	// does not fit within the rings.
+	// The mill or the farms of the planned block that stood and are gone (BlockLoss) get new spots around the refuge (FindAIFarmBlock there);
+	// the opening is told that the slot had a mill and has none (the next one goes near the refuge too). Nothing destroyed: the plan as it was.
+	FHOLAIFarmPlan RelocateDestroyed(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, FHOLAIOpeningData& Data, FHOLAIFarmPlan Planned)
+	{
+		FHOLAIFarmPlan Plan = Planned;
+		FHOLAIBlockSeen Seen;
+		BlockSeens.Find(PlayerIndex, Seen);
+		const FHOLAIBlockLoss Loss = HOLAIOpening::BlockLoss(Seen, Summary, Plan);
+		Data.bMillLost = Seen.bAnyMill && !HOLAIOpening::HasBuilding(Summary, n"Mill");
+		if (Loss.bMill || Loss.Farms.Num() > 0)
+		{
+			FVector NewMill;
+			TArray<FVector> NewFarms;
+			if (HOLAIOrder::FindAIFarmBlock(PlayerIndex, HOLAIOpening::RefugeCentreOf(Summary, Data), Data.FarmRings, NewMill, NewFarms))
+			{
+				HOLAIOpening::RelocateLost(Plan, Seen, Loss, NewMill, NewFarms);
+				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: farm block destroyed (mill {Loss.bMill}, {Loss.Farms.Num()} farms), built again near the refuge ({NewMill.X}, {NewMill.Y})");
+			}
+			else
+			{
+				LogBuildOnce(PlayerIndex, Step, "no room near the refuge for the farm block");
+			}
+		}
+		BlockSeens.Add(PlayerIndex, Seen);
+		return Plan;
+	}
+
 	FHOLAIFarmPlan PlanFarmBlock(int PlayerIndex, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
 	{
 		FHOLAIFarmPlan Plan;

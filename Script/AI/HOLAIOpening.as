@@ -20,6 +20,9 @@ struct FHOLAIOpeningStep
 // The numbers of the opening.
 struct FHOLAIOpeningData
 {
+	// IAQ-S-2 (D621): the slot had a mill and has none now (set by the brain): the next one is built near the refuge, not beside the berries.
+	bool bMillLost = false;
+
 	// Share of the Peasants per resource, in the order food, wood, stone, gold: only when the needs (HOLAINeeds.as) ask for
 	// nothing from any resource that has a source (provisional: IA4 tunes it on AI-only games).
 	int WeightFood = 3;
@@ -204,6 +207,21 @@ struct FHOLAIGatherGroup
 	TArray<int> Peasants;
 }
 
+// IAQ-S-2 (D621): the mill and the farms of the planned block the slot saw standing (finished), to tell when one is destroyed.
+struct FHOLAIBlockSeen
+{
+	bool bMill = false;
+	TArray<bool> Farms;
+	bool bAnyMill = false;
+}
+
+// What was destroyed of the block since the last look: the mill, and the indices of the farms of the plan.
+struct FHOLAIBlockLoss
+{
+	bool bMill = false;
+	TArray<int> Farms;
+}
+
 // IAQ-S (D619): since when (game seconds) the idle Peasants of a slot have had no source to go to (every source under an enemy soldier); -1 none.
 struct FHOLAIStranded
 {
@@ -224,6 +242,97 @@ namespace HOLAIOpening
 {
 	// A site whose progress has not moved for this long (game seconds) has no builder any more; one is sent again at most this often.
 	const float StalledSeconds = 20.f;
+
+	// The refuge (D609, D621): RefugeDistance (40 m) behind the centre, away from the enemy side.
+	FVector RefugeCentreOf(const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		return Summary.CentreLocation - TowardEnemy(Summary) * Data.Army.Lives.RefugeDistance;
+	}
+
+	// A building of this type, finished, within 100 cm of the point.
+	bool HasFinishedAt(const FHOLAISummary& Summary, FName Type, FVector Point)
+	{
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			FVector Away = Summary.Buildings[Index].Location - Point;
+			Away.Z = 0;
+			if (Summary.Buildings[Index].TypeName == Type && Summary.Buildings[Index].State == EHOLConstructionState::Finished && Away.Size() < 100.0)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// Whether a building of this type stands finished anywhere.
+	bool HasFinished(const FHOLAISummary& Summary, FName Type)
+	{
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			if (Summary.Buildings[Index].TypeName == Type && Summary.Buildings[Index].State == EHOLConstructionState::Finished)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// IAQ-S-2 (D621): what of the plan's mill and farms stood (finished) at an earlier look and is gone now, each told once. A site that was
+	// never finished is not "destroyed" (nothing is rebuilt on a mere threat, nor when it never stood). Seen is updated.
+	FHOLAIBlockLoss BlockLoss(FHOLAIBlockSeen& Seen, const FHOLAISummary& Summary, const FHOLAIFarmPlan& Plan)
+	{
+		FHOLAIBlockLoss Loss;
+		Seen.bAnyMill = Seen.bAnyMill || HasFinished(Summary, n"Mill");
+		if (!Plan.bActive)
+		{
+			return Loss;
+		}
+		while (Seen.Farms.Num() < Plan.Farms.Num())
+		{
+			Seen.Farms.Add(false);
+		}
+		if (HasBuildingAt(Summary, n"Mill", Plan.Mill))
+		{
+			Seen.bMill = Seen.bMill || HasFinishedAt(Summary, n"Mill", Plan.Mill);
+		}
+		else if (Seen.bMill)
+		{
+			Seen.bMill = false;
+			Loss.bMill = true;
+		}
+		for (int Index = 0; Index < Plan.Farms.Num(); Index++)
+		{
+			if (HasBuildingAt(Summary, n"Farm", Plan.Farms[Index]))
+			{
+				Seen.Farms[Index] = Seen.Farms[Index] || HasFinishedAt(Summary, n"Farm", Plan.Farms[Index]);
+			}
+			else if (Seen.Farms[Index])
+			{
+				Seen.Farms[Index] = false;
+				Loss.Farms.Add(Index);
+			}
+		}
+		return Loss;
+	}
+
+	// The spots of what was destroyed move near the refuge: the mill to NewMill, the k-th lost farm to the k-th of NewFarms (a block found around
+	// the refuge), what stands is left. Their sightings start over. Nothing to move to (no room found): the old spots stay.
+	void RelocateLost(FHOLAIFarmPlan& Plan, FHOLAIBlockSeen& Seen, const FHOLAIBlockLoss& Loss, FVector NewMill, const TArray<FVector>& NewFarms)
+	{
+		if (Loss.bMill)
+		{
+			Plan.Mill = NewMill;
+			Seen.bMill = false;
+		}
+		for (int Each = 0; Each < Loss.Farms.Num(); Each++)
+		{
+			if (Each < NewFarms.Num() && Loss.Farms[Each] < Plan.Farms.Num())
+			{
+				Plan.Farms[Loss.Farms[Each]] = NewFarms[Each];
+				Seen.Farms[Loss.Farms[Each]] = false;
+			}
+		}
+	}
 
 	// IAQ-S, D619: the idle Peasants with no safe source leave after this long (s) for the source farthest from any enemy soldier.
 	const float StrandedSeconds = 30.f;
@@ -850,7 +959,14 @@ namespace HOLAIOpening
 				Skipped = "no source";
 				continue;
 			}
-			return OrderOf(Summary, Data, Step.Type, Part.Sources[0].Location, false, Busy);
+			// IAQ-S-2 (D621): a mill destroyed is built again near the refuge, not beside the berries where the enemy stood.
+			if (Step.Type == n"Mill" && Data.bMillLost && Plan.bActive)
+			{
+				// The farm block was planned: its mill spot, moved near the refuge when it was destroyed (RelocateLost).
+				return OrderOf(Summary, Data, Step.Type, Plan.Mill, true, Busy);
+			}
+			const FVector Anchor = (Step.Type == n"Mill" && Data.bMillLost) ? RefugeCentreOf(Summary, Data) : Part.Sources[0].Location;
+			return OrderOf(Summary, Data, Step.Type, Anchor, false, Busy);
 		}
 
 		// 2b. The military building the composition calls for (IA2.4: Barracks for Spearmen and Men-at-arms, Archery Range for Archers and

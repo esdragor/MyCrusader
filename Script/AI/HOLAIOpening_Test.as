@@ -895,3 +895,98 @@ void Test_AbandonedSiteIsBuiltAgain(FUnitTest& T)
 	HOLAIOpening::ResumeSite(Done, Summary, NoBusy, 0.f, Site);
 	T.AssertEquals(-1, HOLAIOpening::ResumeSite(Done, Summary, NoBusy, 500.f, Site), "finished: nothing to resume");
 }
+
+// ----- IAQ-S-2 / IAQ-S-3 (D621, 2026-11-01): the mill and the farms destroyed are built again near the refuge, only when one is destroyed -----
+
+// The slot with its nine buildings of the farm block standing (MakePlan's spots), a lumber camp, room in the population and 200 wood.
+FHOLAISummary BlockSummary(FHOLAIFarmPlan Plan)
+{
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.PopulationCap = 100;
+	AddBuildingAt(Summary, n"LumberCamp", EHOLConstructionState::Finished, FVector(1000, 700, 0));
+	AddBuildingAt(Summary, n"Mill", EHOLConstructionState::Finished, Plan.Mill);
+	for (int Index = 0; Index < Plan.Farms.Num(); Index++)
+	{
+		AddBuildingAt(Summary, n"Farm", EHOLConstructionState::Finished, Plan.Farms[Index]);
+	}
+	return Summary;
+}
+
+void RemoveBuildingAt(FHOLAISummary& Summary, FName Type, FVector Where)
+{
+	for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+	{
+		if (Summary.Buildings[Index].TypeName == Type && (Summary.Buildings[Index].Location - Where).Size() < 100.f)
+		{
+			Summary.Buildings.RemoveAt(Index);
+			return;
+		}
+	}
+}
+
+// Nothing is destroyed: nothing is asked (the block stands, no reserve, no rebuilding on a threat). A mill destroyed: it is built again, its spot
+// moved near the refuge (4000 cm behind the centre, away from the enemy), at the normal cost: the AI waits for the wood. A farm destroyed: the
+// same, the mill left where it stands.
+void Test_DestroyedMillAndFarmAreBuiltAgainNearTheRefuge(FUnitTest& T)
+{
+	FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	FHOLAIFarmPlan Plan = MakePlan();
+	FHOLAISummary Summary = BlockSummary(Plan);
+	const FVector Refuge = HOLAIOpening::RefugeCentreOf(Summary, Data);
+	T.AssertTrue((Refuge - FVector(-4000, 0, 0)).Size() < 1.f, "the refuge: 40 m behind the centre, away from the enemy side (+X when unknown)");
+
+	FHOLAIBlockSeen Seen;
+	TArray<int> NoBusy;
+	FHOLAIBlockLoss Loss = HOLAIOpening::BlockLoss(Seen, Summary, Plan);
+	T.AssertFalse(Loss.bMill || Loss.Farms.Num() > 0, "standing: nothing lost");
+	T.AssertFalse(HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy).bBuild, "standing: nothing built");
+
+	// The mill is destroyed: lost once, and its spot moves near the refuge.
+	RemoveBuildingAt(Summary, n"Mill", Plan.Mill);
+	Loss = HOLAIOpening::BlockLoss(Seen, Summary, Plan);
+	T.AssertTrue(Loss.bMill && Loss.Farms.Num() == 0, "the mill is lost, no farm");
+	// The brain tells the opening that the slot had a mill and has none now.
+	Data.bMillLost = Seen.bAnyMill && !HOLAIOpening::HasBuilding(Summary, n"Mill");
+	T.AssertTrue(Data.bMillLost, "the slot had a mill and has none");
+	T.AssertFalse(HOLAIOpening::BlockLoss(Seen, Summary, Plan).bMill, "told once");
+	const FVector NewMill = Refuge + FVector(0, 800, 0);
+	TArray<FVector> NewFarms;
+	for (int Index = 0; Index < 8; Index++)
+	{
+		NewFarms.Add(Refuge + FVector(float(Index) * 300.f, -900, 0));
+	}
+	HOLAIOpening::RelocateLost(Plan, Seen, Loss, NewMill, NewFarms);
+	T.AssertTrue((Plan.Mill - NewMill).Size() < 1.f, "the mill's spot is near the refuge");
+	const FHOLAIBuildChoice Rebuild = HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy);
+	T.AssertTrue(Rebuild.bBuild && Rebuild.Type == n"Mill" && (Rebuild.Spot - NewMill).Size() < 1.f, "the mill is built again near the refuge");
+	Summary.Wood.Stock = 50;
+	T.AssertFalse(HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy).bBuild, "normal cost: without the wood it waits");
+	Summary.Wood.Stock = 200;
+
+	// The mill stands again at its new spot; a farm is destroyed: only that farm is built again, near the refuge.
+	AddBuildingAt(Summary, n"Mill", EHOLConstructionState::Finished, NewMill);
+	HOLAIOpening::BlockLoss(Seen, Summary, Plan);
+	Data.bMillLost = Seen.bAnyMill && !HOLAIOpening::HasBuilding(Summary, n"Mill");
+	T.AssertFalse(Data.bMillLost, "a mill stands again");
+	RemoveBuildingAt(Summary, n"Farm", Plan.Farms[3]);
+	Loss = HOLAIOpening::BlockLoss(Seen, Summary, Plan);
+	T.AssertTrue(!Loss.bMill && Loss.Farms.Num() == 1 && Loss.Farms[0] == 3, "farm 3 is lost");
+	HOLAIOpening::RelocateLost(Plan, Seen, Loss, NewMill, NewFarms);
+	const FHOLAIBuildChoice Farm = HOLAIOpening::ChooseBuild(Summary, Data, Plan, NoBusy);
+	T.AssertTrue(Farm.bBuild && Farm.Type == n"Farm" && (Farm.Spot - Refuge).Size() < 1500.f, "the farm is built again near the refuge");
+}
+
+// The opening's mill (beside the berries) destroyed: it is built again near the refuge, not at the berries where the enemy stood; before any
+// mill was ever built, the opening goes as ever.
+void Test_DestroyedOpeningMillIsBuiltAgainNearTheRefuge(FUnitTest& T)
+{
+	FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
+	FHOLAISummary Summary = OpeningSummary();
+	Summary.PopulationCap = 100;
+	AddBuildingAt(Summary, n"LumberCamp", EHOLConstructionState::Finished, FVector(1000, 700, 0));
+	FHOLAIBuildChoice Choice = HOLAIOpening::ChooseBuild(Summary, Data);
+	T.AssertTrue(Choice.bBuild && Choice.Type == n"Mill" && (Choice.Anchor - FVector(1000, 0, 0)).Size() < 1.f, "no mill yet, never lost: beside the berries");
+	Data.bMillLost = true;
+	Choice = HOLAIOpening::ChooseBuild(Summary, Data);
+	T.AssertTrue(Choice.bBuild && Choice.Type == n"Mill" && (Choice.Anchor - HOLAIOpening::RefugeCentreOf(Summary, Data)).Size() < 1.f, "mill lost: near the refuge");
+}
