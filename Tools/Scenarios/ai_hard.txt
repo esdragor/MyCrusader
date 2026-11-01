@@ -1,6 +1,6 @@
 # IA4 D579 (essai de 3 min) : IA Difficile, son forum est attaqué : elle évalue sa perte, LAISSE TOMBER la vie pour garder son armée et punit chez toi
-# Plain, toi (slot 0) contre une IA Difficile (slot 1). Le scénario pose d'office chez elle une Caserne, une Archerie et une armée de 6 Lanciers rassemblés près de l'Archerie (loin de l'endroit où tes soldats arrivent).
-# À ton Entrée, 8 Hommes d'armes (à toi) arrivent à ~8 m de son forum : le combat lui coûterait plus de la moitié de son armée, mais son armée suffit à écraser ton camp
+# Plain, toi (slot 0) contre une IA Difficile (slot 1). Le scénario pose d'office chez elle une Caserne, une Archerie et une armée de 6 Lanciers rassemblés devant son forum, au point de ralliement de l'IA (du côté de ton camp).
+# À ton Entrée, 8 Hommes d'armes (à toi) arrivent derrière son forum, à ~15 m (loin de ses Lanciers et de la route vers ton Centre) : le combat lui coûterait plus de la moitié de son armée, mais son armée suffit à écraser ton camp
 # (tu n'as aucun soldat chez toi) : elle ne défend pas et part en vague sur ton Centre.
 # Point 1 : capture ai_hard_base. Point 2 : capture ai_hard_letgo (ses soldats ne chargent pas tes 8 Hommes d'armes). Point 3 : capture ai_hard_punish (sa vague en route vers ton Centre).
 # Journal : « decision let the life go, the army is kept », « punishes the attacker's home ».
@@ -13,28 +13,28 @@ hol.Cheat.SpawnBuilding Barracks 1 2800 2600 enemy
 waitlog Cheat: spawned Barracks of slot 1
 hol.Cheat.SpawnBuilding ArcheryRange 1 2800 -2600 enemy
 waitlog Cheat: spawned ArcheryRange of slot 1
-hol.Camera.FocusNear 2800 -2600 enemy
+hol.Camera.FocusNear 1100 0 enemy
 frames 2
 hol.Units.SpawnHere 6 Spearman 1 500
 waitunits 14
-hol.Camera.FocusNear 2200 -1800 enemy
+hol.Camera.FocusNear 1800 0 enemy
 frames 30
 capture ai_hard_base
 hol.Test.Sanity
-note 1. Devant le forum de « IA Difficile 2 » : une Caserne, une Archerie, 6 Lanciers. Tu n'as aucun soldat chez toi.
-note 2. Appuie sur Entrée : 8 Hommes d'armes (à toi) arrivent à ~8 m de son forum. Elle ne défend pas : elle laisse tomber la vie du forum et envoie son armée sur ton Centre.
+note 1. Devant le forum de « IA Difficile 2 » : 6 Lanciers rassemblés, une Caserne et une Archerie sur les côtés. Tu n'as aucun soldat chez toi.
+note 2. Appuie sur Entrée : 8 Hommes d'armes (à toi) arrivent derrière son forum. Elle ne défend pas : elle laisse tomber la vie du forum et envoie son armée sur ton Centre.
 waitkey Entrée : j'envoie 8 Hommes d'armes devant son forum
-hol.Camera.FocusNear 1500 0 enemy
+hol.Camera.FocusNear -1500 0 enemy
 frames 2
 hol.Units.SpawnHere 8 ManAtArms 0 250
-hol.Camera.FocusNear 800 0 enemy
+hol.Camera.FocusNear 0 0 enemy
 waitlog decision let the life go
 wait 3
-hol.Camera.FocusNear 800 0 enemy
+hol.Camera.FocusNear 3000 0 enemy
 frames 3
 capture ai_hard_letgo
-wait 8
-hol.Camera.FocusNear 2200 0 enemy
+wait 4
+hol.Camera.FocusNear 6000 0 enemy
 frames 3
 capture ai_hard_punish
 note 3. Journal : « decision let the life go » puis « punishes the attacker's home ». Sa vague marche vers ton Centre (à gauche) : ² hol.Camera.FocusSlot 0 pour la voir arriver.
