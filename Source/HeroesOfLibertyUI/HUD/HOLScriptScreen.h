@@ -39,6 +39,13 @@ public:
 	void Refresh();
 
 	/**
+	 * A key the script screen listens to went down this frame, read from the player's input state (nothing bound nor consumed, as the Enter
+	 * of a test scenario): "T" opens the talent tree (TQ4 = A). Called from the tick, at most once a press.
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void KeyPressed(FName KeyName);
+
+	/**
 	 * Refresh at once, the timer started again: hol.HUD.Report calls it before Describe, the screen then showing what the
 	 * game holds now (the tests' waits draw no frame, so tick no widget).
 	 */

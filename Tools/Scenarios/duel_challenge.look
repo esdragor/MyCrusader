@@ -1,3 +1,3 @@
-﻿duel_heroes_face | Les deux héros face à face au centre de la carte, chacun entouré de ses Paysans (ceux de l'IA n'ont pas disparu).
-duel_window | La fenêtre « Défi envoyé au héros du joueur 2 » en haut au centre, avec la barre qui descend.
-duel_answer | Après la réponse de l'IA : la fenêtre a disparu (refus) ou le duel commence.
+﻿duel_heroes_face | Les deux héros face à face au centre de la carte, ton héros avec ses 5 Paysans, le héros de l'IA en face (ses Paysans ont pu repartir travailler).
+duel_window | La fenêtre « Défi envoyé au héros du joueur 2 » en haut au centre, avec la barre et les secondes, le panneau du scénario caché.
+duel_answer | Après la réponse de l'IA : la fenêtre a disparu (refus), les héros se battent.

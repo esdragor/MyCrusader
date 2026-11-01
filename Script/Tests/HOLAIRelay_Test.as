@@ -1,4 +1,4 @@
-// The AI's relay rules (R6; RQ3 not decided: three options behind hol.AI.RelayMode, default B). HOLAIRelay (Script/AI/HOLAIRelay.as) is pure; the
+// The AI's relay rules (R6; RQ3 = B, D589: three options kept behind hol.AI.RelayMode, default B, the decision). HOLAIRelay (Script/AI/HOLAIRelay.as) is pure; the
 // setting, the relay type (FHOLAIRelay) and the levels are the game's own. Slot 1 plays; slot 0 and slot 2 are the others.
 
 FHOLAISummary RelSummary(int Soldiers)
@@ -171,4 +171,54 @@ void Test_AIRelayOrdersAgainTheIdleOnesAway(FUnitTest& T)
 	T.AssertEquals(100, Again.MoveIds[0], "the one that is away");
 	Relays[0].Owner = 1;
 	T.AssertTrue(HOLAIRelay::Step(Memory, HOLAIRelay::ModeDetachment, EHOLAIDifficulty::Normal, Summary, Relays, false, 120.f, FVector(0, 0, 0), Data).bEnded, "the relay is ours: the detachment ends");
+}
+
+// RQ3 = B (D589), the three levels on one map: a relay held by an enemy that was ours and a neutral one farther away. Easy sends nowhere;
+// Normal only to the neutral one (and nowhere when the only relay left is held by an enemy); Hard also to the one taken from it, first.
+void Test_AIRelayRq3EasyNowhereNormalNeutralOnlyHardAlsoTheLostOnes(FUnitTest& T)
+{
+	const FHOLAIRelayData Data;
+	const FHOLAISummary Summary = RelSummary(8);
+	const int Default = HOLRelayRules::GetAIRelayMode();
+	T.AssertEquals(HOLAIRelay::ModeDetachment, Default, "the game's setting is the decision, B");
+
+	// Relay 0 was hers (first thought), then an enemy took it; relay 1 is neutral and farther.
+	TArray<EHOLAIDifficulty> Levels;
+	Levels.Add(EHOLAIDifficulty::Easy);
+	Levels.Add(EHOLAIDifficulty::Normal);
+	Levels.Add(EHOLAIDifficulty::Hard);
+	for (int Index = 0; Index < Levels.Num(); Index++)
+	{
+		const EHOLAIDifficulty Level = Levels[Index];
+		FHOLAIRelayMemory Memory = RelMemory();
+		TArray<FHOLAIRelay> Relays;
+		Relays.Add(RelAt(2000, 1));
+		Relays.Add(RelAt(6000, -1));
+		HOLAIRelay::Track(Summary, Relays, Memory);
+		Relays[0].Owner = 0;
+		const FHOLAIRelayStep Step = HOLAIRelay::Step(Memory, Default, Level, Summary, Relays, false, 100.f, FVector(0, 0, 0), Data);
+		if (Level == EHOLAIDifficulty::Easy)
+		{
+			T.AssertFalse(Step.bSent, "Easy sends nowhere");
+		}
+		else if (Level == EHOLAIDifficulty::Normal)
+		{
+			T.AssertTrue(Step.bSent, "Normal sends");
+			T.AssertEquals(1, Step.Relay, "Normal goes to the neutral relay only, not to the nearer one an enemy took");
+		}
+		else
+		{
+			T.AssertTrue(Step.bSent, "Hard sends");
+			T.AssertEquals(0, Step.Relay, "Hard goes first to the relay taken from it, though the neutral one exists");
+			T.AssertTrue(Step.Reason.Contains("lost"), "and says it is one it lost");
+		}
+	}
+
+	// Only enemy relays left (never hers): Normal has no target, Hard goes for the nearest one.
+	TArray<FHOLAIRelay> Held;
+	Held.Add(RelAt(2000, 0));
+	FHOLAIRelayMemory NormalMemory = RelMemory();
+	T.AssertFalse(HOLAIRelay::Step(NormalMemory, Default, EHOLAIDifficulty::Normal, Summary, Held, false, 100.f, FVector(0, 0, 0), Data).bSent, "Normal leaves a relay held by an enemy alone");
+	FHOLAIRelayMemory HardMemory = RelMemory();
+	T.AssertTrue(HOLAIRelay::Step(HardMemory, Default, EHOLAIDifficulty::Hard, Summary, Held, false, 100.f, FVector(0, 0, 0), Data).bSent, "Hard also goes for a relay held by others");
 }

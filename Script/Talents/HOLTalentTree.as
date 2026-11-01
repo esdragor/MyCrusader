@@ -1,5 +1,5 @@
 // The talent tree window's data (TQ4 = A, the user's decision of 2026-11-01: a window of 5 rows x 3 cells, Guardian / Captain / Champion, names and
-// effects on hover; the WINDOW ITSELF IS NOT BUILT YET, the family buttons of the hero's block stand in). Pure, from the level and the picks alone
+// effects on hover; the window is built in UHOLGameScreenScript on these views, opened by the reminder or the T key). Pure, from the level and the picks alone
 // (tested in HOLTalentTree_Test.as): the cells the window will draw, row by row (the rows the prototype's maximum level reaches), each with the
 // table's name (HOLTalentNames) and its hover text (name, effect, and when the prototype cannot show it yet, that too: D194).
 
@@ -24,6 +24,8 @@ struct FHOLTalentCellView
 	EHOLTalentCellState State = EHOLTalentCellState::Later;
 	bool bPickable = false;
 	bool bHasEffect = false;
+	// The icon's glyph (no art yet: the first letter of the name, over the family's colour) of the talents taken (TQ5 = A, D618).
+	FString Glyph;
 }
 
 namespace HOLTalentTree
@@ -62,6 +64,36 @@ namespace HOLTalentTree
 			}
 		}
 		return Cells;
+	}
+
+	// The family a click on the cell (Row, Family) asks for: its own column when the cell is pickable, FamilyNone for any other state or a cell
+	// outside the window (the server checks the rest, HOLTalent::CanPick).
+	int ClickedFamily(const TArray<FHOLTalentCellView>& Cells, int Row, int Family)
+	{
+		for (int Index = 0; Index < Cells.Num(); Index++)
+		{
+			if (Cells[Index].Row == Row && Cells[Index].Family == Family)
+				return Cells[Index].bPickable ? Cells[Index].Family : HOLTalent::FamilyNone;
+		}
+		return HOLTalent::FamilyNone;
+	}
+
+	// The talents taken stay listed and readable after the purchase (TQ5 = A, D618): one entry per talent taken, the rows in order, each with
+	// a glyph for its icon and the hover of its cell in the tree.
+	TArray<FHOLTalentCellView> TakenEntries(int Level, const TArray<int>& Picks)
+	{
+		TArray<FHOLTalentCellView> Taken;
+		const TArray<FHOLTalentCellView> Cells = Make(Level, Picks);
+		for (int Index = 0; Index < Cells.Num(); Index++)
+		{
+			if (Cells[Index].State == EHOLTalentCellState::Taken)
+			{
+				FHOLTalentCellView Entry = Cells[Index];
+				Entry.Glyph = Entry.Name.Left(1);
+				Taken.Add(Entry);
+			}
+		}
+		return Taken;
 	}
 
 	// The stable line of the tests: "row 2: . T . | row 3: ..." (T taken, . passed, P pickable, w waiting, l later).

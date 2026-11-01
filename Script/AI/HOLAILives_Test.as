@@ -369,3 +369,46 @@ void Test_LivesEvolvingPassesFromEasyToHard(FUnitTest& T)
 		T.AssertTrue(HOLAIForum::Judge(Lost, Data, Threat, Level).Call == Calls[Index], f"Evolving at {Times[Index]} s decides as its current level");
 	}
 }
+
+// EV-Q1 = B (D620): the trial tool. hol.AI.SetEvolveTimes <normal> <hard> moves the Evolving AI from one stage to the next WITHOUT the clock
+// moving: the clock stays at 50 s, only the times change. Through the real chain (the setting the command writes, the level the brain plays,
+// the decision of the same lost forum on the real tables): Easy gives the army, Normal feints, Hard lets the life go.
+void Test_LivesEvolveTimesMoveTheStageWithoutTheClock(FUnitTest& T)
+{
+	HOLAITools::ClearEvolveTimes();
+	const FHOLAIArmyData Data = LvData();
+	const FHOLAISummary Lost = LostSummary(Data, 2);
+	const FHOLAIThreat Threat = HOLAIArmy::Threat(Lost, Data);
+	const float Clock = 50.f;
+	T.AssertTrue(Data.Lives.EvolveNormalAt > Clock, "the usual times are far after the 50 s of the test");
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives) == EHOLAIDifficulty::Easy, "no command: Easy at 50 s");
+
+	HOLAITools::SetEvolveTimes(100.f, 200.f);
+	T.AssertTrue(HOLAITools::HasEvolveTimes(), "the setting is kept");
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives) == EHOLAIDifficulty::Easy, "times 100/200: still Easy at 50 s");
+	T.AssertTrue(HOLAIForum::Judge(Lost, Data, Threat, HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives)).Call == EHOLAILifeCall::Fight, "Easy gives the army");
+
+	HOLAITools::SetEvolveTimes(10.f, 200.f);
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives) == EHOLAIDifficulty::Normal, "times 10/200: Normal at 50 s, the clock has not moved");
+	T.AssertTrue(HOLAIForum::Judge(Lost, Data, Threat, HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives)).Call == EHOLAILifeCall::Feint, "Normal feints");
+
+	HOLAITools::SetEvolveTimes(10.f, 20.f);
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives) == EHOLAIDifficulty::Hard, "times 10/20: Hard at 50 s");
+	T.AssertTrue(HOLAIForum::Judge(Lost, Data, Threat, HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives)).Call == EHOLAILifeCall::Let, "Hard lets the life go");
+
+	// The other levels do not follow the times; a setting cleared gives the usual times back.
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Easy, Clock, Data.Lives) == EHOLAIDifficulty::Easy, "Easy stays Easy whatever the times");
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Normal, Clock, Data.Lives) == EHOLAIDifficulty::Normal, "Normal stays Normal whatever the times");
+	HOLAITools::ClearEvolveTimes();
+	T.AssertTrue(HOLAILives::Played(EHOLAIDifficulty::Evolving, Clock, Data.Lives) == EHOLAIDifficulty::Easy, "cleared: the usual times, Easy at 50 s");
+}
+
+// The HUD line of the level (D620): a fixed level by its name, an Evolving one with the stage it plays now; the AI's number is its slot + 1
+// (as its name "IA Evolutive 3").
+void Test_LivesLevelLineShowsTheStagePlayed(FUnitTest& T)
+{
+	T.AssertEquals("IA 2 : Facile", HOLAILives::LevelLine(1, EHOLAIDifficulty::Easy, EHOLAIDifficulty::Easy), "Easy");
+	T.AssertEquals("IA 3 : Difficile", HOLAILives::LevelLine(2, EHOLAIDifficulty::Hard, EHOLAIDifficulty::Hard), "Hard");
+	T.AssertEquals("IA 3 : Évolutive, joue Normal", HOLAILives::LevelLine(2, EHOLAIDifficulty::Evolving, EHOLAIDifficulty::Normal), "Evolving at Normal");
+	T.AssertEquals("IA 4 : Évolutive, joue Difficile", HOLAILives::LevelLine(3, EHOLAIDifficulty::Evolving, EHOLAIDifficulty::Hard), "Evolving at Hard");
+}
