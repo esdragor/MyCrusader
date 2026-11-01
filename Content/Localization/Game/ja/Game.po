@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-01 14:21\n"
-"PO-Revision-Date: 2026-11-01 14:21\n"
+"POT-Creation-Date: 2026-11-01 16:25\n"
+"PO-Revision-Date: 2026-11-01 16:25\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -356,79 +356,100 @@ msgctxt "HOLTalentNames,Effect72"
 msgid "Impact de la charge du Paladin : +30 % de dégâts"
 msgstr "パラディンの突撃の衝撃ダメージ +30%"
 
-#. Key:	ReminderAdvised
+#. Key:	AdvisedButton
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(104)
+#: Script/Talents/HOLTalentPanel.as(104)
+msgctxt "HOLTalentPanel,AdvisedButton"
+msgid "Choix conseillé"
+msgstr "おすすめ"
+
+#. Key:	OpenTooltip
 #. SourceLocation:	Script/Talents/HOLTalentPanel.as(109)
 #: Script/Talents/HOLTalentPanel.as(109)
-msgctxt "HOLTalentPanel,ReminderAdvised"
-msgid "Talents à dépenser : {0} — choix conseillé"
-msgstr "未使用のタレント：{0} — おすすめ"
-
-#. Key:	Reminder
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(110)
-#: Script/Talents/HOLTalentPanel.as(110)
-msgctxt "HOLTalentPanel,Reminder"
-msgid "Talents à dépenser : {0}"
-msgstr "未使用のタレント：{0}"
+msgctxt "HOLTalentPanel,OpenTooltip"
+msgid "Ouvrir l'arbre des talents (T)"
+msgstr "タレントツリーを開く (T)"
 
 #. Key:	TooltipAdvisedTalent
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(116)
-#: Script/Talents/HOLTalentPanel.as(116)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(115)
+#: Script/Talents/HOLTalentPanel.as(115)
 msgctxt "HOLTalentPanel,TooltipAdvisedTalent"
 msgid "Prend le talent de la famille la plus remplie : {0} — {1}"
 msgstr "最も多く取得した系統のタレントを取る：{0} — {1}"
 
 #. Key:	TooltipFirst
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(117)
-#: Script/Talents/HOLTalentPanel.as(117)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(116)
+#: Script/Talents/HOLTalentPanel.as(116)
 msgctxt "HOLTalentPanel,TooltipFirst"
-msgid "Choisissez d'abord un premier talent : l'arbre arrive"
-msgstr "まず最初のタレントを選んでください（ツリーは近日実装）"
+msgid "Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser"
+msgstr "タレントを取得するまで、またはポイントがない間はおすすめはありません"
 
 #. Key:	FamilyGuardian
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(129)
-#: Script/Talents/HOLTalentPanel.as(129)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(128)
+#: Script/Talents/HOLTalentPanel.as(128)
 msgctxt "HOLTalentPanel,FamilyGuardian"
 msgid "Gardien"
 msgstr "守護者"
 
 #. Key:	FamilyCaptain
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(131)
-#: Script/Talents/HOLTalentPanel.as(131)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(130)
+#: Script/Talents/HOLTalentPanel.as(130)
 msgctxt "HOLTalentPanel,FamilyCaptain"
 msgid "Capitaine"
 msgstr "隊長"
 
 #. Key:	FamilyChampion
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(132)
-#: Script/Talents/HOLTalentPanel.as(132)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(131)
+#: Script/Talents/HOLTalentPanel.as(131)
 msgctxt "HOLTalentPanel,FamilyChampion"
 msgid "Champion"
 msgstr "闘士"
 
-#. Key:	FamilyTipTalent
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(152)
-#: Script/Talents/HOLTalentPanel.as(152)
-msgctxt "HOLTalentPanel,FamilyTipTalent"
-msgid "{0}, rangée {1} : {2} — {3}"
-msgstr "{0}、段{1}：{2} — {3}"
-
 #. Key:	Notice
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(173)
-#: Script/Talents/HOLTalentPanel.as(173)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(160)
+#: Script/Talents/HOLTalentPanel.as(160)
 msgctxt "HOLTalentPanel,Notice"
 msgid "Talent pris : {0} — {1}"
 msgstr "タレント取得：{0} — {1}"
 
 #. Key:	List
-#. SourceLocation:	Script/Talents/HOLTalentPanel.as(184)
-#: Script/Talents/HOLTalentPanel.as(184)
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(171)
+#: Script/Talents/HOLTalentPanel.as(171)
 msgctxt "HOLTalentPanel,List"
 msgid "Talents pris ({0}) : {1}"
 msgstr "取得したタレント（{0}）：{1}"
 
+#. Key:	Reminder
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(83)
+#: Script/Talents/HOLTalentPanel.as(83)
+msgctxt "HOLTalentPanel,Reminder"
+msgid "Talents à dépenser : {0}"
+msgstr "未使用のタレント：{0}"
+
+#. Key:	WindowTitle
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(89)
+#: Script/Talents/HOLTalentPanel.as(89)
+msgctxt "HOLTalentPanel,WindowTitle"
+msgid "Arbre de talents"
+msgstr "タレントツリー"
+
+#. Key:	Close
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(94)
+#: Script/Talents/HOLTalentPanel.as(94)
+msgctxt "HOLTalentPanel,Close"
+msgid "Fermer"
+msgstr "閉じる"
+
+#. Key:	RowLabel
+#. SourceLocation:	Script/Talents/HOLTalentPanel.as(99)
+#: Script/Talents/HOLTalentPanel.as(99)
+msgctxt "HOLTalentPanel,RowLabel"
+msgid "Rangée {0}"
+msgstr "段{0}"
+
 #. Key:	Hover
-#. SourceLocation:	Script/Talents/HOLTalentTree.as(33)
-#: Script/Talents/HOLTalentTree.as(33)
+#. SourceLocation:	Script/Talents/HOLTalentTree.as(35)
+#: Script/Talents/HOLTalentTree.as(35)
 msgctxt "HOLTalentTree,Hover"
 msgid "{0} — {1}"
 msgstr "{0} — {1}"
