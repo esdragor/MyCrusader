@@ -116,8 +116,12 @@ namespace UE::HeroesOfLiberty::Dev
 			Steps = { FString::Printf(TEXT("open %s"), *MapFile.GetLongPackageName()) };
 		}
 		Steps.Add(FString::Printf(TEXT("waitmap %s"), *MapFile.GetAssetName()));
+		// SAN-Q2 = B (D616): every scenario records the units' steps for hol.Test.Sanity from its start, no line to write in each one
+		// (a scenario that wants a record starting later still writes hol.Sanity.Watch 1: it restarts it).
+		// "quiet" keeps the log mark, so the scenarios' own first waitlog still sees the lines before it.
 		Steps.Add(TEXT("waitlog Camera above the start of slot"));
 		Steps.Add(TEXT("frames 5"));
+		Steps.Add(TEXT("quiet hol.Sanity.Watch 1"));
 		Steps.Append(MoveTemp(ScenarioSteps));
 		UE_LOG(LogHOLTest, Display, TEXT("Scenario %s: %s, %d occupied slots"), *Name, *Config.Map.ToString(), Config.GetNumOccupiedSlots());
 		// The panel starts again: a reload's notes replace those of the run before.
