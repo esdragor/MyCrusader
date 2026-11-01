@@ -225,14 +225,9 @@ const UDataTable* UHOLUnitSubsystem::GetTypeTable() const
 		}
 		else
 		{
-			// J7-Q5 revised: a wounded unit sends its exact health in FHOLNetUnitState::HealthBits; a larger maximum needs more.
-			// Not the hero (J8-Q5, J8a.3): his wounded health goes on the wire as a share of his maximum
-			// (HOLUnitReplication::GetWireHealthShare), whatever that maximum; his exact health will come by the hero sheet.
-			CachedTypeTable->ForeachRow<FHOLUnitTypeRow>(TEXT("UnitSubsystem"), [](const FName& Name, const FHOLUnitTypeRow& Row)
-			{
-				ensureMsgf(Row.HasArmorCategory(EHOLArmorCategory::Hero) || HOLUnitReplication::FitsWireHealth(Row.MaxHealth), TEXT("Unit type %s: MaxHealth %d does not fit the %d health bits of the wire (FHOLNetUnitState::HealthBits)"),
-					*Name.ToString(), Row.MaxHealth, FHOLNetUnitState::HealthBits);
-			});
+			// J7-Q5 revised: a wounded unit sends its exact health in FHOLNetUnitState::HealthBits; a larger maximum is sent as a
+			// share of it (HOLUnitReplication::GetWireHealthShare, HOLUnitReplication::UsesHealthShare): the hero (J8-Q5, J8a.3,
+			// whose exact health comes by the hero sheet) and, since S2, the siege engines (the Ram: 400). Nothing to check.
 		}
 	}
 	return CachedTypeTable;

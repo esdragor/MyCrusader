@@ -1,10 +1,14 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Siege/HOLSiegeRules.h"
+#include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Technologies/HOLTechnologyTypes.h"
 #include "UObject/Package.h"
 
@@ -46,6 +50,16 @@ bool FHOLSiegeTiersTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("then the tier"), Check(EEngine::Mangonel, 0, false, false) == EBlock::TierTooLow);
 	TestTrue(TEXT("then the workshop"), Check(EEngine::Mangonel, 2, false, false) == EBlock::NoWorkshop);
 	TestTrue(TEXT("then the cost"), Check(EEngine::Mangonel, 2, true, false) == EBlock::CannotPay);
+
+	// S3: a unit type name is an engine only for the four of GDD 6.1; the words the production logs.
+	EEngine Found = EEngine::Cannon;
+	TestTrue(TEXT("Ram is the Ram"), FindEngine(FName(TEXT("Ram")), Found) && Found == EEngine::Ram);
+	TestTrue(TEXT("Mangonel is the Mangonel"), FindEngine(FName(TEXT("Mangonel")), Found) && Found == EEngine::Mangonel);
+	TestTrue(TEXT("Trebuchet is the Trebuchet"), FindEngine(FName(TEXT("Trebuchet")), Found) && Found == EEngine::Trebuchet);
+	TestTrue(TEXT("Cannon is the Cannon"), FindEngine(FName(TEXT("Cannon")), Found) && Found == EEngine::Cannon);
+	TestFalse(TEXT("the Spearman is no engine"), FindEngine(FName(TEXT("Spearman")), Found));
+	TestFalse(TEXT("no name is no engine"), FindEngine(NAME_None, Found));
+	TestEqual(TEXT("tier words"), FString(DescribeBlock(EBlock::TierTooLow)), FString(TEXT("tier too low")));
 	return true;
 }
 
@@ -99,6 +113,149 @@ bool FHOLSiegeTechnologiesTest::RunTest(const FString& Parameters)
 		}
 		TestEqual(FString::Printf(TEXT("%s opens at the tier of the engine it improves"), Line.Technology), Row->MinTier, HOLSiege::GetTier(Line.Engine));
 		TestTrue(FString::Printf(TEXT("%s improves an engine of the prototype"), Line.Technology), HOLSiege::InPrototype(Line.Engine));
+		// S2: the building the technology names is a real type now, no longer a planned one, and the technology is not older than it.
+		const FHOLBuildingTypeRow* Workshop = UHOLBuildingSettings::FindType(Row->Building);
+		if (TestNotNull(FString::Printf(TEXT("%s: its building %s is in the building type table"), Line.Technology, *Row->Building.ToString()), Workshop))
+		{
+			TestTrue(FString::Printf(TEXT("%s: not researched before its building exists (tier %d, building age %d)"), Line.Technology, Row->MinTier, Workshop->Age),
+				Row->MinTier >= Workshop->Age);
+			TestTrue(FString::Printf(TEXT("%s: the workshop produces the engine it improves"), Line.Technology),
+				Workshop->Produces.Contains(Line.Engine == HOLSiege::EEngine::Ram ? FName(TEXT("Ram")) : FName(TEXT("Mangonel"))));
+		}
+	}
+	return true;
+}
+
+// S4 (SQ1 = B, D614): the Ram takes no unit on by itself (a seeker that cannot attack units chooses nobody, a unit before a building
+// or not), the Mangonel's blow reaches the units within its area around the target and only those (the edge of the circle is in).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiegeCombatTest, "HeroesOfLiberty.Siege.Combat", UE::HeroesOfLiberty::Tests::Siege::Flags)
+bool FHOLSiegeCombatTest::RunTest(const FString& Parameters)
+{
+	HOLCombat::FSeeker Seeker;
+	Seeker.Position = FVector2D::ZeroVector;
+	Seeker.AttackRange = 50.f;
+	Seeker.Mode = HOLCombat::ESeekMode::AttackMove;
+	HOLCombat::FCandidate Enemy;
+	Enemy.Id = 1;
+	Enemy.Position = FVector2D(300.0, 0.0);
+	const HOLCombat::FCandidate Candidates[] = { Enemy };
+	TestEqual(TEXT("a unit that attacks units takes the enemy on, on an attack-move"), HOLCombat::ChooseTarget(Seeker, Candidates), 0);
+	Seeker.bCanAttackUnits = false;
+	TestEqual(TEXT("the Ram (no attack on units) takes nobody on, on an attack-move"), HOLCombat::ChooseTarget(Seeker, Candidates), static_cast<int32>(INDEX_NONE));
+	Seeker.Mode = HOLCombat::ESeekMode::Hold;
+	TestEqual(TEXT("nor on hold"), HOLCombat::ChooseTarget(Seeker, Candidates), static_cast<int32>(INDEX_NONE));
+
+	// The area: centre to centre, the circle's edge in.
+	const FVector2D Centre(1000.0, 1000.0);
+	TestTrue(TEXT("on the target"), HOLCombat::IsInArea(Centre, Centre, 250.f));
+	TestTrue(TEXT("249 cm: in"), HOLCombat::IsInArea(Centre, Centre + FVector2D(249.0, 0.0), 250.f));
+	TestTrue(TEXT("250 cm: the edge is in"), HOLCombat::IsInArea(Centre, Centre + FVector2D(150.0, 200.0), 250.f));
+	TestFalse(TEXT("251 cm: out"), HOLCombat::IsInArea(Centre, Centre + FVector2D(0.0, 251.0), 250.f));
+	TestFalse(TEXT("no area (0): nobody but the target itself, never another"), HOLCombat::IsInArea(Centre, Centre + FVector2D(1.0, 0.0), 0.f));
+	return true;
+}
+
+// S2 (SiegeInProgress.md, SQ1 = B / D614, SQ2 = A / D615): the tables of the two engines and of the siege workshop, read from the REAL
+// assets (/Game/Units/UnitTypes, /Game/Buildings/BuildingTypes, imported from the CSVs). The numbers are the user's starting values
+// (provisional, balanced at the trial); the production times and the armours are not in D615 (SQ3 in Retours): only checked to be
+// positive / not negative.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiegeTablesTest, "HeroesOfLiberty.Siege.Table", UE::HeroesOfLiberty::Tests::Siege::Flags)
+bool FHOLSiegeTablesTest::RunTest(const FString& Parameters)
+{
+	const double Grid = UHOLBuildingSettings::GetTileSize();
+	const FName WorkshopName(TEXT("SiegeWorkshop"));
+	const FName RamName(TEXT("Ram"));
+	const FName MangonelName(TEXT("Mangonel"));
+
+	const FHOLBuildingTypeRow* Workshop = UHOLBuildingSettings::FindType(WorkshopName);
+	if (TestNotNull(TEXT("SiegeWorkshop in the building type table"), Workshop))
+	{
+		TestTrue(TEXT("Workshop: built by Peasants"), Workshop->IsBuildable());
+		TestEqual(TEXT("Workshop: military"), int32(Workshop->Category), int32(EHOLBuildingCategory::Military));
+		TestEqual(TEXT("Workshop: age II, the tier of the Ram (GDD 6.1, 11.1)"), Workshop->Age, HOLSiege::GetTier(HOLSiege::EEngine::Ram));
+		TestEqual(TEXT("Workshop: Q of page II (slot 4, military row)"), Workshop->BuildGridSlot, 4);
+		TestEqual(TEXT("Workshop: 3 x 3 tiles"), Workshop->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestEqual(TEXT("Workshop: 1 500 health"), Workshop->MaxHealth, 1500);
+		TestTrue(TEXT("Workshop: 175 wood, nothing else"), Workshop->Cost.Wood == 175 && Workshop->Cost.Food == 0 && Workshop->Cost.Stone == 0 && Workshop->Cost.Gold == 0);
+		TestEqual(TEXT("Workshop: 25 s to build"), Workshop->BuildTime, 25.f);
+		TestTrue(TEXT("Workshop: produces the Ram then the Mangonel"), Workshop->Produces == TArray<FName>({ RamName, MangonelName }));
+		TestEqual(TEXT("Workshop: no population"), Workshop->PopulationProvided, 0);
+		TestTrue(TEXT("Workshop: not a deposit"), Workshop->Accepts.IsEmpty());
+		TestFalse(TEXT("Workshop: not walkable"), Workshop->Walkable);
+		TestTrue(TEXT("Workshop: sees at least as far as a house"), Workshop->SightRadius >= 2000.f);
+	}
+
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	if (!TestNotNull(TEXT("unit type table"), UnitTypes))
+	{
+		return false;
+	}
+
+	const FHOLUnitTypeRow* Ram = UnitTypes->FindRow<FHOLUnitTypeRow>(RamName, TEXT("Siege test"), false);
+	if (TestNotNull(TEXT("Ram in the unit type table"), Ram))
+	{
+		TestEqual(TEXT("Ram: 400 health"), Ram->MaxHealth, 400);
+		TestEqual(TEXT("Ram: 220 cm/s"), Ram->Speed, 220.f);
+		TestEqual(TEXT("Ram: 3 places"), Ram->Population, 3);
+		TestTrue(TEXT("Ram: 150 wood + 75 gold"), Ram->Cost.Wood == 150 && Ram->Cost.Gold == 75 && Ram->Cost.Food == 0 && Ram->Cost.Stone == 0);
+		TestTrue(TEXT("Ram: armour category Siege alone (D345, the Light cavalry's bonus aims at it)"), Ram->ArmorCategories == TArray<EHOLArmorCategory>({ EHOLArmorCategory::Siege }));
+		// SQ1 = B: the Ram hits buildings only, 60 siege damage every 2.5 s; against a unit its attack is zero.
+		TestEqual(TEXT("Ram: siege attack on buildings"), int32(Ram->BuildingAttackType), int32(EHOLAttackType::Siege));
+		TestEqual(TEXT("Ram: 60 damage on a building"), Ram->BuildingAttack, 60);
+		TestEqual(TEXT("Ram: every 2.5 s"), Ram->BuildingAttackInterval, 2.5f);
+		TestEqual(TEXT("Ram: no attack on units (SQ1 = B)"), Ram->Attack, 0);
+		TestEqual(TEXT("Ram: no area"), Ram->AreaRadius, 0.f);
+		TestTrue(TEXT("Ram: a production time"), Ram->BuildTime > 0.f);
+		TestTrue(TEXT("Ram: ranged armour above 0 (SQ3: every siege engine has some, 20 provisional)"), Ram->RangedArmor > 0);
+		TestTrue(TEXT("Ram: armours not negative"), Ram->MeleeArmor >= 0 && Ram->RangedArmor >= 0 && Ram->SiegeArmor >= 0 && Ram->HeroArmor >= 0);
+		TestTrue(TEXT("Ram: sees at least a tile beyond its reach"), Ram->SightRadius >= Ram->BuildingAttackRange + 400.f);
+	}
+
+	const FHOLUnitTypeRow* Mangonel = UnitTypes->FindRow<FHOLUnitTypeRow>(MangonelName, TEXT("Siege test"), false);
+	if (TestNotNull(TEXT("Mangonel in the unit type table"), Mangonel))
+	{
+		TestEqual(TEXT("Mangonel: 200 health"), Mangonel->MaxHealth, 200);
+		TestEqual(TEXT("Mangonel: 180 cm/s"), Mangonel->Speed, 180.f);
+		TestEqual(TEXT("Mangonel: 4 places"), Mangonel->Population, 4);
+		TestTrue(TEXT("Mangonel: 200 wood + 150 gold"), Mangonel->Cost.Wood == 200 && Mangonel->Cost.Gold == 150 && Mangonel->Cost.Food == 0 && Mangonel->Cost.Stone == 0);
+		TestTrue(TEXT("Mangonel: armour category Siege alone"), Mangonel->ArmorCategories == TArray<EHOLArmorCategory>({ EHOLArmorCategory::Siege }));
+		// SQ1 = B: 45 siege damage every 5 s at 3 000 cm, in an area of 250 cm on units, one blow on a building.
+		TestEqual(TEXT("Mangonel: siege attack"), int32(Mangonel->AttackType), int32(EHOLAttackType::Siege));
+		TestEqual(TEXT("Mangonel: 45 damage"), Mangonel->Attack, 45);
+		TestEqual(TEXT("Mangonel: every 5 s"), Mangonel->AttackInterval, 5.f);
+		TestEqual(TEXT("Mangonel: 3 000 cm reach"), Mangonel->AttackRange, 3000.f);
+		TestEqual(TEXT("Mangonel: area of 250 cm on units"), Mangonel->AreaRadius, 250.f);
+		TestEqual(TEXT("Mangonel: siege attack on buildings"), int32(Mangonel->BuildingAttackType), int32(EHOLAttackType::Siege));
+		TestEqual(TEXT("Mangonel: 45 damage on a building, one blow"), Mangonel->BuildingAttack, 45);
+		TestEqual(TEXT("Mangonel: a building every 5 s"), Mangonel->BuildingAttackInterval, 5.f);
+		TestEqual(TEXT("Mangonel: 3 000 cm reach on a building"), Mangonel->BuildingAttackRange, 3000.f);
+		TestTrue(TEXT("Mangonel: a production time"), Mangonel->BuildTime > 0.f);
+		TestTrue(TEXT("Mangonel: ranged armour above 0 (SQ3: every siege engine has some, 20 provisional)"), Mangonel->RangedArmor > 0);
+		TestTrue(TEXT("Mangonel: armours not negative"), Mangonel->MeleeArmor >= 0 && Mangonel->RangedArmor >= 0 && Mangonel->SiegeArmor >= 0 && Mangonel->HeroArmor >= 0);
+		TestTrue(TEXT("Mangonel: sees at least a tile beyond its reach"), Mangonel->SightRadius >= Mangonel->AttackRange + 400.f);
+	}
+
+	// Only the Mangonel has an area; no other unit type does (the column is new).
+	for (const FName Name : UnitTypes->GetRowNames())
+	{
+		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Name, TEXT("Siege test"), false);
+		if (Row != nullptr && Name != MangonelName)
+		{
+			TestEqual(*FString::Printf(TEXT("%s: no area damage"), *Name.ToString()), Row->AreaRadius, 0.f);
+		}
+	}
+
+	// The workshop's engines are all in the unit table, each with the Siege armour category.
+	if (Workshop != nullptr)
+	{
+		for (const FName Produced : Workshop->Produces)
+		{
+			const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Produced, TEXT("Siege test"), false);
+			if (TestNotNull(*FString::Printf(TEXT("Workshop: %s in the unit type table"), *Produced.ToString()), Row))
+			{
+				TestTrue(*FString::Printf(TEXT("Workshop: %s is a siege unit"), *Produced.ToString()), Row->HasArmorCategory(EHOLArmorCategory::Siege));
+			}
+		}
 	}
 	return true;
 }

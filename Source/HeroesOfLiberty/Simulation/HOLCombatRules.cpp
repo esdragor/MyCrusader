@@ -176,6 +176,10 @@ namespace HOLCombat
 		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
 		{
 			const FCandidate& Candidate = Candidates[Index];
+			if (!Seeker.bCanAttackUnits && !Candidate.bIsBuilding)
+			{
+				continue;
+			}
 			if (bRiposteOnly && (!Candidate.bAttacksMe || Candidate.bIsBuilding))
 			{
 				continue;

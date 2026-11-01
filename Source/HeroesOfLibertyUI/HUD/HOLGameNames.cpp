@@ -18,6 +18,18 @@ namespace HOLGameNames
 		static const FName Crossbowman(TEXT("Crossbowman"));
 		static const FName King(TEXT("King"));
 		static const FName Hero(TEXT("Hero"));
+		static const FName Ram(TEXT("Ram"));
+		static const FName Mangonel(TEXT("Mangonel"));
+		if (TypeName == Ram)
+		{
+			// S2 (GDD 6.1), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Ram", "Bélier");
+		}
+		if (TypeName == Mangonel)
+		{
+			// S2 (GDD 6.1), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Mangonel", "Mangonneau");
+		}
 		if (TypeName == Peasant)
 		{
 			return LOCTEXT("Peasant", "Paysan");
@@ -91,6 +103,11 @@ namespace HOLGameNames
 		{
 			// AR7b, translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("ArcheryRange", "Champ de tir");
+		}
+		if (TypeName == HOLBuildingTypeNames::SiegeWorkshop)
+		{
+			// S2 (GDD 6.1, 11.1), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("SiegeWorkshop", "Atelier de siège");
 		}
 		if (TypeName == HOLBuildingTypeNames::Market)
 		{

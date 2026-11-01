@@ -55,8 +55,8 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 	/** The Dawn's own technologies of the grid (the others are common, D27). */
 	constexpr const TCHAR* DawnOwn[] = { TEXT("Liturgy"), TEXT("TemperedHalberds"), TEXT("BlessingOfArms"), TEXT("VowOfPoverty") };
 
-	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. The Sanctuary is a type since SC-Q1 = B (D602). */
-	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("SiegeWorkshop"), TEXT("Chapel") };
+	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. The Sanctuary is a type since SC-Q1 = B (D602), the siege workshop since S2. */
+	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("Chapel") };
 
 	/** The statistics some code applies today (T5 gathering and workers, T6 melee and ranged attack): a row whose statistics are all here is Implemented, any other is "Soon" (D601). */
 	constexpr const TCHAR* CodedStats[] = {
@@ -198,7 +198,7 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 // T3/T4 (T-Q4 = A, D583; T-Q10/T-Q11 = B, D601): of the 26 technologies of the table (the Militia is dropped, D600), the ones
 // the game can play now are those whose building is a type of BuildingTypes.csv AND whose effect is coded (Implemented): the
 // camps and the farm (8). The Improved Alarm Bell (main centre) and the Tempered Halberds (Barracks) have their building but no
-// effect yet: greyed "Soon". The others (Forge, Academy, Siege workshop, Chapel) wait for their buildings.
+// effect yet: greyed "Soon". The Reinforced Ram and Heavy Munitions (siege workshop, S2) are Soon too (RamHealth and MangonelDamage are read at S5). The others (Forge, Academy, Chapel) wait for their buildings.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTechnologyPlayableTest, "HeroesOfLiberty.Technologies.Playable", UE::HeroesOfLiberty::Tests::TechnologyTable::Flags)
 bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 {
@@ -226,7 +226,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("8 technologies are playable"), Playable.Num(), 8);
-	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds") })
+	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"), TEXT("ReinforcedRam"), TEXT("HeavyMunitions") })
 	{
 		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Soon, TEXT("technology"), false);
 		if (TestNotNull(FString::Printf(TEXT("%s is in the table"), Soon), Row))

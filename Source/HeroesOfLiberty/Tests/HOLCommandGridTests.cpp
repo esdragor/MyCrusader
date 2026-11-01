@@ -384,7 +384,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("nine buildable types (the Sanctuary, SC-Q1, and the Market of age II, M3, joined the seven of age I)"), Context.Buildable.Num(), 9);
+	TestEqual(TEXT("ten buildable types (the Sanctuary, SC-Q1, joined the seven of age I; the Market M3 and the siege workshop S2 are of age II)"), Context.Buildable.Num(), 10);
 	TestTrue(TEXT("X: sanctuary (SC-Q1 = B, D602)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 9).TypeName == FName(TEXT("Sanctuary"))
 		&& HOLCommandGrid::GetAgeBuilding(Context, 0, 9).Command == EHOLGridCommand::Build);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
@@ -409,7 +409,11 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	const FHOLGridCommand MarketCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 0);
 	TestTrue(TEXT("II A: the Market, a build command, greyed (age II not reached)"), MarketCell.TypeName == HOLBuildingTypeNames::Market
 		&& MarketCell.Command == EHOLGridCommand::Build && MarketCell.Age == 1 && MarketCell.bGreyed);
-	for (const int32 Cell : { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 })
+	// S2: the siege workshop, Q of page II (military row), greyed likewise; the other cells of page II empty.
+	const FHOLGridCommand WorkshopCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 4);
+	TestTrue(TEXT("II Q: the siege workshop, a build command, greyed (age II not reached)"), WorkshopCell.TypeName == HOLBuildingTypeNames::SiegeWorkshop
+		&& WorkshopCell.Command == EHOLGridCommand::Build && WorkshopCell.Age == 1 && WorkshopCell.bGreyed);
+	for (const int32 Cell : { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11 })
 	{
 		TestTrue(*FString::Printf(TEXT("page II, cell %d: no building yet"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 1, Cell).IsNone());
 	}
@@ -420,7 +424,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	for (const FHOLBuildable& Buildable : Context.Buildable)
 	{
 		// M3: the Market alone is of age II (page II, A: the economic row of its page); every other type is of age I.
-		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market;
+		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market || Buildable.TypeName == HOLBuildingTypeNames::SiegeWorkshop;
 		TestEqual(*FString::Printf(TEXT("%s: %s"), *Buildable.TypeName.ToString(), bMarket ? TEXT("age II") : TEXT("age I")), Buildable.Age, bMarket ? 1 : 0);
 		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology;
 		// the farm alone stands on the third row (IA1.2-Q1: the economic row of age I is full).
@@ -487,6 +491,23 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	if (BarracksType)
 	{
 		TestFalse(TEXT("no Archer at the Barracks any more (AR-Q2)"), BarracksType->Produces.Contains(FName(TEXT("Archer"))));
+	}
+	// The siege workshop's grid (S2): A Ram, Z Mangonel once finished; nothing else. (The tier gate of the Mangonel is S3.)
+	const FHOLBuildingTypeRow* WorkshopType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::SiegeWorkshop);
+	if (TestNotNull(TEXT("Siege workshop in the building type table"), WorkshopType))
+	{
+		FHOLGridContext Workshop;
+		Workshop.bOwnBuilding = true;
+		Workshop.bBuildingFinished = true;
+		Workshop.Produces = WorkshopType->Produces;
+		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Workshop, 0);
+		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Workshop, 1);
+		TestTrue(TEXT("Siege workshop, A: produce a Ram"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Ram")));
+		TestTrue(TEXT("Siege workshop, Z: produce a Mangonel"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("Mangonel")));
+		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		{
+			TestTrue(*FString::Printf(TEXT("Siege workshop, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Workshop, Cell).IsNone());
+		}
 	}
 	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const FHOLBuildable& Type)
 	{

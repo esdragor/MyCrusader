@@ -379,6 +379,10 @@ TRANSLATIONS = {
     "HOLGameNames,Sanctuary": ("Sanctuary of the Dawn", "暁の聖域"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
+    # S2: the siege workshop and its two engines (GDD 6.1).
+    "HOLGameNames,SiegeWorkshop": ("Siege Workshop", "攻城工房"),
+    "HOLGameNames,Ram": ("Ram", "破城槌"),
+    "HOLGameNames,Mangonel": ("Mangonel", "マンゴネル"),
     "HOLGameNames,Spearman": ("Spearman", "槍兵"),
     "HOLGameNames,ManAtArms": ("Man-at-Arms", "重装歩兵"),
     "HOLGameNames,Archer": ("Archer", "弓兵"),

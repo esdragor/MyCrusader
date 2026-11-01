@@ -288,6 +288,14 @@ namespace HOLUnitReplication
 	/** Every wounded health of a type of this maximum fits the wire (MaxHealth - 1 <= MaxWireHealth). */
 	constexpr bool FitsWireHealth(const int32 MaxHealth) { return MaxHealth - 1 <= FHOLNetUnitState::MaxWireHealth; }
 
+	/**
+	 * Whether a type's wounded health goes as a share of its maximum (GetWireHealthShare) rather than as exact points (S2): the
+	 * hero (J8-Q5, J8a.3), and every type whose maximum does not fit the wire's 8 bits (the Ram's 400 health, D615): a client then
+	 * draws its health back to the nearest point, as for the hero (bHealthExact false). Sender and receiver both ask it with the
+	 * type's table maximum.
+	 */
+	constexpr bool UsesHealthShare(const bool bHero, const int32 TableMaxHealth) { return bHero || !FitsWireHealth(TableMaxHealth); }
+
 	/** The activity is one the wire can carry (EncodeActivity). */
 	HEROESOFLIBERTY_API bool IsValidActivity(EHOLUnitActivity Activity);
 
