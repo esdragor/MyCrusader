@@ -2,8 +2,28 @@
 
 #include "Dev/HOLSanityRules.h"
 
+#include "Match/HOLPlayerColors.h"
+
 namespace HOLSanity
 {
+	TArray<FString> FindColourClashes(const TConstArrayView<int32> Neutrals, const TConstArrayView<int32> PlayerSlots, const TConstArrayView<uint8> SlotColorIndices)
+	{
+		TArray<FString> Clashes;
+		for (const int32 Neutral : Neutrals)
+		{
+			const FVector3f NeutralColor = HOLPlayerColors::GetOwnerLinearColor(Neutral, SlotColorIndices);
+			for (const int32 Slot : PlayerSlots)
+			{
+				if (HOLPlayerColors::GetOwnerLinearColor(Slot, SlotColorIndices) == NeutralColor)
+				{
+					Clashes.Add(FString::Printf(TEXT("neutral units (owner %d) are drawn in the colour of slot %d (%s)"), Neutral, Slot,
+						SlotColorIndices.IsValidIndex(Slot) ? *HOLPlayerColors::GetColorName(SlotColorIndices[Slot]).ToString() : TEXT("none")));
+				}
+			}
+		}
+		return Clashes;
+	}
+
 	void FUnitTrack::Add(const double Time, const FVector2D& Location, const EUnitMotion Motion, const FSanityRules& Rules)
 	{
 		FSample Sample;

@@ -188,23 +188,23 @@ namespace UE::HeroesOfLiberty::Dev
 		}
 
 		/**
-		 * The colour index a unit of Owner is drawn with. Mirrors UHOLInterpolatedInstancesProcessor's FSlotColors::Get (the slot's
-		 * colour from its buildings and its player state, the owner's own number for a slot not known, and for a neutral owner,
-		 * which is no slot, the number itself: HOLPlayerColors wraps it). The rule lives in the processor's .cpp, out of reach: when the
-		 * display colour of neutrals gets its own function, this one must call it (Auto_Journey_Retours.md).
+		 * The colour each slot chose, as this machine knows it (the slot's own index until its buildings or its player state say
+		 * otherwise): the data the drawing processor gathers each frame (UHOLInterpolatedInstancesProcessor's FSlotColors). The RULE that
+		 * turns an owner into a colour is not here: HOLSanity::FindColourClashes calls HOLPlayerColors::GetOwnerLinearColor, the same
+		 * function as the processor's (SAN-Q1 = A, D616), so the neutral grey cannot be forgotten by one side only.
 		 */
-		int32 DisplayColorIndex(const UWorld& World, const int32 Owner)
+		TArray<uint8> GatherSlotColors(const UWorld& World)
 		{
-			if (Owner < 0 || Owner >= FHOLMatchConfig::MaxSlots)
+			TArray<uint8> Colors;
+			for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 			{
-				return Owner;
+				Colors.Add(static_cast<uint8>(Slot));
 			}
-			int32 Index = Owner;
 			for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
 			{
-				if (It->GetOwnerPlayer() == Owner)
+				if (It->GetOwnerPlayer() < FHOLMatchConfig::MaxSlots)
 				{
-					Index = It->GetColorIndex();
+					Colors[It->GetOwnerPlayer()] = static_cast<uint8>(It->GetColorIndex());
 				}
 			}
 			if (const AGameStateBase* GameState = World.GetGameState())
@@ -212,13 +212,13 @@ namespace UE::HeroesOfLiberty::Dev
 				for (const APlayerState* PlayerState : GameState->PlayerArray)
 				{
 					const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
-					if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == Owner)
+					if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() >= 0 && HOLPlayerState->GetPlayerIndex() < FHOLMatchConfig::MaxSlots)
 					{
-						Index = HOLPlayerState->GetColorIndex();
+						Colors[HOLPlayerState->GetPlayerIndex()] = static_cast<uint8>(HOLPlayerState->GetColorIndex());
 					}
 				}
 			}
-			return Index;
+			return Colors;
 		}
 
 		void Sanity(const TArray<FString>& Args)
@@ -257,18 +257,7 @@ namespace UE::HeroesOfLiberty::Dev
 						}
 					}
 				}
-				for (const int32 Neutral : Neutrals)
-				{
-					const FColor NeutralColor = HOLPlayerColors::GetColor(DisplayColorIndex(*World, Neutral));
-					for (const int32 Slot : PlayerSlots)
-					{
-						if (HOLPlayerColors::GetColor(DisplayColorIndex(*World, Slot)) == NeutralColor)
-						{
-							Failures.Add(FString::Printf(TEXT("neutral units (owner %d, colour index %d) are drawn in the colour of slot %d (%s)"),
-								Neutral, DisplayColorIndex(*World, Neutral), Slot, *HOLPlayerColors::GetColorName(DisplayColorIndex(*World, Slot)).ToString()));
-						}
-					}
-				}
+				Failures.Append(HOLSanity::FindColourClashes(Neutrals.Array(), PlayerSlots.Array(), GatherSlotColors(*World)));
 				// 2 and 3. The units' steps.
 				if (Watch.World.Get() != World || Watch.Steps == 0)
 				{
