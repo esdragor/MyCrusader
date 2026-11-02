@@ -10,6 +10,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyUILog.h"
 #include "Input/CommonUIActionRouterBase.h"
@@ -1159,6 +1160,12 @@ void UHOLNewGameScreen::Launch()
 	}
 	FHOLMatchConfig Launched = Config;
 	Launched.Seed = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
+	// A scenario whose .json imposes a "seed" (V4-Q2 = C, D608) plays with it, even from the menu's launch.
+	if (TOptional<int32>& Imposed = HOLTestHooks::PendingImposedSeed(); Imposed.IsSet())
+	{
+		Launched.Seed = Imposed.GetValue();
+		Imposed.Reset();
+	}
 	// E2-2: "Aléatoire" becomes a colour nobody else has, before Normalize clamps it.
 	FRandomStream ColorStream(Launched.Seed);
 	Launched.DrawRandomColors(ColorStream);

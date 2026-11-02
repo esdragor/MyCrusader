@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLVolcanoSubsystem.h"
 
@@ -7,6 +7,7 @@
 #include "Commands/HOLPlayerOrders.h"
 #include "EngineUtils.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -24,6 +25,85 @@ void UHOLVolcanoSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
 	BindSteps();
+}
+
+void UHOLVolcanoSubsystem::SetSites(const TArray<HOLVolcano::FSite>& InSites)
+{
+	Sites = InSites;
+	Wakes.Reset();
+	Wakes.SetNum(Sites.Num());
+	AltarHeld.Init(0.f, Sites.Num());
+	AltarHolds.Init(HOLVolcano::EAltarHold::Idle, Sites.Num());
+	AltarCycle.Init(INDEX_NONE, Sites.Num());
+}
+
+HOLVolcano::FSiteState UHOLVolcanoSubsystem::StateOf(const int32 SiteIndex, const float Now) const
+{
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const FHOLUnitTypeRow* ManAtArms = Units ? Units->FindTypeRow(TEXT("ManAtArms")) : nullptr;
+	if (!Sites.IsValidIndex(SiteIndex) || !GameState || !ManAtArms)
+	{
+		return HOLVolcano::FSiteState();
+	}
+	return HOLVolcano::SiteStateOfMatch(GameState->GetLaunchConfig(), SiteIndex, Sites[SiteIndex], Now, Settings, ManAtArms->Speed,
+		Wakes.IsValidIndex(SiteIndex) ? &Wakes[SiteIndex] : nullptr);
+}
+
+HOLVolcano::FSiteState UHOLVolcanoSubsystem::GetSiteState(const int32 SiteIndex) const
+{
+	const UWorld* World = GetWorld();
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	return Simulation ? StateOf(SiteIndex, GetClockOf(Simulation->GetStepIndex())) : HOLVolcano::FSiteState();
+}
+
+bool UHOLVolcanoSubsystem::StepAltarOf(const int32 SiteIndex, const float Now, const float DeltaSeconds)
+{
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (!Sites.IsValidIndex(SiteIndex) || !AltarHeld.IsValidIndex(SiteIndex) || !GameState || !Units)
+	{
+		return false;
+	}
+	const HOLVolcano::FSite& Site = Sites[SiteIndex];
+	const HOLVolcano::FSiteState State = StateOf(SiteIndex, Now);
+	// Each cycle has its own count: the altar lights again at the re-arming (D400), from zero.
+	if (AltarCycle[SiteIndex] != State.CycleIndex)
+	{
+		AltarCycle[SiteIndex] = State.CycleIndex;
+		AltarHeld[SiteIndex] = 0.f;
+	}
+	if (!State.bAltarLit)
+	{
+		AltarHeld[SiteIndex] = 0.f;
+		AltarHolds[SiteIndex] = HOLVolcano::EAltarHold::Idle;
+		return false;
+	}
+	// The camps with a living unit in the zone (a Neutral owner is a camp of its own, an adversary: D401).
+	const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+	TArray<int32, TInlineAllocator<8>> Camps;
+	const FVector2D Altar(Site.Altar.Location);
+	const double RadiusSquared = FMath::Square(static_cast<double>(Site.Altar.Radius));
+	Units->ForEachLivingUnit([&](const uint8 Owner, const FVector& Location)
+	{
+		if (FVector2D::DistSquared(FVector2D(Location), Altar) > RadiusSquared)
+		{
+			return;
+		}
+		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
+		Camps.AddUnique(Camp != INDEX_NONE ? Camp : 1000 + Owner);
+	});
+	AltarHolds[SiteIndex] = HOLVolcano::StepAltar(AltarHeld[SiteIndex], Camps.Num(), DeltaSeconds, Settings);
+	if (AltarHeld[SiteIndex] < Settings.AltarHoldSeconds)
+	{
+		return false;
+	}
+	Wakes[SiteIndex].Add(State.CycleIndex, Now);
+	AltarHeld[SiteIndex] = 0.f;
+	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano altar of site %d held for %.0f s at %.1f s: the alert of cycle %d starts now"), SiteIndex, Settings.AltarHoldSeconds, Now, State.CycleIndex);
+	return true;
 }
 
 void UHOLVolcanoSubsystem::BindSteps()
@@ -66,17 +146,17 @@ void UHOLVolcanoSubsystem::OnStepStarted(const int64 StepIndex)
 	{
 		return;
 	}
-	// The Man-at-arms' speed, read from the unit type table (never typed here): the lava walks at a share of it (D575).
-	const FHOLUnitTypeRow* ManAtArms = Units->FindTypeRow(TEXT("ManAtArms"));
-	if (!ManAtArms)
-	{
-		return;
-	}
 	const float Now = GetClockOf(StepIndex);
+	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 	for (int32 Index = 0; Index < Sites.Num(); ++Index)
 	{
-		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(GameState->GetLaunchConfig(), Index, Sites[Index], Now, Settings, ManAtArms->Speed);
-		Apply(Index, Sites[Index], State);
+		// The altar first (V8): a hold completed this step starts the alert in this very step's state.
+		if (Sites[Index].Altar.bPresent)
+		{
+			StepAltarOf(Index, Now, StepSeconds);
+		}
+		// The Man-at-arms' speed is read from the unit type table (never typed here): the lava walks at a share of it (D575).
+		Apply(Index, Sites[Index], StateOf(Index, Now));
 	}
 }
 
@@ -91,17 +171,12 @@ int32 UHOLVolcanoSubsystem::GetEvacuations(const int32 Slot, TArray<FEvacuation>
 	{
 		return 0;
 	}
-	const FHOLUnitTypeRow* ManAtArms = Units->FindTypeRow(TEXT("ManAtArms"));
-	if (!ManAtArms)
-	{
-		return 0;
-	}
 	const float Now = GetClockOf(Simulation->GetStepIndex());
 	// The flows now threatening: the site's drawn flow while it warns or erupts.
 	TArray<const HOLVolcano::FFlow*> Threats;
 	for (int32 Index = 0; Index < Sites.Num(); ++Index)
 	{
-		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(GameState->GetLaunchConfig(), Index, Sites[Index], Now, Settings, ManAtArms->Speed);
+		const HOLVolcano::FSiteState State = StateOf(Index, Now);
 		if ((State.Phase == EHOLVolcanoPhase::Warning || State.Phase == EHOLVolcanoPhase::Erupting) && Sites[Index].Flows.IsValidIndex(State.FlowIndex))
 		{
 			Threats.Add(&Sites[Index].Flows[State.FlowIndex]);

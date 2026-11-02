@@ -207,7 +207,7 @@ int32 HOLVolcano::SiteSeed(const int32 MatchSeed, const int32 SiteIndex)
 }
 
 HOLVolcano::FSiteState HOLVolcano::SiteStateAt(const bool bCatastrophe, const int32 MatchSeed, const int32 SiteIndex, const FSite& Site, const float Now,
-	const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed)
+	const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed, const FWakes* Wakes)
 {
 	FSiteState State;
 	if (!bCatastrophe)
@@ -222,10 +222,18 @@ HOLVolcano::FSiteState HOLVolcano::SiteStateAt(const bool bCatastrophe, const in
 	{
 		const int32 FlowIndex = DrawFlow(Seed, Index, Site.Flows.Num());
 		const FFlow* Flow = FlowIndex != INDEX_NONE ? &Site.Flows[FlowIndex] : nullptr;
-		const FCycle Cycle = MakeCycle(Seed, Index, ReArmAt, Settings, Flow ? EruptionDuration(*Flow, Speed) : 0.f);
+		FCycle Cycle = MakeCycle(Seed, Index, ReArmAt, Settings, Flow ? EruptionDuration(*Flow, Speed) : 0.f);
+		// V8: the altar held in this cycle begins its alert then; the rest of the cycle, and the re-arming, follow it (D400).
+		const float* HeldAt = Wakes ? Wakes->Find(Index) : nullptr;
+		if (HeldAt)
+		{
+			Cycle = AdvanceForAltar(Cycle, *HeldAt, Settings);
+			State.bWoken = true;
+		}
 		if (Now >= Cycle.ReArmAt)
 		{
 			ReArmAt = Cycle.ReArmAt;
+			State.bWoken = false;
 			continue;
 		}
 		State.CycleIndex = Index;
@@ -235,6 +243,7 @@ HOLVolcano::FSiteState HOLVolcano::SiteStateAt(const bool bCatastrophe, const in
 		if (Now < Cycle.WarningAt)
 		{
 			State.Phase = EHOLVolcanoPhase::Armed;
+			State.bAltarLit = Site.Altar.bPresent && !State.bWoken;
 		}
 		else if (Now < Cycle.EruptAt)
 		{
@@ -296,7 +305,45 @@ EHOLVolcanoPhase HOLVolcano::GetPhase(const bool bCatastrophe, const int32 Seed,
 	return EHOLVolcanoPhase::Rest;
 }
 
-HOLVolcano::FSiteState HOLVolcano::SiteStateOfMatch(const FHOLMatchConfig& Config, const int32 SiteIndex, const FSite& Site, const float Now, const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed)
+HOLVolcano::FSiteState HOLVolcano::SiteStateOfMatch(const FHOLMatchConfig& Config, const int32 SiteIndex, const FSite& Site, const float Now, const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed, const FWakes* Wakes)
 {
-	return SiteStateAt(Config.bCatastrophe, Config.Seed, SiteIndex, Site, Now, Settings, ManAtArmsSpeed);
+	return SiteStateAt(Config.bCatastrophe, Config.Seed, SiteIndex, Site, Now, Settings, ManAtArmsSpeed, Wakes);
+}
+
+HOLVolcano::EAltarHold HOLVolcano::StepAltar(float& HeldSeconds, const int32 CampsInZone, const float DeltaSeconds, const FHOLVolcanoSettings& Settings)
+{
+	// D348's rule, as the ruin's: one camp in the zone holds, none lets the count run down, two camps or more freeze it.
+	if (CampsInZone <= 0)
+	{
+		HeldSeconds = FMath::Max(0.f, HeldSeconds - Settings.AltarDecayRate * DeltaSeconds);
+		return EAltarHold::Idle;
+	}
+	if (CampsInZone == 1)
+	{
+		HeldSeconds += DeltaSeconds;
+		return EAltarHold::Holding;
+	}
+	return EAltarHold::Contested;
+}
+
+HOLVolcano::FAltarSend HOLVolcano::AltarSend(const FAltarSendInput& Input, const FHOLVolcanoSettings& Settings)
+{
+	const int32 Free = FMath::Max(0, Input.FreeSoldiers);
+	const int32 Reserve = FMath::CeilToInt(Settings.AiAltarReserveShare * Free);
+	const int32 Available = FMath::Max(0, Free - Reserve);
+	const int32 Need = FMath::Max(Settings.AiAltarMinSend, FMath::CeilToInt(Settings.AiAltarMargin * Input.AdversaryStrength));
+	FAltarSend Result;
+	if (Need > Available)
+	{
+		// An army the AI cannot beat with its margin: the adversary's camp is bare. Hard strikes elsewhere; the others spare what they can.
+		Result.bDiversion = Input.Level == EAltarLevel::Hard;
+		Result.Squad = Result.bDiversion ? 0 : Available;
+	}
+	else
+	{
+		Result.Squad = Need;
+	}
+	// The soldiers already sent stay (no recall: the movement audit sees the to-and-fro as spins).
+	Result.Squad = FMath::Max(Result.Squad, Input.AlreadySent);
+	return Result;
 }

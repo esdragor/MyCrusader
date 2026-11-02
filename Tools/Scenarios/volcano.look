@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+volcano_held | à gauche, sous le panneau Triches, la ligne « Autel ancien : tenu x % » sans décompte en secondes (x entre 20 et 40 %), 5 Hommes d'armes bleus sur l'autel au centre de l'écran, aucun panneau ne la recouvre
+volcano_contested | à gauche la ligne « Autel ancien : disputé (x %) » avec des Hommes d'armes rouges et bleus qui se battent au centre
+volcano_alert | à gauche la ligne « Volcan : éruption dans m:ss » (entre 0:30 et 1:10), les soldats calmes au centre, plus de ligne d'autel
