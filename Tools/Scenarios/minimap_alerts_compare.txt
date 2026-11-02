@@ -1,0 +1,52 @@
+# Alertes de la mini-carte (D386, D624) : COMPARAISON de la vitesse a laquelle le cercle rouge se resserre (24 px vers 8 px). Entree = option suivante.
+# Plain, toi (slot 0, bleu) et une IA ; brouillard Normal. Une Maison a toi a 35 m du Centre est frappee a chaque option : un cercle rouge se resserre sur la mini-carte a sa place.
+# Seule la duree d'UNE passe change (hol.Minimap.AlertShrinkSeconds) : option 1 = 1 s en boucle (valeur actuelle), option 2 = 3 s en boucle, option 3 = 6 s, une seule passe (24 -> 8 px sur toute la vie de l'alerte, la lecture litterale de D624).
+# Pendant la comparaison l'alerte dure 60 s (hol.Minimap.AlertSeconds 60) pour que tu regardes a ton rythme ; elle revient a 6 s a la fin. 4 captures par option (captureseq) prouvent le mouvement.
+hol.Fog.Mode 2
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Sanity.Watch 1
+hol.Camera.TestCursor 0.5 0.5
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Cheat.SpawnBuilding House 0 3500 3500
+waitlog Cheat: spawned House of slot 0
+hol.Camera.FocusNear 3500 3500
+frames 5
+hol.Camera.Zoom -2
+frames 10
+hol.HUD.Report 1
+frames 30
+hol.Test.Sanity
+# Une 1re capture a vide : la toute premiere prend ~1,5 s (elle aurait decale la sequence de l'option 1).
+capture minimap_alerts_warm
+hol.Minimap.AlertSeconds 60
+hol.Minimap.AlertBlink 10
+note Mini-carte en bas a droite : le cercle rouge est sur la Maison (le point plus gros a droite du Centre). Regarde la vitesse a laquelle il se resserre.
+note 3 options : 1 s la passe (en boucle), 3 s la passe (en boucle), 6 s une seule passe. Entree pour passer a la suivante.
+hol.Minimap.AlertShrinkSeconds 1
+hol.Cheat.DamageNear 25 3500 3500 own melee
+wait 0.6
+captureseq minimap_alerts_cmp1 4 0.25 hol.HUD.Report
+note Option 1/3 : 1 s la passe, en boucle (valeur actuelle).
+waitkey Option 1/3 : le cercle se resserre en 1 s, puis recommence. Entree pour l'option 2
+hol.Minimap.AlertShrinkSeconds 3
+hol.Cheat.DamageNear 25 3500 3500 own melee
+wait 0.6
+captureseq minimap_alerts_cmp2 4 0.75 hol.HUD.Report
+note Option 2/3 : 3 s la passe, en boucle.
+waitkey Option 2/3 : le cercle se resserre en 3 s, puis recommence. Entree pour l'option 3
+hol.Minimap.AlertShrinkSeconds 6
+hol.Cheat.DamageNear 25 3500 3500 own melee
+wait 0.6
+captureseq minimap_alerts_cmp3 4 1.5 hol.HUD.Report
+note Option 3/3 : 6 s, une seule passe (comme la vie de l'alerte).
+waitkey Option 3/3 : le cercle se resserre une seule fois, en 6 s. Entree pour finir
+hol.Minimap.AlertShrinkSeconds 1
+hol.Minimap.AlertSeconds 6
+note Fin : retour aux valeurs actuelles (1 s la passe, alerte de 6 s). Rien n'est decide : ta reponse choisit.

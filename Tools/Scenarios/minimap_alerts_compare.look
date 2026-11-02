@@ -1,0 +1,7 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+minimap_alerts_cmp1_0 | option 1 (1 s la passe, en boucle), image 1 sur 4 : un anneau rouge autour de la Maison, son rayon depend de l'instant de la boucle
+minimap_alerts_cmp1_3 | option 1, image 4 (moins d'1 s plus tard) : un autre rayon, la boucle de 1 s a recommence (le cercle repart grand)
+minimap_alerts_cmp2_0 | option 2 (3 s la passe, en boucle), image 1 : anneau rouge grand
+minimap_alerts_cmp2_3 | option 2, image 4 (2,25 s plus tard) : petit, presque un disque plein (l'anneau epais de 3 px se referme vers 9 px)
+minimap_alerts_cmp3_0 | option 3 (6 s, une seule passe), image 1 : anneau rouge grand
+minimap_alerts_cmp3_3 | option 3, image 4 (4,5 s plus tard) : petit, presque un disque plein (~10 px)

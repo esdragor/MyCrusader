@@ -38,6 +38,12 @@ $Waits = ($Lines | Where-Object { $_ -match '^wait\s+([\d\.]+)' } | ForEach-Obje
 $Keys = @($Lines | Where-Object { $_ -match '^waitkey' }).Count
 $Notes = @($Lines | Where-Object { $_ -match '^note\s' }).Count
 $Captures = @($Lines | Where-Object { $_ -match '^capture\s+(\S+)' } | ForEach-Object { ($_ -split '\s+')[1] })
+# A capture sequence (`captureseq <Name> <Count> <Step> [Command]`, rule 12a) takes <Name>_0 ... <Name>_<Count-1>; it spans (Count-1) * Step s.
+foreach ($Seq in @($Lines | Where-Object { $_ -match '^captureseq\s+(\S+)\s+(\d+)\s+([\d\.]+)' })) {
+    $null = $Seq -match '^captureseq\s+(\S+)\s+(\d+)\s+([\d\.]+)'
+    foreach ($i in 0..([int]$Matches[2] - 1)) { $Captures += "$($Matches[1])_$i" }
+    $Waits += ([int]$Matches[2] - 1) * [double]$Matches[3]
+}
 if ($Waits -gt $MaxSeconds) { Report "FAIL" "static: the scenario waits $Waits s of game time (> $MaxSeconds s)" }
 else { Report "OK" "static: $Waits s of explicit waits, $Keys waitkey step(s) (Enter = next stage, the user decides when)" }
 if ($Notes -lt 1) { Report "FAIL" "no `note` line: the user is not told what to try" } else { Report "OK" "$Notes note(s) for the panel" }
