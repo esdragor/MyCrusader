@@ -56,8 +56,10 @@ capture monk_healed
 hol.Test.Sanity
 hol.Cheat.Wound 50
 waitlog Cheat: slot 0 wound to 50 %
-note 5. Clic droit sur un allie blesse, le Moine selectionne : il le soigne EN PREMIER, meme s'il n'est pas le plus proche (ordre donne ici par le scenario au dernier Lancier).
-hol.Select.Heal 18
+note 5. Clic droit sur un allie blesse, le Moine selectionne : il le soigne EN PREMIER, meme s'il n'est pas le plus proche (ordres donnes ici par le scenario a deux Lanciers de suite).
+hol.Select.Heal 16
+frames 20
+hol.Select.Heal 17
 waitlog (ordered)
 frames 20
 capture monk_order
