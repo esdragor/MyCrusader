@@ -10,6 +10,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "NavigationSystem.h"
+#include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
@@ -129,6 +130,11 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	{
 		return;
 	}
+	// A new order of the player replaces a heal order (its walk to the ally); with Shift it comes after it.
+	if (!bQueue)
+	{
+		UHOLHealProcessor::CancelOrders(UnitIds);
+	}
 
 	// Destination brought back to the navigable area (D228): one point query per order, not per unit, the way
 	// a real time strategy game keeps a click next to the map walkable instead of walking into the void.
@@ -168,6 +174,10 @@ void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitId
 	if (UnitIds.Num() == 0 || Kind == EHOLOrderKind::Move || Kind == EHOLOrderKind::AttackMove || IsRefused(PlayerIndex))
 	{
 		return;
+	}
+	if (!bQueue || Kind != EHOLOrderKind::Attack)
+	{
+		UHOLHealProcessor::CancelOrders(UnitIds);
 	}
 	// F5: a player's attack on a unit its camp does not see (a modified client guessing an identifier).
 	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
@@ -217,6 +227,10 @@ void UHOLCommandSubsystem::IssueAttackBuildingOrder(const TConstArrayView<uint32
 	{
 		return;
 	}
+	if (!bQueue)
+	{
+		UHOLHealProcessor::CancelOrders(UnitIds);
+	}
 	// F5: nor on a building out of its camp's sight (a ghost, D382).
 	const UHOLVisionSubsystem* Vision = GetWorld() ? GetWorld()->GetSubsystem<UHOLVisionSubsystem>() : nullptr;
 	const FHOLBuildingTypeRow* Type = Building->GetType();
@@ -239,6 +253,10 @@ void UHOLCommandSubsystem::IssueGatherOrder(const TConstArrayView<uint32> UnitId
 	if (UnitIds.Num() == 0 || SourceIndex == INDEX_NONE || IsRefused(PlayerIndex))
 	{
 		return;
+	}
+	if (!bQueue)
+	{
+		UHOLHealProcessor::CancelOrders(UnitIds);
 	}
 	if (bQueue)
 	{
@@ -368,6 +386,10 @@ void UHOLCommandSubsystem::IssueBuildOrder(const FHOLBuildOrder& Order)
 {
 	if (Order.UnitIds.Num() > 0 && (Order.Building.IsValid() || Order.SourceIndex != INDEX_NONE) && !IsRefused(Order.PlayerIndex))
 	{
+		if (!Order.bQueue)
+		{
+			UHOLHealProcessor::CancelOrders(Order.UnitIds);
+		}
 		FHOLBuildOrder& Added = PendingBuildOrders.Add_GetRef(Order);
 		Added.bChain |= bPlayerOrders;
 		Added.bRally |= bRallyOrders;

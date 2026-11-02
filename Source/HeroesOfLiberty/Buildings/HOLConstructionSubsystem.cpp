@@ -555,7 +555,7 @@ FHOLResources UHOLConstructionSubsystem::RefundProductionQueue(AHOLBuilding& Bui
 	while (!Queue.IsEmpty())
 	{
 		const FName TypeName = Queue.Last().TypeName;
-		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName) : FHOLProductionCost(), Refund);
+		HOLProduction::Cancel(Queue, Queue.Num() - 1, Production ? Production->GetCost(TypeName, Building.GetOwnerPlayer()) : FHOLProductionCost(), Refund);
 	}
 	Building.NotifyProductionChanged();
 	// Its owner's stock, or the one kept for him while he is away (M6-Q16).

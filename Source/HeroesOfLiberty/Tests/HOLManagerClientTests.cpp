@@ -529,4 +529,78 @@ bool FHOLManagerClientOriginTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// SP1 (D642): the spectators of a lobby: read from the list and the state, the join and me bodies, the « Observer » rule.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLManagerClientSpectatorTest, "HeroesOfLiberty.Net.ManagerClient.Spectator",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLManagerClientSpectatorTest::RunTest(const FString& Parameters)
+{
+	// The list: spectators and canSpectate, absent from an older manager (none, cannot).
+	TArray<FHOLLobbySummary> Rows;
+	TestTrue(TEXT("list read"), FHOLManagerClientRules::ParseLobbies(TEXT(R"({ "lobbies": [
+		{ "id": "L1", "name": "full", "players": 8, "maxPlayers": 8, "state": "lobby", "minutes": null, "canJoin": false, "canWatch": false,
+		  "spectators": 2, "canSpectate": true },
+		{ "id": "L2", "name": "old manager", "players": 1, "maxPlayers": 8, "state": "lobby", "minutes": null, "canJoin": true, "canWatch": false },
+		{ "id": "L3", "name": "playing", "players": 2, "maxPlayers": 2, "state": "in_game", "minutes": 4, "canJoin": false, "canWatch": true,
+		  "spectators": 0, "canSpectate": false } ] })"), Rows));
+	if (TestEqual(TEXT("three lobbies"), Rows.Num(), 3))
+	{
+		TestEqual(TEXT("two spectators"), Rows[0].Spectators, 2);
+		TestTrue(TEXT("full lobby: can spectate"), FHOLManagerClientRules::CanSpectate(Rows[0]));
+		TestTrue(TEXT("full lobby: nothing to join"), FHOLManagerClientRules::ChooseLobbyAction(Rows[0], TEXT("Bob")) == EHOLLobbyAction::None);
+		TestFalse(TEXT("older manager: cannot spectate"), FHOLManagerClientRules::CanSpectate(Rows[1]));
+		TestFalse(TEXT("in game: Regarder, not Observer"), FHOLManagerClientRules::CanSpectate(Rows[2]));
+	}
+
+	// The state: the spectators by name, I am one when my name is among them (no slot).
+	const FString State = TEXT(R"({
+  "id": "L7", "name": "Salon de Bob", "state": "lobby", "minutes": null, "leader": "Bob", "you": "Carol",
+  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false },
+  "maps": [ { "name": "Plain", "maxPlayers": 8 } ],
+  "slots": [
+    { "index": 0, "state": "player", "playerName": "Bob", "colorIndex": 0, "team": 1, "faction": "DawnOrder", "ready": true },
+    { "index": 1, "state": "player", "playerName": "Alice", "colorIndex": 3, "team": 2, "faction": "DawnOrder", "ready": true },
+    { "index": 2, "state": "open" }, { "index": 3, "state": "open" }, { "index": 4, "state": "open" }, { "index": 5, "state": "open" },
+    { "index": 6, "state": "open" }, { "index": 7, "state": "open" }
+  ],
+  "spectators": [ { "playerName": "Bob" }, { "playerName": "Carol" } ],
+  "match": null, "notice": null
+})");
+	FHOLLobby Lobby;
+	TestTrue(TEXT("lobby read"), FHOLManagerClientRules::ParseLobby(State, Lobby));
+	TestEqual(TEXT("spectators by name"), FString::Join(Lobby.Spectators, TEXT(",")), FString(TEXT("Bob,Carol")));
+	TestTrue(TEXT("I am a spectator"), Lobby.IsYouSpectator());
+	TestEqual(TEXT("and have no slot"), Lobby.FindYourSlot(), static_cast<int32>(INDEX_NONE));
+	TestFalse(TEXT("a spectator edits no line"), Lobby.CanEditSlot(0) || Lobby.CanEditSlot(1) || Lobby.CanEditSlot(2));
+	TestTrue(TEXT("a slot is open to take"), Lobby.HasOpenSlot());
+	TestFalse(TEXT("not the leader"), Lobby.IsYouLeader());
+	// The leader may be a spectator: he sets and starts (2 players ready), Bob playing nothing.
+	FHOLLobby AsLeader;
+	TestTrue(TEXT("leader spectator read"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("you": "Carol")"), TEXT(R"("you": "Bob")")), AsLeader));
+	TestTrue(TEXT("leader and spectator"), AsLeader.IsYouLeader() && AsLeader.IsYouSpectator());
+	TestTrue(TEXT("he can start: the spectators neither count nor block"), AsLeader.CanStart());
+	// Older manager: no spectators.
+	FHOLLobby Old;
+	TestTrue(TEXT("older state read"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"(  "spectators": [ { "playerName": "Bob" }, { "playerName": "Carol" } ],)"), TEXT("")), Old));
+	TestTrue(TEXT("no spectator"), Old.Spectators.IsEmpty() && !Old.IsYouSpectator());
+	// A full lobby: nothing to take.
+	FHOLLobby Full = Lobby;
+	for (FHOLLobbySlot& Slot : Full.Slots)
+	{
+		Slot.State = EHOLLobbySlotState::Closed;
+	}
+	TestFalse(TEXT("no open slot: « Jouer » greyed"), Full.HasOpenSlot());
+
+	// The bodies.
+	const TSharedPtr<FJsonObject> Join = ReadBody(FHOLManagerClientRules::MakeJoinBody(TEXT("Carol"), TEXT("v1"), true));
+	TestTrue(TEXT("join as spectator"), Join.IsValid() && Join->GetBoolField(TEXT("spectator")) && Join->GetStringField(TEXT("playerName")) == TEXT("Carol")
+		&& Join->GetStringField(TEXT("gameVersion")) == TEXT("v1"));
+	const TSharedPtr<FJsonObject> JoinPlayer = ReadBody(FHOLManagerClientRules::MakeJoinBody(TEXT("Carol"), TEXT("v1"), false));
+	TestTrue(TEXT("join as a player: no spectator field (the older body)"), JoinPlayer.IsValid() && JoinPlayer->Values.Num() == 2 && !JoinPlayer->HasField(TEXT("spectator")));
+	const TSharedPtr<FJsonObject> ToSpectator = ReadBody(FHOLManagerClientRules::MakeMeBody({}, {}, {}, true));
+	TestTrue(TEXT("me: spectator alone"), ToSpectator.IsValid() && ToSpectator->Values.Num() == 1 && ToSpectator->GetBoolField(TEXT("spectator")));
+	const TSharedPtr<FJsonObject> ToPlayer = ReadBody(FHOLManagerClientRules::MakeMeBody({}, {}, {}, false));
+	TestTrue(TEXT("me: back to a player"), ToPlayer.IsValid() && ToPlayer->Values.Num() == 1 && !ToPlayer->GetBoolField(TEXT("spectator")));
+	return true;
+}
+
 #endif

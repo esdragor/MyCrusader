@@ -1,0 +1,69 @@
+# Chapelle et Moine (Q-chapelle-moine = A, GDD 7.1 et 11.1, D211/D212) : la Chapelle forme un Moine ; le Moine soigne 5 PV/s un allie blesse a la fois, a 8 m, jamais lui-meme.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# hol.Cheat.Wound 70 blesse tous tes soldats et ouvriers a 70 % ; un Lancier a 56/80 manque 24 PV, soit 96 pas de 0,25 PV (5 PV/s a 20 pas/s) : trois Lanciers l'un apres l'autre = 288 pas de soin.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Chapel 0 2500 2500
+waitlog Cheat: spawned Chapel of slot 0
+hol.Camera.Zoom -2
+frames 40
+hol.Select.Category Military
+waitlog Selection: Chapel
+frames 20
+note 1. La Chapelle est selectionnee : la case A de sa grille forme un Moine (100 nourriture + 100 or).
+hol.HUD.Report
+waitlog A=Monk enabled
+capture monk_chapel
+hol.Prod.Queue Monk
+waitlog Production: Monk of slot 0 done
+frames 20
+note 2. Le Moine est sorti de la Chapelle (production de 2 s pour l'essai).
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 1 Monk 0 100
+waitlog SpawnHere: 1 Monk of slot 0
+frames 20
+# Select the Monk right after it spawns, alone (the last own unit): a later click would hit a Spearman standing on it (random spawn spots).
+hol.Select.ClickUnit -1
+waitlog Selection: Monk
+hol.Units.SpawnHere 3 Spearman 0 400
+waitlog SpawnHere: 3 Spearman of slot 0
+frames 20
+hol.Camera.Zoom 7
+frames 20
+hol.Cheat.Wound 70
+waitlog Cheat: slot 0 wound to 70 %
+note 3. Tout le monde est blesse a 70 % : le Moine soigne UN Lancier a la fois (ligne verte et + vert), sans se soigner lui-meme.
+waitlog heals #
+frames 5
+capture monk_heal
+waitlog is healed to 80
+hol.Heal.Report
+waitlog is healed to 80
+hol.Heal.Report
+waitlog is healed to 80
+frames 10
+hol.Heal.Report
+waitlog healed total 72.00
+hol.Heal.Report
+waitlog heal steps 288
+hol.Combat.Report 0
+waitlog Monk slot 0 hp 56/80
+note 4. Les trois Lanciers sont de nouveau a 80 ; les Moines, blesses, sont restes a 56 (pas d'auto-soin).
+capture monk_healed
+hol.Test.Sanity
+hol.Cheat.Wound 50
+waitlog Cheat: slot 0 wound to 50 %
+note 5. Clic droit sur un allie blesse, le Moine selectionne : il le soigne EN PREMIER, meme s'il n'est pas le plus proche (ordres donnes ici par le scenario a deux Lanciers de suite).
+hol.Select.Heal 16
+frames 20
+hol.Select.Heal 17
+waitlog (ordered)
+frames 20
+capture monk_order
+note 6. A toi : tout le monde est blesse a 50 %. Selectionne un Lancier et envoie-le (clic droit) a plus de 8 m du Moine : il n'est plus soigne ; ramene-le a moins de 8 m : il l'est de nouveau. Moine selectionne, clic droit sur un Lancier : il le soigne en premier.

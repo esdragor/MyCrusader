@@ -43,6 +43,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Settings/HOLGameUserSettings.h"
+#include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -486,6 +487,26 @@ namespace UE::HeroesOfLiberty::Player
 					UE_LOG(LogHOLMatch, Display, TEXT("Click on source %d at (%.3f, %.3f)"), Index, Fraction.X, Fraction.Y);
 					Controller->SelectAt(Fraction);
 				}
+			}
+		}));
+
+	/** Q-chapelle-moine = A, without the mouse: the selected own units get the heal order on an ally (its identifier), as a right click on it would. */
+	FAutoConsoleCommand HealCommand(
+		TEXT("hol.Select.Heal"),
+		TEXT("hol.Select.Heal <UnitId>: the local player's selected units get the heal order on that ally (a Monk heals it first, the others walk to it), as the right click on it (the server checks it is not an enemy)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 1)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Heal <UnitId>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+				const TArray<uint32> Own = Controller->GetCommandUnits();
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u"), Own.Num(), TargetId);
+				Controller->RequestHealUnit(Own, TargetId, false);
 			}
 		}));
 
@@ -1602,6 +1623,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand CheatWoundCommand(
+		TEXT("hol.Cheat.Wound"),
+		TEXT("hol.Cheat.Wound [Percent=50]: every living unit of the local player, but the King, is wounded to Percent of its maximum health (1-100; scenarios of the heal; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Percent = Args.IsEmpty() ? 50 : FCString::Atoi(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatWound(Percent);
+			}
+		}));
+
 	FAutoConsoleCommand CheatTechnologyCommand(
 		TEXT("hol.Cheat.Technology"),
 		TEXT("hol.Cheat.Technology <Name>: the local player has that technology researched at once, free, without its building (development only; Technologies.csv names, e.g. MeleeAttackI)"),
@@ -2536,6 +2569,24 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 				bShift ? TEXT(", queued") : TEXT(""));
 			RequestAttackUnit(Own, UnderId, bShift);
 			OnAttackOrderGiven.Broadcast(Under.Location);
+			return;
+		}
+		// Q-chapelle-moine = A: an ally's unit under the cursor (or one of the player's own) and a healer among the selected units
+		// (a Monk): the heal order (the healers walk to it and heal it first), the others walk there.
+		if (UnderId != 0 && (bDirect || (!Source && !EnemyBuilding)) && HOLPlayerState && HOLUnitView::Find(*GetWorld(), UnderId, Under)
+			&& !Camps.AreHostile(Under.OwnerPlayer, HOLPlayerState->GetPlayerIndex()) && Under.OwnerPlayer != FHOLMatchConfig::NeutralOwner
+			&& Own.ContainsByPredicate([this](const uint32 UnitId)
+			{
+				FHOLUnitView Selected;
+				const UDataTable* Table = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+				const FHOLUnitTypeRow* Row = Table && HOLUnitView::Find(*GetWorld(), UnitId, Selected) ? Table->FindRow<FHOLUnitTypeRow>(Selected.TypeName, TEXT("Heal order"), false) : nullptr;
+				return Row && Row->HealRate > 0.f;
+			}))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u %s of slot %d%s"), Own.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
+				bShift ? TEXT(", queued") : TEXT(""));
+			RequestHealUnit(Own, UnderId, bShift);
+			OnOrderGiven.Broadcast(Under.Location);
 			return;
 		}
 		if (EnemyBuilding)
@@ -3835,6 +3886,56 @@ void AHOLPlayerController::RequestAttackUnit(const TConstArrayView<uint32> UnitI
 	}
 }
 
+void AHOLPlayerController::RequestHealUnit(const TConstArrayView<uint32> UnitIds, const uint32 TargetUnitId, const bool bQueue)
+{
+	if (UnitIds.Num() > 0 && TargetUnitId != 0)
+	{
+		ServerHealUnit(TArray<uint32>(UnitIds), TargetUnitId, bQueue);
+	}
+}
+
+void AHOLPlayerController::ServerHealUnit_Implementation(const TArray<uint32>& UnitIds, const uint32 TargetUnitId, const bool bQueue)
+{
+	// The units walk to the ally as a move order would (D288: the player's own units alone); the ones that heal also take it as the unit
+	// to heal first (HOLHealProcessor); an enemy or an unknown unit is no order at all.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	FHOLUnitView Target;
+	if (!HOLPlayerState || !Units || !Units->GetUnitView(TargetUnitId, Target))
+	{
+		return;
+	}
+	const int32 Slot = HOLPlayerState->GetPlayerIndex();
+	if (FHOLCampTable::FromWorld(GetWorld()).AreHostile(Target.OwnerPlayer, Slot))
+	{
+		return;
+	}
+	// The healers do not walk to the ally's place: the heal processor walks them only until the ally is within their heal range, follows it
+	// if it moves off, and ends the order when it is dead or healed (E-monk-soigner, v2). Only the others walk there as a move order.
+	TArray<uint32> Walkers;
+	for (const uint32 UnitId : UnitIds)
+	{
+		FHOLUnitView View;
+		const FHOLUnitTypeRow* Row = Units->GetUnitView(UnitId, View) ? Units->FindTypeRow(View.TypeName) : nullptr;
+		if (Row && View.OwnerPlayer == Slot && Row->HealRate > 0.f)
+		{
+			if (UnitId != TargetUnitId)
+			{
+				UHOLHealProcessor::OrderHeal(UnitId, TargetUnitId);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: #%u (slot %d) heals #%u first"), UnitId, Slot, TargetUnitId);
+			}
+		}
+		else
+		{
+			Walkers.Add(UnitId);
+		}
+	}
+	if (!Walkers.IsEmpty())
+	{
+		HOLPlayerOrders::Move(*GetWorld(), Slot, Walkers, Target.Location, bQueue);
+	}
+}
+
 void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)
 {
 	if (UnitIds.Num() > 0)
@@ -4224,6 +4325,28 @@ void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
 	ServerCheatGatherSpeed(Scale);
+}
+
+void AHOLPlayerController::RequestCheatWound(const int32 Percent)
+{
+	ServerCheatWound(Percent);
+}
+
+void AHOLPlayerController::ServerCheatWound_Implementation(const int32 Percent)
+{
+#if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("wound")))
+	{
+		return;
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (HOLPlayerState && Units)
+	{
+		const int32 Wounded = Units->WoundUnits(HOLPlayerState->GetPlayerIndex(), Percent);
+		UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d wound to %d %%, %d units wounded"), HOLPlayerState->GetPlayerIndex(), FMath::Clamp(Percent, 1, 100), Wounded);
+	}
+#endif
 }
 
 void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)

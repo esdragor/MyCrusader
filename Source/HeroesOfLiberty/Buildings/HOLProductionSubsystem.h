@@ -33,8 +33,11 @@ public:
 	/** Production time of a unit type in simulation steps (its table time at the step rate), at least 1. */
 	static int32 GetBuildSteps(const FHOLUnitTypeRow& Type, float StepSeconds);
 
-	/** What producing one unit of TypeName takes (its row of the unit type table); a missing type costs nothing and takes 1 step. */
-	FHOLProductionCost GetCost(FName TypeName) const;
+	/**
+	 * What producing one unit of TypeName takes (its row of the unit type table); a missing type costs nothing and takes 1 step. PlayerIndex: the
+	 * player who pays, whose technologies lower the cost (the Vow of Poverty: the Monk, MonkCostDiscount); INDEX_NONE: the table's.
+	 */
+	FHOLProductionCost GetCost(FName TypeName, int32 PlayerIndex = INDEX_NONE) const;
 
 	/** Player state of a slot, or null (an AI slot has none yet: no economy). */
 	AHOLPlayerState* FindPlayerState(int32 PlayerIndex) const;

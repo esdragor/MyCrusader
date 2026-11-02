@@ -1158,6 +1158,36 @@ int32 UHOLUnitSubsystem::ApplyTechnologyHealth(const int32 Slot, const int32 Bef
 	return Raised;
 }
 
+int32 UHOLUnitSubsystem::WoundUnits(const int32 Slot, const int32 Percent)
+{
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!EntitySubsystem)
+	{
+		return 0;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	int32 Wounded = 0;
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		const FHOLUnitRecord& Record = Unit.Value;
+		if (Record.bDying || !EntityManager.IsEntityValid(Record.Entity))
+		{
+			continue;
+		}
+		FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity);
+		const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Record.Entity);
+		const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Record.Entity);
+		if (!State || !Combat || !Constants || State->OwnerPlayer != Slot || State->CurrentHealth <= 0.f || HOLIsKing(Constants->ArmorCategoryMask))
+		{
+			continue;
+		}
+		const int32 Maximum = HOLCombat::GetMaxHealth(*Constants, Combat->Level, GetTechnologyHealthPercent(*Constants, Slot));
+		State->CurrentHealth = FMath::Max(1.f, static_cast<float>(Maximum * FMath::Clamp(Percent, 1, 100)) / 100.f);
+		++Wounded;
+	}
+	return Wounded;
+}
+
 FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();

@@ -33,6 +33,8 @@ namespace UE::HeroesOfLiberty::UI::Multiplayer
 	constexpr float PlayersWidth = 90.f;
 	constexpr float StateWidth = 220.f;
 	constexpr float ActionWidth = 200.f;
+	/** SP1: the « Observer » button of a lobby gathering. */
+	constexpr float SpectateWidth = 180.f;
 
 	bool IsNameChar(const TCHAR Char)
 	{
@@ -107,7 +109,7 @@ void UHOLMultiplayerScreen::BuildLayout()
 
 	// The list, with a fixed width so that the columns line up.
 	USizeBox* ListSize = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
-	ListSize->SetWidthOverride(NameWidth + MapWidth + PlayersWidth + StateWidth + ActionWidth + 40.f);
+	ListSize->SetWidthOverride(NameWidth + MapWidth + PlayersWidth + StateWidth + ActionWidth + SpectateWidth + 40.f);
 	ListSize->SetMinDesiredHeight(240.f);
 	LobbyList = WidgetTree->ConstructWidget<UVerticalBox>(UVerticalBox::StaticClass(), TEXT("LobbyList"));
 	ListSize->SetContent(LobbyList);
@@ -304,9 +306,21 @@ void UHOLMultiplayerScreen::AddLobbyRow(const int32 Index, const FHOLLobbySummar
 		Box->SetContent(Button);
 		Row->AddChildToHorizontalBox(Box)->SetVerticalAlignment(VAlign_Center);
 	}
-	UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: lobby %s \"%s\" %s %d/%d %s%s"), *Lobby.Id, *Lobby.Name, *MapText.ToString(), Lobby.Players,
+	// SP1 (D642): a lobby gathering also offers « Observer », which takes no slot (the lobby may be full).
+	const bool bCanSpectate = FHOLManagerClientRules::CanSpectate(Lobby);
+	if (bCanSpectate)
+	{
+		USizeBox* Box = WidgetTree->ConstructWidget<USizeBox>(USizeBox::StaticClass());
+		Box->SetWidthOverride(SpectateWidth);
+		UHOLButton* Button = WidgetTree->ConstructWidget<UHOLButton>(UHOLButton::StaticClass(), *FString::Printf(TEXT("SpectateButton%d"), Index));
+		Button->SetLabel(LOCTEXT("Spectate", "Observer"));
+		Button->OnClicked().AddUObject(this, &UHOLMultiplayerScreen::HandleSpectate, Index);
+		Box->SetContent(Button);
+		Row->AddChildToHorizontalBox(Box)->SetVerticalAlignment(VAlign_Center);
+	}
+	UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: lobby %s \"%s\" %s %d/%d %s%s%s"), *Lobby.Id, *Lobby.Name, *MapText.ToString(), Lobby.Players,
 		Lobby.MaxPlayers, *State.ToString(), Action == EHOLLobbyAction::Join ? TEXT(", join") : Action == EHOLLobbyAction::Rejoin ? TEXT(", rejoin")
-		: Action == EHOLLobbyAction::Watch ? TEXT(", watch") : TEXT(""));
+		: Action == EHOLLobbyAction::Watch ? TEXT(", watch") : TEXT(""), bCanSpectate ? TEXT(", spectate") : TEXT(""));
 }
 
 void UHOLMultiplayerScreen::SetStatus(const FText& Text, const bool bAlert)
@@ -362,14 +376,24 @@ void UHOLMultiplayerScreen::HandleCreate()
 
 void UHOLMultiplayerScreen::HandleJoin(const int32 Index)
 {
+	EnterAs(Index, false);
+}
+
+void UHOLMultiplayerScreen::HandleSpectate(const int32 Index)
+{
+	EnterAs(Index, true);
+}
+
+void UHOLMultiplayerScreen::EnterAs(const int32 Index, const bool bSpectator)
+{
 	const FString Name = TakePlayerName();
 	const UGameInstance* GameInstance = GetGameInstance();
 	UHOLManagerClient* Client = GameInstance ? GameInstance->GetSubsystem<UHOLManagerClient>() : nullptr;
 	if (!Name.IsEmpty() && Lobbies.IsValidIndex(Index) && Client)
 	{
-		UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: join %s as %s"), *Lobbies[Index].Id, *Name);
+		UE_LOG(LogHOLUI, Display, TEXT("Multiplayer: join %s as %s%s"), *Lobbies[Index].Id, *Name, bSpectator ? TEXT(" (spectator)") : TEXT(""));
 		SetStatus(LOCTEXT("Entering", "Entrée dans le salon…"));
-		Client->JoinLobby(Lobbies[Index].Id, Name, FHOLManagerLobbyDone::CreateUObject(this, &UHOLMultiplayerScreen::HandleEntered));
+		Client->JoinLobby(Lobbies[Index].Id, Name, FHOLManagerLobbyDone::CreateUObject(this, &UHOLMultiplayerScreen::HandleEntered), bSpectator);
 	}
 }
 

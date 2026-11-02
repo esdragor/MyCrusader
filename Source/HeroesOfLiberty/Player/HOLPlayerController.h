@@ -393,6 +393,11 @@ public:
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
 	/**
+	 * Q-chapelle-moine = A, the heal order (a right click on an ally with a Monk selected): the units walk to the ally, and the ones that
+	 * heal (a HealRate) heal it first, whatever is nearer (UHOLHealProcessor::OrderHeal); the others only walk there.
+	 */
+	void RequestHealUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
+	/**
 	 * Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building.
 	 * bQueue (Shift, D345): at the end of each unit's queue, as an attack on a unit.
 	 */
@@ -457,6 +462,8 @@ public:
 	void RequestCheatTechnology(FName Technology);
 	void RequestCheatUnitSpeed(float Scale);
 	void RequestCheatGatherSpeed(float Scale);
+	/** Q-chapelle-moine, scenarios: every living unit of the local player, but the King, is wounded to Percent of its maximum health (hol.Cheat.Wound). */
+	void RequestCheatWound(int32 Percent);
 	/**
 	 * D345.2a, until the units attack buildings: Amount of damage of AttackType (EHOLAttackType as a byte) on the building
 	 * nearest Point on the server (any player's), its armour taken off; destroyed at 0 (hol.Cheat.DamageNear, DamageSelected).
@@ -688,6 +695,8 @@ private:
 	UFUNCTION(Server, Reliable)
 	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
 	UFUNCTION(Server, Reliable)
+	void ServerHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	UFUNCTION(Server, Reliable)
 	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
 	UFUNCTION(Server, Reliable)
 	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
@@ -751,6 +760,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatGatherSpeed(float Scale);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatWound(int32 Percent);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);

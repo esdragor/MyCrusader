@@ -24,4 +24,4 @@ HeavyMunitions,Munitions lourdes,Military,Common,SiegeWorkshop,2,0,"(Food=300,Wo
 Liturgy,Liturgie,Faction,Dawn,Sanctuary,1,0,"(Food=100,Wood=0,Stone=0,Gold=100)",30,,(HonourGain),10,False
 TemperedHalberds,Hallebardes trempées,Faction,Dawn,Barracks,1,0,"(Food=100,Wood=0,Stone=0,Gold=100)",30,,(HalberdierBonusVsHeavyInfantry),10,False
 BlessingOfArms,Bénédiction des armes,Faction,Dawn,Sanctuary,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(KnightAndHalberdierBonusVsProfane),20,False
-VowOfPoverty,Vœu de pauvreté,Faction,Dawn,Chapel,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(MonkCostDiscount),20,False
+VowOfPoverty,Vœu de pauvreté,Faction,Dawn,Chapel,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(MonkCostDiscount),20,True

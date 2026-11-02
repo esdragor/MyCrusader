@@ -395,6 +395,25 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("Sanctuary: not walkable"), Sanctuary->Walkable);
 	}
 
+	// Q-chapelle-moine = A: the Chapel of the Dawn (GDD D211/D212, palier 1 = page II), military (it forms the Monk), built by Peasants on S of
+	// page II (right of the siege workshop): 200 wood, 3 x 3 tiles (12 m), 30 s, 1 500 health; it produces the Monk and takes no resource.
+	const FHOLBuildingTypeRow* Chapel = UHOLBuildingSettings::FindType(TEXT("Chapel"));
+	if (TestNotNull(TEXT("Chapel in the building type table"), Chapel))
+	{
+		TestTrue(TEXT("Chapel: built by Peasants"), Chapel->IsBuildable());
+		TestEqual(TEXT("Chapel: S of the Peasant's grid (slot 5, military row)"), Chapel->BuildGridSlot, 5);
+		TestEqual(TEXT("Chapel: age II (page II)"), Chapel->Age, 1);
+		TestEqual(TEXT("Chapel: military (it forms the Monk)"), int32(Chapel->Category), int32(EHOLBuildingCategory::Military));
+		TestEqual(TEXT("Chapel: 3 x 3 tiles (12 m)"), Chapel->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestTrue(TEXT("Chapel: 200 wood"), Chapel->Cost == FHOLResources(0, 200, 0, 0));
+		TestEqual(TEXT("Chapel: 30 s for one builder"), Chapel->BuildTime, 30.f);
+		TestEqual(TEXT("Chapel: 1 500 health"), Chapel->MaxHealth, 1500);
+		TestEqual(TEXT("Chapel: no population"), Chapel->PopulationProvided, 0);
+		TestTrue(TEXT("Chapel: produces the Monk"), Chapel->Produces == TArray<FName>({ FName(TEXT("Monk")) }));
+		TestTrue(TEXT("Chapel: takes no resource"), Chapel->Accepts.IsEmpty());
+		TestFalse(TEXT("Chapel: not walkable"), Chapel->Walkable);
+	}
+
 	// M3 (GDD 5.5, 11.1, D569): the Market, economic, age II (palier 1, Essor), built by Peasants on A of page II. Its size, cost
 	// and health are provisional (MarketInProgress.md, question MK-Q2): 3 x 3 tiles like the Barracks, 150 wood, 20 s.
 	const FHOLBuildingTypeRow* Market = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Market);

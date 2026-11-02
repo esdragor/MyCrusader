@@ -72,6 +72,9 @@ private:
 
 	void HandleCreate();
 	void HandleJoin(int32 Index);
+	/** SP1 (D642): enters the lobby as a spectator (no slot), even full. */
+	void HandleSpectate(int32 Index);
+	void EnterAs(int32 Index, bool bSpectator);
 	void HandleWatch(int32 Index);
 	/** R7.6: back in the match I left (my name among its players away): as Watch, but with my name. */
 	void HandleRejoin(int32 Index);

@@ -165,6 +165,11 @@ public:
 	 * levelling up (HOLHeroXP::GetHealthAfterLevelUp), the damage they took staying. Returns how many it raised.
 	 */
 	int32 ApplyTechnologyHealth(int32 Slot, int32 Before, int32 After);
+	/**
+	 * Development (hol.Cheat.Wound, scenarios of the heal): every living unit of Slot, but the King, goes to Percent (1-100) of its maximum
+	 * health. Returns how many it wounded.
+	 */
+	int32 WoundUnits(int32 Slot, int32 Percent);
 
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }

@@ -392,6 +392,9 @@ TRANSLATIONS = {
     "HOLGameNames,ArcheryRange": ("Archery Range", "射撃場"),
     "HOLGameNames,Market": ("Market", "市場"),
     "HOLGameNames,Sanctuary": ("Sanctuary of the Dawn", "暁の聖域"),
+    # Q-chapelle-moine = A: the Chapel and the Monk (GDD 7.1, 11.1).
+    "HOLGameNames,Chapel": ("Chapel", "礼拝堂"),
+    "HOLGameNames,Monk": ("Monk", "修道士"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
     # S2: the siege workshop and its two engines (GDD 6.1).
@@ -438,6 +441,10 @@ TRANSLATIONS = {
     "HOLMultiplayerScreen,Entering": ("Entering the lobby…", "ロビーに入室中…"),
     "HOLMultiplayerScreen,LobbyOf": ("{0}'s lobby", "{0}のロビー"),
 
+    "HOLMultiplayerScreen,Spectate": ("Spectate", "観戦"),
+    "HOLNewGameScreen,BecomeSpectator": ("Spectator", "観戦者になる"),
+    "HOLNewGameScreen,BecomePlayer": ("Play", "プレイヤーになる"),
+    "HOLNewGameScreen,Spectators": ("Spectators: {0}", "観戦者：{0}"),
     "HOLNewGameScreen,ReadyAction": ("Ready", "準備完了"),
     "HOLNewGameScreen,NotReadyAction": ("Not ready", "準備解除"),
     "HOLNewGameScreen,LeaveLobby": ("Leave the lobby", "ロビーを退出"),

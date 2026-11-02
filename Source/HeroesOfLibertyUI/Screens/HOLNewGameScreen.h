@@ -111,6 +111,14 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLButton> ReadyButton;
 
+	/** SP1 (D642): network mode only, « Spectateur » leaves my slot, « Jouer » takes the first open one (a toggle). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHOLButton> SpectateButton;
+
+	/** SP1: the lobby's spectators ("Spectateurs : ♛ Carol, Dave"), empty and hidden without any. */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> SpectatorsText;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> NoteText;
 
@@ -180,6 +188,8 @@ private:
 	void HandleTeamChosen(int32 SlotIndex, int32 Value);
 	void HandleOptionChosen(int32 Value);
 	void ToggleReady();
+	/** SP1: network mode, PUT me { "spectator": ... } the other way round from the lobby read last. */
+	void ToggleSpectator();
 	/** Network mode: the map and options sent (leader). */
 	void SendSettings();
 	/**

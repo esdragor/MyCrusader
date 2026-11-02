@@ -42,15 +42,19 @@ public:
 
 	/** POST /lobbies (R4.4): creates a lobby and enters it; its token is kept. */
 	void CreateLobby(const FString& LobbyName, const FString& PlayerName, FHOLManagerLobbyDone Done);
-	/** POST /lobbies/{id}/join with this game's version; its token is kept. */
-	void JoinLobby(const FString& LobbyId, const FString& PlayerName, FHOLManagerLobbyDone Done);
+	/**
+	 * POST /lobbies/{id}/join with this game's version; its token is kept. SP1 (D642): bSpectator enters without a slot,
+	 * even in a full lobby.
+	 */
+	void JoinLobby(const FString& LobbyId, const FString& PlayerName, FHOLManagerLobbyDone Done, bool bSpectator = false);
 	/** GET /lobbies/{id} with the kept token, which is the presence (5 s without a read: out). Out of the lobby
 	 *  (not_in_lobby, lobby_not_found), the token is dropped. */
 	void ReadLobby(FHOLManagerLobbyDone Done);
 	/** POST /lobbies/{id}/leave; the token is dropped at once. */
 	void LeaveLobby();
 	/** PUT /lobbies/{id}/me (R4.5): my colour, team, Ready; only the fields set. Answers the lobby's state. */
-	void UpdateMe(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady, FHOLManagerLobbyDone Done);
+	void UpdateMe(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady, FHOLManagerLobbyDone Done,
+		TOptional<bool> bSpectator = {});
 	/** PUT /lobbies/{id}/settings (leader): the map by name and the options. */
 	void UpdateSettings(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, FHOLManagerLobbyDone Done,
 		const FString& Size = FString(), TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString());
@@ -135,6 +139,8 @@ private:
 	bool bRejoinedLobby = false;
 	/** The name the match was opened with (R4.7), for the way back (R4.8). */
 	FString MatchPlayerName;
+	/** SP1: I was a spectator in the lobby last read: the way back (ReturnToLobby) joins as one. */
+	bool bLobbySpectator = false;
 	EAfterMatch AfterMatch = EAfterMatch::None;
 	FHOLManagerError LobbyLoss;
 };
