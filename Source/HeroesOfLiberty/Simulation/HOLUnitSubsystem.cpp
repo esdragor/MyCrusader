@@ -810,6 +810,44 @@ int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner, const FName TypeNam
 	return Killed;
 }
 
+int32 UHOLUnitSubsystem::KillUnitsWhere(const TFunctionRef<bool(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location, float Radius)> Doomed)
+{
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!EntitySubsystem)
+	{
+		return 0;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	int32 Killed = 0;
+	for (TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		FHOLUnitRecord& Record = Unit.Value;
+		if (Record.bDying)
+		{
+			continue;
+		}
+		FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Record.Entity);
+		if (!State || !Transform || State->CurrentHealth <= 0 || State->Activity == EHOLUnitActivity::Dying)
+		{
+			continue;
+		}
+		const FHOLUnitTypeRow* Row = FindTypeRow(Record.TypeName);
+		if (Doomed(Unit.Key, Record.TypeName, Record.OwnerPlayer, Transform->GetTransform().GetLocation(), Row ? Row->Radius : 0.f))
+		{
+			State->CurrentHealth = 0;
+			State->Activity = EHOLUnitActivity::Dying;
+			Record.bDying = true;
+			++Killed;
+			if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
+			{
+				MatchStats->RecordUnitDeath(Record.OwnerPlayer, IsWorkerType(Record.TypeName), INDEX_NONE);
+			}
+		}
+	}
+	return Killed;
+}
+
 int32 UHOLUnitSubsystem::ForEachLivingUnit(const TFunctionRef<void(uint8 Owner, const FVector& Location)> Visit) const
 {
 	return ForEachLivingUnitWithType([&Visit](uint32, FName, const uint8 Owner, const FVector& Location) { Visit(Owner, Location); });
