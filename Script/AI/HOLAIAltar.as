@@ -13,6 +13,9 @@ struct FHOLAIAltarData
 
 	// After a recall nothing is sent for this long (s), so that an attacked forum does not make the squad come and go.
 	float PauseAfterRecallSeconds = 30.f;
+
+	// Q-ia-autel-diversion = B (hol.AI.AltarStrikeBack, default on; the brain reads it): Hard, facing a big adversary army on the altar, strikes back.
+	bool bStrikeBack = true;
 }
 
 // What the AI remembers between two thoughts of a slot.
@@ -32,6 +35,9 @@ struct FHOLAIAltarStep
 	bool bRecalled = false;
 	bool bEnded = false;
 	bool bDiversion = false;
+
+	// Q-ia-autel-diversion = B: the camp of the adversary on the altar is bare, so Hard launches its attack wave now (the brain sets Wave.bForce).
+	bool bStrikeBack = false;
 
 	// The soldiers to attack-move to Where (the new ones when the squad grows, the idle ones away from the zone when ordered again).
 	TArray<int> MoveIds;
@@ -175,6 +181,8 @@ namespace HOLAIAltar
 		bool bDiversion = false;
 		HOLVolcano::DecideAltarSquad(Altar, Free, Memory.Ids.Num(), LevelCode(Level), Squad, bDiversion);
 		Result.bDiversion = bDiversion;
+		// Q-ia-autel-diversion = B: only Hard (the others send what they can spare), only when the diversion is the rule's answer.
+		Result.bStrikeBack = bDiversion && Data.bStrikeBack && Level == EHOLAIDifficulty::Hard;
 		Result.Site = Altar.SiteIndex;
 		Result.Where = Altar.Location;
 

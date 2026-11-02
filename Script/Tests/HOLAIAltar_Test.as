@@ -77,6 +77,23 @@ void Test_AIAltarContestsASmallAdversaryButNotABigArmyInHard(FUnitTest& T)
 	const FHOLAIAltarStep Hard = HOLAIAltar::Step(HardMemory, EHOLAIDifficulty::Hard, AltarSummary(10), Big, false, 100.f, FVector(0, 0, 0), Data);
 	T.AssertFalse(Hard.bSent, "Hard does not throw itself at a big army");
 	T.AssertTrue(Hard.bDiversion, "it strikes elsewhere instead");
+	T.AssertTrue(Hard.bStrikeBack, "Q-ia-autel-diversion = B: facing a big army on the altar, Hard launches its wave toward the bare camp");
+
+	FHOLAIAltarData Off;
+	Off.bStrikeBack = false;
+	FHOLAIAltarMemory OffMemory;
+	const FHOLAIAltarStep NoStrike = HOLAIAltar::Step(OffMemory, EHOLAIDifficulty::Hard, AltarSummary(10), Big, false, 100.f, FVector(0, 0, 0), Off);
+	T.AssertTrue(NoStrike.bDiversion && !NoStrike.bStrikeBack, "the console variable off: only no squad");
+
+	FHOLAIAltarMemory NormalMemory;
+	const FHOLAIAltarStep Normal = HOLAIAltar::Step(NormalMemory, EHOLAIDifficulty::Normal, AltarSummary(10), Big, false, 100.f, FVector(0, 0, 0), Data);
+	T.AssertFalse(Normal.bStrikeBack, "Normal sends what it can spare, no strike");
+	FHOLAIAltarMemory SmallMemory;
+	const FHOLAIAltarStep SmallStep = HOLAIAltar::Step(SmallMemory, EHOLAIDifficulty::Hard, AltarSummary(10), Small, false, 100.f, FVector(0, 0, 0), Data);
+	T.AssertFalse(SmallStep.bStrikeBack, "a small adversary is contested, no strike");
+	FHOLAIAltarMemory AttackedMemory;
+	const FHOLAIAltarStep Attacked = HOLAIAltar::Step(AttackedMemory, EHOLAIDifficulty::Hard, AltarSummary(10), Big, true, 100.f, FVector(0, 0, 0), Data);
+	T.AssertFalse(Attacked.bStrikeBack, "its own forum is attacked: no strike");
 }
 
 // The squad is not recalled by a smaller need (no to-and-fro), and a forum attacked recalls it; the altar no longer lit ends it.

@@ -101,6 +101,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Volcano", meta = (WorldContext = "WorldContextObject"))
 	static void ReadAIAltars(const UObject* WorldContextObject, int32 PlayerIndex, TArray<FHOLAIAltar>& OutAltars);
 
+	/** Q-ia-autel-diversion = B: the console variable hol.AI.AltarStrikeBack (default on): Hard strikes the bare camp of an adversary holding the altar with a big army. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Volcano")
+	static bool GetAIAltarStrikeBack();
+
 	/**
 	 * V11: the size of the squad the AI keeps at an altar: the contest rule when an adversary stands in the zone (HOLVolcano::AltarSend, D639), the
 	 * hold of a free altar otherwise (HOLVolcano::AltarHoldSquad, D640). Level: 0 Easy, 1 Normal, 2 Hard. The simulation's own settings.

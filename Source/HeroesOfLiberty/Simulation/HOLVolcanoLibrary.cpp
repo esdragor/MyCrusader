@@ -137,6 +137,18 @@ namespace
 		TEXT("Q-ia-autel-distance, provisional: from which positions the AI measures the 40 m to the nearest possible flow before it holds a free altar: 0 its buildings (default), 1 the altar itself (where its squad stands)"));
 }
 
+namespace
+{
+	int32 AIAltarStrikeBack = 1;
+	FAutoConsoleVariableRef CVarAIAltarStrikeBack(TEXT("hol.AI.AltarStrikeBack"), AIAltarStrikeBack,
+		TEXT("Q-ia-autel-diversion = B (user answer 2026-11-02): 1 (default) Hard, facing a big adversary army on the altar (its camp is bare), launches its attack wave at once toward the enemy forum, without waiting for the usual ratio; 0 it only does not send the squad"));
+}
+
+bool UHOLVolcanoLibrary::GetAIAltarStrikeBack()
+{
+	return AIAltarStrikeBack != 0;
+}
+
 void UHOLVolcanoLibrary::ReadAIAltars(const UObject* WorldContextObject, const int32 PlayerIndex, TArray<FHOLAIAltar>& OutAltars)
 {
 	OutAltars.Reset();
