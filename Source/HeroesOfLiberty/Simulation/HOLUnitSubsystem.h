@@ -103,6 +103,11 @@ public:
 	 */
 	int32 KillUnitsOfOwner(uint8 Owner, FName TypeName = NAME_None);
 	/**
+	 * V5 (volcano): every living unit for which Doomed(UnitId, TypeName, Owner, Location, Radius) is true goes to 0 health and Dying, as
+	 * KillUnitsOfOwner does (its death noted in the match statistics, a kill for nobody). Returns how many were killed.
+	 */
+	int32 KillUnitsWhere(TFunctionRef<bool(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location, float Radius)> Doomed);
+	/**
 	 * V3.2: calls Visit(Owner, Location) for every living unit (not dying, health above 0), in one walk of the units; the
 	 * births waiting are not there yet. Returns how many units were walked (the dying included).
 	 */

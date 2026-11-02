@@ -340,7 +340,7 @@ bool UHOLFullSpeedProcessor::BuildLookAhead(FMassExecutionContext& Context)
 	FootprintRadii.Reset();
 	if (const UWorld* World = Context.GetWorld())
 	{
-		for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+		for (FHOLBuildingIterator It(World); It; ++It)
 		{
 			const FHOLBuildingTypeRow* Type = It->GetType();
 			// A bare foundation is walked over (D312).
@@ -2222,7 +2222,7 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	}
 	// A few buildings per player: read again at each step, as the gathering's deposits.
 	Footprints.Reset();
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
 		// A bare foundation is walked over (D312): only a footprint the navmesh forbids keeps bodies out.

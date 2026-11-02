@@ -1033,7 +1033,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 	// D345.2b: the buildings that can be attacked this step (a bare foundation is unseen by the enemy: never a target).
 	StepBuildings.Reset();
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
 		if (!IsValid(Building) || Building->IsActorBeingDestroyed() || Building->IsFoundation() || !Building->GetType() || Building->GetHealth() <= 0)

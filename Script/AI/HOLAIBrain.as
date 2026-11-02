@@ -97,6 +97,17 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	UFUNCTION(BlueprintOverride)
 	bool Think(int PlayerIndex)
 	{
+		const bool bThought = ThinkRules(PlayerIndex);
+		// The volcano (V11, D427): last, so that no order of the thought sends a unit back under the lava. The units caught in the corridor of a flow
+		// in its alert or its eruption (half width LavaHalfWidth plus the body's radius, read by the world) are ordered out of it; the C++ side
+		// writes its own line to the journal. Nothing without the Catastrophe option.
+		HOLAIOrder::IssueAIVolcanoEvacuation(PlayerIndex);
+		return bThought;
+	}
+
+	// The rules of one thought (everything but the volcano's way out, which Think adds after them).
+	bool ThinkRules(int PlayerIndex)
+	{
 		NumScriptThoughts++;
 		FHOLAISummary Summary = HOLAISummary::ReadAISummary(PlayerIndex);
 		FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
