@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLMatchConfig.h"
 
 /** Where an event site stands (GDD 12.1, 12.2 bis; D28, D377-D380, D398-D400). */
 enum class EHOLVolcanoPhase : uint8
@@ -128,6 +129,13 @@ namespace HOLVolcano
 	 * Dormant without Catastrophe (D398).
 	 */
 	HEROESOFLIBERTY_API FSiteState SiteStateAt(bool bCatastrophe, int32 MatchSeed, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed);
+
+	/**
+	 * V4c: the state of one site of a match, from the match's configuration (its Seed and its Catastrophe option, both identical on every machine:
+	 * the configuration is replicated with the match, AHOLGameState::LaunchConfig) and the simulation's clock in seconds. Same configuration and
+	 * same clock, same eruption, whichever machine asks and whenever the match was launched (D608).
+	 */
+	HEROESOFLIBERTY_API FSiteState SiteStateOfMatch(const FHOLMatchConfig& Config, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed);
 
 	/** Phase at Now (seconds): always Dormant without the Catastrophe option (D398). EruptionLength as in MakeCycle. */
 	HEROESOFLIBERTY_API EHOLVolcanoPhase GetPhase(bool bCatastrophe, int32 Seed, float Now, const FHOLVolcanoSettings& Settings, float EruptionLength = 0.f);

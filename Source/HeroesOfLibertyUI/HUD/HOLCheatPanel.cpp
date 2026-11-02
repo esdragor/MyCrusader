@@ -1,5 +1,6 @@
 #include "HUD/HOLCheatPanel.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "CommonTextBlock.h"
@@ -189,6 +190,30 @@ void UHOLCheatPanel::NativeTick(const FGeometry& MyGeometry, const float InDelta
 			PanelSlot->SetPadding(FMargin(ScreenMargin, Top, 0.f, 0.f));
 		}
 	}
+}
+
+float UHOLCheatPanel::GetBottom() const
+{
+	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
+
+	if (!Panel)
+	{
+		return 0.f;
+	}
+	const float Top = PlacedAnchorHeight > 0.f ? ScreenMargin + PlacedAnchorHeight + AnchorGap : ScreenMargin;
+	return Top + Panel->GetDesiredSize().Y;
+}
+
+bool UHOLCheatPanel::GetBox(FBox2D& OutBox) const
+{
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	const FGeometry& Geometry = Panel ? Panel->GetCachedGeometry() : FGeometry();
+	if (!Panel || Panel->GetVisibility() == ESlateVisibility::Collapsed || Geometry.GetAbsoluteSize().IsNearlyZero())
+	{
+		return false;
+	}
+	OutBox = FBox2D(FVector2D(Geometry.GetAbsolutePosition()) / Dpi, FVector2D(Geometry.GetAbsolutePosition() + Geometry.GetAbsoluteSize()) / Dpi);
+	return true;
 }
 
 void UHOLCheatPanel::SetOpen(const bool bInOpen)

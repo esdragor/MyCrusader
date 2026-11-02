@@ -175,3 +175,8 @@ EHOLVolcanoPhase HOLVolcano::GetPhase(const bool bCatastrophe, const int32 Seed,
 	}
 	return EHOLVolcanoPhase::Rest;
 }
+
+HOLVolcano::FSiteState HOLVolcano::SiteStateOfMatch(const FHOLMatchConfig& Config, const int32 SiteIndex, const FSite& Site, const float Now, const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed)
+{
+	return SiteStateAt(Config.bCatastrophe, Config.Seed, SiteIndex, Site, Now, Settings, ManAtArmsSpeed);
+}

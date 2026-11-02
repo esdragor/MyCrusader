@@ -101,6 +101,19 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	FMargin GetBottomLeftPlace() const;
 
+	/**
+	 * The bottom edge (Slate units under the screen's top) of the cheats' panel, top left under the top bar: a block of the script stacked under it
+	 * starts there (the AI level line). 0 without the panel (Shipping, or no HUD).
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	float GetCheatPanelBottom() const;
+
+	/**
+	 * Which of the script's visible panels (MakePanel) cover each other or the cheats' panel, as drawn: "none" or "A x B; C x cheats" (hol.HUD.Report's
+	 * "HUD overlap" line; preflight.ps1 fails on anything else). Boxes not drawn yet are left out.
+	 */
+	FString DescribeOverlaps() const;
+
 	/** The class made by the game screen: the newest script class derived from this one, not abstract; null: none. */
 	static UClass* FindScriptClass();
 

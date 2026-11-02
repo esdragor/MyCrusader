@@ -2,6 +2,9 @@
 
 #include "Dev/HOLTestHooks.h"
 #include "Dev/HOLTestSequence.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 #if !UE_BUILD_SHIPPING
 
@@ -99,7 +102,8 @@ namespace UE::HeroesOfLiberty::Dev
 			UE_LOG(LogHOLTest, Error, TEXT("hol.Scenario %s: %s: %s"), *Name, *ConfigFile, *Error);
 			return;
 		}
-		Config.Seed = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
+		// V4c: drawn at each launch, unless the .json imposes its "seed".
+		Config.Seed = HOLTestHooks::GetScenarioSeed(bHasConfigFile ? &Json : nullptr, static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32));
 		Match->SetConfig(Config);
 
 		// From the main menu, the New game screen launches it (the match then starts as from its button: game screen,
@@ -174,6 +178,18 @@ namespace UE::HeroesOfLiberty::Dev
 		TEXT("hol.Scenario"),
 		TEXT("hol.Scenario [Name]: starts a match on the test scenario Tools/Scenarios/<Name>.txt (+ .json, its match configuration); no name: lists them (development only)"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&RunScenario));
+}
+
+int32 HOLTestHooks::GetScenarioSeed(const FString* Json, const int32 Drawn)
+{
+	// The .json's own "seed" (a number other than 0) imposes it; none, or 0: the seed drawn at the launch.
+	TSharedPtr<FJsonObject> Root;
+	int32 Imposed = 0;
+	if (Json && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(*Json), Root) && Root.IsValid() && Root->TryGetNumberField(TEXT("seed"), Imposed) && Imposed != 0)
+	{
+		return Imposed;
+	}
+	return Drawn;
 }
 
 bool HOLTestHooks::MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutConfig, FString* OutError)
