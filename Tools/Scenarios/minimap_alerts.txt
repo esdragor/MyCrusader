@@ -2,7 +2,7 @@
 # Plain, toi (slot 0, bleu) et une IA (slot 1) ; brouillard Normal. Une Maison a toi a 35 m du Centre, 4 Hommes d'armes pres du Centre. Rien n'est attaque tant que tu n'as pas appuye sur Entree.
 # Point 1 : capture minimap_alerts_calm (mini-carte calme, aucune alerte). Point 2 : capture minimap_alerts_house (apres ton Entree : la Maison est frappee, cercle rouge qui se resserre sur la mini-carte a sa place).
 # Point 3 : capture minimap_alerts_units (apres le 2e Entree : des Lanciers attaquent tes Hommes d'armes, 2e cercle rouge plus pres du Centre).
-# L'alerte est un cercle rouge de 24 px qui se resserre vers 8 px (1 s la passe, en boucle) pendant 6 s (MM-Q1, D624, valeurs provisoires) : reglages hol.Minimap.AlertShape (0 cercle), AlertSize, AlertShrinkSeconds, AlertSeconds. Le cercle suit l'horloge du JEU ; 4 captures espacees de 1 s (captureseq, passe de 5 s pour la preuve) montrent le rayon qui change, une 5e que l'alerte a disparu.
+# L'alerte est un cercle rouge de 24 px qui se resserre vers 8 px (0,75 s la passe, en boucle : choix de l'utilisateur, Q-minimap-alerts-vitesse) pendant 6 s (MM-Q1, D624, valeurs provisoires) : reglages hol.Minimap.AlertShape (0 cercle), AlertSize, AlertShrinkSeconds, AlertSeconds. Le cercle suit l'horloge du JEU ; 4 captures espacees de 1 s (captureseq, passe de 5 s pour la preuve) montrent le rayon qui change, une 5e que l'alerte a disparu.
 hol.Fog.Mode 2
 open /Game/Maps/Plain
 waitmap Plain
@@ -26,7 +26,7 @@ frames 30
 capture minimap_alerts_calm
 hol.Test.Sanity
 note Mini-carte en bas a droite : tes points sont bleus (la Maison est le point plus gros a droite du Centre). Aucune alerte pour l'instant.
-note 1. Entree : la Maison est frappee. Un cercle rouge qui se resserre sur la mini-carte a sa place pendant 6 s (les 4 premieres secondes plus lentement, 5 s la passe, pour la preuve ; puis 1 s la passe) ; clique dessus (clic gauche sur la mini-carte) : la camera y va.
+note 1. Entree : la Maison est frappee. Un cercle rouge qui se resserre sur la mini-carte a sa place pendant 6 s (les 4 premieres secondes plus lentement, 5 s la passe, pour la preuve ; puis 0,75 s la passe) ; clique dessus (clic gauche sur la mini-carte) : la camera y va.
 note 2. Entree : des Lanciers ennemis attaquent tes Hommes d'armes pres du Centre : un 2e cercle rouge a cet endroit.
 waitkey Entree : frapper la Maison
 hol.Cheat.DamageNear 25 3500 3500 own melee
@@ -37,7 +37,7 @@ wait 0.6
 # du HUD (rayon du cercle). Puis la periode d'origine (1 s) revient.
 hol.Minimap.AlertShrinkSeconds 5
 captureseq minimap_alerts_ring 4 1 hol.HUD.Report
-hol.Minimap.AlertShrinkSeconds 1
+hol.Minimap.AlertShrinkSeconds 0.75
 # L'alerte vit 6 s : plus de cercle 7 s apres le coup.
 wait 3.5
 capture minimap_alerts_gone

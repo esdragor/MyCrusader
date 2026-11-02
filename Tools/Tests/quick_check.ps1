@@ -2130,7 +2130,7 @@ if ($Parts -contains "camera") {
             Step "mark build minalert", "hol.Minimap.AlertBlink 10", "hol.Minimap.AlertSeconds 30", "hol.Cheat.SpawnBuilding House 0 2500 2500",
                 "waitlog Cheat: spawned House of slot 0", "wait 1", "hol.HUD.Report",
                 "hol.Cheat.DamageNear 100 2500 2500 own melee", "wait 1", "hol.HUD.Report", "capture build_minalert",
-                "hol.Minimap.AlertShrinkSeconds 10", "captureseq build_ring 4 1 hol.HUD.Report", "hol.Minimap.AlertShrinkSeconds 1",
+                "hol.Minimap.AlertShrinkSeconds 10", "captureseq build_ring 4 1 hol.HUD.Report", "hol.Minimap.AlertShrinkSeconds 0.75",
                 "hol.Minimap.AlertSeconds 0.5", "wait 1.5", "hol.HUD.Report",
                 "hol.Minimap.AlertSeconds 6", "hol.Minimap.AlertBlink 0.5",
                 "hol.Cheat.DamageNear 99999 2500 2500 own melee", "waitlog Building destroyed: House of slot 0", "frames 3"

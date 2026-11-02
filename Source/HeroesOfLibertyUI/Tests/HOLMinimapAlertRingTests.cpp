@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "HUD/HOLMinimapView.h"
+#include "HAL/IConsoleManager.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -21,6 +22,11 @@ bool FHOLMinimapAlertRingTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("period 0 stays a number"), FMath::IsFinite(UHOLMinimapView::AlertDiameter(1.f, 0.f, 24.f)));
 	TestTrue(TEXT("a size under 8 px does not grow past itself"), UHOLMinimapView::AlertDiameter(0.3f, 1.f, 6.f) <= 6.f);
 	TestTrue(TEXT("a negative age is the start"), UHOLMinimapView::AlertDiameter(-1.f, 1.f, 24.f) <= 24.f);
+	// The user's choice (Q-minimap-alerts-vitesse, 2026-11-02): 24 px, one pass in 0.75 s, an alert lives 6 s, no blink.
+	const auto Setting = [](const TCHAR* Name) { const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Name); return Variable ? Variable->GetFloat() : -1.f; };
+	TestNearlyEqual(TEXT("default pass of the shrinking"), Setting(TEXT("hol.Minimap.AlertShrinkSeconds")), 0.75f);
+	TestNearlyEqual(TEXT("default size"), Setting(TEXT("hol.Minimap.AlertSize")), 24.f);
+	TestNearlyEqual(TEXT("default life"), Setting(TEXT("hol.Minimap.AlertSeconds")), 6.f);
 	// Shrinking, strictly, over a period (the picture of a ring that moves).
 	float Previous = 1000.f;
 	for (int32 Step = 0; Step < 4; ++Step)

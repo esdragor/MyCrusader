@@ -34,7 +34,7 @@ static TAutoConsoleVariable<int32> CVarMinimapAlertShape(TEXT("hol.Minimap.Alert
 	TEXT("Shape of a minimap alert: 0 a red circle (the user's choice, MM-Q1, 2026-11-01) with a core, 1 a red square outline with a core, 2 a filled red square, 3 two nested squares, 4 a cross."), ECVF_Default);
 static TAutoConsoleVariable<float> CVarMinimapAlertSize(TEXT("hol.Minimap.AlertSize"), 24.f,
 	TEXT("Size of a minimap alert, pixels of the picture (6 to 60): the circle's starting diameter, the square shapes' side."), ECVF_Default);
-static TAutoConsoleVariable<float> CVarMinimapAlertShrink(TEXT("hol.Minimap.AlertShrinkSeconds"), 1.f,
+static TAutoConsoleVariable<float> CVarMinimapAlertShrink(TEXT("hol.Minimap.AlertShrinkSeconds"), 0.75f,
 	TEXT("The circle alert (shape 0) shrinks from AlertSize to 8 px in that many seconds, then starts again while the alert lasts (0.2 to 10)."), ECVF_Default);
 namespace
 {
