@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+tribute_fr | l'annonce du tribut en francais : « ... vous a offert 70 or (taxe 30) »
+tribute_en | la meme annonce en anglais : « ... gave you 70 gold (tax 30) »
+tribute_ja | la meme annonce en japonais, sans carres vides ni texte coupe

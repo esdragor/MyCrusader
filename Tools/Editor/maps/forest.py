@@ -121,3 +121,8 @@ def obstacles(recipe):
 def zones(recipe):
     """[(kind, x, y, radius)] for common.spawn_zones: the road discs (kind 1)."""
     return [(ROAD_KIND, x, y, ROAD_RADIUS) for x, y in discs(recipe)]
+
+
+def relays(recipe):
+    """R2 (provisional level design): one relay between every two neighbouring places (common.ring_relays); the roads are zones that do not stop them."""
+    return common.ring_relays(recipe)

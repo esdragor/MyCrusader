@@ -1,0 +1,29 @@
+# Annonce d'un tribut reçu (D372) sur le fil de messages, en français, anglais et japonais (traductions fill_po.py) : une capture par langue.
+# Plain, toi (slot 0) + une IA (slot 1) qui t'offre 70 d'or (taxe 30) ; hol.Tribute.Notice montre l'annonce sans rien donner. La langue revient en français à la fin.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+frames 20
+hol.Tribute.Notice 1 gold 70 30
+frames 30
+hol.HUD.Report 1
+waitlog HUD messages:
+capture tribute_fr
+hol.UI.Language en
+frames 20
+hol.Tribute.Notice 1 gold 70 30
+frames 30
+hol.HUD.Report 1
+waitlog HUD messages:
+capture tribute_en
+hol.UI.Language ja
+frames 20
+hol.Tribute.Notice 1 gold 70 30
+frames 30
+hol.HUD.Report 1
+waitlog HUD messages:
+capture tribute_ja
+hol.UI.Language fr
+frames 20
+hol.Test.Sanity
+note 1. Au fil de messages (haut gauche) : l'annonce du tribut reçu, une ligne par langue (français, anglais, japonais).
+note 2. Console (²) : hol.Tribute.Notice 1 gold 70 30 pour la revoir ; hol.UI.Language en / ja / fr change la langue.

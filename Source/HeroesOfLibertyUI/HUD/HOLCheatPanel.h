@@ -34,7 +34,14 @@ public:
 	void SetAnchorWidget(UWidget* InAnchor) { Anchor = InAnchor; }
 
 	bool IsOpen() const { return bOpen; }
-	void SetOpen(bool bInOpen);
+	/** bKeep: the choice is kept from one match to the next (the player's click); a fold made by the layout rule or a scenario is not. */
+	void SetOpen(bool bInOpen, bool bKeep = true);
+
+	/**
+	 * Whether the hero's block is shown (the game screen's script tells it as it refreshes). In a low window (HOLHUDLayout::LowWindowHeight, 700 px)
+	 * the panel starts folded and folds when the block opens, as they would cover each other (Q-heros-triches-600 = A).
+	 */
+	void SetHeroBlockShown(const bool bShown) { bHeroBlockShown = bShown; }
 
 	/**
 	 * Clicks a button found by its name (CheatToggle, CheatFood, CheatWood, CheatStone, CheatGold, CheatAll,
@@ -80,6 +87,9 @@ private:
 	};
 	static constexpr int32 NumSpeeds = static_cast<int32>(ESpeed::Num);
 
+	/** The game window's height in pixels (0 while there is no viewport). */
+	static float GetWindowHeight();
+
 	void BuildLayout();
 	void HandleToggleClicked();
 	void HandleCheatClicked(ECheat Cheat);
@@ -120,6 +130,10 @@ private:
 	TWeakObjectPtr<UWidget> Anchor;
 	TWeakObjectPtr<AHOLPlayerController> Controller;
 	bool bOpen = false;
+	/** The low-window rule's state (HOLHUDLayout::ShouldFoldCheats): the hero's block shown, and last tick's values. */
+	bool bHeroBlockShown = false;
+	bool bWasLowWindow = false;
+	bool bWasHeroBlockShown = false;
 	/**
 	 * What the last click asked for, or at first the server's setting when it is this machine (solo): a client never
 	 * learns that another player changed it.

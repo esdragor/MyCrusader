@@ -139,6 +139,14 @@ float UHOLScriptScreen::GetCheatPanelBottom() const
 	return CheatPanel ? CheatPanel->GetBottom() : 0.f;
 }
 
+void UHOLScriptScreen::SetCheatsHeroBlockShown(const bool bShown) const
+{
+	if (UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
+	{
+		CheatPanel->SetHeroBlockShown(bShown);
+	}
+}
+
 FString UHOLScriptScreen::DescribeOverlaps() const
 {
 	struct FNamedBox
@@ -164,6 +172,17 @@ FString UHOLScriptScreen::DescribeOverlaps() const
 		{
 			const UBorder* Border = Cast<UBorder>(Widget);
 			if (!Border || !Border->IsVisible())
+			{
+				continue;
+			}
+			// A border inside another one (the hero's portrait in the hero's block, its ability boxes) is part of that panel, not a panel
+			// covering it: only the outermost borders are compared (the hero's block read "HeroPanel x HeroPortraitFill" in every scenario).
+			bool bNested = false;
+			for (const UWidget* Parent = Border->GetParent(); Parent && !bNested; Parent = Parent->GetParent())
+			{
+				bNested = Parent->IsA<UBorder>();
+			}
+			if (bNested)
 			{
 				continue;
 			}

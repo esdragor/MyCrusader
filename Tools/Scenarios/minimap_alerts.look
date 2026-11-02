@@ -1,6 +1,8 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-minimap_alerts_calm | la mini-carte en bas a droite, points bleus (la Maison a droite du Centre), aucun carre rouge
-minimap_alerts_house_a | la mini-carte avec un cercle rouge autour de la Maison (a droite du Centre)
-minimap_alerts_house_b | la meme, 0,3 s plus tard : le cercle rouge a un autre rayon (il se resserre)
-minimap_alerts_house_c | la meme, 0,3 s plus tard encore : un 3e rayon
+minimap_alerts_calm | la mini-carte en bas a droite, points bleus (la Maison a droite du Centre), aucun cercle rouge
+minimap_alerts_ring_0 | image 1 sur 4 de la sequence (t=0 s) : un cercle rouge autour de la Maison (a droite du Centre), a son plus grand
+minimap_alerts_ring_1 | image 2 (t=1 s) : le meme cercle, plus petit
+minimap_alerts_ring_2 | image 3 (t=2 s) : encore plus petit
+minimap_alerts_ring_3 | image 4 (t=3 s) : le plus petit, un anneau serre autour du point de la Maison
+minimap_alerts_gone | 7 s apres le coup : plus aucun cercle rouge (l'alerte dure 6 s)
 minimap_alerts_units | la mini-carte avec 2 cercles rouges : celui de la Maison et un 2e pres du Centre ou les Lanciers attaquent tes Hommes d'armes

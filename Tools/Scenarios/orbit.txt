@@ -1,0 +1,22 @@
+# Repro of the "spear carrier that goes round" bug (L114): 6 Men-at-arms attack-move on an immobile camp (Aggro 1). Audit on the real chain.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Sanity.Watch 1
+hol.Camp.Aggro 1
+hol.Camp.Credit 2
+hol.Camp.Add 0 8000 3 Spearman
+waitlog Camp 0: 3 Spearman at
+frames 30
+hol.Units.Spawn 6 0 0 0 ManAtArms 200
+waitlog Spawn: 6 ManAtArms
+frames 40
+hol.Units.Move 0 6700 0
+frames 400
+hol.Sanity.DumpUnit 7
+hol.Units.Move 0 7500 0 a
+waitlog Camp 0: fighting
+waitlog Camp 0: cleared for good
+hol.Test.Sanity
+note Repro L114.

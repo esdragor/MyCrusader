@@ -158,3 +158,8 @@ def obstacles(recipe):
 def zones(recipe):
     """[(kind, x, y, radius)] for common.spawn_zones: the marsh ring (kind 0)."""
     return [(0, x, y, radius) for x, y, radius in marsh_zones(recipe)]
+
+
+def relays(recipe):
+    """R2 (provisional level design): the ring of relays plus 4 round the middle, the 4 outside the marsh ring (common.ring_relays, extra_radius = the marsh's outer edge and a zone)."""
+    return common.ring_relays(recipe, extra_radius=marsh_outer(recipe) + common.RELAY_RADIUS + common.RELAY_BASE_MARGIN)

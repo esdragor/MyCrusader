@@ -157,9 +157,9 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 RearFlankNearest = 1;
 	FAutoConsoleVariableRef CVarRearFlankNearest(TEXT("hol.Combat.RearFlankNearest"), RearFlankNearest,
 		TEXT("1 (default, with hol.Combat.RearFlank): the flank's side is always the line's end nearer the unit (along the line's axis); 0: its slide's side first (loop 21)"));
-	float RearFlankMaxShift = 1200.f;
+	float RearFlankMaxShift = 600.f;
 	FAutoConsoleVariableRef CVarRearFlankMaxShift(TEXT("hol.Combat.RearFlankMaxShift"), RearFlankMaxShift,
-		TEXT("cm (default 1200, with hol.Combat.RearFlank): a unit whose flank's goal lies further along the line does not go round (it waits or slides); 0: no cap (loop 21)"));
+		TEXT("cm (default 600, Q-flank-tours = A; was 1200, with hol.Combat.RearFlank): a unit whose flank's goal lies further along the line does not go round (it waits behind the line); 0: no cap (loop 21)"));
 	float RearFlankBack = 250.f;
 	FAutoConsoleVariableRef CVarRearFlankBack(TEXT("hol.Combat.RearFlankBack"), RearFlankBack,
 		TEXT("cm (default 250, with hol.Combat.RearFlank): the flank first walks to a point this far behind the unit's own rank, at the end's level, then round the end; 0: straight to the end (loop 21)"));

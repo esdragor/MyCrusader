@@ -137,3 +137,9 @@ def obstacles(recipe):
     for label, x, y in markers:
         common.spawn(unreal.TargetPoint, unreal.Vector(x, y, 0), label=label)
     return count + len(markers)
+
+
+def relays(recipe):
+    """R2 (provisional level design): the 4 extra relays in the plaza and one in each place's own valley (common.ring_relays on_slots: the ranges of
+    mountains run along the middle angles where the other maps put their ring)."""
+    return common.ring_relays(recipe, on_slots=True)

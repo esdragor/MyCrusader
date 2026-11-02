@@ -183,3 +183,8 @@ def sources(recipe):
             turned = common.turn((x, y), angle)
             placed.append(placed_source(kind, turned[0], turned[1]))
     return placed, len(items)
+
+
+def relays(recipe):
+    """R2 (provisional level design): one relay between every two neighbouring places (common.ring_relays)."""
+    return common.ring_relays(recipe)

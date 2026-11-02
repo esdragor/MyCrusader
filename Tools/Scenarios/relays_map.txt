@@ -1,0 +1,34 @@
+# Les relais POSES PAR LA CARTE (R2, D388) : La Steppe Petite (2 joueurs, 440 m), 2 relais neutres entre les deux bases ; 6 Hommes d'armes en prennent un, 20 s au lieu de 60
+# Aucun hol.Relay.Add : les 2 relais viennent du niveau (HOLRelayLayout, Tools/Editor/maps, relays(recipe)). Ma base est en (-16500, 0), l'autre emplacement (fermé) en (16500, 0) ; les relais sont au nord et au sud du milieu, en (0, -8250) et (0, 8250), zone de 12 m (rayon provisoire, celui de la ruine).
+# Nombre voulu par l'utilisateur (Q-relais-lieux) : 4 relais fixes + un par joueur ; ici 2 joueurs = 6 relais : 2 d'anneau (au nord et au sud, un entre les deux bases) et 4 fixes en croix autour du milieu (a 20 m du centre, positions PROVISOIRES à confirmer).
+hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+frames 5
+hol.Cheat.Resources 1000
+hol.Relay.HoldSeconds 20
+hol.Relay.Report
+hol.Camera.Focus 0 -8250
+frames 30
+capture relays_map_ring
+hol.Units.Spawn 6 0 -8250 0 ManAtArms 250
+wait 1
+wait 9
+frames 5
+capture relays_map_fill
+wait 14
+frames 5
+capture relays_map_owned
+hol.Relay.Report
+hol.Camera.Focus 0 8250
+frames 30
+capture relays_map_other
+hol.Camera.Focus 0 0
+frames 30
+capture relays_map_middle
+hol.Test.Sanity
+hol.Camera.Focus 0 -8250
+frames 10
+note 0. La carte pose 6 relais : 2 d'anneau (un par joueur) et 4 fixes en croix autour du milieu. hol.Relay.Report les liste.
+note 1. La carte a posé 2 relais neutres entre les deux bases : l'un devant toi (celui-ci, au sud du milieu), l'autre de l'autre côté du milieu (au nord, 165 m plus loin). 6 Hommes d'armes à ta couleur le tiennent depuis 20 s : le cercle est plein et à ta couleur.
+note 2. Sélectionne-les (double clic sur l'un d'eux) et envoie-les d'un clic droit sur le cercle du nord (touche Home ou la mini-carte pour y aller) : en y arrivant, le cercle du sud reste à toi (un relais pris reste à son preneur), celui du nord se remplit en 20 s, ton héros gagne de l'XP de territoire (10 par minute et par relais tenu : la barre d'XP du héros).
+note 3. Console : hol.Relay.Report (état de chaque relais), hol.Relay.HoldSeconds 60 (la durée voulue par défaut). Le nombre et les lieux des relais sont provisoires (question Q-relais-lieux).

@@ -1125,4 +1125,30 @@ bool FHOLCombatBuildingAttackTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// L114 (the Spearman that goes round): a melee held behind its line and flanking round the end does not take its own target as the
+// "free enemy" met on the way before it is round the end (it ended the flank 0.2 s after it began, walked back to the same blocked
+// place, waited, set off again). Seen on the real chain (TMPFLANK trace: free = target after 0.2 s), orbit scenario.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatFlankTakeTest, "HeroesOfLiberty.Combat.FlankTake", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLCombatFlankTakeTest::RunTest(const FString& Parameters)
+{
+	// Side -1 (the line's low end, End = -158): at Along -50 it is still behind the end, at Along -300 it is round it.
+	TestFalse(TEXT("its own target, not yet round the end: not a free enemy"), HOLCombat::CanFlankTakeEnemy(true, -1, -50.0, -158.0));
+	TestTrue(TEXT("its own target, round the end: taken"), HOLCombat::CanFlankTakeEnemy(true, -1, -300.0, -158.0));
+	TestTrue(TEXT("another enemy, not yet round the end: taken"), HOLCombat::CanFlankTakeEnemy(false, -1, -50.0, -158.0));
+	// Side +1 mirrors it (End = 165).
+	TestFalse(TEXT("its own target, side +1, not yet round the end: not a free enemy"), HOLCombat::CanFlankTakeEnemy(true, 1, 80.0, 165.0));
+	TestTrue(TEXT("its own target, side +1, round the end: taken"), HOLCombat::CanFlankTakeEnemy(true, 1, 300.0, 165.0));
+	// Q-flank-tours = A (the user, 2026-11-02): a unit goes round only if the line's end is within 600 cm; else it waits behind.
+	const IConsoleVariable* MaxShift = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.RearFlankMaxShift"));
+	TestTrue(TEXT("the flank's cap is 600 cm by default"), MaxShift && FMath::IsNearlyEqual(MaxShift->GetFloat(), 600.f));
+	// The tours: nobody with a free place at the end = no going round, whatever the distance; the cap still holds.
+	TestFalse(TEXT("no free enemy beyond the end: it waits behind the line"), HOLCombat::ShouldGoRound(false, 200.0, 600.0));
+	TestTrue(TEXT("a free enemy beyond the end, the end near: it goes round"), HOLCombat::ShouldGoRound(true, 200.0, 600.0));
+	TestFalse(TEXT("a free enemy beyond the end, the end too far: it waits"), HOLCombat::ShouldGoRound(true, 700.0, 600.0));
+	TestTrue(TEXT("no cap (0): the distance does not count"), HOLCombat::ShouldGoRound(true, 5000.0, 0.0));
+	TestTrue(TEXT("side -1: an enemy 50 cm short of the end, within the 100 cm slack, is beyond it"), HOLCombat::IsBeyondLineEnd(-1, -108.0, -158.0, 100.0));
+	TestFalse(TEXT("side +1: an enemy 150 cm short of the end is not"), HOLCombat::IsBeyondLineEnd(1, 15.0, 165.0, 100.0));
+	return true;
+}
+
 #endif
