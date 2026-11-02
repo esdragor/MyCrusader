@@ -355,7 +355,7 @@ TRANSLATIONS = {
     "HOLVolcanoBanner,Alert": ("Volcano: eruption in {0}", "火山：噴火まで {0}"),
     "HOLVolcanoBanner,Erupting": ("Volcano: the lava is advancing", "火山：溶岩が進んでいます"),
     "HOLVolcanoBanner,Cooling": ("Volcano: the lava is cooling", "火山：溶岩が冷えています"),
-    "HOLVolcanoBanner,AltarHeld": ("Ancient altar: held {0} % ({1} s)", "古代の祭壇：確保 {0} %（残り {1}秒）"),
+    "HOLVolcanoBanner,AltarHeld": ("Ancient altar: held {0} %", "古代の祭壇：確保 {0} %"),
     "HOLVolcanoBanner,AltarContested": ("Ancient altar: contested ({0} %)", "古代の祭壇：争奪中（{0} %）"),
     "HOLVolcanoBanner,AltarIdle": ("Ancient altar: abandoned ({0} %)", "古代の祭壇：放棄（{0} %）"),
     "HOLVolcanoBanner,SiteNumber": ("Site {0} - {1}", "地点 {0} - {1}"),

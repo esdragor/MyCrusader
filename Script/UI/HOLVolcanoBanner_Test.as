@@ -50,8 +50,10 @@ void Test_VolcanoBannerAltar(FUnitTest& T)
 	Altar.AltarSecondsLeft = 40;
 	Sites.Add(Altar);
 	FHOLVolcanoBannerView View = HOLVolcanoBanner::Make(Sites);
-	T.AssertEquals(View.Describe, "volcano 1: altar held 33 left 40", "line");
-	T.AssertTrue(View.Text.Contains("33 %") && View.Text.Contains("40 s"), "the line says the share held and the seconds left");
+	T.AssertEquals(View.Describe, "volcano 1: altar held 33", "line");
+	// The percentage is enough (user, 2026-11-02): no seconds after it. Only the alert's countdown keeps its m:ss.
+	T.AssertEquals(View.Text, "Autel ancien : tenu 33 %", "the line says the share held, without a countdown in seconds");
+	T.AssertFalse(View.Text.Contains(" s)"), "no seconds on the altar line");
 	Sites[0].AltarHold = 2;
 	T.AssertEquals(HOLVolcanoBanner::Make(Sites).Describe, "volcano 1: altar contested 33", "line");
 	Sites[0].AltarHold = 0;

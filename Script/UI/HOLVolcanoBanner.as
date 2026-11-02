@@ -37,7 +37,7 @@ namespace HOLVolcanoBannerText
 		if (Key == Alert) return NSLOCTEXT("HOLVolcanoBanner", "Alert", "Volcan : éruption dans {0}");
 		if (Key == Erupting) return NSLOCTEXT("HOLVolcanoBanner", "Erupting", "Volcan : la lave avance");
 		if (Key == Cooling) return NSLOCTEXT("HOLVolcanoBanner", "Cooling", "Volcan : la lave refroidit");
-		if (Key == AltarHeld) return NSLOCTEXT("HOLVolcanoBanner", "AltarHeld", "Autel ancien : tenu {0} % ({1} s)");
+		if (Key == AltarHeld) return NSLOCTEXT("HOLVolcanoBanner", "AltarHeld", "Autel ancien : tenu {0} %");
 		if (Key == AltarContested) return NSLOCTEXT("HOLVolcanoBanner", "AltarContested", "Autel ancien : disputé ({0} %)");
 		if (Key == AltarIdle) return NSLOCTEXT("HOLVolcanoBanner", "AltarIdle", "Autel ancien : abandonné ({0} %)");
 		if (Key == SiteNumber) return NSLOCTEXT("HOLVolcanoBanner", "SiteNumber", "Site {0} - {1}");
@@ -81,8 +81,8 @@ namespace HOLVolcanoBanner
 			}
 			else if (Site.AltarHold == 1)
 			{
-				Line = HOLVolcanoBannerText::Format(HOLVolcanoBannerText::AltarHeld, f"{Site.AltarPercent}", f"{Site.AltarSecondsLeft}");
-				OutDescribe = f"altar held {Site.AltarPercent} left {Site.AltarSecondsLeft}";
+				Line = HOLVolcanoBannerText::Format(HOLVolcanoBannerText::AltarHeld, f"{Site.AltarPercent}");
+				OutDescribe = f"altar held {Site.AltarPercent}";
 			}
 			else
 			{

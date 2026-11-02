@@ -19,7 +19,7 @@ hol.HUD.Report 1
 waitlog HUD overlap:
 capture volcano_held
 hol.Volcano.Report
-note 1. A gauche, sous le panneau Triches : « Autel ancien : tenu x % (y s) », le compte monte pendant que tes 5 Hommes d'armes tiennent l'autel (60 s sans adversaire).
+note 1. A gauche, sous le panneau Triches : « Autel ancien : tenu x % », le compte monte pendant que tes 5 Hommes d'armes tiennent l'autel (60 s sans adversaire).
 waitkey Entrée : 2 Hommes d'armes ennemis arrivent sur l'autel (le compte se fige)
 hol.Camera.FocusNear 7800 1800
 wait 1
