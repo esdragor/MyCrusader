@@ -963,6 +963,40 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/** Scripted trials: a unit type picked by its name, whatever stands on top of it on the screen (a click on a crowded spot takes another unit). */
+	FAutoConsoleCommand SelectTypeCommand(
+		TEXT("hol.Select.Type"),
+		TEXT("hol.Select.Type <Type> [last]: selects every unit of the local player known here of that type (Monk, Spearman...), on the screen or not; last: the newest one alone"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.Type <Type>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				TArray<FHOLUnitView> Views;
+				HOLUnitView::Gather(*Controller->GetWorld(), Views);
+				TArray<uint32> UnitIds;
+				for (const FHOLUnitView& View : Views)
+				{
+					if (PlayerState && View.OwnerPlayer == PlayerState->GetPlayerIndex() && View.TypeName == FName(*Args[0]))
+					{
+						UnitIds.Add(View.UnitId);
+					}
+				}
+				UnitIds.Sort();
+				if (Args.Num() > 1 && Args[1] == TEXT("last") && UnitIds.Num() > 1)
+				{
+					UnitIds = { UnitIds.Last() };
+				}
+				UE_LOG(LogHOLMatch, Display, TEXT("Select type %s: %d units"), *Args[0], UnitIds.Num());
+				Controller->SetUnitSelection(MoveTemp(UnitIds));
+			}
+		}));
+
 	/** The same, to a point given from the player's own start (a script does not know which slot a client holds). */
 	FAutoConsoleCommand UnitsOrderNearCommand(
 		TEXT("hol.Units.OrderNear"),
