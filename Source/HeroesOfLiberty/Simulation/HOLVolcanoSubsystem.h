@@ -73,6 +73,30 @@ public:
 	 */
 	bool StepAltarOf(int32 SiteIndex, float Now, float DeltaSeconds);
 
+	/** V11 (D639, D640): what the world says of one altar for one slot (the AI's), measured on the units of the zone and the slot's buildings. */
+	struct FAltarMeasure
+	{
+		int32 SiteIndex = INDEX_NONE;
+		FVector Location = FVector::ZeroVector;
+		float Radius = 0.f;
+		/** The slot's camp has a living unit in the zone, and no other camp (a neutral is a camp of its own, an adversary): the camp alone in the zone. */
+		bool bOwnCampAlone = false;
+		/** At least one living unit of another camp stands in the zone. */
+		bool bAdversary = false;
+		/** The adversary's strength in the zone: 1 per soldier (a Peasant counts AiAltarWorkerWeight). */
+		float AdversaryStrength = 0.f;
+		/** The distance (cm) from the slot's buildings (the nearest) to the nearest possible flow's line of the site; a huge number without building or flow. */
+		float TraceFromBuildings = 0.f;
+		/** The distance (cm) from the altar's middle to the nearest possible flow's line of the site. */
+		float TraceFromAltar = 0.f;
+	};
+
+	/**
+	 * V11: measures the altar of SiteIndex for Slot at this step. Returns false (nothing measured) when the site has no altar, the altar is not lit
+	 * now (held and woken, or the site not Armed) or the world lacks what it reads. Server and solo only.
+	 */
+	bool MeasureAltar(int32 SiteIndex, int32 Slot, FAltarMeasure& Out) const;
+
 	/** V11: one unit that must leave a flow's corridor, and where it goes. */
 	struct FEvacuation
 	{
@@ -114,6 +138,8 @@ private:
 	TArray<float> AltarHeld;
 	TArray<HOLVolcano::EAltarHold> AltarHolds;
 	TArray<int32> AltarCycle;
+	/** The camp each altar's count belongs to (INDEX_NONE: nobody yet): a new holder restarts at 0. */
+	TArray<int32> AltarHolder;
 	FHOLVolcanoSettings Settings;
 	/** Height of the obstacle boxes (cm): well above the ground, as a building's. */
 	float ObstacleHeight = 600.f;
