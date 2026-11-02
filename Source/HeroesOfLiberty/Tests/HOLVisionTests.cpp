@@ -583,6 +583,49 @@ bool FHOLVisionPictureTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("read outside the grid: black"), HOLFogPicture::Read(Grid, Bytes, FVector2D(99999., 0.)), EHOLCellVision::Unexplored);
 	TestEqual(TEXT("read agrees with the map"), HOLFogPicture::Read(Grid, Bytes, Grid.GetCenter(FIntPoint(12, 9))), Map.GetVision(0, FIntPoint(12, 9)));
 
+	// The smooth read (the minimap's terrain at 480 px, soft edges): the cells' bytes interpolated bilinearly between the cells' centres, 0..1.
+	if (Bytes.Num() == Grid.Num())
+	{
+		const float VisibleValue = Bytes[Grid.ToIndex(FIntPoint(16, 10))] / 255.f;
+		const float NextValue = Bytes[Grid.ToIndex(FIntPoint(17, 10))] / 255.f;
+		TestTrue(TEXT("smooth: the cells (16, 10) and (17, 10) differ (the test's premise)"), !FMath::IsNearlyEqual(VisibleValue, NextValue, 0.05f));
+		TestTrue(TEXT("smooth: a cell's centre is its byte"), FMath::IsNearlyEqual(HOLFogPicture::ReadSmooth(Grid, Bytes, Grid.GetCenter(FIntPoint(16, 10))), VisibleValue, 0.001f));
+		const FVector2D Between = (Grid.GetCenter(FIntPoint(16, 10)) + Grid.GetCenter(FIntPoint(17, 10))) * 0.5;
+		const float Mid = HOLFogPicture::ReadSmooth(Grid, Bytes, Between);
+		TestTrue(TEXT("smooth: halfway between two cells' centres is the mean of their bytes"), FMath::IsNearlyEqual(Mid, 0.5f * (VisibleValue + NextValue), 0.01f));
+		const float Quarter = HOLFogPicture::ReadSmooth(Grid, Bytes, Grid.GetCenter(FIntPoint(16, 10)) * 0.75 + Grid.GetCenter(FIntPoint(17, 10)) * 0.25);
+		TestTrue(TEXT("smooth: a quarter of the way is a quarter of the step"), FMath::IsNearlyEqual(Quarter, 0.75f * VisibleValue + 0.25f * NextValue, 0.01f));
+		TestTrue(TEXT("smooth: outside the grid is black"), HOLFogPicture::ReadSmooth(Grid, Bytes, FVector2D(99999., 0.)) < 0.001f);
+		TestTrue(TEXT("smooth: no bytes is black"), HOLFogPicture::ReadSmooth(Grid, TConstArrayView<uint8>(), FVector2D::ZeroVector) < 0.001f);
+	}
+
+	// The blur: a lone cell in sight spreads over its eight neighbours (4, 2 and 1 sixteenths), a uniform field does not change, the corner repeats itself.
+	{
+		TArray<uint8> Lone;
+		Lone.Init(HOLFogPicture::UnexploredByte, Grid.Num());
+		Lone[Grid.ToIndex(FIntPoint(10, 10))] = HOLFogPicture::VisibleByte;
+		TArray<uint8> Soft;
+		HOLFogPicture::Blur(Grid, Lone, Soft);
+		TestEqual(TEXT("blur: one byte a cell"), Soft.Num(), Grid.Num());
+		if (Soft.Num() == Grid.Num())
+		{
+			TestEqual(TEXT("blur: the lone cell keeps 4/16"), static_cast<int32>(Soft[Grid.ToIndex(FIntPoint(10, 10))]), 64);
+			TestEqual(TEXT("blur: a side neighbour gets 2/16"), static_cast<int32>(Soft[Grid.ToIndex(FIntPoint(11, 10))]), 32);
+			TestEqual(TEXT("blur: a diagonal neighbour gets 1/16"), static_cast<int32>(Soft[Grid.ToIndex(FIntPoint(9, 11))]), 16);
+			TestEqual(TEXT("blur: two cells away gets nothing"), static_cast<int32>(Soft[Grid.ToIndex(FIntPoint(12, 10))]), 0);
+		}
+		TArray<uint8> Flat;
+		Flat.Init(HOLFogPicture::ExploredByte, Grid.Num());
+		TArray<uint8> FlatSoft;
+		HOLFogPicture::Blur(Grid, Flat, FlatSoft);
+		TestEqual(TEXT("blur: a uniform field (corner and middle) stays itself"),
+			FlatSoft.Num() == Grid.Num() ? static_cast<int32>(FlatSoft[0]) * 1000 + FlatSoft[Grid.ToIndex(FIntPoint(5, 5))] : -1,
+			static_cast<int32>(HOLFogPicture::ExploredByte) * 1000 + HOLFogPicture::ExploredByte);
+		TArray<uint8> Nothing;
+		HOLFogPicture::Blur(Grid, TConstArrayView<uint8>(), Nothing);
+		TestTrue(TEXT("blur: no bytes, no bytes"), Nothing.IsEmpty());
+	}
+
 	for (const EHOLCellVision Vision : { EHOLCellVision::Unexplored, EHOLCellVision::Explored, EHOLCellVision::Visible })
 	{
 		TestEqual(TEXT("a byte comes back to its state"), HOLFogPicture::FromByte(HOLFogPicture::ToByte(Vision)), Vision);

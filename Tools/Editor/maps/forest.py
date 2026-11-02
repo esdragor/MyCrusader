@@ -28,6 +28,14 @@ ROAD_CLEAR = 300.0  # cm: no source's centre nearer than this to a road's edge (
 CHORDS = os.environ.get("HOL_FOREST_CHORDS", "1") != "0"
 VEIN_DRAWS = 20000  # steppe.VEIN_DRAWS for this map (the corridors make the territories narrower)
 
+# CQ7 = B (D598): the Budget `dense` of Tools/Data/Maps.csv: twice the Steppe's trees per player (Map.Table: 600, Huge 720), in groves of
+# 30 to 40 trees (the Steppe's are 12 to 18); the berries are the standard ones.
+DENSE_BUDGET = {"default": (600, 15), "Huge": (int(os.environ.get("HOL_FOREST_HUGE_TREES", "720")), 23)}
+DENSE_LADDER = [30, 34, 37, 40]
+DENSE_CYCLE = [34, 34, 30, 37, 40, 34, 34, 30, 37, 40]
+DENSE_MEANS = [34.0, 35.0, 36.0, 37.0, 38.0]
+DENSE_PACK = 35  # common.PACK_TREES for the forest: how many groves a territory is asked to hold
+
 PLANS = {}
 
 
@@ -81,14 +89,22 @@ def distance_to_road(recipe, point):
 def sources(recipe):
     """The Steppe's sources, none of them on or within ROAD_CLEAR of a road (the layout keeps the groves' extent off it, then the sources
     whose centre is still too near are dropped: the territories hold a little more than the budget, Map.Table checks it still holds it)."""
-    before, draws = steppe.KEEP_OUT, steppe.VEIN_DRAWS
+    before = (steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.BUDGET, steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS, steppe.MIN_EXTENT,
+              steppe.FAR_FLOOR, common.PACK_TREES)
+    # CQ7 = B (the user, 2026-11-01): the forest is twice as dense in wood (the budget of trees doubled) and its groves are 30 to 40 trees.
+    steppe.BUDGET = DENSE_BUDGET
+    steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS = DENSE_LADDER, DENSE_CYCLE, DENSE_MEANS
+    steppe.MIN_EXTENT = steppe.extent("Wood", DENSE_LADDER[0])
+    steppe.FAR_FLOOR = steppe.DEPOSIT_GAP + 2 * steppe.MIN_EXTENT + 10.0
+    common.PACK_TREES = DENSE_PACK
     reach = ROAD_RADIUS + ROAD_CLEAR + steppe.MIN_EXTENT
     steppe.KEEP_OUT = lambda point: distance_to_road(recipe, point) < reach
     steppe.VEIN_DRAWS = VEIN_DRAWS
     try:
         placed, groups = steppe.sources(recipe)
     finally:
-        steppe.KEEP_OUT, steppe.VEIN_DRAWS = before, draws
+        (steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.BUDGET, steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS, steppe.MIN_EXTENT,
+         steppe.FAR_FLOOR, common.PACK_TREES) = before
     kept = []
     for source in placed:
         at = source.get_editor_property("location")

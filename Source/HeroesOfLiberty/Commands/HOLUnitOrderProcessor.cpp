@@ -2476,8 +2476,10 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 		++Block.Steps;
 		const FVector2D Fallback = HOLFormation::GetDirectionOnLine(Block.Path, 0., HOLFormation::BlockTurnWindow, FVector2D(1., 0.));
 		// C3: the ground under the block's point (a marsh) takes its share of the pace; the members follow their slots.
-		const double Pace = Block.Pace * Scale
-			* GetTerrainShare(Terrain, FVector(Block.Progress < 0. ? Block.Path[0] : HOLFormation::GetPointOnLine(Block.Path, Block.Progress), 0.));
+		// The members' own walk speed takes the same share (the road's 130 % spent in the pace only was cut back to their own
+		// 100 % by SteerInFile: a group on a road went no faster, map_forest trial of 2026-11-01, road_group.ps1).
+		const float TerrainShare = GetTerrainShare(Terrain, FVector(Block.Progress < 0. ? Block.Path[0] : HOLFormation::GetPointOnLine(Block.Path, Block.Progress), 0.));
+		const double Pace = Block.Pace * Scale * TerrainShare;
 
 		// The march: the block's point never waits (playtest note 1 of J7b, the user's 3rd trial: no waiting, no slowing
 		// down), nor does any member (the user's 5th trial: each at the block's pace, its depth its own, sliding to its
@@ -2825,7 +2827,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				const double Room = FMath::Max(Back.Size() - Constants.Radius, 0.);
 				Slot = FVector(Point + Back.GetSafeNormal() * Room, Z);
 			}
-			const float WalkSpeed = GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer);
+			const float WalkSpeed = GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer) * TerrainShare;
 			if (Block.bBlending)
 			{
 				// Re-forming: straight to its slot sliding to its place (a member at most BlockCatchUpShare of the pace).
@@ -2944,7 +2946,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				}
 				Order->MarchSpeed = Block.Pace;
 				Order->MarchSlot = FVector2f(FVector2D(Target));
-				const float Speed = FMath::Min(GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Straggler.Entity).OwnerPlayer), static_cast<float>(Block.Pace * Scale * HOLFormation::BlockCatchUpShare));
+				const float Speed = FMath::Min(GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Straggler.Entity).OwnerPlayer) * TerrainShare, static_cast<float>(Block.Pace * Scale * HOLFormation::BlockCatchUpShare));
 				SteerOnMarch(Straggler.Entity, *Order, Target, Speed, Block.Pace * Scale, Direction, static_cast<float>(Block.Length - Block.Progress));
 				++Block.Report.JoinedStragglers;
 				UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sa straggler joined the block after %d steps of march, %.0f cm from its slot, %s, pace %.0f cm/s"),
@@ -2957,7 +2959,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			// Ahead of it (a straggler that started ahead of the block), never turning back either (SteerOnMarch).
 			Order->Phase = EHOLMovePhase::Block;
 			Order->MarchSlot = FVector2f(FVector2D(Target));
-			const float OwnSpeed = GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Straggler.Entity).OwnerPlayer);
+			const float OwnSpeed = GetWalkSpeed(Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Straggler.Entity).OwnerPlayer) * TerrainShare;
 			const float Speed = Straggler.bQueued && Distance <= HOLFormation::BlockSoftHoldDistance
 				? FMath::Min(OwnSpeed, static_cast<float>(Pace * HOLFormation::BlockCatchUpShare)) : OwnSpeed;
 			SteerOnMarch(Straggler.Entity, *Order, Target, Speed, Pace, Direction, static_cast<float>(Block.Length - Block.Progress));

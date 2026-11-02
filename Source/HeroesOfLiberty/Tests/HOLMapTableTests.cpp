@@ -104,6 +104,10 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	constexpr int32 MaxPackTrees = 20;
 	constexpr int32 MinPackTrees = 10;
 	constexpr int32 PackSlack = 2;
+	/** C5 (CQ7 = B, 2026-11-01): the Forest's groves are 30 to 40 trees (steppe.py GROVE_LADDER overridden in forest.py): a cluster has at most 45, a pack counts from 25. */
+	constexpr int32 DenseMaxPackTrees = 45;
+	constexpr int32 DenseMinPackTrees = 25;
+	constexpr int32 DenseBiggestPackTrees = 40;
 	/** M-Q10b: the biggest pack a recipe makes (the Steppe's ladder is 12, 14, 16, 18) and the packs a territory needs are counted with it. */
 	constexpr int32 BiggestPackTrees = 18;
 	/**
@@ -112,8 +116,12 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	 * for the trees at the edge of a pack).
 	 * 2026-10-31 (the user, after the tree_spacing trial: "a forest is trees that touch, compact, a minimum of white"): the trunks (60 cm radius)
 	 * nearly touch: 1.25 to 1.35 m asked of the generator; the mean is 1.34 to 1.37 m on Plain and Hinterland, 1.50 to 1.55 m on the Steppe (its lone trees and clumps), at most 1.6 m.
+	 * 2026-11-01 (the user, after the tree_spacing_compare trial: REGLAGE 0.8 m): the trunks may overlap (60 cm radius, 80 cm between the centres):
+	 * 0.8 to 0.9 m asked of the generator (GROVE_SPACING 80), the mean over the groves, lone trees and clumps is measured below, at most 1.2 m.
 	 */
-	constexpr double MeanTreeSpacing = 160.0;
+	constexpr double MeanTreeSpacing = 120.0;
+	/** Plain's wood is a grid (wood_points, 134 cm between neighbours), not a grove: its limit is the old one. */
+	constexpr double MeanTreeSpacingGrid = 160.0;
 
 	/** Whether Config/DefaultGame.ini carries this line (a commented line does not count). */
 	bool IsCooked(const TArray<FString>& IniLines, const FString& Line)
@@ -476,7 +484,9 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			}
 			for (const FBudgetLine& Line : Budget)
 			{
-				const int32 Needed = Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed;
+				// C5 (CQ7 = B): the Budget `dense` holds twice the wood.
+				const int32 WoodFactor = MapInfo.bDenseWood && FCString::Strcmp(Line.Type, TEXT("Tree")) == 0 ? 2 : 1;
+				const int32 Needed = (Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed) * WoodFactor;
 				int32 Least = MAX_int32, Most = 0;
 				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 				{
@@ -548,15 +558,18 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					if (MapInfo.bBudget)
 					{
 						TestTrue(FString::Printf(TEXT("%s: the trees are %.0f cm from their nearest tree on average, over %.0f (M-Q10b: tighten the trees, GROVE_SPACING in Tools/Editor/maps/common.py; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, MeanSpacing,
-							MeanTreeSpacing, MapInfo.Key, Info.Key), MeanSpacing <= MeanTreeSpacing);
+							MeanTreeSpacing, MapInfo.Key, Info.Key), MeanSpacing <= (FCString::Strcmp(MapInfo.Key, TEXT("Plain")) == 0 ? MeanTreeSpacingGrid : MeanTreeSpacing));
 					}
+					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
+					const int32 MapMinPack = MapInfo.bDenseWood ? DenseMinPackTrees : MinPackTrees;
+					const int32 MapMaxPack = MapInfo.bDenseWood ? DenseMaxPackTrees : MaxPackTrees;
 					TArray<int32> PacksOf;
 					PacksOf.Init(0, Info.NumPlaces);
 					int32 Biggest = 0, Packs = 0, Smallest = MAX_int32;
 					for (int32 Number = 0; Number < PackSizes.Num(); ++Number)
 					{
 						Biggest = FMath::Max(Biggest, PackSizes[Number]);
-						if (PackSizes[Number] < MinPackTrees)
+						if (PackSizes[Number] < MapMinPack)
 						{
 							continue;
 						}
@@ -570,23 +583,24 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						}
 						++PacksOf[Owner];
 					}
-					const int32 Budgeted = Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed;
-					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, BiggestPackTrees) - PackSlack;
+					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
+					const int32 Budgeted = (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed) * (MapInfo.bDenseWood ? 2 : 1);
+					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, MapInfo.bDenseWood ? DenseBiggestPackTrees : BiggestPackTrees) - PackSlack;
 					int32 LeastPacks = MAX_int32;
 					for (const int32 Held : PacksOf)
 					{
 						LeastPacks = FMath::Min(LeastPacks, Held);
 					}
 					AddInfo(FString::Printf(TEXT("%s: %d trees in %d packs of %d trees or more (smallest %d, biggest cluster %d trees), per territory %d at least (needed %d%s)"), *Name, Trees.Num(),
-						Packs, MinPackTrees, Packs ? Smallest : 0, Biggest, LeastPacks == MAX_int32 ? 0 : LeastPacks, PacksNeeded, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
+						Packs, MapMinPack, Packs ? Smallest : 0, Biggest, LeastPacks == MAX_int32 ? 0 : LeastPacks, PacksNeeded, MapInfo.bBudget ? TEXT("") : TEXT(", map without Budget")));
 					if (MapInfo.bBudget)
 					{
-						TestTrue(FString::Printf(TEXT("%s: a cluster of %d trees, over %d: the forests are packs of %d trees (M-Q8; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, Biggest, MaxPackTrees, PackTrees, MapInfo.Key, Info.Key),
-							Biggest <= MaxPackTrees);
+						TestTrue(FString::Printf(TEXT("%s: a cluster of %d trees, over %d: the forests are packs of %d trees (M-Q8; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, Biggest, MapMaxPack, PackTrees, MapInfo.Key, Info.Key),
+							Biggest <= MapMaxPack);
 						for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 						{
 							TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d packs of %d trees or more, under %d (the budget of %d trees in packs of %d, less %d: many small forests, M-Q8)"), *Name, Slot, PacksOf[Slot],
-								MinPackTrees, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded);
+								MapMinPack, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded);
 						}
 					}
 				}

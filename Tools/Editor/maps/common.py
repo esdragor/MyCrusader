@@ -665,9 +665,9 @@ def wood(centre, along_axis, side_axis, rows, columns, first_side):
 # ---- Natural-looking groves and patches (C1c). Plain keeps its grid wood above; a map that wants organic woods (the
 # Steppe) uses these. Everything is deterministic from integers: a small xorshift generator written here (no `random`, no
 # state shared with anything), so a map file made twice, on any Python, is the same file.
-GROVE_SPACING = float(os.environ.get("HOL_GROVE_SPACING", "125"))  # cm: 2026-10-31 (the user, after the tree_spacing trial: "a forest is trees that touch, compact, a minimum of white"; it was 160, 220 before): the closest two neighbouring trunks of a grove (60 cm radius, so they touch at 120) get; HOL_GROVE_SPACING sets it for the variants
+GROVE_SPACING = float(os.environ.get("HOL_GROVE_SPACING", "80"))  # cm: 2026-11-01 (the user, REGLAGE after tree_spacing_compare: 0.8 m, the trunks of 60 cm radius overlap); 2026-10-31 (the user, after the tree_spacing trial: "a forest is trees that touch, compact, a minimum of white"; it was 160, 220 before): the closest two neighbouring trunks of a grove (60 cm radius, so they touch at 120) get; HOL_GROVE_SPACING sets it for the variants
 GROVE_SPACING_SLACK = 10.0  # the spacing asked of a candidate tree is GROVE_SPACING plus up to this much
-GROVE_NEVER = 120.0  # no two trees closer than this, whatever (trunks of 60 cm touch at 120)
+GROVE_NEVER = 80.0  # no two trees closer than this, whatever (2026-11-01: 0.8 m, trunks of 60 cm overlap; was 120, they touched)
 GROVE_AREA = 1.09 * (GROVE_SPACING + GROVE_SPACING_SLACK / 3.0) ** 2  # cm2 a tree takes up in a blob (a dense random packing of trunks GROVE_SPACING apart: 29 600 at 1.6 to 1.74 m, 56 000 at 2.2 to 2.4 m)
 GROVE_GLADES = os.environ.get("HOL_GROVE_GLADES", "1") != "0"  # a grove of 12 or more has a glade or a 3 m path through it (the default); HOL_GROVE_GLADES=0 makes them solid blocks of trees (question in Auto_Journey_Retours.md, 2026-10-31)
 GLADE_RADIUS = (250.0, 380.0)

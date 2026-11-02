@@ -68,7 +68,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	 * apart. The far layer is not the near one turned onto every slot: under MaxCopiedShare of the sources beyond 130 m of every slot
 	 * have an image, turned by some number of places, within 50 cm.
 	 */
-	constexpr double TrunkOverlap = 120.0; // trunks of 60 cm radius: they may touch (2026-10-31, compact groves), never overlap
+	constexpr double TrunkOverlap = 80.0; // 2026-11-01 (the user, REGLAGE 0.8 m): the trunks of 60 cm radius may overlap down to 80 cm between the centres (GROVE_SPACING 80), never closer
 	constexpr double LatticeResultant = 0.85;
 	constexpr double MaxLatticeShare = 0.15;
 	constexpr double MeanLatticeResultant = 0.55;

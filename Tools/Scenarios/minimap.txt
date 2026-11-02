@@ -26,6 +26,9 @@ hol.Select.BoxGround -14600 -900 -13400 900
 waitlog Selection: 4 units (own)
 frames 30
 hol.HUD.Report 1
+frames 40
+hol.HUD.Report 1
+capture minimap_view
 note Mini-carte : tes points sont bleus (batiments plus gros), les ennemis en rouge seulement quand tu les vois ; le cadre blanc est ce que montre la camera.
 note CLIC GAUCHE sur la mini-carte : la camera va la (maintenu, elle suit). CLIC DROIT : tes Hommes d'armes selectionnes marchent la. Envoie-les vers les 3 Lanciers rouges (a l'est du centre) : quand l'un est blesse, un carre rouge clignote a l'endroit du combat pendant 6 s.
 note Le noir est ce que tu n'as jamais vu, le gris ce que tu as vu puis quitte ; les petits points colores (jaune or, gris pierre, vert bois, rose baies) sont les ressources deja explorees.
