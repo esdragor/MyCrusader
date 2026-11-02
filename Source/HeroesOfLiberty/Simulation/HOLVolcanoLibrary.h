@@ -16,34 +16,34 @@ struct HEROESOFLIBERTY_API FHOLVolcanoSiteView
 {
 	GENERATED_BODY()
 
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	int32 Phase = 0;
 
 	/** Whole seconds left before the lava starts, during the alert only; -1 otherwise. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	int32 SecondsToErupt = -1;
 
 	/** The site has an altar. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	bool bAltarPresent = false;
 
 	/** The altar can be held now (the site is Armed and not woken). */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	bool bAltarLit = false;
 
 	/** The altar's count as a percentage of the time to hold, 0 to 100. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	int32 AltarPercent = 0;
 
 	/** The seconds still to hold, rounded up (the countdown at the altar). */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	int32 AltarSecondsLeft = 0;
 
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	int32 AltarHold = 0;
 
 	/** This cycle's alert was begun by the altar held. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Volcano")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Volcano")
 	bool bWoken = false;
 };
 

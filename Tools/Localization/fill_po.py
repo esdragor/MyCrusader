@@ -351,6 +351,14 @@ TRANSLATIONS = {
     "HOLPauseScreen,TimerOver": ("Anyone can resume", "誰でも再開できます"),
     "HOLPauseScreen,Left": ("Pauses left: {0}", "残りの一時停止：{0}"),
     "HOLPauseScreen,Resume": ("Resume", "再開"),
+    # V10: the volcano's lines on the HUD (Script/UI/HOLVolcanoBanner.as: {0} a clock m:ss, a percentage or a site number, {1} seconds or the line).
+    "HOLVolcanoBanner,Alert": ("Volcano: eruption in {0}", "火山：噴火まで {0}"),
+    "HOLVolcanoBanner,Erupting": ("Volcano: the lava is advancing", "火山：溶岩が進んでいます"),
+    "HOLVolcanoBanner,Cooling": ("Volcano: the lava is cooling", "火山：溶岩が冷えています"),
+    "HOLVolcanoBanner,AltarHeld": ("Ancient altar: held {0} % ({1} s)", "古代の祭壇：確保 {0} %（残り {1}秒）"),
+    "HOLVolcanoBanner,AltarContested": ("Ancient altar: contested ({0} %)", "古代の祭壇：争奪中（{0} %）"),
+    "HOLVolcanoBanner,AltarIdle": ("Ancient altar: abandoned ({0} %)", "古代の祭壇：放棄（{0} %）"),
+    "HOLVolcanoBanner,SiteNumber": ("Site {0} - {1}", "地点 {0} - {1}"),
     # R3.10: the banner while the match waits for its named players.
     "HOLGameScreen,WaitingFor": ("Waiting for {Players} ({Time})", "{Players}を待っています（{Time}）"),
     "HOLGameScreen,AbsentLine": ("{Name}: connection lost — {Time}", "{Name}：接続が切れました — {Time}"),
