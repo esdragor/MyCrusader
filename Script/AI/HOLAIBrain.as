@@ -247,6 +247,13 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			Free.Remove(MarketBuilder);
 		}
+		// 3b3. The Siege Workshop (S6, provisional): Hard builds one once it has an army.
+		const int SiegeBuilder = ThinkSiegeBuild(PlayerIndex, Step, Summary, Data);
+		if (SiegeBuilder >= 0)
+		{
+			Free.Remove(SiegeBuilder);
+		}
+		ThinkSiegeProduce(PlayerIndex, Step, Summary);
 
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
@@ -583,6 +590,95 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Sent.Ids.Add(Builder);
 		SentBuilders.Add(PlayerIndex, Sent);
 		return Builder;
+	}
+
+	// The Siege Workshop's construction (S6, provisional, HOLAISiege::WantsWorkshop): Hard only builds one, from the tier where it opens, with a first army
+	// and an enemy centre to break; behind the centre like the Market; one Peasant sent, not one already sent to a site. Returns that Peasant (-1: none).
+	int ThinkSiegeBuild(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		bool bHasWorkshop = false;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			bHasWorkshop = bHasWorkshop || Summary.Buildings[Index].TypeName == n"SiegeWorkshop";
+		}
+		FHOLAITypeFigures Figures;
+		if (!Summary.bHasCentre || !HOLAIOrder::ReadAIBuildingFigures(n"SiegeWorkshop", Figures))
+		{
+			return -1;
+		}
+		if (!HOLAISiege::WantsWorkshop(FHOLAISiegeSettings(), int(Summary.Level), Summary.Tier, bHasWorkshop, Summary.bHasEnemyCentre, Summary.Army.Num(),
+			Summary.Wood.Stock, Figures.CostWood))
+		{
+			return -1;
+		}
+		FHOLAIBuilders Sent;
+		SentBuilders.Find(PlayerIndex, Sent);
+		const int Builder = HOLAIOpening::PickBuilder(Summary, Sent.Ids);
+		if (Builder < 0 || Summary.PeasantIds.Num() < Data.MinPeasantsToBuild || HOLAIOpening::SitesUnderWay(Summary) >= Data.MaxSites)
+		{
+			return -1;
+		}
+		FVector Spot;
+		if (!HOLAIOrder::FindAIPlacement(PlayerIndex, n"SiegeWorkshop", Summary.CentreLocation - HOLAIOpening::TowardEnemy(Summary) * Data.AwayDistance, Data.Rings, Spot))
+		{
+			LogBuildOnce(PlayerIndex, Step, "no spot for SiegeWorkshop");
+			return -1;
+		}
+		TArray<int> Builders;
+		Builders.Add(Builder);
+		if (!HOLAIOrder::IssueAIPlaceOrder(PlayerIndex, n"SiegeWorkshop", Spot, Builders))
+		{
+			LogBuildOnce(PlayerIndex, Step, "build SiegeWorkshop refused");
+			return -1;
+		}
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build SiegeWorkshop at ({Spot.X}, {Spot.Y}) by #{Builder} (Hard, an army of {Summary.Army.Num()})");
+		Sent.Ids.Add(Builder);
+		SentBuilders.Add(PlayerIndex, Sent);
+		return Builder;
+	}
+
+	// The engines (S6, provisional, HOLAISiege::ChooseEngine): a finished Siege Workshop with an empty queue queues a Mangonel (tier 2) or a Ram (tier 1),
+	// a short train. The engines are units without a gathering capacity, so they are in Summary.Army: the attack wave takes them (the Ram only
+	// strikes buildings, D614); they are not in the rules' figures, so the power ratio counts them for nothing.
+	void ThinkSiegeProduce(int PlayerIndex, int64 Step, const FHOLAISummary& Summary)
+	{
+		FVector WorkshopAt;
+		bool bFinished = false;
+		int Queued = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Each = Summary.Buildings[Index];
+			if (Each.TypeName == n"SiegeWorkshop" && Each.State == EHOLConstructionState::Finished)
+			{
+				WorkshopAt = Each.Location;
+				bFinished = true;
+				Queued = Each.Queue.Num();
+				break;
+			}
+		}
+		if (!bFinished)
+		{
+			return;
+		}
+		int Rams = 0;
+		int Mangonels = 0;
+		for (int Index = 0; Index < Summary.Army.Num(); Index++)
+		{
+			Rams += Summary.Army[Index].Type == n"Ram" ? 1 : 0;
+			Mangonels += Summary.Army[Index].Type == n"Mangonel" ? 1 : 0;
+		}
+		FHOLAITypeFigures RamFigures;
+		FHOLAITypeFigures MangonelFigures;
+		HOLAIOrder::ReadAIUnitFigures(n"Ram", RamFigures);
+		HOLAIOrder::ReadAIUnitFigures(n"Mangonel", MangonelFigures);
+		const bool bCanPayRam = Summary.Wood.Stock >= RamFigures.CostWood && Summary.Gold.Stock >= RamFigures.CostGold;
+		const bool bCanPayMangonel = Summary.Wood.Stock >= MangonelFigures.CostWood && Summary.Gold.Stock >= MangonelFigures.CostGold;
+		const FHOLAIEngineChoice Choice = HOLAISiege::ChooseEngine(FHOLAISiegeSettings(), FHOLAIEngineSettings(), int(Summary.Level), Summary.Tier, true, Queued, Rams, Mangonels,
+			bCanPayRam, bCanPayMangonel);
+		if (Choice.bQueue && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, WorkshopAt, Choice.Type))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: queue a {Choice.Type} at the SiegeWorkshop");
+		}
 	}
 
 	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
