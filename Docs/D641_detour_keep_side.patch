@@ -1,0 +1,104 @@
+﻿diff --git a/Source/HeroesOfLiberty/Simulation/HOLAvoidanceHoldFragments.h b/Source/HeroesOfLiberty/Simulation/HOLAvoidanceHoldFragments.h
+index be59709..4b9ac91 100644
+--- a/Source/HeroesOfLiberty/Simulation/HOLAvoidanceHoldFragments.h
++++ b/Source/HeroesOfLiberty/Simulation/HOLAvoidanceHoldFragments.h
+@@ -59,4 +59,14 @@ struct HEROESOFLIBERTY_API FHOLDetourFragment : public FMassFragment
+ 	uint8 CrossRole = 0;
+ 
+ 	int8 CrossSide = 0;
++
++	/**
++	 * D641 (hol.Units.DetourKeepSideSteps): the hand of the last detour round a body, kept for a few steps across the walks the combat
++	 * re-issues to the same target (a new walk resets the rest of this fragment). Without it each new walk chose the hand again and
++	 * a soldier barred by the line of its friends went round it one way, then the other: a loop of 3 m.
++	 */
++	int8 PreferSide = 0;
++
++	/** Steps left before PreferSide is forgotten. */
++	uint8 PreferSteps = 0;
+ };
+diff --git a/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp b/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp
+index 27c54dc..9db0be0 100644
+--- a/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp
++++ b/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp
+@@ -44,6 +44,10 @@ namespace UE::HeroesOfLiberty::Simulation
+ 	int32 AvoidMarchMembersBare = 1;
+ 	FAutoConsoleVariableRef CVarAvoidMarchMembersBare(TEXT("hol.Units.AvoidMarchMembersBare"), AvoidMarchMembersBare,
+ 		TEXT("1 (default): two members of one block march in one kind of row keep clear of each other by their bodies, without the hol.Units.AvoidClearance margin (their honeycomb is tighter than the margin: the to-and-fro of hol.Test.SanityMotion); 0: the margin for them too, as before (A / B)"));
++	/** D641: steps (20 Hz) a melee's detour hand is kept across the walks the combat re-issues (see PreferSide in FHOLDetourFragment). */
++	int32 DetourKeepSideSteps = 60;
++	FAutoConsoleVariableRef CVarDetourKeepSideSteps(TEXT("hol.Units.DetourKeepSideSteps"), DetourKeepSideSteps,
++		TEXT("Steps (default 60 = 3 s): the hand of a melee's detour round the bodies on its way to its target is kept across the walks the combat re-issues (each new walk forgot it and chose the hand again: a soldier behind the line went round it N then S then N, a loop); 0: forgotten at each new walk, as before (A / B)"));
+ 	/**
+ 	 * Perf (hol.Units.FastNear): cells of the look-ahead's dense table at most, per unit (beyond, the hashed buckets): a
+ 	 * crowd's box only; units spread over the map (S7's gatherers) would clear a large table each step for nothing.
+@@ -607,6 +611,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
+ 		Detour.Turn = 0;
+ 		Detour.ClearSteps = 0;
+ 	};
++	// D641: the hand of a detour round a body, kept a few steps after it (the combat re-issues its walks, which resets the detour).
++	const auto KeepHand = [&Detour](const int8 Hand)
++	{
++		Detour.PreferSide = Hand;
++		Detour.PreferSteps = static_cast<uint8>(FMath::Clamp(DetourKeepSideSteps, 0, 255));
++	};
+ 	// A / B (hol.Units.DetourMemory 0): every step from the straight course, as before MV.2.
+ 	if (DetourMemory == 0)
+ 	{
+@@ -775,6 +785,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
+ 			return Direction;
+ 		}
+ 		const FVector2D Way = WayOf(Hand, Detour.Turn);
++		KeepHand(Detour.Side);
+ 		return FVector(Way.X, Way.Y, 0.);
+ 	}
+ 
+@@ -783,7 +794,10 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
+ 	// Passing behind one at a crossing: on the side it comes from, every turn on that hand before the other hand.
+ 	const FVector2D ToBlocker = Positions[Blocker] - Position;
+ 	const bool bPassBehind = Entities[Blocker] == Detour.Crosser && Detour.CrossRole == static_cast<uint8>(HOLAvoid::ECrossingRole::PassBehind);
+-	const double Side = bPassBehind ? static_cast<double>(Detour.CrossSide) : HOLAvoid::ChooseDetourSide(Ahead, ToBlocker, (Radius + Radii[Blocker]) * AvoidRadiusScale);
++	// D641: the hand of the last detour of this fight's walks, if a new walk has just forgotten it (the loop N, S, N round the line).
++	const double Side = bPassBehind ? static_cast<double>(Detour.CrossSide)
++		: Detour.PreferSide != 0 && DetourKeepSideSteps > 0 ? static_cast<double>(Detour.PreferSide)
++		: HOLAvoid::ChooseDetourSide(Ahead, ToBlocker, (Radius + Radii[Blocker]) * AvoidRadiusScale);
+ 	for (int32 Index = 0; Index < 2 * Turns; ++Index)
+ 	{
+ 		const int32 Turn = bPassBehind ? Index % Turns + 1 : Index / 2 + 1;
+@@ -800,6 +814,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
+ 					Detour.Side = static_cast<int8>(Hand);
+ 					Detour.Turn = static_cast<uint8>(Turn);
+ 				}
++				KeepHand(static_cast<int8>(Hand));
+ 				return FVector(Way.X, Way.Y, 0.);
+ 			}
+ 		}
+@@ -810,6 +825,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
+ 		Detour.Blocker = Entities[Blocker];
+ 		Detour.Side = static_cast<int8>(Side);
+ 		Detour.Turn = static_cast<uint8>(Turns);
++		KeepHand(Detour.Side);
+ 		const FVector2D Way = WayOf(Side, Turns);
+ 		return FVector(Way.X, Way.Y, 0.);
+ 	}
+@@ -1236,9 +1252,20 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
+ 				FHOLDetourFragment& Detour = Detours[EntityIt];
+ 				if (Detour.OrderSerial != Order.OrderSerial || Detour.Phase != static_cast<uint8>(Order.Phase))
+ 				{
++					// D641: a melee's walk to its target re-issued by the combat (the target moved, a place taken): the hand of its last
++					// detour is kept a few steps, else it chose it again and went round the line of its friends one way then the other.
++					const bool bFightWalk = !Combats.IsEmpty() && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking;
++					const int8 KeptSide = bFightWalk && Detour.PreferSteps > 0 ? Detour.PreferSide : static_cast<int8>(0);
++					const uint8 KeptSteps = KeptSide != 0 ? Detour.PreferSteps : static_cast<uint8>(0);
+ 					Detour = FHOLDetourFragment();
+ 					Detour.OrderSerial = Order.OrderSerial;
+ 					Detour.Phase = static_cast<uint8>(Order.Phase);
++					Detour.PreferSide = KeptSide;
++					Detour.PreferSteps = KeptSteps;
++				}
++				if (Detour.PreferSteps > 0 && --Detour.PreferSteps == 0)
++				{
++					Detour.PreferSide = 0;
+ 				}
+ 				const bool bOutOfFight = Combats.IsEmpty() || (!Combats[EntityIt].bAttacking && !Combats[EntityIt].bApproaching && Combats[EntityIt].Mode != EHOLCombatMode::AttackMove);
+ 				const FVector2D Goal(Order.Slot.X, Order.Slot.Y);
