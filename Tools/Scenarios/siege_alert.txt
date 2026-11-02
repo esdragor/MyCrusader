@@ -1,0 +1,21 @@
+# Siege S7 (GDD 6.1, D386) : un engin de siege a toi qui perd des PV allume l'alerte de la mini-carte (le cercle rouge de D386, aucun autre canal)
+# Plain, toi (slot 0) contre une IA gelee (slot 1), hero_xp.json. Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# Un Belier a toi pres du Centre ; aucun coup tant qu'il n'est pas frappe. hol.HUD.Report dit "alerts N" (alertes vivantes de la mini-carte).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Camera.FocusNear 4300 0
+frames 2
+hol.Units.SpawnHere 1 Ram 0 50
+waitunits 7
+frames 40
+hol.HUD.Report
+waitlog alerts 0
+note 1. Un Belier a toi, intact : aucune alerte sur la mini-carte.
+hol.Units.SpawnHere 3 Spearman 1 150
+waitunits 10
+wait 6
+hol.HUD.Report
+waitlog alerts 1
+note 2. Le Belier perd des PV : un cercle rouge sur la mini-carte a sa place.
