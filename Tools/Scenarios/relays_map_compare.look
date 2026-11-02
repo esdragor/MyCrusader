@@ -1,0 +1,4 @@
+relays_compare_a | 4 cercles sombres en X autour du milieu, tout proches (4 m entre les bords)
+relays_compare_b | 4 cercles de la même taille, plus écartés (18 m entre les bords)
+relays_compare_c | 4 cercles plus petits (rayon 8 m), à la même distance que A
+relays_compare_d | 4 cercles de la taille de A, très écartés (33 m entre les bords)

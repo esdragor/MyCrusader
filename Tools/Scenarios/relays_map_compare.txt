@@ -1,0 +1,46 @@
+# Les 4 relais fixes du milieu, comparaison un par un : la meme carte (Steppe Petite), la meme camera au centre (0, 0), les 4 relais en X (diagonales) a une distance D du centre
+# et de rayon R ; Entree = valeur suivante. Valeur actuelle (A) = 20 m / 12 m. hol.Relay.Clear retire d'abord les 6 relais de la carte, hol.Relay.Add pose les 4 de l'option.
+# Les arbres et filons de la carte ne sont PAS ecartes des cercles B, C, D (seuls ceux de A ont ete mis hors zone) : ne regarde que la forme et la taille.
+hol.Sanity.Watch 1
+hol.Camera.Zoom -8
+hol.Camera.TestCursor 0.5 0.5
+frames 5
+hol.Relay.Clear
+hol.Relay.Add -1414 -1414 1200
+hol.Relay.Add 1414 -1414 1200
+hol.Relay.Add -1414 1414 1200
+hol.Relay.Add 1414 1414 1200
+hol.Camera.Focus 0 0
+frames 30
+capture relays_compare_a
+waitkey A (actuelle) : 4 relais a 20 m du centre, zone de 12 m (4 m entre les bords) : Entree = option suivante
+hol.Relay.Clear
+hol.Relay.Add -2121 -2121 1200
+hol.Relay.Add 2121 -2121 1200
+hol.Relay.Add -2121 2121 1200
+hol.Relay.Add 2121 2121 1200
+hol.Camera.Focus 0 0
+frames 30
+capture relays_compare_b
+waitkey B : 4 relais a 30 m du centre, zone de 12 m (18 m entre les bords, croix plus large) : Entree = option suivante
+hol.Relay.Clear
+hol.Relay.Add -1414 -1414 800
+hol.Relay.Add 1414 -1414 800
+hol.Relay.Add -1414 1414 800
+hol.Relay.Add 1414 1414 800
+hol.Camera.Focus 0 0
+frames 30
+capture relays_compare_c
+waitkey C : 4 relais a 20 m du centre, zone de 8 m (petits cercles, 12 m entre les bords) : Entree = option suivante
+hol.Relay.Clear
+hol.Relay.Add -2828 -2828 1200
+hol.Relay.Add 2828 -2828 1200
+hol.Relay.Add -2828 2828 1200
+hol.Relay.Add 2828 2828 1200
+hol.Camera.Focus 0 0
+frames 30
+capture relays_compare_d
+hol.Test.Sanity
+hol.Camera.TestCursor off
+waitkey D (pour comparer) : 4 relais a 40 m du centre, zone de 12 m (33 m entre les bords, croix tres large) : Entree = fin
+note Comparaison un par un des 4 relais du milieu (rayon de la zone et distance au centre), Entree = valeur suivante : A actuelle 20 m / 12 m, B 30 m / 12 m, C 20 m / 8 m, D 40 m / 12 m. Dis laquelle te va (ou une autre valeur).
