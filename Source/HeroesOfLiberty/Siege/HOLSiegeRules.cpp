@@ -55,6 +55,21 @@ namespace HOLSiege
 		return false;
 	}
 
+	FName GetHealthStat(const FName TypeName)
+	{
+		// The names of the technology table's statistics (Tools/Data/Technologies.csv, ReinforcedRam and HeavyMunitions).
+		static const FName Ram(TEXT("Ram"));
+		static const FName RamHealth(TEXT("RamHealth"));
+		return TypeName == Ram ? RamHealth : FName(NAME_None);
+	}
+
+	FName GetDamageStat(const FName TypeName)
+	{
+		static const FName Mangonel(TEXT("Mangonel"));
+		static const FName MangonelDamage(TEXT("MangonelDamage"));
+		return TypeName == Mangonel ? MangonelDamage : FName(NAME_None);
+	}
+
 	const TCHAR* DescribeBlock(const EBlock Block)
 	{
 		switch (Block)

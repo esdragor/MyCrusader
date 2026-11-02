@@ -73,6 +73,13 @@ struct HEROESOFLIBERTY_API FHOLTechnologyRow : public FTableRowBase
 	/** The change of those statistics, in percent of the base value, TOTAL of the line (level II = level I and more, T-Q2). */
 	UPROPERTY(EditAnywhere, Category = "Effect", meta = (ClampMin = "0"))
 	int32 Percent = 10;
+
+	/**
+	 * False while no code applies the effect (T-Q10 = B, T-Q11 = B, D601): the technology stays in the grid, greyed with "Soon", and
+	 * no research of it starts. A row whose statistics the game reads (gathering, workers, melee and ranged attack) is true.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Effect")
+	bool Implemented = true;
 };
 
 /** Where the technology table lives (DefaultGame.ini), like the building type table. */

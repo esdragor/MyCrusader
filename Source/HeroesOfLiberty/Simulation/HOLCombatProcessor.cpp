@@ -34,6 +34,7 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Siege/HOLSiegeRules.h"
 #include "Technologies/HOLTechnologyRules.h"
 
 int64 UHOLCombatProcessor::TotalHits = 0;
@@ -501,12 +502,28 @@ int32 UHOLCombatProcessor::GetTechnologyAttackPercent(const FFighter& Attacker) 
 	{
 		return 0;
 	}
+	// S5: a type a technology names itself (the Mangonel, Heavy Munitions) reads that one, whatever its attack's type (siege: none).
+	if (!HOLSiege::GetDamageStat(Attacker.Constants->TypeName).IsNone())
+	{
+		return MangonelDamagePercent[Slot];
+	}
 	switch (Attacker.Constants->AttackType)
 	{
 	case EHOLAttackType::Melee: return MeleeAttackPercent[Slot];
 	case EHOLAttackType::Ranged: return RangedAttackPercent[Slot];
 	default: return 0;
 	}
+}
+
+int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attacker) const
+{
+	// S5: only a type a technology names itself (the Mangonel) hits buildings harder; the attack technologies of the soldiers stay on units.
+	const int32 Slot = Attacker.State->OwnerPlayer;
+	if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots || HOLSiege::GetDamageStat(Attacker.Constants->TypeName).IsNone())
+	{
+		return Attacker.Constants->BuildingAttack;
+	}
+	return HOLTechnology::ScaleByPercent(Attacker.Constants->BuildingAttack, MangonelDamagePercent[Slot]);
 }
 
 void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
@@ -596,6 +613,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		MeleeAttackPercent[Slot] = 0;
 		RangedAttackPercent[Slot] = 0;
+		MangonelDamagePercent[Slot] = 0;
 	}
 	if (const AGameStateBase* GameState = World ? World->GetGameState() : nullptr)
 	{
@@ -607,6 +625,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				MeleeAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Melee));
 				RangedAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Ranged));
+				MangonelDamagePercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLSiege::GetDamageStat(FName(TEXT("Mangonel"))));
 			}
 		}
 	}
@@ -2125,7 +2144,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Arrow.ShooterId = Fighter.UnitId;
 					Arrow.ShooterType = Constants.TypeName;
 					Arrow.ShooterSlot = Fighter.State->OwnerPlayer;
-					Arrow.Damage = static_cast<float>(Constants.BuildingAttack);
+					Arrow.Damage = static_cast<float>(GetBuildingAttackWithTechnology(Fighter));
 					Arrow.ReleaseStep = StepIndex;
 					Arrow.ArrivalStep = StepIndex + HOLCombat::GetArrowFlightSteps(FlightMs, StepMs);
 					Arrow.TargetBuilding = Step.Building;
@@ -2142,7 +2161,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					}
 					continue;
 				}
-				const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Step.Building, Constants.BuildingAttack, Constants.BuildingAttackType);
+				const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Step.Building, GetBuildingAttackWithTechnology(Fighter), Constants.BuildingAttackType);
 				Combat.DamageDealt += Dealt;
 				if (LogHits != 0)
 				{
@@ -2511,7 +2530,7 @@ namespace UE::HeroesOfLiberty::Combat
 				const FVector Location = EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).GetTransform().GetLocation();
 				Fighting += TargetId != 0 ? 1 : 0;
 				Lines.Add(FString::Printf(TEXT("#%u %s slot %d hp %g/%d target %u attacking %d hits %d damage %g kills %d first %lld attackers %d at %.0f %.0f"), UnitId,
-					*Constants.TypeName.ToString(), State->OwnerPlayer, static_cast<double>(State->CurrentHealth), Constants.MaxHealth, TargetId, Combat->bAttacking ? 1 : 0, Combat->Hits,
+					*Constants.TypeName.ToString(), State->OwnerPlayer, static_cast<double>(State->CurrentHealth), HOLCombat::GetMaxHealth(Constants, 1, Units->GetTechnologyHealthPercent(Constants, State->OwnerPlayer)), TargetId, Combat->bAttacking ? 1 : 0, Combat->Hits,
 					static_cast<double>(Combat->DamageDealt), Combat->Kills, Combat->FirstHitStep, Combat->AttackerCount, Location.X, Location.Y));
 			}
 			TArray<FString> PopulationText;

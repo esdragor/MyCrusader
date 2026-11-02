@@ -15,8 +15,8 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Roi | 250 | 50 | — | 1,375 s | 43,6 | 36,36 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Roi | aucun (riposte seulement) |
 | Paladin-Commandant (héros) | 450 | 30 | — | 1,25 s | 48 | 24 | 50 % (0,625 s) | Héros | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Héros | 4 cases (16 m) |
 | Arbalétrier | 80 | 12 | +10 contre Lourd | 2,125 s | 28,2 | 5,65 | 12 % (0,255 s) | Distance (tir) | 5 cases (20 m) | 0 | 0 | 0 | 0 | Distance | 5,33 cases (21,33 m) |
-| Bélier | 400 | 0 | — | 2,5 s | 24 | 0 | 50 % (1,25 s) | Siège | 0,12 case (0,5 m) | 0 | 20 | 0 | 0 | Siège | aucun (seulement sur ordre) |
-| Mangonneau | 200 | 45 | — | 5 s | 12 | 9 | 50 % (2,5 s) | Siège (tir) | 7,5 cases (30 m) | 0 | 20 | 0 | 0 | Siège | aucun (seulement sur ordre) |
+| Bélier | 400 | 0 | — | 2,5 s | 24 | 0 | 50 % (1,25 s) | Siège | 0,12 case (0,5 m) | 0 | 60 | 0 | 0 | Siège | aucun (seulement sur ordre) |
+| Mangonneau | 200 | 45 | — | 5 s | 12 | 9 | 50 % (2,5 s) | Siège (tir) | 7,5 cases (30 m) | 0 | 60 | 0 | 0 | Siège | aucun (seulement sur ordre) |
 
 - Dégâts d'un coup = attaque + chaque bonus visant une des catégories de la cible (ils s'additionnent) − armure de la cible du type de l'attaque (mêlée, distance, siège ou héros), 1 au moins.
 - Cadence : temps entre deux coups. Élan : part de la cadence qu'attend le premier coup sur une cible.

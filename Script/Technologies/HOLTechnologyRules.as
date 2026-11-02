@@ -59,4 +59,15 @@ namespace HOLTechnologyRules
 			return AlreadyQueued;
 		return Check(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched);
 	}
+
+	// No code applies its effect yet (the table's Implemented column is false: T-Q11 = B, D601): refused before every other reason,
+	// as the C++ rule does (HOLTechnology::Check). The AI never starts such a research.
+	const int NotImplemented = 8;
+
+	int CheckImplemented(bool bImplemented, int HeroTier, int HeroLevel, int MinTier, int MinHeroLevel, bool bRequiresDone, bool bBuildingFinished, bool bCanPay, bool bResearched, bool bQueued)
+	{
+		if (!bImplemented)
+			return NotImplemented;
+		return CheckQueued(HeroTier, HeroLevel, MinTier, MinHeroLevel, bRequiresDone, bBuildingFinished, bCanPay, bResearched, bQueued);
+	}
 }

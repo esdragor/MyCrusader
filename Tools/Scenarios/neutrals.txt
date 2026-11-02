@@ -1,11 +1,6 @@
 # Camps neutres (N3 a N5) : un camp de 3 Lanciers neutres au milieu de la carte reste au poste, charge ce qui entre a 15 m, est nettoye pour toujours, et donne son XP.
 # Chaine reelle : proprietaire neutre (8), unites de camp passives au repos, charge a vue (hol.Camp.Aggro 0), retour, recompense partagee (hol.Camp.Credit 2).
 # Chaque waitlog est une preuve (check.ps1) ; les passes du brouillard, des statistiques, de la victoire et du reseau tournent pendant tout le scenario avec un proprietaire 8 present.
-open /Game/Maps/Plain
-waitmap Plain
-waitlog Camera above the start of slot
-frames 5
-hol.Sanity.Watch 1
 # Passifs au repos (N4) : un camp (hol.Camp.Aggro 1, il ne bouge que si on l attaque) a un Paysan de mon camp a 3 m de son poste : personne ne frappe, le camp reste au poste.
 hol.Camp.Aggro 1
 hol.Camp.Add 0 -9000 3 Spearman

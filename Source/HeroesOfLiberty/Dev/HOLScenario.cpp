@@ -2,6 +2,9 @@
 
 #include "Dev/HOLTestHooks.h"
 #include "Dev/HOLTestSequence.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 #if !UE_BUILD_SHIPPING
 
@@ -99,7 +102,8 @@ namespace UE::HeroesOfLiberty::Dev
 			UE_LOG(LogHOLTest, Error, TEXT("hol.Scenario %s: %s: %s"), *Name, *ConfigFile, *Error);
 			return;
 		}
-		Config.Seed = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
+		// V4c: drawn at each launch, unless the .json imposes its "seed".
+		Config.Seed = HOLTestHooks::GetScenarioSeed(bHasConfigFile ? &Json : nullptr, static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32));
 		Match->SetConfig(Config);
 
 		// From the main menu, the New game screen launches it (the match then starts as from its button: game screen,
@@ -116,8 +120,12 @@ namespace UE::HeroesOfLiberty::Dev
 			Steps = { FString::Printf(TEXT("open %s"), *MapFile.GetLongPackageName()) };
 		}
 		Steps.Add(FString::Printf(TEXT("waitmap %s"), *MapFile.GetAssetName()));
+		// SAN-Q2 = B (D616): every scenario records the units' steps for hol.Test.Sanity from its start, no line to write in each one
+		// (a scenario that wants a record starting later still writes hol.Sanity.Watch 1: it restarts it).
+		// "quiet" keeps the log mark, so the scenarios' own first waitlog still sees the lines before it.
 		Steps.Add(TEXT("waitlog Camera above the start of slot"));
 		Steps.Add(TEXT("frames 5"));
+		Steps.Add(TEXT("quiet hol.Sanity.Watch 1"));
 		Steps.Append(MoveTemp(ScenarioSteps));
 		UE_LOG(LogHOLTest, Display, TEXT("Scenario %s: %s, %d occupied slots"), *Name, *Config.Map.ToString(), Config.GetNumOccupiedSlots());
 		// The panel starts again: a reload's notes replace those of the run before.
@@ -170,6 +178,18 @@ namespace UE::HeroesOfLiberty::Dev
 		TEXT("hol.Scenario"),
 		TEXT("hol.Scenario [Name]: starts a match on the test scenario Tools/Scenarios/<Name>.txt (+ .json, its match configuration); no name: lists them (development only)"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&RunScenario));
+}
+
+int32 HOLTestHooks::GetScenarioSeed(const FString* Json, const int32 Drawn)
+{
+	// The .json's own "seed" (a number other than 0) imposes it; none, or 0: the seed drawn at the launch.
+	TSharedPtr<FJsonObject> Root;
+	int32 Imposed = 0;
+	if (Json && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(*Json), Root) && Root.IsValid() && Root->TryGetNumberField(TEXT("seed"), Imposed) && Imposed != 0)
+	{
+		return Imposed;
+	}
+	return Drawn;
 }
 
 bool HOLTestHooks::MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutConfig, FString* OutError)

@@ -1,0 +1,15 @@
+# Technologies grisees Bientot (T-Q10/T-Q11 = B, D601) : la Caserne selectionnee, sa cellule de recherche W (Hallebardes trempees, sans effet code) est grisee et porte Bientot, meme au palier 1 avec 5000 de chaque ressource.
+# Plain, toi (slot 0) contre une IA (slot 1), un heros niveau 3 = palier 1 ; ce scenario est aussi le test de la chaine.
+waitlog Starting hero of slot 0 spawned at
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Hero.SetXP 0 600
+waitlog Hero level up: slot 0 level 1 -> 3
+hol.Select.Category Military
+frames 10
+note La Caserne est selectionnee, palier 1, ressources pleines : la cellule W (Hallebardes trempees) est grisee et affiche Bientot, aucune recherche ne part.
+hol.HUD.Report
+capture tech_soon_barracks

@@ -3545,6 +3545,17 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 	{
 		// A technology (T4, GDD 11): at the building of its type that takes it (the next of a group's even spread). What the
 		// rules, the stock or the queue refuse is told and not sent; the server checks it all again.
+		const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(Command.TypeName);
+		if (Technology && !Technology->Implemented)
+		{
+			// T-Q10/T-Q11 = B (D601): in the grid but no effect coded yet: told "soon" and not sent, building or not.
+			FHOLCommandFeedback Soon;
+			Soon.Kind = EHOLCommandFeedback::ResearchRefused;
+			Soon.Block = HOLTechnology::EBlock::NotImplemented;
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: %s not researched"), *Command.TypeName.ToString());
+			NotifyFeedback(Soon);
+			return;
+		}
 		bool bAny = false;
 		AHOLBuilding* Building = FindProductionBuilding(Command.TypeName, &bAny);
 		if (!bAny)

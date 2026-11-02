@@ -103,6 +103,11 @@ public:
 	 */
 	int32 KillUnitsOfOwner(uint8 Owner, FName TypeName = NAME_None);
 	/**
+	 * V5 (volcano): every living unit for which Doomed(UnitId, TypeName, Owner, Location, Radius) is true goes to 0 health and Dying, as
+	 * KillUnitsOfOwner does (its death noted in the match statistics, a kill for nobody). Returns how many were killed.
+	 */
+	int32 KillUnitsWhere(TFunctionRef<bool(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location, float Radius)> Doomed);
+	/**
 	 * V3.2: calls Visit(Owner, Location) for every living unit (not dying, health above 0), in one walk of the units; the
 	 * births waiting are not there yet. Returns how many units were walked (the dying included).
 	 */
@@ -149,6 +154,18 @@ public:
 	/** One unit simulated here; false when it is gone. */
 	bool GetUnitView(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
 
+	/**
+	 * S5 (Reinforced Ram, GDD 11.1): the percent a slot's technologies add to the health of units of this type (0 for a type that no
+	 * technology changes, HOLSiege::GetHealthStat). Server and solo only: the clients do not know the other players' technologies.
+	 */
+	int32 GetTechnologyHealthPercent(const FHOLUnitTypeConstants& Constants, int32 Slot) const;
+	/**
+	 * S5: a slot's technologies changed the health percent from Before to After (AHOLPlayerState::AddTechnology): kept for the
+	 * births and views, and the living units it changes (the Rams of the slot) gain the difference of their maximum, as a hero
+	 * levelling up (HOLHeroXP::GetHealthAfterLevelUp), the damage they took staying. Returns how many it raised.
+	 */
+	int32 ApplyTechnologyHealth(int32 Slot, int32 Before, int32 After);
+
 	/** Restarts the draw of birth positions: two stress tests in one process start from the same crowd (D230). */
 	void ResetSpawnSeed() { SpawnRandom.Initialize(SpawnSeed); }
 	/** Restarts it from a given seed: a test scenario's births laid out the same whatever was born before it (hol.Units.SpawnSeed). */
@@ -189,6 +206,8 @@ private:
 	/** J8a.3: each slot's hero (FindHeroUnit), by OwnerPlayer. */
 	TMap<uint8, uint32> HeroUnitBySlot;
 	uint32 NextUnitId = 1;
+	/** S5: each slot's percent on the health of the types a technology changes (the Ram's RamHealth); empty = none. */
+	TArray<int32> TechnologyHealthPercent;
 
 	/** Births waiting for their share of the per-step budget, and units to destroy at the end of the step (D224). */
 	TArray<FHOLUnitSpawnRequest> BirthQueue;

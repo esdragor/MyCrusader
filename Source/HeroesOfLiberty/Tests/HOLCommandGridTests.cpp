@@ -384,7 +384,9 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("nine buildable types (the Market M3 and the siege workshop S2 of age II joined the seven of age I)"), Context.Buildable.Num(), 9);
+	TestEqual(TEXT("ten buildable types (the Sanctuary, SC-Q1, joined the seven of age I; the Market M3 and the siege workshop S2 are of age II)"), Context.Buildable.Num(), 10);
+	TestTrue(TEXT("X: sanctuary (SC-Q1 = B, D602)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 9).TypeName == FName(TEXT("Sanctuary"))
+		&& HOLCommandGrid::GetAgeBuilding(Context, 0, 9).Command == EHOLGridCommand::Build);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
 	TestTrue(TEXT("Z: lumber camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 1).TypeName == HOLBuildingTypeNames::LumberCamp);
 	TestTrue(TEXT("E: mining camp"), HOLCommandGrid::GetAgeBuilding(Context, 0, 2).TypeName == HOLBuildingTypeNames::MiningCamp);
@@ -415,7 +417,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	{
 		TestTrue(*FString::Printf(TEXT("page II, cell %d: no building yet"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 1, Cell).IsNone());
 	}
-	for (const int32 Cell : { 6, 7, 9, 10, 11 })
+	for (const int32 Cell : { 6, 7, 10, 11 })
 	{
 		TestTrue(*FString::Printf(TEXT("panel I, cell %d: no building"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 0, Cell).IsNone());
 	}
@@ -747,8 +749,8 @@ bool FHOLCommandGridResearchTest::RunTest(const FString& Parameters)
 	const auto Researches = [](const TCHAR* Building) { TArray<FName> Names; UHOLTechnologySettings::GetBuildingTechnologies(FName(Building), Names); return Names; };
 	TestTrue(TEXT("the Farm researches the Plough and the Wheelbarrow, I then II"),
 		Researches(TEXT("Farm")) == TArray<FName>({ FName(TEXT("PloughI")), FName(TEXT("PloughII")), FName(TEXT("WheelbarrowI")), FName(TEXT("WheelbarrowII")) }));
-	TestTrue(TEXT("the main centre researches the militia and the alarm bell"),
-		Researches(TEXT("MainCentre")) == TArray<FName>({ FName(TEXT("DefenceMilitia")), FName(TEXT("ImprovedAlarmBell")) }));
+	TestTrue(TEXT("the main centre researches the alarm bell only (the militia is dropped, D600)"),
+		Researches(TEXT("MainCentre")) == TArray<FName>({ FName(TEXT("ImprovedAlarmBell")) }));
 	TestTrue(TEXT("the Barracks research the halberds"), Researches(TEXT("Barracks")) == TArray<FName>({ FName(TEXT("TemperedHalberds")) }));
 	TestTrue(TEXT("the House researches nothing"), Researches(TEXT("House")).IsEmpty());
 
@@ -778,8 +780,8 @@ bool FHOLCommandGridResearchTest::RunTest(const FString& Parameters)
 	Centre.Produces = { Peasant };
 	Centre.Researches = Researches(TEXT("MainCentre"));
 	TestTrue(TEXT("centre: A still produces a Peasant"), HOLCommandGrid::GetCommand(Centre, 0).Command == EHOLGridCommand::Produce);
-	TestTrue(TEXT("centre: W the militia, X the alarm bell"), HOLCommandGrid::GetCommand(Centre, 8).TypeName == FName(TEXT("DefenceMilitia"))
-		&& HOLCommandGrid::GetCommand(Centre, 9).TypeName == FName(TEXT("ImprovedAlarmBell")) && HOLCommandGrid::GetCommand(Centre, 10).IsNone());
+	TestTrue(TEXT("centre: W the alarm bell, X empty"), HOLCommandGrid::GetCommand(Centre, 8).TypeName == FName(TEXT("ImprovedAlarmBell"))
+		&& HOLCommandGrid::GetCommand(Centre, 9).IsNone());
 	FHOLGridContext Site = Farm;
 	Site.bBuildingFinished = false;
 	TestTrue(TEXT("a site researches nothing"), HOLCommandGrid::GetCommand(Site, 8).IsNone());
@@ -826,6 +828,29 @@ bool FHOLCommandGridResearchTest::RunTest(const FString& Parameters)
 	Facts.HeroTier = 0;
 	TestTrue(TEXT("the rules before the queue"), HOLCommandGrid::CheckResearch(*Plough1, Facts, Rich, 5, 5).Block == HOLTechnology::EBlock::TierTooLow);
 	TestTrue(TEXT("the rules before the stock"), HOLCommandGrid::CheckResearch(*Plough1, Facts, FHOLResources(), 0, 5).Block == HOLTechnology::EBlock::TierTooLow);
+
+	// T-Q10/T-Q11 = B (D601): the Improved Alarm Bell and the Tempered Halberds are in the grid but have no effect yet: refused "Soon",
+	// whatever the tier, the building, the stock or the queue, and the press tells it (the log says "soon", the screen "Bientot").
+	for (const TCHAR* SoonName : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds") })
+	{
+		const FHOLTechnologyRow* Soon = UHOLTechnologySettings::FindTechnology(SoonName);
+		if (!TestNotNull(*FString::Printf(TEXT("%s in the table"), SoonName), Soon))
+		{
+			continue;
+		}
+		TestFalse(*FString::Printf(TEXT("%s: not implemented in the table"), SoonName), Soon->Implemented);
+		HOLTechnology::FFacts SoonFacts;
+		SoonFacts.HeroTier = 2;
+		SoonFacts.bBuildingFinished = true;
+		const FHOLCommandFeedback Refused = HOLCommandGrid::CheckResearch(*Soon, SoonFacts, Rich, 0, 5);
+		TestTrue(*FString::Printf(TEXT("%s: refused, soon, and it blocks"), SoonName),
+			Refused.Kind == EHOLCommandFeedback::ResearchRefused && Refused.Block == HOLTechnology::EBlock::NotImplemented && HOLCommandGrid::Blocks(Refused));
+		TestEqual(*FString::Printf(TEXT("%s: the log says soon"), SoonName), HOLCommandGrid::Describe(Refused), FString(TEXT("research refused (soon)")));
+		SoonFacts.HeroTier = 0;
+		SoonFacts.bBuildingFinished = false;
+		TestTrue(*FString::Printf(TEXT("%s: soon even with no tier, no building, no stock"), SoonName),
+			HOLCommandGrid::CheckResearch(*Soon, SoonFacts, FHOLResources(), 5, 5).Block == HOLTechnology::EBlock::NotImplemented);
+	}
 	return true;
 }
 

@@ -141,4 +141,24 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// hol.Test.Sanity, check 1 (SAN-Q1 = A, D616): the colour of an owner is the game's one rule (HOLPlayerColors::GetOwnerLinearColor), so a
+// neutral owner (8) or an owner outside the slots is grey and clashes with no player; an owner that IS a slot, taken for a neutral one, is
+// drawn in that slot's colour and the audit reports it (the mutation next to the sound case).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSanityColourTest, "HeroesOfLiberty.Sanity.Colour", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLSanityColourTest::RunTest(const FString& Parameters)
+{
+	const TArray<uint8> Colours = { 0, 1, 2, 3, 4, 5, 6, 7 };
+	const TArray<int32> Players = { 0, 1 };
+	TestTrue(TEXT("the neutral owner (8) is grey: no clash with slots 0 and 1"), HOLSanity::FindColourClashes(TArray<int32>{ 8 }, Players, Colours).IsEmpty());
+	TestTrue(TEXT("an owner far out of the slots (200) is grey too"), HOLSanity::FindColourClashes(TArray<int32>{ 200 }, Players, Colours).IsEmpty());
+	TestTrue(TEXT("a negative owner is grey too"), HOLSanity::FindColourClashes(TArray<int32>{ -1 }, Players, Colours).IsEmpty());
+	const TArray<FString> Clash = HOLSanity::FindColourClashes(TArray<int32>{ 1 }, Players, Colours);
+	TestEqual(TEXT("an owner that is slot 1, taken for a neutral one, clashes with slot 1 only"), Clash.Num(), 1);
+	TestTrue(TEXT("the clash line names the owner"), !Clash.IsEmpty() && Clash[0].Contains(TEXT("owner 1")));
+	// Two slots that chose the same colour: a neutral owner is still grey, the clash is only between the neutral and the slots.
+	const TArray<uint8> Same = { 3, 3, 2, 2, 1, 1, 0, 0 };
+	TestTrue(TEXT("slots sharing a colour do not make the grey neutral clash"), HOLSanity::FindColourClashes(TArray<int32>{ 8 }, Players, Same).IsEmpty());
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

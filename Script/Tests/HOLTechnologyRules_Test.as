@@ -52,3 +52,49 @@ void Test_TechnologyQueued(FUnitTest& T)
 	T.AssertEquals(HOLTechnologyRules::AlreadyQueued, HOLTechnologyRules::CheckQueued(0, 0, 2, 5, false, false, false, false, true), "queued before the tier");
 	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckQueued(1, 3, 1, 0, true, true, true, false, false), "not queued: available");
 }
+
+// T-Q11 = B (D601): a technology whose effect is not coded is refused first, whatever the rest (the C++ rule's order).
+void Test_TechnologyNotImplemented(FUnitTest& T)
+{
+	T.AssertEquals(HOLTechnologyRules::NotImplemented, HOLTechnologyRules::CheckImplemented(false, 1, 3, 1, 0, true, true, true, false, false), "not implemented, everything ready");
+	T.AssertEquals(HOLTechnologyRules::NotImplemented, HOLTechnologyRules::CheckImplemented(false, 0, 0, 2, 5, false, false, false, true, true), "before every other reason");
+	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(true, 1, 3, 1, 0, true, true, true, false, false), "implemented: available");
+	T.AssertEquals(HOLTechnologyRules::AlreadyQueued, HOLTechnologyRules::CheckImplemented(true, 1, 3, 1, 0, true, true, true, false, true), "implemented and queued: the queue rule");
+}
+// The script's rule (CheckImplemented) gives the simulation's reason (C++ HOLTechnology::Check, which the server applies) on every
+// combination of the facts: AlreadyQueued, NotImplemented and the order of the reasons cannot drift apart unseen (T8).
+void Test_TechnologyScriptAndSimulationRulesAgree(FUnitTest& T)
+{
+	int Cases = 0;
+	int Differences = 0;
+	for (int Implemented = 0; Implemented < 2; Implemented++)
+	{
+		for (int HeroTier = 0; HeroTier < 3; HeroTier++)
+		{
+			for (int HeroLevel = 0; HeroLevel < 7; HeroLevel += 3)
+			{
+				for (int MinTier = 0; MinTier < 3; MinTier++)
+				{
+					for (int MinLevel = 0; MinLevel < 7; MinLevel += 5)
+					{
+						for (int Flags = 0; Flags < 32; Flags++)
+						{
+							const bool bRequires = (Flags & 1) != 0;
+							const bool bBuilding = (Flags & 2) != 0;
+							const bool bPay = (Flags & 4) != 0;
+							const bool bDone = (Flags & 8) != 0;
+							const bool bQueued = (Flags & 16) != 0;
+							const int Script = HOLTechnologyRules::CheckImplemented(Implemented == 1, HeroTier, HeroLevel, MinTier, MinLevel, bRequires, bBuilding, bPay, bDone, bQueued);
+							const int Sim = HOLTechnologyCheck::Check(Implemented == 1, HeroTier, HeroLevel, MinTier, MinLevel, bRequires, bBuilding, bPay, bDone, bQueued);
+							Cases++;
+							if (Script != Sim)
+								Differences++;
+						}
+					}
+				}
+			}
+		}
+	}
+	T.AssertEquals(2 * 3 * 3 * 3 * 2 * 32, Cases, "every case compared");
+	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
+}

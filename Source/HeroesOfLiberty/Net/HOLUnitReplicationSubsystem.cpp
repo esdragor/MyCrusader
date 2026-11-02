@@ -290,8 +290,10 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 		Replicator->GetOrAddChunk(View.Slot / AHOLUnitChunk::NumSlots)->SetState(View.Slot % AHOLUnitChunk::NumSlots, View.Sent.State);
 	};
 
+	// S5: the maximum a technology raises (the Ram's) is the one the share of health is sent against.
+	const UHOLUnitSubsystem* HealthUnits = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	FMassExecutionContext ExecutionContext(*EntityManager, StepSeconds);
-	UnitQuery.ForEachEntityChunk(ExecutionContext, [this, Step, &Rules, &WriteState, SampleEvery, &Sample, Vision, GraceSteps](FMassExecutionContext& Context)
+	UnitQuery.ForEachEntityChunk(ExecutionContext, [this, Step, &Rules, &WriteState, SampleEvery, &Sample, Vision, GraceSteps, HealthUnits](FMassExecutionContext& Context)
 	{
 		const TConstArrayView<FHOLUnitStateFragment> States = Context.GetFragmentView<FHOLUnitStateFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
@@ -332,7 +334,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 			// The wire keeps integer health (D455): the float health rounded up, 1 at least alive (J8a.1); a hero's as a
 			// share of his maximum at his level (J8-Q5, J8a.3, J8b.2).
 			const int32 ShownHealth = HOLCombat::GetShownHealth(State.CurrentHealth);
-			const int32 MaxHealth = HOLCombat::GetMaxHealth(Constants, Combat.Level);
+			const int32 MaxHealth = HOLCombat::GetMaxHealth(Constants, Combat.Level, HealthUnits ? HealthUnits->GetTechnologyHealthPercent(Constants, State.OwnerPlayer) : 0);
 			const bool bFacesFront = Order.bFacesFront && Order.Phase == EHOLMovePhase::None;
 			// The hero's, and any type whose table maximum does not fit the wire's health bits (the siege engines, S2).
 			const bool bHero = HOLUnitReplication::UsesHealthShare(HOLIsHero(Constants.ArmorCategoryMask), Constants.MaxHealth);

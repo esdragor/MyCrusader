@@ -1,28 +1,27 @@
-Name,DisplayName,Category,Faction,Building,MinTier,MinHeroLevel,Cost,ResearchTime,Requires,Stats,Percent
-MeleeAttackI,Lames affûtées,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(MeleeAttack),10
-MeleeAttackII,Lames affûtées II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,MeleeAttackI,(MeleeAttack),20
-RangedAttackI,Empennage,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(RangedAttack),10
-RangedAttackII,Empennage II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,RangedAttackI,(RangedAttack),20
-InfantryArmorI,Maille,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(InfantryArmor),10
-InfantryArmorII,Maille II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,InfantryArmorI,(InfantryArmor),20
-CavalryArmorI,Barde,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(CavalryArmor),10
-CavalryArmorII,Barde II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,CavalryArmorI,(CavalryArmor),20
-DoubleAxesI,Haches doubles,Economy,Common,LumberCamp,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,(GatherWood),10
-DoubleAxesII,Haches doubles II,Economy,Common,LumberCamp,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,DoubleAxesI,(GatherWood),20
-MinerPicksI,Pics de mineur,Economy,Common,MiningCamp,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(GatherStone,GatherGold)",10
-MinerPicksII,Pics de mineur II,Economy,Common,MiningCamp,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,MinerPicksI,"(GatherStone,GatherGold)",20
-PloughI,Charrue,Economy,Common,Farm,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,(GatherFood),10
-PloughII,Charrue II,Economy,Common,Farm,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,PloughI,(GatherFood),20
-WheelbarrowI,Brouette,Economy,Common,Farm,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(WorkerSpeed,WorkerCarry)",10
-WheelbarrowII,Brouette II,Economy,Common,Farm,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,WheelbarrowI,"(WorkerSpeed,WorkerCarry)",20
-DefenceMilitia,Milice de défense,Infrastructure,Common,MainCentre,1,0,"(Food=0,Wood=150,Stone=100,Gold=0)",30,,(WorkerDefence),10
-ImprovedAlarmBell,Cloche d'alarme améliorée,Infrastructure,Common,MainCentre,2,0,"(Food=0,Wood=300,Stone=200,Gold=0)",45,,(GarrisonSpeed),20
-Masonry,Maçonnerie,Infrastructure,Common,Academy,2,0,"(Food=0,Wood=300,Stone=200,Gold=0)",45,,(WallTowerHealth),20
-Veterans,Vétérans,Military,Common,Academy,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,,(CoreUnitHealth),20
-Logistics,Logistique,Military,Common,Academy,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,,(ArmyMarchSpeed),20
-ReinforcedRam,Bélier renforcé,Military,Common,SiegeWorkshop,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(RamHealth),10
-HeavyMunitions,Munitions lourdes,Military,Common,SiegeWorkshop,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,,(MangonelDamage),20
-Liturgy,Liturgie,Faction,Dawn,Sanctuary,1,0,"(Food=100,Wood=0,Stone=0,Gold=100)",30,,(HonourGain),10
-TemperedHalberds,Hallebardes trempées,Faction,Dawn,Barracks,1,0,"(Food=100,Wood=0,Stone=0,Gold=100)",30,,(HalberdierBonusVsHeavyInfantry),10
-BlessingOfArms,Bénédiction des armes,Faction,Dawn,Sanctuary,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(KnightAndHalberdierBonusVsProfane),20
-VowOfPoverty,Vœu de pauvreté,Faction,Dawn,Chapel,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(MonkCostDiscount),20
+Name,DisplayName,Category,Faction,Building,MinTier,MinHeroLevel,Cost,ResearchTime,Requires,Stats,Percent,Implemented
+MeleeAttackI,Lames affûtées,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(MeleeAttack),10,True
+MeleeAttackII,Lames affûtées II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,MeleeAttackI,(MeleeAttack),20,True
+RangedAttackI,Empennage,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(RangedAttack),10,True
+RangedAttackII,Empennage II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,RangedAttackI,(RangedAttack),20,True
+InfantryArmorI,Maille,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(InfantryArmor),10,False
+InfantryArmorII,Maille II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,InfantryArmorI,(InfantryArmor),20,False
+CavalryArmorI,Barde,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(CavalryArmor),10,False
+CavalryArmorII,Barde II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,CavalryArmorI,(CavalryArmor),20,False
+DoubleAxesI,Haches doubles,Economy,Common,LumberCamp,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,(GatherWood),10,True
+DoubleAxesII,Haches doubles II,Economy,Common,LumberCamp,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,DoubleAxesI,(GatherWood),20,True
+MinerPicksI,Pics de mineur,Economy,Common,MiningCamp,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(GatherStone,GatherGold)",10,True
+MinerPicksII,Pics de mineur II,Economy,Common,MiningCamp,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,MinerPicksI,"(GatherStone,GatherGold)",20,True
+PloughI,Charrue,Economy,Common,Farm,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,(GatherFood),10,True
+PloughII,Charrue II,Economy,Common,Farm,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,PloughI,(GatherFood),20,True
+WheelbarrowI,Brouette,Economy,Common,Farm,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(WorkerSpeed,WorkerCarry)",10,True
+WheelbarrowII,Brouette II,Economy,Common,Farm,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,WheelbarrowI,"(WorkerSpeed,WorkerCarry)",20,True
+ImprovedAlarmBell,Cloche d'alarme améliorée,Infrastructure,Common,MainCentre,2,0,"(Food=0,Wood=300,Stone=200,Gold=0)",45,,(GarrisonSpeed),20,False
+Masonry,Maçonnerie,Infrastructure,Common,Academy,2,0,"(Food=0,Wood=300,Stone=200,Gold=0)",45,,(WallTowerHealth),20,False
+Veterans,Vétérans,Military,Common,Academy,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,,(CoreUnitHealth),20,False
+Logistics,Logistique,Military,Common,Academy,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,,(ArmyMarchSpeed),20,False
+ReinforcedRam,Bélier renforcé,Military,Common,SiegeWorkshop,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(RamHealth),10,False
+HeavyMunitions,Munitions lourdes,Military,Common,SiegeWorkshop,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,,(MangonelDamage),20,False
+Liturgy,Liturgie,Faction,Dawn,Sanctuary,1,0,"(Food=100,Wood=0,Stone=0,Gold=100)",30,,(HonourGain),10,False
+TemperedHalberds,Hallebardes trempées,Faction,Dawn,Barracks,1,0,"(Food=100,Wood=0,Stone=0,Gold=100)",30,,(HalberdierBonusVsHeavyInfantry),10,False
+BlessingOfArms,Bénédiction des armes,Faction,Dawn,Sanctuary,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(KnightAndHalberdierBonusVsProfane),20,False
+VowOfPoverty,Vœu de pauvreté,Faction,Dawn,Chapel,2,0,"(Food=200,Wood=0,Stone=0,Gold=200)",45,,(MonkCostDiscount),20,False

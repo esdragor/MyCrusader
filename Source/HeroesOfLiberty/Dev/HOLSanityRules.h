@@ -31,6 +31,13 @@ namespace HOLSanity
 		double ShakeAdvanceShare = 0.25;
 	};
 
+	/**
+	 * Check 1 of hol.Test.Sanity (SAN-Q1 = A, D616): the owners in Neutrals must be drawn in no player's colour. The colour of an owner is
+	 * the game's one rule, HOLPlayerColors::GetOwnerLinearColor, the same call as the drawing processor's (no copy here); SlotColorIndices[Slot]
+	 * is the colour each slot chose. One line per clash ("owner 8 is drawn in the colour of slot 0 (Bleu)"); empty when none.
+	 */
+	HEROESOFLIBERTY_API TArray<FString> FindColourClashes(TConstArrayView<int32> Neutrals, TConstArrayView<int32> PlayerSlots, TConstArrayView<uint8> SlotColorIndices);
+
 	/** What a unit is doing at a step, for the rules: walking to an order, standing with nothing to do, or busy (fighting, working). */
 	enum class EUnitMotion : uint8
 	{

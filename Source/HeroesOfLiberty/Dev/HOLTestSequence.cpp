@@ -40,6 +40,7 @@
  *   waitui               waits for the interface to be still: a screen just opened or closed has finished fading
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
+ *   quiet <command>      runs a console command without moving the log mark (a waitlog after it still sees the earlier lines)
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
  *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
  *                        "Scenario note: Text" (what a scenario asks to try)
@@ -405,6 +406,12 @@ namespace UE::HeroesOfLiberty::Dev
 					File = Rest;
 				}
 				bDone = IFileManager::Get().FileExists(*File);
+			}
+			else if (Verb == TEXT("quiet"))
+			{
+				// A command that leaves the log mark where it was (hol.Scenario's own hol.Sanity.Watch 1): a waitlog after it still
+				// sees the lines written before it.
+				GEngine->Exec(GetGameWorld(), *Rest);
 			}
 			else if (Verb == TEXT("console"))
 			{

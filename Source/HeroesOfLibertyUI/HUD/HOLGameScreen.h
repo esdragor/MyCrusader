@@ -89,6 +89,9 @@ public:
 	/** J8a.5: the lines of the part in script (UHOLScriptScreen::Describe), "hero: ..." each; "script: none" without it. */
 	FString DescribeScript() const;
 
+	/** Lesson 12b: the script's panels and the cheats' panel that cover each other, as drawn: "none" or "A x B" (hol.HUD.Report's "HUD overlap" line). */
+	FString DescribeOverlaps() const;
+
 	/**
 	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
 	 * follows the bar's scale (GetBottomScale), read anew on every refresh of the block.
@@ -586,6 +589,8 @@ private:
 	int32 ShownChosenAge = INDEX_NONE;
 	/** The tier of the player's hero the age panels were written for (P4): they follow his level. */
 	int32 ShownTier = INDEX_NONE;
+	/** S7: the tier of the hero the grid's siege engine cells were written for (INDEX_NONE: none shown): the grid follows his level. */
+	int32 ShownEngineTier = INDEX_NONE;
 	bool bQueueShown = false;
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
