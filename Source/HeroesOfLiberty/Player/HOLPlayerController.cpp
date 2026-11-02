@@ -1602,6 +1602,18 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand CheatWoundCommand(
+		TEXT("hol.Cheat.Wound"),
+		TEXT("hol.Cheat.Wound [Percent=50]: every living unit of the local player, but the King, is wounded to Percent of its maximum health (1-100; scenarios of the heal; development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Percent = Args.IsEmpty() ? 50 : FCString::Atoi(*Args[0]);
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatWound(Percent);
+			}
+		}));
+
 	FAutoConsoleCommand CheatTechnologyCommand(
 		TEXT("hol.Cheat.Technology"),
 		TEXT("hol.Cheat.Technology <Name>: the local player has that technology researched at once, free, without its building (development only; Technologies.csv names, e.g. MeleeAttackI)"),
@@ -4224,6 +4236,28 @@ void AHOLPlayerController::RequestCheatUnitSpeed(const float Scale)
 void AHOLPlayerController::RequestCheatGatherSpeed(const float Scale)
 {
 	ServerCheatGatherSpeed(Scale);
+}
+
+void AHOLPlayerController::RequestCheatWound(const int32 Percent)
+{
+	ServerCheatWound(Percent);
+}
+
+void AHOLPlayerController::ServerCheatWound_Implementation(const int32 Percent)
+{
+#if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("wound")))
+	{
+		return;
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLUnitSubsystem* Units = GetWorld() ? GetWorld()->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	if (HOLPlayerState && Units)
+	{
+		const int32 Wounded = Units->WoundUnits(HOLPlayerState->GetPlayerIndex(), Percent);
+		UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d wound to %d %%, %d units wounded"), HOLPlayerState->GetPlayerIndex(), FMath::Clamp(Percent, 1, 100), Wounded);
+	}
+#endif
 }
 
 void AHOLPlayerController::ServerCheatResources_Implementation(const FHOLResources Amount)

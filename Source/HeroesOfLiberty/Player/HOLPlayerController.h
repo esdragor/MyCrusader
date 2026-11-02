@@ -457,6 +457,8 @@ public:
 	void RequestCheatTechnology(FName Technology);
 	void RequestCheatUnitSpeed(float Scale);
 	void RequestCheatGatherSpeed(float Scale);
+	/** Q-chapelle-moine, scenarios: every living unit of the local player, but the King, is wounded to Percent of its maximum health (hol.Cheat.Wound). */
+	void RequestCheatWound(int32 Percent);
 	/**
 	 * D345.2a, until the units attack buildings: Amount of damage of AttackType (EHOLAttackType as a byte) on the building
 	 * nearest Point on the server (any player's), its armour taken off; destroyed at 0 (hol.Cheat.DamageNear, DamageSelected).
@@ -751,6 +753,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatGatherSpeed(float Scale);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatWound(int32 Percent);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatDamageBuilding(FVector_NetQuantize Point, int32 Amount, uint8 AttackType);

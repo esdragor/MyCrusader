@@ -384,7 +384,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("ten buildable types (the Sanctuary, SC-Q1, joined the seven of age I; the Market M3 and the siege workshop S2 are of age II)"), Context.Buildable.Num(), 10);
+	TestEqual(TEXT("eleven buildable types (the Sanctuary, SC-Q1, joined the seven of age I; the Market M3, the siege workshop S2 and the Chapel are of age II)"), Context.Buildable.Num(), 11);
 	TestTrue(TEXT("X: sanctuary (SC-Q1 = B, D602)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 9).TypeName == FName(TEXT("Sanctuary"))
 		&& HOLCommandGrid::GetAgeBuilding(Context, 0, 9).Command == EHOLGridCommand::Build);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
@@ -413,7 +413,11 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	const FHOLGridCommand WorkshopCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 4);
 	TestTrue(TEXT("II Q: the siege workshop, a build command, greyed (age II not reached)"), WorkshopCell.TypeName == HOLBuildingTypeNames::SiegeWorkshop
 		&& WorkshopCell.Command == EHOLGridCommand::Build && WorkshopCell.Age == 1 && WorkshopCell.bGreyed);
-	for (const int32 Cell : { 1, 2, 3, 5, 6, 7, 8, 9, 10, 11 })
+	// Q-chapelle-moine = A: the Chapel, S of page II (military row, right of the siege workshop), greyed likewise.
+	const FHOLGridCommand ChapelCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 5);
+	TestTrue(TEXT("II S: the Chapel, a build command, greyed (age II not reached)"), ChapelCell.TypeName == FName(TEXT("Chapel"))
+		&& ChapelCell.Command == EHOLGridCommand::Build && ChapelCell.Age == 1 && ChapelCell.bGreyed);
+	for (const int32 Cell : { 1, 2, 3, 6, 7, 8, 9, 10, 11 })
 	{
 		TestTrue(*FString::Printf(TEXT("page II, cell %d: no building yet"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 1, Cell).IsNone());
 	}
@@ -424,7 +428,8 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	for (const FHOLBuildable& Buildable : Context.Buildable)
 	{
 		// M3: the Market alone is of age II (page II, A: the economic row of its page); every other type is of age I.
-		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market || Buildable.TypeName == HOLBuildingTypeNames::SiegeWorkshop;
+		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market || Buildable.TypeName == HOLBuildingTypeNames::SiegeWorkshop
+			|| Buildable.TypeName == FName(TEXT("Chapel"));
 		TestEqual(*FString::Printf(TEXT("%s: %s"), *Buildable.TypeName.ToString(), bMarket ? TEXT("age II") : TEXT("age I")), Buildable.Age, bMarket ? 1 : 0);
 		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology;
 		// the farm alone stands on the third row (IA1.2-Q1: the economic row of age I is full).
@@ -507,6 +512,21 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
 			TestTrue(*FString::Printf(TEXT("Siege workshop, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Workshop, Cell).IsNone());
+		}
+	}
+	// The Chapel's grid (Q-chapelle-moine = A): A Monk once finished; nothing else.
+	const FHOLBuildingTypeRow* ChapelType = UHOLBuildingSettings::FindType(TEXT("Chapel"));
+	if (TestNotNull(TEXT("Chapel in the building type table"), ChapelType))
+	{
+		FHOLGridContext Chapel;
+		Chapel.bOwnBuilding = true;
+		Chapel.bBuildingFinished = true;
+		Chapel.Produces = ChapelType->Produces;
+		const FHOLGridCommand A = HOLCommandGrid::GetCommand(Chapel, 0);
+		TestTrue(TEXT("Chapel, A: produce a Monk"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Monk")));
+		for (int32 Cell = 1; Cell < HOLCommandGrid::NumCells; ++Cell)
+		{
+			TestTrue(*FString::Printf(TEXT("Chapel, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Chapel, Cell).IsNone());
 		}
 	}
 	TestFalse(TEXT("the centre is not built"), Context.Buildable.ContainsByPredicate([](const FHOLBuildable& Type)

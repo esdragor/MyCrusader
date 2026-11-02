@@ -368,6 +368,14 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	/** S2 (D614): radius (cm) of the blow's area on units, around the target (the Mangonel's 250); 0: a single target. Read by S4. */
 	UPROPERTY()
 	float AreaRadius = 0.f;
+
+	/** Q-chapelle-moine = A: health points per second this unit heals an ally (the Monk's 5); 0: it heals nobody. */
+	UPROPERTY()
+	float HealRate = 0.f;
+
+	/** Q-chapelle-moine = A: reach (cm, centre to centre) of its heal (the Monk's 800 = 8 m). */
+	UPROPERTY()
+	float HealRange = 0.f;
 };
 
 /**
@@ -627,6 +635,14 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float AreaRadius = 0.f;
 
+	/** Q-chapelle-moine = A: health points per second the unit heals one wounded ally in reach (the Monk: 5); 0: it heals nobody. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
+	float HealRate = 0.f;
+
+	/** Q-chapelle-moine = A: reach of its heal (cm, centre to centre; the Monk: 800 = 8 m). */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ForceUnits = "cm"))
+	float HealRange = 0.f;
+
 	/**
 	 * The projectile drawn in flight for its shots (AR9, AR-Q5): SM_Arrow for the Archer, SM_Bolt for the Crossbowman, the
 	 * same flight for both. Read by the arrow display only (UHOLArrowSubsystem, by the shooter's type), never by the
@@ -691,5 +707,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.BuildingAttackInterval = BuildingAttackInterval;
 	Constants.BuildingAttackRange = BuildingAttackRange;
 	Constants.AreaRadius = AreaRadius;
+	Constants.HealRate = HealRate;
+	Constants.HealRange = HealRange;
 	return Constants;
 }

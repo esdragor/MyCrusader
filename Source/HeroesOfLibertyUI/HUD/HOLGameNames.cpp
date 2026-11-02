@@ -25,6 +25,11 @@ namespace HOLGameNames
 			// S2 (GDD 6.1), translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("Ram", "Bélier");
 		}
+		if (TypeName == FName(TEXT("Monk")))
+		{
+			// Q-chapelle-moine = A (GDD 7.1, D134), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Monk", "Moine");
+		}
 		if (TypeName == Mangonel)
 		{
 			// S2 (GDD 6.1), translated in Tools/Localization/fill_po.py.
@@ -113,6 +118,11 @@ namespace HOLGameNames
 		{
 			// M3, translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("Market", "Marché");
+		}
+		if (TypeName == FName(TEXT("Chapel")))
+		{
+			// Q-chapelle-moine = A (GDD 11.1, D211), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Chapel", "Chapelle");
 		}
 		if (TypeName == FName(TEXT("Sanctuary")))
 		{

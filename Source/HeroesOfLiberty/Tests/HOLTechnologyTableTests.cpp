@@ -55,8 +55,8 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 	/** The Dawn's own technologies of the grid (the others are common, D27). */
 	constexpr const TCHAR* DawnOwn[] = { TEXT("Liturgy"), TEXT("TemperedHalberds"), TEXT("BlessingOfArms"), TEXT("VowOfPoverty") };
 
-	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. The Sanctuary is a type since SC-Q1 = B (D602), the siege workshop since S2. */
-	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy"), TEXT("Chapel") };
+	/** Buildings of GDD 11.1 not yet in BuildingTypes.csv (their chantiers to come, T-Q4): a row may name them. The Sanctuary is a type since SC-Q1 = B (D602), the siege workshop since S2, the Chapel since Q-chapelle-moine = A (D636): the Vow of Poverty finds its Chapel in the table. */
+	constexpr const TCHAR* PlannedBuildings[] = { TEXT("Forge"), TEXT("Academy") };
 
 	/** The statistics some code applies today (T5 gathering and workers, T6 melee and ranged attack): a row whose statistics are all here is Implemented, any other is "Soon" (D601). */
 	constexpr const TCHAR* CodedStats[] = {

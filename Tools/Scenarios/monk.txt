@@ -1,0 +1,52 @@
+# Chapelle et Moine (Q-chapelle-moine = A, GDD 7.1 et 11.1, D211/D212) : la Chapelle forme un Moine ; le Moine soigne 5 PV/s un allie blesse a la fois, a 8 m, jamais lui-meme.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# hol.Cheat.Wound 70 blesse tous tes soldats et ouvriers a 70 % ; un Lancier a 56/80 manque 24 PV, soit 96 pas de 0,25 PV (5 PV/s a 20 pas/s) : trois Lanciers l'un apres l'autre = 288 pas de soin.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Chapel 0 2500 2500
+waitlog Cheat: spawned Chapel of slot 0
+hol.Camera.Zoom -2
+frames 40
+hol.Select.Click 0.5 0.5
+waitlog Selection: Chapel of slot 0 (own)
+frames 20
+note 1. La Chapelle est selectionnee : la case A de sa grille forme un Moine (100 nourriture + 100 or).
+hol.HUD.Report
+waitlog A=Monk enabled
+capture monk_chapel
+hol.Prod.Queue Monk
+waitlog Production: Monk of slot 0 done
+frames 20
+note 2. Le Moine est sorti de la Chapelle (production de 2 s pour l'essai).
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 1 Monk 0 100
+hol.Units.SpawnHere 3 Spearman 0 400
+waitlog SpawnHere: 3 Spearman of slot 0
+frames 20
+hol.Camera.Zoom 3
+frames 20
+hol.Cheat.Wound 70
+waitlog Cheat: slot 0 wound to 70 %
+note 3. Tout le monde est blesse a 70 % : le Moine soigne UN Lancier a la fois (ligne verte et + vert), sans se soigner lui-meme.
+waitlog heals #
+capture monk_heal
+waitlog is healed to 80
+hol.Heal.Report
+waitlog is healed to 80
+hol.Heal.Report
+waitlog is healed to 80
+frames 10
+hol.Heal.Report
+waitlog healed total 72.00
+hol.Heal.Report
+waitlog heal steps 288
+hol.Combat.Report 0
+waitlog Monk slot 0 hp 56/80
+note 4. Les trois Lanciers sont de nouveau a 80 ; les Moines, blesses, sont restes a 56 (pas d'auto-soin).
+capture monk_healed
