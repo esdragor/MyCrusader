@@ -563,3 +563,9 @@ def sources(recipe):
     """The sources of the match (D297), as AHOLSourceLayout data: the bases, then the pockets' contents; groups per player."""
     result = plan(recipe)
     return result.sources, len(result.items)
+
+
+def relays(recipe):
+    """R2 (provisional level design): one relay between every two neighbouring places, clear of the rocks of the belt and the pockets' walls
+    (common.ring_relays, avoid = avoid_points)."""
+    return common.ring_relays(recipe, avoid=avoid_points(recipe))

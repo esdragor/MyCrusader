@@ -1064,6 +1064,83 @@ def spawn_zones(zones, colors=None):
         component.set_editor_property("can_ever_affect_navigation", False)
 
 
+# ---- Relays (R2, D388, RelaysInProgress.md): neutral places the map lays, taken by standing in them. A module's relays(recipe) gives
+# [(x, y, radius)] in cm; make_map lays them as an HOLRelayLayout (data for the server, the rings are drawn at run time). Rules the Map.Table test
+# checks (FHOLRelayLayoutRules): symmetric by a turn of one place, no zone in a base's reach, all inside the bounds, a radius above 0, and (this
+# file) no tree, bush or vein inside a zone: RELAY_ZONES is read by steppe.kept_out so that the far layer keeps RELAY_SOURCE_CLEAR away from it,
+# and make_map drops what is left in a zone (the maps of other recipes).
+# NUMBER AND PLACES (Q-relais-lieux, the user: "4 + number of players"; the reading is the session's, TO CONFIRM): one relay between every two neighbouring
+# places (their middle angle) on a circle of about half the places' circle, plus 4 round the middle; the radius of the ruin's zone (1 200 cm).
+RELAY_RADIUS = 1200.0
+RELAY_SOURCE_CLEAR = 1500.0
+RELAY_ROCK_CLEAR = 1000.0
+RELAY_BASE_MARGIN = 500.0
+RELAY_FRACTIONS = (0.5, 0.45, 0.55, 0.4, 0.6, 0.35, 0.65, 0.7, 0.75)
+RELAY_ZONES = []  # [(x, y, radius)] of the map being made, read by steppe.kept_out
+
+
+RELAY_EXTRA = 4  # the user's answer to Q-relais-lieux (2026-11-02): "4 + number of players" relays, read by the session as the ring plus 4 more (TO CONFIRM)
+RELAY_EXTRA_RADIUS = 2000.0  # cm: the 4 extra relays form a cross this far from the middle (zones 2.8 m apart edge to edge at 12 m radius: they do not overlap)
+
+
+def ring_relays(recipe, avoid=(), extra_radius=RELAY_EXTRA_RADIUS, on_slots=False):
+    """The relays of a map: one for every two neighbouring places (their middle angle; on_slots: on each place's own axis, for the maps whose ranges
+    of mountains run along the middle angles), on the first circle (RELAY_FRACTIONS of the places' circle) where all of them are clear, plus RELAY_EXTRA
+    in a cross round the middle at extra_radius (the ring is farther out than the cross by more than two zones). Clear: outside every base's reach and
+    the bounds' edge, RELAY_ROCK_CLEAR from every avoid point (a rock). The cross turns with the places' first angle; it is NOT symmetric by a turn of
+    one place when there are 6 or 8 places (4 points cannot be), the ring is."""
+    if recipe.size_key is None:
+        return []
+    places = len(recipe.angles)
+    first = math.radians(recipe.angles[0] + (0.0 if on_slots else 180.0 / places))
+    slots = [recipe.slot(index)[0] for index in range(places)]
+    limit = recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN
+    # The cross first as asked (extra_radius, turned with the places); a map with rocks in the middle (the Hinterland's outcrops) turns it by 15 degrees,
+    # then pushes it out by 500 cm, until the cross and a ring are both clear.
+    for rock_clear, push in [(clear_, push_) for clear_ in (RELAY_ROCK_CLEAR, 0.0) for push_ in range(0, 7)]:  # UNTESTED fallback (R2): rocks 0 cm from a zone's edge if none of the clearances above fit
+        cross_radius = extra_radius + 500.0 * push
+        inner = cross_radius + 2.0 * RELAY_RADIUS + RELAY_BASE_MARGIN
+        for turn in range(0, 6):
+            cross = [(cross_radius * math.cos(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn)),
+                      cross_radius * math.sin(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn))) for k in range(RELAY_EXTRA)]
+            for fraction in RELAY_FRACTIONS:
+                radius = fraction * recipe.slot_radius
+                if radius < inner:
+                    continue
+                points = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places)) for k in range(places)]
+                everything = points + cross
+                clear = all(abs(x) <= limit and abs(y) <= limit for x, y in everything)
+                clear = clear and all(math.dist(point, slot) >= BASE_REACH + RELAY_RADIUS + RELAY_BASE_MARGIN for point in everything for slot in slots)
+                clear = clear and all(math.dist(point, rock) >= RELAY_RADIUS + rock_clear for point in everything for rock in avoid)
+                if clear:
+                    return [(x, y, RELAY_RADIUS) for x, y in everything]
+    raise RuntimeError("No clear circle for the relays of %s" % recipe.map_path)
+
+
+def spawn_relays(relays):
+    layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLRelayLayout")
+    if layout_class is None:
+        raise RuntimeError("Missing HOLRelayLayout (is the HeroesOfLiberty module compiled?)")
+    layout = spawn(layout_class, label="RelayLayout")
+    placed = []
+    for x, y, radius in relays:
+        relay = unreal.HOLPlacedRelay()
+        relay.set_editor_property("location", unreal.Vector(x, y, 0))
+        relay.set_editor_property("radius", radius)
+        placed.append(relay)
+    layout.set_editor_property("relays", placed)
+
+
+def outside_relays(sources, relays):
+    """The sources whose centre is not inside any relay's zone."""
+    kept = []
+    for source in sources:
+        at = source.get_editor_property("location")
+        if all(math.dist((at.x, at.y), (x, y)) >= radius for x, y, radius in relays):
+            kept.append(source)
+    return kept
+
+
 def make_map(recipe, module, on_saved):
     """One map file: the shared pieces, then the map module's obstacles and sources, then the navmesh and the save."""
     slot_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLStartSlot")
@@ -1112,8 +1189,16 @@ def make_map(recipe, module, on_saved):
 
     # Resource sources (D297): data read by the server, nothing in the map itself (the navmesh is built without them).
     layout = spawn(layout_class, label="SourceLayout")
-    sources, groups = module.sources(recipe)
+    relays = list(module.relays(recipe)) if hasattr(module, "relays") else []
+    RELAY_ZONES[:] = relays
+    try:
+        sources, groups = module.sources(recipe)
+    finally:
+        RELAY_ZONES[:] = []
+    sources = outside_relays(sources, relays)  # what the far layer's clearance did not keep out (R2)
     layout.set_editor_property("sources", sources)
+    if relays:
+        spawn_relays(relays)
 
     # Terrain zones (C3): data read by the server (the walkers' speed), and the ground drawn under them (zones(recipe) of the module).
     zones = module.zones(recipe) if hasattr(module, "zones") else ()
@@ -1131,8 +1216,8 @@ def make_map(recipe, module, on_saved):
     places = len(recipe.angles)
     neighbours = 2 * recipe.slot_radius * math.sin(math.pi / places) if places > 2 else 2 * recipe.slot_radius
     summary = ("Match map created at %s: %d start slots on a %.0f m circle (neighbours %.0f m apart), bounds %.0f m, %d obstacles, "
-               "%d sources (%d neutral groups per player)%s, navmesh built") % (
-        recipe.map_path, places, recipe.slot_radius / 100, neighbours / 100, 2 * recipe.bounds_half / 100, obstacles, len(sources), groups, summary_zones)
+               "%d sources (%d neutral groups per player)%s, %d relays, navmesh built") % (
+        recipe.map_path, places, recipe.slot_radius / 100, neighbours / 100, 2 * recipe.bounds_half / 100, obstacles, len(sources), groups, summary_zones, len(relays))
     # The navmesh is built once the editor lets it (it locks building for ~2 s after loading), then saved.
     if scenery:
         summary += ", scenery %d instances (%s)" % (sum(scenery.values()), ", ".join("%s %d" % item for item in sorted(scenery.items())))
