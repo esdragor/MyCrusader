@@ -572,6 +572,59 @@ bool FHOLVolcanoAltarTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// How many soldiers the AI sends to the altar an adversary holds (V11, D427, the user's answer of 2026-11-02): a small adversary meets a bigger squad,
+// a big army is not met head on (Hard: a diversion), the size does not oscillate over the reflections.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarSendTest, "HeroesOfLiberty.Volcano.AltarSend", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoAltarSendTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	using namespace HOLVolcano;
+	// 10 free soldiers, the reserve (40 %) keeps 4 at home: 6 can go.
+	FAltarSendInput Small;
+	Small.FreeSoldiers = 10;
+	Small.AdversaryStrength = 1.f;
+	const FAltarSend ToSmall = AltarSend(Small, Settings);
+	TestTrue(TEXT("a small adversary (1): a squad bigger than him"), ToSmall.Squad > 1);
+	TestEqual(TEXT("... the minimum of the settings (needs 1.5, at least 2)"), ToSmall.Squad, Settings.AiAltarMinSend);
+	TestFalse(TEXT("... no diversion"), ToSmall.bDiversion);
+
+	FAltarSendInput Middle = Small;
+	Middle.AdversaryStrength = 3.f;
+	TestEqual(TEXT("an adversary of 3: 1.5 times, rounded up, 5"), AltarSend(Middle, Settings).Squad, 5);
+
+	FAltarSendInput Big = Small;
+	Big.AdversaryStrength = 8.f;
+	Big.Level = EAltarLevel::Hard;
+	const FAltarSend ToBig = AltarSend(Big, Settings);
+	TestEqual(TEXT("a big army (8, needs 12 of the 6 spared), Hard: no massive send"), ToBig.Squad, 0);
+	TestTrue(TEXT("... a diversion instead (its camp is bare)"), ToBig.bDiversion);
+	Big.Level = EAltarLevel::Normal;
+	TestEqual(TEXT("... Normal sends all it can spare (6)"), AltarSend(Big, Settings).Squad, 6);
+	TestFalse(TEXT("... without diversion"), AltarSend(Big, Settings).bDiversion);
+	Big.Level = EAltarLevel::Hard;
+	Big.AlreadySent = 4;
+	TestEqual(TEXT("Hard with 4 already there: they stay, no recall"), AltarSend(Big, Settings).Squad, 4);
+
+	// Ten reflections with an adversary whose strength wobbles between 3 and 4: the squad never shrinks and settles.
+	FAltarSendInput Wobble = Small;
+	int32 Previous = 0;
+	bool bNeverShrinks = true;
+	TArray<int32> Squads;
+	for (int32 Reflection = 0; Reflection < 10; ++Reflection)
+	{
+		Wobble.AdversaryStrength = (Reflection % 2 == 0) ? 3.f : 4.f;
+		Wobble.AlreadySent = Previous;
+		const int32 Squad = AltarSend(Wobble, Settings).Squad;
+		bNeverShrinks = bNeverShrinks && Squad >= Previous;
+		Previous = Squad;
+		Squads.Add(Squad);
+	}
+	TestTrue(TEXT("ten reflections: the squad never shrinks"), bNeverShrinks);
+	TestEqual(TEXT("... and holds the same size over the last 6"), Squads.Last(), Squads[4]);
+	TestEqual(TEXT("... the size of the bigger need (4 x 1.5 = 6)"), Squads.Last(), 6);
+	return true;
+}
+
 // The altar's count (V8, D380, D348's rule): one camp in the zone counts up, nobody makes it go down, two camps freeze it.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarHoldTest, "HeroesOfLiberty.Volcano.AltarHold", UE::HeroesOfLiberty::Tests::VolcanoFlags)
 bool FHOLVolcanoAltarHoldTest::RunTest(const FString& Parameters)

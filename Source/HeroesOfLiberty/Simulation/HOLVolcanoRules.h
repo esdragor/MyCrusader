@@ -57,6 +57,16 @@ struct FHOLVolcanoSettings
 	float AltarHoldSeconds = 60.f;
 	/** V8 (D348's rule, as the ruin's ForumHoldDecay): seconds of the count lost each second nobody stands in the zone. */
 	float AltarDecayRate = 2.f;
+	/**
+	 * V11 (D427, answer of the user 2026-11-02, Q-ia-autel-escouade: "a minimum of strategy"). All PROVISIONAL, to confirm in trial: the AI sends
+	 * ceil(AiAltarMargin x the adversary's strength on the altar) soldiers, at least AiAltarMinSend, among the free ones but never the AiAltarReserveShare
+	 * share of them it keeps at home; an adversary too big for that is a sign its own camp is bare (Hard: no massive send, a diversion instead).
+	 */
+	float AiAltarMargin = 1.5f;
+	float AiAltarReserveShare = 0.4f;
+	int32 AiAltarMinSend = 2;
+	/** The weight, in the adversary's strength on the altar, of a unit that is not a soldier (a Peasant). */
+	float AiAltarWorkerWeight = 0.25f;
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -190,6 +200,33 @@ namespace HOLVolcano
 	 * zone: 0 lowers the count by AltarDecayRate x DeltaSeconds (not below 0), 1 raises it by DeltaSeconds, 2 or more freeze it.
 	 */
 	HEROESOFLIBERTY_API EAltarHold StepAltar(float& HeldSeconds, int32 CampsInZone, float DeltaSeconds, const FHOLVolcanoSettings& Settings);
+
+	/** The levels of the AI as the altar rule reads them (Easy and Normal alike here: only Hard dares the diversion of a big adversary army). */
+	enum class EAltarLevel : uint8 { Easy, Normal, Hard };
+
+	/** V11: what the AI knows at this reflection: the adversary's strength on the altar, its free soldiers, the soldiers already sent there. */
+	struct FAltarSendInput
+	{
+		float AdversaryStrength = 0.f;
+		int32 FreeSoldiers = 0;
+		int32 AlreadySent = 0;
+		EAltarLevel Level = EAltarLevel::Normal;
+	};
+
+	/** V11: the size of the squad at the altar now (the soldiers already sent included, never recalled: no to-and-fro) and the diversion flag. */
+	struct FAltarSend
+	{
+		int32 Squad = 0;
+		/** Too big an adversary army on the altar for the AI to beat: its camp is bare, the Hard level strikes elsewhere instead (no massive send). */
+		bool bDiversion = false;
+	};
+
+	/**
+	 * V11 (D427, user answer 2026-11-02): how many soldiers the AI has at the altar an adversary holds. Need = max(AiAltarMinSend, ceil(AiAltarMargin x
+	 * strength)); Available = free soldiers minus the reserve kept at home (ceil(AiAltarReserveShare x free)). Need beyond Available is a big army:
+	 * Hard sends nothing new (diversion), the others send all they can spare. Otherwise the squad is Need. Never fewer than AlreadySent.
+	 */
+	HEROESOFLIBERTY_API FAltarSend AltarSend(const FAltarSendInput& Input, const FHOLVolcanoSettings& Settings);
 
 	/** What a site is doing at one instant (V4): everything the alert, the lava, the damage and the obstacle need. */
 	struct FSiteState

@@ -325,3 +325,25 @@ HOLVolcano::EAltarHold HOLVolcano::StepAltar(float& HeldSeconds, const int32 Cam
 	}
 	return EAltarHold::Contested;
 }
+
+HOLVolcano::FAltarSend HOLVolcano::AltarSend(const FAltarSendInput& Input, const FHOLVolcanoSettings& Settings)
+{
+	const int32 Free = FMath::Max(0, Input.FreeSoldiers);
+	const int32 Reserve = FMath::CeilToInt(Settings.AiAltarReserveShare * Free);
+	const int32 Available = FMath::Max(0, Free - Reserve);
+	const int32 Need = FMath::Max(Settings.AiAltarMinSend, FMath::CeilToInt(Settings.AiAltarMargin * Input.AdversaryStrength));
+	FAltarSend Result;
+	if (Need > Available)
+	{
+		// An army the AI cannot beat with its margin: the adversary's camp is bare. Hard strikes elsewhere; the others spare what they can.
+		Result.bDiversion = Input.Level == EAltarLevel::Hard;
+		Result.Squad = Result.bDiversion ? 0 : Available;
+	}
+	else
+	{
+		Result.Squad = Need;
+	}
+	// The soldiers already sent stay (no recall: the movement audit sees the to-and-fro as spins).
+	Result.Squad = FMath::Max(Result.Squad, Input.AlreadySent);
+	return Result;
+}
