@@ -81,3 +81,6 @@ eutrals NON redonné (audit rouge, pas de PNG vus).
 - 2026-11-02 21:0x (séance interactive, réponses de l utilisateur) : Q-duel-ring = B (trait épais rouge, hol.Duel.RingStyle 1, défaut gardé). 
 
 - 2026-11-02 21:1x (D5b, user feedback on duel_ring: clear the troops out of the circle): when a duel is on (sheet DuelCode 3), every unit that is not one of the two duelists and stands inside the circle gets one move order to the point radius+200 cm straight out from the centre (HOLDuelClear::GetTarget, Simulation/HOLDuelClearRules.h; UHOLHeroSubsystem::ClearDuelCircles, server and solo, once per unit until it is seen outside radius+margin or the duel ends); cvar hol.Duel.ClearCircle (default 1). Test: HeroesOfLiberty.Duel.ClearCircleRule (pure rule); tests,combat,hero 839/839 PASS. Scenario duel_ring: 3+3 Men-at-arms placed in the circle, capture duel_ring_cleared shows them out; preflight PASS. Limits: the unit's former order is NOT resumed (the move order replaces it; the unit stands outside), and with combat on enemy troops may re-engage and walk back in (no state test of that).
+
+
+- 2026-11-02 21:2x (séance interactive) : E-duel-ring VALIDÉ par l utilisateur (OK) : cercle rouge (B) + troupes écartées du cercle (hol.Duel.ClearCircle, fc4243f). Limites connues : une troupe peut rentrer pendant le duel, ordre d origine non repris.
