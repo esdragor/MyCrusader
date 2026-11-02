@@ -14,6 +14,7 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 #include "Simulation/HOLVolcanoRules.h"
+#include "Simulation/HOLVolcanoLibrary.h"
 #include "Simulation/HOLVolcanoSubsystem.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -33,7 +34,7 @@ namespace UE::HeroesOfLiberty::Tests::VolcanoWorld
 		UHOLSimulationSubsystem* Simulation = nullptr;
 		UHOLVolcanoSubsystem* Volcano = nullptr;
 
-		explicit FWorld(const bool bCatastrophe, const int32 Seed)
+		explicit FWorld(const bool bCatastrophe, const int32 Seed, const bool bSeparateTeams = false)
 		{
 			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -53,7 +54,7 @@ namespace UE::HeroesOfLiberty::Tests::VolcanoWorld
 			for (int32 Index = 0; Index < Config.Slots.Num(); ++Index)
 			{
 				Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : Index <= 2 ? EHOLSlotState::AI : EHOLSlotState::Closed;
-				Config.Slots[Index].Team = 0;
+				Config.Slots[Index].Team = bSeparateTeams ? Index : 0;
 			}
 			Config.bCatastrophe = bCatastrophe;
 			Config.Seed = Seed;
@@ -399,6 +400,100 @@ bool FHOLVolcanoEvacuateStandardTest::RunTest(const FString& Parameters)
 	W.RunTo(900.f);
 	TestTrue(TEXT("placed"), OnTheLine != 0);
 	TestEqual(TEXT("no Catastrophe: nobody leaves"), W.Volcano->GetEvacuations(1, Entries), 0);
+	return true;
+}
+
+// The altar held on the real chain (V8, D380, D348's rule): a server world, the game state's configuration, the units, the steps. One camp in the zone
+// counts up; an adversary in it freezes the count; held 60 s starts the alert at once; the site's state and the HUD's view say so.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarWorldTest, "HeroesOfLiberty.Volcano.Altar", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoAltarWorldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, /*Seed*/ 4242, /*bSeparateTeams*/ true);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	Site.Altar.bPresent = true;
+	Site.Altar.Location = FVector(0.0, 5000.0, 0.0);
+	Site.Altar.Radius = 1200.f;
+	W.Volcano->SetSites({ Site });
+	const float HoldSeconds = W.Volcano->GetSettings().AltarHoldSeconds;
+
+	TestTrue(TEXT("the altar is lit from the start"), W.Volcano->GetSiteState(0).bAltarLit);
+	W.RunTo(5.f);
+	TestEqual(TEXT("nobody in the zone: nothing counted"), W.Volcano->GetAltarHeldSeconds(0), 0.f);
+
+	// A unit of slot 0 on the altar: the count rises with the clock.
+	const uint32 Holder = W.PlaceUnit(FName(TEXT("Peasant")), 0, FVector(0.0, 5300.0, 0.0));
+	const uint32 Outside = W.PlaceUnit(FName(TEXT("Peasant")), 1, FVector(0.0, 5000.0 + 1200.0 + 600.0, 0.0));
+	if (!TestTrue(TEXT("units placed"), Holder != 0 && Outside != 0))
+	{
+		return false;
+	}
+	W.RunTo(25.f);
+	TestTrue(TEXT("one camp in the zone: holding"), W.Volcano->GetAltarHold(0) == HOLVolcano::EAltarHold::Holding);
+	const float After20 = W.Volcano->GetAltarHeldSeconds(0);
+	TestTrue(TEXT("20 s of one camp: about 20 s held (an adversary just outside the zone does not count)"), After20 > 19.f && After20 < 21.f);
+	const FHOLVolcanoSiteView View = UHOLVolcanoLibrary::GetSiteView(W.World, 0);
+	TestTrue(TEXT("the HUD's view: the altar is lit and a third held"), View.bAltarLit && View.AltarPercent >= 30 && View.AltarPercent <= 36 && View.AltarHold == 1);
+	TestEqual(TEXT("... the countdown at the altar"), View.AltarSecondsLeft, FMath::CeilToInt(HoldSeconds - After20));
+
+	// An adversary in the zone freezes the count (the ruin's rule).
+	const uint32 Intruder = W.PlaceUnit(FName(TEXT("Peasant")), 1, FVector(0.0, 4700.0, 0.0));
+	if (!TestTrue(TEXT("intruder placed"), Intruder != 0))
+	{
+		return false;
+	}
+	W.RunTo(35.f);
+	const float Frozen = W.Volcano->GetAltarHeldSeconds(0);
+	W.RunTo(55.f);
+	TestTrue(TEXT("two camps: contested"), W.Volcano->GetAltarHold(0) == HOLVolcano::EAltarHold::Contested);
+	TestTrue(TEXT("... the count is frozen for 20 s"), FMath::IsNearlyEqual(W.Volcano->GetAltarHeldSeconds(0), Frozen, 0.01f));
+	TestTrue(TEXT("... still no alert"), W.Volcano->GetSiteState(0).Phase == EHOLVolcanoPhase::Armed);
+	TestEqual(TEXT("... no wake yet"), W.Volcano->GetNumWakes(0), 0);
+
+	// The intruder is gone: the count goes on from where it stood and reaches the hold time.
+	W.Units->KillUnitsWhere([Intruder](const uint32 UnitId, FName, const uint8, const FVector&, const float) { return UnitId == Intruder; });
+	W.RunTo(55.f + (HoldSeconds - Frozen) - 3.f);
+	TestEqual(TEXT("3 s before the hold time: not woken"), W.Volcano->GetNumWakes(0), 0);
+	TestTrue(TEXT("... still armed"), W.Volcano->GetSiteState(0).Phase == EHOLVolcanoPhase::Armed);
+	W.RunTo(55.f + (HoldSeconds - Frozen) + 3.f);
+	TestEqual(TEXT("held: the altar woke the cycle"), W.Volcano->GetNumWakes(0), 1);
+	const HOLVolcano::FSiteState Woken = W.Volcano->GetSiteState(0);
+	TestTrue(TEXT("the alert has begun, at once (Q13 = B)"), Woken.Phase == EHOLVolcanoPhase::Warning && Woken.bWoken);
+	TestTrue(TEXT("... long before the plain window opens"), Woken.WarningAt < 200.f);
+	TestFalse(TEXT("... the altar is no longer lit"), Woken.bAltarLit);
+	const FHOLVolcanoSiteView WokenView = UHOLVolcanoLibrary::GetSiteView(W.World, 0);
+	TestTrue(TEXT("the HUD's view: alert with a countdown of 60 to 90 s at most"), WokenView.Phase == static_cast<int32>(EHOLVolcanoPhase::Warning) && WokenView.SecondsToErupt > 0 && WokenView.SecondsToErupt <= 90);
+	return true;
+}
+
+// Without Catastrophe the altar is inert (D398): a unit stands on it as long as it likes.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarInertTest, "HeroesOfLiberty.Volcano.AltarInertWithoutCatastrophe", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoAltarInertTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ false, /*Seed*/ 4242, /*bSeparateTeams*/ true);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	Site.Altar.bPresent = true;
+	Site.Altar.Location = FVector(0.0, 5000.0, 0.0);
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	W.Volcano->SetSites({ Site });
+	W.PlaceUnit(FName(TEXT("Peasant")), 0, FVector(0.0, 5000.0, 0.0));
+	W.RunTo(90.f);
+	TestEqual(TEXT("no Catastrophe: nothing woken"), W.Volcano->GetNumWakes(0), 0);
+	TestEqual(TEXT("no Catastrophe: the HUD sees no site"), UHOLVolcanoLibrary::GetSiteCount(W.World), 0);
 	return true;
 }
 

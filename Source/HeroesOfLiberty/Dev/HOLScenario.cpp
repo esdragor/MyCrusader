@@ -103,7 +103,14 @@ namespace UE::HeroesOfLiberty::Dev
 			return;
 		}
 		// V4c: drawn at each launch, unless the .json imposes its "seed".
-		Config.Seed = HOLTestHooks::GetScenarioSeed(bHasConfigFile ? &Json : nullptr, static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32));
+		const int32 Drawn = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
+		Config.Seed = HOLTestHooks::GetScenarioSeed(bHasConfigFile ? &Json : nullptr, Drawn);
+		// From the main menu the New game screen draws its own seed at its Launch: the imposed one waits for it there (V12).
+		HOLTestHooks::PendingImposedSeed().Reset();
+		if (Config.Seed != Drawn)
+		{
+			HOLTestHooks::PendingImposedSeed() = Config.Seed;
+		}
 		Match->SetConfig(Config);
 
 		// From the main menu, the New game screen launches it (the match then starts as from its button: game screen,
@@ -221,3 +228,9 @@ bool HOLTestHooks::MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutC
 }
 
 #endif
+
+TOptional<int32>& HOLTestHooks::PendingImposedSeed()
+{
+	static TOptional<int32> Seed;
+	return Seed;
+}

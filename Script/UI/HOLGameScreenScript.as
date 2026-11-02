@@ -111,6 +111,16 @@ FString TalentTipTexts = "";
 	float AILevelTop = 72.0;
 	FString AILevelTexts = "";
 
+	// The volcano's lines (V10, HOLVolcanoBanner.as), top left under the cheats' panel and the AI level line (the top right holds the players' lives):
+	// the alert's countdown, the lava, the altar being held. Hidden when no site speaks (no Catastrophe, a client, a site that is only armed).
+	UBorder VolcanoPanel;
+	UOverlaySlot VolcanoSlot;
+	UCommonTextBlock VolcanoText;
+	FString VolcanoTexts = "";
+	// The AI line's height with its gap (px at 1080p), when it is shown.
+	const float VolcanoAfterAILine = 34.0;
+	float VolcanoTop = 72.0;
+
 	// Sizes of the block (px at 1080p, the HUD's scale).
 	const float PortraitSize = 64.0;
 	// The column's width: the panel as wide as the selection's block under it, the return's button fitting in it.
@@ -144,6 +154,7 @@ FString TalentTipTexts = "";
 		BuildHeroBlock(Frame);
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
+		BuildVolcanoBanner(Frame);
 		BuildMinimap(Frame);
 		BuildTalentWindow(Frame);
 		// Last: over the other blocks.
@@ -240,6 +251,40 @@ FString TalentTipTexts = "";
 	void HandleDuelRefuseClicked()
 	{
 		ClickDuelAnswer(false);
+	}
+
+	void BuildVolcanoBanner(UOverlay Frame)
+	{
+		VolcanoPanel = MakePanel(n"VolcanoPanel");
+		VolcanoPanel.SetVisibility(ESlateVisibility::Collapsed);
+		VolcanoSlot = Frame.AddChildToOverlay(VolcanoPanel);
+		VolcanoSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		VolcanoSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
+		VolcanoSlot.SetPadding(FMargin(16.0, VolcanoTop, 0.0, 0.0));
+		VolcanoText = MakeText(n"VolcanoText", UHOLTextStyleHUDLabel);
+		VolcanoPanel.SetContent(VolcanoText);
+	}
+
+	// One line per site that has something to read (HOLVolcanoBanner::Make, from the library's views: the alert, the lava, the altar).
+	void RefreshVolcano()
+	{
+		TArray<FHOLVolcanoSiteView> Sites;
+		const int Count = HOLVolcano::GetSiteCount();
+		for (int Index = 0; Index < Count; Index++)
+		{
+			Sites.Add(HOLVolcano::GetSiteView(Index));
+		}
+		const FHOLVolcanoBannerView View = HOLVolcanoBanner::Make(Sites);
+		VolcanoTexts = View.Text.Replace("\n", " / ");
+		// Under the cheats' panel (folded or open) and under the AI level line when it is there.
+		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);
+		if (Math::Abs(Top - VolcanoTop) > 0.5)
+		{
+			VolcanoTop = Top;
+			VolcanoSlot.SetPadding(FMargin(16.0, VolcanoTop, 0.0, 0.0));
+		}
+		VolcanoPanel.SetVisibility(View.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
+		VolcanoText.SetText(FText::FromString(View.Text));
 	}
 
 	void BuildAILevelLine(UOverlay Frame)
@@ -600,6 +645,7 @@ FString TalentTipTexts = "";
 		RefreshHero();
 		RefreshDuel();
 		RefreshAILevel();
+		RefreshVolcano();
 		RefreshPause();
 		RefreshMinimap();
 	}
@@ -1303,6 +1349,7 @@ FString TalentTipTexts = "";
 			+ (HeroView.bVisible && TalentSeenCount >= 0 ? "\ntalent window: " + (bTalentWindowOpen ? "open | " + TalentWindowTexts : "closed") : "")
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
+			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

@@ -73,4 +73,11 @@ namespace HOLTestHooks
 	 * eruption twice (the volcano) gives it. Json null: none. Development builds only.
 	 */
 	HEROESOFLIBERTY_API int32 GetScenarioSeed(const FString* Json, int32 Drawn);
+
+	/**
+	 * The seed a scenario's .json imposed, waiting for the New game screen's launch (a scenario started from the main menu goes through that
+	 * screen, which draws its own seed: V12 found the imposed one lost there). Set by hol.Scenario when the .json has a "seed"; the screen's
+	 * Launch takes it and clears it. Unset otherwise: the screen draws as always.
+	 */
+	HEROESOFLIBERTY_API TOptional<int32>& PendingImposedSeed();
 }
