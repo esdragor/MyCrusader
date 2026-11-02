@@ -199,4 +199,6 @@ def obstacles(recipe):
 def relays(recipe):
     """R2 (provisional level design): the ring's relays between the places and the 4 round the middle, all kept away from the water (axis_points as
     the rocks to avoid: a zone's edge touches no water). A river map (2 places) has its relays on each place's own axis, the ring's usual circle being the river."""
-    return common.ring_relays(recipe, avoid=axis_points(recipe), on_slots=len(recipe.angles) == 2)
+    # 2 places: the middle is the river's bridge, so the middle fixed relay is moved along the axis of the places out of the water (extra_radius).
+    river = len(recipe.angles) == 2
+    return common.ring_relays(recipe, avoid=axis_points(recipe), on_slots=river, extra_radius=WATER_WIDTH / 2.0 if river else 0.0)
