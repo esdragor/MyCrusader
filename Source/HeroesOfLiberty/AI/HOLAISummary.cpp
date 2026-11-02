@@ -325,7 +325,7 @@ namespace HOLAISummary
 	void GatherDeposits(const UWorld& World, TArray<FHOLAIDeposit>& OutDeposits)
 	{
 		OutDeposits.Reset();
-		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		for (FHOLBuildingIterator It(&World); It; ++It)
 		{
 			const FHOLBuildingTypeRow* Type = It->GetType();
 			// As UHOLGatherProcessor::RefreshDeposits: a finished building only (D312), not a forum down (D351).
@@ -345,7 +345,7 @@ namespace HOLAISummary
 	void GatherBuildings(const UWorld& World, TArray<FHOLAIBuilding>& OutBuildings)
 	{
 		OutBuildings.Reset();
-		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		for (FHOLBuildingIterator It(&World); It; ++It)
 		{
 			const AHOLBuilding* Building = *It;
 			// The whole world, as the server and a solo game see it; Make keeps the slot's own (M7 will cut it to the

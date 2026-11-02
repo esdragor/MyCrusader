@@ -315,7 +315,7 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 {
 	// A few buildings per player: read again at each step, a new one or a lost one counts at once.
 	Deposits.Reset();
-	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	for (FHOLBuildingIterator It(&World); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
 		// Only a finished building takes deliveries (D312): a camp's foundation is no deposit yet, nor a forum down (D351).

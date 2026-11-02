@@ -45,7 +45,7 @@ namespace
 					continue;
 				}
 				int32 Count = 0;
-				for (TActorIterator<AHOLBuilding> It(World); It; ++It, ++Count)
+				for (FHOLBuildingIterator It(World); It; ++It, ++Count)
 				{
 					UE_LOG(LogHOLMatch, Display, TEXT("Building report: %s of slot %d, colour %d %s"), *It->GetTypeName().ToString(),
 						It->GetOwnerPlayer(), It->GetColorIndex(), ShowsItsColor(**It) ? TEXT("shown") : TEXT("not shown"));

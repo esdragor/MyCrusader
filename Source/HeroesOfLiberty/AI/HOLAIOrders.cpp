@@ -39,7 +39,7 @@ namespace
 	{
 		AHOLBuilding* Nearest = nullptr;
 		double NearestDistance = 100.0;
-		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		for (FHOLBuildingIterator It(&World); It; ++It)
 		{
 			const double Distance = FVector::Dist2D(It->GetActorLocation(), Location);
 			if ((Owner == INDEX_NONE || It->GetOwnerPlayer() == Owner) && Distance <= NearestDistance)
