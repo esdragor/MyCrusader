@@ -173,10 +173,12 @@ namespace UE::HeroesOfLiberty::Dev
 				Window.UnitId = UnitId;
 				Window.Places.Add(FVector2D(Where.X, Where.Y));
 				Window.Ordered.Add(bOrdered ? 1 : 0);
+				Window.Flanking.Add(Combat && Combat->bFlanking ? 1 : 0);
 				if (Window.Places.Num() > WindowSteps)
 				{
 					Window.Places.RemoveAt(0, Window.Places.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Ordered.RemoveAt(0, Window.Ordered.Num() - WindowSteps, EAllowShrinking::No);
+					Window.Flanking.RemoveAt(0, Window.Flanking.Num() - WindowSteps, EAllowShrinking::No);
 				}
 				if (Window.Places.Num() == WindowSteps && Watch.Steps % JudgeEvery == 0 && !Watch.Faults.Contains(UnitId))
 				{
