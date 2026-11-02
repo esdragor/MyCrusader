@@ -64,6 +64,28 @@ bool HOLVolcano::IsInLava(const FFlow& Flow, const float FrontDistance, const fl
 	}
 	return false;
 }
+TArray<HOLVolcano::FObstacleBox> HOLVolcano::GetObstacleBoxes(const FFlow& Flow, const float HalfWidth)
+{
+	TArray<FObstacleBox> Boxes;
+	for (int32 Index = 1; Index < Flow.Points.Num(); ++Index)
+	{
+		const FVector2D A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y);
+		const FVector2D B(Flow.Points[Index].X, Flow.Points[Index].Y);
+		const float Segment = FlatSegment(Flow.Points[Index - 1], Flow.Points[Index]);
+		if (Segment <= 0.f)
+		{
+			continue;
+		}
+		FObstacleBox Box;
+		Box.Centre = (A + B) * 0.5;
+		Box.HalfLength = 0.5f * Segment + HalfWidth;
+		Box.HalfWidth = HalfWidth;
+		Box.YawDegrees = static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(B.Y - A.Y, B.X - A.X)));
+		Boxes.Add(Box);
+	}
+	return Boxes;
+}
+
 FVector HOLVolcano::PointAt(const FFlow& Flow, const float Distance)
 {
 	if (Flow.Points.IsEmpty())

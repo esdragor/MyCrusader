@@ -74,7 +74,40 @@ void UHOLVolcanoSubsystem::OnStepStarted(const int64 StepIndex)
 	for (int32 Index = 0; Index < Sites.Num(); ++Index)
 	{
 		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(GameState->GetLaunchConfig(), Index, Sites[Index], Now, Settings, ManAtArms->Speed);
-		Burn(Sites[Index], State);
+		Apply(Index, Sites[Index], State);
+	}
+}
+
+void UHOLVolcanoSubsystem::Apply(const int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State)
+{
+	Burn(Site, State);
+	SyncObstacle(SiteIndex, Site, State);
+}
+
+void UHOLVolcanoSubsystem::SyncObstacle(const int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State)
+{
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	const bool bWanted = State.Phase == EHOLVolcanoPhase::Cooling && Site.Flows.IsValidIndex(State.FlowIndex);
+	AHOLLavaObstacle* Existing = FindObstacle(SiteIndex);
+	if (Existing && (!bWanted || Existing->GetCycleIndex() != State.CycleIndex))
+	{
+		Existing->Destroy();
+		Obstacles.Remove(SiteIndex);
+		Existing = nullptr;
+	}
+	if (bWanted && !Existing)
+	{
+		AHOLLavaObstacle* Obstacle = World->SpawnActor<AHOLLavaObstacle>();
+		if (Obstacle)
+		{
+			Obstacle->SetCycleIndex(State.CycleIndex);
+			Obstacle->Build(HOLVolcano::GetObstacleBoxes(Site.Flows[State.FlowIndex], Settings.LavaHalfWidth), ObstacleHeight);
+			Obstacles.Add(SiteIndex, Obstacle);
+		}
 	}
 }
 

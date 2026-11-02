@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Simulation/HOLVolcanoRules.h"
 #include "Subsystems/WorldSubsystem.h"
+#include "Simulation/HOLLavaObstacle.h"
 #include "HOLVolcanoSubsystem.generated.h"
 
 /**
@@ -39,6 +40,15 @@ public:
 	 */
 	int32 Burn(const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State);
 
+	/**
+	 * What a site's state asks of the world: the lava burns while it advances (Burn), the cooled flow forbids its ground to the navmesh
+	 * (V6: an AHOLLavaObstacle for the cycle in Cooling, removed when the basalt is passable).
+	 */
+	void Apply(int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State);
+
+	/** The obstacle standing now for a site, null when its ground is free. */
+	AHOLLavaObstacle* FindObstacle(const int32 SiteIndex) const { const TObjectPtr<AHOLLavaObstacle>* Found = Obstacles.Find(SiteIndex); return Found ? Found->Get() : nullptr; }
+
 	int32 GetNumUnitsBurnt() const { return NumUnitsBurnt; }
 	int32 GetNumBuildingsBurnt() const { return NumBuildingsBurnt; }
 
@@ -51,8 +61,15 @@ protected:
 private:
 	void OnStepStarted(int64 StepIndex);
 
+	void SyncObstacle(int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State);
+
+	/** The obstacle of each site, by index (V6). */
+	UPROPERTY(Transient)
+	TMap<int32, TObjectPtr<AHOLLavaObstacle>> Obstacles;
 	TArray<HOLVolcano::FSite> Sites;
 	FHOLVolcanoSettings Settings;
+	/** Height of the obstacle boxes (cm): well above the ground, as a building's. */
+	float ObstacleHeight = 600.f;
 	FDelegateHandle StepStartedHandle;
 	int32 NumUnitsBurnt = 0;
 	int32 NumBuildingsBurnt = 0;

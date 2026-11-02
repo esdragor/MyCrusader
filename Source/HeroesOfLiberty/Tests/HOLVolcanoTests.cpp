@@ -175,6 +175,61 @@ bool FHOLVolcanoReachTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a hero in a duel is not"), HOLVolcano::LavaDestroys(true, true));
 	return true;
 }
+// The ground a cooled flow forbids (V6, D379): boxes that cover the whole lava reach and not much more.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoObstacleTest, "HeroesOfLiberty.Volcano.ObstacleBoxes", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoObstacleTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	const float H = Settings.LavaHalfWidth;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(3000.0, 0.0, 50.0), FVector(3000.0, 4000.0, 0.0) };
+	const TArray<HOLVolcano::FObstacleBox> Boxes = HOLVolcano::GetObstacleBoxes(Flow, H);
+	if (!TestEqual(TEXT("one box per segment"), Boxes.Num(), 2))
+	{
+		return false;
+	}
+	TestEqual(TEXT("first box: centre"), Boxes[0].Centre.X, 1500.0, 0.01);
+	TestEqual(TEXT("first box: half length = half the segment + the half width at each end"), Boxes[0].HalfLength, 1500.f + H, 0.01f);
+	TestEqual(TEXT("first box: half width"), Boxes[0].HalfWidth, H, 0.01f);
+	TestEqual(TEXT("first box: along +X"), Boxes[0].YawDegrees, 0.f, 0.01f);
+	TestEqual(TEXT("second box: along +Y"), Boxes[1].YawDegrees, 90.f, 0.01f);
+	TestEqual(TEXT("second box: centre"), Boxes[1].Centre.Y, 2000.0, 0.01);
+
+	const auto InBox = [](const HOLVolcano::FObstacleBox& Box, const FVector2D& P)
+	{
+		const FVector2D Local = (P - Box.Centre).GetRotated(-Box.YawDegrees);
+		return FMath::Abs(Local.X) <= Box.HalfLength + 0.01 && FMath::Abs(Local.Y) <= Box.HalfWidth + 0.01;
+	};
+	int32 Reach = 0;
+	int32 Missed = 0;
+	int32 Far = 0;
+	int32 FarInBox = 0;
+	for (double X = -1500.0; X <= 4500.0; X += 50.0)
+	{
+		for (double Y = -1500.0; Y <= 5500.0; Y += 50.0)
+		{
+			const FVector2D P(X, Y);
+			const bool bInBoxes = InBox(Boxes[0], P) || InBox(Boxes[1], P);
+			if (HOLVolcano::IsInLava(Flow, Flow.Length(), H, FVector(X, Y, 0.0)))
+			{
+				++Reach;
+				Missed += bInBoxes ? 0 : 1;
+			}
+			else if (!HOLVolcano::IsInLava(Flow, Flow.Length(), 2.f * H, FVector(X, Y, 0.0)))
+			{
+				++Far;
+				FarInBox += bInBoxes ? 1 : 0;
+			}
+		}
+	}
+	TestTrue(TEXT("the sample has points under the lava and far from it"), Reach > 1000 && Far > 1000);
+	TestEqual(TEXT("every point the lava reaches is in the boxes"), Missed, 0);
+	TestEqual(TEXT("no point farther than twice the half width is"), FarInBox, 0);
+
+	TestEqual(TEXT("no flow, no box"), HOLVolcano::GetObstacleBoxes(HOLVolcano::FFlow(), H).Num(), 0);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoEruptionLengthTest, "HeroesOfLiberty.Volcano.EruptionFollowsTheFlow", UE::HeroesOfLiberty::Tests::VolcanoFlags)
 bool FHOLVolcanoEruptionLengthTest::RunTest(const FString& Parameters)
 {

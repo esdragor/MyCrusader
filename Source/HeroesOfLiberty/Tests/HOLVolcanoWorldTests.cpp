@@ -213,6 +213,68 @@ bool FHOLVolcanoBurnTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The cooled flow forbids its ground (V6, D379): an obstacle for the navmesh while it cools, none before and none once it is basalt.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoObstacleWorldTest, "HeroesOfLiberty.Volcano.Obstacle", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoObstacleWorldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, 4242);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(6000.0, 0.0, 0.0), FVector(6000.0, 5000.0, 0.0) };
+	Site.Flows.Add(Flow);
+	W.Volcano->SetSites({ Site });
+	const FHOLUnitTypeRow* ManAtArms = W.Units->FindTypeRow(TEXT("ManAtArms"));
+	if (!TestNotNull(TEXT("the unit table has a Man-at-arms"), ManAtArms))
+	{
+		return false;
+	}
+	float EruptAt = -1.f;
+	float CoolingAt = -1.f;
+	float RestAt = -1.f;
+	for (float Now = 0.f; Now < 3000.f && RestAt < 0.f; Now += 0.5f)
+	{
+		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(W.GameState->GetLaunchConfig(), 0, Site, Now, W.Volcano->GetSettings(), ManAtArms->Speed);
+		if (EruptAt < 0.f && State.Phase == EHOLVolcanoPhase::Erupting)
+		{
+			EruptAt = Now;
+		}
+		if (CoolingAt < 0.f && State.Phase == EHOLVolcanoPhase::Cooling)
+		{
+			CoolingAt = Now;
+		}
+		if (CoolingAt >= 0.f && State.Phase == EHOLVolcanoPhase::Rest)
+		{
+			RestAt = Now;
+		}
+	}
+	if (!TestTrue(TEXT("the site erupts, cools and rests within 50 minutes"), EruptAt > 0.f && CoolingAt > EruptAt && RestAt > CoolingAt))
+	{
+		return false;
+	}
+	W.RunTo(EruptAt - 1.f);
+	TestNull(TEXT("before the eruption: free ground"), W.Volcano->FindObstacle(0));
+	W.RunTo(EruptAt + 3.f);
+	TestNull(TEXT("while the lava advances: nothing forbidden yet (it burns instead)"), W.Volcano->FindObstacle(0));
+	W.RunTo(CoolingAt + 1.f);
+	AHOLLavaObstacle* Obstacle = W.Volcano->FindObstacle(0);
+	if (TestNotNull(TEXT("cooling: an obstacle stands"), Obstacle))
+	{
+		TestEqual(TEXT("... one box per segment of the flow"), Obstacle->GetNumBoxes(), 2);
+		TestTrue(TEXT("... counted by the navigation"), Obstacle->IsBlockingNavigation());
+	}
+	W.RunTo(CoolingAt + 20.f);
+	TestTrue(TEXT("still the same obstacle 20 s later (not rebuilt every step)"), W.Volcano->FindObstacle(0) == Obstacle);
+	W.RunTo(RestAt + 1.f);
+	TestNull(TEXT("basalt: the ground is free again"), W.Volcano->FindObstacle(0));
+	TestFalse(TEXT("... the obstacle is gone"), IsValid(Obstacle));
+	return true;
+}
+
 // Without the Catastrophe option the site stays dormant: the lava never runs, nothing is touched (D398).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoNoCatastropheTest, "HeroesOfLiberty.Volcano.BurnNothingWithoutCatastrophe", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
 bool FHOLVolcanoNoCatastropheTest::RunTest(const FString& Parameters)

@@ -92,6 +92,23 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API bool IsInLava(const FFlow& Flow, float FrontDistance, float HalfWidth, const FVector& Point, float Radius = 0.f);
 
+	/** One oriented rectangle on the ground (cm): the navmesh takes boxes. */
+	struct FObstacleBox
+	{
+		FVector2D Centre = FVector2D::ZeroVector;
+		/** Half the length along the segment, and half the width across it. */
+		float HalfLength = 0.f;
+		float HalfWidth = 0.f;
+		/** Turn of the segment about the vertical (degrees), 0 = along +X. */
+		float YawDegrees = 0.f;
+	};
+
+	/**
+	 * V6 (D379): the ground a cooling flow forbids (impassable ~2-3 min): one box per segment of the polyline, HalfWidth either side, and
+	 * HalfWidth beyond each end so the corners and the flow's end are covered (the lava's own reach, IsInLava, is inside the union).
+	 */
+	HEROESOFLIBERTY_API TArray<FObstacleBox> GetObstacleBoxes(const FFlow& Flow, float HalfWidth);
+
 	/** V5 (GDD 12.2, 9.8, 10.2): the lava destroys everything it touches but a hero in a duel (the duel's arena is not burnt). */
 	inline bool LavaDestroys(const bool bIsHero, const bool bHeroInDuel) { return !(bIsHero && bHeroInDuel); }
 
