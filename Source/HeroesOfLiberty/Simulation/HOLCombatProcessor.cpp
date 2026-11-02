@@ -2204,7 +2204,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					// Loop 22: the departures spread by id (deterministic), not all on the same step.
 					const float Delay = UE::HeroesOfLiberty::Simulation::RearFlankDelay
 						+ UE::HeroesOfLiberty::Simulation::RearFlankStagger * static_cast<float>(Fighter.UnitId % 8) / 8.f;
-					if (Combat.FlankWaitSeconds >= Delay)
+					if (Combat.FlankWaitSeconds >= Delay && bSearchStep)
 					{
 						const double SlideSide = FVector2D::DotProduct(FVector2D(Combat.SlideWay.X, Combat.SlideWay.Y), Line->Axis);
 						const int8 NearSide = Along >= 0.5 * (Line->Min + Line->Max) ? 1 : -1;
@@ -2213,7 +2213,23 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						// Loop 22: its goal further along the line than the cap, it does not go round (it waits or slides).
 						const double Shift = FMath::Abs((Side > 0 ? Line->Max : Line->Min) + Side * RearFlankOut - Along);
 						const float MaxShift = UE::HeroesOfLiberty::Simulation::RearFlankMaxShift;
-						if (MaxShift <= 0.f || Shift <= MaxShift)
+						// L114 (the tours): only if an enemy with a free place lies at or beyond that end (else it came back from the end
+							// to the same blocked place, and set off again: a tour of the camp every 3 s).
+							const double SideEnd = Side > 0 ? Line->Max : Line->Min;
+							bool bFreeBeyondEnd = false;
+							GatherNearby(Index, RearFlankZone, Nearby);
+							for (const int32 Other : Nearby)
+							{
+								const FFighter& Near = Fighters[Other];
+								if (Other != Target && Near.State->CurrentHealth > 0 && Near.Camp != Fighter.Camp && CanTouch(Fighter, Near)
+									&& HOLCombat::IsBeyondLineEnd(Side, FVector2D::DotProduct(FVector2D(Near.Location) - Line->Origin, Line->Axis), SideEnd, RearFlankEndSlack)
+									&& PlacesAround(Other) < HOLCombat::MaxAttackers)
+								{
+									bFreeBeyondEnd = true;
+									break;
+								}
+							}
+							if (HOLCombat::ShouldGoRound(bFreeBeyondEnd, Shift, MaxShift))
 						{
 							Combat.bFlanking = true;
 							Combat.FlankWaitSeconds = 0.f;

@@ -316,15 +316,22 @@ namespace UE::HeroesOfLiberty::Dev
 						}
 					}
 				}
+				// The colours the renderer uses (6be90ce): HOLPlayerColors::GetOwnerLinearColor over the slots' colour indices; a neutral
+				// owner is no slot and gets the neutral grey, so it is compared as the renderer draws it.
+				TArray<uint8> SlotColors;
+				for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+				{
+					SlotColors.Add(static_cast<uint8>(DisplayColorIndex(*World, Slot)));
+				}
 				for (const int32 Neutral : Neutrals)
 				{
-					const FColor NeutralColor = HOLPlayerColors::GetColor(DisplayColorIndex(*World, Neutral));
+					const FVector3f NeutralColor = HOLPlayerColors::GetOwnerLinearColor(Neutral, SlotColors);
 					for (const int32 Slot : PlayerSlots)
 					{
-						if (HOLPlayerColors::GetColor(DisplayColorIndex(*World, Slot)) == NeutralColor)
+						if (HOLPlayerColors::GetOwnerLinearColor(Slot, SlotColors) == NeutralColor)
 						{
-							Failures.Add(FString::Printf(TEXT("neutral units (owner %d, colour index %d) are drawn in the colour of slot %d (%s)"),
-								Neutral, DisplayColorIndex(*World, Neutral), Slot, *HOLPlayerColors::GetColorName(DisplayColorIndex(*World, Slot)).ToString()));
+							Failures.Add(FString::Printf(TEXT("neutral units (owner %d) are drawn in the colour of slot %d (%s)"),
+								Neutral, Slot, *HOLPlayerColors::GetColorName(DisplayColorIndex(*World, Slot)).ToString()));
 						}
 					}
 				}

@@ -248,6 +248,22 @@ namespace HOLCombat
 		return !bIsOwnTarget || FlankSide * (Along - End) >= 0.0;
 	}
 
+	/** L114: an enemy at OtherAlong (along the line's axis) lies at or beyond the line's End on the flank's side, less Slack (cm). */
+	inline bool IsBeyondLineEnd(const int32 FlankSide, const double OtherAlong, const double End, const double Slack)
+	{
+		return FlankSide * (OtherAlong - End) >= -Slack;
+	}
+
+	/**
+	 * L114 (the tours): a melee held behind its line goes round its end only if there is something to go round for: an enemy with a free
+	 * place at or beyond that end (bFreeEnemyBeyondEnd), and the end within the cap (MaxShift, 0 = none). Otherwise it waited, set off,
+	 * found nobody at the end, came back to its blocked place (the target it had) and set off again: a tour of the camp every 3 s.
+	 */
+	inline bool ShouldGoRound(const bool bFreeEnemyBeyondEnd, const double Shift, const double MaxShift)
+	{
+		return bFreeEnemyBeyondEnd && (MaxShift <= 0.0 || Shift <= MaxShift);
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 

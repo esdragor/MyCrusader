@@ -1141,6 +1141,13 @@ bool FHOLCombatFlankTakeTest::RunTest(const FString& Parameters)
 	// Q-flank-tours = A (the user, 2026-11-02): a unit goes round only if the line's end is within 600 cm; else it waits behind.
 	const IConsoleVariable* MaxShift = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.RearFlankMaxShift"));
 	TestTrue(TEXT("the flank's cap is 600 cm by default"), MaxShift && FMath::IsNearlyEqual(MaxShift->GetFloat(), 600.f));
+	// The tours: nobody with a free place at the end = no going round, whatever the distance; the cap still holds.
+	TestFalse(TEXT("no free enemy beyond the end: it waits behind the line"), HOLCombat::ShouldGoRound(false, 200.0, 600.0));
+	TestTrue(TEXT("a free enemy beyond the end, the end near: it goes round"), HOLCombat::ShouldGoRound(true, 200.0, 600.0));
+	TestFalse(TEXT("a free enemy beyond the end, the end too far: it waits"), HOLCombat::ShouldGoRound(true, 700.0, 600.0));
+	TestTrue(TEXT("no cap (0): the distance does not count"), HOLCombat::ShouldGoRound(true, 5000.0, 0.0));
+	TestTrue(TEXT("side -1: an enemy 50 cm short of the end, within the 100 cm slack, is beyond it"), HOLCombat::IsBeyondLineEnd(-1, -108.0, -158.0, 100.0));
+	TestFalse(TEXT("side +1: an enemy 150 cm short of the end is not"), HOLCombat::IsBeyondLineEnd(1, 15.0, 165.0, 100.0));
 	return true;
 }
 
