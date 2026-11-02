@@ -1,0 +1,49 @@
+﻿# Volcan (V8, V10, V12) : tenir l'autel ancien lance l'alerte tout de suite (Q13 = B) ; la ligne du volcan à gauche sous le panneau Triches. Ni autel ni lave dessinés (V9 pas faite) : on lit la ligne et on voit les soldats.
+# Plain, toi (slot 0) contre un adversaire sans cerveau (aiBrain false), Catastrophe, graine 4242. Le site est posé par hol.Volcano.Site (V4b, les sites dans les cartes, n'est pas faite) à 60 m devant ton centre : 4 coulées de 35 m, autel à 25 m du cratère (zone de 12 m).
+frames 30
+hol.Sanity.Watch 1
+hol.Volcano.Site 6000 0 1800 1800 3500
+waitlog Volcano site posed
+hol.Volcano.Report
+waitlog Volcano report
+# 4 Hommes d'armes sur l'autel : le compte monte, la ligne « Autel ancien : tenu x % » apparaît à gauche sous le panneau Triches.
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Units.SpawnHere 5 ManAtArms 0 400
+waitunits 5
+wait 15
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Camera.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture volcano_held
+hol.Volcano.Report
+note 1. A gauche, sous le panneau Triches : « Autel ancien : tenu x % (y s) », le compte monte pendant que tes 5 Hommes d'armes tiennent l'autel (60 s sans adversaire).
+waitkey Entrée : 2 Hommes d'armes ennemis arrivent sur l'autel (le compte se fige)
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Units.SpawnHere 2 ManAtArms 1 400
+wait 2
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Camera.Report
+hol.Volcano.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture volcano_contested
+hol.Volcano.Report
+note 2. Un adversaire dans la zone de l'autel : « Autel ancien : disputé (x %) » et le compte ne monte plus (comme la ruine du forum).
+waitlog Volcano altar of site 0 held
+hol.Volcano.Report
+# Les soldats se calment avant la capture (et l'audit).
+wait 40
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Camera.Report
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture volcano_alert
+note 3. Autel tenu : l'alerte a commencé AUSSITÔT (« Volcan : éruption dans m:ss », 60 à 90 s au départ), sans attendre la fenêtre ; l'autel n'a plus de ligne. La lave n'est pas encore dessinée.
+hol.Test.Sanity

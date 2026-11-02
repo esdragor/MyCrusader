@@ -47,19 +47,24 @@ namespace UE::HeroesOfLiberty::VolcanoTools
 		}
 		const AHOLBuilding* Forum = AHOLGameState::FindPrimaryForum(*World, 0);
 		const FVector Origin = Forum ? Forum->GetActorLocation() : FVector::ZeroVector;
-		const FVector Crater = Origin + FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.);
-		const FVector AltarOffset = Args.Num() >= 4 ? FVector(FCString::Atod(*Args[2]), FCString::Atod(*Args[3]), 0.) : FVector(1800., 1800., 0.);
+		// In the main forum's frame, as hol.Camera.FocusNear (the scenarios place everything the same way).
+		const FRotator Frame = Forum ? Forum->GetActorRotation() : FRotator::ZeroRotator;
+		FVector Crater = Origin + Frame.RotateVector(FVector(FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), 0.));
+		Crater.Z = 0.;
+		const FVector AltarOffset = Frame.RotateVector(Args.Num() >= 4 ? FVector(FCString::Atod(*Args[2]), FCString::Atod(*Args[3]), 0.) : FVector(1800., 1800., 0.));
 		const double Length = Args.Num() >= 5 ? FCString::Atod(*Args[4]) : 6000.;
 		HOLVolcano::FSite Site;
 		for (const FVector& Direction : { FVector(1., 0., 0.), FVector(0., 1., 0.), FVector(-1., 0., 0.), FVector(0., -1., 0.) })
 		{
 			HOLVolcano::FFlow Flow;
-			Flow.Points = { Crater, Crater + Direction * Length };
+			Flow.Points = { Crater, Crater + Frame.RotateVector(Direction) * Length };
 			Site.Flows.Add(Flow);
 		}
 		Site.Altar.bPresent = true;
 		Site.Altar.Location = Crater + AltarOffset;
 		Volcano->SetSites({ Site });
+		const AHOLBuilding* Enemy = AHOLGameState::FindPrimaryForum(*World, 1);
+		UE_LOG(LogHOLMatch, Display, TEXT("Volcano site: first forum at (%.0f, %.0f), second at (%.0f, %.0f)"), Origin.X, Origin.Y, Enemy ? Enemy->GetActorLocation().X : 0., Enemy ? Enemy->GetActorLocation().Y : 0.);
 		UE_LOG(LogHOLMatch, Display, TEXT("Volcano site posed: crater (%.0f, %.0f), altar (%.0f, %.0f) zone %.0f cm, 4 flows of %.0f cm, Catastrophe %d, seed %d"),
 			Crater.X, Crater.Y, Site.Altar.Location.X, Site.Altar.Location.Y, Site.Altar.Radius, Length, GameState->GetLaunchConfig().bCatastrophe ? 1 : 0, GameState->GetLaunchConfig().Seed);
 	}
