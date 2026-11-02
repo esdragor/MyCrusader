@@ -6899,6 +6899,26 @@ if ($Parts -contains "net") {
         $ServerBook = "$($MarketServerLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $ServerStock = "$($MarketServerLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $MarketChecks["server: the book ($ServerBook) and Bob's stock ($ServerStock) reported"] = $ServerBook -ne "" -and $ServerStock -ne ""
+        # The book recovers by itself, one point per interval (10 s) of the server's clock, toward its base (the book before the sale, client 1's first report):
+        # the server's report and each client's last one are a second or more apart, so a tick can fall between them (a race of the test, not of the game:
+        # red on main too, 2026-11-02, "80 75 120 100" against "80 74 120 100"). A client's book is the server's, or the server's one recovery later.
+        $MarketBaseBook = ""
+        foreach ($BaseClient in @($NetClients | Where-Object { $_.Client -eq 1 })) {
+            $BaseLines = @(Get-ClientSection @(Get-Content $BaseClient.Log -ErrorAction SilentlyContinue) "market")
+            $MarketBaseBook = "$($BaseLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        }
+        $BookIsServers = {
+            param([string] $Book, [string] $Server, [string] $Base)
+            if ($Book -eq "" -or $Server -eq "") { return $false }
+            if ($Book -eq $Server) { return $true }
+            $Mine = @($Book -split " " | ForEach-Object { [int] $_ }); $Theirs = @($Server -split " " | ForEach-Object { [int] $_ }); $Rest = @($Base -split " " | ForEach-Object { if ($_) { [int] $_ } })
+            if ($Mine.Count -ne 4 -or $Theirs.Count -ne 4 -or $Rest.Count -ne 4) { return $false }
+            for ($Index = 0; $Index -lt 4; ++$Index) {
+                $OneTickLater = $Theirs[$Index] + [Math]::Sign($Rest[$Index] - $Theirs[$Index])
+                if ($Mine[$Index] -ne $Theirs[$Index] -and $Mine[$Index] -ne $OneTickLater) { return $false }
+            }
+            return $true
+        }
         foreach ($NetClient in $NetClients) {
             $N = $NetClient.Client
             $MarketLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "market")
@@ -6906,7 +6926,7 @@ if ($Parts -contains "net") {
             $Seen = @($MarketLines | Select-String -Pattern "Market report: a Market of slot (\d+), finished" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $LastBook = if ($Books.Count) { $Books[-1] } else { "" }
             $MarketChecks["client $N : the finished Market of slot $BobSlot seen ($($Seen -join ','))"] = ($Seen | Where-Object { $_ -eq "$BobSlot" }).Count -ge 1
-            $MarketChecks["client $N : the last book ($LastBook) is the server's ($ServerBook)"] = $LastBook -ne "" -and $LastBook -eq $ServerBook
+            $MarketChecks["client $N : the last book ($LastBook) is the server's ($ServerBook), or one recovery later (base $MarketBaseBook)"] = [bool](& $BookIsServers $LastBook $ServerBook $MarketBaseBook)
             if ($N -eq 1) {
                 $MarketChecks["client $N (Bob): the sale moved the book (before $($Books[0]), after $($Books[-1]))"] = $Books.Count -ge 3 -and $Books[0] -ne $Books[1]
                 $OwnStock = "$($MarketLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
