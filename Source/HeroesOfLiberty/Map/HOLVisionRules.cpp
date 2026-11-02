@@ -482,6 +482,62 @@ EHOLCellVision HOLFogPicture::Read(const FHOLVisionGrid& Grid, const TConstArray
 	return Grid.IsInside(Cell) && Bytes.IsValidIndex(Grid.ToIndex(Cell)) ? FromByte(Bytes[Grid.ToIndex(Cell)]) : EHOLCellVision::Unexplored;
 }
 
+float HOLFogPicture::ReadSmooth(const FHOLVisionGrid& Grid, const TConstArrayView<uint8> Bytes, const FVector2D& Point)
+{
+	if (Grid.Side <= 0 || Grid.CellSize <= 0. || Bytes.Num() < Grid.Num())
+	{
+		return 0.f;
+	}
+	// Cell (X, Y)'s centre is at X + 0.5, Y + 0.5 in cell units: shift by half a cell so that integers are the centres, then blend the four around.
+	const double Half = 0.5 * Grid.Side * Grid.CellSize;
+	const double U = (Point.X + Half) / Grid.CellSize - 0.5;
+	const double V = (Point.Y + Half) / Grid.CellSize - 0.5;
+	if (U < -0.5 || V < -0.5 || U > Grid.Side - 0.5 || V > Grid.Side - 0.5)
+	{
+		return 0.f;
+	}
+	const int32 X0 = FMath::FloorToInt(U);
+	const int32 Y0 = FMath::FloorToInt(V);
+	const float Fx = static_cast<float>(U - X0);
+	const float Fy = static_cast<float>(V - Y0);
+	auto At = [&](const int32 X, const int32 Y)
+	{
+		return Bytes[FMath::Clamp(Y, 0, Grid.Side - 1) * Grid.Side + FMath::Clamp(X, 0, Grid.Side - 1)] / 255.f;
+	};
+	return FMath::Lerp(FMath::Lerp(At(X0, Y0), At(X0 + 1, Y0), Fx), FMath::Lerp(At(X0, Y0 + 1), At(X0 + 1, Y0 + 1), Fx), Fy);
+}
+
+void HOLFogPicture::Blur(const FHOLVisionGrid& Grid, const TConstArrayView<uint8> Bytes, TArray<uint8>& OutBytes)
+{
+	OutBytes.Reset();
+	const int32 Side = Grid.Side;
+	if (Side <= 0 || Bytes.Num() < Grid.Num())
+	{
+		return;
+	}
+	// Two passes of 1-2-1 (across, then down), summed in integers: the weights total 16, rounded to the nearest byte.
+	TArray<uint16> Across;
+	Across.SetNumUninitialized(Grid.Num());
+	for (int32 Y = 0; Y < Side; ++Y)
+	{
+		const uint8* Row = Bytes.GetData() + Y * Side;
+		for (int32 X = 0; X < Side; ++X)
+		{
+			Across[Y * Side + X] = Row[FMath::Max(X - 1, 0)] + 2 * Row[X] + Row[FMath::Min(X + 1, Side - 1)];
+		}
+	}
+	OutBytes.SetNumUninitialized(Grid.Num());
+	for (int32 Y = 0; Y < Side; ++Y)
+	{
+		const int32 Up = FMath::Max(Y - 1, 0);
+		const int32 Down = FMath::Min(Y + 1, Side - 1);
+		for (int32 X = 0; X < Side; ++X)
+		{
+			OutBytes[Y * Side + X] = static_cast<uint8>((Across[Up * Side + X] + 2 * Across[Y * Side + X] + Across[Down * Side + X] + 8) / 16);
+		}
+	}
+}
+
 FVector2D HOLFogPicture::ToUV(const FHOLVisionGrid& Grid, const FVector2D& Point)
 {
 	const double Side = Grid.Side * Grid.CellSize;

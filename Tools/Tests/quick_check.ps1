@@ -5000,7 +5000,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $MmCam = if ($MmLines.Count -gt 0 -and $MmLines[-1] -match "last click camera (-?\d+) (-?\d+)") { @([double]$Matches[1], [double]$Matches[2]) } else { @(-1e9, -1e9) }
     $Checks = [ordered]@{}
     $Checks["the picture read: marks, a camera frame of 4 points, the map's area ($($MmLines[0] -replace '^.*HUD minimap: ', ''))"] = ($MmLines.Count -ge 2) -and
-        ($MmLines[0] -match "minimap: 240 px, [1-9]\d* marks, \d+ alerts lit, camera frame 4 points, terrain 200 x 200") -and ($null -ne $MmArea)
+        ($MmLines[0] -match "minimap: 240 px, [1-9]\d* marks, \d+ alerts lit, camera frame 4 points, terrain 480 x 480") -and ($null -ne $MmArea)
     $Checks["a right click on the middle sent the Peasant to the area's centre (order to $MmOrder, centre $([int]$MmCentre[0]), $([int]$MmCentre[1]))"] =
         ([Math]::Abs($MmWent[0] - $MmCentre[0]) -le 1) -and ([Math]::Abs($MmWent[1] - $MmCentre[1]) -le 1)
     $Checks["a left click at (30, 30) px put the camera on that ground (line: camera $($MmCam -join ' '), expected $([int]$MmCorner[0]) $([int]$MmCorner[1]))"] =
