@@ -23,6 +23,15 @@ namespace HOLTestSequence
 	bool LoadSteps(const FString& File, TArray<FString>& OutSteps);
 
 	/**
+	 * Writes out the steps that stand for several (the capture sequence of a moving thing):
+	 *   captureseq <Name> <Count> <StepSeconds> [Command]
+	 * becomes a clock start (seqclock), then for each i in 0..Count-1 a wait for the game's clock to reach i * StepSeconds (waitclock,
+	 * the game's time, not the wall clock: the same on a fixed time step), Command if given (a report of what is shown), and
+	 * capture <Name>_<i>. A line with bad arguments becomes a mark that says so, so that the run does not go on in silence.
+	 */
+	void ExpandSequences(TArray<FString>& Steps);
+
+	/**
 	 * Runs steps one after the other (the verbs of hol.Test.Run). Each Owner has its own run, so that a scenario and a
 	 * check can go on together; a run of the same Owner still going is stopped first.
 	 */

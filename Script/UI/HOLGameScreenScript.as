@@ -668,13 +668,17 @@ FString TalentTipTexts = "";
 		HOLMinimap::Detect(MinimapSeenBefore, Seen, MinimapAlerts);
 		MinimapSeenBefore = Seen;
 		TArray<FVector2D> Lit;
+		TArray<double> LitAges;
 		for (int Index = 0; Index < MinimapAlerts.Num(); Index++)
 		{
 			if (HOLMinimap::IsLit(MinimapAlerts[Index], Minimap.GetAlertBlink()))
+			{
 				Lit.Add(HOLMinimap::ToPicture(MinimapFrame, FVector2D(MinimapAlerts[Index].X, MinimapAlerts[Index].Y)));
+				LitAges.Add(MinimapAlerts[Index].Age);
+			}
 		}
 		MinimapLitAlerts = Lit.Num();
-		Minimap.SetLayers(Marks, Lit);
+		Minimap.SetLayers(Marks, Lit, LitAges);
 		// The camera's ground as the view sees it now (the frame then follows the focus every frame, HandleMinimapTicked).
 		MinimapQuad.Reset();
 		if (Minimap.GetCameraGround(MinimapQuad))

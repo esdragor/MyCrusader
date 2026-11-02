@@ -40,6 +40,13 @@
  *   waitui               waits for the interface to be still: a screen just opened or closed has finished fading
  *   capture <Name>       screenshot with the interface to Saved/Screenshots/HOL/<Name>.png, waits for the file;
  *                        logs "Test capture: <Name> (menu=X modal=Y)", the screens shown, for the script to check
+ *   captureseq <Name> <Count> <Step> [Command]
+ *                        a SEQUENCE of Count pictures Step game-seconds apart (Name_0 ... Name_N-1), Command (a report) run just before
+ *                        each: written out as seqclock, then waitclock <t> / Command / capture Name_<i> (ExpandSequences). For a
+ *                        moving thing: a shrinking circle is proved by several pictures, not by one. The clock is the game's
+ *                        (fixed step: the simulation's), logged as "Test capture: Name_i (...) clock T s".
+ *   seqclock             starts the clock of a capture sequence (written by captureseq)
+ *   waitclock <Seconds>  waits for the game's clock to be Seconds past seqclock (written by captureseq)
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
  *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
  *                        "Scenario note: Text" (what a scenario asks to try)
@@ -117,7 +124,7 @@ namespace UE::HeroesOfLiberty::Dev
 	{
 		FString Verb = Step;
 		Step.Split(TEXT(" "), &Verb, nullptr);
-		return Verb == TEXT("wait") || Verb == TEXT("waitlog") || Verb == TEXT("waitunits") || Verb == TEXT("waitidle")
+		return Verb == TEXT("wait") || Verb == TEXT("waitclock") || Verb == TEXT("waitlog") || Verb == TEXT("waitunits") || Verb == TEXT("waitidle")
 			|| Verb == TEXT("waitmap") || Verb == TEXT("waitplayers");
 	}
 
@@ -206,6 +213,7 @@ namespace UE::HeroesOfLiberty::Dev
 			}
 			Options = MoveTemp(InOptions);
 			Steps = MoveTemp(InSteps);
+			HOLTestSequence::ExpandSequences(Steps);
 			Next = 0;
 			Watcher = MakeUnique<FTestLogWatcher>();
 			GLog->AddOutputDevice(Watcher.Get());
@@ -284,6 +292,18 @@ namespace UE::HeroesOfLiberty::Dev
 				// clock, and what a wait lets happen (a walk, a fight) happens in the game's seconds.
 				bDone = FApp::GetCurrentTime() - WaitStartGame >= FCString::Atod(*Rest);
 			}
+			else if (Verb == TEXT("seqclock"))
+			{
+				// The start of a capture sequence (captureseq): its pictures are placed on the game's clock from here.
+				SeqClockStart = FApp::GetCurrentTime();
+				UE_LOG(LogHOLTest, Display, TEXT("Test seqclock: started"));
+			}
+			else if (Verb == TEXT("waitclock"))
+			{
+				// Seconds of the game's clock since seqclock: on a fixed time step it runs faster than the wall clock, and the pictures
+				// are where the simulation is, not where the machine is.
+				bDone = FApp::GetCurrentTime() - SeqClockStart >= FCString::Atod(*Rest);
+			}
 			else if (Verb == TEXT("waitlog"))
 			{
 				bDone = Watcher->Contains(Rest, LogMark);
@@ -341,7 +361,8 @@ namespace UE::HeroesOfLiberty::Dev
 					IFileManager::Get().Delete(*Path, /*RequireExists*/ false, /*EvenReadOnly*/ true, /*Quiet*/ true);
 					FScreenshotRequest::RequestScreenshot(Path, /*bShowUI*/ true, /*bAddFilenameSuffix*/ false);
 					const TFunction<FString()>& Describe = HOLTestHooks::DescribeInterface();
-					UE_LOG(LogHOLTest, Display, TEXT("Test capture: %s (%s)"), *Rest, Describe ? *Describe() : TEXT("no interface"));
+					UE_LOG(LogHOLTest, Display, TEXT("Test capture: %s (%s) clock %.2f s"), *Rest, Describe ? *Describe() : TEXT("no interface"),
+						FApp::GetCurrentTime() - SeqClockStart);
 					bDone = false;
 				}
 				else
@@ -545,6 +566,8 @@ namespace UE::HeroesOfLiberty::Dev
 		FTSTicker::FDelegateHandle Ticker;
 		/** From Start to Finish: the watcher is in GLog. */
 		bool bRunning = false;
+		/** The game's clock at the last seqclock (a capture sequence's start). */
+		double SeqClockStart = 0.0;
 		/** The current step is a waitkey: the panel says so, the key is awaited. */
 		bool bWaitingForKey = false;
 		/** The continue key was pressed during the current waitkey. */
@@ -642,4 +665,45 @@ bool HOLTestHooks::PressContinueKey()
 void HOLTestSequence::Run(const FName Owner, TArray<FString>&& Steps, FRunOptions&& Options)
 {
 	UE::HeroesOfLiberty::Dev::GetSequence(Owner).Start(MoveTemp(Steps), MoveTemp(Options));
+}
+
+void HOLTestSequence::ExpandSequences(TArray<FString>& Steps)
+{
+	TArray<FString> Out;
+	for (const FString& Step : Steps)
+	{
+		if (!Step.StartsWith(TEXT("captureseq")) || (Step.Len() > 10 && !FChar::IsWhitespace(Step[10])))
+		{
+			Out.Add(Step);
+			continue;
+		}
+		// captureseq <Name> <Count> <StepSeconds> [Command...]
+		TArray<FString> Words;
+		Step.ParseIntoArrayWS(Words);
+		const bool bGood = Words.Num() >= 4 && Words[2].IsNumeric() && Words[3].IsNumeric()
+			&& FCString::Atoi(*Words[2]) >= 1 && FCString::Atod(*Words[3]) >= 0.0;
+		if (!bGood)
+		{
+			Out.Add(FString::Printf(TEXT("mark captureseq: bad arguments (%s), wanted: captureseq <Name> <Count> <StepSeconds> [Command]"), *Step));
+			continue;
+		}
+		FString Command;
+		for (int32 Index = 4; Index < Words.Num(); ++Index)
+		{
+			Command += (Command.IsEmpty() ? TEXT("") : TEXT(" ")) + Words[Index];
+		}
+		const int32 Count = FCString::Atoi(*Words[2]);
+		const double Seconds = FCString::Atod(*Words[3]);
+		Out.Add(TEXT("seqclock"));
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			Out.Add(FString::Printf(TEXT("waitclock %s"), *FString::SanitizeFloat(Index * Seconds, 0)));
+			if (!Command.IsEmpty())
+			{
+				Out.Add(Command);
+			}
+			Out.Add(FString::Printf(TEXT("capture %s_%d"), *Words[1], Index));
+		}
+	}
+	Steps = MoveTemp(Out);
 }

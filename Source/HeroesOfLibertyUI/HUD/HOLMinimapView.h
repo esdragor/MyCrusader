@@ -82,7 +82,7 @@ public:
 
 	/** What is painted over the terrain: dots (pixels) and the lit alerts' places (pixels). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
-	void SetLayers(const TArray<FHOLMinimapMark>& InMarks, const TArray<FVector2D>& InAlerts);
+	void SetLayers(const TArray<FHOLMinimapMark>& InMarks, const TArray<FVector2D>& InAlerts, const TArray<double>& InAlertAges);
 
 	/** The camera's frame (its four corners in pixels), set every frame (OnTicked): it follows the camera at once. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
@@ -148,6 +148,15 @@ public:
 
 	const TArray<FHOLMinimapMark>& GetMarks() const { return Marks; }
 	const TArray<FVector2D>& GetAlerts() const { return Alerts; }
+
+	/**
+	 * The diameter (px) of an alert circle (shape 0) that is Age seconds old: AlertSize at the start, 8 px at the end of the period, then
+	 * again. Age is on the GAME's clock (a sequence of pictures on the simulation's step shows the change, a pause freezes it).
+	 */
+	static float AlertDiameter(float Age, float Period, float Size);
+
+	/** The alert Index's age now (s): the age the script read at the last refresh plus the game's time gone by since. */
+	float GetAlertAge(int32 Index) const;
 	const TArray<FVector2D>& GetCameraFrame() const { return CameraFrame; }
 	UTexture2D* GetTerrain() const { return Terrain; }
 	float GetSide() const { return Side; }
@@ -163,6 +172,9 @@ private:
 
 	TArray<FHOLMinimapMark> Marks;
 	TArray<FVector2D> Alerts;
+	/** The lit alerts' ages (s) when the script last read them, and the game's time then. */
+	TArray<double> AlertAges;
+	double AlertsReadAt = 0.0;
 	TArray<FVector2D> CameraFrame;
 	float Side = 240.f;
 	FVector2D FrameMin = FVector2D(-44000.0, -44000.0);

@@ -2130,6 +2130,7 @@ if ($Parts -contains "camera") {
             Step "mark build minalert", "hol.Minimap.AlertBlink 10", "hol.Minimap.AlertSeconds 30", "hol.Cheat.SpawnBuilding House 0 2500 2500",
                 "waitlog Cheat: spawned House of slot 0", "wait 1", "hol.HUD.Report",
                 "hol.Cheat.DamageNear 100 2500 2500 own melee", "wait 1", "hol.HUD.Report", "capture build_minalert",
+                "hol.Minimap.AlertShrinkSeconds 10", "captureseq build_ring 4 1 hol.HUD.Report", "hol.Minimap.AlertShrinkSeconds 1",
                 "hol.Minimap.AlertSeconds 0.5", "wait 1.5", "hol.HUD.Report",
                 "hol.Minimap.AlertSeconds 6", "hol.Minimap.AlertBlink 0.5",
                 "hol.Cheat.DamageNear 99999 2500 2500 own melee", "waitlog Building destroyed: House of slot 0", "frames 3"
@@ -5013,11 +5014,33 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $HudAlert = Get-Section "build minalert"
     $AlLines = @($HudAlert | Select-String -Pattern "HUD minimap: " | ForEach-Object { $_.Line })
     $AlHit = if ($AlLines.Count -ge 2 -and $AlLines[1] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
-    $AlGone = if ($AlLines.Count -ge 3 -and $AlLines[2] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
+    $AlGone = if ($AlLines.Count -ge 7 -and $AlLines[$AlLines.Count - 1] -match "lit (\d+), alerts (\d+)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
     $Checks = [ordered]@{}
     $Checks["a House of mine hit: an alert, lit (lit $($AlHit[0]), alerts $($AlHit[1]))"] = ($AlHit[0] -ge 1) -and ($AlHit[1] -ge 1)
     $Checks["with a life of 0.5 s the alert is gone 1.5 s later (lit $($AlGone[0]), alerts $($AlGone[1]))"] = ($AlGone[1] -eq 0) -and ($AlGone[0] -eq 0)
     $Checks["capture"] = Test-Path (Join-Path $Shots "build_minalert.png")
+    # The capture sequence (captureseq, rule 12a of Auto_Journey.md, D624): 4 pictures 1 s apart on the GAME's clock, each with the ring's age and
+    # diameter as the widget paints them. With a shrink period of 10 s the ring only gets smaller over those 3 s (24 px -> 8 px, 1.6 px a second):
+    # the diameter falls, strictly, about 1.6 px a step; the ages go up about 1 s a step; the pictures' clock lines are 1 s apart.
+    $Rings = @($HudAlert | Select-String -Pattern "ring age ([\d.]+) s diameter ([\d.]+) px" | ForEach-Object { @{ Age = [double]$_.Matches[0].Groups[1].Value; Diameter = [double]$_.Matches[0].Groups[2].Value } })
+    # (the reading taken just after the hit comes first: the sequence is the last 4)
+    $Rings = @($Rings | Select-Object -Last 4)
+    $Clocks = @($HudAlert | Select-String -Pattern "Test capture: build_ring_\d.* clock ([\d.]+) s" | ForEach-Object { [double]$_.Matches[0].Groups[1].Value })
+    $RingFalls = $Rings.Count -eq 4
+    $AgeSteps = $Rings.Count -eq 4
+    for ($r = 1; $r -lt $Rings.Count; $r++) {
+        $Fall = $Rings[$r - 1].Diameter - $Rings[$r].Diameter
+        if ($Fall -lt 1.0 -or $Fall -gt 2.2) { $RingFalls = $false }
+        $Step = $Rings[$r].Age - $Rings[$r - 1].Age
+        if ($Step -lt 0.8 -or $Step -gt 1.3) { $AgeSteps = $false }
+    }
+    $ClockSteps = $Clocks.Count -eq 4
+    for ($r = 1; $r -lt $Clocks.Count; $r++) { if (($Clocks[$r] - $Clocks[$r - 1]) -lt 0.9 -or ($Clocks[$r] - $Clocks[$r - 1]) -gt 1.4) { $ClockSteps = $false } }
+    $Checks["the sequence: 4 readings of the ring (found $($Rings.Count): $(($Rings | ForEach-Object { $_.Diameter }) -join ' '))"] = $Rings.Count -eq 4
+    $Checks["the ring shrinks 1 to 2.2 px between pictures 1 s apart (diameters $(($Rings | ForEach-Object { $_.Diameter }) -join ' '))"] = $RingFalls
+    $Checks["the ring's age goes up about 1 s a picture (ages $(($Rings | ForEach-Object { $_.Age }) -join ' '))"] = $AgeSteps
+    $Checks["the pictures are 1 s apart on the game's clock ($($Clocks -join ' '))"] = $ClockSteps
+    $Checks["4 pictures written"] = @(0..3 | Where-Object { Test-Path (Join-Path $Shots "build_ring_$_.png") }).Count -eq 4
     $AllOk = (Report "build minalert" $Checks) -and $AllOk
 }
 
