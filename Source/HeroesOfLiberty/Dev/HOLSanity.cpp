@@ -116,6 +116,42 @@ namespace UE::HeroesOfLiberty::Dev
 						UnitId, StepIndex, Where.X, Where.Y, Velocity ? Velocity->Value.X : 0., Velocity ? Velocity->Value.Y : 0., Transform->GetTransform().Rotator().Yaw,
 						DumpOrder ? static_cast<int32>(DumpOrder->Phase) : -1, DumpOrder ? DumpOrder->Slot.X : 0., DumpOrder ? DumpOrder->Slot.Y : 0.,
 						DumpOrder ? DumpOrder->MarchSlot.X : 0., DumpOrder ? DumpOrder->MarchSlot.Y : 0., DumpOrder ? DumpOrder->MarchSpeed : 0.);
+						if (const FHOLCombatFragment* DumpCombat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity))
+						{
+							FVector TargetWhere = FVector::ZeroVector;
+							int32 TargetId = -1;
+							if (DumpCombat->Target.IsSet() && EntityManager.IsEntityValid(DumpCombat->Target))
+							{
+								if (const FTransformFragment* TargetTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(DumpCombat->Target))
+								{
+									TargetWhere = TargetTransform->GetTransform().GetLocation();
+								}
+								if (const FHOLUnitStateFragment* TargetState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(DumpCombat->Target))
+								{
+									TargetId = static_cast<int32>(TargetState->UnitId);
+								}
+							}
+							UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u target #%d at (%.0f, %.0f)"), UnitId, TargetId, TargetWhere.X, TargetWhere.Y);
+							if (StepIndex % 4 == 0)
+							{
+								FString Around;
+								for (const uint32 OtherId : UnitIds)
+								{
+									const FMassEntityHandle OtherEntity = Units->FindEntity(OtherId);
+									const FTransformFragment* OtherTransform = OtherId != UnitId && EntityManager.IsEntityValid(OtherEntity) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(OtherEntity) : nullptr;
+									const FHOLUnitStateFragment* OtherState = OtherTransform ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(OtherEntity) : nullptr;
+									if (OtherState && OtherState->Activity != EHOLUnitActivity::Dying && FVector::Dist2D(OtherTransform->GetTransform().GetLocation(), Where) < 500.)
+									{
+										Around += FString::Printf(TEXT(" #%u(p%d)(%.0f,%.0f)a%d"), OtherId, OtherState->OwnerPlayer, OtherTransform->GetTransform().GetLocation().X, OtherTransform->GetTransform().GetLocation().Y, static_cast<int32>(OtherState->Activity));
+									}
+								}
+								UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u around:%s"), UnitId, *Around);
+							}
+							UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u combat mode %d approaching %d attacking %d target %d detour %d approach (%.0f, %.0f) goal (%.0f, %.0f) slot dist %.0f"),
+								UnitId, static_cast<int32>(DumpCombat->Mode), DumpCombat->bApproaching ? 1 : 0, DumpCombat->bAttacking ? 1 : 0, DumpCombat->Target.IsSet() ? 1 : 0,
+								DumpCombat->bAttackMoveDetour ? 1 : 0, DumpCombat->ApproachPoint.X, DumpCombat->ApproachPoint.Y, DumpCombat->AttackMoveGoal.X, DumpCombat->AttackMoveGoal.Y,
+								DumpOrder ? FVector2D::Distance(FVector2D(Where), FVector2D(DumpOrder->Slot)) : -1.);
+						}
 				}
 				HOLSanity::FUnitTrack& Track = Watch.Tracks.FindOrAdd(UnitId);
 				Track.Add(Time, FVector2D(Where.X, Where.Y), Motion, Watch.Rules);
@@ -147,6 +183,16 @@ namespace UE::HeroesOfLiberty::Dev
 					FHOLUnitView View;
 					Window.Radius = Units->GetUnitView(UnitId, View) ? View.Radius : 60.f;
 					const HOLSanity::FResult Result = HOLSanity::Analyse(Window, static_cast<float>(Simulation->GetStepSeconds()));
+					if (Result.bSpin || Result.bShake)
+					{
+						// The window's places, every 4th step, so that the fault can be read without a dump (hol.Sanity.DumpUnit).
+						FString Trail;
+						for (int32 Index = 0; Index < Window.Places.Num(); Index += 4)
+						{
+							Trail += FString::Printf(TEXT(" (%.0f,%.0f)"), Window.Places[Index].X, Window.Places[Index].Y);
+						}
+						UE_LOG(LogHOLTest, Display, TEXT("SanityTrail #%u at step %lld, every 4th step:%s"), UnitId, Watch.Steps, *Trail);
+					}
 					if (Result.bSpin || Result.bShake)
 					{
 						Watch.Faults.Add(UnitId, FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) %s over 8 s: path %.0f cm, net %.0f cm, turn %.1f rad, %d reversals, ordered %.0f%%"),

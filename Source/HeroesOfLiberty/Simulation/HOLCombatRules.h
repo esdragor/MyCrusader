@@ -238,6 +238,16 @@ namespace HOLCombat
 	inline constexpr double BuildingCloseInProgress = 10.0;
 	inline constexpr int32 BuildingCloseInStopMs = 600;
 
+	/**
+	 * L114 (the Spearman that goes round): an enemy a flanking melee may take as the "free enemy" met on the way (it ends the flank):
+	 * not its own target before it is round the line's end (Along past End on its FlankSide). It was held from that very enemy by its
+	 * friends in front; taking it again ended the flank 0.2 s after it began and sent it back to the same blocked place.
+	 */
+	inline bool CanFlankTakeEnemy(const bool bIsOwnTarget, const int32 FlankSide, const double Along, const double End)
+	{
+		return !bIsOwnTarget || FlankSide * (Along - End) >= 0.0;
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 

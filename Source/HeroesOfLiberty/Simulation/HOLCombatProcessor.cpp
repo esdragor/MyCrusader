@@ -2253,6 +2253,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 							{
 								continue;
 							}
+							// L114 (the Spearman that goes round): its own target is no "free enemy" before it is round the end. It was held
+							// from that very enemy by its friends in front of it; taking it again ended the flank 0.2 s after it began, the
+							// unit walked back to the same blocked place, waited the delay, set off again: a to-and-fro for the whole fight.
+							if (!HOLCombat::CanFlankTakeEnemy(Other == Target, Combat.FlankSide, Along, End))
+							{
+								continue;
+							}
 							const FVector2D OtherPosition(Near.Location);
 							const double Distance = HOLCombat::GetEdgeDistance(Position, Constants.Radius, OtherPosition, Near.Constants->Radius);
 							if (Distance > RearFlankFreeReach
