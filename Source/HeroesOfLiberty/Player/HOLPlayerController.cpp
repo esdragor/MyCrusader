@@ -3910,17 +3910,30 @@ void AHOLPlayerController::ServerHealUnit_Implementation(const TArray<uint32>& U
 	{
 		return;
 	}
+	// The healers do not walk to the ally's place: the heal processor walks them only until the ally is within their heal range, follows it
+	// if it moves off, and ends the order when it is dead or healed (E-monk-soigner, v2). Only the others walk there as a move order.
+	TArray<uint32> Walkers;
 	for (const uint32 UnitId : UnitIds)
 	{
 		FHOLUnitView View;
 		const FHOLUnitTypeRow* Row = Units->GetUnitView(UnitId, View) ? Units->FindTypeRow(View.TypeName) : nullptr;
-		if (Row && View.OwnerPlayer == Slot && Row->HealRate > 0.f && UnitId != TargetUnitId)
+		if (Row && View.OwnerPlayer == Slot && Row->HealRate > 0.f)
 		{
-			UHOLHealProcessor::OrderHeal(UnitId, TargetUnitId);
-			UE_LOG(LogHOLMatch, Display, TEXT("Order: #%u (slot %d) heals #%u first"), UnitId, Slot, TargetUnitId);
+			if (UnitId != TargetUnitId)
+			{
+				UHOLHealProcessor::OrderHeal(UnitId, TargetUnitId);
+				UE_LOG(LogHOLMatch, Display, TEXT("Order: #%u (slot %d) heals #%u first"), UnitId, Slot, TargetUnitId);
+			}
+		}
+		else
+		{
+			Walkers.Add(UnitId);
 		}
 	}
-	HOLPlayerOrders::Move(*GetWorld(), Slot, UnitIds, Target.Location, bQueue);
+	if (!Walkers.IsEmpty())
+	{
+		HOLPlayerOrders::Move(*GetWorld(), Slot, Walkers, Target.Location, bQueue);
+	}
 }
 
 void AHOLPlayerController::RequestAttackMove(const TConstArrayView<uint32> UnitIds, const FVector& Target, const bool bQueue)

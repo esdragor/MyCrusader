@@ -42,6 +42,13 @@ public:
 	 */
 	static void OrderHeal(uint32 HealerId, uint32 TargetId);
 	static void ClearOrders();
+	/**
+	 * Forgets the heal orders of these units: another order of their player (a move, an attack, a stop...) replaces the heal order, as
+	 * the walk it gave is replaced. Not while this processor gives its own walks (IsIssuing).
+	 */
+	static void CancelOrders(TConstArrayView<uint32> UnitIds);
+	/** True while the processor gives a healer its walk or its stop (the command subsystem then keeps the heal order). */
+	static bool IsIssuing() { return bIssuing; }
 	/** The order lasts this many steps (30 s at 20 Hz). */
 	static constexpr int64 OrderSteps = 600;
 
@@ -59,7 +66,13 @@ private:
 		uint32 Target = 0;
 		/** The step it was first seen at (-1: not yet). */
 		int64 Step = -1;
+		/** The order has been looked at once (the first look ends any earlier walk of the healer). */
+		bool bStarted = false;
+		/** A walk this order gave is on, towards Goal (the target's place when it was given). */
+		bool bWalking = false;
+		FVector2D Goal = FVector2D::ZeroVector;
 	};
+	static bool bIssuing;
 	static TMap<uint32, FOrder> Orders;
 
 	static TArray<FLink> Links;

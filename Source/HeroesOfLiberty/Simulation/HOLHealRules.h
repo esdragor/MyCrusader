@@ -35,6 +35,28 @@ namespace HOLHeal
 	 */
 	HEROESOFLIBERTY_API int32 ChooseTarget(uint32 HealerId, uint8 HealerCamp, const FVector2D& HealerLocation, float Range, uint32 OrderedId, uint32 KeptId, TConstArrayView<FCandidate> Candidates);
 
+	/** What a healer under a heal order does with its feet this step (HOLHeal::GetOrderWalk). */
+	enum class EOrderWalk : uint8
+	{
+		/** Nothing new: stand (already in reach), or go on with the walk already given. */
+		Keep,
+		/** Walk (again) to the target: out of reach, or the target moved off the walk's goal. */
+		Walk,
+		/** Stop where it is: the target is in reach, the healer does not go on to contact. */
+		Stop,
+	};
+	/** The healer stops this far inside its range (cm): a unit still gliding a step after the stop stays in reach. */
+	constexpr float OrderStopMargin = 50.f;
+	/** A walk is given again once the target is this far (cm) from the goal it was given. */
+	constexpr float OrderRepathDistance = 200.f;
+	/**
+	 * The heal order's walk (a right click on an ally with a Monk selected): the healer walks only until its target is within its heal
+	 * Range (never to contact), then stops and heals; a target that moves off is followed (a new walk) until in reach again.
+	 * Distance: healer to target (cm, centre to centre); bWalking: a walk of this order is on (true as well for the first look at a new
+	 * order, which also ends the walk an earlier order gave); GoalDrift: distance (cm) between the target now and the goal of that walk.
+	 */
+	HEROESOFLIBERTY_API EOrderWalk GetOrderWalk(float Distance, float Range, bool bWalking, float GoalDrift);
+
 	/** The health after one step of heal: Health + HealRate * StepMs / 1000, held at MaxHealth. */
 	HEROESOFLIBERTY_API float GetHealedHealth(float Health, float MaxHealth, float HealRate, int32 StepMs);
 	/**

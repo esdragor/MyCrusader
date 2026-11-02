@@ -132,6 +132,54 @@ bool FHOLHealRulesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The heal order's walk (E-monk-soigner v2): the Monk ordered to heal an ally 20 m away walks only until it is within the heal range (8 m),
+// not to contact; a target that moves off is followed; the same constant as the automatic heal's range (the unit table's HealRange).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHealOrderWalkTest, "HeroesOfLiberty.Monk.HealOrderWalk", UE::HeroesOfLiberty::Tests::Monk::Flags)
+bool FHOLHealOrderWalkTest::RunTest(const FString& Parameters)
+{
+	using namespace HOLHeal;
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Monk = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Monk"), TEXT("Monk walk test"), false) : nullptr;
+	if (!TestNotNull(TEXT("Monk row"), Monk))
+	{
+		return false;
+	}
+	const float Range = Monk->HealRange; // the automatic heal's range, the one constant
+	TestEqual(TEXT("the order's range is the automatic heal's: 8 m"), Range, 800.f);
+
+	// Simulate the walk on the rule alone: a Monk 20 m from its target walks at 400 cm/s in 50 ms steps, as the processor reads the rule.
+	float Distance = 2000.f;
+	bool bWalking = true; // the first look at the order
+	float GoalDrift = 1.0e9f;
+	int32 Steps = 0;
+	while (Steps < 2000)
+	{
+		const EOrderWalk Walk = GetOrderWalk(Distance, Range, bWalking, GoalDrift);
+		if (Walk == EOrderWalk::Stop)
+		{
+			break;
+		}
+		if (Walk == EOrderWalk::Walk)
+		{
+			bWalking = true;
+			GoalDrift = 0.f;
+		}
+		Distance -= 20.f;
+		++Steps;
+	}
+	TestTrue(TEXT("20 m away: the Monk stops once the target is within the heal range"), Distance <= Range - OrderStopMargin + 0.001f);
+	TestTrue(TEXT("... and stops at the range, not at contact (> 6 m left)"), Distance > 600.f);
+	TestEqual(TEXT("the first look at an order in reach ends any earlier walk"), GetOrderWalk(500.f, Range, true, 1.0e9f), EOrderWalk::Stop);
+	TestEqual(TEXT("standing in reach: nothing to do"), GetOrderWalk(799.f, Range, false, 0.f), EOrderWalk::Keep);
+	TestEqual(TEXT("standing out of reach: walk"), GetOrderWalk(801.f, Range, false, 0.f), EOrderWalk::Walk);
+	TestEqual(TEXT("walking, still far, the target where it was: go on"), GetOrderWalk(1500.f, Range, true, 0.f), EOrderWalk::Keep);
+	TestEqual(TEXT("walking, the target moved off its goal: a new walk (it follows)"), GetOrderWalk(1500.f, Range, true, OrderRepathDistance + 1.f), EOrderWalk::Walk);
+	TestEqual(TEXT("walking, a small step of the target: go on"), GetOrderWalk(1500.f, Range, true, OrderRepathDistance), EOrderWalk::Keep);
+	TestEqual(TEXT("walking, in reach of a moving target: stop, not follow"), GetOrderWalk(700.f, Range, true, 5000.f), EOrderWalk::Stop);
+	TestEqual(TEXT("stopped, the target walks off out of reach: follow"), GetOrderWalk(1000.f, Range, false, 0.f), EOrderWalk::Walk);
+	return true;
+}
+
 // A client's guess of a heal (HOLHeal::FRiseTracker): rises noticed, several expiring in the same frame, units gone, no entry lost or kept by error.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLRiseTrackerTest, "HeroesOfLiberty.Monk.RiseTracker", UE::HeroesOfLiberty::Tests::Monk::Flags)
 bool FHOLRiseTrackerTest::RunTest(const FString& Parameters)

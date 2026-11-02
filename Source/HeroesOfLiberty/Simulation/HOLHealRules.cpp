@@ -47,6 +47,16 @@ namespace HOLHeal
 		// healable in reach (one at a time); else the nearest.
 		return Ordered != INDEX_NONE ? Ordered : Kept != INDEX_NONE ? Kept : Best;
 	}
+	EOrderWalk GetOrderWalk(const float Distance, const float Range, const bool bWalking, const float GoalDrift)
+	{
+		if (bWalking)
+		{
+			// Stop a little inside the range; else keep walking, unless the target moved off the goal.
+			return Distance <= Range - OrderStopMargin ? EOrderWalk::Stop : GoalDrift > OrderRepathDistance ? EOrderWalk::Walk : EOrderWalk::Keep;
+		}
+		// Standing: in reach, nothing to do; out of reach, walk to it.
+		return Distance <= Range ? EOrderWalk::Keep : EOrderWalk::Walk;
+	}
 	float GetHealedHealth(const float Health, const float MaxHealth, const float HealRate, const int32 StepMs)
 	{
 		return FMath::Min(MaxHealth, Health + HealRate * static_cast<float>(StepMs) * 0.001f);
