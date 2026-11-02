@@ -160,6 +160,69 @@ void UHOLVolcanoSubsystem::OnStepStarted(const int64 StepIndex)
 	}
 }
 
+bool UHOLVolcanoSubsystem::MeasureAltar(const int32 SiteIndex, const int32 Slot, FAltarMeasure& Out) const
+{
+	Out = FAltarMeasure();
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	if (!Sites.IsValidIndex(SiteIndex) || !Sites[SiteIndex].Altar.bPresent || !GameState || !GameState->GetLaunchConfig().bCatastrophe || !Units || !Simulation)
+	{
+		return false;
+	}
+	if (!StateOf(SiteIndex, GetClockOf(Simulation->GetStepIndex())).bAltarLit)
+	{
+		return false;
+	}
+	const HOLVolcano::FSite& Site = Sites[SiteIndex];
+	const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+	const int32 MyCamp = Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, static_cast<uint8>(Slot)) : INDEX_NONE;
+	Out.SiteIndex = SiteIndex;
+	Out.Location = Site.Altar.Location;
+	Out.Radius = Site.Altar.Radius;
+	bool bOwn = false;
+	const FVector2D Altar(Site.Altar.Location);
+	const double RadiusSquared = FMath::Square(static_cast<double>(Site.Altar.Radius));
+	Units->ForEachLivingUnitWithType([&](const uint32, const FName TypeName, const uint8 Owner, const FVector& Location)
+	{
+		if (FVector2D::DistSquared(FVector2D(Location), Altar) > RadiusSquared)
+		{
+			return;
+		}
+		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
+		const bool bMine = Owner == Slot || (MyCamp != INDEX_NONE && Camp == MyCamp);
+		if (bMine)
+		{
+			bOwn = true;
+			return;
+		}
+		Out.bAdversary = true;
+		Out.AdversaryStrength += TypeName == TEXT("Peasant") ? Settings.AiAltarWorkerWeight : 1.f;
+	});
+	Out.bOwnCampAlone = bOwn && !Out.bAdversary;
+	Out.TraceFromAltar = TNumericLimits<float>::Max();
+	Out.TraceFromBuildings = TNumericLimits<float>::Max();
+	for (const HOLVolcano::FFlow& Flow : Site.Flows)
+	{
+		Out.TraceFromAltar = FMath::Min(Out.TraceFromAltar, HOLVolcano::DistanceToFlow(Flow, Site.Altar.Location));
+	}
+	for (TActorIterator<AHOLBuilding> It(const_cast<UWorld*>(World)); It; ++It)
+	{
+		const AHOLBuilding* Building = *It;
+		if (!IsValid(Building) || Building->GetHealth() <= 0 || Building->GetOwnerPlayer() != Slot)
+		{
+			continue;
+		}
+		const FVector2D Centre = Building->GetFootprintBounds().GetCenter();
+		for (const HOLVolcano::FFlow& Flow : Site.Flows)
+		{
+			Out.TraceFromBuildings = FMath::Min(Out.TraceFromBuildings, HOLVolcano::DistanceToFlow(Flow, FVector(Centre.X, Centre.Y, 0.0)));
+		}
+	}
+	return true;
+}
+
 int32 UHOLVolcanoSubsystem::GetEvacuations(const int32 Slot, TArray<FEvacuation>& Out) const
 {
 	Out.Reset();

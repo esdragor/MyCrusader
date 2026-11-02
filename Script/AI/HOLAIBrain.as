@@ -40,6 +40,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// What each slot's relay detachment remembers (R6, RQ3 = B, D589).
 	TMap<int, FHOLAIRelayMemory> RelayMemories;
 
+	// What each slot's squad at the volcano's altar remembers (V11, D639, D640).
+	TMap<int, FHOLAIAltarMemory> AltarMemories;
+
 	// The main talent family each slot drew at its first thought (T6, D424).
 	TMap<int, int> TalentMains;
 
@@ -696,7 +699,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		Waves.Find(PlayerIndex, Wave);
 		// The relays (R6, RQ3 = B, D589: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
 		// of the army the other rules see below (defence, regrouping, waves) while it is away.
-		const FHOLAISummary Summary = ThinkRelays(PlayerIndex, Step, FullSummary, Data, Wave, State);
+		// The altar of a volcano site (V11, D639, D640): a squad of the free soldiers goes to hold it or to contest it; left out of the army below.
+		const FHOLAISummary NoAltar = ThinkAltar(PlayerIndex, Step, FullSummary, Data, Wave, State);
+		const FHOLAISummary Summary = ThinkRelays(PlayerIndex, Step, NoAltar, Data, Wave, State);
 		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
 		const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data.Army);
 		const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Wave);
@@ -852,6 +857,34 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			const FString Where = (FleeTo - Summary.CentreLocation).Size() < 1.f ? "the centre" : "the refuge";
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: {Runners.Num()} Peasants run to {Where}");
 		}
+	}
+
+	// The AI and the altar (V11): see Script/AI/HOLAIAltar.as. Returns the summary without the squad. Nothing without a lit altar (no site in the map, no Catastrophe).
+	FHOLAISummary ThinkAltar(int PlayerIndex, int64 Step, const FHOLAISummary& FullSummary, const FHOLAIOpeningData& Data, const FHOLAIWave& Wave, const FHOLAIDefence& State)
+	{
+		FHOLAIAltarMemory Memory;
+		AltarMemories.Find(PlayerIndex, Memory);
+		TArray<FHOLAIAltar> Altars;
+		HOLVolcano::ReadAIAltars(PlayerIndex, Altars);
+		if (Altars.Num() == 0 && Memory.Ids.Num() == 0)
+		{
+			return FullSummary;
+		}
+		const float Now = Data.GameSeconds;
+		const EHOLAIDifficulty Level = HOLAILives::Played(FullSummary.Level, Now, Data.Army.Lives);
+		const bool bAttacked = HOLAIArmy::Threat(FullSummary, Data.Army).bThreatened || State.bDefending;
+		const FVector From = FullSummary.bHasCentre ? FullSummary.CentreLocation : FVector(0, 0, 0);
+		const FHOLAIAltarStep Result = HOLAIAltar::Step(Memory, Level, HOLAIArmy::WithoutWave(FullSummary, Wave), Altars, bAttacked, Now, From, FHOLAIAltarData());
+		AltarMemories.Add(PlayerIndex, Memory);
+		if (Result.Reason.Len() > 0)
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: altar: {Result.Reason}");
+		}
+		if (Result.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIAttackMoveOrder(PlayerIndex, Result.MoveIds, Result.Where))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: altar order refused");
+		}
+		return HOLAIAltar::Without(FullSummary, Memory);
 	}
 
 	// The AI and the relays (R6): see Script/AI/HOLAIRelay.as. Returns the summary without the detached soldiers.

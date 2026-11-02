@@ -67,6 +67,14 @@ struct FHOLVolcanoSettings
 	int32 AiAltarMinSend = 2;
 	/** The weight, in the adversary's strength on the altar, of a unit that is not a soldier (a Peasant). */
 	float AiAltarWorkerWeight = 0.25f;
+	/**
+	 * V11 (D640, answer of the user 2026-11-02, Q-ia-autel-tenir = C): the AI holds a FREE altar itself with this share of its free soldiers (one in 4; one in 8
+	 * in Easy), when no adversary stands in the zone and the nearest possible flow's line is farther than AiAltarSafeDistance (cm, 40 m) from its positions.
+	 * PROVISIONAL, to confirm in trial.
+	 */
+	float AiAltarHoldShare = 0.25f;
+	float AiAltarHoldShareEasy = 0.125f;
+	float AiAltarSafeDistance = 4000.f;
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -227,6 +235,27 @@ namespace HOLVolcano
 	 * Hard sends nothing new (diversion), the others send all they can spare. Otherwise the squad is Need. Never fewer than AlreadySent.
 	 */
 	HEROESOFLIBERTY_API FAltarSend AltarSend(const FAltarSendInput& Input, const FHOLVolcanoSettings& Settings);
+
+	/** V11 (D640): what the AI knows to hold a free altar itself. */
+	struct FAltarHoldInput
+	{
+		int32 FreeSoldiers = 0;
+		int32 AlreadySent = 0;
+		/** An adversary (another camp, a neutral too) stands in the altar's zone: not a free altar, the contest rule (AltarSend) applies. */
+		bool bAdversaryInZone = false;
+		/** The distance (cm) from the AI's positions to the nearest possible flow's line of the site. */
+		float NearestTraceDistance = 0.f;
+		EAltarLevel Level = EAltarLevel::Normal;
+	};
+
+	/**
+	 * V11 (D640): how many soldiers hold a free altar: ceil(share x free soldiers), the share AiAltarHoldShare (AiAltarHoldShareEasy in Easy), when no
+	 * adversary is in the zone and the nearest trace is farther than AiAltarSafeDistance; otherwise no new send. Never fewer than AlreadySent (no recall).
+	 */
+	HEROESOFLIBERTY_API int32 AltarHoldSquad(const FAltarHoldInput& Input, const FHOLVolcanoSettings& Settings);
+
+	/** The distance (cm, ground plane) from Point to the nearest point of the flow's line; a huge number for a flow without point. */
+	HEROESOFLIBERTY_API float DistanceToFlow(const FFlow& Flow, const FVector& Point);
 
 	/** What a site is doing at one instant (V4): everything the alert, the lava, the damage and the obstacle need. */
 	struct FSiteState

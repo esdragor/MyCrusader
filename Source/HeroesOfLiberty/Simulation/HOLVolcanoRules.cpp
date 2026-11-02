@@ -347,3 +347,30 @@ HOLVolcano::FAltarSend HOLVolcano::AltarSend(const FAltarSendInput& Input, const
 	Result.Squad = FMath::Max(Result.Squad, Input.AlreadySent);
 	return Result;
 }
+
+int32 HOLVolcano::AltarHoldSquad(const FAltarHoldInput& Input, const FHOLVolcanoSettings& Settings)
+{
+	const int32 Kept = FMath::Max(0, Input.AlreadySent);
+	if (Input.bAdversaryInZone || Input.NearestTraceDistance <= Settings.AiAltarSafeDistance)
+	{
+		return Kept;
+	}
+	const float Share = Input.Level == EAltarLevel::Easy ? Settings.AiAltarHoldShareEasy : Settings.AiAltarHoldShare;
+	return FMath::Max(Kept, FMath::CeilToInt(Share * FMath::Max(0, Input.FreeSoldiers)));
+}
+
+float HOLVolcano::DistanceToFlow(const FFlow& Flow, const FVector& Point)
+{
+	double Best = TNumericLimits<double>::Max();
+	if (Flow.Points.Num() == 1)
+	{
+		Best = FVector2D::Distance(FVector2D(Point), FVector2D(Flow.Points[0]));
+	}
+	for (int32 Index = 1; Index < Flow.Points.Num(); ++Index)
+	{
+		const FVector A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y, 0.0);
+		const FVector B(Flow.Points[Index].X, Flow.Points[Index].Y, 0.0);
+		Best = FMath::Min(Best, static_cast<double>(FMath::PointDistToSegment(FVector(Point.X, Point.Y, 0.0), A, B)));
+	}
+	return static_cast<float>(Best);
+}

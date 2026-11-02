@@ -129,3 +129,66 @@ FHOLVolcanoSiteView UHOLVolcanoLibrary::GetSiteView(const UObject* WorldContextO
 	View.AltarHold = static_cast<int32>(Volcano->GetAltarHold(SiteIndex));
 	return View;
 }
+
+namespace
+{
+	int32 AIAltarTraceFrom = 0;
+	FAutoConsoleVariableRef CVarAIAltarTraceFrom(TEXT("hol.AI.AltarTraceFrom"), AIAltarTraceFrom,
+		TEXT("Q-ia-autel-distance, provisional: from which positions the AI measures the 40 m to the nearest possible flow before it holds a free altar: 0 its buildings (default), 1 the altar itself (where its squad stands)"));
+}
+
+void UHOLVolcanoLibrary::ReadAIAltars(const UObject* WorldContextObject, const int32 PlayerIndex, TArray<FHOLAIAltar>& OutAltars)
+{
+	OutAltars.Reset();
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UHOLVolcanoSubsystem* Volcano = UHOLVolcanoSubsystem::Find(World);
+	if (!Volcano)
+	{
+		return;
+	}
+	for (int32 Index = 0; Index < Volcano->GetSites().Num(); ++Index)
+	{
+		UHOLVolcanoSubsystem::FAltarMeasure Measure;
+		if (!Volcano->MeasureAltar(Index, PlayerIndex, Measure))
+		{
+			continue;
+		}
+		FHOLAIAltar Altar;
+		Altar.SiteIndex = Index;
+		Altar.Location = Measure.Location;
+		Altar.Radius = Measure.Radius;
+		Altar.bAdversary = Measure.bAdversary;
+		Altar.AdversaryStrength = Measure.AdversaryStrength;
+		Altar.TraceDistance = AIAltarTraceFrom == 1 ? Measure.TraceFromAltar : Measure.TraceFromBuildings;
+		OutAltars.Add(Altar);
+	}
+}
+
+void UHOLVolcanoLibrary::DecideAltarSquad(const UObject* WorldContextObject, const FHOLAIAltar& Altar, const int32 FreeSoldiers, const int32 AlreadySent, const int32 Level, int32& OutSquad, bool& bOutDiversion)
+{
+	OutSquad = 0;
+	bOutDiversion = false;
+	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
+	const UHOLVolcanoSubsystem* Volcano = UHOLVolcanoSubsystem::Find(World);
+	const FHOLVolcanoSettings Defaults;
+	const FHOLVolcanoSettings& Settings = Volcano ? Volcano->GetSettings() : Defaults;
+	const HOLVolcano::EAltarLevel AltarLevel = Level <= 0 ? HOLVolcano::EAltarLevel::Easy : (Level >= 2 ? HOLVolcano::EAltarLevel::Hard : HOLVolcano::EAltarLevel::Normal);
+	if (Altar.bAdversary)
+	{
+		HOLVolcano::FAltarSendInput Input;
+		Input.AdversaryStrength = Altar.AdversaryStrength;
+		Input.FreeSoldiers = FreeSoldiers;
+		Input.AlreadySent = AlreadySent;
+		Input.Level = AltarLevel;
+		const HOLVolcano::FAltarSend Send = HOLVolcano::AltarSend(Input, Settings);
+		OutSquad = Send.Squad;
+		bOutDiversion = Send.bDiversion;
+		return;
+	}
+	HOLVolcano::FAltarHoldInput Input;
+	Input.FreeSoldiers = FreeSoldiers;
+	Input.AlreadySent = AlreadySent;
+	Input.NearestTraceDistance = Altar.TraceDistance;
+	Input.Level = AltarLevel;
+	OutSquad = HOLVolcano::AltarHoldSquad(Input, Settings);
+}

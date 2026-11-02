@@ -497,4 +497,70 @@ bool FHOLVolcanoAltarInertTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// What the AI reads of the altar on the real chain (V11, D639, D640): the camp alone in the zone, an adversary's strength (a Peasant a quarter),
+// the distances of the nearest trace from the buildings and from the altar, the unlit altar not measured, and the library's squad decision.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarMeasureTest, "HeroesOfLiberty.Volcano.AltarMeasure", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoAltarMeasureTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, /*Seed*/ 4242, /*bSeparateTeams*/ true);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	Site.Altar.bPresent = true;
+	Site.Altar.Location = FVector(0.0, 9000.0, 0.0);
+	Site.Altar.Radius = 1200.f;
+	W.Volcano->SetSites({ Site });
+	W.RunTo(2.f);
+
+	UHOLVolcanoSubsystem::FAltarMeasure Empty;
+	TestTrue(TEXT("the lit altar is measured"), W.Volcano->MeasureAltar(0, 1, Empty));
+	TestFalse(TEXT("... nobody in the zone: no adversary"), Empty.bAdversary);
+	TestFalse(TEXT("... nobody: the camp is not alone in the zone either"), Empty.bOwnCampAlone);
+	TestTrue(TEXT("... the altar is 90 m from the line"), FMath::IsNearlyEqual(Empty.TraceFromAltar, 9000.f, 1.f));
+
+	// A building of slot 1 at 60 m from the line: the buildings' distance.
+	W.PlaceBuilding(FName(TEXT("House")), 1, FVector(15000.0, 6000.0, 0.0));
+	// Slot 1 holds the altar with a Man-at-arms; slot 0 has a Man-at-arms and a Peasant there: strength 1.25.
+	W.PlaceUnit(FName(TEXT("ManAtArms")), 1, FVector(0.0, 9100.0, 0.0));
+	W.PlaceUnit(FName(TEXT("ManAtArms")), 0, FVector(0.0, 8900.0, 0.0));
+	W.PlaceUnit(FName(TEXT("Peasant")), 0, FVector(100.0, 8900.0, 0.0));
+	UHOLVolcanoSubsystem::FAltarMeasure Contested;
+	TestTrue(TEXT("measured again"), W.Volcano->MeasureAltar(0, 1, Contested));
+	TestTrue(TEXT("an adversary stands in the zone"), Contested.bAdversary);
+	TestFalse(TEXT("... the camp is not alone"), Contested.bOwnCampAlone);
+	TestTrue(TEXT("... strength 1 + 0.25"), FMath::IsNearlyEqual(Contested.AdversaryStrength, 1.25f, 0.01f));
+	TestTrue(TEXT("the nearest trace from the building: 60 cm... 6000 cm"), FMath::IsNearlyEqual(Contested.TraceFromBuildings, 6000.f, 1.f));
+
+	TArray<FHOLAIAltar> Altars;
+	UHOLVolcanoLibrary::ReadAIAltars(W.World, 1, Altars);
+	if (!TestEqual(TEXT("the library hands over the lit altar"), Altars.Num(), 1))
+	{
+		return false;
+	}
+	TestTrue(TEXT("... with the adversary"), Altars[0].bAdversary && Altars[0].SiteIndex == 0);
+	int32 Squad = 0;
+	bool bDiversion = false;
+	UHOLVolcanoLibrary::DecideAltarSquad(W.World, Altars[0], 10, 0, 1, Squad, bDiversion);
+	TestEqual(TEXT("10 free soldiers against 1.25: at least the minimum, more than him"), Squad, 2);
+
+	// The same altar seen by slot 0's side (it holds it alone once the adversary is gone): the free altar, held by a quarter.
+	W.Units->KillUnitsWhere([](const uint32, FName, const uint8 Owner, const FVector&, const float) { return Owner == 1; });
+	TArray<FHOLAIAltar> Free;
+	UHOLVolcanoLibrary::ReadAIAltars(W.World, 0, Free);
+	if (!TestEqual(TEXT("the altar is still lit"), Free.Num(), 1))
+	{
+		return false;
+	}
+	TestFalse(TEXT("... no adversary for slot 0"), Free[0].bAdversary);
+	UHOLVolcanoLibrary::DecideAltarSquad(W.World, Free[0], 8, 0, 1, Squad, bDiversion);
+	TestEqual(TEXT("slot 0 has no building: the trace is infinitely far, a quarter of 8"), Squad, 2);
+	return true;
+}
+
 #endif
