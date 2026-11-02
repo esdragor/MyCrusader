@@ -39,6 +39,8 @@ public:
 	/**
 	 * Clicks a button found by its name (CheatToggle, CheatFood, CheatWood, CheatStone, CheatGold, CheatAll,
 	 * CheatPopulation, CheatFastBuild), by the same path as the mouse (hol.HUD.Click). False when it is folded away.
+	 * CheatHide (a scenario's step, not a button) hides the whole panel, its toggle too, and leaves the player's saved setting alone:
+	 * a trial that shows a line of the HUD under it (the AI level line) must not have it hidden.
 	 */
 	bool ClickWidget(FName Name);
 

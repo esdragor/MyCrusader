@@ -6,6 +6,9 @@
 # Le stade change par hol.AI.SetEvolveTimes (EV-Q1 = B, D620), sans accéléré : pas de partie qui se joue pendant ce temps ; la ligne « IA 2 : Évolutive, joue ... » en haut à gauche le montre à l'écran.
 waitlog AI brain HOLAIBrain awake
 waitlog AI slot 1 step
+# Le panneau Triches (en haut a gauche) cacherait la ligne HUD du niveau de l'IA : on le cache (sans changer le reglage du joueur).
+hol.HUD.Click CheatHide
+waitlog HUD click CheatHide: done
 hol.AI.SetEvolveTimes 100000 200000
 hol.Cheat.Resources 1000
 hol.Cheat.Population 200
