@@ -2,6 +2,9 @@
 
 #include "Dev/HOLTestHooks.h"
 #include "Dev/HOLTestSequence.h"
+#include "Dom/JsonObject.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 
 #if !UE_BUILD_SHIPPING
 
@@ -175,7 +178,13 @@ namespace UE::HeroesOfLiberty::Dev
 
 int32 HOLTestHooks::GetScenarioSeed(const FString* Json, const int32 Drawn)
 {
-	// Stub of the red test (written first): always drawn.
+	// The .json's own "seed" (a number other than 0) imposes it; none, or 0: the seed drawn at the launch.
+	TSharedPtr<FJsonObject> Root;
+	int32 Imposed = 0;
+	if (Json && FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(*Json), Root) && Root.IsValid() && Root->TryGetNumberField(TEXT("seed"), Imposed) && Imposed != 0)
+	{
+		return Imposed;
+	}
 	return Drawn;
 }
 

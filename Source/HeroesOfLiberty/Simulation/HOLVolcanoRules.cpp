@@ -178,6 +178,5 @@ EHOLVolcanoPhase HOLVolcano::GetPhase(const bool bCatastrophe, const int32 Seed,
 
 HOLVolcano::FSiteState HOLVolcano::SiteStateOfMatch(const FHOLMatchConfig& Config, const int32 SiteIndex, const FSite& Site, const float Now, const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed)
 {
-	// Stub of the red test (written first): a site that never wakes.
-	return FSiteState();
+	return SiteStateAt(Config.bCatastrophe, Config.Seed, SiteIndex, Site, Now, Settings, ManAtArmsSpeed);
 }

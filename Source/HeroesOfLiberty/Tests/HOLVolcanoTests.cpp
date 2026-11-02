@@ -331,10 +331,10 @@ bool FHOLVolcanoSeedTest::RunTest(const FString& Parameters)
 		return true;
 	};
 	FHOLMatchConfig First, Again, Other, Drawn;
-	if (!ConfigOf(TEXT("{ \"seed\": 4242, \"catastrophe\": true }"), 111, First)
-		|| !ConfigOf(TEXT("{ \"seed\": 4242, \"catastrophe\": true }"), 987654, Again)
-		|| !ConfigOf(TEXT("{ \"seed\": 4243, \"catastrophe\": true }"), 111, Other)
-		|| !ConfigOf(TEXT("{ \"catastrophe\": true }"), 31337, Drawn))
+	if (!ConfigOf(TEXT("{ \"seed\": 4242, \"bCatastrophe\": true }"), 111, First)
+		|| !ConfigOf(TEXT("{ \"seed\": 4242, \"bCatastrophe\": true }"), 987654, Again)
+		|| !ConfigOf(TEXT("{ \"seed\": 4243, \"bCatastrophe\": true }"), 111, Other)
+		|| !ConfigOf(TEXT("{ \"bCatastrophe\": true }"), 31337, Drawn))
 	{
 		return false;
 	}
