@@ -1,0 +1,4 @@
+duel_ring_none | Les deux heros face a face au centre, AUCUN anneau au sol (pas de duel).
+duel_ring_on | Un anneau rouge au sol centre entre les deux heros (rayon 6 m), les deux heros a l'interieur, le duel en cours.
+duel_ring_troops_in | Six Hommes d'armes (3 de chaque camp) poses au milieu, autour des deux heros, avant tout duel.
+duel_ring_cleared | Le duel est en cours depuis quelques secondes : les Hommes d'armes sont tous hors de l'anneau rouge, seuls les deux heros sont dedans.

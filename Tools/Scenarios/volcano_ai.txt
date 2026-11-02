@@ -1,0 +1,38 @@
+# Volcan V11 (D639, D640) : l'IA envoie des soldats a l'autel LIBRE (elle le tient elle-meme) puis le conteste quand tu y arrives
+# Plain, toi (slot 0) contre une IA Normale (slot 1) avec cerveau, Catastrophe, graine 4242. Le site est pose par hol.Volcano.Site (V4b, les sites dans les cartes, n'est pas faite) a 60 m devant ton centre : coulees de 35 m, autel a 25 m du cratere (zone de 12 m).
+# Au depart l'IA recoit 8 Hommes d'armes chez elle : un quart (2) part tenir l'autel, aucun adversaire dedans, la trace la plus proche de ses batiments est a plus de 40 m.
+waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
+hol.Camera.FocusNear 1800 0 enemy
+frames 2
+hol.Units.SpawnHere 8 ManAtArms 1 600
+waitunits 18
+hol.Volcano.Site 6000 0 1800 1800 3500
+waitlog Volcano site posed
+waitlog go to the altar of site 0
+hol.Volcano.Report
+hol.Camera.FocusNear 7800 1800
+wait 38
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Camera.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture volcano_ai_free
+hol.Volcano.Report
+note 1. L'IA a envoye 2 de ses 8 Hommes d'armes (rouges) sur l'autel ancien (au centre) : ils le tiennent seuls. A gauche, la ligne « Autel ancien : tenu x % » monte sans que tu aies rien fait.
+waitkey Entree : 5 Hommes d'armes a toi arrivent sur l'autel
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Units.SpawnHere 5 ManAtArms 0 400
+waitunits 23
+wait 38
+hol.Camera.FocusNear 7800 1800
+wait 1
+hol.Camera.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture volcano_ai_contest
+hol.Volcano.Report
+note 2. Tes 5 Hommes d'armes sont dans la zone : « Autel ancien : disputé (x %) ». L'IA envoie plus de soldats que toi (5 x 1,5 = 8 voulus, mais elle garde 4 de ses 8 chez elle : elle en envoie 4 en tout, 2 de plus).
+hol.Test.Sanity

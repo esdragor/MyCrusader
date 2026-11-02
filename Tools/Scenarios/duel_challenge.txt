@@ -40,6 +40,8 @@ waitlog duel window: Défi envoyé au héros du joueur 2
 capture duel_window
 waitlog AI duel answer:
 wait 1
+hol.Select.Report
+waitlog Duel rings: none
 capture duel_answer
 panel show
 note 3. Pendant ces secondes une petite fenêtre en haut au centre montrait "Défi envoyé au héros du joueur 2", la barre et les secondes qui descendent (D8 : le jeu ne s'arrête pas, aucun bouton pour celui qui défie). L'IA répond après 2 à 3 s (journal : "AI duel answer: accept|refuse").

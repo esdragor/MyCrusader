@@ -1289,6 +1289,96 @@ def min_trees_per_territory(recipe, sources):
     return min(counts)
 
 
+# ---- Volcano sites (V4b, D607, D573, VolcanoInProgress.md): the crater and the lava flows of a volcano, written here like the trees and the ores, SYMMETRIC BY
+# CONSTRUCTION (one flow towards each place, the same length, so that the free draw of the direction (D573) favours no camp). A module's volcano(recipe)
+# gives [site]; a site is {"flows": [[(x, y), ...], ...], "altar": (x, y, radius) or None}, the crater being the first point of each flow. make_map lays
+# them as an HOLVolcanoLayout (data for the server; nothing is drawn: V9). Rules the Map.Table test checks (FHOLVolcanoLayoutRules) and volcano_unfair()
+# below checks at once: the flows the same by a turn of one place, the altar as far from every base, everything inside the bounds.
+# PROVISIONAL LEVEL DESIGN (Q-volcan-site, asked of the user): the crater in the middle of the map, one flow straight towards each place, VOLCANO_REACH of the
+# way to the place at most and always VOLCANO_BASE_CLEAR short of its base's reach; the altar, 2 places: VOLCANO_ALTAR_OFFSET across the axis of the places
+# from the crater (as far from both bases), 3 places and more: ON the crater (the only point as far from every base).
+VOLCANO_REACH = float(os.environ.get("HOL_VOLCANO_REACH", "0.5"))  # fraction of the distance from the middle to a place that a flow runs
+VOLCANO_BASE_CLEAR = 1600.0  # cm kept between the end of a flow and the reach of the base it aims at: lava half-width 800 cm + a margin
+VOLCANO_ALTAR_OFFSET = float(os.environ.get("HOL_VOLCANO_ALTAR_OFFSET", "3000"))  # cm; outside the 16 m corridor of the flows
+VOLCANO_ALTAR_RADIUS = 1200.0  # the ruin's zone (D348)
+VOLCANO_FLOW_POINTS = 3  # the crater, the middle, the end
+VOLCANO_AIM = os.environ.get("HOL_VOLCANO_AIM", "bases")  # "bases": a flow straight at each base; "between": at the middle of the gap between two neighbouring bases (Q-volcan-site-trace)
+VOLCANO_TOLERANCE = 100.0  # cm: the same tolerance as FHOLVolcanoLayoutRules::SymmetryTolerance
+
+
+def volcano_site(recipe):
+    """The volcano site of a map, symmetric by construction: a flow from the middle straight towards each place, the altar where it is as far from every base."""
+    slots = [recipe.slot(index)[0] for index in range(len(recipe.angles))]
+    flows = []
+    for x, y in slots:
+        distance = math.hypot(x, y)
+        length = min(VOLCANO_REACH * distance, distance - BASE_REACH - VOLCANO_BASE_CLEAR)
+        if length <= 0.0:
+            raise RuntimeError("%s: no room for a lava flow towards a place (%.0f cm away)" % (recipe.map_path, distance))
+        ux, uy = x / distance, y / distance
+        if VOLCANO_AIM == "between":  # half a place further round (counterclockwise): the same turn of one place still maps the flows on one another
+            half = math.pi / len(slots)
+            ux, uy = ux * math.cos(half) - uy * math.sin(half), ux * math.sin(half) + uy * math.cos(half)
+        flows.append([(ux * length * step / (VOLCANO_FLOW_POINTS - 1), uy * length * step / (VOLCANO_FLOW_POINTS - 1)) for step in range(VOLCANO_FLOW_POINTS)])
+    altar = (0.0, 0.0, VOLCANO_ALTAR_RADIUS)
+    if len(slots) == 2:
+        x, y = slots[0]
+        distance = math.hypot(x, y)
+        altar = (-y / distance * VOLCANO_ALTAR_OFFSET, x / distance * VOLCANO_ALTAR_OFFSET, VOLCANO_ALTAR_RADIUS)
+    return {"flows": flows, "altar": altar}
+
+
+def volcano_unfair(recipe, sites):
+    """What is unfair or out of the map in these sites (a list of texts, empty = fair): the same checks as Map.Table's (FHOLVolcanoLayoutRules)."""
+    problems = []
+    places = len(recipe.angles)
+    turn = math.radians(360.0 / places)
+    cos, sin = math.cos(turn), math.sin(turn)
+    slots = [recipe.slot(index)[0] for index in range(places)]
+    for number, site in enumerate(sites):
+        if not site["flows"]:
+            problems.append("site %d has no flow" % number)
+        for flow in site["flows"]:
+            if len(flow) < 2 or math.dist(flow[0], flow[-1]) <= 0.0:
+                problems.append("site %d: a flow has no length" % number)
+            twin = any(len(other) == len(flow) and all(abs(ox - (x * cos - y * sin)) <= VOLCANO_TOLERANCE and abs(oy - (x * sin + y * cos)) <= VOLCANO_TOLERANCE
+                                                       for (x, y), (ox, oy) in zip(flow, other)) for other in site["flows"])
+            if not twin:
+                problems.append("site %d: the flow from (%.0f, %.0f) to (%.0f, %.0f) has no twin after a turn of one place" % (number, flow[0][0], flow[0][1], flow[-1][0], flow[-1][1]))
+            if any(abs(x) > recipe.bounds_half or abs(y) > recipe.bounds_half for x, y in flow):
+                problems.append("site %d: a flow leaves the bounds" % number)
+        if site["altar"] is not None:
+            x, y, radius = site["altar"]
+            distances = [math.dist((x, y), slot) for slot in slots]
+            if len(distances) > 1 and max(distances) - min(distances) > VOLCANO_TOLERANCE:
+                problems.append("site %d: the altar is %.0f cm nearer one base than another" % (number, max(distances) - min(distances)))
+            if abs(x) + radius > recipe.bounds_half or abs(y) + radius > recipe.bounds_half:
+                problems.append("site %d: the altar's zone leaves the bounds" % number)
+    return problems
+
+
+def spawn_volcano(sites):
+    layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLVolcanoLayout")
+    if layout_class is None:
+        raise RuntimeError("Missing HOLVolcanoLayout (is the HeroesOfLiberty module compiled?)")
+    layout = spawn(layout_class, label="VolcanoLayout")
+    placed = []
+    for site in sites:
+        volcano = unreal.HOLPlacedVolcano()
+        flows = []
+        for points in site["flows"]:
+            flow = unreal.HOLPlacedLavaFlow()
+            flow.set_editor_property("points", [unreal.Vector(x, y, 0) for x, y in points])
+            flows.append(flow)
+        volcano.set_editor_property("flows", flows)
+        if site["altar"] is not None:
+            x, y, radius = site["altar"]
+            volcano.set_editor_property("altar", True)
+            volcano.set_editor_property("altar_location", unreal.Vector(x, y, 0))
+            volcano.set_editor_property("altar_radius", radius)
+        placed.append(volcano)
+    layout.set_editor_property("sites", placed)
+
 def lay_relays_and_sources(recipe, module):
     """(relays, sources, groups) of a map. The relays' zones push the far layer's sources about, so a layout of relays may leave a territory without room
     for a pile (steppe.RoomError) or a map without a clear circle: then the next RELAY_VARIANT (the same fixed relays group drawn from a neighbouring seed;
@@ -1375,6 +1465,14 @@ def make_map(recipe, module, on_saved):
     if relays:
         spawn_relays(relays)
 
+    # Volcano sites (V4b, D607): data read by the server, symmetric by construction; the module gives them (volcano(recipe)), the check refuses an unfair one.
+    volcanoes = list(module.volcano(recipe)) if hasattr(module, "volcano") else []
+    if volcanoes:
+        unfair = volcano_unfair(recipe, volcanoes)
+        if unfair:
+            raise RuntimeError("%s: unfair volcano site: %s" % (recipe.map_path, "; ".join(unfair)))
+        spawn_volcano(volcanoes)
+
     # Terrain zones (C3): data read by the server (the walkers' speed), and the ground drawn under them (zones(recipe) of the module).
     zones = module.zones(recipe) if hasattr(module, "zones") else ()
     if zones:
@@ -1393,6 +1491,8 @@ def make_map(recipe, module, on_saved):
     summary = ("Match map created at %s: %d start slots on a %.0f m circle (neighbours %.0f m apart), bounds %.0f m, %d obstacles, "
                "%d sources (%d neutral groups per player)%s, %d relays, navmesh built") % (
         recipe.map_path, places, recipe.slot_radius / 100, neighbours / 100, 2 * recipe.bounds_half / 100, obstacles, len(sources), groups, summary_zones, len(relays))
+    if volcanoes:
+        summary += ", %d volcano site(s) with %d flows" % (len(volcanoes), sum(len(site["flows"]) for site in volcanoes))
     # The navmesh is built once the editor lets it (it locks building for ~2 s after loading), then saved.
     if scenery:
         summary += ", scenery %d instances (%s)" % (sum(scenery.values()), ", ".join("%s %d" % item for item in sorted(scenery.items())))

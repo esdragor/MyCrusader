@@ -6,6 +6,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLDuelClearRules.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -164,3 +165,28 @@ bool FHOLDuelOrdersInMatchTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+// D5b: the pure rule of the units leaving the duel circle: who is inside, and the point outside they walk to.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDuelClearRuleTest, "HeroesOfLiberty.Duel.ClearCircleRule", UE::HeroesOfLiberty::Tests::DuelOrders::Flags)
+
+bool FHOLDuelClearRuleTest::RunTest(const FString& Parameters)
+{
+	const FVector2D Center(1000.0, -500.0);
+	constexpr double Radius = 600.0;
+	TestTrue(TEXT("a unit at the centre is inside"), HOLDuelClear::IsInside(Center, Center, Radius));
+	TestTrue(TEXT("a unit on the edge is inside"), HOLDuelClear::IsInside(Center + FVector2D(0.0, Radius), Center, Radius));
+	TestFalse(TEXT("a unit past the edge is outside"), HOLDuelClear::IsInside(Center + FVector2D(Radius + 1.0, 0.0), Center, Radius));
+	TestFalse(TEXT("no circle (radius 0): nobody inside"), HOLDuelClear::IsInside(Center, Center, 0.0));
+	for (const FVector2D& Offset : {FVector2D(100.0, 0.0), FVector2D(-250.0, 300.0), FVector2D(0.0, -590.0), FVector2D(0.0, 0.0)})
+	{
+		const FVector2D Position = Center + Offset;
+		const FVector2D Target = HOLDuelClear::GetTarget(Position, Center, Radius);
+		TestFalse(TEXT("the target is outside the circle"), HOLDuelClear::IsInside(Target, Center, Radius));
+		TestEqual(TEXT("... exactly the margin past the edge"), FVector2D::Distance(Target, Center), Radius + HOLDuelClear::MarginCm, 0.01);
+		if (!Offset.IsNearlyZero())
+		{
+			TestTrue(TEXT("... straight out through the unit"), FMath::IsNearlyEqual(FVector2D::DotProduct(Offset.GetSafeNormal(), (Target - Center).GetSafeNormal()), 1.0, 1e-6));
+		}
+	}
+	return true;
+}

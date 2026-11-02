@@ -16,7 +16,7 @@ hol.Camera.Zoom 3
 frames 20
 hol.Cheat.Wound 50
 waitlog Cheat: slot 0 wound to 50 %
-hol.Select.ClickUnit -2
+hol.Select.Type Monk last
 waitlog Selection: Monk
 hol.Units.Where 0
 note 1. Le Moine (a gauche) et un Lancier blesse (a droite) sont a 20 m l'un de l'autre.

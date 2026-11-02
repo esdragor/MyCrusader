@@ -15,6 +15,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLTerrainLayout.h"
 #include "Map/HOLTerrainRules.h"
+#include "Map/HOLVolcanoLayout.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -180,12 +181,19 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			int32 NumTerrainLayouts = 0;
 			TArray<FHOLPlacedRelay> PlacedRelays;
 			int32 NumRelayLayouts = 0;
+			TArray<FHOLPlacedVolcano> PlacedVolcanoes;
+			int32 NumVolcanoLayouts = 0;
 			for (const AActor* Actor : Map->PersistentLevel->Actors)
 			{
 				if (const AHOLRelayLayout* RelayLayout = Cast<AHOLRelayLayout>(Actor))
 				{
 					PlacedRelays.Append(RelayLayout->GetRelays());
 					++NumRelayLayouts;
+				}
+				if (const AHOLVolcanoLayout* VolcanoLayout = Cast<AHOLVolcanoLayout>(Actor))
+				{
+					PlacedVolcanoes.Append(VolcanoLayout->GetSites());
+					++NumVolcanoLayouts;
 				}
 				if (const AHOLTerrainLayout* Terrain = Cast<AHOLTerrainLayout>(Actor))
 				{
@@ -295,6 +303,21 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				AddInfo(FString::Printf(TEXT("%s: %d relays"), *Name, PlacedRelays.Num()));
 			}
 
+			// 3c. V4b (volcano sites of the maps, D607, D573): a map lays no volcano layout or one; its sites are fair between the camps (the flows the same by a
+			// turn of one place, the altar as far from every base), have a length and stay inside the bounds. Which maps carry a site is level design.
+			{
+				TArray<FVector2D> SlotCentres;
+				Starts.GenerateValueArray(SlotCentres);
+				TestTrue(FString::Printf(TEXT("%s: at most one volcano layout"), *Name), NumVolcanoLayouts <= 1);
+				TestEqual(FString::Printf(TEXT("%s: flows without a twin after a turn of one place (unfair draw, D573)"), *Name), FHOLVolcanoLayoutRules::CountUnbalancedFlows(PlacedVolcanoes, 360.0 / Info.NumPlaces), 0);
+				TestEqual(FString::Printf(TEXT("%s: altars nearer one base than another"), *Name), FHOLVolcanoLayoutRules::CountUnfairAltars(PlacedVolcanoes, SlotCentres), 0);
+				TestEqual(FString::Printf(TEXT("%s: volcano flows empty or without length"), *Name), FHOLVolcanoLayoutRules::CountEmptyFlows(PlacedVolcanoes), 0);
+				TestEqual(FString::Printf(TEXT("%s: volcano points outside the bounds"), *Name), FHOLVolcanoLayoutRules::CountOutside(PlacedVolcanoes, Half), 0);
+				if (!PlacedVolcanoes.IsEmpty())
+				{
+					AddInfo(FString::Printf(TEXT("%s: %d volcano site(s), %d flows in the first"), *Name, PlacedVolcanoes.Num(), PlacedVolcanoes[0].Flows.Num()));
+				}
+			}
 			// 4. Fair: for each type of source, the sorted distances to the 3 nearest sources are the same at every place. The
 			// places are compared with each other, never with a constant: a recipe may leave a type out of the bases (the same
 			// for every place) or put it in them.
