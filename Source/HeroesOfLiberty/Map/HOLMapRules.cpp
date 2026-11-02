@@ -19,6 +19,7 @@ namespace UE::HeroesOfLiberty::Map
 			{ TEXT("ElDorado"), NSLOCTEXT("HOLMaps", "Map_ElDorado", "El Dorado"), true, true },
 			{ TEXT("Cols"), NSLOCTEXT("HOLMaps", "Map_Cols", "Les Cols"), true },
 			{ TEXT("Forest"), NSLOCTEXT("HOLMaps", "Map_Forest", "La Forêt profonde"), true, false, true },
+			{ TEXT("Fords"), NSLOCTEXT("HOLMaps", "Map_Fords", "Les Gués"), true },
 		};
 		return Maps;
 	}

@@ -2,5 +2,5 @@ relays_map_ring | un cercle sombre et mince (relais neutre, zone de 12 m) sur l'
 relays_map_fill | 6 Hommes d'armes dans le cercle d'anneau et un arc épais de ma couleur qui monte dans le cercle (environ la moitié)
 relays_map_owned | le cercle entier à ma couleur, les 6 Hommes d'armes dedans
 relays_map_other | le second relais d'anneau, neutre (cercle sombre et mince), de l'autre côté du milieu, sans arbre ni filon dedans
-relays_map_middle | le milieu de la Steppe : 4 cercles sombres et minces en carré (à 20 m du centre), 4 m entre les bords, sans arbre ni filon dedans
+relays_map_middle | le milieu de la Steppe : 4 petits cercles sombres (zone de 4 m) en carré, à 25 m du centre, sans arbre ni filon dedans
 relays_map_middle_men | le même milieu avec 6 Hommes d'armes à ma couleur sous la croix (en bas de l'écran), prêts à être envoyés sur un cercle

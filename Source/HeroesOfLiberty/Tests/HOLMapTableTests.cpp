@@ -41,6 +41,8 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	constexpr float RelayBaseReach = 6000.f;
 	/** Q-relais-lieux: the 4 relays every map holds besides one per place. */
 	constexpr int32 FixedRelays = 4;
+	/** E-relays-carte (2026-11-02): the zone of the 4 fixed relays, 4 m (the user: "zone de 4 m", read as the radius; TO CONFIRM). */
+	constexpr float FixedRelayRadius = 400.f;
 
 	/** D493 (GDD 8.1, fairness between places): the sources nearest each place are the same distance away, to within 1 m. */
 	constexpr double FairnessTolerance = 100.0;
@@ -244,6 +246,13 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				TArray<FHOLPlacedRelay> Ring(ByDistance.GetData() + NumFixed, ByDistance.Num() - NumFixed);
 				TestEqual(FString::Printf(TEXT("%s: ring relays without a twin after a turn of one place"), *Name),
 					FHOLRelayLayoutRules::CountUnmatchedByTurn(Ring, 360.0 / Info.NumPlaces), 0);
+				// E-relays-carte (the user, 2026-11-02: "a zone of 4 m"): the 4 fixed relays have a zone of FixedRelayRadius, the ring's keep the ruin's 12 m.
+				int32 WrongFixedRadius = 0;
+				for (int32 Index = 0; Index < NumFixed; ++Index)
+				{
+					WrongFixedRadius += FMath::IsNearlyEqual(ByDistance[Index].Radius, FixedRelayRadius, 1.f) ? 0 : 1;
+				}
+				TestEqual(FString::Printf(TEXT("%s: fixed relays whose zone is not %.0f cm (common.py RELAY_EXTRA_ZONE)"), *Name, FixedRelayRadius), WrongFixedRadius, 0);
 				int32 Overlapping = 0;
 				for (int32 A = 0; A < ByDistance.Num(); ++A)
 				{

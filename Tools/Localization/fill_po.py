@@ -71,6 +71,7 @@ TRANSLATIONS = {
     "HOLMaps,Map_ElDorado": ("El Dorado", "エルドラド"),
     "HOLMaps,Map_Cols": ("The Cols", "峠"),
     "HOLMaps,Map_Forest": ("The Deep Forest", "深い森"),
+    "HOLMaps,Map_Fords": ("The Fords", "浅瀬"),
     "HOLNewGameScreen,Map": ("Map", "マップ"),
     "HOLNewGameScreen,Size": ("Size", "サイズ"),
     "HOLNewGameScreen,Size_Small": ("Small", "小"),
