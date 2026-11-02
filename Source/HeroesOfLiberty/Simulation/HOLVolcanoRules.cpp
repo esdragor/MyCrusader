@@ -326,6 +326,17 @@ HOLVolcano::EAltarHold HOLVolcano::StepAltar(float& HeldSeconds, const int32 Cam
 	return EAltarHold::Contested;
 }
 
+HOLVolcano::EAltarHold HOLVolcano::StepAltarOwned(float& HeldSeconds, int32& Holder, const int32 CampsInZone, const int32 SoleCamp, const float DeltaSeconds, const FHOLVolcanoSettings& Settings)
+{
+	// The count belongs to the camp that raised it: another camp alone in the zone starts from 0, it never takes over the loser's percentage.
+	if (CampsInZone == 1 && Holder != SoleCamp)
+	{
+		HeldSeconds = 0.f;
+		Holder = SoleCamp;
+	}
+	return StepAltar(HeldSeconds, CampsInZone, DeltaSeconds, Settings);
+}
+
 HOLVolcano::FAltarSend HOLVolcano::AltarSend(const FAltarSendInput& Input, const FHOLVolcanoSettings& Settings)
 {
 	const int32 Free = FMath::Max(0, Input.FreeSoldiers);
@@ -346,4 +357,31 @@ HOLVolcano::FAltarSend HOLVolcano::AltarSend(const FAltarSendInput& Input, const
 	// The soldiers already sent stay (no recall: the movement audit sees the to-and-fro as spins).
 	Result.Squad = FMath::Max(Result.Squad, Input.AlreadySent);
 	return Result;
+}
+
+int32 HOLVolcano::AltarHoldSquad(const FAltarHoldInput& Input, const FHOLVolcanoSettings& Settings)
+{
+	const int32 Kept = FMath::Max(0, Input.AlreadySent);
+	if (Input.bAdversaryInZone || Input.NearestTraceDistance <= Settings.AiAltarSafeDistance)
+	{
+		return Kept;
+	}
+	const float Share = Input.Level == EAltarLevel::Easy ? Settings.AiAltarHoldShareEasy : Settings.AiAltarHoldShare;
+	return FMath::Max(Kept, FMath::CeilToInt(Share * FMath::Max(0, Input.FreeSoldiers)));
+}
+
+float HOLVolcano::DistanceToFlow(const FFlow& Flow, const FVector& Point)
+{
+	double Best = TNumericLimits<double>::Max();
+	if (Flow.Points.Num() == 1)
+	{
+		Best = FVector2D::Distance(FVector2D(Point), FVector2D(Flow.Points[0]));
+	}
+	for (int32 Index = 1; Index < Flow.Points.Num(); ++Index)
+	{
+		const FVector A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y, 0.0);
+		const FVector B(Flow.Points[Index].X, Flow.Points[Index].Y, 0.0);
+		Best = FMath::Min(Best, static_cast<double>(FMath::PointDistToSegment(FVector(Point.X, Point.Y, 0.0), A, B)));
+	}
+	return static_cast<float>(Best);
 }

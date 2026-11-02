@@ -650,6 +650,21 @@ bool FHOLVolcanoAltarHoldTest::RunTest(const FString& Parameters)
 	HOLVolcano::StepAltar(Held, 0, 1000.f, Settings);
 	TestEqual(TEXT("... never below zero"), Held, 0.f);
 
+	// The count belongs to its holder: another camp alone in the zone starts from 0, the same camp goes on from its own count.
+	float Owned = 0.f;
+	int32 Holder = INDEX_NONE;
+	for (int32 Second = 0; Second < 29; ++Second)
+	{
+		HOLVolcano::StepAltarOwned(Owned, Holder, 1, 0, 1.f, Settings);
+	}
+	TestTrue(TEXT("camp 0 holds 29 s"), Holder == 0 && FMath::IsNearlyEqual(Owned, 29.f));
+	HOLVolcano::StepAltarOwned(Owned, Holder, 2, INDEX_NONE, 1.f, Settings);
+	TestEqual(TEXT("contested: frozen, still camp 0's"), Owned, 29.f);
+	HOLVolcano::StepAltarOwned(Owned, Holder, 1, 0, 1.f, Settings);
+	TestEqual(TEXT("camp 0 alone again: goes on"), Owned, 30.f);
+	HOLVolcano::StepAltarOwned(Owned, Holder, 1, 1, 1.f, Settings);
+	TestTrue(TEXT("camp 1 alone after camp 0's 30 s: starts again, 1 s, not 31"), Holder == 1 && Owned == 1.f);
+
 	// Held 60 s in a row reaches the threshold, 59 s does not.
 	float Count = 0.f;
 	for (int32 Second = 0; Second < 59; ++Second)
@@ -710,6 +725,47 @@ bool FHOLVolcanoAltarWakeTest::RunTest(const FString& Parameters)
 
 	// Without Catastrophe nothing is lit.
 	TestFalse(TEXT("no Catastrophe: no altar lit"), HOLVolcano::SiteStateAt(false, MatchSeed, 0, Site, 30.f, Settings, ManSpeed).bAltarLit);
+	return true;
+}
+
+// The free altar the AI holds itself (V11, D640): one free soldier in 4 (one in 8 in Easy) when no adversary is in the zone and the nearest trace is
+// farther than 40 m from its positions; never a recall.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarHoldSquadTest, "HeroesOfLiberty.Volcano.AltarHoldSquad", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoAltarHoldSquadTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	using namespace HOLVolcano;
+	FAltarHoldInput Input;
+	Input.FreeSoldiers = 8;
+	Input.NearestTraceDistance = 9000.f;
+	TestEqual(TEXT("40 m kept as the default"), Settings.AiAltarSafeDistance, 4000.f);
+	TestEqual(TEXT("Normal: one soldier in 4 of 8"), AltarHoldSquad(Input, Settings), 2);
+	Input.Level = EAltarLevel::Hard;
+	TestEqual(TEXT("Hard: the same quarter"), AltarHoldSquad(Input, Settings), 2);
+	Input.Level = EAltarLevel::Easy;
+	TestEqual(TEXT("Easy: one in 8"), AltarHoldSquad(Input, Settings), 1);
+	Input.Level = EAltarLevel::Normal;
+	Input.FreeSoldiers = 5;
+	TestEqual(TEXT("5 free soldiers: the quarter rounded up, 2"), AltarHoldSquad(Input, Settings), 2);
+	Input.FreeSoldiers = 0;
+	TestEqual(TEXT("no free soldier: none"), AltarHoldSquad(Input, Settings), 0);
+
+	Input.FreeSoldiers = 8;
+	Input.NearestTraceDistance = 4000.f;
+	TestEqual(TEXT("a trace at exactly 40 m is too near"), AltarHoldSquad(Input, Settings), 0);
+	Input.NearestTraceDistance = 9000.f;
+	Input.bAdversaryInZone = true;
+	TestEqual(TEXT("an adversary in the zone: not a free altar (the contest rule applies)"), AltarHoldSquad(Input, Settings), 0);
+	Input.bAdversaryInZone = false;
+	Input.AlreadySent = 3;
+	TestEqual(TEXT("3 already there: they stay"), AltarHoldSquad(Input, Settings), 3);
+	Input.NearestTraceDistance = 100.f;
+	TestEqual(TEXT("... even if the trace were near: no recall"), AltarHoldSquad(Input, Settings), 3);
+
+	FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(10000.0, 0.0, 0.0) };
+	TestTrue(TEXT("the distance to a line: 3000 cm beside its middle"), FMath::IsNearlyEqual(DistanceToFlow(Flow, FVector(5000.0, 3000.0, 0.0)), 3000.f, 0.5f));
+	TestTrue(TEXT("... past its end: to the end point"), FMath::IsNearlyEqual(DistanceToFlow(Flow, FVector(13000.0, 4000.0, 0.0)), 5000.f, 0.5f));
 	return true;
 }
 
