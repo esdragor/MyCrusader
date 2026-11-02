@@ -38,6 +38,9 @@ struct FHOLLobbySummary
 	bool bCanWatch = false;
 	/** R7.6: in game, the match's players gone from its server within R7's window (« Revenir »); absent: none. */
 	TArray<FString> Away;
+	/** SP1 (D642): the lobby's spectators (not in Players), and whether one can enter as such (at the lobby, full or not). */
+	int32 Spectators = 0;
+	bool bCanSpectate = false;
 };
 
 /** The button of a row of the Multiplayer list (R4.2, R7.6). */
@@ -108,6 +111,8 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	FString MatchGameVersion;
 	/** "server_stopped", "leader_changed"; empty for null. */
 	FString Notice;
+	/** SP1 (D642): the lobby's spectators by name, in order of entry; they hold no slot. */
+	TArray<FString> Spectators;
 
 	/** The players (humans); an AI is not one (PROTOCOL.md: not in players of GET /lobbies). */
 	int32 GetNumPlayers() const;
@@ -119,8 +124,12 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	EHOLFogMode GetFogMode() const;
 	/** TC3: the places of the lobby's map at its size; FHOLMatchConfig::MaxSlots without a size. */
 	int32 GetNumPlaces() const;
-	/** The slot of the token's player; INDEX_NONE without one. */
+	/** The slot of the token's player; INDEX_NONE without one (a spectator has none). */
 	int32 FindYourSlot() const;
+	/** SP1: the token's player is a spectator of the lobby: no slot, no colour, team or Ready. */
+	bool IsYouSpectator() const;
+	/** SP1: a slot is open, so a spectator can take it (the manager still decides). */
+	bool HasOpenSlot() const;
 
 	/** The token's player leads the lobby (M6-Q3): map, options, slots, Launch. */
 	bool IsYouLeader() const;
@@ -163,6 +172,8 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	 * otherwise (full, starting).
 	 */
 	static EHOLLobbyAction ChooseLobbyAction(const FHOLLobbySummary& Lobby, const FString& MyName);
+	/** SP1 (D642): « Observer » next to « Rejoindre »: the lobby gathers (even full); the manager says so (canSpectate). */
+	static bool CanSpectate(const FHOLLobbySummary& Lobby);
 	/** The lobby's state; false unless its 8 slots are read. */
 	static bool ParseLobby(const FString& Json, FHOLLobby& Out);
 	/** The answer of create and join: { token, slot, lobby }. */
@@ -178,8 +189,10 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	 */
 	static FHOLManagerError ReadFailure(bool bConnected, int32 HttpCode, const FString& Body);
 
-	/** PUT /lobbies/{id}/me: only the fields given ({ "colorIndex", "team", "ready" }). */
-	static FString MakeMeBody(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady);
+	/** PUT /lobbies/{id}/me: only the fields given ({ "colorIndex", "team", "ready", "spectator" }). */
+	static FString MakeMeBody(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady, TOptional<bool> bSpectator = {});
+	/** POST /lobbies/{id}/join: { "playerName", "gameVersion" }, then "spectator": true when entering as one (SP1). */
+	static FString MakeJoinBody(const FString& PlayerName, const FString& GameVersion, bool bSpectator);
 	/**
 	 * PUT /lobbies/{id}/settings: { "map", "nomad", "regicide", "catastrophe" }, then (TC3) "size" when Size is not empty and
 	 * "teamsTogether" when given.

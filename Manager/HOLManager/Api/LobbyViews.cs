@@ -23,6 +23,9 @@ public static class LobbyViews
         map = lobby.Settings.Map,
         size = lobby.Settings.Size,
         players = lobby.Players.Count(),
+        // SP1: the spectators of the lobby, and whether one can enter as such (any lobby at the lobby, full or not).
+        spectators = lobby.Spectators.Count,
+        canSpectate = lobby.State == LobbyState.Lobby,
         maxPlayers = lobby.Slots.Count(s => s.State != SlotState.Closed),
         state = StateName(lobby.State),
         minutes = Minutes(lobby, now),
@@ -35,7 +38,7 @@ public static class LobbyViews
     /** GET /lobbies/{id}, also the answer of every change. */
     public static object State(LobbyStore store, Lobby lobby, string? token)
     {
-        var you = token == null ? null : lobby.Players.FirstOrDefault(p => p.Token == token)?.Name;
+        var you = token == null ? null : lobby.Present.FirstOrDefault(p => p.Token == token)?.Name;
         return new
         {
         id = lobby.Id,
@@ -57,6 +60,8 @@ public static class LobbyViews
         maps = store.Maps.Select(m => new { name = m.Name, maxPlayers = m.MaxPlayers,
             sizes = m.Sizes.Select(s => new { key = s.Key, places = s.Places }).ToList() }).ToList(),
         slots = lobby.Slots.Select(Slot).ToList(),
+        // SP1: the spectators of the lobby by their name, in order of entry; the leader may be one (leader).
+        spectators = lobby.Spectators.OrderBy(p => p.JoinOrder).Select(p => new { playerName = p.Name }).ToList(),
         // In game: what the client opens (PROTOCOL.md, Démarrage de la partie); playerName null without a token.
         match = lobby.State == LobbyState.InGame && lobby.Match is { } m
             ? new { matchId = m.Id, port = m.Port, playerName = you, gameVersion = lobby.GameVersion }

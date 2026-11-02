@@ -158,6 +158,9 @@ amis. `protocolVersion` ne change pas : **sans clé, tout est ouvert comme avant
 - `maxPlayers` : emplacements **ouverts ou tenus** (le chef en ferme pour une partie à 4 ; ceux au-delà des places de
   la taille sont fermés : Petite → 2 au plus).
 - `canJoin` : au salon et pas plein. `canWatch` : en partie (`"in_game"`).
+- `spectators`, `canSpectate` (SP1, ajoutés à la version 1 : un client les ignore s'ils sont absents) : le nombre de
+  spectateurs du salon (hors de `players`) ; `canSpectate` vaut `true` dès que le salon est au salon (`"lobby"`), **plein ou non**
+  (un spectateur ne prend pas d'emplacement).
 - `gameVersion` (D481, ajouté à la version 1) : la version du salon ; un client d'une autre version y est refusé
   (`version_mismatch`).
 - `away` (R7.6, ajouté à la version 1 : un client l'ignore s'il est absent) : en partie, les joueurs de la partie
@@ -192,7 +195,11 @@ Réponse `200` :
 { "token": "9f2c4e0b7a3d4c1e8b6f5a2d0c9e7b14", "slot": 1, "lobby": { "…": "état du salon, voir GET /lobbies/{lobbyId}" } }
 ```
 
-Le joueur reçoit le **premier emplacement ouvert libre**, la **première couleur libre** de la palette (0 à 7) et
+**Spectateur de salon (SP1, D642)** : `"spectator": true` (facultatif, `false` par défaut) entre **sans emplacement** :
+`slot` vaut `-1`, aucune couleur, aucune équipe, pas de « Prêt ». Il entre **même si le salon est plein** (`lobby_full`
+ne le concerne pas), sans plafond de spectateurs ; `name_taken` vaut pour tous les présents, joueurs et spectateurs.
+
+Un joueur (sans `spectator`) reçoit le **premier emplacement ouvert libre**, la **première couleur libre** de la palette (0 à 7) et
 l'équipe 0 (aucune) ; un joueur de la dernière partie finie du salon (même nom, casse ignorée) reprend sa couleur de
 la partie si aucun joueur présent ne l'a (E2-1). Le premier entré d'un salon est chef. Erreurs : `lobby_not_found`, `version_mismatch`,
 `invalid_name`, `name_taken`, `lobby_full`, `lobby_in_game`, `bad_request`.
@@ -229,6 +236,7 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
     { "index": 3, "state": "open" },
     { "index": 4, "state": "closed" }
   ],
+  "spectators": [ { "playerName": "Carol" } ],
   "match": null,
   "notice": null
 }
@@ -243,6 +251,10 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   de la plus grande. `/Game/Maps/Plain` seule (carte d'essai, TC-Q11) n'est pas servie.
 - `slots` : toujours 8 ; `state` vaut `"open"`, `"closed"`, `"player"` ou `"ai"`. `you` : le nom du jeton (`null` sans
   jeton).
+- `spectators` (SP1, D642) : les spectateurs du salon, par leur nom, dans l'ordre d'entrée (`[]` sans eux ; absent d'un
+  gestionnaire plus ancien). Un spectateur n'a pas de ligne : ni emplacement, ni couleur, ni équipe, ni « Prêt ». Il
+  compte comme **présent** (même lecture 2 fois par seconde, même règle des 5 s) et **peut être chef** : `leader` peut
+  nommer un spectateur ; le chef est toujours le présent entré le plus tôt, joueur ou spectateur. `you` nomme aussi un spectateur.
 - `"ai"` (IA0.6, Q4-Q5) : une IA mise par le chef ; `level` (`EHOLAIDifficulty` par son nom) vaut toujours `"Normal"`
   au salon (grisé à l'écran). Pas de `playerName` ni de `ready` : le client la nomme comme le jeu, « IA Normal N »
   (`HOLForumMessages::GetAIName`, N = `index` + 1, texte traduit). Une IA n'est pas un joueur : elle ne compte pas
@@ -259,13 +271,18 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
 Champs facultatifs ; seuls ceux présents changent.
 
 ```json
-{ "colorIndex": 4, "team": 2, "ready": true }
+{ "colorIndex": 4, "team": 2, "ready": true, "spectator": false }
 ```
 
 - `colorIndex` : 0 à 7, unique dans le salon, joueurs et IA (`color_taken`), ou 8 = « Aléatoire » (E2-2), que
   plusieurs joueurs peuvent avoir. Un joueur qui entre prend la première couleur qu'aucun joueur ni aucune IA n'a. `team` : 0 (aucune) à 4.
 - Un changement de couleur ou d'équipe remet **mon** « Prêt » à `false` (choix 4), sauf si `ready` est dans la même
   requête. Une valeur égale à l'actuelle n'est pas un changement.
+- `spectator` (SP1, D642) : `true` me fait quitter mon emplacement (libéré, avec ma couleur ; « Prêt » à `false`) et
+  devenir spectateur, **chef compris** (il le reste et règle et lance sans jouer) ; `false` me donne le **premier
+  emplacement ouvert** (`lobby_full` s'il n'y en a pas, rien ne change), avec la couleur que j'avais si elle est libre
+  (sinon la première libre), l'équipe 0 et « Prêt » à `false`. Un spectateur (qui le reste dans la requête) n'envoie ni
+  `colorIndex`, ni `team`, ni `ready` : `bad_request`. Devenir joueur et régler sa ligne se font dans la même requête.
 - Plus tard : `faction` (`"DawnOrder"`, `"BlackLegions"`).
 - Réponse `200` : l'état du salon. Erreurs : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `bad_request`,
   `color_taken` (dans cet ordre).
@@ -308,7 +325,7 @@ hors de 0 à 7 ou non entier, `state` absent ou inconnu, ouvrir un emplacement a
 
 ### `POST /lobbies/{lobbyId}/start` — « Lancer » (chef)
 
-Conditions : chef, 2 joueurs **ou IA** au moins (IA0.6 Q3 = A : le chef seul avec une IA lance), **tous les joueurs
+Conditions : chef (joueur ou spectateur, SP1), 2 joueurs **ou IA** au moins (les spectateurs ne comptent pas) (IA0.6 Q3 = A : le chef seul avec une IA lance), **tous les joueurs
 « Prêt »** (une IA n'a pas de « Prêt »), moins de `maxServers` serveurs en marche. Le gestionnaire
 écrit `match.json` (format ci-dessous), lance le serveur et passe le salon à `starting`. Réponse `202` :
 `{ "matchId": "M20261023-153012-3" }` ; l'état du salon dit alors `"starting"`, `match` reste `null` jusqu'à
@@ -339,6 +356,9 @@ Quand le serveur annonce qu'il écoute, l'état du salon passe à `"in_game"` et
 
 `gameVersion` est celle **du salon** (D481).
 
+**Spectateur de salon** : `match.playerName` est son nom, absent de `match.json` : le serveur le fait spectateur (R3.2,
+vision complète D376) ; il n'est pas dans `slots[].playerName`. Il suit donc la partie avec les joueurs.
+
 Le client ouvre alors `<adresse du PC hôte>:<port>?Name=<playerName>&Version=<gameVersion>` (même adresse que le
 gestionnaire, celle de `servers.json`). `playerName` est **le nom à passer tel quel** (encodé pour l'URL) : c'est lui
 qui donne l'emplacement (M6-Q9, R3.2). Le serveur vérifie `Version` (R3.3).
@@ -349,8 +369,9 @@ liste » = rien (il n'a plus de place dans le salon depuis `finished`).
 
 ### Retour au salon (choix 6, R2.11)
 
-- Après `finished` (D2) : salon `lobby`, réglages gardés, **plus aucun joueur de la partie** (ancien jeton →
-  `not_in_lobby`). Chaque joueur revient par un `POST /join` ordinaire (nouvel emplacement, équipe par défaut,
+- Après `finished` (D2) : salon `lobby`, réglages gardés, **plus aucun joueur de la partie, spectateurs de salon compris** (ancien jeton →
+  `not_in_lobby`) ; un spectateur revient par un `POST /join` avec `"spectator": true` (le client s'en souvient). Le chef
+  spectateur dirige LeaderReturnGrace (30 s) après la fin, le serveur ne signalant pas le départ d'un spectateur. Chaque joueur revient par un `POST /join` ordinaire (nouvel emplacement, équipe par défaut,
   couleur de la partie si elle est libre, E2-1), refusé comme tout `join`. **Chef** (M6-Q14) : le chef de la partie le reste, absent (`leader` = son nom) ;
   ceux revenus avant lui ne règlent ni ne lancent (`not_leader`) ; à son `join`, il reprend la main (devant eux dans
   l'ordre d'arrivée). Le premier revenu (ordre d'arrivée) devient chef, avec `notice: "leader_changed"` s'il n'est pas
