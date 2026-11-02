@@ -1,13 +1,8 @@
-# hol.Test.Sanity, controle 1 : un camp neutre (proprietaire 8) et un joueur : la couleur d affichage du camp ne doit etre celle d aucun joueur. Rouge tant que les neutres sont dessines de la couleur du joueur 0.
-open /Game/Maps/Plain
-waitmap Plain
-waitlog Camera above the start of slot
-hol.Sanity.Watch 1
-frames 5
+# hol.Test.Sanity, controle 1 : un camp neutre (proprietaire 8) et un joueur : la couleur d affichage du camp ne doit etre celle d aucun joueur. Les neutres sont gris (HOLPlayerColors::GetOwnerLinearColor, une seule regle, D616) : Sanity: OK attendu, rouge tant que l audit garde sa copie DisplayColorIndex (neutre = indice 8 = couleur du joueur 0).
 hol.Camp.Add 0 -9000 3 Spearman
 waitlog Camp 0: 3 Spearman at
 hol.Units.Spawn 1 0 -8000 0 Peasant 50
 waitlog Spawn: 1 Peasant
 wait 1
 hol.Test.Sanity
-waitlog Sanity: FAIL neutral units
+waitlog Sanity: OK

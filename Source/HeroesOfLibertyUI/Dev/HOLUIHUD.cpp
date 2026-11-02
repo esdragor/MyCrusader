@@ -78,6 +78,8 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			{
 				UE_LOG(LogHOLUI, Display, TEXT("HUD %s"), *Line);
 			}
+			// Lesson 12b: which panels cover each other (the script's, and the cheats'), as drawn; preflight.ps1 fails on anything but "none".
+			UE_LOG(LogHOLUI, Display, TEXT("HUD overlap: %s"), *Screen.DescribeOverlaps());
 			// On its own line: the checks read the report's line to its end.
 			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
 			{

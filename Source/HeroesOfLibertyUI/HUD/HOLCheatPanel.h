@@ -45,6 +45,15 @@ public:
 	/** "cheats open, fast build off, unit speed x1.0, gather speed x1.0" or "cheats folded" (hol.HUD.Report). */
 	FString Describe() const;
 
+	/**
+	 * The panel's bottom edge under the screen's top (Slate units, the HUD's scale), from its place and its desired height: what a block
+	 * stacked under the cheats starts at (the AI level line). 0 without the panel.
+	 */
+	float GetBottom() const;
+
+	/** The panel's box as drawn (Slate units); false while it has not been drawn yet (hol.HUD.Report's overlap line). */
+	bool GetBox(FBox2D& OutBox) const;
+
 protected:
 	virtual void NativeOnInitialized() override;
 	virtual void NativeConstruct() override;

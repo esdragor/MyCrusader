@@ -113,7 +113,7 @@ void UHOLMatchStatsSubsystem::TakeSample()
 		Units->GetLivingCountsByOwner(Workers, Military);
 	}
 	TMap<int32, int32> Buildings;
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		++Buildings.FindOrAdd(It->GetOwnerPlayer());
 	}

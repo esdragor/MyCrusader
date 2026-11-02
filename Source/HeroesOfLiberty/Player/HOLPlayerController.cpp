@@ -873,7 +873,7 @@ namespace UE::HeroesOfLiberty::Player
 	AHOLBuilding* FindOwnBuilding(const AHOLPlayerController& Controller, const FName TypeName)
 	{
 		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
-		for (TActorIterator<AHOLBuilding> It(Controller.GetWorld()); PlayerState && It; ++It)
+		for (FHOLBuildingIterator It(Controller.GetWorld()); PlayerState && It; ++It)
 		{
 			if (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex() && It->GetTypeName() == TypeName)
 			{
@@ -994,7 +994,7 @@ namespace UE::HeroesOfLiberty::Player
 	const AHOLBuilding* FindMainCentre(const AHOLPlayerController& Controller, const bool bEnemy)
 	{
 		const AHOLPlayerState* PlayerState = Controller.GetHOLPlayerState();
-		for (TActorIterator<AHOLBuilding> It(Controller.GetWorld()); PlayerState && It; ++It)
+		for (FHOLBuildingIterator It(Controller.GetWorld()); PlayerState && It; ++It)
 		{
 			if (It->GetTypeName() == HOLBuildingTypeNames::MainCentre && (It->GetOwnerPlayer() == PlayerState->GetPlayerIndex()) != bEnemy)
 			{
@@ -1193,7 +1193,7 @@ namespace UE::HeroesOfLiberty::Player
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				TArray<FString> Buildings;
-				for (TActorIterator<AHOLBuilding> It(Controller->GetWorld()); It; ++It)
+				for (FHOLBuildingIterator It(Controller->GetWorld()); It; ++It)
 				{
 					const bool bOwn = PlayerState && It->GetOwnerPlayer() == PlayerState->GetPlayerIndex();
 					// A site's progress (J6a.4), as this machine knows it (its work replicated).
@@ -1372,7 +1372,7 @@ namespace UE::HeroesOfLiberty::Player
 			UE_LOG(LogHOLMatch, Display, TEXT("Market report: net mode %d, book %s, prices %d %d %d %d"), static_cast<int32>(World->GetNetMode()),
 				GameState->HasMarketBook() ? TEXT("set") : TEXT("not set"), Book.Prices[0], Book.Prices[1], Book.Prices[2], Book.Prices[3]);
 			int32 Markets = 0;
-			for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+			for (FHOLBuildingIterator It(World); It; ++It)
 			{
 				if (It->GetTypeName() == FName(TEXT("Market")))
 				{
@@ -2955,7 +2955,7 @@ void AHOLPlayerController::SelectBuildingCategory(const EHOLBuildingCategory Cat
 	TArray<AHOLBuilding*> Buildings;
 	TArray<FHOLCycleBuilding> Entries;
 	TArray<uint32> Keys;
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
 		if (Type && It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->IsSeenHere() && HOLCommandGrid::IsSelectedByCategory(*Type, Category))
@@ -3545,6 +3545,17 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 	{
 		// A technology (T4, GDD 11): at the building of its type that takes it (the next of a group's even spread). What the
 		// rules, the stock or the queue refuse is told and not sent; the server checks it all again.
+		const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(Command.TypeName);
+		if (Technology && !Technology->Implemented)
+		{
+			// T-Q10/T-Q11 = B (D601): in the grid but no effect coded yet: told "soon" and not sent, building or not.
+			FHOLCommandFeedback Soon;
+			Soon.Kind = EHOLCommandFeedback::ResearchRefused;
+			Soon.Block = HOLTechnology::EBlock::NotImplemented;
+			UE_LOG(LogHOLMatch, Display, TEXT("Grid: %s not researched"), *Command.TypeName.ToString());
+			NotifyFeedback(Soon);
+			return;
+		}
 		bool bAny = false;
 		AHOLBuilding* Building = FindProductionBuilding(Command.TypeName, &bAny);
 		if (!bAny)
@@ -3729,7 +3740,7 @@ FHOLCommandFeedback AHOLPlayerController::CheckResearchAt(const FName Technology
 	Facts.bRequiresDone = Row->Requires.IsNone() || HOLPlayerState->GetTechnologies().Has(Row->Requires);
 	Facts.bBuildingFinished = Building->IsFinished() && Building->GetTypeName() == Row->Building;
 	Facts.bResearched = HOLPlayerState->GetTechnologies().Has(Technology);
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It && !Facts.bQueued; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It && !Facts.bQueued; ++It)
 	{
 		Facts.bQueued = It->GetOwnerPlayer() == Slot && HOLTechnology::IsQueued(It->GetProductionQueue(), Technology);
 	}
@@ -4571,7 +4582,7 @@ void AHOLPlayerController::ServerCheatDamageBuilding_Implementation(const FVecto
 	// The building nearest the point on the ground, any player's (a bare foundation too: its owner's test).
 	AHOLBuilding* Nearest = nullptr;
 	double NearestDistance = TNumericLimits<double>::Max();
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		const double Distance = FVector::DistSquared2D(It->GetActorLocation(), Point);
 		if (It->GetType() && Distance < NearestDistance)

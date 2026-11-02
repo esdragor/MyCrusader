@@ -164,11 +164,23 @@ void AHOLPlayerState::OnRep_HeroPrivate()
 
 bool AHOLPlayerState::AddTechnology(const FName Technology)
 {
+	static const FName RamHealthStat(TEXT("RamHealth"));
+	const int32 HealthBefore = GetTechnologyBonusPercent(RamHealthStat);
 	if (!Technologies.Add(Technology))
 	{
 		return false;
 	}
 	TechnologyBonus.Reset();
+	// S5 (Reinforced Ram): the Rams alive gain the new health at once, those born later are born with it (UHOLUnitSubsystem).
+	const int32 HealthAfter = GetTechnologyBonusPercent(RamHealthStat);
+	if (HealthAfter != HealthBefore && GetWorld() != nullptr)
+	{
+		if (UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>())
+		{
+			const int32 Raised = Units->ApplyTechnologyHealth(PlayerIndex, HealthBefore, HealthAfter);
+			UE_LOG(LogTemp, Display, TEXT("Technology: slot %d RamHealth +%d %%: %d units raised"), PlayerIndex, HealthAfter, Raised);
+		}
+	}
 	OnTechnologiesChanged.Broadcast();
 	ForceNetUpdate();
 	return true;

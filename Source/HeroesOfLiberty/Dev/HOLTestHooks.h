@@ -66,4 +66,11 @@ namespace HOLTestHooks
 	 * Development builds only.
 	 */
 	HEROESOFLIBERTY_API bool MakeScenarioConfig(const FString* Json, FHOLMatchConfig& OutConfig, FString* OutError = nullptr);
+
+	/**
+	 * V4c (V4-Q2 = C, D608): the seed a scenario's match is played with. The seed is drawn at each launch (Drawn: the clock's ticks, as the New game
+	 * screen and the lobby do), unless the scenario's .json imposes one ("seed": 4242, a number other than 0): a trial that must see the same
+	 * eruption twice (the volcano) gives it. Json null: none. Development builds only.
+	 */
+	HEROESOFLIBERTY_API int32 GetScenarioSeed(const FString* Json, int32 Drawn);
 }

@@ -1,5 +1,7 @@
-﻿# <nom de capture> | ce que l'utilisateur doit voir
-ai_evolving_base | une Caserne et une Archerie de l'IA debout, 6 Lanciers de l'IA pres de son forum
-ai_evolving_easy | stade 1 : les soldats de l'IA au contact des 8 Hommes d'armes du joueur pres de son forum
-ai_evolving_normal | stade 2 : 35 Hommes d'armes du joueur pres du forum de l'IA (qui a maintenant beaucoup de maisons), combat autour des batiments
-ai_evolving_hard | stade 3 : 20 Hommes d'armes du joueur au milieu des batiments de l'IA, les soldats de l'IA dispersés
+# <nom de capture> | ce que l'utilisateur doit voir
+ai_evolving_base | la ligne « IA 2 : Évolutive, joue Facile » sous le panneau Triches ; une Caserne et une Archerie de l'IA debout, 6 Lanciers pres de son forum
+ai_evolving_easy | stade 1 : la ligne « IA 2 : Évolutive, joue Facile » lisible sous le panneau Triches ; les soldats de l'IA sortent vers les 8 Hommes d'armes bleus pres de son forum
+ai_evolving_normal | stade 2 : la ligne passe a « joue Normal » ; 35 Hommes d'armes bleus pres du forum de l'IA, combat autour
+ai_evolving_hard | stade 3 : la ligne passe a « joue Difficile » ; Hommes d'armes bleus a l'avant du forum (en partie sous le panneau du scenario)
+ai_evolving_normal_start | stade 2, APRES l'Entree et la reouverture de la carte : etat de depart identique au debut (Caserne, Archerie, 6 Lanciers de l'IA, forum intact, aucune troupe bleue, meme si tu avais tout rase au stade 1), ligne "joue Normal" (la commande est deja passee)
+ai_evolving_hard_start | stade 3, meme etat de depart propre : rien du stade 2 ne reste

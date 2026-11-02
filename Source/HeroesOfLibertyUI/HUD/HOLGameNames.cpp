@@ -114,6 +114,11 @@ namespace HOLGameNames
 			// M3, translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("Market", "Marché");
 		}
+		if (TypeName == FName(TEXT("Sanctuary")))
+		{
+			// SC-Q1 = B (D602), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Sanctuary", "Sanctuaire de l'Aube");
+		}
 		if (Row && !Row->DisplayName.IsEmpty())
 		{
 			return Row->DisplayName;
@@ -242,10 +247,6 @@ namespace HOLGameNames
 		{
 			return LOCTEXT("TechWheelbarrowII", "Brouette II");
 		}
-		if (TypeName == FName(TEXT("DefenceMilitia")))
-		{
-			return LOCTEXT("TechDefenceMilitia", "Milice de défense");
-		}
 		if (TypeName == FName(TEXT("ImprovedAlarmBell")))
 		{
 			return LOCTEXT("TechImprovedAlarmBell", "Cloche d'alarme améliorée");
@@ -335,10 +336,6 @@ namespace HOLGameNames
 		if (Stat == FName(TEXT("WorkerCarry")))
 		{
 			return LOCTEXT("TechStatWorkerCarry", "Charge des travailleurs");
-		}
-		if (Stat == FName(TEXT("WorkerDefence")))
-		{
-			return LOCTEXT("TechStatWorkerDefence", "Défense des travailleurs");
 		}
 		if (Stat == FName(TEXT("GarrisonSpeed")))
 		{

@@ -478,3 +478,15 @@ int32 FHOLSourceMassifs::Search(const int32 Start, TFunctionRef<bool(int32)> Acc
 	}
 	return INDEX_NONE;
 }
+
+int32 HOLGather::GetSanctuaryFarmPercent(const TConstArrayView<FVector2D> Sanctuaries, const FVector2D& Field)
+{
+	for (const FVector2D& Sanctuary : Sanctuaries)
+	{
+		if (FVector2D::DistSquared(Sanctuary, Field) <= SanctuaryRadius * SanctuaryRadius)
+		{
+			return SanctuaryFarmPercent;
+		}
+	}
+	return 0;
+}

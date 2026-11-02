@@ -2717,13 +2717,13 @@ if ($NetListening) {
         if ($Client -eq 1) { $NetSteps += "hol.Hero.Cast CloseRanks", "wait 0.5", "hol.Hero.Cast CloseRanks", "hol.Hero.Cast Banner 14665 299", "wait 0.5",
             "signal $(Join-Path $TestSaved "quick_net_hero_cast1.flag")" }
         $NetSteps += "waitfile $NetHeroCastFlag 120", "wait 1", "hol.Hero.Report", "hol.Hero.BannerDisplay", "signal $(Join-Path $TestSaved "quick_net_hero_abilities$Client.flag")"
-        # T4: Bob (client 1, tier 1 with his level 4 hero) researches Tempered Halberds at his barracks (the army phase built them; the camps are the "build" part's); both then report the
+        # T4: Bob (client 1, tier 1 with his level 4 hero) researches Double Axes I at a lumber camp (the army phase has no camp: the cheat spawns a finished one, D601: Tempered Halberds at the barracks are greyed "Soon", no effect coded yet); both then report the
         # technologies of every player state as they have them (the research reaches its owner alone).
         $TechAskedFlag = Join-Path $TestSaved "quick_net_tech_asked.flag"
         $NetSteps += "mark tech"
         # ("hero" alone plays no army phase: no barracks to research at, the report and the flags only.)
         if ($Client -eq 1 -and $NetHeroOnly) { $NetSteps += "hol.Tech.Report", "signal $TechAskedFlag" }
-        elseif ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.FastBuild 1", "hol.Prod.Queue TemperedHalberds Barracks", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
+        elseif ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.SpawnBuilding LumberCamp 1 -1800 -1600", "wait 1", "hol.Cheat.FastBuild 1", "hol.Prod.Queue DoubleAxesI LumberCamp", "wait 3", "hol.Cheat.FastBuild 0", "wait 1", "hol.Tech.Report", "signal $TechAskedFlag" }
         else { $NetSteps += "waitfile $TechAskedFlag 120", "wait 1", "hol.Tech.Report" }
         # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
@@ -3958,12 +3958,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
     $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed\] II=locked \[A=Market greyed Q=SiegeWorkshop greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed X=Sanctuary greyed\] II=locked \[A=Market greyed Q=SiegeWorkshop greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+; II Q: Atelier de si.+ge$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; I X: Sanctuaire.+; II A: March.+; II Q: Atelier de si.+ge$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; II Z: Palier II \S+ Essor \| Palier non atteint; II A: March.+ \| W 150 missing \| Palier non atteint; II Q: Atelier de si.+ge \| W 175 missing \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; I X: Sanctuaire de l.Aube \| W 250 missing; II Z: Palier II \S+ Essor \| Palier non atteint; II A: March.+ \| W 150 missing \| Palier non atteint; II Q: Atelier de si.+ge \| W 175 missing \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -4203,7 +4203,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $BarracksF1 = @(Get-Section "build barracks f1" | ForEach-Object { $_ })
     $Checks = [ordered]@{}
     $PeasantCells = ($Barracks | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir, W = Ferme ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir; I W: Ferme; II A: March.+$") -and
+    $Checks["the Peasants' grid: Q = Caserne, S = Champ de tir, W = Ferme ($PeasantCells)"] = [bool]($PeasantCells -match "; I Q: Caserne; I S: Champ de tir; I W: Ferme; I X: Sanctuaire.+; II A: March.+$") -and
         [bool](($Barracks | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "Q=Barracks enabled")
     $At = [regex]::Escape("Barracks at ($($BarracksAt -join ', '))")
     $Checks["the keys A, Q: the ghost, placed, built by the three, finished"] = [bool]($Barracks | Select-String -Pattern "Placement: Barracks \(cost F 0 W 150 S 0 G 0\)" -Quiet) -and
@@ -6867,9 +6867,9 @@ if ($Parts -contains "net") {
     # Both lines are read from the whole server log, not after its "net tech" mark: with FastBuild on, the client's order can be
     # queued AND done (one step) before the server's own sequence reaches that mark (seen once in three runs, 2026-10-31).
     $TechServer = @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
-    $TechQueued = @($TechServer | Select-String -SimpleMatch "Production: slot $BobSlot queued research TemperedHalberds")
-    $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched TemperedHalberds")
-    $TechChecks["server: Bob's Tempered Halberds queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
+    $TechQueued = @($TechServer | Select-String -SimpleMatch "Production: slot $BobSlot queued research DoubleAxesI")
+    $TechDone = @($TechServer | Select-String -SimpleMatch "Technology: slot $BobSlot researched DoubleAxesI")
+    $TechChecks["server: Bob's Double Axes I queued ($($TechQueued.Count)) then researched ($($TechDone.Count))"] = $TechQueued.Count -eq 1 -and $TechDone.Count -eq 1
     foreach ($NetClient in $NetClients) {
         $N = $NetClient.Client
         $TechLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "tech")
@@ -6877,7 +6877,7 @@ if ($Parts -contains "net") {
         $TechAlice = "$($TechLines | Select-String -Pattern "Technology state slot $AliceSlot (local|other): researched \[(.*)\]" | Select-Object -Last 1 | ForEach-Object { "$($_.Matches[0].Groups[1].Value) [$($_.Matches[0].Groups[2].Value)]" })"
         if ($N -eq 1) {
             $TechChecks["client $N (Bob): his own research received (Bob $TechBob), Alice's hidden (Alice $TechAlice)"] =
-                $TechBob -eq "local [TemperedHalberds]" -and $TechAlice -eq "other []"
+                $TechBob -eq "local [DoubleAxesI]" -and $TechAlice -eq "other []"
         }
         else {
             $TechChecks["client $N (Alice): Bob's research hidden (Bob $TechBob), her own empty (Alice $TechAlice)"] = $TechBob -eq "other []" -and $TechAlice -eq "local []"
@@ -6899,6 +6899,26 @@ if ($Parts -contains "net") {
         $ServerBook = "$($MarketServerLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $ServerStock = "$($MarketServerLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
         $MarketChecks["server: the book ($ServerBook) and Bob's stock ($ServerStock) reported"] = $ServerBook -ne "" -and $ServerStock -ne ""
+        # The book recovers by itself, one point per interval (10 s) of the server's clock, toward its base (the book before the sale, client 1's first report):
+        # the server's report and each client's last one are a second or more apart, so a tick can fall between them (a race of the test, not of the game:
+        # red on main too, 2026-11-02, "80 75 120 100" against "80 74 120 100"). A client's book is the server's, or the server's one recovery later.
+        $MarketBaseBook = ""
+        foreach ($BaseClient in @($NetClients | Where-Object { $_.Client -eq 1 })) {
+            $BaseLines = @(Get-ClientSection @(Get-Content $BaseClient.Log -ErrorAction SilentlyContinue) "market")
+            $MarketBaseBook = "$($BaseLines | Select-String -Pattern "Market report: net mode \d+, book set, prices (\d+ \d+ \d+ \d+)" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"
+        }
+        $BookIsServers = {
+            param([string] $Book, [string] $Server, [string] $Base)
+            if ($Book -eq "" -or $Server -eq "") { return $false }
+            if ($Book -eq $Server) { return $true }
+            $Mine = @($Book -split " " | ForEach-Object { [int] $_ }); $Theirs = @($Server -split " " | ForEach-Object { [int] $_ }); $Rest = @($Base -split " " | ForEach-Object { if ($_) { [int] $_ } })
+            if ($Mine.Count -ne 4 -or $Theirs.Count -ne 4 -or $Rest.Count -ne 4) { return $false }
+            for ($Index = 0; $Index -lt 4; ++$Index) {
+                $OneTickLater = $Theirs[$Index] + [Math]::Sign($Rest[$Index] - $Theirs[$Index])
+                if ($Mine[$Index] -ne $Theirs[$Index] -and $Mine[$Index] -ne $OneTickLater) { return $false }
+            }
+            return $true
+        }
         foreach ($NetClient in $NetClients) {
             $N = $NetClient.Client
             $MarketLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "market")
@@ -6906,7 +6926,7 @@ if ($Parts -contains "net") {
             $Seen = @($MarketLines | Select-String -Pattern "Market report: a Market of slot (\d+), finished" | ForEach-Object { $_.Matches[0].Groups[1].Value })
             $LastBook = if ($Books.Count) { $Books[-1] } else { "" }
             $MarketChecks["client $N : the finished Market of slot $BobSlot seen ($($Seen -join ','))"] = ($Seen | Where-Object { $_ -eq "$BobSlot" }).Count -ge 1
-            $MarketChecks["client $N : the last book ($LastBook) is the server's ($ServerBook)"] = $LastBook -ne "" -and $LastBook -eq $ServerBook
+            $MarketChecks["client $N : the last book ($LastBook) is the server's ($ServerBook), or one recovery later (base $MarketBaseBook)"] = [bool](& $BookIsServers $LastBook $ServerBook $MarketBaseBook)
             if ($N -eq 1) {
                 $MarketChecks["client $N (Bob): the sale moved the book (before $($Books[0]), after $($Books[-1]))"] = $Books.Count -ge 3 -and $Books[0] -ne $Books[1]
                 $OwnStock = "$($MarketLines | Select-String -Pattern "Market stock slot ${BobSlot}: (food .*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })"

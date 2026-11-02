@@ -315,9 +315,15 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 {
 	// A few buildings per player: read again at each step, a new one or a lost one counts at once.
 	Deposits.Reset();
-	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	Sanctuaries.Reset();
+	for (FHOLBuildingIterator It(&World); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
+		// D602: a finished Sanctuary of the Dawn raises the food of its owner's farm fields around it.
+		if (Type && It->GetTypeName() == HOLBuildingTypeNames::Sanctuary && It->IsFinished())
+		{
+			Sanctuaries.Emplace(It->GetOwnerPlayer(), FVector2D(It->GetActorLocation()));
+		}
 		// Only a finished building takes deliveries (D312): a camp's foundation is no deposit yet, nor a forum down (D351).
 		if (!Type || Type->Accepts.IsEmpty() || !It->TakesDeliveries())
 		{
@@ -593,7 +599,22 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		int32 Lost = 0;
 		const float UnitRate = Gatherer.Constants.GatherRates[Resource];
 		// T5: the owner's technologies (the Plough, the Double axes, the Miner picks) raise the rate of their resource.
-		const float TechnologyScale = Owner ? 1.f + 0.01f * Owner->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(Resource)) : 1.f;
+		// D602: a farm field in the zone of its owner's Sanctuary adds its percent to the technologies' (additive: to confirm).
+		int32 SanctuaryPercent = 0;
+		const TArray<FName>& SourceTypeNames = Step.Sources->GetTypeNames();
+		if (SourceTypeNames.IsValidIndex(Source->TypeIndex) && SourceTypeNames[Source->TypeIndex] == HOLSourceTypeNames::FarmField)
+		{
+			TArray<FVector2D, TInlineAllocator<4>> Own;
+			for (const TPair<uint8, FVector2D>& Sanctuary : Sanctuaries)
+			{
+				if (Sanctuary.Key == Gatherer.OwnerPlayer)
+				{
+					Own.Add(Sanctuary.Value);
+				}
+			}
+			SanctuaryPercent = HOLGather::GetSanctuaryFarmPercent(Own, FVector2D(Source->Location));
+		}
+		const float TechnologyScale = 1.f + 0.01f * (SanctuaryPercent + (Owner ? Owner->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(Resource)) : 0));
 		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f) * TechnologyScale;
 		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Rate, Step.StepSeconds,
 			CarryCapacity, Remaining, &Lost);

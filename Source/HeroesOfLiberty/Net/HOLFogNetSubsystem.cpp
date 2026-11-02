@@ -188,7 +188,7 @@ void UHOLFogNetSubsystem::PlaceBuildings()
 	{
 		return;
 	}
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
 		const FHOLBuildingTypeRow* Type = IsValid(Building) ? Building->GetType() : nullptr;

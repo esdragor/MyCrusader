@@ -1,0 +1,79 @@
+﻿# Essai siege (S8, GDD 6.1, D614, D615) : l'Atelier de siege fait un Belier (palier 1) et un Mangonneau (palier 2) ; le Belier abat une Maison ennemie, le Mangonneau tire en zone sur des Lanciers. 3 minutes, 2 Entrees.
+# Plain, toi (slot 0, bleu) contre une IA (slot 1), siege.json : 5 Paysans et un heros. Heros niveau 6 (palier 2), 5000 de chaque ressource, production en 2 s (hol.Prod.BuildTime 2) : le scenario pose l'Atelier de siege et fait lui-meme les deux engins.
+# Les engins sont des mannequins gris agrandis PROVISOIRES (ni couleur d'equipe ni dessin d'engin) : regarde la taille, la lisibilite et le comportement, pas le dessin.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+hol.Combat.LogHits 1
+# L'IA est gelee (1 pensee tous les 100000 pas) : ses Lanciers ne se jouent pas de l'essai.
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Prod.BuildTime 2
+hol.Hero.SetXP 0 3300
+waitlog Hero level up: slot 0 level 1 -> 6
+hol.Camera.FocusNear 2800 800
+frames 2
+hol.Cheat.SpawnBuilding SiegeWorkshop 0 2800 800
+waitlog Cheat: spawned SiegeWorkshop of slot 0
+hol.Camera.Zoom -2
+frames 60
+hol.Select.Click 0.5 0.5
+waitlog Selection: SiegeWorkshop of slot 0 (own)
+frames 20
+capture siege_grid
+note 1. L'Atelier de siege est selectionne : la grille en bas a droite propose le Belier (A) et le Mangonneau (Z), sans grisage (palier 2 atteint par le heros).
+hol.Select.Grid 0
+waitlog Production: slot 0 queued Ram
+waitlog Production: Ram of slot 0 done at step
+hol.Select.Grid 1
+waitlog Production: slot 0 queued Mangonel
+waitlog Production: Mangonel of slot 0 done at step
+frames 30
+hol.Select.ClickUnit -2
+waitlog Selection: Ram
+hol.Select.OrderNear 3400 1500
+hol.Select.ClickUnit -1
+waitlog Selection: Mangonel
+hol.Select.OrderNear 2200 1500
+wait 7
+hol.Camera.FocusNear 2800 1100
+frames 5
+capture siege_engines
+note 2. Le Belier (en haut, non selectionne) et le Mangonneau (en bas, selectionne : panneau en bas a gauche) sortent de l'Atelier (couts pris : 150 bois + 75 or, 200 bois + 150 or).
+waitkey Entree : le Belier abat une Maison ennemie
+hol.Cheat.SpawnBuilding House 1 4800 -600
+waitlog Cheat: spawned House of slot 1
+hol.Camera.FocusNear 4400 800
+frames 5
+hol.Select.ClickUnit -2
+waitlog Selection: Ram
+hol.Select.AttackMoveNear 4800 -600
+waitlog Ram hits a building for
+hol.Camera.FocusNear 4800 -300
+wait 12
+capture siege_ram
+note 3. Le Belier marche vers la Maison ennemie et la frappe (60 de degats toutes les 2,5 s) ; la barre de vie de la Maison (600 PV) baisse a chaque coup, la Maison est detruite en 25 s environ.
+waitkey Entree : le Mangonneau tire sur 6 Lanciers ennemis (zone de 250 cm)
+hol.Camera.FocusNear 2200 4000
+frames 20
+hol.Units.SpawnHere 6 Spearman 1 100
+waitunits 17
+hol.Camera.FocusNear 2200 2300
+frames 5
+hol.Select.ClickUnit -1
+waitlog Selection: Mangonel
+hol.Select.AttackMoveNear 2200 4000
+waitlog area of
+wait 0.2
+capture siege_mangonel_a
+wait 5.5
+capture siege_mangonel_b
+note 4. Le Mangonneau tire sur 6 Lanciers groupes : chaque tir touche la cible ET les Lanciers dans les 250 cm autour (1er tir : un Lancier tombe, 3 autres touchent) ; 5 s plus tard le 2e tir. Les Lanciers courent sur lui : il est vulnerable au corps a corps.
+hol.Test.Sanity
+
+
+
+
+
+
+

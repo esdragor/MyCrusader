@@ -293,4 +293,6 @@ namespace HOLBuildingTypeNames
 	inline const FName Market(TEXT("Market"));
 	/** Military, age II (S2, GDD 6.1, 11.1): produces the Ram and the Mangonel; on Q of the Peasant's grid, page II. */
 	inline const FName SiegeWorkshop(TEXT("SiegeWorkshop"));
+	/** Technological, tier 0 (SC-Q1 = B, D602): the Dawn's Sanctuary; the farm fields within 30 m of it give 15 % more food (HOLGather::GetSanctuaryFarmPercent). */
+	inline const FName Sanctuary(TEXT("Sanctuary"));
 }

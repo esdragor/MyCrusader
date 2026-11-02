@@ -35,6 +35,109 @@ float HOLVolcano::FrontDistance(const FFlow& Flow, const float Now, const float 
 	return FMath::Min((Now - EruptAt) * Speed, Flow.Length());
 }
 
+bool HOLVolcano::IsInLava(const FFlow& Flow, const float FrontDistance, const float HalfWidth, const FVector& Point, const float Radius)
+{
+	if (FrontDistance <= 0.f || Flow.Points.Num() < 2)
+	{
+		return false;
+	}
+	// The distance on the ground to the part of the polyline already run: segment by segment, the last one cut at the front.
+	const double Reach = static_cast<double>(FMath::Max(HalfWidth, 0.f)) + static_cast<double>(FMath::Max(Radius, 0.f));
+	const FVector2D P(Point.X, Point.Y);
+	float Left = FrontDistance;
+	for (int32 Index = 1; Index < Flow.Points.Num() && Left > 0.f; ++Index)
+	{
+		const FVector2D A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y);
+		const FVector2D B(Flow.Points[Index].X, Flow.Points[Index].Y);
+		const float Segment = FlatSegment(Flow.Points[Index - 1], Flow.Points[Index]);
+		if (Segment <= 0.f)
+		{
+			continue;
+		}
+		const FVector2D End = Left >= Segment ? B : A + (B - A) * (Left / Segment);
+		const double Distance = FMath::PointDistToSegment(FVector(P, 0.0), FVector(A, 0.0), FVector(End, 0.0));
+		if (Distance <= Reach)
+		{
+			return true;
+		}
+		Left -= Segment;
+	}
+	return false;
+}
+bool HOLVolcano::IsInCorridor(const FFlow& Flow, const float HalfWidth, const FVector& Point, const float Radius)
+{
+	return IsInLava(Flow, Flow.Length(), HalfWidth, Point, Radius);
+}
+
+FVector HOLVolcano::EvacuationPoint(const FFlow& Flow, const float HalfWidth, const FVector& Point, const float Radius, const float Beyond)
+{
+	if (!IsInCorridor(Flow, HalfWidth, Point, Radius))
+	{
+		return Point;
+	}
+	// The nearest point of the line (ground plane) and the segment it lies on.
+	const FVector2D P(Point.X, Point.Y);
+	double BestDistance = TNumericLimits<double>::Max();
+	FVector2D Nearest = P;
+	FVector2D SegmentDirection(1.0, 0.0);
+	for (int32 Index = 1; Index < Flow.Points.Num(); ++Index)
+	{
+		const FVector2D A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y);
+		const FVector2D B(Flow.Points[Index].X, Flow.Points[Index].Y);
+		const FVector2D AB = B - A;
+		const double Length2 = AB.SizeSquared();
+		if (Length2 <= 0.0)
+		{
+			continue;
+		}
+		const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Length2, 0.0, 1.0);
+		const FVector2D On = A + AB * T;
+		const double Distance = FVector2D::Distance(P, On);
+		if (Distance < BestDistance)
+		{
+			BestDistance = Distance;
+			Nearest = On;
+			SegmentDirection = AB.GetSafeNormal();
+		}
+	}
+	FVector2D Away = P - Nearest;
+	if (Away.SizeSquared() < 1.0)
+	{
+		// On the line itself: the left of the flow's direction.
+		Away = FVector2D(-SegmentDirection.Y, SegmentDirection.X);
+	}
+	Away = Away.GetSafeNormal();
+	const double Clear = static_cast<double>(EvacuationReach(HalfWidth, Radius)) + static_cast<double>(FMath::Max(Beyond, 0.f));
+	FVector Target(Nearest.X + Away.X * Clear, Nearest.Y + Away.Y * Clear, Point.Z);
+	if (IsInCorridor(Flow, HalfWidth, Target, Radius))
+	{
+		Target = FVector(Nearest.X - Away.X * Clear, Nearest.Y - Away.Y * Clear, Point.Z);
+	}
+	return Target;
+}
+
+TArray<HOLVolcano::FObstacleBox> HOLVolcano::GetObstacleBoxes(const FFlow& Flow, const float HalfWidth)
+{
+	TArray<FObstacleBox> Boxes;
+	for (int32 Index = 1; Index < Flow.Points.Num(); ++Index)
+	{
+		const FVector2D A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y);
+		const FVector2D B(Flow.Points[Index].X, Flow.Points[Index].Y);
+		const float Segment = FlatSegment(Flow.Points[Index - 1], Flow.Points[Index]);
+		if (Segment <= 0.f)
+		{
+			continue;
+		}
+		FObstacleBox Box;
+		Box.Centre = (A + B) * 0.5;
+		Box.HalfLength = 0.5f * Segment + HalfWidth;
+		Box.HalfWidth = HalfWidth;
+		Box.YawDegrees = static_cast<float>(FMath::RadiansToDegrees(FMath::Atan2(B.Y - A.Y, B.X - A.X)));
+		Boxes.Add(Box);
+	}
+	return Boxes;
+}
+
 FVector HOLVolcano::PointAt(const FFlow& Flow, const float Distance)
 {
 	if (Flow.Points.IsEmpty())
@@ -66,6 +169,23 @@ HOLVolcano::FCycle HOLVolcano::MakeCycle(const int32 Seed, const int32 Index, co
 	Cycle.CooledAt = Cycle.EruptEndAt + Stream.FRandRange(Settings.CoolingMin, Settings.CoolingMax);
 	Cycle.ReArmAt = Cycle.CooledAt + Stream.FRandRange(Settings.RestMin, Settings.RestMax);
 	return Cycle;
+}
+
+HOLVolcano::FCycle HOLVolcano::AdvanceForAltar(const FCycle& Cycle, const float HeldAt, const FHOLVolcanoSettings& Settings)
+{
+	if (HeldAt >= Cycle.WarningAt || Settings.AltarAdvance <= 0.f)
+	{
+		return Cycle;
+	}
+	// The alert comes sooner by the setting but not before the altar was taken; the rest of the cycle follows it, the alert's length unchanged.
+	const float Sooner = FMath::Min(Settings.AltarAdvance, Cycle.WarningAt - HeldAt);
+	FCycle Moved = Cycle;
+	Moved.WarningAt -= Sooner;
+	Moved.EruptAt -= Sooner;
+	Moved.EruptEndAt -= Sooner;
+	Moved.CooledAt -= Sooner;
+	Moved.ReArmAt -= Sooner;
+	return Moved;
 }
 
 int32 HOLVolcano::DrawFlow(const int32 Seed, const int32 Index, const int32 FlowCount)
@@ -174,4 +294,9 @@ EHOLVolcanoPhase HOLVolcano::GetPhase(const bool bCatastrophe, const int32 Seed,
 		ReArmAt = Cycle.ReArmAt;
 	}
 	return EHOLVolcanoPhase::Rest;
+}
+
+HOLVolcano::FSiteState HOLVolcano::SiteStateOfMatch(const FHOLMatchConfig& Config, const int32 SiteIndex, const FSite& Site, const float Now, const FHOLVolcanoSettings& Settings, const float ManAtArmsSpeed)
+{
+	return SiteStateAt(Config.bCatastrophe, Config.Seed, SiteIndex, Site, Now, Settings, ManAtArmsSpeed);
 }

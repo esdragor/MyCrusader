@@ -1,0 +1,40 @@
+# Siege S5 (D615, GDD 11.1) : Belier renforce (+10 % PV du Belier) et Munitions lourdes (+20 % degats du Mangonneau), lus par la vraie chaine de la recherche
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# hol.Cheat.Technology donne la technologie d'un coup (la recherche a l'Atelier passe par le meme AddTechnology).
+# waitunits N = nombre total d'unites (5 Paysans et le heros au depart : 6).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Units.SpawnHere 1 Mangonel 0 50
+waitunits 7
+frames 20
+note 1. Le Mangonneau tire sur une Maison ennemie a 25 m : 45 de degats par tir, sans technologie.
+hol.Cheat.SpawnBuilding House 1 5500 0
+waitlog Cheat: spawned House of slot 1
+hol.Select.ClickUnit -1
+waitlog Selection: Mangonel
+hol.Select.AttackMoveNear 5500 0
+waitlog Mangonel hits a building for 45
+hol.Cheat.Technology HeavyMunitions
+waitlog Technology: slot 0 researched HeavyMunitions (cheat)
+note 2. Munitions lourdes : le tir suivant du Mangonneau fait 54 (45 x 1,2).
+waitlog Mangonel hits a building for 54
+note 3. Sans technologie : un Belier a 400 PV.
+hol.Units.SpawnHere 1 Ram 0 50
+waitunits 8
+frames 20
+hol.Combat.Report 0
+waitlog Ram slot 0 hp 400/400
+hol.Cheat.Technology ReinforcedRam
+waitlog Technology: slot 0 researched ReinforcedRam (cheat)
+note 4. Belier renforce : le Belier deja la passe a 440 PV (+10 %), les degats pris restant pris.
+waitlog Technology: slot 0 RamHealth +10 %: 1 units raised
+hol.Combat.Report 0
+waitlog Ram slot 0 hp 440/440
+note 5. Un Belier fabrique APRES la recherche nait a 440 PV.
+hol.Units.SpawnHere 1 Ram 0 50
+waitlog born with 440 health

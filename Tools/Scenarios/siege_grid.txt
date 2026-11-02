@@ -1,0 +1,37 @@
+﻿# Siege S7 (GDD 6.1, D614) : la grille de l'Atelier de siege grise un engin dont le palier n'est pas ouvert par le heros (Belier palier 1, Mangonneau palier 2)
+# Plain, toi (slot 0) contre une IA gelee (slot 1) ; un heros niveau 1 (palier 0). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# hol.HUD.Report dit l'etat de chaque cellule de la grille (enabled / greyed) ; hol.Hero.SetXP 0 600 = niveau 3 = palier 1, 3300 = niveau 6 = palier 2.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Camera.FocusNear 2800 800
+frames 2
+hol.Cheat.SpawnBuilding SiegeWorkshop 0 2800 800
+waitlog Cheat: spawned SiegeWorkshop of slot 0
+hol.Camera.Zoom -2
+frames 60
+hol.Select.Click 0.5 0.5
+waitlog Selection: SiegeWorkshop of slot 0 (own)
+frames 20
+note 1. Palier 0 : le Belier (A) et le Mangonneau (Z) sont tous deux grises (palier superieur requis).
+hol.HUD.Report
+waitlog A=Ram greyed
+hol.HUD.Report
+waitlog Z=Mangonel greyed
+hol.Hero.SetXP 0 600
+waitlog Hero level up: slot 0 level 1 -> 3
+frames 20
+note 2. Palier 1 : le Belier (A) est ouvert, le Mangonneau (Z) reste grise.
+hol.HUD.Report
+waitlog A=Ram enabled
+hol.HUD.Report
+waitlog Z=Mangonel greyed
+hol.Hero.SetXP 0 3300
+waitlog Hero level up: slot 0 level 3 -> 6
+frames 20
+note 3. Palier 2 : les deux sont ouverts.
+hol.HUD.Report
+waitlog A=Ram enabled
+hol.HUD.Report
+waitlog Z=Mangonel enabled

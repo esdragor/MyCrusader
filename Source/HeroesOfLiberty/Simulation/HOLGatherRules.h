@@ -150,6 +150,14 @@ private:
 
 namespace HOLGather
 {
+	/** D602 (SC-Q1 = B, provisional table values): a farm field within this distance (cm) of its owner's finished Sanctuary gives more food. */
+	inline constexpr double SanctuaryRadius = 3000.0;
+	/** D602: the extra food percent of a field in the Sanctuary's zone (one Sanctuary or several: they do not stack). */
+	inline constexpr int32 SanctuaryFarmPercent = 15;
+
+	/** The food percent a farm field at Field gains from the Sanctuaries (their centres, the owner's finished ones): SanctuaryFarmPercent when one is within SanctuaryRadius, else 0. */
+	HEROESOFLIBERTY_API int32 GetSanctuaryFarmPercent(TConstArrayView<FVector2D> Sanctuaries, const FVector2D& Field);
+
 	/**
 	 * Distance (cm) between the centres of two sources of one resource linked in a massif (D309): the trees side by side
 	 * in a wood, the bushes of one patch, never two veins. A gatherer with no room at its source, or whose source is used
