@@ -147,10 +147,10 @@ namespace UE::HeroesOfLiberty::Dev
 								}
 								UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u around:%s"), UnitId, *Around);
 							}
-							UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u combat mode %d approaching %d attacking %d target %d detour %d approach (%.0f, %.0f) goal (%.0f, %.0f) slot dist %.0f"),
+							UE_LOG(LogHOLTest, Display, TEXT("SanityDump #%u combat mode %d approaching %d attacking %d target %d detour %d approach (%.0f, %.0f) goal (%.0f, %.0f) slot dist %.0f flank %d"),
 								UnitId, static_cast<int32>(DumpCombat->Mode), DumpCombat->bApproaching ? 1 : 0, DumpCombat->bAttacking ? 1 : 0, DumpCombat->Target.IsSet() ? 1 : 0,
 								DumpCombat->bAttackMoveDetour ? 1 : 0, DumpCombat->ApproachPoint.X, DumpCombat->ApproachPoint.Y, DumpCombat->AttackMoveGoal.X, DumpCombat->AttackMoveGoal.Y,
-								DumpOrder ? FVector2D::Distance(FVector2D(Where), FVector2D(DumpOrder->Slot)) : -1.);
+								DumpOrder ? FVector2D::Distance(FVector2D(Where), FVector2D(DumpOrder->Slot)) : -1., DumpCombat->bFlanking ? 1 : 0);
 						}
 				}
 				HOLSanity::FUnitTrack& Track = Watch.Tracks.FindOrAdd(UnitId);
