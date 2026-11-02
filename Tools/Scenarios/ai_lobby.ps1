@@ -39,7 +39,7 @@ $Url = "http://127.0.0.1:${Port}"
 $Servers = Join-Path $Work "servers.json"
 "{ `"servers`": [ { `"name`": `"Essai IA`", `"url`": `"$Url`" } ] }" | Set-Content -Encoding ascii $Servers
 $ManagerLog = Join-Path $Work "manager.log"
-$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
+$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --VersionsDir=`"$(Join-Path $Work "Versions")`" --AccessKeyFile=no_key.txt --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
     -WorkingDirectory $Work -PassThru -WindowStyle Hidden -RedirectStandardOutput $ManagerLog
 Write-Host "ai_lobby: manager on $Url (pid $($Manager.Id), log $ManagerLog)"
 

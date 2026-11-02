@@ -103,7 +103,7 @@ if ($ServerVersionMade) { [IO.File]::WriteAllText($ServerVersion, "dev", (New-Ob
 # Servers from this copy's UDP range (7900 and up): out of quick_check's net range (7800-7899), whose clients would join a
 # server of ours still starting (seen 2026-10-27: a second « Alice » and « Bob » from another copy in the match), and
 # out of the other copies' lobby tests (seen 2026-10-29: a « Carol » of another copy in Arwen's match).
-$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
+$Manager = Start-Process -FilePath $Exe -ArgumentList "--urls $Url --GameVersion=dev --VersionsDir=`"$(Join-Path $Work "Versions")`" --AccessKeyFile=no_key.txt --ServerExe=`"$ServerExe`" --ManagerUrl=$Url --FirstServerPort=$FirstServerPort" `
     -WorkingDirectory $Work -PassThru -WindowStyle Hidden -RedirectStandardOutput $ManagerLog
 $Games = @{}
 $Failure = $null

@@ -80,7 +80,7 @@ $Served = if ($Case -eq "OtherVersion") { $OtherVersion } else { "dev" }
 $Manager = $null
 # D481: the exe's own Versions folder (this copy's published versions) would make the manager serve its latest version, not "dev":
 # the test's own, empty one.
-$ManagerArguments = "--urls $Url --GameVersion=$Served --VersionsDir=`"$(Join-Path $Work "Versions")`""
+$ManagerArguments = "--urls $Url --GameVersion=$Served --VersionsDir=`"$(Join-Path $Work "Versions")`" --AccessKeyFile=no_key.txt"
 if ($Case -in @("Match", "Return", "Killed")) {
     $ServerExe = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
     if (-not (Test-Path $ServerExe)) { Write-Host "manager_client : FAIL (no $ServerExe; run Tools\Tests\net_match.ps1 -Stage)"; exit 1 }
