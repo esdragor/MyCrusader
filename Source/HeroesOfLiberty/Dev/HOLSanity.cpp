@@ -108,6 +108,25 @@ namespace UE::HeroesOfLiberty::Dev
 					Transform->GetMutableTransform().SetLocation(Location);
 				}
 				const FVector Where = Transform->GetTransform().GetLocation();
+				if (DumpUnit == -2 && UnitId >= 8 && UnitId <= 13)
+				{
+					// hol.Sanity.DumpUnit -2: units 8 to 13 on one compact line each (position, velocity, the slot and the march slot, the nearest bodies).
+					const FMassVelocityFragment* Velocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
+					const FHOLMoveOrderFragment* DumpOrder = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+					FString Near;
+					for (const uint32 OtherId : UnitIds)
+					{
+						const FMassEntityHandle OtherEntity = Units->FindEntity(OtherId);
+						const FTransformFragment* OtherTransform = OtherId != UnitId && EntityManager.IsEntityValid(OtherEntity) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(OtherEntity) : nullptr;
+						if (OtherTransform && FVector::Dist2D(OtherTransform->GetTransform().GetLocation(), Where) < 200.)
+						{
+							Near += FString::Printf(TEXT(" #%u d%.0f"), OtherId, FVector::Dist2D(OtherTransform->GetTransform().GetLocation(), Where));
+						}
+					}
+					UE_LOG(LogHOLTest, Display, TEXT("SanityDump2 #%u step %lld at (%.1f, %.1f) vel (%.0f, %.0f) phase %d slot (%.0f, %.0f) march (%.0f, %.0f) hold %d near:%s"), UnitId, StepIndex, Where.X, Where.Y,
+						Velocity ? Velocity->Value.X : 0., Velocity ? Velocity->Value.Y : 0., DumpOrder ? static_cast<int32>(DumpOrder->Phase) : -1, DumpOrder ? DumpOrder->Slot.X : 0., DumpOrder ? DumpOrder->Slot.Y : 0.,
+						DumpOrder ? DumpOrder->MarchSlot.X : 0., DumpOrder ? DumpOrder->MarchSlot.Y : 0., DumpOrder ? static_cast<int32>(DumpOrder->ObstacleHold) : 0, *Near);
+				}
 				if (static_cast<int32>(UnitId) == DumpUnit)
 				{
 					const FMassVelocityFragment* Velocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
@@ -174,11 +193,25 @@ namespace UE::HeroesOfLiberty::Dev
 				Window.Places.Add(FVector2D(Where.X, Where.Y));
 				Window.Ordered.Add(bOrdered ? 1 : 0);
 				Window.Flanking.Add(Combat && Combat->bFlanking ? 1 : 0);
+				{
+					const FMassVelocityFragment* StepVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
+					int32 TargetUnit = -1;
+					if (Combat && Combat->Target.IsSet() && EntityManager.IsEntityValid(Combat->Target))
+					{
+						if (const FHOLUnitStateFragment* TargetState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Combat->Target))
+						{
+							TargetUnit = static_cast<int32>(TargetState->UnitId);
+						}
+					}
+					Window.States.Add(FString::Printf(TEXT("%d:ap%d at%d t%d ph%d v%.0f,%.0f"), Combat ? static_cast<int32>(Combat->Mode) : -1, Combat && Combat->bApproaching ? 1 : 0, Combat && Combat->bAttacking ? 1 : 0,
+						TargetUnit, Order ? static_cast<int32>(Order->Phase) : -1, StepVelocity ? StepVelocity->Value.X : 0., StepVelocity ? StepVelocity->Value.Y : 0.));
+				}
 				if (Window.Places.Num() > WindowSteps)
 				{
 					Window.Places.RemoveAt(0, Window.Places.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Ordered.RemoveAt(0, Window.Ordered.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Flanking.RemoveAt(0, Window.Flanking.Num() - WindowSteps, EAllowShrinking::No);
+					Window.States.RemoveAt(0, Window.States.Num() - WindowSteps, EAllowShrinking::No);
 				}
 				if (Window.Places.Num() == WindowSteps && Watch.Steps % JudgeEvery == 0 && !Watch.Faults.Contains(UnitId))
 				{
@@ -194,6 +227,10 @@ namespace UE::HeroesOfLiberty::Dev
 							Trail += FString::Printf(TEXT(" (%.0f,%.0f)"), Window.Places[Index].X, Window.Places[Index].Y);
 						}
 						UE_LOG(LogHOLTest, Display, TEXT("SanityTrail #%u at step %lld, every step:%s"), UnitId, Watch.Steps, *Trail);
+						for (int32 Index = 0; Index < Window.States.Num(); ++Index)
+						{
+							UE_LOG(LogHOLTest, Display, TEXT("SanityState #%u [%d] (%.0f,%.0f) %s"), UnitId, Index, Window.Places[Index].X, Window.Places[Index].Y, *Window.States[Index]);
+						}
 					}
 					if (Result.bSpin || Result.bShake)
 					{

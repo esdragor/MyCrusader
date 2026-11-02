@@ -40,6 +40,10 @@ namespace UE::HeroesOfLiberty::Simulation
 	float AvoidRadiusScale = 1.1f;
 	FAutoConsoleVariableRef CVarAvoidClearance(TEXT("hol.Units.AvoidClearance"), AvoidRadiusScale,
 		TEXT("Distance a walker keeps from the bodies it looks ahead for, as a part of the two radii (D293, D294): above 1, a margin"));
+	/** Neutrals trial: members of one block march in one kind of row keep clear of each other by their bodies only (see PairScale in AvoidBodies). */
+	int32 AvoidMarchMembersBare = 1;
+	FAutoConsoleVariableRef CVarAvoidMarchMembersBare(TEXT("hol.Units.AvoidMarchMembersBare"), AvoidMarchMembersBare,
+		TEXT("1 (default): two members of one block march in one kind of row keep clear of each other by their bodies, without the hol.Units.AvoidClearance margin (their honeycomb is tighter than the margin: the to-and-fro of hol.Test.SanityMotion); 0: the margin for them too, as before (A / B)"));
 	/**
 	 * Perf (hol.Units.FastNear): cells of the look-ahead's dense table at most, per unit (beyond, the hashed buckets): a
 	 * crowd's box only; units spread over the map (S7's gatherers) would clear a large table each step for nothing.
@@ -457,6 +461,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	// A still body is seen further (MV.4.4: the walkers touched a wall of still ones before going round it).
 	const double StillHorizon = FMath::Max(Horizon, StillHorizonIn);
 	const auto IsStill = [this](const int32 Other) { return Stills[Other]; };
+	// Neutrals trial (hol.Test.SanityMotion, group march): two members of one block march in one kind of row keep clear of each other by
+	// their bodies, without the margin AvoidRadiusScale puts round every other body. The honeycomb of the block puts two neighbours of
+	// different rows 131 cm apart (the bodies' 120 cm and 9 %), under the 132 cm of the margin: each step the one sliding to its file
+	// saw its neighbour in its way, turned aside, and was drawn back the next step (7 cm to one side every other step, 24 rad of to-and-fro
+	// in 8 s). The margin stays for everybody else.
+	const auto PairScale = [this, FormUpSerial](const int32 Other) { return AvoidMarchMembersBare != 0 && FormUpSerial != 0u && FormUpSerials[Other] == FormUpSerial ? FMath::Min(1.f, AvoidRadiusScale) : AvoidRadiusScale; };
 	// The bodies that could be met within the horizon, whatever way this one takes: in the reach of both speeds, and not
 	// behind it (no turn reaches them; one catching up from behind is its own to avoid).
 	const FVector2D Position(Location.X, Location.Y);
@@ -502,7 +512,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 				{
 					return;
 				}
-				const double ContactDistance = (Radius + OtherRadius) * AvoidRadiusScale;
+				const double ContactDistance = (Radius + OtherRadius) * PairScale(Other);
 				if (!(FVector2D::DotProduct(ToOther, Ahead) > -ContactDistance) || Entities[Other] == Entity
 					|| CanPassThrough(FormUpSerial, FormUpKind, FormUpSerials[Other], FormUpKinds[Other]))
 				{
@@ -550,7 +560,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 					continue;
 				}
 				const FVector2D ToOther = Positions[Other] - Position;
-				const double ContactDistance = (Radius + Radii[Other]) * AvoidRadiusScale;
+				const double ContactDistance = (Radius + Radii[Other]) * PairScale(Other);
 				// A still body touching its goal is no wall (MV.4.5.3: a rank of a held line walking back to its place, just
 				// behind a still friend of the rank ahead, saw it as a wall at 1 s and stopped or went round, 1.5 m off its
 				// place): it is to stand beside it, the separation keeping them apart.
@@ -584,7 +594,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			const int32 Other = Near[Slot];
 			NearOffsets[Slot] = Positions[Other] - Position;
 			NearVelocities[Slot] = Velocities[Other];
-			NearContacts[Slot] = (Radius + Radii[Other]) * AvoidRadiusScale;
+			NearContacts[Slot] = (Radius + Radii[Other]) * PairScale(Other);
 			NearPressed[Slot] = bAroundEnemies && CampTable.AreHostile(Owners[Other], Owner);
 			NearStills[Slot] = Stills[Other];
 		}
@@ -629,7 +639,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	};
 
 	// The first body met going this way, and when.
-	const auto FirstContact = [this, &Near, &Position, Radius, Speed, &ContactLimit, &SlotLimit, Owner, bAroundEnemies, bFastNear, &NearOffsets, &NearVelocities, &NearContacts, &NearPressed](const FVector2D& Way, int32& OutOther)
+	const auto FirstContact = [this, &PairScale, &Near, &Position, Radius, Speed, &ContactLimit, &SlotLimit, Owner, bAroundEnemies, bFastNear, &NearOffsets, &NearVelocities, &NearContacts, &NearPressed](const FVector2D& Way, int32& OutOther)
 	{
 		double First = TNumericLimits<double>::Max();
 		OutOther = INDEX_NONE;
@@ -649,7 +659,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		}
 		for (const int32 Other : Near)
 		{
-			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
+			const double Time = TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * PairScale(Other),
 				bAroundEnemies && CampTable.AreHostile(Owners[Other], Owner));
 			if (Time < First && Time < ContactLimit(Other))
 			{
@@ -660,7 +670,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		return First;
 	};
 	// Whether nothing is met going this way within the horizon: the first contact found is enough (D302).
-	const auto IsClear = [this, &Near, &Position, Radius, Speed, &ContactLimit, &SlotLimit, Owner, bAroundEnemies, bFastNear, &NearOffsets, &NearVelocities, &NearContacts, &NearPressed](const FVector2D& Way)
+	const auto IsClear = [this, &PairScale, &Near, &Position, Radius, Speed, &ContactLimit, &SlotLimit, Owner, bAroundEnemies, bFastNear, &NearOffsets, &NearVelocities, &NearContacts, &NearPressed](const FVector2D& Way)
 	{
 		if (bFastNear)
 		{
@@ -676,7 +686,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		}
 		for (const int32 Other : Near)
 		{
-			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * AvoidRadiusScale,
+			if (TimeToContact(Positions[Other] - Position, Way * Speed - Velocities[Other], (Radius + Radii[Other]) * PairScale(Other),
 				bAroundEnemies && CampTable.AreHostile(Owners[Other], Owner)) < ContactLimit(Other))
 			{
 				return false;
