@@ -42,8 +42,11 @@
 # the game ("Bob") sees the list with only "Observer" on this full lobby (hol.UI.Shown JoinButton0 / SpectateButton0),
 # presses it and is in the lobby as a spectator ("Spectateurs : Carol, Bob", Ready and Launch hidden, "Jouer" greyed: no open
 # slot); once Dave leaves, "Jouer" is pressed and Bob takes his slot ("Spectateurs : Carol"); the manager is read in both states.
+# -Case SpectatorMatch (SP1, D642): with the staged dedicated server (as Match): Bob creates the lobby, Alice joins (HTTP), Bob becomes a
+# spectator (still the leader), puts an AI on slot 2, Alice is made ready, Bob launches; match.json holds Alice and the AI only, and
+# Bob, who opens the match's port by his name, is a spectator of the match on the server ("joined as a spectator", no slot).
 # Prints one line PASS / FAIL; exit code 0 / 1. The manager is always stopped.
-param([string] $EngineDir = "", [switch] $Screen, [ValidateSet("", "Off", "OtherVersion", "Lobby", "NameTaken", "Ready", "Leader", "Match", "Return", "Killed", "AI", "Spectator")] [string] $Case = "")
+param([string] $EngineDir = "", [switch] $Screen, [ValidateSet("", "Off", "OtherVersion", "Lobby", "NameTaken", "Ready", "Leader", "Match", "Return", "Killed", "AI", "Spectator", "SpectatorMatch")] [string] $Case = "")
 if ($Case) { $Screen = $true }
 $ErrorCase = $Case -in @("Off", "OtherVersion")
 $LobbyCase = $Case -in @("Lobby", "NameTaken", "Ready")
@@ -81,7 +84,7 @@ $Manager = $null
 # D481: the exe's own Versions folder (this copy's published versions) would make the manager serve its latest version, not "dev":
 # the test's own, empty one.
 $ManagerArguments = "--urls $Url --GameVersion=$Served --VersionsDir=`"$(Join-Path $Work "Versions")`" --AccessKeyFile=no_key.txt"
-if ($Case -in @("Match", "Return", "Killed")) {
+if ($Case -in @("Match", "Return", "Killed", "SpectatorMatch")) {
     $ServerExe = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
     if (-not (Test-Path $ServerExe)) { Write-Host "manager_client : FAIL (no $ServerExe; run Tools\Tests\net_match.ps1 -Stage)"; exit 1 }
     # Its match servers from this copy's UDP range (not the manager's default 7777: another copy's lobby test or game).
@@ -124,7 +127,74 @@ try {
             try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 }
         }
         if (-not $Status) { throw "the manager does not answer on $Url" }
-    if ($Case -eq "Spectator") {
+    if ($Case -eq "SpectatorMatch") {
+        # SP1 (D642): the game ("Bob") creates the lobby and leads it, Alice joins by HTTP; Bob becomes a spectator (he stays the
+        # leader), puts an AI on slot 2, Alice is made ready by HTTP, Bob launches (2 = Alice + the AI, a spectator does not count);
+        # the staged dedicated server's match.json holds Alice and the AI only and Bob, opening the match's port by his name,
+        # comes in as a spectator of the match ("Bob joined as a spectator", no slot).
+        $Json = "application/json; charset=utf-8"
+        $Sequence = Join-Path $Work "spectator_match.seq"
+        @("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3",
+            "hol.UI.Focus CreateButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog : 2 players (", "waitui", "wait 1",
+            "hol.UI.Focus SpectateButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15", "waitlog Lobby: spectator on accepted", "wait 0.5",
+            "hol.UI.Choose SlotState2 4", "waitlog slots o c1 a0 o o o o o", "wait 0.5",
+            "waitlog you Bob (spectator), leader Bob, 1/1 ready, launch shown, slots o c1r a0 o o o o o", "wait 1",
+            "hol.UI.Shown ReadyButton LaunchButton", "capture manager_client_specmatch_lobby",
+            "hol.UI.Focus LaunchButton", "frames 3", "hol.UI.Key Enter 0 0.1", "wait 0.15",
+            "waitlog Lobby: start sent", "waitlog Lobby: joining match", "waitmap Plain", "wait 8", "capture manager_client_specmatch_game", "wait 3", "quit") | Set-Content -Encoding utf8 $Sequence
+        $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -as-exit-on-error -culture=fr -saveddirsuffix=Tests " +
+            "-PlayerName=Bob -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$GameLog`""
+        $Game = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
+        $Deadline = (Get-Date).AddSeconds(240)
+        $Alice = $null; $AliceReady = $false; $Read = $null; $MatchRead = $null
+        while (-not $Game.HasExited -and (Get-Date) -lt $Deadline) {
+            Start-Sleep -Milliseconds 500
+            if (-not $Alice) {
+                $Found = @((Invoke-RestMethod "${Url}/lobbies" -TimeoutSec 2).lobbies)
+                if ($Found.Count -gt 0) {
+                    $Alice = Invoke-RestMethod "${Url}/lobbies/$($Found[0].id)/join" -Method Post -ContentType $Json -Body (@{ playerName = "Alice"; gameVersion = $Status.gameVersion } | ConvertTo-Json)
+                    Write-Host "Alice joined $($Found[0].id)"
+                }
+                continue
+            }
+            $Read = Invoke-RestMethod "${Url}/lobbies/$($Alice.lobby.id)" -Headers @{ "X-Player-Token" = $Alice.token } -TimeoutSec 2
+            # Alice ready once the AI is on slot 2 (the AI resets every Ready).
+            if (-not $AliceReady -and $Read.slots[2].state -eq "ai") {
+                Invoke-RestMethod "${Url}/lobbies/$($Alice.lobby.id)/me" -Method Put -Body '{ "ready": true }' -ContentType "application/json" -Headers @{ "X-Player-Token" = $Alice.token } | Out-Null
+                $AliceReady = $true; Write-Host "Alice ready"
+                $LobbyRead = $Read
+            }
+            if ($Read.match) { $MatchRead = $Read.match }
+            if ((Test-Path $GameLog) -and (Select-String -Path $GameLog -Pattern "Test capture: manager_client_specmatch_game" -Quiet)) { Start-Sleep 2; break }
+        }
+        if (-not $Game.HasExited) { Stop-Process -Id $Game.Id -Force -ErrorAction SilentlyContinue }
+        $Lines = if (Test-Path $GameLog) { @(Select-String -Path $GameLog -Encoding utf8 -Pattern "Multiplayer|LogHOLUI: Display: (Lobby|End banner|Menu)|Test capture|Test run|LogHOLNet: (Display: )?Manager|LogHOLUI: Display: (Text|Shown) " | ForEach-Object { $_.Line }) } else { @() }
+        $Lines | ForEach-Object { Write-Host "  $_" }
+        $MatchDir = if ($MatchRead) { Join-Path $Project "Saved\Manager\Saved\Matches\$($MatchRead.matchId)" }
+        $ServerLog = if ($MatchDir) { Get-Item (Join-Path $MatchDir "server.log") -ErrorAction SilentlyContinue }
+        $Config = if ($MatchDir -and (Test-Path (Join-Path $MatchDir "match.json"))) { Get-Content (Join-Path $MatchDir "match.json") -Raw | ConvertFrom-Json }
+        $Humans = if ($Config) { @($Config.slots | Where-Object { $_.state -eq "Human" } | ForEach-Object { $_.playerName }) -join "," } else { "not read" }
+        $AIs = if ($Config) { @($Config.slots | Where-Object { $_.state -eq "AI" }).Count } else { -1 }
+        Write-Host "  match.json: humans $Humans, AIs $AIs"
+        if ($ServerLog) { Write-Host "  server log $($ServerLog.FullName):"; Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: .*(Bob|Alice|slot|spectator)|Login" | Select-Object -Last 12 | ForEach-Object { Write-Host "    $($_.Line)" } }
+        # Only this copy's servers (the test manager's), by PID: never another worktree's; Alice never comes, the server would wait for her.
+        $Left = @(Get-Process HeroesOfLibertyServer* -ErrorAction SilentlyContinue | Where-Object { $_.Path -and $_.Path.StartsWith($Project) })
+        $Left | ForEach-Object { Write-Host "stopping server PID $($_.Id)"; Stop-Process -Id $_.Id -Force }
+        if (-not $Alice) { $Failure = "no lobby created by the game" }
+        elseif (-not ($Lines -match "LogHOLUI: Display: Lobby: spectator on accepted")) { $Failure = "no 'Lobby: spectator on accepted'" }
+        elseif (-not ($Lines -match "you Bob \(spectator\), leader Bob, 1/1 ready, launch shown, slots o c1r a0 o o o o o")) { $Failure = "Bob not a spectator and leader with Launch shown, Alice ready, the AI on slot 2" }
+        elseif (-not ($Lines -match "LogHOLUI: Display: Shown ReadyButton: no")) { $Failure = "a spectator sees the Ready button" }
+        elseif (-not ($Lines -match "LogHOLUI: Display: Shown LaunchButton: yes")) { $Failure = "Launch not shown to the spectator-leader" }
+        elseif (-not ($Lines -match "LogHOLUI: Display: Lobby: start accepted \(HTTP 202\)")) { $Failure = "Launch not accepted (HTTP 202)" }
+        elseif (-not $MatchRead) { $Failure = "the manager never gave the match" }
+        elseif ($Humans -ne "Alice" -or $AIs -ne 1) { $Failure = "match.json does not hold Alice alone and one AI (humans $Humans, AIs $AIs)" }
+        elseif (-not ($Lines -match "LogHOLUI: Display: Lobby: joining match \S+ at 127\.0\.0\.1:\d+ as Bob")) { $Failure = "no 'Lobby: joining match ... as Bob'" }
+        elseif (-not ($Lines -match "LogHOLNet: Display: Manager: open 127\.0\.0\.1:\d+\?Name=Bob\?Version=")) { $Failure = "no 'Manager: open 127.0.0.1:<port>?Name=Bob?Version=...'" }
+        elseif (-not $ServerLog -or -not (Select-String -Path $ServerLog.FullName -Pattern "joined as a spectator \(name 'Bob'" -Quiet)) { $Failure = "the server has no 'joined as a spectator (name 'Bob'...'" }
+        elseif (Select-String -Path $ServerLog.FullName -Pattern "LogHOLMatch: Bob holds slot" -Quiet) { $Failure = "Bob holds a slot on the server" }
+        elseif (-not ($Lines -match "LogHOLTest: Display: Test capture: manager_client_specmatch_game")) { $Failure = "no capture of the match" }
+    }
+    elseif ($Case -eq "Spectator") {
         # SP1 (D642): Alice leads a lobby of 2 places (Small) held by Alice and Dave, Carol is in it as a spectator (all by HTTP);
         # the game ("Bob") sees the list with only "Observer" (full lobby), enters as a spectator, sees "Spectateurs : Carol, Bob"
         # and "Jouer" greyed (no open slot); once Dave leaves, "Jouer" is active and takes his slot.
@@ -476,6 +546,7 @@ if ($Case -eq "Match") { Write-Host "manager_client -Case Match : PASS (Launch $
 if ($Case -eq "Return") { Write-Host "manager_client -Case Return : PASS (match from the lobby, Bob gave up, end banner captured, « Retour au salon »: Bob back in lobby $($Alice.lobby.id), state $($Back.state); no server left; $Url)"; exit 0 }
 if ($Case -eq "Killed") { Write-Host ("manager_client -Case Killed : PASS (match's server killed, the game back on the Multiplayer list with the red reason in {0:N1} s, captured; no server left; $Url)" -f $LostAfter); exit 0 }
 if ($Case -eq "AI") { Write-Host "manager_client -Case AI : PASS (Bob put an AI on slot 2 by its list (IA Normal 3, level greyed, Ready reset), gave it colour 5 and team 2, captured, closed the slot (AI taken away), Launch sent: $Started; $Url)"; exit 0 }
+if ($Case -eq "SpectatorMatch") { Write-Host "manager_client -Case SpectatorMatch : PASS (spectator-leader launched with Alice and an AI, match.json without Bob, Bob a spectator of the match on the server; $Url)"; exit 0 }
 if ($Case -eq "Spectator") { Write-Host "manager_client -Case Spectator : PASS (full lobby offering only Observer, Bob in as a spectator beside Carol with Ready hidden and Play greyed, Dave left, Play took his slot; $Url)"; exit 0 }
 if ($Case -eq "Leader") { Write-Host "manager_client -Case Leader : PASS (Bob created and led the lobby, closed slot 2, Ready, captured, Launch sent: $Started; $Url)"; exit 0 }
 if ($Case -eq "Ready") { Write-Host "manager_client -Case Ready : PASS (Bob took colour 5 and Ready, the manager has both, Launch hidden from him, captured; $Url)"; exit 0 }
