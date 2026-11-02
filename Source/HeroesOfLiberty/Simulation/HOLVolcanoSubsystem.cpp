@@ -6,6 +6,7 @@
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "EngineUtils.h"
+#include "Map/HOLVolcanoLayout.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLDuelSubsystem.h"
@@ -25,6 +26,29 @@ void UHOLVolcanoSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
 	BindSteps();
+	LoadLayout();
+}
+
+void UHOLVolcanoSubsystem::LoadLayout()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	TArray<FHOLPlacedVolcano> Placed;
+	bool bAnyLayout = false;
+	for (TActorIterator<AHOLVolcanoLayout> It(World); It; ++It)
+	{
+		bAnyLayout = true;
+		Placed.Append(It->GetSites());
+	}
+	if (!bAnyLayout)
+	{
+		return;
+	}
+	SetSites(FHOLVolcanoLayoutRules::ToSites(Placed));
+	UE_LOG(LogHOLVolcano, Log, TEXT("%d volcano site(s) placed by the map"), Sites.Num());
 }
 
 void UHOLVolcanoSubsystem::SetSites(const TArray<HOLVolcano::FSite>& InSites)
