@@ -537,7 +537,8 @@ bool FHOLVolcanoEvacuationTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// The altar held wakes the site sooner (V8, D380; Q-volcan-autel, option A by default: AltarAdvance seconds, behind the setting).
+// The altar held starts the alert AT ONCE (V8, D380; Q13 = B of the user, 2026-11-02): the default AltarAdvance is "all the time left before the alert"; a smaller
+// setting still moves the alert by that much (the setting rules).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarTest, "HeroesOfLiberty.Volcano.AltarAdvance", UE::HeroesOfLiberty::Tests::VolcanoFlags)
 bool FHOLVolcanoAltarTest::RunTest(const FString& Parameters)
 {
@@ -545,29 +546,117 @@ bool FHOLVolcanoAltarTest::RunTest(const FString& Parameters)
 	const HOLVolcano::FCycle Base = HOLVolcano::MakeCycle(4242, 0, 0.f, Settings, 60.f);
 	TestTrue(TEXT("the setting is a positive advance"), Settings.AltarAdvance > 0.f);
 
-	// Held long before the alert: everything comes the setting's seconds sooner, the alert as long as before.
+	// Held long before the alert: the alert starts at that very instant (option B), as long as before, the rest of the cycle following.
 	const HOLVolcano::FCycle Early = HOLVolcano::AdvanceForAltar(Base, 10.f, Settings);
-	TestEqual(TEXT("the alert comes the advance sooner"), Early.WarningAt, Base.WarningAt - Settings.AltarAdvance);
-	TestEqual(TEXT("... the eruption too"), Early.EruptAt, Base.EruptAt - Settings.AltarAdvance);
+	TestEqual(TEXT("the alert starts the instant the altar is held"), Early.WarningAt, 10.f);
 	TestEqual(TEXT("... the alert keeps its length (D380)"), Early.EruptAt - Early.WarningAt, Base.EruptAt - Base.WarningAt);
-	TestEqual(TEXT("... the cooling and the re-arming follow"), Early.ReArmAt - Base.ReArmAt, -Settings.AltarAdvance);
+	TestEqual(TEXT("... the eruption follows the alert"), Early.EruptAt, 10.f + (Base.EruptAt - Base.WarningAt));
+	const float Moved = Base.WarningAt - 10.f;
+	TestEqual(TEXT("... the cooling and the re-arming follow by the same shift"), Base.ReArmAt - Early.ReArmAt, Moved);
 
-	// Held just before the alert: never earlier than the instant the altar was taken.
+	// Held just before the alert: the alert starts at once, not before.
 	const float Late = Base.WarningAt - 30.f;
-	const HOLVolcano::FCycle Capped = HOLVolcano::AdvanceForAltar(Base, Late, Settings);
-	TestEqual(TEXT("held 30 s before the alert: the alert comes at once, not before"), Capped.WarningAt, Late);
+	TestEqual(TEXT("held 30 s before the alert: the alert comes at once"), HOLVolcano::AdvanceForAltar(Base, Late, Settings).WarningAt, Late);
 
 	// Held once the alert has begun: nothing changes.
 	const HOLVolcano::FCycle After = HOLVolcano::AdvanceForAltar(Base, Base.WarningAt + 1.f, Settings);
 	TestEqual(TEXT("held during the alert: unchanged"), After.WarningAt, Base.WarningAt);
 
-	// The setting rules: no advance, no change; a bigger one moves more.
+	// The setting rules: no advance, no change; a bounded one (option A's 120 s) moves by that much only.
 	FHOLVolcanoSettings None = Settings;
 	None.AltarAdvance = 0.f;
 	TestEqual(TEXT("no advance: unchanged"), HOLVolcano::AdvanceForAltar(Base, 10.f, None).WarningAt, Base.WarningAt);
-	FHOLVolcanoSettings Big = Settings;
-	Big.AltarAdvance = 1.0e6f;
-	TestEqual(TEXT("an enormous advance is held at the instant of capture (option B's effect)"), HOLVolcano::AdvanceForAltar(Base, 10.f, Big).WarningAt, 10.f);
+	FHOLVolcanoSettings Bounded = Settings;
+	Bounded.AltarAdvance = 120.f;
+	TestEqual(TEXT("a bounded advance moves the alert by that much"), HOLVolcano::AdvanceForAltar(Base, 10.f, Bounded).WarningAt, Base.WarningAt - 120.f);
+	return true;
+}
+
+// The altar's count (V8, D380, D348's rule): one camp in the zone counts up, nobody makes it go down, two camps freeze it.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarHoldTest, "HeroesOfLiberty.Volcano.AltarHold", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoAltarHoldTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	TestEqual(TEXT("held ~60 s (D380)"), Settings.AltarHoldSeconds, 60.f);
+
+	float Held = 0.f;
+	TestTrue(TEXT("one camp: holding"), HOLVolcano::StepAltar(Held, 1, 1.f, Settings) == HOLVolcano::EAltarHold::Holding);
+	TestEqual(TEXT("... the count goes up by the step"), Held, 1.f);
+	for (int32 Second = 0; Second < 19; ++Second)
+	{
+		HOLVolcano::StepAltar(Held, 1, 1.f, Settings);
+	}
+	TestEqual(TEXT("20 s held"), Held, 20.f);
+
+	TestTrue(TEXT("two camps: contested"), HOLVolcano::StepAltar(Held, 2, 1.f, Settings) == HOLVolcano::EAltarHold::Contested);
+	TestTrue(TEXT("... three camps too"), HOLVolcano::StepAltar(Held, 3, 5.f, Settings) == HOLVolcano::EAltarHold::Contested);
+	TestEqual(TEXT("... the count is frozen"), Held, 20.f);
+
+	TestTrue(TEXT("nobody: idle"), HOLVolcano::StepAltar(Held, 0, 1.f, Settings) == HOLVolcano::EAltarHold::Idle);
+	TestEqual(TEXT("... the count goes down by the decay rate"), Held, 20.f - Settings.AltarDecayRate);
+	HOLVolcano::StepAltar(Held, 0, 1000.f, Settings);
+	TestEqual(TEXT("... never below zero"), Held, 0.f);
+
+	// Held 60 s in a row reaches the threshold, 59 s does not.
+	float Count = 0.f;
+	for (int32 Second = 0; Second < 59; ++Second)
+	{
+		HOLVolcano::StepAltar(Count, 1, 1.f, Settings);
+	}
+	TestTrue(TEXT("59 s: not held yet"), Count < Settings.AltarHoldSeconds);
+	HOLVolcano::StepAltar(Count, 1, 1.f, Settings);
+	TestTrue(TEXT("60 s: held"), Count >= Settings.AltarHoldSeconds);
+	return true;
+}
+
+// The woken cycle in a site's state (V8): the altar held starts that cycle's alert at once; the site is lit while Armed and not woken.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarWakeTest, "HeroesOfLiberty.Volcano.AltarWake", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoAltarWakeTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	constexpr float ManSpeed = 697.f;
+	constexpr int32 MatchSeed = 4242;
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(9000.0, 0.0, 0.0) };
+	Site.Flows = { Flow };
+	Site.Altar.bPresent = true;
+	Site.Altar.Location = FVector(200.0, 0.0, 0.0);
+
+	const HOLVolcano::FSiteState Plain = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, 30.f, Settings, ManSpeed);
+	TestTrue(TEXT("armed at 30 s"), Plain.Phase == EHOLVolcanoPhase::Armed);
+	TestTrue(TEXT("the altar is lit while armed"), Plain.bAltarLit);
+	TestFalse(TEXT("... and the cycle is not woken"), Plain.bWoken);
+
+	// Held at 30 s: the alert starts then.
+	HOLVolcano::FWakes Wakes;
+	Wakes.Add(Plain.CycleIndex, 30.f);
+	const HOLVolcano::FSiteState Woken = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, 31.f, Settings, ManSpeed, &Wakes);
+	TestTrue(TEXT("one second after the altar is held: the alert"), Woken.Phase == EHOLVolcanoPhase::Warning);
+	TestTrue(TEXT("... woken"), Woken.bWoken);
+	TestFalse(TEXT("... the altar is no longer lit"), Woken.bAltarLit);
+	TestEqual(TEXT("... the alert began when the altar was held"), Woken.WarningAt, 30.f);
+	TestTrue(TEXT("... the alert has its 60 to 90 s (D28)"), Woken.EruptAt - Woken.WarningAt >= Settings.WarningMin && Woken.EruptAt - Woken.WarningAt <= Settings.WarningMax);
+	TestTrue(TEXT("... the countdown is the alert's length less the second spent"), FMath::IsNearlyEqual(Woken.SecondsToErupt, Woken.EruptAt - 31.f, 0.001f));
+	TestTrue(TEXT("same flow as the plain cycle (the draw does not move)"), Woken.FlowIndex == Plain.FlowIndex);
+	TestFalse(TEXT("without the wake the same instant is still armed"), HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, 31.f, Settings, ManSpeed).Phase == EHOLVolcanoPhase::Warning);
+
+	// The eruption comes at the woken date and the rest of the cycle follows; the next cycle opens earlier than it would have.
+	const HOLVolcano::FSiteState Erupting = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Woken.EruptAt + 2.f, Settings, ManSpeed, &Wakes);
+	TestTrue(TEXT("erupting two seconds after the woken date"), Erupting.Phase == EHOLVolcanoPhase::Erupting);
+	const float ProbeAt = Plain.EruptAt + 2000.f;
+	const HOLVolcano::FSiteState PlainNext = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, ProbeAt, Settings, ManSpeed);
+	const HOLVolcano::FSiteState WokenNext = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, ProbeAt, Settings, ManSpeed, &Wakes);
+	TestTrue(TEXT("the later cycles come sooner than without the altar (the cycle restarts from the provoked eruption, D400)"), WokenNext.CycleIndex >= PlainNext.CycleIndex);
+	TestTrue(TEXT("... and the woken cycle is the first one"), Plain.CycleIndex == 0);
+
+	// Lit again at the re-arming: the next cycle is Armed and lit, whatever woke the last.
+	const HOLVolcano::FSiteState Later = HOLVolcano::SiteStateAt(true, MatchSeed, 0, Site, Woken.EruptAt + 1000.f, Settings, ManSpeed, &Wakes);
+	TestTrue(TEXT("a cycle later: a new cycle"), Later.CycleIndex == Plain.CycleIndex + 1);
+	TestTrue(TEXT("... the altar is lit again (D400) whenever that cycle is armed"), Later.Phase != EHOLVolcanoPhase::Armed || Later.bAltarLit);
+
+	// Without Catastrophe nothing is lit.
+	TestFalse(TEXT("no Catastrophe: no altar lit"), HOLVolcano::SiteStateAt(false, MatchSeed, 0, Site, 30.f, Settings, ManSpeed).bAltarLit);
 	return true;
 }
 

@@ -48,8 +48,15 @@ struct FHOLVolcanoSettings
 	 * building's own radius more). V5-Q1 = B, the user's answer (2026-11-02): 800 cm, a flow 16 m wide.
 	 */
 	float LavaHalfWidth = 800.f;
-	/** V8 (D380): how much sooner the altar held wakes the site (s); Q-volcan-autel option A, 120 s by default, to be answered. */
-	float AltarAdvance = 120.f;
+	/**
+	 * V8 (D380): how much sooner the altar held brings the alert (s), never before the instant it was held. The user chose option B (Q13, 2026-11-02):
+	 * the alert starts AT ONCE, so the default is far more than any wait (1e6 s); a smaller value (option A was 120 s) is a tuning.
+	 */
+	float AltarAdvance = 1.0e6f;
+	/** V8 (D380, D348): seconds of the altar held without an adversary in its zone that wake the site (~60 s, like the ruin). */
+	float AltarHoldSeconds = 60.f;
+	/** V8 (D348's rule, as the ruin's ForumHoldDecay): seconds of the count lost each second nobody stands in the zone. */
+	float AltarDecayRate = 2.f;
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -148,11 +155,41 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API int32 DrawFlow(int32 Seed, int32 Index, int32 FlowCount);
 
-	/** A site as the map gives it (V4): its flows, the crater being the first point of each. Several sites may share a match. */
+	/** V8 (D380): the ancient altar of a site, near the crater: where the map puts it (a point and a zone), held to wake the site. */
+	struct FAltar
+	{
+		bool bPresent = false;
+		FVector Location = FVector::ZeroVector;
+		/** The zone's reach from the altar's middle (cm), level design; the ruin's zone is 1200 cm from the forum's edge (D348). */
+		float Radius = 1200.f;
+	};
+
+	/** A site as the map gives it (V4): its flows, the crater being the first point of each, and its altar (V8). Several sites may share a match. */
 	struct FSite
 	{
 		TArray<FFlow> Flows;
+		FAltar Altar;
 	};
+
+	/** V8: the altars held so far, by cycle: the instant (s since the match start) the altar was held, which began that cycle's alert at once. */
+	using FWakes = TMap<int32, float>;
+
+	/** V8: what the altar's zone is doing this step (D348's rule: an adversary in the zone freezes the count). */
+	enum class EAltarHold : uint8
+	{
+		/** Nobody in the zone: the count goes back down. */
+		Idle,
+		/** Units of one camp only: the count goes up. */
+		Holding,
+		/** Units of two camps or more: the count is frozen. */
+		Contested,
+	};
+
+	/**
+	 * V8: one step of the altar's count (HeldSeconds, in seconds held). CampsInZone = how many different camps (teams) have a living unit in the
+	 * zone: 0 lowers the count by AltarDecayRate x DeltaSeconds (not below 0), 1 raises it by DeltaSeconds, 2 or more freeze it.
+	 */
+	HEROESOFLIBERTY_API EAltarHold StepAltar(float& HeldSeconds, int32 CampsInZone, float DeltaSeconds, const FHOLVolcanoSettings& Settings);
 
 	/** What a site is doing at one instant (V4): everything the alert, the lava, the damage and the obstacle need. */
 	struct FSiteState
@@ -169,6 +206,10 @@ namespace HOLVolcano
 		/** The front along the flow (cm) and its place; 0 and the crater before the eruption, the end of the flow once it has arrived. */
 		float FrontDistance = 0.f;
 		FVector FrontPoint = FVector::ZeroVector;
+		/** V8: the altar can be held now (the site is Armed, its cycle not yet woken); it lights again at the re-arming (D400). */
+		bool bAltarLit = false;
+		/** V8: this cycle's alert was begun by the altar held (Wakes). */
+		bool bWoken = false;
 	};
 
 	/**
@@ -187,14 +228,14 @@ namespace HOLVolcano
 	 * draws its flow (DrawFlow) and lasts as long as its lava needs (EruptionDuration at LavaSpeed of ManAtArmsSpeed, the unit table's).
 	 * Dormant without Catastrophe (D398).
 	 */
-	HEROESOFLIBERTY_API FSiteState SiteStateAt(bool bCatastrophe, int32 MatchSeed, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed);
+	HEROESOFLIBERTY_API FSiteState SiteStateAt(bool bCatastrophe, int32 MatchSeed, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed, const FWakes* Wakes = nullptr);
 
 	/**
 	 * V4c: the state of one site of a match, from the match's configuration (its Seed and its Catastrophe option, both identical on every machine:
 	 * the configuration is replicated with the match, AHOLGameState::LaunchConfig) and the simulation's clock in seconds. Same configuration and
 	 * same clock, same eruption, whichever machine asks and whenever the match was launched (D608).
 	 */
-	HEROESOFLIBERTY_API FSiteState SiteStateOfMatch(const FHOLMatchConfig& Config, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed);
+	HEROESOFLIBERTY_API FSiteState SiteStateOfMatch(const FHOLMatchConfig& Config, int32 SiteIndex, const FSite& Site, float Now, const FHOLVolcanoSettings& Settings, float ManAtArmsSpeed, const FWakes* Wakes = nullptr);
 
 	/** Phase at Now (seconds): always Dormant without the Catastrophe option (D398). EruptionLength as in MakeCycle. */
 	HEROESOFLIBERTY_API EHOLVolcanoPhase GetPhase(bool bCatastrophe, int32 Seed, float Now, const FHOLVolcanoSettings& Settings, float EruptionLength = 0.f);
