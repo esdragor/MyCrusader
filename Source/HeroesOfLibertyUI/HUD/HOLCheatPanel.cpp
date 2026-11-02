@@ -56,7 +56,6 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 		{ TEXT("CheatFastBuild"), TEXT("") },
 	};
 	const FName ToggleName(TEXT("CheatToggle"));
-	const FName HideName(TEXT("CheatHide"));
 
 	struct FSpeedSlider
 	{
@@ -330,15 +329,6 @@ bool UHOLCheatPanel::ClickWidget(const FName Name)
 	if (Toggle && Name == UE::HeroesOfLiberty::UI::CheatPanel::ToggleName)
 	{
 		HandleToggleClicked();
-		return true;
-	}
-	if (Name == UE::HeroesOfLiberty::UI::CheatPanel::HideName)
-	{
-		// Gone for this game only (the toggle too: it sits where the AI level line is): no config write, the player finds his panel as he left it next time.
-		if (Panel)
-		{
-			Panel->SetVisibility(ESlateVisibility::Collapsed);
-		}
 		return true;
 	}
 	for (int32 Index = 0; Index < CheatButtons.Num(); ++Index)

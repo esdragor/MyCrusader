@@ -6,9 +6,6 @@
 # Le stade change par hol.AI.SetEvolveTimes (EV-Q1 = B, D620), sans accéléré : pas de partie qui se joue pendant ce temps ; la ligne « IA 2 : Évolutive, joue ... » en haut à gauche le montre à l'écran.
 waitlog AI brain HOLAIBrain awake
 waitlog AI slot 1 step
-# Le panneau Triches (en haut a gauche) cacherait la ligne HUD du niveau de l'IA : on le cache (sans changer le reglage du joueur).
-hol.HUD.Click CheatHide
-waitlog HUD click CheatHide: done
 hol.AI.SetEvolveTimes 100000 200000
 hol.Cheat.Resources 1000
 hol.Cheat.Population 200
@@ -22,6 +19,8 @@ hol.Units.SpawnHere 6 Spearman 1 500
 waitunits 14
 hol.Camera.FocusNear 1800 0 enemy
 frames 30
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_base
 hol.Test.Sanity
 note 1. « IA Évolutive 2 » commence FACILE : Caserne, Archerie, 6 Lanciers. Trois stades, une Entrée chacun.
@@ -35,6 +34,8 @@ waitlog level Easy
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_easy
 note 3. Stade 2 : Entrée, la commande hol.AI.SetEvolveTimes fait passer l'IA à NORMALE (la ligne en haut à gauche passe à « joue Normal »), puis 35 Hommes d'armes l'attaquent : elle ne charge plus quand elle sait perdre (elle feinte).
 waitkey Entrée : stade 2 NORMAL : l'IA passe Normale et j'attaque
@@ -44,10 +45,13 @@ hol.Camera.FocusNear 1500 0 enemy
 frames 2
 hol.Units.SpawnHere 35 ManAtArms 0 400
 hol.Camera.FocusNear 800 0 enemy
-waitlog level Normal
+# (la decision de l'IA Normale est ecrite au journal quand le forum est attaque, parfois avant l'arrivee des 35 : on ne l'attend pas, la ligne HUD montre le stade)
+wait 4
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_normal
 note 4. Stade 3 : Entrée, la commande fait passer l'IA à DIFFICILE (la ligne passe à « joue Difficile »), puis nouvelle attaque : elle évalue sa perte et peut laisser la vie pour garder son armée.
 waitkey Entrée : stade 3 DIFFICILE : l'IA passe Difficile et j'attaque
@@ -61,5 +65,7 @@ wait 6
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_hard
 note 5. (Stade 3 : la décision de l'IA Difficile n'est pas attendue : le forum peut n'avoir plus de vie à perdre ; la ligne HUD montre le stade.) Journal (Saved/Logs) : « evolving, plays Easy / Normal / Hard now » et « forum attacked ... level ... decision ... ».
