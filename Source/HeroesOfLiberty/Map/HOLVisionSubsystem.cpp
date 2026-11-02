@@ -297,7 +297,7 @@ void UHOLVisionSubsystem::Update()
 		ObserveUnit(UnitId, TypeName, Owner, Location);
 	});
 	// F3.2: the buildings, a site half as far, a forum in ruin blind (its sight counted again only when it changes).
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		if (IsValid(*It))
 		{
@@ -420,7 +420,7 @@ bool UHOLVisionSubsystem::UpdateClient()
 		}
 	}
 	// All the buildings it holds are present for its memory (F6e.2: an enemy's it sees now, until the server stops sending it); its camp's observe.
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		if (IsValid(*It) && !It->IsFogGhostActor())
 		{
@@ -530,7 +530,7 @@ int32 UHOLVisionSubsystem::SyncGhostActors(const int32 ViewerSlot)
 	const TMap<uint64, FHOLGhost>& Memory = Ghosts[ViewerCamp];
 	// The real buildings held here, by type and place.
 	TArray<const AHOLBuilding*> Real;
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		if (IsValid(*It) && !It->IsFogGhostActor())
 		{
@@ -595,7 +595,7 @@ void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
 {
 	const int32 ViewerCamp = bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
 	const TMap<uint64, FHOLGhost>* Memory = Ghosts.IsValidIndex(ViewerCamp) ? &Ghosts[ViewerCamp] : nullptr;
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
 		const FHOLBuildingTypeRow* Type = IsValid(Building) && !Building->IsFogGhostActor() ? Building->GetType() : nullptr;
@@ -746,7 +746,7 @@ FString UHOLVisionSubsystem::MakeLeakReport() const
 	}
 	int32 NumBuildings = 0;
 	int32 BuildingsOut = 0;
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = IsValid(*It) && !It->IsFogGhostActor() && GetCampIndex(It->GetOwnerPlayer()) != ClientCamp ? It->GetType() : nullptr;
 		if (!Type)

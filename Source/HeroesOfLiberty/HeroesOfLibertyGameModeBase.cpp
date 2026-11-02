@@ -43,7 +43,7 @@ static FAutoConsoleCommandWithWorldAndArgs CommandSpawnKing(TEXT("hol.Victory.Sp
 			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Victory.SpawnKing: on the server or in solo"));
 			return;
 		}
-		for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+		for (FHOLBuildingIterator It(World); It; ++It)
 		{
 			if (It->IsPrimaryForum() && It->GetOwnerPlayer() == Slot)
 			{
@@ -497,7 +497,7 @@ void AHeroesOfLibertyGameModeBase::AssignBuildingOwners(const int32 Slot)
 	{
 		return;
 	}
-	for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
 		if (It->GetOwnerPlayer() == Slot)
 		{

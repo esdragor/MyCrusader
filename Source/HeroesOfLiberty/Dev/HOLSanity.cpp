@@ -261,7 +261,7 @@ namespace UE::HeroesOfLiberty::Dev
 				return Owner;
 			}
 			int32 Index = Owner;
-			for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+			for (FHOLBuildingIterator It(&World); It; ++It)
 			{
 				if (It->GetOwnerPlayer() == Owner)
 				{
@@ -301,7 +301,7 @@ namespace UE::HeroesOfLiberty::Dev
 				{
 					(FHOLMatchConfig::IsNeutralOwner(View.OwnerPlayer) ? Neutrals : PlayerSlots).Add(View.OwnerPlayer);
 				}
-				for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+				for (FHOLBuildingIterator It(World); It; ++It)
 				{
 					if (It->GetOwnerPlayer() < FHOLMatchConfig::MaxSlots)
 					{
