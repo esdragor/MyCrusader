@@ -47,6 +47,7 @@
  *                        (fixed step: the simulation's), logged as "Test capture: Name_i (...) clock T s".
  *   seqclock             starts the clock of a capture sequence (written by captureseq)
  *   waitclock <Seconds>  waits for the game's clock to be Seconds past seqclock (written by captureseq)
+ *   quiet <command>      runs a console command without moving the log mark (a waitlog after it still sees the earlier lines)
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
  *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
  *                        "Scenario note: Text" (what a scenario asks to try)
@@ -426,6 +427,12 @@ namespace UE::HeroesOfLiberty::Dev
 					File = Rest;
 				}
 				bDone = IFileManager::Get().FileExists(*File);
+			}
+			else if (Verb == TEXT("quiet"))
+			{
+				// A command that leaves the log mark where it was (hol.Scenario's own hol.Sanity.Watch 1): a waitlog after it still
+				// sees the lines written before it.
+				GEngine->Exec(GetGameWorld(), *Rest);
 			}
 			else if (Verb == TEXT("console"))
 			{

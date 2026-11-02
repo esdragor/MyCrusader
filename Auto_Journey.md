@@ -144,6 +144,24 @@ Lancé seulement par « commence ton Auto_Journey interactif » (ou à la demand
 - **Limites inchangées** : au plus 2 questions par chantier ; essais de 3 min ; ~6 essais par jour ; pas de fusion ni de push sans accord explicite.
 - **Mesures du test** (à écrire au bilan) : délai entre `[À RÉPONDRE]`/`[À ESSAYER]` et la réponse ; délai entre la réponse et la relance de l'agent ; nombre de boucles fermées par heure ; nombre de fois où l'utilisateur a été dérangé ; conflits d'édition sur Retours.
 
+## Leçons de la séance interactive du 2026-11-01 (test 4, 16:50-18:50, 8 worktrees, ~15 agents, 7 agents de fusion)
+
+Résultat : 10 essais sur 10 validés (contre 5 sur 16 le 2026-10-31), 5 décisions de l'utilisateur en séance (D622-D625), boucle réponse -> correction en minutes. **Règles à appliquer dès la prochaine séance** (approuvées par l'utilisateur le 2026-11-01) :
+1. **Durée et tokens des agents** : plusieurs ont dépassé 250k (343k, 312k, 312k) et travaillé plus d'une heure. Relancer un agent **neuf vers 200k**, repartant du journal.
+2. **Commit par lot vert, au plus 30 min sans commit** (37 et 34 fichiers non commités pendant 60 min). Fichiers par nom, jamais `git add -A`.
+3. **`git merge main` avant le rapport** : chaque agent fusionne `main` dans sa branche avant de rendre la main, pour que la fusion soit une avance rapide sans retest ; l'agent de fusion ne rejoue que `tests,aiserver,aiduel`.
+4. **Veilleur silencieux** : un script unique qui ne réveille la session que si `Auto_Journey_Retours.md` change ou si un agent termine ; **ne rien écrire** quand rien n'a changé (12 passages « rien » en séance).
+5. **Un fichier par item dans `Retours/`** (essai, question) au lieu d'une ligne géante par item (suppression = recopier toute la ligne dans Edit) ; l'en-tête est compté par script.
+6. **Identifiants de réponse** : `E1`, `Q2` ; l'utilisateur répond `E1 OK`, `Q2 A`. Les réponses nues (« works », « fonctionne », « Cercle ») étaient ambiguës quand deux essais attendaient.
+7. **Toute question porte une option « Autre » et les valeurs par défaut prises si l'utilisateur ne précise pas** (taille, durée, valeur d'armure) : la préférence réelle était hors des options 3 fois sur 4 (TB-Q1, MM-Q1, SQ3). Les hypothèses prises par la session sont listées « à confirmer » (cercle 24 -> 8 px sur 6 s ; armure distance 20).
+8. **Un seul enregistrement de statut par agent**, consolidé par la session principale : 5 à 6 journaux mis à jour par agent (`*InProgress`, `EtapeDefini`, file, `Jour`, `IN_USE`, `Retours`) coûtent cher et `Jour.md` n'était pas à jour.
+9. **Numéros de décision GDD réservés par plage et par agent**, ou écrits par la session principale (D622-D625 écrits par elle) ; vérifier « Prochain numéro » avant d'écrire.
+10. **Docs de la copie principale commités à chaque boucle** (par nom de fichier, jamais `GDD.md` sans accord) : ils auraient pu bloquer chaque avance rapide.
+11. **Machine** : l'utilisateur joue depuis **un instantané figé** (pas depuis le worktree d'un agent qui compile : un build a attendu sa partie, puis 517 s de file) ; `.gitattributes` pour normaliser CRLF/LF/BOM (l'outil Edit échouait sur des fins de ligne mélangées) ; **PowerShell seulement pour l'heure** (Git Bash diverge de 40 min).
+12. **Outils manquants à construire** : (a) capture en séquence au pas de simulation pour prouver une animation (un cercle qui se rétrécit n'est pas prouvé par un instantané ; sinon l'essai est LOGIQUE SEULEMENT) ; (b) détection par le pré-vol d'un panneau qui en cache un autre (ligne HUD d'`ai_evolving` sous « Triches », fenêtre de duel sous le panneau du scénario) ; (c) `check.ps1` doit échouer quand l'audit Sanity échoue (seul `preflight` le voit).
+13. **Test rouge d'abord vérifiable par l'ordre des commits** (test avant implémentation) : sauté pour R2 des relais, `Test_TechnologyNotImplemented` et le tribut.
+14. **Passage d'intégration de 10 min en fin de séance** sur `main` fusionné (règles 5 et 10 de « Qualité des essais », toujours non appliquées) : 3 essais qui croisent les chantiers (Marché + tribut + mini-carte + talents).
+
 ## Au démarrage : « commence ton Auto_Journey »
 
 L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase. Les chantiers auront avancé depuis la dernière fois. Sans poser de question déjà tranchée :

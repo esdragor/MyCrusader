@@ -225,7 +225,7 @@ void UHOLBuildProcessor::Execute(FMassEntityManager& EntityManager, FMassExecuti
 	// no spot in the way between two neighbours either, too narrow for a builder and a passer-by).
 	Footprints.Reset();
 	FootprintBuildings.Reset();
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		if (It->GetType())
 		{

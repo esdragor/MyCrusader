@@ -219,6 +219,8 @@ private:
 	const FHOLGatherDeposit* FindSourceDeposit(uint8 OwnerPlayer, const FHOLSource& Source) const;
 
 	TArray<FDeposit> Deposits;
+	/** D602: the finished Sanctuaries of the match, read with the deposits: their owner's slot and centre. */
+	TArray<TPair<uint8, FVector2D>> Sanctuaries;
 	/** The spots held: their gatherers still walk to them or gather there; and the points of the idle ones in front of a full source. */
 	FHOLSpotClaims SpotClaims;
 	/**

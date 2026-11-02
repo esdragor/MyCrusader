@@ -16,6 +16,11 @@ bool FHOLTechnologyState::Add(const FName Technology)
 
 HOLTechnology::EBlock HOLTechnology::Check(const FHOLTechnologyRow& Row, const FFacts& Facts)
 {
+	// T-Q11 = B (D601): no code applies its effect yet, whatever the rest says.
+	if (!Row.Implemented)
+	{
+		return EBlock::NotImplemented;
+	}
 	if (Facts.bResearched)
 	{
 		return EBlock::AlreadyResearched;
@@ -51,6 +56,7 @@ const TCHAR* HOLTechnology::DescribeBlock(const EBlock Block)
 {
 	switch (Block)
 	{
+	case EBlock::NotImplemented: return TEXT("soon");
 	case EBlock::AlreadyResearched: return TEXT("already researched");
 	case EBlock::AlreadyQueued: return TEXT("already queued");
 	case EBlock::TierTooLow: return TEXT("tier too low");
@@ -64,7 +70,7 @@ const TCHAR* HOLTechnology::DescribeBlock(const EBlock Block)
 
 bool HOLTechnology::IsPlayable(const FHOLTechnologyRow& Row, TFunctionRef<bool(FName)> BuildingTypeExists)
 {
-	return BuildingTypeExists(Row.Building);
+	return Row.Implemented && BuildingTypeExists(Row.Building);
 }
 
 FHOLProductionCost HOLTechnology::MakeCost(const FHOLTechnologyRow& Row, const float StepSeconds)

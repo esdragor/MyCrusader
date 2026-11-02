@@ -804,7 +804,7 @@ void AHOLSelectionMarkers::UpdateHealthBars()
 		// BuildingBarAfterHitSeconds (an attacked building); as the units' but wider; above its top (a site's, risen with its work).
 		const AHOLBuilding* SelectedBuilding = PlayerController->GetSelection();
 		const double Now = GetWorld()->GetTimeSeconds();
-		for (TActorIterator<AHOLBuilding> It(GetWorld()); It; ++It)
+		for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 		{
 			const AHOLBuilding* Building = *It;
 			const FHOLBuildingTypeRow* Type = Building->GetType();

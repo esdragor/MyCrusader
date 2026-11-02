@@ -37,6 +37,7 @@
 #include "HUD/HOLScriptScreen.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
+#include "Siege/HOLSiegeRules.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLGameMenuRules.h"
@@ -177,6 +178,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	{
 		switch (Block)
 		{
+		case HOLTechnology::EBlock::NotImplemented: return LOCTEXT("ResearchSoon", "Bientôt");
 		case HOLTechnology::EBlock::AlreadyResearched: return LOCTEXT("ResearchDone", "Déjà recherchée");
 		case HOLTechnology::EBlock::AlreadyQueued: return LOCTEXT("ResearchQueued", "Déjà en cours de recherche");
 		case HOLTechnology::EBlock::TierTooLow: return LOCTEXT("ResearchTier", "Palier supérieur requis");
@@ -573,6 +575,12 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		{
 			RefreshAges(BoundPlayerState.Get());
 		}
+	}
+	// S7: the siege workshop's engine cells follow the tier of the hero (his level moves without a delegate): drawn again when it changes.
+	if (bGridShown && ShownEngineTier != INDEX_NONE && BoundTableState.IsValid() && BoundPlayerState.IsValid()
+		&& BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) != ShownEngineTier)
+	{
+		Refresh();
 	}
 	// M5: a Market's trade cells quote the common book; another player's trade, the book's way back to rest or a client's
 	// late replication moves it without telling this HUD: the cells are drawn again as soon as it differs from the quoted one.
@@ -1849,6 +1857,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	ShownTradeLabels.Reset();
 	ShownTradeLabels.SetNum(GridCells.Num());
 	ShownMarketPrices.Reset();
+	ShownEngineTier = INDEX_NONE;
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
@@ -1880,8 +1889,17 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const bool bQueueFull = !PlayerController || !PlayerController->FindProductionBuilding(Command.TypeName);
 			const FText Name = HOLGameNames::GetUnitName(Command.TypeName, UnitType);
-			GridCell->SetCommand(Name, bQueueFull || !(Missing == FHOLResources()) ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
-			GridCell->SetTooltip(Name, Cost, Missing, GetUnitEffect(Command.TypeName));
+			// S7 (siege engines, GDD 6.1): an engine whose tier the hero has not opened is greyed too, with the reason in its tooltip
+			// (the server refuses it by the same rule, HOLSiege::Check; the workshop is there, it is its grid, the stock is above).
+			HOLSiege::EEngine Engine;
+			const bool bTierBlocked = PlayerState && BoundTableState.IsValid() && HOLSiege::FindEngine(Command.TypeName, Engine)
+				&& HOLSiege::Check(Engine, BoundTableState->GetTier(PlayerState->GetPlayerIndex()), true, true) == HOLSiege::EBlock::TierTooLow;
+			if (PlayerState && BoundTableState.IsValid() && HOLSiege::FindEngine(Command.TypeName, Engine))
+			{
+				ShownEngineTier = BoundTableState->GetTier(PlayerState->GetPlayerIndex());
+			}
+			GridCell->SetCommand(Name, bQueueFull || bTierBlocked || !(Missing == FHOLResources()) ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, Cost, Missing, bTierBlocked ? GetResearchBlockText(HOLTechnology::EBlock::TierTooLow) : GetUnitEffect(Command.TypeName));
 			break;
 		}
 		case EHOLGridCommand::Research:
@@ -1895,7 +1913,13 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			bool bAny = false;
 			const AHOLBuilding* Researcher = PlayerController ? PlayerController->FindProductionBuilding(Command.TypeName, &bAny) : nullptr;
 			FHOLCommandFeedback Feedback;
-			if (Researcher)
+			if (Technology && !Technology->Implemented)
+			{
+				// T-Q10/T-Q11 = B (D601): no effect coded yet, greyed "Bientôt" whatever the building, the tier or the stock.
+				Feedback.Kind = EHOLCommandFeedback::ResearchRefused;
+				Feedback.Block = HOLTechnology::EBlock::NotImplemented;
+			}
+			else if (Researcher)
 			{
 				Feedback = PlayerController->CheckResearchAt(Command.TypeName, Researcher);
 			}
@@ -1905,7 +1929,9 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			}
 			const FText Effect = Feedback.Kind == EHOLCommandFeedback::ResearchRefused ? GetResearchBlockText(Feedback.Block)
 				: Technology ? HOLGameNames::GetTechnologyEffect(*Technology) : FText();
-			GridCell->SetCommand(Name, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
+			const FText CellName = Feedback.Kind == EHOLCommandFeedback::ResearchRefused && Feedback.Block == HOLTechnology::EBlock::NotImplemented
+				? FText::Format(LOCTEXT("ResearchSoonCell", "{0}\nBientôt"), Name) : Name;
+			GridCell->SetCommand(CellName, Feedback.IsNone() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
 			GridCell->SetTooltip(Name, Cost, Missing, Effect);
 			break;
 		}
@@ -2298,7 +2324,7 @@ void UHOLGameScreen::CheckPopulationBlocked()
 	bool bBlocked = false;
 	if (PlayerState && World)
 	{
-		for (TActorIterator<AHOLBuilding> It(World); It && !bBlocked; ++It)
+		for (FHOLBuildingIterator It(World); It && !bBlocked; ++It)
 		{
 			const TArray<FHOLProductionItem>& Queue = It->GetProductionQueue();
 			if (It->GetOwnerPlayer() != PlayerState->GetPlayerIndex() || !It->IsFinished() || Queue.IsEmpty() || Queue[0].IsStarted())

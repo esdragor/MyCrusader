@@ -245,7 +245,7 @@ void AHOLGameState::RefreshForumLooks() const
 	{
 		return;
 	}
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		if (It->IsPrimaryForum())
 		{
@@ -268,7 +268,7 @@ bool AHOLGameState::AnyForumBuildersWait() const
 
 AHOLBuilding* AHOLGameState::FindPrimaryForum(const UWorld& World, const int32 Slot)
 {
-	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	for (FHOLBuildingIterator It(&World); It; ++It)
 	{
 		if (It->IsPrimaryForum() && It->GetOwnerPlayer() == Slot && !It->IsActorBeingDestroyed())
 		{
@@ -795,7 +795,7 @@ void AHOLGameState::CollapseSlot(const int32 Slot)
 	const int32 UnitsKilled = Units ? Units->KillUnitsOfOwner(static_cast<uint8>(Slot)) : 0;
 	// Its buildings destroyed as in combat, sites and foundations too (their queues go with them: nothing produced after).
 	TArray<AHOLBuilding*> Buildings;
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		if (It->GetOwnerPlayer() == Slot && !It->IsActorBeingDestroyed())
 		{

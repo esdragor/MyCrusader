@@ -13,6 +13,7 @@
 #include "Engine/World.h"
 #include "Match/HOLGameState.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLVolcanoSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLMatchConfig.h"
@@ -39,7 +40,7 @@ namespace
 	{
 		AHOLBuilding* Nearest = nullptr;
 		double NearestDistance = 100.0;
-		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		for (FHOLBuildingIterator It(&World); It; ++It)
 		{
 			const double Distance = FVector::Dist2D(It->GetActorLocation(), Location);
 			if ((Owner == INDEX_NONE || It->GetOwnerPlayer() == Owner) && Distance <= NearestDistance)
@@ -91,6 +92,13 @@ bool UHOLAIOrderLibrary::IssueAIMoveOrder(const UObject* WorldContextObject, con
 	return World && HOLPlayerOrders::Move(*World, PlayerIndex, ToUnitIds(UnitIds), Target, bQueue);
 }
 
+
+int32 UHOLAIOrderLibrary::IssueAIVolcanoEvacuation(const UObject* WorldContextObject, const int32 PlayerIndex)
+{
+	UWorld* World = GetAuthorityWorld(WorldContextObject);
+	UHOLVolcanoSubsystem* Volcano = World ? UHOLVolcanoSubsystem::Find(World) : nullptr;
+	return Volcano ? Volcano->EvacuateOwner(PlayerIndex) : 0;
+}
 
 bool UHOLAIOrderLibrary::IssueAITalentOrder(const UObject* WorldContextObject, const int32 PlayerIndex, const int32 Family)
 {

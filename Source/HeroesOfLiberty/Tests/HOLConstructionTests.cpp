@@ -376,6 +376,25 @@ bool FHOLConstructionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Archery range: age I"), ArcheryRange->Age, 0);
 	}
 
+	// SC-Q1 = B (D602): the Sanctuary of the Dawn, technological, age I, built by Peasants on X of page I (the economic row's overflow, after
+	// the Farm): 250 wood, 3 x 3 tiles (12 m), 30 s, 1 500 health, no production. The +15 % of food on the farms within 30 m is a second step.
+	const FHOLBuildingTypeRow* Sanctuary = UHOLBuildingSettings::FindType(TEXT("Sanctuary"));
+	if (TestNotNull(TEXT("Sanctuary in the building type table"), Sanctuary))
+	{
+		TestTrue(TEXT("Sanctuary: built by Peasants"), Sanctuary->IsBuildable());
+		TestEqual(TEXT("Sanctuary: X of the Peasant's grid (slot 9, after the Farm)"), Sanctuary->BuildGridSlot, 9);
+		TestEqual(TEXT("Sanctuary: age I"), Sanctuary->Age, 0);
+		TestEqual(TEXT("Sanctuary: technological (it researches the Dawn's technologies; the W X C V row of the grid)"), int32(Sanctuary->Category), int32(EHOLBuildingCategory::Technological));
+		TestEqual(TEXT("Sanctuary: 3 x 3 tiles (12 m)"), Sanctuary->Footprint, FVector2D(3.0 * Grid, 3.0 * Grid));
+		TestTrue(TEXT("Sanctuary: 250 wood"), Sanctuary->Cost == FHOLResources(0, 250, 0, 0));
+		TestEqual(TEXT("Sanctuary: 30 s for one builder"), Sanctuary->BuildTime, 30.f);
+		TestEqual(TEXT("Sanctuary: 1 500 health"), Sanctuary->MaxHealth, 1500);
+		TestEqual(TEXT("Sanctuary: no population"), Sanctuary->PopulationProvided, 0);
+		TestTrue(TEXT("Sanctuary: produces nothing"), Sanctuary->Produces.IsEmpty());
+		TestTrue(TEXT("Sanctuary: takes no resource"), Sanctuary->Accepts.IsEmpty());
+		TestFalse(TEXT("Sanctuary: not walkable"), Sanctuary->Walkable);
+	}
+
 	// M3 (GDD 5.5, 11.1, D569): the Market, economic, age II (palier 1, Essor), built by Peasants on A of page II. Its size, cost
 	// and health are provisional (MarketInProgress.md, question MK-Q2): 3 x 3 tiles like the Barracks, 150 wood, 20 s.
 	const FHOLBuildingTypeRow* Market = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Market);

@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Dev/HOLTestHooks.h"
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -120,6 +121,112 @@ bool FHOLVolcanoFlowTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("no speed: no duration"), HOLVolcano::EruptionDuration(Flow, 0.f), 0.f);
 	TestEqual(TEXT("no speed: the front does not move"), HOLVolcano::FrontDistance(Flow, EruptAt + 10.f, EruptAt, 0.f), 0.f);
 	TestTrue(TEXT("no point: the origin"), HOLVolcano::PointAt(Empty, 10.f).IsZero());
+	return true;
+}
+
+// The lava's reach (V5, GDD 12.2, D377): what is under a flow whose front has gone some way is destroyed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoReachTest, "HeroesOfLiberty.Volcano.LavaReach", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoReachTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	const double H = Settings.LavaHalfWidth;
+	TestEqual(TEXT("a flow is 16 m wide: half-width 800 cm (V5-Q1 = B, the user)"), Settings.LavaHalfWidth, 800.f);
+	// An L-shaped flow: 3000 cm east then 4000 cm north.
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(3000.0, 0.0, 50.0), FVector(3000.0, 4000.0, 0.0) };
+
+	// Before the eruption (front at the crater) nothing is burnt, not even the crater.
+	TestFalse(TEXT("front at 0: the crater itself is safe"), HOLVolcano::IsInLava(Flow, 0.f, Settings.LavaHalfWidth, FVector(0.0, 0.0, 0.0)));
+	// Front at 2000 (first leg).
+	const float Front = 2000.f;
+	const float W = Settings.LavaHalfWidth;
+	TestTrue(TEXT("on the line behind the front: burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, 0.0, 0.0)));
+	TestTrue(TEXT("on the crater once it erupts: burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(0.0, 0.0, 0.0)));
+	TestTrue(TEXT("just inside the width: burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H - 10.0, 0.0)));
+	TestFalse(TEXT("just outside the width: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H + 10.0, 0.0)));
+	TestFalse(TEXT("outside the width on the other side: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, -(H + 10.0), 0.0)));
+	TestTrue(TEXT("a body's radius counts: outside by 10 with radius 50 touches it"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H + 10.0, 0.0), 50.f));
+	TestFalse(TEXT("a body far enough even with its radius: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H + 100.0, 0.0), 50.f));
+	TestTrue(TEXT("the head of the front is rounded: a little ahead of it, burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(Front + H - 10.0, 0.0, 0.0)));
+	TestFalse(TEXT("well ahead of the front: safe, the lava has not come yet"), HOLVolcano::IsInLava(Flow, Front, W, FVector(Front + H + 10.0, 0.0, 0.0)));
+	TestFalse(TEXT("ahead on the flow's second leg: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(3000.0, 2000.0, 0.0)));
+	TestTrue(TEXT("Z is ignored: far above the line but inside its width, burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, 0.0, 99999.0)));
+
+	// The front has turned the corner (3000 + 2000 up the second leg).
+	const float Turned = 5000.f;
+	TestTrue(TEXT("second leg, behind the front: burnt"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(3000.0, 1500.0, 0.0)));
+	TestTrue(TEXT("second leg, beside the line: burnt"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(3000.0 + H - 10.0, 1500.0, 0.0)));
+	TestFalse(TEXT("second leg, beyond the front: safe"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(3000.0, 3500.0, 0.0)));
+	TestFalse(TEXT("away from both legs: safe"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(0.0, 3000.0, 0.0)));
+
+	// Once the lava has arrived, the whole flow is burnt, its far end too.
+	TestTrue(TEXT("front at the end: the far end is burnt"), HOLVolcano::IsInLava(Flow, Flow.Length(), W, FVector(3000.0, 4000.0, 0.0)));
+
+	// A flow that is not one burns nothing.
+	const HOLVolcano::FFlow Empty;
+	TestFalse(TEXT("no point: no lava"), HOLVolcano::IsInLava(Empty, 100.f, W, FVector::ZeroVector));
+	HOLVolcano::FFlow OnePoint;
+	OnePoint.Points = { FVector::ZeroVector };
+	TestFalse(TEXT("one point: no lava"), HOLVolcano::IsInLava(OnePoint, 100.f, W, FVector::ZeroVector));
+
+	// What the lava destroys: all but a hero in a duel (GDD 9.8, 10.2).
+	TestTrue(TEXT("a unit is destroyed"), HOLVolcano::LavaDestroys(false, false));
+	TestTrue(TEXT("a hero outside a duel is destroyed"), HOLVolcano::LavaDestroys(true, false));
+	TestFalse(TEXT("a hero in a duel is not"), HOLVolcano::LavaDestroys(true, true));
+	return true;
+}
+// The ground a cooled flow forbids (V6, D379): boxes that cover the whole lava reach and not much more.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoObstacleTest, "HeroesOfLiberty.Volcano.ObstacleBoxes", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoObstacleTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	const float H = Settings.LavaHalfWidth;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(3000.0, 0.0, 50.0), FVector(3000.0, 4000.0, 0.0) };
+	const TArray<HOLVolcano::FObstacleBox> Boxes = HOLVolcano::GetObstacleBoxes(Flow, H);
+	if (!TestEqual(TEXT("one box per segment"), Boxes.Num(), 2))
+	{
+		return false;
+	}
+	TestEqual(TEXT("first box: centre"), Boxes[0].Centre.X, 1500.0, 0.01);
+	TestEqual(TEXT("first box: half length = half the segment + the half width at each end"), Boxes[0].HalfLength, 1500.f + H, 0.01f);
+	TestEqual(TEXT("first box: half width"), Boxes[0].HalfWidth, H, 0.01f);
+	TestEqual(TEXT("first box: along +X"), Boxes[0].YawDegrees, 0.f, 0.01f);
+	TestEqual(TEXT("second box: along +Y"), Boxes[1].YawDegrees, 90.f, 0.01f);
+	TestEqual(TEXT("second box: centre"), Boxes[1].Centre.Y, 2000.0, 0.01);
+
+	const auto InBox = [](const HOLVolcano::FObstacleBox& Box, const FVector2D& P)
+	{
+		const FVector2D Local = (P - Box.Centre).GetRotated(-Box.YawDegrees);
+		return FMath::Abs(Local.X) <= Box.HalfLength + 0.01 && FMath::Abs(Local.Y) <= Box.HalfWidth + 0.01;
+	};
+	int32 Reach = 0;
+	int32 Missed = 0;
+	int32 Far = 0;
+	int32 FarInBox = 0;
+	for (double X = -1500.0; X <= 4500.0; X += 50.0)
+	{
+		for (double Y = -1500.0; Y <= 5500.0; Y += 50.0)
+		{
+			const FVector2D P(X, Y);
+			const bool bInBoxes = InBox(Boxes[0], P) || InBox(Boxes[1], P);
+			if (HOLVolcano::IsInLava(Flow, Flow.Length(), H, FVector(X, Y, 0.0)))
+			{
+				++Reach;
+				Missed += bInBoxes ? 0 : 1;
+			}
+			else if (!HOLVolcano::IsInLava(Flow, Flow.Length(), 2.f * H, FVector(X, Y, 0.0)))
+			{
+				++Far;
+				FarInBox += bInBoxes ? 1 : 0;
+			}
+		}
+	}
+	TestTrue(TEXT("the sample has points under the lava and far from it"), Reach > 1000 && Far > 1000);
+	TestEqual(TEXT("every point the lava reaches is in the boxes"), Missed, 0);
+	TestEqual(TEXT("no point farther than twice the half width is"), FarInBox, 0);
+
+	TestEqual(TEXT("no flow, no box"), HOLVolcano::GetObstacleBoxes(HOLVolcano::FFlow(), H).Num(), 0);
 	return true;
 }
 
@@ -301,6 +408,166 @@ bool FHOLVolcanoSiteStateTest::RunTest(const FString& Parameters)
 	const HOLVolcano::FCycle BareCycle = HOLVolcano::MakeCycle(HOLVolcano::SiteSeed(3, 0), 0, 0.f, Settings);
 	const HOLVolcano::FSiteState BareState = HOLVolcano::SiteStateAt(true, 3, 0, Bare, BareCycle.EruptAt + 5.f, Settings, ManSpeed);
 	TestTrue(TEXT("no flow: erupting by the placeholder, nothing drawn, the front stays"), BareState.Phase == EHOLVolcanoPhase::Erupting && BareState.FlowIndex == INDEX_NONE && BareState.FrontDistance == 0.f);
+	return true;
+}
+
+// V4c (V4-Q2 = C, D608): the seed of the match makes the eruption. A scenario's .json imposes it ("seed"), the real chain reads it
+// (MakeScenarioConfig, GetScenarioSeed), and the site's state follows from the configuration and the clock alone: the same seed gives the same
+// eruption on any launch, another seed another one.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoSeedTest, "HeroesOfLiberty.Volcano.MatchSeed", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoSeedTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests;
+	const float ManSpeed = ManAtArmsSpeedFromTable();
+	if (!TestTrue(TEXT("the table gives a Man-at-arms' speed"), ManSpeed > 0.f))
+	{
+		return false;
+	}
+	const FHOLVolcanoSettings Settings;
+	const HOLVolcano::FSite Site = MakeThreeFlowSite();
+
+	// The scenario's .json, by the real chain: with a seed (imposed), without (drawn).
+	const auto ConfigOf = [this](const FString& Json, const int32 Drawn, FHOLMatchConfig& Out)
+	{
+		if (!TestTrue(TEXT(".json read"), HOLTestHooks::MakeScenarioConfig(&Json, Out)))
+		{
+			return false;
+		}
+		Out.Seed = HOLTestHooks::GetScenarioSeed(&Json, Drawn);
+		return true;
+	};
+	FHOLMatchConfig First, Again, Other, Drawn;
+	if (!ConfigOf(TEXT("{ \"seed\": 4242, \"bCatastrophe\": true }"), 111, First)
+		|| !ConfigOf(TEXT("{ \"seed\": 4242, \"bCatastrophe\": true }"), 987654, Again)
+		|| !ConfigOf(TEXT("{ \"seed\": 4243, \"bCatastrophe\": true }"), 111, Other)
+		|| !ConfigOf(TEXT("{ \"bCatastrophe\": true }"), 31337, Drawn))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the .json's seed is the match's, whatever the draw"), First.Seed, 4242);
+	TestEqual(TEXT("again, another launch"), Again.Seed, 4242);
+	TestEqual(TEXT("another seed"), Other.Seed, 4243);
+	TestEqual(TEXT("no seed in the .json: the drawn one"), Drawn.Seed, 31337);
+	TestTrue(TEXT("the Catastrophe option comes from the .json"), First.bCatastrophe);
+
+	// The same configuration gives the same eruption at every instant; the state is the one the seed makes.
+	const HOLVolcano::FCycle Cycle0 = HOLVolcano::MakeCycle(HOLVolcano::SiteSeed(4242, 0), 0, 0.f, Settings,
+		HOLVolcano::EruptionDuration(Site.Flows[HOLVolcano::DrawFlow(HOLVolcano::SiteSeed(4242, 0), 0, Site.Flows.Num())], Settings.LavaSpeed(ManSpeed)));
+	int32 SameCount = 0;
+	for (float Now = 0.f; Now <= 1800.f; Now += 9.f)
+	{
+		const HOLVolcano::FSiteState A = HOLVolcano::SiteStateOfMatch(First, 0, Site, Now, Settings, ManSpeed);
+		const HOLVolcano::FSiteState B = HOLVolcano::SiteStateOfMatch(Again, 0, Site, Now, Settings, ManSpeed);
+		const HOLVolcano::FSiteState Truth = HOLVolcano::SiteStateAt(true, 4242, 0, Site, Now, Settings, ManSpeed);
+		SameCount += (A.Phase == B.Phase && A.CycleIndex == B.CycleIndex && A.FlowIndex == B.FlowIndex && A.FrontPoint.Equals(B.FrontPoint, 0.001)
+			&& A.Phase == Truth.Phase && A.FlowIndex == Truth.FlowIndex && A.FrontPoint.Equals(Truth.FrontPoint, 0.001)) ? 1 : 0;
+	}
+	TestEqual(TEXT("same seed, same eruption at each of the 201 instants"), SameCount, 201);
+	const HOLVolcano::FSiteState Erupting = HOLVolcano::SiteStateOfMatch(First, 0, Site, Cycle0.EruptAt + 4.f, Settings, ManSpeed);
+	TestTrue(TEXT("the eruption of the seed's first cycle is on at its date"), Erupting.Phase == EHOLVolcanoPhase::Erupting && Erupting.CycleIndex == 0);
+
+	// Another seed does not give the same eruption: over the whole hour, some instant tells them apart.
+	bool bDiffers = false;
+	for (float Now = 0.f; Now <= 3600.f && !bDiffers; Now += 3.f)
+	{
+		const HOLVolcano::FSiteState A = HOLVolcano::SiteStateOfMatch(First, 0, Site, Now, Settings, ManSpeed);
+		const HOLVolcano::FSiteState C = HOLVolcano::SiteStateOfMatch(Other, 0, Site, Now, Settings, ManSpeed);
+		bDiffers = A.Phase != C.Phase || A.FlowIndex != C.FlowIndex;
+	}
+	TestTrue(TEXT("another seed, another eruption"), bDiffers);
+
+	// Without the Catastrophe option the site sleeps, the seed or not (D398).
+	FHOLMatchConfig Standard = First;
+	Standard.bCatastrophe = false;
+	TestTrue(TEXT("no Catastrophe: dormant"), HOLVolcano::SiteStateOfMatch(Standard, 0, Site, Cycle0.EruptAt + 4.f, Settings, ManSpeed).Phase == EHOLVolcanoPhase::Dormant);
+	return true;
+}
+
+// The AI's way out (V11, D427, V5-Q1 = B): the corridor is the flow's half width plus the body's radius, the whole length of the flow.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoEvacuationTest, "HeroesOfLiberty.Volcano.EvacuationPoint", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoEvacuationTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	const float W = Settings.LavaHalfWidth;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(8000.0, 0.0, 0.0) };
+
+	TestEqual(TEXT("the reach is the half width plus the radius"), HOLVolcano::EvacuationReach(W, 60.f), W + 60.f);
+	// The reach follows the settings (never typed): a narrower flow, a shorter reach.
+	TestEqual(TEXT("... of the setting, whatever it is"), HOLVolcano::EvacuationReach(300.f, 60.f), 360.f);
+
+	// A body that the old 8 m flow (half width 400) spared is now caught, along the whole corridor even before the front moves.
+	const FVector Beside(4000.0, 700.0, 0.0);
+	TestTrue(TEXT("700 cm aside, radius 60: inside the 16 m corridor"), HOLVolcano::IsInCorridor(Flow, W, Beside, 60.f));
+	TestFalse(TEXT("... but outside an 8 m corridor"), HOLVolcano::IsInCorridor(Flow, 400.f, Beside, 60.f));
+	TestFalse(TEXT("the radius counts: 800 + 60 + 1 cm aside is out"), HOLVolcano::IsInCorridor(Flow, W, FVector(4000.0, W + 61.0, 0.0), 60.f));
+	TestTrue(TEXT("... 800 + 60 - 1 cm is in"), HOLVolcano::IsInCorridor(Flow, W, FVector(4000.0, W + 59.0, 0.0), 60.f));
+	TestFalse(TEXT("far from the line: out"), HOLVolcano::IsInCorridor(Flow, W, FVector(4000.0, 3000.0, 0.0), 60.f));
+
+	// The way out: out of the corridor with a margin, on the side it stood on, at its height.
+	const FVector Out = HOLVolcano::EvacuationPoint(Flow, W, FVector(4000.0, 700.0, 25.0), 60.f);
+	TestFalse(TEXT("the point is out of the corridor"), HOLVolcano::IsInCorridor(Flow, W, Out, 60.f));
+	TestTrue(TEXT("... on the same side"), Out.Y > 0.0);
+	TestTrue(TEXT("... with a margin beyond the reach"), Out.Y >= W + 60.f + 199.f);
+	TestTrue(TEXT("... straight away from the line"), FMath::Abs(Out.X - 4000.0) < 1.0);
+	TestEqual(TEXT("... at its height"), static_cast<float>(Out.Z), 25.f);
+	TestTrue(TEXT("a body already out stays where it is"), HOLVolcano::EvacuationPoint(Flow, W, FVector(4000.0, 3000.0, 0.0), 60.f).Equals(FVector(4000.0, 3000.0, 0.0), 0.001));
+	const FVector OnLine = HOLVolcano::EvacuationPoint(Flow, W, FVector(2000.0, 0.0, 0.0), 60.f);
+	TestFalse(TEXT("a body on the line itself is led out as well"), HOLVolcano::IsInCorridor(Flow, W, OnLine, 60.f));
+	const FVector OtherSide = HOLVolcano::EvacuationPoint(Flow, W, FVector(4000.0, -300.0, 0.0), 60.f);
+	TestTrue(TEXT("a body on the other side goes to the other side"), OtherSide.Y < 0.0 && !HOLVolcano::IsInCorridor(Flow, W, OtherSide, 60.f));
+
+	// Every body of a grid across the corridor ends outside it.
+	int32 Caught = 0;
+	int32 Left = 0;
+	for (double X = -500.0; X <= 8500.0; X += 500.0)
+	{
+		for (double Y = -1500.0; Y <= 1500.0; Y += 100.0)
+		{
+			const FVector P(X, Y, 0.0);
+			if (HOLVolcano::IsInCorridor(Flow, W, P, 60.f))
+			{
+				++Caught;
+				Left += HOLVolcano::IsInCorridor(Flow, W, HOLVolcano::EvacuationPoint(Flow, W, P, 60.f), 60.f) ? 0 : 1;
+			}
+		}
+	}
+	TestTrue(TEXT("the grid has bodies in the corridor"), Caught > 100);
+	TestEqual(TEXT("every one of them is led out"), Left, Caught);
+	return true;
+}
+
+// The altar held wakes the site sooner (V8, D380; Q-volcan-autel, option A by default: AltarAdvance seconds, behind the setting).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarTest, "HeroesOfLiberty.Volcano.AltarAdvance", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoAltarTest::RunTest(const FString& Parameters)
+{
+	FHOLVolcanoSettings Settings;
+	const HOLVolcano::FCycle Base = HOLVolcano::MakeCycle(4242, 0, 0.f, Settings, 60.f);
+	TestTrue(TEXT("the setting is a positive advance"), Settings.AltarAdvance > 0.f);
+
+	// Held long before the alert: everything comes the setting's seconds sooner, the alert as long as before.
+	const HOLVolcano::FCycle Early = HOLVolcano::AdvanceForAltar(Base, 10.f, Settings);
+	TestEqual(TEXT("the alert comes the advance sooner"), Early.WarningAt, Base.WarningAt - Settings.AltarAdvance);
+	TestEqual(TEXT("... the eruption too"), Early.EruptAt, Base.EruptAt - Settings.AltarAdvance);
+	TestEqual(TEXT("... the alert keeps its length (D380)"), Early.EruptAt - Early.WarningAt, Base.EruptAt - Base.WarningAt);
+	TestEqual(TEXT("... the cooling and the re-arming follow"), Early.ReArmAt - Base.ReArmAt, -Settings.AltarAdvance);
+
+	// Held just before the alert: never earlier than the instant the altar was taken.
+	const float Late = Base.WarningAt - 30.f;
+	const HOLVolcano::FCycle Capped = HOLVolcano::AdvanceForAltar(Base, Late, Settings);
+	TestEqual(TEXT("held 30 s before the alert: the alert comes at once, not before"), Capped.WarningAt, Late);
+
+	// Held once the alert has begun: nothing changes.
+	const HOLVolcano::FCycle After = HOLVolcano::AdvanceForAltar(Base, Base.WarningAt + 1.f, Settings);
+	TestEqual(TEXT("held during the alert: unchanged"), After.WarningAt, Base.WarningAt);
+
+	// The setting rules: no advance, no change; a bigger one moves more.
+	FHOLVolcanoSettings None = Settings;
+	None.AltarAdvance = 0.f;
+	TestEqual(TEXT("no advance: unchanged"), HOLVolcano::AdvanceForAltar(Base, 10.f, None).WarningAt, Base.WarningAt);
+	FHOLVolcanoSettings Big = Settings;
+	Big.AltarAdvance = 1.0e6f;
+	TestEqual(TEXT("an enormous advance is held at the instant of capture (option B's effect)"), HOLVolcano::AdvanceForAltar(Base, 10.f, Big).WarningAt, 10.f);
 	return true;
 }
 

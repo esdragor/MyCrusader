@@ -7,6 +7,17 @@
 #include "HOLMinimapView.generated.h"
 
 class UTexture2D;
+struct FHOLSource;
+
+namespace HOLMinimapTerrain
+{
+	/**
+	 * What the sources add to the terrain layer, in one number: which are standing, and where. It changes when a source is used up,
+	 * added or elsewhere, not when one is only gathered from (an amount going down changes nothing of the picture). With the fog's
+	 * version and the frame, it tells UHOLMinimapView::RefreshTerrain whether the 480 x 480 layer is to be made again.
+	 */
+	HEROESOFLIBERTYUI_API uint32 GetSourcesSignature(TConstArrayView<FHOLSource> Sources);
+}
 
 /** One of the things the minimap shows, read from the game (UHOLMinimapView::GatherEntities); the script turns it into a mark. */
 USTRUCT(BlueprintType)
@@ -92,7 +103,7 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	FVector2D GetCameraFocus() const;
 
-	/** The terrain layer made again from the fog render's picture (the argument is the local slot, not used: all in sight without a fog). 480 x 480 texels (the fog's cells blurred once, then blended between their centres: soft edges), twice a second. */
+	/** The terrain layer made again from the fog render's picture (the argument is the local slot, not used: all in sight without a fog). 480 x 480 texels (the fog's cells blurred once, then blended between their centres: soft edges), twice a second, and only if the fog's picture, the frame or the standing sources changed since the last time (P2). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	void RefreshTerrain(int32 ViewerSlot);
 
@@ -181,4 +192,23 @@ private:
 	FVector2D FrameMax = FVector2D(44000.0, 44000.0);
 	int32 NumSourcesDrawn = 0;
 	int32 NumInSight = 0;
+
+	/** What the terrain layer was last made from (P2): the fog picture's version, the frame, the standing sources. */
+	struct FTerrainKey
+	{
+		uint32 FogVersion = 0;
+		bool bFogActive = false;
+		FVector2D Min = FVector2D::ZeroVector;
+		FVector2D Max = FVector2D::ZeroVector;
+		uint32 Sources = 0;
+
+		bool operator==(const FTerrainKey& Other) const
+		{
+			return FogVersion == Other.FogVersion && bFogActive == Other.bFogActive && Min == Other.Min && Max == Other.Max && Sources == Other.Sources;
+		}
+	};
+	FTerrainKey BuiltKey;
+	bool bTerrainBuilt = false;
+	/** Times the layer was made (not counting the readings that found it up to date). */
+	int32 TerrainBuilds = 0;
 };

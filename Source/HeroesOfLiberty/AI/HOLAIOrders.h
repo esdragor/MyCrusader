@@ -143,6 +143,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIDuelAnswer(const UObject* WorldContextObject, int32 PlayerIndex, bool bAccept);
 
+	/**
+	 * V11 (volcano, D427): PlayerIndex's units caught in the corridor of a flow in its alert or its eruption (LavaHalfWidth plus their radius
+	 * from its line, UHOLVolcanoSubsystem::GetEvacuations) walk out of it, applied at the next step. How many were ordered; 0 without the Catastrophe option.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
+	static int32 IssueAIVolcanoEvacuation(const UObject* WorldContextObject, int32 PlayerIndex);
+
 	/** PlayerIndex's units attack-move to Target (they take on the enemies met on the way), applied at the next step. Whether the order entered the queue. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool IssueAIAttackMoveOrder(const UObject* WorldContextObject, int32 PlayerIndex, const TArray<int32>& UnitIds, FVector Target, bool bQueue = false);

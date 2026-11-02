@@ -48,6 +48,12 @@ namespace HOLSiege
 	/** The engine a unit type is, by the name of its row (Ram, Mangonel, Trebuchet, Cannon); false for any other type (S3). */
 	HEROESOFLIBERTY_API bool FindEngine(FName TypeName, EEngine& OutEngine);
 
+	/** S5: the technology statistic that raises this type's health (Ram: RamHealth), NAME_None for any other type. */
+	HEROESOFLIBERTY_API FName GetHealthStat(FName TypeName);
+
+	/** S5: the technology statistic that raises this type's damage (Mangonel: MangonelDamage), NAME_None for any other type. */
+	HEROESOFLIBERTY_API FName GetDamageStat(FName TypeName);
+
 	/** The words of a block in the log of the production ("tier too low"), the same family as HOLTechnology::DescribeBlock (S3). */
 	HEROESOFLIBERTY_API const TCHAR* DescribeBlock(EBlock Block);
 }

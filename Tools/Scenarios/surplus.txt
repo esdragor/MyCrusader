@@ -5,7 +5,6 @@
 # 3) 8 autres de tes Hommes d'armes naissent à l'ouest de la scène (-16000, 4500), sont sélectionnés au cadre, puis clic droit sur le héros ennemi.
 # Comparaison : hol.Combat.SurplusReassign 1 (défaut, correctif) ou 0 (ancien comportement : le surplus attend derrière l'anneau) ; puis hol.Scenario surplus rejoue.
 waitlog Starting hero of slot 0 spawned at
-hol.Sanity.Watch 1
 waitlog Starting hero of slot 1 spawned at
 hol.Cheat.Resources 1000
 hol.Camera.Focus -14500 3000

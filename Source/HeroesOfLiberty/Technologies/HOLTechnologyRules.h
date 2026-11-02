@@ -42,6 +42,8 @@ namespace HOLTechnology
 	enum class EBlock : uint8
 	{
 		None,
+		/** No code applies its effect yet (the table's Implemented is false): greyed with "Soon" (T-Q11 = B, D601), before every other reason. */
+		NotImplemented,
 		/** Researched already (a technology is researched once). */
 		AlreadyResearched,
 		/** Already in a production queue of its owner (one research of it at a time). */
@@ -78,7 +80,7 @@ namespace HOLTechnology
 	/** The words of a block for the logs ("tier too low", "requires missing"...), the same as the server's. */
 	HEROESOFLIBERTY_API const TCHAR* DescribeBlock(EBlock Block);
 
-	/** True when a technology can be researched in the game as it is: its building is a type that exists (T-Q4 = A). */
+	/** True when a technology can be researched in the game as it is: its building is a type that exists (T-Q4 = A) and some code applies its effect (Implemented, T-Q11 = B). */
 	HEROESOFLIBERTY_API bool IsPlayable(const FHOLTechnologyRow& Row, TFunctionRef<bool(FName)> BuildingTypeExists);
 
 	/** What a research takes as an item of the production queue: its cost, its time in steps (at least 1), no population place. */

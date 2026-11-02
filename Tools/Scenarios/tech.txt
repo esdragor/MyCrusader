@@ -2,7 +2,6 @@
 # Plain, toi (slot 0) contre une IA (slot 1), hero_xp.json : un héros niveau 1. La Charrue se cherche à la Ferme (D583). Ce scénario est aussi le test de la chaîne : chaque waitlog doit arriver.
 # Recherche de 2 s au lieu de 30 s (hol.Prod.BuildTime 2) ; hol.Hero.SetXP 0 600 = niveau 3 = palier 1, 3300 = niveau 6 = palier 2.
 waitlog Starting hero of slot 0 spawned at
-hol.Sanity.Watch 1
 hol.Cheat.Resources 5000
 hol.Prod.BuildTime 2
 hol.Camera.FocusNear 2500 2500

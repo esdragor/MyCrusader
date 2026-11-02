@@ -88,6 +88,21 @@ namespace
 	}
 }
 
+uint32 HOLMinimapTerrain::GetSourcesSignature(const TConstArrayView<FHOLSource> Sources)
+{
+	uint32 Signature = 0;
+	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	{
+		if (Sources[Index].IsStanding())
+		{
+			const FVector& Place = Sources[Index].Location;
+			Signature = HashCombineFast(Signature, GetTypeHash(Index));
+			Signature = HashCombineFast(Signature, GetTypeHash(FIntPoint(FMath::RoundToInt(Place.X), FMath::RoundToInt(Place.Y))));
+		}
+	}
+	return Signature;
+}
+
 /** The Slate side: paints what the view holds, takes the mouse. */
 class SHOLMinimap : public SLeafWidget
 {
@@ -371,6 +386,22 @@ void UHOLMinimapView::RefreshTerrain(const int32 /*ViewerSlot: the fog render kn
 	{
 		return;
 	}
+	// P2: 230 400 texels read, the fog blurred first, the picture sent to the card: not again when nothing it shows has changed
+	// (the fog's picture has a version, the sources a signature, the frame is two corners).
+	const UHOLSourceSubsystem* SourceRegistry = World->GetSubsystem<UHOLSourceSubsystem>();
+	FTerrainKey Key;
+	Key.FogVersion = Fog ? Fog->GetVersion() : 0;
+	Key.bFogActive = Fog && Fog->IsFogActive();
+	Key.Min = FrameMin;
+	Key.Max = FrameMax;
+	Key.Sources = SourceRegistry ? HOLMinimapTerrain::GetSourcesSignature(SourceRegistry->GetSources()) : 0;
+	if (bTerrainBuilt && Key == BuiltKey)
+	{
+		return;
+	}
+	bTerrainBuilt = true;
+	BuiltKey = Key;
+	++TerrainBuilds;
 	// The same line as HOLMinimap::ToWorld (Script/UI/HOLMinimapRules.as): screen right is world +Y, screen up is world +X.
 	auto TexelOf = [&](const double WorldX, const double WorldY, int32& OutX, int32& OutY)
 	{
@@ -404,7 +435,7 @@ void UHOLMinimapView::RefreshTerrain(const int32 /*ViewerSlot: the fog render kn
 	}
 	// The sources the camp has explored: a round dot each (about 3 texels across), in their resource's colour, its edge blended into the ground.
 	NumSourcesDrawn = 0;
-	if (const UHOLSourceSubsystem* Sources = World->GetSubsystem<UHOLSourceSubsystem>())
+	if (const UHOLSourceSubsystem* Sources = SourceRegistry)
 	{
 		constexpr float DotRadius = 3.2f;
 		for (const FHOLSource& Source : Sources->GetSources())
@@ -488,7 +519,7 @@ void UHOLMinimapView::GatherEntities(const int32 ViewerSlot, TArray<FHOLMinimapE
 		Entity.Color = ColorOf(View.OwnerPlayer);
 		Entity.Health = View.Health;
 	}
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		const AHOLBuilding* Building = *It;
 		const int32 OwnerSlot = Building->GetOwnerPlayer();
@@ -615,8 +646,8 @@ FString UHOLMinimapView::Describe() const
 		? FString::Printf(TEXT(", ring age %.2f s diameter %.1f px"), GetAlertAge(0),
 			AlertDiameter(GetAlertAge(0), FMath::Clamp(CVarMinimapAlertShrink.GetValueOnGameThread(), 0.2f, 10.f), FMath::Clamp(CVarMinimapAlertSize.GetValueOnGameThread(), 6.f, 60.f)))
 		: FString();
-	return FString::Printf(TEXT("minimap: %.0f px, %d marks, %d alerts lit, camera frame %d points, terrain %d x %d (sources %d, in sight %d texels)%s"),
-		Side, Marks.Num(), Alerts.Num(), CameraFrame.Num(), Terrain ? TerrainSide : 0, Terrain ? TerrainSide : 0, NumSourcesDrawn, NumInSight, *Ring);
+	return FString::Printf(TEXT("minimap: %.0f px, %d marks, %d alerts lit, camera frame %d points, terrain %d x %d (sources %d, in sight %d texels, made %d times)%s"),
+		Side, Marks.Num(), Alerts.Num(), CameraFrame.Num(), Terrain ? TerrainSide : 0, Terrain ? TerrainSide : 0, NumSourcesDrawn, NumInSight, TerrainBuilds, *Ring);
 }
 
 void UHOLMinimapView::BroadcastPressed(const FVector2D& Position, const bool bRight, const bool bDrag)

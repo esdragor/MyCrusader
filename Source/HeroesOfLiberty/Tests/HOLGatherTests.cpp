@@ -1100,4 +1100,73 @@ bool FHOLGatherFarmFieldTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D602: the farm fields within 30 m of a finished Sanctuary of the Dawn of their owner give 15 % more food (the pure rule, then
+// the real chain: a Peasant at a field in the zone, one at a field out of it, one at a field by a rival's Sanctuary).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherSanctuaryTest, "HeroesOfLiberty.Gather.Sanctuary", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherSanctuaryTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GatherFarm;
+	// The rule: the zone's edge, nothing without a Sanctuary, no stacking.
+	TArray<FVector2D> Sanctuaries;
+	TestEqual(TEXT("no Sanctuary: no bonus"), HOLGather::GetSanctuaryFarmPercent(Sanctuaries, FVector2D(100.0, 0.0)), 0);
+	Sanctuaries.Add(FVector2D(0.0, 0.0));
+	TestEqual(TEXT("a field 29 m away"), HOLGather::GetSanctuaryFarmPercent(Sanctuaries, FVector2D(2900.0, 0.0)), 15);
+	TestEqual(TEXT("a field at 30 m"), HOLGather::GetSanctuaryFarmPercent(Sanctuaries, FVector2D(3000.0, 0.0)), 15);
+	TestEqual(TEXT("a field 31 m away"), HOLGather::GetSanctuaryFarmPercent(Sanctuaries, FVector2D(3100.0, 0.0)), 0);
+	Sanctuaries.Add(FVector2D(1000.0, 0.0));
+	TestEqual(TEXT("two Sanctuaries do not stack"), HOLGather::GetSanctuaryFarmPercent(Sanctuaries, FVector2D(500.0, 0.0)), 15);
+
+	FFarmWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	UWorld& World = *Test.World;
+	UHOLSourceSubsystem& Registry = *Test.Sources;
+	const int32 Near = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, 0.0, 0.0), INDEX_NONE, 0);
+	const int32 Far = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, 8000.0, 0.0), INDEX_NONE, 0);
+	const int32 Rival = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, -8000.0, 0.0), INDEX_NONE, 0);
+	AHOLBuilding* Own = World.SpawnActor<AHOLBuilding>(FVector(1000.0, 2500.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* Enemy = World.SpawnActor<AHOLBuilding>(FVector(1000.0, -6000.0, 0.0), FRotator::ZeroRotator);
+	if (!TestTrue(TEXT("three fields and two Sanctuaries"), Near != INDEX_NONE && Far != INDEX_NONE && Rival != INDEX_NONE && Own && Enemy))
+	{
+		return false;
+	}
+	Own->Setup(HOLBuildingTypeNames::Sanctuary, 0, 0);
+	Enemy->Setup(HOLBuildingTypeNames::Sanctuary, 1, 1);
+	const TArray<FHOLSource>& Sources = Registry.GetSources();
+	const FHOLSourceTypeRow* FieldRow = Registry.GetType(Sources[Near].TypeIndex);
+	const uint32 InZone = Test.PlacePeasant(0);
+	const uint32 OutOfZone = Test.PlacePeasant(0);
+	const uint32 ByRival = Test.PlacePeasant(0);
+	const FHOLUnitTypeConstants* Constants = Test.GetConstants(InZone);
+	if (!TestNotNull(TEXT("the field's row"), FieldRow) || !TestTrue(TEXT("three Peasants born"), InZone && OutOfZone && ByRival) || !TestNotNull(TEXT("constants"), Constants))
+	{
+		return false;
+	}
+	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	const float FieldRate = FieldRow->GatherRate(Constants->GatherRates[EHOLResource::Food]);
+	const double BodyRadius = Constants->Radius;
+	const auto Touching = [&Sources, BodyRadius](const int32 SourceIndex)
+	{
+		return FVector2D(Sources[SourceIndex].Location) + FVector2D(-1.0, 0.0) * (Sources[SourceIndex].Radius + BodyRadius + 10.0);
+	};
+	Test.SetDown(InZone, Touching(Near));
+	Test.SetDown(OutOfZone, Touching(Far));
+	Test.SetDown(ByRival, Touching(Rival));
+	TestTrue(TEXT("order to the field in the zone"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ InZone }), Near));
+	TestTrue(TEXT("order to the field out of the zone"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ OutOfZone }), Far));
+	TestTrue(TEXT("order to the field by the rival's Sanctuary"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ ByRival }), Rival));
+	for (int32 Step = 0; Step < Steps; ++Step)
+	{
+		Test.RunStep();
+	}
+	const double Seconds = Steps * StepSeconds;
+	const double Slack = FieldRate * StepSeconds * 1.15 + 1e-3;
+	TestEqual(TEXT("in the zone of its Sanctuary: the field's rate + 15 %"), Test.GetFoodGathered(InZone), FieldRate * 1.15 * Seconds, Slack);
+	TestEqual(TEXT("out of the zone: the field's rate"), Test.GetFoodGathered(OutOfZone), FieldRate * Seconds, Slack);
+	TestEqual(TEXT("by a rival's Sanctuary: the field's rate"), Test.GetFoodGathered(ByRival), FieldRate * Seconds, Slack);
+	return true;
+}
+
 #endif

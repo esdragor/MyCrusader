@@ -1,12 +1,12 @@
 # IA4 D329/D579 (essai de 3 min) : IA Évolutive : Facile, puis Normale (600 s), puis Difficile (1500 s). UNE ENTRÉE PAR STADE.
 # Plain, toi (slot 0) contre une IA Évolutive (slot 1). Le scénario pose d'office chez elle une Caserne, une Archerie et 6 Lanciers.
 # Stade 1 (Facile) : à ton Entrée, 8 Hommes d'armes arrivent devant son forum : « decision fight » (elle donne toute son armée).
-# Stade 2 : à ton Entrée, la partie avance de 10 min en accéléré (slomo 40), l'IA passe Normale (« evolving, plays Normal now »), nouvelle attaque : elle feinte.
-# Stade 3 : à ton Entrée, la partie avance jusqu'à 25 min, l'IA passe Difficile (« plays Hard now »), nouvelle attaque : elle évalue sa perte.
-# Limite : pendant l'accéléré l'IA joue sa vraie partie (elle fait des soldats avec sa Caserne, peut lancer une vague) : les décisions peuvent varier d'un essai à l'autre ; le niveau, lui, est lu au journal.
+# Stade 2 : à ton Entrée, la commande fait passer l'IA Normale (« evolving, plays Normal now »), nouvelle attaque : elle feinte.
+# Stade 3 : à ton Entrée, la commande fait passer l'IA Difficile (« plays Hard now »), nouvelle attaque : elle évalue sa perte.
+# A CHAQUE Entree (stades 2 et 3) la carte est rouverte : meme etat de depart (Caserne, Archerie, 6 Lanciers, forum intact), rien du stade precedent ne reste, meme si tu as tout rase. Le stade change par hol.AI.SetEvolveTimes (EV-Q1 = B, D620), sans accéléré : pas de partie qui se joue pendant ce temps ; la ligne « IA 2 : Évolutive, joue ... » en haut à gauche le montre à l'écran.
 waitlog AI brain HOLAIBrain awake
-hol.Sanity.Watch 1
 waitlog AI slot 1 step
+hol.AI.SetEvolveTimes 100000 200000
 hol.Cheat.Resources 1000
 hol.Cheat.Population 200
 hol.Cheat.SpawnBuilding Barracks 1 2800 2600 enemy
@@ -19,6 +19,8 @@ hol.Units.SpawnHere 6 Spearman 1 500
 waitunits 14
 hol.Camera.FocusNear 1800 0 enemy
 frames 30
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_base
 hol.Test.Sanity
 note 1. « IA Évolutive 2 » commence FACILE : Caserne, Archerie, 6 Lanciers. Trois stades, une Entrée chacun.
@@ -32,35 +34,84 @@ waitlog level Easy
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_easy
-note 3. Stade 2 : Entrée, la partie avance de 10 min en accéléré, l'IA devient NORMALE, puis 35 Hommes d'armes l'attaquent : elle ne charge plus quand elle sait perdre (elle feinte). Pendant l'accéléré l'IA joue sa vraie partie : elle peut détruire TON forum (c'est normal, ne t'en occupe pas).
-waitkey Entrée : stade 2 NORMAL : avance la partie de 10 min et attaque
-hol.Units.Move -12000 0 0
-console slomo 40
+note 3. Stade 2 : Entrée, la commande hol.AI.SetEvolveTimes fait passer l'IA à NORMALE (la ligne en haut à gauche passe à « joue Normal »), puis 35 Hommes d'armes l'attaquent : elle ne charge plus quand elle sait perdre (elle feinte).
+waitkey Entrée : stade 2 NORMAL : l'IA passe Normale et j'attaque
+# Etat propre et identique (retour E4) : la carte est rouverte, tout ce qui restait du stade precedent disparait (troupes des deux camps, batiments rases, vies du forum)
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.AI.SetEvolveTimes 1 100000
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Cheat.SpawnBuilding Barracks 1 2800 2600 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding ArcheryRange 1 2800 -2600 enemy
+waitlog Cheat: spawned ArcheryRange of slot 1
+hol.Camera.FocusNear 2800 0 enemy
+frames 2
+hol.Units.SpawnHere 6 Spearman 1 500
+waitunits 14
+hol.Units.Report 0
+waitlog Units report
+hol.Camera.FocusNear 1800 0 enemy
+frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture ai_evolving_normal_start
 waitlog plays Normal now
-console slomo 1
 hol.Camera.FocusNear 1500 0 enemy
 frames 2
 hol.Units.SpawnHere 35 ManAtArms 0 400
 hol.Camera.FocusNear 800 0 enemy
-waitlog level Normal
+# (la decision de l'IA Normale est ecrite au journal quand le forum est attaque, parfois avant l'arrivee des 35 : on ne l'attend pas, la ligne HUD montre le stade)
+wait 4
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_normal
-note 4. Stade 3 : Entrée, la partie avance jusqu'à 25 min, l'IA devient DIFFICILE, puis nouvelle attaque : elle évalue sa perte et peut laisser la vie pour garder son armée.
-waitkey Entrée : stade 3 DIFFICILE : avance la partie jusqu'à 25 min et attaque
-hol.Units.Move -12000 0 0
-console slomo 40
+note 4. Stade 3 : Entrée, la commande fait passer l'IA à DIFFICILE (la ligne passe à « joue Difficile »), puis nouvelle attaque : elle évalue sa perte et peut laisser la vie pour garder son armée.
+waitkey Entrée : stade 3 DIFFICILE : l'IA passe Difficile et j'attaque
+# Etat propre et identique (retour E4) : la carte est rouverte, tout ce qui restait du stade precedent disparait (troupes des deux camps, batiments rases, vies du forum)
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.AI.SetEvolveTimes 1 2
+hol.Cheat.Resources 1000
+hol.Cheat.Population 200
+hol.Cheat.SpawnBuilding Barracks 1 2800 2600 enemy
+waitlog Cheat: spawned Barracks of slot 1
+hol.Cheat.SpawnBuilding ArcheryRange 1 2800 -2600 enemy
+waitlog Cheat: spawned ArcheryRange of slot 1
+hol.Camera.FocusNear 2800 0 enemy
+frames 2
+hol.Units.SpawnHere 6 Spearman 1 500
+waitunits 14
+hol.Units.Report 0
+waitlog Units report
+hol.Camera.FocusNear 1800 0 enemy
+frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture ai_evolving_hard_start
 waitlog plays Hard now
-console slomo 1
 hol.Camera.FocusNear 1500 0 enemy
 frames 2
 hol.Units.SpawnHere 20 ManAtArms 0 400
 hol.Camera.FocusNear 800 0 enemy
-waitlog level Hard
+wait 6
 wait 4
 hol.Camera.FocusNear 800 0 enemy
 frames 3
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture ai_evolving_hard
-note 5. Journal (Saved/Logs) : « evolving, plays Easy / Normal / Hard now » et « forum attacked ... level ... decision ... ».
+note 5. (Stade 3 : la décision de l'IA Difficile n'est pas attendue : le forum peut n'avoir plus de vie à perdre ; la ligne HUD montre le stade.) Journal (Saved/Logs) : « evolving, plays Easy / Normal / Hard now » et « forum attacked ... level ... decision ... ».

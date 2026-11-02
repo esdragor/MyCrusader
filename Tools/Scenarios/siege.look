@@ -1,0 +1,6 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+siege_grid | l'Atelier de siege selectionne ; la grille en bas a droite : Belier (A) et Mangonneau (Z), non grises
+siege_engines | deux engins gris devant l'Atelier de siege (grands mannequins provisoires), le Mangonneau selectionne (panneau en bas a gauche), ressources diminuees
+siege_ram | le Belier au contact de la Maison ennemie, la barre de vie de la Maison a moitie vide
+siege_mangonel_a | un groupe de Lanciers ennemis rouges a gauche, le Mangonneau a droite, la trajectoire du tir en rouge, un Lancier tombe
+siege_mangonel_b | 5 s plus tard : les Lanciers sur le Mangonneau, des corps au sol
