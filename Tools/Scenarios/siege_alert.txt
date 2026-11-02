@@ -19,3 +19,5 @@ wait 6
 hol.HUD.Report
 waitlog alerts 1
 note 2. Le Belier perd des PV : un cercle rouge sur la mini-carte a sa place.
+capture siege_alert
+hol.Test.Sanity
