@@ -1,0 +1,9 @@
+# Regression (hol.Test.SanityMotion, neutrals trial): a group of 6 Men-at-arms marching in files must not tremble. Two members of the
+# honeycomb sit 131 cm apart, under the 132 cm of the avoidance's margin: the one sliding to its file turned aside every other step
+# (7 cm to one side, 24 rad of to-and-fro in 8 s). Red with hol.Units.AvoidMarchMembersBare 0, green by default.
+hol.Units.Spawn 6 -4000 0 0 ManAtArms 200
+waitlog Spawn: 6 ManAtArms
+frames 40
+hol.Units.Move 0 6700 0
+wait 14
+hol.Test.Sanity

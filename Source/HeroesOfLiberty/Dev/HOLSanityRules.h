@@ -92,8 +92,13 @@ namespace HOLSanity
 		float ShakePerSecond = 3.f;
 		/** ... on a unit whose net move over the window is under this share of the path it walked. */
 		float ShakeNetShare = 0.5f;
-		/** A trembling walk: a unit that makes headway (net over half its path) yet turns more than this (radians a second) summed. */
-		float JitterTurnPerSecond = 2.f;
+		/**
+		 * A trembling walk: a unit that makes headway (net over half its path) yet whose heading zigzags: the turns that undo the turn just
+		 * before them (a turn to the left right after a turn to the right), summed, more than this many radians a second. A curve, a pivot
+		 * on the spot, a walk that bends round bodies all turn the same way and do not count: only the to-and-fro does (a wobble of +-12 cm
+		 * a step at 35 cm ahead is 15 rad/s; a charge through a crowd measured under 1).
+		 */
+		float JitterZigzagPerSecond = 3.f;
 	};
 
 	struct FResult
@@ -103,6 +108,10 @@ namespace HOLSanity
 		float Path = 0.f;
 		float Net = 0.f;
 		float Turn = 0.f;
+		/** The turns added with their signs (left +, right -): what a unit going round something piles up; to-and-fro jostling cancels out of it. */
+		float SignedTurn = 0.f;
+		/** The part of Turn made of turns against the one before (to and fro), see FSettings::JitterZigzagPerSecond. */
+		float Zigzag = 0.f;
 		int32 Reversals = 0;
 		float OrderedShare = 0.f;
 	};
@@ -116,6 +125,7 @@ namespace HOLSanity
 			return Result;
 		}
 		FVector2D PreviousMove = FVector2D::ZeroVector;
+		float PreviousTurn = 0.f;
 		int32 Ordered = 0;
 		const auto IsFlanking = [&Trace](const int32 Index) { return Trace.Flanking.IsValidIndex(Index) && Trace.Flanking[Index] != 0; };
 		for (int32 Index = 1; Index < Count; ++Index)
@@ -128,6 +138,7 @@ namespace HOLSanity
 			{
 				// A rear flank in progress: its turns and reversals are the manoeuvre, not a fault (Q-flank-demi-tour = A).
 				PreviousMove = FVector2D::ZeroVector;
+				PreviousTurn = 0.f;
 				continue;
 			}
 			if (Length < Settings.MinMove)
@@ -137,18 +148,27 @@ namespace HOLSanity
 			if (!PreviousMove.IsZero())
 			{
 				const float Cos = FVector2D::DotProduct(Move, PreviousMove) / (Length * PreviousMove.Size());
-				Result.Turn += FMath::Acos(FMath::Clamp(Cos, -1.f, 1.f));
+				const float Angle = FMath::Acos(FMath::Clamp(Cos, -1.f, 1.f));
+				const float Signed = FVector2D::CrossProduct(PreviousMove, Move) < 0.f ? -Angle : Angle;
+				Result.Turn += Angle;
+				Result.SignedTurn += Signed;
 				Result.Reversals += Cos < -0.5f ? 1 : 0;
+				if (Signed * PreviousTurn < 0.f)
+				{
+					Result.Zigzag += FMath::Min(FMath::Abs(Signed), FMath::Abs(PreviousTurn));
+				}
+				PreviousTurn = Signed;
 			}
 			PreviousMove = Move;
 		}
 		Result.Net = static_cast<float>(FVector2D::Distance(Trace.Places[0], Trace.Places.Last()));
 		Result.OrderedShare = static_cast<float>(Ordered) / static_cast<float>(Count - 1);
 		const float Seconds = static_cast<float>(Count - 1) * StepSeconds;
-		Result.bSpin = Result.OrderedShare >= 0.9f && Result.Turn >= Settings.SpinTurn && Result.Net <= Settings.SpinNetRadii * Trace.Radius;
+		Result.bSpin = Result.OrderedShare >= 0.9f && FMath::Abs(Result.SignedTurn) >= Settings.SpinTurn && Result.Net <= Settings.SpinNetRadii * Trace.Radius;
 		Result.bShake = Seconds > 0.f && static_cast<float>(Result.Reversals) / Seconds >= Settings.ShakePerSecond && Result.Net <= Settings.ShakeNetShare * Result.Path;
 		// A spin met in a part of the window only (a unit that walked up to a fight, then circled it): any 2 s of it going round
-		// (a full turn of heading, under 30% of the path made good) on an order counts.
+		// (a full turn of heading, in one direction, under 30% of the path made good) on an order counts. A unit shoved to and fro by its
+		// neighbours turns as much but in both directions: that is a jostle (a tremor is judged below), not a unit going round.
 		const int32 Window = FMath::Max(3, FMath::RoundToInt32(2.f / FMath::Max(StepSeconds, 0.001f)));
 		for (int32 Begin = 0; !Result.bSpin && Begin + Window < Count; Begin += Window / 4 + 1)
 		{
@@ -169,16 +189,17 @@ namespace HOLSanity
 				}
 				if (!Before.IsZero())
 				{
-					WindowTurn += FMath::Acos(FMath::Clamp(FVector2D::DotProduct(Move, Before) / (Length * Before.Size()), -1.f, 1.f));
+					const float Angle = FMath::Acos(FMath::Clamp(FVector2D::DotProduct(Move, Before) / (Length * Before.Size()), -1.f, 1.f));
+					WindowTurn += FVector2D::CrossProduct(Before, Move) < 0.f ? -Angle : Angle;
 				}
 				Before = Move;
 			}
 			const float WindowNet = static_cast<float>(FVector2D::Distance(Trace.Places[Begin], Trace.Places[Begin + Window]));
-			Result.bSpin = !bFlankInWindow && WindowOrdered >= 0.9f * Window && WindowTurn >= 2.f * UE_PI && WindowPath > 6.f * Trace.Radius && WindowNet <= 0.3f * WindowPath;
+			Result.bSpin = !bFlankInWindow && WindowOrdered >= 0.9f * Window && FMath::Abs(WindowTurn) >= 2.f * UE_PI && WindowPath > 6.f * Trace.Radius && WindowNet <= 0.3f * WindowPath;
 		}
-		// A walk with a heading that wobbles at each step (the units round the hero in the duel_challenge trial: +-12 cm sideways a step
+		// A walk with a heading that wobbles at each step, to and fro (the units round the hero in the duel_challenge trial: +-12 cm sideways a step
 		// while advancing 35): headway made, but a turn of several radians a second, which a straight or gently curved walk never has.
-		Result.bShake |= Seconds > 0.f && Result.Path > 10.f * Trace.Radius && Result.Net > Settings.ShakeNetShare * Result.Path && Result.Turn / Seconds >= Settings.JitterTurnPerSecond;
+		Result.bShake |= Seconds > 0.f && Result.Path > 10.f * Trace.Radius && Result.Net > Settings.ShakeNetShare * Result.Path && Result.Zigzag / Seconds >= Settings.JitterZigzagPerSecond;
 		return Result;
 	}
 }

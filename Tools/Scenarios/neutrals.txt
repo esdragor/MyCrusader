@@ -15,7 +15,6 @@ hol.Camp.Report
 waitlog Camp 0 at (0, -9000): guarding, members 3 of 3, hits taken 0
 hol.Camp.Aggro 0
 hol.Camp.Credit 2
-hol.Units.SpeedScale 5
 hol.Camp.Add 0 0 3 Spearman
 waitlog Camp 1: 3 Spearman at
 frames 30
