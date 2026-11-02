@@ -102,7 +102,13 @@ FString TalentTipTexts = "";
 	// The AI level line (EV-Q1 = B, D620; AIInProgress.md), top left under the top bar: one line per AI slot, "IA 3 : Évolutive, joue Normal".
 	// A trial tool: shown only while the times of the Evolving AI are set (hol.AI.SetEvolveTimes), so that a trial reads the stage on the screen.
 	UBorder AILevelPanel;
+	UOverlaySlot AILevelSlot;
 	UCommonTextBlock AILevelText;
+	// Where the line sits: under the cheats' panel (C++ widget, over this one: folded or open, its height changes), never behind it
+	// (the line was hidden by it, ai_level_line scenario and the "HUD overlap" check). Top margin and gap in px at 1080p.
+	const float AILevelTopMin = 72.0;
+	const float AILevelGap = 6.0;
+	float AILevelTop = 72.0;
 	FString AILevelTexts = "";
 
 	// Sizes of the block (px at 1080p, the HUD's scale).
@@ -240,10 +246,10 @@ FString TalentTipTexts = "";
 	{
 		AILevelPanel = MakePanel(n"AILevelPanel");
 		AILevelPanel.SetVisibility(ESlateVisibility::Collapsed);
-		UOverlaySlot PanelSlot = Frame.AddChildToOverlay(AILevelPanel);
-		PanelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
-		PanelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
-		PanelSlot.SetPadding(FMargin(16.0, 72.0, 0.0, 0.0));
+		AILevelSlot = Frame.AddChildToOverlay(AILevelPanel);
+		AILevelSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Left);
+		AILevelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
+		AILevelSlot.SetPadding(FMargin(16.0, AILevelTop, 0.0, 0.0));
 		AILevelText = MakeText(n"AILevelText", UHOLTextStyleHUDLabel);
 		AILevelPanel.SetContent(AILevelText);
 	}
@@ -267,6 +273,13 @@ FString TalentTipTexts = "";
 			}
 		}
 		AILevelTexts = Text.Replace("\n", " / ");
+		// Under the cheats' panel, as tall as it is now (folded or open).
+		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap);
+		if (Math::Abs(Top - AILevelTop) > 0.5)
+		{
+			AILevelTop = Top;
+			AILevelSlot.SetPadding(FMargin(16.0, AILevelTop, 0.0, 0.0));
+		}
 		AILevelPanel.SetVisibility(Text.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 		AILevelText.SetText(FText::FromString(Text));
 	}
