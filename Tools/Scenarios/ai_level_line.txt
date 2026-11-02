@@ -1,0 +1,19 @@
+# Ligne HUD « IA 2 : Évolutive, joue Facile » (EV-Q1 = B, D620) : lisible sous le panneau « Triches », panneau plié puis déplié. Outil 12b : « HUD overlap: none ».
+# Plain, toi (slot 0) contre une IA Évolutive (slot 1). Le scénario pose les temps de l'IA (hol.AI.SetEvolveTimes), ce qui fait apparaître la ligne en haut à gauche.
+# Deux captures : le panneau Triches dans un état, puis dans l'autre (le scénario clique sur « Triches »). Le journal dit « HUD overlap: none » aux deux fois.
+waitlog AI brain HOLAIBrain awake
+hol.Sanity.Watch 1
+waitlog AI slot 1 step
+hol.AI.SetEvolveTimes 300 900
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture ai_level_line_a
+hol.HUD.Click CheatToggle
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture ai_level_line_b
+hol.Test.Sanity
+note 1. En haut à gauche : le panneau « Triches » (plié ou déplié), et SOUS lui la ligne « IA 2 : Évolutive, joue Facile » : lisible, rien ne la cache.
+note 2. Clique sur « Triches » pour le plier / déplier : la ligne suit et reste sous le panneau.

@@ -89,6 +89,9 @@ public:
 	/** J8a.5: the lines of the part in script (UHOLScriptScreen::Describe), "hero: ..." each; "script: none" without it. */
 	FString DescribeScript() const;
 
+	/** Lesson 12b: the script's panels and the cheats' panel that cover each other, as drawn: "none" or "A x B" (hol.HUD.Report's "HUD overlap" line). */
+	FString DescribeOverlaps() const;
+
 	/**
 	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
 	 * follows the bar's scale (GetBottomScale), read anew on every refresh of the block.
