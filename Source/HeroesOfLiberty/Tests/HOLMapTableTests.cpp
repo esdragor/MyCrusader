@@ -39,6 +39,8 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 
 	/** R2 (relays of the maps, D388): the reach of a base a relay's zone must stay out of (Tools/Editor/maps/common.py BASE_REACH), and the gap kept between a relay's zone and a source. */
 	constexpr float RelayBaseReach = 6000.f;
+	/** Q-relais-lieux: the 4 relays every map holds besides one per place. */
+	constexpr int32 FixedRelays = 4;
 
 	/** D493 (GDD 8.1, fairness between places): the sources nearest each place are the same distance away, to within 1 m. */
 	constexpr double FairnessTolerance = 100.0;
@@ -232,9 +234,25 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				TArray<FVector2D> SlotCentres;
 				Starts.GenerateValueArray(SlotCentres);
 				TestEqual(FString::Printf(TEXT("%s: one relay layout (Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, MapInfo.Key, Info.Key), NumRelayLayouts, 1);
-				TestTrue(FString::Printf(TEXT("%s: %d relays (at least one)"), *Name, PlacedRelays.Num()), PlacedRelays.Num() >= 1);
-				TestEqual(FString::Printf(TEXT("%s: relays without a twin after a turn of one place"), *Name),
-					FHOLRelayLayoutRules::CountUnmatchedByTurn(PlacedRelays, 360.0 / Info.NumPlaces), 0);
+				// Q-relais-lieux (the user, 2026-11-02): "4 fixed relays plus one per player": FixedRelays round the middle of the map, and one per place
+				// (the ring, farther out). The ring is symmetric by a turn of one place; the 4 fixed ones cannot be for 6 or 8 places (4 points), so they
+				// are only required not to overlap each other.
+				TestEqual(FString::Printf(TEXT("%s: %d relays (the places plus %d fixed ones)"), *Name, PlacedRelays.Num(), FixedRelays), PlacedRelays.Num(), Info.NumPlaces + FixedRelays);
+				TArray<FHOLPlacedRelay> ByDistance = PlacedRelays;
+				ByDistance.Sort([](const FHOLPlacedRelay& A, const FHOLPlacedRelay& B) { return A.Location.SizeSquared2D() < B.Location.SizeSquared2D(); });
+				const int32 NumFixed = FMath::Min(FixedRelays, ByDistance.Num());
+				TArray<FHOLPlacedRelay> Ring(ByDistance.GetData() + NumFixed, ByDistance.Num() - NumFixed);
+				TestEqual(FString::Printf(TEXT("%s: ring relays without a twin after a turn of one place"), *Name),
+					FHOLRelayLayoutRules::CountUnmatchedByTurn(Ring, 360.0 / Info.NumPlaces), 0);
+				int32 Overlapping = 0;
+				for (int32 A = 0; A < ByDistance.Num(); ++A)
+				{
+					for (int32 B = A + 1; B < ByDistance.Num(); ++B)
+					{
+						Overlapping += FVector2D::Distance(FVector2D(ByDistance[A].Location), FVector2D(ByDistance[B].Location)) < ByDistance[A].Radius + ByDistance[B].Radius ? 1 : 0;
+					}
+				}
+				TestEqual(FString::Printf(TEXT("%s: pairs of relay zones that overlap"), *Name), Overlapping, 0);
 				TestEqual(FString::Printf(TEXT("%s: relays whose zone enters a base's reach"), *Name), FHOLRelayLayoutRules::CountInBases(PlacedRelays, SlotCentres, RelayBaseReach), 0);
 				TestEqual(FString::Printf(TEXT("%s: relays outside the bounds"), *Name), FHOLRelayLayoutRules::CountOutside(PlacedRelays, Half), 0);
 				TestEqual(FString::Printf(TEXT("%s: relays with a bad radius"), *Name), FHOLRelayLayoutRules::CountBadRadius(PlacedRelays), 0);
