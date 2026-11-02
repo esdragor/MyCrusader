@@ -109,6 +109,13 @@ public:
 	float GetCheatPanelBottom() const;
 
 	/**
+	 * Tells the cheats' panel whether the hero's block is shown (the script, as it applies the block's view): in a low window (under 700 px) the
+	 * panel folds when the block opens, as they would cover each other (Q-heros-triches-600 = A). Nothing without the panel.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void SetCheatsHeroBlockShown(bool bShown) const;
+
+	/**
 	 * Which of the script's visible panels (MakePanel) cover each other or the cheats' panel, as drawn: "none" or "A x B; C x cheats" (hol.HUD.Report's
 	 * "HUD overlap" line; preflight.ps1 fails on anything else). Boxes not drawn yet are left out.
 	 */

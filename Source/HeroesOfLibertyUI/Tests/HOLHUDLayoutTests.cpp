@@ -25,4 +25,32 @@ bool FHOLHUDLayoutOverlapTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Q-heros-triches-600 = A: under 700 px of height the cheats' panel starts folded and folds when the hero's block opens (or the window
+// becomes low with the panel open); a click that opens it afterwards stays; a tall window changes nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHUDLayoutLowWindowTest, "HeroesOfLiberty.UI.Layout.CheatsLowWindow",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLHUDLayoutLowWindowTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("600 px is low"), HOLHUDLayout::IsLowWindow(600.f));
+	TestFalse(TEXT("700 px is not"), HOLHUDLayout::IsLowWindow(700.f));
+	TestFalse(TEXT("1080 px is not"), HOLHUDLayout::IsLowWindow(1080.f));
+	TestFalse(TEXT("a size not known yet is not low"), HOLHUDLayout::IsLowWindow(0.f));
+	TestFalse(TEXT("low: starts folded whatever was kept"), HOLHUDLayout::CheatsStartOpen(true, 600.f));
+	TestTrue(TEXT("tall: starts as kept (open)"), HOLHUDLayout::CheatsStartOpen(true, 1080.f));
+	TestFalse(TEXT("tall: starts as kept (folded)"), HOLHUDLayout::CheatsStartOpen(false, 1080.f));
+
+	bool bWasLow = false;
+	bool bWasShown = false;
+	TestFalse(TEXT("low, hero block not there yet: nothing"), HOLHUDLayout::ShouldFoldCheats(600.f, false, true, bWasLow, bWasShown));
+	TestTrue(TEXT("the hero block opens over an open panel: fold"), HOLHUDLayout::ShouldFoldCheats(600.f, true, true, bWasLow, bWasShown));
+	TestFalse(TEXT("once: a click that opens it again stays"), HOLHUDLayout::ShouldFoldCheats(600.f, true, true, bWasLow, bWasShown));
+	TestFalse(TEXT("already folded: nothing"), HOLHUDLayout::ShouldFoldCheats(600.f, true, false, bWasLow, bWasShown));
+
+	bool bTallLow = false;
+	bool bTallShown = false;
+	TestFalse(TEXT("tall window, hero block shown: nothing"), HOLHUDLayout::ShouldFoldCheats(1080.f, true, true, bTallLow, bTallShown));
+	TestTrue(TEXT("the window becomes low with the panel open and the block there: fold"), HOLHUDLayout::ShouldFoldCheats(600.f, true, true, bTallLow, bTallShown));
+	return true;
+}
+
 #endif

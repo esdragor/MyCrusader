@@ -18,4 +18,37 @@ namespace HOLHUDLayout
 		const double Down = FMath::Min(A.Max.Y, B.Max.Y) - FMath::Max(A.Min.Y, B.Min.Y);
 		return Across > Tolerance && Down > Tolerance;
 	}
+
+	/**
+	 * Q-heros-triches-600 = A (2026-11-02): under this window height (px) the cheats' panel (top left, grows downwards) and the hero's block
+	 * (bottom left) cover each other. The cheats' panel is a development tool; nothing moves for the player.
+	 */
+	constexpr float LowWindowHeight = 700.f;
+
+	/** A window lower than LowWindowHeight; a height not known yet (0) is not low. */
+	inline bool IsLowWindow(const float HeightPx)
+	{
+		return HeightPx > 0.f && HeightPx < LowWindowHeight;
+	}
+
+	/** Whether the cheats' panel starts open (the kept choice), which a low window does not: it starts folded, one click opens it. */
+	inline bool CheatsStartOpen(const bool bSavedOpen, const float HeightPx)
+	{
+		return bSavedOpen && !IsLowWindow(HeightPx);
+	}
+
+	/**
+	 * Called each tick: true on the tick the cheats' panel must fold, i.e. it is open and the hero's block has just opened (or the window has just
+	 * become low) in a low window. Edge-triggered, so that a click opening the panel afterwards (the developer's choice) is not undone.
+	 * bWasLow and bWasShown are the previous tick's, updated here.
+	 */
+	inline bool ShouldFoldCheats(const float HeightPx, const bool bHeroBlockShown, const bool bCheatsOpen, bool& bWasLow, bool& bWasShown)
+	{
+		const bool bLow = IsLowWindow(HeightPx);
+		const bool bConflict = bLow && bHeroBlockShown;
+		const bool bWasConflict = bWasLow && bWasShown;
+		bWasLow = bLow;
+		bWasShown = bHeroBlockShown;
+		return bCheatsOpen && bConflict && !bWasConflict;
+	}
 }
