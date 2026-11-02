@@ -2,7 +2,11 @@
 #include "GameFramework/PlayerController.h"
 #include "InputCoreTypes.h"
 
+#include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
+#include "HUD/HOLCheatPanel.h"
+#include "HUD/HOLGameHUD.h"
+#include "HUD/HOLHUDLayoutRules.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
@@ -127,6 +131,62 @@ FLinearColor UHOLScriptScreen::GetMutedColor()
 FLinearColor UHOLScriptScreen::GetMissingColor()
 {
 	return HOLUIStyle::Missing;
+}
+
+float UHOLScriptScreen::GetCheatPanelBottom() const
+{
+	const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer());
+	return CheatPanel ? CheatPanel->GetBottom() : 0.f;
+}
+
+FString UHOLScriptScreen::DescribeOverlaps() const
+{
+	struct FNamedBox
+	{
+		FString Name;
+		FBox2D Box;
+	};
+	TArray<FNamedBox> Boxes;
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
+	{
+		FBox2D CheatBox;
+		if (CheatPanel->GetBox(CheatBox))
+		{
+			Boxes.Add({ TEXT("cheats"), CheatBox });
+		}
+	}
+	if (WidgetTree)
+	{
+		TArray<UWidget*> Widgets;
+		WidgetTree->GetAllWidgets(Widgets);
+		for (UWidget* Widget : Widgets)
+		{
+			const UBorder* Border = Cast<UBorder>(Widget);
+			if (!Border || !Border->IsVisible())
+			{
+				continue;
+			}
+			const FGeometry& Geometry = Border->GetCachedGeometry();
+			if (Geometry.GetAbsoluteSize().IsNearlyZero())
+			{
+				continue;
+			}
+			Boxes.Add({ Border->GetName(), FBox2D(FVector2D(Geometry.GetAbsolutePosition()) / Dpi, FVector2D(Geometry.GetAbsolutePosition() + Geometry.GetAbsoluteSize()) / Dpi) });
+		}
+	}
+	FString Result;
+	for (int32 First = 0; First < Boxes.Num(); ++First)
+	{
+		for (int32 Second = First + 1; Second < Boxes.Num(); ++Second)
+		{
+			if (HOLHUDLayout::Overlaps(Boxes[First].Box, Boxes[Second].Box))
+			{
+				Result += (Result.IsEmpty() ? TEXT("") : TEXT("; ")) + FString::Printf(TEXT("%s x %s"), *Boxes[First].Name, *Boxes[Second].Name);
+			}
+		}
+	}
+	return Result.IsEmpty() ? FString(TEXT("none")) : Result;
 }
 
 FMargin UHOLScriptScreen::GetBottomLeftPlace() const

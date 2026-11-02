@@ -10,6 +10,7 @@
 #   4. every point "to look at" is declared in Tools/Scenarios/<name>.look, one per line: `<capture name> | <what the user must see>`;
 #      the scenario must take it (`capture <capture name>`), the PNG must exist and be new: the script prints its path, THE AGENT
 #      MUST OPEN EACH PNG (Read) and see the point before writing the trial. No .look file = FAIL (a trial with nothing to see is not listed);
+#   4b. HUD panels covering each other (lesson 12b): the log line "HUD overlap: ..." of hol.HUD.Report must say none;
 #   5. the sanity audit of the game itself (units of a neutral camp with a player's colour, a unit that spins without reaching its goal,
 #      units that shake): a scenario may call `hol.Test.Sanity`; any log line "Sanity: FAIL ..." is a FAIL. Without that call: WARN
 #      (the audit is queued in Auto_Journey_File.md, section « Processus »).
@@ -71,6 +72,12 @@ if (Test-Path $Log) {
     # LogAutomationTest errors are written by the engine at frame 0 of every run (also on a clean one): not a verdict on the scenario.
     $Bad = @($Text | Select-String -Pattern 'LogHOL\w*: (Warning|Error)|Angelscript: Error|\]\w+: Error:' | Where-Object { $_.Line -notmatch 'LogHOLTest: Warning: .*waitkey|LogAutomationTest: Error' })
     if ($Bad.Count -gt 0) { Report "FAIL" "$($Bad.Count) warning/error line(s) in the log, first: $($Bad[0].Line.Trim()) (a script error right at start usually means the build of this worktree is stale: Tools\build.ps1 first)" } else { Report "OK" "no warning or error in the log" }
+    # 12b: a panel that hides another. hol.HUD.Report writes "HUD overlap: none" or "HUD overlap: A x B; ..." (the script's panels and the cheats');
+    # any line but "none" is a FAIL. Without a hol.HUD.Report in the scenario: WARN (the check is blind).
+    $Overlaps = @($Text | Select-String -Pattern 'HUD overlap: ')
+    if ($Overlaps.Count -eq 0) { Report "WARN" "no 'HUD overlap:' line: the scenario does not call hol.HUD.Report at the moment of the screenshots (a panel hiding another is not checked)" }
+    elseif (@($Overlaps | Where-Object { $_.Line -notmatch 'HUD overlap: none' }).Count -gt 0) { Report "FAIL" ("HUD panels cover each other: " + (($Overlaps | Where-Object { $_.Line -notmatch 'HUD overlap: none' } | Select-Object -First 2 | ForEach-Object { $_.Line.Trim() }) -join " / ")) }
+    else { Report "OK" "no HUD panel covers another ($($Overlaps.Count) report(s))" }
     $Sanity = @($Text | Select-String -Pattern 'Sanity: ')
     if ($Sanity.Count -eq 0) { Report "WARN" "no 'Sanity:' audit line: the scenario does not call hol.Test.Sanity (neutral colours, spinning, shaking not checked)" }
     elseif (@($Sanity | Where-Object { $_.Line -match 'Sanity: FAIL' }).Count -gt 0) { Report "FAIL" ("sanity audit: " + (($Sanity | Where-Object { $_.Line -match 'Sanity: FAIL' } | Select-Object -First 3 | ForEach-Object { $_.Line.Trim() }) -join " / ")) }
