@@ -23,7 +23,7 @@ public:
 	/** The world's volcano book, or null. */
 	static UHOLVolcanoSubsystem* Find(const UWorld* World) { return World ? World->GetSubsystem<UHOLVolcanoSubsystem>() : nullptr; }
 
-	void SetSites(const TArray<HOLVolcano::FSite>& InSites) { Sites = InSites; }
+	void SetSites(const TArray<HOLVolcano::FSite>& InSites);
 	const TArray<HOLVolcano::FSite>& GetSites() const { return Sites; }
 	FHOLVolcanoSettings& GetMutableSettings() { return Settings; }
 	const FHOLVolcanoSettings& GetSettings() const { return Settings; }
@@ -52,6 +52,24 @@ public:
 	int32 GetNumUnitsBurnt() const { return NumUnitsBurnt; }
 	int32 GetNumBuildingsBurnt() const { return NumBuildingsBurnt; }
 
+	/**
+	 * V8 (D380, D348's rule): the state of a site NOW, wakes included (an altar held began that cycle's alert). A Dormant state without
+	 * Catastrophe, without the unit table or for an index out of the sites. The HUD (V10) and the report read it.
+	 */
+	HOLVolcano::FSiteState GetSiteState(int32 SiteIndex) const;
+
+	/** V8: the altar's count of a site (s held so far), what its zone is doing now, and how many times it has been held (cycles woken). */
+	float GetAltarHeldSeconds(const int32 SiteIndex) const { return AltarHeld.IsValidIndex(SiteIndex) ? AltarHeld[SiteIndex] : 0.f; }
+	HOLVolcano::EAltarHold GetAltarHold(const int32 SiteIndex) const { return AltarHolds.IsValidIndex(SiteIndex) ? AltarHolds[SiteIndex] : HOLVolcano::EAltarHold::Idle; }
+	int32 GetNumWakes(const int32 SiteIndex) const { return Wakes.IsValidIndex(SiteIndex) ? Wakes[SiteIndex].Num() : 0; }
+
+	/**
+	 * V8: one step of the altar of a site at the clock Now (s): counts the camps with a living unit in its zone while the altar is lit, steps the
+	 * count (HOLVolcano::StepAltar) and, when it reaches the hold time, records the wake: the cycle's alert starts at Now. The step calls it for every
+	 * site; a test may call it by hand. Returns true on the step the altar is held.
+	 */
+	bool StepAltarOf(int32 SiteIndex, float Now, float DeltaSeconds);
+
 	/** V11: one unit that must leave a flow's corridor, and where it goes. */
 	struct FEvacuation
 	{
@@ -79,12 +97,20 @@ protected:
 private:
 	void OnStepStarted(int64 StepIndex);
 
+	/** The state of a site at Now with its wakes, from the match's configuration (Dormant when the unit table or the game state is missing). */
+	HOLVolcano::FSiteState StateOf(int32 SiteIndex, float Now) const;
+
 	void SyncObstacle(int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State);
 
 	/** The obstacle of each site, by index (V6). */
 	UPROPERTY(Transient)
 	TMap<int32, TObjectPtr<AHOLLavaObstacle>> Obstacles;
 	TArray<HOLVolcano::FSite> Sites;
+	/** V8, by site: the altars held (cycle -> instant), the count of each altar, what its zone does, the cycle the count belongs to. */
+	TArray<HOLVolcano::FWakes> Wakes;
+	TArray<float> AltarHeld;
+	TArray<HOLVolcano::EAltarHold> AltarHolds;
+	TArray<int32> AltarCycle;
 	FHOLVolcanoSettings Settings;
 	/** Height of the obstacle boxes (cm): well above the ground, as a building's. */
 	float ObstacleHeight = 600.f;

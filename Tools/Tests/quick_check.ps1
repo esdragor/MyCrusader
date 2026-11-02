@@ -7245,6 +7245,38 @@ if ($Parts -contains "aimarket") {
     $AllOk = (Report "aimarket" $Checks) -and $AllOk
 }
 
+# The "aisiege" part (SiegeInProgress.md S6, ~3 min): a Hard and a Normal AI slot on Plain (fixed time step, no window), heroes at tier 2; only the Hard one
+# builds a Siege Workshop (an army of 8, wood for it) and queues engines there; the Normal one never does. Lines "AI slot N step S: build SiegeWorkshop at"
+# and "queue a Ram|Mangonel at the SiegeWorkshop" are read from the server's log.
+if ($Parts -contains "aisiege") {
+    $SiegeLog = Join-Path $TestSaved "Logs\quick_aisiege.log"
+    $SiegeConfig = Join-Path $TestSaved "quick_aisiege.json"
+    $SiegeSequence = Join-Path $TestSaved "quick_aisiege.seq"
+    Remove-Item $SiegeLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $SiegeConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
+    $SiegeLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300")
+    for ($Second = 0; $Second -lt 840; $Second += 10) { $SiegeLines += "wait 10" }
+    $SiegeLines += "quit"
+    $SiegeLines | Set-Content -Encoding utf8 $SiegeSequence
+    $SiegePort = Get-AITestPort
+    $SiegeArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SiegePort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SiegeConfig`" -abslog=`"$SiegeLog`" -ExecCmds=`"hol.Test.Run $SiegeSequence`""
+    $SiegeProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SiegeArguments -PassThru -WindowStyle Hidden
+    $SiegeTimedOut = -not $SiegeProcess.WaitForExit(480000)
+    if ($SiegeTimedOut) { Stop-Process -Id $SiegeProcess.Id -Force -ErrorAction SilentlyContinue }
+    $SiegeText = if (Test-Path $SiegeLog) { Get-Content $SiegeLog } else { @() }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself"] = -not $SiegeTimedOut
+    $Checks["scripts compiled"] = @(Get-ScriptErrors $SiegeLog).Count -eq 0
+    $Checks["sequence ran to its end"] = -not ($SiegeText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
+    $Checks["slot 0 is Hard, slot 1 Normal (levels read from the configuration)"] = [bool]($SiegeText | Select-String -Pattern "AI slot 0 step \d+: level Hard" -Quiet) -and [bool]($SiegeText | Select-String -Pattern "AI slot 1 step \d+: level Normal" -Quiet)
+    $HardWorkshop = @($SiegeText | Select-String -Pattern "AI slot 0 step \d+: build SiegeWorkshop at")
+    $Checks["Hard builds its Siege Workshop ($($HardWorkshop.Count) order)"] = $HardWorkshop.Count -eq 1
+    $Checks["Hard's Workshop is finished (an engine is queued there)"] = [bool]($SiegeText | Select-String -Pattern "AI slot 0 step \d+: queue a (Ram|Mangonel) at the SiegeWorkshop" -Quiet)
+    $Checks["Normal never builds a Siege Workshop"] = -not ($SiegeText | Select-String -Pattern "AI slot 1 step \d+: build SiegeWorkshop" -Quiet)
+    $Checks["Normal never queues an engine"] = -not ($SiegeText | Select-String -Pattern "AI slot 1 step \d+: queue a (Ram|Mangonel)" -Quiet)
+    $AllOk = (Report "aisiege" $Checks) -and $AllOk
+}
+
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
 # "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
 # named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).

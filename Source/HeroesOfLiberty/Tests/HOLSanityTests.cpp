@@ -120,6 +120,46 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	// A walk that trembles: 35 cm ahead a step, sideways +14 then -11 (the units round the hero, measured on the real chain).
 	const HOLSanity::FResult Wobble = HOLSanity::Analyse(Make([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, true), Step);
 	TestTrue(*FString::Printf(TEXT("a walk whose heading wobbles at each step shakes (turn %.1f rad)"), Wobble.Turn), Wobble.bShake);
+	// A charge through a crowd (neutrals trial, measured on the real chain): 35 cm a step, the heading bends one way for a while, then the other
+	// (an S of +-0.8 rad every 24 steps, 2.6 rad/s of turning in all): a weave, never a tremor, since no turn undoes the one just before it.
+	const auto Weave = [](int32 I)
+	{
+		FVector2D Where = FVector2D::ZeroVector;
+		for (int32 K = 0; K < I; ++K)
+		{
+			const double Heading = 0.8 * FMath::Sin(2. * UE_DOUBLE_PI * K / 24.);
+			Where += 35. * FVector2D(FMath::Cos(Heading), FMath::Sin(Heading));
+		}
+		return Where;
+	};
+	const HOLSanity::FResult Slalom = HOLSanity::Analyse(Make(Weave, true), Step);
+	TestTrue(*FString::Printf(TEXT("the weave turns a lot (%.1f rad), as the old rule judged it"), Slalom.Turn), Slalom.Turn / 8.f >= 2.f);
+	TestFalse(*FString::Printf(TEXT("a weave through a crowd does not shake (turn %.1f, to and fro %.1f rad)"), Slalom.Turn, Slalom.Zigzag), Slalom.bShake);
+	TestTrue(*FString::Printf(TEXT("a wobble is mostly to and fro (%.1f of %.1f rad)"), Wobble.Zigzag, Wobble.Turn), Wobble.Zigzag > 0.9f * Wobble.Turn);
+	// A man at arms jostled in the neutrals trial's crowd (steps 180-219 of unit #11, measured on the real chain): it stands, takes 6 steps, stands
+	// 19 steps, then is shoved sideways and back by its neighbours (turns of +60, -22, -12, +150, +26, -32, -18, +25, -26 ... degrees). Its turns
+	// add up to 8 radians, but they cancel one another: it never goes round anything, so it is not a spin.
+	{
+		struct FStep { float Length; float Degrees; };
+		TArray<FStep> Moves;
+		Moves.Init({ 0.f, 0.f }, 4);
+		Moves.Append({ { 10.f, -36.f }, { 21.f, -32.f }, { 24.f, -22.f }, { 31.f, 23.f }, { 35.f, 8.f }, { 35.f, -1.f } });
+		Moves.AddZeroed(19);
+		Moves.Append({ { 10.f, 58.f }, { 19.f, 36.f }, { 25.f, 24.f }, { 29.f, 174.f }, { 13.f, -160.f }, { 19.f, 167.f }, { 27.f, 150.f }, { 14.f, 175.f }, { 21.f, 149.f }, { 29.f, 135.f }, { 34.f, 118.f } });
+		HOLSanity::FTrace Jostled;
+		FVector2D Where = FVector2D::ZeroVector;
+		Jostled.Places.Add(Where);
+		Jostled.Ordered.Add(1);
+		for (const FStep& Move : Moves)
+		{
+			Where += Move.Length * FVector2D(FMath::Cos(FMath::DegreesToRadians(Move.Degrees)), FMath::Sin(FMath::DegreesToRadians(Move.Degrees)));
+			Jostled.Places.Add(Where);
+			Jostled.Ordered.Add(1);
+		}
+		const HOLSanity::FResult Jostle = HOLSanity::Analyse(Jostled, Step);
+		TestTrue(*FString::Printf(TEXT("the jostled unit does turn a lot (%.1f rad), as the old rule judged it"), Jostle.Turn), Jostle.Turn >= 2.f * UE_PI);
+		TestFalse(TEXT("a unit jostled to and fro in a crowd does not spin"), Jostle.bSpin);
+	}
 	// A walker with one real turn at a corner: neither.
 	const HOLSanity::FResult Corner = HOLSanity::Analyse(Make([](int32 I) { return I < 80 ? FVector2D(20. * I, 0.) : FVector2D(1580., 20. * (I - 80)); }, true), Step);
 	TestFalse(TEXT("a walk round a corner does not spin"), Corner.bSpin);
