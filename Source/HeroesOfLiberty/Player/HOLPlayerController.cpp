@@ -1356,6 +1356,28 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/**
+	 * Scripted trial of the tribute's announcement (D372, D372's translations): the local player gets the notice of a tribute from GiverSlot, as the
+	 * receiver does (HOLGameState::NoteTributeReceived: the thread's line, in the current language). Nothing is given: the notice alone.
+	 */
+	FAutoConsoleCommandWithWorldAndArgs TributeNoticeCommand(
+		TEXT("hol.Tribute.Notice"),
+		TEXT("hol.Tribute.Notice <GiverSlot> <food|wood|stone|gold> <Arrives> <Tax>: shows the local player the notice of a tribute received (nothing is given)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+			const APlayerController* Local = World ? World->GetFirstPlayerController() : nullptr;
+			const AHOLPlayerState* LocalState = Local ? Local->GetPlayerState<AHOLPlayerState>() : nullptr;
+			if (Args.Num() < 4 || !GameState || !LocalState)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Tribute.Notice <GiverSlot> <food|wood|stone|gold> <Arrives> <Tax> (in a match)"));
+				return;
+			}
+			const int32 Resource = Args[1].Equals(TEXT("food"), ESearchCase::IgnoreCase) ? 0 : Args[1].Equals(TEXT("wood"), ESearchCase::IgnoreCase) ? 1
+				: Args[1].Equals(TEXT("stone"), ESearchCase::IgnoreCase) ? 2 : 3;
+			GameState->NoteTributeReceived(FCString::Atoi(*Args[0]), LocalState->GetPlayerIndex(), Resource, FCString::Atoi(*Args[2]), FCString::Atoi(*Args[3]));
+		}));
+
 	/** M6: the common book of prices and the local players' stocks as this machine has them (a dedicated server too: the book alone). */
 	FAutoConsoleCommandWithWorld MarketReportCommand(
 		TEXT("hol.Market.Report"),
