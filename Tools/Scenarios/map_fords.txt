@@ -18,6 +18,6 @@ frames 10
 capture fords_army
 hol.Test.Sanity
 hol.Camera.TestCursor off
-note Les Gues Moyenne : 616 m de cote, 4 bases en cercle autour d'un ANNEAU D'EAU (bande bleu sombre de 18 m, 80 m de rayon) ; le milieu est de l'autre cote de l'eau. L'eau ne se traverse pas. Devant chaque base : un PONT large (bande brune de 16 m) et, a 38 m de lui, un GUE (bande bleu clair de 5 m).
+note Les Gues Moyenne : 616 m de cote, 4 bases en cercle autour d'un ANNEAU D'EAU (bande bleu sombre de 18 m, 80 m de rayon) ; le milieu est de l'autre cote de l'eau. L'eau ne se traverse pas. Devant chaque base : un PONT large (bande beige de 16 m) et, a 38 m de lui, un GUE (bande blanc-bleu clair de 5 m).
 note A essayer : double clic sur tes 10 Hommes d'armes (devant le pont, a gauche de l'ecran), clic droit de l'autre cote de l'eau, vers le milieu : ils passent par le pont en formation ; puis envoie-en quelques-uns vers le milieu a partir du gue : ils y passent en file. Clic droit en pleine eau : ils contournent jusqu'a un passage. Le pont ne tombe pas encore (le chantier de pont refait par un Paysan viendra apres, M-Q3 = A).
 note Les gues ne ralentissent pas (D496). Le milieu : 4 relais autour du centre, dans l'anneau (touche Home ou mini-carte).
