@@ -29,5 +29,11 @@ protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
 private:
+	/** A client's version: the heal is guessed from the health received (a unit whose health rose, a healer of its owner within reach). */
+	void TickClient(UWorld& World);
+
 	int64 Drawn = 0;
+	/** A client's guess: each unit's health at the last frame, and the time its health last rose. */
+	TMap<uint32, int32> LastHealth;
+	TMap<uint32, double> LastRise;
 };

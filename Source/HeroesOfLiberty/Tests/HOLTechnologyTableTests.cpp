@@ -61,7 +61,7 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 	/** The statistics some code applies today (T5 gathering and workers, T6 melee and ranged attack): a row whose statistics are all here is Implemented, any other is "Soon" (D601). */
 	constexpr const TCHAR* CodedStats[] = {
 		TEXT("MeleeAttack"), TEXT("RangedAttack"),
-		TEXT("GatherWood"), TEXT("GatherStone"), TEXT("GatherGold"), TEXT("GatherFood"), TEXT("WorkerSpeed"), TEXT("WorkerCarry"),
+		TEXT("GatherWood"), TEXT("GatherStone"), TEXT("GatherGold"), TEXT("GatherFood"), TEXT("WorkerSpeed"), TEXT("WorkerCarry"), TEXT("MonkCostDiscount"),
 	};
 
 	/** The statistics the effects code (T5) will read; a new one is added here with its code. */
@@ -214,7 +214,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 
 	const TSet<FName> Expected = {
 		TEXT("DoubleAxesI"), TEXT("DoubleAxesII"), TEXT("MinerPicksI"), TEXT("MinerPicksII"), TEXT("PloughI"), TEXT("PloughII"),
-		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"),
+		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("VowOfPoverty"),
 	};
 	TSet<FName> Playable;
 	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
@@ -225,7 +225,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 			Playable.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("8 technologies are playable"), Playable.Num(), 8);
+	TestEqual(TEXT("9 technologies are playable (the Vow of Poverty joined the 8: its Chapel and its MonkCostDiscount exist)"), Playable.Num(), 9);
 	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"), TEXT("ReinforcedRam"), TEXT("HeavyMunitions") })
 	{
 		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Soon, TEXT("technology"), false);

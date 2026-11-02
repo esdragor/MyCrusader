@@ -19,6 +19,17 @@
 TArray<UHOLHealProcessor::FLink> UHOLHealProcessor::Links;
 double UHOLHealProcessor::TotalHealed = 0.;
 int64 UHOLHealProcessor::HealSteps = 0;
+TMap<uint32, UHOLHealProcessor::FOrder> UHOLHealProcessor::Orders;
+
+void UHOLHealProcessor::OrderHeal(const uint32 HealerId, const uint32 TargetId)
+{
+	Orders.Add(HealerId, FOrder{ TargetId, -1 });
+}
+
+void UHOLHealProcessor::ClearOrders()
+{
+	Orders.Reset();
+}
 
 UHOLHealProcessor::UHOLHealProcessor()
 	: EntityQuery(*this)
@@ -94,6 +105,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 	if (!bAnyHealer)
 	{
 		Kept.Reset();
+		Orders.Reset();
 		return;
 	}
 	Step.Sort([](const FUnit& A, const FUnit& B) { return A.Candidate.UnitId < B.Candidate.UnitId; });
@@ -114,7 +126,21 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			continue;
 		}
 		const uint32* KeptId = Kept.Find(Healer.Candidate.UnitId);
-		const int32 Chosen = HOLHeal::ChooseTarget(Healer.Candidate.UnitId, Healer.Camp, Healer.Candidate.Location, Healer.Constants->HealRange, KeptId ? *KeptId : 0u, Candidates);
+		// The unit its player ordered it to heal (a right click on an ally), for OrderSteps steps at most.
+		uint32 OrderedId = 0;
+		if (FOrder* Order = Orders.Find(Healer.Candidate.UnitId))
+		{
+			Order->Step = Order->Step < 0 ? StepIndex : Order->Step;
+			if (StepIndex - Order->Step >= OrderSteps)
+			{
+				Orders.Remove(Healer.Candidate.UnitId);
+			}
+			else
+			{
+				OrderedId = Order->Target;
+			}
+		}
+		const int32 Chosen = HOLHeal::ChooseTarget(Healer.Candidate.UnitId, Healer.Camp, Healer.Candidate.Location, Healer.Constants->HealRange, OrderedId, KeptId ? *KeptId : 0u, Candidates);
 		if (Chosen == INDEX_NONE)
 		{
 			if (KeptId)
@@ -133,11 +159,16 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		Links.Add(FLink{ Healer.Candidate.UnitId, Target.Candidate.UnitId });
 		if (!KeptId || *KeptId != Target.Candidate.UnitId)
 		{
-			UE_LOG(LogHOLSimulation, Display, TEXT("Heal: step %lld #%u (slot %d) heals #%u (slot %d), health %.2f/%.0f"), StepIndex, Healer.Candidate.UnitId,
-				Healer.State->OwnerPlayer, Target.Candidate.UnitId, Target.State->OwnerPlayer, Before, Target.Candidate.MaxHealth);
+			UE_LOG(LogHOLSimulation, Display, TEXT("Heal: step %lld #%u (slot %d) heals #%u (slot %d), health %.2f/%.0f%s"), StepIndex, Healer.Candidate.UnitId,
+				Healer.State->OwnerPlayer, Target.Candidate.UnitId, Target.State->OwnerPlayer, Before, Target.Candidate.MaxHealth,
+				Target.Candidate.UnitId == OrderedId ? TEXT(" (ordered)") : TEXT(""));
 		}
 		if (After >= Target.Candidate.MaxHealth)
 		{
+			if (Target.Candidate.UnitId == OrderedId)
+			{
+				Orders.Remove(Healer.Candidate.UnitId);
+			}
 			UE_LOG(LogHOLSimulation, Display, TEXT("Heal: step %lld #%u (slot %d) is healed to %.0f by #%u"), StepIndex, Target.Candidate.UnitId, Target.State->OwnerPlayer,
 				Target.Candidate.MaxHealth, Healer.Candidate.UnitId);
 		}

@@ -29,11 +29,11 @@ namespace HOLHeal
 	HEROESOFLIBERTY_API bool IsHealable(uint32 HealerId, uint8 HealerCamp, const FCandidate& Candidate);
 
 	/**
-	 * The candidate the healer heals this step, an index of Candidates, INDEX_NONE if none: its current target KeptId while it is still
+	 * The candidate the healer heals this step, an index of Candidates, INDEX_NONE if none: the unit its player ordered it to heal\r\n	 * (OrderedId) while it is healable and within Range, else its current target KeptId while it is still
 	 * healable and within Range (one ally at a time, not a flip to a nearer one at each step), else the nearest healable ally within
 	 * Range (centre to centre, cm), the lowest unit identifier on a tie. The healer itself is never chosen.
 	 */
-	HEROESOFLIBERTY_API int32 ChooseTarget(uint32 HealerId, uint8 HealerCamp, const FVector2D& HealerLocation, float Range, uint32 KeptId, TConstArrayView<FCandidate> Candidates);
+	HEROESOFLIBERTY_API int32 ChooseTarget(uint32 HealerId, uint8 HealerCamp, const FVector2D& HealerLocation, float Range, uint32 OrderedId, uint32 KeptId, TConstArrayView<FCandidate> Candidates);
 
 	/** The health after one step of heal: Health + HealRate * StepMs / 1000, held at MaxHealth. */
 	HEROESOFLIBERTY_API float GetHealedHealth(float Health, float MaxHealth, float HealRate, int32 StepMs);

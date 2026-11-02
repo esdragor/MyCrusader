@@ -35,6 +35,16 @@ public:
 	/** Steps with at least one heal since the program started: a Monk healing its allies one after the other counts each step once per Monk. */
 	static int64 GetHealSteps() { return HealSteps; }
 
+	/**
+	 * The player's order (a right click on an ally with Monks selected, ServerHealUnit): Healer heals TargetId first, whatever is nearer,
+	 * while it is healable and within its HealRange, for OrderSteps steps at most or until it is healed; one order per healer, a new one
+	 * replaces it. Server and solo only (the simulation runs there).
+	 */
+	static void OrderHeal(uint32 HealerId, uint32 TargetId);
+	static void ClearOrders();
+	/** The order lasts this many steps (30 s at 20 Hz). */
+	static constexpr int64 OrderSteps = 600;
+
 protected:
 	virtual void ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager) override;
 	virtual void Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context) override;
@@ -43,6 +53,14 @@ private:
 	FMassEntityQuery EntityQuery;
 	/** The target of each healer, kept while it stays healable and in reach (healer id -> unit id). */
 	TMap<uint32, uint32> Kept;
+
+	struct FOrder
+	{
+		uint32 Target = 0;
+		/** The step it was first seen at (-1: not yet). */
+		int64 Step = -1;
+	};
+	static TMap<uint32, FOrder> Orders;
 
 	static TArray<FLink> Links;
 	static double TotalHealed;

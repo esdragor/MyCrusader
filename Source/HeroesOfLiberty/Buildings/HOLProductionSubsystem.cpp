@@ -108,13 +108,19 @@ int32 UHOLProductionSubsystem::GetBuildSteps(const FHOLUnitTypeRow& Type, const 
 	return FMath::Max(1, FMath::RoundToInt(BuildTime / FMath::Max(InStepSeconds, UE_KINDA_SMALL_NUMBER)));
 }
 
-FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName) const
+FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName, const int32 PlayerIndex) const
 {
 	FHOLProductionCost Cost;
 	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
 	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(TypeName) : nullptr)
 	{
 		Cost.Resources = Row->Cost;
+		const FName DiscountStat = HOLTechnology::GetCostDiscountStat(TypeName);
+		const AHOLPlayerState* Payer = DiscountStat.IsNone() || PlayerIndex == INDEX_NONE ? nullptr : FindPlayerState(PlayerIndex);
+		if (Payer)
+		{
+			Cost.Resources = HOLTechnology::GetDiscountedCost(Cost.Resources, Payer->GetTechnologyBonusPercent(DiscountStat));
+		}
 		Cost.BuildSteps = GetBuildSteps(*Row, StepSeconds);
 		Cost.Population = Row->Population;
 	}
@@ -375,7 +381,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 			const FHOLTechnologyRow* Technology = Type->Produces.Contains(Order.TypeName) ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
 			if (Technology)
 			{
-				const FHOLProductionCost Cost = GetCost(Order.TypeName);
+				const FHOLProductionCost Cost = GetCost(Order.TypeName, Order.PlayerIndex);
 				HOLTechnology::FFacts Facts;
 				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
 				Facts.HeroTier = HOLGameState ? HOLGameState->GetTier(Order.PlayerIndex) : 0;
@@ -423,7 +429,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 				}
 			}
 			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
-				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName), Type->MaxQueue, Stock)
+				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName, Order.PlayerIndex), Type->MaxQueue, Stock)
 				: EHOLProductionRefusal::NotProducible;
 			if (Refusal != EHOLProductionRefusal::None)
 			{
@@ -437,7 +443,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 		else
 		{
 			const FName TypeName = Queue.IsValidIndex(Order.Index) ? Queue[Order.Index].TypeName : NAME_None;
-			if (!HOLProduction::Cancel(Queue, Order.Index, GetCost(TypeName), Stock))
+			if (!HOLProduction::Cancel(Queue, Order.Index, GetCost(TypeName, Order.PlayerIndex), Stock))
 			{
 				continue;
 			}

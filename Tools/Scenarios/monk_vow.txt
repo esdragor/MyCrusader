@@ -1,0 +1,34 @@
+# Voeu de pauvrete (GDD 11.1, table : MonkCostDiscount 20 %) : une fois recherche a la Chapelle, le Moine coute 20 % de moins (100 + 100 -> 80 + 80).
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver ; la recherche passe par la file de la Chapelle (palier 2 = heros niveau 6).
+# Ressources de depart : 5000 + 200 de chaque ; la file de production est ramenee a 2 s (hol.Prod.BuildTime 2).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Chapel 0 2500 2500
+waitlog Cheat: spawned Chapel of slot 0
+hol.Camera.Zoom -2
+frames 40
+hol.Select.Category Military
+waitlog Selection: Chapel
+frames 20
+note 1. Sans le Voeu de pauvrete : un Moine coute 100 nourriture + 100 or (5200 -> 5100).
+hol.Prod.Queue Monk
+waitlog queued Monk (1 in the queue, F 5100 W 5200 S 5200 G 5100)
+waitlog Production: Monk of slot 0 done
+hol.Hero.SetXP 0 3300
+waitlog Hero level up: slot 0 level 1 -> 6
+frames 4
+note 2. Le Voeu de pauvrete se cherche a la Chapelle (200 nourriture + 200 or, palier 2, 2 s pour l'essai).
+hol.Prod.Queue VowOfPoverty Chapel
+waitlog Production: slot 0 queued research VowOfPoverty
+waitlog Technology: slot 0 researched VowOfPoverty
+frames 10
+note 3. Avec le Voeu : un Moine coute 80 nourriture + 80 or (4900 -> 4820), pas 100.
+hol.Prod.Queue Monk
+waitlog queued Monk (1 in the queue, F 4820 W 5200 S 5200 G 4820)
+frames 20
+capture monk_vow
+hol.Test.Sanity

@@ -6,6 +6,7 @@
 #include "Simulation/HOLHealRules.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitTypes.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -77,14 +78,14 @@ bool FHOLHealRulesTest::RunTest(const FString& Parameters)
 
 	// The Monk itself is wounded and alone: it heals nobody (no self-heal).
 	TArray<FCandidate> Alone = { Make(Monk, 0., 40.f) };
-	TestEqual(TEXT("a wounded Monk alone heals nobody: no self-heal"), ChooseTarget(Monk, 1, Here, Range, 0u, Alone), int32(INDEX_NONE));
-	TestEqual(TEXT("... even if it kept itself as its target"), ChooseTarget(Monk, 1, Here, Range, Monk, Alone), int32(INDEX_NONE));
+	TestEqual(TEXT("a wounded Monk alone heals nobody: no self-heal"), ChooseTarget(Monk, 1, Here, Range, 0u, 0u, Alone), int32(INDEX_NONE));
+	TestEqual(TEXT("... even if it kept itself as its target"), ChooseTarget(Monk, 1, Here, Range, 0u, Monk, Alone), int32(INDEX_NONE));
 
 	// An ally in reach and wounded is the target; a healthy one, an enemy, a King, a siege engine or a dying unit is not.
 	TArray<FCandidate> Mixed = { Make(Monk, 0., 40.f), Make(2, 300., 100.f), Make(3, 300., 50.f, 2), Make(4, 300., 50.f), Make(5, 300., 50.f), Make(6, 300., 0.f), Make(7, 300., 60.f) };
 	Mixed[3].bUnhealable = true; // the King (HOLCanBeHealed) or an engine
 	Mixed[4].bUnhealable = true;
-	TestEqual(TEXT("the wounded ally is the target (not a healthy one, an enemy, a King, an engine, a dead unit)"), ChooseTarget(Monk, 1, Here, Range, 0u, Mixed), 6);
+	TestEqual(TEXT("the wounded ally is the target (not a healthy one, an enemy, a King, an engine, a dead unit)"), ChooseTarget(Monk, 1, Here, Range, 0u, 0u, Mixed), 6);
 	TestFalse(TEXT("a healthy ally is not healable"), IsHealable(Monk, 1, Mixed[1]));
 	TestFalse(TEXT("an enemy is not healable"), IsHealable(Monk, 1, Mixed[2]));
 	TestFalse(TEXT("an unhealable unit is not healable"), IsHealable(Monk, 1, Mixed[3]));
@@ -94,18 +95,32 @@ bool FHOLHealRulesTest::RunTest(const FString& Parameters)
 
 	// 8 m, centre to centre: 800 is in, 801 out.
 	TArray<FCandidate> Edge = { Make(Monk, 0., 100.f), Make(2, 800., 50.f), Make(3, 801., 50.f) };
-	TestEqual(TEXT("an ally at 8 m is healed"), ChooseTarget(Monk, 1, Here, Range, 0u, TConstArrayView<FCandidate>(&Edge[0], 2)), 1);
-	TestEqual(TEXT("an ally past 8 m is not"), ChooseTarget(Monk, 1, Here, Range, 0u, TConstArrayView<FCandidate>(&Edge[2], 1)), int32(INDEX_NONE));
+	TestEqual(TEXT("an ally at 8 m is healed"), ChooseTarget(Monk, 1, Here, Range, 0u, 0u, TConstArrayView<FCandidate>(&Edge[0], 2)), 1);
+	TestEqual(TEXT("an ally past 8 m is not"), ChooseTarget(Monk, 1, Here, Range, 0u, 0u, TConstArrayView<FCandidate>(&Edge[2], 1)), int32(INDEX_NONE));
 
 	// The nearest, the lowest identifier on a tie, and the kept target (one at a time) before a nearer one.
 	TArray<FCandidate> Two = { Make(Monk, 0., 100.f), Make(8, 500., 50.f), Make(9, 200., 50.f), Make(10, -200., 50.f) };
-	TestEqual(TEXT("the nearest wounded ally, the lowest identifier on a tie"), ChooseTarget(Monk, 1, Here, Range, 0u, Two), 2);
-	TestEqual(TEXT("the target it healed before is kept while healable and in reach, though another is nearer"), ChooseTarget(Monk, 1, Here, Range, 8u, Two), 1);
+	TestEqual(TEXT("the nearest wounded ally, the lowest identifier on a tie"), ChooseTarget(Monk, 1, Here, Range, 0u, 0u, Two), 2);
+	TestEqual(TEXT("the target it healed before is kept while healable and in reach, though another is nearer"), ChooseTarget(Monk, 1, Here, Range, 0u, 8u, Two), 1);
 	Two[1].Health = 100.f;
-	TestEqual(TEXT("the kept target healed to full: the nearest wounded one, the next"), ChooseTarget(Monk, 1, Here, Range, 8u, Two), 2);
+	TestEqual(TEXT("the kept target healed to full: the nearest wounded one, the next"), ChooseTarget(Monk, 1, Here, Range, 0u, 8u, Two), 2);
 	Two[2].Location = FVector2D(5000., 0.);
-	TestEqual(TEXT("the kept target out of reach: another"), ChooseTarget(Monk, 1, Here, Range, 9u, Two), 3);
+	TestEqual(TEXT("the kept target out of reach: another"), ChooseTarget(Monk, 1, Here, Range, 0u, 9u, Two), 3);
 
+	// An order (a right click on an ally): the ordered unit first, though another is nearer or kept; ignored out of reach or healed.
+	Two[1].Health = 50.f;
+	Two[2].Location = FVector2D(200., 0.);
+	TestEqual(TEXT("the ordered ally, though another is nearer"), ChooseTarget(Monk, 1, Here, Range, 8u, 0u, Two), 1);
+	TestEqual(TEXT("the ordered ally, though the kept one is another"), ChooseTarget(Monk, 1, Here, Range, 8u, 9u, Two), 1);
+	TestEqual(TEXT("the kept one without an order"), ChooseTarget(Monk, 1, Here, Range, 0u, 8u, Two), 1);
+	Two[1].Location = FVector2D(5000., 0.);
+	TestEqual(TEXT("the ordered ally out of reach: the nearest, the order waits"), ChooseTarget(Monk, 1, Here, Range, 8u, 0u, Two), 2);
+	Two[1].Location = FVector2D(500., 0.);
+	Two[1].Health = 100.f;
+	TestEqual(TEXT("the ordered ally already healed: the nearest"), ChooseTarget(Monk, 1, Here, Range, 8u, 0u, Two), 2);
+	Two[1].Health = 50.f;
+	Two[1].Camp = 2;
+	TestEqual(TEXT("an enemy cannot be ordered healed"), ChooseTarget(Monk, 1, Here, Range, 8u, 0u, Two), 2);
 	// 5 health per second on 50 ms steps: 0.25 a step, 5 after 20 steps, held at the maximum.
 	float Health = 40.f;
 	for (int32 Step = 0; Step < 20; ++Step)
@@ -114,6 +129,21 @@ bool FHOLHealRulesTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("5 health per second: one second of steps heals 5"), Health, 45.f, 0.001f);
 	TestEqual(TEXT("held at the maximum"), GetHealedHealth(99.9f, 100.f, 5.f, 50), 100.f);
+	return true;
+}
+
+// The Vow of Poverty (GDD 11.1, table: MonkCostDiscount 20 %): the Monk costs less, and only the Monk.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMonkDiscountTest, "HeroesOfLiberty.Monk.CostDiscount", UE::HeroesOfLiberty::Tests::Monk::Flags)
+bool FHOLMonkDiscountTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("the Monk's cost is lowered by MonkCostDiscount"), HOLTechnology::GetCostDiscountStat(TEXT("Monk")), FName(TEXT("MonkCostDiscount")));
+	TestTrue(TEXT("no other unit's is"), HOLTechnology::GetCostDiscountStat(TEXT("Spearman")).IsNone() && HOLTechnology::GetCostDiscountStat(TEXT("Peasant")).IsNone());
+	const FHOLResources Cost(100, 0, 0, 100);
+	TestTrue(TEXT("20 %: 80 food + 80 gold"), HOLTechnology::GetDiscountedCost(Cost, 20) == FHOLResources(80, 0, 0, 80));
+	TestTrue(TEXT("0 %: unchanged"), HOLTechnology::GetDiscountedCost(Cost, 0) == Cost);
+	TestTrue(TEXT("a free resource stays free"), HOLTechnology::GetDiscountedCost(FHOLResources(0, 0, 0, 50), 20).Food == 0);
+	TestTrue(TEXT("rounded to the nearest unit: 15 % of 50 = 42.5 -> 43"), HOLTechnology::GetDiscountedCost(FHOLResources(50, 0, 0, 0), 15).Food == 43);
+	TestTrue(TEXT("never below 10 % of the cost"), HOLTechnology::GetDiscountedCost(Cost, 400).Food == 10);
 	return true;
 }
 

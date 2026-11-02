@@ -1,3 +1,4 @@
 monk_chapel | La Chapelle selectionnee : la case A de sa grille porte le Moine (100 nourriture + 100 or)
 monk_heal | Le Moine soigne un Lancier blesse : ligne verte du Moine vers le Lancier, un + vert au-dessus, sa barre de vie monte
 monk_healed | Les trois Lanciers sont revenus a pleine vie (barres pleines) ; le Moine, blesse, n'a pas ete soigne
+monk_order | Le Moine selectionne a recu l'ordre de soigner un Lancier precis : ligne verte vers lui, il est soigne en premier

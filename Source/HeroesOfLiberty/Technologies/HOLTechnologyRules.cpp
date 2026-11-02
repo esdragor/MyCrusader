@@ -126,6 +126,20 @@ FName HOLTechnology::GetGatherStat(const EHOLResource Resource)
 	default: return TEXT("GatherGold");
 	}
 }
+FName HOLTechnology::GetCostDiscountStat(const FName UnitType)
+{
+	static const FName Monk(TEXT("Monk"));
+	static const FName MonkCostDiscount(TEXT("MonkCostDiscount"));
+	return UnitType == Monk ? MonkCostDiscount : NAME_None;
+}
+
+FHOLResources HOLTechnology::GetDiscountedCost(const FHOLResources& Cost, const int32 Percent)
+{
+	const int32 Kept = 100 - FMath::Clamp(Percent, 0, 90);
+	const auto Scale = [Kept](const int32 Amount) { return FMath::RoundToInt(static_cast<float>(Amount * Kept) / 100.f); };
+	return FHOLResources(Scale(Cost.Food), Scale(Cost.Wood), Scale(Cost.Stone), Scale(Cost.Gold));
+}
+
 FName HOLTechnology::GetAttackStat(const EHOLAttackType AttackType)
 {
 	switch (AttackType)

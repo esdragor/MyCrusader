@@ -104,6 +104,12 @@ namespace HOLTechnology
 	/** T6: the statistic that raises the hits of this attack type (Melee, Ranged), NAME_None for the others (siege, hero: no technology yet). */
 	HEROESOFLIBERTY_API FName GetAttackStat(EHOLAttackType AttackType);
 
+	/** Q-chapelle-moine, Vow of Poverty (GDD 11.1): the statistic that lowers the cost of this unit type (MonkCostDiscount for the Monk), NAME_None for the others. */
+	HEROESOFLIBERTY_API FName GetCostDiscountStat(FName UnitType);
+
+	/** A unit's resource cost lowered by Percent (0-90): each resource Cost * (100 - Percent) / 100, rounded to the nearest whole unit (a free resource stays free). */
+	HEROESOFLIBERTY_API FHOLResources GetDiscountedCost(const FHOLResources& Cost, int32 Percent);
+
 	/** A whole quantity (a carrying capacity) raised by Percent: Base + Base * Percent / 100, rounded to the nearest whole unit, never below Base. */
 	HEROESOFLIBERTY_API int32 ScaleByPercent(int32 Base, int32 Percent);
 

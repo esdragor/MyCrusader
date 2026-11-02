@@ -393,6 +393,11 @@ public:
 	/** Asks the server to have units attack an enemy unit (J7b.3, a right click on it); it checks the units and the target. */
 	void RequestAttackUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
 	/**
+	 * Q-chapelle-moine = A, the heal order (a right click on an ally with a Monk selected): the units walk to the ally, and the ones that
+	 * heal (a HealRate) heal it first, whatever is nearer (UHOLHealProcessor::OrderHeal); the others only walk there.
+	 */
+	void RequestHealUnit(TConstArrayView<uint32> UnitIds, uint32 TargetUnitId, bool bQueue = false);
+	/**
 	 * Asks the server to have units strike an enemy building (D345.2b, a right click on it); it checks the units and the building.
 	 * bQueue (Shift, D345): at the end of each unit's queue, as an attack on a unit.
 	 */
@@ -689,6 +694,8 @@ private:
 	/** The combat orders (J7b.3): attack a unit, attack-move, stop or hold (EHOLOrderKind as a byte); the server checks them. */
 	UFUNCTION(Server, Reliable)
 	void ServerAttackUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
+	UFUNCTION(Server, Reliable)
+	void ServerHealUnit(const TArray<uint32>& UnitIds, uint32 TargetUnitId, bool bQueue);
 	UFUNCTION(Server, Reliable)
 	void ServerAttackBuilding(const TArray<uint32>& UnitIds, AHOLBuilding* Building, bool bQueue);
 	UFUNCTION(Server, Reliable)
