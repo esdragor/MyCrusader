@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Dev/HOLTestHooks.h"
 #include "Engine/DataTable.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -301,6 +302,78 @@ bool FHOLVolcanoSiteStateTest::RunTest(const FString& Parameters)
 	const HOLVolcano::FCycle BareCycle = HOLVolcano::MakeCycle(HOLVolcano::SiteSeed(3, 0), 0, 0.f, Settings);
 	const HOLVolcano::FSiteState BareState = HOLVolcano::SiteStateAt(true, 3, 0, Bare, BareCycle.EruptAt + 5.f, Settings, ManSpeed);
 	TestTrue(TEXT("no flow: erupting by the placeholder, nothing drawn, the front stays"), BareState.Phase == EHOLVolcanoPhase::Erupting && BareState.FlowIndex == INDEX_NONE && BareState.FrontDistance == 0.f);
+	return true;
+}
+
+// V4c (V4-Q2 = C, D608): the seed of the match makes the eruption. A scenario's .json imposes it ("seed"), the real chain reads it
+// (MakeScenarioConfig, GetScenarioSeed), and the site's state follows from the configuration and the clock alone: the same seed gives the same
+// eruption on any launch, another seed another one.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoSeedTest, "HeroesOfLiberty.Volcano.MatchSeed", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoSeedTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests;
+	const float ManSpeed = ManAtArmsSpeedFromTable();
+	if (!TestTrue(TEXT("the table gives a Man-at-arms' speed"), ManSpeed > 0.f))
+	{
+		return false;
+	}
+	const FHOLVolcanoSettings Settings;
+	const HOLVolcano::FSite Site = MakeThreeFlowSite();
+
+	// The scenario's .json, by the real chain: with a seed (imposed), without (drawn).
+	const auto ConfigOf = [this](const FString& Json, const int32 Drawn, FHOLMatchConfig& Out)
+	{
+		if (!TestTrue(TEXT(".json read"), HOLTestHooks::MakeScenarioConfig(&Json, Out)))
+		{
+			return false;
+		}
+		Out.Seed = HOLTestHooks::GetScenarioSeed(&Json, Drawn);
+		return true;
+	};
+	FHOLMatchConfig First, Again, Other, Drawn;
+	if (!ConfigOf(TEXT("{ \"seed\": 4242, \"catastrophe\": true }"), 111, First)
+		|| !ConfigOf(TEXT("{ \"seed\": 4242, \"catastrophe\": true }"), 987654, Again)
+		|| !ConfigOf(TEXT("{ \"seed\": 4243, \"catastrophe\": true }"), 111, Other)
+		|| !ConfigOf(TEXT("{ \"catastrophe\": true }"), 31337, Drawn))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the .json's seed is the match's, whatever the draw"), First.Seed, 4242);
+	TestEqual(TEXT("again, another launch"), Again.Seed, 4242);
+	TestEqual(TEXT("another seed"), Other.Seed, 4243);
+	TestEqual(TEXT("no seed in the .json: the drawn one"), Drawn.Seed, 31337);
+	TestTrue(TEXT("the Catastrophe option comes from the .json"), First.bCatastrophe);
+
+	// The same configuration gives the same eruption at every instant; the state is the one the seed makes.
+	const HOLVolcano::FCycle Cycle0 = HOLVolcano::MakeCycle(HOLVolcano::SiteSeed(4242, 0), 0, 0.f, Settings,
+		HOLVolcano::EruptionDuration(Site.Flows[HOLVolcano::DrawFlow(HOLVolcano::SiteSeed(4242, 0), 0, Site.Flows.Num())], Settings.LavaSpeed(ManSpeed)));
+	int32 SameCount = 0;
+	for (float Now = 0.f; Now <= 1800.f; Now += 9.f)
+	{
+		const HOLVolcano::FSiteState A = HOLVolcano::SiteStateOfMatch(First, 0, Site, Now, Settings, ManSpeed);
+		const HOLVolcano::FSiteState B = HOLVolcano::SiteStateOfMatch(Again, 0, Site, Now, Settings, ManSpeed);
+		const HOLVolcano::FSiteState Truth = HOLVolcano::SiteStateAt(true, 4242, 0, Site, Now, Settings, ManSpeed);
+		SameCount += (A.Phase == B.Phase && A.CycleIndex == B.CycleIndex && A.FlowIndex == B.FlowIndex && A.FrontPoint.Equals(B.FrontPoint, 0.001)
+			&& A.Phase == Truth.Phase && A.FlowIndex == Truth.FlowIndex && A.FrontPoint.Equals(Truth.FrontPoint, 0.001)) ? 1 : 0;
+	}
+	TestEqual(TEXT("same seed, same eruption at each of the 201 instants"), SameCount, 201);
+	const HOLVolcano::FSiteState Erupting = HOLVolcano::SiteStateOfMatch(First, 0, Site, Cycle0.EruptAt + 4.f, Settings, ManSpeed);
+	TestTrue(TEXT("the eruption of the seed's first cycle is on at its date"), Erupting.Phase == EHOLVolcanoPhase::Erupting && Erupting.CycleIndex == 0);
+
+	// Another seed does not give the same eruption: over the whole hour, some instant tells them apart.
+	bool bDiffers = false;
+	for (float Now = 0.f; Now <= 3600.f && !bDiffers; Now += 3.f)
+	{
+		const HOLVolcano::FSiteState A = HOLVolcano::SiteStateOfMatch(First, 0, Site, Now, Settings, ManSpeed);
+		const HOLVolcano::FSiteState C = HOLVolcano::SiteStateOfMatch(Other, 0, Site, Now, Settings, ManSpeed);
+		bDiffers = A.Phase != C.Phase || A.FlowIndex != C.FlowIndex;
+	}
+	TestTrue(TEXT("another seed, another eruption"), bDiffers);
+
+	// Without the Catastrophe option the site sleeps, the seed or not (D398).
+	FHOLMatchConfig Standard = First;
+	Standard.bCatastrophe = false;
+	TestTrue(TEXT("no Catastrophe: dormant"), HOLVolcano::SiteStateOfMatch(Standard, 0, Site, Cycle0.EruptAt + 4.f, Settings, ManSpeed).Phase == EHOLVolcanoPhase::Dormant);
 	return true;
 }
 
