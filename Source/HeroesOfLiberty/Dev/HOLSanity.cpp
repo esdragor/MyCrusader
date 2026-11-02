@@ -213,7 +213,7 @@ namespace UE::HeroesOfLiberty::Dev
 			{
 				Colors.Add(static_cast<uint8>(Slot));
 			}
-			for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+			for (FHOLBuildingIterator It(&World); It; ++It)
 			{
 				if (It->GetOwnerPlayer() < FHOLMatchConfig::MaxSlots)
 				{
@@ -253,7 +253,7 @@ namespace UE::HeroesOfLiberty::Dev
 				{
 					(FHOLMatchConfig::IsNeutralOwner(View.OwnerPlayer) ? Neutrals : PlayerSlots).Add(View.OwnerPlayer);
 				}
-				for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+				for (FHOLBuildingIterator It(World); It; ++It)
 				{
 					if (It->GetOwnerPlayer() < FHOLMatchConfig::MaxSlots)
 					{

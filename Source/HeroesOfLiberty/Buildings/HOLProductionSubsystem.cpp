@@ -384,7 +384,7 @@ void UHOLProductionSubsystem::ApplyOrders()
 				Facts.bBuildingFinished = Building->GetTypeName() == Technology->Building;
 				Facts.bCanPay = Stock.Covers(Cost.Resources);
 				Facts.bResearched = PlayerState->GetTechnologies().Has(Order.TypeName);
-				for (TActorIterator<AHOLBuilding> It(GetWorld()); It && !Facts.bQueued; ++It)
+				for (FHOLBuildingIterator It(GetWorld()); It && !Facts.bQueued; ++It)
 				{
 					Facts.bQueued = It->GetOwnerPlayer() == Order.PlayerIndex && HOLTechnology::IsQueued(It->GetProductionQueue(), Order.TypeName);
 				}
@@ -463,7 +463,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 	TArray<AHOLBuilding*> Buildings;
 	TMap<int32, int32> Caps;
 	TMap<int32, int32> Started;
-	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
 		const FHOLBuildingTypeRow* Type = Building->GetType();

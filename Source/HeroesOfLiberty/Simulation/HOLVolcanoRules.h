@@ -43,6 +43,13 @@ struct FHOLVolcanoSettings
 	float CoolingMax = 180.f;
 	float RestMin = 360.f;
 	float RestMax = 480.f;
+	/**
+	 * Half the width of a flow (cm): the lava destroys what is within this of the line from the crater to its front (and a unit's or a
+	 * building's own radius more). V5-Q1 = B, the user's answer (2026-11-02): 800 cm, a flow 16 m wide.
+	 */
+	float LavaHalfWidth = 800.f;
+	/** V8 (D380): how much sooner the altar held wakes the site (s); Q-volcan-autel option A, 120 s by default, to be answered. */
+	float AltarAdvance = 120.f;
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -79,6 +86,51 @@ namespace HOLVolcano
 	 * flow's end and never backward.
 	 */
 	HEROESOFLIBERTY_API float FrontDistance(const FFlow& Flow, float Now, float EruptAt, float Speed);
+
+	/**
+	 * V5 (D377): whether something at Point (ground plane, Z ignored) with a body of Radius is under the lava of a flow whose front has
+	 * gone FrontDistance (cm) from the crater: its distance to the part of the polyline already run (the head of the front rounded) is
+	 * within HalfWidth + Radius. False while the front is still at the crater (before the eruption), for a flow without length.
+	 */
+	HEROESOFLIBERTY_API bool IsInLava(const FFlow& Flow, float FrontDistance, float HalfWidth, const FVector& Point, float Radius = 0.f);
+
+	/** One oriented rectangle on the ground (cm): the navmesh takes boxes. */
+	struct FObstacleBox
+	{
+		FVector2D Centre = FVector2D::ZeroVector;
+		/** Half the length along the segment, and half the width across it. */
+		float HalfLength = 0.f;
+		float HalfWidth = 0.f;
+		/** Turn of the segment about the vertical (degrees), 0 = along +X. */
+		float YawDegrees = 0.f;
+	};
+
+	/**
+	 * V6 (D379): the ground a cooling flow forbids (impassable ~2-3 min): one box per segment of the polyline, HalfWidth either side, and
+	 * HalfWidth beyond each end so the corners and the flow's end are covered (the lava's own reach, IsInLava, is inside the union).
+	 */
+	HEROESOFLIBERTY_API TArray<FObstacleBox> GetObstacleBoxes(const FFlow& Flow, float HalfWidth);
+
+	/**
+	 * V11 (D427, V5-Q1 = B): how far from the line of a flow (cm) a body must stand to be out of the lava's way: the flow's half width plus the
+	 * body's own radius, the same reach IsInLava counts (never a typed constant: HalfWidth is FHOLVolcanoSettings::LavaHalfWidth).
+	 */
+	inline float EvacuationReach(const float HalfWidth, const float Radius) { return FMath::Max(HalfWidth, 0.f) + FMath::Max(Radius, 0.f); }
+
+	/**
+	 * V11: whether a body at Point with Radius lies in the whole corridor of the flow, from the crater to its end (the lava's reach once the
+	 * front has gone all the way): the AI leaves it from the alert on, before the front moves.
+	 */
+	HEROESOFLIBERTY_API bool IsInCorridor(const FFlow& Flow, float HalfWidth, const FVector& Point, float Radius = 0.f);
+
+	/**
+	 * V11: where a body at Point goes to leave the corridor: the nearest point of the flow's line, then straight away from it until
+	 * EvacuationReach + Beyond is cleared (on the other side if a bend of the flow still covers that point). Point itself when it is already out.
+	 */
+	HEROESOFLIBERTY_API FVector EvacuationPoint(const FFlow& Flow, float HalfWidth, const FVector& Point, float Radius = 0.f, float Beyond = 200.f);
+
+	/** V5 (GDD 12.2, 9.8, 10.2): the lava destroys everything it touches but a hero in a duel (the duel's arena is not burnt). */
+	inline bool LavaDestroys(const bool bIsHero, const bool bHeroInDuel) { return !(bIsHero && bHeroInDuel); }
 
 	/** The point at Distance along the flow (clamped to its two ends); the origin for a flow without point. */
 	HEROESOFLIBERTY_API FVector PointAt(const FFlow& Flow, float Distance);
@@ -118,6 +170,13 @@ namespace HOLVolcano
 		float FrontDistance = 0.f;
 		FVector FrontPoint = FVector::ZeroVector;
 	};
+
+	/**
+	 * V8 (D380, Q-volcan-autel option A by default): the altar held for ~60 s with no enemy (the ruin's rule, D348) wakes the site earlier. The alert
+	 * (and everything after it in the cycle) comes FHOLVolcanoSettings::AltarAdvance seconds sooner, never before HeldAt (the instant the altar was
+	 * taken), and unchanged if the alert has already begun (HeldAt at or after its date). The alert's own length stays (60 to 90 s, D380).
+	 */
+	HEROESOFLIBERTY_API FCycle AdvanceForAltar(const FCycle& Cycle, float HeldAt, const FHOLVolcanoSettings& Settings);
 
 	/** The seed of one site: the match's seed and the site's index mixed, so two sites never erupt alike. */
 	HEROESOFLIBERTY_API int32 SiteSeed(int32 MatchSeed, int32 SiteIndex);

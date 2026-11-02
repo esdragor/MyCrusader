@@ -88,7 +88,7 @@ namespace UE::HeroesOfLiberty::Construction
 
 		void Gather(const UWorld& World, const int32 PlayerIndex)
 		{
-			for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+			for (FHOLBuildingIterator It(&World); It; ++It)
 			{
 				if (!It->GetType())
 				{

@@ -316,7 +316,7 @@ void UHOLGatherProcessor::RefreshDeposits(UWorld& World)
 	// A few buildings per player: read again at each step, a new one or a lost one counts at once.
 	Deposits.Reset();
 	Sanctuaries.Reset();
-	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	for (FHOLBuildingIterator It(&World); It; ++It)
 	{
 		const FHOLBuildingTypeRow* Type = It->GetType();
 		// D602: a finished Sanctuary of the Dawn raises the food of its owner's farm fields around it.

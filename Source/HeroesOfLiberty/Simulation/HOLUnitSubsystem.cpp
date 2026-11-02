@@ -7,6 +7,7 @@
 #include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Siege/HOLSiegeRules.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
 #include "Engine/DataTable.h"
@@ -668,7 +669,14 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		const uint32 UnitId = NextUnitId++;
 		FHOLUnitStateFragment& State = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity);
 		State.UnitId = UnitId;
-		State.CurrentHealth = static_cast<float>(Constants.MaxHealth);
+		// S5: a Ram born after Reinforced Ram has the health the technology gives (HOLCombat::GetMaxHealth with the slot's percent).
+		const int32 BornHealthPercent = GetTechnologyHealthPercent(Constants, Request.OwnerPlayer);
+		State.CurrentHealth = BornHealthPercent > 0 ? static_cast<float>(HOLCombat::GetMaxHealth(Constants, 1, BornHealthPercent)) : static_cast<float>(Constants.MaxHealth);
+		if (BornHealthPercent > 0)
+		{
+			UE_LOG(LogHOLSimulation, Display, TEXT("Unit #%u %s of slot %d born with %d health (+%d %%)"), UnitId, *Constants.TypeName.ToString(),
+				static_cast<int32>(Request.OwnerPlayer), FMath::RoundToInt(State.CurrentHealth), BornHealthPercent);
+		}
 		State.Activity = EHOLUnitActivity::Idle;
 		State.OwnerPlayer = Request.OwnerPlayer;
 
@@ -804,6 +812,44 @@ int32 UHOLUnitSubsystem::KillUnitsOfOwner(const uint8 Owner, const FName TypeNam
 			if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
 			{
 				MatchStats->RecordUnitDeath(Owner, IsWorkerType(Record.TypeName), INDEX_NONE);
+			}
+		}
+	}
+	return Killed;
+}
+
+int32 UHOLUnitSubsystem::KillUnitsWhere(const TFunctionRef<bool(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location, float Radius)> Doomed)
+{
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!EntitySubsystem)
+	{
+		return 0;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	int32 Killed = 0;
+	for (TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		FHOLUnitRecord& Record = Unit.Value;
+		if (Record.bDying)
+		{
+			continue;
+		}
+		FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Record.Entity);
+		if (!State || !Transform || State->CurrentHealth <= 0 || State->Activity == EHOLUnitActivity::Dying)
+		{
+			continue;
+		}
+		const FHOLUnitTypeRow* Row = FindTypeRow(Record.TypeName);
+		if (Doomed(Unit.Key, Record.TypeName, Record.OwnerPlayer, Transform->GetTransform().GetLocation(), Row ? Row->Radius : 0.f))
+		{
+			State->CurrentHealth = 0;
+			State->Activity = EHOLUnitActivity::Dying;
+			Record.bDying = true;
+			++Killed;
+			if (UHOLMatchStatsSubsystem* MatchStats = GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>())
+			{
+				MatchStats->RecordUnitDeath(Record.OwnerPlayer, IsWorkerType(Record.TypeName), INDEX_NONE);
 			}
 		}
 	}
@@ -971,7 +1017,7 @@ namespace UE::HeroesOfLiberty::Units
 {
 	/** The view of one simulated unit; false when its entity has no transform or state. */
 	bool MakeUnitView(const FMassEntityManager& EntityManager, const uint32 UnitId, const FName TypeName, const FMassEntityHandle Entity,
-		const float Alpha, FHOLUnitView& OutView)
+		const float Alpha, FHOLUnitView& OutView, const UHOLUnitSubsystem* Subsystem = nullptr)
 	{
 		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
 		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
@@ -1019,7 +1065,9 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.bKing = Constants->HasArmorCategory(EHOLArmorCategory::King);
 			OutView.bHero = Constants->HasArmorCategory(EHOLArmorCategory::Hero);
 			// J8b.2: the maximum at its level (the hero's grows).
-			const int32 MaxHealth = HOLCombat::GetMaxHealth(*Constants, Combat ? Combat->Level : 1);
+			// S5: and the technologies' share of it (the Ram's).
+			const int32 MaxHealth = HOLCombat::GetMaxHealth(*Constants, Combat ? Combat->Level : 1,
+				Subsystem ? Subsystem->GetTechnologyHealthPercent(*Constants, State->OwnerPlayer) : 0);
 			OutView.bFullHealth = State->CurrentHealth >= static_cast<float>(MaxHealth);
 			OutView.Health = HOLCombat::GetShownHealth(State->CurrentHealth);
 			OutView.MaxHealth = MaxHealth;
@@ -1043,7 +1091,7 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 	FHOLUnitView View;
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
-		if (UE::HeroesOfLiberty::Units::MakeUnitView(EntityManager, Unit.Key, Unit.Value.TypeName, Unit.Value.Entity, Alpha, View))
+		if (UE::HeroesOfLiberty::Units::MakeUnitView(EntityManager, Unit.Key, Unit.Value.TypeName, Unit.Value.Entity, Alpha, View, this))
 		{
 			OutUnits.Add(View);
 		}
@@ -1060,7 +1108,54 @@ bool UHOLUnitSubsystem::GetUnitView(const uint32 UnitId, FHOLUnitView& OutUnit) 
 	}
 	const UHOLSimulationSubsystem* Simulation = GetWorld()->GetSubsystem<UHOLSimulationSubsystem>();
 	return UE::HeroesOfLiberty::Units::MakeUnitView(EntitySubsystem->GetEntityManager(), UnitId, Unit->TypeName, Unit->Entity,
-		Simulation ? Simulation->GetInterpolationAlpha() : 1.f, OutUnit);
+		Simulation ? Simulation->GetInterpolationAlpha() : 1.f, OutUnit, this);
+}
+
+int32 UHOLUnitSubsystem::GetTechnologyHealthPercent(const FHOLUnitTypeConstants& Constants, const int32 Slot) const
+{
+	if (!TechnologyHealthPercent.IsValidIndex(Slot) || HOLSiege::GetHealthStat(Constants.TypeName).IsNone())
+	{
+		return 0;
+	}
+	return TechnologyHealthPercent[Slot];
+}
+
+int32 UHOLUnitSubsystem::ApplyTechnologyHealth(const int32 Slot, const int32 Before, const int32 After)
+{
+	if (Slot < 0 || Slot >= 64)
+	{
+		return 0;
+	}
+	if (TechnologyHealthPercent.Num() <= Slot)
+	{
+		TechnologyHealthPercent.SetNumZeroed(Slot + 1);
+	}
+	TechnologyHealthPercent[Slot] = After;
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!EntitySubsystem || After == Before)
+	{
+		return 0;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	int32 Raised = 0;
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		const FHOLUnitRecord& Record = Unit.Value;
+		if (Record.bDying || !EntityManager.IsEntityValid(Record.Entity) || HOLSiege::GetHealthStat(Record.TypeName).IsNone())
+		{
+			continue;
+		}
+		FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record.Entity);
+		const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Record.Entity);
+		if (!State || !Constants || State->OwnerPlayer != Slot || State->CurrentHealth <= 0.f)
+		{
+			continue;
+		}
+		const int32 Delta = HOLCombat::GetMaxHealth(*Constants, 1, After) - HOLCombat::GetMaxHealth(*Constants, 1, Before);
+		State->CurrentHealth += static_cast<float>(Delta);
+		++Raised;
+	}
+	return Raised;
 }
 
 FString UHOLUnitSubsystem::DescribeUnits(const int32 MaxUnits) const

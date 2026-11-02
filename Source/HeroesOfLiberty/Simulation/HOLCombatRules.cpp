@@ -43,9 +43,11 @@ namespace HOLCombat
 		return Hit;
 	}
 
-	int32 GetMaxHealth(const FHOLUnitTypeConstants& Type, const int32 Level)
+	int32 GetMaxHealth(const FHOLUnitTypeConstants& Type, const int32 Level, const int32 HealthPercent)
 	{
-		return FMath::RoundToInt(HOLHeroXP::GetLevelStat(static_cast<float>(Type.MaxHealth), Level));
+		// S5: the technologies' share after the level, rounded once (400 + 10 % = 440); a negative percent is no loss.
+		const float AtLevel = HOLHeroXP::GetLevelStat(static_cast<float>(Type.MaxHealth), Level);
+		return FMath::RoundToInt(AtLevel * (1.f + 0.01f * static_cast<float>(FMath::Max(HealthPercent, 0))));
 	}
 
 	int32 GetHitsToKill(const float Health, const float Damage)

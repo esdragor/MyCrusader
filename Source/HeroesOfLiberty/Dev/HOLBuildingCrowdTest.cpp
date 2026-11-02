@@ -697,7 +697,7 @@ namespace UE::HeroesOfLiberty::Dev::BuildingCrowd
 			{
 				AHOLBuilding* Found = nullptr;
 				double Best = 0.5 * SecondHouseOffset;
-				for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+				for (FHOLBuildingIterator It(World); It; ++It)
 				{
 					const double D = FVector2D::Distance(FVector2D(It->GetActorLocation()), Point);
 					if (It->GetOwnerPlayer() == Run.EnemySlot && It->GetHealth() > 0 && D < Best)
