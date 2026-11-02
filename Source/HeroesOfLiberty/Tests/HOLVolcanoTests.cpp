@@ -537,4 +537,38 @@ bool FHOLVolcanoEvacuationTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The altar held wakes the site sooner (V8, D380; Q-volcan-autel, option A by default: AltarAdvance seconds, behind the setting).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarTest, "HeroesOfLiberty.Volcano.AltarAdvance", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoAltarTest::RunTest(const FString& Parameters)
+{
+	FHOLVolcanoSettings Settings;
+	const HOLVolcano::FCycle Base = HOLVolcano::MakeCycle(4242, 0, 0.f, Settings, 60.f);
+	TestTrue(TEXT("the setting is a positive advance"), Settings.AltarAdvance > 0.f);
+
+	// Held long before the alert: everything comes the setting's seconds sooner, the alert as long as before.
+	const HOLVolcano::FCycle Early = HOLVolcano::AdvanceForAltar(Base, 10.f, Settings);
+	TestEqual(TEXT("the alert comes the advance sooner"), Early.WarningAt, Base.WarningAt - Settings.AltarAdvance);
+	TestEqual(TEXT("... the eruption too"), Early.EruptAt, Base.EruptAt - Settings.AltarAdvance);
+	TestEqual(TEXT("... the alert keeps its length (D380)"), Early.EruptAt - Early.WarningAt, Base.EruptAt - Base.WarningAt);
+	TestEqual(TEXT("... the cooling and the re-arming follow"), Early.ReArmAt - Base.ReArmAt, -Settings.AltarAdvance);
+
+	// Held just before the alert: never earlier than the instant the altar was taken.
+	const float Late = Base.WarningAt - 30.f;
+	const HOLVolcano::FCycle Capped = HOLVolcano::AdvanceForAltar(Base, Late, Settings);
+	TestEqual(TEXT("held 30 s before the alert: the alert comes at once, not before"), Capped.WarningAt, Late);
+
+	// Held once the alert has begun: nothing changes.
+	const HOLVolcano::FCycle After = HOLVolcano::AdvanceForAltar(Base, Base.WarningAt + 1.f, Settings);
+	TestEqual(TEXT("held during the alert: unchanged"), After.WarningAt, Base.WarningAt);
+
+	// The setting rules: no advance, no change; a bigger one moves more.
+	FHOLVolcanoSettings None = Settings;
+	None.AltarAdvance = 0.f;
+	TestEqual(TEXT("no advance: unchanged"), HOLVolcano::AdvanceForAltar(Base, 10.f, None).WarningAt, Base.WarningAt);
+	FHOLVolcanoSettings Big = Settings;
+	Big.AltarAdvance = 1.0e6f;
+	TestEqual(TEXT("an enormous advance is held at the instant of capture (option B's effect)"), HOLVolcano::AdvanceForAltar(Base, 10.f, Big).WarningAt, 10.f);
+	return true;
+}
+
 #endif

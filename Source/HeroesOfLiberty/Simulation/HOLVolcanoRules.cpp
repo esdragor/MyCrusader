@@ -171,6 +171,23 @@ HOLVolcano::FCycle HOLVolcano::MakeCycle(const int32 Seed, const int32 Index, co
 	return Cycle;
 }
 
+HOLVolcano::FCycle HOLVolcano::AdvanceForAltar(const FCycle& Cycle, const float HeldAt, const FHOLVolcanoSettings& Settings)
+{
+	if (HeldAt >= Cycle.WarningAt || Settings.AltarAdvance <= 0.f)
+	{
+		return Cycle;
+	}
+	// The alert comes sooner by the setting but not before the altar was taken; the rest of the cycle follows it, the alert's length unchanged.
+	const float Sooner = FMath::Min(Settings.AltarAdvance, Cycle.WarningAt - HeldAt);
+	FCycle Moved = Cycle;
+	Moved.WarningAt -= Sooner;
+	Moved.EruptAt -= Sooner;
+	Moved.EruptEndAt -= Sooner;
+	Moved.CooledAt -= Sooner;
+	Moved.ReArmAt -= Sooner;
+	return Moved;
+}
+
 int32 HOLVolcano::DrawFlow(const int32 Seed, const int32 Index, const int32 FlowCount)
 {
 	if (FlowCount <= 0)

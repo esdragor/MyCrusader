@@ -48,6 +48,8 @@ struct FHOLVolcanoSettings
 	 * building's own radius more). V5-Q1 = B, the user's answer (2026-11-02): 800 cm, a flow 16 m wide.
 	 */
 	float LavaHalfWidth = 800.f;
+	/** V8 (D380): how much sooner the altar held wakes the site (s); Q-volcan-autel option A, 120 s by default, to be answered. */
+	float AltarAdvance = 120.f;
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -168,6 +170,13 @@ namespace HOLVolcano
 		float FrontDistance = 0.f;
 		FVector FrontPoint = FVector::ZeroVector;
 	};
+
+	/**
+	 * V8 (D380, Q-volcan-autel option A by default): the altar held for ~60 s with no enemy (the ruin's rule, D348) wakes the site earlier. The alert
+	 * (and everything after it in the cycle) comes FHOLVolcanoSettings::AltarAdvance seconds sooner, never before HeldAt (the instant the altar was
+	 * taken), and unchanged if the alert has already begun (HeldAt at or after its date). The alert's own length stays (60 to 90 s, D380).
+	 */
+	HEROESOFLIBERTY_API FCycle AdvanceForAltar(const FCycle& Cycle, float HeldAt, const FHOLVolcanoSettings& Settings);
 
 	/** The seed of one site: the match's seed and the site's index mixed, so two sites never erupt alike. */
 	HEROESOFLIBERTY_API int32 SiteSeed(int32 MatchSeed, int32 SiteIndex);
