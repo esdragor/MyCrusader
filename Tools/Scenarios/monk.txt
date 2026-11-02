@@ -26,6 +26,11 @@ note 2. Le Moine est sorti de la Chapelle (production de 2 s pour l'essai).
 hol.Camera.FocusNear 4000 0
 frames 2
 hol.Units.SpawnHere 1 Monk 0 100
+waitlog SpawnHere: 1 Monk of slot 0
+frames 20
+# Select the Monk right after it spawns, alone (the last own unit): a later click would hit a Spearman standing on it (random spawn spots).
+hol.Select.ClickUnit -1
+waitlog Selection: Monk
 hol.Units.SpawnHere 3 Spearman 0 400
 waitlog SpawnHere: 3 Spearman of slot 0
 frames 20
@@ -35,8 +40,6 @@ hol.Cheat.Wound 70
 waitlog Cheat: slot 0 wound to 70 %
 note 3. Tout le monde est blesse a 70 % : le Moine soigne UN Lancier a la fois (ligne verte et + vert), sans se soigner lui-meme.
 waitlog heals #
-hol.Select.ClickUnit -4
-waitlog Selection: Monk
 frames 5
 capture monk_heal
 waitlog is healed to 80
