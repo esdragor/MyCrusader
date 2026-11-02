@@ -11,6 +11,7 @@
 #include "Map/HOLMapBounds.h"
 #include "Map/HOLMapRules.h"
 #include "Map/HOLMapSizeRules.h"
+#include "Map/HOLRelayLayout.h"
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLTerrainLayout.h"
 #include "Map/HOLTerrainRules.h"
@@ -35,6 +36,9 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	/** C3c: the marsh is a ring of at least this many round zones, and its edge no nearer than 50 m to a slot (the bases are 165 m or more from the middle). */
 	constexpr int32 MinMarshZones = 8;
 	constexpr double MarshFromSlot = 5000.0;
+
+	/** R2 (relays of the maps, D388): the reach of a base a relay's zone must stay out of (Tools/Editor/maps/common.py BASE_REACH), and the gap kept between a relay's zone and a source. */
+	constexpr float RelayBaseReach = 6000.f;
 
 	/** D493 (GDD 8.1, fairness between places): the sources nearest each place are the same distance away, to within 1 m. */
 	constexpr double FairnessTolerance = 100.0;
@@ -170,8 +174,15 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			const AHOLSourceLayout* Layout = nullptr;
 			TArray<FHOLPlacedTerrainZone> TerrainZones;
 			int32 NumTerrainLayouts = 0;
+			TArray<FHOLPlacedRelay> PlacedRelays;
+			int32 NumRelayLayouts = 0;
 			for (const AActor* Actor : Map->PersistentLevel->Actors)
 			{
+				if (const AHOLRelayLayout* RelayLayout = Cast<AHOLRelayLayout>(Actor))
+				{
+					PlacedRelays.Append(RelayLayout->GetRelays());
+					++NumRelayLayouts;
+				}
 				if (const AHOLTerrainLayout* Terrain = Cast<AHOLTerrainLayout>(Actor))
 				{
 					TerrainZones.Append(Terrain->GetZones());
@@ -213,6 +224,30 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 			{
 				TestTrue(FString::Printf(TEXT("%s: slot %d inside the bounds"), *Name, Slot), Area.IsInside(Starts[Slot]));
+			}
+
+			// 3b. R2 (relays of the maps, D388, RelaysInProgress.md): one relay layout, symmetric by a turn of one place, no zone in a base's reach,
+			// all inside the bounds, a radius above 0, and nothing to gather (tree, bush, vein) inside a zone: units must be able to stand there.
+			{
+				TArray<FVector2D> SlotCentres;
+				Starts.GenerateValueArray(SlotCentres);
+				TestEqual(FString::Printf(TEXT("%s: one relay layout (Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, MapInfo.Key, Info.Key), NumRelayLayouts, 1);
+				TestTrue(FString::Printf(TEXT("%s: %d relays (at least one)"), *Name, PlacedRelays.Num()), PlacedRelays.Num() >= 1);
+				TestEqual(FString::Printf(TEXT("%s: relays without a twin after a turn of one place"), *Name),
+					FHOLRelayLayoutRules::CountUnmatchedByTurn(PlacedRelays, 360.0 / Info.NumPlaces), 0);
+				TestEqual(FString::Printf(TEXT("%s: relays whose zone enters a base's reach"), *Name), FHOLRelayLayoutRules::CountInBases(PlacedRelays, SlotCentres, RelayBaseReach), 0);
+				TestEqual(FString::Printf(TEXT("%s: relays outside the bounds"), *Name), FHOLRelayLayoutRules::CountOutside(PlacedRelays, Half), 0);
+				TestEqual(FString::Printf(TEXT("%s: relays with a bad radius"), *Name), FHOLRelayLayoutRules::CountBadRadius(PlacedRelays), 0);
+				int32 SourcesInRelays = 0;
+				for (const FHOLPlacedSource& Source : Layout->GetSources())
+				{
+					for (const FHOLPlacedRelay& Relay : PlacedRelays)
+					{
+						SourcesInRelays += FVector2D::Distance(FVector2D(Source.Location), FVector2D(Relay.Location)) < Relay.Radius ? 1 : 0;
+					}
+				}
+				TestEqual(FString::Printf(TEXT("%s: %d sources (trees, bushes, veins) inside a relay's zone"), *Name, SourcesInRelays), SourcesInRelays, 0);
+				AddInfo(FString::Printf(TEXT("%s: %d relays"), *Name, PlacedRelays.Num()));
 			}
 
 			// 4. Fair: for each type of source, the sorted distances to the 3 nearest sources are the same at every place. The
