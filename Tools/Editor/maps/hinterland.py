@@ -568,4 +568,6 @@ def sources(recipe):
 def relays(recipe):
     """R2 (provisional level design): one relay between every two neighbouring places, clear of the rocks of the belt and the pockets' walls
     (common.ring_relays, avoid = avoid_points)."""
-    return common.ring_relays(recipe, avoid=avoid_points(recipe))
+    # The piles of gold and stone too: make_map drops what falls in a zone, and the budget per territory (Map.Table) must stay whole.
+    veins = [(x, y) for type_name, x, y, _ in plan(recipe).points if type_name not in ("Tree", "BerryBush")]
+    return common.ring_relays(recipe, avoid=avoid_points(recipe), keep_whole=veins)

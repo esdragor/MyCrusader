@@ -1076,6 +1076,7 @@ RELAY_SOURCE_CLEAR = 1500.0
 RELAY_ROCK_CLEAR = 1000.0
 RELAY_BASE_MARGIN = 500.0
 RELAY_FRACTIONS = (0.5, 0.45, 0.55, 0.4, 0.6, 0.35, 0.65, 0.7, 0.75)
+RELAY_FRACTIONS_WIDE = tuple(sorted((0.3 + 0.025 * k for k in range(0, 27) if round(0.3 + 0.025 * k, 3) not in RELAY_FRACTIONS), key=lambda f: abs(f - 0.5)))  # second tier of ring circles
 RELAY_ZONES = []  # [(x, y, radius)] of the map being made, read by steppe.kept_out
 
 
@@ -1083,7 +1084,7 @@ RELAY_EXTRA = 4  # the user's answer to Q-relais-lieux (2026-11-02): "4 + number
 RELAY_EXTRA_RADIUS = 2000.0  # cm: the 4 extra relays form a cross this far from the middle (zones 2.8 m apart edge to edge at 12 m radius: they do not overlap)
 
 
-def ring_relays(recipe, avoid=(), extra_radius=RELAY_EXTRA_RADIUS, on_slots=False):
+def ring_relays(recipe, avoid=(), extra_radius=RELAY_EXTRA_RADIUS, on_slots=False, keep_whole=()):
     """The relays of a map: one for every two neighbouring places (their middle angle; on_slots: on each place's own axis, for the maps whose ranges
     of mountains run along the middle angles), on the first circle (RELAY_FRACTIONS of the places' circle) where all of them are clear, plus RELAY_EXTRA
     in a cross round the middle at extra_radius (the ring is farther out than the cross by more than two zones). Clear: outside every base's reach and
@@ -1097,23 +1098,26 @@ def ring_relays(recipe, avoid=(), extra_radius=RELAY_EXTRA_RADIUS, on_slots=Fals
     limit = recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN
     # The cross first as asked (extra_radius, turned with the places); a map with rocks in the middle (the Hinterland's outcrops) turns it by 15 degrees,
     # then pushes it out by 500 cm, until the cross and a ring are both clear.
-    for rock_clear, push in [(clear_, push_) for clear_ in (RELAY_ROCK_CLEAR, 0.0) for push_ in range(0, 7)]:  # UNTESTED fallback (R2): rocks 0 cm from a zone's edge if none of the clearances above fit
-        cross_radius = extra_radius + 500.0 * push
-        inner = cross_radius + 2.0 * RELAY_RADIUS + RELAY_BASE_MARGIN
-        for turn in range(0, 6):
-            cross = [(cross_radius * math.cos(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn)),
-                      cross_radius * math.sin(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn))) for k in range(RELAY_EXTRA)]
-            for fraction in RELAY_FRACTIONS:
-                radius = fraction * recipe.slot_radius
-                if radius < inner:
-                    continue
-                points = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places)) for k in range(places)]
-                everything = points + cross
-                clear = all(abs(x) <= limit and abs(y) <= limit for x, y in everything)
-                clear = clear and all(math.dist(point, slot) >= BASE_REACH + RELAY_RADIUS + RELAY_BASE_MARGIN for point in everything for slot in slots)
-                clear = clear and all(math.dist(point, rock) >= RELAY_RADIUS + rock_clear for point in everything for rock in avoid)
-                if clear:
-                    return [(x, y, RELAY_RADIUS) for x, y in everything]
+    # Two tiers of ring circles: the usual ones, then (only if none fits, so the maps that fit keep their relays) a finer and wider choice.
+    for fractions in (RELAY_FRACTIONS, RELAY_FRACTIONS_WIDE):
+        for rock_clear, push in [(clear_, push_) for clear_ in (RELAY_ROCK_CLEAR, 0.0) for push_ in range(0, 7)]:  # UNTESTED fallback (R2): rocks 0 cm from a zone's edge if none of the clearances above fit
+            cross_radius = extra_radius + 500.0 * push
+            inner = cross_radius + 2.0 * RELAY_RADIUS + RELAY_BASE_MARGIN
+            for turn in range(0, 6):
+                cross = [(cross_radius * math.cos(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn)),
+                          cross_radius * math.sin(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn))) for k in range(RELAY_EXTRA)]
+                for fraction in fractions:
+                    radius = fraction * recipe.slot_radius
+                    if radius < inner:
+                        continue
+                    points = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places)) for k in range(places)]
+                    everything = points + cross
+                    clear = all(abs(x) <= limit and abs(y) <= limit for x, y in everything)
+                    clear = clear and all(math.dist(point, slot) >= BASE_REACH + RELAY_RADIUS + RELAY_BASE_MARGIN for point in everything for slot in slots)
+                    clear = clear and all(math.dist(point, rock) >= RELAY_RADIUS + rock_clear for point in everything for rock in avoid)
+                    clear = clear and all(math.dist(point, pile) >= RELAY_RADIUS + 1.0 for point in everything for pile in keep_whole)  # keep_whole: sources that must not fall in a zone
+                    if clear:
+                        return [(x, y, RELAY_RADIUS) for x, y in everything]
     raise RuntimeError("No clear circle for the relays of %s" % recipe.map_path)
 
 
