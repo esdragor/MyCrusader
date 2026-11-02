@@ -53,3 +53,7 @@ hol.Combat.Report 0
 waitlog Monk slot 0 hp 56/80
 note 4. Les trois Lanciers sont de nouveau a 80 ; les Moines, blesses, sont restes a 56 (pas d'auto-soin).
 capture monk_healed
+hol.Test.Sanity
+hol.Cheat.Wound 50
+waitlog Cheat: slot 0 wound to 50 %
+note 5. A toi : tout le monde est reblesse a 50 % ; le Moine reprend, un Lancier a la fois. Selectionne un Lancier et envoie-le (clic droit) a plus de 8 m du Moine : il n'est plus soigne ; ramene-le a moins de 8 m : il l'est de nouveau.
