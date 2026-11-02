@@ -123,6 +123,52 @@ bool FHOLSiegeTechnologiesTest::RunTest(const FString& Parameters)
 				Workshop->Produces.Contains(Line.Engine == HOLSiege::EEngine::Ram ? FName(TEXT("Ram")) : FName(TEXT("Mangonel"))));
 		}
 	}
+
+	// S5: the statistic each of the two technologies changes is the one the engine reads (not a name typed twice).
+	const FHOLTechnologyRow* ReinforcedRam = Table->FindRow<FHOLTechnologyRow>(TEXT("ReinforcedRam"), TEXT("technology"), false);
+	const FHOLTechnologyRow* HeavyMunitions = Table->FindRow<FHOLTechnologyRow>(TEXT("HeavyMunitions"), TEXT("technology"), false);
+	const FName RamName(TEXT("Ram"));
+	const FName MangonelName(TEXT("Mangonel"));
+	TestEqual(TEXT("the Ram reads RamHealth"), HOLSiege::GetHealthStat(RamName), FName(TEXT("RamHealth")));
+	TestEqual(TEXT("the Mangonel reads MangonelDamage"), HOLSiege::GetDamageStat(MangonelName), FName(TEXT("MangonelDamage")));
+	TestEqual(TEXT("the Mangonel's health has no technology"), HOLSiege::GetHealthStat(MangonelName), FName(NAME_None));
+	TestEqual(TEXT("the Ram's damage has no technology"), HOLSiege::GetDamageStat(RamName), FName(NAME_None));
+	TestEqual(TEXT("a Spearman has none"), HOLSiege::GetHealthStat(FName(TEXT("Spearman"))), FName(NAME_None));
+	if (ReinforcedRam != nullptr && HeavyMunitions != nullptr)
+	{
+		TestTrue(TEXT("Reinforced Ram changes what the Ram reads"), ReinforcedRam->Stats.Contains(HOLSiege::GetHealthStat(RamName)));
+		TestTrue(TEXT("Heavy Munitions changes what the Mangonel reads"), HeavyMunitions->Stats.Contains(HOLSiege::GetDamageStat(MangonelName)));
+	}
+	return true;
+}
+
+// S5: a type's maximum health with the percent its player's technologies add (Reinforced Ram: +10 % on the Ram's 400 -> 440), applied
+// after the level and rounded to nearest; 0 changes nothing.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiegeHealthTest, "HeroesOfLiberty.Siege.TechnologyHealth", UE::HeroesOfLiberty::Tests::Siege::Flags)
+bool FHOLSiegeHealthTest::RunTest(const FString& Parameters)
+{
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Ram = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Ram"), TEXT("Siege test"), false) : nullptr;
+	const FHOLUnitTypeRow* Mangonel = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Mangonel"), TEXT("Siege test"), false) : nullptr;
+	if (!TestNotNull(TEXT("Ram row"), Ram) || !TestNotNull(TEXT("Mangonel row"), Mangonel))
+	{
+		return false;
+	}
+	const FHOLUnitTypeConstants RamConstants = Ram->ToConstants(TEXT("Ram"));
+	TestEqual(TEXT("no technology: 400"), HOLCombat::GetMaxHealth(RamConstants, 1), 400);
+	TestEqual(TEXT("0 percent: 400"), HOLCombat::GetMaxHealth(RamConstants, 1, 0), 400);
+	TestEqual(TEXT("+10 percent: 440"), HOLCombat::GetMaxHealth(RamConstants, 1, 10), 440);
+	TestEqual(TEXT("+20 percent: 480"), HOLCombat::GetMaxHealth(RamConstants, 1, 20), 480);
+	TestEqual(TEXT("a negative percent is not a loss"), HOLCombat::GetMaxHealth(RamConstants, 1, -10), 400);
+	// The Mangonel's blow: 45 siege damage x 1.2 (Heavy Munitions) = 54 on a Spearman (no siege armour).
+	const FHOLUnitTypeRow* Spearman = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Spearman"), TEXT("Siege test"), false);
+	if (TestNotNull(TEXT("Spearman row"), Spearman))
+	{
+		const FHOLUnitTypeConstants MangonelConstants = Mangonel->ToConstants(TEXT("Mangonel"));
+		const FHOLUnitTypeConstants SpearmanConstants = Spearman->ToConstants(TEXT("Spearman"));
+		TestEqual(TEXT("Mangonel on a Spearman: 45"), HOLCombat::GetDamage(MangonelConstants, SpearmanConstants), 45.f);
+		TestEqual(TEXT("Mangonel on a Spearman with Heavy Munitions: 54"), HOLCombat::GetDamage(MangonelConstants, SpearmanConstants, 1, 0, 20), 54.f);
+	}
 	return true;
 }
 
@@ -206,7 +252,7 @@ bool FHOLSiegeTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Ram: no attack on units (SQ1 = B)"), Ram->Attack, 0);
 		TestEqual(TEXT("Ram: no area"), Ram->AreaRadius, 0.f);
 		TestTrue(TEXT("Ram: a production time"), Ram->BuildTime > 0.f);
-		TestTrue(TEXT("Ram: ranged armour above 0 (SQ3: every siege engine has some, 20 provisional)"), Ram->RangedArmor > 0);
+		TestEqual(TEXT("Ram: ranged armour 60 (SQ3, confirmed by the user 2026-11-02, D625)"), Ram->RangedArmor, 60);
 		TestTrue(TEXT("Ram: armours not negative"), Ram->MeleeArmor >= 0 && Ram->RangedArmor >= 0 && Ram->SiegeArmor >= 0 && Ram->HeroArmor >= 0);
 		TestTrue(TEXT("Ram: sees at least a tile beyond its reach"), Ram->SightRadius >= Ram->BuildingAttackRange + 400.f);
 	}
@@ -230,7 +276,7 @@ bool FHOLSiegeTablesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("Mangonel: a building every 5 s"), Mangonel->BuildingAttackInterval, 5.f);
 		TestEqual(TEXT("Mangonel: 3 000 cm reach on a building"), Mangonel->BuildingAttackRange, 3000.f);
 		TestTrue(TEXT("Mangonel: a production time"), Mangonel->BuildTime > 0.f);
-		TestTrue(TEXT("Mangonel: ranged armour above 0 (SQ3: every siege engine has some, 20 provisional)"), Mangonel->RangedArmor > 0);
+		TestEqual(TEXT("Mangonel: ranged armour 60 (SQ3, confirmed by the user 2026-11-02, D625)"), Mangonel->RangedArmor, 60);
 		TestTrue(TEXT("Mangonel: armours not negative"), Mangonel->MeleeArmor >= 0 && Mangonel->RangedArmor >= 0 && Mangonel->SiegeArmor >= 0 && Mangonel->HeroArmor >= 0);
 		TestTrue(TEXT("Mangonel: sees at least a tile beyond its reach"), Mangonel->SightRadius >= Mangonel->AttackRange + 400.f);
 	}

@@ -37,6 +37,7 @@
 #include "HUD/HOLScriptScreen.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
+#include "Siege/HOLSiegeRules.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLGameMenuRules.h"
@@ -573,6 +574,12 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		{
 			RefreshAges(BoundPlayerState.Get());
 		}
+	}
+	// S7: the siege workshop's engine cells follow the tier of the hero (his level moves without a delegate): drawn again when it changes.
+	if (bGridShown && ShownEngineTier != INDEX_NONE && BoundTableState.IsValid() && BoundPlayerState.IsValid()
+		&& BoundTableState->GetTier(BoundPlayerState->GetPlayerIndex()) != ShownEngineTier)
+	{
+		Refresh();
 	}
 	// M5: a Market's trade cells quote the common book; another player's trade, the book's way back to rest or a client's
 	// late replication moves it without telling this HUD: the cells are drawn again as soon as it differs from the quoted one.
@@ -1849,6 +1856,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 	ShownTradeLabels.Reset();
 	ShownTradeLabels.SetNum(GridCells.Num());
 	ShownMarketPrices.Reset();
+	ShownEngineTier = INDEX_NONE;
 	for (int32 Cell = 0; Cell < GridCells.Num() && Cell < ShownGridTypes.Num(); ++Cell)
 	{
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
@@ -1880,8 +1888,17 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const bool bQueueFull = !PlayerController || !PlayerController->FindProductionBuilding(Command.TypeName);
 			const FText Name = HOLGameNames::GetUnitName(Command.TypeName, UnitType);
-			GridCell->SetCommand(Name, bQueueFull || !(Missing == FHOLResources()) ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
-			GridCell->SetTooltip(Name, Cost, Missing, GetUnitEffect(Command.TypeName));
+			// S7 (siege engines, GDD 6.1): an engine whose tier the hero has not opened is greyed too, with the reason in its tooltip
+			// (the server refuses it by the same rule, HOLSiege::Check; the workshop is there, it is its grid, the stock is above).
+			HOLSiege::EEngine Engine;
+			const bool bTierBlocked = PlayerState && BoundTableState.IsValid() && HOLSiege::FindEngine(Command.TypeName, Engine)
+				&& HOLSiege::Check(Engine, BoundTableState->GetTier(PlayerState->GetPlayerIndex()), true, true) == HOLSiege::EBlock::TierTooLow;
+			if (PlayerState && BoundTableState.IsValid() && HOLSiege::FindEngine(Command.TypeName, Engine))
+			{
+				ShownEngineTier = BoundTableState->GetTier(PlayerState->GetPlayerIndex());
+			}
+			GridCell->SetCommand(Name, bQueueFull || bTierBlocked || !(Missing == FHOLResources()) ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, Cost, Missing, bTierBlocked ? GetResearchBlockText(HOLTechnology::EBlock::TierTooLow) : GetUnitEffect(Command.TypeName));
 			break;
 		}
 		case EHOLGridCommand::Research:

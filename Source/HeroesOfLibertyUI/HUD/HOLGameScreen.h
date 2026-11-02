@@ -586,6 +586,8 @@ private:
 	int32 ShownChosenAge = INDEX_NONE;
 	/** The tier of the player's hero the age panels were written for (P4): they follow his level. */
 	int32 ShownTier = INDEX_NONE;
+	/** S7: the tier of the hero the grid's siege engine cells were written for (INDEX_NONE: none shown): the grid follows his level. */
+	int32 ShownEngineTier = INDEX_NONE;
 	bool bQueueShown = false;
 	TArray<FName> ShownQueueTypes;
 	EHeadState HeadState = EHeadState::None;
