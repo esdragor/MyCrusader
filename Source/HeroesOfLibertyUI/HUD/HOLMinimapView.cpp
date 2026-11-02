@@ -34,7 +34,7 @@ static TAutoConsoleVariable<int32> CVarMinimapAlertShape(TEXT("hol.Minimap.Alert
 	TEXT("Shape of a minimap alert: 0 a red circle (the user's choice, MM-Q1, 2026-11-01) with a core, 1 a red square outline with a core, 2 a filled red square, 3 two nested squares, 4 a cross."), ECVF_Default);
 static TAutoConsoleVariable<float> CVarMinimapAlertSize(TEXT("hol.Minimap.AlertSize"), 24.f,
 	TEXT("Size of a minimap alert, pixels of the picture (6 to 60): the circle's starting diameter, the square shapes' side."), ECVF_Default);
-static TAutoConsoleVariable<float> CVarMinimapAlertShrink(TEXT("hol.Minimap.AlertShrinkSeconds"), 1.f,
+static TAutoConsoleVariable<float> CVarMinimapAlertShrink(TEXT("hol.Minimap.AlertShrinkSeconds"), 0.75f,
 	TEXT("The circle alert (shape 0) shrinks from AlertSize to 8 px in that many seconds, then starts again while the alert lasts (0.2 to 10)."), ECVF_Default);
 namespace
 {
@@ -169,9 +169,10 @@ public:
 		const int32 Shape = CVarMinimapAlertShape.GetValueOnGameThread();
 		const float Ring = FMath::Clamp(CVarMinimapAlertSize.GetValueOnGameThread(), 6.f, 60.f);
 		const FLinearColor AlertRed(1.f, 0.1f, 0.1f, 1.f);
-		for (const FVector2D& Alert : View->GetAlerts())
+		const TArray<FVector2D>& AlertPlaces = View->GetAlerts();
+		for (int32 AlertIndex = 0; AlertIndex < AlertPlaces.Num(); ++AlertIndex)
 		{
-			const FVector2f Centre(Alert);
+			const FVector2f Centre(AlertPlaces[AlertIndex]);
 			auto Outline = [&](const float Side, const float Thickness)
 			{
 				const FVector2f Corner = Centre - FVector2f(Side * 0.5f, Side * 0.5f);
@@ -219,8 +220,8 @@ public:
 				{
 					// MM-Q1 (2026-11-01): a circle that tightens on the struck point, again and again (the ping / radar manner).
 					const float Period = FMath::Clamp(CVarMinimapAlertShrink.GetValueOnGameThread(), 0.2f, 10.f);
-					const float Phase = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), Period) / Period;
-					const float Diameter = FMath::Lerp(Ring, 8.f, Phase);
+					// The alert's age on the GAME's clock (not the wall clock: pictures taken on the simulation's step show it moving).
+					const float Diameter = UHOLMinimapView::AlertDiameter(View->GetAlertAge(AlertIndex), Period, Ring);
 					Circle(Diameter * 0.5f, 3.f);
 					Circle(1.5f, 3.f);
 				}
@@ -315,10 +316,27 @@ void UHOLMinimapView::SetFrame(const FVector2D InMin, const FVector2D InMax)
 	FrameMax = InMax;
 }
 
-void UHOLMinimapView::SetLayers(const TArray<FHOLMinimapMark>& InMarks, const TArray<FVector2D>& InAlerts)
+float UHOLMinimapView::AlertDiameter(const float Age, const float Period, const float Size)
+{
+	// The period is kept sane (0 would divide by zero); a size under the 8 px end never grows.
+	const float SanePeriod = FMath::Clamp(Period, 0.2f, 10.f);
+	const float Phase = FMath::Fmod(FMath::Max(Age, 0.f), SanePeriod) / SanePeriod;
+	return FMath::Lerp(Size, FMath::Min(8.f, Size), Phase);
+}
+
+float UHOLMinimapView::GetAlertAge(const int32 Index) const
+{
+	const UWorld* World = GetWorld();
+	const double Since = World ? FMath::Max(World->GetTimeSeconds() - AlertsReadAt, 0.0) : 0.0;
+	return (AlertAges.IsValidIndex(Index) ? AlertAges[Index] : 0.f) + static_cast<float>(Since);
+}
+
+void UHOLMinimapView::SetLayers(const TArray<FHOLMinimapMark>& InMarks, const TArray<FVector2D>& InAlerts, const TArray<double>& InAlertAges)
 {
 	Marks = InMarks;
 	Alerts = InAlerts;
+	AlertAges = InAlertAges;
+	AlertsReadAt = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
 	if (Slate.IsValid())
 	{
 		Slate->Invalidate(EInvalidateWidgetReason::Paint);
@@ -623,8 +641,13 @@ bool UHOLMinimapView::OrderMove(const FVector2D World)
 
 FString UHOLMinimapView::Describe() const
 {
-	return FString::Printf(TEXT("minimap: %.0f px, %d marks, %d alerts lit, camera frame %d points, terrain %d x %d (sources %d, in sight %d texels, made %d times)"),
-		Side, Marks.Num(), Alerts.Num(), CameraFrame.Num(), Terrain ? TerrainSide : 0, Terrain ? TerrainSide : 0, NumSourcesDrawn, NumInSight, TerrainBuilds);
+	// The first alert's circle (shape 0) as it is painted now: its age on the game's clock and its diameter, for a sequence of pictures to check.
+	const FString Ring = Alerts.Num() > 0
+		? FString::Printf(TEXT(", ring age %.2f s diameter %.1f px"), GetAlertAge(0),
+			AlertDiameter(GetAlertAge(0), FMath::Clamp(CVarMinimapAlertShrink.GetValueOnGameThread(), 0.2f, 10.f), FMath::Clamp(CVarMinimapAlertSize.GetValueOnGameThread(), 6.f, 60.f)))
+		: FString();
+	return FString::Printf(TEXT("minimap: %.0f px, %d marks, %d alerts lit, camera frame %d points, terrain %d x %d (sources %d, in sight %d texels, made %d times)%s"),
+		Side, Marks.Num(), Alerts.Num(), CameraFrame.Num(), Terrain ? TerrainSide : 0, Terrain ? TerrainSide : 0, NumSourcesDrawn, NumInSight, TerrainBuilds, *Ring);
 }
 
 void UHOLMinimapView::BroadcastPressed(const FVector2D& Position, const bool bRight, const bool bDrag)

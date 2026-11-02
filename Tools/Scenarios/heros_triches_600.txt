@@ -1,0 +1,22 @@
+﻿# Fenêtre basse (1280x600) : le panneau « Triches » (haut gauche) et le bloc du héros (bas gauche) ne se recouvrent pas (Q-heros-triches-600 = A). Outil 12b : « HUD overlap: none ».
+# Plain, toi (slot 0) + un héros, une IA. Le scénario ouvre « Triches » dans une fenêtre haute (1280x1080), puis abaisse la fenêtre à 600 px : le panneau se replie tout seul.
+# Deux captures : fenêtre basse avec le panneau replié et le bloc du héros entier ; puis (clic sur « Triches ») le panneau rouvert à la main reste ouvert, c'est ton choix.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+r.SetRes 1280x1080w
+frames 40
+hol.HUD.Cheats 1
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+r.SetRes 1280x600w
+frames 60
+hol.HUD.Report 1
+waitlog HUD overlap:
+waitlog HUD cheats: cheats folded
+capture heros_triches_600_folded
+hol.Test.Sanity
+note 1. Fenêtre de 600 px de haut : en haut à gauche « Triches + » (replié), en bas à gauche le bloc du héros entier (emblème, niveau, PV) : rien ne se recouvre.
+note 2. Clique sur « Triches » : il s'ouvre et reste ouvert (il ne couvre pas le bloc du héros : la mise en page suit la hauteur de la fenêtre) ; reclique pour le replier.
+
+

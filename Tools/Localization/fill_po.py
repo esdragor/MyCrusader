@@ -247,6 +247,12 @@ TRANSLATIONS = {
     "HOLGameScreen,MessageHeroReady": ("Your hero is ready to return", "英雄の帰還準備が整った"),
     "HOLGameScreen,MessageHeroLevel": ("Paladin-Commander: level {0}", "聖騎士団長：レベル {0}"),
     "HOLGameScreen,MessageHeroTier": ("Tier {0} reached", "段階{0}に到達"),
+    # The tribute announced to its receiver alone (D372, TB-Q1): the resource names are lower case inside the sentence.
+    "HOLGameScreen,TributeFood": ("food", "食料"),
+    "HOLGameScreen,TributeWood": ("wood", "木材"),
+    "HOLGameScreen,TributeStone": ("stone", "石材"),
+    "HOLGameScreen,TributeGold": ("gold", "金"),
+    "HOLGameScreen,MessageTribute": ("{0} gave you {1} {2} (tax {3})", "{0}から{2}{1}の贈り物（税 {3}）"),
 
     # The hero's block, in script (Script/UI/HOLHeroBlock.as, J8a.5): {0} {1} numbers, the delay m:ss.
     "HOLHeroBlock,Level": ("Level {0}", "レベル {0}"),

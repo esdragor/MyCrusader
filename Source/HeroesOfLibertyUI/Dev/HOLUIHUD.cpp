@@ -107,6 +107,25 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		});
 	}
 
+	/** hol.HUD.Cheats <0|1>: the cheats' panel folded or open, without keeping the choice (scenarios: a known state, whatever was kept). */
+	void Cheats(const TArray<FString>& Args, UWorld* World)
+	{
+		const bool bOpen = Args.Num() > 0 && FCString::Atoi(*Args[0]) != 0;
+		WithGameScreen(World, 0.f, [bOpen](UHOLGameScreen& Screen)
+		{
+			if (UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
+			{
+				CheatPanel->SetOpen(bOpen, /*bKeep*/ false);
+			}
+			UE_LOG(LogHOLUI, Display, TEXT("HUD cheats set: %s"), bOpen ? TEXT("open") : TEXT("folded"));
+		});
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs CheatsCommand(
+		TEXT("hol.HUD.Cheats"),
+		TEXT("hol.HUD.Cheats <0|1>: folds or opens the cheats' panel without keeping the choice (scenarios)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Cheats));
+
 	FAutoConsoleCommandWithWorldAndArgs ReportCommand(
 		TEXT("hol.HUD.Report"),
 		TEXT("hol.HUD.Report [DelaySeconds=0]: logs what the game HUD shows (resources, selection, grid, queue)"),

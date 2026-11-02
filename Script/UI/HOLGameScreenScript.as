@@ -681,13 +681,17 @@ FString TalentTipTexts = "";
 		HOLMinimap::Detect(MinimapSeenBefore, Seen, MinimapAlerts);
 		MinimapSeenBefore = Seen;
 		TArray<FVector2D> Lit;
+		TArray<double> LitAges;
 		for (int Index = 0; Index < MinimapAlerts.Num(); Index++)
 		{
 			if (HOLMinimap::IsLit(MinimapAlerts[Index], Minimap.GetAlertBlink()))
+			{
 				Lit.Add(HOLMinimap::ToPicture(MinimapFrame, FVector2D(MinimapAlerts[Index].X, MinimapAlerts[Index].Y)));
+				LitAges.Add(MinimapAlerts[Index].Age);
+			}
 		}
 		MinimapLitAlerts = Lit.Num();
-		Minimap.SetLayers(Marks, Lit);
+		Minimap.SetLayers(Marks, Lit, LitAges);
 		// The camera's ground as the view sees it now (the frame then follows the focus every frame, HandleMinimapTicked).
 		MinimapQuad.Reset();
 		if (Minimap.GetCameraGround(MinimapQuad))
@@ -971,6 +975,8 @@ FString TalentTipTexts = "";
 		HeroView = View;
 		HeroTexts = "";
 		HeroPanel.SetVisibility(View.bVisible ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		// A low window: the cheats' panel folds when this block opens (Q-heros-triches-600 = A).
+		SetCheatsHeroBlockShown(View.bVisible);
 		if (!View.bVisible)
 			return;
 		// The portrait: the player's colour and the emblem, both darkened while dead (its click does nothing then).

@@ -11,9 +11,12 @@
 #include "Components/Slider.h"
 #include "Components/VerticalBox.h"
 #include "Components/VerticalBoxSlot.h"
+#include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
+#include "HUD/HOLHUDLayoutRules.h"
 #include "Match/HOLResources.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Player/HOLPlayerController.h"
@@ -56,6 +59,11 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 		{ TEXT("CheatFastBuild"), TEXT("") },
 	};
 	const FName ToggleName(TEXT("CheatToggle"));
+
+	/** 1 (default): in a window lower than 700 px the panel starts folded and folds when the hero's block opens (Q-heros-triches-600 = A); 0: as before (A / B measure). */
+	TAutoConsoleVariable<bool> CVarLowFold(
+		TEXT("hol.HUD.CheatsLowFold"), true,
+		TEXT("1 (default): in a window lower than 700 px high the cheats' panel starts folded and folds when the hero's block opens; 0: as before"));
 
 	struct FSpeedSlider
 	{
@@ -115,8 +123,20 @@ void UHOLCheatPanel::NativeOnInitialized()
 			Slider->OnValueChanged.AddDynamic(this, &UHOLCheatPanel::HandleGatherSpeedChanged);
 		}
 	}
-	GConfig->GetBool(ConfigSection, ConfigOpenKey, bOpen, GGameUserSettingsIni);
-	SetOpen(bOpen);
+	bool bSavedOpen = false;
+	GConfig->GetBool(ConfigSection, ConfigOpenKey, bSavedOpen, GGameUserSettingsIni);
+	// A low window starts folded (Q-heros-triches-600 = A), without losing the kept choice.
+	SetOpen(CVarLowFold.GetValueOnGameThread() ? HOLHUDLayout::CheatsStartOpen(bSavedOpen, GetWindowHeight()) : bSavedOpen, /*bKeep*/ false);
+}
+
+float UHOLCheatPanel::GetWindowHeight()
+{
+	FVector2D Size = FVector2D::ZeroVector;
+	if (GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->GetViewportSize(Size);
+	}
+	return static_cast<float>(Size.Y);
 }
 
 void UHOLCheatPanel::NativeConstruct()
@@ -177,6 +197,13 @@ void UHOLCheatPanel::NativeTick(const FGeometry& MyGeometry, const float InDelta
 	Super::NativeTick(MyGeometry, InDeltaTime);
 	FollowServerSettings();
 
+	// A low window: the hero's block opening folds the panel that would cover it (once; a click that opens it again stays).
+	if (HOLHUDLayout::ShouldFoldCheats(GetWindowHeight(), bHeroBlockShown, bOpen, bWasLowWindow, bWasHeroBlockShown) && CVarLowFold.GetValueOnGameThread())
+	{
+		SetOpen(false, /*bKeep*/ false);
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: cheats folded (window %.0f px high, the hero's block opened)"), GetWindowHeight());
+	}
+
 	// Under the top bar, which only shows once the player's economy has arrived and may change height.
 	const UWidget* AnchorWidget = Anchor.Get();
 	const float AnchorHeight = AnchorWidget && AnchorWidget->GetVisibility() != ESlateVisibility::Collapsed ? AnchorWidget->GetDesiredSize().Y : 0.f;
@@ -215,11 +242,11 @@ bool UHOLCheatPanel::GetBox(FBox2D& OutBox) const
 	return true;
 }
 
-void UHOLCheatPanel::SetOpen(const bool bInOpen)
+void UHOLCheatPanel::SetOpen(const bool bInOpen, const bool bKeep)
 {
 	using namespace UE::HeroesOfLiberty::UI::CheatPanel;
 
-	const bool bChanged = bOpen != bInOpen;
+	const bool bChanged = bKeep && bOpen != bInOpen;
 	bOpen = bInOpen;
 	if (CheatColumn)
 	{
