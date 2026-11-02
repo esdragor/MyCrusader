@@ -73,6 +73,9 @@ bool FHOLManagerClientRules::ParseLobbies(const FString& Json, TArray<FHOLLobbyS
 		{
 			Lobby.Minutes = -1;
 		}
+		// SP1: absent from an older manager (no spectators, none to enter as).
+		(*Row)->TryGetNumberField(TEXT("spectators"), Lobby.Spectators);
+		(*Row)->TryGetBoolField(TEXT("canSpectate"), Lobby.bCanSpectate);
 		// TC3: absent from an older manager.
 		(*Row)->TryGetStringField(TEXT("map"), Lobby.Map);
 		(*Row)->TryGetStringField(TEXT("size"), Lobby.Size);
@@ -111,6 +114,11 @@ EHOLLobbyAction FHOLManagerClientRules::ChooseLobbyAction(const FHOLLobbySummary
 	return bAway ? EHOLLobbyAction::Rejoin : EHOLLobbyAction::Watch;
 }
 
+bool FHOLManagerClientRules::CanSpectate(const FHOLLobbySummary& Lobby)
+{
+	return Lobby.State == EHOLLobbyState::Lobby && Lobby.bCanSpectate;
+}
+
 int32 FHOLLobby::GetNumPlayers() const
 {
 	return Slots.FilterByPredicate([](const FHOLLobbySlot& Slot) { return Slot.State == EHOLLobbySlotState::Player; }).Num();
@@ -127,6 +135,16 @@ int32 FHOLLobby::FindYourSlot() const
 	{
 		return Slot.State == EHOLLobbySlotState::Player && Slot.PlayerName == You;
 	});
+}
+
+bool FHOLLobby::IsYouSpectator() const
+{
+	return !You.IsEmpty() && Spectators.Contains(You);
+}
+
+bool FHOLLobby::HasOpenSlot() const
+{
+	return Slots.ContainsByPredicate([](const FHOLLobbySlot& Slot) { return Slot.State == EHOLLobbySlotState::Open; });
 }
 
 bool FHOLLobby::IsYouLeader() const
@@ -169,7 +187,20 @@ namespace
 	}
 }
 
-FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const TOptional<bool> bReady)
+FString FHOLManagerClientRules::MakeJoinBody(const FString& PlayerName, const FString& GameVersion, const bool bSpectator)
+{
+	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
+	Object->SetStringField(TEXT("playerName"), PlayerName);
+	Object->SetStringField(TEXT("gameVersion"), GameVersion);
+	if (bSpectator)
+	{
+		Object->SetBoolField(TEXT("spectator"), true);
+	}
+	return WriteBody(Object);
+}
+
+FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const TOptional<bool> bReady,
+	const TOptional<bool> bSpectator)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	if (ColorIndex.IsSet())
@@ -183,6 +214,10 @@ FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, co
 	if (bReady.IsSet())
 	{
 		Object->SetBoolField(TEXT("ready"), bReady.GetValue());
+	}
+	if (bSpectator.IsSet())
+	{
+		Object->SetBoolField(TEXT("spectator"), bSpectator.GetValue());
 	}
 	return WriteBody(Object);
 }
@@ -292,6 +327,19 @@ namespace
 		Object.TryGetStringField(TEXT("leader"), Out.Leader);
 		Object.TryGetStringField(TEXT("you"), Out.You);
 		Object.TryGetStringField(TEXT("notice"), Out.Notice);
+		// SP1: the spectators by name, absent from an older manager.
+		if (const TArray<TSharedPtr<FJsonValue>>* Watchers = nullptr; Object.TryGetArrayField(TEXT("spectators"), Watchers))
+		{
+			for (const TSharedPtr<FJsonValue>& Watcher : *Watchers)
+			{
+				const TSharedPtr<FJsonObject>* Row = nullptr;
+				FString Name;
+				if (Watcher.IsValid() && Watcher->TryGetObject(Row) && (*Row)->TryGetStringField(TEXT("playerName"), Name))
+				{
+					Out.Spectators.Add(MoveTemp(Name));
+				}
+			}
+		}
 		(*Settings)->TryGetBoolField(TEXT("nomad"), Out.bNomad);
 		(*Settings)->TryGetBoolField(TEXT("regicide"), Out.bRegicide);
 		(*Settings)->TryGetBoolField(TEXT("catastrophe"), Out.bCatastrophe);

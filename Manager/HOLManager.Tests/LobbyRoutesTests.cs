@@ -123,6 +123,33 @@ public sealed class LobbyRoutesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task SpectatorsEnterBecomeAndLeaveThroughTheRoutes()
+    {
+        var (id, bob) = await CreateLobby();
+        // SP1: join as a spectator (no slot: -1), then switch with PUT /me.
+        var joined = await client.PostAsJsonAsync($"/lobbies/{id}/join", new { playerName = "Carol", gameVersion = Version, spectator = true });
+        Assert.Equal(HttpStatusCode.OK, joined.StatusCode);
+        var body = await Json(joined);
+        var carol = (string)body["token"]!;
+        Assert.Equal(-1, (int)body["slot"]!);
+        Assert.Equal("Carol", (string?)body["lobby"]!["you"]);
+        Assert.Equal("Carol", (string?)body["lobby"]!["spectators"]![0]!["playerName"]);
+        Assert.Equal(7, body["lobby"]!["slots"]!.AsArray().Count(s => (string?)s!["state"] == "open"));
+
+        var list = (await Json(await client.GetAsync("/lobbies")))["lobbies"]![0]!;
+        Assert.Equal((1, 1, true), ((int)list["players"]!, (int)list["spectators"]!, (bool)list["canSpectate"]!));
+
+        // A spectator sets no colour; becoming a player takes the first open slot.
+        await AssertError(await Send(HttpMethod.Put, $"/lobbies/{id}/me", carol, new { colorIndex = 3 }), HttpStatusCode.BadRequest, "bad_request");
+        var player = await Json(await Send(HttpMethod.Put, $"/lobbies/{id}/me", carol, new { spectator = false }));
+        Assert.Equal("player", (string?)player["slots"]![1]!["state"]);
+        Assert.Empty(player["spectators"]!.AsArray());
+        var back = await Json(await Send(HttpMethod.Put, $"/lobbies/{id}/me", bob, new { spectator = true }));
+        Assert.Equal("Bob", (string?)back["leader"]);
+        Assert.Equal("Bob", (string?)back["spectators"]![0]!["playerName"]);
+    }
+
+    [Fact]
     public async Task CreateWithBadNameOrVersionIsRefused()
     {
         await AssertError(await client.PostAsJsonAsync("/lobbies", new { name = "A", playerName = "B<b>", gameVersion = Version }),

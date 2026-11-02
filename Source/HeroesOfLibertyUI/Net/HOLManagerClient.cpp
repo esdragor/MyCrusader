@@ -295,6 +295,7 @@ void UHOLManagerClient::Enter(const FString& Route, const FString& Body, FHOLMan
 		{
 			WeakThis->LobbyId = Lobby.Id;
 			WeakThis->LobbyToken = Token;
+			WeakThis->bLobbySpectator = Lobby.IsYouSpectator();
 			WeakThis->bRejoinedLobby = false;
 			WeakThis->LobbyLoss = FHOLManagerError();
 			UE_LOG(LogHOLNet, Log, TEXT("Manager: in lobby %s as %s, slot %d"), *Lobby.Id, *Lobby.You, SlotIndex);
@@ -309,10 +310,10 @@ void UHOLManagerClient::CreateLobby(const FString& LobbyName, const FString& Pla
 		MoveTemp(Done));
 }
 
-void UHOLManagerClient::JoinLobby(const FString& InLobbyId, const FString& PlayerName, FHOLManagerLobbyDone Done)
+void UHOLManagerClient::JoinLobby(const FString& InLobbyId, const FString& PlayerName, FHOLManagerLobbyDone Done, const bool bSpectator)
 {
 	Enter(FString::Printf(TEXT("/lobbies/%s/join"), *InLobbyId),
-		MakeBody({ { TEXT("playerName"), PlayerName }, { TEXT("gameVersion"), HOLVersion::Get() } }), MoveTemp(Done));
+		FHOLManagerClientRules::MakeJoinBody(PlayerName, HOLVersion::Get(), bSpectator), MoveTemp(Done));
 }
 
 void UHOLManagerClient::ReadLobby(FHOLManagerLobbyDone Done)
@@ -335,6 +336,11 @@ void UHOLManagerClient::ReadLobby(FHOLManagerLobbyDone Done)
 		{
 			Error.Kind = FHOLManagerError::EKind::Unreadable;
 			Error.Message = Answer.Left(200);
+		}
+		// SP1: what I am in the lobby (spectator or player), for the way back after the match.
+		if (!Error.IsError() && WeakThis.IsValid() && WeakThis->LobbyToken == Token)
+		{
+			WeakThis->bLobbySpectator = Lobby.IsYouSpectator();
 		}
 		// Out of the lobby: this token is worth nothing any more (unless a newer one came meanwhile).
 		if ((Error.Code == TEXT("not_in_lobby") || Error.Code == TEXT("lobby_not_found")) && WeakThis.IsValid() && WeakThis->LobbyToken == Token)
@@ -373,9 +379,10 @@ void UHOLManagerClient::Write(const FString& Route, const FString& Body, FHOLMan
 	});
 }
 
-void UHOLManagerClient::UpdateMe(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const TOptional<bool> bReady, FHOLManagerLobbyDone Done)
+void UHOLManagerClient::UpdateMe(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const TOptional<bool> bReady, FHOLManagerLobbyDone Done,
+	const TOptional<bool> bSpectator)
 {
-	Write(TEXT("/me"), FHOLManagerClientRules::MakeMeBody(ColorIndex, Team, bReady), MoveTemp(Done));
+	Write(TEXT("/me"), FHOLManagerClientRules::MakeMeBody(ColorIndex, Team, bReady, bSpectator), MoveTemp(Done));
 }
 
 void UHOLManagerClient::UpdateSettings(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe, FHOLManagerLobbyDone Done,
@@ -464,8 +471,8 @@ void UHOLManagerClient::ReturnToLobby(FHOLManagerLobbyDone Done)
 	const FString Name = MatchPlayerName;
 	MatchPlayerName.Reset();
 	bRejoinedLobby = false;
-	UE_LOG(LogHOLNet, Display, TEXT("Manager: back to lobby %s as %s"), *Id, *Name);
-	JoinLobby(Id, Name, MoveTemp(Done));
+	UE_LOG(LogHOLNet, Display, TEXT("Manager: back to lobby %s as %s%s"), *Id, *Name, bLobbySpectator ? TEXT(" (spectator)") : TEXT(""));
+	JoinLobby(Id, Name, MoveTemp(Done), bLobbySpectator);
 }
 
 void UHOLManagerClient::ForgetLobby()

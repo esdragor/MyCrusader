@@ -316,6 +316,8 @@ void UHOLNewGameScreen::BuildLayout()
 	AddCell(Options, MakeText(LOCTEXT("Catastrophe", "Catastrophe"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
 	CatastropheDropdown = AddDropdown(Options, TEXT("CatastropheDropdown"), OffOn(), 0, ToggleWidth);
 
+	SpectatorsText = AddText(Column, TEXT("SpectatorsText"), FText::GetEmpty(), UHOLTextStyleNote::StaticClass(), 4.f);
+	SpectatorsText->SetVisibility(ESlateVisibility::Collapsed);
 	NoteText = AddText(Column, TEXT("Note"), LOCTEXT("GreyedTeamsOpen", "Grisé : pas encore dans le jeu (factions, mode et options)."),
 		UHOLTextStyleNote::StaticClass(), 4.f);
 	ErrorText = AddText(Column, TEXT("ErrorText"), FText::GetEmpty(), UHOLTextStyleBody::StaticClass(), 4.f);
@@ -326,6 +328,8 @@ void UHOLNewGameScreen::BuildLayout()
 	BackButton = AddButton(Buttons, TEXT("BackButton"), LOCTEXT("Back", "Retour"));
 	ReadyButton = AddButton(Buttons, TEXT("ReadyButton"), LOCTEXT("ReadyAction", "Prêt"));
 	ReadyButton->SetVisibility(ESlateVisibility::Collapsed);
+	SpectateButton = AddButton(Buttons, TEXT("SpectateButton"), LOCTEXT("BecomeSpectator", "Spectateur"));
+	SpectateButton->SetVisibility(ESlateVisibility::Collapsed);
 	LaunchButton = AddButton(Buttons, TEXT("LaunchButton"), LOCTEXT("Launch", "Lancer"));
 }
 
@@ -427,6 +431,10 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	{
 		ReadyButton->OnClicked().AddUObject(this, &UHOLNewGameScreen::ToggleReady);
 	}
+	if (SpectateButton)
+	{
+		SpectateButton->OnClicked().AddUObject(this, &UHOLNewGameScreen::ToggleSpectator);
+	}
 	if (BackButton)
 	{
 		BackButton->OnClicked().AddUObject(this, &UHOLNewGameScreen::Close);
@@ -484,6 +492,10 @@ void UHOLNewGameScreen::EnterLobby(const FHOLLobby& InLobby)
 	if (ReadyButton)
 	{
 		ReadyButton->SetVisibility(ESlateVisibility::Visible);
+	}
+	if (SpectateButton)
+	{
+		SpectateButton->SetVisibility(ESlateVisibility::Visible);
 	}
 	if (NoteText)
 	{
@@ -637,10 +649,28 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 		}
 	}
 	const bool bReady = Lobby.Slots.IsValidIndex(Yours) && Lobby.Slots[Yours].bReady;
+	// SP1 (D642): a spectator has no Ready; his button takes a slot back (only if one is open), a player's leaves his.
+	const bool bSpectator = Lobby.IsYouSpectator();
 	if (ReadyButton)
 	{
 		ReadyButton->SetLabel(bReady ? LOCTEXT("NotReadyAction", "Plus prêt") : LOCTEXT("ReadyAction", "Prêt"));
 		ReadyButton->SetIsEnabled(Yours != INDEX_NONE && Lobby.State == EHOLLobbyState::Lobby);
+		ReadyButton->SetVisibility(bSpectator ? ESlateVisibility::Collapsed : ESlateVisibility::Visible);
+	}
+	if (SpectateButton)
+	{
+		SpectateButton->SetLabel(bSpectator ? LOCTEXT("BecomePlayer", "Jouer") : LOCTEXT("BecomeSpectator", "Spectateur"));
+		SpectateButton->SetIsEnabled(Lobby.State == EHOLLobbyState::Lobby && (!bSpectator || Lobby.HasOpenSlot()));
+	}
+	if (SpectatorsText)
+	{
+		TArray<FString> Names;
+		for (const FString& Name : Lobby.Spectators)
+		{
+			Names.Add(Name == Lobby.Leader ? FText::Format(LOCTEXT("Leader", "♛ {0}"), FText::FromString(Name)).ToString() : Name);
+		}
+		SpectatorsText->SetText(Names.IsEmpty() ? FText::GetEmpty() : FText::Format(LOCTEXT("Spectators", "Spectateurs : {0}"), FText::FromString(FString::Join(Names, TEXT(", ")))));
+		SpectatorsText->SetVisibility(Names.IsEmpty() ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
 	}
 	// Launch: the leader's only, active when all are ready (the manager still decides).
 	if (LaunchButton)
@@ -667,9 +697,9 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 			: Row.State == EHOLLobbySlotState::AI ? FString::Printf(TEXT("a%d"), Row.ColorIndex)
 			: FString::Printf(TEXT("c%d%s"), Row.ColorIndex, Row.bReady ? TEXT("r") : TEXT("")));
 	}
-	const FString Logged = FString::Printf(TEXT("%d players (%s), you %s, leader %s, %d/%d ready, launch %s, slots %s"), Players.Num(),
-		*FString::Join(Players, TEXT(", ")), *Lobby.You, *Lobby.Leader, NumReady, Players.Num(), bLeader ? TEXT("shown") : TEXT("hidden"),
-		*FString::Join(SlotsShown, TEXT(" ")));
+	const FString Logged = FString::Printf(TEXT("%d players (%s), you %s%s, leader %s, %d/%d ready, launch %s, slots %s, spectators (%s)"), Players.Num(),
+		*FString::Join(Players, TEXT(", ")), *Lobby.You, bSpectator ? TEXT(" (spectator)") : TEXT(""), *Lobby.Leader, NumReady, Players.Num(),
+		bLeader ? TEXT("shown") : TEXT("hidden"), *FString::Join(SlotsShown, TEXT(" ")), *FString::Join(Lobby.Spectators, TEXT(", ")));
 	if (Logged != LoggedPlayers)
 	{
 		LoggedPlayers = Logged;
@@ -986,6 +1016,22 @@ void UHOLNewGameScreen::ToggleReady()
 	{
 		HandleWritten(Written, Error, What);
 	}));
+}
+
+void UHOLNewGameScreen::ToggleSpectator()
+{
+	UHOLManagerClient* Client = bLobby ? GetClient() : nullptr;
+	if (!Client)
+	{
+		return;
+	}
+	const bool bToSpectator = !Lobby.IsYouSpectator();
+	const FString What = FString::Printf(TEXT("spectator %s"), bToSpectator ? TEXT("on") : TEXT("off"));
+	UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
+	Client->UpdateMe({}, {}, {}, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
+	{
+		HandleWritten(Written, Error, What);
+	}), bToSpectator);
 }
 
 void UHOLNewGameScreen::StartMatch()

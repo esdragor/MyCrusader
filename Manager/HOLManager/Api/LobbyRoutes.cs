@@ -11,9 +11,9 @@ public static class LobbyRoutes
 
     private sealed record CreateRequest(string? Name, string? PlayerName, string? GameVersion);
 
-    private sealed record JoinRequest(string? PlayerName, string? GameVersion);
+    private sealed record JoinRequest(string? PlayerName, string? GameVersion, bool? Spectator = null);
 
-    private sealed record MeRequest(int? ColorIndex, int? Team, bool? Ready);
+    private sealed record MeRequest(int? ColorIndex, int? Team, bool? Ready, bool? Spectator = null);
 
     private sealed record SettingsRequest(string? Map, bool? Nomad, bool? Regicide, bool? Catastrophe, string? Size = null,
         bool? TeamsTogether = null, string? Fog = null);
@@ -77,7 +77,7 @@ public static class LobbyRoutes
         app.MapPost("/lobbies/{lobbyId}/join", async (string lobbyId, HttpRequest request, LobbyStore store) =>
         {
             var body = await Body<JoinRequest>(request);
-            return store.Atomic(() => JoinView(store, store.Join(lobbyId, body.PlayerName, body.GameVersion)));
+            return store.Atomic(() => JoinView(store, store.Join(lobbyId, body.PlayerName, body.GameVersion, body.Spectator == true)));
         });
 
         app.MapGet("/lobbies/{lobbyId}", (string lobbyId, HttpRequest request, LobbyStore store) =>
@@ -91,7 +91,7 @@ public static class LobbyRoutes
             var body = await Body<MeRequest>(request);
             var token = Token(request);
             return store.Atomic(() =>
-                LobbyViews.State(store, store.UpdateMe(lobbyId, token, body.ColorIndex, body.Team, body.Ready), token));
+                LobbyViews.State(store, store.UpdateMe(lobbyId, token, body.ColorIndex, body.Team, body.Ready, body.Spectator), token));
         });
 
         app.MapPut("/lobbies/{lobbyId}/settings", async (string lobbyId, HttpRequest request, LobbyStore store) =>

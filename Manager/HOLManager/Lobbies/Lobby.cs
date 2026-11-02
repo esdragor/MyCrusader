@@ -70,8 +70,11 @@ public sealed class LobbyPlayer
     public required string Name { get; init; }
     /** Changed when the player comes back by name after a match (R2.11). */
     public string Token { get; internal set; } = "";
-    /** TC3: changed when a smaller size moves the player onto a free slot below its places. */
+    /** TC3: changed when a smaller size moves the player onto a free slot below its places; -1 for a spectator. */
     public int SlotIndex { get; internal set; }
+
+    /** A spectator of the lobby (SP1): present, without a slot, a colour, a team nor a "Prêt". */
+    public bool IsSpectator => SlotIndex < 0;
     public int ColorIndex { get; internal set; }
     public int Team { get; internal set; }
     public string Faction { get; internal set; } = LobbyRules.DefaultFaction;
@@ -145,11 +148,17 @@ public sealed class Lobby
     public required LobbySettings Settings { get; init; }
     public IReadOnlyList<LobbySlot> Slots { get; } = Enumerable.Range(0, LobbyRules.SlotCount).Select(i => new LobbySlot(i)).ToArray();
 
-    /** Players in order of arrival. */
+    /** SP1: the spectators of the lobby, without a slot, in order of entry. */
+    public List<LobbyPlayer> Spectators { get; } = [];
+
+    /** Players (the ones holding a slot) in order of arrival. */
     public IEnumerable<LobbyPlayer> Players => Slots.Select(s => s.Player).OfType<LobbyPlayer>().OrderBy(p => p.JoinOrder);
 
-    /** The earliest arrival among the players back (the match's leader keeps his order); none back: the earliest. */
-    public LobbyPlayer? Leader => Players.FirstOrDefault(p => p.Back) ?? Players.FirstOrDefault();
+    /** SP1: everybody present, players and spectators, in order of arrival. */
+    public IEnumerable<LobbyPlayer> Present => Players.Concat(Spectators).OrderBy(p => p.JoinOrder);
+
+    /** The earliest arrival among those present back, a spectator too (the match's leader keeps his order); none back: the earliest. */
+    public LobbyPlayer? Leader => Present.FirstOrDefault(p => p.Back) ?? Present.FirstOrDefault();
 
     /**
      * After "finished" (M6-Q14): the match's leader, not back yet, still leads by name and nobody else sets or

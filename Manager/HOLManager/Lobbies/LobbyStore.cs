@@ -89,8 +89,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         }
     }
 
-    /** POST /lobbies/{id}/join. */
-    public JoinResult Join(string lobbyId, string? playerName, string? clientVersion)
+    /**
+     * POST /lobbies/{id}/join. SP1: as a spectator (spectator = true) the entry takes no slot, so a full lobby still
+     * lets him in, and there is no limit to their number.
+     */
+    public JoinResult Join(string lobbyId, string? playerName, string? clientVersion, bool spectator = false)
     {
         lock (gate)
         {
@@ -102,7 +105,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 throw new LobbyException(LobbyErrors.LobbyInGame, "The lobby is in a match.");
             }
-            var held = lobby.Players.FirstOrDefault(p => LobbyRules.NameComparer.Equals(p.Name, name));
+            var held = lobby.Present.FirstOrDefault(p => LobbyRules.NameComparer.Equals(p.Name, name));
             if (held?.ReservedUntil > clock.UtcNow)
             {
                 // Back from the match by name (R2.11): same line, new token; the old one is no longer valid.
@@ -111,7 +114,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 MarkBack(lobby, held);
                 return new JoinResult(lobby, held.Token, held.SlotIndex);
             }
-            if (!lobby.Slots.Any(s => s.State == SlotState.Open))
+            if (!spectator && !lobby.Slots.Any(s => s.State == SlotState.Open))
             {
                 throw new LobbyException(LobbyErrors.LobbyFull, "The lobby is full.");
             }
@@ -121,16 +124,16 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             }
             var leaderBack = lobby.AwayLeader != null && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name)
                 && !(lobby.AwayLeaderUntil <= clock.UtcNow);
-            var entered = Enter(lobby, name);
+            var entered = Enter(lobby, name, spectator);
             if (leaderBack)
             {
                 // M6-Q14: the match's leader takes the lead again, ahead of those back before him.
-                var leader = lobby.Players.Single(p => p.Token == entered.Token);
-                leader.JoinOrder = lobby.Players.Min(p => p.JoinOrder) - 1;
+                var leader = lobby.Present.Single(p => p.Token == entered.Token);
+                leader.JoinOrder = lobby.Present.Min(p => p.JoinOrder) - 1;
                 ClearAwayLeader(lobby);
             }
             else if (lobby.AwayLeader != null
-                && (lobby.AwayLeaderUntil <= clock.UtcNow || !lobby.Slots.Any(s => s.State == SlotState.Open)))
+                && (lobby.AwayLeaderUntil <= clock.UtcNow || (!spectator && !lobby.Slots.Any(s => s.State == SlotState.Open))))
             {
                 // Gone while nobody was back, or the lobby is full without him: the first back leads.
                 GiveUpAwayLeader(lobby);
@@ -139,8 +142,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         }
     }
 
-    /** PUT /lobbies/{id}/me: only the given fields change. */
-    public Lobby UpdateMe(string lobbyId, string? token, int? colorIndex = null, int? team = null, bool? ready = null)
+    /**
+     * PUT /lobbies/{id}/me: only the given fields change. SP1: spectator = true leaves my slot (the leader stays
+     * leader), false takes the first open slot (lobby_full); a spectator has no colour, team nor "Prêt" to set.
+     */
+    public Lobby UpdateMe(string lobbyId, string? token, int? colorIndex = null, int? team = null, bool? ready = null, bool? spectator = null)
     {
         lock (gate)
         {
@@ -150,10 +156,44 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 throw new LobbyException(LobbyErrors.BadRequest,
                     $"Color is 0 to {LobbyRules.RandomColor} (random), team 0 to {LobbyRules.MaxTeam}.");
             }
+            var spectating = spectator ?? me.IsSpectator;
+            if (spectating && (colorIndex != null || team != null || ready != null))
+            {
+                throw new LobbyException(LobbyErrors.BadRequest, "A spectator has no colour, team or ready.");
+            }
+            LobbySlot? freeSlot = null;
+            if (!spectating && me.IsSpectator)
+            {
+                freeSlot = lobby.Slots.FirstOrDefault(s => s.State == SlotState.Open)
+                    ?? throw new LobbyException(LobbyErrors.LobbyFull, "The lobby is full.");
+            }
             // E2-2: "Aléatoire" is never taken. IA0.6: an AI's colour is taken.
             if (colorIndex is { } color && color != LobbyRules.RandomColor && lobby.Slots.Any(s => s.Player != me && s.ColorIndex == color))
             {
                 throw new LobbyException(LobbyErrors.ColorTaken, $"Color {color} is taken.");
+            }
+            if (spectating)
+            {
+                if (!me.IsSpectator)
+                {
+                    lobby.Slots[me.SlotIndex].Player = null;
+                    me.SlotIndex = -1;
+                    me.Ready = false;
+                    lobby.Spectators.Add(me);
+                }
+                return lobby;
+            }
+            if (freeSlot != null)
+            {
+                // Back among the players: the first open slot, the colour I had if free, no team, not ready.
+                lobby.Spectators.Remove(me);
+                me.ColorIndex = me.ColorIndex is >= 0 and < LobbyRules.ColorCount && lobby.Slots.All(s => s.ColorIndex != me.ColorIndex)
+                    ? me.ColorIndex
+                    : FirstFreeColor(lobby);
+                freeSlot.Player = me;
+                me.SlotIndex = freeSlot.Index;
+                me.Team = 0;
+                me.Ready = false;
             }
             var lineChanged = (colorIndex ?? me.ColorIndex) != me.ColorIndex || (team ?? me.Team) != me.Team;
             me.ColorIndex = colorIndex ?? me.ColorIndex;
@@ -400,7 +440,9 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             match.Winners = winners ?? [];
             // M6-Q14: the leader leads while away, unless he already left the match's server.
             lobby.AwayLeader = lobby.Leader?.Name;
-            lobby.AwayLeaderUntil = lobby.AwayLeader != null && match.LeftBeforeEnd.Contains(lobby.AwayLeader) ? clock.UtcNow : null;
+            // SP1: the server does not tell when a spectator leaves, so a spectator-leader leads LeaderReturnGrace from the end.
+            lobby.AwayLeaderUntil = lobby.AwayLeader != null && match.LeftBeforeEnd.Contains(lobby.AwayLeader) ? clock.UtcNow
+                : lobby.Leader is { IsSpectator: true } ? clock.UtcNow + LobbyRules.LeaderReturnGrace : null;
             lobby.LastMatchColors = lobby.Players.ToDictionary(p => p.Name, p => p.ColorIndex, LobbyRules.NameComparer);
             lobby.State = LobbyState.Lobby;
             lobby.Match = null;
@@ -408,6 +450,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 slot.Player = null;
             }
+            lobby.Spectators.Clear();
         }
     });
 
@@ -527,8 +570,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             }
             if (lobby.State == LobbyState.Lobby)
             {
-                Remove(lobby, lobby.Players.Where(p => now - p.LastSeen >= LobbyRules.SilenceLimit && !(p.ReservedUntil > now)).ToList());
-                if (lobby.AwayLeaderUntil <= now && lobby.Players.Any())
+                Remove(lobby, lobby.Present.Where(p => now - p.LastSeen >= LobbyRules.SilenceLimit && !(p.ReservedUntil > now)).ToList());
+                if (lobby.AwayLeaderUntil <= now && lobby.Present.Any())
                 {
                     GiveUpAwayLeader(lobby);
                 }
@@ -584,7 +627,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         lobby.State = LobbyState.Lobby;
         lobby.Match = null;
         var now = clock.UtcNow;
-        foreach (var player in lobby.Players)
+        foreach (var player in lobby.Present)
         {
             player.Ready = false;
             player.LastSeen = now;
@@ -611,7 +654,14 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         var leader = lobby.Leader;
         foreach (var player in players)
         {
-            lobby.Slots[player.SlotIndex].Player = null;
+            if (player.IsSpectator)
+            {
+                lobby.Spectators.Remove(player);
+            }
+            else
+            {
+                lobby.Slots[player.SlotIndex].Player = null;
+            }
         }
         if (lobby.Leader == null)
         {
@@ -632,7 +682,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
     private void GiveUpAwayLeader(Lobby lobby)
     {
         ClearAwayLeader(lobby);
-        if (lobby.Players.Count() > 1)
+        if (lobby.Present.Count() > 1)
         {
             lobby.Notice = LobbyNotices.LeaderChanged;
             lobby.NoticeUntil = clock.UtcNow + LobbyRules.NoticeDuration;
@@ -651,7 +701,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
     /** The token's player; any call with a valid token counts as presence. */
     private LobbyPlayer FindPlayer(Lobby lobby, string? token)
     {
-        var player = lobby.Players.FirstOrDefault(p => p.Token == token)
+        var player = lobby.Present.FirstOrDefault(p => p.Token == token)
             ?? throw new LobbyException(LobbyErrors.NotInLobby, "Not in the lobby.");
         player.LastSeen = clock.UtcNow;
         MarkBack(lobby, player);
@@ -668,7 +718,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         {
             return;
         }
-        if (player != lobby.Players.First())
+        if (player != lobby.Present.First())
         {
             player.JoinOrder = nextJoinOrder++;
         }
@@ -718,8 +768,23 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
         }
     }
 
-    private JoinResult Enter(Lobby lobby, string name)
+    private JoinResult Enter(Lobby lobby, string name, bool spectator = false)
     {
+        if (spectator)
+        {
+            // SP1: no slot and no colour (-1: the first free one, or the one he had, when he takes a slot).
+            var watcher = new LobbyPlayer
+            {
+                Name = name,
+                Token = NewToken(),
+                SlotIndex = -1,
+                ColorIndex = -1,
+                JoinOrder = nextJoinOrder++,
+                LastSeen = clock.UtcNow,
+            };
+            lobby.Spectators.Add(watcher);
+            return new JoinResult(lobby, watcher.Token, -1);
+        }
         var slot = lobby.Slots.First(s => s.State == SlotState.Open);
         var player = new LobbyPlayer
         {

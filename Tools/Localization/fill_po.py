@@ -437,6 +437,10 @@ TRANSLATIONS = {
     "HOLMultiplayerScreen,Entering": ("Entering the lobby…", "ロビーに入室中…"),
     "HOLMultiplayerScreen,LobbyOf": ("{0}'s lobby", "{0}のロビー"),
 
+    "HOLMultiplayerScreen,Spectate": ("Spectate", "観戦"),
+    "HOLNewGameScreen,BecomeSpectator": ("Spectator", "観戦者になる"),
+    "HOLNewGameScreen,BecomePlayer": ("Play", "プレイヤーになる"),
+    "HOLNewGameScreen,Spectators": ("Spectators: {0}", "観戦者：{0}"),
     "HOLNewGameScreen,ReadyAction": ("Ready", "準備完了"),
     "HOLNewGameScreen,NotReadyAction": ("Not ready", "準備解除"),
     "HOLNewGameScreen,LeaveLobby": ("Leave the lobby", "ロビーを退出"),
