@@ -483,4 +483,58 @@ bool FHOLVolcanoSeedTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The AI's way out (V11, D427, V5-Q1 = B): the corridor is the flow's half width plus the body's radius, the whole length of the flow.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoEvacuationTest, "HeroesOfLiberty.Volcano.EvacuationPoint", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoEvacuationTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	const float W = Settings.LavaHalfWidth;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(8000.0, 0.0, 0.0) };
+
+	TestEqual(TEXT("the reach is the half width plus the radius"), HOLVolcano::EvacuationReach(W, 60.f), W + 60.f);
+	// The reach follows the settings (never typed): a narrower flow, a shorter reach.
+	TestEqual(TEXT("... of the setting, whatever it is"), HOLVolcano::EvacuationReach(300.f, 60.f), 360.f);
+
+	// A body that the old 8 m flow (half width 400) spared is now caught, along the whole corridor even before the front moves.
+	const FVector Beside(4000.0, 700.0, 0.0);
+	TestTrue(TEXT("700 cm aside, radius 60: inside the 16 m corridor"), HOLVolcano::IsInCorridor(Flow, W, Beside, 60.f));
+	TestFalse(TEXT("... but outside an 8 m corridor"), HOLVolcano::IsInCorridor(Flow, 400.f, Beside, 60.f));
+	TestFalse(TEXT("the radius counts: 800 + 60 + 1 cm aside is out"), HOLVolcano::IsInCorridor(Flow, W, FVector(4000.0, W + 61.0, 0.0), 60.f));
+	TestTrue(TEXT("... 800 + 60 - 1 cm is in"), HOLVolcano::IsInCorridor(Flow, W, FVector(4000.0, W + 59.0, 0.0), 60.f));
+	TestFalse(TEXT("far from the line: out"), HOLVolcano::IsInCorridor(Flow, W, FVector(4000.0, 3000.0, 0.0), 60.f));
+
+	// The way out: out of the corridor with a margin, on the side it stood on, at its height.
+	const FVector Out = HOLVolcano::EvacuationPoint(Flow, W, FVector(4000.0, 700.0, 25.0), 60.f);
+	TestFalse(TEXT("the point is out of the corridor"), HOLVolcano::IsInCorridor(Flow, W, Out, 60.f));
+	TestTrue(TEXT("... on the same side"), Out.Y > 0.0);
+	TestTrue(TEXT("... with a margin beyond the reach"), Out.Y >= W + 60.f + 199.f);
+	TestTrue(TEXT("... straight away from the line"), FMath::Abs(Out.X - 4000.0) < 1.0);
+	TestEqual(TEXT("... at its height"), static_cast<float>(Out.Z), 25.f);
+	TestTrue(TEXT("a body already out stays where it is"), HOLVolcano::EvacuationPoint(Flow, W, FVector(4000.0, 3000.0, 0.0), 60.f).Equals(FVector(4000.0, 3000.0, 0.0), 0.001));
+	const FVector OnLine = HOLVolcano::EvacuationPoint(Flow, W, FVector(2000.0, 0.0, 0.0), 60.f);
+	TestFalse(TEXT("a body on the line itself is led out as well"), HOLVolcano::IsInCorridor(Flow, W, OnLine, 60.f));
+	const FVector OtherSide = HOLVolcano::EvacuationPoint(Flow, W, FVector(4000.0, -300.0, 0.0), 60.f);
+	TestTrue(TEXT("a body on the other side goes to the other side"), OtherSide.Y < 0.0 && !HOLVolcano::IsInCorridor(Flow, W, OtherSide, 60.f));
+
+	// Every body of a grid across the corridor ends outside it.
+	int32 Caught = 0;
+	int32 Left = 0;
+	for (double X = -500.0; X <= 8500.0; X += 500.0)
+	{
+		for (double Y = -1500.0; Y <= 1500.0; Y += 100.0)
+		{
+			const FVector P(X, Y, 0.0);
+			if (HOLVolcano::IsInCorridor(Flow, W, P, 60.f))
+			{
+				++Caught;
+				Left += HOLVolcano::IsInCorridor(Flow, W, HOLVolcano::EvacuationPoint(Flow, W, P, 60.f), 60.f) ? 0 : 1;
+			}
+		}
+	}
+	TestTrue(TEXT("the grid has bodies in the corridor"), Caught > 100);
+	TestEqual(TEXT("every one of them is led out"), Left, Caught);
+	return true;
+}
+
 #endif

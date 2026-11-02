@@ -52,6 +52,24 @@ public:
 	int32 GetNumUnitsBurnt() const { return NumUnitsBurnt; }
 	int32 GetNumBuildingsBurnt() const { return NumBuildingsBurnt; }
 
+	/** V11: one unit that must leave a flow's corridor, and where it goes. */
+	struct FEvacuation
+	{
+		uint32 UnitId = 0;
+		FVector Target = FVector::ZeroVector;
+	};
+
+	/**
+	 * V11 (D427): the units of Slot caught in the corridor of a site in its alert or its eruption now (the whole corridor from the alert on, not
+	 * only what the front has run over: the AI leaves before the lava moves) and the point each goes to. A body is caught when it is within
+	 * LavaHalfWidth (the settings') plus its own radius of the flow's line (HOLVolcano::EvacuationReach). A hero in a duel stays (it cannot
+	 * flee). Nothing without Catastrophe. Returns how many.
+	 */
+	int32 GetEvacuations(int32 Slot, TArray<FEvacuation>& Out) const;
+
+	/** V11: GetEvacuations, then a move order for each unit (applied at the next step, the order a player's click sends). Returns how many were ordered. */
+	int32 EvacuateOwner(int32 Slot);
+
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
 

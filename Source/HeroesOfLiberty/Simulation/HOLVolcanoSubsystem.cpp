@@ -4,12 +4,14 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLConstructionSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
 #include "EngineUtils.h"
 #include "Match/HOLGameState.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Simulation/HOLUnitView.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogHOLVolcano, Log, All);
 
@@ -76,6 +78,81 @@ void UHOLVolcanoSubsystem::OnStepStarted(const int64 StepIndex)
 		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(GameState->GetLaunchConfig(), Index, Sites[Index], Now, Settings, ManAtArms->Speed);
 		Apply(Index, Sites[Index], State);
 	}
+}
+
+int32 UHOLVolcanoSubsystem::GetEvacuations(const int32 Slot, TArray<FEvacuation>& Out) const
+{
+	Out.Reset();
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	if (Sites.IsEmpty() || !GameState || !GameState->GetLaunchConfig().bCatastrophe || !Units || !Simulation)
+	{
+		return 0;
+	}
+	const FHOLUnitTypeRow* ManAtArms = Units->FindTypeRow(TEXT("ManAtArms"));
+	if (!ManAtArms)
+	{
+		return 0;
+	}
+	const float Now = GetClockOf(Simulation->GetStepIndex());
+	// The flows now threatening: the site's drawn flow while it warns or erupts.
+	TArray<const HOLVolcano::FFlow*> Threats;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(GameState->GetLaunchConfig(), Index, Sites[Index], Now, Settings, ManAtArms->Speed);
+		if ((State.Phase == EHOLVolcanoPhase::Warning || State.Phase == EHOLVolcanoPhase::Erupting) && Sites[Index].Flows.IsValidIndex(State.FlowIndex))
+		{
+			Threats.Add(&Sites[Index].Flows[State.FlowIndex]);
+		}
+	}
+	if (Threats.IsEmpty())
+	{
+		return 0;
+	}
+	UHOLDuelSubsystem* Duels = UHOLDuelSubsystem::Find(World);
+	const bool bHeroInDuel = Duels && Duels->GetAdversaryNow(Slot) >= 0;
+	const uint32 Hero = Units->FindHeroUnit(Slot);
+	TArray<FHOLUnitView> Views;
+	Units->GetUnitViews(Views);
+	for (const FHOLUnitView& View : Views)
+	{
+		if (View.OwnerPlayer != Slot || View.Health <= 0 || (bHeroInDuel && View.UnitId == Hero))
+		{
+			continue;
+		}
+		for (const HOLVolcano::FFlow* Flow : Threats)
+		{
+			if (HOLVolcano::IsInCorridor(*Flow, Settings.LavaHalfWidth, View.Location, View.Radius))
+			{
+				FEvacuation& Entry = Out.AddDefaulted_GetRef();
+				Entry.UnitId = View.UnitId;
+				Entry.Target = HOLVolcano::EvacuationPoint(*Flow, Settings.LavaHalfWidth, View.Location, View.Radius);
+				break;
+			}
+		}
+	}
+	return Out.Num();
+}
+
+int32 UHOLVolcanoSubsystem::EvacuateOwner(const int32 Slot)
+{
+	UWorld* World = GetWorld();
+	TArray<FEvacuation> Entries;
+	if (!World || GetEvacuations(Slot, Entries) == 0)
+	{
+		return 0;
+	}
+	int32 Ordered = 0;
+	for (const FEvacuation& Entry : Entries)
+	{
+		const uint32 Ids[1] = { Entry.UnitId };
+		Ordered += HOLPlayerOrders::Move(*World, Slot, MakeArrayView(Ids, 1), Entry.Target) ? 1 : 0;
+	}
+	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano evacuation: slot %d, %d of %d units leave the corridor (margin = LavaHalfWidth %.0f cm + each body's radius)"),
+		Slot, Ordered, Entries.Num(), Settings.LavaHalfWidth);
+	return Ordered;
 }
 
 void UHOLVolcanoSubsystem::Apply(const int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State)

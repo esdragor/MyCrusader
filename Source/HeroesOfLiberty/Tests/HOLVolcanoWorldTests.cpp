@@ -301,4 +301,105 @@ bool FHOLVolcanoNoCatastropheTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The AI leaves the lava's way from the alert on (V11, D427): on the real chain, the units caught in the 16 m corridor get a way out before the
+// front moves; the one beside it, and those of another slot, none.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoEvacuateWorldTest, "HeroesOfLiberty.Volcano.Evacuate", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoEvacuateWorldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, 4242);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	W.Volcano->SetSites({ Site });
+	const FHOLUnitTypeRow* ManAtArms = W.Units->FindTypeRow(TEXT("ManAtArms"));
+	if (!TestNotNull(TEXT("the Man-at-arms row"), ManAtArms))
+	{
+		return false;
+	}
+	const double Half = W.Volcano->GetSettings().LavaHalfWidth;
+	float WarningAt = -1.f;
+	float EruptAt = -1.f;
+	for (float Now = 0.f; Now < 3000.f && EruptAt < 0.f; Now += 0.5f)
+	{
+		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(W.GameState->GetLaunchConfig(), 0, Site, Now, W.Volcano->GetSettings(), ManAtArms->Speed);
+		if (WarningAt < 0.f && State.Phase == EHOLVolcanoPhase::Warning)
+		{
+			WarningAt = State.WarningAt;
+		}
+		if (State.Phase == EHOLVolcanoPhase::Erupting)
+		{
+			EruptAt = State.EruptAt;
+		}
+	}
+	if (!TestTrue(TEXT("the site warns then erupts"), WarningAt > 0.f && EruptAt > WarningAt))
+	{
+		return false;
+	}
+
+	const FName Peasant(TEXT("Peasant"));
+	const uint32 OnTheLine = W.PlaceUnit(Peasant, 1, FVector(5000.0, 0.0, 0.0));
+	const uint32 InTheWidth = W.PlaceUnit(Peasant, 1, FVector(9000.0, Half - 100.0, 0.0));
+	const uint32 Beside = W.PlaceUnit(Peasant, 1, FVector(5000.0, Half + 400.0, 0.0));
+	const uint32 FarAhead = W.PlaceUnit(Peasant, 1, FVector(25000.0, -300.0, 0.0));
+	const uint32 OtherSlots = W.PlaceUnit(Peasant, 2, FVector(5000.0, 100.0, 0.0));
+	if (!TestTrue(TEXT("everything placed"), OnTheLine && InTheWidth && Beside && FarAhead && OtherSlots))
+	{
+		return false;
+	}
+	TArray<UHOLVolcanoSubsystem::FEvacuation> Entries;
+
+	// Armed, before the alert: nobody leaves.
+	W.RunTo(WarningAt - 1.f);
+	TestEqual(TEXT("before the alert: nobody leaves"), W.Volcano->GetEvacuations(1, Entries), 0);
+
+	// The alert: the three caught by the corridor leave, the whole length of it (the front has not moved); the one beside it and the other slot's do not.
+	W.RunTo(WarningAt + 1.f);
+	TestEqual(TEXT("at the alert: the three in the corridor of slot 1 leave"), W.Volcano->GetEvacuations(1, Entries), 3);
+	TArray<uint32> Ids;
+	for (const UHOLVolcanoSubsystem::FEvacuation& Entry : Entries)
+	{
+		Ids.Add(Entry.UnitId);
+		FHOLUnitView View;
+		W.Units->GetUnitView(Entry.UnitId, View);
+		TestFalse(TEXT("... each to a point out of the corridor (its radius counted)"), HOLVolcano::IsInCorridor(Flow, W.Volcano->GetSettings().LavaHalfWidth, Entry.Target, View.Radius));
+	}
+	TestTrue(TEXT("... the one on the line"), Ids.Contains(OnTheLine));
+	TestTrue(TEXT("... the one in the width"), Ids.Contains(InTheWidth));
+	TestTrue(TEXT("... the one far ahead, the front is not near"), Ids.Contains(FarAhead));
+	TestFalse(TEXT("the one beside the corridor stays"), Ids.Contains(Beside));
+	TestFalse(TEXT("another slot's unit is not slot 1's to move"), Ids.Contains(OtherSlots));
+	TestEqual(TEXT("slot 2 has its own: one"), W.Volcano->GetEvacuations(2, Entries), 1);
+	TestEqual(TEXT("the orders are sent: three"), W.Volcano->EvacuateOwner(1), 3);
+	return true;
+}
+
+// Without the Catastrophe option the AI has nothing to flee (D398).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoEvacuateStandardTest, "HeroesOfLiberty.Volcano.EvacuateNothingWithoutCatastrophe", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoEvacuateStandardTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ false, 4242);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	W.Volcano->SetSites({ Site });
+	const uint32 OnTheLine = W.PlaceUnit(FName(TEXT("Peasant")), 1, FVector(5000.0, 0.0, 0.0));
+	TArray<UHOLVolcanoSubsystem::FEvacuation> Entries;
+	W.RunTo(900.f);
+	TestTrue(TEXT("placed"), OnTheLine != 0);
+	TestEqual(TEXT("no Catastrophe: nobody leaves"), W.Volcano->GetEvacuations(1, Entries), 0);
+	return true;
+}
+
 #endif

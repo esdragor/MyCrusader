@@ -64,6 +64,58 @@ bool HOLVolcano::IsInLava(const FFlow& Flow, const float FrontDistance, const fl
 	}
 	return false;
 }
+bool HOLVolcano::IsInCorridor(const FFlow& Flow, const float HalfWidth, const FVector& Point, const float Radius)
+{
+	return IsInLava(Flow, Flow.Length(), HalfWidth, Point, Radius);
+}
+
+FVector HOLVolcano::EvacuationPoint(const FFlow& Flow, const float HalfWidth, const FVector& Point, const float Radius, const float Beyond)
+{
+	if (!IsInCorridor(Flow, HalfWidth, Point, Radius))
+	{
+		return Point;
+	}
+	// The nearest point of the line (ground plane) and the segment it lies on.
+	const FVector2D P(Point.X, Point.Y);
+	double BestDistance = TNumericLimits<double>::Max();
+	FVector2D Nearest = P;
+	FVector2D SegmentDirection(1.0, 0.0);
+	for (int32 Index = 1; Index < Flow.Points.Num(); ++Index)
+	{
+		const FVector2D A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y);
+		const FVector2D B(Flow.Points[Index].X, Flow.Points[Index].Y);
+		const FVector2D AB = B - A;
+		const double Length2 = AB.SizeSquared();
+		if (Length2 <= 0.0)
+		{
+			continue;
+		}
+		const double T = FMath::Clamp(FVector2D::DotProduct(P - A, AB) / Length2, 0.0, 1.0);
+		const FVector2D On = A + AB * T;
+		const double Distance = FVector2D::Distance(P, On);
+		if (Distance < BestDistance)
+		{
+			BestDistance = Distance;
+			Nearest = On;
+			SegmentDirection = AB.GetSafeNormal();
+		}
+	}
+	FVector2D Away = P - Nearest;
+	if (Away.SizeSquared() < 1.0)
+	{
+		// On the line itself: the left of the flow's direction.
+		Away = FVector2D(-SegmentDirection.Y, SegmentDirection.X);
+	}
+	Away = Away.GetSafeNormal();
+	const double Clear = static_cast<double>(EvacuationReach(HalfWidth, Radius)) + static_cast<double>(FMath::Max(Beyond, 0.f));
+	FVector Target(Nearest.X + Away.X * Clear, Nearest.Y + Away.Y * Clear, Point.Z);
+	if (IsInCorridor(Flow, HalfWidth, Target, Radius))
+	{
+		Target = FVector(Nearest.X - Away.X * Clear, Nearest.Y - Away.Y * Clear, Point.Z);
+	}
+	return Target;
+}
+
 TArray<HOLVolcano::FObstacleBox> HOLVolcano::GetObstacleBoxes(const FFlow& Flow, const float HalfWidth)
 {
 	TArray<FObstacleBox> Boxes;

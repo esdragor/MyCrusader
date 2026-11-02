@@ -109,6 +109,24 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API TArray<FObstacleBox> GetObstacleBoxes(const FFlow& Flow, float HalfWidth);
 
+	/**
+	 * V11 (D427, V5-Q1 = B): how far from the line of a flow (cm) a body must stand to be out of the lava's way: the flow's half width plus the
+	 * body's own radius, the same reach IsInLava counts (never a typed constant: HalfWidth is FHOLVolcanoSettings::LavaHalfWidth).
+	 */
+	inline float EvacuationReach(const float HalfWidth, const float Radius) { return FMath::Max(HalfWidth, 0.f) + FMath::Max(Radius, 0.f); }
+
+	/**
+	 * V11: whether a body at Point with Radius lies in the whole corridor of the flow, from the crater to its end (the lava's reach once the
+	 * front has gone all the way): the AI leaves it from the alert on, before the front moves.
+	 */
+	HEROESOFLIBERTY_API bool IsInCorridor(const FFlow& Flow, float HalfWidth, const FVector& Point, float Radius = 0.f);
+
+	/**
+	 * V11: where a body at Point goes to leave the corridor: the nearest point of the flow's line, then straight away from it until
+	 * EvacuationReach + Beyond is cleared (on the other side if a bend of the flow still covers that point). Point itself when it is already out.
+	 */
+	HEROESOFLIBERTY_API FVector EvacuationPoint(const FFlow& Flow, float HalfWidth, const FVector& Point, float Radius = 0.f, float Beyond = 200.f);
+
 	/** V5 (GDD 12.2, 9.8, 10.2): the lava destroys everything it touches but a hero in a duel (the duel's arena is not burnt). */
 	inline bool LavaDestroys(const bool bIsHero, const bool bHeroInDuel) { return !(bIsHero && bHeroInDuel); }
 
