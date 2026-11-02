@@ -1090,6 +1090,9 @@ RELAY_EXTRA_ZONE = RELAY_RADIUS  # the fixed relays' zone: 12 m (the user, E-rel
 # with 2 places the two bases see the same distances (exact); with 4, 6 and 8 places a base and its opposite are equal, the other bases are not (the places
 # circle is of 0.75 H, so the pairs sit between and beyond the bases). A zone near a base, a rock or the ring is refused and the draw goes on.
 RELAY_FIXED_SEED = int(os.environ.get("HOL_RELAY_SEED", "1"))
+RELAY_VARIANT = 0  # 0 = the layout of HOL_RELAY_SEED; lay_relays_and_sources moves to 1, 2... (a neighbouring seed, always the same sequence) when a map has no room
+RELAY_VARIANTS = 12
+RELAY_VARIANT_STEP = 7919
 RELAY_FIXED_APART = 500.0  # cm of free ground between two zones' edges
 RELAY_FIXED_TRIES = 40000
 SALT_RELAYS = 778
@@ -1118,7 +1121,7 @@ def fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius)
     avoid point, whole veins left alone, apart from each other and from the ring's relays (RELAY_FIXED_APART between edges). min_radius > 0 (El Dorado's marsh):
     the middle relay stands that far from the middle, along the axis of place 0, and the others at least as far."""
     places = len(recipe.angles)
-    rng = Rng(mix_seed(recipe.layout_seed, SALT_RELAYS, RELAY_FIXED_SEED, places, sum(ord(c) for c in recipe.map_name)))
+    rng = Rng(mix_seed(recipe.layout_seed, SALT_RELAYS, RELAY_FIXED_SEED + RELAY_VARIANT * RELAY_VARIANT_STEP, places, sum(ord(c) for c in recipe.map_name)))
     zone = RELAY_EXTRA_ZONE
     middle = (min_radius + zone + RELAY_BASE_MARGIN) if min_radius > 0.0 else 0.0
     for _ in range(RELAY_FIXED_TRIES):
@@ -1135,6 +1138,71 @@ def fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius)
         clear = clear and all(math.dist(p, pile) >= zone + 1.0 for p in group for pile in keep_whole)
         if clear:
             return [(x, y, zone) for x, y in group]
+    return None
+
+
+RELAY_SNAP_STEP = 400.0
+RELAY_SNAP_REACH_FRACTION = 0.3  # how far (of the bounds' half side) a point of the group may be moved to find a clear place
+RELAY_SNAP_DRAWS = 40
+
+
+def snapped_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius):
+    """The 5 fixed relays of a map that is full of rocks (the Hinterland's belt and pockets: the plain draw of fixed_relays finds no group whose five zones all
+    stand clear), or None. A template is drawn as in fixed_relays, then each of its three independent parts (the middle one, the corner pair, the side pair) is
+    moved to the nearest clear place found on a spiral round its drawn point (RELAY_SNAP_STEP, RELAY_SNAP_REACH_FRACTION of the half side); a pair moves as
+    one (the point and its opposite, a turn of 180 degrees, are both clear), so the group stays closed under that turn. Deterministic (the same seeded draws)."""
+    places = len(recipe.angles)
+    rng = Rng(mix_seed(recipe.layout_seed, SALT_RELAYS + 1, RELAY_FIXED_SEED + RELAY_VARIANT * RELAY_VARIANT_STEP, places, sum(ord(c) for c in recipe.map_name)))
+    zone = RELAY_EXTRA_ZONE
+    half = recipe.bounds_half
+    middle = (min_radius + zone + RELAY_BASE_MARGIN) if min_radius > 0.0 else 0.0
+    reach = RELAY_SNAP_REACH_FRACTION * half
+
+    def clear(point, others):
+        if not (abs(point[0]) <= half - zone - RELAY_BASE_MARGIN and abs(point[1]) <= half - zone - RELAY_BASE_MARGIN):
+            return False
+        if math.hypot(point[0], point[1]) < min_radius - 1.0:
+            return False
+        if any(math.dist(point, slot) < BASE_REACH + zone + RELAY_BASE_MARGIN for slot in slots):
+            return False
+        if any(math.dist(point, other) < 2.0 * zone + RELAY_FIXED_APART for other in others):
+            return False
+        if any(math.dist(point, (x, y)) < zone + r + RELAY_FIXED_APART for x, y, r in ring):
+            return False
+        if any(math.dist(point, pile) < zone + 1.0 for pile in keep_whole):
+            return False
+        return not any(math.dist(point, rock) < zone + rock_clear for rock in avoid)
+
+    def spiral(point):
+        yield point
+        step = RELAY_SNAP_STEP
+        for number in range(1, int(reach / step) + 1):
+            count = 6 * number
+            for k in range(count):
+                angle = 2.0 * math.pi * k / count
+                yield (point[0] + number * step * math.cos(angle), point[1] + number * step * math.sin(angle))
+
+    def find(point, others, pair):
+        for candidate in spiral(point):
+            if pair:
+                twin = (-candidate[0], -candidate[1])
+                if clear(candidate, others) and clear(twin, others + [candidate]):
+                    return [candidate, twin]
+            elif clear(candidate, others):
+                return [candidate]
+        return None
+
+    for _ in range(RELAY_SNAP_DRAWS):
+        turn = math.radians(recipe.angles[0]) if places == 2 else rng.range(0.0, math.pi)
+        group = fixed_group(turn, rng, half, middle)
+        placed = []
+        for point, pair in ((group[0], False), (group[1], True), (group[3], True)):
+            found = find(point, placed, pair)
+            if found is None:
+                break
+            placed += found
+        else:
+            return [(x, y, zone) for x, y in placed]
     return None
 
 
@@ -1166,6 +1234,23 @@ def ring_relays(recipe, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(
                 fixed = fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, extra_radius)
                 if fixed:
                     return ring + fixed
+    # Last resort (a map full of rocks, the Hinterland's belt): the same circles, the fixed group's parts moved to the nearest clear ground (snapped_relays).
+    for rock_clear in (RELAY_ROCK_CLEAR, 0.0):
+        for fractions in (RELAY_FRACTIONS, RELAY_FRACTIONS_WIDE):
+            for fraction in fractions:
+                radius = fraction * recipe.slot_radius
+                if radius < extra_radius + RELAY_RADIUS + RELAY_BASE_MARGIN:
+                    continue
+                ring = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places), RELAY_RADIUS) for k in range(places)]
+                clear = all(abs(x) <= recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN and abs(y) <= recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN for x, y, _ in ring)
+                clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + RELAY_RADIUS + RELAY_BASE_MARGIN for x, y, _ in ring for slot in slots)
+                clear = clear and all(math.dist((x, y), rock) >= RELAY_RADIUS + rock_clear for x, y, _ in ring for rock in avoid)
+                clear = clear and all(math.dist((x, y), pile) >= RELAY_RADIUS + 1.0 for x, y, _ in ring for pile in keep_whole)
+                if not clear:
+                    continue
+                fixed = snapped_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, extra_radius)
+                if fixed:
+                    return ring + fixed
     raise RuntimeError("No clear circle for the relays of %s" % recipe.map_path)
 
 
@@ -1191,6 +1276,49 @@ def outside_relays(sources, relays):
         if all(math.dist((at.x, at.y), (x, y)) >= radius for x, y, radius in relays):
             kept.append(source)
     return kept
+
+
+def min_trees_per_territory(recipe, sources):
+    """The fewest trees any territory holds (a tree belongs to the slot nearest to it, as Map.Table counts)."""
+    slots = [recipe.slot(index)[0] for index in range(len(recipe.angles))]
+    counts = [0] * len(slots)
+    for source in sources:
+        if str(source.get_editor_property("type")) == "Tree":
+            at = source.get_editor_property("location")
+            counts[min(range(len(slots)), key=lambda index: math.dist((at.x, at.y), slots[index]))] += 1
+    return min(counts)
+
+
+def lay_relays_and_sources(recipe, module):
+    """(relays, sources, groups) of a map. The relays' zones push the far layer's sources about, so a layout of relays may leave a territory without room
+    for a pile (steppe.RoomError) or a map without a clear circle: then the next RELAY_VARIANT (the same fixed relays group drawn from a neighbouring seed;
+    always the same sequence, so the same file every time) is tried, up to RELAY_VARIANTS. Variant 0 is HOL_RELAY_SEED's own."""
+    global RELAY_VARIANT
+    last = None
+    try:
+        for RELAY_VARIANT in range(RELAY_VARIANTS):
+            try:
+                relays = list(module.relays(recipe)) if hasattr(module, "relays") else []
+                RELAY_ZONES[:] = relays
+                try:
+                    sources, groups = module.sources(recipe)
+                finally:
+                    RELAY_ZONES[:] = []
+                floor = getattr(module, "tree_floor", None)  # the trees each territory must keep once the zones have taken theirs (Map.Table's budget)
+                if floor is not None:
+                    short = min_trees_per_territory(recipe, outside_relays(sources, relays))
+                    if short < floor(recipe):
+                        raise RuntimeError("%s: a territory holds %d trees outside the relays' zones, the budget is %d" % (recipe.map_path, short, floor(recipe)))
+            except RuntimeError as error:
+                last = error
+                print("[maps] %s: relay variant %d refused (%s)" % (recipe.map_path, RELAY_VARIANT, str(error)[:120]))
+                continue
+            if RELAY_VARIANT:
+                print("[maps] %s: relay variant %d" % (recipe.map_path, RELAY_VARIANT))
+            return relays, sources, groups
+    finally:
+        RELAY_VARIANT = 0
+    raise last
 
 
 def make_map(recipe, module, on_saved):
@@ -1241,12 +1369,7 @@ def make_map(recipe, module, on_saved):
 
     # Resource sources (D297): data read by the server, nothing in the map itself (the navmesh is built without them).
     layout = spawn(layout_class, label="SourceLayout")
-    relays = list(module.relays(recipe)) if hasattr(module, "relays") else []
-    RELAY_ZONES[:] = relays
-    try:
-        sources, groups = module.sources(recipe)
-    finally:
-        RELAY_ZONES[:] = []
+    relays, sources, groups = lay_relays_and_sources(recipe, module)
     sources = outside_relays(sources, relays)  # what the far layer's clearance did not keep out (R2)
     layout.set_editor_property("sources", sources)
     if relays:

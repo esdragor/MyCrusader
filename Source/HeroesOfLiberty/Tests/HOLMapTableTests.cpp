@@ -256,8 +256,21 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						WrongFixedRadius += FMath::IsNearlyEqual(Relay.Radius, FixedRelayRadius, 1.f) ? 0 : 1;
 					}
 					TestEqual(FString::Printf(TEXT("%s: fixed relays whose zone is not %.0f cm (common.py RELAY_EXTRA_ZONE)"), *Name, FixedRelayRadius), WrongFixedRadius, 0);
-					// The fixed relays are the middle and two pairs of opposite points: closed under a turn of 180 degrees.
-					TestEqual(FString::Printf(TEXT("%s: fixed relays without a twin after a turn of 180 degrees"), *Name), FHOLRelayLayoutRules::CountUnmatchedByTurn(Fixed, 180.0), 0);
+					// The fixed relays are the middle and two pairs of opposite points: the two pairs are closed under a turn of 180 degrees. The middle one is left out
+					// of that check (the relay nearest the map's centre): a map may move it off the centre (Les Gues' river on 2 places, El Dorado's marsh).
+					TArray<FHOLPlacedRelay> Pairs = Fixed;
+					{
+						int32 Nearest = 0;
+						for (int32 Index = 1; Index < Pairs.Num(); ++Index)
+						{
+							Nearest = FVector2D(Pairs[Index].Location).SizeSquared() < FVector2D(Pairs[Nearest].Location).SizeSquared() ? Index : Nearest;
+						}
+						if (Pairs.IsValidIndex(Nearest))
+						{
+							Pairs.RemoveAt(Nearest);
+						}
+					}
+					TestEqual(FString::Printf(TEXT("%s: fixed relays (not the middle one) without a twin after a turn of 180 degrees"), *Name), FHOLRelayLayoutRules::CountUnmatchedByTurn(Pairs, 180.0), 0);
 				int32 Overlapping = 0;
 				for (int32 A = 0; A < ByDistance.Num(); ++A)
 				{

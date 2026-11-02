@@ -123,6 +123,14 @@ def territory(recipe, base):
             y += CANDIDATE_STEP
         x += CANDIDATE_STEP
     placed = [(px, py, 150.0) for px, py in own]
+    # R2 (relays, E-relays-carte v4): nothing is placed in a relay's zone, whichever slot the territory is turned onto: the zones (common.RELAY_ZONES, in the
+    # map's frame) are turned back into slot 0's frame, once for each slot, and kept clear like a deposit (zone radius + CLEAR). Otherwise make_map drops
+    # the trees that fall in a zone and the territory is left under its budget.
+    for index in range(len(recipe.angles)):
+        back = -math.radians(recipe.angles[index] - recipe.angles[0])
+        for zx, zy, zr in common.RELAY_ZONES:
+            turned = common.turn((zx, zy), back)
+            placed.append((turned[0], turned[1], zr))
     items = []
 
     def put(kind, radius, target_distance=None, target_point=None):
@@ -188,3 +196,8 @@ def sources(recipe):
 def relays(recipe):
     """R2 (provisional level design): one relay between every two neighbouring places (common.ring_relays)."""
     return common.ring_relays(recipe)
+
+
+def tree_floor(recipe):
+    """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
+    return BUDGET_TREES["Huge" if recipe.size_key == "Huge" else "default"]

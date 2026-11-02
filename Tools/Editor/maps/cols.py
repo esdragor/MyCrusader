@@ -143,3 +143,8 @@ def relays(recipe):
     """R2 (provisional level design): the 4 extra relays in the plaza and one in each place's own valley (common.ring_relays on_slots: the ranges of
     mountains run along the middle angles where the other maps put their ring)."""
     return common.ring_relays(recipe, on_slots=True)
+
+
+def tree_floor(recipe):
+    """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
+    return steppe.budget_of(recipe)[0]

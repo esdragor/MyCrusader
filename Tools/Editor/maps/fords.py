@@ -202,3 +202,8 @@ def relays(recipe):
     # 2 places: the middle is the river's bridge, so the middle fixed relay is moved along the axis of the places out of the water (extra_radius).
     river = len(recipe.angles) == 2
     return common.ring_relays(recipe, avoid=axis_points(recipe), on_slots=river, extra_radius=WATER_WIDTH / 2.0 if river else 0.0)
+
+
+def tree_floor(recipe):
+    """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
+    return steppe.budget_of(recipe)[0]

@@ -694,3 +694,8 @@ def sources(recipe):
 def relays(recipe):
     """R2 (provisional level design): one relay between every two neighbouring places (common.ring_relays)."""
     return common.ring_relays(recipe)
+
+
+def tree_floor(recipe):
+    """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
+    return budget_of(recipe)[0]

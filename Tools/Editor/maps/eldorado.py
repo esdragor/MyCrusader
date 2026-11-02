@@ -162,4 +162,9 @@ def zones(recipe):
 
 def relays(recipe):
     """R2 (provisional level design): the ring of relays plus 4 round the middle, the 4 outside the marsh ring (common.ring_relays, extra_radius = the marsh's outer edge and a zone)."""
-    return common.ring_relays(recipe, extra_radius=marsh_outer(recipe) + common.RELAY_RADIUS + common.RELAY_BASE_MARGIN)
+    return common.ring_relays(recipe, extra_radius=marsh_outer(recipe))  # the ring and the middle relay add their own zone and margin outside this radius
+
+
+def tree_floor(recipe):
+    """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
+    return steppe.budget_of(recipe)[0]

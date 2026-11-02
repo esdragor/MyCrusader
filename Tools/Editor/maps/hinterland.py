@@ -571,3 +571,8 @@ def relays(recipe):
     # The piles of gold and stone too: make_map drops what falls in a zone, and the budget per territory (Map.Table) must stay whole.
     veins = [(x, y) for type_name, x, y, _ in plan(recipe).points if type_name not in ("Tree", "BerryBush")]
     return common.ring_relays(recipe, avoid=avoid_points(recipe), keep_whole=veins)
+
+
+def tree_floor(recipe):
+    """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
+    return steppe.budget_of(recipe)[0]
