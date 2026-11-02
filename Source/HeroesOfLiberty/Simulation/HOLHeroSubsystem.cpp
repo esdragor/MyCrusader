@@ -15,6 +15,7 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLDuelClearRules.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroLibrary.h"
@@ -363,8 +364,82 @@ void UHOLHeroSubsystem::UpdateSheets()
 		CopyDuelView(Slot);
 		WriteCopies(Slot);
 	}
+	ClearDuelCircles();
 	// J8a.4: the returns asked were born at this step's start (or failed): they may be asked again.
 	PendingReturns = 0;
+}
+
+namespace
+{
+	TAutoConsoleVariable<int32> CVarDuelClearCircle(
+		TEXT("hol.Duel.ClearCircle"), 1,
+		TEXT("1 (default): the units that are not duelists walk out of the duel circle when a duel begins; 0: they stay."),
+		ECVF_Default);
+}
+
+void UHOLHeroSubsystem::ClearDuelCircles()
+{
+	// D5b: for each slot whose sheet shows the duel on (code 3), the units inside the circle but the two duelists walk to the outside.
+	UWorld* World = GetWorld();
+	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Units || !Commands || World->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	struct FCircle { FVector2D Center; double Radius; int32 SlotA; int32 SlotB; };
+	TArray<FCircle> Circles;
+	if (CVarDuelClearCircle.GetValueOnGameThread() != 0)
+	{
+		for (int32 Slot = 0; Slot < Sheets.Num(); ++Slot)
+		{
+			const FHOLHeroSheet& Public = Sheets[Slot].Public;
+			if (Public.DuelCode != 3 || Public.DuelRadius == 0 || Public.DuelOpponent == 255 || Public.DuelOpponent < Slot)
+			{
+				continue;
+			}
+			Circles.Add({FVector2D(Public.DuelCenter.X, Public.DuelCenter.Y), static_cast<double>(Public.DuelRadius), Slot, static_cast<int32>(Public.DuelOpponent)});
+		}
+	}
+	if (Circles.IsEmpty())
+	{
+		SentOutOfDuel.Reset();
+		return;
+	}
+	TArray<FHOLUnitView> Views;
+	Units->GetUnitViews(Views);
+	TArray<uint32> Alive;
+	for (const FHOLUnitView& View : Views)
+	{
+		Alive.Add(View.UnitId);
+		for (const FCircle& Circle : Circles)
+		{
+			const FVector2D Position(View.Location);
+			if (Units->FindHeroUnit(Circle.SlotA) == View.UnitId || Units->FindHeroUnit(Circle.SlotB) == View.UnitId)
+			{
+				continue;
+			}
+			if (!HOLDuelClear::IsInside(Position, Circle.Center, Circle.Radius))
+			{
+				if (!HOLDuelClear::IsInside(Position, Circle.Center, Circle.Radius + HOLDuelClear::MarginCm))
+				{
+					SentOutOfDuel.Remove(View.UnitId);
+				}
+				continue;
+			}
+			if (SentOutOfDuel.Contains(View.UnitId))
+			{
+				continue;
+			}
+			SentOutOfDuel.Add(View.UnitId);
+			const FVector2D Target = HOLDuelClear::GetTarget(Position, Circle.Center, Circle.Radius);
+			const uint32 Ids[1] = {View.UnitId};
+			Commands->IssueMoveOrder(Ids, FVector(Target.X, Target.Y, 0.0));
+			UE_LOG(LogHOLMatch, Display, TEXT("Duel circle: unit %u of slot %d walks out to (%.0f, %.0f)"), View.UnitId, View.OwnerPlayer, Target.X, Target.Y);
+			break;
+		}
+	}
+	SentOutOfDuel = SentOutOfDuel.Intersect(TSet<uint32>(Alive));
 }
 
 void UHOLHeroSubsystem::CopyDuelView(const int32 Slot)

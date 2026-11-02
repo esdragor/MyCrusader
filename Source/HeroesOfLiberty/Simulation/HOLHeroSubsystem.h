@@ -131,6 +131,10 @@ private:
 	void WriteCopies(int32 Slot) const;
 	/** D4: the slot's duel (the script book's view) copied into its public sheet, the end step from the clock. */
 	void CopyDuelView(int32 Slot);
+	/** D5b: sends the units that are not duelists out of each duel circle (server and solo), once each, while the circle stands. */
+	void ClearDuelCircles();
+	/** The units already sent out of a circle (taken off when they stand outside it or the duel ends). */
+	TSet<uint32> SentOutOfDuel;
 	/** J8b.2: his body brought to the level of his XP (attack, max health; the HP gained added), alive only. */
 	void ApplyLevel(int32 Slot, FHOLUnitStateFragment* State, FHOLCombatFragment* Combat, const FHOLUnitTypeConstants* Constants) const;
 	void UnbindSteps();

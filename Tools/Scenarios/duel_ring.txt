@@ -26,7 +26,13 @@ hol.Units.SpeedScale 1
 hol.Camera.Focus 0 300
 frames 10
 capture duel_ring_none
-note 2. Les deux heros sont face a face au centre : pas de cercle au sol, personne n'a defie. Appuie sur Entree : ton heros defie, l'IA accepte (d'office).
+hol.Units.Spawn 3 0 300 0 ManAtArms 250
+hol.Units.Spawn 3 0 300 1 ManAtArms 250
+wait 1
+hol.Camera.Focus 0 300
+frames 10
+capture duel_ring_troops_in
+note 2. Six Hommes d'armes (3 a toi, 3 a l'IA) sont poses au milieu, autour des heros. Les deux heros sont face a face au centre : pas de cercle au sol, personne n'a defie. Appuie sur Entree : ton heros defie le heros de l'IA, l'acceptation est donnee d'office.
 waitkey Entree : ton heros defie le heros de l'IA, l'acceptation est donnee d'office
 panel hide
 hol.Duel.Challenge 1
@@ -41,5 +47,9 @@ waitlog Duel rings: 1 |
 hol.Camera.Focus 0 300
 frames 20
 capture duel_ring_on
+wait 6
+hol.Camera.Focus 0 300
+frames 20
+capture duel_ring_cleared
 panel show
-note 3. Le duel est en cours : un anneau rouge est trace au sol, centre entre les deux heros, de rayon 6 m. Les heros se battent dedans ; le cercle reste jusqu'a la fin du duel.
+note 3. Le duel est en cours : les Hommes d'armes qui etaient dans le cercle en sont sortis a pied (ils restent dehors, ils n'oscillent pas). Un anneau rouge est trace au sol, centre entre les deux heros, de rayon 6 m. Les heros se battent dedans ; le cercle reste jusqu'a la fin du duel.
