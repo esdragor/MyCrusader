@@ -2298,7 +2298,7 @@ void UHOLGameScreen::CheckPopulationBlocked()
 	bool bBlocked = false;
 	if (PlayerState && World)
 	{
-		for (TActorIterator<AHOLBuilding> It(World); It && !bBlocked; ++It)
+		for (FHOLBuildingIterator It(World); It && !bBlocked; ++It)
 		{
 			const TArray<FHOLProductionItem>& Queue = It->GetProductionQueue();
 			if (It->GetOwnerPlayer() != PlayerState->GetPlayerIndex() || !It->IsFinished() || Queue.IsEmpty() || Queue[0].IsStarted())

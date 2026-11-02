@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionRules.h"
 #include "GameFramework/Actor.h"
+#include "HAL/ThreadSafeCounter.h"
 #include "Map/HOLVisionRules.h"
 #include "HOLBuilding.generated.h"
 
@@ -344,12 +345,28 @@ public:
 	virtual void Tick(float DeltaSeconds) override;
 	/** IA1.2 F6a: a building spawned deferred and finished (main centres, hol.Cheat.SpawnBuilding) gets its linked source. */
 	virtual void PostInitializeComponents() override;
+	/** The registry of FHOLBuildingIterator: a building is in it from the registration of its components to its end. */
+	virtual void PostRegisterAllComponents() override;
+	virtual void Destroyed() override;
 
 protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
+	friend class FHOLBuildingIterator;
+
+	/** A building of a world, as the registry keeps it (the world kept apart: no look at the actor to know whose it is). */
+	struct FRegistered
+	{
+		TWeakObjectPtr<AHOLBuilding> Building;
+		const UWorld* World = nullptr;
+	};
+	/** Every building of every world of this process, in the order they appeared; the game thread alone changes it. */
+	static TArray<FRegistered> Registry;
+	/** Iterators alive: while any, a leaving building empties its slot instead of removing it (an iterator keeps its place). */
+	static FThreadSafeCounter RegistryWalkers;
+	void UnregisterBuilding();
 	/**
 	 * IA1.2 F6a, server only: a finished building of a type with a Source has it standing at its centre (added once, its
 	 * index kept in LinkedSource); otherwise it has none (released). Safe to call again.
@@ -542,4 +559,37 @@ private:
 	TArray<float> OwnerTones;
 	/** How far toward white each one is (the ghost's lighter edges, J6a.4). */
 	TArray<float> OwnerWhitens;
+};
+
+/**
+ * The buildings of a world, as `for (FHOLBuildingIterator It(World); It; ++It)` gave them, without visiting every
+ * actor of the world (the cost of TActorIterator follows the number of actors, trees and chunks included; this one follows
+ * the number of buildings). Same use: `for (FHOLBuildingIterator It(World); It; ++It) { It->...; }`. Game thread (or a
+ * task it waits for, with nothing changing the buildings meanwhile). A building that leaves during the walk is skipped; one
+ * that appears is walked last. An iterator is not copied: it holds a place in the registry.
+ */
+class HEROESOFLIBERTY_API FHOLBuildingIterator
+{
+public:
+	explicit FHOLBuildingIterator(const UWorld* InWorld);
+	~FHOLBuildingIterator();
+	FHOLBuildingIterator(const FHOLBuildingIterator&) = delete;
+	FHOLBuildingIterator& operator=(const FHOLBuildingIterator&) = delete;
+
+	explicit operator bool() const { return Current != nullptr; }
+	FHOLBuildingIterator& operator++()
+	{
+		Advance();
+		return *this;
+	}
+	AHOLBuilding* operator*() const { return Current; }
+	AHOLBuilding* operator->() const { return Current; }
+
+private:
+	/** To the next valid building of the world after Index, or to the end (Current null). */
+	void Advance();
+
+	const UWorld* World;
+	int32 Index = INDEX_NONE;
+	AHOLBuilding* Current = nullptr;
 };

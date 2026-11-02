@@ -82,7 +82,7 @@ namespace UE::HeroesOfLiberty::Presentation
 			{
 				return;
 			}
-			for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+			for (FHOLBuildingIterator It(World); It; ++It)
 			{
 				if (It->GetOwnerPlayer() < FHOLMatchConfig::MaxSlots)
 				{
@@ -181,7 +181,7 @@ namespace UE::HeroesOfLiberty::Presentation
 			{
 				bGathered = true;
 				const AHOLGameState* GameState = World->GetGameState<AHOLGameState>();
-				for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+				for (FHOLBuildingIterator It(World); It; ++It)
 				{
 					// A main forum down is built as a site (V2.2), in ruin its builders wait (V2.3a).
 					if (It->NeedsBuilders() && It->GetType())

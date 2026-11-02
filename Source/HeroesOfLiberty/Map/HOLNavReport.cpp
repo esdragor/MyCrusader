@@ -131,7 +131,7 @@ namespace
 	void GetFootprints(UWorld& World, TArray<FWatchedFootprint>& OutFootprints)
 	{
 		OutFootprints.Reset();
-		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		for (FHOLBuildingIterator It(&World); It; ++It)
 		{
 			// A bare foundation is walked over (D312): watched once it blocks the navmesh.
 			const FHOLBuildingTypeRow* Type = It->BlocksNavigation() ? It->GetType() : nullptr;

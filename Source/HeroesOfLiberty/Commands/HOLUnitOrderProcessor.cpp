@@ -263,7 +263,7 @@ namespace UE::HeroesOfLiberty::Orders
 		}
 		const FVector2D Line[] = { FVector2D(Start), FVector2D(Target) };
 		TArray<FBox2D, TInlineAllocator<32>> Bodies;
-		for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+		for (FHOLBuildingIterator It(&World); It; ++It)
 		{
 			if (It->BlocksNavigation())
 			{
@@ -1017,7 +1017,7 @@ bool UHOLUnitOrderProcessor::DoesCrossBuilding(const UWorld& World, const FVecto
 	// Rare (a partial path out of a pocket of the navmesh, a group's straight path): the buildings read from the world.
 	const double Margin = UHOLBuildingSettings::GetBodyClearance() + (NavData ? NavData->GetConfig().AgentRadius : 0.f) + ExtraMargin;
 	const FVector2D Way[] = { FVector2D(Start), FVector2D(Target) };
-	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	for (FHOLBuildingIterator It(&World); It; ++It)
 	{
 		if (It->BlocksNavigation() && HOLConstruction::DoesWalkCross(It->GetBodyBounds(), Margin, Way))
 		{
@@ -4018,7 +4018,7 @@ bool UHOLUnitOrderProcessor::LocateChainStep(const UWorld& World, const HOLOrder
 	{
 		if (Sites.IsEmpty())
 		{
-			for (TActorIterator<AHOLBuilding> It(const_cast<UWorld*>(&World)); It; ++It)
+			for (FHOLBuildingIterator It(const_cast<UWorld*>(&World)); It; ++It)
 			{
 				Sites.Add(It->GetUniqueID(), *It);
 			}

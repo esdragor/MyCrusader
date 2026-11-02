@@ -383,7 +383,7 @@ bool AHOLBuilding::FindNearestBodyPoint(const UWorld& World, const FVector2D& Fr
 {
 	double Best = FMath::Square(MaxDistance);
 	bool bFound = false;
-	for (TActorIterator<AHOLBuilding> It(&World); It; ++It)
+	for (FHOLBuildingIterator It(&World); It; ++It)
 	{
 		const AHOLBuilding* Building = *It;
 		if (!IsValid(Building) || Building->IsFoundation() || !Building->IsSeenHere() || static_cast<int32>(Building->GetOwnerPlayer()) == OwnerToSkip)
@@ -521,6 +521,59 @@ void AHOLBuilding::PostInitializeComponents()
 	UpdateLinkedSource();
 }
 
+TArray<AHOLBuilding::FRegistered> AHOLBuilding::Registry;
+FThreadSafeCounter AHOLBuilding::RegistryWalkers;
+
+void AHOLBuilding::PostRegisterAllComponents()
+{
+	Super::PostRegisterAllComponents();
+	const UWorld* World = GetWorld();
+	if (!World || IsTemplate())
+	{
+		return;
+	}
+	// Components are registered again at times (a reregister): in the registry once.
+	for (const FRegistered& Known : Registry)
+	{
+		if (Known.Building.Get() == this)
+		{
+			return;
+		}
+	}
+	// The ones left behind by a world destroyed before they were (no EndPlay without a BeginPlay), when no walk is under way.
+	if (RegistryWalkers.GetValue() == 0)
+	{
+		Registry.RemoveAll([](const FRegistered& Known) { return !Known.Building.IsValid(); });
+	}
+	Registry.Add({ this, World });
+}
+
+void AHOLBuilding::UnregisterBuilding()
+{
+	for (int32 Index = 0; Index < Registry.Num(); ++Index)
+	{
+		if (Registry[Index].Building.Get() == this)
+		{
+			// A walk under way keeps its places: the slot is emptied, taken out later.
+			if (RegistryWalkers.GetValue() > 0)
+			{
+				Registry[Index] = FRegistered();
+			}
+			else
+			{
+				Registry.RemoveAt(Index);
+			}
+			return;
+		}
+	}
+}
+
+void AHOLBuilding::Destroyed()
+{
+	UnregisterBuilding();
+	Super::Destroyed();
+}
+
 void AHOLBuilding::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// IA1.2 F6a: destroyed by any other way than DestroyBuilding (which releases it first), its source leaves the map too.
@@ -528,7 +581,36 @@ void AHOLBuilding::EndPlay(const EEndPlayReason::Type EndPlayReason)
 	{
 		ReleaseLinkedSource();
 	}
+	UnregisterBuilding();
 	Super::EndPlay(EndPlayReason);
+}
+
+FHOLBuildingIterator::FHOLBuildingIterator(const UWorld* InWorld)
+	: World(InWorld)
+{
+	AHOLBuilding::RegistryWalkers.Increment();
+	Advance();
+}
+
+FHOLBuildingIterator::~FHOLBuildingIterator()
+{
+	AHOLBuilding::RegistryWalkers.Decrement();
+}
+
+void FHOLBuildingIterator::Advance()
+{
+	// As TActorIterator: a building about to be collected is not walked.
+	Current = nullptr;
+	while (++Index < AHOLBuilding::Registry.Num())
+	{
+		const AHOLBuilding::FRegistered& Known = AHOLBuilding::Registry[Index];
+		AHOLBuilding* Building = Known.Building.Get();
+		if (Building && Known.World == World && IsValid(Building))
+		{
+			Current = Building;
+			return;
+		}
+	}
 }
 
 void AHOLBuilding::UpdateLinkedSource()
