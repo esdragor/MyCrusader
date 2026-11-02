@@ -1,8 +1,8 @@
 # Les relais POSES PAR LA CARTE (R2, D388) : La Steppe Petite (2 joueurs, 440 m), 2 relais neutres entre les deux bases ; 6 Hommes d'armes en prennent un, 20 s au lieu de 60
 # Aucun hol.Relay.Add : les 2 relais viennent du niveau (HOLRelayLayout, Tools/Editor/maps, relays(recipe)). Ma base est en (-16500, 0), l'autre emplacement (fermé) en (16500, 0) ; les relais sont au nord et au sud du milieu, en (0, -8250) et (0, 8250), zone de 12 m (rayon provisoire, celui de la ruine).
 # Nombre voulu par l'utilisateur (Q-relais-lieux) : 4 relais fixes + un par joueur ; ici 2 joueurs = 6 relais : 2 d'anneau (au nord et au sud, un entre les deux bases) et 4 fixes en croix autour du milieu (a 20 m du centre, positions PROVISOIRES à confirmer).
+hol.Sanity.Watch 1
 hol.Camera.Zoom -7
-waitlog Starting hero of slot 0 spawned at
 frames 5
 hol.Cheat.Resources 1000
 hol.Relay.HoldSeconds 20
