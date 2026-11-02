@@ -124,6 +124,57 @@ bool FHOLVolcanoFlowTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The lava's reach (V5, GDD 12.2, D377): what is under a flow whose front has gone some way is destroyed.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoReachTest, "HeroesOfLiberty.Volcano.LavaReach", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoReachTest::RunTest(const FString& Parameters)
+{
+	const FHOLVolcanoSettings Settings;
+	const double H = Settings.LavaHalfWidth;
+	TestEqual(TEXT("a flow is 16 m wide: half-width 800 cm (V5-Q1 = B, the user)"), Settings.LavaHalfWidth, 800.f);
+	// An L-shaped flow: 3000 cm east then 4000 cm north.
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(3000.0, 0.0, 50.0), FVector(3000.0, 4000.0, 0.0) };
+
+	// Before the eruption (front at the crater) nothing is burnt, not even the crater.
+	TestFalse(TEXT("front at 0: the crater itself is safe"), HOLVolcano::IsInLava(Flow, 0.f, Settings.LavaHalfWidth, FVector(0.0, 0.0, 0.0)));
+	// Front at 2000 (first leg).
+	const float Front = 2000.f;
+	const float W = Settings.LavaHalfWidth;
+	TestTrue(TEXT("on the line behind the front: burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, 0.0, 0.0)));
+	TestTrue(TEXT("on the crater once it erupts: burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(0.0, 0.0, 0.0)));
+	TestTrue(TEXT("just inside the width: burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H - 10.0, 0.0)));
+	TestFalse(TEXT("just outside the width: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H + 10.0, 0.0)));
+	TestFalse(TEXT("outside the width on the other side: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, -(H + 10.0), 0.0)));
+	TestTrue(TEXT("a body's radius counts: outside by 10 with radius 50 touches it"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H + 10.0, 0.0), 50.f));
+	TestFalse(TEXT("a body far enough even with its radius: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, H + 100.0, 0.0), 50.f));
+	TestTrue(TEXT("the head of the front is rounded: a little ahead of it, burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(Front + H - 10.0, 0.0, 0.0)));
+	TestFalse(TEXT("well ahead of the front: safe, the lava has not come yet"), HOLVolcano::IsInLava(Flow, Front, W, FVector(Front + H + 10.0, 0.0, 0.0)));
+	TestFalse(TEXT("ahead on the flow's second leg: safe"), HOLVolcano::IsInLava(Flow, Front, W, FVector(3000.0, 2000.0, 0.0)));
+	TestTrue(TEXT("Z is ignored: far above the line but inside its width, burnt"), HOLVolcano::IsInLava(Flow, Front, W, FVector(1000.0, 0.0, 99999.0)));
+
+	// The front has turned the corner (3000 + 2000 up the second leg).
+	const float Turned = 5000.f;
+	TestTrue(TEXT("second leg, behind the front: burnt"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(3000.0, 1500.0, 0.0)));
+	TestTrue(TEXT("second leg, beside the line: burnt"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(3000.0 + H - 10.0, 1500.0, 0.0)));
+	TestFalse(TEXT("second leg, beyond the front: safe"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(3000.0, 3500.0, 0.0)));
+	TestFalse(TEXT("away from both legs: safe"), HOLVolcano::IsInLava(Flow, Turned, W, FVector(0.0, 3000.0, 0.0)));
+
+	// Once the lava has arrived, the whole flow is burnt, its far end too.
+	TestTrue(TEXT("front at the end: the far end is burnt"), HOLVolcano::IsInLava(Flow, Flow.Length(), W, FVector(3000.0, 4000.0, 0.0)));
+
+	// A flow that is not one burns nothing.
+	const HOLVolcano::FFlow Empty;
+	TestFalse(TEXT("no point: no lava"), HOLVolcano::IsInLava(Empty, 100.f, W, FVector::ZeroVector));
+	HOLVolcano::FFlow OnePoint;
+	OnePoint.Points = { FVector::ZeroVector };
+	TestFalse(TEXT("one point: no lava"), HOLVolcano::IsInLava(OnePoint, 100.f, W, FVector::ZeroVector));
+
+	// What the lava destroys: all but a hero in a duel (GDD 9.8, 10.2).
+	TestTrue(TEXT("a unit is destroyed"), HOLVolcano::LavaDestroys(false, false));
+	TestTrue(TEXT("a hero outside a duel is destroyed"), HOLVolcano::LavaDestroys(true, false));
+	TestFalse(TEXT("a hero in a duel is not"), HOLVolcano::LavaDestroys(true, true));
+	return true;
+}
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoEruptionLengthTest, "HeroesOfLiberty.Volcano.EruptionFollowsTheFlow", UE::HeroesOfLiberty::Tests::VolcanoFlags)
 bool FHOLVolcanoEruptionLengthTest::RunTest(const FString& Parameters)
 {

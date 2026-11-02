@@ -43,6 +43,11 @@ struct FHOLVolcanoSettings
 	float CoolingMax = 180.f;
 	float RestMin = 360.f;
 	float RestMax = 480.f;
+	/**
+	 * Half the width of a flow (cm): the lava destroys what is within this of the line from the crater to its front (and a unit's or a
+	 * building's own radius more). V5-Q1 = B, the user's answer (2026-11-02): 800 cm, a flow 16 m wide.
+	 */
+	float LavaHalfWidth = 800.f;
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -79,6 +84,16 @@ namespace HOLVolcano
 	 * flow's end and never backward.
 	 */
 	HEROESOFLIBERTY_API float FrontDistance(const FFlow& Flow, float Now, float EruptAt, float Speed);
+
+	/**
+	 * V5 (D377): whether something at Point (ground plane, Z ignored) with a body of Radius is under the lava of a flow whose front has
+	 * gone FrontDistance (cm) from the crater: its distance to the part of the polyline already run (the head of the front rounded) is
+	 * within HalfWidth + Radius. False while the front is still at the crater (before the eruption), for a flow without length.
+	 */
+	HEROESOFLIBERTY_API bool IsInLava(const FFlow& Flow, float FrontDistance, float HalfWidth, const FVector& Point, float Radius = 0.f);
+
+	/** V5 (GDD 12.2, 9.8, 10.2): the lava destroys everything it touches but a hero in a duel (the duel's arena is not burnt). */
+	inline bool LavaDestroys(const bool bIsHero, const bool bHeroInDuel) { return !(bIsHero && bHeroInDuel); }
 
 	/** The point at Distance along the flow (clamped to its two ends); the origin for a flow without point. */
 	HEROESOFLIBERTY_API FVector PointAt(const FFlow& Flow, float Distance);

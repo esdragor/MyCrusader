@@ -35,6 +35,35 @@ float HOLVolcano::FrontDistance(const FFlow& Flow, const float Now, const float 
 	return FMath::Min((Now - EruptAt) * Speed, Flow.Length());
 }
 
+bool HOLVolcano::IsInLava(const FFlow& Flow, const float FrontDistance, const float HalfWidth, const FVector& Point, const float Radius)
+{
+	if (FrontDistance <= 0.f || Flow.Points.Num() < 2)
+	{
+		return false;
+	}
+	// The distance on the ground to the part of the polyline already run: segment by segment, the last one cut at the front.
+	const double Reach = static_cast<double>(FMath::Max(HalfWidth, 0.f)) + static_cast<double>(FMath::Max(Radius, 0.f));
+	const FVector2D P(Point.X, Point.Y);
+	float Left = FrontDistance;
+	for (int32 Index = 1; Index < Flow.Points.Num() && Left > 0.f; ++Index)
+	{
+		const FVector2D A(Flow.Points[Index - 1].X, Flow.Points[Index - 1].Y);
+		const FVector2D B(Flow.Points[Index].X, Flow.Points[Index].Y);
+		const float Segment = FlatSegment(Flow.Points[Index - 1], Flow.Points[Index]);
+		if (Segment <= 0.f)
+		{
+			continue;
+		}
+		const FVector2D End = Left >= Segment ? B : A + (B - A) * (Left / Segment);
+		const double Distance = FMath::PointDistToSegment(FVector(P, 0.0), FVector(A, 0.0), FVector(End, 0.0));
+		if (Distance <= Reach)
+		{
+			return true;
+		}
+		Left -= Segment;
+	}
+	return false;
+}
 FVector HOLVolcano::PointAt(const FFlow& Flow, const float Distance)
 {
 	if (Flow.Points.IsEmpty())
