@@ -51,4 +51,37 @@ namespace HOLHeal
 	{
 		return FMath::Min(MaxHealth, Health + HealRate * static_cast<float>(StepMs) * 0.001f);
 	}
+	void FRiseTracker::Update(const TConstArrayView<TTuple<uint32, int32, bool>> Units, const double Now, const double KeepSeconds)
+	{
+		TMap<uint32, int32> NewHealth;
+		NewHealth.Reserve(Units.Num());
+		for (const TTuple<uint32, int32, bool>& Unit : Units)
+		{
+			NewHealth.Add(Unit.Get<0>(), Unit.Get<1>());
+			const int32* Last = LastHealth.Find(Unit.Get<0>());
+			if (Last && Unit.Get<1>() > *Last && Unit.Get<2>())
+			{
+				LastRise.Add(Unit.Get<0>(), Now);
+			}
+		}
+		LastHealth = MoveTemp(NewHealth);
+		TArray<uint32, TInlineAllocator<16>> Forgotten;
+		for (const TPair<uint32, double>& Rise : LastRise)
+		{
+			if (Now - Rise.Value > KeepSeconds || !LastHealth.Contains(Rise.Key))
+			{
+				Forgotten.Add(Rise.Key);
+			}
+		}
+		for (const uint32 UnitId : Forgotten)
+		{
+			LastRise.Remove(UnitId);
+		}
+	}
+
+	bool FRiseTracker::IsRising(const uint32 UnitId, const double Now, const double WindowSeconds) const
+	{
+		const double* Rise = LastRise.Find(UnitId);
+		return Rise && Now - *Rise <= WindowSeconds;
+	}
 }

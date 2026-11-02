@@ -106,26 +106,14 @@ void UHOLHealEffectSubsystem::TickClient(UWorld& World)
 	TArray<FHOLUnitView> Views;
 	HOLUnitView::Gather(World, Views);
 	const double Now = World.GetTimeSeconds();
-	TMap<uint32, int32> NewHealth;
-	NewHealth.Reserve(Views.Num());
+	TArray<TTuple<uint32, int32, bool>> Observed;
+	Observed.Reserve(Views.Num());
 	for (const FHOLUnitView& View : Views)
 	{
-		NewHealth.Add(View.UnitId, View.Health);
-		const int32* Last = LastHealth.Find(View.UnitId);
-		if (Last && View.Health > *Last && View.MaxHealth > 0)
-		{
-			LastRise.Add(View.UnitId, Now);
-		}
+		Observed.Add(MakeTuple(View.UnitId, View.Health, View.MaxHealth > 0));
 	}
-	LastHealth = MoveTemp(NewHealth);
-	for (auto It = LastRise.CreateIterator(); It; ++It)
-	{
-		if (Now - It.Value() > 5.0)
-		{
-			It.RemoveCurrent();
-		}
-	}
-	if (LastRise.IsEmpty())
+	Rises.Update(Observed, Now, 5.0);
+	if (Rises.IsEmpty())
 	{
 		return;
 	}
@@ -140,8 +128,7 @@ void UHOLHealEffectSubsystem::TickClient(UWorld& World)
 		double BestDistance = 0.;
 		for (const FHOLUnitView& Target : Views)
 		{
-			const double* Rise = LastRise.Find(Target.UnitId);
-			if (!Rise || Now - *Rise > RiseSeconds || Target.UnitId == Healer.UnitId || Target.OwnerPlayer != Healer.OwnerPlayer)
+			if (!Rises.IsRising(Target.UnitId, Now, RiseSeconds) || Target.UnitId == Healer.UnitId || Target.OwnerPlayer != Healer.OwnerPlayer)
 			{
 				continue;
 			}

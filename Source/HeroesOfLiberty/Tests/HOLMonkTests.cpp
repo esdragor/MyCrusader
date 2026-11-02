@@ -132,6 +132,56 @@ bool FHOLHealRulesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// A client's guess of a heal (HOLHeal::FRiseTracker): rises noticed, several expiring in the same frame, units gone, no entry lost or kept by error.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLRiseTrackerTest, "HeroesOfLiberty.Monk.RiseTracker", UE::HeroesOfLiberty::Tests::Monk::Flags)
+bool FHOLRiseTrackerTest::RunTest(const FString& Parameters)
+{
+	using FUnits = TArray<TTuple<uint32, int32, bool>>;
+	HOLHeal::FRiseTracker Tracker;
+	FUnits Units;
+	for (uint32 Id = 1; Id <= 40; ++Id)
+	{
+		Units.Add(MakeTuple(Id, 10, true));
+	}
+	Tracker.Update(Units, 0.0, 5.0);
+	TestTrue(TEXT("nothing rose at the first look"), Tracker.IsEmpty());
+	// Forty units rise at once at t = 1.
+	for (TTuple<uint32, int32, bool>& Unit : Units)
+	{
+		Unit.Get<1>() += 1;
+	}
+	Tracker.Update(Units, 1.0, 5.0);
+	TestEqual(TEXT("forty rises noticed"), Tracker.NumRises(), 40);
+	TestTrue(TEXT("rising within the window"), Tracker.IsRising(7, 1.4, 0.6));
+	TestFalse(TEXT("not rising past the window"), Tracker.IsRising(7, 1.7, 0.6));
+	TestFalse(TEXT("an unknown unit does not rise"), Tracker.IsRising(999, 1.0, 0.6));
+	// Half of them rise again at t = 3, the others stay: all the 40 expire together at t = 6.5 except those risen again.
+	for (TTuple<uint32, int32, bool>& Unit : Units)
+	{
+		Unit.Get<1>() += Unit.Get<0>() % 2 == 0 ? 1 : 0;
+	}
+	Tracker.Update(Units, 3.0, 5.0);
+	TestEqual(TEXT("still forty remembered"), Tracker.NumRises(), 40);
+	Tracker.Update(Units, 6.5, 5.0);
+	TestEqual(TEXT("the twenty that rose at t = 1 and not again are forgotten in one frame, the twenty that rose at t = 3 stay"), Tracker.NumRises(), 20);
+	TestTrue(TEXT("a unit that rose at t = 3 is still known"), !Tracker.IsRising(2, 6.5, 0.6) && Tracker.NumRises() == 20);
+	// Units gone (dead, out of sight) are forgotten with their rise.
+	Units.RemoveAll([](const TTuple<uint32, int32, bool>& Unit) { return Unit.Get<0>() <= 30; });
+	Tracker.Update(Units, 6.6, 5.0);
+	TestEqual(TEXT("only the units still there keep a rise (even ids from 32 to 40: five)"), Tracker.NumRises(), 5);
+	// A health that falls or an unknown maximum is no rise.
+	Units.Empty();
+	Units.Add(MakeTuple(100u, 50, true));
+	Units.Add(MakeTuple(101u, 50, false));
+	Tracker.Update(Units, 7.0, 5.0);
+	Units[0].Get<1>() = 40;
+	Units[1].Get<1>() = 60;
+	Tracker.Update(Units, 7.1, 5.0);
+	TestFalse(TEXT("a falling health is not healed"), Tracker.IsRising(100, 7.1, 0.6));
+	TestFalse(TEXT("an unknown maximum is not a rise"), Tracker.IsRising(101, 7.1, 0.6));
+	return true;
+}
+
 // The Vow of Poverty (GDD 11.1, table: MonkCostDiscount 20 %): the Monk costs less, and only the Monk.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMonkDiscountTest, "HeroesOfLiberty.Monk.CostDiscount", UE::HeroesOfLiberty::Tests::Monk::Flags)
 bool FHOLMonkDiscountTest::RunTest(const FString& Parameters)

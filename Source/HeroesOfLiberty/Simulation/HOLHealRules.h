@@ -37,4 +37,22 @@ namespace HOLHeal
 
 	/** The health after one step of heal: Health + HealRate * StepMs / 1000, held at MaxHealth. */
 	HEROESOFLIBERTY_API float GetHealedHealth(float Health, float MaxHealth, float HealRate, int32 StepMs);
+	/**
+	 * What a client sees of a heal (the wire carries none): a unit whose shown health went up since the last frame is being healed for a
+	 * moment. Fed once a frame with every unit's health; forgets the units that are gone and the rises older than KeepSeconds (no entry is
+	 * removed while the maps are walked: the keys to forget are gathered first).
+	 */
+	struct HEROESOFLIBERTY_API FRiseTracker
+	{
+		/** Observes every unit of the frame (id, shown health, whether its maximum is known) at time Now. */
+		void Update(TConstArrayView<TTuple<uint32, int32, bool>> Units, double Now, double KeepSeconds);
+		/** Whether the unit's health rose within the last WindowSeconds. */
+		bool IsRising(uint32 UnitId, double Now, double WindowSeconds) const;
+		bool IsEmpty() const { return LastRise.IsEmpty(); }
+		int32 NumRises() const { return LastRise.Num(); }
+
+	private:
+		TMap<uint32, int32> LastHealth;
+		TMap<uint32, double> LastRise;
+	};
 }

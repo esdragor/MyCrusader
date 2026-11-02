@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Simulation/HOLHealRules.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLHealEffectSubsystem.generated.h"
 
@@ -33,7 +34,6 @@ private:
 	void TickClient(UWorld& World);
 
 	int64 Drawn = 0;
-	/** A client's guess: each unit's health at the last frame, and the time its health last rose. */
-	TMap<uint32, int32> LastHealth;
-	TMap<uint32, double> LastRise;
+	/** A client's guess: which units' health rose a moment ago. */
+	HOLHeal::FRiseTracker Rises;
 };
