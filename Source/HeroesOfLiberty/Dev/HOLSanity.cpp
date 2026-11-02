@@ -189,16 +189,16 @@ namespace UE::HeroesOfLiberty::Dev
 					{
 						// The window's places, every 4th step, so that the fault can be read without a dump (hol.Sanity.DumpUnit).
 						FString Trail;
-						for (int32 Index = 0; Index < Window.Places.Num(); Index += 4)
+						for (int32 Index = 0; Index < Window.Places.Num(); Index += 1)
 						{
 							Trail += FString::Printf(TEXT(" (%.0f,%.0f)"), Window.Places[Index].X, Window.Places[Index].Y);
 						}
-						UE_LOG(LogHOLTest, Display, TEXT("SanityTrail #%u at step %lld, every 4th step:%s"), UnitId, Watch.Steps, *Trail);
+						UE_LOG(LogHOLTest, Display, TEXT("SanityTrail #%u at step %lld, every step:%s"), UnitId, Watch.Steps, *Trail);
 					}
 					if (Result.bSpin || Result.bShake)
 					{
-						Watch.Faults.Add(UnitId, FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) %s over 8 s: path %.0f cm, net %.0f cm, turn %.1f rad, %d reversals, ordered %.0f%%"),
-							UnitId, State->OwnerPlayer, Where.X, Where.Y, Result.bSpin ? TEXT("spins") : TEXT("shakes"), Result.Path, Result.Net, Result.Turn, Result.Reversals, Result.OrderedShare * 100.f));
+						Watch.Faults.Add(UnitId, FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) %s over 8 s: path %.0f cm, net %.0f cm, turn %.1f rad (net %.1f, to and fro %.1f), %d reversals, ordered %.0f%%"),
+							UnitId, State->OwnerPlayer, Where.X, Where.Y, Result.bSpin ? TEXT("spins") : TEXT("shakes"), Result.Path, Result.Net, Result.Turn, Result.SignedTurn, Result.Zigzag, Result.Reversals, Result.OrderedShare * 100.f));
 					}
 				}
 			}
