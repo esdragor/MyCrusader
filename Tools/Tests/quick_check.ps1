@@ -380,6 +380,11 @@ if ($Parts -contains "net") {
             "mark net market", "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 1", "hol.Market.Report",
             "signal $(Join-Path $TestSaved "quick_net_market_server.flag")",
             "waitfile $(Join-Path $TestSaved "quick_net_market_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_market_done2.flag") 120",
+            # Duel D5 (the circle drawn): a duel accepted at once between the two heroes (the development door, the heroes stand far apart:
+            # the circle is centred between them); both clients draw it from the replicated sheets ("Duel rings:" of hol.Select.Report).
+            # The duel ends with the heroes' removal below (health 0).
+            "mark net duel", "hol.Duel.Begin 0 1", "wait 1", "signal $(Join-Path $TestSaved "quick_net_duel_begun.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_duel_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_duel_done2.flag") 120",
             "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero", "wait 0.5", "signal $NetHeroesGoneFlag") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
@@ -2737,6 +2742,8 @@ if ($NetListening) {
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 3", "hol.Market.Report" }
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_market_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_done2.flag") 120" }
+        # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
+        $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -6961,6 +6968,14 @@ if ($Parts -contains "net") {
             }
         }
         $AllOk = (Report "net market" $MarketChecks) -and $AllOk
+        # Duel D5: the circle the server's duel draws on each client (centred between the heroes, 600 cm, the pair's slots 0 and 1).
+        $DuelChecks = [ordered]@{}
+        foreach ($NetClient in $NetClients) {
+            $DuelLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "duel")
+            $DuelRing = @($DuelLines | Select-String -Pattern "Duel rings: (1 \| \(-?\d+, -?\d+\) r600 slots 0-1 style \d)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            $DuelChecks["client $($NetClient.Client) : the duel's circle is drawn ($($DuelRing -join ' ; '))"] = $DuelRing.Count -ge 1
+        }
+        $AllOk = (Report "net duel" $DuelChecks) -and $AllOk
     }
 }
 

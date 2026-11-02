@@ -43,6 +43,8 @@ hol.Duel.ForceAnswer 1 1
 waitlog slot 1 accepts at step
 hol.Camera.Focus 0 300
 wait 2
+hol.Select.Report
+waitlog Duel rings: 1 |
 capture duel_started
 panel show
 note 3. Le défi est parti ; l'acceptation de l'IA est donnée d'office (hol.Duel.ForceAnswer 1 1, développement). Le duel commence : les deux héros se frappent seuls (D18), personne d'autre ne les touche.
