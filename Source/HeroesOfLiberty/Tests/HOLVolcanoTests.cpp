@@ -650,6 +650,21 @@ bool FHOLVolcanoAltarHoldTest::RunTest(const FString& Parameters)
 	HOLVolcano::StepAltar(Held, 0, 1000.f, Settings);
 	TestEqual(TEXT("... never below zero"), Held, 0.f);
 
+	// The count belongs to its holder: another camp alone in the zone starts from 0, the same camp goes on from its own count.
+	float Owned = 0.f;
+	int32 Holder = INDEX_NONE;
+	for (int32 Second = 0; Second < 29; ++Second)
+	{
+		HOLVolcano::StepAltarOwned(Owned, Holder, 1, 0, 1.f, Settings);
+	}
+	TestTrue(TEXT("camp 0 holds 29 s"), Holder == 0 && FMath::IsNearlyEqual(Owned, 29.f));
+	HOLVolcano::StepAltarOwned(Owned, Holder, 2, INDEX_NONE, 1.f, Settings);
+	TestEqual(TEXT("contested: frozen, still camp 0's"), Owned, 29.f);
+	HOLVolcano::StepAltarOwned(Owned, Holder, 1, 0, 1.f, Settings);
+	TestEqual(TEXT("camp 0 alone again: goes on"), Owned, 30.f);
+	HOLVolcano::StepAltarOwned(Owned, Holder, 1, 1, 1.f, Settings);
+	TestTrue(TEXT("camp 1 alone after camp 0's 30 s: starts again, 1 s, not 31"), Holder == 1 && Owned == 1.f);
+
 	// Held 60 s in a row reaches the threshold, 59 s does not.
 	float Count = 0.f;
 	for (int32 Second = 0; Second < 59; ++Second)

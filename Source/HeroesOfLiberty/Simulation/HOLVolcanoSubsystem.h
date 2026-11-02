@@ -135,6 +135,8 @@ private:
 	TArray<float> AltarHeld;
 	TArray<HOLVolcano::EAltarHold> AltarHolds;
 	TArray<int32> AltarCycle;
+	/** The camp each altar's count belongs to (INDEX_NONE: nobody yet): a new holder restarts at 0. */
+	TArray<int32> AltarHolder;
 	FHOLVolcanoSettings Settings;
 	/** Height of the obstacle boxes (cm): well above the ground, as a building's. */
 	float ObstacleHeight = 600.f;

@@ -209,6 +209,13 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API EAltarHold StepAltar(float& HeldSeconds, int32 CampsInZone, float DeltaSeconds, const FHOLVolcanoSettings& Settings);
 
+	/**
+	 * StepAltar with the count's OWNER: Holder = the camp the count belongs to (INDEX_NONE: nobody yet), SoleCamp = the camp alone in the zone (read only
+	 * when CampsInZone == 1). When a different camp is alone in the zone, the count restarts at 0 for it (the loser's percentage is never inherited);
+	 * the same camp keeps its (possibly decayed) count. The world's altar uses this one.
+	 */
+	HEROESOFLIBERTY_API EAltarHold StepAltarOwned(float& HeldSeconds, int32& Holder, int32 CampsInZone, int32 SoleCamp, float DeltaSeconds, const FHOLVolcanoSettings& Settings);
+
 	/** The levels of the AI as the altar rule reads them (Easy and Normal alike here: only Hard dares the diversion of a big adversary army). */
 	enum class EAltarLevel : uint8 { Easy, Normal, Hard };
 

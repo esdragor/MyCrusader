@@ -326,6 +326,17 @@ HOLVolcano::EAltarHold HOLVolcano::StepAltar(float& HeldSeconds, const int32 Cam
 	return EAltarHold::Contested;
 }
 
+HOLVolcano::EAltarHold HOLVolcano::StepAltarOwned(float& HeldSeconds, int32& Holder, const int32 CampsInZone, const int32 SoleCamp, const float DeltaSeconds, const FHOLVolcanoSettings& Settings)
+{
+	// The count belongs to the camp that raised it: another camp alone in the zone starts from 0, it never takes over the loser's percentage.
+	if (CampsInZone == 1 && Holder != SoleCamp)
+	{
+		HeldSeconds = 0.f;
+		Holder = SoleCamp;
+	}
+	return StepAltar(HeldSeconds, CampsInZone, DeltaSeconds, Settings);
+}
+
 HOLVolcano::FAltarSend HOLVolcano::AltarSend(const FAltarSendInput& Input, const FHOLVolcanoSettings& Settings)
 {
 	const int32 Free = FMath::Max(0, Input.FreeSoldiers);

@@ -35,6 +35,7 @@ void UHOLVolcanoSubsystem::SetSites(const TArray<HOLVolcano::FSite>& InSites)
 	AltarHeld.Init(0.f, Sites.Num());
 	AltarHolds.Init(HOLVolcano::EAltarHold::Idle, Sites.Num());
 	AltarCycle.Init(INDEX_NONE, Sites.Num());
+	AltarHolder.Init(INDEX_NONE, Sites.Num());
 }
 
 HOLVolcano::FSiteState UHOLVolcanoSubsystem::StateOf(const int32 SiteIndex, const float Now) const
@@ -74,10 +75,12 @@ bool UHOLVolcanoSubsystem::StepAltarOf(const int32 SiteIndex, const float Now, c
 	{
 		AltarCycle[SiteIndex] = State.CycleIndex;
 		AltarHeld[SiteIndex] = 0.f;
+		AltarHolder[SiteIndex] = INDEX_NONE;
 	}
 	if (!State.bAltarLit)
 	{
 		AltarHeld[SiteIndex] = 0.f;
+		AltarHolder[SiteIndex] = INDEX_NONE;
 		AltarHolds[SiteIndex] = HOLVolcano::EAltarHold::Idle;
 		return false;
 	}
@@ -95,13 +98,21 @@ bool UHOLVolcanoSubsystem::StepAltarOf(const int32 SiteIndex, const float Now, c
 		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
 		Camps.AddUnique(Camp != INDEX_NONE ? Camp : 1000 + Owner);
 	});
-	AltarHolds[SiteIndex] = HOLVolcano::StepAltar(AltarHeld[SiteIndex], Camps.Num(), DeltaSeconds, Settings);
+	const int32 PreviousHolder = AltarHolder[SiteIndex];
+	const float PreviousCount = AltarHeld[SiteIndex];
+	AltarHolds[SiteIndex] = HOLVolcano::StepAltarOwned(AltarHeld[SiteIndex], AltarHolder[SiteIndex], Camps.Num(), Camps.Num() == 1 ? Camps[0] : INDEX_NONE, DeltaSeconds, Settings);
+	if (PreviousHolder != INDEX_NONE && AltarHolder[SiteIndex] != PreviousHolder)
+	{
+		UE_LOG(LogHOLVolcano, Display, TEXT("Volcano altar of site %d changes holder at %.1f s: camp %d (was camp %d at %.0f%%) starts again from 0%%"),
+			SiteIndex, Now, AltarHolder[SiteIndex], PreviousHolder, 100.f * PreviousCount / FMath::Max(Settings.AltarHoldSeconds, UE_KINDA_SMALL_NUMBER));
+	}
 	if (AltarHeld[SiteIndex] < Settings.AltarHoldSeconds)
 	{
 		return false;
 	}
 	Wakes[SiteIndex].Add(State.CycleIndex, Now);
 	AltarHeld[SiteIndex] = 0.f;
+	AltarHolder[SiteIndex] = INDEX_NONE;
 	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano altar of site %d held for %.0f s at %.1f s: the alert of cycle %d starts now"), SiteIndex, Settings.AltarHoldSeconds, Now, State.CycleIndex);
 	return true;
 }
