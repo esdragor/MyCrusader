@@ -1,4 +1,5 @@
-relays_compare_a | 4 petits cercles sombres (zone de 4 m) en carré autour du milieu, bien écartés (25 m du centre)
-relays_compare_b | 4 grands cercles (zone de 12 m) à 20 m du centre, presque collés (ancien réglage)
-relays_compare_c | 4 petits cercles (zone de 4 m) plus écartés encore (30 m du centre)
-relays_compare_d | 4 cercles moyens (zone de 8 m) à 25 m du centre
+relays_compare_a | 4 cercles de 12 m en rectangle autour du milieu (graine 1), proches du centre
+relays_compare_b_haut | graine 2, moitié de l'écran vers le haut : 2 cercles de 12 m, plus loin du centre que la graine 1
+relays_compare_b_bas | graine 2, l'autre moitié : les 2 autres cercles (symétriques)
+relays_compare_c_haut | graine 3, 2 cercles de 12 m, encore plus loin du centre
+relays_compare_c_bas | graine 3, les 2 autres cercles (symétriques)

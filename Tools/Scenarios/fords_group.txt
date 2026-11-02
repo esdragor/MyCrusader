@@ -1,0 +1,52 @@
+# Les Gues Moyenne, un GROUPE de 10 Hommes d'armes (ordre de marche du joueur, formation) : phase 1 de devant le pont de ma base jusqu'au centre (par le pont, en ligne droite) ; phase 2 du centre vers un point de l'autre cote de l'eau, loin de tout passage (il doit contourner par un gue ou un pont). Lu par Tools/Tests/fords_group.ps1 : jamais de soldat dans l'eau, arrivee au but.
+hol.Camera.Zoom -7
+frames 5
+hol.Cheat.Resources 2000
+hol.Camera.Focus -11500 0
+frames 2
+hol.Units.SpawnHere 10 ManAtArms 0 600
+waitlog SpawnHere: 10 ManAtArms of slot 0
+waitunits 10
+frames 20
+note PHASE bridge
+hol.Units.Where 0
+hol.Units.Move 0 0 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+note PHASE round
+hol.Units.Move -5792 -9451 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+wait 3
+hol.Units.Where 0
+note FORDS_GROUP_DONE

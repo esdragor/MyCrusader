@@ -1,46 +1,45 @@
-# Les 4 relais fixes du milieu, comparaison un par un : la meme carte (Steppe Petite), la meme camera au centre (0, 0), les 4 relais en carre (diagonales) a une distance D du centre
-# et de rayon R ; Entree = valeur suivante. Valeur actuelle (A, v2 apres ta reponse « un peu plus epars, zone de 4 m ») = 25 m / 4 m. hol.Relay.Clear retire d'abord les 6 relais de la carte, hol.Relay.Add pose les 4 de l'option.
-# Les arbres et filons de la carte ne sont ecartes que des cercles de A : ne regarde que la forme et la taille.
+# Les 4 relais fixes, comparaison un par un des TIRAGES au hasard (graines 1, 2 et 3) sur la Steppe Petite : chaque graine donne 4 positions symetriques dans la zone centrale
+# (2 joueurs : les 4 images d'un point par les deux miroirs, exact pour les deux bases), zone de 12 m. Graine 1 = celle des cartes (defaut). Entree = graine suivante.
+# hol.Relay.Clear retire d'abord les 6 relais de la carte, hol.Relay.Add pose les 4 de la graine ; les arbres et filons de la carte ne sont ecartes que des cercles de la graine 1.
 hol.Sanity.Watch 1
 hol.Camera.Zoom -8
 hol.Camera.TestCursor 0.5 0.5
 frames 5
 hol.Relay.Clear
-hol.Relay.Add -1768 -1768 400
-hol.Relay.Add 1768 -1768 400
-hol.Relay.Add -1768 1768 400
-hol.Relay.Add 1768 1768 400
+hol.Relay.Add -1733 -3129 1200
+hol.Relay.Add 1733 -3129 1200
+hol.Relay.Add -1733 3129 1200
+hol.Relay.Add 1733 3129 1200
 hol.Camera.Focus 0 0
 frames 30
 capture relays_compare_a
-waitkey A (actuelle, v2) : 4 relais a 25 m du centre, zone de 4 m (27 m entre les bords) : Entree = option suivante
+waitkey Graine 1 (actuelle, celle des cartes) : 4 relais de 12 m en (+-17 m, +-31 m) autour du centre : Entree = graine suivante
 hol.Relay.Clear
-hol.Relay.Add -1414 -1414 1200
-hol.Relay.Add 1414 -1414 1200
-hol.Relay.Add -1414 1414 1200
-hol.Relay.Add 1414 1414 1200
-hol.Camera.Focus 0 0
+hol.Relay.Add 3687 -5284 1200
+hol.Relay.Add 3687 5284 1200
+hol.Relay.Add -3687 -5284 1200
+hol.Relay.Add -3687 5284 1200
+hol.Camera.Focus 2200 0
 frames 30
-capture relays_compare_b
-waitkey B (v1, avant ta reponse) : 4 relais a 20 m du centre, zone de 12 m (4 m entre les bords) : Entree = option suivante
+capture relays_compare_b_haut
+waitkey Graine 2 : 4 relais de 12 m en (+-37 m, +-53 m) : plus ecartes du centre (moitie haute de l'ecran du milieu) : Entree = moitie basse
+hol.Camera.Focus -2200 0
+frames 30
+capture relays_compare_b_bas
+waitkey Graine 2, moitie basse : Entree = graine suivante
 hol.Relay.Clear
-hol.Relay.Add -2121 -2121 400
-hol.Relay.Add 2121 -2121 400
-hol.Relay.Add -2121 2121 400
-hol.Relay.Add 2121 2121 400
-hol.Camera.Focus 0 0
+hol.Relay.Add 3494 -6402 1200
+hol.Relay.Add 3494 6402 1200
+hol.Relay.Add -3494 -6402 1200
+hol.Relay.Add -3494 6402 1200
+hol.Camera.Focus 2200 0
 frames 30
-capture relays_compare_c
-waitkey C : 4 relais a 30 m du centre, zone de 4 m (38 m entre les bords) : Entree = option suivante
-hol.Relay.Clear
-hol.Relay.Add -1768 -1768 800
-hol.Relay.Add 1768 -1768 800
-hol.Relay.Add -1768 1768 800
-hol.Relay.Add 1768 1768 800
-hol.Camera.Focus 0 0
-frames 30
-capture relays_compare_d
+capture relays_compare_c_haut
 hol.Test.Sanity
 hol.Camera.TestCursor off
-waitkey D : 4 relais a 25 m du centre, zone de 8 m (35 m entre les bords) : Entree = fin
-note Comparaison un par un des 4 relais du milieu (rayon de la zone et distance au centre), Entree = valeur suivante : A actuelle 25 m / 4 m, B ancienne 20 m / 12 m, C 30 m / 4 m, D 25 m / 8 m. Dis laquelle te va (ou une autre valeur).
+waitkey Graine 3 : 4 relais de 12 m en (+-35 m, +-64 m) : encore plus vers les relais d'anneau (moitie haute) : Entree = moitie basse
+hol.Camera.Focus -2200 0
+frames 30
+capture relays_compare_c_bas
+waitkey Graine 3, moitie basse : Entree = fin
+note Comparaison des tirages au hasard des 4 relais fixes (Steppe Petite, 2 joueurs), Entree = graine suivante : graine 1 (defaut), 2, 3. Dis laquelle te plait ou demande d'autres graines.

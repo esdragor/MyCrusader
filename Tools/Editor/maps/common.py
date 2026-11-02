@@ -1080,45 +1080,89 @@ RELAY_FRACTIONS_WIDE = tuple(sorted((0.3 + 0.025 * k for k in range(0, 27) if ro
 RELAY_ZONES = []  # [(x, y, radius)] of the map being made, read by steppe.kept_out
 
 
-RELAY_EXTRA = 4  # the user's answer to Q-relais-lieux (2026-11-02): "4 + number of players" relays, read by the session as the ring plus 4 more (TO CONFIRM)
-RELAY_EXTRA_RADIUS = 2500.0  # cm: the 4 extra relays form a cross this far from the middle (2026-11-02, the user, E-relays-carte: "a little sparser but balanced as to the spawns, zone of 4 m": it was 2000; read as 25 m, TO CONFIRM)
-RELAY_EXTRA_ZONE = 400.0  # cm: the radius of the zone of the 4 extra relays (the user: "zone de 4 m", read as the radius; the ring's relays keep RELAY_RADIUS, the ruin's 12 m; it was 1200 for all)
+RELAY_EXTRA = 4  # the user's answer to Q-relais-lieux (2026-11-02): "4 + number of players" relays: the ring (one per place) plus 4 fixed ones
+RELAY_EXTRA_ZONE = RELAY_RADIUS  # the 4 fixed relays' zone: 12 m (the user, E-relays-carte v2: "REGLAGE: rayon 12")
+# E-relays-carte v3 (the user, 2026-11-02): the 4 fixed relays are NOT a line or a cross but at RANDOM places of the map, drawn ONCE per map from its seed
+# (recipe.layout_seed, the map, its places and HOL_RELAY_SEED, default 1: the same result every time the map is made), in a symmetric group so that no
+# spawn is favoured: 2 places the 4 images of a point by the mirror along the axis of the places and the mirror across it (exact for both bases); 4 places the
+# 4 turns of 90 degrees of a point (exact for every base); 6 and 8 places two points and their opposites (a turn of 180 degrees: a base and its opposite are
+# equal, the other bases are not, 4 points cannot be symmetric by a sixth or an eighth of a turn). The places of the draw: the central zone of the map.
+RELAY_FIXED_SEED = int(os.environ.get("HOL_RELAY_SEED", "1"))
+RELAY_FIXED_CENTRAL = 0.45  # the central zone: this fraction of the places' circle
+RELAY_FIXED_CENTRAL_MIN = 4000.0  # cm: ... and at least this much
+RELAY_FIXED_APART = 500.0  # cm of free ground between two zones' edges
+RELAY_FIXED_TRIES = 40000
+SALT_RELAYS = 777
 
 
-def ring_relays(recipe, avoid=(), extra_radius=RELAY_EXTRA_RADIUS, on_slots=False, keep_whole=()):
-    """The relays of a map: one for every two neighbouring places (their middle angle; on_slots: on each place's own axis, for the maps whose ranges
-    of mountains run along the middle angles), on the first circle (RELAY_FRACTIONS of the places' circle) where all of them are clear, plus RELAY_EXTRA
-    in a cross round the middle at extra_radius (the ring is farther out than the cross by more than two zones). Clear: outside every base's reach and
-    the bounds' edge, RELAY_ROCK_CLEAR from every avoid point (a rock). The cross turns with the places' first angle; it is NOT symmetric by a turn of
-    one place when there are 6 or 8 places (4 points cannot be), the ring is."""
+def fixed_group(places, a0, rng, reach):
+    """A random group of 4 points (x, y) symmetric as the places need (see above); reach: the central zone's radius; a0: the angle of place 0."""
+    def point():
+        radius = reach * math.sqrt(rng.uniform())
+        angle = rng.range(0.0, 2.0 * math.pi)
+        return radius * math.cos(angle), radius * math.sin(angle)
+
+    if places == 2:
+        x, y = point()
+        ux, uy = math.cos(a0), math.sin(a0)  # along the axis of the two places
+        a, b = x * ux + y * uy, -x * uy + y * ux
+        return [(sa * a * ux - sb * b * uy, sa * a * uy + sb * b * ux) for sa in (1.0, -1.0) for sb in (1.0, -1.0)]
+    if places == 4:
+        x, y = point()
+        return [(x, y), (-y, x), (-x, -y), (y, -x)]
+    (x1, y1), (x2, y2) = point(), point()
+    return [(x1, y1), (-x1, -y1), (x2, y2), (-x2, -y2)]
+
+
+def fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius):
+    """The 4 fixed relays (x, y, RELAY_EXTRA_ZONE) of a map, or None if no draw is clear: in the central zone, inside the bounds, outside every base's
+    reach, rock_clear from every avoid point, whole veins left alone, apart from each other and from the ring's relays (RELAY_FIXED_APART between edges)."""
+    places = len(recipe.angles)
+    reach = max(RELAY_FIXED_CENTRAL_MIN, RELAY_FIXED_CENTRAL * recipe.slot_radius, min_radius + 3.0 * RELAY_RADIUS)
+    rng = Rng(mix_seed(recipe.layout_seed, SALT_RELAYS, RELAY_FIXED_SEED, places, sum(ord(c) for c in recipe.map_name)))
+    zone = RELAY_EXTRA_ZONE
+    for _ in range(RELAY_FIXED_TRIES):
+        group = fixed_group(places, math.radians(recipe.angles[0]), rng, reach)
+        clear = all(math.hypot(x, y) >= min_radius for x, y in group)
+        clear = clear and all(abs(x) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN and abs(y) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN for x, y in group)
+        clear = clear and all(math.dist(p, slot) >= BASE_REACH + zone + RELAY_BASE_MARGIN for p in group for slot in slots)
+        clear = clear and all(math.dist(p, q) >= 2.0 * zone + RELAY_FIXED_APART for i, p in enumerate(group) for q in group[i + 1:])
+        clear = clear and all(math.dist(p, (x, y)) >= zone + r + RELAY_FIXED_APART for p in group for x, y, r in ring)
+        clear = clear and all(math.dist(p, rock) >= zone + rock_clear for p in group for rock in avoid)
+        clear = clear and all(math.dist(p, pile) >= zone + 1.0 for p in group for pile in keep_whole)
+        if clear:
+            return [(x, y, zone) for x, y in group]
+    return None
+
+
+def ring_relays(recipe, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=()):
+    """The relays of a map, the ring first then the 4 fixed ones (the order the Map.Table test reads): one for every two neighbouring places (their middle
+    angle; on_slots: on each place's own axis, for the maps whose ranges of mountains run along the middle angles), on the first circle (RELAY_FRACTIONS of the
+    places' circle) where all of them are clear, then the 4 fixed ones drawn at random (fixed_relays; extra_radius: they stay at least this far from the middle,
+    El Dorado's marsh). Clear: outside every base's reach and the bounds' edge, RELAY_ROCK_CLEAR from every avoid point (a rock). The ring is symmetric by a
+    turn of one place."""
     if recipe.size_key is None:
         return []
     places = len(recipe.angles)
     first = math.radians(recipe.angles[0] + (0.0 if on_slots else 180.0 / places))
     slots = [recipe.slot(index)[0] for index in range(places)]
-    limit = recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN
-    # The cross first as asked (extra_radius, turned with the places); a map with rocks in the middle (the Hinterland's outcrops) turns it by 15 degrees,
-    # then pushes it out by 500 cm, until the cross and a ring are both clear.
     # Two tiers of ring circles: the usual ones, then (only if none fits, so the maps that fit keep their relays) a finer and wider choice.
     for fractions in (RELAY_FRACTIONS, RELAY_FRACTIONS_WIDE):
-        for rock_clear, push in [(clear_, push_) for clear_ in (RELAY_ROCK_CLEAR, 0.0) for push_ in range(0, 7)]:  # UNTESTED fallback (R2): rocks 0 cm from a zone's edge if none of the clearances above fit
-            cross_radius = extra_radius + 500.0 * push
-            inner = cross_radius + RELAY_EXTRA_ZONE + RELAY_RADIUS + RELAY_BASE_MARGIN
-            for turn in range(0, 6):
-                cross = [(cross_radius * math.cos(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn)),
-                          cross_radius * math.sin(first + math.pi / 4 + 0.5 * math.pi * k + math.radians(15.0 * turn))) for k in range(RELAY_EXTRA)]
-                for fraction in fractions:
-                    radius = fraction * recipe.slot_radius
-                    if radius < inner:
-                        continue
-                    points = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places)) for k in range(places)]
-                    everything = [(x, y, RELAY_RADIUS) for x, y in points] + [(x, y, RELAY_EXTRA_ZONE) for x, y in cross]
-                    clear = all(abs(x) <= recipe.bounds_half - r - RELAY_BASE_MARGIN and abs(y) <= recipe.bounds_half - r - RELAY_BASE_MARGIN for x, y, r in everything)
-                    clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + r + RELAY_BASE_MARGIN for x, y, r in everything for slot in slots)
-                    clear = clear and all(math.dist((x, y), rock) >= r + rock_clear for x, y, r in everything for rock in avoid)
-                    clear = clear and all(math.dist((x, y), pile) >= r + 1.0 for x, y, r in everything for pile in keep_whole)  # keep_whole: sources that must not fall in a zone
-                    if clear:
-                        return everything
+        for rock_clear in (RELAY_ROCK_CLEAR, 0.0):  # UNTESTED fallback (R2): rocks 0 cm from a zone's edge if none of the clearances above fit
+            for fraction in fractions:
+                radius = fraction * recipe.slot_radius
+                if radius < extra_radius + RELAY_RADIUS + RELAY_BASE_MARGIN:
+                    continue
+                ring = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places), RELAY_RADIUS) for k in range(places)]
+                clear = all(abs(x) <= recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN and abs(y) <= recipe.bounds_half - RELAY_RADIUS - RELAY_BASE_MARGIN for x, y, _ in ring)
+                clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + RELAY_RADIUS + RELAY_BASE_MARGIN for x, y, _ in ring for slot in slots)
+                clear = clear and all(math.dist((x, y), rock) >= RELAY_RADIUS + rock_clear for x, y, _ in ring for rock in avoid)
+                clear = clear and all(math.dist((x, y), pile) >= RELAY_RADIUS + 1.0 for x, y, _ in ring for pile in keep_whole)  # keep_whole: sources that must not fall in a zone
+                if not clear:
+                    continue
+                fixed = fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, extra_radius)
+                if fixed:
+                    return ring + fixed
     raise RuntimeError("No clear circle for the relays of %s" % recipe.map_path)
 
 
