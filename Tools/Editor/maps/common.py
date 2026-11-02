@@ -1080,50 +1080,53 @@ RELAY_FRACTIONS_WIDE = tuple(sorted((0.3 + 0.025 * k for k in range(0, 27) if ro
 RELAY_ZONES = []  # [(x, y, radius)] of the map being made, read by steppe.kept_out
 
 
-RELAY_EXTRA = 4  # the user's answer to Q-relais-lieux (2026-11-02): "4 + number of players" relays: the ring (one per place) plus 4 fixed ones
-RELAY_EXTRA_ZONE = RELAY_RADIUS  # the 4 fixed relays' zone: 12 m (the user, E-relays-carte v2: "REGLAGE: rayon 12")
-# E-relays-carte v3 (the user, 2026-11-02): the 4 fixed relays are NOT a line or a cross but at RANDOM places of the map, drawn ONCE per map from its seed
-# (recipe.layout_seed, the map, its places and HOL_RELAY_SEED, default 1: the same result every time the map is made), in a symmetric group so that no
-# spawn is favoured: 2 places the 4 images of a point by the mirror along the axis of the places and the mirror across it (exact for both bases); 4 places the
-# 4 turns of 90 degrees of a point (exact for every base); 6 and 8 places two points and their opposites (a turn of 180 degrees: a base and its opposite are
-# equal, the other bases are not, 4 points cannot be symmetric by a sixth or an eighth of a turn). The places of the draw: the central zone of the map.
+RELAY_EXTRA = 5  # the fixed relays besides the ring: v4 (the user, E-relays-carte, "in the manner of" his picture of 5 circles): one in the middle and two symmetric pairs
+RELAY_EXTRA_ZONE = RELAY_RADIUS  # the fixed relays' zone: 12 m (the user, E-relays-carte v2: "REGLAGE: rayon 12")
+# E-relays-carte v4 (the user, 2026-11-02: "in the manner of" a picture: 5 circles spread over the WHOLE map, one in the middle, two near opposite corners,
+# two at mid height near the sides; not a square nor a cross nor stuck to the middle): a SEEDED TEMPLATE, drawn once per map from its seed (recipe.layout_seed,
+# the map, its places and HOL_RELAY_SEED, default 1: the same result every time the map is made), in the frame of the places (u from the middle towards place 0,
+# v across), as fractions of the bounds' half side H: the middle (0, 0); a CORNER pair +-(u, v) with |u|, |v| in 0.60 to 0.85 H (random signs: the diagonal it
+# lies on); a SIDE pair +-(du, v) with |v| in 0.72 to 0.88 H and du in +-0.10 H (across the axis of the places). The group is closed under a turn of 180 degrees:
+# with 2 places the two bases see the same distances (exact); with 4, 6 and 8 places a base and its opposite are equal, the other bases are not (the places
+# circle is of 0.75 H, so the pairs sit between and beyond the bases). A zone near a base, a rock or the ring is refused and the draw goes on.
 RELAY_FIXED_SEED = int(os.environ.get("HOL_RELAY_SEED", "1"))
-RELAY_FIXED_CENTRAL = 0.45  # the central zone: this fraction of the places' circle
-RELAY_FIXED_CENTRAL_MIN = 4000.0  # cm: ... and at least this much
 RELAY_FIXED_APART = 500.0  # cm of free ground between two zones' edges
 RELAY_FIXED_TRIES = 40000
-SALT_RELAYS = 777
+SALT_RELAYS = 778
 
 
-def fixed_group(places, a0, rng, reach):
-    """A random group of 4 points (x, y) symmetric as the places need (see above); reach: the central zone's radius; a0: the angle of place 0."""
-    def point():
-        radius = reach * math.sqrt(rng.uniform())
-        angle = rng.range(0.0, 2.0 * math.pi)
-        return radius * math.cos(angle), radius * math.sin(angle)
+def fixed_group(a0, rng, half, middle):
+    """5 points (x, y): the middle (moved to `middle` along the axis of place 0 when a marsh or a mine fills the middle: El Dorado) and two symmetric pairs; a0: the angle of place 0."""
+    ux, uy = math.cos(a0), math.sin(a0)
+    vx, vy = -uy, ux
 
-    if places == 2:
-        x, y = point()
-        ux, uy = math.cos(a0), math.sin(a0)  # along the axis of the two places
-        a, b = x * ux + y * uy, -x * uy + y * ux
-        return [(sa * a * ux - sb * b * uy, sa * a * uy + sb * b * ux) for sa in (1.0, -1.0) for sb in (1.0, -1.0)]
-    if places == 4:
-        x, y = point()
-        return [(x, y), (-y, x), (-x, -y), (y, -x)]
-    (x1, y1), (x2, y2) = point(), point()
-    return [(x1, y1), (-x1, -y1), (x2, y2), (-x2, -y2)]
+    def at(u, v):
+        return u * ux + v * vx, u * uy + v * vy
+
+    corner_u = rng.range(0.60, 0.85) * half * (1.0 if rng.uniform() < 0.5 else -1.0)
+    corner_v = rng.range(0.60, 0.85) * half * (1.0 if rng.uniform() < 0.5 else -1.0)
+    side_v = rng.range(0.72, 0.88) * half
+    side_u = rng.range(-0.10, 0.10) * half
+    cx, cy = at(corner_u, corner_v)
+    sx, sy = at(side_u, side_v)
+    mx, my = at(middle, 0.0)
+    return [(mx, my), (cx, cy), (-cx, -cy), (sx, sy), (-sx, -sy)]
 
 
 def fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius):
-    """The 4 fixed relays (x, y, RELAY_EXTRA_ZONE) of a map, or None if no draw is clear: in the central zone, inside the bounds, outside every base's
-    reach, rock_clear from every avoid point, whole veins left alone, apart from each other and from the ring's relays (RELAY_FIXED_APART between edges)."""
+    """The 5 fixed relays (x, y, RELAY_EXTRA_ZONE) of a map, or None if no draw is clear: inside the bounds, outside every base's reach, rock_clear from every
+    avoid point, whole veins left alone, apart from each other and from the ring's relays (RELAY_FIXED_APART between edges). min_radius > 0 (El Dorado's marsh):
+    the middle relay stands that far from the middle, along the axis of place 0, and the others at least as far."""
     places = len(recipe.angles)
-    reach = max(RELAY_FIXED_CENTRAL_MIN, RELAY_FIXED_CENTRAL * recipe.slot_radius, min_radius + 3.0 * RELAY_RADIUS)
     rng = Rng(mix_seed(recipe.layout_seed, SALT_RELAYS, RELAY_FIXED_SEED, places, sum(ord(c) for c in recipe.map_name)))
     zone = RELAY_EXTRA_ZONE
+    middle = (min_radius + zone + RELAY_BASE_MARGIN) if min_radius > 0.0 else 0.0
     for _ in range(RELAY_FIXED_TRIES):
-        group = fixed_group(places, math.radians(recipe.angles[0]), rng, reach)
-        clear = all(math.hypot(x, y) >= min_radius for x, y in group)
+        # 2 places: the frame is the places' own (the pairs lie across and beyond the two bases); 4, 6 and 8: the frame is turned at random (the group stays
+        # symmetric by 180 degrees whatever its turn) so that the pairs find the room between the bases.
+        turn = math.radians(recipe.angles[0]) if places == 2 else rng.range(0.0, math.pi)
+        group = fixed_group(turn, rng, recipe.bounds_half, middle)
+        clear = all(math.hypot(x, y) >= min_radius - 1.0 for x, y in group)
         clear = clear and all(abs(x) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN and abs(y) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN for x, y in group)
         clear = clear and all(math.dist(p, slot) >= BASE_REACH + zone + RELAY_BASE_MARGIN for p in group for slot in slots)
         clear = clear and all(math.dist(p, q) >= 2.0 * zone + RELAY_FIXED_APART for i, p in enumerate(group) for q in group[i + 1:])

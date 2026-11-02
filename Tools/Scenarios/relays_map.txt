@@ -30,13 +30,20 @@ capture relays_map_other
 hol.Camera.Focus 0 0
 frames 30
 capture relays_map_middle
+hol.Camera.Focus 493 16869
+frames 30
+capture relays_map_side
+hol.Camera.Focus 13949 17668
+frames 30
+capture relays_map_corner
 hol.Test.Sanity
-# Fin : camera au milieu, 6 Hommes d'armes de plus sous les cercles (en bas de l'ecran) pour la tester ; les premiers tiennent le relais d'anneau de gauche
+# Fin : camera au milieu, 6 Hommes d'armes de plus a cote du relais du centre pour le tester ; les premiers tiennent le relais d'anneau de gauche
+hol.Camera.Focus 0 0
 hol.Units.Spawn 6 -3500 0 0 ManAtArms 250
 frames 30
 capture relays_map_middle_men
 hol.Camera.TestCursor off
-note 0. La carte pose 6 relais (hol.Relay.Report les liste) : 2 d'anneau (un par joueur, a gauche et a droite du milieu de l'ecran) et 4 fixes tires au hasard dans la zone centrale (une fois par carte, graine 1), en rectangle symetrique, zone de 12 m comme l'anneau.
-note 1. Tu vois le milieu de la Steppe : 4 cercles sombres (zone de 12 m) en rectangle, sans arbre ni filon dedans. 6 Hommes d'armes (en bas de l'ecran) sont a toi ; 6 autres tiennent depuis 20 s le relais d'anneau de gauche (cercle plein a ta couleur, a moitie visible sur le bord gauche).
-note 2. Double clic sur un de tes Hommes d'armes (en bas de l'ecran) puis clic droit sur un des 4 cercles : il se remplit en 20 s a ta couleur. Envoie-les ensuite sur un autre : le premier reste a toi (un relais pris reste a son preneur). Ton heros gagne de l'XP de territoire (10 par minute et par relais tenu).
-note 3. Question : ce tirage te va-t-il (graine 1) ? Le scenario relays_map_compare montre les graines 2 et 3. Console : hol.Relay.Report, hol.Relay.HoldSeconds 60.
+note 0. La carte pose 7 relais de 12 m (hol.Relay.Report les liste) : 2 d'anneau (un par joueur, a gauche et a droite du milieu de l'ecran) et 5 FIXES etales sur toute la carte, tires au hasard une fois par carte (graine 1) : un au centre, deux en coins opposes, deux sur les cotes ; chaque camp en a autant a sa portee (2 joueurs).
+note 1. Tu vois le relais du centre (cercle sombre de 12 m, sans arbre ni filon dedans). 6 Hommes d'armes (en bas de l'ecran) sont a toi ; 6 autres tiennent depuis 20 s le relais d'anneau de gauche (cercle plein a ta couleur, sur le bord gauche).
+note 2. Double clic sur un de tes Hommes d'armes puis clic droit sur le cercle du centre : il se remplit en 20 s a ta couleur. Va ensuite voir les autres (mini-carte ou touche Home) : un relais pris reste a son preneur ; ton heros gagne de l'XP de territoire (10 par minute et par relais tenu).
+note 3. Question : cette disposition (5 fixes etales, dans le genre de ton image) te va-t-elle ? Les graines 2 et 3 sont dessinees dans Retours\E-relays-carte-graines.png. Console : hol.Relay.Report, hol.Relay.HoldSeconds 60.

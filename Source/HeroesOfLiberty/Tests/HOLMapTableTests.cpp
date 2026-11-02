@@ -40,7 +40,7 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	/** R2 (relays of the maps, D388): the reach of a base a relay's zone must stay out of (Tools/Editor/maps/common.py BASE_REACH), and the gap kept between a relay's zone and a source. */
 	constexpr float RelayBaseReach = 6000.f;
 	/** Q-relais-lieux: the 4 relays every map holds besides one per place. */
-	constexpr int32 FixedRelays = 4;
+	constexpr int32 FixedRelays = 5;
 	/** E-relays-carte v3 (2026-11-02): the zone of the 4 fixed relays, 12 m (the user: "REGLAGE: rayon 12"), at random places (drawn once per map). */
 	constexpr float FixedRelayRadius = 1200.f;
 
@@ -256,31 +256,8 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						WrongFixedRadius += FMath::IsNearlyEqual(Relay.Radius, FixedRelayRadius, 1.f) ? 0 : 1;
 					}
 					TestEqual(FString::Printf(TEXT("%s: fixed relays whose zone is not %.0f cm (common.py RELAY_EXTRA_ZONE)"), *Name, FixedRelayRadius), WrongFixedRadius, 0);
-					if (Info.NumPlaces == 2)
-					{
-						// The places lie on the X axis (angles 180 and 0): the group is closed under both mirrors.
-						auto Closed = [&Fixed](const double SignX, const double SignY)
-						{
-							int32 Unmatched = 0;
-							for (const FHOLPlacedRelay& Relay : Fixed)
-							{
-								bool bFound = false;
-								for (const FHOLPlacedRelay& Other : Fixed)
-								{
-									bFound = bFound || (FMath::Abs(Other.Location.X - SignX * Relay.Location.X) < 1.0 && FMath::Abs(Other.Location.Y - SignY * Relay.Location.Y) < 1.0);
-								}
-								Unmatched += !bFound;
-							}
-							return Unmatched;
-						};
-						TestEqual(FString::Printf(TEXT("%s: fixed relays closed under the mirror across the axis of the places"), *Name), Closed(1.0, -1.0), 0);
-						TestEqual(FString::Printf(TEXT("%s: fixed relays closed under the mirror between the two places"), *Name), Closed(-1.0, 1.0), 0);
-					}
-					else
-					{
-						TestEqual(FString::Printf(TEXT("%s: fixed relays without a twin after a turn of %s"), *Name, Info.NumPlaces == 4 ? TEXT("90 degrees") : TEXT("180 degrees")),
-							FHOLRelayLayoutRules::CountUnmatchedByTurn(Fixed, Info.NumPlaces == 4 ? 90.0 : 180.0), 0);
-					}
+					// The fixed relays are the middle and two pairs of opposite points: closed under a turn of 180 degrees.
+					TestEqual(FString::Printf(TEXT("%s: fixed relays without a twin after a turn of 180 degrees"), *Name), FHOLRelayLayoutRules::CountUnmatchedByTurn(Fixed, 180.0), 0);
 				int32 Overlapping = 0;
 				for (int32 A = 0; A < ByDistance.Num(); ++A)
 				{
