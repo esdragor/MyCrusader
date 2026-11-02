@@ -473,6 +473,66 @@ bool FHOLVolcanoAltarWorldTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The altar's count belongs to its holder (V8, the user's remark on volcano_ai): when the camp that held it is gone and the other camp stands alone in
+// the zone, the new holder starts from 0, never from the old holder's percentage. Real chain: server world, two camps, the units, the steps.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarNewHolderTest, "HeroesOfLiberty.Volcano.AltarNewHolderStartsAtZero", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoAltarNewHolderTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, /*Seed*/ 4242, /*bSeparateTeams*/ true);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	Site.Altar.bPresent = true;
+	Site.Altar.Location = FVector(0.0, 5000.0, 0.0);
+	Site.Altar.Radius = 1200.f;
+	W.Volcano->SetSites({ Site });
+
+	// Slot 0 holds the altar alone for ~28 s (almost half).
+	const uint32 First = W.PlaceUnit(FName(TEXT("Peasant")), 0, FVector(0.0, 5300.0, 0.0));
+	if (!TestTrue(TEXT("first holder placed"), First != 0))
+	{
+		return false;
+	}
+	W.RunTo(30.f);
+	const float FirstCount = W.Volcano->GetAltarHeldSeconds(0);
+	TestTrue(TEXT("the first holder has about 28 s"), FirstCount > 25.f && FirstCount < 31.f);
+
+	// The other camp comes in: contested, frozen. The first holder dies: the other camp is alone and starts from 0.
+	const uint32 Second = W.PlaceUnit(FName(TEXT("Peasant")), 1, FVector(0.0, 4700.0, 0.0));
+	if (!TestTrue(TEXT("second camp placed"), Second != 0))
+	{
+		return false;
+	}
+	W.RunTo(40.f);
+	TestTrue(TEXT("two camps: contested"), W.Volcano->GetAltarHold(0) == HOLVolcano::EAltarHold::Contested);
+	TestTrue(TEXT("... frozen at the first holder's count"), FMath::IsNearlyEqual(W.Volcano->GetAltarHeldSeconds(0), FirstCount, 0.5f));
+	W.Units->KillUnitsWhere([First](const uint32 UnitId, FName, const uint8, const FVector&, const float) { return UnitId == First; });
+	W.RunTo(45.f);
+	TestTrue(TEXT("the other camp alone: holding"), W.Volcano->GetAltarHold(0) == HOLVolcano::EAltarHold::Holding);
+	const float NewCount = W.Volcano->GetAltarHeldSeconds(0);
+	TestTrue(TEXT("... its count restarted from 0 (about 5 s after 5 s alone), not the loser's 28 s"), NewCount > 0.f && NewCount < 7.f);
+	W.RunTo(55.f);
+	const float LaterCount = W.Volcano->GetAltarHeldSeconds(0);
+	TestTrue(TEXT("... and goes on from there (about 15 s)"), LaterCount > 12.f && LaterCount < 17.f);
+
+	// The same camp coming back after an absence keeps its own decayed count (the ruin's rule): not the object of this change, but it must not restart.
+	W.Units->KillUnitsWhere([Second](const uint32 UnitId, FName, const uint8, const FVector&, const float) { return UnitId == Second; });
+	W.RunTo(58.f);
+	const float Decayed = W.Volcano->GetAltarHeldSeconds(0);
+	TestTrue(TEXT("nobody: the count goes down"), Decayed < LaterCount);
+	const uint32 Again = W.PlaceUnit(FName(TEXT("Peasant")), 1, FVector(0.0, 5300.0, 0.0));
+	TestTrue(TEXT("the holder's camp is back"), Again != 0);
+	W.RunTo(63.f);
+	TestTrue(TEXT("... it goes on from its decayed count, not from 0"), W.Volcano->GetAltarHeldSeconds(0) > Decayed + 3.f);
+	return true;
+}
+
 // Without Catastrophe the altar is inert (D398): a unit stands on it as long as it likes.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarInertTest, "HeroesOfLiberty.Volcano.AltarInertWithoutCatastrophe", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
 bool FHOLVolcanoAltarInertTest::RunTest(const FString& Parameters)
@@ -494,6 +554,72 @@ bool FHOLVolcanoAltarInertTest::RunTest(const FString& Parameters)
 	W.RunTo(90.f);
 	TestEqual(TEXT("no Catastrophe: nothing woken"), W.Volcano->GetNumWakes(0), 0);
 	TestEqual(TEXT("no Catastrophe: the HUD sees no site"), UHOLVolcanoLibrary::GetSiteCount(W.World), 0);
+	return true;
+}
+
+// What the AI reads of the altar on the real chain (V11, D639, D640): the camp alone in the zone, an adversary's strength (a Peasant a quarter),
+// the distances of the nearest trace from the buildings and from the altar, the unlit altar not measured, and the library's squad decision.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoAltarMeasureTest, "HeroesOfLiberty.Volcano.AltarMeasure", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoAltarMeasureTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, /*Seed*/ 4242, /*bSeparateTeams*/ true);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(30000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	Site.Altar.bPresent = true;
+	Site.Altar.Location = FVector(0.0, 9000.0, 0.0);
+	Site.Altar.Radius = 1200.f;
+	W.Volcano->SetSites({ Site });
+	W.RunTo(2.f);
+
+	UHOLVolcanoSubsystem::FAltarMeasure Empty;
+	TestTrue(TEXT("the lit altar is measured"), W.Volcano->MeasureAltar(0, 1, Empty));
+	TestFalse(TEXT("... nobody in the zone: no adversary"), Empty.bAdversary);
+	TestFalse(TEXT("... nobody: the camp is not alone in the zone either"), Empty.bOwnCampAlone);
+	TestTrue(TEXT("... the altar is 90 m from the line"), FMath::IsNearlyEqual(Empty.TraceFromAltar, 9000.f, 1.f));
+
+	// A building of slot 1 at 60 m from the line: the buildings' distance.
+	W.PlaceBuilding(FName(TEXT("House")), 1, FVector(15000.0, 6000.0, 0.0));
+	// Slot 1 holds the altar with a Man-at-arms; slot 0 has a Man-at-arms and a Peasant there: strength 1.25.
+	W.PlaceUnit(FName(TEXT("ManAtArms")), 1, FVector(0.0, 9100.0, 0.0));
+	W.PlaceUnit(FName(TEXT("ManAtArms")), 0, FVector(0.0, 8900.0, 0.0));
+	W.PlaceUnit(FName(TEXT("Peasant")), 0, FVector(100.0, 8900.0, 0.0));
+	UHOLVolcanoSubsystem::FAltarMeasure Contested;
+	TestTrue(TEXT("measured again"), W.Volcano->MeasureAltar(0, 1, Contested));
+	TestTrue(TEXT("an adversary stands in the zone"), Contested.bAdversary);
+	TestFalse(TEXT("... the camp is not alone"), Contested.bOwnCampAlone);
+	TestTrue(TEXT("... strength 1 + 0.25"), FMath::IsNearlyEqual(Contested.AdversaryStrength, 1.25f, 0.01f));
+	TestTrue(TEXT("the nearest trace from the building: 60 cm... 6000 cm"), FMath::IsNearlyEqual(Contested.TraceFromBuildings, 6000.f, 1.f));
+
+	TArray<FHOLAIAltar> Altars;
+	UHOLVolcanoLibrary::ReadAIAltars(W.World, 1, Altars);
+	if (!TestEqual(TEXT("the library hands over the lit altar"), Altars.Num(), 1))
+	{
+		return false;
+	}
+	TestTrue(TEXT("... with the adversary"), Altars[0].bAdversary && Altars[0].SiteIndex == 0);
+	int32 Squad = 0;
+	bool bDiversion = false;
+	UHOLVolcanoLibrary::DecideAltarSquad(W.World, Altars[0], 10, 0, 1, Squad, bDiversion);
+	TestEqual(TEXT("10 free soldiers against 1.25: at least the minimum, more than him"), Squad, 2);
+
+	// The same altar seen by slot 0's side (it holds it alone once the adversary is gone): the free altar, held by a quarter.
+	W.Units->KillUnitsWhere([](const uint32, FName, const uint8 Owner, const FVector&, const float) { return Owner == 1; });
+	TArray<FHOLAIAltar> Free;
+	UHOLVolcanoLibrary::ReadAIAltars(W.World, 0, Free);
+	if (!TestEqual(TEXT("the altar is still lit"), Free.Num(), 1))
+	{
+		return false;
+	}
+	TestFalse(TEXT("... no adversary for slot 0"), Free[0].bAdversary);
+	UHOLVolcanoLibrary::DecideAltarSquad(W.World, Free[0], 8, 0, 1, Squad, bDiversion);
+	TestEqual(TEXT("slot 0 has no building: the trace is infinitely far, a quarter of 8"), Squad, 2);
 	return true;
 }
 

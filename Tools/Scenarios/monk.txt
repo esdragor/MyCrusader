@@ -28,8 +28,9 @@ frames 2
 hol.Units.SpawnHere 1 Monk 0 100
 waitlog SpawnHere: 1 Monk of slot 0
 frames 20
-# Select the Monk right after it spawns, alone (the last own unit): a later click would hit a Spearman standing on it (random spawn spots).
-hol.Select.ClickUnit -1
+# Select the Monk by its type (the newest Monk alone), not by a click: a click takes whatever stands on top of it on the screen (a Spearman at random spawn spots).
+hol.Select.Type Monk last
+waitlog Select type Monk: 1 units
 waitlog Selection: Monk
 hol.Units.SpawnHere 3 Spearman 0 400
 waitlog SpawnHere: 3 Spearman of slot 0

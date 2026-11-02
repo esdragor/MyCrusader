@@ -6,6 +6,7 @@
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLPlayerOrders.h"
 #include "EngineUtils.h"
+#include "Map/HOLVolcanoLayout.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLDuelSubsystem.h"
@@ -25,6 +26,29 @@ void UHOLVolcanoSubsystem::OnWorldBeginPlay(UWorld& InWorld)
 {
 	Super::OnWorldBeginPlay(InWorld);
 	BindSteps();
+	LoadLayout();
+}
+
+void UHOLVolcanoSubsystem::LoadLayout()
+{
+	UWorld* World = GetWorld();
+	if (!World || World->GetNetMode() == NM_Client)
+	{
+		return;
+	}
+	TArray<FHOLPlacedVolcano> Placed;
+	bool bAnyLayout = false;
+	for (TActorIterator<AHOLVolcanoLayout> It(World); It; ++It)
+	{
+		bAnyLayout = true;
+		Placed.Append(It->GetSites());
+	}
+	if (!bAnyLayout)
+	{
+		return;
+	}
+	SetSites(FHOLVolcanoLayoutRules::ToSites(Placed));
+	UE_LOG(LogHOLVolcano, Log, TEXT("%d volcano site(s) placed by the map"), Sites.Num());
 }
 
 void UHOLVolcanoSubsystem::SetSites(const TArray<HOLVolcano::FSite>& InSites)
@@ -35,6 +59,7 @@ void UHOLVolcanoSubsystem::SetSites(const TArray<HOLVolcano::FSite>& InSites)
 	AltarHeld.Init(0.f, Sites.Num());
 	AltarHolds.Init(HOLVolcano::EAltarHold::Idle, Sites.Num());
 	AltarCycle.Init(INDEX_NONE, Sites.Num());
+	AltarHolder.Init(INDEX_NONE, Sites.Num());
 }
 
 HOLVolcano::FSiteState UHOLVolcanoSubsystem::StateOf(const int32 SiteIndex, const float Now) const
@@ -74,10 +99,12 @@ bool UHOLVolcanoSubsystem::StepAltarOf(const int32 SiteIndex, const float Now, c
 	{
 		AltarCycle[SiteIndex] = State.CycleIndex;
 		AltarHeld[SiteIndex] = 0.f;
+		AltarHolder[SiteIndex] = INDEX_NONE;
 	}
 	if (!State.bAltarLit)
 	{
 		AltarHeld[SiteIndex] = 0.f;
+		AltarHolder[SiteIndex] = INDEX_NONE;
 		AltarHolds[SiteIndex] = HOLVolcano::EAltarHold::Idle;
 		return false;
 	}
@@ -95,13 +122,21 @@ bool UHOLVolcanoSubsystem::StepAltarOf(const int32 SiteIndex, const float Now, c
 		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
 		Camps.AddUnique(Camp != INDEX_NONE ? Camp : 1000 + Owner);
 	});
-	AltarHolds[SiteIndex] = HOLVolcano::StepAltar(AltarHeld[SiteIndex], Camps.Num(), DeltaSeconds, Settings);
+	const int32 PreviousHolder = AltarHolder[SiteIndex];
+	const float PreviousCount = AltarHeld[SiteIndex];
+	AltarHolds[SiteIndex] = HOLVolcano::StepAltarOwned(AltarHeld[SiteIndex], AltarHolder[SiteIndex], Camps.Num(), Camps.Num() == 1 ? Camps[0] : INDEX_NONE, DeltaSeconds, Settings);
+	if (PreviousHolder != INDEX_NONE && AltarHolder[SiteIndex] != PreviousHolder)
+	{
+		UE_LOG(LogHOLVolcano, Display, TEXT("Volcano altar of site %d changes holder at %.1f s: camp %d (was camp %d at %.0f%%) starts again from 0%%"),
+			SiteIndex, Now, AltarHolder[SiteIndex], PreviousHolder, 100.f * PreviousCount / FMath::Max(Settings.AltarHoldSeconds, UE_KINDA_SMALL_NUMBER));
+	}
 	if (AltarHeld[SiteIndex] < Settings.AltarHoldSeconds)
 	{
 		return false;
 	}
 	Wakes[SiteIndex].Add(State.CycleIndex, Now);
 	AltarHeld[SiteIndex] = 0.f;
+	AltarHolder[SiteIndex] = INDEX_NONE;
 	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano altar of site %d held for %.0f s at %.1f s: the alert of cycle %d starts now"), SiteIndex, Settings.AltarHoldSeconds, Now, State.CycleIndex);
 	return true;
 }
@@ -158,6 +193,69 @@ void UHOLVolcanoSubsystem::OnStepStarted(const int64 StepIndex)
 		// The Man-at-arms' speed is read from the unit type table (never typed here): the lava walks at a share of it (D575).
 		Apply(Index, Sites[Index], StateOf(Index, Now));
 	}
+}
+
+bool UHOLVolcanoSubsystem::MeasureAltar(const int32 SiteIndex, const int32 Slot, FAltarMeasure& Out) const
+{
+	Out = FAltarMeasure();
+	const UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+	if (!Sites.IsValidIndex(SiteIndex) || !Sites[SiteIndex].Altar.bPresent || !GameState || !GameState->GetLaunchConfig().bCatastrophe || !Units || !Simulation)
+	{
+		return false;
+	}
+	if (!StateOf(SiteIndex, GetClockOf(Simulation->GetStepIndex())).bAltarLit)
+	{
+		return false;
+	}
+	const HOLVolcano::FSite& Site = Sites[SiteIndex];
+	const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+	const int32 MyCamp = Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, static_cast<uint8>(Slot)) : INDEX_NONE;
+	Out.SiteIndex = SiteIndex;
+	Out.Location = Site.Altar.Location;
+	Out.Radius = Site.Altar.Radius;
+	bool bOwn = false;
+	const FVector2D Altar(Site.Altar.Location);
+	const double RadiusSquared = FMath::Square(static_cast<double>(Site.Altar.Radius));
+	Units->ForEachLivingUnitWithType([&](const uint32, const FName TypeName, const uint8 Owner, const FVector& Location)
+	{
+		if (FVector2D::DistSquared(FVector2D(Location), Altar) > RadiusSquared)
+		{
+			return;
+		}
+		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
+		const bool bMine = Owner == Slot || (MyCamp != INDEX_NONE && Camp == MyCamp);
+		if (bMine)
+		{
+			bOwn = true;
+			return;
+		}
+		Out.bAdversary = true;
+		Out.AdversaryStrength += TypeName == TEXT("Peasant") ? Settings.AiAltarWorkerWeight : 1.f;
+	});
+	Out.bOwnCampAlone = bOwn && !Out.bAdversary;
+	Out.TraceFromAltar = TNumericLimits<float>::Max();
+	Out.TraceFromBuildings = TNumericLimits<float>::Max();
+	for (const HOLVolcano::FFlow& Flow : Site.Flows)
+	{
+		Out.TraceFromAltar = FMath::Min(Out.TraceFromAltar, HOLVolcano::DistanceToFlow(Flow, Site.Altar.Location));
+	}
+	for (TActorIterator<AHOLBuilding> It(const_cast<UWorld*>(World)); It; ++It)
+	{
+		const AHOLBuilding* Building = *It;
+		if (!IsValid(Building) || Building->GetHealth() <= 0 || Building->GetOwnerPlayer() != Slot)
+		{
+			continue;
+		}
+		const FVector2D Centre = Building->GetFootprintBounds().GetCenter();
+		for (const HOLVolcano::FFlow& Flow : Site.Flows)
+		{
+			Out.TraceFromBuildings = FMath::Min(Out.TraceFromBuildings, HOLVolcano::DistanceToFlow(Flow, FVector(Centre.X, Centre.Y, 0.0)));
+		}
+	}
+	return true;
 }
 
 int32 UHOLVolcanoSubsystem::GetEvacuations(const int32 Slot, TArray<FEvacuation>& Out) const

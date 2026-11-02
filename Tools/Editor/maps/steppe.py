@@ -696,6 +696,11 @@ def relays(recipe):
     return common.ring_relays(recipe)
 
 
+def volcano(recipe):
+    """V4b (D607): the volcano site of the map, symmetric by construction (common.volcano_site); inert unless the match has the Catastrophe option (D398)."""
+    return [common.volcano_site(recipe)]
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
     return budget_of(recipe)[0]

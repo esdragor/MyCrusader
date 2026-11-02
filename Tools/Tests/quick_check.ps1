@@ -380,6 +380,14 @@ if ($Parts -contains "net") {
             "mark net market", "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 1", "hol.Market.Report",
             "signal $(Join-Path $TestSaved "quick_net_market_server.flag")",
             "waitfile $(Join-Path $TestSaved "quick_net_market_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_market_done2.flag") 120",
+            # The Monk's heal over the network (T6, Q-chapelle-moine): a Monk and a Spearman of Bob (slot 1) far from everything, 1 m apart;
+            # client 1 (Bob) wounds his units to 50 % (the real cheat), the Monk heals the Spearman by itself (the server's heal, 5 hp/s):
+            # the server reports, then each client reports the units as it has them three times 2 s apart (the Spearman's health rising),
+            # and the heals it draws (the green line of UHOLHealEffectSubsystem::TickClient, counted by hol.Heal.Report).
+            "mark net monk", "hol.Units.Spawn 1 0 9000 1 Monk 100", "hol.Units.Spawn 1 0 9000 1 Spearman 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_monk_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120", "wait 1", "hol.Units.Where 1", "hol.Heal.Report", "wait 3", "hol.Units.Where 1", "hol.Heal.Report",
+            "waitfile $(Join-Path $TestSaved "quick_net_monk_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120",
+            "hol.Units.Remove 0 9000 1500 1",
             # Duel D5 (the circle drawn): a duel accepted at once between the two heroes (the development door, the heroes stand far apart:
             # the circle is centred between them); both clients draw it from the replicated sheets ("Duel rings:" of hol.Select.Report).
             # The duel ends with the heroes' removal below (health 0).
@@ -2742,6 +2750,13 @@ if ($NetListening) {
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_asked.flag") 120", "wait 3", "hol.Market.Report" }
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_market_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_market_done2.flag") 120" }
+        # The Monk's heal (see the server's sequence): client 1 wounds its units once the server has made the Monk and the Spearman;
+        # both clients then report the units of slot 1 (the Monk and the Spearman at (0, 9000)) three times 2 s apart, and the heals drawn.
+        $NetSteps += "mark monk"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_spawned.flag") 120", "hol.Cheat.Wound 50", "wait 0.3", "signal $(Join-Path $TestSaved "quick_net_monk_wounded.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120" }
+        $NetSteps += "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "hol.Heal.Report", "signal $(Join-Path $TestSaved "quick_net_monk_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120" }
         # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
         $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
@@ -6976,6 +6991,38 @@ if ($Parts -contains "net") {
             $DuelChecks["client $($NetClient.Client) : the duel's circle is drawn ($($DuelRing -join ' ; '))"] = $DuelRing.Count -ge 1
         }
         $AllOk = (Report "net duel" $DuelChecks) -and $AllOk
+    }
+    # T6 (the Monk over the network): Bob's Monk and Spearman at (0, 9000), both wounded to 50 % by Bob's cheat; the server's heal raises the
+    # Spearman 5 hp/s, the Monk (no self-heal) stays; each client sees the Spearman's health rise in the units it has, and draws the heal.
+    if (-not $NetHeroOnly) {
+        $MonkChecks = [ordered]@{}
+        $MonkServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk")
+        $MonkHealed = @($MonkServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #\d+ \(slot $BobSlot\), health ([\d.]+)/80" | ForEach-Object { [double] $_.Matches[0].Groups[1].Value })
+        $MonkServerTotal = @($MonkServerLines | Select-String -Pattern "Heal report: links \d+, healed total ([\d.]+)," | ForEach-Object { [double] $_.Matches[0].Groups[1].Value })
+        $MonkChecks["server: the Monk heals the Spearman of slot $BobSlot from 40/80, the health healed rising (starts ($($MonkHealed -join ',')) ; total $($MonkServerTotal -join ','))"] = $MonkHealed.Count -ge 1 -and $MonkHealed[0] -le 40.5 -and
+            $MonkServerTotal.Count -ge 2 -and $MonkServerTotal[-1] -gt $MonkServerTotal[0] -and $MonkServerTotal[0] -gt 0
+        foreach ($NetClient in $NetClients) {
+            $N = $NetClient.Client
+            $MonkLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monk")
+            # Per report, the units of slot 1 within 4 m of (0, 9000): id -> health (80-point Spearman, the Monk's own maximum).
+            $Reports = @($MonkLines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object {
+                $Near = @{}
+                foreach ($Unit in ($_.Matches[0].Groups[1].Value -split "; ")) {
+                    if ($Unit -match "^#(\d+) slot $BobSlot at \((-?\d+), (-?\d+)\) \w+(?:, hp (\d+)/(\d+))?") {
+                        if ([Math]::Abs([int] $Matches[2]) -le 400 -and [Math]::Abs([int] $Matches[3] - 9000) -le 400) { $Near[$Matches[1]] = if ($Matches[4]) { [int] $Matches[4] } else { 99999 } }
+                    }
+                }
+                , $Near
+            })
+            $Ids = if ($Reports.Count) { @($Reports[0].Keys) } else { @() }
+            $Rising = @($Ids | Where-Object { $Id = $_; $Reports.Count -ge 3 -and $Reports[-1].ContainsKey($Id) -and $Reports[-1][$Id] -ge $Reports[0][$Id] + 5 -and $Reports[1][$Id] -ge $Reports[0][$Id] -and $Reports[-1][$Id] -ge $Reports[1][$Id] })
+            $Still = @($Ids | Where-Object { $Id = $_; $Reports.Count -ge 3 -and $Reports[-1].ContainsKey($Id) -and $Reports[-1][$Id] -eq $Reports[0][$Id] -and $Reports[0][$Id] -lt 99999 })
+            $MonkChecks["client $N : the Monk and the Spearman of slot $BobSlot seen near (0, 9000) in 3 reports ($($Reports.Count) reports, ids $($Ids -join ','))"] = $Reports.Count -ge 3 -and $Ids.Count -eq 2
+            $MonkChecks["client $N : one of them (the Spearman) rises by 5 hp or more, the other (the Monk) stays wounded ($($Rising -join ',') rising, $($Still -join ',') still)"] = $Rising.Count -eq 1 -and $Still.Count -eq 1
+            $MonkDrawn = @($MonkLines | Select-String -Pattern "Heal report: links \d+, healed total [\d.]+, heal steps \d+, drawn (\d+)" | ForEach-Object { [int64] $_.Matches[0].Groups[1].Value })
+            $MonkChecks["client $N : the green heal line drawn by TickClient (drawn $($MonkDrawn -join ','))"] = $MonkDrawn.Count -ge 1 -and $MonkDrawn[-1] -gt 0
+        }
+        $AllOk = (Report "net monk" $MonkChecks) -and $AllOk
     }
 }
 
