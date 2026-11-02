@@ -74,6 +74,8 @@ namespace HOLSanity
 		float Radius = 60.f;
 		TArray<FVector2D> Places;
 		TArray<uint8> Ordered;
+	/** 1 at a step where the unit was going round the end of its line (a rear flank, Q-flank-demi-tour = A): a deliberate manoeuvre, never judged as a spin or a tremor. */
+	TArray<uint8> Flanking;
 		/** Debug text per step (hol.Test.SanityVerbose 2). */
 		TArray<FString> States;
 	};
@@ -115,12 +117,19 @@ namespace HOLSanity
 		}
 		FVector2D PreviousMove = FVector2D::ZeroVector;
 		int32 Ordered = 0;
+		const auto IsFlanking = [&Trace](const int32 Index) { return Trace.Flanking.IsValidIndex(Index) && Trace.Flanking[Index] != 0; };
 		for (int32 Index = 1; Index < Count; ++Index)
 		{
 			Ordered += Trace.Ordered.IsValidIndex(Index) && Trace.Ordered[Index] ? 1 : 0;
 			const FVector2D Move = Trace.Places[Index] - Trace.Places[Index - 1];
 			const float Length = Move.Size();
 			Result.Path += Length;
+			if (IsFlanking(Index))
+			{
+				// A rear flank in progress: its turns and reversals are the manoeuvre, not a fault (Q-flank-demi-tour = A).
+				PreviousMove = FVector2D::ZeroVector;
+				continue;
+			}
 			if (Length < Settings.MinMove)
 			{
 				continue;
@@ -146,8 +155,10 @@ namespace HOLSanity
 			float WindowTurn = 0.f, WindowPath = 0.f;
 			int32 WindowOrdered = 0;
 			FVector2D Before = FVector2D::ZeroVector;
+			bool bFlankInWindow = false;
 			for (int32 Index = Begin + 1; Index <= Begin + Window; ++Index)
 			{
+				bFlankInWindow |= IsFlanking(Index);
 				WindowOrdered += Trace.Ordered.IsValidIndex(Index) && Trace.Ordered[Index] ? 1 : 0;
 				const FVector2D Move = Trace.Places[Index] - Trace.Places[Index - 1];
 				const float Length = Move.Size();
@@ -163,7 +174,7 @@ namespace HOLSanity
 				Before = Move;
 			}
 			const float WindowNet = static_cast<float>(FVector2D::Distance(Trace.Places[Begin], Trace.Places[Begin + Window]));
-			Result.bSpin = WindowOrdered >= 0.9f * Window && WindowTurn >= 2.f * UE_PI && WindowPath > 6.f * Trace.Radius && WindowNet <= 0.3f * WindowPath;
+			Result.bSpin = !bFlankInWindow && WindowOrdered >= 0.9f * Window && WindowTurn >= 2.f * UE_PI && WindowPath > 6.f * Trace.Radius && WindowNet <= 0.3f * WindowPath;
 		}
 		// A walk with a heading that wobbles at each step (the units round the hero in the duel_challenge trial: +-12 cm sideways a step
 		// while advancing 35): headway made, but a turn of several radians a second, which a straight or gently curved walk never has.

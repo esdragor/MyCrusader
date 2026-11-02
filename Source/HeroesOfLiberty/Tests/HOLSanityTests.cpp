@@ -124,6 +124,20 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	const HOLSanity::FResult Corner = HOLSanity::Analyse(Make([](int32 I) { return I < 80 ? FVector2D(20. * I, 0.) : FVector2D(1580., 20. * (I - 80)); }, true), Step);
 	TestFalse(TEXT("a walk round a corner does not spin"), Corner.bSpin);
 	TestFalse(TEXT("a walk round a corner does not shake"), Corner.bShake);
+	// Q-flank-demi-tour = A: a rear flank in progress (a hairpin round the end of the line) is a deliberate manoeuvre, neither a spin nor a tremor.
+	const auto Flank = [&Make](const TFunction<FVector2D(int32)>& Place, const int32 FlankFrom, const int32 FlankTo)
+	{
+		HOLSanity::FTrace Trace = Make(Place, true);
+		for (int32 Index = 0; Index < Trace.Places.Num(); ++Index)
+		{
+			Trace.Flanking.Add(Index >= FlankFrom && Index < FlankTo ? 1 : 0);
+		}
+		return Trace;
+	};
+	TestFalse(TEXT("a circle made all along on a flank is not a spin"), HOLSanity::Analyse(Flank(Circle, 0, 160), Step).bSpin);
+	TestFalse(TEXT("a wobbling walk made all along on a flank is not a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 160), Step).bShake);
+	TestTrue(TEXT("a circle with no flank flag is still a spin"), HOLSanity::Analyse(Flank(Circle, 0, 0), Step).bSpin);
+	TestTrue(TEXT("a wobbling walk with no flank flag is still a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 0), Step).bShake);
 	return true;
 }
 
