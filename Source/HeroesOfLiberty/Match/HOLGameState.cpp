@@ -46,6 +46,8 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, HeroSheets);
 	// M4c: the Market's common prices.
 	DOREPLIFETIME(AHOLGameState, MarketPrices);
+	DOREPLIFETIME(AHOLGameState, DiplomacyStances);
+	DOREPLIFETIME(AHOLGameState, DiplomacyVision);
 	DOREPLIFETIME(AHOLGameState, SlotDefeats);
 	DOREPLIFETIME(AHOLGameState, bMatchOver);
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
@@ -86,6 +88,7 @@ void AHOLGameState::InitVictory(const FHOLMatchConfig& Config)
 	PendingForumDefeats = 0;
 	AbsentSlots.Reset();
 	AbsentNotices.Reset();
+	ResetDiplomacy();
 	PausesLeft = FMath::Max(PausesPerMatch, 0);
 	PausedBySlot = INDEX_NONE;
 	PausedByName.Reset();
@@ -159,6 +162,8 @@ void AHOLGameState::UnbindSteps()
 void AHOLGameState::OnStepStarted(const int64 StepIndex)
 {
 	CurrentStep = StepIndex;
+	// D5: the stances asked since the last step take effect now, before anything else of the step reads them.
+	ApplyDiplomacyOrders();
 	AdvanceForums();
 }
 
@@ -1097,5 +1102,168 @@ void AHOLGameState::ResetMarketBook()
 	if (HOLMarket::LoadStandardSettings(Settings))
 	{
 		SetMarketBook(HOLMarket::NewBook(Settings));
+	}
+}
+
+namespace
+{
+	const TCHAR* StanceName(const int32 Stance)
+	{
+		return Stance == HOLDiplomacy::Ally ? TEXT("Ally") : Stance == HOLDiplomacy::Neutral ? TEXT("Neutral") : TEXT("Enemy");
+	}
+}
+
+HOLDiplomacy::FBook AHOLGameState::GetDiplomacyBook() const
+{
+	constexpr int32 Slots = FHOLMatchConfig::MaxSlots;
+	TArray<bool> IsAI;
+	TArray<int32> TeamBySlot;
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		const bool bValid = LaunchConfig.Slots.IsValidIndex(Slot);
+		IsAI.Add(bValid && LaunchConfig.Slots[Slot].State == EHOLSlotState::AI);
+		TeamBySlot.Add(bValid ? LaunchConfig.Slots[Slot].Team : 0);
+	}
+	if (!IsDiplomacyMode())
+	{
+		return HOLDiplomacy::NewTeamBook(TeamBySlot, IsAI);
+	}
+	HOLDiplomacy::FBook Book = HOLDiplomacy::NewBook(Slots, IsAI);
+	if (DiplomacyStances.Num() == Slots * Slots && DiplomacyVision.Num() == Slots * Slots)
+	{
+		for (int32 Index = 0; Index < Slots * Slots; ++Index)
+		{
+			Book.Stances[Index] = DiplomacyStances[Index];
+			Book.Vision[Index] = DiplomacyVision[Index] != 0;
+		}
+	}
+	return Book;
+}
+
+int32 AHOLGameState::GetDiplomacyRelation(const int32 A, const int32 B) const
+{
+	return HOLDiplomacy::Relation(GetDiplomacyBook(), A, B);
+}
+
+void AHOLGameState::ResetDiplomacy()
+{
+	DiplomacyStances.Reset();
+	DiplomacyVision.Reset();
+	if (HasAuthority() && IsDiplomacyMode())
+	{
+		StoreDiplomacyBook(GetDiplomacyBook());
+	}
+}
+
+void AHOLGameState::StoreDiplomacyBook(const HOLDiplomacy::FBook& Book)
+{
+	DiplomacyStances.SetNum(Book.Stances.Num());
+	DiplomacyVision.SetNum(Book.Vision.Num());
+	for (int32 Index = 0; Index < Book.Stances.Num(); ++Index)
+	{
+		DiplomacyStances[Index] = static_cast<int8>(Book.Stances[Index]);
+		DiplomacyVision[Index] = Book.Vision[Index] ? 1 : 0;
+	}
+	ForceNetUpdate();
+	OnDiplomacyChanged.Broadcast();
+}
+
+HOLDiplomacy::FStanceChange AHOLGameState::ApplyStance(const int32 From, const int32 To, const int32 Stance)
+{
+	HOLDiplomacy::FStanceChange Change;
+	const auto Occupied = [this](const int32 Slot) { return LaunchConfig.Slots.IsValidIndex(Slot) && LaunchConfig.Slots[Slot].State != EHOLSlotState::Closed; };
+	if (!HasAuthority() || !IsDiplomacyMode() || !Occupied(From) || !Occupied(To))
+	{
+		Change.Result = HOLDiplomacy::EResult::NoSuchSlot;
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: slot %d toward slot %d (%s) refused (%s)"), From, To, StanceName(Stance),
+			!IsDiplomacyMode() ? TEXT("not the Diplomacy mode") : TEXT("no such player"));
+		return Change;
+	}
+	HOLDiplomacy::FBook Book = GetDiplomacyBook();
+	Change = HOLDiplomacy::SetStance(Book, From, To, Stance);
+	if (Change.Result != HOLDiplomacy::EResult::Ok)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: slot %d toward slot %d (%s) refused (code %d)"), From, To, StanceName(Stance), static_cast<int32>(Change.Result));
+		return Change;
+	}
+	if (Change.bAnnounce)
+	{
+		StoreDiplomacyBook(Book);
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: slot %d now %s toward slot %d (relation %s -> %s)%s%s"), From, StanceName(Stance), To,
+			StanceName(Change.Before), StanceName(Change.After), Change.bBroke ? TEXT(", alliance broken") : TEXT(""),
+			Change.bFormed ? TEXT(", alliance formed") : TEXT(""));
+		OnDiplomacyAnnounced.Broadcast(Change);
+	}
+	return Change;
+}
+
+HOLDiplomacy::FVisionChange AHOLGameState::ApplyVision(const int32 From, const int32 To, const bool bShare)
+{
+	HOLDiplomacy::FVisionChange Change;
+	if (!HasAuthority() || !IsDiplomacyMode())
+	{
+		Change.Result = HOLDiplomacy::EResult::NoSuchSlot;
+		return Change;
+	}
+	HOLDiplomacy::FBook Book = GetDiplomacyBook();
+	Change = HOLDiplomacy::SetVision(Book, From, To, bShare);
+	if (Change.Result != HOLDiplomacy::EResult::Ok)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: slot %d vision toward slot %d refused (code %d)"), From, To, static_cast<int32>(Change.Result));
+		return Change;
+	}
+	if (Change.bAnnounce)
+	{
+		StoreDiplomacyBook(Book);
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: slot %d %s its vision with slot %d"), From, bShare ? TEXT("shares") : TEXT("stops sharing"), To);
+	}
+	return Change;
+}
+
+void AHOLGameState::ApplyDiplomacyOrders()
+{
+	UHOLCommandSubsystem* Commands = HasAuthority() && GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (!Commands)
+	{
+		return;
+	}
+	TArray<FHOLDiplomacyOrder> Orders;
+	Commands->ConsumeDiplomacyOrders(Orders);
+	for (const FHOLDiplomacyOrder& Order : Orders)
+	{
+		if (Order.Kind == EHOLDiplomacyOrderKind::Stance)
+		{
+			ApplyStance(Order.PlayerIndex, Order.OtherSlot, Order.Value);
+		}
+		else
+		{
+			ApplyVision(Order.PlayerIndex, Order.OtherSlot, Order.Value != 0);
+		}
+	}
+}
+
+void AHOLGameState::OnRep_Diplomacy()
+{
+	UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy: state received"));
+	OnDiplomacyChanged.Broadcast();
+}
+
+void AHOLGameState::ReportDiplomacy() const
+{
+	const HOLDiplomacy::FBook Book = GetDiplomacyBook();
+	UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy report: mode %s%s"), IsDiplomacyMode() ? TEXT("Diplomacy") : TEXT("Standard"), Book.bLocked ? TEXT(" (locked)") : TEXT(""));
+	const auto Occupied = [this](const int32 Slot) { return LaunchConfig.Slots.IsValidIndex(Slot) && LaunchConfig.Slots[Slot].State != EHOLSlotState::Closed; };
+	for (int32 From = 0; From < FHOLMatchConfig::MaxSlots; ++From)
+	{
+		for (int32 To = 0; To < FHOLMatchConfig::MaxSlots; ++To)
+		{
+			if (From != To && Occupied(From) && Occupied(To))
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy report: slot %d toward slot %d: stance %s, relation %s, vision %d, fires %d, adversary %d"), From, To,
+					StanceName(HOLDiplomacy::StanceOf(Book, From, To)), StanceName(HOLDiplomacy::Relation(Book, From, To)),
+					HOLDiplomacy::SharesVision(Book, From, To) ? 1 : 0, HOLDiplomacy::FiresAtOnce(Book, From, To) ? 1 : 0,
+					HOLDiplomacy::IsAdversary(Book, From, To) ? 1 : 0);
+			}
+		}
 	}
 }

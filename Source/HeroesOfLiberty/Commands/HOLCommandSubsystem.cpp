@@ -61,6 +61,22 @@ void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
 	PendingHeroAbilityOrders.RemoveAll(OfPlayer);
 	PendingHeroTalentOrders.RemoveAll(OfPlayer);
 	PendingDuelOrders.RemoveAll(OfPlayer);
+	PendingDiplomacyOrders.RemoveAll(OfPlayer);
+}
+
+void UHOLCommandSubsystem::IssueDiplomacyOrder(const int32 PlayerIndex, const EHOLDiplomacyOrderKind Kind, const int32 OtherSlot, const int32 Value)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingDiplomacyOrders.Add(FHOLDiplomacyOrder{ PlayerIndex, Kind, OtherSlot, Value });
+}
+
+void UHOLCommandSubsystem::ConsumeDiplomacyOrders(TArray<FHOLDiplomacyOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingDiplomacyOrders);
 }
 
 void UHOLCommandSubsystem::IssueDuelOrder(const int32 PlayerIndex, const EHOLDuelOrderKind Kind, const int32 OtherSlot)

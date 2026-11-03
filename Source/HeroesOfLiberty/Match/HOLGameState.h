@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLDiplomacyRules.h"
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
@@ -507,6 +508,50 @@ private:
 	/** The four prices of the book (HOLMarket::FBook): replicated to everyone; empty until the match starts. */
 	UPROPERTY(Replicated)
 	TArray<int32> MarketPrices;
+
+public:
+	/**
+	 * D5 of DiplomacyInProgress.md (GDD 14.3, D369 to D376): the stances of the match, on every machine. In the Diplomacy mode the
+	 * server owns them and replicates them (DiplomacyStances / DiplomacyVision: the stance of From toward To at From * MaxSlots + To);
+	 * in the other modes the book is only the fixed teams of LaunchConfig (locked, nothing replicated). The AIs and the closed slots
+	 * come from LaunchConfig, so both sides build the same book.
+	 */
+	bool IsDiplomacyMode() const { return LaunchConfig.Mode == EHOLMatchMode::Diplomacy; }
+	HOLDiplomacy::FBook GetDiplomacyBook() const;
+	/** The relation of a pair on this machine (HOLDiplomacy::Relation of the book). */
+	int32 GetDiplomacyRelation(int32 A, int32 B) const;
+	/**
+	 * Server only: From says Stance toward To (HOLDiplomacy::SetStance; refused for a closed slot, outside the Diplomacy mode, an AI...),
+	 * the change stored and replicated at once, announced (log "Diplomacy: ...", then OnDiplomacyAnnounced).
+	 */
+	HOLDiplomacy::FStanceChange ApplyStance(int32 From, int32 To, int32 Stance);
+	/** Server only: From opens (bShare) or closes its vision to To (HOLDiplomacy::SetVision). */
+	HOLDiplomacy::FVisionChange ApplyVision(int32 From, int32 To, bool bShare);
+	/** The log of this machine's view: one line per pair of occupied slots ("Diplomacy report: ..."), for the scenarios and quick_check. */
+	void ReportDiplomacy() const;
+	/** Server: a stance really changed (the line told to all, D369). The clients learn it by OnDiplomacyChanged. */
+	DECLARE_MULTICAST_DELEGATE_OneParam(FOnDiplomacyAnnounced, const HOLDiplomacy::FStanceChange& /*Change*/);
+	FOnDiplomacyAnnounced OnDiplomacyAnnounced;
+	/** Every machine: the stances or the shared visions changed (server at once, a client by OnRep). */
+	DECLARE_MULTICAST_DELEGATE(FOnDiplomacyChanged);
+	FOnDiplomacyChanged OnDiplomacyChanged;
+
+private:
+	/** Server, at the launch: every stance at HOLDiplomacy::DefaultStance (the DQ-1 provisional) in the Diplomacy mode, nothing otherwise. */
+	void ResetDiplomacy();
+	/** Server: the orders waiting (UHOLCommandSubsystem::ConsumeDiplomacyOrders), at the start of a step. */
+	void ApplyDiplomacyOrders();
+	void StoreDiplomacyBook(const HOLDiplomacy::FBook& Book);
+	UFUNCTION()
+	void OnRep_Diplomacy();
+
+	/** Diplomacy mode only, MaxSlots * MaxSlots once the match started: the stance of From toward To (HOLDiplomacy::Enemy / Neutral / Ally). */
+	UPROPERTY(ReplicatedUsing = OnRep_Diplomacy)
+	TArray<int8> DiplomacyStances;
+
+	/** Same indexing: 1 when From lets To see what it sees (D371). */
+	UPROPERTY(ReplicatedUsing = OnRep_Diplomacy)
+	TArray<uint8> DiplomacyVision;
 
 public:
 	/**
