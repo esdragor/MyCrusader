@@ -4,6 +4,13 @@ Procédure : `Auto_Journey.md` (section « La file de travail »). États : `[ ]
 Une tâche = une phrase, le journal à lire, le premier test rouge, 15-30 min. Le dernier agent d'un worktree ajoute la suivante qu'il voit venir.
 **Semée le 2026-10-30 à 18:10 d'après les rapports du test 1 : l'étape 0 doit la confronter à l'état réel avant de lancer.**
 
+## En tête : réponses de l'utilisateur du 2026-11-03 (D644 à D649, GDD § 22), à faire en premier
+- [ ] Arwen, `ai-ia1` : **gisement aléatoire le long de la coulée (position, type or/pierre, taille tirés de la graine ; tests)** (D649, remplace V7 « milieu, 2 500 fixe » ; journal `VolcanoInProgress.md`)
+- [ ] Arwen, `ai-ia1` : **V9a réplication du site au client : reprendre le code non commité du worktree Arwen** (`VolcanoInProgress.md`)
+- [ ] Haldir, `maps` : **relais du milieu à >= 24 m du centre sur les cartes à volcan, régénérer en gardant la symétrie, puis les 19 cartes sans site de volcan** (D647 ; `MapsInProgress.md`, `VolcanoInProgress.md`)
+- [ ] Elrond, `tiers` : **IA technologies : tous niveaux, priorité/retard par niveau (Facile bien plus tard), remplace `hol.AI.TechMinLevel`** (D648 ; `TechnologiesInProgress.md`)
+- [ ] Glorfindel, `net-playtest` : **spectateur : toute la carte quand l'équipe entière est tombée (`GetViewerCamp`), `netspec` 3 équipes** (D646 ; `NetPlaytestInProgress.md`)
+
 ## Arwen — `ai-ia1` — IA et Volcan (journaux : `AIInProgress.md`, `VolcanoInProgress.md`)
 - [x] (FAIT 2026-11-02 11:3x-12:1x, Arwen, ai-ia1 : V5a 09377f3, V5b b405bae, V6 66c03b5 ; tests 800/800) **Volcan V5 (la lave detruit) et V6 (sol interdit pendant le refroidissement)** : IsInLava, UHOLVolcanoSubsystem (unites par KillUnitsWhere, batiments par DamageBuilding donc Forum en ruine), largeur 16 m (V5-Q1 = B), AHOLLavaObstacle (boites de navmesh) ; journal VolcanoInProgress.md ; NON VU en vraie partie ni sur un vrai navmesh (aucun site dans les cartes avant V4b) ; reste V7 (gisement neuf), V8 (autel), V9 (rendu), V10 (HUD script), V11 (IA, evacuer plus tot avec 16 m), V12 (scenario volcano)
 - [x] (FAIT 2026-11-02 12:3x, Arwen, ai-ia1 : V11a 9a5c41c, V11b ca2abbd, V8a 369ed03 ; tests 804/804 + aiserver + aiduel PASS, pas dans main) **Volcan V11 (l'IA evacue le couloir de 16 m, marge = LavaHalfWidth + rayon) et V8a (AdvanceForAltar, AltarAdvance 120 s par defaut) + question `Retours/Q-volcan-autel.md` [A REPONDRE]** ; NON VU en vraie partie (aucun site avant V4b), cerveau script non exerce avec Catastrophe ; reste V8 (autel, branchement), V7, V9, V10, V12 ; detail dans VolcanoInProgress.md
