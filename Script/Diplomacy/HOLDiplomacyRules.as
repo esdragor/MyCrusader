@@ -13,6 +13,8 @@ struct FHOLDiplomacyBook
 	bool bLocked = false;
 	TArray<int> Stances;
 	TArray<bool> bAI;
+	// "Share my vision" (D371): Vision[From * Slots + To] = From lets To see what it sees. Meaningful between allies only.
+	TArray<bool> Vision;
 }
 
 // What a SetStance did, for the announcement to all and for what the change cuts or opens.
@@ -33,6 +35,23 @@ struct FHOLStanceChange
 	bool bFormed = false;
 }
 
+// What a SetVision did: the line told to all (who opens or closes the vision toward whom).
+struct FHOLVisionChange
+{
+	int Result = 0;
+	bool bAnnounce = false;
+	int From = 0;
+	int To = 0;
+	bool bShare = false;
+}
+
+// The end by allied victory (D373): the winners, together, when it ends.
+struct FHOLAlliedVictory
+{
+	bool bEnded = false;
+	TArray<int> Winners;
+}
+
 namespace HOLDiplomacy
 {
 	// The stances, the lower the more hostile: the relation of a pair is the minimum of its two stances.
@@ -50,6 +69,8 @@ namespace HOLDiplomacy
 	const int BadStance = 3;
 	const int SenderIsAI = 4;
 	const int Locked = 5;
+	// Vision only: not allied (both must say Ally first).
+	const int NotAlly = 6;
 
 	// The book of a Diplomacy match: Slots players, every stance at the default; IsAI marks the AIs (Enemy toward everybody, D367).
 	FHOLDiplomacyBook NewBook(int Slots, const TArray<bool>& IsAI)
@@ -57,7 +78,10 @@ namespace HOLDiplomacy
 		FHOLDiplomacyBook Book;
 		Book.Slots = Math::Max(Slots, 0);
 		for (int Index = 0; Index < Book.Slots * Book.Slots; Index++)
+		{
 			Book.Stances.Add(DefaultStance);
+			Book.Vision.Add(false);
+		}
 		for (int Slot = 0; Slot < Book.Slots; Slot++)
 			Book.bAI.Add(Slot < IsAI.Num() && IsAI[Slot]);
 		return Book;
@@ -151,6 +175,100 @@ namespace HOLDiplomacy
 		Change.After = Relation(Book, From, To);
 		Change.bBroke = Change.Before == Ally && Change.After != Ally;
 		Change.bFormed = Change.Before != Ally && Change.After == Ally;
+		// Everything shared is cut at that second (D370, D371), and it is not given back by itself if the alliance is formed again.
+		if (Change.bBroke)
+		{
+			Book.Vision[From * Book.Slots + To] = false;
+			Book.Vision[To * Book.Slots + From] = false;
+		}
 		return Change;
+	}
+
+	// From opens (or closes) its vision to To: a box ticked toward one ally, one-sided, announced to all (D371). Allied only (both said
+	// Ally); in the standard modes the vision of teammates is automatic, there is no box (Locked). Same refusals as a stance, in order.
+	FHOLVisionChange SetVision(FHOLDiplomacyBook& Book, int From, int To, bool bShare)
+	{
+		FHOLVisionChange Change;
+		Change.From = From;
+		Change.To = To;
+		Change.bShare = bShare;
+		if (!InMatch(Book, From) || !InMatch(Book, To))
+			Change.Result = NoSuchSlot;
+		else if (From == To)
+			Change.Result = Self;
+		else if (Book.bAI[From])
+			Change.Result = SenderIsAI;
+		else if (Book.bLocked)
+			Change.Result = Locked;
+		else if (!IsAlly(Book, From, To))
+			Change.Result = NotAlly;
+		if (Change.Result != Ok)
+			return Change;
+
+		Change.bAnnounce = Book.Vision[From * Book.Slots + To] != bShare;
+		Book.Vision[From * Book.Slots + To] = bShare;
+		return Change;
+	}
+
+	// To sees what From sees: oneself always; teammates of the standard modes always (automatic); otherwise allies who were given it.
+	bool SharesVision(const FHOLDiplomacyBook& Book, int From, int To)
+	{
+		if (!InMatch(Book, From) || !InMatch(Book, To))
+			return false;
+		if (From == To)
+			return true;
+		if (!IsAlly(Book, From, To))
+			return false;
+		return Book.bLocked || Book.Vision[From * Book.Slots + To];
+	}
+
+	// No garrison in an ally's building, in the standard modes as in the Diplomacy mode (D374, revising D371): only in one's own.
+	bool CanGarrison(int UnitOwner, int BuildingOwner)
+	{
+		return UnitOwner >= 0 && UnitOwner == BuildingOwner;
+	}
+
+	// The doors and ramparts of Owner are open to Other: its own, and an ally's (D371); shut to everybody else, at the very second an
+	// alliance breaks (D370, D374).
+	bool DoorsOpenFor(const FHOLDiplomacyBook& Book, int Owner, int Other)
+	{
+		return InMatch(Book, Owner) && InMatch(Book, Other) && (Owner == Other || IsAlly(Book, Owner, Other));
+	}
+
+	// A unit of UnitOwner standing on a rampart of RampartOwner can get down: it can while the access is open. After a break the units
+	// of the former ally stay up there for good (D374: "tant pis").
+	bool CanLeaveRampart(const FHOLDiplomacyBook& Book, int UnitOwner, int RampartOwner)
+	{
+		return DoorsOpenFor(Book, RampartOwner, UnitOwner);
+	}
+
+	// The allied victory (D373): the survivors (not Defeated; a slot beyond the list is alive) are all allied to each other and at least one
+	// player has been beaten: they win together, at once. Nobody beaten: a general alliance ends nothing. No survivor: not an allied victory.
+	// An AI alive is Enemy to everybody in the Diplomacy mode (D367) and so blocks it. The standard modes' fixed teams give the team victory.
+	FHOLAlliedVictory AlliedVictory(const FHOLDiplomacyBook& Book, const TArray<bool>& Defeated)
+	{
+		FHOLAlliedVictory Victory;
+		bool bSomeoneBeaten = false;
+		TArray<int> Survivors;
+		for (int Slot = 0; Slot < Book.Slots; Slot++)
+		{
+			if (Slot < Defeated.Num() && Defeated[Slot])
+				bSomeoneBeaten = true;
+			else
+				Survivors.Add(Slot);
+		}
+		if (!bSomeoneBeaten || Survivors.Num() == 0)
+			return Victory;
+		for (int First = 0; First < Survivors.Num(); First++)
+		{
+			for (int Second = First + 1; Second < Survivors.Num(); Second++)
+			{
+				if (!IsAlly(Book, Survivors[First], Survivors[Second]))
+					return Victory;
+			}
+		}
+		Victory.bEnded = true;
+		Victory.Winners = Survivors;
+		return Victory;
 	}
 }
