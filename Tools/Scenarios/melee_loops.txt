@@ -1,0 +1,19 @@
+﻿# D641 repro: the camp fight of `neutrals` alone (12 Men-at-arms attack-move on a camp of 6 Spearmen that charge), audited on the real chain.
+# The loops at the front of the melee (a soldier in FinalLeg to its target's centre circles the line of friends) show as `spins`.
+hol.Camp.Aggro 0
+hol.Camp.Credit 2
+hol.Camp.Add 0 0 6 Spearman
+waitlog Camp 0: 6 Spearman at
+frames 30
+hol.Units.Spawn 12 -4000 0 0 ManAtArms 200
+waitlog Spawn: 12 ManAtArms
+frames 40
+hol.Sanity.DumpUnit -3
+hol.Units.Move -1000 0 0 a
+waitlog Camp 0: fighting
+waitlog Camp 0: cleared for good
+wait 1
+hol.Test.Sanity
+
+
+

@@ -83,6 +83,11 @@ private:
 	 * under the cursor (golden within reach, red beyond). Circles of strips, each at the ground's height (hills).
 	 */
 	void UpdateAuraRings();
+	/**
+	 * Duel D5 (GDD 10.2): the circle of every duel on, to everyone (spectators too): a ring on the ground at the centre and the
+	 * radius the two duellists' public sheets carry (replicated, so a client draws it as the host). One circle a pair.
+	 */
+	void UpdateDuelRings();
 	/** A pole and its cloth more for the flags (one per building with a rally point), made the first time needed. */
 	void AddFlag();
 
@@ -208,7 +213,14 @@ private:
 	/** "hero (x, y) 1200, banner (x, y) 1200, reach 1600, aim (x, y) ok" or "none": what UpdateAuraRings drew last. */
 	FString AuraRingsDescription = TEXT("none");
 
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> DuelRings;
+	/** "1 | (x, y) r600 slots 0-1 style 1" or "none": what UpdateDuelRings drew last. */
+	FString DuelRingsDescription = TEXT("none");
+
 public:
+	/** The duel circles drawn (hol.Select.Report's "Duel rings:" line). */
+	const FString& DescribeDuelRings() const { return DuelRingsDescription; }
 	/** The player's aura circles drawn (hol.Select.Report's "Aura rings:" line). */
 	const FString& DescribeAuraRings() const { return AuraRingsDescription; }
 	/** The relay rings drawn (hol.Select.Report's "Relay rings:" line). */

@@ -1,0 +1,50 @@
+# Le cercle du duel, 3 aspects cote a cote (A fin blanc, B epais rouge, C epais mi-couleur de chaque duelliste), Entree = suivant ; l acceptation de l IA est donnee d office.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.Focus -15600 400
+frames 10
+hol.Combat.Enabled 0
+note 1. Ton heros et celui de l'IA marchent vers le centre (vitesse x4, environ 8 s, rien a faire).
+hol.Units.SpeedScale 4
+hol.Units.Move -300 300 0
+hol.Units.Move 300 300 1
+wait 2
+hol.Camera.Focus -11000 400
+wait 2
+hol.Camera.Focus -6000 400
+wait 2
+hol.Camera.Focus -2000 400
+wait 2.5
+hol.Units.SpeedScale 1
+hol.Camera.Focus 0 300
+frames 10
+capture duel_ring_none
+note 2. Les deux heros sont face a face au centre. Appuie sur Entree : le duel est accepte (d'office), le cercle apparait en A (fin, blanc).
+waitkey Entree : duel accepte, aspect A
+panel hide
+hol.Duel.RingStyle 0
+hol.Duel.Challenge 1
+waitlog challenges slot 1 at step
+hol.Duel.ForceAnswer 1 1
+waitlog slot 1 accepts at step
+hol.Camera.Focus 0 300
+hol.Select.Report
+waitlog Duel rings: 1 |
+frames 20
+capture duel_ring_A
+panel show
+note 3. Aspect A : un trait fin blanc (14 cm), comme les cercles de selection. Entree : aspect B.
+waitkey Entree : aspect B (epais rouge)
+panel hide
+hol.Duel.RingStyle 1
+frames 20
+capture duel_ring_B
+panel show
+note 4. Aspect B : un trait epais rouge (30 cm). Entree : aspect C.
+waitkey Entree : aspect C (epais, moitie de la couleur de chaque duelliste)
+panel hide
+hol.Duel.RingStyle 2
+frames 20
+capture duel_ring_C
+panel show
+note 5. Aspect C : un trait epais, une moitie bleue (toi), l'autre rouge (l'IA). Dis A, B ou C (ou autre chose).

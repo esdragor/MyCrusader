@@ -1,0 +1,13 @@
+# Volcan V4b : la carte porte son site (aucun hol.Volcano.Site). Steppe Petite, toi (slot 0) contre un adversaire sans cerveau, Catastrophe, graine 4242.
+# LOGIQUE : le journal doit dire « 2 flows, crater (0, 0), altar (0, -3000) » lu dans la carte ; l'alerte n'est pas dessinée (V9 pas faite).
+frames 30
+hol.Volcano.Report
+waitlog Volcano report: site 0
+hol.Camera.FocusNear 0 0
+wait 1
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture volcano_map_centre
+hol.Volcano.Report
+note 1. Le milieu de la carte Steppe Petite : le volcan est là (cratère au centre, une coulée vers chaque base, autel a 30 m en travers de l'axe) mais rien n'est dessiné (V9) ; le journal dit « 2 flows ».
+hol.Test.Sanity

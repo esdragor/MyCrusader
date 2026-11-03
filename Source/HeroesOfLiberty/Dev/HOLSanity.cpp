@@ -108,6 +108,45 @@ namespace UE::HeroesOfLiberty::Dev
 					Transform->GetMutableTransform().SetLocation(Location);
 				}
 				const FVector Where = Transform->GetTransform().GetLocation();
+				if (DumpUnit == -3 && UnitId <= 16)
+				{
+					// hol.Sanity.DumpUnit -3 (D641, the loops at the melee's front): units 1 to 16, one line each: position, velocity, its slot (the
+					// walk's goal), its combat (approaching, attacking, target and where it is, slide way), the bodies within 2.5 m as
+					// #id(owner)(x,y) v(vx,vy), so that the path of a loop can be read against its neighbours step by step.
+					const FMassVelocityFragment* Velocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
+					const FHOLMoveOrderFragment* DumpOrder = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+					const FHOLCombatFragment* DumpCombat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+					int32 TargetId = -1;
+					FVector TargetWhere = FVector::ZeroVector;
+					if (DumpCombat && DumpCombat->Target.IsSet() && EntityManager.IsEntityValid(DumpCombat->Target))
+					{
+						if (const FTransformFragment* TargetTransform = EntityManager.GetFragmentDataPtr<FTransformFragment>(DumpCombat->Target))
+						{
+							TargetWhere = TargetTransform->GetTransform().GetLocation();
+						}
+						if (const FHOLUnitStateFragment* TargetState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(DumpCombat->Target))
+						{
+							TargetId = static_cast<int32>(TargetState->UnitId);
+						}
+					}
+					FString Near;
+					for (const uint32 OtherId : UnitIds)
+					{
+						const FMassEntityHandle OtherEntity = Units->FindEntity(OtherId);
+						const FTransformFragment* OtherTransform = OtherId != UnitId && EntityManager.IsEntityValid(OtherEntity) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(OtherEntity) : nullptr;
+						const FHOLUnitStateFragment* OtherState = OtherTransform ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(OtherEntity) : nullptr;
+						if (OtherState && OtherState->Activity != EHOLUnitActivity::Dying && FVector::Dist2D(OtherTransform->GetTransform().GetLocation(), Where) < 250.)
+						{
+							const FMassVelocityFragment* OtherVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(OtherEntity);
+							Near += FString::Printf(TEXT(" #%u(%d)(%.0f,%.0f)v(%.0f,%.0f)"), OtherId, OtherState->OwnerPlayer, OtherTransform->GetTransform().GetLocation().X, OtherTransform->GetTransform().GetLocation().Y,
+								OtherVelocity ? OtherVelocity->Value.X : 0., OtherVelocity ? OtherVelocity->Value.Y : 0.);
+						}
+					}
+					UE_LOG(LogHOLTest, Display, TEXT("SanityDump3 #%u step %lld at (%.0f, %.0f) vel (%.0f, %.0f) ph %d slot (%.0f, %.0f) ap%d at%d tgt #%d (%.0f, %.0f) slide (%.2f, %.2f) flank %d near:%s"), UnitId, StepIndex, Where.X, Where.Y,
+						Velocity ? Velocity->Value.X : 0., Velocity ? Velocity->Value.Y : 0., DumpOrder ? static_cast<int32>(DumpOrder->Phase) : -1, DumpOrder ? DumpOrder->Slot.X : 0., DumpOrder ? DumpOrder->Slot.Y : 0.,
+						DumpCombat && DumpCombat->bApproaching ? 1 : 0, DumpCombat && DumpCombat->bAttacking ? 1 : 0, TargetId, TargetWhere.X, TargetWhere.Y,
+						DumpCombat ? DumpCombat->SlideWay.X : 0.f, DumpCombat ? DumpCombat->SlideWay.Y : 0.f, DumpCombat && DumpCombat->bFlanking ? 1 : 0, *Near);
+				}
 				if (DumpUnit == -2 && UnitId >= 8 && UnitId <= 13)
 				{
 					// hol.Sanity.DumpUnit -2: units 8 to 13 on one compact line each (position, velocity, the slot and the march slot, the nearest bodies).

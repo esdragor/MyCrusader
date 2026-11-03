@@ -24,6 +24,9 @@ public:
 	static UHOLVolcanoSubsystem* Find(const UWorld* World) { return World ? World->GetSubsystem<UHOLVolcanoSubsystem>() : nullptr; }
 
 	void SetSites(const TArray<HOLVolcano::FSite>& InSites);
+
+	/** V4b (D607): the sites the map lays (AHOLVolcanoLayout, data of the map) replace the list; no layout in the world = the list is left as it is. Server or solo only. Done as the match begins. */
+	void LoadLayout();
 	const TArray<HOLVolcano::FSite>& GetSites() const { return Sites; }
 	FHOLVolcanoSettings& GetMutableSettings() { return Settings; }
 	const FHOLVolcanoSettings& GetSettings() const { return Settings; }

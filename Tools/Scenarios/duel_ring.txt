@@ -1,0 +1,55 @@
+# Le cercle du duel (Duel D5, GDD 10.2) : un anneau rouge au sol entre les deux heroes quand le duel est accepte. Marche accelere (x4, ~8 s), Entree = defier, l'acceptation de l'IA est donnee d'office.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.Focus -15600 400
+frames 10
+hol.Combat.Enabled 0
+# Logique : aucun duel, aucun cercle ; un defi trop loin est refuse, toujours aucun cercle.
+hol.Select.Report
+waitlog Duel rings: none
+hol.Duel.Challenge 1
+wait 1
+hol.Select.Report
+waitlog Duel rings: none
+note 1. Ton heros et celui de l'IA marchent vers le centre (vitesse x4, environ 8 s, rien a faire).
+hol.Units.SpeedScale 4
+hol.Units.Move -300 300 0
+hol.Units.Move 300 300 1
+wait 2
+hol.Camera.Focus -11000 400
+wait 2
+hol.Camera.Focus -6000 400
+wait 2
+hol.Camera.Focus -2000 400
+wait 2.5
+hol.Units.SpeedScale 1
+hol.Camera.Focus 0 300
+frames 10
+capture duel_ring_none
+hol.Units.Spawn 3 0 300 0 ManAtArms 250
+hol.Units.Spawn 3 0 300 1 ManAtArms 250
+wait 1
+hol.Camera.Focus 0 300
+frames 10
+capture duel_ring_troops_in
+note 2. Six Hommes d'armes (3 a toi, 3 a l'IA) sont poses au milieu, autour des heros. Les deux heros sont face a face au centre : pas de cercle au sol, personne n'a defie. Appuie sur Entree : ton heros defie le heros de l'IA, l'acceptation est donnee d'office.
+waitkey Entree : ton heros defie le heros de l'IA, l'acceptation est donnee d'office
+panel hide
+hol.Duel.Challenge 1
+waitlog challenges slot 1 at step
+hol.Duel.ForceAnswer 1 1
+waitlog slot 1 accepts at step
+hol.Combat.Enabled 1
+hol.Camera.Focus 0 300
+wait 0.6
+hol.Select.Report
+waitlog Duel rings: 1 |
+hol.Camera.Focus 0 300
+frames 20
+capture duel_ring_on
+wait 6
+hol.Camera.Focus 0 300
+frames 20
+capture duel_ring_cleared
+panel show
+note 3. Le duel est en cours : les Hommes d'armes qui etaient dans le cercle en sont sortis a pied (ils restent dehors, ils n'oscillent pas). Un anneau rouge est trace au sol, centre entre les deux heros, de rayon 6 m. Les heros se battent dedans ; le cercle reste jusqu'a la fin du duel.

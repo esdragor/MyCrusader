@@ -218,6 +218,22 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 	constexpr double RelayRingTraceHalfHeight = 20000.0;
 	constexpr double RelayRingOffset = 4.0;
 
+	/**
+	 * Duel D5 (GDD 10.2): the duel circle's look is the user's to choose (Q-duel-ring): 0 a thin white line, 1 a thick red one, 2 a
+	 * thick one half in each duellist's colour. Read each frame so that a scenario can show the three.
+	 */
+	TAutoConsoleVariable<int32> CVarDuelRingStyle(
+		TEXT("hol.Duel.RingStyle"),
+		1,
+		TEXT("Look of the duel circle on the ground: 0 thin white, 1 thick red (default), 2 thick, half in each duellist's colour."));
+	constexpr double DuelRingThinWidth = 14.0;
+	constexpr double DuelRingThickWidth = 30.0;
+	const FLinearColor DuelRingWhite(0.85f, 0.85f, 0.85f);
+	const FLinearColor DuelRingRed(0.9f, 0.08f, 0.05f);
+	constexpr int32 DuelRingPieces = 96;
+	constexpr double DuelRingOffset = 5.0;
+	constexpr double DuelRingTraceHalfHeight = 20000.0;
+
 	UStaticMesh* LoadMesh(const TCHAR* Path)
 	{
 		UStaticMesh* Mesh = LoadObject<UStaticMesh>(nullptr, Path);
@@ -313,6 +329,7 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	ForumRings = MakeMarkerComponent(*this, TEXT("ForumRings"));
 	RelayRings = MakeMarkerComponent(*this, TEXT("RelayRings"));
 	AuraRings = MakeMarkerComponent(*this, TEXT("AuraRings"));
+	DuelRings = MakeMarkerComponent(*this, TEXT("DuelRings"));
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
 		GhostEdges.Add(MakeFlagComponent(*this, *FString::Printf(TEXT("GhostEdge%d"), Index)));
@@ -350,6 +367,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	RelayRings->SetMaterial(0, Frames->GetMaterial(0));
 	AuraRings->SetStaticMesh(Plane);
 	AuraRings->SetMaterial(0, Frames->GetMaterial(0));
+	DuelRings->SetStaticMesh(Plane);
+	DuelRings->SetMaterial(0, Frames->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
 	CubeMesh = Cube;
@@ -446,6 +465,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	UpdateForumRings();
 	UpdateRelayRings();
 	UpdateAuraRings();
+	UpdateDuelRings();
 	UpdateFrame();
 	UpdateFlag();
 	UpdateGhost();
@@ -737,6 +757,89 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 	}
 	AuraRingsDescription = Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT(", "));
 	SetInstances(*AuraRings, Transforms, CustomData);
+}
+
+void AHOLSelectionMarkers::UpdateDuelRings()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	FString Line;
+	int32 Circles = 0;
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (GameState)
+	{
+		const int32 Style = FMath::Clamp(CVarDuelRingStyle.GetValueOnGameThread(), 0, 2);
+		const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+		const auto SlotColor = [&Config](const int32 Slot)
+		{
+			if (!Config.Slots.IsValidIndex(Slot))
+			{
+				return DuelRingWhite;
+			}
+			const FVector3f& Linear = HOLPlayerColors::GetLinearColor(Config.Slots[Slot].ColorIndex);
+			return FLinearColor(Linear.X, Linear.Y, Linear.Z);
+		};
+		// The lowest static surface under a point (a tree's crown is no ground), as the aura and relay rings'.
+		const auto GroundAt = [World](const FVector2D& Point)
+		{
+			TArray<FHitResult> Hits;
+			const FCollisionQueryParams Params(SCENE_QUERY_STAT(HOLDuelRing), false);
+			World->LineTraceMultiByObjectType(Hits, FVector(Point.X, Point.Y, DuelRingTraceHalfHeight), FVector(Point.X, Point.Y, -DuelRingTraceHalfHeight),
+				FCollisionObjectQueryParams(ECC_WorldStatic), Params);
+			double Height = TNumericLimits<double>::Max();
+			for (const FHitResult& Hit : Hits)
+			{
+				Height = FMath::Min(Height, Hit.ImpactPoint.Z);
+			}
+			return Hits.Num() > 0 ? Height : 0.0;
+		};
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			const FHOLHeroSheet& Sheet = GameState->GetHeroSheet(Slot);
+			// A duel on (code 3) with its circle; one circle a pair, drawn from the lower slot (the other's sheet alone, if it lags).
+			if (Sheet.DuelCode != 3 || Sheet.DuelRadius == 0)
+			{
+				continue;
+			}
+			const int32 Other = Sheet.DuelOpponent;
+			if (Other > Slot && Other < FHOLMatchConfig::MaxSlots && GameState->GetHeroSheet(Other).DuelCode == 3)
+			{
+				continue;
+			}
+			const FVector2D Centre(Sheet.DuelCenter.X, Sheet.DuelCenter.Y);
+			const double Radius = Sheet.DuelRadius;
+			const double Width = Style == 0 ? DuelRingThinWidth : DuelRingThickWidth;
+			const int32 First = FMath::Min(Slot, Other);
+			const int32 Second = FMath::Max(Slot, Other);
+			const auto PointAt = [&](const int32 Piece)
+			{
+				const double Angle = UE_DOUBLE_TWO_PI * Piece / DuelRingPieces;
+				const FVector2D Point = Centre + Radius * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+				return FVector(Point.X, Point.Y, GroundAt(Point) + DuelRingOffset);
+			};
+			FVector Start = PointAt(0);
+			for (int32 Piece = 0; Piece < DuelRingPieces; ++Piece)
+			{
+				const FVector End = PointAt(Piece + 1);
+				const FVector Span = End - Start;
+				const double Length = Span.Size();
+				const FLinearColor Color = Style == 0 ? DuelRingWhite : Style == 1 ? DuelRingRed : SlotColor(Piece < DuelRingPieces / 2 ? First : Second);
+				if (Length > UE_KINDA_SMALL_NUMBER)
+				{
+					Transforms.Add(FTransform(FRotationMatrix::MakeFromX(Span / Length).ToQuat(), (Start + End) * 0.5, FVector(Length / ShapeSize, Width / ShapeSize, 1.0)));
+					CustomData.Append({ Color.R, Color.G, Color.B, BarFullStroke });
+				}
+				Start = End;
+			}
+			Line += FString::Printf(TEXT(" (%d, %d) r%d slots %d-%d style %d"), Sheet.DuelCenter.X, Sheet.DuelCenter.Y, static_cast<int32>(Sheet.DuelRadius), First, Second, Style);
+			++Circles;
+		}
+	}
+	DuelRingsDescription = Circles == 0 ? FString(TEXT("none")) : FString::Printf(TEXT("%d |%s"), Circles, *Line);
+	SetInstances(*DuelRings, Transforms, CustomData);
 }
 
 bool AHOLSelectionMarkers::ShowsHealthBar(const bool bSelected, const bool bFullHealth)
