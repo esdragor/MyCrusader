@@ -6,6 +6,7 @@
 #include "MassEntityQuery.h"
 #include "MassProcessor.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "HOLCombatProcessor.generated.h"
 
@@ -78,6 +79,11 @@ protected:
 		/** Its owner's camp of the step (FHOLCampTable): units of one camp never fight each other. */
 		uint8 Camp = 0;
 	};
+
+	/** The step's relations between owners (read once in Execute). In the Diplomacy mode (D6) each owner is its own camp and the relations are the book's. */
+	FHOLCampTable StepCamps;
+	/** Whether A takes B on by itself: always outside the Diplomacy mode (the lists hold only other camps), in it only at war (D369: Neutral and allies no). */
+	bool IsAutoFoe(const FFighter& A, const FFighter& B) const;
 
 	/** Stops it dead where it stands (as the order processor's arrival, D290): its walk to the target is over. */
 	void StopWalk(const UWorld& World, FFighter& Fighter) const;

@@ -117,11 +117,25 @@ bool UHOLVolcanoSubsystem::StepAltarOf(const int32 SiteIndex, const float Now, c
 	TArray<int32, TInlineAllocator<8>> Camps;
 	const FVector2D Altar(Site.Altar.Location);
 	const double RadiusSquared = FMath::Square(static_cast<double>(Site.Altar.Radius));
+	// D6 (D369, D401): in the Diplomacy mode allies (both said Ally) in the zone are one camp, a Neutral is another one.
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(GetWorld());
+	TArray<int32, TInlineAllocator<8>> SeenOwners;
 	Units->ForEachLivingUnit([&](const uint8 Owner, const FVector& Location)
 	{
 		if (FVector2D::DistSquared(FVector2D(Location), Altar) > RadiusSquared)
 		{
 			return;
+		}
+		if (Relations.IsDiplomacy() && Owner < FHOLMatchConfig::MaxSlots)
+		{
+			for (const int32 Seen : SeenOwners)
+			{
+				if (Seen == Owner || !Relations.AreHostile(Seen, Owner))
+				{
+					return; // an owner already counted, or an ally of one: the same camp
+				}
+			}
+			SeenOwners.Add(Owner);
 		}
 		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
 		Camps.AddUnique(Camp != INDEX_NONE ? Camp : 1000 + Owner);
@@ -216,6 +230,7 @@ bool UHOLVolcanoSubsystem::MeasureAltar(const int32 SiteIndex, const int32 Slot,
 	}
 	const HOLVolcano::FSite& Site = Sites[SiteIndex];
 	const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(GetWorld());
 	const int32 MyCamp = Slot >= 0 && Slot < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, static_cast<uint8>(Slot)) : INDEX_NONE;
 	Out.SiteIndex = SiteIndex;
 	Out.Location = Site.Altar.Location;
@@ -230,7 +245,8 @@ bool UHOLVolcanoSubsystem::MeasureAltar(const int32 SiteIndex, const int32 Slot,
 			return;
 		}
 		const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
-		const bool bMine = Owner == Slot || (MyCamp != INDEX_NONE && Camp == MyCamp);
+		const bool bMine = Owner == Slot || (Relations.IsDiplomacy() ? (Owner < FHOLMatchConfig::MaxSlots && !Relations.AreHostile(Slot, Owner))
+			: (MyCamp != INDEX_NONE && Camp == MyCamp));
 		if (bMine)
 		{
 			bOwn = true;

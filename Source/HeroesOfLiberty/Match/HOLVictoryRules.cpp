@@ -34,6 +34,7 @@ FHOLCampTable::FHOLCampTable()
 	{
 		Camps[Owner] = static_cast<uint8>(Owner);
 	}
+	FMemory::Memzero(Relations);
 }
 
 FHOLCampTable::FHOLCampTable(const FHOLMatchConfig& Config)
@@ -58,10 +59,47 @@ FHOLCampTable::FHOLCampTable(const FHOLMatchConfig& Config)
 	}
 }
 
+FHOLCampTable::FHOLCampTable(const FHOLMatchConfig& Config, const HOLDiplomacy::FBook& Book)
+	: FHOLCampTable()
+{
+	bDiplomacy = true;
+	for (int32 A = 0; A < FHOLMatchConfig::MaxSlots; ++A)
+	{
+		for (int32 B = 0; B < FHOLMatchConfig::MaxSlots; ++B)
+		{
+			// A closed slot has no unit: its relation is never read; the rest comes from the book (D375: the most hostile of the two stances).
+			const bool bOccupied = HOLVictoryRules::GetCamp(Config, A) != INDEX_NONE && HOLVictoryRules::GetCamp(Config, B) != INDEX_NONE;
+			Relations[A * FHOLMatchConfig::MaxSlots + B] = static_cast<uint8>(bOccupied ? HOLDiplomacy::Relation(Book, A, B) : HOLDiplomacy::Enemy);
+		}
+	}
+}
+
+int32 FHOLCampTable::Relation(const int32 OwnerA, const int32 OwnerB) const
+{
+	if (OwnerA == OwnerB)
+	{
+		return HOLDiplomacy::Ally;
+	}
+	if (!bDiplomacy)
+	{
+		return Get(OwnerA) == Get(OwnerB) ? HOLDiplomacy::Ally : HOLDiplomacy::Enemy;
+	}
+	if (OwnerA < 0 || OwnerB < 0 || OwnerA >= FHOLMatchConfig::MaxSlots || OwnerB >= FHOLMatchConfig::MaxSlots)
+	{
+		return HOLDiplomacy::Enemy; // the neutral camps (D401) and any owner out of the slots
+	}
+	return Relations[OwnerA * FHOLMatchConfig::MaxSlots + OwnerB];
+}
+
 FHOLCampTable FHOLCampTable::FromWorld(const UWorld* World)
 {
 	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
-	return GameState ? FHOLCampTable(GameState->GetLaunchConfig()) : FHOLCampTable();
+	if (!GameState)
+	{
+		return FHOLCampTable();
+	}
+	return GameState->IsDiplomacyMode() ? FHOLCampTable(GameState->GetLaunchConfig(), GameState->GetDiplomacyBook())
+		: FHOLCampTable(GameState->GetLaunchConfig());
 }
 
 bool HOLVictoryRules::AreHostile(const FHOLMatchConfig& Config, const int32 SlotA, const int32 SlotB)
