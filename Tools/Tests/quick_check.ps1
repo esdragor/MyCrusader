@@ -275,7 +275,8 @@ if ($Parts -contains "net") {
     }
     # The Diplomacy mode (D5 of DiplomacyInProgress.md): the stances are the server's, replicated; "net diplomacy" below makes Bob and
     # Alice ally then break and compares what the server and both clients read. Nothing else of the part reads the mode yet (D6).
-    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"mode`": `"Diplomacy`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
+    # V9a: the Catastrophe option and a seed imposed (the volcano's state is a function of both), as a lobby with the option would give.
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"mode`": `"Diplomacy`", `"bCatastrophe`": true, `"seed`": 4242, `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
@@ -434,6 +435,11 @@ if ($Parts -contains "net") {
             # The duel ends with the heroes' removal below (health 0).
             "mark net duel", "hol.Duel.Begin 0 1", "wait 1", "signal $(Join-Path $TestSaved "quick_net_duel_begun.flag")",
             "waitfile $(Join-Path $TestSaved "quick_net_duel_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_duel_done2.flag") 120",
+            # V9a (the volcano seen by the clients): a site posed on the server (the map's actor is not replicated), its trigger window opened
+            # 2 s from now (1 s long), so the alert (60 to 90 s) is on after 6 s; the server reports the view from its sites (the truth), each
+            # client reports the view it received through the game state; the window is closed again afterwards (no eruption in the other checks).
+            "mark net volcano", "hol.Volcano.Site 9000 9000", "hol.Volcano.Window 2 1", "wait 6", "hol.Volcano.Report", "signal $(Join-Path $TestSaved "quick_net_volcano_begun.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_volcano_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_volcano_done2.flag") 120", "hol.Volcano.Window 3600 180",
             "hol.Hero.ResetAbilities 1",
             "hol.Hero.ReturnTimePercent 100", "hol.Units.Remove 0 0 60000 0 Hero", "hol.Units.Remove 0 0 60000 1 Hero", "wait 0.5", "signal $NetHeroesGoneFlag") +
         # V5.5a (Regicide), with "victory": once client 1 asks (its forum fallen and held, V2.5-V4.5), a King for each slot
@@ -2840,6 +2846,8 @@ if ($NetListening) {
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_end2.flag") 120" }
         # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
         $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
+        # V9a: the volcano site as the server's game state replicates it (see the server's sequence): the report of the views received.
+        $NetSteps += "mark volcano", "waitfile $(Join-Path $TestSaved "quick_net_volcano_begun.flag") 120", "wait 1", "hol.Volcano.Report", "signal $(Join-Path $TestSaved "quick_net_volcano_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
         # then signals; client 1's King dies (V5.5a, in place of its surrender: the network surrender is the "lobby" part's,
         # Bob's ServerSurrender checked on the server log by lobby_match.ps1), its banner Defeat; client 2's banner Victory (the game state's OnRep), then the units it shows each second for 5 s (client 1's fall and go).
@@ -7091,6 +7099,25 @@ if ($Parts -contains "net") {
             $DuelChecks["client $($NetClient.Client) : the duel's circle is drawn ($($DuelRing -join ' ; '))"] = $DuelRing.Count -ge 1
         }
         $AllOk = (Report "net duel" $DuelChecks) -and $AllOk
+        # V9a: the volcano site every machine reads: the server's view (from its sites) and each client's (from the game state's replicated
+        # views) say the same phase (the alert), the same flow drawn for the cycle, the same crater and altar; the countdown within a few seconds.
+        $VolcanoChecks = [ordered]@{}
+        $VolcanoPattern = "Volcano view: site 0 (phase (\d) cycle (\d+) flow (-?\d+) \((\d+) cm\) front (\d+) cm) to-erupt (-?\d+) s (crater .*)$"
+        $VolcanoServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net volcano")
+        $VolcanoServer = @($VolcanoServerLines | Select-String -Pattern $VolcanoPattern | Select-Object -Last 1)
+        $VolcanoChecks["server: the site is in its alert (phase 2) with a flow drawn and a length ($(if ($VolcanoServer.Count) { $VolcanoServer[0].Matches[0].Groups[1].Value } else { 'no view line' }))"] =
+            $VolcanoServer.Count -eq 1 -and $VolcanoServer[0].Matches[0].Groups[2].Value -eq "2" -and [int]$VolcanoServer[0].Matches[0].Groups[4].Value -ge 0 -and [int]$VolcanoServer[0].Matches[0].Groups[5].Value -gt 0
+        foreach ($NetClient in $NetClients) {
+            $VolcanoLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "volcano")
+            $VolcanoClient = @($VolcanoLines | Select-String -Pattern $VolcanoPattern | Select-Object -Last 1)
+            $VolcanoChecks["client $($NetClient.Client) : a view of the site was received ($(if ($VolcanoClient.Count) { $VolcanoClient[0].Matches[0].Groups[1].Value } else { 'no view line' }))"] = $VolcanoClient.Count -eq 1
+            if ($VolcanoClient.Count -eq 1 -and $VolcanoServer.Count -eq 1) {
+                $S = $VolcanoServer[0].Matches[0].Groups; $C = $VolcanoClient[0].Matches[0].Groups
+                $VolcanoChecks["client $($NetClient.Client) : same phase, cycle, flow drawn, length, front, crater and altar as the server (client: $($C[1].Value) $($C[8].Value))"] = $C[1].Value -eq $S[1].Value -and $C[8].Value -eq $S[8].Value
+                $VolcanoChecks["client $($NetClient.Client) : the countdown ($($C[7].Value) s) is the server's ($($S[7].Value) s) within 10 s"] = [Math]::Abs([int]$C[7].Value - [int]$S[7].Value) -le 10 -and [int]$C[7].Value -gt 0
+            }
+        }
+        $AllOk = (Report "net volcano" $VolcanoChecks) -and $AllOk
     }
     # T6 (the Monk over the network): Bob's Monk and Spearman at (0, 9000), both wounded to 50 % by Bob's cheat; the server's heal raises the
     # Spearman 5 hp/s, the Monk (no self-heal) stays; each client sees the Spearman's health rise in the units it has, and draws the heal.

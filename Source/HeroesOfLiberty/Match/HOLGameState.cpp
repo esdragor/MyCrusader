@@ -59,6 +59,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
 	DOREPLIFETIME(AHOLGameState, AbsentNotices);
 	DOREPLIFETIME(AHOLGameState, RelayViews);
+	DOREPLIFETIME(AHOLGameState, VolcanoViews);
 	DOREPLIFETIME(AHOLGameState, PausesLeft);
 	DOREPLIFETIME(AHOLGameState, PausedBySlot);
 	DOREPLIFETIME(AHOLGameState, PausedByName);
@@ -177,6 +178,14 @@ void AHOLGameState::SetRelayViews(const TArray<FHOLRelayView>& Views)
 	if (HasAuthority() && RelayViews != Views)
 	{
 		RelayViews = Views;
+	}
+}
+
+void AHOLGameState::SetVolcanoViews(const TArray<FHOLVolcanoSiteNet>& Views)
+{
+	if (HasAuthority() && VolcanoViews != Views)
+	{
+		VolcanoViews = Views;
 	}
 }
 
