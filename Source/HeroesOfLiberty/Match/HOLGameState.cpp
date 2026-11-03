@@ -758,6 +758,10 @@ bool AHOLGameState::DoesViewerSeeForum(const int32 ViewerSlot, const int32 Forum
 	{
 		return false;
 	}
+	if (Vision->GetCampIndex(ViewerSlot) != INDEX_NONE && Vision->GetViewerCamp(ViewerSlot) == INDEX_NONE)
+	{
+		return true;	// D376: a player defeated alone sees the whole map.
+	}
 	const AHOLStartSlot* Start = AHOLStartSlot::FindForSlot(World, ForumSlot);
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
 	return Start && Type && Vision->IsAreaVisible(ViewerSlot, Start->GetMainCentreLocation(), 0.5 * Type->Footprint);

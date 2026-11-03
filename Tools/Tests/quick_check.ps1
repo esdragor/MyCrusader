@@ -7618,5 +7618,93 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     $AllOk = (Report $NetFogPart $Checks) -and $AllOk
 }
 
+# The "netspec" part (D357, D376), after "netfog": a player defeated alone (free for all) becomes a spectator and keeps its connection.
+# The server (as "netfog", the fog Normal) with Alice (slot 0), Bob (slot 1) and an AI (slot 2, so that the match goes on once Bob is
+# out). Bob's client, 6 s in, reports what it holds (own side only: the starts are 300 m apart), has himself defeated
+# (hol.Victory.Defeat 1, the cheat of the server), still connected, then reports again: his client now holds the whole map (the
+# centres of slots 0 and 2, the units of both, his fog line "no camp, everything in sight"). Alice's client keeps her fog: it never
+# holds the AI's centre, whatever Bob became.
+if ($Parts -contains "netspec") {
+    $SpecPart = "netspec"
+    $SpecServerLog = Join-Path $TestSaved "Logs\quick_netspec_server.log"
+    $SpecConfig = Join-Path $TestSaved "quick_netspec.json"
+    $SpecServerSequence = Join-Path $TestSaved "quick_netspec_server.seq"
+    Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_netspec_client*.log"), (Join-Path $TestSaved "quick_netspec_*.flag") -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $SpecConfig @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    $SpecDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_netspec_done$_.flag" })
+    @("waitplayers 2", "mark netspec", "waitfile $($SpecDone[0]) 240", "waitfile $($SpecDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $SpecServerSequence
+    $SpecPort = Get-AITestPort
+    $SpecServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SpecPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SpecConfig`" -abslog=`"$SpecServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $SpecServerSequence`""
+    $SpecServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SpecServerArguments -PassThru -WindowStyle Hidden
+    $SpecListening = $false
+    $Deadline = (Get-Date).AddSeconds(240)
+    while (-not $SpecListening -and (Get-Date) -lt $Deadline -and -not $SpecServer.HasExited) {
+        Start-Sleep -Milliseconds 500
+        $SpecListening = (Test-Path $SpecServerLog) -and (Select-String -Path $SpecServerLog -Pattern "listening on port" -Quiet)
+    }
+    $SpecClients = @()
+    if ($SpecListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_netspec_client$Client.seq"
+            $SpecReports = @("hol.Buildings.Report", "hol.Units.Report", "hol.HUD.Report")
+            $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark netspec", "wait 6") + $SpecReports
+            if ($Client -eq 1) {
+                # Bob: defeated (his banner), then the same reports once the server has widened his connection.
+                $Steps += @("hol.Victory.Defeat 1", "waitlog End banner: Defeat", "wait 4", "mark netspecafter") + $SpecReports + @("wait 2", "hol.Units.Report")
+            }
+            else {
+                $Steps += @("wait 10", "mark netspecafter") + $SpecReports
+            }
+            $Steps += @("signal $($SpecDone[$Client - 1])", "mark end", "quit")
+            $Steps | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_netspec_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $SpecClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $SpecListening
+    foreach ($SpecClient in $SpecClients) {
+        $TimedOut = -not $SpecClient.Process.WaitForExit(240000)
+        if ($TimedOut) { Stop-Process -Id $SpecClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $N = $SpecClient.Client
+        $Lines = if (Test-Path $SpecClient.Log) { Get-Content $SpecClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $TimedOut) -and [bool]($Lines | Select-String -Pattern "Test mark: end" -Quiet)
+        $BuildingsOf = { param($Mark) @(Get-MarkedLines $Lines $Mark | Select-String -Pattern "Building report: MainCentre of slot (\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value } | Sort-Object -Unique) }
+        $UnitsOf = { param($Mark) $Last = Get-MarkedLines $Lines $Mark | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            @([regex]::Matches("$Last", "of slot (\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique) }
+        $FogOf = { param($Mark) $L = Get-MarkedLines $Lines $Mark | Select-String -Pattern "HUD fog: (.*)$" | Select-Object -Last 1; if ($L) { $L.Matches[0].Groups[1].Value } else { "" } }
+        $BeforeBuildings = & $BuildingsOf "netspec"
+        $AfterBuildings = & $BuildingsOf "netspecafter"
+        $AfterUnits = & $UnitsOf "netspecafter"
+        $AfterFog = & $FogOf "netspecafter"
+        if ($N -eq 1) {
+            $Checks["client 1 (Bob) : before, his own centre only ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -join '|') -eq "1"
+            $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
+            $Checks["client 1 (Bob) : spectator holds the centres of slots 0 and 2 ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and ($AfterBuildings -contains 2)
+            $Checks["client 1 (Bob) : spectator holds the units of slots 0 and 2 ($($AfterUnits -join ','))"] = ($AfterUnits -contains 0) -and ($AfterUnits -contains 2)
+            $Checks["client 1 (Bob) : his fog line says the whole map is in sight ($AfterFog)"] = $AfterFog -match "no camp, everything in sight"
+        }
+        else {
+            $Checks["client 2 (Alice) : keeps her fog, never holds the AI's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and -not ($AfterBuildings -contains 2)
+            $Checks["client 2 (Alice) : her own camp's fog line ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
+        }
+    }
+    $SpecServerTimedOut = -not $SpecServer.WaitForExit($(if ($SpecClients.Count) { 30000 } else { 1000 }))
+    if ($SpecServerTimedOut) { Stop-Process -Id $SpecServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $SpecServerTimedOut
+    $SpecLog = if (Test-Path $SpecServerLog) { Get-Content $SpecServerLog } else { @() }
+    $Checks["server : slot 1 defeated by the cheat, the match goes on (the AI and Alice stand)"] = [bool]($SpecLog | Select-String -Pattern "Victory: slot 1 defeated" -Quiet) -and -not [bool]($SpecLog | Select-String -Pattern "match over" -Quiet)
+    $AllOk = (Report $SpecPart $Checks) -and $AllOk
+}
+
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
 if (-not $AllOk) { exit 1 }

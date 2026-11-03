@@ -47,6 +47,11 @@ uint32 HOLVisionRules::GetReceivedCamps(const int32 Camp, const bool bDefeated, 
 	return 1u << Camp;
 }
 
+int32 HOLVisionRules::GetViewerCamp(const int32 Camp, const bool bDefeated, const bool bTeamCamp)
+{
+	return GetReceivedCamps(Camp, bDefeated, bTeamCamp) == AllCamps ? INDEX_NONE : Camp;
+}
+
 bool HOLVisionRules::UpdateGhosts(TMap<uint64, FHOLGhost>& Ghosts, TConstArrayView<FHOLGhost> Present, TFunctionRef<bool(const FVector2D&)> IsVisible)
 {
 	bool bChanged = false;

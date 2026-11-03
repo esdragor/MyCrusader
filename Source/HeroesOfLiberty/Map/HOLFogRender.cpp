@@ -97,7 +97,7 @@ int32 UHOLFogRenderSubsystem::GetViewerCamp() const
 	}
 	const APlayerController* Controller = GetWorld()->GetFirstPlayerController();
 	const AHOLPlayerState* PlayerState = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
-	return PlayerState ? Vision->GetCampIndex(PlayerState->GetPlayerIndex()) : INDEX_NONE;
+	return PlayerState ? Vision->GetViewerCamp(PlayerState->GetPlayerIndex()) : INDEX_NONE;
 }
 
 void UHOLFogRenderSubsystem::Tick(const float DeltaTime)
