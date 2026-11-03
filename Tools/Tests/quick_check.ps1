@@ -7542,38 +7542,54 @@ if ($Parts -contains "aisiege") {
     $AllOk = (Report "aisiege" $Checks) -and $AllOk
 }
 
-# The "aitech" part (TechnologiesInProgress.md T7, ~4 min): a Hard, a Normal and an Easy AI slot on Plain (fixed time step, no window), heroes at tier 2; by the
-# provisional setting hol.AI.TechMinLevel (set to 1 here; its default is 2, Hard only) Hard and Normal research the economy lines (the order goes through the real production: "queued research" then
-# "Technology: slot N researched"), Easy never does. Lines "AI slot N step S: research X" and the production's own are read from the server's log.
+# The "aitech" part (TechnologiesInProgress.md T7 and D648, ~5 min): a Hard, a Normal, an Easy and an Evolving AI slot on Plain (fixed time step, no
+# window), heroes at tier 2. EVERY level researches the economy lines (the order goes through the real production: "queued research" then "Technology:
+# slot N researched"), after the delay of the level it plays (hol.AI.TechDelayHard/Normal/Easy, set here to 0 / 380 / 480 s of game time so the three
+# differ within the run; the Evolving AI passes Easy -> Normal at 60 s -> Hard at 120 s and so researches as a Hard one, before Easy's delay). Hard first,
+# Normal then Easy. Lines "AI slot N step S: research X" (20 steps a second) and the production's own are read from the server's log.
 if ($Parts -contains "aitech") {
     $TechLog = Join-Path $TestSaved "Logs\quick_aitech.log"
     $TechConfig = Join-Path $TestSaved "quick_aitech.json"
     $TechSequence = Join-Path $TestSaved "quick_aitech.seq"
     Remove-Item $TechLog -ErrorAction SilentlyContinue
-    Write-AIMatchConfig $TechConfig @("AI", "AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal", "Easy")
-    $TechLines = @("hol.Simulation.SyncNavBuild 1", "hol.AI.TechMinLevel 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Hero.SetXP 2 1300")
-    for ($Second = 0; $Second -lt 600; $Second += 10) { $TechLines += "wait 10" }
+    Write-AIMatchConfig $TechConfig @("AI", "AI", "AI", "AI", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal", "Easy", "Evolving")
+    $TechLines = @("hol.Simulation.SyncNavBuild 1", "hol.AI.TechDelayHard 0", "hol.AI.TechDelayNormal 380", "hol.AI.TechDelayEasy 480", "hol.AI.SetEvolveTimes 60 120", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Hero.SetXP 2 1300", "hol.Hero.SetXP 3 1300")
+    for ($Second = 0; $Second -lt 650; $Second += 10) { $TechLines += "wait 10" }
     $TechLines += "quit"
     $TechLines | Set-Content -Encoding utf8 $TechSequence
     $TechPort = Get-AITestPort
     $TechArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$TechPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$TechConfig`" -abslog=`"$TechLog`" -ExecCmds=`"hol.Test.Run $TechSequence`""
     $TechProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $TechArguments -PassThru -WindowStyle Hidden
-    $TechTimedOut = -not $TechProcess.WaitForExit(480000)
+    $TechTimedOut = -not $TechProcess.WaitForExit(540000)
     if ($TechTimedOut) { Stop-Process -Id $TechProcess.Id -Force -ErrorAction SilentlyContinue }
     $TechText = if (Test-Path $TechLog) { Get-Content $TechLog } else { @() }
     $Checks = [ordered]@{}
     $Checks["server quit by itself"] = -not $TechTimedOut
     $Checks["scripts compiled"] = @(Get-ScriptErrors $TechLog).Count -eq 0
     $Checks["sequence ran to its end"] = -not ($TechText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
-    $Checks["slot 0 is Hard, slot 1 Normal, slot 2 Easy"] = [bool]($TechText | Select-String -Pattern "AI slot 0 step \d+: level Hard" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 1 step \d+: level Normal" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 2 step \d+: level Easy" -Quiet)
-    foreach ($TechSlot in 0, 1) {
-        $Ordered = @($TechText | Select-String -Pattern "AI slot $TechSlot step \d+: research \w+")
+    $Checks["slot 0 is Hard, 1 Normal, 2 Easy, 3 Evolving"] = [bool]($TechText | Select-String -Pattern "AI slot 0 step \d+: level Hard" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 1 step \d+: level Normal" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 2 step \d+: level Easy" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 3 step \d+: level Evolving" -Quiet)
+    $FirstSeconds = @{}
+    $Delays = @{ 0 = 0; 1 = 380; 2 = 480; 3 = 0 }
+    foreach ($TechSlot in 0, 1, 2, 3) {
+        $Ordered = @($TechText | Select-String -Pattern "AI slot $TechSlot step (\d+): research \w+")
         $Checks["slot $TechSlot orders a research ($($Ordered.Count) orders, the first: $(if ($Ordered.Count) { $Ordered[0].Line.Trim() } else { 'none' }))"] = $Ordered.Count -ge 1
+        if ($Ordered.Count) {
+            $FirstSeconds[$TechSlot] = [int]$Ordered[0].Matches[0].Groups[1].Value / 20.0
+            $Checks["slot $TechSlot waited for its delay ($($Delays[$TechSlot]) s; first order at $([int]$FirstSeconds[$TechSlot]) s)"] = $FirstSeconds[$TechSlot] -ge $Delays[$TechSlot]
+        }
         $Checks["slot $TechSlot's research is accepted by the production"] = [bool]($TechText | Select-String -Pattern "slot $TechSlot queued research \w+" -Quiet) -and [bool]($TechText | Select-String -Pattern "Technology: slot $TechSlot researched" -Quiet)
         $Refused = @($TechText | Select-String -Pattern "slot $TechSlot cannot research")
         $Checks["slot $TechSlot's production refuses none ($($Refused.Count))"] = $Refused.Count -eq 0
     }
-    $Checks["Easy never researches"] = -not ($TechText | Select-String -Pattern "AI slot 2 step \d+: research" -Quiet) -and -not ($TechText | Select-String -Pattern "Technology: slot 2 researched" -Quiet)
+    foreach ($TechSlot in 1, 2) {
+        $Checks["slot $TechSlot said it was too early"] = [bool]($TechText | Select-String -Pattern "AI slot $TechSlot step \d+: technology: too early for this level" -Quiet)
+    }
+    if ($FirstSeconds.ContainsKey(0) -and $FirstSeconds.ContainsKey(1) -and $FirstSeconds.ContainsKey(2)) {
+        $Checks["Hard first ($([int]$FirstSeconds[0]) s), then Normal ($([int]$FirstSeconds[1]) s), then Easy ($([int]$FirstSeconds[2]) s)"] = ($FirstSeconds[0] -lt $FirstSeconds[1]) -and ($FirstSeconds[1] -lt $FirstSeconds[2])
+    }
+    if ($FirstSeconds.ContainsKey(3)) {
+        $Checks["Evolving researched as a Hard one, before Easy's delay ($([int]$FirstSeconds[3]) s)"] = $FirstSeconds[3] -lt 480
+    }
     $AllOk = (Report "aitech" $Checks) -and $AllOk
 }
 
