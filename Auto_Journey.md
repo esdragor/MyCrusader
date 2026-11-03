@@ -180,6 +180,11 @@ Mesure (`Tools\build_queue_report.ps1`) : 24 builds en 3 h 40, 5 orphelins, 4 ab
 5. **Builds plus rapides plutôt que plus nombreux** : un seul lot de modifications de headers par agent avant le premier build (un premier build après un header prend 200 à 750 s) ; `git merge main` seulement avant le rapport.
 6. **Bugs de comportement durs (mouvement, mêlée) : un agent neuf à 200k tokens**, repartant du journal avec la mesure acquise (l'agent de D641 a consommé 250k+ sans corriger). La session principale ne relance pas le même agent.
 7. **Veilleur** : au réarmement, il liste à nouveau les fichiers existants comme « nouveaux » ; ignorer le premier tour, ou persister l'état vu dans un fichier.
+8. **Agent d'intégration nommé en début de séance** : aucune validation à l'écran pendant la séance du 2026-11-03 (5 branches dans `main` sans essai joué) ; les règles 5, 10 et 14 (recette indépendante, essais rejoués sur `main` fusionné, passage d'intégration de 10 min) n'ont pas été appliquées pour la troisième séance de suite. La session principale désigne dès le lancement UN agent chargé de rejouer, après la fusion, les 2 ou 3 essais prêts sur le build de `main` (pré-vol + PNG ouverts) et de les écrire dans `Retours\`.
+9. **La session principale se relance vers 200k tokens**, comme un agent : repartir d'une session neuve qui lit `Auto_Journey_Jour.md`, `Auto_Journey_File.md` et `Retours\`. (Séance du 2026-11-03 : 290k en fin de séance.)
+10. **L'heure se lit à `Get-Date` PowerShell avant toute annonce de temps** (arrêt dur, « il est X h ») : plusieurs heures annoncées de mémoire étaient fausses de 5 à 10 minutes et ont brouillé les arrêts durs.
+11. **Régénération des cartes** : elle demande l'éditeur, dont le démarrage (Turnkey / `ValidatePlatforms`) attend les builds des autres worktrees (éditeur de Haldir bloqué 14 min sans rien produire). Ne pas la planifier en même temps que des builds ; la lancer seule ou hors file, avec le harnais Python à module `unreal` factice pour les réglages.
+12. **Étape 0 sautée** : acceptable seulement quand la file de travail porte déjà les tâches du jour (réponses de l'utilisateur en tête, comme D644-D649) ; sinon l'étape 0 reste obligatoire.
 
 ## Au démarrage : « commence ton Auto_Journey »
 
