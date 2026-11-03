@@ -7391,6 +7391,67 @@ if ($Parts -contains "aisiege") {
     $AllOk = (Report "aisiege" $Checks) -and $AllOk
 }
 
+# The "aiwave" part (SiegeInProgress.md S6, ~3 min): the wave of a Hard AI takes its engines. A Hard (slot 0) and a Normal AI on Plain (fixed time
+# step, no window), heroes at tier 2; slot 0 is given 10 Spearmen, 2 Rams and a Mangonel at its base (ids read from Units.Where before / after),
+# then its units are sampled every 5 s from 290 s to 520 s of game time. Read from the log: "attack launched with N soldiers" (N counts the engines),
+# every engine has left home (>= 5000 cm), and no engine is ever in front of the escort (its advance toward the enemy centre never beyond the front-most Spearman's
+# + 100 cm, while 3 Spearmen or more of the escort still live; the escort's spread is reported).
+if ($Parts -contains "aiwave") {
+    $WaveLog = Join-Path $TestSaved "Logs\quick_aiwave.log"
+    $WaveConfig = Join-Path $TestSaved "quick_aiwave.json"
+    $WaveSequence = Join-Path $TestSaved "quick_aiwave.seq"
+    Remove-Item $WaveLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $WaveConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
+    $WaveLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Units.Where 0",
+        "hol.Units.Spawn 10 -13000 0 0 Spearman 300", "hol.Units.Spawn 2 -13000 0 0 Ram 300", "hol.Units.Spawn 1 -13000 0 0 Mangonel 300", "wait 1", "hol.Units.Where 0")
+    for ($Second = 0; $Second -lt 285; $Second += 5) { $WaveLines += "wait 5" }
+    for ($Second = 290; $Second -le 520; $Second += 5) { $WaveLines += "wait 5"; $WaveLines += "hol.Units.Where 0" }
+    $WaveLines += "quit"
+    $WaveLines | Set-Content -Encoding utf8 $WaveSequence
+    $WavePort = Get-AITestPort
+    $WaveArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$WavePort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$WaveConfig`" -abslog=`"$WaveLog`" -ExecCmds=`"hol.Test.Run $WaveSequence`""
+    $WaveProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $WaveArguments -PassThru -WindowStyle Hidden
+    $WaveTimedOut = -not $WaveProcess.WaitForExit(480000)
+    if ($WaveTimedOut) { Stop-Process -Id $WaveProcess.Id -Force -ErrorAction SilentlyContinue }
+    $WaveText = if (Test-Path $WaveLog) { Get-Content $WaveLog } else { @() }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself"] = -not $WaveTimedOut
+    $Checks["scripts compiled"] = @(Get-ScriptErrors $WaveLog).Count -eq 0
+    $Checks["sequence ran to its end"] = -not ($WaveText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
+    # The units of slot 0 at each sample: id -> (x, y).
+    $Samples = @($WaveText | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Parse = { param($Line) $Map = @{}; foreach ($Match in [regex]::Matches($Line, "#(\d+) slot \d+ at \((-?\d+), (-?\d+)\)")) { $Map[[int]$Match.Groups[1].Value] = @([double]$Match.Groups[2].Value, [double]$Match.Groups[3].Value) }; $Map }
+    $Before = if ($Samples.Count -ge 1) { & $Parse $Samples[0] } else { @{} }
+    $After = if ($Samples.Count -ge 2) { & $Parse $Samples[1] } else { @{} }
+    $NewIds = @($After.Keys | Where-Object { -not $Before.ContainsKey($_) } | Sort-Object)
+    $Checks["13 units given to slot 0 ($($NewIds.Count))"] = $NewIds.Count -eq 13
+    $Escort = @($NewIds | Select-Object -First 10)
+    $Engines = @($NewIds | Select-Object -Skip 10)
+    $Launch = $WaveText | Select-String -Pattern "AI slot 0 step (\d+): attack launched with (\d+) soldiers" | Select-Object -First 1
+    $Checks["Hard's wave is launched ($(if ($Launch) { $Launch.Line -replace '^.*step', 'step' } else { 'no wave' }))"] = [bool]$Launch
+    if ($Samples.Count -ge 4 -and $Engines.Count -eq 3) {
+        $Start = @(-13000.0, 0.0); $Target = @(14800.0, 0.0)
+        $Direction = @(($Target[0] - $Start[0]), ($Target[1] - $Start[1])); $Length = [math]::Sqrt($Direction[0] * $Direction[0] + $Direction[1] * $Direction[1])
+        $Advance = { param($Point) (($Point[0] - $Start[0]) * $Direction[0] + ($Point[1] - $Start[1]) * $Direction[1]) / $Length }
+        $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0
+        foreach ($Sample in $Samples | Select-Object -Skip 2) {
+            $Units = & $Parse $Sample
+            $Live = @($Escort | Where-Object { $Units.ContainsKey($_) })
+            $EngineLive = @($Engines | Where-Object { $Units.ContainsKey($_) })
+            foreach ($Id in $EngineLive) { $MaxEngine[$Id] = [math]::Max([double]$MaxEngine[$Id], (& $Advance $Units[$Id])) }
+            if ($Live.Count -ge 3) {
+                $Front = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Maximum).Maximum; $Back = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Minimum).Minimum; $Spread = [math]::Max($Spread, $Front - $Back)
+                $Compared++
+                foreach ($Id in $EngineLive) { if ((& $Advance $Units[$Id]) -gt $Front + 100) { $Ahead += "#$Id +$([int]((& $Advance $Units[$Id]) - $Front))" } }
+            }
+        }
+        $Checks["every engine has left home (best advance: $(($Engines | ForEach-Object { '#' + $_ + ' ' + [int]$MaxEngine[$_] }) -join ', '))"] = @($Engines | Where-Object { $MaxEngine[$_] -ge 5000 }).Count -eq 3
+        $Checks["no engine in front of the escort's front-most Spearman in $Compared samples (escort strung out over at most $([int]$Spread) cm; ahead: $(($Ahead | Select-Object -First 4) -join ', '))"] = $Compared -gt 0 -and $Ahead.Count -eq 0
+    }
+    else { $Checks["samples and engines found ($($Samples.Count) samples, $($Engines.Count) engines)"] = $false }
+    $AllOk = (Report "aiwave" $Checks) -and $AllOk
+}
+
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
 # "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
 # named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).
