@@ -20,6 +20,7 @@ namespace UE::HeroesOfLiberty::Map
 			{ TEXT("Cols"), NSLOCTEXT("HOLMaps", "Map_Cols", "Les Cols"), true },
 			{ TEXT("Forest"), NSLOCTEXT("HOLMaps", "Map_Forest", "La Forêt profonde"), true, false, true },
 			{ TEXT("Fords"), NSLOCTEXT("HOLMaps", "Map_Fords", "Les Gués"), true },
+			{ TEXT("Crown"), NSLOCTEXT("HOLMaps", "Map_Crown", "La Couronne"), true, true },
 		};
 		return Maps;
 	}

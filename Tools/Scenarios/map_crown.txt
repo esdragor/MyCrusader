@@ -1,0 +1,26 @@
+# La Couronne Moyenne (4 joueurs, 616 m) : chaque base est un fortin, un anneau de falaises de roche (sans hauteur) avec UNE rampe de 16 m vers le milieu ; l'or est tout entier au milieu
+# Ma base est a l'ouest (-23100, 0) ; sa rampe est en (-16300, 0) (rayon de l'anneau 68 m). 10 Hommes d'armes en formation devant la rampe, dehors.
+hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+frames 5
+hol.Cheat.Resources 1000
+hol.Camera.Focus -23100 0
+frames 30
+capture crown_keep
+hol.Camera.Focus -16300 0
+frames 30
+capture crown_ramp
+hol.Camera.Focus 0 0
+frames 30
+capture crown_bowl
+hol.Camera.Focus -16300 0
+hol.Units.Spawn 10 -14000 0 0 ManAtArms 400
+wait 2
+frames 10
+capture crown_army
+hol.Test.Sanity
+hol.Camera.TestCursor off
+note La Couronne Moyenne : 616 m de cote, 4 bases ; autour de chacune un ANNEAU DE FALAISES de roche de 68 m de rayon (sans hauteur : on ne monte pas, on contourne), ouvert par UNE rampe de 16 m qui regarde le milieu. L'or est tout entier au milieu, dans la cuvette.
+note A essayer : double clic sur tes 10 Hommes d'armes (devant la rampe, dehors, a droite de l'ecran), clic droit dans ta base : ils passent par la rampe en formation ; clic droit sur un point de l'anneau : ils ne traversent pas la roche. Envoie-les vers le milieu : ils longent l'anneau jusqu'a la rampe puis rejoignent l'or.
+note Pas de bonus de hauteur des archers (D23) : il attend le relief. Les autres cartes ont maintenant un site de volcan (rien n'est dessine : seule l'option Catastrophe le lit).
