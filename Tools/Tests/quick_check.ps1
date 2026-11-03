@@ -7339,6 +7339,41 @@ if ($Parts -contains "aisiege") {
     $AllOk = (Report "aisiege" $Checks) -and $AllOk
 }
 
+# The "aitech" part (TechnologiesInProgress.md T7, ~4 min): a Hard, a Normal and an Easy AI slot on Plain (fixed time step, no window), heroes at tier 2; by the
+# provisional setting hol.AI.TechMinLevel (set to 1 here; its default is 2, Hard only) Hard and Normal research the economy lines (the order goes through the real production: "queued research" then
+# "Technology: slot N researched"), Easy never does. Lines "AI slot N step S: research X" and the production's own are read from the server's log.
+if ($Parts -contains "aitech") {
+    $TechLog = Join-Path $TestSaved "Logs\quick_aitech.log"
+    $TechConfig = Join-Path $TestSaved "quick_aitech.json"
+    $TechSequence = Join-Path $TestSaved "quick_aitech.seq"
+    Remove-Item $TechLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $TechConfig @("AI", "AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal", "Easy")
+    $TechLines = @("hol.Simulation.SyncNavBuild 1", "hol.AI.TechMinLevel 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Hero.SetXP 2 1300")
+    for ($Second = 0; $Second -lt 600; $Second += 10) { $TechLines += "wait 10" }
+    $TechLines += "quit"
+    $TechLines | Set-Content -Encoding utf8 $TechSequence
+    $TechPort = Get-AITestPort
+    $TechArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$TechPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$TechConfig`" -abslog=`"$TechLog`" -ExecCmds=`"hol.Test.Run $TechSequence`""
+    $TechProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $TechArguments -PassThru -WindowStyle Hidden
+    $TechTimedOut = -not $TechProcess.WaitForExit(480000)
+    if ($TechTimedOut) { Stop-Process -Id $TechProcess.Id -Force -ErrorAction SilentlyContinue }
+    $TechText = if (Test-Path $TechLog) { Get-Content $TechLog } else { @() }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself"] = -not $TechTimedOut
+    $Checks["scripts compiled"] = @(Get-ScriptErrors $TechLog).Count -eq 0
+    $Checks["sequence ran to its end"] = -not ($TechText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
+    $Checks["slot 0 is Hard, slot 1 Normal, slot 2 Easy"] = [bool]($TechText | Select-String -Pattern "AI slot 0 step \d+: level Hard" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 1 step \d+: level Normal" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 2 step \d+: level Easy" -Quiet)
+    foreach ($TechSlot in 0, 1) {
+        $Ordered = @($TechText | Select-String -Pattern "AI slot $TechSlot step \d+: research \w+")
+        $Checks["slot $TechSlot orders a research ($($Ordered.Count) orders, the first: $(if ($Ordered.Count) { $Ordered[0].Line.Trim() } else { 'none' }))"] = $Ordered.Count -ge 1
+        $Checks["slot $TechSlot's research is accepted by the production"] = [bool]($TechText | Select-String -Pattern "slot $TechSlot queued research \w+" -Quiet) -and [bool]($TechText | Select-String -Pattern "Technology: slot $TechSlot researched" -Quiet)
+        $Refused = @($TechText | Select-String -Pattern "slot $TechSlot cannot research")
+        $Checks["slot $TechSlot's production refuses none ($($Refused.Count))"] = $Refused.Count -eq 0
+    }
+    $Checks["Easy never researches"] = -not ($TechText | Select-String -Pattern "AI slot 2 step \d+: research" -Quiet) -and -not ($TechText | Select-String -Pattern "Technology: slot 2 researched" -Quiet)
+    $AllOk = (Report "aitech" $Checks) -and $AllOk
+}
+
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
 # "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
 # named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).

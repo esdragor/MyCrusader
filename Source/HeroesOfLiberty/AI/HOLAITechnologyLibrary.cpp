@@ -14,9 +14,9 @@
 
 namespace
 {
-	int32 AITechMinLevel = 1;
+	int32 AITechMinLevel = 2;
 	FAutoConsoleVariableRef CVarAITechMinLevel(TEXT("hol.AI.TechMinLevel"), AITechMinLevel,
-		TEXT("T7 (provisional): the lowest AI difficulty that researches technologies: 0 easy, 1 normal (default), 2 hard, 3 none"));
+		TEXT("T7 (provisional): the lowest AI difficulty that researches technologies: 0 easy, 1 normal, 2 hard (default), 3 none"));
 }
 
 bool UHOLAITechnologyLibrary::ReadAITechnologyTable(TArray<FHOLAITechnology>& OutRows)

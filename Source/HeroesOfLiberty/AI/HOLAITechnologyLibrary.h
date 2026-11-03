@@ -75,7 +75,7 @@ public:
 
 	/**
 	 * T7 (provisional, the answer to which levels research is not given): the lowest difficulty (0 easy, 1 normal, 2 hard) whose AI researches
-	 * technologies; 3 = none. The console variable hol.AI.TechMinLevel, 1 by default (Normal and Hard).
+	 * technologies; 3 = none. The console variable hol.AI.TechMinLevel, 2 by default (Hard only, like the Market and the Siege Workshop).
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
 	static int32 GetAITechMinLevel();

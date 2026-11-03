@@ -32,13 +32,13 @@ void Test_AITechResearchesTheFirstOfTheOrder(FUnitTest& T)
 	TArray<FName> Done;
 	TArray<FHOLAIBuilding> Buildings;
 	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
-	FHOLAITechChoice Choice = HOLAITech::Choose(HOLAITech::DefaultSettings(), Table, Done, Buildings, AITechStock(500, 500, 0, 0), 25, 1, 3, 1);
+	FHOLAITechChoice Choice = HOLAITech::Choose(HOLAITech::DefaultSettings(), Table, Done, Buildings, AITechStock(500, 500, 0, 0), 25, 1, 3, 2);
 	T.AssertTrue(Choice.bResearch, "it researches");
 	T.AssertTrue(Choice.Technology == n"PloughI", "Plough I first");
 	T.AssertEquals(700.f, float(Choice.BuildingAt.X), "in the Farm");
 }
 
-// The difficulty: Easy does not by the provisional setting; the setting is the one switch (3 = nobody, 0 = everybody).
+// The difficulty: only Hard by the provisional setting; the setting is the one switch (3 = nobody, 0 = everybody).
 void Test_AITechDifficultyIsTheOnlySwitch(FUnitTest& T)
 {
 	TArray<FHOLAITechnology> Table;
@@ -51,7 +51,10 @@ void Test_AITechDifficultyIsTheOnlySwitch(FUnitTest& T)
 	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 0).bResearch, "Easy does not");
 	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 2).bResearch, "Hard does");
 	Rule.MinDifficulty = 2;
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).bResearch, "raised to Hard: Normal does not");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).bResearch, "Hard only (the default): Normal does not");
+	Rule.MinDifficulty = 1;
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).bResearch, "lowered to Normal: Normal does");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 0).bResearch, "and Easy still not");
 	Rule.MinDifficulty = 0;
 	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 0).bResearch, "lowered to Easy: Easy does");
 	Rule.MinDifficulty = 3;
@@ -68,18 +71,19 @@ void Test_AITechEachConditionHoldsItBack(FUnitTest& T)
 	TArray<FHOLAIBuilding> Farm;
 	Farm.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
 	const TArray<int> Rich = AITechStock(500, 500, 0, 0);
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 19, 1, 3, 1).bResearch, "19 Peasants: the economy comes first");
-	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 20, 1, 3, 1).bResearch, "20 Peasants");
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 25, 0, 0, 1).bResearch, "tier 0: the technology is not open");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 19, 1, 3, 2).bResearch, "19 Peasants: the economy comes first");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 20, 1, 3, 2).bResearch, "20 Peasants");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 25, 0, 0, 2).bResearch, "tier 0: the technology is not open");
 	TArray<FHOLAIBuilding> Site;
 	Site.Add(AITechBuilding(n"Farm", 700, false, NAME_None));
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Site, Rich, 25, 1, 3, 1).bResearch, "the Farm is a site, not finished");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Site, Rich, 25, 1, 3, 2).bResearch, "the Farm is a site, not finished");
 	TArray<FHOLAIBuilding> None;
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, None, Rich, 25, 1, 3, 1).bResearch, "no building at all");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, None, Rich, 25, 1, 3, 2).bResearch, "no building at all");
 }
 
-// The reserve: the research is paid on top of what the economy keeps (100 food, 100 wood). Plough I costs 100 food, 100 wood: it needs 200 of each.
-// The AI SAVES for the most wanted one instead of spending on a lesser one at once.
+// The purse: the research is paid out of the stock when it is queued, and the reserve a rule keeps comes on top (the default keeps none: the AI spends
+// all it has, a stock of 200 never builds up, so a reserve would never be met in a real game). Plough I costs 100 food, 100 wood. The AI SAVES for
+// the most wanted open one instead of spending on a lesser one at once.
 void Test_AITechKeepsTheReserveAndSaves(FUnitTest& T)
 {
 	TArray<FHOLAITechnology> Table;
@@ -89,10 +93,15 @@ void Test_AITechKeepsTheReserveAndSaves(FUnitTest& T)
 	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
 	Buildings.Add(AITechBuilding(n"LumberCamp", 300, true, NAME_None));
 	FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
-	FHOLAITechChoice Short = HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(199, 500, 0, 0), 25, 1, 3, 1);
-	T.AssertFalse(Short.bResearch, "199 food: 100 for the Plough and 100 kept are not there; it does not fall back on the Axes");
+	FHOLAITechChoice Short = HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(99, 500, 0, 0), 25, 1, 3, 2);
+	T.AssertFalse(Short.bResearch, "99 food: the Plough is not paid; it does not fall back on the Axes");
 	T.AssertTrue(Short.Reason.Contains("saving"), "it says it is saving");
-	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(200, 200, 0, 0), 25, 1, 3, 1).Technology == n"PloughI", "200 and 200: the Plough");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(100, 100, 0, 0), 25, 1, 3, 2).Technology == n"PloughI", "100 and 100: the Plough");
+	// A rule that keeps a reserve (100 food, 100 wood) needs the cost on top.
+	Rule.Reserve[0] = 100;
+	Rule.Reserve[1] = 100;
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(199, 500, 0, 0), 25, 1, 3, 2).bResearch, "199 food with 100 kept");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(200, 200, 0, 0), 25, 1, 3, 2).Technology == n"PloughI", "200 and 200 with 100 kept");
 }
 
 // What is not there goes on to the next: no Farm, a Lumber Camp: the Axes. Researched ones are left, the level II asks the tier 2.
@@ -105,13 +114,13 @@ void Test_AITechSkipsWhatIsNotThereAndFollowsTheLines(FUnitTest& T)
 	Camp.Add(AITechBuilding(n"LumberCamp", 300, true, NAME_None));
 	FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
 	const TArray<int> Rich = AITechStock(900, 900, 0, 0);
-	FHOLAITechChoice First = HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 1, 3, 1);
+	FHOLAITechChoice First = HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 1, 3, 2);
 	T.AssertTrue(First.Technology == n"DoubleAxesI", "no Farm: the Axes");
 	Done.Add(n"DoubleAxesI");
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 1, 3, 1).bResearch, "Axes I done, tier 1: the level II is not open");
-	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 2, 6, 1).Technology == n"DoubleAxesII", "tier 2: Axes II");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 1, 3, 2).bResearch, "Axes I done, tier 1: the level II is not open");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 2, 6, 2).Technology == n"DoubleAxesII", "tier 2: Axes II");
 	Done.Add(n"DoubleAxesII");
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 2, 6, 1).bResearch, "the line is finished");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Camp, Rich, 25, 2, 6, 2).bResearch, "the line is finished");
 }
 
 // One research at a time: a technology in any queue of the slot holds the next back (the purse is spared, a Farm is not a second hand).
@@ -123,13 +132,13 @@ void Test_AITechOneAtATime(FUnitTest& T)
 	TArray<FHOLAIBuilding> Buildings;
 	Buildings.Add(AITechBuilding(n"Farm", 700, true, n"PloughI"));
 	Buildings.Add(AITechBuilding(n"LumberCamp", 300, true, NAME_None));
-	T.AssertFalse(HOLAITech::Choose(HOLAITech::DefaultSettings(), Table, Done, Buildings, AITechStock(900, 900, 0, 0), 25, 1, 3, 1).bResearch,
+	T.AssertFalse(HOLAITech::Choose(HOLAITech::DefaultSettings(), Table, Done, Buildings, AITechStock(900, 900, 0, 0), 25, 1, 3, 2).bResearch,
 		"Plough I is being researched: nothing else starts");
 	// A unit in a queue is not a research: a Barracks training a Spearman does not hold it.
 	TArray<FHOLAIBuilding> Busy;
 	Busy.Add(AITechBuilding(n"Barracks", 100, true, n"Spearman"));
 	Busy.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
-	T.AssertTrue(HOLAITech::Choose(HOLAITech::DefaultSettings(), Table, Done, Busy, AITechStock(900, 900, 0, 0), 25, 1, 3, 1).bResearch, "a Spearman in a queue does not hold it");
+	T.AssertTrue(HOLAITech::Choose(HOLAITech::DefaultSettings(), Table, Done, Busy, AITechStock(900, 900, 0, 0), 25, 1, 3, 2).bResearch, "a Spearman in a queue does not hold it");
 }
 
 // The order of the settings is the only list: a technology that is not in it is never chosen, and one whose effect is not coded (Implemented false) is refused.
@@ -142,11 +151,11 @@ void Test_AITechOnlyTheListedAndImplemented(FUnitTest& T)
 	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
 	FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
 	Rule.Order.Empty();
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(900, 900, 900, 900), 25, 1, 3, 1).bResearch, "an empty list: nothing");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(900, 900, 900, 900), 25, 1, 3, 2).bResearch, "an empty list: nothing");
 	// The Cloche (Main Centre, tier 2) has no coded effect: it stays refused with the Centre there and the tier open.
 	Buildings.Add(AITechBuilding(n"MainCentre", 0, true, NAME_None));
 	Rule.Order.Add(n"ImprovedAlarmBell");
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(900, 900, 900, 900), 25, 2, 6, 1).bResearch, "Implemented false: refused");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(900, 900, 900, 900), 25, 2, 6, 2).bResearch, "Implemented false: refused");
 }
 
 // The default list names rows of the real table, each of an economy line a finished building of the AI's first buildings researches and whose effect is coded.
@@ -170,4 +179,54 @@ void Test_AITechDefaultOrderIsInTheTable(FUnitTest& T)
 		}
 		T.AssertTrue(bFound, Rule.Order[Index].ToString() + " is a row of the table");
 	}
+}
+
+// Saving: the cost the stock already holds is earmarked (so that the other purchases leave it), no more than the stock has.
+void Test_AITechEarmarksWhatIsHeldOfTheCost(FUnitTest& T)
+{
+	TArray<FHOLAITechnology> Table;
+	HOLAITechnology::ReadAITechnologyTable(Table);
+	TArray<FName> Done;
+	TArray<FHOLAIBuilding> Buildings;
+	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
+	FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	FHOLAITechMemory Memory;
+	FHOLAITechChoice Saving = HOLAITech::Think(Rule, Memory, 100.f, Table, Done, Buildings, AITechStock(130, 40, 7, 9), 25, 1, 3, 2);
+	T.AssertTrue(Saving.bSaving, "saving for the Plough");
+	T.AssertEquals(4, Saving.Earmark.Num(), "one amount per resource");
+	T.AssertEquals(100, Saving.Earmark[0], "food: the 100 of the cost, not the 130 held");
+	T.AssertEquals(40, Saving.Earmark[1], "wood: the 40 held of the 100");
+	T.AssertEquals(0, Saving.Earmark[2], "stone: not in the cost");
+	T.AssertEquals(0, Saving.Earmark[3], "gold: not in the cost");
+	// Paid: not saving, nothing earmarked.
+	FHOLAITechChoice Paid = HOLAITech::Think(Rule, Memory, 101.f, Table, Done, Buildings, AITechStock(130, 130, 0, 0), 25, 1, 3, 2);
+	T.AssertTrue(Paid.bResearch, "it researches");
+	T.AssertFalse(Paid.bSaving, "not saving");
+	T.AssertEquals(100, Paid.Earmark[1], "the cost of the research is set aside for the other purchases of the thought");
+}
+
+// A save that lasts longer than SaveSeconds is given up: no earmark for GiveUpSeconds, then it saves again.
+void Test_AITechGivesUpAfterSaveSeconds(FUnitTest& T)
+{
+	TArray<FHOLAITechnology> Table;
+	HOLAITechnology::ReadAITechnologyTable(Table);
+	TArray<FName> Done;
+	TArray<FHOLAIBuilding> Buildings;
+	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
+	FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	FHOLAITechMemory Memory;
+	const TArray<int> Poor = AITechStock(130, 40, 0, 0);
+	T.AssertTrue(HOLAITech::Think(Rule, Memory, 100.f, Table, Done, Buildings, Poor, 25, 1, 3, 2).bSaving, "starts saving at 100");
+	T.AssertTrue(HOLAITech::Think(Rule, Memory, 100.f + Rule.SaveSeconds, Table, Done, Buildings, Poor, 25, 1, 3, 2).bSaving, "still saving at the limit");
+	FHOLAITechChoice Gave = HOLAITech::Think(Rule, Memory, 100.f + Rule.SaveSeconds + 1.f, Table, Done, Buildings, Poor, 25, 1, 3, 2);
+	T.AssertFalse(Gave.bSaving, "given up");
+	T.AssertEquals(0, Gave.Earmark.Num(), "nothing earmarked");
+	T.AssertFalse(HOLAITech::Think(Rule, Memory, 200.f, Table, Done, Buildings, Poor, 25, 1, 3, 2).bSaving, "still given up");
+	T.AssertTrue(HOLAITech::Think(Rule, Memory, 100.f + Rule.SaveSeconds + 1.f + Rule.GiveUpSeconds + 1.f, Table, Done, Buildings, Poor, 25, 1, 3, 2).bSaving, "saves again after the pause");
+}
+
+// The default level is Hard only (like the Market and the Siege Workshop): Normal's economy stays what the user validated until the answer.
+void Test_AITechDefaultIsHardOnly(FUnitTest& T)
+{
+	T.AssertEquals(2, HOLAITech::DefaultSettings().MinDifficulty, "Hard only by default");
 }
