@@ -1,6 +1,6 @@
 """The varied ground of the maps (chantier Cartes, C1b; M-Q5: varied ground for every map). The parent material
 /Game/Rendering/M_GroundVaried is made by Tools/Editor/make_ground_materials.py (three colours blended by a world noise,
-the faint tile line of the building grid kept); each map that wants its own ground has an instance of it, set here, and names
+the faint tile line of the building grid kept; since 2026-11-03 also a CC0 detail texture, see DETAILS below); each map that wants its own ground has an instance of it, set here, and names
 it in its module (steppe.GROUND = "MI_Ground_Steppe"). A module without GROUND keeps the grey M_MatteGround (Plain). The
 recipes make the instance when missing, so a map file never lacks it; the script sets them again (tuning a colour: edit
 GROUNDS here, run the script, remake the maps only if you want the file to carry it - the instance is an asset, the map only
@@ -30,6 +30,22 @@ GROUNDS = {
 }
 
 
+# Sol CC0 (etape 1, 2026-11-03): the detail texture of each instance (made by Tools/prepare_ground_details.py from the CC0 albedos of
+# Poly Haven listed in Docs/AssetsExternes.md, imported by make_ground_materials.py). name -> (source name, TextureScale in cm: the
+# size of one repeat of the first sample, the second is x0.37 of it, DetailStrength: 0 = none, 1 = the texture's own contrast).
+TEXTURE_FOLDER = FOLDER + "/Textures/Ground"
+DETAILS = {
+    "MI_Ground_Steppe": ("grass_ground", 900.0, 0.7),
+    "MI_Ground_Hinterland": ("forest_ground_06", 900.0, 0.7),
+}
+# Every source texture to import (the alternatives are kept so that a map can be switched by DETAILS alone).
+TEXTURES = ("grass_ground", "sparse_grass", "forest_ground_06")
+
+
+def texture_name(source):
+    return "T_Ground_%s_Detail" % "".join(part.capitalize() for part in source.split("_"))
+
+
 def instance(name):
     """The instance of M_GroundVaried named name (a key of GROUNDS), made when missing, its parameters set (again)."""
     colors_and_scale = GROUNDS[name]
@@ -50,5 +66,13 @@ def instance(name):
         lib.set_material_instance_vector_parameter_value(material, parameter, value)
     for parameter, value in zip(("NoiseScale", "BFrom", "BWidth", "CFrom", "CWidth"), colors_and_scale[3:]):
         lib.set_material_instance_scalar_parameter_value(material, parameter, value)
+    if name in DETAILS:
+        source, texture_scale, strength = DETAILS[name]
+        texture = unreal.load_asset(TEXTURE_FOLDER + "/" + texture_name(source))
+        if texture is None:
+            raise RuntimeError("Missing texture %s: run Tools/Editor/make_ground_materials.py first" % texture_name(source))
+        lib.set_material_instance_texture_parameter_value(material, "GroundTexture", texture)
+        lib.set_material_instance_scalar_parameter_value(material, "TextureScale", texture_scale)
+        lib.set_material_instance_scalar_parameter_value(material, "DetailStrength", strength)
     unreal.EditorAssetLibrary.save_loaded_asset(material)
     return material
