@@ -555,3 +555,9 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   27 + 142 + 49 + 320 verts. `PROTOCOL.md` complété. **Non fait** : une vraie publication (6 Go, minutes) pour voir
   `0.3.0` de bout en bout ; quand l'utilisateur valide une étape : `HOLPublish.exe release next-stage --file
   Saved\Manager\Versions\release.json` (Y + 1, X = 0). Le « V » n'est pas dans le nom stocké (pas d'espace permis).
+- 2026-11-03 : **L14 commitée (2f2c497) et publiée : `0.3.0`** (`publish.ps1 -Notes …`, package 6,3 min, HOLPublish 352 s,
+  141 fichiers, 368,6 Mo compressés, 42 correctifs, serveur `Saved\Manager\Servers\0.3.0`). `latest.txt` = `0.3.0`,
+  `release.json` = `{"stage":3,"update":1}` (prochaine : `0.3.1`). Versions gardées : 0.3.0, 2026-10-27-r8, 2026-10-30-r9,
+  2026-11-03-f5006b5 ; **`L11-v1` a été retirée** par la limite `-Keep 3`. Archive `Saved\Packages\0.3.0` (2 Go) gardée.
+  Non vu : l'affichage « V 0.3.0 » dans un lanceur / un jeu réellement installé depuis cette version.
+  **Reprise : L15 (réglages + langue) dans une prochaine session, en suivant ce journal** (tableau L14-L24 plus haut).
