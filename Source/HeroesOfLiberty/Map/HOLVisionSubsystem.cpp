@@ -109,6 +109,7 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 
 	// A camp per team, or per slot alone (HOLVictoryRules::GetCamp), packed: Map's camps are only the match's.
 	CampOfSlot.Init(INDEX_NONE, Config.Slots.Num());
+	SlotHasTeam.Init(false, Config.Slots.Num());
 	TArray<int32> Camps;
 	for (int32 Slot = 0; Slot < Config.Slots.Num(); ++Slot)
 	{
@@ -116,6 +117,7 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 		if (Camp != INDEX_NONE)
 		{
 			CampOfSlot[Slot] = Camps.AddUnique(Camp);
+			SlotHasTeam[Slot] = Config.Slots[Slot].Team != 0;
 		}
 	}
 	Map.Init(FHOLVisionGrid::MakeCentered(AHOLMapBounds::MaxSideTiles, UHOLBuildingSettings::GetTileSize()), Camps.Num());
@@ -333,7 +335,7 @@ bool UHOLVisionSubsystem::KeepSourceDrawn(const int32 SourceIndex) const
 
 void UHOLVisionSubsystem::RefreshSourceMemory(const int32 ViewerSlot)
 {
-	SourceViewerCamp = Mode == EHOLFogMode::Disabled || !bStarted ? INDEX_NONE : GetCampIndex(ViewerSlot);
+	SourceViewerCamp = Mode == EHOLFogMode::Disabled || !bStarted ? INDEX_NONE : GetViewerCamp(ViewerSlot);
 	UHOLSourceSubsystem* Sources = GetWorld() ? GetWorld()->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
 	if (!Sources || Sources->GetKeptDrawn().IsEmpty())
 	{
@@ -384,9 +386,16 @@ bool UHOLVisionSubsystem::UpdateClient()
 	// Its own camp: the slot of the local player (INDEX_NONE until its state has come).
 	const APlayerController* Controller = GetWorld()->GetFirstPlayerController();
 	const AHOLPlayerState* PlayerState = Controller ? Controller->GetPlayerState<AHOLPlayerState>() : nullptr;
-	ClientCamp = PlayerState ? GetCampIndex(PlayerState->GetPlayerIndex()) : INDEX_NONE;
+	ClientCamp = PlayerState ? GetViewerCamp(PlayerState->GetPlayerIndex()) : INDEX_NONE;
 	if (ClientCamp == INDEX_NONE)
 	{
+		if (PlayerState && GetCampIndex(PlayerState->GetPlayerIndex()) != INDEX_NONE)
+		{
+			// D376: a player defeated alone sees the whole map: what its camp's memory drew goes (buildings live, ghosts and kept trees gone).
+			RefreshBuildingMemory(PlayerState->GetPlayerIndex());
+			RefreshSourceMemory(PlayerState->GetPlayerIndex());
+			SyncGhostActors(PlayerState->GetPlayerIndex());
+		}
 		return false;
 	}
 	if (bMemoryPending)
@@ -461,6 +470,18 @@ int32 UHOLVisionSubsystem::GetCampIndex(const int32 Slot) const
 	return CampOfSlot.IsValidIndex(Slot) ? CampOfSlot[Slot] : INDEX_NONE;
 }
 
+int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot) const
+{
+	const UWorld* World = GetWorld();
+	const AHOLGameState* State = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return GetViewerCamp(Slot, State && State->IsSlotDefeated(Slot));
+}
+
+int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot, const bool bDefeated) const
+{
+	return HOLVisionRules::GetViewerCamp(GetCampIndex(Slot), bDefeated, SlotHasTeam.IsValidIndex(Slot) && SlotHasTeam[Slot]);
+}
+
 EHOLCellVision UHOLVisionSubsystem::GetVision(const int32 Slot, const FVector& Location) const
 {
 	if (Mode == EHOLFogMode::Disabled)
@@ -473,7 +494,7 @@ EHOLCellVision UHOLVisionSubsystem::GetVision(const int32 Slot, const FVector& L
 
 bool UHOLVisionSubsystem::IsUnitShown(const int32 ViewerSlot, const int32 OwnerSlot, const FVector& Location) const
 {
-	const int32 ViewerCamp = GetCampIndex(ViewerSlot);
+	const int32 ViewerCamp = GetViewerCamp(ViewerSlot);
 	if (!bStarted || Mode == EHOLFogMode::Disabled || ViewerCamp == INDEX_NONE || ViewerCamp == GetCampIndex(OwnerSlot))
 	{
 		return true;
@@ -483,7 +504,7 @@ bool UHOLVisionSubsystem::IsUnitShown(const int32 ViewerSlot, const int32 OwnerS
 
 FVector UHOLVisionSubsystem::GetOrderLineEnd(const int32 ViewerSlot, const FVector& StepLocation, const FVector& TargetLocation) const
 {
-	const int32 ViewerCamp = GetCampIndex(ViewerSlot);
+	const int32 ViewerCamp = GetViewerCamp(ViewerSlot);
 	if (!bStarted || Mode == EHOLFogMode::Disabled || ViewerCamp == INDEX_NONE
 		|| Map.GetVision(ViewerCamp, Map.GetGrid().ToCell(FVector2D(TargetLocation))) == EHOLCellVision::Visible)
 	{
@@ -522,9 +543,18 @@ bool UHOLVisionSubsystem::IsAreaVisible(const int32 Slot, const FVector& Center,
 int32 UHOLVisionSubsystem::SyncGhostActors(const int32 ViewerSlot)
 {
 	UWorld* World = GetWorld();
-	const int32 ViewerCamp = World && bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
+	const int32 ViewerCamp = World && bStarted && Mode != EHOLFogMode::Disabled ? GetViewerCamp(ViewerSlot) : INDEX_NONE;
 	if (!World || !Ghosts.IsValidIndex(ViewerCamp))
 	{
+		// No camp memory to draw (the viewer sees all, D376): the ghosts drawn so far go.
+		for (TPair<uint64, TWeakObjectPtr<AHOLBuilding>>& Pair : GhostActors)
+		{
+			if (AHOLBuilding* Actor = Pair.Value.Get())
+			{
+				Actor->Destroy();
+			}
+		}
+		GhostActors.Reset();
 		return 0;
 	}
 	const TMap<uint64, FHOLGhost>& Memory = Ghosts[ViewerCamp];
@@ -593,7 +623,7 @@ int32 UHOLVisionSubsystem::SyncGhostActors(const int32 ViewerSlot)
 
 void UHOLVisionSubsystem::RefreshBuildingMemory(const int32 ViewerSlot)
 {
-	const int32 ViewerCamp = bStarted && Mode != EHOLFogMode::Disabled ? GetCampIndex(ViewerSlot) : INDEX_NONE;
+	const int32 ViewerCamp = bStarted && Mode != EHOLFogMode::Disabled ? GetViewerCamp(ViewerSlot) : INDEX_NONE;
 	const TMap<uint64, FHOLGhost>* Memory = Ghosts.IsValidIndex(ViewerCamp) ? &Ghosts[ViewerCamp] : nullptr;
 	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
 	{
@@ -680,7 +710,7 @@ FString UHOLVisionSubsystem::MakeViewerLine(const int32 ViewerSlot) const
 	{
 		return FString::Printf(TEXT("mode %s, everything in sight"), GetModeName(bStarted ? Mode : EHOLFogMode::Disabled));
 	}
-	const int32 Camp = GetCampIndex(ViewerSlot);
+	const int32 Camp = GetViewerCamp(ViewerSlot);
 	if (Camp == INDEX_NONE)
 	{
 		return FString::Printf(TEXT("mode %s, no camp, everything in sight"), GetModeName(Mode));

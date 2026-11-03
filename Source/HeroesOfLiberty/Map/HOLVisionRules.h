@@ -118,6 +118,13 @@ namespace HOLVisionRules
 	 */
 	HEROESOFLIBERTY_API uint32 GetReceivedCamps(int32 Camp, bool bDefeated, bool bTeamCamp);
 
+	/**
+	 * D357, D376: the camp whose sight a player's own machine shows (the client's side of GetReceivedCamps): its own camp; a slot
+	 * defeated alone (free for all, Diplomacy) or no camp at all INDEX_NONE, no fog for it, everything in sight; defeated in a
+	 * team, the team's. Whatever shows every camp here is what GetReceivedCamps sends every camp to.
+	 */
+	HEROESOFLIBERTY_API int32 GetViewerCamp(int32 Camp, bool bDefeated, bool bTeamCamp);
+
 	/** F6a: a connection receiving ReceivedCamps gets an object seen by ObjectCamps (a bit per camp). */
 	inline bool Receives(const uint32 ReceivedCamps, const uint32 ObjectCamps) { return (ReceivedCamps & ObjectCamps) != 0; }
 

@@ -493,7 +493,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Q-chapelle-moine = A, without the mouse: the selected own units get the heal order on an ally (its identifier), as a right click on it would. */
 	FAutoConsoleCommand HealCommand(
 		TEXT("hol.Select.Heal"),
-		TEXT("hol.Select.Heal <UnitId>: the local player's selected units get the heal order on that ally (a Monk heals it first, the others walk to it), as the right click on it (the server checks it is not an enemy)"),
+		TEXT("hol.Select.Heal <UnitId|slot=<S>>: the local player's selected units get the heal order on that ally (slot=<S>: slot S's first unit known here) (a Monk heals it first, the others walk to it), as the right click on it (the server checks it is not an enemy)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 1)
@@ -503,7 +503,19 @@ namespace UE::HeroesOfLiberty::Player
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				const uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+				uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+				if (Args[0].StartsWith(TEXT("slot=")))
+				{
+					// A script does not know the identifiers (quick_check "net monk"): slot S's first unit known here, as hol.Select.Attack.
+					const int32 Slot = FCString::Atoi(*Args[0].RightChop(5));
+					TArray<FHOLUnitView> Views;
+					HOLUnitView::Gather(*Controller->GetWorld(), Views);
+					TargetId = 0;
+					for (const FHOLUnitView& View : Views)
+					{
+						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
+					}
+				}
 				const TArray<uint32> Own = Controller->GetCommandUnits();
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u"), Own.Num(), TargetId);
 				Controller->RequestHealUnit(Own, TargetId, false);

@@ -388,6 +388,27 @@ if ($Parts -contains "net") {
             "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120", "wait 1", "hol.Units.Where 1", "hol.Heal.Report", "wait 3", "hol.Units.Where 1", "hol.Heal.Report",
             "waitfile $(Join-Path $TestSaved "quick_net_monk_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120",
             "hol.Units.Remove 0 9000 1500 1",
+            # The Monk heals a HERO (maximum 558, above the 256 the wire carries as exact points: his health comes as a share and from the hero sheet):
+            # a Monk beside Bob's hero (14100, 300), everything of Bob wounded to 30 % by client 1, 6 s of heal, the Monk removed (the health
+            # stops changing), then the server and both clients read the hero's health points: the same number everywhere.
+            "mark net monk hero", "hol.Units.Spawn 1 14100 300 1 Monk 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_monkhero_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkhero_wounded.flag") 120", "wait 6", "hol.Units.Remove 14100 300 400 1 Monk", "wait 3", "hol.Units.Where 1",
+            "signal $(Join-Path $TestSaved "quick_net_monkhero_stopped.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkhero_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monkhero_done2.flag") 120",
+            # The "heal" command (the right click on an ally) over the network: a Monk of Bob among his wounded units (the nearest wounded one
+            # would be its natural target); client 1 selects that Monk and orders the heal of Bob's first unit (hol.Select.Heal slot=1, the
+            # real RequestHealUnit): the server heals the ordered unit first ("(ordered)"), both clients see its health rise.
+            "mark net monk order", "hol.Units.Spawn 1 15250 -3000 1 Monk 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_monkorder_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkorder_asked.flag") 120", "wait 3", "hol.Units.Where 1",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkorder_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monkorder_done2.flag") 120",
+            "hol.Units.Remove 15250 -3000 800 1 Monk",
+            # The Vow of Poverty (-20 % on the Monk's cost) over the network: client 1 has a Chapel (the server's cheat), the technology (the
+            # cheat, as researched), and queues a Monk (the real order, produced in 2 s here): the server charges 80 food + 80 gold, and the
+            # stocks every machine has agree (the book of each player state: "Market stock slot").
+            "mark net monk vow", "hol.Prod.BuildTime 2", "waitfile $(Join-Path $TestSaved "quick_net_monkvow_asked.flag") 120", "wait 1", "hol.Market.Report",
+            "signal $(Join-Path $TestSaved "quick_net_monkvow_server.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkvow_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monkvow_done2.flag") 120",
+            "hol.Prod.BuildTime 0", "hol.Units.Remove -2500 3000 3000 1 Monk",
             # Duel D5 (the circle drawn): a duel accepted at once between the two heroes (the development door, the heroes stand far apart:
             # the circle is centred between them); both clients draw it from the replicated sheets ("Duel rings:" of hol.Select.Report).
             # The duel ends with the heroes' removal below (health 0).
@@ -2757,6 +2778,27 @@ if ($NetListening) {
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120" }
         $NetSteps += "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "hol.Heal.Report", "signal $(Join-Path $TestSaved "quick_net_monk_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120" }
+        # The Monk beside the hero (see the server's sequence): client 1 wounds everything of Bob to 30 %; once the server has removed the
+        # Monk, each client reads Bob's units (the hero's health points).
+        $NetSteps += "mark monkhero"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_spawned.flag") 120", "hol.Cheat.Wound 30", "wait 0.3", "signal $(Join-Path $TestSaved "quick_net_monkhero_wounded.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_wounded.flag") 120" }
+        $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_stopped.flag") 120", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_monkhero_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_done2.flag") 120" }
+        # The heal command: client 1 selects the new Monk and orders the heal of Bob's first unit, both clients read Bob's units twice.
+        $NetSteps += "mark monkorder"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkorder_spawned.flag") 120", "hol.Cheat.Wound 50", "wait 1", "hol.Select.Type Monk last", "wait 0.5", "hol.Select.Heal slot=1", "signal $(Join-Path $TestSaved "quick_net_monkorder_asked.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkorder_asked.flag") 120" }
+        $NetSteps += "wait 1", "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_monkorder_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkorder_done2.flag") 120" }
+        # The Vow of Poverty (see the server's sequence): client 1 reports Bob's stock, queues a Monk with the technology, reports again.
+        $NetSteps += "mark monkvow"
+        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.Population 40", "hol.Cheat.SpawnBuilding Chapel 1 -2500 3000", "wait 2", "hol.Cheat.Technology VowOfPoverty", "wait 1",
+            "hol.Market.Report", "hol.Prod.Queue Monk Chapel", "wait 2", "hol.Market.Report", "signal $(Join-Path $TestSaved "quick_net_monkvow_asked.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkvow_server.flag") 120", "wait 1", "hol.Market.Report" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkvow_asked.flag") 120", "wait 3", "hol.Market.Report" }
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_monkvow_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkvow_done2.flag") 120" }
         # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
         $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
@@ -7023,6 +7065,68 @@ if ($Parts -contains "net") {
             $MonkChecks["client $N : the green heal line drawn by TickClient (drawn $($MonkDrawn -join ','))"] = $MonkDrawn.Count -ge 1 -and $MonkDrawn[-1] -gt 0
         }
         $AllOk = (Report "net monk" $MonkChecks) -and $AllOk
+        # The hero (maximum above 256) healed by a Monk: the health points read after the heal stopped, the same on the server and on both clients.
+        $MonkHeroChecks = [ordered]@{}
+        $HeroServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk hero")
+        $HeroHealed = @($HeroServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #\d+ \(slot $BobSlot\), health ([\d.]+)/(\d+)" | ForEach-Object { [double] $_.Matches[0].Groups[1].Value })
+        $HeroMaxSeen = @($HeroServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #\d+ \(slot $BobSlot\), health [\d.]+/(\d+)" | ForEach-Object { [int] $_.Matches[0].Groups[1].Value })
+        $MonkHeroChecks["server: the Monk heals a unit of more than 256 hp (the hero) ($($HeroHealed.Count) heal lines, first from $($HeroHealed[0]) hp, maximum $($HeroMaxSeen | Select-Object -Last 1))"] = $HeroHealed.Count -ge 1 -and $HeroMaxSeen[-1] -gt 256
+        # The health of the unit above 256 maximum in a "Units where" line of slot 1 (the last report of the section): "hp N/M".
+        function Get-HeroHp($Lines) {
+            $Reports = @($Lines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            if (-not $Reports.Count) { return $null }
+            foreach ($Unit in ($Reports[-1] -split "; ")) { if ($Unit -match "^#\d+ slot $BobSlot .*hp (\d+)/(\d+)" -and [int] $Matches[2] -gt 256) { return [int] $Matches[1] } }
+            return $null
+        }
+        $HeroServerHp = Get-HeroHp $HeroServerLines
+        $MonkHeroChecks["server: the hero's health after 6 s of heal from 30 % of 558 (167) is above 180 (hp $HeroServerHp)"] = $null -ne $HeroServerHp -and $HeroServerHp -gt 180
+        foreach ($NetClient in $NetClients) {
+            $HeroClientHp = Get-HeroHp @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monkhero")
+            $MonkHeroChecks["client $($NetClient.Client) : the hero's health points are the server's (client $HeroClientHp, server $HeroServerHp)"] = $null -ne $HeroClientHp -and $HeroClientHp -eq $HeroServerHp
+        }
+        $AllOk = (Report "net monk hero" $MonkHeroChecks) -and $AllOk
+        # The heal command: the server heals the ordered unit first, both clients see its health rise (or full) over the two reports.
+        $MonkOrderChecks = [ordered]@{}
+        $OrderServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk order")
+        $OrderedHeals = @($OrderServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #(\d+) \(slot $BobSlot\), health ([\d.]+)/\d+ \(ordered\)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $OrderedId = if ($OrderedHeals.Count) { $OrderedHeals[0] } else { "" }
+        $MonkOrderChecks["server: the Monk heals the unit it was ordered to, first ((ordered) lines $($OrderedHeals.Count), target #$OrderedId)"] = $OrderedHeals.Count -ge 1
+        foreach ($NetClient in $NetClients) {
+            $OrderLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monkorder")
+            $OrderHp = @($OrderLines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object {
+                $Found = "gone"
+                foreach ($Unit in ($_.Matches[0].Groups[1].Value -split "; ")) {
+                    if ($OrderedId -and $Unit -match "^#$OrderedId slot $BobSlot ") { $Found = if ($Unit -match "hp (\d+)/") { [int] $Matches[1] } else { "full" } }
+                }
+                $Found
+            })
+            $First = if ($OrderHp.Count) { $OrderHp[0] } else { "none" }
+            $Last = if ($OrderHp.Count) { $OrderHp[-1] } else { "none" }
+            $MonkOrderChecks["client $($NetClient.Client) : the ordered unit #$OrderedId rises over the two reports (first $First, last $Last)"] = $OrderHp.Count -ge 2 -and $First -is [int] -and ($Last -eq "full" -or ($Last -is [int] -and $Last -gt $First))
+        }
+        $AllOk = (Report "net monk order" $MonkOrderChecks) -and $AllOk
+        # The Vow of Poverty: a Monk costs 80 + 80 (100 + 100 less 20 %): Bob's stock falls by that between client 1's two reports, and the
+        # last stock of each machine (the server's, then the clients' after it) is the same.
+        $MonkVowChecks = [ordered]@{}
+        $VowServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk vow")
+        $VowQueued = @($VowServerLines | Select-String -Pattern "Production: slot $BobSlot queued Monk \(1 in the queue, F (\d+) W \d+ S \d+ G (\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)/$($_.Matches[0].Groups[2].Value)" })
+        function Get-VowStocks($Lines) {
+            @($Lines | Select-String -Pattern "Market stock slot ${BobSlot}: food (-?\d+) wood -?\d+ stone -?\d+ gold (-?\d+)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)/$($_.Matches[0].Groups[2].Value)" })
+        }
+        $VowServerStocks = @(Get-VowStocks $VowServerLines)
+        $VowServerLast = if ($VowServerStocks.Count) { $VowServerStocks[-1] } else { "none" }
+        $MonkVowChecks["server: the Monk queued with the Vow (stock food/gold after the charge $($VowQueued -join ' '), the server's report $VowServerLast)"] = $VowQueued.Count -ge 1 -and $VowQueued[0] -eq $VowServerLast
+        foreach ($NetClient in $NetClients) {
+            $VowStocks = @(Get-VowStocks @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monkvow"))
+            $VowLast = if ($VowStocks.Count) { $VowStocks[-1] } else { "none" }
+            # A stock reaches its owner alone (client 2 reads 0 for Bob's, by design as the technologies): only client 1's is compared.
+            if ($NetClient.Client -eq 1) {
+                $MonkVowChecks["client 1 : Bob's stock is the server's (client $VowLast, server $VowServerLast)"] = $VowStocks.Count -ge 1 -and $VowLast -eq $VowServerLast
+                $Spent = if ($VowStocks.Count -ge 3) { $Before = $VowStocks[0] -split "/"; $After = $VowStocks[1] -split "/"; "$([int] $Before[0] - [int] $After[0])/$([int] $Before[1] - [int] $After[1])" } else { "none" }
+                $MonkVowChecks["client 1 : the Monk cost 80 food + 80 gold with the Vow, not 100 + 100 (spent $Spent)"] = $Spent -eq "80/80"
+            }
+        }
+        $AllOk = (Report "net monk vow" $MonkVowChecks) -and $AllOk
     }
 }
 
@@ -7651,6 +7755,107 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     $FogNet = $(if ($NetFogBack) { $FogNetLines | Where-Object { $_.Matches[0].Groups[1].Value -match "^active, groups [1-9]" } } else { $FogNetLines }) | Select-Object @FogNetPick | ForEach-Object { $_.Matches[0].Groups[1].Value }
     $Checks["server : fog net $(if ($NetFogOn) { 'active, a group per set of camps' } else { 'off' }) ($FogNet)"] = [bool]$FogNet -and $(if ($NetFogOn) { $FogNet -match "^active, groups [1-9]" } else { $FogNet -match "^off" })
     $AllOk = (Report $NetFogPart $Checks) -and $AllOk
+}
+
+# The "netspec" part (D357, D376), after "netfog": a player defeated alone (free for all) becomes a spectator and keeps its connection.
+# The server (as "netfog", the fog Normal) with Alice (slot 0), Bob (slot 1) and an AI (slot 2, so that the match goes on once Bob is
+# out). Bob's client, 6 s in, reports what it holds (own side only: the starts are 300 m apart), has himself defeated
+# (hol.Victory.Defeat 1, the cheat of the server), still connected, then reports again: his client now holds the whole map (the
+# centres of slots 0 and 2, the units of both, his fog line "no camp, everything in sight"). Alice's client keeps her fog: it never
+# holds the AI's centre, whatever Bob became.
+# "netspecteam": the same, but Bob and the AI are one team (team 2) against Alice (team 1): defeated in a team, Bob keeps his team's sight
+# (the AI ally's side, his fog line "camp N", not "no camp") and still does not hold Alice's centre.
+foreach ($SpecPart in "netspec", "netspecteam") {
+    if (-not ($Parts -contains $SpecPart)) { continue }
+    $SpecTeam = $SpecPart -eq "netspecteam"
+    $SpecServerLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_server.log"
+    $SpecConfig = Join-Path $TestSaved "quick_${SpecPart}.json"
+    $SpecServerSequence = Join-Path $TestSaved "quick_${SpecPart}_server.seq"
+    Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_${SpecPart}_client*.log"), (Join-Path $TestSaved "quick_${SpecPart}_*.flag") -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $SpecConfig @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    if ($SpecTeam) {
+        (Get-Content $SpecConfig -Raw) -replace '"colorIndex": 0,', '"colorIndex": 0, "team": 1,' -replace '"colorIndex": 1,', '"colorIndex": 1, "team": 2,' -replace '"colorIndex": 2 }', '"colorIndex": 2, "team": 2 }' |
+            Set-Content -Encoding ascii $SpecConfig
+    }
+    $SpecDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${SpecPart}_done$_.flag" })
+    @("waitplayers 2", "mark $SpecPart", "waitfile $($SpecDone[0]) 240", "waitfile $($SpecDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $SpecServerSequence
+    $SpecPort = Get-AITestPort
+    $SpecServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SpecPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SpecConfig`" -abslog=`"$SpecServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $SpecServerSequence`""
+    $SpecServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SpecServerArguments -PassThru -WindowStyle Hidden
+    $SpecListening = $false
+    $Deadline = (Get-Date).AddSeconds(240)
+    while (-not $SpecListening -and (Get-Date) -lt $Deadline -and -not $SpecServer.HasExited) {
+        Start-Sleep -Milliseconds 500
+        $SpecListening = (Test-Path $SpecServerLog) -and (Select-String -Path $SpecServerLog -Pattern "listening on port" -Quiet)
+    }
+    $SpecClients = @()
+    if ($SpecListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_${SpecPart}_client$Client.seq"
+            $SpecReports = @("hol.Buildings.Report", "hol.Units.Report", "hol.HUD.Report")
+            $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $SpecPart", "wait 6") + $SpecReports
+            if ($Client -eq 1) {
+                # Bob: defeated (his banner), then the same reports once the server has widened his connection.
+                $Steps += @("hol.Victory.Defeat 1", "waitlog End banner: Defeat", "wait 4", "mark ${SpecPart}after") + $SpecReports + @("wait 2", "hol.Units.Report")
+            }
+            else {
+                $Steps += @("wait 10", "mark ${SpecPart}after") + $SpecReports
+            }
+            $Steps += @("signal $($SpecDone[$Client - 1])", "mark end", "quit")
+            $Steps | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $SpecClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $SpecListening
+    foreach ($SpecClient in $SpecClients) {
+        $TimedOut = -not $SpecClient.Process.WaitForExit(240000)
+        if ($TimedOut) { Stop-Process -Id $SpecClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $N = $SpecClient.Client
+        $Lines = if (Test-Path $SpecClient.Log) { Get-Content $SpecClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $TimedOut) -and [bool]($Lines | Select-String -Pattern "Test mark: end" -Quiet)
+        $BuildingsOf = { param($Mark) @(Get-MarkedLines $Lines $Mark | Select-String -Pattern "Building report: MainCentre of slot (\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value } | Sort-Object -Unique) }
+        $UnitsOf = { param($Mark) $Last = Get-MarkedLines $Lines $Mark | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            @([regex]::Matches("$Last", "of slot (\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique) }
+        $FogOf = { param($Mark) $L = Get-MarkedLines $Lines $Mark | Select-String -Pattern "HUD fog: (.*)$" | Select-Object -Last 1; if ($L) { $L.Matches[0].Groups[1].Value } else { "" } }
+        $BeforeBuildings = & $BuildingsOf $SpecPart
+        $AfterBuildings = & $BuildingsOf "${SpecPart}after"
+        $AfterUnits = & $UnitsOf "${SpecPart}after"
+        $AfterFog = & $FogOf "${SpecPart}after"
+        if ($N -eq 1 -and $SpecTeam) {
+            $Checks["client 1 (Bob) : before, his team's centres (own and the AI ally's), not Alice's ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -notcontains 0) -and ($BeforeBuildings -contains 1)
+            $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
+            $Checks["client 1 (Bob) : defeated in a team, keeps his team's sight, not Alice's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 2) -and -not ($AfterBuildings -contains 0)
+            $Checks["client 1 (Bob) : his fog line is his team's, not the whole map ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
+        }
+        elseif ($N -eq 1) {
+            $Checks["client 1 (Bob) : before, his own centre only ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -join '|') -eq "1"
+            $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
+            $Checks["client 1 (Bob) : spectator holds the centres of slots 0 and 2 ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and ($AfterBuildings -contains 2)
+            $Checks["client 1 (Bob) : spectator holds the units of slots 0 and 2 ($($AfterUnits -join ','))"] = ($AfterUnits -contains 0) -and ($AfterUnits -contains 2)
+            $Checks["client 1 (Bob) : his fog line says the whole map is in sight ($AfterFog)"] = $AfterFog -match "no camp, everything in sight"
+        }
+        else {
+            $Checks["client 2 (Alice) : keeps her fog, never holds the AI's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and -not ($AfterBuildings -contains 2) -and -not ($AfterBuildings -contains 1)
+            $Checks["client 2 (Alice) : her own camp's fog line ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
+        }
+    }
+    $SpecServerTimedOut = -not $SpecServer.WaitForExit($(if ($SpecClients.Count) { 30000 } else { 1000 }))
+    if ($SpecServerTimedOut) { Stop-Process -Id $SpecServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $SpecServerTimedOut
+    $SpecLog = if (Test-Path $SpecServerLog) { Get-Content $SpecServerLog } else { @() }
+    $Checks["server : slot 1 defeated by the cheat, the match goes on (the AI $(if ($SpecTeam) { 'ally' } else { 'and Alice' }) stands)"] = [bool]($SpecLog | Select-String -Pattern "Victory: slot 1 defeated" -Quiet) -and -not [bool]($SpecLog | Select-String -Pattern "match over" -Quiet)
+    $AllOk = (Report $SpecPart $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
