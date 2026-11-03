@@ -119,4 +119,23 @@ namespace HOLAvoid
 	 * walker turned wide from still builders straight into the site's wall (MV.4); the keep-out put them back.
 	 */
 	HEROESOFLIBERTY_API bool LeadsIntoFootprint(const FFootprintBox& Box, double Keep, const FVector2D& Position, const FVector2D& Way, double Distance);
+
+	/**
+	 * D641: the state of a melee walking to its target that must not go round the line of its friends in loops: the heading it last walked at (unit
+	 * length, zero: none yet), the turning piled up since (radians), and the seconds it still waits.
+	 */
+	struct FLoopPatience
+	{
+		FVector2D Heading = FVector2D::ZeroVector;
+		double Turn = 0.;
+		double WaitSeconds = 0.;
+	};
+
+	/**
+	 * One step of the rule: the turn of the velocity Asked (cm/s; none under 50) from the last heading is added to the turning piled up, every turn
+	 * counted without its sign (a sway to and fro and a loop both pile up; a detour round an obstacle and back is a few hundred degrees at most),
+	 * the pile leaking away over ForgetSeconds. Past PatienceDegrees the unit waits WaitSeconds: true while it must stand still (the pile is then
+	 * empty). PatienceDegrees at 0 or less: off, the state cleared.
+	 */
+	HEROESOFLIBERTY_API bool StepLoopPatience(FLoopPatience& State, const FVector2D& Asked, double DeltaTime, double PatienceDegrees, double WaitSeconds, double ForgetSeconds);
 }

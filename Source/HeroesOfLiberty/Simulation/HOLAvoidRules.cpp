@@ -107,3 +107,35 @@ bool HOLAvoid::LeadsIntoFootprint(const FFootprintBox& Box, const double Keep, c
 	}
 	return false;
 }
+
+bool HOLAvoid::StepLoopPatience(FLoopPatience& State, const FVector2D& Asked, const double DeltaTime, const double PatienceDegrees, const double WaitSeconds, const double ForgetSeconds)
+{
+	if (PatienceDegrees <= 0.)
+	{
+		State = FLoopPatience();
+		return false;
+	}
+	if (State.WaitSeconds > 0.)
+	{
+		State.WaitSeconds -= DeltaTime;
+		return true;
+	}
+	// Under 50 cm/s there is no heading (a unit starting from rest, or pushed): the last one is kept.
+	if (Asked.SizeSquared() > FMath::Square(50.))
+	{
+		const FVector2D Heading = Asked.GetSafeNormal();
+		if (!State.Heading.IsZero())
+		{
+			State.Turn += FMath::Abs(FMath::Atan2(FVector2D::CrossProduct(State.Heading, Heading), FVector2D::DotProduct(State.Heading, Heading)));
+		}
+		State.Heading = Heading;
+	}
+	State.Turn *= FMath::Max(0., 1. - DeltaTime / FMath::Max(ForgetSeconds, 0.1));
+	if (State.Turn > FMath::DegreesToRadians(PatienceDegrees))
+	{
+		State.Turn = 0.;
+		State.WaitSeconds = WaitSeconds;
+		return true;
+	}
+	return false;
+}

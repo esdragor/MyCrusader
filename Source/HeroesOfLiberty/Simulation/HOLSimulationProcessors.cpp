@@ -44,6 +44,45 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 AvoidMarchMembersBare = 1;
 	FAutoConsoleVariableRef CVarAvoidMarchMembersBare(TEXT("hol.Units.AvoidMarchMembersBare"), AvoidMarchMembersBare,
 		TEXT("1 (default): two members of one block march in one kind of row keep clear of each other by their bodies, without the hol.Units.AvoidClearance margin (their honeycomb is tighter than the margin: the to-and-fro of hol.Test.SanityMotion); 0: the margin for them too, as before (A / B)"));
+	/** D641: see HoldIfLooping. */
+	float LoopPatienceDegrees = 270.f;
+	FAutoConsoleVariableRef CVarLoopPatience(TEXT("hol.Combat.LoopPatience"), LoopPatienceDegrees,
+		TEXT("Degrees (default 270; 0 = off, for A / B): a melee walking to its target that has turned this much in all (every turn counted without its sign, leaking away over hol.Combat.LoopForget) stands and waits hol.Combat.LoopWait instead of going round the line of its friends in loops (D641)"));
+	float LoopWaitSeconds = 2.5f;
+	FAutoConsoleVariableRef CVarLoopWait(TEXT("hol.Combat.LoopWait"), LoopWaitSeconds,
+		TEXT("Seconds a melee waits once it has turned hol.Combat.LoopPatience degrees (D641)"));
+	float LoopForgetSeconds = 4.f;
+	FAutoConsoleVariableRef CVarLoopForget(TEXT("hol.Combat.LoopForget"), LoopForgetSeconds,
+		TEXT("Seconds over which the turning a melee piled up (hol.Combat.LoopPatience) leaks away (D641)"));
+
+	/**
+	 * D641: a melee walking to its target (not striking, not going round the line's end on purpose) that keeps turning, going round the line of its
+	 * friends one way then the other, stands and waits instead (HOLAvoid::StepLoopPatience on the velocity asked of it). Returns whether the
+	 * velocity was zeroed.
+	 */
+	bool HoldIfLooping(FHOLCombatFragment& Combat, FVector& Velocity, const float DeltaTime, const bool bFighting)
+	{
+		if (!bFighting)
+		{
+			Combat.LoopHeading = FVector2f::ZeroVector;
+			Combat.LoopTurn = 0.f;
+			Combat.LoopWaitSeconds = 0.f;
+			return false;
+		}
+		HOLAvoid::FLoopPatience State;
+		State.Heading = FVector2D(Combat.LoopHeading);
+		State.Turn = Combat.LoopTurn;
+		State.WaitSeconds = Combat.LoopWaitSeconds;
+		const bool bHold = HOLAvoid::StepLoopPatience(State, FVector2D(Velocity.X, Velocity.Y), DeltaTime, LoopPatienceDegrees, LoopWaitSeconds, LoopForgetSeconds);
+		Combat.LoopHeading = FVector2f(State.Heading);
+		Combat.LoopTurn = static_cast<float>(State.Turn);
+		Combat.LoopWaitSeconds = static_cast<float>(State.WaitSeconds);
+		if (bHold)
+		{
+			Velocity = FVector::ZeroVector;
+		}
+		return bHold;
+	}
 	/**
 	 * Perf (hol.Units.FastNear): cells of the look-ahead's dense table at most, per unit (beyond, the hashed buckets): a
 	 * crowd's box only; units spread over the map (S7's gatherers) would clear a large table each step for nothing.
@@ -1274,6 +1313,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 					Wanted, Speed, Last, States[EntityIt].OwnerPlayer, DeltaTime, Combats[EntityIt], Slid, bSliding))
 				{
 					Velocity = FVector(Slid.X, Slid.Y, 0.);
+					HoldIfLooping(Combats[EntityIt], Velocity, DeltaTime, !IsGhost(States[EntityIt]) && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking && !Combats[EntityIt].bFlanking);
 					CountTurn(LastVelocities[EntityIt].Value, Velocity);
 					continue;
 				}
@@ -1294,6 +1334,11 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				Direction = Inward * FMath::Max(0., FVector::DotProduct(Direction, Inward));
 			}
 			Velocity = Direction * Speed;
+			// D641: a melee walking to its target that keeps turning round the line of its friends waits instead.
+			if (!Combats.IsEmpty())
+			{
+				HoldIfLooping(Combats[EntityIt], Velocity, DeltaTime, !IsGhost(States[EntityIt]) && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking && !Combats[EntityIt].bFlanking);
+			}
 			CountTurn(LastVelocities[EntityIt].Value, Velocity);
 		}
 	}, FMassEntityQuery::EParallelExecutionFlags::AutoBalance);
