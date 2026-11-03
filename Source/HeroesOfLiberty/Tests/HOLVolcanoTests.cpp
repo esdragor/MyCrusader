@@ -769,4 +769,87 @@ bool FHOLVolcanoAltarHoldSquadTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// The fresh deposit of a cooled flow (V7, D379): gold or stone, on the flow's line, a function of the seed and the cycle, there when the basalt is passable.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoFreshDepositTest, "HeroesOfLiberty.Volcano.FreshDeposit", UE::HeroesOfLiberty::Tests::VolcanoFlags)
+bool FHOLVolcanoFreshDepositTest::RunTest(const FString& Parameters)
+{
+	using namespace HOLVolcano;
+	FHOLVolcanoSettings Settings;
+	FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(6000.0, 0.0, 0.0), FVector(6000.0, 4000.0, 0.0) };
+	const int32 SiteSeedValue = SiteSeed(4242, 0);
+
+	const FFreshDeposit First = FreshDeposit(SiteSeedValue, 0, Flow, Settings);
+	if (!TestTrue(TEXT("a flow with a length leaves a deposit"), First.bPresent))
+	{
+		return false;
+	}
+	// 10 000 cm long, half way: 4000 cm up the second segment.
+	TestTrue(TEXT("it stands half way along the flow (the setting)"), First.Location.Equals(PointAt(Flow, 0.5f * Flow.Length()), 1.0));
+	TestTrue(TEXT("... which is on the flow's line"), DistanceToFlow(Flow, First.Location) < 1.f);
+	TestTrue(TEXT("... named by the setting"), First.TypeName == (First.Kind == EFreshKind::Gold ? Settings.FreshDepositGoldType : Settings.FreshDepositStoneType));
+	TestTrue(TEXT("the same call gives the same deposit (a function of seed, cycle and flow)"),
+		FreshDeposit(SiteSeedValue, 0, Flow, Settings).Kind == First.Kind && FreshDeposit(SiteSeedValue, 0, Flow, Settings).Location == First.Location);
+
+	Settings.FreshDepositAlong = 0.25f;
+	TestTrue(TEXT("a quarter along when set so"), FreshDeposit(SiteSeedValue, 0, Flow, Settings).Location.Equals(PointAt(Flow, 0.25f * Flow.Length()), 1.0));
+	Settings.FreshDepositAlong = 0.5f;
+
+	// Both kinds come, about as often as the share says; no memory (a cycle does not depend on the previous one).
+	int32 Gold = 0;
+	for (int32 Cycle = 0; Cycle < 200; ++Cycle)
+	{
+		Gold += FreshDeposit(SiteSeedValue, Cycle, Flow, Settings).Kind == EFreshKind::Gold ? 1 : 0;
+	}
+	TestTrue(TEXT("share 0.5: both kinds come, about half gold over 200 cycles"), Gold > 70 && Gold < 130);
+	Settings.FreshDepositGoldShare = 0.f;
+	Gold = 0;
+	for (int32 Cycle = 0; Cycle < 50; ++Cycle)
+	{
+		Gold += FreshDeposit(SiteSeedValue, Cycle, Flow, Settings).Kind == EFreshKind::Gold ? 1 : 0;
+	}
+	TestEqual(TEXT("share 0: always stone"), Gold, 0);
+	Settings.FreshDepositGoldShare = 1.f;
+	for (int32 Cycle = 0; Cycle < 50; ++Cycle)
+	{
+		Gold += FreshDeposit(SiteSeedValue, Cycle, Flow, Settings).Kind == EFreshKind::Gold ? 1 : 0;
+	}
+	TestEqual(TEXT("share 1: always gold"), Gold, 50);
+	Settings.FreshDepositGoldShare = 0.5f;
+
+	// Two sites of one match do not leave the same kinds.
+	int32 Differ = 0;
+	for (int32 Cycle = 0; Cycle < 40; ++Cycle)
+	{
+		Differ += FreshDeposit(SiteSeed(4242, 0), Cycle, Flow, Settings).Kind != FreshDeposit(SiteSeed(4242, 1), Cycle, Flow, Settings).Kind ? 1 : 0;
+	}
+	TestTrue(TEXT("two sites of a match draw their own kinds"), Differ > 5);
+
+	FFlow Empty;
+	Empty.Points = { FVector(100.0, 100.0, 0.0), FVector(100.0, 100.0, 0.0) };
+	TestFalse(TEXT("a flow without length leaves nothing"), FreshDeposit(SiteSeedValue, 0, Empty, Settings).bPresent);
+	TestFalse(TEXT("... nor a flow without point"), FreshDeposit(SiteSeedValue, 0, FFlow(), Settings).bPresent);
+
+	// Due exactly while the site rests on its basalt, on the real chain of states.
+	FSite Site;
+	Site.Flows = { Flow };
+	constexpr float ManSpeed = 697.f;
+	int32 RestSteps = 0;
+	bool bAllMatch = true;
+	for (float Now = 0.f; Now < 3000.f; Now += 1.f)
+	{
+		const FSiteState State = SiteStateAt(true, 4242, 0, Site, Now, Settings, ManSpeed);
+		const bool bRest = State.Phase == EHOLVolcanoPhase::Rest;
+		RestSteps += bRest ? 1 : 0;
+		bAllMatch &= FreshDepositDue(State) == bRest;
+	}
+	TestTrue(TEXT("the deposit is due in every second of the rest, and only then (not in the alert, the lava, the cooling)"), bAllMatch && RestSteps > 300);
+	TestFalse(TEXT("a dormant site (no Catastrophe) leaves nothing"), FreshDepositDue(SiteStateAt(false, 4242, 0, Site, 1500.f, Settings, ManSpeed)));
+	FSiteState NoFlow;
+	NoFlow.Phase = EHOLVolcanoPhase::Rest;
+	NoFlow.FlowIndex = INDEX_NONE;
+	TestFalse(TEXT("a rest without a drawn flow leaves nothing"), FreshDepositDue(NoFlow));
+	return true;
+}
+
 #endif

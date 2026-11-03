@@ -18,6 +18,22 @@ bool FHOLVersionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Display (L14): the V only before a numbered version "0.Y.X".
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVersionDisplayTest, "HeroesOfLiberty.VersionDisplay",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLVersionDisplayTest::RunTest(const FString& Parameters)
+{
+	TestEqual(TEXT("numbered"), HOLVersion::Display(TEXT("0.3.0")), FString(TEXT("V 0.3.0")));
+	TestEqual(TEXT("numbered, two digits"), HOLVersion::Display(TEXT("0.12.105")), FString(TEXT("V 0.12.105")));
+	TestEqual(TEXT("old dated name"), HOLVersion::Display(TEXT("2026-10-30-r9")), FString(TEXT("2026-10-30-r9")));
+	TestEqual(TEXT("dev"), HOLVersion::Display(HOLVersion::Dev), FString(HOLVersion::Dev));
+	TestEqual(TEXT("unknown"), HOLVersion::Display(HOLVersion::Unknown), FString(HOLVersion::Unknown));
+	TestEqual(TEXT("two parts"), HOLVersion::Display(TEXT("0.3")), FString(TEXT("0.3")));
+	TestEqual(TEXT("letters"), HOLVersion::Display(TEXT("0.a.1")), FString(TEXT("0.a.1")));
+	TestEqual(TEXT("not stage 0"), HOLVersion::Display(TEXT("1.3.0")), FString(TEXT("1.3.0")));
+	return true;
+}
+
 // Version check at login (R3.3): the server lets in a client of its own version only.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVersionCheckTest, "HeroesOfLiberty.VersionCheck",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)

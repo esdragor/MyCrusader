@@ -1,4 +1,5 @@
 #include "HUD/HOLGameScreen.h"
+#include "HUD/HOLHUDSpace.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Blueprint/WidgetTree.h"
@@ -2417,8 +2418,8 @@ FString UHOLGameScreen::DescribeLayout() const
 	const UBorder* FirstPanel = AgePanels.IsValidIndex(0) ? AgePanels[0].Get() : nullptr;
 	if (FirstMedallion && FirstPanel && FirstPanel->GetVisibility() != ESlateVisibility::Collapsed && BottomScale)
 	{
-		const float MedallionTop = FirstMedallion->GetCachedGeometry().GetAbsolutePosition().Y / Dpi;
-		const float ClipTop = BottomScale->GetCachedGeometry().GetAbsolutePosition().Y / Dpi;
+		const float MedallionTop = HOLHUDSpace::BoxOf(this, FirstMedallion->GetCachedGeometry()).Min.Y;
+		const float ClipTop = HOLHUDSpace::BoxOf(this, BottomScale->GetCachedGeometry()).Min.Y;
 		Medallion = FString::Printf(TEXT("top %d clip %d cut %d"), FMath::RoundToInt(MedallionTop), FMath::RoundToInt(ClipTop),
 			FMath::Max(0, FMath::Max(FMath::RoundToInt(ClipTop) - FMath::RoundToInt(MedallionTop), -FMath::RoundToInt(MedallionTop))));
 	}

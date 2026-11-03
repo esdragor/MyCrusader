@@ -1,4 +1,5 @@
 #include "Containers/Ticker.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "HAL/IConsoleManager.h"
@@ -9,6 +10,7 @@
 #include "HUD/HOLScenarioPanel.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLPlayerState.h"
+#include "Widgets/SWindow.h"
 
 /**
  * The game HUD for the scripted checks (J3, D284): what it shows, and a click on it by the same path as the mouse.
@@ -78,6 +80,15 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			{
 				UE_LOG(LogHOLUI, Display, TEXT("HUD %s"), *Line);
 			}
+			// Where the window is on the desktop (the HUD's boxes are read in the viewport's space, not the desktop's).
+			if (const UGameViewportClient* GameViewport = Screen.GetWorld() ? Screen.GetWorld()->GetGameViewport() : nullptr)
+			{
+				if (const TSharedPtr<SWindow> Window = GameViewport->GetWindow())
+				{
+					UE_LOG(LogHOLUI, Display, TEXT("HUD window: at %d,%d on the desktop, client %dx%d"), FMath::RoundToInt(Window->GetPositionInScreen().X),
+						FMath::RoundToInt(Window->GetPositionInScreen().Y), FMath::RoundToInt(Window->GetClientSizeInScreen().X), FMath::RoundToInt(Window->GetClientSizeInScreen().Y));
+				}
+			}
 			// Lesson 12b: which panels cover each other (the script's, and the cheats'), as drawn; preflight.ps1 fails on anything but "none".
 			UE_LOG(LogHOLUI, Display, TEXT("HUD overlap: %s"), *Screen.DescribeOverlaps());
 			// On its own line: the checks read the report's line to its end.
@@ -120,6 +131,27 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			UE_LOG(LogHOLUI, Display, TEXT("HUD cheats set: %s"), bOpen ? TEXT("open") : TEXT("folded"));
 		});
 	}
+
+	/** hol.Window.Move <X> <Y>: moves the game's window on the desktop (scenarios: the HUD must not depend on where the window is). */
+	void MoveWindow(const TArray<FString>& Args, UWorld* World)
+	{
+		const UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr;
+		const TSharedPtr<SWindow> Window = Viewport ? Viewport->GetWindow() : nullptr;
+		if (Args.Num() < 2 || !Window.IsValid())
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("hol.Window.Move <X> <Y>: no window or no coordinates"));
+			return;
+		}
+		Window->MoveWindowTo(FVector2f(FCString::Atof(*Args[0]), FCString::Atof(*Args[1])));
+		const FVector2f Place = Window->GetPositionInScreen();
+		UE_LOG(LogHOLUI, Display, TEXT("Window moved: at %d,%d on the desktop, client %dx%d"), FMath::RoundToInt(Place.X), FMath::RoundToInt(Place.Y),
+			FMath::RoundToInt(Window->GetClientSizeInScreen().X), FMath::RoundToInt(Window->GetClientSizeInScreen().Y));
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs MoveWindowCommand(
+		TEXT("hol.Window.Move"),
+		TEXT("hol.Window.Move <X> <Y>: moves the game's window to X,Y on the desktop (scenarios)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&MoveWindow));
 
 	FAutoConsoleCommandWithWorldAndArgs CheatsCommand(
 		TEXT("hol.HUD.Cheats"),

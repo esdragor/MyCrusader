@@ -23,6 +23,18 @@ public class StatusViewTests
     }
 
     [Fact]
+    public void NumberedVersionsAreShownWithTheV()
+    {
+        var outdated = StatusView.From(Status("0.3.0", "0.3.1"));
+        Assert.Equal("Version installée : V 0.3.0", outdated.InstalledText);
+        Assert.Equal("Dernière version : V 0.3.1", outdated.LatestText);
+        Assert.Equal("Une mise à jour du jeu est disponible (V 0.3.1).", outdated.StateText);
+        var missing = StatusView.From(Status(null, "0.3.1"));
+        Assert.Equal("Le jeu n'est pas installé ; la version V 0.3.1 est disponible.", missing.StateText);
+        Assert.Equal("Version installée : V 0.3.0", StatusView.Error("x", "0.3.0").InstalledText);
+    }
+
+    [Fact]
     public void OutdatedEnablesGameUpdate()
     {
         var view = StatusView.From(Status("v1", "v2"));

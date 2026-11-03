@@ -7,6 +7,7 @@
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLHUDLayoutRules.h"
+#include "HUD/HOLHUDSpace.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
@@ -147,6 +148,37 @@ void UHOLScriptScreen::SetCheatsHeroBlockShown(const bool bShown) const
 	}
 }
 
+FVector2D UHOLScriptScreen::GetViewportSlateSize() const
+{
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	return UWidgetLayoutLibrary::GetViewportSize(this) / Dpi;
+}
+
+bool UHOLScriptScreen::GetWidgetBox(UWidget* Widget, FVector2D& OutMin, FVector2D& OutMax) const
+{
+	if (!Widget || !Widget->IsVisible())
+	{
+		return false;
+	}
+	const FGeometry& Geometry = Widget->GetCachedGeometry();
+	if (Geometry.GetAbsoluteSize().IsNearlyZero())
+	{
+		return false;
+	}
+	// Desktop space is not the HUD's (a windowed game): HOLHUDSpace.
+	const FBox2D Box = HOLHUDSpace::BoxOf(this, Geometry);
+	OutMin = Box.Min;
+	OutMax = Box.Max;
+	return true;
+}
+
+bool UHOLScriptScreen::GetGameScreenBox(const FName WidgetName, FVector2D& OutMin, FVector2D& OutMax) const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	UWidget* Widget = GameScreen && GameScreen->WidgetTree ? GameScreen->WidgetTree->FindWidget(WidgetName) : nullptr;
+	return GetWidgetBox(Widget, OutMin, OutMax);
+}
+
 FString UHOLScriptScreen::DescribeOverlaps() const
 {
 	struct FNamedBox
@@ -155,13 +187,23 @@ FString UHOLScriptScreen::DescribeOverlaps() const
 		FBox2D Box;
 	};
 	TArray<FNamedBox> Boxes;
-	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
 	if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
 	{
 		FBox2D CheatBox;
 		if (CheatPanel->GetBox(CheatBox))
 		{
 			Boxes.Add({ TEXT("cheats"), CheatBox });
+		}
+	}
+	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
+	const TCHAR* const GameNames[] = { TEXT("PlayersPanel"), TEXT("MenuPanel") };
+	for (const TCHAR* GameName : GameNames)
+	{
+		FVector2D Low;
+		FVector2D High;
+		if (GetGameScreenBox(FName(GameName), Low, High))
+		{
+			Boxes.Add({ GameName, FBox2D(Low, High) });
 		}
 	}
 	if (WidgetTree)
@@ -191,10 +233,39 @@ FString UHOLScriptScreen::DescribeOverlaps() const
 			{
 				continue;
 			}
-			Boxes.Add({ Border->GetName(), FBox2D(FVector2D(Geometry.GetAbsolutePosition()) / Dpi, FVector2D(Geometry.GetAbsolutePosition() + Geometry.GetAbsoluteSize()) / Dpi) });
+			Boxes.Add({ Border->GetName(), HOLHUDSpace::BoxOf(this, Geometry) });
 		}
 	}
 	FString Result;
+	// Placement (2026-11-03, E-diplomacy-compare): a panel must lie inside the window (a box off it was read in another space than the
+	// HUD's, as the windowed game's desktop coordinates were), and the Diplomacy button sits left of the menu's buttons at their height.
+	const FVector2D Room = GetViewportSlateSize();
+	const FBox2D* MenuBox = nullptr;
+	const FBox2D* ButtonBox = nullptr;
+	for (const FNamedBox& Named : Boxes)
+	{
+		const float Slack = 2.f;
+		if (Named.Box.Min.X < -Slack || Named.Box.Min.Y < -Slack || Named.Box.Max.X > Room.X + Slack || Named.Box.Max.Y > Room.Y + Slack)
+		{
+			Result += (Result.IsEmpty() ? TEXT("") : TEXT("; ")) + FString::Printf(TEXT("%s outside window (%d,%d to %d,%d in %dx%d)"), *Named.Name,
+				FMath::RoundToInt(Named.Box.Min.X), FMath::RoundToInt(Named.Box.Min.Y), FMath::RoundToInt(Named.Box.Max.X), FMath::RoundToInt(Named.Box.Max.Y),
+				FMath::RoundToInt(Room.X), FMath::RoundToInt(Room.Y));
+		}
+		if (Named.Name == TEXT("MenuPanel"))
+		{
+			MenuBox = &Named.Box;
+		}
+		else if (Named.Name == TEXT("DiplomacyButtonPanel"))
+		{
+			ButtonBox = &Named.Box;
+		}
+	}
+	if (MenuBox && ButtonBox && (FMath::Abs(ButtonBox->Min.Y - MenuBox->Min.Y) > 3.f || ButtonBox->Max.X > MenuBox->Min.X + 3.f))
+	{
+		Result += (Result.IsEmpty() ? TEXT("") : TEXT("; ")) + FString::Printf(TEXT("DiplomacyButtonPanel misplaced against MenuPanel (button %d,%d to %d,%d; menu %d,%d to %d,%d)"),
+			FMath::RoundToInt(ButtonBox->Min.X), FMath::RoundToInt(ButtonBox->Min.Y), FMath::RoundToInt(ButtonBox->Max.X), FMath::RoundToInt(ButtonBox->Max.Y),
+			FMath::RoundToInt(MenuBox->Min.X), FMath::RoundToInt(MenuBox->Min.Y), FMath::RoundToInt(MenuBox->Max.X), FMath::RoundToInt(MenuBox->Max.Y));
+	}
 	for (int32 First = 0; First < Boxes.Num(); ++First)
 	{
 		for (int32 Second = First + 1; Second < Boxes.Num(); ++Second)
@@ -259,6 +330,13 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::T))
 		{
 			KeyPressed(TEXT("T"));
+		}
+		// Ctrl + D: the Diplomacy panel (D387, D650). Not F11 (the window's full screen); D alone is a cell of the command grid (D30), so the
+		// chord keeps clear of it. A provisional key (DiplomacyInProgress.md), reconfigurable with the others.
+		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::D)
+			&& (Controller->IsInputKeyDown(EKeys::LeftControl) || Controller->IsInputKeyDown(EKeys::RightControl)))
+		{
+			KeyPressed(TEXT("CtrlD"));
 		}
 	}
 	RefreshLeft -= InDeltaTime;

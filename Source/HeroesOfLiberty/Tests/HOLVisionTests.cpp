@@ -490,6 +490,31 @@ bool FHOLVisionReceiversTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionViewerCampTest, "HeroesOfLiberty.Vision.ViewerCamp", UE::HeroesOfLiberty::Tests::Vision::Flags)
+bool FHOLVisionViewerCampTest::RunTest(const FString& Parameters)
+{
+	// D357, D376: the camp whose sight a player's own machine shows. INDEX_NONE: no fog for this viewer, everything in sight.
+	using namespace HOLVisionRules;
+	TestEqual(TEXT("a player: its camp"), GetViewerCamp(2, false, false), 2);
+	TestEqual(TEXT("a player of a team: its camp"), GetViewerCamp(1, false, true), 1);
+	TestEqual(TEXT("a spectator of the lobby (no camp): everything"), GetViewerCamp(INDEX_NONE, false, false), (int32)INDEX_NONE);
+	TestEqual(TEXT("defeated in a team: the team's sight"), GetViewerCamp(1, true, true), 1);
+	TestEqual(TEXT("defeated alone (free for all, Diplomacy): the whole map"), GetViewerCamp(3, true, false), (int32)INDEX_NONE);
+	TestEqual(TEXT("alone and standing: its own camp"), GetViewerCamp(3, false, false), 3);
+	// The same viewer, the server's way and the client's way (F6a's GetReceivedCamps): a viewer that shows every camp receives every camp.
+	for (int32 Camp = 0; Camp < 4; ++Camp)
+	{
+		for (int32 Flags = 0; Flags < 4; ++Flags)
+		{
+			const bool bDefeated = (Flags & 1) != 0;
+			const bool bTeam = (Flags & 2) != 0;
+			TestEqual(FString::Printf(TEXT("camp %d defeated %d team %d: what it shows is what it receives"), Camp, bDefeated, bTeam),
+				GetViewerCamp(Camp, bDefeated, bTeam) == INDEX_NONE, GetReceivedCamps(Camp, bDefeated, bTeam) == AllCamps);
+		}
+	}
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVisionExploredRunsTest, "HeroesOfLiberty.Vision.ExploredRuns", UE::HeroesOfLiberty::Tests::Vision::Flags)
 bool FHOLVisionExploredRunsTest::RunTest(const FString& Parameters)
 {

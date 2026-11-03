@@ -53,6 +53,24 @@ struct FHOLDuelOrder
 	int32 OtherSlot = INDEX_NONE;
 };
 
+/** D5 of DiplomacyInProgress.md: what a player's diplomacy command is: the stance toward a slot, or "share my vision" with it. */
+enum class EHOLDiplomacyOrderKind : uint8
+{
+	Stance,
+	Vision,
+};
+
+/** D5: a player's diplomacy command asked (UHOLCommandSubsystem::IssueDiplomacyOrder). */
+struct FHOLDiplomacyOrder
+{
+	int32 PlayerIndex = INDEX_NONE;
+	EHOLDiplomacyOrderKind Kind = EHOLDiplomacyOrderKind::Stance;
+	/** The slot the stance / the vision is toward. */
+	int32 OtherSlot = INDEX_NONE;
+	/** Stance: HOLDiplomacy::Enemy / Neutral / Ally; Vision: 1 share, 0 stop. */
+	int32 Value = 0;
+};
+
 /** T3: a player's talent pick asked (UHOLCommandSubsystem::IssueHeroTalentOrder). */
 struct FHOLHeroTalentOrder
 {
@@ -219,6 +237,16 @@ public:
 	/** Takes the duel orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
 	void ConsumeDuelOrders(TArray<FHOLDuelOrder>& OutOrders);
 
+	/**
+	 * D5 (DiplomacyInProgress.md, D369, D370): PlayerIndex's player says Value toward OtherSlot (ServerDiplomacyStance,
+	 * hol.Diplomacy.Stance) or opens / closes its vision to it (ServerDiplomacyVision, hol.Diplomacy.Vision), applied at the start of the
+	 * next step by the game state (HOLDiplomacy::SetStance / SetVision decide). Refused here as the duel orders (no player's slot, a
+	 * defeated one, the match waiting or paused).
+	 */
+	void IssueDiplomacyOrder(int32 PlayerIndex, EHOLDiplomacyOrderKind Kind, int32 OtherSlot, int32 Value);
+	/** Takes the diplomacy orders waiting (AHOLGameState, at the start of each step), in the order given. */
+	void ConsumeDiplomacyOrders(TArray<FHOLDiplomacyOrder>& OutOrders);
+
 	/** D358: drops every order of PlayerIndex still waiting (a slot just defeated). */
 	void DropOrdersOf(int32 PlayerIndex);
 
@@ -250,6 +278,8 @@ private:
 	TArray<FHOLHeroTalentOrder> PendingHeroTalentOrders;
 	/** D4: the duel commands asked, in the order given. */
 	TArray<FHOLDuelOrder> PendingDuelOrders;
+	/** D5: the diplomacy commands asked, in the order given. */
+	TArray<FHOLDiplomacyOrder> PendingDiplomacyOrders;
 	TArray<FBox> PendingNavigationChanges;
 	TArray<FHOLBlockedFootprint> PendingBlockedFootprints;
 };

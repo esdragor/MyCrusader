@@ -557,6 +557,15 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	float SlideFreeSeconds = 0.f;
 
 	/**
+	 * D641 (hol.Combat.LoopPatience): the heading (unit length, of the velocity the processor asked) it walked at last, the turning it has piled up
+	 * since (radians, every turn counted without its sign, leaking away), and how long it waits for being turned round too much: a soldier barred by
+	 * the line of its friends stands and waits for a place instead of going round the line in loops. Written by UHOLFullSpeedProcessor only.
+	 */
+	FVector2f LoopHeading = FVector2f::ZeroVector;
+	float LoopTurn = 0.f;
+	float LoopWaitSeconds = 0.f;
+
+	/**
 	 * J7c.4 loop 21 (hol.Combat.RearFlank): a melee of an attack-move held behind its own line goes round its end.
 	 * FlankWaitSeconds: how long it has been held (then, flanking: how long it has flanked); FlankSide: the end it goes to
 	 * (+1/-1 along FHOLFrontLine::Axis); FlankWalkGoal: the point its last walk was given (zero: none yet).

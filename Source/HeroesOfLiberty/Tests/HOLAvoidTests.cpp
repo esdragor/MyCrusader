@@ -149,4 +149,85 @@ bool FHOLAvoidFootprintTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidLoopPatienceTest, "HeroesOfLiberty.Movement.LoopPatience",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAvoidLoopPatienceTest::RunTest(const FString& Parameters)
+{
+	// D641: a melee barred by the line of its friends waits instead of going round it in loops (20 Hz steps, 270 degrees, 2.5 s, 4 s leak).
+	const double Dt = 0.05;
+	const auto Step = [Dt](HOLAvoid::FLoopPatience& State, const double Degrees, const double Speed = 697.)
+	{
+		return HOLAvoid::StepLoopPatience(State, FVector2D(Speed, 0.).GetRotated(Degrees), Dt, 270., 2.5, 4.);
+	};
+	{
+		HOLAvoid::FLoopPatience State;
+		bool bHeld = false;
+		for (int32 Index = 0; Index < 200; ++Index)
+		{
+			bHeld |= Step(State, 0.);
+		}
+		TestFalse(TEXT("a straight walk never waits"), bHeld);
+	}
+	{
+		// A detour round an obstacle and back: 60 degrees out, then back, over a second: no wait.
+		HOLAvoid::FLoopPatience State;
+		bool bHeld = false;
+		for (int32 Index = 0; Index < 80; ++Index)
+		{
+			bHeld |= Step(State, Index < 10 ? Index * 6. : Index < 40 ? 60. : Index < 50 ? 60. - (Index - 40) * 6. : 0.);
+		}
+		TestFalse(TEXT("a detour out and back does not wait"), bHeld);
+	}
+	{
+		// A loop: the heading turns 12 degrees a step (a circle in 1.5 s): it waits before the circle is closed.
+		HOLAvoid::FLoopPatience State;
+		int32 HeldAt = INDEX_NONE;
+		for (int32 Index = 0; Index < 40 && HeldAt == INDEX_NONE; ++Index)
+		{
+			if (Step(State, Index * 12.))
+			{
+				HeldAt = Index;
+			}
+		}
+		TestTrue(TEXT("a loop makes it wait"), HeldAt != INDEX_NONE);
+		TestTrue(TEXT("before it closes the circle"), HeldAt != INDEX_NONE && HeldAt * 12 < 330);
+		// It waits 2.5 s (50 steps), whatever it is asked, then walks again with an empty pile.
+		int32 Steps = 0;
+		while (Step(State, 0.) && Steps < 200)
+		{
+			++Steps;
+		}
+		TestTrue(TEXT("the wait lasts 2.5 s"), Steps >= 49 && Steps <= 51);
+		TestFalse(TEXT("then it walks"), Step(State, 0.));
+	}
+	{
+		// A sway to and fro (a U-turn every 4 steps) piles up through its reversals.
+		HOLAvoid::FLoopPatience State;
+		bool bHeld = false;
+		for (int32 Index = 0; Index < 30; ++Index)
+		{
+			bHeld |= Step(State, (Index / 4) % 2 == 0 ? 0. : 180.);
+		}
+		TestTrue(TEXT("a sway to and fro makes it wait"), bHeld);
+	}
+	{
+		// Standing (asked less than 50 cm/s) keeps its heading and piles nothing; off at 0 degrees.
+		HOLAvoid::FLoopPatience State;
+		bool bHeld = false;
+		for (int32 Index = 0; Index < 100; ++Index)
+		{
+			bHeld |= Step(State, Index * 30., 10.);
+		}
+		TestFalse(TEXT("standing piles no turn"), bHeld);
+		HOLAvoid::FLoopPatience Off;
+		bool bOffHeld = false;
+		for (int32 Index = 0; Index < 100; ++Index)
+		{
+			bOffHeld |= HOLAvoid::StepLoopPatience(Off, FVector2D(697., 0.).GetRotated(Index * 40.), Dt, 0., 2.5, 4.);
+		}
+		TestFalse(TEXT("0 degrees: off"), bOffHeld);
+	}
+	return true;
+}
+
 #endif

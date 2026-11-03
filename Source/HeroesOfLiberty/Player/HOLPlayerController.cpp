@@ -12,6 +12,7 @@
 #include "Commands/HOLPlayerOrders.h"
 #include "Containers/Ticker.h"
 #include "Dev/HOLTestHooks.h"
+#include "Match/HOLDiplomacyRules.h"
 #include "Engine/Engine.h"
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/HUD.h"
@@ -493,7 +494,7 @@ namespace UE::HeroesOfLiberty::Player
 	/** Q-chapelle-moine = A, without the mouse: the selected own units get the heal order on an ally (its identifier), as a right click on it would. */
 	FAutoConsoleCommand HealCommand(
 		TEXT("hol.Select.Heal"),
-		TEXT("hol.Select.Heal <UnitId>: the local player's selected units get the heal order on that ally (a Monk heals it first, the others walk to it), as the right click on it (the server checks it is not an enemy)"),
+		TEXT("hol.Select.Heal <UnitId|slot=<S>>: the local player's selected units get the heal order on that ally (slot=<S>: slot S's first unit known here) (a Monk heals it first, the others walk to it), as the right click on it (the server checks it is not an enemy)"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
 			if (Args.Num() < 1)
@@ -503,7 +504,19 @@ namespace UE::HeroesOfLiberty::Player
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				const uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+				uint32 TargetId = static_cast<uint32>(FCString::Atoi64(*Args[0]));
+				if (Args[0].StartsWith(TEXT("slot=")))
+				{
+					// A script does not know the identifiers (quick_check "net monk"): slot S's first unit known here, as hol.Select.Attack.
+					const int32 Slot = FCString::Atoi(*Args[0].RightChop(5));
+					TArray<FHOLUnitView> Views;
+					HOLUnitView::Gather(*Controller->GetWorld(), Views);
+					TargetId = 0;
+					for (const FHOLUnitView& View : Views)
+					{
+						TargetId = View.OwnerPlayer == Slot && (TargetId == 0 || View.UnitId < TargetId) ? View.UnitId : TargetId;
+					}
+				}
 				const TArray<uint32> Own = Controller->GetCommandUnits();
 				UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units heal #%u"), Own.Num(), TargetId);
 				Controller->RequestHealUnit(Own, TargetId, false);
@@ -1592,6 +1605,67 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->RequestDuelAnswer(false);
+			}
+		}));
+
+	/** D5, until the panel Diplomatie (D387): the local players say their stance toward a slot, or share their vision with it (the server decides). */
+	FAutoConsoleCommand DiplomacyStanceCommand(
+		TEXT("hol.Diplomacy.Stance"),
+		TEXT("hol.Diplomacy.Stance <Slot> <ally|neutral|enemy>: the local player says that stance toward that slot (Diplomacy mode; at once at the next step, announced to all)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Diplomacy.Stance <Slot> <ally|neutral|enemy>"));
+				return;
+			}
+			const int32 Stance = Args[1].Equals(TEXT("ally"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Ally
+				: Args[1].Equals(TEXT("neutral"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Neutral : HOLDiplomacy::Enemy;
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestStance(FCString::Atoi(*Args[0]), Stance);
+			}
+		}));
+	FAutoConsoleCommand DiplomacyVisionCommand(
+		TEXT("hol.Diplomacy.Vision"),
+		TEXT("hol.Diplomacy.Vision <Slot> <0|1>: the local player stops (0) or starts (1) sharing his vision with that slot (allies only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Diplomacy.Vision <Slot> <0|1>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestShareVision(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]) != 0);
+			}
+		}));
+	/** D5, scenarios: the server (or a solo game) sets a stance of any slot at once, as if that player had said it. No effect on a client. */
+	FAutoConsoleCommandWithWorldAndArgs DiplomacyForceCommand(
+		TEXT("hol.Diplomacy.Force"),
+		TEXT("hol.Diplomacy.Force <FromSlot> <ToSlot> <ally|neutral|enemy>: server or solo only: FromSlot says that stance toward ToSlot, at once (scenarios)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+			if (Args.Num() < 3 || !GameState)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Diplomacy.Force <FromSlot> <ToSlot> <ally|neutral|enemy> (in a match, on the server)"));
+				return;
+			}
+			const int32 Stance = Args[2].Equals(TEXT("ally"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Ally
+				: Args[2].Equals(TEXT("neutral"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Neutral : HOLDiplomacy::Enemy;
+			GameState->ApplyStance(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]), Stance);
+		}));
+	/** D5: the stances as this machine has them (a dedicated server too), one line per pair: the check that the server and the clients agree. */
+	FAutoConsoleCommandWithWorld DiplomacyReportCommand(
+		TEXT("hol.Diplomacy.Report"),
+		TEXT("hol.Diplomacy.Report: logs the stance, the relation and the shared vision of each pair of players as this machine has them"),
+		FConsoleCommandWithWorldDelegate::CreateLambda([](UWorld* World)
+		{
+			if (const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr)
+			{
+				GameState->ReportDiplomacy();
 			}
 		}));
 
@@ -3893,6 +3967,23 @@ void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Reso
 	}
 }
 
+void AHOLPlayerController::RequestPanelTribute(const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (IsSpectator() || !HOLPlayerState)
+	{
+		return;
+	}
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
+	{
+		if (It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->GetTypeName() == HOLBuildingTypeNames::Market && It->IsFinished())
+		{
+			ServerTribute(*It, Receiver, Resource, Amount);
+			return;
+		}
+	}
+}
+
 void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	if (IsSpectator())
@@ -4721,6 +4812,45 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 	if (!IsSpectator())
 	{
 		ServerDuelAnswer(bAccept);
+	}
+}
+
+void AHOLPlayerController::RequestStance(const int32 TargetSlot, const int32 Stance)
+{
+	if (!IsSpectator())
+	{
+		ServerDiplomacyStance(TargetSlot, Stance);
+	}
+}
+
+void AHOLPlayerController::RequestShareVision(const int32 TargetSlot, const bool bShare)
+{
+	if (!IsSpectator())
+	{
+		ServerDiplomacyVision(TargetSlot, bShare);
+	}
+}
+
+void AHOLPlayerController::ServerDiplomacyStance_Implementation(const int32 TargetSlot, const int32 Stance)
+{
+	// The player's own slot only (D288); the target, the stance and the mode are checked by HOLDiplomacy::SetStance at the next step.
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d stance %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), Stance, TargetSlot);
+		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Stance, TargetSlot, Stance);
+	}
+}
+
+void AHOLPlayerController::ServerDiplomacyVision_Implementation(const int32 TargetSlot, const bool bShare)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld()->GetSubsystem<UHOLCommandSubsystem>();
+	if (HOLPlayerState && Commands)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Diplomacy order: slot %d vision %d toward slot %d queued"), HOLPlayerState->GetPlayerIndex(), bShare ? 1 : 0, TargetSlot);
+		Commands->IssueDiplomacyOrder(HOLPlayerState->GetPlayerIndex(), EHOLDiplomacyOrderKind::Vision, TargetSlot, bShare ? 1 : 0);
 	}
 }
 

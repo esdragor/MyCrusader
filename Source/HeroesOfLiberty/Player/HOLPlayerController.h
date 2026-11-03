@@ -386,6 +386,12 @@ public:
 	/** D372: asks the server to give Amount of Resource (0 food, 1 wood, 2 stone, 3 gold) to the player at slot Receiver, from the selected Market (its own, finished); taxed. */
 	void RequestTribute(int32 Receiver, int32 Resource, int32 Amount);
 	/**
+	 * D387 (the Diplomacy panel): the same tribute without selecting anything: the player's own finished Market is found here (the panel's
+	 * button asks for it); no Market, nothing. Amount of Resource (0 food, 1 wood, 2 stone, 3 gold) to the player at Receiver, taxed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	void RequestPanelTribute(int32 Receiver, int32 Resource, int32 Amount);
+	/**
 	 * Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. bQueue
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
 	 */
@@ -519,6 +525,17 @@ public:
 	/** D4: the player answers the challenge waiting for his hero: accepted or refused (D80: final; the silence counts as a refusal). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
 	void RequestDuelAnswer(bool bAccept);
+
+	/**
+	 * D5 (DiplomacyInProgress.md, D369): the player says Stance (HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2) toward the player at TargetSlot.
+	 * Through the order queue; at the next step the server has HOLDiplomacy::SetStance decide (Diplomacy mode only), stores it, tells all.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	void RequestStance(int32 TargetSlot, int32 Stance);
+
+	/** D5 (D371): the player lets the player at TargetSlot see what he sees (bShare), or stops (allies only; the server checks it). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	void RequestShareVision(int32 TargetSlot, bool bShare);
 
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
@@ -802,6 +819,12 @@ private:
 	void ServerDuelChallenge(int32 TargetSlot);
 	UFUNCTION(Server, Reliable)
 	void ServerDuelAnswer(bool bAccept);
+
+	/** D5: the player's own slot's stance / shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. */
+	UFUNCTION(Server, Reliable)
+	void ServerDiplomacyStance(int32 TargetSlot, int32 Stance);
+	UFUNCTION(Server, Reliable)
+	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

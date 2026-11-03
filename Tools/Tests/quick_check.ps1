@@ -273,7 +273,9 @@ if ($Parts -contains "net") {
         $NetSlotName = if ($i -lt 2) { ", `"playerName`": `"$($NetNames[$i])`"" } else { "" }
         "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i$NetSlotName }"
     }
-    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
+    # The Diplomacy mode (D5 of DiplomacyInProgress.md): the stances are the server's, replicated; "net diplomacy" below makes Bob and
+    # Alice ally then break and compares what the server and both clients read. Nothing else of the part reads the mode yet (D6).
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"mode`": `"Diplomacy`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
@@ -325,6 +327,11 @@ if ($Parts -contains "net") {
     $NetPauseCheckFlag = Join-Path $TestSaved "quick_net_pause_check.flag"
     $NetPauseCheckedFlag = Join-Path $TestSaved "quick_net_pause_checked.flag"
     $NetResumedFlag = Join-Path $TestSaved "quick_net_resumed.flag"
+    # Diplomacy (D5): Bob says Ally toward Alice (his flag), Alice says Ally (allied: everyone reports), Bob breaks (everyone reports again).
+    $NetDipBobFlag = Join-Path $TestSaved "quick_net_dip_bob.flag"
+    $NetDipAlliedFlag = Join-Path $TestSaved "quick_net_dip_allied.flag"
+    $NetDipBrokenFlag = Join-Path $TestSaved "quick_net_dip_broken.flag"
+    $NetDipServerFlag = Join-Path $TestSaved "quick_net_dip_server.flag"
     $NetKingAskFlag = Join-Path $TestSaved "quick_net_king_ask.flag"
     $NetKingBornFlag = Join-Path $TestSaved "quick_net_king_born.flag"
     $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
@@ -335,7 +342,9 @@ if ($Parts -contains "net") {
     $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
     else { @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
         "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
-        "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+        "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport",
+        "waitfile $NetDipAlliedFlag 120", "wait 2", "mark net diplomacy allied", "hol.Diplomacy.Report", "signal $NetDipServerFlag", "waitfile $NetDipBrokenFlag 120", "wait 2", "mark net diplomacy broken", "hol.Diplomacy.Report",
+        "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") }) +
@@ -388,6 +397,38 @@ if ($Parts -contains "net") {
             "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120", "wait 1", "hol.Units.Where 1", "hol.Heal.Report", "wait 3", "hol.Units.Where 1", "hol.Heal.Report",
             "waitfile $(Join-Path $TestSaved "quick_net_monk_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120",
             "hol.Units.Remove 0 9000 1500 1",
+            # The Monk heals a HERO (maximum 558, above the 256 the wire carries as exact points: his health comes as a share and from the hero sheet):
+            # a Monk beside Bob's hero (14100, 300), everything of Bob wounded to 30 % by client 1, 6 s of heal, the Monk removed (the health
+            # stops changing), then the server and both clients read the hero's health points: the same number everywhere.
+            "mark net monk hero", "hol.Units.Spawn 1 14100 300 1 Monk 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_monkhero_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkhero_wounded.flag") 120", "wait 6", "hol.Units.Remove 14100 300 400 1 Monk", "wait 3", "hol.Units.Where 1",
+            "signal $(Join-Path $TestSaved "quick_net_monkhero_stopped.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkhero_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monkhero_done2.flag") 120",
+            # The "heal" command (the right click on an ally) over the network: a Monk of Bob among his wounded units (the nearest wounded one
+            # would be its natural target); client 1 selects that Monk and orders the heal of Bob's first unit (hol.Select.Heal slot=1, the
+            # real RequestHealUnit): the server heals the ordered unit first ("(ordered)"), both clients see its health rise.
+            "mark net monk order", "hol.Units.Spawn 1 15250 -3000 1 Monk 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_monkorder_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkorder_asked.flag") 120", "wait 3", "hol.Units.Where 1",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkorder_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monkorder_done2.flag") 120",
+            "hol.Units.Remove 15250 -3000 800 1 Monk",
+            # The Vow of Poverty (-20 % on the Monk's cost) over the network: client 1 has a Chapel (the server's cheat), the technology (the
+            # cheat, as researched), and queues a Monk (the real order, produced in 2 s here): the server charges 80 food + 80 gold, and the
+            # stocks every machine has agree (the book of each player state: "Market stock slot").
+            "mark net monk vow", "hol.Prod.BuildTime 2", "waitfile $(Join-Path $TestSaved "quick_net_monkvow_asked.flag") 120", "wait 1", "hol.Market.Report",
+            "signal $(Join-Path $TestSaved "quick_net_monkvow_server.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkvow_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monkvow_done2.flag") 120",
+            "hol.Prod.BuildTime 0", "hol.Units.Remove -2500 3000 3000 1 Monk",
+            # The Ram's health over the network (Siege S2, 400 hp > 256 hp of the wire's 8 bits, sent as a share of its maximum): a Ram
+            # of Bob (slot 1) at (4000, 9000); client 1 (Bob) wounds his units to 50 % (the real cheat): the server's exact 200/400,
+            # then each client's reading of it (3 times 1 s apart).
+            "mark net siege", "hol.Units.Spawn 1 4000 9000 1 Ram 100", "hol.Units.Spawn 1 2000 9000 1 Mangonel 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_siege_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120", "wait 1", "hol.Units.Where 1",
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120",
+            # Reinforced Ram (S5) asked by client 1 (the real cheat, the server's AddTechnology): the Ram gains 40 (240/440 on the server);
+            # Bob alone knows his technology (he reads 240/440), Alice reads the same 240 points against the table's 400.
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_tech.flag") 120", "wait 1", "hol.Units.Where 1",
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_end1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_end2.flag") 120",
+            "hol.Units.Remove 4000 9000 800 1",
             # Duel D5 (the circle drawn): a duel accepted at once between the two heroes (the development door, the heroes stand far apart:
             # the circle is centred between them); both clients draw it from the replicated sheets ("Duel rings:" of hol.Select.Report).
             # The duel ends with the heroes' removal below (health 0).
@@ -2580,6 +2621,15 @@ if ($NetListening) {
         } else {
             $NetSteps += "waitfile $NetPausedFlag 300", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "capture qcnet_2_paused", "signal $NetAliceResumeTriedFlag", "waitfile $NetResumedFlag 120"
         }
+        # Diplomacy (D5, net diplomacy): Bob (slot 1) says Ally toward Alice (slot 0), then Alice toward Bob: allied, everybody reports;
+        # Bob breaks (Enemy toward Alice), everybody reports again. The server and both clients must read the same stances.
+        if ($Client -eq 1) {
+            $NetSteps += "hol.Diplomacy.Stance 0 ally", "wait 2", "signal $NetDipBobFlag", "waitfile $NetDipAlliedFlag 120", "wait 2", "hol.Diplomacy.Report",
+                "waitfile $NetDipServerFlag 120", "hol.Diplomacy.Stance 0 enemy", "wait 2", "hol.Diplomacy.Report", "signal $NetDipBrokenFlag"
+        } else {
+            $NetSteps += "waitfile $NetDipBobFlag 120", "hol.Diplomacy.Stance 1 ally", "wait 2", "hol.Diplomacy.Report", "signal $NetDipAlliedFlag",
+                "waitfile $NetDipBrokenFlag 120", "wait 2", "hol.Diplomacy.Report"
+        }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
                 "frames 2", "hol.Select.Report", "capture qcnet_${Client}_slot$Slot"
@@ -2757,6 +2807,37 @@ if ($NetListening) {
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120" }
         $NetSteps += "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "hol.Heal.Report", "signal $(Join-Path $TestSaved "quick_net_monk_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120" }
+        # The Monk beside the hero (see the server's sequence): client 1 wounds everything of Bob to 30 %; once the server has removed the
+        # Monk, each client reads Bob's units (the hero's health points).
+        $NetSteps += "mark monkhero"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_spawned.flag") 120", "hol.Cheat.Wound 30", "wait 0.3", "signal $(Join-Path $TestSaved "quick_net_monkhero_wounded.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_wounded.flag") 120" }
+        $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_stopped.flag") 120", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_monkhero_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkhero_done2.flag") 120" }
+        # The heal command: client 1 selects the new Monk and orders the heal of Bob's first unit, both clients read Bob's units twice.
+        $NetSteps += "mark monkorder"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkorder_spawned.flag") 120", "hol.Cheat.Wound 50", "wait 1", "hol.Select.Type Monk last", "wait 0.5", "hol.Select.Heal slot=1", "signal $(Join-Path $TestSaved "quick_net_monkorder_asked.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkorder_asked.flag") 120" }
+        $NetSteps += "wait 1", "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_monkorder_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkorder_done2.flag") 120" }
+        # The Vow of Poverty (see the server's sequence): client 1 reports Bob's stock, queues a Monk with the technology, reports again.
+        $NetSteps += "mark monkvow"
+        if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.Population 40", "hol.Cheat.SpawnBuilding Chapel 1 -2500 3000", "wait 2", "hol.Cheat.Technology VowOfPoverty", "wait 1",
+            "hol.Market.Report", "hol.Prod.Queue Monk Chapel", "wait 2", "hol.Market.Report", "signal $(Join-Path $TestSaved "quick_net_monkvow_asked.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_monkvow_server.flag") 120", "wait 1", "hol.Market.Report" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkvow_asked.flag") 120", "wait 3", "hol.Market.Report" }
+        $NetSteps += "signal $(Join-Path $TestSaved "quick_net_monkvow_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monkvow_done2.flag") 120" }
+        # The Ram's health (see the server's sequence): client 1 wounds its units to 50 % once the server has made the Ram; both
+        # clients then report the units of slot 1 (the Ram at (4000, 9000)) three times 1 s apart.
+        $NetSteps += "mark siege"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_spawned.flag") 120", "hol.Cheat.Wound 50", "wait 0.3", "signal $(Join-Path $TestSaved "quick_net_siege_wounded.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120" }
+        $NetSteps += "wait 2", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_siege_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120", "hol.Cheat.Technology ReinforcedRam", "wait 0.5", "signal $(Join-Path $TestSaved "quick_net_siege_tech.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_tech.flag") 120" }
+        $NetSteps += "wait 2", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_siege_end$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_end2.flag") 120" }
         # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
         $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
@@ -6465,6 +6546,25 @@ if ($Parts -contains "net") {
         $MatchPauses[3].Groups[2].Value -eq "1" -and $MatchPauses[3].Groups[1].Value -eq $MatchPauses[2].Groups[1].Value -and
         $MatchPauses[4].Groups[2].Value -eq "0" -and $MatchPauses[5].Groups[2].Value -eq "0" -and
         [int64]$MatchPauses[5].Groups[1].Value -gt [int64]$MatchPauses[4].Groups[1].Value
+    # D5 (net diplomacy): Bob and Alice ally then Bob breaks; the server and both clients each report twice (two pairs a report): the
+    # same four lines everywhere, the alliance read as formed (both Ally) then as broken at once (Bob Enemy: the relation Enemy, Alice's stance kept).
+    $DipLines = {
+        param($Path)
+        @(if ($Path -and (Test-Path $Path)) { Select-String -Path $Path -Pattern "Diplomacy report: (slot \d toward slot \d: .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
+    }
+    $DipServer = & $DipLines $NetServerLog
+    $DipClient1 = & $DipLines (Join-Path $TestSaved "Logs\quick_net_client1.log")
+    $DipClient2 = & $DipLines (Join-Path $TestSaved "Logs\quick_net_client2.log")
+    $DipWant = @(
+        "slot 0 toward slot 1: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
+        "slot 1 toward slot 0: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
+        "slot 0 toward slot 1: stance Ally, relation Enemy, vision 0, fires 1, adversary 1",
+        "slot 1 toward slot 0: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1")
+    $DipSays = "server $($DipServer.Count), client 1 $($DipClient1.Count), client 2 $($DipClient2.Count) lines"
+    $Checks["net diplomacy: the server and both clients read the alliance then the break ($DipSays)"] =
+        ($DipServer -join "|") -eq ($DipWant -join "|") -and ($DipClient1 -join "|") -eq ($DipWant -join "|") -and ($DipClient2 -join "|") -eq ($DipWant -join "|")
+    $DipStart = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Diplomacy report: mode Diplomacy" }).Count
+    $Checks["net diplomacy: the match is in the Diplomacy mode on the server ($DipStart reports)"] = $DipStart -eq 2
     # The pause screen (P5.3) on each client: Bob's (« Reprendre » his, at once), then hidden once resumed; Alice's
     # (« Reprendre » greyed while the timer runs, 1 to 60 s).
     foreach ($N in 1, 2) {
@@ -7023,6 +7123,109 @@ if ($Parts -contains "net") {
             $MonkChecks["client $N : the green heal line drawn by TickClient (drawn $($MonkDrawn -join ','))"] = $MonkDrawn.Count -ge 1 -and $MonkDrawn[-1] -gt 0
         }
         $AllOk = (Report "net monk" $MonkChecks) -and $AllOk
+        # The hero (maximum above 256) healed by a Monk: the health points read after the heal stopped, the same on the server and on both clients.
+        $MonkHeroChecks = [ordered]@{}
+        $HeroServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk hero")
+        $HeroHealed = @($HeroServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #\d+ \(slot $BobSlot\), health ([\d.]+)/(\d+)" | ForEach-Object { [double] $_.Matches[0].Groups[1].Value })
+        $HeroMaxSeen = @($HeroServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #\d+ \(slot $BobSlot\), health [\d.]+/(\d+)" | ForEach-Object { [int] $_.Matches[0].Groups[1].Value })
+        $MonkHeroChecks["server: the Monk heals a unit of more than 256 hp (the hero) ($($HeroHealed.Count) heal lines, first from $($HeroHealed[0]) hp, maximum $($HeroMaxSeen | Select-Object -Last 1))"] = $HeroHealed.Count -ge 1 -and $HeroMaxSeen[-1] -gt 256
+        # The health of the unit above 256 maximum in a "Units where" line of slot 1 (the last report of the section): "hp N/M".
+        function Get-HeroHp($Lines) {
+            $Reports = @($Lines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+            if (-not $Reports.Count) { return $null }
+            foreach ($Unit in ($Reports[-1] -split "; ")) { if ($Unit -match "^#\d+ slot $BobSlot .*hp (\d+)/(\d+)" -and [int] $Matches[2] -gt 256) { return [int] $Matches[1] } }
+            return $null
+        }
+        $HeroServerHp = Get-HeroHp $HeroServerLines
+        $MonkHeroChecks["server: the hero's health after 6 s of heal from 30 % of 558 (167) is above 180 (hp $HeroServerHp)"] = $null -ne $HeroServerHp -and $HeroServerHp -gt 180
+        foreach ($NetClient in $NetClients) {
+            $HeroClientHp = Get-HeroHp @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monkhero")
+            $MonkHeroChecks["client $($NetClient.Client) : the hero's health points are the server's (client $HeroClientHp, server $HeroServerHp)"] = $null -ne $HeroClientHp -and $HeroClientHp -eq $HeroServerHp
+        }
+        $AllOk = (Report "net monk hero" $MonkHeroChecks) -and $AllOk
+        # The heal command: the server heals the ordered unit first, both clients see its health rise (or full) over the two reports.
+        $MonkOrderChecks = [ordered]@{}
+        $OrderServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk order")
+        $OrderedHeals = @($OrderServerLines | Select-String -Pattern "Heal: step \d+ #\d+ \(slot $BobSlot\) heals #(\d+) \(slot $BobSlot\), health ([\d.]+)/\d+ \(ordered\)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+        $OrderedId = if ($OrderedHeals.Count) { $OrderedHeals[0] } else { "" }
+        $MonkOrderChecks["server: the Monk heals the unit it was ordered to, first ((ordered) lines $($OrderedHeals.Count), target #$OrderedId)"] = $OrderedHeals.Count -ge 1
+        foreach ($NetClient in $NetClients) {
+            $OrderLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monkorder")
+            $OrderHp = @($OrderLines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object {
+                $Found = "gone"
+                foreach ($Unit in ($_.Matches[0].Groups[1].Value -split "; ")) {
+                    if ($OrderedId -and $Unit -match "^#$OrderedId slot $BobSlot ") { $Found = if ($Unit -match "hp (\d+)/") { [int] $Matches[1] } else { "full" } }
+                }
+                $Found
+            })
+            $First = if ($OrderHp.Count) { $OrderHp[0] } else { "none" }
+            $Last = if ($OrderHp.Count) { $OrderHp[-1] } else { "none" }
+            $MonkOrderChecks["client $($NetClient.Client) : the ordered unit #$OrderedId rises over the two reports (first $First, last $Last)"] = $OrderHp.Count -ge 2 -and $First -is [int] -and ($Last -eq "full" -or ($Last -is [int] -and $Last -gt $First))
+        }
+        $AllOk = (Report "net monk order" $MonkOrderChecks) -and $AllOk
+        # The Vow of Poverty: a Monk costs 80 + 80 (100 + 100 less 20 %): Bob's stock falls by that between client 1's two reports, and the
+        # last stock of each machine (the server's, then the clients' after it) is the same.
+        $MonkVowChecks = [ordered]@{}
+        $VowServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net monk vow")
+        $VowQueued = @($VowServerLines | Select-String -Pattern "Production: slot $BobSlot queued Monk \(1 in the queue, F (\d+) W \d+ S \d+ G (\d+)\)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)/$($_.Matches[0].Groups[2].Value)" })
+        function Get-VowStocks($Lines) {
+            @($Lines | Select-String -Pattern "Market stock slot ${BobSlot}: food (-?\d+) wood -?\d+ stone -?\d+ gold (-?\d+)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)/$($_.Matches[0].Groups[2].Value)" })
+        }
+        $VowServerStocks = @(Get-VowStocks $VowServerLines)
+        $VowServerLast = if ($VowServerStocks.Count) { $VowServerStocks[-1] } else { "none" }
+        $MonkVowChecks["server: the Monk queued with the Vow (stock food/gold after the charge $($VowQueued -join ' '), the server's report $VowServerLast)"] = $VowQueued.Count -ge 1 -and $VowQueued[0] -eq $VowServerLast
+        foreach ($NetClient in $NetClients) {
+            $VowStocks = @(Get-VowStocks @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "monkvow"))
+            $VowLast = if ($VowStocks.Count) { $VowStocks[-1] } else { "none" }
+            # A stock reaches its owner alone (client 2 reads 0 for Bob's, by design as the technologies): only client 1's is compared.
+            if ($NetClient.Client -eq 1) {
+                $MonkVowChecks["client 1 : Bob's stock is the server's (client $VowLast, server $VowServerLast)"] = $VowStocks.Count -ge 1 -and $VowLast -eq $VowServerLast
+                $Spent = if ($VowStocks.Count -ge 3) { $Before = $VowStocks[0] -split "/"; $After = $VowStocks[1] -split "/"; "$([int] $Before[0] - [int] $After[0])/$([int] $Before[1] - [int] $After[1])" } else { "none" }
+                $MonkVowChecks["client 1 : the Monk cost 80 food + 80 gold with the Vow, not 100 + 100 (spent $Spent)"] = $Spent -eq "80/80"
+            }
+        }
+        $AllOk = (Report "net monk vow" $MonkVowChecks) -and $AllOk
+        # The Ram's health over the network (Siege S2: 400 hp, more than the 8 bits of the wire, a share of its maximum once): Bob's Ram at
+        # (4000, 9000) wounded to 50 % by Bob's cheat is 200/400 on the server; each client reads the same 200/400 in all its 3 reports.
+        $SiegeChecks = [ordered]@{}
+        $SiegeRead = {
+            param($Lines, $WantX = 4000)
+            @($Lines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object {
+                $Found = ""
+                foreach ($Unit in ($_.Matches[0].Groups[1].Value -split "; ")) {
+                    if ($Unit -match "^#\d+ slot $BobSlot at \((-?\d+), (-?\d+)\) \w+, hp (\d+)/(\d+)") {
+                        if ([Math]::Abs([int] $Matches[1] - $WantX) -le 400 -and [Math]::Abs([int] $Matches[2] - 9000) -le 400) { $Found = "$($Matches[3])/$($Matches[4])" }
+                    }
+                }
+                $Found
+            })
+        }
+        $SiegeServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege"))
+        $SiegeTruth = if ($SiegeServer.Count) { $SiegeServer[0] } else { "" }
+        $SiegeTruth2 = if ($SiegeServer.Count -ge 2) { $SiegeServer[-1] } else { "" }
+        $SiegeChecks["server: Bob's Ram wounded to 50 % reads 200/400, then 240/440 with Reinforced Ram ($($SiegeServer -join ','))"] = $SiegeTruth -eq "200/400" -and $SiegeTruth2 -eq "240/440"
+        # The Mangonel (200 hp, the other engine) at (2000, 9000) wounded by the same cheat: 100/200 on the server and on both clients in all their
+        # reports (before and after Reinforced Ram, which is the Ram's). Its own stat (Heavy Munitions) is a damage, not a health.
+        $MangonelServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege") 2000)
+        $SiegeChecks["server: Bob's Mangonel wounded to 50 % reads 100/200 in every report ($($MangonelServer -join ','))"] =
+            $MangonelServer.Count -ge 2 -and @($MangonelServer | Where-Object { $_ -ne "100/200" }).Count -eq 0
+        foreach ($NetClient in $NetClients) {
+            $MangonelSeen = @(& $SiegeRead @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "siege") 2000)
+            $SiegeChecks["client $($NetClient.Client) : the Mangonel reads 100/200 in all its $($MangonelSeen.Count) reports ($(($MangonelSeen | Select-Object -First 6) -join ','))"] =
+                $MangonelSeen.Count -ge 5 -and @($MangonelSeen | Where-Object { $_ -ne "100/200" }).Count -eq 0
+        }
+        foreach ($NetClient in $NetClients) {
+            $SiegeSeen = @(& $SiegeRead @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "siege"))
+            $First = @($SiegeSeen | Select-Object -First 3)
+            $Last = @($SiegeSeen | Select-Object -Last 2)
+            $SiegeChecks["client $($NetClient.Client) : the Ram reads the server's $SiegeTruth in its first 3 reports ($($First -join ','))"] =
+                $First.Count -eq 3 -and $SiegeTruth -ne "" -and @($First | Where-Object { $_ -ne $SiegeTruth }).Count -eq 0
+            # Bob (the owner) knows his Reinforced Ram: 240/440; Alice, who is not told, reads the same 240 points against the table's 400.
+            $WantLast = if ($NetClient.Client -eq 1) { "240/440" } else { "240/400" }
+            $SiegeChecks["client $($NetClient.Client) : after Reinforced Ram the Ram reads $WantLast in its last 2 reports ($($Last -join ','))"] =
+                $SiegeSeen.Count -ge 5 -and $Last.Count -eq 2 -and @($Last | Where-Object { $_ -ne $WantLast }).Count -eq 0
+        }
+        $AllOk = (Report "net siege" $SiegeChecks) -and $AllOk
     }
 }
 
@@ -7339,6 +7542,102 @@ if ($Parts -contains "aisiege") {
     $AllOk = (Report "aisiege" $Checks) -and $AllOk
 }
 
+# The "aitech" part (TechnologiesInProgress.md T7, ~4 min): a Hard, a Normal and an Easy AI slot on Plain (fixed time step, no window), heroes at tier 2; by the
+# provisional setting hol.AI.TechMinLevel (set to 1 here; its default is 2, Hard only) Hard and Normal research the economy lines (the order goes through the real production: "queued research" then
+# "Technology: slot N researched"), Easy never does. Lines "AI slot N step S: research X" and the production's own are read from the server's log.
+if ($Parts -contains "aitech") {
+    $TechLog = Join-Path $TestSaved "Logs\quick_aitech.log"
+    $TechConfig = Join-Path $TestSaved "quick_aitech.json"
+    $TechSequence = Join-Path $TestSaved "quick_aitech.seq"
+    Remove-Item $TechLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $TechConfig @("AI", "AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal", "Easy")
+    $TechLines = @("hol.Simulation.SyncNavBuild 1", "hol.AI.TechMinLevel 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Hero.SetXP 2 1300")
+    for ($Second = 0; $Second -lt 600; $Second += 10) { $TechLines += "wait 10" }
+    $TechLines += "quit"
+    $TechLines | Set-Content -Encoding utf8 $TechSequence
+    $TechPort = Get-AITestPort
+    $TechArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$TechPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$TechConfig`" -abslog=`"$TechLog`" -ExecCmds=`"hol.Test.Run $TechSequence`""
+    $TechProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $TechArguments -PassThru -WindowStyle Hidden
+    $TechTimedOut = -not $TechProcess.WaitForExit(480000)
+    if ($TechTimedOut) { Stop-Process -Id $TechProcess.Id -Force -ErrorAction SilentlyContinue }
+    $TechText = if (Test-Path $TechLog) { Get-Content $TechLog } else { @() }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself"] = -not $TechTimedOut
+    $Checks["scripts compiled"] = @(Get-ScriptErrors $TechLog).Count -eq 0
+    $Checks["sequence ran to its end"] = -not ($TechText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
+    $Checks["slot 0 is Hard, slot 1 Normal, slot 2 Easy"] = [bool]($TechText | Select-String -Pattern "AI slot 0 step \d+: level Hard" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 1 step \d+: level Normal" -Quiet) -and [bool]($TechText | Select-String -Pattern "AI slot 2 step \d+: level Easy" -Quiet)
+    foreach ($TechSlot in 0, 1) {
+        $Ordered = @($TechText | Select-String -Pattern "AI slot $TechSlot step \d+: research \w+")
+        $Checks["slot $TechSlot orders a research ($($Ordered.Count) orders, the first: $(if ($Ordered.Count) { $Ordered[0].Line.Trim() } else { 'none' }))"] = $Ordered.Count -ge 1
+        $Checks["slot $TechSlot's research is accepted by the production"] = [bool]($TechText | Select-String -Pattern "slot $TechSlot queued research \w+" -Quiet) -and [bool]($TechText | Select-String -Pattern "Technology: slot $TechSlot researched" -Quiet)
+        $Refused = @($TechText | Select-String -Pattern "slot $TechSlot cannot research")
+        $Checks["slot $TechSlot's production refuses none ($($Refused.Count))"] = $Refused.Count -eq 0
+    }
+    $Checks["Easy never researches"] = -not ($TechText | Select-String -Pattern "AI slot 2 step \d+: research" -Quiet) -and -not ($TechText | Select-String -Pattern "Technology: slot 2 researched" -Quiet)
+    $AllOk = (Report "aitech" $Checks) -and $AllOk
+}
+
+# The "aiwave" part (SiegeInProgress.md S6, ~3 min): the wave of a Hard AI takes its engines. A Hard (slot 0) and a Normal AI on Plain (fixed time
+# step, no window), heroes at tier 2; slot 0 is given 10 Spearmen, 2 Rams and a Mangonel at its base (ids read from Units.Where before / after),
+# then its units are sampled every 5 s from 290 s to 520 s of game time. Read from the log: "attack launched with N soldiers" (N counts the engines),
+# every engine has left home (>= 5000 cm), and no engine is ever in front of the escort (its advance toward the enemy centre never beyond the front-most Spearman's
+# + 100 cm, while 3 Spearmen or more of the escort still live; the escort's spread is reported).
+if ($Parts -contains "aiwave") {
+    $WaveLog = Join-Path $TestSaved "Logs\quick_aiwave.log"
+    $WaveConfig = Join-Path $TestSaved "quick_aiwave.json"
+    $WaveSequence = Join-Path $TestSaved "quick_aiwave.seq"
+    Remove-Item $WaveLog -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $WaveConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
+    $WaveLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Units.Where 0",
+        "hol.Units.Spawn 10 -13000 0 0 Spearman 300", "hol.Units.Spawn 2 -13000 0 0 Ram 300", "hol.Units.Spawn 1 -13000 0 0 Mangonel 300", "wait 1", "hol.Units.Where 0")
+    for ($Second = 0; $Second -lt 285; $Second += 5) { $WaveLines += "wait 5" }
+    for ($Second = 290; $Second -le 520; $Second += 5) { $WaveLines += "wait 5"; $WaveLines += "hol.Units.Where 0" }
+    $WaveLines += "quit"
+    $WaveLines | Set-Content -Encoding utf8 $WaveSequence
+    $WavePort = Get-AITestPort
+    $WaveArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$WavePort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$WaveConfig`" -abslog=`"$WaveLog`" -ExecCmds=`"hol.Test.Run $WaveSequence`""
+    $WaveProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $WaveArguments -PassThru -WindowStyle Hidden
+    $WaveTimedOut = -not $WaveProcess.WaitForExit(480000)
+    if ($WaveTimedOut) { Stop-Process -Id $WaveProcess.Id -Force -ErrorAction SilentlyContinue }
+    $WaveText = if (Test-Path $WaveLog) { Get-Content $WaveLog } else { @() }
+    $Checks = [ordered]@{}
+    $Checks["server quit by itself"] = -not $WaveTimedOut
+    $Checks["scripts compiled"] = @(Get-ScriptErrors $WaveLog).Count -eq 0
+    $Checks["sequence ran to its end"] = -not ($WaveText | Select-String -Pattern "Test sequence: timeout at step" -Quiet)
+    # The units of slot 0 at each sample: id -> (x, y).
+    $Samples = @($WaveText | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
+    $Parse = { param($Line) $Map = @{}; foreach ($Match in [regex]::Matches($Line, "#(\d+) slot \d+ at \((-?\d+), (-?\d+)\)")) { $Map[[int]$Match.Groups[1].Value] = @([double]$Match.Groups[2].Value, [double]$Match.Groups[3].Value) }; $Map }
+    $Before = if ($Samples.Count -ge 1) { & $Parse $Samples[0] } else { @{} }
+    $After = if ($Samples.Count -ge 2) { & $Parse $Samples[1] } else { @{} }
+    $NewIds = @($After.Keys | Where-Object { -not $Before.ContainsKey($_) } | Sort-Object)
+    $Checks["13 units given to slot 0 ($($NewIds.Count))"] = $NewIds.Count -eq 13
+    $Escort = @($NewIds | Select-Object -First 10)
+    $Engines = @($NewIds | Select-Object -Skip 10)
+    $Launch = $WaveText | Select-String -Pattern "AI slot 0 step (\d+): attack launched with (\d+) soldiers" | Select-Object -First 1
+    $Checks["Hard's wave is launched ($(if ($Launch) { $Launch.Line -replace '^.*step', 'step' } else { 'no wave' }))"] = [bool]$Launch
+    if ($Samples.Count -ge 4 -and $Engines.Count -eq 3) {
+        $Start = @(-13000.0, 0.0); $Target = @(14800.0, 0.0)
+        $Direction = @(($Target[0] - $Start[0]), ($Target[1] - $Start[1])); $Length = [math]::Sqrt($Direction[0] * $Direction[0] + $Direction[1] * $Direction[1])
+        $Advance = { param($Point) (($Point[0] - $Start[0]) * $Direction[0] + ($Point[1] - $Start[1]) * $Direction[1]) / $Length }
+        $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0
+        foreach ($Sample in $Samples | Select-Object -Skip 2) {
+            $Units = & $Parse $Sample
+            $Live = @($Escort | Where-Object { $Units.ContainsKey($_) })
+            $EngineLive = @($Engines | Where-Object { $Units.ContainsKey($_) })
+            foreach ($Id in $EngineLive) { $MaxEngine[$Id] = [math]::Max([double]$MaxEngine[$Id], (& $Advance $Units[$Id])) }
+            if ($Live.Count -ge 3) {
+                $Front = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Maximum).Maximum; $Back = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Minimum).Minimum; $Spread = [math]::Max($Spread, $Front - $Back)
+                $Compared++
+                foreach ($Id in $EngineLive) { if ((& $Advance $Units[$Id]) -gt $Front + 100) { $Ahead += "#$Id +$([int]((& $Advance $Units[$Id]) - $Front))" } }
+            }
+        }
+        $Checks["every engine has left home (best advance: $(($Engines | ForEach-Object { '#' + $_ + ' ' + [int]$MaxEngine[$_] }) -join ', '))"] = @($Engines | Where-Object { $MaxEngine[$_] -ge 5000 }).Count -eq 3
+        $Checks["no engine in front of the escort's front-most Spearman in $Compared samples (escort strung out over at most $([int]$Spread) cm; ahead: $(($Ahead | Select-Object -First 4) -join ', '))"] = $Compared -gt 0 -and $Ahead.Count -eq 0
+    }
+    else { $Checks["samples and engines found ($($Samples.Count) samples, $($Engines.Count) engines)"] = $false }
+    $AllOk = (Report "aiwave" $Checks) -and $AllOk
+}
+
 # The "netai" part (IA0.5 B2, IA0.5-Q1 B, Q2 B): the AI's brain on a dedicated server with two clients. The server of
 # "aiserver" (the editor in server mode on Plain, 5 starting Peasants for everyone) with Alice (slot 0) and Bob (slot 1)
 # named in the config (the match waits for them, R3.9), and the AI in a third slot (slot 2: Plain has 8 places, 270 deg).
@@ -7616,6 +7915,107 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     $FogNet = $(if ($NetFogBack) { $FogNetLines | Where-Object { $_.Matches[0].Groups[1].Value -match "^active, groups [1-9]" } } else { $FogNetLines }) | Select-Object @FogNetPick | ForEach-Object { $_.Matches[0].Groups[1].Value }
     $Checks["server : fog net $(if ($NetFogOn) { 'active, a group per set of camps' } else { 'off' }) ($FogNet)"] = [bool]$FogNet -and $(if ($NetFogOn) { $FogNet -match "^active, groups [1-9]" } else { $FogNet -match "^off" })
     $AllOk = (Report $NetFogPart $Checks) -and $AllOk
+}
+
+# The "netspec" part (D357, D376), after "netfog": a player defeated alone (free for all) becomes a spectator and keeps its connection.
+# The server (as "netfog", the fog Normal) with Alice (slot 0), Bob (slot 1) and an AI (slot 2, so that the match goes on once Bob is
+# out). Bob's client, 6 s in, reports what it holds (own side only: the starts are 300 m apart), has himself defeated
+# (hol.Victory.Defeat 1, the cheat of the server), still connected, then reports again: his client now holds the whole map (the
+# centres of slots 0 and 2, the units of both, his fog line "no camp, everything in sight"). Alice's client keeps her fog: it never
+# holds the AI's centre, whatever Bob became.
+# "netspecteam": the same, but Bob and the AI are one team (team 2) against Alice (team 1): defeated in a team, Bob keeps his team's sight
+# (the AI ally's side, his fog line "camp N", not "no camp") and still does not hold Alice's centre.
+foreach ($SpecPart in "netspec", "netspecteam") {
+    if (-not ($Parts -contains $SpecPart)) { continue }
+    $SpecTeam = $SpecPart -eq "netspecteam"
+    $SpecServerLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_server.log"
+    $SpecConfig = Join-Path $TestSaved "quick_${SpecPart}.json"
+    $SpecServerSequence = Join-Path $TestSaved "quick_${SpecPart}_server.seq"
+    Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_${SpecPart}_client*.log"), (Join-Path $TestSaved "quick_${SpecPart}_*.flag") -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $SpecConfig @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    if ($SpecTeam) {
+        (Get-Content $SpecConfig -Raw) -replace '"colorIndex": 0,', '"colorIndex": 0, "team": 1,' -replace '"colorIndex": 1,', '"colorIndex": 1, "team": 2,' -replace '"colorIndex": 2 }', '"colorIndex": 2, "team": 2 }' |
+            Set-Content -Encoding ascii $SpecConfig
+    }
+    $SpecDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${SpecPart}_done$_.flag" })
+    @("waitplayers 2", "mark $SpecPart", "waitfile $($SpecDone[0]) 240", "waitfile $($SpecDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $SpecServerSequence
+    $SpecPort = Get-AITestPort
+    $SpecServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SpecPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SpecConfig`" -abslog=`"$SpecServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $SpecServerSequence`""
+    $SpecServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SpecServerArguments -PassThru -WindowStyle Hidden
+    $SpecListening = $false
+    $Deadline = (Get-Date).AddSeconds(240)
+    while (-not $SpecListening -and (Get-Date) -lt $Deadline -and -not $SpecServer.HasExited) {
+        Start-Sleep -Milliseconds 500
+        $SpecListening = (Test-Path $SpecServerLog) -and (Select-String -Path $SpecServerLog -Pattern "listening on port" -Quiet)
+    }
+    $SpecClients = @()
+    if ($SpecListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_${SpecPart}_client$Client.seq"
+            $SpecReports = @("hol.Buildings.Report", "hol.Units.Report", "hol.HUD.Report")
+            $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $SpecPart", "wait 6") + $SpecReports
+            if ($Client -eq 1) {
+                # Bob: defeated (his banner), then the same reports once the server has widened his connection.
+                $Steps += @("hol.Victory.Defeat 1", "waitlog End banner: Defeat", "wait 4", "mark ${SpecPart}after") + $SpecReports + @("wait 2", "hol.Units.Report")
+            }
+            else {
+                $Steps += @("wait 10", "mark ${SpecPart}after") + $SpecReports
+            }
+            $Steps += @("signal $($SpecDone[$Client - 1])", "mark end", "quit")
+            $Steps | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $SpecClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $SpecListening
+    foreach ($SpecClient in $SpecClients) {
+        $TimedOut = -not $SpecClient.Process.WaitForExit(240000)
+        if ($TimedOut) { Stop-Process -Id $SpecClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $N = $SpecClient.Client
+        $Lines = if (Test-Path $SpecClient.Log) { Get-Content $SpecClient.Log } else { @() }
+        $Checks["client $N : sequence done"] = (-not $TimedOut) -and [bool]($Lines | Select-String -Pattern "Test mark: end" -Quiet)
+        $BuildingsOf = { param($Mark) @(Get-MarkedLines $Lines $Mark | Select-String -Pattern "Building report: MainCentre of slot (\d+)" | ForEach-Object { [int]$_.Matches[0].Groups[1].Value } | Sort-Object -Unique) }
+        $UnitsOf = { param($Mark) $Last = Get-MarkedLines $Lines $Mark | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
+            @([regex]::Matches("$Last", "of slot (\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique) }
+        $FogOf = { param($Mark) $L = Get-MarkedLines $Lines $Mark | Select-String -Pattern "HUD fog: (.*)$" | Select-Object -Last 1; if ($L) { $L.Matches[0].Groups[1].Value } else { "" } }
+        $BeforeBuildings = & $BuildingsOf $SpecPart
+        $AfterBuildings = & $BuildingsOf "${SpecPart}after"
+        $AfterUnits = & $UnitsOf "${SpecPart}after"
+        $AfterFog = & $FogOf "${SpecPart}after"
+        if ($N -eq 1 -and $SpecTeam) {
+            $Checks["client 1 (Bob) : before, his team's centres (own and the AI ally's), not Alice's ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -notcontains 0) -and ($BeforeBuildings -contains 1)
+            $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
+            $Checks["client 1 (Bob) : defeated in a team, keeps his team's sight, not Alice's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 2) -and -not ($AfterBuildings -contains 0)
+            $Checks["client 1 (Bob) : his fog line is his team's, not the whole map ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
+        }
+        elseif ($N -eq 1) {
+            $Checks["client 1 (Bob) : before, his own centre only ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -join '|') -eq "1"
+            $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
+            $Checks["client 1 (Bob) : spectator holds the centres of slots 0 and 2 ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and ($AfterBuildings -contains 2)
+            $Checks["client 1 (Bob) : spectator holds the units of slots 0 and 2 ($($AfterUnits -join ','))"] = ($AfterUnits -contains 0) -and ($AfterUnits -contains 2)
+            $Checks["client 1 (Bob) : his fog line says the whole map is in sight ($AfterFog)"] = $AfterFog -match "no camp, everything in sight"
+        }
+        else {
+            $Checks["client 2 (Alice) : keeps her fog, never holds the AI's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and -not ($AfterBuildings -contains 2) -and -not ($AfterBuildings -contains 1)
+            $Checks["client 2 (Alice) : her own camp's fog line ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
+        }
+    }
+    $SpecServerTimedOut = -not $SpecServer.WaitForExit($(if ($SpecClients.Count) { 30000 } else { 1000 }))
+    if ($SpecServerTimedOut) { Stop-Process -Id $SpecServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $SpecServerTimedOut
+    $SpecLog = if (Test-Path $SpecServerLog) { Get-Content $SpecServerLog } else { @() }
+    $Checks["server : slot 1 defeated by the cheat, the match goes on (the AI $(if ($SpecTeam) { 'ally' } else { 'and Alice' }) stands)"] = [bool]($SpecLog | Select-String -Pattern "Victory: slot 1 defeated" -Quiet) -and -not [bool]($SpecLog | Select-String -Pattern "match over" -Quiet)
+    $AllOk = (Report $SpecPart $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"

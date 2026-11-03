@@ -501,3 +501,63 @@ après accord de cette session ou après la fusion de ses étapes en cours.
   vérifiés. À savoir avant l'essai avec un ami : le kit (25/10 22:12) précède L13a (22:26), son lanceur n'a pas le
   message « Le jeu est installé » (sans gravité) ; L11-v1 est d'avant J8a et le moteur Hazelight, la prochaine
   publication sera un gros téléchargement (moteur changé).
+- 2026-11-03 : **Suite du lanceur : périmètre validé par l'utilisateur, rien codé.** Demandé : « y a-t-il des
+  améliorations prévues ? » (non : chantier clos), puis « comment ajouter des choses ». Mode d'ajout : bouton dans
+  `MainForm` (`NewButton`, `buttons.Controls.AddRange`, `Click`), logique dans une classe pure testée (`StatusView`,
+  `PlayRules`, `GameLauncher`, `LauncherOptions`), route dans `HOLManager` + `PROTOCOL.md` si le serveur est concerné,
+  `LauncherInfo.Version` à monter à la main, publication, « Mettre à jour le lanceur » chez les amis.
+  **Validé (14)** : vérifier / réparer les fichiers (`UpdatePlan.ScanGame` forcé), options de lancement, ouvrir le
+  dossier du jeu ou des journaux, désinstaller, page d'actualités plus riche, réglages, apparence, **envoyer un rapport**
+  (zip des journaux + version + machine), **détecter un plantage**, **pause et reprise**, **mise à jour automatique en
+  arrière-plan**, **icône dans la zone de notification**, **lanceur en fr / en / ja**, **historique des nouveautés**.
+  **Écartés par l'utilisateur** : clé par ami et HTTPS (« ça sert à rien »). Non retenus (proposés, non validés) :
+  diagnostic de connexion, pseudo dans le lanceur, choix de version / retour arrière, espace disque, raccourcis,
+  choix du serveur, contenu optionnel, sauvegardes / replays. Correction notée : le journal des refus 401 existe
+  (L12, 0b9b14a). Prochaine étape : proposer le découpage L14+ (ordre, fichiers, tests) et numéroter les décisions au GDD.
+- 2026-11-03 : **Découpage L14+ proposé (à valider), et nouvelle règle de version demandée par l'utilisateur.**
+  **Version affichée « V 0.Y.X »** (et plus `<date>-<commit>`) : **Y** = nombre d'étapes validées par l'utilisateur,
+  **X** = numéro de la mise à jour dans l'étape en cours. Constat du code : le nom de version est libre
+  (`VersionStore.IsValidName` = `[A-Za-z0-9._-]+`, pas d'espace) et rien ne les trie par nom (`VersionFolder` trie par
+  date du manifeste), donc **le nom stocké est `0.Y.X`** (dossier, `Version.txt`, `latest.txt`) et le « V » + espace
+  n'est ajouté qu'à l'affichage ; les anciennes versions datées restent lisibles. Défaut actuel à remplacer :
+  `package.ps1` ligne 40 (`yyyy-MM-dd-<commit>`). Le numéro du **lanceur** (`LauncherInfo.Version` = "1") reste à part.
+  À fixer avec l'utilisateur : valeur de départ de Y ; X commence à 1 ou 0 après une étape validée ; ce qu'on appelle
+  « étape » (étape d'`EtapeDefini.md` close et validée par l'utilisateur : proposé).
+
+  | Étape | Contenu | Fichiers principaux | Preuve |
+  |---|---|---|---|
+  | **L14 Version V 0.Y.X** | `Tools/Package/release.json` (`stage` = Y, `update` = X) ; `publish.ps1` monte X à chaque publication réussie, `-NextStage` monte Y et remet X à 1 ; `package.ps1` en tire le nom ; affichage « V 0.Y.X » dans le lanceur (titre, installée / disponible) et dans le jeu (menu, journal) ; `PROTOCOL.md` | `package.ps1`, `publish.ps1`, `StatusView`, `MainForm`, `HOLVersion`, `PublishTests` | tests rouge d'abord ; deux publications de suite = 0.Y.1 puis 0.Y.2 ; `-NextStage` = 0.(Y+1).1 |
+  | **L15 Réglages + langue** | `LauncherSettings` (fichier JSON à côté de l'exe : langue, dossier, mise à jour auto, options) ; fenêtre « Réglages » ; mécanique fr / en / ja (ressources `.resx`) | nouveau `Settings*.cs`, `MainForm` | tests de lecture / écriture, fichier absent ou corrompu |
+  | **L16 Textes fr / en / ja** | tous les textes en dur de `StatusView`, `MainForm`, `ProgressView`, erreurs de mise à jour passent en ressources ; liste de langues | idem + tests des textes | aucune chaîne française restante hors ressources (test) |
+  | **L17 Fichiers** | « Vérifier / réparer » (`UpdatePlan.ScanGame` forcé) ; ouvrir le dossier du jeu / des journaux ; désinstaller (confirmation, garde les réglages) | `GameUpdater`, `UpdatePlan`, `MainForm`, nouvelle `GameUninstaller` | jeu abîmé volontairement puis réparé ; désinstallation sur copie |
+  | **L18 Pause et reprise** | bouton « Pause » à côté d'« Annuler » (la partie téléchargée est déjà gardée) | `FileDownloader`, `ProgressView`, `MainForm` | pause, fermeture, reprise sans retélécharger |
+  | **L19 Options de lancement** | fenêtré / plein écran, résolution, arguments passés à `GameLauncher` | `GameLauncher`, `LauncherOptions`, réglages (L15) | arguments vérifiés dans le journal du jeu |
+  | **L20 Rapport + plantage** | « Envoyer un rapport » = zip (journaux du jeu, version, machine, sans clé) à donner à l'utilisateur ; détection de plantage au lancement suivant (marqueur « session en cours » écrit par le jeu et effacé à la sortie propre, ou dossier `Saved\Crashes`) qui propose le rapport | nouvelle `ReportBuilder`, `CrashDetector`, petit changement C++ côté jeu si marqueur | rapport sans clé d'accès (test) ; plantage simulé détecté |
+  | **L21 Historique des nouveautés** | `Nouveautes.txt` de chaque version gardé et servi, le lanceur affiche toutes celles entre l'installée et la dernière (à vérifier : ce que `publish` garde par version) | `HOLPublish`, `HOLManager` (route), `PROTOCOL.md`, `VersionsClient`, `StatusView` | 3 versions publiées, 2 notes affichées |
+  | **L22 Actualités plus riches + apparence** | HTML (WebView2) ou texte enrichi ; logo, fond, thème sombre | `MainForm` | capture d'écran du lanceur |
+  | **L23 Mise à jour auto en arrière-plan + zone de notification** | le lanceur reste résident (icône), vérifie `/versions/latest` toutes les N minutes, notifie ou met à jour selon le réglage, démarrage avec Windows (option) ; « Jouer » ne ferme plus forcément le lanceur | `Program`, `MainForm`, nouvelle `TrayHost` | version publiée pendant que le lanceur dort : notification, puis mise à jour |
+  | **L24 Clôture** | décisions au GDD (numéros D libres alors), kit refait, publication, essai avec un ami (R8d) avec le nouveau lanceur | `make_kit.ps1`, GDD | essai à deux |
+
+  Ordre voulu : L14 d'abord (chaque publication porte déjà le nouveau nom), L15-L16 avant le reste (tout nouveau texte
+  naît en trois langues), L23 en dernier (il change le comportement de fermeture). Chaque étape : test rouge d'abord,
+  `dotnet test HOLManager.sln`, `LauncherInfo.Version` monté à la main, boucles de 15 min, une publication = un X de plus.
+- 2026-11-03 : **Réponses de l'utilisateur** : Y de départ = **3** ; X commence à **0** après une étape validée ; « étape »
+  = étape d'`EtapeDefini.md` validée par l'utilisateur (oui). Le découpage L14-L24 ci-dessus n'a pas été contredit.
+- 2026-11-03 : **L14 faite, non commitée** (tests C# verts ; `quick_check -Parts tests` 884/884 PASS le 2026-11-03, compilé avec `HOLVersion::Display`). Choix : `release.json` vit dans le
+  **dossier des versions** (`Saved\Manager\Versions\release.json`, créé à `{"stage":3,"update":0}`), à côté de
+  `latest.txt` : toutes les copies / worktrees qui publient vers lui comptent ensemble. Il contient le numéro de la
+  **prochaine** publication (donc la prochaine est `0.3.0`, puis `0.3.1`…). Code : `Manager/HOLPublish/ReleaseNumber.cs`
+  (`HOLPublish release name|done|next-stage|set --file …`), `Manager/HOLUpdate/VersionName.cs` (`Display` : « V 0.Y.X »,
+  les anciens noms datés restent tels quels), `StatusView` (lanceur : installée, dernière, état), `HOLVersion::Display`
+  (C++, écran-titre du jeu) ; `publish.ps1` : HOLPublish est construit d'abord, sans `-Version` ni `-Archive` le nom vient de
+  `release.json` et X monte après une publication réussie de ce numéro. Tests : `ReleaseTests` (16, rouge puis vert),
+  `StatusViewTests.NumberedVersionsAreShownWithTheV`, `HeroesOfLiberty.VersionDisplay` ; `dotnet test HOLManager.sln` :
+  27 + 142 + 49 + 320 verts. `PROTOCOL.md` complété. **Non fait** : une vraie publication (6 Go, minutes) pour voir
+  `0.3.0` de bout en bout ; quand l'utilisateur valide une étape : `HOLPublish.exe release next-stage --file
+  Saved\Manager\Versions\release.json` (Y + 1, X = 0). Le « V » n'est pas dans le nom stocké (pas d'espace permis).
+- 2026-11-03 : **L14 commitée (2f2c497) et publiée : `0.3.0`** (`publish.ps1 -Notes …`, package 6,3 min, HOLPublish 352 s,
+  141 fichiers, 368,6 Mo compressés, 42 correctifs, serveur `Saved\Manager\Servers\0.3.0`). `latest.txt` = `0.3.0`,
+  `release.json` = `{"stage":3,"update":1}` (prochaine : `0.3.1`). Versions gardées : 0.3.0, 2026-10-27-r8, 2026-10-30-r9,
+  2026-11-03-f5006b5 ; **`L11-v1` a été retirée** par la limite `-Keep 3`. Archive `Saved\Packages\0.3.0` (2 Go) gardée.
+  Non vu : l'affichage « V 0.3.0 » dans un lanceur / un jeu réellement installé depuis cette version.
+  **Reprise : L15 (réglages + langue) dans une prochaine session, en suivant ce journal** (tableau L14-L24 plus haut).

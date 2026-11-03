@@ -88,6 +88,10 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// Since when the idle Peasants of each slot have had no safe source (IAQ-S, D619).
 	TMap<int, FHOLAIStranded> Strandeds;
 
+	// The last reason each slot's technology rule gave (T7), to write it when it changes, and what its saving remembers.
+	TMap<int, FString> TechReasons;
+	TMap<int, FHOLAITechMemory> TechMemories;
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -118,6 +122,16 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int64 Step = GetStepIndex();
 		Data.GameSeconds = float(Step) / 20.f;
 		LogStatus(PlayerIndex, Step, Summary);
+		// 0a. The technologies (T7, provisional levels: hol.AI.TechMinLevel, default Hard only): first, so that a research is paid before the other purchases
+		// of the thought; while it saves for one, the other purchases of this thought do not see the stock set aside for it.
+		const TArray<int> Earmark = ThinkTech(PlayerIndex, Step, Summary);
+		if (Earmark.Num() == 4)
+		{
+			Summary.Food.Stock -= Earmark[0];
+			Summary.Wood.Stock -= Earmark[1];
+			Summary.Stone.Stock -= Earmark[2];
+			Summary.Gold.Stock -= Earmark[3];
+		}
 		const int NumIdle = Summary.IdlePeasants.Num();
 		TArray<int> Free = Summary.IdlePeasants;
 
@@ -321,6 +335,55 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		return true;
+	}
+
+	// The technologies (T7, GDD 11): the research HOLAITech::Choose wants, queued at its building as a unit would be (a research is an item of the
+	// same queue, T-Q6). The levels that research are provisional (hol.AI.TechMinLevel, 2 = Hard only by default; question Q-ia-technologies). Returns what the other purchases of the thought must leave in the
+	// stock (the cost of the research ordered, or the part of it held while it saves): four amounts, or none..
+	TArray<int> ThinkTech(int PlayerIndex, int64 Step, const FHOLAISummary& Summary)
+	{
+		TArray<int> Earmark;
+		FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+		Rule.MinDifficulty = HOLAITechnology::GetAITechMinLevel();
+		if (int(Summary.Level) < Rule.MinDifficulty)
+		{
+			return Earmark;
+		}
+		TArray<FHOLAITechnology> Table;
+		if (!HOLAITechnology::ReadAITechnologyTable(Table))
+		{
+			return Earmark;
+		}
+		TArray<FName> Done;
+		HOLAITechnology::ReadAITechnologiesDone(PlayerIndex, Done);
+		TArray<int> Stock;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			Stock.Add(HOLAIOpening::PartOf(Summary, Resource).Stock);
+		}
+		FHOLAITechMemory Memory;
+		TechMemories.Find(PlayerIndex, Memory);
+		const FHOLAITechChoice Choice = HOLAITech::Think(Rule, Memory, float(Step) / 20.f, Table, Done, Summary.Buildings, Stock, Summary.PeasantIds.Num(), Summary.Tier,
+			HOLHero::GetHeroLevel(PlayerIndex), int(Summary.Level));
+		TechMemories.Add(PlayerIndex, Memory);
+		// The reason it waits is written when it changes (the journal of a trial says why a slot does not research).
+		FString LastReason;
+		TechReasons.Find(PlayerIndex, LastReason);
+		if (LastReason != Choice.Reason)
+		{
+			TechReasons.Add(PlayerIndex, Choice.Reason);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: technology: {Choice.Reason}");
+		}
+		if (Choice.bSaving)
+		{
+			return Choice.Earmark;
+		}
+		if (Choice.bResearch && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, Choice.BuildingAt, Choice.Technology))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: research {Choice.Technology} ({Choice.Reason})");
+			return Choice.Earmark;
+		}
+		return Earmark;
 	}
 
 	// The hero's point, if one is in reserve (HOLAITalent::Choose): the order of the talent of the main family, the same order a player's button sends.

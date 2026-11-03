@@ -146,12 +146,63 @@ FString TalentTipTexts = "";
 	const float MinimapSize = 240.0;
 	const float MinimapMargin = 16.0;
 
+	// The Diplomacy panel (D7 of DiplomacyInProgress.md, GDD D387): a button at the top, Ctrl + D, and a panel over the game, a line per player (colour,
+	// name, faction, lives; stance; vision; tribute; private message). Three presentations behind hol.UI.DiplomacyLayout 0|1|2 (the rows are the
+	// same, HOLDiplomacyPanel.as; only the places of the controls differ): 0 stance in three buttons, the panel wide and centred; 1 the stance
+	// cycled on a coloured chip, the panel narrow at the right under the players' table; 2 the stance in a drop-down, the panel compact bottom
+	// left over the hero's block. The discussion itself (D385) is another chantier: « Message » only notes whom it is for.
+	const int DipMaxRows = 8;
+	const int DipKindMenu = 4;
+	const int DipKindVision = 5;
+	const int DipKindTribute = 6;
+	const int DipKindMessage = 7;
+	const int DipKindChip = 3;
+	UBorder DipButtonPanel;
+	UOverlaySlot DipButtonSlot;
+	UButton DipOpenButton;
+	UCommonTextBlock DipOpenLabel;
+	USizeBox DipPanelBox;
+	UBorder DipPanel;
+	UOverlaySlot DipPanelSlot;
+	UCommonTextBlock DipTitleText;
+	UCommonTextBlock DipLockedText;
+	UButton DipCloseButton;
+	UCommonTextBlock DipCloseLabel;
+	UVerticalBox DipRowsBox;
+	TArray<UVerticalBox> DipRowBoxes;
+	TArray<UHorizontalBox> DipLines;
+	TArray<UHorizontalBox> DipMenuBoxes;
+	TArray<UBorder> DipSwatches;
+	TArray<USizeBox> DipSwatchBoxes;
+	TArray<UCommonTextBlock> DipNames;
+	TArray<UCommonTextBlock> DipFactions;
+	TArray<UCommonTextBlock> DipInfos;
+	TArray<UButton> DipStanceButtons;
+	TArray<UButton> DipChips;
+	TArray<UButton> DipMenuButtons;
+	TArray<UCommonTextBlock> DipPendings;
+	TArray<UButton> DipVisionButtons;
+	TArray<UButton> DipTributeButtons;
+	TArray<UButton> DipMessageButtons;
+	TArray<UHOLDiplomacyClick> DipHandlers;
+	TArray<FHOLDiplomacyRowView> DipRows;
+	bool bDipOpen = false;
+	int DipLayout = -1;
+	// The line whose drop-down is open (layout 2), -1 none; the player the last « Message » was for.
+	int DipMenuSlot = -1;
+	int DipMessageSlot = -1;
+	FString DipTexts = "";
+	float DipPanelTop = -1.0;
+	float DipPanelBottom = -1.0;
+	float DipButtonRight = -1.0;
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
+		BuildDiplomacyPanel(Frame);
 		BuildDuelWindow(Frame);
 		BuildAILevelLine(Frame);
 		BuildVolcanoBanner(Frame);
@@ -251,6 +302,473 @@ FString TalentTipTexts = "";
 	void HandleDuelRefuseClicked()
 	{
 		ClickDuelAnswer(false);
+	}
+
+	// ---- The Diplomacy panel (see the members above) ----
+
+	// A button with its label (a child text); the label is found again by DipLabelOf.
+	UButton MakeDipButton(FName Name)
+	{
+		UButton Button = MakeButton(Name);
+		UCommonTextBlock Label = MakeText(FName(f"{Name}Label"), UHOLTextStyleHUDLabel);
+		Label.SetVisibility(ESlateVisibility::HitTestInvisible);
+		Button.AddChild(Label);
+		return Button;
+	}
+
+	UCommonTextBlock DipLabelOf(UButton Button)
+	{
+		return Cast<UCommonTextBlock>(Button.GetChildAt(0));
+	}
+
+	// One object a control: its clicks come back to PanelClick with the line's slot and the control's kind.
+	UButton BindDipButton(UButton Button, int Slot, int Kind)
+	{
+		UHOLDiplomacyClick Handler = Cast<UHOLDiplomacyClick>(NewObject(this, UHOLDiplomacyClick));
+		Handler.Screen = this;
+		Handler.Slot = Slot;
+		Handler.Kind = Kind;
+		DipHandlers.Add(Handler);
+		Button.OnClicked.AddUFunction(Handler, n"Clicked");
+		return Button;
+	}
+
+	void BuildDiplomacyPanel(UOverlay Frame)
+	{
+		// The button at the top, left of the menu's (the place follows the menu's box, RefreshDiplomacy).
+		DipButtonPanel = MakePanel(n"DiplomacyButtonPanel");
+		DipButtonPanel.SetPadding(FMargin(4.0, 2.0));
+		DipButtonPanel.SetVisibility(ESlateVisibility::Collapsed);
+		DipButtonSlot = Frame.AddChildToOverlay(DipButtonPanel);
+		DipButtonSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Right);
+		DipButtonSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Top);
+		DipButtonSlot.SetPadding(FMargin(0.0, 16.0, 300.0, 0.0));
+		DipOpenButton = MakeDipButton(n"DiplomacyButton");
+		BindDipButton(DipOpenButton, -1, 9);
+		DipOpenLabel = DipLabelOf(DipOpenButton);
+		DipButtonPanel.SetContent(DipOpenButton);
+
+		// The panel itself: a box limiting its height (the rows scroll beyond it), the title and the close button, the locked note, the rows.
+		DipPanelBox = Cast<USizeBox>(ConstructWidget(USizeBox, n"DiplomacyPanelBox"));
+		DipPanelBox.SetVisibility(ESlateVisibility::Collapsed);
+		DipPanelSlot = Frame.AddChildToOverlay(DipPanelBox);
+		DipPanel = MakePanel(n"DiplomacyPanel");
+		DipPanelBox.SetContent(DipPanel);
+		UVerticalBox Column = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"DiplomacyColumn"));
+		DipPanel.SetContent(Column);
+		UHorizontalBox Head = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DiplomacyHead"));
+		Column.AddChildToVerticalBox(Head);
+		DipTitleText = MakeText(n"DiplomacyTitle", UHOLTextStyleHUD);
+		Head.AddChildToHorizontalBox(DipTitleText).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		DipLockedText = MakeText(n"DiplomacyLocked", UHOLTextStyleHUDLabel);
+		UHorizontalBoxSlot LockedSlot = Head.AddChildToHorizontalBox(DipLockedText);
+		LockedSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		LockedSlot.SetPadding(FMargin(16.0, 0.0, 16.0, 0.0));
+		DipCloseButton = MakeDipButton(n"DiplomacyClose");
+		BindDipButton(DipCloseButton, -1, 8);
+		DipCloseLabel = DipLabelOf(DipCloseButton);
+		Head.AddChildToHorizontalBox(DipCloseButton);
+
+		UScrollBox Scroll = Cast<UScrollBox>(ConstructWidget(UScrollBox, n"DiplomacyScroll"));
+		Column.AddChildToVerticalBox(Scroll).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		DipRowsBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"DiplomacyRows"));
+		Scroll.AddChild(DipRowsBox);
+
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			UVerticalBox RowBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, FName(f"DipRow_{Slot}")));
+			DipRowsBox.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 0.0, 0.0, 6.0));
+			DipRowBoxes.Add(RowBox);
+			for (int Line = 0; Line < 3; ++Line)
+			{
+				UHorizontalBox LineBox = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"DipLine_{Slot}_{Line}")));
+				RowBox.AddChildToVerticalBox(LineBox).SetPadding(FMargin(0.0, Line > 0 ? 3.0 : 0.0, 0.0, 0.0));
+				DipLines.Add(LineBox);
+			}
+			UHorizontalBox MenuBox = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"DipMenuBox_{Slot}")));
+			RowBox.AddChildToVerticalBox(MenuBox).SetPadding(FMargin(0.0, 3.0, 0.0, 0.0));
+			DipMenuBoxes.Add(MenuBox);
+
+			USizeBox SwatchBox = Cast<USizeBox>(ConstructWidget(USizeBox, FName(f"DipSwatchBox_{Slot}")));
+			SwatchBox.SetWidthOverride(14.0);
+			SwatchBox.SetHeightOverride(14.0);
+			UBorder Swatch = Cast<UBorder>(ConstructWidget(UBorder, FName(f"DipSwatch_{Slot}")));
+			SwatchBox.SetContent(Swatch);
+			DipSwatchBoxes.Add(SwatchBox);
+			DipSwatches.Add(Swatch);
+			DipNames.Add(MakeText(FName(f"DipName_{Slot}"), UHOLTextStyleHUD));
+			DipFactions.Add(MakeText(FName(f"DipFaction_{Slot}"), UHOLTextStyleHUDLabel));
+			DipInfos.Add(MakeText(FName(f"DipInfo_{Slot}"), UHOLTextStyleHUDLabel));
+			DipPendings.Add(MakeText(FName(f"DipPending_{Slot}"), UHOLTextStyleHUDLabel));
+			// The three stance buttons (layouts 0 and 2), the chip (1) and the drop-down's head (2): Enemy 0, Neutral 1, Ally 2 as the stances.
+			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipEnemy_{Slot}")), Slot, HOLDiplomacy::Enemy));
+			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipNeutral_{Slot}")), Slot, HOLDiplomacy::Neutral));
+			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipAlly_{Slot}")), Slot, HOLDiplomacy::Ally));
+			DipChips.Add(BindDipButton(MakeDipButton(FName(f"DipChip_{Slot}")), Slot, DipKindChip));
+			DipMenuButtons.Add(BindDipButton(MakeDipButton(FName(f"DipMenu_{Slot}")), Slot, DipKindMenu));
+			DipVisionButtons.Add(BindDipButton(MakeDipButton(FName(f"DipVision_{Slot}")), Slot, DipKindVision));
+			DipTributeButtons.Add(BindDipButton(MakeDipButton(FName(f"DipTribute_{Slot}")), Slot, DipKindTribute));
+			DipMessageButtons.Add(BindDipButton(MakeDipButton(FName(f"DipMessage_{Slot}")), Slot, DipKindMessage));
+		}
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+			DipRows.Add(FHOLDiplomacyRowView());
+	}
+
+	// A control of a line: added to a line with its gap.
+	void DipAdd(UHorizontalBox Line, UWidget Widget, float Gap = 8.0)
+	{
+		UHorizontalBoxSlot Added = Line.AddChildToHorizontalBox(Widget);
+		Added.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+		Added.SetPadding(FMargin(0.0, 0.0, Gap, 0.0));
+	}
+
+	USizeBox DipWide(UWidget Widget, float Width, FName BoxName)
+	{
+		USizeBox Box = Cast<USizeBox>(ConstructWidget(USizeBox, BoxName));
+		Box.SetMinDesiredWidth(Width);
+		Box.SetContent(Widget);
+		return Box;
+	}
+
+	// Where the controls of a line go, by layout (the same widgets every time: ClearChildren only detaches them).
+	void PlaceDipRow(int Slot, int Layout)
+	{
+		for (int Line = 0; Line < 3; ++Line)
+			DipLines[Slot * 3 + Line].ClearChildren();
+		DipMenuBoxes[Slot].ClearChildren();
+		UHorizontalBox First = DipLines[Slot * 3];
+		UHorizontalBox Second = DipLines[Slot * 3 + 1];
+		UHorizontalBox Third = DipLines[Slot * 3 + 2];
+		DipAdd(First, DipSwatchBoxes[Slot], 8.0);
+		if (Layout == 0)
+		{
+			// One wide line: colour, name, faction, lives | three buttons, the wait | vision, tribute, message.
+			DipAdd(First, DipWide(DipNames[Slot], 110.0, FName(f"DipNameBox_{Slot}")), 10.0);
+			DipAdd(First, DipWide(DipFactions[Slot], 150.0, FName(f"DipFactionBox_{Slot}")), 10.0);
+			DipAdd(First, DipWide(DipInfos[Slot], 60.0, FName(f"DipInfoBox_{Slot}")), 14.0);
+			DipAdd(First, DipStanceButtons[Slot * 3 + 2], 4.0);
+			DipAdd(First, DipStanceButtons[Slot * 3 + 1], 4.0);
+			DipAdd(First, DipStanceButtons[Slot * 3 + 0], 8.0);
+			DipAdd(First, DipWide(DipPendings[Slot], 170.0, FName(f"DipPendingBox_{Slot}")), 10.0);
+			DipAdd(First, DipVisionButtons[Slot], 6.0);
+			DipAdd(First, DipTributeButtons[Slot], 6.0);
+			DipAdd(First, DipMessageButtons[Slot], 0.0);
+		}
+		else if (Layout == 1)
+		{
+			// Narrow: colour, name, faction, lives; then the chip, the wait; then vision, tribute, message under.
+			DipAdd(First, DipWide(DipNames[Slot], 80.0, FName(f"DipNameBox_{Slot}")), 8.0);
+			DipAdd(First, DipFactions[Slot], 8.0);
+			DipAdd(First, DipInfos[Slot], 0.0);
+			DipAdd(Second, DipChips[Slot], 8.0);
+			DipAdd(Second, DipPendings[Slot], 0.0);
+			DipAdd(Third, DipVisionButtons[Slot], 6.0);
+			DipAdd(Third, DipTributeButtons[Slot], 6.0);
+			DipAdd(Third, DipMessageButtons[Slot], 0.0);
+		}
+		else
+		{
+			// Compact: colour, name, faction, lives; then the drop-down's head, the wait, vision, tribute, message; the drop-down opens under.
+			DipAdd(First, DipWide(DipNames[Slot], 80.0, FName(f"DipNameBox_{Slot}")), 8.0);
+			DipAdd(First, DipFactions[Slot], 8.0);
+			DipAdd(First, DipInfos[Slot], 0.0);
+			DipAdd(Second, DipMenuButtons[Slot], 8.0);
+			DipAdd(Second, DipPendings[Slot], 8.0);
+			DipAdd(Second, DipVisionButtons[Slot], 6.0);
+			DipAdd(Second, DipTributeButtons[Slot], 6.0);
+			DipAdd(Second, DipMessageButtons[Slot], 0.0);
+			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 2], 4.0);
+			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 1], 4.0);
+			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 0], 0.0);
+		}
+	}
+
+	// Tints over the buttons' dark: a stance's colour on its active button or chip (the brush is nearly black, so the factors are large).
+	FLinearColor DipStanceTint(int Stance) const
+	{
+		if (Stance == HOLDiplomacy::Ally)
+			return FLinearColor(2.6, 8.0, 2.8, 1.0);
+		if (Stance == HOLDiplomacy::Neutral)
+			return FLinearColor(8.5, 7.1, 1.7, 1.0);
+		return FLinearColor(8.5, 2.1, 1.7, 1.0);
+	}
+
+	// A control shown or not (collapsed: no room), greyed or not (its click ignored), its label and tooltip.
+	void DipSetButton(UButton Button, bool bShown, bool bEnabled, FText Label, FText Tip, FLinearColor Tint)
+	{
+		Button.SetVisibility(bShown ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (!bShown)
+			return;
+		UHOLScriptScreen::SetButtonGreyed(Button, !bEnabled);
+		// Greyed: the whole control dimmed (the muted label alone was too close to the normal one to tell them apart).
+		Button.SetRenderOpacity(bEnabled ? 1.0 : 0.45);
+		Button.SetBackgroundColor(Tint);
+		UCommonTextBlock LabelText = DipLabelOf(Button);
+		LabelText.SetText(Label);
+		LabelText.SetColorAndOpacity(bEnabled ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+		Button.SetToolTipText(Tip);
+	}
+
+	void RefreshDiplomacy()
+	{
+		const int Viewer = GetLocalSlot();
+		const bool bPlays = Viewer >= 0;
+		DipTexts = "";
+		DipButtonPanel.SetVisibility(bPlays ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		DipOpenLabel.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Button));
+		DipOpenButton.SetToolTipText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::ButtonTip));
+		DipOpenLabel.SetColorAndOpacity(bDipOpen ? UHOLScriptScreen::GetMutedColor() : UHOLScriptScreen::GetTextColor());
+		// Left of the menu's buttons (the C++ screen's box), at their height.
+		FVector2D MenuLow;
+		FVector2D MenuHigh;
+		const FVector2D Room = GetViewportSlateSize();
+		if (GetGameScreenBox(n"MenuPanel", MenuLow, MenuHigh))
+		{
+			const float Right = Math::Max(0.0, Room.X - MenuLow.X + 6.0);
+			if (Math::Abs(Right - DipButtonRight) > 0.5 || Math::Abs(MenuLow.Y - DipPanelTop) > 0.5)
+			{
+				DipButtonRight = Right;
+				DipPanelTop = MenuLow.Y;
+				DipButtonSlot.SetPadding(FMargin(0.0, Math::Max(4.0, MenuLow.Y), Right, 0.0));
+			}
+		}
+		if (!bPlays)
+			bDipOpen = false;
+		DipPanelBox.SetVisibility(bDipOpen ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		if (!bDipOpen)
+			return;
+
+		const int Layout = HOLDiplomacyRead::GetPanelLayout();
+		const bool bDipMode = HOLDiplomacyRead::IsDiplomacyMode();
+		if (Layout != DipLayout)
+		{
+			DipLayout = Layout;
+			DipMenuSlot = -1;
+			for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+				PlaceDipRow(Slot, Layout);
+		}
+		PlaceDipPanel(Layout, Room);
+		DipTitleText.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Title));
+		DipLockedText.SetText(bDipMode ? FText() : HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Locked));
+		DipLockedText.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+		DipCloseLabel.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Close));
+
+		const bool bViewerDefeated = HOLHero::IsSlotDefeated(Viewer);
+		const bool bMarket = HOLDiplomacyRead::HasFinishedMarket(Viewer);
+		const int Tax = HOLDiplomacyRead::GetTributeTaxPercent();
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			const bool bThere = HOLDiplomacyRead::IsSlotInMatch(Slot);
+			DipRowBoxes[Slot].SetVisibility(bThere ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+			if (!bThere)
+			{
+				DipRows[Slot] = FHOLDiplomacyRowView();
+				continue;
+			}
+			FHOLDiplomacyRowView Row = HOLDiplomacyPanel::MakeRow(bDipMode, Viewer, bViewerDefeated, Slot, HOLDiplomacyRead::IsSlotAI(Slot),
+				HOLHero::IsSlotDefeated(Slot), HOLDiplomacyRead::GetStance(Viewer, Slot), HOLDiplomacyRead::GetStance(Slot, Viewer),
+				HOLDiplomacyRead::GetVision(Viewer, Slot), bMarket, Tax);
+			DipRows[Slot] = Row;
+			ShowDipRow(Slot, Row, Layout, Viewer);
+		}
+	}
+
+	// The panel's place and room by layout, from where the other blocks are now (px at the HUD's scale).
+	void PlaceDipPanel(int Layout, FVector2D Room)
+	{
+		float Top = 150.0;
+		float MaxHeight = 400.0;
+		EHorizontalAlignment Horizontal = EHorizontalAlignment::HAlign_Center;
+		EVerticalAlignment Vertical = EVerticalAlignment::VAlign_Top;
+		FMargin Margin = FMargin(0.0);
+		if (Layout == 0)
+		{
+			// Centred, high: clear of the top bar, the table at the right and the bottom bar (330 px kept below).
+			MaxHeight = Math::Max(160.0, Room.Y - Top - 330.0);
+			Margin = FMargin(0.0, Top, 0.0, 0.0);
+		}
+		else if (Layout == 1)
+		{
+			// At the right, under the players' table and the thread's five lines (they fade; the place stays), over the minimap's.
+			FVector2D TableLow;
+			FVector2D TableHigh;
+			float Under = 72.0;
+			if (GetGameScreenBox(n"PlayersPanel", TableLow, TableHigh))
+				Under = TableHigh.Y;
+			Top = Under + 6.0 + 5.0 * 26.0 + 6.0;
+			MaxHeight = Math::Max(160.0, Room.Y - Top - 272.0);
+			Horizontal = EHorizontalAlignment::HAlign_Right;
+			Margin = FMargin(0.0, Top, 16.0, 0.0);
+		}
+		else
+		{
+			// Bottom left, over the hero's block (its top edge, or the bottom bar's place when it is hidden), under the cheats' panel.
+			FVector2D HeroLow;
+			FVector2D HeroHigh;
+			float Limit = Room.Y - GetBottomLeftPlace().Bottom;
+			if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh))
+				Limit = HeroLow.Y;
+			Top = Math::Max(GetCheatPanelBottom() + 8.0, 80.0);
+			MaxHeight = Math::Max(120.0, Limit - 8.0 - Top);
+			Horizontal = EHorizontalAlignment::HAlign_Left;
+			Vertical = EVerticalAlignment::VAlign_Bottom;
+			Margin = FMargin(16.0, 0.0, 0.0, Math::Max(0.0, Room.Y - Limit + 8.0));
+		}
+		DipPanelSlot.SetHorizontalAlignment(Horizontal);
+		DipPanelSlot.SetVerticalAlignment(Vertical);
+		DipPanelSlot.SetPadding(Margin);
+		DipPanelBox.SetMaxDesiredHeight(MaxHeight);
+	}
+
+	// One line from its row.
+	void ShowDipRow(int Slot, FHOLDiplomacyRowView Row, int Layout, int Viewer)
+	{
+		DipRowBoxes[Slot].SetRenderOpacity(Row.bDefeated ? 0.45 : 1.0);
+		DipSwatches[Slot].SetBrushColor(HOLDiplomacyRead::GetSlotColor(Slot));
+		DipNames[Slot].SetText(FText::FromString(HOLDiplomacyRead::GetSlotNameText(Viewer, Slot)));
+		DipNames[Slot].SetColorAndOpacity(HOLDiplomacyRead::GetSlotColor(Slot));
+		DipFactions[Slot].SetText(FText::FromString(HOLDiplomacyRead::GetSlotFactionText(Slot)));
+		DipFactions[Slot].SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+		FString Info = HOLDiplomacyRead::GetSlotLivesText(Viewer, Slot);
+		if (Info.IsEmpty())
+			Info = HOLDiplomacyRead::GetSlotStateText(Viewer, Slot);
+		DipInfos[Slot].SetText(FText::FromString(Info));
+		DipInfos[Slot].SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+
+		// The posture controls: none on the viewer's own line; greyed when locked (the standard modes, an AI, a defeated player).
+		const bool bControls = !Row.bSelf;
+		for (int Stance = HOLDiplomacy::Enemy; Stance <= HOLDiplomacy::Ally; ++Stance)
+		{
+			const bool bActive = Row.MyStance == Stance;
+			DipSetButton(DipStanceButtons[Slot * 3 + Stance], bControls && (Layout == 0 || (Layout == 2 && DipMenuSlot == Slot)), Row.bStanceEditable,
+				HOLDiplomacyPanelText::StanceLabel(Stance), FText(), bActive ? DipStanceTint(Stance) : FLinearColor(1.0, 1.0, 1.0, 1.0));
+		}
+		DipSetButton(DipChips[Slot], bControls && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
+		DipSetButton(DipMenuButtons[Slot], bControls && Layout == 2, Row.bStanceEditable,
+			FText::FromString(HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + " v"), FText(), DipStanceTint(Row.MyStance));
+		DipPendings[Slot].SetVisibility(Row.bPending ? ESlateVisibility::HitTestInvisible : (Layout == 0 && bControls ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed));
+		DipPendings[Slot].SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Pending));
+		DipPendings[Slot].SetColorAndOpacity(FLinearColor(1.0, 0.82, 0.25, 1.0));
+
+		// Vision (checked: [x]), tribute (with the tax, greyed without a Market), private message.
+		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";
+		DipSetButton(DipVisionButtons[Slot], bControls, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
+			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacy::Ally) : FLinearColor(1.0, 1.0, 1.0, 1.0));
+		DipSetButton(DipTributeButtons[Slot], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, f"{Row.TaxPercent}")),
+			Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, f"{Row.TaxPercent}")),
+			FLinearColor(1.0, 1.0, 1.0, 1.0));
+		DipSetButton(DipMessageButtons[Slot], bControls, Row.bMessageEnabled, HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Message),
+			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::MessageTip), FLinearColor(1.0, 1.0, 1.0, 1.0));
+		DipMenuBoxes[Slot].SetVisibility(Layout == 2 && DipMenuSlot == Slot ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		DipTexts += (DipTexts.IsEmpty() ? "" : " || ") + HOLDiplomacyRead::GetSlotNameText(Viewer, Slot) + " (" + HOLDiplomacyRead::GetSlotFactionText(Slot) + ") "
+			+ Info + " | " + HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + (Row.bPending ? " | " + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Pending) : "")
+			+ " | " + Row.Describe;
+	}
+
+	// A click on a control of the panel (the mouse's, through UHOLDiplomacyClick, or hol.HUD.Click by the control's name): Kind 0..2 a stance
+	// (Enemy, Neutral, Ally), 3 the chip (the next stance), 4 the drop-down, 5 vision, 6 tribute, 7 message, 8 close, 9 the top button.
+	// A hidden or greyed control does nothing (false). The server decides the rest (the order is taken at the next step).
+	bool PanelClick(int Slot, int Kind)
+	{
+		if (Kind == 9)
+			return ToggleDiplomacy();
+		if (!bDipOpen)
+			return false;
+		if (Kind == 8)
+		{
+			bDipOpen = false;
+			DipPanelBox.SetVisibility(ESlateVisibility::Collapsed);
+			return true;
+		}
+		if (Slot < 0 || Slot >= DipMaxRows)
+			return false;
+		const FHOLDiplomacyRowView Row = DipRows[Slot];
+		AHOLPlayerController Controller = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (Row.Slot != Slot || Row.bSelf || Controller == nullptr)
+			return false;
+		if (Kind >= HOLDiplomacy::Enemy && Kind <= HOLDiplomacy::Ally)
+		{
+			if (!Row.bStanceEditable || !DipStanceButtons[Slot * 3 + Kind].IsVisible())
+				return false;
+			Controller.RequestStance(Slot, Kind);
+			DipMenuSlot = -1;
+			return true;
+		}
+		if (Kind == DipKindChip)
+		{
+			if (!Row.bStanceEditable || !DipChips[Slot].IsVisible())
+				return false;
+			Controller.RequestStance(Slot, HOLDiplomacyPanel::NextStance(Row.MyStance));
+			return true;
+		}
+		if (Kind == DipKindMenu)
+		{
+			if (!Row.bStanceEditable || !DipMenuButtons[Slot].IsVisible())
+				return false;
+			DipMenuSlot = DipMenuSlot == Slot ? -1 : Slot;
+			return true;
+		}
+		if (Kind == DipKindVision)
+		{
+			if (!Row.bVisionEnabled)
+				return false;
+			Controller.RequestShareVision(Slot, !Row.bVisionChecked);
+			return true;
+		}
+		if (Kind == DipKindTribute)
+		{
+			if (!Row.bTributeEnabled)
+				return false;
+			Controller.RequestPanelTribute(Slot, 3, 100);
+			return true;
+		}
+		if (Kind == DipKindMessage)
+		{
+			if (!Row.bMessageEnabled)
+				return false;
+			DipMessageSlot = Slot;
+			return true;
+		}
+		return false;
+	}
+
+	bool ToggleDiplomacy()
+	{
+		if (GetLocalSlot() < 0)
+			return false;
+		bDipOpen = !bDipOpen;
+		DipMenuSlot = -1;
+		DipPanelBox.SetVisibility(bDipOpen ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+		return true;
+	}
+
+	// hol.HUD.Click names: DiplomacyButton, DiplomacyClose, Dip<Enemy|Neutral|Ally|Chip|Menu|Vision|Tribute|Message>_<slot>, DiplomacyKey (Ctrl + D).
+	bool ClickDiplomacyName(FName WidgetName)
+	{
+		if (WidgetName == n"DiplomacyButton" || WidgetName == n"DiplomacyKey")
+			return ToggleDiplomacy();
+		if (WidgetName == n"DiplomacyClose")
+			return PanelClick(-1, 8);
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			if (WidgetName == FName(f"DipEnemy_{Slot}"))
+				return PanelClick(Slot, HOLDiplomacy::Enemy);
+			if (WidgetName == FName(f"DipNeutral_{Slot}"))
+				return PanelClick(Slot, HOLDiplomacy::Neutral);
+			if (WidgetName == FName(f"DipAlly_{Slot}"))
+				return PanelClick(Slot, HOLDiplomacy::Ally);
+			if (WidgetName == FName(f"DipChip_{Slot}"))
+				return PanelClick(Slot, DipKindChip);
+			if (WidgetName == FName(f"DipMenu_{Slot}"))
+				return PanelClick(Slot, DipKindMenu);
+			if (WidgetName == FName(f"DipVision_{Slot}"))
+				return PanelClick(Slot, DipKindVision);
+			if (WidgetName == FName(f"DipTribute_{Slot}"))
+				return PanelClick(Slot, DipKindTribute);
+			if (WidgetName == FName(f"DipMessage_{Slot}"))
+				return PanelClick(Slot, DipKindMessage);
+		}
+		return false;
 	}
 
 	void BuildVolcanoBanner(UOverlay Frame)
@@ -646,6 +1164,7 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		RefreshDiplomacy();
 		RefreshPause();
 		RefreshMinimap();
 	}
@@ -1276,6 +1795,8 @@ FString TalentTipTexts = "";
 	{
 		if (KeyName == n"T")
 			ClickTalent();
+		if (KeyName == n"CtrlD")
+			ToggleDiplomacy();
 	}
 
 	UFUNCTION(BlueprintOverride)
@@ -1289,6 +1810,8 @@ FString TalentTipTexts = "";
 			return ClickReturn();
 		if (ClickMinimapName(WidgetName))
 			return true;
+		if (WidgetName.ToString().StartsWith("Dip"))
+			return ClickDiplomacyName(WidgetName);
 		if (WidgetName == n"HeroTalentButton" || WidgetName == n"TalentKey")
 			return ClickTalent();
 		if (WidgetName == n"TalentWindowClose")
@@ -1350,6 +1873,7 @@ FString TalentTipTexts = "";
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
+			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

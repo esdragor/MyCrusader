@@ -1,0 +1,63 @@
+# Le bouton et le panneau Diplomatie en fenetre (pas plein ecran), la fenetre deplacee sur le bureau : ils suivent le HUD, pas la place de la fenetre (verification, sans geste).
+# Plain, mode Diplomatie (diplomacy_window.json, comme diplomacy_compare) ; pour chaque taille le scenario regle la fenetre (r.SetRes ...w = fenetree), la deplace (hol.Window.Move), ouvre le panneau et rapporte (HUD overlap : none attendu, y compris « outside window » et « misplaced »).
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+r.SetRes 1920x1080w
+frames 30
+hol.Diplomacy.Force 0 1 ally
+hol.Diplomacy.Force 1 0 ally
+hol.Diplomacy.Force 0 2 neutral
+hol.Diplomacy.Force 0 4 ally
+hol.Diplomacy.Vision 1 1
+waitlog Diplomacy: slot 0 shares its vision with slot 1
+hol.UI.DiplomacyLayout 1
+# Le raccourci : F11 (le plein ecran du jeu) ne touche plus le panneau, Ctrl + D l'ouvre.
+hol.HUD.Report 1
+waitlog HUD diplomacy: closed
+hol.UI.Key F11 0 0.1
+frames 40
+hol.HUD.Report 1
+waitlog HUD diplomacy: closed
+hol.UI.Key LeftControl 0 2
+hol.UI.Key D 0.5 0.1
+frames 80
+hol.HUD.Report 1
+waitlog HUD diplomacy: open
+panel hide
+frames 5
+r.SetRes 1920x1080f
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_w1920fs
+r.SetRes 1280x720w
+frames 40
+hol.Window.Move 300 200
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_w1280
+r.SetRes 1600x900w
+frames 40
+hol.Window.Move -150 120
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_w1600
+r.SetRes 1366x768w
+frames 40
+hol.Window.Move 500 60
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_w1366
+r.SetRes 1280x600w
+frames 40
+hol.Window.Move 80 300
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_w600
+hol.Test.Sanity
+panel show
+note Verification seule : le bouton Diplomatie reste a gauche du bouton Menu, a toutes les tailles de fenetre, plein ecran ou non.

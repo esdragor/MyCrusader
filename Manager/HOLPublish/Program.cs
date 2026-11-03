@@ -14,6 +14,10 @@ public static class Program
 
     public static int Run(IReadOnlyList<string> args, TextWriter output)
     {
+        if (args.Count > 0 && args[0] == "release")
+        {
+            return ReleaseNumber.Run(args.Skip(1).ToList(), output);
+        }
         try
         {
             var result = Publisher.Publish(CommandLine.Parse(args));
