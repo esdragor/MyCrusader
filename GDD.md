@@ -3272,4 +3272,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D656** (B-Q6, § 8, précise D576 et D652) : **la carte garde les formes de son décor d'identité** (rochers de Cols, roseaux d'El Dorado, aux mêmes endroits) et **le biome les recolore** (Cols en neige : rochers blancs givrés) ; le biome **remplace le décor générique** (fleurs, touffes, buissons) par le sien (neige : touffes gelées, buissons nus). Les recettes de cartes séparent donc le décor d'identité du décor générique. Écartées : le biome remplace tout (la carte perd ce qui la rend lisible), le biome s'ajoute sans recolorer (rochers gris sur sol blanc). **Aucun effet de jeu** : navigation, ressources, rochers de jeu, IA et neutres inchangés ; D258 et D265 restent en vigueur.
 
-Prochain numéro : **D657**.
+**D657** (Q-ia-tech-retards = A, § 11 Technologies, précise D648) : **retard avant la première recherche de l'IA, en temps de jeu** : Difficile 0 s, Normal 6 min, Facile 14 min (ensuite l'ordre habituel : Charrue, Haches doubles, Brouette, Pics de mineur, à partir de 20 Paysans). Réglages `hol.AI.TechDelayHard`, `hol.AI.TechDelayNormal`, `hol.AI.TechDelayEasy` ; l'IA Évolutive suit le niveau qu'elle joue.
+
+Prochain numéro : **D658**.
