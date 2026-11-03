@@ -1,0 +1,22 @@
+# Siege S4 (SQ1 = B, D614) : un Belier abat un batiment ennemi de bout en bout (Maison de 600 PV, 60 de degats siege toutes les 2,5 s, ~25 s) puis, le batiment detruit, s'arrete.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# waitunits N = nombre total d'unites (5 Paysans et le heros au depart : 6).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Cheat.SpawnBuilding House 1 5200 0
+waitlog Cheat: spawned House of slot 1
+hol.Units.SpawnHere 1 Ram 0 50
+waitunits 7
+frames 20
+hol.Select.ClickUnit -1
+waitlog Selection: Ram
+note 1. Le Belier est ordonne vers la Maison ennemie : il la frappe (60 de degats).
+hol.Select.AttackMoveNear 5200 0
+waitlog Ram hits a building for 60
+note 2. Le Belier continue jusqu'a la destruction de la Maison (600 PV).
+waitlog Building destroyed: House of slot 1

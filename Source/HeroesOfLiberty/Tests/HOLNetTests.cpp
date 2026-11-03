@@ -119,7 +119,7 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("57 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position)"),
 		FHOLNetUnitState::TotalBits, 57);
-	TestEqual(TEXT("8 bits more for a wounded unit, its exact health (J7-Q5 revised)"), FHOLNetUnitState::WoundedBits, 8);
+	TestEqual(TEXT("9 bits more for a wounded unit, its exact health (J7-Q5 revised; 8 bits until the Ram's 400)"), FHOLNetUnitState::WoundedBits, 9);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
 	TestEqual(TEXT("6 bits more for one facing its front at rest"), FHOLNetUnitState::FacingFrontBits, 6);
 	TestEqual(TEXT("2 bits more for a carrier (J5, D303: its resource, never its amount)"), FHOLNetUnitState::CarriedLoadBits, 2);
@@ -228,13 +228,13 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		});
 	}
 	// S2: who is sent as a share (the exact numbers of the rule, not read from the table).
-	TestTrue(TEXT("the Ram (400) goes as a share"), HOLUnitReplication::UsesHealthShare(false, 400));
-	TestTrue(TEXT("257 goes as a share"), HOLUnitReplication::UsesHealthShare(false, 257));
-	TestFalse(TEXT("256 fits the 8 bits (one point off is 255)"), HOLUnitReplication::UsesHealthShare(false, 256));
+	TestFalse(TEXT("the Ram (400) goes exact"), HOLUnitReplication::UsesHealthShare(false, 400));
+	TestFalse(TEXT("512 fits the 9 bits (one point off is 511)"), HOLUnitReplication::UsesHealthShare(false, 512));
+	TestTrue(TEXT("513 goes as a share"), HOLUnitReplication::UsesHealthShare(false, 513));
 	TestFalse(TEXT("the Man-at-arms (155) goes exact"), HOLUnitReplication::UsesHealthShare(false, 155));
 	TestTrue(TEXT("the hero goes as a share whatever his maximum"), HOLUnitReplication::UsesHealthShare(true, 50));
-	TestTrue(*FString::Printf(TEXT("the largest maximum of the exact types (%d) is the one the bits are set for: 8 bits while it is at most 256"), TableMaxHealth),
-		TableMaxHealth > 1 && HOLUnitReplication::FitsWireHealth(TableMaxHealth) && (TableMaxHealth > 256 || FHOLNetUnitState::HealthBits == 8));
+	TestTrue(*FString::Printf(TEXT("the largest maximum of the exact types (%d) is the one the bits are set for: 9 bits while it is above 256 and at most 512"), TableMaxHealth),
+		TableMaxHealth > 256 && HOLUnitReplication::FitsWireHealth(TableMaxHealth) && FHOLNetUnitState::HealthBits == 9);
 	for (const FHOLNetUnitState& State : AllStates)
 	{
 		alignas(16) uint8 Quantized[64] = {};
@@ -264,7 +264,7 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 		SerializeArgs.Source = NetSerializerValuePointer(Quantized);
 		Serializer.Serialize(WriteContext, SerializeArgs);
 		Writer.CommitWrites();
-		TestEqual(TEXT("57 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +8 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
+		TestEqual(TEXT("57 bits on the wire (1 for the health of an unhurt unit), +2 for a carrier, +9 wounded, +12 attacking, +6 facing its front"), Writer.GetPosBits(),
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
@@ -340,8 +340,8 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("exact: 80"), HOLUnitReplication::GetWireHealth(80, 160), static_cast<uint16>(80));
 	TestEqual(TEXT("one hit off the Man-at-arms' 155: 154"), HOLUnitReplication::GetWireHealth(154, 155), static_cast<uint16>(154));
 	TestEqual(TEXT("held at the wire's largest"), HOLUnitReplication::GetWireHealth(1000, 2000), FHOLNetUnitState::MaxWireHealth);
-	TestTrue(TEXT("256 fits 8 bits (255 wounded at most)"), HOLUnitReplication::FitsWireHealth(256));
-	TestFalse(TEXT("257 does not"), HOLUnitReplication::FitsWireHealth(257));
+	TestTrue(TEXT("512 fits 9 bits (511 wounded at most)"), HOLUnitReplication::FitsWireHealth(512));
+	TestFalse(TEXT("513 does not"), HOLUnitReplication::FitsWireHealth(513));
 	FHOLNetUnitState Wounded = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
 	Wounded.SetCombat(152, 160, 0);
 	TestFalse(TEXT("one hit off: not full"), Wounded.bFullHealth);
@@ -380,7 +380,7 @@ bool FHOLNetHeroHealthShareTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("the Hero row is of the Hero category"), Hero->HasArmorCategory(EHOLArmorCategory::Hero));
 	TestEqual(TEXT("the hero's 450 health (J8a-Q1)"), Hero->MaxHealth, 450);
-	TestFalse(TEXT("too many for the exact health bits"), HOLUnitReplication::FitsWireHealth(Hero->MaxHealth));
+	TestTrue(TEXT("the hero goes as a share whatever his maximum"), HOLUnitReplication::UsesHealthShare(true, Hero->MaxHealth));
 
 	const FReceivedHealth Wounded = SendHealth(*this, *Hero, TEXT("Hero"), 300.f);
 	TestFalse(TEXT("300/450: wounded"), Wounded.bFullHealth);
@@ -429,6 +429,26 @@ bool FHOLNetHeroHealthShareTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Man-at-arms 100/155: 100 on the wire"), Troop.Wire, static_cast<uint16>(100));
 	TestEqual(TEXT("Man-at-arms 100/155: received exactly 100"), Troop.Health, 100);
 	TestEqual(TEXT("Man-at-arms 154/155: exact"), SendHealth(*this, *ManAtArms, TEXT("ManAtArms"), 154.f).Health, 154);
+
+	// The Ram (400, more than 8 bits): exact too, with the 9 bits of the wire (net siege of quick_check: a client read 201 for 200
+	// when it was a share of 255 steps).
+	const FHOLUnitTypeRow* Ram = UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Ram"), TEXT("Net test"));
+	if (TestNotNull(TEXT("Ram row"), Ram))
+	{
+		TestTrue(TEXT("the Ram's 400 fits the wire's health bits"), HOLUnitReplication::FitsWireHealth(Ram->MaxHealth));
+		TestFalse(TEXT("the Ram is not sent as a share"), HOLUnitReplication::UsesHealthShare(HOLIsHero(Ram->ToConstants(TEXT("Ram")).ArmorCategoryMask), Ram->MaxHealth));
+		int32 Wrong = 0;
+		for (int32 Health = 1; Health < Ram->MaxHealth; ++Health)
+		{
+			const FReceivedHealth Received = SendHealth(*this, *Ram, TEXT("Ram"), static_cast<float>(Health));
+			Wrong += (Received.bFullHealth || Received.Wire != Health || Received.Health != Health) ? 1 : 0;
+		}
+		TestEqual(TEXT("every wounded health of the Ram received exactly (wrong values)"), Wrong, 0);
+		// With Reinforced Ram (440), a Ram wounded at 439 is sent exact, its maximum the effective one.
+		FHOLNetUnitState Reinforced = FHOLNetUnitState::Make(FVector::ZeroVector, FVector::ZeroVector, EHOLUnitActivity::Idle, 0);
+		Reinforced.SetCombat(439, 440, 0);
+		TestTrue(TEXT("439/440: wounded, 439 on the wire"), !Reinforced.bFullHealth && Reinforced.Health == 439);
+	}
 	return true;
 }
 

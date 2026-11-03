@@ -64,10 +64,10 @@ uint16 HOLUnitReplication::GetWireHealthShare(const int32 Health, const int32 Ma
 	}
 	if (MaxHealth <= 0)
 	{
-		return FHOLNetUnitState::MaxWireHealth;
+		return FHOLNetUnitState::MaxWireHealthShare;
 	}
-	const int64 Share = (static_cast<int64>(Health) * FHOLNetUnitState::MaxWireHealth + MaxHealth - 1) / MaxHealth;
-	return static_cast<uint16>(FMath::Clamp<int64>(Share, 1, FHOLNetUnitState::MaxWireHealth));
+	const int64 Share = (static_cast<int64>(Health) * FHOLNetUnitState::MaxWireHealthShare + MaxHealth - 1) / MaxHealth;
+	return static_cast<uint16>(FMath::Clamp<int64>(Share, 1, FHOLNetUnitState::MaxWireHealthShare));
 }
 
 bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B)

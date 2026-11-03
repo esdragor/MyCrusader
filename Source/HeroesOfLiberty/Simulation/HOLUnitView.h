@@ -79,7 +79,7 @@ struct FHOLUnitView
 
 namespace HOLUnitView
 {
-	/** FHOLNetUnitState::MaxWireHealth, whose header this one does not include: a hero's whole share (J8a.3). */
+	/** FHOLNetUnitState::MaxWireHealthShare, whose header this one does not include: a hero's whole share (J8a.3). */
 	constexpr int32 MaxWireHealthShare = (1 << 8) - 1;
 
 	/**
