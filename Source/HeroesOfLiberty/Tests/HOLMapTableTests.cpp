@@ -552,8 +552,16 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				}
 				const int32 GoldBudget = (Info.Size == EHOLMapSize::Huge ? MineralValue[0].NeededHuge : MineralValue[0].Needed) * Info.NumPlaces;
 				// The marsh (C3c): one terrain layout, a ring of round zones round the cluster, none on a base; the gold is in the clear in the middle.
-				TestEqual(FString::Printf(TEXT("%s: %d terrain layouts (one: the marsh zones)"), *Name, NumTerrainLayouts), NumTerrainLayouts, 1);
-				TestTrue(FString::Printf(TEXT("%s: %d marsh zones, under %d (a ring)"), *Name, TerrainZones.Num(), MinMarshZones), TerrainZones.Num() >= MinMarshZones);
+				// El Dorado alone rings its gold with marsh; the Crown (C6) has its gold in a clear bowl, with no terrain layout at all.
+				if (FCString::Strcmp(MapInfo.Key, TEXT("ElDorado")) == 0)
+				{
+					TestEqual(FString::Printf(TEXT("%s: %d terrain layouts (one: the marsh zones)"), *Name, NumTerrainLayouts), NumTerrainLayouts, 1);
+					TestTrue(FString::Printf(TEXT("%s: %d marsh zones, under %d (a ring)"), *Name, TerrainZones.Num(), MinMarshZones), TerrainZones.Num() >= MinMarshZones);
+				}
+				else
+				{
+					TestEqual(FString::Printf(TEXT("%s: %d terrain layouts on a map without marsh"), *Name, NumTerrainLayouts), NumTerrainLayouts, 0);
+				}
 				int32 ZonesNearSlot = 0, GoldInMarsh = 0, OthersInMarsh = 0;
 				double NearestZoneEdge = 1.0e9;
 				for (const FHOLPlacedTerrainZone& Zone : TerrainZones)

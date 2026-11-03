@@ -1,0 +1,1 @@
+{ "map": "/Game/Maps/Crown.Crown", "mapSize": "Medium", "bDrawPlaces": true, "startingPeasants": 5, "startingHero": true, "slots": [ { "state": "Human", "colorIndex": 0, "team": 1 }, { "state": "Closed", "colorIndex": 1, "team": 2 }, { "state": "Closed", "colorIndex": 2, "team": 1 }, { "state": "Closed", "colorIndex": 3, "team": 2 } ] }
