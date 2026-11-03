@@ -7925,14 +7925,21 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
 # holds the AI's centre, whatever Bob became.
 # "netspecteam": the same, but Bob and the AI are one team (team 2) against Alice (team 1): defeated in a team, Bob keeps his team's sight
 # (the AI ally's side, his fog line "camp N", not "no camp") and still does not hold Alice's centre.
-foreach ($SpecPart in "netspec", "netspecteam") {
+# "netspecteams" (D646): three teams (Alice 1, Bob 2, the AI 3): Bob's team has fallen with him, he sees the whole map like "netspec".
+foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
     if (-not ($Parts -contains $SpecPart)) { continue }
     $SpecTeam = $SpecPart -eq "netspecteam"
+    $SpecThreeTeams = $SpecPart -eq "netspecteams"
     $SpecServerLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_server.log"
     $SpecConfig = Join-Path $TestSaved "quick_${SpecPart}.json"
     $SpecServerSequence = Join-Path $TestSaved "quick_${SpecPart}_server.seq"
     Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_${SpecPart}_client*.log"), (Join-Path $TestSaved "quick_${SpecPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $SpecConfig @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    if ($SpecThreeTeams) {
+        # D646: three teams (Alice 1, Bob 2, the AI 3): Bob is alone in his team, his team has fallen with him.
+        (Get-Content $SpecConfig -Raw) -replace '"colorIndex": 0,', '"colorIndex": 0, "team": 1,' -replace '"colorIndex": 1,', '"colorIndex": 1, "team": 2,' -replace '"colorIndex": 2 }', '"colorIndex": 2, "team": 3 }' |
+            Set-Content -Encoding ascii $SpecConfig
+    }
     if ($SpecTeam) {
         (Get-Content $SpecConfig -Raw) -replace '"colorIndex": 0,', '"colorIndex": 0, "team": 1,' -replace '"colorIndex": 1,', '"colorIndex": 1, "team": 2,' -replace '"colorIndex": 2 }', '"colorIndex": 2, "team": 2 }' |
             Set-Content -Encoding ascii $SpecConfig
