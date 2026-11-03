@@ -38,18 +38,34 @@ double HOLVisionRules::GetBuildingSight(const double SightRadius, const EHOLBuil
 	}
 }
 
-uint32 HOLVisionRules::GetReceivedCamps(const int32 Camp, const bool bDefeated, const bool bTeamCamp)
+uint32 HOLVisionRules::GetReceivedCamps(const int32 Camp, const bool bDefeated, const bool bTeamStands)
 {
-	if (Camp < 0 || Camp >= 32 || (bDefeated && !bTeamCamp))
+	if (Camp < 0 || Camp >= 32 || (bDefeated && !bTeamStands))
 	{
 		return AllCamps;
 	}
 	return 1u << Camp;
 }
 
-int32 HOLVisionRules::GetViewerCamp(const int32 Camp, const bool bDefeated, const bool bTeamCamp)
+int32 HOLVisionRules::GetViewerCamp(const int32 Camp, const bool bDefeated, const bool bTeamStands)
 {
-	return GetReceivedCamps(Camp, bDefeated, bTeamCamp) == AllCamps ? INDEX_NONE : Camp;
+	return GetReceivedCamps(Camp, bDefeated, bTeamStands) == AllCamps ? INDEX_NONE : Camp;
+}
+
+bool HOLVisionRules::HasStandingTeammate(const int32 Slot, const TConstArrayView<int32> CampOfSlot, const TFunctionRef<bool(int32)> IsDefeated)
+{
+	if (!CampOfSlot.IsValidIndex(Slot) || CampOfSlot[Slot] == INDEX_NONE)
+	{
+		return false;
+	}
+	for (int32 Other = 0; Other < CampOfSlot.Num(); ++Other)
+	{
+		if (Other != Slot && CampOfSlot[Other] == CampOfSlot[Slot] && !IsDefeated(Other))
+		{
+			return true;
+		}
+	}
+	return false;
 }
 
 bool HOLVisionRules::UpdateGhosts(TMap<uint64, FHOLGhost>& Ghosts, TConstArrayView<FHOLGhost> Present, TFunctionRef<bool(const FVector2D&)> IsVisible)

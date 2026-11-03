@@ -501,6 +501,22 @@ bool FHOLVisionViewerCampTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("defeated in a team: the team's sight"), GetViewerCamp(1, true, true), 1);
 	TestEqual(TEXT("defeated alone (free for all, Diplomacy): the whole map"), GetViewerCamp(3, true, false), (int32)INDEX_NONE);
 	TestEqual(TEXT("alone and standing: its own camp"), GetViewerCamp(3, false, false), 3);
+	// D646: defeated, the team's sight only while a teammate stands (HasStandingTeammate), else the whole map.
+	{
+		const TArray<int32> Camps = { 0, 1, 1, INDEX_NONE, 2 };	// slots 1 and 2 are a team, slot 3 closed, slot 4 alone
+		TSet<int32> Defeated;
+		const auto IsDefeated = [&Defeated](const int32 Slot) { return Defeated.Contains(Slot); };
+		Defeated.Add(1);
+		TestTrue(TEXT("slot 1 defeated, its teammate stands: the team stands"), HasStandingTeammate(1, Camps, IsDefeated));
+		TestEqual(TEXT("... the team's sight"), GetViewerCamp(1, true, HasStandingTeammate(1, Camps, IsDefeated)), 1);
+		Defeated.Add(2);
+		TestFalse(TEXT("both defeated: the whole team has fallen"), HasStandingTeammate(1, Camps, IsDefeated));
+		TestFalse(TEXT("... from either side"), HasStandingTeammate(2, Camps, IsDefeated));
+		TestEqual(TEXT("... the whole map"), GetViewerCamp(1, true, HasStandingTeammate(1, Camps, IsDefeated)), (int32)INDEX_NONE);
+		TestFalse(TEXT("alone: no teammate"), HasStandingTeammate(4, Camps, IsDefeated));
+		TestFalse(TEXT("a closed slot: none"), HasStandingTeammate(3, Camps, IsDefeated));
+		TestFalse(TEXT("no such slot"), HasStandingTeammate(9, Camps, IsDefeated));
+	}
 	// The same viewer, the server's way and the client's way (F6a's GetReceivedCamps): a viewer that shows every camp receives every camp.
 	for (int32 Camp = 0; Camp < 4; ++Camp)
 	{

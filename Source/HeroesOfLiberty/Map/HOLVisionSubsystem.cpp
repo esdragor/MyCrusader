@@ -109,7 +109,6 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 
 	// A camp per team, or per slot alone (HOLVictoryRules::GetCamp), packed: Map's camps are only the match's.
 	CampOfSlot.Init(INDEX_NONE, Config.Slots.Num());
-	SlotHasTeam.Init(false, Config.Slots.Num());
 	TArray<int32> Camps;
 	for (int32 Slot = 0; Slot < Config.Slots.Num(); ++Slot)
 	{
@@ -117,7 +116,6 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 		if (Camp != INDEX_NONE)
 		{
 			CampOfSlot[Slot] = Camps.AddUnique(Camp);
-			SlotHasTeam[Slot] = Config.Slots[Slot].Team != 0;
 		}
 	}
 	Map.Init(FHOLVisionGrid::MakeCentered(AHOLMapBounds::MaxSideTiles, UHOLBuildingSettings::GetTileSize()), Camps.Num());
@@ -479,7 +477,14 @@ int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot) const
 
 int32 UHOLVisionSubsystem::GetViewerCamp(const int32 Slot, const bool bDefeated) const
 {
-	return HOLVisionRules::GetViewerCamp(GetCampIndex(Slot), bDefeated, SlotHasTeam.IsValidIndex(Slot) && SlotHasTeam[Slot]);
+	return HOLVisionRules::GetViewerCamp(GetCampIndex(Slot), bDefeated, bDefeated && HasStandingTeammate(Slot));
+}
+
+bool UHOLVisionSubsystem::HasStandingTeammate(const int32 Slot) const
+{
+	const UWorld* World = GetWorld();
+	const AHOLGameState* State = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	return HOLVisionRules::HasStandingTeammate(Slot, CampOfSlot, [State](const int32 Other) { return State && State->IsSlotDefeated(Other); });
 }
 
 EHOLCellVision UHOLVisionSubsystem::GetVision(const int32 Slot, const FVector& Location) const
