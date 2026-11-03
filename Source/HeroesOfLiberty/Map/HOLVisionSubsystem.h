@@ -84,11 +84,14 @@ public:
 
 	/**
 	 * D357, D376: the camp whose sight the machine of Slot's player shows (HOLVisionRules::GetViewerCamp): its own, the team's when
-	 * it is defeated in a team, INDEX_NONE (no fog, everything in sight) for no camp or defeated alone. bDefeated: told by the caller,
-	 * else read from the game state (IsSlotDefeated).
+	 * it is defeated while a teammate stands (D646), INDEX_NONE (no fog, everything in sight) for no camp, defeated alone or defeated
+	 * with its whole team fallen. bDefeated: told by the caller, else read from the game state (IsSlotDefeated).
 	 */
 	int32 GetViewerCamp(int32 Slot) const;
 	int32 GetViewerCamp(int32 Slot, bool bDefeated) const;
+
+	/** D646: a teammate of Slot is not defeated (HOLVisionRules::HasStandingTeammate, the game state's defeats); false alone. */
+	bool HasStandingTeammate(int32 Slot) const;
 
 	/** What Slot's camp knows of Location (Disabled: everything in sight; a slot with no camp: nothing). */
 	EHOLCellVision GetVision(int32 Slot, const FVector& Location) const;
@@ -207,8 +210,6 @@ private:
 	TArray<FHOLFogGhostNet> PendingGhosts;
 	/** Per slot: its camp's index in Map (INDEX_NONE: closed). */
 	TArray<int32> CampOfSlot;
-	/** Per slot: it had a team at the launch (a defeated one keeps its team's sight, else the whole map: D376). */
-	TArray<bool> SlotHasTeam;
 	/** The living units seen as observers, by identifier; Stamp: the last Update that walked them. */
 	TMap<uint32, FTracked> UnitObservers;
 	/** F3.2: the buildings, by actor (UObject's unique identifier); Radius: their sight at the last Update. */

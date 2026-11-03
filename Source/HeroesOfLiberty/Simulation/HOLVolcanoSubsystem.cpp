@@ -197,6 +197,57 @@ void UHOLVolcanoSubsystem::OnStepStarted(const int64 StepIndex)
 		// The Man-at-arms' speed is read from the unit type table (never typed here): the lava walks at a share of it (D575).
 		Apply(Index, Sites[Index], StateOf(Index, Now));
 	}
+	PublishViews(Now);
+}
+
+FHOLVolcanoSiteNet UHOLVolcanoSubsystem::BuildNetView(const int32 SiteIndex, const float Now) const
+{
+	FHOLVolcanoSiteNet View;
+	if (!Sites.IsValidIndex(SiteIndex))
+	{
+		return View;
+	}
+	const HOLVolcano::FSite& Site = Sites[SiteIndex];
+	const HOLVolcano::FSiteState State = StateOf(SiteIndex, Now);
+	View.Phase = static_cast<uint8>(State.Phase);
+	View.Cycle = State.CycleIndex;
+	View.FlowIndex = State.FlowIndex;
+	View.SecondsToErupt = State.SecondsToErupt >= 0.f ? FMath::CeilToInt(State.SecondsToErupt) : -1;
+	View.FrontDistance = FMath::RoundToInt(State.FrontDistance);
+	if (!Site.Flows.IsEmpty() && !Site.Flows[0].Points.IsEmpty())
+	{
+		View.CraterX = Site.Flows[0].Points[0].X;
+		View.CraterY = Site.Flows[0].Points[0].Y;
+	}
+	View.FlowLength = Site.Flows.IsValidIndex(State.FlowIndex) ? FMath::RoundToInt(Site.Flows[State.FlowIndex].Length()) : 0;
+	View.bAltarPresent = Site.Altar.bPresent;
+	View.bAltarLit = State.bAltarLit;
+	View.bWoken = State.bWoken;
+	View.AltarX = Site.Altar.Location.X;
+	View.AltarY = Site.Altar.Location.Y;
+	View.AltarRadius = Site.Altar.Radius;
+	const float HoldSeconds = FMath::Max(Settings.AltarHoldSeconds, UE_KINDA_SMALL_NUMBER);
+	const float Held = GetAltarHeldSeconds(SiteIndex);
+	View.AltarPercent = static_cast<uint8>(FMath::Clamp(FMath::FloorToInt(100.f * Held / HoldSeconds), 0, 100));
+	View.AltarSecondsLeft = FMath::Max(0, FMath::CeilToInt(HoldSeconds - Held));
+	View.AltarHold = static_cast<uint8>(GetAltarHold(SiteIndex));
+	return View;
+}
+
+void UHOLVolcanoSubsystem::PublishViews(const float Now) const
+{
+	const UWorld* World = GetWorld();
+	AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	TArray<FHOLVolcanoSiteNet> Views;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		Views.Add(BuildNetView(Index, Now));
+	}
+	GameState->SetVolcanoViews(Views);
 }
 
 bool UHOLVolcanoSubsystem::MeasureAltar(const int32 SiteIndex, const int32 Slot, FAltarMeasure& Out) const
@@ -364,8 +415,9 @@ void UHOLVolcanoSubsystem::SyncFreshDeposit(const int32 SiteIndex, const HOLVolc
 	{
 		FreshSources[SiteIndex].Add(SourceIndex);
 	}
-	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano site %d cycle %d: the flow has cooled, a fresh %s vein (%s) appears at (%.0f, %.0f), source %d"),
-		SiteIndex, State.CycleIndex, Deposit.Kind == HOLVolcano::EFreshKind::Gold ? TEXT("gold") : TEXT("stone"), *Deposit.TypeName.ToString(), Deposit.Location.X, Deposit.Location.Y, SourceIndex);
+	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano site %d cycle %d: the flow has cooled, a fresh %s %s vein (%s) appears %.0f %% along the flow, at (%.0f, %.0f), source %d"),
+		SiteIndex, State.CycleIndex, Deposit.bBig ? TEXT("big") : TEXT("small"), Deposit.Kind == HOLVolcano::EFreshKind::Gold ? TEXT("gold") : TEXT("stone"), *Deposit.TypeName.ToString(),
+			100.f * Deposit.Along, Deposit.Location.X, Deposit.Location.Y, SourceIndex);
 }
 
 void UHOLVolcanoSubsystem::SyncObstacle(const int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State)

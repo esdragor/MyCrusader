@@ -14,9 +14,17 @@
 
 namespace
 {
-	int32 AITechMinLevel = 2;
-	FAutoConsoleVariableRef CVarAITechMinLevel(TEXT("hol.AI.TechMinLevel"), AITechMinLevel,
-		TEXT("T7 (provisional): the lowest AI difficulty that researches technologies: 0 easy, 1 normal, 2 hard (default), 3 none"));
+	// D648: every level researches, the delay (game seconds before its first research) is what differs: Hard first, Normal later, Easy much later.
+	// The values are the user's (Q-ia-tech-retards = A, D657): Hard 0, Normal 6 min, Easy 14 min.
+	float AITechDelayEasy = 840.f;
+	FAutoConsoleVariableRef CVarAITechDelayEasy(TEXT("hol.AI.TechDelayEasy"), AITechDelayEasy,
+		TEXT("D648: game seconds before an Easy AI researches its first technology (default 840)"));
+	float AITechDelayNormal = 360.f;
+	FAutoConsoleVariableRef CVarAITechDelayNormal(TEXT("hol.AI.TechDelayNormal"), AITechDelayNormal,
+		TEXT("D648: game seconds before a Normal AI researches its first technology (default 360)"));
+	float AITechDelayHard = 0.f;
+	FAutoConsoleVariableRef CVarAITechDelayHard(TEXT("hol.AI.TechDelayHard"), AITechDelayHard,
+		TEXT("D648: game seconds before a Hard AI researches its first technology (default 0: the 20 Peasants of its economy are the only wait)"));
 }
 
 bool UHOLAITechnologyLibrary::ReadAITechnologyTable(TArray<FHOLAITechnology>& OutRows)
@@ -70,7 +78,7 @@ void UHOLAITechnologyLibrary::ReadAITechnologiesDone(const UObject* WorldContext
 	}
 }
 
-int32 UHOLAITechnologyLibrary::GetAITechMinLevel()
+float UHOLAITechnologyLibrary::GetAITechDelay(const int32 Level)
 {
-	return AITechMinLevel;
+	return Level <= 0 ? AITechDelayEasy : (Level == 1 ? AITechDelayNormal : AITechDelayHard);
 }

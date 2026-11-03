@@ -69,6 +69,44 @@ namespace UE::HeroesOfLiberty::VolcanoTools
 			Crater.X, Crater.Y, Site.Altar.Location.X, Site.Altar.Location.Y, Site.Altar.Radius, Length, GameState->GetLaunchConfig().bCatastrophe ? 1 : 0, GameState->GetLaunchConfig().Seed);
 	}
 
+	/** V9a: the world of a client of a network match (it has the game state, replicated), or null. */
+	UWorld* FindClientWorld()
+	{
+		if (!GEngine)
+		{
+			return nullptr;
+		}
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
+		{
+			UWorld* World = Context.World();
+			if (World && World->IsGameWorld() && World->GetNetMode() == NM_Client && World->GetGameState<AHOLGameState>())
+			{
+				return World;
+			}
+		}
+		return nullptr;
+	}
+
+	/**
+	 * hol.Volcano.Window <Seconds> [Length]: a trial and test tool (server or solo): the first trigger window of every site opens Seconds after the
+	 * present clock instant (Length s long, 1 by default) so that the alert comes within seconds instead of after 6 minutes. Dormant without Catastrophe.
+	 */
+	void RunWindow(const TArray<FString>& Args)
+	{
+		UWorld* World = FindMatchWorld();
+		UHOLVolcanoSubsystem* Volcano = World ? UHOLVolcanoSubsystem::Find(World) : nullptr;
+		const UHOLSimulationSubsystem* Simulation = World ? World->GetSubsystem<UHOLSimulationSubsystem>() : nullptr;
+		if (!Volcano || !Simulation || Args.IsEmpty())
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Volcano.Window <Seconds> [Length]: needs a running match (server or solo)"));
+			return;
+		}
+		const float Now = Volcano->GetClockOf(Simulation->GetStepIndex());
+		Volcano->GetMutableSettings().WindowOpensAfter = Now + static_cast<float>(FCString::Atod(*Args[0]));
+		Volcano->GetMutableSettings().WindowLength = Args.Num() >= 2 ? static_cast<float>(FCString::Atod(*Args[1])) : 1.f;
+		UE_LOG(LogHOLMatch, Display, TEXT("Volcano window: the trigger window opens at %.1f s (clock now %.1f s) and lasts %.1f s"), Volcano->GetSettings().WindowOpensAfter, Now, Volcano->GetSettings().WindowLength);
+	}
+
 	/** hol.Volcano.Report: one line per site (phase, countdown, altar), for the scenarios and the journal. */
 	void RunReport(const TArray<FString>& Args)
 	{
@@ -76,7 +114,19 @@ namespace UE::HeroesOfLiberty::VolcanoTools
 		const UHOLVolcanoSubsystem* Volcano = World ? UHOLVolcanoSubsystem::Find(World) : nullptr;
 		if (!Volcano)
 		{
-			UE_LOG(LogHOLMatch, Display, TEXT("Volcano report: no match"));
+			// V9a: a client has no site, only the views the server replicates through the game state.
+			UWorld* ClientWorld = FindClientWorld();
+			const AHOLGameState* ClientState = ClientWorld ? ClientWorld->GetGameState<AHOLGameState>() : nullptr;
+			if (!ClientState)
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Volcano report: no match"));
+				return;
+			}
+			UE_LOG(LogHOLMatch, Display, TEXT("Volcano views (client): catastrophe %d, %d site(s)"), ClientState->GetLaunchConfig().bCatastrophe ? 1 : 0, ClientState->GetVolcanoViews().Num());
+			for (int32 Index = 0; Index < ClientState->GetVolcanoViews().Num(); ++Index)
+			{
+				UE_LOG(LogHOLMatch, Display, TEXT("Volcano view: site %d %s"), Index, *ClientState->GetVolcanoViews()[Index].Describe());
+			}
 			return;
 		}
 		if (Volcano->GetSites().IsEmpty())
@@ -92,12 +142,17 @@ namespace UE::HeroesOfLiberty::VolcanoTools
 				Volcano->GetSites()[Index].Flows.Num(), Volcano->GetSites()[Index].Flows.IsEmpty() || Volcano->GetSites()[Index].Flows[0].Points.IsEmpty() ? 0. : Volcano->GetSites()[Index].Flows[0].Points[0].X,
 				Volcano->GetSites()[Index].Flows.IsEmpty() || Volcano->GetSites()[Index].Flows[0].Points.IsEmpty() ? 0. : Volcano->GetSites()[Index].Flows[0].Points[0].Y,
 				Volcano->GetSites()[Index].Altar.Location.X, Volcano->GetSites()[Index].Altar.Location.Y, Volcano->GetFreshSourceIndices(Index).Num());
+			const UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+			// V9a: the same line a client prints from the views it receives (the server's, from the truth).
+			UE_LOG(LogHOLMatch, Display, TEXT("Volcano view: site %d %s"), Index, *Volcano->BuildNetView(Index, Simulation ? Volcano->GetClockOf(Simulation->GetStepIndex()) : 0.f).Describe());
 		}
 	}
 
 	FAutoConsoleCommand CmdSite(TEXT("hol.Volcano.Site"),
 		TEXT("hol.Volcano.Site <Dx> <Dy> [AltarDx AltarDy] [Length]: poses a volcano site relative to the first player's main forum (trial tool, V12); needs the Catastrophe option"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&RunSite));
+	FAutoConsoleCommand CmdWindow(TEXT("hol.Volcano.Window"), TEXT("hol.Volcano.Window <Seconds> [Length]: the sites' first trigger window opens Seconds from now (trial and test tool)"),
+		FConsoleCommandWithArgsDelegate::CreateStatic(&RunWindow));
 	FAutoConsoleCommand CmdReport(TEXT("hol.Volcano.Report"), TEXT("hol.Volcano.Report: one log line per volcano site (phase, countdown, altar)"),
 		FConsoleCommandWithArgsDelegate::CreateStatic(&RunReport));
 }
@@ -107,6 +162,11 @@ int32 UHOLVolcanoLibrary::GetSiteCount(const UObject* WorldContextObject)
 	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	const UHOLVolcanoSubsystem* Volcano = UHOLVolcanoSubsystem::Find(World);
 	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (World && World->GetNetMode() == NM_Client)
+	{
+		// V9a: a client has no site, it counts the views the server replicates.
+		return GameState && GameState->GetLaunchConfig().bCatastrophe ? GameState->GetVolcanoViews().Num() : 0;
+	}
 	return Volcano && GameState && GameState->GetLaunchConfig().bCatastrophe ? Volcano->GetSites().Num() : 0;
 }
 
@@ -115,6 +175,25 @@ FHOLVolcanoSiteView UHOLVolcanoLibrary::GetSiteView(const UObject* WorldContextO
 	FHOLVolcanoSiteView View;
 	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 	const UHOLVolcanoSubsystem* Volcano = UHOLVolcanoSubsystem::Find(World);
+	if (World && World->GetNetMode() == NM_Client)
+	{
+		// V9a: read from the views the server replicates (the same numbers it reads from its sites).
+		const AHOLGameState* ClientState = World->GetGameState<AHOLGameState>();
+		if (!ClientState || !ClientState->GetLaunchConfig().bCatastrophe || !ClientState->GetVolcanoViews().IsValidIndex(SiteIndex))
+		{
+			return View;
+		}
+		const FHOLVolcanoSiteNet& Net = ClientState->GetVolcanoViews()[SiteIndex];
+		View.Phase = Net.Phase;
+		View.SecondsToErupt = Net.SecondsToErupt;
+		View.bAltarPresent = Net.bAltarPresent;
+		View.bAltarLit = Net.bAltarLit;
+		View.bWoken = Net.bWoken;
+		View.AltarPercent = Net.AltarPercent;
+		View.AltarSecondsLeft = Net.AltarSecondsLeft;
+		View.AltarHold = Net.AltarHold;
+		return View;
+	}
 	if (!Volcano || !Volcano->GetSites().IsValidIndex(SiteIndex))
 	{
 		return View;
