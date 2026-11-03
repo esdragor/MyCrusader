@@ -24,10 +24,14 @@ frames 40
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): guarding, members 3 of 3, hits taken 0
 # Au repos : rien ne bouge tant que personne n est a 15 m ; puis mes soldats entrent dans le rayon.
+hol.Camera.Focus 0 400
 hol.Units.Move -1000 0 0 a
 waitlog Camp 1: fighting
+frames 60
+capture neutrals_camp_fight
 waitlog Camp 1: cleared for good
 waitlog Camp 1 reward: slot 0 +100 XP
+capture neutrals_camp_cleared
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): cleared
 # NQ1, l autre branche : seulement quand on l attaque (hol.Camp.Aggro 1). Les soldats s arretent a 13 m du poste (dans le rayon de 15 m) sans le toucher : le camp ne bouge pas ; puis ils attaquent.
