@@ -1,0 +1,53 @@
+﻿# Camps neutres (N3 a N5) : un camp de 3 Lanciers neutres au milieu de la carte reste au poste, charge ce qui entre a 15 m, est nettoye pour toujours, et donne son XP.
+# Chaine reelle : proprietaire neutre (8), unites de camp passives au repos, charge a vue (hol.Camp.Aggro 0), retour, recompense partagee (hol.Camp.Credit 2).
+# Chaque waitlog est une preuve (check.ps1) ; les passes du brouillard, des statistiques, de la victoire et du reseau tournent pendant tout le scenario avec un proprietaire 8 present.
+# Passifs au repos (N4) : un camp (hol.Camp.Aggro 1, il ne bouge que si on l attaque) a un Paysan de mon camp a 3 m de son poste : personne ne frappe, le camp reste au poste.
+hol.Combat.FlankToTarget 0
+hol.Camp.Aggro 1
+hol.Camp.Add 0 -9000 3 Spearman
+waitlog Camp 0: 3 Spearman at
+frames 30
+hol.Units.Spawn 1 0 -8700 0 Peasant 50
+waitlog Spawn: 1 Peasant
+frames 100
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+hol.Camp.Report
+waitlog Camp 0 at (0, -9000): guarding, members 3 of 3, hits taken 0
+hol.Camp.Aggro 0
+hol.Camp.Credit 2
+hol.Camp.Add 0 0 3 Spearman
+waitlog Camp 1: 3 Spearman at
+frames 30
+hol.Units.Spawn 6 -4000 0 0 ManAtArms 200
+waitlog Spawn: 6 ManAtArms
+frames 40
+hol.Camp.Report
+waitlog Camp 1 at (0, 0): guarding, members 3 of 3, hits taken 0
+# Au repos : rien ne bouge tant que personne n est a 15 m ; puis mes soldats entrent dans le rayon.
+hol.Camera.Focus 0 400
+hol.Units.Move -1000 0 0 a
+waitlog Camp 1: fighting
+frames 60
+capture neutrals_camp_fight
+waitlog Camp 1: cleared for good
+waitlog Camp 1 reward: slot 0 +100 XP
+capture neutrals_camp_cleared
+hol.Camp.Report
+waitlog Camp 1 at (0, 0): cleared
+# NQ1, l autre branche : seulement quand on l attaque (hol.Camp.Aggro 1). Les soldats s arretent a 13 m du poste (dans le rayon de 15 m) sans le toucher : le camp ne bouge pas ; puis ils attaquent.
+hol.Camp.Aggro 1
+hol.Camp.Add 0 8000 3 Spearman
+waitlog Camp 2: 3 Spearman at
+frames 30
+hol.Units.Move 0 6700 0
+frames 100
+hol.Camp.Report
+waitlog Camp 2 at (0, 8000): guarding, members 3 of 3, hits taken 0
+hol.Units.Move 0 7500 0 a
+waitlog Camp 2: fighting
+waitlog Camp 2: cleared for good
+waitlog Camp 2 reward: slot 0 +100 XP
+note Camp neutre : 3 Lanciers neutres au centre de la carte. Mes 6 Hommes d armes entrent dans leur rayon (15 m), le camp charge, est detruit, et mon heros gagne 100 XP (journal : Camp 1 reward).
+# Audit du jeu (Auto_Journey, Qualite des essais) : couleur des neutres, unites qui tournent ou tremblent. Lu par preflight.ps1.
+hol.Test.Sanity

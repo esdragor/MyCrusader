@@ -576,6 +576,14 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	FVector2f FlankWalkGoal = FVector2f::ZeroVector;
 	/** J7c.4 loop 22 (hol.Combat.RearFlankBack): how far behind its line (cm) its first point, at the end's level, lies; 0: passed or none. */
 	float FlankBack = 0.f;
+	/**
+	 * D641 (hol.Combat.FlankToTarget, the user's retour on the neutrals trial): where the melee stood when it last moved more than 3 cm, and for how
+	 * long it has stood there (s) while held behind its line: a soldier that stands still that long with a free place round its target goes round to it.
+	 */
+	FVector2f StillFrom = FVector2f::ZeroVector;
+	float StillSeconds = 0.f;
+	/** D641 (hol.Combat.LoopHoldOnlyFull): a place was free round its target at its last search step (written by UHOLCombatProcessor); a looping soldier is held only if none. */
+	bool bRoomAtTarget = false;
 
 	/**
 	 * A player's order prevails (J7b.2): its target, its approach, its strikes and its last attacker forgotten (no riposte

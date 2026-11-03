@@ -267,6 +267,43 @@ namespace HOLCombat
 		return bFreeEnemyBeyondEnd && (MaxShift <= 0.0 || Shift <= MaxShift);
 	}
 
+	/** A body on the ground: where, and how wide (cm). */
+	struct FBody
+	{
+		FVector2D Where = FVector2D::ZeroVector;
+		float Radius = 60.f;
+	};
+
+	/**
+	 * D641 (the user's retour on the neutrals trial: a soldier that does nothing though it could go round to strike): whether a body of SelfRadius could
+	 * stand touching the target (TargetWhere, TargetRadius) without overlapping any of Others (the target and the unit itself left out by the caller):
+	 * sixteen spots round the target, each free when every other body is further than Tolerance (0.85) of the two radii. The reading of "there is
+	 * room to strike" by eye; hol.Test.Sanity's check 4 (HOLSanity::HasFreePlaceAround) and the flank (hol.Combat.FlankToTarget) are the same call.
+	 */
+	inline bool HasFreePlaceAround(const FVector2D& TargetWhere, const float TargetRadius, const float SelfRadius, TConstArrayView<FBody> Others, const float Tolerance = 0.85f)
+	{
+		constexpr int32 Spots = 16;
+		for (int32 Spot = 0; Spot < Spots; ++Spot)
+		{
+			const double Angle = 2. * UE_DOUBLE_PI * Spot / Spots;
+			const FVector2D Place = TargetWhere + (TargetRadius + SelfRadius + 2.f) * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+			bool bFree = true;
+			for (const FBody& Other : Others)
+			{
+				if (FVector2D::Distance(Place, Other.Where) < Tolerance * (SelfRadius + Other.Radius))
+				{
+					bFree = false;
+					break;
+				}
+			}
+			if (bFree)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 

@@ -178,6 +178,52 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a wobbling walk made all along on a flank is not a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 160), Step).bShake);
 	TestTrue(TEXT("a circle with no flank flag is still a spin"), HOLSanity::Analyse(Flank(Circle, 0, 0), Step).bSpin);
 	TestTrue(TEXT("a wobbling walk with no flank flag is still a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 0), Step).bShake);
+	// Q-sanity-micro = A: the 8 s rule has the floor of the 2 s one (a path over 6 radii). A soldier that fidgets 0.5 cm a step round a 2 cm circle
+	// (80 cm in 8 s, 40 radians of turning, ordered) was counted a spinner (the old rule: no floor); a real loop of 503 cm still is.
+	HOLSanity::FSettings NoFloor;
+	NoFloor.SpinMinPathRadii = 0.f;
+	const auto Fidget = [](int32 I) { const double A = 0.25 * I; return FVector2D(2. * FMath::Cos(A), 2. * FMath::Sin(A)); };
+	TestTrue(TEXT("without the floor (the rule as it was) a 2 cm fidget is a spin"), HOLSanity::Analyse(Make(Fidget, true), Step, NoFloor).bSpin);
+	TestFalse(TEXT("with the floor a 2 cm fidget is not a spin"), HOLSanity::Analyse(Make(Fidget, true), Step).bSpin);
+	const auto Loop = [](int32 I) { const double A = 0.25 * I; return FVector2D(80. * FMath::Cos(A), 80. * FMath::Sin(A)); };
+	const HOLSanity::FResult Real = HOLSanity::Analyse(Make(Loop, true, 40), Step);
+	TestTrue(*FString::Printf(TEXT("a real loop of 503 cm a turn is still a spin (path %.0f cm, net turn %.1f rad)"), Real.Path, Real.SignedTurn), Real.bSpin);
+	return true;
+}
+
+// Check 4 of hol.Test.Sanity (the user's retour on the neutrals trial): a soldier standing still out of reach while a place round its target is free.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSanityStallTest, "HeroesOfLiberty.Sanity.Stall", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLSanityStallTest::RunTest(const FString& Parameters)
+{
+	// A target at the origin (radius 30) ringed by bodies of radius 30 touching it, every 60 degrees: six round it, no room for a seventh.
+	TArray<HOLSanity::FBody> Ring;
+	for (int32 Index = 0; Index < 6; ++Index)
+	{
+		const double Angle = UE_DOUBLE_PI / 3. * Index;
+		Ring.Add({ FVector2D(62. * FMath::Cos(Angle), 62. * FMath::Sin(Angle)), 30.f });
+	}
+	TestFalse(TEXT("a target ringed by six bodies has no free place"), HOLSanity::HasFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Ring));
+	Ring.RemoveAt(2);
+	TestTrue(TEXT("with one body gone a place is free"), HOLSanity::HasFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Ring));
+	TestTrue(TEXT("a lone target has a free place"), HOLSanity::HasFreePlaceAround(FVector2D(500., 0.), 30.f, 30.f, TConstArrayView<HOLSanity::FBody>()));
+	// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
+	HOLSanity::FStall Stall;
+	int32 Told = 0;
+	for (int32 Index = 0; Index < 30; ++Index)
+	{
+		Told += Stall.Step(true, 0.05, 0.5) ? 1 : 0;
+	}
+	TestEqual(TEXT("a stall of 1.5 s over the 0.5 s limit is told once"), Told, 1);
+	Stall.Step(false, 0.05, 0.5);
+	TestEqual(TEXT("a step that moves ends the run"), Stall.Seconds, 0.);
+	TestTrue(TEXT("the longest run is kept"), Stall.Longest > 1.4);
+	HOLSanity::FStall Brief;
+	for (int32 Index = 0; Index < 100; ++Index)
+	{
+		Brief.Step(Index % 8 != 0, 0.05, 0.5);
+	}
+	TestTrue(TEXT("a pause of 7 steps (0.35 s) now and again is not a stall"), Brief.Longest < 0.5 && !Brief.bTold);
 	return true;
 }
 

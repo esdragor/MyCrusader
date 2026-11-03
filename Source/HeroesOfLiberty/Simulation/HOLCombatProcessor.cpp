@@ -130,6 +130,8 @@ namespace UE::HeroesOfLiberty::Simulation
 	// J7c.4 loop 22 (HOLSimulationProcessors.cpp).
 	extern float RearFlankStagger;
 	extern int32 RearFlankNearest;
+	extern int32 FlankToTarget;
+	extern float FlankStillSeconds;
 	extern float RearFlankMaxShift;
 	extern float RearFlankBack;
 	extern float RearTargetMaxShift;
@@ -1259,6 +1261,24 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		return PlacesTaken[Other];
 	};
+	// D641: whether a body of SelfRadius could stand touching Target (a free place round it, the bodies of any side read by HOLCombat::HasFreePlaceAround).
+	const auto RoomAtTarget = [&](const int32 Self, const int32 Enemy, const float SelfRadius)
+	{
+		TArray<int32> RoomNearby;
+		TArray<int32> RoomFriends;
+		GatherNearby(Enemy, 400., RoomNearby);
+		GatherFriends(Enemy, 400., RoomFriends);
+		RoomNearby.Append(RoomFriends);
+		TArray<HOLCombat::FBody> RoomBodies;
+		for (const int32 Body : RoomNearby)
+		{
+			if (Body != Self && Body != Enemy && Fighters[Body].State->CurrentHealth > 0)
+			{
+				RoomBodies.Add({ FVector2D(Fighters[Body].Location), Fighters[Body].Constants->Radius });
+			}
+		}
+		return HOLCombat::HasFreePlaceAround(FVector2D(Fighters[Enemy].Location), Fighters[Enemy].Constants->Radius, SelfRadius, RoomBodies);
+	};
 
 	// Perf (hol.Combat.ParallelSearch): the searches of the units gathered ahead, made now in parallel, the arrows landed:
 	// the serial pass's search as it would run if nothing it reads changed before the unit's turn (the same candidates,
@@ -2217,6 +2237,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				const double Along = FVector2D::DotProduct(Position - Line->Origin, Line->Axis);
 				const double Behind = -FVector2D::DotProduct(Position - Line->Origin, Line->Charge);
+				// D641 (hol.Combat.FlankToTarget): how long it has stood within 3 cm of one place.
+				if (FVector2D::DistSquared(Position, FVector2D(Combat.StillFrom)) > 9.)
+				{
+					Combat.StillFrom = FVector2f(Position);
+					Combat.StillSeconds = 0.f;
+				}
+				else
+				{
+					Combat.StillSeconds += StepSeconds;
+				}
 				if (!Combat.bFlanking)
 				{
 					Combat.FlankWaitSeconds = Behind > -RearFlankArrival && Behind < RearFlankZone ? Combat.FlankWaitSeconds + StepSeconds : 0.f;
@@ -2248,7 +2278,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 									break;
 								}
 							}
-							if (HOLCombat::ShouldGoRound(bFreeBeyondEnd, Shift, MaxShift))
+							// D641 (hol.Combat.FlankToTarget, the user's retour on the neutrals trial): held still behind its line with a place free round
+							// its own target (the bodies round it, of any side, read by HOLCombat::HasFreePlaceAround), it goes round the end to that place:
+							// it waits only when there is no place to strike from.
+							bool bRoomAtTarget = false;
+							if (!bFreeBeyondEnd && UE::HeroesOfLiberty::Simulation::FlankToTarget != 0 && Combat.StillSeconds >= UE::HeroesOfLiberty::Simulation::FlankStillSeconds)
+							{
+								bRoomAtTarget = RoomAtTarget(Index, Target, Constants.Radius);
+							}
+							if (HOLCombat::ShouldGoRound(bFreeBeyondEnd || bRoomAtTarget, Shift, MaxShift))
 						{
 							Combat.bFlanking = true;
 							Combat.FlankWaitSeconds = 0.f;
@@ -2362,6 +2400,11 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		{
 			Combat.bAttacking = false;
 			HOLCombat::TickIdle(Combat.CooldownMs, StepMs);
+			// D641 (hol.Combat.LoopHoldOnlyFull): whether a place is free round its target, read at the search rate; UHOLFullSpeedProcessor holds a looping soldier only if none.
+			if (bSearchStep && bPreferFree && !HOLCombat::IsRangedAttack(Constants.AttackRange))
+			{
+				Combat.bRoomAtTarget = RoomAtTarget(Index, Target, Constants.Radius);
+			}
 			// A walk to it at most at the search rate: the first, or once it moved off, or once the last one ended short.
 			const bool bWalkOver = Fighter.Order->Phase == EHOLMovePhase::None;
 			const bool bMoved = FVector2D::DistSquared(EnemyPosition, Combat.ApproachPoint) > FMath::Square(ReapproachDistance);

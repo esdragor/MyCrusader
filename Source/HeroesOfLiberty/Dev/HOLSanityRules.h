@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Simulation/HOLCombatRules.h"
 
 /**
  * The rules of hol.Test.Sanity (Auto_Journey, "Qualité des essais"): what a trial must never show, decided here from a
@@ -88,6 +89,11 @@ namespace HOLSanity
 		float SpinTurn = 3.f * UE_PI;
 		/** ... on an ordered unit that ends within this many body radii of where it began. */
 		float SpinNetRadii = 4.f;
+		/**
+		 * ... and walked more than this many body radii in all (Q-sanity-micro = A, the same floor as the 2 s rule below): a soldier jostled
+		 * 1 to 3 cm a step piles up turns on a path of a metre, it does not go round anything. 0: no floor (the rule as it was).
+		 */
+		float SpinMinPathRadii = 6.f;
 		/** A shake: reversals (a step against the one before, both moving) per second, ... */
 		float ShakePerSecond = 3.f;
 		/** ... on a unit whose net move over the window is under this share of the path it walked. */
@@ -164,7 +170,8 @@ namespace HOLSanity
 		Result.Net = static_cast<float>(FVector2D::Distance(Trace.Places[0], Trace.Places.Last()));
 		Result.OrderedShare = static_cast<float>(Ordered) / static_cast<float>(Count - 1);
 		const float Seconds = static_cast<float>(Count - 1) * StepSeconds;
-		Result.bSpin = Result.OrderedShare >= 0.9f && FMath::Abs(Result.SignedTurn) >= Settings.SpinTurn && Result.Net <= Settings.SpinNetRadii * Trace.Radius;
+		Result.bSpin = Result.OrderedShare >= 0.9f && FMath::Abs(Result.SignedTurn) >= Settings.SpinTurn && Result.Net <= Settings.SpinNetRadii * Trace.Radius
+			&& Result.Path > Settings.SpinMinPathRadii * Trace.Radius;
 		Result.bShake = Seconds > 0.f && static_cast<float>(Result.Reversals) / Seconds >= Settings.ShakePerSecond && Result.Net <= Settings.ShakeNetShare * Result.Path;
 		// A spin met in a part of the window only (a unit that walked up to a fight, then circled it): any 2 s of it going round
 		// (a full turn of heading, in one direction, under 30% of the path made good) on an order counts. A unit shoved to and fro by its
@@ -202,4 +209,39 @@ namespace HOLSanity
 		Result.bShake |= Seconds > 0.f && Result.Path > 10.f * Trace.Radius && Result.Net > Settings.ShakeNetShare * Result.Path && Result.Zigzag / Seconds >= Settings.JitterZigzagPerSecond;
 		return Result;
 	}
+
+	// ---- Check 4 (D641, the user's retour on the neutrals trial): a soldier that does nothing while a place is free. ----
+	/** The rule itself lives with the combat (HOLCombat::HasFreePlaceAround): the audit and the flank (hol.Combat.FlankToTarget) read "room" with one call. */
+	using FBody = HOLCombat::FBody;
+	using HOLCombat::HasFreePlaceAround;
+
+
+	/** A unit's run of steps standing still out of reach of its target while a place was free round it: the current run and the longest one (s). */
+	struct FStall
+	{
+		double Seconds = 0.;
+		double Longest = 0.;
+		/** The run is over the limit: its first step (the fault is told once). */
+		bool bTold = false;
+		/** How many runs went over the limit. */
+		int32 Runs = 0;
+
+		/** One step: stalled or not. Returns true at the step the current run first goes over LimitSeconds. */
+		bool Step(const bool bStalledWithRoom, const double StepSeconds, const double LimitSeconds)
+		{
+			if (!bStalledWithRoom)
+			{
+				bTold = false;
+			}
+			Seconds = bStalledWithRoom ? Seconds + StepSeconds : 0.;
+			Longest = FMath::Max(Longest, Seconds);
+			if (!bTold && LimitSeconds > 0. && Seconds > LimitSeconds)
+			{
+				bTold = true;
+				++Runs;
+				return true;
+			}
+			return false;
+		}
+	};
 }
