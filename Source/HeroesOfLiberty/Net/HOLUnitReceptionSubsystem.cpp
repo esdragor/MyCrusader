@@ -28,6 +28,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
+#include "Siege/HOLSiegeRules.h"
 
 bool UHOLUnitReceptionSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
@@ -550,7 +551,25 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		// A share also for a type too large for the wire's exact health bits (the siege engines, S2): no hero sheet for it.
 		const bool bShare = HOLUnitReplication::UsesHealthShare(bHero, Row->MaxHealth);
 		const AHOLGameState* GameState = bHero ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
-		HOLUnitView::SetReceivedHealth(OutView, Slot.State.bFullHealth, Slot.State.Health, Row->MaxHealth, bShare,
+		// S5: the maximum of a type a technology raises (the Ram's Reinforced Ram, +10 %): its owner alone knows its technologies (the
+		// research reaches its owner alone), so an enemy's Ram is read at the table's maximum, its own at the raised one.
+		int32 MaxHealth = Row->MaxHealth;
+		if (const FName HealthStat = HOLSiege::GetHealthStat(OutView.TypeName); !HealthStat.IsNone())
+		{
+			if (const AGameStateBase* Game = GetWorld()->GetGameState())
+			{
+				for (const APlayerState* Player : Game->PlayerArray)
+				{
+					const AHOLPlayerState* HOLPlayer = Cast<AHOLPlayerState>(Player);
+					if (HOLPlayer && HOLPlayer->GetPlayerIndex() == Slot.OwnerPlayer)
+					{
+						MaxHealth = HOLCombat::GetMaxHealth(Row->ToConstants(OutView.TypeName), 1, HOLPlayer->GetTechnologyBonusPercent(HealthStat));
+						break;
+					}
+				}
+			}
+		}
+		HOLUnitView::SetReceivedHealth(OutView, Slot.State.bFullHealth, Slot.State.Health, MaxHealth, bShare,
 			GameState ? &GameState->GetHeroSheet(Slot.OwnerPlayer) : nullptr);
 	}
 	return true;

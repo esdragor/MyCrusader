@@ -394,6 +394,10 @@ if ($Parts -contains "net") {
             "mark net siege", "hol.Units.Spawn 1 4000 9000 1 Ram 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_siege_spawned.flag")",
             "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120", "wait 1", "hol.Units.Where 1",
             "waitfile $(Join-Path $TestSaved "quick_net_siege_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120",
+            # Reinforced Ram (S5) asked by client 1 (the real cheat, the server's AddTechnology): the Ram gains 40 (240/440 on the server);
+            # Bob alone knows his technology (he reads 240/440), Alice reads the same 240 points against the table's 400.
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_tech.flag") 120", "wait 1", "hol.Units.Where 1",
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_end1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_end2.flag") 120",
             "hol.Units.Remove 4000 9000 800 1",
             # Duel D5 (the circle drawn): a duel accepted at once between the two heroes (the development door, the heroes stand far apart:
             # the circle is centred between them); both clients draw it from the replicated sheets ("Duel rings:" of hol.Select.Report).
@@ -2770,7 +2774,10 @@ if ($NetListening) {
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_spawned.flag") 120", "hol.Cheat.Wound 50", "wait 0.3", "signal $(Join-Path $TestSaved "quick_net_siege_wounded.flag")" }
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120" }
         $NetSteps += "wait 2", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_siege_done$Client.flag")"
-        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120" }
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120", "hol.Cheat.Technology ReinforcedRam", "wait 0.5", "signal $(Join-Path $TestSaved "quick_net_siege_tech.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_tech.flag") 120" }
+        $NetSteps += "wait 2", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_siege_end$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_end2.flag") 120" }
         # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
         $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
@@ -7053,12 +7060,19 @@ if ($Parts -contains "net") {
             })
         }
         $SiegeServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege"))
-        $SiegeTruth = if ($SiegeServer.Count) { $SiegeServer[-1] } else { "" }
-        $SiegeChecks["server: Bob's Ram wounded to 50 % reads 200/400 ($($SiegeServer -join ','))"] = $SiegeTruth -eq "200/400"
+        $SiegeTruth = if ($SiegeServer.Count) { $SiegeServer[0] } else { "" }
+        $SiegeTruth2 = if ($SiegeServer.Count -ge 2) { $SiegeServer[-1] } else { "" }
+        $SiegeChecks["server: Bob's Ram wounded to 50 % reads 200/400, then 240/440 with Reinforced Ram ($($SiegeServer -join ','))"] = $SiegeTruth -eq "200/400" -and $SiegeTruth2 -eq "240/440"
         foreach ($NetClient in $NetClients) {
             $SiegeSeen = @(& $SiegeRead @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "siege"))
-            $SiegeChecks["client $($NetClient.Client) : the Ram reads the server's $SiegeTruth in its 3 reports ($($SiegeSeen -join ','))"] =
-                $SiegeSeen.Count -ge 3 -and $SiegeTruth -ne "" -and @($SiegeSeen | Where-Object { $_ -ne $SiegeTruth }).Count -eq 0
+            $First = @($SiegeSeen | Select-Object -First 3)
+            $Last = @($SiegeSeen | Select-Object -Last 2)
+            $SiegeChecks["client $($NetClient.Client) : the Ram reads the server's $SiegeTruth in its first 3 reports ($($First -join ','))"] =
+                $First.Count -eq 3 -and $SiegeTruth -ne "" -and @($First | Where-Object { $_ -ne $SiegeTruth }).Count -eq 0
+            # Bob (the owner) knows his Reinforced Ram: 240/440; Alice, who is not told, reads the same 240 points against the table's 400.
+            $WantLast = if ($NetClient.Client -eq 1) { "240/440" } else { "240/400" }
+            $SiegeChecks["client $($NetClient.Client) : after Reinforced Ram the Ram reads $WantLast in its last 2 reports ($($Last -join ','))"] =
+                $SiegeSeen.Count -ge 5 -and $Last.Count -eq 2 -and @($Last | Where-Object { $_ -ne $WantLast }).Count -eq 0
         }
         $AllOk = (Report "net siege" $SiegeChecks) -and $AllOk
     }
