@@ -306,12 +306,13 @@ bool FHOLDiplomacyCombatTest::RunTest(const FString& Parameters)
 		// Mutual Neutral from fresh units: no automatic fire at all.
 		Launch(GameState, EHOLMatchMode::Diplomacy);
 		RunStep();
+		// Said BEFORE the units are born: a fight already begun between two Enemies is another case (each one's target attacks it: the defender's right).
+		Say(0, 1, HOLDiplomacy::Neutral);
+		Say(1, 0, HOLDiplomacy::Neutral);
 		const uint32 C = Place(ManAtArms, 0, FVector(0.0, 0.0, 0.0));
 		const uint32 D = Place(ManAtArms, 1, FVector(150.0, 0.0, 0.0));
 		if (TestTrue(TEXT("two fresh Men-at-arms born"), C != 0 && D != 0))
 		{
-			Say(0, 1, HOLDiplomacy::Neutral);
-			Say(1, 0, HOLDiplomacy::Neutral);
 			TestFalse(TEXT("both Neutral: nobody is hurt in 10 s (no automatic fire, D369)"), HurtWithin(C, D, 2 * FiveSeconds));
 			// Neutral is no friendship: a third player at war with both is fought by both.
 			const uint32 Stranger = Place(Spearman, 2, FVector(-150.0, 0.0, 0.0));
@@ -326,6 +327,20 @@ bool FHOLDiplomacyCombatTest::RunTest(const FString& Parameters)
 				}
 				TestTrue(TEXT("a player at war with the Neutrals is still fought"), bStrangerHurt);
 			}
+		}
+		Clear();
+
+		// A fight already engaged, then Neutral on both sides (D661): a unit still struck defends itself, so the blows go on.
+		Launch(GameState, EHOLMatchMode::Diplomacy);
+		RunStep();
+		const uint32 E = Place(ManAtArms, 0, FVector(0.0, 0.0, 0.0));
+		const uint32 F = Place(ManAtArms, 1, FVector(150.0, 0.0, 0.0));
+		if (TestTrue(TEXT("two Men-at-arms born for the engaged fight"), E != 0 && F != 0))
+		{
+			TestTrue(TEXT("Enemy first: they fight"), HurtWithin(E, F, 2 * FiveSeconds));
+			Say(0, 1, HOLDiplomacy::Neutral);
+			Say(1, 0, HOLDiplomacy::Neutral);
+			TestTrue(TEXT("Neutral made in the middle of the fight: the defence goes on (D661)"), HurtWithin(E, F, 2 * FiveSeconds));
 		}
 		Clear();
 		CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
