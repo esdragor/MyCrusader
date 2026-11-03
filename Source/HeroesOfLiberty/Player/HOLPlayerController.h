@@ -520,6 +520,17 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Duel")
 	void RequestDuelAnswer(bool bAccept);
 
+	/**
+	 * D5 (DiplomacyInProgress.md, D369): the player says Stance (HOLDiplomacy::Enemy 0 / Neutral 1 / Ally 2) toward the player at TargetSlot.
+	 * Through the order queue; at the next step the server has HOLDiplomacy::SetStance decide (Diplomacy mode only), stores it, tells all.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	void RequestStance(int32 TargetSlot, int32 Stance);
+
+	/** D5 (D371): the player lets the player at TargetSlot see what he sees (bShare), or stops (allies only; the server checks it). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	void RequestShareVision(int32 TargetSlot, bool bShare);
+
 	/** D356: Escape with nothing to undo asks the interface to open the in-game menu (on this machine only). */
 	DECLARE_MULTICAST_DELEGATE(FOnGameMenuRequested);
 	FOnGameMenuRequested OnGameMenuRequested;
@@ -802,6 +813,12 @@ private:
 	void ServerDuelChallenge(int32 TargetSlot);
 	UFUNCTION(Server, Reliable)
 	void ServerDuelAnswer(bool bAccept);
+
+	/** D5: the player's own slot's stance / shared vision, queued (UHOLCommandSubsystem::IssueDiplomacyOrder); the game state checks the rest. */
+	UFUNCTION(Server, Reliable)
+	void ServerDiplomacyStance(int32 TargetSlot, int32 Stance);
+	UFUNCTION(Server, Reliable)
+	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;

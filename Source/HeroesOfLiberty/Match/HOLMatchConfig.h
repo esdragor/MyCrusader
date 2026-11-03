@@ -40,11 +40,13 @@ enum class EHOLAIDifficulty : uint8
 	Evolving,	// Évolutive (D329)
 };
 
-/** Game modes (§ 14.3): only Standard until the prototype is done (D205). */
+/** Game modes (§ 14.3): Standard, and Diplomacy (D357, D366 to D376; provisional name) between humans, D5 of DiplomacyInProgress.md. */
 UENUM()
 enum class EHOLMatchMode : uint8
 {
 	Standard,
+	/** Everyone for oneself with alliances made and broken during the match (HOLDiplomacy); the AIs alone against all. */
+	Diplomacy,
 };
 
 /** One of the eight slots of a match (D244). The start position is the slot index: the maps are symmetric. */

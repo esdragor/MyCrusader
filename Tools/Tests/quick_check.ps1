@@ -273,7 +273,9 @@ if ($Parts -contains "net") {
         $NetSlotName = if ($i -lt 2) { ", `"playerName`": `"$($NetNames[$i])`"" } else { "" }
         "{ `"state`": `"$(if ($i -lt 2) { 'Human' } else { 'Closed' })`", `"colorIndex`": $i$NetSlotName }"
     }
-    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
+    # The Diplomacy mode (D5 of DiplomacyInProgress.md): the stances are the server's, replicated; "net diplomacy" below makes Bob and
+    # Alice ally then break and compares what the server and both clients read. Nothing else of the part reads the mode yet (D6).
+    "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"mode`": `"Diplomacy`", `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
     Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
@@ -325,6 +327,11 @@ if ($Parts -contains "net") {
     $NetPauseCheckFlag = Join-Path $TestSaved "quick_net_pause_check.flag"
     $NetPauseCheckedFlag = Join-Path $TestSaved "quick_net_pause_checked.flag"
     $NetResumedFlag = Join-Path $TestSaved "quick_net_resumed.flag"
+    # Diplomacy (D5): Bob says Ally toward Alice (his flag), Alice says Ally (allied: everyone reports), Bob breaks (everyone reports again).
+    $NetDipBobFlag = Join-Path $TestSaved "quick_net_dip_bob.flag"
+    $NetDipAlliedFlag = Join-Path $TestSaved "quick_net_dip_allied.flag"
+    $NetDipBrokenFlag = Join-Path $TestSaved "quick_net_dip_broken.flag"
+    $NetDipServerFlag = Join-Path $TestSaved "quick_net_dip_server.flag"
     $NetKingAskFlag = Join-Path $TestSaved "quick_net_king_ask.flag"
     $NetKingBornFlag = Join-Path $TestSaved "quick_net_king_born.flag"
     $NetKingKillFlag = Join-Path $TestSaved "quick_net_king_kill.flag"
@@ -335,7 +342,9 @@ if ($Parts -contains "net") {
     $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
     else { @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
         "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
-        "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
+        "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport",
+        "waitfile $NetDipAlliedFlag 120", "wait 2", "mark net diplomacy allied", "hol.Diplomacy.Report", "signal $NetDipServerFlag", "waitfile $NetDipBrokenFlag 120", "wait 2", "mark net diplomacy broken", "hol.Diplomacy.Report",
+        "waitfile $NetFightFlag 900", "mark net fight", "hol.Combat.LogHits 1", "hol.Units.Spawn 2 -6300 -5500 0 ManAtArms 150",
         "hol.Units.Spawn 2 -5700 -5500 1 Spearman 150") + @(for ($i = 0; $i -lt 30; $i++) { "wait 1"; "hol.Units.Where" }) +
         @("waitfile $NetArrowsFlag 300", "mark net arrows", "hol.Units.Spawn 3 -2000 -5000 0 Archer 150", "hol.Units.Spawn 2 -2000 -3600 1 Spearman 150", "wait 12",
         "hol.Units.Remove -2000 -4300 1500 1", "hol.Units.Remove -2000 -4300 1500 0", "mark net arrows end", "signal $NetArrowsEndFlag", "hol.Units.CorpseReport") }) +
@@ -2600,6 +2609,15 @@ if ($NetListening) {
                 "signal $NetPauseCheckFlag", "waitfile $NetPauseCheckedFlag 60", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "signal $NetResumedFlag"
         } else {
             $NetSteps += "waitfile $NetPausedFlag 300", "hol.Match.Resume", "wait 1", "hol.HUD.Report", "capture qcnet_2_paused", "signal $NetAliceResumeTriedFlag", "waitfile $NetResumedFlag 120"
+        }
+        # Diplomacy (D5, net diplomacy): Bob (slot 1) says Ally toward Alice (slot 0), then Alice toward Bob: allied, everybody reports;
+        # Bob breaks (Enemy toward Alice), everybody reports again. The server and both clients must read the same stances.
+        if ($Client -eq 1) {
+            $NetSteps += "hol.Diplomacy.Stance 0 ally", "wait 2", "signal $NetDipBobFlag", "waitfile $NetDipAlliedFlag 120", "wait 2", "hol.Diplomacy.Report",
+                "waitfile $NetDipServerFlag 120", "hol.Diplomacy.Stance 0 enemy", "wait 2", "hol.Diplomacy.Report", "signal $NetDipBrokenFlag"
+        } else {
+            $NetSteps += "waitfile $NetDipBobFlag 120", "hol.Diplomacy.Stance 1 ally", "wait 2", "hol.Diplomacy.Report", "signal $NetDipAlliedFlag",
+                "waitfile $NetDipBrokenFlag 120", "wait 2", "hol.Diplomacy.Report"
         }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
@@ -6507,6 +6525,25 @@ if ($Parts -contains "net") {
         $MatchPauses[3].Groups[2].Value -eq "1" -and $MatchPauses[3].Groups[1].Value -eq $MatchPauses[2].Groups[1].Value -and
         $MatchPauses[4].Groups[2].Value -eq "0" -and $MatchPauses[5].Groups[2].Value -eq "0" -and
         [int64]$MatchPauses[5].Groups[1].Value -gt [int64]$MatchPauses[4].Groups[1].Value
+    # D5 (net diplomacy): Bob and Alice ally then Bob breaks; the server and both clients each report twice (two pairs a report): the
+    # same four lines everywhere, the alliance read as formed (both Ally) then as broken at once (Bob Enemy: the relation Enemy, Alice's stance kept).
+    $DipLines = {
+        param($Path)
+        @(if ($Path -and (Test-Path $Path)) { Select-String -Path $Path -Pattern "Diplomacy report: (slot \d toward slot \d: .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
+    }
+    $DipServer = & $DipLines $NetServerLog
+    $DipClient1 = & $DipLines (Join-Path $TestSaved "Logs\quick_net_client1.log")
+    $DipClient2 = & $DipLines (Join-Path $TestSaved "Logs\quick_net_client2.log")
+    $DipWant = @(
+        "slot 0 toward slot 1: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
+        "slot 1 toward slot 0: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
+        "slot 0 toward slot 1: stance Ally, relation Enemy, vision 0, fires 1, adversary 1",
+        "slot 1 toward slot 0: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1")
+    $DipSays = "server $($DipServer.Count), client 1 $($DipClient1.Count), client 2 $($DipClient2.Count) lines"
+    $Checks["net diplomacy: the server and both clients read the alliance then the break ($DipSays)"] =
+        ($DipServer -join "|") -eq ($DipWant -join "|") -and ($DipClient1 -join "|") -eq ($DipWant -join "|") -and ($DipClient2 -join "|") -eq ($DipWant -join "|")
+    $DipStart = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Diplomacy report: mode Diplomacy" }).Count
+    $Checks["net diplomacy: the match is in the Diplomacy mode on the server ($DipStart reports)"] = $DipStart -eq 2
     # The pause screen (P5.3) on each client: Bob's (« Reprendre » his, at once), then hidden once resumed; Alice's
     # (« Reprendre » greyed while the timer runs, 1 to 60 s).
     foreach ($N in 1, 2) {
