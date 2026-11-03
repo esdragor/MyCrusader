@@ -274,7 +274,7 @@ TRANSLATIONS = {
     "HOLHeroBlock,AbilityCooldown": ("Ready in {0} s", "あと {0} 秒"),
     "HOLDiplomacyPanel,Title": ("Diplomacy", "外交"),
     "HOLDiplomacyPanel,Button": ("Diplomacy", "外交"),
-    "HOLDiplomacyPanel,ButtonTip": ("Open or close diplomacy (F11)", "外交を開く/閉じる (F11)"),
+    "HOLDiplomacyPanel,ButtonTip": ("Open or close diplomacy (Ctrl + D)", "外交を開く/閉じる (Ctrl + D)"),
     "HOLDiplomacyPanel,Ally": ("Ally", "同盟"),
     "HOLDiplomacyPanel,Neutral": ("Neutral", "中立"),
     "HOLDiplomacyPanel,Enemy": ("Enemy", "敵対"),

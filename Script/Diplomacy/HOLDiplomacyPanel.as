@@ -121,7 +121,7 @@ namespace HOLDiplomacyPanelText
 	{
 		if (Key == Title) return NSLOCTEXT("HOLDiplomacyPanel", "Title", "Diplomatie");
 		if (Key == Button) return NSLOCTEXT("HOLDiplomacyPanel", "Button", "Diplomatie");
-		if (Key == ButtonTip) return NSLOCTEXT("HOLDiplomacyPanel", "ButtonTip", "Ouvrir ou fermer la diplomatie (F11)");
+		if (Key == ButtonTip) return NSLOCTEXT("HOLDiplomacyPanel", "ButtonTip", "Ouvrir ou fermer la diplomatie (Ctrl + D)");
 		if (Key == Ally) return NSLOCTEXT("HOLDiplomacyPanel", "Ally", "Allié");
 		if (Key == Neutral) return NSLOCTEXT("HOLDiplomacyPanel", "Neutral", "Neutre");
 		if (Key == Enemy) return NSLOCTEXT("HOLDiplomacyPanel", "Enemy", "Ennemi");

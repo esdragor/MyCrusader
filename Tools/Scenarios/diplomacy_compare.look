@@ -9,7 +9,7 @@ dip_L2_1920 | Presentation 2 a 1920x1080 : panneau compact en bas a gauche au-de
 dip_L2_1366 | Presentation 2 a 1366x768 : le meme panneau compact, au-dessus du bloc du heros, sans le couvrir
 dip_L2_600 | Presentation 2 a 1280x600 : le meme panneau compact, sans couvrir le bloc du heros ni les Triches
 dip_L2_menu | Presentation 2 : le menu d'un joueur ouvert, trois choix Allie / Neutre / Ennemi sous sa ligne
-dip_L1_choice | Presentation 1 apres la touche Entree, vue de l'utilisateur
+dip_L0_choice | Presentation 0 apres la touche Entree, vue de l'utilisateur
 dip_L2_choice | Presentation 2 apres la touche Entree, vue de l'utilisateur
 dip_L0_market | Presentation 0 avec un Marche : le bouton Tribut est actif (non grise) sur chaque ligne
 dip_L1_market | Presentation 1 avec un Marche : le bouton Tribut est actif

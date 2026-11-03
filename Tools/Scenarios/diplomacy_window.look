@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+dip_w1920fs | 1920x1080 plein ecran : le bouton « Diplomatie » est a gauche du bouton « Menu », a sa hauteur, sans toucher le bloc « vous / vies » ; le panneau a droite sous le tableau des joueurs
+dip_w1280 | 1280x720 en fenetre deplacee sur le bureau : le bouton « Diplomatie » est a gauche du bouton « Menu », a sa hauteur, sans toucher le bloc « vous / vies » ; le panneau a droite sous le tableau des joueurs
+dip_w1600 | 1600x900 en fenetre deplacee sur le bureau : le bouton « Diplomatie » est a gauche du bouton « Menu », a sa hauteur, sans toucher le bloc « vous / vies » ; le panneau a droite sous le tableau des joueurs
+dip_w1366 | 1366x768 en fenetre deplacee sur le bureau : le bouton « Diplomatie » est a gauche du bouton « Menu », a sa hauteur, sans toucher le bloc « vous / vies » ; le panneau a droite sous le tableau des joueurs
+dip_w600 | 1280x600 en fenetre deplacee sur le bureau : le bouton « Diplomatie » est a gauche du bouton « Menu », a sa hauteur, sans toucher le bloc « vous / vies » ; le panneau a droite sous le tableau des joueurs

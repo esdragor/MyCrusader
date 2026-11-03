@@ -17,6 +17,7 @@
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLHUDLayoutRules.h"
+#include "HUD/HOLHUDSpace.h"
 #include "Match/HOLResources.h"
 #include "Misc/ConfigCacheIni.h"
 #include "Player/HOLPlayerController.h"
@@ -232,13 +233,12 @@ float UHOLCheatPanel::GetBottom() const
 
 bool UHOLCheatPanel::GetBox(FBox2D& OutBox) const
 {
-	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
 	const FGeometry& Geometry = Panel ? Panel->GetCachedGeometry() : FGeometry();
 	if (!Panel || Panel->GetVisibility() == ESlateVisibility::Collapsed || Geometry.GetAbsoluteSize().IsNearlyZero())
 	{
 		return false;
 	}
-	OutBox = FBox2D(FVector2D(Geometry.GetAbsolutePosition()) / Dpi, FVector2D(Geometry.GetAbsolutePosition() + Geometry.GetAbsoluteSize()) / Dpi);
+	OutBox = HOLHUDSpace::BoxOf(this, Geometry);
 	return true;
 }
 

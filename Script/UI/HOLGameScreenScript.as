@@ -146,7 +146,7 @@ FString TalentTipTexts = "";
 	const float MinimapSize = 240.0;
 	const float MinimapMargin = 16.0;
 
-	// The Diplomacy panel (D7 of DiplomacyInProgress.md, GDD D387): a button at the top, F11, and a panel over the game, a line per player (colour,
+	// The Diplomacy panel (D7 of DiplomacyInProgress.md, GDD D387): a button at the top, Ctrl + D, and a panel over the game, a line per player (colour,
 	// name, faction, lives; stance; vision; tribute; private message). Three presentations behind hol.UI.DiplomacyLayout 0|1|2 (the rows are the
 	// same, HOLDiplomacyPanel.as; only the places of the controls differ): 0 stance in three buttons, the panel wide and centred; 1 the stance
 	// cycled on a coloured chip, the panel narrow at the right under the players' table; 2 the stance in a drop-down, the panel compact bottom
@@ -742,7 +742,7 @@ FString TalentTipTexts = "";
 		return true;
 	}
 
-	// hol.HUD.Click names: DiplomacyButton, DiplomacyClose, Dip<Enemy|Neutral|Ally|Chip|Menu|Vision|Tribute|Message>_<slot>, DiplomacyKey (F11).
+	// hol.HUD.Click names: DiplomacyButton, DiplomacyClose, Dip<Enemy|Neutral|Ally|Chip|Menu|Vision|Tribute|Message>_<slot>, DiplomacyKey (Ctrl + D).
 	bool ClickDiplomacyName(FName WidgetName)
 	{
 		if (WidgetName == n"DiplomacyButton" || WidgetName == n"DiplomacyKey")
@@ -1795,7 +1795,7 @@ FString TalentTipTexts = "";
 	{
 		if (KeyName == n"T")
 			ClickTalent();
-		if (KeyName == n"F11")
+		if (KeyName == n"CtrlD")
 			ToggleDiplomacy();
 	}
 

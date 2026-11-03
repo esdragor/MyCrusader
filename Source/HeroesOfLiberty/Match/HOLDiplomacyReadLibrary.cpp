@@ -16,13 +16,13 @@
 
 namespace
 {
-	/** hol.UI.DiplomacyLayout: the three presentations of the panel, behind a setting until the user chooses (DiplomacyInProgress.md, D7). */
+	/** hol.UI.DiplomacyLayout: the three presentations of the panel, 1 is the user's choice of 2026-11-03 (D650), the others stay behind the setting for comparison. */
 	TAutoConsoleVariable<int32> CVarDiplomacyLayout(
-		TEXT("hol.UI.DiplomacyLayout"), 0,
+		TEXT("hol.UI.DiplomacyLayout"), 1,
 		TEXT("The Diplomacy panel's presentation: 0 stance in three buttons (wide, centred), 1 stance cycled on a colour chip (narrow, right), 2 stance in a drop-down menu (bottom left, compact)."),
 		ECVF_Default);
 
-	const AHOLGameState* GetGameStateOf(const UObject* WorldContextObject)
+	const AHOLGameState* GetDiplomacyGameStateOf(const UObject* WorldContextObject)
 	{
 		const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
 		return World ? World->GetGameState<AHOLGameState>() : nullptr;
@@ -54,43 +54,43 @@ namespace
 
 bool UHOLDiplomacyReadLibrary::IsDiplomacyMode(const UObject* WorldContextObject)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	return GameState && GameState->IsDiplomacyMode();
 }
 
 bool UHOLDiplomacyReadLibrary::IsSlotInMatch(const UObject* WorldContextObject, const int32 Slot)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	return GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Slot) && GameState->GetLaunchConfig().Slots[Slot].State != EHOLSlotState::Closed;
 }
 
 bool UHOLDiplomacyReadLibrary::IsSlotAI(const UObject* WorldContextObject, const int32 Slot)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	return GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(Slot) && GameState->GetLaunchConfig().Slots[Slot].State == EHOLSlotState::AI;
 }
 
 int32 UHOLDiplomacyReadLibrary::GetStance(const UObject* WorldContextObject, const int32 From, const int32 To)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	return GameState ? HOLDiplomacy::StanceOf(GameState->GetDiplomacyBook(), From, To) : HOLDiplomacy::Enemy;
 }
 
 int32 UHOLDiplomacyReadLibrary::GetRelation(const UObject* WorldContextObject, const int32 A, const int32 B)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	return GameState ? GameState->GetDiplomacyRelation(A, B) : HOLDiplomacy::Enemy;
 }
 
 bool UHOLDiplomacyReadLibrary::GetVision(const UObject* WorldContextObject, const int32 From, const int32 To)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	return GameState && HOLDiplomacy::SharesVision(GameState->GetDiplomacyBook(), From, To);
 }
 
 FLinearColor UHOLDiplomacyReadLibrary::GetSlotColor(const UObject* WorldContextObject, const int32 Slot)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	if (!GameState || !GameState->GetLaunchConfig().Slots.IsValidIndex(Slot))
 	{
 		return FLinearColor(0.5f, 0.5f, 0.5f, 1.f);
@@ -100,21 +100,21 @@ FLinearColor UHOLDiplomacyReadLibrary::GetSlotColor(const UObject* WorldContextO
 
 FString UHOLDiplomacyReadLibrary::GetSlotNameText(const UObject* WorldContextObject, const int32 Viewer, const int32 Slot)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	FHOLPlayersTableRow Row;
 	return GameState && FindRow(*GameState, Viewer, Slot, Row) ? Row.Name.ToString() : FString();
 }
 
 FString UHOLDiplomacyReadLibrary::GetSlotLivesText(const UObject* WorldContextObject, const int32 Viewer, const int32 Slot)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	FHOLPlayersTableRow Row;
 	return GameState && FindRow(*GameState, Viewer, Slot, Row) ? Row.Lives.ToString() : FString();
 }
 
 FString UHOLDiplomacyReadLibrary::GetSlotStateText(const UObject* WorldContextObject, const int32 Viewer, const int32 Slot)
 {
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	FHOLPlayersTableRow Row;
 	return GameState && FindRow(*GameState, Viewer, Slot, Row) ? Row.State.ToString() : FString();
 }
@@ -122,7 +122,7 @@ FString UHOLDiplomacyReadLibrary::GetSlotStateText(const UObject* WorldContextOb
 FString UHOLDiplomacyReadLibrary::GetSlotFactionText(const UObject* WorldContextObject, const int32 Slot)
 {
 	// The new game screen's own table (namespace HOLNewGameScreen, same keys and sources: one entry per name in the gathered texts).
-	const AHOLGameState* GameState = GetGameStateOf(WorldContextObject);
+	const AHOLGameState* GameState = GetDiplomacyGameStateOf(WorldContextObject);
 	if (!GameState || !GameState->GetLaunchConfig().Slots.IsValidIndex(Slot))
 	{
 		return FString();
