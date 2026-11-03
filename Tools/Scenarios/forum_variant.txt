@@ -1,0 +1,16 @@
+# Un variante du Forum (VisualInProgress.md) vue en jeu : la capture fv_mid sert à la planche de comparaison (Tools/Scenarios/forum_variants.ps1)
+# Plain, toi (slot 0) contre une IA (slot 1), forum_variant.json ; le modèle est celui de SM_Forum, composé par make_forum_mesh.py --compose --variant=<lettre>.
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 0 0
+frames 10
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+hol.Units.SpawnHere 3 ManAtArms 0 -300
+waitunits 8
+# Les shaders et textures du modèle se préparent à la première image : on attend avant de capturer.
+wait 12
+hol.Camera.Zoom 2
+hol.Camera.FocusNear -450 1000
+frames 20
+capture fv_mid
+note Variante du Forum : à comparer avec les autres sur la planche.

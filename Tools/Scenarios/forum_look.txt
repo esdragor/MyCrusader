@@ -1,0 +1,24 @@
+# Le Forum (V3, VisualInProgress.md) : ton centre principal avec le modèle du Retro Fantasy Kit, 5 Paysans et 3 Hommes d'armes à côté pour l'échelle
+# Plain, toi (slot 0) contre une IA (slot 1), forum_look.json. Le modèle est celui de SM_Forum (colonne Mesh de MainCentre) ; la couleur du joueur n'est pas encore appliquée (V3).
+# Les lignes capture prennent des images (Saved*/Screenshots/WindowsEditor/HOL/fl_*.png) ; en essai, elles ne gênent pas.
+hol.Cheat.Resources 5000
+hol.Camera.FocusNear 0 0
+frames 10
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+hol.Units.SpawnHere 3 ManAtArms 0 -300
+waitunits 8
+# Les shaders et textures du modèle se préparent à la première image : on attend avant de capturer.
+wait 12
+hol.Camera.FocusNear -450 1000
+frames 20
+capture fl_rts
+hol.Camera.Zoom 2
+hol.Camera.FocusNear -450 1000
+frames 10
+capture fl_mid
+hol.Camera.Zoom 4
+hol.Camera.FocusNear -450 1000
+frames 10
+capture fl_close
+note Le Forum : lisible à hauteur de jeu ? à la bonne échelle à côté des Paysans et des Hommes d'armes ? la porte (le portail) devant, côté caméra, avec du sol dessous ? plutôt un forum qu'un hangar ?
