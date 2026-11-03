@@ -3274,4 +3274,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D657** (Q-ia-tech-retards = A, § 11 Technologies, précise D648) : **retard avant la première recherche de l'IA, en temps de jeu** : Difficile 0 s, Normal 6 min, Facile 14 min (ensuite l'ordre habituel : Charrue, Haches doubles, Brouette, Pics de mineur, à partir de 20 Paysans). Réglages `hol.AI.TechDelayHard`, `hol.AI.TechDelayNormal`, `hol.AI.TechDelayEasy` ; l'IA Évolutive suit le niveau qu'elle joue.
 
-Prochain numéro : **D658**.
+**D658** (D647 appliquée, § 12 Volcan et § 8 Cartes, rapport de Haldir du 2026-11-03, code `far_middle` de `Tools/Editor/maps/common.py`, **à confirmer par l'utilisateur**) : sur une carte à volcan, le relais du milieu est à 24 / 32 / 44 / 56 m du centre selon la taille, **hors de la zone de l'autel et hors du couloir de lave** quand la place existe ; à 2 places il est **en travers de l'axe, du côté opposé à l'autel**, à égale distance des deux bases ; **le milieu est exempt de la symétrie à 180°** (les deux paires de relais la gardent). El Dorado, la Couronne et les Gués Petite gardent leur propre règle (26 à 108 m, déjà >= 24 m). Le test `relay_middle_test.py` signale encore le relais du milieu SUR une coulée à El Dorado Petite et Normale, aux Gués Petite et à la Couronne Petite et Normale (recettes non touchées) : à décider.
+
+Prochain numéro : **D659**.
