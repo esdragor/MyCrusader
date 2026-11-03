@@ -7229,13 +7229,17 @@ if ($Parts -contains "net") {
                 $Found
             })
         }
-        $SiegeServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege"))
+        # The server also logs a periodic "Units where" (every 5 s): the reads before the wound line (this section's first one) are not the wound's.
+        $SiegeServerLines = @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege")
+        $WoundAt = @(0..($SiegeServerLines.Count - 1) | Where-Object { "$($SiegeServerLines[$_])" -match "Cheat: slot $BobSlot wound to 50 %" } | Select-Object -First 1)
+        if ($WoundAt.Count) { $SiegeServerLines = @($SiegeServerLines | Select-Object -Skip $WoundAt[0]) }
+        $SiegeServer = @(& $SiegeRead $SiegeServerLines)
         $SiegeTruth = if ($SiegeServer.Count) { $SiegeServer[0] } else { "" }
         $SiegeTruth2 = if ($SiegeServer.Count -ge 2) { $SiegeServer[-1] } else { "" }
         $SiegeChecks["server: Bob's Ram wounded to 50 % reads 200/400, then 240/440 with Reinforced Ram ($($SiegeServer -join ','))"] = $SiegeTruth -eq "200/400" -and $SiegeTruth2 -eq "240/440"
         # The Mangonel (200 hp, the other engine) at (2000, 9000) wounded by the same cheat: 100/200 on the server and on both clients in all their
         # reports (before and after Reinforced Ram, which is the Ram's). Its own stat (Heavy Munitions) is a damage, not a health.
-        $MangonelServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege") 2000)
+        $MangonelServer = @(& $SiegeRead $SiegeServerLines 2000)
         $SiegeChecks["server: Bob's Mangonel wounded to 50 % reads 100/200 in every report ($($MangonelServer -join ','))"] =
             $MangonelServer.Count -ge 2 -and @($MangonelServer | Where-Object { $_ -ne "100/200" }).Count -eq 0
         foreach ($NetClient in $NetClients) {
