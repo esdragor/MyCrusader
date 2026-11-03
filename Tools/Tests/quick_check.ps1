@@ -388,6 +388,13 @@ if ($Parts -contains "net") {
             "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120", "wait 1", "hol.Units.Where 1", "hol.Heal.Report", "wait 3", "hol.Units.Where 1", "hol.Heal.Report",
             "waitfile $(Join-Path $TestSaved "quick_net_monk_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120",
             "hol.Units.Remove 0 9000 1500 1",
+            # The Ram's health over the network (Siege S2, 400 hp > 256 hp of the wire's 8 bits, sent as a share of its maximum): a Ram
+            # of Bob (slot 1) at (4000, 9000); client 1 (Bob) wounds his units to 50 % (the real cheat): the server's exact 200/400,
+            # then each client's reading of it (3 times 1 s apart).
+            "mark net siege", "hol.Units.Spawn 1 4000 9000 1 Ram 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_siege_spawned.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120", "wait 1", "hol.Units.Where 1",
+            "waitfile $(Join-Path $TestSaved "quick_net_siege_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120",
+            "hol.Units.Remove 4000 9000 800 1",
             # Duel D5 (the circle drawn): a duel accepted at once between the two heroes (the development door, the heroes stand far apart:
             # the circle is centred between them); both clients draw it from the replicated sheets ("Duel rings:" of hol.Select.Report).
             # The duel ends with the heroes' removal below (health 0).
@@ -2757,6 +2764,13 @@ if ($NetListening) {
         else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_wounded.flag") 120" }
         $NetSteps += "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "wait 2", "hol.Units.Where 1", "hol.Heal.Report", "signal $(Join-Path $TestSaved "quick_net_monk_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_monk_done2.flag") 120" }
+        # The Ram's health (see the server's sequence): client 1 wounds its units to 50 % once the server has made the Ram; both
+        # clients then report the units of slot 1 (the Ram at (4000, 9000)) three times 1 s apart.
+        $NetSteps += "mark siege"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_spawned.flag") 120", "hol.Cheat.Wound 50", "wait 0.3", "signal $(Join-Path $TestSaved "quick_net_siege_wounded.flag")" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120" }
+        $NetSteps += "wait 2", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "wait 1", "hol.Units.Where 1", "signal $(Join-Path $TestSaved "quick_net_siege_done$Client.flag")"
+        if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120" }
         # Duel D5: the circle of the server's duel (both heroes), read from the replicated sheets of the game state.
         $NetSteps += "mark duel", "waitfile $(Join-Path $TestSaved "quick_net_duel_begun.flag") 120", "wait 1", "hol.Select.Report", "signal $(Join-Path $TestSaved "quick_net_duel_done$Client.flag")"
         # The end of the match (V1.4c, D356-D358), last (the match is over after it): client 2 counts the units it shows,
@@ -7023,6 +7037,30 @@ if ($Parts -contains "net") {
             $MonkChecks["client $N : the green heal line drawn by TickClient (drawn $($MonkDrawn -join ','))"] = $MonkDrawn.Count -ge 1 -and $MonkDrawn[-1] -gt 0
         }
         $AllOk = (Report "net monk" $MonkChecks) -and $AllOk
+        # The Ram's health over the network (Siege S2: 400 hp, more than the 8 bits of the wire, a share of its maximum once): Bob's Ram at
+        # (4000, 9000) wounded to 50 % by Bob's cheat is 200/400 on the server; each client reads the same 200/400 in all its 3 reports.
+        $SiegeChecks = [ordered]@{}
+        $SiegeRead = {
+            param($Lines)
+            @($Lines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object {
+                $Found = ""
+                foreach ($Unit in ($_.Matches[0].Groups[1].Value -split "; ")) {
+                    if ($Unit -match "^#\d+ slot $BobSlot at \((-?\d+), (-?\d+)\) \w+, hp (\d+)/(\d+)") {
+                        if ([Math]::Abs([int] $Matches[1] - 4000) -le 400 -and [Math]::Abs([int] $Matches[2] - 9000) -le 400) { $Found = "$($Matches[3])/$($Matches[4])" }
+                    }
+                }
+                $Found
+            })
+        }
+        $SiegeServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege"))
+        $SiegeTruth = if ($SiegeServer.Count) { $SiegeServer[-1] } else { "" }
+        $SiegeChecks["server: Bob's Ram wounded to 50 % reads 200/400 ($($SiegeServer -join ','))"] = $SiegeTruth -eq "200/400"
+        foreach ($NetClient in $NetClients) {
+            $SiegeSeen = @(& $SiegeRead @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "siege"))
+            $SiegeChecks["client $($NetClient.Client) : the Ram reads the server's $SiegeTruth in its 3 reports ($($SiegeSeen -join ','))"] =
+                $SiegeSeen.Count -ge 3 -and $SiegeTruth -ne "" -and @($SiegeSeen | Where-Object { $_ -ne $SiegeTruth }).Count -eq 0
+        }
+        $AllOk = (Report "net siege" $SiegeChecks) -and $AllOk
     }
 }
 

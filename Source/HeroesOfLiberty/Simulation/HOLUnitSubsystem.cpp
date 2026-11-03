@@ -228,7 +228,7 @@ const UDataTable* UHOLUnitSubsystem::GetTypeTable() const
 		{
 			// J7-Q5 revised: a wounded unit sends its exact health in FHOLNetUnitState::HealthBits; a larger maximum is sent as a
 			// share of it (HOLUnitReplication::GetWireHealthShare, HOLUnitReplication::UsesHealthShare): the hero (J8-Q5, J8a.3,
-			// whose exact health comes by the hero sheet) and, since S2, the siege engines (the Ram: 400). Nothing to check.
+			// whose exact health comes by the hero sheet) ; the siege engines (the Ram: 400) fit the 9 bits. Nothing to check.
 		}
 	}
 	return CachedTypeTable;

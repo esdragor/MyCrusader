@@ -58,14 +58,17 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	/**
 	 * Health (J7b.4, J7-Q5 revised): one bit "full health", then only a wounded unit writes its exact health points
 	 * (HOLUnitReplication::GetWireHealth: 1 to MaxHealth - 1 alive, 0 dead). A change of health is a change of action
-	 * (sent at once; the healing will come through the same field). A wounded unit has at most MaxHealth - 1, so 8 bits
-	 * carry every maximum up to MaxWireHealth + 1 = 256 (the table's largest: 155, the Man-at-arms); the unit table's
+	 * (sent at once; the healing will come through the same field). A wounded unit has at most MaxHealth - 1, so 9 bits
+	 * carry every maximum up to MaxWireHealth + 1 = 512 (the Ram's 400, 440 with Reinforced Ram; 8 bits, 256, carried the
+	 * Man-at-arms' 155 until the siege engines: the Ram was then read 1 point off by a client, a share of 255 steps); the unit table's
 	 * loading checks it (HOLUnitReplication::FitsWireHealth). Back to levels: HealthBits, GetWireHealth and
-	 * HOLUnitView::GetReceivedHealth. The hero (J8-Q5, J8a.3) is larger (450): his wounded health goes as a share of
-	 * MaxWireHealth instead (HOLUnitReplication::GetWireHealthShare), his exact health by the hero sheet.
+	 * HOLUnitView::GetReceivedHealth. The hero (J8-Q5, J8a.3) is larger (450 and more by level): his wounded health goes as
+	 * a share of MaxWireHealthShare instead (HOLUnitReplication::GetWireHealthShare), his exact health by the hero sheet.
 	 */
-	static constexpr int32 HealthBits = 8;
+	static constexpr int32 HealthBits = 9;
 	static constexpr uint16 MaxWireHealth = (1 << HealthBits) - 1;
+	/** The steps of a hero's share of his maximum (J8a.3): 255, the same as before the wire's health went to 9 bits. */
+	static constexpr uint16 MaxWireHealthShare = (1 << 8) - 1;
 	/**
 	 * Target of an Attacking unit (J7b.4, J7-Q5), written only with that activity: its replication slot (the chunks'
 	 * slots, whose identifier the client reads), cheaper than its identifier, which is never recycled. 4 095 slots
@@ -279,8 +282,8 @@ namespace HOLUnitReplication
 	HEROESOFLIBERTY_API uint16 GetWireHealth(int32 Health, int32 MaxHealth);
 
 	/**
-	 * Health of a wounded hero as sent (J8-Q5, J8a.3): his share of MaxHealth in MaxWireHealth-ths, rounded up, so 1 at
-	 * least alive (never read as dead) and MaxWireHealth one point off his maximum (bFullHealth tells him wounded); 0 only
+	 * Health of a wounded hero as sent (J8-Q5, J8a.3): his share of MaxHealth in MaxWireHealthShare-ths, rounded up, so 1 at
+	 * least alive (never read as dead) and MaxWireHealthShare one point off his maximum (bFullHealth tells him wounded); 0 only
 	 * at 0 health or below.
 	 */
 	HEROESOFLIBERTY_API uint16 GetWireHealthShare(int32 Health, int32 MaxHealth);
@@ -290,9 +293,9 @@ namespace HOLUnitReplication
 
 	/**
 	 * Whether a type's wounded health goes as a share of its maximum (GetWireHealthShare) rather than as exact points (S2): the
-	 * hero (J8-Q5, J8a.3), and every type whose maximum does not fit the wire's 8 bits (the Ram's 400 health, D615): a client then
-	 * draws its health back to the nearest point, as for the hero (bHealthExact false). Sender and receiver both ask it with the
-	 * type's table maximum.
+	 * hero (J8-Q5, J8a.3), and every type whose maximum does not fit the wire's 9 bits (past 512: none today, the Ram's 400 health
+	 * goes exact since the wire's health has 9 bits): a client then draws its health back to the nearest point, as for the hero
+	 * (bHealthExact false). Sender and receiver both ask it with the type's table maximum.
 	 */
 	constexpr bool UsesHealthShare(const bool bHero, const int32 TableMaxHealth) { return bHero || !FitsWireHealth(TableMaxHealth); }
 

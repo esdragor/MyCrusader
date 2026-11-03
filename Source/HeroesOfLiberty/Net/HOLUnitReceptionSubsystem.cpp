@@ -545,7 +545,7 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.bHero = Row->HasArmorCategory(EHOLArmorCategory::Hero);
 		// J7b.5: the health received, exact (J7-Q5 revised); a hero's as a share (J8-Q5, J8a.3), his bar filled from it,
 		// his health points exact from his slot's public hero sheet once received and alive, drawn back from the share before.
-		static_assert(HOLUnitView::MaxWireHealthShare == FHOLNetUnitState::MaxWireHealth, "a hero's share is read in the wire's own steps");
+		static_assert(HOLUnitView::MaxWireHealthShare == FHOLNetUnitState::MaxWireHealthShare, "a hero's share is read in the wire's own steps");
 		const bool bHero = Row->HasArmorCategory(EHOLArmorCategory::Hero);
 		// A share also for a type too large for the wire's exact health bits (the siege engines, S2): no hero sheet for it.
 		const bool bShare = HOLUnitReplication::UsesHealthShare(bHero, Row->MaxHealth);
