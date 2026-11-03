@@ -565,19 +565,49 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	CollapseSlot(Slot);
 	OnSlotDefeated.Broadcast(Slot, Reason);
 
-	const FHOLVictoryResult Result = HOLVictoryRules::Evaluate(LaunchConfig, GetDefeatedMask());
-	if (Result.bOver)
-	{
-		bMatchOver = true;
-		WinnerMask = Result.WinnerMask;
-		const TArray<int32> Winners = Result.GetWinners();
-		UE_LOG(LogHOLMatch, Display, TEXT("Victory: match over, %s"), Winners.IsEmpty() ? TEXT("no winner")
-			: *FString::Printf(TEXT("winners %s"), *FString::JoinBy(Winners, TEXT(","), [](const int32 Winner) { return FString::FromInt(Winner); })));
-		OnMatchOver.Broadcast();
-	}
+	EvaluateMatchEnd();
 	ForceNetUpdate();
 	// No OnRep on the server (listen or solo): its own player hears it here.
 	OnVictoryChanged.Broadcast();
+	return true;
+}
+
+bool AHOLGameState::EvaluateMatchEnd()
+{
+	if (!HasAuthority() || bMatchOver)
+	{
+		return false;
+	}
+	FHOLVictoryResult Result = HOLVictoryRules::Evaluate(LaunchConfig, GetDefeatedMask());
+	if (!Result.bOver && IsDiplomacyMode() && GetDefeatedMask() != 0)
+	{
+		// D373: the survivors all allied to each other and at least one beaten: they win together, at once. A closed slot counts as beaten
+		// for the rule (it is nobody's ally) but never makes the "at least one beaten" (the mask above holds only real defeats).
+		TArray<bool> Gone;
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			Gone.Add(HOLVictoryRules::GetCamp(LaunchConfig, Slot) == INDEX_NONE || IsSlotDefeated(Slot));
+		}
+		const HOLDiplomacy::FAlliedVictory Allied = HOLDiplomacy::AlliedVictory(GetDiplomacyBook(), Gone);
+		if (Allied.bEnded)
+		{
+			Result.bOver = true;
+			for (const int32 Winner : Allied.Winners)
+			{
+				Result.WinnerMask |= static_cast<uint8>(1 << Winner);
+			}
+		}
+	}
+	if (!Result.bOver)
+	{
+		return false;
+	}
+	bMatchOver = true;
+	WinnerMask = Result.WinnerMask;
+	const TArray<int32> Winners = Result.GetWinners();
+	UE_LOG(LogHOLMatch, Display, TEXT("Victory: match over, %s"), Winners.IsEmpty() ? TEXT("no winner")
+		: *FString::Printf(TEXT("winners %s"), *FString::JoinBy(Winners, TEXT(","), [](const int32 Winner) { return FString::FromInt(Winner); })));
+	OnMatchOver.Broadcast();
 	return true;
 }
 
@@ -1206,6 +1236,12 @@ HOLDiplomacy::FStanceChange AHOLGameState::ApplyStance(const int32 From, const i
 			StanceName(Change.Before), StanceName(Change.After), Change.bBroke ? TEXT(", alliance broken") : TEXT(""),
 			Change.bFormed ? TEXT(", alliance formed") : TEXT(""));
 		OnDiplomacyAnnounced.Broadcast(Change);
+		// D373: an alliance formed after the last defeat can end the match at that second.
+		if (Change.bFormed && EvaluateMatchEnd())
+		{
+			ForceNetUpdate();
+			OnVictoryChanged.Broadcast();
+		}
 	}
 	return Change;
 }

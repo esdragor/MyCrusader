@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLDiplomacyRules.h"
 #include "Match/HOLMatchConfig.h"
 
 class UWorld;
@@ -30,15 +31,33 @@ struct HEROESOFLIBERTY_API FHOLCampTable
 	/** Each owner alone (no configuration: tests without a game state, free for all). */
 	FHOLCampTable();
 	explicit FHOLCampTable(const FHOLMatchConfig& Config);
-	/** The launch configuration of the world's AHOLGameState; each owner alone without one. */
+	/**
+	 * D6 (Diplomacy mode, D369 / D375 / D401): the relations come from the stances of the book, not from the teams. Each owner is
+	 * its own camp (Get), the pair's relation is read from the book: allies (both said Ally) are friends, Neutral is an adversary
+	 * that does not fire on its own, Enemy fires at once.
+	 */
+	FHOLCampTable(const FHOLMatchConfig& Config, const HOLDiplomacy::FBook& Book);
+	/** The launch configuration of the world's AHOLGameState (its book in the Diplomacy mode); each owner alone without one. */
 	static FHOLCampTable FromWorld(const UWorld* World);
 
 	uint8 Get(const int32 Owner) const { return Camps[static_cast<uint8>(Owner)]; }
-	/** Whether units of these owners fight each other. */
-	bool AreHostile(const int32 OwnerA, const int32 OwnerB) const { return Get(OwnerA) != Get(OwnerB); }
+	/** The Diplomacy mode: the relations of the pairs are the book's, a camp is no more an equivalence of allies. */
+	bool IsDiplomacy() const { return bDiplomacy; }
+	/** The relation of a pair, HOLDiplomacy::Enemy / Neutral / Ally (an owner out of the slots, the neutral camps': Enemy; oneself: Ally). */
+	int32 Relation(int32 OwnerA, int32 OwnerB) const;
+	/**
+	 * Whether these owners are adversaries, for the rules that say "enemy" (an attack order, a duel, avoidance): in the Diplomacy mode
+	 * a Neutral counts (D401), an ally does not. Else, whether units of these owners fight each other (different camps).
+	 */
+	bool AreHostile(const int32 OwnerA, const int32 OwnerB) const { return bDiplomacy ? Relation(OwnerA, OwnerB) != 2 : Get(OwnerA) != Get(OwnerB); }
+	/** Whether the units of these owners fire on their own at each other (D369: only at war; a Neutral does not). Else as AreHostile. */
+	bool FiresAtOnce(const int32 OwnerA, const int32 OwnerB) const { return bDiplomacy ? Relation(OwnerA, OwnerB) == 0 : Get(OwnerA) != Get(OwnerB); }
 
 private:
 	uint8 Camps[256];
+	bool bDiplomacy = false;
+	/** [A * MaxSlots + B]: 0 Enemy, 1 Neutral, 2 Ally. */
+	uint8 Relations[FHOLMatchConfig::MaxSlots * FHOLMatchConfig::MaxSlots];
 };
 
 /**

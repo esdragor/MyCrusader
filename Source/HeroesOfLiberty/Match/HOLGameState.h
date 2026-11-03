@@ -538,6 +538,12 @@ public:
 	 * the change stored and replicated at once, announced (log "Diplomacy: ...", then OnDiplomacyAnnounced).
 	 */
 	HOLDiplomacy::FStanceChange ApplyStance(int32 From, int32 To, int32 Stance);
+	/**
+	 * D6 (D373): the end of the match by the camps and, in the Diplomacy mode, by an alliance of all the survivors (at least one player
+	 * beaten): over at once, together. Server only; sets bMatchOver / WinnerMask and broadcasts OnMatchOver. Called by each defeat and each
+	 * stance change (an alliance formed after the last defeat ends the match at that second). True when the match just ended.
+	 */
+	bool EvaluateMatchEnd();
 	/** Server only: From opens (bShare) or closes its vision to To (HOLDiplomacy::SetVision). */
 	HOLDiplomacy::FVisionChange ApplyVision(int32 From, int32 To, bool bShare);
 	/** The log of this machine's view: one line per pair of occupied slots ("Diplomacy report: ..."), for the scenarios and quick_check. */

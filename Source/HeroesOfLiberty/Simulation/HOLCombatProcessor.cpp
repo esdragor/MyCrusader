@@ -382,6 +382,11 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 	return Count;
 }
 
+bool UHOLCombatProcessor::IsAutoFoe(const FFighter& A, const FFighter& B) const
+{
+	return !StepCamps.IsDiplomacy() || StepCamps.FiresAtOnce(A.State->OwnerPlayer, B.State->OwnerPlayer);
+}
+
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
 {
 	// As the order processor's arrival (D290): stands dead where it is. Its order serial cleared, a path still to come for
@@ -599,6 +604,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 	// The step's units, in identifier order (the outcome does not depend on the chunks). Each one's camp read once here.
 	const FHOLCampTable CampTable = FHOLCampTable::FromWorld(World);
+	StepCamps = CampTable;
 	Fighters.Reset();
 	MaxRadius = 1.f;
 	// J7c.4, S2 (hol.Combat.SkipAttackerCount): the counts zeroed here (the attackers' count below starts with it; nothing
@@ -1168,6 +1174,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				FFighter& Around = Fighters[Other];
 				if (Other == Victim || Around.Camp == Arrow.ShooterCamp || Around.State->CurrentHealth <= 0
+					|| (StepCamps.IsDiplomacy() && !StepCamps.FiresAtOnce(Arrow.ShooterSlot, Around.State->OwnerPlayer)) // allies and Neutrals take no splash (D369)
 					|| !HOLCombat::IsInArea(Centre, FVector2D(Around.Location), Arrow.AreaRadius) || !CanHitSlots(ShooterHero, HeroSlotOf(Around)))
 				{
 					continue;
@@ -1339,7 +1346,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			};
 			for (const int32 Other : AheadLists[Slot])
 			{
-				if (Fighters[Other].State->CurrentHealth > 0)
+				if (Fighters[Other].State->CurrentHealth > 0 && IsAutoFoe(Fighter, Fighters[Other]))
 				{
 					Add(Other);
 				}
@@ -1474,6 +1481,18 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Touch(Index);
 			Target = INDEX_NONE;
 		}
+		// D6 (D369, D370, D401): the alliance made since it chose its target: no more blows at an ally; a target gone Neutral is let go too
+		// unless the player ordered it (a Neutral stays one that can be attacked on order, but nobody takes it on by itself).
+		if (StepCamps.IsDiplomacy() && Target != INDEX_NONE && Fighters[Target].State->CurrentHealth > 0
+			&& (!StepCamps.AreHostile(Fighter.State->OwnerPlayer, Fighters[Target].State->OwnerPlayer)
+				|| (!Combat.bOrderedTarget && !IsAutoFoe(Fighter, Fighters[Target]) && Fighters[Target].Combat->Target != Fighter.Entity)))
+		{
+			--Fighters[Target].Combat->AttackerCount;
+			Touch(Target);
+			Combat.Disengage();
+			Touch(Index);
+			Target = INDEX_NONE;
+		}
 		if (Combat.Target.IsSet() && (Target == INDEX_NONE || Fighters[Target].State->CurrentHealth <= 0))
 		{
 			Touch(Index);
@@ -1597,7 +1616,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						}
 						for (const int32 Other : AheadLists[SearchSlot])
 						{
-							if (SearchTouched[Other] != 0 && Fighters[Other].State->CurrentHealth > 0)
+							if (SearchTouched[Other] != 0 && Fighters[Other].State->CurrentHealth > 0 && IsAutoFoe(Fighter, Fighters[Other]))
 							{
 								AddCandidate(Other);
 							}
@@ -1642,7 +1661,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						}
 						for (const int32 Other : bAhead ? AheadLists[AheadSlot] : Nearby)
 						{
-							if (Fighters[Other].State->CurrentHealth > 0)
+							if (Fighters[Other].State->CurrentHealth > 0 && IsAutoFoe(Fighter, Fighters[Other]))
 							{
 								AddCandidate(Other);
 							}
@@ -1656,7 +1675,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 							for (int32 Other = CellHeads[BucketOf(Cell)]; Other != INDEX_NONE; Other = NextInCell[Other])
 							{
 								const FFighter& Enemy = Fighters[Other];
-								if (Cells[Other] != Cell || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0
+								if (Cells[Other] != Cell || Enemy.Camp == Fighter.Camp || !IsAutoFoe(Fighter, Enemy) || Enemy.State->CurrentHealth <= 0
 									|| HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius) > Reach)
 								{
 									continue;
@@ -1909,7 +1928,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			if (!Combat.TargetBuilding.IsExplicitlyNull())
 			{
 				BuildingIndex = FindStepBuilding(Combat.TargetBuilding.Get());
-				if (BuildingIndex != INDEX_NONE && StepBuildings[BuildingIndex].Camp == Fighter.Camp)
+				if (BuildingIndex != INDEX_NONE && (StepBuildings[BuildingIndex].Camp == Fighter.Camp
+						|| !StepCamps.AreHostile(Fighter.State->OwnerPlayer, StepBuildings[BuildingIndex].OwnerPlayer))) // an ally's, since the alliance (D6)
 				{
 					BuildingIndex = INDEX_NONE;
 				}
@@ -1934,7 +1954,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (int32 Other = 0; Other < StepBuildings.Num(); ++Other)
 					{
 						const FStepBuilding& Step = StepBuildings[Other];
-						if (!Step.bGone && Step.Camp != Fighter.Camp)
+						if (!Step.bGone && Step.Camp != Fighter.Camp && (!StepCamps.IsDiplomacy() || StepCamps.FiresAtOnce(Fighter.State->OwnerPlayer, Step.OwnerPlayer)))
 						{
 							HOLCombat::FBuildingCandidate& Candidate = BuildingCandidates.AddDefaulted_GetRef();
 							Candidate.Id = Step.Id;
