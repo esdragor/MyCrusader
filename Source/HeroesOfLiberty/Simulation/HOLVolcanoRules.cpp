@@ -385,3 +385,26 @@ float HOLVolcano::DistanceToFlow(const FFlow& Flow, const FVector& Point)
 	}
 	return static_cast<float>(Best);
 }
+
+HOLVolcano::FFreshDeposit HOLVolcano::FreshDeposit(const int32 SiteSeedValue, const int32 CycleIndex, const FFlow& Flow, const FHOLVolcanoSettings& Settings)
+{
+	FFreshDeposit Result;
+	const float Length = Flow.Length();
+	if (Length <= 0.f)
+	{
+		return Result;
+	}
+	// A stream of its own (another salt than the flow's draw and the cycle's dates), the seed hashed first like DrawFlow's: no memory of the previous cycles.
+	FRandomStream Stream(static_cast<int32>(MurmurFinalize32(HashCombineFast(MurmurFinalize32(static_cast<uint32>(SiteSeedValue)), MurmurFinalize32(static_cast<uint32>(CycleIndex) + 60013u)))));
+	Result.bPresent = true;
+	Result.Kind = Stream.FRand() < Settings.FreshDepositGoldShare ? EFreshKind::Gold : EFreshKind::Stone;
+	Result.TypeName = Result.Kind == EFreshKind::Gold ? Settings.FreshDepositGoldType : Settings.FreshDepositStoneType;
+	Result.Location = PointAt(Flow, FMath::Clamp(Settings.FreshDepositAlong, 0.f, 1.f) * Length);
+	return Result;
+}
+
+bool HOLVolcano::FreshDepositDue(const FSiteState& State)
+{
+	// The basalt is passable once the cooling is over (D379); a rest without a drawn flow has nothing to leave.
+	return State.Phase == EHOLVolcanoPhase::Rest && State.FlowIndex != INDEX_NONE;
+}

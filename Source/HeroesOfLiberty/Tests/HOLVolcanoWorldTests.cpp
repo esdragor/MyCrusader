@@ -9,6 +9,8 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Misc/AutomationTest.h"
+#include "Resources/HOLSourceSubsystem.h"
+#include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -620,6 +622,106 @@ bool FHOLVolcanoAltarMeasureTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("... no adversary for slot 0"), Free[0].bAdversary);
 	UHOLVolcanoLibrary::DecideAltarSquad(W.World, Free[0], 8, 0, 1, Squad, bDiversion);
 	TestEqual(TEXT("slot 0 has no building: the trace is infinitely far, a quarter of 8"), Squad, 2);
+	return true;
+}
+
+// The fresh deposit on the real chain (V7, D379): when the flow has cooled and the basalt is passable, one new gold or stone vein stands on the
+// flow's line in the real source registry, once per cycle, never before, never without the Catastrophe option.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoFreshDepositWorldTest, "HeroesOfLiberty.Volcano.FreshDepositAppears", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoFreshDepositWorldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ true, 4242);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	UHOLSourceSubsystem* Sources = W.World->GetSubsystem<UHOLSourceSubsystem>();
+	if (!TestNotNull(TEXT("a source registry"), Sources))
+	{
+		return false;
+	}
+	Sources->OnWorldBeginPlay(*W.World);
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(6000.0, 0.0, 0.0), FVector(6000.0, 5000.0, 0.0) };
+	Site.Flows.Add(Flow);
+	W.Volcano->SetSites({ Site });
+	const FHOLUnitTypeRow* ManAtArms = W.Units->FindTypeRow(TEXT("ManAtArms"));
+	if (!TestNotNull(TEXT("the unit table has a Man-at-arms"), ManAtArms))
+	{
+		return false;
+	}
+	// The dates of the first two cycles come from the pure chain (the test reads them, it does not type them).
+	float RestAt = -1.f;
+	float SecondRestAt = -1.f;
+	int32 FirstCycle = INDEX_NONE;
+	for (float Now = 0.f; Now < 6000.f && SecondRestAt < 0.f; Now += 0.5f)
+	{
+		const HOLVolcano::FSiteState State = HOLVolcano::SiteStateOfMatch(W.GameState->GetLaunchConfig(), 0, Site, Now, W.Volcano->GetSettings(), ManAtArms->Speed);
+		if (State.Phase == EHOLVolcanoPhase::Rest)
+		{
+			if (RestAt < 0.f)
+			{
+				RestAt = Now;
+				FirstCycle = State.CycleIndex;
+			}
+			else if (State.CycleIndex != FirstCycle)
+			{
+				SecondRestAt = Now;
+			}
+		}
+	}
+	if (!TestTrue(TEXT("the site rests twice within 100 minutes"), RestAt > 0.f && SecondRestAt > RestAt))
+	{
+		return false;
+	}
+	const int32 Before = Sources->GetSources().Num();
+	W.RunTo(RestAt - 2.f);
+	TestEqual(TEXT("before the rest: no new source"), Sources->GetSources().Num(), Before);
+	W.RunTo(RestAt + 2.f);
+	if (TestEqual(TEXT("the basalt is passable: exactly one new source"), Sources->GetSources().Num(), Before + 1))
+	{
+		const FHOLSource& Fresh = Sources->GetSources().Last();
+		TestTrue(TEXT("... standing"), Fresh.IsStanding());
+		TestTrue(TEXT("... gold or stone"), Fresh.Resource == EHOLResource::Gold || Fresh.Resource == EHOLResource::Stone);
+		TestTrue(TEXT("... on the flow's line"), HOLVolcano::DistanceToFlow(Flow, Fresh.Location) < 1.f);
+		TestTrue(TEXT("... half way along it"), Fresh.Location.Equals(HOLVolcano::PointAt(Flow, 0.5f * Flow.Length()), 1.0));
+		const FHOLSourceTypeRow* Row = Sources->GetType(Fresh.TypeIndex);
+		TestTrue(TEXT("... holding what its type holds"), Row && Fresh.Remaining == Row->Amount && Fresh.Remaining > 0);
+		TestEqual(TEXT("... the volcano's own list of the site's fresh deposits has it"), W.Volcano->GetFreshSourceIndices(0).Num(), 1);
+	}
+	W.RunTo(RestAt + 30.f);
+	TestEqual(TEXT("30 s on: still one (placed once per cycle, not at every step)"), Sources->GetSources().Num(), Before + 1);
+	W.RunTo(SecondRestAt + 2.f);
+	TestEqual(TEXT("the next cycle's rest: a second one"), Sources->GetSources().Num(), Before + 2);
+	return true;
+}
+
+// Without the Catastrophe option the site never erupts nor cools: no deposit appears (D398).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLVolcanoFreshDepositStandardTest, "HeroesOfLiberty.Volcano.FreshDepositNothingWithoutCatastrophe", UE::HeroesOfLiberty::Tests::VolcanoWorld::Flags)
+bool FHOLVolcanoFreshDepositStandardTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::VolcanoWorld;
+	FWorld W(/*bCatastrophe*/ false, 4242);
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	UHOLSourceSubsystem* Sources = W.World->GetSubsystem<UHOLSourceSubsystem>();
+	if (!TestNotNull(TEXT("a source registry"), Sources))
+	{
+		return false;
+	}
+	Sources->OnWorldBeginPlay(*W.World);
+	HOLVolcano::FSite Site;
+	HOLVolcano::FFlow Flow;
+	Flow.Points = { FVector(0.0, 0.0, 0.0), FVector(6000.0, 0.0, 0.0) };
+	Site.Flows.Add(Flow);
+	W.Volcano->SetSites({ Site });
+	const int32 Before = Sources->GetSources().Num();
+	W.RunTo(1500.f);
+	TestEqual(TEXT("25 minutes of a standard match: no new source"), Sources->GetSources().Num(), Before);
 	return true;
 }
 

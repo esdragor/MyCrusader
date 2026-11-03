@@ -9,6 +9,7 @@
 #include "Map/HOLVolcanoLayout.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLVictoryRules.h"
+#include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -60,6 +61,9 @@ void UHOLVolcanoSubsystem::SetSites(const TArray<HOLVolcano::FSite>& InSites)
 	AltarHolds.Init(HOLVolcano::EAltarHold::Idle, Sites.Num());
 	AltarCycle.Init(INDEX_NONE, Sites.Num());
 	AltarHolder.Init(INDEX_NONE, Sites.Num());
+	FreshPlacedCycle.Init(INDEX_NONE, Sites.Num());
+	FreshSources.Reset();
+	FreshSources.SetNum(Sites.Num());
 }
 
 HOLVolcano::FSiteState UHOLVolcanoSubsystem::StateOf(const int32 SiteIndex, const float Now) const
@@ -332,6 +336,36 @@ void UHOLVolcanoSubsystem::Apply(const int32 SiteIndex, const HOLVolcano::FSite&
 {
 	Burn(Site, State);
 	SyncObstacle(SiteIndex, Site, State);
+	SyncFreshDeposit(SiteIndex, Site, State);
+}
+
+void UHOLVolcanoSubsystem::SyncFreshDeposit(const int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State)
+{
+	// V7 (D379): once per cycle, on the step the basalt becomes passable. The cycle is marked placed even if the source could not be added (no log at every step).
+	if (!HOLVolcano::FreshDepositDue(State) || !FreshPlacedCycle.IsValidIndex(SiteIndex) || FreshPlacedCycle[SiteIndex] >= State.CycleIndex || !Site.Flows.IsValidIndex(State.FlowIndex))
+	{
+		return;
+	}
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	UHOLSourceSubsystem* Sources = World ? World->GetSubsystem<UHOLSourceSubsystem>() : nullptr;
+	if (!GameState || !Sources || !Sources->HasAuthority())
+	{
+		return;
+	}
+	FreshPlacedCycle[SiteIndex] = State.CycleIndex;
+	const HOLVolcano::FFreshDeposit Deposit = HOLVolcano::FreshDeposit(HOLVolcano::SiteSeed(GameState->GetLaunchConfig().Seed, SiteIndex), State.CycleIndex, Site.Flows[State.FlowIndex], Settings);
+	if (!Deposit.bPresent)
+	{
+		return;
+	}
+	const int32 SourceIndex = Sources->AddSource(Deposit.TypeName, Deposit.Location);
+	if (SourceIndex != INDEX_NONE)
+	{
+		FreshSources[SiteIndex].Add(SourceIndex);
+	}
+	UE_LOG(LogHOLVolcano, Display, TEXT("Volcano site %d cycle %d: the flow has cooled, a fresh %s vein (%s) appears at (%.0f, %.0f), source %d"),
+		SiteIndex, State.CycleIndex, Deposit.Kind == HOLVolcano::EFreshKind::Gold ? TEXT("gold") : TEXT("stone"), *Deposit.TypeName.ToString(), Deposit.Location.X, Deposit.Location.Y, SourceIndex);
 }
 
 void UHOLVolcanoSubsystem::SyncObstacle(const int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State)

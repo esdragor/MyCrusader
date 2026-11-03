@@ -87,11 +87,11 @@ namespace UE::HeroesOfLiberty::VolcanoTools
 		for (int32 Index = 0; Index < Volcano->GetSites().Num(); ++Index)
 		{
 			const FHOLVolcanoSiteView View = UHOLVolcanoLibrary::GetSiteView(World, Index);
-			UE_LOG(LogHOLMatch, Display, TEXT("Volcano report: site %d phase %d to-erupt %d s altar lit %d held %d%% (%d s left) zone %d woken %d wakes %d, %d flows, crater (%.0f, %.0f), altar (%.0f, %.0f)"),
+			UE_LOG(LogHOLMatch, Display, TEXT("Volcano report: site %d phase %d to-erupt %d s altar lit %d held %d%% (%d s left) zone %d woken %d wakes %d, %d flows, crater (%.0f, %.0f), altar (%.0f, %.0f), fresh deposits %d"),
 				Index, View.Phase, View.SecondsToErupt, View.bAltarLit ? 1 : 0, View.AltarPercent, View.AltarSecondsLeft, View.AltarHold, View.bWoken ? 1 : 0, Volcano->GetNumWakes(Index),
 				Volcano->GetSites()[Index].Flows.Num(), Volcano->GetSites()[Index].Flows.IsEmpty() || Volcano->GetSites()[Index].Flows[0].Points.IsEmpty() ? 0. : Volcano->GetSites()[Index].Flows[0].Points[0].X,
 				Volcano->GetSites()[Index].Flows.IsEmpty() || Volcano->GetSites()[Index].Flows[0].Points.IsEmpty() ? 0. : Volcano->GetSites()[Index].Flows[0].Points[0].Y,
-				Volcano->GetSites()[Index].Altar.Location.X, Volcano->GetSites()[Index].Altar.Location.Y);
+				Volcano->GetSites()[Index].Altar.Location.X, Volcano->GetSites()[Index].Altar.Location.Y, Volcano->GetFreshSourceIndices(Index).Num());
 		}
 	}
 
