@@ -500,6 +500,8 @@ FString TalentTipTexts = "";
 		if (!bShown)
 			return;
 		UHOLScriptScreen::SetButtonGreyed(Button, !bEnabled);
+		// Greyed: the whole control dimmed (the muted label alone was too close to the normal one to tell them apart).
+		Button.SetRenderOpacity(bEnabled ? 1.0 : 0.45);
 		Button.SetBackgroundColor(Tint);
 		UCommonTextBlock LabelText = DipLabelOf(Button);
 		LabelText.SetText(Label);

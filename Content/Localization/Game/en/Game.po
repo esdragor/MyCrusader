@@ -4,14 +4,133 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-02 17:15\n"
-"PO-Revision-Date: 2026-11-02 17:15\n"
+"POT-Creation-Date: 2026-11-03 12:42\n"
+"PO-Revision-Date: 2026-11-03 12:42\n"
 "Language-Team: \n"
 "Language: en\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. Key:	Title
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(122)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(122)
+msgctxt "HOLDiplomacyPanel,Title"
+msgid "Diplomatie"
+msgstr "Diplomacy"
+
+#. Key:	Button
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(123)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(123)
+msgctxt "HOLDiplomacyPanel,Button"
+msgid "Diplomatie"
+msgstr "Diplomacy"
+
+#. Key:	ButtonTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(124)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(124)
+msgctxt "HOLDiplomacyPanel,ButtonTip"
+msgid "Ouvrir ou fermer la diplomatie (F11)"
+msgstr "Open or close diplomacy (F11)"
+
+#. Key:	Ally
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(125)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(125)
+msgctxt "HOLDiplomacyPanel,Ally"
+msgid "Allié"
+msgstr "Ally"
+
+#. Key:	Neutral
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(126)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(126)
+msgctxt "HOLDiplomacyPanel,Neutral"
+msgid "Neutre"
+msgstr "Neutral"
+
+#. Key:	Enemy
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(127)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(127)
+msgctxt "HOLDiplomacyPanel,Enemy"
+msgid "Ennemi"
+msgstr "Enemy"
+
+#. Key:	Pending
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(128)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(128)
+msgctxt "HOLDiplomacyPanel,Pending"
+msgid "En attente de l'autre"
+msgstr "Waiting for the other"
+
+#. Key:	Vision
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(129)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(129)
+msgctxt "HOLDiplomacyPanel,Vision"
+msgid "Vision"
+msgstr "Vision"
+
+#. Key:	VisionTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(130)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(130)
+msgctxt "HOLDiplomacyPanel,VisionTip"
+msgid "Partager ma vision avec ce joueur (alliés seulement)"
+msgstr "Share my vision with this player (allies only)"
+
+#. Key:	Tribute
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(131)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(131)
+msgctxt "HOLDiplomacyPanel,Tribute"
+msgid "Tribut 100 or (taxe {0} %)"
+msgstr "Tribute 100 gold ({0}% tax)"
+
+#. Key:	TributeTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(132)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(132)
+msgctxt "HOLDiplomacyPanel,TributeTip"
+msgid "Donner 100 d'or à ce joueur ; le Marché garde {0} %"
+msgstr "Give 100 gold to this player; the Market keeps {0}%"
+
+#. Key:	TributeNoMarket
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(133)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(133)
+msgctxt "HOLDiplomacyPanel,TributeNoMarket"
+msgid "Il faut un Marché terminé pour faire un tribut"
+msgstr "A finished Market is needed to send a tribute"
+
+#. Key:	Message
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(134)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(134)
+msgctxt "HOLDiplomacyPanel,Message"
+msgid "Message"
+msgstr "Message"
+
+#. Key:	MessageTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(135)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(135)
+msgctxt "HOLDiplomacyPanel,MessageTip"
+msgid "Message privé à ce joueur"
+msgstr "Private message to this player"
+
+#. Key:	Locked
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(136)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(136)
+msgctxt "HOLDiplomacyPanel,Locked"
+msgid "Postures verrouillées : équipes fixes"
+msgstr "Stances locked: fixed teams"
+
+#. Key:	Close
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(137)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(137)
+msgctxt "HOLDiplomacyPanel,Close"
+msgid "Fermer"
+msgstr "Close"
+
+#. Key:	AIAlways
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(138)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(138)
+msgctxt "HOLDiplomacyPanel,AIAlways"
+msgid "Les IA sont toujours ennemies"
+msgstr "The AIs are always enemies"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)
@@ -698,6 +817,55 @@ msgstr "The Deep Forest"
 msgctxt "HOLMaps,Map_Fords"
 msgid "Les Gués"
 msgstr "The Fords"
+
+#. Key:	Map_Crown
+#. SourceLocation:	Source/HeroesOfLiberty/Map/HOLMapRules.cpp(23)
+#: Source/HeroesOfLiberty/Map/HOLMapRules.cpp(23)
+msgctxt "HOLMaps,Map_Crown"
+msgid "La Couronne"
+msgstr "The Crown"
+
+#. Key:	DawnOrder
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(132)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(132)
+msgctxt "HOLNewGameScreen,DawnOrder"
+msgid "Ordre de l'Aube"
+msgstr "Order of the Dawn"
+
+#. Key:	BlackLegions
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(133)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(133)
+msgctxt "HOLNewGameScreen,BlackLegions"
+msgid "Légions Noires"
+msgstr "Black Legions"
+
+#. Key:	DragonChildren
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(134)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(134)
+msgctxt "HOLNewGameScreen,DragonChildren"
+msgid "Enfants du Dragon"
+msgstr "Children of the Dragon"
+
+#. Key:	ShadowCircle
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(135)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(135)
+msgctxt "HOLNewGameScreen,ShadowCircle"
+msgid "Cercle de l'Ombre"
+msgstr "Circle of Shadow"
+
+#. Key:	FireHeirs
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(136)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(136)
+msgctxt "HOLNewGameScreen,FireHeirs"
+msgid "Héritiers du Feu"
+msgstr "Heirs of Fire"
+
+#. Key:	Templars
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(137)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(137)
+msgctxt "HOLNewGameScreen,Templars"
+msgid "Templiers"
+msgstr "Templars"
 
 #. Key:	AbsentLine
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDisconnectRules.cpp(70)
@@ -3099,48 +3267,6 @@ msgstr "Starting…"
 msgctxt "HOLNewGameScreen,Slot"
 msgid "Emplacement"
 msgstr "Slot"
-
-#. Key:	DawnOrder
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(82)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(82)
-msgctxt "HOLNewGameScreen,DawnOrder"
-msgid "Ordre de l'Aube"
-msgstr "Order of the Dawn"
-
-#. Key:	BlackLegions
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(83)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(83)
-msgctxt "HOLNewGameScreen,BlackLegions"
-msgid "Légions Noires"
-msgstr "Black Legions"
-
-#. Key:	DragonChildren
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(84)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(84)
-msgctxt "HOLNewGameScreen,DragonChildren"
-msgid "Enfants du Dragon"
-msgstr "Children of the Dragon"
-
-#. Key:	ShadowCircle
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(85)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(85)
-msgctxt "HOLNewGameScreen,ShadowCircle"
-msgid "Cercle de l'Ombre"
-msgstr "Circle of Shadow"
-
-#. Key:	FireHeirs
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(86)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(86)
-msgctxt "HOLNewGameScreen,FireHeirs"
-msgid "Héritiers du Feu"
-msgstr "Heirs of Fire"
-
-#. Key:	Templars
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(87)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(87)
-msgctxt "HOLNewGameScreen,Templars"
-msgid "Templiers"
-msgstr "Templars"
 
 #. Key:	NoTeam
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(93)

@@ -4,14 +4,133 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-02 17:15\n"
-"PO-Revision-Date: 2026-11-02 17:15\n"
+"POT-Creation-Date: 2026-11-03 12:42\n"
+"PO-Revision-Date: 2026-11-03 12:42\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
+
+#. Key:	Title
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(122)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(122)
+msgctxt "HOLDiplomacyPanel,Title"
+msgid "Diplomatie"
+msgstr "外交"
+
+#. Key:	Button
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(123)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(123)
+msgctxt "HOLDiplomacyPanel,Button"
+msgid "Diplomatie"
+msgstr "外交"
+
+#. Key:	ButtonTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(124)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(124)
+msgctxt "HOLDiplomacyPanel,ButtonTip"
+msgid "Ouvrir ou fermer la diplomatie (F11)"
+msgstr "外交を開く/閉じる (F11)"
+
+#. Key:	Ally
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(125)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(125)
+msgctxt "HOLDiplomacyPanel,Ally"
+msgid "Allié"
+msgstr "同盟"
+
+#. Key:	Neutral
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(126)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(126)
+msgctxt "HOLDiplomacyPanel,Neutral"
+msgid "Neutre"
+msgstr "中立"
+
+#. Key:	Enemy
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(127)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(127)
+msgctxt "HOLDiplomacyPanel,Enemy"
+msgid "Ennemi"
+msgstr "敵対"
+
+#. Key:	Pending
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(128)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(128)
+msgctxt "HOLDiplomacyPanel,Pending"
+msgid "En attente de l'autre"
+msgstr "相手の返答待ち"
+
+#. Key:	Vision
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(129)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(129)
+msgctxt "HOLDiplomacyPanel,Vision"
+msgid "Vision"
+msgstr "視界共有"
+
+#. Key:	VisionTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(130)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(130)
+msgctxt "HOLDiplomacyPanel,VisionTip"
+msgid "Partager ma vision avec ce joueur (alliés seulement)"
+msgstr "このプレイヤーと視界を共有（同盟のみ）"
+
+#. Key:	Tribute
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(131)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(131)
+msgctxt "HOLDiplomacyPanel,Tribute"
+msgid "Tribut 100 or (taxe {0} %)"
+msgstr "貢物 100ゴールド（税{0}%）"
+
+#. Key:	TributeTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(132)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(132)
+msgctxt "HOLDiplomacyPanel,TributeTip"
+msgid "Donner 100 d'or à ce joueur ; le Marché garde {0} %"
+msgstr "このプレイヤーに100ゴールドを贈る。市場が{0}%を徴収"
+
+#. Key:	TributeNoMarket
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(133)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(133)
+msgctxt "HOLDiplomacyPanel,TributeNoMarket"
+msgid "Il faut un Marché terminé pour faire un tribut"
+msgstr "貢物には完成した市場が必要です"
+
+#. Key:	Message
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(134)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(134)
+msgctxt "HOLDiplomacyPanel,Message"
+msgid "Message"
+msgstr "メッセージ"
+
+#. Key:	MessageTip
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(135)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(135)
+msgctxt "HOLDiplomacyPanel,MessageTip"
+msgid "Message privé à ce joueur"
+msgstr "このプレイヤーへの個人メッセージ"
+
+#. Key:	Locked
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(136)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(136)
+msgctxt "HOLDiplomacyPanel,Locked"
+msgid "Postures verrouillées : équipes fixes"
+msgstr "姿勢は固定：チーム固定"
+
+#. Key:	Close
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(137)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(137)
+msgctxt "HOLDiplomacyPanel,Close"
+msgid "Fermer"
+msgstr "閉じる"
+
+#. Key:	AIAlways
+#. SourceLocation:	Script/Diplomacy/HOLDiplomacyPanel.as(138)
+#: Script/Diplomacy/HOLDiplomacyPanel.as(138)
+msgctxt "HOLDiplomacyPanel,AIAlways"
+msgid "Les IA sont toujours ennemies"
+msgstr "AIは常に敵対"
 
 #. Key:	Effect80
 #. SourceLocation:	Script/Talents/HOLTalentNames.as(100)
@@ -698,6 +817,55 @@ msgstr "深い森"
 msgctxt "HOLMaps,Map_Fords"
 msgid "Les Gués"
 msgstr "浅瀬"
+
+#. Key:	Map_Crown
+#. SourceLocation:	Source/HeroesOfLiberty/Map/HOLMapRules.cpp(23)
+#: Source/HeroesOfLiberty/Map/HOLMapRules.cpp(23)
+msgctxt "HOLMaps,Map_Crown"
+msgid "La Couronne"
+msgstr "王冠"
+
+#. Key:	DawnOrder
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(132)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(132)
+msgctxt "HOLNewGameScreen,DawnOrder"
+msgid "Ordre de l'Aube"
+msgstr "暁の騎士団"
+
+#. Key:	BlackLegions
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(133)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(133)
+msgctxt "HOLNewGameScreen,BlackLegions"
+msgid "Légions Noires"
+msgstr "黒の軍団"
+
+#. Key:	DragonChildren
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(134)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(134)
+msgctxt "HOLNewGameScreen,DragonChildren"
+msgid "Enfants du Dragon"
+msgstr "竜の子ら"
+
+#. Key:	ShadowCircle
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(135)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(135)
+msgctxt "HOLNewGameScreen,ShadowCircle"
+msgid "Cercle de l'Ombre"
+msgstr "影の結社"
+
+#. Key:	FireHeirs
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(136)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(136)
+msgctxt "HOLNewGameScreen,FireHeirs"
+msgid "Héritiers du Feu"
+msgstr "炎の継承者"
+
+#. Key:	Templars
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(137)
+#: Source/HeroesOfLiberty/Match/HOLDiplomacyReadLibrary.cpp(137)
+msgctxt "HOLNewGameScreen,Templars"
+msgid "Templiers"
+msgstr "テンプル騎士団"
 
 #. Key:	AbsentLine
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLDisconnectRules.cpp(70)
@@ -3099,48 +3267,6 @@ msgstr "開始中…"
 msgctxt "HOLNewGameScreen,Slot"
 msgid "Emplacement"
 msgstr "スロット"
-
-#. Key:	DawnOrder
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(82)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(82)
-msgctxt "HOLNewGameScreen,DawnOrder"
-msgid "Ordre de l'Aube"
-msgstr "暁の騎士団"
-
-#. Key:	BlackLegions
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(83)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(83)
-msgctxt "HOLNewGameScreen,BlackLegions"
-msgid "Légions Noires"
-msgstr "黒の軍団"
-
-#. Key:	DragonChildren
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(84)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(84)
-msgctxt "HOLNewGameScreen,DragonChildren"
-msgid "Enfants du Dragon"
-msgstr "竜の子ら"
-
-#. Key:	ShadowCircle
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(85)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(85)
-msgctxt "HOLNewGameScreen,ShadowCircle"
-msgid "Cercle de l'Ombre"
-msgstr "影の結社"
-
-#. Key:	FireHeirs
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(86)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(86)
-msgctxt "HOLNewGameScreen,FireHeirs"
-msgid "Héritiers du Feu"
-msgstr "炎の継承者"
-
-#. Key:	Templars
-#. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(87)
-#: Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(87)
-msgctxt "HOLNewGameScreen,Templars"
-msgid "Templiers"
-msgstr "テンプル騎士団"
 
 #. Key:	NoTeam
 #. SourceLocation:	Source/HeroesOfLibertyUI/Screens/HOLNewGameScreen.cpp(93)

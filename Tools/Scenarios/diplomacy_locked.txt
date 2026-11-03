@@ -1,0 +1,31 @@
+# Diplomatie hors mode Diplomatie (equipes fixes) : le panneau montre les postures grisees et verrouillees (3 presentations), tributs et messages disponibles ; un clic sur une posture ne fait rien.
+# Plain, mode Standard (diplomacy_locked.json) : toi et le joueur 2 dans l'equipe 1, le joueur 3 et une IA dans l'equipe 2.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+r.SetRes 1920x1080w
+frames 30
+hol.UI.DiplomacyLayout 0
+hol.HUD.Click DiplomacyButton
+hol.HUD.Report 1
+waitlog HUD overlap:
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_L0_locked
+hol.HUD.Click DipNeutral_2
+hol.HUD.Click DipAlly_2
+frames 20
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 3 toward slot 2
+hol.UI.DiplomacyLayout 1
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_L1_locked
+hol.UI.DiplomacyLayout 2
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_L2_locked
+hol.Test.Sanity
+panel show
+note 1. Partie a equipes fixes (pas le mode Diplomatie) : les postures sont grisees et verrouillees, on lit seulement qui est allie (equipe 1) et qui est ennemi ; clique-les, rien ne change. Le panneau dit « Postures verrouillees : equipes fixes ».
