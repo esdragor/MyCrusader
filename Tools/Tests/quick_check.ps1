@@ -422,6 +422,8 @@ if ($Parts -contains "net") {
             # of Bob (slot 1) at (4000, 9000); client 1 (Bob) wounds his units to 50 % (the real cheat): the server's exact 200/400,
             # then each client's reading of it (3 times 1 s apart).
             "mark net siege", "hol.Units.Spawn 1 4000 9000 1 Ram 100", "hol.Units.Spawn 1 2000 9000 1 Mangonel 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_siege_spawned.flag")",
+            # The server waits for the wound itself (its own log line, whatever the load delays the command), not for the signal's timing.
+            "waitlog Cheat: slot 1 wound to 50 %",
             "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120", "wait 1", "hol.Units.Where 1",
             "waitfile $(Join-Path $TestSaved "quick_net_siege_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120",
             # Reinforced Ram (S5) asked by client 1 (the real cheat, the server's AddTechnology): the Ram gains 40 (240/440 on the server);
@@ -7745,10 +7747,16 @@ function Get-MarkedLines($Lines, [string] $Mark) {
 # F6e.3 "netfogback" (R7): the same match, but after her march Alice's game closes and she comes back under the same name (within the
 # server's absence window): her client begins with a black map, the server sends back what her camp explored and the buildings it
 # remembers (ClientReceiveFogMemory): her second game must hold them, not only what her units see now.
-foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
+foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     if (-not ($Parts -contains $NetFogPart)) { continue }
     $NetFogOn = $NetFogPart -ne "netfogoff"
     $NetFogBack = $NetFogPart -eq "netfogback"
+    # F9 "netfogtrees": a pack of 10 trees thrown on Alice's line (server side), seen by her march, then cut by the server while her units are
+    # 125 m away: her client must keep drawing them (shown > standing), and stop once her units come back in sight of them.
+    # HOL_TREES_CUT_IN_VIEW=1 (the control, red on purpose): the cut comes while her units still see them, nothing to keep.
+    $NetFogTrees = $NetFogPart -eq "netfogtrees"
+    $TreesCutNow = [bool] $env:HOL_TREES_CUT_IN_VIEW
+    $TreesCut = @(1..10 | ForEach-Object { "hol.Sources.TakeNear 0 1500" })
     $NetFogServerLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_server.log"
     $NetFogConfig = Join-Path $TestSaved "quick_$NetFogPart.json"
     $NetFogServerSequence = Join-Path $TestSaved "quick_${NetFogPart}_server.seq"
@@ -7757,7 +7765,8 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
     # F6b: after 10 s Alice's units march (fast) to 27 m from Bob's forum, inside its sight (D523: 6400 cm) and theirs (3200 cm, F6e.2:
     # they see his centre), stay, and come home.
-    @("waitplayers 2", "mark $NetFogPart", "wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0", "wait 14", "hol.Units.Move -15200 0 0", "wait 16",
+    @("waitplayers 2", "mark $NetFogPart") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
+        @($(if ($NetFogTrees -and $TreesCutNow) { @("wait 7") + $TreesCut + @("wait 7") } else { "wait 14" })) + @($(if ($NetFogTrees -and -not $TreesCutNow) { $TreesCut + @("wait 6") })) + @("hol.Units.Move -15200 0 0", "wait 16",
         "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
     $NetFogPort = Get-AITestPort
@@ -7780,7 +7789,8 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
             }
             $ClientSequence = Join-Path $TestSaved "quick_${NetFogPart}_client$Client.seq"
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
-            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report" } }) + @("hol.Fog.Report")
+            $ReportCount = if ($NetFogTrees) { 48 } else { 40 }
+            $ClientReports = @(1..$ReportCount | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report"; if ($NetFogTrees) { "hol.Sources.Report" } } }) + @("hol.Fog.Report")
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
                 @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
@@ -7894,6 +7904,37 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
         $FogClose = $Mine[0] -gt 0 -and $Theirs[0] -gt 0 -and [Math]::Abs($Mine[0] - $Theirs[0]) * 100 -le $Theirs[0] -and [Math]::Abs($Mine[1] - $Theirs[1]) * 100 -le $Theirs[1]
         $Checks["client $N : its own fog $(if ($NetFogOn) { 'within 1 % of the server''s for its camp' } else { 'off' }) (visible $($Mine[0]) explored $($Mine[1]); server: visible $($Theirs[0]) explored $($Theirs[1]))"] =
             $(if ($NetFogOn) { $FogClose } else { $ClientFog[$N].Line -match "mode Disabled" })
+    }
+    if ($NetFogTrees) {
+        # F9: "Sources (client): S standing of K (...); shown D, navmesh N" every 2 s. A tree cut while out of the camp's sight stays drawn
+        # (shown above standing: the drawn ones are the standing ones plus the kept), Alice's only (Bob never saw the pack), then goes when her
+        # units see its place again (back to the first gap).
+        # (Measured, 2026-11-03: the server's per-camp memory keeps a tree out of sight "standing" for the client, which therefore keeps it standing
+        # AND drawn; it learns of the cut when its camp sees the place again. So the proof is in the timing: the client's standing count drops
+        # only after the cut by the return of the units, not at the cut.)
+        $StampOf = { param($Line) if ("$Line" -match "^\[(\d+)\.(\d+)\.(\d+)-(\d+)\.(\d+)\.(\d+):(\d+)\]") { [datetime]::new([int] $Matches[1], [int] $Matches[2], [int] $Matches[3], [int] $Matches[4], [int] $Matches[5], [int] $Matches[6], [int] $Matches[7]) } else { $null } }
+        $CutLine = @($NetFogLog | Select-String -Pattern "Sources: took \d+ from source" | Select-Object -First 1)
+        $CutAt = if ($CutLine.Count) { & $StampOf $CutLine[0].Line } else { $null }
+        foreach ($N in $ClientFog.Keys | Sort-Object) {
+            $Reports = @(Get-MarkedLines (Get-Content $NetFogClientLogs[$N]) $NetFogPart | Select-String -Pattern "Sources \(client\): (\d+) standing of \d+ .*; shown (\d+)," |
+                ForEach-Object { [pscustomobject]@{ At = (& $StampOf $_.Line); Standing = [int] $_.Matches[0].Groups[1].Value; Shown = [int] $_.Matches[0].Groups[2].Value } })
+            $Top = if ($Reports.Count) { ($Reports | Measure-Object Standing -Maximum).Maximum } else { 0 }
+            $TopAt = @($Reports | Where-Object { $_.Standing -eq $Top } | Select-Object -First 1)
+            $Drop = @($Reports | Where-Object { $TopAt.Count -and $_.At -gt $TopAt[0].At -and $_.Standing -le $Top - 8 } | Select-Object -First 1)
+            $Gap = if ($Drop.Count -and $CutAt) { [Math]::Round(($Drop[0].At - $CutAt).TotalSeconds, 1) } else { -99 }
+            if ($ClientFog[$N].Held -eq 0) {
+                # The cut comes 14 s after the units left, the units come back 6 s later (the server's wait) and need ~3 s to see the place: a count that
+                # fell before 6 s after the cut would be the server telling what the camp cannot see (or, the control, a cut in sight: at once).
+                $Checks["client $N (Alice) : the 10 trees cut out of her sight stay standing for her ($Top over $($Reports.Count) reports), gone $Gap s after the cut (at least 6)"] =
+                    $Reports.Count -ge 10 -and $Top -ge 10 -and $Drop.Count -eq 1 -and $Gap -ge 6
+                $InAway = @($Reports | Where-Object { $CutAt -and ($_.At - $CutAt).TotalSeconds -ge 1 -and ($_.At - $CutAt).TotalSeconds -le 5 })
+                $Checks["client $N (Alice) : and drawn meanwhile (shown $(($InAway | ForEach-Object { $_.Shown }) -join ',') of $Top)"] =
+                    $InAway.Count -ge 1 -and @($InAway | Where-Object { $_.Shown -lt $Top - 2 }).Count -eq 0
+            }
+            else {
+                $Checks["client $N (Bob) : never held the pack (most $Top standing, none gone)"] = $Reports.Count -ge 10 -and $Drop.Count -eq 0
+            }
+        }
     }
     if ($NetFogBack) {
         # Her second game: the memory taken in, then her own fog read 6 s later; the server's last report is of her camp at the end of the march.
