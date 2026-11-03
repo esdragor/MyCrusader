@@ -257,6 +257,8 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			Free.Remove(SiegeBuilder);
 		}
 		ThinkSiegeProduce(PlayerIndex, Step, Summary);
+		// 3b4. The technologies (T7, provisional levels: hol.AI.TechMinLevel): one research at a time, the economy lines first.
+		ThinkTech(PlayerIndex, Step, Summary);
 
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
@@ -321,6 +323,40 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 		}
 		return true;
+	}
+
+	// The technologies (T7, GDD 11): the research HOLAITech::Choose wants, queued at its building as a unit would be (a research is an item of the
+	// same queue, T-Q6). The levels that research are provisional (hol.AI.TechMinLevel, 1 = Normal and Hard; question Q-ia-technologies).
+	void ThinkTech(int PlayerIndex, int64 Step, const FHOLAISummary& Summary)
+	{
+		FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+		Rule.MinDifficulty = HOLAITechnology::GetAITechMinLevel();
+		if (int(Summary.Level) < Rule.MinDifficulty)
+		{
+			return;
+		}
+		TArray<FHOLAITechnology> Table;
+		if (!HOLAITechnology::ReadAITechnologyTable(Table))
+		{
+			return;
+		}
+		TArray<FName> Done;
+		HOLAITechnology::ReadAITechnologiesDone(PlayerIndex, Done);
+		TArray<int> Stock;
+		for (int Resource = 0; Resource < 4; Resource++)
+		{
+			Stock.Add(HOLAIOpening::PartOf(Summary, Resource).Stock);
+		}
+		const FHOLAITechChoice Choice = HOLAITech::Choose(Rule, Table, Done, Summary.Buildings, Stock, Summary.PeasantIds.Num(), Summary.Tier,
+			HOLHero::GetHeroLevel(PlayerIndex), int(Summary.Level));
+		if (!Choice.bResearch)
+		{
+			return;
+		}
+		if (HOLAIOrder::IssueAIProduceOrder(PlayerIndex, Choice.BuildingAt, Choice.Technology))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: research {Choice.Technology} ({Choice.Reason})");
+		}
 	}
 
 	// The hero's point, if one is in reserve (HOLAITalent::Choose): the order of the talent of the main family, the same order a player's button sends.
