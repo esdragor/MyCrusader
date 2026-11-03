@@ -7624,15 +7624,22 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback") {
 # (hol.Victory.Defeat 1, the cheat of the server), still connected, then reports again: his client now holds the whole map (the
 # centres of slots 0 and 2, the units of both, his fog line "no camp, everything in sight"). Alice's client keeps her fog: it never
 # holds the AI's centre, whatever Bob became.
-if ($Parts -contains "netspec") {
-    $SpecPart = "netspec"
-    $SpecServerLog = Join-Path $TestSaved "Logs\quick_netspec_server.log"
-    $SpecConfig = Join-Path $TestSaved "quick_netspec.json"
-    $SpecServerSequence = Join-Path $TestSaved "quick_netspec_server.seq"
-    Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_netspec_client*.log"), (Join-Path $TestSaved "quick_netspec_*.flag") -ErrorAction SilentlyContinue
+# "netspecteam": the same, but Bob and the AI are one team (team 2) against Alice (team 1): defeated in a team, Bob keeps his team's sight
+# (the AI ally's side, his fog line "camp N", not "no camp") and still does not hold Alice's centre.
+foreach ($SpecPart in "netspec", "netspecteam") {
+    if (-not ($Parts -contains $SpecPart)) { continue }
+    $SpecTeam = $SpecPart -eq "netspecteam"
+    $SpecServerLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_server.log"
+    $SpecConfig = Join-Path $TestSaved "quick_${SpecPart}.json"
+    $SpecServerSequence = Join-Path $TestSaved "quick_${SpecPart}_server.seq"
+    Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_${SpecPart}_client*.log"), (Join-Path $TestSaved "quick_${SpecPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $SpecConfig @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
-    $SpecDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_netspec_done$_.flag" })
-    @("waitplayers 2", "mark netspec", "waitfile $($SpecDone[0]) 240", "waitfile $($SpecDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $SpecServerSequence
+    if ($SpecTeam) {
+        (Get-Content $SpecConfig -Raw) -replace '"colorIndex": 0,', '"colorIndex": 0, "team": 1,' -replace '"colorIndex": 1,', '"colorIndex": 1, "team": 2,' -replace '"colorIndex": 2 }', '"colorIndex": 2, "team": 2 }' |
+            Set-Content -Encoding ascii $SpecConfig
+    }
+    $SpecDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${SpecPart}_done$_.flag" })
+    @("waitplayers 2", "mark $SpecPart", "waitfile $($SpecDone[0]) 240", "waitfile $($SpecDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $SpecServerSequence
     $SpecPort = Get-AITestPort
     $SpecServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SpecPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SpecConfig`" -abslog=`"$SpecServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $SpecServerSequence`""
     $SpecServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SpecServerArguments -PassThru -WindowStyle Hidden
@@ -7651,19 +7658,19 @@ if ($Parts -contains "netspec") {
                 (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
                     -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
             }
-            $ClientSequence = Join-Path $TestSaved "quick_netspec_client$Client.seq"
+            $ClientSequence = Join-Path $TestSaved "quick_${SpecPart}_client$Client.seq"
             $SpecReports = @("hol.Buildings.Report", "hol.Units.Report", "hol.HUD.Report")
-            $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark netspec", "wait 6") + $SpecReports
+            $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $SpecPart", "wait 6") + $SpecReports
             if ($Client -eq 1) {
                 # Bob: defeated (his banner), then the same reports once the server has widened his connection.
-                $Steps += @("hol.Victory.Defeat 1", "waitlog End banner: Defeat", "wait 4", "mark netspecafter") + $SpecReports + @("wait 2", "hol.Units.Report")
+                $Steps += @("hol.Victory.Defeat 1", "waitlog End banner: Defeat", "wait 4", "mark ${SpecPart}after") + $SpecReports + @("wait 2", "hol.Units.Report")
             }
             else {
-                $Steps += @("wait 10", "mark netspecafter") + $SpecReports
+                $Steps += @("wait 10", "mark ${SpecPart}after") + $SpecReports
             }
             $Steps += @("signal $($SpecDone[$Client - 1])", "mark end", "quit")
             $Steps | Set-Content -Encoding utf8 $ClientSequence
-            $ClientLog = Join-Path $TestSaved "Logs\quick_netspec_client$Client.log"
+            $ClientLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_client$Client.log"
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
@@ -7682,11 +7689,17 @@ if ($Parts -contains "netspec") {
         $UnitsOf = { param($Mark) $Last = Get-MarkedLines $Lines $Mark | Select-String -Pattern "Units report: client, (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
             @([regex]::Matches("$Last", "of slot (\d+)") | ForEach-Object { [int]$_.Groups[1].Value } | Sort-Object -Unique) }
         $FogOf = { param($Mark) $L = Get-MarkedLines $Lines $Mark | Select-String -Pattern "HUD fog: (.*)$" | Select-Object -Last 1; if ($L) { $L.Matches[0].Groups[1].Value } else { "" } }
-        $BeforeBuildings = & $BuildingsOf "netspec"
-        $AfterBuildings = & $BuildingsOf "netspecafter"
-        $AfterUnits = & $UnitsOf "netspecafter"
-        $AfterFog = & $FogOf "netspecafter"
-        if ($N -eq 1) {
+        $BeforeBuildings = & $BuildingsOf $SpecPart
+        $AfterBuildings = & $BuildingsOf "${SpecPart}after"
+        $AfterUnits = & $UnitsOf "${SpecPart}after"
+        $AfterFog = & $FogOf "${SpecPart}after"
+        if ($N -eq 1 -and $SpecTeam) {
+            $Checks["client 1 (Bob) : before, his team's centres (own and the AI ally's), not Alice's ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -notcontains 0) -and ($BeforeBuildings -contains 1)
+            $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
+            $Checks["client 1 (Bob) : defeated in a team, keeps his team's sight, not Alice's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 2) -and -not ($AfterBuildings -contains 0)
+            $Checks["client 1 (Bob) : his fog line is his team's, not the whole map ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
+        }
+        elseif ($N -eq 1) {
             $Checks["client 1 (Bob) : before, his own centre only ($($BeforeBuildings -join ','))"] = ($BeforeBuildings -join '|') -eq "1"
             $Checks["client 1 (Bob) : defeated, still connected (banner Defeat)"] = [bool]($Lines | Select-String -Pattern "End banner: Defeat" -Quiet)
             $Checks["client 1 (Bob) : spectator holds the centres of slots 0 and 2 ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and ($AfterBuildings -contains 2)
@@ -7694,7 +7707,7 @@ if ($Parts -contains "netspec") {
             $Checks["client 1 (Bob) : his fog line says the whole map is in sight ($AfterFog)"] = $AfterFog -match "no camp, everything in sight"
         }
         else {
-            $Checks["client 2 (Alice) : keeps her fog, never holds the AI's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and -not ($AfterBuildings -contains 2)
+            $Checks["client 2 (Alice) : keeps her fog, never holds the AI's centre ($($AfterBuildings -join ','))"] = ($AfterBuildings -contains 0) -and -not ($AfterBuildings -contains 2) -and -not ($AfterBuildings -contains 1)
             $Checks["client 2 (Alice) : her own camp's fog line ($AfterFog)"] = $AfterFog -match "camp \d+, in sight"
         }
     }
@@ -7702,7 +7715,7 @@ if ($Parts -contains "netspec") {
     if ($SpecServerTimedOut) { Stop-Process -Id $SpecServer.Id -Force -ErrorAction SilentlyContinue }
     $Checks["server quit by itself"] = -not $SpecServerTimedOut
     $SpecLog = if (Test-Path $SpecServerLog) { Get-Content $SpecServerLog } else { @() }
-    $Checks["server : slot 1 defeated by the cheat, the match goes on (the AI and Alice stand)"] = [bool]($SpecLog | Select-String -Pattern "Victory: slot 1 defeated" -Quiet) -and -not [bool]($SpecLog | Select-String -Pattern "match over" -Quiet)
+    $Checks["server : slot 1 defeated by the cheat, the match goes on (the AI $(if ($SpecTeam) { 'ally' } else { 'and Alice' }) stands)"] = [bool]($SpecLog | Select-String -Pattern "Victory: slot 1 defeated" -Quiet) -and -not [bool]($SpecLog | Select-String -Pattern "match over" -Quiet)
     $AllOk = (Report $SpecPart $Checks) -and $AllOk
 }
 
