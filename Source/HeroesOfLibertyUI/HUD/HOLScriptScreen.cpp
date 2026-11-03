@@ -147,6 +147,36 @@ void UHOLScriptScreen::SetCheatsHeroBlockShown(const bool bShown) const
 	}
 }
 
+FVector2D UHOLScriptScreen::GetViewportSlateSize() const
+{
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	return UWidgetLayoutLibrary::GetViewportSize(this) / Dpi;
+}
+
+bool UHOLScriptScreen::GetWidgetBox(UWidget* Widget, FVector2D& OutMin, FVector2D& OutMax) const
+{
+	if (!Widget || !Widget->IsVisible())
+	{
+		return false;
+	}
+	const FGeometry& Geometry = Widget->GetCachedGeometry();
+	if (Geometry.GetAbsoluteSize().IsNearlyZero())
+	{
+		return false;
+	}
+	const float Dpi = FMath::Max(UWidgetLayoutLibrary::GetViewportScale(this), UE_KINDA_SMALL_NUMBER);
+	OutMin = FVector2D(Geometry.GetAbsolutePosition()) / Dpi;
+	OutMax = FVector2D(Geometry.GetAbsolutePosition() + Geometry.GetAbsoluteSize()) / Dpi;
+	return true;
+}
+
+bool UHOLScriptScreen::GetGameScreenBox(const FName WidgetName, FVector2D& OutMin, FVector2D& OutMax) const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	UWidget* Widget = GameScreen && GameScreen->WidgetTree ? GameScreen->WidgetTree->FindWidget(WidgetName) : nullptr;
+	return GetWidgetBox(Widget, OutMin, OutMax);
+}
+
 FString UHOLScriptScreen::DescribeOverlaps() const
 {
 	struct FNamedBox
@@ -162,6 +192,17 @@ FString UHOLScriptScreen::DescribeOverlaps() const
 		if (CheatPanel->GetBox(CheatBox))
 		{
 			Boxes.Add({ TEXT("cheats"), CheatBox });
+		}
+	}
+	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
+	const TCHAR* const GameNames[] = { TEXT("PlayersPanel"), TEXT("MenuPanel") };
+	for (const TCHAR* GameName : GameNames)
+	{
+		FVector2D Low;
+		FVector2D High;
+		if (GetGameScreenBox(FName(GameName), Low, High))
+		{
+			Boxes.Add({ GameName, FBox2D(Low, High) });
 		}
 	}
 	if (WidgetTree)
@@ -259,6 +300,11 @@ void UHOLScriptScreen::NativeTick(const FGeometry& MyGeometry, const float InDel
 		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::T))
 		{
 			KeyPressed(TEXT("T"));
+		}
+		// F11: the Diplomacy panel (D387, AoE2's key), a default of the panel's trial until the keys are chosen.
+		if (Controller->IsLocalController() && Controller->WasInputKeyJustPressed(EKeys::F11))
+		{
+			KeyPressed(TEXT("F11"));
 		}
 	}
 	RefreshLeft -= InDeltaTime;

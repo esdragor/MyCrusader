@@ -9,6 +9,7 @@ class UButton;
 class UProgressBar;
 class UCommonTextBlock;
 class UCommonTextStyle;
+class UWidget;
 
 /**
  * The game screen's part written in Angelscript (J8a.5 loop 2): the HUD's blocks move to script one by one, the hero's
@@ -114,6 +115,18 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	void SetCheatsHeroBlockShown(bool bShown) const;
+
+	/** The window as the HUD sees it, in Slate units (the pixels over the DPI scale): the room the panels are laid out in. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	FVector2D GetViewportSlateSize() const;
+
+	/** The box a drawn, visible widget of this screen covers, in Slate units from the window's top left; false: hidden or not drawn yet. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetWidgetBox(UWidget* Widget, FVector2D& OutMin, FVector2D& OutMax) const;
+
+	/** The same for a widget of the C++ game screen by name ("PlayersPanel", "MenuPanel"): where a block of the script must not go. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	bool GetGameScreenBox(FName WidgetName, FVector2D& OutMin, FVector2D& OutMax) const;
 
 	/**
 	 * Which of the script's visible panels (MakePanel) cover each other or the cheats' panel, as drawn: "none" or "A x B; C x cheats" (hol.HUD.Report's

@@ -3967,6 +3967,23 @@ void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Reso
 	}
 }
 
+void AHOLPlayerController::RequestPanelTribute(const int32 Receiver, const int32 Resource, const int32 Amount)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	if (IsSpectator() || !HOLPlayerState)
+	{
+		return;
+	}
+	for (FHOLBuildingIterator It(GetWorld()); It; ++It)
+	{
+		if (It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->GetTypeName() == HOLBuildingTypeNames::Market && It->IsFinished())
+		{
+			ServerTribute(*It, Receiver, Resource, Amount);
+			return;
+		}
+	}
+}
+
 void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 Lots, const bool bBuy)
 {
 	if (IsSpectator())

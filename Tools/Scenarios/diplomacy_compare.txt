@@ -1,0 +1,159 @@
+# Le panneau Diplomatie en 3 presentations (0 trois boutons, 1 puce qui tourne, 2 menu deroulant), 5 joueurs en mode Diplomatie, Entree = presentation suivante ; les clics agissent.
+# Plain, mode Diplomatie (diplomacy_compare.json) : toi (slot 0) et 4 autres joueurs sans manette : joueur 2 Allie (alliance reciproque, vision partagee), joueur 3 Neutre, joueur 4 Ennemi (une IA : toujours ennemie, posture verrouillee), joueur 5 a qui tu as propose l'alliance (sans reponse : « En attente de l'autre »).
+# Avant de te rendre la main, le scenario prend lui-meme 9 captures (3 presentations x 1920x1080, 1366x768, 1280x600) et teste les clics (posture, vision) ; il remet ensuite les postures de depart.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+hol.Cheat.Resources 2000
+r.SetRes 1920x1080w
+frames 30
+hol.Diplomacy.Force 0 1 ally
+hol.Diplomacy.Force 1 0 ally
+hol.Diplomacy.Force 0 2 neutral
+hol.Diplomacy.Force 0 4 ally
+hol.Diplomacy.Vision 1 1
+waitlog Diplomacy: slot 0 shares its vision with slot 1
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 4 toward slot 3
+hol.UI.DiplomacyLayout 0
+hol.HUD.Click DiplomacyButton
+frames 20
+# Les 9 captures de controle : la presentation 0, puis 1, puis 2, a trois tailles de fenetre.
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L0_1920
+r.SetRes 1366x768w
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L0_1366
+r.SetRes 1280x600w
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L0_600
+r.SetRes 1920x1080w
+frames 30
+hol.UI.DiplomacyLayout 1
+frames 30
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L1_1920
+r.SetRes 1366x768w
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L1_1366
+r.SetRes 1280x600w
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L1_600
+r.SetRes 1920x1080w
+frames 30
+hol.UI.DiplomacyLayout 2
+frames 30
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L2_1920
+r.SetRes 1366x768w
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L2_1366
+r.SetRes 1280x600w
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L2_600
+r.SetRes 1920x1080w
+frames 30
+# Les clics qui agissent. Presentation 2 : le menu s'ouvre (clic sur la tete), Allie sur le joueur 3 (slot 2) ; les autres via leurs boutons.
+hol.HUD.Click DipMenu_2
+frames 10
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L2_menu
+hol.HUD.Click DipAlly_2
+waitlog Diplomacy: slot 0 now ally toward slot 2
+hol.UI.DiplomacyLayout 1
+frames 30
+hol.HUD.Click DipChip_2
+waitlog Diplomacy: slot 0 now neutral toward slot 2
+hol.UI.DiplomacyLayout 0
+frames 30
+hol.HUD.Click DipNeutral_1
+waitlog Diplomacy: slot 0 now neutral toward slot 1
+hol.HUD.Click DipVision_1
+frames 10
+hol.HUD.Report 1
+waitlog HUD overlap:
+hol.HUD.Click DipAlly_1
+waitlog Diplomacy: slot 0 now ally toward slot 1
+hol.HUD.Click DipVision_1
+waitlog Diplomacy: slot 0 shares its vision with slot 1
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 4 toward slot 3
+# Postures de depart remises.
+hol.Diplomacy.Force 0 2 neutral
+hol.HUD.Report 1
+waitlog HUD overlap:
+hol.Test.Sanity
+panel show
+note 1. Le panneau Diplomatie est ouvert (bouton « Diplomatie » en haut, a gauche de « Statistiques » et « Menu » ; raccourci F11). 5 joueurs : toi, le joueur 2 Allie (vision partagee cochee), le joueur 3 Neutre, le joueur 4 Ennemi (une IA : posture verrouillee), le joueur 5 « En attente de l'autre » (tu lui as propose l'alliance).
+note Presentation 0 (affichee) : la posture en trois boutons Allie / Neutre / Ennemi dans la ligne, panneau large au centre. Clique un bouton : la ligne change (apres un instant, l'ordre est pris au pas suivant). Les tributs sont gris : tu n'as pas de Marche.
+waitkey Entree : presentation 1 (puce qui tourne, panneau etroit a droite)
+hol.UI.DiplomacyLayout 1
+frames 30
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L1_choice
+panel show
+note 2. Presentation 1 : la posture est une puce coloree dans la ligne (clic = posture suivante : Allie, Neutre, Ennemi, Allie...), le panneau est etroit, a droite sous le tableau des joueurs.
+waitkey Entree : presentation 2 (menu deroulant, panneau compact en bas a gauche)
+hol.UI.DiplomacyLayout 2
+frames 30
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L2_choice
+panel show
+note 3. Presentation 2 : la posture est un menu (clic sur « Ennemi v » : Allie / Neutre / Ennemi apparaissent sous la ligne), le panneau est compact, en bas a gauche au-dessus du bloc du heros.
+waitkey Entree : un Marche t'est bati (les tributs deviennent actifs), presentation 0
+hol.Cheat.SpawnBuilding Market 0 1500 3000
+waitlog Cheat: spawned Market of slot 0
+hol.UI.DiplomacyLayout 0
+frames 40
+hol.HUD.Click DipTribute_3
+waitlog Tribute: slot 0 gave 100 of resource 3 to slot 3
+frames 10
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L0_market
+panel show
+note 4. Avec un Marche : « Tribut 100 or (taxe 30 %) » est actif ; le scenario vient de donner 100 d'or au joueur 4, l'IA (le Marche en garde 30 %, elle en recoit 70). Les trois presentations restent essayables avec Entree.
+waitkey Entree : presentation 1 avec Marche
+hol.UI.DiplomacyLayout 1
+frames 30
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L1_market
+panel show
+waitkey Entree : presentation 2 avec Marche
+hol.UI.DiplomacyLayout 2
+frames 30
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dip_L2_market
+panel show
+note 5. Dis 0, 1 ou 2 (ou autre chose). Le choix est un reglage : hol.UI.DiplomacyLayout 0|1|2.

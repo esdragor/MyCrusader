@@ -386,6 +386,12 @@ public:
 	/** D372: asks the server to give Amount of Resource (0 food, 1 wood, 2 stone, 3 gold) to the player at slot Receiver, from the selected Market (its own, finished); taxed. */
 	void RequestTribute(int32 Receiver, int32 Resource, int32 Amount);
 	/**
+	 * D387 (the Diplomacy panel): the same tribute without selecting anything: the player's own finished Market is found here (the panel's
+	 * button asks for it); no Market, nothing. Amount of Resource (0 food, 1 wood, 2 stone, 3 gold) to the player at Receiver, taxed.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	void RequestPanelTribute(int32 Receiver, int32 Resource, int32 Amount);
+	/**
 	 * Asks the server to move units to a ground point, as one group (J4, D288); it moves only the player's own. bQueue
 	 * (Shift, the user's 1st trial of J7a.4): after their current move.
 	 */
