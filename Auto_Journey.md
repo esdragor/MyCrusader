@@ -170,6 +170,17 @@ Résultat : 10 essais sur 10 validés (contre 5 sur 16 le 2026-10-31), 5 décisi
 13. **Test rouge d'abord vérifiable par l'ordre des commits** (test avant implémentation) : sauté pour R2 des relais, `Test_TechnologyNotImplemented` et le tribut.
 14. **Passage d'intégration de 10 min en fin de séance** sur `main` fusionné (règles 5 et 10 de « Qualité des essais », toujours non appliquées) : 3 essais qui croisent les chantiers (Marché + tribut + mini-carte + talents).
 
+## Leçons de la séance interactive du 2026-11-03 (15:41-17:30, 7 agents C++, 15 agents au total ; approuvées par l'utilisateur le 2026-11-03)
+
+Mesure (`Tools\build_queue_report.ps1`) : 24 builds en 3 h 40, 5 orphelins, 4 abandonnés ; attente médiane 38 s mais jusqu'à 44 min (Glorfindel), 32 min (Elrond) ; 17 builds demandés en 2 h par 7 agents ; 3 agents ont rendu du code NON compilé (deux relances de 25 min pour compiler/tester). Règles **toutes obligatoires** :
+1. **Plafond de 3 agents C++ écrit DANS l'énoncé.** Les autres démarrent par des docs, des règles en Angelscript, des scénarios ou des tests de script, et ne passent au C++ qu'à la libération d'une place. La session principale regarde `Docs\BuildQueue.state\` avant chaque lancement.
+2. **Un agent qui touche au C++ lance son build TOUT DE SUITE en `run_in_background` et reste vivant jusqu'à sa fin** (un build détaché meurt avec l'agent : exit 4). Son arrêt dur est repoussé jusqu'à la fin de son build, et il écrit « NON COMPILÉ » en tête du rapport s'il rend la main avant. Un agent qui rend du code non compilé = un agent neuf dédié « compiler et tester », jamais une fusion.
+3. **Outils de test** : `check.ps1` (PASS périmé quand le journal précédent est tenu) et `quick_check -Parts tests` avec d'autres parties (faux FAIL 0/0, journal `quick_tests_2.log`) sont corrigés en début de séance (ligne `[ ]` de la file) ; en attendant, lancer `tests` SEUL.
+4. **Écriture au bon endroit** : chaque agent n'écrit que par chemin absolu dans son worktree (jamais de chemin relatif), et son rapport se termine par `git status` de la copie principale inchangé (hors docs voulus). Un fichier modifié par erreur dans la copie principale bloque l'avance rapide.
+5. **Builds plus rapides plutôt que plus nombreux** : un seul lot de modifications de headers par agent avant le premier build (un premier build après un header prend 200 à 750 s) ; `git merge main` seulement avant le rapport.
+6. **Bugs de comportement durs (mouvement, mêlée) : un agent neuf à 200k tokens**, repartant du journal avec la mesure acquise (l'agent de D641 a consommé 250k+ sans corriger). La session principale ne relance pas le même agent.
+7. **Veilleur** : au réarmement, il liste à nouveau les fichiers existants comme « nouveaux » ; ignorer le premier tour, ou persister l'état vu dans un fichier.
+
 ## Au démarrage : « commence ton Auto_Journey »
 
 L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase. Les chantiers auront avancé depuis la dernière fois. Sans poser de question déjà tranchée :
