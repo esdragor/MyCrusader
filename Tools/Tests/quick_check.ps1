@@ -7756,6 +7756,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     # HOL_TREES_CUT_IN_VIEW=1 (the control, red on purpose): the cut comes while her units still see them, nothing to keep.
     $NetFogTrees = $NetFogPart -eq "netfogtrees"
     $TreesCutNow = [bool] $env:HOL_TREES_CUT_IN_VIEW
+    $TreesCutWait = if ($env:HOL_TREES_CUT_IN_VIEW -match '^\d+$' -and [int] $env:HOL_TREES_CUT_IN_VIEW -gt 1) { [int] $env:HOL_TREES_CUT_IN_VIEW } else { 7 }
     $TreesCut = @(1..10 | ForEach-Object { "hol.Sources.TakeNear 0 1500" })
     $NetFogServerLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_server.log"
     $NetFogConfig = Join-Path $TestSaved "quick_$NetFogPart.json"
@@ -7766,7 +7767,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     # F6b: after 10 s Alice's units march (fast) to 27 m from Bob's forum, inside its sight (D523: 6400 cm) and theirs (3200 cm, F6e.2:
     # they see his centre), stay, and come home.
     @("waitplayers 2", "mark $NetFogPart") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
-        @($(if ($NetFogTrees -and $TreesCutNow) { @("wait 7") + $TreesCut + @("wait 7") } else { "wait 14" })) + @($(if ($NetFogTrees -and -not $TreesCutNow) { $TreesCut + @("wait 6") })) + @("hol.Units.Move -15200 0 0", "wait 16",
+        @($(if ($NetFogTrees -and $TreesCutNow) { @("wait $TreesCutWait") + $TreesCut + @("wait $(14 - $TreesCutWait)") } else { "wait 14" })) + @($(if ($NetFogTrees -and -not $TreesCutNow) { $TreesCut + @("wait 6") })) + @("hol.Units.Move -15200 0 0", "wait 16",
         "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
     $NetFogPort = Get-AITestPort
