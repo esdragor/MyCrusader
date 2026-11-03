@@ -126,3 +126,8 @@ def zones(recipe):
 def relays(recipe):
     """R2 (provisional level design): one relay between every two neighbouring places (common.ring_relays); the roads are zones that do not stop them."""
     return common.ring_relays(recipe)
+
+
+def volcano(recipe):
+    """V4b (D607): the volcano site of the map, symmetric by construction (common.volcano_site); inert unless the match has the Catastrophe option (D398)."""
+    return [common.volcano_site(recipe)]
