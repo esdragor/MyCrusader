@@ -1,0 +1,3 @@
+camps_game | 20 Hommes d'armes bleus a gauche et 20 rouges a droite, au contact, au milieu de la carte, a la hauteur de camera du jeu : les deux camps se distinguent tout de suite.
+camps_close | La meme scene de plus pres : bleu et rouge nets, sans confusion avec le sol.
+camps_selected | Les bleus selectionnes (cercles) et blesses (barres de vie), les rouges intacts : cercles et barres lisibles.

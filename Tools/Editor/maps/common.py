@@ -47,6 +47,7 @@ import os
 
 import unreal
 
+from maps import ambience
 from maps import ground
 
 MAPS_ROOT = "/Game/Maps"
@@ -1427,17 +1428,18 @@ def make_map(recipe, module, on_saved):
     spawn_mesh("/Engine/BasicShapes/Plane", unreal.Vector(0, 0, 0), unreal.Vector(recipe.ground_size / 100, recipe.ground_size / 100, 1),
                "Ground", ground_material(module))
 
-    # Light and sky, all movable: nothing to build. No shadows in the game (D258).
-    sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 1000), unreal.Rotator(roll=0, pitch=-50, yaw=30), "Sun")
+    # Light and sky, all movable: nothing to build. No shadows in the game (D258). The map's ambience (maps/ambience.py: the sun's colour,
+    # strength and angle, the sky's tint, a faint height fog; none = the engine's defaults) is set here, nothing else.
+    sun_pitch, sun_yaw = ambience.rotation(recipe.map_name)
+    sun = spawn(unreal.DirectionalLight, unreal.Vector(0, 0, 1000), unreal.Rotator(roll=0, pitch=sun_pitch, yaw=sun_yaw), "Sun")
     sun_light = movable_light(sun)
     sun_light.set_editor_property("atmosphere_sun_light", True)
-    sun_light.set_editor_property("cast_shadows", False)
     spawn(unreal.SkyAtmosphere, label="SkyAtmosphere")
     sky_light = spawn(unreal.SkyLight, label="SkyLight")
     sky = movable_light(sky_light)
     sky.set_editor_property("real_time_capture", True)
-    sky.set_editor_property("cast_shadows", False)
-    spawn(unreal.ExponentialHeightFog, label="HeightFog")
+    fog = spawn(unreal.ExponentialHeightFog, label="HeightFog")
+    ambience.apply(recipe.map_name, sun_light, sky, fog.get_editor_property("component"))
 
     # Bounds of the camera (its box's extent, read before the box is registered), and the navmesh over them (the
     # default volume brush is a 2 m cube).
