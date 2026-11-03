@@ -38,7 +38,7 @@ void UHOLTitleScreen::BuildLayout()
 	{
 		Version = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), TEXT("Version"));
 		Version->SetStyle(UHOLTextStyleNote::StaticClass());
-		Version->SetText(FText::AsCultureInvariant(HOLVersion::Get()));
+		Version->SetText(FText::AsCultureInvariant(HOLVersion::Display(HOLVersion::Get())));
 		UOverlaySlot* VersionSlot = Frame->AddChildToOverlay(Version);
 		VersionSlot->SetHorizontalAlignment(HAlign_Right);
 		VersionSlot->SetVerticalAlignment(VAlign_Bottom);

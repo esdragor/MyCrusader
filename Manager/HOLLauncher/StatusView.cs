@@ -1,3 +1,5 @@
+using HOLUpdate;
+
 namespace HOLLauncher;
 
 /**
@@ -31,8 +33,8 @@ public sealed record StatusView(
         var state = status.State switch
         {
             GameState.UpToDate => "Le jeu est à jour.",
-            GameState.Outdated => $"Une mise à jour du jeu est disponible ({status.Latest}).",
-            GameState.NotInstalled => $"Le jeu n'est pas installé ; la version {status.Latest} est disponible.",
+            GameState.Outdated => $"Une mise à jour du jeu est disponible ({VersionName.Display(status.Latest!)}).",
+            GameState.NotInstalled => $"Le jeu n'est pas installé ; la version {VersionName.Display(status.Latest!)} est disponible.",
             _ when status.Message == AccessKeyHandler.BadKeyMessage => status.Message,
             _ => $"Serveur injoignable : {status.Message}",
         };
@@ -69,9 +71,9 @@ public sealed record StatusView(
         => new(InstalledLine(installed), LatestLine(null), $"Erreur : {message}", "", LauncherLine(launcherCurrent),
             false, false, false, true);
 
-    private static string InstalledLine(string? installed) => $"Version installée : {installed ?? "pas installé"}";
+    private static string InstalledLine(string? installed) => $"Version installée : {(installed is null ? "pas installé" : VersionName.Display(installed))}";
 
-    private static string LatestLine(string? latest) => $"Dernière version : {latest ?? "inconnue"}";
+    private static string LatestLine(string? latest) => $"Dernière version : {(latest is null ? "inconnue" : VersionName.Display(latest))}";
 
     private static string LauncherLine(string current) => $"Lanceur : version {current}";
 }

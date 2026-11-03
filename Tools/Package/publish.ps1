@@ -11,6 +11,10 @@
 #   powershell -ExecutionPolicy Bypass -File Tools\Package\publish.ps1 [-Root <copy>] [-Archive <copy>\Saved\Packages\<v>]
 #       [-Version <name>] [-Notes <file>] [-Keep 3] [-VersionsDir <folder>] [-ServersDir <folder>] [-NoServer]
 # - no -Archive: package.ps1 -Root <copy> [-Version <name>] first (1.5 to 5 min, more the first time), then its archive;
+# - L14: without -Version nor -Archive the version is "0.Y.X", read from <VersionsDir>\release.json (Y = steps validated
+#   by the user, X = update of the step, from 0; shown "V 0.Y.X"); X moves up after a publication that succeeded. The
+#   user validating a step: HOLPublish release next-stage --file <VersionsDir>\release.json (Y + 1, X = 0); first
+#   creation: HOLPublish release set --file ... --stage 3 --update 0 (HOLPublish.exe is in <copy>\Saved\HOLPublish\);
 # - the version published is the one in <archive>\Windows\HeroesOfLiberty\Version.txt (what the game reads); a -Version
 #   that differs from it is refused;
 # - -Notes: the "what's new" text shown by the launcher (copied as notes.txt; none without it);
@@ -49,14 +53,36 @@ if (-not $VersionsDir) { $VersionsDir = Join-Path $Project "Saved\Manager\Versio
 $VersionsDir = [IO.Path]::GetFullPath($VersionsDir)
 if (-not $ServersDir) { $ServersDir = Join-Path $Project "Saved\Manager\Servers" }
 $ServersDir = [IO.Path]::GetFullPath($ServersDir)
+$ReleaseFile = Join-Path $VersionsDir "release.json"
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) { Fail "dotnet not found" }
 $Clock = [Diagnostics.Stopwatch]::StartNew()
+
+# 0. HOLPublish, built in Release (hdiffz.exe and hpatchz.exe copied beside it by its .csproj).
+$PublishDir = Join-Path $Project "Saved\HOLPublish"
+$PublishExe = Join-Path $PublishDir "HOLPublish.exe"
+$Csproj = Join-Path $Project "Manager\HOLPublish\HOLPublish.csproj"
+if (-not (Test-Path $Csproj)) { Fail "no $Csproj" }
+& dotnet build $Csproj --nologo -c Release -o $PublishDir 2>&1 | Out-File -Append -Encoding utf8 $Log
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PublishExe)) {
+    Select-String -Path $Log -Pattern ": error " | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Line.Trim())" }
+    Fail "dotnet build of HOLPublish"
+}
+foreach ($Tool in "hdiffz.exe", "hpatchz.exe") {
+    if (-not (Test-Path (Join-Path $PublishDir $Tool))) { Fail "no $Tool beside $PublishExe (Tools\ThirdParty\HDiffPatch\)" }
+}
 
 # 1. The archive: packaged now (package.ps1, its lines repeated as they come), or the one given.
 $PackageMinutes = $null
 if (-not $Archive) {
     $PackageArgs = @("-ExecutionPolicy", "Bypass", "-File", (Join-Path $PSScriptRoot "package.ps1"), "-Root", $Project)
-    if ($Version) { $PackageArgs += @("-Version", $Version) }
+    if (-not $Version) {
+        # L14: the version is "0.Y.X" (release.json beside latest.txt: Y = steps validated, X = update of the step).
+        $ReleaseLine = & $PublishExe release name --file $ReleaseFile
+        if ($LASTEXITCODE -ne 0 -or "$ReleaseLine" -notmatch 'RELEASE (\S+)$') { Fail "release number: $ReleaseLine" }
+        $Version = $Matches[1]
+        Say "version $Version (release.json)"
+    }
+    $PackageArgs += @("-Version", $Version)
     $PassLine = ""
     & powershell @PackageArgs | ForEach-Object {
         Say "  $_"
@@ -84,20 +110,6 @@ if (-not (Test-Path $VersionFile)) { Fail "no Windows\HeroesOfLiberty\Version.tx
 $GameVersion = (Get-Content $VersionFile -Raw -Encoding utf8).Trim()
 if (-not $GameVersion) { Fail "$VersionFile is empty" }
 if ($Version -and $Version -ne $GameVersion) { Fail "-Version $Version but the archive's Version.txt says $GameVersion" }
-
-# 3. HOLPublish, built in Release (hdiffz.exe and hpatchz.exe copied beside it by its .csproj).
-$PublishDir = Join-Path $Project "Saved\HOLPublish"
-$PublishExe = Join-Path $PublishDir "HOLPublish.exe"
-$Csproj = Join-Path $Project "Manager\HOLPublish\HOLPublish.csproj"
-if (-not (Test-Path $Csproj)) { Fail "no $Csproj" }
-& dotnet build $Csproj --nologo -c Release -o $PublishDir 2>&1 | Out-File -Append -Encoding utf8 $Log
-if ($LASTEXITCODE -ne 0 -or -not (Test-Path $PublishExe)) {
-    Select-String -Path $Log -Pattern ": error " | Select-Object -First 3 | ForEach-Object { Write-Host "  $($_.Line.Trim())" }
-    Fail "dotnet build of HOLPublish"
-}
-foreach ($Tool in "hdiffz.exe", "hpatchz.exe") {
-    if (-not (Test-Path (Join-Path $PublishDir $Tool))) { Fail "no $Tool beside $PublishExe (Tools\ThirdParty\HDiffPatch\)" }
-}
 
 # 4. HOLPublish on the player folder. Its lines are UTF-8 ("compresses" with an accent): the console's encoding set to
 # UTF-8 while it runs, then put back (it belongs to the console window, which outlives this script).
@@ -128,6 +140,10 @@ if (-not (Test-Path (Join-Path $VersionsDir "$GameVersion\manifest.json"))) { Fa
 if (-not $NoServer -and -not (Test-Path (Join-Path $ServersDir "$GameVersion\HeroesOfLibertyServer.exe"))) {
     Fail "no $GameVersion\HeroesOfLibertyServer.exe in $ServersDir"
 }
+# L14: the number of the release moves up only for a publication that took it (another -Version leaves it alone).
+$ReleaseDone = & $PublishExe release done --file $ReleaseFile --version $GameVersion
+if ($LASTEXITCODE -ne 0) { Fail "release done: $ReleaseDone" }
+Say "  $ReleaseDone"
 $Kept = @(Get-ChildItem $VersionsDir -Directory | Where-Object { Test-Path (Join-Path $_.FullName "manifest.json") } | ForEach-Object { $_.Name })
 $Bytes = (Get-ChildItem $VersionsDir -Recurse -File | Measure-Object Length -Sum).Sum
 $Package = if ($null -ne $PackageMinutes) { "package $PackageMinutes min, " } else { "archive given, " }
