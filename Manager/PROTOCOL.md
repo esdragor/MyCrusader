@@ -553,6 +553,7 @@ script de publication (L4) :
 
 ```
 <versions>/latest.txt                          nom de la dernière version
+<versions>/release.json                       numéro de la prochaine publication (L14), jamais servi
 <versions>/<v>/manifest.json                   liste des fichiers (HOLUpdate : chemin, taille, SHA-256)
 <versions>/<v>/notes.txt                       nouveautés (facultatif)
 <versions>/<v>/files/<chemin>.gz               fichier compressé (gzip) à la publication
@@ -562,6 +563,14 @@ script de publication (L4) :
 ```
 
 Noms de version (`{v}`, `{depuis}`, contenu des `latest.txt`) : `[A-Za-z0-9._-]+`, sauf `.` et `..`.
+
+**Numérotation (L14).** Les versions publiées par `Tools/Package/publish.ps1` s'appellent `0.Y.X` : `Y` = nombre
+d'étapes validées par l'utilisateur, `X` = numéro de la mise à jour dans l'étape en cours (à partir de 0). Le nom
+stocké n'a ni `V` ni espace ; le lanceur et le jeu affichent `V 0.Y.X` (`HOLUpdate.VersionName.Display`,
+`HOLVersion::Display`). `release.json` (`{"stage":Y,"update":X}`) contient le numéro de la **prochaine** publication :
+`HOLPublish release name|done|next-stage|set --file <release.json>` le lit et le tient à jour (`done` : X + 1 après
+une publication réussie de ce numéro ; `next-stage` : Y + 1, X = 0). Les anciens noms datés restent valides et
+s'affichent tels quels. Le protocole ne change pas (`protocolVersion` reste 1).
 
 ### `GET /versions/latest`
 

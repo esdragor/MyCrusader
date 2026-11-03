@@ -23,6 +23,18 @@ namespace HOLVersion
 		return Line.IsEmpty() ? FString(Unknown) : Line;
 	}
 
+	FString Display(const FString& Version)
+	{
+		TArray<FString> Parts;
+		Version.ParseIntoArray(Parts, TEXT("."), false);
+		bool bNumbered = Parts.Num() == 3 && Parts[0] == TEXT("0");
+		for (int32 Index = 1; bNumbered && Index < 3; ++Index)
+		{
+			bNumbered = Parts[Index].IsNumeric() && !Parts[Index].Contains(TEXT("-")) && !Parts[Index].Contains(TEXT("+"));
+		}
+		return bNumbered ? TEXT("V ") + Version : Version;
+	}
+
 	const FString& Get()
 	{
 		static const FString Version = []()

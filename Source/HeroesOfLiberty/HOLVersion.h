@@ -3,7 +3,7 @@
 #include "CoreMinimal.h"
 
 /**
- * Version of the game (M6 R1.7): <yyyy-mm-dd>-<short commit> in a package, "dev" outside one (editor, -game). The
+ * Version of the game (M6 R1.7): "0.Y.X" in a package published by publish.ps1 (L14: Y = steps validated, X = update of the step), <yyyy-mm-dd>-<short commit> in a package made by hand, "dev" outside one (editor, -game). The
  * same for the client, the dedicated server and the manager, which compare it (R2, R3.3). Tools\Package\package.ps1
  * writes it after the build in <package>\<platform>\HeroesOfLiberty\Version.txt, beside the cooked game: no tracked
  * file is touched and nothing is rebuilt for a new version.
@@ -20,6 +20,9 @@ namespace HOLVersion
 
 	/** The version in the text of a Version.txt: its first line, trimmed; Unknown if empty. */
 	HEROESOFLIBERTY_API FString Parse(const FString& FileText);
+
+	/** How a version is shown (L14): a numbered one "0.Y.X" as "V 0.Y.X", any other (old dated names, "dev") as it is. */
+	HEROESOFLIBERTY_API FString Display(const FString& Version);
 
 	/** Path of Version.txt in a package (the project folder beside the cooked content). */
 	HEROESOFLIBERTY_API FString GetFilePath();
