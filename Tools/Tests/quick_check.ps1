@@ -391,7 +391,7 @@ if ($Parts -contains "net") {
             # The Ram's health over the network (Siege S2, 400 hp > 256 hp of the wire's 8 bits, sent as a share of its maximum): a Ram
             # of Bob (slot 1) at (4000, 9000); client 1 (Bob) wounds his units to 50 % (the real cheat): the server's exact 200/400,
             # then each client's reading of it (3 times 1 s apart).
-            "mark net siege", "hol.Units.Spawn 1 4000 9000 1 Ram 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_siege_spawned.flag")",
+            "mark net siege", "hol.Units.Spawn 1 4000 9000 1 Ram 100", "hol.Units.Spawn 1 2000 9000 1 Mangonel 100", "wait 1", "signal $(Join-Path $TestSaved "quick_net_siege_spawned.flag")",
             "waitfile $(Join-Path $TestSaved "quick_net_siege_wounded.flag") 120", "wait 1", "hol.Units.Where 1",
             "waitfile $(Join-Path $TestSaved "quick_net_siege_done1.flag") 120", "waitfile $(Join-Path $TestSaved "quick_net_siege_done2.flag") 120",
             # Reinforced Ram (S5) asked by client 1 (the real cheat, the server's AddTechnology): the Ram gains 40 (240/440 on the server);
@@ -7048,12 +7048,12 @@ if ($Parts -contains "net") {
         # (4000, 9000) wounded to 50 % by Bob's cheat is 200/400 on the server; each client reads the same 200/400 in all its 3 reports.
         $SiegeChecks = [ordered]@{}
         $SiegeRead = {
-            param($Lines)
+            param($Lines, $WantX = 4000)
             @($Lines | Select-String -Pattern "Units where: \d+ units: (.*)$" | ForEach-Object {
                 $Found = ""
                 foreach ($Unit in ($_.Matches[0].Groups[1].Value -split "; ")) {
                     if ($Unit -match "^#\d+ slot $BobSlot at \((-?\d+), (-?\d+)\) \w+, hp (\d+)/(\d+)") {
-                        if ([Math]::Abs([int] $Matches[1] - 4000) -le 400 -and [Math]::Abs([int] $Matches[2] - 9000) -le 400) { $Found = "$($Matches[3])/$($Matches[4])" }
+                        if ([Math]::Abs([int] $Matches[1] - $WantX) -le 400 -and [Math]::Abs([int] $Matches[2] - 9000) -le 400) { $Found = "$($Matches[3])/$($Matches[4])" }
                     }
                 }
                 $Found
@@ -7063,6 +7063,16 @@ if ($Parts -contains "net") {
         $SiegeTruth = if ($SiegeServer.Count) { $SiegeServer[0] } else { "" }
         $SiegeTruth2 = if ($SiegeServer.Count -ge 2) { $SiegeServer[-1] } else { "" }
         $SiegeChecks["server: Bob's Ram wounded to 50 % reads 200/400, then 240/440 with Reinforced Ram ($($SiegeServer -join ','))"] = $SiegeTruth -eq "200/400" -and $SiegeTruth2 -eq "240/440"
+        # The Mangonel (200 hp, the other engine) at (2000, 9000) wounded by the same cheat: 100/200 on the server and on both clients in all their
+        # reports (before and after Reinforced Ram, which is the Ram's). Its own stat (Heavy Munitions) is a damage, not a health.
+        $MangonelServer = @(& $SiegeRead @(Get-ClientSection @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog }) "net siege") 2000)
+        $SiegeChecks["server: Bob's Mangonel wounded to 50 % reads 100/200 in every report ($($MangonelServer -join ','))"] =
+            $MangonelServer.Count -ge 2 -and @($MangonelServer | Where-Object { $_ -ne "100/200" }).Count -eq 0
+        foreach ($NetClient in $NetClients) {
+            $MangonelSeen = @(& $SiegeRead @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "siege") 2000)
+            $SiegeChecks["client $($NetClient.Client) : the Mangonel reads 100/200 in all its $($MangonelSeen.Count) reports ($(($MangonelSeen | Select-Object -First 6) -join ','))"] =
+                $MangonelSeen.Count -ge 5 -and @($MangonelSeen | Where-Object { $_ -ne "100/200" }).Count -eq 0
+        }
         foreach ($NetClient in $NetClients) {
             $SiegeSeen = @(& $SiegeRead @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "siege"))
             $First = @($SiegeSeen | Select-Object -First 3)
