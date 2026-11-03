@@ -3280,4 +3280,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D660** (Biomes B0/B1, § 8, règles pures de Faramir du 2026-11-03, **valeurs provisoires à confirmer**) : le premier choix de la liste du salon est « défaut de la carte » (`MapDefault` = -1) ; le biome neige ne porte aucune texture de sol tant qu'une texture CC0 n'est pas choisie ; les couleurs des 5 biomes sont celles des ambiances de `ambience.py`.
 
-Prochain numéro : **D661**.
+**D661** (Q-neutre-en-combat = B, § 14 Diplomatie, précise D369 et D401, réponse de l'utilisateur du 2026-11-03) : quand deux camps déjà en plein combat deviennent **Neutres** l'un envers l'autre, **la défense continue** : une unité neutre encore frappée se défend jusqu'à ce que l'autre arrête ; elle ne lâche une cible Neutre que si cette cible ne l'attaque pas (et si le joueur ne l'a pas ordonnée). Un combat engagé ne se coupe donc pas d'un coup ; le test de la Diplomatie crée ses unités après avoir posé Neutre. Écartée : Neutre coupe tout (une unité frappée ne se défendrait plus).
+
+Prochain numéro : **D662**.
