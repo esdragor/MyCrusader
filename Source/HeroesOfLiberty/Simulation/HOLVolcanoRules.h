@@ -76,14 +76,20 @@ struct FHOLVolcanoSettings
 	float AiAltarHoldShareEasy = 0.125f;
 	float AiAltarSafeDistance = 4000.f;
 	/**
-	 * V7 (D379, PROVISIONAL, no ruling of the user yet on the numbers): the fresh deposit that appears on the basalt when a flow has cooled. It stands on the
-	 * flow's line FreshDepositAlong of the way from the crater (0 crater, 1 the flow's end; 0.5 = the middle, away from both camps), is gold with the chance
-	 * FreshDepositGoldShare and stone otherwise (drawn from the match seed, no memory), and is of the source type named here (a row of the source type table).
+	 * V7 + D649 (answer of the user 2026-11-03: "a bit random along the flow, gold OR stone, small or big, it gives everything"): the fresh deposit that appears
+	 * on the basalt when a flow has cooled. EVERYTHING is drawn from the match seed (no memory, no fixed value): it stands on the flow's line at a distance drawn
+	 * between FreshDepositAlongMin and FreshDepositAlongMax of the way from the crater (0 crater, 1 the flow's end; 0.3 to 0.7 keeps it away from both camps),
+	 * is gold with the chance FreshDepositGoldShare and stone otherwise, and big with the chance FreshDepositBigShare and small otherwise. The four source types
+	 * are rows of the source type table (500 for small, 5000 for big at the time of writing: the test reads the table, it never types the amounts).
 	 */
-	float FreshDepositAlong = 0.5f;
+	float FreshDepositAlongMin = 0.3f;
+	float FreshDepositAlongMax = 0.7f;
 	float FreshDepositGoldShare = 0.5f;
-	FName FreshDepositGoldType = TEXT("GoldVein");
-	FName FreshDepositStoneType = TEXT("StoneVein");
+	float FreshDepositBigShare = 0.5f;
+	FName FreshDepositGoldSmallType = TEXT("GoldVeinSmall");
+	FName FreshDepositGoldBigType = TEXT("GoldVeinBig");
+	FName FreshDepositStoneSmallType = TEXT("StoneVeinSmall");
+	FName FreshDepositStoneBigType = TEXT("StoneVeinBig");
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -278,6 +284,10 @@ namespace HOLVolcano
 	{
 		bool bPresent = false;
 		EFreshKind Kind = EFreshKind::Gold;
+		/** D649: big (drawn) or small. */
+		bool bBig = false;
+		/** D649: where on the flow, as a fraction of its length from the crater (drawn between FreshDepositAlongMin and Max). */
+		float Along = 0.f;
 		/** On the flow's line (PointAt). */
 		FVector Location = FVector::ZeroVector;
 		/** The row of the source type table. */
@@ -286,7 +296,7 @@ namespace HOLVolcano
 
 	/**
 	 * V7 (D379): the new deposit (gold or stone) the cycle CycleIndex of a site leaves on its cooled Flow: a function of the site's seed (SiteSeed), the cycle
-	 * and the flow only, same on every machine; the kind is drawn on a stream of its own, with no memory of the previous cycles.
+	 * and the flow only, same on every machine; the kind, the place and the size are drawn on a stream of its own, with no memory of the previous cycles (D649).
 	 */
 	HEROESOFLIBERTY_API FFreshDeposit FreshDeposit(int32 SiteSeedValue, int32 CycleIndex, const FFlow& Flow, const FHOLVolcanoSettings& Settings);
 
