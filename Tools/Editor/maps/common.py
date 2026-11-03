@@ -1097,6 +1097,13 @@ RELAY_VARIANT_STEP = 7919
 RELAY_FIXED_APART = 500.0  # cm of free ground between two zones' edges
 RELAY_FIXED_TRIES = 40000
 SALT_RELAYS = 778
+# D647 (Q-volcan-autel-relais = B, 2026-11-03): a map with a volcano (all of them) keeps the relay of the middle at least 24 m from the middle, so that the relay
+# and the altar of the crater are two stakes. Not on a lava flow (LAVA_HALF_WIDTH + the zone) when the map has room, nor on the altar's zone. El Dorado
+# (min_radius > 0) keeps its own rule (the marsh's edge, already further than that). The other 4 relays are not touched.
+RELAY_MIDDLE_MIN = 2400.0
+RELAY_MIDDLE_DISTANCES = tuple(RELAY_MIDDLE_MIN + 400.0 * k for k in range(0, 13))
+RELAY_MIDDLE_OFFSETS = (-90.0, 90.0, -45.0, 45.0, -135.0, 135.0, 180.0, 0.0, -22.5, 22.5, -67.5, 67.5, -112.5, 112.5, -157.5, 157.5)
+RELAY_LAVA_HALF_WIDTH = 800.0
 
 
 def fixed_group(a0, rng, half, middle):
@@ -1117,6 +1124,39 @@ def fixed_group(a0, rng, half, middle):
     return [(mx, my), (cx, cy), (-cx, -cy), (sx, sy), (-sx, -sy)]
 
 
+def segment_distance(point, a, b):
+    """Distance from a point to the segment a-b."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length2 = dx * dx + dy * dy
+    t = 0.0 if length2 <= 0.0 else max(0.0, min(1.0, ((point[0] - a[0]) * dx + (point[1] - a[1]) * dy) / length2))
+    return math.dist(point, (a[0] + t * dx, a[1] + t * dy))
+
+
+def far_middle(recipe, turn, accept):
+    """D647: the point of the middle relay, RELAY_MIDDLE_MIN or more from the middle of the map, off the altar's zone and (if the map has room) off the lava
+    flows; accept(point) says whether the rest of the map lets it be there (bounds, bases, rocks, the other relays). The places' middle angles first (more
+    than 2 places), then the frame's turn plus RELAY_MIDDLE_OFFSETS (2 places: across the axis of the places, on the side opposite the altar, as far from one base as from
+    the other); the nearest distance of each angle first. None if no point fits."""
+    places = len(recipe.angles)
+    site = volcano_site(recipe)
+    altar_x, altar_y, altar_radius = site["altar"]
+    angles = []
+    if places > 2:
+        angles += [math.radians(recipe.angles[0]) + (2 * k + 1) * math.pi / places for k in range(places)]
+    angles += [turn + math.radians(offset) for offset in RELAY_MIDDLE_OFFSETS]
+    for off_flows in (True, False):
+        for angle in angles:
+            for distance in RELAY_MIDDLE_DISTANCES:
+                point = (distance * math.cos(angle), distance * math.sin(angle))
+                if math.dist(point, (altar_x, altar_y)) < RELAY_RADIUS + altar_radius:
+                    continue
+                if off_flows and any(segment_distance(point, flow[0], flow[-1]) < RELAY_LAVA_HALF_WIDTH + RELAY_EXTRA_ZONE for flow in site["flows"]):
+                    continue
+                if accept(point):
+                    return point
+    return None
+
+
 def fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius):
     """The 5 fixed relays (x, y, RELAY_EXTRA_ZONE) of a map, or None if no draw is clear: inside the bounds, outside every base's reach, rock_clear from every
     avoid point, whole veins left alone, apart from each other and from the ring's relays (RELAY_FIXED_APART between edges). min_radius > 0 (El Dorado's marsh):
@@ -1130,6 +1170,23 @@ def fixed_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radius)
         # symmetric by 180 degrees whatever its turn) so that the pairs find the room between the bases.
         turn = math.radians(recipe.angles[0]) if places == 2 else rng.range(0.0, math.pi)
         group = fixed_group(turn, rng, recipe.bounds_half, middle)
+        if min_radius <= 0.0:  # D647: the middle relay is drawn apart (far_middle), the two pairs are checked as they always were
+            pairs = group[1:]
+
+            def point_ok(p, others):
+                return (abs(p[0]) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN and abs(p[1]) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN
+                        and all(math.dist(p, slot) >= BASE_REACH + zone + RELAY_BASE_MARGIN for slot in slots)
+                        and all(math.dist(p, q) >= 2.0 * zone + RELAY_FIXED_APART for q in others)
+                        and all(math.dist(p, (x, y)) >= zone + r + RELAY_FIXED_APART for x, y, r in ring)
+                        and all(math.dist(p, rock) >= zone + rock_clear for rock in avoid)
+                        and all(math.dist(p, pile) >= zone + 1.0 for pile in keep_whole))
+
+            if not all(point_ok(p, [q for q in pairs if q is not p]) for p in pairs):
+                continue
+            mid = far_middle(recipe, turn, lambda p: point_ok(p, pairs))
+            if mid is None:
+                continue
+            return [(x, y, zone) for x, y in [mid] + pairs]
         clear = all(math.hypot(x, y) >= min_radius - 1.0 for x, y in group)
         clear = clear and all(abs(x) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN and abs(y) <= recipe.bounds_half - zone - RELAY_BASE_MARGIN for x, y in group)
         clear = clear and all(math.dist(p, slot) >= BASE_REACH + zone + RELAY_BASE_MARGIN for p in group for slot in slots)
@@ -1197,12 +1254,19 @@ def snapped_relays(recipe, ring, slots, avoid, rock_clear, keep_whole, min_radiu
         turn = math.radians(recipe.angles[0]) if places == 2 else rng.range(0.0, math.pi)
         group = fixed_group(turn, rng, half, middle)
         placed = []
-        for point, pair in ((group[0], False), (group[1], True), (group[3], True)):
+        # D647: with no marsh the middle relay is drawn last, far from the middle (far_middle); the pairs go first, as before.
+        parts = ((group[1], True), (group[3], True)) if min_radius <= 0.0 else ((group[0], False), (group[1], True), (group[3], True))
+        for point, pair in parts:
             found = find(point, placed, pair)
             if found is None:
                 break
             placed += found
         else:
+            if min_radius <= 0.0:
+                mid = far_middle(recipe, turn, lambda p: clear(p, placed))
+                if mid is None:
+                    continue
+                return [(x, y, zone) for x, y in [mid] + placed]
             return [(x, y, zone) for x, y in placed]
     return None
 
