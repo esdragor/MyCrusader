@@ -75,6 +75,15 @@ struct FHOLVolcanoSettings
 	float AiAltarHoldShare = 0.25f;
 	float AiAltarHoldShareEasy = 0.125f;
 	float AiAltarSafeDistance = 4000.f;
+	/**
+	 * V7 (D379, PROVISIONAL, no ruling of the user yet on the numbers): the fresh deposit that appears on the basalt when a flow has cooled. It stands on the
+	 * flow's line FreshDepositAlong of the way from the crater (0 crater, 1 the flow's end; 0.5 = the middle, away from both camps), is gold with the chance
+	 * FreshDepositGoldShare and stone otherwise (drawn from the match seed, no memory), and is of the source type named here (a row of the source type table).
+	 */
+	float FreshDepositAlong = 0.5f;
+	float FreshDepositGoldShare = 0.5f;
+	FName FreshDepositGoldType = TEXT("GoldVein");
+	FName FreshDepositStoneType = TEXT("StoneVein");
 
 	/** The lava's speed (cm/s) for the Man-at-arms' speed read from the unit type table (never typed here). */
 	float LavaSpeed(const float ManAtArmsSpeed) const { return ManAtArmsSpeed * LavaSpeedFactor; }
@@ -261,6 +270,26 @@ namespace HOLVolcano
 	 */
 	HEROESOFLIBERTY_API int32 AltarHoldSquad(const FAltarHoldInput& Input, const FHOLVolcanoSettings& Settings);
 
+	/** V7 (D379): what a flow leaves when it has cooled. */
+	enum class EFreshKind : uint8 { Gold, Stone };
+
+	/** V7: the fresh deposit of one cooled flow: bPresent false for a flow without length. */
+	struct FFreshDeposit
+	{
+		bool bPresent = false;
+		EFreshKind Kind = EFreshKind::Gold;
+		/** On the flow's line (PointAt). */
+		FVector Location = FVector::ZeroVector;
+		/** The row of the source type table. */
+		FName TypeName;
+	};
+
+	/**
+	 * V7 (D379): the new deposit (gold or stone) the cycle CycleIndex of a site leaves on its cooled Flow: a function of the site's seed (SiteSeed), the cycle
+	 * and the flow only, same on every machine; the kind is drawn on a stream of its own, with no memory of the previous cycles.
+	 */
+	HEROESOFLIBERTY_API FFreshDeposit FreshDeposit(int32 SiteSeedValue, int32 CycleIndex, const FFlow& Flow, const FHOLVolcanoSettings& Settings);
+
 	/** The distance (cm, ground plane) from Point to the nearest point of the flow's line; a huge number for a flow without point. */
 	HEROESOFLIBERTY_API float DistanceToFlow(const FFlow& Flow, const FVector& Point);
 
@@ -284,6 +313,9 @@ namespace HOLVolcano
 		/** V8: this cycle's alert was begun by the altar held (Wakes). */
 		bool bWoken = false;
 	};
+
+	/** V7: whether the deposit of the state's cycle stands now: the basalt is passable (Rest, D379, D400) and the cycle has a flow. */
+	HEROESOFLIBERTY_API bool FreshDepositDue(const FSiteState& State);
 
 	/**
 	 * V8 (D380, Q-volcan-autel option A by default): the altar held for ~60 s with no enemy (the ruin's rule, D348) wakes the site earlier. The alert

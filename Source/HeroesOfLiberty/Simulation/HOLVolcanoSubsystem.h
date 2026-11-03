@@ -115,6 +115,9 @@ public:
 	/** V11: GetEvacuations, then a move order for each unit (applied at the next step, the order a player's click sends). Returns how many were ordered. */
 	int32 EvacuateOwner(int32 Slot);
 
+	/** V7 (D379): the indices (in UHOLSourceSubsystem) of the fresh deposits a site has left so far, one per cooled cycle. */
+	const TArray<int32>& GetFreshSourceIndices(const int32 SiteIndex) const { static const TArray<int32> None; return FreshSources.IsValidIndex(SiteIndex) ? FreshSources[SiteIndex] : None; }
+
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
 	virtual void Deinitialize() override;
 
@@ -129,6 +132,9 @@ private:
 
 	void SyncObstacle(int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State);
 
+	/** V7 (D379): the fresh deposit of the cycle whose basalt is passable, placed in the source registry (server or solo), once per cycle. */
+	void SyncFreshDeposit(int32 SiteIndex, const HOLVolcano::FSite& Site, const HOLVolcano::FSiteState& State);
+
 	/** The obstacle of each site, by index (V6). */
 	UPROPERTY(Transient)
 	TMap<int32, TObjectPtr<AHOLLavaObstacle>> Obstacles;
@@ -140,6 +146,9 @@ private:
 	TArray<int32> AltarCycle;
 	/** The camp each altar's count belongs to (INDEX_NONE: nobody yet): a new holder restarts at 0. */
 	TArray<int32> AltarHolder;
+	/** V7, by site: the last cycle whose fresh deposit was placed (INDEX_NONE: none), and the source indices placed. */
+	TArray<int32> FreshPlacedCycle;
+	TArray<TArray<int32>> FreshSources;
 	FHOLVolcanoSettings Settings;
 	/** Height of the obstacle boxes (cm): well above the ground, as a building's. */
 	float ObstacleHeight = 600.f;
