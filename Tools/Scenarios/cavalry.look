@@ -1,0 +1,8 @@
+cavalry_stable | L'Ecurie selectionnee : la case A de sa grille porte le Cavalier leger (80 nourriture + 40 or), le batiment est la boite provisoire
+cavalry_produced | Le Cavalier leger sorti de l'Ecurie : un Mannequin agrandi, plus gros que les fantassins (placeholder assume)
+cavalry_vs_archers_start | Le Cavalier leger a gauche, 3 Archers a droite a 35 m, rien ne bouge encore
+cavalry_vs_archers | Le Cavalier leger a rejoint les Archers : ils tombent l'un apres l'autre, lui est blesse mais debout
+cavalry_vs_spearmen_start | Le Cavalier leger a gauche, 2 Piquiers a droite a 35 m
+cavalry_vs_spearmen | Le Cavalier leger est mort (ou presque) face aux 2 Piquiers (+17 contre Cavalerie)
+cavalry_vs_mangonel_start | Le Cavalier leger a gauche, le Mangonneau a droite a 35 m
+cavalry_vs_mangonel | Le Mangonneau est detruit (ou presque) par le Cavalier leger, qui n'est pas blesse
