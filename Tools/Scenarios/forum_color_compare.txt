@@ -24,6 +24,8 @@ hol.Camera.FocusNear -450 1200
 frames 5
 waitkey Option A sur 3 : la couleur sur le TOIT (pyramide). Regarde les deux Forums, de loin puis de pres (molette). Entree = option B
 hol.Building.MeshVariant Banner
+# Le modele se charge et se prepare : on attend avant de capturer.
+wait 6
 frames 20
 capture fcc_banner_far
 hol.Camera.Zoom 3
@@ -35,6 +37,8 @@ hol.Camera.FocusNear -450 1200
 frames 5
 waitkey Option B sur 3 : la couleur sur les BANNIERES des quatre tourelles (toit de pierre). Entree = option C
 hol.Building.MeshVariant Both
+# Le modele se charge et se prepare : on attend avant de capturer.
+wait 6
 frames 20
 capture fcc_both_far
 hol.Camera.Zoom 3
