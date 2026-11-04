@@ -303,12 +303,15 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				AddInfo(FString::Printf(TEXT("%s: %d relays"), *Name, PlacedRelays.Num()));
 			}
 
-			// 3c. V4b (volcano sites of the maps, D607, D573): a map lays no volcano layout or one; its sites are fair between the camps (the flows the same by a
-			// turn of one place, the altar as far from every base), have a length and stay inside the bounds. Which maps carry a site is level design.
+			// 3c. V4b (volcano sites of the maps, D607, D573): a map lays one volcano layout (every map and size, 2026-11-03); its sites are fair between the camps (the flows the same by a
+			// turn of one place, the altar as far from every base), have a length and stay inside the bounds.
 			{
 				TArray<FVector2D> SlotCentres;
 				Starts.GenerateValueArray(SlotCentres);
 				TestTrue(FString::Printf(TEXT("%s: at most one volcano layout"), *Name), NumVolcanoLayouts <= 1);
+				// V4b on every map and size (2026-11-03): each map file holds one site, with one flow towards each place (the site is written by the recipe, common.volcano_site).
+				TestEqual(FString::Printf(TEXT("%s: volcano sites"), *Name), PlacedVolcanoes.Num(), 1);
+				TestEqual(FString::Printf(TEXT("%s: flows of the volcano site (one towards each place)"), *Name), PlacedVolcanoes.IsEmpty() ? 0 : PlacedVolcanoes[0].Flows.Num(), Info.NumPlaces);
 				TestEqual(FString::Printf(TEXT("%s: flows without a twin after a turn of one place (unfair draw, D573)"), *Name), FHOLVolcanoLayoutRules::CountUnbalancedFlows(PlacedVolcanoes, 360.0 / Info.NumPlaces), 0);
 				TestEqual(FString::Printf(TEXT("%s: altars nearer one base than another"), *Name), FHOLVolcanoLayoutRules::CountUnfairAltars(PlacedVolcanoes, SlotCentres), 0);
 				TestEqual(FString::Printf(TEXT("%s: volcano flows empty or without length"), *Name), FHOLVolcanoLayoutRules::CountEmptyFlows(PlacedVolcanoes), 0);
