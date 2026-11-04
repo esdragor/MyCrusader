@@ -115,6 +115,16 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 SurplusReassign = 1;
 	FAutoConsoleVariableRef CVarSurplusReassign(TEXT("hol.Combat.SurplusReassign"), SurplusReassign,
 		TEXT("1 (default, with hol.Combat.PreferFreeTarget): a melee ordered at a target it cannot reach, every place around it taken (MaxAttackers bodies), takes the nearest enemy within its aggression radius that has a place left, its order over; 0: it waits behind the crowd, as before"));
+	/** D641 (the user's retour on the neutrals trial): a melee that makes no headway to its target, with a place free round it, walks to that place and keeps its side. */
+	int32 ClaimPlace = 1;
+	FAutoConsoleVariableRef CVarClaimPlace(TEXT("hol.Combat.ClaimPlace"), ClaimPlace,
+		TEXT("1 (default): a melee out of reach of its target that has gained no hol.Combat.ClaimProgress cm of edge distance for hol.Combat.ClaimStuck s, with a place free round the target, walks to that place (the free spot nearest to the side it was on, kept while free) instead of the target's centre; 0: off"));
+	float ClaimStuckSeconds = 0.4f;
+	FAutoConsoleVariableRef CVarClaimStuck(TEXT("hol.Combat.ClaimStuck"), ClaimStuckSeconds,
+		TEXT("s (default 0.4, with hol.Combat.ClaimPlace): how long a melee out of reach may make no headway before it claims a free place round its target"));
+	float ClaimProgress = 25.f;
+	FAutoConsoleVariableRef CVarClaimProgress(TEXT("hol.Combat.ClaimProgress"), ClaimProgress,
+		TEXT("cm (default 25, with hol.Combat.ClaimPlace): the edge distance to its target a melee must gain to count as making headway"));
 	/** MV.4, choice C (AoE4): an idle melee soldier comes to the aid of a friend fighting within this radius (HOLCombat::ShouldComeToAid). */
 	float AidRadius = HOLCombat::DefaultAidRadius;
 	FAutoConsoleVariableRef CVarAidRadius(TEXT("hol.Combat.AidRadius"), AidRadius,
@@ -1269,21 +1279,25 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		return PlacesTaken[Other];
 	};
 	// D641: whether a body of SelfRadius could stand touching Target (a free place round it, the bodies of any side read by HOLCombat::HasFreePlaceAround).
-	const auto RoomAtTarget = [&](const int32 Self, const int32 Enemy, const float SelfRadius)
+	const auto GatherRoomBodies = [&](const int32 Self, const int32 Enemy, TArray<HOLCombat::FBody>& OutBodies)
 	{
 		TArray<int32> RoomNearby;
 		TArray<int32> RoomFriends;
 		GatherNearby(Enemy, 400., RoomNearby);
 		GatherFriends(Enemy, 400., RoomFriends);
 		RoomNearby.Append(RoomFriends);
-		TArray<HOLCombat::FBody> RoomBodies;
 		for (const int32 Body : RoomNearby)
 		{
 			if (Body != Self && Body != Enemy && Fighters[Body].State->CurrentHealth > 0)
 			{
-				RoomBodies.Add({ FVector2D(Fighters[Body].Location), Fighters[Body].Constants->Radius });
+				OutBodies.Add({ FVector2D(Fighters[Body].Location), Fighters[Body].Constants->Radius });
 			}
 		}
+	};
+	const auto RoomAtTarget = [&](const int32 Self, const int32 Enemy, const float SelfRadius)
+	{
+		TArray<HOLCombat::FBody> RoomBodies;
+		GatherRoomBodies(Self, Enemy, RoomBodies);
 		return HOLCombat::HasFreePlaceAround(FVector2D(Fighters[Enemy].Location), Fighters[Enemy].Constants->Radius, SelfRadius, RoomBodies);
 	};
 
@@ -2425,14 +2439,71 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				Combat.bRoomAtTarget = RoomAtTarget(Index, Target, Constants.Radius);
 			}
+			// D641 (hol.Combat.ClaimPlace): no headway for a while with a place free round the target: it claims the free spot nearest to
+			// the side it is on and walks to that spot, keeping the same one (the same side of the target) while it stays free.
+			bool bPlaceNew = false;
+			if (ClaimPlace != 0 && bPreferFree && !HOLCombat::IsRangedAttack(Constants.AttackRange) && !Combat.bFlanking && Combat.Mode != EHOLCombatMode::Hold)
+			{
+				const double Edge = HOLCombat::GetEdgeDistance(Position, Constants.Radius, EnemyPosition, Enemy.Constants->Radius);
+				if (Combat.PlaceTarget != Combat.Target)
+				{
+					Combat.PlaceTarget = Combat.Target;
+					Combat.bHasPlace = false;
+					Combat.BestEdge = static_cast<float>(Edge);
+					Combat.NoProgressSeconds = 0.f;
+				}
+				else if (Edge < static_cast<double>(Combat.BestEdge) - ClaimProgress)
+				{
+					Combat.BestEdge = static_cast<float>(Edge);
+					Combat.NoProgressSeconds = 0.f;
+				}
+				else
+				{
+					Combat.NoProgressSeconds += static_cast<float>(StepMs) / 1000.f;
+				}
+				if (bSearchStep && (Combat.bHasPlace || (Combat.bRoomAtTarget && Combat.NoProgressSeconds >= ClaimStuckSeconds)))
+				{
+					TArray<HOLCombat::FBody> PlaceBodies;
+					GatherRoomBodies(Index, Target, PlaceBodies);
+					const FVector2D FromTarget = Position - EnemyPosition;
+					const double Prefer = Combat.bHasPlace ? static_cast<double>(Combat.PlaceAngle) : (FromTarget.IsNearlyZero() ? 0. : FMath::Atan2(FromTarget.Y, FromTarget.X) + (FromTarget.Y < 0. ? 2. * UE_DOUBLE_PI : 0.));
+					double Angle = 0.;
+					if (HOLCombat::FindFreePlaceAround(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Prefer, Angle))
+					{
+						bPlaceNew = !Combat.bHasPlace || FMath::Abs(Angle - static_cast<double>(Combat.PlaceAngle)) > 1e-3;
+						if (!Combat.bHasPlace)
+						{
+							Combat.BestEdge = static_cast<float>(Edge);
+							Combat.NoProgressSeconds = 0.f;
+						}
+						Combat.bHasPlace = true;
+						Combat.PlaceAngle = static_cast<float>(Angle);
+					}
+					else
+					{
+						Combat.bHasPlace = false;
+					}
+				}
+			}
+			else
+			{
+				Combat.bHasPlace = false;
+			}
+			FVector WalkGoal = Enemy.Location;
+			if (Combat.bHasPlace)
+			{
+				const double PlaceReach = Enemy.Constants->Radius + Constants.Radius + 2.;
+				WalkGoal.X = EnemyPosition.X + PlaceReach * FMath::Cos(static_cast<double>(Combat.PlaceAngle));
+				WalkGoal.Y = EnemyPosition.Y + PlaceReach * FMath::Sin(static_cast<double>(Combat.PlaceAngle));
+			}
 			// A walk to it at most at the search rate: the first, or once it moved off, or once the last one ended short.
 			const bool bWalkOver = Fighter.Order->Phase == EHOLMovePhase::None;
 			const bool bMoved = FVector2D::DistSquared(EnemyPosition, Combat.ApproachPoint) > FMath::Square(ReapproachDistance);
 			if (Combat.Mode != EHOLCombatMode::Hold
-				&& (bZoneTaken || ((bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))))
+				&& (bZoneTaken || bPlaceNew || ((bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))))
 			{
 				// Stamped (J7b.3): a player's order given meanwhile drops it.
-				Commands->IssueCombatWalk(Fighter.UnitId, Enemy.Location, Combat.EngageSerial, /*bAttackMove*/ false);
+				Commands->IssueCombatWalk(Fighter.UnitId, WalkGoal, Combat.EngageSerial, /*bAttackMove*/ false);
 				Combat.ApproachPoint = EnemyPosition;
 				Combat.bAttackMoveDetour |= Combat.Mode == EHOLCombatMode::AttackMove;
 				Combat.bApproaching = true;

@@ -584,6 +584,16 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	float StillSeconds = 0.f;
 	/** D641 (hol.Combat.LoopHoldOnlyFull): a place was free round its target at its last search step (written by UHOLCombatProcessor); a looping soldier is held only if none. */
 	bool bRoomAtTarget = false;
+	/**
+	 * D641 (hol.Combat.ClaimPlace): a melee out of reach of its target that makes no headway (BestEdge: the least edge distance it reached, NoProgressSeconds: how
+	 * long since it gained ClaimProgress cm) with a place free round the target claims one: PlaceAngle (radians, round PlaceTarget) is kept while the place stays
+	 * free, so the same side of the target is walked to (not a new detour at every walk). Written by UHOLCombatProcessor only.
+	 */
+	FMassEntityHandle PlaceTarget;
+	float PlaceAngle = 0.f;
+	float BestEdge = MAX_flt;
+	float NoProgressSeconds = 0.f;
+	bool bHasPlace = false;
 
 	/**
 	 * A player's order prevails (J7b.2): its target, its approach, its strikes and its last attacker forgotten (no riposte

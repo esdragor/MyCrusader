@@ -166,10 +166,12 @@ namespace UE::HeroesOfLiberty::Dev
 								OtherVelocity ? OtherVelocity->Value.X : 0., OtherVelocity ? OtherVelocity->Value.Y : 0.);
 						}
 					}
-					UE_LOG(LogHOLTest, Display, TEXT("SanityDump3 #%u step %lld at (%.0f, %.0f) vel (%.0f, %.0f) ph %d slot (%.0f, %.0f) ap%d at%d tgt #%d (%.0f, %.0f) slide (%.2f, %.2f) flank %d near:%s"), UnitId, StepIndex, Where.X, Where.Y,
+					UE_LOG(LogHOLTest, Display, TEXT("SanityDump3 #%u step %lld at (%.0f, %.0f) vel (%.0f, %.0f) ph %d slot (%.0f, %.0f) ap%d at%d tgt #%d (%.0f, %.0f) slide (%.2f, %.2f) flank %d place %d/%.2f np %.1f room %d loop %.1f near:%s"), UnitId, StepIndex, Where.X, Where.Y,
 						Velocity ? Velocity->Value.X : 0., Velocity ? Velocity->Value.Y : 0., DumpOrder ? static_cast<int32>(DumpOrder->Phase) : -1, DumpOrder ? DumpOrder->Slot.X : 0., DumpOrder ? DumpOrder->Slot.Y : 0.,
 						DumpCombat && DumpCombat->bApproaching ? 1 : 0, DumpCombat && DumpCombat->bAttacking ? 1 : 0, TargetId, TargetWhere.X, TargetWhere.Y,
-						DumpCombat ? DumpCombat->SlideWay.X : 0.f, DumpCombat ? DumpCombat->SlideWay.Y : 0.f, DumpCombat && DumpCombat->bFlanking ? 1 : 0, *Near);
+						DumpCombat ? DumpCombat->SlideWay.X : 0.f, DumpCombat ? DumpCombat->SlideWay.Y : 0.f, DumpCombat && DumpCombat->bFlanking ? 1 : 0,
+							DumpCombat && DumpCombat->bHasPlace ? 1 : 0, DumpCombat ? DumpCombat->PlaceAngle : 0.f, DumpCombat ? DumpCombat->NoProgressSeconds : 0.f, DumpCombat && DumpCombat->bRoomAtTarget ? 1 : 0,
+							DumpCombat ? DumpCombat->LoopWaitSeconds : 0.f, *Near);
 				}
 				if (DumpUnit == -2 && UnitId >= 8 && UnitId <= 13)
 				{
@@ -293,9 +295,9 @@ namespace UE::HeroesOfLiberty::Dev
 								}
 							}
 							bStalledWithRoom = HOLSanity::HasFreePlaceAround(TargetBody->Key.Where, TargetBody->Key.Radius, SelfBody->Key.Radius, Others);
-							StallText = FString::Printf(TEXT("out of reach of #%u at (%.0f, %.0f), %.0f cm short of its edge, with a free place round it (mode %d, approaching %d, flanking %d, flank wait %.1f s, loop wait %.1f s, phase %d)"),
+							StallText = FString::Printf(TEXT("out of reach of #%u at (%.0f, %.0f), %.0f cm short of its edge, with a free place round it (mode %d, approaching %d, flanking %d, flank wait %.1f s, loop wait %.1f s, phase %d, claimed place %d, no headway %.1f s)"),
 								TargetState->UnitId, TargetBody->Key.Where.X, TargetBody->Key.Where.Y, Gap, static_cast<int32>(Combat->Mode), Combat->bApproaching ? 1 : 0, Combat->bFlanking ? 1 : 0,
-								Combat->FlankWaitSeconds, Combat->LoopWaitSeconds, Order ? static_cast<int32>(Order->Phase) : -1);
+								Combat->FlankWaitSeconds, Combat->LoopWaitSeconds, Order ? static_cast<int32>(Order->Phase) : -1, Combat->bHasPlace ? 1 : 0, Combat->NoProgressSeconds);
 						}
 					}
 					HOLSanity::FStall& Stall = Watch.Stalls.FindOrAdd(UnitId);

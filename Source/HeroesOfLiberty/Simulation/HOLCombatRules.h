@@ -304,6 +304,44 @@ namespace HOLCombat
 		return false;
 	}
 
+	/**
+	 * D641 (hol.Combat.ClaimPlace): the free spot (the same sixteen as HasFreePlaceAround) whose angle round the target is the nearest to PreferAngle (radians;
+	 * the lower spot on a tie); false when none is free. OutAngle is the spot's angle. A soldier that keeps the angle it claimed keeps the same side of the target.
+	 */
+	inline bool FindFreePlaceAround(const FVector2D& TargetWhere, const float TargetRadius, const float SelfRadius, TConstArrayView<FBody> Others, const double PreferAngle, double& OutAngle, const float Tolerance = 0.85f)
+	{
+		constexpr int32 Spots = 16;
+		bool bFound = false;
+		double BestGap = 0.;
+		for (int32 Spot = 0; Spot < Spots; ++Spot)
+		{
+			const double Angle = 2. * UE_DOUBLE_PI * Spot / Spots;
+			const FVector2D Place = TargetWhere + (TargetRadius + SelfRadius + 2.f) * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+			bool bFree = true;
+			for (const FBody& Other : Others)
+			{
+				if (FVector2D::Distance(Place, Other.Where) < Tolerance * (SelfRadius + Other.Radius))
+				{
+					bFree = false;
+					break;
+				}
+			}
+			if (!bFree)
+			{
+				continue;
+			}
+			double Gap = FMath::Fmod(FMath::Abs(Angle - PreferAngle), 2. * UE_DOUBLE_PI);
+			Gap = FMath::Min(Gap, 2. * UE_DOUBLE_PI - Gap);
+			if (!bFound || Gap < BestGap - 1e-9)
+			{
+				bFound = true;
+				BestGap = Gap;
+				OutAngle = Angle;
+			}
+		}
+		return bFound;
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 

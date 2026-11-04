@@ -207,6 +207,23 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 	Ring.RemoveAt(2);
 	TestTrue(TEXT("with one body gone a place is free"), HOLSanity::HasFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Ring));
 	TestTrue(TEXT("a lone target has a free place"), HOLSanity::HasFreePlaceAround(FVector2D(500., 0.), 30.f, 30.f, TConstArrayView<HOLSanity::FBody>()));
+	// D641 (hol.Combat.ClaimPlace): the free spot nearest to the side asked for; none when the ring is full.
+	{
+		TArray<HOLCombat::FBody> Full;
+		for (int32 Index = 0; Index < 6; ++Index)
+		{
+			const double Angle = UE_DOUBLE_PI / 3. * Index;
+			Full.Add({ FVector2D(62. * FMath::Cos(Angle), 62. * FMath::Sin(Angle)), 30.f });
+		}
+		double Chosen = -1.;
+		TestFalse(TEXT("no place is found round a full ring"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Full, 0., Chosen));
+		Full.RemoveAt(3);
+		TestTrue(TEXT("the one place left is found"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Full, 0., Chosen));
+		TestTrue(TEXT("it is the one opposite the body that left (180 degrees)"), FMath::IsNearlyEqual(Chosen, UE_DOUBLE_PI, 1e-6));
+		TArray<HOLCombat::FBody> None;
+		TestTrue(TEXT("a lone target: the spot nearest to 1.0 rad"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, None, 1.0, Chosen));
+		TestTrue(TEXT("is the third spot (67.5 degrees)"), FMath::IsNearlyEqual(Chosen, 2. * UE_DOUBLE_PI * 3. / 16., 1e-6));
+	}
 	// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
 	HOLSanity::FStall Stall;
 	int32 Told = 0;
