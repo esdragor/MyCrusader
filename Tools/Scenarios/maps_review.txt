@@ -1,4 +1,4 @@
-# Revue des cartes 1/8 : La Steppe Petite (2 joueurs, 440 m) : base, milieu, plus grande foret, autel du volcan ; Entree charge la carte suivante
+# Revue des 8 cartes en une commande (Petite, 2 joueurs, 440 m) : Entree charge la carte suivante ; base, milieu, plus grande foret, autel du volcan de chacune
 hol.Camera.Zoom -7
 hol.Camera.TestCursor 0.5 0.5
 panel hide
@@ -26,11 +26,268 @@ hol.HUD.Report 1
 waitlog HUD overlap:
 capture rev1_steppe_altar
 hol.Camera.Zoom -7
-hol.Test.Sanity
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note CARTE 1/8 : La Steppe, taille Petite (2 joueurs, 440 m). Regarde le sol (texture, pas gris), les bosquets (deux fois plus d'arbres qu'avant : groupes de 30 a 40 arbres, l'esprit de la Steppe), l'autel du volcan (socle noir et haut rouge, a 30 m du centre) et le relais du milieu (cercle de 12 m en travers de l'axe).
-note Tu peux deplacer la camera librement. Console (carre) : hol.Relay.Report liste les relais.
+note CARTE 1/8 : La Steppe, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
 waitkey Entree : carte suivante (La Plaine)
-hol.Scenario maps_review_2
+open /Game/Maps/Plain_Small
+waitmap Plain_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev2_plain_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev2_plain_centre
+hol.Camera.Focus -11800 8600
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev2_plain_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev2_plain_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 2/8 : La Plaine, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (L'Arriere-pays)
+open /Game/Maps/Hinterland_Small
+waitmap Hinterland_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev3_hinterland_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev3_hinterland_centre
+hol.Camera.Focus -12500 7800
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev3_hinterland_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev3_hinterland_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 3/8 : L'Arriere-pays, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (La Foret profonde)
+open /Game/Maps/Forest_Small
+waitmap Forest_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev4_forest_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev4_forest_centre
+hol.Camera.Focus -2296 -2888
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev4_forest_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev4_forest_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 4/8 : La Foret profonde, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Cols)
+open /Game/Maps/Cols_Small
+waitmap Cols_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev5_cols_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev5_cols_centre
+hol.Camera.Focus -3819 -10129
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev5_cols_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev5_cols_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 5/8 : Les Cols, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Gues)
+open /Game/Maps/Fords_Small
+waitmap Fords_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev6_fords_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev6_fords_centre
+hol.Camera.Focus -13727 -7673
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev6_fords_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev6_fords_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 6/8 : Les Gues, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (El Dorado)
+open /Game/Maps/ElDorado_Small
+waitmap ElDorado_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev7_eldorado_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev7_eldorado_centre
+hol.Camera.Focus -7850 -4976
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev7_eldorado_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev7_eldorado_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 7/8 : El Dorado, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (La Couronne)
+open /Game/Maps/Crown_Small
+waitmap Crown_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev8_crown_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev8_crown_centre
+hol.Camera.Focus -7850 -4976
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev8_crown_forest
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 -3000
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture rev8_crown_altar
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 8/8 : La Couronne, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+hol.Test.Sanity
+note FIN de la revue : les 8 cartes ont ete vues.
