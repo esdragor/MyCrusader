@@ -25,7 +25,8 @@ import unreal
 from maps import common, steppe
 from maps.common import mix_seed
 
-GROUND = steppe.GROUND
+GROUND = "MI_Ground_Cols"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
+
 COLS_PER_RANGE = int(os.environ.get("HOL_COLS_PASSES", "2"))
 PLAZA_FRACTION = float(os.environ.get("HOL_COLS_PLAZA", "0.2"))
 CHAIN_OFFSETS = (-700.0, 700.0)  # cm: the two chains of a massif, side by side (about 20 m of rock across with the rocks' own width)
@@ -115,7 +116,7 @@ def sources(recipe):
     steppe.KEEP_OUT = keep_out_of(recipe)
     steppe.VEIN_DRAWS = VEIN_DRAWS  # the wedges are narrow: a far vein's random points seldom fall in a territory outside the massifs
     try:
-        placed, groups = steppe.sources(recipe)
+        placed, groups = steppe.sources(recipe, "forests")
     finally:
         steppe.KEEP_OUT, steppe.VEIN_DRAWS = before, draws
     # A grove's centre is kept out of the massifs but its far trees can reach into one (seen on Medium: one tree): such a source is dropped
@@ -147,7 +148,7 @@ def relays(recipe):
 
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
-    return steppe.budget_of(recipe)[0]
+    return steppe.floor_of("forests", recipe)
 
 
 def volcano(recipe):

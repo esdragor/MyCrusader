@@ -1,0 +1,31 @@
+# Les Cols Petite (2 joueurs, 440 m) : ambiance (lumiere, brume), sol et relais du milieu (D647/D658) ; coup d'oeil de 3 minutes, rien a jouer
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Relay.Report
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture cols_base
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture cols_centre
+hol.Camera.Zoom 5
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture cols_close
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+frames 10
+hol.Test.Sanity
+hol.Camera.TestCursor off
+panel show
+note 1. Les Cols Petite : le coup d'oeil sur ma base (cinq paysans, bas de l'ecran), puis le milieu de la carte. Regarde la lumiere, la brume, le sol.
+note 2. Le relais du milieu (cercle de 12 m) doit etre a 24 m du centre, en travers de l'axe, loin de l'autel. Console ² : hol.Relay.Report le liste. Question : l'ambiance te plait-elle (assez distincte des autres cartes) et le sol te va-t-il ?

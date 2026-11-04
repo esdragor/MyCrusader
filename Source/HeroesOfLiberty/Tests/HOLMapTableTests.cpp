@@ -68,7 +68,7 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 		int32 NeededHuge;
 	};
 	constexpr FBudgetLine Budget[] = {
-		{ TEXT("Tree"), TEXT("wood"), 300, 360 },
+		{ TEXT("Tree"), TEXT("wood"), 400, 600 },  // 2026-11-04 (the user): 400 trees per player, Huge 1.5 times that
 		{ TEXT("BerryBush"), TEXT("berries"), 15, 23 },
 	};
 
@@ -119,6 +119,19 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	constexpr int32 DenseBiggestPackTrees = 40;
 	/** M-Q10b: the biggest pack a recipe makes (the Steppe's ladder is 12, 14, 16, 18) and the packs a territory needs are counted with it. */
 	constexpr int32 BiggestPackTrees = 18;
+	/**
+	 * 2026-11-04 (the user, after the Plain and Steppe trials): the Steppe holds twice the wood again (600 per player, Huge 720) in groves of 30 to 40,
+	 * and every other map's forests are REAL forests of 200 trees or more (organic shapes, not squares of 16): a cluster has at most BigForestMax, a pack
+	 * counts from BigForestMin, and a territory holds at least ceil(budget / BigForestBiggest) - BigForestSlack of them.
+	 */
+	constexpr int32 BigForestMax = 420;
+	constexpr int32 BigForestMin = 150;
+	constexpr int32 BigForestBiggest = 260;
+	constexpr int32 BigForestSlack = 1;
+	inline bool IsSteppeWood(const TCHAR* Key) { return FCString::Strcmp(Key, TEXT("Steppe")) == 0; }
+	/** The Steppe and the Budget `dense` (the Forest) hold more wood than the budget: 600 trees per player, Huge 720 (steppe.py WOODS). */
+	constexpr int32 RichTrees = 600;
+	constexpr int32 RichTreesHuge = 720;
 	/**
 	 * M-Q10b (the user, 2026-10-30, after the Hinterland trial: "tighten the trees"): the trees of a pack are closer than they were (2.2 to 2.4 m
 	 * between trunks): the mean distance from a tree to its nearest tree is at most MeanTreeSpacing (1.6 to 1.74 m asked of the generator, 10 to 20 cm more
@@ -303,12 +316,15 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				AddInfo(FString::Printf(TEXT("%s: %d relays"), *Name, PlacedRelays.Num()));
 			}
 
-			// 3c. V4b (volcano sites of the maps, D607, D573): a map lays no volcano layout or one; its sites are fair between the camps (the flows the same by a
-			// turn of one place, the altar as far from every base), have a length and stay inside the bounds. Which maps carry a site is level design.
+			// 3c. V4b (volcano sites of the maps, D607, D573): a map lays one volcano layout (every map and size, 2026-11-03); its sites are fair between the camps (the flows the same by a
+			// turn of one place, the altar as far from every base), have a length and stay inside the bounds.
 			{
 				TArray<FVector2D> SlotCentres;
 				Starts.GenerateValueArray(SlotCentres);
 				TestTrue(FString::Printf(TEXT("%s: at most one volcano layout"), *Name), NumVolcanoLayouts <= 1);
+				// V4b on every map and size (2026-11-03): each map file holds one site, with one flow towards each place (the site is written by the recipe, common.volcano_site).
+				TestEqual(FString::Printf(TEXT("%s: volcano sites"), *Name), PlacedVolcanoes.Num(), 1);
+				TestEqual(FString::Printf(TEXT("%s: flows of the volcano site (one towards each place)"), *Name), PlacedVolcanoes.IsEmpty() ? 0 : PlacedVolcanoes[0].Flows.Num(), Info.NumPlaces);
 				TestEqual(FString::Printf(TEXT("%s: flows without a twin after a turn of one place (unfair draw, D573)"), *Name), FHOLVolcanoLayoutRules::CountUnbalancedFlows(PlacedVolcanoes, 360.0 / Info.NumPlaces), 0);
 				TestEqual(FString::Printf(TEXT("%s: altars nearer one base than another"), *Name), FHOLVolcanoLayoutRules::CountUnfairAltars(PlacedVolcanoes, SlotCentres), 0);
 				TestEqual(FString::Printf(TEXT("%s: volcano flows empty or without length"), *Name), FHOLVolcanoLayoutRules::CountEmptyFlows(PlacedVolcanoes), 0);
@@ -596,8 +612,8 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			for (const FBudgetLine& Line : Budget)
 			{
 				// C5 (CQ7 = B): the Budget `dense` holds twice the wood.
-				const int32 WoodFactor = MapInfo.bDenseWood && FCString::Strcmp(Line.Type, TEXT("Tree")) == 0 ? 2 : 1;
-				const int32 Needed = (Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed) * WoodFactor;
+				const bool bRichWood = (MapInfo.bDenseWood || IsSteppeWood(MapInfo.Key)) && FCString::Strcmp(Line.Type, TEXT("Tree")) == 0;
+				const int32 Needed = bRichWood ? (Info.Size == EHOLMapSize::Huge ? RichTreesHuge : RichTrees) : (Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed);
 				int32 Least = MAX_int32, Most = 0;
 				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 				{
@@ -672,8 +688,8 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 							MeanTreeSpacing, MapInfo.Key, Info.Key), MeanSpacing <= (FCString::Strcmp(MapInfo.Key, TEXT("Plain")) == 0 ? MeanTreeSpacingGrid : MeanTreeSpacing));
 					}
 					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
-					const int32 MapMinPack = MapInfo.bDenseWood ? DenseMinPackTrees : MinPackTrees;
-					const int32 MapMaxPack = MapInfo.bDenseWood ? DenseMaxPackTrees : MaxPackTrees;
+					const int32 MapMinPack = IsSteppeWood(MapInfo.Key) ? DenseMinPackTrees : BigForestMin;
+					const int32 MapMaxPack = IsSteppeWood(MapInfo.Key) ? DenseMaxPackTrees : BigForestMax;
 					TArray<int32> PacksOf;
 					PacksOf.Init(0, Info.NumPlaces);
 					int32 Biggest = 0, Packs = 0, Smallest = MAX_int32;
@@ -695,8 +711,8 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						++PacksOf[Owner];
 					}
 					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
-					const int32 Budgeted = (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed) * (MapInfo.bDenseWood ? 2 : 1);
-					const int32 PacksNeeded = FMath::DivideAndRoundUp(Budgeted, MapInfo.bDenseWood ? DenseBiggestPackTrees : BiggestPackTrees) - PackSlack;
+					const int32 Budgeted = MapInfo.bDenseWood || IsSteppeWood(MapInfo.Key) ? (Info.Size == EHOLMapSize::Huge ? RichTreesHuge : RichTrees) : (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed);
+					const int32 PacksNeeded = IsSteppeWood(MapInfo.Key) ? FMath::DivideAndRoundUp(Budgeted, DenseBiggestPackTrees) - PackSlack : FMath::DivideAndRoundUp(Budgeted, BigForestBiggest) - BigForestSlack;
 					int32 LeastPacks = MAX_int32;
 					for (const int32 Held : PacksOf)
 					{

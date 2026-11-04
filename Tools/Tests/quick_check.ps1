@@ -2588,7 +2588,7 @@ $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
 # Off screen on a fixed step, the world is not drawn while the sequence waits for the game (each frame ~2 ms cheaper);
 # drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
 if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
-$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
+$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -7434,7 +7434,7 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence
     $Port = Get-AITestPort
-    $Arguments = "`"$UProject`" $DuelMap -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+    $Arguments = "`"$UProject`" $DuelMap -server -Port=$Port -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     $TimedOut = -not $Process.WaitForExit(420000)
     if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }
