@@ -135,6 +135,9 @@ public sealed class LobbySettings
 
     /** D5 (DiplomacyInProgress.md): the match mode, EHOLMatchMode by name: "Standard" or "Diplomacy" (alliances made and broken during the match). */
     public string Mode { get; internal set; } = LobbyRules.DefaultMode;
+    /** B2 (D651-D656, BiomeInProgress.md): the biome (ambience: ground, light, sky, mist, generic decor) by key; "default" = the map's own. */
+    public string Biome { get; internal set; } = LobbyRules.DefaultBiome;
+
     public bool Nomad { get; internal set; }
     public bool Regicide { get; internal set; }
     public bool Catastrophe { get; internal set; }

@@ -103,6 +103,14 @@ public static class LobbyRules
     public const string DefaultMode = "Standard";
 
     /**
+     * B2 (D651-D656): the lobby's biomes by key: "default" (the map's own ambience, the first choice) then the five of the game's table
+     * (Script/Biomes/HOLBiomeRules.as, checked by a test). Any biome on any map (B-Q4).
+     */
+    public static readonly IReadOnlyList<string> Biomes = ["default", "fresh_grass", "dry_steppe", "autumn", "dark_forest", "snow"];
+
+    public const string DefaultBiome = "default";
+
+    /**
      * C0.2 (Cartes): the match maps, in the order of Tools/Data/Maps.csv (checked by a test, as FHOLMapRules in the game),
      * each in the five sizes (TC-Q11: the map itself, /Game/Maps/Plain, is the test map, not offered).
      */
