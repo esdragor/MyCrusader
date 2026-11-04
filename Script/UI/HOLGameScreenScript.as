@@ -1500,6 +1500,13 @@ FString TalentTipTexts = "";
 			const bool bTaken = Cell.State == EHOLTalentCellState::Taken;
 			TalentCellLabels[Index].SetText(FText::FromString(Cell.Name));
 			TalentCellLabels[Index].SetColorAndOpacity(bTaken || Cell.bPickable ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+			if (Cell.State == EHOLTalentCellState::Locked)
+			{
+				// "Plus tard": fainter than the rows still to come in this game (their hover says the level).
+				FLinearColor Faint = UHOLScriptScreen::GetMutedColor();
+				Faint.A = 0.45;
+				TalentCellLabels[Index].SetColorAndOpacity(Faint);
+			}
 			TalentCellButtons[Index].SetBackgroundColor(bTaken ? TalentFamilyColour(Cell.Family) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 			UHOLScriptScreen::SetButtonGreyed(TalentCellButtons[Index], !bTaken && !Cell.bPickable);
 			TalentCellButtons[Index].SetToolTipText(FText::FromString(Cell.Tooltip));

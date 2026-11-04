@@ -157,3 +157,113 @@ void Test_AITalentProfileEdges(FUnitTest& T)
 	Spent.Add(1);
 	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseFor(2, Spent, Alone), "level 2 with its point spent: nothing");
 }
+
+// ---- The adaptation to the seals and keys scouted on the adversary (D424; the user's answers of 2026-11-04: Q-talents-contres Q1 = A, Q2 = A) ----
+// Factions as EHOLFaction: 0 Dawn, 1 Legions, 2 Dragon, 3 Shadow, 4 Fire, 5 Templars. Difficulty as EHOLAIDifficulty: 0 Easy, 1 Normal, 2 Hard.
+
+FHOLAIScoutedBuild AITalentScouted(int Faction, int Seals, int Keys = 0)
+{
+	FHOLAIScoutedBuild Build;
+	Build.Faction = Faction;
+	Build.Seals = Seals;
+	Build.Keys = Keys;
+	return Build;
+}
+
+TArray<int> AITalentSpent(int Count, int Family = 1)
+{
+	TArray<int> Picks;
+	for (int Index = 0; Index < Count; Index++)
+		Picks.Add(Family);
+	return Picks;
+}
+
+FHOLAIProfile AITalentProfile(int Main, int Secondary)
+{
+	FHOLAIProfile Profile;
+	Profile.Main = Main;
+	Profile.Secondary = Secondary;
+	return Profile;
+}
+
+// The table of the archetypes: army (answered by the Captain, 1), hero and duel (the Champion, 2), hold, economy and siege (the Guardian, 0), family by family.
+void Test_AITalentArchetypesTable(FUnitTest& T)
+{
+	for (int Faction = 0; Faction < 2; Faction++)
+	{
+		T.AssertEquals(0, HOLAITalent::AnswerFamily(Faction, 0), f"faction {Faction}, first family: the Guardian answers");
+		T.AssertEquals(1, HOLAITalent::AnswerFamily(Faction, 1), f"faction {Faction}, second family: the Captain answers");
+		T.AssertEquals(2, HOLAITalent::AnswerFamily(Faction, 2), f"faction {Faction}, third family: the Champion answers");
+	}
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(2, 0), "Dragon, Le Ciel");
+	T.AssertEquals(1, HOLAITalent::AnswerFamily(2, 1), "Dragon, La Lignee");
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(2, 2), "Dragon, La Mue");
+	T.AssertEquals(2, HOLAITalent::AnswerFamily(3, 0), "Shadow, La Lame");
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(3, 1), "Shadow, Le Miroir");
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(3, 2), "Shadow, La Toile");
+	T.AssertEquals(1, HOLAITalent::AnswerFamily(4, 0), "Fire, Le Marteau");
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(4, 1), "Fire, L'Enclume");
+	T.AssertEquals(2, HOLAITalent::AnswerFamily(4, 2), "Fire, La Flamme");
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(5, 0), "Templars, Croisade");
+	T.AssertEquals(1, HOLAITalent::AnswerFamily(5, 1), "Templars, Chevalerie");
+	T.AssertEquals(2, HOLAITalent::AnswerFamily(5, 2), "Templars, Tresor");
+	T.AssertEquals(0, HOLAITalent::AnswerFamily(5, 3), "Templars, Citadelles");
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::AnswerFamily(9, 0), "no such faction");
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::AnswerFamily(0, 7), "no such family");
+}
+
+// Disabled (the default) or Easy: the profile's choice, whatever has been scouted.
+void Test_AITalentAdaptationOffOrEasyChangesNothing(FUnitTest& T)
+{
+	const FHOLAIProfile Profile = AITalentProfile(1, 0);
+	const TArray<int> Picks = AITalentSpent(1);
+	TArray<FHOLAIScoutedBuild> Seen;
+	Seen.Add(AITalentScouted(0, 4));
+	const FHOLAITalentChoice Off = HOLAITalent::ChooseAdapted(false, 2, 3, Picks, Profile, Seen, 0);
+	T.AssertEquals(HOLAITalent::ChooseFor(3, Picks, Profile), Off.Family, "disabled: the profile's choice");
+	T.AssertEquals(0, Off.AnsweredMask, "disabled: nothing answered");
+	const FHOLAITalentChoice Easy = HOLAITalent::ChooseAdapted(true, 0, 3, Picks, Profile, Seen, 0);
+	T.AssertEquals(HOLAITalent::ChooseFor(3, Picks, Profile), Easy.Family, "Easy ignores what it scouted");
+	T.AssertEquals(0, Easy.AnsweredMask, "Easy answers nothing");
+}
+
+// Normal: the next point goes to the family that answers the seal scouted, ONCE; the answer is remembered and the profile resumes. A key talent counts as a seal.
+void Test_AITalentNormalAnswersAScoutedSealOnce(FUnitTest& T)
+{
+	const FHOLAIProfile Profile = AITalentProfile(1, 0);
+	TArray<int> Picks = AITalentSpent(1);
+	TArray<FHOLAIScoutedBuild> Seen;
+	Seen.Add(AITalentScouted(0, 4));
+	const FHOLAITalentChoice First = HOLAITalent::ChooseAdapted(true, 1, 3, Picks, Profile, Seen, 0);
+	T.AssertEquals(2, First.Family, "the Champion answers the Champion's seal");
+	T.AssertTrue(First.AnsweredMask != 0, "the answer is remembered");
+	T.AssertTrue(HOLTalent::Pick(3, Picks, First.Family), "taken");
+	const FHOLAITalentChoice Second = HOLAITalent::ChooseAdapted(true, 1, 4, Picks, Profile, Seen, First.AnsweredMask);
+	T.AssertEquals(1, Second.Family, "answered already: the profile resumes");
+	T.AssertEquals(First.AnsweredMask, Second.AnsweredMask, "nothing new answered");
+	Seen[0] = AITalentScouted(0, 4 | 1);
+	T.AssertEquals(0, HOLAITalent::ChooseAdapted(true, 1, 4, Picks, Profile, Seen, First.AnsweredMask).Family, "a second seal, a second answer: the Guardian's hold archetype");
+	TArray<FHOLAIScoutedBuild> KeyOnly;
+	KeyOnly.Add(AITalentScouted(0, 0, 4));
+	T.AssertEquals(2, HOLAITalent::ChooseAdapted(true, 1, 2, AITalentSpent(0), AITalentProfile(0, 1), KeyOnly, 0).Family, "a scouted key talent is answered like a seal (the Champion's)");
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseAdapted(true, 1, 2, Picks, Profile, Seen, 0).Family, "no point in reserve: nothing");
+	T.AssertEquals(0, HOLAITalent::ChooseAdapted(true, 1, 2, Picks, Profile, Seen, 0).AnsweredMask, "an answer not taken is not remembered");
+}
+
+// Hard: as Normal, and from level 6 it keeps ONE point in reserve while no seal of the adversary is scouted (D105); with two points it spends one; a seal
+// scouted releases it; below level 6 it spends as usual.
+void Test_AITalentHardKeepsOnePointInReserve(FUnitTest& T)
+{
+	const FHOLAIProfile Profile = AITalentProfile(1, 0);
+	const TArray<FHOLAIScoutedBuild> Nothing;
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseAdapted(true, 2, 6, AITalentSpent(4), Profile, Nothing, 0).Family, "level 6, one point, nothing scouted: kept in reserve");
+	T.AssertEquals(1, HOLAITalent::ChooseAdapted(true, 1, 6, AITalentSpent(4), Profile, Nothing, 0).Family, "Normal spends it");
+	T.AssertEquals(1, HOLAITalent::ChooseAdapted(true, 2, 5, AITalentSpent(3), Profile, Nothing, 0).Family, "level 5 (before 6): spent as usual");
+	T.AssertEquals(1, HOLAITalent::ChooseAdapted(true, 2, 7, AITalentSpent(4), Profile, Nothing, 0).Family, "two points in reserve: one spent, the other kept");
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseAdapted(true, 2, 7, AITalentSpent(5), Profile, Nothing, 0).Family, "then one point: kept again, never more than one");
+	TArray<FHOLAIScoutedBuild> Seen;
+	Seen.Add(AITalentScouted(1, 4));
+	const FHOLAITalentChoice Released = HOLAITalent::ChooseAdapted(true, 2, 6, AITalentSpent(4), Profile, Seen, 0);
+	T.AssertEquals(2, Released.Family, "a seal scouted: the point goes to its answer");
+	T.AssertEquals(1, HOLAITalent::ChooseAdapted(true, 2, 6, AITalentSpent(4), Profile, Seen, Released.AnsweredMask).Family, "answered: no more reason to hold, it spends as usual");
+}

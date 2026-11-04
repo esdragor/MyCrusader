@@ -1,0 +1,34 @@
+# Les rangées 7 à 9 de l'arbre de talents, grisées « plus tard » sous les 5 rangées du prototype (réponse Q-talents-niveaux Q1 = B, 2026-11-04) : le scénario met le héros au niveau 6 et ouvre l'arbre
+# Plain, toi (slot 0) contre une IA (slot 1), talents_later.json (copie de talents.json). Le héros est au niveau 6 (5 points) : la fenêtre « Arbre de talents » montre 8 rangées de 3 cases ; les rangées 7, 8 et 9 sont grisées et non prenables (aucun niveau ne les donne dans le prototype), leur survol dit le nom, l'effet et « plus tard, niveau N ».
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Camera.FocusNear -900 300
+frames 10
+hol.Hero.SetXP 0 3300
+wait 1
+frames 8
+hol.HUD.Click HeroTalentButton
+wait 1
+frames 8
+capture talents_later_open
+hol.HUD.Click HeroTalentCell_7_1
+wait 0.5
+frames 4
+hol.Hero.PickTalent 1
+hol.Hero.PickTalent 1
+hol.Hero.PickTalent 1
+hol.Hero.PickTalent 1
+hol.Hero.PickTalent 1
+wait 1
+frames 8
+capture talents_later_full
+hol.HUD.Click HeroTalentCell_7_1
+wait 0.5
+frames 4
+capture talents_later_click
+hol.Hero.ResetTalents 0
+wait 1
+frames 4
+note Niveau 6, cinq points rendus. L'arbre est ouvert : 8 rangées de 3 cases. Les rangées 2 à 6 sont celles du prototype ; les rangées 7, 8 et 9 sont grisées (non prenables, aucun niveau ne les donne encore). Survole une case de la rangée 7 : le nom, l'effet et « plus tard, niveau 7 ». Clique-les : rien ne se passe.
+waitkey Entrée quand tu as regardé les rangées 7 à 9 et leur survol (clique aussi une case de la rangée 2 : elle se prend, les trois du bas restent grisées)
