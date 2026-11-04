@@ -132,6 +132,9 @@ public sealed class LobbySettings
 
     /** F8 (D522, FogInProgress.md): the fog of war, EHOLFogMode by name: "Normal", "Explored" or "Disabled". */
     public string Fog { get; internal set; } = LobbyRules.DefaultFog;
+
+    /** D5 (DiplomacyInProgress.md): the match mode, EHOLMatchMode by name: "Standard" or "Diplomacy" (alliances made and broken during the match). */
+    public string Mode { get; internal set; } = LobbyRules.DefaultMode;
     public bool Nomad { get; internal set; }
     public bool Regicide { get; internal set; }
     public bool Catastrophe { get; internal set; }

@@ -21,19 +21,27 @@ namespace HOLHeal
 		float MaxHealth = 0.f;
 		/** Its camp (FHOLCampTable): the healer's camp is the allies' (itself included). */
 		uint8 Camp = 0;
+		/** Its owner's slot (D6 of DiplomacyInProgress.md: the Diplomacy mode's allies are other owners, not a shared camp); 255 when not told. */
+		uint8 Owner = 255;
 		/** A King, a siege engine or a dying unit: never healed. */
 		bool bUnhealable = false;
 	};
 
 	/** Whether a candidate may be healed by the healer UnitId (not itself, an ally, wounded, alive, healable). */
-	HEROESOFLIBERTY_API bool IsHealable(uint32 HealerId, uint8 HealerCamp, const FCandidate& Candidate);
+	HEROESOFLIBERTY_API bool IsHealable(uint32 HealerId, uint8 HealerCamp, const FCandidate& Candidate, uint32 HealerAllyOwners = 0);
 
 	/**
 	 * The candidate the healer heals this step, an index of Candidates, INDEX_NONE if none: the unit its player ordered it to heal\r\n	 * (OrderedId) while it is healable and within Range, else its current target KeptId while it is still
 	 * healable and within Range (one ally at a time, not a flip to a nearer one at each step), else the nearest healable ally within
 	 * Range (centre to centre, cm), the lowest unit identifier on a tie. The healer itself is never chosen.
 	 */
-	HEROESOFLIBERTY_API int32 ChooseTarget(uint32 HealerId, uint8 HealerCamp, const FVector2D& HealerLocation, float Range, uint32 OrderedId, uint32 KeptId, TConstArrayView<FCandidate> Candidates);
+	HEROESOFLIBERTY_API int32 ChooseTarget(uint32 HealerId, uint8 HealerCamp, const FVector2D& HealerLocation, float Range, uint32 OrderedId, uint32 KeptId, TConstArrayView<FCandidate> Candidates, uint32 HealerAllyOwners = 0);
+
+	/**
+	 * D6 (Diplomacy mode): the allies of a healer are also the units of the owners whose bit is set in HealerAllyOwners (bit n = the slot n
+	 * is allied to the healer's owner, both sides said Ally), besides its own camp. 0 = the camp only, as in the standard modes.
+	 */
+	HEROESOFLIBERTY_API bool IsAllyOf(uint8 HealerCamp, uint32 HealerAllyOwners, const FCandidate& Candidate);
 
 	/** What a healer under a heal order does with its feet this step (HOLHeal::GetOrderWalk). */
 	enum class EOrderWalk : uint8

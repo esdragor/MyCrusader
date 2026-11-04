@@ -97,6 +97,7 @@ TRANSLATIONS = {
     "HOLNewGameScreen,You": ("You", "あなた"),
     "HOLNewGameScreen,Mode": ("Mode", "モード"),
     "HOLNewGameScreen,Standard": ("Standard", "スタンダード"),
+    "HOLNewGameScreen,ModeDiplomacy": ("Diplomacy", "外交"),
     "HOLNewGameScreen,Nomad": ("Nomad", "ノマド"),
     "HOLNewGameScreen,Regicide": ("Regicide", "レジサイド"),
     "HOLNewGameScreen,Catastrophe": ("Catastrophe", "カタストロフィ"),

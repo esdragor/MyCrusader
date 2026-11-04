@@ -58,6 +58,7 @@ public sealed class MatchConfig
             DrawPlaces = true,
             TeamsTogether = lobby.Settings.TeamsTogether,
             FogMode = lobby.Settings.Fog,
+            Mode = lobby.Settings.Mode,
             Slots = lobby.Slots.Select((slot, position) => slot.Player is { } p
                 ? new MatchSlot { State = MatchSlot.Human, Faction = p.Faction, ColorIndex = colors[position]!.Value, Team = p.Team, PlayerName = p.Name }
                 : slot.AI is { } ai
