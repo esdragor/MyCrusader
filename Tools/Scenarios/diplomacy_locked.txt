@@ -18,14 +18,16 @@ hol.HUD.Click DipAlly_2
 frames 20
 hol.Diplomacy.Report
 waitlog Diplomacy report: slot 3 toward slot 2
-hol.UI.DiplomacyLayout 1
-hol.HUD.Report 1
-waitlog HUD overlap:
-capture dipl_L1_locked
 hol.UI.DiplomacyLayout 2
+frames 30
 hol.HUD.Report 1
 waitlog HUD overlap:
 capture dipl_L2_locked
+hol.UI.DiplomacyLayout 1
+frames 30
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_L1_locked
 hol.Test.Sanity
 panel show
 note 1. Partie a equipes fixes (pas le mode Diplomatie) : les postures sont grisees et verrouillees, on lit seulement qui est allie (equipe 1) et qui est ennemi ; clique-les, rien ne change. Le panneau dit « Postures verrouillees : equipes fixes ».
