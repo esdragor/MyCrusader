@@ -342,6 +342,48 @@ namespace HOLCombat
 		return bFound;
 	}
 
+	/**
+	 * D641 (Q-neutrals-hold = C): whether a free place round the target is out of the soldier's reach for the audit: bodies close on BOTH sides of it
+	 * (relative to its way to the target), within Slack of touching (1.5 x the two radii by default: a gap of up to half a body), wall it in between two
+	 * friends who strike; it waits, rightly. Others = every body but the soldier and its target. The audit (hol.Test.Sanity check 4) counts a stall only
+	 * when this is false.
+	 */
+	inline bool IsBoxedIn(const FVector2D& SelfWhere, const float SelfRadius, const FVector2D& TargetWhere, TConstArrayView<FBody> Others, const float Slack = 1.5f)
+	{
+		FVector2D Ahead = TargetWhere - SelfWhere;
+		if (Ahead.IsNearlyZero())
+		{
+			return false;
+		}
+		Ahead.Normalize();
+		bool bLeft = false;
+		bool bRight = false;
+		for (const FBody& Other : Others)
+		{
+			const FVector2D Off = Other.Where - SelfWhere;
+			if (Off.Size() > Slack * (SelfRadius + Other.Radius))
+			{
+				continue;
+			}
+			const double Cross = Ahead.X * Off.Y - Ahead.Y * Off.X;
+			bLeft |= Cross > 0.;
+			bRight |= Cross < 0.;
+		}
+		return bLeft && bRight;
+	}
+
+	/** D641 (hol.Combat.ClaimPlace): the rear flank (a 600 cm tour round the line) is suspended while the soldier holds a claimed place that is within MaxDistance (400 cm). */
+	inline bool ShouldSuspendRearFlank(const bool bHasPlace, const double DistanceToPlace, const double MaxDistance = 400.0)
+	{
+		return bHasPlace && DistanceToPlace <= MaxDistance;
+	}
+
+	/** D641: a new target within MaxDistance (150 cm) of the last one is "the next enemy along", not a new quarrel: the no-headway count goes on. */
+	inline bool IsNeighbourTarget(const FVector2D& OldWhere, const FVector2D& NewWhere, const double MaxDistance = 150.0)
+	{
+		return FVector2D::DistSquared(OldWhere, NewWhere) <= MaxDistance * MaxDistance;
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 

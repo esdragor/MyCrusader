@@ -119,9 +119,9 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 ClaimPlace = 1;
 	FAutoConsoleVariableRef CVarClaimPlace(TEXT("hol.Combat.ClaimPlace"), ClaimPlace,
 		TEXT("1 (default): a melee out of reach of its target that has gained no hol.Combat.ClaimProgress cm of edge distance for hol.Combat.ClaimStuck s, with a place free round the target, walks to that place (the free spot nearest to the side it was on, kept while free) instead of the target's centre; 0: off"));
-	float ClaimStuckSeconds = 0.4f;
+	float ClaimStuckSeconds = 0.15f;
 	FAutoConsoleVariableRef CVarClaimStuck(TEXT("hol.Combat.ClaimStuck"), ClaimStuckSeconds,
-		TEXT("s (default 0.4, with hol.Combat.ClaimPlace): how long a melee out of reach may make no headway before it claims a free place round its target"));
+		TEXT("s (default 0.15, with hol.Combat.ClaimPlace): how long a melee out of reach may make no headway before it claims a free place round its target"));
 	float ClaimProgress = 25.f;
 	FAutoConsoleVariableRef CVarClaimProgress(TEXT("hol.Combat.ClaimProgress"), ClaimProgress,
 		TEXT("cm (default 25, with hol.Combat.ClaimPlace): the edge distance to its target a melee must gain to count as making headway"));
@@ -2262,7 +2262,15 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const bool bInReach = HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius,
 				Constants.AttackRange);
 			const float StepSeconds = static_cast<float>(StepMs) / 1000.f;
-			if (bInReach || !Line || Line->Count <= 0)
+			// D641 (hol.Combat.ClaimPlace): holding a claimed place within 400 cm, it does not go round the line (that tour of 600 cm was the 3 s loop).
+			bool bPlaceNear = false;
+			if (Combat.bHasPlace && Combat.PlaceTarget == Combat.Target)
+			{
+				const double PlaceReach = Fighters[Target].Constants->Radius + Constants.Radius + 2.;
+				const FVector2D PlaceAt = FVector2D(Fighters[Target].Location) + PlaceReach * FVector2D(FMath::Cos(static_cast<double>(Combat.PlaceAngle)), FMath::Sin(static_cast<double>(Combat.PlaceAngle)));
+				bPlaceNear = HOLCombat::ShouldSuspendRearFlank(true, FVector2D::Distance(Position, PlaceAt));
+			}
+			if (bInReach || bPlaceNear || !Line || Line->Count <= 0)
 			{
 				Combat.bFlanking = false;
 				Combat.FlankWaitSeconds = 0.f;
@@ -2447,10 +2455,19 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				const double Edge = HOLCombat::GetEdgeDistance(Position, Constants.Radius, EnemyPosition, Enemy.Constants->Radius);
 				if (Combat.PlaceTarget != Combat.Target)
 				{
+					// A new target next to the last one (the enemies strike in turn, the quarrel is the same crowd): the count of no headway goes on.
+					const bool bNeighbour = Combat.PlaceTarget.IsSet() && HOLCombat::IsNeighbourTarget(FVector2D(Combat.PlaceTargetWhere), EnemyPosition);
 					Combat.PlaceTarget = Combat.Target;
 					Combat.bHasPlace = false;
-					Combat.BestEdge = static_cast<float>(Edge);
-					Combat.NoProgressSeconds = 0.f;
+					if (!bNeighbour)
+					{
+						Combat.BestEdge = static_cast<float>(Edge);
+						Combat.NoProgressSeconds = 0.f;
+					}
+					else
+					{
+						Combat.BestEdge = FMath::Min(Combat.BestEdge, static_cast<float>(Edge));
+					}
 				}
 				else if (Edge < static_cast<double>(Combat.BestEdge) - ClaimProgress)
 				{
@@ -2461,6 +2478,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				{
 					Combat.NoProgressSeconds += static_cast<float>(StepMs) / 1000.f;
 				}
+				Combat.PlaceTargetWhere = FVector2f(EnemyPosition);
 				if (bSearchStep && (Combat.bHasPlace || (Combat.bRoomAtTarget && Combat.NoProgressSeconds >= ClaimStuckSeconds)))
 				{
 					TArray<HOLCombat::FBody> PlaceBodies;

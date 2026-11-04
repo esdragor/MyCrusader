@@ -224,6 +224,24 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("a lone target: the spot nearest to 1.0 rad"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, None, 1.0, Chosen));
 		TestTrue(TEXT("is the third spot (67.5 degrees)"), FMath::IsNearlyEqual(Chosen, 2. * UE_DOUBLE_PI * 3. / 16., 1e-6));
 	}
+	// Q-neutrals-hold = C: bodies close on both sides wall a soldier in (a free place it cannot reach is no stall); one side only, or far, does not.
+	{
+		const FVector2D Self(0., 0.);
+		const FVector2D Target(300., 0.);
+		TArray<HOLCombat::FBody> Sides;
+		Sides.Add({ FVector2D(0., 125.), 55.f });
+		TestFalse(TEXT("a friend on one side only does not box a soldier in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
+		Sides.Add({ FVector2D(0., -140.), 55.f });
+		TestTrue(TEXT("friends 125 and 140 cm off on both sides box it in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
+		Sides[1].Where = FVector2D(0., -400.);
+		TestFalse(TEXT("a body 400 cm off on one side is no wall"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
+		TestFalse(TEXT("nobody near: not boxed in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, TConstArrayView<HOLCombat::FBody>()));
+		TestTrue(TEXT("a claimed place at 170 cm holds the rear flank back"), HOLCombat::ShouldSuspendRearFlank(true, 170.));
+		TestFalse(TEXT("a claimed place at 600 cm does not"), HOLCombat::ShouldSuspendRearFlank(true, 600.));
+		TestFalse(TEXT("no claimed place: the flank is not suspended"), HOLCombat::ShouldSuspendRearFlank(false, 100.));
+		TestTrue(TEXT("a target 100 cm from the last is a neighbour"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(60., 80.)));
+		TestFalse(TEXT("a target 300 cm from the last is not"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(300., 0.)));
+	}
 	// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
 	HOLSanity::FStall Stall;
 	int32 Told = 0;

@@ -214,6 +214,8 @@ namespace HOLSanity
 	/** The rule itself lives with the combat (HOLCombat::HasFreePlaceAround): the audit and the flank (hol.Combat.FlankToTarget) read "room" with one call. */
 	using FBody = HOLCombat::FBody;
 	using HOLCombat::HasFreePlaceAround;
+	/** Q-neutrals-hold = C: a free place does not count when bodies close on both sides wall the soldier in (HOLCombat::IsBoxedIn). */
+	using HOLCombat::IsBoxedIn;
 
 
 	/** A unit's run of steps standing still out of reach of its target while a place was free round it: the current run and the longest one (s). */

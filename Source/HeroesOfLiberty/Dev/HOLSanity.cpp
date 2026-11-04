@@ -294,7 +294,9 @@ namespace UE::HeroesOfLiberty::Dev
 									Others.Add(Body.Value.Key);
 								}
 							}
-							bStalledWithRoom = HOLSanity::HasFreePlaceAround(TargetBody->Key.Where, TargetBody->Key.Radius, SelfBody->Key.Radius, Others);
+							bStalledWithRoom = HOLSanity::HasFreePlaceAround(TargetBody->Key.Where, TargetBody->Key.Radius, SelfBody->Key.Radius, Others)
+									// Q-neutrals-hold = C: a place that bodies close on both sides keep out of reach is not room to strike.
+									&& !HOLSanity::IsBoxedIn(SelfBody->Key.Where, SelfBody->Key.Radius, TargetBody->Key.Where, Others);
 							StallText = FString::Printf(TEXT("out of reach of #%u at (%.0f, %.0f), %.0f cm short of its edge, with a free place round it (mode %d, approaching %d, flanking %d, flank wait %.1f s, loop wait %.1f s, phase %d, claimed place %d, no headway %.1f s)"),
 								TargetState->UnitId, TargetBody->Key.Where.X, TargetBody->Key.Where.Y, Gap, static_cast<int32>(Combat->Mode), Combat->bApproaching ? 1 : 0, Combat->bFlanking ? 1 : 0,
 								Combat->FlankWaitSeconds, Combat->LoopWaitSeconds, Order ? static_cast<int32>(Order->Phase) : -1, Combat->bHasPlace ? 1 : 0, Combat->NoProgressSeconds);

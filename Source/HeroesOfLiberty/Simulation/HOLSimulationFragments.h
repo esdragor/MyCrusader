@@ -590,6 +590,8 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	 * free, so the same side of the target is walked to (not a new detour at every walk). Written by UHOLCombatProcessor only.
 	 */
 	FMassEntityHandle PlaceTarget;
+	/** Where PlaceTarget stood at the last step: a new target within 150 cm of it keeps the no-headway count (HOLCombat::IsNeighbourTarget). */
+	FVector2f PlaceTargetWhere = FVector2f::ZeroVector;
 	float PlaceAngle = 0.f;
 	float BestEdge = MAX_flt;
 	float NoProgressSeconds = 0.f;
