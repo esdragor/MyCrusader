@@ -1,0 +1,6 @@
+fcc_roof_far | Option A (toit) a la hauteur de jeu : le toit pyramidal des deux Forums (bleu et rouge) est-il lisible de loin ?
+fcc_roof_near | Option A (toit) de pres : la couleur plate du toit, sans texture, a cote de la pierre
+fcc_banner_far | Option B (bannieres) a la hauteur de jeu : les quatre petits drapeaux se voient-ils, de quelle couleur ?
+fcc_banner_near | Option B (bannieres) de pres : le drapeau et sa hampe en haut de chaque tourelle
+fcc_both_far | Option C (toit et bannieres) a la hauteur de jeu
+fcc_both_near | Option C (toit et bannieres) de pres

@@ -2,7 +2,9 @@
 /Game/Buildings/Forum/Kit, and prints every piece's size in cm so the composition (V2b) can be laid out from measures.
 With "--compose" it instead builds /Game/Buildings/Forum/SM_Forum: the pieces of forum_layout.LAYOUT merged into ONE static
 mesh (the building table takes one), at the building's visible size (forum_layout.SCALE), origin at the centre of the
-footprint on the ground, every material slot named after the kit's material; no team colour yet (V3).
+footprint on the ground, every material slot named after the kit's material. The slot named "owner" wears the player's colour (V3b, VI-Q3): the roof's
+in SM_Forum_Roof, the banners' cloth in SM_Forum_Banner, both in SM_Forum_Both (SM_Forum is a copy of the default one,
+forum_layout.DEFAULT_COLOUR; "--colour=<roof|banner|both>" builds that one alone).
 
 The kit lives outside the repository (Docs/assets_art.csv): C:\\Users\\baudo\\Documents\\MyCrusader_Art\\Kenney\\retro-fantasy-kit.
 A piece is /Game/Buildings/Forum/Kit/SM_Kit_<name with _ for ->. Run (no window):
@@ -66,7 +68,7 @@ if not COMPOSE:
     unreal.log("Forum kit: %d pieces asked, %d imported" % (len(PIECES), sum(1 for l in lines if "NOT IMPORTED" not in l)))
 
 
-def compose():
+def compose(colour=None, path="/Game/Buildings/Forum/SM_Forum"):
     import forum_layout as layout
 
     geo = unreal.GeometryScript_AssetUtils
@@ -81,7 +83,12 @@ def compose():
         return [v for v in (result if isinstance(result, tuple) else (result,)) if isinstance(v, int) and not isinstance(v, bool)]
 
     variant = next((a.split("=", 1)[1].upper() for a in sys.argv[1:] if a.startswith("--variant=")), None)
-    items = layout.VARIANTS[variant]() if variant else layout.LAYOUT
+    items = list(layout.VARIANTS[variant]() if variant else layout.LAYOUT)
+    if colour in ("banner", "both"):
+        items += layout.banner_items()
+    owner_material = unreal.load_asset("/Game/Rendering/M_FlatColor")
+    if colour and not owner_material:
+        raise RuntimeError("Missing /Game/Rendering/M_FlatColor")
 
     slots = []  # global material slots: [name, material interface]
     pieces = {}  # name -> (dynamic mesh with global material ids)
@@ -125,7 +132,10 @@ def compose():
     if any(p[0] == "@pyramid" for p in items):
         # The pyramid roof (forum_layout.pyramid_unit): flat faces, tiled UVs, the kit's roof material.
         roof_mesh = unreal.load_asset("%s/SM_Kit_roof" % FOLDER)
-        roof_slot = slot_index(str(roof_mesh.static_materials[0].material_slot_name), roof_mesh.static_materials[0].material_interface)
+        if colour in ("roof", "both"):
+            roof_slot = slot_index("owner", owner_material)
+        else:
+            roof_slot = slot_index(str(roof_mesh.static_materials[0].material_slot_name), roof_mesh.static_materials[0].material_interface)
         vertices, normals, uvs, triangles = layout.pyramid_unit()
         buffers = unreal.GeometryScriptSimpleMeshBuffers()
         buffers.set_editor_property("vertices", [unreal.Vector(*v) for v in vertices])
@@ -135,6 +145,26 @@ def compose():
         pyramid = unreal.DynamicMesh()
         edits.append_buffers_to_mesh(pyramid, buffers, roof_slot)
         pieces["@pyramid"] = pyramid
+
+    if any(p[0] == "@pole" for p in items):
+        # The banners (forum_layout.box_unit): a pole in the kit's planks, a cloth in the owner's slot.
+        vertices, normals, uvs, triangles = layout.box_unit()
+        buffers = unreal.GeometryScriptSimpleMeshBuffers()
+        buffers.set_editor_property("vertices", [unreal.Vector(*v) for v in vertices])
+        buffers.set_editor_property("normals", [unreal.Vector(*n) for n in normals])
+        buffers.set_editor_property("uv0", [unreal.Vector2D(*uv) for uv in uvs])
+        buffers.set_editor_property("triangles", [unreal.IntVector(*t) for t in triangles])
+        wood = None
+        for candidate in slots:
+            if candidate[0] == "planks":
+                wood = candidate
+        if wood is None:
+            wood_mesh = unreal.load_asset("%s/SM_Kit_stairs_wood" % FOLDER)
+            wood = (str(wood_mesh.static_materials[0].material_slot_name), wood_mesh.static_materials[0].material_interface)
+        for piece_name, slot in (("@pole", slot_index(wood[0], wood[1])), ("@cloth", slot_index("owner", owner_material))):
+            piece = unreal.DynamicMesh()
+            edits.append_buffers_to_mesh(piece, buffers, slot)
+            pieces[piece_name] = piece
 
     target = unreal.DynamicMesh()
     step = layout.MODULE * layout.SCALE
@@ -150,7 +180,6 @@ def compose():
             unreal.log("Forum compose: append_mesh_transformed doc: %s" % edits.append_mesh_transformed.__doc__)
             raise
 
-    path = "/Game/Buildings/Forum/SM_Forum"
     if unreal.EditorAssetLibrary.does_asset_exist(path):
         unreal.EditorAssetLibrary.delete_asset(path)
     options = unreal.GeometryScriptCreateNewStaticMeshAssetOptions()
@@ -175,4 +204,12 @@ def compose():
 
 
 if COMPOSE:
-    compose()
+    import forum_layout as _layout
+    asked = next((a.split("=", 1)[1].lower() for a in sys.argv[1:] if a.startswith("--colour=")),
+                 "none" if any(a.startswith("--variant=") for a in sys.argv[1:]) else "all")
+    if asked == "all":
+        for option in _layout.COLOUR_OPTIONS:
+            compose(option, "/Game/Buildings/Forum/SM_Forum_" + option.capitalize())
+        compose(_layout.DEFAULT_COLOUR)
+    else:
+        compose(None if asked == "none" else asked)

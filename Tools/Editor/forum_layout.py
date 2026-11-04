@@ -62,6 +62,28 @@ def pyramid_unit(overhang=2.0, tiles=3.0):
     return vertices, normals, uvs, triangles
 
 
+def box_unit():
+    """The piece "@pole" / "@cloth": a box of 100 cm on each side (the placement scales it), centred on x and y, base at z 0,
+    flat faces. Returns (vertices, normals, uvs, triangles), wound like pyramid_unit's."""
+    h = 50.0
+    corners = [(-h, -h), (h, -h), (h, h), (-h, h)]
+    vertices, normals, uvs, triangles = [], [], [], []
+    def quad(a, b, c, d, n):
+        i = len(vertices)
+        vertices.extend([a, b, c, d])
+        normals.extend([n] * 4)
+        uvs.extend([(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
+        triangles.extend([(i, i + 2, i + 1), (i, i + 3, i + 2)])  # as pyramid_unit: the cross product points into the solid
+    for k in range(4):  # the four sides, counter-clockwise seen from outside
+        a, b = corners[k], corners[(k + 1) % 4]
+        n = (b[1] - a[1], -(b[0] - a[0]), 0.0)
+        length = (n[0] ** 2 + n[1] ** 2) ** 0.5
+        quad((a[0], a[1], 0.0), (b[0], b[1], 0.0), (b[0], b[1], 100.0), (a[0], a[1], 100.0), (n[0] / length, n[1] / length, 0.0))
+    quad((-h, -h, 100.0), (h, -h, 100.0), (h, h, 100.0), (-h, h, 100.0), (0.0, 0.0, 1.0))
+    quad((-h, h, 0.0), (h, h, 0.0), (h, -h, 0.0), (-h, -h, 0.0), (0.0, 0.0, -1.0))
+    return vertices, normals, uvs, triangles
+
+
 class Plan:
     """The placements of one variant: (piece, x, y, z, yaw, (sx, sy, sz)), cells in modules, z in levels."""
 
@@ -366,6 +388,25 @@ def variant_t():  # as K, a low house either side of the keep
         p.add("wall-paint-window", 0, hy, 0, face)
         p.pyramid(0, hy, 1, 1.0, 0.8)
     return p.items
+
+
+# ---- Team colour (V3b, VI-Q3: roof, banner or both; the user's to choose). A material slot named "owner" wears the player's colour
+# (AHOLBuilding::BuildFinalMesh): the pyramid roof's in "roof" and "both", the cloth of the banners in "banner" and "both".
+COLOUR_OPTIONS = ("roof", "banner", "both")
+DEFAULT_COLOUR = "both"   # until the user answers VI-Q3 (Retours/Q-forum-colour.md): both is the one that can not be missed
+TURRET_TOP = 2.3   # the turrets' crown (tower-top, 30 cm) stands on two modules
+POLE_HEIGHT = 0.9  # the pole's top reaches the keep's apex (3.2 modules)
+
+
+def banner_items():
+    """A pole and a cloth on each turret, the cloth flying outward (along Y), seen face on by the RTS camera (it looks along +X)."""
+    items = []
+    for tx in (-TURRET_AT, TURRET_AT):
+        for ty in (-TURRET_AT, TURRET_AT):
+            side = 1.0 if ty > 0 else -1.0
+            items.append(("@pole", tx, ty, TURRET_TOP, 0.0, (0.04, 0.04, POLE_HEIGHT)))
+            items.append(("@cloth", tx, ty + side * 0.37, TURRET_TOP + POLE_HEIGHT - 0.5, 0.0, (0.03, 0.7, 0.5)))
+    return items
 
 
 VARIANTS = {name[-1].upper(): fn for name, fn in sorted(globals().items()) if name.startswith("variant_") and callable(fn)}

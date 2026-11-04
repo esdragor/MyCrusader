@@ -5,6 +5,8 @@
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
+#include "Engine/StaticMesh.h"
+#include "HAL/IConsoleManager.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "HOLCollision.h"
@@ -58,7 +60,12 @@ bool FHOLBuildingTypesTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("16 x 16 m: 4 x 4 tiles of 4 m (D261, D311, D344)"), MainCentre->Footprint, FVector2D(1600.0, 1600.0));
 		TestEqual(TEXT("~10 m high (D261)"), MainCentre->Height, 1000.f);
 		TestTrue(TEXT("health points"), MainCentre->MaxHealth > 0);
-		TestTrue(TEXT("provisional shape: no final mesh yet"), MainCentre->Mesh.IsNull());
+		TestFalse(TEXT("the Forum has its model (VisualInProgress V3a): SM_Forum, composed from the kit"), MainCentre->Mesh.IsNull());
+	}
+	const FHOLBuildingTypeRow* House = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
+	if (TestNotNull(TEXT("house in the building type table"), House))
+	{
+		TestTrue(TEXT("provisional shape: no final mesh yet"), House->Mesh.IsNull());
 	}
 	return true;
 }
@@ -74,11 +81,18 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 	// As in a match: the actors spawned from now on are initialised (a building builds its look once initialised).
 	World->InitializeActorsForPlay(FURL());
 
+	// The Forum has a model since VisualInProgress V3a: the provisional shape of D261 is a house's (800 x 800 cm, 400 high).
+	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
+	if (!TestNotNull(TEXT("house in the table"), Type))
+	{
+		return false;
+	}
+	const double Tiles = Type->Footprint.X;
 	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
 	if (TestNotNull(TEXT("building spawned"), Building))
 	{
 		TestTrue(TEXT("replicated"), Building->GetIsReplicated());
-		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 3);
+		Building->Setup(HOLBuildingTypeNames::House, 2, 3);
 		// The look is applied at the frame (D325): at once here.
 		Building->ApplyPendingAppearance();
 		TestEqual(TEXT("owner"), Building->GetOwnerPlayer(), static_cast<uint8>(2));
@@ -94,30 +108,168 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 		{
 			Box += Piece->Bounds.GetBox();
 		}
-		const double Seen = 1600.0 - 2.0 * UHOLBuildingSettings::GetVisualInset();
-		const double Body = 1600.0 - 2.0 * UHOLBuildingSettings::GetBodyInset();
-		TestTrue(FString::Printf(TEXT("the visible size of its 16 x 16 m (%.0f cm)"), Seen), Box.GetSize().Equals(FVector(Seen, Seen, 1000.0), 1.0));
-		TestTrue(TEXT("at least 90 % of its tiles"), Seen >= 0.9 * 1600.0 - 0.01);
+		const double Seen = Tiles - 2.0 * UHOLBuildingSettings::GetVisualInset();
+		const double Body = Tiles - 2.0 * UHOLBuildingSettings::GetBodyInset();
+		TestTrue(FString::Printf(TEXT("the visible size of its footprint (%.0f cm)"), Seen), Box.GetSize().Equals(FVector(Seen, Seen, static_cast<double>(Type->Height)), 1.0));
+		TestTrue(TEXT("at least 90 % of its tiles"), Seen >= 0.9 * Tiles - 0.01);
 		TestTrue(TEXT("on the ground, centred"), Box.Min.Equals(FVector(-Seen * 0.5, -Seen * 0.5, 0.0), 1.0));
 		TestTrue(TEXT("its body box"), Building->GetBodyBounds().GetSize().Equals(FVector2D(Body), 0.01));
-		TestTrue(TEXT("its tiles box"), Building->GetFootprintBounds().GetSize().Equals(FVector2D(1600.0), 0.01));
+		TestTrue(TEXT("its tiles box"), Building->GetFootprintBounds().GetSize().Equals(FVector2D(Tiles), 0.01));
 
 		// The navmesh's forbidden area: the body widened by the bodies' clearance (D310), as tall as the shape.
 		TArray<UBoxComponent*> Boxes;
 		Building->GetComponents(Boxes);
 		const double Clearance = UHOLBuildingSettings::GetBodyClearance();
 		TestTrue(TEXT("forbidden area: the body and the clearance"), Boxes.Num() == 1 && Boxes[0]->CanEverAffectNavigation()
-			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(Body * 0.5 + Clearance, Body * 0.5 + Clearance, 500.0), 1.0));
+			&& Boxes[0]->GetScaledBoxExtent().Equals(FVector(Body * 0.5 + Clearance, Body * 0.5 + Clearance, Type->Height * 0.5), 1.0));
 
 		TestEqual(TEXT("the roof at the owner's colour"), CountPiecesOfColor(*Building, 3), 1);
 		TestEqual(TEXT("the top of the block at a darker tone of it"), CountPiecesOfColor(*Building, 3, AHOLBuilding::BaseTopTone), 1);
-		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 5);
+		Building->Setup(HOLBuildingTypeNames::House, 2, 5);
 		// The look is applied at the frame (D325): at once here.
 		Building->ApplyPendingAppearance();
 		TestEqual(TEXT("a new colour repaints them"),
 			CountPiecesOfColor(*Building, 5) + CountPiecesOfColor(*Building, 5, AHOLBuilding::BaseTopTone), 2);
 		Building->GetComponents(Pieces);
 		TestEqual(TEXT("without rebuilding the pieces"), Pieces.Num(), 4);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// VisualInProgress V3b (VI-Q3): the Forum's model (SM_Forum, a kit's pieces in one mesh) wears the player's colour on its
+// material slot named "owner"; the roof, the banners or both (hol.Building.MeshVariant, provisional until the user chooses).
+// The same checks as the provisional shape: repainted without rebuilding, a click on it selects it (D262), greyed when only
+// remembered (F7.3 b).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingForumColourTest, "HeroesOfLiberty.Buildings.ForumColour", UE::HeroesOfLiberty::Tests::Buildings::Flags)
+bool FHOLBuildingForumColourTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Buildings;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	IConsoleVariable* Variant = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Building.MeshVariant"));
+	if (!TestNotNull(TEXT("the variant console variable exists"), Variant))
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+		return false;
+	}
+
+	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
+	if (TestNotNull(TEXT("building spawned"), Building))
+	{
+		const FName OwnerSlot(TEXT("owner"));
+		// The model's piece, the index of its "owner" slot (-1: none), and what that slot wears.
+		const auto GetModel = [Building]() -> UStaticMeshComponent*
+		{
+			TArray<UStaticMeshComponent*> Pieces;
+			Building->GetComponents(Pieces);
+			return Pieces.Num() == 1 ? Pieces[0] : nullptr;
+		};
+		const auto OwnerSlotsOf = [OwnerSlot](const UStaticMeshComponent& Model)
+		{
+			TArray<int32> Result;
+			const UStaticMesh* Mesh = Model.GetStaticMesh();
+			for (int32 Index = 0; Mesh && Index < Mesh->GetStaticMaterials().Num(); ++Index)
+			{
+				if (Mesh->GetStaticMaterials()[Index].MaterialSlotName == OwnerSlot)
+				{
+					Result.Add(Index);
+				}
+			}
+			return Result;
+		};
+		const auto SlotColor = [](const UStaticMeshComponent& Model, const int32 Index, FLinearColor& Out)
+		{
+			const UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Model.GetMaterial(Index));
+			return Material && Material->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("Color")), Out);
+		};
+		const auto Expected = [](const int32 ColorIndex)
+		{
+			FLinearColor Color(HOLPlayerColors::GetLinearColor(ColorIndex));
+			Color.A = 1.f;
+			return Color;
+		};
+
+		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 3);
+		Building->ApplyPendingAppearance();
+		UStaticMeshComponent* Model = GetModel();
+		if (TestNotNull(TEXT("the Forum is one piece: its model"), Model))
+		{
+			TArray<int32> OwnerSlots = OwnerSlotsOf(*Model);
+			TestEqual(TEXT("the model has one material slot named owner (the player's colour)"), OwnerSlots.Num(), 1);
+			FLinearColor Painted;
+			if (OwnerSlots.Num() == 1)
+			{
+				TestTrue(TEXT("the owner slot is painted with the player's colour"), SlotColor(*Model, OwnerSlots[0], Painted) && Painted.Equals(Expected(3), 1.e-4f));
+				// The kit's own textures stay (no dynamic colour on the other slots).
+				int32 Plain = 0;
+				for (int32 Index = 0; Index < Model->GetNumMaterials(); ++Index)
+				{
+					Plain += Index != OwnerSlots[0] && !Cast<UMaterialInstanceDynamic>(Model->GetMaterial(Index)) ? 1 : 0;
+				}
+				TestTrue(TEXT("the other slots keep the kit's materials"), Plain >= 1);
+
+				// A new colour repaints the same piece.
+				Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 5);
+				Building->ApplyPendingAppearance();
+				TestTrue(TEXT("a new colour repaints the model without rebuilding it"), GetModel() == Model
+					&& SlotColor(*Model, OwnerSlots[0], Painted) && Painted.Equals(Expected(5), 1.e-4f));
+			}
+
+			// D262: a click over its middle selects the building; one beyond its footprint finds nothing.
+			FHitResult Hit;
+			World->LineTraceSingleByChannel(Hit, FVector(0.0, 0.0, 5000.0), FVector(0.0, 0.0, -100.0), HOLCollision::Selection);
+			TestTrue(TEXT("the selection ray over its middle hits the Forum"), Hit.GetActor() == Building);
+			FHitResult Miss;
+			World->LineTraceSingleByChannel(Miss, FVector(1500.0, 1500.0, 5000.0), FVector(1500.0, 1500.0, -100.0), HOLCollision::Selection);
+			TestTrue(TEXT("the selection ray beyond its footprint finds nothing"), Miss.GetActor() != Building);
+		}
+
+		// The three placements of the colour to compare (VI-Q3): each one a model with an owner slot at the player's colour.
+		for (const TCHAR* Name : { TEXT("Roof"), TEXT("Banner"), TEXT("Both") })
+		{
+			Variant->Set(Name);
+			Building->ApplyPendingAppearance();
+			const UStaticMeshComponent* Other = GetModel();
+			if (TestNotNull(*FString::Printf(TEXT("%s: one piece"), Name), Other) && Other->GetStaticMesh())
+			{
+				TestEqual(*FString::Printf(TEXT("%s: its own model"), Name), Other->GetStaticMesh()->GetName(), FString::Printf(TEXT("SM_Forum_%s"), Name));
+				const TArray<int32> Slots = OwnerSlotsOf(*Other);
+				FLinearColor Painted;
+				TestTrue(*FString::Printf(TEXT("%s: one owner slot at the player's colour"), Name),
+					Slots.Num() == 1 && SlotColor(*Other, Slots[0], Painted) && Painted.Equals(Expected(5), 1.e-4f));
+			}
+		}
+		Variant->Set(TEXT(""));
+		Building->ApplyPendingAppearance();
+		const UStaticMeshComponent* Back = GetModel();
+		TestTrue(TEXT("without a variant, the table's model again"), Back && Back->GetStaticMesh() && Back->GetStaticMesh()->GetName() == TEXT("SM_Forum"));
+
+		// F7.3 (b): seen once, then out of sight: no texture left to grey, every slot a plain colour toward the memory's grey, the
+		// owner's too (ApplyColors).
+		Building->SetFogDraw(EHOLBuildingDraw::Memory, EHOLBuildingSight::Standing);
+		Building->ApplyPendingAppearance();
+		const UStaticMeshComponent* Remembered = GetModel();
+		if (TestNotNull(TEXT("remembered: one piece"), Remembered))
+		{
+			bool bAllPainted = true;
+			for (int32 Index = 0; Index < Remembered->GetNumMaterials(); ++Index)
+			{
+				bAllPainted &= Cast<UMaterialInstanceDynamic>(Remembered->GetMaterial(Index)) != nullptr;
+			}
+			TestTrue(TEXT("remembered: every slot is a plain colour"), bAllPainted);
+			const TArray<int32> Slots = OwnerSlotsOf(*Remembered);
+			FLinearColor Painted;
+			TestTrue(TEXT("remembered: the owner's colour is greyed"), Slots.Num() == 1 && SlotColor(*Remembered, Slots[0], Painted)
+				&& !Painted.Equals(Expected(5), 1.e-3f));
+		}
 	}
 
 	GEngine->DestroyWorldContext(World);
