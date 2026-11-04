@@ -246,7 +246,20 @@ if (-not (Test-Path $TestSettings)) {
     Copy-Item (Join-Path $PSScriptRoot "GameUserSettings.ini") $TestSettings
 }
 New-Item -ItemType Directory -Force (Split-Path $GameLog) | Out-Null
-Remove-Item $GameLog, $TestsLog -ErrorAction SilentlyContinue
+# The logs of THIS pass (2026-11-03): a log still held by another process cannot be removed, and the engine then writes
+# <name>_2.log (what the pass used to read: the held file's old lines, or nothing: "0/0"). Waits a few seconds for the
+# holder, then takes a name of its own for this pass, said aloud; every read below goes through the variable.
+function Get-FreshLog([string] $Path) {
+    for ($Try = 0; $Try -lt 10; $Try++) {
+        if (-not (Test-Path $Path)) { return $Path }
+        try { Remove-Item $Path -Force -ErrorAction Stop; return $Path } catch { Start-Sleep -Milliseconds 500 }
+    }
+    $Own = Join-Path (Split-Path $Path) ([IO.Path]::GetFileNameWithoutExtension($Path) + "_" + (Get-Date -Format "yyyyMMdd_HHmmss_fff") + [IO.Path]::GetExtension($Path))
+    Write-Host "quick_check : $Path is held by another process (a game or editor of this worktree still running?); this pass writes and reads $Own"
+    return $Own
+}
+$GameLog = Get-FreshLog $GameLog
+$TestsLog = Get-FreshLog $TestsLog
 
 # 1. Automation tests, in the background (no window).
 # IA1.1: the matches of quick_check make their own Peasants (none at the start, as the scenarios); the automation
@@ -7270,6 +7283,7 @@ if ($TestsProcess) {
     # Every test started has completed (the forced exit of -TestExit cut the last lines of the log; SoftQuit flushes it).
     $Started = @(if (Test-Path $TestsLog) { Select-String -Path $TestsLog -Pattern "Test Started\. Name=" }).Count
     $Checks = [ordered]@{}
+    $Checks["the tests' log of this pass exists ($TestsLog; the engine writes <name>_2.log when its log is held)"] = Test-Path $TestsLog
     $Checks["tests ran ($($Results.Count))"] = (-not $TestsTimedOut) -and $Results.Count -gt 0
     $Checks["every test started completed ($($Results.Count) of $Started)"] = $Results.Count -eq $Started
     $Checks["all green (failed: $($Failures -join ', '))"] = $Failures.Count -eq 0

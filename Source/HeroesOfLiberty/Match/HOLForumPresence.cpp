@@ -70,7 +70,9 @@ void FHOLForumPresenceCounter::Count(const AHOLGameState& GameState)
 	}
 
 	++Walks;
-	UnitsWalked += Units->ForEachLivingUnit([&Zones, &Config, Radius](const uint8 Owner, const FVector& Location)
+	// D6 (D369, D401): in the Diplomacy mode a defender is the zone owner or an ally (both said Ally); a Neutral is an adversary (but fires on nobody).
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(World);
+	UnitsWalked += Units->ForEachLivingUnit([&Zones, &Config, &Relations, Radius](const uint8 Owner, const FVector& Location)
 	{
 		const FVector2D Point(Location);
 		for (FZone& Zone : Zones)
@@ -81,7 +83,8 @@ void FHOLForumPresenceCounter::Count(const AHOLGameState& GameState)
 			}
 			// D401: an owner out of the launch's slots (Neutral) is an adversary.
 			const int32 Camp = Owner < FHOLMatchConfig::MaxSlots ? HOLVictoryRules::GetCamp(Config, Owner) : INDEX_NONE;
-			if (Owner == Zone.Slot || (Camp != INDEX_NONE && Camp == Zone.Camp))
+			if (Owner == Zone.Slot || (Relations.IsDiplomacy() ? (Owner < FHOLMatchConfig::MaxSlots && !Relations.AreHostile(Owner, Zone.Slot))
+				: (Camp != INDEX_NONE && Camp == Zone.Camp)))
 			{
 				Zone.bDefenders = true;
 				continue;
