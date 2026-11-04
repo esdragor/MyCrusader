@@ -218,7 +218,12 @@ bool FHOLVolcanoLayoutAltarMeshTest::RunTest(const FString& Parameters)
 	{
 		Layout->SetSites({ WithAltar, WithoutAltar });
 		Layout->FinishSpawning(FTransform::Identity);
-		TestEqual(TEXT("one altar drawn (4 parts), none for the site without altar"), Layout->GetAltarMeshCount(), 4);
+		// A bare test world has no game mode, so it never begins play by itself: the actor's BeginPlay is dispatched by hand then.
+			if (!Layout->HasActorBegunPlay())
+			{
+				Layout->DispatchBeginPlay();
+			}
+			TestEqual(TEXT("one altar drawn (4 parts), none for the site without altar"), Layout->GetAltarMeshCount(), 4);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

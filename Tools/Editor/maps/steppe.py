@@ -84,6 +84,7 @@ BERRY_SIZES = [4, 3, 5]
 
 # Distances (cm).
 DEPOSIT_GAP = 1800.0  # M-Q10b: it was 25 m; with tighter packs and twice as many, 18 m between two deposits
+CAP_MARGIN = 150.0  # cm taken off every deposit's room (room_caps), the shapes' overshoot
 VEIN_GAP = 1800.0  # M-Q9: between a pile and another deposit (source to source): the piles are small bodies and a territory holds 14 of them
 VEIN_FROM_SLOT = 11000.0
 VEIN_SPREAD = 4000.0  # M-Q9: veins of one resource this far apart (was 60 m with 4 and 2 veins a territory; now 14 piles, many of them small)
@@ -501,7 +502,9 @@ def room_caps(recipe, fixed, points):
                    + [math.dist(point, deposit.at) - deposit.reach - (VEIN_GAP if deposit.is_vein else DEPOSIT_GAP) for deposit in fixed]
                    + [edge - abs(point[0]), edge - abs(point[1]), math.hypot(*point) - CENTRE_CLEAR]
                    + [math.dist(point, slot) - NEAR_REACH for slot in slots])
-        caps.append(room)
+        # 2026-11-04: a margin, because the groves of 30 to 40 trees (organic, re-centred) go some tens of cm past their nominal reach
+        # (Map.Steppe, Huge: veins 1732 to 1785 cm from a grove's trees, under the 1800 of VEIN_GAP).
+        caps.append(room - CAP_MARGIN)
     return caps
 
 
