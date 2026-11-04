@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+talents_later_open | La fenêtre « Arbre de talents » à 8 rangées : « Talents à dépenser : 5 », la rangée 2 claire (prenable), les rangées 3 à 6 grisées « en attente », les rangées 7, 8, 9 grisées aussi (sans teinte, noms lisibles)
+talents_later_full | Cinq talents du Capitaine pris (rangées 2 à 6 teintées dorées), les rangées 7 à 9 toujours grisées, « Talents à dépenser : 0 »
+talents_later_click | Après un clic sur une case de la rangée 7 : rien n'a changé, aucun talent pris, aucune ligne dorée

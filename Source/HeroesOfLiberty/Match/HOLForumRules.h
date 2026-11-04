@@ -6,6 +6,8 @@
 #include "Containers/ArrayView.h"
 #include "HOLForumRules.generated.h"
 
+namespace HOLDiplomacy { struct FBook; }
+
 /** Where a slot's main forum stands (V2, D350-D352). */
 UENUM()
 enum class EHOLForumPhase : uint8
@@ -154,6 +156,8 @@ enum class EHOLPlayerRelation : uint8
 	Ally,
 	/** Another camp: red crossed swords. */
 	Enemy,
+	/** The Diplomacy mode, a Neutral player (neither allied nor at war, D401): a small grey dot (the user's answer Q-diplomacy-table = B). */
+	Neutral,
 };
 
 /**
@@ -336,7 +340,10 @@ namespace HOLForumRules
 	 * by team when there are teams (team 1 first, the slots without a team last). Forums by slot (a missing one standing),
 	 * DefeatedMask's bit Slot a defeated slot, LocalSlot the machine's own (INDEX_NONE: none). Tiers by slot (P2: each
 	 * hero's; a missing one takes Tuning's) give the lives.
+	 * Book (D6, the Diplomacy mode; null otherwise): the lobby's teams count for nothing there (no grouping), a row is an ally (green
+	 * shield) when the viewer's relation with that slot is Ally in the book (both said Ally), an enemy (red cross) when Enemy, and
+	 * shows a grey dot when Neutral (Q-diplomacy-table = B); it follows the stances as they change.
 	 */
 	HEROESOFLIBERTY_API TArray<FHOLPlayersTableRow> GetPlayersTable(const FHOLMatchConfig& Config, TConstArrayView<FHOLForumState> Forums,
-		uint8 DefeatedMask, int32 LocalSlot, const FHOLForumTuning& Tuning, TConstArrayView<int32> Tiers = {});
+		uint8 DefeatedMask, int32 LocalSlot, const FHOLForumTuning& Tuning, TConstArrayView<int32> Tiers = {}, const HOLDiplomacy::FBook* Book = nullptr);
 }

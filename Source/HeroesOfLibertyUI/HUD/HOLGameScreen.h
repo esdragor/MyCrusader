@@ -484,6 +484,7 @@ private:
 	TWeakObjectPtr<class AHOLGameState> BoundTableState;
 	FDelegateHandle TableForumsHandle;
 	FDelegateHandle TableVictoryHandle;
+	FDelegateHandle TableDiplomacyHandle;
 	float SinceTableRefresh = 1.f;
 
 	/**

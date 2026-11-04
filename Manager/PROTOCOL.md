@@ -226,7 +226,7 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   "minutes": null,
   "leader": "Bob",
   "you": "Alice",
-  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false, "size": "Large", "teamsTogether": true, "fog": "Normal" },
+  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false, "size": "Large", "teamsTogether": true, "fog": "Normal", "mode": "Standard", "biome": "default" },
   "maps": [ { "name": "Plain", "maxPlayers": 8, "sizes": [ { "key": "Small", "places": 2 }, { "key": "Medium", "places": 4 },
     { "key": "Normal", "places": 6 }, { "key": "Large", "places": 8 }, { "key": "Huge", "places": 8 } ] } ],
   "slots": [
@@ -244,7 +244,7 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
 
 - `settings.size` (TC3, TC-Q3 / TC-Q4) : clé de la taille (`Small`, `Medium`, `Normal`, `Large`, `Huge` = Petite,
   Moyenne, Normale, Grande, Immense ; `Tools/Data/MapSizes.csv`), qui fixe le nombre de places ; `""` pour une carte
-  sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage. `settings.fog` (F8, D522) : le brouillard de guerre, `Normal` (défaut, carte noire), `Explored` (carte explorée) ou `Disabled` (sans brouillard) ; le chef seul le change, et un changement remet tous les « prêt » à zéro.
+  sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage. `settings.fog` (F8, D522) : le brouillard de guerre, `Normal` (défaut, carte noire), `Explored` (carte explorée) ou `Disabled` (sans brouillard) ; le chef seul le change, et un changement remet tous les « prêt » à zéro. `settings.mode` (D5, chantier Diplomatie) : le mode de la partie, `Standard` (défaut) ou `Diplomacy` (alliances faites et rompues en cours de partie, chacun pour soi au départ) ; même règles que le brouillard (chef seul, remet les « prêt » à zéro, nom inconnu refusé `bad_request`), recopié dans `mode` de `match.json`. `settings.biome` (B2, D651-D656) : le biome du salon (ambiance : sol, lumière, ciel, brume, décor générique), par sa clé : `default` (défaut, l'ambiance propre de la carte), `fresh_grass`, `dry_steppe`, `autumn`, `dark_forest` ou `snow` (table de `Script/Biomes/HOLBiomeRules.as`, vérifiée par un test) ; n'importe quel biome sur n'importe quelle carte, le chef seul le change (même remise à zéro des « prêt »), inconnu = `bad_request`.
 - `maps` : les cartes de la partie, dans l'ordre de `Tools/Data/Maps.csv` (la table unique des cartes, C0.2 ; la
   première est celle d'un nouveau salon), `LobbyRules.Maps` dans le gestionnaire et `FHOLMapRules` dans le jeu.
 - `maps[].sizes` : les tailles de la carte et leurs places (vide pour une carte sans tailles) ; `maxPlayers` = places
@@ -290,7 +290,7 @@ Champs facultatifs ; seuls ceux présents changent.
 ### `PUT /lobbies/{lobbyId}/settings` — réglages du chef (en-tête `X-Player-Token`)
 
 ```json
-{ "map": "Plain", "nomad": true, "regicide": false, "catastrophe": false, "size": "Small", "teamsTogether": true, "fog": "Explored" }
+{ "map": "Plain", "nomad": true, "regicide": false, "catastrophe": false, "size": "Small", "teamsTogether": true, "fog": "Explored", "biome": "snow" }
 ```
 
 Champs facultatifs. Un changement (valeur différente de l'actuelle) remet **tous** les « Prêt » à `false`. Une carte
@@ -480,6 +480,7 @@ tailles de carte) :
 | `bDrawPlaces` | booléen | **nouveau en version 3** : `true` depuis un salon : places tirées par le serveur depuis `seed` (TC-Q6) ; absent = places fixes (emplacement i à la place i : scénarios, `quick_check`) |
 | `bTeamsTogether` | booléen | **nouveau en version 3** : « Équipes ensemble » du salon (alliés sur des places voisines) |
 | `fogMode` | `"Normal"`, `"Explored"`, `"Disabled"` | **F8 (D522)** : le brouillard du salon (`EHOLFogMode` par son nom) ; absent = `Disabled` (les scénarios de test) ; la console `hol.Fog.Mode` (0 à 2) le remplace sur le serveur |
+| `biome` | `"default"`, `"fresh_grass"`, `"dry_steppe"`, `"autumn"`, `"dark_forest"`, `"snow"` | **B2 (D651-D656)** : le biome du salon par sa clé ; absent ou `default` = la carte telle quelle (les scénarios de test) ; une clé inconnue est lue comme `default` côté jeu ; répliqué aux clients avec la configuration |
 | `slots` | 8 objets | emplacement du salon = index (la place de départ est tirée, `bDrawPlaces`) |
 | `slots[].state` | `"Closed"`, `"Human"`, `"AI"` | `"Human"` pour chaque joueur du salon, `"AI"` pour chaque IA (IA0.6, avec sa couleur, son équipe et sa faction) ; ouvert vide ou fermé → `"Closed"` (faction `DawnOrder`, couleur = index, équipe 0, comme `Normalize`) |
 | `slots[].faction` | `"DawnOrder"`, `"BlackLegions"`, … | |
@@ -505,6 +506,7 @@ chef, Nomade) :
   "bDrawPlaces": true,
   "bTeamsTogether": true,
   "fogMode": "Normal",
+  "biome": "default",
   "slots": [
     { "state": "Human", "faction": "DawnOrder", "colorIndex": 0, "team": 1, "playerName": "Bob" },
     { "state": "Closed", "faction": "DawnOrder", "colorIndex": 1, "team": 0, "playerName": "" },

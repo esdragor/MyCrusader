@@ -179,7 +179,16 @@ public:
 private:
 	/** One pass over the observers: BeginPass, the Observe calls, then EndPass (those not seen again are removed; the memory is refreshed). */
 	void BeginPass();
-	void ObserveUnit(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location);
+	/**
+	 * bOwnCamp: counted for the owner's camp (false on a client, which computes the fog of its own camp only: an ally's unit counts there
+	 * only through the vision the ally shares, D371). The camps the owner shares its vision with (ShareCamps) count it too.
+	 */
+	void ObserveUnit(uint32 UnitId, FName TypeName, uint8 Owner, const FVector& Location, bool bOwnCamp = true);
+	/**
+	 * D371 (D6 of DiplomacyInProgress.md): per owner slot, the other camps that see what it sees (the Diplomacy mode: an ally it gave its
+	 * vision to, HOLDiplomacy::SharesVision; read from the game state's book, so the same on a client). OnlyCamp: a client keeps its own.
+	 */
+	void BuildShareCamps(int32 OnlyCamp = INDEX_NONE);
 	/** Present in the memory; bObserve: its cells counted too (the buildings of the camp whose fog this is). */
 	void ObserveBuilding(const class AHOLBuilding& Building, bool bObserve);
 	/** bGhosts: the memory refreshed (OnlyCamp: a client's own camp's, INDEX_NONE: every camp's). */
@@ -214,6 +223,11 @@ private:
 	TMap<uint32, FTracked> UnitObservers;
 	/** F3.2: the buildings, by actor (UObject's unique identifier); Radius: their sight at the last Update. */
 	TMap<uint32, FTracked> BuildingObservers;
+	/** D371: the same observers counted in an ally's camp, by (camp << 32 | identifier). */
+	TMap<uint64, FTracked> SharedUnitObservers;
+	TMap<uint64, FTracked> SharedBuildingObservers;
+	/** D371: per owner slot, the camps it shares its vision with (BuildShareCamps). */
+	TArray<TArray<int32>> ShareCamps;
 	TMap<FName, double> UnitSights;
 	/** F4: per camp of Map, its memory. */
 	TArray<TMap<uint64, FHOLGhost>> Ghosts;

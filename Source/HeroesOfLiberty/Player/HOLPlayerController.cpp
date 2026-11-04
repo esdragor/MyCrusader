@@ -1657,6 +1657,20 @@ namespace UE::HeroesOfLiberty::Player
 				: Args[2].Equals(TEXT("neutral"), ESearchCase::IgnoreCase) ? HOLDiplomacy::Neutral : HOLDiplomacy::Enemy;
 			GameState->ApplyStance(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]), Stance);
 		}));
+	/** D6, scenarios: the server (or a solo game) sets the vision a slot gives to another at once (allies only, as the order). No effect on a client. */
+	FAutoConsoleCommandWithWorldAndArgs DiplomacyForceVisionCommand(
+		TEXT("hol.Diplomacy.ForceVision"),
+		TEXT("hol.Diplomacy.ForceVision <FromSlot> <ToSlot> <0|1>: server or solo only: FromSlot stops (0) or starts (1) sharing its vision with ToSlot, at once (scenarios)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+			if (Args.Num() < 3 || !GameState)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Diplomacy.ForceVision <FromSlot> <ToSlot> <0|1> (in a match, on the server)"));
+				return;
+			}
+			GameState->ApplyVision(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]), FCString::Atoi(*Args[2]) != 0);
+		}));
 	/** D5: the stances as this machine has them (a dedicated server too), one line per pair: the check that the server and the clients agree. */
 	FAutoConsoleCommandWithWorld DiplomacyReportCommand(
 		TEXT("hol.Diplomacy.Report"),

@@ -205,7 +205,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
 
     /** PUT /lobbies/{id}/settings (leader): only the given fields change; a change resets every "Ready". */
     public Lobby UpdateSettings(string lobbyId, string? token, string? map = null, bool? nomad = null, bool? regicide = null,
-        bool? catastrophe = null, string? size = null, bool? teamsTogether = null, string? fog = null)
+        bool? catastrophe = null, string? size = null, bool? teamsTogether = null, string? fog = null, string? mode = null, string? biome = null)
     {
         lock (gate)
         {
@@ -222,6 +222,16 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 ? LobbyRules.FogModes.FirstOrDefault(f => string.Equals(f, fog, StringComparison.OrdinalIgnoreCase))
                     ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown fog mode: '{fog}'.")
                 : settings.Fog;
+            // D5: the mode asked (by name, case ignored), else the current one.
+            var newMode = mode != null
+                ? LobbyRules.Modes.FirstOrDefault(m => string.Equals(m, mode, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown mode: '{mode}'.")
+                : settings.Mode;
+            // B2: the biome asked (its key, case ignored; "default" = the map's own), else the current one; any biome on any map (B-Q4).
+            var newBiome = biome != null
+                ? LobbyRules.Biomes.FirstOrDefault(b => string.Equals(b, biome, StringComparison.OrdinalIgnoreCase))
+                    ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown biome: '{biome}'.")
+                : settings.Biome;
             var oldPlaces = Places(lobby);
             var places = mapInfo.Places(newSize);
             var extraSlots = lobby.Slots.Skip(places).ToList();
@@ -237,7 +247,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var sizeChanged = newSize != settings.Size;
             var changed = mapInfo.Name != settings.Map || sizeChanged || (nomad ?? settings.Nomad) != settings.Nomad
                 || (regicide ?? settings.Regicide) != settings.Regicide || (catastrophe ?? settings.Catastrophe) != settings.Catastrophe
-                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || newFog != settings.Fog || extraSlots.Any(s => !s.Closed);
+                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || newFog != settings.Fog || newMode != settings.Mode || newBiome != settings.Biome || extraSlots.Any(s => !s.Closed);
             settings.Map = mapInfo.Name;
             settings.Size = newSize;
             settings.Nomad = nomad ?? settings.Nomad;
@@ -245,6 +255,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             settings.Catastrophe = catastrophe ?? settings.Catastrophe;
             settings.TeamsTogether = teamsTogether ?? settings.TeamsTogether;
             settings.Fog = newFog;
+            settings.Mode = newMode;
+            settings.Biome = newBiome;
             // TC3 (FHOLMapSizeRules::FitSlotsToSize): each player or AI past the places onto the first free slot below, in order.
             foreach (var from in moving)
             {

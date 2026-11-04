@@ -178,6 +178,8 @@ private:
 	void HandleTeamsTogetherChosen(int32 Value);
 	/** F8: the fog's list. */
 	void HandleFogChosen(int32 Value);
+	/** D5: the mode's list (0 Standard, 1 Diplomatie = EHOLMatchMode). */
+	void HandleModeChosen(int32 Value);
 	/**
 	 * TC3: the menu's size (FHOLMapSizeRules::FitSlotsToSize: the slots past its places closed, a player past them moved
 	 * below), places drawn at the launch; false (nothing changed) when the players do not fit it.

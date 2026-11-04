@@ -91,3 +91,80 @@ void Test_TalentTakenEntriesOnePerTalentWithAHover(FUnitTest& T)
 	T.AssertTrue(Taken[1].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Mains du guerisseur says it has no effect yet");
 	T.AssertFalse(Taken[0].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Boucliers leves does not");
 }
+
+// The full game's tree (rows 2 to 9, hero levels up to 9; D04, D194, D195): the same views with a higher maximum level, 8 rows of 3, the
+// rows 7 to 9 named by the table like the others. The prototype's window (HOLTalentTree::Make) keeps its 5 rows.
+void Test_TalentTreeFullGameHasEightRows(FUnitTest& T)
+{
+	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::MakeFor(9, 1, TreePicks());
+	T.AssertEquals(8 * 3, Cells.Num(), "8 rows x 3 cells at maximum level 9");
+	T.AssertEquals(8 * 3, HOLTalentTree::MakeFor(10, 1, TreePicks()).Num(), "level 10 gives no talent: still 8 rows");
+	T.AssertEquals(5 * 3, HOLTalentTree::MakeFor(HOLHero::GetMaxLevel(), 1, TreePicks()).Num(), "the prototype's maximum level: 5 rows");
+	T.AssertEquals(5 * 3, HOLTalentTree::Make(1, TreePicks()).Num(), "Make is the prototype's window");
+	for (int Index = 15; Index < 24; Index++)
+	{
+		T.AssertEquals(HOLTalent::FirstRow + Index / 3, Cells[Index].Row, f"cell {Index}: its row");
+		T.AssertEquals(Index % 3, Cells[Index].Family, f"cell {Index}: its column");
+		T.AssertFalse(Cells[Index].Name.IsEmpty(), f"cell {Index}: the table names it");
+		T.AssertEquals(HOLTalentNames::Name(Cells[Index].Row, Cells[Index].Family).ToString(), Cells[Index].Name, f"cell {Index}: the table's name");
+		T.AssertFalse(Cells[Index].bHasEffect, f"cell {Index}: no effect yet in the prototype's rules (D194 says so in the hover)");
+		T.AssertTrue(Cells[Index].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), f"cell {Index}: the hover says so");
+	}
+}
+
+// The states of the rows 7 to 9 follow the level and the picks: a hero of level 7 with five Captain talents has row 7 open; at level 9 with
+// all eight taken every row is filled; with seven taken and a point row 9 is the one open.
+void Test_TalentTreeFullGameStates(FUnitTest& T)
+{
+	const TArray<FHOLTalentCellView> Open = HOLTalentTree::MakeFor(9, 7, TreePicks(1, 1, 1, 1, 1));
+	T.AssertEquals("row 2: . T . | row 3: . T . | row 4: . T . | row 5: . T . | row 6: . T . | row 7: P P P | row 8: l l l | row 9: l l l", HOLTalentTree::Describe(Open), "level 7, five taken");
+	TArray<int> Eight = TreePicks(1, 1, 1, 1, 1);
+	Eight.Add(0);
+	Eight.Add(0);
+	Eight.Add(0);
+	const TArray<FHOLTalentCellView> Full = HOLTalentTree::MakeFor(9, 9, Eight);
+	T.AssertEquals("row 2: . T . | row 3: . T . | row 4: . T . | row 5: . T . | row 6: . T . | row 7: T . . | row 8: T . . | row 9: T . .", HOLTalentTree::Describe(Full), "level 9, eight taken: the maximum build, key and seal");
+	const TArray<FHOLTalentCellView> Waiting = HOLTalentTree::MakeFor(9, 7, Eight);
+	T.AssertFalse(Waiting[23].bPickable, "nothing is pickable once the eight are taken");
+	T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(Open, 8, 1), "row 8 is later: a click sends nothing");
+	T.AssertEquals(2, HOLTalentTree::ClickedFamily(Open, 7, 2), "row 7 is open: the Champion column asks for the Champion");
+}
+
+// The prototype's window also shows the rows past its maximum level, greyed "plus tard" (the user's answer to Q-talents-niveaux Q1 = B, 2026-11-04):
+// 8 rows of 3, rows 7 to 9 locked (not pickable, even with a point in reserve), named and described by the table like the others, the hover saying "later".
+void Test_TalentTreeWindowShowsTheLaterRows(FUnitTest& T)
+{
+	const int GameMax = HOLHero::GetMaxLevel();
+	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::MakeWithLater(GameMax, 1, TreePicks());
+	T.AssertEquals(8 * 3, Cells.Num(), "the window draws 8 rows x 3 cells");
+	T.AssertEquals("row 2: w w w | row 3: l l l | row 4: l l l | row 5: l l l | row 6: l l l | row 7: x x x | row 8: x x x | row 9: x x x", HOLTalentTree::Describe(Cells), "level 1");
+	const TArray<FHOLTalentCellView> Prototype = HOLTalentTree::Make(1, TreePicks());
+	for (int Index = 0; Index < Prototype.Num(); Index++)
+	{
+		T.AssertTrue(Prototype[Index].State == Cells[Index].State, f"cell {Index}: the prototype's rows are the same as Make's");
+		T.AssertEquals(Prototype[Index].Tooltip, Cells[Index].Tooltip, f"cell {Index}: same hover");
+	}
+	for (int Index = 15; Index < 24; Index++)
+	{
+		T.AssertTrue(Cells[Index].State == EHOLTalentCellState::Locked, f"cell {Index}: locked");
+		T.AssertFalse(Cells[Index].bPickable, f"cell {Index}: not pickable");
+		T.AssertEquals(HOLTalentNames::Name(Cells[Index].Row, Cells[Index].Family).ToString(), Cells[Index].Name, f"cell {Index}: the table's name");
+		T.AssertTrue(Cells[Index].Tooltip.Contains(Cells[Index].Name), f"cell {Index}: the hover names the talent");
+		T.AssertTrue(Cells[Index].Tooltip.Contains(HOLTalentNames::Effect(Cells[Index].Row, Cells[Index].Family).ToString()), f"cell {Index}: and says what it does");
+		T.AssertTrue(Cells[Index].Tooltip.Contains(HOLTalentTree::LaterNote(Cells[Index].Row)), f"cell {Index}: and that it comes later");
+	}
+	T.AssertFalse(Cells[0].Tooltip.Contains(HOLTalentTree::LaterNote(7)), "a prototype row does not say it");
+}
+
+// With the hero at the prototype's top (level 6, five Captain talents) the next row 7 is NOT "waiting for a point": it is locked, and a click on it sends nothing.
+void Test_TalentTreeLaterRowsNeverAskForAPoint(FUnitTest& T)
+{
+	const int GameMax = HOLHero::GetMaxLevel();
+	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::MakeWithLater(GameMax, GameMax, TreePicks(1, 1, 1, 1, 1));
+	T.AssertEquals("row 2: . T . | row 3: . T . | row 4: . T . | row 5: . T . | row 6: . T . | row 7: x x x | row 8: x x x | row 9: x x x", HOLTalentTree::Describe(Cells), "level 6, five taken");
+	for (int Family = 0; Family < 3; Family++)
+		T.AssertEquals(HOLTalent::FamilyNone, HOLTalentTree::ClickedFamily(Cells, 7, Family), f"row 7, family {Family}: nothing asked");
+	// A game whose heroes reach level 9 opens them: row 7 is pickable at level 7.
+	const TArray<FHOLTalentCellView> Full = HOLTalentTree::MakeWithLater(9, 7, TreePicks(1, 1, 1, 1, 1));
+	T.AssertEquals("row 2: . T . | row 3: . T . | row 4: . T . | row 5: . T . | row 6: . T . | row 7: P P P | row 8: l l l | row 9: l l l", HOLTalentTree::Describe(Full), "maximum level 9: nothing locked");
+}
