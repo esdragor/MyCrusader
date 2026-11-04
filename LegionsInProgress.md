@@ -1,0 +1,203 @@
+# Légions Noires : la deuxième faction du prototype
+
+Ouvert le 2026-11-04 (Claude, session principale, à la demande de l'utilisateur : « un InProgress.md par feature, lié dans EtapeDefini », puis « on finit le dossier avant d'en ouvrir un autre, pour qu'il n'y ait plus qu'à le lancer »). **Rien n'est codé, rien n'est commité.** Ce journal est **autosuffisant** : une session qui reçoit « continue LegionsInProgress » dans un worktree donné par l'utilisateur doit pouvoir démarrer à L0 sans rien relire d'autre que ce qui est cité ici.
+
+**Pourquoi** : D11 fait des Légions la deuxième faction du prototype (contraste maximal avec l'Aube) ; le test prioritaire n° 10 (§ 17.1, « chaque faction offre-t-elle une façon réellement différente de jouer ? ») ne peut pas se jouer sans elles ; plusieurs chantiers les attendent (technologies de l'Aube contre le « Profane » T6, IA qui lit les cadavres, talents Moisson / Charnier / Effroi).
+
+**Statut : PRÊT À LANCER, en attente d'un worktree** (l'utilisateur le prépare). **Toutes les questions de conception sont tranchées (LQ-1 à LQ-14).** Sections : décisions prises, état des lieux, conception de L0, règles du projet, étapes L0 à L14 (avec test rouge et critère de fin), trous comblés, comment lancer, journal.
+
+## Décisions de l'utilisateur (2026-11-04), numérotées au GDD § 21 : D677 (LQ-1, LQ-2, LQ-8), D678 (LQ-3, LQ-7), D679 (LQ-9, LQ-10, LQ-13), D680 (LQ-11), D681 (LQ-4, LQ-5, LQ-12), D682 (LQ-14), D683 (technologie ou bâtiment pour toutes les factions) ; LQ-6 (worktree) est un fait de séance, pas une décision de conception
+
+- **LQ-1** : un **coût propre par unité** (pas de multiplicateur global), choisi unité par unité (D345), toujours moins cher que le socle commun (D66).
+- **LQ-2** : **reskin du socle** (D20, § 7.1, § 11.1). Les Légions ont Lancier, Homme d'armes, Archer, Arbalétrier, Cavalier léger (Cavalier lourd hors prototype), Bélier, Mangonneau, avec une apparence propre et les mêmes rôles. Leurs seules **variantes** : **Zombie** à la place du Paysan (D66) et **Cracheur de bile** à la place du Canon (palier 3, D59). **Elles n'ont pas** : Hallebardier (Aube), Moine ni Chapelle (D210, aucun soigneur), Sanctuaire (Aube), Arquebusier ni Canon (D59). La cavalerie de `CavalryInProgress.md` est aussi la leur, en reskin.
+- **LQ-3** : un **petit cadre de capacités d'unités ordinaires en Angelscript** (D483), avec du C++ pour ce qui touche à la simulation (intangible, cadavre consommé).
+- **LQ-4** : ordre gardé : L0, puis Aube contre Légions jouable (Zombie, socle en reskin, Guerrier Damné, héros sans kit), puis la mécanique signature (cadavres, Nécromancien, Squelette).
+- **LQ-5** : le **Seigneur Damné est créé comme fiche de données** (L8a) ; son **kit (L8b) et ses talents (L11) attendent la clôture du chantier global du héros** (J8, `JourneyInProgress.md`).
+- **LQ-6** : aucun worktree réservé, l'utilisateur prépare le chantier.
+- **LQ-7 (conception de L0, réponse du même jour)** : **rôles + surcharges**, pas de types dupliqués (voir « Conception de L0 »).
+- **LQ-8** : le Zombie **ne coûte pas de nourriture** (bois et or seulement).
+- **LQ-9** : le Nécromancien a **deux malédictions** au prototype, **un affaiblissement d'attaque** et **un ralentissement**, plus le **drain de vie**.
+- **LQ-10** : **1 cadavre = 1 Squelette**, canalisation de **3 s**, portée de levée courte (**3 cases, 12 m**) ; le talent *Levée prompte* supprime la canalisation.
+- **LQ-11** : le marquage du Spectre fait que **la cible marquée prend plus de dégâts** (de toutes les unités alliées au Spectre, quelques secondes).
+- **LQ-12** : la fiche du Seigneur Damné part **des mêmes chiffres que le Paladin-Commandant** (450 PV, attaque 30, cadence 1,25 s, vitesse et armures du Paladin), réglée à l'essai.
+- **LQ-13** : cadavres : **durée 75 s**, **plafond de 60 par joueur** (le cadavre compte pour le joueur dont l'unité est morte ; au plafond, son plus ancien disparaît).
+- **LQ-14 (exception à D335 pour les Légions)** : ***Fosses de labeur*** et ***Tour des nécromanciens*** sont des **technologies** (choix définitifs, des effets) ; ***Autel de sang***, ***Fosse des damnés*** et la ***Nécropole*** sont de **vrais bâtiments**, **constructibles en plusieurs exemplaires**. Lecture, à confirmer à L9 : l'effet d'un bâtiment est actif tant qu'au moins un exemplaire tient, **sans cumul** ; le choix d'un palier reste exclusif (bâtiment OU technologie, D07).
+
+## Références au GDD
+
+- **§ 13.3** : unités, économie (D66), spécialisations des paliers 1 et 2 (D126, D127), cadavres (D86), héros Seigneur Damné (D13, D53 à D57), kit de duel « Le Boucher » (D122), ultime *Grande Moisson* (D36, D55), arbre des trois Rites (D112 à D116, rangées 7 à 9 : D196), Ossuaire (D60, D65).
+- **§ 7.1** (socle, variantes, D20, D134, D210, D211), **§ 11.1** (grille des paliers, technologies propres, D393), **§ 17** (prototype : emblématiques Guerrier Damné + Nécromancien + Spectre Assassin, D82, D394 ; Nécropole, D338 ; niveaux de héros 1 à 6).
+- **D393** : catégorie d'armure « Profane » (Zombie, Squelette, Guerrier Damné, serviteurs temporaires, Champion damné ; pas le Nécromancien ni le héros). **D395 / D396** : Spectre Assassin au palier 1, Caserne, *Dématérialisation*. **D128** : un bâtiment par catégorie. **D74 / D125 / D404** : effets de moral. **D190** : plancher de 2 000 unités simultanées (Squelettes et serviteurs temporaires comptés). **D345** : stats choisies une par une.
+- **Hors prototype** (palier 3, § 11.2, D184) : *Abomination* (Atelier de siège), *Cimetière maudit*, *Ossuaire*, *Cracheur de bile* ; *Relève impie* (héros niveau 7) ; talents des rangées 7 à 9 (D196) ; Cavalier lourd. **Ne pas les faire dans ce chantier** (une section « Après le prototype » à la fin les range).
+
+## État des lieux (vérifié dans le dépôt le 2026-11-04)
+
+**Ce qui existe déjà**
+- `EHOLFaction::BlackLegions` et le choix de faction par emplacement (`FHOLMatchConfig::Slots[].Faction`, `Match/HOLMatchConfig.h`) ; relais de l'écran « Nouvelle partie », du salon (`Net/HOLManagerClientRules.cpp` lit `faction`), nom affiché « Légions Noires » (`HOLDiplomacyReadLibrary.cpp`). **Rien d'autre ne lit la faction** dans la simulation.
+- La colonne `Faction` des technologies (`FHOLTechnologyRow::Faction`, défaut `Common`, `Technologies/HOLTechnologyTypes.h`) : modèle à imiter pour les unités et les bâtiments. `Technologies.csv` n'a aucune ligne `Legions`.
+- Le coût de refus de duel propre à la faction (`bRefusalCost`, `HOLDuelRules.as`) ; les durées d'effets de moral du duel (`HesitationMs`, `TriumphMs`, Demoralised) ; `Simulation/HOLHeroAbilityRules.*` (capacités du héros, un peu de moral). **Il n'y a pas de système général d'effets de moral posés sur des unités** : l'*Aura de terreur* et les malus du sol maudit en demanderont un (voir L8b, L11).
+- Les catégories d'armure : `EHOLArmorCategory` (10 valeurs : LightInfantry, HeavyInfantry, Ranged, Cavalry, Siege, Peasant, GunpowderInfantry, Heavy, King, Hero) et un masque `int32` (`HOLArmorCategoryBit`) : **ajouter `Profane` est une valeur de plus** (`Simulation/HOLUnitTypes.h`), aucun élargissement de format. Le bonus de l'Aube contre le Profane se pose dans `Bonuses` (`FHOLAttackBonus`, D345).
+- Le soin du Moine (`HOLHealRules`, `HOLHealProcessor`, colonnes `HealRate` / `HealRange`) : seul exemple d'une capacité d'unité ordinaire, en C++ ; modèle pour le cadre de LQ-3.
+- La mort d'une unité (`EHOLUnitActivity::Dying`, `HOLCombatProcessor.cpp`, `HOLUnitSubsystem.cpp`) et la présentation du corps qui tombe puis s'enfonce (`Presentation/HOLCorpse.*`, `Net/HOLUnitReceptionSubsystem.cpp`) : **purement visuelle**, ce n'est pas le cadavre de D86.
+- Les tables de données : `Tools/Data/UnitTypes.csv` (Peasant, Spearman, ManAtArms, Archer, Crossbowman, King, Hero, Monk, Ram, Mangonel, LightInfantry, LightInfantryNanite ; `LightCavalry` dans la branche `cavalry`) et `BuildingTypes.csv` (MainCentre, House, LumberCamp, MiningCamp, Mill, Barracks, Farm, Sanctuary, ArcheryRange, Market, SiegeWorkshop, Chapel ; `Stable` dans `cavalry`), régénérées en assets par `Tools/Editor/make_unit_types.py` et `make_building_types.py` (**l'éditeur doit tourner**). `Produces` (liste de noms) par bâtiment dans `FHOLBuildingTypeRow` (`Buildings/HOLBuildingTypes.h`) ; grille de commandes dans `Player/HOLCommandGrid.*`.
+
+**Ce qui n'existe pas** : aucune unité, aucun bâtiment, aucun héros, aucune technologie des Légions ; aucune colonne de faction dans `UnitTypes` / `BuildingTypes` ; ni cadavre de jeu, ni Squelette, ni catégorie « Profane », ni capacité active d'unité ordinaire en script ; pas de système général de moral.
+
+**Ce qui est en dur pour l'Aube aujourd'hui (le travail de L0)**
+- `FHOLStartRules::PeasantTypeName` (« Peasant ») et `HeroTypeName` (« Hero ») : **32 occurrences dans 11 fichiers** (`Match/HOLStartRules.*`, `HeroesOfLibertyGameModeBase.cpp` : `SpawnStartingPeasants` et `SpawnStartingHero` aux lignes 605 à 610 et 673 à 704, `Simulation/HOLHeroSubsystem.cpp`, `HOLHeroLibrary.cpp`, `Player/HOLSelectionMarkers.cpp`, `StressTest/HOLStressTestSubsystem.cpp`, plus des tests). Le centre de départ est `MainCentre` (`HOLBuildingTypes.h:277`).
+- Les noms de types écrits dans l'IA et ses tests : 251 occurrences dans 22 fichiers de `Script/AI` et `Script/Tests` (`"Peasant"`, `"Spearman"`, `"ManAtArms"`, `"Crossbowman"`, `"Monk"`, `"Barracks"`, `"MainCentre"`). La conception de L0 les laisse valides.
+- La liste des bâtiments constructibles et des unités produites (grille) est celle du tableau, pour tous les joueurs.
+
+## Conception de L0 (LQ-7 : rôles + surcharges)
+
+Les types gardent leurs noms (`Spearman`, `Archer`, `ManAtArms`…). Trois tables de données, sur le modèle de la colonne `Faction` des technologies :
+1. **`Faction` sur `UnitTypes` et `BuildingTypes`** (défaut `Common` = toutes les factions) : filtre ce qu'une faction peut produire, construire ou voir dans sa grille. `Chapel`, `Sanctuary` et `Monk` n'ont pas `Legions` ; `Zombie`, `Necropolis`… sont `Legions` seul.
+2. **Table des rôles par faction** (`Tools/Data/Factions.csv` : faction, rôle, type) : rôle `Worker` → `Peasant` (Aube) / `Zombie` (Légions) ; rôle `Hero` → `Hero` / `DamnedLord` ; rôle `MainCentre` → `MainCentre` pour les deux. `FHOLStartRules::PeasantTypeName` et `HeroTypeName` deviennent des **fonctions du joueur** (« type travailleur de l'emplacement N », « type héros de l'emplacement N »), les 32 usages passent par elles. Les tests et l'IA qui écrivent `"Peasant"` pour l'Aube continuent de marcher.
+3. **Table des surcharges** (`Tools/Data/FactionOverrides.csv` : faction, type, champ, valeur) : nom affiché, maillage, échelle, coût, temps de production, éventuellement PV et attaque, d'un type du socle **pour cette faction** : c'est ainsi que le Lancier des Légions coûte moins cher et a une autre tête, sans nouvelle ligne de type. Lue une fois au chargement des tables, appliquée par l'emplacement du propriétaire (`FindTypeRow(type, faction)`).
+
+Pourquoi pas des types dupliqués (`LegionsSpearman`…) : 2 à 6 fois plus de lignes, et l'IA, les tests et les contres devraient connaître chaque nom. À revoir si un jour les statistiques des factions divergent beaucoup (les Héritiers du Feu : règle d'élite ×2).
+
+## Règles du projet à suivre pendant ce chantier
+
+- **Test rouge d'abord**, sur la vraie chaîne (pas de valeurs mises à la main) ; chaque cas de la demande testé et répété avant l'essai ; boucle jusqu'au vert.
+- **EtapeDefini.md** (chemin absolu `C:\Users\baudo\Documents\MyCrusader\EtapeDefini.md`) mis à jour à chaque avancée, en même temps que ce journal ; relire juste avant d'éditer.
+- Boucles de 15 min ; aucun sous-agent au-delà de 300 000 jetons ; compiler par `Tools\build.ps1` (file d'attente automatique), `-LiveCoding=0` ; moteur HeroesOfLiberty `C:\UE\UE_5.8_HOL` ; ne pas écraser AS_3 (ProjectShiva).
+- Commits **en anglais**, sans ligne `Co-Authored-By` ; **rien committé tant que l'utilisateur n'a pas validé que tout marche** ; jamais de push sans accord.
+- Tests : `Tools\Tests\quick_check.ps1` (< 1 min par défaut, `-Parts` pour les parties touchées, `-Full` seulement à une clôture) ; essais **rigoureux** (`preflight.ps1`, « VU À L'ÉCRAN » contre « LOGIQUE SEULEMENT », 3 min au plus, 12 règles de `Auto_Journey.md` « Qualité des essais ») ; chaque essai demandé vient avec son **scénario** `Tools\Scenarios\<nom>.txt` lancé par `play.ps1` ; deuxième écran (`-WinX=3940 -WinY=100 -saveddirsuffix=Tests`) ou sans fenêtre.
+- Un asset visuel : **une dizaine d'échantillons** vus dans le jeu, l'utilisateur dit aimé / pas aimé (méthode `assets-ten-samples`) ; **placeholders d'abord** (Mannequin teinté, boîtes), vrais modèles après.
+- Chemins absolus dans toute commande donnée à l'utilisateur et dans les sous-agents ; le PowerShell de l'utilisateur s'ouvre dans `C:\Users\baudo`.
+- Aucune statistique n'est inventée : chaque unité et chaque bâtiment est **proposé** (valeurs du GDD d'abord) puis **choisi par l'utilisateur** (D345), en bloc s'il le préfère.
+
+## Étapes
+
+Chaque étape : **objectif**, **à toucher**, **test rouge d'abord**, **fin** (critère vérifiable) et, si besoin, **valeurs à proposer à l'utilisateur**.
+
+### L0 Socle multi-faction (C++ + données) : la clé de tout
+- **Objectif** : la faction d'un emplacement décide de son travailleur, de son héros, de ses surcharges et de ce qu'il voit dans sa grille. Avec deux Aube, **rien ne change** (aucun test existant ne devient rouge).
+- **À toucher** : `Tools/Data/UnitTypes.csv`, `BuildingTypes.csv` (colonne `Faction`), `Factions.csv` et `FactionOverrides.csv` (neufs) ; `Simulation/HOLUnitTypes.h` (lecture, `FindTypeRow` avec faction), `Buildings/HOLBuildingTypes.h` ; `Match/HOLStartRules.*` (rôles), `HeroesOfLibertyGameModeBase.cpp` (départ), `Simulation/HOLHeroSubsystem.cpp`, `HOLHeroLibrary.cpp`, `Player/HOLSelectionMarkers.cpp`, `StressTest/HOLStressTestSubsystem.cpp` ; `Player/HOLCommandGrid.*` et `HOLPlayerController.cpp` (grille filtrée par faction) ; `Production/` (refus d'un type d'une autre faction) ; réplication : la faction d'un emplacement est déjà dans `GetLaunchConfig()`, vérifier qu'elle arrive au client (`-Parts net`) ; régénération des assets (éditeur).
+- **Test rouge d'abord** : (1) un emplacement `BlackLegions` démarre avec le type travailleur et le type héros que `Factions.csv` donne (pas ceux de l'Aube) ; (2) la grille d'une Caserne des Légions n'affiche pas `Monk` ; la grille du Centre n'affiche pas `Chapel` / `Sanctuary` ; (3) `FindTypeRow(Spearman, Legions)` rend le coût et le nom de `FactionOverrides.csv` ; (4) la production d'un type d'une autre faction est refusée par le serveur ; (5) un match Aube contre Aube est inchangé octet pour octet (empreintes, `-Parts tests`).
+- **Fin** : `quick_check -Parts tests,build,net` verts ; le lobby « Légions Noires » lance une partie qui démarre avec un « travailleur » provisoire (le Paysan, tant que le Zombie n'existe pas) et le héros de l'Aube (tant que L8a n'existe pas), **sans plantage**.
+- **Pas à faire ici** : aucun contenu des Légions (L1 et suivantes).
+
+### L1 Zombie et économie (données + script)
+- **Objectif** : le Zombie remplace le Paysan des Légions (D66) : moins cher, **sans nourriture** (LQ-8 : bois et or seulement), **collecte plus lente**, **1 place** de population ; construit, récolte, répare comme le Paysan.
+- **À toucher** : ligne `Zombie` dans `UnitTypes.csv` (`Faction` = `Legions`, catégories `Peasant` + `Profane` après L3), rôle `Worker` dans `Factions.csv` ; `Script/AI/HOLAIOpening.as` et `HOLAINeeds.as` (l'ouverture de l'IA lit « Peasant » : passer par le rôle) ; textes fr / en / ja (`fill_po.py`) ; maillage placeholder.
+- **Test rouge d'abord** : un emplacement des Légions démarre avec N Zombies (pas de Paysans) ; un Zombie récolte plus lentement qu'un Paysan et ne coûte pas de nourriture ; l'IA des Légions ouvre avec des Zombies.
+- **Valeurs à proposer** : PV, coût, temps de production, taux de collecte par ressource, capacité de portage, vitesse. LQ-8 tranchée : le Zombie ne coûte pas de nourriture.
+- **Fin** : scénario `legions_economy` (un Zombie construit une Maison et récolte du bois ; comparaison avec un Paysan à l'écran) ; tests verts.
+
+### L2 Socle en reskin (données + art)
+- **Objectif** : Lancier (`Spearman`), Homme d'armes (`ManAtArms`), Archer, Arbalétrier, Cavalier léger (`LightCavalry` de la branche `cavalry`), Bélier, Mangonneau : **mêmes types, surcharges des Légions** (nom affiché, maillage, **coût propre**, temps) ; Caserne, Champ de tir, Écurie, Atelier de siège, Maison, camps, Moulin, Ferme, Marché, Centre : mêmes bâtiments, apparence propre en surcharge.
+- **À toucher** : `FactionOverrides.csv` (lignes des Légions), `Factions.csv` (filtres : pas de Moine, de Chapelle, de Sanctuaire, de Hallebardier).
+- **Test rouge d'abord** : pour chaque unité du socle, le coût d'un emplacement des Légions vient de la surcharge et est inférieur à celui de l'Aube ; le nom affiché est celui des Légions ; la grille de la Caserne des Légions propose Lancier / Homme d'armes, jamais Hallebardier.
+- **Valeurs à proposer** : coût et temps de chacune des 7 unités (une par une, D345, ou en bloc si l'utilisateur préfère), en gardant le rapport de D66 ; maillage : placeholders (Mannequin teinté en gris-vert, carcan de bois pour le Zombie…), dix échantillons plus tard (L13).
+- **Dépend de** la branche `cavalry` (fusion dans `main`) pour le Cavalier léger : sinon le laisser pour la fin de L2.
+- **Fin** : scénario `legions_roster` (une rangée de chaque unité des Légions face à la même des Aube, coûts affichés).
+
+### L3 Catégorie « Profane » (C++ léger)
+- **Objectif** : `EHOLArmorCategory::Profane` (D393) sur le Zombie, le Squelette, le Guerrier Damné, les serviteurs temporaires et le Champion damné ; **pas** le Nécromancien ni le héros. *Bénédiction des armes* de l'Aube (`Technologies.csv`, T6) ajoute un bonus contre cette catégorie.
+- **À toucher** : `Simulation/HOLUnitTypes.h` (nouvelle valeur ; mettre à jour le commentaire de la liste, `AI/HOLAIOrders.h` ligne 90, `Tools/Data/make_unit_stats.py`, `UnitStats.md`), `Tools/Data/Technologies.csv` et les effets de technologie (`Technologies/`).
+- **Test rouge d'abord** : un Zombie a le bit `Profane` ; un Archer de l'Aube avec *Bénédiction des armes* fait plus de dégâts à un Zombie qu'à un Paysan ; le Nécromancien et le héros n'ont pas le bit.
+- **Fin** : tests verts ; la partie « Aube bloquée » de T6 dans `TechnologiesInProgress.md` mise à jour (les autres blocages SC-Q1 / SC-Q2 restent à l'Aube).
+
+### L4 Guerrier Damné (données + script, un peu de C++ pour la rage)
+- **Objectif** : unité emblématique de la **Caserne** (D395, D128), palier 1 ; frontline berserker, massue ou hache, dégâts élevés ; ***rage nécrotique*** (durée plus longue avec la *Fosse des damnés*, L9) : **il se consume au combat** (perd des PV en frappant ; chiffres à proposer) ; catégories Infanterie lourde + Lourd (D428, « unité par unité ») + Profane.
+- **À toucher** : ligne `DamnedWarrior` dans `UnitTypes.csv` (`Faction` = `Legions`), `Produces` de la Caserne (filtre de faction), textes, maillage placeholder ; la rage passe par le **cadre de capacités d'unités** (LQ-3, voir L6a ci-dessous : à commencer ici).
+- **Test rouge d'abord** : stats lues du tableau ; rage : bonus de cadence et de dégâts pendant X s, PV perdus par coup, recharge ; la Caserne des Légions le propose, celle de l'Aube non.
+- **Valeurs à proposer** : tout (PV, attaque, cadence, armures, coût, temps, rage : durée, bonus, coût en PV, recharge).
+- **Fin** : scénario `legions_warrior` : Guerrier Damné contre Homme d'armes de l'Aube (contre direct), puis rage lancée à la main et à l'IA.
+
+### L5 Cadavres de jeu, D86 (C++ de simulation + réseau) : la plus lourde
+- **Objectif** : chaque unité morte (alliée ou ennemie, sauf Squelettes temporaires, serviteurs de *Relève impie*, siège, bâtiments) laisse un **cadavre** pendant un temps limité (~60 à 90 s), avec un **plafond sur la carte** ; **aucun déni** (rien ne détruit ni ne purifie un cadavre, le Moine non) ; le cadavre est une donnée de simulation (position, type d'origine, propriétaire d'origine, instant), **pas** l'élément visuel de `HOLCorpse`.
+- **À toucher** : un petit magasin de cadavres (sous-système ou fragment Mass), alimenté à la mort (`HOLCombatProcessor` / `HOLUnitSubsystem` où l'activité devient `Dying`), expiré au pas de simulation ; réplication au client (nécessaire pour les dessiner et pour que le Nécromancien du client les voie) ; brouillard (un cadavre sous le brouillard n'est pas dessiné, F7) ; **empreinte** de la simulation (déterminisme, `-Parts net`) ; coût en performance (D190, S1 / S2 : à mesurer à la clôture seulement).
+- **Test rouge d'abord** : une unité tuée laisse un cadavre à sa place ; il disparaît après sa durée ; au plafond, le plus ancien part ; deux simulations identiques donnent les mêmes cadavres ; le client en voit le même nombre que le serveur (`net`).
+- **Valeurs (LQ-13, tranchées)** : durée 75 s, plafond de 60 cadavres par joueur (celui dont l'unité est morte).
+- **Fin** : `quick_check -Parts tests,net` verts ; commande de triche `hol.Cheat.Corpses` (liste) pour les essais ; pas encore de dessin final (cercle de debug).
+
+### L6 Nécropole, Nécromancien, Squelette (C++ léger + script)
+- **L6a Cadre de capacités d'unités ordinaires** (LQ-3 = A) : une table de capacités (nom, recharge, durée, cible), un registre par unité, des règles pures en Angelscript, un bouton dans la grille du bâtiment ou de la sélection, la file d'ordre existante ; le C++ ne fait que ce que le script ne peut pas (consommer un cadavre, rendre intangible). Modèle : le soin du Moine (`HOLHealRules`) et les capacités du héros (`HOLHeroAbilityRules`). **Commencé à L4 (rage), fini ici.**
+- **L6b Nécropole** : bâtiment du palier 1 (D338), produit le Nécromancien ; spécialisation du palier 2 *Tour des nécromanciens* y pose sa flamme violette (L9). **Constructible en plusieurs exemplaires** (LQ-14). **Valeurs à proposer** : taille, PV, coût, temps de construction, grille.
+- **L6c Squelette** : unité **permanente**, faible, **gratuite**, dans la population ; catégories Profane (+ légère) ; levée = **consommer un cadavre** (du Nécromancien, à portée) ; **à proposer** : PV, attaque, armure, population (1), temps de levée.
+- **L6d Nécromancien** : soutien ; lève des Squelettes depuis les cadavres ; **deux malédictions** (affaiblissement d'attaque, ralentissement ; durée courte, recharge) et **drain de vie** (LQ-9) ; levée : 1 cadavre = 1 Squelette, canalisation 3 s, portée 3 cases (LQ-10) ; sorcier vivant, **pas Profane** ; **valeurs à proposer**.
+- **Test rouge d'abord** : un Nécromancien à portée d'un cadavre lève un Squelette, le cadavre disparaît, la population du joueur augmente de 1 ; sans cadavre, l'ordre est refusé ; plafond de population respecté ; le Squelette survit (permanent).
+- **Fin** : scénario `legions_necro` : champ de bataille, cadavres, Nécromancien qui lève, Squelettes qui combattent ; essai de l'utilisateur ; tests réseau.
+
+### L7 Spectre Assassin (C++ pour l'intangible + script)
+- **Objectif** : Caserne, palier 1 (D395) ; rapide ; dagues spectrales (harcèlement des tireurs) ; ***Dématérialisation*** : ~3 s intangible (ne subit pas les tirs, traverse les unités), longue recharge, pour atteindre les tireurs ; **marquage** de cibles : la cible marquée prend plus de dégâts de toutes les unités alliées pendant quelques secondes (LQ-11, valeur à proposer) ; **aucune furtivité propre** (D396), il profite des zones de furtivité de la carte (D383).
+- **À toucher** : l'état d'unité (`D343`, 59 bits : y a-t-il de la place pour un bit « intangible » ? sinon un fragment à part), les tirs (`HOLCombatProcessor` : ignorer une cible intangible), la collision / l'évitement (`HOLCollision.h`), la capacité (cadre L6a).
+- **Test rouge d'abord** : pendant la Dématérialisation, un tir d'Archer ne le touche pas et une unité peut le traverser ; après 3 s, il redevient touchable et solide ; recharge respectée ; il ne peut pas se dématérialiser coincé dans un bâtiment (position valide à la sortie).
+- **Valeurs à proposer** : PV, attaque, cadence, vitesse, durée et recharge, marquage.
+- **Fin** : scénario `legions_spectre` : Spectre contre Archers (il passe les flèches, tue les tireurs), contre Lanciers (il perd).
+
+### L8a Seigneur Damné, fiche du héros (données, **sans kit**)
+- **Objectif** : un héros de départ propre aux Légions : type `DamnedLord` (rôle `Hero` des Légions), nom, PV, attaque, vitesse, armure Héros, fiche de héros (niveaux 1 à 6 du prototype avec les valeurs d'XP du héros actuel), **aucune capacité, aucun talent, pas de kit de duel** (le héros des Légions n'a que l'attaque de base).
+- **Test rouge d'abord** : un emplacement des Légions démarre avec un `DamnedLord`, pas un `Hero` de l'Aube ; la mort et le retour du héros (J8a.4) marchent pour lui ; son XP monte aux mêmes sources.
+- **Valeurs (LQ-12, tranchées)** : mêmes chiffres que le Paladin-Commandant (450 PV, attaque 30, cadence 1,25 s, vitesse et armures du Paladin), réglés à l'essai ; les étoiles (combat ★★★, commandement ★★☆, stratégique ★☆☆) se traduiront par le kit (L8b).
+- **Fin** : essai : Aube contre Légions avec héros des deux côtés.
+
+### Jalon « Aube contre Légions jouable » (après L0, L1, L2, L3, L4, L8a)
+- L'utilisateur lance une partie Aube contre Légions en solo et en réseau, sans IA des Légions (IA = L12) ; scénario `legions_vs_dawn` (armées déjà posées) ; première lecture : l'économie du Zombie et le coût réduit changent-ils le rythme ? **À montrer à l'utilisateur** avant de continuer.
+
+### L8b Seigneur Damné, kit — **ATTEND la clôture du chantier global du héros (J8)**
+- *Aura de terreur* (niveau 1) et *Moisson* (niveau 1) ; *Sacrifice* (niveau 4) ; *Grande Moisson* (niveau 10, hors prototype) ; kit de duel « Le Boucher » (D122 : drain, *Enchaînement*, *Frappe dévorante*, *Rage nécrotique*, ultime *Faim des damnés*) ; effet de victoire en duel (*Champion damné* ~45 s + *Moisson* au maximum, D35) ; refus de duel : seulement l'*Hésitation*, pas d'Honneur (D76).
+- Demandera : un **système général d'effets de moral** posés sur des unités (D74, D125, D404 : catégorie, plafond de cumul, durée), absent aujourd'hui ; la lecture des cadavres (L5) pour *Sacrifice* ; le chantier Duel (`DuelInProgress.md`).
+
+### L9 Spécialisations des paliers 1 et 2 (script + données ; LQ-14)
+- **Palier 1 (D126, choix définitif)** : ***Autel de sang*** = **bâtiment avancé** (hors du rayon anti-rush de D22, constructible loin de la base mais pas près d'un centre ennemi) qui forme Guerriers Damnés et infanterie près du front ; les cadavres durent plus longtemps dans son rayon ; **plusieurs exemplaires possibles** ; fragile (le risque voulu). **OU** ***Fosses de labeur*** = **technologie** : Zombies plus rapides à la collecte et moins chers ; marque : carcan de bois aux épaules des Zombies ; choisie dans l'interface, gratuite, appliquée après 30 s (palier 1) ou 45 s (palier 2) (D332, D683, D684).
+- **Palier 2 (D127, choix définitif)** : ***Fosse des damnés*** = **bâtiment** : Guerriers Damnés moins chers, *rage nécrotique* plus longue ; halo verdâtre autour de la Caserne ; **plusieurs exemplaires possibles**, payés en ressources comme tout bâtiment (le choix ne fait que le débloquer), effet actif tant qu'un exemplaire tient, sans cumul (à confirmer). **OU** ***Tour des nécromanciens*** = **technologie** : Nécromanciens lèvent plus vite, malédictions plus fortes ; flamme violette sur la Nécropole ; choisie dans l'interface, gratuite, appliquée après 30 s (palier 1) ou 45 s (palier 2) (D332, D683, D684).
+- **Exception à D335** (« un effet, pas un bâtiment ») voulue par l'utilisateur pour trois des quatre choix : à noter au GDD avec les décisions de ce chantier.
+- Le mécanisme de **choix définitif** entre deux options d'un palier (D07, D332, D333) **n'existe pas dans le code** (relevé du 2026-11-04). **D690 : la première session qui en a besoin le construit** (L9 ici, ou A8 du dossier `AubeInProgress.md`) ; **vérifier dans `main` s'il existe avant de le refaire**. La règle anti-rush de l'Autel de sang est aussi reprise par la *Chapelle de campagne* de l'Aube (A9) : un seul code.
+- **Test rouge d'abord** : après le choix, l'effet s'applique et l'autre option du palier est fermée ; l'Autel de sang refuse de se construire dans le rayon anti-rush ; deux Fosses des damnés ne cumulent pas ; la destruction de la dernière retire l'effet.
+- **Valeurs à proposer** : coûts, tailles, PV, temps de construction des deux bâtiments ; effet chiffré des deux technologies (le choix est gratuit, délai de D684).
+
+### L10 Technologies de faction (données + script)
+- *Os taillés* (Squelettes +armure), *Chair putride* (Zombies +PV) au palier 1 ; *Rites funèbres* (chaque levée d'un Nécromancien soigne les Squelettes proches de ~10 %, D317), *Lames empoisonnées* (Guerriers Damnés : dégâts sur la durée) au palier 2 ; lieu de recherche (D583) : à fixer (Nécropole ? Caserne ?) ; lignes `Legions` de `Technologies.csv` ; textes fr / en / ja ; IA (`HOLAITechnologyLibrary.h`, table de retards).
+- **Test rouge d'abord** : chaque technologie se recherche au bon bâtiment et au bon palier, change la statistique visée, n'est pas proposée à l'Aube.
+
+### L11 Talents du Seigneur Damné — **ATTEND L8b**
+- Les trois Rites (Moisson, Charnier, Effroi) : sceaux, talents clés, rangées 2 à 6 (D112 à D116) dans `Talents.csv` et `TalentsInProgress.md` ; la table de contres de l'IA (D662) a déjà les profils.
+
+### L12 IA des Légions (script)
+- Économie de Zombies (ouverture écrite en données, cible de population de travailleurs, maisons, camps, moulin et fermes : adapter `HOLAIOpening`, `HOLAINeeds`) ; production selon les catégories et les contres (Guerriers, socle, Spectres contre les tireurs, Squelettes quand il y a des cadavres) ; **usage des cadavres** (envoyer le Nécromancien là où l'on se bat) ; spécialisations (choix tiré du profil) ; **héros et talents après L8b / L11** ; niveaux Facile / Normal / Difficile et Évolutive comme l'Aube ; **aucune triche**.
+- **Test rouge d'abord** : l'IA des Légions seule lève des Zombies, bâtit, produit une armée et attaque ; `aiduel` Aube IA contre Légions IA sans plantage.
+
+### L13 Visuel et son (art)
+- Placeholders d'abord (Mannequin teinté et échelles), puis **dix échantillons à choisir** (méthode `assets-ten-samples`, chantier `VisualInProgress.md`) pour Zombie, Guerrier, Nécromancien, Spectre, Squelette, Nécropole, Fosses, cadavre ; teinte et effets « mort-vivant » **communs** appliqués au modèle d'origine (D56) ; sons (chantier `AudioInProgress.md`) ; **couleur du joueur** par bannières (VI-Q3 = B / D666) sur les bâtiments.
+
+### L14 Essais et clôture
+- Scénarios `legions_*` et leur pré-vol, `aiduel` Aube contre Légions, essai de l'utilisateur (Aube contre Légions en vrai, solo et réseau), test prioritaire 10 (§ 17.1) noté, mesures S1 / S2 à la clôture seulement (`rest_measures.ps1`), `-Full` à la fusion, décisions numérotées au GDD, journal clos et archivé dans `Docs/Archive/`.
+
+## Trous du GDD comblés (réponses du 2026-11-04)
+
+Les sept questions de valeurs LQ-8 à LQ-14 sont **tranchées** (voir « Décisions de l'utilisateur » en tête). Restent à **proposer chiffres en main** à leur étape : tous les PV, attaques, coûts, temps, durées de recharge et tailles de bâtiments (règle D345 : une proposition du GDD, l'utilisateur tranche).
+
+## Ce que ce chantier touche chez les autres
+
+- **Duel** : `HOLDuelRules.as` a le coût de refus par faction ; il faudra l'effet de victoire des Légions et le kit « Le Boucher » (L8b).
+- **Technologies** : T6 de l'Aube (*Bénédiction des armes*, Profane) se débloque avec L3 ; `Technologies.csv` n'a aucune ligne `Legions` (L10).
+- **Talents** : les Rites vont dans `TalentsInProgress.md` / `Talents.csv` (L11).
+- **Cavalerie** (`CavalryInProgress.md`) : le Cavalier léger est aussi celui des Légions, en reskin (L2).
+- **IA** (`AIInProgress.md`) : chaque règle doit pouvoir être lue par l'IA (§ 14.4) ; L12.
+- **Réseau** : cadavres et Squelettes sont de l'état de simulation répliqué (empreintes identiques, `-Parts net`, `netfogview` pour le brouillard).
+- **Visuel** (`VisualInProgress.md`) : bannières sur les bâtiments, dix échantillons.
+- **Brouillard** : les cadavres et les Spectres suivent la vision (D381 à D383).
+
+## Après le prototype (ne pas faire ici)
+
+Palier 3 : *Abomination* (Fosse de suture, Atelier de siège), *Cimetière maudit*, *Ossuaire*, *Cracheur de bile* ; *Relève impie* (héros niveau 7) ; talents des rangées 7 à 9 (D196) ; Cavalier lourd ; goules et corruption de zone (pistes du GDD) ; variantes de chute (chantier animations).
+
+## Comment lancer
+
+1. L'utilisateur donne un worktree (ou dit lequel prendre) ; réserver par `IN_USE.txt` sans écraser ; créer la branche `legions` depuis `main` à jour.
+2. Lire ce journal, `CLAUDE.md` du projet et `Auto_Journey.md` « Qualité des essais ».
+3. Vérifier que la branche `cavalry` est fusionnée dans `main` (sinon L2 attend pour le Cavalier léger) et que le worktree compile (`Tools\build.ps1`).
+4. Commencer par **L0**, test rouge d'abord ; mettre à jour ce journal et `EtapeDefini.md` à chaque étape.
+5. Demander les valeurs à l'utilisateur étape par étape (une proposition du GDD, il tranche), numéroter les décisions au GDD § 21 (prochain numéro libre à relire dans le GDD ; ceux de la section « Décisions » ci-dessus d'abord).
+
+## Journal
+
+- 2026-11-04 : journal ouvert, état des lieux fait, rien codé, rien commité.
+- 2026-11-04 : réponses LQ-1 à LQ-6 de l'utilisateur consignées ; L2 en reskin à coûts par unité ; L8 coupée en L8a (fiche) et L8b (kit, après J8).
+- 2026-11-04 : dossier complété (« on finit le dossier avant d'en ouvrir un autre ») : conception de L0 tranchée par l'utilisateur (LQ-7, rôles + surcharges), état des lieux précisé dans le code (32 usages de `PeasantTypeName` / `HeroTypeName`, 251 noms de types dans l'IA, `Profane` = une valeur de plus dans le masque, pas de système général de moral), chaque étape avec son test rouge et sa fin, trous du GDD listés (LQ-8 à LQ-14), mode d'emploi. **Statut : prêt à lancer** dès qu'un worktree est donné.
+- 2026-11-04 : LQ-8 à LQ-14 tranchées avec l'utilisateur (Zombie sans nourriture en coût, deux malédictions, 1 cadavre = 1 Squelette en 3 s, marquage = plus de dégâts, héros aux chiffres du Paladin, cadavres 75 s et 60 par joueur, Autel de sang et Fosse des damnés = bâtiments multiples, Fosses de labeur et Tour des nécromanciens = technologies). Plus aucune question ouverte de conception ; reste les valeurs chiffrées, proposées à chaque étape.
+- 2026-11-04 : LQ-1 à LQ-14 numérotées au GDD (D677 à D682) ; D683 : chaque spécialisation de palier est marquée « technologie » ou « bâtiment » dans le GDD pour toutes les factions ; pour les Légions : Fosses de labeur, Tour des nécromanciens, Fosse de suture = technologies, Autel de sang, Fosse des damnés, Cimetière maudit = bâtiments. Coûts tranchés ensuite : une technologie de spécialisation ne coûte que le choix (gratuit, délai de déblocage 30 / 45 / 60 s, annulable avant la fin, D684), un bâtiment de spécialisation se paie en ressources comme tout bâtiment (il est débloqué par le choix).
