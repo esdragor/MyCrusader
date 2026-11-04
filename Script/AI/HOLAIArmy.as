@@ -253,6 +253,9 @@ namespace HOLAIArmy
 		Data.Types.Add(n"ManAtArms");
 		Data.Types.Add(n"Archer");
 		Data.Types.Add(n"Crossbowman");
+		// C1 (D672, NOT COMPILED): the cavalry is a type whose value and matchups count (own and enemy) in the power ratio; it is not a candidate of the
+		// composition (its Stable is built and filled by HOLAICavalry, per level), and a table without the row leaves it with no health: it counts for nothing.
+		Data.Types.Add(n"LightCavalry");
 		Data.Candidates.Add(n"Spearman");
 		Data.CandidateBuildings.Add(n"Barracks");
 		Data.CandidateRatios.Add(2);

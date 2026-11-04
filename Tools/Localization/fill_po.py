@@ -415,6 +415,10 @@ TRANSLATIONS = {
     # Q-chapelle-moine = A: the Chapel and the Monk (GDD 7.1, 11.1).
     "HOLGameNames,Chapel": ("Chapel", "礼拝堂"),
     "HOLGameNames,Monk": ("Monk", "修道士"),
+    # C1 (D672, cavalry of the prototype): the Stable and the Light Cavalry. NOT YET USED: the keys exist in the .po files only once
+    # HOLGameNames.cpp has the two LOCTEXT (C2, C++); until then both show the table's French name (DisplayName) in every language.
+    "HOLGameNames,Stable": ("Stable", "厩舎"),
+    "HOLGameNames,LightCavalry": ("Light Cavalry", "軽騎兵"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
     # S2: the siege workshop and its two engines (GDD 6.1).
