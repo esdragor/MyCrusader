@@ -163,7 +163,7 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
     # A light client capped at 60 frames per second (a player's game): without a renderer nothing paces it (600-690 fps) and it burnt more than a
     # processor each (248 % of one core for two, 2026-10-29) in a measure that wants the servers' load, not theirs.
     $ClientCommands = $NetCommands + $(if ($Headless) { @("t.MaxFPS 60") } else { @() }) + "hol.Test.Run $Sequence"
-    $Arguments = "`"$UProject`" $Address -game $Display -saveddirsuffix=Tests_Net$Tag$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$($ClientCommands -join ',')`""
+    $Arguments = "`"$UProject`" $Address -game $Display -saveddirsuffix=Tests_Net$Tag$Client -nosplash -unattended -LiveCoding=0 -asdebugport=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$($ClientCommands -join ',')`""
     $ClientProcess = if ($Headless) {
         Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     } else {
