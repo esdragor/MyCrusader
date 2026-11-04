@@ -1,7 +1,7 @@
 """The varied ground of the maps (chantier Cartes, C1b; M-Q5: varied ground for every map). The parent material
 /Game/Rendering/M_GroundVaried is made by Tools/Editor/make_ground_materials.py (three colours blended by a world noise,
 the faint tile line of the building grid kept; since 2026-11-03 also a CC0 detail texture, see DETAILS below); each map that wants its own ground has an instance of it, set here, and names
-it in its module (steppe.GROUND = "MI_Ground_Steppe"). A module without GROUND keeps the grey M_MatteGround (Plain). The
+it in its module (steppe.GROUND = "MI_Ground_Steppe"). A module without GROUND keeps the grey M_MatteGround (none now: every map but the Steppe and the fixed test map has its own). The
 recipes make the instance when missing, so a map file never lacks it; the script sets them again (tuning a colour: edit
 GROUNDS here, run the script, remake the maps only if you want the file to carry it - the instance is an asset, the map only
 points to it).
@@ -27,6 +27,14 @@ GROUNDS = {
     "MI_Ground_Steppe": (color(0.115, 0.145, 0.055), color(0.300, 0.200, 0.085), color(0.060, 0.045, 0.030), 2200.0, 2.0, 0.04, 2.0, 0.04),
     # The Hinterland (C2): a dark moss green, ochre sand and stony earth, grey-brown mud; smaller patches than the Steppe.
     "MI_Ground_Hinterland": (color(0.080, 0.115, 0.050), color(0.260, 0.170, 0.080), color(0.070, 0.062, 0.055), 2000.0, 2.0, 0.04, 2.0, 0.04),
+    # 2026-11-04 (the user: "the ground of the Plain is grey; every map but the Steppe gets a real ground"): one textured ground per map, a uniform
+    # colour with no patches (BFrom / CFrom out of the noise's reach), each its own tone so that the maps tell apart.
+    "MI_Ground_Plain": (color(0.090, 0.165, 0.050), color(0.220, 0.200, 0.080), color(0.070, 0.060, 0.040), 2400.0, 2.0, 0.04, 2.0, 0.04),
+    "MI_Ground_Forest": (color(0.045, 0.090, 0.035), color(0.150, 0.110, 0.050), color(0.040, 0.035, 0.030), 2400.0, 2.0, 0.04, 2.0, 0.04),
+    "MI_Ground_Cols": (color(0.130, 0.120, 0.060), color(0.260, 0.200, 0.100), color(0.080, 0.070, 0.050), 2400.0, 2.0, 0.04, 2.0, 0.04),
+    "MI_Ground_Fords": (color(0.100, 0.160, 0.070), color(0.220, 0.200, 0.090), color(0.070, 0.060, 0.040), 2400.0, 2.0, 0.04, 2.0, 0.04),
+    "MI_Ground_ElDorado": (color(0.070, 0.130, 0.060), color(0.200, 0.170, 0.070), color(0.050, 0.050, 0.035), 2400.0, 2.0, 0.04, 2.0, 0.04),
+    "MI_Ground_Crown": (color(0.110, 0.130, 0.090), color(0.230, 0.200, 0.110), color(0.070, 0.065, 0.055), 2400.0, 2.0, 0.04, 2.0, 0.04),
 }
 
 
@@ -37,6 +45,12 @@ TEXTURE_FOLDER = FOLDER + "/Textures/Ground"
 DETAILS = {
     "MI_Ground_Steppe": ("grass_ground", 900.0, 0.7),
     "MI_Ground_Hinterland": ("forest_ground_06", 900.0, 0.7),
+    "MI_Ground_Plain": ("grass_ground", 900.0, 0.7),
+    "MI_Ground_Forest": ("forest_ground_06", 900.0, 0.7),
+    "MI_Ground_Cols": ("sparse_grass", 900.0, 0.7),
+    "MI_Ground_Fords": ("sparse_grass", 900.0, 0.7),
+    "MI_Ground_ElDorado": ("grass_ground", 900.0, 0.7),
+    "MI_Ground_Crown": ("sparse_grass", 900.0, 0.7),
 }
 # Every source texture to import (the alternatives are kept so that a map can be switched by DETAILS alone).
 TEXTURES = ("grass_ground", "sparse_grass", "forest_ground_06")

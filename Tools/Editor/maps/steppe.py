@@ -682,12 +682,39 @@ def obstacles(recipe):
     return common.spawn_ridges(recipe)
 
 
-def sources(recipe):
-    """The sources of the match (D297), as AHOLSourceLayout data: the reduced bases, then the deposits, each in turn."""
-    placed = common.base_sources(recipe, BASE_WOOD_ROWS, BASE_WOOD_COLUMNS, veins=False, organic=True, wood_packs=BASE_PACKS)
-    deposits = layout(recipe)
-    for deposit in deposits:
-        placed += deposit.sources()
+# 2026-11-04 (the user, after the Steppe and Plain trials): the budget of trees is 400 per player (Huge 1.5 times that), the Steppe holds
+# twice the wood it had (600, Huge 900) in groves of 30 to 40 (its spirit kept: scattered clumps), and every other map's forests are REAL
+# forests of 200 trees or more (organic blobs with glades, never squares). WOODS: profile -> (budget {size: (trees, berries)}, GROVE_LADDER,
+# GROVE_CYCLE, GROVE_MEANS, trees asked of a deposit point = common.PACK_TREES). A map module calls steppe.sources(recipe, "forests").
+NEAR_FORESTS = 1  # real forests: how many of NEAR's three woods stay (as big as a forest)
+WOODS = {
+    "steppe": ({"default": (600, 15), "Huge": (int(os.environ.get("HOL_STEPPE_HUGE_TREES", "720")), 23)}, [30, 34, 37, 40],
+               [34, 34, 30, 37, 40, 34, 34, 30, 37, 40], [34.0, 35.0, 36.0, 37.0, 38.0], 35),
+    "forests": ({"default": (400, 15), "Huge": (int(os.environ.get("HOL_FORESTS_HUGE_TREES", "600")), 23)}, [200, 210, 220, 230],
+                [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
+    "dense": ({"default": (600, 15), "Huge": (int(os.environ.get("HOL_DENSE_HUGE_TREES", "720")), 23)}, [200, 210, 220, 230],
+              [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
+}
+
+
+def sources(recipe, woods="steppe"):
+    """The sources of the match (D297), as AHOLSourceLayout data: the reduced bases, then the deposits, each in turn. woods: a key of WOODS."""
+    global BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, NEAR
+    before = (BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, common.PACK_TREES, NEAR)
+    BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, common.PACK_TREES = WOODS[woods]
+    NEAR = [(kind, GROVE_LADDER[0] if kind == "Wood" else size, nearest, farthest) for kind, size, nearest, farthest in NEAR]  # the near woods are as big as the smallest grove
+    if woods != "steppe":
+        woods_in_near = [i for i, entry in enumerate(NEAR) if entry[0] == "Wood"]
+        NEAR = [entry for i, entry in enumerate(NEAR) if entry[0] != "Wood" or i in woods_in_near[:NEAR_FORESTS]]
+    MIN_EXTENT = extent("Wood", GROVE_LADDER[0])
+    FAR_FLOOR = DEPOSIT_GAP + 2 * MIN_EXTENT + 10.0
+    try:
+        placed = common.base_sources(recipe, BASE_WOOD_ROWS, BASE_WOOD_COLUMNS, veins=False, organic=True, wood_packs=BASE_PACKS)
+        deposits = layout(recipe)
+        for deposit in deposits:
+            placed += deposit.sources()
+    finally:
+        BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, common.PACK_TREES, NEAR = before
     return placed, len(deposits) // len(recipe.angles)
 
 
@@ -701,6 +728,12 @@ def volcano(recipe):
     return [common.volcano_site(recipe)]
 
 
+def floor_of(woods, recipe):
+    """The trees a territory must hold at this size for the WOODS profile (the budget)."""
+    table = WOODS[woods][0]
+    return table.get(recipe.size_key, table["default"])[0]
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
-    return budget_of(recipe)[0]
+    return floor_of("steppe", recipe)

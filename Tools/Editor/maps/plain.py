@@ -18,6 +18,8 @@ import unreal
 from maps import common
 from maps.common import spawn_shape, matte_instance, placed_source
 
+GROUND = "MI_Ground_Plain"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
+
 # Obstacles (D286): the ridges are the shared piece common.spawn_ridges; the grove is Plaine's own.
 # Grove: trunks of 5 m, crowns from 4 m up (the units pass under them, the trunks block), on a disc of 14 m.
 GROVE_TREES = [(0.0, 0.0), (700.0, 250.0), (-500.0, 600.0), (-650.0, -400.0), (250.0, -750.0), (1200.0, -300.0),
@@ -37,10 +39,11 @@ CROWN_COLOR = unreal.LinearColor(0.10, 0.22, 0.08, 1.0)
 # packs of PACK_SIDE x PACK_SIDE trees (a grid with the jitter of common.WOOD_JITTER, turned by a random yaw), berry patches and the far
 # veins, each thrown on the cell of a 6 m grid of the territory nearest to the distance asked of it (growing outwards), CLEAR from
 # everything else.
-BUDGET_TREES = {"default": 300, "Huge": int(os.environ.get("HOL_HUGE_TREES", "360"))}  # HOL_HUGE_TREES=450 (the formula 1.5 x 300): the same setting as the Steppe's
+BUDGET_TREES = {"default": 400, "Huge": int(os.environ.get("HOL_HUGE_TREES", "600"))}  # 2026-11-04 (the user): 400 trees per player, Huge 1.5 times that  # HOL_HUGE_TREES=450 (the formula 1.5 x 300): the same setting as the Steppe's
 BUDGET_BERRIES = {"default": 15, "Huge": 23}
 BASE_PACKS = [16, 16]
 PACK_SIDE = 4
+FOREST_TREES = 210  # 2026-11-04 (the user): REAL forests of 200 trees or more (organic blobs with glades, common.grove_points), not squares of 16
 PACK_SPACING = 140.0  # cm between neighbouring trunks (2026-10-31, the user: "trees that touch"; it was 170): the trunks (60 cm radius) touch at 120, the jitter (PACK_JITTER of common.WOOD_JITTER) never takes two below it
 PACK_JITTER = 0.35
 BERRY_PATCHES = {"default": [5, 4], "Huge": [6, 6, 5]}  # on top of the base's 6 bushes: 15 and 23 asked
@@ -157,7 +160,7 @@ def territory(recipe, base):
     far = [(common.mineral_type(resource, tier), MINERAL_RADIUS[tier], 1) for resource, tier in reversed(common.mineral_far(recipe))]
     patches = [("BerryBush", common.berry_reach(count) * 0.9, count) for count in BERRY_PATCHES[huge]]
     wanted_trees = BUDGET_TREES[huge] - sum(BASE_PACKS)
-    packs = [("Tree", 450.0, PACK_SIDE * PACK_SIDE) for _ in range(-(-wanted_trees // (PACK_SIDE * PACK_SIDE)))]
+    packs = [("Tree", common.grove_reach(FOREST_TREES) * 0.95, FOREST_TREES) for _ in range(-(-wanted_trees // FOREST_TREES))]
     queue = []
     for kind_list in (far, patches, packs):
         queue += [((index + 0.5) / len(kind_list), kind_list[index]) for index in range(len(kind_list))]
@@ -168,7 +171,8 @@ def territory(recipe, base):
         target = FIRST_DISTANCE + (last - FIRST_DISTANCE) * (number + 0.5) / len(queue)
         x, y = put(item[0], item[1], target_distance=target)
         if item[0] == "Tree":
-            for tx, ty in pack_points((x, y), noise.uniform() * 2 * math.pi):
+            yaw = noise.uniform() * 2 * math.pi
+            for tx, ty in common.grove_points(common.mix_seed(recipe.layout_seed, 40 + number), (x, y), item[2], (math.cos(yaw), math.sin(yaw))):
                 items.append(("Tree", tx, ty))
         elif item[0] == "BerryBush":
             for bx, by in common.berry_points(common.mix_seed(recipe.layout_seed, 20 + number), (x, y), item[2]):

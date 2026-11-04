@@ -740,14 +740,20 @@ class Noise:
         return max(-1.0, min(1.0, total / math.sqrt(0.5 * len(self.waves))))
 
 
+def big_room(count):
+    """2026-11-04: the room a tree of a REAL forest (60 trees or more) is given, compared with a small grove's (random sprouting jams at that density
+    otherwise): 1 up to 60 trees, 1.5 from there."""
+    return 1.0 if count <= 60 else 1.5
+
+
 def grove_reach(count):
     """How far from its centre the farthest tree of a grove of count trees may be (grove_local keeps to it)."""
-    return 1.3 * math.sqrt(count * GROVE_AREA / math.pi) + 90.0
+    return 1.3 * math.sqrt(count * GROVE_AREA * big_room(count) / math.pi) + 90.0
 
 
 def grove_long(count):
     """How far the farthest tree of a grove of count trees may be when the room allows it (a stretched or bent grove)."""
-    return 2.0 * math.sqrt(count * GROVE_AREA / math.pi) + 120.0
+    return 2.0 * math.sqrt(count * GROVE_AREA * big_room(count) / math.pi) + 120.0
 
 
 def berry_reach(count):
@@ -802,7 +808,7 @@ def grove_attempt(rng, count, compact):
                 cut_area += math.pi * glades[-1][2] ** 2
             else:
                 paths.append((rng.range(0.0, 0.4), rng.range(0.0, 2 * math.pi), rng.range(0.0, 2 * math.pi), rng.chance(0.5)))
-    radius = math.sqrt((blob + cut_area / GROVE_AREA) * GROVE_AREA / math.pi / mean_square)
+    radius = math.sqrt((blob + cut_area / GROVE_AREA) * GROVE_AREA * big_room(count) / math.pi / mean_square)
     for _, _, _, through in paths:
         radius = math.sqrt(radius ** 2 + (2 if through else 1) * 2 * PATH_HALF_WIDTH * radius / math.pi)
     semi_a, semi_b = radius * math.sqrt(aspect), radius / math.sqrt(aspect)
@@ -850,7 +856,7 @@ def grove_attempt(rng, count, compact):
     while len(points) < blob:
         tries += 1
         stalled += 1
-        if tries > 12000:
+        if tries > max(12000, 250 * count):
             return None
         spacing = GROVE_SPACING + GROVE_SPACING_SLACK * rng.uniform() ** 2
         if points and stalled < 300:
