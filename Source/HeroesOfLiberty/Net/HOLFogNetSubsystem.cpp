@@ -283,7 +283,6 @@ void UHOLFogNetSubsystem::RefreshConnections()
 	{
 		return;
 	}
-	const FHOLMatchConfig& Config = State->GetLaunchConfig();
 	TMap<uint32, uint32> Now;
 	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
 	{
@@ -295,9 +294,8 @@ void UHOLFogNetSubsystem::RefreshConnections()
 		}
 		const AHOLPlayerState* Player = Controller->GetPlayerState<AHOLPlayerState>();
 		const int32 Slot = Player ? Player->GetPlayerIndex() : INDEX_NONE;
-		const bool bTeam = Config.Slots.IsValidIndex(Slot) && Config.Slots[Slot].Team != 0;
 		Now.Add(Connection->GetConnectionHandle().GetParentConnectionId(),
-			HOLVisionRules::GetReceivedCamps(Vision->GetCampIndex(Slot), State->IsSlotDefeated(Slot), bTeam));
+			HOLVisionRules::GetReceivedCamps(Vision->GetCampIndex(Slot), State->IsSlotDefeated(Slot), Vision->HasStandingTeammate(Slot)));
 	}
 	for (const TPair<uint32, uint32>& Connection : Now)
 	{

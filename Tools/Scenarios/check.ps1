@@ -24,7 +24,18 @@ if (-not $EngineDir) {
 }
 $Log = Join-Path $Root "Saved_Tests\Logs\scenario_$Name.log"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
-Remove-Item $Log -ErrorAction SilentlyContinue
+# The log of THIS pass only (2026-11-03: a log still held by the previous pass's process could not be removed, the loop below
+# read its old "ready" line: three stale PASS). A log that cannot be removed is a FAIL, never read; preflight.ps1 reads this
+# same path, so no other name is taken.
+$Removed = $false
+for ($Try = 0; $Try -lt 10 -and -not $Removed; $Try++) {
+    if (-not (Test-Path $Log)) { $Removed = $true; break }
+    try { Remove-Item $Log -Force -ErrorAction Stop; $Removed = $true } catch { Start-Sleep -Milliseconds 500 }
+}
+if (-not $Removed) {
+    Write-Host "check $Name : FAIL (the log $Log of an earlier pass is held by another process and cannot be removed: a game of this worktree still running? Stop it, then run again; nothing was read from it)"
+    exit 1
+}
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
 $Arguments = "`"$UProject`" -game -RenderOffScreen -nosound -unattended -nosplash -culture=fr -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Scenario $Name`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
@@ -32,7 +43,8 @@ $Start = Get-Date
 $Result = "FAIL (timeout after $TimeoutSeconds s)"
 while (((Get-Date) - $Start).TotalSeconds -lt $TimeoutSeconds) {
     Start-Sleep -Seconds 3
-    if (Test-Path $Log) {
+    # Never a log older than this pass's start (the engine creates it after the removal above).
+    if ((Test-Path $Log) -and (Get-Item $Log).LastWriteTime -ge $Start.AddSeconds(-2)) {
         $Text = Get-Content $Log -Raw -ErrorAction SilentlyContinue
         if ($Text -match "Scenario ${Name}: ready") { $Result = "PASS"; break }
         if ($Text -match "Test sequence: timeout at step") { $Result = "FAIL (a step timed out)"; break }

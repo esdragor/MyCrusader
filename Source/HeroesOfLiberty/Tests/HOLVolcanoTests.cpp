@@ -784,16 +784,56 @@ bool FHOLVolcanoFreshDepositTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	// 10 000 cm long, half way: 4000 cm up the second segment.
-	TestTrue(TEXT("it stands half way along the flow (the setting)"), First.Location.Equals(PointAt(Flow, 0.5f * Flow.Length()), 1.0));
+	// D649: the place is drawn from the seed between the two settings, on the flow's line, and is not a fixed value.
+	TestTrue(TEXT("it stands where its drawn fraction says"), First.Location.Equals(PointAt(Flow, First.Along * Flow.Length()), 1.0));
 	TestTrue(TEXT("... which is on the flow's line"), DistanceToFlow(Flow, First.Location) < 1.f);
-	TestTrue(TEXT("... named by the setting"), First.TypeName == (First.Kind == EFreshKind::Gold ? Settings.FreshDepositGoldType : Settings.FreshDepositStoneType));
+	TestTrue(TEXT("... named by the setting of its kind and its size"), First.TypeName == (First.Kind == EFreshKind::Gold ? (First.bBig ? Settings.FreshDepositGoldBigType : Settings.FreshDepositGoldSmallType)
+		: (First.bBig ? Settings.FreshDepositStoneBigType : Settings.FreshDepositStoneSmallType)));
 	TestTrue(TEXT("the same call gives the same deposit (a function of seed, cycle and flow)"),
-		FreshDeposit(SiteSeedValue, 0, Flow, Settings).Kind == First.Kind && FreshDeposit(SiteSeedValue, 0, Flow, Settings).Location == First.Location);
+		FreshDeposit(SiteSeedValue, 0, Flow, Settings).Kind == First.Kind && FreshDeposit(SiteSeedValue, 0, Flow, Settings).Location == First.Location && FreshDeposit(SiteSeedValue, 0, Flow, Settings).bBig == First.bBig);
 
-	Settings.FreshDepositAlong = 0.25f;
-	TestTrue(TEXT("a quarter along when set so"), FreshDeposit(SiteSeedValue, 0, Flow, Settings).Location.Equals(PointAt(Flow, 0.25f * Flow.Length()), 1.0));
-	Settings.FreshDepositAlong = 0.5f;
+	// The place varies from cycle to cycle, always inside the settings' range; both sizes come; every kind and size pairs with its own type.
+	float LowestAlong = 2.f;
+	float HighestAlong = -1.f;
+	int32 Big = 0;
+	int32 Combos[2][2] = { { 0, 0 }, { 0, 0 } };
+	bool bAllNamed = true;
+	for (int32 Cycle = 0; Cycle < 400; ++Cycle)
+	{
+		const FFreshDeposit Drawn = FreshDeposit(SiteSeedValue, Cycle, Flow, Settings);
+		LowestAlong = FMath::Min(LowestAlong, Drawn.Along);
+		HighestAlong = FMath::Max(HighestAlong, Drawn.Along);
+		Big += Drawn.bBig ? 1 : 0;
+		Combos[Drawn.Kind == EFreshKind::Gold ? 1 : 0][Drawn.bBig ? 1 : 0]++;
+		bAllNamed &= Drawn.Location.Equals(PointAt(Flow, Drawn.Along * Flow.Length()), 1.0) && !Drawn.TypeName.IsNone();
+	}
+	TestTrue(TEXT("the place is always between the minimum and the maximum of the settings"), LowestAlong >= Settings.FreshDepositAlongMin - 0.0001f && HighestAlong <= Settings.FreshDepositAlongMax + 0.0001f);
+	TestTrue(TEXT("... and it varies (not one fixed place): the 400 cycles cover most of the range"),
+		LowestAlong < Settings.FreshDepositAlongMin + 0.1f * (Settings.FreshDepositAlongMax - Settings.FreshDepositAlongMin)
+		&& HighestAlong > Settings.FreshDepositAlongMax - 0.1f * (Settings.FreshDepositAlongMax - Settings.FreshDepositAlongMin));
+	TestTrue(TEXT("both sizes come, about half big over 400 cycles"), Big > 140 && Big < 260);
+	TestTrue(TEXT("all four combinations (small/big gold/stone) come"), Combos[0][0] > 20 && Combos[0][1] > 20 && Combos[1][0] > 20 && Combos[1][1] > 20);
+	TestTrue(TEXT("every draw stands on the flow and has a type"), bAllNamed);
+
+	Settings.FreshDepositBigShare = 0.f;
+	Big = 0;
+	for (int32 Cycle = 0; Cycle < 50; ++Cycle)
+	{
+		Big += FreshDeposit(SiteSeedValue, Cycle, Flow, Settings).bBig ? 1 : 0;
+	}
+	TestEqual(TEXT("big share 0: always small"), Big, 0);
+	Settings.FreshDepositBigShare = 1.f;
+	for (int32 Cycle = 0; Cycle < 50; ++Cycle)
+	{
+		Big += FreshDeposit(SiteSeedValue, Cycle, Flow, Settings).bBig ? 1 : 0;
+	}
+	TestEqual(TEXT("big share 1: always big"), Big, 50);
+	Settings.FreshDepositBigShare = 0.5f;
+	Settings.FreshDepositAlongMin = 0.25f;
+	Settings.FreshDepositAlongMax = 0.25f;
+	TestTrue(TEXT("a range reduced to one fraction puts it there"), FreshDeposit(SiteSeedValue, 0, Flow, Settings).Location.Equals(PointAt(Flow, 0.25f * Flow.Length()), 1.0));
+	Settings.FreshDepositAlongMin = 0.3f;
+	Settings.FreshDepositAlongMax = 0.7f;
 
 	// Both kinds come, about as often as the share says; no memory (a cycle does not depend on the previous one).
 	int32 Gold = 0;

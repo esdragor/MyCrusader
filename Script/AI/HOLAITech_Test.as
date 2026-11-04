@@ -38,8 +38,8 @@ void Test_AITechResearchesTheFirstOfTheOrder(FUnitTest& T)
 	T.AssertEquals(700.f, float(Choice.BuildingAt.X), "in the Farm");
 }
 
-// The difficulty: only Hard by the provisional setting; the setting is the one switch (3 = nobody, 0 = everybody).
-void Test_AITechDifficultyIsTheOnlySwitch(FUnitTest& T)
+// D648: every level researches, the DELAY is what differs: nothing before it (game seconds), then the same rule. The levels by their numbers 0 Easy, 1 Normal, 2 Hard.
+void Test_AITechEveryLevelResearchesAfterItsDelay(FUnitTest& T)
 {
 	TArray<FHOLAITechnology> Table;
 	HOLAITechnology::ReadAITechnologyTable(Table);
@@ -47,18 +47,57 @@ void Test_AITechDifficultyIsTheOnlySwitch(FUnitTest& T)
 	TArray<FHOLAIBuilding> Buildings;
 	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
 	const TArray<int> Rich = AITechStock(500, 500, 0, 0);
-	FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 0).bResearch, "Easy does not");
-	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 2).bResearch, "Hard does");
-	Rule.MinDifficulty = 2;
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).bResearch, "Hard only (the default): Normal does not");
-	Rule.MinDifficulty = 1;
-	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).bResearch, "lowered to Normal: Normal does");
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 0).bResearch, "and Easy still not");
-	Rule.MinDifficulty = 0;
-	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 0).bResearch, "lowered to Easy: Easy does");
-	Rule.MinDifficulty = 3;
-	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 2).bResearch, "3 = nobody");
+	const FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	T.AssertEquals(3, Rule.DelaySeconds.Num(), "a delay per level");
+	for (int Level = 0; Level < 3; Level++)
+	{
+		FHOLAITechMemory Memory;
+		const float Delay = Rule.DelaySeconds[Level];
+		FHOLAITechChoice Early = HOLAITech::Think(Rule, Memory, Delay - 1.f, Table, Done, Buildings, Rich, 25, 1, 3, Level);
+		if (Delay > 0.f)
+		{
+			T.AssertFalse(Early.bResearch, f"level {Level}: not a second before its delay");
+			T.AssertTrue(Early.Reason.Contains("too early"), f"level {Level}: it says why");
+		}
+		FHOLAITechChoice Late = HOLAITech::Think(Rule, Memory, Delay, Table, Done, Buildings, Rich, 25, 1, 3, Level);
+		T.AssertTrue(Late.bResearch, f"level {Level}: researches at its delay");
+		T.AssertTrue(Late.Technology == n"PloughI", f"level {Level}: the same first technology");
+	}
+}
+
+// D648: Hard first, then Normal, Easy MUCH later (not a few seconds: at least twice Normal's delay and a few minutes).
+void Test_AITechDelaysAreOrderedHardNormalEasy(FUnitTest& T)
+{
+	const FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	T.AssertTrue(Rule.DelaySeconds[2] < Rule.DelaySeconds[1], "Hard before Normal");
+	T.AssertTrue(Rule.DelaySeconds[1] < Rule.DelaySeconds[0], "Normal before Easy");
+	T.AssertTrue(Rule.DelaySeconds[0] >= 2.f * Rule.DelaySeconds[1], "Easy much later than Normal");
+	T.AssertTrue(Rule.DelaySeconds[0] >= 300.f, "Easy at least five minutes in");
+}
+
+// An Evolving AI plays Easy, then Normal, then Hard (D329): its delay is the one of the level it plays now, so it researches when the stage it is in allows.
+void Test_AITechEvolvingFollowsTheLevelItPlays(FUnitTest& T)
+{
+	TArray<FHOLAITechnology> Table;
+	HOLAITechnology::ReadAITechnologyTable(Table);
+	TArray<FName> Done;
+	TArray<FHOLAIBuilding> Buildings;
+	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
+	const TArray<int> Rich = AITechStock(500, 500, 0, 0);
+	const FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	const FHOLAILivesData Data;
+	// Just before Normal's stage the Evolving AI is Easy: it waits for Easy's delay.
+	float Now = Data.EvolveNormalAt - 1.f;
+	int Level = int(HOLAILives::Effective(EHOLAIDifficulty::Evolving, Now, Data));
+	T.AssertEquals(0, Level, "Easy before Normal's stage");
+	FHOLAITechMemory Memory;
+	T.AssertEquals(Now >= Rule.DelaySeconds[0], HOLAITech::Think(Rule, Memory, Now, Table, Done, Buildings, Rich, 25, 1, 3, Level).bResearch, "Easy's delay applies");
+	// At Hard's stage it is Hard: Hard's delay (the shortest) applies whatever Easy's was.
+	Now = Data.EvolveHardAt;
+	Level = int(HOLAILives::Effective(EHOLAIDifficulty::Evolving, Now, Data));
+	T.AssertEquals(2, Level, "Hard after Hard's stage");
+	FHOLAITechMemory Later;
+	T.AssertTrue(HOLAITech::Think(Rule, Later, Now, Table, Done, Buildings, Rich, 25, 1, 3, Level).bResearch, "researches as a Hard AI");
 }
 
 // Each condition holds it back alone: the economy (20 Peasants), the tier, the building (finished), the Farm busy.
@@ -223,10 +262,4 @@ void Test_AITechGivesUpAfterSaveSeconds(FUnitTest& T)
 	T.AssertEquals(0, Gave.Earmark.Num(), "nothing earmarked");
 	T.AssertFalse(HOLAITech::Think(Rule, Memory, 200.f, Table, Done, Buildings, Poor, 25, 1, 3, 2).bSaving, "still given up");
 	T.AssertTrue(HOLAITech::Think(Rule, Memory, 100.f + Rule.SaveSeconds + 1.f + Rule.GiveUpSeconds + 1.f, Table, Done, Buildings, Poor, 25, 1, 3, 2).bSaving, "saves again after the pause");
-}
-
-// The default level is Hard only (like the Market and the Siege Workshop): Normal's economy stays what the user validated until the answer.
-void Test_AITechDefaultIsHardOnly(FUnitTest& T)
-{
-	T.AssertEquals(2, HOLAITech::DefaultSettings().MinDifficulty, "Hard only by default");
 }

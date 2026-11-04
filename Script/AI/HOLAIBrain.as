@@ -122,7 +122,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int64 Step = GetStepIndex();
 		Data.GameSeconds = float(Step) / 20.f;
 		LogStatus(PlayerIndex, Step, Summary);
-		// 0a. The technologies (T7, provisional levels: hol.AI.TechMinLevel, default Hard only): first, so that a research is paid before the other purchases
+		// 0a. The technologies (T7, D648: every level, a delay per level): first, so that a research is paid before the other purchases
 		// of the thought; while it saves for one, the other purchases of this thought do not see the stock set aside for it.
 		const TArray<int> Earmark = ThinkTech(PlayerIndex, Step, Summary);
 		if (Earmark.Num() == 4)
@@ -338,17 +338,13 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	}
 
 	// The technologies (T7, GDD 11): the research HOLAITech::Choose wants, queued at its building as a unit would be (a research is an item of the
-	// same queue, T-Q6). The levels that research are provisional (hol.AI.TechMinLevel, 2 = Hard only by default; question Q-ia-technologies). Returns what the other purchases of the thought must leave in the
+	// same queue, T-Q6). Every level researches, after the delay of the level it plays now (D648, hol.AI.TechDelay*; an Evolving AI follows its stage). Returns what the other purchases of the thought must leave in the
 	// stock (the cost of the research ordered, or the part of it held while it saves): four amounts, or none..
 	TArray<int> ThinkTech(int PlayerIndex, int64 Step, const FHOLAISummary& Summary)
 	{
 		TArray<int> Earmark;
 		FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
-		Rule.MinDifficulty = HOLAITechnology::GetAITechMinLevel();
-		if (int(Summary.Level) < Rule.MinDifficulty)
-		{
-			return Earmark;
-		}
+		const EHOLAIDifficulty Played = HOLAILives::Played(Summary.Level, float(Step) / 20.f, HOLAIArmy::DefaultData().Lives);
 		TArray<FHOLAITechnology> Table;
 		if (!HOLAITechnology::ReadAITechnologyTable(Table))
 		{
@@ -364,7 +360,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		FHOLAITechMemory Memory;
 		TechMemories.Find(PlayerIndex, Memory);
 		const FHOLAITechChoice Choice = HOLAITech::Think(Rule, Memory, float(Step) / 20.f, Table, Done, Summary.Buildings, Stock, Summary.PeasantIds.Num(), Summary.Tier,
-			HOLHero::GetHeroLevel(PlayerIndex), int(Summary.Level));
+			HOLHero::GetHeroLevel(PlayerIndex), int(Played));
 		TechMemories.Add(PlayerIndex, Memory);
 		// The reason it waits is written when it changes (the journal of a trial says why a slot does not research).
 		FString LastReason;

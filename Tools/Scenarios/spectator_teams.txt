@@ -1,0 +1,21 @@
+# Spectateur d'une equipe entiere tombee (D646) : a 3 equipes, quand mon equipe tombe (je suis seul dedans), je vois TOUTE la carte, plus la vue vide de mon equipe.
+# Plain, moi (slot 0, equipe 1) et deux IA (slots 1 et 2, equipes 2 et 3). Brouillard Normal dessine.
+hol.Fog.Mode 2
+hol.Fog.Render 1
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+hol.Camera.FocusNear 0 0
+hol.Camera.Zoom -2
+frames 30
+hol.HUD.Report 1
+capture spectator_a
+note Brouillard Normal : la carte est noire hors de ma vue (mon centre et mes unites). Deux IA, chacune dans son equipe.
+waitkey Entree : mon equipe tombe (je suis seul dans mon equipe)
+hol.Victory.Defeat 0
+waitlog End banner: Defeat
+frames 60
+hol.HUD.Report 1
+capture spectator_b
+note Defaite, equipe entiere tombee : toute la carte est en vue, plus de noir, les deux autres equipes se voient .

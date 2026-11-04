@@ -12,6 +12,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLRelayView.h"
 #include "Match/HOLVictoryRules.h"
+#include "Match/HOLVolcanoView.h"
 #include "Net/HOLPauseRules.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "HOLGameState.generated.h"
@@ -155,6 +156,14 @@ public:
 	const TArray<FHOLRelayView>& GetRelayViews() const { return RelayViews; }
 	/** Server or solo only. */
 	void SetRelayViews(const TArray<FHOLRelayView>& Views);
+
+	/**
+	 * V9a: the volcano sites as every machine knows them (phase, flow drawn, front, crater, altar); the server writes them
+	 * (UHOLVolcanoSubsystem, each step, only when they changed), a client reads them: the map's site is not replicated.
+	 */
+	const TArray<FHOLVolcanoSiteNet>& GetVolcanoViews() const { return VolcanoViews; }
+	/** Server or solo only. */
+	void SetVolcanoViews(const TArray<FHOLVolcanoSiteNet>& Views);
 	/**
 	 * R7.5: the banner's lines at the server time Now (GetServerWorldTimeSeconds), one per notice, in the order of the
 	 * departures: « Bob : connexion perdue — 2:41 » while away, « Bob : de retour » BackNoticeSeconds after his return.
@@ -360,6 +369,10 @@ private:
 	/** R5: the neutral relays, public. */
 	UPROPERTY(Replicated)
 	TArray<FHOLRelayView> RelayViews;
+
+	/** V9a: the volcano sites, public. */
+	UPROPERTY(Replicated)
+	TArray<FHOLVolcanoSiteNet> VolcanoViews;
 	/** The stock kept for slot Slot while its player is away; nullptr: not absent (or no game state of ours). */
 	static FHOLResources* FindAbsentStock(const UWorld& World, int32 Slot);
 
@@ -525,6 +538,12 @@ public:
 	 * the change stored and replicated at once, announced (log "Diplomacy: ...", then OnDiplomacyAnnounced).
 	 */
 	HOLDiplomacy::FStanceChange ApplyStance(int32 From, int32 To, int32 Stance);
+	/**
+	 * D6 (D373): the end of the match by the camps and, in the Diplomacy mode, by an alliance of all the survivors (at least one player
+	 * beaten): over at once, together. Server only; sets bMatchOver / WinnerMask and broadcasts OnMatchOver. Called by each defeat and each
+	 * stance change (an alliance formed after the last defeat ends the match at that second). True when the match just ended.
+	 */
+	bool EvaluateMatchEnd();
 	/** Server only: From opens (bShare) or closes its vision to To (HOLDiplomacy::SetVision). */
 	HOLDiplomacy::FVisionChange ApplyVision(int32 From, int32 To, bool bShare);
 	/** The log of this machine's view: one line per pair of occupied slots ("Diplomacy report: ..."), for the scenarios and quick_check. */
