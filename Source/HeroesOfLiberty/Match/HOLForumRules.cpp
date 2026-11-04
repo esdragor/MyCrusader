@@ -5,6 +5,7 @@
 #include "Algo/StableSort.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "Match/HOLDiplomacyRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
@@ -436,7 +437,7 @@ FHOLForumBlock HOLForumRules::GetSelectionBlock(const FHOLForumState* State, con
 }
 
 TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig& Config, const TConstArrayView<FHOLForumState> Forums,
-	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers)
+	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers, const HOLDiplomacy::FBook* Book)
 {
 	// The occupied slots, in their order; grouped by team when there are teams (no team last).
 	TArray<int32> Slots;
@@ -446,7 +447,7 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		if (Config.Slots[Slot].State != EHOLSlotState::Closed)
 		{
 			Slots.Add(Slot);
-			bTeams |= Config.Slots[Slot].Team > 0;
+			bTeams |= Config.Slots[Slot].Team > 0 && !Book;
 		}
 	}
 	if (bTeams)
@@ -468,16 +469,29 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		FHOLPlayersTableRow& Row = Rows.AddDefaulted_GetRef();
 		Row.Slot = Slot;
 		Row.ColorIndex = MatchSlot.ColorIndex;
-		Row.Team = MatchSlot.Team;
+		Row.Team = Book ? 0 : MatchSlot.Team;
 		Row.bGreyed = bDefeated;
 		// E4-2: a defeated slot's name struck through, as its row greyed.
 		Row.bStruck = bDefeated;
 		// E4-1: same camp as the viewer an ally, another an enemy; a spectator (no slot) sees no relation.
 		const int32 ViewerCamp = LocalSlot != INDEX_NONE ? HOLVictoryRules::GetCamp(Config, LocalSlot) : INDEX_NONE;
-		Row.Relation = bLocal ? EHOLPlayerRelation::Self
-			: ViewerCamp == INDEX_NONE ? EHOLPlayerRelation::None
-			: HOLVictoryRules::GetCamp(Config, Slot) == ViewerCamp ? EHOLPlayerRelation::Ally
-			: EHOLPlayerRelation::Enemy;
+		if (Book)
+		{
+			// D6: the stances of the book, not the lobby's teams. Neutral: no icon (provisional).
+			const int32 Relation = LocalSlot != INDEX_NONE ? HOLDiplomacy::Relation(*Book, LocalSlot, Slot) : HOLDiplomacy::Neutral;
+			Row.Relation = bLocal ? EHOLPlayerRelation::Self
+				: ViewerCamp == INDEX_NONE ? EHOLPlayerRelation::None
+				: Relation == HOLDiplomacy::Ally ? EHOLPlayerRelation::Ally
+				: Relation == HOLDiplomacy::Enemy ? EHOLPlayerRelation::Enemy
+				: EHOLPlayerRelation::Neutral;
+		}
+		else
+		{
+			Row.Relation = bLocal ? EHOLPlayerRelation::Self
+				: ViewerCamp == INDEX_NONE ? EHOLPlayerRelation::None
+				: HOLVictoryRules::GetCamp(Config, Slot) == ViewerCamp ? EHOLPlayerRelation::Ally
+				: EHOLPlayerRelation::Enemy;
+		}
 		Row.bNewGroup = bTeams && Rows.Num() > 1 && Rows[Rows.Num() - 2].Team != Row.Team;
 		// M6-Q12: the name the lobby gave the slot when it has one (a match from a lobby), else Joueur N; an AI's
 		// « IA Difficile 3 » (IA0.1-Q1).
@@ -517,6 +531,7 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 		}
 		const TCHAR* const RelationShown = Row.Relation == EHOLPlayerRelation::Self ? TEXT(" you")
 			: Row.Relation == EHOLPlayerRelation::Ally ? TEXT(" ally")
+			: Row.Relation == EHOLPlayerRelation::Neutral ? TEXT(" neutral")
 			: Row.Relation == EHOLPlayerRelation::Enemy ? TEXT(" enemy") : TEXT("");
 		Row.Shown = FString::Printf(TEXT("slot %d%s%s%s colour %d lives %d %s"), Slot, RelationShown,
 			PlayerName.IsEmpty() ? TEXT("") : *FString::Printf(TEXT(" '%s'"), *PlayerName),

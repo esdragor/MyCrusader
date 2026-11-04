@@ -24,7 +24,8 @@ int32 HOLVictoryRules::GetCamp(const FHOLMatchConfig& Config, const int32 Slot)
 	{
 		return INDEX_NONE;
 	}
-	const int32 Team = Config.Slots[Slot].Team;
+	// D5/D6: in the Diplomacy mode the lobby's teams do not count (everyone for oneself, the alliances are the stances of the book).
+	const int32 Team = Config.Mode == EHOLMatchMode::Diplomacy ? 0 : Config.Slots[Slot].Team;
 	return Team >= 1 && Team <= FHOLMatchConfig::MaxTeams ? Team : FHOLMatchConfig::MaxTeams + 1 + Slot;
 }
 

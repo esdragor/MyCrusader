@@ -12,6 +12,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLMapBounds.h"
+#include "Match/HOLDiplomacyRules.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
@@ -105,6 +106,9 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 	Mode = InMode;
 	UnitObservers.Reset();
 	BuildingObservers.Reset();
+	SharedUnitObservers.Reset();
+	SharedBuildingObservers.Reset();
+	ShareCamps.Reset();
 	Stamp = 0;
 
 	// A camp per team, or per slot alone (HOLVictoryRules::GetCamp), packed: Map's camps are only the match's.
@@ -184,7 +188,34 @@ void UHOLVisionSubsystem::BeginPass()
 	Present.Reset();
 }
 
-void UHOLVisionSubsystem::ObserveUnit(const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
+void UHOLVisionSubsystem::BuildShareCamps(const int32 OnlyCamp)
+{
+	ShareCamps.Reset();
+	const AHOLGameState* State = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+	if (!State || !State->IsDiplomacyMode())
+	{
+		return;
+	}
+	ShareCamps.SetNum(FHOLMatchConfig::MaxSlots);
+	const HOLDiplomacy::FBook Book = State->GetDiplomacyBook();
+	for (int32 From = 0; From < FHOLMatchConfig::MaxSlots; ++From)
+	{
+		for (int32 To = 0; To < FHOLMatchConfig::MaxSlots; ++To)
+		{
+			const int32 Camp = GetCampIndex(To);
+			if (From == To || Camp == INDEX_NONE || Camp == GetCampIndex(From) || (OnlyCamp != INDEX_NONE && Camp != OnlyCamp))
+			{
+				continue;
+			}
+			if (HOLDiplomacy::SharesVision(Book, From, To))
+			{
+				ShareCamps[From].AddUnique(Camp);
+			}
+		}
+	}
+}
+
+void UHOLVisionSubsystem::ObserveUnit(const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location, const bool bOwnCamp)
 {
 	const int32 Camp = GetCampIndex(Owner);
 	if (Camp == INDEX_NONE)
@@ -192,14 +223,34 @@ void UHOLVisionSubsystem::ObserveUnit(const uint32 UnitId, const FName TypeName,
 		return;
 	}
 	const FVector2D Position(Location);
-	if (FTracked* Tracked = UnitObservers.Find(UnitId))
+	if (bOwnCamp)
 	{
-		Map.MoveObserver(Tracked->Handle, Position);
-		Tracked->Stamp = Stamp;
+		if (FTracked* Tracked = UnitObservers.Find(UnitId))
+		{
+			Map.MoveObserver(Tracked->Handle, Position);
+			Tracked->Stamp = Stamp;
+		}
+		else
+		{
+			UnitObservers.Add(UnitId, FTracked{ Map.AddObserver(Camp, Position, GetUnitSight(TypeName)), Stamp });
+		}
 	}
-	else
+	// D371: the camps of the allies it shares its vision with count it as well.
+	if (ShareCamps.IsValidIndex(Owner))
 	{
-		UnitObservers.Add(UnitId, FTracked{ Map.AddObserver(Camp, Position, GetUnitSight(TypeName)), Stamp });
+		for (const int32 SharedCamp : ShareCamps[Owner])
+		{
+			const uint64 Key = (static_cast<uint64>(SharedCamp) << 32) | UnitId;
+			if (FTracked* Tracked = SharedUnitObservers.Find(Key))
+			{
+				Map.MoveObserver(Tracked->Handle, Position);
+				Tracked->Stamp = Stamp;
+			}
+			else
+			{
+				SharedUnitObservers.Add(Key, FTracked{ Map.AddObserver(SharedCamp, Position, GetUnitSight(TypeName)), Stamp });
+			}
+		}
 	}
 }
 
@@ -219,31 +270,51 @@ void UHOLVisionSubsystem::ObserveBuilding(const AHOLBuilding& Building, const bo
 	const double Radius = HOLVisionRules::GetBuildingSight(Type->SightRadius, State);
 	Present.Add(FHOLGhost{ HOLVisionRules::MakeGhostKey(false, Building.GetUniqueID()), Building.GetTypeName(), Building.GetOwnerPlayer(),
 		FVector2D(Building.GetActorLocation()), State, 0 });
-	if (!bObserve)
+	if (bObserve)
 	{
-		return;
-	}
-	if (FTracked* Tracked = BuildingObservers.Find(Building.GetUniqueID()))
-	{
-		if (Tracked->Radius != Radius)
+		if (FTracked* Tracked = BuildingObservers.Find(Building.GetUniqueID()))
 		{
-			Map.SetObserverRadius(Tracked->Handle, Radius);
-			Tracked->Radius = Radius;
+			if (Tracked->Radius != Radius)
+			{
+				Map.SetObserverRadius(Tracked->Handle, Radius);
+				Tracked->Radius = Radius;
+			}
+			Tracked->Stamp = Stamp;
 		}
-		Tracked->Stamp = Stamp;
+		else
+		{
+			BuildingObservers.Add(Building.GetUniqueID(), FTracked{ Map.AddObserver(Camp, FVector2D(Building.GetActorLocation()), Radius), Stamp, Radius });
+		}
 	}
-	else
+	// D371: the camps of the allies the owner shares its vision with count the building's sight as well.
+	if (ShareCamps.IsValidIndex(Building.GetOwnerPlayer()))
 	{
-		BuildingObservers.Add(Building.GetUniqueID(), FTracked{ Map.AddObserver(Camp, FVector2D(Building.GetActorLocation()), Radius), Stamp, Radius });
+		for (const int32 SharedCamp : ShareCamps[Building.GetOwnerPlayer()])
+		{
+			const uint64 Key = (static_cast<uint64>(SharedCamp) << 32) | Building.GetUniqueID();
+			if (FTracked* Tracked = SharedBuildingObservers.Find(Key))
+			{
+				if (Tracked->Radius != Radius)
+				{
+					Map.SetObserverRadius(Tracked->Handle, Radius);
+					Tracked->Radius = Radius;
+				}
+				Tracked->Stamp = Stamp;
+			}
+			else
+			{
+				SharedBuildingObservers.Add(Key, FTracked{ Map.AddObserver(SharedCamp, FVector2D(Building.GetActorLocation()), Radius), Stamp, Radius });
+			}
+		}
 	}
 }
 
 void UHOLVisionSubsystem::EndPass(const bool bGhosts, const int32 OnlyCamp)
 {
 	// Dead, destroyed or gone since the last pass: their cells counted off, still explored.
-	for (TMap<uint32, FTracked>* Observers : { &UnitObservers, &BuildingObservers })
+	const auto Sweep = [this](auto& Observers)
 	{
-		for (auto It = Observers->CreateIterator(); It; ++It)
+		for (auto It = Observers.CreateIterator(); It; ++It)
 		{
 			if (It.Value().Stamp != Stamp)
 			{
@@ -251,7 +322,11 @@ void UHOLVisionSubsystem::EndPass(const bool bGhosts, const int32 OnlyCamp)
 				It.RemoveCurrent();
 			}
 		}
-	}
+	};
+	Sweep(UnitObservers);
+	Sweep(BuildingObservers);
+	Sweep(SharedUnitObservers);
+	Sweep(SharedBuildingObservers);
 	if (!bGhosts)
 	{
 		return;
@@ -292,6 +367,7 @@ void UHOLVisionSubsystem::Update()
 	}
 	const double StartSeconds = FPlatformTime::Seconds();
 	BeginPass();
+	BuildShareCamps();
 	Units->ForEachLivingUnitWithType([this](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
 	{
 		ObserveUnit(UnitId, TypeName, Owner, Location);
@@ -416,14 +492,17 @@ bool UHOLVisionSubsystem::UpdateClient()
 	}
 	const double StartSeconds = FPlatformTime::Seconds();
 	BeginPass();
-	// The units of its camp only (an ally's too): the others it holds are the ones it sees, and they see nothing for it.
+	BuildShareCamps(ClientCamp);
+	// The units of its camp only (an ally's too): the others it holds are the ones it sees, and they see nothing for it. D371: an ally
+	// that shares its vision with this camp sees for it, so the units it sent here count (ShareCamps keeps this camp only).
 	TArray<FHOLUnitView> Views;
 	Reception->GetDisplayedUnits(Views);
 	for (const FHOLUnitView& View : Views)
 	{
-		if (GetCampIndex(View.OwnerPlayer) == ClientCamp)
+		const bool bOwnCamp = GetCampIndex(View.OwnerPlayer) == ClientCamp;
+		if (bOwnCamp || (ShareCamps.IsValidIndex(View.OwnerPlayer) && !ShareCamps[View.OwnerPlayer].IsEmpty()))
 		{
-			ObserveUnit(View.UnitId, View.TypeName, View.OwnerPlayer, View.Location);
+			ObserveUnit(View.UnitId, View.TypeName, View.OwnerPlayer, View.Location, bOwnCamp);
 		}
 	}
 	// All the buildings it holds are present for its memory (F6e.2: an enemy's it sees now, until the server stops sending it); its camp's observe.

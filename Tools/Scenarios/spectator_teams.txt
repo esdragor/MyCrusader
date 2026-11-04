@@ -16,6 +16,10 @@ waitkey Entree : mon equipe tombe (je suis seul dans mon equipe)
 hol.Victory.Defeat 0
 waitlog End banner: Defeat
 frames 60
+# La camera recule au maximum (le bandeau « Defaite » reste : hol.HUD.Click ne touche pas ses boutons) : on voit la carte sans noir.
+frames 30
+hol.Camera.Zoom -40
+frames 40
 hol.HUD.Report 1
 capture spectator_b
-note Defaite, equipe entiere tombee : toute la carte est en vue, plus de noir, les deux autres equipes se voient .
+note Defaite, equipe entiere tombee : clique « Continuer a regarder » si le bandeau est encore la, puis recule la camera (molette) : toute la carte est en vue, plus de noir, les deux autres equipes se voient.

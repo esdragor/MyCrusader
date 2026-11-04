@@ -6,6 +6,7 @@
   "bDrawPlaces": true,
   "bTeamsTogether": true,
   "fogMode": "Normal",
+  "biome": "default",
   "slots": [
     { "state": "Human", "faction": "DawnOrder", "colorIndex": 0, "team": 1, "playerName": "Bob" },
     { "state": "AI", "faction": "DawnOrder", "colorIndex": 6, "team": 2, "playerName": "", "difficulty": "Normal" },

@@ -7,13 +7,14 @@ waitlog Volcano site posed
 hol.Volcano.Report
 waitlog Volcano report
 # 4 Hommes d'armes sur l'autel : le compte monte, la ligne « Autel ancien : tenu x % » apparaît à gauche sous le panneau Triches.
+# Pas de « wait 1 » apres FocusNear : le defilement par le bord de l'ecran (curseur pres du bord de la fenetre) deplace la camera de ~4000 cm par seconde et les soldats naissaient hors de la zone de l'autel (apres preflight du 2026-11-04).
 hol.Camera.FocusNear 7800 1800
-wait 1
+frames 2
 hol.Units.SpawnHere 5 ManAtArms 0 400
 waitunits 5
 wait 15
 hol.Camera.FocusNear 7800 1800
-wait 1
+frames 2
 hol.Camera.Report
 hol.HUD.Report 1
 waitlog HUD overlap:
@@ -22,11 +23,11 @@ hol.Volcano.Report
 note 1. A gauche, sous le panneau Triches : « Autel ancien : tenu x % », le compte monte pendant que tes 5 Hommes d'armes tiennent l'autel (60 s sans adversaire).
 waitkey Entrée : 2 Hommes d'armes ennemis arrivent sur l'autel (le compte se fige)
 hol.Camera.FocusNear 7800 1800
-wait 1
+frames 2
 hol.Units.SpawnHere 2 ManAtArms 1 400
 wait 2
 hol.Camera.FocusNear 7800 1800
-wait 1
+frames 2
 hol.Camera.Report
 hol.Volcano.Report
 hol.HUD.Report 1
@@ -39,7 +40,7 @@ hol.Volcano.Report
 # Les soldats se calment avant la capture (et l'audit).
 wait 40
 hol.Camera.FocusNear 7800 1800
-wait 1
+frames 2
 hol.Camera.Report
 frames 20
 hol.HUD.Report 1

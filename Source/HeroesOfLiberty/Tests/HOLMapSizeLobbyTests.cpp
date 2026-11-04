@@ -65,6 +65,13 @@ bool FHOLMapSizeLobbyReadTest::RunTest(const FString& Parameters)
 	}
 	FHOLManagerClientRules::ParseLobby(MakeState(TEXT(R"(, "size": "huge")")), Lobby);
 	TestTrue(TEXT("size key without case"), Lobby.GetMapSize() == EHOLMapSize::Huge);
+	// D5: the lobby's match mode, Standard when the manager does not say or says an unknown name.
+	FHOLManagerClientRules::ParseLobby(MakeState(TEXT(R"(, "mode": "Diplomacy")")), Lobby);
+	TestTrue(TEXT("mode Diplomacy read"), Lobby.GetMatchMode() == EHOLMatchMode::Diplomacy);
+	FHOLManagerClientRules::ParseLobby(MakeState(TEXT("")), Lobby);
+	TestTrue(TEXT("no mode: Standard"), Lobby.GetMatchMode() == EHOLMatchMode::Standard);
+	FHOLManagerClientRules::ParseLobby(MakeState(TEXT(R"(, "mode": "Battlefield")")), Lobby);
+	TestTrue(TEXT("unknown mode: Standard"), Lobby.GetMatchMode() == EHOLMatchMode::Standard);
 
 	TArray<FHOLLobbySummary> Rows;
 	if (TestTrue(TEXT("list read"), FHOLManagerClientRules::ParseLobbies(TEXT(R"({ "lobbies": [
@@ -92,6 +99,12 @@ bool FHOLMapSizeLobbySendTest::RunTest(const FString& Parameters)
 	}
 	const TSharedPtr<FJsonObject> Plain = ReadSizedBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false));
 	TestTrue(TEXT("no size nor teams together unless given"), Plain.IsValid() && !Plain->HasField(TEXT("size")) && !Plain->HasField(TEXT("teamsTogether")));
+	TestFalse(TEXT("no mode unless given"), Plain.IsValid() && Plain->HasField(TEXT("mode")));
+	const TSharedPtr<FJsonObject> Diplomatic = ReadSizedBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, FString(), {}, FString(), TEXT("Diplomacy")));
+	if (TestTrue(TEXT("mode body read"), Diplomatic.IsValid()))
+	{
+		TestEqual(TEXT("mode sent"), Diplomatic->GetStringField(TEXT("mode")), FString(TEXT("Diplomacy")));
+	}
 	return true;
 }
 

@@ -1,4 +1,3 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-dipl_L0_locked | Presentation 0 hors mode Diplomatie : les trois boutons de posture sont grises (le joueur 2 Allie de ton equipe, les autres Ennemi), la note « Postures verrouillees », tributs et messages actifs
-dipl_L1_locked | Presentation 1 hors mode Diplomatie : la puce de posture est grisee
-dipl_L2_locked | Presentation 2 hors mode Diplomatie : la tete de menu est grisee
+dipl_locked_panel | Presentation 1 (panneau etroit a droite) hors mode Diplomatie : une ligne par joueur avec Tribut et Message, SANS puce de posture ni case Vision ; le bouton « Diplomatie » est la, a gauche de « Menu » ; le tableau des joueurs : bouclier vert devant le joueur 2, croix rouges devant les autres
+dipl_locked_wide | Presentation 0 (panneau large) hors mode Diplomatie : les memes lignes, sans les trois boutons de posture ni la case Vision, sans la note « Postures verrouillees »
