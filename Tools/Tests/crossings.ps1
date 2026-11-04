@@ -1,4 +1,4 @@
-# The ridge crossed again and again (the user's trials of ridge_army): one army of the player, made between its main
+﻿# The ridge crossed again and again (the user's trials of ridge_army): one army of the player, made between its main
 # centre and its ridge on Plain, sent across the ridge to a random point, then back across it, Count times
 # (hol.Test.Crossings, Source/HeroesOfLiberty/Dev/HOLCrossingTest.cpp). Each crossing checked every frame: no unit in a
 # rock, no stall (half the walking units not moving), every unit standing near the point in time.

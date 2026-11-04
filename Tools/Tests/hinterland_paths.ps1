@@ -1,4 +1,4 @@
-# The paths of L'Arriere-pays on the game's own navmesh (chantier Cartes, C2; modelled on the ridge's crossings.ps1): a solo match on
+﻿# The paths of L'Arriere-pays on the game's own navmesh (chantier Cartes, C2; modelled on the ridge's crossings.ps1): a solo match on
 # <Map>_<Size> (Hinterland by default), then hol.Nav.Path between the places the recipe says (Tools/Tests/hinterland_dump.py: the
 # slots, a gold vein of each pocket, the openings of the pockets, the passages of the belt), each judged by its length against the
 # straight line (the rocks are NavArea_Null volumes: the navmesh knows them, the trees do not):
