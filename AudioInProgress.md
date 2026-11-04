@@ -53,6 +53,10 @@ Registre : `Docs/assets_audio.csv` (fichier, source, licence, lien, date de tél
 - **AU-Q2** — Worktree pour A2 (code et contenu Unreal) : à choisir parmi ceux marqués libres dans leur `IN_USE.txt`, l'utilisateur donne le nom (règle : jamais de worktree créé sans lui demander).
 - **AU-Q3** — Le bundle Sonniss (plusieurs dizaines de Go) : où le ranger sur le disque, et quelle année ?
 
+## Réponses du 2026-11-04
+
+- **AU-Q1 = A** : musique du prototype en pistes CC0 (D676). **AU-Q2** : A2 se fait dans le worktree **Arwen** (HeroesOfLiberty-Arwen, libre, main 532e638 ; à marquer PRIS dans son IN_USE.txt au départ). **AU-Q3 = A** : Sonniss récupéré hors dépôt, dans `MyCrusader_Audio\Sonniss\<année>` (D676).
+
 ## Journal
 
 - 2026-11-03 : chantier ouvert. Relevé de `Content/Audio/` et du code. Kenney : licences CC0 lues sur les 4 pages ; téléchargement automatique refusé (HTTP 403 à `curl`, bouton JavaScript), donc à la main. Aucun fichier de jeu, aucun code touché, rien commité.
