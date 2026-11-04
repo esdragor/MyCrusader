@@ -28,7 +28,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 
 ### Unités et héros
 - **Légions Noires, la 2e faction du prototype (D11, § 13.3), 2026-11-04 : journal ouvert, RIEN codé** ; aucune unité, aucun bâtiment ni héros des Légions, aucune colonne de faction dans `UnitTypes` / `BuildingTypes` ; découpage L0 (socle multi-faction) à L14 (essais) ; questions LQ-1 à LQ-6 en attente de l'utilisateur *(`LegionsInProgress.md`)*
-- Cavalerie (D672, 2026-11-04) : CV-Q1 à CV-Q5 tranchées (charge oui, cheval placeholder, stats en bloc, IA à tous les niveaux, bannières) ; C1 (Écurie + Cavalier léger en données et script) FAITE et commitée dans Glorfindel, branche `cavalry` (07758ae, ae961a8, 3dbf714), NON compilée, NON exécutée, pas dans `main` ; C2 (LOCTEXT, charge, forêt, tests C++ de la grille : C++) attend l'autorisation de builder ; bannières de l'Écurie avec le chantier visuel *(`CavalryInProgress.md`)*
+- Cavalerie (D672, 2026-11-04) : CV-Q1 à CV-Q5 tranchées (charge oui, cheval placeholder, stats en bloc, IA à tous les niveaux, bannières) ; C1 (Écurie + Cavalier léger en données et script) FAITE et DANS `main` (fusion 9f9c591, 2026-11-04), NON compilée, NON exécutée, rien de poussé ; Glorfindel libéré ; reprise = liste des commandes de `CavalryInProgress.md` quand le build sera permis ; C2 (LOCTEXT, charge, forêt, tests C++ de la grille : C++) attend l'autorisation de builder ; bannières de l'Écurie avec le chantier visuel *(`CavalryInProgress.md`)*
 - Deuxième attaque à déclencheur (charge, D345) : C2 de la cavalerie, C++
 - Clôture de J8 (héros) : J8a, J8b, J8c et leurs correctifs sont dans `main` ; reste les mesures au repos (S2 3,05 ms contre le seuil 3, bissection commencée dans Elrond ; seuil S3 / S4 relevé à 6,5 ms, D586 : `chapter_measures.ps1` à ajuster (à vérifier)) et le paquet / serveur à recuire *(`JourneyInProgress.md`, `Docs/Mesures_2026-10-31.md`)*
 - Glissement du rang des Hommes d'armes en surnombre (D577) : dans `main`, rien à faire.
@@ -135,7 +135,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `AIInProgress.md` : IA du prototype (D421-D427, D527-D531, D552-D556, D558-D561, D571-D585, D619-D621) ; IA5 à venir
 - `AudioInProgress.md` : sons (ouvert 2026-11-03, A2 suivant)
 - `BiomeInProgress.md` : biomes du salon (D651-D656)
-- `CavalryInProgress.md` : cavalerie (ouvert 2026-11-04, D672, C1 en cours dans Glorfindel / branche `cavalry`, C2 C++ en attente)
+- `CavalryInProgress.md` : cavalerie (ouvert 2026-11-04, D672, C1 dans `main` (9f9c591) non compilée, C2 C++ en attente)
 - `DiplomacyInProgress.md` : mode Diplomatie (D366-D376, D385-D387, D650) ; bugs de l'essai en tête de file
 - `DuelInProgress.md` : duel de héros (branche `hero-j8-close` pour les boucles de mêlée)
 - `FogInProgress.md` : brouillard (F0-F9 dans `main`, clôture à faire)
