@@ -6577,7 +6577,7 @@ if ($Parts -contains "net") {
         $MatchPauses[4].Groups[2].Value -eq "0" -and $MatchPauses[5].Groups[2].Value -eq "0" -and
         [int64]$MatchPauses[5].Groups[1].Value -gt [int64]$MatchPauses[4].Groups[1].Value
     # D5 (net diplomacy): Bob and Alice ally then Bob breaks; the server and both clients each report twice (two pairs a report): the
-    # same four lines everywhere, the alliance read as formed (both Ally) then as broken at once (Bob Enemy: the relation Enemy, Alice's stance kept).
+    # same four lines everywhere, the alliance read as formed (both Ally) then as broken at once (Bob Enemy: the relation Enemy and Alice's stance dropped to Enemy too, on the client's replicated book as well; 2026-11-04).
     $DipLines = {
         param($Path)
         @(if ($Path -and (Test-Path $Path)) { Select-String -Path $Path -Pattern "Diplomacy report: (slot \d toward slot \d: .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
@@ -6588,7 +6588,7 @@ if ($Parts -contains "net") {
     $DipWant = @(
         "slot 0 toward slot 1: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
         "slot 1 toward slot 0: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
-        "slot 0 toward slot 1: stance Ally, relation Enemy, vision 0, fires 1, adversary 1",
+        "slot 0 toward slot 1: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1",
         "slot 1 toward slot 0: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1")
     $DipSays = "server $($DipServer.Count), client 1 $($DipClient1.Count), client 2 $($DipClient2.Count) lines"
     # Its own PASS / FAIL line "net diplomacy" (not played with "-Parts hero", which keeps the join and the server's checks only).

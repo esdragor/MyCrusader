@@ -16,23 +16,19 @@ FHOLDiplomacyBook DpHumans(int Slots)
 	return HOLDiplomacy::NewBook(Slots, NoAI);
 }
 
-// An alliance offered and not answered is « en attente de l'autre » (D369: both must say Ally); answered, it is not pending and the vision opens up.
+// An alliance needs both sides (D369) but no waiting state is shown; a break drops both stances to Enemy at once.
 void Test_DiplomacyPanelPendingAlliance(FUnitTest& T)
 {
 	FHOLDiplomacyBook Book = DpHumans(4);
-	T.AssertFalse(DpRow(Book, 0, 1, false).bPending, "at launch (Enemy toward all): nothing pending");
 	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
 	FHOLDiplomacyRowView Offered = DpRow(Book, 0, 1, false);
-	T.AssertTrue(Offered.bPending, "0 offers, 1 has not answered: pending");
-	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "the viewer's stance shown is Ally");
+	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "the viewer's stance shown is Ally (no waiting state: nothing else is written)");
 	T.AssertEquals(Offered.Relation, HOLDiplomacy::Enemy, "but the relation is not an alliance yet");
 	T.AssertFalse(Offered.bVisionEnabled, "no vision to share before the alliance");
-	T.AssertFalse(DpRow(Book, 1, 0, false).bPending, "the other side offered nothing: not pending there");
 	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Neutral);
-	T.AssertTrue(DpRow(Book, 0, 1, false).bPending, "1 answered Neutral: still pending");
+	T.AssertEquals(DpRow(Book, 0, 1, false).Relation, HOLDiplomacy::Neutral, "0 Ally, 1 Neutral: the most hostile (D375) is Neutral");
 	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
 	FHOLDiplomacyRowView Allied = DpRow(Book, 0, 1, false);
-	T.AssertFalse(Allied.bPending, "both said Ally: no longer pending");
 	T.AssertEquals(Allied.Relation, HOLDiplomacy::Ally, "allied");
 	T.AssertTrue(Allied.bVisionEnabled, "allies may share their vision");
 	T.AssertFalse(Allied.bVisionChecked, "not ticked until asked");
@@ -40,7 +36,8 @@ void Test_DiplomacyPanelPendingAlliance(FUnitTest& T)
 	T.AssertTrue(DpRow(Book, 0, 1, false).bVisionChecked, "ticked once shared");
 	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
 	FHOLDiplomacyRowView Broken = DpRow(Book, 0, 1, false);
-	T.AssertTrue(Broken.bPending, "the other broke: the viewer's Ally stands alone, pending again");
+	T.AssertEquals(Broken.MyStance, HOLDiplomacy::Enemy, "the other broke: the viewer's row shows Enemy at once, not Ally (bug of 2026-11-04)");
+	T.AssertEquals(Broken.TheirStance, HOLDiplomacy::Enemy, "and the other's stance is Enemy");
 	T.AssertFalse(Broken.bVisionChecked, "the break cut the vision at once (D370, D371)");
 	T.AssertFalse(Broken.bVisionEnabled, "and it cannot be ticked");
 }
@@ -61,7 +58,6 @@ void Test_DiplomacyPanelLockedInStandard(FUnitTest& T)
 	T.AssertEquals(Mate.MyStance, HOLDiplomacy::Ally, "a teammate is shown Ally");
 	T.AssertTrue(Mate.bVisionChecked, "his vision is shared by the team");
 	T.AssertFalse(Mate.bVisionEnabled, "and not a choice");
-	T.AssertFalse(Mate.bPending, "nothing is pending in a fixed team");
 	FHOLDiplomacyRowView Foe = DpRow(Book, 0, 2, true);
 	T.AssertEquals(Foe.MyStance, HOLDiplomacy::Enemy, "the other team is shown Enemy");
 	T.AssertFalse(Foe.bStanceEditable, "locked as well");
