@@ -337,12 +337,6 @@ public:
 	 */
 	void ApplyPendingAppearance();
 
-	/**
-	 * V3b (VI-Q3, provisional): every building of every world redoes its look at the next frame. Called when
-	 * hol.Building.MeshVariant changes (the variant of a final model: "Roof", "Banner" or "Both" loads <Mesh>_<variant>).
-	 */
-	static void RefreshAllLooks();
-
 	/** V2.3a, what the pieces show now (the tests): Rubble, Site (any site, a forum rising again included) or Standing. */
 	EHOLForumLook GetShownLook() const;
 	/** The share of its height its building is shown at (a site's rise, J6a.4; 1 finished). */
@@ -531,8 +525,6 @@ private:
 	EHOLBuildingSight RememberedState = EHOLBuildingSight::Standing;
 	bool bBuiltFromMemory = false;
 	bool bFogGhostActor = false;
-	/** V3b: the value of hol.Building.MeshVariant the pieces were built for (the look is rebuilt when it changes). */
-	FName BuiltMeshVariant;
 
 	/** The building above its foundation, squashed to a site's progress (J6a.4); scale 1 once finished. */
 	UPROPERTY(VisibleAnywhere)

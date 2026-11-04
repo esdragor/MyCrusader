@@ -35,19 +35,7 @@ namespace
 	// F7.3 (b): a building remembered, out of sight, is drawn toward this blue-grey by hol.Fog.GhostTint (0: its own colours, the fog
 	// darkens it alone; 1: all grey). The default is provisional, the user's to choose (Auto_Journey_Retours.md).
 	const FLinearColor MemoryGrey(0.40f, 0.43f, 0.50f);
-	// V3b (VI-Q3, provisional until the user chooses): where the player's colour goes on the Forum's model, to compare in the game. Empty
-	// = the table's model; "Roof", "Banner" or "Both" = the sibling asset <Mesh>_<variant> (SM_Forum_Banner...), made by
-	// Tools/Editor/make_forum_mesh.py --compose. Its slot named "owner" wears the player's colour.
-	TAutoConsoleVariable<FString> CVarMeshVariant(TEXT("hol.Building.MeshVariant"), TEXT(""),
-		TEXT("Variant of the final models: empty (the table's), Roof, Banner or Both (SM_Forum_<variant>). Rebuilds the buildings' look."));
-	struct FMeshVariantHook
-	{
-		FMeshVariantHook()
-		{
-			CVarMeshVariant->SetOnChangedCallback(FConsoleVariableDelegate::CreateLambda([](IConsoleVariable*) { AHOLBuilding::RefreshAllLooks(); }));
-		}
-	} MeshVariantHook;
-	/** The material slot of a final model that wears the owner's colour (V3b). */
+	/** The material slot of a final model that wears the owner's colour (V3b; the Forum's banners, VI-Q3 = B). */
 	const FName OwnerSlotName(TEXT("owner"));
 
 	TAutoConsoleVariable<float> CVarFogGhostTint(TEXT("hol.Fog.GhostTint"), 0.6f,
@@ -810,17 +798,6 @@ void AHOLBuilding::RefreshNavObstacle()
 	}
 }
 
-void AHOLBuilding::RefreshAllLooks()
-{
-	for (const FRegistered& Entry : Registry)
-	{
-		if (AHOLBuilding* Building = Entry.Building.Get())
-		{
-			Building->MarkAppearanceDirty();
-		}
-	}
-}
-
 void AHOLBuilding::RefreshVisuals()
 {
 	bAppearanceDirty = false;
@@ -839,8 +816,7 @@ void AHOLBuilding::RefreshVisuals()
 		: Forum.Look == EHOLForumLook::Rubble ? ELook::Rubble : Forum.Look == EHOLForumLook::Site ? ELook::Site
 		: IsFinished() ? ELook::Finished : !IsFoundation() ? ELook::Site : IsSeenHere() ? ELook::Ghost : ELook::Hidden;
 	const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(TypeName);
-	const FName MeshVariant(*CVarMeshVariant.GetValueOnGameThread());
-	if (BuiltTypeName != TypeName || BuiltLook != Look || bBuiltFromMemory != bMemory || BuiltMeshVariant != MeshVariant)
+	if (BuiltTypeName != TypeName || BuiltLook != Look || bBuiltFromMemory != bMemory)
 	{
 		for (UStaticMeshComponent* Piece : Pieces)
 		{
@@ -851,7 +827,6 @@ void AHOLBuilding::RefreshVisuals()
 		OwnerTones.Reset();
 		OwnerWhitens.Reset();
 		BuiltTypeName = TypeName;
-		BuiltMeshVariant = MeshVariant;
 		BuiltLook = Look;
 		bBuiltFromMemory = bMemory;
 
@@ -1181,19 +1156,7 @@ void AHOLBuilding::BuildGhostShape(const FHOLBuildingTypeRow& Type)
 
 void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 {
-	// V3b: the table's model, or its sibling <Mesh>_<variant> when hol.Building.MeshVariant asks (a comparison in the game).
-	UStaticMesh* Mesh = nullptr;
-	const FString Variant = CVarMeshVariant.GetValueOnGameThread();
-	if (!Variant.IsEmpty())
-	{
-		const FSoftObjectPath Base = Type.Mesh.ToSoftObjectPath();
-		const FSoftObjectPath Sibling(FString::Printf(TEXT("%s_%s.%s_%s"), *Base.GetLongPackageName(), *Variant, *Base.GetAssetName(), *Variant));
-		Mesh = Cast<UStaticMesh>(Sibling.TryLoad());
-	}
-	if (!Mesh)
-	{
-		Mesh = Type.Mesh.LoadSynchronous();
-	}
+	UStaticMesh* Mesh = Type.Mesh.LoadSynchronous();
 	if (!Mesh)
 	{
 		UE_LOG(LogHOLMatch, Error, TEXT("Building type %s: mesh %s not found"), *TypeName.ToString(), *Type.Mesh.ToString());

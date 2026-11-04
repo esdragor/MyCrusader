@@ -390,10 +390,10 @@ def variant_t():  # as K, a low house either side of the keep
     return p.items
 
 
-# ---- Team colour (V3b, VI-Q3: roof, banner or both; the user's to choose). A material slot named "owner" wears the player's colour
+# ---- Team colour (V3b, VI-Q3 answered B on 2026-11-04: banner; roof and both stay buildable). A material slot named "owner" wears the player's colour
 # (AHOLBuilding::BuildFinalMesh): the pyramid roof's in "roof" and "both", the cloth of the banners in "banner" and "both".
 COLOUR_OPTIONS = ("roof", "banner", "both")
-DEFAULT_COLOUR = "both"   # until the user answers VI-Q3 (Retours/Q-forum-colour.md): both is the one that can not be missed
+DEFAULT_COLOUR = "banner"   # VI-Q3 = B (the user, 2026-11-04): banners on the four turrets, the roof keeps its texture
 TURRET_TOP = 2.3   # the turrets' crown (tower-top, 30 cm) stands on two modules
 POLE_HEIGHT = 0.9  # the pole's top reaches the keep's apex (3.2 modules)
 

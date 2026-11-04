@@ -6,7 +6,7 @@
 #include "Components/StaticMeshComponent.h"
 #include "Engine/Engine.h"
 #include "Engine/StaticMesh.h"
-#include "HAL/IConsoleManager.h"
+#include "StaticMeshResources.h"
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 #include "HOLCollision.h"
@@ -140,7 +140,7 @@ bool FHOLBuildingAppearanceTest::RunTest(const FString& Parameters)
 }
 
 // VisualInProgress V3b (VI-Q3): the Forum's model (SM_Forum, a kit's pieces in one mesh) wears the player's colour on its
-// material slot named "owner"; the roof, the banners or both (hol.Building.MeshVariant, provisional until the user chooses).
+// material slot named "owner", on the cloth of the banners of its four turrets (VI-Q3 = B).
 // The same checks as the provisional shape: repainted without rebuilding, a click on it selects it (D262), greyed when only
 // remembered (F7.3 b).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLBuildingForumColourTest, "HeroesOfLiberty.Buildings.ForumColour", UE::HeroesOfLiberty::Tests::Buildings::Flags)
@@ -152,14 +152,6 @@ bool FHOLBuildingForumColourTest::RunTest(const FString& Parameters)
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
 	Context.SetCurrentWorld(World);
 	World->InitializeActorsForPlay(FURL());
-
-	IConsoleVariable* Variant = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Building.MeshVariant"));
-	if (!TestNotNull(TEXT("the variant console variable exists"), Variant))
-	{
-		GEngine->DestroyWorldContext(World);
-		World->DestroyWorld(/*bInformEngineOfWorld*/ false);
-		return false;
-	}
 
 	AHOLBuilding* Building = World->SpawnActor<AHOLBuilding>();
 	if (TestNotNull(TEXT("building spawned"), Building))
@@ -232,25 +224,34 @@ bool FHOLBuildingForumColourTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("the selection ray beyond its footprint finds nothing"), Miss.GetActor() != Building);
 		}
 
-		// The three placements of the colour to compare (VI-Q3): each one a model with an owner slot at the player's colour.
-		for (const TCHAR* Name : { TEXT("Roof"), TEXT("Banner"), TEXT("Both") })
-		{
-			Variant->Set(Name);
-			Building->ApplyPendingAppearance();
-			const UStaticMeshComponent* Other = GetModel();
-			if (TestNotNull(*FString::Printf(TEXT("%s: one piece"), Name), Other) && Other->GetStaticMesh())
-			{
-				TestEqual(*FString::Printf(TEXT("%s: its own model"), Name), Other->GetStaticMesh()->GetName(), FString::Printf(TEXT("SM_Forum_%s"), Name));
-				const TArray<int32> Slots = OwnerSlotsOf(*Other);
-				FLinearColor Painted;
-				TestTrue(*FString::Printf(TEXT("%s: one owner slot at the player's colour"), Name),
-					Slots.Num() == 1 && SlotColor(*Other, Slots[0], Painted) && Painted.Equals(Expected(5), 1.e-4f));
-			}
-		}
-		Variant->Set(TEXT(""));
+		Building->Setup(HOLBuildingTypeNames::MainCentre, 2, 5);
 		Building->ApplyPendingAppearance();
-		const UStaticMeshComponent* Back = GetModel();
-		TestTrue(TEXT("without a variant, the table's model again"), Back && Back->GetStaticMesh() && Back->GetStaticMesh()->GetName() == TEXT("SM_Forum"));
+		// VI-Q3 = B (the user, 2026-11-04): the colour is on the banners of the four turrets (a pole in the kit's planks, a cloth in
+		// the owner slot), the roof keeps its wood texture; the whole stays within the table's 10 m.
+		const UStaticMeshComponent* Banners = GetModel();
+		if (TestNotNull(TEXT("banners: one piece"), Banners) && Banners->GetStaticMesh())
+		{
+			TestEqual(TEXT("the table's model is the banner one"), Banners->GetStaticMesh()->GetName(), FString(TEXT("SM_Forum")));
+			bool bPoles = false;
+			for (const FStaticMaterial& Slot : Banners->GetStaticMesh()->GetStaticMaterials())
+			{
+				bPoles |= Slot.MaterialSlotName == TEXT("planks");
+			}
+			TestTrue(TEXT("the poles' wood slot is there"), bPoles);
+			TestTrue(TEXT("no taller than the table's 10 m"), Banners->Bounds.GetBox().Max.Z <= 1000.0);
+			// The owner slot holds the four cloths alone (4 boxes of 12 triangles): the pyramid roof keeps the kit's wood.
+			int32 OwnerTriangles = 0;
+			const FStaticMeshRenderData* RenderData = Banners->GetStaticMesh()->GetRenderData();
+			const TArray<int32> BannerOwnerSlots = OwnerSlotsOf(*Banners);
+			if (RenderData && RenderData->LODResources.Num() > 0)
+			{
+				for (const FStaticMeshSection& Section : RenderData->LODResources[0].Sections)
+				{
+					OwnerTriangles += BannerOwnerSlots.Contains(Section.MaterialIndex) ? static_cast<int32>(Section.NumTriangles) : 0;
+				}
+			}
+			TestEqual(TEXT("the owner slot is the four cloths, not the roof"), OwnerTriangles, 4 * 12);
+		}
 
 		// F7.3 (b): seen once, then out of sight: no texture left to grey, every slot a plain colour toward the memory's grey, the
 		// owner's too (ApplyColors).

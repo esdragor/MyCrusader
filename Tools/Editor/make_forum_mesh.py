@@ -2,9 +2,8 @@
 /Game/Buildings/Forum/Kit, and prints every piece's size in cm so the composition (V2b) can be laid out from measures.
 With "--compose" it instead builds /Game/Buildings/Forum/SM_Forum: the pieces of forum_layout.LAYOUT merged into ONE static
 mesh (the building table takes one), at the building's visible size (forum_layout.SCALE), origin at the centre of the
-footprint on the ground, every material slot named after the kit's material. The slot named "owner" wears the player's colour (V3b, VI-Q3): the roof's
-in SM_Forum_Roof, the banners' cloth in SM_Forum_Banner, both in SM_Forum_Both (SM_Forum is a copy of the default one,
-forum_layout.DEFAULT_COLOUR; "--colour=<roof|banner|both>" builds that one alone).
+footprint on the ground, every material slot named after the kit's material. The slot named "owner" wears the player's colour (V3b; VI-Q3 = B, the user chose the banners on 2026-11-04):
+forum_layout.DEFAULT_COLOUR = "banner" (the pyramid roof keeps the kit's wood texture); "--colour=<roof|banner|both>" builds another.
 
 The kit lives outside the repository (Docs/assets_art.csv): C:\\Users\\baudo\\Documents\\MyCrusader_Art\\Kenney\\retro-fantasy-kit.
 A piece is /Game/Buildings/Forum/Kit/SM_Kit_<name with _ for ->. Run (no window):
@@ -206,10 +205,5 @@ def compose(colour=None, path="/Game/Buildings/Forum/SM_Forum"):
 if COMPOSE:
     import forum_layout as _layout
     asked = next((a.split("=", 1)[1].lower() for a in sys.argv[1:] if a.startswith("--colour=")),
-                 "none" if any(a.startswith("--variant=") for a in sys.argv[1:]) else "all")
-    if asked == "all":
-        for option in _layout.COLOUR_OPTIONS:
-            compose(option, "/Game/Buildings/Forum/SM_Forum_" + option.capitalize())
-        compose(_layout.DEFAULT_COLOUR)
-    else:
-        compose(None if asked == "none" else asked)
+                 "none" if any(a.startswith("--variant=") for a in sys.argv[1:]) else _layout.DEFAULT_COLOUR)
+    compose(None if asked == "none" else asked)
