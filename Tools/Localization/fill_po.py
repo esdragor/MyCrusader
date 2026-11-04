@@ -303,6 +303,7 @@ TRANSLATIONS = {
     "HOLTalentPanel,Notice": ("Talent taken: {0} — {1}", "タレント取得：{0} — {1}"),
     "HOLTalentPanel,List": ("Talents taken ({0}): {1}", "取得したタレント（{0}）：{1}"),
     "HOLTalentTree,Hover": ("{0} — {1}", "{0} — {1}"),
+    "HOLTalentTree,Later": ("later, level {0}", "後で、レベル{0}"),
     "HOLTalentNames,Name20": ("Blessed Harvest", "祝福の収穫"),
     "HOLTalentNames,Effect20": ("Sanctuary radius +25%", "聖域の半径 +25%"),
     "HOLTalentNames,Name21": ("Shields Raised", "掲げた盾"),

@@ -1080,7 +1080,8 @@ FString TalentTipTexts = "";
 			TalentWindowFamilyHeads.Add(FamilyHead);
 		}
 
-		const int Rows = HOLTalent::PointsEarned(HOLHero::GetMaxLevel());
+		// All the game's rows (2 to 9): the ones past the prototype's maximum level are drawn greyed "plus tard" (HOLTalentTree::MakeWithLater).
+		const int Rows = HOLTalent::RowCount;
 		for (int Index = 0; Index < Rows; ++Index)
 		{
 			const int Row = HOLTalent::FirstRow + Index;
@@ -1095,7 +1096,7 @@ FString TalentTipTexts = "";
 				CellBox.SetWidthOverride(TalentCellWidth);
 				CellBox.SetMinDesiredHeight(40.0);
 				UButton Cell = MakeButton(TalentCellName(Row, Family));
-				// One handler a cell (a button's click does not say which): HandleCell0 .. HandleCell14, the row and the column from the number.
+				// One handler a cell (a button's click does not say which): HandleCell0 .. HandleCell23, the row and the column from the number.
 				Cell.OnClicked.AddUFunction(this, FName(f"HandleCell{Index * HOLTalent::FamilyCount + Family}"));
 				CellBox.SetContent(Cell);
 				UCommonTextBlock CellLabel = MakeText(FName(f"HeroTalentCellLabel_{Row}_{Family}"), UHOLTextStyleHUDLabel);
@@ -1430,7 +1431,7 @@ FString TalentTipTexts = "";
 			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerSlot, Index));
 		ShowTalentFeedback(PlayerSlot, Count, Picks);
 		TalentView = HOLTalentPanel::Make(View.Level, Picks);
-		TalentCells = HOLTalentTree::Make(View.Level, Picks);
+		TalentCells = HOLTalentTree::MakeWithLater(HOLHero::GetMaxLevel(), View.Level, Picks);
 		ShowTalentIcons(View.Level, Picks);
 		ShowTalentWindow();
 		HeroTalentButton.SetVisibility(TalentView.bReminder ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -1499,6 +1500,13 @@ FString TalentTipTexts = "";
 			const bool bTaken = Cell.State == EHOLTalentCellState::Taken;
 			TalentCellLabels[Index].SetText(FText::FromString(Cell.Name));
 			TalentCellLabels[Index].SetColorAndOpacity(bTaken || Cell.bPickable ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+			if (Cell.State == EHOLTalentCellState::Locked)
+			{
+				// "Plus tard": fainter than the rows still to come in this game (their hover says the level).
+				FLinearColor Faint = UHOLScriptScreen::GetMutedColor();
+				Faint.A = 0.45;
+				TalentCellLabels[Index].SetColorAndOpacity(Faint);
+			}
 			TalentCellButtons[Index].SetBackgroundColor(bTaken ? TalentFamilyColour(Cell.Family) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 			UHOLScriptScreen::SetButtonGreyed(TalentCellButtons[Index], !bTaken && !Cell.bPickable);
 			TalentCellButtons[Index].SetToolTipText(FText::FromString(Cell.Tooltip));
@@ -1769,6 +1777,60 @@ FString TalentTipTexts = "";
 	void HandleCell14()
 	{
 		ClickTalentCell(HOLTalent::FirstRow + 4, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell15()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 5, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell16()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 5, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell17()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 5, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell18()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 6, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell19()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 6, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell20()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 6, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell21()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 7, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell22()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 7, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell23()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 7, 2);
 	}
 
 	// The advised choice (D105), now at the foot of the window: the family most filled, the order sent. Greyed or closed: nothing.
