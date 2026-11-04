@@ -187,6 +187,9 @@ FString TalentTipTexts = "";
 	TArray<UHOLDiplomacyClick> DipHandlers;
 	TArray<FHOLDiplomacyRowView> DipRows;
 	bool bDipOpen = false;
+	// The match is in the Diplomacy mode (set by RefreshDiplomacy): outside it the panel keeps the players, tribute and message but has no
+	// posture control and no vision box (the user's answer of 2026-11-04: they are not there, not greyed).
+	bool bDipModeNow = false;
 	int DipLayout = -1;
 	// The line whose drop-down is open (layout 2), -1 none; the player the last « Message » was for.
 	int DipMenuSlot = -1;
@@ -540,6 +543,7 @@ FString TalentTipTexts = "";
 
 		const int Layout = HOLDiplomacyRead::GetPanelLayout();
 		const bool bDipMode = HOLDiplomacyRead::IsDiplomacyMode();
+		bDipModeNow = bDipMode;
 		if (Layout != DipLayout)
 		{
 			DipLayout = Layout;
@@ -549,7 +553,7 @@ FString TalentTipTexts = "";
 		}
 		PlaceDipPanel(Layout, Room);
 		DipTitleText.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Title));
-		DipLockedText.SetText(bDipMode ? FText() : HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Locked));
+		DipLockedText.SetText(FText());
 		DipLockedText.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
 		DipCloseLabel.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Close));
 
@@ -637,22 +641,23 @@ FString TalentTipTexts = "";
 
 		// The posture controls: none on the viewer's own line; greyed when locked (the standard modes, an AI, a defeated player).
 		const bool bControls = !Row.bSelf;
+		const bool bStances = bControls && bDipModeNow;
 		for (int Stance = HOLDiplomacy::Enemy; Stance <= HOLDiplomacy::Ally; ++Stance)
 		{
 			const bool bActive = Row.MyStance == Stance;
-			DipSetButton(DipStanceButtons[Slot * 3 + Stance], bControls && (Layout == 0 || (Layout == 2 && DipMenuSlot == Slot)), Row.bStanceEditable,
+			DipSetButton(DipStanceButtons[Slot * 3 + Stance], bStances && (Layout == 0 || (Layout == 2 && DipMenuSlot == Slot)), Row.bStanceEditable,
 				HOLDiplomacyPanelText::StanceLabel(Stance), FText(), bActive ? DipStanceTint(Stance) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 		}
-		DipSetButton(DipChips[Slot], bControls && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
-		DipSetButton(DipMenuButtons[Slot], bControls && Layout == 2, Row.bStanceEditable,
+		DipSetButton(DipChips[Slot], bStances && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
+		DipSetButton(DipMenuButtons[Slot], bStances && Layout == 2, Row.bStanceEditable,
 			FText::FromString(HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + " v"), FText(), DipStanceTint(Row.MyStance));
-		DipPendings[Slot].SetVisibility(Row.bPending ? ESlateVisibility::HitTestInvisible : (Layout == 0 && bControls ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed));
+		DipPendings[Slot].SetVisibility(Row.bPending ? ESlateVisibility::HitTestInvisible : (Layout == 0 && bStances ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed));
 		DipPendings[Slot].SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Pending));
 		DipPendings[Slot].SetColorAndOpacity(FLinearColor(1.0, 0.82, 0.25, 1.0));
 
 		// Vision (checked: [x]), tribute (with the tax, greyed without a Market), private message.
 		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";
-		DipSetButton(DipVisionButtons[Slot], bControls, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
+		DipSetButton(DipVisionButtons[Slot], bStances, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
 			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacy::Ally) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 		DipSetButton(DipTributeButtons[Slot], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, f"{Row.TaxPercent}")),
 			Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, f"{Row.TaxPercent}")),
@@ -710,7 +715,7 @@ FString TalentTipTexts = "";
 		}
 		if (Kind == DipKindVision)
 		{
-			if (!Row.bVisionEnabled)
+			if (!Row.bVisionEnabled || !DipVisionButtons[Slot].IsVisible())
 				return false;
 			Controller.RequestShareVision(Slot, !Row.bVisionChecked);
 			return true;

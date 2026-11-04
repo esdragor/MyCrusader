@@ -56,6 +56,7 @@ public static class LobbyViews
             size = lobby.Settings.Size,
             teamsTogether = lobby.Settings.TeamsTogether,
             fog = lobby.Settings.Fog,
+            mode = lobby.Settings.Mode,
         },
         maps = store.Maps.Select(m => new { name = m.Name, maxPlayers = m.MaxPlayers,
             sizes = m.Sizes.Select(s => new { key = s.Key, places = s.Places }).ToList() }).ToList(),

@@ -97,6 +97,11 @@ public static class LobbyRules
 
     public const string DefaultFog = "Normal";
 
+    /** D5 (DiplomacyInProgress.md): the match modes, EHOLMatchMode by name (Source/HeroesOfLiberty/Match/HOLMatchConfig.h): Standard is the game's. */
+    public static readonly IReadOnlyList<string> Modes = ["Standard", "Diplomacy"];
+
+    public const string DefaultMode = "Standard";
+
     /**
      * C0.2 (Cartes): the match maps, in the order of Tools/Data/Maps.csv (checked by a test, as FHOLMapRules in the game),
      * each in the five sizes (TC-Q11: the map itself, /Game/Maps/Plain, is the test map, not offered).
