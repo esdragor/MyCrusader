@@ -35,13 +35,14 @@ namespace HOLTalentTree
 		return NSLOCTEXT("HOLTalentTree", "Hover", "{0} — {1}");
 	}
 
-	// The cells of a hero of Level who took Picks (the families, row 2 first): row by row, the families in the column order.
-	TArray<FHOLTalentCellView> Make(int Level, const TArray<int>& Picks)
+	// The cells of a hero of Level who took Picks (the families, row 2 first): row by row, the families in the column order, for a game whose
+	// heroes reach MaxLevel at the most: the rows 2 to MaxLevel (the full game's 8 rows, 2 to 9, at 9 or 10; the rows 7 to 9 are D195's).
+	TArray<FHOLTalentCellView> MakeFor(int MaxLevel, int Level, const TArray<int>& Picks)
 	{
 		TArray<FHOLTalentCellView> Cells;
 		const int Points = HOLTalent::PointsAvailable(Level, Picks);
 		const int NextRow = HOLTalent::NextRow(Picks);
-		const int RowsShown = HOLTalent::PointsEarned(HOLHero::GetMaxLevel());
+		const int RowsShown = HOLTalent::PointsEarned(MaxLevel);
 		for (int Index = 0; Index < RowsShown; Index++)
 		{
 			const int Row = HOLTalent::FirstRow + Index;
@@ -64,6 +65,12 @@ namespace HOLTalentTree
 			}
 		}
 		return Cells;
+	}
+
+	// The prototype's window: the rows its maximum level reaches (2 to 6).
+	TArray<FHOLTalentCellView> Make(int Level, const TArray<int>& Picks)
+	{
+		return MakeFor(HOLHero::GetMaxLevel(), Level, Picks);
 	}
 
 	// The family a click on the cell (Row, Family) asks for: its own column when the cell is pickable, FamilyNone for any other state or a cell

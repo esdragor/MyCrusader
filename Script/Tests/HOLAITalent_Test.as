@@ -81,3 +81,79 @@ void Test_AITalentCatchesUp(FUnitTest& T)
 	}
 	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::Choose(6, Picks, Main), "all five spent");
 }
+
+// The second half of the profile (D424): a main and a secondary family, never the same, whatever the roll (a negative one too); the main is
+// still the one DrawMain draws among the families with effects.
+void Test_AITalentProfileHasTwoDifferentFamilies(FUnitTest& T)
+{
+	for (int Roll = -7; Roll < 25; Roll++)
+	{
+		const FHOLAIProfile Profile = HOLAITalent::DrawProfile(Roll);
+		T.AssertEquals(HOLAITalent::DrawMain(Roll), Profile.Main, "the main family, roll " + Roll);
+		T.AssertTrue(Profile.Secondary >= 0 && Profile.Secondary < HOLTalent::FamilyCount, "the secondary family exists, roll " + Roll);
+		T.AssertTrue(Profile.Secondary != Profile.Main, "and is another one, roll " + Roll);
+	}
+	// Both other families come up as the secondary across the rolls.
+	bool bSeen0 = false;
+	bool bSeen2 = false;
+	for (int Roll = 0; Roll < 8; Roll++)
+	{
+		const int Secondary = HOLAITalent::DrawProfile(Roll).Secondary;
+		bSeen0 = bSeen0 || Secondary == 0;
+		bSeen2 = bSeen2 || Secondary == 2;
+	}
+	T.AssertTrue(bSeen0 && bSeen2, "the Guardian and the Champion both come up as the secondary with the Captain as the main");
+}
+
+// The profile spends its eight points as the maximum build of D103: five on the main family (its key talent), then the three others on the
+// secondary (its seal); the server's rule agreeing each time. In the prototype (five points) only the main is ever reached.
+void Test_AITalentProfileSpendsFiveThenThree(FUnitTest& T)
+{
+	const FHOLAIProfile Profile = HOLAITalent::DrawProfile(0);
+	TArray<int> Picks;
+	for (int Level = 2; Level <= 9; Level++)
+	{
+		const int Family = HOLAITalent::ChooseFor(Level, Picks, Profile);
+		const int Expected = Picks.Num() < HOLTalent::KeyThreshold ? Profile.Main : Profile.Secondary;
+		T.AssertEquals(Expected, Family, "level " + Level + ": the profile's family");
+		T.AssertTrue(HOLTalent::Pick(Level, Picks, Family), "taken at level " + Level);
+	}
+	T.AssertEquals(8, Picks.Num(), "eight talents");
+	T.AssertTrue(HOLTalent::HasKey(Picks, Profile.Main), "the main family's key talent");
+	T.AssertEquals(3, HOLTalent::CountOf(Picks, Profile.Secondary), "three on the secondary");
+	T.AssertTrue(HOLTalent::HasSeal(Picks, Profile.Secondary), "its seal");
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseFor(9, Picks, Profile), "nothing left to take");
+}
+
+// In the prototype's five points the profile does what Choose did: the main family only, so the key talent comes.
+void Test_AITalentProfileInThePrototypeIsTheMainAlone(FUnitTest& T)
+{
+	const FHOLAIProfile Profile = HOLAITalent::DrawProfile(3);
+	TArray<int> Picks;
+	for (int Level = 2; Level <= HOLHero::GetMaxLevel(); Level++)
+	{
+		T.AssertEquals(HOLAITalent::Choose(Level, Picks, Profile.Main), HOLAITalent::ChooseFor(Level, Picks, Profile), "level " + Level + ": same as the main-only rule");
+		T.AssertTrue(HOLTalent::Pick(Level, Picks, HOLAITalent::ChooseFor(Level, Picks, Profile)), "taken");
+	}
+	T.AssertEquals(HOLTalent::PointsEarned(HOLHero::GetMaxLevel()), HOLTalent::CountOf(Picks, Profile.Main), "all on the main family");
+	T.AssertTrue(HOLTalent::HasKey(Picks, Profile.Main), "its key talent");
+}
+
+// No point or no profile: nothing; a profile without a secondary spends everything on the main.
+void Test_AITalentProfileEdges(FUnitTest& T)
+{
+	TArray<int> Picks;
+	FHOLAIProfile None;
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseFor(9, Picks, None), "an empty profile takes nothing");
+	FHOLAIProfile Alone;
+	Alone.Main = 1;
+	for (int Level = 2; Level <= 9; Level++)
+	{
+		const int Family = HOLAITalent::ChooseFor(Level, Picks, Alone);
+		T.AssertEquals(1, Family, "no secondary: the main, level " + Level);
+		HOLTalent::Pick(Level, Picks, Family);
+	}
+	TArray<int> Spent;
+	Spent.Add(1);
+	T.AssertEquals(HOLAITalent::FamilyNone, HOLAITalent::ChooseFor(2, Spent, Alone), "level 2 with its point spent: nothing");
+}

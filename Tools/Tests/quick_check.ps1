@@ -3467,6 +3467,7 @@ if ($Parts -contains "menu") {
     # row, rows 2 to 6, each one taken by the server.
     $AITalents = @($Launch | Select-String -Pattern "AI slot 1 step \d+: talent of family (\d) in row (\d)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)@$($_.Matches[0].Groups[2].Value)" })
     $Checks["the AI draws its main family (the Captain, 1)"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: talent profile main family 1$" -Quiet)
+    $Checks["it draws a secondary family too (another one: the Guardian, 0, for slot 1)"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: talent profile secondary family 0$" -Quiet)
     $Checks["its hero at level 6 takes the Captain in rows 2 to 6, in order ($($AITalents -join ' '))"] = ($AITalents -join " ") -eq "1@2 1@3 1@4 1@5 1@6"
     $Checks["the server took the five ($(@($Launch | Select-String -Pattern 'Hero talent order: slot 1 family 1 at step \d+ taken').Count))"] =
         @($Launch | Select-String -Pattern "Hero talent order: slot 1 family 1 at step \d+ taken").Count -eq 5

@@ -43,8 +43,8 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// What each slot's squad at the volcano's altar remembers (V11, D639, D640).
 	TMap<int, FHOLAIAltarMemory> AltarMemories;
 
-	// The main talent family each slot drew at its first thought (T6, D424).
-	TMap<int, int> TalentMains;
+	// The talent profile each slot drew at its first thought: main and secondary family (T6, D424).
+	TMap<int, FHOLAIProfile> TalentProfiles;
 
 	// The duel (D4, D9): the game second each slot first saw a challenge waiting for it (its reaction time runs from there), and the
 	// game second of its last challenge sent (it asks again only after DuelAskEvery).
@@ -382,8 +382,9 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		return Earmark;
 	}
 
-	// The hero's point, if one is in reserve (HOLAITalent::Choose): the order of the talent of the main family, the same order a player's button sends.
-	// The main family is drawn once per slot from its index (HOLAITalent::DrawMain; the prototype has one family with effects, so the roll is moot).
+	// The hero's point, if one is in reserve (HOLAITalent::ChooseFor): the order of the talent of the profile's family, the same order a player's button sends.
+	// The profile is drawn once per slot from its index (HOLAITalent::DrawProfile; the prototype has one family with effects, so the main's roll is moot,
+	// and its five points never leave the main).
 	void ThinkTalent(int PlayerIndex, int64 Step)
 	{
 		const int Count = HOLHero::GetHeroTalentCount(PlayerIndex);
@@ -391,19 +392,20 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			return;
 		}
-		int Main = HOLAITalent::FamilyNone;
-		if (!TalentMains.Find(PlayerIndex, Main))
+		FHOLAIProfile Profile;
+		if (!TalentProfiles.Find(PlayerIndex, Profile))
 		{
-			Main = HOLAITalent::DrawMain(PlayerIndex);
-			TalentMains.Add(PlayerIndex, Main);
-			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent profile main family {Main}");
+			Profile = HOLAITalent::DrawProfile(PlayerIndex);
+			TalentProfiles.Add(PlayerIndex, Profile);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent profile main family {Profile.Main}");
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent profile secondary family {Profile.Secondary}");
 		}
 		TArray<int> Picks;
 		for (int Index = 0; Index < Count; Index++)
 		{
 			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerIndex, Index));
 		}
-		const int Family = HOLAITalent::Choose(HOLHero::GetHeroLevel(PlayerIndex), Picks, Main);
+		const int Family = HOLAITalent::ChooseFor(HOLHero::GetHeroLevel(PlayerIndex), Picks, Profile);
 		if (Family != HOLAITalent::FamilyNone && HOLAIOrder::IssueAITalentOrder(PlayerIndex, Family))
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: talent of family {Family} in row {HOLTalent::FirstRow + Count}");
