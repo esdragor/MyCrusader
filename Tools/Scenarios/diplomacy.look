@@ -1,6 +1,6 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 dipl_allies | Deux groupes d'Hommes d'armes (couleurs differentes) melanges et immobiles, sans combat ; le panneau Diplomatie a droite montre le joueur 2 allie ; le tableau des joueurs en haut a droite montre un BOUCLIER VERT devant le joueur 2 (pas une croix rouge) et une croix rouge devant l'IA
 dipl_neutral | Les memes 12 hommes toujours debout et sans combat apres le passage du joueur 2 en Neutre ; sa puce de posture n'est plus verte ; le tableau des joueurs montre un petit ROND GRIS devant le joueur 2 (ni bouclier vert, ni croix rouge)
-dipl_enemy | Les deux groupes se battent apres la rupture : des corps au sol, des coups ; le tableau des joueurs montre maintenant une CROIX ROUGE devant le joueur 2
+dipl_enemy | Les deux groupes se battent apres la rupture : des corps au sol, des coups ; le tableau des joueurs montre maintenant une CROIX ROUGE devant le joueur 2 ET la puce de posture du joueur 2 dans le panneau dit ENNEMI (rouge), plus jamais Allie, sans aucun texte "En attente"
 dipl_fog_black | La camera a 90 m de ton depart : terrain noir (brouillard), aucun homme du joueur 2 visible
 dipl_fog_shared | Apres le partage de vision du joueur 2 : le terrain est eclaire autour de ses hommes, on voit son groupe et les Lanciers de l'IA qui l'attaquent

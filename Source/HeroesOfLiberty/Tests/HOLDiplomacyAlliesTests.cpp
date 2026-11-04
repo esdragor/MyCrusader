@@ -159,6 +159,7 @@ bool FHOLDiplomacySharedFogTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("... slot 0 keeps seeing around its Peasant"), Vision->IsVisible(0, Near));
 
 			Say(1, 0, HOLDiplomacy::Ally);
+			Say(0, 1, HOLDiplomacy::Ally);
 			TestFalse(TEXT("allied again: the vision must be given again (D371)"), Vision->IsVisible(1, Near));
 			Order(0, EHOLDiplomacyOrderKind::Vision, 1, 1);
 			TestTrue(TEXT("given again: seen again"), Vision->IsVisible(1, Near));

@@ -92,7 +92,7 @@ void Test_DiplomacyBreakIsImmediate(FUnitTest& T)
 	T.AssertFalse(HOLDiplomacy::IsAlly(Book, 1, 0), "from either side");
 	T.AssertTrue(HOLDiplomacy::FiresAtOnce(Book, 0, 1), "the betrayed one's units fire back at once");
 	T.AssertTrue(HOLDiplomacy::FiresAtOnce(Book, 1, 0), "and the traitor's too");
-	T.AssertEquals(HOLDiplomacy::Ally, HOLDiplomacy::StanceOf(Book, 0, 1), "the betrayed one's own stance is not touched");
+	T.AssertEquals(HOLDiplomacy::Enemy, HOLDiplomacy::StanceOf(Book, 0, 1), "the betrayed one's stance drops to Enemy too: nobody keeps showing Ally (2026-11-04)");
 
 	// Neutral also breaks an alliance (it is no longer one), but does not make the units fire.
 	FHOLDiplomacyBook Calm = HumansBook(2);
