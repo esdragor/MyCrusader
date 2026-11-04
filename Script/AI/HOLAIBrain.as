@@ -274,6 +274,13 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			Free.Remove(SiegeBuilder);
 		}
 		ThinkSiegeProduce(PlayerIndex, Step, Summary);
+		// 3b4. The Stable and the Light Cavalry (C1, D672, provisional, NOT COMPILED): every level builds a Stable from tier 1 and queues cavalry, the quantity by level.
+		const int CavalryBuilder = ThinkCavalryBuild(PlayerIndex, Step, Summary, Data);
+		if (CavalryBuilder >= 0)
+		{
+			Free.Remove(CavalryBuilder);
+		}
+		ThinkCavalryProduce(PlayerIndex, Step, Summary, Data);
 
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
@@ -750,6 +757,89 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		if (Choice.bQueue && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, WorkshopAt, Choice.Type))
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: queue a {Choice.Type} at the SiegeWorkshop");
+		}
+	}
+
+	// The Stable's construction (C1, D672, provisional, HOLAICavalry::WantsStable; NOT COMPILED, NOT RUN): every level builds one, from the tier where it opens, with
+	// a first army and an enemy centre to strike; on the enemy side of the centre like the other military buildings; one Peasant sent, not one already sent to a
+	// site. Returns that Peasant (-1: none).
+	int ThinkCavalryBuild(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		bool bHasStable = false;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			bHasStable = bHasStable || Summary.Buildings[Index].TypeName == n"Stable";
+		}
+		FHOLAITypeFigures Figures;
+		if (!Summary.bHasCentre || !HOLAIOrder::ReadAIBuildingFigures(n"Stable", Figures))
+		{
+			return -1;
+		}
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		if (!HOLAICavalry::WantsStable(FHOLAICavalrySettings(), Level, Summary.Tier, bHasStable, Summary.bHasEnemyCentre, Summary.Army.Num(), Summary.Wood.Stock,
+			Figures.CostWood))
+		{
+			return -1;
+		}
+		FHOLAIBuilders Sent;
+		SentBuilders.Find(PlayerIndex, Sent);
+		const int Builder = HOLAIOpening::PickBuilder(Summary, Sent.Ids);
+		if (Builder < 0 || Summary.PeasantIds.Num() < Data.MinPeasantsToBuild || HOLAIOpening::SitesUnderWay(Summary) >= Data.MaxSites)
+		{
+			return -1;
+		}
+		FVector Spot;
+		if (!HOLAIOrder::FindAIPlacement(PlayerIndex, n"Stable", HOLAIOpening::MilitaryAnchor(Summary, Data), Data.Rings, Spot))
+		{
+			LogBuildOnce(PlayerIndex, Step, "no spot for Stable");
+			return -1;
+		}
+		TArray<int> Builders;
+		Builders.Add(Builder);
+		if (!HOLAIOrder::IssueAIPlaceOrder(PlayerIndex, n"Stable", Spot, Builders))
+		{
+			LogBuildOnce(PlayerIndex, Step, "build Stable refused");
+			return -1;
+		}
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build Stable at ({Spot.X}, {Spot.Y}) by #{Builder} (level {Level}, an army of {Summary.Army.Num()})");
+		Sent.Ids.Add(Builder);
+		SentBuilders.Add(PlayerIndex, Sent);
+		return Builder;
+	}
+
+	// The cavalry (C1, D672, provisional, HOLAICavalry::ChooseCavalry; NOT COMPILED, NOT RUN): a finished Stable with an empty queue queues a Light Cavalry while the
+	// train of the level is short (2 Easy, 4 Normal, 6 Hard). The cavalry is in Summary.Army (no gathering capacity): the regrouping and the attack wave take it.
+	void ThinkCavalryProduce(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FVector StableAt;
+		bool bFinished = false;
+		int Queued = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Each = Summary.Buildings[Index];
+			if (Each.TypeName == n"Stable" && Each.State == EHOLConstructionState::Finished)
+			{
+				StableAt = Each.Location;
+				bFinished = true;
+				Queued = Each.Queue.Num();
+				break;
+			}
+		}
+		if (!bFinished)
+		{
+			return;
+		}
+		FHOLAITypeFigures Unit;
+		HOLAIOrder::ReadAIUnitFigures(n"LightCavalry", Unit);
+		const bool bCanPay = Unit.Health > 0 && Summary.Food.Stock >= Unit.CostFood && Summary.Wood.Stock >= Unit.CostWood && Summary.Stone.Stock >= Unit.CostStone
+			&& Summary.Gold.Stock >= Unit.CostGold;
+		const bool bRoom = Summary.bHasPopulation && HOLAIOpening::PlacesLeft(Summary) >= Math::Max(1, Unit.Population);
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		const FHOLAICavalryChoice Choice = HOLAICavalry::ChooseCavalry(FHOLAICavalrySettings(), FHOLAICavalryTrain(), Level, true, Queued,
+			HOLAIArmy::CountOfType(Summary, n"LightCavalry"), bCanPay, bRoom);
+		if (Choice.bQueue && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, StableAt, Choice.Type))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: queue a {Choice.Type} at the Stable (level {Level})");
 		}
 	}
 
