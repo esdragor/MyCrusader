@@ -705,6 +705,7 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 	{
 		Previous->OnForumsChanged.Remove(TableForumsHandle);
 		Previous->OnVictoryChanged.Remove(TableVictoryHandle);
+		Previous->OnDiplomacyChanged.Remove(TableDiplomacyHandle);
 		Previous->OnForumEvent.Remove(TableForumEventHandle);
 		Previous->OnHeroReadyMessage.Remove(TableHeroReadyHandle);
 		Previous->OnTributeMessage.Remove(TableTributeHandle);
@@ -712,6 +713,7 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 	}
 	TableForumsHandle.Reset();
 	TableVictoryHandle.Reset();
+	TableDiplomacyHandle.Reset();
 	TableForumEventHandle.Reset();
 	TableHeroReadyHandle.Reset();
 	TableHeroLevelHandle.Reset();
@@ -721,6 +723,7 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		// Every machine: the server at once, a client by its OnReps (D353: public).
 		TableForumsHandle = GameState->OnForumsChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
 		TableVictoryHandle = GameState->OnVictoryChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
+		TableDiplomacyHandle = GameState->OnDiplomacyChanged.AddUObject(this, &UHOLGameScreen::RefreshPlayersTable);
 		// V4.2: the events of the ruin, every machine (a reliable multicast).
 		TableForumEventHandle = GameState->OnForumEvent.AddUObject(this, &UHOLGameScreen::HandleForumEvent);
 		// J8a.4: the local player's hero ready to return (its owner alone, once per death).
@@ -1010,8 +1013,10 @@ void UHOLGameScreen::RefreshPlayersTable()
 			Forums.Add(GameState->GetForumState(Seat));
 			Tiers.Add(GameState->GetForumTuning(Seat).Tier);
 		}
+		// D6: in the Diplomacy mode the allies and enemies are the book's, not the lobby's teams.
+		const HOLDiplomacy::FBook Book = GameState->IsDiplomacyMode() ? GameState->GetDiplomacyBook() : HOLDiplomacy::FBook();
 		Rows = HOLForumRules::GetPlayersTable(GameState->GetLaunchConfig(), Forums, GameState->GetDefeatedMask(),
-			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers);
+			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers, GameState->IsDiplomacyMode() ? &Book : nullptr);
 	}
 	const FString Shown = FString::JoinBy(Rows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
 	if (Shown == ShownPlayersTable)
@@ -1057,7 +1062,14 @@ void UHOLGameScreen::RefreshPlayersTable()
 			PlayerRelations[Index]->SetBrushFromTexture(Icon);
 			PlayerRelations[Index]->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
 		}
-		const ESlateVisibility RelationVisibility = Icon ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
+		const bool bNeutral = Row->Relation == EHOLPlayerRelation::Neutral;
+		if (bNeutral)
+		{
+			// The Diplomacy mode's Neutral: a small grey dot in the icon's room (no texture for it).
+			PlayerRelations[Index]->SetBrush(FSlateRoundedBoxBrush(FLinearColor(0.62f, 0.62f, 0.62f, 1.f), 5.f, FVector2D(10.f, 10.f)));
+			PlayerRelations[Index]->SetDesiredSizeOverride(FVector2D(16.f, 16.f));
+		}
+		const ESlateVisibility RelationVisibility = Icon || bNeutral ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Hidden;
 		if (PlayerRelations[Index]->GetVisibility() != RelationVisibility)
 		{
 			PlayerRelations[Index]->SetVisibility(RelationVisibility);

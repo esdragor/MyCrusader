@@ -86,7 +86,7 @@ bool FHOLBiomeConfigLobbyTest::RunTest(const FString& Parameters)
 		FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Body), Object);
 		return Object;
 	};
-	const TSharedPtr<FJsonObject> Sent = ReadBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, FString(), {}, FString(), TEXT("snow")));
+	const TSharedPtr<FJsonObject> Sent = ReadBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, FString(), {}, FString(), FString(), TEXT("snow")));
 	if (TestTrue(TEXT("settings with a biome"), Sent.IsValid()))
 	{
 		TestEqual(TEXT("biome sent"), Sent->GetStringField(TEXT("biome")), FString(TEXT("snow")));

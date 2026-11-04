@@ -98,6 +98,8 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	FString Fog;
 	/** B2 (D651-D656): the biome's key (HOLBiomeRules.as; "default" = the map's own); empty when the manager does not say (shown as "default"). */
 	FString Biome;
+	/** D5 (DiplomacyInProgress.md): the match mode by name (Standard, Diplomacy); empty when the manager does not say (shown as Standard). */
+	FString Mode;
 	bool bNomad = false;
 	bool bRegicide = false;
 	bool bCatastrophe = false;
@@ -126,6 +128,8 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	EHOLFogMode GetFogMode() const;
 	/** B2: the lobby's biome key ("default" when the manager does not say). */
 	FString GetBiomeKey() const { return Biome.IsEmpty() ? FString(TEXT("default")) : Biome; }
+	/** D5: the lobby's match mode (Standard when the manager does not say, or says an unknown name). */
+	EHOLMatchMode GetMatchMode() const;
 	/** TC3: the places of the lobby's map at its size; FHOLMatchConfig::MaxSlots without a size. */
 	int32 GetNumPlaces() const;
 	/** The slot of the token's player; INDEX_NONE without one (a spectator has none). */
@@ -202,7 +206,7 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	 * "teamsTogether" when given.
 	 */
 	static FString MakeSettingsBody(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, const FString& Size = FString(),
-		TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString(), const FString& Biome = FString());
+		TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString(), const FString& Mode = FString(), const FString& Biome = FString());
 	/** PUT /lobbies/{id}/slots/{index}: { "state": "open" | "closed" }. */
 	static FString MakeSlotBody(bool bOpen);
 	/**

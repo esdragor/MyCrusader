@@ -66,7 +66,7 @@ private:
  */
 namespace HOLVictoryRules
 {
-	/** The camp of an occupied slot (team 1..4 as is, team 0 as MaxTeams + 1 + Slot: alone), INDEX_NONE for a closed one. */
+	/** The camp of an occupied slot (team 1..4 as is, team 0 as MaxTeams + 1 + Slot: alone; in the Diplomacy mode always alone), INDEX_NONE for a closed one. */
 	HEROESOFLIBERTY_API int32 GetCamp(const FHOLMatchConfig& Config, int32 Slot);
 
 	/** Whether two slots' units fight each other (FHOLCampTable's rule): not of one team 1..4. */

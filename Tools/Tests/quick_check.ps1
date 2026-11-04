@@ -250,7 +250,8 @@ New-Item -ItemType Directory -Force (Split-Path $GameLog) | Out-Null
 # <name>_2.log (what the pass used to read: the held file's old lines, or nothing: "0/0"). Waits a few seconds for the
 # holder, then takes a name of its own for this pass, said aloud; every read below goes through the variable.
 function Get-FreshLog([string] $Path) {
-    for ($Try = 0; $Try -lt 10; $Try++) {
+    $Tries = if ($env:HOL_LOG_HOLD_TRIES -match '^\d+$') { [int] $env:HOL_LOG_HOLD_TRIES } else { 10 }   # Tools\Tests\log_lock_test.ps1 sets 2
+    for ($Try = 0; $Try -lt $Tries; $Try++) {
         if (-not (Test-Path $Path)) { return $Path }
         try { Remove-Item $Path -Force -ErrorAction Stop; return $Path } catch { Start-Sleep -Milliseconds 500 }
     }
@@ -290,7 +291,8 @@ if ($Parts -contains "net") {
     # Alice ally then break and compares what the server and both clients read. Nothing else of the part reads the mode yet (D6).
     # V9a: the Catastrophe option and a seed imposed (the volcano's state is a function of both), as a lobby with the option would give.
     "{ `"version`": 2, `"map`": `"/Game/Maps/Plain.Plain`", `"mode`": `"Diplomacy`", `"bCatastrophe`": true, `"seed`": 4242, `"slots`": [ $($NetSlots -join ', ') ] }" | Set-Content -Encoding ascii $NetConfig
-    Remove-Item $NetServerLog, (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
+    $NetServerLog = Get-FreshLog $NetServerLog
+    Remove-Item (Join-Path $TestSaved "Logs\quick_net_client*.log"), (Join-Path $TestSaved "quick_net_*.flag") -ErrorAction SilentlyContinue
     # Sources (J5a.2): 5 s after both clients joined, the server uses up the first tree of the wood beside slot 0.
     # Gathering (J5a.5): a second later, it leaves 5 wood in the tree nearest each start (the one each client's Peasant
     # will gather), so that the gathering uses it up within seconds; every unload logged. The starts are the main centres'
@@ -2896,11 +2898,10 @@ if ($NetListening) {
         $NetSteps += "mark end", "quit"
         $ClientSequence = Join-Path $TestSaved "quick_net_client$Client.seq"
         $NetSteps | Set-Content -Encoding utf8 $ClientSequence
-        $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$Client.log"
+        $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_net_client$Client.log")
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
         $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
-        Remove-Item $ClientLog -ErrorAction SilentlyContinue
         $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
         if ($Client -eq 2) {
@@ -3467,6 +3468,7 @@ if ($Parts -contains "menu") {
     # row, rows 2 to 6, each one taken by the server.
     $AITalents = @($Launch | Select-String -Pattern "AI slot 1 step \d+: talent of family (\d) in row (\d)$" | ForEach-Object { "$($_.Matches[0].Groups[1].Value)@$($_.Matches[0].Groups[2].Value)" })
     $Checks["the AI draws its main family (the Captain, 1)"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: talent profile main family 1$" -Quiet)
+    $Checks["it draws a secondary family too (another one: the Guardian, 0, for slot 1)"] = [bool]($Launch | Select-String -Pattern "AI slot 1 step \d+: talent profile secondary family 0$" -Quiet)
     $Checks["its hero at level 6 takes the Captain in rows 2 to 6, in order ($($AITalents -join ' '))"] = ($AITalents -join " ") -eq "1@2 1@3 1@4 1@5 1@6"
     $Checks["the server took the five ($(@($Launch | Select-String -Pattern 'Hero talent order: slot 1 family 1 at step \d+ taken').Count))"] =
         @($Launch | Select-String -Pattern "Hero talent order: slot 1 family 1 at step \d+ taken").Count -eq 5
@@ -6535,6 +6537,11 @@ if ($Parts -contains "net") {
         param($Lines)
         $Lines | Where-Object { $_ -match "Corpse report: (\d+) corpses" } | Select-Object -Last 1 | ForEach-Object { [int]$Matches[1] }
     }
+    # The log of a client of THIS pass (its name may be its own, Get-FreshLog); a path that does not exist when it never launched.
+    function Get-NetClientLog([int] $N) {
+        $Log = ($NetClients | Where-Object { $_.Client -eq $N } | Select-Object -First 1).Log
+        if ($Log) { $Log } else { Join-Path $TestSaved "Logs\quick_net_client$N.log" }
+    }
     $Client1Log = ($NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1).Log
     $ClientCorpses = & $CorpseCount @(if ($Client1Log -and (Test-Path $Client1Log)) { Get-Content $Client1Log })
     $ServerCorpses = & $CorpseCount @(if (Test-Path $NetServerLog) { Get-Content $NetServerLog })
@@ -6576,22 +6583,25 @@ if ($Parts -contains "net") {
         @(if ($Path -and (Test-Path $Path)) { Select-String -Path $Path -Pattern "Diplomacy report: (slot \d toward slot \d: .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
     }
     $DipServer = & $DipLines $NetServerLog
-    $DipClient1 = & $DipLines (Join-Path $TestSaved "Logs\quick_net_client1.log")
-    $DipClient2 = & $DipLines (Join-Path $TestSaved "Logs\quick_net_client2.log")
+    $DipClient1 = & $DipLines (Get-NetClientLog 1)
+    $DipClient2 = & $DipLines (Get-NetClientLog 2)
     $DipWant = @(
         "slot 0 toward slot 1: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
         "slot 1 toward slot 0: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
         "slot 0 toward slot 1: stance Ally, relation Enemy, vision 0, fires 1, adversary 1",
         "slot 1 toward slot 0: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1")
     $DipSays = "server $($DipServer.Count), client 1 $($DipClient1.Count), client 2 $($DipClient2.Count) lines"
-    $Checks["net diplomacy: the server and both clients read the alliance then the break ($DipSays)"] =
+    # Its own PASS / FAIL line "net diplomacy" (not played with "-Parts hero", which keeps the join and the server's checks only).
+    $DipChecks = [ordered]@{}
+    $DipChecks["net diplomacy: the server and both clients read the alliance then the break ($DipSays)"] =
         ($DipServer -join "|") -eq ($DipWant -join "|") -and ($DipClient1 -join "|") -eq ($DipWant -join "|") -and ($DipClient2 -join "|") -eq ($DipWant -join "|")
     $DipStart = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Diplomacy report: mode Diplomacy" }).Count
-    $Checks["net diplomacy: the match is in the Diplomacy mode on the server ($DipStart reports)"] = $DipStart -eq 2
+    $DipChecks["net diplomacy: the match is in the Diplomacy mode on the server ($DipStart reports)"] = $DipStart -eq 2
+    if (-not $NetHeroOnly) { $AllOk = (Report "net diplomacy" $DipChecks) -and $AllOk }
     # The pause screen (P5.3) on each client: Bob's (« Reprendre » his, at once), then hidden once resumed; Alice's
     # (« Reprendre » greyed while the timer runs, 1 to 60 s).
     foreach ($N in 1, 2) {
-        $ClientLog = Join-Path $TestSaved "Logs\quick_net_client$N.log"
+        $ClientLog = Get-NetClientLog $N
         $Screens = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "HUD pause: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
         $Texts = @(if (Test-Path $ClientLog) { Select-String -Path $ClientLog -Pattern "HUD pause texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
         $Says = ($Screens -join "; ") + " / " + ($Texts -join "; ")
@@ -7355,7 +7365,7 @@ if ($Parts -contains "aiserver") {
     $AIServerLog = Join-Path $TestSaved "Logs\quick_aiserver.log"
     $AIServerConfig = Join-Path $TestSaved "quick_aiserver.json"
     $AIServerSequence = Join-Path $TestSaved "quick_aiserver.seq"
-    Remove-Item $AIServerLog -ErrorAction SilentlyContinue
+    $AIServerLog = Get-FreshLog $AIServerLog
     # IA4 (D579): the AI slot is Easy in the configuration; the brain must say so (the level read through the whole chain).
     Write-AIMatchConfig $AIServerConfig @("Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("", "Easy")
     @("wait 5", "hol.Gather.Report 1", "waitlog Gather: slot 1 to source", "hol.Units.Where 1", "waitlog Units where:", "quit") |
@@ -7405,7 +7415,7 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
     $Log = Join-Path $TestSaved "Logs\quick_aiduel_$Tag.log"
     $Config = Join-Path $TestSaved "quick_aiduel.json"
     $Sequence = Join-Path $TestSaved "quick_aiduel_$Tag.seq"
-    Remove-Item $Log -ErrorAction SilentlyContinue
+    $Log = Get-FreshLog $Log
     $DuelStates = @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed")
     if ($MapKey -eq "Plain") {
         $DuelMap = "/Game/Maps/Plain"
@@ -7532,7 +7542,7 @@ if ($Parts -contains "aimarket") {
     $MarketLog = Join-Path $TestSaved "Logs\quick_aimarket.log"
     $MarketConfig = Join-Path $TestSaved "quick_aimarket.json"
     $MarketSequence = Join-Path $TestSaved "quick_aimarket.seq"
-    Remove-Item $MarketLog -ErrorAction SilentlyContinue
+    $MarketLog = Get-FreshLog $MarketLog
     Write-AIMatchConfig $MarketConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
     $MarketLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300")
     for ($Second = 0; $Second -lt 360; $Second += 10) { $MarketLines += "wait 10" }
@@ -7564,7 +7574,7 @@ if ($Parts -contains "aisiege") {
     $SiegeLog = Join-Path $TestSaved "Logs\quick_aisiege.log"
     $SiegeConfig = Join-Path $TestSaved "quick_aisiege.json"
     $SiegeSequence = Join-Path $TestSaved "quick_aisiege.seq"
-    Remove-Item $SiegeLog -ErrorAction SilentlyContinue
+    $SiegeLog = Get-FreshLog $SiegeLog
     Write-AIMatchConfig $SiegeConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
     $SiegeLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300")
     for ($Second = 0; $Second -lt 840; $Second += 10) { $SiegeLines += "wait 10" }
@@ -7598,7 +7608,7 @@ if ($Parts -contains "aitech") {
     $TechLog = Join-Path $TestSaved "Logs\quick_aitech.log"
     $TechConfig = Join-Path $TestSaved "quick_aitech.json"
     $TechSequence = Join-Path $TestSaved "quick_aitech.seq"
-    Remove-Item $TechLog -ErrorAction SilentlyContinue
+    $TechLog = Get-FreshLog $TechLog
     Write-AIMatchConfig $TechConfig @("AI", "AI", "AI", "AI", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal", "Easy", "Evolving")
     $TechLines = @("hol.Simulation.SyncNavBuild 1", "hol.AI.TechDelayHard 0", "hol.AI.TechDelayNormal 380", "hol.AI.TechDelayEasy 480", "hol.AI.SetEvolveTimes 60 120", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Hero.SetXP 2 1300", "hol.Hero.SetXP 3 1300")
     for ($Second = 0; $Second -lt 650; $Second += 10) { $TechLines += "wait 10" }
@@ -7649,7 +7659,7 @@ if ($Parts -contains "aiwave") {
     $WaveLog = Join-Path $TestSaved "Logs\quick_aiwave.log"
     $WaveConfig = Join-Path $TestSaved "quick_aiwave.json"
     $WaveSequence = Join-Path $TestSaved "quick_aiwave.seq"
-    Remove-Item $WaveLog -ErrorAction SilentlyContinue
+    $WaveLog = Get-FreshLog $WaveLog
     Write-AIMatchConfig $WaveConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
     $WaveLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Units.Where 0",
         "hol.Units.Spawn 10 -13000 0 0 Spearman 300", "hol.Units.Spawn 2 -13000 0 0 Ram 300", "hol.Units.Spawn 1 -13000 0 0 Mangonel 300", "wait 1", "hol.Units.Where 0")
@@ -7712,7 +7722,8 @@ if ($Parts -contains "netai") {
     $NetAIServerLog = Join-Path $TestSaved "Logs\quick_netai_server.log"
     $NetAIConfig = Join-Path $TestSaved "quick_netai.json"
     $NetAIServerSequence = Join-Path $TestSaved "quick_netai_server.seq"
-    Remove-Item $NetAIServerLog, (Join-Path $TestSaved "Logs\quick_netai_client*.log"), (Join-Path $TestSaved "quick_netai_*.flag") -ErrorAction SilentlyContinue
+    $NetAIServerLog = Get-FreshLog $NetAIServerLog
+    Remove-Item (Join-Path $TestSaved "Logs\quick_netai_client*.log"), (Join-Path $TestSaved "quick_netai_*.flag") -ErrorAction SilentlyContinue
     # The slots: Alice and Bob, the AI in slot 2.
     $NetAIStates = @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed")
     Write-AIMatchConfig $NetAIConfig $NetAIStates @("Alice", "Bob")
@@ -7741,7 +7752,7 @@ if ($Parts -contains "netai") {
             $ClientSequence = Join-Path $TestSaved "quick_netai_client$Client.seq"
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark netai", "wait 8", "hol.Units.Where 2", "wait 1", "hol.Units.Where 2",
                 "signal $($NetAIDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
-            $ClientLog = Join-Path $TestSaved "Logs\quick_netai_client$Client.log"
+            $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_netai_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetAIPort} -PlayerName=Bob" } else { "127.0.0.1:${NetAIPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
@@ -7822,7 +7833,8 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     $NetFogServerLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_server.log"
     $NetFogConfig = Join-Path $TestSaved "quick_$NetFogPart.json"
     $NetFogServerSequence = Join-Path $TestSaved "quick_${NetFogPart}_server.seq"
-    Remove-Item $NetFogServerLog, (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client*.log"), (Join-Path $TestSaved "quick_${NetFogPart}_*.flag") -ErrorAction SilentlyContinue
+    $NetFogServerLog = Get-FreshLog $NetFogServerLog
+    Remove-Item (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client*.log"), (Join-Path $TestSaved "quick_${NetFogPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $NetFogConfig @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
     # B2 (D651-D656): the lobby's biome travels in the configuration to the server and, with the game state, to each client ("hol.Biome.Report" below).
     (Get-Content $NetFogConfig -Raw) -replace '"startingPeasants"', '"biome": "snow", "startingPeasants"' | Set-Content -Encoding ascii $NetFogConfig
@@ -7857,7 +7869,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
             $ClientReports = @(1..$ReportCount | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report"; if ($NetFogTrees) { "hol.Sources.Report" } } }) + @("hol.Fog.Report")
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Biome.Report", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
                 @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
-            $ClientLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log"
+            $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetFogPort} -PlayerName=Bob" } else { "127.0.0.1:${NetFogPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
@@ -7925,7 +7937,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
         @("waitmap Plain", "waitlog Camera above the start", "mark ${NetFogPart}back", "wait 6", "hol.Buildings.Report", "hol.Fog.Report", "signal $($NetFogDone[1])", "mark end", "quit") |
             Set-Content -Encoding utf8 $BackSequence
         $BackLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_back.log"
-        Remove-Item $BackLog -ErrorAction SilentlyContinue
+        $BackLog = Get-FreshLog $BackLog
         $BackArguments = "`"$UProject`" 127.0.0.1:${NetFogPort}?Name=Alice -game $(if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=4900 -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }) -saveddirsuffix=Tests_Net2 -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$BackLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $BackSequence`""
         $BackProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $BackArguments -PassThru
         $BackTimedOut = -not $BackProcess.WaitForExit(240000)
@@ -8127,7 +8139,8 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
     $SpecServerLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_server.log"
     $SpecConfig = Join-Path $TestSaved "quick_${SpecPart}.json"
     $SpecServerSequence = Join-Path $TestSaved "quick_${SpecPart}_server.seq"
-    Remove-Item $SpecServerLog, (Join-Path $TestSaved "Logs\quick_${SpecPart}_client*.log"), (Join-Path $TestSaved "quick_${SpecPart}_*.flag") -ErrorAction SilentlyContinue
+    $SpecServerLog = Get-FreshLog $SpecServerLog
+    Remove-Item (Join-Path $TestSaved "Logs\quick_${SpecPart}_client*.log"), (Join-Path $TestSaved "quick_${SpecPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $SpecConfig @("Human", "Human", "AI", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
     if ($SpecThreeTeams) {
         # D646: three teams (Alice 1, Bob 2, the AI 3): Bob is alone in his team, his team has fallen with him.
@@ -8170,7 +8183,7 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
             }
             $Steps += @("signal $($SpecDone[$Client - 1])", "mark end", "quit")
             $Steps | Set-Content -Encoding utf8 $ClientSequence
-            $ClientLog = Join-Path $TestSaved "Logs\quick_${SpecPart}_client$Client.log"
+            $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${SpecPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""

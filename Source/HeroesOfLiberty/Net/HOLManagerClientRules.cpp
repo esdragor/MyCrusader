@@ -228,6 +228,12 @@ EHOLFogMode FHOLLobby::GetFogMode() const
 	return Value == INDEX_NONE ? EHOLFogMode::Normal : static_cast<EHOLFogMode>(Value);
 }
 
+EHOLMatchMode FHOLLobby::GetMatchMode() const
+{
+	const int64 Value = StaticEnum<EHOLMatchMode>()->GetValueByNameString(Mode);
+	return Value == INDEX_NONE ? EHOLMatchMode::Standard : static_cast<EHOLMatchMode>(Value);
+}
+
 EHOLMapSize FHOLLobby::GetMapSize() const
 {
 	return FHOLMapSizeRules::FindByKey(Size);
@@ -240,7 +246,7 @@ int32 FHOLLobby::GetNumPlaces() const
 }
 
 FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe,
-	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Biome)
+	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Mode, const FString& Biome)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("map"), Map);
@@ -260,6 +266,11 @@ FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool 
 	if (!Fog.IsEmpty())
 	{
 		Object->SetStringField(TEXT("fog"), Fog);
+	}
+	// D5: the match mode, only when given.
+	if (!Mode.IsEmpty())
+	{
+		Object->SetStringField(TEXT("mode"), Mode);
 	}
 	// B2: the biome's key, only when given ("default", the map's own, is a key, not an empty string).
 	if (!Biome.IsEmpty())
@@ -353,6 +364,7 @@ namespace
 		(*Settings)->TryGetBoolField(TEXT("teamsTogether"), Out.bTeamsTogether);
 		(*Settings)->TryGetStringField(TEXT("fog"), Out.Fog);
 		(*Settings)->TryGetStringField(TEXT("biome"), Out.Biome);
+		(*Settings)->TryGetStringField(TEXT("mode"), Out.Mode);
 		const TArray<TSharedPtr<FJsonValue>>* Maps = nullptr;
 		if (Object.TryGetArrayField(TEXT("maps"), Maps))
 		{

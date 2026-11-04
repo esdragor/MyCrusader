@@ -186,6 +186,29 @@ Mesure (`Tools\build_queue_report.ps1`) : 24 builds en 3 h 40, 5 orphelins, 4 ab
 11. **Régénération des cartes** : elle demande l'éditeur, dont le démarrage (Turnkey / `ValidatePlatforms`) attend les builds des autres worktrees (éditeur de Haldir bloqué 14 min sans rien produire). Ne pas la planifier en même temps que des builds ; la lancer seule ou hors file, avec le harnais Python à module `unreal` factice pour les réglages.
 12. **Étape 0 sautée** : acceptable seulement quand la file de travail porte déjà les tâches du jour (réponses de l'utilisateur en tête, comme D644-D649) ; sinon l'étape 0 reste obligatoire.
 
+## Leçons de la séance interactive du 2026-11-04 (11:40 -> prévue 14:00, réelle ~15:50 ; approuvées par l'utilisateur le 2026-11-04, toutes obligatoires)
+
+Bilan : fusion groupée de 4 branches (921/921) et 7 décisions, mais 1 h 45 de dépassement reproché par l'utilisateur, 5 agents C++ en même temps, builds de 20 à 40 min, 3 agents ayant rendu du code non compilé, un agent à 424k tokens.
+**Heure et durée**
+1. **L'arrêt dur est un contrat.** Aucun agent n'est lancé ni relancé après l'heure de fin ; un retour tardif devient une ligne `[ ]` de la file pour la séance suivante. Une prolongation se demande **15 minutes avant l'heure**, et ne dépasse pas **2 cycles (30 min)**.
+2. **L'heure vient de `Get-Date` PowerShell à chaque annonce** (mes estimations de mémoire étaient fausses de plusieurs minutes) ; les arrêts durs sont écrits en heure réelle dans chaque énoncé.
+3. **Alarme de fin** : au lancement, un rappel programmé à « fin - 15 min » déclenche la clôture : plus de lancement, bilan, fusion groupée.
+**File de build (le vrai goulot)**
+4. **Plafond de 3 agents C++ vérifié avant CHAQUE lancement** (`Docs\BuildQueue.state\` + agents actifs) ; au-delà, l'agent démarre sans compiler (docs, scénarios, tests de script).
+5. **Un build par agent, lancé dans les 15 premières minutes** : tout le C++ en un seul lot, puis `build.ps1` en `run_in_background`. Un agent qui n'a pas compilé à mi-parcours passe la main ; jamais de code non compilé rendu comme fini (Faramir, Celeborn, Sauron, Galadriel l'ont fait).
+6. **La fusion groupée démarre à « fin - 30 min »** avec ce qui est prêt (elle a pris 70 min dont 40 d'attente de file) ; ce qui n'est pas prêt attend la séance suivante.
+**Tokens et agents**
+7. **Un agent est remplacé à 200k tokens, jamais plus tard** (Haldir 424k) ; le journal du chantier doit permettre de repartir d'un agent neuf.
+8. **Question sans réponse = valeur par défaut déjà codée** (a bien marché : aucun agent n'a attendu) ; l'option « Autre » et la recommandation restent.
+**Essais**
+9. **L'agent d'intégration est nommé au lancement** et rejoue les essais après la première fusion (il a trouvé le bug du tableau des joueurs que personne n'avait vu) ; c'est le seul à écrire les essais d'intégration dans `Retours\`.
+10. **Un essai n'est donné qu'après fusion et build vérifié** : un essai d'une branche non fusionnée (`E-maps-review`) attend, sauf demande explicite de l'utilisateur.
+11. **Plusieurs cartes/variantes = un scénario de revue** (une commande, Entrée charge la suivante, nom et taille à l'écran), pas une commande par élément.
+**Outils**
+12. **Corriger l'outil partagé au lieu du contournement privé** : `bEdgeScroll` à couper dans les scénarios (défilement de caméra pendant un `check`), parties `netfogview`/`netspec` inexistantes dans `quick_check` (vraies : `netfogtrees`, `netspecteams`), démarrage de l'éditeur bloqué par les builds des autres copies (`-Multiprocess` le contourne, à mettre dans `crossings.ps1`, `hinterland_paths.ps1`, `quick_check.ps1`).
+13. **Détecter un `Intermediate` périmé** : après `git merge main`, un build qui échoue avec des erreurs de déclaration dans des fichiers que l'agent n'a pas touchés (UHT/.generated.h) = supprimer `Intermediate\...\Inc\HeroesOfLiberty\UHT` de CE worktree avant de chercher une cause dans le code.
+14. **Fin de séance : tous les worktrees se remettent à jour avec main** (demandé par l'utilisateur le 2026-11-04) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\sync_worktrees.ps1` (`-DryRun` pour voir). Il fait `git merge main` dans chaque branche ; un worktree avec du travail suivi non commité est SAUTÉ et signalé, un conflit annule la fusion et est signalé, jamais de push. À lancer après la fusion groupée et avant le bilan, **quand aucun agent ne tourne** ; les sauts et conflits entrent dans le bilan (ligne `[ ]` de la file). Le travail non commité d'un agent est d'abord commité sur sa branche (jamais laissé en l'air) : le 2026-11-04 le C++ de Biomes B2 (Faramir) n'était PAS dans `fog` bien que la fusion l'ait laissé croire.
+
 ## Au démarrage : « commence ton Auto_Journey »
 
 L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase. Les chantiers auront avancé depuis la dernière fois. Sans poser de question déjà tranchée :

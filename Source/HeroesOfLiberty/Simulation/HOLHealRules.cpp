@@ -4,13 +4,18 @@
 
 namespace HOLHeal
 {
-	bool IsHealable(const uint32 HealerId, const uint8 HealerCamp, const FCandidate& Candidate)
+	bool IsAllyOf(const uint8 HealerCamp, const uint32 HealerAllyOwners, const FCandidate& Candidate)
 	{
-		return Candidate.UnitId != HealerId && Candidate.Camp == HealerCamp && !Candidate.bUnhealable
+		return Candidate.Camp == HealerCamp || (Candidate.Owner < 32 && (HealerAllyOwners & (1u << Candidate.Owner)) != 0);
+	}
+
+	bool IsHealable(const uint32 HealerId, const uint8 HealerCamp, const FCandidate& Candidate, const uint32 HealerAllyOwners)
+	{
+		return Candidate.UnitId != HealerId && IsAllyOf(HealerCamp, HealerAllyOwners, Candidate) && !Candidate.bUnhealable
 			&& Candidate.Health > 0.f && Candidate.Health < Candidate.MaxHealth;
 	}
 
-	int32 ChooseTarget(const uint32 HealerId, const uint8 HealerCamp, const FVector2D& HealerLocation, const float Range, const uint32 OrderedId, const uint32 KeptId, const TConstArrayView<FCandidate> Candidates)
+	int32 ChooseTarget(const uint32 HealerId, const uint8 HealerCamp, const FVector2D& HealerLocation, const float Range, const uint32 OrderedId, const uint32 KeptId, const TConstArrayView<FCandidate> Candidates, const uint32 HealerAllyOwners)
 	{
 		const double RangeSquared = static_cast<double>(Range) * static_cast<double>(Range);
 		int32 Ordered = INDEX_NONE;
@@ -20,7 +25,7 @@ namespace HOLHeal
 		for (int32 Index = 0; Index < Candidates.Num(); ++Index)
 		{
 			const FCandidate& Candidate = Candidates[Index];
-			if (!IsHealable(HealerId, HealerCamp, Candidate))
+			if (!IsHealable(HealerId, HealerCamp, Candidate, HealerAllyOwners))
 			{
 				continue;
 			}

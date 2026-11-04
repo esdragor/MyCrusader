@@ -308,7 +308,7 @@ void UHOLNewGameScreen::BuildLayout()
 
 	UHorizontalBox* Options = AddLine(16.f);
 	AddCell(Options, MakeText(LOCTEXT("Mode", "Mode"), UHOLTextStyleBody::StaticClass()), NameWidth);
-	ModeDropdown = AddDropdown(Options, TEXT("ModeDropdown"), { LOCTEXT("Standard", "Standard") }, 0, OptionWidth);
+	ModeDropdown = AddDropdown(Options, TEXT("ModeDropdown"), { LOCTEXT("Standard", "Standard"), LOCTEXT("ModeDiplomacy", "Diplomatie") }, 0, OptionWidth);
 	AddCell(Options, MakeText(LOCTEXT("Nomad", "Nomade"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
 	NomadDropdown = AddDropdown(Options, TEXT("NomadDropdown"), OffOn(), 0, ToggleWidth);
 	AddCell(Options, MakeText(LOCTEXT("Regicide", "Régicide"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
@@ -393,7 +393,7 @@ void UHOLNewGameScreen::NativeOnInitialized()
 			SlotFactions[SlotIndex]->SetIsEnabled(false);
 		}
 	}
-	for (UHOLDropdown* Greyed : { ModeDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
+	for (UHOLDropdown* Greyed : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
 		if (Greyed)
 		{
@@ -415,6 +415,10 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	if (FogDropdown)
 	{
 		FogDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleFogChosen);
+	}
+	if (ModeDropdown)
+	{
+		ModeDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleModeChosen);
 	}
 	for (UHOLDropdown* Option : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
@@ -562,6 +566,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	Config.MapSize = Lobby.GetMapSize();
 	Config.bTeamsTogether = Lobby.bTeamsTogether;
 	Config.FogMode = Lobby.GetFogMode();
+	Config.Mode = Lobby.GetMatchMode();
 	Config.bDrawPlaces = true;
 	TArray<FString> Players;
 	for (int32 SlotIndex = 0; SlotIndex < FHOLMatchConfig::MaxSlots; ++SlotIndex)
@@ -640,8 +645,8 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	}
 	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
 	const bool bLeader = Lobby.IsYouLeader();
-	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), FogDropdown.Get(), NomadDropdown.Get(), RegicideDropdown.Get(),
-		CatastropheDropdown.Get() })
+	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), FogDropdown.Get(), ModeDropdown.Get(), NomadDropdown.Get(),
+		RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
 		if (Setting)
 		{
@@ -780,6 +785,10 @@ void UHOLNewGameScreen::Refresh()
 	if (FogDropdown)
 	{
 		FogDropdown->SetSelectedIndex(2 - static_cast<int32>(Config.FogMode));
+	}
+	if (ModeDropdown)
+	{
+		ModeDropdown->SetSelectedIndex(static_cast<int32>(Config.Mode));
 	}
 	// TC3 (TC-Q4): the slots past the places of the size are closed, not changeable (the lobby sets its own, loop 2).
 	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
@@ -926,6 +935,17 @@ void UHOLNewGameScreen::HandleFogChosen(const int32 Value)
 	Refresh();
 }
 
+void UHOLNewGameScreen::HandleModeChosen(const int32 Value)
+{
+	Config.Mode = Value == 1 ? EHOLMatchMode::Diplomacy : EHOLMatchMode::Standard;
+	UE_LOG(LogHOLUI, Display, TEXT("New game: mode %s"), *StaticEnum<EHOLMatchMode>()->GetNameStringByValue(static_cast<int64>(Config.Mode)));
+	if (bLobby)
+	{
+		SendSettings();
+	}
+	Refresh();
+}
+
 void UHOLNewGameScreen::HandleOptionChosen(int32)
 {
 	if (!bLobby)
@@ -956,7 +976,8 @@ void UHOLNewGameScreen::SendSettings()
 		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
 		Client->UpdateSettings(Config.Map.GetAssetName(), Config.bNomad, Config.bRegicide, Config.bCatastrophe,
 			FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error) { HandleWritten(Written, Error, What); }),
-			SizeKey, Config.bTeamsTogether, StaticEnum<EHOLFogMode>()->GetNameStringByValue(static_cast<int64>(Config.FogMode)));
+			SizeKey, Config.bTeamsTogether, StaticEnum<EHOLFogMode>()->GetNameStringByValue(static_cast<int64>(Config.FogMode)),
+			StaticEnum<EHOLMatchMode>()->GetNameStringByValue(static_cast<int64>(Config.Mode)));
 	}
 }
 

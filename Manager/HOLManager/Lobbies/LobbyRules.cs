@@ -97,6 +97,11 @@ public static class LobbyRules
 
     public const string DefaultFog = "Normal";
 
+    /** D5 (DiplomacyInProgress.md): the match modes, EHOLMatchMode by name (Source/HeroesOfLiberty/Match/HOLMatchConfig.h): Standard is the game's. */
+    public static readonly IReadOnlyList<string> Modes = ["Standard", "Diplomacy"];
+
+    public const string DefaultMode = "Standard";
+
     /**
      * B2 (D651-D656): the lobby's biomes by key: "default" (the map's own ambience, the first choice) then the five of the game's table
      * (Script/Biomes/HOLBiomeRules.as, checked by a test). Any biome on any map (B-Q4).

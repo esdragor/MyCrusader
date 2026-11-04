@@ -1,6 +1,6 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 talents_points | Sous les capacités du héros : « Talents à dépenser : 2 », sans bouton de famille
-talents_window | La fenêtre « Arbre de talents » au milieu : « Talents à dépenser : 2 », trois têtes Gardien / Capitaine / Champion, 5 rangées de 3 cases nommées (Rangée 2 : trois cases claires = prenables, les rangées suivantes grisées), « Fermer » et « Choix conseillé »
+talents_window | La fenêtre « Arbre de talents » au milieu : « Talents à dépenser : 2 », trois têtes Gardien / Capitaine / Champion, 8 rangées de 3 cases (les rangées 7 à 9 grisées « plus tard ») nommées (Rangée 2 : trois cases claires = prenables, les rangées suivantes grisées), « Fermer » et « Choix conseillé »
 talents_first | Après un clic sur la case Capitaine de la rangée 2 (Boucliers levés) : la case est teintée dorée, la ligne dorée « Talent pris : Boucliers levés — ... » dans le bloc, une icône « B » sous la liste
 talents_second | Après « Choix conseillé » : la case Capitaine de la rangée 3 (Mains du guérisseur) teintée, « (pas encore actif dans ce prototype) » dans la ligne dorée, deux icônes « B M »
 talents_dawn | Au niveau 4, trois talents : cases Capitaine des rangées 2, 3, 4 teintées (Boucliers levés, Mains du guérisseur, Pas de l'Aube), trois icônes « B M P », la rangée 5 grisée « en attente »

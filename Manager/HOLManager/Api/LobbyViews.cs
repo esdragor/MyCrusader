@@ -56,6 +56,7 @@ public static class LobbyViews
             size = lobby.Settings.Size,
             teamsTogether = lobby.Settings.TeamsTogether,
             fog = lobby.Settings.Fog,
+            mode = lobby.Settings.Mode,
             biome = lobby.Settings.Biome,
         },
         maps = store.Maps.Select(m => new { name = m.Name, maxPlayers = m.MaxPlayers,

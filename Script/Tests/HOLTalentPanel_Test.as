@@ -84,3 +84,17 @@ void Test_TalentPanelKeyReach(FUnitTest& T)
 	T.AssertFalse(Lost.FamilyKeyReachable[0], "one Guardian, one Captain: neither reaches five in 5 points");
 	T.AssertFalse(Lost.FamilyKeyReachable[1], "... nor the Captain");
 }
+
+// The full game's panel (8 rows, 2 to 9; MakeFor with maximum level 9): the same line with three more rows; the key stays reachable with five
+// on a family and three left (D103's maximum build: a key and a seal), and with eight points two families can both be started.
+void Test_TalentPanelFullGameHasEightRows(FUnitTest& T)
+{
+	const FHOLTalentPanelView Start = HOLTalentPanel::MakeFor(9, 1, PanelPicks());
+	T.AssertEquals(8, Start.Rows.Num(), "rows 2 to 9");
+	T.AssertEquals("points 0 | w . . . . . . . | advised none | seals 0 keys 0", Start.Describe, "the stable line, level 1");
+	T.AssertEquals(HOLTalentPanel::Make(1, PanelPicks()).Rows.Num(), HOLHero::GetMaxLevel() - 1, "Make is still the prototype's");
+	const FHOLTalentPanelView Split = HOLTalentPanel::MakeFor(9, 7, PanelPicks(0, 0, 1, 1, 1));
+	T.AssertEquals("points 1 | 0 0 1 1 1 n . . | advised 1 | seals 1 keys 0", Split.Describe, "level 7, five taken: row 7 open");
+	T.AssertTrue(Split.FamilyKeyReachable[1], "the Captain has three and five points left at most: its key can still come");
+	T.AssertFalse(Split.FamilyKeyReachable[2], "the Champion has none and three left: out of reach");
+}

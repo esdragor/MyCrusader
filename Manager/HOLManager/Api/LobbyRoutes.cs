@@ -16,7 +16,7 @@ public static class LobbyRoutes
     private sealed record MeRequest(int? ColorIndex, int? Team, bool? Ready, bool? Spectator = null);
 
     private sealed record SettingsRequest(string? Map, bool? Nomad, bool? Regicide, bool? Catastrophe, string? Size = null,
-        bool? TeamsTogether = null, string? Fog = null, string? Biome = null);
+        bool? TeamsTogether = null, string? Fog = null, string? Mode = null, string? Biome = null);
 
     private sealed record SlotRequest(string? State, int? ColorIndex = null, int? Team = null);
 
@@ -100,7 +100,7 @@ public static class LobbyRoutes
             var token = Token(request);
             return store.Atomic(() => LobbyViews.State(store,
                 store.UpdateSettings(lobbyId, token, body.Map, body.Nomad, body.Regicide, body.Catastrophe, body.Size,
-                    body.TeamsTogether, body.Fog, body.Biome), token));
+                    body.TeamsTogether, body.Fog, body.Mode, body.Biome), token));
         });
 
         app.MapPut("/lobbies/{lobbyId}/slots/{index}", async (string lobbyId, string index, HttpRequest request, LobbyStore store) =>
