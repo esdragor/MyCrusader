@@ -686,7 +686,12 @@ bool FHOLVolcanoFreshDepositWorldTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("... standing"), Fresh.IsStanding());
 		TestTrue(TEXT("... gold or stone"), Fresh.Resource == EHOLResource::Gold || Fresh.Resource == EHOLResource::Stone);
 		TestTrue(TEXT("... on the flow's line"), HOLVolcano::DistanceToFlow(Flow, Fresh.Location) < 1.f);
-		TestTrue(TEXT("... half way along it"), Fresh.Location.Equals(HOLVolcano::PointAt(Flow, 0.5f * Flow.Length()), 1.0));
+		// D649: the place, the kind and the size are what the rule draws from the match seed for this site and cycle (the real seed of the real config).
+		const HOLVolcano::FFreshDeposit Expected = HOLVolcano::FreshDeposit(HOLVolcano::SiteSeed(W.GameState->GetLaunchConfig().Seed, 0), FirstCycle, Flow, W.Volcano->GetSettings());
+		TestTrue(TEXT("... where the seed puts it along the flow"), Expected.bPresent && Fresh.Location.Equals(Expected.Location, 1.0));
+		TestTrue(TEXT("... within the settings' range of the flow's length"), Expected.Along >= W.Volcano->GetSettings().FreshDepositAlongMin - 0.0001f && Expected.Along <= W.Volcano->GetSettings().FreshDepositAlongMax + 0.0001f);
+		TestTrue(TEXT("... of the type the seed draws (kind and size)"), Sources->GetTypeNames().IsValidIndex(Fresh.TypeIndex) && Sources->GetTypeNames()[Fresh.TypeIndex] == Expected.TypeName);
+		TestTrue(TEXT("... gold or stone as drawn"), Fresh.Resource == (Expected.Kind == HOLVolcano::EFreshKind::Gold ? EHOLResource::Gold : EHOLResource::Stone));
 		const FHOLSourceTypeRow* Row = Sources->GetType(Fresh.TypeIndex);
 		TestTrue(TEXT("... holding what its type holds"), Row && Fresh.Remaining == Row->Amount && Fresh.Remaining > 0);
 		TestEqual(TEXT("... the volcano's own list of the site's fresh deposits has it"), W.Volcano->GetFreshSourceIndices(0).Num(), 1);

@@ -397,9 +397,21 @@ HOLVolcano::FFreshDeposit HOLVolcano::FreshDeposit(const int32 SiteSeedValue, co
 	// A stream of its own (another salt than the flow's draw and the cycle's dates), the seed hashed first like DrawFlow's: no memory of the previous cycles.
 	FRandomStream Stream(static_cast<int32>(MurmurFinalize32(HashCombineFast(MurmurFinalize32(static_cast<uint32>(SiteSeedValue)), MurmurFinalize32(static_cast<uint32>(CycleIndex) + 60013u)))));
 	Result.bPresent = true;
+	// D649: the kind, the place along the flow and the size, in this order, all from the seed.
 	Result.Kind = Stream.FRand() < Settings.FreshDepositGoldShare ? EFreshKind::Gold : EFreshKind::Stone;
-	Result.TypeName = Result.Kind == EFreshKind::Gold ? Settings.FreshDepositGoldType : Settings.FreshDepositStoneType;
-	Result.Location = PointAt(Flow, FMath::Clamp(Settings.FreshDepositAlong, 0.f, 1.f) * Length);
+	const float AlongMin = FMath::Clamp(Settings.FreshDepositAlongMin, 0.f, 1.f);
+	const float AlongMax = FMath::Clamp(Settings.FreshDepositAlongMax, AlongMin, 1.f);
+	Result.Along = FMath::Lerp(AlongMin, AlongMax, Stream.FRand());
+	Result.bBig = Stream.FRand() < Settings.FreshDepositBigShare;
+	if (Result.Kind == EFreshKind::Gold)
+	{
+		Result.TypeName = Result.bBig ? Settings.FreshDepositGoldBigType : Settings.FreshDepositGoldSmallType;
+	}
+	else
+	{
+		Result.TypeName = Result.bBig ? Settings.FreshDepositStoneBigType : Settings.FreshDepositStoneSmallType;
+	}
+	Result.Location = PointAt(Flow, Result.Along * Length);
 	return Result;
 }
 

@@ -74,9 +74,9 @@ public:
 	static void ReadAITechnologiesDone(const UObject* WorldContextObject, int32 PlayerIndex, TArray<FName>& OutDone);
 
 	/**
-	 * T7 (provisional, the answer to which levels research is not given): the lowest difficulty (0 easy, 1 normal, 2 hard) whose AI researches
-	 * technologies; 3 = none. The console variable hol.AI.TechMinLevel, 2 by default (Hard only, like the Market and the Siege Workshop).
+	 * D648: the game seconds before the AI of a level (0 easy, 1 normal, 2 hard, as played now: an Evolving AI is resolved by the caller)
+	 * researches its first technology. The console variables hol.AI.TechDelayEasy / TechDelayNormal / TechDelayHard (840, 360, 0: the user's answer A, D657).
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
-	static int32 GetAITechMinLevel();
+	static float GetAITechDelay(int32 Level);
 };

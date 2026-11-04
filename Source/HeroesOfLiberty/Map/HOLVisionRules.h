@@ -113,17 +113,24 @@ namespace HOLVisionRules
 
 	/**
 	 * F6a (D518, D376): the camps (a bit per camp of FHOLVisionMap) whose sight a connection receives: a player its own
-	 * camp; a spectator (Camp INDEX_NONE) every camp; a slot defeated its former team's (bTeamCamp: its slot had a team)
-	 * or, alone, every camp.
+	 * camp; a spectator (Camp INDEX_NONE) every camp; a slot defeated its team's while the team still stands (bTeamStands:
+	 * HasStandingTeammate) or, alone or with its whole team fallen (D646), every camp.
 	 */
-	HEROESOFLIBERTY_API uint32 GetReceivedCamps(int32 Camp, bool bDefeated, bool bTeamCamp);
+	HEROESOFLIBERTY_API uint32 GetReceivedCamps(int32 Camp, bool bDefeated, bool bTeamStands);
 
 	/**
-	 * D357, D376: the camp whose sight a player's own machine shows (the client's side of GetReceivedCamps): its own camp; a slot
-	 * defeated alone (free for all, Diplomacy) or no camp at all INDEX_NONE, no fog for it, everything in sight; defeated in a
-	 * team, the team's. Whatever shows every camp here is what GetReceivedCamps sends every camp to.
+	 * D357, D376, D646: the camp whose sight a player's own machine shows (the client's side of GetReceivedCamps): its own camp; a slot
+	 * defeated alone (free for all, Diplomacy), defeated with its whole team fallen, or no camp at all INDEX_NONE, no fog,
+	 * everything in sight; defeated while a teammate stands, the team's. Whatever shows every camp here is what GetReceivedCamps
+	 * sends every camp to.
 	 */
-	HEROESOFLIBERTY_API int32 GetViewerCamp(int32 Camp, bool bDefeated, bool bTeamCamp);
+	HEROESOFLIBERTY_API int32 GetViewerCamp(int32 Camp, bool bDefeated, bool bTeamStands);
+
+	/**
+	 * D646: Slot's team still stands without it: another slot of its camp (CampOfSlot per slot, INDEX_NONE for a closed one) is not
+	 * defeated. False alone (no other slot in its camp), so a slot alone and a slot whose whole team has fallen see the same.
+	 */
+	HEROESOFLIBERTY_API bool HasStandingTeammate(int32 Slot, TConstArrayView<int32> CampOfSlot, TFunctionRef<bool(int32)> IsDefeated);
 
 	/** F6a: a connection receiving ReceivedCamps gets an object seen by ObjectCamps (a bit per camp). */
 	inline bool Receives(const uint32 ReceivedCamps, const uint32 ObjectCamps) { return (ReceivedCamps & ObjectCamps) != 0; }

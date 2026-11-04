@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLVolcanoView.h"
 #include "Simulation/HOLVolcanoRules.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "Simulation/HOLLavaObstacle.h"
@@ -60,6 +61,15 @@ public:
 	 * Catastrophe, without the unit table or for an index out of the sites. The HUD (V10) and the report read it.
 	 */
 	HOLVolcano::FSiteState GetSiteState(int32 SiteIndex) const;
+
+	/**
+	 * V9a: the site as every machine knows it (what the game state replicates): its state at the match clock Now, the flow drawn, the front, the
+	 * crater and the altar. Server or solo (a client has no site: it reads AHOLGameState::GetVolcanoViews).
+	 */
+	FHOLVolcanoSiteNet BuildNetView(int32 SiteIndex, float Now) const;
+
+	/** V9a: writes every site's view into the game state (replicated, only when it changed); the step calls it after the sites were applied. */
+	void PublishViews(float Now) const;
 
 	/** V8: the altar's count of a site (s held so far), what its zone is doing now, and how many times it has been held (cycles woken). */
 	float GetAltarHeldSeconds(const int32 SiteIndex) const { return AltarHeld.IsValidIndex(SiteIndex) ? AltarHeld[SiteIndex] : 0.f; }

@@ -222,13 +222,24 @@ void UHOLRelaySubsystem::OnStepEnded(const int64 StepIndex)
 		}
 	});
 
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(World);
 	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
 	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(HoldSeconds * Rate));
 	for (int32 Index = 0; Index < Relays.Num(); ++Index)
 	{
 		FHOLRelayState& State = Relays[Index].State;
 		const int32 OldOwner = State.Owner;
-		State = HOLRelay::Step(State, Counts[Index], TeamBySlot, HoldSteps, HOLRelay::DefaultDecaySteps);
+		// D6 (D369, D401): in the Diplomacy mode the owner's side is the owner and its allies (both said Ally); anyone else, a Neutral included,
+		// is an adversary of its own (the book is read each step, so a break or an alliance counts at once).
+		TArray<int32> OwnerRelativeTeams;
+		if (Relations.IsDiplomacy() && State.Owner >= 0 && State.Owner < Slots)
+		{
+			for (int32 Slot = 0; Slot < Slots; ++Slot)
+			{
+				OwnerRelativeTeams.Add(Slot == State.Owner || !Relations.AreHostile(State.Owner, Slot) ? 500 : 1000 + Slot);
+			}
+		}
+		State = HOLRelay::Step(State, Counts[Index], OwnerRelativeTeams.IsEmpty() ? TeamBySlot : OwnerRelativeTeams, HoldSteps, HOLRelay::DefaultDecaySteps);
 		if (State.Owner != OldOwner)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Relay %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
