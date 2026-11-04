@@ -157,6 +157,12 @@ FString TalentTipTexts = "";
 	const int DipKindTribute = 6;
 	const int DipKindMessage = 7;
 	const int DipKindChip = 3;
+	const int DipKindResource = 10;
+	// The resource of the tributes (one for all lines, cycled by the button in the panel's foot; the tax is written once beside it) and its widgets.
+	int DipResource = 3;
+	UButton DipResourceButton;
+	UCommonTextBlock DipResourceLabel;
+	UCommonTextBlock DipTaxText;
 	UBorder DipButtonPanel;
 	UOverlaySlot DipButtonSlot;
 	UButton DipOpenButton;
@@ -415,6 +421,15 @@ FString TalentTipTexts = "";
 		}
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 			DipRows.Add(FHOLDiplomacyRowView());
+
+		// The foot: the resource of the tributes and, written once, the tax (the user's answer of 2026-11-04).
+		UHorizontalBox Foot = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DiplomacyFoot"));
+		Column.AddChildToVerticalBox(Foot).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		DipResourceButton = BindDipButton(MakeDipButton(n"DipResource"), -1, DipKindResource);
+		DipResourceLabel = DipLabelOf(DipResourceButton);
+		DipAdd(Foot, DipResourceButton, 12.0);
+		DipTaxText = MakeText(n"DiplomacyTax", UHOLTextStyleHUDLabel);
+		DipAdd(Foot, DipTaxText, 0.0);
 	}
 
 	// A control of a line: added to a line with its gap.
@@ -560,6 +575,11 @@ FString TalentTipTexts = "";
 		const bool bViewerDefeated = HOLHero::IsSlotDefeated(Viewer);
 		const bool bMarket = HOLDiplomacyRead::HasFinishedMarket(Viewer);
 		const int Tax = HOLDiplomacyRead::GetTributeTaxPercent();
+		DipResourceLabel.SetText(FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::ResourceButton, HOLDiplomacyPanelText::ResourceName(DipResource))));
+		DipResourceLabel.SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
+		DipResourceButton.SetToolTipText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::ResourceTip));
+		DipTaxText.SetText(FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TaxNote, f"{Tax}")));
+		DipTaxText.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			const bool bThere = HOLDiplomacyRead::IsSlotInMatch(Slot);
@@ -651,22 +671,22 @@ FString TalentTipTexts = "";
 		DipSetButton(DipChips[Slot], bStances && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
 		DipSetButton(DipMenuButtons[Slot], bStances && Layout == 2, Row.bStanceEditable,
 			FText::FromString(HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + " v"), FText(), DipStanceTint(Row.MyStance));
-		DipPendings[Slot].SetVisibility(Row.bPending ? ESlateVisibility::HitTestInvisible : (Layout == 0 && bStances ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed));
-		DipPendings[Slot].SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Pending));
-		DipPendings[Slot].SetColorAndOpacity(FLinearColor(1.0, 0.82, 0.25, 1.0));
+		// No waiting state any more (2026-11-04): only the alliance needs both sides, and nothing is written about it.
+		DipPendings[Slot].SetVisibility(ESlateVisibility::Collapsed);
 
 		// Vision (checked: [x]), tribute (with the tax, greyed without a Market), private message.
 		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";
 		DipSetButton(DipVisionButtons[Slot], bStances, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
 			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacy::Ally) : FLinearColor(1.0, 1.0, 1.0, 1.0));
-		DipSetButton(DipTributeButtons[Slot], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, f"{Row.TaxPercent}")),
-			Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, f"{Row.TaxPercent}")),
+		const FString ResourceName = HOLDiplomacyPanelText::ResourceName(DipResource);
+		DipSetButton(DipTributeButtons[Slot], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, ResourceName)),
+			Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, ResourceName, f"{Row.TaxPercent}")),
 			FLinearColor(1.0, 1.0, 1.0, 1.0));
 		DipSetButton(DipMessageButtons[Slot], bControls, Row.bMessageEnabled, HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Message),
 			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::MessageTip), FLinearColor(1.0, 1.0, 1.0, 1.0));
 		DipMenuBoxes[Slot].SetVisibility(Layout == 2 && DipMenuSlot == Slot ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
 		DipTexts += (DipTexts.IsEmpty() ? "" : " || ") + HOLDiplomacyRead::GetSlotNameText(Viewer, Slot) + " (" + HOLDiplomacyRead::GetSlotFactionText(Slot) + ") "
-			+ Info + " | " + HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + (Row.bPending ? " | " + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Pending) : "")
+			+ Info + " | " + HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString()
 			+ " | " + Row.Describe;
 	}
 
@@ -683,6 +703,11 @@ FString TalentTipTexts = "";
 		{
 			bDipOpen = false;
 			DipPanelBox.SetVisibility(ESlateVisibility::Collapsed);
+			return true;
+		}
+		if (Kind == DipKindResource)
+		{
+			DipResource = HOLDiplomacyPanelText::NextResource(DipResource);
 			return true;
 		}
 		if (Slot < 0 || Slot >= DipMaxRows)
@@ -724,7 +749,7 @@ FString TalentTipTexts = "";
 		{
 			if (!Row.bTributeEnabled)
 				return false;
-			Controller.RequestPanelTribute(Slot, 3, 100);
+			Controller.RequestPanelTribute(Slot, DipResource, 100);
 			return true;
 		}
 		if (Kind == DipKindMessage)
@@ -754,6 +779,8 @@ FString TalentTipTexts = "";
 			return ToggleDiplomacy();
 		if (WidgetName == n"DiplomacyClose")
 			return PanelClick(-1, 8);
+		if (WidgetName == n"DipResource")
+			return PanelClick(-1, DipKindResource);
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			if (WidgetName == FName(f"DipEnemy_{Slot}"))

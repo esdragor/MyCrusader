@@ -33,7 +33,7 @@ $Commands = (@($Exec -split "," | Where-Object { $_.Trim() }) + @("hol.Scenario 
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
 # Two runs: the first compiles the shaders of the fog material (captures made meanwhile are dark): the sequence waits for the
 # render report, then the captures are made; a second launch would only be needed after a material change.
-$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -saveddirsuffix=Tests_Fogb -nosplash -LiveCoding=0 -asdebugport=0 -culture=fr -abslog=`"$Log`" -ExecCmds=`"$Commands`""
+$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -saveddirsuffix=Tests_Fogb -nosplash -unattended -LiveCoding=0 -asdebugport=0 -culture=fr -abslog=`"$Log`" -ExecCmds=`"$Commands`""
 $Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru
 $Deadline = (Get-Date).AddSeconds($TimeoutSeconds)
 $Done = $false

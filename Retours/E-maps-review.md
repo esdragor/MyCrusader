@@ -1,0 +1,19 @@
+# [À ESSAYER] E-maps-review : revue des 8 cartes d'un seul lancement (Entrée = carte suivante), 1 minute par carte
+
+Intégration (2026-11-04 17:3x, agent de fusion) : sur le build de la fusion groupée (worktree Elrond), preflight maps_review PASS (79 s, 32 PNG, 32 mesures de HUD sans recouvrement, audit de sanité passé). VU À L'ÉCRAN : rev3_hinterland_altar (autel : socle noir à deux marches, pilier noir, haut orange, au milieu entre les deux relais) et rev2_plain_forest (grandes forêts organiques de la Plaine, sol vert uni texturé, baies, or). Les 30 autres PNG NON ouverts par cet agent. Statut : VU SUR MAIN FUSIONNÉ (autel, forêt de la Plaine) ; autres cartes et tailles Moyenne à Immense non revues ; main = pas encore avancée.
+
+Statut : pré-vol PASS de la chaîne entière `maps_review` (104 s, 7 appuis sur Entrée simulés, 32 mesures de HUD sans recouvrement, audit de sanité passé, 32 PNG produits) ; PNG ouverts et vus : sol et forêts des 8 cartes (de quoi vérifier les formes et les sols), plus les bases de plusieurs. Une seule commande, pas de console : la scène suivante s'ouvre par `open` dans la même séquence (`hol.Scenario` dans une séquence ne marche pas : il expire à 60 s). **L'AUTEL EST VU À L'ÉCRAN** (relancé à 16:50 après compilation du worktree Haldir, PNG ouverts : Forêt profonde, Arrière-pays, Gués, Couronne) : socle noir à deux marches, pilier noir, haut orange vif, à côté du centre. Vu du haut de la caméra par défaut il est petit (7 m de diamètre) ; la caméra se rapproche à la main. Anomalie vue : sur les Gués l'autel se tient DANS la rivière (le centre de la carte est dans l'eau).
+
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 maps_review -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+
+Déroulé : la carte 1/8 s'ouvre (La Steppe Petite, 2 joueurs, 440 m) ; une note en haut de l'écran donne le nom et la taille de la carte ; tu peux déplacer la caméra ; **Entrée** charge la carte suivante : Plaine, Arrière-pays, Forêt profonde, Cols, Gués, El Dorado, Couronne.
+
+Ce qui a changé (ce que tu avais demandé) :
+- budget d'arbres 400 par joueur (Immense 600), la Steppe en a 600 (Immense 720) en bosquets de 30 à 40 ;
+- sur les 7 autres cartes, de VRAIES forêts de 200 arbres ou plus, en blobs organiques à clairières (plus de carrés de 16) ;
+- un sol texturé de couleur propre à chaque carte (la Plaine n'est plus grise : elle n'avait pas de matériau de sol, les autres copiaient celui de la Steppe) ;
+- un autel de volcan en placeholder (deux marches noires, pilier noir, haut rouge) à 30 m du centre, en travers de l'axe.
+
+À regarder sur chaque carte : le sol (couleur, texture), les forêts (formes, nombre d'arbres, pas des carrés), le relais du milieu (cercle de 12 m à côté du centre), l'autel. Vu aux PNG : Plaine verte vif, Forêt vert sombre avec la route claire, Cols ocre, Gués vert clair avec la rivière, forêts compactes d'environ 200 arbres (blobs ronds ou en haricot) ; la Steppe garde ses petits bosquets.
+
+Limite : tailles Moyenne à Immense non vues à l'écran (seule la Petite) ; Map.Table passe ; Map.Steppe échouait à 16:46 sur la Steppe Huge (veines à 1732-1785 cm d'un bosquet, sous les 1800 de VEIN_GAP) : marge de 150 cm ajoutée dans `room_caps` (steppe.py) et Steppe Huge régénérée, voir MapsInProgress.md pour le résultat.

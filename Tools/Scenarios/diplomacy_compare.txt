@@ -1,5 +1,5 @@
 # Le panneau Diplomatie (presentation 1, la puce qui tourne, choisie par l'utilisateur le 2026-11-03 ; les presentations 0 et 2 restent pour comparer), 5 joueurs en mode Diplomatie, Entree = presentation suivante ; les clics agissent.
-# Plain, mode Diplomatie (diplomacy_compare.json) : toi (slot 0) et 4 autres joueurs sans manette : joueur 2 Allie (alliance reciproque, vision partagee), joueur 3 Neutre, joueur 4 Ennemi (une IA : toujours ennemie, posture verrouillee), joueur 5 a qui tu as propose l'alliance (sans reponse : « En attente de l'autre »).
+# Plain, mode Diplomatie (diplomacy_compare.json) : toi (slot 0) et 4 autres joueurs sans manette : joueur 2 Allie (alliance reciproque, vision partagee), joueur 3 Neutre, joueur 4 Ennemi (une IA : toujours ennemie, posture verrouillee), joueur 5 a qui tu as propose l'alliance (sans reponse ; plus d'etat « En attente » depuis le 2026-11-04).
 # Avant de te rendre la main, le scenario prend lui-meme 9 captures (3 presentations x 1920x1080, 1366x768, 1280x600) et teste les clics (posture, vision) ; il remet ensuite les postures de depart.
 waitlog Starting hero of slot 0 spawned at
 hol.Sanity.Watch 1
@@ -139,7 +139,7 @@ hol.HUD.Report 1
 waitlog HUD overlap:
 capture dip_L1_market
 panel show
-note 4. Avec un Marche : « Tribut 100 or (taxe 30 %) » est actif ; le scenario vient de donner 100 d'or au joueur 4, l'IA (le Marche en garde 30 %, elle en recoit 70).
+note 4. Avec un Marche : « Tribut 100 or » (ressource a choisir en bas du panneau, taxe de 30 % ecrite une fois) est actif ; le scenario vient de donner 100 d'or au joueur 4, l'IA (le Marche en garde 30 %, elle en recoit 70).
 waitkey Entree : presentation 0 avec Marche
 hol.UI.DiplomacyLayout 0
 frames 30

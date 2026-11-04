@@ -5,6 +5,8 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Simulation/HOLVolcanoRules.h"
+class UStaticMeshComponent;
+
 #include "HOLVolcanoLayout.generated.h"
 
 /** One lava flow of a volcano site a map lays (V4b, D607): a polyline on the ground in centimetres, the crater being its first point. */
@@ -56,10 +58,21 @@ public:
 	const TArray<FHOLPlacedVolcano>& GetSites() const { return Sites; }
 	/** For the tests and the map scripts. */
 	void SetSites(const TArray<FHOLPlacedVolcano>& InSites) { Sites = InSites; }
+	/** How many altar meshes this machine drew (a placeholder altar, 2026-11-04: a stepped basalt plinth with a red top, one per altar of the sites; 0 on a dedicated server). */
+	int32 GetAltarMeshCount() const { return AltarMeshes.Num(); }
+
+protected:
+	virtual void BeginPlay() override;
 
 private:
+	/** Draws the placeholder altar of each site that has one (the altar's own model comes with the art pass). */
+	void BuildAltarMeshes();
+
 	UPROPERTY(EditAnywhere, Category = "Volcano")
 	TArray<FHOLPlacedVolcano> Sites;
+
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UStaticMeshComponent>> AltarMeshes;
 };
 
 /** The rules every map's volcano sites must satisfy (pure: the Map.Table test of a map calls them). */

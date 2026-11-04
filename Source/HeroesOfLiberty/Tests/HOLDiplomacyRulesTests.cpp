@@ -64,7 +64,7 @@ bool FHOLDiplomacyRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("straight to Enemy"), Betrayal.After, Enemy);
 	TestTrue(TEXT("both fire at once"), FiresAtOnce(Pair, 0, 1) && FiresAtOnce(Pair, 1, 0));
 	TestFalse(TEXT("the vision is cut at that second"), SharesVision(Pair, 0, 1));
-	TestEqual(TEXT("the betrayed one's stance is not touched"), StanceOf(Pair, 0, 1), Ally);
+	TestEqual(TEXT("the betrayed one's stance drops to Enemy too (mutual, at once: nobody keeps showing Ally)"), StanceOf(Pair, 0, 1), Enemy);
 	MakeAllies(Pair, 0, 1);
 	TestTrue(TEXT("allied again"), IsAlly(Pair, 0, 1));
 	TestFalse(TEXT("the vision must be opened again"), SharesVision(Pair, 0, 1));

@@ -105,7 +105,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	{
 		if (Type == TEXT("Tree"))
 		{
-			return Size == 12 || Size == 14 || Size == 16 || Size == 18;  // M-Q8: packs of 14, 12 or 16 where the room asks; M-Q10b: 18 on Huge
+			return Size >= 12 && Size <= 45;  // M-Q8: packs of 14, 12 or 16 where the room asks; M-Q10b: 18 on Huge; 2026-11-04: the Steppe's groves are 30 to 40 trees (steppe.py WOODS), a base's second pack is 6
 		}
 		return Type == TEXT("BerryBush") ? Size >= 3 && Size <= 5 : Size == 1;
 	}

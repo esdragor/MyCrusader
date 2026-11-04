@@ -1,0 +1,10 @@
+# [À ESSAYER] E-diplomacy : la rupture met l'autre en Ennemi à l'écran, plus d'« En attente »
+
+Intégration (2026-11-04 17:3x, agent de fusion) : sur le build de la fusion groupée (worktree Elrond, branche tiers = main d5d9364 + galadriel-tab + fog + maps), preflight diplomacy PASS (check 27 s, 5 PNG). VU À L'ÉCRAN : dipl_allies (panneau : chip verte « Allié », bouclier vert dans le tableau) et dipl_enemy (chip rouge « Ennemi », croix rouge devant Joueur 2, aucun texte d'attente). NON VU : le combat des deux groupes (les deux captures montrent surtout du terrain noir/brouillard, la caméra ne cadre pas les hommes) ; pas vu avec un second humain. Statut : VU SUR MAIN FUSIONNÉ (chip et tableau) ; main = pas encore avancée (voir Auto_Journey_Retours section 3).
+
+Statut : pré-vol PASS (preflight.ps1 diplomacy, 33 s, 3 min max, HUD sans recouvrement) ; PNG ouverts et vus : dipl_allies (puce verte Allié), dipl_neutral (puce jaune Neutre), dipl_enemy (puce rouge **Ennemi**, plus jamais Allié, aucun texte d'attente). Tests : quick_check -Parts tests,net PASS (921/921 + réplication réseau de la rupture sur le serveur et les deux clients).
+
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 diplomacy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+
+Ce qui a changé : (1) BUG corrigé : quand un joueur passe Ennemi (ou Neutre), TA posture envers lui tombe aussi à la même valeur, tout de suite, côté serveur et côté client ; avant, ta puce restait sur Allié ; (2) l'état « En attente de l'autre » n'existe plus ; seule l'alliance exige que les deux disent Allié (si un seul dit Allié, la relation reste ce que dit l'autre).
+À regarder : après Entrée « le joueur 2 te passe ENNEMI », la puce de la ligne du joueur 2 dans le panneau dit Ennemi (rouge). Limite : vu en solo avec `hol.Diplomacy.Force` ; non essayé par un vrai second joueur humain à l'écran (le réseau est vérifié par le test réseau).

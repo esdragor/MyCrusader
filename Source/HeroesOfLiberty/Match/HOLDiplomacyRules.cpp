@@ -115,6 +115,13 @@ namespace HOLDiplomacy
 		Change.Before = Relation(Book, From, To);
 		Change.bAnnounce = StanceOf(Book, From, To) != Stance;
 		Book.Stances[From * Book.Slots + To] = Stance;
+		// Lowering the relation is mutual and at once (user answer of 2026-11-04): the other side's stance toward From drops to this stance too, so
+		// that nobody keeps showing "Ally" (or "Neutral") toward a player who has just gone Enemy; only an alliance needs both sides to say Ally.
+		if (Stance < Change.Before)
+		{
+			int32& Theirs = Book.Stances[To * Book.Slots + From];
+			Theirs = FMath::Min(Theirs, Stance);
+		}
 		Change.After = Relation(Book, From, To);
 		Change.bBroke = Change.Before == Ally && Change.After != Ally;
 		Change.bFormed = Change.Before != Ally && Change.After == Ally;
