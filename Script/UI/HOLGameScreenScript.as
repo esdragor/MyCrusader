@@ -187,6 +187,9 @@ FString TalentTipTexts = "";
 	TArray<UHOLDiplomacyClick> DipHandlers;
 	TArray<FHOLDiplomacyRowView> DipRows;
 	bool bDipOpen = false;
+	// The match is in the Diplomacy mode (set by RefreshDiplomacy): outside it the panel keeps the players, tribute and message but has no
+	// posture control and no vision box (the user's answer of 2026-11-04: they are not there, not greyed).
+	bool bDipModeNow = false;
 	int DipLayout = -1;
 	// The line whose drop-down is open (layout 2), -1 none; the player the last « Message » was for.
 	int DipMenuSlot = -1;
@@ -540,6 +543,7 @@ FString TalentTipTexts = "";
 
 		const int Layout = HOLDiplomacyRead::GetPanelLayout();
 		const bool bDipMode = HOLDiplomacyRead::IsDiplomacyMode();
+		bDipModeNow = bDipMode;
 		if (Layout != DipLayout)
 		{
 			DipLayout = Layout;
@@ -549,7 +553,7 @@ FString TalentTipTexts = "";
 		}
 		PlaceDipPanel(Layout, Room);
 		DipTitleText.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Title));
-		DipLockedText.SetText(bDipMode ? FText() : HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Locked));
+		DipLockedText.SetText(FText());
 		DipLockedText.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
 		DipCloseLabel.SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Close));
 
@@ -637,22 +641,23 @@ FString TalentTipTexts = "";
 
 		// The posture controls: none on the viewer's own line; greyed when locked (the standard modes, an AI, a defeated player).
 		const bool bControls = !Row.bSelf;
+		const bool bStances = bControls && bDipModeNow;
 		for (int Stance = HOLDiplomacy::Enemy; Stance <= HOLDiplomacy::Ally; ++Stance)
 		{
 			const bool bActive = Row.MyStance == Stance;
-			DipSetButton(DipStanceButtons[Slot * 3 + Stance], bControls && (Layout == 0 || (Layout == 2 && DipMenuSlot == Slot)), Row.bStanceEditable,
+			DipSetButton(DipStanceButtons[Slot * 3 + Stance], bStances && (Layout == 0 || (Layout == 2 && DipMenuSlot == Slot)), Row.bStanceEditable,
 				HOLDiplomacyPanelText::StanceLabel(Stance), FText(), bActive ? DipStanceTint(Stance) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 		}
-		DipSetButton(DipChips[Slot], bControls && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
-		DipSetButton(DipMenuButtons[Slot], bControls && Layout == 2, Row.bStanceEditable,
+		DipSetButton(DipChips[Slot], bStances && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
+		DipSetButton(DipMenuButtons[Slot], bStances && Layout == 2, Row.bStanceEditable,
 			FText::FromString(HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + " v"), FText(), DipStanceTint(Row.MyStance));
-		DipPendings[Slot].SetVisibility(Row.bPending ? ESlateVisibility::HitTestInvisible : (Layout == 0 && bControls ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed));
+		DipPendings[Slot].SetVisibility(Row.bPending ? ESlateVisibility::HitTestInvisible : (Layout == 0 && bStances ? ESlateVisibility::Hidden : ESlateVisibility::Collapsed));
 		DipPendings[Slot].SetText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Pending));
 		DipPendings[Slot].SetColorAndOpacity(FLinearColor(1.0, 0.82, 0.25, 1.0));
 
 		// Vision (checked: [x]), tribute (with the tax, greyed without a Market), private message.
 		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";
-		DipSetButton(DipVisionButtons[Slot], bControls, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
+		DipSetButton(DipVisionButtons[Slot], bStances, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
 			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacy::Ally) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 		DipSetButton(DipTributeButtons[Slot], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, f"{Row.TaxPercent}")),
 			Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, f"{Row.TaxPercent}")),
@@ -710,7 +715,7 @@ FString TalentTipTexts = "";
 		}
 		if (Kind == DipKindVision)
 		{
-			if (!Row.bVisionEnabled)
+			if (!Row.bVisionEnabled || !DipVisionButtons[Slot].IsVisible())
 				return false;
 			Controller.RequestShareVision(Slot, !Row.bVisionChecked);
 			return true;
@@ -1080,7 +1085,8 @@ FString TalentTipTexts = "";
 			TalentWindowFamilyHeads.Add(FamilyHead);
 		}
 
-		const int Rows = HOLTalent::PointsEarned(HOLHero::GetMaxLevel());
+		// All the game's rows (2 to 9): the ones past the prototype's maximum level are drawn greyed "plus tard" (HOLTalentTree::MakeWithLater).
+		const int Rows = HOLTalent::RowCount;
 		for (int Index = 0; Index < Rows; ++Index)
 		{
 			const int Row = HOLTalent::FirstRow + Index;
@@ -1095,7 +1101,7 @@ FString TalentTipTexts = "";
 				CellBox.SetWidthOverride(TalentCellWidth);
 				CellBox.SetMinDesiredHeight(40.0);
 				UButton Cell = MakeButton(TalentCellName(Row, Family));
-				// One handler a cell (a button's click does not say which): HandleCell0 .. HandleCell14, the row and the column from the number.
+				// One handler a cell (a button's click does not say which): HandleCell0 .. HandleCell23, the row and the column from the number.
 				Cell.OnClicked.AddUFunction(this, FName(f"HandleCell{Index * HOLTalent::FamilyCount + Family}"));
 				CellBox.SetContent(Cell);
 				UCommonTextBlock CellLabel = MakeText(FName(f"HeroTalentCellLabel_{Row}_{Family}"), UHOLTextStyleHUDLabel);
@@ -1430,7 +1436,7 @@ FString TalentTipTexts = "";
 			Picks.Add(HOLHero::GetHeroTalentFamily(PlayerSlot, Index));
 		ShowTalentFeedback(PlayerSlot, Count, Picks);
 		TalentView = HOLTalentPanel::Make(View.Level, Picks);
-		TalentCells = HOLTalentTree::Make(View.Level, Picks);
+		TalentCells = HOLTalentTree::MakeWithLater(HOLHero::GetMaxLevel(), View.Level, Picks);
 		ShowTalentIcons(View.Level, Picks);
 		ShowTalentWindow();
 		HeroTalentButton.SetVisibility(TalentView.bReminder ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
@@ -1499,6 +1505,13 @@ FString TalentTipTexts = "";
 			const bool bTaken = Cell.State == EHOLTalentCellState::Taken;
 			TalentCellLabels[Index].SetText(FText::FromString(Cell.Name));
 			TalentCellLabels[Index].SetColorAndOpacity(bTaken || Cell.bPickable ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
+			if (Cell.State == EHOLTalentCellState::Locked)
+			{
+				// "Plus tard": fainter than the rows still to come in this game (their hover says the level).
+				FLinearColor Faint = UHOLScriptScreen::GetMutedColor();
+				Faint.A = 0.45;
+				TalentCellLabels[Index].SetColorAndOpacity(Faint);
+			}
 			TalentCellButtons[Index].SetBackgroundColor(bTaken ? TalentFamilyColour(Cell.Family) : FLinearColor(1.0, 1.0, 1.0, 1.0));
 			UHOLScriptScreen::SetButtonGreyed(TalentCellButtons[Index], !bTaken && !Cell.bPickable);
 			TalentCellButtons[Index].SetToolTipText(FText::FromString(Cell.Tooltip));
@@ -1769,6 +1782,60 @@ FString TalentTipTexts = "";
 	void HandleCell14()
 	{
 		ClickTalentCell(HOLTalent::FirstRow + 4, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell15()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 5, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell16()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 5, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell17()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 5, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell18()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 6, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell19()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 6, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell20()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 6, 2);
+	}
+
+	UFUNCTION()
+	void HandleCell21()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 7, 0);
+	}
+
+	UFUNCTION()
+	void HandleCell22()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 7, 1);
+	}
+
+	UFUNCTION()
+	void HandleCell23()
+	{
+		ClickTalentCell(HOLTalent::FirstRow + 7, 2);
 	}
 
 	// The advised choice (D105), now at the foot of the window: the family most filled, the order sent. Greyed or closed: nothing.

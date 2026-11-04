@@ -10,6 +10,8 @@
 #include "MassCommonTypes.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutionContext.h"
+#include "Match/HOLDiplomacyRules.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLHealRules.h"
@@ -87,6 +89,8 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		const FHOLUnitTypeConstants* Constants = nullptr;
 		FVector Location3 = FVector::ZeroVector;
 		uint8 Camp = 0;
+		/** D6: the owners allied to this unit's owner in the Diplomacy mode (a bit per slot; 0 in the standard modes, where the camp says it). */
+		uint32 AllyOwners = 0;
 		bool bHealer = false;
 	};
 	TArray<FUnit> Step;
@@ -107,12 +111,20 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			Unit.State = &State;
 			Unit.Constants = &Constants;
 			Unit.Camp = CampTable.Get(State.OwnerPlayer);
+			if (CampTable.IsDiplomacy() && bHealer)
+			{
+				for (int32 Other = 0; Other < FHOLMatchConfig::MaxSlots; ++Other)
+				{
+					Unit.AllyOwners |= Other != State.OwnerPlayer && CampTable.Relation(State.OwnerPlayer, Other) == HOLDiplomacy::Ally ? (1u << Other) : 0u;
+				}
+			}
 			Unit.Location3 = Transforms[It].GetTransform().GetLocation();
 			Unit.bHealer = bHealer;
 			bAnyHealer |= bHealer;
 			HOLHeal::FCandidate& Candidate = Unit.Candidate;
 			Candidate.UnitId = State.UnitId;
 			Candidate.Camp = Unit.Camp;
+			Candidate.Owner = State.OwnerPlayer;
 			Candidate.Location = FVector2D(Transforms[It].GetTransform().GetLocation());
 			Candidate.Health = State.CurrentHealth;
 			Candidate.MaxHealth = static_cast<float>(HOLCombat::GetMaxHealth(Constants, Combats[It].Level, Units->GetTechnologyHealthPercent(Constants, State.OwnerPlayer)));
@@ -175,7 +187,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			};
 			const int32 TargetIndex = Candidates.IndexOfByPredicate([OrderedId](const HOLHeal::FCandidate& C) { return C.UnitId == OrderedId; });
 			const HOLHeal::FCandidate* Target = TargetIndex != INDEX_NONE ? &Candidates[TargetIndex] : nullptr;
-			if (!Target || Target->Health <= 0.f || Target->bUnhealable || Target->Camp != Healer.Camp || Target->UnitId == HealerId)
+			if (!Target || Target->Health <= 0.f || Target->bUnhealable || !HOLHeal::IsAllyOf(Healer.Camp, Healer.AllyOwners, *Target) || Target->UnitId == HealerId)
 			{
 				// Gone: dead, a King or an engine, not an ally. The walk it gave ends where the healer stands.
 				if (Order.bWalking)
@@ -218,7 +230,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 				}
 			}
 		}
-		const int32 Chosen = HOLHeal::ChooseTarget(Healer.Candidate.UnitId, Healer.Camp, Healer.Candidate.Location, Healer.Constants->HealRange, OrderedId, KeptId ? *KeptId : 0u, Candidates);
+		const int32 Chosen = HOLHeal::ChooseTarget(Healer.Candidate.UnitId, Healer.Camp, Healer.Candidate.Location, Healer.Constants->HealRange, OrderedId, KeptId ? *KeptId : 0u, Candidates, Healer.AllyOwners);
 		if (Chosen == INDEX_NONE)
 		{
 			if (KeptId)

@@ -1,7 +1,7 @@
 // The talent panel as a view (T5; GDD 9.6, D103-D105, D203): what the screen shows of the hero's talents, from his level and his picks
 // alone (pure, no world, tested in HOLTalentPanel_Test.as); the widgets will apply it (the hero's block, F-key panel). The rules are
 // HOLTalentRules.as's: this file only arranges them for the eye. The rows shown are those the prototype's maximum level reaches
-// (HOLHero::GetMaxLevel: rows 2 to 6); the others (7 to 9) come with the levels.
+// (HOLHero::GetMaxLevel: rows 2 to 6) through Make; MakeFor takes the maximum level (the full game: 9, rows 2 to 9, D195).
 
 // One row of the tree: the family of the talent taken (the column), or still to take.
 struct FHOLTalentRowView
@@ -37,13 +37,19 @@ struct FHOLTalentPanelView
 
 namespace HOLTalentPanel
 {
-	// The panel of a hero of Level who took Picks (the families, row 2 first).
+	// The prototype's panel: the rows its maximum level reaches (2 to 6).
 	FHOLTalentPanelView Make(int Level, const TArray<int>& Picks)
+	{
+		return MakeFor(HOLHero::GetMaxLevel(), Level, Picks);
+	}
+
+	// The panel of a hero of Level who took Picks (the families, row 2 first), in a game whose heroes reach MaxLevel at the most (9 or 10: the
+	// full game's 8 rows, 2 to 9, D04, D195).
+	FHOLTalentPanelView MakeFor(int MaxLevel, int Level, const TArray<int>& Picks)
 	{
 		FHOLTalentPanelView View;
 		View.Points = HOLTalent::PointsAvailable(Level, Picks);
 		View.bReminder = View.Points > 0;
-		const int MaxLevel = HOLHero::GetMaxLevel();
 		const int RowsShown = HOLTalent::PointsEarned(MaxLevel);
 		const int NextRow = HOLTalent::NextRow(Picks);
 		FString Cells = "";

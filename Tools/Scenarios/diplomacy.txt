@@ -1,0 +1,71 @@
+# Diplomatie en vraie partie (mode Diplomatie, brouillard Normal) : une alliance qui empeche le combat, le Neutre, la rupture, puis la vision partagee d'un allie.
+# Plain, 3 joueurs (diplomacy.json) : toi (slot 0), le joueur 2 (slot 1, sans manette, ton allie) et une IA (slot 2, toujours ennemie). Les postures sont posees par le scenario (hol.Diplomacy.Force) comme si le joueur 2 les disait ; le panneau Diplomatie est ouvert a droite.
+# Le scenario pose 6 Hommes d'armes a toi et 6 au joueur 2, melanges, a 30 m de ton depart. Entree = etape suivante ; 3 minutes au plus.
+hol.Cheat.Resources 2000
+hol.UI.DiplomacyLayout 1
+hol.HUD.Report 1
+hol.Diplomacy.Force 0 1 ally
+hol.Diplomacy.Force 1 0 ally
+hol.Camera.FocusNear 3000 0
+frames 5
+hol.Units.SpawnHere 6 ManAtArms 0 250
+hol.Units.SpawnHere 6 ManAtArms 1 250
+waitunits 12
+hol.HUD.Click DiplomacyButton
+frames 90
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 2 toward slot 1
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_allies
+panel show
+note 1. ALLIES : tes 6 Hommes d'armes et les 6 du joueur 2 sont melanges, les deux ont dit Allie (panneau a droite : puce verte). Ils ne se battent pas, aucun coup.
+note    Le tableau des joueurs montre toujours le joueur 2 en vert (allie).
+waitkey Entree : le joueur 2 te passe NEUTRE (il retire l'alliance, sans te declarer la guerre)
+hol.Diplomacy.Force 1 0 neutral
+frames 120
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_neutral
+panel show
+note 2. NEUTRE : plus allies, mais personne ne tire d'office : les 12 restent la, debout, aucun coup en 2 secondes.
+waitkey Entree : le joueur 2 te passe ENNEMI (la rupture)
+hol.Diplomacy.Force 1 0 enemy
+frames 150
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_enemy
+panel show
+note 3. ENNEMI : la rupture est immediate, les deux groupes se battent aussitot (des corps tombent).
+hol.Diplomacy.Force 1 0 ally
+hol.Diplomacy.Force 0 1 ally
+hol.Camera.FocusNear 9000 0
+frames 5
+hol.Units.SpawnHere 6 ManAtArms 1 250
+waitunits 12
+frames 60
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_fog_black
+panel show
+note 4. BROUILLARD : l'alliance est refaite ; la camera est a 90 m, la ou le joueur 2 a 6 Hommes d'armes. Tu ne les vois pas : sa vision n'est pas partagee (terrain noir).
+waitkey Entree : le joueur 2 partage sa vision avec toi, et une IA (toujours ennemie) arrive sur ses hommes
+hol.Diplomacy.ForceVision 1 0 1
+hol.Units.SpawnHere 4 Spearman 2 250
+frames 120
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_fog_shared
+panel show
+note 5. VISION PARTAGEE : le terrain autour des hommes du joueur 2 apparait (ce qu'il voit, tu le vois) et tu vois les 4 Lanciers de l'IA les attaquer.
+note 6. Dis OK, ou BUG: ..., ou REGLAGE: ...
