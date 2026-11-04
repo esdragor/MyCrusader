@@ -386,9 +386,9 @@ void UHOLManagerClient::UpdateMe(const TOptional<int32> ColorIndex, const TOptio
 }
 
 void UHOLManagerClient::UpdateSettings(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe, FHOLManagerLobbyDone Done,
-	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog)
+	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Biome)
 {
-	Write(TEXT("/settings"), FHOLManagerClientRules::MakeSettingsBody(Map, bNomad, bRegicide, bCatastrophe, Size, bTeamsTogether, Fog), MoveTemp(Done));
+	Write(TEXT("/settings"), FHOLManagerClientRules::MakeSettingsBody(Map, bNomad, bRegicide, bCatastrophe, Size, bTeamsTogether, Fog, Biome), MoveTemp(Done));
 }
 
 void UHOLManagerClient::SetSlot(const int32 SlotIndex, const bool bOpen, FHOLManagerLobbyDone Done)

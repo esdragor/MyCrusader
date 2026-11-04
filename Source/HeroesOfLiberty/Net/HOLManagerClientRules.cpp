@@ -240,7 +240,7 @@ int32 FHOLLobby::GetNumPlaces() const
 }
 
 FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe,
-	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog)
+	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Biome)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("map"), Map);
@@ -260,6 +260,11 @@ FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool 
 	if (!Fog.IsEmpty())
 	{
 		Object->SetStringField(TEXT("fog"), Fog);
+	}
+	// B2: the biome's key, only when given ("default", the map's own, is a key, not an empty string).
+	if (!Biome.IsEmpty())
+	{
+		Object->SetStringField(TEXT("biome"), Biome);
 	}
 	return WriteBody(Object);
 }
@@ -347,6 +352,7 @@ namespace
 		(*Settings)->TryGetStringField(TEXT("size"), Out.Size);
 		(*Settings)->TryGetBoolField(TEXT("teamsTogether"), Out.bTeamsTogether);
 		(*Settings)->TryGetStringField(TEXT("fog"), Out.Fog);
+		(*Settings)->TryGetStringField(TEXT("biome"), Out.Biome);
 		const TArray<TSharedPtr<FJsonValue>>* Maps = nullptr;
 		if (Object.TryGetArrayField(TEXT("maps"), Maps))
 		{
