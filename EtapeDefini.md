@@ -13,6 +13,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ## État des branches (2026-11-04 16:3x, `main` = 1f5d8d8, poussé jusqu'à b284036)
 
 - **Dans `main`** (fusion groupée 532e638 le 2026-11-04) : `ai-ia1` (Arwen), `tiers` (Elrond), `fog` (Faramir), `net-playtest` (Glorfindel), `galadriel-tab` (Galadriel). Les cinq worktrees sont à 1f5d8d8, libres côté code (Faramir : la partie C++ de B2 est commitée sur `fog` 19adf23, non compilée, conflit avec main à résoudre).
+- **Fusion groupée `tiers` (Elrond, 1a473c6) = galadriel-tab + fog B2 + maps autel + Cavalerie C1 (assets régénérés), VERTE 936/936 + net, PAS ENCORE dans `main`** (2026-11-04 17:5x) : l'avance rapide attend que la session Légions commite `GDD.md` ; voir `Auto_Journey_Retours.md` § 3.
 - **PAS dans `main`** : `maps` (Haldir, 9387cd3, voir Cartes), `visual` (Sauron, 3b3247c, voir Visuel), `hero-j8-close` (Celeborn, 09cb852, voir Duel et Bugs).
 - Essais validés le 2026-11-04 : spectateur d'équipe, `diplomacy_compare`, volcan, `talents_later`. Seule attente de l'utilisateur dans `Retours\` : `E-maps-review.md`.
 
@@ -27,7 +28,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités et héros
-- **Légions Noires, la 2e faction du prototype (D11, § 13.3), 2026-11-04 : journal ouvert, RIEN codé** ; aucune unité, aucun bâtiment ni héros des Légions, aucune colonne de faction dans `UnitTypes` / `BuildingTypes` ; découpage L0 (socle multi-faction) à L14 (essais) ; questions LQ-1 à LQ-6 en attente de l'utilisateur *(`LegionsInProgress.md`)*
+- **Légions Noires, la 2e faction du prototype (D11, § 13.3), 2026-11-04 : dossier COMPLET, PRÊT À LANCER, RIEN codé** ; attend un worktree (l'utilisateur le prépare) ; L0 socle multi-faction (rôles + surcharges par faction) puis Aube contre Légions jouable (Zombie, socle en reskin, Guerrier Damné, fiche du Seigneur Damné), puis cadavres / Nécromancien / Squelette, Spectre, spécialisations, technologies, IA, art, essais (L0 à L14) ; kit du héros (L8b) et talents (L11) après la clôture du chantier héros ; décisions à numéroter au GDD ; LQ-1 à LQ-14 TOUTES tranchées (Zombie sans nourriture en coût, deux malédictions, 1 cadavre = 1 Squelette, cadavres 75 s / 60 par joueur, Autel de sang et Fosse des damnés = bâtiments, Fosses de labeur et Tour des nécromanciens = technologies) ; reste les chiffres, proposés à chaque étape *(`LegionsInProgress.md`)*
 - Cavalerie (D672, 2026-11-04) : CV-Q1 à CV-Q5 tranchées (charge oui, cheval placeholder, stats en bloc, IA à tous les niveaux, bannières) ; C1 (Écurie + Cavalier léger en données et script) FAITE et DANS `main` (fusion 9f9c591, 2026-11-04), NON compilée, NON exécutée, rien de poussé ; Glorfindel libéré ; reprise = liste des commandes de `CavalryInProgress.md` quand le build sera permis ; C2 (LOCTEXT, charge, forêt, tests C++ de la grille : C++) attend l'autorisation de builder ; bannières de l'Écurie avec le chantier visuel *(`CavalryInProgress.md`)*
 - Deuxième attaque à déclencheur (charge, D345) : C2 de la cavalerie, C++
 - Clôture de J8 (héros) : J8a, J8b, J8c et leurs correctifs sont dans `main` ; reste les mesures au repos (S2 3,05 ms contre le seuil 3, bissection commencée dans Elrond ; seuil S3 / S4 relevé à 6,5 ms, D586 : `chapter_measures.ps1` à ajuster (à vérifier)) et le paquet / serveur à recuire *(`JourneyInProgress.md`, `Docs/Mesures_2026-10-31.md`)*
@@ -140,7 +141,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `DuelInProgress.md` : duel de héros (branche `hero-j8-close` pour les boucles de mêlée)
 - `FogInProgress.md` : brouillard (F0-F9 dans `main`, clôture à faire)
 - `JourneyInProgress.md` : parcours du joueur et héros (J8 : clôture, mesures)
-- `LegionsInProgress.md` : Légions Noires, 2e faction du prototype (ouvert 2026-11-04, rien codé, L0 socle multi-faction en tête)
+- `LegionsInProgress.md` : Légions Noires, 2e faction du prototype (dossier complet le 2026-11-04, rien codé, prêt à lancer dans un worktree donné par l'utilisateur ; L0 socle multi-faction en tête)
 - `MapsInProgress.md` : les sept cartes du prototype (branche `maps`)
 - `MarketInProgress.md` : Marché et tributs
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés, spectateurs)
