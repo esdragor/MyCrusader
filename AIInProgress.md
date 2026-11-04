@@ -62,6 +62,26 @@ Rien n'est codé. Les questions sont posées à l'utilisateur une à la fois (op
 - **IA3 Fin de partie** : forum à vies (D426), ruine adverse, Roi protégé en Régicide.
 - **IA4 Niveaux** : curseurs, Facile / Normal / Difficile, évolutive (D422, D329) ; plus tard, parties à 8 IA pour nourrir
   les données (ouverture, besoins) et raffiner chaque niveau (IA1-Q4).
+- **IA5 Tournoi automatique et réglage des niveaux** (idée validée par l'utilisateur le 2026-11-04, après le prototype) :
+  pas d'apprentissage par renforcement (trop gros, boîte noire, contraire à § 16.4) ; l'IA reste scriptée et ses curseurs
+  (D422) sont réglés par des parties IA contre IA en masse (1v1, 2v1, 2v2, ... sur les 7 cartes, sans fenêtre, `Seed`).
+  Outil : N parties entre deux jeux de curseurs -> taux de victoire + mesures par partie (Paysans à 5 et 10 min, premier
+  combat, ressources gaspillées, âge suivant, pertes) ; recherche simple sur les curseurs (grille, aléatoire ou évolution) ;
+  les niveaux deviennent des points d'une échelle de force (cibles à fixer, ex. Normal bat Facile ~70 %, Difficile bat
+  Normal ~70 %) ; l'évolutive (D329) vérifiée comme courbe régulière ; analyse des parties perdues par un agent qui
+  PROPOSE des changements de règles, validés par l'utilisateur ; gardes-fous : toujours une part de parties contre
+  l'utilisateur et les testeurs (une IA réglée contre des IA seulement devient exploitable par un humain). **Parties IA
+  contre Joueur analysées aussi** (ajout de l'utilisateur, 2026-11-04) : chaque partie où une IA affronte un humain
+  (solo, salon, essais) est journalisée avec les mêmes mesures et analysée comme les parties IA contre IA ; elle pèse
+  plus que celles-ci pour juger la force réelle des niveaux et trouver les trous exploitables (à trancher : journal
+  automatique ou non, consentement des joueurs en réseau, format des mesures). **Nouveaux paliers possibles** (idée de
+  l'utilisateur, 2026-11-04) : un palier = un point de l'échelle de force (cible du type « Très difficile bat Difficile
+  ~70 % »), le tournoi cherche les curseurs qui l'atteignent ; réglage par curseurs seulement (aucune triche, § 16.4),
+  donc plafond = la meilleure IA scriptée ; bas (Très facile) : IA ralentie et affaiblie, sans plafond ; haut : plus de
+  qualité d'IA (micro, défense, arbitrage des vies), 5 ou 6 paliers en tout au plus ; énumération `EHOLAIDifficulty` et
+  menu à étendre (petit travail) ; l'évolutive devient une courbe entre deux paliers choisis, voire adaptative (monte si
+  le joueur gagne, descend s'il perd). Recommandation : poser l'échelle d'abord avec les 4 niveaux actuels, décider des
+  paliers en plus après les mesures. Numéro D et cibles de force à trancher à l'ouverture.
 - **Avec chaque système à venir** : héros (J8, D425), paliers et build (D424), duel (D423), volcan (D427),
   brouillard (M7 : la lecture du monde passe par la vision), déconnexion (D71, avec le réseau).
 
