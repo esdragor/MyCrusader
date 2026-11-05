@@ -11,3 +11,5 @@ NON VÉRIFIÉ : les sons eux-mêmes (jamais entendus : volume, choix des fichier
 
 Lancer UNE commande (sans -nosound, avec le son du poste) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 audio_ui -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 10 s. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...` (dire quels sons garder / changer).
+
+Reponse: REGLAGE : changer TOUS les sons de l'interface : (utilisateur, ecoute reelle, 2026-11-05 22:4x) ils font « console sci-fi de vaisseau spatial », pas du tout une interface de jeu medieval fantasy. Les trois cues entendues : Ui.Open SW_open_002, Ui.Confirm SW_confirmation_001, Ui.Close SW_close_003 (pack Kenney interface-sounds). Regle 6 de Qualite des essais : balayage, l'utilisateur choisit a l'oreille (methode des dix echantillons).
