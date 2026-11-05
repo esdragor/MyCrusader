@@ -57,10 +57,10 @@ namespace UE::HeroesOfLiberty::Dev
 		float StallSeconds = 0.5f;
 		FAutoConsoleVariableRef CVarStallSeconds(TEXT("hol.Test.SanityStall"), StallSeconds,
 			TEXT("Seconds (default 0.5; 0 = off) a melee may stand still out of reach of its target while a place is free round that target: longer, hol.Test.Sanity says FAIL (the user's retour on the neutrals trial, D641)"));
-		/** hol.Test.SanityPlaceWalk: Q-sanity-circling (open question, default 0 = the rules as they were): a soldier walking to the free place it claimed round its target (D641) is on a manoeuvre, like a rear flank (Q-flank-demi-tour = A): the spin and shake rules skip its steps. */
-		int32 PlaceWalkIsManoeuvre = 0;
+		/** hol.Test.SanityPlaceWalk: Q-sanity-circling (Q-sanity-circling = C, default 1): the walk round ONE side to the free place a soldier claimed round its target (D641) is tolerated by the spin rules; a turn against the one before is not (see FTrace::PlaceWalk). */
+		int32 PlaceWalkIsManoeuvre = 1;
 		FAutoConsoleVariableRef CVarPlaceWalkIsManoeuvre(TEXT("hol.Test.SanityPlaceWalk"), PlaceWalkIsManoeuvre,
-			TEXT("0 (default): the spin and shake rules judge every step; 1: the steps of a soldier walking to the free place it claimed round its target are a manoeuvre and are skipped (Q-sanity-circling)"));
+			TEXT("1 (default, Q-sanity-circling = C): a soldier walking to the free place it claimed round its target may go round ONE side (turns in one direction, each under a right angle, are not summed); a turn back on its steps is still a fault. 0: every step is judged"));
 		/** hol.Sanity.DumpUnit <UnitId>: the log line of that unit at every step (position, velocity, order), -1 none. */
 		int32 DumpUnit = -1;
 		FAutoConsoleVariableRef CVarDumpUnit(TEXT("hol.Sanity.DumpUnit"), DumpUnit, TEXT("Log the position, velocity and order of this unit at every watched step (-1: none)."));
@@ -261,7 +261,9 @@ namespace UE::HeroesOfLiberty::Dev
 				Window.UnitId = UnitId;
 				Window.Places.Add(FVector2D(Where.X, Where.Y));
 				Window.Ordered.Add(bOrdered ? 1 : 0);
-				Window.Flanking.Add(Combat && (Combat->bFlanking || (PlaceWalkIsManoeuvre != 0 && Combat->bHasPlace && Combat->bApproaching)) ? 1 : 0);
+				Window.Flanking.Add(Combat && Combat->bFlanking ? 1 : 0);
+					// Q-sanity-circling = C: the walk round one side to the claimed place is tolerated, a turn back on its steps is not (HOLSanity::FTrace::PlaceWalk).
+					Window.PlaceWalk.Add(Combat && PlaceWalkIsManoeuvre != 0 && Combat->bHasPlace && Combat->bApproaching ? 1 : 0);
 				{
 					const FMassVelocityFragment* StepVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
 					int32 TargetUnit = -1;
@@ -322,6 +324,7 @@ namespace UE::HeroesOfLiberty::Dev
 					Window.Places.RemoveAt(0, Window.Places.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Ordered.RemoveAt(0, Window.Ordered.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Flanking.RemoveAt(0, Window.Flanking.Num() - WindowSteps, EAllowShrinking::No);
+						Window.PlaceWalk.RemoveAt(0, Window.PlaceWalk.Num() - WindowSteps, EAllowShrinking::No);
 					Window.States.RemoveAt(0, Window.States.Num() - WindowSteps, EAllowShrinking::No);
 				}
 				if (Window.Places.Num() == WindowSteps && Watch.Steps % JudgeEvery == 0 && !Watch.Faults.Contains(UnitId))

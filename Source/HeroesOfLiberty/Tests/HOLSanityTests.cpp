@@ -178,7 +178,17 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a wobbling walk made all along on a flank is not a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 160), Step).bShake);
 	TestTrue(TEXT("a circle with no flank flag is still a spin"), HOLSanity::Analyse(Flank(Circle, 0, 0), Step).bSpin);
 	TestTrue(TEXT("a wobbling walk with no flank flag is still a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 0), Step).bShake);
-	// Q-sanity-micro = A: the 8 s rule has the floor of the 2 s one (a path over 6 radii). A soldier that fidgets 0.5 cm a step round a 2 cm circle
+	// Q-sanity-circling = C: the walk round ONE side to the claimed place is tolerated, a turn back on the soldier's steps is not.
+		const auto PlaceWalking = [&Make](const TFunction<FVector2D(int32)>& Place)
+		{
+			HOLSanity::FTrace Trace = Make(Place, true);
+			Trace.PlaceWalk.Init(1, Trace.Places.Num());
+			return Trace;
+		};
+		TestFalse(TEXT("a circle made all along on a place walk (one side) is not a spin"), HOLSanity::Analyse(PlaceWalking(Circle), Step).bSpin);
+		TestTrue(TEXT("the same circle without the place-walk flag is still a spin"), HOLSanity::Analyse(Make(Circle, true), Step).bSpin);
+		TestTrue(TEXT("a wobbling (to and fro) walk on a place walk is still a tremor"), HOLSanity::Analyse(PlaceWalking([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }), Step).bShake);
+		// Q-sanity-micro = A: the 8 s rule has the floor of the 2 s one (a path over 6 radii). A soldier that fidgets 0.5 cm a step round a 2 cm circle
 	// (80 cm in 8 s, 40 radians of turning, ordered) was counted a spinner (the old rule: no floor); a real loop of 503 cm still is.
 	HOLSanity::FSettings NoFloor;
 	NoFloor.SpinMinPathRadii = 0.f;

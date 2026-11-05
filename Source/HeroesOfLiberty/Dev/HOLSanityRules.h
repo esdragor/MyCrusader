@@ -77,6 +77,8 @@ namespace HOLSanity
 		TArray<uint8> Ordered;
 	/** 1 at a step where the unit was going round the end of its line (a rear flank, Q-flank-demi-tour = A): a deliberate manoeuvre, never judged as a spin or a tremor. */
 	TArray<uint8> Flanking;
+	/** 1 at a step where the unit walks to the free place it claimed round its target (Q-sanity-circling = C): going round ONE side to it is tolerated (a turn in the direction of the turn before, under a right angle, adds nothing to the spin sums); a turn against the one before, a heading that doubles back, counts in full (to and fro, hairpin = a fault). */
+	TArray<uint8> PlaceWalk;
 		/** Debug text per step (hol.Test.SanityVerbose 2). */
 		TArray<FString> States;
 	};
@@ -134,6 +136,11 @@ namespace HOLSanity
 		float PreviousTurn = 0.f;
 		int32 Ordered = 0;
 		const auto IsFlanking = [&Trace](const int32 Index) { return Trace.Flanking.IsValidIndex(Index) && Trace.Flanking[Index] != 0; };
+		// Q-sanity-circling = C: a turn made walking to the claimed place, in the direction of the turn before and under a right angle, is the walk round one side.
+		const auto IsOneSideCurve = [&Trace](const int32 Index, const float Signed, const float PreviousSigned)
+		{
+			return Trace.PlaceWalk.IsValidIndex(Index) && Trace.PlaceWalk[Index] != 0 && FMath::Abs(Signed) < 0.5f * UE_PI && Signed * PreviousSigned >= 0.f;
+		};
 		for (int32 Index = 1; Index < Count; ++Index)
 		{
 			Ordered += Trace.Ordered.IsValidIndex(Index) && Trace.Ordered[Index] ? 1 : 0;
@@ -156,8 +163,9 @@ namespace HOLSanity
 				const float Cos = FVector2D::DotProduct(Move, PreviousMove) / (Length * PreviousMove.Size());
 				const float Angle = FMath::Acos(FMath::Clamp(Cos, -1.f, 1.f));
 				const float Signed = FVector2D::CrossProduct(PreviousMove, Move) < 0.f ? -Angle : Angle;
-				Result.Turn += Angle;
-				Result.SignedTurn += Signed;
+				const bool bOneSide = IsOneSideCurve(Index, Signed, PreviousTurn);
+				if (!bOneSide) { Result.Turn += Angle; }
+				if (!bOneSide) { Result.SignedTurn += Signed; }
 				Result.Reversals += Cos < -0.5f ? 1 : 0;
 				if (Signed * PreviousTurn < 0.f)
 				{
@@ -182,6 +190,7 @@ namespace HOLSanity
 			float WindowTurn = 0.f, WindowPath = 0.f;
 			int32 WindowOrdered = 0;
 			FVector2D Before = FVector2D::ZeroVector;
+				float BeforeTurn = 0.f;
 			bool bFlankInWindow = false;
 			for (int32 Index = Begin + 1; Index <= Begin + Window; ++Index)
 			{
@@ -197,7 +206,9 @@ namespace HOLSanity
 				if (!Before.IsZero())
 				{
 					const float Angle = FMath::Acos(FMath::Clamp(FVector2D::DotProduct(Move, Before) / (Length * Before.Size()), -1.f, 1.f));
-					WindowTurn += FVector2D::CrossProduct(Before, Move) < 0.f ? -Angle : Angle;
+					const float SignedWindowTurn = FVector2D::CrossProduct(Before, Move) < 0.f ? -Angle : Angle;
+						if (!IsOneSideCurve(Index, SignedWindowTurn, BeforeTurn)) { WindowTurn += SignedWindowTurn; }
+						BeforeTurn = SignedWindowTurn;
 				}
 				Before = Move;
 			}
