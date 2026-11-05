@@ -13,20 +13,24 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ## État des branches (2026-11-04 16:3x, `main` = 1f5d8d8, poussé jusqu'à b284036)
 
 - **Dans `main`** (fusion groupée 532e638 le 2026-11-04) : `ai-ia1` (Arwen), `tiers` (Elrond), `fog` (Faramir), `net-playtest` (Glorfindel), `galadriel-tab` (Galadriel). Les cinq worktrees sont à 1f5d8d8, libres côté code (Faramir : la partie C++ de B2 est commitée sur `fog` 19adf23, non compilée, conflit avec main à résoudre).
+- **Fusion groupée `tiers` (Elrond, 1a473c6) = galadriel-tab + fog B2 + maps autel + Cavalerie C1 (assets régénérés), VERTE 936/936 + net, PAS ENCORE dans `main`** (2026-11-04 17:5x) : l'avance rapide attend que la session Légions commite `GDD.md` ; voir `Auto_Journey_Retours.md` § 3.
 - **PAS dans `main`** : `maps` (Haldir, 9387cd3, voir Cartes), `visual` (Sauron, 3b3247c, voir Visuel), `hero-j8-close` (Celeborn, 09cb852, voir Duel et Bugs).
 - Essais validés le 2026-11-04 : spectateur d'équipe, `diplomacy_compare`, volcan, `talents_later`. Seule attente de l'utilisateur dans `Retours\` : `E-maps-review.md`.
 
 ## À faire
 
 ### En tête de file (Galadriel, `Auto_Journey_File.md`)
-- Diplomatie, retours de l'essai `E-diplomacy` et `E-diplomacy_locked` (2026-11-04 15:55) : voir « Bugs remontés » ; tête de file de Galadriel.
-- Décisions à numéroter au GDD (prochain numéro **D663**) : VI-Q3 = B (Forum à bannières), budget d'arbres 400 par joueur (Immense 600), D663-D665 proposées par Haldir (`MapsInProgress.md`). D662 (table de contres de l'IA) est écrite ; D658 confirmée par l'utilisateur.
+- Diplomatie, retours de l'essai `E-diplomacy` et `E-diplomacy_locked` (2026-11-04 15:55) : voir « Bugs remontés » ; tête de file de Galadriel. **17:03 : fait sur `galadriel-tab` (commit 9f64436 + scénarios) : rupture mutuelle (bug), « En attente » supprimé, taxe écrite une fois, tribut par ressource ; build PASS, quick_check tests+net 921/921 PASS, pré-vols `diplomacy` et `diplomacy_locked` PASS ; essais `Retours/E-diplomacy.md` et `E-diplomacy_locked.md` ; pas fusionné dans `main` (`DiplomacyInProgress.md`).**
+- Outils de test (Arwen, `ai-ia1`, 2026-11-04 17:0x) : défilement par le bord coupé dans `check.ps1` et `quick_check.ps1` (`bEdgeScroll=False`), `-Multiprocess` dans `quick_check.ps1`, `crossings.ps1`, `hinterland_paths.ps1` ; `log_lock_test`, `check sanity_ok`, `quick_check -Parts tests` PASS ; commité sur `ai-ia1`, pas dans `main`.
+- Décisions numérotées au GDD le 2026-11-04 (prochain numéro **D691**) : D663-D665 (arbres 400, Steppe x2 et vraies forêts, sols et autel, de Haldir), D666 (VI-Q3 = B, bannières), D667-D670 (TB-Q1, TB-Q2, MM-Q1, AIQ-H), D671 (réponses Diplomatie du 15:55). D658 confirmée par l'utilisateur (la ligne est dans la branche `maps`).
 
 ### Animations
 - Variantes de chutes par type (2 ou 3, choisies par unité) *(après le prototype)*
 
 ### Unités et héros
-- Deuxième attaque à déclencheur (charge, D345) *(avec la cavalerie, pas avant)*
+- **Légions Noires, la 2e faction du prototype (D11, § 13.3), 2026-11-04 : dossier COMPLET, PRÊT À LANCER, RIEN codé** ; attend un worktree (l'utilisateur le prépare) ; L0 socle multi-faction (rôles + surcharges par faction) puis Aube contre Légions jouable (Zombie, socle en reskin, Guerrier Damné, fiche du Seigneur Damné), puis cadavres / Nécromancien / Squelette, Spectre, spécialisations, technologies, IA, art, essais (L0 à L14) ; kit du héros (L8b) et talents (L11) après la clôture du chantier héros ; décisions numérotées D677 à D683 au GDD ; LQ-1 à LQ-14 TOUTES tranchées (Zombie sans nourriture en coût, deux malédictions, 1 cadavre = 1 Squelette, cadavres 75 s / 60 par joueur, Autel de sang et Fosse des damnés = bâtiments, Fosses de labeur et Tour des nécromanciens = technologies) ; reste les chiffres, proposés à chaque étape *(`LegionsInProgress.md`)*
+- Cavalerie (D672, 2026-11-04) : CV-Q1 à CV-Q5 tranchées (charge oui, cheval placeholder, stats en bloc, IA à tous les niveaux, bannières) ; C1 (Écurie + Cavalier léger en données et script) FAITE et DANS `main` (fusion 9f9c591, 2026-11-04), NON compilée, NON exécutée, rien de poussé ; Glorfindel libéré ; reprise = liste des commandes de `CavalryInProgress.md` quand le build sera permis ; C2 (LOCTEXT, charge, forêt, tests C++ de la grille : C++) attend l'autorisation de builder ; bannières de l'Écurie avec le chantier visuel *(`CavalryInProgress.md`)*
+- Deuxième attaque à déclencheur (charge, D345) : C2 de la cavalerie, C++
 - Clôture de J8 (héros) : J8a, J8b, J8c et leurs correctifs sont dans `main` ; reste les mesures au repos (S2 3,05 ms contre le seuil 3, bissection commencée dans Elrond ; seuil S3 / S4 relevé à 6,5 ms, D586 : `chapter_measures.ps1` à ajuster (à vérifier)) et le paquet / serveur à recuire *(`JourneyInProgress.md`, `Docs/Mesures_2026-10-31.md`)*
 - Glissement du rang des Hommes d'armes en surnombre (D577) : dans `main`, rien à faire.
 
@@ -35,8 +39,10 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 
 ### Cartes (branche `maps`, Haldir, PAS fusionnée)
 - Les sept cartes du prototype (D496, D498) : Steppe, Arrière-pays, El Dorado, Cols, Forêt profonde, Couronne, Gués faites ; site du volcan et relais (5 fixes de 12 m + anneau, D647 / D658) écrits sur toutes ; **40 cartes régénérées le 2026-11-04 : budget d'arbres 400 par joueur (Immense 600), forêts de 200 arbres ou plus, sol texturé par carte (CC0), ambiance lumineuse** *(`MapsInProgress.md`, `Docs\AssetsExternes.md`)*
-- Reste avant fusion : autel (mesh placeholder) non vu à l'écran, build du worktree réparé mais non vérifié, tests forêts / `crossings` / `hinterland_paths` / `aiduel` / `Map.Table` C++ non rejoués après la régénération ; essai `E-maps-review` (Entrée = carte suivante) en attente de l'utilisateur
-- À trancher : force du marais et or du centre d'El Dorado (CQ2, valeurs provisoires), cartes trop proches visuellement (Steppe verte contre dorée), coût en i/s du sol CC0 à 2 000 unités non mesuré
+- Autel du volcan sur Les Gués (2 joueurs) : tranché D673 (2026-11-04), sur le pont du milieu ; à coder dans `fords.py` *(`MapsInProgress.md`)*
+- 2026-11-04 17:03 : build du worktree PASS, `quick_check -Parts tests,sizes` 922/922, autel VU À L'ÉCRAN (`maps_review`), Steppe Immense régénérée, commit 14a9bf0 (branche `maps`)
+- Reste avant fusion : `crossings` / `hinterland_paths` / `aiduel` non rejoués après la régénération ; autel des Gués à mettre sur le pont (D673) ; essai `E-maps-review` (Entrée = carte suivante) en attente de l'utilisateur
+- El Dorado : marais 30 m à 60 % et tout l'or au centre figés (D674, 2026-11-04). Sols : une teinte distincte par carte (D675, à coder, valider par `maps_review`). Non mesuré : coût en i/s du sol CC0 à 2 000 unités non mesuré
 
 ### Volcan et option Catastrophe *(D205, D208, D377-D380, D398-D400, D427, D649, `VolcanoInProgress.md`)*
 - V1-V8, V10-V12, gisement neuf tiré de la graine (D649), réplication du site au client (V9a), IA qui évacue et tient l'autel : dans `main`, essai volcan validé
@@ -72,7 +78,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 
 ### Biomes *(D651-D656, D660, `BiomeInProgress.md`)*
 - B0 et règles pures B1 (Angelscript), B2 côté gestionnaire (champ `biome` du salon) : dans `main` (b9460b1)
-- B2 côté C++ (`FHOLMatchConfig::Biome`, lobby du client, `hol.Biome.Report`) commité sur `fog` (19adf23), NON compilé, jamais joué ; `git merge main` y donne un conflit à résoudre (garder `mode` et `biome`) ; reste B1 visuel (sol et lumières au chargement), B3 décor au chargement, B4 (première ligne de la liste = « Défaut : <biome de la carte> », D660), B5
+- B2 côté C++ (`FHOLMatchConfig::Biome`, lobby du client, `hol.Biome.Report`) : `fog` 2b425d4 = main fusionné, compilé (PASS), `tests` 923/923, `netfogtrees` et `netfogview` PASS (2026-11-04 16:55, Faramir) ; pas dans `main` ; reste B1 visuel (sol et lumières au chargement), B3 décor au chargement, B4 (première ligne de la liste = « Défaut : <biome de la carte> », D660), B5
 
 ### Visuel des bâtiments (branche `visual`, Sauron, PAS fusionnée) *(`VisualInProgress.md`)*
 - Style stylisé et franc, kit Kenney CC0 ; Forum « K » (donjon 3 x 3, quatre tourelles) retenu, couleur du joueur par bannières (VI-Q3 = B, `SM_Forum`), tests 903/903 ; correctif du contrôle de couleur de `-Parts net` (9a669f4) NON compilé, à rejouer ; reste coût S1, fusion, puis les autres bâtiments ; limites du kit pour la variété des factions (question ouverte)
@@ -88,10 +94,10 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 
 ### IA *(`AIInProgress.md`)*
 - IA0 à IA3 closes et IA4 (Paysans D572, arbitrage des vies D579, aide aux coéquipiers D571, niveaux Facile / Normal / Difficile / Évolutive, IAQ-S D619-D621) : dans `main`
-- Reste : snipe et fermes reconstruites non vus en vraie partie ; repli de la vague punitive (AIQ-H = A, numéro D à écrire) ; IA5 (idée validée le 2026-11-04, après le prototype) : tournoi automatique IA contre IA pour régler les curseurs, parties IA contre joueur analysées, paliers Très facile / Très difficile après mesures
+- Reste : snipe et fermes reconstruites non vus en vraie partie ; repli de la vague punitive (AIQ-H = A, D670, rien à coder) ; IA5 (idée validée le 2026-11-04, après le prototype) : tournoi automatique IA contre IA pour régler les curseurs, parties IA contre joueur analysées, paliers Très facile / Très difficile après mesures
 
 ### Sons
-- Refaire tous les sons du jeu (demande du 2026-10-29) : alertes, voix du héraut, fanfares provisoires (VSCO 2 CE, CC0) ; chantier `AudioInProgress.md` : A0-A1 faites (packs Kenney CC0 hors dépôt), suivant A2 (table événement vers son en script ; attend un nom de worktree, AU-Q2) ; questions AU-Q1 à AU-Q3
+- Refaire tous les sons du jeu (demande du 2026-10-29) : alertes, voix du héraut, fanfares provisoires (VSCO 2 CE, CC0) ; chantier `AudioInProgress.md` : A0-A1 faites (packs Kenney CC0 hors dépôt), suivant A2 (table événement vers son en script, dans le worktree Arwen, AU-Q2) ; AU-Q1 à AU-Q3 répondues le 2026-11-04 (musique CC0, Sonniss hors dépôt, D676)
 
 ### Performance
 - Revue de performance : P1 (registre de bâtiments) et P2 (cache du terrain de la mini-carte) commités (fe5dca4) ; mesures S1 / S2 avant / après non faites ; P3-P5 en réserve *(`PerformanceInProgress.md`)*
@@ -100,7 +106,8 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - Mini-carte faite, essai validé (« très bien », meilleure résolution plus tard : terrain 480 x 480 fait, rendu 1920 x 1080 et coût non mesurés)  ; icônes de ressources à venir
 
 ### GDD
-- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro **D663** ; D659-D660 (valeurs fraîches, biomes) « à confirmer » au commit (à vérifier) ; numéros D à écrire par la session principale : TB-Q1 (annonce du tribut au seul destinataire, amende D372), TB-Q2, MM-Q1 (alerte mini-carte en cercle), AIQ-H (à vérifier)
+- **Spécialisations de palier : technologie ou bâtiment (D683, 2026-11-04)** : étiquette posée sur les 29 options de § 13.2 à § 13.6 ; coûts tranchés (technologie = le choix suffit, bâtiment = ressources comme tout bâtiment) ; **délai de déblocage D684 : 30 / 45 / 60 s selon le palier, lancé au Forum, en parallèle (barre à part), annulable avant la fin** ; les 9 commanderies des Templiers sont des technologies ; plus rien d'ouvert sur ce point
+- Review du GDD : séances closes, reste la courbe d'XP (Q04, à régler en test) ; prochain numéro **D691** ; D659-D660 (valeurs fraîches, biomes) et D665 (couleurs des sols, autel non vu) « à confirmer » ; TB-Q1, TB-Q2, MM-Q1, AIQ-H numérotées D667-D670
 
 ### Moteur
 - Moteur propre HeroesOfLiberty `C:\UE\UE_5.8_HOL` (avec cible Server) ; AS_3 appartient à ProjectShiva (ne pas l'écraser) ; serveur dédié cuit de nouveau *(`NetPlaytestInProgress.md`)*
@@ -127,13 +134,16 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `Auto_Journey.md` (procédure et leçons), `Auto_Journey_File.md` (file de travail), `Auto_Journey_Retours.md` (essais, questions, fusions), `Auto_Journey_Jour.md` (bilans) : journée autonome / séances interactives ; commits partout sauf push
 
 ### Chantiers en cours (à la racine)
+- `AubeInProgress.md` : Ordre de l'Aube, 1re faction du prototype (dossier complet le 2026-11-04, D685-D690, rien codé, prêt à lancer après L0 des Légions et un worktree donné par l'utilisateur ; A1 Hallebardier en tête ; Honneur, Chevalier + *Défi*, Moine Lumineux, pouvoirs ; *Rempart béni* et *Bastion* attendent les fortifications)
 - `AIInProgress.md` : IA du prototype (D421-D427, D527-D531, D552-D556, D558-D561, D571-D585, D619-D621) ; IA5 à venir
 - `AudioInProgress.md` : sons (ouvert 2026-11-03, A2 suivant)
 - `BiomeInProgress.md` : biomes du salon (D651-D656)
+- `CavalryInProgress.md` : cavalerie (ouvert 2026-11-04, D672, C1 dans `main` (9f9c591) non compilée, C2 C++ en attente)
 - `DiplomacyInProgress.md` : mode Diplomatie (D366-D376, D385-D387, D650) ; bugs de l'essai en tête de file
 - `DuelInProgress.md` : duel de héros (branche `hero-j8-close` pour les boucles de mêlée)
 - `FogInProgress.md` : brouillard (F0-F9 dans `main`, clôture à faire)
 - `JourneyInProgress.md` : parcours du joueur et héros (J8 : clôture, mesures)
+- `LegionsInProgress.md` : Légions Noires, 2e faction du prototype (dossier complet le 2026-11-04, rien codé, prêt à lancer dans un worktree donné par l'utilisateur ; L0 socle multi-faction en tête)
 - `MapsInProgress.md` : les sept cartes du prototype (branche `maps`)
 - `MarketInProgress.md` : Marché et tributs
 - `NetPlaytestInProgress.md` : réseau M6 (salons, serveurs dédiés, spectateurs)

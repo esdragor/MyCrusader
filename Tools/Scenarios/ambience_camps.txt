@@ -1,0 +1,27 @@
+# Rouge contre bleu sur le sol et l'ambiance de la carte (chantier Cartes, ambiance lumineuse) : 20 Hommes d'armes bleus et 20 rouges au contact au milieu de la carte, combat coupe pour que la scene reste fixe. Est-ce lisible au premier coup d'oeil ?
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Camera.Focus 0 0
+frames 5
+hol.Units.Spawn 20 -450 0 0 ManAtArms 450
+hol.Units.Spawn 20 450 0 1 ManAtArms 450
+waitunits 40
+hol.Camera.Focus 0 0
+frames 30
+capture camps_game
+note 1. 20 Hommes d'armes bleus (toi, a gauche) et 20 rouges (l'IA, a droite) au contact au milieu de la carte, vus a la hauteur de camera du jeu. Distingue-t-on le rouge du bleu au premier coup d'oeil sur ce sol et cette lumiere ?
+hol.Camera.Zoom 7
+frames 5
+hol.Camera.Focus 0 0
+frames 30
+capture camps_close
+note 2. Meme scene vue de plus pres (7 crans de molette).
+hol.Select.Own
+hol.Cheat.Wound 55
+hol.Camera.Focus 0 0
+frames 30
+capture camps_selected
+note 3. Tes 20 Hommes d'armes sont selectionnes (cercle de selection) et blesses a 55 % (barres de vie), les rouges intacts : cercles et barres restent lisibles sur ce sol.
+hol.Test.Sanity
+panel show

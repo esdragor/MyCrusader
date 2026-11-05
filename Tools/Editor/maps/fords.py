@@ -26,7 +26,8 @@ import unreal
 
 from maps import common, steppe
 
-GROUND = steppe.GROUND
+GROUND = "MI_Ground_Fords"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
+
 WATER_WIDTH = 1800.0  # cm: the water band, 18 m across
 WATER_CLEAR = 500.0  # cm: no deposit's centre nearer than this to the water's edge (the deposit's own extent comes on top, steppe.MIN_EXTENT)
 FORD_WIDTH = 500.0  # cm: a ford, a file of units (5 m free in the band)
@@ -147,7 +148,7 @@ def sources(recipe):
     steppe.KEEP_OUT = keep_out_of(recipe)
     steppe.VEIN_DRAWS = VEIN_DRAWS
     try:
-        placed, groups = steppe.sources(recipe)
+        placed, groups = steppe.sources(recipe, "forests")
     finally:
         steppe.KEEP_OUT, steppe.VEIN_DRAWS = before, draws
     kept = []
@@ -206,7 +207,7 @@ def relays(recipe):
 
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
-    return steppe.budget_of(recipe)[0]
+    return steppe.floor_of("forests", recipe)
 
 
 def volcano(recipe):

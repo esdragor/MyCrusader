@@ -16,8 +16,6 @@ struct FHOLDiplomacyRowView
 	// The three posture controls may be used. False: shown but greyed (the standard modes' fixed teams, an AI that is always Enemy, D367, a
 	// defeated player, a spectator).
 	bool bStanceEditable = false;
-	// The viewer offered an alliance the other has not answered (D369: both must say Ally): « en attente de l'autre ».
-	bool bPending = false;
 	// « Share my vision » (D371): ticked now, and whether it may be changed (allies only; automatic between teammates of the standard modes).
 	bool bVisionChecked = false;
 	bool bVisionEnabled = false;
@@ -27,7 +25,7 @@ struct FHOLDiplomacyRowView
 	int TaxPercent = 0;
 	// The private message (D385): the button opens the discussion, which is another chantier; usable toward any other human still in the match.
 	bool bMessageEnabled = false;
-	// "slot 2 me ally them enemy pending stance on | vision off off | tribute on tax 30 | message on" (hol.HUD.Report).
+	// "slot 2 me ally them enemy stance on | vision off off | tribute on tax 30 | message on" (hol.HUD.Report).
 	FString Describe;
 }
 
@@ -64,14 +62,13 @@ namespace HOLDiplomacyPanel
 		const bool bViewerPlays = Viewer >= 0 && !bViewerDefeated;
 		const bool bOther = !Row.bSelf && bViewerPlays;
 		Row.bStanceEditable = bDiplomacyMode && bOther && !bSlotAI && !bSlotDefeated;
-		Row.bPending = Row.bStanceEditable && Row.MyStance == HOLDiplomacy::Ally && Row.TheirStance != HOLDiplomacy::Ally;
 		Row.bVisionChecked = bVision && Row.Relation == HOLDiplomacy::Ally;
 		Row.bVisionEnabled = Row.bStanceEditable && Row.Relation == HOLDiplomacy::Ally;
 		Row.TaxPercent = TaxPercent;
 		Row.bNoMarket = !bViewerHasMarket;
 		Row.bTributeEnabled = bOther && bViewerHasMarket && !bSlotDefeated;
 		Row.bMessageEnabled = bOther && !bSlotAI && !bSlotDefeated;
-		Row.Describe = "slot " + Slot + " me " + StanceName(Row.MyStance) + " them " + StanceName(Row.TheirStance) + (Row.bPending ? " pending" : "")
+		Row.Describe = "slot " + Slot + " me " + StanceName(Row.MyStance) + " them " + StanceName(Row.TheirStance)
 			+ (Row.bStanceEditable ? " stance on" : " stance locked")
 			+ " | vision " + OnOff(Row.bVisionChecked) + " " + OnOff(Row.bVisionEnabled)
 			+ " | tribute " + (Row.bTributeEnabled ? "on" : (Row.bNoMarket ? "no market" : "off")) + " tax " + TaxPercent
@@ -105,7 +102,13 @@ namespace HOLDiplomacyPanelText
 	const FString Ally = "Diplomacy.Ally";
 	const FString Neutral = "Diplomacy.Neutral";
 	const FString Enemy = "Diplomacy.Enemy";
-	const FString Pending = "Diplomacy.Pending";
+	const FString TaxNote = "Diplomacy.TaxNote";
+	const FString ResourceButton = "Diplomacy.ResourceButton";
+	const FString ResourceTip = "Diplomacy.ResourceTip";
+	const FString ResFood = "Diplomacy.ResFood";
+	const FString ResWood = "Diplomacy.ResWood";
+	const FString ResStone = "Diplomacy.ResStone";
+	const FString ResGold = "Diplomacy.ResGold";
 	const FString Vision = "Diplomacy.Vision";
 	const FString VisionTip = "Diplomacy.VisionTip";
 	const FString Tribute = "Diplomacy.Tribute";
@@ -125,11 +128,17 @@ namespace HOLDiplomacyPanelText
 		if (Key == Ally) return NSLOCTEXT("HOLDiplomacyPanel", "Ally", "Allié");
 		if (Key == Neutral) return NSLOCTEXT("HOLDiplomacyPanel", "Neutral", "Neutre");
 		if (Key == Enemy) return NSLOCTEXT("HOLDiplomacyPanel", "Enemy", "Ennemi");
-		if (Key == Pending) return NSLOCTEXT("HOLDiplomacyPanel", "Pending", "En attente de l'autre");
+		if (Key == TaxNote) return NSLOCTEXT("HOLDiplomacyPanel", "TaxNote", "Tribut : taxe de {0} % gardée par le Marché");
+		if (Key == ResourceButton) return NSLOCTEXT("HOLDiplomacyPanel", "ResourceButton", "Ressource : {0}");
+		if (Key == ResourceTip) return NSLOCTEXT("HOLDiplomacyPanel", "ResourceTip", "Choisir la ressource des tributs (nourriture, bois, pierre, or)");
+		if (Key == ResFood) return NSLOCTEXT("HOLDiplomacyPanel", "ResFood", "nourriture");
+		if (Key == ResWood) return NSLOCTEXT("HOLDiplomacyPanel", "ResWood", "bois");
+		if (Key == ResStone) return NSLOCTEXT("HOLDiplomacyPanel", "ResStone", "pierre");
+		if (Key == ResGold) return NSLOCTEXT("HOLDiplomacyPanel", "ResGold", "or");
 		if (Key == Vision) return NSLOCTEXT("HOLDiplomacyPanel", "Vision", "Vision");
 		if (Key == VisionTip) return NSLOCTEXT("HOLDiplomacyPanel", "VisionTip", "Partager ma vision avec ce joueur (alliés seulement)");
-		if (Key == Tribute) return NSLOCTEXT("HOLDiplomacyPanel", "Tribute", "Tribut 100 or (taxe {0} %)");
-		if (Key == TributeTip) return NSLOCTEXT("HOLDiplomacyPanel", "TributeTip", "Donner 100 d'or à ce joueur ; le Marché garde {0} %");
+		if (Key == Tribute) return NSLOCTEXT("HOLDiplomacyPanel", "Tribute", "Tribut 100 {0}");
+		if (Key == TributeTip) return NSLOCTEXT("HOLDiplomacyPanel", "TributeTip", "Donner 100 {0} à ce joueur ; le Marché garde {1} %");
 		if (Key == TributeNoMarket) return NSLOCTEXT("HOLDiplomacyPanel", "TributeNoMarket", "Il faut un Marché terminé pour faire un tribut");
 		if (Key == Message) return NSLOCTEXT("HOLDiplomacyPanel", "Message", "Message");
 		if (Key == MessageTip) return NSLOCTEXT("HOLDiplomacyPanel", "MessageTip", "Message privé à ce joueur");
@@ -139,9 +148,25 @@ namespace HOLDiplomacyPanelText
 		return FText();
 	}
 
-	FString Format(FString Key, FString First = "")
+	FString Format(FString Key, FString First = "", FString Second = "")
 	{
-		return PatternText(Key).ToString().Replace("{0}", First);
+		return PatternText(Key).ToString().Replace("{0}", First).Replace("{1}", Second);
+	}
+
+	// The tribute's resources, in the game's order (HOLResource: 0 food, 1 wood, 2 stone, 3 gold); the panel keeps one chosen for all lines.
+	const int ResourceCount = 4;
+
+	int NextResource(int Resource)
+	{
+		return (Resource + 1) % ResourceCount;
+	}
+
+	FString ResourceName(int Resource)
+	{
+		if (Resource == 0) return PatternText(ResFood).ToString();
+		if (Resource == 1) return PatternText(ResWood).ToString();
+		if (Resource == 2) return PatternText(ResStone).ToString();
+		return PatternText(ResGold).ToString();
 	}
 
 	FText StanceLabel(int Stance)

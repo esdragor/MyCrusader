@@ -23,6 +23,11 @@ frames 30
 hol.HUD.Report 1
 waitlog HUD overlap:
 capture dipl_locked_wide
+hol.HUD.Click DipResource
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_locked_food
 hol.UI.DiplomacyLayout 1
 hol.Test.Sanity
 panel show

@@ -1,3 +1,4 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 dipl_locked_panel | Presentation 1 (panneau etroit a droite) hors mode Diplomatie : une ligne par joueur avec Tribut et Message, SANS puce de posture ni case Vision ; le bouton « Diplomatie » est la, a gauche de « Menu » ; le tableau des joueurs : bouclier vert devant le joueur 2, croix rouges devant les autres
 dipl_locked_wide | Presentation 0 (panneau large) hors mode Diplomatie : les memes lignes, sans les trois boutons de posture ni la case Vision, sans la note « Postures verrouillees »
+dipl_locked_food | Apres un clic sur le bouton « Ressource » en bas du panneau : il dit « Ressource : nourriture » et les boutons Tribut des lignes disent « Tribut 100 nourriture » ; la taxe de 30 % n'est ecrite qu'une fois, en bas

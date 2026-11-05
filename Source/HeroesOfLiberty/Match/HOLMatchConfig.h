@@ -148,6 +148,16 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	UPROPERTY()
 	EHOLFogMode FogMode = EHOLFogMode::Disabled;
 
+	/**
+	 * B2 (D651-D656, BiomeInProgress.md): the biome of the match (the lobby's list "Biome"), by the key of the table of
+	 * Script/Biomes/HOLBiomeRules.as ("fresh_grass", "dry_steppe", "autumn", "dark_forest", "snow"); "default" (no such field in
+	 * the file: the scenarios, the tests, older files) = the map's own biome. An unknown key is read as the map's own too (the
+	 * script's IndexOfKey gives -1, never a read outside the table). Replicated to the clients with the rest of the configuration
+	 * (AHOLGameState::LaunchConfig): everyone sees the same biome (B-Q1). UHOLBiomeReadLibrary::GetMatchBiomeKey reads it.
+	 */
+	UPROPERTY()
+	FString Biome = TEXT("default");
+
 	/** Always MaxSlots after Normalize(). */
 	UPROPERTY()
 	TArray<FHOLMatchSlot> Slots;

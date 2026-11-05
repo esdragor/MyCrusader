@@ -42,7 +42,7 @@ if ($What -eq "Menu") {
     Remove-Item $Log -ErrorAction SilentlyContinue
     @("waitmap MainMenu", "waitui", "hol.UI.Open NewGame", "waitui", "frames 20", "hol.UI.Text FogDropdown", "capture newgame_fog_a",
         "hol.UI.Choose FogDropdown 1", "frames 10", "hol.UI.Text FogDropdown", "capture newgame_fog_b", "quit") | Set-Content -Encoding ascii $Sequence
-    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -as-exit-on-error -asdebugport=0 -saveddirsuffix=$Suffix -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -as-exit-on-error -asdebugport=0 -saveddirsuffix=$Suffix -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
     $Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru
     if (-not $Process.WaitForExit(180000)) { $Process.Kill() }
     if (Test-Path $Log) { Get-Content $Log | Select-String -Pattern "Text FogDropdown|New game: fog|Test capture|Error:" | ForEach-Object { $_.Line -replace "^.*?\]", "" } }
@@ -93,7 +93,7 @@ foreach ($Client in 1, 2) {
     $Lines | Set-Content -Encoding utf8 $Sequence
     $ClientLog = Join-Path $Work "Logs\fog_shots_client$Client.log"
     $Url = if ($Client -eq 1) { "127.0.0.1:${Port} -PlayerName=Bob" } else { "127.0.0.1:${Port}?Name=Alice" }
-    $Arguments = "`"$UProject`" $Url -game -RenderOffScreen -ResX=960 -ResY=540 -nosound -saveddirsuffix=$Suffix -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $Sequence`""
+    $Arguments = "`"$UProject`" $Url -game -RenderOffScreen -ResX=960 -ResY=540 -nosound -saveddirsuffix=$Suffix -nosplash -unattended -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $Sequence`""
     $Clients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru) }
 }
 foreach ($C in $Clients) { if (-not $C.Process.WaitForExit(240000)) { $C.Process.Kill() } }

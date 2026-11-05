@@ -384,7 +384,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	FHOLGridContext Context;
 	Context.bBuilders = true;
 	UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
-	TestEqual(TEXT("eleven buildable types (the Sanctuary, SC-Q1, joined the seven of age I; the Market M3, the siege workshop S2 and the Chapel are of age II)"), Context.Buildable.Num(), 11);
+	TestEqual(TEXT("twelve buildable types (the Sanctuary, SC-Q1, joined the seven of age I; the Market M3, the siege workshop S2, the Chapel and the Stable, Cavalry C1, are of age II)"), Context.Buildable.Num(), 12);
 	TestTrue(TEXT("X: sanctuary (SC-Q1 = B, D602)"), HOLCommandGrid::GetAgeBuilding(Context, 0, 9).TypeName == FName(TEXT("Sanctuary"))
 		&& HOLCommandGrid::GetAgeBuilding(Context, 0, 9).Command == EHOLGridCommand::Build);
 	TestTrue(TEXT("A: house"), HOLCommandGrid::GetAgeBuilding(Context, 0, 0).TypeName == HOLBuildingTypeNames::House);
@@ -417,7 +417,11 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	const FHOLGridCommand ChapelCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 5);
 	TestTrue(TEXT("II S: the Chapel, a build command, greyed (age II not reached)"), ChapelCell.TypeName == FName(TEXT("Chapel"))
 		&& ChapelCell.Command == EHOLGridCommand::Build && ChapelCell.Age == 1 && ChapelCell.bGreyed);
-	for (const int32 Cell : { 1, 2, 3, 6, 7, 8, 9, 10, 11 })
+	// Cavalry C1 (D672): the Stable, D of page II (military row, cell 6), greyed likewise.
+	const FHOLGridCommand StableCell = HOLCommandGrid::GetAgeBuilding(Context, 1, 6);
+	TestTrue(TEXT("II D: the Stable, a build command, greyed (age II not reached)"), StableCell.TypeName == FName(TEXT("Stable"))
+		&& StableCell.Command == EHOLGridCommand::Build && StableCell.Age == 1 && StableCell.bGreyed);
+	for (const int32 Cell : { 1, 2, 3, 7, 8, 9, 10, 11 })
 	{
 		TestTrue(*FString::Printf(TEXT("page II, cell %d: no building yet"), Cell), HOLCommandGrid::GetAgeBuilding(Context, 1, Cell).IsNone());
 	}
@@ -429,7 +433,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	{
 		// M3: the Market alone is of age II (page II, A: the economic row of its page); every other type is of age I.
 		const bool bMarket = Buildable.TypeName == HOLBuildingTypeNames::Market || Buildable.TypeName == HOLBuildingTypeNames::SiegeWorkshop
-			|| Buildable.TypeName == FName(TEXT("Chapel"));
+			|| Buildable.TypeName == FName(TEXT("Chapel")) || Buildable.TypeName == FName(TEXT("Stable"));
 		TestEqual(*FString::Printf(TEXT("%s: %s"), *Buildable.TypeName.ToString(), bMarket ? TEXT("age II") : TEXT("age I")), Buildable.Age, bMarket ? 1 : 0);
 		// Its row is its category's (the user's 3rd trial of G.1): A Z E R economic, Q S D F military, W X C V technology;
 		// the farm alone stands on the third row (IA1.2-Q1: the economic row of age I is full).

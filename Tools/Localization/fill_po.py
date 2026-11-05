@@ -279,11 +279,17 @@ TRANSLATIONS = {
     "HOLDiplomacyPanel,Ally": ("Ally", "同盟"),
     "HOLDiplomacyPanel,Neutral": ("Neutral", "中立"),
     "HOLDiplomacyPanel,Enemy": ("Enemy", "敵対"),
-    "HOLDiplomacyPanel,Pending": ("Waiting for the other", "相手の返答待ち"),
+    "HOLDiplomacyPanel,TaxNote": ("Tribute: {0}% tax kept by the Market", "貢物：市場が税{0}%を徴収"),
+    "HOLDiplomacyPanel,ResourceButton": ("Resource: {0}", "資源：{0}"),
+    "HOLDiplomacyPanel,ResourceTip": ("Choose the resource of the tributes (food, wood, stone, gold)", "貢物の資源を選ぶ（食料・木材・石材・金）"),
+    "HOLDiplomacyPanel,ResFood": ("food", "食料"),
+    "HOLDiplomacyPanel,ResWood": ("wood", "木材"),
+    "HOLDiplomacyPanel,ResStone": ("stone", "石材"),
+    "HOLDiplomacyPanel,ResGold": ("gold", "金"),
     "HOLDiplomacyPanel,Vision": ("Vision", "視界共有"),
     "HOLDiplomacyPanel,VisionTip": ("Share my vision with this player (allies only)", "このプレイヤーと視界を共有（同盟のみ）"),
-    "HOLDiplomacyPanel,Tribute": ("Tribute 100 gold ({0}% tax)", "貢物 100ゴールド（税{0}%）"),
-    "HOLDiplomacyPanel,TributeTip": ("Give 100 gold to this player; the Market keeps {0}%", "このプレイヤーに100ゴールドを贈る。市場が{0}%を徴収"),
+    "HOLDiplomacyPanel,Tribute": ("Tribute 100 {0}", "貢物 {0} 100"),
+    "HOLDiplomacyPanel,TributeTip": ("Give 100 {0} to this player; the Market keeps {1}%", "このプレイヤーに{0}を100贈る。市場が{1}%を徴収"),
     "HOLDiplomacyPanel,TributeNoMarket": ("A finished Market is needed to send a tribute", "貢物には完成した市場が必要です"),
     "HOLDiplomacyPanel,Message": ("Message", "メッセージ"),
     "HOLDiplomacyPanel,MessageTip": ("Private message to this player", "このプレイヤーへの個人メッセージ"),
@@ -415,6 +421,10 @@ TRANSLATIONS = {
     # Q-chapelle-moine = A: the Chapel and the Monk (GDD 7.1, 11.1).
     "HOLGameNames,Chapel": ("Chapel", "礼拝堂"),
     "HOLGameNames,Monk": ("Monk", "修道士"),
+    # C1 (D672, cavalry of the prototype): the Stable and the Light Cavalry. NOT YET USED: the keys exist in the .po files only once
+    # HOLGameNames.cpp has the two LOCTEXT (C2, C++); until then both show the table's French name (DisplayName) in every language.
+    "HOLGameNames,Stable": ("Stable", "厩舎"),
+    "HOLGameNames,LightCavalry": ("Light Cavalry", "軽騎兵"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
     # S2: the siege workshop and its two engines (GDD 6.1).

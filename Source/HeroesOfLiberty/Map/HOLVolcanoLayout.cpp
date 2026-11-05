@@ -2,13 +2,81 @@
 
 #include "Map/HOLVolcanoLayout.h"
 
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Materials/MaterialInterface.h"
+
 AHOLVolcanoLayout::AHOLVolcanoLayout()
 {
 	PrimaryActorTick.bCanEverTick = false;
-	// Data for the server: the sites are the simulation's.
-	bNetLoadOnClient = false;
+	// The sites are the simulation's data, but the clients draw the placeholder altar from the map's own copy (2026-11-04).
+	bNetLoadOnClient = true;
 	SetCanBeDamaged(false);
 	RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
+}
+
+void AHOLVolcanoLayout::BeginPlay()
+{
+	Super::BeginPlay();
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		BuildAltarMeshes();
+	}
+}
+
+void AHOLVolcanoLayout::BuildAltarMeshes()
+{
+	// A placeholder, assumed (2026-11-04, the user: a mesh for the altar so that it shows on the maps): two basalt steps, a pillar and a red top,
+	// made of the engine's basic shapes, no collision, no navigation, no shadow (D258, D265).
+	UStaticMesh* Cylinder = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cylinder.Cylinder"));
+	UStaticMesh* Cube = LoadObject<UStaticMesh>(nullptr, TEXT("/Engine/BasicShapes/Cube.Cube"));
+	UMaterialInterface* Parent = LoadObject<UMaterialInterface>(nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"));
+	if (!Cylinder || !Cube)
+	{
+		return;
+	}
+	UMaterialInstanceDynamic* Basalt = Parent ? UMaterialInstanceDynamic::Create(Parent, this) : nullptr;
+	UMaterialInstanceDynamic* Ember = Parent ? UMaterialInstanceDynamic::Create(Parent, this) : nullptr;
+	if (Basalt)
+	{
+		Basalt->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.04f, 0.04f, 0.05f));
+	}
+	if (Ember)
+	{
+		Ember->SetVectorParameterValue(TEXT("Color"), FLinearColor(0.9f, 0.22f, 0.03f));
+	}
+	auto AddPart = [this](UStaticMesh* Mesh, UMaterialInterface* Material, const FVector& Where, const FVector& Scale)
+	{
+		UStaticMeshComponent* Part = NewObject<UStaticMeshComponent>(this);
+		Part->SetStaticMesh(Mesh);
+		if (Material)
+		{
+			Part->SetMaterial(0, Material);
+		}
+		Part->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		Part->SetCanEverAffectNavigation(false);
+		Part->SetCastShadow(false);
+		Part->SetMobility(EComponentMobility::Movable);
+		Part->SetupAttachment(GetRootComponent());
+		Part->RegisterComponent();
+		Part->SetWorldLocationAndRotation(Where, FRotator::ZeroRotator);
+		Part->SetWorldScale3D(Scale);
+		AltarMeshes.Add(Part);
+	};
+	for (const FHOLPlacedVolcano& Site : Sites)
+	{
+		if (!Site.bAltar)
+		{
+			continue;
+		}
+		const FVector At = Site.AltarLocation;
+		// The shapes are 100 cm: a 7 m step 30 cm high, a 4.5 m step 30 cm high, a 1.2 m pillar 3.4 m high, a 2 m red top 30 cm high.
+		AddPart(Cylinder, Basalt, At + FVector(0, 0, 15), FVector(7.0, 7.0, 0.3));
+		AddPart(Cylinder, Basalt, At + FVector(0, 0, 45), FVector(4.5, 4.5, 0.3));
+		AddPart(Cube, Basalt, At + FVector(0, 0, 60 + 170), FVector(1.2, 1.2, 3.4));
+		AddPart(Cylinder, Ember, At + FVector(0, 0, 60 + 340 + 15), FVector(2.0, 2.0, 0.3));
+	}
 }
 
 int32 FHOLVolcanoLayoutRules::CountUnbalancedFlows(const TConstArrayView<FHOLPlacedVolcano> Sites, const double StepDegrees)

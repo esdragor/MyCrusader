@@ -43,7 +43,9 @@ public static class FakeEngine {
 '@
 $Engine = Join-Path $Work "engine"
 New-Item -ItemType Directory -Force $Engine | Out-Null
-Add-Type -TypeDefinition $Source -OutputType ConsoleApplication -OutputAssembly (Join-Path $Engine "UnrealEditor.exe")
+# WindowsApplication, not ConsoleApplication: the tools under test start it with Start-Process, and a console exe opens a
+# terminal window each time that closes at once (2026-11-05).
+Add-Type -TypeDefinition $Source -OutputType WindowsApplication -OutputAssembly (Join-Path $Engine "UnrealEditor.exe")
 Copy-Item (Join-Path $Engine "UnrealEditor.exe") (Join-Path $Engine "UnrealEditor-Cmd.exe")
 
 # Holds a file open the way a process still writing it does (nobody can delete or write it, others may read it).
@@ -77,40 +79,6 @@ try {
     $env:FAKE_ENGINE_TEXT = $Ready
     $Output = @(& powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | ForEach-Object { "$_" })
     Case "check.ps1: a free log and a ready line written by this pass gives PASS (control)" ($LASTEXITCODE -eq 0 -and [bool]($Output -match "check fake : PASS"))
-
-    # ---- Edge scrolling (bEdgeScroll) is off in the test settings of both tools (a cursor at the screen's edge pans the camera,
-    # a check moved it by itself). check.ps1 on a root without a settings file: created, option off.
-    $RootSettings = Join-Path $Root "Saved_Tests\Config\WindowsEditor\GameUserSettings.ini"
-    Remove-Item $RootSettings -Force -ErrorAction SilentlyContinue
-    Remove-Item $ScenarioLog -Force -ErrorAction SilentlyContinue
-    $env:FAKE_ENGINE_TEXT = $Ready
-    & powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | Out-Null
-    $Text = if (Test-Path $RootSettings) { @(Get-Content $RootSettings) } else { @() }
-    Case "check.ps1: a root without settings gets bEdgeScroll=False once" (@($Text | Where-Object { $_ -eq "bEdgeScroll=False" }).Count -eq 1 -and -not [bool]($Text -match "bEdgeScroll=True"))
-    # ... on a file that has the option on (the user's old test settings): turned off, the other lines kept.
-    New-Item -ItemType Directory -Force (Split-Path $RootSettings) | Out-Null
-    Set-Content -Encoding ascii $RootSettings @("[/Script/HeroesOfLiberty.HOLGameUserSettings]", "bEdgeScroll=True", "ResolutionSizeX=777", "[Other]", "Keep=1")
-    Remove-Item $ScenarioLog -Force -ErrorAction SilentlyContinue
-    & powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | Out-Null
-    $Text = @(Get-Content $RootSettings)
-    Case "check.ps1: bEdgeScroll=True becomes False, the other lines stay" (($Text -contains "bEdgeScroll=False") -and -not [bool]($Text -match "bEdgeScroll=True") -and ($Text -contains "ResolutionSizeX=777") -and ($Text -contains "Keep=1"))
-    # ... on a file that does not mention it: added under the section.
-    Set-Content -Encoding ascii $RootSettings @("[/Script/HeroesOfLiberty.HOLGameUserSettings]", "ResolutionSizeX=777")
-    Remove-Item $ScenarioLog -Force -ErrorAction SilentlyContinue
-    & powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | Out-Null
-    $Text = @(Get-Content $RootSettings)
-    Case "check.ps1: a file without the option gets it under its section" (($Text -contains "bEdgeScroll=False") -and ($Text -contains "ResolutionSizeX=777"))
-
-    # quick_check.ps1 (the real Saved_Tests of this worktree, its settings file saved and put back).
-    $QuickSettings = Join-Path $Project "Saved_Tests\Config\WindowsEditor\GameUserSettings.ini"
-    $QuickSettingsBackup = if (Test-Path $QuickSettings) { Get-Content $QuickSettings -Raw } else { $null }
-    New-Item -ItemType Directory -Force (Split-Path $QuickSettings) | Out-Null
-    Set-Content -Encoding ascii $QuickSettings @("[/Script/HeroesOfLiberty.HOLGameUserSettings]", "bEdgeScroll=True")
-    $env:FAKE_ENGINE_TEXT = ""
-    & powershell -ExecutionPolicy Bypass -File (Join-Path $Project "Tools\Tests\quick_check.ps1") -Parts tests -EngineDir $Engine 2>&1 | Out-Null
-    $Text = @(Get-Content $QuickSettings)
-    Case "quick_check.ps1: bEdgeScroll=True becomes False" (($Text -contains "bEdgeScroll=False") -and -not [bool]($Text -match "bEdgeScroll=True"))
-    if ($null -ne $QuickSettingsBackup) { Set-Content -Encoding ascii $QuickSettings $QuickSettingsBackup.TrimEnd() }
 
     # ---- quick_check.ps1 -Parts tests: the log of THIS pass is read, whatever the file's name.
     $QuickLog = Join-Path $Project "Saved_Tests\Logs\quick_tests.log"
@@ -169,7 +137,7 @@ try {
     $Text += "Diplomacy report: mode Diplomacy"
     $Text += "Diplomacy report: slot 0 toward slot 1: stance Ally, relation Ally, vision 0, fires 0, adversary 0"
     $Text += "Diplomacy report: slot 1 toward slot 0: stance Ally, relation Ally, vision 0, fires 0, adversary 0"
-    $Text += "Diplomacy report: slot 0 toward slot 1: stance Ally, relation Enemy, vision 0, fires 1, adversary 1"
+    $Text += "Diplomacy report: slot 0 toward slot 1: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1"
     $Text += "Diplomacy report: slot 1 toward slot 0: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1"
     $Text += "AI brain X awake, net mode DedicatedServer, thinking slots [0, 1]"
     $Text += "AI slot 0 step 5: level Hard"

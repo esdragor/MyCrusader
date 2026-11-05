@@ -69,8 +69,8 @@ OPENING_CLEAR = 1100.0  # and from the middle of an opening
 VEIN_ROWS = (1600.0, 2900.0, 4200.0)
 VEIN_STEP = 2400.0  # between two veins of a row
 VEIN_FIRST = 5500.0  # the first vein of a row, from the pocket's axis
-GROVE_SIZES = [common.PACK_TREES]  # M-Q8: the pocket's woods are packs of 14 (they were groves of 28 to 40)
-POCKET_MIN_PACKS = 4  # the pocket keeps a real forest whatever the middle brings: 4 packs of 14
+GROVE_SIZES = [210]  # 2026-11-04 (the user): the pocket's woods are real forests of 200 trees or more (they were packs of 14)
+POCKET_MIN_PACKS = 1  # the pocket keeps a real forest (210 trees) whatever the middle brings
 TREES_MARGIN = 1.0  # the pocket, the front and the base hold the budget by themselves; the packs of the middle come on top
 BERRIES_MARGIN = 1.15
 PATCH_SIZE = 5
@@ -299,7 +299,7 @@ def pocket_minerals(recipe):
 def budget_counts(recipe, middle_least=0):
     """The pocket's needs: the packs and berry patches that, with the base, the front and at least middle_least trees of the
     middle (the fewest any territory's middle holds), come to the budget."""
-    trees, berries = steppe.budget_of(recipe)
+    trees, berries = steppe.floor_of("forests", recipe), steppe.budget_of(recipe)[1]  # 2026-11-04: 400 trees per player (Huge 600), in real forests
     groves = []
     need = max(math.ceil(trees * TREES_MARGIN) - BASE_TREES - FRONT_TREES - middle_least, POCKET_MIN_PACKS * common.PACK_TREES)
     while sum(groves) < need:
@@ -575,7 +575,7 @@ def relays(recipe):
 
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
-    return steppe.budget_of(recipe)[0]
+    return steppe.floor_of("forests", recipe)
 
 
 def volcano(recipe):

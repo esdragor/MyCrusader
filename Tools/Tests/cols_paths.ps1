@@ -62,7 +62,7 @@ foreach ($Query in $Queries) { $Lines += "hol.Nav.Path $(Point $Query.From) $(Po
 $Lines += "frames 2", "quit"
 $Lines | Set-Content -Encoding ascii $Sequence
 
-$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
 if (-not $Process.WaitForExit(240000)) { $Process.Kill() }
 
