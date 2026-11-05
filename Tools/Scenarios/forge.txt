@@ -26,6 +26,13 @@ waitlog Command feedback: research refused (tier too low)
 hol.Hero.SetXP 0 600
 waitlog slot 0 level 1 -> 3
 frames 90
+# Re-selection (Economic then Technological): the Forge's research cells do not follow the tier change by themselves (BUG-forge-tier1-grid.md), a new selection redraws them.
+hol.Select.Category Economic
+waitlog Selection: 
+frames 5
+hol.Select.Category Technological
+waitlog Selection: Forge
+frames 20
 hol.HUD.Report
 capture forge_tier1
 note 2. Palier 1 : un Homme d'armes (toi) et cinq Lanciers (ennemis) a cote de la Forge. Sans technologie, l'Homme d'armes frappe un Lancier pour 12.

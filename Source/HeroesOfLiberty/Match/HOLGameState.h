@@ -281,6 +281,10 @@ public:
 	int32 GetLives(int32 Slot) const;
 	/** P3: the civilisation tier the slot's hero level opens (HOLHeroXP::GetTier; 0 without a hero), as the HUD and the rules read it. */
 	int32 GetTier(int32 Slot) const;
+	/** G0 (D710), development: forces the slot's tier (0 to 3, whatever its hero's level; GetTier then returns it); Tier below 0 lifts it. Server side, replicated (hol.Cheat.Tier). */
+	void SetTierOverride(int32 Slot, int32 Tier);
+	/** The tier forced for the slot, -1 when none (every machine: the property is replicated). */
+	int32 GetTierOverride(int32 Slot) const;
 	/** P2: the forum's values for a slot: the tier its hero's level opens (HOLHeroXP::GetTier), at least the setting's (tests). */
 	FHOLForumTuning GetForumTuning(int32 Slot) const;
 	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
@@ -392,6 +396,10 @@ private:
 	/** One per slot (MaxSlots), public (D353). */
 	UPROPERTY(ReplicatedUsing = OnRep_Forums)
 	TArray<FHOLForumState> ForumStates;
+
+	/** G0 (D710): one per slot (MaxSlots), the tier forced for a slot by hol.Cheat.Tier, -1 for none; public, so a client reads the same tier. */
+	UPROPERTY(Replicated)
+	TArray<int32> TierOverrides;
 
 	/** Server only (R7): the slots kept for their players gone, in the order of the departures. */
 	TArray<FHOLAbsentSlot> AbsentSlots;

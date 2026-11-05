@@ -1,0 +1,7 @@
+# BUG-melee-spin-sanity : l'audit « Sanity » signale un soldat qui tourne sur place en mêlée (à relier à D641 « boucles mêlée »)
+
+Constaté par l'agent Elrond-sans-C++ le 2026-11-05 ~20:35 et ~20:41, binaire du 20:12 (main b39fafd), pré-vol `preflight.ps1`.
+1. Scénario `diplomacy` avec `hol.Test.Sanity` ajouté en fin de scénario (la ligne a été retirée ensuite pour que le pré-vol passe, le scénario ne l'appelle donc plus) : « Sanity: FAIL unit #3 (slot 0) at (-11692, 168) spins over 8 s: path 409 cm, net 149 cm, turn 56.6 rad (net -12.6, to and fro 6.3), 18 reversals ». Contexte : après la rupture Neutre -> Ennemi (`hol.Diplomacy.Force 1 0 enemy`), mêlée de 12 Hommes d'armes ; la trace montre l'unité bloquée sur une cible (« at1 t12 ») qui change de position de 50 cm.
+2. Scénario `neutrals` (1er passage seulement) : « Sanity: FAIL unit #8 (slot 0) at (-916, 391) spins over 8 s: path 1136 cm, net 150 cm, turn 12.4 rad ». Contexte : 6 Hommes d'armes contre le camp neutre. Aux deux passages suivants du même scénario : « Sanity: OK (699 steps, 16 units followed) ». Donc intermittent.
+Geste exact : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\preflight.ps1 neutrals -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` (répéter 3 fois) ; pour le cas 1, ajouter `hol.Test.Sanity` avant la dernière `note` de diplomacy.txt.
+Pas de correctif tenté (C++ interdit à cet agent, simulation). Question de design : aucune. À confier à l'agent mêlée (D641).

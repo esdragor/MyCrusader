@@ -1802,6 +1802,24 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand CheatTierCommand(
+		TEXT("hol.Cheat.Tier"),
+		TEXT("hol.Cheat.Tier <0..3|off> [Slot|all]: forces the tier of the local player (or of that slot, or of every slot) whatever his hero's level, for the grid, the server, the technologies and the AI; off lifts it (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.Tier <0..3|off> [Slot|all]"));
+				return;
+			}
+			const int32 Tier = Args[0].Equals(TEXT("off"), ESearchCase::IgnoreCase) ? -1 : FMath::Clamp(FCString::Atoi(*Args[0]), 0, 3);
+			const int32 Slot = Args.Num() < 2 ? -1 : (Args[1].Equals(TEXT("all"), ESearchCase::IgnoreCase) ? -2 : FCString::Atoi(*Args[1]));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatTier(Tier, Slot);
+			}
+		}));
+
 	FAutoConsoleCommand CheatUnitSpeedCommand(
 		TEXT("hol.Cheat.UnitSpeed"),
 		TEXT("hol.Cheat.UnitSpeed [Scale=1]: every unit of every player walks Scale times as fast (0.1 to 10; 1: the table's speeds; development only)"),
@@ -4514,6 +4532,11 @@ void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 	ServerCheatTechnology(Technology);
 }
 
+void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
+{
+	ServerCheatTier(Tier, Slot);
+}
+
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
 	ServerCheatPopulation(Places);
@@ -4609,6 +4632,30 @@ void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Tech
 	else
 	{
 		UE_LOG(LogHOLCommands, Warning, TEXT("Cheat: technology %s unknown or already researched"), *Technology.ToString());
+	}
+#endif
+}
+
+void AHOLPlayerController::ServerCheatTier_Implementation(const int32 Tier, const int32 Slot)
+{
+#if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("tier")))
+	{
+		return;
+	}
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!HOLGameState)
+	{
+		return;
+	}
+	for (int32 Target = 0; Target < FHOLMatchConfig::MaxSlots; ++Target)
+	{
+		const bool bOwn = Slot == -1 && GetHOLPlayerState() && GetHOLPlayerState()->GetPlayerIndex() == Target;
+		if (Slot == -2 || Slot == Target || bOwn)
+		{
+			HOLGameState->SetTierOverride(Target, Tier);
+			UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d tier forced to %d (-1: none)"), Target, HOLGameState->GetTierOverride(Target));
+		}
 	}
 #endif
 }

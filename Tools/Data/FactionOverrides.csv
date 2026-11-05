@@ -1,1 +1,15 @@
 Name,Faction,Type,Field,Value
+Legions_Spearman_Name,Legions,Spearman,DisplayName,Legion Spearman
+Legions_Spearman_Cost,Legions,Spearman,Cost,"(Food=45,Wood=15,Stone=0,Gold=0)"
+Legions_ManAtArms_Name,Legions,ManAtArms,DisplayName,Black Guard
+Legions_ManAtArms_Cost,Legions,ManAtArms,Cost,"(Food=75,Wood=0,Stone=0,Gold=15)"
+Legions_Archer_Name,Legions,Archer,DisplayName,Legion Archer
+Legions_Archer_Cost,Legions,Archer,Cost,"(Food=25,Wood=40,Stone=0,Gold=0)"
+Legions_Crossbowman_Name,Legions,Crossbowman,DisplayName,Legion Crossbowman
+Legions_Crossbowman_Cost,Legions,Crossbowman,Cost,"(Food=60,Wood=0,Stone=0,Gold=30)"
+Legions_LightCavalry_Name,Legions,LightCavalry,DisplayName,Dread Rider
+Legions_LightCavalry_Cost,Legions,LightCavalry,Cost,"(Food=60,Wood=0,Stone=0,Gold=30)"
+Legions_Ram_Name,Legions,Ram,DisplayName,Bone Ram
+Legions_Ram_Cost,Legions,Ram,Cost,"(Food=0,Wood=110,Stone=0,Gold=55)"
+Legions_Mangonel_Name,Legions,Mangonel,DisplayName,Bone Mangonel
+Legions_Mangonel_Cost,Legions,Mangonel,Cost,"(Food=0,Wood=150,Stone=0,Gold=110)"
