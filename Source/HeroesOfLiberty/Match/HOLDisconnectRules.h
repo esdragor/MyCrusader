@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLResources.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 struct FHOLMatchConfig;
 
@@ -17,6 +18,8 @@ struct FHOLAbsentSlot
 	double LeftAt = 0.;
 	/** The stock at the departure, given back on the return (R7.2). */
 	FHOLResources Resources;
+	/** D719 (T0): the technologies acquired at the departure, and those whose research ends while he is away; given back on the return. */
+	FHOLTechnologyState Technologies;
 };
 
 /**

@@ -515,12 +515,20 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			// A research done (T3): his player has it, nothing is born.
 			if (!Units->FindTypeRow(TypeName) && UHOLTechnologySettings::FindTechnology(TypeName))
 			{
-				if (AHOLPlayerState* Researcher = FindPlayerState(Building->GetOwnerPlayer()))
+				// D719 (T0): in his player state, or in the record kept for him while he is away (given back on his return);
+				// nowhere (no state, not away: a slot of nobody) is not logged as researched.
+				const AHOLGameState* GameStateOfResearch = World->GetGameState<AHOLGameState>();
+				const bool bAway = GameStateOfResearch && GameStateOfResearch->IsSlotAbsent(Building->GetOwnerPlayer());
+				if (AHOLGameState::AddSlotTechnology(*World, Building->GetOwnerPlayer(), TypeName))
 				{
-					Researcher->AddTechnology(TypeName);
+					UE_LOG(LogHOLCommands, Display, TEXT("Technology: slot %d researched %s at step %lld%s"), Building->GetOwnerPlayer(),
+						*TypeName.ToString(), StepIndex, bAway ? TEXT(" (away, kept for him)") : TEXT(""));
 				}
-				UE_LOG(LogHOLCommands, Display, TEXT("Technology: slot %d researched %s at step %lld"), Building->GetOwnerPlayer(),
-					*TypeName.ToString(), StepIndex);
+				else
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Technology: slot %d research of %s at step %lld went nowhere (no player state, not away, or had it)"),
+						Building->GetOwnerPlayer(), *TypeName.ToString(), StepIndex);
+				}
 				continue;
 			}
 			int32& NumBorn = NumBirths.FindOrAdd(Building);
