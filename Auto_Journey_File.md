@@ -88,3 +88,13 @@ Une tâche = une phrase, le journal à lire, le premier test rouge, 15-30 min. L
 
 
 
+
+## Suite de la seance du 2026-11-05 soir (lignes [ ] creees a la cloture)
+- [ ] (C++, Celeborn hero-j8-close) Neutres 2/4 : hypothese de Celeborn-7 (NeutralsInProgress.md) : ne pas reclamer une place a plus de ~1,5 rad du cote du soldat (SelfSide), prendre l'ennemi le plus proche ayant une place de son cote (FindReachableEnemy deja ecrit), sinon attendre ; regle pure dans HOLCombatRules.h, test rouge, mesure x8 contre 5/8 ; puis tremblement de cap de la marche en bloc ; puis refaire a la main la correction camera 16411b8 (patch ne s'applique pas sur main eb7b5fe)
+- [ ] (C++, UI) BUG forge-tier1-grid : HOLGameScreen.cpp RefreshGrid pour EHOLGridCommand::Research (l. 1918-1950) ne suit pas le changement de palier (ShownTier/ShownEngineTier pour les seuls ages et engins) ; verifier la Caserne ; retirer la re-selection commentee de Tools\Scenarios\forge.txt apres
+- [ ] (sans C++, scenario) BUG cavalry-flat : cavalier couche au repos, PV 120 vs note 80, gris ; BUG playtest_hero_death : alerte « pret a revenir » reste apres l'achat ; rejouer apres correction
+- [ ] (C++) D641 spin en melee (playtest_hero_army, neutrals) ; BUG-qground-camp-not-gated : le camp de carte est frappe meme avec AttackMoveEngagesNeutral 0 (voulu ou non ?)
+- [ ] (C++) Legions : afficher les noms (cle par faction, l'UI prend les libelles par cle de type), filtrer Hallebardes trempees par faction, modele client ; puis Sites S2 (copie C++ de HOLSite::Step avec Q2 = B) ; Palier 3 G1 C++ (colonne MinTier)
+- [ ] (C++ + C#) Deconnexion T5 gestionnaire C# (Revenir jusqu'a la fin pour un siege tenu), T6-T10 ; textes de KickPlayer fr/ja
+- [ ] (sans C++, outil) Durcir session_gate Launch : verifier que le binaire du worktree est plus recent que le dernier commit de code de main avant de lancer un agent qui joue des scenarios ; verrou d'editeur partage comme build.ps1 ; compteur d'appels reel des agents (tool_uses) dans le rapport
+- [ ] (sans C++, GDD) Numeroter D730+ au GDD (accord de l'utilisateur requis pour commiter GDD.md) : reponses Legions A/A, Q+clic batiments A, hold-scope C, Sites Q1 A / Q2 B, Trebuchet A/A, Audio A (uasset commites), cadre Diplomatie A, PT7 A
