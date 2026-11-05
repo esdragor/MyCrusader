@@ -1,0 +1,34 @@
+# Essai PT7, questions 1 et 7 de GDD 17.1 (PlaytestInProgress.md) : le heros est-il important sans etre obligatoire, et les combats sont-ils interessants sans lui ?
+# Plain, toi (slot 0) contre une IA gelee (slot 1) : le MEME combat deux fois, 6 Hommes d'armes contre 10 Lanciers ; A avec ton heros (niveau 3, a cote), B apres sa mort (hol.Hero.Kill 0).
+# hol.Combat.Report 0 donne les PV de tes unites a la fin de chaque combat : compare les pertes. Entree = passer au combat suivant (aucune attente morte).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Hero.SetXP 0 600
+waitlog slot 0 level 1 -> 3
+hol.Camera.FocusNear -900 300
+frames 10
+note 1. Combat A, AVEC ton heros (niveau 3, pres du forum) : 6 Hommes d'armes alliés contre 10 Lanciers ennemis a 7 m. Regarde qui tombe, et si le heros decide du combat ou s'il n'est qu'un soldat de plus.
+hol.Units.Spawn 6 -15600 300 0 ManAtArms 150
+hol.Units.Spawn 10 -14900 300 1 Spearman 150
+frames 20
+capture playtest_hero_army_a_start
+wait 20
+hol.Combat.Report 0
+capture playtest_hero_army_a_end
+note 2. Fin du combat A : releve les pertes (Hommes d'armes restants, PV du heros) dans le journal. Entree pour le combat B.
+waitkey Entree : combat B, sans ton heros
+hol.Hero.Kill 0
+frames 5
+hol.Camera.FocusNear -900 2500
+hol.Units.Spawn 6 -15600 2500 0 ManAtArms 150
+hol.Units.Spawn 10 -14900 2500 1 Spearman 150
+frames 20
+capture playtest_hero_army_b_start
+note 3. Combat B, SANS heros (il est tombe) : memes forces. Meme question : l'issue change-t-elle beaucoup ?
+wait 20
+hol.Combat.Report 0
+capture playtest_hero_army_b_end
+note 4. Compare A et B : si le heros est obligatoire, B est une defaite ; s'il est important, B coute plus de pertes. Note ton impression dans Auto_Journey_Retours.md.
+hol.Test.Sanity

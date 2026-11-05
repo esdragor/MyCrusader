@@ -15,7 +15,9 @@ param(
     [Parameter(Mandatory)] [string] $LogName,
     [string] $Extra = "",
     [string] $ExtraExec = "",
-    [switch] $Trace
+    [switch] $Trace,
+    # Plumbing tests only (chapter_measures_test.ps1): runs although other HeroesOfLiberty editors are open. The numbers are then worthless.
+    [switch] $IgnoreBusy
 )
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
 $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation
@@ -30,7 +32,7 @@ if ($Trace) {
     $Extra = "$Extra -trace=cpu,frame,bookmark,region,log -tracefile=`"$TraceFile`""
 }
 $Others = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'HeroesOfLiberty' -and $_.Name -match 'Unreal|UnrealBuildTool|dotnet' }
-if ($Others) { Write-Host "BUSY: $($Others | ForEach-Object { $_.ProcessId })"; exit 1 }
+if ($Others -and -not $IgnoreBusy) { Write-Host "BUSY: $($Others | ForEach-Object { $_.ProcessId })"; exit 1 }
 $ArgList = "`"$UProject`" /Game/Maps/StressTest -game -RenderOffScreen -ResX=888 -ResY=500 -saveddirsuffix=Tests -nosplash -nosound -LiveCoding=0 -as-exit-on-error $Extra -abslog=`"$Log`" -ExecCmds=`"r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,$ExtraExec hol.StressTest $Test 2000 $Seconds quit`""
 $Cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 2 -MaxSamples 3).CounterSamples | ForEach-Object { [math]::Round($_.CookedValue, 1) }
 Write-Host "project: $Project ; cpu before: $($Cpu -join ', ')"

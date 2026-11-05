@@ -47,7 +47,10 @@ param(
     # and no capture in their sequence (a capture waits for drawn frames, which never come without a renderer). They
     # join and receive the match like a player's game, at a fraction of its cost: what a measure of the servers wants.
     [switch] $Headless,
-    [string] $EngineDir = ""
+    [string] $EngineDir = "",
+    # The clients run from a COPY of the worktree's binaries (BinaryCopy.ps1) so that Tools\build.ps1 of the worktree stays free during the measure
+    # (the staged server is a separate build: untouched). Their saved dirs (Saved_Tests_Net<Tag><N>) are junctions to the worktree's.
+    [switch] $BinaryCopy
 )
 if ($Units -gt 0 -and -not $PSBoundParameters.ContainsKey('Map')) { $Map = "/Game/Maps/StressTest" }
 # A battle (S3, S4): 20 s of melee by default (~10 % of the units fall in 15 s), three whole replication reports.
@@ -131,6 +134,14 @@ while (-not ((Test-Path $ServerLog) -and (Select-String -Path $ServerLog -Patter
     Start-Sleep -Milliseconds 250
 }
 $Width = [Math]::Floor(1920 / $Clients)
+$ClientUProject = $UProject
+$Shadow = $null
+if ($BinaryCopy) {
+    . (Join-Path $PSScriptRoot "BinaryCopy.ps1")
+    $Shadow = New-BinaryCopy -Root $Project -ExtraLinks @(1..$Clients | ForEach-Object { "Saved_Tests_Net$Tag$_" })
+    $ClientUProject = Join-Path $Shadow "HeroesOfLiberty.uproject"
+    Write-Host "clients from the binary copy $Shadow (build.ps1 of $(Split-Path $Project -Leaf) stays free)"
+}
 $ClientProcesses = @()
 $ClientLogs = @()
 for ($Client = 1; $Client -le $Clients; $Client++) {
@@ -163,7 +174,7 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
     # A light client capped at 60 frames per second (a player's game): without a renderer nothing paces it (600-690 fps) and it burnt more than a
     # processor each (248 % of one core for two, 2026-10-29) in a measure that wants the servers' load, not theirs.
     $ClientCommands = $NetCommands + $(if ($Headless) { @("t.MaxFPS 60") } else { @() }) + "hol.Test.Run $Sequence"
-    $Arguments = "`"$UProject`" $Address -game $Display -saveddirsuffix=Tests_Net$Tag$Client -nosplash -unattended -LiveCoding=0 -asdebugport=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$($ClientCommands -join ',')`""
+    $Arguments = "`"$ClientUProject`" $Address -game $Display -saveddirsuffix=Tests_Net$Tag$Client -nosplash -unattended -LiveCoding=0 -asdebugport=0 -as-exit-on-error -abslog=`"$ClientLog`" -ExecCmds=`"$($ClientCommands -join ',')`""
     $ClientProcess = if ($Headless) {
         Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     } else {
@@ -173,7 +184,7 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
     $ClientLogs += $ClientLog
     Write-Host "client $Client : pid $($ClientProcess.Id), log $ClientLog"
 }
-if ($Units -le 0 -or $Keep) { exit 0 }
+if ($Units -le 0 -or $Keep) { if ($Shadow) { Write-Host "binary copy kept (the clients run from it): $Shadow" }; exit 0 }
 
 # S5: wait for the stress test's report (the server quits after it), close the clients, then the report. A battle
 # waits up to 40 s more for its armies to join.
@@ -185,5 +196,6 @@ while (-not (Select-String -Path $ServerLog -Pattern "Stress test $Test \([^)]*\
 Start-Sleep -Seconds 2
 $ClientProcesses | Where-Object { -not $_.HasExited } | Stop-Process -Force
 if (-not $ServerProcess.WaitForExit(30000)) { Stop-Process -Id $ServerProcess.Id -Force }
+if ($Shadow) { Remove-BinaryCopy $Shadow }
 & python (Join-Path $PSScriptRoot "s5_report.py") $ServerLog @ClientLogs
 exit $LASTEXITCODE

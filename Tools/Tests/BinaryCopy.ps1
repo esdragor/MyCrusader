@@ -19,7 +19,8 @@
 $script:BinaryCopyLinks = @('Content', 'Config', 'Script', 'Tools', 'Build', 'DerivedDataCache', 'Saved_Tests')
 
 function New-BinaryCopy {
-    param([Parameter(Mandatory = $true)] [string] $Root, [string] $Parent = $env:TEMP)
+    # -ExtraLinks: more directory names of the worktree to junction (created when missing), e.g. the clients' saved dirs Saved_Tests_Net1 (net_match.ps1).
+    param([Parameter(Mandatory = $true)] [string] $Root, [string] $Parent = $env:TEMP, [string[]] $ExtraLinks = @())
     $Root = (Resolve-Path $Root).Path
     $Source = Join-Path $Root 'Binaries\Win64'
     if (-not (Get-ChildItem $Source -Filter '*.dll' -ErrorAction SilentlyContinue)) { throw "no DLL in $Source : build the worktree first (Tools\build.ps1 -Root $Root)" }
@@ -29,9 +30,9 @@ function New-BinaryCopy {
     & robocopy $Source (Join-Path $Shadow 'Binaries\Win64') /E /NFL /NDL /NJH /NJS /NP /XF *.pdb *.lib *.exp *.exe | Out-Null
     if ($LASTEXITCODE -ge 8) { throw "robocopy failed ($LASTEXITCODE) copying $Source" }
     Copy-Item (Join-Path $Root 'HeroesOfLiberty.uproject') (Join-Path $Shadow 'HeroesOfLiberty.uproject')
-    foreach ($Name in $script:BinaryCopyLinks) {
+    foreach ($Name in @($script:BinaryCopyLinks) + @($ExtraLinks)) {
         $Target = Join-Path $Root $Name
-        if ($Name -eq 'Saved_Tests') { New-Item -ItemType Directory -Force $Target | Out-Null }
+        if ($Name -eq 'Saved_Tests' -or $ExtraLinks -contains $Name) { New-Item -ItemType Directory -Force $Target | Out-Null }
         if (-not (Test-Path $Target)) { continue }
         & cmd /c mklink /J "$(Join-Path $Shadow $Name)" "$Target" | Out-Null
         if ($LASTEXITCODE -ne 0) { throw "mklink /J failed for $Name" }

@@ -1,6 +1,7 @@
 # Every rest measure in one go, for a moment when nothing else runs on the machine (asked 2026-10-21):
 #   main copy : S1, S2, S7, S3, S4 (each twice, chapter_measures.ps1), then S5 and S5 in combat
 #   (S3 / S4 live on main since the melee merge 48ffa00: the Elrond copy is no longer needed)
+# S1-S4 and S7 run from a binary copy (chapter_measures.ps1 -> BinaryCopy.ps1, 2026-11-05): Tools\build.ps1 of this copy stays free once the copy is taken.
 # Checks first that no Unreal / build runs and that the processor is calm, builds the main copy, then runs the measures
 # and writes one summary: Saved_Tests\Logs\rest_measures_<date>.txt. ~10-15 min (more when the dedicated server has to
 # be cooked again). Run from Windows PowerShell (never Git Bash), from the main copy:
