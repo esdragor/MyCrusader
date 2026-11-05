@@ -15,6 +15,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerColors.h"
 #include "Map/HOLVisionSubsystem.h"
@@ -555,7 +556,7 @@ void AHOLSelectionMarkers::UpdateRings()
 	{
 		for (const FHOLUnitView& View : Views)
 		{
-			if (View.OwnerPlayer != Flash.Key || View.TypeName != FHOLStartRules::HeroTypeName)
+			if (View.OwnerPlayer != Flash.Key || View.TypeName != HOLFactionRules::GetRoleTypeName(GetWorld(), Flash.Key, HOLFactionRules::Roles::Hero))
 			{
 				continue;
 			}
@@ -648,7 +649,7 @@ void AHOLSelectionMarkers::UpdateCryFlashes(const float DeltaSeconds)
 		const FHOLUnitView* Hero = nullptr;
 		for (const FHOLUnitView& View : Views)
 		{
-			if (View.OwnerPlayer == Slot && View.TypeName == FHOLStartRules::HeroTypeName && (!Hero || View.UnitId < Hero->UnitId))
+			if (View.OwnerPlayer == Slot && View.TypeName == HOLFactionRules::GetRoleTypeName(GetWorld(), Slot, HOLFactionRules::Roles::Hero) && (!Hero || View.UnitId < Hero->UnitId))
 			{
 				Hero = &View;
 			}
@@ -720,7 +721,7 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 		{
 			for (const FHOLUnitView& View : Views)
 			{
-				if (View.OwnerPlayer == Slot && View.TypeName == FHOLStartRules::HeroTypeName && (!Hero || View.UnitId < Hero->UnitId))
+				if (View.OwnerPlayer == Slot && View.TypeName == HOLFactionRules::GetRoleTypeName(GetWorld(), Slot, HOLFactionRules::Roles::Hero) && (!Hero || View.UnitId < Hero->UnitId))
 				{
 					Hero = &View;
 				}

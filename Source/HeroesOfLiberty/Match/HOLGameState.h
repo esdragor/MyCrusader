@@ -110,7 +110,7 @@ public:
 	bool KeepAbsentSlot(const AHOLPlayerState& Leaving, double Now, double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds);
 	/** R7 (R3.9), server only: a named slot whose player missed the start, kept for the window from Now with Resources. */
 	bool KeepMissingSlot(int32 Slot, const FHOLResources& Resources, double Now,
-		double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds);
+		double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds, const FHOLTechnologyState& Technologies = FHOLTechnologyState());
 	/**
 	 * R7.2, server only, by the game mode's PostLogin: the stock of the player taking his slot, the one kept at his
 	 * departure if he comes back within the window (the slot no longer absent), else Starting. True when he came back
@@ -143,6 +143,16 @@ public:
 	static bool SetSlotStock(UWorld& World, int32 Slot, const FHOLResources& Stock);
 	/** Server only: adds Gain to slot Slot's stock (a deposit, a refund). False: nowhere (Gain lost); OutStock: after it. */
 	static bool AddSlotStock(UWorld& World, int32 Slot, const FHOLResources& Gain, FHOLResources& OutStock);
+	/**
+	 * D719 (T0): the technologies of slot Slot, its player's (AHOLPlayerState) or, while he is away, the ones kept for him
+	 * (AbsentSlots). False (OutTechnologies empty): the slot has none (no player state, not absent).
+	 */
+	static bool GetSlotTechnologies(const UWorld& World, int32 Slot, FHOLTechnologyState& OutTechnologies);
+	/**
+	 * D719 (T0), server only: a research of slot Slot ended: added where GetSlotTechnologies reads (the player state, with its
+	 * effects, or the absent's record, given back on his return). False: nowhere, or already had it (nothing written).
+	 */
+	static bool AddSlotTechnology(UWorld& World, int32 Slot, FName Technology);
 	/** Server only: the slots kept for their players gone (R7.5's banner will replicate them). */
 	const TArray<FHOLAbsentSlot>& GetAbsentSlots() const { return AbsentSlots; }
 

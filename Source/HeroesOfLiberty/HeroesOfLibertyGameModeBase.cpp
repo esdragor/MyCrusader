@@ -16,6 +16,7 @@
 #include "Map/HOLVisionSubsystem.h"
 #include "EngineUtils.h"
 #include "Match/HOLDisconnectRules.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchSettings.h"
@@ -586,7 +587,7 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		{
 			continue;
 		}
-		Centre->Setup(HOLBuildingTypeNames::MainCentre, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
+		Centre->Setup(FHOLStartRules::GetMainCentreTypeName(MatchConfig, Slot), static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
 		// V2 (D350): the centre given at the start is the slot's main forum, the one with lives.
 		Centre->SetPrimaryForum(true);
 		Centre->FinishSpawning(Transform);
@@ -684,7 +685,7 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const in
 	for (const FVector& Location : Locations)
 	{
 		// A tiny radius: put on the navmesh right under the point, like the King.
-		Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::PeasantTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
+		Units->RequestUnits(FHOLUnitSpawnRequest{ HOLFactionRules::GetRoleTypeName(&World, Slot, HOLFactionRules::Roles::Worker), 1, Location, 1.f, static_cast<uint8>(Slot) });
 	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Starting Peasants of slot %d: %d in front of its main forum"), Slot, Locations.Num());
 	return true;
@@ -701,7 +702,7 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingHero(UWorld& World, const int32 
 	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
 	const FVector Location = FHOLStartRules::GetHeroLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
 	// A tiny radius: put on the navmesh right under the point, like the King.
-	Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::HeroTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
+	Units->RequestUnits(FHOLUnitSpawnRequest{ HOLFactionRules::GetRoleTypeName(&World, Slot, HOLFactionRules::Roles::Hero), 1, Location, 1.f, static_cast<uint8>(Slot) });
 	UE_LOG(LogHOLMatch, Display, TEXT("Starting hero of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
 	return true;
 }

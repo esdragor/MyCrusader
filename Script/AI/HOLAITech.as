@@ -17,7 +17,7 @@ struct FHOLAITechSettings
 	TArray<int> Reserve;
 
 	// The technologies it researches, most wanted first (the economy lines of the table: food, wood, carry, then the mines). A technology not
-	// listed is never researched (the Forge's, the Chapel's: they come with the army and the Monk).
+	// listed is never researched (the Chapel's: it comes with the Monk; the Forge's four attack lines are listed since F1).
 	TArray<FName> Order;
 
 	// It saves for the technology it cannot pay yet: for at most SaveSeconds the brain holds back from the other purchases what the stock already has of its cost
@@ -70,6 +70,11 @@ namespace HOLAITech
 		Rule.Order.Add(n"DoubleAxesII");
 		Rule.Order.Add(n"WheelbarrowII");
 		Rule.Order.Add(n"MinerPicksII");
+		// F1 (FortificationsInProgress.md, Q-Fortifications-ForgeValues Q2 = A by default): after the economy, the Forge's attack lines (it builds no Forge before F14: with none standing these are passed over).
+		Rule.Order.Add(n"MeleeAttackI");
+		Rule.Order.Add(n"RangedAttackI");
+		Rule.Order.Add(n"MeleeAttackII");
+		Rule.Order.Add(n"RangedAttackII");
 		return Rule;
 	}
 

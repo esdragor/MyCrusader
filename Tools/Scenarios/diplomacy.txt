@@ -33,6 +33,19 @@ waitlog HUD overlap:
 capture dipl_neutral
 panel show
 note 2. NEUTRE : plus allies, mais personne ne tire d'office : les 12 restent la, debout, aucun coup en 2 secondes.
+waitkey Entree : Q + clic sur un homme du joueur 2 (toujours NEUTRE) : tes 6 hommes recoivent l'ordre d'attaque
+hol.Select.Army
+hol.Select.AttackMoveNear 3000 0
+waitlog (neutral): a direct attack
+frames 90
+hol.Diplomacy.Report
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture dipl_neutral_qclick
+panel show
+note 2b. Q + CLIC SUR UN NEUTRE : le Q arme l'attaque-deplacement, le clic tombe sur un homme du joueur 2 (neutre) : tes hommes lui courent dessus et frappent (le log dit "a direct attack"), la puce du joueur 2 reste jaune NEUTRE : l'ordre ne rompt pas la posture.
 waitkey Entree : le joueur 2 te passe ENNEMI (la rupture)
 hol.Diplomacy.Force 1 0 enemy
 frames 150
