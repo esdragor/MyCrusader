@@ -24,7 +24,7 @@ void Test_MoraleStartingCaps(FUnitTest& T)
 	T.AssertEquals(30, HOLMorale::BonusCap(HOLMorale::LeverRate), "attack rate, bonus cap");
 	T.AssertEquals(30, HOLMorale::MalusCap(HOLMorale::LeverDealt), "damage dealt, malus cap");
 	T.AssertEquals(30, HOLMorale::MalusCap(HOLMorale::LeverRate), "attack rate, malus cap");
-	T.AssertEquals(50, HOLMorale::MalusCap(HOLMorale::LeverTaken), "damage taken, malus cap (symmetric, question Q-Morale-MalusCap)");
+	T.AssertEquals(50, HOLMorale::MalusCap(HOLMorale::LeverTaken), "damage taken, malus cap (symmetric, decided by the user on 2026-11-05)");
 	T.AssertEquals(75, HOLMorale::AttenuationCap, "attenuation never reaches 100 %");
 }
 

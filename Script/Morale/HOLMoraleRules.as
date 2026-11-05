@@ -8,7 +8,7 @@
 // weakens an aura malus by the same fraction, never a bonus; sources add up to 75 % at most, the strongest of one nature counting alone;
 // the immunity (D404) stops a malus from being posed, never a bonus; the removal takes the malus and leaves the bonus.
 // Caps (D704, to tune in test): 50 % on the damage taken (the existing MoraleReductionCapPercent), 30 % on the damage dealt and on the rate.
-// The malus cap of the damage taken is not decided: 50 % here, symmetric (Retours/Q-Morale-MalusCap.md).
+// The malus cap of the damage taken: 50 %, symmetric, decided by the user on 2026-11-05.
 namespace HOLMorale
 {
 	// The three levers.
