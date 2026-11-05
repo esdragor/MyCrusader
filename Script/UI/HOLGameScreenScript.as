@@ -165,6 +165,7 @@ FString TalentTipTexts = "";
 	UButton DipOpenButton;
 	UCommonTextBlock DipOpenLabel;
 	USizeBox DipPanelBox;
+	UScrollBox DipScroll;
 	UBorder DipPanel;
 	UOverlaySlot DipPanelSlot;
 	UCommonTextBlock DipTitleText;
@@ -377,7 +378,15 @@ FString TalentTipTexts = "";
 		Head.AddChildToHorizontalBox(DipCloseButton);
 
 		UScrollBox Scroll = Cast<UScrollBox>(ConstructWidget(UScrollBox, n"DiplomacyScroll"));
-		Column.AddChildToVerticalBox(Scroll).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		// The rows take what the head and the foot leave (a Fill slot): the box's height limit then makes them scroll, instead of the
+		// foot running out of the panel (layout 2, the cheats' panel open: 17 px at 1920x1080, more in a low window).
+		DipScroll = Scroll;
+		UVerticalBoxSlot ScrollSlot = Column.AddChildToVerticalBox(Scroll);
+		ScrollSlot.SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		FSlateChildSize FillSize;
+		FillSize.SizeRule = ESlateSizeRule::Fill;
+		FillSize.Value = 1.0;
+		ScrollSlot.SetSize(FillSize);
 		DipRowsBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"DiplomacyRows"));
 		Scroll.AddChild(DipRowsBox);
 
@@ -1984,7 +1993,7 @@ FString TalentTipTexts = "";
 		if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && Math::Min(PanelHigh.X, HeroHigh.X) > Math::Max(PanelLow.X, HeroLow.X))
 			HeroOver = Math::Max(0.0, Math::Min(PanelHigh.Y, HeroHigh.Y) - Math::Max(PanelLow.Y, HeroLow.Y));
 		const float CheatOver = Math::Max(0.0, GetCheatPanelBottom() - PanelLow.Y);
-		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px";
+		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px, rows scroll {Math::RoundToInt(DipScroll.GetScrollOffsetOfEnd())} px";
 	}
 
 	UFUNCTION(BlueprintOverride)
