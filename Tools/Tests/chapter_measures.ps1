@@ -97,6 +97,7 @@ foreach ($Test in $Plan) {
 if (-not $NoS5) {
     # S5 once: its bandwidth moves by ~1 % from one run to the next.
     $NetArgs = @{ Units = 2000; Seconds = 40 }
+    if (-not $InPlace) { $NetArgs.BinaryCopy = $true }
     # Cooked again only when the code, the configuration or the content changed since the staged server was cooked.
     $Staged = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Binaries\Win64\HeroesOfLibertyServer.exe"
     $NeedStage = $ForceStage -or -not (Test-Path $Staged)
@@ -122,7 +123,9 @@ if (-not $NoS5) {
         $Lines += "S5 combat : FAIL - no staged server"
         $Failed = $true
     } else {
-        $CombatOut = & (Join-Path $PSScriptRoot "net_match.ps1") -Units 2000 -Test S3 2>&1 | Out-String
+        $CombatArgs = @{ Units = 2000; Test = "S3" }
+        if (-not $InPlace) { $CombatArgs.BinaryCopy = $true }
+        $CombatOut = & (Join-Path $PSScriptRoot "net_match.ps1") @CombatArgs 2>&1 | Out-String
         $CombatCode = $LASTEXITCODE
         Write-Host $CombatOut
         $Verdict = ($CombatOut -split "`r?`n" | Where-Object { $_ -match "PASS|FAIL" } | Select-Object -Last 3) -join " | "
