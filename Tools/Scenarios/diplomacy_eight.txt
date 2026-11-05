@@ -55,6 +55,19 @@ frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
 capture dipl_eight_L0_600
+# Le defilement des lignes (ce que fait la molette) : 8 joueurs en presentation 1, fenetre basse ; avant, la derniere ligne depasse du bas de la zone ; apres DipScrollEnd, elle est entierement dans la zone.
+hol.UI.DiplomacyLayout 1
+r.SetRes 1280x600w
+frames 40
+hol.HUD.Report 1
+waitlog HUD diplomacy:
+hol.HUD.Click DipScrollEnd
+frames 15
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog last row out 0 px (slot 7)
+capture dipl_eight_scrolled
 r.SetRes 1920x1080w
 frames 30
 hol.UI.DiplomacyLayout 1

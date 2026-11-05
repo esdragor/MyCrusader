@@ -793,6 +793,17 @@ FString TalentTipTexts = "";
 	{
 		if (WidgetName == n"DiplomacyButton" || WidgetName == n"DiplomacyKey")
 			return ToggleDiplomacy();
+		// The rows' scrolling (what the mouse wheel does), for the scenarios: DipScrollEnd, DipScrollTop.
+		if (WidgetName == n"DipScrollEnd" || WidgetName == n"DipScrollTop")
+		{
+			if (!bDipOpen)
+				return false;
+			if (WidgetName == n"DipScrollEnd")
+				DipScroll.ScrollToEnd();
+			else
+				DipScroll.ScrollToStart();
+			return true;
+		}
 		if (WidgetName == n"DiplomacyClose")
 			return PanelClick(-1, 8);
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
@@ -1993,7 +2004,26 @@ FString TalentTipTexts = "";
 		if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && Math::Min(PanelHigh.X, HeroHigh.X) > Math::Max(PanelLow.X, HeroLow.X))
 			HeroOver = Math::Max(0.0, Math::Min(PanelHigh.Y, HeroHigh.Y) - Math::Max(PanelLow.Y, HeroLow.Y));
 		const float CheatOver = Math::Max(0.0, GetCheatPanelBottom() - PanelLow.Y);
-		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px, rows scroll {Math::RoundToInt(DipScroll.GetScrollOffsetOfEnd())} px";
+		// The last player's line against the bottom of the scrolling area: how far it is still below it (0 once scrolled to the end).
+		float LastOut = 0.0;
+		int LastSlot = -1;
+		FVector2D ScrollLow;
+		FVector2D ScrollHigh;
+		if (GetWidgetBox(DipScroll, ScrollLow, ScrollHigh))
+		{
+			for (int Slot = DipMaxRows - 1; Slot >= 0; --Slot)
+			{
+				FVector2D RowLow;
+				FVector2D RowHigh;
+				if (GetWidgetBox(DipRowBoxes[Slot], RowLow, RowHigh))
+				{
+					LastOut = Math::Max(0.0, RowHigh.Y - ScrollHigh.Y);
+					LastSlot = Slot;
+					break;
+				}
+			}
+		}
+		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px, rows scroll {Math::RoundToInt(DipScroll.GetScrollOffsetOfEnd())} px, last row out {Math::RoundToInt(LastOut)} px (slot {LastSlot})";
 	}
 
 	UFUNCTION(BlueprintOverride)
