@@ -16,7 +16,11 @@ param(
     [switch] $NoS5,
     [switch] $NoStage,
     [switch] $ForceStage,
-    [string] $Tag = ""
+    [string] $Tag = "",
+    # Runs the editors from the worktree itself (the old behaviour: build.ps1 of this worktree waits for the measures).
+    [switch] $InPlace,
+    # Plumbing tests only (chapter_measures_test.ps1): measures although other HeroesOfLiberty editors are open (worthless numbers).
+    [switch] $IgnoreBusy
 )
 $Project = (Resolve-Path "$PSScriptRoot\..\..").Path
 $LogDir = Join-Path $Project "Saved_Tests\Logs"
@@ -27,6 +31,11 @@ $Thresholds = @{ StepMs = 3.0; Fps = 144.0 }
 $BattleStepMs = @{ S3 = 6.5; S4 = 6.5 }
 function Get-StepThreshold([string] $Scenario) { if ($BattleStepMs.ContainsKey($Scenario)) { $BattleStepMs[$Scenario] } else { $Thresholds.StepMs } }
 $Clock = [Diagnostics.Stopwatch]::StartNew()
+# S1-S4 and S7 run from a COPY of the binaries (BinaryCopy.ps1, 2026-11-05): the editor locks the copied DLLs, so Tools\build.ps1 of this
+# worktree stays free during the ~6 min of measures. $RunProject is the shadow project (or $Project with -InPlace); logs land in the worktree.
+. (Join-Path $PSScriptRoot "BinaryCopy.ps1")
+$RunProject = $Project
+$Shadow = $null
 
 function Read-Report([string] $Log) {
     # The two verdict lines of the stress test report (UHOLStressTestSubsystem).
@@ -39,7 +48,7 @@ function Read-Report([string] $Log) {
 
 function Invoke-Run([string] $Scenario, [int] $Seconds, [int] $Round) {
     $Name = "chapter_${Stamp}_$($Scenario.ToLower())_$Round"
-    & (Join-Path $PSScriptRoot "stress_ab.ps1") -Project $Project -Test $Scenario -Seconds $Seconds -LogName $Name | Out-Host
+    & (Join-Path $PSScriptRoot "stress_ab.ps1") -Project $RunProject -Test $Scenario -Seconds $Seconds -LogName $Name -IgnoreBusy:$IgnoreBusy | Out-Host
     $Report = Read-Report (Join-Path $LogDir "$Name.log")
     if (-not $Report) { Write-Host "  $Scenario run $Round : no report (see $Name.log)"; return $null }
     $Pass = $Report.StepMs -le (Get-StepThreshold $Scenario) -and $Report.Fps -ge $Thresholds.Fps
@@ -48,6 +57,12 @@ function Invoke-Run([string] $Scenario, [int] $Seconds, [int] $Round) {
     return $Report
 }
 
+if (-not $InPlace -and @($Tests | Where-Object { $_ -ne "none" }).Count) {
+    $Shadow = New-BinaryCopy -Root $Project
+    $RunProject = $Shadow
+    Write-Host "Binary copy for S1-S4, S7 : $Shadow (build.ps1 of $(Split-Path $Project -Leaf) stays free)"
+}
+try {
 $Plan = $Tests | Where-Object { $_ -ne "none" } | ForEach-Object { $Parts = $_.Split(":"); [pscustomobject]@{ Scenario = $Parts[0]; Seconds = [int]$Parts[1]; Runs = @() } }
 # Two rounds in alternation: a drift of the machine's load spreads over every test instead of falling on one.
 foreach ($Round in 1..2) {
@@ -74,6 +89,9 @@ foreach ($Test in $Plan) {
     $Each = ($Runs | ForEach-Object { "{0:N3}" -f $_.StepMs }) -join " / "
     $Lines += ("{0} : {1} - {2} ms per step (mean {3:N3}, threshold {4}), {5:N0} fps (threshold {6}){7}" -f $Test.Scenario, $(if ($Pass) { "PASS" } else { "FAIL" }),
         $Each, $Step, (Get-StepThreshold $Test.Scenario), $Fps, $Thresholds.Fps, $(if ($Runs.Count -eq 3) { ", decided by the mean of 3 runs" } else { "" }))
+}
+} finally {
+    if ($Shadow) { Remove-BinaryCopy $Shadow }
 }
 
 if (-not $NoS5) {
