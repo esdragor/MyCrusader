@@ -37,16 +37,19 @@ hol.Camera.FocusNear 8000 -3000
 frames 2
 hol.Units.SpawnHere 3 Archer 1 250
 waitlog SpawnHere: 3 Archer of slot 1
-hol.Camera.FocusNear 6200 -3000
-hol.Camera.Zoom 7
+hol.Camera.FocusNear 6400 -4800
+hol.Camera.Zoom 0
 frames 20
 hol.Select.Type LightCavalry last
 waitlog Select type LightCavalry: 1 units
 note 3. Un Cavalier leger contre 3 Archers (a 35 m) : ordre d'attaque-deplacement. Il doit les rejoindre sous les fleches (3 de degats chacune sur lui) et les tuer l'un apres l'autre (19 par coup, 4 coups, ~5 s par Archer) : il gagne, blesse.
 hol.Select.AttackMoveNear 8000 -3000
+panel hide
+frames 3
 capture cavalry_vs_archers_start
 wait 25
 capture cavalry_vs_archers
+panel show
 hol.Combat.Report 0
 # Couloir 2 : un Cavalier leger contre 2 Piquiers (+17 contre Cavalerie : 24 par coup, 5 coups le tuent) : il doit perdre.
 hol.Camera.FocusNear 4500 0
@@ -57,15 +60,18 @@ hol.Camera.FocusNear 8000 0
 frames 2
 hol.Units.SpawnHere 2 Spearman 1 250
 waitlog SpawnHere: 2 Spearman of slot 1
-hol.Camera.FocusNear 6200 0
+hol.Camera.FocusNear 6400 -1800
 frames 20
 hol.Select.Type LightCavalry last
 waitlog Select type LightCavalry: 1 units
 note 4. Un Cavalier leger contre 2 Piquiers : le contre. Chaque coup de Piquier lui fait 24 (8 + 17 contre Cavalerie - 1 d'armure), 5 coups le tuent en ~8 s ; lui n'en fait que 9 (80 PV : 9 coups). Il doit mourir.
 hol.Select.AttackMoveNear 8000 0
+panel hide
+frames 3
 capture cavalry_vs_spearmen_start
 wait 25
 capture cavalry_vs_spearmen
+panel show
 hol.Combat.Report 0
 # Couloir 3 : un Cavalier leger contre un Mangonneau (+20 contre Siege : 29 par coup, 7 coups pour 200 PV). Le Mangonneau n'a pas de rayon d'agressivite : il ne riposte pas tant qu'on ne l'a pas ordonne.
 hol.Camera.FocusNear 4500 3000
@@ -76,15 +82,18 @@ hol.Camera.FocusNear 8000 3000
 frames 2
 hol.Units.SpawnHere 1 Mangonel 1 100
 waitlog SpawnHere: 1 Mangonel of slot 1
-hol.Camera.FocusNear 6200 3000
+hol.Camera.FocusNear 6400 1200
 frames 20
 hol.Select.Type LightCavalry last
 waitlog Select type LightCavalry: 1 units
 note 5. Un Cavalier leger contre un Mangonneau : 29 par coup (9 + 20 contre Siege, le Mangonneau n'a pas d'armure de melee), 7 coups (~10 s) pour ses 200 PV. Le Cavalier leger, lui, ne perd rien.
 hol.Select.AttackMoveNear 8000 3000
+panel hide
+frames 3
 capture cavalry_vs_mangonel_start
 wait 20
 capture cavalry_vs_mangonel
+panel show
 hol.Combat.Report 0
 hol.Test.Sanity
 note 6. A toi : fais sortir des Cavaliers legers de l'Ecurie (case A), lance-les contre des Archers, des Piquiers, un Mangonneau. A regarder : le cheval est un placeholder (Mannequin agrandi, sans animation) ; il n'y a pas encore de charge (C2).
