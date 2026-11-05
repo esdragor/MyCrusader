@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "GameFramework/GameSession.h"
 #include "HeroesOfLibertyGameModeBase.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -232,13 +233,8 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 		return;
 	}
 
-	// D717 (T2): the player state of the AI that holds a human's seat does not count: his name finds his seat again.
 	TArray<int32> TakenSlots;
-	if (const AHOLGameState* TakenState = GetGameState<AHOLGameState>())
-	{
-		TakenSlots = TakenState->GetSlotsInUse(PlayerState);
-	}
-	else
+	if (!GetGameState<AHOLGameState>())
 	{
 		for (const APlayerState* Other : GameState->PlayerArray)
 		{
@@ -253,7 +249,10 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	LoginNames.RemoveAndCopyValue(NewPlayer, LoginName);
 	// B6b: a defeated slot is never taken again (FindSlotOnLogin), its name watches.
 	const AHOLGameState* LoginGameState = GetGameState<AHOLGameState>();
-	const int32 Slot = LoginGameState ? LoginGameState->FindSlotOnLogin(MatchConfig, LoginName, TakenSlots)
+	// D717 (T2, T4): the AI's player state of an absent player's seat does not count (his name finds his seat again); a live OLD connection
+	// of his name that still holds it (he restarted before it timed out) is replaced: handed over below, then kicked.
+	AHOLPlayerState* Replaced = nullptr;
+	const int32 Slot = LoginGameState ? LoginGameState->FindSlotForLogin(MatchConfig, LoginName, *PlayerState, Replaced)
 		: MatchConfig.FindSlotForName(LoginName, TakenSlots);
 	if (Slot == INDEX_NONE)
 	{
@@ -264,6 +263,18 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 		UE_LOG(LogHOLMatch, Log, TEXT("%s joined as a spectator (name '%s', %s)"), *PlayerState->GetPlayerName(), *LoginName,
 			MatchConfig.HasPlayerNames() ? TEXT("no free slot of that name") : TEXT("every human slot is taken"));
 		return;
+	}
+	if (Replaced)
+	{
+		// The old connection's seat handed over (its stock and technologies are given to the new player state below), then it is expelled:
+		// its late Logout keeps nothing (KeepAbsentSlot) and tells the manager nothing.
+		AHOLGameState* ReplacingState = GetGameState<AHOLGameState>();
+		ReplacingState->RetireHolder(*Replaced, GetWorld()->GetTimeSeconds(), CVarDisconnectWindowSeconds.GetValueOnGameThread());
+		if (APlayerController* OldController = Cast<APlayerController>(Replaced->GetOwner()); OldController && GameSession)
+		{
+			UE_LOG(LogHOLMatch, Log, TEXT("Disconnect: slot %d (%s): old connection kicked, the new one takes the seat"), Slot, *LoginName);
+			GameSession->KickPlayer(OldController, NSLOCTEXT("HOLNet", "ReplacedByNewConnection", "Another connection of your name took your seat"));
+		}
 	}
 	PlayerState->SetMatchSlot(Slot, MatchConfig.Slots[Slot].ColorIndex);
 	UE_LOG(LogHOLMatch, Log, TEXT("%s holds slot %d (colour %d)"), *PlayerState->GetPlayerName(), Slot,
@@ -392,7 +403,8 @@ void AHeroesOfLibertyGameModeBase::SendStartedIfAllHere()
 	for (const APlayerState* PlayerState : GameState->PlayerArray)
 	{
 		const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
-		if (HOLPlayerState && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex())
+		// D717: the AI's player state of an absent player's seat (a bot on a human seat) is nobody present.
+		if (HOLPlayerState && !HOLPlayerState->IsABot() && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex())
 			&& MatchConfig.Slots[HOLPlayerState->GetPlayerIndex()].State == EHOLSlotState::Human)
 		{
 			++Held;
@@ -430,7 +442,9 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 	}
 	// M6-Q14: a named player gone; the manager gives the lobby a new leader if he was its away leader.
 	const AHOLPlayerState* HOLPlayerState = Exiting ? Exiting->GetPlayerState<AHOLPlayerState>() : nullptr;
-	if (HOLPlayerState && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex()))
+	// D717 (T4): an old connection closing late under a newer one of his name tells the manager nothing ("left" would put the new player away).
+	if (HOLPlayerState && !HOLPlayerState->IsOnlyASpectator() && MatchConfig.Slots.IsValidIndex(HOLPlayerState->GetPlayerIndex())
+		&& !AHOLGameState::FindLiveHolder(*GetWorld(), HOLPlayerState->GetPlayerIndex(), HOLPlayerState))
 	{
 		const FString PlayerName = MatchConfig.Slots[HOLPlayerState->GetPlayerIndex()].PlayerName.TrimStartAndEnd();
 		if (!PlayerName.IsEmpty())
@@ -474,7 +488,9 @@ void AHeroesOfLibertyGameModeBase::UpdateAbsences()
 	}
 	HOLGameState->DefeatExpiredAbsences(GetWorld()->GetTimeSeconds(), CVarDisconnectWindowSeconds.GetValueOnGameThread());
 	// R7.5: on until the last « de retour » is dropped.
-	if (HOLGameState->GetAbsentSlots().IsEmpty() && HOLGameState->GetAbsentNotices().IsEmpty())
+	// D718 (T5): a seat kept by the AI after its window (bWindowOver) waits for nobody's clock.
+	if (!HOLGameState->GetAbsentSlots().ContainsByPredicate([](const FHOLAbsentSlot& Absent) { return !Absent.bWindowOver; })
+		&& HOLGameState->GetAbsentNotices().IsEmpty())
 	{
 		GetWorldTimerManager().ClearTimer(AbsenceTimer);
 	}

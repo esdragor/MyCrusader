@@ -69,7 +69,7 @@ TArray<int32> FHOLDisconnectRules::GetExpired(const TConstArrayView<FHOLAbsentSl
 	TArray<int32> Expired;
 	for (const FHOLAbsentSlot& Each : Absent)
 	{
-		if (IsWindowOver(Each.LeftAt, Now, WindowSeconds))
+		if (!Each.bWindowOver && IsWindowOver(Each.LeftAt, Now, WindowSeconds))
 		{
 			Expired.Add(Each.Slot);
 		}
