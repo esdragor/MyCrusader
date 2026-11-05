@@ -72,6 +72,22 @@ def notes(name, module, recipe, site):
     return out
 
 
+def altar_on_the_bridge(module, recipe, site):
+    """D673 (Q-autel-gues = A): on the Fords with 2 places the altar stands on the middle bridge, in the middle of the map, not in the river.
+    None when it does, else the text of what is wrong."""
+    _, gaps = module.plan(recipe)
+    bridges = [gap for gap in gaps if gap[0]]
+    if len(bridges) != 1:
+        return "the 2-place Fords should have one bridge, found %d" % len(bridges)
+    _, bx, by, _, width = bridges[0]
+    x, y, _ = site["altar"]
+    if abs(x - bx) > module.WATER_WIDTH / 2.0 or abs(y - by) > width / 2.0:
+        return "the altar (%.0f, %.0f) is not on the bridge (%.0f, %.0f, %.0f cm wide): D673" % (x, y, bx, by, width)
+    if math.hypot(x, y) > common.VOLCANO_TOLERANCE:
+        return "the altar (%.0f, %.0f) is not at the middle of the map: D673" % (x, y)
+    return None
+
+
 def main(keys):
     sizes = common.read_sizes()
     maps = common.read_maps()
@@ -99,6 +115,10 @@ def main(keys):
                     ok = False
                     print("  %s %s: NOT CAUGHT: %s" % (name, key, label))
             flows = sites[0]["flows"]
+            wrong = altar_on_the_bridge(module, recipe, sites[0]) if name == "Fords" and places == 2 else None
+            if wrong:
+                ok = False
+                problems.append(wrong)
             if len(flows) != places:
                 ok = False
                 problems.append("%d flows for %d places" % (len(flows), places))

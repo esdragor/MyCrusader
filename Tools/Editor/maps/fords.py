@@ -211,5 +211,13 @@ def tree_floor(recipe):
 
 
 def volcano(recipe):
-    """V4b (D607): the volcano site of the map, symmetric by construction (common.volcano_site); inert unless the match has the Catastrophe option (D398)."""
-    return [common.volcano_site(recipe)]
+    """V4b (D607): the volcano site of the map, symmetric by construction (common.volcano_site); inert unless the match has the Catastrophe option (D398).
+    D673: on the 2-place river the altar is on the middle bridge."""
+    site = common.volcano_site(recipe)
+    if len(recipe.angles) == 2:
+        # D673 (Q-autel-gues = A): with 2 players the altar stands on the middle bridge, the centre of the map and the one contested place (the
+        # relay was lifted out of the water the same way), not across the axis in the river. The bridge is at the middle: as far from both bases.
+        _, gaps = plan(recipe)
+        bridge = [gap for gap in gaps if gap[0]][0]
+        site["altar"] = (bridge[1], bridge[2], common.VOLCANO_ALTAR_RADIUS)
+    return [site]
