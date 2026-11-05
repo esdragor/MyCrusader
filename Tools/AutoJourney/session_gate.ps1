@@ -12,7 +12,7 @@ param(
   [string]$End = '13:30',
   [string[]]$Branches = @(),
   [string]$Root = '',
-  [int]$MinMinutes = 20
+  [int]$MinMinutes = 5   # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
 )
 $ErrorActionPreference = 'Continue'
 $Branches = @($Branches | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passe "a,b" comme une seule chaine
@@ -29,7 +29,7 @@ $wts = Get-ChildItem 'C:\Users\baudo\Documents' -Directory -Filter 'HeroesOfLibe
 
 if ($Phase -eq 'Launch') {
   if ($left -lt $MinMinutes) { Say 'FAIL' ("il reste {0} min (< {1}) : AUCUN lancement d'agent" -f $left, $MinMinutes) }
-  else { Say 'PASS' ("temps restant {0} min ; arret dur des agents = {1}" -f $left, $endAt.AddMinutes(-15).ToString('HH:mm')) }
+  else { Say 'PASS' ("temps restant {0} min ; arret dur des agents = {1} (jusqu'a +15 min toleres, jamais 15 min trop tot)" -f $left, $endAt.ToString('HH:mm')) }
 
   $q = @(Get-ChildItem "$Main\Docs\BuildQueue.state" -Filter '*.json' -ErrorAction SilentlyContinue).Count
   if ($q -ge 3) { Say 'FAIL' "$q builds dans la file : plafond de 3 agents C++ atteint, le nouvel agent demarre SANS C++" } else { Say 'PASS' "$q build(s) dans la file (< 3)" }
