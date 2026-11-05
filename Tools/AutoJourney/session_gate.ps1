@@ -5,8 +5,10 @@
 #   -Phase Close  : avant le bilan (worktrees propres et a jour, reponses non traitees, bilan des lecons)
 # Sortie : une ligne PASS / WARN / FAIL par controle, code de sortie 1 s'il y a un FAIL.
 #   -Phase Essay  : avant de donner une commande play.ps1 a l'utilisateur (-Root <worktree> : contient main, propre, build plus recent que le dernier commit de code)
+#   -Phase Report : a la RECEPTION du rapport de chaque agent (-Root <worktree de l'agent>) : la copie principale n'a que des docs voulus modifies, le worktree contient main, est propre, et son binaire n'est pas plus vieux que le dernier code (sinon build.ps1 AVANT tout quick_check : binaire perime = faux rouges)
+#   Launch verifie aussi la file : au moins 3 lignes '[ ]' etiquetees 'sans C++' dans Auto_Journey_File.md (de quoi relancer sans toucher au plafond de 3 agents C++)
 param(
-  [Parameter(Mandatory=$true)][ValidateSet('Launch','Merge','Close','Essay')][string]$Phase,
+  [Parameter(Mandatory=$true)][ValidateSet('Launch','Merge','Close','Essay','Report')][string]$Phase,
   [string]$End = '13:30',
   [string[]]$Branches = @(),
   [string]$Root = '',
@@ -42,6 +44,30 @@ if ($Phase -eq 'Launch') {
   if ($untracked.Count -gt 0) { Say 'FAIL' ("dossiers non suivis dans la copie principale (bloquent la fusion) : " + (($untracked | ForEach-Object { $_.Substring(3) }) -join ', ') + ' -> demander l''accord de les commiter') } else { Say 'PASS' 'aucun *InProgress.md non suivi' }
   $dirty = @($st | Where-Object { $_ -match '^ ?M ' })
   if ($dirty.Count -gt 0) { Say 'WARN' ("fichiers suivis modifies dans la copie principale : " + (($dirty | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
+  $file = Get-Content "$Main\Auto_Journey_File.md" -ErrorAction SilentlyContinue
+  $noCpp = @($file | Where-Object { $_ -match '^\s*- \[ \]' -and $_ -match 'sans C\+\+' }).Count
+  if ($noCpp -ge 3) { Say 'PASS' "$noCpp ligne(s) '[ ]' sans C++ en file (relance possible sans toucher au plafond)" }
+  else { Say 'WARN' "seulement $noCpp ligne(s) '[ ]' etiquetee(s) 'sans C++' dans Auto_Journey_File.md (< 3) : en ecrire avant de lancer, sinon les agents finis ne pourront pas etre relances (2026-11-05 : 30 min vides)" }
+}
+
+if ($Phase -eq 'Report') {
+  $docOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|GDD\.md|[A-Za-z0-9_]+InProgress\.md|Retours/.*)$'
+  $bad = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' } | ForEach-Object { $_.Substring(3).Trim('"') } | Where-Object { $_ -notmatch $docOk })
+  if ($bad.Count -gt 0) { Say 'FAIL' ("la copie principale porte des fichiers modifies hors docs voulus (ecriture au mauvais endroit ?) : " + ($bad -join ', ')) } else { Say 'PASS' 'copie principale : seulement des docs voulus' }
+  if (-not $Root -or -not (Test-Path $Root)) { Say 'FAIL' 'donner -Root <worktree de l agent>' }
+  else {
+    $dirty = @(git -C $Root status --short 2>$null | Where-Object { $_ -notmatch 'IN_USE\.txt' -and $_ -match '^ ?[MADR]' })
+    if ($dirty.Count -gt 0) { Say 'FAIL' "$Root : $($dirty.Count) fichier(s) suivi(s) non commite(s)" } else { Say 'PASS' "$Root : propre" }
+    $behind = [int](git -C $Root rev-list --count 'HEAD..main' 2>$null)
+    if ($behind -gt 0) { Say 'WARN' "$Root : retard de $behind commit(s) sur main (git merge main avant le rapport)" } else { Say 'PASS' 'contient main' }
+    $lastCode = git -C $Root log -1 --format=%ct -- Source Script Content Tools/Data 2>$null
+    $bin = Get-ChildItem (Join-Path $Root 'Binaries\Win64') -Filter '*.dll' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($bin -and $lastCode) {
+      $codeTime = [DateTimeOffset]::FromUnixTimeSeconds([int64]$lastCode).LocalDateTime
+      if ($bin.LastWriteTime -ge $codeTime) { Say 'PASS' ("binaire du {0} >= dernier code du {1}" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
+      else { Say 'WARN' ("binaire du {0} plus ANCIEN que le dernier code du {1} : build.ps1 AVANT tout quick_check (sinon faux rouges CommandGrid/Technologies/Map.Table)" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
+    } else { Say 'WARN' 'binaire ou commit de code introuvable' }
+  }
 }
 
 if ($Phase -eq 'Merge') {
