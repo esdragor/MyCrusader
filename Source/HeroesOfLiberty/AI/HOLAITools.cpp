@@ -2,6 +2,7 @@
 
 #include "AI/HOLAITools.h"
 
+#include "AI/HOLAIBrain.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -72,6 +73,12 @@ int32 UHOLAIToolsLibrary::GetSlotLevel(const UObject* WorldContextObject, const 
 	if (!GameState || !GameState->GetLaunchConfig().Slots.IsValidIndex(Slot))
 	{
 		return -1;
+	}
+	// D717 (T2): the seat of a player who left, held by the AI, plays at the Normal level.
+	const UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(World);
+	if (Brain && Brain->IsHeld(Slot))
+	{
+		return static_cast<int32>(EHOLAIDifficulty::Normal);
 	}
 	const FHOLMatchSlot& MatchSlot = GameState->GetLaunchConfig().Slots[Slot];
 	return MatchSlot.State == EHOLSlotState::AI ? static_cast<int32>(MatchSlot.Difficulty) : -1;

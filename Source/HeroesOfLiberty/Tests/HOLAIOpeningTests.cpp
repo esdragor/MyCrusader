@@ -593,6 +593,61 @@ bool FHOLAIArmyAttackTest::RunTest(const FString& Parameters)
 }
 
 /**
+ * D717 (T2), a held seat launches no wave, on the real chain: the setting of HeroesOfLiberty.AI.Army.Attack (nine Spearmen at the
+ * assembly point, past 450 s, one enemy Spearman seen far away). Slot 1 not held: the wave goes (the control, so that the test
+ * cannot pass for nothing); slot 1 held by SetHeld (what the disconnect of its player does): the same thought sends nobody, the
+ * soldiers stay home. Held then released: the wave goes again.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIHoldNoWaveTest, "HeroesOfLiberty.AI.Hold.NoWave", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIHoldNoWaveTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	for (const int32 Case : { 0, 1, 2 })
+	{
+		FWorld Test;
+		if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+		{
+			return false;
+		}
+		const TArray<uint32> Soldiers = PlaceSoldiers(Test, FName(TEXT("Spearman")), 1, FVector(-1500.0, 0.0, 0.0), 9);
+		const TArray<uint32> Enemy = PlaceSoldiers(Test, FName(TEXT("Spearman")), 0, FVector(-18000.0, 0.0, 0.0), 1);
+		if (!TestTrue(TEXT("nine Spearmen of slot 1, one of slot 0"), Soldiers.Num() == 9 && Enemy.Num() == 1))
+		{
+			return false;
+		}
+		UHOLSimulationSubsystem* Simulation = Test.World->GetSubsystem<UHOLSimulationSubsystem>();
+		for (int32 Count = 0; Count < 9100; ++Count)
+		{
+			Simulation->AdvanceStepIndexForTests();
+		}
+		// Case 0: not held (control). Case 1: held. Case 2: held then released.
+		if (Case >= 1)
+		{
+			Test.Brain->SetHeld(1, true);
+			TestTrue(TEXT("the seat is held"), Test.Brain->IsHeld(1));
+		}
+		if (Case == 2)
+		{
+			Test.Brain->SetHeld(1, false);
+			TestFalse(TEXT("the seat is released"), Test.Brain->IsHeld(1));
+		}
+		TArray<FHOLMoveOrder> Discard;
+		Test.Commands->ConsumeMoveOrders(Discard);
+		TestTrue(TEXT("thought"), Test.Brain->ThinkNow(1));
+		const TArray<FHOLMoveOrder> Orders = TakeAttackMoves(Test);
+		if (Case == 1)
+		{
+			TestEqual(TEXT("held: no soldier is sent to the enemy"), CountOrdered(Orders, Soldiers), 0);
+		}
+		else
+		{
+			TestEqual(*FString::Printf(TEXT("case %d, not held: the nine Spearmen are sent"), Case), CountOrdered(Orders, Soldiers), 9);
+		}
+	}
+	return true;
+}
+
+/**
  * IA1.6, the figures: the brain's costs come from the type tables (UHOLAIOrderLibrary::ReadAIUnitFigures / ReadAIBuildingFigures),
  * not from numbers copied into the script. The Peasant and the House as the tables have them; an unknown type is refused.
  */
