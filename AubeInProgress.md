@@ -171,8 +171,8 @@ Chaque étape : **objectif**, **à toucher**, **test rouge d'abord**, **fin** et
 - **Héros** (`JourneyInProgress.md`, J8) : la *Bannière* reçoit sa recharge de duel ; rien d'autre.
 - **Relais** (`RelaysInProgress.md`) : propriété d'un relais lue par A5e.
 - **Réseau** : l'Honneur et les Renforts sont de l'état de simulation répliqué ; `-Parts net`.
-- **Fortifications** (dossier à ouvrir) : *Rempart béni*, *Bastion de l'Aube* (D686).
-- **Moral** (dossier à ouvrir) : retrait des malus et immunité de *Lumière sacrée*, atténuation du Moine Lumineux.
+- **Fortifications** (`FortificationsInProgress.md`, dossier complet le 2026-11-04, D691-D696) : *Rempart béni*, *Bastion de l'Aube* (D686) se débloquent avec ses étapes F10 (murs et tours) et F12 (remparts).
+- **Moral** (`MoraleInProgress.md`, dossier complet le 2026-11-04, D704-D709) : retrait des malus et immunité de *Lumière sacrée* (A6a), atténuation du Moine Lumineux par une aura passive de courte portée (A3), *Discipline de l'Aube* et *Monastère* (A10) appellent l'étape M8 de ce dossier ; le moral n'est plus « à ouvrir ».
 - **Visuel** (`VisualInProgress.md`), **son** (`AudioInProgress.md`).
 
 ## Après le prototype (ne pas faire ici)
