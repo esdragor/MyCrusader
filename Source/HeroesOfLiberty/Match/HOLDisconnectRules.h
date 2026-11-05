@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLResources.h"
+#include "Technologies/HOLTechnologyRules.h"
 
 struct FHOLMatchConfig;
 
@@ -17,6 +18,8 @@ struct FHOLAbsentSlot
 	double LeftAt = 0.;
 	/** The stock at the departure, given back on the return (R7.2). */
 	FHOLResources Resources;
+	/** D719 (T0): the technologies acquired at the departure, and those whose research ends while he is away; given back on the return. */
+	FHOLTechnologyState Technologies;
 };
 
 /**
@@ -37,6 +40,36 @@ struct HEROESOFLIBERTY_API FHOLDisconnectRules
 
 	/** The window has run out (at its end exactly too). */
 	static bool IsWindowOver(double LeftAt, double Now, double WindowSeconds);
+
+	/** D718 (T1): what the end of the window does to the seat. */
+	enum class EWindowEnd : uint8
+	{
+		/** The slot is defeated (reason Disconnected), as today. */
+		Defeat,
+		/** The AI keeps the seat to the end of the match (teams, free for all of 3 and more). */
+		AIHolds,
+	};
+	/**
+	 * D718 (T1): the end of the window of Slot, by the camps of the launch configuration (D357, HOLVictoryRules::GetCamp; only the
+	 * occupied slots count, the AI seats too): Defeat when he is alone in his camp and there are only two camps in all (the 1v1, the
+	 * 1 against 2); AIHolds otherwise. A closed or unknown slot: Defeat (nothing to hold).
+	 */
+	static EWindowEnd GetWindowEnd(const FHOLMatchConfig& Config, int32 Slot);
+
+	/** D718 (T1): the states of a seat of a human during a match. */
+	enum class ESeatState : uint8
+	{
+		/** Its player is connected. */
+		Present,
+		/** Away, in the window: the AI holds the seat for him. */
+		AbsentAIHolds,
+		/** Away, the window past: the AI keeps the seat to the end (GetWindowEnd = AIHolds). */
+		AIHolds,
+		/** Defeated: nothing to return to. */
+		Defeated,
+	};
+	/** D718 (T1): whether the name of the seat's player may take it again: not once defeated, not once the match is over. */
+	static bool MayReturn(ESeatState State, bool bMatchOver);
 
 	/** R7.5: how long « Bob : de retour » stays in the banner. */
 	static constexpr double BackNoticeSeconds = 5.;

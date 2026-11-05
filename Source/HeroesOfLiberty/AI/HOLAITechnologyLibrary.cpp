@@ -8,6 +8,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "GameFramework/PlayerState.h"
 #include "HAL/IConsoleManager.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Technologies/HOLTechnologyRules.h"
 #include "Technologies/HOLTechnologyTypes.h"
@@ -62,19 +63,15 @@ void UHOLAITechnologyLibrary::ReadAITechnologiesDone(const UObject* WorldContext
 {
 	OutDone.Reset();
 	const UWorld* World = GEngine ? GEngine->GetWorldFromContextObject(WorldContextObject, EGetWorldErrorMode::ReturnNull) : nullptr;
-	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
-	if (!GameState || PlayerIndex == INDEX_NONE)
+	if (!World || PlayerIndex == INDEX_NONE)
 	{
 		return;
 	}
-	for (const APlayerState* PlayerState : GameState->PlayerArray)
+	// D719 (T0): his player state's, or the ones kept for him while he is away.
+	FHOLTechnologyState Technologies;
+	if (AHOLGameState::GetSlotTechnologies(*World, PlayerIndex, Technologies))
 	{
-		const AHOLPlayerState* HOLPlayerState = Cast<AHOLPlayerState>(PlayerState);
-		if (HOLPlayerState && HOLPlayerState->GetPlayerIndex() == PlayerIndex)
-		{
-			OutDone = HOLPlayerState->GetTechnologies().Done;
-			return;
-		}
+		OutDone = Technologies.Done;
 	}
 }
 

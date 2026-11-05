@@ -3,6 +3,7 @@
 #include "Match/HOLDisconnectRules.h"
 
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLVictoryRules.h"
 
 bool FHOLDisconnectRules::KeepsSlot(const FHOLMatchConfig& Config, const int32 Slot, const bool bWaitingForPlayers,
 	const bool bMatchOver, const bool bSlotDefeated)
@@ -13,6 +14,32 @@ bool FHOLDisconnectRules::KeepsSlot(const FHOLMatchConfig& Config, const int32 S
 	}
 	const FHOLMatchSlot& SlotConfig = Config.Slots[Slot];
 	return SlotConfig.State == EHOLSlotState::Human && !SlotConfig.PlayerName.TrimStartAndEnd().IsEmpty();
+}
+
+FHOLDisconnectRules::EWindowEnd FHOLDisconnectRules::GetWindowEnd(const FHOLMatchConfig& Config, const int32 Slot)
+{
+	const int32 Camp = HOLVictoryRules::GetCamp(Config, Slot);
+	if (Camp == INDEX_NONE)
+	{
+		return EWindowEnd::Defeat;
+	}
+	TSet<int32> Camps;
+	int32 InHisCamp = 0;
+	for (int32 Each = 0; Each < Config.Slots.Num(); ++Each)
+	{
+		const int32 EachCamp = HOLVictoryRules::GetCamp(Config, Each);
+		if (EachCamp != INDEX_NONE)
+		{
+			Camps.Add(EachCamp);
+			InHisCamp += EachCamp == Camp ? 1 : 0;
+		}
+	}
+	return InHisCamp == 1 && Camps.Num() == 2 ? EWindowEnd::Defeat : EWindowEnd::AIHolds;
+}
+
+bool FHOLDisconnectRules::MayReturn(const ESeatState State, const bool bMatchOver)
+{
+	return !bMatchOver && State != ESeatState::Defeated;
 }
 
 bool FHOLDisconnectRules::IsWindowOver(const double LeftAt, const double Now, const double WindowSeconds)
