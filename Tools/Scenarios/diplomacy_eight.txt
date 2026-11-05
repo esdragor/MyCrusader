@@ -1,4 +1,4 @@
-﻿# Le panneau Diplomatie a 8 joueurs (le maximum) reste dans son cadre dans les 3 presentations, a 1920x1080 et 1280x600, et ses lignes defilent (rows scroll > 0). Cheat panel deplie.
+# Le panneau Diplomatie a 8 joueurs (le maximum) reste dans son cadre dans les 3 presentations, a 1920x1080 et 1280x600, et ses lignes defilent (rows scroll > 0). Cheat panel deplie.
 # Plain, mode Diplomatie (diplomacy_eight.json) : 8 joueurs dont 2 IA.
 waitlog Starting hero of slot 0 spawned at
 hol.Sanity.Watch 1
@@ -14,6 +14,7 @@ panel hide
 frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
 capture dipl_eight_L2_1920
 hol.UI.DiplomacyLayout 2
 r.SetRes 1366x768w
@@ -22,6 +23,7 @@ panel hide
 frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
 capture dipl_eight_L2_1366
 hol.UI.DiplomacyLayout 2
 r.SetRes 1280x600w
@@ -30,6 +32,7 @@ panel hide
 frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
 capture dipl_eight_L2_600
 hol.UI.DiplomacyLayout 1
 r.SetRes 1280x600w
@@ -38,6 +41,7 @@ panel hide
 frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
 capture dipl_eight_L1_600
 hol.UI.DiplomacyLayout 1
 r.SetRes 1920x1080w
@@ -46,6 +50,8 @@ panel hide
 frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
+waitlog rows scroll 0 px
 capture dipl_eight_L1_1920
 hol.UI.DiplomacyLayout 0
 r.SetRes 1280x600w
@@ -54,7 +60,18 @@ panel hide
 frames 5
 hol.HUD.Report 1
 waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
 capture dipl_eight_L0_600
+hol.UI.DiplomacyLayout 0
+r.SetRes 1920x1080w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+waitlog row lines 2,
+waitlog rows scroll 0 px
+capture dipl_eight_L0_1920
 # Le defilement des lignes (ce que fait la molette) : 8 joueurs en presentation 1, fenetre basse ; avant, la derniere ligne depasse du bas de la zone ; apres DipScrollEnd, elle est entierement dans la zone.
 hol.UI.DiplomacyLayout 1
 r.SetRes 1280x600w

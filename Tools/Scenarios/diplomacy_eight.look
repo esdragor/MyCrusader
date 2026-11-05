@@ -1,4 +1,4 @@
-﻿# <nom de capture> | ce que l'utilisateur doit voir
+# <nom de capture> | ce que l'utilisateur doit voir
 dipl_eight_L2_1920 | Presentation 2, 8 joueurs, fenetre 1920x1080, Triches deplie : le panneau Diplomatie est entier dans son cadre, la taxe de 30 % est visible en bas du cadre (les lignes defilent au-dessus), le cadre ne recouvre ni le panneau Triches ni le bloc du heros
 dipl_eight_L2_1366 | Presentation 2, 8 joueurs, fenetre 1366x768, Triches deplie : le panneau Diplomatie est entier dans son cadre, la taxe de 30 % est visible en bas du cadre (les lignes defilent au-dessus), le cadre ne recouvre ni le panneau Triches ni le bloc du heros
 dipl_eight_L2_600 | Presentation 2, 8 joueurs, fenetre 1280x600, Triches deplie : le panneau Diplomatie est entier dans son cadre, la taxe de 30 % est visible en bas du cadre (les lignes defilent au-dessus), le cadre ne recouvre ni le panneau Triches ni le bloc du heros
@@ -6,3 +6,4 @@ dipl_eight_L1_600 | Presentation 1, 8 joueurs, fenetre 1280x600, Triches deplie 
 dipl_eight_L1_1920 | Presentation 1, 8 joueurs, fenetre 1920x1080, Triches deplie : le panneau Diplomatie est entier dans son cadre, la taxe de 30 % est visible en bas du cadre (les lignes defilent au-dessus), le cadre ne recouvre ni le panneau Triches ni le bloc du heros
 dipl_eight_L0_600 | Presentation 0, 8 joueurs, fenetre 1280x600, Triches deplie : le panneau Diplomatie est entier dans son cadre, la taxe de 30 % est visible en bas du cadre (les lignes defilent au-dessus), le cadre ne recouvre ni le panneau Triches ni le bloc du heros
 dipl_eight_scrolled | Presentation 1, 8 joueurs, fenetre 1280x600, apres le defilement jusqu'en bas : la derniere ligne (joueur 8, ses quatre boutons de tribut) est entierement visible dans le cadre, juste au-dessus de la taxe
+dipl_eight_L0_1920 | Presentation 0, 8 joueurs, fenetre 1920x1080 : chaque joueur tient sur 2 lignes (nom, faction, vies, postures, vision, message ; puis les 4 boutons de tribut), les 8 joueurs sont visibles ensemble sans defilement, la taxe en bas du cadre

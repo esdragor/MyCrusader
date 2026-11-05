@@ -2023,7 +2023,28 @@ FString TalentTipTexts = "";
 				}
 			}
 		}
-		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px, rows scroll {Math::RoundToInt(DipScroll.GetScrollOffsetOfEnd())} px, last row out {Math::RoundToInt(LastOut)} px (slot {LastSlot})";
+		// A player's lines: how many of its line boxes are drawn (an empty line has no size), the most over the shown players, and the
+		// tallest player's height ("2 lines at most a player", the user's answer of 2026-11-05).
+		int MostLines = 0;
+		float TallestRow = 0.0;
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			FVector2D RowLow;
+			FVector2D RowHigh;
+			if (!GetWidgetBox(DipRowBoxes[Slot], RowLow, RowHigh))
+				continue;
+			TallestRow = Math::Max(TallestRow, RowHigh.Y - RowLow.Y);
+			int Lines = 0;
+			for (int Line = 0; Line < 4; ++Line)
+			{
+				FVector2D LineLow;
+				FVector2D LineHigh;
+				if (GetWidgetBox(DipLines[Slot * 4 + Line], LineLow, LineHigh) && LineHigh.Y - LineLow.Y > 1.0)
+					++Lines;
+			}
+			MostLines = Math::Max(MostLines, Lines);
+		}
+		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px, rows scroll {Math::RoundToInt(DipScroll.GetScrollOffsetOfEnd())} px, last row out {Math::RoundToInt(LastOut)} px (slot {LastSlot}), row lines {MostLines}, row height {Math::RoundToInt(TallestRow)} px";
 	}
 
 	UFUNCTION(BlueprintOverride)
