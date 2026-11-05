@@ -1962,6 +1962,31 @@ FString TalentTipTexts = "";
 		return Line;
 	}
 
+	// Where the open Diplomacy panel lies against what it must not cover or leave (px at the HUD's scale, 0 = in place): its foot
+	// (the tax line) must be inside the panel's own box (the rows scroll, the content does not run out), the panel inside the window,
+	// clear of the cheats' panel and of the hero's block. Read by hol.HUD.Report ("fit ..."), asserted by the scenario diplomacy_fit.
+	FString DescribeDipFit() const
+	{
+		FVector2D PanelLow;
+		FVector2D PanelHigh;
+		if (!GetWidgetBox(DipPanel, PanelLow, PanelHigh))
+			return "fit unread";
+		float FootOut = 0.0;
+		FVector2D FootLow;
+		FVector2D FootHigh;
+		if (GetWidgetBox(DipTaxText, FootLow, FootHigh))
+			FootOut = Math::Max(0.0, FootHigh.Y - PanelHigh.Y);
+		const FVector2D Room = GetViewportSlateSize();
+		const float WindowOut = Math::Max(0.0, PanelHigh.Y - Room.Y) + Math::Max(0.0, -PanelLow.Y);
+		float HeroOver = 0.0;
+		FVector2D HeroLow;
+		FVector2D HeroHigh;
+		if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && Math::Min(PanelHigh.X, HeroHigh.X) > Math::Max(PanelLow.X, HeroLow.X))
+			HeroOver = Math::Max(0.0, Math::Min(PanelHigh.Y, HeroHigh.Y) - Math::Max(PanelLow.Y, HeroLow.Y));
+		const float CheatOver = Math::Max(0.0, GetCheatPanelBottom() - PanelLow.Y);
+		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px";
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FString Describe() const
 	{
@@ -1975,7 +2000,7 @@ FString TalentTipTexts = "";
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
-			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DipTexts : "closed")
+			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DescribeDipFit() + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }
