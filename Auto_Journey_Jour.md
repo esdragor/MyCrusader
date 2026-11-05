@@ -254,3 +254,24 @@ Lancés ~10:40 : Glorfindel (Légions L0, C++), Faramir (Déconnexion T0, C++), 
 - **Boucles fermées avec l'utilisateur** : 8 réponses en séance (6 questions A/B, Q-Maps-Budget B + arbres x3, Q-sanity-circling C) et 3 REGLAGE sur essais (Q-clic neutre, 4 boutons de tribut, forêts/budgets/bords des Gués), la plupart relancées en moins de 10 minutes.
 - **Leçons** (à ajouter à Auto_Journey.md à la prochaine séance) : (1) **identifiants d'agents mélangés par la session principale** : tenir un tableau nom -> id AVANT d'envoyer des messages (3 consignes mal adressées) ; (2) l'agent qui rend la main en attendant son build (`waiting on its own background work`) revient seul : ne pas le doubler ; (3) un agent à 240k tokens a continué : le signaler dès 200k ; (4) la file de build est restée vide toute la séance (3 agents C++ + 1 d'appoint ont suffi) ; (5) `log_lock_test.ps1` de main avait une fixture périmée (`stance Ally, relation Enemy`) : corrigée dans ai-ia1, entrée dans main ; (6) premier `-Parts net` de la fusion en échec total, le second vert sans changement : conflit de ressources probable avec un UnrealEditor d'un autre projet (AS_3) ; (7) Haldir : les cartes demandent l'éditeur et une régénération des 7 cartes x 5 tailles : à planifier seul dans un créneau.
 - **Reste pour la prochaine séance (lignes `[ ]`)** : maps (régénérer les 35 fichiers, build, `tests,sizes`, `aiduel`, pré-vol maps_review, perf 14 400 arbres, lecture de « x3 » = nombre d'arbres à confirmer) ; hero-j8-close (mesures neutrals/nvpb0/nvpw1, tolérance d'un seul côté dans l'audit, demi-tours dans le jeu) ; visual (régénérer BuildingTypes.uasset après merge) ; Légions L2 reskin + surcharges à la naissance ; Déconnexion T2 ; Forge F1 fin (scénario, maillage, textes) puis F2 ; Moral M3 (chargeur C++) ; Audio A2b (import des 79 .ogg dans l'éditeur) ; essais à rejouer sur main : `E-diplomacy`, `E-diplomacy_locked`.
+
+## Agents du 2026-11-05 (tableau rétabli a posteriori : il n'a pas ete ecrit au lancement, c'est la lecon L5-2)
+| Nom | Worktree / branche | Tache | Appels d'outils | Resultat |
+|---|---|---|---|---|
+| Etape 0 | lecture seule | plan de lancement | 15 | rapport OK |
+| Glorfindel | Glorfindel / net-playtest | Legions L0/L1 | 174 (hors regle) | dans main |
+| Faramir | Faramir / fog | Deconnexion T0/T1 | 150 (hors regle) | dans main |
+| Celeborn 1 | Celeborn / hero-j8-close | compiler 1baede3 | 50 | neutrals 2/10 |
+| Celeborn 2 | Celeborn / hero-j8-close | neutrals PlaceBySide | 96 (hors regle) | neutrals 2/4, pas fusionne |
+| Arwen | Arwen / ai-ia1 | outils + Audio A2 | 103 (hors regle) | dans main |
+| Galadriel | Galadriel / galadriel-tab | Moral M1/M2 | 56 + 6 | dans main |
+| Haldir 1 | Haldir / maps | PT0 fiche de valeurs | 133 (hors regle) | pas fusionne (maps) |
+| Haldir 2 | Haldir / maps | Gues + budgets + arbres | 109 (hors regle) | pas fusionne, cartes a regenerer |
+| Elrond 1 | Elrond / tiers | integration des 3 essais | 99 | essais VU, defauts notes |
+| Elrond 2 | Elrond / tiers | Q-clic neutre, 4 boutons, Forge F1 | 185 (hors regle) | dans main ; Q-clic NE MARCHE PAS en jeu |
+| Elrond 3 | Elrond / tiers | BUG Q-clic | 3 | arret : heure de fin deja passee |
+| Fusion | Arwen / ai-ia1 | 5 branches | 35 | main f171e8b |
+| noop x2 | - | erreur de la session principale | 1 chacun | inutiles |
+
+### Lecons appliquees 2026-11-05 (bilan retroactif ; les controles ont ete ecrits apres la seance)
+- L5-1 heure avant lancement : NON appliquee (agent lance a 13:19 avec arret 13:15). L5-2 tableau des agents : NON appliquee (ecrit apres coup). L1-1/L3-6/L4-7 plafond tokens : NON appliquee (6 agents sur 12 au-dela de 100 appels). L5-4/Q5 recette independante sur geste reel : NON appliquee pour le Q-clic (bug trouve par l'utilisateur). L3-1/L4-4 plafond de 3 agents C++ : appliquee (file de build vide toute la seance). L1-2 commits par lot : appliquee (tous les agents ont commite). L1-3 merge main avant rapport : appliquee (tous). L3-2 build en tete : appliquee sauf Haldir 2 (pas de build apres ses changements de donnees). Q10/L4-10 essai apres fusion et build : appliquee pour les commandes (Arwen, verifie ensuite par `Essay` : PASS). L4-1 arret dur contrat : appliquee a 11:20 (cloture) ; non appliquee ensuite (13:19). L4-14 sync_worktrees : appliquee a 11:51 (Sauron en conflit).

@@ -100,9 +100,14 @@ Une liste ordonnée par worktree, de tâches **déjà préparées** (une phrase,
 
 Au démarrage la session principale crée **un seul rappel récurrent toutes les 20 min** (prompt : « veilleur Auto_Journey : lance `Tools\AutoJourney\status.ps1`, relance tout worktree libre qui a une tâche `[ ]` dans la file, signale tout agent sans commit depuis 45 min »). Les notifications de fin d'agent réveillent déjà la session : les minuteurs « point de 15 min » par agent sont **supprimés** (au test ils tombaient presque tous après le rapport). Le veilleur est la seule sécurité contre un agent bloqué ou une session qui dort. Un rappel disparaît à la fin de la session : le recréer à chaque « commence ton Auto_Journey ».
 
+## Contrôles mécaniques (2026-11-05, à dérouler : `Auto_Journey_Checklist.md`)
+
+Les leçons de toutes les séances sont maintenant des contrôles : `Tools\AutoJourney\session_gate.ps1 -Phase Launch|Merge|Essay|Close` (avant chaque lancement, avant la fusion, avant de donner une commande `play.ps1`, avant le bilan), `Tools\AutoJourney\agent_rules.md` (19 règles que chaque agent lit en premier, rapport à 12 champs vérifié à la réception) et le tableau « Leçons appliquées » du bilan (`### Lecons appliquees <date>`, une ligne par règle de la check-list, preuve à l'appui). **Chaque énoncé d'agent commence par « Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et applique-le » et donne l'heure d'arrêt calculée à partir d'un `Get-Date` lu juste avant.**
+
 ## Modèle d'énoncé d'un agent (à copier, remplir les <>)
 
 ```
+Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et applique-le (80 appels d'outils max, rapport à 12 champs).
 Worktree <chemin absolu> (branche <b>, <commits>). Lis <chemin>\CLAUDE.md, la fin de <chemin>\<Chantier>InProgress.md,
 la ligne <n> de <chemin>\Auto_Journey_File.md et les `Reponse:` utiles de <chemin>\Auto_Journey_Retours.md.
 TÂCHE : <la ligne de la file>. Test rouge d'abord sur la vraie chaîne ; Tools\build.ps1 (-LiveCoding=0) ; quick_check -Parts <parties touchées>.
@@ -214,6 +219,7 @@ Bilan : fusion groupée de 4 branches (921/921) et 7 décisions, mais 1 h 45 de 
 ## Au démarrage : « commence ton Auto_Journey »
 
 L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase. Les chantiers auront avancé depuis la dernière fois. Sans poser de question déjà tranchée :
+0. **Déroulé obligatoire (2026-11-05)** : lire `Auto_Journey_Checklist.md` ; lancer `session_gate.ps1 -Phase Launch -End <heure de fin>` avant CHAQUE lancement d'agent (un FAIL = pas de lancement) ; écrire le tableau `## Agents du <date>` dans `Auto_Journey_Jour.md` ; poser l'alarme « fin - 15 min » ; avant chaque commande `play.ps1` donnée à l'utilisateur : `-Phase Essay -Root <worktree>` ; avant l'agent de fusion : `-Phase Merge -Branches ...` ; avant le bilan : `-Phase Close` puis le tableau `### Lecons appliquees <date>`.
 1. Lire ce fichier, `Auto_Journey_Jour.md` et `Auto_Journey_Retours.md` (la session principale). **Créer le veilleur** (voir « Le veilleur »).
 2. **Lancer l'étape 0** : sous-agent en lecture seule qui lance `Tools\AutoJourney\status.ps1`, compare avec la file et rend le **plan de lancement** (une ligne par worktree). Il réécrit aussi le programme de `Auto_Journey_Jour.md` avec l'état réel.
 3. **Lire les `Reponse:` de l'utilisateur** dans `Auto_Journey_Retours.md` : c'est la relance qui autorise les corrections et suites qu'elles demandent ; elles deviennent des lignes `[ ]` en tête de file. Les « A trancher » restent ouvertes. Enregistrer ce qui est tranché (décisions du jour, journaux, `EtapeDefini.md`).
