@@ -1,0 +1,63 @@
+﻿# Le panneau Diplomatie reste DANS son cadre : le pied (la taxe) dans le panneau, le panneau dans la fenetre, sans toucher le panneau Triches ni le bloc du heros (2026-11-05, presentation 2 debordait quand Triches est deplie). Chaque etape lit la ligne « HUD diplomacy: ... fit overflow N px, window N px, hero N px, cheats N px » de hol.HUD.Report et exige 0 partout.
+# Plain, mode Diplomatie (diplomacy_fit.json) : toi et 4 autres joueurs (4 lignes de tribut chacune : le contenu depasse le cadre compact).
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+r.SetRes 1920x1080w
+frames 30
+hol.HUD.Click DiplomacyButton
+hol.HUD.Click CheatToggle
+frames 40
+hol.UI.DiplomacyLayout 2
+r.SetRes 1920x1080w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_fit_L2_1920
+hol.UI.DiplomacyLayout 2
+r.SetRes 1366x768w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_fit_L2_1366
+hol.UI.DiplomacyLayout 2
+r.SetRes 1280x600w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_fit_L2_600
+hol.UI.DiplomacyLayout 1
+r.SetRes 1280x600w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_fit_L1_600
+hol.UI.DiplomacyLayout 1
+r.SetRes 1920x1080w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_fit_L1_1920
+hol.UI.DiplomacyLayout 0
+r.SetRes 1280x600w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_fit_L0_600
+r.SetRes 1920x1080w
+frames 30
+hol.UI.DiplomacyLayout 1
+hol.Test.Sanity
+panel show
+note 1. Le panneau Diplomatie est ouvert avec le panneau Triches deplie. Essaie les 3 presentations (hol.UI.DiplomacyLayout 0, 1, 2) et des fenetres basses (Alt + Entree, redimensionne) : le bas du panneau (taxe) doit toujours etre visible, les lignes defilent a la molette dans le cadre, rien ne recouvre le bloc du heros ni Triches.

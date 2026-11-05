@@ -1,4 +1,4 @@
-# Le panneau Diplomatie (presentation 1, la puce qui tourne, choisie par l'utilisateur le 2026-11-03 ; les presentations 0 et 2 restent pour comparer), 5 joueurs en mode Diplomatie, Entree = presentation suivante ; les clics agissent.
+﻿# Le panneau Diplomatie (presentation 1, la puce qui tourne, choisie par l'utilisateur le 2026-11-03 ; les presentations 0 et 2 restent pour comparer), 5 joueurs en mode Diplomatie, Entree = presentation suivante ; les clics agissent.
 # Plain, mode Diplomatie (diplomacy_compare.json) : toi (slot 0) et 4 autres joueurs sans manette : joueur 2 Allie (alliance reciproque, vision partagee), joueur 3 Neutre, joueur 4 Ennemi (une IA : toujours ennemie, posture verrouillee), joueur 5 a qui tu as propose l'alliance (sans reponse ; plus d'etat « En attente » depuis le 2026-11-04).
 # Avant de te rendre la main, le scenario prend lui-meme 9 captures (3 presentations x 1920x1080, 1366x768, 1280x600) et teste les clics (posture, vision) ; il remet ensuite les postures de depart.
 waitlog Starting hero of slot 0 spawned at
@@ -89,6 +89,8 @@ hol.HUD.Click DipVision_1
 frames 10
 hol.HUD.Report 1
 waitlog HUD overlap:
+# Depuis la rupture mutuelle (2026-11-04) le joueur 2 est devenu Neutre lui aussi : on le remet Allie pour que l'alliance (les deux cotes) se forme et que la case Vision soit active.
+hol.Diplomacy.Force 1 0 ally
 hol.HUD.Click DipAlly_1
 waitlog Diplomacy: slot 0 now ally toward slot 1
 hol.HUD.Click DipVision_1
