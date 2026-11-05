@@ -242,8 +242,9 @@ void Test_HoldRefusesTheDuel(FUnitTest& T)
 {
 	const FHOLAIDuelSettings S = HOLAIDuel::Preset(EHOLAIDifficulty::Normal);
 	FHOLAIDuelView Good = DuelEven();
-	Good.MyLevel = 6;
+	Good.MyLevel = 8;
 	Good.EnemyLevel = 2;
+	Good.EnemyHealthPercent = 50;
 	Good.bBattleNear = true;
 	Good.TroopsNearMe = 20;
 	T.AssertTrue(HOLAIHold::Answer(false, S, Good, 0).bYes, "precondition: not held, a good duel is accepted");
