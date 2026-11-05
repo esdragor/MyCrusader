@@ -1,0 +1,50 @@
+# Règles communes de tout agent Auto_Journey (à lire EN PREMIER ; l'énoncé du lancement dit « lis ce fichier et applique-le »)
+
+Chaque règle est mécanique : un nombre à compter, une commande à lancer, un champ du rapport. La session principale vérifie ces champs à la réception ; un champ manquant ou hors seuil est noté « non appliqué » au bilan (`Auto_Journey_Checklist.md`).
+
+## Heure et durée
+1. **Premier geste : `Get-Date` PowerShell.** Si l'heure d'arrêt dur de l'énoncé est déjà passée, ne rien faire d'autre que le dire dans le rapport. Jamais repousser l'arrêt ; seule exception : un build C++ déjà lancé, qu'on attend.
+2. **80 appels d'outils maximum** (tu ne vois pas tes tokens, tu comptes tes appels : 2 000 tokens environ par appel). À 80 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Jamais continuer « parce que c'est presque fini ».
+3. Toute heure annoncée vient de `Get-Date` (Git Bash diverge de 5 à 40 min).
+
+## Écriture
+4. **Chemins absolus** dans TON worktree ; jamais de chemin relatif. Dans la copie principale (`C:\Users\baudo\Documents\MyCrusader`) tu n'écris que : `EtapeDefini.md` (relire juste avant, TES lignes seulement), tes fichiers `Retours\`. Jamais `GDD.md`, `CLAUDE.md`, `Auto_Journey*.md` (sauf ta ligne de `Auto_Journey_File.md`). Aucun numéro de décision D : la session principale les attribue.
+5. **Un seul enregistrement de statut** : ton `*InProgress.md` (état précis pour un agent neuf) + ta ligne d'`EtapeDefini.md`. Pas six journaux.
+6. Un fichier avec fins de ligne mélangées refuse `Edit` multi-lignes : remplace par lignes, relis le résultat. `IN_USE.txt` sans accents.
+
+## Tests
+7. **Test rouge d'abord, sur la vraie chaîne** (pas de valeur à la main). Il assertit l'**EFFET** (PV qui baissent, ressource reçue, bouton actif, unité arrivée), jamais seulement un prédicat ou une ligne de journal. Commit du test AVANT l'implémentation (le SHA va au rapport). Un test rouge peut venir du script de test : lis le dernier `Test mark` du journal avant de toucher au code.
+8. `quick_check` **ne compile pas** : `Tools\build.ps1` d'abord. `-Parts` des seules parties touchées ; `tests` SEUL en cas de doute ; ne jamais lancer deux `quick_check` / `log_lock_test` en parallèle (collision de journaux). Un `net` rouge sans changement de code : le relancer deux fois avant de le croire.
+9. **Scripts et outils** : un script n'est « prêt » qu'après un passage de bout en bout (colle la sortie au rapport). Outil partagé fautif (`check.ps1`, `preflight.ps1`, `quick_check.ps1`) : corrige l'outil et dis-le, pas de copie privée.
+
+## Build (C++)
+10. **Au plus 3 agents C++** en même temps : si l'énoncé dit « sans C++ », tu n'en fais pas (docs, scénarios, Angelscript `*_Test.as`, données).
+11. **Tout le C++ en UN lot, puis `Tools\build.ps1 -LiveCoding=0` en `run_in_background` dans les 15 premières minutes**, et tu restes vivant jusqu'à la fin du build (un build détaché meurt avec l'agent). Un build en attente par worktree : relancer remplace. Rendu sans build = « NON COMPILÉ » en TÊTE du rapport.
+12. Après `git merge main`, un échec de déclaration dans des fichiers que tu n'as pas touchés = supprimer `Intermediate\...\Inc\HeroesOfLiberty\UHT` de CE worktree avant de chercher une cause. Un fichier binaire (`.uasset`) en conflit se **régénère** depuis les CSV fusionnés, jamais « theirs » à l'aveugle.
+13. Régénération des cartes (éditeur) : seulement seul, file de build vide ; l'éditeur se lance avec `-Multiprocess`.
+
+## Git
+14. **Commit par lot vert, au plus 30 minutes sans commit**, fichiers par NOM (jamais `git add -A`), message en anglais, sans `Co-Authored-By`, jamais de push, **jamais de fusion dans `main`** (l'agent de fusion s'en charge).
+15. **`git merge main` avant le rapport** (pour que la fusion soit une avance rapide sans retest).
+16. Ne jamais `checkout`/`reset` du travail non commité d'un autre.
+
+## Questions, décisions, essais
+17. **Ne jamais trancher un design.** Question = fichier `C:\Users\baudo\Documents\MyCrusader\Retours\Q-<nom>.md` titré `[À RÉPONDRE]` : contexte en 2 lignes, options A/B/C **+ « Autre »**, conséquences visibles, **recommandation**, valeur par défaut codée derrière un réglage (cvar/CSV, une ligne à changer). **Au plus 2 questions par chantier**, regroupées. Tu n'attends jamais une réponse : tu appliques le défaut et continues.
+18. **Un essai n'est listé (`[À ESSAYER]`) que si** `Tools\Scenarios\preflight.ps1 <nom>` PASS, `<nom>.look` présent, **chaque PNG ouvert avec Read et le point vu**, ≤ 3 min, aucune attente morte (`waitkey`), geste RÉEL (touche puis clic, pas un appel interne), statut `VU À L'ÉCRAN`. Sinon `LOGIQUE SEULEMENT`, jamais compté prêt. Un essai d'IA ou de système comprend au moins une partie naturelle. Un réglage à l'œil = **balayage** (N valeurs étiquetées côte à côte), pas une valeur à la fois. Un défaut visuel qui persiste après 2 réglages : remonte à la cause avant une 3e valeur. Libellés, touches, noms viennent du GDD et de la grille AoE4, jamais inventés.
+19. Un **REGLAGE ou BUG** de l'utilisateur est rejoué par un AUTRE agent (l'intégrateur) sur le build de `main` fusionné avant toute commande donnée à l'utilisateur.
+
+## Rapport final : 12 champs, dans cet ordre (la session principale les vérifie)
+```
+APPELS_OUTILS: <n> (seuil 80)
+HEURE_DEBUT/HEURE_FIN: <Get-Date> / <Get-Date>
+PREMIER_BUILD: <HH:MM ou « sans C++ »>   BUILD: PASS / FAIL / NON COMPILÉ
+TEST_ROUGE: <SHA du commit du test, antérieur au correctif> + « assertit l'effet : oui/non »
+COMMITS: <n>, dernier à <HH:MM> (seuil 30 min), merge_main_fait: oui/non
+TESTS: <parties lancées + chiffres>
+ESSAIS: <nom : preflight PASS, PNG ouverts, VU À L'ÉCRAN / LOGIQUE SEULEMENT, commande play.ps1 avec -Root>
+QUESTIONS: <fichiers Retours\Q-*.md créés, valeur par défaut codée>
+FAIT / RESTE: <10 lignes au plus>
+NON VÉRIFIÉ: <obligatoire>
+ANOMALIES_PROCESSUS: <obligatoire>
+GIT_STATUS_PRINCIPALE: <sortie de `git -C C:\Users\baudo\Documents\MyCrusader status --short`, inchangée hors docs voulus : oui/non>
+```
