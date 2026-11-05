@@ -1,0 +1,7 @@
+Name,Faction,Role,Type
+Dawn_Worker,Dawn,Worker,Peasant
+Dawn_Hero,Dawn,Hero,Hero
+Dawn_MainCentre,Dawn,MainCentre,MainCentre
+Legions_Worker,Legions,Worker,Zombie
+Legions_Hero,Legions,Hero,Hero
+Legions_MainCentre,Legions,MainCentre,MainCentre

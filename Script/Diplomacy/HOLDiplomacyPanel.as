@@ -89,6 +89,53 @@ namespace HOLDiplomacyPanel
 			return "neutral";
 		return "enemy";
 	}
+	// E-diplomacy_locked (the user, 2026-11-05): no switch button, FOUR tribute buttons on a line, one per resource, each giving its own. The resources by
+	// button, left to right (HOLResource: 0 food, 1 wood, 2 stone, 3 gold): gold, food, wood, stone, the order the user named them.
+	const int TributeButtonCount = 4;
+
+	int TributeResource(int Index)
+	{
+		if (Index == 1) return 0;
+		if (Index == 2) return 1;
+		if (Index == 3) return 2;
+		return 3;
+	}
+
+	// The click's kind of a tribute button (the panel's other kinds are 0..10): 20 + the resource.
+	const int TributeKindBase = 20;
+
+	int TributeKind(int Resource)
+	{
+		return TributeKindBase + Resource;
+	}
+
+	// The resource a click's kind stands for, -1 for any other kind (the old single tribute kind 6 and the old switch kind 10 give none).
+	int TributeResourceOfKind(int Kind)
+	{
+		if (Kind >= TributeKindBase && Kind < TributeKindBase + TributeButtonCount)
+			return Kind - TributeKindBase;
+		return -1;
+	}
+
+	// The name hol.HUD.Click reaches the control by: DipTribute_<slot>_<resource>.
+	FName TributeControlName(int Slot, int Resource)
+	{
+		return FName(f"DipTribute_{Slot}_{Resource}");
+	}
+
+	// The resource of such a name (any of the lines), -1 for any other name.
+	int TributeResourceOfName(FName Name)
+	{
+		for (int Slot = 0; Slot < 8; ++Slot)
+		{
+			for (int Resource = 0; Resource < TributeButtonCount; ++Resource)
+			{
+				if (Name == TributeControlName(Slot, Resource))
+					return Resource;
+			}
+		}
+		return -1;
+	}
 }
 
 // The panel's texts by key (French source here, gathered from the .as files by GatherText; English and Japanese in
@@ -103,8 +150,6 @@ namespace HOLDiplomacyPanelText
 	const FString Neutral = "Diplomacy.Neutral";
 	const FString Enemy = "Diplomacy.Enemy";
 	const FString TaxNote = "Diplomacy.TaxNote";
-	const FString ResourceButton = "Diplomacy.ResourceButton";
-	const FString ResourceTip = "Diplomacy.ResourceTip";
 	const FString ResFood = "Diplomacy.ResFood";
 	const FString ResWood = "Diplomacy.ResWood";
 	const FString ResStone = "Diplomacy.ResStone";
@@ -129,8 +174,6 @@ namespace HOLDiplomacyPanelText
 		if (Key == Neutral) return NSLOCTEXT("HOLDiplomacyPanel", "Neutral", "Neutre");
 		if (Key == Enemy) return NSLOCTEXT("HOLDiplomacyPanel", "Enemy", "Ennemi");
 		if (Key == TaxNote) return NSLOCTEXT("HOLDiplomacyPanel", "TaxNote", "Tribut : taxe de {0} % gardée par le Marché");
-		if (Key == ResourceButton) return NSLOCTEXT("HOLDiplomacyPanel", "ResourceButton", "Ressource : {0}");
-		if (Key == ResourceTip) return NSLOCTEXT("HOLDiplomacyPanel", "ResourceTip", "Choisir la ressource des tributs (nourriture, bois, pierre, or)");
 		if (Key == ResFood) return NSLOCTEXT("HOLDiplomacyPanel", "ResFood", "nourriture");
 		if (Key == ResWood) return NSLOCTEXT("HOLDiplomacyPanel", "ResWood", "bois");
 		if (Key == ResStone) return NSLOCTEXT("HOLDiplomacyPanel", "ResStone", "pierre");
@@ -153,14 +196,7 @@ namespace HOLDiplomacyPanelText
 		return PatternText(Key).ToString().Replace("{0}", First).Replace("{1}", Second);
 	}
 
-	// The tribute's resources, in the game's order (HOLResource: 0 food, 1 wood, 2 stone, 3 gold); the panel keeps one chosen for all lines.
-	const int ResourceCount = 4;
-
-	int NextResource(int Resource)
-	{
-		return (Resource + 1) % ResourceCount;
-	}
-
+	// The tribute's resource names, in the game's order (HOLResource: 0 food, 1 wood, 2 stone, 3 gold).
 	FString ResourceName(int Resource)
 	{
 		if (Resource == 0) return PatternText(ResFood).ToString();

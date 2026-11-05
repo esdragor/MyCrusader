@@ -64,6 +64,10 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Display")
 	FText DisplayName;
 
+	/** L0 (LQ-7, D677): the factions that build it: `Common` (every faction, the default) or the keys of those that do (`Dawn`; several joined by ';'). */
+	UPROPERTY(EditAnywhere, Category = "Faction")
+	FName Faction = TEXT("Common");
+
 	/** Ground footprint (cm), X by Y: whole tiles (UHOLBuildingSettings::TileSize, D311). */
 	UPROPERTY(EditAnywhere, Category = "Building", meta = (ForceUnits = "cm"))
 	FVector2D Footprint = FVector2D(1200.0, 1200.0);
@@ -268,7 +272,7 @@ public:
 	static const FHOLBuildingTypeRow* FindType(FName TypeName);
 
 	/** The types builders build, each with its cell in their grid and its age tab (BuildGridSlot, Age, D313), in the table's order. */
-	static void GetBuildableTypes(TArray<FHOLBuildable>& OutTypes);
+	static void GetBuildableTypes(TArray<FHOLBuildable>& OutTypes, FName FactionKey = NAME_None);
 };
 
 /** Row names of the building type table used by the code. */

@@ -613,10 +613,12 @@ bool AHOLGameState::EvaluateMatchEnd()
 
 bool AHOLGameState::KeepAbsentSlot(const AHOLPlayerState& Leaving, const double Now, const double WindowSeconds)
 {
-	return !Leaving.IsOnlyASpectator() && KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now, WindowSeconds);
+	return !Leaving.IsOnlyASpectator()
+		&& KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now, WindowSeconds, Leaving.GetTechnologies());
 }
 
-bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resources, const double Now, const double WindowSeconds)
+bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resources, const double Now, const double WindowSeconds,
+	const FHOLTechnologyState& Technologies)
 {
 	if (!HasAuthority() || IsSlotAbsent(Slot)
 		|| !FHOLDisconnectRules::KeepsSlot(LaunchConfig, Slot, bWaitingForPlayers, bMatchOver, IsSlotDefeated(Slot)))
@@ -624,13 +626,13 @@ bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resou
 		return false;
 	}
 	const FString Name = LaunchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
-	AbsentSlots.Add({ Slot, Name, Now, Resources });
+	AbsentSlots.Add({ Slot, Name, Now, Resources, Technologies });
 	// R7.5: the banner of the others (a notice of his last return replaced).
 	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
 	AbsentNotices.Add({ Slot, Name, Now + WindowSeconds, 0., WindowSeconds });
 	ForceNetUpdate();
-	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) kept, F %d W %d S %d G %d"), Slot, *Name, Resources.Food,
-		Resources.Wood, Resources.Stone, Resources.Gold);
+	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) kept, F %d W %d S %d G %d, %d technologies"), Slot, *Name, Resources.Food,
+		Resources.Wood, Resources.Stone, Resources.Gold, Technologies.Done.Num());
 	return true;
 }
 
@@ -700,6 +702,33 @@ bool AHOLGameState::AddSlotStock(UWorld& World, const int32 Slot, const FHOLReso
 	return SetSlotStock(World, Slot, OutStock);
 }
 
+bool AHOLGameState::GetSlotTechnologies(const UWorld& World, const int32 Slot, FHOLTechnologyState& OutTechnologies)
+{
+	// Absent first, as the stock: between the Logout and its destruction, the leaving player state still holds the slot.
+	const AHOLGameState* HOLGameState = Cast<AHOLGameState>(World.GetGameState());
+	const int32 Index = HOLGameState ? FHOLDisconnectRules::FindAbsent(HOLGameState->AbsentSlots, Slot) : INDEX_NONE;
+	if (Index != INDEX_NONE)
+	{
+		OutTechnologies = HOLGameState->AbsentSlots[Index].Technologies;
+		return true;
+	}
+	const AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Match::FindSlotPlayerState(World, Slot);
+	OutTechnologies = PlayerState ? PlayerState->GetTechnologies() : FHOLTechnologyState();
+	return PlayerState != nullptr;
+}
+
+bool AHOLGameState::AddSlotTechnology(UWorld& World, const int32 Slot, const FName Technology)
+{
+	AHOLGameState* HOLGameState = Cast<AHOLGameState>(World.GetGameState());
+	const int32 Index = HOLGameState ? FHOLDisconnectRules::FindAbsent(HOLGameState->AbsentSlots, Slot) : INDEX_NONE;
+	if (Index != INDEX_NONE)
+	{
+		return HOLGameState->AbsentSlots[Index].Technologies.Add(Technology);
+	}
+	AHOLPlayerState* PlayerState = UE::HeroesOfLiberty::Match::FindSlotPlayerState(World, Slot);
+	return PlayerState && PlayerState->AddTechnology(Technology);
+}
+
 int32 AHOLGameState::FindSlotOnLogin(const FHOLMatchConfig& Config, const FString& Name, const TConstArrayView<int32> TakenSlots,
 	const bool bLog) const
 {
@@ -742,7 +771,13 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) back, %s"), AbsentSlots[Index].Slot, *AbsentSlots[Index].Name,
 			*Taking.DescribeEconomy());
 		const int32 Slot = AbsentSlots[Index].Slot;
+		// D719 (T0): his technologies, those acquired and those whose research ended while he was away, with their effects.
+		const FHOLTechnologyState Kept = AbsentSlots[Index].Technologies;
 		AbsentSlots.RemoveAt(Index);
+		for (const FName Technology : Kept.Done)
+		{
+			Taking.AddTechnology(Technology);
+		}
 		// R7.10: his hero's private sheet (kept by the hero subsystem) in his new player state at once, as his stock.
 		if (UHOLHeroSubsystem* Heroes = GetWorld() ? GetWorld()->GetSubsystem<UHOLHeroSubsystem>() : nullptr)
 		{

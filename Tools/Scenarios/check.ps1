@@ -22,6 +22,9 @@ if (-not $EngineDir) {
     if (-not $EngineRoot) { Write-Host "check: engine '$Association' not found in the registry; pass -EngineDir"; exit 1 }
     $EngineDir = Join-Path $EngineRoot "Engine\Binaries\Win64"
 }
+. (Join-Path $PSScriptRoot "..\Tests\TestSettings.ps1")
+# Edge scrolling off in the test settings (bEdgeScroll): a cursor at the screen's edge would pan the camera during the check.
+Set-TestEdgeScrollOff (Join-Path $Root "Saved_Tests")
 $Log = Join-Path $Root "Saved_Tests\Logs\scenario_$Name.log"
 New-Item -ItemType Directory -Force (Split-Path $Log) | Out-Null
 # The log of THIS pass only (2026-11-03: a log still held by the previous pass's process could not be removed, the loop below

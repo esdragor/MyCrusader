@@ -2,6 +2,7 @@
 
 #include "Simulation/HOLUnitSubsystem.h"
 
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -238,6 +239,38 @@ const FHOLUnitTypeRow* UHOLUnitSubsystem::FindTypeRow(const FName TypeName) cons
 {
 	const UDataTable* Table = GetTypeTable();
 	return Table ? Table->FindRow<FHOLUnitTypeRow>(TypeName, TEXT("UnitSubsystem"), /*bWarnIfRowMissing*/ false) : nullptr;
+}
+
+const FHOLUnitTypeRow* UHOLUnitSubsystem::FindTypeRow(const FName TypeName, const FName FactionKey) const
+{
+	const FHOLUnitTypeRow* Base = FindTypeRow(TypeName);
+	if (!Base)
+	{
+		return nullptr;
+	}
+	const HOLFactionRules::FTable& Table = HOLFactionRules::GetTable();
+	const FName Key = Table.ResolveKey(FactionKey);
+	if (!Table.HasOverride(Key, TypeName))
+	{
+		return Base;
+	}
+	if (FactionRowsVersion != HOLFactionRules::GetTableVersion())
+	{
+		FactionRows.Reset();
+		FactionRowsVersion = HOLFactionRules::GetTableVersion();
+	}
+	TSharedPtr<FHOLUnitTypeRow>& Cached = FactionRows.FindOrAdd(Key).FindOrAdd(TypeName);
+	if (!Cached.IsValid())
+	{
+		Cached = MakeShared<FHOLUnitTypeRow>(*Base);
+		TArray<FString> Problems;
+		Table.ApplyOverrides(Key, TypeName, FHOLUnitTypeRow::StaticStruct(), Cached.Get(), &Problems);
+		for (const FString& Problem : Problems)
+		{
+			UE_LOG(LogHOLSimulation, Warning, TEXT("Faction override ignored: %s"), *Problem);
+		}
+	}
+	return Cached.Get();
 }
 
 void UHOLUnitSubsystem::GetTypeNames(TArray<FName>& OutTypeNames) const

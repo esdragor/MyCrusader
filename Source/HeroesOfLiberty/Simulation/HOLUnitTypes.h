@@ -392,6 +392,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Display")
 	FString DisplayName;
 
+	/**
+	 * L0 (LQ-7, D677): the factions that field the type: `Common` (every faction, the default) or the keys of the factions that do
+	 * (`Dawn`, `Legions`; several joined by ';'). A faction without a rule of its own reads as the Dawn (HOLFactionRules).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Faction")
+	FName Faction = TEXT("Common");
+
 	/** Body radius (cm): the avoidance solver and the navigation use it (FAgentRadiusFragment). */
 	UPROPERTY(EditAnywhere, Category = "Unit", meta = (ClampMin = "1", ForceUnits = "cm"))
 	float Radius = 40.f;

@@ -87,6 +87,11 @@ bool FHOLDiplomacyCampsTest::RunTest(const FString& Parameters)
 		Say(1, 0, HOLDiplomacy::Neutral);
 		TestTrue(TEXT("Neutral on one side, Ally on the other: Neutral (the most hostile)"), Camps().AreHostile(0, 1));
 		TestFalse(TEXT("... no automatic fire"), Camps().FiresAtOnce(0, 1) || Camps().FiresAtOnce(1, 0));
+			// E-diplomacy (the user, 2026-11-05): the attack-move click (Q + click) on a unit or a building of a Neutral aims at it, as at an enemy: an adversary that
+			// does not fire on its own (the book unchanged, the order never breaks the stance). Not at an Enemy (the units already take it on), not at oneself.
+			TestTrue(TEXT("a Neutral: the attack-move click gives a direct attack order"), Camps().IsPassiveAdversary(0, 1));
+			TestFalse(TEXT("oneself: no attack"), Camps().IsPassiveAdversary(0, 0));
+			TestFalse(TEXT("an Enemy fires on its own: nothing to aim at"), Camps().IsPassiveAdversary(0, 2));
 		Say(1, 0, HOLDiplomacy::Enemy);
 		TestTrue(TEXT("the break is immediate: fires at once"), Camps().FiresAtOnce(0, 1));
 

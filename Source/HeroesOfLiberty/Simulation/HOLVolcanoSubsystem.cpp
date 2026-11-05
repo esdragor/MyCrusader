@@ -304,7 +304,7 @@ bool UHOLVolcanoSubsystem::MeasureAltar(const int32 SiteIndex, const int32 Slot,
 			return;
 		}
 		Out.bAdversary = true;
-		Out.AdversaryStrength += TypeName == TEXT("Peasant") ? Settings.AiAltarWorkerWeight : 1.f;
+		Out.AdversaryStrength += (TypeName == TEXT("Peasant") || TypeName == TEXT("Zombie")) ? Settings.AiAltarWorkerWeight : 1.f;
 	});
 	Out.bOwnCampAlone = bOwn && !Out.bAdversary;
 	Out.TraceFromAltar = TNumericLimits<float>::Max();

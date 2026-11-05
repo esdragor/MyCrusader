@@ -60,6 +60,15 @@ struct HEROESOFLIBERTY_API FHOLStartRules
 	static const FName HeroTypeName;
 
 	/**
+	 * L0 (LQ-7): the type that plays the Worker, Hero and MainCentre roles for a slot, by its faction (Tools/Data/Factions.csv,
+	 * HOLFactionRules): the Peasant, the Paladin-Commander and the MainCentre for the Dawn, and for a faction with no rule of its own.
+	 * PeasantTypeName and HeroTypeName above stay the Dawn's, for the tests and the scripts that name them.
+	 */
+	static FName GetWorkerTypeName(const FHOLMatchConfig& Config, int32 Slot);
+	static FName GetHeroTypeName(const FHOLMatchConfig& Config, int32 Slot);
+	static FName GetMainCentreTypeName(const FHOLMatchConfig& Config, int32 Slot);
+
+	/**
 	 * J8a.2 (J8a-Q2): the slot gets its hero at the start: the slot occupied (a human or an AI), and the configuration
 	 * asks for it (StartingHero 1) or leaves it to the rule of the game (-1: bSetting, UHOLMatchSettings::bStartingHero).
 	 */
