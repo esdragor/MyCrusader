@@ -25,7 +25,26 @@ namespace HOLFactionRules
 			"Legions_Worker,Legions,Worker,Zombie\n"
 			"Legions_Hero,Legions,Hero,Hero\n"
 			"Legions_MainCentre,Legions,MainCentre,MainCentre\n");
-		const TCHAR* BuiltInOverrides = TEXT("Name,Faction,Type,Field,Value\n");
+		// Generated from Tools/Data/FactionOverrides.csv by Tools/Data/make_builtin_overrides.py (run it after editing the CSV);
+		// the test HeroesOfLiberty.Match.Factions.Tables keeps the two equal, line by line.
+		// BEGIN generated overrides
+		const TCHAR* BuiltInOverrides = TEXT(
+			"Name,Faction,Type,Field,Value\n"
+			"Legions_Spearman_Name,Legions,Spearman,DisplayName,Legion Spearman\n"
+			"Legions_Spearman_Cost,Legions,Spearman,Cost,\"(Food=45,Wood=15,Stone=0,Gold=0)\"\n"
+			"Legions_ManAtArms_Name,Legions,ManAtArms,DisplayName,Black Guard\n"
+			"Legions_ManAtArms_Cost,Legions,ManAtArms,Cost,\"(Food=75,Wood=0,Stone=0,Gold=15)\"\n"
+			"Legions_Archer_Name,Legions,Archer,DisplayName,Legion Archer\n"
+			"Legions_Archer_Cost,Legions,Archer,Cost,\"(Food=25,Wood=40,Stone=0,Gold=0)\"\n"
+			"Legions_Crossbowman_Name,Legions,Crossbowman,DisplayName,Legion Crossbowman\n"
+			"Legions_Crossbowman_Cost,Legions,Crossbowman,Cost,\"(Food=60,Wood=0,Stone=0,Gold=30)\"\n"
+			"Legions_LightCavalry_Name,Legions,LightCavalry,DisplayName,Dread Rider\n"
+			"Legions_LightCavalry_Cost,Legions,LightCavalry,Cost,\"(Food=60,Wood=0,Stone=0,Gold=30)\"\n"
+			"Legions_Ram_Name,Legions,Ram,DisplayName,Bone Ram\n"
+			"Legions_Ram_Cost,Legions,Ram,Cost,\"(Food=0,Wood=110,Stone=0,Gold=55)\"\n"
+			"Legions_Mangonel_Name,Legions,Mangonel,DisplayName,Bone Mangonel\n"
+			"Legions_Mangonel_Cost,Legions,Mangonel,Cost,\"(Food=0,Wood=150,Stone=0,Gold=110)\"\n");
+		// END generated overrides
 
 		TOptional<FTable> GameTable;
 		const FTable* TestTable = nullptr;

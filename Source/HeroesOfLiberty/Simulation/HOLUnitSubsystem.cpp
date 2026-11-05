@@ -301,15 +301,11 @@ int32 UHOLUnitSubsystem::GetBirthBudget() const
 
 const FHOLUnitTypeRow* UHOLUnitSubsystem::FindTypeRowFor(const FName TypeName, const int32 OwnerPlayer) const
 {
-	return FindTypeRow(TypeName); // STUB (red test commit): behaviourless, the real body comes with the implementation
+	return FindTypeRow(TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer));
 }
 
 FName UHOLUnitSubsystem::GetTemplateKey(const FName TypeName, const FName FactionKey) const
 {
-	if (true) // STUB (red test commit): behaviourless
-	{
-		return TypeName;
-	}
 	if (FactionKey.IsNone())
 	{
 		return TypeName;
