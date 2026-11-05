@@ -521,4 +521,64 @@ bool FHOLDisconnectTechnologiesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D718 (T1): the end of the window by the camps of the launch (D357). Alone in his camp with only two camps in all (the 1v1,
+// the 1 against 2 too): defeat; otherwise the AI keeps the seat (teams, free for all of 3 and more, a camp with an AI seat
+// beside him). The Diplomacy mode has every slot alone in its camp (GetCamp). The seat states and the return.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectWindowEndTest, "HeroesOfLiberty.Match.DisconnectWindowEnd",
+	UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectWindowEndTest::RunTest(const FString& Parameters)
+{
+	using EEnd = FHOLDisconnectRules::EWindowEnd;
+	// Each entry: the team of a human slot (0 = no team, free for all); a negative one is an AI of the team -value.
+	const auto Make = [](const TArray<int32>& Seats, const EHOLMatchMode Mode = EHOLMatchMode::Standard)
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		for (FHOLMatchSlot& Slot : Config.Slots)
+		{
+			Slot.State = EHOLSlotState::Closed;
+			Slot.Team = 0;
+		}
+		for (int32 Index = 0; Index < Seats.Num(); ++Index)
+		{
+			Config.Slots[Index].State = Seats[Index] < 0 ? EHOLSlotState::AI : EHOLSlotState::Human;
+			Config.Slots[Index].Team = FMath::Abs(Seats[Index]);
+			Config.Slots[Index].PlayerName = Seats[Index] < 0 ? FString() : FString::Printf(TEXT("P%d"), Index);
+		}
+		Config.Mode = Mode;
+		return Config;
+	};
+	const auto End = [&Make](const TArray<int32>& Seats, const int32 Slot, const EHOLMatchMode Mode = EHOLMatchMode::Standard)
+	{
+		return FHOLDisconnectRules::GetWindowEnd(Make(Seats, Mode), Slot);
+	};
+
+	TestTrue(TEXT("1v1: defeat"), End({ 1, 2 }, 0) == EEnd::Defeat && End({ 1, 2 }, 1) == EEnd::Defeat);
+	TestTrue(TEXT("1v1 free for all (no teams): defeat"), End({ 0, 0 }, 0) == EEnd::Defeat);
+	TestTrue(TEXT("2v2: the AI keeps the seat"), End({ 1, 1, 2, 2 }, 0) == EEnd::AIHolds && End({ 1, 1, 2, 2 }, 3) == EEnd::AIHolds);
+	TestTrue(TEXT("free for all of 3: the AI keeps the seat"), End({ 0, 0, 0 }, 1) == EEnd::AIHolds);
+	TestTrue(TEXT("free for all of 8: the AI keeps the seat"), End({ 0, 0, 0, 0, 0, 0, 0, 0 }, 7) == EEnd::AIHolds);
+	TestTrue(TEXT("1 against 2: the one alone loses"), End({ 1, 2, 2 }, 0) == EEnd::Defeat);
+	TestTrue(TEXT("1 against 2: one of the two: the AI keeps the seat"), End({ 1, 2, 2 }, 1) == EEnd::AIHolds);
+	TestTrue(TEXT("1 against 3 and 1 against 1 against 1: three camps or the camp of two: the AI keeps"),
+		End({ 1, 2, 2, 2 }, 2) == EEnd::AIHolds && End({ 1, 2, 3 }, 0) == EEnd::AIHolds);
+	// A human with an AI seat in his camp (Bob and an AI against Alice, as the other tests' configuration): the camp is not alone.
+	TestTrue(TEXT("a human with an AI of his camp against one: the AI keeps"), End({ 1, 2, -2 }, 1) == EEnd::AIHolds);
+	TestTrue(TEXT("... the one alone against that camp of two: defeat"), End({ 1, 2, -2 }, 0) == EEnd::Defeat);
+	TestTrue(TEXT("a human against an AI alone (two camps): defeat"), End({ 1, -2 }, 0) == EEnd::Defeat);
+	// The camps are those of the launch configuration (D357): the lobby's teams do not count in the Diplomacy mode.
+	TestTrue(TEXT("Diplomacy, 2v2 teams ignored: four camps, the AI keeps"), End({ 1, 1, 2, 2 }, 0, EHOLMatchMode::Diplomacy) == EEnd::AIHolds);
+	TestTrue(TEXT("Diplomacy, two players: two camps alone, defeat"), End({ 1, 1 }, 0, EHOLMatchMode::Diplomacy) == EEnd::Defeat);
+	TestTrue(TEXT("a closed or unknown slot holds nothing: defeat"), End({ 1, 2 }, 5) == EEnd::Defeat && End({ 1, 2 }, INDEX_NONE) == EEnd::Defeat);
+
+	// The seat's states: back in the window (the AI holds it for him), back after it while the match lasts, never when defeated.
+	using ESeat = FHOLDisconnectRules::ESeatState;
+	TestTrue(TEXT("present: his name takes the seat again (a second connection)"), FHOLDisconnectRules::MayReturn(ESeat::Present, false));
+	TestTrue(TEXT("away, the AI holds it (window): he may return"), FHOLDisconnectRules::MayReturn(ESeat::AbsentAIHolds, false));
+	TestTrue(TEXT("the AI holds it after the window: he may return while the match lasts"), FHOLDisconnectRules::MayReturn(ESeat::AIHolds, false));
+	TestFalse(TEXT("... not when the match is over"), FHOLDisconnectRules::MayReturn(ESeat::AIHolds, true));
+	TestFalse(TEXT("defeated: he returns as a spectator only"), FHOLDisconnectRules::MayReturn(ESeat::Defeated, false));
+	TestFalse(TEXT("a seat defeated is not kept (KeepsSlot)"), FHOLDisconnectRules::KeepsSlot(Make({ 1, 2 }), 0, false, false, true));
+	return true;
+}
+
 #endif
