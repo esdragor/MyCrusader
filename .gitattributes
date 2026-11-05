@@ -1,0 +1,12 @@
+# Fins de ligne (2026-11-05) : l'index est en LF, l'arbre de travail en CRLF sous Windows, quelle que soit la machine.
+* text=auto eol=crlf
+*.sh text eol=lf
+*.uasset binary
+*.umap binary
+*.png binary
+*.jpg binary
+*.wav binary
+*.ogg binary
+*.fbx binary
+*.dll binary
+*.exe binary
