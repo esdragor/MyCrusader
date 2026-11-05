@@ -425,6 +425,9 @@ TRANSLATIONS = {
     # HOLGameNames.cpp has the two LOCTEXT (C2, C++); until then both show the table's French name (DisplayName) in every language.
     "HOLGameNames,Stable": ("Stable", "厩舎"),
     "HOLGameNames,LightCavalry": ("Light Cavalry", "軽騎兵"),
+    # F1 (FortificationsInProgress.md): the Forge. NOT YET USED, same rule as the Stable: the key exists in the .po files only once
+    # HOLGameNames.cpp::GetBuildingName has its LOCTEXT("Forge", "Forge") (C++); until then the table's French name (DisplayName) shows in every language.
+    "HOLGameNames,Forge": ("Forge", "鍛冶場"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
     # S2: the siege workshop and its two engines (GDD 6.1).
