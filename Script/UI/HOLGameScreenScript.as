@@ -154,15 +154,12 @@ FString TalentTipTexts = "";
 	const int DipMaxRows = 8;
 	const int DipKindMenu = 4;
 	const int DipKindVision = 5;
-	const int DipKindTribute = 6;
 	const int DipKindMessage = 7;
 	const int DipKindChip = 3;
-	const int DipKindResource = 10;
-	// The resource of the tributes (one for all lines, cycled by the button in the panel's foot; the tax is written once beside it) and its widgets.
-	int DipResource = 3;
-	UButton DipResourceButton;
-	UCommonTextBlock DipResourceLabel;
+	// The tribute (E-diplomacy_locked, 2026-11-05): four buttons a line, one per resource (HOLDiplomacyPanel::TributeResource), the click's kind
+	// HOLDiplomacyPanel::TributeKind; the tax is written once in the panel's foot and, without a finished Market, why the buttons are greyed.
 	UCommonTextBlock DipTaxText;
+	UCommonTextBlock DipReasonText;
 	UBorder DipButtonPanel;
 	UOverlaySlot DipButtonSlot;
 	UButton DipOpenButton;
@@ -188,6 +185,7 @@ FString TalentTipTexts = "";
 	TArray<UButton> DipMenuButtons;
 	TArray<UCommonTextBlock> DipPendings;
 	TArray<UButton> DipVisionButtons;
+	// Four a line: [Slot * 4 + button index].
 	TArray<UButton> DipTributeButtons;
 	TArray<UButton> DipMessageButtons;
 	TArray<UHOLDiplomacyClick> DipHandlers;
@@ -388,7 +386,8 @@ FString TalentTipTexts = "";
 			UVerticalBox RowBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, FName(f"DipRow_{Slot}")));
 			DipRowsBox.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 0.0, 0.0, 6.0));
 			DipRowBoxes.Add(RowBox);
-			for (int Line = 0; Line < 3; ++Line)
+			// Four lines: the last one holds the four tribute buttons (layouts 0 to 2 alike).
+			for (int Line = 0; Line < 4; ++Line)
 			{
 				UHorizontalBox LineBox = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"DipLine_{Slot}_{Line}")));
 				RowBox.AddChildToVerticalBox(LineBox).SetPadding(FMargin(0.0, Line > 0 ? 3.0 : 0.0, 0.0, 0.0));
@@ -416,20 +415,25 @@ FString TalentTipTexts = "";
 			DipChips.Add(BindDipButton(MakeDipButton(FName(f"DipChip_{Slot}")), Slot, DipKindChip));
 			DipMenuButtons.Add(BindDipButton(MakeDipButton(FName(f"DipMenu_{Slot}")), Slot, DipKindMenu));
 			DipVisionButtons.Add(BindDipButton(MakeDipButton(FName(f"DipVision_{Slot}")), Slot, DipKindVision));
-			DipTributeButtons.Add(BindDipButton(MakeDipButton(FName(f"DipTribute_{Slot}")), Slot, DipKindTribute));
+			for (int Button = 0; Button < HOLDiplomacyPanel::TributeButtonCount; ++Button)
+			{
+				const int Resource = HOLDiplomacyPanel::TributeResource(Button);
+				DipTributeButtons.Add(BindDipButton(MakeDipButton(HOLDiplomacyPanel::TributeControlName(Slot, Resource)), Slot, HOLDiplomacyPanel::TributeKind(Resource)));
+			}
 			DipMessageButtons.Add(BindDipButton(MakeDipButton(FName(f"DipMessage_{Slot}")), Slot, DipKindMessage));
 		}
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 			DipRows.Add(FHOLDiplomacyRowView());
 
-		// The foot: the resource of the tributes and, written once, the tax (the user's answer of 2026-11-04).
+		// The foot: the tax, written once (the user's answer of 2026-11-04), and the reason of the greyed tributes when there is no Market.
 		UHorizontalBox Foot = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DiplomacyFoot"));
 		Column.AddChildToVerticalBox(Foot).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
-		DipResourceButton = BindDipButton(MakeDipButton(n"DipResource"), -1, DipKindResource);
-		DipResourceLabel = DipLabelOf(DipResourceButton);
-		DipAdd(Foot, DipResourceButton, 12.0);
 		DipTaxText = MakeText(n"DiplomacyTax", UHOLTextStyleHUDLabel);
 		DipAdd(Foot, DipTaxText, 0.0);
+		UHorizontalBox Reason = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DiplomacyReason"));
+		Column.AddChildToVerticalBox(Reason).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		DipReasonText = MakeText(n"DiplomacyReasonText", UHOLTextStyleHUDLabel);
+		DipAdd(Reason, DipReasonText, 0.0);
 	}
 
 	// A control of a line: added to a line with its gap.
@@ -451,16 +455,20 @@ FString TalentTipTexts = "";
 	// Where the controls of a line go, by layout (the same widgets every time: ClearChildren only detaches them).
 	void PlaceDipRow(int Slot, int Layout)
 	{
-		for (int Line = 0; Line < 3; ++Line)
-			DipLines[Slot * 3 + Line].ClearChildren();
+		for (int Line = 0; Line < 4; ++Line)
+			DipLines[Slot * 4 + Line].ClearChildren();
 		DipMenuBoxes[Slot].ClearChildren();
-		UHorizontalBox First = DipLines[Slot * 3];
-		UHorizontalBox Second = DipLines[Slot * 3 + 1];
-		UHorizontalBox Third = DipLines[Slot * 3 + 2];
+		UHorizontalBox First = DipLines[Slot * 4];
+		UHorizontalBox Second = DipLines[Slot * 4 + 1];
+		UHorizontalBox Third = DipLines[Slot * 4 + 2];
+		UHorizontalBox Fourth = DipLines[Slot * 4 + 3];
 		DipAdd(First, DipSwatchBoxes[Slot], 8.0);
+		// The four tribute buttons, one line of their own in every layout (gold, food, wood, stone).
+		for (int Button = 0; Button < HOLDiplomacyPanel::TributeButtonCount; ++Button)
+			DipAdd(Fourth, DipTributeButtons[Slot * 4 + Button], Button + 1 < HOLDiplomacyPanel::TributeButtonCount ? 6.0 : 0.0);
 		if (Layout == 0)
 		{
-			// One wide line: colour, name, faction, lives | three buttons, the wait | vision, tribute, message.
+			// One wide line: colour, name, faction, lives | three buttons, the wait | vision, message; the tributes under.
 			DipAdd(First, DipWide(DipNames[Slot], 110.0, FName(f"DipNameBox_{Slot}")), 10.0);
 			DipAdd(First, DipWide(DipFactions[Slot], 150.0, FName(f"DipFactionBox_{Slot}")), 10.0);
 			DipAdd(First, DipWide(DipInfos[Slot], 60.0, FName(f"DipInfoBox_{Slot}")), 14.0);
@@ -469,31 +477,28 @@ FString TalentTipTexts = "";
 			DipAdd(First, DipStanceButtons[Slot * 3 + 0], 8.0);
 			DipAdd(First, DipWide(DipPendings[Slot], 170.0, FName(f"DipPendingBox_{Slot}")), 10.0);
 			DipAdd(First, DipVisionButtons[Slot], 6.0);
-			DipAdd(First, DipTributeButtons[Slot], 6.0);
 			DipAdd(First, DipMessageButtons[Slot], 0.0);
 		}
 		else if (Layout == 1)
 		{
-			// Narrow: colour, name, faction, lives; then the chip, the wait; then vision, tribute, message under.
+			// Narrow: colour, name, faction, lives; then the chip, the wait; then vision, message under; the tributes on the last line.
 			DipAdd(First, DipWide(DipNames[Slot], 80.0, FName(f"DipNameBox_{Slot}")), 8.0);
 			DipAdd(First, DipFactions[Slot], 8.0);
 			DipAdd(First, DipInfos[Slot], 0.0);
 			DipAdd(Second, DipChips[Slot], 8.0);
 			DipAdd(Second, DipPendings[Slot], 0.0);
 			DipAdd(Third, DipVisionButtons[Slot], 6.0);
-			DipAdd(Third, DipTributeButtons[Slot], 6.0);
 			DipAdd(Third, DipMessageButtons[Slot], 0.0);
 		}
 		else
 		{
-			// Compact: colour, name, faction, lives; then the drop-down's head, the wait, vision, tribute, message; the drop-down opens under.
+			// Compact: colour, name, faction, lives; then the drop-down's head, the wait, vision, message; the tributes on the last line; the drop-down opens under.
 			DipAdd(First, DipWide(DipNames[Slot], 80.0, FName(f"DipNameBox_{Slot}")), 8.0);
 			DipAdd(First, DipFactions[Slot], 8.0);
 			DipAdd(First, DipInfos[Slot], 0.0);
 			DipAdd(Second, DipMenuButtons[Slot], 8.0);
 			DipAdd(Second, DipPendings[Slot], 8.0);
 			DipAdd(Second, DipVisionButtons[Slot], 6.0);
-			DipAdd(Second, DipTributeButtons[Slot], 6.0);
 			DipAdd(Second, DipMessageButtons[Slot], 0.0);
 			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 2], 4.0);
 			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 1], 4.0);
@@ -575,11 +580,12 @@ FString TalentTipTexts = "";
 		const bool bViewerDefeated = HOLHero::IsSlotDefeated(Viewer);
 		const bool bMarket = HOLDiplomacyRead::HasFinishedMarket(Viewer);
 		const int Tax = HOLDiplomacyRead::GetTributeTaxPercent();
-		DipResourceLabel.SetText(FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::ResourceButton, HOLDiplomacyPanelText::ResourceName(DipResource))));
-		DipResourceLabel.SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
-		DipResourceButton.SetToolTipText(HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::ResourceTip));
 		DipTaxText.SetText(FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TaxNote, f"{Tax}")));
 		DipTaxText.SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
+		// Without a finished Market the tributes are greyed: the reason is written here, not only in a tooltip.
+		DipReasonText.SetText(bMarket ? FText() : HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket));
+		DipReasonText.SetVisibility(bMarket ? ESlateVisibility::Collapsed : ESlateVisibility::HitTestInvisible);
+		DipReasonText.SetColorAndOpacity(UHOLScriptScreen::GetTextColor());
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			const bool bThere = HOLDiplomacyRead::IsSlotInMatch(Slot);
@@ -678,10 +684,14 @@ FString TalentTipTexts = "";
 		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";
 		DipSetButton(DipVisionButtons[Slot], bStances, Row.bVisionEnabled, FText::FromString(Mark + HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Vision)),
 			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::VisionTip), Row.bVisionChecked ? DipStanceTint(HOLDiplomacy::Ally) : FLinearColor(1.0, 1.0, 1.0, 1.0));
-		const FString ResourceName = HOLDiplomacyPanelText::ResourceName(DipResource);
-		DipSetButton(DipTributeButtons[Slot], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, ResourceName)),
-			Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, ResourceName, f"{Row.TaxPercent}")),
-			FLinearColor(1.0, 1.0, 1.0, 1.0));
+		// The four tributes: one button a resource, each greyed without a Market or toward a player out of the match, the reason in a tooltip (and in the foot).
+		for (int Button = 0; Button < HOLDiplomacyPanel::TributeButtonCount; ++Button)
+		{
+			const FString ResourceName = HOLDiplomacyPanelText::ResourceName(HOLDiplomacyPanel::TributeResource(Button));
+			DipSetButton(DipTributeButtons[Slot * 4 + Button], bControls, Row.bTributeEnabled, FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, ResourceName)),
+				Row.bNoMarket ? HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::TributeNoMarket) : FText::FromString(HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::TributeTip, ResourceName, f"{Row.TaxPercent}")),
+				FLinearColor(1.0, 1.0, 1.0, 1.0));
+		}
 		DipSetButton(DipMessageButtons[Slot], bControls, Row.bMessageEnabled, HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::Message),
 			HOLDiplomacyPanelText::PatternText(HOLDiplomacyPanelText::MessageTip), FLinearColor(1.0, 1.0, 1.0, 1.0));
 		DipMenuBoxes[Slot].SetVisibility(Layout == 2 && DipMenuSlot == Slot ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
@@ -691,7 +701,7 @@ FString TalentTipTexts = "";
 	}
 
 	// A click on a control of the panel (the mouse's, through UHOLDiplomacyClick, or hol.HUD.Click by the control's name): Kind 0..2 a stance
-	// (Enemy, Neutral, Ally), 3 the chip (the next stance), 4 the drop-down, 5 vision, 6 tribute, 7 message, 8 close, 9 the top button.
+	// (Enemy, Neutral, Ally), 3 the chip (the next stance), 4 the drop-down, 5 vision, 7 message, 8 close, 9 the top button, 20 + a resource a tribute button.
 	// A hidden or greyed control does nothing (false). The server decides the rest (the order is taken at the next step).
 	bool PanelClick(int Slot, int Kind)
 	{
@@ -703,11 +713,6 @@ FString TalentTipTexts = "";
 		{
 			bDipOpen = false;
 			DipPanelBox.SetVisibility(ESlateVisibility::Collapsed);
-			return true;
-		}
-		if (Kind == DipKindResource)
-		{
-			DipResource = HOLDiplomacyPanelText::NextResource(DipResource);
 			return true;
 		}
 		if (Slot < 0 || Slot >= DipMaxRows)
@@ -745,11 +750,13 @@ FString TalentTipTexts = "";
 			Controller.RequestShareVision(Slot, !Row.bVisionChecked);
 			return true;
 		}
-		if (Kind == DipKindTribute)
+		// A tribute button (E-diplomacy_locked): its kind says its resource; greyed (no Market, out of the match) it does nothing.
+		const int TributeResource = HOLDiplomacyPanel::TributeResourceOfKind(Kind);
+		if (TributeResource >= 0)
 		{
 			if (!Row.bTributeEnabled)
 				return false;
-			Controller.RequestPanelTribute(Slot, DipResource, 100);
+			Controller.RequestPanelTribute(Slot, TributeResource, 100);
 			return true;
 		}
 		if (Kind == DipKindMessage)
@@ -772,15 +779,13 @@ FString TalentTipTexts = "";
 		return true;
 	}
 
-	// hol.HUD.Click names: DiplomacyButton, DiplomacyClose, Dip<Enemy|Neutral|Ally|Chip|Menu|Vision|Tribute|Message>_<slot>, DiplomacyKey (Ctrl + D).
+	// hol.HUD.Click names: DiplomacyButton, DiplomacyClose, Dip<Enemy|Neutral|Ally|Chip|Menu|Vision|Message>_<slot>, DipTribute_<slot>_<resource 0 food 1 wood 2 stone 3 gold>, DiplomacyKey (Ctrl + D).
 	bool ClickDiplomacyName(FName WidgetName)
 	{
 		if (WidgetName == n"DiplomacyButton" || WidgetName == n"DiplomacyKey")
 			return ToggleDiplomacy();
 		if (WidgetName == n"DiplomacyClose")
 			return PanelClick(-1, 8);
-		if (WidgetName == n"DipResource")
-			return PanelClick(-1, DipKindResource);
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			if (WidgetName == FName(f"DipEnemy_{Slot}"))
@@ -795,8 +800,11 @@ FString TalentTipTexts = "";
 				return PanelClick(Slot, DipKindMenu);
 			if (WidgetName == FName(f"DipVision_{Slot}"))
 				return PanelClick(Slot, DipKindVision);
-			if (WidgetName == FName(f"DipTribute_{Slot}"))
-				return PanelClick(Slot, DipKindTribute);
+			for (int Resource = 0; Resource < HOLDiplomacyPanel::TributeButtonCount; ++Resource)
+			{
+				if (WidgetName == HOLDiplomacyPanel::TributeControlName(Slot, Resource))
+					return PanelClick(Slot, HOLDiplomacyPanel::TributeKind(Resource));
+			}
 			if (WidgetName == FName(f"DipMessage_{Slot}"))
 				return PanelClick(Slot, DipKindMessage);
 		}

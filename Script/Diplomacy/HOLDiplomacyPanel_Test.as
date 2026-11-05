@@ -103,3 +103,40 @@ void Test_DiplomacyPanelTributeAndCycle(FUnitTest& T)
 	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Neutral), HOLDiplomacy::Enemy, "Neutre -> Ennemi");
 	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Enemy), HOLDiplomacy::Ally, "Ennemi -> Allié");
 }
+
+// E-diplomacy_locked (the user, 2026-11-05): no switch button, FOUR tribute buttons a line, one per resource (gold, food, wood, stone), each one giving its own
+// resource when clicked. The panel's controls are told apart by a kind (the click) and a name (hol.HUD.Click): four distinct ones, each giving its resource back,
+// none of them one of the panel's other kinds (0..10); the labels are the game's resource names, one each.
+void Test_DiplomacyPanelFourTributeButtons(FUnitTest& T)
+{
+	T.AssertEquals(4, HOLDiplomacyPanel::TributeButtonCount, "four buttons");
+	T.AssertEquals(3, HOLDiplomacyPanel::TributeResource(0), "gold first");
+	TArray<bool> bSeen;
+	bSeen.SetNum(4);
+	for (int Index = 0; Index < HOLDiplomacyPanel::TributeButtonCount; Index++)
+	{
+		const int Resource = HOLDiplomacyPanel::TributeResource(Index);
+		T.AssertTrue(Resource >= 0 && Resource < 4, "a game resource");
+		if (Resource >= 0 && Resource < 4)
+		{
+			T.AssertFalse(bSeen[Resource], "each resource once");
+			bSeen[Resource] = true;
+		}
+		const int Kind = HOLDiplomacyPanel::TributeKind(Resource);
+		T.AssertTrue(Kind > 10, "a kind of its own, none of the panel's other controls (0..10)");
+		T.AssertEquals(Resource, HOLDiplomacyPanel::TributeResourceOfKind(Kind), "the kind gives its resource back");
+		T.AssertEquals(Resource, HOLDiplomacyPanel::TributeResourceOfName(HOLDiplomacyPanel::TributeControlName(1, Resource)), "so does the control's name");
+		for (int Other = 0; Other < Index; Other++)
+		{
+			const int OtherResource = HOLDiplomacyPanel::TributeResource(Other);
+			T.AssertTrue(HOLDiplomacyPanel::TributeKind(OtherResource) != Kind, "distinct kinds");
+			T.AssertTrue(HOLDiplomacyPanel::TributeControlName(1, OtherResource) != HOLDiplomacyPanel::TributeControlName(1, Resource), "distinct names");
+			T.AssertTrue(HOLDiplomacyPanelText::ResourceName(OtherResource) != HOLDiplomacyPanelText::ResourceName(Resource), "distinct labels");
+		}
+	}
+	T.AssertTrue(HOLDiplomacyPanel::TributeControlName(1, 3) != HOLDiplomacyPanel::TributeControlName(2, 3), "a name a line");
+	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfKind(6), "the old single tribute kind gives none");
+	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfKind(10), "nor the old switch kind");
+	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfName(n"DipResource"), "no switch control any more");
+	T.AssertTrue("Tribut 100 or" == HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, HOLDiplomacyPanelText::ResourceName(3)), "the label is the existing one, \"Tribut 100 or\"");
+}

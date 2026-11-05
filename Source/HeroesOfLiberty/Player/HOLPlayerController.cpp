@@ -4127,6 +4127,32 @@ void AHOLPlayerController::AttackMoveAt(const FVector2D& ViewportFraction, const
 	{
 		return;
 	}
+	// E-diplomacy (the user, 2026-11-05): the click on a unit or a building of a NEUTRAL player (an adversary that does not fire on its own, D401) gives the
+	// attack order as the right click does, as at an enemy; the stance is not touched. At an enemy or at the ground the attack-move goes on as before.
+	if (const AHOLPlayerState* OwnState = GetHOLPlayerState())
+	{
+		const FHOLCampTable Camps = FHOLCampTable::FromWorld(GetWorld());
+		const int32 Me = OwnState->GetPlayerIndex();
+		bool bDirect = false;
+		const uint32 UnderId = FindTargetAt(ViewportFraction, bDirect);
+		FHOLUnitView Under;
+		AHOLBuilding* UnderBuilding = FindBuildingAt(ViewportFraction);
+		if (UnderId != 0 && (bDirect || !UnderBuilding) && HOLUnitView::Find(*GetWorld(), UnderId, Under) && Camps.IsPassiveAdversary(Under.OwnerPlayer, Me))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move on #%u %s of slot %d (neutral): a direct attack%s"), Soldiers.Num(), UnderId, *Under.TypeName.ToString(), Under.OwnerPlayer,
+				bQueue ? TEXT(", queued") : TEXT(""));
+			RequestAttackUnit(Soldiers, UnderId, bQueue);
+			OnAttackOrderGiven.Broadcast(Under.Location);
+			return;
+		}
+		if (UnderBuilding && Camps.IsPassiveAdversary(UnderBuilding->GetOwnerPlayer(), Me) && UnderBuilding->IsSeenHere() && !UnderBuilding->IsFoundation())
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move on %s (neutral): a direct attack%s"), Soldiers.Num(), *DescribeBuilding(UnderBuilding), bQueue ? TEXT(", queued") : TEXT(""));
+			RequestAttackBuilding(Soldiers, UnderBuilding, bQueue);
+			OnAttackOrderGiven.Broadcast(UnderBuilding->GetActorLocation());
+			return;
+		}
+	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units attack-move to (%.0f, %.0f)%s"), Soldiers.Num(), Ground.X, Ground.Y, bQueue ? TEXT(", queued") : TEXT(""));
 	RequestAttackMove(Soldiers, Ground, bQueue);
 	OnAttackOrderGiven.Broadcast(Ground);

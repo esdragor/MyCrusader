@@ -23,7 +23,9 @@ frames 30
 hol.HUD.Report 1
 waitlog HUD overlap:
 capture dipl_locked_wide
-hol.HUD.Click DipResource
+hol.Cheat.SpawnBuilding Market 0 -2500 1500
+frames 60
+hol.HUD.Click DipTribute_1_0
 frames 20
 hol.HUD.Report 1
 waitlog HUD overlap:
@@ -31,5 +33,5 @@ capture dipl_locked_food
 hol.UI.DiplomacyLayout 1
 hol.Test.Sanity
 panel show
-note 1. Partie a equipes fixes (pas le mode Diplomatie) : le bouton « Diplomatie » (a gauche de « Menu ») et le panneau existent, avec une ligne par joueur, « Tribut » et « Message » ; il n'y a PAS de puce de posture ni de case Vision (rien de grise, elles ne sont pas la).
+note 1. Partie a equipes fixes (pas le mode Diplomatie) : le bouton « Diplomatie » (a gauche de « Menu ») et le panneau existent, avec une ligne par joueur, QUATRE boutons de tribut (or, nourriture, bois, pierre ; grises : pas de Marche, la raison est ecrite en bas) et « Message » ; il n'y a PAS de puce de posture ni de case Vision (rien de grise, elles ne sont pas la).
 note    Ctrl + D ouvre et ferme le panneau. Le tableau des joueurs montre un bouclier vert devant le joueur 2 (ton equipe) et des croix rouges devant les autres.

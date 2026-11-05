@@ -198,7 +198,7 @@ bool FHOLTechnologyTableTest::RunTest(const FString& Parameters)
 // T3/T4 (T-Q4 = A, D583; T-Q10/T-Q11 = B, D601): of the 26 technologies of the table (the Militia is dropped, D600), the ones
 // the game can play now are those whose building is a type of BuildingTypes.csv AND whose effect is coded (Implemented): the
 // camps and the farm (8). The Improved Alarm Bell (main centre) and the Tempered Halberds (Barracks) have their building but no
-// effect yet: greyed "Soon". The Reinforced Ram and Heavy Munitions (siege workshop, S2) are Soon too (RamHealth and MangonelDamage are read at S5). The others (Forge, Academy, Chapel) wait for their buildings.
+// effect yet: greyed "Soon". The Reinforced Ram and Heavy Munitions (siege workshop, S2) are Soon too (RamHealth and MangonelDamage are read at S5). The Forge's four attack lines are playable since F1; the armour lines (Forge) and the Academy's wait (F2, F3).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTechnologyPlayableTest, "HeroesOfLiberty.Technologies.Playable", UE::HeroesOfLiberty::Tests::TechnologyTable::Flags)
 bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 {
@@ -215,6 +215,8 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 	const TSet<FName> Expected = {
 		TEXT("DoubleAxesI"), TEXT("DoubleAxesII"), TEXT("MinerPicksI"), TEXT("MinerPicksII"), TEXT("PloughI"), TEXT("PloughII"),
 		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("VowOfPoverty"),
+		// F1 (FortificationsInProgress.md): the Forge is a building type now, so its four attack lines (effect coded) are playable; the armour lines wait for F2 (Implemented false).
+		TEXT("MeleeAttackI"), TEXT("MeleeAttackII"), TEXT("RangedAttackI"), TEXT("RangedAttackII"),
 	};
 	TSet<FName> Playable;
 	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
@@ -225,7 +227,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 			Playable.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("9 technologies are playable (the Vow of Poverty joined the 8: its Chapel and its MonkCostDiscount exist)"), Playable.Num(), 9);
+	TestEqual(TEXT("13 technologies are playable (the 8 economy ones, the Vow of Poverty, and the Forge's four attack lines since F1)"), Playable.Num(), 13);
 	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"), TEXT("ReinforcedRam"), TEXT("HeavyMunitions") })
 	{
 		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Soon, TEXT("technology"), false);
