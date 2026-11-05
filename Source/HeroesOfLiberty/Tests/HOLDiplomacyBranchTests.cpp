@@ -605,7 +605,9 @@ bool FHOLDiplomacyAttackMoveNeutralTest::RunTest(const FString& Parameters)
 				Say(1, 0, HOLDiplomacy::Neutral);
 			}
 			const uint32 Attacker = Place(FName(TEXT("ManAtArms")), 0, FVector(0.0, 0.0, 0.0));
-			const uint32 Met = Place(FName(TEXT("ManAtArms")), Trial.TargetOwner, FVector(800.0, 0.0, 0.0));
+			// In melee reach (the test world has no movement: the bodies do not walk), as AttackOnNeutral; the goal is past him. What is under test is that the
+			// attack-move's search takes him on, the blows then fall by themselves.
+			const uint32 Met = Place(FName(TEXT("ManAtArms")), Trial.TargetOwner, FVector(150.0, 0.0, 0.0));
 			if (TestTrue(*FString::Printf(TEXT("[%s] the two men born"), Trial.Name), Attacker != 0 && Met != 0))
 			{
 				const float MetStart = HealthOf(Met);
