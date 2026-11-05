@@ -1,0 +1,22 @@
+﻿# Les sons de l'interface (Audio A2b, provisoires) : ouvrir l'arbre de talents, prendre un talent, le fermer ; chaque clic joue un son de la table et l'ecrit au journal (cue played)
+# Plain, toi (slot 0) contre une IA (slot 1), 2 points de talent. Les sons viennent des packs Kenney CC0, choisis d'apres leurs noms et pas encore ecoutes : a toi de dire lesquels te plaisent.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+hol.Hero.SetXP 0 600
+wait 1
+frames 8
+hol.HUD.Click HeroTalentButton
+waitlog cue played Ui.Open
+frames 8
+capture audio_ui_window
+wait 0.3
+hol.HUD.Click HeroTalentCell_2_1
+waitlog cue played Ui.Confirm
+wait 0.3
+hol.HUD.Click TalentWindowClose
+waitlog cue played Ui.Close
+hol.Test.Sanity
+note Ecoute : clique le bloc Talents (ou touche T) pour ouvrir l'arbre, prends un talent, ferme avec Fermer. Trois sons : ouvrir, confirmer, fermer.
+note Sons provisoires (Kenney CC0, jamais ecoutes) : dis lesquels garder, lesquels changer (table : Script/Audio/HOLAudioTable.as).
