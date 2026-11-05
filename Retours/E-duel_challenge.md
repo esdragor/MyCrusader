@@ -12,3 +12,5 @@ NON VÉRIFIÉ : les unités des deux héros vues à l'œil nu pendant la marche 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 duel_challenge -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min 30 (25 s de marche, Entrée pour défier, 6 s de fenêtre).
 Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK (2026-11-05 22:3x, utilisateur, fenetre reelle : 25 s de marche sans tremblement puis defi a Entree).
