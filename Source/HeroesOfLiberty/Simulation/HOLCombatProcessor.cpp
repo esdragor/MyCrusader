@@ -129,6 +129,15 @@ namespace UE::HeroesOfLiberty::Combat
 	float ClaimProgress = 25.f;
 	FAutoConsoleVariableRef CVarClaimProgress(TEXT("hol.Combat.ClaimProgress"), ClaimProgress,
 		TEXT("cm (default 25, with hol.Combat.ClaimPlace): the edge distance to its target a melee must gain to count as making headway"));
+	/** Q-neutrals-second-rank = C (the user, 2026-11-05): a soldier walled in between its friends changes target instead of turning back. */
+	int32 BoxedRetarget = 0;
+	FAutoConsoleVariableRef CVarBoxedRetarget(TEXT("hol.Combat.BoxedRetarget"), BoxedRetarget,
+		TEXT("1 (default 0 since the neutrals_trace measure of 2026-11-05: 3 green of 8 with it on, no better than without; needs hol.Combat.ClaimPlace): a melee out of reach of its target, walled in between two friends (HOLCombat::IsBoxedIn) with no headway for hol.Combat.BoxedRetargetSeconds, takes the nearest enemy (within 500 cm) with a free place it can reach without going round; a target the player ordered is kept; 0: off"));
+	float BoxedRetargetSeconds = 1.f;
+	FAutoConsoleVariableRef CVarBoxedRetargetSeconds(TEXT("hol.Combat.BoxedRetargetSeconds"), BoxedRetargetSeconds,
+		TEXT("s (default 1, with hol.Combat.BoxedRetarget): how long a walled-in melee makes no headway before it changes target"));
+	constexpr double BoxedRetargetReach = 900.0;
+	constexpr double BoxedRetargetEnemyReach = 500.0;
 	/** MV.4, choice C (AoE4): an idle melee soldier comes to the aid of a friend fighting within this radius (HOLCombat::ShouldComeToAid). */
 	float AidRadius = HOLCombat::DefaultAidRadius;
 	FAutoConsoleVariableRef CVarAidRadius(TEXT("hol.Combat.AidRadius"), AidRadius,
@@ -2483,6 +2492,80 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Combat.NoProgressSeconds += static_cast<float>(StepMs) / 1000.f;
 				}
 				Combat.PlaceTargetWhere = FVector2f(EnemyPosition);
+					// Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget): walled in between two friends who strike for BoxedRetargetSeconds, a soldier that was
+					// made to slide, wait and turn back (the walk-round of the neutrals trace) takes the nearest enemy with a place it can reach (no going round) instead.
+					if (BoxedRetarget != 0 && bSearchStep && !Combat.bOrderedTarget && Combat.NoProgressSeconds >= BoxedRetargetSeconds)
+					{
+						TArray<int32> BoxEnemies;
+						TArray<int32> BoxFriends;
+						GatherNearby(Index, BoxedRetargetReach, BoxEnemies);
+						GatherFriends(Index, BoxedRetargetReach, BoxFriends);
+						TArray<HOLCombat::FBody> BoxBodies;
+						TArray<int32> BoxFighters;
+						TArray<int32> BoxEnemyBodies;
+						TArray<uint64> BoxEnemyIds;
+						int32 TargetBody = INDEX_NONE;
+						for (const int32 Other : BoxFriends)
+						{
+							if (Other != Index && Fighters[Other].State->CurrentHealth > 0)
+							{
+								BoxBodies.Add({ FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius });
+								BoxFighters.Add(Other);
+							}
+						}
+						for (const int32 Other : BoxEnemies)
+						{
+							if (Fighters[Other].State->CurrentHealth <= 0)
+							{
+								continue;
+							}
+							if (Other == Target)
+							{
+								TargetBody = BoxBodies.Num();
+							}
+							else if (!CanTouch(Fighter, Fighters[Other]) || HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius) > BoxedRetargetEnemyReach)
+							{
+								BoxBodies.Add({ FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius });
+								BoxFighters.Add(Other);
+								continue;
+							}
+							BoxEnemyBodies.Add(BoxBodies.Num());
+							BoxEnemyIds.Add(Fighters[Other].UnitId);
+							BoxBodies.Add({ FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius });
+							BoxFighters.Add(Other);
+						}
+						TArray<HOLCombat::FBody> BoxOthers;
+						for (int32 BodyIndex = 0; BodyIndex < BoxBodies.Num(); ++BodyIndex)
+						{
+							if (BodyIndex != TargetBody)
+							{
+								BoxOthers.Add(BoxBodies[BodyIndex]);
+							}
+						}
+						if (HOLCombat::ShouldRetargetWhenBoxedIn(Combat.NoProgressSeconds, HOLCombat::IsBoxedIn(Position, Constants.Radius, EnemyPosition, BoxOthers), Combat.bOrderedTarget, BoxedRetargetSeconds))
+						{
+							const int32 Chosen = HOLCombat::FindReachableEnemy(Position, Constants.Radius, BoxBodies, BoxEnemyBodies, BoxEnemyIds, TargetBody);
+							if (Chosen != INDEX_NONE)
+							{
+								const int32 NewTarget = BoxFighters[BoxEnemyBodies[Chosen]];
+								--Enemy.Combat->AttackerCount;
+								++Fighters[NewTarget].Combat->AttackerCount;
+								Touch(Target);
+								Touch(NewTarget);
+								Touch(Index);
+								Combat.Target = Fighters[NewTarget].Entity;
+								Combat.bAttacking = false;
+								Combat.bApproaching = false; // the walk to the new target is given at the next step
+								Combat.PlaceTarget = Combat.Target;
+								Combat.PlaceTargetWhere = FVector2f(FVector2D(Fighters[NewTarget].Location));
+								Combat.bHasPlace = false;
+								Combat.NoProgressSeconds = 0.f;
+								Combat.BestEdge = static_cast<float>(HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[NewTarget].Location), Fighters[NewTarget].Constants->Radius));
+								UE_LOG(LogHOLSimulation, Verbose, TEXT("Combat: step %lld #%u walled in, takes #%u for #%u"), StepIndex, Fighter.UnitId, Fighters[NewTarget].UnitId, Enemy.UnitId);
+								continue;
+							}
+						}
+					}
 				if (bSearchStep && (Combat.bHasPlace || (Combat.bRoomAtTarget && Combat.NoProgressSeconds >= ClaimStuckSeconds)))
 				{
 					TArray<HOLCombat::FBody> PlaceBodies;

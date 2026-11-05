@@ -433,11 +433,11 @@ namespace HOLCombat
 
 	/**
 	 * Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget): a soldier walled in (IsBoxedIn) with no headway for MinSeconds changes target, unless the target was
-	 * ordered by the player. (Stub of the red step: the rule is written by the next commit.)
+	 * ordered by the player.
 	 */
 	inline bool ShouldRetargetWhenBoxedIn(const float NoProgressSeconds, const bool bBoxedIn, const bool bOrderedTarget, const float MinSeconds = 1.f)
 	{
-		return false;
+		return bBoxedIn && !bOrderedTarget && NoProgressSeconds >= MinSeconds;
 	}
 
 	/**
@@ -447,7 +447,37 @@ namespace HOLCombat
 	 */
 	inline int32 FindReachableEnemy(const FVector2D& SelfWhere, const float SelfRadius, TConstArrayView<FBody> Bodies, TConstArrayView<int32> EnemyBodies, TConstArrayView<uint64> EnemyIds, const int32 ExcludeBody)
 	{
-		return INDEX_NONE;
+		int32 Best = INDEX_NONE;
+		double BestEdge = 0.;
+		TArray<FBody, TInlineAllocator<32>> Others;
+		for (int32 Slot = 0; Slot < EnemyBodies.Num(); ++Slot)
+		{
+			const int32 Body = EnemyBodies[Slot];
+			if (Body == ExcludeBody || !Bodies.IsValidIndex(Body) || !EnemyIds.IsValidIndex(Slot))
+			{
+				continue;
+			}
+			Others.Reset();
+			for (int32 Other = 0; Other < Bodies.Num(); ++Other)
+			{
+				if (Other != Body)
+				{
+					Others.Add(Bodies[Other]);
+				}
+			}
+			const FBody& Enemy = Bodies[Body];
+			if (!HasFreePlaceAround(Enemy.Where, Enemy.Radius, SelfRadius, Others) || IsBoxedIn(SelfWhere, SelfRadius, Enemy.Where, Others))
+			{
+				continue;
+			}
+			const double Edge = FVector2D::Distance(SelfWhere, Enemy.Where) - SelfRadius - Enemy.Radius;
+			if (Best == INDEX_NONE || Edge < BestEdge - 1e-6 || (FMath::Abs(Edge - BestEdge) <= 1e-6 && EnemyIds[Slot] < EnemyIds[Best]))
+			{
+				Best = Slot;
+				BestEdge = Edge;
+			}
+		}
+		return Best;
 	}
 
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
