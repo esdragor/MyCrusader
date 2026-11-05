@@ -2,6 +2,7 @@
 
 #include "Match/HOLGameState.h"
 
+#include "AI/HOLAIBrain.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
@@ -556,6 +557,10 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	// R7: a slot defeated while its player is away is no longer kept for him.
 	AbsentSlots.RemoveAll([Slot](const FHOLAbsentSlot& Absent) { return Absent.Slot == Slot; });
 	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+	if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+	{
+		Brain->SetHeld(Slot, false);
+	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: slot %d defeated (%s)"), Slot, GetReasonName(Reason));
 	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
 	{
@@ -630,6 +635,12 @@ bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resou
 	// R7.5: the banner of the others (a notice of his last return replaced).
 	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
 	AbsentNotices.Add({ Slot, Name, Now + WindowSeconds, 0., WindowSeconds });
+	// D717 (T2): the AI holds his seat from now (base economy and defence), until he is back or the seat is defeated.
+	if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+	{
+		Brain->SetHeld(Slot, true);
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) held by AI"), Slot, *Name);
+	}
 	ForceNetUpdate();
 	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) kept, F %d W %d S %d G %d, %d technologies"), Slot, *Name, Resources.Food,
 		Resources.Wood, Resources.Stone, Resources.Gold, Technologies.Done.Num());
@@ -774,6 +785,11 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 		// D719 (T0): his technologies, those acquired and those whose research ended while he was away, with their effects.
 		const FHOLTechnologyState Kept = AbsentSlots[Index].Technologies;
 		AbsentSlots.RemoveAt(Index);
+		// D717 (T2): he is back, the AI lets his seat go (what it remembered of it is dropped).
+		if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+		{
+			Brain->SetHeld(Slot, false);
+		}
 		for (const FName Technology : Kept.Done)
 		{
 			Taking.AddTechnology(Technology);

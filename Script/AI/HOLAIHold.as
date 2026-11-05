@@ -31,14 +31,16 @@ namespace HOLAIHold
 	}
 
 	// Whether a part of the brain runs for a slot: all of them when it is not held; held, only the economy, the technologies, the
-	// defence and the production of the defence units (Q-hold-scope: provisional, the answer may change the list).
+	// defence and the production of the defence units and of the Light Cavalry (Q-hold-scope = C: the answer of the user).
 	bool Allows(bool bHeld, EHOLAIHoldPart Part)
 	{
 		if (!bHeld)
 		{
 			return true;
 		}
-		return Part == EHOLAIHoldPart::Economy || Part == EHOLAIHoldPart::Technology || Part == EHOLAIHoldPart::Defence || Part == EHOLAIHoldPart::Military;
+		// Q-hold-scope = C (2026-11-05): and the Light Cavalry (the Stable, the cavalry queued: the mobile defence); the AI makes no other cavalry.
+		return Part == EHOLAIHoldPart::Economy || Part == EHOLAIHoldPart::Technology || Part == EHOLAIHoldPart::Defence || Part == EHOLAIHoldPart::Military
+			|| Part == EHOLAIHoldPart::Cavalry;
 	}
 
 	// The building the opening chose, unless it stands beyond the base while the slot holds (an expansion): then nothing.

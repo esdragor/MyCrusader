@@ -96,24 +96,42 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FHOLAITechMemory> TechMemories;
 
 	// The slots that hold the position of a player who left (DisconnectInProgress.md, D717): base economy and defence only (HOLAIHold.as).
-	// The server side sets them with SetHeld when the window of absence opens and clears them when the player returns.
-	TMap<int, bool> HeldSlots;
-
-	void SetHeld(int PlayerIndex, bool bHeld)
+	// The held seats are kept by the C++ base (UHOLAIBrainSubsystem::SetHeld / IsHeld): the game state sets them when the window of absence
+	// opens and clears them when the player returns; the release calls ForgetSlot, which drops what this brain remembered of the seat.
+	UFUNCTION(BlueprintOverride)
+	void ForgetSlot(int PlayerIndex)
 	{
-		if (bHeld)
-		{
-			HeldSlots.Add(PlayerIndex, true);
-		}
-		else
-		{
-			HeldSlots.Remove(PlayerIndex);
-		}
-	}
-
-	bool IsHeld(int PlayerIndex)
-	{
-		return HeldSlots.Contains(PlayerIndex);
+		RallySources.Remove(PlayerIndex);
+		FarmPlans.Remove(PlayerIndex);
+		Flights.Remove(PlayerIndex);
+		SentBuilders.Remove(PlayerIndex);
+		Rebuilds.Remove(PlayerIndex);
+		Kings.Remove(PlayerIndex);
+		RelayMemories.Remove(PlayerIndex);
+		AltarMemories.Remove(PlayerIndex);
+		TalentProfiles.Remove(PlayerIndex);
+		TalentAnswered.Remove(PlayerIndex);
+		DuelSeen.Remove(PlayerIndex);
+		DuelAsked.Remove(PlayerIndex);
+		ForumLogged.Remove(PlayerIndex);
+		LevelLogged.Remove(PlayerIndex);
+		Feints.Remove(PlayerIndex);
+		Snipes.Remove(PlayerIndex);
+		LevelsNow.Remove(PlayerIndex);
+		Rallied.Remove(PlayerIndex);
+		Defences.Remove(PlayerIndex);
+		RegroupCounts.Remove(PlayerIndex);
+		DefenceCounts.Remove(PlayerIndex);
+		Waves.Remove(PlayerIndex);
+		MarketSteps.Remove(PlayerIndex);
+		MarketBuilds.Remove(PlayerIndex);
+		BlockSeens.Remove(PlayerIndex);
+		Strandeds.Remove(PlayerIndex);
+		TechReasons.Remove(PlayerIndex);
+		TechMemories.Remove(PlayerIndex);
+		LastStatusStep.Remove(PlayerIndex);
+		SiteMemories.Remove(PlayerIndex);
+		LastBuildReason.Remove(PlayerIndex);
 	}
 
 	// The step of the last status line per slot.
