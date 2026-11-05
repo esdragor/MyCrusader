@@ -1,0 +1,3 @@
+# Points a regarder de l'essai neutrals (D641) : <nom de capture> | ce que l'utilisateur doit voir
+neutrals_camp_fight | Au centre, dans le cercle d'arbres : 3 Lanciers de couleur neutre (gris, ni la couleur d'un joueur) face a tes Hommes d'armes bleus qui arrivent par le bas, juste avant le choc.
+neutrals_camp_cleared | Apres le combat : les Lanciers neutres sont tombes (tas gris au sol), tes Hommes d'armes bleus restent autour du centre.

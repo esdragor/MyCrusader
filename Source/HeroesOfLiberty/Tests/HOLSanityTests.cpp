@@ -276,6 +276,18 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		Sides[1].Where = FVector2D(0., -400.);
 		TestFalse(TEXT("a body 400 cm off on one side is no wall"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
 		TestFalse(TEXT("nobody near: not boxed in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, TConstArrayView<HOLCombat::FBody>()));
+		// The trace of neutrals (2026-11-05, #11): friends at (-56, 109) and (64, 115) from the soldier, the target at (153, 262), one friend almost on the
+		// line (cross +2) and the other left of it: both on the same side, a wall all the same (their gap, 10 cm, takes no body of 110).
+		{
+			TArray<HOLCombat::FBody> Wall;
+			Wall.Add({ FVector2D(-56., 109.), 55.f });
+			Wall.Add({ FVector2D(64., 115.), 55.f });
+			TestTrue(TEXT("two friends ahead, 10 cm apart, on one side of the line: boxed in"), HOLCombat::IsBoxedIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+			Wall[1].Where = FVector2D(64., 215.);
+			TestFalse(TEXT("the second friend 215 cm off: no wall (out of reach)"), HOLCombat::IsBoxedIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+			Wall[1].Where = FVector2D(-60., -100.);
+			TestFalse(TEXT("one friend behind the soldier: no wall ahead"), HOLCombat::IsBoxedIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+		}
 		TestTrue(TEXT("a claimed place at 170 cm holds the rear flank back"), HOLCombat::ShouldSuspendRearFlank(true, 170.));
 		TestFalse(TEXT("a claimed place at 600 cm does not"), HOLCombat::ShouldSuspendRearFlank(true, 600.));
 		TestFalse(TEXT("no claimed place: the flank is not suspended"), HOLCombat::ShouldSuspendRearFlank(false, 100.));

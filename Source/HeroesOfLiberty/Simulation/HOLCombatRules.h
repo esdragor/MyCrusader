@@ -384,6 +384,7 @@ namespace HOLCombat
 		Ahead.Normalize();
 		bool bLeft = false;
 		bool bRight = false;
+		TArray<const FBody*, TInlineAllocator<8>> Near;
 		for (const FBody& Other : Others)
 		{
 			const FVector2D Off = Other.Where - SelfWhere;
@@ -394,8 +395,28 @@ namespace HOLCombat
 			const double Cross = Ahead.X * Off.Y - Ahead.Y * Off.X;
 			bLeft |= Cross > 0.;
 			bRight |= Cross < 0.;
+			if (Ahead.X * Off.X + Ahead.Y * Off.Y > 0.)
+			{
+				Near.Add(&Other);
+			}
 		}
-		return bLeft && bRight;
+		if (bLeft && bRight)
+		{
+			return true;
+		}
+		// 2026-11-05 (trace of neutrals, #11 behind #9 and #13): two close bodies in front that are both on the same side of the line to the target
+		// (one almost on it) still wall the soldier in when the gap between them cannot take its body; the sign test above misses that pair.
+		for (int32 A = 0; A < Near.Num(); ++A)
+		{
+			for (int32 B = A + 1; B < Near.Num(); ++B)
+			{
+				if (FVector2D::Distance(Near[A]->Where, Near[B]->Where) - Near[A]->Radius - Near[B]->Radius < 2.f * SelfRadius)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	/** D641 (hol.Combat.ClaimPlace): the rear flank (a 600 cm tour round the line) is suspended while the soldier holds a claimed place that is within MaxDistance (400 cm). */

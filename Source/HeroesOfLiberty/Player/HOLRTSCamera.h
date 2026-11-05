@@ -51,6 +51,12 @@ public:
 
 	// Pure rules, also used by the automation tests.
 	static FVector2D ClampFocus(const FVector2D& Focus, const FBox2D& Area);
+	/**
+	 * Whether the cursor at the screen's edge pans the camera. The "edge scrolling" option (bEdgeScroll) is the PLAYER's choice for the real cursor;
+	 * the scripted test cursor (hol.Camera.TestCursor, D257) is never the desktop's, so it always pans: the test tools write bEdgeScroll=False
+	 * (2026-11-04, bd827c1) against a stray real cursor, and the camera check "right edge 1 s" then got 0 m.
+	 */
+	static bool IsEdgeScrollWanted(const bool bOptionOn, const bool bScriptedCursor) { return bOptionOn || bScriptedCursor; }
 	/** Pan speed, cm/s: grows with the height, so that the screen moves at the same pace at any zoom. */
 	static float GetPanSpeed(float Height, EHOLCameraSpeed Speed);
 
