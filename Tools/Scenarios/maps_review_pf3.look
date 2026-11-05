@@ -1,4 +1,4 @@
 rev3_hinterland_base | ma base : cinq paysans sur le sol texture de L'Arriere-pays
 rev3_hinterland_centre | le milieu de la carte de L'Arriere-pays en vue large, relais du milieu a cote du centre
 rev3_hinterland_forest | une grande foret de L'Arriere-pays : forme organique (pas un carre), 200 arbres ou plus
-rev3_hinterland_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev3_hinterland_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)

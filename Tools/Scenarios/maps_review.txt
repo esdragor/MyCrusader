@@ -214,7 +214,7 @@ hol.Camera.Zoom -7
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note CARTE 6/8 : Les Gues, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+note CARTE 6/8 : Les Gues, taille Petite (440 m) : sol, forets, autel du volcan (sur le pont du milieu, au centre, D673), relais du milieu. Camera libre ; Entree = carte suivante.
 waitkey Entree : carte suivante (El Dorado)
 open /Game/Maps/ElDorado_Small
 waitmap ElDorado_Small
@@ -251,7 +251,7 @@ hol.Camera.Zoom -7
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note CARTE 7/8 : El Dorado, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+note CARTE 7/8 : El Dorado, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Annonce : l'anneau de taches vert-bleu tres sombres autour de l'or du milieu est le MARAIS voulu (CQ2, 3000 cm de large, 60 % de vitesse), pas un defaut de rendu. Camera libre ; Entree = carte suivante.
 waitkey Entree : carte suivante (La Couronne)
 open /Game/Maps/Crown_Small
 waitmap Crown_Small
@@ -288,6 +288,6 @@ hol.Camera.Zoom -7
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note CARTE 8/8 : La Couronne, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Camera libre ; Entree = carte suivante.
+note CARTE 8/8 : La Couronne, taille Petite (440 m) : sol, forets, autel du volcan (30 m du centre), relais du milieu. Annonce : aucun relief n'est dessine (D567, M-Q2 = A) : les bases sont derriere un anneau de rochers avec une rampe de 16 m, et l'or du milieu est celui d'El Dorado sans marais. Camera libre ; Entree = carte suivante.
 hol.Test.Sanity
 note FIN de la revue : les 8 cartes ont ete vues.

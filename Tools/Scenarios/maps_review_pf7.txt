@@ -30,5 +30,5 @@ hol.Test.Sanity
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note CARTE 7/8 : El Dorado, taille Petite (2 joueurs, 440 m). Regarde le sol (texture, pas gris), les forets (formes organiques, 200 arbres ou plus chacune), l'autel du volcan (socle noir et haut rouge, a 30 m du centre) et le relais du milieu (cercle de 12 m en travers de l'axe).
+note CARTE 7/8 : El Dorado, taille Petite (2 joueurs, 440 m). Regarde le sol (texture, pas gris), les forets (formes organiques, 200 arbres ou plus chacune), l'autel du volcan (socle noir et haut orange, a 30 m du centre) et le relais du milieu (cercle de 12 m en travers de l'axe). Au milieu, l'anneau de taches vert-bleu tres sombres autour de l'or est le MARAIS voulu (CQ2, 60 % de vitesse), pas un defaut de rendu.
 note Tu peux deplacer la camera librement. Console (carre) : hol.Relay.Report liste les relais.

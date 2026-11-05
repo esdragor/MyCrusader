@@ -1,32 +1,32 @@
 rev1_steppe_base | ma base : cinq paysans sur le sol texture de La Steppe
 rev1_steppe_centre | le milieu de la carte de La Steppe en vue large, relais du milieu a cote du centre
 rev1_steppe_forest | un bosquet de La Steppe (30 a 40 arbres), il y en a deux fois plus qu'avant
-rev1_steppe_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev1_steppe_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev2_plain_base | ma base : cinq paysans sur le sol texture de La Plaine
 rev2_plain_centre | le milieu de la carte de La Plaine en vue large, relais du milieu a cote du centre
 rev2_plain_forest | une grande foret de La Plaine : forme organique (pas un carre), 200 arbres ou plus
-rev2_plain_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev2_plain_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev3_hinterland_base | ma base : cinq paysans sur le sol texture de L'Arriere-pays
 rev3_hinterland_centre | le milieu de la carte de L'Arriere-pays en vue large, relais du milieu a cote du centre
 rev3_hinterland_forest | une grande foret de L'Arriere-pays : forme organique (pas un carre), 200 arbres ou plus
-rev3_hinterland_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev3_hinterland_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev4_forest_base | ma base : cinq paysans sur le sol texture de La Foret profonde
 rev4_forest_centre | le milieu de la carte de La Foret profonde en vue large, relais du milieu a cote du centre
 rev4_forest_forest | une grande foret de La Foret profonde : forme organique (pas un carre), 200 arbres ou plus
-rev4_forest_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev4_forest_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev5_cols_base | ma base : cinq paysans sur le sol texture de Les Cols
 rev5_cols_centre | le milieu de la carte de Les Cols en vue large, relais du milieu a cote du centre
 rev5_cols_forest | une grande foret de Les Cols : forme organique (pas un carre), 200 arbres ou plus
-rev5_cols_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev5_cols_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev6_fords_base | ma base : cinq paysans sur le sol texture de Les Gues
 rev6_fords_centre | le milieu de la carte de Les Gues en vue large, relais du milieu a cote du centre
 rev6_fords_forest | une grande foret de Les Gues : forme organique (pas un carre), 200 arbres ou plus
-rev6_fords_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev6_fords_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev7_eldorado_base | ma base : cinq paysans sur le sol texture de El Dorado
-rev7_eldorado_centre | le milieu de la carte de El Dorado en vue large, relais du milieu a cote du centre
+rev7_eldorado_centre | le milieu de la carte de El Dorado en vue large : le tas d'or entoure d'un anneau de marais vert-bleu sombre (voulu, CQ2), relais du milieu a cote
 rev7_eldorado_forest | une grande foret de El Dorado : forme organique (pas un carre), 200 arbres ou plus
-rev7_eldorado_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev7_eldorado_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
 rev8_crown_base | ma base : cinq paysans sur le sol texture de La Couronne
-rev8_crown_centre | le milieu de la carte de La Couronne en vue large, relais du milieu a cote du centre
+rev8_crown_centre | le milieu de la carte de La Couronne en vue large : meme tas d'or qu'El Dorado sans marais, aucun relief dessine (D567), relais du milieu a cote
 rev8_crown_forest | une grande foret de La Couronne : forme organique (pas un carre), 200 arbres ou plus
-rev8_crown_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut rouge, de pres
+rev8_crown_altar | l'autel du volcan : socle noir a deux marches, pilier noir, haut orange, en vue par defaut (la camera n est pas rapprochee)
