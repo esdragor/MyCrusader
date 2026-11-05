@@ -852,6 +852,25 @@ int32 AHOLGameState::FindSlotOnLogin(const FHOLMatchConfig& Config, const FStrin
 	return INDEX_NONE;
 }
 
+int32 AHOLGameState::FindSlotForLogin(const FHOLMatchConfig& Config, const FString& Name, const AHOLPlayerState& Logging,
+	AHOLPlayerState*& OutReplaced) const
+{
+	// STUB (red test first): today's behaviour, a live old connection makes the new one a spectator.
+	OutReplaced = nullptr;
+	return FindSlotOnLogin(Config, Name, GetSlotsInUse(&Logging));
+}
+
+void AHOLGameState::RetireHolder(AHOLPlayerState& Old, const double Now, const double WindowSeconds)
+{
+	// STUB (red test first).
+}
+
+AHOLPlayerState* AHOLGameState::FindLiveHolder(const UWorld& World, const int32 Slot, const AHOLPlayerState* Except)
+{
+	// STUB (red test first).
+	return nullptr;
+}
+
 bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting)
 {
 	return GiveSlotStock(Taking, Starting, GetServerWorldTimeSeconds());

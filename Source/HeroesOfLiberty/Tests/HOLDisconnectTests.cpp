@@ -690,6 +690,104 @@ bool FHOLDisconnectHeldStockTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D717 (T4): a name that comes back while its OLD connection is still alive (he restarted in less than the engine's timeout) takes his
+// seat back; he is not a spectator. The real chain of the game mode (FindSlotForLogin, RetireHolder, then PostLogin's SetMatchSlot and
+// GiveSlotStock): the new player state has the stock and technologies the old one had (not the starting stock), his order stays in the
+// centre's queue, the old player state is no longer a holder, and its LATE Logout (KeepAbsentSlot) puts nobody "away" under the new
+// player (nor a second duplicate still holding the seat). An unknown name watches; Alice's seat is untouched.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectReplaceTest, "HeroesOfLiberty.Match.DisconnectReplace", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectReplaceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* BobOld = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* BobNew = World->SpawnActor<AHOLPlayerState>();
+	AHOLBuilding* BobCentre = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* AliceCentre = World->SpawnActor<AHOLBuilding>(FVector(-20000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("production"), Production) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("player states"), Alice) && TestNotNull(TEXT("player states"), BobOld) && TestNotNull(TEXT("player states"), BobNew)
+		&& TestNotNull(TEXT("centres"), BobCentre) && TestNotNull(TEXT("centres"), AliceCentre))
+	{
+		const FHOLMatchConfig Config = MakeNamedConfig();
+		State->InitVictory(Config);
+		Alice->SetMatchSlot(0, 0);
+		BobOld->SetMatchSlot(1, 1);
+		State->AddPlayerState(Alice);
+		State->AddPlayerState(BobOld);
+		const FHOLResources Starting(2000, 2000, 500, 500);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*BobOld, Starting);
+		BobCentre->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		AliceCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Production->OnWorldBeginPlay(*World);
+		const FName Peasant(TEXT("Peasant"));
+		const FName PloughI(TEXT("PloughI"));
+		BobOld->AddTechnology(PloughI);
+		// His order in progress at the centre (paid on his stock), before he "restarts".
+		TestTrue(TEXT("Bob orders a Peasant"), UHOLAIOrderLibrary::IssueAIProduceOrder(World, 1, FVector::ZeroVector, Peasant));
+		Simulation->GetOnStepStarted().Broadcast(1);
+		TestEqual(TEXT("the Peasant is in his centre's queue"), BobCentre->GetProductionQueue().Num(), 1);
+		const FHOLResources BobStock = BobOld->GetResources();
+		TestTrue(TEXT("(his stock is no longer the starting one)"), BobStock.ToString() != Starting.ToString());
+
+		// The new connection of his name, no slot yet (PostLogin's state), while the old one is still in the player array.
+		State->AddPlayerState(BobNew);
+		AHOLPlayerState* Replaced = nullptr;
+		const int32 Slot = State->FindSlotForLogin(Config, TEXT("Bob"), *BobNew, Replaced);
+		TestEqual(TEXT("his name finds his seat, not a spectator"), Slot, 1);
+		TestTrue(TEXT("the old connection's player state is the one to replace"), Replaced == BobOld);
+		AHOLPlayerState* ReplacedUnknown = nullptr;
+		TestEqual(TEXT("an unknown name watches"), State->FindSlotForLogin(Config, TEXT("Zed"), *BobNew, ReplacedUnknown), INDEX_NONE);
+		TestNull(TEXT("... and replaces nobody"), ReplacedUnknown);
+
+		// PostLogin's order: the old one handed over, then the slot and the stock to the new one.
+		if (Slot == 1 && Replaced == BobOld)
+		{
+			State->RetireHolder(*BobOld, 100., 180.);
+			BobNew->SetMatchSlot(Slot, 1);
+			TestTrue(TEXT("he takes his seat back"), State->GiveSlotStock(*BobNew, Starting, 100.));
+			TestEqual(TEXT("his stock is the one of his old connection, not the starting one"), BobNew->GetResources().ToString(), BobStock.ToString());
+			TestTrue(TEXT("his Plough I"), BobNew->GetTechnologies().Has(PloughI));
+			TestEqual(TEXT("his order stays in the centre's queue"), BobCentre->GetProductionQueue().Num(), 1);
+			TestTrue(TEXT("the old player state is a spectator now"), BobOld->IsOnlyASpectator());
+			TestTrue(TEXT("... without a seat"), BobOld->GetPlayerIndex() != 1);
+			TestTrue(TEXT("the new player state alone holds the seat"), AHOLGameState::FindLiveHolder(*World, 1, nullptr) == BobNew);
+			TestNull(TEXT("no player state of the AI is left on the seat"), AHOLGameState::FindHeldBot(*World, 1));
+			TestFalse(TEXT("his seat is not absent"), State->IsSlotAbsent(1));
+			// The old connection closes late: nobody is put away under the new player.
+			TestFalse(TEXT("late Logout of the old connection: the seat is not kept"), State->KeepAbsentSlot(*BobOld, 101., 180.));
+			TestFalse(TEXT("... the seat stays present"), State->IsSlotAbsent(1));
+			TestNull(TEXT("... no AI on it"), AHOLGameState::FindHeldBot(*World, 1));
+			TestEqual(TEXT("... his stock is untouched"), BobNew->GetResources().ToString(), BobStock.ToString());
+		}
+
+		// A duplicate that was NOT handed over (killed another way): its late Logout is no absence either, the new holder is there.
+		AHOLPlayerState* Duplicate = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("duplicate"), Duplicate))
+		{
+			Duplicate->SetMatchSlot(1, 1);
+			State->AddPlayerState(Duplicate);
+			TestFalse(TEXT("a duplicate closing late: the seat is not kept"), State->KeepAbsentSlot(*Duplicate, 102., 180.));
+			TestFalse(TEXT("... the seat stays present"), State->IsSlotAbsent(1));
+		}
+		TestEqual(TEXT("Alice's stock is untouched"), Alice->GetResources().ToString(), Starting.ToString());
+		TestFalse(TEXT("Alice is not absent"), State->IsSlotAbsent(0));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 // D718 (T1): the end of the window by the camps of the launch (D357). Alone in his camp with only two camps in all (the 1v1,
 // the 1 against 2 too): defeat; otherwise the AI keeps the seat (teams, free for all of 3 and more, a camp with an AI seat
 // beside him). The Diplomacy mode has every slot alone in its camp (GetCamp). The seat states and the return.
