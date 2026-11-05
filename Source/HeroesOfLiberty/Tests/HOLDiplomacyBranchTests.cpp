@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
+#include "Commands/HOLUnitOrderProcessor.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -348,6 +350,137 @@ bool FHOLDiplomacyCombatTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("Neutral made in the middle of the fight: the defence goes on (D661)"), HurtWithin(E, F, 2 * FiveSeconds));
 		}
 		Clear();
+		CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDiplomacyAttackNeutralTest, "HeroesOfLiberty.Diplomacy.AttackOnNeutral", UE::HeroesOfLiberty::Tests::DiplomacyBranch::Flags)
+
+// E-diplomacy BUG (the user, 2026-11-05): the attack order given at a NEUTRAL player's unit (Q + click gives it, AHOLPlayerController::AttackMoveAt, through
+// HOLPlayerOrders::Attack as the server's RPC does) must HURT it: the effect is read, not a predicate. Real order processor and combat processor, the
+// stances said through the real book. Two Men-at-arms of slots 0 and 1, mutual Neutral: nobody is hurt without an order (D369); the order of slot 0 on the
+// unit of slot 1: its health falls; the stance is still Neutral (the order never breaks it).
+bool FHOLDiplomacyAttackNeutralTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::DiplomacyBranch;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	if (TestNotNull(TEXT("game state"), GameState) && TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("commands"), Commands))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLUnitOrderProcessor* Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+		Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 FiveSeconds = FMath::CeilToInt(5.f / StepSeconds);
+		int64 Step = 0;
+		// Order processor then combat processor, as the simulation chains them.
+		const auto RunStep = [Simulation, Units, Orders, Combat, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Orders, ProcessingContext);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Say = [&](const int32 From, const int32 To, const int32 Stance)
+		{
+			Commands->IssueDiplomacyOrder(From, EHOLDiplomacyOrderKind::Stance, To, Stance);
+			RunStep();
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = Type;
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto HealthOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			return State ? State->CurrentHealth : -1.f;
+		};
+
+		Launch(GameState, EHOLMatchMode::Diplomacy);
+		RunStep();
+		Say(0, 1, HOLDiplomacy::Neutral);
+		Say(1, 0, HOLDiplomacy::Neutral);
+		const uint32 Attacker = Place(FName(TEXT("ManAtArms")), 0, FVector(0.0, 0.0, 0.0));
+		const uint32 Target = Place(FName(TEXT("ManAtArms")), 1, FVector(150.0, 0.0, 0.0));
+		if (TestTrue(TEXT("a Man-at-arms of slot 0 and one of slot 1 born"), Attacker != 0 && Target != 0))
+		{
+			const float TargetStart = HealthOf(Target);
+			const float AttackerStart = HealthOf(Attacker);
+			bool bHurtWithoutOrder = false;
+			for (int32 Index = 0; Index < FiveSeconds; ++Index)
+			{
+				RunStep();
+				bHurtWithoutOrder |= HealthOf(Target) < TargetStart || HealthOf(Attacker) < AttackerStart;
+			}
+			TestFalse(TEXT("both Neutral and no order: the Neutral is not struck (D369)"), bHurtWithoutOrder);
+
+			// The order, through the very function the server's RPC of the click calls.
+			const uint32 Ordered[] = { Attacker };
+			TestTrue(TEXT("the order of slot 0 is accepted into the queue"), HOLPlayerOrders::Attack(*World, 0, Ordered, Target, false));
+			bool bTargetHurt = false;
+			for (int32 Index = 0; Index < 2 * FiveSeconds && !bTargetHurt; ++Index)
+			{
+				RunStep();
+				bTargetHurt = HealthOf(Target) < TargetStart;
+			}
+			TestTrue(TEXT("the attack order on a Neutral's unit: its health falls (the effect, not a predicate)"), bTargetHurt);
+			const FHOLCampTable Camps = FHOLCampTable::FromWorld(World);
+			TestEqual(TEXT("the stance is unchanged: still Neutral"), Camps.Relation(0, 1), static_cast<int32>(HOLDiplomacy::Neutral));
+		}
 		CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
 	}
 	GEngine->DestroyWorldContext(World);
