@@ -5,7 +5,7 @@ hol.Camp.Add -9800 0 3 Spearman
 waitlog Camp 0: 3 Spearman at
 hol.Camera.Focus -9500 0
 frames 5
-hol.Units.Spawn 6 -11500 0 0 ManAtArms 250
+hol.Units.Spawn 6 -13800 0 0 ManAtArms 250
 waitlog Spawn: 6 ManAtArms
 frames 120
 hol.Combat.Report
@@ -18,6 +18,9 @@ waitlog Scripted left click at
 waitlog attack-move to
 waitlog hits #
 waitlog Camp 0: fighting
-frames 240
+hol.Camera.Zoom 8
+frames 40
+capture neutrals_qground_fight
+frames 200
 hol.Camp.Report
 note Q puis clic sur le sol derriere un camp neutre : tes 6 hommes rencontrent les 3 Lanciers neutres et les frappent (le camp riposte).
