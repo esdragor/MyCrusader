@@ -77,6 +77,16 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L1-13 | Test rouge vérifiable par l'ordre des commits | `RAPPORT TEST_ROUGE` : SHA du test antérieur au correctif | RAPPORT |
 | L5-bilan | Chaque leçon « appliquée / non appliquée » avec preuve | `Close` FAIL sans le titre `### Lecons appliquees <date>` | GATE |
 
+## Leçons du 2026-11-06 (séance d'1 h du 2026-11-05 après-midi) : contrôles ajoutés
+| ID | Règle | Contrôle | Où |
+|---|---|---|---|
+| L6-1 | Au moins 3 tâches `[ ]` étiquetées `sans C++` en file avant de lancer (la séance était vide après 14:12) | `session_gate.ps1 -Phase Launch` : WARN si < 3 | GATE |
+| L6-2 | La session principale ne lit jamais la file en entier (42k tokens) : l'étape 0 rend un extrait | consigne de l'étape 0 ; ligne de nettoyage de la file | SESSION |
+| L6-3 | À la réception d'un rapport : la copie principale n'a que des docs voulus modifiés, le worktree contient main, est propre, binaire plus récent que le dernier code | `session_gate.ps1 -Phase Report -Root <worktree>` (FAIL / WARN) | GATE |
+| L6-4 | Un bug rapporté se rejoue par le scénario et le geste exacts de l'utilisateur ; test « sur le geste réel » = scénario `click` | ligne `[ ]` « Scénario click » ; question de repro posée AVANT de lancer l'agent | SESSION + AGENT |
+| L6-5 | Après `git merge main`, `build.ps1` avant tout `quick_check` | `-Phase Report` (WARN binaire périmé) ; ligne `sync_worktrees` + build | GATE |
+| L6-6 | Mesures répétées sur un binaire copié, jamais sur celui que `build.ps1` doit écraser | ligne `[ ]` des mesures | AGENT |
+
 ## Outils encore à construire (lignes `[ ]` de `Auto_Journey_File.md`)
 - L1-12 (a) capture en séquence au pas de simulation (prouver une animation) ; (b) détection par le pré-vol d'un panneau qui en cache un autre ; (c) `check.ps1` qui échoue quand l'audit `Sanity` échoue.
 - L3-3 : journaux nommés de `quick_check` (`net`, `aiserver`...) sans `Get-FreshLog` partout.
