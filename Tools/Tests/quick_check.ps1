@@ -129,6 +129,28 @@ if (-not $MapKey) { Write-Host "quick_check : FAIL (unknown map '$Map'; Tools\Da
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "fogclick", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+# "values" (PT0 of PlaytestInProgress.md, D727): the sheet of values, pure Python, no engine: the tool's own tests (a mini repository per
+# case, then the real registry) and `make_value_sheet.py --check` (a value that moved, a marker with no row, a validated value that
+# drifted fail it). Asked alone, nothing else starts (no editor, no build).
+$ValuesOk = $true
+if ($Parts -contains "values") {
+    $Parts = @($Parts | Where-Object { $_ -ne "values" })
+    $env:PYTHONIOENCODING = "utf-8"
+    $ValuesChecks = [ordered]@{}
+    if (-not (Get-Command python -ErrorAction SilentlyContinue)) { $ValuesChecks["python is on the path"] = $false }
+    else {
+        $ValuesTestOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\value_sheet_test.py") 2>&1)
+        $ValuesChecks["value_sheet_test.py ($($ValuesTestOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        $ValuesCheckOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\make_value_sheet.py") --check 2>&1)
+        $ValuesChecks["make_value_sheet.py --check ($($ValuesCheckOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+    }
+    $ValuesFailed = @($ValuesChecks.Keys | Where-Object { -not $ValuesChecks[$_] })
+    Write-Host "values : $(if ($ValuesFailed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
+    $ValuesFailed | ForEach-Object { Write-Host "  [KO] $_" }
+    if ($ValuesFailed.Count) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
+    $ValuesOk = $ValuesFailed.Count -eq 0
+    if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { exit 1 }; exit 0 }
+}
 # "hero" (J8a.6): the hero's checks alone, solo and 2 clients: the build part's hero cases (build:hero) and the net part
 # cut to its hero phases (each client goes from its start to the hero sheets, the server spawns the heroes once both
 # are there; the "net 2 clients" report keeps its join and server checks only). With "net" asked too, the net part whole.
@@ -2927,7 +2949,7 @@ $GameTimedOut = -not $GameProcess.WaitForExit($GameLimitSeconds * 1000)
 if ($GameTimedOut) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
-$AllOk = $true
+$AllOk = $ValuesOk
 # The first script compile errors of a log (Angelscript, D484), at most three lines: file, then line and message. A script
 # test's failed assertion is written "Angelscript: Error: ::<test>" too, its next line "Assert failed ...": not a compile
 # error (the test's own failure says it, J8a.4 loop 5). The script's Log() lines ("Angelscript: Hero return refused ...")
