@@ -689,13 +689,21 @@ def obstacles(recipe):
 # twice the wood it had (600, Huge 900) in groves of 30 to 40 (its spirit kept: scattered clumps), and every other map's forests are REAL
 # forests of 200 trees or more (organic blobs with glades, never squares). WOODS: profile -> (budget {size: (trees, berries)}, GROVE_LADDER,
 # GROVE_CYCLE, GROVE_MEANS, trees asked of a deposit point = common.PACK_TREES). A map module calls steppe.sources(recipe, "forests").
-NEAR_FORESTS = 1  # real forests: how many of NEAR's three woods stay (as big as a forest)
+# 2026-11-05 (the user, REGLAGE on E-maps-review: "much more forest round the camp, or bigger forests; the Deep Forest has few trees for its name",
+# then "the trees make x3 except on the Steppe, which makes x1.5"): the number of trees per player is the former base (400, Huge 600: 400 x 1.5) times
+# FOREST_FACTOR (3) on every map but the Steppe, times STEPPE_FACTOR (1.5) on the Steppe: the factor REPLACES the Steppe's own former x1.5 (it was 600,
+# Huge 720), and combines with Huge's x1.5. The Deep Forest keeps its former ratio to the others (600 / 400 = x1.5 more: 1 800, Huge 2 700), so it stays the
+# thickest. All three of the near layer's woods are real forests (it was one). HOL_FOREST_FACTOR=1, HOL_STEPPE_FACTOR=1.5 and HOL_NEAR_FORESTS=1 give the
+# former forests back. A tree stays 100 wood.
+FOREST_FACTOR = float(os.environ.get("HOL_FOREST_FACTOR", "3"))
+STEPPE_FACTOR = float(os.environ.get("HOL_STEPPE_FACTOR", "1.5"))
+NEAR_FORESTS = int(os.environ.get("HOL_NEAR_FORESTS", "3"))  # real forests: how many of NEAR's three woods stay (as big as a forest)
 WOODS = {
-    "steppe": ({"default": (600, 15), "Huge": (int(os.environ.get("HOL_STEPPE_HUGE_TREES", "720")), 23)}, [30, 34, 37, 40],
+    "steppe": ({"default": (int(400 * STEPPE_FACTOR), 15), "Huge": (int(600 * STEPPE_FACTOR), 23)}, [30, 34, 37, 40],
                [34, 34, 30, 37, 40, 34, 34, 30, 37, 40], [34.0, 35.0, 36.0, 37.0, 38.0], 35),
-    "forests": ({"default": (400, 15), "Huge": (int(os.environ.get("HOL_FORESTS_HUGE_TREES", "600")), 23)}, [200, 210, 220, 230],
+    "forests": ({"default": (int(400 * FOREST_FACTOR), 15), "Huge": (int(600 * FOREST_FACTOR), 23)}, [200, 210, 220, 230],
                 [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
-    "dense": ({"default": (600, 15), "Huge": (int(os.environ.get("HOL_DENSE_HUGE_TREES", "720")), 23)}, [200, 210, 220, 230],
+    "dense": ({"default": (int(600 * FOREST_FACTOR), 15), "Huge": (int(900 * FOREST_FACTOR), 23)}, [200, 210, 220, 230],
               [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
 }
 

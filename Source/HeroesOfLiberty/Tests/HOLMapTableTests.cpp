@@ -88,8 +88,8 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 		int32 NeededHuge;
 	};
 	constexpr FValueLine MineralValue[] = {
-		{ EHOLResource::Gold, TEXT("gold"), 10000, 15000 },
-		{ EHOLResource::Stone, TEXT("stone"), 5000, 7500 },
+		{ EHOLResource::Gold, TEXT("gold"), 21000, 25000 },  // 2026-11-05 (Q-Maps-Budget = B): the mines are 2000, 2500, 3000, 4000, the places kept: 4000 + 2 x 2500 + 6 x 2000 (Huge: 2 x 4000)
+		{ EHOLResource::Stone, TEXT("stone"), 11500, 12500 },  // 3000 + 2500 + 3 x 2000 (Huge: 4000 + 2500 + 3 x 2000)
 	};
 	constexpr double ValueMargin = 1.10;
 	constexpr int32 MinMineralSizes = 3;

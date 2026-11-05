@@ -15,7 +15,7 @@ import os
 
 import unreal
 
-from maps import common
+from maps import common, steppe
 from maps.common import spawn_shape, matte_instance, placed_source
 
 GROUND = "MI_Ground_Plain"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
@@ -39,7 +39,7 @@ CROWN_COLOR = unreal.LinearColor(0.10, 0.22, 0.08, 1.0)
 # packs of PACK_SIDE x PACK_SIDE trees (a grid with the jitter of common.WOOD_JITTER, turned by a random yaw), berry patches and the far
 # veins, each thrown on the cell of a 6 m grid of the territory nearest to the distance asked of it (growing outwards), CLEAR from
 # everything else.
-BUDGET_TREES = {"default": 400, "Huge": int(os.environ.get("HOL_HUGE_TREES", "600"))}  # 2026-11-04 (the user): 400 trees per player, Huge 1.5 times that  # HOL_HUGE_TREES=450 (the formula 1.5 x 300): the same setting as the Steppe's
+BUDGET_TREES = {"default": int(400 * steppe.FOREST_FACTOR), "Huge": int(int(os.environ.get("HOL_HUGE_TREES", "600")) * steppe.FOREST_FACTOR)}  # 2026-11-05 (the user: much more forest): x steppe.FOREST_FACTOR  # 2026-11-04 (the user): 400 trees per player, Huge 1.5 times that  # HOL_HUGE_TREES=450 (the formula 1.5 x 300): the same setting as the Steppe's
 BUDGET_BERRIES = {"default": 15, "Huge": 23}
 BASE_PACKS = [16, 16]
 PACK_SIDE = 4

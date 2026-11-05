@@ -593,7 +593,7 @@ def placed_source(type_name, x, y):
 # Big 5 000. The value of a territory is the M-Q4 one (4 gold veins of 2 500 = 10 000 gold, 2 stone veins of 2 500 = 5 000 stone; Huge x1.5,
 # M-Q4b) but it comes as a MIX of sizes, so that a territory holds MINERAL_MIX piles: a few big ones far out, mediums, many small ones near
 # the middle and the belts. Map.Table checks the value, the number of piles and the variety on the saved files (HOLMapTableTests.cpp).
-MINERAL_AMOUNTS = {"Small": 500, "Medium": 1000, "Standard": 2500, "Big": 5000}
+MINERAL_AMOUNTS = {"Small": 2000, "Medium": 2500, "Standard": 3000, "Big": 4000}  # 2026-11-05 (the user, Q-Maps-Budget = B: "a mini mine is 2000, a big one 4000", four amounts kept, the places kept; was 500 / 1000 / 2500 / 5000): per territory 21 000 gold, 11 500 stone (Huge 25 000 / 12 500)
 MINERAL_RESOURCES = ("Gold", "Stone")
 MINERAL_MIX = {
     "default": {"Gold": ["Big", "Medium", "Medium"] + ["Small"] * 6, "Stone": ["Standard", "Medium"] + ["Small"] * 3},   # 10 000 gold, 5 000 stone

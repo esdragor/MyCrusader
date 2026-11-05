@@ -594,16 +594,16 @@ bool FHOLGatherTablesTest::RunTest(const FString& Parameters)
 	};
 	const FExpectedSource Expected[] = {
 		{ HOLSourceTypeNames::Tree, EHOLResource::Wood, 100 },
-		{ HOLSourceTypeNames::BerryBush, EHOLResource::Food, 200 },
-		{ HOLSourceTypeNames::StoneVein, EHOLResource::Stone, 2500 },
-		{ HOLSourceTypeNames::GoldVein, EHOLResource::Gold, 2500 },
+		{ HOLSourceTypeNames::BerryBush, EHOLResource::Food, 300 },
+		{ HOLSourceTypeNames::StoneVein, EHOLResource::Stone, 3000 },
+		{ HOLSourceTypeNames::GoldVein, EHOLResource::Gold, 3000 },
 		// M-Q9: the veins in other sizes (small 500, medium 1 000, big 5 000), the same behaviour as the standard ones.
-		{ HOLSourceTypeNames::StoneVeinSmall, EHOLResource::Stone, 500 },
-		{ HOLSourceTypeNames::StoneVeinMedium, EHOLResource::Stone, 1000 },
-		{ HOLSourceTypeNames::StoneVeinBig, EHOLResource::Stone, 5000 },
-		{ HOLSourceTypeNames::GoldVeinSmall, EHOLResource::Gold, 500 },
-		{ HOLSourceTypeNames::GoldVeinMedium, EHOLResource::Gold, 1000 },
-		{ HOLSourceTypeNames::GoldVeinBig, EHOLResource::Gold, 5000 },
+		{ HOLSourceTypeNames::StoneVeinSmall, EHOLResource::Stone, 2000 },
+		{ HOLSourceTypeNames::StoneVeinMedium, EHOLResource::Stone, 2500 },
+		{ HOLSourceTypeNames::StoneVeinBig, EHOLResource::Stone, 4000 },
+		{ HOLSourceTypeNames::GoldVeinSmall, EHOLResource::Gold, 2000 },
+		{ HOLSourceTypeNames::GoldVeinMedium, EHOLResource::Gold, 2500 },
+		{ HOLSourceTypeNames::GoldVeinBig, EHOLResource::Gold, 4000 },
 	};
 	for (const FExpectedSource& Source : Expected)
 	{
@@ -695,10 +695,10 @@ bool FHOLGatherVeinSizesTest::RunTest(const FString& Parameters)
 			int32 Amount;
 		};
 		const FSize Sizes[] = {
-			{ HOLSourceTypeNames::StoneVeinSmall, EHOLResource::Stone, 500 }, { HOLSourceTypeNames::StoneVeinMedium, EHOLResource::Stone, 1000 },
-			{ HOLSourceTypeNames::StoneVein, EHOLResource::Stone, 2500 }, { HOLSourceTypeNames::StoneVeinBig, EHOLResource::Stone, 5000 },
-			{ HOLSourceTypeNames::GoldVeinSmall, EHOLResource::Gold, 500 }, { HOLSourceTypeNames::GoldVeinMedium, EHOLResource::Gold, 1000 },
-			{ HOLSourceTypeNames::GoldVein, EHOLResource::Gold, 2500 }, { HOLSourceTypeNames::GoldVeinBig, EHOLResource::Gold, 5000 },
+			{ HOLSourceTypeNames::StoneVeinSmall, EHOLResource::Stone, 2000 }, { HOLSourceTypeNames::StoneVeinMedium, EHOLResource::Stone, 2500 },
+			{ HOLSourceTypeNames::StoneVein, EHOLResource::Stone, 3000 }, { HOLSourceTypeNames::StoneVeinBig, EHOLResource::Stone, 4000 },
+			{ HOLSourceTypeNames::GoldVeinSmall, EHOLResource::Gold, 2000 }, { HOLSourceTypeNames::GoldVeinMedium, EHOLResource::Gold, 2500 },
+			{ HOLSourceTypeNames::GoldVein, EHOLResource::Gold, 3000 }, { HOLSourceTypeNames::GoldVeinBig, EHOLResource::Gold, 4000 },
 		};
 		TArray<FHOLPlacedSource>& Placed = *LayoutSources->ContainerPtrToValuePtr<TArray<FHOLPlacedSource>>(Layout);
 		for (int32 Number = 0; Number < UE_ARRAY_COUNT(Sizes); ++Number)
