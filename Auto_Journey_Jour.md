@@ -275,3 +275,35 @@ Lancés ~10:40 : Glorfindel (Légions L0, C++), Faramir (Déconnexion T0, C++), 
 
 ### Lecons appliquees 2026-11-05 (bilan retroactif ; les controles ont ete ecrits apres la seance)
 - L5-1 heure avant lancement : NON appliquee (agent lance a 13:19 avec arret 13:15). L5-2 tableau des agents : NON appliquee (ecrit apres coup). L1-1/L3-6/L4-7 plafond tokens : NON appliquee (6 agents sur 12 au-dela de 100 appels). L5-4/Q5 recette independante sur geste reel : NON appliquee pour le Q-clic (bug trouve par l'utilisateur). L3-1/L4-4 plafond de 3 agents C++ : appliquee (file de build vide toute la seance). L1-2 commits par lot : appliquee (tous les agents ont commite). L1-3 merge main avant rapport : appliquee (tous). L3-2 build en tete : appliquee sauf Haldir 2 (pas de build apres ses changements de donnees). Q10/L4-10 essai apres fusion et build : appliquee pour les commandes (Arwen, verifie ensuite par `Essay` : PASS). L4-1 arret dur contrat : appliquee a 11:20 (cloture) ; non appliquee ensuite (13:19). L4-14 sync_worktrees : appliquee a 11:51 (Sauron en conflit).
+
+## Agents du 2026-11-05 (seance d'1 h, 13:43 -> fin 14:41, arret dur des agents 14:22, alarme 14:26, 3 agents C++ max)
+| Nom | Worktree / branche | Tache | Classe | Arret | Resultat |
+|---|---|---|---|---|---|
+| Etape 0 | lecture seule | plan de lancement (14 appels) | - | - | rapport OK, plan relu |
+| Elrond-4 | HeroesOfLiberty-Elrond / tiers | BUG Q-clic sur neutre n'attaque pas (ligne 210) | C++ 1 | 14:22 | en cours |
+| Celeborn-3 | HeroesOfLiberty-Celeborn / hero-j8-close | BUG neutrals : inactifs avec place libre (lignes 17 et 138) | C++ 2 | 14:22 | en cours |
+| Haldir-3 | HeroesOfLiberty-Haldir / maps | regenerer Les Gues Petite + cartes budgets x3 (ligne 80), build, tests,sizes | C++ 3 | 14:22 | en cours |
+| Galadriel-3 | HeroesOfLiberty-Galadriel / galadriel-tab | panneau Diplomatie presentation 2 deborde (ligne 13), AS seul | sans C++ | 14:22 | en cours |
+| Faramir-3 | HeroesOfLiberty-Faramir / fog | Deconnexion T2 (DisconnectInProgress.md), AS seul | sans C++ | 14:22 | en cours |
+| integrateur | - | NON NOMME : aucune fusion autorisee sans accord de l'utilisateur ; les branches restent pretes, essais = LOGIQUE SEULEMENT | - | - | - |
+| Arwen, Glorfindel, Sauron | - | NON lances : Arwen = editeur en meme temps que Haldir ; Glorfindel = L2 est du C++ (4e) ; Sauron = conflit .uasset + editeur | - | - | - |
+
+### Bilan seance d'1 h du 2026-11-05 (13:43 -> 14:41, agents finis a 14:12, worktrees en C:\Users\baudo\Documents\HeroesOfLiberty-*)
+| Agent | Appels | Fin | Resultat |
+|---|---|---|---|
+| Faramir-3 (fog deb6c33) | 45 | 13:58 | cerveau AS HOLAIHold.as, 7 tests verts, aiserver PASS ; reste C++ (SetHeld au Logout) en tete de file ; Q-hold-scope (defaut A) |
+| Galadriel-3 (galadriel-tab 0916bb0) | 91 (hors regle 80) | 14:03 | panneau Diplomatie en place Fill, 3 scenarios preflight PASS, LOGIQUE SEULEMENT (molette) ; Q-diplomacy-panel-room (defaut A) ; a ecrit par erreur dans DiplomacyInProgress.md de la copie principale, rattrape (EOL seul) |
+| Elrond-4 (tiers 89bd5bb) | 75 | 14:08 | BUG Q-clic NON reproduit, test d'effet vert du 1er coup, build 741 s ; reponse utilisateur = hypothese A (un seul cote Neutre), ligne [ ] en tete de file |
+| Haldir-3 (maps 451f166) | 53 | 14:12 | 7 cartes Petites regenerees (x3), tests,sizes 977/977, aiduel/crossings Fords PASS ; restent 28 fichiers + Steppe |
+| Celeborn-3 (hero-j8-close 43e774b) | 74 | 14:12 | neutrals 2/4 NON corrige, audit PlaceWalk, tests,combat verts, camera rouge non investigue |
+Decisions de l'utilisateur : fusion dans main NON (branches pretes) ; Q+clic neutre = cas A. Aucun essai donne (tous LOGIQUE SEULEMENT). sync_worktrees 14:13 : Arwen et Glorfindel mis a jour, Sauron CONFLIT (BuildingTypes.uasset, connu).
+Aucun agent lance apres 13:44 : plafond C++ (3) occupe puis plus assez de temps (build 741 s).
+
+### Lecons appliquees 2026-11-05
+- L5-1 heure avant lancement : appliquee (Get-Date 13:43:41, gate PASS 57 min). L5-2 tableau des agents ecrit AU LANCEMENT : appliquee (les chemins de worktree du tableau sont faux, corriges ici : Documents\HeroesOfLiberty-*).
+- L3-1/L4-4 plafond 3 agents C++ : appliquee (3 C++, 2 sans C++, gate file 0-2). L1-1/L3-6/L4-7 80 appels : 4 sur 5 appliquee (45, 75, 53, 74), Galadriel 91 (hors regle 80, sous 100).
+- L1-2 commits par lot : appliquee (tous ont commite, dernier commit < 30 min). L1-3 merge main avant rapport : appliquee (5/5).
+- L3-2 premier build dans les 15 min : Elrond 13:48 appliquee, Haldir 13:53 appliquee, Celeborn 14:00 non appliquee (editeur tenait la DLL pendant ses mesures). L5-3 pas de code non compile rendu : appliquee (Galadriel et Faramir ont signale NON COMPILE/binaire perime).
+- L4-1/L4-3 arret dur contrat et alarme : appliquee (alarme 14:26 posee, tous finis a 14:12, aucun lancement apres l'heure). L5-4/Q5 recette independante : NON appliquee (aucune fusion, aucun essai donne, Elrond a prouve l'effet mais pas le geste). L3-8 integrateur nomme : NON appliquee (non nomme, aucune fusion autorisee).
+- L5-7 accord de commiter les dossiers : sans objet (gate : aucun dossier non suivi). Q11 essais : 0 donne. T2-4 questions : 3 posees (Q-hold-scope, Q-diplomacy-panel-room, Q-qclic-neutre-repro), 1 par chantier.
+- L3-4 ecriture au bon endroit : NON appliquee (Galadriel a ecrit dans la copie principale ; Elrond/Celeborn/Haldir : docs voulus seulement). L4-14 sync_worktrees : appliquee 14:13 (Sauron en conflit, signale).
