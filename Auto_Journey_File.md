@@ -206,3 +206,6 @@ Une tâche = une phrase, le journal à lire, le premier test rouge, 15-30 min. L
 - [x] Fusions faites le 2026-10-30 (19:20) : `ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps` toutes dans `main` (f0c7b06), tests verts ; prochaines fusions : seulement les nouveaux commits de ces branches (ordre `ai-ia1`, `galadriel-tab`, `tiers`, `hero-j8-close`, `fog`, `maps`)
 
 - [ ] (Arwen, ai-ia1, ajouté 2026-11-02 12:37, réponse de l'utilisateur Q13 = B) **Autel du volcan : tenir l'autel lance l'alerte TOUT DE SUITE** (option B de Q-volcan-autel : l'alerte de 60 à 90 s démarre dès que l'autel est tenu ~60 s, sans attendre la fenêtre) : FHOLVolcanoSettings::AltarAdvance à une valeur très grande (ou mode explicite « immédiat »), test rouge Volcano.AltarAdvance adapté ; puis V8 (lieu de l'autel, tenue 60 s D348, relier AdvanceForAltar à SiteStateAt, réarmement, IA qui le dispute), V7, V9, V10, V12.
+
+- [ ] **Elrond (tiers), EN TETE** : BUG E-diplomacy, Q + clic sur un neutre n'attaque pas (voir DiplomacyInProgress.md, entree du 2026-11-05 13:2x) ; test rouge sur la vraie chaine d'abord ; C++ probable (un seul lot, build en run_in_background).
+
