@@ -51,6 +51,13 @@ Legions_Spearman_Name,Legions,Spearman,DisplayName,Fixture Legion Spearman
 Legions_Spearman_Cost,Legions,Spearman,Cost,"(Food=0,Wood=7,Stone=0,Gold=9)"
 )csv");
 
+	/** L2: the fixture's overrides plus a health and an attack of the Legions' Spearman (made-up figures), for the births. */
+	const TCHAR* FixtureBirthOverrides = TEXT(R"csv(Name,Faction,Type,Field,Value
+Legions_Spearman_Name,Legions,Spearman,DisplayName,Fixture Legion Spearman
+Legions_Spearman_Cost,Legions,Spearman,Cost,"(Food=0,Wood=7,Stone=0,Gold=9)"
+Legions_Spearman_Health,Legions,Spearman,MaxHealth,777
+)csv");
+
 	bool LoadData(FAutomationTestBase& Test, const TCHAR* File, FString& OutText)
 	{
 		const FString Path = FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools"), TEXT("Data"), File);
@@ -63,10 +70,10 @@ Legions_Spearman_Cost,Legions,Spearman,Cost,"(Food=0,Wood=7,Stone=0,Gold=9)"
 		HOLFactionRules::FTable Table;
 		TArray<FString> Problems;
 
-		FFixtureTable()
+		explicit FFixtureTable(const TCHAR* OverridesText = FixtureOverrides)
 		{
 			HOLFactionRules::ParseRoles(FixtureRoles, Table.Roles, Problems);
-			HOLFactionRules::ParseOverrides(FixtureOverrides, Table.Overrides, Problems);
+			HOLFactionRules::ParseOverrides(OverridesText, Table.Overrides, Problems);
 			HOLFactionRules::SetTableForTests(&Table);
 		}
 
@@ -146,7 +153,7 @@ Legions_Spearman_Cost,Legions,Spearman,Cost,"(Food=0,Wood=7,Stone=0,Gold=9)"
 
 		bool IsReady() const { return Centre[0] && Centre[1]; }
 
-		void RunStep() { World->GetSubsystem<UHOLSimulationSubsystem>()->GetOnStepStarted().Broadcast(1); }
+		void RunStep(const int64 StepIndex = 1) { World->GetSubsystem<UHOLSimulationSubsystem>()->GetOnStepStarted().Broadcast(StepIndex); }
 
 		AHOLPlayerState* FindPlayerState(const int32 Slot) const
 		{
@@ -212,6 +219,12 @@ bool FHOLFactionTablesTest::RunTest(const FString& Parameters)
 		TestEqual(*FString::Printf(TEXT("built-in %s"), *Row.Name.ToString()), BuiltIn.FindRoleType(Row.Faction, Row.Role), Row.Type);
 	}
 	TestEqual(TEXT("built-in overrides: the files'"), BuiltIn.Overrides.Num(), Real.Overrides.Num());
+	for (const HOLFactionRules::FOverrideRow& Row : Real.Overrides)
+	{
+		const bool bSame = BuiltIn.Overrides.ContainsByPredicate([&Row](const HOLFactionRules::FOverrideRow& Each)
+			{ return Each.Name == Row.Name && Each.Faction == Row.Faction && Each.Type == Row.Type && Each.Field == Row.Field && Each.Value == Row.Value; });
+		TestTrue(*FString::Printf(TEXT("built-in override %s is the file's (run Tools/Data/make_builtin_overrides.py)"), *Row.Name.ToString()), bSame);
+	}
 
 	// 3. The fixture, by the same parsers: the Legions differ from the Dawn, a faction with no rows reads as the Dawn.
 	{
@@ -312,7 +325,8 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("slot 1 starts with no Peasant"), Test.CountUnits(Peasant, 1), 0);
 	}
 
-	// With the real tables (no Legions content yet): nothing differs from the Dawn, the type tables' rows are the same rows.
+	// With the real tables (L2, Q-Legions-RosterValues = A): the 7 types of the roster differ for the Legions, by a name and a cost of
+	// their own (the cost under the Dawn's), and by nothing else; the others are the table's own rows.
 	{
 		TArray<FName> Names;
 		Test.Units->GetTypeNames(Names);
@@ -321,7 +335,24 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 		{
 			Different += Test.Units->FindTypeRow(Name, Legions) != Test.Units->FindTypeRow(Name) ? 1 : 0;
 		}
-		TestEqual(TEXT("no unit type differs for the Legions before L2 (same rows)"), Different, 0);
+		TestEqual(TEXT("seven unit types differ for the Legions (the roster)"), Different, 7);
+		const TCHAR* const RosterNames[][2] = { { TEXT("Spearman"), TEXT("Legion Spearman") }, { TEXT("ManAtArms"), TEXT("Black Guard") },
+			{ TEXT("Archer"), TEXT("Legion Archer") }, { TEXT("Crossbowman"), TEXT("Legion Crossbowman") }, { TEXT("LightCavalry"), TEXT("Dread Rider") },
+			{ TEXT("Ram"), TEXT("Bone Ram") }, { TEXT("Mangonel"), TEXT("Bone Mangonel") } };
+		for (const TCHAR* const* Pair : RosterNames)
+		{
+			const FName Type(Pair[0]);
+			const FHOLUnitTypeRow* Dawns = Test.Units->FindTypeRowFor(Type, 0);
+			const FHOLUnitTypeRow* Theirs = Test.Units->FindTypeRowFor(Type, 1);
+			if (TestNotNull(*FString::Printf(TEXT("%s: both rows"), Pair[0]), Dawns) && TestNotNull(*FString::Printf(TEXT("%s: the Legions' row"), Pair[0]), Theirs))
+			{
+				TestEqual(*FString::Printf(TEXT("%s: the Legions' name"), Pair[0]), Theirs->DisplayName, FString(Pair[1]));
+				TestTrue(*FString::Printf(TEXT("%s: the Dawn keeps its name"), Pair[0]), Dawns->DisplayName != Theirs->DisplayName);
+				const auto Total = [](const FHOLResources& Cost) { return Cost.Food + Cost.Wood + Cost.Stone + Cost.Gold; };
+				TestTrue(*FString::Printf(TEXT("%s: the Legions' cost is under the Dawn's"), Pair[0]), Total(Theirs->Cost) < Total(Dawns->Cost));
+				TestEqual(*FString::Printf(TEXT("%s: the Legions' health is the Dawn's"), Pair[0]), Theirs->MaxHealth, Dawns->MaxHealth);
+			}
+		}
 		TestEqual(TEXT("slot 1 (Legions) has the Zombie as Worker, by the game state's configuration"), HOLFactionRules::GetRoleTypeName(Test.World, 1, HOLFactionRules::Roles::Worker), FName(TEXT("Zombie")));
 		TestEqual(TEXT("slot 1 (Legions, provisional Hero until L8a) has the Dawn's"), HOLFactionRules::GetRoleTypeName(Test.World, 1, HOLFactionRules::Roles::Hero), FName(TEXT("Hero")));
 	}
@@ -484,6 +515,101 @@ bool FHOLZombieWorkerTest::RunTest(const FString& Parameters)
 	}
 	FHOLResources Stock;
 	TestTrue(TEXT("free Zombies: nothing was paid"), AHOLGameState::GetSlotStock(*Test.World, 1, Stock) && Stock == FHOLResources());
+	return true;
+}
+
+// L2 (LegionsInProgress.md, LQ-7): the effect of a faction's overrides, through the real chain: a Spearman ordered at a Barracks costs
+// its payer's faction's price (the Legions' 45 food 15 wood, the Dawn's own), takes its faction's time and places, and is BORN with its
+// faction's health (a made-up 777 in the fixture; the Dawn's stays the table's), and the Legions' own template is built for it only.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionRosterTest, "HeroesOfLiberty.Match.Factions.Roster", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	const FName Barracks(TEXT("Barracks"));
+	const FHOLUnitTypeRow* BaseSpearman = Test.Units->FindTypeRow(Spearman);
+	if (!TestNotNull(TEXT("the Spearman row"), BaseSpearman))
+	{
+		return false;
+	}
+
+	AHOLBuilding* Houses[2] = { nullptr, nullptr };
+	AHOLPlayerState* Payers[2] = { nullptr, nullptr };
+	for (int32 Slot = 0; Slot < 2; ++Slot)
+	{
+		Houses[Slot] = Test.World->SpawnActor<AHOLBuilding>(FVector(Slot * -20000.0 + 4000.0, 0.0, 0.0), FRotator::ZeroRotator);
+		Payers[Slot] = Test.FindPlayerState(Slot);
+		if (!TestNotNull(TEXT("a Barracks"), Houses[Slot]) || !TestNotNull(TEXT("the slot's player state"), Payers[Slot]))
+		{
+			return false;
+		}
+		Houses[Slot]->Setup(Barracks, static_cast<uint8>(Slot), static_cast<uint8>(Slot));
+		Payers[Slot]->SetResources(FHOLResources(5000, 5000, 5000, 5000));
+		FHOLProductionCommand Command;
+		Command.PlayerIndex = Slot;
+		Command.Building = Houses[Slot];
+		Command.TypeName = Spearman;
+		Test.Commands->IssueProductionOrder(Command);
+	}
+
+	// With the real tables: what each payer paid at the order.
+	Test.RunStep(1);
+	const FHOLResources Dawn0 = Payers[0]->GetResources();
+	const FHOLResources Legions1 = Payers[1]->GetResources();
+	TestEqual(TEXT("the Dawn's Barracks queued the Spearman"), Houses[0]->GetProductionQueue().Num(), 1);
+	TestEqual(TEXT("the Legions' Barracks queued the Spearman"), Houses[1]->GetProductionQueue().Num(), 1);
+	TestEqual(TEXT("the Dawn paid the table's food"), 5000 - Dawn0.Food, BaseSpearman->Cost.Food);
+	TestEqual(TEXT("the Dawn paid the table's wood"), 5000 - Dawn0.Wood, BaseSpearman->Cost.Wood);
+	TestEqual(TEXT("the Legions paid 45 food (-25 %, Q-Legions-RosterValues = A)"), 5000 - Legions1.Food, 45);
+	TestEqual(TEXT("the Legions paid 15 wood"), 5000 - Legions1.Wood, 15);
+	TestTrue(TEXT("... under what the Dawn paid"), 5000 - Legions1.Food < 5000 - Dawn0.Food);
+
+	// With a fixture that gives the Legions' Spearman a health of 777: ordered, built, born with it.
+	{
+		FFixtureTable Fixture(FixtureBirthOverrides);
+		for (const FString& Problem : Fixture.Problems)
+		{
+			AddError(Problem);
+		}
+		const FHOLUnitTypeRow* LegionsRow = Test.Units->FindTypeRowFor(Spearman, 1);
+		if (!TestNotNull(TEXT("the Legions' Spearman row under the fixture"), LegionsRow))
+		{
+			return false;
+		}
+		TestEqual(TEXT("the fixture's health is the Legions' row's"), LegionsRow->MaxHealth, 777);
+		TestTrue(TEXT("the test can tell it from the table's"), BaseSpearman->MaxHealth != 777);
+		TestEqual(TEXT("the Legions' Spearman is told apart by template key"), Test.Units->GetTemplateKey(Spearman, Legions), FName(TEXT("Spearman@Legions")));
+		TestEqual(TEXT("the Dawn's Spearman keeps the table's key"), Test.Units->GetTemplateKey(Spearman, Dawn), Spearman);
+
+		// Both queues run to their end (the time of an item is its payer's faction's), the births are served.
+		const int32 Steps = FMath::Max(Test.Production->GetCost(Spearman, 0).BuildSteps, Test.Production->GetCost(Spearman, 1).BuildSteps) + 3;
+		for (int32 Step = 2; Step < Steps + 2; ++Step)
+		{
+			Test.RunStep(Step);
+		}
+		Test.Units->ServeBirthRequests();
+		int32 NumBorn[2] = { 0, 0 };
+		int32 Health[2] = { 0, 0 };
+		TArray<uint32> Ids;
+		Test.Units->GetAllUnitIds(Ids);
+		for (const uint32 Id : Ids)
+		{
+			FHOLUnitView View;
+			if (Test.Units->GetUnitView(Id, View) && View.TypeName == Spearman && View.OwnerPlayer >= 0 && View.OwnerPlayer < 2)
+			{
+				++NumBorn[View.OwnerPlayer];
+				Health[View.OwnerPlayer] = View.MaxHealth;
+			}
+		}
+		TestEqual(TEXT("the Dawn's Spearman was born"), NumBorn[0], 1);
+		TestEqual(TEXT("the Legions' Spearman was born"), NumBorn[1], 1);
+		TestEqual(TEXT("the Dawn's Spearman is born with the table's health"), Health[0], BaseSpearman->MaxHealth);
+		TestEqual(TEXT("the Legions' Spearman is born with the Legions' health (777)"), Health[1], 777);
+	}
 	return true;
 }
 
