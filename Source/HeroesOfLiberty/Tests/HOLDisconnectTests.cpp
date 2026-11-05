@@ -119,6 +119,7 @@ bool FHOLDisconnectGameStateTest::RunTest(const FString& Parameters)
 		Bob->SetResources(FHOLResources(0, 300, 0, 0));
 
 		TestTrue(TEXT("Bob leaves: slot kept"), State->KeepAbsentSlot(*Bob, 10.));
+		Bob->Destroy();	// as after a Logout (a live second holder of the seat would make a later KeepAbsentSlot a duplicate, T4)
 		TestTrue(TEXT("slot 1 absent"), State->IsSlotAbsent(1));
 		TestEqual(TEXT("no defeat 179 s later"), State->DefeatExpiredAbsences(189., 180.).Num(), 0);
 		BobAgain->SetMatchSlot(1, 1);
@@ -279,6 +280,7 @@ bool FHOLDisconnectBannerTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("first login: no notice"), State->GetAbsentNotices().Num(), 0);
 
 		TestTrue(TEXT("Bob leaves at 10"), State->KeepAbsentSlot(*Bob, 10., 180.));
+		Bob->Destroy();	// as after a Logout
 		if (TestEqual(TEXT("one notice"), State->GetAbsentNotices().Num(), 1))
 		{
 			const FHOLAbsentNotice& Notice = State->GetAbsentNotices()[0];
@@ -785,6 +787,104 @@ bool FHOLDisconnectReplaceTest::RunTest(const FString& Parameters)
 
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D718 (T5): the end of the window by the rule of T1 (GetWindowEnd). Bob (slot 1) shares his camp with an AI seat (slot 2): at the end of
+// his window his seat is NOT defeated; the AI goes from the "hold" mode to the full brain at the Normal level, the banner goes out,
+// the seat stays his and he takes it back AFTER the window, with the stock the AI left. Contrast, a real 1v1 (Bob alone in his camp, two
+// camps in all): the end of the window is his defeat (Disconnected), as before.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectLateReturnTest, "HeroesOfLiberty.Match.DisconnectLateReturn", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectLateReturnTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+	const int32 Normal = static_cast<int32>(EHOLAIDifficulty::Normal);
+	const FHOLResources Starting(2000, 2000, 500, 500);
+
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+		UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(World);
+		AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+		AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("the script brain"), Brain) && TestNotNull(TEXT("player states"), Alice)
+			&& TestNotNull(TEXT("player states"), Bob))
+		{
+			State->InitVictory(MakeNamedConfig());
+			Alice->SetMatchSlot(0, 0);
+			Bob->SetMatchSlot(1, 1);
+			State->AddPlayerState(Alice);
+			State->AddPlayerState(Bob);
+			State->GiveSlotStock(*Alice, Starting);
+			State->GiveSlotStock(*Bob, Starting);
+			TestTrue(TEXT("Bob leaves at 10"), State->KeepAbsentSlot(*Bob, 10., 180.));
+			Bob->Destroy();
+			TestTrue(TEXT("in the window: the seat is held (hold mode)"), Brain->IsHeld(1));
+			TestTrue(TEXT("in the window: his banner is up"), State->GetAbsentNotices().ContainsByPredicate([](const FHOLAbsentNotice& Notice) { return Notice.Slot == 1; }));
+
+			// The window runs out (10 + 180): the AI keeps the seat.
+			const TArray<int32> Defeated = State->DefeatExpiredAbsences(191., 180.);
+			TestEqual(TEXT("end of the window: nobody defeated (his camp has an AI seat)"), Defeated.Num(), 0);
+			TestFalse(TEXT("... his seat is not defeated"), State->IsSlotDefeated(1));
+			TestNotNull(TEXT("... the AI's player state still holds it"), AHOLGameState::FindHeldBot(*World, 1));
+			TestFalse(TEXT("... the hold mode is over"), Brain->IsHeld(1));
+			TestTrue(TEXT("... the brain thinks for it, the full brain"), Brain->GetThinkingSlots().Contains(1));
+			TestEqual(TEXT("... at the Normal level"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), Normal);
+			TestFalse(TEXT("... his banner is out"), State->GetAbsentNotices().ContainsByPredicate([](const FHOLAbsentNotice& Notice) { return Notice.Slot == 1; }));
+			State->DefeatExpiredAbsences(300., 180.);
+			TestFalse(TEXT("a second pass later: still not defeated"), State->IsSlotDefeated(1));
+			Brain->ThinkNow(1);
+
+			// He comes back AFTER the window and takes the seat.
+			AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
+			if (TestNotNull(TEXT("new player state"), BobAgain))
+			{
+				BobAgain->SetMatchSlot(1, 1);
+				State->AddPlayerState(BobAgain);
+				TestTrue(TEXT("late return at 500"), State->GiveSlotStock(*BobAgain, Starting, 500.));
+				TestEqual(TEXT("... his stock"), BobAgain->GetResources().ToString(), Starting.ToString());
+				TestNull(TEXT("... the AI's player state gone"), AHOLGameState::FindHeldBot(*World, 1));
+				TestFalse(TEXT("... the brain no longer thinks for it"), Brain->GetThinkingSlots().Contains(1));
+				TestEqual(TEXT("... a human seat has no level again"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), -1);
+				TestFalse(TEXT("... the seat is no longer absent"), State->IsSlotAbsent(1));
+				TestFalse(TEXT("... and never defeated"), State->IsSlotDefeated(1));
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	}
+
+	// A 1v1: Bob alone in his camp (the AI seat closed): his window's end is his defeat.
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+		AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+		AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("player states"), Alice) && TestNotNull(TEXT("player states"), Bob))
+		{
+			FHOLMatchConfig Config = MakeNamedConfig();
+			Config.Slots[2].State = EHOLSlotState::Closed;
+			State->InitVictory(Config);
+			Alice->SetMatchSlot(0, 0);
+			Bob->SetMatchSlot(1, 1);
+			State->AddPlayerState(Alice);
+			State->AddPlayerState(Bob);
+			State->GiveSlotStock(*Alice, Starting);
+			State->GiveSlotStock(*Bob, Starting);
+			TestTrue(TEXT("1v1: Bob leaves at 10"), State->KeepAbsentSlot(*Bob, 10., 180.));
+			Bob->Destroy();
+			const TArray<int32> Defeated = State->DefeatExpiredAbsences(191., 180.);
+			TestTrue(TEXT("1v1: the end of the window is his defeat"), Defeated.Contains(1) && State->IsSlotDefeated(1));
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	}
 	return true;
 }
 
