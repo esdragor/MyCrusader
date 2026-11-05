@@ -318,7 +318,7 @@ if ($Rejoin) {
     $S = if ($ServerLog) { @(Get-Content $ServerLog.FullName) } else { @() }
     $Lines = @{}
     foreach ($Who in "Alice", "Bob", "Bob2") { $Lines[$Who] = if (Test-Path $GameLogs[$Who]) { @(Get-Content $GameLogs[$Who] -Encoding utf8) } else { @() } }
-    if ($ServerLog) { Write-Host "  server log $($ServerLog.FullName):"; $S -match "holds slot|Disconnect:|Manager: Bob|Production: slot 1|spectator|Victory: (slot|match)" | ForEach-Object { Write-Host "    $_" } }
+    if ($ServerLog) { Write-Host "  server log $($ServerLog.FullName):"; $S -match "holds slot|Disconnect:|Manager: Bob|Production: slot 1|Construction: slot 1|AI brain: slot 1|ignored: no player state|spectator|Victory: (slot|match)" | ForEach-Object { Write-Host "    $_" } }
     foreach ($Who in "Alice", "Bob2") { Write-Host "  $Who :"; $Lines[$Who] -match "Absence banner|End banner: (Victory|Defeat|MatchOver)|Multiplayer: (lobby|back|rejoin)|Test sequence: timeout|LogHOL\w+: .*Production" | ForEach-Object { Write-Host "    $_" } }
     # Only our games in the match: Alice, Bob, and Bob again after « Revenir » (never in the -Window round).
     $Joins = @($S -match "LogNet: Join succeeded: ").Count
@@ -342,6 +342,13 @@ if ($Rejoin) {
         exit 0
     }
     if (-not $Failure) {
+        # D717 (T2): what the AI ordered for slot 1 between his departure and his return (kept ... back), told in the report.
+        $KeptAt = @(0..($S.Count - 1) | Where-Object { $S[$_] -match "Disconnect: slot 1 \(Bob\) kept," })[0]
+        $BackAt = @(0..($S.Count - 1) | Where-Object { $S[$_] -match "Disconnect: slot 1 \(Bob\) back, " })[0]
+        if ($null -ne $KeptAt -and $null -ne $BackAt -and $BackAt -gt $KeptAt) {
+            $AIOrders = @($S[$KeptAt..$BackAt] -match "(Production|Construction): slot 1 (queued|placed|ordered)")
+            Write-Host "  the AI held slot 1 between line ${KeptAt} and ${BackAt}: $($AIOrders.Count) order(s) accepted for slot 1 (Production/Construction)"
+        }
         $Kept = @($S | ForEach-Object { if ($_ -match "Disconnect: slot 1 \(Bob\) kept, F (\d+) W (\d+) S (\d+) G (\d+)") { "$($Matches[1]) $($Matches[2]) $($Matches[3]) $($Matches[4])" } })[0]
         $BackLine = @($S -match "Disconnect: slot 1 \(Bob\) back, ")[0]
         $BackStock = if ($BackLine -match "back, (.*), population") { (@([regex]::Matches($Matches[1], "\d+") | ForEach-Object { $_.Value }) -join " ") } else { $null }
@@ -354,10 +361,13 @@ if ($Rejoin) {
         elseif (-not ($Lines.Bob2 -match "Multiplayer: back in match \S+ of $([regex]::Escape($Lobby.id)) on port \d+")) { $Failure = "Bob : « Revenir » did not open the match" }
         elseif (@($S -match "LogHOLMatch: Bob holds slot 1").Count -lt 2) { $Failure = "the server: Bob not back in slot 1" }
         elseif (-not $BackLine) { $Failure = "the server has no 'Disconnect: slot 1 (Bob) back'" }
-        elseif ($BackStock -ne $Kept) { $Failure = "Bob back with stock ($BackStock), not the one kept ($Kept)" }
+        # D717 (T2): the AI held his seat while he was away (it plays with his stock): the stock back is what it left, not the one kept.
+        elseif (-not ($S -match "Disconnect: slot 1 \(Bob\) held by AI")) { $Failure = "the server has no 'Disconnect: slot 1 (Bob) held by AI'" }
+        elseif ($S -match "Construction order of slot 1 ignored: no player state|Production order of slot 1 ignored: no player state") { $Failure = "the AI's order for his seat was ignored: no player state" }
+        elseif ($S -match "Disconnect: slot 1 \(Bob\) back, " -and -not $BackStock) { $Failure = "Bob back without a readable stock" }
         elseif (-not ($S -match "Manager: Bob back")) { $Failure = "the server has no 'Manager: Bob back'" }
         elseif (-not ($Lines.Alice -match "Absence banner: shown, .*Bob.*de retour")) { $Failure = "Alice : no « Bob : de retour »" }
-        elseif (-not ($S -match "Production: slot 1 queued Peasant")) { $Failure = "the server did not accept the Peasant of Bob after his return (R7.4)" }
+        elseif (-not ($(if ($null -ne $BackAt) { $S[$BackAt..($S.Count - 1)] } else { $S }) -match "Production: slot 1 queued Peasant")) { $Failure = "the server did not accept the Peasant of Bob after his return (R7.4)" }
         elseif (($Lines.Alice + $Lines.Bob + $Lines.Bob2) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
         elseif ($S -match "Disconnect: slot \d+ not back within") { $Failure = "a slot defeated by its absence" }
     }
