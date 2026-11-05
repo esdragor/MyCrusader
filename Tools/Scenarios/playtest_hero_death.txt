@@ -1,0 +1,35 @@
+# Essai PT7, questions 2 et 3 de GDD 17.1 (PlaytestInProgress.md) : la mort du heros est-elle assez punitive, et le delai de resurrection est-il une fenetre interessante ?
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Delai VRAI (hol.Hero.ReturnTimePercent 100 : 30 s + 8 s par niveau, ici niveau 3 = 54 s) ; ton heros tombe devant 6 Lanciers ennemis qui avancent sur ton forum.
+# Pendant la fenetre : l'alerte « pret », le bouton « Ramener le heros » au prix qui baisse (100 + 50 par niveau sur 60 s), les pertes de ton armee. Entree = lancer la fenetre.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Gold 1000
+hol.Cheat.Population 60
+hol.Hero.ReturnTimePercent 100
+hol.Hero.SetXP 0 600
+waitlog slot 0 level 1 -> 3
+hol.Camera.FocusNear -900 300
+frames 10
+hol.Units.Spawn 4 -15500 300 0 Spearman 150
+frames 10
+capture playtest_death_before
+note 1. Ton heros (niveau 3) et 4 Lanciers pres du forum. Entree : le heros tombe et 6 Lanciers ennemis arrivent.
+waitkey Entree : le heros tombe, l'ennemi arrive
+hol.Hero.Kill 0
+waitlog hol.Hero.Kill: slot 0
+hol.Units.Spawn 6 -14500 300 1 Spearman 150
+hol.Hero.Report
+capture playtest_death_fallen
+note 2. Le heros est tombe : le bloc du bas dit le delai et le prix. 6 Lanciers ennemis contre tes 4 : sans heros, c'est une fenetre de faiblesse ou une defense jouable ?
+wait 30
+hol.Combat.Report 0
+note 3. 30 s de fenetre ecoulees : releve ce que tu as perdu. Le delai complet est de 54 s ; le bouton « Ramener le heros » apparait ensuite avec un prix qui baisse.
+waitlog Hero return: slot 0 ready
+hol.Hero.Report
+capture playtest_death_ready
+hol.Hero.Return
+waitlog Hero return: slot 0 bought for
+capture playtest_death_back
+note 4. Ton heros est revenu (achat) : or depense, retour pres du forum. Note si la mort t'a paru assez punitive (Q2) et la fenetre intéressante (Q3).
+hol.Test.Sanity
