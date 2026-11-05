@@ -294,7 +294,33 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("a target 100 cm from the last is a neighbour"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(60., 80.)));
 		TestFalse(TEXT("a target 300 cm from the last is not"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(300., 0.)));
 	}
-	// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
+	// Q-neutrals-second-rank = C (the trace of neutrals, #11 behind #9 and #13, 2026-11-05): walled in for 1 s, the soldier turns to the nearest enemy
+		// with a free place it can reach; not the target it leaves, not an enemy walled in by a ring of bodies.
+		{
+			TArray<HOLCombat::FBody> Bodies;
+			Bodies.Add({ FVector2D(153., 262.), 55.f });   // 0: the target it leaves (edge 193)
+			Bodies.Add({ FVector2D(-56., 109.), 55.f });   // 1: friend
+			Bodies.Add({ FVector2D(64., 115.), 55.f });    // 2: friend
+			Bodies.Add({ FVector2D(-400., -100.), 55.f }); // 3: enemy A, free and reachable (edge 302)
+			const FVector2D RingCentre(212., -212.);
+			Bodies.Add({ RingCentre, 55.f });              // 4: enemy B (edge 190), ringed by twelve bodies: no free place
+			for (int32 Spot = 0; Spot < 12; ++Spot)
+			{
+				const double Angle = 2. * UE_DOUBLE_PI * Spot / 12;
+				Bodies.Add({ RingCentre + 112. * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)), 55.f });
+			}
+			const TArray<int32> Enemies = { 0, 3, 4 };
+			const TArray<uint64> Ids = { 10, 11, 12 };
+			TestEqual(TEXT("it turns to enemy A: not the target it leaves, not the ringed enemy B"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, Enemies, Ids, 0), 1);
+			const TArray<int32> OnlyRinged = { 0, 4 };
+			const TArray<uint64> RingedIds = { 10, 12 };
+			TestEqual(TEXT("no enemy with a place it can reach: none chosen"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, OnlyRinged, RingedIds, 0), static_cast<int32>(INDEX_NONE));
+			TestTrue(TEXT("walled in for 1 s: it retargets"), HOLCombat::ShouldRetargetWhenBoxedIn(1.f, true, false));
+			TestFalse(TEXT("walled in for 0.9 s: not yet"), HOLCombat::ShouldRetargetWhenBoxedIn(0.9f, true, false));
+			TestFalse(TEXT("not walled in: it keeps its target"), HOLCombat::ShouldRetargetWhenBoxedIn(5.f, false, false));
+			TestFalse(TEXT("a target the player ordered is kept"), HOLCombat::ShouldRetargetWhenBoxedIn(5.f, true, true));
+		}
+		// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
 	HOLSanity::FStall Stall;
 	int32 Told = 0;
 	for (int32 Index = 0; Index < 30; ++Index)

@@ -431,6 +431,25 @@ namespace HOLCombat
 		return FVector2D::DistSquared(OldWhere, NewWhere) <= MaxDistance * MaxDistance;
 	}
 
+	/**
+	 * Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget): a soldier walled in (IsBoxedIn) with no headway for MinSeconds changes target, unless the target was
+	 * ordered by the player. (Stub of the red step: the rule is written by the next commit.)
+	 */
+	inline bool ShouldRetargetWhenBoxedIn(const float NoProgressSeconds, const bool bBoxedIn, const bool bOrderedTarget, const float MinSeconds = 1.f)
+	{
+		return false;
+	}
+
+	/**
+	 * Q-neutrals-second-rank = C: the enemy a walled-in soldier turns to: among EnemyBodies (indices into Bodies, with EnemyIds as tie-break) the one whose edge is
+	 * nearest to the soldier, having a free place (HasFreePlaceAround, every other body counted) that the soldier can reach without going round (not IsBoxedIn
+	 * towards it); ExcludeBody (the target it leaves) is never chosen. Bodies = every body near but the soldier. Returns the index into EnemyBodies, or INDEX_NONE.
+	 */
+	inline int32 FindReachableEnemy(const FVector2D& SelfWhere, const float SelfRadius, TConstArrayView<FBody> Bodies, TConstArrayView<int32> EnemyBodies, TConstArrayView<uint64> EnemyIds, const int32 ExcludeBody)
+	{
+		return INDEX_NONE;
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 
