@@ -11,3 +11,5 @@ Comment as-tu mis le joueur en Neutre et sur quoi as-tu clique ?
 
 Recommandation : repondre A, B, C ou D avec la selection utilisee (hommes d'armes seuls ? heros inclus ?).
 Valeur par defaut codee : aucune ; le comportement actuel est inchange (ordre d'attaque direct sur une unite ou un batiment neutre, posture jamais modifiee).
+
+Reponse: (2026-11-05 14:3x) Scenario diplomacy : au debut allies et melanges (rien ne se passe, normal), Entree = passage a Neutre (les DEUX cotes ou un seul : non precise, l'autre cote suit le scenario). Q+clic sur le SOL derriere les hommes neutres : les hommes se deplacent seulement, ne les tapent pas (meme apres les avoir eloignes puis re-Q+clic derriere eux). Q+clic directement SUR un homme neutre : tous l'attaquent. => le clic direct marche (comme le test d'Elrond) ; le defaut est l'attack-move sur le sol (Q+clic sans cible) : il n'engage pas les neutres a portee. Design a confirmer : l'attack-move doit-il engager les neutres rencontres ? (question a poser, non tranchee).
