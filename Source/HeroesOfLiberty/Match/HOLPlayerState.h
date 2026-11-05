@@ -129,6 +129,11 @@ public:
 	const FHOLTechnologyState& GetTechnologies() const { return Technologies; }
 	/** Server only: a technology researched (true when it is new). */
 	bool AddTechnology(FName Technology);
+	/**
+	 * D717 (T2), server only: the technologies of a seat handed over (the AI that holds it, the player who comes back) set as they
+	 * are, WITHOUT the one-time effects of AddTechnology (the Rams alive were raised when it was researched, not again).
+	 */
+	void RestoreTechnologies(const FHOLTechnologyState& InTechnologies);
 
 	/** T5: the percent a statistic gains from the player's technologies (HOLTechnology::GetBonusPercent), kept until they change. */
 	int32 GetTechnologyBonusPercent(FName Stat) const;
