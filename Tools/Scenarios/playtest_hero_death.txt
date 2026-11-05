@@ -20,8 +20,9 @@ hol.Hero.Kill 0
 waitlog hol.Hero.Kill: slot 0
 hol.Units.Spawn 6 -14500 300 1 Spearman 150
 hol.Hero.Report
+frames 40
 capture playtest_death_fallen
-note 2. Le heros est tombe : le bloc du bas dit le delai et le prix. 6 Lanciers ennemis contre tes 4 : sans heros, c'est une fenetre de faiblesse ou une defense jouable ?
+note 2. Le heros est tombe : le bloc du bas dit PV 0 et le delai (le prix n apparait qu a la fin du delai). 6 Lanciers ennemis contre tes 4 : sans heros, c'est une fenetre de faiblesse ou une defense jouable ?
 wait 30
 hol.Combat.Report 0
 note 3. 30 s de fenetre ecoulees : releve ce que tu as perdu. Le delai complet est de 54 s ; le bouton « Ramener le heros » apparait ensuite avec un prix qui baisse.
@@ -30,6 +31,7 @@ hol.Hero.Report
 capture playtest_death_ready
 hol.Hero.Return
 waitlog Hero return: slot 0 bought for
+frames 60
 capture playtest_death_back
 note 4. Ton heros est revenu (achat) : or depense, retour pres du forum. Note si la mort t'a paru assez punitive (Q2) et la fenetre intéressante (Q3).
 hol.Test.Sanity

@@ -1,4 +1,4 @@
 playtest_death_before | Le heros et ses 4 Lanciers pres du forum, avant la mort
-playtest_death_fallen | Le heros est tombe : le bloc du bas affiche le delai de resurrection et le prix, 6 Lanciers ennemis arrivent
+playtest_death_fallen | Le heros est tombe : le bloc du bas affiche PV 0 et le delai (Pret dans 0:54), le prix n apparait qu a la fin du delai (voir ready) ; 6 Lanciers ennemis arrivent
 playtest_death_ready | L'alerte « Votre heros est pret a revenir » et le bouton « Ramener le heros » avec son prix
 playtest_death_back | Le heros est revenu pres du forum, l'or a baisse du prix
