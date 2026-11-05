@@ -1,0 +1,26 @@
+# D733 : Q puis clic sur le SOL derriere un camp neutre de la carte (proprietaire neutre, passif au repos, hol.Camp.Aggro 1 : il ne bouge que si on l'attaque). Geste reel (hol.Select.Grid 4 = la touche Q, puis hol.Select.LeftClickGround). Les soldats doivent rencontrer le camp ET le frapper (le camp se bat : "Camp 0: fighting"). 3 minutes au plus.
+hol.Combat.LogHits 1
+hol.Camp.Aggro 1
+hol.Camp.Add -9800 0 3 Spearman
+waitlog Camp 0: 3 Spearman at
+hol.Camera.Focus -9500 0
+frames 5
+hol.Units.Spawn 6 -13800 0 0 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+frames 120
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -8000 0
+waitlog Scripted left click at
+waitlog attack-move to
+waitlog hits #
+waitlog Camp 0: fighting
+hol.Camera.Zoom 8
+frames 40
+capture neutrals_qground_fight
+frames 200
+hol.Camp.Report
+note Q puis clic sur le sol derriere un camp neutre : tes 6 hommes rencontrent les 3 Lanciers neutres et les frappent (le camp riposte).

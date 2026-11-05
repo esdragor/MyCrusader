@@ -186,6 +186,14 @@ bool AHOLPlayerState::AddTechnology(const FName Technology)
 	return true;
 }
 
+void AHOLPlayerState::RestoreTechnologies(const FHOLTechnologyState& InTechnologies)
+{
+	Technologies = InTechnologies;
+	TechnologyBonus.Reset();
+	OnTechnologiesChanged.Broadcast();
+	ForceNetUpdate();
+}
+
 void AHOLPlayerState::OnRep_Technologies()
 {
 	TechnologyBonus.Reset();

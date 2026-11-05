@@ -69,6 +69,10 @@ namespace UE::HeroesOfLiberty::Combat
 	FAutoConsoleVariableRef CVarLogHits(TEXT("hol.Combat.LogHits"), LogHits, TEXT("1: logs every hit of the melee and every arrow released, landed or lost (server or solo)"));
 	int32 Enabled = 1;
 	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Combat.Enabled"), Enabled, TEXT("0: no unit fights (server or solo)"));
+	/** D733: a unit on an attack-move takes on the Neutrals it meets (a Neutral player's units, in Diplomacy). 0: it leaves them alone, as before. */
+	int32 AttackMoveEngagesNeutral = 1;
+	FAutoConsoleVariableRef CVarAttackMoveEngagesNeutral(TEXT("hol.Combat.AttackMoveEngagesNeutral"), AttackMoveEngagesNeutral,
+		TEXT("1 (default, D733): the attack-move (Q then a click, on the ground too) engages the Neutral players' units it meets, the stance unchanged; 0: it passes them by (a click on one still orders the attack)"));
 	/** J7c.4, S3: the same outcome by cheaper ways (a flat entity index, a key sort, no search when the target is in reach). */
 	int32 FastPaths = 1;
 	FAutoConsoleVariableRef CVarFastPaths(TEXT("hol.Combat.FastPaths"), FastPaths,
@@ -384,7 +388,14 @@ int32 UHOLCombatProcessor::CountBodiesAround(const int32 Index, const double Gap
 
 bool UHOLCombatProcessor::IsAutoFoe(const FFighter& A, const FFighter& B) const
 {
-	return !StepCamps.IsDiplomacy() || StepCamps.FiresAtOnce(A.State->OwnerPlayer, B.State->OwnerPlayer);
+	if (!StepCamps.IsDiplomacy() || StepCamps.FiresAtOnce(A.State->OwnerPlayer, B.State->OwnerPlayer))
+	{
+		return true;
+	}
+	// D733 (the user, 2026-11-05): a unit on an attack-move (Q then a click, even on the ground) takes on the Neutrals it meets, though nobody takes a
+	// Neutral on by itself (D369, D401); the stance is not touched.
+	return UE::HeroesOfLiberty::Combat::AttackMoveEngagesNeutral != 0 && A.Combat->Mode == EHOLCombatMode::AttackMove
+		&& StepCamps.IsPassiveAdversary(A.State->OwnerPlayer, B.State->OwnerPlayer);
 }
 
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
