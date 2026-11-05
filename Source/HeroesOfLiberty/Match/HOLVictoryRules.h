@@ -52,6 +52,12 @@ struct HEROESOFLIBERTY_API FHOLCampTable
 	bool AreHostile(const int32 OwnerA, const int32 OwnerB) const { return bDiplomacy ? Relation(OwnerA, OwnerB) != 2 : Get(OwnerA) != Get(OwnerB); }
 	/** Whether the units of these owners fire on their own at each other (D369: only at war; a Neutral does not). Else as AreHostile. */
 	bool FiresAtOnce(const int32 OwnerA, const int32 OwnerB) const { return bDiplomacy ? Relation(OwnerA, OwnerB) == 0 : Get(OwnerA) != Get(OwnerB); }
+	/**
+	 * An adversary that does not fire on its own (a Neutral, D401): the attack-move click (Q + click) on its unit or building gives a direct attack order, since the
+	 * units would never take it on by themselves (E-diplomacy, 2026-11-05). False for an enemy (it fires, the attack-move already takes it on), an ally and oneself;
+	 * never changes a stance.
+	 */
+	bool IsPassiveAdversary(const int32 OwnerA, const int32 OwnerB) const { return AreHostile(OwnerA, OwnerB) && !FiresAtOnce(OwnerA, OwnerB); }
 
 private:
 	uint8 Camps[256];
