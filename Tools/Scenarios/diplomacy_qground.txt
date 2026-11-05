@@ -20,7 +20,10 @@ hol.Select.LeftClickGround -8000 0
 waitlog Scripted left click at
 waitlog attack-move to
 waitlog hits #
-frames 240
+hol.Camera.Zoom 8
+frames 40
+capture dipl_qground_fight
+frames 200
 hol.Diplomacy.Report
 waitlog Diplomacy report: slot 2 toward slot 1
 note Q puis clic sur le sol derriere les hommes neutres : tes 6 hommes les rencontrent et les frappent (melee, barres de vie qui baissent) ; la posture du joueur 2 reste Neutre.

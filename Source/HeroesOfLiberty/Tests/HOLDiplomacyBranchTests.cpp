@@ -510,15 +510,27 @@ bool FHOLDiplomacyAttackMoveNeutralTest::RunTest(const FString& Parameters)
 		const TCHAR* Name;
 		EHOLMatchMode Mode;
 		int32 TargetOwner;
-		bool bBothNeutral;
+		int32 StanceOf0; // what slot 0 says of slot 1 (-1: nothing said)
+		int32 StanceOf1; // what slot 1 says of slot 0 (-1: nothing said)
+		int32 ExpectedRelation; // the relation of the pair after the words (-1: not read), the stance never changes under the order
 		bool bGroundOrder; // the attack-move order; false: the control, no order
 		bool bExpectHurt;
 	};
+	constexpr int32 StN = HOLDiplomacy::Neutral;
+	constexpr int32 StA = HOLDiplomacy::Ally;
+	constexpr int32 StE = HOLDiplomacy::Enemy;
 	const FTrial Trials[] = {
-		{ TEXT("a Neutral player's man, attack-move on the ground behind him"), EHOLMatchMode::Diplomacy, 1, true, true, true },
-		{ TEXT("a Neutral player's man, no order (D369)"), EHOLMatchMode::Diplomacy, 1, true, false, false },
-		{ TEXT("a map camp's member (Neutral owner), attack-move on the ground behind him, Diplomacy"), EHOLMatchMode::Diplomacy, FHOLMatchConfig::NeutralOwner, false, true, true },
-		{ TEXT("a map camp's member (Neutral owner), attack-move on the ground behind him, Standard"), EHOLMatchMode::Standard, FHOLMatchConfig::NeutralOwner, false, true, true },
+		{ TEXT("a Neutral player's man, attack-move on the ground behind him"), EHOLMatchMode::Diplomacy, 1, StN, StN, StN, true, true },
+		{ TEXT("a Neutral player's man, no order (D369)"), EHOLMatchMode::Diplomacy, 1, StN, StN, StN, false, false },
+		{ TEXT("a map camp's member (Neutral owner), attack-move on the ground behind him, Diplomacy"), EHOLMatchMode::Diplomacy, FHOLMatchConfig::NeutralOwner, -1, -1, -1, true, true },
+		{ TEXT("a map camp's member (Neutral owner), attack-move on the ground behind him, Standard"), EHOLMatchMode::Standard, FHOLMatchConfig::NeutralOwner, -1, -1, -1, true, true },
+		// One side only (the user's answer: the relation is the most hostile of the two words, D375). Neutral on my side, Ally on his: the pair is Neutral.
+		{ TEXT("one-sided: I say Neutral, he says Ally (pair Neutral), attack-move on the ground behind him"), EHOLMatchMode::Diplomacy, 1, StN, StA, StN, true, true },
+		{ TEXT("one-sided: I say Ally, he says Neutral (pair Neutral), attack-move on the ground behind him"), EHOLMatchMode::Diplomacy, 1, StA, StN, StN, true, true },
+		{ TEXT("one-sided: I say Neutral, he says Ally (pair Neutral), no order (D369)"), EHOLMatchMode::Diplomacy, 1, StN, StA, StN, false, false },
+		{ TEXT("one-sided: I say Neutral, he says Enemy (pair Enemy), attack-move on the ground behind him"), EHOLMatchMode::Diplomacy, 1, StN, StE, StE, true, true },
+		// The control of the safety: an ally is never taken on by the attack-move (both words Ally: the pair is Ally).
+		{ TEXT("both say Ally (pair Ally), attack-move on the ground behind him: the ally is not struck"), EHOLMatchMode::Diplomacy, 1, StA, StA, StA, true, false },
 	};
 	for (const FTrial& Trial : Trials)
 	{
@@ -599,10 +611,13 @@ bool FHOLDiplomacyAttackMoveNeutralTest::RunTest(const FString& Parameters)
 
 			Launch(GameState, Trial.Mode);
 			RunStep();
-			if (Trial.bBothNeutral)
+			if (Trial.StanceOf0 >= 0)
 			{
-				Say(0, 1, HOLDiplomacy::Neutral);
-				Say(1, 0, HOLDiplomacy::Neutral);
+				Say(0, 1, Trial.StanceOf0);
+			}
+			if (Trial.StanceOf1 >= 0)
+			{
+				Say(1, 0, Trial.StanceOf1);
 			}
 			const uint32 Attacker = Place(FName(TEXT("ManAtArms")), 0, FVector(0.0, 0.0, 0.0));
 			// In melee reach (the test world has no movement: the bodies do not walk), as AttackOnNeutral; the goal is past him. What is under test is that the
@@ -624,9 +639,9 @@ bool FHOLDiplomacyAttackMoveNeutralTest::RunTest(const FString& Parameters)
 					bMetHurt = HealthOf(Met) < MetStart;
 				}
 				TestEqual(*FString::Printf(TEXT("[%s] the health of the man met falls (the effect)"), Trial.Name), bMetHurt, Trial.bExpectHurt);
-				if (Trial.bBothNeutral)
+				if (Trial.ExpectedRelation >= 0)
 				{
-					TestEqual(*FString::Printf(TEXT("[%s] the stance is unchanged: still Neutral"), Trial.Name), FHOLCampTable::FromWorld(World).Relation(0, 1), static_cast<int32>(HOLDiplomacy::Neutral));
+					TestEqual(*FString::Printf(TEXT("[%s] the relation of the pair is unchanged by the order"), Trial.Name), FHOLCampTable::FromWorld(World).Relation(0, 1), Trial.ExpectedRelation);
 				}
 			}
 		}
