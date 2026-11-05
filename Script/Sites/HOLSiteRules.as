@@ -9,7 +9,7 @@
 // count (S10), the cancelling of the count when an alliance breaks (S5, S10).
 // Values are the relay's, provisional, to tune in test (D345: the user chooses them). Edge cases settled by the default of the code, not by the
 // GDD (see Retours\Q-sites-rule-edges.md): an adverse soldier alone (no taker of his own camp) freezes a count another camp had begun and lets
-// a count of his own camp recede; a count begun by one camp goes on if another camp's taker takes over the zone alone (as the relay's).
+// a count of his own camp recede; a count begun by one camp starts again from zero if another camp's taker takes over the zone alone (Q2 = B, answered; the relay's inheritance is not kept).
 namespace HOLSite
 {
 	// Simulation steps per second (the bridge, as the relays' and the hero's return).
@@ -115,9 +115,12 @@ namespace HOLSite
 				Next.Taker = None;
 			return Next;
 		}
-		// One adverse camp alone with a taker: the count goes up, its slot with the most takers shown as the taker.
+		// One adverse camp alone with a taker: the count goes up, its slot with the most takers shown as the taker. A taker of another camp than
+		// the one who began the count starts it again from zero, he inherits nothing (Q2 = B, answered 2026-11-05); an ally's slot goes on.
+		const int StartedBy = (State.Held > 0 && State.Taker >= 0 && State.Taker < TeamBySlot.Num()) ? TeamBySlot[State.Taker] : -1;
+		const int Held = (StartedBy >= 0 && StartedBy != TeamBySlot[Taker]) ? 0 : State.Held;
 		Next.Taker = Taker;
-		Next.Held = State.Held + 1;
+		Next.Held = Held + 1;
 		if (Next.Held >= HoldSteps())
 		{
 			Next.Owner = Taker;
