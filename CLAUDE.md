@@ -1,5 +1,11 @@
 # Règles du projet HeroesOfLiberty
 
+## Emplacement des sessions Claude
+
+Les sessions (transcripts) de ce projet sont dans `C:\Users\baudo\ProjectPersoClaude\c--Users-baudo-Documents-MyCrusader\`.
+Ne **jamais** les chercher ni écrire de notes à leur sujet dans `C:\Users\baudo\.claude\projects` : cet emplacement n'est
+pas utilisé. Toute note de ce type va dans le projet (ce fichier, `EtapeDefini.md`, les `*InProgress.md`).
+
 ## EtapeDefini.md à chaque avancée (règle absolue)
 
 À chaque avancée (question tranchée, boucle ou sous-étape faite, commit même sur une branche de worktree, fusion dans
