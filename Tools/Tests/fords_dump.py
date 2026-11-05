@@ -64,6 +64,11 @@ def main(size):
     if places == 2:
         mid = 0.5 * fords.RIVER_FORD_AT * recipe.bounds_half
         walls = [{"label": "River", "ax": -WALL_SIDE, "ay": mid, "bx": WALL_SIDE, "by": mid}]
+        # The river's two ends (2026-11-05, the user: "on peut passer sur les bords de map et esquiver l'eau"): the water must reach the edge of the
+        # navmesh, so that the way round is as long as the map and not a few metres along the border.
+        for sign, name in ((1, "north"), (-1, "south")):
+            for beyond, tag in ((-150.0, "edge"),):
+                walls.append({"label": "River %s %s" % (tag, name), "ax": -WALL_SIDE, "ay": sign * (recipe.bounds_half + beyond), "bx": WALL_SIDE, "by": sign * (recipe.bounds_half + beyond)})
     else:
         spacing = 360.0 / places
         angle = math.radians(angles[0] + (fords.FORD_OFFSET + 1.0) / 2.0 * spacing)

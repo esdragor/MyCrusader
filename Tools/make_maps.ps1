@@ -57,7 +57,7 @@ $Script = Join-Path $Project "Tools\Editor\create_match_map.py"
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 # The script's path has no space (the copies live under Documents\HeroesOfLiberty-*): no quotes inside -ExecCmds.
 if ($Script -match ' ') { Write-Host "make_maps : FAIL (a space in $Script; -ExecCmds cannot quote it)"; exit 1 }
-$EditorArguments = "`"$UProject`" -nosplash -unattended -LiveCoding=0 -nosound -abslog=`"$Log`" -ExecCmds=`"py $Script $($Arguments -join ' ')`""
+$EditorArguments = "`"$UProject`" -nosplash -unattended -Multiprocess -LiveCoding=0 -nosound -abslog=`"$Log`" -ExecCmds=`"py $Script $($Arguments -join ' ')`""
 $Process = Start-Process -FilePath $Editor -ArgumentList $EditorArguments -PassThru -WindowStyle Minimized
 $TimedOut = -not $Process.WaitForExit(1800000)
 if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }
