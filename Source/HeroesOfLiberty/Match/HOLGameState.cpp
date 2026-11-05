@@ -36,6 +36,7 @@ AHOLGameState::AHOLGameState()
 {
 	SlotDefeats.Init(EHOLDefeatReason::None, FHOLMatchConfig::MaxSlots);
 	ForumStates.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
+	TierOverrides.Init(-1, FHOLMatchConfig::MaxSlots);
 	ForumBuilders.Init(0, FHOLMatchConfig::MaxSlots);
 	LaunchConfig = FHOLMatchConfig::MakeDefault();
 	HeroSheets.Init(FHOLHeroSheet(), FHOLMatchConfig::MaxSlots);
@@ -56,6 +57,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, LaunchConfig);
 	DOREPLIFETIME(AHOLGameState, FogMode);
 	DOREPLIFETIME(AHOLGameState, ForumStates);
+	DOREPLIFETIME(AHOLGameState, TierOverrides);
 	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
@@ -197,8 +199,26 @@ const FHOLForumState& AHOLGameState::GetForumState(const int32 Slot) const
 	return ForumStates.IsValidIndex(Slot) ? ForumStates[Slot] : Standing;
 }
 
+int32 AHOLGameState::GetTierOverride(const int32 Slot) const
+{
+	return TierOverrides.IsValidIndex(Slot) ? TierOverrides[Slot] : -1;
+}
+
+void AHOLGameState::SetTierOverride(const int32 Slot, const int32 Tier)
+{
+	if (TierOverrides.IsValidIndex(Slot))
+	{
+		TierOverrides[Slot] = Tier < 0 ? -1 : FMath::Min(Tier, 3);
+	}
+}
+
 int32 AHOLGameState::GetTier(const int32 Slot) const
 {
+	// G0 (D710): a tier forced by hol.Cheat.Tier wins over the hero's level, for the grid, the server, the technologies and the AI alike.
+	if (GetTierOverride(Slot) >= 0)
+	{
+		return GetTierOverride(Slot);
+	}
 	// The level is the public sheet's on a client as on the server (UHOLHeroLibrary), so the tier needs nothing sent more.
 	return HOLHeroXP::GetTier(UHOLHeroLibrary::GetHeroLevel(this, Slot));
 }
