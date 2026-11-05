@@ -204,9 +204,22 @@ FString TalentTipTexts = "";
 	float DipPanelBottom = -1.0;
 	float DipButtonRight = -1.0;
 
+	// The sounds of the screen (AudioInProgress.md A2b, Script/Audio): one player, asked by the clicks and the alerts below.
+	UHOLAudioPlayer Audio;
+	bool bVolcanoShown = false;
+
+	// The cue of an event (HOLAudioEvent::), played in 2D; false when the player is not made yet or the cue is in its cooldown.
+	bool Sound(int Event)
+	{
+		if (Audio == nullptr)
+			return false;
+		return Audio.Play(Event);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
+		Audio = Cast<UHOLAudioPlayer>(NewObject(this, UHOLAudioPlayer));
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
@@ -297,6 +310,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestDuelAnswer(bAccept);
+		Sound(bAccept ? HOLAudioEvent::UiConfirm : HOLAudioEvent::UiBack);
 		return true;
 	}
 
@@ -811,6 +825,7 @@ FString TalentTipTexts = "";
 		if (GetLocalSlot() < 0)
 			return false;
 		bDipOpen = !bDipOpen;
+		Sound(bDipOpen ? HOLAudioEvent::UiOpen : HOLAudioEvent::UiClose);
 		DipMenuSlot = -1;
 		DipPanelBox.SetVisibility(bDipOpen ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		return true;
@@ -891,6 +906,10 @@ FString TalentTipTexts = "";
 		}
 		VolcanoPanel.SetVisibility(View.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		VolcanoText.SetText(FText::FromString(View.Text));
+		// The alert: a bell when the volcano's line appears (a site that speaks), not at each refresh.
+		if (View.bVisible && !bVolcanoShown)
+			Sound(HOLAudioEvent::AlertVolcano);
+		bVolcanoShown = View.bVisible;
 	}
 
 	void BuildAILevelLine(UOverlay Frame)
@@ -1461,6 +1480,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestResume();
+		Sound(HOLAudioEvent::UiClick);
 		return true;
 	}
 
@@ -1704,6 +1724,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.SelectHero();
+		Sound(HOLAudioEvent::UiClick);
 		return true;
 	}
 
@@ -1716,6 +1737,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestReturnHero();
+		Sound(HOLAudioEvent::UiConfirm);
 		return true;
 	}
 
@@ -1737,6 +1759,7 @@ FString TalentTipTexts = "";
 		if (!HeroView.bVisible || TalentSeenCount < 0)
 			return false;
 		bTalentWindowOpen = !bTalentWindowOpen;
+		Sound(bTalentWindowOpen ? HOLAudioEvent::UiOpen : HOLAudioEvent::UiClose);
 		ShowTalentWindow();
 		return true;
 	}
@@ -1752,6 +1775,7 @@ FString TalentTipTexts = "";
 		if (!bTalentWindowOpen)
 			return false;
 		bTalentWindowOpen = false;
+		Sound(HOLAudioEvent::UiClose);
 		ShowTalentWindow();
 		return true;
 	}
@@ -1774,6 +1798,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestHeroTalent(Asked);
+		Sound(HOLAudioEvent::UiConfirm);
 		return true;
 	}
 
@@ -1930,6 +1955,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestHeroTalent(TalentView.AdvisedFamily);
+		Sound(HOLAudioEvent::UiConfirm);
 		return true;
 	}
 
