@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "AI/HOLAIBrain.h"
+#include "AI/HOLAIOrders.h"
 #include "AI/HOLAITechnologyLibrary.h"
 #include "AI/HOLAITools.h"
 #include "Buildings/HOLBuilding.h"
@@ -575,6 +576,110 @@ bool FHOLDisconnectHeldTest::RunTest(const FString& Parameters)
 			TestFalse(TEXT("back: the AI lets the seat go"), Brain->IsHeld(1));
 			TestFalse(TEXT("back: the brain no longer thinks for it"), Brain->GetThinkingSlots().Contains(1));
 			TestEqual(TEXT("back: a human seat has no level again"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), -1);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D717 (T2): the AI that holds the seat plays with HIS stock. Bob (slot 1, a Peasant-making centre) leaves; the real chain
+// (KeepAbsentSlot, as the game mode's Logout) gives the seat to a player state of the AI (his name, his stock, his technologies),
+// so what the brain orders passes the same queue and is paid on that stock (before: "ignored: no player state", nothing
+// happened). A Peasant ordered by the AI for slot 1 enters his centre's queue and costs food; what a Peasant unloads is added
+// there too (SetSlotStock/AddSlotStock). A second connection of his name does not find his seat "taken" (PostLogin's slots in use
+// leave the held seat out). Back (GiveSlotStock): the new player state has the stock as the AI left it, the spent food spent,
+// his technologies (without raising twice what was raised), and only one player state is left for the seat; Alice is untouched.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectHeldStockTest, "HeroesOfLiberty.Match.DisconnectHeldStock", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectHeldStockTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+	AHOLBuilding* BobCentre = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* AliceCentre = World->SpawnActor<AHOLBuilding>(FVector(-20000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("production"), Production) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("player states"), Alice) && TestNotNull(TEXT("player states"), Bob) && TestNotNull(TEXT("centres"), BobCentre)
+		&& TestNotNull(TEXT("centres"), AliceCentre))
+	{
+		State->InitVictory(MakeNamedConfig());
+		Alice->SetMatchSlot(0, 0);
+		Bob->SetMatchSlot(1, 1);
+		State->AddPlayerState(Alice);
+		State->AddPlayerState(Bob);
+		const FHOLResources Starting(2000, 2000, 500, 500);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*Bob, Starting);
+		BobCentre->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		AliceCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Production->OnWorldBeginPlay(*World);
+		const FName Peasant(TEXT("Peasant"));
+		const FName PloughI(TEXT("PloughI"));
+		Bob->AddTechnology(PloughI);
+
+		TestTrue(TEXT("Bob leaves: slot kept"), State->KeepAbsentSlot(*Bob, 10., 180.));
+		Bob->Destroy();
+
+		// The seat has a player state of the AI: his name, his slot, his stock and technologies; one only.
+		const AHOLPlayerState* Holder = AHOLGameState::FindHeldBot(*World, 1);
+		if (TestNotNull(TEXT("away: a player state of the AI holds the seat"), Holder))
+		{
+			TestTrue(TEXT("it is an AI's"), Holder->IsABot());
+			TestEqual(TEXT("it keeps his name"), Holder->GetPlayerName(), FString(TEXT("Bob")));
+			TestEqual(TEXT("it has his stock"), Holder->GetResources().ToString(), Starting.ToString());
+			TestTrue(TEXT("it has his Plough I"), Holder->GetTechnologies().Has(PloughI));
+		}
+		TestNull(TEXT("Alice's seat has none"), AHOLGameState::FindHeldBot(*World, 0));
+		// A second connection of his name: the seat is not "in use" by that player state of the AI (else he joins as a spectator).
+		TestFalse(TEXT("away: PostLogin does not see his seat as taken"), State->GetSlotsInUse(nullptr).Contains(1));
+		TestTrue(TEXT("... Alice's is"), State->GetSlotsInUse(nullptr).Contains(0));
+
+		// What the brain orders for the seat is paid on his stock (the real order path, as the script's).
+		FHOLResources Before;
+		TestTrue(TEXT("away: his stock is read"), AHOLGameState::GetSlotStock(*World, 1, Before));
+		TestTrue(TEXT("the AI orders a Peasant at his centre"), UHOLAIOrderLibrary::IssueAIProduceOrder(World, 1, FVector::ZeroVector, Peasant));
+		Simulation->GetOnStepStarted().Broadcast(1);
+		TestEqual(TEXT("next step: the Peasant is in his centre's queue"), BobCentre->GetProductionQueue().Num(), 1);
+		FHOLResources After;
+		AHOLGameState::GetSlotStock(*World, 1, After);
+		TestTrue(TEXT("paid: his food went down"), After.Food < Before.Food);
+		// A deposit (what a Peasant unloads) goes where the orders pay.
+		FHOLResources Stock;
+		TestTrue(TEXT("a deposit is added to his stock"), AHOLGameState::AddSlotStock(*World, 1, FHOLResources(0, 100, 0, 0), Stock));
+		TestEqual(TEXT("... and the orders pay on it (wood +100)"), Stock.Wood, After.Wood + 100);
+		FHOLResources Read;
+		AHOLGameState::GetSlotStock(*World, 1, Read);
+		TestEqual(TEXT("... read back"), Read.ToString(), Stock.ToString());
+		TestEqual(TEXT("Alice's stock is untouched"), Alice->GetResources().ToString(), Starting.ToString());
+
+		// Back with a new player state: what the AI left, the AI gone.
+		AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("new player state"), BobAgain))
+		{
+			BobAgain->SetMatchSlot(1, 1);
+			State->AddPlayerState(BobAgain);
+			TestTrue(TEXT("back at 100"), State->GiveSlotStock(*BobAgain, Starting, 100.));
+			TestEqual(TEXT("back: the stock as the AI left it (spent, deposited)"), BobAgain->GetResources().ToString(), Stock.ToString());
+			TestTrue(TEXT("back: his Plough I"), BobAgain->GetTechnologies().Has(PloughI));
+			TestNull(TEXT("back: no player state of the AI any more"), AHOLGameState::FindHeldBot(*World, 1));
+			int32 Seats = 0;
+			for (const APlayerState* Each : State->PlayerArray)
+			{
+				const AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+				Seats += HOLEach && HOLEach->GetPlayerIndex() == 1 ? 1 : 0;
+			}
+			TestEqual(TEXT("back: one player state for his seat"), Seats, 1);
+			TestEqual(TEXT("back: his order stays in the centre's queue"), BobCentre->GetProductionQueue().Num(), 1);
 		}
 	}
 
