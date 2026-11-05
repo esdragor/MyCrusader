@@ -11,3 +11,5 @@ Options :
 Recommandation : A (aucun défaut visible, le défilement marche ; B contredit une demande explicite). À reprendre seulement si l'essai à 6-8 joueurs gêne.
 
 Valeur par défaut codée : A (rien à changer ; `PlaceDipPanel` dans `Script/UI/HOLGameScreenScript.as`, `MaxHeight` par présentation).
+
+Reponse: Autre (2026-11-05 14:3x) : allonger un peu le cadre ET reduire la taille des elements ; un joueur = 2 lignes MAX ; allonger en hauteur pour faire tenir les 8 joueurs, mais seulement quand les 2 lignes par joueur sont effectives (donc d'abord le compactage a 2 lignes, ensuite la hauteur). Les 4 boutons de tribut restent directs (demande du 2026-11-05) : ils doivent tenir dans les 2 lignes. Pas encore applique : ligne de la file.
