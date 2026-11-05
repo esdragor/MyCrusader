@@ -16,3 +16,5 @@ Conséquences visibles : A garde la base vivante et sûre sans lancer l'IA dans 
 Recommandation : A.
 
 Réglage : une ligne dans `HOLAIHold::Allows` (la liste) et `BaseRadius` (le rayon) ; le C++ n'est pas concerné.
+
+Reponse: C (2026-11-05 14:3x) : comme A, mais la cavalerie legere est produite (defense mobile). Pas encore appliquee : une ligne dans HOLAIHold::Allows, a faire au prochain Auto_Journey avec le reste C++ de la deconnexion.
