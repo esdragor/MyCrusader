@@ -2,6 +2,7 @@
 # Chaine reelle : proprietaire neutre (8), unites de camp passives au repos, charge a vue (hol.Camp.Aggro 0), retour, recompense partagee (hol.Camp.Credit 2).
 # Chaque waitlog est une preuve (check.ps1) ; les passes du brouillard, des statistiques, de la victoire et du reseau tournent pendant tout le scenario avec un proprietaire 8 present.
 # Passifs au repos (N4) : un camp (hol.Camp.Aggro 1, il ne bouge que si on l attaque) a un Paysan de mon camp a 3 m de son poste : personne ne frappe, le camp reste au poste.
+hol.Orders.LogFinalLegs 1
 hol.Sanity.DumpUnit -3
 hol.Camp.Aggro 1
 hol.Camp.Add 0 -9000 3 Spearman

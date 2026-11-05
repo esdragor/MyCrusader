@@ -343,6 +343,32 @@ namespace HOLCombat
 	}
 
 	/**
+	 * D641 (hol.Combat.PlaceBySide, the walk-round trace of 2026-11-05): the spot a soldier claims round its target. A claimed place that is still free
+	 * is kept (the same side of the target). A place taken is replaced by the free spot nearest to SelfAngle (the soldier's own side of the target,
+	 * radians), the shortest way round the ring from where it stands; with bBySide false it is the spot nearest to the old angle (the rule as it was:
+	 * once the soldier had slid round, the spot nearest to the OLD place could lie across the whole melee, a walk round the crowd that reverses on its
+	 * steps). A soldier without a place takes the spot nearest to SelfAngle. False when no spot is free.
+	 */
+	inline bool ChooseFreePlace(const FVector2D& TargetWhere, const float TargetRadius, const float SelfRadius, TConstArrayView<FBody> Others, const bool bHasPlace,
+		const double PlaceAngle, const double SelfAngle, const bool bBySide, double& OutAngle)
+	{
+		if (bHasPlace)
+		{
+			double Kept = 0.;
+			if (!FindFreePlaceAround(TargetWhere, TargetRadius, SelfRadius, Others, PlaceAngle, Kept))
+			{
+				return false;
+			}
+			if (FMath::Abs(Kept - PlaceAngle) <= 1e-3 || !bBySide)
+			{
+				OutAngle = Kept;
+				return true;
+			}
+		}
+		return FindFreePlaceAround(TargetWhere, TargetRadius, SelfRadius, Others, SelfAngle, OutAngle);
+	}
+
+	/**
 	 * D641 (Q-neutrals-hold = C): whether a free place round the target is out of the soldier's reach for the audit: bodies close on BOTH sides of it
 	 * (relative to its way to the target), within Slack of touching (1.5 x the two radii by default: a gap of up to half a body), wall it in between two
 	 * friends who strike; it waits, rightly. Others = every body but the soldier and its target. The audit (hol.Test.Sanity check 4) counts a stall only

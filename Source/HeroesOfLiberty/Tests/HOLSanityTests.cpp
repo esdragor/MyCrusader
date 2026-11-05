@@ -224,7 +224,37 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("a lone target: the spot nearest to 1.0 rad"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, None, 1.0, Chosen));
 		TestTrue(TEXT("is the third spot (67.5 degrees)"), FMath::IsNearlyEqual(Chosen, 2. * UE_DOUBLE_PI * 3. / 16., 1e-6));
 	}
-	// Q-neutrals-hold = C: bodies close on both sides wall a soldier in (a free place it cannot reach is no stall); one side only, or far, does not.
+	// D641 (hol.Combat.PlaceBySide, the neutrals trace of 2026-11-05): a claimed place that gets taken is replaced by the free spot on the soldier's OWN
+		// side, not the one nearest the old place (which could lie across the whole melee: the soldier walked round the crowd and back on its steps).
+		// Sixteen spots round a target (radius 30, ring at 62 cm); bodies on spots 9, 10, 0 and 3 (each blocks its spot and the two either side) leave
+		// spots 6 (135 degrees) and 13 (292.5 degrees) free. The soldier stands west of the target (180 degrees); its claimed place was spot 12 (270).
+		{
+			TArray<HOLCombat::FBody> Crowd;
+			for (const int32 Spot : { 9, 10, 0, 3 })
+			{
+				const double Angle = 2. * UE_DOUBLE_PI * Spot / 16.;
+				Crowd.Add({ FVector2D(62. * FMath::Cos(Angle), 62. * FMath::Sin(Angle)), 30.f });
+			}
+			const double Spot6 = 2. * UE_DOUBLE_PI * 6. / 16.;
+			const double Spot13 = 2. * UE_DOUBLE_PI * 13. / 16.;
+			double Old = -1.;
+			TestTrue(TEXT("control: the rule as it was finds a spot"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Crowd, 1.5 * UE_DOUBLE_PI, Old));
+			TestTrue(TEXT("control: the rule as it was takes the spot nearest the old place (13, on the far side of the crowd)"), FMath::IsNearlyEqual(Old, Spot13, 1e-6));
+			double Chosen = -1.;
+			TestTrue(TEXT("a taken place is replaced"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, 1.5 * UE_DOUBLE_PI, UE_DOUBLE_PI, true, Chosen));
+			TestTrue(*FString::Printf(TEXT("by the spot on the soldier's own side (spot 6, 135 degrees), not across the melee (got %.1f degrees)"), FMath::RadiansToDegrees(Chosen)),
+				FMath::IsNearlyEqual(Chosen, Spot6, 1e-6));
+			TestTrue(TEXT("with hol.Combat.PlaceBySide 0 the old choice stands"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, 1.5 * UE_DOUBLE_PI, UE_DOUBLE_PI, false, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot13, 1e-6));
+			TestTrue(TEXT("a claimed place still free is kept, whatever the side"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, static_cast<float>(Spot13), UE_DOUBLE_PI, true, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot13, 1e-6));
+			TestTrue(TEXT("no place yet: the spot nearest the soldier's side"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, false, 0., UE_DOUBLE_PI, true, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot6, 1e-6));
+			Crowd.Add({ FVector2D(62. * FMath::Cos(Spot6), 62. * FMath::Sin(Spot6)), 30.f });
+			Crowd.Add({ FVector2D(62. * FMath::Cos(Spot13), 62. * FMath::Sin(Spot13)), 30.f });
+			TestFalse(TEXT("every spot taken: no place"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, 1.5 * UE_DOUBLE_PI, UE_DOUBLE_PI, true, Chosen));
+		}
+		// Q-neutrals-hold = C: bodies close on both sides wall a soldier in (a free place it cannot reach is no stall); one side only, or far, does not.
 	{
 		const FVector2D Self(0., 0.);
 		const FVector2D Target(300., 0.);

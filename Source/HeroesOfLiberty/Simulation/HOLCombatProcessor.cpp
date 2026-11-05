@@ -119,6 +119,10 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 ClaimPlace = 1;
 	FAutoConsoleVariableRef CVarClaimPlace(TEXT("hol.Combat.ClaimPlace"), ClaimPlace,
 		TEXT("1 (default): a melee out of reach of its target that has gained no hol.Combat.ClaimProgress cm of edge distance for hol.Combat.ClaimStuck s, with a place free round the target, walks to that place (the free spot nearest to the side it was on, kept while free) instead of the target's centre; 0: off"));
+	/** D641 (the walk-round trace of 2026-11-05): a claimed place that is taken is replaced by the free spot on the soldier's own side, not the one nearest the old place. */
+	int32 PlaceBySide = 1;
+	FAutoConsoleVariableRef CVarPlaceBySide(TEXT("hol.Combat.PlaceBySide"), PlaceBySide,
+		TEXT("1 (default, with hol.Combat.ClaimPlace): a claimed place that gets taken is replaced by the free spot nearest to the side of the target the soldier stands on now (the shortest way round the ring); 0: the spot nearest to the old place (it could lie across the whole melee)"));
 	float ClaimStuckSeconds = 0.15f;
 	FAutoConsoleVariableRef CVarClaimStuck(TEXT("hol.Combat.ClaimStuck"), ClaimStuckSeconds,
 		TEXT("s (default 0.15, with hol.Combat.ClaimPlace): how long a melee out of reach may make no headway before it claims a free place round its target"));
@@ -2484,9 +2488,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					TArray<HOLCombat::FBody> PlaceBodies;
 					GatherRoomBodies(Index, Target, PlaceBodies);
 					const FVector2D FromTarget = Position - EnemyPosition;
-					const double Prefer = Combat.bHasPlace ? static_cast<double>(Combat.PlaceAngle) : (FromTarget.IsNearlyZero() ? 0. : FMath::Atan2(FromTarget.Y, FromTarget.X) + (FromTarget.Y < 0. ? 2. * UE_DOUBLE_PI : 0.));
+					const double SelfSide = FromTarget.IsNearlyZero() ? 0. : FMath::Atan2(FromTarget.Y, FromTarget.X) + (FromTarget.Y < 0. ? 2. * UE_DOUBLE_PI : 0.);
 					double Angle = 0.;
-					if (HOLCombat::FindFreePlaceAround(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Prefer, Angle))
+					if (HOLCombat::ChooseFreePlace(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Combat.bHasPlace, static_cast<double>(Combat.PlaceAngle), SelfSide, PlaceBySide != 0, Angle))
 					{
 						bPlaceNew = !Combat.bHasPlace || FMath::Abs(Angle - static_cast<double>(Combat.PlaceAngle)) > 1e-3;
 						if (!Combat.bHasPlace)

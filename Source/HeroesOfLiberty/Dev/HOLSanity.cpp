@@ -57,6 +57,10 @@ namespace UE::HeroesOfLiberty::Dev
 		float StallSeconds = 0.5f;
 		FAutoConsoleVariableRef CVarStallSeconds(TEXT("hol.Test.SanityStall"), StallSeconds,
 			TEXT("Seconds (default 0.5; 0 = off) a melee may stand still out of reach of its target while a place is free round that target: longer, hol.Test.Sanity says FAIL (the user's retour on the neutrals trial, D641)"));
+		/** hol.Test.SanityPlaceWalk: Q-sanity-circling (open question, default 0 = the rules as they were): a soldier walking to the free place it claimed round its target (D641) is on a manoeuvre, like a rear flank (Q-flank-demi-tour = A): the spin and shake rules skip its steps. */
+		int32 PlaceWalkIsManoeuvre = 0;
+		FAutoConsoleVariableRef CVarPlaceWalkIsManoeuvre(TEXT("hol.Test.SanityPlaceWalk"), PlaceWalkIsManoeuvre,
+			TEXT("0 (default): the spin and shake rules judge every step; 1: the steps of a soldier walking to the free place it claimed round its target are a manoeuvre and are skipped (Q-sanity-circling)"));
 		/** hol.Sanity.DumpUnit <UnitId>: the log line of that unit at every step (position, velocity, order), -1 none. */
 		int32 DumpUnit = -1;
 		FAutoConsoleVariableRef CVarDumpUnit(TEXT("hol.Sanity.DumpUnit"), DumpUnit, TEXT("Log the position, velocity and order of this unit at every watched step (-1: none)."));
@@ -257,7 +261,7 @@ namespace UE::HeroesOfLiberty::Dev
 				Window.UnitId = UnitId;
 				Window.Places.Add(FVector2D(Where.X, Where.Y));
 				Window.Ordered.Add(bOrdered ? 1 : 0);
-				Window.Flanking.Add(Combat && Combat->bFlanking ? 1 : 0);
+				Window.Flanking.Add(Combat && (Combat->bFlanking || (PlaceWalkIsManoeuvre != 0 && Combat->bHasPlace && Combat->bApproaching)) ? 1 : 0);
 				{
 					const FMassVelocityFragment* StepVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
 					int32 TargetUnit = -1;

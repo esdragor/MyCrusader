@@ -435,6 +435,31 @@ namespace UE::HeroesOfLiberty::Orders
 		return Best;
 	}
 
+	/** D641 (the neutrals trace of 2026-11-05): who sends a soldier of an attack-move to a new place; read with hol.Sanity.DumpUnit. */
+	int32 LogFinalLegs = 0;
+	FAutoConsoleVariableRef CVarLogFinalLegs(TEXT("hol.Orders.LogFinalLegs"), LogFinalLegs,
+		TEXT("1: log each final leg (a straight walk to a place) given to a unit on an attack-move, with the call site that gave it (D641 trace); 0 (default): off"));
+
+	/** One line for hol.Orders.LogFinalLegs: Caller = the call site of StartFinalLeg, Place = where the leg ends. */
+	void LogFinalLegCaller(const FMassEntityManager& EntityManager, const FMassEntityHandle Entity, const TCHAR* Caller, const FVector& Place)
+	{
+		if (LogFinalLegs == 0)
+		{
+			return;
+		}
+		const FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+		const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity);
+		const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity);
+		if (!Combat || !State || !Transform || Combat->Mode != EHOLCombatMode::AttackMove)
+		{
+			return;
+		}
+		const FVector Here = Transform->GetTransform().GetLocation();
+		UE_LOG(LogHOLCommands, Display, TEXT("FinalLeg #%u by %s: from (%.0f, %.0f) to (%.0f, %.0f), %.0f cm; combat: approaching %d attacking %d target %d claimed place %d"),
+			State->UnitId, Caller, Here.X, Here.Y, Place.X, Place.Y, FVector::Dist2D(Here, Place), Combat->bApproaching ? 1 : 0, Combat->bAttacking ? 1 : 0,
+			Combat->Target.IsSet() ? 1 : 0, Combat->bHasPlace ? 1 : 0);
+	}
+
 	/** From where it is straight to its slot, standing there (the M1 move of D228, now the end of every order). */
 	void StartFinalLeg(const UWorld& World, const FTransformFragment& Transform, const FHOLUnitTypeConstants& Constants, const uint8 Owner, FHOLMoveOrderFragment& Order,
 		FMassMoveTargetFragment& MoveTarget, FMassNavMeshShortPathFragment& ShortPath, FMassNavMeshCachedPathFragment& CachedPath)
@@ -2186,6 +2211,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 			Request.Entities.Add(Entity);
 			return;
 		}
+		LogFinalLegCaller(EntityManager, Entity, TEXT("ToFinalLeg"), Order.Slot);
 		StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity),
 			EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order,
 			EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity),
@@ -2695,6 +2721,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 					Request.Entities.Add(Entity);
 					continue;
 				}
+				LogFinalLegCaller(EntityManager, Entity, TEXT("BlockEnd"), Order.Slot);
 				StartFinalLeg(*World, Transform, EntityManager.GetConstSharedFragmentDataChecked<FHOLUnitTypeConstants>(Entity),
 					EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order,
 					EntityManager.GetFragmentDataChecked<FMassMoveTargetFragment>(Entity), EntityManager.GetFragmentDataChecked<FMassNavMeshShortPathFragment>(Entity),
@@ -3652,6 +3679,7 @@ void UHOLUnitOrderProcessor::ServePathRequests(FMassEntityManager& EntityManager
 			if (!bFollowPath && !bOwnWayBlocked)
 			{
 				// A straight path, or none (start off the navmesh, already there): straight to the slot.
+				LogFinalLegCaller(EntityManager, Entity, TEXT("PathService"), Order.Slot);
 				StartFinalLeg(*World, Transform, Constants, EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Entity).OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 				continue;
 			}
@@ -3693,7 +3721,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 	const int32 FirstNewPath = PendingPaths.Num();
 	const UHOLTerrainSubsystem* Terrain = World->GetSubsystem<UHOLTerrainSubsystem>();
 
-	EntityQuery.ForEachEntityChunk(Context, [this, World, Terrain, Tolerance, StuckLimit, NavData](FMassExecutionContext& Context)
+	EntityQuery.ForEachEntityChunk(Context, [this, World, Terrain, Tolerance, StuckLimit, NavData, &EntityManager](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLUnitStateFragment> States = Context.GetMutableFragmentView<FHOLUnitStateFragment>();
 		const TArrayView<FHOLMoveOrderFragment> Orders = Context.GetMutableFragmentView<FHOLMoveOrderFragment>();
@@ -3782,6 +3810,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 					// for 15 s, a new path each 3 s): it stands where it is, as the final leg does near a slot it cannot reach.
 					if (FVector2f::Distance(Here, FVector2f(FVector2D(Order.Slot))) <= StuckCountDistance)
 					{
+						LogFinalLegCaller(EntityManager, Context.GetEntity(EntityIt), TEXT("PathStuckNearSlot"), Order.Slot);
 						StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 						Order.StuckSteps = static_cast<uint16>(FMath::Max(StuckLimit, 1));
 						Order.LastSlotDistance = 0.f;
@@ -3811,6 +3840,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				}
 				else
 				{
+					LogFinalLegCaller(EntityManager, Context.GetEntity(EntityIt), TEXT("PathDone"), Order.Slot);
 					StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 				}
 				continue;
@@ -3827,6 +3857,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 				if (FVector::DistSquared2D(Location, PathEnd) <= FMath::Square(LeaveDistance)
 					&& !NavData->Raycast(Location, Order.Slot, Hit, NavData->GetDefaultQueryFilter()))
 				{
+					LogFinalLegCaller(EntityManager, Context.GetEntity(EntityIt), TEXT("LeavePath"), Order.Slot);
 					StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 				}
 				continue;
@@ -3856,6 +3887,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 						else
 						{
 							Order.bShortOfSlot = false;
+							LogFinalLegCaller(EntityManager, Context.GetEntity(EntityIt), TEXT("PlaceReturn"), Order.Slot);
 							StartFinalLeg(*World, Transform, Constants, States[EntityIt].OwnerPlayer, Order, MoveTarget, ShortPath, CachedPath);
 							States[EntityIt].Activity = EHOLUnitActivity::Moving;
 							++TotalPlaceReturns;
