@@ -1,4 +1,4 @@
-// The AI that holds the position of a player who left (DisconnectInProgress.md T2/T3, D717): base economy and defence only, no far
+﻿// The AI that holds the position of a player who left (DisconnectInProgress.md T2/T3, D717): base economy and defence only, no far
 // attack, no expansion, no duel accepted. Each expectation compares the held thought with the same rule on the same summary
 // not held (the numbers of the rules are not typed in; the fixtures are those of HOLAIOpening_Test.as and HOLAIAttack_Test.as).
 
@@ -204,7 +204,6 @@ void Test_HoldBlocksTheFarParts(FUnitTest& T)
 	TArray<EHOLAIHoldPart> Far;
 	Far.Add(EHOLAIHoldPart::Market);
 	Far.Add(EHOLAIHoldPart::Siege);
-	Far.Add(EHOLAIHoldPart::Cavalry);
 	Far.Add(EHOLAIHoldPart::Relays);
 	Far.Add(EHOLAIHoldPart::Altar);
 	Far.Add(EHOLAIHoldPart::AttackWave);
@@ -217,6 +216,15 @@ void Test_HoldBlocksTheFarParts(FUnitTest& T)
 	}
 }
 
+// Q-hold-scope = C (2026-11-05): a held seat also produces Light Cavalry (the mobile defence; the Stable is built, the Light Cavalry queued). The AI makes no
+// other cavalry, and the rest of the far parts stay blocked (HOLAIHold_Test: Test_HoldBlocksTheFarParts).
+void Test_HoldMakesLightCavalry(FUnitTest& T)
+{
+	T.AssertTrue(HOLAIHold::Allows(true, EHOLAIHoldPart::Cavalry), "held: the Light Cavalry is produced (Q-hold-scope C)");
+	T.AssertTrue(HOLAIHold::Allows(false, EHOLAIHoldPart::Cavalry), "not held: as before");
+	T.AssertFalse(HOLAIHold::Allows(true, EHOLAIHoldPart::Siege), "held: still no siege workshop");
+	T.AssertFalse(HOLAIHold::Allows(true, EHOLAIHoldPart::AttackWave), "held: still no wave");
+}
 void Test_HoldLaunchesNoAttack(FUnitTest& T)
 {
 	FHOLAIWave NormalWave;
