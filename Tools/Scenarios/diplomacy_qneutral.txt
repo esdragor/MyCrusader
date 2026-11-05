@@ -1,0 +1,18 @@
+# Q + clic sur un joueur NEUTRE (E-diplomacy BUG 2026-11-05) : les soldats doivent se rapprocher ET frapper, posture inchangee. 3 minutes au plus.
+hol.Cheat.Resources 2000
+hol.Combat.LogHits 1
+hol.Diplomacy.Force 0 1 neutral
+hol.Diplomacy.Force 1 0 neutral
+hol.Camera.FocusNear 3000 0
+frames 5
+hol.Units.SpawnHere 6 ManAtArms 0 250
+hol.Units.SpawnHere 6 ManAtArms 1 250
+waitunits 12
+frames 120
+hol.Select.Army
+hol.Select.AttackMoveNear 3000 0
+waitlog (neutral): a direct attack
+frames 480
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 2 toward slot 1
+note Q + clic sur un neutre : voir le journal (coups portes, posture inchangee).

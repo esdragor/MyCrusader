@@ -614,6 +614,33 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/**
+	 * The REAL left click (Auto_Journey_File line 14): the cursor put where that ground point (cm) is drawn, then the press and the release as the input
+	 * does (HandleSelectStarted: attack-move armed by Q, placement, banner, else a selection). A test of a gesture goes through it, not through
+	 * AttackMoveAt or SelectAt (hol.Select.AttackMove and hol.Select.Click do not read the modes the keys armed).
+	 */
+	FAutoConsoleCommand LeftClickGroundCommand(
+		TEXT("hol.Select.LeftClickGround"),
+		TEXT("hol.Select.LeftClickGround <X> <Y>: a real left click (press and release, through the input's handlers) where that ground point (cm) is drawn; after the grid's Q (hol.Select.Grid 4) it is the attack-move's click"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.LeftClickGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.LeftClickGround: the point is not on the screen"));
+					continue;
+				}
+				Controller->ScriptLeftClick(Fraction);
+			}
+		}));
+
 	FAutoConsoleCommand AttackMoveCommand(
 		TEXT("hol.Select.AttackMove"),
 		TEXT("hol.Select.AttackMove <X> <Y> [shift]: the grid's attack-move (Q) then a left click where that ground point (cm) is drawn"),
@@ -5255,6 +5282,17 @@ void AHOLPlayerController::HandleSelectStarted()
 	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
 	SelectPressTime = GetWorld()->GetRealTimeSeconds();
+}
+
+void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
+{
+	IConsoleVariable* const TestCursor = UE::HeroesOfLiberty::Player::CVarTestCursor.AsVariable();
+	const FString Former = TestCursor->GetString();
+	TestCursor->Set(*FString::Printf(TEXT("%.4f %.4f"), ViewportFraction.X, ViewportFraction.Y), ECVF_SetByConsole);
+	UE_LOG(LogHOLMatch, Display, TEXT("Scripted left click at (%.3f, %.3f), armed attack-move: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"));
+	HandleSelectStarted();
+	HandleSelectCompleted();
+	TestCursor->Set(*Former, ECVF_SetByConsole);
 }
 
 void AHOLPlayerController::HandleSelectCompleted()
