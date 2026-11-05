@@ -283,3 +283,30 @@ void Test_SiteCountsOfTheUnits(FUnitTest& T)
 	T.AssertEquals(4, Zone.Takers.Num(), "a slot out of the arrays is ignored");
 	T.AssertEquals(2, Zone.Takers[1], "and changes nothing");
 }
+
+// Q2 = B (Retours\Q-sites-rule-edges.md, answered 2026-11-05): a taker of ANOTHER camp who arrives alone while a count was begun by a first
+// camp starts again from zero (he does not inherit the effort); a taker of the SAME camp (an ally's slot) goes on from the count.
+void Test_SiteTakerOfAnotherCampStartsFromZero(FUnitTest& T)
+{
+	FSiteZone First = EmptyZone();
+	AddHoly(First, 1);
+	HOLSite::FHOLSiteState Begun = SiteRun(HOLSite::FHOLSiteState(), First, SiteTeams(), 100);
+	T.AssertEquals(100, Begun.Held, "the first camp has 100 steps");
+	// Another camp's holy unit alone (the first one gone): the count starts again, it is his own.
+	FSiteZone Second = EmptyZone();
+	AddHoly(Second, 2);
+	HOLSite::FHOLSiteState State = SiteRun(Begun, Second, SiteTeams(), 10);
+	T.AssertEquals(10, State.Held, "another camp's taker starts from zero, he inherits nothing");
+	T.AssertEquals(2, State.Taker, "he is the one filling it");
+	// His count is his: it is full after the whole capture time from his arrival, not before.
+	State = SiteRun(Begun, Second, SiteTeams(), HOLSite::HoldSteps() - 1);
+	T.AssertEquals(HOLSite::None, State.Owner, "not taken one step before his own full count");
+	State = SiteRun(Begun, Second, SiteTeams(), HOLSite::HoldSteps());
+	T.AssertEquals(2, State.Owner, "taken after the whole capture time from his arrival");
+	// An ally of the first taker (slot 3, same team as slot 1) goes on from the count: the same camp.
+	FSiteZone Ally = EmptyZone();
+	AddHoly(Ally, 3);
+	State = SiteRun(Begun, Ally, SiteTeams(0, 1, 2, 1), 10);
+	T.AssertEquals(110, State.Held, "a taker of the same camp goes on from the count");
+	T.AssertEquals(3, State.Taker, "and is shown as the taker");
+}
