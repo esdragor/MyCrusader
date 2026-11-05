@@ -22,7 +22,7 @@ namespace HOLFactionRules
 			"Dawn_Worker,Dawn,Worker,Peasant\n"
 			"Dawn_Hero,Dawn,Hero,Hero\n"
 			"Dawn_MainCentre,Dawn,MainCentre,MainCentre\n"
-			"Legions_Worker,Legions,Worker,Peasant\n"
+			"Legions_Worker,Legions,Worker,Zombie\n"
 			"Legions_Hero,Legions,Hero,Hero\n"
 			"Legions_MainCentre,Legions,MainCentre,MainCentre\n");
 		const TCHAR* BuiltInOverrides = TEXT("Name,Faction,Type,Field,Value\n");

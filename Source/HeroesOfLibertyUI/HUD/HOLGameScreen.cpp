@@ -145,7 +145,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	FText GetUnitEffect(const FName TypeName)
 	{
 		static const FName Peasant(TEXT("Peasant"));
-		return TypeName == Peasant ? LOCTEXT("PeasantEffect", "Récolte et bâtit") : FText::GetEmpty();
+		return (TypeName == Peasant || TypeName == FName(TEXT("Zombie"))) ? LOCTEXT("PeasantEffect", "Récolte et bâtit") : FText::GetEmpty();
 	}
 
 	/** The key of a command's message, for the logs and Describe: "NotEnoughWood", "PopulationFull", "PlacementBuilding"... */

@@ -200,8 +200,9 @@ bool FHOLFactionTablesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Dawn Hero"), Real.FindRoleType(Dawn, HOLFactionRules::Roles::Hero), FName(TEXT("Hero")));
 	TestEqual(TEXT("Dawn MainCentre"), Real.FindRoleType(Dawn, HOLFactionRules::Roles::MainCentre), FName(TEXT("MainCentre")));
 	TestTrue(TEXT("the Legions have rows of their own"), Real.HasFaction(Legions));
-	// Until L1 (Zombie) and L8a (Damned Lord) a Legions slot starts as the Dawn does: no crash, nothing missing.
-	TestEqual(TEXT("Legions Worker, provisional"), Real.FindRoleType(Legions, HOLFactionRules::Roles::Worker), Peasant);
+	// L1: the Legions' Worker is the Zombie; their Hero stays the Dawn's until L8a (Damned Lord).
+	TestEqual(TEXT("Legions Worker: the Zombie (L1)"), Real.FindRoleType(Legions, HOLFactionRules::Roles::Worker), FName(TEXT("Zombie")));
+	TestEqual(TEXT("Legions Hero, provisional until L8a"), Real.FindRoleType(Legions, HOLFactionRules::Roles::Hero), FName(TEXT("Hero")));
 
 	// 2. The figures built in (a packaged game) are the files'.
 	const HOLFactionRules::FTable BuiltIn = HOLFactionRules::GetBuiltInTable();
@@ -321,7 +322,8 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 			Different += Test.Units->FindTypeRow(Name, Legions) != Test.Units->FindTypeRow(Name) ? 1 : 0;
 		}
 		TestEqual(TEXT("no unit type differs for the Legions before L2 (same rows)"), Different, 0);
-		TestEqual(TEXT("slot 1 (Legions, provisional Worker) starts as the Dawn: Peasant"), HOLFactionRules::GetRoleTypeName(Test.World, 1, HOLFactionRules::Roles::Worker), Peasant);
+		TestEqual(TEXT("slot 1 (Legions) has the Zombie as Worker, by the game state's configuration"), HOLFactionRules::GetRoleTypeName(Test.World, 1, HOLFactionRules::Roles::Worker), FName(TEXT("Zombie")));
+		TestEqual(TEXT("slot 1 (Legions, provisional Hero until L8a) has the Dawn's"), HOLFactionRules::GetRoleTypeName(Test.World, 1, HOLFactionRules::Roles::Hero), FName(TEXT("Hero")));
 	}
 
 	// (2) The grid: the Chapel's Monk is the Dawn's; the Chapel and the Sanctuary are built by the Dawn.
@@ -379,6 +381,109 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the Dawn's Chapel queued the Monk"), Chapels[0]->GetProductionQueue().Num(), 1);
 		TestEqual(TEXT("the Legions' Chapel refused it"), Chapels[1]->GetProductionQueue().Num(), 0);
 	}
+	return true;
+}
+
+// L1 (LegionsInProgress.md, LQ-8, D66): the Zombie replaces the Peasant for the Legions, on the real tables (no fixture): the Legions
+// start with Zombies, their centre produces Zombies and no Peasant, the Dawn's the opposite; the Zombie is cheaper than the Peasant,
+// costs no food, gathers slower and takes one population place. The figures are the provisional ones of the CSV (Q-Legions-ZombieValues).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLZombieWorkerTest, "HeroesOfLiberty.Match.Factions.Zombie", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLZombieWorkerTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	const FName Zombie(TEXT("Zombie"));
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	const FHOLUnitTypeRow* ZombieRow = Test.Units->FindTypeRow(Zombie);
+	const FHOLUnitTypeRow* PeasantRow = Test.Units->FindTypeRow(Peasant);
+	if (!TestNotNull(TEXT("the unit type table has a Zombie"), ZombieRow) || !TestNotNull(TEXT("... and a Peasant"), PeasantRow))
+	{
+		return false;
+	}
+
+	// The row: a worker (it carries), of the Legions only, cheaper, no food, slower, one place.
+	TestTrue(TEXT("the Zombie carries what it gathers (a worker)"), ZombieRow->CarryCapacity > 0);
+	TestEqual(TEXT("the Zombie is the Legions' only"), ZombieRow->Faction, Legions);
+	TestEqual(TEXT("the Peasant is the Dawn's only"), PeasantRow->Faction, Dawn);
+	TestEqual(TEXT("the Zombie costs no food (LQ-8)"), ZombieRow->Cost.Food, 0);
+	TestTrue(TEXT("the Zombie is free (the user's answer of 2026-11-05 to Q-Legions-ZombieValues)"), ZombieRow->Cost == FHOLResources());
+	TestTrue(TEXT("the Zombie is cheaper than the Peasant (D66)"), ZombieRow->Cost.Food + ZombieRow->Cost.Wood + ZombieRow->Cost.Stone + ZombieRow->Cost.Gold
+		< PeasantRow->Cost.Food + PeasantRow->Cost.Wood + PeasantRow->Cost.Stone + PeasantRow->Cost.Gold);
+	TestEqual(TEXT("the Zombie has 35 health (the user's answer)"), ZombieRow->MaxHealth, 35);
+	TestEqual(TEXT("the Zombie walks at the Peasant's speed"), ZombieRow->Speed, PeasantRow->Speed);
+	TestEqual(TEXT("the Zombie takes 20 s to produce"), ZombieRow->BuildTime, 20.f);
+	TestEqual(TEXT("the Zombie takes one population place (D66)"), ZombieRow->Population, 1);
+	TestTrue(TEXT("the Zombie gathers wood slower than the Peasant"), ZombieRow->GatherRates.Wood < PeasantRow->GatherRates.Wood);
+	TestTrue(TEXT("... and stone"), ZombieRow->GatherRates.Stone < PeasantRow->GatherRates.Stone);
+	TestTrue(TEXT("... and gold"), ZombieRow->GatherRates.Gold < PeasantRow->GatherRates.Gold);
+	TestTrue(TEXT("... and food"), ZombieRow->GatherRates.Food < PeasantRow->GatherRates.Food);
+
+	// The roles of the real table, by the real start of a match.
+	const FHOLMatchConfig Config = MakeConfig();
+	TestEqual(TEXT("slot 1 (Legions) has the Zombie as Worker"), FHOLStartRules::GetWorkerTypeName(Config, 1), Zombie);
+	TestEqual(TEXT("slot 0 (Dawn) has the Peasant as Worker"), FHOLStartRules::GetWorkerTypeName(Config, 0), Peasant);
+	TestTrue(TEXT("Peasants asked for slot 0"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(*Test.World, 0, *Test.Centre[0], 3));
+	TestTrue(TEXT("workers asked for slot 1"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(*Test.World, 1, *Test.Centre[1], 3));
+	Test.Units->ServeBirthRequests();
+	TestEqual(TEXT("the Legions start with 3 Zombies"), Test.CountUnits(Zombie, 1), 3);
+	TestEqual(TEXT("... and no Peasant"), Test.CountUnits(Peasant, 1), 0);
+	TestEqual(TEXT("the Dawn starts with 3 Peasants"), Test.CountUnits(Peasant, 0), 3);
+	TestEqual(TEXT("... and no Zombie"), Test.CountUnits(Zombie, 0), 0);
+
+	// The centre's grid and the server's rule: Zombie for the Legions, Peasant for the Dawn.
+	const FHOLBuildingTypeRow* CentreRow = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre);
+	if (TestNotNull(TEXT("the main centre's row"), CentreRow))
+	{
+		TestTrue(TEXT("the Legions' centre grid: the Zombie alone"), HOLFactionRules::FilterProduces(Test.World, CentreRow->Produces, 1) == TArray<FName>({ Zombie }));
+		TestTrue(TEXT("the Dawn's centre grid: the Peasant alone"), HOLFactionRules::FilterProduces(Test.World, CentreRow->Produces, 0) == TArray<FName>({ Peasant }));
+	}
+	for (int32 Slot = 0; Slot < 2; ++Slot)
+	{
+		AHOLPlayerState* Payer = Test.FindPlayerState(Slot);
+		if (!TestNotNull(TEXT("the slot's player state"), Payer))
+		{
+			return false;
+		}
+		Payer->SetResources(FHOLResources(5000, 5000, 5000, 5000));
+		for (const FName Type : { Peasant, Zombie })
+		{
+			FHOLProductionCommand Command;
+			Command.PlayerIndex = Slot;
+			Command.Building = Test.Centre[Slot];
+			Command.TypeName = Type;
+			Test.Commands->IssueProductionOrder(Command);
+		}
+	}
+	Test.RunStep();
+	TestEqual(TEXT("the Dawn's centre queued one worker (the Peasant)"), Test.Centre[0]->GetProductionQueue().Num(), 1);
+	TestEqual(TEXT("the Legions' centre queued one worker (the Zombie)"), Test.Centre[1]->GetProductionQueue().Num(), 1);
+	if (Test.Centre[0]->GetProductionQueue().Num() == 1 && Test.Centre[1]->GetProductionQueue().Num() == 1)
+	{
+		TestEqual(TEXT("... which is a Peasant for the Dawn"), Test.Centre[0]->GetProductionQueue()[0].TypeName, Peasant);
+		TestEqual(TEXT("... and a Zombie for the Legions"), Test.Centre[1]->GetProductionQueue()[0].TypeName, Zombie);
+	}
+
+	// A free worker is no unlimited one: with an empty stock the Legions' centre takes the free orders (nothing is paid), but its queue
+	// stops at its length (MaxQueue), and the population cap holds at each step (HOLProduction::Advance, whatever the cost).
+	Test.FindPlayerState(1)->SetResources(FHOLResources());
+	for (int32 Index = 0; Index < 12; ++Index)
+	{
+		FHOLProductionCommand Command;
+		Command.PlayerIndex = 1;
+		Command.Building = Test.Centre[1];
+		Command.TypeName = Zombie;
+		Test.Commands->IssueProductionOrder(Command);
+	}
+	Test.RunStep();
+	if (CentreRow)
+	{
+		TestEqual(TEXT("free Zombies: the queue stops at the centre's MaxQueue"), Test.Centre[1]->GetProductionQueue().Num(), CentreRow->MaxQueue);
+	}
+	FHOLResources Stock;
+	TestTrue(TEXT("free Zombies: nothing was paid"), AHOLGameState::GetSlotStock(*Test.World, 1, Stock) && Stock == FHOLResources());
 	return true;
 }
 

@@ -5696,13 +5696,13 @@ void AHOLPlayerController::SelectArmy()
 	{
 		return;
 	}
-	static const FName PeasantType(TEXT("Peasant"));
+	// L1: a worker is a unit that carries (the Peasant, the Zombie), not a type name.
 	TArray<FHOLUnitView> Views;
 	HOLUnitView::Gather(*GetWorld(), Views);
 	TArray<uint32> UnitIds;
 	for (const FHOLUnitView& View : Views)
 	{
-		if (View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.TypeName != PeasantType)
+		if (View.OwnerPlayer == HOLPlayerState->GetPlayerIndex() && View.CarryCapacity == 0)
 		{
 			UnitIds.Add(View.UnitId);
 		}
