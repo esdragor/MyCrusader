@@ -197,7 +197,60 @@ void Test_AITechOnlyTheListedAndImplemented(FUnitTest& T)
 	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, AITechStock(900, 900, 900, 900), 25, 2, 6, 2).bResearch, "Implemented false: refused");
 }
 
-// The default list names rows of the real table, each of an economy line a finished building of the AI's first buildings researches and whose effect is coded.
+// F1 (Fortifications, D696): with a finished Forge the AI researches the attack lines after the economy ones: the economy lines open at tier 1 first (the Forge is
+// asked nothing while one of them is open), then the level I of the melee attack, of the ranged attack, then the level II of each at tier 2. It builds no Forge here
+// (F14): the rule only uses the one it has.
+void Test_AIResearchesTheForgeAttacksAfterTheEconomyLines(FUnitTest& T)
+{
+	TArray<FHOLAITechnology> Table;
+	HOLAITechnology::ReadAITechnologyTable(Table);
+	TArray<FHOLAIBuilding> Buildings;
+	Buildings.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
+	Buildings.Add(AITechBuilding(n"Forge", 900, true, NAME_None));
+	const FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	const TArray<int> Rich = AITechStock(900, 900, 0, 900);
+	TArray<FName> Done;
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).Technology == n"PloughI", "an economy line still open comes first, the Forge waits");
+	Done.Add(n"PloughI");
+	Done.Add(n"WheelbarrowI");
+	FHOLAITechChoice Melee = HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1);
+	T.AssertTrue(Melee.bResearch, "the economy line of the Farm done: the Forge's turn");
+	T.AssertTrue(Melee.Technology == n"MeleeAttackI", "the melee attack first");
+	T.AssertEquals(900.f, float(Melee.BuildingAt.X), "in the Forge");
+	Done.Add(n"MeleeAttackI");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).Technology == n"RangedAttackI", "then the ranged attack");
+	Done.Add(n"RangedAttackI");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 1, 3, 1).bResearch, "tier 1: both level I done, the level II are not open");
+	Done.Add(n"PloughII");
+	Done.Add(n"WheelbarrowII");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 2, 6, 1).Technology == n"MeleeAttackII", "tier 2: the melee level II");
+	Done.Add(n"MeleeAttackII");
+	T.AssertTrue(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 2, 6, 1).Technology == n"RangedAttackII", "then the ranged level II");
+	Done.Add(n"RangedAttackII");
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Buildings, Rich, 25, 2, 6, 1).bResearch, "the four attack lines are done: nothing left (the armour is not coded, F2)");
+}
+
+// Without a finished Forge nothing changes for the AI (it builds none until F14): the attacks are passed over, as a technology of an absent building is.
+void Test_AIForgeAttacksNeedAFinishedForge(FUnitTest& T)
+{
+	TArray<FHOLAITechnology> Table;
+	HOLAITechnology::ReadAITechnologyTable(Table);
+	TArray<FName> Done;
+	Done.Add(n"PloughI");
+	Done.Add(n"WheelbarrowI");
+	const FHOLAITechSettings Rule = HOLAITech::DefaultSettings();
+	const TArray<int> Rich = AITechStock(900, 900, 0, 900);
+	TArray<FHOLAIBuilding> Farm;
+	Farm.Add(AITechBuilding(n"Farm", 700, true, NAME_None));
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 25, 1, 3, 1).bResearch, "no Forge: no attack line");
+	Farm.Add(AITechBuilding(n"Forge", 900, false, NAME_None));
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 25, 1, 3, 1).bResearch, "a Forge still a site: no attack line");
+	Farm.Add(AITechBuilding(n"Forge", 950, true, n"MeleeAttackI"));
+	T.AssertFalse(HOLAITech::Choose(Rule, Table, Done, Farm, Rich, 25, 1, 3, 1).bResearch, "one research at a time: Melee I is in the Forge's queue");
+}
+
+// The default list names rows of the real table, each a line a finished building of the AI's first buildings researches (an economy line, or an attack line of the
+// Forge, F1) and whose effect is coded.
 void Test_AITechDefaultOrderIsInTheTable(FUnitTest& T)
 {
 	TArray<FHOLAITechnology> Table;
@@ -213,7 +266,9 @@ void Test_AITechDefaultOrderIsInTheTable(FUnitTest& T)
 			{
 				bFound = true;
 				T.AssertTrue(Table[Row].bImplemented, Rule.Order[Index].ToString() + " has a coded effect");
-				T.AssertEquals(0, Table[Row].Category, Rule.Order[Index].ToString() + " is an economy technology");
+				const bool bEconomy = Table[Row].Category == 0;
+				const bool bForgeAttack = Table[Row].Category == 1 && Table[Row].Building == n"Forge";
+				T.AssertTrue(bEconomy || bForgeAttack, Rule.Order[Index].ToString() + " is an economy technology or an attack line of the Forge");
 			}
 		}
 		T.AssertTrue(bFound, Rule.Order[Index].ToString() + " is a row of the table");

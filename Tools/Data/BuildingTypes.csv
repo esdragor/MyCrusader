@@ -12,3 +12,4 @@ Market,Marché,"(X=1200.0,Y=1200.0)",500,1500,40,,0,,1,,"(Food=0,Wood=150,Stone=
 SiegeWorkshop,Atelier de siège,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Ram"",""Mangonel"")",5,,"(Food=0,Wood=175,Stone=0,Gold=0)",25,4,1,Military,False,,BlockAndTower,3200
 Chapel,Chapelle,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""Monk"")",5,,"(Food=0,Wood=200,Stone=0,Gold=0)",30,5,1,Military,False,,BlockAndTower,3200
 Stable,Écurie,"(X=1200.0,Y=1200.0)",600,1500,40,,0,"(""LightCavalry"")",5,,"(Food=0,Wood=150,Stone=0,Gold=0)",20,6,1,Military,False,,BlockAndTower,3200
+Forge,Forge,"(X=1200.0,Y=1200.0)",600,1500,40,,0,,5,,"(Food=0,Wood=150,Stone=0,Gold=0)",25,8,1,Technological,False,,BlockAndTower,3200
