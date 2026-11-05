@@ -1,0 +1,63 @@
+﻿# Le panneau Diplomatie a 8 joueurs (le maximum) reste dans son cadre dans les 3 presentations, a 1920x1080 et 1280x600, et ses lignes defilent (rows scroll > 0). Cheat panel deplie.
+# Plain, mode Diplomatie (diplomacy_eight.json) : 8 joueurs dont 2 IA.
+waitlog Starting hero of slot 0 spawned at
+hol.Sanity.Watch 1
+r.SetRes 1920x1080w
+frames 30
+hol.HUD.Click DiplomacyButton
+hol.HUD.Click CheatToggle
+frames 40
+hol.UI.DiplomacyLayout 2
+r.SetRes 1920x1080w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_eight_L2_1920
+hol.UI.DiplomacyLayout 2
+r.SetRes 1366x768w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_eight_L2_1366
+hol.UI.DiplomacyLayout 2
+r.SetRes 1280x600w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_eight_L2_600
+hol.UI.DiplomacyLayout 1
+r.SetRes 1280x600w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_eight_L1_600
+hol.UI.DiplomacyLayout 1
+r.SetRes 1920x1080w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_eight_L1_1920
+hol.UI.DiplomacyLayout 0
+r.SetRes 1280x600w
+frames 40
+panel hide
+frames 5
+hol.HUD.Report 1
+waitlog fit overflow 0 px, window 0 px, hero 0 px, cheats 0 px
+capture dipl_eight_L0_600
+r.SetRes 1920x1080w
+frames 30
+hol.UI.DiplomacyLayout 1
+hol.Test.Sanity
+panel show
+note 1. Le panneau Diplomatie est ouvert avec le panneau Triches deplie. Essaie les 3 presentations (hol.UI.DiplomacyLayout 0, 1, 2) et des fenetres basses (Alt + Entree, redimensionne) : le bas du panneau (taxe) doit toujours etre visible, les lignes defilent a la molette dans le cadre, rien ne recouvre le bloc du heros ni Triches.
