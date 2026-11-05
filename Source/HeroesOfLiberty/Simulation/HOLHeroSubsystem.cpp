@@ -14,6 +14,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
+#include "Match/HOLFactionRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLDuelClearRules.h"
 #include "Simulation/HOLDuelSubsystem.h"
@@ -167,7 +168,7 @@ namespace UE::HeroesOfLiberty::Hero
 				UE_LOG(LogHOLMatch, Warning, TEXT("hol.Hero.Kill: on the server or in solo, a slot 0 to %d"), FHOLMatchConfig::MaxSlots - 1);
 				return;
 			}
-			const int32 Killed = Units->KillUnitsOfOwner(static_cast<uint8>(Slot), FHOLStartRules::HeroTypeName);
+			const int32 Killed = Units->KillUnitsOfOwner(static_cast<uint8>(Slot), HOLFactionRules::GetRoleTypeName(World, Slot, HOLFactionRules::Roles::Hero));
 			UE_LOG(LogHOLMatch, Display, TEXT("hol.Hero.Kill: slot %d, %d hero(es) at 0 health"), Slot, Killed);
 		}));
 

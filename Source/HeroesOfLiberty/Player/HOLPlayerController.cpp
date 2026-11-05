@@ -29,6 +29,7 @@
 #include "InputMappingContext.h"
 #include "Map/HOLMapBounds.h"
 #include "Net/HOLCheatRules.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
@@ -3439,7 +3440,13 @@ FName AHOLPlayerController::GetGridCellUnitType(const int32 Cell) const
 	// A building under construction produces nothing (D312), nor a main forum down (V2.3a).
 	const AHOLBuilding* Building = GetOwnSelection();
 	const FHOLBuildingTypeRow* Type = Building && Building->IsFinished() && !Building->IsForumDown() ? Building->GetType() : nullptr;
-	return Type && Type->Produces.IsValidIndex(Cell) ? Type->Produces[Cell] : NAME_None;
+	if (!Type)
+	{
+		return NAME_None;
+	}
+	// L0 (LQ-7): the cells of the grid are the types the owner's faction fields, in the building's order.
+	const TArray<FName> Open = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Building->GetOwnerPlayer());
+	return Open.IsValidIndex(Cell) ? Open[Cell] : NAME_None;
 }
 
 void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands) const
@@ -3461,7 +3468,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		Context.bMarket = Building->GetTypeName() == HOLBuildingTypeNames::Market;
 		if (Type)
 		{
-			Context.Produces = Type->Produces;
+			Context.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Building->GetOwnerPlayer());
 			UHOLTechnologySettings::GetBuildingTechnologies(Building->GetTypeName(), Context.Researches);
 		}
 	}
@@ -3494,7 +3501,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			One.bMarket = Group[Member]->GetTypeName() == HOLBuildingTypeNames::Market;
 			if (Type)
 			{
-				One.Produces = Type->Produces;
+				One.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Group[Member]->GetOwnerPlayer());
 				UHOLTechnologySettings::GetBuildingTechnologies(Group[Member]->GetTypeName(), One.Researches);
 			}
 			for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
@@ -3545,7 +3552,8 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 		Context.bOnlyKings = bAnyKnown && bAllKings;
 		if (Context.bBuilders)
 		{
-			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable);
+			// L0 (LQ-7): the buildings the player\'s faction builds.
+			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable, HOLFactionRules::GetSlotFactionKey(GetWorld(), GetHOLPlayerState() ? GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE));
 		}
 		Context.bOwnUnits = !Units.IsEmpty();
 		// J8c.4: the hero commanded, his abilities on the grid (his level from the public sheet, the cool-downs from the

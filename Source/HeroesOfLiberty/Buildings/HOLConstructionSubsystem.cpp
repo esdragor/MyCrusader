@@ -15,6 +15,7 @@
 #include "GameFramework/PlayerController.h"
 #include "HeroesOfLibertyLog.h"
 #include "Map/HOLMapBounds.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "NavigationSystem.h"
@@ -423,6 +424,12 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	if (!Type || !Type->IsBuildable())
 	{
 		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
+		return;
+	}
+	// L0 (LQ-7): a building the player's faction does not build: the grid hides it, a client could still ask.
+	if (!HOLFactionRules::IsBuildingOpenTo(World, Order.TypeName, Order.PlayerIndex))
+	{
+		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not a building of its faction"), Order.PlayerIndex, *Order.TypeName.ToString());
 		return;
 	}
 	// P3 (D07): a building of an age the player's tier (his hero's level) has not reached; the grid greys it, a client could still ask.

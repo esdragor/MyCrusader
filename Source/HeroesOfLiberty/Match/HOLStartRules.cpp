@@ -2,11 +2,27 @@
 
 #include "Match/HOLStartRules.h"
 
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchConfig.h"
 
 const FName FHOLStartRules::KingTypeName(TEXT("King"));
 const FName FHOLStartRules::PeasantTypeName(TEXT("Peasant"));
 const FName FHOLStartRules::HeroTypeName(TEXT("Hero"));
+
+FName FHOLStartRules::GetWorkerTypeName(const FHOLMatchConfig& Config, const int32 Slot)
+{
+	return HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::Worker);
+}
+
+FName FHOLStartRules::GetHeroTypeName(const FHOLMatchConfig& Config, const int32 Slot)
+{
+	return HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::Hero);
+}
+
+FName FHOLStartRules::GetMainCentreTypeName(const FHOLMatchConfig& Config, const int32 Slot)
+{
+	return HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::MainCentre);
+}
 
 bool FHOLStartRules::ShouldSpawnHero(const FHOLMatchConfig& Config, const int32 Slot, const bool bSetting)
 {

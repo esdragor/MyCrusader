@@ -4,6 +4,7 @@
 
 #include "Buildings/HOLConstructionRules.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLFactionRules.h"
 
 FVector2D UHOLBuildingSettings::GetBodySize(const FVector2D& Footprint)
 {
@@ -31,7 +32,7 @@ const FHOLBuildingTypeRow* UHOLBuildingSettings::FindType(const FName TypeName)
 	return Row;
 }
 
-void UHOLBuildingSettings::GetBuildableTypes(TArray<FHOLBuildable>& OutTypes)
+void UHOLBuildingSettings::GetBuildableTypes(TArray<FHOLBuildable>& OutTypes, const FName FactionKey)
 {
 	OutTypes.Reset();
 	const UDataTable* Table = GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous();
@@ -39,9 +40,11 @@ void UHOLBuildingSettings::GetBuildableTypes(TArray<FHOLBuildable>& OutTypes)
 	{
 		return;
 	}
-	Table->ForeachRow<FHOLBuildingTypeRow>(TEXT("buildable types"), [&OutTypes](const FName& Name, const FHOLBuildingTypeRow& Row)
+	// L0: with a faction (not None), only the types it builds (the `Faction` column).
+	const HOLFactionRules::FTable& Factions = HOLFactionRules::GetTable();
+	Table->ForeachRow<FHOLBuildingTypeRow>(TEXT("buildable types"), [&OutTypes, &Factions, FactionKey](const FName& Name, const FHOLBuildingTypeRow& Row)
 	{
-		if (Row.IsBuildable())
+		if (Row.IsBuildable() && (FactionKey.IsNone() || Factions.Allows(Row.Faction, FactionKey)))
 		{
 			OutTypes.Add({ Name, Row.BuildGridSlot, Row.Age });
 		}

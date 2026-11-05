@@ -13,6 +13,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
@@ -112,7 +113,10 @@ FHOLProductionCost UHOLProductionSubsystem::GetCost(const FName TypeName, const 
 {
 	FHOLProductionCost Cost;
 	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
-	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(TypeName) : nullptr)
+	// L0 (LQ-7): the row as the payer's faction fields it (its overrides: cost, time...); the table's without a payer.
+	const FHOLUnitTypeRow* Row = !Units ? nullptr : PlayerIndex == INDEX_NONE ? Units->FindTypeRow(TypeName)
+		: Units->FindTypeRow(TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), PlayerIndex));
+	if (Row)
 	{
 		Cost.Resources = Row->Cost;
 		const FName DiscountStat = HOLTechnology::GetCostDiscountStat(TypeName);
@@ -427,6 +431,13 @@ void UHOLProductionSubsystem::ApplyOrders()
 						*Order.TypeName.ToString(), HOLSiege::DescribeBlock(Block));
 					continue;
 				}
+			}
+			// L0 (LQ-7): a unit type the owner's faction does not field is refused here whatever a client asked (its grid hides it).
+			if (Type->Produces.Contains(Order.TypeName) && !HOLFactionRules::IsUnitOpenTo(GetWorld(), Order.TypeName, Order.PlayerIndex))
+			{
+				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (not a unit of its faction)"), Order.PlayerIndex,
+					*Order.TypeName.ToString());
+				continue;
 			}
 			const EHOLProductionRefusal Refusal = Type->Produces.Contains(Order.TypeName)
 				? HOLProduction::TryEnqueue(Queue, Order.TypeName, GetCost(Order.TypeName, Order.PlayerIndex), Type->MaxQueue, Stock)
