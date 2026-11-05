@@ -43,7 +43,9 @@ public static class FakeEngine {
 '@
 $Engine = Join-Path $Work "engine"
 New-Item -ItemType Directory -Force $Engine | Out-Null
-Add-Type -TypeDefinition $Source -OutputType ConsoleApplication -OutputAssembly (Join-Path $Engine "UnrealEditor.exe")
+# WindowsApplication, not ConsoleApplication: the tools under test start it with Start-Process, and a console exe opens a
+# terminal window each time that closes at once (2026-11-05).
+Add-Type -TypeDefinition $Source -OutputType WindowsApplication -OutputAssembly (Join-Path $Engine "UnrealEditor.exe")
 Copy-Item (Join-Path $Engine "UnrealEditor.exe") (Join-Path $Engine "UnrealEditor-Cmd.exe")
 
 # Holds a file open the way a process still writing it does (nobody can delete or write it, others may read it).
