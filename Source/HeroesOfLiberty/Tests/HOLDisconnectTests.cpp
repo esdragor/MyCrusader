@@ -1,6 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "AI/HOLAIBrain.h"
 #include "AI/HOLAITechnologyLibrary.h"
+#include "AI/HOLAITools.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
@@ -516,6 +518,66 @@ bool FHOLDisconnectTechnologiesTest::RunTest(const FString& Parameters)
 	}
 
 	BuildTime->Set(0.f, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D717 (T2): the AI holds the seat of the player who left, from the Logout to his return. Bob (slot 1) leaves: the brain holds the seat
+// (SetHeld by the game state), reads it as a Normal level (a human seat has none), makes it think (it has no player state any more);
+// the thought runs. Alice (present) is never held. Bob back: released, no longer thought for.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectHeldTest, "HeroesOfLiberty.Match.DisconnectHeld", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectHeldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(World);
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("the script brain"), Brain) && TestNotNull(TEXT("player states"), Alice)
+		&& TestNotNull(TEXT("player states"), Bob))
+	{
+		State->InitVictory(MakeNamedConfig());
+		Alice->SetMatchSlot(0, 0);
+		Bob->SetMatchSlot(1, 1);
+		State->AddPlayerState(Alice);
+		State->AddPlayerState(Bob);
+		const FHOLResources Starting(2000, 2000, 500, 500);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*Bob, Starting);
+		const int32 Normal = static_cast<int32>(EHOLAIDifficulty::Normal);
+
+		TestFalse(TEXT("present: Bob's seat is not held"), Brain->IsHeld(1));
+		TestEqual(TEXT("present: a human seat has no level"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), -1);
+		TestFalse(TEXT("present: nobody thinks for him"), Brain->GetThinkingSlots().Contains(1));
+
+		TestTrue(TEXT("Bob leaves: slot kept"), State->KeepAbsentSlot(*Bob, 10., 180.));
+		Bob->Destroy();
+		TestTrue(TEXT("away: the AI holds his seat"), Brain->IsHeld(1));
+		TestFalse(TEXT("away: Alice's seat is not held"), Brain->IsHeld(0));
+		TestEqual(TEXT("away: a held seat is read as Normal"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), Normal);
+		TestTrue(TEXT("away: the brain thinks for his seat"), Brain->GetThinkingSlots().Contains(1));
+		TestFalse(TEXT("away: and not for Alice's"), Brain->GetThinkingSlots().Contains(0));
+		Brain->ThinkNow(1);
+
+		AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("new player state"), BobAgain))
+		{
+			BobAgain->SetMatchSlot(1, 1);
+			State->AddPlayerState(BobAgain);
+			TestTrue(TEXT("back at 100"), State->GiveSlotStock(*BobAgain, Starting, 100.));
+			TestFalse(TEXT("back: the AI lets the seat go"), Brain->IsHeld(1));
+			TestFalse(TEXT("back: the brain no longer thinks for it"), Brain->GetThinkingSlots().Contains(1));
+			TestEqual(TEXT("back: a human seat has no level again"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), -1);
+		}
+	}
+
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
 	return true;
