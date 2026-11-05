@@ -1,0 +1,8 @@
+# Fixture of preflight_selftest.ps1 only (not a trial): a long quiet scenario, so that a check which does not stop on a script error waits ~90 s.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+frames 5
+wait 90
+capture zz_preflight_selftest
+note Fixture of the preflight self-test, nothing to try.

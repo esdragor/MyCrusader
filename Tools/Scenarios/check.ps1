@@ -1,4 +1,4 @@
-﻿# Runs a scenario (Tools/Scenarios/<name>.txt) without a window and says whether it reaches "Scenario <name>: ready" with no
+# Runs a scenario (Tools/Scenarios/<name>.txt) without a window and says whether it reaches "Scenario <name>: ready" with no
 # error: the check that a scenario is testable before it is listed for the user (Auto_Journey_Retours.md, section 1), and the
 # test of a chain written as a scenario (every waitlog must come). Run from Windows PowerShell:
 #   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\check.ps1 <name> [-Root <worktree>] [-TimeoutSeconds 240] [-Keys 3]
@@ -52,6 +52,8 @@ while (((Get-Date) - $Start).TotalSeconds -lt $TimeoutSeconds) {
         if ($Text -match "Scenario ${Name}: ready") { $Result = "PASS"; break }
         if ($Text -match "Test sequence: timeout at step") { $Result = "FAIL (a step timed out)"; break }
         if ($Text -match "LogHOLTest: Error") { $Result = "FAIL (error)"; break }
+        # A script that does not compile (a stale build, a broken .as) shows at the start of the log and the scenario never goes on: stop at the FIRST such line, do not wait for the timeout (2026-11-05).
+        if ($Text -match "Angelscript: Error") { $Result = "FAIL (Angelscript: Error in the log, the build of this worktree is stale or a script does not compile: first line below)"; break }
         if ($Text -match "waitkey") { if ($Text -match "Test sequence: waiting for a key") { $Result = "FAIL (waiting for a key: a scenario for the user, checked up to its first key)"; break } }
     }
     if ($Process.HasExited) { $Result = "FAIL (the game exited)"; break }

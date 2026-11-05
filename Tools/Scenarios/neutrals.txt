@@ -23,15 +23,23 @@ waitlog Spawn: 6 ManAtArms
 frames 40
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): guarding, members 3 of 3, hits taken 0
+hol.Camera.Focus -2300 0
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture neutrals_camp
 # Au repos : rien ne bouge tant que personne n est a 15 m ; puis mes soldats entrent dans le rayon.
 hol.Camera.Focus 0 400
 hol.Units.Move -1000 0 0 a
 waitlog Camp 1: fighting
-frames 60
-capture neutrals_camp_fight
+hol.Camera.Focus -700 0
+hol.Camera.Zoom 3
+frames 100
+capture neutrals_fight
 waitlog Camp 1: cleared for good
 waitlog Camp 1 reward: slot 0 +100 XP
-capture neutrals_camp_cleared
+frames 30
+capture neutrals_cleared
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): cleared
 # NQ1, l autre branche : seulement quand on l attaque (hol.Camp.Aggro 1). Les soldats s arretent a 13 m du poste (dans le rayon de 15 m) sans le toucher : le camp ne bouge pas ; puis ils attaquent.

@@ -1,3 +1,4 @@
-# Points a regarder de l'essai neutrals (D641) : <nom de capture> | ce que l'utilisateur doit voir
-neutrals_camp_fight | Au centre, dans le cercle d'arbres : 3 Lanciers de couleur neutre (gris, ni la couleur d'un joueur) face a tes Hommes d'armes bleus qui arrivent par le bas, juste avant le choc.
-neutrals_camp_cleared | Apres le combat : les Lanciers neutres sont tombes (tas gris au sol), tes Hommes d'armes bleus restent autour du centre.
+# <capture name> | what the user must see
+neutrals_camp | A camp of 3 GREY Spearmen (neutral, not a player's colour) at the map centre, and my 6 Men-at-arms in blue 40 m to the left, nobody fighting yet
+neutrals_fight | The camp has charged: the grey Spearmen run at my blue Men-at-arms or are already in melee with them (blows, health bars); a tree may hide part of the scene
+neutrals_cleared | The fight is over: the 3 grey Spearmen are dead (no grey unit standing at the centre), my blue Men-at-arms stand

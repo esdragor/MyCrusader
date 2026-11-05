@@ -76,7 +76,7 @@ int32 UHOLAIToolsLibrary::GetSlotLevel(const UObject* WorldContextObject, const 
 	}
 	// D717 (T2): the seat of a player who left, held by the AI, plays at the Normal level.
 	const UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(World);
-	if (Brain && Brain->IsHeld(Slot))
+	if (Brain && (Brain->IsHeld(Slot) || Brain->IsFullBrain(Slot)))
 	{
 		return static_cast<int32>(EHOLAIDifficulty::Normal);
 	}

@@ -111,7 +111,10 @@ bool FHOLDisconnectGameStateTest::RunTest(const FString& Parameters)
 	AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
 	if (TestNotNull(TEXT("game state spawned"), State) && TestNotNull(TEXT("player states spawned"), Bob) && BobAgain)
 	{
-		State->InitVictory(MakeNamedConfig());
+		// A 1v1 (the AI seat of Bob's camp closed): the end of his window is his defeat (D718, T5: with others in his camp the AI keeps the seat).
+		FHOLMatchConfig Config1v1 = MakeNamedConfig();
+		Config1v1.Slots[2].State = EHOLSlotState::Closed;
+		State->InitVictory(Config1v1);
 		const FHOLResources Starting(200, 200, 200, 200);
 		Bob->SetMatchSlot(1, 1);
 		TestFalse(TEXT("first login: not a return (no back to the manager)"), State->GiveSlotStock(*Bob, Starting));
@@ -119,6 +122,7 @@ bool FHOLDisconnectGameStateTest::RunTest(const FString& Parameters)
 		Bob->SetResources(FHOLResources(0, 300, 0, 0));
 
 		TestTrue(TEXT("Bob leaves: slot kept"), State->KeepAbsentSlot(*Bob, 10.));
+		Bob->Destroy();	// as after a Logout (a live second holder of the seat would make a later KeepAbsentSlot a duplicate, T4)
 		TestTrue(TEXT("slot 1 absent"), State->IsSlotAbsent(1));
 		TestEqual(TEXT("no defeat 179 s later"), State->DefeatExpiredAbsences(189., 180.).Num(), 0);
 		BobAgain->SetMatchSlot(1, 1);
@@ -132,7 +136,7 @@ bool FHOLDisconnectGameStateTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("reason Disconnected"), State->GetDefeatReason(1) == EHOLDefeatReason::Disconnected);
 		TestEqual(TEXT("reason's name"), FString(AHOLGameState::GetReasonName(EHOLDefeatReason::Disconnected)), FString(TEXT("Disconnected")));
 		TestFalse(TEXT("no longer absent once defeated"), State->IsSlotAbsent(1));
-		TestFalse(TEXT("not over: the AI of Bob's camp plays on"), State->IsMatchOver());
+		TestTrue(TEXT("1v1: his defeat ends the match"), State->IsMatchOver());
 		TestFalse(TEXT("a defeated slot is not kept"), State->KeepAbsentSlot(*BobAgain, 1200.));
 
 		// B6b: Bob joins again after his defeat: he watches (no slot, no stock of the start on a beaten camp).
@@ -272,13 +276,17 @@ bool FHOLDisconnectBannerTest::RunTest(const FString& Parameters)
 	AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
 	if (TestNotNull(TEXT("game state spawned"), State) && TestNotNull(TEXT("player states spawned"), Bob) && BobAgain)
 	{
-		State->InitVictory(MakeNamedConfig());
+		// A 1v1 (the AI seat of Bob's camp closed): the end of his window is his defeat (D718, T5: with others in his camp the AI keeps the seat).
+		FHOLMatchConfig Config1v1 = MakeNamedConfig();
+		Config1v1.Slots[2].State = EHOLSlotState::Closed;
+		State->InitVictory(Config1v1);
 		const FHOLResources Starting(200, 200, 200, 200);
 		Bob->SetMatchSlot(1, 1);
 		State->GiveSlotStock(*Bob, Starting, 0.);
 		TestEqual(TEXT("first login: no notice"), State->GetAbsentNotices().Num(), 0);
 
 		TestTrue(TEXT("Bob leaves at 10"), State->KeepAbsentSlot(*Bob, 10., 180.));
+		Bob->Destroy();	// as after a Logout
 		if (TestEqual(TEXT("one notice"), State->GetAbsentNotices().Num(), 1))
 		{
 			const FHOLAbsentNotice& Notice = State->GetAbsentNotices()[0];
@@ -687,6 +695,202 @@ bool FHOLDisconnectHeldStockTest::RunTest(const FString& Parameters)
 
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D717 (T4): a name that comes back while its OLD connection is still alive (he restarted in less than the engine's timeout) takes his
+// seat back; he is not a spectator. The real chain of the game mode (FindSlotForLogin, RetireHolder, then PostLogin's SetMatchSlot and
+// GiveSlotStock): the new player state has the stock and technologies the old one had (not the starting stock), his order stays in the
+// centre's queue, the old player state is no longer a holder, and its LATE Logout (KeepAbsentSlot) puts nobody "away" under the new
+// player (nor a second duplicate still holding the seat). An unknown name watches; Alice's seat is untouched.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectReplaceTest, "HeroesOfLiberty.Match.DisconnectReplace", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectReplaceTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* BobOld = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* BobNew = World->SpawnActor<AHOLPlayerState>();
+	AHOLBuilding* BobCentre = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* AliceCentre = World->SpawnActor<AHOLBuilding>(FVector(-20000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("production"), Production) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("player states"), Alice) && TestNotNull(TEXT("player states"), BobOld) && TestNotNull(TEXT("player states"), BobNew)
+		&& TestNotNull(TEXT("centres"), BobCentre) && TestNotNull(TEXT("centres"), AliceCentre))
+	{
+		const FHOLMatchConfig Config = MakeNamedConfig();
+		State->InitVictory(Config);
+		Alice->SetMatchSlot(0, 0);
+		BobOld->SetMatchSlot(1, 1);
+		State->AddPlayerState(Alice);
+		State->AddPlayerState(BobOld);
+		const FHOLResources Starting(2000, 2000, 500, 500);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*BobOld, Starting);
+		BobCentre->Setup(HOLBuildingTypeNames::MainCentre, 1, 1);
+		AliceCentre->Setup(HOLBuildingTypeNames::MainCentre, 0, 0);
+		Production->OnWorldBeginPlay(*World);
+		const FName Peasant(TEXT("Peasant"));
+		const FName PloughI(TEXT("PloughI"));
+		BobOld->AddTechnology(PloughI);
+		// His order in progress at the centre (paid on his stock), before he "restarts".
+		TestTrue(TEXT("Bob orders a Peasant"), UHOLAIOrderLibrary::IssueAIProduceOrder(World, 1, FVector::ZeroVector, Peasant));
+		Simulation->GetOnStepStarted().Broadcast(1);
+		TestEqual(TEXT("the Peasant is in his centre's queue"), BobCentre->GetProductionQueue().Num(), 1);
+		const FHOLResources BobStock = BobOld->GetResources();
+		TestTrue(TEXT("(his stock is no longer the starting one)"), BobStock.ToString() != Starting.ToString());
+
+		// The new connection of his name, no slot yet (PostLogin's state), while the old one is still in the player array.
+		State->AddPlayerState(BobNew);
+		AHOLPlayerState* Replaced = nullptr;
+		const int32 Slot = State->FindSlotForLogin(Config, TEXT("Bob"), *BobNew, Replaced);
+		TestEqual(TEXT("his name finds his seat, not a spectator"), Slot, 1);
+		TestTrue(TEXT("the old connection's player state is the one to replace"), Replaced == BobOld);
+		AHOLPlayerState* ReplacedUnknown = nullptr;
+		TestEqual(TEXT("an unknown name watches"), State->FindSlotForLogin(Config, TEXT("Zed"), *BobNew, ReplacedUnknown), INDEX_NONE);
+		TestNull(TEXT("... and replaces nobody"), ReplacedUnknown);
+
+		// PostLogin's order: the old one handed over, then the slot and the stock to the new one.
+		if (Slot == 1 && Replaced == BobOld)
+		{
+			State->RetireHolder(*BobOld, 100., 180.);
+			BobNew->SetMatchSlot(Slot, 1);
+			TestTrue(TEXT("he takes his seat back"), State->GiveSlotStock(*BobNew, Starting, 100.));
+			TestEqual(TEXT("his stock is the one of his old connection, not the starting one"), BobNew->GetResources().ToString(), BobStock.ToString());
+			TestTrue(TEXT("his Plough I"), BobNew->GetTechnologies().Has(PloughI));
+			TestEqual(TEXT("his order stays in the centre's queue"), BobCentre->GetProductionQueue().Num(), 1);
+			TestTrue(TEXT("the old player state is a spectator now"), BobOld->IsOnlyASpectator());
+			TestTrue(TEXT("... without a seat"), BobOld->GetPlayerIndex() != 1);
+			TestTrue(TEXT("the new player state alone holds the seat"), AHOLGameState::FindLiveHolder(*World, 1, nullptr) == BobNew);
+			TestNull(TEXT("no player state of the AI is left on the seat"), AHOLGameState::FindHeldBot(*World, 1));
+			TestFalse(TEXT("his seat is not absent"), State->IsSlotAbsent(1));
+			// The old connection closes late: nobody is put away under the new player.
+			TestFalse(TEXT("late Logout of the old connection: the seat is not kept"), State->KeepAbsentSlot(*BobOld, 101., 180.));
+			TestFalse(TEXT("... the seat stays present"), State->IsSlotAbsent(1));
+			TestNull(TEXT("... no AI on it"), AHOLGameState::FindHeldBot(*World, 1));
+			TestEqual(TEXT("... his stock is untouched"), BobNew->GetResources().ToString(), BobStock.ToString());
+		}
+
+		// A duplicate that was NOT handed over (killed another way): its late Logout is no absence either, the new holder is there.
+		AHOLPlayerState* Duplicate = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("duplicate"), Duplicate))
+		{
+			Duplicate->SetMatchSlot(1, 1);
+			State->AddPlayerState(Duplicate);
+			TestFalse(TEXT("a duplicate closing late: the seat is not kept"), State->KeepAbsentSlot(*Duplicate, 102., 180.));
+			TestFalse(TEXT("... the seat stays present"), State->IsSlotAbsent(1));
+		}
+		TestEqual(TEXT("Alice's stock is untouched"), Alice->GetResources().ToString(), Starting.ToString());
+		TestFalse(TEXT("Alice is not absent"), State->IsSlotAbsent(0));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// D718 (T5): the end of the window by the rule of T1 (GetWindowEnd). Bob (slot 1) shares his camp with an AI seat (slot 2): at the end of
+// his window his seat is NOT defeated; the AI goes from the "hold" mode to the full brain at the Normal level, the banner goes out,
+// the seat stays his and he takes it back AFTER the window, with the stock the AI left. Contrast, a real 1v1 (Bob alone in his camp, two
+// camps in all): the end of the window is his defeat (Disconnected), as before.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectLateReturnTest, "HeroesOfLiberty.Match.DisconnectLateReturn", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectLateReturnTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+	const int32 Normal = static_cast<int32>(EHOLAIDifficulty::Normal);
+	const FHOLResources Starting(2000, 2000, 500, 500);
+
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+		UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(World);
+		AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+		AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("the script brain"), Brain) && TestNotNull(TEXT("player states"), Alice)
+			&& TestNotNull(TEXT("player states"), Bob))
+		{
+			State->InitVictory(MakeNamedConfig());
+			Alice->SetMatchSlot(0, 0);
+			Bob->SetMatchSlot(1, 1);
+			State->AddPlayerState(Alice);
+			State->AddPlayerState(Bob);
+			State->GiveSlotStock(*Alice, Starting);
+			State->GiveSlotStock(*Bob, Starting);
+			TestTrue(TEXT("Bob leaves at 10"), State->KeepAbsentSlot(*Bob, 10., 180.));
+			Bob->Destroy();
+			TestTrue(TEXT("in the window: the seat is held (hold mode)"), Brain->IsHeld(1));
+			TestTrue(TEXT("in the window: his banner is up"), State->GetAbsentNotices().ContainsByPredicate([](const FHOLAbsentNotice& Notice) { return Notice.Slot == 1; }));
+
+			// The window runs out (10 + 180): the AI keeps the seat.
+			const TArray<int32> Defeated = State->DefeatExpiredAbsences(191., 180.);
+			TestEqual(TEXT("end of the window: nobody defeated (his camp has an AI seat)"), Defeated.Num(), 0);
+			TestFalse(TEXT("... his seat is not defeated"), State->IsSlotDefeated(1));
+			TestNotNull(TEXT("... the AI's player state still holds it"), AHOLGameState::FindHeldBot(*World, 1));
+			TestFalse(TEXT("... the hold mode is over"), Brain->IsHeld(1));
+			TestTrue(TEXT("... the brain thinks for it, the full brain"), Brain->GetThinkingSlots().Contains(1));
+			TestEqual(TEXT("... at the Normal level"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), Normal);
+			TestFalse(TEXT("... his banner is out"), State->GetAbsentNotices().ContainsByPredicate([](const FHOLAbsentNotice& Notice) { return Notice.Slot == 1; }));
+			State->DefeatExpiredAbsences(300., 180.);
+			TestFalse(TEXT("a second pass later: still not defeated"), State->IsSlotDefeated(1));
+			Brain->ThinkNow(1);
+
+			// He comes back AFTER the window and takes the seat.
+			AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
+			if (TestNotNull(TEXT("new player state"), BobAgain))
+			{
+				BobAgain->SetMatchSlot(1, 1);
+				State->AddPlayerState(BobAgain);
+				TestTrue(TEXT("late return at 500"), State->GiveSlotStock(*BobAgain, Starting, 500.));
+				TestEqual(TEXT("... his stock"), BobAgain->GetResources().ToString(), Starting.ToString());
+				TestNull(TEXT("... the AI's player state gone"), AHOLGameState::FindHeldBot(*World, 1));
+				TestFalse(TEXT("... the brain no longer thinks for it"), Brain->GetThinkingSlots().Contains(1));
+				TestEqual(TEXT("... a human seat has no level again"), UHOLAIToolsLibrary::GetSlotLevel(World, 1), -1);
+				TestFalse(TEXT("... the seat is no longer absent"), State->IsSlotAbsent(1));
+				TestFalse(TEXT("... and never defeated"), State->IsSlotDefeated(1));
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	}
+
+	// A 1v1: Bob alone in his camp (the AI seat closed): his window's end is his defeat.
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+		AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+		AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("player states"), Alice) && TestNotNull(TEXT("player states"), Bob))
+		{
+			FHOLMatchConfig Config = MakeNamedConfig();
+			Config.Slots[2].State = EHOLSlotState::Closed;
+			State->InitVictory(Config);
+			Alice->SetMatchSlot(0, 0);
+			Bob->SetMatchSlot(1, 1);
+			State->AddPlayerState(Alice);
+			State->AddPlayerState(Bob);
+			State->GiveSlotStock(*Alice, Starting);
+			State->GiveSlotStock(*Bob, Starting);
+			TestTrue(TEXT("1v1: Bob leaves at 10"), State->KeepAbsentSlot(*Bob, 10., 180.));
+			Bob->Destroy();
+			const TArray<int32> Defeated = State->DefeatExpiredAbsences(191., 180.);
+			TestTrue(TEXT("1v1: the end of the window is his defeat"), Defeated.Contains(1) && State->IsSlotDefeated(1));
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	}
 	return true;
 }
 

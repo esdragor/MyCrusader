@@ -69,6 +69,14 @@ public:
 	bool IsHeld(int32 PlayerIndex) const { return HeldSlots.Contains(PlayerIndex); }
 
 	/**
+	 * D718 (T5): the window of absence of a seat is over and the AI keeps it (FHOLDisconnectRules::GetWindowEnd = AIHolds): the seat leaves the
+	 * hold mode (IsHeld false: the script plays its full brain), keeps thinking while it is absent, at the Normal level; what the brain remembered
+	 * of it is kept. SetHeld(false) (the player is back, or the seat defeated) clears both.
+	 */
+	void SetFullBrain(int32 PlayerIndex);
+	bool IsFullBrain(int32 PlayerIndex) const { return FullBrainSlots.Contains(PlayerIndex); }
+
+	/**
 	 * IA0.4 B2b (IA0.4-Q3 A): the AI slots whose brain is on (FHOLMatchSlot::bAIBrain of the game state's launch
 	 * configuration), by player index: the ones the step makes think. Every AI slot without an AHOLGameState.
 	 */
@@ -102,6 +110,8 @@ private:
 	FDelegateHandle StepEndedHandle;
 	/** D717 (T2): the seats the AI holds for a player who left. */
 	TSet<int32> HeldSlots;
+	/** D718 (T5): the seats kept by the AI after the window, in the full brain. */
+	TSet<int32> FullBrainSlots;
 	int32 NumThoughts = 0;
 	/** IA0.5 B1: the "awake" line written once per world, at the first step (the AI PlayerStates exist from StartPlay). */
 	bool bAwakeLogged = false;

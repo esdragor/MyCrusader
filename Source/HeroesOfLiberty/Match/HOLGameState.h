@@ -142,6 +142,22 @@ public:
 	 * name absent from the configuration. With bLog, logs "Disconnect: slot N (Name) defeated, joins as spectator".
 	 */
 	int32 FindSlotOnLogin(const FHOLMatchConfig& Config, const FString& Name, TConstArrayView<int32> TakenSlots, bool bLog = true) const;
+	/**
+	 * D717 (T4), server only, by the game mode's PostLogin: the slot a new connection (Logging, no slot yet) of Name takes. As
+	 * FindSlotOnLogin on the slots in use (the AI's seat of an absent player left out), but a LIVE player state of another connection
+	 * that already holds the seat of that name (he restarted before the old connection timed out) does not make him a spectator: it is
+	 * OutReplaced (null otherwise), to be handed over by RetireHolder and kicked. A defeated seat is never taken again.
+	 */
+	int32 FindSlotForLogin(const FHOLMatchConfig& Config, const FString& Name, const AHOLPlayerState& Logging, AHOLPlayerState*& OutReplaced) const;
+	/**
+	 * D717 (T4), server only: the old connection's seat handed over to its successor (called before the successor is given the slot,
+	 * then GiveSlotStock): its stock, technologies and hero sheet are kept for him as at a Logout, with no banner; the old player state
+	 * becomes a spectator without a seat, so its late Logout (KeepAbsentSlot) puts nobody "away" under the new player. The orders,
+	 * building queues and units stay (they belong to the slot).
+	 */
+	void RetireHolder(AHOLPlayerState& Old, double Now, double WindowSeconds);
+	/** A player state of a connection that is still there (not the AI's, not a spectator) holding Slot, Except left out; null: none. */
+	static AHOLPlayerState* FindLiveHolder(const UWorld& World, int32 Slot, const AHOLPlayerState* Except);
 
 	/**
 	 * M6-Q16 (R7): the stock of slot Slot, its player's (AHOLPlayerState) or, while he is away, the one kept for him
