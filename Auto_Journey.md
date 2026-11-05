@@ -114,7 +114,7 @@ Un essai n'est listé dans Auto_Journey_Retours.md section 1 que si Tools\Scenar
 Commits verts sur ta branche (anglais, sans Co-Authored-By, jamais de push). Fusion dans main : interdite (l'agent de fusion s'en charge ; dis dans ton rapport que la branche est prête). Au plus 2 questions, regroupées.
 Tiens à jour EtapeDefini.md (relis avant, tes lignes seulement), ton *InProgress.md, Auto_Journey_File.md (ta ligne), ta ligne du tableau
 des agents de Auto_Journey_Jour.md, IN_USE.txt à l'entrée et à la sortie. PowerShell pour tout chemin Windows.
-ARRÊT DUR à <HH:MM> (Get-Date PowerShell) ou ~250k tokens. RAPPORT de 10 lignes MAX, dans cet ordre :
+ARRÊT DUR à <HH:MM> (Get-Date PowerShell) ou 80 APPELS D'OUTILS (un agent ne voit pas ses tokens, il compte ses appels : 2026-11-05, 96 appels = 242k, 133 = 284k, 185 = 336k ; 80 appels ≈ 160-200k). À 80 appels : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. RAPPORT de 10 lignes MAX, dans cet ordre :
 fait / tests / commit / reste / NON VÉRIFIÉ (obligatoire : ce qui n'a pas de test ni de preuve) / anomalies du processus.
 ```
 
@@ -223,3 +223,30 @@ L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase.
 7. **Avant de donner les essais** (« Qualité des essais ») : fusionner, rejouer le pré-vol de chaque essai sur le build de `main`, faire passer la recette indépendante, trier les ~6 essais prioritaires de 3 min ; les autres restent « prêts mais non donnés ».
 8. À la fin : paquet et serveur (créneau 3), bilan dans `Auto_Journey_Jour.md` (généré depuis le tableau des agents), `Auto_Journey_Retours.md` à jour et son compteur en tête.
 
+
+## Leçons de la séance interactive du 2026-11-05 (10:30 -> close à 11:20 sur demande, fusion 11:50 ; approuvées par l'utilisateur, toutes OBLIGATOIRES)
+
+**Constat de l'utilisateur : des leçons reviennent de séance en séance sans être appliquées (plafond de tokens : écrit le 2026-11-01, 11-03 et 11-04, dépassé à 250-336k le 11-05 par 4 agents).** Cause : une règle en prose relue au démarrage ne se déclenche pas toute seule. **Règle de méthode : une leçon n'est « intégrée » que si elle devient un contrôle mécanique (un nombre qu'un agent peut compter, une commande à lancer, une ligne à cocher), jamais une phrase.** Les leçons ci-dessous sont écrites ainsi ; à chaque fin de séance le bilan liste, pour chaque leçon, « appliquée / non appliquée » avec la preuve (nombre d'appels, heure lue).
+
+### Check-list avant CHAQUE lancement ou envoi (la session principale la déroule, une ligne par lancement dans `Auto_Journey_Jour.md`)
+1. `Get-Date` PowerShell lu juste avant ; heure d'arrêt dur de l'agent = calculée depuis cette lecture ; **aucun lancement s'il reste moins de 20 minutes avant la fin** (2026-11-05 : agent lancé à 13:19 avec un arrêt à 13:15).
+2. **Tableau agent -> identifiant -> worktree -> branche -> tâche** écrit dans `Auto_Journey_Jour.md` AU LANCEMENT ; tout `SendMessage` relit ce tableau (2026-11-05 : 3 consignes envoyées au mauvais agent).
+3. Nombre d'agents C++ en cours <= 3 (`Docs\BuildQueue.state\` + tableau).
+4. Pas d'agent « noop » ni de test d'outil par un agent : un outil se teste avec la commande elle-même.
+
+### Plafond de tokens = plafond d'appels d'outils
+- Dans l'énoncé de chaque agent : **80 appels d'outils maximum** (le modèle d'énoncé le dit). Mesure du 2026-11-05 : ~2k tokens par appel (96 appels = 242k, 133 = 284k, 150 = 250k, 185 = 336k).
+- À la réception du rapport, la session principale **lit `tool_uses` de la notification** : au-delà de 100, l'agent est jugé hors règle, noté dans le bilan, et la tâche suivante du même worktree part sur un agent NEUF (jamais un `SendMessage` qui reprend l'agent).
+- Un agent qui revient « waiting on its own background work » n'est pas relancé : il revient seul à la fin du build (2026-11-05 : 6 notifications intermédiaires, aucun doublon lancé).
+
+### Une correction n'est « faite » que si l'effet est mesuré par un geste réel
+- **Un test qui assertit un prédicat ou une ligne de journal ne prouve rien** (2026-11-05 : `IsPassiveAdversary` testé, Q+clic sur neutre qui ne fait rien en jeu ; l'utilisateur l'a trouvé). Le test rouge d'un REGLAGE/BUG assertit l'**effet** (PV de la cible qui baissent, ressource reçue, bouton actif) sur la vraie chaîne, déclenché par la même entrée que l'utilisateur (touche puis clic).
+- **Tout essai d'un REGLAGE/BUG passe par l'intégrateur** (autre agent que l'auteur) sur le build de `main` fusionné, geste réel + PNG avant/après, AVANT que la commande `play.ps1` soit donnée à l'utilisateur. Sans cela l'essai est `LOGIQUE SEULEMENT`. La commande donnée à l'utilisateur pointe le worktree qui porte le build fusionné.
+
+### Questions et réponses
+- Dès le premier envoi : **un tableau unique** (question, option recommandée, ce que ça change), et le raccourci « `recommandées partout` » accepté.
+- Demander **dès le lancement** l'accord pour commiter les dossiers de fonctionnalités non suivis de la copie principale (ils bloquent la fusion).
+
+### Cartes et mesures
+- La régénération des 7 cartes x 5 tailles est **une tâche à part** (éditeur seul, build vide, mesure de perf), jamais mêlée à un réglage de budget ; un changement de budget de cartes ne se fusionne qu'après régénération complète, build et `tests,sizes`.
+- Un `-Parts net` qui échoue sans changement de code (2026-11-05) est relancé deux fois avant d'être cru ; vérifier qu'aucun `UnrealEditor` d'un autre projet (AS_3 / ProjectShiva) ne tourne.
