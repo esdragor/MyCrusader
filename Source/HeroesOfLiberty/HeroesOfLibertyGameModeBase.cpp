@@ -232,12 +232,20 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 		return;
 	}
 
+	// D717 (T2): the player state of the AI that holds a human's seat does not count: his name finds his seat again.
 	TArray<int32> TakenSlots;
-	for (const APlayerState* Other : GameState->PlayerArray)
+	if (const AHOLGameState* TakenState = GetGameState<AHOLGameState>())
 	{
-		if (const AHOLPlayerState* HOLOther = Cast<AHOLPlayerState>(Other); HOLOther && HOLOther != PlayerState)
+		TakenSlots = TakenState->GetSlotsInUse(PlayerState);
+	}
+	else
+	{
+		for (const APlayerState* Other : GameState->PlayerArray)
 		{
-			TakenSlots.Add(HOLOther->GetPlayerIndex());
+			if (const AHOLPlayerState* HOLOther = Cast<AHOLPlayerState>(Other); HOLOther && HOLOther != PlayerState)
+			{
+				TakenSlots.Add(HOLOther->GetPlayerIndex());
+			}
 		}
 	}
 

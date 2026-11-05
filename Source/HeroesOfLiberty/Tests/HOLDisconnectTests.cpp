@@ -354,7 +354,9 @@ bool FHOLDisconnectHeroSheetTest::RunTest(const FString& Parameters)
 
 		TestTrue(TEXT("Bob leaves at 10: slot kept"), State->KeepAbsentSlot(*Bob, 10., 180.));
 		Bob->Destroy();
-		TestNull(TEXT("no player state for slot 1 while he is gone"), UHOLHeroSubsystem::FindPlayerState(*World, 1));
+		// D717 (T2): the player state of slot 1 while he is gone is the AI's that holds his seat (not his).
+		const AHOLPlayerState* Holder = UHOLHeroSubsystem::FindPlayerState(*World, 1);
+		TestTrue(TEXT("only the AI's player state is left for slot 1 while he is gone"), Holder != nullptr && Holder != Bob && Holder->IsABot());
 		TestEqual(TEXT("the subsystem keeps his XP while he is gone"), Heroes->GetSheets(1).Private.XP, 12);
 
 		// Back at 100 with a new player state (PostLogin's order: his slot, then the stock); no simulation step.
