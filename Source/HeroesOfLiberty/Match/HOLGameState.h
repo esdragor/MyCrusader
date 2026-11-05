@@ -127,6 +127,16 @@ public:
 	TArray<int32> DefeatExpiredAbsences(double Now, double WindowSeconds);
 	bool IsSlotAbsent(int32 Slot) const { return FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot) != INDEX_NONE; }
 	/**
+	 * D717 (T2): the player state of the AI that holds the seat of a player who left (a bot on a seat the launch configuration gave to
+	 * a human), or null. It holds his stock and technologies, so the orders of the brain pass the same queues and are paid on it.
+	 */
+	static AHOLPlayerState* FindHeldBot(const UWorld& World, int32 Slot);
+	/**
+	 * The slots in use by player states, Except left out (PostLogin's TakenSlots): the player state of the AI that holds a human's seat
+	 * does not count, else his own return (or a second connection of his name) would find his seat taken and join as a spectator.
+	 */
+	TArray<int32> GetSlotsInUse(const AHOLPlayerState* Except) const;
+	/**
 	 * B6b (R7), server only, by the game mode's PreLogin and PostLogin: the slot a login of Name takes
 	 * (FHOLMatchConfig::FindSlotForName), a defeated slot never (its window past, or beaten otherwise): he watches, as a
 	 * name absent from the configuration. With bLog, logs "Disconnect: slot N (Name) defeated, joins as spectator".
@@ -369,6 +379,8 @@ private:
 
 	/** Server only (R7): the slots kept for their players gone, in the order of the departures. */
 	TArray<FHOLAbsentSlot> AbsentSlots;
+	/** D717 (T2), server only: the AI's player state for the seat just kept (KeepMissingSlot), with his name, stock and technologies. */
+	void SpawnHeldBot(int32 Slot, const FString& Name, const FHOLResources& Resources, const FHOLTechnologyState& Technologies);
 	/**
 	 * R7.5: what the banner shows of AbsentSlots, replicated (a state rather than a multicast: a client joining or coming
 	 * back late sees the players gone and those just back as the others do).

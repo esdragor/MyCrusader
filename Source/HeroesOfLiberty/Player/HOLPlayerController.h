@@ -419,6 +419,8 @@ public:
 	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
 	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
+	/** Scripted checks: a real left click at a viewport point, as the input's press and release (hol.Select.LeftClickGround). */
+	void ScriptLeftClick(const FVector2D& ViewportFraction);
 	/**
 	 * Banner aiming (J8c.4, the grid's Z with the hero commanded): the next left click on the ground plants it there (the
 	 * server checks the reach); a right click or Escape leaves it.
