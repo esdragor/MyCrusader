@@ -16,3 +16,5 @@ NON VÉRIFIÉ : les dégâts 12 puis 13,2 et le 4 des Lanciers (lignes `Spearman
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 forge -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 15 s (aucune attente). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: REGLAGE : forge (utilisateur, fenetre reelle, main) : aucune preuve a l'ecran que l'attaque soit augmentee par Lames affutees, car il est impossible de voir les stats de notre unite (le 12 -> 13.2 n'est que dans le journal du scenario). Rendre l'effet VISIBLE (regle Qualite des essais n9 : un effet de gameplay doit etre visible sinon l'essai est LOGIQUE SEULEMENT).
