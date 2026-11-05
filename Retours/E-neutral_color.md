@@ -10,3 +10,5 @@ NON VÉRIFIÉ : la couleur sous le brouillard (voir scénario neutrals_fog, non 
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 neutral_color -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : 15 s, rien à faire. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK (2026-11-05 22:3x, utilisateur, fenetre reelle : Lanciers gris et Paysans bleus lisibles).
