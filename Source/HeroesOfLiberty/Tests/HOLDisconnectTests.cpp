@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "AI/HOLAITechnologyLibrary.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
@@ -17,6 +18,11 @@
 #include "Simulation/HOLGatherProcessor.h"
 #include "Simulation/HOLGatherRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLSimulationSubsystem.h"
+#include "HAL/IConsoleManager.h"
+#include "Misc/OutputDeviceRedirector.h"
+#include "Technologies/HOLTechnologyRules.h"
+#include "Technologies/HOLTechnologyTypes.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -362,6 +368,154 @@ bool FHOLDisconnectHeroSheetTest::RunTest(const FString& Parameters)
 		}
 	}
 
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+namespace UE::HeroesOfLiberty::Tests::Disconnect
+{
+	/** What the game logs while a test runs (the journal of the research: « Technology: slot N researched X »). */
+	class FCaptureLog : public FOutputDevice
+	{
+	public:
+		TArray<FString> Lines;
+		virtual void Serialize(const TCHAR* Text, ELogVerbosity::Type, const FName&) override { Lines.Add(Text); }
+		int32 CountContaining(const FString& A, const FString& B) const
+		{
+			int32 Count = 0;
+			for (const FString& Line : Lines)
+			{
+				Count += Line.Contains(A) && Line.Contains(B) ? 1 : 0;
+			}
+			return Count;
+		}
+	};
+}
+
+// D719 (T0): what the absent gains is kept for him, the technologies as the stock. Bob has the Plough I, queues the Plough II at
+// his farm and leaves; the research ends while he is away (the real production step); the AI's reader still sees his Plough I
+// (what a technology that asks for it needs); back in the window he finds the Plough I and the Plough II, and their effect.
+// Alice, who never leaves, is as before; a research ending for a slot that exists nowhere is not logged as done.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectTechnologiesTest, "HeroesOfLiberty.Match.DisconnectTechnologies",
+	UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectTechnologiesTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	const FName PloughI(TEXT("PloughI"));
+	const FName PloughII(TEXT("PloughII"));
+	if (!TestNotNull(TEXT("the technology table is loaded (Plough II)"), UHOLTechnologySettings::FindTechnology(PloughII)))
+	{
+		return false;
+	}
+	IConsoleVariable* BuildTime = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Prod.BuildTime"));
+	if (!TestNotNull(TEXT("hol.Prod.BuildTime"), BuildTime))
+	{
+		return false;
+	}
+	BuildTime->Set(0.1f, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+	AHOLBuilding* BobFarm = World->SpawnActor<AHOLBuilding>(FVector(0.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* AliceFarm = World->SpawnActor<AHOLBuilding>(FVector(5000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* NobodyFarm = World->SpawnActor<AHOLBuilding>(FVector(-5000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("production"), Production) && TestNotNull(TEXT("simulation"), Simulation)
+		&& TestNotNull(TEXT("player states"), Alice) && TestNotNull(TEXT("player states"), Bob) && TestNotNull(TEXT("farms"), BobFarm)
+		&& TestNotNull(TEXT("farms"), AliceFarm) && TestNotNull(TEXT("farms"), NobodyFarm))
+	{
+		State->InitVictory(MakeNamedConfig());
+		Alice->SetMatchSlot(0, 0);
+		Bob->SetMatchSlot(1, 1);
+		State->AddPlayerState(Alice);
+		State->AddPlayerState(Bob);
+		const FHOLResources Starting(2000, 2000, 500, 500);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*Bob, Starting);
+		BobFarm->Setup(HOLBuildingTypeNames::Farm, 1, 1);
+		AliceFarm->Setup(HOLBuildingTypeNames::Farm, 0, 0);
+		// Slot 3 is nobody's (closed, no player state, not absent): its farm researches into the void.
+		NobodyFarm->Setup(HOLBuildingTypeNames::Farm, 3, 3);
+		Production->OnWorldBeginPlay(*World);
+
+		const auto Queue = [&](AHOLBuilding* Farm, AHOLPlayerState* Payer, const int32 Slot, const FName Technology)
+		{
+			const FHOLProductionCost Cost = Production->GetCost(Technology, Slot);
+			FHOLResources Stock = Payer ? Payer->GetResources() : Starting;
+			const bool bQueued = HOLProduction::TryEnqueue(Farm->GetMutableProductionQueue(), Technology, Cost, 5, Stock) == EHOLProductionRefusal::None;
+			if (Payer)
+			{
+				Payer->SetResources(Stock);
+			}
+			return bQueued;
+		};
+		int64 StepCount = 0;
+		const auto RunSteps = [&](const int32 Steps)
+		{
+			for (int32 Each = 0; Each < Steps; ++Each)
+			{
+				Simulation->GetOnStepStarted().Broadcast(++StepCount);
+			}
+		};
+
+		// Bob has the Plough I and queues the Plough II; Alice and slot 3 queue the Plough I.
+		TestTrue(TEXT("Bob has the Plough I"), Bob->AddTechnology(PloughI));
+		TestTrue(TEXT("Bob queues the Plough II"), Queue(BobFarm, Bob, 1, PloughII));
+		TestTrue(TEXT("Alice queues the Plough I"), Queue(AliceFarm, Alice, 0, PloughI));
+		TestTrue(TEXT("slot 3 queues the Plough I"), Queue(NobodyFarm, nullptr, 3, PloughI));
+
+		// Bob leaves; his player state goes, as after a Logout.
+		TestTrue(TEXT("Bob leaves: slot kept"), State->KeepAbsentSlot(*Bob, 10., 180.));
+		Bob->Destroy();
+
+		// What a technology that asks for the Plough I reads (the AI's reader): his Plough I is still his.
+		TArray<FName> Done;
+		UHOLAITechnologyLibrary::ReadAITechnologiesDone(World, 1, Done);
+		AddInfo(FString::Printf(TEXT("while he is away, his technologies read: %d"), Done.Num()));
+		TestTrue(TEXT("away: his Plough I is still read as done (the Plough II stays offered)"), Done.Contains(PloughI));
+
+		// The researches end while he is away (the real production step).
+		FCaptureLog Log;
+		GLog->AddOutputDevice(&Log);
+		RunSteps(8);
+		GLog->FlushThreadedLogs();
+		GLog->RemoveOutputDevice(&Log);
+
+		TestTrue(TEXT("Alice's research landed in her player state, as ever"), Alice->GetTechnologies().Has(PloughI));
+		TestEqual(TEXT("Alice's research logged once"), Log.CountContaining(TEXT("researched PloughI"), TEXT("slot 0")), 1);
+		UHOLAITechnologyLibrary::ReadAITechnologiesDone(World, 1, Done);
+		TestTrue(TEXT("away: the research ended while he was gone is his"), Done.Contains(PloughII));
+		TestEqual(TEXT("slot 3's research, going nowhere, is not logged as researched"), Log.CountContaining(TEXT("researched PloughI"), TEXT("slot 3")), 0);
+
+		// Back in the window with a new player state: everything is his.
+		AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("new player state"), BobAgain))
+		{
+			TestFalse(TEXT("a new player state starts without technologies"), BobAgain->GetTechnologies().Has(PloughI));
+			BobAgain->SetMatchSlot(1, 1);
+			State->AddPlayerState(BobAgain);
+			TestTrue(TEXT("back at 100"), State->GiveSlotStock(*BobAgain, Starting, 100.));
+			AddInfo(FString::Printf(TEXT("back: %d technologies, food gathering +%d %%"), BobAgain->GetTechnologies().Done.Num(),
+				BobAgain->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Food))));
+			TestTrue(TEXT("back: his Plough I"), BobAgain->GetTechnologies().Has(PloughI));
+			TestTrue(TEXT("back: his Plough II, ended while he was away"), BobAgain->GetTechnologies().Has(PloughII));
+			TestTrue(TEXT("back: their effect (food gathering) counts at once"), BobAgain->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(EHOLResource::Food)) > 0);
+			TestFalse(TEXT("back: Alice's technologies are not his"), BobAgain->GetTechnologies().Done.Num() > 2);
+		}
+		// A slot never absent keeps what it had (nothing gained, nothing lost).
+		TestEqual(TEXT("Alice never left: her technologies are hers"), Alice->GetTechnologies().Done.Num(), 1);
+	}
+
+	BuildTime->Set(0.f, ECVF_SetByCode);
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
 	return true;
