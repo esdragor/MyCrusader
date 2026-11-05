@@ -111,7 +111,10 @@ bool FHOLDisconnectGameStateTest::RunTest(const FString& Parameters)
 	AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
 	if (TestNotNull(TEXT("game state spawned"), State) && TestNotNull(TEXT("player states spawned"), Bob) && BobAgain)
 	{
-		State->InitVictory(MakeNamedConfig());
+		// A 1v1 (the AI seat of Bob's camp closed): the end of his window is his defeat (D718, T5: with others in his camp the AI keeps the seat).
+		FHOLMatchConfig Config1v1 = MakeNamedConfig();
+		Config1v1.Slots[2].State = EHOLSlotState::Closed;
+		State->InitVictory(Config1v1);
 		const FHOLResources Starting(200, 200, 200, 200);
 		Bob->SetMatchSlot(1, 1);
 		TestFalse(TEXT("first login: not a return (no back to the manager)"), State->GiveSlotStock(*Bob, Starting));
@@ -133,7 +136,7 @@ bool FHOLDisconnectGameStateTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("reason Disconnected"), State->GetDefeatReason(1) == EHOLDefeatReason::Disconnected);
 		TestEqual(TEXT("reason's name"), FString(AHOLGameState::GetReasonName(EHOLDefeatReason::Disconnected)), FString(TEXT("Disconnected")));
 		TestFalse(TEXT("no longer absent once defeated"), State->IsSlotAbsent(1));
-		TestFalse(TEXT("not over: the AI of Bob's camp plays on"), State->IsMatchOver());
+		TestTrue(TEXT("1v1: his defeat ends the match"), State->IsMatchOver());
 		TestFalse(TEXT("a defeated slot is not kept"), State->KeepAbsentSlot(*BobAgain, 1200.));
 
 		// B6b: Bob joins again after his defeat: he watches (no slot, no stock of the start on a beaten camp).
@@ -273,7 +276,10 @@ bool FHOLDisconnectBannerTest::RunTest(const FString& Parameters)
 	AHOLPlayerState* BobAgain = World->SpawnActor<AHOLPlayerState>();
 	if (TestNotNull(TEXT("game state spawned"), State) && TestNotNull(TEXT("player states spawned"), Bob) && BobAgain)
 	{
-		State->InitVictory(MakeNamedConfig());
+		// A 1v1 (the AI seat of Bob's camp closed): the end of his window is his defeat (D718, T5: with others in his camp the AI keeps the seat).
+		FHOLMatchConfig Config1v1 = MakeNamedConfig();
+		Config1v1.Slots[2].State = EHOLSlotState::Closed;
+		State->InitVictory(Config1v1);
 		const FHOLResources Starting(200, 200, 200, 200);
 		Bob->SetMatchSlot(1, 1);
 		State->GiveSlotStock(*Bob, Starting, 0.);

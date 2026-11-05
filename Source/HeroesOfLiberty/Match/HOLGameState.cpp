@@ -624,6 +624,12 @@ bool AHOLGameState::EvaluateMatchEnd()
 
 bool AHOLGameState::KeepAbsentSlot(const AHOLPlayerState& Leaving, const double Now, const double WindowSeconds)
 {
+	// D717 (T4): an old connection closing late, while a newer one of his name already holds the seat: nobody is "away" under the new player.
+	if (const UWorld* World = GetWorld(); World && !Leaving.IsOnlyASpectator() && FindLiveHolder(*World, Leaving.GetPlayerIndex(), &Leaving))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d left by an old connection, a newer one holds it: not kept"), Leaving.GetPlayerIndex());
+		return false;
+	}
 	return !Leaving.IsOnlyASpectator()
 		&& KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now, WindowSeconds, Leaving.GetTechnologies());
 }
@@ -855,19 +861,61 @@ int32 AHOLGameState::FindSlotOnLogin(const FHOLMatchConfig& Config, const FStrin
 int32 AHOLGameState::FindSlotForLogin(const FHOLMatchConfig& Config, const FString& Name, const AHOLPlayerState& Logging,
 	AHOLPlayerState*& OutReplaced) const
 {
-	// STUB (red test first): today's behaviour, a live old connection makes the new one a spectator.
 	OutReplaced = nullptr;
-	return FindSlotOnLogin(Config, Name, GetSlotsInUse(&Logging));
+	TArray<int32> Taken = GetSlotsInUse(&Logging);
+	const UWorld* World = GetWorld();
+	if (World && Config.HasPlayerNames())
+	{
+		// His name's seat, whoever holds it: a live holder of another connection is the old connection of this very player (the lobby's names
+		// are unique), to be handed over to him, unless the seat is defeated (then he watches, as FindSlotOnLogin says).
+		const int32 NameSlot = Config.FindSlotForName(Name, {});
+		if (NameSlot != INDEX_NONE && !IsSlotDefeated(NameSlot) && Taken.Contains(NameSlot))
+		{
+			if (AHOLPlayerState* Old = FindLiveHolder(*World, NameSlot, &Logging))
+			{
+				OutReplaced = Old;
+				Taken.Remove(NameSlot);
+			}
+		}
+	}
+	return FindSlotOnLogin(Config, Name, Taken);
 }
 
 void AHOLGameState::RetireHolder(AHOLPlayerState& Old, const double Now, const double WindowSeconds)
 {
-	// STUB (red test first).
+	const int32 Slot = Old.GetPlayerIndex();
+	if (!HasAuthority() || Slot == INDEX_NONE)
+	{
+		return;
+	}
+	// What a Logout would keep for him (stock, technologies; the AI's player state holds them until his successor takes the seat, at once);
+	// no banner for the others: nobody left, a player restarted.
+	if (KeepMissingSlot(Slot, Old.GetResources(), Now, WindowSeconds, Old.GetTechnologies()))
+	{
+		AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+	}
+	// The old connection no longer holds the seat: its late Logout (KeepAbsentSlot) keeps nothing, and the seat is read on the new player.
+	Old.SetIsOnlyASpectator(true);
+	Old.SetMatchSlot(INDEX_NONE, Old.GetColorIndex());
+	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) handed over from his old connection"), Slot, *Old.GetPlayerName());
+	ForceNetUpdate();
 }
 
 AHOLPlayerState* AHOLGameState::FindLiveHolder(const UWorld& World, const int32 Slot, const AHOLPlayerState* Except)
 {
-	// STUB (red test first).
+	const AGameStateBase* HolderState = World.GetGameState();
+	if (!HolderState || Slot == INDEX_NONE)
+	{
+		return nullptr;
+	}
+	for (APlayerState* Each : HolderState->PlayerArray)
+	{
+		AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+		if (HOLEach && HOLEach != Except && !HOLEach->IsABot() && !HOLEach->IsOnlyASpectator() && HOLEach->GetPlayerIndex() == Slot)
+		{
+			return HOLEach;
+		}
+	}
 	return nullptr;
 }
 
@@ -944,6 +992,19 @@ TArray<int32> AHOLGameState::DefeatExpiredAbsences(const double Now, const doubl
 	TArray<int32> Defeated;
 	for (const int32 Slot : FHOLDisconnectRules::GetExpired(AbsentSlots, Now, WindowSeconds))
 	{
+		// D718 (T5): by the camps of the launch, the AI keeps the seat (full brain, the banner out, his return open to the end of the match) or it is a defeat.
+		if (FHOLDisconnectRules::GetWindowEnd(LaunchConfig, Slot) == FHOLDisconnectRules::EWindowEnd::AIHolds && GetWorld() && FindHeldBot(*GetWorld(), Slot))
+		{
+			AbsentSlots[FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot)].bWindowOver = true;
+			AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+			if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+			{
+				Brain->SetFullBrain(Slot);
+			}
+			UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d not back within %.0f s, the AI keeps the seat (full brain)"), Slot, WindowSeconds);
+			ForceNetUpdate();
+			continue;
+		}
 		AbsentSlots.RemoveAt(FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot));
 		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d not back within %.0f s"), Slot, WindowSeconds);
 		// As a surrender (R-Q5): the collapse of V1 (D358), the camps' rules decide the end.

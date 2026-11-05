@@ -116,11 +116,14 @@ TArray<int32> UHOLAIBrainSubsystem::GetThinkingSlots() const
 		const FHOLMatchConfig& Config = State->GetLaunchConfig();
 		Slots.RemoveAll([&Config](const int32 Slot) { return Config.Slots.IsValidIndex(Slot) && !Config.Slots[Slot].bAIBrain; });
 		// D717 (T2): the seats held for a player who left think too, while they stay absent (a defeated seat is not thought for).
-		for (const int32 Held : HeldSlots)
+		for (const TSet<int32>* Kept : { &HeldSlots, &FullBrainSlots })
 		{
-			if (State->IsSlotAbsent(Held) && !State->IsSlotDefeated(Held))
+			for (const int32 Held : *Kept)
 			{
-				Slots.AddUnique(Held);
+				if (State->IsSlotAbsent(Held) && !State->IsSlotDefeated(Held))
+				{
+					Slots.AddUnique(Held);
+				}
 			}
 		}
 		Slots.Sort();
@@ -133,16 +136,28 @@ void UHOLAIBrainSubsystem::SetHeld(const int32 PlayerIndex, const bool bHeld)
 	if (bHeld)
 	{
 		bool bAlready = false;
+		FullBrainSlots.Remove(PlayerIndex);
 		HeldSlots.Add(PlayerIndex, &bAlready);
 		if (!bAlready)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("AI brain: slot %d held (a player left)"), PlayerIndex);
 		}
 	}
-	else if (HeldSlots.Remove(PlayerIndex) > 0)
+	else if (const bool bWasHeld = HeldSlots.Remove(PlayerIndex) > 0, bWasFull = FullBrainSlots.Remove(PlayerIndex) > 0; bWasHeld || bWasFull)
 	{
 		ForgetSlot(PlayerIndex);
 		UE_LOG(LogHOLMatch, Display, TEXT("AI brain: slot %d released (its player is back)"), PlayerIndex);
+	}
+}
+
+void UHOLAIBrainSubsystem::SetFullBrain(const int32 PlayerIndex)
+{
+	HeldSlots.Remove(PlayerIndex);
+	bool bAlready = false;
+	FullBrainSlots.Add(PlayerIndex, &bAlready);
+	if (!bAlready)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("AI brain: slot %d plays its full brain (its player's window is over)"), PlayerIndex);
 	}
 }
 
