@@ -3,17 +3,21 @@
 open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
+hol.Sanity.Watch 1
 frames 5
 hol.Camp.Aggro 1
 hol.Camp.Add 0 -9000 3 Spearman
 waitlog Camp 0: 3 Spearman at
 hol.Camera.FocusNear 14800 -9000
-hol.Camera.Zoom -4
+hol.Camera.Zoom 4
 frames 60
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture neutralcol_a
 hol.Units.Spawn 3 3000 -9000 0 Peasant 150
 waitlog Spawn: 3 Peasant
 hol.Camera.FocusNear 17800 -9000
 frames 60
 capture neutralcol_b
+hol.Test.Sanity
 note Camp neutre a 30 m de mes Paysans : les 3 Lanciers du camp sont GRIS, mes Paysans sont bleus (ma couleur).
