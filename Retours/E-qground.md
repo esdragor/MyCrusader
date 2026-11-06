@@ -26,3 +26,10 @@ eutrals_qground : l'attendu « avant = 0 coup » etait faux (un camp de carte ga
 - Regle du camp : 
 eutrals_qground_rule (reglage 0, camp de carte QUAND MEME frappe : coups + Camp 0: fighting), preflight PASS 24 s, PNG ouvert : 6 bleus au contact de 3 Lanciers gris, barres de vie entamees.
 - Commit 7085ffe (tiers). Retours utilisateur du 22:10 (melee qui glitch) : voir BUG-melee-spin-sanity, non traite ici.
+
+Recette indépendante 2026-11-06 12:12 : DÉFAUT scénario corrigé (main 2bb0d6b, binaire à jour). PNG vus : dipl_qground_fight, dipl_qground_before, neutrals_qground_fight, neutrals_qground_rule_fight.
+- diplomacy_qground (réglage 1) : OK, preflight PASS 41 s ; Q puis clic au sol (hol.Select.Grid 4 + hol.Select.LeftClickGround), mêlée visible sur dipl_qground_fight (bleus au contact des rouges, une barre rouge entamée visible ; les autres barres rouges ne se lisent pas, la preuve des PV est au journal : « hits # »). Posture Neutre inchangée au journal. Pas d'audit Sanity dans ce scénario (WARN preflight) : la rotation en mêlée vue par l'utilisateur à 22:10 n'est pas jugée ici.
+- diplomacy_qground_before (réglage 0) : DÉFAUT trouvé, ROUGE 2/2 sur le build intégré (« timeout at step 33: waitlog fighting 0 hits 0 kills 0 ») : le journal dit « fighting 1 hits 0 kills 0 » (une unité acquiert une cible, 0 coup) ; l'effet attendu (0 coup, PNG face à face sans mêlée) est bon. Cause : l'assertion portait sur le compteur « fighting », pas sur l'effet. Corrigé (commit sur tiers) : assertion « hits 0 kills 0 » ; preflight PASS 40 s ; copie jetable avec le réglage 1 = ROUGE (99 s, timeout) : la preuve discrimine. Voir BUG-diplomacy-qground-before-flaky.md.
+- neutrals_qground : OK, PASS 31 s, 6 bleus au contact de 3 Lanciers gris, barres grises entamées ; reste NON discriminant (camp de carte, règle propre D731). neutrals_qground_rule (réglage 0) : OK, PASS 40 s, camp frappé quand même.
+GESTE: réel (touche Q puis clic gauche par les gestionnaires d'entrée ; souris physique non testée)
+SON: non entendu

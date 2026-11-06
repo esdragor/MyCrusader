@@ -397,3 +397,5 @@ Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Farami
 | Elrond-7 (integrateur) | a8e91ada0aae9bc73 | Documents\HeroesOfLiberty-Elrond / tiers | rejoue hero_xp, cavalry, diplomacy_qground, neutrals_qground sur main 7d0714c | sans C++ | 13:00 | lance 11:52 |
 | (suite 11:55) Galadriel-6 FINI 11:53 59 tool_uses (4d46cdb stats A + armures + infobulle, tests 1039/1039, camera 2p rouge) | | | | | | |
 | Fusion-2 | ae920c5e4dac125f3 | Documents\HeroesOfLiberty-Faramir / fog | fusion galadriel-tab (4d46cdb) + net-playtest (6cf6bd2) sur main 0dcc695 ; baseline camera d'abord | merge C++ | 13:00 | lance 11:55 |
+| (suite 12:12) Arwen-7 FINI 12:02 25 tool_uses (gate Essay PASS, preflight audio_compare x3 PASS) | | | | | | |
+| Arwen-8 | a56dc422f2615946d | Documents\HeroesOfLiberty-Arwen / heal-sleep | appliquer les sons elus (reponse E-audio_compare) : Click H, Open F, Back B, Error A, Confirm G ; Hover/Toggle/Tick/Scroll aucun | sans C++ | 13:00 | lance 12:12 |
