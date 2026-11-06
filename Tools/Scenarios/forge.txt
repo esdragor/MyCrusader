@@ -26,8 +26,6 @@ waitlog Command feedback: research refused (tier too low)
 hol.Hero.SetXP 0 600
 waitlog slot 0 level 1 -> 3
 frames 90
-waitlog Selection: Forge
-frames 20
 hol.HUD.Report
 waitlog +10 %
 capture forge_tier1
