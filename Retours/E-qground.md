@@ -33,3 +33,4 @@ Recette indépendante 2026-11-06 12:12 : DÉFAUT scénario corrigé (main 2bb0d6
 - neutrals_qground : OK, PASS 31 s, 6 bleus au contact de 3 Lanciers gris, barres grises entamées ; reste NON discriminant (camp de carte, règle propre D731). neutrals_qground_rule (réglage 0) : OK, PASS 40 s, camp frappé quand même.
 GESTE: réel (touche Q puis clic gauche par les gestionnaires d'entrée ; souris physique non testée)
 SON: non entendu
+Reponse (utilisateur 2026-11-06 12:4x) : qground : OK (la regle Q+clic marche) MAIS BUG: toujours des mouvements de certains soldats EN CERCLE pendant pas mal de temps avant de se placer pour frapper. NB : essai joue depuis le worktree Elrond (tiers), SANS les correctifs de melee de Celeborn-8/9 (FarPlaceRetarget + detour tenu, branche hero-j8-close, en cours de fusion 3) : a rejouer depuis le worktree Faramir une fois main fusionne.
