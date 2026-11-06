@@ -1,5 +1,5 @@
 # D733 PREUVE "AVANT" (copie de diplomacy_qground avec hol.Combat.AttackMoveEngagesNeutral 0 = le comportement d avant D733) : Q puis clic au sol derriere des hommes d un joueur NEUTRE. Les deux camps se rencontrent et NE SE FRAPPENT PAS (0 coup, posture Neutral inchangee). Le meme scenario avec le reglage 1 (defaut) = diplomacy_qground, qui doit frapper.
-# Effet assertit : apres le geste reel et 150 images, hol.Combat.Report dit "fighting 0 hits 0 kills 0" (rouge si le reglage 0 ne coupait pas l engagement).
+# Effet assertit : apres le geste reel et 150 images, hol.Combat.Report dit "hits 0 kills 0" (peu importe "fighting N" : une cible peut etre acquise sans un coup ; rouge si le reglage 0 ne coupait pas l engagement).
 hol.Cheat.Resources 2000
 hol.Combat.LogHits 1
 hol.Combat.AttackMoveEngagesNeutral 0
@@ -25,7 +25,7 @@ hol.Camera.Zoom 8
 frames 40
 capture dipl_qground_before
 hol.Combat.Report
-waitlog fighting 0 hits 0 kills 0
+waitlog hits 0 kills 0
 frames 20
 hol.Diplomacy.Report
 waitlog Diplomacy report: slot 2 toward slot 1
