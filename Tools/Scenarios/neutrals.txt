@@ -29,6 +29,7 @@ hol.HUD.Report 1
 waitlog HUD overlap:
 capture neutrals_camp
 # Au repos : rien ne bouge tant que personne n est a 15 m ; puis mes soldats entrent dans le rayon.
+hol.Camera.Focus 0 400
 hol.Units.Move -1000 0 0 a
 waitlog Camp 1: fighting
 hol.Camera.Focus -700 0

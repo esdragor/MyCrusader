@@ -2309,7 +2309,8 @@ FVector2D AHOLPlayerController::GetEdgeScroll() const
 
 	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
 	FVector2D Cursor;
-	if ((Settings && !Settings->IsEdgeScrollEnabled()) || !GetCursorFraction(Cursor))
+	const bool bScriptedCursor = !CVarTestCursor.GetValueOnGameThread().IsEmpty();
+	if ((Settings && !AHOLRTSCamera::IsEdgeScrollWanted(Settings->IsEdgeScrollEnabled(), bScriptedCursor)) || !GetCursorFraction(Cursor))
 	{
 		return FVector2D::ZeroVector;
 	}

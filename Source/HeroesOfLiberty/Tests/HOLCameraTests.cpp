@@ -102,7 +102,17 @@ bool FHOLSettingsCameraTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMapStartSlotsTest, "HeroesOfLiberty.Map.StartSlots", UE::HeroesOfLiberty::Tests::Camera::Flags)
+// The edge scrolling option governs the real cursor only: the scripted test cursor always pans (quick_check -Parts camera, "right edge 1 s", 2026-11-05).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLEdgeScrollScriptedTest, "HeroesOfLiberty.Camera.EdgeScrollScripted", UE::HeroesOfLiberty::Tests::Camera::Flags)
+bool FHOLEdgeScrollScriptedTest::RunTest(const FString& Parameters)
+{
+	TestTrue(TEXT("option on, real cursor: pans"), AHOLRTSCamera::IsEdgeScrollWanted(true, false));
+	TestFalse(TEXT("option off, real cursor: does not pan"), AHOLRTSCamera::IsEdgeScrollWanted(false, false));
+	TestTrue(TEXT("option off, scripted test cursor: pans (the test tools turn the option off)"), AHOLRTSCamera::IsEdgeScrollWanted(false, true));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMapStartSlotsTest,"HeroesOfLiberty.Map.StartSlots", UE::HeroesOfLiberty::Tests::Camera::Flags)
 bool FHOLMapStartSlotsTest::RunTest(const FString& Parameters)
 {
 	// The actors as saved in the match map, read without starting it: their components are not registered, so their

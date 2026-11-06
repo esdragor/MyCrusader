@@ -48,6 +48,9 @@ namespace UE::HeroesOfLiberty::Simulation
 	float LoopPatienceDegrees = 270.f;
 	FAutoConsoleVariableRef CVarLoopPatience(TEXT("hol.Combat.LoopPatience"), LoopPatienceDegrees,
 		TEXT("Degrees (default 270; 0 = off, for A / B): a melee walking to its target that has turned this much in all (every turn counted without its sign, leaking away over hol.Combat.LoopForget) stands and waits hol.Combat.LoopWait instead of going round the line of its friends in loops (D641)"));
+	int32 LoopHoldOnlyFull = 1;
+	FAutoConsoleVariableRef CVarLoopHoldOnlyFull(TEXT("hol.Combat.LoopHoldOnlyFull"), LoopHoldOnlyFull,
+		TEXT("1 (default; D641, the user's retour on the neutrals trial): the loop patience (hol.Combat.LoopPatience) holds a melee only when no place is free round its target, a soldier with room goes round to it; 0: it holds whenever it has turned too much (the first version)"));
 	float LoopWaitSeconds = 2.5f;
 	FAutoConsoleVariableRef CVarLoopWait(TEXT("hol.Combat.LoopWait"), LoopWaitSeconds,
 		TEXT("Seconds a melee waits once it has turned hol.Combat.LoopPatience degrees (D641)"));
@@ -62,7 +65,7 @@ namespace UE::HeroesOfLiberty::Simulation
 	 */
 	bool HoldIfLooping(FHOLCombatFragment& Combat, FVector& Velocity, const float DeltaTime, const bool bFighting)
 	{
-		if (!bFighting)
+		if (!bFighting || (LoopHoldOnlyFull != 0 && Combat.bRoomAtTarget))
 		{
 			Combat.LoopHeading = FVector2f::ZeroVector;
 			Combat.LoopTurn = 0.f;
@@ -154,6 +157,19 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarAvoidMaxAngle(TEXT("hol.Units.AvoidMaxAngle"), AvoidMaxAngle,
 		TEXT("Largest turn (degrees) a walker makes around a body ahead; beyond, the detour is too long and it pushes its way (D293)"));
 
+	/**
+	 * Melee_spin (Celeborn-9): a walker on its last leg to its slot, a still enemy grazing the straight way to it, held the largest turn
+	 * along that enemy and circled its slot (turn 555 degrees in 3 s at 700 cm/s, Sanity FAIL). A detour held this many steps while the
+	 * goal is within hol.Units.SlotDetourRadius commits the walker to the goal for the rest of the leg (the separation still keeps the
+	 * bodies apart). 0: off (the detour as before).
+	 */
+	int32 SlotDetourMaxSteps = 8;
+	FAutoConsoleVariableRef CVarSlotDetourMaxSteps(TEXT("hol.Units.SlotDetourMaxSteps"), SlotDetourMaxSteps,
+		TEXT("Steps a detour is held near the walker's goal before it goes straight to it for the rest of the leg (the slot circling of melee_spin); 0: off"));
+	float SlotDetourRadius = 300.f;
+	FAutoConsoleVariableRef CVarSlotDetourRadius(TEXT("hol.Units.SlotDetourRadius"), SlotDetourRadius,
+		TEXT("cm: the goal's distance within which hol.Units.SlotDetourMaxSteps counts"));
+
 	/** J7c.4, loop 19: the ranks behind the front slide along their friends instead of walking into them. */
 	/** J7c.4 loop 29: the melee rules' bookkeeping (army middles, lines of contact) skipped or done without maps when it cannot change anything. */
 	int32 MeleeRuleSkips = 1;
@@ -203,6 +219,12 @@ namespace UE::HeroesOfLiberty::Simulation
 	float RearFlankMaxShift = 600.f;
 	FAutoConsoleVariableRef CVarRearFlankMaxShift(TEXT("hol.Combat.RearFlankMaxShift"), RearFlankMaxShift,
 		TEXT("cm (default 600, Q-flank-tours = A; was 1200, with hol.Combat.RearFlank): a unit whose flank's goal lies further along the line does not go round (it waits behind the line); 0: no cap (loop 21)"));
+	int32 FlankToTarget = 1;
+	FAutoConsoleVariableRef CVarFlankToTarget(TEXT("hol.Combat.FlankToTarget"), FlankToTarget,
+		TEXT("1 (default, with hol.Combat.RearFlank; D641, the user's retour on the neutrals trial): a melee of an attack-move that stood still hol.Combat.FlankStill s behind its line, out of reach, goes round the line's end (under hol.Combat.RearFlankMaxShift) when a place is free round its own target, not only when another enemy is free beyond the end; 0: as before (A / B)"));
+	float FlankStillSeconds = 0.5f;
+	FAutoConsoleVariableRef CVarFlankStill(TEXT("hol.Combat.FlankStill"), FlankStillSeconds,
+		TEXT("s (default 0.5, with hol.Combat.FlankToTarget): how long a melee must have stood still (under 3 cm) before it goes round to its target's free place"));
 	float RearFlankBack = 250.f;
 	FAutoConsoleVariableRef CVarRearFlankBack(TEXT("hol.Combat.RearFlankBack"), RearFlankBack,
 		TEXT("cm (default 250, with hol.Combat.RearFlank): the flank first walks to a point this far behind the unit's own rank, at the end's level, then round the end; 0: straight to the end (loop 21)"));
@@ -645,7 +667,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.Side = 0;
 		Detour.Turn = 0;
 		Detour.ClearSteps = 0;
+		Detour.DetourSteps = 0;
 	};
+	if (Detour.bSlotCommit != 0)
+	{
+		return Direction;
+	}
 	// A / B (hol.Units.DetourMemory 0): every step from the straight course, as before MV.2.
 	if (DetourMemory == 0)
 	{
@@ -812,6 +839,15 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		{
 			Forget();
 			return Direction;
+		}
+		if (SlotDetourMaxSteps > 0 && Goal && FVector2D::DistSquared(*Goal, Position) < FMath::Square(static_cast<double>(SlotDetourRadius)))
+		{
+			if (++Detour.DetourSteps >= SlotDetourMaxSteps)
+			{
+				Forget();
+				Detour.bSlotCommit = 1;
+				return Direction;
+			}
 		}
 		const FVector2D Way = WayOf(Hand, Detour.Turn);
 		return FVector(Way.X, Way.Y, 0.);
