@@ -431,6 +431,23 @@ namespace HOLCombat
 		return FVector2D::DistSquared(OldWhere, NewWhere) <= MaxDistance * MaxDistance;
 	}
 
+	/** Angular gap (radians, 0 to pi) between two angles round a target. */
+	inline double GetPlaceGap(const double PlaceAngle, const double SelfAngle)
+	{
+		double Gap = FMath::Fmod(FMath::Abs(PlaceAngle - SelfAngle), 2. * UE_DOUBLE_PI);
+		return FMath::Min(Gap, 2. * UE_DOUBLE_PI - Gap);
+	}
+
+	/**
+	 * D641 (hol.Combat.FarPlaceRetarget, the melee that spins of 2026-11-05: 6 soldiers on 3 targets that die one after the other): a place claimed more than
+	 * MaxGap (1.5 rad, about 90 degrees) from the side of the target the soldier is on lies across the melee: reaching it is a walk round the crowd that
+	 * reverses on its steps, and the target is dead before the arrival. STUB (red test first): never too far.
+	 */
+	inline bool IsPlaceTooFar(const double PlaceAngle, const double SelfAngle, const double MaxGap = 1.5)
+	{
+		return false;
+	}
+
 	/**
 	 * Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget): a soldier walled in (IsBoxedIn) with no headway for MinSeconds changes target, unless the target was
 	 * ordered by the player.
@@ -445,7 +462,7 @@ namespace HOLCombat
 	 * nearest to the soldier, having a free place (HasFreePlaceAround, every other body counted) that the soldier can reach without going round (not IsBoxedIn
 	 * towards it); ExcludeBody (the target it leaves) is never chosen. Bodies = every body near but the soldier. Returns the index into EnemyBodies, or INDEX_NONE.
 	 */
-	inline int32 FindReachableEnemy(const FVector2D& SelfWhere, const float SelfRadius, TConstArrayView<FBody> Bodies, TConstArrayView<int32> EnemyBodies, TConstArrayView<uint64> EnemyIds, const int32 ExcludeBody)
+	inline int32 FindReachableEnemy(const FVector2D& SelfWhere, const float SelfRadius, TConstArrayView<FBody> Bodies, TConstArrayView<int32> EnemyBodies, TConstArrayView<uint64> EnemyIds, const int32 ExcludeBody, const double MaxPlaceGap = -1.)
 	{
 		int32 Best = INDEX_NONE;
 		double BestEdge = 0.;

@@ -320,6 +320,30 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 			TestFalse(TEXT("not walled in: it keeps its target"), HOLCombat::ShouldRetargetWhenBoxedIn(5.f, false, false));
 			TestFalse(TEXT("a target the player ordered is kept"), HOLCombat::ShouldRetargetWhenBoxedIn(5.f, true, true));
 		}
+		// D641 (hol.Combat.FarPlaceRetarget, melee spin of 2026-11-05): a place claimed more than 1.5 rad from the soldier's side of the target is refused, and the
+		// soldier turns to the nearest enemy with a place on ITS side (else it waits).
+		{
+			TestFalse(TEXT("a place on the soldier's own side is kept"), HOLCombat::IsPlaceTooFar(0.1, 0.0));
+			TestTrue(TEXT("a place 2 rad round is too far"), HOLCombat::IsPlaceTooFar(2.0, 0.0));
+			TestFalse(TEXT("the gap wraps round 2 pi: 6.0 against 0.1 is 0.38 rad"), HOLCombat::IsPlaceTooFar(6.0, 0.1));
+			TestTrue(TEXT("the gap wraps round 2 pi: 4.0 against 0.1 is 2.38 rad"), HOLCombat::IsPlaceTooFar(4.0, 0.1));
+			TestFalse(TEXT("exactly 1.5 rad is kept"), HOLCombat::IsPlaceTooFar(1.5, 0.0));
+			TestTrue(TEXT("1.6 rad is too far"), HOLCombat::IsPlaceTooFar(1.6, 0.0));
+			// Enemy E at (300, 0): its side towards the soldier is blocked by two friends of E (not walling the soldier in); the nearest free spot is 1.57 rad round.
+			TArray<HOLCombat::FBody> Bodies;
+			const FVector2D EWhere(300., 0.);
+			Bodies.Add({ EWhere, 55.f });                                                                                           // 0: enemy E
+			Bodies.Add({ EWhere + 112. * FVector2D(FMath::Cos(UE_DOUBLE_PI + 0.6), FMath::Sin(UE_DOUBLE_PI + 0.6)), 55.f });        // 1: blocks E's near side
+			Bodies.Add({ EWhere + 112. * FVector2D(FMath::Cos(UE_DOUBLE_PI - 0.6), FMath::Sin(UE_DOUBLE_PI - 0.6)), 55.f });        // 2: blocks E's near side
+			Bodies.Add({ FVector2D(-300., 100.), 55.f });                                                                           // 3: enemy F, open on the soldier's side
+			const TArray<int32> Enemies = { 0, 3 };
+			const TArray<uint64> Ids = { 10, 11 };
+			TestEqual(TEXT("without the side rule E (edge 190) is the nearest with a place"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, Enemies, Ids, INDEX_NONE), 0);
+			TestEqual(TEXT("with the side rule E (its only places are across) is skipped: F"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, Enemies, Ids, INDEX_NONE, 1.5), 1);
+			const TArray<int32> OnlyE = { 0 };
+			const TArray<uint64> OnlyEId = { 10 };
+			TestEqual(TEXT("with the side rule and only E: none, the soldier waits"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, OnlyE, OnlyEId, INDEX_NONE, 1.5), static_cast<int32>(INDEX_NONE));
+		}
 		// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
 	HOLSanity::FStall Stall;
 	int32 Told = 0;
