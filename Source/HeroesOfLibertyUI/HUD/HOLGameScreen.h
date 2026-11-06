@@ -113,6 +113,8 @@ public:
 
 	/** What the statistics' line of the selection block says ("attack 13.2 (+1.2), armor 2/1, range melee, speed 3" or "none"): the "HUD stats" line of hol.HUD.Report. */
 	FString DescribeStats() const { return ShownStats.IsEmpty() ? FString(TEXT("none")) : ShownStats; }
+	/** The tooltip on the statistics (the hover): what the line leaves out, read back from the widget; "none" when there is none ("HUD stats tip" line of hol.HUD.Report). */
+	FString DescribeStatsTip() const;
 	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
 	FString DescribeCells() const;
 
@@ -579,6 +581,8 @@ private:
 	FString ShownHealth;
 	/** "attack 13.2 (+1.2), armor 2/1, range melee, speed 3" for one unit selected (hol.HUD.Report's "HUD stats" line); empty otherwise. */
 	FString ShownStats;
+	/** The tooltip text of the statistics, culture-free ("health 155 | base attack 12 | range melee | siege armor 0"). */
+	FString ShownStatsTip;
 	/** A main forum's lives last written in SelectionLives (V2.3d). */
 	int32 ShownForumLives = INDEX_NONE;
 

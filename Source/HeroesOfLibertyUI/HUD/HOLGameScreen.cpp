@@ -1669,10 +1669,16 @@ namespace
 	}
 }
 
+FString UHOLGameScreen::DescribeStatsTip() const
+{
+	return ShownStatsTip.IsEmpty() || !SelectionStats || SelectionStats->GetVisibility() != ESlateVisibility::Visible || SelectionStats->GetToolTipText().IsEmpty() ? FString(TEXT("none")) : ShownStatsTip;
+}
+
 void UHOLGameScreen::HideUnitStats()
 {
 	ShownStats.Reset();
-	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
+	ShownStatsTip.Reset();
+	if (SelectionStats &&SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
 	{
 		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
 	}
@@ -1709,19 +1715,40 @@ void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 			: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)));
 		Plain.Add(Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)));
 	}
-	Lines.Add(FText::Format(LOCTEXT("StatArmor", "Armure {0} (mêlée) {1} (distance)"), Row->MeleeArmor, Row->RangedArmor));
-	Plain.Add(FString::Printf(TEXT("armor %d/%d"), Row->MeleeArmor, Row->RangedArmor));
-	if (bStrikes)
-	{
-		const bool bMelee = Row->AttackType == EHOLAttackType::Melee;
-		Lines.Add(bMelee ? LOCTEXT("StatRangeMelee", "Portée mêlée")
-			: FText::Format(LOCTEXT("StatRange", "Portée {0} m"), FormatStat(Row->AttackRange / 100.f)));
-		Plain.Add(bMelee ? FString(TEXT("range melee")) : FString::Printf(TEXT("range %s"), *FormatStatPlain(Row->AttackRange / 100.f)));
-	}
+	// Answer to Q-unit-stats: the line keeps attack, the three armours that matter in a fight (melee, ranged, hero) and speed; the rest is the tooltip.
+	Lines.Add(FText::Format(LOCTEXT("StatMeleeArmor", "Armure mêlée {0}"), Row->MeleeArmor));
+	Plain.Add(FString::Printf(TEXT("melee armor %d"), Row->MeleeArmor));
+	Lines.Add(FText::Format(LOCTEXT("StatRangedArmor", "Armure distance {0}"), Row->RangedArmor));
+	Plain.Add(FString::Printf(TEXT("ranged armor %d"), Row->RangedArmor));
+	Lines.Add(FText::Format(LOCTEXT("StatHeroArmor", "Armure héros {0}"), Row->HeroArmor));
+	Plain.Add(FString::Printf(TEXT("hero armor %d"), Row->HeroArmor));
 	Lines.Add(FText::Format(LOCTEXT("StatSpeed", "Vitesse {0} m/s"), FormatStat(Row->Speed / 100.f)));
 	Plain.Add(FString::Printf(TEXT("speed %s"), *FormatStatPlain(Row->Speed / 100.f)));
 
+	// The tooltip (on hover): what the line leaves out: health, the attack's base and the technologies' bonus, the range, the siege armour.
+	TArray<FText> Tip;
+	TArray<FString> TipPlain;
+	Tip.Add(FText::Format(LOCTEXT("TipHealth", "Points de vie {0}"), Row->MaxHealth));
+	TipPlain.Add(FString::Printf(TEXT("health %d"), Row->MaxHealth));
+	if (bStrikes)
+	{
+		Tip.Add(FText::Format(LOCTEXT("TipBaseAttack", "Attaque de base {0}"), FormatStat(Base)));
+		TipPlain.Add(FString::Printf(TEXT("base attack %s"), *FormatStatPlain(Base)));
+		if (Percent != 0)
+		{
+			Tip.Add(FText::Format(LOCTEXT("TipTechnology", "Technologies {0} %"), FText::FromString(FString::Printf(TEXT("%+d"), Percent))));
+			TipPlain.Add(FString::Printf(TEXT("technology %+d %%"), Percent));
+		}
+		const bool bMelee = Row->AttackType == EHOLAttackType::Melee;
+		Tip.Add(bMelee ? LOCTEXT("StatRangeMelee", "Portée mêlée")
+			: FText::Format(LOCTEXT("StatRange", "Portée {0} m"), FormatStat(Row->AttackRange / 100.f)));
+		TipPlain.Add(bMelee ? FString(TEXT("range melee")) : FString::Printf(TEXT("range %s"), *FormatStatPlain(Row->AttackRange / 100.f)));
+	}
+	Tip.Add(FText::Format(LOCTEXT("TipSiegeArmor", "Armure siège {0}"), Row->SiegeArmor));
+	TipPlain.Add(FString::Printf(TEXT("siege armor %d"), Row->SiegeArmor));
+
 	ShownStats = FString::Join(Plain, TEXT(", "));
+	ShownStatsTip = FString::Join(TipPlain, TEXT(" | "));
 	if (SelectionStats)
 	{
 		const FText Text = FText::Join(Mode == 2 ? FText::AsCultureInvariant(TEXT("\n")) : FText::AsCultureInvariant(TEXT("   ·   ")), Lines);
@@ -1729,7 +1756,9 @@ void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 		{
 			SelectionStats->SetText(Text);
 		}
-		SelectionStats->SetVisibility(ESlateVisibility::HitTestInvisible);
+		SelectionStats->SetToolTipText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Tip));
+		// Visible (not HitTestInvisible): the hover shows the tooltip.
+		SelectionStats->SetVisibility(ESlateVisibility::Visible);
 	}
 }
 
