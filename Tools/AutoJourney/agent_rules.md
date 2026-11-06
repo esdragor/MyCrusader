@@ -4,7 +4,7 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 
 ## Heure et durée
 1. **Premier geste : `Get-Date` PowerShell.** Si l'heure d'arrêt dur de l'énoncé est déjà passée, ne rien faire d'autre que le dire dans le rapport. Jamais repousser l'arrêt ; seule exception : un build C++ déjà lancé, qu'on attend.
-2. **80 appels d'outils maximum** (tu ne vois pas tes tokens, tu comptes tes appels : 2 000 tokens environ par appel). À 80 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Jamais continuer « parce que c'est presque fini ».
+2. **80 appels d'outils maximum, relevés par la session principale** (champ `tool_uses` de la notification de fin ; ton propre décompte est faux de 10 à 30 % : 77 déclarés = 108 réels). **Tu ne vois pas tes appels : arrête-toi à 60 appels déclarés** (marge de 30 %). À 60 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Jamais continuer « parce que c'est presque fini ». Compte en tenant une liste dans ton journal (un trait par appel), pas de mémoire.
 3. Toute heure annoncée vient de `Get-Date` (Git Bash diverge de 5 à 40 min).
 
 ## Écriture
@@ -30,12 +30,14 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 
 ## Questions, décisions, essais
 17. **Ne jamais trancher un design.** Question = fichier `C:\Users\baudo\Documents\MyCrusader\Retours\Q-<nom>.md` titré `[À RÉPONDRE]` : contexte en 2 lignes, options A/B/C **+ « Autre »**, conséquences visibles, **recommandation**, valeur par défaut codée derrière un réglage (cvar/CSV, une ligne à changer). **Au plus 2 questions par chantier**, regroupées. Tu n'attends jamais une réponse : tu appliques le défaut et continues.
-18. **Un essai n'est listé (`[À ESSAYER]`) que si** `Tools\Scenarios\preflight.ps1 <nom>` PASS, `<nom>.look` présent, **chaque PNG ouvert avec Read et le point vu**, ≤ 3 min, aucune attente morte (`waitkey`), geste RÉEL (touche puis clic, pas un appel interne), statut `VU À L'ÉCRAN`. Sinon `LOGIQUE SEULEMENT`, jamais compté prêt. Un essai d'IA ou de système comprend au moins une partie naturelle. Un réglage à l'œil = **balayage** (N valeurs étiquetées côte à côte), pas une valeur à la fois. Un défaut visuel qui persiste après 2 réglages : remonte à la cause avant une 3e valeur. Libellés, touches, noms viennent du GDD et de la grille AoE4, jamais inventés.
+18. **Un essai n'est listé (`[À ESSAYER]`) que si** `Tools\Scenarios\preflight.ps1 <nom>` PASS, `<nom>.look` présent, **chaque PNG ouvert avec Read et le point vu**, ≤ 3 min, aucune attente morte (`waitkey`), geste RÉEL (touche puis clic, pas un appel interne), statut `VU À L'ÉCRAN`. Sinon `LOGIQUE SEULEMENT`, jamais compté prêt. Un essai d'IA ou de système comprend au moins une partie naturelle. Un réglage à l'œil = **balayage** (N valeurs étiquetées côte à côte), pas une valeur à la fois. Un défaut visuel qui persiste après 2 réglages : remonte à la cause avant une 3e valeur. Libellés, touches, noms viennent du GDD et de la grille AoE4, jamais inventés. **Chaque `Retours\E-*.md` porte deux lignes de statut** (gabarit : `Tools\AutoJourney\E_template.md`) : `GESTE: réel` (vraie touche puis vrai clic, modèle `neutrals_qground`) ou `GESTE: interne` (commande `hol.*`) et `SON: entendu` ou `SON: non entendu` (`-nosound`, rien entendu par l'agent) ; un essai de geste ou de son reste LOGIQUE SEULEMENT tant que la ligne dit `interne` / `non entendu` ; `session_gate.ps1 -Phase Close` signale (WARN) les E-*.md `[À ESSAYER]` sans ces deux lignes.
 19. Un **REGLAGE ou BUG** de l'utilisateur est rejoué par un AUTRE agent (l'intégrateur) sur le build de `main` fusionné avant toute commande donnée à l'utilisateur.
 
-## Rapport final : 12 champs, dans cet ordre (la session principale les vérifie)
+20. **Aucun processus détaché à ta fin.** Dernier geste : `powershell -ExecutionPolicy Bypass -File <ton worktree>\Tools\AutoJourney\stray_processes.ps1 -Root <ton worktree> -Stop` (liste puis arrête les `chain`/`loop`/`UnrealEditor` de ton worktree ; un build C++ en cours attendu est listé mais jamais arrêté) ; colle la sortie dans `PROCESSUS_DETACHES`. La session principale relance le script avant l'agent suivant du même worktree.
+
+## Rapport final : 13 champs, dans cet ordre (la session principale les vérifie)
 ```
-APPELS_OUTILS: <n> (seuil 80)
+APPELS_DECLARES: <n> (arrêt à 60 ; le seuil de 80 se juge sur `tool_uses` relevé par la session principale, pas sur ce champ)
 HEURE_DEBUT/HEURE_FIN: <Get-Date> / <Get-Date>
 PREMIER_BUILD: <HH:MM ou « sans C++ »>   BUILD: PASS / FAIL / NON COMPILÉ
 TEST_ROUGE: <SHA du commit du test, antérieur au correctif> + « assertit l'effet : oui/non »
@@ -45,6 +47,7 @@ ESSAIS: <nom : preflight PASS, PNG ouverts, VU À L'ÉCRAN / LOGIQUE SEULEMENT, 
 QUESTIONS: <fichiers Retours\Q-*.md créés, valeur par défaut codée>
 FAIT / RESTE: <10 lignes au plus>
 NON VÉRIFIÉ: <obligatoire>
+PROCESSUS_DETACHES: <sortie de `Tools\AutoJourney\stray_processes.ps1 -Root <ton worktree>` lancé en dernier geste, ou « aucun »>
 ANOMALIES_PROCESSUS: <obligatoire>
 GIT_STATUS_PRINCIPALE: <sortie de `git -C C:\Users\baudo\Documents\MyCrusader status --short`, inchangée hors docs voulus : oui/non>
 ```
