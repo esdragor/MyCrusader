@@ -62,7 +62,7 @@ void Test_AudioPlanNeverRepeatsTheLastFile(FUnitTest& T)
 void Test_AudioPlanIsDeterministic(FUnitTest& T)
 {
 	FHOLAudioPlan A = HOLAudio::Plan(HOLAudioEvent::AlertUnderAttack, 90000, 100, 42, 1);
-	FHOLAudioPlan B = HOLAudio::Plan(HOLAudioEvent::AlertUnderAttack, 9000, 100, 42, 1);
+	FHOLAudioPlan B = HOLAudio::Plan(HOLAudioEvent::AlertUnderAttack, 90000, 100, 42, 1);
 	T.AssertEquals(A.Asset, B.Asset, "same asset");
 	T.AssertEquals(A.PitchPercent, B.PitchPercent, "same pitch");
 	T.AssertEquals(A.VolumePercent, B.VolumePercent, "same volume");
