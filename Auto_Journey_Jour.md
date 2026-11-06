@@ -392,3 +392,6 @@ Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Farami
 | Galadriel-6 | ac07c74069e5f71ca | Documents\HeroesOfLiberty-Galadriel / galadriel-tab | build + tests apres merge, puis reponse Q-unit-stats (A + armures + survol) | C++ 2 | 13:00 | lance 11:30 |
 | Fusion-1 | ad37220d06ff19fca | Documents\HeroesOfLiberty-Faramir / fog | fusion groupee fog+heal-sleep+tiers (tips d3187ab, f6eea1b, f74b74f ; main fd5e3b4) | merge | 13:00 | lance 11:41 |
 | Celeborn-9 | a3424ebcbd924834a | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | virages restants melee_spin (trace_flips -Unit 11) | C++ 1 | 13:00 | lance 11:44 |
+| (suite 11:52) Glorfindel-8 FINI 11:44 89 tool_uses (hors regle 80) ; Fusion-1 FINI 11:48 : main = 7d0714c (fog+heal-sleep+tiers, tests 1043/1043, aiserver/aiduel PASS) | | | | | | |
+| Arwen-7 | a6107db4f4ff60f74 | Documents\HeroesOfLiberty-Arwen / heal-sleep | sync main + build + gate Essay + preflight audio_compare | sans C++ | 13:00 | lance 11:52 |
+| Elrond-7 (integrateur) | a8e91ada0aae9bc73 | Documents\HeroesOfLiberty-Elrond / tiers | rejoue hero_xp, cavalry, diplomacy_qground, neutrals_qground sur main 7d0714c | sans C++ | 13:00 | lance 11:52 |
