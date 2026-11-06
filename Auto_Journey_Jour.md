@@ -404,7 +404,7 @@ Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Farami
 
 ## Bilan de la seance interactive du 2026-11-06 (10:53 -> 13:00, cartes EXCLUES par l'utilisateur)
 Agents lances : 17 (etape 0, Celeborn-8/9, Galadriel-5/6, Glorfindel-8, Elrond-6/7 integrateur, Faramir-5/6, Arwen-6/7/8, Fusion-1/2/3). tool_uses releves : max 89 (Glorfindel-8), Galadriel-5 85 ; aucun > 100.
-Fusions dans main (accord explicite de l'utilisateur pour la 3 ; jamais de push) : F1 7d0714c (fog+heal-sleep+tiers, tests 1043), F2 1145fda (galadriel-tab+net-playtest, tests 1049), F3 en cours a 12:45 (tiers + hero-j8-close + heal-sleep).
+Fusions dans main (accord explicite de l'utilisateur pour la 3 ; jamais de push) : F1 7d0714c (fog+heal-sleep+tiers, tests 1043), F2 1145fda (galadriel-tab+net-playtest, tests 1049), F3 acdb5cc a 12:47 (tiers + hero-j8-close + heal-sleep tip final e80add5, tests 1055/1055, aiserver/aiduel/combat PASS, camera 2p/8p rouges connus).
 Decisions de l'utilisateur : melee FarPlace = A (attendre 2 s puis contourner) ; stats de l'unite = ligne A + Armure heros + infobulle au survol (OK) ; sons candidats non commites (B) ; sons d'interface/selection/alertes elus (Click H, Open F, Close A, Back B, Error A, Confirm G, Select.Unit D, UnderAttack A, Trade A, Volcan A x3, Diplomacy A, TrainingDone G ; Hover/Toggle/Tick/Scroll/ordres/Select.Building/BuildingDone/TechDone muets) ; idee future : un son par type de batiment.
 Essais joues par l'utilisateur : hero_xp OK, cavalry OK, forge OK (+ infobulle stats OK, infobulle Lancier 45/15 OK), qground OK mais soldats en cercle (a rejouer sur main F3), legions_roster REGLAGE (noms par faction non cables).
 Reste (file) : noms Legions, G1 points d'appel MinTier (change le jeu), Sites S3, camera 2p/8p rouges sur main, to-and-fro melee_spin #7/#9 + tremblements slot 0, Biomes B4-B5, Sauron conflit BuildingTypes.uasset, nettoyage des 79 anciens .uasset Kenney (a decider).
@@ -462,3 +462,4 @@ Reste (file) : noms Legions, G1 points d'appel MinTier (change le jeu), Sites S3
 - L7-6 : partielle : GESTE et SON declares dans les E-*.md ; geste physique et son jamais verifies
 - L7-8 : appliquee : session_gate -Exclude Haldir fusionne en F1
 
+| (suite 12:48) Celeborn-9 FINI, Arwen-8 FINI 12:37 49 tool_uses, Fusion-3 FINI 12:47 35 declares : main = acdb5cc | | | | | | |
