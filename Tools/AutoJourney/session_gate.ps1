@@ -36,6 +36,14 @@ if ($Phase -eq 'Launch') {
   if ($left -lt $MinMinutes) { Say 'FAIL' ("il reste {0} min (< {1}) : AUCUN lancement d'agent" -f $left, $MinMinutes) }
   else { Say 'PASS' ("temps restant {0} min ; arret dur des agents = {1} (jusqu'a +15 min toleres, jamais 15 min trop tot)" -f $left, $endAt.ToString('HH:mm')) }
 
+  # L8-9 : au DEBUT de chaque Auto_Journey tous les worktrees sont remis a jour (sync_worktrees.ps1) ; WARN par worktree en retard (les agents deja lances en cours de seance retardent apres chaque fusion : normal)
+  foreach ($w in $wts) {
+    $n9 = Split-Path $w -Leaf
+    if ($Exclude -contains ($n9 -replace '^HeroesOfLiberty-', '')) { continue }
+    $b9 = [int](git -C $w rev-list --count 'HEAD..main' 2>$null)
+    if ($b9 -gt 0) { Say 'WARN' "$n9 : retard de $b9 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement" }
+  }
+
   $q = @(Get-ChildItem "$Main\Docs\BuildQueue.state" -Filter '*.json' -ErrorAction SilentlyContinue).Count
   if ($q -ge 3) { Say 'FAIL' "$q builds dans la file : plafond de 3 agents C++ atteint, le nouvel agent demarre SANS C++" } else { Say 'PASS' "$q build(s) dans la file (< 3)" }
 
@@ -127,7 +135,7 @@ if ($Phase -eq 'Close') {
     $dirty = @(git -C $w status --short 2>$null | Where-Object { $_ -notmatch 'IN_USE\.txt' -and $_ -match '^ ?[MADR]' })
     if ($dirty.Count -gt 0) { Say 'FAIL' "$n : $($dirty.Count) fichier(s) suivi(s) NON commite(s) (commiter sur la branche, jamais laisser en l'air)" } else { Say 'PASS' "$n : propre" }
     $behind = [int](git -C $w rev-list --count 'HEAD..main' 2>$null)
-    if ($behind -gt 0) { Say 'WARN' "$n : retard de $behind commit(s) sur main (sync_worktrees.ps1 quand aucun agent ne tourne)" }
+    if ($behind -gt 0) { Say 'FAIL' "$n : retard de $behind commit(s) sur main : L8-9, lancer Tools\AutoJourney\sync_worktrees.ps1 -NoBuild (ou avec build) avant le bilan, aucun agent ne tourne" } else { Say 'PASS' "$n : a jour avec main" }
   }
   $dm = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' })
   if ($dm.Count -gt 0) { Say 'FAIL' ("copie principale : fichiers suivis non commites : " + (($dm | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
