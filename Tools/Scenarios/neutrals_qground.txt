@@ -1,4 +1,4 @@
-# D733 : Q puis clic sur le SOL derriere un camp neutre de la carte (proprietaire neutre, passif au repos, hol.Camp.Aggro 1 : il ne bouge que si on l'attaque). Geste reel (hol.Select.Grid 4 = la touche Q, puis hol.Select.LeftClickGround). Les soldats doivent rencontrer le camp ET le frapper (le camp se bat : "Camp 0: fighting"). 3 minutes au plus.
+# D731/D733 (camp de carte) : Q puis clic sur le SOL derriere un camp neutre de la carte (proprietaire neutre, passif au repos, hol.Camp.Aggro 1 : il ne bouge que si on l attaque). Geste reel (hol.Select.Grid 4 = la touche Q, puis hol.Select.LeftClickGround). Les soldats rencontrent le camp ET le frappent ("Camp 0: fighting"). ATTENDU CORRIGE (2026-11-06) : ce scenario NE PROUVE PAS le correctif D733 (il frappe aussi avec hol.Combat.AttackMoveEngagesNeutral 0 : un camp de carte garde sa regle propre, toujours engage, D731) ; la preuve avant/apres de D733 = diplomacy_qground_before (0 coup) + diplomacy_qground (coups). La regle du camp (engage meme reglage 0) = neutrals_qground_rule. 3 minutes au plus.
 hol.Combat.LogHits 1
 hol.Camp.Aggro 1
 hol.Camp.Add -9800 0 3 Spearman
@@ -23,4 +23,4 @@ frames 40
 capture neutrals_qground_fight
 frames 200
 hol.Camp.Report
-note Q puis clic sur le sol derriere un camp neutre : tes 6 hommes rencontrent les 3 Lanciers neutres et les frappent (le camp riposte).
+note Q puis clic sur le sol derriere un camp neutre de la carte : tes 6 hommes rencontrent les 3 Lanciers neutres et les frappent (le camp riposte). Un camp de carte est TOUJOURS engage par Q + clic, quel que soit le reglage ; le cas du joueur Neutre est dans diplomacy_qground.

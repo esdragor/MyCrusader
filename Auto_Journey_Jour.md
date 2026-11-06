@@ -388,3 +388,14 @@ Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Farami
 | Arwen-6 | ab5551120595ceebe | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.110 sons medievaux (dix echantillons) puis l.102 verrou editeur | sans C++ | 13:00 | lance 11:05 |
 | Sauron | - | visual | NON LANCE : aucune tache visual, conflit de merge BuildingTypes.uasset (sync annulee) | - | - | - |
 | Haldir | - | maps | EXCLU par l'utilisateur (dossier cartes) | - | - | - |
+| (suite 11:45) Faramir-5 FINI 11:09 37 tool_uses ; Faramir-6 ae0a222856e7e000e FINI 11:14 15 tool_uses ; Arwen-6 FINI ~11:31 69 tool_uses ; Elrond-6 FINI 11:31 73 tool_uses ; Galadriel-5 FINI 11:22 85 tool_uses (hors regle 80, merge main sans build derriere) ; Celeborn-8 FINI 11:41 80 tool_uses | | | | | | |
+| Galadriel-6 | ac07c74069e5f71ca | Documents\HeroesOfLiberty-Galadriel / galadriel-tab | build + tests apres merge, puis reponse Q-unit-stats (A + armures + survol) | C++ 2 | 13:00 | lance 11:30 |
+| Fusion-1 | ad37220d06ff19fca | Documents\HeroesOfLiberty-Faramir / fog | fusion groupee fog+heal-sleep+tiers (tips d3187ab, f6eea1b, f74b74f ; main fd5e3b4) | merge | 13:00 | lance 11:41 |
+| Celeborn-9 | a3424ebcbd924834a | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | virages restants melee_spin (trace_flips -Unit 11) | C++ 1 | 13:00 | lance 11:44 |
+| (suite 11:52) Glorfindel-8 FINI 11:44 89 tool_uses (hors regle 80) ; Fusion-1 FINI 11:48 : main = 7d0714c (fog+heal-sleep+tiers, tests 1043/1043, aiserver/aiduel PASS) | | | | | | |
+| Arwen-7 | a6107db4f4ff60f74 | Documents\HeroesOfLiberty-Arwen / heal-sleep | sync main + build + gate Essay + preflight audio_compare | sans C++ | 13:00 | lance 11:52 |
+| Elrond-7 (integrateur) | a8e91ada0aae9bc73 | Documents\HeroesOfLiberty-Elrond / tiers | rejoue hero_xp, cavalry, diplomacy_qground, neutrals_qground sur main 7d0714c | sans C++ | 13:00 | lance 11:52 |
+| (suite 11:55) Galadriel-6 FINI 11:53 59 tool_uses (4d46cdb stats A + armures + infobulle, tests 1039/1039, camera 2p rouge) | | | | | | |
+| Fusion-2 | ae920c5e4dac125f3 | Documents\HeroesOfLiberty-Faramir / fog | fusion galadriel-tab (4d46cdb) + net-playtest (6cf6bd2) sur main 0dcc695 ; baseline camera d'abord | merge C++ | 13:00 | lance 11:55 |
+| (suite 12:12) Arwen-7 FINI 12:02 25 tool_uses (gate Essay PASS, preflight audio_compare x3 PASS) | | | | | | |
+| Arwen-8 | a56dc422f2615946d | Documents\HeroesOfLiberty-Arwen / heal-sleep | appliquer les sons elus (reponse E-audio_compare) : Click H, Open F, Back B, Error A, Confirm G ; Hover/Toggle/Tick/Scroll aucun | sans C++ | 13:00 | lance 12:12 |

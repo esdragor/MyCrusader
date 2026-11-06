@@ -73,6 +73,29 @@ namespace HOLGameNames
 		return FText::FromName(TypeName);
 	}
 
+	FText GetUnitName(const FName TypeName, const FHOLUnitTypeRow* Row, const FName FactionKey)
+	{
+		// The Legions' own names (FactionOverrides.csv, rows `Legions_<Unit>_Name`, field DisplayName; provisional until L13): one key per
+		// unit and faction, the texts kept equal to the table by the test UI.GameNames.FactionNames.
+		if (FactionKey == FName(TEXT("Legions")))
+		{
+			static const TMap<FName, FText> LegionsNames = {
+				{ FName(TEXT("Spearman")), LOCTEXT("Legions_Spearman", "Legion Spearman") },
+				{ FName(TEXT("ManAtArms")), LOCTEXT("Legions_ManAtArms", "Black Guard") },
+				{ FName(TEXT("Archer")), LOCTEXT("Legions_Archer", "Legion Archer") },
+				{ FName(TEXT("Crossbowman")), LOCTEXT("Legions_Crossbowman", "Legion Crossbowman") },
+				{ FName(TEXT("LightCavalry")), LOCTEXT("Legions_LightCavalry", "Dread Rider") },
+				{ FName(TEXT("Ram")), LOCTEXT("Legions_Ram", "Bone Ram") },
+				{ FName(TEXT("Mangonel")), LOCTEXT("Legions_Mangonel", "Bone Mangonel") },
+			};
+			if (const FText* Own = LegionsNames.Find(TypeName))
+			{
+				return *Own;
+			}
+		}
+		return GetUnitName(TypeName, Row);
+	}
+
 	FText GetBuildingName(const FName TypeName, const FHOLBuildingTypeRow* Row)
 	{
 		if (TypeName == HOLBuildingTypeNames::MainCentre)
@@ -118,6 +141,11 @@ namespace HOLGameNames
 		{
 			// M3, translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("Market", "Marché");
+		}
+		if (TypeName == FName(TEXT("Forge")))
+		{
+			// F1 (FortificationsInProgress.md), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Forge", "Forge");
 		}
 		if (TypeName == FName(TEXT("Chapel")))
 		{

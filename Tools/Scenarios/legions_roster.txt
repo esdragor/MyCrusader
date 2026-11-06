@@ -1,4 +1,4 @@
-# Legions L2 : le socle des Legions en reskin. Toi (slot 0, Legions) : une rangee de chaque unite du socle a gauche ; l'IA gelee (slot 1, Aube) : la meme rangee a droite. Les couts des Legions sont a -25 % de ceux de l'Aube, les noms sont ceux des Legions (surcharges de FactionOverrides.csv).
+﻿# Legions L2 : le socle des Legions en reskin. Toi (slot 0, Legions) : une rangee de chaque unite du socle a gauche ; l'IA gelee (slot 1, Aube) : la meme rangee a droite. Les couts des Legions sont a -25 % de ceux de l'Aube, les noms sont ceux des Legions (surcharges de FactionOverrides.csv).
 # Les 7 types : Spearman (Legion Spearman), ManAtArms (Black Guard), Archer (Legion Archer), Crossbowman (Legion Crossbowman), LightCavalry (Dread Rider), Ram (Bone Ram), Mangonel (Bone Mangonel). Maillages : les memes que ceux de l'Aube (placeholders, L13).
 # Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
 waitlog Starting hero of slot 0 spawned at
@@ -17,6 +17,9 @@ waitlog Selection: Barracks
 frames 20
 hol.HUD.Report
 waitlog A=Spearman enabled
+# The tooltip of the Spearman cell quotes the Legions' cost (45 / 15), what the Barracks charges, not the Dawn's 60 / 20.
+hol.HUD.Report
+waitlog F 45 | W 15
 note 1. La Caserne des Legions est selectionnee : sa grille propose le Lancier (A) et l'Homme d'armes (B), jamais de Hallebardier. Cout du Lancier pour les Legions : 45 nourriture + 15 bois (60 + 20 pour l'Aube).
 capture legions_roster_barracks
 hol.Prod.Queue Spearman

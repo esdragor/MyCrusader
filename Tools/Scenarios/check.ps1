@@ -23,6 +23,7 @@ if (-not $EngineDir) {
     $EngineDir = Join-Path $EngineRoot "Engine\Binaries\Win64"
 }
 . (Join-Path $PSScriptRoot "..\Tests\TestSettings.ps1")
+. (Join-Path $PSScriptRoot "EditorSlot.ps1")
 # Edge scrolling off in the test settings (bEdgeScroll): a cursor at the screen's edge would pan the camera during the check.
 Set-TestEdgeScrollOff (Join-Path $Root "Saved_Tests")
 $Log = Join-Path $Root "Saved_Tests\Logs\scenario_$Name.log"
@@ -39,6 +40,8 @@ if (-not $Removed) {
     Write-Host "check $Name : FAIL (the log $Log of an earlier pass is held by another process and cannot be removed: a game of this worktree still running? Stop it, then run again; nothing was read from it)"
     exit 1
 }
+# One of the 2 editor slots of the machine (EditorSlot.ps1, L7-3): wait for our turn instead of piling one more editor on the others.
+if (-not (Enter-EditorSlot -Name $Name -Root $Root -Max 2 -WaitSeconds 1500)) { Write-Host "check $Name : FAIL (no editor slot after 25 min: 2 editors already run on this machine)"; exit 1 }
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
 $Arguments = "`"$UProject`" -game -RenderOffScreen -nosound -unattended -nosplash -culture=fr -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Scenario $Name`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
@@ -59,6 +62,7 @@ while (((Get-Date) - $Start).TotalSeconds -lt $TimeoutSeconds) {
     if ($Process.HasExited) { $Result = "FAIL (the game exited)"; break }
 }
 Get-Process -Id $Process.Id -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+Exit-EditorSlot
 if (Test-Path $Log) {
     Get-Content $Log | Select-String -Pattern "Scenario |Test sequence|Production:|Technology:|LogHOLTest: Error|Error:" | Select-Object -Last 40 | ForEach-Object { $_.Line }
 }

@@ -1,0 +1,11 @@
+﻿# [À ESSAYER] E-playtest_hero_xp : progression du héros sans âges (XP par source, niveaux 2 et 3, palier 1, mort, retour plus cher)
+
+STATUT : preflight PASS (2026-11-06 11:2x, 122-130 s, sanity OK, HUD OK, journal sans warning), 3 PNG OUVERTS ET VUS (agent Elrond sans C++, tiers = main 0f6ecee + commits scenarios, binaire du 10:57) : niveau 2 (bloc « Niveau 2 », PV 441/486, anneau doré, « Talents à dépenser : 1 », alerte « Paladin-Commandant : niveau 2 »), niveau 3 (« Niveau 3 », PV 437/522, « Palier 1 atteint », anneau, 6 Hommes d'armes mêlés à 5 ennemis), retour prêt (héros mort : PV 0/522, « Ramener le héros — 248 or », alerte « Votre héros est prêt à revenir »). VU À L'ÉCRAN.
+GESTE : INTERNE (commandes hol.Hero.Kill, hol.Units.Spawn, hol.Build.PlaceNear, pas de souris) ; SON : non vérifié (alerte de niveau avec son, non entendu par l'agent). Délais de retour à 50 % pour tenir en environ 130 s (vrais délais : hol.Hero.ReturnTimePercent 100).
+Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 playtest_hero_xp -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+Question de GDD § 17.1 jugée : 5 (progression sans âges). Réponse attendue : OK, BUG: ... ou REGLAGE: ... (une valeur changée à l'œil : REGLAGE:, puis une ligne de la fiche).
+NON VÉRIFIÉ : la mêlée du scénario peut déclencher le défaut connu de rotation (BUG-melee-spin-sanity : 1 passe de préflight sur 3) ; souris physique ; durée en vrais délais.
+
+Recette indépendante 2026-11-06 12:12 : OK (intégrateur autre que l'auteur, main 2bb0d6b = tiers + gate, binaire 10:57 à jour pour le C++, preflight PASS 134 s, sanity OK). PNG vus : playtest_xp_level2 (bloc « Niveau 2 », PV 441/486, « Talents à dépenser : 1 », alerte « Paladin-Commandant : niveau 2 »), playtest_xp_level3 (« Niveau 3 », PV 388/522, « Palier 1 atteint », talents 2, 3 vies, Hommes d'armes autour), playtest_xp_return_ready (PV 0/522, « Ramener le héros — 247 or », alerte « Votre héros est prêt à revenir »). Réserves : l'anneau doré autour du héros n'est pas distinguable sur les PNG (le héros est noyé dans la mêlée) ; la rotation en mêlée (BUG-melee-spin-sanity) n'est pas apparue ce passage (1 rejeu).
+GESTE: interne
+SON: non entendu
