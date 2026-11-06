@@ -18,3 +18,11 @@ Limites : geste piloté par `hol.Select.Grid 4` + `hol.Select.LeftClickGround` (
 Rejeu « avant » : copier diplomacy_qground.{txt,json,look} sous un autre nom, ajouter `hol.Combat.AttackMoveEngagesNeutral 0` après `hol.Combat.LogHits 1`, remplacer `waitlog hits #` par `frames 150` (copies d'essai dans C:\Users\baudo\AppData\Local\Temp\claude\82f06dab6ac779ae\ff9187d4-48b3-40cb-831e-20911ac70cb5\scratchpad\qground_before\).
 
 Reponse: BUG : diplomacy_qground (22:10, fenetre reelle) : beaucoup des hommes d'armes bleus ou rouges ont fait n'importe quoi, glitch sur place (tremblement/rotation en melee). Meme famille que BUG-melee-spin-sanity (D641) : vu a l'oeil par l'utilisateur, pas seulement par l'audit Sanity. Le correctif D733 (barres de vie qui baissent) n'a pas ete juge ; a revoir apres correction de la melee.
+
+## Mise a jour 2026-11-06 (agent Elrond sans C++) : la preuve AVANT / APRES de D733 est maintenant un SCENARIO
+- 
+eutrals_qground : l'attendu « avant = 0 coup » etait faux (un camp de carte garde sa regle propre, D731) : commentaire et note renommes ; il ne prouve PAS D733.
+- Preuve D733 : diplomacy_qground_before (reglage hol.Combat.AttackMoveEngagesNeutral 0, geste reel Q + clic, 150 images : ighting 0 hits 0 kills 0, preflight PASS 24 s, PNG dipl_qground_before ouvert : deux troupes face a face, aucune melee, barres pleines) ROUGE avec le reglage 1 (copie jetable : 	imeout at step 33: waitlog fighting 0 hits 0 kills 0) ; diplomacy_qground (reglage 1) PASS 21 s : coups portes, PV des rouges qui baissent (PNG dipl_qground_fight ouvert).
+- Regle du camp : 
+eutrals_qground_rule (reglage 0, camp de carte QUAND MEME frappe : coups + Camp 0: fighting), preflight PASS 24 s, PNG ouvert : 6 bleus au contact de 3 Lanciers gris, barres de vie entamees.
+- Commit 7085ffe (tiers). Retours utilisateur du 22:10 (melee qui glitch) : voir BUG-melee-spin-sanity, non traite ici.
