@@ -36,6 +36,12 @@ def wanted():
 
 
 def find(pack, stem):
+    if pack == "vsco":
+        # The VSCO 2 CE recordings (CC0) prepared by Tools/Audio/make_ui_candidates.py.
+        path = os.path.join(os.path.dirname(ROOT), "Candidates", "vsco", stem + ".wav")
+        if not os.path.exists(path):
+            raise RuntimeError("%s not found" % path)
+        return path
     for folder, _, files in os.walk(os.path.join(ROOT, pack)):
         if stem + ".ogg" in files:
             return os.path.join(folder, stem + ".ogg")
@@ -47,19 +53,19 @@ def import_all(unreal):
     count = 0
     skipped = 0
     for pack, stem in wanted():
-        if not os.environ.get("HOL_KENNEY_FORCE") and os.path.exists(os.path.join(PROJECT, "Content", "Audio", "Kenney", pack, "SW_" + stem + ".uasset")):
+        if not os.environ.get("HOL_KENNEY_FORCE") and os.path.exists(os.path.join(PROJECT, "Content", "Audio", "Vsco" if pack == "vsco" else os.path.join("Kenney", pack), "SW_" + stem + ".uasset")):
             skipped += 1
             continue
         source = find(pack, stem)
         task = unreal.AssetImportTask()
         task.set_editor_property("filename", source)
-        task.set_editor_property("destination_path", FOLDER + "/" + pack)
+        task.set_editor_property("destination_path", "/Game/Audio/Vsco" if pack == "vsco" else FOLDER + "/" + pack)
         task.set_editor_property("destination_name", "SW_" + stem)
         task.set_editor_property("automated", True)
         task.set_editor_property("replace_existing", True)
         task.set_editor_property("save", False)
         unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
-        asset = "%s/%s/SW_%s" % (FOLDER, pack, stem)
+        asset = "/Game/Audio/Vsco/SW_%s" % stem if pack == "vsco" else "%s/%s/SW_%s" % (FOLDER, pack, stem)
         sound = unreal.load_asset(asset)
         if not isinstance(sound, unreal.SoundWave):
             raise RuntimeError("Could not import %s as a sound wave (got %s)" % (source, sound))

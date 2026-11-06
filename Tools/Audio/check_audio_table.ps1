@@ -36,6 +36,16 @@ foreach ($Line in $Lines) {
     $Pack = $Matches['pack']
     $StemList = $Matches['stems']
     if ($StemList -eq '') { $Silent++; continue }   # a silent cue (the user wants no sound): no pack, no file
+    if ($Pack -eq 'vsco') {
+        # The VSCO 2 CE recordings (CC0): WAV prepared in Candidates\vsco, asset under Content\Audio\Vsco.
+        if ($Registered -notmatch 'VSCO') { Problem "${CueName}: VSCO has no licence line in the registry" }
+        foreach ($Stem in ($StemList -split ',')) {
+            $Files++
+            if (-not (Test-Path (Join-Path (Split-Path $Root -Parent) "Candidates\vsco\$Stem.wav"))) { Problem "${CueName}: file '${Stem}.wav' is not in Candidates\vsco" }
+            if ($Assets -and -not (Test-Path (Join-Path $Content "..\Vsco\SW_$Stem.uasset"))) { Problem "${CueName}: asset SW_$Stem is not imported under Content\Audio\Vsco" }
+        }
+        continue
+    }
     if (-not $Index.ContainsKey($Pack)) { Problem "${CueName}: pack '$Pack' is not in $Root"; continue }
     if ($Registered -notmatch [regex]::Escape("\Kenney\$Pack\License.txt")) { Problem "${CueName}: pack '$Pack' has no licence line in the registry" }
     foreach ($Stem in ($StemList -split ',')) {
