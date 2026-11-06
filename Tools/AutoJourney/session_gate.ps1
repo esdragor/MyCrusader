@@ -109,7 +109,7 @@ if ($Phase -eq 'Essay') {
     if ($codeDiff.Count -eq 0) { Say 'PASS' "$Root : aucun ecart de code avec main ($($mainHead.Substring(0,7)))" } else { Say 'FAIL' "$Root : $($codeDiff.Count) fichier(s) de code different de main (ex. $($codeDiff[0])) : l'essai ne compte pas comme integre (git merge main + build)" }
     $dirty = @(git -C $Root status --short 2>$null | Where-Object { $_ -notmatch 'IN_USE\.txt' -and $_ -match '^ ?[MADR]' })
     if ($dirty.Count -gt 0) { Say 'FAIL' "$Root : $($dirty.Count) fichier(s) non commite(s) : le build ne correspond pas a un commit" } else { Say 'PASS' 'worktree propre' }
-    $lastCode = git -C $Root log -1 --format=%ct -- Source Script Content Tools/Data 2>$null
+    $lastCode = git -C $Root log -1 --format=%ct -- Source Config 2>$null  # the DLL only goes stale with C++ (Source) or Config changes; a Script/ (Angelscript) or Content commit never needs a DLL rebuild (false FAIL seen 2026-11-06 with the audio .as commit)
     $bin = Get-ChildItem (Join-Path $Root 'Binaries\Win64') -Filter '*.dll' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
     if ($bin -and $lastCode) {
       $codeTime = [DateTimeOffset]::FromUnixTimeSeconds([int64]$lastCode).LocalDateTime
