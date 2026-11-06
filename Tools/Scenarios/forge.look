@@ -1,4 +1,5 @@
 forge_grid | La Forge selectionnee au palier 0 : sa grille affiche W Lames affutees, X Lames affutees II, C Empennage, V Empennage II, toutes grisees (palier requis)
 forge_tier1 | Palier 1 atteint (niveau 3 du heros) : W Lames affutees I est maintenant prete (non grisee), le refus du palier a disparu
 forge_queued | Lames affutees I est en file, le cout est pris (nourriture et or) ; l'Homme d'armes et les Lanciers sont pres de la Forge
-forge_after | Apres la recherche : l'Homme d'armes frappe un Lancier pour 13.2 ; les Lanciers le frappent toujours pour 4
+forge_after | Apres la recherche : l'Homme d'armes frappe un Lancier pour 13.2 ; les Lanciers le frappent toujours pour 4forge_stats_before | Homme d'armes selectionne : la ligne de statistiques sous les points de vie (attaque, armure, portee, vitesse), sans bonus
+forge_stats_after | Apres Lames affutees I : la meme ligne, l'attaque augmentee de 10 % avec le bonus entre parentheses
