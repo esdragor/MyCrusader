@@ -23,6 +23,7 @@
 TArray<UHOLHealProcessor::FLink> UHOLHealProcessor::Links;
 double UHOLHealProcessor::TotalHealed = 0.;
 int64 UHOLHealProcessor::HealSteps = 0;
+int32 UHOLHealProcessor::LastCandidateCount = 0;
 TMap<uint32, UHOLHealProcessor::FOrder> UHOLHealProcessor::Orders;
 bool UHOLHealProcessor::bIssuing = false;
 
@@ -71,10 +72,26 @@ void UHOLHealProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& E
 void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
 	Links.Reset();
+	LastCandidateCount = 0;
 	UWorld* World = EntityManager.GetWorld();
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	if (!Units)
 	{
+		return;
+	}
+	// Sleep while nobody can heal (PerfSpikeInProgress.md, part 1): HealRate and HealRange are in the unit type's shared fragment, the
+	// same for a whole chunk, so a walk over the chunks (no walk over the units) tells whether a healer exists. Without one, the table
+	// of every light unit below would be built and thrown away (~0.1 ms a step with 2000 units).
+	bool bHealerInWorld = false;
+	EntityQuery.ForEachEntityChunk(Context, [&bHealerInWorld](FMassExecutionContext& Chunk)
+	{
+		const FHOLUnitTypeConstants& Constants = Chunk.GetConstSharedFragment<FHOLUnitTypeConstants>();
+		bHealerInWorld |= Constants.HealRate > 0.f && Constants.HealRange > 0.f && Chunk.GetNumEntities() > 0;
+	});
+	if (!bHealerInWorld)
+	{
+		Kept.Reset();
+		Orders.Reset();
 		return;
 	}
 	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
@@ -131,6 +148,7 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 			Candidate.bUnhealable = bUnhealable || Combats[It].DeathStep >= 0 || State.Activity == EHOLUnitActivity::Dying;
 		}
 	});
+	LastCandidateCount = Step.Num();
 	if (!bAnyHealer)
 	{
 		Kept.Reset();
