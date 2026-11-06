@@ -310,3 +310,138 @@ void Test_SiteTakerOfAnotherCampStartsFromZero(FUnitTest& T)
 	T.AssertEquals(110, State.Held, "a taker of the same camp goes on from the count");
 	T.AssertEquals(3, State.Taker, "and is shown as the taker");
 }
+
+// The units of one presence digit for a slot: 0 nobody, 1 one holy unit, 2 a soldier and a worker, 3 two holy units and a soldier.
+void SiteAddPresence(TArray<int>& UnitSlots, TArray<int>& CanTake, TArray<int>& IsPeasant, int Slot, int Digit)
+{
+	int Holy = 0;
+	int Soldiers = 0;
+	int Workers = 0;
+	if (Digit == 1)
+		Holy = 1;
+	else if (Digit == 2)
+	{
+		Soldiers = 1;
+		Workers = 1;
+	}
+	else if (Digit == 3)
+	{
+		Holy = 2;
+		Soldiers = 1;
+	}
+	for (int N = 0; N < Holy; N++)
+	{
+		UnitSlots.Add(Slot);
+		CanTake.Add(1);
+		IsPeasant.Add(0);
+	}
+	for (int N = 0; N < Soldiers; N++)
+	{
+		UnitSlots.Add(Slot);
+		CanTake.Add(0);
+		IsPeasant.Add(0);
+	}
+	for (int N = 0; N < Workers; N++)
+	{
+		UnitSlots.Add(Slot);
+		CanTake.Add(0);
+		IsPeasant.Add(1);
+	}
+}
+
+TArray<int> SiteArrangement(int Index)
+{
+	if (Index == 1)
+		return SiteTeams(0, 0, 1, 1);
+	if (Index == 2)
+		return SiteTeams(0, 1, 0, 1);
+	return SiteTeams();
+}
+
+// The simulation's copy of the rules (C++, HOLSite::Step and HOLSite::AddUnit) gives the same site and the same counts as the script's on every
+// case: each owner, count and taker of the count, each presence of the four slots (nobody, a holy unit, a soldier and a worker, two holy units
+// and a soldier), three arrangements of the teams. The units go through the AddUnit of each side, never counts typed by hand.
+void Test_SiteScriptAndSimulationRulesAgree(FUnitTest& T)
+{
+	TArray<int> Owners;
+	Owners.Add(-1);
+	Owners.Add(0);
+	Owners.Add(2);
+	TArray<int> Helds;
+	Helds.Add(0);
+	Helds.Add(1);
+	Helds.Add(100);
+	Helds.Add(HOLSite::HoldSteps() - 1);
+	TArray<int> Takers;
+	Takers.Add(1);
+	Takers.Add(3);
+	int Cases = 0;
+	int Differences = 0;
+	int CountDifferences = 0;
+	int Risen = 0;
+	for (int O = 0; O < Owners.Num(); O++)
+	{
+		for (int H = 0; H < Helds.Num(); H++)
+		{
+			for (int K = 0; K < (Helds[H] > 0 ? 2 : 1); K++)
+			{
+				for (int A = 0; A < 3; A++)
+				{
+					for (int Presence = 0; Presence < 256; Presence++)
+					{
+						TArray<int> UnitSlots;
+						TArray<int> CanTake;
+						TArray<int> IsPeasant;
+						int Rest = Presence;
+						for (int Slot = 0; Slot < 4; Slot++)
+						{
+							SiteAddPresence(UnitSlots, CanTake, IsPeasant, Slot, Rest % 4);
+							Rest = Rest / 4;
+						}
+						FSiteZone Zone = EmptyZone();
+						for (int Unit = 0; Unit < UnitSlots.Num(); Unit++)
+							HOLSite::AddUnit(Zone.Takers, Zone.Disturbers, UnitSlots[Unit], CanTake[Unit] != 0, IsPeasant[Unit] != 0);
+						HOLSite::FHOLSiteState State;
+						State.Owner = Owners[O];
+						State.Taker = Helds[H] > 0 ? Takers[K] : -1;
+						State.Held = Helds[H];
+						const HOLSite::FHOLSiteState Script = HOLSite::Step(State, Zone.Takers, Zone.Disturbers, SiteArrangement(A));
+						int OwnerOut = -9;
+						int TakerOut = -9;
+						int HeldOut = -9;
+						HOLSiteRules::StepSite(State.Owner, State.Taker, State.Held, UnitSlots, CanTake, IsPeasant, SiteArrangement(A), HOLSite::HoldSteps(), HOLSite::DecaySteps, OwnerOut, TakerOut, HeldOut);
+						TArray<int> SimTakers;
+						TArray<int> SimDisturbers;
+						HOLSiteRules::CountSiteUnits(4, UnitSlots, CanTake, IsPeasant, SimTakers, SimDisturbers);
+						Cases++;
+						if (Script.Owner != OwnerOut || Script.Taker != TakerOut || Script.Held != HeldOut)
+							Differences++;
+						if (SimTakers.Num() != 4 || SimDisturbers.Num() != 4)
+							CountDifferences++;
+						else
+						{
+							for (int Slot = 0; Slot < 4; Slot++)
+							{
+								if (SimTakers[Slot] != Zone.Takers[Slot] || SimDisturbers[Slot] != Zone.Disturbers[Slot])
+									CountDifferences++;
+							}
+						}
+						if (Script.Held > State.Held)
+							Risen++;
+					}
+				}
+			}
+		}
+	}
+	T.AssertEquals(3 * 7 * 3 * 256, Cases, "every case compared");
+	T.AssertEquals(0, CountDifferences, "AddUnit makes the same counts on both sides");
+	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
+	T.AssertTrue(Risen > 0, "the cases do raise the count (the comparison is not made of frozen sites only)");
+}
+
+// The provisional values of the simulation (C++) are the script's.
+void Test_SiteConstantsAgreeWithTheSimulation(FUnitTest& T)
+{
+	T.AssertEquals(HOLSite::HoldSeconds, HOLSiteRules::GetHoldSeconds(), "the capture time");
+	T.AssertEquals(HOLSite::DecaySteps, HOLSiteRules::GetDecaySteps(), "the recession");
+}

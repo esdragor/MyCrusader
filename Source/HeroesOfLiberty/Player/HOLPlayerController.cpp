@@ -3514,7 +3514,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		if (Type)
 		{
 			Context.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Building->GetOwnerPlayer());
-			UHOLTechnologySettings::GetBuildingTechnologies(Building->GetTypeName(), Context.Researches);
+			UHOLTechnologySettings::GetBuildingTechnologies(Building->GetTypeName(), HOLFactionRules::GetSlotFactionKey(GetWorld(), Building->GetOwnerPlayer()), Context.Researches);
 		}
 	}
 	else if (HasBuildingGroup())
@@ -3547,7 +3547,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			if (Type)
 			{
 				One.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Group[Member]->GetOwnerPlayer());
-				UHOLTechnologySettings::GetBuildingTechnologies(Group[Member]->GetTypeName(), One.Researches);
+				UHOLTechnologySettings::GetBuildingTechnologies(Group[Member]->GetTypeName(), HOLFactionRules::GetSlotFactionKey(GetWorld(), Group[Member]->GetOwnerPlayer()), One.Researches);
 			}
 			for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
 			{

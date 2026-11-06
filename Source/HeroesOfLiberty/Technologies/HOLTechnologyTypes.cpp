@@ -2,6 +2,8 @@
 
 #include "Technologies/HOLTechnologyTypes.h"
 
+#include "Match/HOLFactionRules.h"
+
 const UDataTable* UHOLTechnologySettings::GetTable()
 {
 	const UHOLTechnologySettings* Settings = GetDefault<UHOLTechnologySettings>();
@@ -16,6 +18,11 @@ const FHOLTechnologyRow* UHOLTechnologySettings::FindTechnology(const FName Name
 
 void UHOLTechnologySettings::GetBuildingTechnologies(const FName Building, TArray<FName>& OutNames)
 {
+	GetBuildingTechnologies(Building, NAME_None, OutNames);
+}
+
+void UHOLTechnologySettings::GetBuildingTechnologies(const FName Building, const FName FactionKey, TArray<FName>& OutNames)
+{
 	OutNames.Reset();
 	const UDataTable* Table = GetTable();
 	if (!Table)
@@ -25,7 +32,7 @@ void UHOLTechnologySettings::GetBuildingTechnologies(const FName Building, TArra
 	for (const FName Name : Table->GetRowNames())
 	{
 		const FHOLTechnologyRow* Row = Table->FindRow<FHOLTechnologyRow>(Name, TEXT("technology"), /*bWarnIfRowMissing*/ false);
-		if (Row && Row->Building == Building)
+		if (Row && Row->Building == Building && (FactionKey.IsNone() || HOLFactionRules::GetTable().Allows(Row->Faction, FactionKey)))
 		{
 			OutNames.Add(Name);
 		}

@@ -136,3 +136,46 @@ void Test_UnitTierMonotone(FUnitTest& T)
 	}
 	T.AssertEquals(0, Violations, "tiers in range, and never closing when the tier rises");
 }
+
+// The simulation's twin (C++, HOLUnitTier::Check on the column MinTier of the unit type table) gives the same reason as the script's on every
+// case: each unit the table holds and the rule lists, each tier, building and stock. The tier of each type is the column's, never typed on
+// the C++ side. A type the table does not hold (Trebuchet, Cannon, Arquebusier: G3, G4) is left out until its row exists.
+void Test_UnitTierScriptAndSimulationRulesAgree(FUnitTest& T)
+{
+	TArray<FString> Types = UnitTierTypes();
+	int Cases = 0;
+	int Differences = 0;
+	int ColumnDifferences = 0;
+	int Refused = 0;
+	for (int Type = 0; Type < Types.Num(); Type++)
+	{
+		const int Column = HOLUnitTierRules::GetUnitMinTier(FName(Types[Type]));
+		if (Column < 0)
+			continue;
+		if (Column != HOLUnitTier::MinTierOf(Types[Type]))
+			ColumnDifferences++;
+		for (int Tier = 0; Tier < 4; Tier++)
+		{
+			for (int Building = 0; Building < 2; Building++)
+			{
+				for (int Pay = 0; Pay < 2; Pay++)
+				{
+					const int Script = HOLUnitTier::Check(Types[Type], Tier, Building == 1, Pay == 1);
+					const int Sim = HOLUnitTierRules::CheckUnit(FName(Types[Type]), Tier, Building == 1, Pay == 1);
+					Cases++;
+					if (Script != Sim)
+						Differences++;
+					if (Sim == HOLUnitTier::TierTooLow)
+						Refused++;
+				}
+			}
+		}
+	}
+	T.AssertEquals(9 * 4 * 2 * 2, Cases, "the nine units of the table are compared on every case");
+	T.AssertEquals(0, ColumnDifferences, "the column MinTier of the table is the tiers of GDD 11.1");
+	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
+	T.AssertTrue(Refused > 0, "the simulation refuses a unit for its tier");
+	T.AssertEquals(HOLUnitTier::TierTooLow, HOLUnitTierRules::CheckUnit(n"ManAtArms", 0, true, true), "the C++ rule refuses the Man-at-arms at tier 0 on the real column");
+	T.AssertEquals(HOLUnitTier::Available, HOLUnitTierRules::CheckUnit(n"ManAtArms", 1, true, true), "and lets him out at tier 1");
+	T.AssertEquals(HOLUnitTier::Available, HOLUnitTierRules::CheckUnit(n"Spearman", 0, true, true), "the Spearman is of tier 0");
+}
