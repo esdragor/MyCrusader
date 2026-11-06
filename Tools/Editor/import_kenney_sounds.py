@@ -5,6 +5,8 @@
 One asset per file named in an `Add(Cues, ..., "<pack>", "<file>,<file>", ...)` line, in the sound class SC_Effects (the
 volume sliders of the options). The packs stay outside the repository (Docs/assets_audio.csv); the assets are in it.
 Run in the editor: UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<this file> [-unattended]
+A silent cue (empty pack and files, e.g. Ui.Hover) names no file. Only the sounds not yet imported are imported (the .uasset exists:
+skipped, so the committed assets stay byte for byte), unless HOL_KENNEY_FORCE=1.
 Environment: HOL_KENNEY_ROOT overrides the folder of the packs. Tools/Audio/check_audio_table.ps1 verifies the names first.
 """
 import os
@@ -14,7 +16,7 @@ PROJECT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 TABLE = os.path.join(PROJECT, "Script", "Audio", "HOLAudioTable.as")
 ROOT = os.environ.get("HOL_KENNEY_ROOT", r"C:\Users\baudo\Documents\MyCrusader_Audio\Kenney")
 FOLDER = "/Game/Audio/Kenney"
-LINE = re.compile(r'^\s*Add\(Cues,.*?"(?P<name>[A-Za-z]+\.[A-Za-z]+)",\s*"(?P<pack>[a-z-]+)",\s*"(?P<stems>[A-Za-z0-9_,]+)"')
+LINE = re.compile(r'^\s*Add\(Cues,.*?"(?P<name>[A-Za-z]+\.[A-Za-z]+)",\s*"(?P<pack>[a-z-]*)",\s*"(?P<stems>[A-Za-z0-9_,]*)"')
 
 
 def wanted():
@@ -26,6 +28,8 @@ def wanted():
             if not match:
                 continue
             for stem in match.group("stems").split(","):
+                if not stem:
+                    continue
                 if (match.group("pack"), stem) not in seen:
                     seen.append((match.group("pack"), stem))
     return seen
@@ -41,7 +45,11 @@ def find(pack, stem):
 def import_all(unreal):
     effects = unreal.load_asset("/Game/Audio/SC_Effects")
     count = 0
+    skipped = 0
     for pack, stem in wanted():
+        if not os.environ.get("HOL_KENNEY_FORCE") and os.path.exists(os.path.join(PROJECT, "Content", "Audio", "Kenney", pack, "SW_" + stem + ".uasset")):
+            skipped += 1
+            continue
         source = find(pack, stem)
         task = unreal.AssetImportTask()
         task.set_editor_property("filename", source)
@@ -58,7 +66,7 @@ def import_all(unreal):
         sound.set_editor_property("sound_class_object", effects)
         unreal.EditorAssetLibrary.save_loaded_asset(sound)
         count += 1
-    unreal.log("Kenney sounds: %d sound waves under %s" % (count, FOLDER))
+    unreal.log("Kenney sounds: %d sound waves imported (%d already there) under %s" % (count, skipped, FOLDER))
 
 
 if __name__ == "__main__":

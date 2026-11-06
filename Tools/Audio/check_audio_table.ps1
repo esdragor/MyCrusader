@@ -12,6 +12,7 @@ param(
 )
 
 $Problems = 0
+$Silent = 0
 function Problem([string]$Text) { Write-Host "  FAIL : $Text"; $script:Problems++ }
 
 if (-not (Test-Path $Table)) { Problem "table not found: $Table"; Write-Host "check_audio_table: FAIL ($Problems)"; exit 1 }
@@ -29,11 +30,12 @@ foreach ($Pack in (Get-ChildItem $Root -Directory)) {
 }
 
 foreach ($Line in $Lines) {
-    if ($Line -notmatch '"(?<name>[A-Za-z]+\.[A-Za-z]+)",\s*"(?<pack>[a-z-]+)",\s*"(?<stems>[A-Za-z0-9_,]+)"') { Problem "cannot read the line: $Line"; continue }
+    if ($Line -notmatch '"(?<name>[A-Za-z]+\.[A-Za-z]+)",\s*"(?<pack>[a-z-]*)",\s*"(?<stems>[A-Za-z0-9_,]*)"') { Problem "cannot read the line: $Line"; continue }
     $Cues++
     $CueName = $Matches['name']
     $Pack = $Matches['pack']
     $StemList = $Matches['stems']
+    if ($StemList -eq '') { $Silent++; continue }   # a silent cue (the user wants no sound): no pack, no file
     if (-not $Index.ContainsKey($Pack)) { Problem "${CueName}: pack '$Pack' is not in $Root"; continue }
     if ($Registered -notmatch [regex]::Escape("\Kenney\$Pack\License.txt")) { Problem "${CueName}: pack '$Pack' has no licence line in the registry" }
     foreach ($Stem in ($StemList -split ',')) {
@@ -44,7 +46,7 @@ foreach ($Line in $Lines) {
 }
 
 if ($Cues -eq 0) { Problem "no cue line read from the table (the format changed?)" }
-Write-Host "  $Cues cues, $Files files read"
+Write-Host "  $Cues cues ($Silent silent), $Files files read"
 if ($Problems -eq 0) { Write-Host "check_audio_table: PASS"; exit 0 }
 Write-Host "check_audio_table: FAIL ($Problems)"
 exit 1

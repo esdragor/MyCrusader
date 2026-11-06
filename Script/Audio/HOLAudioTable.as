@@ -4,7 +4,10 @@
 // the other visual feedback, so nothing here touches the simulation or the network. Pure functions of a seed and of a clock in
 // milliseconds (no random inside, no sound played here); the code that plays (A2 next step) asks this table.
 // The file names come from the packs' own names and are NOT listened to yet; the check Tools/Audio/check_audio_table.ps1 reads
-// this file and verifies that every pack and file exists on disk. Provisional choices, to listen to and settle with the user.
+// this file and verifies that every pack and file exists on disk. Choices by the user's ear (E-audio_compare, E-audio_compare_orders,
+// 2026-11-06): the elected cues have ONE file; a SILENT cue (empty pack and files: Hover, Toggle, Tick, Scroll, the five orders, the generic
+// Select.Building, each building will have its own sound later) stays in the table but never plays. The alerts are still the provisional
+// Kenney choices, to settle after audio_compare_alerts.
 
 // What a cue says.
 struct FHOLAudioCue
@@ -94,25 +97,25 @@ namespace HOLAudio
 	// One line per event, in the order of HOLAudioEvent: event, name, pack, files, volume, pitch min, pitch max, cooldown, priority.
 	void Build(TArray<FHOLAudioCue>& Cues)
 	{
-		Add(Cues, HOLAudioEvent::UiClick, "Ui.Click", "ui-audio", "click1,click2,click3,click4,click5", 80, 97, 103, 40, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiHover, "Ui.Hover", "ui-audio", "rollover1,rollover2,rollover3,rollover4,rollover5,rollover6", 40, 100, 100, 80, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiOpen, "Ui.Open", "interface-sounds", "open_001,open_002,open_003,open_004", 70, 100, 100, 100, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiClose, "Ui.Close", "interface-sounds", "close_001,close_002,close_003,close_004", 70, 100, 100, 100, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiBack, "Ui.Back", "interface-sounds", "back_001,back_002,back_003,back_004", 70, 100, 100, 100, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiError, "Ui.Error", "interface-sounds", "error_001,error_002,error_003", 80, 100, 100, 300, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiConfirm, "Ui.Confirm", "interface-sounds", "confirmation_001,confirmation_002,confirmation_003,confirmation_004", 80, 100, 100, 100, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiToggle, "Ui.Toggle", "interface-sounds", "toggle_001,toggle_002,toggle_003,toggle_004", 60, 100, 100, 60, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiTick, "Ui.Tick", "interface-sounds", "tick_001,tick_002,tick_004", 50, 100, 100, 40, HOLAudioPriority::Ui);
-		Add(Cues, HOLAudioEvent::UiScroll, "Ui.Scroll", "interface-sounds", "scroll_001,scroll_002,scroll_003,scroll_004,scroll_005", 40, 100, 100, 50, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiClick, "Ui.Click", "rpg-audio", "beltHandle1", 80, 97, 103, 40, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiHover, "Ui.Hover", "", "", 40, 100, 100, 80, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiOpen, "Ui.Open", "rpg-audio", "bookFlip2", 70, 100, 100, 100, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiClose, "Ui.Close", "rpg-audio", "bookClose", 70, 100, 100, 100, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiBack, "Ui.Back", "rpg-audio", "cloth2", 70, 100, 100, 100, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiError, "Ui.Error", "impact-sounds", "impactMetal_heavy_000", 80, 100, 100, 300, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiConfirm, "Ui.Confirm", "rpg-audio", "metalClick", 80, 100, 100, 100, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiToggle, "Ui.Toggle", "", "", 60, 100, 100, 60, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiTick, "Ui.Tick", "", "", 50, 100, 100, 40, HOLAudioPriority::Ui);
+		Add(Cues, HOLAudioEvent::UiScroll, "Ui.Scroll", "", "", 40, 100, 100, 50, HOLAudioPriority::Ui);
 
-		Add(Cues, HOLAudioEvent::OrderMove, "Order.Move", "interface-sounds", "select_001,select_002,select_003", 55, 95, 105, 120, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::OrderAttack, "Order.Attack", "rpg-audio", "drawKnife1,drawKnife2,drawKnife3", 70, 95, 105, 150, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::OrderGather, "Order.Gather", "rpg-audio", "chop,cloth1,cloth2", 60, 95, 105, 150, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::OrderBuild, "Order.Build", "impact-sounds", "impactWood_medium_000,impactWood_medium_001,impactWood_medium_002", 65, 95, 105, 150, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::OrderGarrison, "Order.Garrison", "rpg-audio", "doorClose_1,doorClose_2,doorClose_3,doorClose_4", 60, 95, 105, 200, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::OrderMove, "Order.Move", "", "", 55, 95, 105, 120, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::OrderAttack, "Order.Attack", "", "", 70, 95, 105, 150, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::OrderGather, "Order.Gather", "", "", 60, 95, 105, 150, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::OrderBuild, "Order.Build", "", "", 65, 95, 105, 150, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::OrderGarrison, "Order.Garrison", "", "", 60, 95, 105, 200, HOLAudioPriority::Order);
 
-		Add(Cues, HOLAudioEvent::SelectUnit, "Select.Unit", "interface-sounds", "select_004,select_005,select_006", 55, 97, 103, 60, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::SelectBuilding, "Select.Building", "rpg-audio", "metalLatch,metalClick", 60, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectUnit, "Select.Unit", "rpg-audio", "handleSmallLeather", 55, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuilding, "Select.Building", "", "", 60, 97, 103, 60, HOLAudioPriority::Order);
 
 		Add(Cues, HOLAudioEvent::AlertUnderAttack, "Alert.UnderAttack", "impact-sounds", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002", 100, 100, 100, 10000, HOLAudioPriority::Alert);
 		Add(Cues, HOLAudioEvent::AlertBuildingDone, "Alert.BuildingDone", "interface-sounds", "maximize_006,maximize_007", 80, 100, 100, 500, HOLAudioPriority::Alert);
