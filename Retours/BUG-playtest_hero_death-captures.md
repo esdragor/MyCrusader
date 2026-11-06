@@ -15,3 +15,5 @@ Piste (scénario, non appliquée : fichier de scénario non modifié par cet age
 NON VÉRIFIÉ : si, avec quelques images de plus, le HUD montre bien le délai, le prix et le héros revenu (le journal dit que le héros est ré-apparu à (-15935, 300) au step 74).
 
 ## Corrige (agent scenarios, 2026-11-05 21:34, commit 3cea937 sur tiers) : DEFAUT DU SCENARIO. frames 40 avant fallen (PV 0, Pret dans 0:54 vu ; le PRIX n'apparait qu'a la fin du delai : .look et note 2 corriges), frames 60 apres l'achat avant back (PV 522/522, bouton disparu, heros pres du forum vus). Preflight PASS (73 s). Reste vu : l'alerte « Votre heros est pret a revenir » (haut droite) est encore affichee apres l'achat sur playtest_death_back.png (a juger : defaut de jeu possible, non tranche).
+
+CLOS 2026-11-05 22:3x : scenario corrige (frames 40 / 60), essai OK par l'utilisateur ; l'alerte « pret a revenir » disparait bien apres l'achat (non-defaut).

@@ -34,6 +34,11 @@ public:
 	static double GetTotalHealed() { return TotalHealed; }
 	/** Steps with at least one heal since the program started: a Monk healing its allies one after the other counts each step once per Monk. */
 	static int64 GetHealSteps() { return HealSteps; }
+	/**
+	 * Units gathered into the step's table (their camp, health, place...) in the last step: 0 when the step slept because no unit of the
+	 * world can heal (PerfSpikeInProgress.md, part 1: the table of every light unit cost ~0.1 ms a step even with no Monk).
+	 */
+	static int32 GetLastCandidateCount() { return LastCandidateCount; }
 
 	/**
 	 * The player's order (a right click on an ally with Monks selected, ServerHealUnit): Healer heals TargetId first, whatever is nearer,
@@ -78,4 +83,5 @@ private:
 	static TArray<FLink> Links;
 	static double TotalHealed;
 	static int64 HealSteps;
+	static int32 LastCandidateCount;
 };

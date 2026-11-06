@@ -13,3 +13,5 @@ NON VÉRIFIÉ : l'XP sur le héros à l'écran (pas de héros dans ce scénario,
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 neutrals -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min (tout se déclenche d'office). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK (2026-11-05 22:3x, utilisateur, fenetre reelle : camp gris attaque puis vide).

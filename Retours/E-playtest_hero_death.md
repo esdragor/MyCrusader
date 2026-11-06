@@ -17,3 +17,5 @@ NON VÉRIFIÉ : le héros réellement revenu à l'écran ; le prix qui baisse su
 
 Lancer UNE commande (non prête) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 playtest_hero_death -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min 20 + touche Entrée. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK (2026-11-05 22:3x, utilisateur, fenetre reelle). L'alerte « Votre heros est pret a revenir » DISPARAIT apres l'achat : le defaut possible vu sur la capture (alerte restee en haut a droite) etait un artefact de capture hors ecran, pas un defaut du jeu.

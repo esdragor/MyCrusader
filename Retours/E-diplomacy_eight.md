@@ -7,3 +7,5 @@ Statut : VU À L'ÉCRAN pour les présentations 0 et 1 à 1920x1080 ; la présen
 PUCE DE POSTURE VISIBLE À L'ÉCRAN : oui (Ennemi rouge pour les humains, grisée pour les IA ; tableau des vies avec croix rouges).
 NON VÉRIFIÉ : molette réelle (le scénario clique DipScrollEnd) ; fenêtres 1366x768 et 1280x600 (PNG non ouverts, journal « fit overflow 0 px » seulement) ; 8 humains réels.
 Lancer : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 diplomacy_eight -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+
+Reponse: OK (2026-11-05 22:2x, utilisateur, fenetre reelle : 8 joueurs sur 2 lignes).

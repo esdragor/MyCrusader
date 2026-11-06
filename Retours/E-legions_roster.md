@@ -15,3 +15,5 @@ NON VÉRIFIÉ : le coût 60/20 de l'Aube (pas de Caserne de l'Aube dans le scén
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 legions_roster -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 10 s (tout se déclenche d'office). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: BUG : legions_roster (utilisateur, fenetre reelle, main) : le Lancier est bien paye 45 N / 15 B mais le survol (infobulle) garde l'ancien cout (celui de l'Aube 60 N / 20 B). L'infobulle de la grille lit le cout du type de base, pas FindTypeRowFor(type, faction du joueur).
