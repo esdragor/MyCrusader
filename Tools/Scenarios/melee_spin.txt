@@ -1,3 +1,4 @@
+hol.Sanity.Watch 1
 hol.Orders.LogFinalLegs 1
 hol.Sanity.DumpUnit -3
 # D733 : Q puis clic sur le SOL derriere des hommes d'un joueur NEUTRE (geste reel : hol.Select.Grid 4 = la touche Q, puis hol.Select.LeftClickGround = vrai clic gauche par les gestionnaires d'entree). Les soldats doivent les rencontrer ET les frapper, posture inchangee. 3 minutes au plus.
@@ -25,7 +26,7 @@ waitlog hits #
 hol.Camera.Zoom 8
 frames 40
 capture dipl_qground_fight
-frames 200
+frames 600
 hol.Diplomacy.Report
 waitlog Diplomacy report: slot 2 toward slot 1
 # Audit du jeu : unites qui tournent sur place en melee 6 contre 6 (mesure repetee par Tools\Tests\repeat_scenario.ps1 melee_spin -Runs 8).
