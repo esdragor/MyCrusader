@@ -8,12 +8,28 @@
 
 int32 HOLUnitTier::GetMinTier(const FName UnitType)
 {
-	// G1 stub (red test first): no tier read.
-	return -1;
+	const UDataTable* Table = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Row = Table ? Table->FindRow<FHOLUnitTypeRow>(UnitType, TEXT("unit tier"), /*bWarnIfRowMissing*/ false) : nullptr;
+	return Row ? Row->MinTier : -1;
 }
 
 HOLUnitTier::EBlock HOLUnitTier::Check(const int32 MinTier, const int32 Tier, const bool bBuildingFinished, const bool bCanPay)
 {
-	// G1 stub (red test first): nothing stops a unit.
+	if (MinTier < 0)
+	{
+		return EBlock::NotListed;
+	}
+	if (Tier < MinTier)
+	{
+		return EBlock::TierTooLow;
+	}
+	if (!bBuildingFinished)
+	{
+		return EBlock::NoBuilding;
+	}
+	if (!bCanPay)
+	{
+		return EBlock::CannotPay;
+	}
 	return EBlock::Available;
 }
