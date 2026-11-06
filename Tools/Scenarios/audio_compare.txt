@@ -1,0 +1,313 @@
+# Ecoute : les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement), dix variantes MEDIEVAL FANTASY chacune (bois, cuir, parchemin, metal sourd, cloche, pierre, cordes), Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement). 100 sons, 10 cues, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit laquelle vient de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Ui.Open C.
+note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes (bois, cloche, harpe...) pour les dix suivantes.
+capture audio_compare_start
+waitkey Entree : commencer par Ui.Click A
+hol.Audio.Candidate Ui.Click A
+waitlog candidate played Ui.Click A
+waitkey Ui.Click A (impactWood_light_000) vient de jouer. Entree : Ui.Click B
+hol.Audio.Candidate Ui.Click B
+waitlog candidate played Ui.Click B
+waitkey Ui.Click B (impactWood_light_001) vient de jouer. Entree : Ui.Click C
+hol.Audio.Candidate Ui.Click C
+waitlog candidate played Ui.Click C
+waitkey Ui.Click C (metalClick) vient de jouer. Entree : Ui.Click D
+hol.Audio.Candidate Ui.Click D
+waitlog candidate played Ui.Click D
+waitkey Ui.Click D (handleSmallLeather) vient de jouer. Entree : Ui.Click E
+hol.Audio.Candidate Ui.Click E
+waitlog candidate played Ui.Click E
+waitkey Ui.Click E (v_claves_mf) vient de jouer. Entree : Ui.Click F
+hol.Audio.Candidate Ui.Click F
+waitlog candidate played Ui.Click F
+waitkey Ui.Click F (v_slapstick_quiet1) vient de jouer. Entree : Ui.Click G
+hol.Audio.Candidate Ui.Click G
+waitlog candidate played Ui.Click G
+waitkey Ui.Click G (impactTin_medium_000) vient de jouer. Entree : Ui.Click H
+hol.Audio.Candidate Ui.Click H
+waitlog candidate played Ui.Click H
+waitkey Ui.Click H (beltHandle1) vient de jouer. Entree : Ui.Click I
+hol.Audio.Candidate Ui.Click I
+waitlog candidate played Ui.Click I
+waitkey Ui.Click I (bookPlace1) vient de jouer. Entree : Ui.Click J
+hol.Audio.Candidate Ui.Click J
+waitlog candidate played Ui.Click J
+waitkey Ui.Click J (impactPlank_medium_000) vient de jouer. Entree : Ui.Hover A  [nouveau cue]
+hol.Audio.Candidate Ui.Hover A
+waitlog candidate played Ui.Hover A
+waitkey Ui.Hover A (cloth1) vient de jouer. Entree : Ui.Hover B
+hol.Audio.Candidate Ui.Hover B
+waitlog candidate played Ui.Hover B
+waitkey Ui.Hover B (cloth3) vient de jouer. Entree : Ui.Hover C
+hol.Audio.Candidate Ui.Hover C
+waitlog candidate played Ui.Hover C
+waitkey Ui.Hover C (clothBelt) vient de jouer. Entree : Ui.Hover D
+hol.Audio.Candidate Ui.Hover D
+waitlog candidate played Ui.Hover D
+waitkey Ui.Hover D (bookFlip1) vient de jouer. Entree : Ui.Hover E
+hol.Audio.Candidate Ui.Hover E
+waitlog candidate played Ui.Hover E
+waitkey Ui.Hover E (handleSmallLeather2) vient de jouer. Entree : Ui.Hover F
+hol.Audio.Candidate Ui.Hover F
+waitlog candidate played Ui.Hover F
+waitkey Ui.Hover F (impactSoft_medium_000) vient de jouer. Entree : Ui.Hover G
+hol.Audio.Candidate Ui.Hover G
+waitlog candidate played Ui.Hover G
+waitkey Ui.Hover G (v_triangle_muted) vient de jouer. Entree : Ui.Hover H
+hol.Audio.Candidate Ui.Hover H
+waitlog candidate played Ui.Hover H
+waitkey Ui.Hover H (v_harp_A6) vient de jouer. Entree : Ui.Hover I
+hol.Audio.Candidate Ui.Hover I
+waitlog candidate played Ui.Hover I
+waitkey Ui.Hover I (beltHandle2) vient de jouer. Entree : Ui.Hover J
+hol.Audio.Candidate Ui.Hover J
+waitlog candidate played Ui.Hover J
+waitkey Ui.Hover J (v_claves_mp) vient de jouer. Entree : Ui.Open A  [nouveau cue]
+hol.Audio.Candidate Ui.Open A
+waitlog candidate played Ui.Open A
+waitkey Ui.Open A (bookOpen) vient de jouer. Entree : Ui.Open B
+hol.Audio.Candidate Ui.Open B
+waitlog candidate played Ui.Open B
+waitkey Ui.Open B (doorOpen_1) vient de jouer. Entree : Ui.Open C
+hol.Audio.Candidate Ui.Open C
+waitlog candidate played Ui.Open C
+waitkey Ui.Open C (doorOpen_2) vient de jouer. Entree : Ui.Open D
+hol.Audio.Candidate Ui.Open D
+waitlog candidate played Ui.Open D
+waitkey Ui.Open D (creak1) vient de jouer. Entree : Ui.Open E
+hol.Audio.Candidate Ui.Open E
+waitlog candidate played Ui.Open E
+waitkey Ui.Open E (creak2) vient de jouer. Entree : Ui.Open F
+hol.Audio.Candidate Ui.Open F
+waitlog candidate played Ui.Open F
+waitkey Ui.Open F (bookFlip2) vient de jouer. Entree : Ui.Open G
+hol.Audio.Candidate Ui.Open G
+waitlog candidate played Ui.Open G
+waitkey Ui.Open G (clothBelt2) vient de jouer. Entree : Ui.Open H
+hol.Audio.Candidate Ui.Open H
+waitlog candidate played Ui.Open H
+waitkey Ui.Open H (v_harp_C5) vient de jouer. Entree : Ui.Open I
+hol.Audio.Candidate Ui.Open I
+waitlog candidate played Ui.Open I
+waitkey Ui.Open I (v_nbell_s01) vient de jouer. Entree : Ui.Open J
+hol.Audio.Candidate Ui.Open J
+waitlog candidate played Ui.Open J
+waitkey Ui.Open J (metalLatch) vient de jouer. Entree : Ui.Close A  [nouveau cue]
+hol.Audio.Candidate Ui.Close A
+waitlog candidate played Ui.Close A
+waitkey Ui.Close A (bookClose) vient de jouer. Entree : Ui.Close B
+hol.Audio.Candidate Ui.Close B
+waitlog candidate played Ui.Close B
+waitkey Ui.Close B (doorClose_1) vient de jouer. Entree : Ui.Close C
+hol.Audio.Candidate Ui.Close C
+waitlog candidate played Ui.Close C
+waitkey Ui.Close C (doorClose_2) vient de jouer. Entree : Ui.Close D
+hol.Audio.Candidate Ui.Close D
+waitlog candidate played Ui.Close D
+waitkey Ui.Close D (doorClose_3) vient de jouer. Entree : Ui.Close E
+hol.Audio.Candidate Ui.Close E
+waitlog candidate played Ui.Close E
+waitkey Ui.Close E (bookPlace2) vient de jouer. Entree : Ui.Close F
+hol.Audio.Candidate Ui.Close F
+waitlog candidate played Ui.Close F
+waitkey Ui.Close F (dropLeather) vient de jouer. Entree : Ui.Close G
+hol.Audio.Candidate Ui.Close G
+waitlog candidate played Ui.Close G
+waitkey Ui.Close G (impactWood_medium_000) vient de jouer. Entree : Ui.Close H
+hol.Audio.Candidate Ui.Close H
+waitlog candidate played Ui.Close H
+waitkey Ui.Close H (impactPlank_medium_001) vient de jouer. Entree : Ui.Close I
+hol.Audio.Candidate Ui.Close I
+waitlog candidate played Ui.Close I
+waitkey Ui.Close I (metalLatch) vient de jouer. Entree : Ui.Close J
+hol.Audio.Candidate Ui.Close J
+waitlog candidate played Ui.Close J
+waitkey Ui.Close J (v_cello_pizz_D4) vient de jouer. Entree : Ui.Back A  [nouveau cue]
+hol.Audio.Candidate Ui.Back A
+waitlog candidate played Ui.Back A
+waitkey Ui.Back A (bookFlip3) vient de jouer. Entree : Ui.Back B
+hol.Audio.Candidate Ui.Back B
+waitlog candidate played Ui.Back B
+waitkey Ui.Back B (cloth2) vient de jouer. Entree : Ui.Back C
+hol.Audio.Candidate Ui.Back C
+waitlog candidate played Ui.Back C
+waitkey Ui.Back C (clothBelt) vient de jouer. Entree : Ui.Back D
+hol.Audio.Candidate Ui.Back D
+waitlog candidate played Ui.Back D
+waitkey Ui.Back D (doorClose_4) vient de jouer. Entree : Ui.Back E
+hol.Audio.Candidate Ui.Back E
+waitlog candidate played Ui.Back E
+waitkey Ui.Back E (impactSoft_medium_001) vient de jouer. Entree : Ui.Back F
+hol.Audio.Candidate Ui.Back F
+waitlog candidate played Ui.Back F
+waitkey Ui.Back F (dropLeather) vient de jouer. Entree : Ui.Back G
+hol.Audio.Candidate Ui.Back G
+waitlog candidate played Ui.Back G
+waitkey Ui.Back G (beltHandle1) vient de jouer. Entree : Ui.Back H
+hol.Audio.Candidate Ui.Back H
+waitlog candidate played Ui.Back H
+waitkey Ui.Back H (v_vln_pizz_C5) vient de jouer. Entree : Ui.Back I
+hol.Audio.Candidate Ui.Back I
+waitlog candidate played Ui.Back I
+waitkey Ui.Back I (impactWood_light_002) vient de jouer. Entree : Ui.Back J
+hol.Audio.Candidate Ui.Back J
+waitlog candidate played Ui.Back J
+waitkey Ui.Back J (v_slapstick_quiet2) vient de jouer. Entree : Ui.Error A  [nouveau cue]
+hol.Audio.Candidate Ui.Error A
+waitlog candidate played Ui.Error A
+waitkey Ui.Error A (impactMetal_heavy_000) vient de jouer. Entree : Ui.Error B
+hol.Audio.Candidate Ui.Error B
+waitlog candidate played Ui.Error B
+waitkey Ui.Error B (impactPlate_heavy_000) vient de jouer. Entree : Ui.Error C
+hol.Audio.Candidate Ui.Error C
+waitlog candidate played Ui.Error C
+waitkey Ui.Error C (impactWood_heavy_000) vient de jouer. Entree : Ui.Error D
+hol.Audio.Candidate Ui.Error D
+waitlog candidate played Ui.Error D
+waitkey Ui.Error D (metalPot1) vient de jouer. Entree : Ui.Error E
+hol.Audio.Candidate Ui.Error E
+waitlog candidate played Ui.Error E
+waitkey Ui.Error E (metalPot2) vient de jouer. Entree : Ui.Error F
+hol.Audio.Candidate Ui.Error F
+waitlog candidate played Ui.Error F
+waitkey Ui.Error F (impactTin_medium_001) vient de jouer. Entree : Ui.Error G
+hol.Audio.Candidate Ui.Error G
+waitlog candidate played Ui.Error G
+waitkey Ui.Error G (v_bass_pizz_E1) vient de jouer. Entree : Ui.Error H
+hol.Audio.Candidate Ui.Error H
+waitlog candidate played Ui.Error H
+waitkey Ui.Error H (v_mallet_hit_mf) vient de jouer. Entree : Ui.Error I
+hol.Audio.Candidate Ui.Error I
+waitlog candidate played Ui.Error I
+waitkey Ui.Error I (creak3) vient de jouer. Entree : Ui.Error J
+hol.Audio.Candidate Ui.Error J
+waitlog candidate played Ui.Error J
+waitkey Ui.Error J (impactPunch_medium_000) vient de jouer. Entree : Ui.Confirm A  [nouveau cue]
+hol.Audio.Candidate Ui.Confirm A
+waitlog candidate played Ui.Confirm A
+waitkey Ui.Confirm A (v_harp_E5) vient de jouer. Entree : Ui.Confirm B
+hol.Audio.Candidate Ui.Confirm B
+waitlog candidate played Ui.Confirm B
+waitkey Ui.Confirm B (v_harp_G5) vient de jouer. Entree : Ui.Confirm C
+hol.Audio.Candidate Ui.Confirm C
+waitlog candidate played Ui.Confirm C
+waitkey Ui.Confirm C (v_vln_pizz_E5) vient de jouer. Entree : Ui.Confirm D
+hol.Audio.Candidate Ui.Confirm D
+waitlog candidate played Ui.Confirm D
+waitkey Ui.Confirm D (v_glock_G5) vient de jouer. Entree : Ui.Confirm E
+hol.Audio.Candidate Ui.Confirm E
+waitlog candidate played Ui.Confirm E
+waitkey Ui.Confirm E (handleCoins) vient de jouer. Entree : Ui.Confirm F
+hol.Audio.Candidate Ui.Confirm F
+waitlog candidate played Ui.Confirm F
+waitkey Ui.Confirm F (impactBell_heavy_000) vient de jouer. Entree : Ui.Confirm G
+hol.Audio.Candidate Ui.Confirm G
+waitlog candidate played Ui.Confirm G
+waitkey Ui.Confirm G (metalClick) vient de jouer. Entree : Ui.Confirm H
+hol.Audio.Candidate Ui.Confirm H
+waitlog candidate played Ui.Confirm H
+waitkey Ui.Confirm H (v_nbell_s04) vient de jouer. Entree : Ui.Confirm I
+hol.Audio.Candidate Ui.Confirm I
+waitlog candidate played Ui.Confirm I
+waitkey Ui.Confirm I (bookPlace3) vient de jouer. Entree : Ui.Confirm J
+hol.Audio.Candidate Ui.Confirm J
+waitlog candidate played Ui.Confirm J
+waitkey Ui.Confirm J (impactPlate_light_000) vient de jouer. Entree : Ui.Toggle A  [nouveau cue]
+hol.Audio.Candidate Ui.Toggle A
+waitlog candidate played Ui.Toggle A
+waitkey Ui.Toggle A (metalLatch) vient de jouer. Entree : Ui.Toggle B
+hol.Audio.Candidate Ui.Toggle B
+waitlog candidate played Ui.Toggle B
+waitkey Ui.Toggle B (metalClick) vient de jouer. Entree : Ui.Toggle C
+hol.Audio.Candidate Ui.Toggle C
+waitlog candidate played Ui.Toggle C
+waitkey Ui.Toggle C (impactWood_light_003) vient de jouer. Entree : Ui.Toggle D
+hol.Audio.Candidate Ui.Toggle D
+waitlog candidate played Ui.Toggle D
+waitkey Ui.Toggle D (handleSmallLeather) vient de jouer. Entree : Ui.Toggle E
+hol.Audio.Candidate Ui.Toggle E
+waitlog candidate played Ui.Toggle E
+waitkey Ui.Toggle E (beltHandle2) vient de jouer. Entree : Ui.Toggle F
+hol.Audio.Candidate Ui.Toggle F
+waitlog candidate played Ui.Toggle F
+waitkey Ui.Toggle F (v_claves_mf) vient de jouer. Entree : Ui.Toggle G
+hol.Audio.Candidate Ui.Toggle G
+waitlog candidate played Ui.Toggle G
+waitkey Ui.Toggle G (impactTin_medium_002) vient de jouer. Entree : Ui.Toggle H
+hol.Audio.Candidate Ui.Toggle H
+waitlog candidate played Ui.Toggle H
+waitkey Ui.Toggle H (bookPlace1) vient de jouer. Entree : Ui.Toggle I
+hol.Audio.Candidate Ui.Toggle I
+waitlog candidate played Ui.Toggle I
+waitkey Ui.Toggle I (clothBelt2) vient de jouer. Entree : Ui.Toggle J
+hol.Audio.Candidate Ui.Toggle J
+waitlog candidate played Ui.Toggle J
+waitkey Ui.Toggle J (v_slapstick_quiet1) vient de jouer. Entree : Ui.Tick A  [nouveau cue]
+hol.Audio.Candidate Ui.Tick A
+waitlog candidate played Ui.Tick A
+waitkey Ui.Tick A (v_claves_mp) vient de jouer. Entree : Ui.Tick B
+hol.Audio.Candidate Ui.Tick B
+waitlog candidate played Ui.Tick B
+waitkey Ui.Tick B (impactWood_light_004) vient de jouer. Entree : Ui.Tick C
+hol.Audio.Candidate Ui.Tick C
+waitlog candidate played Ui.Tick C
+waitkey Ui.Tick C (metalClick) vient de jouer. Entree : Ui.Tick D
+hol.Audio.Candidate Ui.Tick D
+waitlog candidate played Ui.Tick D
+waitkey Ui.Tick D (v_triangle_muted) vient de jouer. Entree : Ui.Tick E
+hol.Audio.Candidate Ui.Tick E
+waitlog candidate played Ui.Tick E
+waitkey Ui.Tick E (impactTin_medium_003) vient de jouer. Entree : Ui.Tick F
+hol.Audio.Candidate Ui.Tick F
+waitlog candidate played Ui.Tick F
+waitkey Ui.Tick F (v_harp_D6) vient de jouer. Entree : Ui.Tick G
+hol.Audio.Candidate Ui.Tick G
+waitlog candidate played Ui.Tick G
+waitkey Ui.Tick G (v_vln_pizz_A5) vient de jouer. Entree : Ui.Tick H
+hol.Audio.Candidate Ui.Tick H
+waitlog candidate played Ui.Tick H
+waitkey Ui.Tick H (cloth4) vient de jouer. Entree : Ui.Tick I
+hol.Audio.Candidate Ui.Tick I
+waitlog candidate played Ui.Tick I
+waitkey Ui.Tick I (impactPlank_medium_000) vient de jouer. Entree : Ui.Tick J
+hol.Audio.Candidate Ui.Tick J
+waitlog candidate played Ui.Tick J
+waitkey Ui.Tick J (beltHandle1) vient de jouer. Entree : Ui.Scroll A  [nouveau cue]
+hol.Audio.Candidate Ui.Scroll A
+waitlog candidate played Ui.Scroll A
+waitkey Ui.Scroll A (bookFlip1) vient de jouer. Entree : Ui.Scroll B
+hol.Audio.Candidate Ui.Scroll B
+waitlog candidate played Ui.Scroll B
+waitkey Ui.Scroll B (bookFlip2) vient de jouer. Entree : Ui.Scroll C
+hol.Audio.Candidate Ui.Scroll C
+waitlog candidate played Ui.Scroll C
+waitkey Ui.Scroll C (bookFlip3) vient de jouer. Entree : Ui.Scroll D
+hol.Audio.Candidate Ui.Scroll D
+waitlog candidate played Ui.Scroll D
+waitkey Ui.Scroll D (cloth1) vient de jouer. Entree : Ui.Scroll E
+hol.Audio.Candidate Ui.Scroll E
+waitlog candidate played Ui.Scroll E
+waitkey Ui.Scroll E (cloth2) vient de jouer. Entree : Ui.Scroll F
+hol.Audio.Candidate Ui.Scroll F
+waitlog candidate played Ui.Scroll F
+waitkey Ui.Scroll F (clothBelt) vient de jouer. Entree : Ui.Scroll G
+hol.Audio.Candidate Ui.Scroll G
+waitlog candidate played Ui.Scroll G
+waitkey Ui.Scroll G (clothBelt2) vient de jouer. Entree : Ui.Scroll H
+hol.Audio.Candidate Ui.Scroll H
+waitlog candidate played Ui.Scroll H
+waitkey Ui.Scroll H (cloth3) vient de jouer. Entree : Ui.Scroll I
+hol.Audio.Candidate Ui.Scroll I
+waitlog candidate played Ui.Scroll I
+waitkey Ui.Scroll I (cloth4) vient de jouer. Entree : Ui.Scroll J
+hol.Audio.Candidate Ui.Scroll J
+waitlog candidate played Ui.Scroll J
+waitkey Ui.Scroll J (handleSmallLeather2) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
