@@ -173,3 +173,5 @@ Chaque étape : **objectif**, **à toucher**, **test rouge d'abord**, **fin**. L
 eutrals_qground corrige (7085ffe, voir Retours/E-qground.md) ; BUG cavalry-flat diagnostique (cause de scenario : cadrage, d611d94, voir Retours/BUG-cavalry-flat.md).
 
 - 2026-11-06 12:2x : E-playtest_hero_xp OK par l'utilisateur (progression du heros sans ages : niveaux 2 et 3, palier 1, mort, retour plus cher ; recette independante Elrond-7 OK avant). Reserve : anneau dore peu visible dans la melee.
+
+- 2026-11-06 12:3x : E-cavalry OK par l'utilisateur (cavalier debout apres recadrage du scenario ; BUG-cavalry-flat resolu : cause de scenario, pose en T = placeholder assume).
