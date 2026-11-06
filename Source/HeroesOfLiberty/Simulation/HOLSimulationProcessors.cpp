@@ -157,6 +157,19 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarAvoidMaxAngle(TEXT("hol.Units.AvoidMaxAngle"), AvoidMaxAngle,
 		TEXT("Largest turn (degrees) a walker makes around a body ahead; beyond, the detour is too long and it pushes its way (D293)"));
 
+	/**
+	 * Melee_spin (Celeborn-9): a walker on its last leg to its slot, a still enemy grazing the straight way to it, held the largest turn
+	 * along that enemy and circled its slot (turn 555 degrees in 3 s at 700 cm/s, Sanity FAIL). A detour held this many steps while the
+	 * goal is within hol.Units.SlotDetourRadius commits the walker to the goal for the rest of the leg (the separation still keeps the
+	 * bodies apart). 0: off (the detour as before).
+	 */
+	int32 SlotDetourMaxSteps = 8;
+	FAutoConsoleVariableRef CVarSlotDetourMaxSteps(TEXT("hol.Units.SlotDetourMaxSteps"), SlotDetourMaxSteps,
+		TEXT("Steps a detour is held near the walker's goal before it goes straight to it for the rest of the leg (the slot circling of melee_spin); 0: off"));
+	float SlotDetourRadius = 300.f;
+	FAutoConsoleVariableRef CVarSlotDetourRadius(TEXT("hol.Units.SlotDetourRadius"), SlotDetourRadius,
+		TEXT("cm: the goal's distance within which hol.Units.SlotDetourMaxSteps counts"));
+
 	/** J7c.4, loop 19: the ranks behind the front slide along their friends instead of walking into them. */
 	/** J7c.4 loop 29: the melee rules' bookkeeping (army middles, lines of contact) skipped or done without maps when it cannot change anything. */
 	int32 MeleeRuleSkips = 1;
@@ -654,7 +667,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.Side = 0;
 		Detour.Turn = 0;
 		Detour.ClearSteps = 0;
+		Detour.DetourSteps = 0;
 	};
+	if (Detour.bSlotCommit != 0)
+	{
+		return Direction;
+	}
 	// A / B (hol.Units.DetourMemory 0): every step from the straight course, as before MV.2.
 	if (DetourMemory == 0)
 	{
@@ -821,6 +839,15 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		{
 			Forget();
 			return Direction;
+		}
+		if (SlotDetourMaxSteps > 0 && Goal && FVector2D::DistSquared(*Goal, Position) < FMath::Square(static_cast<double>(SlotDetourRadius)))
+		{
+			if (++Detour.DetourSteps >= SlotDetourMaxSteps)
+			{
+				Forget();
+				Detour.bSlotCommit = 1;
+				return Direction;
+			}
 		}
 		const FVector2D Way = WayOf(Hand, Detour.Turn);
 		return FVector(Way.X, Way.Y, 0.);
