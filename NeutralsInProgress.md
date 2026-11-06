@@ -99,3 +99,5 @@ eutrals_trace_slot_off pour l'A/B).
 - 2026-11-06 12:4x : essai diplomacy_qground de l'utilisateur (Elrond/tiers, sans les correctifs hero-j8-close) : Q+clic OK, mais des soldats tournent en cercle longtemps avant de frapper = famille D641 / BUG-melee-spin-sanity ; a rejouer sur main apres fusion 3 (FarPlaceRetarget + SlotDetourMaxSteps) ; reste connu : to-and-fro melee_spin #7/#9, tremblements du slot 0 de neutrals_trace, tremblement de cap de la marche en bloc.
 
 - 2026-11-06 12:5x : BUG utilisateur apres fusion 3 : diplomacy_qground, 2 soldats rouges stuck devant la cible (anim d'attaque en boucle ou idle sans attaquer) ; voir Retours\BUG-melee-stuck-attack.md ; a mesurer en A/B avec SlotDetourMaxSteps 0 et FarPlaceRetarget 0.
+
+- 2026-11-06 12:5x : precision utilisateur sur BUG-melee-stuck-attack : les 2 stuck sont ceux qui ont voulu contourner (chemin attente 2 s puis tour, ou detour tenu) ; voir le fichier BUG pour l'hypothese et l'A/B.
