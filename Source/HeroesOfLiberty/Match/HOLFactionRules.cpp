@@ -10,6 +10,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "Technologies/HOLTechnologyTypes.h"
 #include "UObject/UnrealType.h"
 
 namespace HOLFactionRules
@@ -395,8 +396,8 @@ namespace HOLFactionRules
 
 	bool IsTechnologyOpenTo(const FName Technology, const FName FactionKey)
 	{
-		// L2 stub (red test first): everything is open.
-		return true;
+		const FHOLTechnologyRow* Row = Technology.IsNone() ? nullptr : UHOLTechnologySettings::FindTechnology(Technology);
+		return !Row || FactionKey.IsNone() || GetTable().Allows(Row->Faction, FactionKey);
 	}
 
 	TArray<FName> FilterProduces(const UWorld* World, const TConstArrayView<FName> Produces, const int32 Slot)

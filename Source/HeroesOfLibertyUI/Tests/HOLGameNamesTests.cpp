@@ -1,5 +1,7 @@
 #include "HUD/HOLGameNames.h"
 #include "Match/HOLFactionRules.h"
+#include "Internationalization/TextKey.h"
+#include "Internationalization/Text.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -31,6 +33,19 @@ bool FHOLGameNamesFactionTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("the Legions' seven names are in the table"), Names, 7);
+	return true;
+}
+
+// F1: the Forge has its own localization key (the .po files carry `HOLGameNames,Forge`), so its name follows the language; with no row, the
+// name still comes from the code, not from the table's French DisplayName.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGameNamesForgeTest, "HeroesOfLiberty.UI.GameNames.ForgeKey",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLGameNamesForgeTest::RunTest(const FString& Parameters)
+{
+	const FText Name = HOLGameNames::GetBuildingName(TEXT("Forge"), nullptr);
+	TestEqual(TEXT("the Forge's name"), Name.ToString(), FString(TEXT("Forge")));
+	TestEqual(TEXT("its localization key"), FTextInspector::GetKey(Name).Get(FString()), FString(TEXT("Forge")));
+	TestEqual(TEXT("its localization namespace"), FTextInspector::GetNamespace(Name).Get(FString()), FString(TEXT("HOLGameNames")));
 	return true;
 }
 
