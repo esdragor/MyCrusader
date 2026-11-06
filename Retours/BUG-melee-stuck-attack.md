@@ -1,0 +1,5 @@
+﻿# BUG-melee-stuck-attack : 2 soldats rouges stuck devant la cible (debut d'anim d'attaque en boucle ou idle sans attaquer)
+
+BUG (utilisateur 2026-11-06 12:5x, diplomacy_qground rejoue sur main acdb5cc/9c7d7a1 depuis le worktree Faramir, correctifs FarPlace + detour tenu inclus) : 2 soldats ROUGES se retrouvent STUCK : debut d'animation en boucle (l'attaque ne part pas) ou simplement en idle devant la cible sans attaquer. Ce n'est plus le cercle (spin) : c'est un blocage en position d'attaque.
+
+Repro : play.ps1 diplomacy_qground -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir (main 9c7d7a1). Pistes : le correctif de detour tenu (SlotDetourMaxSteps 8, SlotDetourRadius 300) envoie le soldat droit au but, il pourrait s'arreter dans la tolerance sans etre a portee d'attaque ; FarPlaceRetarget (attente FarPlaceWaitSeconds 2) pourrait laisser un soldat sans cible ; verifier l'etat de l'anim (AttackStart repete) dans HOLCombatProcessor / animation. Comparaison A/B : hol.Units.SlotDetourMaxSteps 0 et hol.Combat.FarPlaceRetarget 0 sur le meme binaire, scenario melee_spin / diplomacy_qground avec hol.Test.Sanity (audit stall). Agent NEUF (bug dur, regle L3-6).
