@@ -11,7 +11,7 @@
 
 namespace
 {
-	/** True when a piece of the building is painted with its colour index's colour (the tower's roof, tone 1, D261). */
+	/** True when a piece of the building is painted with its colour index's colour (the tower's roof, tone 1, D261; a final model's owner slot). */
 	bool ShowsItsColor(const AHOLBuilding& Building)
 	{
 		const FLinearColor Expected(HOLPlayerColors::GetLinearColor(Building.GetColorIndex()));
@@ -19,12 +19,16 @@ namespace
 		Building.GetComponents(Pieces);
 		for (const UStaticMeshComponent* Piece : Pieces)
 		{
-			const UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Piece->GetMaterial(0));
-			FLinearColor Shown;
-			if (Material && Material->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("Color")), Shown)
-				&& Shown.Equals(Expected, 0.001f))
+			// Every slot: a final model (the Forum's banners, V3b) wears the colour on its slot named owner, not on slot 0.
+			for (int32 Slot = 0; Slot < Piece->GetNumMaterials(); ++Slot)
 			{
-				return true;
+				const UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Piece->GetMaterial(Slot));
+				FLinearColor Shown;
+				if (Material && Material->GetVectorParameterValue(FHashedMaterialParameterInfo(TEXT("Color")), Shown)
+					&& Shown.Equals(Expected, 0.001f))
+				{
+					return true;
+				}
 			}
 		}
 		return false;

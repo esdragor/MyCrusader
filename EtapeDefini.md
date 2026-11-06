@@ -112,7 +112,8 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - B2 côté C++ (`FHOLMatchConfig::Biome`, lobby du client, `hol.Biome.Report`) : `fog` 2b425d4 = main fusionné, compilé (PASS), `tests` 923/923, `netfogtrees` et `netfogview` PASS (2026-11-04 16:55, Faramir) ; pas dans `main` ; reste B1 visuel (sol et lumières au chargement), B3 décor au chargement, B4 (première ligne de la liste = « Défaut : <biome de la carte> », D660), B5
 - B3, règle pure du décor générique en Angelscript (`HOLDecorRules.as`, port de `decor_transforms`, accord avec le Python sur graine fixe, déterminisme) : FAIT, `galadriel-tab` 77ba850 (test rouge cc5abe8), `tests` 984/984, pas dans `main` ; reste la pose au chargement, la preuve navmesh, S1/S2 (Galadriel, 2026-11-05 soir)
 
-### Visuel des bâtiments (branche `visual`, Sauron, PAS fusionnée) *(`VisualInProgress.md`)*
+### Visuel des bâtiments (branche `visual`, Sauron, FUSIONNÉE dans `main` le 2026-11-06, 2eba156) *(`VisualInProgress.md`)*
+- 2026-11-06 : `main` fusionné dans `visual` (c2ee600), conflits `BuildingTypes.csv` / `.uasset` résolus (uasset régénéré, build PASS) ; `-Parts tests,net` PASS (1056/1056, `net 2 clients` confirme le correctif de couleur) ; **`visual` fusionné dans `main` (avance rapide, 2eba156), pas poussé** ; reste coût S1 (au repos), V3b, puis les autres bâtiments
 - Style stylisé et franc, kit Kenney CC0 ; Forum « K » (donjon 3 x 3, quatre tourelles) retenu, couleur du joueur par bannières (VI-Q3 = B, `SM_Forum`), tests 903/903 ; correctif du contrôle de couleur de `-Parts net` (9a669f4) NON compilé, à rejouer ; reste coût S1, fusion, puis les autres bâtiments ; limites du kit pour la variété des factions (question ouverte)
 
 ### Équilibrage et modes de jeu
