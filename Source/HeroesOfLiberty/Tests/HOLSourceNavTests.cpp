@@ -13,7 +13,7 @@ namespace
 	constexpr double Bottom = -100.;
 	constexpr double Height = 400.;
 	constexpr double Margin = 100.;
-	constexpr double Radius = 40.;
+	constexpr double SourceRadius = 40.;
 	constexpr int32 GridSide = 142;
 	constexpr double Spacing = 150.;
 	constexpr int32 NumSources = GridSide * GridSide;	// 20 164, a Forest Medium is 142 935
@@ -26,7 +26,7 @@ namespace
 	FBox BoxOf(const int32 Index)
 	{
 		const FVector Base = LocationOf(Index) + FVector(0., 0., Bottom);
-		return FBox(Base - FVector(Radius + Margin, Radius + Margin, Margin), Base + FVector(Radius + Margin, Radius + Margin, Height + Margin));
+		return FBox(Base - FVector(SourceRadius + Margin, SourceRadius + Margin, Margin), Base + FVector(SourceRadius + Margin, SourceRadius + Margin, Height + Margin));
 	}
 
 	/** The union of the boxes of the sources standing, found the long way. */
@@ -65,7 +65,7 @@ bool FHOLSourceNavBoundsTest::RunTest(const FString& Parameters)
 	// 1. Adding: the bounds are exact and no add scans the cylinders already there.
 	for (int32 Index = 0; Index < NumSources; ++Index)
 	{
-		Nav->AddSource(Index, LocationOf(Index), Radius);
+		Nav->AddSource(Index, LocationOf(Index), SourceRadius);
 	}
 	TestEqual(TEXT("every source has its cylinder"), Nav->GetNumCylinders(), NumSources);
 	TestTrue(TEXT("the bounds after the adds are the union of the boxes"), SameBox(Nav->GetCylindersBounds(), ExpectedBounds({})));
@@ -103,7 +103,7 @@ bool FHOLSourceNavBoundsTest::RunTest(const FString& Parameters)
 
 	// 4. Adding a source again (same index, elsewhere) moves its cylinder: the bounds follow.
 	const FVector Far(30000., 0., 50.);
-	Nav->AddSource(GridSide + 1, Far, Radius);
+	Nav->AddSource(GridSide + 1, Far, SourceRadius);
 	FBox Rebuilt(ForceInit);
 	for (int32 Index = 0; Index < NumSources; ++Index)
 	{
@@ -113,7 +113,7 @@ bool FHOLSourceNavBoundsTest::RunTest(const FString& Parameters)
 		}
 	}
 	const FVector FarBase = Far + FVector(0., 0., Bottom);
-	Rebuilt += FBox(FarBase - FVector(Radius + Margin, Radius + Margin, Margin), FarBase + FVector(Radius + Margin, Radius + Margin, Height + Margin));
+	Rebuilt += FBox(FarBase - FVector(SourceRadius + Margin, SourceRadius + Margin, Margin), FarBase + FVector(SourceRadius + Margin, SourceRadius + Margin, Height + Margin));
 	TestTrue(TEXT("a source added again at another place: the bounds are the union with its new box"), SameBox(Nav->GetCylindersBounds(), Rebuilt));
 	TestEqual(TEXT("it still counts once"), Nav->GetNumCylinders(), NumSources - Removed.Num());
 

@@ -1,8 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "GameFramework/GameSession.h"
 #include "HeroesOfLibertyGameModeBase.h"
 
+#include "GameFramework/GameSession.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Engine/GameInstance.h"

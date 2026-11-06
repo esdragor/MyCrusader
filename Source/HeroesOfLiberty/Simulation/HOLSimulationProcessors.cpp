@@ -1,7 +1,8 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "Map/HOLMapBounds.h"
 #include "Simulation/HOLSimulationProcessors.h"
+
+#include "Map/HOLMapBounds.h"
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
