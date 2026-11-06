@@ -39,7 +39,8 @@ waitlog Spearman for 12,
 hol.Select.Type ManAtArms
 frames 10
 hol.HUD.Report
-waitlog HUD stats: attack
+waitlog HUD stats: attack 12, melee armor 4, ranged armor 4, hero armor 2, speed 7
+waitlog HUD stats tip: health 155 | base attack 12 | range melee | siege armor 0
 capture forge_stats_before
 hol.Select.Category Technological
 waitlog Selection: Forge
@@ -53,7 +54,8 @@ waitlog Technology: slot 0 researched MeleeAttackI
 hol.Select.Type ManAtArms
 frames 10
 hol.HUD.Report
-waitlog HUD stats: attack
+waitlog HUD stats: attack 13.2 (+1.2), melee armor 4, ranged armor 4, hero armor 2, speed 7
+waitlog HUD stats tip: health 155 | base attack 12 | technology +10 % | range melee | siege armor 0
 capture forge_stats_after
 hol.Tech.Report
 note 4. Apres la recherche l'Homme d'armes frappe un Lancier pour 13.2 (12 x 1.1) ; les Lanciers ennemis, eux, ne gagnent rien : ils le frappent toujours pour 4.
