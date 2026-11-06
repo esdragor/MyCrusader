@@ -148,7 +148,7 @@ def sources(recipe):
     steppe.KEEP_OUT = keep_out_of(recipe)
     steppe.VEIN_DRAWS = VEIN_DRAWS
     try:
-        placed, groups = steppe.sources(recipe, "forests")
+        placed, groups = steppe.sources(recipe, "forests", camp_veins=True)
     finally:
         steppe.KEEP_OUT, steppe.VEIN_DRAWS = before, draws
     kept = []

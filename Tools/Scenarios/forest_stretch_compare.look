@@ -1,0 +1,15 @@
+fstretch1_small_base | Petite : ma base, forets peintes etirees autour
+fstretch1_small_centre | Petite : le milieu de la carte
+fstretch1_small_forest | Petite : la plus grande foret
+fstretch2_medium_base | Moyenne : ma base, forets peintes etirees autour
+fstretch2_medium_centre | Moyenne : le milieu de la carte
+fstretch2_medium_forest | Moyenne : la plus grande foret
+fstretch3_normal_base | Normale : ma base, forets peintes etirees autour
+fstretch3_normal_centre | Normale : le milieu de la carte
+fstretch3_normal_forest | Normale : la plus grande foret
+fstretch4_large_base | Grande : ma base, forets peintes etirees autour
+fstretch4_large_centre | Grande : le milieu de la carte
+fstretch4_large_forest | Grande : la plus grande foret
+fstretch5_huge_base | Immense : ma base, forets peintes etirees autour
+fstretch5_huge_centre | Immense : le milieu de la carte
+fstretch5_huge_forest | Immense : la plus grande foret

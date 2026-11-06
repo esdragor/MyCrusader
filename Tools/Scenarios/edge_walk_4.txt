@@ -1,0 +1,38 @@
+# Bord de la carte, les 4 directions : 5 paysans a chaque bord (ouest, nord, est, sud) de la Foret Petite, la limite de jeu en rouge ; selectionne un groupe et clique au-dela du rouge
+hol.Cheat.Resources 500
+hol.Camera.Zoom -4
+hol.Map.ShowBounds 1
+frames 5
+hol.Camera.FocusNear -4500 0
+frames 5
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+hol.Camera.FocusNear 16500 21000
+frames 5
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 10
+hol.Camera.FocusNear 37500 0
+frames 5
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 15
+hol.Camera.FocusNear 16500 -21000
+frames 5
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 20
+hol.Camera.Focus -22000 0
+frames 40
+capture edge4_ouest
+hol.Camera.Focus 0 21500
+frames 40
+capture edge4_nord
+hol.Camera.Focus 22000 0
+frames 40
+capture edge4_est
+hol.Camera.Focus 0 -21500
+frames 40
+capture edge4_sud
+hol.Camera.Focus -22000 0
+hol.Select.Own
+frames 5
+note 4 groupes de 5 paysans, un a chaque bord de la carte (ouest, nord, est, sud) ; le rouge = la limite de jeu. Selectionne un groupe au cadre et clique au-dela du rouge : ils doivent s'arreter au rouge.
+note Essaie aussi un ordre en diagonale, plusieurs groupes a la fois, et Shift.

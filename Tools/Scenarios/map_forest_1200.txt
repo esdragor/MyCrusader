@@ -1,0 +1,18 @@
+# La Foret profonde Grande (8 joueurs) a 1 200 arbres par joueur (au lieu de 1 800, qui ne tient pas) : le milieu de la carte et les forets, vue large
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 60
+note Foret profonde Grande a 1 200 arbres par joueur : regarde la densite des forets entre les bases.
+hol.Camera.Focus 0 0
+frames 60
+capture f1200_c0
+hol.Camera.Focus 6000 6000
+frames 60
+capture f1200_c1
+hol.Camera.Focus -6000 -6000
+frames 60
+capture f1200_c2
+hol.Camera.Focus 6000 -9000
+frames 60
+capture f1200_c3

@@ -42,6 +42,7 @@ The shared pieces, in the order they are placed:
                default, `seed=N` for create_match_map.py) is what they are drawn from. Plain keeps its grid wood.
 """
 import csv
+import glob
 import math
 import os
 
@@ -1482,6 +1483,293 @@ def lay_relays_and_sources(recipe, module):
     raise last
 
 
+def edits_path(recipe):
+    return os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_dir()), "Tools", "Data", "MapEdits", recipe.map_path.rsplit("/", 1)[1] + ".json")
+
+
+def edit_hash(x, y):
+    """A value in [0, 1) from a position: the same tree is kept or dropped every time."""
+    value = math.sin(x * 12.9898 + y * 78.233) * 43758.5453
+    return value - math.floor(value)
+
+
+def relattice(added, kept, spacing):
+    """The painted trees re-seeded on a regular hex lattice of `spacing` cm (a little jitter) over the area they cover (settings "lattice"): the painter's
+    own spacing and any thinning leave an uneven pattern (2026-11-05: after a gap filter the painted trees' nearest neighbour was 1.43 m against the
+    recipe's groves 0.89 m, the user saw two kinds of forest); this gives the painted forests the spacing asked, whatever the painting. A node is kept
+    if a painted tree is within 0.8 x spacing and no other source of the map is too near (a tree 0.7 x spacing, anything else 2 m)."""
+    trees = [a for a in added if a["type"] == "Tree"]
+    others = [a for a in added if a["type"] != "Tree"]
+    reach = 0.8 * spacing
+    cell = 200.0
+    painted = {}
+    for a in trees:
+        painted.setdefault((int(a["x"] // cell), int(a["y"] // cell)), []).append((a["x"], a["y"]))
+    fixed = {}
+    for source in kept:
+        at = source.get_editor_property("location")
+        kind = str(source.get_editor_property("type"))
+        fixed.setdefault((int(at.x // cell), int(at.y // cell)), []).append((at.x, at.y, kind == "Tree"))
+    row = spacing * 0.8660254
+
+    def near_painted(x, y):
+        cx, cy = int(x // cell), int(y // cell)
+        return any(math.dist((x, y), q) <= reach for i in (-1, 0, 1) for j in (-1, 0, 1) for q in painted.get((cx + i, cy + j), ()))
+
+    def blocked(x, y):
+        cx, cy = int(x // cell), int(y // cell)
+        for i in (-1, 0, 1):
+            for j in (-1, 0, 1):
+                for ox, oy, is_tree in fixed.get((cx + i, cy + j), ()):
+                    if math.dist((x, y), (ox, oy)) < (0.7 * spacing if is_tree else 200.0):
+                        return True
+        return False
+
+    nodes = set()
+    for a in trees:
+        i0, j0 = int(round(a["x"] / row)), int(round(a["y"] / spacing))
+        for i in range(i0 - 1, i0 + 2):
+            for j in range(j0 - 1, j0 + 2):
+                nodes.add((i, j))
+    out = []
+    for i, j in sorted(nodes):
+        x = i * row + (edit_hash(i, j) - 0.5) * 0.16 * spacing
+        y = j * spacing + (spacing / 2 if i & 1 else 0.0) + (edit_hash(j + 0.5, i) - 0.5) * 0.16 * spacing
+        if near_painted(x, y) and not blocked(x, y):
+            out.append({"type": "Tree", "x": round(x), "y": round(y)})
+    return out + others
+
+
+ROCK_MARGIN = 100.0  # cm: a painted tree this near an obstacle's bounds is left out too (the tests' raster of rocks is a cell coarser than the bounds)
+
+
+def drop_buried(added):
+    """2026-11-06: the painted (or stretched) trees that fall inside a collision obstacle of the level (a rock, a ridge, a wall: the static meshes of the map's
+    own pieces, spawned before the sources; the ground and the flat water have none or are huge) are left out, as the tests' "no source inside a rock" asks.
+    The box is the actor's axis-aligned bounds (a superset of its footprint) taken in by nothing."""
+    boxes = []
+    for actor in unreal.get_editor_subsystem(unreal.EditorActorSubsystem).get_all_level_actors():
+        if not isinstance(actor, unreal.StaticMeshActor):
+            continue
+        origin, extent = actor.get_actor_bounds(True)
+        if extent.x <= 0.0 or extent.y <= 0.0 or extent.x > 20000.0 or extent.y > 20000.0:
+            continue
+        boxes.append((origin.x - extent.x - ROCK_MARGIN, origin.x + extent.x + ROCK_MARGIN, origin.y - extent.y - ROCK_MARGIN, origin.y + extent.y + ROCK_MARGIN))
+    if not boxes:
+        return added
+    cell = 1000.0
+    grid = {}
+    for number, box in enumerate(boxes):
+        for i in range(int(box[0] // cell), int(box[1] // cell) + 1):
+            for j in range(int(box[2] // cell), int(box[3] // cell) + 1):
+                grid.setdefault((i, j), []).append(number)
+    kept = []
+    for source in added:
+        at = source.get_editor_property("location")
+        if str(source.get_editor_property("type")) == "Tree" and any(boxes[n][0] <= at.x <= boxes[n][1] and boxes[n][2] <= at.y <= boxes[n][3] for n in grid.get((int(at.x // cell), int(at.y // cell)), ())):
+            continue
+        kept.append(source)
+    if len(kept) != len(added):
+        print("[maps] %d painted trees inside an obstacle left out" % (len(added) - len(kept)))
+    return kept
+
+
+def reserved_discs(recipe, relays, module):
+    """2026-11-06 (the user, on an Arriere-pays trial: "the altar, the camps, the capturable zones must have no resource on them"): [(x, y, radius)] where no
+    painted or stretched source may stand: every slot's base (BASE_REACH), every relay's zone (+ 300 cm), every volcano altar (+ 300 cm)."""
+    discs = [(recipe.slot(index)[0][0], recipe.slot(index)[0][1], BASE_REACH) for index in range(len(recipe.angles))]
+    discs += [(relay[0], relay[1], (relay[2] if len(relay) > 2 else RELAY_RADIUS) + 300.0) for relay in relays]
+    for site in (module.volcano(recipe) if hasattr(module, "volcano") else ()):
+        discs.append((site["altar"][0], site["altar"][1], site["altar"][2] + 300.0))
+    return discs
+
+
+def drop_reserved(added, recipe, relays, module):
+    """The painted or stretched sources (any type) inside a reserved disc (reserved_discs) left out."""
+    discs = reserved_discs(recipe, relays, module)
+    kept = []
+    for source in added:
+        at = source.get_editor_property("location")
+        if any(math.dist((at.x, at.y), (x, y)) < radius for x, y, radius in discs):
+            continue
+        kept.append(source)
+    if len(kept) != len(added):
+        print("[maps] %s: %d painted sources on a camp, a relay or an altar left out" % (recipe.map_path, len(added) - len(kept)))
+    return kept
+
+
+def stretch_edits(recipe, sources, relays, module):
+    """2026-11-05 (the user, after validating the painted Forest_Medium: "forget the ratio, it is an enlargement of the map, like a stretch, as far as the
+    forests go"): a size with no edits file of its own takes the painted forests of the map's Medium file (Tools/Data/MapEdits/<Map>_Medium.json) when its
+    settings say {"stretch": true, "source_half": <the Medium's bounds_half>}: the painted area is scaled by recipe.bounds_half / source_half, round the map's
+    centre, and re-seeded on the same hex lattice (settings "lattice", cm), so that the trees follow the surface, not a budget. The recipe's own sources
+    (bases, deposits, groves) stay where the recipe put them: a lattice node is dropped where it is too near one of them (relattice's rule), within BASE_REACH of a
+    slot, in front of a ridge, in a relay's disc, or where the module's stretch_blocked(recipe, point) says (the Forest's roads). The Medium's own strokes (the
+    erasers) are not carried over: they were drawn on the Medium recipe's groves."""
+    import json
+    name = recipe.map_path.rsplit("/", 1)[1]
+    prefix = name.rsplit("_", 1)[0]
+    folder = os.path.dirname(edits_path(recipe))
+    # 2026-11-06 (the user: "do it for every map"): the reference is whichever size of the map the user painted (<Map>_<Size>.json, any size, not only the
+    # Medium); its settings file may say {"stretch": false} to refuse, "lattice" (default 90 cm) and "source_half" (default: the half side of that size's
+    # layout, Saved/MapLayouts/<file>.json, written by its generation). A size with an edits file of its own keeps its own strokes.
+    if os.path.exists(os.path.join(folder, name + ".json")):
+        return sources
+    best = None
+    for candidate in sorted(glob.glob(os.path.join(folder, prefix + "_*.json"))):
+        stem = os.path.basename(candidate)[:-len(".json")]
+        if stem.endswith(".settings") or stem == name:
+            continue
+        with open(candidate, encoding="utf-8") as handle:
+            count = sum(1 for a in json.load(handle).get("add", []) if a["type"] == "Tree")
+        if count > 0 and (best is None or count > best[1]):
+            best = (stem, count)
+    if best is None:
+        return sources
+    base = os.path.join(folder, best[0])
+    settings = {}
+    if os.path.exists(base + ".settings.json"):
+        with open(base + ".settings.json", encoding="utf-8") as handle:
+            settings = json.load(handle)
+    if not settings.get("stretch", True):
+        return sources
+    settings.setdefault("lattice", 90.0)
+    if "source_half" not in settings:
+        layout = os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()), "MapLayouts", best[0] + ".json")
+        if not os.path.exists(layout):
+            print("[maps] %s: no layout of %s (Saved/MapLayouts) and no source_half in its settings: its painted trees are not stretched" % (recipe.map_path, best[0]))
+            return sources
+        with open(layout, encoding="utf-8") as handle:
+            settings["source_half"] = float(json.load(handle)["half"])
+    if float(settings["lattice"]) <= 0:
+        return sources
+    with open(base + ".json", encoding="utf-8") as handle:
+        painted_source = [(a["x"], a["y"]) for a in json.load(handle).get("add", []) if a["type"] == "Tree"]
+    scale = recipe.bounds_half / float(settings["source_half"])
+    spacing = float(settings["lattice"])
+    row = spacing * 0.8660254
+    cell = 200.0
+    reach = 0.8 * spacing
+    painted = {}
+    for x, y in painted_source:
+        painted.setdefault((int(x // cell), int(y // cell)), []).append((x, y))
+
+    def near_painted(x, y):  # (x, y) in the Medium's coordinates
+        cx, cy = int(x // cell), int(y // cell)
+        return any(math.dist((x, y), q) <= reach for i in (-1, 0, 1) for j in (-1, 0, 1) for q in painted.get((cx + i, cy + j), ()))
+
+    fixed = {}
+    for source in sources:
+        at = source.get_editor_property("location")
+        kind = str(source.get_editor_property("type"))
+        fixed.setdefault((int(at.x // cell), int(at.y // cell)), []).append((at.x, at.y, kind == "Tree"))
+    slots = [recipe.slot(index)[0] for index in range(len(recipe.angles))]
+    ridges = ridge_points(recipe)
+    blocked_by_module = getattr(module, "stretch_blocked", None)
+    margin = 600.0
+
+    def blocked(x, y):
+        if abs(x) > recipe.bounds_half - margin or abs(y) > recipe.bounds_half - margin:
+            return True
+        cx, cy = int(x // cell), int(y // cell)
+        for i in (-1, 0, 1):
+            for j in (-1, 0, 1):
+                for ox, oy, is_tree in fixed.get((cx + i, cy + j), ()):
+                    if math.dist((x, y), (ox, oy)) < (0.7 * spacing if is_tree else 200.0):
+                        return True
+        if any(math.dist((x, y), slot) < BASE_REACH for slot in slots):
+            return True
+        if any(math.dist((x, y), ridge) < 1000.0 for ridge in ridges):
+            return True
+        if any(math.dist((x, y), (relay[0], relay[1])) < (relay[2] if len(relay) > 2 else RELAY_RADIUS) + 300.0 for relay in relays):
+            return True
+        return bool(blocked_by_module and blocked_by_module(recipe, (x, y)))
+
+    # Every lattice node of the target whose Medium-side image is near a painted tree: walk the 200 cm cells of the painted mask, scaled.
+    nodes = set()
+    for (cx, cy) in painted:
+        x0, x1 = cx * cell * scale, (cx + 1) * cell * scale
+        y0, y1 = cy * cell * scale, (cy + 1) * cell * scale
+        for i in range(int(math.floor(x0 / row)), int(math.ceil(x1 / row)) + 1):
+            for j in range(int(math.floor((y0 - spacing) / spacing)), int(math.ceil(y1 / spacing)) + 1):
+                nodes.add((i, j))
+    out = []
+    for i, j in sorted(nodes):
+        x = i * row + (edit_hash(i, j) - 0.5) * 0.16 * spacing
+        y = j * spacing + (spacing / 2 if i & 1 else 0.0) + (edit_hash(j + 0.5, i) - 0.5) * 0.16 * spacing
+        if near_painted(x / scale, y / scale) and not blocked(x, y):
+            out.append(placed_source("Tree", round(x), round(y)))
+    print("[maps] %s: painted forests of %s stretched x%.3f (lattice %.0f cm): %d trees added" % (recipe.map_path, best[0], scale, spacing, len(out)))
+    return sources + drop_reserved(drop_buried(out), recipe, relays, module)
+
+
+def apply_edits(recipe, sources, relays=(), module=None):
+    """The map painter's strokes (2026-11-05, the user: "give me an editor, I paint on the map"), applied after the recipe: {"remove": [{"x", "y", "r", "types": [..] or absent}],
+    "add": [{"type", "x", "y"}]} in centimetres, the world's coordinates. A remove drops the sources whose centre is within r of (x, y) (of the types listed, or
+    any); an add places one source. No file = the recipe as it is."""
+    path = edits_path(recipe)
+    if not os.path.exists(path):
+        return stretch_edits(recipe, sources, relays, module)
+    import json
+    with open(path, encoding="utf-8") as handle:
+        edits = json.load(handle)
+    kept = []
+    for source in sources:
+        at = source.get_editor_property("location")
+        kind = str(source.get_editor_property("type"))
+        if any(math.dist((at.x, at.y), (cut["x"], cut["y"])) <= cut["r"] and ("types" not in cut or kind in cut["types"]) for cut in edits.get("remove", [])):
+            continue
+        kept.append(source)
+    # Tools/Data/MapEdits/<map file>.settings.json (2026-11-05, the user: "space the trees by 0.2 and take one tree in two out"): {"keep": 0.5, "gap": 110} -
+    # keep = the fraction of the painted TREES kept (chosen by a hash of the position: even, no stripes), gap = the least distance in cm between two
+    # painted trees (greedy, in the file's order, after the thinning). No file = every painted tree. The painter's forests are very dense (131 782 trees
+    # on one Medium map): the numbers belong to the map, so that a plain regeneration gives the same file.
+    keep, gap, lattice = 1.0, 0.0, 0.0
+    settings_file = path.replace(".json", ".settings.json")
+    if os.path.exists(settings_file):
+        with open(settings_file, encoding="utf-8") as handle:
+            settings = json.load(handle)
+        keep, gap, lattice = float(settings.get("keep", 1.0)), float(settings.get("gap", 0.0)), float(settings.get("lattice", 0.0))
+    wanted = [add for add in edits.get("add", []) if add["type"] != "Tree" or keep >= 1.0 or edit_hash(add["x"], add["y"]) < keep]
+    if gap > 0:
+        cells, spaced = {}, []
+        for add in wanted:
+            if add["type"] == "Tree":
+                cx, cy = int(add["x"] // gap), int(add["y"] // gap)
+                if any(math.dist((add["x"], add["y"]), other) < gap for dx in (-1, 0, 1) for dy in (-1, 0, 1) for other in cells.get((cx + dx, cy + dy), ())):
+                    continue
+                cells.setdefault((cx, cy), []).append((add["x"], add["y"]))
+            spaced.append(add)
+        wanted = spaced
+    if lattice > 0:
+        wanted = relattice(wanted, kept, lattice)
+    added = drop_reserved(drop_buried([placed_source(add["type"], add["x"], add["y"]) for add in wanted]), recipe, relays, module)
+    # 2026-11-06: the painter does not show the Forest's roads: a painted tree in a road's corridor (the module's stretch_blocked) is left out, as for a stretched one.
+    blocked_by_module = getattr(module, "stretch_blocked", None)
+    if blocked_by_module:
+        before_roads = len(added)
+        added = [a for a in added if str(a.get_editor_property("type")) != "Tree" or not blocked_by_module(recipe, (a.get_editor_property("location").x, a.get_editor_property("location").y))]
+        if len(added) != before_roads:
+            print("[maps] %s: %d painted trees in a road's corridor left out" % (recipe.map_path, before_roads - len(added)))
+    print("[maps] %s: %d strokes applied, %d sources removed, %d added" % (recipe.map_path, len(edits.get("remove", [])) + len(edits.get("add", [])), len(sources) - len(kept), len(added)))
+    return kept + added
+
+
+def export_layout(recipe, relays, sources):
+    """Saved/MapLayouts/<map file>.json for the map painter: bounds, slots, relays and every source (type, x, y)."""
+    import json
+    folder = os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()), "MapLayouts")
+    os.makedirs(folder, exist_ok=True)
+    slots = [list(recipe.slot(index)[0]) for index in range(len(recipe.angles))]
+    rows = []
+    for source in sources:
+        at = source.get_editor_property("location")
+        rows.append([str(source.get_editor_property("type")), round(at.x), round(at.y)])
+    data = {"map": recipe.map_path.rsplit("/", 1)[1], "half": recipe.bounds_half, "slots": slots, "relays": [list(relay) for relay in relays], "sources": rows}
+    with open(os.path.join(folder, recipe.map_path.rsplit("/", 1)[1] + ".json"), "w", encoding="utf-8") as handle:
+        json.dump(data, handle, separators=(",", ":"))
+
+
 def make_map(recipe, module, on_saved):
     """One map file: the shared pieces, then the map module's obstacles and sources, then the navmesh and the save."""
     slot_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLStartSlot")
@@ -1533,6 +1821,8 @@ def make_map(recipe, module, on_saved):
     layout = spawn(layout_class, label="SourceLayout")
     relays, sources, groups = lay_relays_and_sources(recipe, module)
     sources = outside_relays(sources, relays)  # what the far layer's clearance did not keep out (R2)
+    sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
+    export_layout(recipe, relays, sources)  # Saved/MapLayouts/<map file>.json: what the map painter shows
     layout.set_editor_property("sources", sources)
     if relays:
         spawn_relays(relays)

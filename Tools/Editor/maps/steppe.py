@@ -135,6 +135,16 @@ NEAR = [("GoldVein", 1, 11000.0, 12500.0), ("StoneVein", 1, 11000.0, 12500.0), (
         ("Wood", 14, 7500.0, 10500.0)]
 MAX_ATTEMPTS = 3000
 FAR_CANDIDATES = 40000
+# 2026-11-06 (the user: "in the Steppe, the Forest and the Fords every camp must have 3 stone and 3 gold mines; in El Dorado 3 stone mines", "in the camp, like
+# the Plain"): the near layer's veins (3 gold, 3 stone: common.MINERAL_NEAR) are drawn INSIDE the camp (CAMP_VEIN_FROM to CAMP_VEIN_TO from the slot, within
+# common.BASE_REACH, outside the base's wood and berries) instead of at 110-125 m; the totals do not change (same tiers). sources(..., camp_veins=True).
+# They are MOVED after the near layer is drawn (the draws, the gaps and so every other deposit stay where they were: the painted maps keep their forests):
+# six on a ring of CAMP_VEIN_RING cm round the slot, at equal angles (60 degrees for six) from CAMP_VEIN_ANGLE off the direction towards the centre, gold and stone in turn.
+CAMP_VEIN_RING = 5400.0
+CAMP_VEIN_RINGS = [5400.0, 5200.0, 5600.0, 5000.0, 5800.0]  # tried in turn: the first ring whose points keep their gaps (camp_ring)
+CAMP_VEIN_ANGLE = math.radians(15.0)
+CAMP_VEIN_EDGE = 800.0  # a camp vein is this far from the bounds at least (a Small map's camps are 55 m from its edge)
+CAMP_VEINS = False
 
 # Salts of the generators: one family of numbers each, so that changing one never shifts another.
 SALT_NEAR, SALT_NEAR_SHAPE, SALT_NOISE, SALT_DIPS, SALT_FAR, SALT_KINDS, SALT_SHAPE, SALT_FRAME, SALT_FILL, SALT_VEINS = range(101, 111)
@@ -280,8 +290,9 @@ def near_layer(recipe):
     for index in range(places):
         _, radial, _ = recipe.slot(index)
         for kind, size, point, seed in pattern:
+            at = rotate(point, index * step)
             # The frame of the deposit: the slot's own (radial outward), as in the base: the same shape at every slot.
-            deposits.append(Deposit(kind, size, rotate(point, index * step), radial, seed, near_room(kind, size)))
+            deposits.append(Deposit(kind, size, at, radial, seed, near_room(kind, size)))
     return deposits
 
 
@@ -635,6 +646,64 @@ def empty_circle(recipe, points):
 
 
 def layout(recipe):
+    """_layout, then (CAMP_VEINS) the near layer's veins moved into the camps: done last, so that the far veins, the groves and every draw of the layout are the
+    ones the near veins at 110-125 m gave (a painted map keeps its forests, its erasers and its relays)."""
+    deposits = _layout(recipe)
+    if CAMP_VEINS:
+        per_slot = camp_veins_of(recipe, deposits)
+        ring, angle = camp_ring(recipe, deposits, per_slot)
+        for index, slot_veins in enumerate(per_slot):
+            slot, radial, _ = recipe.slot(index)
+            towards = (-radial[0], -radial[1])
+            for number, deposit in enumerate(slot_veins):
+                direction = rotate(towards, angle + number * 2.0 * math.pi / len(slot_veins))
+                deposit.at = (slot[0] + direction[0] * ring, slot[1] + direction[1] * ring)
+                deposit.cached = None
+    return deposits
+
+
+def camp_ring(recipe, deposits, per_slot):
+    """(radius, first angle) of the ring of a camp's veins: the first of CAMP_VEIN_RINGS (then the angles from CAMP_VEIN_ANGLE, 1 degree apart, both sides)
+    whose points keep VEIN_GAP + 100 from every other deposit's sources and the base's, and are not kept out. The same at every slot (the pattern is turned)."""
+    slot, radial, _ = recipe.slot(0)
+    towards = (-radial[0], -radial[1])
+    count = len(per_slot[0])
+    others = [point for deposit in deposits if deposit not in per_slot[0] for point in deposit.points() if math.dist(point, slot) < 10000.0]
+    base = [(x, y) for _, x, y in base_sources(recipe) if math.dist((x, y), slot) < 10000.0]
+    # The gap asked of the other deposits' sources: the Steppe's (VEIN_GAP + 100, Map.Steppe's rule); a map of dense forests (the groves are 200 trees and more)
+    # may not hold it: then 1 200, then 600 cm (a trunk is 120 across).
+    for gap in (VEIN_GAP + 100.0, 1200.0, 600.0):
+        for ring in CAMP_VEIN_RINGS:
+            for step in range(0, 61):
+                for sign in ((1,) if step == 0 else (1, -1)):
+                    angle = CAMP_VEIN_ANGLE + sign * math.radians(step)
+                    points = []
+                    for number in range(count):
+                        direction = rotate(towards, angle + number * 2.0 * math.pi / count)
+                        points.append((slot[0] + direction[0] * ring, slot[1] + direction[1] * ring))
+                    if any(kept_out(point) or max(abs(point[0]), abs(point[1])) > recipe.bounds_half - CAMP_VEIN_EDGE for point in points):
+                        continue
+                    if all(math.dist(point, other) >= gap for point in points for other in others) and all(math.dist(point, other) >= 1500.0 for point in points for other in base):
+                        return ring, angle
+    # Nothing keeps all its gaps (the dense forests' groves of 400 trees and more cover the camps' surroundings): the first ring as it is, the way it was before the
+    # search (the maps made so far have it, and the layout's own rules, not these gaps, are what Map.Forest and Map.Table test).
+    print("[maps] %s: no camp-veins ring keeps its gaps, the first ring is taken as it is" % recipe.map_path)
+    return CAMP_VEIN_RING, CAMP_VEIN_ANGLE
+
+
+def camp_veins_of(recipe, deposits):
+    """[[the near veins of slot 0], [of slot 1]...] in the order of NEAR: the veins within NEAR_VEIN_END of their slot (the far ones are all farther, Map.Steppe)."""
+    slots = slot_positions(recipe)
+    per_slot = [[] for _ in slots]
+    for deposit in deposits:
+        if deposit.is_vein:
+            index = nearest(deposit.at, slots)
+            if math.dist(deposit.at, slots[index]) < NEAR_VEIN_END:
+                per_slot[index].append(deposit)
+    return per_slot
+
+
+def _layout(recipe):
     """All the deposits of the match beside the bases: the near layer, then the far layer. Deterministic from recipe.layout_seed.
     The far layer is thrown at FAR_GAP_START and the gap shrinks by FAR_GAP_STEP until every territory has the points it needs
     for groves of the smallest mean of GROVE_MEANS that works (many small deposits first); its holes are filled down to
@@ -697,22 +766,49 @@ def obstacles(recipe):
 # former forests back. A tree stays 100 wood.
 FOREST_FACTOR = float(os.environ.get("HOL_FOREST_FACTOR", "3"))
 STEPPE_FACTOR = float(os.environ.get("HOL_STEPPE_FACTOR", "1.5"))
+# 2026-11-05 15:30 (the user, after the captures of the Deep Forest Large at 1 200 per player: "on valide Foret profonde"): the Deep Forest no longer follows
+# FOREST_FACTOR: its own factor is 2 (base 600, Huge 900: 1 200 per player, Huge 1 800), because 1 800 per player does not fit at Large (RoomError, "the far layer
+# cannot hold the territories"). HOL_DENSE_FACTOR=3 gives the 1 800 back.
+DENSE_FACTOR = float(os.environ.get("HOL_DENSE_FACTOR", "4"))  # 2026-11-05: 4 = 2 400 trees per player: the layout the user painted Forest_Medium on
+# 2026-11-05 (the user, on the captures of the Deep Forest Large at 1 200: "you can put twice as many, there are enormous voids"): HOL_DENSE_GROVE scales the
+# Deep Forest's grove sizes (200-230 trees; x2 = 400-460) so that few far points can hold a doubled budget (HOL_DENSE_FACTOR=4 = 2 400 per player).
+DENSE_GROVE = float(os.environ.get("HOL_DENSE_GROVE", "2"))  # 2026-11-05: groves of 400-460 (the painted layout; Forest Large does not fit at these values yet)
 NEAR_FORESTS = int(os.environ.get("HOL_NEAR_FORESTS", "3"))  # real forests: how many of NEAR's three woods stay (as big as a forest)
 WOODS = {
     "steppe": ({"default": (int(400 * STEPPE_FACTOR), 15), "Huge": (int(600 * STEPPE_FACTOR), 23)}, [30, 34, 37, 40],
                [34, 34, 30, 37, 40, 34, 34, 30, 37, 40], [34.0, 35.0, 36.0, 37.0, 38.0], 35),
     "forests": ({"default": (int(400 * FOREST_FACTOR), 15), "Huge": (int(600 * FOREST_FACTOR), 23)}, [200, 210, 220, 230],
                 [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
-    "dense": ({"default": (int(600 * FOREST_FACTOR), 15), "Huge": (int(900 * FOREST_FACTOR), 23)}, [200, 210, 220, 230],
-              [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
+    "dense": ({"default": (int(600 * DENSE_FACTOR), 15), "Huge": (int(900 * DENSE_FACTOR), 23)}, [int(g * DENSE_GROVE) for g in (200, 210, 220, 230)],
+              [int(g * DENSE_GROVE) for g in (210, 200, 220, 210, 230, 200)], [g * DENSE_GROVE for g in (205.0, 210.0, 215.0, 220.0, 225.0)],
+              int(210 * DENSE_GROVE)),
+    # 2026-11-05 (the user: "forget the ratio, the forests are an enlargement of the map"): the Deep Forest's sizes other than the painted Medium keep the
+    # recipe's own groves at the x2 that fits everywhere (1 200 per player, groves of 200-230); the forests themselves come from common.stretch_edits.
+    "dense_x2": ({"default": (1200, 15), "Huge": (1800, 23)}, [200, 210, 220, 230], [210, 200, 220, 210, 230, 200], [205.0, 210.0, 215.0, 220.0, 225.0], 210),
 }
 
 
-def sources(recipe, woods="steppe"):
+# 2026-11-06: the x3 does not fit at these sizes of the "forests" profile (RoomError at generation: the far layer cannot hold the territories / no place for a far
+# pile / no room for a grove); the factor that fits, found by HOL_FOREST_FACTOR trials (the user's answer of 2026-11-05: lower only the maps that do not hold x3).
+TREE_FACTOR_FITS = {("Cols", "Large"): 2.0, ("Cols", "Huge"): 2.5, ("Hinterland", "Normal"): 2.5}
+
+
+def budget_for(woods, recipe):
+    """WOODS[woods]'s budget table, lowered to TREE_FACTOR_FITS' factor for this map and size ("forests" profile only: FOREST_FACTOR is what it replaces)."""
+    table = WOODS[woods][0]
+    factor = TREE_FACTOR_FITS.get((recipe.map_name, recipe.size_key)) if woods == "forests" else None
+    if factor is None or factor >= FOREST_FACTOR:
+        return table
+    return {size: (int(trees * factor / FOREST_FACTOR), berries) for size, (trees, berries) in table.items()}
+
+
+def sources(recipe, woods="steppe", camp_veins=None):
     """The sources of the match (D297), as AHOLSourceLayout data: the reduced bases, then the deposits, each in turn. woods: a key of WOODS."""
-    global BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, NEAR
-    before = (BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, common.PACK_TREES, NEAR)
+    global BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, NEAR, CAMP_VEINS
+    before = (BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, common.PACK_TREES, NEAR, CAMP_VEINS)
+    CAMP_VEINS = woods == "steppe" if camp_veins is None else camp_veins
     BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, common.PACK_TREES = WOODS[woods]
+    BUDGET = budget_for(woods, recipe)
     NEAR = [(kind, GROVE_LADDER[0] if kind == "Wood" else size, nearest, farthest) for kind, size, nearest, farthest in NEAR]  # the near woods are as big as the smallest grove
     if woods != "steppe":
         woods_in_near = [i for i, entry in enumerate(NEAR) if entry[0] == "Wood"]
@@ -725,7 +821,7 @@ def sources(recipe, woods="steppe"):
         for deposit in deposits:
             placed += deposit.sources()
     finally:
-        BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, common.PACK_TREES, NEAR = before
+        BUDGET, GROVE_LADDER, GROVE_CYCLE, GROVE_MEANS, MIN_EXTENT, FAR_FLOOR, common.PACK_TREES, NEAR, CAMP_VEINS = before
     return placed, len(deposits) // len(recipe.angles)
 
 
@@ -741,7 +837,7 @@ def volcano(recipe):
 
 def floor_of(woods, recipe):
     """The trees a territory must hold at this size for the WOODS profile (the budget)."""
-    table = WOODS[woods][0]
+    table = budget_for(woods, recipe)
     return table.get(recipe.size_key, table["default"])[0]
 
 

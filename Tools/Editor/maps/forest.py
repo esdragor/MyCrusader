@@ -93,11 +93,12 @@ def sources(recipe):
     before = (steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.BUDGET, steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS, steppe.MIN_EXTENT,
               steppe.FAR_FLOOR, common.PACK_TREES)
     # 2026-11-04 (the user): the forest holds 600 trees per player (Huge 900, steppe.WOODS["dense"]) in real forests of 200 trees or more.
-    reach = ROAD_RADIUS + ROAD_CLEAR + steppe.extent("Wood", steppe.WOODS["dense"][1][0])
+    profile = "dense" if recipe.size_key == "Medium" else "dense_x2"  # the painted Medium's layout; the other sizes stretch its forests (common.stretch_edits)
+    reach = ROAD_RADIUS + ROAD_CLEAR + steppe.extent("Wood", steppe.WOODS[profile][1][0])
     steppe.KEEP_OUT = lambda point: distance_to_road(recipe, point) < reach
     steppe.VEIN_DRAWS = VEIN_DRAWS
     try:
-        placed, groups = steppe.sources(recipe, "dense")
+        placed, groups = steppe.sources(recipe, profile, camp_veins=True)
     finally:
         (steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.BUDGET, steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS, steppe.MIN_EXTENT,
          steppe.FAR_FLOOR, common.PACK_TREES) = before
@@ -107,6 +108,11 @@ def sources(recipe):
         if distance_to_road(recipe, (at.x, at.y)) >= ROAD_RADIUS + ROAD_CLEAR:
             kept.append(source)
     return kept, groups
+
+
+def stretch_blocked(recipe, point):
+    """common.stretch_edits: no stretched painted tree in a road's corridor (ROAD_RADIUS + ROAD_CLEAR from its axis, the recipe's own rule)."""
+    return distance_to_road(recipe, point) < ROAD_RADIUS + ROAD_CLEAR
 
 
 def obstacles(recipe):

@@ -1,0 +1,25 @@
+# Repro 2 : groupe de 20 paysans, ordres au-dela du bord ouest, en diagonale et vers un coin (Foret Petite, bord a -22000, coin -22000/-22000)
+hol.Camera.Zoom -7
+hol.Camera.FocusNear -4500 0
+frames 5
+hol.Units.SpawnHere 20 Peasant 0 250
+waitunits 20
+hol.Camera.Focus -23000 0
+frames 40
+hol.Select.Own
+frames 5
+hol.Select.OrderGround -25000 0
+frames 5
+wait 14
+hol.Units.Report 25
+hol.Select.OrderGround -25000 5000
+frames 5
+wait 12
+hol.Units.Report 25
+hol.Camera.Focus -23000 -20000
+frames 40
+hol.Select.OrderGround -25000 -25000
+frames 5
+wait 50
+hol.Units.Report 25
+hol.Nav.Units 10

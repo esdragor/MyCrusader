@@ -1,0 +1,417 @@
+<title>Peintre de cartes</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Layout: a tool. Left rail of brushes, the map filling the middle, a counts panel on the right (below the map on a phone).
+     Colour: ground-tinted neutrals (green-grey), sources keep their game colours in both themes. */
+  :root {
+    --bg: #eef1ec; --panel: #e2e7df; --edge: #c3cbbf; --fg: #1d261f; --muted: #5a6a5e; --accent: #1f6fb5; --accent-fg: #fff;
+    --canvas: #d9e2d3; --grid: #b9c5b3; --void: rgba(214, 120, 40, .22);
+    --tree: #2f7a3c; --berry: #c8423a; --gold: #c9971a; --stone: #6f7a88; --slot: #1f6fb5; --relay: #8a5cc0;
+    --font-ui: "IBM Plex Sans", system-ui, sans-serif; --font-num: "IBM Plex Mono", ui-monospace, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #151a16; --panel: #1e251f; --edge: #2f3a31; --fg: #e3eae4; --muted: #92a395; --accent: #5aa8ee; --accent-fg: #0b1a28;
+      --canvas: #1b231c; --grid: #2b362d; --void: rgba(235, 140, 60, .24);
+      --tree: #4fae5c; --berry: #ec6b60; --gold: #e8b93a; --stone: #98a3b3; --slot: #5aa8ee; --relay: #b48be8; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #151a16; --panel: #1e251f; --edge: #2f3a31; --fg: #e3eae4; --muted: #92a395; --accent: #5aa8ee; --accent-fg: #0b1a28;
+    --canvas: #1b231c; --grid: #2b362d; --void: rgba(235, 140, 60, .24);
+    --tree: #4fae5c; --berry: #ec6b60; --gold: #e8b93a; --stone: #98a3b3; --slot: #5aa8ee; --relay: #b48be8; color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); font-size: 14px;
+         padding-block: 12px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  h1 { font-size: 18px; margin: 0; font-weight: 600; letter-spacing: .01em; }
+  header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-bottom: 10px; }
+  header .hint { color: var(--muted); font-size: 12.5px; min-width: 0; }
+  select, button, input { font: inherit; color: inherit; }
+  select, button { background: var(--panel); border: 1px solid var(--edge); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+  button:hover, select:hover { border-color: var(--accent); }
+  button:focus-visible, select:focus-visible, input:focus-visible, canvas:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); font-weight: 600; }
+  .app { display: grid; grid-template-columns: 190px minmax(0, 1fr) 250px; gap: 10px; align-items: start; }
+  .rail, .side { background: var(--panel); border: 1px solid var(--edge); border-radius: 8px; padding: 10px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .rail h2, .side h2 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .tools { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tools button { text-align: left; }
+  .row { display: flex; align-items: center; gap: 8px; }
+  .row label { flex: 0 0 auto; color: var(--muted); font-size: 12.5px; }
+  .row input[type=range] { flex: 1 1 auto; min-width: 0; accent-color: var(--accent); }
+  .row output { font-family: var(--font-num); min-width: 4.5ch; text-align: right; font-size: 12.5px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 6px 12px; }
+  .checks label { display: flex; align-items: center; gap: 5px; font-size: 12.5px; }
+  .swatch { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+  .stage { min-width: 0; }
+  .canvaswrap { position: relative; border: 1px solid var(--edge); border-radius: 8px; overflow: hidden; background: var(--canvas); height: min(78vh, 760px); min-height: 320px; touch-action: none; }
+  canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+  .readout { position: absolute; left: 8px; bottom: 6px; font-family: var(--font-num); font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--canvas) 80%, transparent); padding: 2px 6px; border-radius: 4px; pointer-events: none; }
+  table { width: 100%; border-collapse: collapse; font-family: var(--font-num); font-size: 12px; }
+  th, td { text-align: right; padding: 3px 4px; border-bottom: 1px solid var(--edge); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 500; }
+  .delta-up { color: var(--tree); } .delta-down { color: var(--berry); }
+  .note { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 0; }
+  .msg { font-size: 12.5px; min-height: 1.3em; }
+  @media (max-width: 900px) { .app { grid-template-columns: minmax(0, 1fr); } .tools { grid-template-columns: repeat(4, 1fr); } }
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;600&display=swap">
+
+<header>
+  <h1>Peintre de cartes</h1>
+  <select id="mapSel" aria-label="Carte"></select>
+  <span class="hint">Molette : zoom · clic droit ou Espace + glisser : déplacer · le haut de l'écran est le nord de la minimap du jeu</span>
+</header>
+
+<div class="app">
+  <aside class="rail">
+    <h2>Pinceau</h2>
+    <div class="tools" id="tools">
+      <button data-tool="forest" class="on" title="B">Forêt</button>
+      <button data-tool="erase" title="E">Effacer</button>
+      <button data-tool="put" title="P">Poser</button>
+      <button data-tool="pan" title="H">Main</button>
+    </div>
+    <div class="row"><label for="radius">Rayon</label><input id="radius" type="range" min="3" max="80" value="20"><output id="radiusOut">20 m</output></div>
+    <div id="forestOpts">
+      <div class="row"><label for="spacing">Espace</label><input id="spacing" type="range" min="70" max="200" value="90"><output id="spacingOut">0,9 m</output></div>
+      <p class="note">Forêt : sème des arbres en quinconce dans le cercle, jamais sur une source existante.</p>
+    </div>
+    <div id="eraseOpts" hidden>
+      <h2>Efface</h2>
+      <div class="checks" id="eraseTypes">
+        <label><input type="checkbox" value="Tree" checked><span class="swatch" style="background:var(--tree)"></span>arbres</label>
+        <label><input type="checkbox" value="Berry"><span class="swatch" style="background:var(--berry)"></span>baies</label>
+        <label><input type="checkbox" value="Gold"><span class="swatch" style="background:var(--gold)"></span>or</label>
+        <label><input type="checkbox" value="Stone"><span class="swatch" style="background:var(--stone)"></span>pierre</label>
+      </div>
+    </div>
+    <div id="putOpts" hidden>
+      <h2>Poser un</h2>
+      <select id="putType" aria-label="Source à poser">
+        <option value="Tree">Arbre</option>
+        <option value="BerryBush">Baies</option>
+        <option value="GoldVeinSmall">Or petit 2000</option>
+        <option value="GoldVeinMedium">Or moyen 2500</option>
+        <option value="GoldVein">Or standard 3000</option>
+        <option value="GoldVeinBig">Or gros 4000</option>
+        <option value="StoneVeinSmall">Pierre petit 2000</option>
+        <option value="StoneVeinMedium">Pierre moyen 2500</option>
+        <option value="StoneVein">Pierre standard 3000</option>
+        <option value="StoneVeinBig">Pierre gros 4000</option>
+      </select>
+    </div>
+    <h2>Vue</h2>
+    <div class="checks">
+      <label><input type="checkbox" id="showVoids">vides (cases de 25 m sans source)</label>
+      <label><input type="checkbox" id="showRings" checked>bases et relais</label>
+    </div>
+    <h2>Historique</h2>
+    <div class="row"><button id="undo">Annuler</button><button id="reset">Tout défaire</button></div>
+  </aside>
+
+  <main class="stage">
+    <div class="canvaswrap" id="wrap"><canvas id="cv" tabindex="0" aria-label="Carte vue de dessus"></canvas><div class="readout" id="readout"></div></div>
+  </main>
+
+  <aside class="side">
+    <h2>Par joueur (territoire)</h2>
+    <table id="counts"></table>
+    <p class="note" id="legend"></p>
+    <h2>Fichier de retouches</h2>
+    <p class="note" id="editSummary"></p>
+    <div class="row"><button class="primary" id="save">Enregistrer le fichier</button><button id="copy">Copier</button></div>
+    <div class="msg" id="msg" role="status"></div>
+    <p class="note">Le fichier se range dans <b>Tools/Data/MapEdits/</b> sous le nom indiqué ; la régénération de la carte l'applique par-dessus la recette.</p>
+  </aside>
+</div>
+
+<script>
+const MAPS = /*MAPS*/{};
+const EDITS = /*EDITS*/{};
+const SIZES = { Tree: 60, BerryBush: 110, Gold: 160, Stone: 160 };
+const kindOf = t => t === "Tree" ? "Tree" : t === "BerryBush" ? "Berry" : t.startsWith("Gold") ? "Gold" : "Stone";
+const KIND_VAR = { Tree: "--tree", Berry: "--berry", Gold: "--gold", Stone: "--stone" };
+const $ = id => document.getElementById(id);
+const cv = $("cv"), ctx = cv.getContext("2d"), wrap = $("wrap");
+
+let map = null, name = "";
+let types = [], xs = [], ys = [], alive = [], isNew = [];   // every source, original then added
+let removes = [];                                           // strokes {x, y, r, types}
+let undo = [];                                              // {removed: [indices], added: [indices], stroke: bool}
+let view = { cx: 0, cy: 0, s: 0.01 };
+let tool = "forest", dirty = true, colors = {};
+let grid = new Map();                                       // spatial hash of alive sources, cell 200 cm
+const CELL = 200;
+const key = (x, y) => Math.floor(x / CELL) + "," + Math.floor(y / CELL);
+
+function readColors() {
+  const cs = getComputedStyle(document.documentElement);
+  for (const v of ["--tree","--berry","--gold","--stone","--slot","--relay","--grid","--void","--canvas","--muted","--fg"]) colors[v] = cs.getPropertyValue(v).trim();
+}
+
+function loadMap(n) {
+  name = n; map = MAPS[n];
+  types = map.sources.map(r => r[0]); xs = map.sources.map(r => r[1]); ys = map.sources.map(r => r[2]);
+  alive = types.map(() => true); isNew = types.map(() => false); removes = []; undo = [];
+  try {
+    const saved = JSON.parse(localStorage.getItem("painter:" + n) || "null");
+    if (saved) replay(saved);
+    else if (location.protocol.startsWith("http") && EDITS[n]) replay(EDITS[n]);
+  } catch (e) {}
+  rebuildGrid(); fit(); update();
+}
+
+function rebuildGrid() {
+  grid = new Map();
+  for (let i = 0; i < xs.length; i++) if (alive[i]) { const k = key(xs[i], ys[i]); (grid.get(k) || grid.set(k, []).get(k)).push(i); }
+}
+function nearAlive(x, y, d) {
+  const c = Math.ceil(d / CELL);
+  const cx = Math.floor(x / CELL), cy = Math.floor(y / CELL);
+  for (let i = -c; i <= c; i++) for (let j = -c; j <= c; j++) {
+    const list = grid.get((cx + i) + "," + (cy + j)); if (!list) continue;
+    for (const s of list) if (alive[s] && Math.hypot(xs[s] - x, ys[s] - y) < d) return true;
+  }
+  return false;
+}
+function addToGrid(i) { const k = key(xs[i], ys[i]); (grid.get(k) || grid.set(k, []).get(k)).push(i); }
+
+function nearestSlot(x, y) {
+  let best = 0, bd = Infinity;
+  map.slots.forEach((s, i) => { const d = Math.hypot(s[0] - x, s[1] - y); if (d < bd) { bd = d; best = i; } });
+  return best;
+}
+
+/* ---- view ---- */
+const toScreen = (x, y) => [(y - view.cy) * view.s + cv.width / 2, -(x - view.cx) * view.s + cv.height / 2];
+const toWorld = (px, py) => [-(py - cv.height / 2) / view.s + view.cx, (px - cv.width / 2) / view.s + view.cy];
+function fit() { view.cx = 0; view.cy = 0; view.s = Math.min(cv.width, cv.height) / (map.half * 2.1); dirty = true; }
+function resize() {
+  const r = wrap.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  cv.width = Math.max(100, Math.round(r.width * d)); cv.height = Math.max(100, Math.round(r.height * d)); dirty = true;
+}
+
+/* ---- drawing ---- */
+function draw() {
+  dirty = false;
+  const W = cv.width, H = cv.height, d = window.devicePixelRatio || 1;
+  ctx.fillStyle = colors["--canvas"]; ctx.fillRect(0, 0, W, H);
+  if (!map) return;
+  const half = map.half;
+  // 100 m grid
+  ctx.strokeStyle = colors["--grid"]; ctx.lineWidth = 1; ctx.beginPath();
+  for (let m = -Math.floor(half / 10000) * 10000; m <= half; m += 10000) {
+    const [ax, ay] = toScreen(m, -half), [bx, by] = toScreen(m, half); ctx.moveTo(ax, ay); ctx.lineTo(bx, by);
+    const [cx2, cy2] = toScreen(-half, m), [dx, dy] = toScreen(half, m); ctx.moveTo(cx2, cy2); ctx.lineTo(dx, dy);
+  }
+  ctx.stroke();
+  const [b1x, b1y] = toScreen(half, -half), [b2x, b2y] = toScreen(-half, half);
+  ctx.strokeStyle = colors["--muted"]; ctx.strokeRect(b1x, b1y, b2x - b1x, b2y - b1y);
+  if ($("showVoids").checked) drawVoids();
+  // sources, one pass per kind
+  for (const kind of ["Stone", "Gold", "Berry", "Tree"]) {
+    ctx.fillStyle = colors[KIND_VAR[kind]];
+    const r = Math.max(kind === "Tree" ? 1.1 : 2.2, SIZES[kind] * view.s) * (kind === "Tree" ? 1 : 1);
+    for (let i = 0; i < xs.length; i++) {
+      if (!alive[i] || kindOf(types[i]) !== kind) continue;
+      const [px, py] = toScreen(xs[i], ys[i]);
+      if (px < -4 || py < -4 || px > W + 4 || py > H + 4) continue;
+      if (kind === "Tree" && r < 2.2) ctx.fillRect(px - r, py - r, r * 2, r * 2);
+      else { ctx.beginPath(); ctx.arc(px, py, r, 0, 6.2832); ctx.fill(); }
+    }
+  }
+  if ($("showRings").checked) {
+    ctx.lineWidth = 1.5 * d;
+    map.slots.forEach((s, i) => {
+      const [px, py] = toScreen(s[0], s[1]);
+      ctx.strokeStyle = colors["--slot"]; ctx.beginPath(); ctx.arc(px, py, 7500 * view.s, 0, 6.2832); ctx.stroke();
+      ctx.fillStyle = colors["--slot"]; ctx.font = (13 * d) + "px sans-serif"; ctx.textAlign = "center"; ctx.fillText("J" + (i + 1), px, py + 4 * d);
+    });
+    ctx.strokeStyle = colors["--relay"]; ctx.setLineDash([5 * d, 4 * d]);
+    for (const r of map.relays) { const [px, py] = toScreen(r[0], r[1]); ctx.beginPath(); ctx.arc(px, py, r[2] * view.s, 0, 6.2832); ctx.stroke(); }
+    ctx.setLineDash([]);
+  }
+  if (hover && (tool === "forest" || tool === "erase")) {
+    ctx.strokeStyle = colors["--fg"]; ctx.lineWidth = 1.5 * d; ctx.beginPath(); ctx.arc(hover[0], hover[1], radiusCm() * view.s, 0, 6.2832); ctx.stroke();
+  }
+}
+function drawVoids() {
+  const cell = 2500, half = map.half, n = Math.ceil(2 * half / cell);
+  const seen = new Uint8Array(n * n);
+  for (let i = 0; i < xs.length; i++) if (alive[i]) {
+    const gi = Math.floor((xs[i] + half) / cell), gj = Math.floor((ys[i] + half) / cell);
+    if (gi >= 0 && gj >= 0 && gi < n && gj < n) seen[gi * n + gj] = 1;
+  }
+  ctx.fillStyle = colors["--void"];
+  for (let gi = 0; gi < n; gi++) for (let gj = 0; gj < n; gj++) if (!seen[gi * n + gj]) {
+    const x0 = -half + gi * cell, y0 = -half + gj * cell;
+    const [ax, ay] = toScreen(x0 + cell, y0), [bx, by] = toScreen(x0, y0 + cell);
+    ctx.fillRect(ax, ay, bx - ax, by - ay);
+  }
+}
+function loop() { if (dirty) draw(); requestAnimationFrame(loop); }
+
+/* ---- brushes ---- */
+const radiusCm = () => +$("radius").value * 100;
+function erasedKinds() { return [...document.querySelectorAll("#eraseTypes input:checked")].map(c => c.value); }
+
+function stroke(wx, wy, act) {
+  if (tool === "erase") {
+    const kinds = erasedKinds(); if (!kinds.length) return;
+    const r = radiusCm(); const hit = [];
+    for (let i = 0; i < xs.length; i++) if (alive[i] && kinds.includes(kindOf(types[i]) === "Berry" ? "Berry" : kindOf(types[i])) && Math.hypot(xs[i] - wx, ys[i] - wy) <= r) hit.push(i);
+    if (!hit.length) return;
+    for (const i of hit) alive[i] = false;
+    act.removed.push(...hit);
+    const typeNames = [];
+    for (const k of kinds) typeNames.push(...(k === "Tree" ? ["Tree"] : k === "Berry" ? ["BerryBush"] : k === "Gold" ? ["GoldVein","GoldVeinSmall","GoldVeinMedium","GoldVeinBig"] : ["StoneVein","StoneVeinSmall","StoneVeinMedium","StoneVeinBig"]));
+    removes.push({ x: Math.round(wx), y: Math.round(wy), r: Math.round(r), types: typeNames }); act.strokes++;
+  } else if (tool === "forest") {
+    const r = radiusCm(), sp = +$("spacing").value, rowH = sp * 0.866;
+    const j0 = Math.floor((wy - r) / sp) - 1, j1 = Math.ceil((wy + r) / sp) + 1, i0 = Math.floor((wx - r) / rowH) - 1, i1 = Math.ceil((wx + r) / rowH) + 1;
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+      const px = i * rowH + jit(i, j, 1) * sp * 0.22, py = j * sp + (i & 1 ? sp / 2 : 0) + jit(i, j, 2) * sp * 0.22;
+      if (Math.hypot(px - wx, py - wy) > r) continue;
+      if (Math.abs(px) > map.half - 500 || Math.abs(py) > map.half - 500) continue;
+      if (nearAlive(px, py, sp * 0.78)) continue;
+      addSource("Tree", px, py, act);
+    }
+  } else if (tool === "put") {
+    const t = $("putType").value;
+    if (nearAlive(wx, wy, SIZES[kindOf(t)] * 1.6)) return;
+    addSource(t, wx, wy, act);
+  }
+}
+function jit(i, j, s) { const v = Math.sin(i * 127.1 + j * 311.7 + s * 74.7) * 43758.5453; return (v - Math.floor(v)) - 0.5; }
+function addSource(t, x, y, act) {
+  const i = xs.length; types.push(t); xs.push(Math.round(x)); ys.push(Math.round(y)); alive.push(true); isNew.push(true); addToGrid(i); act.added.push(i);
+}
+
+/* ---- pointer ---- */
+let hover = null, drag = null, act = null, space = false;
+function pos(e) { const r = cv.getBoundingClientRect(), d = cv.width / r.width; return [(e.clientX - r.left) * d, (e.clientY - r.top) * d]; }
+cv.addEventListener("contextmenu", e => e.preventDefault());
+cv.addEventListener("pointerdown", e => {
+  cv.setPointerCapture(e.pointerId); cv.focus();
+  const [px, py] = pos(e);
+  if (e.button === 2 || e.button === 1 || tool === "pan" || space) { drag = { kind: "pan", px, py, cx: view.cx, cy: view.cy }; return; }
+  act = { removed: [], added: [], strokes: 0 }; drag = { kind: "paint" };
+  const [wx, wy] = toWorld(px, py); stroke(wx, wy, act); dirty = true;
+});
+cv.addEventListener("pointermove", e => {
+  const [px, py] = pos(e); hover = [px, py]; dirty = true;
+  const [wx, wy] = toWorld(px, py);
+  $("readout").textContent = "x " + (wx / 100).toFixed(0) + " m · y " + (wy / 100).toFixed(0) + " m · J" + (nearestSlot(wx, wy) + 1);
+  if (!drag) return;
+  if (drag.kind === "pan") { view.cy = drag.cy - (px - drag.px) / view.s; view.cx = drag.cx + (py - drag.py) / view.s; }
+  else if (tool !== "put") stroke(wx, wy, act);
+});
+function endDrag() {
+  if (drag && drag.kind === "paint" && act && (act.removed.length || act.added.length)) { undo.push(act); update(); }
+  drag = null; act = null;
+}
+cv.addEventListener("pointerup", endDrag); cv.addEventListener("pointercancel", endDrag);
+cv.addEventListener("pointerleave", () => { hover = null; dirty = true; });
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  const [px, py] = pos(e), [wx, wy] = toWorld(px, py), f = Math.exp(-e.deltaY * 0.0015);
+  view.s = Math.min(2, Math.max(0.002, view.s * f));
+  const [nx, ny] = toWorld(px, py); view.cx += wx - nx; view.cy += wy - ny; dirty = true;
+}, { passive: false });
+addEventListener("keydown", e => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.code === "Space") { space = true; e.preventDefault(); }
+  const map2 = { b: "forest", e: "erase", p: "put", h: "pan" }; if (map2[e.key.toLowerCase()]) setTool(map2[e.key.toLowerCase()]);
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); doUndo(); }
+});
+addEventListener("keyup", e => { if (e.code === "Space") space = false; });
+
+/* ---- state, counts, export ---- */
+function setTool(t) {
+  tool = t; document.querySelectorAll("#tools button").forEach(b => b.classList.toggle("on", b.dataset.tool === t));
+  $("forestOpts").hidden = t !== "forest"; $("eraseOpts").hidden = t !== "erase"; $("putOpts").hidden = t !== "put";
+  cv.style.cursor = t === "pan" ? "grab" : "crosshair"; dirty = true;
+}
+document.querySelectorAll("#tools button").forEach(b => b.addEventListener("click", () => setTool(b.dataset.tool)));
+$("radius").addEventListener("input", () => { $("radiusOut").textContent = $("radius").value + " m"; dirty = true; });
+$("spacing").addEventListener("input", () => { $("spacingOut").textContent = ($("spacing").value / 100).toFixed(1).replace(".", ",") + " m"; });
+$("showVoids").addEventListener("change", () => dirty = true); $("showRings").addEventListener("change", () => dirty = true);
+
+function doUndo() {
+  const a = undo.pop(); if (!a) return;
+  for (const i of a.removed) alive[i] = true;
+  for (const i of a.added) alive[i] = false;
+  if (a.strokes) removes.length -= a.strokes;
+  rebuildGrid(); update();
+}
+$("undo").addEventListener("click", doUndo);
+$("reset").addEventListener("click", () => { while (undo.length) doUndo(); });
+
+function edits() {
+  const add = [];
+  for (let i = 0; i < xs.length; i++) if (isNew[i] && alive[i]) add.push({ type: types[i], x: xs[i], y: ys[i] });
+  return { map: name, remove: removes, add };
+}
+function replay(saved) {
+  for (const cut of saved.remove || []) {
+    const act2 = { removed: [], added: [], strokes: 0 };
+    for (let i = 0; i < xs.length; i++) if (alive[i] && Math.hypot(xs[i] - cut.x, ys[i] - cut.y) <= cut.r && (!cut.types || cut.types.includes(types[i]))) { alive[i] = false; act2.removed.push(i); }
+    removes.push(cut); act2.strokes = 1; undo.push(act2);
+  }
+  const act3 = { removed: [], added: [], strokes: 0 };
+  for (const a of saved.add || []) { types.push(a.type); xs.push(a.x); ys.push(a.y); alive.push(true); isNew.push(true); act3.added.push(xs.length - 1); }
+  if (act3.added.length) undo.push(act3);
+}
+function update() {
+  rebuildGrid(); dirty = true;
+  // counts per territory
+  const n = map.slots.length, rows = [], now = [], was = [];
+  for (let s = 0; s < n; s++) { now.push({ Tree: 0, Berry: 0, Gold: 0, Stone: 0 }); was.push({ Tree: 0, Berry: 0, Gold: 0, Stone: 0 }); }
+  for (let i = 0; i < xs.length; i++) {
+    const k = kindOf(types[i]), s = nearestSlot(xs[i], ys[i]);
+    if (alive[i]) now[s][k]++;
+    if (!isNew[i]) was[s][k]++;
+  }
+  let html = "<tr><th></th><th>arbres</th><th>baies</th><th>or</th><th>pierre</th></tr>";
+  for (let s = 0; s < n; s++) {
+    const d = now[s].Tree - was[s].Tree;
+    html += "<tr><td>J" + (s + 1) + "</td><td>" + now[s].Tree + (d ? ' <span class="' + (d > 0 ? "delta-up" : "delta-down") + '">' + (d > 0 ? "+" : "") + d + "</span>" : "") + "</td><td>" + now[s].Berry + "</td><td>" + now[s].Gold + "</td><td>" + now[s].Stone + "</td></tr>";
+  }
+  $("counts").innerHTML = html;
+  $("legend").textContent = "Un arbre appartient au joueur dont la base est la plus proche (comme le test de budget). Les nombres comptent aussi les arbres des bases.";
+  const e = edits();
+  $("editSummary").textContent = e.remove.length + " coups de gomme, " + e.add.length + " sources ajoutées. Nom : " + name + ".json";
+  try { localStorage.setItem("painter:" + name, JSON.stringify(e)); } catch (err) {}
+}
+function say(text) { $("msg").textContent = text; }
+$("save").addEventListener("click", async () => {
+  const text = JSON.stringify(edits());
+  try {   // the local server (Tools/MapPainter/server.py) writes the file straight into Tools/Data/MapEdits/
+    const r = await fetch("/save/" + name, { method: "POST", body: text });
+    if (r.ok) { say("Enregistré : Tools/Data/MapEdits/" + name + ".json (" + (await r.text()) + ")"); return; }
+  } catch (err) {}
+  try {
+    const dl = window.claude && await claude.use("downloads");
+    if (!dl) { say("Enregistrement indisponible ici : utilise Copier."); return; }
+    await dl.save({ filename: name + ".json", data: text }); say("Fichier enregistré.");
+  } catch (err) { say(err && err.code === "declined" ? "Enregistrement refusé." : "Enregistrement impossible : utilise Copier."); }
+});
+$("copy").addEventListener("click", async () => {
+  const text = JSON.stringify(edits());
+  try { await navigator.clipboard.writeText(text); say("Retouches copiées (" + text.length + " caractères)."); }
+  catch (err) { const t = document.createElement("textarea"); t.value = text; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); say("Retouches copiées."); } catch (e2) { say("Copie impossible."); } t.remove(); }
+});
+
+for (const n of Object.keys(MAPS)) { const o = document.createElement("option"); o.value = n; o.textContent = n.replace("_", " "); $("mapSel").appendChild(o); }
+$("mapSel").addEventListener("change", () => loadMap($("mapSel").value));
+new ResizeObserver(resize).observe(wrap);
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { readColors(); dirty = true; });
+new MutationObserver(() => { readColors(); dirty = true; }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+readColors(); resize();
+if (Object.keys(MAPS).length) loadMap(Object.keys(MAPS)[0]); else $("msg").textContent = "Aucune carte chargée.";
+loop();
+</script>

@@ -1,0 +1,63 @@
+pm01_plain_small_base | Plaine Petite : ma base (mines inchangees sur cette carte)
+pm01_plain_small_centre | Plaine Petite : le milieu de la carte
+pm01_plain_small_forest | Plaine Petite : la foret peinte la plus dense
+pm02_plain_normal_base | Plaine Normale : ma base (mines inchangees sur cette carte)
+pm02_plain_normal_centre | Plaine Normale : le milieu de la carte
+pm02_plain_normal_forest | Plaine Normale : la foret peinte la plus dense
+pm03_plain_huge_base | Plaine Immense : ma base (mines inchangees sur cette carte)
+pm03_plain_huge_centre | Plaine Immense : le milieu de la carte
+pm03_plain_huge_forest | Plaine Immense : la foret peinte la plus dense
+pm04_hinterland_small_base | Arrière-pays Petite : ma base (mines inchangees sur cette carte)
+pm04_hinterland_small_centre | Arrière-pays Petite : le milieu de la carte
+pm04_hinterland_small_forest | Arrière-pays Petite : la foret peinte la plus dense
+pm05_hinterland_medium_base | Arrière-pays Moyenne : ma base (mines inchangees sur cette carte)
+pm05_hinterland_medium_centre | Arrière-pays Moyenne : le milieu de la carte
+pm05_hinterland_medium_forest | Arrière-pays Moyenne : la foret peinte la plus dense
+pm06_hinterland_huge_base | Arrière-pays Immense : ma base (mines inchangees sur cette carte)
+pm06_hinterland_huge_centre | Arrière-pays Immense : le milieu de la carte
+pm06_hinterland_huge_forest | Arrière-pays Immense : la foret peinte la plus dense
+pm07_eldorado_small_base | El Dorado Petite : ma base, 3 mines de pierre dans le camp (l'or est au centre)
+pm07_eldorado_small_centre | El Dorado Petite : le milieu de la carte
+pm07_eldorado_small_forest | El Dorado Petite : la foret peinte la plus dense
+pm08_eldorado_medium_base | El Dorado Moyenne : ma base, 3 mines de pierre dans le camp (l'or est au centre)
+pm08_eldorado_medium_centre | El Dorado Moyenne : le milieu de la carte
+pm08_eldorado_medium_forest | El Dorado Moyenne : la foret peinte la plus dense
+pm09_eldorado_huge_base | El Dorado Immense : ma base, 3 mines de pierre dans le camp (l'or est au centre)
+pm09_eldorado_huge_centre | El Dorado Immense : le milieu de la carte
+pm09_eldorado_huge_forest | El Dorado Immense : la foret peinte la plus dense
+pm10_cols_small_base | Les Cols Petite : ma base (mines inchangees sur cette carte)
+pm10_cols_small_centre | Les Cols Petite : le milieu de la carte
+pm10_cols_small_forest | Les Cols Petite : la foret peinte la plus dense
+pm11_cols_medium_base | Les Cols Moyenne : ma base (mines inchangees sur cette carte)
+pm11_cols_medium_centre | Les Cols Moyenne : le milieu de la carte
+pm11_cols_medium_forest | Les Cols Moyenne : la foret peinte la plus dense
+pm12_cols_huge_base | Les Cols Immense : ma base (mines inchangees sur cette carte)
+pm12_cols_huge_centre | Les Cols Immense : le milieu de la carte
+pm12_cols_huge_forest | Les Cols Immense : la foret peinte la plus dense
+pm13_fords_small_base | Les Gués Petite : ma base, 3 mines d'or et 3 de pierre dans le camp (a compter)
+pm13_fords_small_centre | Les Gués Petite : le milieu de la carte
+pm13_fords_small_forest | Les Gués Petite : la foret peinte la plus dense
+pm14_fords_medium_base | Les Gués Moyenne : ma base, 3 mines d'or et 3 de pierre dans le camp (a compter)
+pm14_fords_medium_centre | Les Gués Moyenne : le milieu de la carte
+pm14_fords_medium_forest | Les Gués Moyenne : la foret peinte la plus dense
+pm15_fords_huge_base | Les Gués Immense : ma base, 3 mines d'or et 3 de pierre dans le camp (a compter)
+pm15_fords_huge_centre | Les Gués Immense : le milieu de la carte
+pm15_fords_huge_forest | Les Gués Immense : la foret peinte la plus dense
+pm16_crown_small_base | La Couronne Petite : ma base (mines inchangees sur cette carte)
+pm16_crown_small_centre | La Couronne Petite : le milieu de la carte
+pm16_crown_small_forest | La Couronne Petite : la foret peinte la plus dense
+pm17_crown_medium_base | La Couronne Moyenne : ma base (mines inchangees sur cette carte)
+pm17_crown_medium_centre | La Couronne Moyenne : le milieu de la carte
+pm17_crown_medium_forest | La Couronne Moyenne : la foret peinte la plus dense
+pm18_crown_huge_base | La Couronne Immense : ma base (mines inchangees sur cette carte)
+pm18_crown_huge_centre | La Couronne Immense : le milieu de la carte
+pm18_crown_huge_forest | La Couronne Immense : la foret peinte la plus dense
+pm19_forest_small_base | Forêt profonde Petite : ma base, 3 mines d'or et 3 de pierre dans le camp (a compter)
+pm19_forest_small_centre | Forêt profonde Petite : le milieu de la carte
+pm19_forest_small_forest | Forêt profonde Petite : la foret peinte la plus dense
+pm20_forest_medium_base | Forêt profonde Moyenne : ma base, 3 mines d'or et 3 de pierre dans le camp (a compter)
+pm20_forest_medium_centre | Forêt profonde Moyenne : le milieu de la carte
+pm20_forest_medium_forest | Forêt profonde Moyenne : la foret peinte la plus dense
+pm21_forest_huge_base | Forêt profonde Immense : ma base, 3 mines d'or et 3 de pierre dans le camp (a compter)
+pm21_forest_huge_centre | Forêt profonde Immense : le milieu de la carte
+pm21_forest_huge_forest | Forêt profonde Immense : la foret peinte la plus dense

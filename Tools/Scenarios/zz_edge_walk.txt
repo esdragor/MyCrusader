@@ -1,0 +1,21 @@
+# Repro : des paysans envoyes au-dela du bord de la carte (Foret Petite, bord a x = -22000) ; que disent leurs positions ?
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+hol.Camera.FocusNear -4500 0
+frames 5
+hol.Units.SpawnHere 3 Peasant 0 150
+waitunits 3
+hol.Units.Report 5
+hol.Camera.Focus -23000 0
+frames 40
+hol.Select.Own
+frames 5
+hol.Select.OrderGround -25000 0
+frames 5
+wait 12
+hol.Units.Report 5
+hol.Nav.Units 10
+capture edge_after
+hol.Camera.TestCursor off
+panel show

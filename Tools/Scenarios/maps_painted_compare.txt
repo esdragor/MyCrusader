@@ -1,0 +1,478 @@
+# Cartes peintes (Plaine Normale, les autres Moyenne) et leurs etirements : Petite, la taille peinte, Immense de chaque carte. Pour chaque : ma base (3 mines d'or et 3 de pierre dans le camp), le milieu, la foret peinte la plus dense. Entree = carte suivante.
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm01_plain_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm01_plain_small_centre
+hol.Camera.Focus 7500 -7500
+frames 40
+capture pm01_plain_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 1/21 : Plaine Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Plaine Normale)
+open /Game/Maps/Plain_Normal
+waitmap Plain_Normal
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -27450 0
+frames 40
+capture pm02_plain_normal_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm02_plain_normal_centre
+hol.Camera.Focus -27500 12500
+frames 40
+capture pm02_plain_normal_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 2/21 : Plaine Normale, 6 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Plaine Immense)
+open /Game/Maps/Plain_Huge
+waitmap Plain_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm03_plain_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm03_plain_huge_centre
+hol.Camera.Focus -22500 -2500
+frames 40
+capture pm03_plain_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 3/21 : Plaine Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Arriere-pays Petite)
+open /Game/Maps/Hinterland_Small
+waitmap Hinterland_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm04_hinterland_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm04_hinterland_small_centre
+hol.Camera.Focus 12500 -12500
+frames 40
+capture pm04_hinterland_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 4/21 : Arriere-pays Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Arriere-pays Moyenne)
+open /Game/Maps/Hinterland_Medium
+waitmap Hinterland_Medium
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -23100 0
+frames 40
+capture pm05_hinterland_medium_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm05_hinterland_medium_centre
+hol.Camera.Focus -22500 12500
+frames 40
+capture pm05_hinterland_medium_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 5/21 : Arriere-pays Moyenne, 4 joueurs (TAILLE PEINTE PAR TOI). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Arriere-pays Immense)
+open /Game/Maps/Hinterland_Huge
+waitmap Hinterland_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm06_hinterland_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm06_hinterland_huge_centre
+hol.Camera.Focus 32500 -12500
+frames 40
+capture pm06_hinterland_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 6/21 : Arriere-pays Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (El Dorado Petite)
+open /Game/Maps/ElDorado_Small
+waitmap ElDorado_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm07_eldorado_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm07_eldorado_small_centre
+hol.Camera.Focus -7500 17500
+frames 40
+capture pm07_eldorado_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 7/21 : El Dorado Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (El Dorado Moyenne)
+open /Game/Maps/ElDorado_Medium
+waitmap ElDorado_Medium
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -23100 0
+frames 40
+capture pm08_eldorado_medium_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm08_eldorado_medium_centre
+hol.Camera.Focus -7500 27500
+frames 40
+capture pm08_eldorado_medium_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 8/21 : El Dorado Moyenne, 4 joueurs (TAILLE PEINTE PAR TOI). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (El Dorado Immense)
+open /Game/Maps/ElDorado_Huge
+waitmap ElDorado_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm09_eldorado_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm09_eldorado_huge_centre
+hol.Camera.Focus -37500 12500
+frames 40
+capture pm09_eldorado_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 9/21 : El Dorado Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Cols Petite)
+open /Game/Maps/Cols_Small
+waitmap Cols_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm10_cols_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm10_cols_small_centre
+hol.Camera.Focus -17500 -17500
+frames 40
+capture pm10_cols_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 10/21 : Les Cols Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Cols Moyenne)
+open /Game/Maps/Cols_Medium
+waitmap Cols_Medium
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -23100 0
+frames 40
+capture pm11_cols_medium_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm11_cols_medium_centre
+hol.Camera.Focus 12500 17500
+frames 40
+capture pm11_cols_medium_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 11/21 : Les Cols Moyenne, 4 joueurs (TAILLE PEINTE PAR TOI). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Cols Immense)
+open /Game/Maps/Cols_Huge
+waitmap Cols_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm12_cols_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm12_cols_huge_centre
+hol.Camera.Focus -32500 32500
+frames 40
+capture pm12_cols_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 12/21 : Les Cols Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Gues Petite)
+open /Game/Maps/Fords_Small
+waitmap Fords_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm13_fords_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm13_fords_small_centre
+hol.Camera.Focus -2500 -17500
+frames 40
+capture pm13_fords_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 13/21 : Les Gues Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Gues Moyenne)
+open /Game/Maps/Fords_Medium
+waitmap Fords_Medium
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -23100 0
+frames 40
+capture pm14_fords_medium_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm14_fords_medium_centre
+hol.Camera.Focus -17500 -22500
+frames 40
+capture pm14_fords_medium_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 14/21 : Les Gues Moyenne, 4 joueurs (TAILLE PEINTE PAR TOI). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Les Gues Immense)
+open /Game/Maps/Fords_Huge
+waitmap Fords_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm15_fords_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm15_fords_huge_centre
+hol.Camera.Focus 12500 7500
+frames 40
+capture pm15_fords_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 15/21 : Les Gues Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (La Couronne Petite)
+open /Game/Maps/Crown_Small
+waitmap Crown_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm16_crown_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm16_crown_small_centre
+hol.Camera.Focus -17500 -17500
+frames 40
+capture pm16_crown_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 16/21 : La Couronne Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (La Couronne Moyenne)
+open /Game/Maps/Crown_Medium
+waitmap Crown_Medium
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -23100 0
+frames 40
+capture pm17_crown_medium_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm17_crown_medium_centre
+hol.Camera.Focus 22500 22500
+frames 40
+capture pm17_crown_medium_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 17/21 : La Couronne Moyenne, 4 joueurs (TAILLE PEINTE PAR TOI). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (La Couronne Immense)
+open /Game/Maps/Crown_Huge
+waitmap Crown_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm18_crown_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm18_crown_huge_centre
+hol.Camera.Focus -37500 -32500
+frames 40
+capture pm18_crown_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 18/21 : La Couronne Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Foret profonde Petite)
+open /Game/Maps/Forest_Small
+waitmap Forest_Small
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -16500 0
+frames 40
+capture pm19_forest_small_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm19_forest_small_centre
+hol.Camera.Focus -7500 -17500
+frames 40
+capture pm19_forest_small_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 19/21 : Foret profonde Petite, 2 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Foret profonde Moyenne)
+open /Game/Maps/Forest_Medium
+waitmap Forest_Medium
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -23100 0
+frames 40
+capture pm20_forest_medium_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm20_forest_medium_centre
+hol.Camera.Focus 17500 -22500
+frames 40
+capture pm20_forest_medium_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 20/21 : Foret profonde Moyenne, 4 joueurs (TAILLE PEINTE PAR TOI). Camera libre ; Entree = carte suivante.
+waitkey Entree : carte suivante (Foret profonde Immense)
+open /Game/Maps/Forest_Huge
+waitmap Forest_Huge
+waitlog Camera above the start of slot
+frames 5
+quiet hol.Sanity.Watch 1
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus -33000 0
+frames 40
+capture pm21_forest_huge_base
+hol.Camera.Focus 0 0
+frames 40
+capture pm21_forest_huge_centre
+hol.Camera.Focus -12500 -32500
+frames 40
+capture pm21_forest_huge_forest
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note CARTE 21/21 : Foret profonde Immense, 8 joueurs (etiree de la taille peinte). Camera libre ; Entree = carte suivante.

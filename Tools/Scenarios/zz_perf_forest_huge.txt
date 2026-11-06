@@ -1,0 +1,31 @@
+# Measure only (2026-11-06): CSV profile of Forest_Huge (258 000 sources) after the load, same views as zz_perf_forest
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+mark P0_start
+csvprofile start
+frames 150
+mark P1_warm_end
+hol.Camera.Focus 0 0
+frames 300
+mark P2_center_end
+console show InstancedStaticMeshes
+frames 200
+mark P3_noISM_end
+console show InstancedStaticMeshes
+hol.Camera.Focus 6000 6000
+frames 200
+mark P4_ne_end
+hol.Camera.Focus -6000 -6000
+frames 200
+mark P5_sw_end
+csvprofile stop
+frames 30
+console profilegpu
+frames 10
+mark P6_gpuprofile_done
+console show InstancedStaticMeshes
+frames 20
+console profilegpu
+frames 10
+mark P7_gpuprofile_noISM_done

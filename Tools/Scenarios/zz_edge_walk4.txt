@@ -1,0 +1,39 @@
+# Repro 4 directions : 20 paysans, ordres au-dela de chaque bord (O, N, E, S), limite rouge, positions et captures
+hol.Camera.Zoom -4
+hol.Map.ShowBounds 1
+hol.Units.SpeedScale 3
+hol.Camera.FocusNear 0 0
+frames 5
+hol.Units.SpawnHere 20 Peasant 0 250
+waitunits 20
+hol.Select.Own
+frames 5
+hol.Camera.Focus -22000 0
+frames 30
+hol.Select.OrderGround -25000 0
+wait 14
+hol.Units.Report 25
+capture edge4m_ouest
+hol.Nav.Units 3
+hol.Camera.Focus 0 21500
+frames 30
+hol.Select.OrderGround 0 25000
+wait 24
+hol.Units.Report 25
+capture edge4m_nord
+hol.Nav.Units 3
+hol.Camera.Focus 22000 0
+frames 30
+hol.Select.OrderGround 25000 0
+wait 24
+hol.Units.Report 25
+capture edge4m_est
+hol.Nav.Units 3
+hol.Camera.Focus 0 -21500
+frames 30
+hol.Select.OrderGround 0 -25000
+wait 24
+hol.Units.Report 25
+capture edge4m_sud
+hol.Nav.Units 3
+hol.Nav.Units 10

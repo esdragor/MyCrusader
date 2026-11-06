@@ -1,0 +1,16 @@
+# Bord de la carte : 5 paysans au bord ouest de la Foret Petite ; clique AU-DELA de la limite, dans le sol hors jeu : ils doivent s'arreter au bord
+hol.Cheat.Resources 500
+hol.Camera.Zoom -4
+hol.Camera.TestCursor 0.5 0.5
+hol.Camera.FocusNear -4500 0
+frames 5
+hol.Units.SpawnHere 5 Peasant 0 150
+waitunits 5
+hol.Camera.Focus -22000 0
+frames 40
+capture edge_try_start
+hol.Camera.TestCursor off
+hol.Select.Own
+frames 5
+note Les 5 paysans sont selectionnes, au bord ouest de la carte (le sol continue 50 m plus loin, c'est le terrain hors jeu).
+note Clic droit dans ce sol, bien au-dela de la limite : les paysans doivent s'arreter au bord, sans sortir. Essaie aussi un ordre en diagonale et avec Shift.

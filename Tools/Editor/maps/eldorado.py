@@ -127,6 +127,18 @@ def marsh_outer(recipe):
     return max(math.hypot(x, y) + radius for x, y, radius in marsh_zones(recipe))
 
 
+def stretch_blocked(recipe, point):
+    """common.stretch_edits / apply_edits: no painted or stretched tree in the marsh nor in the middle (the Map.Table rule: nothing to gather in the marsh)."""
+    # Asked for every candidate tree (100 000 and more): the marsh's outer radius is computed once per recipe.
+    if _BLOCKED_RADIUS.get("recipe") is not recipe:
+        _BLOCKED_RADIUS["recipe"] = recipe
+        _BLOCKED_RADIUS["radius"] = marsh_outer(recipe) + MARSH_CLEAR_MARGIN
+    return math.hypot(*point) < _BLOCKED_RADIUS["radius"]
+
+
+_BLOCKED_RADIUS = {}
+
+
 def sources(recipe):
     """The Steppe's sources less its gold (all, half or the far ones, GOLD_MODE) plus the cluster in the middle."""
     # Nothing of the Steppe's far layer in the marsh nor in the middle: its "clear centre" grows to the marsh's outer edge (the deposits' own
@@ -139,7 +151,7 @@ def sources(recipe):
         steppe.NEAR = [row for row in near if row[0] != "GoldVein"]
         common.MINERAL_RESOURCES = ("Stone",)
     try:
-        placed, groups = steppe.sources(recipe, "forests")
+        placed, groups = steppe.sources(recipe, "forests", camp_veins=True)
     finally:
         steppe.CENTRE_CLEAR, steppe.NEAR, common.MINERAL_RESOURCES = clear, near, resources
     if GOLD_MODE == "keep_near":
