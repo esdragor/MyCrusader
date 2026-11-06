@@ -15,7 +15,8 @@ waitlog Selection: Forge
 hol.Select.Grid 8
 waitlog Technology: slot 0 researched MeleeAttackI
 hol.Units.SpawnHere 1 ManAtArms 0 900
-waitunits 3
+waitunits 7
+frames 20
 hol.Select.Type ManAtArms
 frames 20
 hol.HUD.UnitStats 1
