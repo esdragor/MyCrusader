@@ -441,11 +441,11 @@ namespace HOLCombat
 	/**
 	 * D641 (hol.Combat.FarPlaceRetarget, the melee that spins of 2026-11-05: 6 soldiers on 3 targets that die one after the other): a place claimed more than
 	 * MaxGap (1.5 rad, about 90 degrees) from the side of the target the soldier is on lies across the melee: reaching it is a walk round the crowd that
-	 * reverses on its steps, and the target is dead before the arrival. STUB (red test first): never too far.
+	 * reverses on its steps, and the target is dead before the arrival.
 	 */
 	inline bool IsPlaceTooFar(const double PlaceAngle, const double SelfAngle, const double MaxGap = 1.5)
 	{
-		return false;
+		return GetPlaceGap(PlaceAngle, SelfAngle) > MaxGap;
 	}
 
 	/**
@@ -461,6 +461,7 @@ namespace HOLCombat
 	 * Q-neutrals-second-rank = C: the enemy a walled-in soldier turns to: among EnemyBodies (indices into Bodies, with EnemyIds as tie-break) the one whose edge is
 	 * nearest to the soldier, having a free place (HasFreePlaceAround, every other body counted) that the soldier can reach without going round (not IsBoxedIn
 	 * towards it); ExcludeBody (the target it leaves) is never chosen. Bodies = every body near but the soldier. Returns the index into EnemyBodies, or INDEX_NONE.
+	 * With MaxPlaceGap >= 0 (D641, hol.Combat.FarPlaceRetarget) the enemy's free place nearest to the soldier's own side of it must lie within MaxPlaceGap rad of that side.
 	 */
 	inline int32 FindReachableEnemy(const FVector2D& SelfWhere, const float SelfRadius, TConstArrayView<FBody> Bodies, TConstArrayView<int32> EnemyBodies, TConstArrayView<uint64> EnemyIds, const int32 ExcludeBody, const double MaxPlaceGap = -1.)
 	{
@@ -486,6 +487,17 @@ namespace HOLCombat
 			if (!HasFreePlaceAround(Enemy.Where, Enemy.Radius, SelfRadius, Others) || IsBoxedIn(SelfWhere, SelfRadius, Enemy.Where, Others))
 			{
 				continue;
+			}
+			if (MaxPlaceGap >= 0.)
+			{
+				const FVector2D FromEnemy = SelfWhere - Enemy.Where;
+				double SelfSide = FromEnemy.IsNearlyZero() ? 0. : FMath::Atan2(FromEnemy.Y, FromEnemy.X);
+				SelfSide += SelfSide < 0. ? 2. * UE_DOUBLE_PI : 0.;
+				double Spot = 0.;
+				if (!FindFreePlaceAround(Enemy.Where, Enemy.Radius, SelfRadius, Others, SelfSide, Spot) || IsPlaceTooFar(Spot, SelfSide, MaxPlaceGap))
+				{
+					continue;
+				}
 			}
 			const double Edge = FVector2D::Distance(SelfWhere, Enemy.Where) - SelfRadius - Enemy.Radius;
 			if (Best == INDEX_NONE || Edge < BestEdge - 1e-6 || (FMath::Abs(Edge - BestEdge) <= 1e-6 && EnemyIds[Slot] < EnemyIds[Best]))

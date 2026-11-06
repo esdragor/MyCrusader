@@ -140,6 +140,15 @@ namespace UE::HeroesOfLiberty::Combat
 	float BoxedRetargetSeconds = 1.f;
 	FAutoConsoleVariableRef CVarBoxedRetargetSeconds(TEXT("hol.Combat.BoxedRetargetSeconds"), BoxedRetargetSeconds,
 		TEXT("s (default 1, with hol.Combat.BoxedRetarget): how long a walled-in melee makes no headway before it changes target"));
+	int32 FarPlaceRetarget = 1;
+	FAutoConsoleVariableRef CVarFarPlaceRetarget(TEXT("hol.Combat.FarPlaceRetarget"), FarPlaceRetarget,
+		TEXT("1 (needs hol.Combat.ClaimPlace): a melee that would claim a NEW place more than hol.Combat.FarPlaceGap rad from the side of its target it stands on (the free spot is across the melee, a walk round the crowd that reverses on its steps while the target dies) takes instead the nearest enemy with a free place on its own side; none: it waits up to hol.Combat.FarPlaceWaitSeconds of no headway, then takes the far place as before; a target the player ordered is kept; 0: off"));
+	float FarPlaceGap = 1.5f;
+	FAutoConsoleVariableRef CVarFarPlaceGap(TEXT("hol.Combat.FarPlaceGap"), FarPlaceGap,
+		TEXT("rad (default 1.5, about 90 degrees, with hol.Combat.FarPlaceRetarget): the largest gap between the place claimed and the side of the target the soldier is on"));
+	float FarPlaceWaitSeconds = 2.f;
+	FAutoConsoleVariableRef CVarFarPlaceWaitSeconds(TEXT("hol.Combat.FarPlaceWaitSeconds"), FarPlaceWaitSeconds,
+		TEXT("s (default 2, with hol.Combat.FarPlaceRetarget): how long a soldier with no enemy on its side waits (no headway) before it takes the far place"));
 	constexpr double BoxedRetargetReach = 900.0;
 	constexpr double BoxedRetargetEnemyReach = 500.0;
 	/** MV.4, choice C (AoE4): an idle melee soldier comes to the aid of a friend fighting within this radius (HOLCombat::ShouldComeToAid). */
@@ -2474,6 +2483,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// D641 (hol.Combat.ClaimPlace): no headway for a while with a place free round the target: it claims the free spot nearest to
 			// the side it is on and walks to that spot, keeping the same one (the same side of the target) while it stays free.
 			bool bPlaceNew = false;
+			bool bWaitFarPlace = false;
 			if (ClaimPlace != 0 && bPreferFree && !HOLCombat::IsRangedAttack(Constants.AttackRange) && !Combat.bFlanking && Combat.Mode != EHOLCombatMode::Hold)
 			{
 				const double Edge = HOLCombat::GetEdgeDistance(Position, Constants.Radius, EnemyPosition, Enemy.Constants->Radius);
@@ -2503,9 +2513,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					Combat.NoProgressSeconds += static_cast<float>(StepMs) / 1000.f;
 				}
 				Combat.PlaceTargetWhere = FVector2f(EnemyPosition);
-					// Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget): walled in between two friends who strike for BoxedRetargetSeconds, a soldier that was
-					// made to slide, wait and turn back (the walk-round of the neutrals trace) takes the nearest enemy with a place it can reach (no going round) instead.
-					if (BoxedRetarget != 0 && bSearchStep && !Combat.bOrderedTarget && Combat.NoProgressSeconds >= BoxedRetargetSeconds)
+					// Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget) and D641 (hol.Combat.FarPlaceRetarget): a soldier that cannot get at its target takes the
+					// nearest enemy with a free place it can reach (no going round; with MaxPlaceGap, a place on its own side) instead. True when it did (the target changed).
+					const auto TryRetarget = [&](const bool bRequireBoxed, const double MaxPlaceGap) -> bool
 					{
 						TArray<int32> BoxEnemies;
 						TArray<int32> BoxFriends;
@@ -2545,37 +2555,46 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 							BoxBodies.Add({ FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius });
 							BoxFighters.Add(Other);
 						}
-						TArray<HOLCombat::FBody> BoxOthers;
-						for (int32 BodyIndex = 0; BodyIndex < BoxBodies.Num(); ++BodyIndex)
+						if (bRequireBoxed)
 						{
-							if (BodyIndex != TargetBody)
+							TArray<HOLCombat::FBody> BoxOthers;
+							for (int32 BodyIndex = 0; BodyIndex < BoxBodies.Num(); ++BodyIndex)
 							{
-								BoxOthers.Add(BoxBodies[BodyIndex]);
+								if (BodyIndex != TargetBody)
+								{
+									BoxOthers.Add(BoxBodies[BodyIndex]);
+								}
+							}
+							if (!HOLCombat::ShouldRetargetWhenBoxedIn(Combat.NoProgressSeconds, HOLCombat::IsBoxedIn(Position, Constants.Radius, EnemyPosition, BoxOthers), Combat.bOrderedTarget, BoxedRetargetSeconds))
+							{
+								return false;
 							}
 						}
-						if (HOLCombat::ShouldRetargetWhenBoxedIn(Combat.NoProgressSeconds, HOLCombat::IsBoxedIn(Position, Constants.Radius, EnemyPosition, BoxOthers), Combat.bOrderedTarget, BoxedRetargetSeconds))
+						const int32 Chosen = HOLCombat::FindReachableEnemy(Position, Constants.Radius, BoxBodies, BoxEnemyBodies, BoxEnemyIds, TargetBody, MaxPlaceGap);
+						if (Chosen == INDEX_NONE)
 						{
-							const int32 Chosen = HOLCombat::FindReachableEnemy(Position, Constants.Radius, BoxBodies, BoxEnemyBodies, BoxEnemyIds, TargetBody);
-							if (Chosen != INDEX_NONE)
-							{
-								const int32 NewTarget = BoxFighters[BoxEnemyBodies[Chosen]];
-								--Enemy.Combat->AttackerCount;
-								++Fighters[NewTarget].Combat->AttackerCount;
-								Touch(Target);
-								Touch(NewTarget);
-								Touch(Index);
-								Combat.Target = Fighters[NewTarget].Entity;
-								Combat.bAttacking = false;
-								Combat.bApproaching = false; // the walk to the new target is given at the next step
-								Combat.PlaceTarget = Combat.Target;
-								Combat.PlaceTargetWhere = FVector2f(FVector2D(Fighters[NewTarget].Location));
-								Combat.bHasPlace = false;
-								Combat.NoProgressSeconds = 0.f;
-								Combat.BestEdge = static_cast<float>(HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[NewTarget].Location), Fighters[NewTarget].Constants->Radius));
-								UE_LOG(LogHOLSimulation, Verbose, TEXT("Combat: step %lld #%u walled in, takes #%u for #%u"), StepIndex, Fighter.UnitId, Fighters[NewTarget].UnitId, Enemy.UnitId);
-								continue;
-							}
+							return false;
 						}
+						const int32 NewTarget = BoxFighters[BoxEnemyBodies[Chosen]];
+						--Enemy.Combat->AttackerCount;
+						++Fighters[NewTarget].Combat->AttackerCount;
+						Touch(Target);
+						Touch(NewTarget);
+						Touch(Index);
+						Combat.Target = Fighters[NewTarget].Entity;
+						Combat.bAttacking = false;
+						Combat.bApproaching = false; // the walk to the new target is given at the next step
+						Combat.PlaceTarget = Combat.Target;
+						Combat.PlaceTargetWhere = FVector2f(FVector2D(Fighters[NewTarget].Location));
+						Combat.bHasPlace = false;
+						Combat.NoProgressSeconds = 0.f;
+						Combat.BestEdge = static_cast<float>(HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[NewTarget].Location), Fighters[NewTarget].Constants->Radius));
+						UE_LOG(LogHOLSimulation, Verbose, TEXT("Combat: step %lld #%u retargets (walled in or place across), takes #%u for #%u"), StepIndex, Fighter.UnitId, Fighters[NewTarget].UnitId, Enemy.UnitId);
+						return true;
+					};
+					if (BoxedRetarget != 0 && bSearchStep && !Combat.bOrderedTarget && Combat.NoProgressSeconds >= BoxedRetargetSeconds && TryRetarget(true, -1.))
+					{
+						continue;
 					}
 				if (bSearchStep && (Combat.bHasPlace || (Combat.bRoomAtTarget && Combat.NoProgressSeconds >= ClaimStuckSeconds)))
 				{
@@ -2586,14 +2605,30 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					double Angle = 0.;
 					if (HOLCombat::ChooseFreePlace(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Combat.bHasPlace, static_cast<double>(Combat.PlaceAngle), SelfSide, PlaceBySide != 0, Angle))
 					{
-						bPlaceNew = !Combat.bHasPlace || FMath::Abs(Angle - static_cast<double>(Combat.PlaceAngle)) > 1e-3;
-						if (!Combat.bHasPlace)
+						// D641 (hol.Combat.FarPlaceRetarget): a NEW place across the melee (more than FarPlaceGap from the soldier's side) is refused.
+						const bool bNewClaim = !Combat.bHasPlace || FMath::Abs(Angle - static_cast<double>(Combat.PlaceAngle)) > 1e-3;
+						if (FarPlaceRetarget != 0 && bNewClaim && !Combat.bOrderedTarget && HOLCombat::IsPlaceTooFar(Angle, SelfSide, FarPlaceGap))
 						{
-							Combat.BestEdge = static_cast<float>(Edge);
-							Combat.NoProgressSeconds = 0.f;
+							if (TryRetarget(false, FarPlaceGap))
+							{
+								continue;
+							}
+							if (Combat.NoProgressSeconds < FarPlaceWaitSeconds)
+							{
+								bWaitFarPlace = true; // no enemy on its side: it waits where it stands, the place is looked at again at the next search step
+							}
 						}
-						Combat.bHasPlace = true;
-						Combat.PlaceAngle = static_cast<float>(Angle);
+						if (!bWaitFarPlace)
+						{
+							bPlaceNew = bNewClaim;
+							if (!Combat.bHasPlace)
+							{
+								Combat.BestEdge = static_cast<float>(Edge);
+								Combat.NoProgressSeconds = 0.f;
+							}
+							Combat.bHasPlace = true;
+							Combat.PlaceAngle = static_cast<float>(Angle);
+						}
 					}
 					else
 					{
@@ -2615,7 +2650,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// A walk to it at most at the search rate: the first, or once it moved off, or once the last one ended short.
 			const bool bWalkOver = Fighter.Order->Phase == EHOLMovePhase::None;
 			const bool bMoved = FVector2D::DistSquared(EnemyPosition, Combat.ApproachPoint) > FMath::Square(ReapproachDistance);
-			if (Combat.Mode != EHOLCombatMode::Hold
+			if (Combat.Mode != EHOLCombatMode::Hold && !bWaitFarPlace
 				&& (bZoneTaken || bPlaceNew || ((bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))))
 			{
 				// Stamped (J7b.3): a player's order given meanwhile drops it.
