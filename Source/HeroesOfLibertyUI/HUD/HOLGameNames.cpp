@@ -73,6 +73,12 @@ namespace HOLGameNames
 		return FText::FromName(TypeName);
 	}
 
+	FText GetUnitName(const FName TypeName, const FHOLUnitTypeRow* Row, const FName FactionKey)
+	{
+		// L2 stub (red test first): the base names.
+		return GetUnitName(TypeName, Row);
+	}
+
 	FText GetBuildingName(const FName TypeName, const FHOLBuildingTypeRow* Row)
 	{
 		if (TypeName == HOLBuildingTypeNames::MainCentre)

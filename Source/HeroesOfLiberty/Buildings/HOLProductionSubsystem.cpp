@@ -385,6 +385,12 @@ void UHOLProductionSubsystem::ApplyOrders()
 			const FHOLTechnologyRow* Technology = Type->Produces.Contains(Order.TypeName) ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
 			if (Technology)
 			{
+				if (!HOLFactionRules::IsTechnologyOpenTo(Order.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Order.PlayerIndex)))
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (not a technology of its faction)"), Order.PlayerIndex,
+						*Order.TypeName.ToString());
+					continue;
+				}
 				const FHOLProductionCost Cost = GetCost(Order.TypeName, Order.PlayerIndex);
 				HOLTechnology::FFacts Facts;
 				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();

@@ -16,6 +16,11 @@ const FHOLTechnologyRow* UHOLTechnologySettings::FindTechnology(const FName Name
 
 void UHOLTechnologySettings::GetBuildingTechnologies(const FName Building, TArray<FName>& OutNames)
 {
+	GetBuildingTechnologies(Building, NAME_None, OutNames);
+}
+
+void UHOLTechnologySettings::GetBuildingTechnologies(const FName Building, const FName FactionKey, TArray<FName>& OutNames)
+{
 	OutNames.Reset();
 	const UDataTable* Table = GetTable();
 	if (!Table)

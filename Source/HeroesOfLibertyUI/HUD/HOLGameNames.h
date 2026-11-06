@@ -15,6 +15,8 @@ struct FHOLUnitTypeRow;
 namespace HOLGameNames
 {
 	HEROESOFLIBERTYUI_API FText GetUnitName(FName TypeName, const FHOLUnitTypeRow* Row);
+	/** L2: the name of a unit type for a faction (Legions: their own names, `DisplayName` rows of FactionOverrides.csv, provisional until L13); None or a faction without its own name: GetUnitName(TypeName, Row). */
+	HEROESOFLIBERTYUI_API FText GetUnitName(FName TypeName, const FHOLUnitTypeRow* Row, FName FactionKey);
 	HEROESOFLIBERTYUI_API FText GetBuildingName(FName TypeName, const FHOLBuildingTypeRow* Row);
 	HEROESOFLIBERTYUI_API FText GetSourceName(FName TypeName, const FHOLSourceTypeRow* Row);
 	/** T8: a technology's name (a table's DisplayName is not a localized text), and its effect, one line by statistic ("Récolte du bois +10 %"). */

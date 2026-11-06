@@ -393,6 +393,12 @@ namespace HOLFactionRules
 		return !Row || GetTable().Allows(Row->Faction, GetSlotFactionKey(World, Slot));
 	}
 
+	bool IsTechnologyOpenTo(const FName Technology, const FName FactionKey)
+	{
+		// L2 stub (red test first): everything is open.
+		return true;
+	}
+
 	TArray<FName> FilterProduces(const UWorld* World, const TConstArrayView<FName> Produces, const int32 Slot)
 	{
 		TArray<FName> Open;
