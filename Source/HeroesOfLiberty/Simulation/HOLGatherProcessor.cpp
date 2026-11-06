@@ -187,7 +187,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	Step.NavData = Step.NavSystem ? Step.NavSystem->GetDefaultNavDataInstance() : nullptr;
 	Step.StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 	// Spots taken since the last step, and spots left: every source may have room again (D309).
-	FullSources.Init(false, Step.Sources->GetSources().Num());
+	FullSources.Reset();
 	GameSeconds += Step.StepSeconds;
 
 	RefreshDeposits(*World);
@@ -721,9 +721,9 @@ void UHOLGatherProcessor::WalkToSource(const FStepContext& Step, FGatherer& Gath
 		return;
 	}
 	// Full for it, full for the others too (its own claim was no obstacle).
-	if (FullSources.IsValidIndex(Gather.SourceIndex))
+	if (Sources.IsValidIndex(Gather.SourceIndex))
 	{
-		FullSources[Gather.SourceIndex] = true;
+		FullSources.Add(Gather.SourceIndex);
 	}
 	// Its source is surrounded: the nearest source of its massif with a free spot, from it outward (the user's rule at
 	// the 3rd trial of J5b.2: the gatherers fill the wood from the tree clicked and surround it, round the patch of
@@ -813,16 +813,9 @@ bool UHOLGatherProcessor::FindStandPoint(const FStepContext& Step, const FHOLSou
 	for (int32 FirstRow = 0; FirstRow < MaxStandRows; FirstRow += StandRows)
 	{
 		const double Reach = SpotDistance + (FirstRow + StandRows + 1) * Spacing;
-		for (const FHOLSource& Other : Step.Sources->GetSources())
-		{
-			const double Within = Reach + Other.Radius + SpotOffset + Spacing;
-			const double Before = SitesReach + Other.Radius + SpotOffset + Spacing;
-			const double DistanceSquared = FVector::DistSquared2D(Other.Location, Source.Location);
-			if (Other.IsStanding() && DistanceSquared <= FMath::Square(Within) && (SitesReach < 0. || DistanceSquared > FMath::Square(Before)))
-			{
-				Sites.Add(FHOLGatherSite{ FVector2D(Other.Location), Other.Radius });
-			}
-		}
+		// Through the grid of the sources (2026-11-05: a walk over the 142 935 sources of a Forest Medium, at each call).
+		HOLGather::FindStandSites(Step.Sources->GetGrid(), Step.Sources->GetSources(), Source.Location, Reach, SitesReach, SpotOffset, Spacing,
+			[&Sites](const FHOLGatherSite& Site) { Sites.Add(Site); });
 		SitesReach = Reach;
 		HOLGather::GetStandPoints(Centre, SpotDistance, Spacing, FVector2D(From) - Centre, StandRows, Points, FirstRow);
 		for (const FVector2D& Point : Points)
@@ -1219,25 +1212,25 @@ void UHOLGatherProcessor::PruneHolders(const FStepContext& Step, const int32 Sou
 void UHOLGatherProcessor::PublishOccupants(const FStepContext& Step)
 {
 	// IA1.7b: what the AI's summary shows of a farm field: the places held (a player sees a worker on it).
-	TArray<uint8> Occupants;
-	Occupants.SetNumZeroed(Step.Sources->GetSources().Num());
+	// Only the sources that have some or are full: a map of 143 000 trees published 143 000 zeros at every step.
+	const TArray<FHOLSource>& Sources = Step.Sources->GetSources();
+	TMap<int32, uint8> Occupants;
 	for (TPair<int32, TArray<uint64>>& Pair : PlaceHolders)
 	{
 		PruneHolders(Step, Pair.Key, Pair.Value, 0);
-		if (Occupants.IsValidIndex(Pair.Key))
+		if (Sources.IsValidIndex(Pair.Key) && !Pair.Value.IsEmpty())
 		{
-			Occupants[Pair.Key] = static_cast<uint8>(FMath::Min(Pair.Value.Num(), 255));
+			Occupants.Add(Pair.Key, static_cast<uint8>(FMath::Min(Pair.Value.Num(), 255)));
 		}
 	}
 	Step.Sources->SetOccupants(MoveTemp(Occupants));
 	// IA2.6b: the sources a gatherer stood idle in front of in the last FullShownSeconds.
-	TBitArray<> Full;
-	Full.Init(false, Step.Sources->GetSources().Num());
+	TSet<int32> Full;
 	for (const TPair<int32, double>& Pair : LastNoRoom)
 	{
-		if (Full.IsValidIndex(Pair.Key) && GameSeconds - Pair.Value <= UE::HeroesOfLiberty::Gather::FullShownSeconds)
+		if (Sources.IsValidIndex(Pair.Key) && GameSeconds - Pair.Value <= UE::HeroesOfLiberty::Gather::FullShownSeconds)
 		{
-			Full[Pair.Key] = true;
+			Full.Add(Pair.Key);
 		}
 	}
 	Step.Sources->SetFullSources(MoveTemp(Full));
@@ -1290,7 +1283,7 @@ int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGathe
 		{
 			*OutNearestStanding = Index;
 		}
-		if (FullSources.IsValidIndex(Index) && FullSources[Index])
+		if (FullSources.Contains(Index))
 		{
 			return false;
 		}
@@ -1298,10 +1291,7 @@ int32 UHOLGatherProcessor::FindMassifSpot(const FStepContext& Step, const FGathe
 		{
 			return true;
 		}
-		if (FullSources.IsValidIndex(Index))
-		{
-			FullSources[Index] = true;
-		}
+		FullSources.Add(Index);
 		return false;
 	}, Deposit);
 	if (Found != INDEX_NONE && SourceMassifs.GetMassif(Found) != OwnMassif)

@@ -23,6 +23,15 @@ public:
 	/** The area on the ground plane (X, Y), world space. */
 	FBox2D GetArea() const;
 
+	/**
+	 * How far the units' playable area is kept inside the map's bounds (cm). 2026-11-05 (the user: "the limit at the foot of the trees"): the border band of trees
+	 * of the maps stops about 6 m before the bounds, and the ground goes on 50 m past them; the walkers' limit is where the trees stop.
+	 */
+	static constexpr double PlayInset = 700.0;
+
+	/** The area the walkers stay in: the bounds taken in by PlayInset (700: the border band of trees stops 6 m before the bounds, and its trunks leave a hole in the navmesh 1 m wide) (never smaller than a point at the middle). */
+	FBox2D GetPlayableArea() const;
+
 	/** The bounds of the map, or null if it has none. */
 	static AHOLMapBounds* Find(const UWorld* World);
 

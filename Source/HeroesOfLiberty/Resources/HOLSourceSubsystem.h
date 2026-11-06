@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLResources.h"
+#include "Resources/HOLSourceGrid.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLSourceSubsystem.generated.h"
 
@@ -108,6 +109,8 @@ public:
 	bool IsDrawn(const int32 SourceIndex) const { return (Sources.IsValidIndex(SourceIndex) && Sources[SourceIndex].IsStanding()) || KeptDrawn.Contains(SourceIndex); }
 
 	const TArray<FHOLSource>& GetSources() const { return Sources; }
+	/** Server or solo: every source added, by place and resource. Empty on a client (the chunks do not fill it). */
+	const FHOLSourceGrid& GetGrid() const { return Grid; }
 	int32 GetNumStanding() const { return NumStanding; }
 
 	/** The source type table's rows, in its order: their indices travel instead of names. */
@@ -118,15 +121,15 @@ public:
 	 * Server: the places held of the sources of few places (a farm field, IA1.7b), by source index, as the gather processor
 	 * counted them at its last step; what the AI's summary shows of a field (a worker standing on it). Not replicated.
 	 */
-	void SetOccupants(TArray<uint8>&& InOccupants) { Occupants = MoveTemp(InOccupants); }
-	int32 GetOccupants(const int32 SourceIndex) const { return Occupants.IsValidIndex(SourceIndex) ? Occupants[SourceIndex] : 0; }
+	void SetOccupants(TMap<int32, uint8>&& InOccupants) { Occupants = MoveTemp(InOccupants); }
+	int32 GetOccupants(const int32 SourceIndex) const { return Occupants.FindRef(SourceIndex); }
 
 	/**
 	 * Server: the sources a gatherer stood idle in front of, no spot free, in the last seconds (IA2.6b), by source index, as the
 	 * gather processor counted them at its last step; what the AI's summary shows of a vein with every spot taken. Not replicated.
 	 */
-	void SetFullSources(TBitArray<>&& InFull) { FullSources = MoveTemp(InFull); }
-	bool IsFull(const int32 SourceIndex) const { return FullSources.IsValidIndex(SourceIndex) && FullSources[SourceIndex]; }
+	void SetFullSources(TSet<int32>&& InFull) { FullSources = MoveTemp(InFull); }
+	bool IsFull(const int32 SourceIndex) const { return FullSources.Contains(SourceIndex); }
 
 	/** Server: what a player's gatherers unloaded since the start (reports, stress test S7). */
 	void RecordDeposit(uint8 OwnerPlayer, EHOLResource Resource, int32 Amount);
@@ -169,8 +172,11 @@ private:
 	TSet<int32> KeptDrawn;
 	int32 NumStanding = 0;
 	TMap<uint8, FHOLResources> Deposited;
-	TArray<uint8> Occupants;
-	TBitArray<> FullSources;
+	/** Only the sources that have some (a map of 143 000 trees would publish 143 000 zeros at every step). */
+	TMap<int32, uint8> Occupants;
+	TSet<int32> FullSources;
+	/** Server: where the sources stand, for the searches that would walk them all (the AI's summary, the stand points). */
+	FHOLSourceGrid Grid;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLSourceField> Field;

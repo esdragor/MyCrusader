@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLMapBounds.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
@@ -157,18 +158,31 @@ void UHOLCommandSubsystem::IssueMoveOrder(const TConstArrayView<uint32> UnitIds,
 	// A task's walk (J5: a gatherer's spot, already on the navmesh) is taken as it is.
 	FVector Destination = Target;
 	UWorld* World = GetWorld();
+	// 2026-11-05 (the user: "my peasants can go past the limit of the map, the 13 tiles of the border"): the ground is drawn 5 000 cm past the map's bounds,
+	// and a point there is off the navmesh, which the D228 branch below keeps as given: the walkers went straight out of the map. A walk by the player is
+	// brought inside the bounds first (the server's own check: a modified client cannot send a point outside either).
+	if (World && !bFromTask)
+	{
+		if (const AHOLMapBounds* Bounds = AHOLMapBounds::Find(World))
+		{
+			const FBox2D Area = Bounds->GetPlayableArea();
+			Destination.X = FMath::Clamp(Destination.X, Area.Min.X, Area.Max.X);
+			Destination.Y = FMath::Clamp(Destination.Y, Area.Min.Y, Area.Max.Y);
+		}
+	}
 	if (UNavigationSystemV1* NavSystem = World && !bFromTask ? FNavigationSystem::GetCurrent<UNavigationSystemV1>(World) : nullptr)
 	{
 		const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
 		const FVector Extent(Settings ? Settings->OrderTargetProjectionExtent : 1000.f);
 		FNavLocation Projected;
-		if (NavSystem->ProjectPointToNavigation(Target, Projected, Extent))
+		if (NavSystem->ProjectPointToNavigation(Destination, Projected, Extent)
+			|| NavSystem->ProjectPointToNavigation(Destination, Projected, Extent * 5.0))  // 2026-11-05: a point brought back to the edge inside the border trees is 10-50 m from the navmesh
 		{
 			Destination = Projected.Location;
 		}
 		else
 		{
-			UE_LOG(LogHOLSimulation, Warning, TEXT("Move order to %s is not on the navmesh: kept as given (D228)"), *Target.ToString());
+			UE_LOG(LogHOLSimulation, Warning, TEXT("Move order to %s is not on the navmesh: kept as given (D228)"), *Destination.ToString());
 		}
 	}
 

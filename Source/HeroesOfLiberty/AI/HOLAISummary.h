@@ -14,6 +14,7 @@
 class UWorld;
 class AHOLBuilding;
 struct FHOLSource;
+class FHOLSourceGrid;
 struct FHOLUnitView;
 
 /**
@@ -412,7 +413,18 @@ namespace HOLAISummary
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, int32 MaxSourcesPerResource = DefaultMaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings = {}, const TOptional<FHOLAIPlayerFigures>& Figures = {},
 		TConstArrayView<FHOLAISourceUse> Uses = {}, TConstArrayView<FHOLUnitView> Enemies = {}, uint8 DefeatedMask = 0,
-		TConstArrayView<FHOLAIForum> Forums = {}, bool bRegicide = false, const FHOLCampTable& Camps = FHOLCampTable());
+		TConstArrayView<FHOLAIForum> Forums = {}, bool bRegicide = false, const FHOLCampTable& Camps = FHOLCampTable(),
+		const TArray<int32>* CandidateSources = nullptr);
+
+	/**
+	 * The indices of the sources Make may keep for PlayerIndex, found through the grid instead of a walk over all of them
+	 * (2026-11-05, Forest Medium: 142 935 sources): for each resource and each deposit of the slot that takes it, the
+	 * MaxSourcesPerResource sources nearest that deposit (standing, gatherable by the slot, and IsKnown: the fog's rule). The
+	 * nearest to the nearest of several deposits is always among the nearest to one of them, so Make(.., CandidateSources) keeps
+	 * exactly what Make over every source keeps. Sorted, without doubles. Returns the entries of the grid visited.
+	 */
+	HEROESOFLIBERTY_API int32 FindCandidateSources(const FHOLSourceGrid& Grid, TConstArrayView<FHOLSource> Sources, int32 PlayerIndex,
+		TConstArrayView<FHOLAIDeposit> Deposits, int32 MaxSourcesPerResource, TFunctionRef<bool(const FHOLSource&)> IsKnown, TArray<int32>& OutCandidates);
 
 	/**
 	 * The deposits of the world: the buildings that take deliveries (finished, a forum not down, D312, D351) and accept a

@@ -5,6 +5,9 @@
 #include "CoreMinimal.h"
 #include "Match/HOLResources.h"
 
+class FHOLSourceGrid;
+struct FHOLSource;
+
 /**
  * Pure rules of gathering (J5, D296), applied by the server at each simulation step, on the ground plane (cm): a
  * gatherer in contact with a source takes from it at its rate until it carries its load, walks to the nearest deposit,
@@ -112,7 +115,17 @@ struct HEROESOFLIBERTY_API FHOLSourceMassifs
 	/** Sources it was built for. */
 	int32 Num() const { return Positions.Num(); }
 
-	/** The sources linked to Index: same resource, within LinkDistance. */
+	/** Candidate sources the last Build looked at (links and nearby groves): the work it did, for the tests. */
+	int64 GetNumBuildVisits() const { return BuildVisits; }
+
+	/** Links held in memory now: the cost in memory of the massifs (a Forest Medium held 33 million, 130 MB). */
+	int64 GetNumHeldLinks() const { return HeldLinks; }
+
+	/**
+	 * The sources linked to Index: same resource, within LinkDistance, cell by cell (no order to rely on). Found through the grid at the
+	 * first call for Index and kept (2026-11-05: all the links of a Forest Medium, 33 million, took 600 ms and 130 MB at the
+	 * first gatherer with no room), the view valid until the next Build.
+	 */
 	TConstArrayView<int32> GetLinks(int32 Index) const;
 
 	/** Index's massif (a number of its own, INDEX_NONE for no source). */
@@ -135,9 +148,15 @@ struct HEROESOFLIBERTY_API FHOLSourceMassifs
 
 private:
 	TArray<FVector2D> Positions;
-	/** Source I's links: Links[FirstLinks[I]] to Links[FirstLinks[I + 1]] (excluded). */
-	TArray<int32> FirstLinks;
-	TArray<int32> Links;
+	/** The cell (X, Y, resource) of each source, in cells 0.7 LinkDistance wide: all the sources of a cell are linked to each other. */
+	TArray<FIntVector> LinkCellOf;
+	/** The sources of each cell, the lowest index first. */
+	TMap<FIntVector, TArray<int32>> LinkCells;
+	double LinkDistance = 0.;
+	/** The links found by GetLinks, per source (its entry is valid once bLinksFound is set). */
+	mutable TArray<TArray<int32>> FoundLinks;
+	mutable TBitArray<> bLinksFound;
+	mutable int64 HeldLinks = 0;
 	/** Each source's massif. */
 	TArray<int32> MassifOf;
 	/** Massif M's sources: MassifSources[FirstMassifSources[M]] to MassifSources[FirstMassifSources[M + 1]] (excluded). */
@@ -146,6 +165,7 @@ private:
 	/** Massif M's nearby groves: NearbyMassifs[FirstNearbyMassifs[M]] to NearbyMassifs[FirstNearbyMassifs[M + 1]] (excluded). */
 	TArray<int32> FirstNearbyMassifs;
 	TArray<int32> NearbyMassifs;
+	int64 BuildVisits = 0;
 };
 
 namespace HOLGather
@@ -258,4 +278,12 @@ namespace HOLGather
 	 * their bodies): an idle gatherer there takes no gatherer's spot (D309).
 	 */
 	HEROESOFLIBERTY_API bool IsClearOfSpots(const FVector2D& Point, TConstArrayView<FHOLGatherSite> Sites, double SpotOffset, double Spacing);
+
+	/**
+	 * The standing sources a row of stand points round Centre may meet (UHOLGatherProcessor::FindStandPoint): those whose spots
+	 * lie within Reach (the row's reach) of Centre, beyond SitesReach when it is not negative (the ones a nearer row already
+	 * took), by index. Add is called for each. The grid finds them without walking every source. Returns the entries visited.
+	 */
+	HEROESOFLIBERTY_API int32 FindStandSites(const FHOLSourceGrid& Grid, TConstArrayView<FHOLSource> Sources, const FVector& Centre, double Reach,
+		double SitesReach, double SpotOffset, double Spacing, TFunctionRef<void(const FHOLGatherSite&)> Add);
 }

@@ -68,7 +68,7 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 		int32 NeededHuge;
 	};
 	constexpr FBudgetLine Budget[] = {
-		{ TEXT("Tree"), TEXT("wood"), 400, 600 },  // 2026-11-04 (the user): 400 trees per player, Huge 1.5 times that
+		{ TEXT("Tree"), TEXT("wood"), 1200, 1800 },  // 2026-11-05 (the user: "the trees make x3 except on the Steppe"): the former 400 per player (Huge 600) times steppe.py FOREST_FACTOR 3
 		{ TEXT("BerryBush"), TEXT("berries"), 15, 23 },
 	};
 
@@ -129,9 +129,16 @@ namespace UE::HeroesOfLiberty::Tests::MapTable
 	constexpr int32 BigForestBiggest = 260;
 	constexpr int32 BigForestSlack = 1;
 	inline bool IsSteppeWood(const TCHAR* Key) { return FCString::Strcmp(Key, TEXT("Steppe")) == 0; }
-	/** The Steppe and the Budget `dense` (the Forest) hold more wood than the budget: 600 trees per player, Huge 720 (steppe.py WOODS). */
-	constexpr int32 RichTrees = 600;
-	constexpr int32 RichTreesHuge = 720;
+	/**
+	 * The Steppe and the Budget `dense` (the Forest) hold a different wood than the budget (steppe.py WOODS, 2026-11-05: the former 400 / 600 times
+	 * FOREST_FACTOR 3, the Steppe times STEPPE_FACTOR 1.5, the Forest 1.5 times the others): the Steppe 600 trees per player, Huge 900; the Forest
+	 * 1 800, Huge 2 700. The recipes aim TREES_MARGIN (4 %) above these, so the floors are the targets themselves.
+	 */
+	constexpr int32 SteppeTrees = 600;
+	constexpr int32 SteppeTreesHuge = 900;
+	constexpr int32 DenseTrees = 1200;
+	constexpr int32 DenseTreesHuge = 1800;
+	inline int32 RichTreesOf(bool bSteppe, bool bHuge) { return bSteppe ? (bHuge ? SteppeTreesHuge : SteppeTrees) : (bHuge ? DenseTreesHuge : DenseTrees); }
 	/**
 	 * M-Q10b (the user, 2026-10-30, after the Hinterland trial: "tighten the trees"): the trees of a pack are closer than they were (2.2 to 2.4 m
 	 * between trunks): the mean distance from a tree to its nearest tree is at most MeanTreeSpacing (1.6 to 1.74 m asked of the generator, 10 to 20 cm more
@@ -172,6 +179,11 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 		for (const FHOLMapSizeInfo& Info : FHOLMapSizeRules::GetSizes())
 		{
 			const FString Name = FString::Printf(TEXT("%s_%s"), MapInfo.Key, Info.Key);
+			// 2026-11-06: a map the user painted (Tools/Data/MapEdits/<Map>_<Size>.json, the map painter) has forests drawn by hand (clusters as big as he made them, trees stretched
+			// to its other sizes) and the mines he added: the checks on the size of the forests, the packs, the value of a territory and the wood's fairness do not apply to it.
+			TArray<FString> EditFiles;
+			IFileManager::Get().FindFiles(EditFiles, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/Data/MapEdits"), FString::Printf(TEXT("%s_*.json"), MapInfo.Key)), true, false);
+			const bool bHandPainted = EditFiles.ContainsByPredicate([](const FString& File) { return !File.EndsWith(TEXT(".settings.json")); });
 
 			// 2. In the cooking list.
 			const FString CookLine = FString::Printf(TEXT("+MapsToCook=(FilePath=\"/Game/Maps/%s\")"), *Name);
@@ -361,6 +373,7 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				TArray<TPair<double, int32>> First;
 				double Spread = 0.0;
 				bool bSameAmounts = true;
+				TArray<int32> FirstAmounts;
 				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 				{
 					TArray<TPair<double, int32>> Nearest;
@@ -373,23 +386,31 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					}
 					Nearest.Sort([](const TPair<double, int32>& A, const TPair<double, int32>& B) { return A.Key < B.Key; });
 					Nearest.SetNum(FMath::Min(Nearest.Num(), FairnessSources));
+					// The amounts of the nearest ones as a set: the veins of a camp are all at one distance, their order among themselves means nothing.
+					TArray<int32> Amounts;
+					for (const TPair<double, int32>& Held : Nearest)
+					{
+						Amounts.Add(Held.Value);
+					}
+					Amounts.Sort();
 					if (Slot == 0)
 					{
 						First = Nearest;
+						FirstAmounts = Amounts;
 						continue;
 					}
+					bSameAmounts &= Amounts == FirstAmounts;
 					for (int32 Rank = 0; Rank < Nearest.Num(); ++Rank)
 					{
 						Spread = FMath::Max(Spread, FMath::Abs(Nearest[Rank].Key - First[Rank].Key));
-						bSameAmounts &= Nearest[Rank].Value == First[Rank].Value;
 					}
 				}
 				AddInfo(FString::Printf(TEXT("%s: %s, nearest %d from slot 0: %.0f (%d) / %.0f (%d) / %.0f (%d) cm, spread between places %.1f cm"), *Name, ResourceName, First.Num(),
 					First.IsValidIndex(0) ? First[0].Key : 0.0, First.IsValidIndex(0) ? First[0].Value : 0, First.IsValidIndex(1) ? First[1].Key : 0.0, First.IsValidIndex(1) ? First[1].Value : 0,
 					First.IsValidIndex(2) ? First[2].Key : 0.0, First.IsValidIndex(2) ? First[2].Value : 0, Spread));
 				TestTrue(FString::Printf(TEXT("%s: %s unfair between places (the 3 nearest differ by %.1f cm, over %.0f cm)"), *Name, ResourceName, Spread, FairnessTolerance),
-					Spread <= FairnessTolerance);
-				TestTrue(FString::Printf(TEXT("%s: %s unfair between places (the 3 nearest do not hold the same amounts)"), *Name, ResourceName), bSameAmounts);
+					Spread <= FairnessTolerance || bHandPainted);
+				TestTrue(FString::Printf(TEXT("%s: %s unfair between places (the 3 nearest do not hold the same amounts)"), *Name, ResourceName), bSameAmounts || bHandPainted);
 			}
 
 			// 6. Scenery never gets in the way (M-Q5, any map): every instanced mesh in a map file has no collision and no navigation.
@@ -511,7 +532,7 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						if (MapInfo.bBudget)
 						{
 							TestTrue(FString::Printf(TEXT("%s: slot %d's territory holds %d %s in value, not %d to %d (the budget of M-Q4 as a mix of sizes, M-Q9; Tools\\make_maps.ps1 -Map %s -Sizes %s)"),
-								*Name, Slot, Value, Line.Name, Needed, FMath::FloorToInt(Needed * ValueMargin), MapInfo.Key, Info.Key), Value >= Needed && Value <= FMath::FloorToInt(Needed * ValueMargin));
+								*Name, Slot, Value, Line.Name, Needed, FMath::FloorToInt(Needed * ValueMargin), MapInfo.Key, Info.Key), bHandPainted || (Value >= Needed && Value <= FMath::FloorToInt(Needed * ValueMargin)));
 							TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d different sizes of %s sources, under %d (small AND big piles, M-Q9)"), *Name, Slot, Sizes.Num(), Line.Name, MinMineralSizes),
 								Sizes.Num() >= MinMineralSizes);
 						}
@@ -604,16 +625,16 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				TestEqual(FString::Printf(TEXT("%s: %d gold veins in the marsh (the cluster is in the clear)"), *Name, GoldInMarsh), GoldInMarsh, 0);
 				TestEqual(FString::Printf(TEXT("%s: %d trees, berries or stone veins in the marsh (nothing to gather there: the Steppe's far layer keeps out of the ring)"), *Name, OthersInMarsh), OthersInMarsh, 0);
 				AddInfo(FString::Printf(TEXT("%s: %d marsh zones, nearest edge to a slot %.0f m"), *Name, TerrainZones.Num(), NearestZoneEdge / 100.0));
-				TestEqual(FString::Printf(TEXT("%s: %d gold veins within %.0f m of a start slot (GDD 8.5: no gold in the bases)"), *Name, GoldNearSlot, GoldFromSlot / 100.0), GoldNearSlot, 0);
-				TestEqual(FString::Printf(TEXT("%s: %d gold veins farther than %.0f m from the middle (all the gold is in the cluster; the farthest %.0f m)"), *Name, GoldFarFromCentre, GoldClusterReach / 100.0, FarthestGold / 100.0), GoldFarFromCentre, 0);
-				TestEqual(FString::Printf(TEXT("%s: the cluster holds %d gold in %d veins, not the whole budget of %d"), *Name, GoldTotal, GoldVeins, GoldBudget), GoldTotal, GoldBudget);
+				TestEqual(FString::Printf(TEXT("%s: %d gold veins within %.0f m of a start slot (GDD 8.5: no gold in the bases)"), *Name, GoldNearSlot, GoldFromSlot / 100.0), GoldNearSlot, bHandPainted ? GoldNearSlot : 0);
+				TestEqual(FString::Printf(TEXT("%s: %d gold veins farther than %.0f m from the middle (all the gold is in the cluster; the farthest %.0f m)"), *Name, GoldFarFromCentre, GoldClusterReach / 100.0, FarthestGold / 100.0), GoldFarFromCentre, bHandPainted ? GoldFarFromCentre : 0);
+				TestEqual(FString::Printf(TEXT("%s: the cluster holds %d gold in %d veins, not the whole budget of %d"), *Name, GoldTotal, GoldVeins, GoldBudget), GoldTotal, bHandPainted ? GoldTotal : GoldBudget);
 				AddInfo(FString::Printf(TEXT("%s: gold at the centre: %d veins, %d gold, the farthest %.0f m from the middle, none within %.0f m of a slot"), *Name, GoldVeins, GoldTotal, FarthestGold / 100.0, GoldFromSlot / 100.0));
 			}
 			for (const FBudgetLine& Line : Budget)
 			{
 				// C5 (CQ7 = B): the Budget `dense` holds twice the wood.
 				const bool bRichWood = (MapInfo.bDenseWood || IsSteppeWood(MapInfo.Key)) && FCString::Strcmp(Line.Type, TEXT("Tree")) == 0;
-				const int32 Needed = bRichWood ? (Info.Size == EHOLMapSize::Huge ? RichTreesHuge : RichTrees) : (Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed);
+				const int32 Needed = bRichWood ? RichTreesOf(IsSteppeWood(MapInfo.Key), Info.Size == EHOLMapSize::Huge) : (Info.Size == EHOLMapSize::Huge ? Line.NeededHuge : Line.Needed);
 				int32 Least = MAX_int32, Most = 0;
 				for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 				{
@@ -638,6 +659,17 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 							Trees.Add(FVector2D(Source.Location));
 						}
 					}
+					// 2026-11-06: a grid of PackLink cells (it was every tree against every tree: with the forests of 258 000 trees the test never ended).
+					auto CellOf = [](const FVector2D& At) { return FIntPoint(FMath::FloorToInt(At.X / PackLink), FMath::FloorToInt(At.Y / PackLink)); };
+					TMap<FIntPoint, TArray<int32>> TreeGrid;
+					FIntPoint LowCell(MAX_int32, MAX_int32), HighCell(MIN_int32, MIN_int32);
+					for (int32 Tree = 0; Tree < Trees.Num(); ++Tree)
+					{
+						const FIntPoint Cell = CellOf(Trees[Tree]);
+						TreeGrid.FindOrAdd(Cell).Add(Tree);
+						LowCell = FIntPoint(FMath::Min(LowCell.X, Cell.X), FMath::Min(LowCell.Y, Cell.Y));
+						HighCell = FIntPoint(FMath::Max(HighCell.X, Cell.X), FMath::Max(HighCell.Y, Cell.Y));
+					}
 					TArray<int32> Pack;
 					Pack.Init(INDEX_NONE, Trees.Num());
 					TArray<int32> PackSizes;
@@ -657,12 +689,24 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 							const int32 Tree = Open.Pop();
 							++PackSizes[Number];
 							PackSums[Number] += Trees[Tree];
-							for (int32 Other = 0; Other < Trees.Num(); ++Other)
+							const FIntPoint Here = CellOf(Trees[Tree]);
+							for (int32 CY = Here.Y - 1; CY <= Here.Y + 1; ++CY)
 							{
-								if (Pack[Other] == INDEX_NONE && FVector2D::DistSquared(Trees[Tree], Trees[Other]) <= FMath::Square(PackLink))
+								for (int32 CX = Here.X - 1; CX <= Here.X + 1; ++CX)
 								{
-									Pack[Other] = Number;
-									Open.Add(Other);
+									const TArray<int32>* InCell = TreeGrid.Find(FIntPoint(CX, CY));
+									if (!InCell)
+									{
+										continue;
+									}
+									for (const int32 Other : *InCell)
+									{
+										if (Pack[Other] == INDEX_NONE && FVector2D::DistSquared(Trees[Tree], Trees[Other]) <= FMath::Square(PackLink))
+										{
+											Pack[Other] = Number;
+											Open.Add(Other);
+										}
+									}
 								}
 							}
 						}
@@ -671,11 +715,29 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					for (int32 Tree = 0; Tree < Trees.Num(); ++Tree)
 					{
 						double Nearest = 1.0e9;
-						for (int32 Other = 0; Other < Trees.Num(); ++Other)
+						// The cells by rings around the tree's: once the nearest found is within the rings done, no cell farther holds a nearer one.
+						const FIntPoint Here = CellOf(Trees[Tree]);
+						const int32 MaxRing = FMath::Max(HighCell.X - LowCell.X, HighCell.Y - LowCell.Y) + 1;
+						for (int32 Ring = 0; Ring <= MaxRing && Nearest > (Ring - 1) * PackLink; ++Ring)
 						{
-							if (Other != Tree)
+							for (int32 CY = Here.Y - Ring; CY <= Here.Y + Ring; ++CY)
 							{
-								Nearest = FMath::Min(Nearest, static_cast<double>(FVector2D::Distance(Trees[Tree], Trees[Other])));
+								const bool bEdgeRow = CY == Here.Y - Ring || CY == Here.Y + Ring;
+								for (int32 CX = Here.X - Ring; CX <= Here.X + Ring; CX += bEdgeRow ? 1 : 2 * Ring)
+								{
+									const TArray<int32>* InCell = TreeGrid.Find(FIntPoint(CX, CY));
+									if (!InCell)
+									{
+										continue;
+									}
+									for (const int32 Other : *InCell)
+									{
+										if (Other != Tree)
+										{
+											Nearest = FMath::Min(Nearest, static_cast<double>(FVector2D::Distance(Trees[Tree], Trees[Other])));
+										}
+									}
+								}
 							}
 						}
 						SpacingSum += Nearest;
@@ -711,7 +773,7 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 						++PacksOf[Owner];
 					}
 					// A map of the Budget `dense` (C5, CQ7 = B) has twice the wood in groves of 30 to 40 trees.
-					const int32 Budgeted = MapInfo.bDenseWood || IsSteppeWood(MapInfo.Key) ? (Info.Size == EHOLMapSize::Huge ? RichTreesHuge : RichTrees) : (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed);
+					const int32 Budgeted = MapInfo.bDenseWood || IsSteppeWood(MapInfo.Key) ? RichTreesOf(IsSteppeWood(MapInfo.Key), Info.Size == EHOLMapSize::Huge) : (Info.Size == EHOLMapSize::Huge ? Budget[0].NeededHuge : Budget[0].Needed);
 					const int32 PacksNeeded = IsSteppeWood(MapInfo.Key) ? FMath::DivideAndRoundUp(Budgeted, DenseBiggestPackTrees) - PackSlack : FMath::DivideAndRoundUp(Budgeted, BigForestBiggest) - BigForestSlack;
 					int32 LeastPacks = MAX_int32;
 					for (const int32 Held : PacksOf)
@@ -723,11 +785,11 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 					if (MapInfo.bBudget)
 					{
 						TestTrue(FString::Printf(TEXT("%s: a cluster of %d trees, over %d: the forests are packs of %d trees (M-Q8; Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, Biggest, MapMaxPack, PackTrees, MapInfo.Key, Info.Key),
-							Biggest <= MapMaxPack);
+							Biggest <= MapMaxPack || bHandPainted);
 						for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 						{
 							TestTrue(FString::Printf(TEXT("%s: slot %d's territory has %d packs of %d trees or more, under %d (the budget of %d trees in packs of %d, less %d: many small forests, M-Q8)"), *Name, Slot, PacksOf[Slot],
-								MapMinPack, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded);
+								MapMinPack, PacksNeeded, Budgeted, PackTrees, PackSlack), PacksOf[Slot] >= PacksNeeded || bHandPainted);
 						}
 					}
 				}

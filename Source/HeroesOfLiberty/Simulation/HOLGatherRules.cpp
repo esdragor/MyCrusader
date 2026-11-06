@@ -2,6 +2,9 @@
 
 #include "Simulation/HOLGatherRules.h"
 
+#include "Resources/HOLSourceGrid.h"
+#include "Resources/HOLSourceSubsystem.h"
+
 void HOLGather::StartGathering(FHOLGatherLoad& Load, const EHOLResource Resource)
 {
 	if (Load.Amount == 0)
@@ -200,6 +203,36 @@ bool HOLGather::IsClearOfSpots(const FVector2D& Point, TConstArrayView<FHOLGathe
 	return true;
 }
 
+int32 HOLGather::FindStandSites(const FHOLSourceGrid& Grid, const TConstArrayView<FHOLSource> Sources, const FVector& Centre, const double Reach,
+	const double SitesReach, const double SpotOffset, const double Spacing, const TFunctionRef<void(const FHOLGatherSite&)> Add)
+{
+	// The widest source the grid knows bounds the search; each one is then measured with its own radius, as the walk over all did.
+	const double Widest = Reach + Grid.GetMaxRadius() + SpotOffset + Spacing;
+	TArray<int32, TInlineAllocator<64>> Met;
+	const int32 Visits = Grid.ForEachInSquare(FVector2D(Centre), Widest, [&](const FHOLSourceGrid::FEntry& Entry)
+	{
+		if (!Sources.IsValidIndex(Entry.Index))
+		{
+			return;
+		}
+		const FHOLSource& Other = Sources[Entry.Index];
+		const double Within = Reach + Other.Radius + SpotOffset + Spacing;
+		const double Before = SitesReach + Other.Radius + SpotOffset + Spacing;
+		const double DistanceSquared = FVector::DistSquared2D(Other.Location, Centre);
+		if (Other.IsStanding() && DistanceSquared <= FMath::Square(Within) && (SitesReach < 0. || DistanceSquared > FMath::Square(Before)))
+		{
+			Met.Add(Entry.Index);
+		}
+	});
+	// By index, as the walk over all of them met them.
+	Met.Sort();
+	for (const int32 Index : Met)
+	{
+		Add(FHOLGatherSite{ FVector2D(Sources[Index].Location), Sources[Index].Radius });
+	}
+	return Visits;
+}
+
 FIntPoint FHOLSpotClaims::GetCell(const FVector2D& Spot)
 {
 	return FIntPoint(FMath::FloorToInt32(Spot.X / CellSize), FMath::FloorToInt32(Spot.Y / CellSize));
@@ -254,78 +287,133 @@ int32 FHOLSpotClaims::Num() const
 	return Total;
 }
 
-void FHOLSourceMassifs::Build(TConstArrayView<FHOLGatherSource> Sources, const double LinkDistance, const double NearbyDistance)
+void FHOLSourceMassifs::Build(TConstArrayView<FHOLGatherSource> Sources, const double InLinkDistance, const double NearbyDistance)
 {
-	Positions.Reset(Sources.Num());
-	FirstLinks.Reset(Sources.Num() + 1);
-	Links.Reset();
+	// 2026-11-05 (Forest Medium, 142 935 sources, a step of 1.1 to 1.5 s at the first gatherer with no room): the old build
+	// looked at every source of the 3 x 3 cells round each source (600 candidates per source for the links, 4 000 for the
+	// nearby groves) and kept every link (33 million, 130 MB). Now: cells 0.7 LinkDistance wide, whose sources are all linked
+	// to each other (their diagonal is shorter than a link), so the massifs join cell by cell (a pair of cells is looked
+	// into until one link is found, and not at all once both are of one massif); the links of a source are found when asked
+	// for (GetLinks); the nearby groves go by (cell, massif) groups, joined at the first pair of sources near enough. The
+	// links, the massifs (numbered by their first source) and the nearby groves are the old build's.
+	BuildVisits = 0;
+	const int32 Num = Sources.Num();
+	LinkDistance = InLinkDistance;
+	Positions.Reset(Num);
 	for (const FHOLGatherSource& Source : Sources)
 	{
 		Positions.Add(Source.Site.Position);
 	}
-	// Cells as wide as a link: a source's links lie in the 3 x 3 cells around its own.
-	const double CellSize = FMath::Max(LinkDistance, 1.);
 	const auto GetCell = [](const FVector2D& Position, const double Size)
 	{
 		return FIntPoint(FMath::FloorToInt32(Position.X / Size), FMath::FloorToInt32(Position.Y / Size));
 	};
-	TMap<FIntPoint, TArray<int32>> Cells;
-	for (int32 Index = 0; Index < Sources.Num(); ++Index)
+	const double CellSize = FMath::Max(InLinkDistance * 0.7, 1.);
+	const double LinkDistanceSquared = InLinkDistance * InLinkDistance;
+	LinkCells.Reset();
+	LinkCellOf.Reset(Num);
+	for (int32 Index = 0; Index < Num; ++Index)
 	{
-		Cells.FindOrAdd(GetCell(Positions[Index], CellSize)).Add(Index);
-	}
-	const double LinkDistanceSquared = LinkDistance * LinkDistance;
-	for (int32 Index = 0; Index < Sources.Num(); ++Index)
-	{
-		FirstLinks.Add(Links.Num());
 		const FIntPoint Cell = GetCell(Positions[Index], CellSize);
-		for (int32 Y = -1; Y <= 1; ++Y)
+		const FIntVector Key(Cell.X, Cell.Y, static_cast<int32>(Sources[Index].Resource));
+		LinkCellOf.Add(Key);
+		LinkCells.FindOrAdd(Key).Add(Index);
+	}
+	FoundLinks.Reset();
+	FoundLinks.SetNum(Num);
+	bLinksFound.Init(false, Num);
+	HeldLinks = 0;
+
+	// The sources joined: the root of each, by union-find.
+	TArray<int32> Parent;
+	Parent.SetNumUninitialized(Num);
+	for (int32 Index = 0; Index < Num; ++Index)
+	{
+		Parent[Index] = Index;
+	}
+	const auto Find = [&Parent](int32 Index)
+	{
+		while (Parent[Index] != Index)
 		{
-			for (int32 X = -1; X <= 1; ++X)
+			Parent[Index] = Parent[Parent[Index]];
+			Index = Parent[Index];
+		}
+		return Index;
+	};
+	const auto Join = [&Parent, &Find](const int32 A, const int32 B)
+	{
+		const int32 RootA = Find(A), RootB = Find(B);
+		if (RootA != RootB)
+		{
+			Parent[FMath::Max(RootA, RootB)] = FMath::Min(RootA, RootB);
+		}
+	};
+	for (const TPair<FIntVector, TArray<int32>>& Cell : LinkCells)
+	{
+		for (const int32 Index : Cell.Value)
+		{
+			++BuildVisits;
+			Join(Cell.Value[0], Index);
+		}
+	}
+	// Two cells apart at most hold sources a link apart (a link is 1.43 cells): the nearer cells first, so that those
+	// farther out are most often joined already when their turn comes. Each pair of cells once (the half of the offsets).
+	for (int32 Pass = 0; Pass < 2; ++Pass)
+	{
+		for (const TPair<FIntVector, TArray<int32>>& Cell : LinkCells)
+		{
+			for (int32 Y = 0; Y <= 2; ++Y)
 			{
-				const TArray<int32>* Others = Cells.Find(Cell + FIntPoint(X, Y));
-				if (!Others)
+				for (int32 X = (Y == 0 ? 1 : -2); X <= 2; ++X)
 				{
-					continue;
-				}
-				for (const int32 Other : *Others)
-				{
-					if (Other != Index && Sources[Other].Resource == Sources[Index].Resource
-						&& FVector2D::DistSquared(Positions[Other], Positions[Index]) <= LinkDistanceSquared)
+					const bool bNear = FMath::Abs(X) <= 1 && Y <= 1;
+					if (bNear == (Pass == 1))
 					{
-						Links.Add(Other);
+						continue;
+					}
+					const TArray<int32>* Others = LinkCells.Find(FIntVector(Cell.Key.X + X, Cell.Key.Y + Y, Cell.Key.Z));
+					if (!Others || Find(Cell.Value[0]) == Find((*Others)[0]))
+					{
+						continue;
+					}
+					bool bJoined = false;
+					for (const int32 A : Cell.Value)
+					{
+						for (const int32 B : *Others)
+						{
+							++BuildVisits;
+							if (FVector2D::DistSquared(Positions[A], Positions[B]) <= LinkDistanceSquared)
+							{
+								Join(A, B);
+								bJoined = true;
+								break;
+							}
+						}
+						if (bJoined)
+						{
+							break;
+						}
 					}
 				}
 			}
 		}
 	}
-	FirstLinks.Add(Links.Num());
 
-	// The massifs: the sources linked step by step, each massif numbered in the order of its first source.
-	MassifOf.Init(INDEX_NONE, Sources.Num());
+	// The massifs, numbered in the order of their first source.
+	MassifOf.Init(INDEX_NONE, Num);
 	int32 NumMassifs = 0;
-	TArray<int32> Pending;
-	for (int32 Index = 0; Index < Sources.Num(); ++Index)
 	{
-		if (MassifOf[Index] != INDEX_NONE)
+		TArray<int32> MassifOfRoot;
+		MassifOfRoot.Init(INDEX_NONE, Num);
+		for (int32 Index = 0; Index < Num; ++Index)
 		{
-			continue;
-		}
-		MassifOf[Index] = NumMassifs;
-		Pending.Reset();
-		Pending.Add(Index);
-		while (Pending.Num() > 0)
-		{
-			for (const int32 Link : GetLinks(Pending.Pop(EAllowShrinking::No)))
+			int32& Massif = MassifOfRoot[Find(Index)];
+			if (Massif == INDEX_NONE)
 			{
-				if (MassifOf[Link] == INDEX_NONE)
-				{
-					MassifOf[Link] = NumMassifs;
-					Pending.Add(Link);
-				}
+				Massif = NumMassifs++;
 			}
+			MassifOf[Index] = Massif;
 		}
-		++NumMassifs;
 	}
 	FirstMassifSources.Init(0, NumMassifs + 1);
 	for (const int32 Massif : MassifOf)
@@ -336,50 +424,103 @@ void FHOLSourceMassifs::Build(TConstArrayView<FHOLGatherSource> Sources, const d
 	{
 		FirstMassifSources[Massif + 1] += FirstMassifSources[Massif];
 	}
-	MassifSources.SetNumUninitialized(Sources.Num());
+	MassifSources.SetNumUninitialized(Num);
 	{
 		TArray<int32> Filled(FirstMassifSources.GetData(), NumMassifs);
-		for (int32 Index = 0; Index < Sources.Num(); ++Index)
+		for (int32 Index = 0; Index < Num; ++Index)
 		{
 			MassifSources[Filled[MassifOf[Index]]++] = Index;
 		}
 	}
 
-	// The nearby groves (D309 point 6): built once too, through cells as wide as their distance (every pair of sources
-	// close enough lies in 3 x 3 cells), each pair of massifs kept once.
+	// The nearby groves (D309 point 6): built once too. The sources in groups of one massif and one cell as wide as their
+	// distance (every pair of sources close enough lies in 3 x 3 cells); a pair of groups is looked into until one pair of
+	// sources near enough is found, and not at all once their massifs are known near, or their boxes too far apart.
 	TArray<TArray<int32>> Nearby;
 	Nearby.SetNum(NumMassifs);
 	if (NearbyDistance > 0.)
 	{
-		TMap<FIntPoint, TArray<int32>> NearbyCells;
-		for (int32 Index = 0; Index < Sources.Num(); ++Index)
+		struct FGroup
 		{
-			NearbyCells.FindOrAdd(GetCell(Positions[Index], NearbyDistance)).Add(Index);
+			TArray<int32> Members;
+			FVector2D Min = FVector2D(DBL_MAX, DBL_MAX);
+			FVector2D Max = FVector2D(-DBL_MAX, -DBL_MAX);
+			int32 Massif = INDEX_NONE;
+		};
+		const auto GetBoxDistanceSquared = [](const FGroup& A, const FVector2D& Min, const FVector2D& Max)
+		{
+			const double GapX = FMath::Max3(0., A.Min.X - Max.X, Min.X - A.Max.X);
+			const double GapY = FMath::Max3(0., A.Min.Y - Max.Y, Min.Y - A.Max.Y);
+			return GapX * GapX + GapY * GapY;
+		};
+		TArray<FGroup> Groups;
+		TMap<FIntVector, int32> GroupOf;
+		TMap<FIntPoint, TArray<int32>> GroupsOfCell;
+		for (int32 Index = 0; Index < Num; ++Index)
+		{
+			const FIntPoint Cell = GetCell(Positions[Index], NearbyDistance);
+			int32& Group = GroupOf.FindOrAdd(FIntVector(Cell.X, Cell.Y, MassifOf[Index]), INDEX_NONE);
+			if (Group == INDEX_NONE)
+			{
+				Group = Groups.Num();
+				Groups.AddDefaulted();
+				Groups[Group].Massif = MassifOf[Index];
+				GroupsOfCell.FindOrAdd(Cell).Add(Group);
+			}
+			FGroup& Grouped = Groups[Group];
+			Grouped.Members.Add(Index);
+			Grouped.Min = FVector2D(FMath::Min(Grouped.Min.X, Positions[Index].X), FMath::Min(Grouped.Min.Y, Positions[Index].Y));
+			Grouped.Max = FVector2D(FMath::Max(Grouped.Max.X, Positions[Index].X), FMath::Max(Grouped.Max.Y, Positions[Index].Y));
 		}
 		const double NearbyDistanceSquared = NearbyDistance * NearbyDistance;
-		for (int32 Index = 0; Index < Sources.Num(); ++Index)
+		for (const FGroup& Group : Groups)
 		{
-			const int32 Massif = MassifOf[Index];
-			const FIntPoint Cell = GetCell(Positions[Index], NearbyDistance);
+			const FIntPoint Cell = GetCell(Positions[Group.Members[0]], NearbyDistance);
 			for (int32 Y = -1; Y <= 1; ++Y)
 			{
 				for (int32 X = -1; X <= 1; ++X)
 				{
-					const TArray<int32>* Others = NearbyCells.Find(Cell + FIntPoint(X, Y));
+					const TArray<int32>* Others = GroupsOfCell.Find(Cell + FIntPoint(X, Y));
 					if (!Others)
 					{
 						continue;
 					}
-					for (const int32 Other : *Others)
+					for (const int32 OtherIndex : *Others)
 					{
-						// Each pair of massifs from its lower one, once.
-						const int32 OtherMassif = MassifOf[Other];
-						if (OtherMassif > Massif && Sources[Other].Resource == Sources[Index].Resource
-							&& !Nearby[Massif].Contains(OtherMassif)
-							&& FVector2D::DistSquared(Positions[Other], Positions[Index]) <= NearbyDistanceSquared)
+						const FGroup& Other = Groups[OtherIndex];
+						// Each pair of massifs from its lower one, once; a massif is of one resource (its links keep to one).
+						if (Other.Massif <= Group.Massif || Sources[Other.Members[0]].Resource != Sources[Group.Members[0]].Resource
+							|| Nearby[Group.Massif].Contains(Other.Massif)
+							|| GetBoxDistanceSquared(Group, Other.Min, Other.Max) > NearbyDistanceSquared)
 						{
-							Nearby[Massif].Add(OtherMassif);
-							Nearby[OtherMassif].Add(Massif);
+							continue;
+						}
+						bool bNear = false;
+						for (const int32 A : Group.Members)
+						{
+							++BuildVisits;
+							if (GetBoxDistanceSquared(Other, Positions[A], Positions[A]) > NearbyDistanceSquared)
+							{
+								continue;
+							}
+							for (const int32 B : Other.Members)
+							{
+								++BuildVisits;
+								if (FVector2D::DistSquared(Positions[A], Positions[B]) <= NearbyDistanceSquared)
+								{
+									bNear = true;
+									break;
+								}
+							}
+							if (bNear)
+							{
+								break;
+							}
+						}
+						if (bNear)
+						{
+							Nearby[Group.Massif].Add(Other.Massif);
+							Nearby[Other.Massif].Add(Group.Massif);
 						}
 					}
 				}
@@ -391,6 +532,7 @@ void FHOLSourceMassifs::Build(TConstArrayView<FHOLGatherSource> Sources, const d
 	for (int32 Massif = 0; Massif < NumMassifs; ++Massif)
 	{
 		FirstNearbyMassifs.Add(NearbyMassifs.Num());
+		Nearby[Massif].Sort();
 		NearbyMassifs.Append(Nearby[Massif]);
 	}
 	FirstNearbyMassifs.Add(NearbyMassifs.Num());
@@ -398,11 +540,38 @@ void FHOLSourceMassifs::Build(TConstArrayView<FHOLGatherSource> Sources, const d
 
 TConstArrayView<int32> FHOLSourceMassifs::GetLinks(const int32 Index) const
 {
-	if (!Positions.IsValidIndex(Index))
+	if (!FoundLinks.IsValidIndex(Index))
 	{
 		return TConstArrayView<int32>();
 	}
-	return TConstArrayView<int32>(Links.GetData() + FirstLinks[Index], FirstLinks[Index + 1] - FirstLinks[Index]);
+	TArray<int32>& Found = FoundLinks[Index];
+	if (!bLinksFound[Index])
+	{
+		bLinksFound[Index] = true;
+		const FIntVector& Cell = LinkCellOf[Index];
+		const double LinkDistanceSquared = LinkDistance * LinkDistance;
+		// A link is 1.43 cells at most: the sources of the 5 x 5 cells round.
+		for (int32 Y = -2; Y <= 2; ++Y)
+		{
+			for (int32 X = -2; X <= 2; ++X)
+			{
+				const TArray<int32>* Others = LinkCells.Find(FIntVector(Cell.X + X, Cell.Y + Y, Cell.Z));
+				if (!Others)
+				{
+					continue;
+				}
+				for (const int32 Other : *Others)
+				{
+					if (Other != Index && FVector2D::DistSquared(Positions[Other], Positions[Index]) <= LinkDistanceSquared)
+					{
+						Found.Add(Other);
+					}
+				}
+			}
+		}
+		HeldLinks += Found.Num();
+	}
+	return TConstArrayView<int32>(Found);
 }
 
 TConstArrayView<int32> FHOLSourceMassifs::GetNearbyMassifs(const int32 Massif) const

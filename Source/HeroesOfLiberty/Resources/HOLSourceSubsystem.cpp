@@ -309,6 +309,7 @@ int32 UHOLSourceSubsystem::AddSource(const FName TypeName, const FVector& Locati
 	Source.Remaining = Amount != INDEX_NONE ? FMath::Max(Amount, 1) : Type->Amount;
 	Source.OwnerSlot = OwnerSlot;
 	const int32 SourceIndex = Sources.Num() - 1;
+	Grid.Add(SourceIndex, Source.Resource, FVector2D(Location), Source.Radius);
 	OnSourceAdded(SourceIndex);
 	return SourceIndex;
 }

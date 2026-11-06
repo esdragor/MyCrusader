@@ -2,6 +2,7 @@
 
 #include "AI/HOLAISummary.h"
 
+#include "Algo/Unique.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLProductionRules.h"
@@ -68,7 +69,8 @@ namespace HOLAISummary
 	FHOLAISummary Make(const int32 PlayerIndex, TConstArrayView<FHOLUnitView> Units, TConstArrayView<FHOLSource> Sources,
 		TConstArrayView<FHOLAIDeposit> Deposits, const TOptional<FHOLResources>& Stock, const int32 MaxSourcesPerResource,
 		TConstArrayView<FHOLAIBuilding> Buildings, const TOptional<FHOLAIPlayerFigures>& Figures, TConstArrayView<FHOLAISourceUse> Uses,
-		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide, const FHOLCampTable& Camps)
+		TConstArrayView<FHOLUnitView> Enemies, const uint8 DefeatedMask, TConstArrayView<FHOLAIForum> Forums, const bool bRegicide, const FHOLCampTable& Camps,
+		const TArray<int32>* CandidateSources)
 	{
 		FHOLAISummary Summary;
 		Summary.PlayerIndex = PlayerIndex;
@@ -134,9 +136,16 @@ namespace HOLAISummary
 
 		// Sources: each standing one the slot may gather (not another slot's farm field, IA1.2: the gather would refuse it,
 		// IA0.4 B4) measured from the slot's nearest deposit taking its resource. A few deposits per slot, a few hundred
-		// sources: every pair is measured (2 to 4 summaries per second and AI slot, IA-Q2).
-		for (int32 SourceIndex = 0; SourceIndex < Sources.Num(); ++SourceIndex)
+		// sources: every pair is measured (2 to 4 summaries per second and AI slot, IA-Q2). With CandidateSources (Read, through the
+		// grid of the sources: a Forest Medium has 142 935) only those are measured: they hold the ones that are kept.
+		const int32 NumToMeasure = CandidateSources ? CandidateSources->Num() : Sources.Num();
+		for (int32 Measured = 0; Measured < NumToMeasure; ++Measured)
 		{
+			const int32 SourceIndex = CandidateSources ? (*CandidateSources)[Measured] : Measured;
+			if (!Sources.IsValidIndex(SourceIndex))
+			{
+				continue;
+			}
 			const FHOLSource& Source = Sources[SourceIndex];
 			if (!Source.IsStanding() || PlayerIndex < 0 || PlayerIndex > MAX_uint8
 				|| !Source.IsGatherableBy(static_cast<uint8>(PlayerIndex)))
@@ -308,6 +317,40 @@ namespace HOLAISummary
 		return Summary;
 	}
 
+	int32 FindCandidateSources(const FHOLSourceGrid& Grid, const TConstArrayView<FHOLSource> Sources, const int32 PlayerIndex,
+		const TConstArrayView<FHOLAIDeposit> Deposits, const int32 MaxSourcesPerResource, const TFunctionRef<bool(const FHOLSource&)> IsKnown,
+		TArray<int32>& OutCandidates)
+	{
+		OutCandidates.Reset();
+		const int32 Count = FMath::Max(MaxSourcesPerResource, 0);
+		if (PlayerIndex < 0 || PlayerIndex > MAX_uint8 || Count == 0)
+		{
+			return 0;
+		}
+		// What Make keeps: standing, gatherable by the slot, known to it.
+		const auto Accept = [&Sources, PlayerIndex, &IsKnown](const int32 Index)
+		{
+			return Sources.IsValidIndex(Index) && Sources[Index].IsStanding() && Sources[Index].IsGatherableBy(static_cast<uint8>(PlayerIndex))
+				&& IsKnown(Sources[Index]);
+		};
+		int32 Visits = 0;
+		TArray<int32> Nearest;
+		for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
+		{
+			for (const FHOLAIDeposit& Deposit : Deposits)
+			{
+				if (Deposit.OwnerPlayer == PlayerIndex && Deposit.Accepts.Contains(Resource))
+				{
+					Visits += Grid.FindNearest(Deposit.Footprint, Resource, Count, Accept, Nearest);
+					OutCandidates.Append(Nearest);
+				}
+			}
+		}
+		OutCandidates.Sort();
+		OutCandidates.SetNum(Algo::Unique(OutCandidates));
+		return Visits;
+	}
+
 	void GatherEnemies(const UWorld& World, const int32 PlayerIndex, TArray<FHOLUnitView>& OutEnemies)
 	{
 		// The whole world, as the server and a solo game see it (nothing is hidden before the fog, IA2-Q1 A): every unit of
@@ -447,7 +490,21 @@ namespace HOLAISummary
 		// others count as used up here (their indices kept).
 		TArray<FHOLSource> Known;
 		const UHOLVisionSubsystem* Vision = World.GetSubsystem<UHOLVisionSubsystem>();
-		if (Vision && Vision->IsStarted() && Vision->GetMode() != EHOLFogMode::Disabled)
+		const bool bFog = Vision && Vision->IsStarted() && Vision->GetMode() != EHOLFogMode::Disabled;
+		TArray<FHOLAIBuilding> Buildings;
+		GatherBuildings(World, Buildings);
+		// 2026-11-05: only the sources Make can keep are found (through the grid of the sources) and measured; a Forest Medium has
+		// 142 935 (Think 33 ms against 1.3). A client has no grid: every source, as before.
+		TArray<int32> Candidates;
+		const bool bCandidates = SourceSystem && SourceSystem->HasAuthority();
+		if (bCandidates)
+		{
+			FindCandidateSources(SourceSystem->GetGrid(), Sources, PlayerIndex, Deposits, DefaultMaxSourcesPerResource, [Vision, bFog, PlayerIndex](const FHOLSource& Source)
+			{
+				return !bFog || Vision->GetVision(PlayerIndex, Source.Location) != EHOLCellVision::Unexplored;
+			}, Candidates);
+		}
+		else if (bFog)
 		{
 			Known = Sources;
 			for (FHOLSource& Source : Known)
@@ -459,29 +516,29 @@ namespace HOLAISummary
 			}
 			Sources = Known;
 		}
-		TArray<FHOLAIBuilding> Buildings;
-		GatherBuildings(World, Buildings);
-		// IA1.7b: the places of each source of few places and the ones held (the processor's, published at each step).
-		TArray<FHOLAISourceUse> Uses;
-		if (SourceSystem)
-		{
-			Uses.SetNum(Sources.Num());
-			for (int32 Index = 0; Index < Sources.Num(); ++Index)
-			{
-				const FHOLSourceTypeRow* Type = SourceSystem->GetType(Sources[Index].TypeIndex);
-				Uses[Index].Places = Type ? Type->Places : 0;
-				Uses[Index].Occupants = Uses[Index].Places > 0 ? SourceSystem->GetOccupants(Index) : 0;
-				Uses[Index].bFull = SourceSystem->IsFull(Index);
-			}
-		}
 		TArray<FHOLUnitView> Enemies;
 		GatherEnemies(World, PlayerIndex, Enemies);
 		const AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
 		TArray<FHOLAIForum> Forums;
 		GatherForums(World, Forums);
 		FHOLAISummary Summary = Make(PlayerIndex, Units, Sources, Deposits, ReadStock(World, PlayerIndex), DefaultMaxSourcesPerResource, Buildings,
-			ReadFigures(World, PlayerIndex), Uses, Enemies, GameState ? GameState->GetDefeatedMask() : 0, Forums,
-			GameState && GameState->GetLaunchConfig().bRegicide, FHOLCampTable::FromWorld(&World));
+			ReadFigures(World, PlayerIndex), {}, Enemies, GameState ? GameState->GetDefeatedMask() : 0, Forums,
+			GameState && GameState->GetLaunchConfig().bRegicide, FHOLCampTable::FromWorld(&World), bCandidates ? &Candidates : nullptr);
+		// IA1.7b: the places of each source of few places and the ones held (the processor's, published at each step), for the
+		// sources kept only.
+		if (SourceSystem)
+		{
+			for (const EHOLResource Resource : { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold })
+			{
+				for (FHOLAISourceNear& Near : Summary.Get(Resource).Sources)
+				{
+					const FHOLSourceTypeRow* Type = Sources.IsValidIndex(Near.SourceIndex) ? SourceSystem->GetType(Sources[Near.SourceIndex].TypeIndex) : nullptr;
+					Near.Places = Type ? Type->Places : 0;
+					Near.Occupants = Near.Places > 0 ? SourceSystem->GetOccupants(Near.SourceIndex) : 0;
+					Near.bFull = SourceSystem->IsFull(Near.SourceIndex);
+				}
+			}
+		}
 		// IA4 (D579): the slot's level, from the launch configuration (Normal for a slot out of its table).
 		if (GameState && GameState->GetLaunchConfig().Slots.IsValidIndex(PlayerIndex))
 		{

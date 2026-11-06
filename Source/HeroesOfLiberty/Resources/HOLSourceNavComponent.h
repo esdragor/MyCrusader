@@ -35,6 +35,18 @@ public:
 
 	int32 GetNumCylinders() const;
 
+	/** The box of all the cylinders (invalid with none), as the navigation is told. */
+	FBox GetCylindersBounds() const;
+
+	/** The cylinders visited by the full scans of CalcAndCacheBounds so far (a test and the load log read it). */
+	int64 GetNumBoundsVisits() const { return NumBoundsVisits; }
+
+	/**
+	 * The boxes to dirty at registration: the cylinders' boxes merged per cell of the ground, not one per source (a forest
+	 * of 143 000 trees would dirty 143 000 boxes, and the navigation and the paths kept would each hold them all).
+	 */
+	void GetRegistrationAreas(TArray<FBox>& OutAreas) const;
+
 	//~ Begin INavRelevantInterface
 	virtual void GetNavigationData(FNavigationRelevantData& Data) const override;
 	virtual bool ShouldSkipDirtyAreaOnAddOrRemove() const override { return true; }
@@ -54,6 +66,13 @@ private:
 
 	/** One cylinder per standing source (radius 1, height 1, scaled per source); the key is the source's index. */
 	TMap<int32, FTransform> Cylinders;
+
+	/**
+	 * Bounds is kept as the cylinders come (a box added to it) and keeps the boxes of those that went (a superset of the
+	 * union) until the next CalcAndCacheBounds, which scans once and shrinks it.
+	 */
+	mutable bool bBoundsStale = false;
+	mutable int64 NumBoundsVisits = 0;
 
 	/** The generator reads Cylinders while the game thread may change them. */
 	mutable FRWLock CylindersLock;

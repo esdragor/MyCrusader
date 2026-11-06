@@ -237,7 +237,7 @@ private:
 	 * Peasants ordered to a wood at once look through the trees filled before them once, not each). Another gatherer's
 	 * own source is never skipped this way: its own claim may be there.
 	 */
-	TBitArray<> FullSources;
+	TSet<int32> FullSources;
 	/**
 	 * IA2.6b: the game time (s, summed from the steps) a gatherer last stood idle in front of each source for want of a spot; a
 	 * source is shown full to the AI's summary for FullShownSeconds after it. The vein of a camp holds a handful of gatherers:

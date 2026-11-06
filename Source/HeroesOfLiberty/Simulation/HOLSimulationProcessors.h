@@ -177,6 +177,9 @@ protected:
 	 */
 	TArray<FBox2D> ObstacleReaches;
 	FBox2D ObstacleBounds;
+	/** The map's playable area (AHOLMapBounds), once per world: a body is kept inside it (the user, 2026-11-05: the units pushed a quarter of a tile out of the map). */
+	FBox2D MapArea;
+	bool bHasMapArea = false;
 	TWeakObjectPtr<const UWorld> ObstacleWorld;
 
 	static std::atomic<int64> NumPushedOut;

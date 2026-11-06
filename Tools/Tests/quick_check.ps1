@@ -7311,7 +7311,8 @@ if ($Parts -contains "net") {
 }
 
 if ($TestsProcess) {
-    $TestsTimedOut = -not $TestsProcess.WaitForExit(300000)
+    # 2026-11-06: 900 s (it was 300): Map.Table loads the 35 match maps (the painted forests hold up to 258 000 sources) and takes minutes alone.
+    $TestsTimedOut = -not $TestsProcess.WaitForExit(900000)
     if ($TestsTimedOut) { $TestsProcess.Kill() }
     $Results = @(if (Test-Path $TestsLog) { Select-String -Path $TestsLog -Pattern "Test Completed\. Result=\{(\w+)\}.*Path=\{([^}]+)\}" | ForEach-Object { $_.Matches[0] } })
     $Failures = @($Results | Where-Object { $_.Groups[1].Value -ne "Success" } | ForEach-Object { $_.Groups[2].Value })

@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Map/HOLMapBounds.h"
 #include "Simulation/HOLSimulationProcessors.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -2303,6 +2304,12 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 		ObstacleWorld = World;
 		ObstacleReaches.Reset();
 		ObstacleBounds = FBox2D(ForceInit);
+		bHasMapArea = false;
+		if (const AHOLMapBounds* Bounds = AHOLMapBounds::Find(World))
+		{
+			MapArea = Bounds->GetPlayableArea();
+			bHasMapArea = true;
+		}
 		for (TActorIterator<AStaticMeshActor> It(World); It; ++It)
 		{
 			const UStaticMeshComponent* Mesh = It->GetStaticMeshComponent();
@@ -2323,7 +2330,7 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 	}
 	const UNavigationSystemV1* NavSystem = ObstacleReaches.IsEmpty() ? nullptr : FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
 	const ANavigationData* NavData = NavSystem ? NavSystem->GetDefaultNavDataInstance() : nullptr;
-	if (Footprints.IsEmpty() && NavData == nullptr)
+	if (Footprints.IsEmpty() && NavData == nullptr && !bHasMapArea)
 	{
 		return;
 	}
@@ -2545,6 +2552,18 @@ void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, F
 			else if (Order.ObstaclePushes != 0)
 			{
 				Order.ObstaclePushes = 0;
+			}
+			// The map's limit: a body (and its place) stays inside the playable area, whatever pushed it (a crowd's separation, a formation's places).
+			if (bHasMapArea)
+			{
+				const FVector2D Inside(FMath::Clamp(Position.X, MapArea.Min.X + Radius, MapArea.Max.X - Radius), FMath::Clamp(Position.Y, MapArea.Min.Y + Radius, MapArea.Max.Y - Radius));
+				if (!Inside.Equals(Position, 0.01))
+				{
+					Position = Inside;
+					Transform.SetLocation(FVector(Position.X, Position.Y, Location.Z));
+				}
+				Order.Slot.X = FMath::Clamp(Order.Slot.X, MapArea.Min.X + Radius, MapArea.Max.X - Radius);
+				Order.Slot.Y = FMath::Clamp(Order.Slot.Y, MapArea.Min.Y + Radius, MapArea.Max.Y - Radius);
 			}
 			// A walker put back step after step: its way crosses the building, the order processor finds it a new path.
 			if (bMoved && (Order.Phase == EHOLMovePhase::Path || Order.Phase == EHOLMovePhase::FinalLeg))

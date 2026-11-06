@@ -3,6 +3,8 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Level.h"
 #include "Engine/World.h"
+#include "HAL/FileManager.h"
+#include "Misc/Paths.h"
 #include "Map/HOLMapBounds.h"
 #include "Map/HOLMapSizeRules.h"
 #include "Map/HOLStartSlot.h"
@@ -101,18 +103,23 @@ bool FHOLMapPlainSizesTest::RunTest(const FString& Parameters)
 		int32 Unmatched = 0;
 		int32 Neutral = 0;
 		const double Turn = FMath::DegreesToRadians(Step);
+		// 2026-11-06: a map the user painted (Tools/Data/MapEdits/<Map>_<Size>.json, the map painter) holds forests drawn by hand, which no turn maps onto
+		// another: its trees are not compared (everything else still is).
+		TArray<FString> PaintedFiles;
+		IFileManager::Get().FindFiles(PaintedFiles, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/Data/MapEdits"), TEXT("Plain_*.json")), true, false);
+		const bool bPaintedForests = PaintedFiles.ContainsByPredicate([](const FString& File) { return !File.EndsWith(TEXT(".settings.json")); });
 		for (const FHOLPlacedSource& Source : Sources)
 		{
 			const FVector2D At(Source.Location);
 			const FVector2D Turned(At.X * FMath::Cos(Turn) - At.Y * FMath::Sin(Turn), At.X * FMath::Sin(Turn) + At.Y * FMath::Cos(Turn));
-			const bool bMatched = Sources.ContainsByPredicate([&Source, &Turned](const FHOLPlacedSource& Other)
-				{ return Other.Type == Source.Type && FVector2D::DistSquared(FVector2D(Other.Location), Turned) < 4.0; });
-			Unmatched += !bMatched;
 			bool bNearSlot = false;
 			for (const TPair<int32, FVector2D>& Start : Starts)
 			{
 				bNearSlot |= FVector2D::Distance(At, Start.Value) < BaseReach;
 			}
+			const bool bMatched = (bPaintedForests && Source.Type == TEXT("Tree")) || Sources.ContainsByPredicate([&Source, &Turned](const FHOLPlacedSource& Other)
+				{ return Other.Type == Source.Type && FVector2D::DistSquared(FVector2D(Other.Location), Turned) < 4.0; });
+			Unmatched += !bMatched;
 			Neutral += !bNearSlot;
 			TestTrue(FString::Printf(TEXT("%s: source at %s inside the bounds"), Info.Key, *At.ToString()), Area.IsInside(At) || !Area.bIsValid);
 		}
