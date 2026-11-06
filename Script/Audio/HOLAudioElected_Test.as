@@ -3,7 +3,7 @@
 // that the game plays (HOLAudio::Plan): the elected cue plays its elected file whatever the seed, the cues the user wants silent
 // never play, and the cues he has not answered about keep the table they had.
 
-// Click H, Open F, Back B, Error A, Confirm G: one file each, in the pack it comes from.
+// Click H, Open F, Close A, Back B, Error A, Confirm G, Select.Unit D: one file each, in the pack it comes from.
 void Test_AudioElectedCuesPointAtTheElectedSound(FUnitTest& T)
 {
 	TArray<int> Events;
@@ -11,6 +11,8 @@ void Test_AudioElectedCuesPointAtTheElectedSound(FUnitTest& T)
 	TArray<FString> Stems;
 	Events.Add(HOLAudioEvent::UiClick);   Packs.Add("rpg-audio");     Stems.Add("beltHandle1");
 	Events.Add(HOLAudioEvent::UiOpen);    Packs.Add("rpg-audio");     Stems.Add("bookFlip2");
+	Events.Add(HOLAudioEvent::UiClose);   Packs.Add("rpg-audio");     Stems.Add("bookClose");
+	Events.Add(HOLAudioEvent::SelectUnit); Packs.Add("rpg-audio");    Stems.Add("handleSmallLeather");
 	Events.Add(HOLAudioEvent::UiBack);    Packs.Add("rpg-audio");     Stems.Add("cloth2");
 	Events.Add(HOLAudioEvent::UiError);   Packs.Add("impact-sounds"); Stems.Add("impactMetal_heavy_000");
 	Events.Add(HOLAudioEvent::UiConfirm); Packs.Add("rpg-audio");     Stems.Add("metalClick");
@@ -29,7 +31,7 @@ void Test_AudioElectedCuesPointAtTheElectedSound(FUnitTest& T)
 	}
 }
 
-// Hover, Toggle, Tick, Scroll: the user wants NO sound. The cue stays in the table (same numbering) but nothing ever plays, at any
+// Hover, Toggle, Tick, Scroll, the five orders and Select.Building (every building will have its own sound later): the user wants NO sound. The cue stays in the table (same numbering) but nothing ever plays, at any
 // time, with any seed, and there is no asset to load.
 void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 {
@@ -38,12 +40,18 @@ void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 	Events.Add(HOLAudioEvent::UiToggle);
 	Events.Add(HOLAudioEvent::UiTick);
 	Events.Add(HOLAudioEvent::UiScroll);
+	Events.Add(HOLAudioEvent::OrderMove);
+	Events.Add(HOLAudioEvent::OrderAttack);
+	Events.Add(HOLAudioEvent::OrderGather);
+	Events.Add(HOLAudioEvent::OrderBuild);
+	Events.Add(HOLAudioEvent::OrderGarrison);
+	Events.Add(HOLAudioEvent::SelectBuilding);
 	T.AssertEquals(24, HOLAudio::Count(), "the table still has its 24 events");
 	for (int Index = 0; Index < Events.Num(); Index++)
 	{
 		FHOLAudioCue Cue = HOLAudio::CueFor(Events[Index]);
 		T.AssertEquals(Events[Index], Cue.Event, f"{Cue.Name}: still in the table, same event number");
-		T.AssertTrue(Cue.Name.StartsWith("Ui."), f"{Cue.Name}: still named");
+		T.AssertTrue(Cue.Name.Contains("."), f"{Cue.Name}: still named");
 		T.AssertEquals(0, Cue.Stems.Num(), f"{Cue.Name}: no file");
 		T.AssertFalse(HOLAudio::MayPlay(Cue, 100000, -1), f"{Cue.Name}: may not play");
 		for (int Seed = -7; Seed < 40; Seed++)
@@ -55,15 +63,9 @@ void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 	}
 }
 
-// The user has not answered about Close, the orders, the selection and the alerts: they keep the table they had (only listened to later).
+// The user has not answered about the alerts (audio_compare_alerts, not yet listened to): they keep the table they had.
 void Test_AudioUnansweredCuesAreUnchanged(FUnitTest& T)
 {
-	FHOLAudioCue Close = HOLAudio::CueFor(HOLAudioEvent::UiClose);
-	T.AssertEquals("interface-sounds", Close.Pack, "Ui.Close: unchanged pack");
-	T.AssertEquals(4, Close.Stems.Num(), "Ui.Close: unchanged files");
-	T.AssertEquals("close_001", Close.Stems[0], "Ui.Close: unchanged first file");
-	T.AssertEquals("rpg-audio", HOLAudio::CueFor(HOLAudioEvent::OrderAttack).Pack, "Order.Attack: unchanged");
-	T.AssertEquals(3, HOLAudio::CueFor(HOLAudioEvent::OrderMove).Stems.Num(), "Order.Move: unchanged");
 	T.AssertEquals("impact-sounds", HOLAudio::CueFor(HOLAudioEvent::AlertUnderAttack).Pack, "Alert.UnderAttack: unchanged");
 	T.AssertEquals(3, HOLAudio::CueFor(HOLAudioEvent::AlertUnderAttack).Stems.Num(), "Alert.UnderAttack: unchanged files");
 	T.AssertEquals("question_001", HOLAudio::CueFor(HOLAudioEvent::AlertDiplomacy).Stems[0], "Alert.Diplomacy: unchanged");
