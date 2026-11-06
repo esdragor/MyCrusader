@@ -1272,6 +1272,8 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		if (Audio != nullptr)
+			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
 		RefreshPause();
 		RefreshMinimap();

@@ -6,8 +6,8 @@
 // The file names come from the packs' own names and are NOT listened to yet; the check Tools/Audio/check_audio_table.ps1 reads
 // this file and verifies that every pack and file exists on disk. Choices by the user's ear (E-audio_compare, E-audio_compare_orders,
 // 2026-11-06): the elected cues have ONE file; a SILENT cue (empty pack and files: Hover, Toggle, Tick, Scroll, the five orders, the generic
-// Select.Building, each building will have its own sound later) stays in the table but never plays. The alerts are still the provisional
-// Kenney choices, to settle after audio_compare_alerts.
+// Select.Building, each building will have its own sound later) stays in the table but never plays. The alerts follow audio_compare_alerts: UnderAttack,
+// Trade, Volcano (rung 3 times) and Diplomacy elected, TrainingDone takes TechDone's variant G, BuildingDone and TechDone silent.
 
 // What a cue says.
 struct FHOLAudioCue
@@ -36,6 +36,10 @@ struct FHOLAudioCue
 
 	// HOLAudioPriority: what stays when the sound budget is full (A3).
 	int Priority = 0;
+
+	// The cue rings this many times in a row (1 = once), RepeatGapMs apart (the volcano's bell, HOLAudio::SetRepeat).
+	int RepeatCount = 1;
+	int RepeatGapMs = 0;
 }
 
 namespace HOLAudioPriority
@@ -79,6 +83,11 @@ namespace HOLAudioEvent
 
 namespace HOLAudio
 {
+	// The volcano's bell rings several times (the user's answer to audio_compare_alerts: "Alert Volcano A, mais plusieurs fois"). THE setting:
+	// how many times and how far apart (milliseconds).
+	const int VolcanoRepeatCount = 3;
+	const int VolcanoRepeatGapMs = 1000;
+
 	void Add(TArray<FHOLAudioCue>& Cues, int Event, FString Name, FString Pack, FString StemList, int Volume, int PitchMin, int PitchMax, int CooldownMs, int Priority)
 	{
 		FHOLAudioCue Cue;
@@ -92,6 +101,13 @@ namespace HOLAudio
 		Cue.CooldownMs = CooldownMs;
 		Cue.Priority = Priority;
 		Cues.Add(Cue);
+	}
+
+	// Makes a cue ring Count times in a row, GapMs apart.
+	void SetRepeat(TArray<FHOLAudioCue>& Cues, int Event, int Count, int GapMs)
+	{
+		Cues[Event].RepeatCount = Count;
+		Cues[Event].RepeatGapMs = GapMs;
 	}
 
 	// One line per event, in the order of HOLAudioEvent: event, name, pack, files, volume, pitch min, pitch max, cooldown, priority.
@@ -117,13 +133,14 @@ namespace HOLAudio
 		Add(Cues, HOLAudioEvent::SelectUnit, "Select.Unit", "rpg-audio", "handleSmallLeather", 55, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuilding, "Select.Building", "", "", 60, 97, 103, 60, HOLAudioPriority::Order);
 
-		Add(Cues, HOLAudioEvent::AlertUnderAttack, "Alert.UnderAttack", "impact-sounds", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002", 100, 100, 100, 10000, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertBuildingDone, "Alert.BuildingDone", "interface-sounds", "maximize_006,maximize_007", 80, 100, 100, 500, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertTrainingDone, "Alert.TrainingDone", "interface-sounds", "pluck_001,pluck_002", 80, 100, 100, 400, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertTechDone, "Alert.TechDone", "interface-sounds", "bong_001", 85, 100, 100, 1000, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertTrade, "Alert.Trade", "rpg-audio", "handleCoins,handleCoins2", 80, 100, 100, 200, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertVolcano, "Alert.Volcano", "impact-sounds", "impactBell_heavy_003,impactBell_heavy_004", 100, 90, 90, 5000, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertDiplomacy, "Alert.Diplomacy", "interface-sounds", "question_001,question_002,question_003,question_004", 80, 100, 100, 1000, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertUnderAttack, "Alert.UnderAttack", "impact-sounds", "impactBell_heavy_000", 100, 100, 100, 10000, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertBuildingDone, "Alert.BuildingDone", "", "", 80, 100, 100, 500, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertTrainingDone, "Alert.TrainingDone", "rpg-audio", "bookPlace2", 80, 100, 100, 400, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertTechDone, "Alert.TechDone", "", "", 85, 100, 100, 1000, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertTrade, "Alert.Trade", "rpg-audio", "handleCoins", 80, 100, 100, 200, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertVolcano, "Alert.Volcano", "impact-sounds", "impactBell_heavy_003", 100, 100, 100, 5000, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertDiplomacy, "Alert.Diplomacy", "vsco", "v_harp_arp_up", 80, 100, 100, 1000, HOLAudioPriority::Alert);
+		SetRepeat(Cues, HOLAudioEvent::AlertVolcano, VolcanoRepeatCount, VolcanoRepeatGapMs);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).
@@ -185,6 +202,8 @@ namespace HOLAudio
 	FString SoundPath(FHOLAudioCue Cue, int Index)
 	{
 		if (Index < 0 || Index >= Cue.Stems.Num()) return "";
+		// The VSCO 2 CE recordings (CC0) are not a Kenney pack: /Game/Audio/Vsco.
+		if (Cue.Pack == "vsco") return f"/Game/Audio/Vsco/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 		return f"/Game/Audio/Kenney/{Cue.Pack}/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 	}
 

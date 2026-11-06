@@ -76,9 +76,9 @@ void Test_AudioPlanIsDeterministic(FUnitTest& T)
 // The log line the player writes for a played cue (what a test of the game reads): the name, the file, the asset.
 void Test_AudioPlanLineNamesTheCueAndTheFile(FUnitTest& T)
 {
-	FHOLAudioPlan Plan = HOLAudio::Plan(HOLAudioEvent::AlertTechDone, 5000, -1, 0, -1);
+	FHOLAudioPlan Plan = HOLAudio::Plan(HOLAudioEvent::AlertVolcano, 5000, -1, 0, -1);
 	FString Line = HOLAudio::PlayedLine(Plan);
 	T.AssertTrue(Line.StartsWith("cue played "), "starts with 'cue played '");
-	T.AssertTrue(Line.Contains("Alert.TechDone"), "carries the cue's name");
+	T.AssertTrue(Line.Contains("Alert.Volcano"), "carries the cue's name");
 	T.AssertTrue(Line.Contains(Plan.Asset), "carries the asset");
 }
