@@ -4,7 +4,7 @@ Créée le 2026-11-05 à la demande de l'utilisateur : des axes d'amélioration 
 
 - **GATE** = `Tools\AutoJourney\session_gate.ps1 -Phase Launch|Merge|Essay|Close` (script, sortie PASS/WARN/FAIL, code 1 s'il y a un FAIL). La session principale le lance : `Launch` avant CHAQUE lancement d'agent, `Merge` avant l'agent de fusion, `Essay` avant de donner une commande `play.ps1`, `Close` avant le bilan.
 - **AGENT** = règle numérotée de `Tools\AutoJourney\agent_rules.md`, que chaque énoncé fait lire en premier.
-- **RAPPORT** = champ du rapport final à 12 champs (voir `agent_rules.md`) que la session principale vérifie à la réception.
+- **RAPPORT** = champ du rapport final à 13 champs (voir `agent_rules.md`) que la session principale vérifie à la réception.
 - **SESSION** = ligne que la session principale coche elle-même dans le tableau « Leçons appliquées » du bilan.
 
 **Bilan de fin de séance (obligatoire, vérifié par `-Phase Close`)** : dans `Auto_Journey_Jour.md`, un titre `### Lecons appliquees <AAAA-MM-JJ>` suivi d'une ligne par règle ci-dessous : `<ID> : appliquee / non appliquee : <preuve (nombre, heure, SHA, sortie)>`. Une règle « non appliquée » devient une ligne `[ ]` de `Auto_Journey_File.md` (ou un durcissement du contrôle).
@@ -30,7 +30,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Pendant les agents
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max dans l'énoncé ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_OUTILS` |
+| L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max (jugés sur `tool_uses`), arrêt à **60 appels déclarés** dans l'énoncé ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_DECLARES` |
 | L1-2 | Commit par lot vert, au plus 30 min sans commit, fichiers par nom | `RAPPORT COMMITS` (dernier commit à HH:MM) ; `status.ps1` à chaque tour signale 45 min sans commit | AGENT 14 |
 | L1-3 | `git merge main` avant le rapport | `RAPPORT merge_main_fait` | AGENT 15 |
 | L3-2, L4-5 | Build C++ lancé dans les 15 premières minutes, en `run_in_background`, agent vivant jusqu'à sa fin ; jamais de code non compilé rendu comme fini | `RAPPORT PREMIER_BUILD`, `BUILD` ; « NON COMPILÉ » en tête sinon | AGENT 11 |
@@ -77,7 +77,43 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L1-13 | Test rouge vérifiable par l'ordre des commits | `RAPPORT TEST_ROUGE` : SHA du test antérieur au correctif | RAPPORT |
 | L5-bilan | Chaque leçon « appliquée / non appliquée » avec preuve | `Close` FAIL sans le titre `### Lecons appliquees <date>` | GATE |
 
+## Leçons du 2026-11-06 (séance d'1 h du 2026-11-05 après-midi) : contrôles ajoutés
+| ID | Règle | Contrôle | Où |
+|---|---|---|---|
+| L6-1 | Au moins 3 tâches `[ ]` étiquetées `sans C++` en file avant de lancer (la séance était vide après 14:12) | `session_gate.ps1 -Phase Launch` : WARN si < 3 | GATE |
+| L6-2 | La session principale ne lit jamais la file en entier (42k tokens) : l'étape 0 rend un extrait | consigne de l'étape 0 ; ligne de nettoyage de la file | SESSION |
+| L6-3 | À la réception d'un rapport : la copie principale n'a que des docs voulus modifiés, le worktree contient main, est propre, binaire plus récent que le dernier code | `session_gate.ps1 -Phase Report -Root <worktree>` (FAIL / WARN) | GATE |
+| L6-4 | Un bug rapporté se rejoue par le scénario et le geste exacts de l'utilisateur ; test « sur le geste réel » = scénario `click` | ligne `[ ]` « Scénario click » ; question de repro posée AVANT de lancer l'agent | SESSION + AGENT |
+| L6-5 | Après `git merge main`, `build.ps1` avant tout `quick_check` | `-Phase Report` (WARN binaire périmé) ; ligne `sync_worktrees` + build | GATE |
+| L6-6 | Mesures répétées sur un binaire copié, jamais sur celui que `build.ps1` doit écraser | ligne `[ ]` des mesures | AGENT |
+
 ## Outils encore à construire (lignes `[ ]` de `Auto_Journey_File.md`)
 - L1-12 (a) capture en séquence au pas de simulation (prouver une animation) ; (b) détection par le pré-vol d'un panneau qui en cache un autre ; (c) `check.ps1` qui échoue quand l'audit `Sanity` échoue.
 - L3-3 : journaux nommés de `quick_check` (`net`, `aiserver`...) sans `Get-FreshLog` partout.
 - Un script `launch_agent` qui lit `Launch`, écrit la ligne du tableau des agents et génère l'énoncé (heure d'arrêt, rapport fixe) : supprimerait le reste de dépendance à ma mémoire.
+
+## Leçons du 2026-11-05 soir (séance autonome 19:12-21:38) : contrôles ajoutés
+| ID | Règle | Contrôle | Où |
+|---|---|---|---|
+| L7-1 | Le décompte d'appels déclaré par les agents est faux de 10 à 30 % (77 déclarés = 108 réels) : seul tool_uses de la notification compte | à chaque rapport, la session principale lit tool_uses : > 80 = noté hors règle, > 100 = tâche suivante sur agent NEUF et ligne au bilan ; le champ du rapport devient APPELS_DECLARES (arrêt à 60 déclarés), le seuil de 80 se juge sur tool_uses relevé par la session | SESSION |
+| L7-2 | Un lancement ne vérifie pas l'état réel du worktree (DLL périmée : Galadriel-7 18 appels perdus ; SHA périmés donnés à la fusion 1) | session_gate.ps1 -Phase Launch -Root <worktree> : FAIL si la DLL du worktree est plus ancienne que le dernier commit de code de main ET que la tâche joue des scénarios ; les énoncés de fusion contiennent les tips relevés par git rev-parse <branche> au moment du lancement, jamais des SHA recopiés d'un rapport | GATE + SESSION |
+| L7-3 | Pas de verrou partagé pour l'éditeur : 2 à 8 éditeurs en permanence, Arwen-5 a attendu ~20 appels et ses 3 pré-vols n'ont pas abouti | un ticket d'éditeur dans Docs\BuildQueue.state (comme build.ps1) pris par preflight.ps1 / check.ps1 ; au plus 2 éditeurs simultanés | OUTIL |
+| L7-4 | Un agent laisse un processus détaché après sa fin (chain.ps1 de Celeborn-4 a relancé des éditeurs, chain2.ps1 d'Arwen-5) | champ de rapport PROCESSUS_DETACHES (liste ou « aucun ») ; la session principale arrête ceux qui restent avant de lancer l'agent suivant du même worktree (Get-CimInstance Win32_Process filtré sur le worktree) | RAPPORT + SESSION |
+| L7-5 | Test rouge non observé quand un symbole manque : le test ne compile pas | l'énoncé d'un agent C++ impose un stub qui compile + test AVANT le premier build (rouge observé), budget de deux builds, et le champ TEST_ROUGE donne « observé » ou « supposé » | AGENT + RAPPORT |
+| L7-6 | Les essais passent par des commandes internes (hol.*), jamais par la vraie touche ni le vrai clic ; aucun son entendu | statut explicite GESTE: réel / interne et SON: entendu / non entendu dans chaque Retours\E-*.md ; un essai de geste ou de son reste LOGIQUE SEULEMENT tant que le scénario click à la vraie touche n'existe pas | AGENT 18 + SESSION |
+| L7-7 | Fusion anticipée (20:00 au lieu de 21:35) : a laissé du temps à deux intégrateurs qui ont trouvé 4 défauts invisibles aux auteurs | première fusion groupée dès que 3 branches sont vertes, pas à « fin - 30 min » ; intégrateur nommé AU LANCEMENT | SESSION |
+| L7-8 | Une règle Close ne doit pas échouer sur un worktree hors périmètre | session_gate -Phase Close accepte -Exclude <worktree> (Haldir exclu par l'utilisateur : 48 fichiers non commités d'une autre session) | GATE |
+
+
+## Leçons du 2026-11-06 (séance interactive 10:53-13:00, cartes exclues) : contrôles ajoutés
+| ID | Règle | Contrôle | Où |
+|---|---|---|---|
+| L8-1 | Un essai se joue depuis un worktree qui porte TOUS les correctifs cités (qground joué depuis Elrond sans les correctifs de mêlée de Celeborn : défaut déjà traité retrouvé, rejeu nécessaire) | `session_gate -Phase Essay -Root` vérifie que le worktree contient le tip de chaque branche citée dans le `E-*.md` ; la commande `play.ps1` donnée pointe toujours le worktree qui porte `main` compilé | GATE (ligne `[ ]` de la file) |
+| L8-2 | Un blocage en mêlée (soldat en idle ou début d'animation d'attaque en boucle devant sa cible) n'est détecté par aucun test : l'audit Sanity ne voit que les rotations | audit « cible à portée, aucune attaque depuis N s » dans `hol.Test.Sanity` ; devient le test rouge de `BUG-melee-stuck-attack` | AGENT C++ |
+| L8-3 | L'heure de fin n'était lue que si `-End` était passé (les gates `Merge`/`Essay` affichaient « fin dure 13:30 ») | l'heure de fin écrite une fois dans un fichier de séance (`Docs\SessionEnd.txt`) lu par tous les gates | GATE |
+| L8-4 | Une réponse d'essai sonore ambiguë (« UI.Open F, UI.Open A » = en fait Open puis Close) a coûté une question de plus | `E-audio_compare.md` porte d'avance une ligne `Ui.Open = _` par cue ; le panneau d'écoute affiche le nom du cue à côté de la lettre | AGENT 18 |
+| L8-5 | Les rouges connus (`camera 2p`, `camera 8p`) sont remesurés par chaque agent de fusion | fichier `Tools\Tests\known_reds.txt` (test, depuis quand, cause supposée) lu par `quick_check` : « rouge connu » distinct de « régression » | OUTIL |
+| L8-6 | Fins de ligne mêlées (`Auto_Journey_File.md`, `EtapeDefini.md`), heredocs Bash cassés par le hook, `$r`/`$R` confondus en PowerShell : appels perdus | `.gitattributes` (proposé le 2026-11-01, jamais fait) ; consigne d'énoncé : écrire par l'outil Write/Edit, jamais par heredoc ; variables PowerShell de noms distincts | OUTIL + AGENT |
+| L8-7 | La file n'avait plus qu'une ligne `sans C++` en fin de séance (les agents libres n'ont pas pu être relancés) | `session_gate -Phase Launch` passe de WARN à FAIL sous 3 lignes `sans C++` au démarrage | GATE |
+| L8-8 | Le build de fusion (11 à 18 min) est le chemin critique ; la fusion 3 est partie à 12:30 pour finir à 12:47 | lancer la fusion C++ dès que la branche C++ est prête (avant les autres) et fusionner en second tour les branches script-only sans rebuild (comme `heal-sleep` en fusion 3) | SESSION |
+| L8-9 | **Demande de l'utilisateur (2026-11-06) : au DÉBUT et à la FIN de chaque Auto_Journey, tous les worktrees sont remis à jour avec `main`**, pour qu'ils restent à jour le plus longtemps possible | début : `Tools\AutoJourney\sync_worktrees.ps1` AVANT le premier lancement (`session_gate -Phase Launch` : WARN par worktree en retard) ; fin : `sync_worktrees.ps1` après la dernière fusion et le dernier commit de docs, aucun agent ne tourne (`session_gate -Phase Close` : FAIL par worktree en retard, `-Exclude` pour les worktrees hors périmètre) ; un saut (travail non commité) ou un conflit entre dans le bilan | GATE + SESSION |

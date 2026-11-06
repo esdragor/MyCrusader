@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+playtest_xp_level2 | Niveau 2 du heros : bloc en bas a gauche "Niveau 2", barre d'XP doree, anneaux dores autour du heros
+playtest_xp_level3 | Niveau 3 (palier 1) : bloc "Niveau 3", barre d'XP recommencee, ses Hommes d'armes autour de lui
+playtest_xp_return_ready | Heros mort, pret a revenir : alerte "Votre heros est pret a revenir" et bouton de retour avec son prix

@@ -614,6 +614,33 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	/**
+	 * The REAL left click (Auto_Journey_File line 14): the cursor put where that ground point (cm) is drawn, then the press and the release as the input
+	 * does (HandleSelectStarted: attack-move armed by Q, placement, banner, else a selection). A test of a gesture goes through it, not through
+	 * AttackMoveAt or SelectAt (hol.Select.AttackMove and hol.Select.Click do not read the modes the keys armed).
+	 */
+	FAutoConsoleCommand LeftClickGroundCommand(
+		TEXT("hol.Select.LeftClickGround"),
+		TEXT("hol.Select.LeftClickGround <X> <Y>: a real left click (press and release, through the input's handlers) where that ground point (cm) is drawn; after the grid's Q (hol.Select.Grid 4) it is the attack-move's click"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Select.LeftClickGround <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				FVector2D Fraction;
+				if (!ProjectGroundPoint(*Controller, FCString::Atod(*Args[0]), FCString::Atod(*Args[1]), Fraction))
+				{
+					UE_LOG(LogHOLMatch, Warning, TEXT("hol.Select.LeftClickGround: the point is not on the screen"));
+					continue;
+				}
+				Controller->ScriptLeftClick(Fraction);
+			}
+		}));
+
 	FAutoConsoleCommand AttackMoveCommand(
 		TEXT("hol.Select.AttackMove"),
 		TEXT("hol.Select.AttackMove <X> <Y> [shift]: the grid's attack-move (Q) then a left click where that ground point (cm) is drawn"),
@@ -1775,6 +1802,24 @@ namespace UE::HeroesOfLiberty::Player
 			}
 		}));
 
+	FAutoConsoleCommand CheatTierCommand(
+		TEXT("hol.Cheat.Tier"),
+		TEXT("hol.Cheat.Tier <0..3|off> [Slot|all]: forces the tier of the local player (or of that slot, or of every slot) whatever his hero's level, for the grid, the server, the technologies and the AI; off lifts it (development only)"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.IsEmpty())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Cheat.Tier <0..3|off> [Slot|all]"));
+				return;
+			}
+			const int32 Tier = Args[0].Equals(TEXT("off"), ESearchCase::IgnoreCase) ? -1 : FMath::Clamp(FCString::Atoi(*Args[0]), 0, 3);
+			const int32 Slot = Args.Num() < 2 ? -1 : (Args[1].Equals(TEXT("all"), ESearchCase::IgnoreCase) ? -2 : FCString::Atoi(*Args[1]));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCheatTier(Tier, Slot);
+			}
+		}));
+
 	FAutoConsoleCommand CheatUnitSpeedCommand(
 		TEXT("hol.Cheat.UnitSpeed"),
 		TEXT("hol.Cheat.UnitSpeed [Scale=1]: every unit of every player walks Scale times as fast (0.1 to 10; 1: the table's speeds; development only)"),
@@ -2264,7 +2309,8 @@ FVector2D AHOLPlayerController::GetEdgeScroll() const
 
 	const UHOLGameUserSettings* Settings = UHOLGameUserSettings::Get();
 	FVector2D Cursor;
-	if ((Settings && !Settings->IsEdgeScrollEnabled()) || !GetCursorFraction(Cursor))
+	const bool bScriptedCursor = !CVarTestCursor.GetValueOnGameThread().IsEmpty();
+	if ((Settings && !AHOLRTSCamera::IsEdgeScrollWanted(Settings->IsEdgeScrollEnabled(), bScriptedCursor)) || !GetCursorFraction(Cursor))
 	{
 		return FVector2D::ZeroVector;
 	}
@@ -3469,7 +3515,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		if (Type)
 		{
 			Context.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Building->GetOwnerPlayer());
-			UHOLTechnologySettings::GetBuildingTechnologies(Building->GetTypeName(), Context.Researches);
+			UHOLTechnologySettings::GetBuildingTechnologies(Building->GetTypeName(), HOLFactionRules::GetSlotFactionKey(GetWorld(), Building->GetOwnerPlayer()), Context.Researches);
 		}
 	}
 	else if (HasBuildingGroup())
@@ -3502,7 +3548,7 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 			if (Type)
 			{
 				One.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Group[Member]->GetOwnerPlayer());
-				UHOLTechnologySettings::GetBuildingTechnologies(Group[Member]->GetTypeName(), One.Researches);
+				UHOLTechnologySettings::GetBuildingTechnologies(Group[Member]->GetTypeName(), HOLFactionRules::GetSlotFactionKey(GetWorld(), Group[Member]->GetOwnerPlayer()), One.Researches);
 			}
 			for (int32 Cell = 0; Cell < NumGridCells; ++Cell)
 			{
@@ -4486,6 +4532,11 @@ void AHOLPlayerController::RequestCheatTechnology(const FName Technology)
 	ServerCheatTechnology(Technology);
 }
 
+void AHOLPlayerController::RequestCheatTier(const int32 Tier, const int32 Slot)
+{
+	ServerCheatTier(Tier, Slot);
+}
+
 void AHOLPlayerController::RequestCheatPopulation(const int32 Places)
 {
 	ServerCheatPopulation(Places);
@@ -4581,6 +4632,30 @@ void AHOLPlayerController::ServerCheatTechnology_Implementation(const FName Tech
 	else
 	{
 		UE_LOG(LogHOLCommands, Warning, TEXT("Cheat: technology %s unknown or already researched"), *Technology.ToString());
+	}
+#endif
+}
+
+void AHOLPlayerController::ServerCheatTier_Implementation(const int32 Tier, const int32 Slot)
+{
+#if !UE_BUILD_SHIPPING
+	if (IsCheatRefused(TEXT("tier")))
+	{
+		return;
+	}
+	AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
+	if (!HOLGameState)
+	{
+		return;
+	}
+	for (int32 Target = 0; Target < FHOLMatchConfig::MaxSlots; ++Target)
+	{
+		const bool bOwn = Slot == -1 && GetHOLPlayerState() && GetHOLPlayerState()->GetPlayerIndex() == Target;
+		if (Slot == -2 || Slot == Target || bOwn)
+		{
+			HOLGameState->SetTierOverride(Target, Tier);
+			UE_LOG(LogHOLMatch, Display, TEXT("Cheat: slot %d tier forced to %d (-1: none)"), Target, HOLGameState->GetTierOverride(Target));
+		}
 	}
 #endif
 }
@@ -5255,6 +5330,17 @@ void AHOLPlayerController::HandleSelectStarted()
 	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
 	SelectPressTime = GetWorld()->GetRealTimeSeconds();
+}
+
+void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
+{
+	IConsoleVariable* const TestCursor = UE::HeroesOfLiberty::Player::CVarTestCursor.AsVariable();
+	const FString Former = TestCursor->GetString();
+	TestCursor->Set(*FString::Printf(TEXT("%.4f %.4f"), ViewportFraction.X, ViewportFraction.Y), ECVF_SetByConsole);
+	UE_LOG(LogHOLMatch, Display, TEXT("Scripted left click at (%.3f, %.3f), armed attack-move: %s"), ViewportFraction.X, ViewportFraction.Y, bAttackMoveArmed ? TEXT("yes") : TEXT("no"));
+	HandleSelectStarted();
+	HandleSelectCompleted();
+	TestCursor->Set(*Former, ECVF_SetByConsole);
 }
 
 void AHOLPlayerController::HandleSelectCompleted()

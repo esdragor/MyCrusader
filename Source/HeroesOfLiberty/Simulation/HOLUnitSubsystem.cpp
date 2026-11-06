@@ -299,18 +299,48 @@ int32 UHOLUnitSubsystem::GetBirthBudget() const
 	return Settings && Settings->MaxUnitBirthsPerStep > 0 ? Settings->MaxUnitBirthsPerStep : MAX_int32;
 }
 
-const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind)
+const FHOLUnitTypeRow* UHOLUnitSubsystem::FindTypeRowFor(const FName TypeName, const int32 OwnerPlayer) const
+{
+	return FindTypeRow(TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer));
+}
+
+FName UHOLUnitSubsystem::GetTemplateKey(const FName TypeName, const FName FactionKey) const
+{
+	if (FactionKey.IsNone())
+	{
+		return TypeName;
+	}
+	const FHOLUnitTypeRow* Base = FindTypeRow(TypeName);
+	const FHOLUnitTypeRow* ForFaction = FindTypeRow(TypeName, FactionKey);
+	if (!Base || ForFaction == Base)
+	{
+		return TypeName;
+	}
+	const auto Crc = [TypeName](const FHOLUnitTypeRow& Row)
+	{
+		return UE::StructUtils::GetStructInstanceCrc32(FConstStructView::Make(Row.ToConstants(TypeName)));
+	};
+	if (Crc(*Base) == Crc(*ForFaction))
+	{
+		return TypeName;
+	}
+	return FName(*FString::Printf(TEXT("%s@%s"), *TypeName.ToString(), *HOLFactionRules::GetTable().ResolveKey(FactionKey).ToString()));
+}
+
+const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind, const FName FactionKey)
 {
 	const bool bDisplay = Kind == EHOLUnitTemplateKind::Display;
 	const bool bCorpse = Kind == EHOLUnitTemplateKind::Corpse;
 	TMap<FName, TSharedPtr<FMassEntityConfig>>& Cache = bDisplay ? DisplayTemplateCache : bCorpse ? CorpseTemplateCache : TemplateCache;
 	const TCHAR* KindName = bDisplay ? TEXT("display entity") : bCorpse ? TEXT("body") : TEXT("simulated unit");
-	if (const TSharedPtr<FMassEntityConfig>* Found = Cache.Find(TypeName))
+	// L2: a faction whose row builds other constants than the table's has a template of its own (health, attack, mesh at birth).
+	const FName CacheName = GetTemplateKey(TypeName, FactionKey);
+	if (const TSharedPtr<FMassEntityConfig>* Found = Cache.Find(CacheName))
 	{
 		return &(*Found)->GetOrCreateEntityTemplate(*GetWorld());
 	}
 
-	const FHOLUnitTypeRow* Row = FindTypeRow(TypeName);
+	const FHOLUnitTypeRow* Row = FindTypeRow(TypeName, CacheName == TypeName ? NAME_None : FactionKey);
 	if (Row == nullptr)
 	{
 		UE_LOG(LogHOLSimulation, Error, TEXT("Unknown unit type '%s': no row of that name in the type table (D221)"), *TypeName.ToString());
@@ -517,7 +547,7 @@ const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName,
 		Traits.Add(Trait);
 	}
 
-	Cache.Add(TypeName, Config);
+	Cache.Add(CacheName, Config);
 	UE_LOG(LogHOLSimulation, Log, TEXT("Unit type '%s' (%s%s): radius %.0f cm, speed %.0f cm/s, %d HP, avoidance %.0f cm, drawn as %s"),
 		*TypeName.ToString(), *Row->DisplayName, Kind == EHOLUnitTemplateKind::Simulation ? TEXT("") : *FString::Printf(TEXT(", %s"), KindName), Constants.Radius, Constants.Speed, Constants.MaxHealth, Constants.AvoidanceDistance,
 		!bDrawn ? TEXT("nothing (dedicated server)")
@@ -565,7 +595,8 @@ int32 UHOLUnitSubsystem::ServeBirthRequests()
 	while (BirthQueue.Num() > 0 && NumCreated < Budget)
 	{
 		FHOLUnitSpawnRequest& Request = BirthQueue[0];
-		const FMassEntityTemplate* Template = FindTemplate(Request.TypeName);
+		// L2: born with the figures of its owner's faction (the table's own row for the Dawn and for a type the faction leaves alone).
+		const FMassEntityTemplate* Template = FindTemplate(Request.TypeName, EHOLUnitTemplateKind::Simulation, HOLFactionRules::GetSlotFactionKey(GetWorld(), Request.OwnerPlayer));
 		if (Template == nullptr)
 		{
 			BirthQueue.RemoveAt(0);
@@ -629,7 +660,7 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 {
 	UWorld* World = GetWorld();
 	UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
-	const FHOLUnitTypeRow* Row = FindTypeRow(Request.TypeName);
+	const FHOLUnitTypeRow* Row = FindTypeRowFor(Request.TypeName, Request.OwnerPlayer);
 	if (EntitySubsystem == nullptr || Row == nullptr)
 	{
 		return;

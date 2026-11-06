@@ -425,6 +425,22 @@ TRANSLATIONS = {
     # HOLGameNames.cpp has the two LOCTEXT (C2, C++); until then both show the table's French name (DisplayName) in every language.
     "HOLGameNames,Stable": ("Stable", "厩舎"),
     "HOLGameNames,LightCavalry": ("Light Cavalry", "軽騎兵"),
+    # F1 (FortificationsInProgress.md): the Forge. NOT YET USED, same rule as the Stable: the key exists in the .po files only once
+    # HOLGameNames.cpp::GetBuildingName has its LOCTEXT("Forge", "Forge") (C++); until then the table's French name (DisplayName) shows in every language.
+    "HOLGameNames,Forge": ("Forge", "鍛冶場"),
+    # M2 (MoraleInProgress.md, D704): the names and descriptions of the morale effects (Script/Morale/HOLMoraleTable.as, made from Tools/Data/Effects.csv).
+    "HOLMoraleTable,NameDawnAura": ("Dawn Aura", "暁の加護"),
+    "HOLMoraleTable,NameCloseRanks": ("Close ranks", "隊列を詰めよ"),
+    "HOLMoraleTable,NameBanner": ("Banner", "軍旗"),
+    "HOLMoraleTable,NameTriumph": ("Triumph", "勝利の高揚"),
+    "HOLMoraleTable,NameDemoralised": ("Demoralised", "士気喪失"),
+    "HOLMoraleTable,NameHesitation": ("Hesitation", "ためらい"),
+    "HOLMoraleTable,DescriptionDawnAura": ("Units of your side near the hero take 15% less damage.", "英雄の近くにいる味方ユニットが受けるダメージが15%減少する。"),
+    "HOLMoraleTable,DescriptionCloseRanks": ("Units of your side near the hero take 25% less damage for 15 s.", "英雄の近くにいる味方ユニットが受けるダメージが15秒間25%減少する。"),
+    "HOLMoraleTable,DescriptionBanner": ("The planted banner gives the Dawn Aura around it for 45 s (only one aura counts).", "立てた軍旗が45秒間、周囲に暁の加護を与える（効果は1つのみ有効）。"),
+    "HOLMoraleTable,DescriptionTriumph": ("After a won duel: 10% more damage dealt and 10% less damage taken for 40 s.", "決闘に勝利した後、40秒間、与えるダメージが10%増加し、受けるダメージが10%減少する。"),
+    "HOLMoraleTable,DescriptionDemoralised": ("After a lost duel: 10% less damage dealt and 10% more damage taken for 40 s.", "決闘に敗北した後、40秒間、与えるダメージが10%減少し、受けるダメージが10%増加する。"),
+    "HOLMoraleTable,DescriptionHesitation": ("The hero refused a duel: 5% less damage dealt for 25 s.", "英雄が決闘を拒否した：25秒間、与えるダメージが5%減少する。"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
     # S2: the siege workshop and its two engines (GDD 6.1).

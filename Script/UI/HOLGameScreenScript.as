@@ -165,6 +165,7 @@ FString TalentTipTexts = "";
 	UButton DipOpenButton;
 	UCommonTextBlock DipOpenLabel;
 	USizeBox DipPanelBox;
+	UScrollBox DipScroll;
 	UBorder DipPanel;
 	UOverlaySlot DipPanelSlot;
 	UCommonTextBlock DipTitleText;
@@ -203,9 +204,22 @@ FString TalentTipTexts = "";
 	float DipPanelBottom = -1.0;
 	float DipButtonRight = -1.0;
 
+	// The sounds of the screen (AudioInProgress.md A2b, Script/Audio): one player, asked by the clicks and the alerts below.
+	UHOLAudioPlayer Audio;
+	bool bVolcanoShown = false;
+
+	// The cue of an event (HOLAudioEvent::), played in 2D; false when the player is not made yet or the cue is in its cooldown.
+	bool Sound(int Event)
+	{
+		if (Audio == nullptr)
+			return false;
+		return Audio.Play(Event);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void OnInitialized()
 	{
+		Audio = Cast<UHOLAudioPlayer>(NewObject(this, UHOLAudioPlayer));
 		UOverlay Frame = Cast<UOverlay>(ConstructWidget(UOverlay, n"ScriptFrame"));
 		SetRootWidget(Frame);
 		BuildHeroBlock(Frame);
@@ -296,6 +310,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestDuelAnswer(bAccept);
+		Sound(bAccept ? HOLAudioEvent::UiConfirm : HOLAudioEvent::UiBack);
 		return true;
 	}
 
@@ -317,9 +332,12 @@ FString TalentTipTexts = "";
 	UButton MakeDipButton(FName Name)
 	{
 		UButton Button = MakeButton(Name);
-		UCommonTextBlock Label = MakeText(FName(f"{Name}Label"), UHOLTextStyleHUDLabel);
+		UCommonTextBlock Label = MakeText(FName(f"{Name}Label"), UHOLTextStyleHUDSmall);
 		Label.SetVisibility(ESlateVisibility::HitTestInvisible);
-		Button.AddChild(Label);
+		// Small: the label's own margin is cut to a few pixels, so a player's two lines stay low (the panel's 8 players must fit).
+		UButtonSlot LabelSlot = Cast<UButtonSlot>(Button.AddChild(Label));
+		if (LabelSlot != nullptr)
+			LabelSlot.SetPadding(FMargin(5.0, 0.0, 5.0, 0.0));
 		return Button;
 	}
 
@@ -377,20 +395,28 @@ FString TalentTipTexts = "";
 		Head.AddChildToHorizontalBox(DipCloseButton);
 
 		UScrollBox Scroll = Cast<UScrollBox>(ConstructWidget(UScrollBox, n"DiplomacyScroll"));
-		Column.AddChildToVerticalBox(Scroll).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		// The rows take what the head and the foot leave (a Fill slot): the box's height limit then makes them scroll, instead of the
+		// foot running out of the panel (layout 2, the cheats' panel open: 17 px at 1920x1080, more in a low window).
+		DipScroll = Scroll;
+		UVerticalBoxSlot ScrollSlot = Column.AddChildToVerticalBox(Scroll);
+		ScrollSlot.SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
+		FSlateChildSize FillSize;
+		FillSize.SizeRule = ESlateSizeRule::Fill;
+		FillSize.Value = 1.0;
+		ScrollSlot.SetSize(FillSize);
 		DipRowsBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, n"DiplomacyRows"));
 		Scroll.AddChild(DipRowsBox);
 
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
 		{
 			UVerticalBox RowBox = Cast<UVerticalBox>(ConstructWidget(UVerticalBox, FName(f"DipRow_{Slot}")));
-			DipRowsBox.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 0.0, 0.0, 6.0));
+			DipRowsBox.AddChildToVerticalBox(RowBox).SetPadding(FMargin(0.0, 0.0, 0.0, 2.0));
 			DipRowBoxes.Add(RowBox);
-			// Four lines: the last one holds the four tribute buttons (layouts 0 to 2 alike).
+			// Two lines a player (the user's answer of 2026-11-05): the first holds the colour, name, faction, lives, posture, vision and message; the second the four tribute buttons, under the name. Lines 2 and 3 stay empty (no size); DescribeDipFit counts the lines drawn.
 			for (int Line = 0; Line < 4; ++Line)
 			{
 				UHorizontalBox LineBox = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"DipLine_{Slot}_{Line}")));
-				RowBox.AddChildToVerticalBox(LineBox).SetPadding(FMargin(0.0, Line > 0 ? 3.0 : 0.0, 0.0, 0.0));
+				RowBox.AddChildToVerticalBox(LineBox).SetPadding(FMargin(Line > 0 ? 22.0 : 0.0, 0.0, 0.0, 0.0));
 				DipLines.Add(LineBox);
 			}
 			UHorizontalBox MenuBox = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"DipMenuBox_{Slot}")));
@@ -404,9 +430,9 @@ FString TalentTipTexts = "";
 			SwatchBox.SetContent(Swatch);
 			DipSwatchBoxes.Add(SwatchBox);
 			DipSwatches.Add(Swatch);
-			DipNames.Add(MakeText(FName(f"DipName_{Slot}"), UHOLTextStyleHUD));
-			DipFactions.Add(MakeText(FName(f"DipFaction_{Slot}"), UHOLTextStyleHUDLabel));
-			DipInfos.Add(MakeText(FName(f"DipInfo_{Slot}"), UHOLTextStyleHUDLabel));
+			DipNames.Add(MakeText(FName(f"DipName_{Slot}"), UHOLTextStyleHUDLabel));
+			DipFactions.Add(MakeText(FName(f"DipFaction_{Slot}"), UHOLTextStyleHUDSmall));
+			DipInfos.Add(MakeText(FName(f"DipInfo_{Slot}"), UHOLTextStyleHUDSmall));
 			DipPendings.Add(MakeText(FName(f"DipPending_{Slot}"), UHOLTextStyleHUDLabel));
 			// The three stance buttons (layouts 0 and 2), the chip (1) and the drop-down's head (2): Enemy 0, Neutral 1, Ally 2 as the stances.
 			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipEnemy_{Slot}")), Slot, HOLDiplomacy::Enemy));
@@ -427,11 +453,11 @@ FString TalentTipTexts = "";
 
 		// The foot: the tax, written once (the user's answer of 2026-11-04), and the reason of the greyed tributes when there is no Market.
 		UHorizontalBox Foot = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DiplomacyFoot"));
-		Column.AddChildToVerticalBox(Foot).SetPadding(FMargin(0.0, 8.0, 0.0, 0.0));
+		Column.AddChildToVerticalBox(Foot).SetPadding(FMargin(0.0, 4.0, 0.0, 0.0));
 		DipTaxText = MakeText(n"DiplomacyTax", UHOLTextStyleHUDLabel);
 		DipAdd(Foot, DipTaxText, 0.0);
 		UHorizontalBox Reason = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, n"DiplomacyReason"));
-		Column.AddChildToVerticalBox(Reason).SetPadding(FMargin(0.0, 2.0, 0.0, 0.0));
+		Column.AddChildToVerticalBox(Reason).SetPadding(FMargin(0.0, 0.0, 0.0, 0.0));
 		DipReasonText = MakeText(n"DiplomacyReasonText", UHOLTextStyleHUDLabel);
 		DipAdd(Reason, DipReasonText, 0.0);
 	}
@@ -460,12 +486,10 @@ FString TalentTipTexts = "";
 		DipMenuBoxes[Slot].ClearChildren();
 		UHorizontalBox First = DipLines[Slot * 4];
 		UHorizontalBox Second = DipLines[Slot * 4 + 1];
-		UHorizontalBox Third = DipLines[Slot * 4 + 2];
-		UHorizontalBox Fourth = DipLines[Slot * 4 + 3];
 		DipAdd(First, DipSwatchBoxes[Slot], 8.0);
-		// The four tribute buttons, one line of their own in every layout (gold, food, wood, stone).
+		// The four tribute buttons, the player's second line in every layout.
 		for (int Button = 0; Button < HOLDiplomacyPanel::TributeButtonCount; ++Button)
-			DipAdd(Fourth, DipTributeButtons[Slot * 4 + Button], Button + 1 < HOLDiplomacyPanel::TributeButtonCount ? 6.0 : 0.0);
+			DipAdd(Second, DipTributeButtons[Slot * 4 + Button], Button + 1 < HOLDiplomacyPanel::TributeButtonCount ? 4.0 : 0.0);
 		if (Layout == 0)
 		{
 			// One wide line: colour, name, faction, lives | three buttons, the wait | vision, message; the tributes under.
@@ -474,32 +498,29 @@ FString TalentTipTexts = "";
 			DipAdd(First, DipWide(DipInfos[Slot], 60.0, FName(f"DipInfoBox_{Slot}")), 14.0);
 			DipAdd(First, DipStanceButtons[Slot * 3 + 2], 4.0);
 			DipAdd(First, DipStanceButtons[Slot * 3 + 1], 4.0);
-			DipAdd(First, DipStanceButtons[Slot * 3 + 0], 8.0);
-			DipAdd(First, DipWide(DipPendings[Slot], 170.0, FName(f"DipPendingBox_{Slot}")), 10.0);
+			DipAdd(First, DipStanceButtons[Slot * 3 + 0], 14.0);
 			DipAdd(First, DipVisionButtons[Slot], 6.0);
 			DipAdd(First, DipMessageButtons[Slot], 0.0);
 		}
 		else if (Layout == 1)
 		{
-			// Narrow: colour, name, faction, lives; then the chip, the wait; then vision, message under; the tributes on the last line.
-			DipAdd(First, DipWide(DipNames[Slot], 80.0, FName(f"DipNameBox_{Slot}")), 8.0);
-			DipAdd(First, DipFactions[Slot], 8.0);
-			DipAdd(First, DipInfos[Slot], 0.0);
-			DipAdd(Second, DipChips[Slot], 8.0);
-			DipAdd(Second, DipPendings[Slot], 0.0);
-			DipAdd(Third, DipVisionButtons[Slot], 6.0);
-			DipAdd(Third, DipMessageButtons[Slot], 0.0);
+			// Narrow: colour, name, faction, lives, the chip, vision, message on one line; the tributes under.
+			DipAdd(First, DipWide(DipNames[Slot], 70.0, FName(f"DipNameBox_{Slot}")), 6.0);
+			DipAdd(First, DipFactions[Slot], 6.0);
+			DipAdd(First, DipInfos[Slot], 8.0);
+			DipAdd(First, DipChips[Slot], 6.0);
+			DipAdd(First, DipVisionButtons[Slot], 4.0);
+			DipAdd(First, DipMessageButtons[Slot], 0.0);
 		}
 		else
 		{
-			// Compact: colour, name, faction, lives; then the drop-down's head, the wait, vision, message; the tributes on the last line; the drop-down opens under.
-			DipAdd(First, DipWide(DipNames[Slot], 80.0, FName(f"DipNameBox_{Slot}")), 8.0);
-			DipAdd(First, DipFactions[Slot], 8.0);
-			DipAdd(First, DipInfos[Slot], 0.0);
-			DipAdd(Second, DipMenuButtons[Slot], 8.0);
-			DipAdd(Second, DipPendings[Slot], 8.0);
-			DipAdd(Second, DipVisionButtons[Slot], 6.0);
-			DipAdd(Second, DipMessageButtons[Slot], 0.0);
+			// Compact: colour, name, faction, lives, the drop-down's head, vision, message on one line; the tributes under; the drop-down opens under them.
+			DipAdd(First, DipWide(DipNames[Slot], 70.0, FName(f"DipNameBox_{Slot}")), 6.0);
+			DipAdd(First, DipFactions[Slot], 6.0);
+			DipAdd(First, DipInfos[Slot], 8.0);
+			DipAdd(First, DipMenuButtons[Slot], 6.0);
+			DipAdd(First, DipVisionButtons[Slot], 4.0);
+			DipAdd(First, DipMessageButtons[Slot], 0.0);
 			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 2], 4.0);
 			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 1], 4.0);
 			DipAdd(DipMenuBoxes[Slot], DipStanceButtons[Slot * 3 + 0], 0.0);
@@ -603,9 +624,27 @@ FString TalentTipTexts = "";
 		}
 	}
 
-	// The panel's place and room by layout, from where the other blocks are now (px at the HUD's scale).
+	// The height the whole panel would take with every player's two lines shown (px at the HUD's scale): the rows' own height plus what the
+	// head and the foot take around the scrolling area. 0 while the boxes are not drawn yet.
+	float DipNeededHeight() const
+	{
+		FVector2D PanelLow;
+		FVector2D PanelHigh;
+		FVector2D ScrollLow;
+		FVector2D ScrollHigh;
+		FVector2D RowsLow;
+		FVector2D RowsHigh;
+		if (!GetWidgetBox(DipPanel, PanelLow, PanelHigh) || !GetWidgetBox(DipScroll, ScrollLow, ScrollHigh) || !GetWidgetBox(DipRowsBox, RowsLow, RowsHigh))
+			return 0.0;
+		return (PanelHigh.Y - PanelLow.Y) - (ScrollHigh.Y - ScrollLow.Y) + (RowsHigh.Y - RowsLow.Y) + 4.0;
+	}
+
+	// The panel's place and room by layout, from where the other blocks are now (px at the HUD's scale). Once a player takes two lines only,
+	// the frame is lengthened so that all the players fit (up into the room kept for the thread's lines in the narrow layout, never over the
+	// table, the top bar, the minimap or the hero's block); where even that is short, the rows scroll.
 	void PlaceDipPanel(int Layout, FVector2D Room)
 	{
+		const float Needed = DipNeededHeight();
 		float Top = 150.0;
 		float MaxHeight = 400.0;
 		EHorizontalAlignment Horizontal = EHorizontalAlignment::HAlign_Center;
@@ -615,6 +654,12 @@ FString TalentTipTexts = "";
 		{
 			// Centred, high: clear of the top bar, the table at the right and the bottom bar (330 px kept below).
 			MaxHeight = Math::Max(160.0, Room.Y - Top - 330.0);
+			if (Needed > MaxHeight)
+			{
+				const float Limit = Top + MaxHeight;
+				Top = Math::Max(80.0, Limit - Needed);
+				MaxHeight = Limit - Top;
+			}
 			Margin = FMargin(0.0, Top, 0.0, 0.0);
 		}
 		else if (Layout == 1)
@@ -626,7 +671,13 @@ FString TalentTipTexts = "";
 			if (GetGameScreenBox(n"PlayersPanel", TableLow, TableHigh))
 				Under = TableHigh.Y;
 			Top = Under + 6.0 + 5.0 * 26.0 + 6.0;
-			MaxHeight = Math::Max(160.0, Room.Y - Top - 272.0);
+			MaxHeight = Math::Max(160.0, Room.Y - Top - 262.0);
+			if (Needed > MaxHeight)
+			{
+				const float Limit = Top + MaxHeight;
+				Top = Math::Max(Under + 6.0, Limit - Needed);
+				MaxHeight = Limit - Top;
+			}
 			Horizontal = EHorizontalAlignment::HAlign_Right;
 			Margin = FMargin(0.0, Top, 16.0, 0.0);
 		}
@@ -774,6 +825,7 @@ FString TalentTipTexts = "";
 		if (GetLocalSlot() < 0)
 			return false;
 		bDipOpen = !bDipOpen;
+		Sound(bDipOpen ? HOLAudioEvent::UiOpen : HOLAudioEvent::UiClose);
 		DipMenuSlot = -1;
 		DipPanelBox.SetVisibility(bDipOpen ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 		return true;
@@ -784,6 +836,17 @@ FString TalentTipTexts = "";
 	{
 		if (WidgetName == n"DiplomacyButton" || WidgetName == n"DiplomacyKey")
 			return ToggleDiplomacy();
+		// The rows' scrolling (what the mouse wheel does), for the scenarios: DipScrollEnd, DipScrollTop.
+		if (WidgetName == n"DipScrollEnd" || WidgetName == n"DipScrollTop")
+		{
+			if (!bDipOpen)
+				return false;
+			if (WidgetName == n"DipScrollEnd")
+				DipScroll.ScrollToEnd();
+			else
+				DipScroll.ScrollToStart();
+			return true;
+		}
 		if (WidgetName == n"DiplomacyClose")
 			return PanelClick(-1, 8);
 		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
@@ -843,6 +906,10 @@ FString TalentTipTexts = "";
 		}
 		VolcanoPanel.SetVisibility(View.bVisible ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		VolcanoText.SetText(FText::FromString(View.Text));
+		// The alert: a bell when the volcano's line appears (a site that speaks), not at each refresh.
+		if (View.bVisible && !bVolcanoShown)
+			Sound(HOLAudioEvent::AlertVolcano);
+		bVolcanoShown = View.bVisible;
 	}
 
 	void BuildAILevelLine(UOverlay Frame)
@@ -1205,6 +1272,8 @@ FString TalentTipTexts = "";
 		RefreshDuel();
 		RefreshAILevel();
 		RefreshVolcano();
+		if (Audio != nullptr)
+			Audio.PlayDueRepeats();
 		RefreshDiplomacy();
 		RefreshPause();
 		RefreshMinimap();
@@ -1413,6 +1482,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestResume();
+		Sound(HOLAudioEvent::UiClick);
 		return true;
 	}
 
@@ -1656,6 +1726,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.SelectHero();
+		Sound(HOLAudioEvent::UiClick);
 		return true;
 	}
 
@@ -1668,6 +1739,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestReturnHero();
+		Sound(HOLAudioEvent::UiConfirm);
 		return true;
 	}
 
@@ -1689,6 +1761,7 @@ FString TalentTipTexts = "";
 		if (!HeroView.bVisible || TalentSeenCount < 0)
 			return false;
 		bTalentWindowOpen = !bTalentWindowOpen;
+		Sound(bTalentWindowOpen ? HOLAudioEvent::UiOpen : HOLAudioEvent::UiClose);
 		ShowTalentWindow();
 		return true;
 	}
@@ -1704,6 +1777,7 @@ FString TalentTipTexts = "";
 		if (!bTalentWindowOpen)
 			return false;
 		bTalentWindowOpen = false;
+		Sound(HOLAudioEvent::UiClose);
 		ShowTalentWindow();
 		return true;
 	}
@@ -1726,6 +1800,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestHeroTalent(Asked);
+		Sound(HOLAudioEvent::UiConfirm);
 		return true;
 	}
 
@@ -1882,6 +1957,7 @@ FString TalentTipTexts = "";
 		if (Controller == nullptr)
 			return false;
 		Controller.RequestHeroTalent(TalentView.AdvisedFamily);
+		Sound(HOLAudioEvent::UiConfirm);
 		return true;
 	}
 
@@ -1962,6 +2038,71 @@ FString TalentTipTexts = "";
 		return Line;
 	}
 
+	// Where the open Diplomacy panel lies against what it must not cover or leave (px at the HUD's scale, 0 = in place): its foot
+	// (the tax line) must be inside the panel's own box (the rows scroll, the content does not run out), the panel inside the window,
+	// clear of the cheats' panel and of the hero's block. Read by hol.HUD.Report ("fit ..."), asserted by the scenario diplomacy_fit.
+	FString DescribeDipFit() const
+	{
+		FVector2D PanelLow;
+		FVector2D PanelHigh;
+		if (!GetWidgetBox(DipPanel, PanelLow, PanelHigh))
+			return "fit unread";
+		float FootOut = 0.0;
+		FVector2D FootLow;
+		FVector2D FootHigh;
+		if (GetWidgetBox(DipTaxText, FootLow, FootHigh))
+			FootOut = Math::Max(0.0, FootHigh.Y - PanelHigh.Y);
+		const FVector2D Room = GetViewportSlateSize();
+		const float WindowOut = Math::Max(0.0, PanelHigh.Y - Room.Y) + Math::Max(0.0, -PanelLow.Y);
+		float HeroOver = 0.0;
+		FVector2D HeroLow;
+		FVector2D HeroHigh;
+		if (GetWidgetBox(HeroPanel, HeroLow, HeroHigh) && Math::Min(PanelHigh.X, HeroHigh.X) > Math::Max(PanelLow.X, HeroLow.X))
+			HeroOver = Math::Max(0.0, Math::Min(PanelHigh.Y, HeroHigh.Y) - Math::Max(PanelLow.Y, HeroLow.Y));
+		const float CheatOver = Math::Max(0.0, GetCheatPanelBottom() - PanelLow.Y);
+		// The last player's line against the bottom of the scrolling area: how far it is still below it (0 once scrolled to the end).
+		float LastOut = 0.0;
+		int LastSlot = -1;
+		FVector2D ScrollLow;
+		FVector2D ScrollHigh;
+		if (GetWidgetBox(DipScroll, ScrollLow, ScrollHigh))
+		{
+			for (int Slot = DipMaxRows - 1; Slot >= 0; --Slot)
+			{
+				FVector2D RowLow;
+				FVector2D RowHigh;
+				if (GetWidgetBox(DipRowBoxes[Slot], RowLow, RowHigh))
+				{
+					LastOut = Math::Max(0.0, RowHigh.Y - ScrollHigh.Y);
+					LastSlot = Slot;
+					break;
+				}
+			}
+		}
+		// A player's lines: how many of its line boxes are drawn (an empty line has no size), the most over the shown players, and the
+		// tallest player's height ("2 lines at most a player", the user's answer of 2026-11-05).
+		int MostLines = 0;
+		float TallestRow = 0.0;
+		for (int Slot = 0; Slot < DipMaxRows; ++Slot)
+		{
+			FVector2D RowLow;
+			FVector2D RowHigh;
+			if (!GetWidgetBox(DipRowBoxes[Slot], RowLow, RowHigh))
+				continue;
+			TallestRow = Math::Max(TallestRow, RowHigh.Y - RowLow.Y);
+			int Lines = 0;
+			for (int Line = 0; Line < 4; ++Line)
+			{
+				FVector2D LineLow;
+				FVector2D LineHigh;
+				if (GetWidgetBox(DipLines[Slot * 4 + Line], LineLow, LineHigh) && LineHigh.Y - LineLow.Y > 1.0)
+					++Lines;
+			}
+			MostLines = Math::Max(MostLines, Lines);
+		}
+		return f"fit overflow {Math::RoundToInt(FootOut)} px, window {Math::RoundToInt(WindowOut)} px, hero {Math::RoundToInt(HeroOver)} px, cheats {Math::RoundToInt(CheatOver)} px, rows scroll {Math::RoundToInt(DipScroll.GetScrollOffsetOfEnd())} px, last row out {Math::RoundToInt(LastOut)} px (slot {LastSlot}), row lines {MostLines}, row height {Math::RoundToInt(TallestRow)} px";
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FString Describe() const
 	{
@@ -1975,7 +2116,7 @@ FString TalentTipTexts = "";
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
-			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DipTexts : "closed")
+			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DescribeDipFit() + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
 }

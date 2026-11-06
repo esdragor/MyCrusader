@@ -2,9 +2,11 @@
 
 #include "Match/HOLGameState.h"
 
+#include "AI/HOLAIBrain.h"
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/WorldSettings.h"
@@ -34,6 +36,7 @@ AHOLGameState::AHOLGameState()
 {
 	SlotDefeats.Init(EHOLDefeatReason::None, FHOLMatchConfig::MaxSlots);
 	ForumStates.Init(FHOLForumState(), FHOLMatchConfig::MaxSlots);
+	TierOverrides.Init(-1, FHOLMatchConfig::MaxSlots);
 	ForumBuilders.Init(0, FHOLMatchConfig::MaxSlots);
 	LaunchConfig = FHOLMatchConfig::MakeDefault();
 	HeroSheets.Init(FHOLHeroSheet(), FHOLMatchConfig::MaxSlots);
@@ -54,6 +57,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, LaunchConfig);
 	DOREPLIFETIME(AHOLGameState, FogMode);
 	DOREPLIFETIME(AHOLGameState, ForumStates);
+	DOREPLIFETIME(AHOLGameState, TierOverrides);
 	DOREPLIFETIME(AHOLGameState, bWaitingForPlayers);
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
@@ -195,8 +199,26 @@ const FHOLForumState& AHOLGameState::GetForumState(const int32 Slot) const
 	return ForumStates.IsValidIndex(Slot) ? ForumStates[Slot] : Standing;
 }
 
+int32 AHOLGameState::GetTierOverride(const int32 Slot) const
+{
+	return TierOverrides.IsValidIndex(Slot) ? TierOverrides[Slot] : -1;
+}
+
+void AHOLGameState::SetTierOverride(const int32 Slot, const int32 Tier)
+{
+	if (TierOverrides.IsValidIndex(Slot))
+	{
+		TierOverrides[Slot] = Tier < 0 ? -1 : FMath::Min(Tier, 3);
+	}
+}
+
 int32 AHOLGameState::GetTier(const int32 Slot) const
 {
+	// G0 (D710): a tier forced by hol.Cheat.Tier wins over the hero's level, for the grid, the server, the technologies and the AI alike.
+	if (GetTierOverride(Slot) >= 0)
+	{
+		return GetTierOverride(Slot);
+	}
 	// The level is the public sheet's on a client as on the server (UHOLHeroLibrary), so the tier needs nothing sent more.
 	return HOLHeroXP::GetTier(UHOLHeroLibrary::GetHeroLevel(this, Slot));
 }
@@ -556,6 +578,10 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	// R7: a slot defeated while its player is away is no longer kept for him.
 	AbsentSlots.RemoveAll([Slot](const FHOLAbsentSlot& Absent) { return Absent.Slot == Slot; });
 	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+	if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+	{
+		Brain->SetHeld(Slot, false);
+	}
 	UE_LOG(LogHOLMatch, Display, TEXT("Victory: slot %d defeated (%s)"), Slot, GetReasonName(Reason));
 	if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
 	{
@@ -563,6 +589,11 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	}
 	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, Slot));
 	CollapseSlot(Slot);
+	// D717 (T2): the AI's player state of a defeated seat goes away (the seat is no longer held, nobody thinks for it).
+	if (AHOLPlayerState* Bot = GetWorld() ? FindHeldBot(*GetWorld(), Slot) : nullptr)
+	{
+		Bot->Destroy();
+	}
 	OnSlotDefeated.Broadcast(Slot, Reason);
 
 	EvaluateMatchEnd();
@@ -613,6 +644,12 @@ bool AHOLGameState::EvaluateMatchEnd()
 
 bool AHOLGameState::KeepAbsentSlot(const AHOLPlayerState& Leaving, const double Now, const double WindowSeconds)
 {
+	// D717 (T4): an old connection closing late, while a newer one of his name already holds the seat: nobody is "away" under the new player.
+	if (const UWorld* World = GetWorld(); World && !Leaving.IsOnlyASpectator() && FindLiveHolder(*World, Leaving.GetPlayerIndex(), &Leaving))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d left by an old connection, a newer one holds it: not kept"), Leaving.GetPlayerIndex());
+		return false;
+	}
 	return !Leaving.IsOnlyASpectator()
 		&& KeepMissingSlot(Leaving.GetPlayerIndex(), Leaving.GetResources(), Now, WindowSeconds, Leaving.GetTechnologies());
 }
@@ -627,13 +664,77 @@ bool AHOLGameState::KeepMissingSlot(const int32 Slot, const FHOLResources& Resou
 	}
 	const FString Name = LaunchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
 	AbsentSlots.Add({ Slot, Name, Now, Resources, Technologies });
+	// D717 (T2): the AI's player state for his seat, with his stock and technologies: the brain's orders are paid on it.
+	SpawnHeldBot(Slot, Name, Resources, Technologies);
 	// R7.5: the banner of the others (a notice of his last return replaced).
 	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
 	AbsentNotices.Add({ Slot, Name, Now + WindowSeconds, 0., WindowSeconds });
+	// D717 (T2): the AI holds his seat from now (base economy and defence), until he is back or the seat is defeated.
+	if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+	{
+		Brain->SetHeld(Slot, true);
+		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) held by AI"), Slot, *Name);
+	}
 	ForceNetUpdate();
 	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) kept, F %d W %d S %d G %d, %d technologies"), Slot, *Name, Resources.Food,
 		Resources.Wood, Resources.Stone, Resources.Gold, Technologies.Done.Num());
 	return true;
+}
+
+AHOLPlayerState* AHOLGameState::FindHeldBot(const UWorld& World, const int32 Slot)
+{
+	const AHOLGameState* HOLGameState = Cast<AHOLGameState>(World.GetGameState());
+	if (!HOLGameState || !HOLGameState->LaunchConfig.Slots.IsValidIndex(Slot) || HOLGameState->LaunchConfig.Slots[Slot].State == EHOLSlotState::AI)
+	{
+		return nullptr;
+	}
+	for (APlayerState* Each : HOLGameState->PlayerArray)
+	{
+		AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+		if (HOLEach && HOLEach->IsABot() && HOLEach->GetPlayerIndex() == Slot)
+		{
+			return HOLEach;
+		}
+	}
+	return nullptr;
+}
+
+TArray<int32> AHOLGameState::GetSlotsInUse(const AHOLPlayerState* Except) const
+{
+	TArray<int32> Slots;
+	for (const APlayerState* Each : PlayerArray)
+	{
+		const AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+		if (HOLEach && HOLEach != Except && FindHeldBot(*GetWorld(), HOLEach->GetPlayerIndex()) != HOLEach)
+		{
+			Slots.Add(HOLEach->GetPlayerIndex());
+		}
+	}
+	return Slots;
+}
+
+void AHOLGameState::SpawnHeldBot(const int32 Slot, const FString& Name, const FHOLResources& Resources, const FHOLTechnologyState& Technologies)
+{
+	UWorld* World = GetWorld();
+	if (!World || !LaunchConfig.Slots.IsValidIndex(Slot) || LaunchConfig.Slots[Slot].State == EHOLSlotState::AI || FindHeldBot(*World, Slot))
+	{
+		return;
+	}
+	// As the AI's own seats (AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates): no controller, it lists itself in PlayerArray.
+	FActorSpawnParameters Parameters;
+	Parameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	AHOLPlayerState* Bot = World->SpawnActor<AHOLPlayerState>(AHOLPlayerState::StaticClass(), Parameters);
+	if (!Bot)
+	{
+		return;
+	}
+	Bot->SetIsABot(true);
+	Bot->SetPlayerName(Name);
+	Bot->SetMatchSlot(Slot, LaunchConfig.Slots[Slot].ColorIndex);
+	Bot->SetResources(Resources);
+	// What he had was raised when he researched it: as it is, no second raising of the Rams.
+	Bot->RestoreTechnologies(Technologies);
+	AddPlayerState(Bot);
 }
 
 FHOLResources* AHOLGameState::FindAbsentStock(const UWorld& World, const int32 Slot)
@@ -666,6 +767,12 @@ namespace UE::HeroesOfLiberty::Match
 
 bool AHOLGameState::GetSlotStock(const UWorld& World, const int32 Slot, FHOLResources& OutStock)
 {
+	// D717 (T2): the AI that holds the seat of an absent player has his stock (where its orders are paid), before anything else.
+	if (const AHOLPlayerState* Bot = FindHeldBot(World, Slot))
+	{
+		OutStock = Bot->GetResources();
+		return true;
+	}
 	// Absent first: between the Logout and its destruction, the leaving player state still holds the slot.
 	if (const FHOLResources* Kept = FindAbsentStock(World, Slot))
 	{
@@ -679,6 +786,11 @@ bool AHOLGameState::GetSlotStock(const UWorld& World, const int32 Slot, FHOLReso
 
 bool AHOLGameState::SetSlotStock(UWorld& World, const int32 Slot, const FHOLResources& Stock)
 {
+	if (AHOLPlayerState* Bot = FindHeldBot(World, Slot))
+	{
+		Bot->SetResources(Stock);
+		return true;
+	}
 	if (FHOLResources* Kept = FindAbsentStock(World, Slot))
 	{
 		*Kept = Stock;
@@ -704,7 +816,12 @@ bool AHOLGameState::AddSlotStock(UWorld& World, const int32 Slot, const FHOLReso
 
 bool AHOLGameState::GetSlotTechnologies(const UWorld& World, const int32 Slot, FHOLTechnologyState& OutTechnologies)
 {
-	// Absent first, as the stock: between the Logout and its destruction, the leaving player state still holds the slot.
+	// The AI that holds the seat first (D717, T2), then absent, as the stock.
+	if (const AHOLPlayerState* Bot = FindHeldBot(World, Slot))
+	{
+		OutTechnologies = Bot->GetTechnologies();
+		return true;
+	}
 	const AHOLGameState* HOLGameState = Cast<AHOLGameState>(World.GetGameState());
 	const int32 Index = HOLGameState ? FHOLDisconnectRules::FindAbsent(HOLGameState->AbsentSlots, Slot) : INDEX_NONE;
 	if (Index != INDEX_NONE)
@@ -719,6 +836,10 @@ bool AHOLGameState::GetSlotTechnologies(const UWorld& World, const int32 Slot, F
 
 bool AHOLGameState::AddSlotTechnology(UWorld& World, const int32 Slot, const FName Technology)
 {
+	if (AHOLPlayerState* Bot = FindHeldBot(World, Slot))
+	{
+		return Bot->AddTechnology(Technology);
+	}
 	AHOLGameState* HOLGameState = Cast<AHOLGameState>(World.GetGameState());
 	const int32 Index = HOLGameState ? FHOLDisconnectRules::FindAbsent(HOLGameState->AbsentSlots, Slot) : INDEX_NONE;
 	if (Index != INDEX_NONE)
@@ -757,6 +878,67 @@ int32 AHOLGameState::FindSlotOnLogin(const FHOLMatchConfig& Config, const FStrin
 	return INDEX_NONE;
 }
 
+int32 AHOLGameState::FindSlotForLogin(const FHOLMatchConfig& Config, const FString& Name, const AHOLPlayerState& Logging,
+	AHOLPlayerState*& OutReplaced) const
+{
+	OutReplaced = nullptr;
+	TArray<int32> Taken = GetSlotsInUse(&Logging);
+	const UWorld* World = GetWorld();
+	if (World && Config.HasPlayerNames())
+	{
+		// His name's seat, whoever holds it: a live holder of another connection is the old connection of this very player (the lobby's names
+		// are unique), to be handed over to him, unless the seat is defeated (then he watches, as FindSlotOnLogin says).
+		const int32 NameSlot = Config.FindSlotForName(Name, {});
+		if (NameSlot != INDEX_NONE && !IsSlotDefeated(NameSlot) && Taken.Contains(NameSlot))
+		{
+			if (AHOLPlayerState* Old = FindLiveHolder(*World, NameSlot, &Logging))
+			{
+				OutReplaced = Old;
+				Taken.Remove(NameSlot);
+			}
+		}
+	}
+	return FindSlotOnLogin(Config, Name, Taken);
+}
+
+void AHOLGameState::RetireHolder(AHOLPlayerState& Old, const double Now, const double WindowSeconds)
+{
+	const int32 Slot = Old.GetPlayerIndex();
+	if (!HasAuthority() || Slot == INDEX_NONE)
+	{
+		return;
+	}
+	// What a Logout would keep for him (stock, technologies; the AI's player state holds them until his successor takes the seat, at once);
+	// no banner for the others: nobody left, a player restarted.
+	if (KeepMissingSlot(Slot, Old.GetResources(), Now, WindowSeconds, Old.GetTechnologies()))
+	{
+		AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+	}
+	// The old connection no longer holds the seat: its late Logout (KeepAbsentSlot) keeps nothing, and the seat is read on the new player.
+	Old.SetIsOnlyASpectator(true);
+	Old.SetMatchSlot(INDEX_NONE, Old.GetColorIndex());
+	UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d (%s) handed over from his old connection"), Slot, *Old.GetPlayerName());
+	ForceNetUpdate();
+}
+
+AHOLPlayerState* AHOLGameState::FindLiveHolder(const UWorld& World, const int32 Slot, const AHOLPlayerState* Except)
+{
+	const AGameStateBase* HolderState = World.GetGameState();
+	if (!HolderState || Slot == INDEX_NONE)
+	{
+		return nullptr;
+	}
+	for (APlayerState* Each : HolderState->PlayerArray)
+	{
+		AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+		if (HOLEach && HOLEach != Except && !HOLEach->IsABot() && !HOLEach->IsOnlyASpectator() && HOLEach->GetPlayerIndex() == Slot)
+		{
+			return HOLEach;
+		}
+	}
+	return nullptr;
+}
+
 bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting)
 {
 	return GiveSlotStock(Taking, Starting, GetServerWorldTimeSeconds());
@@ -765,6 +947,17 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting, const double Now)
 {
 	const int32 Index = FHOLDisconnectRules::FindAbsent(AbsentSlots, Taking.GetPlayerIndex());
+	// D717 (T2): the AI that held his seat has the stock and technologies as they are now (what it spent, what it researched).
+	AHOLPlayerState* Bot = GetWorld() ? FindHeldBot(*GetWorld(), Taking.GetPlayerIndex()) : nullptr;
+	if (Bot == &Taking)
+	{
+		Bot = nullptr;
+	}
+	if (Bot && AbsentSlots.IsValidIndex(Index))
+	{
+		AbsentSlots[Index].Resources = Bot->GetResources();
+		AbsentSlots[Index].Technologies = Bot->GetTechnologies();
+	}
 	Taking.SetResources(FHOLDisconnectRules::GetStockOnTaking(AbsentSlots.IsValidIndex(Index) ? &AbsentSlots[Index] : nullptr, Starting));
 	if (AbsentSlots.IsValidIndex(Index))
 	{
@@ -774,9 +967,23 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 		// D719 (T0): his technologies, those acquired and those whose research ended while he was away, with their effects.
 		const FHOLTechnologyState Kept = AbsentSlots[Index].Technologies;
 		AbsentSlots.RemoveAt(Index);
-		for (const FName Technology : Kept.Done)
+		// D717 (T2): he is back, the AI lets his seat go (what it remembered of it is dropped).
+		if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
 		{
-			Taking.AddTechnology(Technology);
+			Brain->SetHeld(Slot, false);
+		}
+		if (Bot)
+		{
+			// The AI's seat goes away first (the hero's sheet below is written to his new player state), his technologies as they are.
+			Bot->Destroy();
+			Taking.RestoreTechnologies(Kept);
+		}
+		else
+		{
+			for (const FName Technology : Kept.Done)
+			{
+				Taking.AddTechnology(Technology);
+			}
 		}
 		// R7.10: his hero's private sheet (kept by the hero subsystem) in his new player state at once, as his stock.
 		if (UHOLHeroSubsystem* Heroes = GetWorld() ? GetWorld()->GetSubsystem<UHOLHeroSubsystem>() : nullptr)
@@ -805,6 +1012,19 @@ TArray<int32> AHOLGameState::DefeatExpiredAbsences(const double Now, const doubl
 	TArray<int32> Defeated;
 	for (const int32 Slot : FHOLDisconnectRules::GetExpired(AbsentSlots, Now, WindowSeconds))
 	{
+		// D718 (T5): by the camps of the launch, the AI keeps the seat (full brain, the banner out, his return open to the end of the match) or it is a defeat.
+		if (FHOLDisconnectRules::GetWindowEnd(LaunchConfig, Slot) == FHOLDisconnectRules::EWindowEnd::AIHolds && GetWorld() && FindHeldBot(*GetWorld(), Slot))
+		{
+			AbsentSlots[FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot)].bWindowOver = true;
+			AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
+			if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
+			{
+				Brain->SetFullBrain(Slot);
+			}
+			UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d not back within %.0f s, the AI keeps the seat (full brain)"), Slot, WindowSeconds);
+			ForceNetUpdate();
+			continue;
+		}
 		AbsentSlots.RemoveAt(FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot));
 		UE_LOG(LogHOLMatch, Display, TEXT("Disconnect: slot %d not back within %.0f s"), Slot, WindowSeconds);
 		// As a surrender (R-Q5): the collapse of V1 (D358), the camps' rules decide the end.

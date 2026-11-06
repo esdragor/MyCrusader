@@ -1,0 +1,223 @@
+# Ecoute : les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment), dix variantes MEDIEVAL FANTASY chacune (bois, cuir, parchemin, metal sourd, cloche, pierre, cordes), Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment). 70 sons, 7 cues, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit laquelle vient de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Ui.Open C.
+note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes (bois, cloche, harpe...) pour les dix suivantes.
+capture audio_compare_orders_start
+waitkey Entree : commencer par Order.Move A
+hol.Audio.Candidate Order.Move A
+waitlog candidate played Order.Move A
+waitkey Order.Move A (handleSmallLeather) vient de jouer. Entree : Order.Move B
+hol.Audio.Candidate Order.Move B
+waitlog candidate played Order.Move B
+waitkey Order.Move B (beltHandle1) vient de jouer. Entree : Order.Move C
+hol.Audio.Candidate Order.Move C
+waitlog candidate played Order.Move C
+waitkey Order.Move C (impactWood_light_001) vient de jouer. Entree : Order.Move D
+hol.Audio.Candidate Order.Move D
+waitlog candidate played Order.Move D
+waitkey Order.Move D (v_cello_pizz_D4) vient de jouer. Entree : Order.Move E
+hol.Audio.Candidate Order.Move E
+waitlog candidate played Order.Move E
+waitkey Order.Move E (v_vln_pizz_A4) vient de jouer. Entree : Order.Move F
+hol.Audio.Candidate Order.Move F
+waitlog candidate played Order.Move F
+waitkey Order.Move F (cloth1) vient de jouer. Entree : Order.Move G
+hol.Audio.Candidate Order.Move G
+waitlog candidate played Order.Move G
+waitkey Order.Move G (footstep_wood_000) vient de jouer. Entree : Order.Move H
+hol.Audio.Candidate Order.Move H
+waitlog candidate played Order.Move H
+waitkey Order.Move H (impactSoft_medium_002) vient de jouer. Entree : Order.Move I
+hol.Audio.Candidate Order.Move I
+waitlog candidate played Order.Move I
+waitkey Order.Move I (v_claves_mf) vient de jouer. Entree : Order.Move J
+hol.Audio.Candidate Order.Move J
+waitlog candidate played Order.Move J
+waitkey Order.Move J (v_harp_F6) vient de jouer. Entree : Order.Attack A  [nouveau cue]
+hol.Audio.Candidate Order.Attack A
+waitlog candidate played Order.Attack A
+waitkey Order.Attack A (drawKnife1) vient de jouer. Entree : Order.Attack B
+hol.Audio.Candidate Order.Attack B
+waitlog candidate played Order.Attack B
+waitkey Order.Attack B (drawKnife2) vient de jouer. Entree : Order.Attack C
+hol.Audio.Candidate Order.Attack C
+waitlog candidate played Order.Attack C
+waitkey Order.Attack C (drawKnife3) vient de jouer. Entree : Order.Attack D
+hol.Audio.Candidate Order.Attack D
+waitlog candidate played Order.Attack D
+waitkey Order.Attack D (knifeSlice) vient de jouer. Entree : Order.Attack E
+hol.Audio.Candidate Order.Attack E
+waitlog candidate played Order.Attack E
+waitkey Order.Attack E (knifeSlice2) vient de jouer. Entree : Order.Attack F
+hol.Audio.Candidate Order.Attack F
+waitlog candidate played Order.Attack F
+waitkey Order.Attack F (impactMetal_light_000) vient de jouer. Entree : Order.Attack G
+hol.Audio.Candidate Order.Attack G
+waitlog candidate played Order.Attack G
+waitkey Order.Attack G (impactMetal_medium_000) vient de jouer. Entree : Order.Attack H
+hol.Audio.Candidate Order.Attack H
+waitlog candidate played Order.Attack H
+waitkey Order.Attack H (impactPlate_medium_000) vient de jouer. Entree : Order.Attack I
+hol.Audio.Candidate Order.Attack I
+waitlog candidate played Order.Attack I
+waitkey Order.Attack I (v_mallet_hit_ff) vient de jouer. Entree : Order.Attack J
+hol.Audio.Candidate Order.Attack J
+waitlog candidate played Order.Attack J
+waitkey Order.Attack J (v_gong_smack_light) vient de jouer. Entree : Order.Gather A  [nouveau cue]
+hol.Audio.Candidate Order.Gather A
+waitlog candidate played Order.Gather A
+waitkey Order.Gather A (chop) vient de jouer. Entree : Order.Gather B
+hol.Audio.Candidate Order.Gather B
+waitlog candidate played Order.Gather B
+waitkey Order.Gather B (cloth1) vient de jouer. Entree : Order.Gather C
+hol.Audio.Candidate Order.Gather C
+waitlog candidate played Order.Gather C
+waitkey Order.Gather C (impactMining_000) vient de jouer. Entree : Order.Gather D
+hol.Audio.Candidate Order.Gather D
+waitlog candidate played Order.Gather D
+waitkey Order.Gather D (impactWood_medium_001) vient de jouer. Entree : Order.Gather E
+hol.Audio.Candidate Order.Gather E
+waitlog candidate played Order.Gather E
+waitkey Order.Gather E (handleSmallLeather) vient de jouer. Entree : Order.Gather F
+hol.Audio.Candidate Order.Gather F
+waitlog candidate played Order.Gather F
+waitkey Order.Gather F (impactPlank_medium_002) vient de jouer. Entree : Order.Gather G
+hol.Audio.Candidate Order.Gather G
+waitlog candidate played Order.Gather G
+waitkey Order.Gather G (impactMining_001) vient de jouer. Entree : Order.Gather H
+hol.Audio.Candidate Order.Gather H
+waitlog candidate played Order.Gather H
+waitkey Order.Gather H (impactWood_heavy_001) vient de jouer. Entree : Order.Gather I
+hol.Audio.Candidate Order.Gather I
+waitlog candidate played Order.Gather I
+waitkey Order.Gather I (beltHandle2) vient de jouer. Entree : Order.Gather J
+hol.Audio.Candidate Order.Gather J
+waitlog candidate played Order.Gather J
+waitkey Order.Gather J (impactSoft_heavy_000) vient de jouer. Entree : Order.Build A  [nouveau cue]
+hol.Audio.Candidate Order.Build A
+waitlog candidate played Order.Build A
+waitkey Order.Build A (impactWood_medium_000) vient de jouer. Entree : Order.Build B
+hol.Audio.Candidate Order.Build B
+waitlog candidate played Order.Build B
+waitkey Order.Build B (impactPlank_medium_000) vient de jouer. Entree : Order.Build C
+hol.Audio.Candidate Order.Build C
+waitlog candidate played Order.Build C
+waitkey Order.Build C (impactWood_heavy_002) vient de jouer. Entree : Order.Build D
+hol.Audio.Candidate Order.Build D
+waitlog candidate played Order.Build D
+waitkey Order.Build D (impactMining_002) vient de jouer. Entree : Order.Build E
+hol.Audio.Candidate Order.Build E
+waitlog candidate played Order.Build E
+waitkey Order.Build E (chop) vient de jouer. Entree : Order.Build F
+hol.Audio.Candidate Order.Build F
+waitlog candidate played Order.Build F
+waitkey Order.Build F (metalPot3) vient de jouer. Entree : Order.Build G
+hol.Audio.Candidate Order.Build G
+waitlog candidate played Order.Build G
+waitkey Order.Build G (impactPlate_light_001) vient de jouer. Entree : Order.Build H
+hol.Audio.Candidate Order.Build H
+waitlog candidate played Order.Build H
+waitkey Order.Build H (impactMetal_light_001) vient de jouer. Entree : Order.Build I
+hol.Audio.Candidate Order.Build I
+waitlog candidate played Order.Build I
+waitkey Order.Build I (impactWood_light_000) vient de jouer. Entree : Order.Build J
+hol.Audio.Candidate Order.Build J
+waitlog candidate played Order.Build J
+waitkey Order.Build J (impactTin_medium_000) vient de jouer. Entree : Order.Garrison A  [nouveau cue]
+hol.Audio.Candidate Order.Garrison A
+waitlog candidate played Order.Garrison A
+waitkey Order.Garrison A (doorClose_1) vient de jouer. Entree : Order.Garrison B
+hol.Audio.Candidate Order.Garrison B
+waitlog candidate played Order.Garrison B
+waitkey Order.Garrison B (doorClose_2) vient de jouer. Entree : Order.Garrison C
+hol.Audio.Candidate Order.Garrison C
+waitlog candidate played Order.Garrison C
+waitkey Order.Garrison C (doorClose_3) vient de jouer. Entree : Order.Garrison D
+hol.Audio.Candidate Order.Garrison D
+waitlog candidate played Order.Garrison D
+waitkey Order.Garrison D (doorClose_4) vient de jouer. Entree : Order.Garrison E
+hol.Audio.Candidate Order.Garrison E
+waitlog candidate played Order.Garrison E
+waitkey Order.Garrison E (doorOpen_1) vient de jouer. Entree : Order.Garrison F
+hol.Audio.Candidate Order.Garrison F
+waitlog candidate played Order.Garrison F
+waitkey Order.Garrison F (creak2) vient de jouer. Entree : Order.Garrison G
+hol.Audio.Candidate Order.Garrison G
+waitlog candidate played Order.Garrison G
+waitkey Order.Garrison G (metalLatch) vient de jouer. Entree : Order.Garrison H
+hol.Audio.Candidate Order.Garrison H
+waitlog candidate played Order.Garrison H
+waitkey Order.Garrison H (impactWood_heavy_003) vient de jouer. Entree : Order.Garrison I
+hol.Audio.Candidate Order.Garrison I
+waitlog candidate played Order.Garrison I
+waitkey Order.Garrison I (impactPlank_medium_003) vient de jouer. Entree : Order.Garrison J
+hol.Audio.Candidate Order.Garrison J
+waitlog candidate played Order.Garrison J
+waitkey Order.Garrison J (v_bass_pizz_E1) vient de jouer. Entree : Select.Unit A  [nouveau cue]
+hol.Audio.Candidate Select.Unit A
+waitlog candidate played Select.Unit A
+waitkey Select.Unit A (handleSmallLeather) vient de jouer. Entree : Select.Unit B
+hol.Audio.Candidate Select.Unit B
+waitlog candidate played Select.Unit B
+waitkey Select.Unit B (beltHandle1) vient de jouer. Entree : Select.Unit C
+hol.Audio.Candidate Select.Unit C
+waitlog candidate played Select.Unit C
+waitkey Select.Unit C (impactSoft_medium_003) vient de jouer. Entree : Select.Unit D
+hol.Audio.Candidate Select.Unit D
+waitlog candidate played Select.Unit D
+waitkey Select.Unit D (cloth2) vient de jouer. Entree : Select.Unit E
+hol.Audio.Candidate Select.Unit E
+waitlog candidate played Select.Unit E
+waitkey Select.Unit E (v_claves_mp) vient de jouer. Entree : Select.Unit F
+hol.Audio.Candidate Select.Unit F
+waitlog candidate played Select.Unit F
+waitkey Select.Unit F (v_vln_pizz_C5) vient de jouer. Entree : Select.Unit G
+hol.Audio.Candidate Select.Unit G
+waitlog candidate played Select.Unit G
+waitkey Select.Unit G (metalClick) vient de jouer. Entree : Select.Unit H
+hol.Audio.Candidate Select.Unit H
+waitlog candidate played Select.Unit H
+waitkey Select.Unit H (impactTin_medium_004) vient de jouer. Entree : Select.Unit I
+hol.Audio.Candidate Select.Unit I
+waitlog candidate played Select.Unit I
+waitkey Select.Unit I (v_harp_F6) vient de jouer. Entree : Select.Unit J
+hol.Audio.Candidate Select.Unit J
+waitlog candidate played Select.Unit J
+waitkey Select.Unit J (footstep_wood_001) vient de jouer. Entree : Select.Building A  [nouveau cue]
+hol.Audio.Candidate Select.Building A
+waitlog candidate played Select.Building A
+waitkey Select.Building A (metalLatch) vient de jouer. Entree : Select.Building B
+hol.Audio.Candidate Select.Building B
+waitlog candidate played Select.Building B
+waitkey Select.Building B (doorOpen_2) vient de jouer. Entree : Select.Building C
+hol.Audio.Candidate Select.Building C
+waitlog candidate played Select.Building C
+waitkey Select.Building C (impactWood_medium_002) vient de jouer. Entree : Select.Building D
+hol.Audio.Candidate Select.Building D
+waitlog candidate played Select.Building D
+waitkey Select.Building D (impactPlank_medium_004) vient de jouer. Entree : Select.Building E
+hol.Audio.Candidate Select.Building E
+waitlog candidate played Select.Building E
+waitkey Select.Building E (creak1) vient de jouer. Entree : Select.Building F
+hol.Audio.Candidate Select.Building F
+waitlog candidate played Select.Building F
+waitkey Select.Building F (metalPot1) vient de jouer. Entree : Select.Building G
+hol.Audio.Candidate Select.Building G
+waitlog candidate played Select.Building G
+waitkey Select.Building G (impactMining_003) vient de jouer. Entree : Select.Building H
+hol.Audio.Candidate Select.Building H
+waitlog candidate played Select.Building H
+waitkey Select.Building H (v_mallet_hit_mf) vient de jouer. Entree : Select.Building I
+hol.Audio.Candidate Select.Building I
+waitlog candidate played Select.Building I
+waitkey Select.Building I (v_bass_pizz_E1) vient de jouer. Entree : Select.Building J
+hol.Audio.Candidate Select.Building J
+waitlog candidate played Select.Building J
+waitkey Select.Building J (impactPlate_medium_001) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Simulation/HOLCombatRules.h"
 
 /**
  * The rules of hol.Test.Sanity (Auto_Journey, "Qualité des essais"): what a trial must never show, decided here from a
@@ -76,6 +77,8 @@ namespace HOLSanity
 		TArray<uint8> Ordered;
 	/** 1 at a step where the unit was going round the end of its line (a rear flank, Q-flank-demi-tour = A): a deliberate manoeuvre, never judged as a spin or a tremor. */
 	TArray<uint8> Flanking;
+	/** 1 at a step where the unit walks to the free place it claimed round its target (Q-sanity-circling = C): going round ONE side to it is tolerated (a turn in the direction of the turn before, under a right angle, adds nothing to the spin sums); a turn against the one before, a heading that doubles back, counts in full (to and fro, hairpin = a fault). */
+	TArray<uint8> PlaceWalk;
 		/** Debug text per step (hol.Test.SanityVerbose 2). */
 		TArray<FString> States;
 	};
@@ -88,6 +91,11 @@ namespace HOLSanity
 		float SpinTurn = 3.f * UE_PI;
 		/** ... on an ordered unit that ends within this many body radii of where it began. */
 		float SpinNetRadii = 4.f;
+		/**
+		 * ... and walked more than this many body radii in all (Q-sanity-micro = A, the same floor as the 2 s rule below): a soldier jostled
+		 * 1 to 3 cm a step piles up turns on a path of a metre, it does not go round anything. 0: no floor (the rule as it was).
+		 */
+		float SpinMinPathRadii = 6.f;
 		/** A shake: reversals (a step against the one before, both moving) per second, ... */
 		float ShakePerSecond = 3.f;
 		/** ... on a unit whose net move over the window is under this share of the path it walked. */
@@ -128,6 +136,11 @@ namespace HOLSanity
 		float PreviousTurn = 0.f;
 		int32 Ordered = 0;
 		const auto IsFlanking = [&Trace](const int32 Index) { return Trace.Flanking.IsValidIndex(Index) && Trace.Flanking[Index] != 0; };
+		// Q-sanity-circling = C: a turn made walking to the claimed place, in the direction of the turn before and under a right angle, is the walk round one side.
+		const auto IsOneSideCurve = [&Trace](const int32 Index, const float Signed, const float PreviousSigned)
+		{
+			return Trace.PlaceWalk.IsValidIndex(Index) && Trace.PlaceWalk[Index] != 0 && FMath::Abs(Signed) < 0.5f * UE_PI && Signed * PreviousSigned >= 0.f;
+		};
 		for (int32 Index = 1; Index < Count; ++Index)
 		{
 			Ordered += Trace.Ordered.IsValidIndex(Index) && Trace.Ordered[Index] ? 1 : 0;
@@ -150,8 +163,9 @@ namespace HOLSanity
 				const float Cos = FVector2D::DotProduct(Move, PreviousMove) / (Length * PreviousMove.Size());
 				const float Angle = FMath::Acos(FMath::Clamp(Cos, -1.f, 1.f));
 				const float Signed = FVector2D::CrossProduct(PreviousMove, Move) < 0.f ? -Angle : Angle;
-				Result.Turn += Angle;
-				Result.SignedTurn += Signed;
+				const bool bOneSide = IsOneSideCurve(Index, Signed, PreviousTurn);
+				if (!bOneSide) { Result.Turn += Angle; }
+				if (!bOneSide) { Result.SignedTurn += Signed; }
 				Result.Reversals += Cos < -0.5f ? 1 : 0;
 				if (Signed * PreviousTurn < 0.f)
 				{
@@ -164,7 +178,8 @@ namespace HOLSanity
 		Result.Net = static_cast<float>(FVector2D::Distance(Trace.Places[0], Trace.Places.Last()));
 		Result.OrderedShare = static_cast<float>(Ordered) / static_cast<float>(Count - 1);
 		const float Seconds = static_cast<float>(Count - 1) * StepSeconds;
-		Result.bSpin = Result.OrderedShare >= 0.9f && FMath::Abs(Result.SignedTurn) >= Settings.SpinTurn && Result.Net <= Settings.SpinNetRadii * Trace.Radius;
+		Result.bSpin = Result.OrderedShare >= 0.9f && FMath::Abs(Result.SignedTurn) >= Settings.SpinTurn && Result.Net <= Settings.SpinNetRadii * Trace.Radius
+			&& Result.Path > Settings.SpinMinPathRadii * Trace.Radius;
 		Result.bShake = Seconds > 0.f && static_cast<float>(Result.Reversals) / Seconds >= Settings.ShakePerSecond && Result.Net <= Settings.ShakeNetShare * Result.Path;
 		// A spin met in a part of the window only (a unit that walked up to a fight, then circled it): any 2 s of it going round
 		// (a full turn of heading, in one direction, under 30% of the path made good) on an order counts. A unit shoved to and fro by its
@@ -175,6 +190,7 @@ namespace HOLSanity
 			float WindowTurn = 0.f, WindowPath = 0.f;
 			int32 WindowOrdered = 0;
 			FVector2D Before = FVector2D::ZeroVector;
+				float BeforeTurn = 0.f;
 			bool bFlankInWindow = false;
 			for (int32 Index = Begin + 1; Index <= Begin + Window; ++Index)
 			{
@@ -190,7 +206,9 @@ namespace HOLSanity
 				if (!Before.IsZero())
 				{
 					const float Angle = FMath::Acos(FMath::Clamp(FVector2D::DotProduct(Move, Before) / (Length * Before.Size()), -1.f, 1.f));
-					WindowTurn += FVector2D::CrossProduct(Before, Move) < 0.f ? -Angle : Angle;
+					const float SignedWindowTurn = FVector2D::CrossProduct(Before, Move) < 0.f ? -Angle : Angle;
+						if (!IsOneSideCurve(Index, SignedWindowTurn, BeforeTurn)) { WindowTurn += SignedWindowTurn; }
+						BeforeTurn = SignedWindowTurn;
 				}
 				Before = Move;
 			}
@@ -202,4 +220,41 @@ namespace HOLSanity
 		Result.bShake |= Seconds > 0.f && Result.Path > 10.f * Trace.Radius && Result.Net > Settings.ShakeNetShare * Result.Path && Result.Zigzag / Seconds >= Settings.JitterZigzagPerSecond;
 		return Result;
 	}
+
+	// ---- Check 4 (D641, the user's retour on the neutrals trial): a soldier that does nothing while a place is free. ----
+	/** The rule itself lives with the combat (HOLCombat::HasFreePlaceAround): the audit and the flank (hol.Combat.FlankToTarget) read "room" with one call. */
+	using FBody = HOLCombat::FBody;
+	using HOLCombat::HasFreePlaceAround;
+	/** Q-neutrals-hold = C: a free place does not count when bodies close on both sides wall the soldier in (HOLCombat::IsBoxedIn). */
+	using HOLCombat::IsBoxedIn;
+
+
+	/** A unit's run of steps standing still out of reach of its target while a place was free round it: the current run and the longest one (s). */
+	struct FStall
+	{
+		double Seconds = 0.;
+		double Longest = 0.;
+		/** The run is over the limit: its first step (the fault is told once). */
+		bool bTold = false;
+		/** How many runs went over the limit. */
+		int32 Runs = 0;
+
+		/** One step: stalled or not. Returns true at the step the current run first goes over LimitSeconds. */
+		bool Step(const bool bStalledWithRoom, const double StepSeconds, const double LimitSeconds)
+		{
+			if (!bStalledWithRoom)
+			{
+				bTold = false;
+			}
+			Seconds = bStalledWithRoom ? Seconds + StepSeconds : 0.;
+			Longest = FMath::Max(Longest, Seconds);
+			if (!bTold && LimitSeconds > 0. && Seconds > LimitSeconds)
+			{
+				bTold = true;
+				++Runs;
+				return true;
+			}
+			return false;
+		}
+	};
 }

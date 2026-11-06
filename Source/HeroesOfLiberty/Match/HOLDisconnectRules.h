@@ -20,6 +20,8 @@ struct FHOLAbsentSlot
 	FHOLResources Resources;
 	/** D719 (T0): the technologies acquired at the departure, and those whose research ends while he is away; given back on the return. */
 	FHOLTechnologyState Technologies;
+	/** D718 (T5): the window is over and the AI keeps the seat (GetWindowEnd = AIHolds): the record stays for his return, no longer expires. */
+	bool bWindowOver = false;
 };
 
 /**

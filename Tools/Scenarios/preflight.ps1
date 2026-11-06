@@ -2,7 +2,7 @@
 # reaches "ready"; this one says whether the TRIAL is worth the user's time. Run from Windows PowerShell:
 #   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\preflight.ps1 <name> [-Root <worktree>] [-MaxSeconds 180]
 # Checks (each prints OK / FAIL / WARN, exit 1 if any FAIL):
-#   1. check.ps1 passes (the scenario reaches "ready", no error), run -unattended, so the waitkey steps go on by themselves;
+#   1. check.ps1 passes (the scenario reaches "ready", no error), run -unattended, so the waitkey steps go on by themselves (check.ps1 stops at the first "Angelscript: Error" line of the log instead of waiting for its timeout; tested by preflight_selftest.ps1);
 #   2. the user's time: waitkey steps and `wait` seconds in the .txt, and the wall time of the run, stay under -MaxSeconds (default 180 s,
 #      the user's limit: a trial lasts 3 minutes at most, the scenario puts the user in the situation, no dead wait: a waiting event is
 #      triggered by the scenario or released by a waitkey);

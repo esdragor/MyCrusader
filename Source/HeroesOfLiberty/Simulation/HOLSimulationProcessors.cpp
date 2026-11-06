@@ -49,6 +49,9 @@ namespace UE::HeroesOfLiberty::Simulation
 	float LoopPatienceDegrees = 270.f;
 	FAutoConsoleVariableRef CVarLoopPatience(TEXT("hol.Combat.LoopPatience"), LoopPatienceDegrees,
 		TEXT("Degrees (default 270; 0 = off, for A / B): a melee walking to its target that has turned this much in all (every turn counted without its sign, leaking away over hol.Combat.LoopForget) stands and waits hol.Combat.LoopWait instead of going round the line of its friends in loops (D641)"));
+	int32 LoopHoldOnlyFull = 1;
+	FAutoConsoleVariableRef CVarLoopHoldOnlyFull(TEXT("hol.Combat.LoopHoldOnlyFull"), LoopHoldOnlyFull,
+		TEXT("1 (default; D641, the user's retour on the neutrals trial): the loop patience (hol.Combat.LoopPatience) holds a melee only when no place is free round its target, a soldier with room goes round to it; 0: it holds whenever it has turned too much (the first version)"));
 	float LoopWaitSeconds = 2.5f;
 	FAutoConsoleVariableRef CVarLoopWait(TEXT("hol.Combat.LoopWait"), LoopWaitSeconds,
 		TEXT("Seconds a melee waits once it has turned hol.Combat.LoopPatience degrees (D641)"));
@@ -63,7 +66,7 @@ namespace UE::HeroesOfLiberty::Simulation
 	 */
 	bool HoldIfLooping(FHOLCombatFragment& Combat, FVector& Velocity, const float DeltaTime, const bool bFighting)
 	{
-		if (!bFighting)
+		if (!bFighting || (LoopHoldOnlyFull != 0 && Combat.bRoomAtTarget))
 		{
 			Combat.LoopHeading = FVector2f::ZeroVector;
 			Combat.LoopTurn = 0.f;
@@ -155,6 +158,19 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarAvoidMaxAngle(TEXT("hol.Units.AvoidMaxAngle"), AvoidMaxAngle,
 		TEXT("Largest turn (degrees) a walker makes around a body ahead; beyond, the detour is too long and it pushes its way (D293)"));
 
+	/**
+	 * Melee_spin (Celeborn-9): a walker on its last leg to its slot, a still enemy grazing the straight way to it, held the largest turn
+	 * along that enemy and circled its slot (turn 555 degrees in 3 s at 700 cm/s, Sanity FAIL). A detour held this many steps while the
+	 * goal is within hol.Units.SlotDetourRadius commits the walker to the goal for the rest of the leg (the separation still keeps the
+	 * bodies apart). 0: off (the detour as before).
+	 */
+	int32 SlotDetourMaxSteps = 8;
+	FAutoConsoleVariableRef CVarSlotDetourMaxSteps(TEXT("hol.Units.SlotDetourMaxSteps"), SlotDetourMaxSteps,
+		TEXT("Steps a detour is held near the walker's goal before it goes straight to it for the rest of the leg (the slot circling of melee_spin); 0: off"));
+	float SlotDetourRadius = 300.f;
+	FAutoConsoleVariableRef CVarSlotDetourRadius(TEXT("hol.Units.SlotDetourRadius"), SlotDetourRadius,
+		TEXT("cm: the goal's distance within which hol.Units.SlotDetourMaxSteps counts"));
+
 	/** J7c.4, loop 19: the ranks behind the front slide along their friends instead of walking into them. */
 	/** J7c.4 loop 29: the melee rules' bookkeeping (army middles, lines of contact) skipped or done without maps when it cannot change anything. */
 	int32 MeleeRuleSkips = 1;
@@ -184,6 +200,12 @@ namespace UE::HeroesOfLiberty::Simulation
 		TEXT("Part of the walk's speed (default 0, with hol.Combat.RearSlideKeep): a sliding melee whose side is shut creeps on towards its goal at this speed instead of standing"));
 	/** RearSlideKeep: the kept way is forgotten after this long (s) walking on unbarred; the target's side that turns it. */
 	constexpr float RearSlideForgetTime = 0.5f;
+	int32 RearSlideStandKeep = 1;
+	FAutoConsoleVariableRef CVarRearSlideStandKeep(TEXT("hol.Combat.RearSlideStandKeep"), RearSlideStandKeep,
+		TEXT("1 (default): a stand of one step (the walk re-issued) keeps the rear slide's memory (side, shut time); it is cleared after 0.5 s of standing; 0: cleared at once, as before (BUG-melee-stuck-attack: the soldier shut between two friends never turned)"));
+	float RearSlideTurnCommit = 1.f;
+	FAutoConsoleVariableRef CVarRearSlideTurnCommit(TEXT("hol.Combat.RearSlideTurnCommit"), RearSlideTurnCommit,
+		TEXT("s (default 1, with hol.Combat.RearSlideKeep): a rear slide that turns to the open side after RearSlideShutTime walks it at once and holds it this long (the target's side no longer turns it back: the cycle of one second, standing, of BUG-melee-stuck-attack); 0: as before"));
 	constexpr double RearSlideTurnGoalSide = 0.5;
 	/** RearSlideKeep: across the line, a unit this close (cm) to its army's middle takes its side by its id. */
 	constexpr double RearSlideMiddle = 100.0;
@@ -204,6 +226,12 @@ namespace UE::HeroesOfLiberty::Simulation
 	float RearFlankMaxShift = 600.f;
 	FAutoConsoleVariableRef CVarRearFlankMaxShift(TEXT("hol.Combat.RearFlankMaxShift"), RearFlankMaxShift,
 		TEXT("cm (default 600, Q-flank-tours = A; was 1200, with hol.Combat.RearFlank): a unit whose flank's goal lies further along the line does not go round (it waits behind the line); 0: no cap (loop 21)"));
+	int32 FlankToTarget = 1;
+	FAutoConsoleVariableRef CVarFlankToTarget(TEXT("hol.Combat.FlankToTarget"), FlankToTarget,
+		TEXT("1 (default, with hol.Combat.RearFlank; D641, the user's retour on the neutrals trial): a melee of an attack-move that stood still hol.Combat.FlankStill s behind its line, out of reach, goes round the line's end (under hol.Combat.RearFlankMaxShift) when a place is free round its own target, not only when another enemy is free beyond the end; 0: as before (A / B)"));
+	float FlankStillSeconds = 0.5f;
+	FAutoConsoleVariableRef CVarFlankStill(TEXT("hol.Combat.FlankStill"), FlankStillSeconds,
+		TEXT("s (default 0.5, with hol.Combat.FlankToTarget): how long a melee must have stood still (under 3 cm) before it goes round to its target's free place"));
 	float RearFlankBack = 250.f;
 	FAutoConsoleVariableRef CVarRearFlankBack(TEXT("hol.Combat.RearFlankBack"), RearFlankBack,
 		TEXT("cm (default 250, with hol.Combat.RearFlank): the flank first walks to a point this far behind the unit's own rank, at the end's level, then round the end; 0: straight to the end (loop 21)"));
@@ -646,7 +674,12 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.Side = 0;
 		Detour.Turn = 0;
 		Detour.ClearSteps = 0;
+		Detour.DetourSteps = 0;
 	};
+	if (Detour.bSlotCommit != 0)
+	{
+		return Direction;
+	}
 	// A / B (hol.Units.DetourMemory 0): every step from the straight course, as before MV.2.
 	if (DetourMemory == 0)
 	{
@@ -814,6 +847,15 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			Forget();
 			return Direction;
 		}
+		if (SlotDetourMaxSteps > 0 && Goal && FVector2D::DistSquared(*Goal, Position) < FMath::Square(static_cast<double>(SlotDetourRadius)))
+		{
+			if (++Detour.DetourSteps >= SlotDetourMaxSteps)
+			{
+				Forget();
+				Detour.bSlotCommit = 1;
+				return Direction;
+			}
+		}
 		const FVector2D Way = WayOf(Hand, Detour.Turn);
 		return FVector(Way.X, Way.Y, 0.);
 	}
@@ -961,16 +1003,14 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 		// that side shut a while, below); a new one: the target's side, else away from its army's middle (the nearer end of
 		// the line: the neighbours all take the same way, a wave, and wrap round the flank).
 		double Hand = 0.;
+		bool bHandKept = false;
 		const double GoalSide = FVector2D::DotProduct(Goal, Left);
 		const double KeptSide = FVector2D::DotProduct(FVector2D(Combat.SlideWay.X, Combat.SlideWay.Y), Left);
 		if (bKeep && FMath::Abs(KeptSide) > 0.2)
 		{
+			// Turned by its target gone clearly the other way (HOLCombat::AdvanceSlideSide, below).
 			Hand = KeptSide > 0. ? 1. : -1.;
-			if (GoalSide * Hand < -RearSlideTurnGoalSide)
-			{
-				Hand = -Hand;
-				Combat.SlideShutSeconds = 0.f;
-			}
+			bHandKept = true;
 		}
 		else if (FMath::Abs(GoalSide) > 0.25)
 		{
@@ -1027,24 +1067,17 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 		Target = FVector2D::ZeroVector;
 		if (bKeep)
 		{
-			// Its side shut: it waits (or creeps on towards its goal), and turns only once shut a while.
-			const FVector2D Way = Left * Hand;
-			if (!IsShut(Way))
-			{
-				Target = Way * (Speed * RearSlideSpeed);
-				Combat.SlideShutSeconds = 0.f;
-			}
-			else
-			{
-				Target = Ahead * (Speed * FMath::Clamp(RearSlideCreep, 0.f, 1.f));
-				// Turned only towards an open side: both shut, it keeps its side and waits (no turn each second).
-				Combat.SlideShutSeconds += DeltaTime;
-				if (Combat.SlideShutSeconds >= RearSlideShutTime && !IsShut(-Way))
-				{
-					Hand = -Hand;
-					Combat.SlideShutSeconds = 0.f;
-				}
-			}
+			// Its side shut: it waits (or creeps on towards its goal), and turns only once shut a while, towards an open side (both
+			// shut, it keeps its side and waits: no turn each second). BUG-melee-stuck-attack (hol.Combat.RearSlideTurnCommit): that
+			// turn walks at once and holds for a while, the target's side no longer turns it back the next step.
+			HOLCombat::FSlideSideState Side;
+			Side.Hand = Hand;
+			Side.ShutSeconds = Combat.SlideShutSeconds;
+			const HOLCombat::FSlideSideResult Step = HOLCombat::AdvanceSlideSide(Side, bHandKept, GoalSide, IsShut(Left), IsShut(-Left), DeltaTime,
+				RearSlideShutTime, RearSlideTurnGoalSide, RearSlideTurnCommit);
+			Hand = Step.Hand;
+			Combat.SlideShutSeconds = Side.ShutSeconds;
+			Target = Step.bMoves ? Left * Hand * (Speed * RearSlideSpeed) : Ahead * (Speed * FMath::Clamp(RearSlideCreep, 0.f, 1.f));
 			Combat.SlideWay = FVector2f(Left * Hand);
 		}
 		else
@@ -1201,8 +1234,18 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				Velocity = FVector::ZeroVector;
 				if (!Combats.IsEmpty())
 				{
-					Combats[EntityIt].SlideWay = FVector2f::ZeroVector;
-					Combats[EntityIt].SlideShutSeconds = 0.f;
+					// BUG-melee-stuck-attack (hol.Combat.RearSlideStandKeep): a walk re-issued every ~1 s stands the unit for one step, and the
+					// slide's memory went with it: the kept side's shut time was set back to 0 at 0.95 s of RearSlideShutTime 1 s, so a soldier
+					// shut in between two friends never turned and waited for 17 s. A stand of a step keeps the memory; only a stand of
+					// RearSlideForgetTime (the time a walk on unbarred forgets it) clears it.
+					FHOLCombatFragment& StandCombat = Combats[EntityIt];
+					StandCombat.SlideFreeSeconds += DeltaTime > 0.f ? DeltaTime : RearSlideForgetTime;
+					if (RearSlideStandKeep == 0 || StandCombat.SlideFreeSeconds >= RearSlideForgetTime)
+					{
+						StandCombat.SlideWay = FVector2f::ZeroVector;
+						StandCombat.SlideShutSeconds = 0.f;
+						StandCombat.SlideFreeSeconds = 0.f;
+					}
 				}
 				continue;
 			}

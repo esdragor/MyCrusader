@@ -52,6 +52,12 @@ struct HEROESOFLIBERTY_API FHOLDetourFragment : public FMassFragment
 	/** Steps in a row the course one turn narrower was clear (MV.2: eased back after HOLAvoid::EaseBackSteps). */
 	uint8 ClearSteps = 0;
 
+	/** Steps this detour has been held while the walker was near its goal (hol.Units.SlotDetourMaxSteps). */
+	uint8 DetourSteps = 0;
+
+	/** Set for the rest of the leg once that limit is passed: the walker goes straight to its goal, pushing (neutrals trial, melee_spin: a walker circling its own slot). */
+	uint8 bSlotCommit = 0;
+
 	/** The walker met at a crossing and this one's part against it (HOLAvoid::ECrossingRole), kept while it is near (MV.2:
 	 * predicted from last step's velocities, the part would flip once one turned). */
 	FMassEntityHandle Crosser;

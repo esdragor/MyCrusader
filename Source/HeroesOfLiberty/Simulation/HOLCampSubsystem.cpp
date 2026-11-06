@@ -131,9 +131,14 @@ int32 UHOLCampSubsystem::AddCamp(const FVector& Post, const FName TypeName, cons
 
 void UHOLCampSubsystem::OnStepEnded(const int64 StepIndex)
 {
-	if (Camps.IsEmpty() || StepIndex % FMath::Max(1, CampThinkSteps) != 0)
+	if (Camps.IsEmpty())
 	{
 		HitNotes.Reset();
+		return;
+	}
+	// The hits struck between two thoughts are kept for the next one (they were dropped: a camp cleared "with 0 hits taken" gave no reward, seen on `neutrals`).
+	if (StepIndex % FMath::Max(1, CampThinkSteps) != 0)
+	{
 		return;
 	}
 	UWorld* World = GetWorld();

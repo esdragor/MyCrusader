@@ -178,6 +178,280 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a wobbling walk made all along on a flank is not a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 160), Step).bShake);
 	TestTrue(TEXT("a circle with no flank flag is still a spin"), HOLSanity::Analyse(Flank(Circle, 0, 0), Step).bSpin);
 	TestTrue(TEXT("a wobbling walk with no flank flag is still a tremor"), HOLSanity::Analyse(Flank([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }, 0, 0), Step).bShake);
+	// Q-sanity-circling = C: the walk round ONE side to the claimed place is tolerated, a turn back on the soldier's steps is not.
+		const auto PlaceWalking = [&Make](const TFunction<FVector2D(int32)>& Place)
+		{
+			HOLSanity::FTrace Trace = Make(Place, true);
+			Trace.PlaceWalk.Init(1, Trace.Places.Num());
+			return Trace;
+		};
+		TestFalse(TEXT("a circle made all along on a place walk (one side) is not a spin"), HOLSanity::Analyse(PlaceWalking(Circle), Step).bSpin);
+		TestTrue(TEXT("the same circle without the place-walk flag is still a spin"), HOLSanity::Analyse(Make(Circle, true), Step).bSpin);
+		TestTrue(TEXT("a wobbling (to and fro) walk on a place walk is still a tremor"), HOLSanity::Analyse(PlaceWalking([](int32 I) { return FVector2D(35. * I, (I % 2) ? 14. : 0.); }), Step).bShake);
+		// Q-sanity-micro = A: the 8 s rule has the floor of the 2 s one (a path over 6 radii). A soldier that fidgets 0.5 cm a step round a 2 cm circle
+	// (80 cm in 8 s, 40 radians of turning, ordered) was counted a spinner (the old rule: no floor); a real loop of 503 cm still is.
+	HOLSanity::FSettings NoFloor;
+	NoFloor.SpinMinPathRadii = 0.f;
+	const auto Fidget = [](int32 I) { const double A = 0.25 * I; return FVector2D(2. * FMath::Cos(A), 2. * FMath::Sin(A)); };
+	TestTrue(TEXT("without the floor (the rule as it was) a 2 cm fidget is a spin"), HOLSanity::Analyse(Make(Fidget, true), Step, NoFloor).bSpin);
+	TestFalse(TEXT("with the floor a 2 cm fidget is not a spin"), HOLSanity::Analyse(Make(Fidget, true), Step).bSpin);
+	const auto Loop = [](int32 I) { const double A = 0.25 * I; return FVector2D(80. * FMath::Cos(A), 80. * FMath::Sin(A)); };
+	const HOLSanity::FResult Real = HOLSanity::Analyse(Make(Loop, true, 40), Step);
+	TestTrue(*FString::Printf(TEXT("a real loop of 503 cm a turn is still a spin (path %.0f cm, net turn %.1f rad)"), Real.Path, Real.SignedTurn), Real.bSpin);
+	return true;
+}
+
+// Check 4 of hol.Test.Sanity (the user's retour on the neutrals trial): a soldier standing still out of reach while a place round its target is free.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSanityStallTest, "HeroesOfLiberty.Sanity.Stall", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLSanityStallTest::RunTest(const FString& Parameters)
+{
+	// A target at the origin (radius 30) ringed by bodies of radius 30 touching it, every 60 degrees: six round it, no room for a seventh.
+	TArray<HOLSanity::FBody> Ring;
+	for (int32 Index = 0; Index < 6; ++Index)
+	{
+		const double Angle = UE_DOUBLE_PI / 3. * Index;
+		Ring.Add({ FVector2D(62. * FMath::Cos(Angle), 62. * FMath::Sin(Angle)), 30.f });
+	}
+	TestFalse(TEXT("a target ringed by six bodies has no free place"), HOLSanity::HasFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Ring));
+	Ring.RemoveAt(2);
+	TestTrue(TEXT("with one body gone a place is free"), HOLSanity::HasFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Ring));
+	TestTrue(TEXT("a lone target has a free place"), HOLSanity::HasFreePlaceAround(FVector2D(500., 0.), 30.f, 30.f, TConstArrayView<HOLSanity::FBody>()));
+	// D641 (hol.Combat.ClaimPlace): the free spot nearest to the side asked for; none when the ring is full.
+	{
+		TArray<HOLCombat::FBody> Full;
+		for (int32 Index = 0; Index < 6; ++Index)
+		{
+			const double Angle = UE_DOUBLE_PI / 3. * Index;
+			Full.Add({ FVector2D(62. * FMath::Cos(Angle), 62. * FMath::Sin(Angle)), 30.f });
+		}
+		double Chosen = -1.;
+		TestFalse(TEXT("no place is found round a full ring"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Full, 0., Chosen));
+		Full.RemoveAt(3);
+		TestTrue(TEXT("the one place left is found"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Full, 0., Chosen));
+		TestTrue(TEXT("it is the one opposite the body that left (180 degrees)"), FMath::IsNearlyEqual(Chosen, UE_DOUBLE_PI, 1e-6));
+		TArray<HOLCombat::FBody> None;
+		TestTrue(TEXT("a lone target: the spot nearest to 1.0 rad"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, None, 1.0, Chosen));
+		TestTrue(TEXT("is the third spot (67.5 degrees)"), FMath::IsNearlyEqual(Chosen, 2. * UE_DOUBLE_PI * 3. / 16., 1e-6));
+	}
+	// D641 (hol.Combat.PlaceBySide, the neutrals trace of 2026-11-05): a claimed place that gets taken is replaced by the free spot on the soldier's OWN
+		// side, not the one nearest the old place (which could lie across the whole melee: the soldier walked round the crowd and back on its steps).
+		// Sixteen spots round a target (radius 30, ring at 62 cm); bodies on spots 9, 10, 0 and 3 (each blocks its spot and the two either side) leave
+		// spots 6 (135 degrees) and 13 (292.5 degrees) free. The soldier stands west of the target (180 degrees); its claimed place was spot 12 (270).
+		{
+			TArray<HOLCombat::FBody> Crowd;
+			for (const int32 Spot : { 9, 10, 0, 3 })
+			{
+				const double Angle = 2. * UE_DOUBLE_PI * Spot / 16.;
+				Crowd.Add({ FVector2D(62. * FMath::Cos(Angle), 62. * FMath::Sin(Angle)), 30.f });
+			}
+			const double Spot6 = 2. * UE_DOUBLE_PI * 6. / 16.;
+			const double Spot13 = 2. * UE_DOUBLE_PI * 13. / 16.;
+			double Old = -1.;
+			TestTrue(TEXT("control: the rule as it was finds a spot"), HOLCombat::FindFreePlaceAround(FVector2D::ZeroVector, 30.f, 30.f, Crowd, 1.5 * UE_DOUBLE_PI, Old));
+			TestTrue(TEXT("control: the rule as it was takes the spot nearest the old place (13, on the far side of the crowd)"), FMath::IsNearlyEqual(Old, Spot13, 1e-6));
+			double Chosen = -1.;
+			TestTrue(TEXT("a taken place is replaced"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, 1.5 * UE_DOUBLE_PI, UE_DOUBLE_PI, true, Chosen));
+			TestTrue(*FString::Printf(TEXT("by the spot on the soldier's own side (spot 6, 135 degrees), not across the melee (got %.1f degrees)"), FMath::RadiansToDegrees(Chosen)),
+				FMath::IsNearlyEqual(Chosen, Spot6, 1e-6));
+			TestTrue(TEXT("with hol.Combat.PlaceBySide 0 the old choice stands"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, 1.5 * UE_DOUBLE_PI, UE_DOUBLE_PI, false, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot13, 1e-6));
+			TestTrue(TEXT("a claimed place still free is kept, whatever the side"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, static_cast<float>(Spot13), UE_DOUBLE_PI, true, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot13, 1e-6));
+			TestTrue(TEXT("no place yet: the spot nearest the soldier's side"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, false, 0., UE_DOUBLE_PI, true, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot6, 1e-6));
+			Crowd.Add({ FVector2D(62. * FMath::Cos(Spot6), 62. * FMath::Sin(Spot6)), 30.f });
+			Crowd.Add({ FVector2D(62. * FMath::Cos(Spot13), 62. * FMath::Sin(Spot13)), 30.f });
+			TestFalse(TEXT("every spot taken: no place"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, Crowd, true, 1.5 * UE_DOUBLE_PI, UE_DOUBLE_PI, true, Chosen));
+		}
+		// BUG-melee-stuck-attack (hol.Combat.ClaimedSlots, melee_stuck_8 pair #13/#14): two friends of one target that both claimed the same free spot
+		// (spot 12, 270 degrees, ring at 62 cm round a target of radius 30). Without the claims read as bodies each keeps the spot; with them the soldier
+		// that is farther from the spot (or, as near, of the higher id) takes another, the other keeps it.
+		{
+			const double Spot12 = 2. * UE_DOUBLE_PI * 12. / 16.;
+			const FVector2D Spot12Where(62. * FMath::Cos(Spot12), 62. * FMath::Sin(Spot12));
+			const FVector2D Near(Spot12Where.X - 20., Spot12Where.Y - 90.);
+			const FVector2D Far(Spot12Where.X - 120., Spot12Where.Y - 90.);
+			TArray<HOLCombat::FBody> NoBodies;
+			double Chosen = -1.;
+			TestTrue(TEXT("control: with no claim read, the far soldier keeps the spot it shares"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, NoBodies, true, Spot12, 1.5 * UE_DOUBLE_PI, true, Chosen)
+				&& FMath::IsNearlyEqual(Chosen, Spot12, 1e-6));
+			const TArray<HOLCombat::FPlaceClaim> NearClaim = { { Near, 30.f, Spot12, 14 } };
+			TArray<HOLCombat::FBody> FarBodies;
+			HOLCombat::AppendClaimedPlaceBodies(FVector2D::ZeroVector, 30.f, Far, 13, Spot12, true, 30.f, NearClaim, FarBodies);
+			TestEqual(TEXT("the near soldier's claim stands as one body against the far one"), FarBodies.Num(), 1);
+			TestTrue(TEXT("the far soldier takes another spot"), HOLCombat::ChooseFreePlace(FVector2D::ZeroVector, 30.f, 30.f, FarBodies, true, Spot12, 1.5 * UE_DOUBLE_PI, true, Chosen)
+				&& !FMath::IsNearlyEqual(Chosen, Spot12, 1e-6));
+			const TArray<HOLCombat::FPlaceClaim> FarClaim = { { Far, 30.f, Spot12, 13 } };
+			TArray<HOLCombat::FBody> NearBodies;
+			HOLCombat::AppendClaimedPlaceBodies(FVector2D::ZeroVector, 30.f, Near, 14, Spot12, true, 30.f, FarClaim, NearBodies);
+			TestEqual(TEXT("the far soldier's claim is no body against the near one"), NearBodies.Num(), 0);
+			TArray<HOLCombat::FBody> LowBodies;
+			TArray<HOLCombat::FBody> HighBodies;
+			const TArray<HOLCombat::FPlaceClaim> TwinHigh = { { Near, 30.f, Spot12, 14 } };
+			const TArray<HOLCombat::FPlaceClaim> TwinLow = { { Near, 30.f, Spot12, 13 } };
+			HOLCombat::AppendClaimedPlaceBodies(FVector2D::ZeroVector, 30.f, Near, 13, Spot12, true, 30.f, TwinHigh, LowBodies);
+			HOLCombat::AppendClaimedPlaceBodies(FVector2D::ZeroVector, 30.f, Near, 14, Spot12, true, 30.f, TwinLow, HighBodies);
+			TestTrue(TEXT("as near as each other: the lower id keeps the spot, the higher id yields"), LowBodies.Num() == 0 && HighBodies.Num() == 1);
+		}
+		// BUG-melee-stuck-attack (hol.Combat.RearSlideTurnCommit; run4 #2, run8 #10, run3 #14): a soldier whose target is on the east (GoalSide +0.68) and whose
+		// kept east side is shut by a friend, the west open: after RearSlideShutTime it turns west, and the next step's goal rule used to turn it east again
+		// (shut time back to 0): a cycle of one second, speed 0 for 120+ steps. With the commit the turn holds for Commit seconds and it walks west.
+		{
+			const auto Run = [](const float Commit, const bool bWestShutFrom25, TArray<double>& Hands, TArray<bool>& Moves)
+			{
+				HOLCombat::FSlideSideState State;
+				State.Hand = 1.;
+				for (int32 Step = 0; Step < 80; ++Step)
+				{
+					const bool bWestShut = bWestShutFrom25 && Step >= 25;
+					const HOLCombat::FSlideSideResult Out = HOLCombat::AdvanceSlideSide(State, true, 0.68, /*east shut*/ !bWestShut, /*west shut*/ bWestShut, 0.05f, 1.f, 0.5, Commit);
+					Hands.Add(Out.Hand);
+					Moves.Add(Out.bMoves);
+				}
+			};
+			const auto LongestWestWalk = [](const TArray<double>& Hands, const TArray<bool>& Moves, const int32 From, const int32 To)
+			{
+				int32 Best = 0;
+				int32 Run = 0;
+				for (int32 Step = From; Step <= To; ++Step)
+				{
+					Run = (Moves[Step] && Hands[Step] < 0.) ? Run + 1 : 0;
+					Best = FMath::Max(Best, Run);
+				}
+				return Best;
+			};
+			TArray<double> OldHands;
+			TArray<bool> OldMoves;
+			Run(0.f, false, OldHands, OldMoves);
+			TestEqual(TEXT("control: with Commit 0 (as before) the soldier shut on the east never walks west (steps 20-45)"), LongestWestWalk(OldHands, OldMoves, 20, 45), 0);
+			int32 OldMoving = 0;
+			for (const bool bMoves : OldMoves)
+			{
+				OldMoving += bMoves ? 1 : 0;
+			}
+			TestEqual(TEXT("control: with Commit 0 it never moves in 80 steps"), OldMoving, 0);
+			TArray<double> Hands;
+			TArray<bool> Moves;
+			Run(1.f, false, Hands, Moves);
+			const int32 West = LongestWestWalk(Hands, Moves, 20, 45);
+			TestTrue(*FString::Printf(TEXT("with Commit 1 it walks west at least 15 steps in a row between steps 20 and 45 (got %d)"), West), West >= 15);
+			// The west turned shut in its turn (from step 25): after a second it turns east again (it is not held in one way).
+			TArray<double> ShutHands;
+			TArray<bool> ShutMoves;
+			Run(1.f, true, ShutHands, ShutMoves);
+			bool bBackEast = false;
+			for (int32 Step = 26; Step < 80; ++Step)
+			{
+				bBackEast |= ShutHands[Step] > 0.;
+			}
+			TestTrue(TEXT("a committed west that shuts in turn is given up: the soldier turns east again"), bBackEast);
+			// The target on the west (GoalSide -0.8): west from the first step, walking (the goal rule is obeyed outside a commitment).
+			HOLCombat::FSlideSideState WestGoal;
+			WestGoal.Hand = 1.;
+			const HOLCombat::FSlideSideResult First = HOLCombat::AdvanceSlideSide(WestGoal, true, -0.8, true, false, 0.05f, 1.f, 0.5, 1.f);
+			TestTrue(TEXT("the target on the west: west at once, walking"), First.Hand < 0. && First.bMoves);
+		}
+		// Q-neutrals-hold = C: bodies close on both sides wall a soldier in (a free place it cannot reach is no stall); one side only, or far, does not.
+	{
+		const FVector2D Self(0., 0.);
+		const FVector2D Target(300., 0.);
+		TArray<HOLCombat::FBody> Sides;
+		Sides.Add({ FVector2D(0., 125.), 55.f });
+		TestFalse(TEXT("a friend on one side only does not box a soldier in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
+		Sides.Add({ FVector2D(0., -140.), 55.f });
+		TestTrue(TEXT("friends 125 and 140 cm off on both sides box it in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
+		Sides[1].Where = FVector2D(0., -400.);
+		TestFalse(TEXT("a body 400 cm off on one side is no wall"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
+		TestFalse(TEXT("nobody near: not boxed in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, TConstArrayView<HOLCombat::FBody>()));
+		// The trace of neutrals (2026-11-05, #11): friends at (-56, 109) and (64, 115) from the soldier, the target at (153, 262), one friend almost on the
+		// line (cross +2) and the other left of it: both on the same side, a wall all the same (their gap, 10 cm, takes no body of 110).
+		{
+			TArray<HOLCombat::FBody> Wall;
+			Wall.Add({ FVector2D(-56., 109.), 55.f });
+			Wall.Add({ FVector2D(64., 115.), 55.f });
+			TestTrue(TEXT("two friends ahead, 10 cm apart, on one side of the line: boxed in"), HOLCombat::IsBoxedIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+			Wall[1].Where = FVector2D(64., 215.);
+			TestFalse(TEXT("the second friend 215 cm off: no wall (out of reach)"), HOLCombat::IsBoxedIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+			Wall[1].Where = FVector2D(-60., -100.);
+			TestFalse(TEXT("one friend behind the soldier: no wall ahead"), HOLCombat::IsBoxedIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+		}
+		TestTrue(TEXT("a claimed place at 170 cm holds the rear flank back"), HOLCombat::ShouldSuspendRearFlank(true, 170.));
+		TestFalse(TEXT("a claimed place at 600 cm does not"), HOLCombat::ShouldSuspendRearFlank(true, 600.));
+		TestFalse(TEXT("no claimed place: the flank is not suspended"), HOLCombat::ShouldSuspendRearFlank(false, 100.));
+		TestTrue(TEXT("a target 100 cm from the last is a neighbour"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(60., 80.)));
+		TestFalse(TEXT("a target 300 cm from the last is not"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(300., 0.)));
+	}
+	// Q-neutrals-second-rank = C (the trace of neutrals, #11 behind #9 and #13, 2026-11-05): walled in for 1 s, the soldier turns to the nearest enemy
+		// with a free place it can reach; not the target it leaves, not an enemy walled in by a ring of bodies.
+		{
+			TArray<HOLCombat::FBody> Bodies;
+			Bodies.Add({ FVector2D(153., 262.), 55.f });   // 0: the target it leaves (edge 193)
+			Bodies.Add({ FVector2D(-56., 109.), 55.f });   // 1: friend
+			Bodies.Add({ FVector2D(64., 115.), 55.f });    // 2: friend
+			Bodies.Add({ FVector2D(-400., -100.), 55.f }); // 3: enemy A, free and reachable (edge 302)
+			const FVector2D RingCentre(212., -212.);
+			Bodies.Add({ RingCentre, 55.f });              // 4: enemy B (edge 190), ringed by twelve bodies: no free place
+			for (int32 Spot = 0; Spot < 12; ++Spot)
+			{
+				const double Angle = 2. * UE_DOUBLE_PI * Spot / 12;
+				Bodies.Add({ RingCentre + 112. * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)), 55.f });
+			}
+			const TArray<int32> Enemies = { 0, 3, 4 };
+			const TArray<uint64> Ids = { 10, 11, 12 };
+			TestEqual(TEXT("it turns to enemy A: not the target it leaves, not the ringed enemy B"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, Enemies, Ids, 0), 1);
+			const TArray<int32> OnlyRinged = { 0, 4 };
+			const TArray<uint64> RingedIds = { 10, 12 };
+			TestEqual(TEXT("no enemy with a place it can reach: none chosen"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, OnlyRinged, RingedIds, 0), static_cast<int32>(INDEX_NONE));
+			// BUG-melee-stuck-attack (hol.Combat.StuckLooseSeconds): loose, the ringed enemy B (no place) is taken all the same; the target it leaves never is.
+			TestEqual(TEXT("loose: the nearest other enemy is B (edge 190), ringed or not"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, OnlyRinged, RingedIds, 0, -1., true), 1);
+			TestEqual(TEXT("loose: still never the target it leaves"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, TArray<int32>{ 0 }, TArray<uint64>{ 10 }, 0, -1., true), static_cast<int32>(INDEX_NONE));
+			TestTrue(TEXT("walled in for 1 s: it retargets"), HOLCombat::ShouldRetargetWhenBoxedIn(1.f, true, false));
+			TestFalse(TEXT("walled in for 0.9 s: not yet"), HOLCombat::ShouldRetargetWhenBoxedIn(0.9f, true, false));
+			TestFalse(TEXT("not walled in: it keeps its target"), HOLCombat::ShouldRetargetWhenBoxedIn(5.f, false, false));
+			TestFalse(TEXT("a target the player ordered is kept"), HOLCombat::ShouldRetargetWhenBoxedIn(5.f, true, true));
+		}
+		// D641 (hol.Combat.FarPlaceRetarget, melee spin of 2026-11-05): a place claimed more than 1.5 rad from the soldier's side of the target is refused, and the
+		// soldier turns to the nearest enemy with a place on ITS side (else it waits).
+		{
+			TestFalse(TEXT("a place on the soldier's own side is kept"), HOLCombat::IsPlaceTooFar(0.1, 0.0));
+			TestTrue(TEXT("a place 2 rad round is too far"), HOLCombat::IsPlaceTooFar(2.0, 0.0));
+			TestFalse(TEXT("the gap wraps round 2 pi: 6.0 against 0.1 is 0.38 rad"), HOLCombat::IsPlaceTooFar(6.0, 0.1));
+			TestTrue(TEXT("the gap wraps round 2 pi: 4.0 against 0.1 is 2.38 rad"), HOLCombat::IsPlaceTooFar(4.0, 0.1));
+			TestFalse(TEXT("exactly 1.5 rad is kept"), HOLCombat::IsPlaceTooFar(1.5, 0.0));
+			TestTrue(TEXT("1.6 rad is too far"), HOLCombat::IsPlaceTooFar(1.6, 0.0));
+			// Enemy E at (300, 0): its side towards the soldier is blocked by two friends of E (not walling the soldier in); the nearest free spot is 1.57 rad round.
+			TArray<HOLCombat::FBody> Bodies;
+			const FVector2D EWhere(300., 0.);
+			Bodies.Add({ EWhere, 55.f });                                                                                           // 0: enemy E
+			Bodies.Add({ EWhere + 112. * FVector2D(FMath::Cos(UE_DOUBLE_PI + 0.6), FMath::Sin(UE_DOUBLE_PI + 0.6)), 55.f });        // 1: blocks E's near side
+			Bodies.Add({ EWhere + 112. * FVector2D(FMath::Cos(UE_DOUBLE_PI - 0.6), FMath::Sin(UE_DOUBLE_PI - 0.6)), 55.f });        // 2: blocks E's near side
+			Bodies.Add({ FVector2D(-300., 100.), 55.f });                                                                           // 3: enemy F, open on the soldier's side
+			const TArray<int32> Enemies = { 0, 3 };
+			const TArray<uint64> Ids = { 10, 11 };
+			TestEqual(TEXT("without the side rule E (edge 190) is the nearest with a place"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, Enemies, Ids, INDEX_NONE), 0);
+			TestEqual(TEXT("with the side rule E (its only places are across) is skipped: F"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, Enemies, Ids, INDEX_NONE, 1.5), 1);
+			const TArray<int32> OnlyE = { 0 };
+			const TArray<uint64> OnlyEId = { 10 };
+			TestEqual(TEXT("with the side rule and only E: none, the soldier waits"), HOLCombat::FindReachableEnemy(FVector2D::ZeroVector, 55.f, Bodies, OnlyE, OnlyEId, INDEX_NONE, 1.5), static_cast<int32>(INDEX_NONE));
+		}
+		// The run: 0.5 s over, told once; a step that moves ends the run, and the longest is kept.
+	HOLSanity::FStall Stall;
+	int32 Told = 0;
+	for (int32 Index = 0; Index < 30; ++Index)
+	{
+		Told += Stall.Step(true, 0.05, 0.5) ? 1 : 0;
+	}
+	TestEqual(TEXT("a stall of 1.5 s over the 0.5 s limit is told once"), Told, 1);
+	Stall.Step(false, 0.05, 0.5);
+	TestEqual(TEXT("a step that moves ends the run"), Stall.Seconds, 0.);
+	TestTrue(TEXT("the longest run is kept"), Stall.Longest > 1.4);
+	HOLSanity::FStall Brief;
+	for (int32 Index = 0; Index < 100; ++Index)
+	{
+		Brief.Step(Index % 8 != 0, 0.05, 0.5);
+	}
+	TestTrue(TEXT("a pause of 7 steps (0.35 s) now and again is not a stall"), Brief.Longest < 0.5 && !Brief.bTold);
 	return true;
 }
 

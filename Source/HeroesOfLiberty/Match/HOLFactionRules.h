@@ -124,6 +124,9 @@ namespace HOLFactionRules
 	/** Whether the slot's faction builds the building type (the `Faction` column of the building type table); a type the table does not know is left open. */
 	HEROESOFLIBERTY_API bool IsBuildingOpenTo(const UWorld* World, FName BuildingType, int32 Slot);
 
+	/** Whether the faction researches the technology (the `Faction` column of the technology table); a technology the table does not know is left open. */
+	HEROESOFLIBERTY_API bool IsTechnologyOpenTo(FName Technology, FName FactionKey);
+
 	/** A production list (a building's Produces) without the unit types the slot's faction does not field, the order kept (the grid's cells, D30). */
 	HEROESOFLIBERTY_API TArray<FName> FilterProduces(const UWorld* World, TConstArrayView<FName> Produces, int32 Slot);
 }

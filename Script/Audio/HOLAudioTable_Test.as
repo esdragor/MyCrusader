@@ -3,6 +3,27 @@
 // cooldown, priority); the choice of a variant and the cooldown are pure functions of a seed and a clock in milliseconds,
 // so the sounds are presentation and never reach the simulation or the network. Nothing here plays a sound.
 
+// The cues the user wants SILENT (answers of the audio_compare and audio_compare_orders trials): Hover, Toggle, Tick, Scroll, the five orders, Select.Building. They stay in the table with no file.
+bool AudioTestIsSilentEvent(int Event)
+{
+	return Event == HOLAudioEvent::UiHover || Event == HOLAudioEvent::UiToggle || Event == HOLAudioEvent::UiTick || Event == HOLAudioEvent::UiScroll
+		|| Event == HOLAudioEvent::OrderMove || Event == HOLAudioEvent::OrderAttack || Event == HOLAudioEvent::OrderGather || Event == HOLAudioEvent::OrderBuild
+		|| Event == HOLAudioEvent::OrderGarrison || Event == HOLAudioEvent::SelectBuilding
+		|| Event == HOLAudioEvent::AlertBuildingDone || Event == HOLAudioEvent::AlertTechDone;
+}
+
+// A cue with three variants, for the tests of the choice of a variant (the table's cues have one file each since the user chose).
+FHOLAudioCue AudioTestCueWithVariants()
+{
+	FHOLAudioCue Cue;
+	Cue.Name = "Test.Variants";
+	Cue.Pack = "rpg-audio";
+	Cue.Stems.Add("a");
+	Cue.Stems.Add("b");
+	Cue.Stems.Add("c");
+	return Cue;
+}
+
 // A cue that is not in the table gives an empty name.
 void Test_AudioUnknownEventHasNoCue(FUnitTest& T)
 {
@@ -23,8 +44,11 @@ void Test_AudioEveryEventHasACue(FUnitTest& T)
 		T.AssertTrue(HOLAudio::IsValid(Event), f"event {Event} is valid");
 		T.AssertEquals(Event, Cue.Event, f"event {Event}: the cue says which event it is");
 		T.AssertTrue(Cue.Name.Contains("."), f"event {Event}: name '{Cue.Name}' is Group.Name");
-		T.AssertFalse(Cue.Pack.IsEmpty(), f"event {Event}: a pack");
-		T.AssertTrue(Cue.Stems.Num() >= 1, f"event {Event}: at least one file");
+		if (!AudioTestIsSilentEvent(Event))
+		{
+			T.AssertFalse(Cue.Pack.IsEmpty(), f"event {Event}: a pack");
+			T.AssertTrue(Cue.Stems.Num() >= 1, f"event {Event}: at least one file");
+		}
 		T.AssertTrue(Cue.VolumePercent >= 1 && Cue.VolumePercent <= 100, f"event {Event}: volume 1 to 100");
 		T.AssertTrue(Cue.PitchMinPercent >= 50 && Cue.PitchMinPercent <= Cue.PitchMaxPercent, f"event {Event}: pitch range ordered");
 		T.AssertTrue(Cue.PitchMaxPercent <= 200, f"event {Event}: pitch at most 200 %");
@@ -49,6 +73,9 @@ void Test_AudioNamesAndFilesAreUnique(FUnitTest& T)
 			Seen.Add(Cue.Stems[Index]);
 			FString Path = HOLAudio::SoundPath(Cue, Index);
 			FString Expected = f"/Game/Audio/Kenney/{Cue.Pack}/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
+			// The VSCO recordings (CC0) are not a Kenney pack: /Game/Audio/Vsco.
+			if (Cue.Pack == "vsco")
+				Expected = f"/Game/Audio/Vsco/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 			T.AssertEquals(Expected, Path, f"{Cue.Name}: asset path of file {Index}");
 		}
 	}
@@ -117,8 +144,8 @@ void Test_AudioAlertsOutrankTheInterface(FUnitTest& T)
 // The variant is a function of the seed: same seed, same file; every file comes up; a negative seed is fine.
 void Test_AudioPickIsDeterministicAndCoversEveryFile(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::UiClick);
-	T.AssertTrue(Cue.Stems.Num() >= 2, "the click has variants");
+	FHOLAudioCue Cue = AudioTestCueWithVariants();
+	T.AssertTrue(Cue.Stems.Num() >= 2, "the test cue has variants");
 	TArray<bool> Heard;
 	for (int Index = 0; Index < Cue.Stems.Num(); Index++) Heard.Add(false);
 	for (int Seed = -7; Seed < 40; Seed++)
@@ -136,7 +163,7 @@ void Test_AudioPickIsDeterministicAndCoversEveryFile(FUnitTest& T)
 // The same file is never played twice in a row when the cue has another one.
 void Test_AudioPickNextAvoidsTheLastFile(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::UiClick);
+	FHOLAudioCue Cue = AudioTestCueWithVariants();
 	int Last = -1;
 	for (int Seed = 0; Seed < 60; Seed++)
 	{
@@ -157,8 +184,8 @@ void Test_AudioPickNextAvoidsTheLastFile(FUnitTest& T)
 // match) plays.
 void Test_AudioCooldown(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::UiHover);
-	T.AssertTrue(Cue.CooldownMs > 0, "the hover has a cooldown to test");
+	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::AlertUnderAttack);
+	T.AssertTrue(Cue.CooldownMs > 0, "the under-attack alert has a cooldown to test");
 	T.AssertTrue(HOLAudio::MayPlay(Cue, 1000, -1), "never played: plays");
 	T.AssertFalse(HOLAudio::MayPlay(Cue, 1000 + Cue.CooldownMs - 1, 1000), "one millisecond before the end: waits");
 	T.AssertTrue(HOLAudio::MayPlay(Cue, 1000 + Cue.CooldownMs, 1000), "at the end of the window: plays");

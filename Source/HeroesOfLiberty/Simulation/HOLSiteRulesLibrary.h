@@ -1,0 +1,38 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Kismet/BlueprintFunctionLibrary.h"
+#include "HOLSiteRulesLibrary.generated.h"
+
+/**
+ * The simulation's sacred-site rules (HOLSite::Step and HOLSite::AddUnit, C++) for Angelscript (namespace HOLSiteRules there): only so that
+ * the script's own rules, Script/Sites/HOLSiteRules.as (namespace HOLSite), are checked against them (Test_SiteScriptAndSimulationRulesAgree).
+ */
+UCLASS()
+class HEROESOFLIBERTY_API UHOLSiteRulesLibrary : public UBlueprintFunctionLibrary
+{
+	GENERATED_BODY()
+
+public:
+	/**
+	 * HOLSite::Step on one site fed through HOLSite::AddUnit: its state in, its state out. The units are parallel arrays (the slot of each
+	 * living unit in the zone, 1 when it can take, 1 when it is a Peasant); the slots are TeamBySlot's.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site")
+	static void StepSite(int32 Owner, int32 Taker, int32 Held, const TArray<int32>& UnitSlots, const TArray<int32>& UnitCanTake,
+		const TArray<int32>& UnitIsPeasant, const TArray<int32>& TeamBySlot, int32 HoldSteps, int32 DecaySteps, int32& OutOwner, int32& OutTaker,
+		int32& OutHeld);
+
+	/** The counts HOLSite::AddUnit makes of the same parallel arrays, for Slots slots. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site")
+	static void CountSiteUnits(int32 Slots, const TArray<int32>& UnitSlots, const TArray<int32>& UnitCanTake, const TArray<int32>& UnitIsPeasant,
+		TArray<int32>& OutTakers, TArray<int32>& OutDisturbers);
+
+	/** The provisional values of the simulation's rules (HOLSite), so that the script's are checked against them. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site")
+	static int32 GetHoldSeconds();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site")
+	static int32 GetDecaySteps();
+};

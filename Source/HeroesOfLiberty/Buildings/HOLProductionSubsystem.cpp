@@ -385,6 +385,12 @@ void UHOLProductionSubsystem::ApplyOrders()
 			const FHOLTechnologyRow* Technology = Type->Produces.Contains(Order.TypeName) ? nullptr : UHOLTechnologySettings::FindTechnology(Order.TypeName);
 			if (Technology)
 			{
+				if (!HOLFactionRules::IsTechnologyOpenTo(Order.TypeName, HOLFactionRules::GetSlotFactionKey(GetWorld(), Order.PlayerIndex)))
+				{
+					UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot research %s (not a technology of its faction)"), Order.PlayerIndex,
+						*Order.TypeName.ToString());
+					continue;
+				}
 				const FHOLProductionCost Cost = GetCost(Order.TypeName, Order.PlayerIndex);
 				HOLTechnology::FFacts Facts;
 				const AHOLGameState* HOLGameState = GetWorld()->GetGameState<AHOLGameState>();
@@ -474,7 +480,8 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 	{
 		return;
 	}
-	const auto GetCostOf = [this](const FName TypeName) { return GetCost(TypeName); };
+	// L2: the cost, the places and the time of an item are its payer's faction's (FindTypeRow(type, faction)), the building's owner.
+	const auto GetCostOfPayer = [this](const int32 Payer) { return [this, Payer](const FName TypeName) { return GetCost(TypeName, Payer); }; };
 
 	// Each player's cap (its buildings) and the places its units in production hold.
 	TArray<AHOLBuilding*> Buildings;
@@ -487,7 +494,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		Buildings.Add(Building);
 		// Only a finished building gives places (D312): a house's foundation gives none.
 		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? HOLConstruction::GetPopulationProvided(Type->PopulationProvided, Building->IsFinished()) : 0;
-		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
+		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOfPayer(Building->GetOwnerPlayer()));
 	}
 	for (const TPair<int32, int32>& Cheat : CheatPopulation)
 	{
@@ -520,7 +527,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		}
 		const TArray<FHOLProductionItem> Before = Queue;
 		TArray<FName> Done;
-		HOLProduction::Advance(Queue, StepIndex, GetCostOf, FreePopulation.FindOrAdd(Building->GetOwnerPlayer()), Done);
+		HOLProduction::Advance(Queue, StepIndex, GetCostOfPayer(Building->GetOwnerPlayer()),FreePopulation.FindOrAdd(Building->GetOwnerPlayer()), Done);
 		for (const FName TypeName : Done)
 		{
 			// A research done (T3): his player has it, nothing is born.
@@ -595,7 +602,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		{
 			if (Building->GetOwnerPlayer() == PlayerIndex)
 			{
-				InProduction += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOf);
+				InProduction += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOfPayer(PlayerIndex));
 			}
 		}
 		const int32 Used = (UnitPopulation.IsValidIndex(PlayerIndex) ? UnitPopulation[PlayerIndex] : 0) + InProduction;

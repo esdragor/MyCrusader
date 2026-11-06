@@ -7,6 +7,7 @@ hol.HUD.Report 1
 hol.Diplomacy.Force 0 1 ally
 hol.Diplomacy.Force 1 0 ally
 hol.Camera.FocusNear 3000 0
+hol.Camera.Zoom 8
 frames 5
 hol.Units.SpawnHere 6 ManAtArms 0 250
 hol.Units.SpawnHere 6 ManAtArms 1 250
@@ -34,9 +35,12 @@ capture dipl_neutral
 panel show
 note 2. NEUTRE : plus allies, mais personne ne tire d'office : les 12 restent la, debout, aucun coup en 2 secondes.
 waitkey Entree : Q + clic sur un homme du joueur 2 (toujours NEUTRE) : tes 6 hommes recoivent l'ordre d'attaque
+hol.Camera.Zoom -8
+frames 5
 hol.Select.Army
 hol.Select.AttackMoveNear 3000 0
 waitlog (neutral): a direct attack
+hol.Camera.Zoom 8
 frames 90
 hol.Diplomacy.Report
 panel hide
@@ -55,7 +59,7 @@ hol.HUD.Report 1
 waitlog HUD overlap:
 capture dipl_enemy
 panel show
-note 3. ENNEMI : la rupture est immediate, les deux groupes se battent aussitot (des corps tombent).
+note 3. ENNEMI : la rupture est immediate, les deux groupes se battent aussitot (en 2,5 s un seul homme est tombe : regarde les coups et les barres de vie, pas une boucherie).
 hol.Diplomacy.Force 1 0 ally
 hol.Diplomacy.Force 0 1 ally
 hol.Camera.FocusNear 9000 0

@@ -35,6 +35,9 @@ namespace
 	// F7.3 (b): a building remembered, out of sight, is drawn toward this blue-grey by hol.Fog.GhostTint (0: its own colours, the fog
 	// darkens it alone; 1: all grey). The default is provisional, the user's to choose (Auto_Journey_Retours.md).
 	const FLinearColor MemoryGrey(0.40f, 0.43f, 0.50f);
+	/** The material slot of a final model that wears the owner's colour (V3b; the Forum's banners, VI-Q3 = B). */
+	const FName OwnerSlotName(TEXT("owner"));
+
 	TAutoConsoleVariable<float> CVarFogGhostTint(TEXT("hol.Fog.GhostTint"), 0.6f,
 		TEXT("How far toward grey a building remembered out of sight is painted, 0 (its colours) to 1 (grey). Applies to the next rebuilt building."));
 
@@ -1167,6 +1170,35 @@ void AHOLBuilding::BuildFinalMesh(const FHOLBuildingTypeRow& Type)
 	// rises (a site's rise moved its pieces' bodies at each visible step, J6b.3).
 	Piece->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
 	Piece->SetGenerateOverlapEvents(false);
+
+	// V3b: the slot named "owner" wears the player's colour (unlit, as the block's roof, D261; written by ApplyColors). A model
+	// remembered out of sight (F7.3 b) has no texture to grey: its other slots become the matte stone of the provisional shape,
+	// drawn toward the memory's grey.
+	const bool bMemory = FogDraw == EHOLBuildingDraw::Memory;
+	const TArray<FStaticMaterial>& Slots = Mesh->GetStaticMaterials();
+	for (int32 Index = 0; Index < Slots.Num(); ++Index)
+	{
+		const bool bOwner = Slots[Index].MaterialSlotName == OwnerSlotName;
+		UMaterialInterface* BaseMaterial = bOwner ? OwnerPieceMaterial.Get() : PieceMaterial.Get();
+		if ((!bOwner && !bMemory) || !BaseMaterial)
+		{
+			continue;
+		}
+		UMaterialInstanceDynamic* Material = UMaterialInstanceDynamic::Create(BaseMaterial, Piece);
+		if (bOwner)
+		{
+			OwnerMaterials.Add(Material);
+			OwnerTones.Add(1.f);
+			OwnerWhitens.Add(0.f);
+		}
+		else
+		{
+			Material->SetVectorParameterValue(UE::HeroesOfLiberty::Buildings::ColorParameter,
+				FMath::Lerp(UE::HeroesOfLiberty::Buildings::StoneColor, MemoryGrey, GetMemoryTint()));
+		}
+		Piece->SetMaterial(Index, Material);
+	}
+
 	Piece->SetupAttachment(PieceParent ? PieceParent : RootComponent.Get());
 	Piece->RegisterComponent();
 	Pieces.Add(Piece);

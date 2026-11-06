@@ -399,6 +399,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Faction")
 	FName Faction = TEXT("Common");
 
+	/**
+	 * G1 (Palier3InProgress.md, D711; GDD 11.1): the tier the unit opens at (0 to 3); the rule HOLUnitTier::Check reads it. Read from the column by
+	 * HOLUnitTier::GetMinTier; no call site refuses a unit by it yet (the C++ lot of G1 goes on).
+	 */
+	UPROPERTY(EditAnywhere, Category = "Production")
+	int32 MinTier = 0;
+
 	/** Body radius (cm): the avoidance solver and the navigation use it (FAgentRadiusFragment). */
 	UPROPERTY(EditAnywhere, Category = "Unit", meta = (ClampMin = "1", ForceUnits = "cm"))
 	float Radius = 40.f;

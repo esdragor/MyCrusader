@@ -267,6 +267,344 @@ namespace HOLCombat
 		return bFreeEnemyBeyondEnd && (MaxShift <= 0.0 || Shift <= MaxShift);
 	}
 
+	/** A body on the ground: where, and how wide (cm). */
+	struct FBody
+	{
+		FVector2D Where = FVector2D::ZeroVector;
+		float Radius = 60.f;
+	};
+
+	/**
+	 * D641 (the user's retour on the neutrals trial: a soldier that does nothing though it could go round to strike): whether a body of SelfRadius could
+	 * stand touching the target (TargetWhere, TargetRadius) without overlapping any of Others (the target and the unit itself left out by the caller):
+	 * sixteen spots round the target, each free when every other body is further than Tolerance (0.85) of the two radii. The reading of "there is
+	 * room to strike" by eye; hol.Test.Sanity's check 4 (HOLSanity::HasFreePlaceAround) and the flank (hol.Combat.FlankToTarget) are the same call.
+	 */
+	inline bool HasFreePlaceAround(const FVector2D& TargetWhere, const float TargetRadius, const float SelfRadius, TConstArrayView<FBody> Others, const float Tolerance = 0.85f)
+	{
+		constexpr int32 Spots = 16;
+		for (int32 Spot = 0; Spot < Spots; ++Spot)
+		{
+			const double Angle = 2. * UE_DOUBLE_PI * Spot / Spots;
+			const FVector2D Place = TargetWhere + (TargetRadius + SelfRadius + 2.f) * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+			bool bFree = true;
+			for (const FBody& Other : Others)
+			{
+				if (FVector2D::Distance(Place, Other.Where) < Tolerance * (SelfRadius + Other.Radius))
+				{
+					bFree = false;
+					break;
+				}
+			}
+			if (bFree)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * D641 (hol.Combat.ClaimPlace): the free spot (the same sixteen as HasFreePlaceAround) whose angle round the target is the nearest to PreferAngle (radians;
+	 * the lower spot on a tie); false when none is free. OutAngle is the spot's angle. A soldier that keeps the angle it claimed keeps the same side of the target.
+	 */
+	inline bool FindFreePlaceAround(const FVector2D& TargetWhere, const float TargetRadius, const float SelfRadius, TConstArrayView<FBody> Others, const double PreferAngle, double& OutAngle, const float Tolerance = 0.85f)
+	{
+		constexpr int32 Spots = 16;
+		bool bFound = false;
+		double BestGap = 0.;
+		for (int32 Spot = 0; Spot < Spots; ++Spot)
+		{
+			const double Angle = 2. * UE_DOUBLE_PI * Spot / Spots;
+			const FVector2D Place = TargetWhere + (TargetRadius + SelfRadius + 2.f) * FVector2D(FMath::Cos(Angle), FMath::Sin(Angle));
+			bool bFree = true;
+			for (const FBody& Other : Others)
+			{
+				if (FVector2D::Distance(Place, Other.Where) < Tolerance * (SelfRadius + Other.Radius))
+				{
+					bFree = false;
+					break;
+				}
+			}
+			if (!bFree)
+			{
+				continue;
+			}
+			double Gap = FMath::Fmod(FMath::Abs(Angle - PreferAngle), 2. * UE_DOUBLE_PI);
+			Gap = FMath::Min(Gap, 2. * UE_DOUBLE_PI - Gap);
+			if (!bFound || Gap < BestGap - 1e-9)
+			{
+				bFound = true;
+				BestGap = Gap;
+				OutAngle = Angle;
+			}
+		}
+		return bFound;
+	}
+
+	/**
+	 * D641 (hol.Combat.PlaceBySide, the walk-round trace of 2026-11-05): the spot a soldier claims round its target. A claimed place that is still free
+	 * is kept (the same side of the target). A place taken is replaced by the free spot nearest to SelfAngle (the soldier's own side of the target,
+	 * radians), the shortest way round the ring from where it stands; with bBySide false it is the spot nearest to the old angle (the rule as it was:
+	 * once the soldier had slid round, the spot nearest to the OLD place could lie across the whole melee, a walk round the crowd that reverses on its
+	 * steps). A soldier without a place takes the spot nearest to SelfAngle. False when no spot is free.
+	 */
+	inline bool ChooseFreePlace(const FVector2D& TargetWhere, const float TargetRadius, const float SelfRadius, TConstArrayView<FBody> Others, const bool bHasPlace,
+		const double PlaceAngle, const double SelfAngle, const bool bBySide, double& OutAngle)
+	{
+		if (bHasPlace)
+		{
+			double Kept = 0.;
+			if (!FindFreePlaceAround(TargetWhere, TargetRadius, SelfRadius, Others, PlaceAngle, Kept))
+			{
+				return false;
+			}
+			if (FMath::Abs(Kept - PlaceAngle) <= 1e-3 || !bBySide)
+			{
+				OutAngle = Kept;
+				return true;
+			}
+		}
+		return FindFreePlaceAround(TargetWhere, TargetRadius, SelfRadius, Others, SelfAngle, OutAngle);
+	}
+
+	/** A place a friend claimed round the same target (BUG-melee-stuck-attack): the friend's body and the angle of its place round the target. */
+	struct FPlaceClaim
+	{
+		FVector2D Where = FVector2D::ZeroVector;
+		float Radius = 60.f;
+		double Angle = 0.;
+		uint64 UnitId = 0;
+	};
+
+	/**
+	 * BUG-melee-stuck-attack (hol.Combat.ClaimedSlots; the melee_stuck_8 pair #13/#14, side by side 70 to 156 steps, the same target, the same place):
+	 * two friends of one target that claim the same free spot both walk to it, and one waits behind the other, who is held behind friends in turn. The
+	 * claims of the friends are read as bodies standing on their spots (Out), so the free spot a soldier takes is never one a friend holds. A claim holds
+	 * against the soldier when its holder is nearer its spot than the soldier is its own (by more than Margin cm), or as near and of the lower id: one of
+	 * two soldiers on the same spot always keeps it. SelfWhere = the soldier's own body; Claims = the friends' claims (the soldier's own left out by the caller).
+	 */
+	inline void AppendClaimedPlaceBodies(const FVector2D& TargetWhere, const float TargetRadius, const FVector2D& SelfWhere, const uint64 SelfId, const double SelfPlaceAngle,
+		const bool bSelfHasPlace, const float SelfRadius, TConstArrayView<FPlaceClaim> Claims, TArray<FBody>& Out, const double Margin = 30.)
+	{
+		for (const FPlaceClaim& Claim : Claims)
+		{
+			const FVector2D Spot = TargetWhere + (TargetRadius + Claim.Radius + 2.f) * FVector2D(FMath::Cos(Claim.Angle), FMath::Sin(Claim.Angle));
+			// How near the soldier is to the same spot: its claimed one when it has one, else the spot of the friend's claim (it would stand there).
+			const FVector2D SelfSpot = bSelfHasPlace
+				? TargetWhere + (TargetRadius + SelfRadius + 2.f) * FVector2D(FMath::Cos(SelfPlaceAngle), FMath::Sin(SelfPlaceAngle))
+				: Spot;
+			const double MineToMine = FVector2D::Distance(SelfWhere, SelfSpot);
+			const double TheirsToTheirs = FVector2D::Distance(Claim.Where, Spot);
+			const bool bHolderCloser = TheirsToTheirs < MineToMine - Margin || (FMath::Abs(TheirsToTheirs - MineToMine) <= Margin && Claim.UnitId < SelfId);
+			if (bHolderCloser)
+			{
+				Out.Add({ Spot, Claim.Radius });
+			}
+		}
+	}
+
+	/** The kept side of a rear slide (UHOLFullSpeedProcessor::SlideAlongFriends): Hand +1 / -1 = the left / right of the way to the blocker; ShutSeconds < 0 = a committed turn. */
+	struct FSlideSideState
+	{
+		double Hand = 0.;
+		float ShutSeconds = 0.f;
+	};
+
+	struct FSlideSideResult
+	{
+		double Hand = 0.;
+		bool bMoves = false;
+	};
+
+	/**
+	 * BUG-melee-stuck-attack (hol.Combat.RearSlideTurnCommit): one step of the side a soldier kept while it slides along the friends barring its way.
+	 * State.Hand = the side it kept; bApplyGoalRule: that side is the kept one (turned when the goal is clearly on the other); bShutPlus / bShutMinus:
+	 * a friend at contact on the left (Hand +1) / right (Hand -1). Out.bMoves: it walks its side this step; else it stands (or creeps).
+	 * Before: the turn after ShutTime of a shut side was undone the next step by the goal rule (the target on the shut side), the shut time set back to 0:
+	 * a cycle of one second, standing for 120+ steps. Now (Commit > 0) the turn walks at once and the goal rule is put by for Commit seconds
+	 * (ShutSeconds negative while committed); a committed side that shuts in turn starts the count again.
+	 */
+	inline FSlideSideResult AdvanceSlideSide(FSlideSideState& State, const bool bApplyGoalRule, const double GoalSide, const bool bShutPlus, const bool bShutMinus,
+		const float Dt, const float ShutTime, const double TurnGoalSide, const float Commit)
+	{
+		if (bApplyGoalRule && (State.ShutSeconds >= 0.f || Commit <= 0.f) && GoalSide * State.Hand < -TurnGoalSide)
+		{
+			State.Hand = -State.Hand;
+			State.ShutSeconds = 0.f;
+		}
+		FSlideSideResult Out;
+		const bool bWayShut = State.Hand > 0. ? bShutPlus : bShutMinus;
+		const bool bOppositeShut = State.Hand > 0. ? bShutMinus : bShutPlus;
+		if (!bWayShut)
+		{
+			Out.bMoves = true;
+			State.ShutSeconds = State.ShutSeconds < 0.f ? FMath::Min(0.f, State.ShutSeconds + Dt) : 0.f;
+		}
+		else
+		{
+			State.ShutSeconds = State.ShutSeconds < 0.f ? 0.f : State.ShutSeconds;
+			State.ShutSeconds += Dt;
+			if (State.ShutSeconds >= ShutTime && !bOppositeShut)
+			{
+				State.Hand = -State.Hand;
+				if (Commit > 0.f)
+				{
+					State.ShutSeconds = -Commit;
+					Out.bMoves = true;
+				}
+				else
+				{
+					State.ShutSeconds = 0.f;
+				}
+			}
+		}
+		Out.Hand = State.Hand;
+		return Out;
+	}
+
+	/**
+	 * D641 (Q-neutrals-hold = C): whether a free place round the target is out of the soldier's reach for the audit: bodies close on BOTH sides of it
+	 * (relative to its way to the target), within Slack of touching (1.5 x the two radii by default: a gap of up to half a body), wall it in between two
+	 * friends who strike; it waits, rightly. Others = every body but the soldier and its target. The audit (hol.Test.Sanity check 4) counts a stall only
+	 * when this is false.
+	 */
+	inline bool IsBoxedIn(const FVector2D& SelfWhere, const float SelfRadius, const FVector2D& TargetWhere, TConstArrayView<FBody> Others, const float Slack = 1.5f)
+	{
+		FVector2D Ahead = TargetWhere - SelfWhere;
+		if (Ahead.IsNearlyZero())
+		{
+			return false;
+		}
+		Ahead.Normalize();
+		bool bLeft = false;
+		bool bRight = false;
+		TArray<const FBody*, TInlineAllocator<8>> Near;
+		for (const FBody& Other : Others)
+		{
+			const FVector2D Off = Other.Where - SelfWhere;
+			if (Off.Size() > Slack * (SelfRadius + Other.Radius))
+			{
+				continue;
+			}
+			const double Cross = Ahead.X * Off.Y - Ahead.Y * Off.X;
+			bLeft |= Cross > 0.;
+			bRight |= Cross < 0.;
+			if (Ahead.X * Off.X + Ahead.Y * Off.Y > 0.)
+			{
+				Near.Add(&Other);
+			}
+		}
+		if (bLeft && bRight)
+		{
+			return true;
+		}
+		// 2026-11-05 (trace of neutrals, #11 behind #9 and #13): two close bodies in front that are both on the same side of the line to the target
+		// (one almost on it) still wall the soldier in when the gap between them cannot take its body; the sign test above misses that pair.
+		for (int32 A = 0; A < Near.Num(); ++A)
+		{
+			for (int32 B = A + 1; B < Near.Num(); ++B)
+			{
+				if (FVector2D::Distance(Near[A]->Where, Near[B]->Where) - Near[A]->Radius - Near[B]->Radius < 2.f * SelfRadius)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** D641 (hol.Combat.ClaimPlace): the rear flank (a 600 cm tour round the line) is suspended while the soldier holds a claimed place that is within MaxDistance (400 cm). */
+	inline bool ShouldSuspendRearFlank(const bool bHasPlace, const double DistanceToPlace, const double MaxDistance = 400.0)
+	{
+		return bHasPlace && DistanceToPlace <= MaxDistance;
+	}
+
+	/** D641: a new target within MaxDistance (150 cm) of the last one is "the next enemy along", not a new quarrel: the no-headway count goes on. */
+	inline bool IsNeighbourTarget(const FVector2D& OldWhere, const FVector2D& NewWhere, const double MaxDistance = 150.0)
+	{
+		return FVector2D::DistSquared(OldWhere, NewWhere) <= MaxDistance * MaxDistance;
+	}
+
+	/** Angular gap (radians, 0 to pi) between two angles round a target. */
+	inline double GetPlaceGap(const double PlaceAngle, const double SelfAngle)
+	{
+		double Gap = FMath::Fmod(FMath::Abs(PlaceAngle - SelfAngle), 2. * UE_DOUBLE_PI);
+		return FMath::Min(Gap, 2. * UE_DOUBLE_PI - Gap);
+	}
+
+	/**
+	 * D641 (hol.Combat.FarPlaceRetarget, the melee that spins of 2026-11-05: 6 soldiers on 3 targets that die one after the other): a place claimed more than
+	 * MaxGap (1.5 rad, about 90 degrees) from the side of the target the soldier is on lies across the melee: reaching it is a walk round the crowd that
+	 * reverses on its steps, and the target is dead before the arrival.
+	 */
+	inline bool IsPlaceTooFar(const double PlaceAngle, const double SelfAngle, const double MaxGap = 1.5)
+	{
+		return GetPlaceGap(PlaceAngle, SelfAngle) > MaxGap;
+	}
+
+	/**
+	 * Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget): a soldier walled in (IsBoxedIn) with no headway for MinSeconds changes target, unless the target was
+	 * ordered by the player.
+	 */
+	inline bool ShouldRetargetWhenBoxedIn(const float NoProgressSeconds, const bool bBoxedIn, const bool bOrderedTarget, const float MinSeconds = 1.f)
+	{
+		return bBoxedIn && !bOrderedTarget && NoProgressSeconds >= MinSeconds;
+	}
+
+	/**
+	 * Q-neutrals-second-rank = C: the enemy a walled-in soldier turns to: among EnemyBodies (indices into Bodies, with EnemyIds as tie-break) the one whose edge is
+	 * nearest to the soldier, having a free place (HasFreePlaceAround, every other body counted) that the soldier can reach without going round (not IsBoxedIn
+	 * towards it); ExcludeBody (the target it leaves) is never chosen. Bodies = every body near but the soldier. Returns the index into EnemyBodies, or INDEX_NONE.
+	 * With MaxPlaceGap >= 0 (D641, hol.Combat.FarPlaceRetarget) the enemy's free place nearest to the soldier's own side of it must lie within MaxPlaceGap rad of that side.
+	 */
+	inline int32 FindReachableEnemy(const FVector2D& SelfWhere, const float SelfRadius, TConstArrayView<FBody> Bodies, TConstArrayView<int32> EnemyBodies, TConstArrayView<uint64> EnemyIds, const int32 ExcludeBody, const double MaxPlaceGap = -1., const bool bLoose = false)
+	{
+		// bLoose (hol.Combat.StuckLooseTarget, BUG-melee-stuck-attack): the nearest other enemy, whether or not it has a free place or the way to it is walled in.
+		int32 Best = INDEX_NONE;
+		double BestEdge = 0.;
+		TArray<FBody, TInlineAllocator<32>> Others;
+		for (int32 Slot = 0; Slot < EnemyBodies.Num(); ++Slot)
+		{
+			const int32 Body = EnemyBodies[Slot];
+			if (Body == ExcludeBody || !Bodies.IsValidIndex(Body) || !EnemyIds.IsValidIndex(Slot))
+			{
+				continue;
+			}
+			Others.Reset();
+			for (int32 Other = 0; Other < Bodies.Num(); ++Other)
+			{
+				if (Other != Body)
+				{
+					Others.Add(Bodies[Other]);
+				}
+			}
+			const FBody& Enemy = Bodies[Body];
+			if (!bLoose && (!HasFreePlaceAround(Enemy.Where, Enemy.Radius, SelfRadius, Others) || IsBoxedIn(SelfWhere, SelfRadius, Enemy.Where, Others)))
+			{
+				continue;
+			}
+			if (!bLoose && MaxPlaceGap >= 0.)
+			{
+				const FVector2D FromEnemy = SelfWhere - Enemy.Where;
+				double SelfSide = FromEnemy.IsNearlyZero() ? 0. : FMath::Atan2(FromEnemy.Y, FromEnemy.X);
+				SelfSide += SelfSide < 0. ? 2. * UE_DOUBLE_PI : 0.;
+				double Spot = 0.;
+				if (!FindFreePlaceAround(Enemy.Where, Enemy.Radius, SelfRadius, Others, SelfSide, Spot) || IsPlaceTooFar(Spot, SelfSide, MaxPlaceGap))
+				{
+					continue;
+				}
+			}
+			const double Edge = FVector2D::Distance(SelfWhere, Enemy.Where) - SelfRadius - Enemy.Radius;
+			if (Best == INDEX_NONE || Edge < BestEdge - 1e-6 || (FMath::Abs(Edge - BestEdge) <= 1e-6 && EnemyIds[Slot] < EnemyIds[Best]))
+			{
+				Best = Slot;
+				BestEdge = Edge;
+			}
+		}
+		return Best;
+	}
+
 	/** Its hits on a building are arrows in flight: a building attack of type Ranged (a melee's reach of a tile is beyond RangedReach). */
 	HEROESOFLIBERTY_API bool IsBuildingShot(const FHOLUnitTypeConstants& Attacker);
 
