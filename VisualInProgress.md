@@ -46,6 +46,8 @@ Aucune source ne confirme que les deux kits Kenney partagent le même style et l
 
 ## Journal
 
+- 2026-11-06 13:5x (Sauron, `visual` = c2ee600) : **`quick_check -Parts tests,net` PASS en 283 s : tests 1056/1056, tous les cas net PASS, dont `net 2 clients` (le correctif `ShowsItsColor` de 9a669f4 est donc confirmé : chaque centre à sa couleur)**. Reste : coût S1 (non mesuré), puis fusion de `visual` dans `main` (supprimer d'abord la copie non suivie de `Docs/assets_art.csv` dans la copie principale).
+
 - 2026-11-06 13:3x (Sauron, `visual`) : **`main` fusionné dans `visual` (c2ee600)**. Conflits : `BuildingTypes.csv` (pris de `main`, colonne `Faction`, lignes Stable / Forge, `Zombie`, puis `Mesh` du `MainCentre` = `SM_Forum` remis à la main) et `BuildingTypes.uasset` (binaire : version de `main`, puis **régénéré** par `make_building_types.py` après build PASS 220 s, 0 problème, contenu vérifié : SM_Forum, Faction, Stable, Forge, Chapel, Zombie). Pas de `-Parts` rejoué depuis la fusion (le correctif `ShowsItsColor` de 9a669f4 reste à rejouer en `-Parts net`).
 
 - 2026-11-04 14:5x (Sauron, `visual`) : **build PASS (1 118 s dont ~15 min de file), `-Parts tests` rouge puis vert 903/903** (ForumColour rouge sur l'ancien modèle `Both`, vert sur `SM_Forum` à bannières). **`-Parts net` : un vrai défaut trouvé** (`net 2 clients` : « both centres, each in its colour: colour 0 not shown ») : le contrôle `ShowsItsColor` de `HOLBuildingReport.cpp` ne lisait que l'emplacement 0 ; corrigé pour tous les emplacements (commit « NOT COMPILED »), **à recompiler puis rejouer `-Parts net`** ; tous les autres cas net PASS (hero, technologies, market, duel, volcano, monk, siege). Coût S1 non mesuré.
