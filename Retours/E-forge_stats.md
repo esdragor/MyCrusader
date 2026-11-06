@@ -20,3 +20,5 @@ Reponse attendue : OK, BUG: ... ou REGLAGE: ... (en particulier : l'infobulle au
 Reponse (utilisateur 2026-11-06 12:3x) : forge : OK. legions_roster : REGLAGE: seulement le Dread Rider a un nom qui change, les autres unites Legions gardent leur nom d'Aube (noms par faction a cabler, voir ligne [ ] de Auto_Journey_File.md). Infobulle 45/15 et infobulle de stats au survol : pas de retour.
 
 Reponse (utilisateur 2026-11-06 12:3x) : infobulle au survol : OK (fixe). Restent seulement les noms des unites Legions a cabler.
+
+Reponse (utilisateur 2026-11-06 12:4x) : infobulle du Lancier 45 N / 15 B : OK (vue, bonne).
