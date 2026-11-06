@@ -199,6 +199,12 @@ namespace UE::HeroesOfLiberty::Simulation
 		TEXT("Part of the walk's speed (default 0, with hol.Combat.RearSlideKeep): a sliding melee whose side is shut creeps on towards its goal at this speed instead of standing"));
 	/** RearSlideKeep: the kept way is forgotten after this long (s) walking on unbarred; the target's side that turns it. */
 	constexpr float RearSlideForgetTime = 0.5f;
+	int32 RearSlideStandKeep = 1;
+	FAutoConsoleVariableRef CVarRearSlideStandKeep(TEXT("hol.Combat.RearSlideStandKeep"), RearSlideStandKeep,
+		TEXT("1 (default): a stand of one step (the walk re-issued) keeps the rear slide's memory (side, shut time); it is cleared after 0.5 s of standing; 0: cleared at once, as before (BUG-melee-stuck-attack: the soldier shut between two friends never turned)"));
+	float RearSlideTurnCommit = 1.f;
+	FAutoConsoleVariableRef CVarRearSlideTurnCommit(TEXT("hol.Combat.RearSlideTurnCommit"), RearSlideTurnCommit,
+		TEXT("s (default 1, with hol.Combat.RearSlideKeep): a rear slide that turns to the open side after RearSlideShutTime walks it at once and holds it this long (the target's side no longer turns it back: the cycle of one second, standing, of BUG-melee-stuck-attack); 0: as before"));
 	constexpr double RearSlideTurnGoalSide = 0.5;
 	/** RearSlideKeep: across the line, a unit this close (cm) to its army's middle takes its side by its id. */
 	constexpr double RearSlideMiddle = 100.0;
@@ -996,16 +1002,14 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 		// that side shut a while, below); a new one: the target's side, else away from its army's middle (the nearer end of
 		// the line: the neighbours all take the same way, a wave, and wrap round the flank).
 		double Hand = 0.;
+		bool bHandKept = false;
 		const double GoalSide = FVector2D::DotProduct(Goal, Left);
 		const double KeptSide = FVector2D::DotProduct(FVector2D(Combat.SlideWay.X, Combat.SlideWay.Y), Left);
 		if (bKeep && FMath::Abs(KeptSide) > 0.2)
 		{
+			// Turned by its target gone clearly the other way (HOLCombat::AdvanceSlideSide, below).
 			Hand = KeptSide > 0. ? 1. : -1.;
-			if (GoalSide * Hand < -RearSlideTurnGoalSide)
-			{
-				Hand = -Hand;
-				Combat.SlideShutSeconds = 0.f;
-			}
+			bHandKept = true;
 		}
 		else if (FMath::Abs(GoalSide) > 0.25)
 		{
@@ -1062,24 +1066,17 @@ bool UHOLFullSpeedProcessor::SlideAlongFriends(const FMassEntityHandle Entity, c
 		Target = FVector2D::ZeroVector;
 		if (bKeep)
 		{
-			// Its side shut: it waits (or creeps on towards its goal), and turns only once shut a while.
-			const FVector2D Way = Left * Hand;
-			if (!IsShut(Way))
-			{
-				Target = Way * (Speed * RearSlideSpeed);
-				Combat.SlideShutSeconds = 0.f;
-			}
-			else
-			{
-				Target = Ahead * (Speed * FMath::Clamp(RearSlideCreep, 0.f, 1.f));
-				// Turned only towards an open side: both shut, it keeps its side and waits (no turn each second).
-				Combat.SlideShutSeconds += DeltaTime;
-				if (Combat.SlideShutSeconds >= RearSlideShutTime && !IsShut(-Way))
-				{
-					Hand = -Hand;
-					Combat.SlideShutSeconds = 0.f;
-				}
-			}
+			// Its side shut: it waits (or creeps on towards its goal), and turns only once shut a while, towards an open side (both
+			// shut, it keeps its side and waits: no turn each second). BUG-melee-stuck-attack (hol.Combat.RearSlideTurnCommit): that
+			// turn walks at once and holds for a while, the target's side no longer turns it back the next step.
+			HOLCombat::FSlideSideState Side;
+			Side.Hand = Hand;
+			Side.ShutSeconds = Combat.SlideShutSeconds;
+			const HOLCombat::FSlideSideResult Step = HOLCombat::AdvanceSlideSide(Side, bHandKept, GoalSide, IsShut(Left), IsShut(-Left), DeltaTime,
+				RearSlideShutTime, RearSlideTurnGoalSide, RearSlideTurnCommit);
+			Hand = Step.Hand;
+			Combat.SlideShutSeconds = Side.ShutSeconds;
+			Target = Step.bMoves ? Left * Hand * (Speed * RearSlideSpeed) : Ahead * (Speed * FMath::Clamp(RearSlideCreep, 0.f, 1.f));
 			Combat.SlideWay = FVector2f(Left * Hand);
 		}
 		else
@@ -1236,8 +1233,18 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				Velocity = FVector::ZeroVector;
 				if (!Combats.IsEmpty())
 				{
-					Combats[EntityIt].SlideWay = FVector2f::ZeroVector;
-					Combats[EntityIt].SlideShutSeconds = 0.f;
+					// BUG-melee-stuck-attack (hol.Combat.RearSlideStandKeep): a walk re-issued every ~1 s stands the unit for one step, and the
+					// slide's memory went with it: the kept side's shut time was set back to 0 at 0.95 s of RearSlideShutTime 1 s, so a soldier
+					// shut in between two friends never turned and waited for 17 s. A stand of a step keeps the memory; only a stand of
+					// RearSlideForgetTime (the time a walk on unbarred forgets it) clears it.
+					FHOLCombatFragment& StandCombat = Combats[EntityIt];
+					StandCombat.SlideFreeSeconds += DeltaTime > 0.f ? DeltaTime : RearSlideForgetTime;
+					if (RearSlideStandKeep == 0 || StandCombat.SlideFreeSeconds >= RearSlideForgetTime)
+					{
+						StandCombat.SlideWay = FVector2f::ZeroVector;
+						StandCombat.SlideShutSeconds = 0.f;
+						StandCombat.SlideFreeSeconds = 0.f;
+					}
 				}
 				continue;
 			}

@@ -108,6 +108,21 @@ namespace UE::HeroesOfLiberty::Combat
 	FAutoConsoleVariableRef CVarStopAtContact(TEXT("hol.Combat.StopAtContact"), StopAtContact,
 		TEXT("1 (default): a melee walking to fight, its target out of reach, takes at every step the enemy in its reach of least unit id (an ordered target kept; dense grid only); 0: as before"));
 	/** J7c.4, loop 12: a walking melee does not pass by an enemy this close (cm, edge to edge): it takes it on. */
+	int32 ClaimedSlots = 1;
+	FAutoConsoleVariableRef CVarClaimedSlots(TEXT("hol.Combat.ClaimedSlots"), ClaimedSlots,
+		TEXT("1 (default, with hol.Combat.ClaimPlace): the places the friends of the same target claimed count as bodies standing on their spots when a melee chooses its place (the nearer holder keeps its spot, then the lower id), so two friends never walk to the same spot; 0: off, the rule as before (BUG-melee-stuck-attack)"));
+	float StuckRetargetSeconds = 3.f;
+	FAutoConsoleVariableRef CVarStuckRetargetSeconds(TEXT("hol.Combat.StuckRetargetSeconds"), StuckRetargetSeconds,
+		TEXT("s (default 3, with hol.Combat.ClaimPlace): a melee out of reach with no headway to its target for this long takes the nearest enemy with a free place it can reach (no going round); a target the player ordered is kept; 0: off (BUG-melee-stuck-attack)"));
+	float StuckLooseSeconds = 0.f; // OFF by default: the lot of 2026-11-06 17:00 gave 3/8 red with 4 (see Retours/BUG-melee-stuck-attack.md, Correcteur 2)
+	FAutoConsoleVariableRef CVarStuckLooseSeconds(TEXT("hol.Combat.StuckLooseSeconds"), StuckLooseSeconds,
+		TEXT("s (default 0 = off, tried at 4: not better; with hol.Combat.StuckRetargetSeconds): a melee out of reach with no headway for this long, no enemy with a free place it can reach, takes the nearest other enemy whatever the places and the friends in the way (a target the player ordered is kept); 0: off (BUG-melee-stuck-attack)"));
+	float MeleeLock = 60.f;
+	FAutoConsoleVariableRef CVarMeleeLock(TEXT("hol.Combat.MeleeLock"), MeleeLock,
+		TEXT("cm (default 60): a melee soldier that struck last step keeps its target while it lives and stays within its reach plus this (the target nudged out of reach by a few cm no longer makes the soldier take another enemy and begin its blow again: BUG-melee-stuck-attack); 0: off, as before"));
+	int32 ZoneSkipFull = 1;
+	FAutoConsoleVariableRef CVarZoneSkipFull(TEXT("hol.Combat.ZoneSkipFull"), ZoneSkipFull,
+		TEXT("1 (default, with hol.Combat.ZoneOfControl and hol.Combat.PreferFreeTarget): the zone of control does not take an enemy with every place around it taken (other than the target already held): the search and the zone no longer swing the soldier between two enemies; 0: as before (BUG-melee-stuck-attack)"));
 	float ZoneOfControl = 150.f;
 	FAutoConsoleVariableRef CVarZoneOfControl(TEXT("hol.Combat.ZoneOfControl"), ZoneOfControl,
 		TEXT("cm edge to edge (default 150): a melee walking to fight (hol.Combat.StopAtContact), no enemy in its reach, takes the nearest enemy this close and walks to it alone (its target kept while in the zone); 0: as before"));
@@ -1587,7 +1602,16 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			!Combat.OrderedBuilding.IsExplicitlyNull());
 		const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
 		const int32 TargetBeforeSearch = Target;
-		if (bMaySeek && (bSearchStep || bLost))
+		// BUG-melee-stuck-attack (hol.Combat.MeleeLock, the user's rule: a soldier at grips with a target keeps it until it dies): a melee that struck
+		// last step (bAttacking) keeps its living target while it stays within its reach plus MeleeLock; no search, no zone of control, no retarget
+		// takes it away. (The target nudged out of reach by a few cm made the search take a nearer enemy and the blow begin again, in a loop.)
+		bool bMeleeLocked = false;
+		if (MeleeLock > 0.f && Target != INDEX_NONE && Combat.bAttacking && !HOLCombat::IsRangedAttack(Constants.AttackRange)
+			&& Fighters[Target].State->CurrentHealth > 0 && Fighters[Target].Camp != Fighter.Camp && CanTouch(Fighter, Fighters[Target]))
+		{
+			bMeleeLocked = HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange + MeleeLock);
+		}
+		if (bMaySeek && !bMeleeLocked && (bSearchStep || bLost))
 		{
 			HOLCombat::FSeeker Seeker;
 			Seeker.Position = Position;
@@ -1868,7 +1892,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// the enemy it already touches, of least unit id (no draw), and stops below: it no longer slides past a body to its
 		// target. Every step, the full search at its rate unchanged; an ordered target is never replaced (bMaySeek).
 		bool bZoneTaken = false; // a target taken by the zone of control: walked to at once, not to the former one
-		if (bStopAtContact && bMaySeek && Fighter.Order->Phase != EHOLMovePhase::None && !HOLCombat::IsRangedAttack(Constants.AttackRange)
+		if (bStopAtContact && bMaySeek && !bMeleeLocked && Fighter.Order->Phase != EHOLMovePhase::None && !HOLCombat::IsRangedAttack(Constants.AttackRange)
 			&& (Combat.TargetBuilding.IsExplicitlyNull() || Constants.AggressionRadius > 0.f) // D345.2b: not a Peasant sent to a building
 			&& (Target == INDEX_NONE || !HOLCombat::IsInRange(Position, Constants.Radius, FVector2D(Fighters[Target].Location), Fighters[Target].Constants->Radius, Constants.AttackRange)))
 		{
@@ -1902,6 +1926,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					if (Distance <= Zone)
 					{
 						bTargetInZone |= Other == Target;
+						// BUG-melee-stuck-attack (hol.Combat.ZoneSkipFull): the search (PreferFreeTarget) takes an enemy with a place left, the zone took back the
+						// nearest one with none at the next step, and the soldier swung between the two for seconds, its attack never begun (#5: #12 <-> #9 over 160 steps).
+						// An enemy with every place taken (other than its target) is no choice of the zone: it cannot be struck anyway.
+						if (ZoneSkipFull != 0 && bPreferFree && Other != Target && PlacesAround(Other) >= HOLCombat::MaxAttackers)
+						{
+							continue;
+						}
 						if (Nearest == INDEX_NONE || Distance < NearestDistance || (Distance == NearestDistance && Enemy.UnitId < Fighters[Nearest].UnitId))
 						{
 							Nearest = Other;
@@ -2515,8 +2546,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Combat.PlaceTargetWhere = FVector2f(EnemyPosition);
 					// Q-neutrals-second-rank = C (hol.Combat.BoxedRetarget) and D641 (hol.Combat.FarPlaceRetarget): a soldier that cannot get at its target takes the
 					// nearest enemy with a free place it can reach (no going round; with MaxPlaceGap, a place on its own side) instead. True when it did (the target changed).
-					const auto TryRetarget = [&](const bool bRequireBoxed, const double MaxPlaceGap) -> bool
+					const auto TryRetarget = [&](const bool bRequireBoxed, const double MaxPlaceGap, const bool bLoose = false) -> bool
 					{
+						if (bMeleeLocked)
+						{
+							return false; // hol.Combat.MeleeLock: at grips with its target, it keeps it
+						}
 						TArray<int32> BoxEnemies;
 						TArray<int32> BoxFriends;
 						GatherNearby(Index, BoxedRetargetReach, BoxEnemies);
@@ -2570,7 +2605,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 								return false;
 							}
 						}
-						const int32 Chosen = HOLCombat::FindReachableEnemy(Position, Constants.Radius, BoxBodies, BoxEnemyBodies, BoxEnemyIds, TargetBody, MaxPlaceGap);
+						const int32 Chosen = HOLCombat::FindReachableEnemy(Position, Constants.Radius, BoxBodies, BoxEnemyBodies, BoxEnemyIds, TargetBody, MaxPlaceGap, bLoose);
 						if (Chosen == INDEX_NONE)
 						{
 							return false;
@@ -2596,10 +2631,40 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					{
 						continue;
 					}
+					// BUG-melee-stuck-attack (hol.Combat.StuckRetargetSeconds): a soldier that has made no headway to its target for this long (held behind friends
+					// that strike, its place claimed and never reached: #5 waited 10 s, np 12 s) takes the nearest enemy with a free place it can reach; the walled-in test
+					// above (off by default) asks to be boxed in, this one only waits. A target the player ordered is kept.
+					if (StuckRetargetSeconds > 0.f && bSearchStep && !Combat.bOrderedTarget && Combat.NoProgressSeconds >= StuckRetargetSeconds && TryRetarget(false, -1.))
+					{
+						continue;
+					}
+				// BUG-melee-stuck-attack (hol.Combat.StuckLooseSeconds): still no headway after this long and no enemy with a free place it can reach: it turns to the
+				// nearest other enemy whatever the places and the friends in the way (the walk to a new goal frees it from the friends that bar the old one).
+				if (StuckLooseSeconds > 0.f && bSearchStep && !Combat.bOrderedTarget && Combat.NoProgressSeconds >= StuckLooseSeconds && TryRetarget(false, -1., true))
+				{
+					continue;
+				}
 				if (bSearchStep && (Combat.bHasPlace || (Combat.bRoomAtTarget && Combat.NoProgressSeconds >= ClaimStuckSeconds)))
 				{
 					TArray<HOLCombat::FBody> PlaceBodies;
 					GatherRoomBodies(Index, Target, PlaceBodies);
+					if (ClaimedSlots != 0)
+					{
+						// BUG-melee-stuck-attack: the places the friends of the same target claimed stand as bodies on their spots.
+						TArray<int32> ClaimFriends;
+						GatherFriends(Index, 800., ClaimFriends);
+						TArray<HOLCombat::FPlaceClaim> Claims;
+						for (const int32 Friend : ClaimFriends)
+						{
+							const FFighter& Mate = Fighters[Friend];
+							if (Friend != Index && Mate.Camp == Fighter.Camp && Mate.State->CurrentHealth > 0 && Mate.Combat->bHasPlace && Mate.Combat->Target == Combat.Target)
+							{
+								Claims.Add({ FVector2D(Mate.Location), Mate.Constants->Radius, static_cast<double>(Mate.Combat->PlaceAngle), Mate.UnitId });
+							}
+						}
+						HOLCombat::AppendClaimedPlaceBodies(EnemyPosition, Enemy.Constants->Radius, Position, Fighter.UnitId, static_cast<double>(Combat.PlaceAngle), Combat.bHasPlace,
+							Constants.Radius, Claims, PlaceBodies);
+					}
 					const FVector2D FromTarget = Position - EnemyPosition;
 					const double SelfSide = FromTarget.IsNearlyZero() ? 0. : FMath::Atan2(FromTarget.Y, FromTarget.X) + (FromTarget.Y < 0. ? 2. * UE_DOUBLE_PI : 0.);
 					double Angle = 0.;
