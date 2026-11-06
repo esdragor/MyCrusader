@@ -388,3 +388,7 @@ Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Farami
 | Arwen-6 | ab5551120595ceebe | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.110 sons medievaux (dix echantillons) puis l.102 verrou editeur | sans C++ | 13:00 | lance 11:05 |
 | Sauron | - | visual | NON LANCE : aucune tache visual, conflit de merge BuildingTypes.uasset (sync annulee) | - | - | - |
 | Haldir | - | maps | EXCLU par l'utilisateur (dossier cartes) | - | - | - |
+| (suite 11:45) Faramir-5 FINI 11:09 37 tool_uses ; Faramir-6 ae0a222856e7e000e FINI 11:14 15 tool_uses ; Arwen-6 FINI ~11:31 69 tool_uses ; Elrond-6 FINI 11:31 73 tool_uses ; Galadriel-5 FINI 11:22 85 tool_uses (hors regle 80, merge main sans build derriere) ; Celeborn-8 FINI 11:41 80 tool_uses | | | | | | |
+| Galadriel-6 | ac07c74069e5f71ca | Documents\HeroesOfLiberty-Galadriel / galadriel-tab | build + tests apres merge, puis reponse Q-unit-stats (A + armures + survol) | C++ 2 | 13:00 | lance 11:30 |
+| Fusion-1 | ad37220d06ff19fca | Documents\HeroesOfLiberty-Faramir / fog | fusion groupee fog+heal-sleep+tiers (tips d3187ab, f6eea1b, f74b74f ; main fd5e3b4) | merge | 13:00 | lance 11:41 |
+| Celeborn-9 | a3424ebcbd924834a | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | virages restants melee_spin (trace_flips -Unit 11) | C++ 1 | 13:00 | lance 11:44 |
