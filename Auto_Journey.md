@@ -102,12 +102,12 @@ Au démarrage la session principale crée **un seul rappel récurrent toutes les
 
 ## Contrôles mécaniques (2026-11-05, à dérouler : `Auto_Journey_Checklist.md`)
 
-Les leçons de toutes les séances sont maintenant des contrôles : `Tools\AutoJourney\session_gate.ps1 -Phase Launch|Merge|Essay|Close` (avant chaque lancement, avant la fusion, avant de donner une commande `play.ps1`, avant le bilan), `Tools\AutoJourney\agent_rules.md` (19 règles que chaque agent lit en premier, rapport à 12 champs vérifié à la réception) et le tableau « Leçons appliquées » du bilan (`### Lecons appliquees <date>`, une ligne par règle de la check-list, preuve à l'appui). **Chaque énoncé d'agent commence par « Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et applique-le » et donne l'heure d'arrêt calculée à partir d'un `Get-Date` lu juste avant.**
+Les leçons de toutes les séances sont maintenant des contrôles : `Tools\AutoJourney\session_gate.ps1 -Phase Launch|Merge|Essay|Close` (avant chaque lancement, avant la fusion, avant de donner une commande `play.ps1`, avant le bilan), `Tools\AutoJourney\agent_rules.md` (les règles que chaque agent lit en premier, rapport à 13 champs vérifié à la réception) et le tableau « Leçons appliquées » du bilan (`### Lecons appliquees <date>`, une ligne par règle de la check-list, preuve à l'appui). **Chaque énoncé d'agent commence par « Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et applique-le » et donne l'heure d'arrêt calculée à partir d'un `Get-Date` lu juste avant.**
 
 ## Modèle d'énoncé d'un agent (à copier, remplir les <>)
 
 ```
-Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et applique-le (80 appels d'outils max, rapport à 12 champs).
+Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et applique-le (80 appels d'outils max jugés sur `tool_uses`, arrêt à 60 appels déclarés, rapport à 13 champs).
 Worktree <chemin absolu> (branche <b>, <commits>). Lis <chemin>\CLAUDE.md, la fin de <chemin>\<Chantier>InProgress.md,
 la ligne <n> de <chemin>\Auto_Journey_File.md et les `Reponse:` utiles de <chemin>\Auto_Journey_Retours.md.
 TÂCHE : <la ligne de la file>. Test rouge d'abord sur la vraie chaîne ; Tools\build.ps1 (-LiveCoding=0) ; quick_check -Parts <parties touchées>.
@@ -119,8 +119,8 @@ Un essai n'est listé dans Auto_Journey_Retours.md section 1 que si Tools\Scenar
 Commits verts sur ta branche (anglais, sans Co-Authored-By, jamais de push). Fusion dans main : interdite (l'agent de fusion s'en charge ; dis dans ton rapport que la branche est prête). Au plus 2 questions, regroupées.
 Tiens à jour EtapeDefini.md (relis avant, tes lignes seulement), ton *InProgress.md, Auto_Journey_File.md (ta ligne), ta ligne du tableau
 des agents de Auto_Journey_Jour.md, IN_USE.txt à l'entrée et à la sortie. PowerShell pour tout chemin Windows.
-ARRÊT DUR à <HH:MM> (Get-Date PowerShell) ou 80 APPELS D'OUTILS (un agent ne voit pas ses tokens, il compte ses appels : 2026-11-05, 96 appels = 242k, 133 = 284k, 185 = 336k ; 80 appels ≈ 160-200k). À 80 appels : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. RAPPORT de 10 lignes MAX, dans cet ordre :
-fait / tests / commit / reste / NON VÉRIFIÉ (obligatoire : ce qui n'a pas de test ni de preuve) / anomalies du processus.
+ARRÊT DUR à <HH:MM> (Get-Date PowerShell) ou 60 APPELS DÉCLARÉS (un agent ne voit pas ses tokens et sous-compte ses appels de 10 à 30 % : 77 déclarés = 108 réels ; la session principale juge le seuil de 80 sur `tool_uses` de la notification de fin, au-delà de 100 la tâche suivante part sur un agent neuf). À 60 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Dernier geste : `Tools\AutoJourney\stray_processes.ps1 -Root <worktree> -Stop` (champ PROCESSUS_DETACHES). Un essai porte les statuts `GESTE: réel / interne` et `SON: entendu / non entendu` (gabarit `Tools\AutoJourney\E_template.md`) ; `session_gate.ps1 -Phase Close -Exclude <worktree>` écarte un worktree hors périmètre. RAPPORT de 13 champs (liste dans `agent_rules.md`, dont APPELS_DECLARES et PROCESSUS_DETACHES), résumé en 10 lignes MAX, dans cet ordre :
+fait / tests / commit / reste / NON VÉRIFIÉ (obligatoire : ce qui n'a pas de test ni de preuve) / anomalies du processus / PROCESSUS_DETACHES.
 ```
 
 ## Builds : ne pas saturer la file
