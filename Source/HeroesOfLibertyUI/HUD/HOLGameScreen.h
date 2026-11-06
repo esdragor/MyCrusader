@@ -110,6 +110,9 @@ public:
 
 	/** The tooltips of the grid's cells: "A: Maison | W 50 | +10 population; Z: ..." (hol.HUD.Report). */
 	FString DescribeTooltips() const;
+
+	/** What the statistics' line of the selection block says ("attack 13.2 (+1.2), armor 2/1, range melee, speed 3" or "none"): the "HUD stats" line of hol.HUD.Report. */
+	FString DescribeStats() const { return ShownStats.IsEmpty() ? FString(TEXT("none")) : ShownStats; }
 	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
 	FString DescribeCells() const;
 
@@ -216,6 +219,10 @@ protected:
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UCommonTextBlock> SelectionHealth;
+
+	/** The selected unit's statistics (attack with the technologies' bonus, armour, range, speed): one line or one per statistic (hol.HUD.UnitStats). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UCommonTextBlock> SelectionStats;
 
 	/**
 	 * The line under the name (J5, D298): what a gatherer does and carries (« Récolte — Bois 7/10 »), a group's workers by
@@ -327,6 +334,9 @@ private:
 	void RefreshUnitActivity(const struct FHOLUnitView* Unit);
 	/** One unit's health in the selection block (J7b.5), or none (nullptr: a group, a building, a source). */
 	void RefreshUnitHealth(const struct FHOLUnitView* Unit);
+	/** One unit's statistics under its health (the technologies' bonus on its attack), or hidden (nullptr: a group, a building, a source, a hero). */
+	void RefreshUnitStats(const struct FHOLUnitView* Unit);
+	void HideUnitStats();
 	/** The line under the name: Shown is what Describe writes of it (empty: hidden); written only when it changed. */
 	void SetDetailLine(const FString& Shown, const FText& Text);
 	/** The idle workers' counter, written when their number changed. */
@@ -389,6 +399,8 @@ private:
 	void CheckPopulationBlocked();
 
 	const FHOLUnitTypeRow* FindUnitType(FName TypeName) const;
+	/** The type's row for the player's faction (cost, name, statistics as that player pays and fields them: FindTypeRowFor). */
+	const FHOLUnitTypeRow* FindUnitTypeFor(FName TypeName, int32 OwnerPlayer) const;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;
@@ -565,6 +577,8 @@ private:
 	FString ShownActivity;
 	/** ", hp 37/50" for one unit selected (J7b.5), for Report; empty otherwise. */
 	FString ShownHealth;
+	/** "attack 13.2 (+1.2), armor 2/1, range melee, speed 3" for one unit selected (hol.HUD.Report's "HUD stats" line); empty otherwise. */
+	FString ShownStats;
 	/** A main forum's lives last written in SelectionLives (V2.3d). */
 	int32 ShownForumLives = INDEX_NONE;
 

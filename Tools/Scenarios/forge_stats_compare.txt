@@ -1,0 +1,33 @@
+﻿# Comparison of the formats of the selected unit's statistics (Q-unit-stats): the same Homme d'armes selected, each option in turn on the real HUD. Enter = next option.
+# Options: A = one line under the health (hol.HUD.UnitStats 1, the default), B = one line per statistic (hol.HUD.UnitStats 2). The bonus of Lames affutees I is researched first so that the "(+x)" shows.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.SpawnBuilding Forge 0 2500 2500
+waitlog Cheat: spawned Forge of slot 0
+hol.Camera.FocusNear 2500 2500
+hol.Camera.Zoom -2
+hol.Hero.SetXP 0 600
+waitlog slot 0 level 1 -> 3
+hol.Prod.BuildTime 2
+hol.Select.Category Technological
+waitlog Selection: Forge
+hol.Select.Grid 8
+waitlog Technology: slot 0 researched MeleeAttackI
+hol.Units.SpawnHere 1 ManAtArms 0 900
+waitunits 3
+hol.Select.Type ManAtArms
+frames 20
+hol.HUD.UnitStats 1
+frames 10
+hol.HUD.Report
+note Option A : une ligne sous les points de vie (Entree = option B).
+capture forge_stats_compare_A
+waitkey Option A. Entree : option B.
+hol.HUD.UnitStats 2
+frames 10
+hol.HUD.Report
+note Option B : une ligne par statistique.
+capture forge_stats_compare_B
+waitkey Option B. Entree : fin.
+hol.HUD.UnitStats 1

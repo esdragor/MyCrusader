@@ -1255,7 +1255,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	if (!Building)
 	{
 		ShownSelection = TEXT("none");
-		ShownHealth.Reset();
+		ShownHealth.Reset(); HideUnitStats();
 		RefreshUnitActivity(nullptr);
 		return;
 	}
@@ -1288,7 +1288,7 @@ void UHOLGameScreen::RefreshSelection(const AHOLBuilding* Building, const bool b
 	{
 		SelectionOwner->SetText(GetOwnerNameIn(GetWorld(), Building->GetOwnerPlayer(), bOwn));
 	}
-	ShownHealth.Reset();
+	ShownHealth.Reset(); HideUnitStats();
 	// A main forum (V2.3b): its lives to anyone (D353); down, its ruin or its rebuilding in place of its health (0 until up).
 	const FHOLForumBlock Forum = Building->GetForumBlock(bOwn);
 	// Reported on the line "HUD forum", not in Describe (the checks read the report's line to its end).
@@ -1348,7 +1348,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	if (Views.IsEmpty())
 	{
 		ShownSelection = TEXT("none");
-		ShownHealth.Reset();
+		ShownHealth.Reset(); HideUnitStats();
 		RefreshUnitActivity(nullptr);
 		return;
 	}
@@ -1384,7 +1384,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	ShownSelection = FString::Printf(TEXT("%s (%s)"), *FString::Join(ShownTypes, TEXT(", ")), bOwn ? TEXT("own") : TEXT("other"));
 	if (SelectionName && Views.Num() == 1)
 	{
-		SelectionName->SetText(HOLGameNames::GetUnitName(Views[0].TypeName, FindUnitType(Views[0].TypeName)));
+		SelectionName->SetText(HOLGameNames::GetUnitName(Views[0].TypeName, FindUnitTypeFor(Views[0].TypeName, Views[0].OwnerPlayer)));
 	}
 	// A group (G.1e, AoE4's way): chips, the player's units of several types by their subgroups (Tab's, « Tous (8) » first,
 	// the active one lit, the soldiers first, the Peasants last); else « Tous » (several types) then one per type.
@@ -1474,12 +1474,12 @@ void UHOLGameScreen::RefreshBuildingGroup(const TConstArrayView<AHOLBuilding*> B
 	// Several of the player's buildings (an F key, D30): by type and number, as a group of units; the sites among them.
 	SetShown(SelectionPanel, !Buildings.IsEmpty(), ESlateVisibility::Visible);
 	SetShown(SelectionProgressRow, false);
-	ShownHealth.Reset();
+	ShownHealth.Reset(); HideUnitStats();
 	SetShown(SelectionHealthRow, false);
 	if (Buildings.IsEmpty())
 	{
 		ShownSelection = TEXT("none");
-		ShownHealth.Reset();
+		ShownHealth.Reset(); HideUnitStats();
 		SetDetailLine(FString(), FText::GetEmpty());
 		return;
 	}
@@ -1602,13 +1602,13 @@ void UHOLGameScreen::RefreshSourceSelection(const int32 SourceIndex)
 	if (TypeName.IsNone())
 	{
 		ShownSelection = TEXT("none");
-		ShownHealth.Reset();
+		ShownHealth.Reset(); HideUnitStats();
 		SetDetailLine(FString(), FText::GetEmpty());
 		return;
 	}
 	// Nobody's: no owner, no health; its name, and what it still holds (« Filon d'or — 1840 », D298).
 	SetShown(SelectionOwnerRow, false);
-	ShownHealth.Reset();
+	ShownHealth.Reset(); HideUnitStats();
 	SetShown(SelectionHealthRow, false);
 	const FString Shown = FString::Printf(TEXT("%s source %d"), *TypeName.ToString(), SourceIndex);
 	if (Shown != ShownSelection)
@@ -1648,9 +1648,96 @@ void UHOLGameScreen::RefreshUnitActivity(const FHOLUnitView* Unit)
 		: Activity);
 }
 
+namespace
+{
+	TAutoConsoleVariable<int32> CVarUnitStats(TEXT("hol.HUD.UnitStats"), 1,
+		TEXT("How the selected unit's statistics (attack with the technologies' bonus, armour, range, speed) are shown under its health: 0 hidden, 1 one line, 2 one line per statistic"));
+
+	/** A statistic as the line writes it: at most one decimal, none when whole (13,2 ; 12). */
+	FText FormatStat(const float Value)
+	{
+		FNumberFormattingOptions Options;
+		Options.MinimumFractionalDigits = 0;
+		Options.MaximumFractionalDigits = 1;
+		return FText::AsNumber(Value, &Options);
+	}
+
+	/** The same, culture-free, for the report (hol.HUD.Report's "HUD stats" line). */
+	FString FormatStatPlain(const float Value)
+	{
+		return FString::SanitizeFloat(FMath::RoundToFloat(Value * 10.f) / 10.f, 0);
+	}
+}
+
+void UHOLGameScreen::HideUnitStats()
+{
+	ShownStats.Reset();
+	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
+	}
+}
+
+void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
+{
+	// One unit selected (not a hero: his statistics come from his level): its attack with the bonus of the technologies researched
+	// (Lames aff·tées: 12 -> 13,2), its armour, its range and its speed, from the row of its owner's faction.
+	const int32 Mode = CVarUnitStats.GetValueOnGameThread();
+	const FHOLUnitTypeRow* Row = Unit && Mode > 0 && !Unit->bHero ? FindUnitTypeFor(Unit->TypeName, Unit->OwnerPlayer) : nullptr;
+	if (!Row)
+	{
+		HideUnitStats();
+		return;
+	}
+	// The bonus is the player's own technologies' (a client does not know the others').
+	int32 Percent = 0;
+	const AHOLPlayerState* Own = BoundPlayerState.Get();
+	const FName AttackStat = HOLTechnology::GetAttackStat(Row->AttackType);
+	if (Own && Own->GetPlayerIndex() == Unit->OwnerPlayer && !AttackStat.IsNone())
+	{
+		Percent = Own->GetTechnologyBonusPercent(AttackStat);
+	}
+	const float Base = static_cast<float>(Row->Attack);
+	const float Attack = Base * static_cast<float>(100 + Percent) / 100.f;
+	const float Bonus = Attack - Base;
+	const bool bStrikes = Row->Attack > 0;
+	TArray<FText> Lines;
+	TArray<FString> Plain;
+	if (bStrikes)
+	{
+		Lines.Add(Percent != 0 ? FText::Format(LOCTEXT("StatAttackBonus", "Attaque {0} (+{1})"), FormatStat(Attack), FormatStat(Bonus))
+			: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)));
+		Plain.Add(Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)));
+	}
+	Lines.Add(FText::Format(LOCTEXT("StatArmor", "Armure {0} (mêlée) {1} (distance)"), Row->MeleeArmor, Row->RangedArmor));
+	Plain.Add(FString::Printf(TEXT("armor %d/%d"), Row->MeleeArmor, Row->RangedArmor));
+	if (bStrikes)
+	{
+		const bool bMelee = Row->AttackType == EHOLAttackType::Melee;
+		Lines.Add(bMelee ? LOCTEXT("StatRangeMelee", "Portée mêlée")
+			: FText::Format(LOCTEXT("StatRange", "Portée {0} m"), FormatStat(Row->AttackRange / 100.f)));
+		Plain.Add(bMelee ? FString(TEXT("range melee")) : FString::Printf(TEXT("range %s"), *FormatStatPlain(Row->AttackRange / 100.f)));
+	}
+	Lines.Add(FText::Format(LOCTEXT("StatSpeed", "Vitesse {0} m/s"), FormatStat(Row->Speed / 100.f)));
+	Plain.Add(FString::Printf(TEXT("speed %s"), *FormatStatPlain(Row->Speed / 100.f)));
+
+	ShownStats = FString::Join(Plain, TEXT(", "));
+	if (SelectionStats)
+	{
+		const FText Text = FText::Join(Mode == 2 ? FText::AsCultureInvariant(TEXT("\n")) : FText::AsCultureInvariant(TEXT("   ·   ")), Lines);
+		if (!SelectionStats->GetText().EqualTo(Text))
+		{
+			SelectionStats->SetText(Text);
+		}
+		SelectionStats->SetVisibility(ESlateVisibility::HitTestInvisible);
+	}
+}
+
 void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
+
+	RefreshUnitStats(Unit);
 
 	// Exact for the troops (J7-Q5 revised: a client receives a wounded unit's exact health); a client's hero (J8a.3) is
 	// exact from his public sheet, before it arrives known by a share of his maximum, drawn back to health points within 2
@@ -1897,7 +1984,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			// Greyed when the server would refuse it (D282): queue full (every queue of a group) or not enough resources;
 			// still clickable, the click says why (D313). The population is only checked when the unit starts: a full
 			// population makes it wait.
-			const FHOLUnitTypeRow* UnitType = FindUnitType(Command.TypeName);
+			const FHOLUnitTypeRow* UnitType = FindUnitTypeFor(Command.TypeName, PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE);
 			const FHOLResources Cost = UnitType ? UnitType->Cost : FHOLResources();
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const bool bQueueFull = !PlayerController || !PlayerController->FindProductionBuilding(Command.TypeName);
@@ -1920,6 +2007,11 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			// A technology (T4, GDD 11): its name on the cell, its cost in the tooltip; greyed when the rules, the stock or the queue
 			// would refuse it (still clickable, the click says why), the reason under its name in the tooltip.
 			const FHOLTechnologyRow* Technology = UHOLTechnologySettings::FindTechnology(Command.TypeName);
+			// BUG forge-tier1-grid: the tier the hero has opened decides the refusal of a technology (TierTooLow): the grid is drawn again when it changes (the tick compares ShownEngineTier).
+			if (PlayerState && BoundTableState.IsValid())
+			{
+				ShownEngineTier = BoundTableState->GetTier(PlayerState->GetPlayerIndex());
+			}
 			const FHOLResources Cost = Technology ? Technology->Cost : FHOLResources();
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetTechnologyName(Command.TypeName, Technology);
@@ -2724,6 +2816,14 @@ const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const
 	return Units ? Units->FindTypeRow(TypeName) : nullptr;
 }
 
+const FHOLUnitTypeRow* UHOLGameScreen::FindUnitTypeFor(const FName TypeName, const int32 OwnerPlayer) const
+{
+	const UWorld* World = GetWorld();
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	// The row of the player's faction (the cost it pays, the name it reads, the statistics it fields); the base row for nobody.
+	return Units ? (OwnerPlayer >= 0 ? Units->FindTypeRowFor(TypeName, OwnerPlayer) : Units->FindTypeRow(TypeName)) : nullptr;
+}
+
 void UHOLGameScreen::BuildLayout()
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -3096,6 +3196,10 @@ void UHOLGameScreen::BuildLayout()
 	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
 	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	AddToRow(HealthRow, SelectionHealth, 0.f);
+		SelectionStats = MakeText(TEXT("SelectionStats"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+		SelectionStats->SetAutoWrapText(true);
+		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
+		SelectionColumn->AddChildToVerticalBox(SelectionStats)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
 	// A site's progress (J6a.5, D313): a bar and its percentage.
 	UHorizontalBox* ProgressRow = MakeHorizontalBox(TEXT("SelectionProgressRow"));
 	SelectionProgressRow = ProgressRow;
