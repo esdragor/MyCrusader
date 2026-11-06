@@ -21,3 +21,7 @@ Reponse attendue : par cue, la lettre preferee (ou plusieurs) ; « aucune, dix a
 NON VERIFIE : l'ecoute (volumes relatifs, longueur, tout) ; le son dans la partie reelle (le jeu garde ses sons actuels tant que tu n'as pas choisi, la table n'est pas touchee) ; la commande console tapee a la main. Voir `Q-audio-candidates.md` (les .uasset candidats ne sont pas commites).
 
 Reponse (utilisateur, 2026-11-06 12:1x, texte brut) : audio_compare : UI.Click H, pas de son quand tu hover, UI.Open F, UI.Open A, Ui.Back B, Ui.Error A, Ui.Confirm G, Ui.Toggle pas de son, pas de son pour le tick, pas de son pour le scroll
+
+Reponse (utilisateur, 2026-11-06 12:1x) audio_compare_orders : Select.Unit D, pas de son pour tous les buildings en general (chaque building devrait avoir son propre son), le reste, pas de son
+
+Reponse (utilisateur, 2026-11-06 12:2x) audio_compare_alerts : Alert.UnderAttack A mais faute de mieux, pas de son pour les fin de building, TrainingDone prendre celui de TechDone G (il faut un truc martial), pas de son pour les tech done, Trade A, Alert Volcano A (mais plusieurs fois), Alert.Diplomacy A
