@@ -25,3 +25,5 @@ Reponse (utilisateur, 2026-11-06 12:1x, texte brut) : audio_compare : UI.Click H
 Reponse (utilisateur, 2026-11-06 12:1x) audio_compare_orders : Select.Unit D, pas de son pour tous les buildings en general (chaque building devrait avoir son propre son), le reste, pas de son
 
 Reponse (utilisateur, 2026-11-06 12:2x) audio_compare_alerts : Alert.UnderAttack A mais faute de mieux, pas de son pour les fin de building, TrainingDone prendre celui de TechDone G (il faut un truc martial), pas de son pour les tech done, Trade A, Alert Volcano A (mais plusieurs fois), Alert.Diplomacy A
+
+STATUT 2026-11-06 12:3x : REPONSE APPLIQUEE (audio_compare, audio_compare_orders, audio_compare_alerts) dans la table du jeu, worktree Arwen heal-sleep, commits 41b0607 et 76a1ab1 ; Q-audio-open = option A ; 12 cues muets ; voir AudioInProgress.md du worktree. SON: non entendu (reste a ecouter en jeu).

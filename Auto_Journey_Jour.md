@@ -401,3 +401,64 @@ Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Farami
 | Arwen-8 | a56dc422f2615946d | Documents\HeroesOfLiberty-Arwen / heal-sleep | appliquer les sons elus (reponse E-audio_compare) : Click H, Open F, Back B, Error A, Confirm G ; Hover/Toggle/Tick/Scroll aucun | sans C++ | 13:00 | lance 12:12 |
 | (suite 12:30) Elrond-7 FINI 12:12 44 tool_uses (recette independante hero_xp/cavalry/qground OK) ; Fusion-2 FINI 12:24 29 tool_uses : main = 1145fda (galadriel-tab+net-playtest, tests 1049/1049, camera 2p/8p rouges sur main aussi) ; Celeborn-9 FINI 12:27 55 tool_uses (4bb1f59 detour tenu, melee_spin 1/10) | | | | | | |
 | Fusion-3 | a95cb1e5f02ebd138 | Documents\HeroesOfLiberty-Faramir / fog | fusion tiers 872a33b + hero-j8-close 33db1e2 + heal-sleep (dernier commit vert) sur main cec9675, accord explicite de l'utilisateur 12:28 | merge C++ | 13:10 | lance 12:30 |
+
+## Bilan de la seance interactive du 2026-11-06 (10:53 -> 13:00, cartes EXCLUES par l'utilisateur)
+Agents lances : 17 (etape 0, Celeborn-8/9, Galadriel-5/6, Glorfindel-8, Elrond-6/7 integrateur, Faramir-5/6, Arwen-6/7/8, Fusion-1/2/3). tool_uses releves : max 89 (Glorfindel-8), Galadriel-5 85 ; aucun > 100.
+Fusions dans main (accord explicite de l'utilisateur pour la 3 ; jamais de push) : F1 7d0714c (fog+heal-sleep+tiers, tests 1043), F2 1145fda (galadriel-tab+net-playtest, tests 1049), F3 en cours a 12:45 (tiers + hero-j8-close + heal-sleep).
+Decisions de l'utilisateur : melee FarPlace = A (attendre 2 s puis contourner) ; stats de l'unite = ligne A + Armure heros + infobulle au survol (OK) ; sons candidats non commites (B) ; sons d'interface/selection/alertes elus (Click H, Open F, Close A, Back B, Error A, Confirm G, Select.Unit D, UnderAttack A, Trade A, Volcan A x3, Diplomacy A, TrainingDone G ; Hover/Toggle/Tick/Scroll/ordres/Select.Building/BuildingDone/TechDone muets) ; idee future : un son par type de batiment.
+Essais joues par l'utilisateur : hero_xp OK, cavalry OK, forge OK (+ infobulle stats OK, infobulle Lancier 45/15 OK), qground OK mais soldats en cercle (a rejouer sur main F3), legions_roster REGLAGE (noms par faction non cables).
+Reste (file) : noms Legions, G1 points d'appel MinTier (change le jeu), Sites S3, camera 2p/8p rouges sur main, to-and-fro melee_spin #7/#9 + tremblements slot 0, Biomes B4-B5, Sauron conflit BuildingTypes.uasset, nettoyage des 79 anciens .uasset Kenney (a decider).
+
+### Lecons appliquees 2026-11-06
+- T2-1 : appliquee : etape 0 par sous-agent en lecture seule (16 appels), plan relu ; Sauron non lance (aucune tache visual + conflit uasset), Haldir exclu par l'utilisateur
+- T2-2 : appliquee avec exceptions ecrites : 6 worktrees lances 11:05, Sauron et Haldir raisons au tableau
+- L3-12 : sans objet : etape 0 faite
+- L5-1 : appliquee : session_gate -Phase Launch -End 13:00 avant chaque lancement ; ECART : -Phase Merge et Essay lances sans -End affichent fin dure 13:30
+- L5-2 : appliquee : tableau Agents du 2026-11-06 ecrit avant le premier lancement, ids remplis, lignes ajoutees a chaque lancement
+- L3-1, L4-4 : appliquee : au plus 3 agents C++ simultanes, file de build vue a 0 a 2 tickets
+- L1-10, L5-7 : appliquee : accord de commiter les docs demande au lancement (oui par nom), docs commites a chaque boucle, jamais GDD.md
+- L4-1, L4-3 : appliquee : alarme 12:43 posee a 10:57 et declenchee a 12:43 ; heure de fin 13:00 dans le titre du tableau
+- L3-8, L4-9, Q5, L1-14 : appliquee : integrateur Elrond-6/7 nomme au lancement ; a rejoue hero_xp, cavalry, qground sur main fusionne
+- L3-9 : non mesuree : appels de la session principale non comptes
+- T2-3 : appliquee : enonces commencent par Lis agent_rules.md + arret dur
+- L1-1, L3-6, L4-7, L5-3, L7-1 : appliquee avec 2 ecarts : tool_uses releves 15 a 89 ; plus de 80 pour Glorfindel-8 (89) et Galadriel-5 (85), aucun plus de 100
+- L1-2 : appliquee : commit au moins toutes les 30 min, sauf une fenetre de 31 min chez Celeborn-9
+- L1-3 : non appliquee pour Arwen-8 (heal-sleep 25 commits de retard au rapport) ; appliquee pour les autres
+- L3-2, L4-5, L3-5 : appliquee : premiers builds C++ a 11:08, 11:09, 11:14 puis 11:47 ; Galadriel-5 a rendu un merge main sans build derriere (rattrape par Galadriel-6)
+- L1-8 : partielle : chaque agent a ecrit son journal + EtapeDefini + file (3 a 5 fichiers)
+- L1-9, L4-8 : appliquee : aucun agent n a ecrit GDD.md ; defauts codes pour toutes les questions
+- L1-7, T2-4 : appliquee : 4 questions agents, jamais plus de 2 par chantier, option Autre et defaut presents
+- L5-6 : partielle : questions posees une a une (AskUserQuestion) plutot que dans un tableau unique
+- T2-5, T2-6, L5-8 : appliquee : build avant quick_check ; camera 2p/8p rouges 2 fois sur main = connu
+- T2-7 : appliquee : Retours par fichier Q-/E-, Edit sur lignes precises
+- L1-11 : appliquee : essais joues depuis des worktrees portant main ; ECART : Elrond ne portait pas les correctifs de F3
+- L3-4 : appliquee : GIT_STATUS_PRINCIPALE rapporte par chaque agent
+- L4-12 : appliquee : faux FAIL du gate Essay corrige par Elrond-7 ; Close -Exclude, stray_processes.ps1, E_template.md par Faramir-5
+- L4-13 : sans objet : aucun UHT perime rencontre
+- L3-11, L5-5 : sans objet : cartes exclues
+- L3-7 : appliquee : veilleur silencieux quand rien ne change
+- Q1-Q4 : appliquee : preflight PASS avant chaque essai donne ; PNG ouverts par les agents ; infobulles de E-forge_stats en LOGIQUE SEULEMENT puis validees par l utilisateur
+- Q5, L5-4 : partielle : recette independante par Elrond-7 pour hero_xp, cavalry, qground ; forge_stats et audio rejoues par leur auteur seulement
+- Q6, Q7 : appliquee : sons = balayage de 10 variantes par cue
+- Q8 : sans objet : aucun defaut commun nouveau (camera 2p/8p note en file)
+- Q9 : partielle : libelles de stats tires du GDD ; noms Legions non cables
+- Q10, L4-10 : appliquee : gate Essay PASS pour hero_xp, cavalry, qground, forge, legions_roster, audio_compare
+- Q11 : appliquee : 5 essais de gameplay + les 3 scenarios audio
+- Q12, L1-6 : appliquee : reponses enregistrees dans le chantier puis fichiers supprimes (hero_xp, cavalry, forge)
+- L4-11 : appliquee : audio_compare Entree = variante suivante
+- L3/T2 fusion groupee, L4-6, L7-7 : appliquee : F1 des que 3 branches vertes (11:41), F2 11:55, F3 12:30
+- Prevol : appliquee : preflight_merge + build + quick_check -Parts tests tout vert avant F1 et F2
+- L1-13 : appliquee : commits de tests rouges avant implementation (94faa35, 79973c5, f70e8c3, 229287a, 9143d43, 7cff091)
+- L6-1 : non appliquee : une seule ligne sans C++ libre en fin de seance (WARN du gate)
+- L6-2 : appliquee : file lue par grep, jamais en entier
+- L6-3 : non appliquee : session_gate -Phase Report non lance a la reception des rapports
+- L6-4 : partielle : qground rejoue en geste Q+clic (scenario) mais souris physique jamais testee
+- L6-5 : appliquee : build avant quick_check apres chaque merge main
+- L6-6 : sans objet : aucune mesure repetee
+- L7-2 : appliquee : tips de fusion releves par git rev-parse au lancement
+- L7-3 : appliquee : verrou d editeur (EditorSlot.ps1) fusionne en F1
+- L7-4 : appliquee : PROCESSUS_DETACHES dans chaque rapport ; stray_processes.ps1 fusionne en F1
+- L7-5 : partielle : stub + test rouge pour Celeborn-8 (non rejoue sur binaire) et Glorfindel-8 (rouge observe)
+- L7-6 : partielle : GESTE et SON declares dans les E-*.md ; geste physique et son jamais verifies
+- L7-8 : appliquee : session_gate -Exclude Haldir fusionne en F1
+

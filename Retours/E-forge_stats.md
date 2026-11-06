@@ -17,3 +17,8 @@ Lancer UNE commande par essai (3 minutes au plus chacun) :
 powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 forge -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel
 powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 legions_roster -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel
 Reponse attendue : OK, BUG: ... ou REGLAGE: ... (en particulier : l'infobulle au survol de la ligne de stats).
+Reponse (utilisateur 2026-11-06 12:3x) : forge : OK. legions_roster : REGLAGE: seulement le Dread Rider a un nom qui change, les autres unites Legions gardent leur nom d'Aube (noms par faction a cabler, voir ligne [ ] de Auto_Journey_File.md). Infobulle 45/15 et infobulle de stats au survol : pas de retour.
+
+Reponse (utilisateur 2026-11-06 12:3x) : infobulle au survol : OK (fixe). Restent seulement les noms des unites Legions a cabler.
+
+Reponse (utilisateur 2026-11-06 12:4x) : infobulle du Lancier 45 N / 15 B : OK (vue, bonne).
