@@ -8,7 +8,20 @@ bool AudioTestIsSilentEvent(int Event)
 {
 	return Event == HOLAudioEvent::UiHover || Event == HOLAudioEvent::UiToggle || Event == HOLAudioEvent::UiTick || Event == HOLAudioEvent::UiScroll
 		|| Event == HOLAudioEvent::OrderMove || Event == HOLAudioEvent::OrderAttack || Event == HOLAudioEvent::OrderGather || Event == HOLAudioEvent::OrderBuild
-		|| Event == HOLAudioEvent::OrderGarrison || Event == HOLAudioEvent::SelectBuilding;
+		|| Event == HOLAudioEvent::OrderGarrison || Event == HOLAudioEvent::SelectBuilding
+		|| Event == HOLAudioEvent::AlertBuildingDone || Event == HOLAudioEvent::AlertTechDone;
+}
+
+// A cue with three variants, for the tests of the choice of a variant (the table's cues have one file each since the user chose).
+FHOLAudioCue AudioTestCueWithVariants()
+{
+	FHOLAudioCue Cue;
+	Cue.Name = "Test.Variants";
+	Cue.Pack = "rpg-audio";
+	Cue.Stems.Add("a");
+	Cue.Stems.Add("b");
+	Cue.Stems.Add("c");
+	return Cue;
 }
 
 // A cue that is not in the table gives an empty name.
@@ -60,6 +73,9 @@ void Test_AudioNamesAndFilesAreUnique(FUnitTest& T)
 			Seen.Add(Cue.Stems[Index]);
 			FString Path = HOLAudio::SoundPath(Cue, Index);
 			FString Expected = f"/Game/Audio/Kenney/{Cue.Pack}/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
+			// The VSCO recordings (CC0) are not a Kenney pack: /Game/Audio/Vsco.
+			if (Cue.Pack == "vsco")
+				Expected = f"/Game/Audio/Vsco/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 			T.AssertEquals(Expected, Path, f"{Cue.Name}: asset path of file {Index}");
 		}
 	}
@@ -128,8 +144,8 @@ void Test_AudioAlertsOutrankTheInterface(FUnitTest& T)
 // The variant is a function of the seed: same seed, same file; every file comes up; a negative seed is fine.
 void Test_AudioPickIsDeterministicAndCoversEveryFile(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::AlertUnderAttack);
-	T.AssertTrue(Cue.Stems.Num() >= 2, "the under-attack alert has variants");
+	FHOLAudioCue Cue = AudioTestCueWithVariants();
+	T.AssertTrue(Cue.Stems.Num() >= 2, "the test cue has variants");
 	TArray<bool> Heard;
 	for (int Index = 0; Index < Cue.Stems.Num(); Index++) Heard.Add(false);
 	for (int Seed = -7; Seed < 40; Seed++)
@@ -147,7 +163,7 @@ void Test_AudioPickIsDeterministicAndCoversEveryFile(FUnitTest& T)
 // The same file is never played twice in a row when the cue has another one.
 void Test_AudioPickNextAvoidsTheLastFile(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::AlertUnderAttack);
+	FHOLAudioCue Cue = AudioTestCueWithVariants();
 	int Last = -1;
 	for (int Seed = 0; Seed < 60; Seed++)
 	{

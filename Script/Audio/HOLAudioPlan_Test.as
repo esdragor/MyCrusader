@@ -47,14 +47,19 @@ void Test_AudioPlanUnknownEventDoesNotPlay(FUnitTest& T)
 // The same file is not heard twice in a row when the cue has another, whatever the seed.
 void Test_AudioPlanNeverRepeatsTheLastFile(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::AlertUnderAttack);
+	for (int Event = 0; Event < HOLAudio::Count(); Event++)
+	{
+	FHOLAudioCue Cue = HOLAudio::CueFor(Event);
+	if (Cue.Stems.Num() < 2)
+		continue;
 	for (int Last = 0; Last < Cue.Stems.Num(); Last++)
 	{
 		for (int Seed = -7; Seed < 20; Seed++)
 		{
-			FHOLAudioPlan Plan = HOLAudio::Plan(HOLAudioEvent::AlertUnderAttack, 5000, -1, Seed, Last);
-			T.AssertTrue(Plan.FileIndex != Last, f"last {Last}, seed {Seed}: another file");
+			FHOLAudioPlan Plan = HOLAudio::Plan(Event, 5000, -1, Seed, Last);
+			T.AssertTrue(Plan.FileIndex != Last, f"{Cue.Name}: last {Last}, seed {Seed}: another file");
 		}
+	}
 	}
 }
 
