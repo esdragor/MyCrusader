@@ -21,12 +21,14 @@ frames 20
 hol.HUD.UnitStats 1
 frames 10
 hol.HUD.Report
+waitlog HUD stats: attack 13.2 (+1.2)
 note Option A : une ligne sous les points de vie (Entree = option B).
 capture forge_stats_compare_A
 waitkey Option A. Entree : option B.
 hol.HUD.UnitStats 2
 frames 10
 hol.HUD.Report
+waitlog HUD stats: attack 13.2 (+1.2)
 note Option B : une ligne par statistique.
 capture forge_stats_compare_B
 waitkey Option B. Entree : fin.
