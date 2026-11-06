@@ -1,0 +1,27 @@
+# D731 REGLE DU CAMP : copie de neutrals_qground avec hol.Combat.AttackMoveEngagesNeutral 0 (le reglage du joueur Neutre coupe l engagement) : un camp de carte garde sa regle propre et est QUAND MEME engage par Q + clic (coups portes, "Camp 0: fighting"). Rouge si le reglage 0 se mettait a couvrir les camps.
+hol.Combat.LogHits 1
+hol.Camp.Aggro 1
+hol.Combat.AttackMoveEngagesNeutral 0
+hol.Camp.Add -9800 0 3 Spearman
+waitlog Camp 0: 3 Spearman at
+hol.Camera.Focus -9500 0
+frames 5
+hol.Units.Spawn 6 -13800 0 0 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+frames 120
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -8000 0
+waitlog Scripted left click at
+waitlog attack-move to
+waitlog hits #
+waitlog Camp 0: fighting
+hol.Camera.Zoom 8
+frames 40
+capture neutrals_qground_rule_fight
+frames 200
+hol.Camp.Report
+note Reglage 0 (le joueur Neutre n est plus engage) : un camp de carte est quand meme frappe par Q + clic (regle propre du camp, D731).

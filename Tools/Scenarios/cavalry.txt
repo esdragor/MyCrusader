@@ -37,7 +37,7 @@ hol.Camera.FocusNear 8000 -3000
 frames 2
 hol.Units.SpawnHere 3 Archer 1 250
 waitlog SpawnHere: 3 Archer of slot 1
-hol.Camera.FocusNear 6400 -4800
+hol.Camera.FocusNear 5600 -3000
 hol.Camera.Zoom 0
 frames 20
 hol.Select.Type LightCavalry last
@@ -60,11 +60,11 @@ hol.Camera.FocusNear 8000 0
 frames 2
 hol.Units.SpawnHere 2 Spearman 1 250
 waitlog SpawnHere: 2 Spearman of slot 1
-hol.Camera.FocusNear 6400 -1800
+hol.Camera.FocusNear 5600 0
 frames 20
 hol.Select.Type LightCavalry last
 waitlog Select type LightCavalry: 1 units
-note 4. Un Cavalier leger contre 2 Piquiers : le contre. Chaque coup de Piquier lui fait 24 (8 + 17 contre Cavalerie - 1 d'armure), 5 coups le tuent en ~8 s ; lui n'en fait que 9 (80 PV : 9 coups). Il doit mourir.
+note 4. Un Cavalier leger contre 2 Piquiers : le contre. Chaque coup de Piquier lui fait 24 (8 + 17 contre Cavalerie - 1 d'armure), 5 coups le tuent en ~8 s ; lui n'en fait que 9 par coup (120 PV : il en encaisse 5). Il doit mourir.
 hol.Select.AttackMoveNear 8000 0
 panel hide
 frames 3
@@ -82,7 +82,7 @@ hol.Camera.FocusNear 8000 3000
 frames 2
 hol.Units.SpawnHere 1 Mangonel 1 100
 waitlog SpawnHere: 1 Mangonel of slot 1
-hol.Camera.FocusNear 6400 1200
+hol.Camera.FocusNear 5600 3000
 frames 20
 hol.Select.Type LightCavalry last
 waitlog Select type LightCavalry: 1 units
