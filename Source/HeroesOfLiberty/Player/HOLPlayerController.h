@@ -419,6 +419,8 @@ public:
 	bool IsAttackMoveArmed() const { return bAttackMoveArmed; }
 	/** The attack-move of the mode at a viewport point (a left click, or hol.Select.AttackMove). */
 	void AttackMoveAt(const FVector2D& ViewportFraction, bool bQueue);
+	/** Scripted checks: a real left click at a viewport point, as the input's press and release (hol.Select.LeftClickGround). */
+	void ScriptLeftClick(const FVector2D& ViewportFraction);
 	/**
 	 * Banner aiming (J8c.4, the grid's Z with the hero commanded): the next left click on the ground plants it there (the
 	 * server checks the reach); a right click or Escape leaves it.
@@ -466,6 +468,8 @@ public:
 	void RequestCheatPopulation(int32 Places);
 	/** T6, scenarios: the local player has Technology researched at once, free, its building or not (hol.Cheat.Technology). */
 	void RequestCheatTechnology(FName Technology);
+	/** G0 (D710), scenarios: forces the tier of Slot (-1: the local player's, -2: every slot) to Tier (0 to 3; below 0 lifts it), the hero's level untouched (hol.Cheat.Tier). */
+	void RequestCheatTier(int32 Tier, int32 Slot);
 	void RequestCheatUnitSpeed(float Scale);
 	void RequestCheatGatherSpeed(float Scale);
 	/** Q-chapelle-moine, scenarios: every living unit of the local player, but the King, is wounded to Percent of its maximum health (hol.Cheat.Wound). */
@@ -771,6 +775,9 @@ private:
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatTechnology(FName Technology);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCheatTier(int32 Tier, int32 Slot);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCheatUnitSpeed(float Scale);

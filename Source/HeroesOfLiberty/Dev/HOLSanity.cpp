@@ -48,8 +48,19 @@ namespace UE::HeroesOfLiberty::Dev
 			TMap<uint32, HOLSanity::FTrace> Windows;
 			/** hol.Test.SanityMotion <Seconds>: the verdict (hol.Test.Sanity) is given once this many steps are watched (0: none). */
 			int64 VerdictAtSteps = 0;
+			/** Check 4: each unit's run of steps standing still out of reach of its target while a place was free round it, and the faults found. */
+			TMap<uint32, HOLSanity::FStall> Stalls;
+			TMap<uint32, FString> StallFaults;
 		};
 		FSanityWatch Watch;
+		/** hol.Test.SanityStall <Seconds>: check 4, a soldier standing still this long out of reach of its target with a free place round it fails (0: off). */
+		float StallSeconds = 0.5f;
+		FAutoConsoleVariableRef CVarStallSeconds(TEXT("hol.Test.SanityStall"), StallSeconds,
+			TEXT("Seconds (default 0.5; 0 = off) a melee may stand still out of reach of its target while a place is free round that target: longer, hol.Test.Sanity says FAIL (the user's retour on the neutrals trial, D641)"));
+		/** hol.Test.SanityPlaceWalk: Q-sanity-circling (Q-sanity-circling = C, default 1): the walk round ONE side to the free place a soldier claimed round its target (D641) is tolerated by the spin rules; a turn against the one before is not (see FTrace::PlaceWalk). */
+		int32 PlaceWalkIsManoeuvre = 1;
+		FAutoConsoleVariableRef CVarPlaceWalkIsManoeuvre(TEXT("hol.Test.SanityPlaceWalk"), PlaceWalkIsManoeuvre,
+			TEXT("1 (default, Q-sanity-circling = C): a soldier walking to the free place it claimed round its target may go round ONE side (turns in one direction, each under a right angle, are not summed); a turn back on its steps is still a fault. 0: every step is judged"));
 		/** hol.Sanity.DumpUnit <UnitId>: the log line of that unit at every step (position, velocity, order), -1 none. */
 		int32 DumpUnit = -1;
 		FAutoConsoleVariableRef CVarDumpUnit(TEXT("hol.Sanity.DumpUnit"), DumpUnit, TEXT("Log the position, velocity and order of this unit at every watched step (-1: none)."));
@@ -86,6 +97,23 @@ namespace UE::HeroesOfLiberty::Dev
 			const int32 JudgeEvery = FMath::Max(1, FMath::RoundToInt32(1.f / FMath::Max(static_cast<float>(Simulation->GetStepSeconds()), 0.001f)));
 			TArray<uint32> UnitIds;
 			Units->GetAllUnitIds(UnitIds);
+			// Check 4's bodies: every living unit's place and width this step (and whether it shoots, a shooter stands off on purpose).
+			TMap<uint32, TPair<HOLSanity::FBody, bool>> StallBodies;
+			if (StallSeconds > 0.f)
+			{
+				for (const uint32 BodyId : UnitIds)
+				{
+					const FMassEntityHandle BodyEntity = Units->FindEntity(BodyId);
+					const FTransformFragment* BodyTransform = EntityManager.IsEntityValid(BodyEntity) ? EntityManager.GetFragmentDataPtr<FTransformFragment>(BodyEntity) : nullptr;
+					const FHOLUnitStateFragment* BodyState = BodyTransform ? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(BodyEntity) : nullptr;
+					FHOLUnitView BodyView;
+					if (BodyState && BodyState->Activity != EHOLUnitActivity::Dying && Units->GetUnitView(BodyId, BodyView))
+					{
+						const FVector BodyWhere = BodyTransform->GetTransform().GetLocation();
+						StallBodies.Add(BodyId, TPair<HOLSanity::FBody, bool>(HOLSanity::FBody{ FVector2D(BodyWhere.X, BodyWhere.Y), BodyView.Radius }, BodyView.bRanged));
+					}
+				}
+			}
 			for (const uint32 UnitId : UnitIds)
 			{
 				const FMassEntityHandle Entity = Units->FindEntity(UnitId);
@@ -142,10 +170,12 @@ namespace UE::HeroesOfLiberty::Dev
 								OtherVelocity ? OtherVelocity->Value.X : 0., OtherVelocity ? OtherVelocity->Value.Y : 0.);
 						}
 					}
-					UE_LOG(LogHOLTest, Display, TEXT("SanityDump3 #%u step %lld at (%.0f, %.0f) vel (%.0f, %.0f) ph %d slot (%.0f, %.0f) ap%d at%d tgt #%d (%.0f, %.0f) slide (%.2f, %.2f) flank %d near:%s"), UnitId, StepIndex, Where.X, Where.Y,
+					UE_LOG(LogHOLTest, Display, TEXT("SanityDump3 #%u step %lld at (%.0f, %.0f) vel (%.0f, %.0f) ph %d slot (%.0f, %.0f) ap%d at%d tgt #%d (%.0f, %.0f) slide (%.2f, %.2f) flank %d place %d/%.2f np %.1f room %d loop %.1f near:%s"), UnitId, StepIndex, Where.X, Where.Y,
 						Velocity ? Velocity->Value.X : 0., Velocity ? Velocity->Value.Y : 0., DumpOrder ? static_cast<int32>(DumpOrder->Phase) : -1, DumpOrder ? DumpOrder->Slot.X : 0., DumpOrder ? DumpOrder->Slot.Y : 0.,
 						DumpCombat && DumpCombat->bApproaching ? 1 : 0, DumpCombat && DumpCombat->bAttacking ? 1 : 0, TargetId, TargetWhere.X, TargetWhere.Y,
-						DumpCombat ? DumpCombat->SlideWay.X : 0.f, DumpCombat ? DumpCombat->SlideWay.Y : 0.f, DumpCombat && DumpCombat->bFlanking ? 1 : 0, *Near);
+						DumpCombat ? DumpCombat->SlideWay.X : 0.f, DumpCombat ? DumpCombat->SlideWay.Y : 0.f, DumpCombat && DumpCombat->bFlanking ? 1 : 0,
+							DumpCombat && DumpCombat->bHasPlace ? 1 : 0, DumpCombat ? DumpCombat->PlaceAngle : 0.f, DumpCombat ? DumpCombat->NoProgressSeconds : 0.f, DumpCombat && DumpCombat->bRoomAtTarget ? 1 : 0,
+							DumpCombat ? DumpCombat->LoopWaitSeconds : 0.f, *Near);
 				}
 				if (DumpUnit == -2 && UnitId >= 8 && UnitId <= 13)
 				{
@@ -232,6 +262,8 @@ namespace UE::HeroesOfLiberty::Dev
 				Window.Places.Add(FVector2D(Where.X, Where.Y));
 				Window.Ordered.Add(bOrdered ? 1 : 0);
 				Window.Flanking.Add(Combat && Combat->bFlanking ? 1 : 0);
+					// Q-sanity-circling = C: the walk round one side to the claimed place is tolerated, a turn back on its steps is not (HOLSanity::FTrace::PlaceWalk).
+					Window.PlaceWalk.Add(Combat && PlaceWalkIsManoeuvre != 0 && Combat->bHasPlace && Combat->bApproaching ? 1 : 0);
 				{
 					const FMassVelocityFragment* StepVelocity = EntityManager.GetFragmentDataPtr<FMassVelocityFragment>(Entity);
 					int32 TargetUnit = -1;
@@ -245,11 +277,54 @@ namespace UE::HeroesOfLiberty::Dev
 					Window.States.Add(FString::Printf(TEXT("%d:ap%d at%d t%d ph%d v%.0f,%.0f"), Combat ? static_cast<int32>(Combat->Mode) : -1, Combat && Combat->bApproaching ? 1 : 0, Combat && Combat->bAttacking ? 1 : 0,
 						TargetUnit, Order ? static_cast<int32>(Order->Phase) : -1, StepVelocity ? StepVelocity->Value.X : 0., StepVelocity ? StepVelocity->Value.Y : 0.));
 				}
+				if (StallSeconds > 0.f)
+				{
+					// Check 4: a melee standing still (under 0.3 cm this step) more than 40 cm short of its target's edge, with a free place round it.
+					bool bStalledWithRoom = false;
+					FString StallText;
+					const FHOLUnitStateFragment* TargetState = Combat && Combat->Target.IsSet() && EntityManager.IsEntityValid(Combat->Target) && !Combat->bAttacking && Combat->Mode != EHOLCombatMode::Hold && Window.Places.Num() >= 2
+						? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Combat->Target) : nullptr;
+					const TPair<HOLSanity::FBody, bool>* SelfBody = TargetState ? StallBodies.Find(UnitId) : nullptr;
+					const TPair<HOLSanity::FBody, bool>* TargetBody = TargetState ? StallBodies.Find(TargetState->UnitId) : nullptr;
+					if (SelfBody && TargetBody && !SelfBody->Value)
+					{
+						const bool bStill = FVector2D::Distance(Window.Places[Window.Places.Num() - 2], FVector2D(Where.X, Where.Y)) < 0.3;
+						const double Gap = FVector2D::Distance(SelfBody->Key.Where, TargetBody->Key.Where) - SelfBody->Key.Radius - TargetBody->Key.Radius;
+						if (bStill && Gap > 40.)
+						{
+							TArray<HOLSanity::FBody> Others;
+							for (const TPair<uint32, TPair<HOLSanity::FBody, bool>>& Body : StallBodies)
+							{
+								if (Body.Key != UnitId && Body.Key != TargetState->UnitId)
+								{
+									Others.Add(Body.Value.Key);
+								}
+							}
+							bStalledWithRoom = HOLSanity::HasFreePlaceAround(TargetBody->Key.Where, TargetBody->Key.Radius, SelfBody->Key.Radius, Others)
+									// Q-neutrals-hold = C: a place that bodies close on both sides keep out of reach is not room to strike.
+									&& !HOLSanity::IsBoxedIn(SelfBody->Key.Where, SelfBody->Key.Radius, TargetBody->Key.Where, Others);
+							StallText = FString::Printf(TEXT("out of reach of #%u at (%.0f, %.0f), %.0f cm short of its edge, with a free place round it (mode %d, approaching %d, flanking %d, flank wait %.1f s, loop wait %.1f s, phase %d, claimed place %d, no headway %.1f s)"),
+								TargetState->UnitId, TargetBody->Key.Where.X, TargetBody->Key.Where.Y, Gap, static_cast<int32>(Combat->Mode), Combat->bApproaching ? 1 : 0, Combat->bFlanking ? 1 : 0,
+								Combat->FlankWaitSeconds, Combat->LoopWaitSeconds, Order ? static_cast<int32>(Order->Phase) : -1, Combat->bHasPlace ? 1 : 0, Combat->NoProgressSeconds);
+						}
+					}
+					HOLSanity::FStall& Stall = Watch.Stalls.FindOrAdd(UnitId);
+					if (Stall.Step(bStalledWithRoom, Simulation->GetStepSeconds(), StallSeconds))
+					{
+						const FString StallLine = FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) stalls over %.1f s %s"), UnitId, State->OwnerPlayer, Where.X, Where.Y, StallSeconds, *StallText);
+						UE_LOG(LogHOLTest, Display, TEXT("SanityStall step %lld: %s"), Watch.Steps, *StallLine);
+						if (!Watch.StallFaults.Contains(UnitId))
+						{
+							Watch.StallFaults.Add(UnitId, StallLine);
+						}
+					}
+				}
 				if (Window.Places.Num() > WindowSteps)
 				{
 					Window.Places.RemoveAt(0, Window.Places.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Ordered.RemoveAt(0, Window.Ordered.Num() - WindowSteps, EAllowShrinking::No);
 					Window.Flanking.RemoveAt(0, Window.Flanking.Num() - WindowSteps, EAllowShrinking::No);
+						Window.PlaceWalk.RemoveAt(0, Window.PlaceWalk.Num() - WindowSteps, EAllowShrinking::No);
 					Window.States.RemoveAt(0, Window.States.Num() - WindowSteps, EAllowShrinking::No);
 				}
 				if (Window.Places.Num() == WindowSteps && Watch.Steps % JudgeEvery == 0 && !Watch.Faults.Contains(UnitId))
@@ -299,6 +374,8 @@ namespace UE::HeroesOfLiberty::Dev
 			Watch.Tracks.Reset();
 			Watch.Faults.Reset();
 			Watch.Windows.Reset();
+			Watch.Stalls.Reset();
+			Watch.StallFaults.Reset();
 			Watch.VerdictAtSteps = 0;
 			Watch.Steps = 0;
 		}
@@ -404,6 +481,18 @@ namespace UE::HeroesOfLiberty::Dev
 				{
 					Failures.Add(Fault.Value);
 				}
+				for (const TPair<uint32, FString>& Fault : Watch.StallFaults)
+				{
+					Failures.Add(Fault.Value);
+				}
+				int32 StallRuns = 0;
+				double StallLongest = 0.;
+				for (const TPair<uint32, HOLSanity::FStall>& Stall : Watch.Stalls)
+				{
+					StallRuns += Stall.Value.Runs;
+					StallLongest = FMath::Max(StallLongest, Stall.Value.Longest);
+				}
+				UE_LOG(LogHOLTest, Display, TEXT("Sanity stalls: %d runs over %.1f s, longest %.1f s (limit hol.Test.SanityStall)"), StallRuns, StallSeconds, StallLongest);
 			}
 			if (Failures.IsEmpty())
 			{

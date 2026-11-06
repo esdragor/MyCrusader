@@ -16,23 +16,19 @@ FHOLDiplomacyBook DpHumans(int Slots)
 	return HOLDiplomacy::NewBook(Slots, NoAI);
 }
 
-// An alliance offered and not answered is « en attente de l'autre » (D369: both must say Ally); answered, it is not pending and the vision opens up.
+// An alliance needs both sides (D369) but no waiting state is shown; a break drops both stances to Enemy at once.
 void Test_DiplomacyPanelPendingAlliance(FUnitTest& T)
 {
 	FHOLDiplomacyBook Book = DpHumans(4);
-	T.AssertFalse(DpRow(Book, 0, 1, false).bPending, "at launch (Enemy toward all): nothing pending");
 	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
 	FHOLDiplomacyRowView Offered = DpRow(Book, 0, 1, false);
-	T.AssertTrue(Offered.bPending, "0 offers, 1 has not answered: pending");
-	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "the viewer's stance shown is Ally");
+	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "the viewer's stance shown is Ally (no waiting state: nothing else is written)");
 	T.AssertEquals(Offered.Relation, HOLDiplomacy::Enemy, "but the relation is not an alliance yet");
 	T.AssertFalse(Offered.bVisionEnabled, "no vision to share before the alliance");
-	T.AssertFalse(DpRow(Book, 1, 0, false).bPending, "the other side offered nothing: not pending there");
 	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Neutral);
-	T.AssertTrue(DpRow(Book, 0, 1, false).bPending, "1 answered Neutral: still pending");
+	T.AssertEquals(DpRow(Book, 0, 1, false).Relation, HOLDiplomacy::Neutral, "0 Ally, 1 Neutral: the most hostile (D375) is Neutral");
 	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
 	FHOLDiplomacyRowView Allied = DpRow(Book, 0, 1, false);
-	T.AssertFalse(Allied.bPending, "both said Ally: no longer pending");
 	T.AssertEquals(Allied.Relation, HOLDiplomacy::Ally, "allied");
 	T.AssertTrue(Allied.bVisionEnabled, "allies may share their vision");
 	T.AssertFalse(Allied.bVisionChecked, "not ticked until asked");
@@ -40,7 +36,8 @@ void Test_DiplomacyPanelPendingAlliance(FUnitTest& T)
 	T.AssertTrue(DpRow(Book, 0, 1, false).bVisionChecked, "ticked once shared");
 	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
 	FHOLDiplomacyRowView Broken = DpRow(Book, 0, 1, false);
-	T.AssertTrue(Broken.bPending, "the other broke: the viewer's Ally stands alone, pending again");
+	T.AssertEquals(Broken.MyStance, HOLDiplomacy::Enemy, "the other broke: the viewer's row shows Enemy at once, not Ally (bug of 2026-11-04)");
+	T.AssertEquals(Broken.TheirStance, HOLDiplomacy::Enemy, "and the other's stance is Enemy");
 	T.AssertFalse(Broken.bVisionChecked, "the break cut the vision at once (D370, D371)");
 	T.AssertFalse(Broken.bVisionEnabled, "and it cannot be ticked");
 }
@@ -61,7 +58,6 @@ void Test_DiplomacyPanelLockedInStandard(FUnitTest& T)
 	T.AssertEquals(Mate.MyStance, HOLDiplomacy::Ally, "a teammate is shown Ally");
 	T.AssertTrue(Mate.bVisionChecked, "his vision is shared by the team");
 	T.AssertFalse(Mate.bVisionEnabled, "and not a choice");
-	T.AssertFalse(Mate.bPending, "nothing is pending in a fixed team");
 	FHOLDiplomacyRowView Foe = DpRow(Book, 0, 2, true);
 	T.AssertEquals(Foe.MyStance, HOLDiplomacy::Enemy, "the other team is shown Enemy");
 	T.AssertFalse(Foe.bStanceEditable, "locked as well");
@@ -106,4 +102,41 @@ void Test_DiplomacyPanelTributeAndCycle(FUnitTest& T)
 	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Ally), HOLDiplomacy::Neutral, "Allié -> Neutre");
 	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Neutral), HOLDiplomacy::Enemy, "Neutre -> Ennemi");
 	T.AssertEquals(HOLDiplomacyPanel::NextStance(HOLDiplomacy::Enemy), HOLDiplomacy::Ally, "Ennemi -> Allié");
+}
+
+// E-diplomacy_locked (the user, 2026-11-05): no switch button, FOUR tribute buttons a line, one per resource (gold, food, wood, stone), each one giving its own
+// resource when clicked. The panel's controls are told apart by a kind (the click) and a name (hol.HUD.Click): four distinct ones, each giving its resource back,
+// none of them one of the panel's other kinds (0..10); the labels are the game's resource names, one each.
+void Test_DiplomacyPanelFourTributeButtons(FUnitTest& T)
+{
+	T.AssertEquals(4, HOLDiplomacyPanel::TributeButtonCount, "four buttons");
+	T.AssertEquals(3, HOLDiplomacyPanel::TributeResource(0), "gold first");
+	TArray<bool> bSeen;
+	bSeen.SetNum(4);
+	for (int Index = 0; Index < HOLDiplomacyPanel::TributeButtonCount; Index++)
+	{
+		const int Resource = HOLDiplomacyPanel::TributeResource(Index);
+		T.AssertTrue(Resource >= 0 && Resource < 4, "a game resource");
+		if (Resource >= 0 && Resource < 4)
+		{
+			T.AssertFalse(bSeen[Resource], "each resource once");
+			bSeen[Resource] = true;
+		}
+		const int Kind = HOLDiplomacyPanel::TributeKind(Resource);
+		T.AssertTrue(Kind > 10, "a kind of its own, none of the panel's other controls (0..10)");
+		T.AssertEquals(Resource, HOLDiplomacyPanel::TributeResourceOfKind(Kind), "the kind gives its resource back");
+		T.AssertEquals(Resource, HOLDiplomacyPanel::TributeResourceOfName(HOLDiplomacyPanel::TributeControlName(1, Resource)), "so does the control's name");
+		for (int Other = 0; Other < Index; Other++)
+		{
+			const int OtherResource = HOLDiplomacyPanel::TributeResource(Other);
+			T.AssertTrue(HOLDiplomacyPanel::TributeKind(OtherResource) != Kind, "distinct kinds");
+			T.AssertTrue(HOLDiplomacyPanel::TributeControlName(1, OtherResource) != HOLDiplomacyPanel::TributeControlName(1, Resource), "distinct names");
+			T.AssertTrue(HOLDiplomacyPanelText::ResourceName(OtherResource) != HOLDiplomacyPanelText::ResourceName(Resource), "distinct labels");
+		}
+	}
+	T.AssertTrue(HOLDiplomacyPanel::TributeControlName(1, 3) != HOLDiplomacyPanel::TributeControlName(2, 3), "a name a line");
+	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfKind(6), "the old single tribute kind gives none");
+	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfKind(10), "nor the old switch kind");
+	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfName(n"DipResource"), "no switch control any more");
+	T.AssertTrue("Tribut 100 or" == HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, HOLDiplomacyPanelText::ResourceName(3)), "the label is the existing one, \"Tribut 100 or\"");
 }

@@ -58,6 +58,9 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			// On their own lines too (J6a.5): what the grid's cells write, and their tooltips.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD cells: %s"), *Screen.DescribeCells());
 			UE_LOG(LogHOLUI, Display, TEXT("HUD tooltips: %s"), *Screen.DescribeTooltips());
+				// The selected unit's statistics (attack with the technologies' bonus...), on their own line too.
+				UE_LOG(LogHOLUI, Display, TEXT("HUD stats: %s"), *Screen.DescribeStats());
+				UE_LOG(LogHOLUI, Display, TEXT("HUD stats tip: %s"), *Screen.DescribeStatsTip());
 			// The main forums (V2): the selected one's lives and state, the players' table.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD forum: %s"), *Screen.DescribeForum());
 			// The thread of messages (V4.2), on its own line too.

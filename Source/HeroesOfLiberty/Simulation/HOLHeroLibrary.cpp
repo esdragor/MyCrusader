@@ -17,6 +17,7 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
+#include "Match/HOLFactionRules.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -80,7 +81,7 @@ int32 UHOLHeroLibrary::GetHeroMaxHealth(const UObject* WorldContextObject, const
 {
 	const UWorld* World = GetWorldOf(WorldContextObject);
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
-	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(FHOLStartRules::HeroTypeName) : nullptr;
+	const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(HOLFactionRules::GetRoleTypeName(World, Slot, HOLFactionRules::Roles::Hero), HOLFactionRules::GetSlotFactionKey(World, Slot)) : nullptr;
 	if (!Row)
 	{
 		return 0;

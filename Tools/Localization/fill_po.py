@@ -279,11 +279,17 @@ TRANSLATIONS = {
     "HOLDiplomacyPanel,Ally": ("Ally", "同盟"),
     "HOLDiplomacyPanel,Neutral": ("Neutral", "中立"),
     "HOLDiplomacyPanel,Enemy": ("Enemy", "敵対"),
-    "HOLDiplomacyPanel,Pending": ("Waiting for the other", "相手の返答待ち"),
+    "HOLDiplomacyPanel,TaxNote": ("Tribute: {0}% tax kept by the Market", "貢物：市場が税{0}%を徴収"),
+    "HOLDiplomacyPanel,ResourceButton": ("Resource: {0}", "資源：{0}"),
+    "HOLDiplomacyPanel,ResourceTip": ("Choose the resource of the tributes (food, wood, stone, gold)", "貢物の資源を選ぶ（食料・木材・石材・金）"),
+    "HOLDiplomacyPanel,ResFood": ("food", "食料"),
+    "HOLDiplomacyPanel,ResWood": ("wood", "木材"),
+    "HOLDiplomacyPanel,ResStone": ("stone", "石材"),
+    "HOLDiplomacyPanel,ResGold": ("gold", "金"),
     "HOLDiplomacyPanel,Vision": ("Vision", "視界共有"),
     "HOLDiplomacyPanel,VisionTip": ("Share my vision with this player (allies only)", "このプレイヤーと視界を共有（同盟のみ）"),
-    "HOLDiplomacyPanel,Tribute": ("Tribute 100 gold ({0}% tax)", "貢物 100ゴールド（税{0}%）"),
-    "HOLDiplomacyPanel,TributeTip": ("Give 100 gold to this player; the Market keeps {0}%", "このプレイヤーに100ゴールドを贈る。市場が{0}%を徴収"),
+    "HOLDiplomacyPanel,Tribute": ("Tribute 100 {0}", "貢物 {0} 100"),
+    "HOLDiplomacyPanel,TributeTip": ("Give 100 {0} to this player; the Market keeps {1}%", "このプレイヤーに{0}を100贈る。市場が{1}%を徴収"),
     "HOLDiplomacyPanel,TributeNoMarket": ("A finished Market is needed to send a tribute", "貢物には完成した市場が必要です"),
     "HOLDiplomacyPanel,Message": ("Message", "メッセージ"),
     "HOLDiplomacyPanel,MessageTip": ("Private message to this player", "このプレイヤーへの個人メッセージ"),
@@ -415,6 +421,26 @@ TRANSLATIONS = {
     # Q-chapelle-moine = A: the Chapel and the Monk (GDD 7.1, 11.1).
     "HOLGameNames,Chapel": ("Chapel", "礼拝堂"),
     "HOLGameNames,Monk": ("Monk", "修道士"),
+    # C1 (D672, cavalry of the prototype): the Stable and the Light Cavalry. NOT YET USED: the keys exist in the .po files only once
+    # HOLGameNames.cpp has the two LOCTEXT (C2, C++); until then both show the table's French name (DisplayName) in every language.
+    "HOLGameNames,Stable": ("Stable", "厩舎"),
+    "HOLGameNames,LightCavalry": ("Light Cavalry", "軽騎兵"),
+    # F1 (FortificationsInProgress.md): the Forge. NOT YET USED, same rule as the Stable: the key exists in the .po files only once
+    # HOLGameNames.cpp::GetBuildingName has its LOCTEXT("Forge", "Forge") (C++); until then the table's French name (DisplayName) shows in every language.
+    "HOLGameNames,Forge": ("Forge", "鍛冶場"),
+    # M2 (MoraleInProgress.md, D704): the names and descriptions of the morale effects (Script/Morale/HOLMoraleTable.as, made from Tools/Data/Effects.csv).
+    "HOLMoraleTable,NameDawnAura": ("Dawn Aura", "暁の加護"),
+    "HOLMoraleTable,NameCloseRanks": ("Close ranks", "隊列を詰めよ"),
+    "HOLMoraleTable,NameBanner": ("Banner", "軍旗"),
+    "HOLMoraleTable,NameTriumph": ("Triumph", "勝利の高揚"),
+    "HOLMoraleTable,NameDemoralised": ("Demoralised", "士気喪失"),
+    "HOLMoraleTable,NameHesitation": ("Hesitation", "ためらい"),
+    "HOLMoraleTable,DescriptionDawnAura": ("Units of your side near the hero take 15% less damage.", "英雄の近くにいる味方ユニットが受けるダメージが15%減少する。"),
+    "HOLMoraleTable,DescriptionCloseRanks": ("Units of your side near the hero take 25% less damage for 15 s.", "英雄の近くにいる味方ユニットが受けるダメージが15秒間25%減少する。"),
+    "HOLMoraleTable,DescriptionBanner": ("The planted banner gives the Dawn Aura around it for 45 s (only one aura counts).", "立てた軍旗が45秒間、周囲に暁の加護を与える（効果は1つのみ有効）。"),
+    "HOLMoraleTable,DescriptionTriumph": ("After a won duel: 10% more damage dealt and 10% less damage taken for 40 s.", "決闘に勝利した後、40秒間、与えるダメージが10%増加し、受けるダメージが10%減少する。"),
+    "HOLMoraleTable,DescriptionDemoralised": ("After a lost duel: 10% less damage dealt and 10% more damage taken for 40 s.", "決闘に敗北した後、40秒間、与えるダメージが10%減少し、受けるダメージが10%増加する。"),
+    "HOLMoraleTable,DescriptionHesitation": ("The hero refused a duel: 5% less damage dealt for 25 s.", "英雄が決闘を拒否した：25秒間、与えるダメージが5%減少する。"),
     "HOLGameScreen,ResearchSoon": ("Coming soon", "近日公開"),
     "HOLGameScreen,ResearchSoonCell": ("{0}\nComing soon", "{0}\n近日公開"),
     # S2: the siege workshop and its two engines (GDD 6.1).

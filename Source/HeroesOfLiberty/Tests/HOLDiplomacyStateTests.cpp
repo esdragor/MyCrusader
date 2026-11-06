@@ -103,7 +103,12 @@ bool FHOLDiplomacyStateTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the break is immediate: Enemy at that step"), Relation(0, 1), Enemy);
 		TestEqual(TEXT("... announced as a break"), Broken, 1);
 		TestFalse(TEXT("... the shared vision is cut at that second (D371)"), SharesVision(GameState->GetDiplomacyBook(), 0, 1));
+		// The book a client rebuilds from the replicated arrays shows the break on BOTH sides at once (bug of 2026-11-04: 0 kept "Ally" toward 1).
+		TestEqual(TEXT("the replicated book: 1 is Enemy toward 0"), StanceOf(GameState->GetDiplomacyBook(), 1, 0), Enemy);
+		TestEqual(TEXT("... and 0 no longer shows Ally toward 1 (no state left waiting for the other)"), StanceOf(GameState->GetDiplomacyBook(), 0, 1), Enemy);
 		Say(1, 0, Ally);
+		TestEqual(TEXT("one side's Ally again: no alliance (both must say Ally)"), Relation(0, 1), Enemy);
+		Say(0, 1, Ally);
 		TestEqual(TEXT("the alliance formed again"), Relation(0, 1), Ally);
 		TestFalse(TEXT("... the vision is not given back by itself"), SharesVision(GameState->GetDiplomacyBook(), 0, 1));
 

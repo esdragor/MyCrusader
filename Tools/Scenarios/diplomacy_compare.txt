@@ -1,5 +1,5 @@
-# Le panneau Diplomatie (presentation 1, la puce qui tourne, choisie par l'utilisateur le 2026-11-03 ; les presentations 0 et 2 restent pour comparer), 5 joueurs en mode Diplomatie, Entree = presentation suivante ; les clics agissent.
-# Plain, mode Diplomatie (diplomacy_compare.json) : toi (slot 0) et 4 autres joueurs sans manette : joueur 2 Allie (alliance reciproque, vision partagee), joueur 3 Neutre, joueur 4 Ennemi (une IA : toujours ennemie, posture verrouillee), joueur 5 a qui tu as propose l'alliance (sans reponse : « En attente de l'autre »).
+﻿# Le panneau Diplomatie (presentation 1, la puce qui tourne, choisie par l'utilisateur le 2026-11-03 ; les presentations 0 et 2 restent pour comparer), 5 joueurs en mode Diplomatie, Entree = presentation suivante ; les clics agissent.
+# Plain, mode Diplomatie (diplomacy_compare.json) : toi (slot 0) et 4 autres joueurs sans manette : joueur 2 Allie (alliance reciproque, vision partagee), joueur 3 Neutre, joueur 4 Ennemi (une IA : toujours ennemie, posture verrouillee), joueur 5 a qui tu as propose l'alliance (sans reponse ; plus d'etat « En attente » depuis le 2026-11-04).
 # Avant de te rendre la main, le scenario prend lui-meme 9 captures (3 presentations x 1920x1080, 1366x768, 1280x600) et teste les clics (posture, vision) ; il remet ensuite les postures de depart.
 waitlog Starting hero of slot 0 spawned at
 hol.Sanity.Watch 1
@@ -89,6 +89,8 @@ hol.HUD.Click DipVision_1
 frames 10
 hol.HUD.Report 1
 waitlog HUD overlap:
+# Depuis la rupture mutuelle (2026-11-04) le joueur 2 est devenu Neutre lui aussi : on le remet Allie pour que l'alliance (les deux cotes) se forme et que la case Vision soit active.
+hol.Diplomacy.Force 1 0 ally
 hol.HUD.Click DipAlly_1
 waitlog Diplomacy: slot 0 now ally toward slot 1
 hol.HUD.Click DipVision_1
@@ -130,7 +132,7 @@ hol.Cheat.SpawnBuilding Market 0 1500 3000
 waitlog Cheat: spawned Market of slot 0
 hol.UI.DiplomacyLayout 1
 frames 40
-hol.HUD.Click DipTribute_3
+hol.HUD.Click DipTribute_3_3
 waitlog Tribute: slot 0 gave 100 of resource 3 to slot 3
 frames 10
 panel hide
@@ -139,7 +141,7 @@ hol.HUD.Report 1
 waitlog HUD overlap:
 capture dip_L1_market
 panel show
-note 4. Avec un Marche : « Tribut 100 or (taxe 30 %) » est actif ; le scenario vient de donner 100 d'or au joueur 4, l'IA (le Marche en garde 30 %, elle en recoit 70).
+note 4. Avec un Marche : « Tribut 100 or » (ressource a choisir en bas du panneau, taxe de 30 % ecrite une fois) est actif ; le scenario vient de donner 100 d'or au joueur 4, l'IA (le Marche en garde 30 %, elle en recoit 70).
 waitkey Entree : presentation 0 avec Marche
 hol.UI.DiplomacyLayout 0
 frames 30

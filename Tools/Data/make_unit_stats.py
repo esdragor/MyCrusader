@@ -32,6 +32,7 @@ NAMES = {
     "Ram": "Bélier",
     "Mangonel": "Mangonneau",
     "Monk": "Moine",
+    "LightCavalry": "Cavalier léger",
     "Peasant": "Paysan",
     "Spearman": "Piquier",
     "ManAtArms": "Homme d'armes",
@@ -220,6 +221,10 @@ def main():
                  f"{num(float(monk['HealRate']))} PV par seconde un allié blessé à la fois, à {metres(float(monk['HealRange']))} "
                  "(colonnes HealRate et HealRange), jamais lui-même, jamais le Roi (D471) ni un engin de siège. Temps de "
                  "production : provisoire.")
+    if any(u["Name"] == "LightCavalry" for u in units):
+        L.append("- Cavalier léger (D672, CV-Q3 : stats validées en bloc, à retoucher à l'essai) : cheval provisoire (Mannequin "
+                 "agrandi, comme le Bélier). Sa charge (deuxième attaque à déclencheur, D345.3) n'est pas encore dans la table : "
+                 "les colonnes, le calcul et le marais viennent avec C2 (C++), donc les dégâts ci-dessus sont ceux du coup normal.")
     L.append(f"- Au plus {MAX_ATTACKERS} attaquants de mêlée vont sur une même cible hors de portée ; les autres en "
              f"prennent une moins entourée.")
     L.append(f"- Une unité à 0 PV reste {DYING_STEPS} pas ({num(DYING_STEPS / STEP_HZ)} s à {STEP_HZ} Hz) pour sa chute.")

@@ -75,6 +75,13 @@ public:
 	const FHOLUnitTypeRow* FindTypeRow(FName TypeName) const;
 
 	/**
+	 * L0 (LQ-7, D677): the row of a type as a faction fields it: the table's row with the faction's overrides written over it
+	 * (Tools/Data/FactionOverrides.csv: name, cost, time, mesh...), built once and kept. The table's own row (the same pointer)
+	 * when the faction overrides nothing of the type, the Dawn included: two Dawn slots read what they always read.
+	 */
+	const FHOLUnitTypeRow* FindTypeRow(FName TypeName, FName FactionKey) const;
+
+	/**
 	 * Types of the table in lexical order: the same list on the server and on the clients, so the unit replication
 	 * sends a type as its index in it (D270).
 	 */
@@ -177,7 +184,20 @@ public:
 	void ResetSpawnSeed(const int32 Seed) { SpawnRandom.Initialize(Seed); }
 
 	/** Mass entity template of a type, built once from its row and cached (D225); nullptr for an unknown type. */
-	const FMassEntityTemplate* FindTemplate(FName TypeName, EHOLUnitTemplateKind Kind = EHOLUnitTemplateKind::Simulation);
+	const FMassEntityTemplate* FindTemplate(FName TypeName, EHOLUnitTemplateKind Kind = EHOLUnitTemplateKind::Simulation, FName FactionKey = NAME_None);
+
+	/**
+	 * L2 (LQ-7): the row of a type as the faction of a slot fields it (FindTypeRow(TypeName, the slot's faction)): the table's own
+	 * row when the slot's faction overrides nothing of it. What a unit of that slot is born with, pays and is called.
+	 */
+	const FHOLUnitTypeRow* FindTypeRowFor(FName TypeName, int32 OwnerPlayer) const;
+
+	/**
+	 * L2: the key a template of a type is cached under for a faction: the type's name when the faction's row builds the same constants
+	 * as the table's (a name or a cost override: nothing to build twice), else the name with the faction's key ("Spearman@Legions":
+	 * health, attack, speed or mesh of its own, so a template of its own).
+	 */
+	FName GetTemplateKey(FName TypeName, FName FactionKey) const;
 
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
@@ -236,6 +256,10 @@ private:
 	UPROPERTY(Transient)
 	mutable TObjectPtr<const UDataTable> CachedTypeTable = nullptr;
 	mutable bool bTypeTableLookedUp = false;
+
+	/** L0: the rows with a faction's overrides, by faction then type; dropped when the faction tables change (HOLFactionRules::GetTableVersion). */
+	mutable TMap<FName, TMap<FName, TSharedPtr<FHOLUnitTypeRow>>> FactionRows;
+	mutable int32 FactionRowsVersion = 0;
 
 	/** Birth positions come from a fixed seed, so two runs of a stress test are comparable (D230). */
 	static constexpr int32 SpawnSeed = 1066;

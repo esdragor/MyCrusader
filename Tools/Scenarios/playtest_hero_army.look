@@ -1,0 +1,4 @@
+playtest_hero_army_a_start | Combat A : ton heros pres du forum, 6 Hommes d'armes allies et 10 Lanciers ennemis face a face
+playtest_hero_army_a_end | Fin du combat A : survivants et morts visibles (corps), barre de vie du heros dans le bloc du bas
+playtest_hero_army_b_start | Combat B sans heros : memes 6 Hommes d'armes contre 10 Lanciers, plus loin sur la carte (hors de la vue du combat A)
+playtest_hero_army_b_end | Fin du combat B : a comparer avec A (pertes, survivants)

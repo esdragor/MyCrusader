@@ -101,4 +101,7 @@ public:
 
 	/** The technologies researched in a building type (T4), in the order of the table: what its research row of the grid shows. */
 	static void GetBuildingTechnologies(FName Building, TArray<FName>& OutNames);
+
+	/** Same, for one faction (L2): without the technologies of other factions (the row's `Faction` column); a None key leaves all of them. */
+	static void GetBuildingTechnologies(FName Building, FName FactionKey, TArray<FName>& OutNames);
 };

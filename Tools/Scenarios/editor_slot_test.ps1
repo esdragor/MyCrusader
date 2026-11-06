@@ -1,0 +1,62 @@
+# End-to-end test of the shared editor slots (Tools\Scenarios\EditorSlot.ps1, Auto_Journey_Checklist L7-3): three real processes ask for a
+# slot at once with a cap of 2; at most 2 may hold one at the same time (and 2 do, so the cap is not 1), the third enters only after
+# one left; a ticket whose owner is dead does not count. Uses a temporary folder (HOL_EDITOR_SLOT_DIR), no editor is started.
+# Run: powershell -ExecutionPolicy Bypass -File Tools\Scenarios\editor_slot_test.ps1   (about 20 s). Exit 0 = PASS.
+$ErrorActionPreference = "Stop"
+$Lib = Join-Path $PSScriptRoot "EditorSlot.ps1"
+$Fails = 0
+function Check([bool]$Ok, [string]$Text) { if ($Ok) { Write-Host "  OK   $Text" } else { Write-Host "  FAIL $Text"; $script:Fails++ } }
+if (-not (Test-Path $Lib)) { Write-Host "  FAIL EditorSlot.ps1 does not exist"; Write-Host "editor_slot_test: FAIL (1)"; exit 1 }
+
+$Dir = Join-Path $env:TEMP ("hol_editor_slots_" + [guid]::NewGuid().ToString("N").Substring(0, 8))
+New-Item -ItemType Directory -Force $Dir | Out-Null
+$env:HOL_EDITOR_SLOT_DIR = $Dir
+$Events = Join-Path $Dir "events.log"
+$Child = Join-Path $Dir "child.ps1"
+@'
+param([string]$Lib, [string]$Name, [string]$Events, [int]$Hold)
+. $Lib
+$Got = Enter-EditorSlot -Name $Name -Root "test" -Max 2 -WaitSeconds 60
+Add-Content $Events ("enter {0} {1} {2}" -f $Name, [DateTime]::UtcNow.Ticks, $Got)
+Start-Sleep -Seconds $Hold
+Add-Content $Events ("exit {0} {1}" -f $Name, [DateTime]::UtcNow.Ticks)
+Exit-EditorSlot
+'@ | Set-Content $Child -Encoding UTF8
+
+$Procs = foreach ($Name in "a", "b", "c") {
+    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Child`" -Lib `"$Lib`" -Name $Name -Events `"$Events`" -Hold 6" -PassThru -WindowStyle Hidden
+    Start-Sleep -Milliseconds 700
+}
+$Procs | Wait-Process -Timeout 90
+$Rows = @(Get-Content $Events | ForEach-Object { $F = $_ -split ' '; [pscustomobject]@{ Kind = $F[0]; Name = $F[1]; At = [int64]$F[2]; Got = $F[3] } })
+$Enters = @($Rows | Where-Object Kind -eq "enter" | Sort-Object At)
+$Exits = @($Rows | Where-Object Kind -eq "exit" | Sort-Object At)
+Check ($Enters.Count -eq 3 -and $Exits.Count -eq 3) "the three processes entered and left (enters $($Enters.Count), exits $($Exits.Count))"
+Check (@($Enters | Where-Object { $_.Got -notmatch 'True' }).Count -eq 0) "every wait ended with a slot (no timeout)"
+$Max = 0
+foreach ($E in $Enters) {
+    $Open = @($Enters | Where-Object { $_.At -le $E.At }).Count - @($Exits | Where-Object { $_.At -le $E.At }).Count
+    if ($Open -gt $Max) { $Max = $Open }
+}
+Check ($Max -eq 2) "at most 2 editors at once, and 2 did run together (peak $Max)"
+if ($Enters.Count -eq 3 -and $Exits.Count -eq 3) {
+    Check ($Enters[2].At -ge $Exits[0].At) "the third waited for a slot to be released (entered $([math]::Round(($Enters[2].At - $Exits[0].At) / 1e7, 1)) s after the first exit)"
+}
+Check (@(Get-ChildItem $Dir -Filter *.json -ErrorAction SilentlyContinue).Count -eq 0) "every ticket was removed at the end"
+
+# A ticket whose owner is dead is dropped: write two for a process that is gone, then one entry must still succeed at once.
+. $Lib
+$Dead = Start-Process powershell -ArgumentList "-NoProfile -Command exit" -PassThru -WindowStyle Hidden
+$Dead | Wait-Process
+foreach ($I in 1, 2) {
+    @{ id = "dead$I"; name = "dead$I"; root = "x"; state = "running"; requested = (Get-Date).ToString("o"); ownerPid = $Dead.Id; ownerStart = $Dead.StartTime.ToUniversalTime().Ticks } | ConvertTo-Json | Set-Content (Join-Path $Dir "20000101_dead$I.json") -Encoding UTF8
+}
+$T = Get-Date
+$Got = Enter-EditorSlot -Name "after-dead" -Root "test" -Max 2 -WaitSeconds 20
+Check ($Got -and ((Get-Date) - $T).TotalSeconds -lt 10) "two tickets of a dead owner do not hold the slots"
+Exit-EditorSlot
+Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item Env:\HOL_EDITOR_SLOT_DIR
+if ($Fails -eq 0) { Write-Host "editor_slot_test: PASS"; exit 0 }
+Write-Host "editor_slot_test: FAIL ($Fails)"
+exit 1

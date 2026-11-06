@@ -57,6 +57,26 @@ public:
 	TArray<int32> GetAISlots() const;
 
 	/**
+	 * D717 (T2): the AI holds the seat of a player who left (HOLAIHold.as: the base economy and the defence, no far attack, no
+	 * expansion, no duel). The game state sets it when the window of absence opens and clears it when the player is back; a held
+	 * seat thinks as long as it is absent (GetThinkingSlots) and is read as a Normal level (UHOLAIToolsLibrary::GetSlotLevel).
+	 * Released: the script forgets what it remembered of the seat (ForgetSlot).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI")
+	void SetHeld(int32 PlayerIndex, bool bHeld);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|AI")
+	bool IsHeld(int32 PlayerIndex) const { return HeldSlots.Contains(PlayerIndex); }
+
+	/**
+	 * D718 (T5): the window of absence of a seat is over and the AI keeps it (FHOLDisconnectRules::GetWindowEnd = AIHolds): the seat leaves the
+	 * hold mode (IsHeld false: the script plays its full brain), keeps thinking while it is absent, at the Normal level; what the brain remembered
+	 * of it is kept. SetHeld(false) (the player is back, or the seat defeated) clears both.
+	 */
+	void SetFullBrain(int32 PlayerIndex);
+	bool IsFullBrain(int32 PlayerIndex) const { return FullBrainSlots.Contains(PlayerIndex); }
+
+	/**
 	 * IA0.4 B2b (IA0.4-Q3 A): the AI slots whose brain is on (FHOLMatchSlot::bAIBrain of the game state's launch
 	 * configuration), by player index: the ones the step makes think. Every AI slot without an AHOLGameState.
 	 */
@@ -78,11 +98,20 @@ protected:
 	bool Think(int32 PlayerIndex);
 	virtual bool Think_Implementation(int32 PlayerIndex) { return false; }
 
+	/** D717 (T2): the script drops all it remembered of slot PlayerIndex (overridden in script); the C++ base remembers nothing. */
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|AI")
+	void ForgetSlot(int32 PlayerIndex);
+	virtual void ForgetSlot_Implementation(int32 PlayerIndex) {}
+
 private:
 	/** Tail of each step: the AI slots whose turn it is think, spread over the interval by slot. */
 	void OnStepEnded(int64 StepIndex);
 
 	FDelegateHandle StepEndedHandle;
+	/** D717 (T2): the seats the AI holds for a player who left. */
+	TSet<int32> HeldSlots;
+	/** D718 (T5): the seats kept by the AI after the window, in the full brain. */
+	TSet<int32> FullBrainSlots;
 	int32 NumThoughts = 0;
 	/** IA0.5 B1: the "awake" line written once per world, at the first step (the AI PlayerStates exist from StartPlay). */
 	bool bAwakeLogged = false;

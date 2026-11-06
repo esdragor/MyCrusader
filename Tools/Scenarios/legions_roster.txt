@@ -1,0 +1,61 @@
+﻿# Legions L2 : le socle des Legions en reskin. Toi (slot 0, Legions) : une rangee de chaque unite du socle a gauche ; l'IA gelee (slot 1, Aube) : la meme rangee a droite. Les couts des Legions sont a -25 % de ceux de l'Aube, les noms sont ceux des Legions (surcharges de FactionOverrides.csv).
+# Les 7 types : Spearman (Legion Spearman), ManAtArms (Black Guard), Archer (Legion Archer), Crossbowman (Legion Crossbowman), LightCavalry (Dread Rider), Ram (Bone Ram), Mangonel (Bone Mangonel). Maillages : les memes que ceux de l'Aube (placeholders, L13).
+# Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Camera.Zoom -2
+frames 40
+hol.Select.Category Military
+waitlog Selection: Barracks
+frames 20
+hol.HUD.Report
+waitlog A=Spearman enabled
+# The tooltip of the Spearman cell quotes the Legions' cost (45 / 15), what the Barracks charges, not the Dawn's 60 / 20.
+hol.HUD.Report
+waitlog F 45 | W 15
+note 1. La Caserne des Legions est selectionnee : sa grille propose le Lancier (A) et l'Homme d'armes (B), jamais de Hallebardier. Cout du Lancier pour les Legions : 45 nourriture + 15 bois (60 + 20 pour l'Aube).
+capture legions_roster_barracks
+hol.Prod.Queue Spearman
+waitlog Production: Spearman of slot 0 done
+frames 20
+note 2. Un Lancier des Legions est sorti de la Caserne (production de 2 s pour l'essai) : le cout paye etait celui des Legions (la barre de ressources a baisse de 45 / 15).
+hol.Camera.FocusNear 5000 -1500
+frames 2
+hol.Units.SpawnHere 3 Spearman 0 120
+hol.Camera.FocusNear 5000 -750
+frames 2
+hol.Units.SpawnHere 3 ManAtArms 0 120
+hol.Camera.FocusNear 5000 0
+frames 2
+hol.Units.SpawnHere 3 Archer 0 120
+hol.Camera.FocusNear 5000 750
+frames 2
+hol.Units.SpawnHere 3 Crossbowman 0 120
+hol.Camera.FocusNear 5000 1500
+frames 2
+hol.Units.SpawnHere 3 LightCavalry 0 120
+waitlog SpawnHere: 3 LightCavalry of slot 0
+hol.Camera.FocusNear 5000 0
+hol.Camera.Zoom 2
+frames 90
+capture legions_roster_row
+note 3. Les unites du socle des Legions, produites avec leurs surcharges (nom et cout propres). Leur apparence est celle de l'Aube pour l'instant (maillages provisoires, L13).
+# l'essai de l'Aube : meme unites au meme endroit pour comparer
+hol.Camera.FocusNear 8000 -1500
+frames 2
+hol.Units.SpawnHere 3 Spearman 1 120
+waitlog SpawnHere: 3 Spearman of slot 1
+hol.Camera.FocusNear 6500 -1500
+frames 90
+panel hide
+frames 3
+capture legions_roster_dawn
+panel show
+note 4. La meme unite de l'Aube (rouge) a cote : meme corps, meme sante ; seuls le nom et le cout different.

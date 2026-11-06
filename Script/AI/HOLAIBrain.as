@@ -95,6 +95,45 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	TMap<int, FString> TechReasons;
 	TMap<int, FHOLAITechMemory> TechMemories;
 
+	// The slots that hold the position of a player who left (DisconnectInProgress.md, D717): base economy and defence only (HOLAIHold.as).
+	// The held seats are kept by the C++ base (UHOLAIBrainSubsystem::SetHeld / IsHeld): the game state sets them when the window of absence
+	// opens and clears them when the player returns; the release calls ForgetSlot, which drops what this brain remembered of the seat.
+	UFUNCTION(BlueprintOverride)
+	void ForgetSlot(int PlayerIndex)
+	{
+		RallySources.Remove(PlayerIndex);
+		FarmPlans.Remove(PlayerIndex);
+		Flights.Remove(PlayerIndex);
+		SentBuilders.Remove(PlayerIndex);
+		Rebuilds.Remove(PlayerIndex);
+		Kings.Remove(PlayerIndex);
+		RelayMemories.Remove(PlayerIndex);
+		AltarMemories.Remove(PlayerIndex);
+		TalentProfiles.Remove(PlayerIndex);
+		TalentAnswered.Remove(PlayerIndex);
+		DuelSeen.Remove(PlayerIndex);
+		DuelAsked.Remove(PlayerIndex);
+		ForumLogged.Remove(PlayerIndex);
+		LevelLogged.Remove(PlayerIndex);
+		Feints.Remove(PlayerIndex);
+		Snipes.Remove(PlayerIndex);
+		LevelsNow.Remove(PlayerIndex);
+		Rallied.Remove(PlayerIndex);
+		Defences.Remove(PlayerIndex);
+		RegroupCounts.Remove(PlayerIndex);
+		DefenceCounts.Remove(PlayerIndex);
+		Waves.Remove(PlayerIndex);
+		MarketSteps.Remove(PlayerIndex);
+		MarketBuilds.Remove(PlayerIndex);
+		BlockSeens.Remove(PlayerIndex);
+		Strandeds.Remove(PlayerIndex);
+		TechReasons.Remove(PlayerIndex);
+		TechMemories.Remove(PlayerIndex);
+		LastStatusStep.Remove(PlayerIndex);
+		SiteMemories.Remove(PlayerIndex);
+		LastBuildReason.Remove(PlayerIndex);
+	}
+
 	// The step of the last status line per slot.
 	TMap<int, int64> LastStatusStep;
 
@@ -127,7 +166,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		LogStatus(PlayerIndex, Step, Summary);
 		// 0a. The technologies (T7, D648: every level, a delay per level): first, so that a research is paid before the other purchases
 		// of the thought; while it saves for one, the other purchases of this thought do not see the stock set aside for it.
-		const TArray<int> Earmark = ThinkTech(PlayerIndex, Step, Summary);
+		const bool bHeld = IsHeld(PlayerIndex);
+		TArray<int> Earmark;
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Technology))
+		{
+			Earmark = ThinkTech(PlayerIndex, Step, Summary);
+		}
 		if (Earmark.Num() == 4)
 		{
 			Summary.Food.Stock -= Earmark[0];
@@ -190,14 +234,15 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// 0c. IAQ-S-2 (D621): the mill or a farm destroyed is built again near the refuge (40 m behind the centre), at the normal cost.
 		Plan = RelocateDestroyed(PlayerIndex, Step, Summary, Data, Plan);
 		FarmPlans.Add(PlayerIndex, Plan);
-		FHOLAIBuildChoice Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
+		const FHOLAIHoldRules HoldRules = HOLAIHold::DefaultRules();
+		FHOLAIBuildChoice Build = HOLAIHold::FilterBuild(bHeld, HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids), Summary, HoldRules);
 		if (Build.bPlanFarms)
 		{
 			Plan = PlanFarmBlock(PlayerIndex, Summary, Data);
 			if (Plan.bActive)
 			{
 				FarmPlans.Add(PlayerIndex, Plan);
-				Build = HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids);
+				Build = HOLAIHold::FilterBuild(bHeld, HOLAIOpening::ChooseBuild(Summary, Data, Plan, Sent.Ids), Summary, HoldRules);
 			}
 		}
 		if (Build.bBuild)
@@ -261,19 +306,44 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		ThinkArmy(PlayerIndex, Step, Summary, Data);
 
 		// 3b2. The Market (M6, MK-Q3 provisional): with a finished one, a surplus buys what is missing (HOLAIMarket::Choose).
-		ThinkMarket(PlayerIndex, Step, Summary, Data);
-		const int MarketBuilder = ThinkMarketBuild(PlayerIndex, Step, Summary, Data);
+		int MarketBuilder = -1;
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Market))
+		{
+			ThinkMarket(PlayerIndex, Step, Summary, Data);
+			MarketBuilder = ThinkMarketBuild(PlayerIndex, Step, Summary, Data);
+		}
 		if (MarketBuilder >= 0)
 		{
 			Free.Remove(MarketBuilder);
 		}
 		// 3b3. The Siege Workshop (S6, provisional): Hard builds one once it has an army.
-		const int SiegeBuilder = ThinkSiegeBuild(PlayerIndex, Step, Summary, Data);
+		int SiegeBuilder = -1;
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Siege))
+		{
+			SiegeBuilder = ThinkSiegeBuild(PlayerIndex, Step, Summary, Data);
+		}
 		if (SiegeBuilder >= 0)
 		{
 			Free.Remove(SiegeBuilder);
 		}
-		ThinkSiegeProduce(PlayerIndex, Step, Summary);
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Siege))
+		{
+			ThinkSiegeProduce(PlayerIndex, Step, Summary);
+		}
+		// 3b4. The Stable and the Light Cavalry (C1, D672, provisional, NOT COMPILED): every level builds a Stable from tier 1 and queues cavalry, the quantity by level.
+		int CavalryBuilder = -1;
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Cavalry))
+		{
+			CavalryBuilder = ThinkCavalryBuild(PlayerIndex, Step, Summary, Data);
+		}
+		if (CavalryBuilder >= 0)
+		{
+			Free.Remove(CavalryBuilder);
+		}
+		if (HOLAIHold::Allows(bHeld, EHOLAIHoldPart::Cavalry))
+		{
+			ThinkCavalryProduce(PlayerIndex, Step, Summary, Data);
+		}
 
 		// 3c. The King (IA3.4, Regicide): behind the forum, away from the enemy soldiers that come near him.
 		FHOLAIKingMemory KingMemory;
@@ -478,7 +548,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				if (Summary.Enemies[Index].OwnerSlot == Other && Summary.Enemies[Index].Type == n"Hero")
 					Where = Summary.Enemies[Index].Location;
 			}
-			const FHOLAIDuelDecision Decision = HOLAIDuel::Answer(Settings, DuelViewOf(PlayerIndex, Other, Where, Summary), Noise);
+			const FHOLAIDuelDecision Decision = HOLAIHold::Answer(IsHeld(PlayerIndex), Settings, DuelViewOf(PlayerIndex, Other, Where, Summary), Noise);
 			if (HOLAIOrder::IssueAIDuelAnswer(PlayerIndex, Decision.bYes))
 			{
 				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: " + HOLAIDuel::Describe("answer", Decision));
@@ -506,7 +576,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			}
 			if (!bNear)
 				continue;
-			const FHOLAIDuelDecision Decision = HOLAIDuel::Challenge(Settings, DuelViewOf(PlayerIndex, Enemy.OwnerSlot, Enemy.Location, Summary), true, Noise);
+			const FHOLAIDuelDecision Decision = HOLAIHold::Challenge(IsHeld(PlayerIndex), Settings, DuelViewOf(PlayerIndex, Enemy.OwnerSlot, Enemy.Location, Summary), true, Noise);
 			if (Decision.bYes && HOLAIOrder::IssueAIDuelChallenge(PlayerIndex, Enemy.OwnerSlot))
 			{
 				DuelAsked.Add(PlayerIndex, Data.GameSeconds);
@@ -753,6 +823,89 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		}
 	}
 
+	// The Stable's construction (C1, D672, provisional, HOLAICavalry::WantsStable; NOT COMPILED, NOT RUN): every level builds one, from the tier where it opens, with
+	// a first army and an enemy centre to strike; on the enemy side of the centre like the other military buildings; one Peasant sent, not one already sent to a
+	// site. Returns that Peasant (-1: none).
+	int ThinkCavalryBuild(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		bool bHasStable = false;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			bHasStable = bHasStable || Summary.Buildings[Index].TypeName == n"Stable";
+		}
+		FHOLAITypeFigures Figures;
+		if (!Summary.bHasCentre || !HOLAIOrder::ReadAIBuildingFigures(n"Stable", Figures))
+		{
+			return -1;
+		}
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		if (!HOLAICavalry::WantsStable(FHOLAICavalrySettings(), Level, Summary.Tier, bHasStable, Summary.bHasEnemyCentre, Summary.Army.Num(), Summary.Wood.Stock,
+			Figures.CostWood))
+		{
+			return -1;
+		}
+		FHOLAIBuilders Sent;
+		SentBuilders.Find(PlayerIndex, Sent);
+		const int Builder = HOLAIOpening::PickBuilder(Summary, Sent.Ids);
+		if (Builder < 0 || Summary.PeasantIds.Num() < Data.MinPeasantsToBuild || HOLAIOpening::SitesUnderWay(Summary) >= Data.MaxSites)
+		{
+			return -1;
+		}
+		FVector Spot;
+		if (!HOLAIOrder::FindAIPlacement(PlayerIndex, n"Stable", HOLAIOpening::MilitaryAnchor(Summary, Data), Data.Rings, Spot))
+		{
+			LogBuildOnce(PlayerIndex, Step, "no spot for Stable");
+			return -1;
+		}
+		TArray<int> Builders;
+		Builders.Add(Builder);
+		if (!HOLAIOrder::IssueAIPlaceOrder(PlayerIndex, n"Stable", Spot, Builders))
+		{
+			LogBuildOnce(PlayerIndex, Step, "build Stable refused");
+			return -1;
+		}
+		Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: build Stable at ({Spot.X}, {Spot.Y}) by #{Builder} (level {Level}, an army of {Summary.Army.Num()})");
+		Sent.Ids.Add(Builder);
+		SentBuilders.Add(PlayerIndex, Sent);
+		return Builder;
+	}
+
+	// The cavalry (C1, D672, provisional, HOLAICavalry::ChooseCavalry; NOT COMPILED, NOT RUN): a finished Stable with an empty queue queues a Light Cavalry while the
+	// train of the level is short (2 Easy, 4 Normal, 6 Hard). The cavalry is in Summary.Army (no gathering capacity): the regrouping and the attack wave take it.
+	void ThinkCavalryProduce(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FVector StableAt;
+		bool bFinished = false;
+		int Queued = 0;
+		for (int Index = 0; Index < Summary.Buildings.Num(); Index++)
+		{
+			const FHOLAIBuilding Each = Summary.Buildings[Index];
+			if (Each.TypeName == n"Stable" && Each.State == EHOLConstructionState::Finished)
+			{
+				StableAt = Each.Location;
+				bFinished = true;
+				Queued = Each.Queue.Num();
+				break;
+			}
+		}
+		if (!bFinished)
+		{
+			return;
+		}
+		FHOLAITypeFigures Unit;
+		HOLAIOrder::ReadAIUnitFigures(n"LightCavalry", Unit);
+		const bool bCanPay = Unit.Health > 0 && Summary.Food.Stock >= Unit.CostFood && Summary.Wood.Stock >= Unit.CostWood && Summary.Stone.Stock >= Unit.CostStone
+			&& Summary.Gold.Stock >= Unit.CostGold;
+		const bool bRoom = Summary.bHasPopulation && HOLAIOpening::PlacesLeft(Summary) >= Math::Max(1, Unit.Population);
+		const int Level = int(HOLAILives::Played(Summary.Level, Data.GameSeconds, HOLAIArmy::DefaultData().Lives));
+		const FHOLAICavalryChoice Choice = HOLAICavalry::ChooseCavalry(FHOLAICavalrySettings(), FHOLAICavalryTrain(), Level, true, Queued,
+			HOLAIArmy::CountOfType(Summary, n"LightCavalry"), bCanPay, bRoom);
+		if (Choice.bQueue && HOLAIOrder::IssueAIProduceOrder(PlayerIndex, StableAt, Choice.Type))
+		{
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: queue a {Choice.Type} at the Stable (level {Level})");
+		}
+	}
+
 	// The army's orders (IA2.5, IA2.6). The assembly point is the soldiers' rally point. When the rules want the defence (enemy soldiers
 	// within the defence radius of the base, the army not far behind them), every soldier attack-moves toward the threat, the orders sent
 	// again every few seconds; it ends after a quiet delay. At home, the idle soldiers far from the point attack-move back to it (a fight
@@ -769,9 +922,19 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		// The relays (R6, RQ3 = B, D589: hol.AI.RelayMode, default B): a detachment (or the whole army) goes to take them; its soldiers are left out
 		// of the army the other rules see below (defence, regrouping, waves) while it is away.
 		// The altar of a volcano site (V11, D639, D640): a squad of the free soldiers goes to hold it or to contest it; left out of the army below.
+		// (Held, DisconnectInProgress.md D717: no altar squad and no relay detachment, the army stays home.)
+		const bool bHolding = IsHeld(PlayerIndex);
 		bool bAltarStrike = false;
-		const FHOLAISummary NoAltar = ThinkAltar(PlayerIndex, Step, FullSummary, Data, Wave, State, bAltarStrike);
-		const FHOLAISummary Summary = ThinkRelays(PlayerIndex, Step, NoAltar, Data, Wave, State);
+		FHOLAISummary NoAltar = FullSummary;
+		if (HOLAIHold::Allows(bHolding, EHOLAIHoldPart::Altar))
+		{
+			NoAltar = ThinkAltar(PlayerIndex, Step, FullSummary, Data, Wave, State, bAltarStrike);
+		}
+		FHOLAISummary Summary = NoAltar;
+		if (HOLAIHold::Allows(bHolding, EHOLAIHoldPart::Relays))
+		{
+			Summary = ThinkRelays(PlayerIndex, Step, NoAltar, Data, Wave, State);
+		}
 		const FVector Assembly = HOLAIOpening::RallyPointOf(Summary, Data);
 		const FHOLAIThreat Whole = HOLAIArmy::Threat(Summary, Data.Army);
 		const FHOLAISummary Rest = HOLAIArmy::WithoutWave(Summary, Wave);
@@ -854,7 +1017,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: altar strike back: an army holds the altar, its camp is bare, the wave goes now");
 		}
 		const bool bRecall = HOLAIForum::WaveRecalled(Summary, Data.Army, Whole, Situation) && !Wave.bPunishing;
-		const FHOLAIWaveStep Wave_ = HOLAIArmy::UpdateWave(Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
+		const FHOLAIWaveStep Wave_ = HOLAIHold::WaveStep(bHolding, Wave, Summary, Data.Army, State.bDefending, bRecall, Assembly, Now);
 		if (Wave_.bLaunched)
 		{
 			if (Wave.bPunishing)

@@ -21,7 +21,8 @@ import os
 
 from maps import common, steppe
 
-GROUND = steppe.GROUND  # the Steppe's grass; the marsh is drawn over it (common.spawn_zones)
+GROUND = "MI_Ground_ElDorado"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
+
 GOLD_MODE = os.environ.get("HOL_ELDORADO_GOLD", "all")
 MARSH_WIDTH = float(os.environ.get("HOL_MARSH_WIDTH", "3000"))
 CLUSTER_GAP = 500.0  # cm between the edges of two veins of the cluster (a Peasant: 60 cm radius, 2 m free to walk round)
@@ -138,7 +139,7 @@ def sources(recipe):
         steppe.NEAR = [row for row in near if row[0] != "GoldVein"]
         common.MINERAL_RESOURCES = ("Stone",)
     try:
-        placed, groups = steppe.sources(recipe)
+        placed, groups = steppe.sources(recipe, "forests")
     finally:
         steppe.CENTRE_CLEAR, steppe.NEAR, common.MINERAL_RESOURCES = clear, near, resources
     if GOLD_MODE == "keep_near":
@@ -167,7 +168,7 @@ def relays(recipe):
 
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
-    return steppe.budget_of(recipe)[0]
+    return steppe.floor_of("forests", recipe)
 
 
 def volcano(recipe):

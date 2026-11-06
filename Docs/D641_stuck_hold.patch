@@ -1,0 +1,232 @@
+﻿diff --git a/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.cpp b/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.cpp
+index 84baf8a..654a809 100644
+--- a/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.cpp
++++ b/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.cpp
+@@ -139,3 +139,33 @@ bool HOLAvoid::StepLoopPatience(FLoopPatience& State, const FVector2D& Asked, co
+ 	}
+ 	return false;
+ }
++
++bool HOLAvoid::StepStuckHold(FStuckHold& State, const FVector2D& Place, const FVector2D& Asked, const double DeltaTime, const double RadiusCm, const double AfterSeconds, const double HoldSeconds)
++{
++	if (AfterSeconds <= 0.)
++	{
++		State = FStuckHold();
++		return false;
++	}
++	if (State.HoldSeconds > 0.)
++	{
++		State.HoldSeconds -= DeltaTime;
++		return true;
++	}
++	if (!State.bAnchored || Asked.SizeSquared() <= FMath::Square(50.) || FVector2D::DistSquared(Place, State.Anchor) > FMath::Square(RadiusCm))
++	{
++		State.Anchor = Place;
++		State.bAnchored = true;
++		State.StuckSeconds = 0.;
++		return false;
++	}
++	State.StuckSeconds += DeltaTime;
++	if (State.StuckSeconds >= AfterSeconds)
++	{
++		State.StuckSeconds = 0.;
++		State.HoldSeconds = HoldSeconds;
++		State.Anchor = Place;
++		return true;
++	}
++	return false;
++}
+diff --git a/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.h b/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.h
+index 26de625..f8643fb 100644
+--- a/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.h
++++ b/Source/HeroesOfLiberty/Simulation/HOLAvoidRules.h
+@@ -138,4 +138,24 @@ namespace HOLAvoid
+ 	 * empty). PatienceDegrees at 0 or less: off, the state cleared.
+ 	 */
+ 	HEROESOFLIBERTY_API bool StepLoopPatience(FLoopPatience& State, const FVector2D& Asked, double DeltaTime, double PatienceDegrees, double WaitSeconds, double ForgetSeconds);
++
++	/**
++	 * D641 (the soldier stuck against a fixed obstacle): the state of a melee that is asked to walk and does not get anywhere: the place it is held
++	 * from (anchor, valid once Anchored), the seconds it has been asked to walk without leaving that place, and the seconds it still stands.
++	 */
++	struct FStuckHold
++	{
++		FVector2D Anchor = FVector2D::ZeroVector;
++		bool bAnchored = false;
++		double StuckSeconds = 0.;
++		double HoldSeconds = 0.;
++	};
++
++	/**
++	 * One step of the rule: the unit at Place is asked Asked (cm/s; under 50 is standing). It is "stuck" while it stays within RadiusCm of its anchor
++	 * though it is asked to walk; after AfterSeconds of that it stands (true) for HoldSeconds, its anchor taken again, then tries again: a soldier
++	 * whose path runs into a tree or a rock does not pivot on the spot pushing against it (the to and fro of hol.Test.SanityMotion), it waits.
++	 * AfterSeconds at 0 or less: off, the state cleared. Returns true while the unit must stand still.
++	 */
++	HEROESOFLIBERTY_API bool StepStuckHold(FStuckHold& State, const FVector2D& Place, const FVector2D& Asked, double DeltaTime, double RadiusCm, double AfterSeconds, double HoldSeconds);
+ }
+diff --git a/Source/HeroesOfLiberty/Simulation/HOLSimulationFragments.h b/Source/HeroesOfLiberty/Simulation/HOLSimulationFragments.h
+index ad4d92d..5ee9414 100644
+--- a/Source/HeroesOfLiberty/Simulation/HOLSimulationFragments.h
++++ b/Source/HeroesOfLiberty/Simulation/HOLSimulationFragments.h
+@@ -565,6 +565,16 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
+ 	float LoopTurn = 0.f;
+ 	float LoopWaitSeconds = 0.f;
+ 
++	/**
++	 * D641 (hol.Combat.StuckAfter): the place a soldier asked to walk is held from, how long it has stayed within reach of it, and how long it still
++	 * stands for it: a soldier whose walk runs into a fixed obstacle (a tree, a rock) stands instead of pivoting on the spot. Written by
++	 * UHOLFullSpeedProcessor only.
++	 */
++	FVector2f StuckAnchor = FVector2f::ZeroVector;
++	bool bStuckAnchored = false;
++	float StuckSeconds = 0.f;
++	float StuckHoldSeconds = 0.f;
++
+ 	/**
+ 	 * J7c.4 loop 21 (hol.Combat.RearFlank): a melee of an attack-move held behind its own line goes round its end.
+ 	 * FlankWaitSeconds: how long it has been held (then, flanking: how long it has flanked); FlankSide: the end it goes to
+diff --git a/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp b/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp
+index b2fa895..33f727d 100644
+--- a/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp
++++ b/Source/HeroesOfLiberty/Simulation/HOLSimulationProcessors.cpp
+@@ -54,21 +54,51 @@ namespace UE::HeroesOfLiberty::Simulation
+ 	float LoopForgetSeconds = 4.f;
+ 	FAutoConsoleVariableRef CVarLoopForget(TEXT("hol.Combat.LoopForget"), LoopForgetSeconds,
+ 		TEXT("Seconds over which the turning a melee piled up (hol.Combat.LoopPatience) leaks away (D641)"));
++	float StuckAfterSeconds = 1.f;
++	FAutoConsoleVariableRef CVarStuckAfter(TEXT("hol.Combat.StuckAfter"), StuckAfterSeconds,
++		TEXT("Seconds (default 1; 0 = off, for A / B) a melee asked to walk to its target may stay within hol.Combat.StuckRadius of its place (a tree or a rock in its way) before it stands hol.Combat.StuckHold instead of pivoting on the spot (D641)"));
++	float StuckRadiusCm = 30.f;
++	FAutoConsoleVariableRef CVarStuckRadius(TEXT("hol.Combat.StuckRadius"), StuckRadiusCm,
++		TEXT("cm: how little a melee asked to walk has moved, for hol.Combat.StuckAfter (D641)"));
++	float StuckHoldSecondsSetting = 1.f;
++	FAutoConsoleVariableRef CVarStuckHold(TEXT("hol.Combat.StuckHold"), StuckHoldSecondsSetting,
++		TEXT("Seconds a melee stuck against an obstacle stands before it tries again (D641)"));
+ 
+ 	/**
+ 	 * D641: a melee walking to its target (not striking, not going round the line's end on purpose) that keeps turning, going round the line of its
+ 	 * friends one way then the other, stands and waits instead (HOLAvoid::StepLoopPatience on the velocity asked of it). Returns whether the
+ 	 * velocity was zeroed.
+ 	 */
+-	bool HoldIfLooping(FHOLCombatFragment& Combat, FVector& Velocity, const float DeltaTime, const bool bFighting)
++	bool HoldIfLooping(FHOLCombatFragment& Combat, FVector& Velocity, const float DeltaTime, const bool bFighting, const FVector& Location)
+ 	{
+ 		if (!bFighting)
+ 		{
+ 			Combat.LoopHeading = FVector2f::ZeroVector;
+ 			Combat.LoopTurn = 0.f;
+ 			Combat.LoopWaitSeconds = 0.f;
++			Combat.bStuckAnchored = false;
++			Combat.StuckSeconds = 0.f;
++			Combat.StuckHoldSeconds = 0.f;
+ 			return false;
+ 		}
++		// D641: asked to walk, held within reach of its place by a fixed obstacle: it stands rather than pivot pushing against it.
++		{
++			HOLAvoid::FStuckHold Stuck;
++			Stuck.Anchor = FVector2D(Combat.StuckAnchor);
++			Stuck.bAnchored = Combat.bStuckAnchored;
++			Stuck.StuckSeconds = Combat.StuckSeconds;
++			Stuck.HoldSeconds = Combat.StuckHoldSeconds;
++			const bool bStandStuck = HOLAvoid::StepStuckHold(Stuck, FVector2D(Location.X, Location.Y), FVector2D(Velocity.X, Velocity.Y), DeltaTime, StuckRadiusCm, StuckAfterSeconds, StuckHoldSecondsSetting);
++			Combat.StuckAnchor = FVector2f(Stuck.Anchor);
++			Combat.bStuckAnchored = Stuck.bAnchored;
++			Combat.StuckSeconds = static_cast<float>(Stuck.StuckSeconds);
++			Combat.StuckHoldSeconds = static_cast<float>(Stuck.HoldSeconds);
++			if (bStandStuck)
++			{
++				Velocity = FVector::ZeroVector;
++				return true;
++			}
++		}
+ 		HOLAvoid::FLoopPatience State;
+ 		State.Heading = FVector2D(Combat.LoopHeading);
+ 		State.Turn = Combat.LoopTurn;
+@@ -1313,7 +1343,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
+ 					Wanted, Speed, Last, States[EntityIt].OwnerPlayer, DeltaTime, Combats[EntityIt], Slid, bSliding))
+ 				{
+ 					Velocity = FVector(Slid.X, Slid.Y, 0.);
+-					HoldIfLooping(Combats[EntityIt], Velocity, DeltaTime, !IsGhost(States[EntityIt]) && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking && !Combats[EntityIt].bFlanking);
++					HoldIfLooping(Combats[EntityIt], Velocity, DeltaTime, !IsGhost(States[EntityIt]) && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking && !Combats[EntityIt].bFlanking, Location);
+ 					CountTurn(LastVelocities[EntityIt].Value, Velocity);
+ 					continue;
+ 				}
+@@ -1337,7 +1367,7 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
+ 			// D641: a melee walking to its target that keeps turning round the line of its friends waits instead.
+ 			if (!Combats.IsEmpty())
+ 			{
+-				HoldIfLooping(Combats[EntityIt], Velocity, DeltaTime, !IsGhost(States[EntityIt]) && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking && !Combats[EntityIt].bFlanking);
++				HoldIfLooping(Combats[EntityIt], Velocity, DeltaTime, !IsGhost(States[EntityIt]) && Combats[EntityIt].bApproaching && !Combats[EntityIt].bAttacking && !Combats[EntityIt].bFlanking, Location);
+ 			}
+ 			CountTurn(LastVelocities[EntityIt].Value, Velocity);
+ 		}
+diff --git a/Source/HeroesOfLiberty/Tests/HOLAvoidTests.cpp b/Source/HeroesOfLiberty/Tests/HOLAvoidTests.cpp
+index 73f6da6..6daca8f 100644
+--- a/Source/HeroesOfLiberty/Tests/HOLAvoidTests.cpp
++++ b/Source/HeroesOfLiberty/Tests/HOLAvoidTests.cpp
+@@ -230,4 +230,64 @@ bool FHOLAvoidLoopPatienceTest::RunTest(const FString& Parameters)
+ 	return true;
+ }
+ 
++IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidStuckHoldTest, "HeroesOfLiberty.Movement.StuckHold",
++	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
++bool FHOLAvoidStuckHoldTest::RunTest(const FString& Parameters)
++{
++	// D641: a soldier asked to walk that stays within 30 cm of its place for 1 s stands 1 s, then tries again (20 Hz steps).
++	const double Dt = 0.05;
++	const auto Step = [Dt](HOLAvoid::FStuckHold& State, const FVector2D& Place, const double Speed = 697.)
++	{
++		return HOLAvoid::StepStuckHold(State, Place, FVector2D(Speed, 0.), Dt, 30., 1., 1.);
++	};
++	{
++		HOLAvoid::FStuckHold State;
++		bool bHeld = false;
++		for (int32 Index = 0; Index < 200; ++Index)
++		{
++			bHeld |= Step(State, FVector2D(Index * 35., 0.));
++		}
++		TestFalse(TEXT("a walk that gets on never stands"), bHeld);
++	}
++	{
++		// Pushing against a tree: 1 cm of noise a step, going nowhere.
++		HOLAvoid::FStuckHold State;
++		int32 HeldAt = INDEX_NONE;
++		for (int32 Index = 0; Index < 60 && HeldAt == INDEX_NONE; ++Index)
++		{
++			if (Step(State, FVector2D((Index % 2) * 1., 0.)))
++			{
++				HeldAt = Index;
++			}
++		}
++		TestTrue(TEXT("stuck against an obstacle, it stands"), HeldAt != INDEX_NONE);
++		TestTrue(TEXT("after about a second"), HeldAt >= 18 && HeldAt <= 22);
++		int32 Steps = 0;
++		while (Step(State, FVector2D::ZeroVector) && Steps < 200)
++		{
++			++Steps;
++		}
++		TestTrue(TEXT("it stands a second"), Steps >= 18 && Steps <= 21);
++		TestFalse(TEXT("then it tries again"), Step(State, FVector2D::ZeroVector));
++	}
++	{
++		// Standing (asked under 50 cm/s) is not being stuck; off at 0 seconds.
++		HOLAvoid::FStuckHold State;
++		bool bHeld = false;
++		for (int32 Index = 0; Index < 100; ++Index)
++		{
++			bHeld |= Step(State, FVector2D::ZeroVector, 10.);
++		}
++		TestFalse(TEXT("asked nothing, it is not stuck"), bHeld);
++		HOLAvoid::FStuckHold Off;
++		bool bOffHeld = false;
++		for (int32 Index = 0; Index < 100; ++Index)
++		{
++			bOffHeld |= HOLAvoid::StepStuckHold(Off, FVector2D::ZeroVector, FVector2D(697., 0.), Dt, 30., 0., 1.);
++		}
++		TestFalse(TEXT("0 seconds: off"), bOffHeld);
++	}
++	return true;
++}
++
+ #endif

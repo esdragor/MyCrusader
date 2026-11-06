@@ -1,0 +1,7 @@
+﻿Name,DisplayName,Sign,Dealt,Taken,Rate,Form,DurationMs,RadiusCm,SourceKind,Gives,Attenuable,Description
+DawnAura,Aura de l'Aube,Bonus,0,15,0,Aura,0,1200,Hero,,False,Les unités du camp près du héros subissent 15 % de dégâts en moins.
+CloseRanks,Serrez les rangs,Bonus,0,25,0,Temporary,15000,1200,HeroCry,,False,Les unités du camp près du héros subissent 25 % de dégâts en moins pendant 15 s.
+Banner,Bannière,Bonus,0,0,0,Aura,45000,1200,Banner,DawnAura,False,La bannière plantée donne l'Aura de l'Aube autour d'elle pendant 45 s (une seule aura compte).
+Triumph,Triomphe,Bonus,10,10,0,Temporary,40000,0,Duel,,False,Après un duel gagné : 10 % de dégâts en plus et 10 % de dégâts reçus en moins pendant 40 s.
+Demoralised,Démoralisé,Malus,-10,-10,0,Temporary,40000,0,Duel,,True,Après un duel perdu : 10 % de dégâts en moins et 10 % de dégâts reçus en plus pendant 40 s.
+Hesitation,Hésitation,Malus,-5,0,0,Temporary,25000,0,Duel,,True,Le héros a refusé un duel : 5 % de dégâts en moins pendant 25 s.

@@ -1,0 +1,99 @@
+# Cavalerie C1 (D672, CV-Q1 a CV-Q5) : l'Ecurie forme un Cavalier leger (cheval PLACEHOLDER : Mannequin agrandi, comme le Belier) ; le Cavalier leger contre des Archers, contre des Piquiers, contre un Mangonneau.
+# NON EXECUTE : ecrit le 2026-11-04 sans build (machine interdite), avec des unites et des commandes que seuls les tableaux regeneres rendent possibles (Stable, LightCavalry). A lancer par play.ps1 cavalry une fois le build permis ; si une etape echoue, la corriger avant l'essai.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# Chiffres attendus (UnitStats.md) : le Cavalier leger a 120 PV, frappe 9 par 1,5 s (+10 contre Distance, +20 contre Siege) ; Archer 3 par fleche sur lui (5 - 2) ; Piquier 24 par coup sur lui (8 + 17 - 1), 5 coups le tuent ; Mangonneau 29 par coup (9 + 20).
+# Trois couloirs (Y = -3000, 0, +3000 du centre), le Cavalier leger a 35 m de ses ennemis (hors du rayon d'agressivite de 21 m des Archers et des Piquiers : rien ne part avant l'ordre).
+# NB : la CHARGE (deuxieme attaque a declencheur, D345.3) n'est pas encore dans le jeu (C2, C++) : ici le Cavalier leger ne frappe que son coup normal.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Prod.BuildTime 2
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Stable 0 2500 2500
+waitlog Cheat: spawned Stable of slot 0
+hol.Camera.Zoom -2
+frames 40
+hol.Select.Category Military
+waitlog Selection: Stable
+frames 20
+note 1. L'Ecurie est selectionnee : la case A de sa grille forme un Cavalier leger (80 nourriture + 40 or). Le batiment est la boite provisoire (le vrai modele et les bannieres a la couleur du joueur viennent avec le chantier visuel).
+hol.HUD.Report
+waitlog A=LightCavalry enabled
+capture cavalry_stable
+hol.Prod.Queue LightCavalry
+waitlog Production: LightCavalry of slot 0 done
+frames 20
+note 2. Le Cavalier leger est sorti de l'Ecurie (production de 2 s pour l'essai) : un Mannequin agrandi (placeholder assume), plus gros et plus rapide (875 cm/s) que les fantassins.
+capture cavalry_produced
+# Couloir 1 : un Cavalier leger contre 3 Archers (bonus +10 contre Distance : 19 par coup, 4 coups par Archer).
+hol.Camera.FocusNear 4500 -3000
+frames 2
+hol.Units.SpawnHere 1 LightCavalry 0 100
+waitlog SpawnHere: 1 LightCavalry of slot 0
+hol.Camera.FocusNear 8000 -3000
+frames 2
+hol.Units.SpawnHere 3 Archer 1 250
+waitlog SpawnHere: 3 Archer of slot 1
+hol.Camera.FocusNear 5600 -3000
+hol.Camera.Zoom 0
+frames 20
+hol.Select.Type LightCavalry last
+waitlog Select type LightCavalry: 1 units
+note 3. Un Cavalier leger contre 3 Archers (a 35 m) : ordre d'attaque-deplacement. Il doit les rejoindre sous les fleches (3 de degats chacune sur lui) et les tuer l'un apres l'autre (19 par coup, 4 coups, ~5 s par Archer) : il gagne, blesse.
+hol.Select.AttackMoveNear 8000 -3000
+panel hide
+frames 3
+capture cavalry_vs_archers_start
+wait 25
+capture cavalry_vs_archers
+panel show
+hol.Combat.Report 0
+# Couloir 2 : un Cavalier leger contre 2 Piquiers (+17 contre Cavalerie : 24 par coup, 5 coups le tuent) : il doit perdre.
+hol.Camera.FocusNear 4500 0
+frames 2
+hol.Units.SpawnHere 1 LightCavalry 0 100
+waitlog SpawnHere: 1 LightCavalry of slot 0
+hol.Camera.FocusNear 8000 0
+frames 2
+hol.Units.SpawnHere 2 Spearman 1 250
+waitlog SpawnHere: 2 Spearman of slot 1
+hol.Camera.FocusNear 5600 0
+frames 20
+hol.Select.Type LightCavalry last
+waitlog Select type LightCavalry: 1 units
+note 4. Un Cavalier leger contre 2 Piquiers : le contre. Chaque coup de Piquier lui fait 24 (8 + 17 contre Cavalerie - 1 d'armure), 5 coups le tuent en ~8 s ; lui n'en fait que 9 par coup (120 PV : il en encaisse 5). Il doit mourir.
+hol.Select.AttackMoveNear 8000 0
+panel hide
+frames 3
+capture cavalry_vs_spearmen_start
+wait 25
+capture cavalry_vs_spearmen
+panel show
+hol.Combat.Report 0
+# Couloir 3 : un Cavalier leger contre un Mangonneau (+20 contre Siege : 29 par coup, 7 coups pour 200 PV). Le Mangonneau n'a pas de rayon d'agressivite : il ne riposte pas tant qu'on ne l'a pas ordonne.
+hol.Camera.FocusNear 4500 3000
+frames 2
+hol.Units.SpawnHere 1 LightCavalry 0 100
+waitlog SpawnHere: 1 LightCavalry of slot 0
+hol.Camera.FocusNear 8000 3000
+frames 2
+hol.Units.SpawnHere 1 Mangonel 1 100
+waitlog SpawnHere: 1 Mangonel of slot 1
+hol.Camera.FocusNear 5600 3000
+frames 20
+hol.Select.Type LightCavalry last
+waitlog Select type LightCavalry: 1 units
+note 5. Un Cavalier leger contre un Mangonneau : 29 par coup (9 + 20 contre Siege, le Mangonneau n'a pas d'armure de melee), 7 coups (~10 s) pour ses 200 PV. Le Cavalier leger, lui, ne perd rien.
+hol.Select.AttackMoveNear 8000 3000
+panel hide
+frames 3
+capture cavalry_vs_mangonel_start
+wait 20
+capture cavalry_vs_mangonel
+panel show
+hol.Combat.Report 0
+hol.Test.Sanity
+note 6. A toi : fais sortir des Cavaliers legers de l'Ecurie (case A), lance-les contre des Archers, des Piquiers, un Mangonneau. A regarder : le cheval est un placeholder (Mannequin agrandi, sans animation) ; il n'y a pas encore de charge (C2).

@@ -1,5 +1,5 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-dip_L0_1920 | Presentation 0 a 1920x1080 : panneau large au centre, une ligne par joueur (couleur, nom, faction, vies, trois boutons Allie / Neutre / Ennemi dont l'actif est colore, « En attente de l'autre » sur le joueur 5, case Vision cochee sur le joueur 2, Tribut grise, Message) ; rien ne couvre le bloc du heros, la mini-carte, le tableau des joueurs
+dip_L0_1920 | Presentation 0 a 1920x1080 : panneau large au centre, une ligne par joueur (couleur, nom, faction, vies, trois boutons Allie / Neutre / Ennemi dont l'actif est colore, Allie affiche sur le joueur 5 (alliance proposee, sans mot d'attente), case Vision cochee sur le joueur 2, Tribut grise, Message) ; rien ne couvre le bloc du heros, la mini-carte, le tableau des joueurs
 dip_L0_1366 | Presentation 0 a 1366x768 : le meme panneau, entier, sans chevauchement
 dip_L0_600 | Presentation 0 a 1280x600 : le meme panneau, entier ou defilant, sans couvrir le bas
 dip_L1_1920 | Presentation 1 a 1920x1080 : panneau etroit a droite sous le tableau des joueurs, la posture est une puce coloree par ligne, ne couvre pas la mini-carte
@@ -11,6 +11,6 @@ dip_L2_600 | Presentation 2 a 1280x600 : le meme panneau compact, sans couvrir l
 dip_L2_menu | Presentation 2 : le menu d'un joueur ouvert, trois choix Allie / Neutre / Ennemi sous sa ligne
 dip_L0_choice | Presentation 0 apres la touche Entree, vue de l'utilisateur
 dip_L2_choice | Presentation 2 apres la touche Entree, vue de l'utilisateur
-dip_L0_market | Presentation 0 avec un Marche : le bouton Tribut est actif (non grise) sur chaque ligne
+dip_L0_market | Presentation 0 avec un Marche : le bouton Tribut est actif (non grise) sur chaque ligne ; en bas du panneau : le bouton Ressource et la taxe 30 % ecrite une fois
 dip_L1_market | Presentation 1 avec un Marche : le bouton Tribut est actif
 dip_L2_market | Presentation 2 avec un Marche : le bouton Tribut est actif

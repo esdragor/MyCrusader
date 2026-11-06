@@ -18,7 +18,8 @@ import os
 
 from maps import common, steppe
 
-GROUND = steppe.GROUND  # the Steppe's grass; the roads are drawn over it (common.spawn_zones, ZONE_COLORS[1]: packed earth)
+GROUND = "MI_Ground_Forest"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
+
 ROAD_KIND = 1
 ROAD_RADIUS = 400.0  # cm: a disc of 8 m across (CQ6a = A: "zones rondes alignees en couloir de 8 m")
 ROAD_STEP = 400.0  # cm between two disc centres along a road: they overlap by half a diameter, a continuous corridor of 8 m
@@ -91,17 +92,12 @@ def sources(recipe):
     whose centre is still too near are dropped: the territories hold a little more than the budget, Map.Table checks it still holds it)."""
     before = (steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.BUDGET, steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS, steppe.MIN_EXTENT,
               steppe.FAR_FLOOR, common.PACK_TREES)
-    # CQ7 = B (the user, 2026-11-01): the forest is twice as dense in wood (the budget of trees doubled) and its groves are 30 to 40 trees.
-    steppe.BUDGET = DENSE_BUDGET
-    steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS = DENSE_LADDER, DENSE_CYCLE, DENSE_MEANS
-    steppe.MIN_EXTENT = steppe.extent("Wood", DENSE_LADDER[0])
-    steppe.FAR_FLOOR = steppe.DEPOSIT_GAP + 2 * steppe.MIN_EXTENT + 10.0
-    common.PACK_TREES = DENSE_PACK
-    reach = ROAD_RADIUS + ROAD_CLEAR + steppe.MIN_EXTENT
+    # 2026-11-04 (the user): the forest holds 600 trees per player (Huge 900, steppe.WOODS["dense"]) in real forests of 200 trees or more.
+    reach = ROAD_RADIUS + ROAD_CLEAR + steppe.extent("Wood", steppe.WOODS["dense"][1][0])
     steppe.KEEP_OUT = lambda point: distance_to_road(recipe, point) < reach
     steppe.VEIN_DRAWS = VEIN_DRAWS
     try:
-        placed, groups = steppe.sources(recipe)
+        placed, groups = steppe.sources(recipe, "dense")
     finally:
         (steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.BUDGET, steppe.GROVE_LADDER, steppe.GROVE_CYCLE, steppe.GROVE_MEANS, steppe.MIN_EXTENT,
          steppe.FAR_FLOOR, common.PACK_TREES) = before

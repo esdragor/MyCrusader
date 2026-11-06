@@ -1,0 +1,64 @@
+﻿# Forge F1 (FortificationsInProgress.md, GDD 11.1, D691, D695) : la Forge (palier 1, case technologie F3) recherche Lames affutees I ; la recherche paye et change les degats du joueur seul
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# La Forge est posee finie par hol.Cheat.SpawnBuilding (la pose par le Paysan est le meme code que les autres batiments) ; recherche de 2 s (hol.Prod.BuildTime 2) ;
+# hol.Hero.SetXP 0 600 = niveau 3 = palier 1. hol.Combat.LogHits donne chaque coup : Homme d'armes sur Lancier 12 sans technologie, 13.2 avec Lames affutees I (+10 %).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Combat.LogHits 1
+hol.Test.Sanity
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Cheat.SpawnBuilding Forge 0 2500 2500
+waitlog Cheat: spawned Forge of slot 0
+hol.Camera.Zoom -2
+frames 30
+hol.Select.Category Technological
+waitlog Selection: Forge
+frames 20
+note 1. La Forge est selectionnee (F3) : sa grille de recherche (rangee W X C V). Au palier 0 la recherche est refusee, le motif est dit.
+hol.HUD.Report
+capture forge_grid
+hol.Select.Grid 8
+waitlog Command feedback: research refused (tier too low)
+hol.Hero.SetXP 0 600
+waitlog slot 0 level 1 -> 3
+frames 90
+hol.HUD.Report
+waitlog +10 %
+capture forge_tier1
+note 2. Palier 1 : un Homme d'armes (toi) et cinq Lanciers (ennemis) a cote de la Forge. Sans technologie, l'Homme d'armes frappe un Lancier pour 12.
+hol.Units.SpawnHere 1 ManAtArms 0 900
+hol.Units.SpawnHere 5 Spearman 1 1300
+waitunits 12
+frames 20
+waitlog Spearman for 12,
+# Statistics of the selected unit (REGLAGE forge): the Homme d'armes selected shows its attack; after Lames affutees I its attack carries the bonus, "(+" in the line.
+hol.Select.Type ManAtArms
+frames 10
+hol.HUD.Report
+waitlog HUD stats: attack 12, melee armor 4, ranged armor 4, hero armor 2, speed 7
+waitlog HUD stats tip: health 155 | base attack 12 | range melee | siege armor 0
+capture forge_stats_before
+hol.Select.Category Technological
+waitlog Selection: Forge
+frames 20
+note 3. Lames affutees I (W) part en file, son cout est pris ; deux secondes plus tard elle est faite.
+hol.Select.Grid 8
+waitlog Production: slot 0 queued research MeleeAttackI
+frames 5
+capture forge_queued
+waitlog Technology: slot 0 researched MeleeAttackI
+hol.Select.Type ManAtArms
+frames 10
+hol.HUD.Report
+waitlog HUD stats: attack 13.2 (+1.2), melee armor 4, ranged armor 4, hero armor 2, speed 7
+waitlog HUD stats tip: health 155 | base attack 12 | technology +10 % | range melee | siege armor 0
+capture forge_stats_after
+hol.Tech.Report
+note 4. Apres la recherche l'Homme d'armes frappe un Lancier pour 13.2 (12 x 1.1) ; les Lanciers ennemis, eux, ne gagnent rien : ils le frappent toujours pour 4.
+waitlog Spearman for 13.2,
+waitlog ManAtArms for 4,
+capture forge_after

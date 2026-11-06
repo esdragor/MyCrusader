@@ -1,4 +1,4 @@
-# The paths of L'Arriere-pays on the game's own navmesh (chantier Cartes, C2; modelled on the ridge's crossings.ps1): a solo match on
+﻿# The paths of L'Arriere-pays on the game's own navmesh (chantier Cartes, C2; modelled on the ridge's crossings.ps1): a solo match on
 # <Map>_<Size> (Hinterland by default), then hol.Nav.Path between the places the recipe says (Tools/Tests/hinterland_dump.py: the
 # slots, a gold vein of each pocket, the openings of the pockets, the passages of the belt), each judged by its length against the
 # straight line (the rocks are NavArea_Null volumes: the navmesh knows them, the trees do not):
@@ -68,7 +68,7 @@ foreach ($Query in $Queries) { $Lines += "hol.Nav.Path $(Point $Query.From) $(Po
 $Lines += "frames 2", "quit"
 $Lines | Set-Content -Encoding ascii $Sequence
 
-$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+$Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -Multiprocess -culture=fr -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
 if (-not $Process.WaitForExit(240000)) { $Process.Kill() }
 

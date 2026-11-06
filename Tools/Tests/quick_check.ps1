@@ -245,6 +245,9 @@ if (-not (Test-Path $TestSettings)) {
     New-Item -ItemType Directory -Force (Split-Path $TestSettings) | Out-Null
     Copy-Item (Join-Path $PSScriptRoot "GameUserSettings.ini") $TestSettings
 }
+# Edge scrolling off, every pass (a file made before it existed keeps the option on): a cursor at the screen's edge pans the camera.
+. (Join-Path $PSScriptRoot "TestSettings.ps1")
+Set-TestEdgeScrollOff $TestSaved
 New-Item -ItemType Directory -Force (Split-Path $GameLog) | Out-Null
 # The logs of THIS pass (2026-11-03): a log still held by another process cannot be removed, and the engine then writes
 # <name>_2.log (what the pass used to read: the held file's old lines, or nothing: "0/0"). Waits a few seconds for the
@@ -268,7 +271,7 @@ $TestsLog = Get-FreshLog $TestsLog
 $NoStartingPeasants = "-ini:Game:[/Script/HeroesOfLiberty.HOLMatchSettings]:StartingPeasants=0,[/Script/HeroesOfLiberty.HOLMatchSettings]:bStartingHero=False"
 $TestsProcess = $null
 if ($Parts -contains "tests") {
-    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty+Angelscript.UnitTests;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -abslog=`"$TestsLog`""
+    $TestsArguments = "`"$UProject`" -ExecCmds=`"Automation RunTests HeroesOfLiberty+Angelscript.UnitTests;SoftQuit`" -saveddirsuffix=Tests -unattended -nullrhi -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -abslog=`"$TestsLog`""
     $TestsProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor-Cmd.exe") -ArgumentList $TestsArguments -PassThru -WindowStyle Hidden
 }
 
@@ -501,7 +504,7 @@ if ($Parts -contains "net") {
         }
     }).AddArgument($ManagerListener).AddArgument($ManagerCallsFile)
     $null = $ManagerRunspace.BeginInvoke()
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1,hol.Match.StartWaitSeconds 120$NetSourceCommand`""
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1,hol.Match.StartWaitSeconds 120$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -2588,7 +2591,7 @@ $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
 # Off screen on a fixed step, the world is not drawn while the sequence waits for the game (each frame ~2 ms cheaper);
 # drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
 if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
-$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
+$GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
 $GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
@@ -2901,7 +2904,7 @@ if ($NetListening) {
         $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_net_client$Client.log")
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
-        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
+        $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
         $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
         if ($Client -eq 2) {
@@ -4087,7 +4090,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
     $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed X=Sanctuary greyed\] II=locked \[A=Market greyed Q=SiegeWorkshop greyed S=Chapel greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed X=Sanctuary greyed\] II=locked \[A=Market greyed Q=SiegeWorkshop greyed S=Chapel greyed D=Stable greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; I X: Sanctuaire.+; II A: March.+; II Q: Atelier de si.+ge; II S: Chapelle$") -and -not ($Cells -match "\d")
@@ -6577,7 +6580,7 @@ if ($Parts -contains "net") {
         $MatchPauses[4].Groups[2].Value -eq "0" -and $MatchPauses[5].Groups[2].Value -eq "0" -and
         [int64]$MatchPauses[5].Groups[1].Value -gt [int64]$MatchPauses[4].Groups[1].Value
     # D5 (net diplomacy): Bob and Alice ally then Bob breaks; the server and both clients each report twice (two pairs a report): the
-    # same four lines everywhere, the alliance read as formed (both Ally) then as broken at once (Bob Enemy: the relation Enemy, Alice's stance kept).
+    # same four lines everywhere, the alliance read as formed (both Ally) then as broken at once (Bob Enemy: the relation Enemy and Alice's stance dropped to Enemy too, on the client's replicated book as well; 2026-11-04).
     $DipLines = {
         param($Path)
         @(if ($Path -and (Test-Path $Path)) { Select-String -Path $Path -Pattern "Diplomacy report: (slot \d toward slot \d: .*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } })
@@ -6588,7 +6591,7 @@ if ($Parts -contains "net") {
     $DipWant = @(
         "slot 0 toward slot 1: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
         "slot 1 toward slot 0: stance Ally, relation Ally, vision 0, fires 0, adversary 0",
-        "slot 0 toward slot 1: stance Ally, relation Enemy, vision 0, fires 1, adversary 1",
+        "slot 0 toward slot 1: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1",
         "slot 1 toward slot 0: stance Enemy, relation Enemy, vision 0, fires 1, adversary 1")
     $DipSays = "server $($DipServer.Count), client 1 $($DipClient1.Count), client 2 $($DipClient2.Count) lines"
     # Its own PASS / FAIL line "net diplomacy" (not played with "-Parts hero", which keeps the join and the server's checks only).
@@ -7372,7 +7375,7 @@ if ($Parts -contains "aiserver") {
         Set-Content -Encoding utf8 $AIServerSequence
     # A free UDP port in this copy's range of 10 (as "net"; nobody joins, but two copies must not share one).
     $AIPort = Get-AITestPort
-    $AIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$AIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$AIServerConfig`" -abslog=`"$AIServerLog`" -ExecCmds=`"hol.Test.Run $AIServerSequence`""
+    $AIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$AIPort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$AIServerConfig`" -abslog=`"$AIServerLog`" -ExecCmds=`"hol.Test.Run $AIServerSequence`""
     $AIServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $AIServerArguments -PassThru -WindowStyle Hidden
     $AIServerTimedOut = -not $AIServerProcess.WaitForExit(180000)
     if ($AIServerTimedOut) { Stop-Process -Id $AIServerProcess.Id -Force -ErrorAction SilentlyContinue }
@@ -7434,7 +7437,7 @@ function Invoke-AIDuelRun([string] $Tag, [int] $GameSeconds, [int] $Fps) {
     $Lines += @("hol.Gather.Report", "quit")
     $Lines | Set-Content -Encoding utf8 $Sequence
     $Port = Get-AITestPort
-    $Arguments = "`"$UProject`" $DuelMap -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
+    $Arguments = "`"$UProject`" $DuelMap -server -Port=$Port -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=$Fps -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     $TimedOut = -not $Process.WaitForExit(420000)
     if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }
@@ -7549,7 +7552,7 @@ if ($Parts -contains "aimarket") {
     $MarketLines += "quit"
     $MarketLines | Set-Content -Encoding utf8 $MarketSequence
     $MarketPort = Get-AITestPort
-    $MarketArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$MarketPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$MarketConfig`" -abslog=`"$MarketLog`" -ExecCmds=`"hol.Test.Run $MarketSequence`""
+    $MarketArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$MarketPort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$MarketConfig`" -abslog=`"$MarketLog`" -ExecCmds=`"hol.Test.Run $MarketSequence`""
     $MarketProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $MarketArguments -PassThru -WindowStyle Hidden
     $MarketTimedOut = -not $MarketProcess.WaitForExit(420000)
     if ($MarketTimedOut) { Stop-Process -Id $MarketProcess.Id -Force -ErrorAction SilentlyContinue }
@@ -7581,7 +7584,7 @@ if ($Parts -contains "aisiege") {
     $SiegeLines += "quit"
     $SiegeLines | Set-Content -Encoding utf8 $SiegeSequence
     $SiegePort = Get-AITestPort
-    $SiegeArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SiegePort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SiegeConfig`" -abslog=`"$SiegeLog`" -ExecCmds=`"hol.Test.Run $SiegeSequence`""
+    $SiegeArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SiegePort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SiegeConfig`" -abslog=`"$SiegeLog`" -ExecCmds=`"hol.Test.Run $SiegeSequence`""
     $SiegeProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SiegeArguments -PassThru -WindowStyle Hidden
     $SiegeTimedOut = -not $SiegeProcess.WaitForExit(480000)
     if ($SiegeTimedOut) { Stop-Process -Id $SiegeProcess.Id -Force -ErrorAction SilentlyContinue }
@@ -7615,7 +7618,7 @@ if ($Parts -contains "aitech") {
     $TechLines += "quit"
     $TechLines | Set-Content -Encoding utf8 $TechSequence
     $TechPort = Get-AITestPort
-    $TechArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$TechPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$TechConfig`" -abslog=`"$TechLog`" -ExecCmds=`"hol.Test.Run $TechSequence`""
+    $TechArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$TechPort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$TechConfig`" -abslog=`"$TechLog`" -ExecCmds=`"hol.Test.Run $TechSequence`""
     $TechProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $TechArguments -PassThru -WindowStyle Hidden
     $TechTimedOut = -not $TechProcess.WaitForExit(540000)
     if ($TechTimedOut) { Stop-Process -Id $TechProcess.Id -Force -ErrorAction SilentlyContinue }
@@ -7668,7 +7671,7 @@ if ($Parts -contains "aiwave") {
     $WaveLines += "quit"
     $WaveLines | Set-Content -Encoding utf8 $WaveSequence
     $WavePort = Get-AITestPort
-    $WaveArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$WavePort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$WaveConfig`" -abslog=`"$WaveLog`" -ExecCmds=`"hol.Test.Run $WaveSequence`""
+    $WaveArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$WavePort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -nullrhi -UseFixedTimeStep -FPS=20 -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$WaveConfig`" -abslog=`"$WaveLog`" -ExecCmds=`"hol.Test.Run $WaveSequence`""
     $WaveProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $WaveArguments -PassThru -WindowStyle Hidden
     $WaveTimedOut = -not $WaveProcess.WaitForExit(480000)
     if ($WaveTimedOut) { Stop-Process -Id $WaveProcess.Id -Force -ErrorAction SilentlyContinue }
@@ -7731,7 +7734,7 @@ if ($Parts -contains "netai") {
     @("waitplayers 2", "mark netai", "wait 8", "hol.Gather.Report 2", "wait 1", "hol.Units.Where 2", "waitlog Units where:",
         "waitfile $($NetAIDone[0]) 240", "waitfile $($NetAIDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $NetAIServerSequence
     $NetAIPort = Get-AITestPort
-    $NetAIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetAIPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetAIConfig`" -abslog=`"$NetAIServerLog`" -ExecCmds=`"hol.Test.Run $NetAIServerSequence`""
+    $NetAIServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetAIPort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetAIConfig`" -abslog=`"$NetAIServerLog`" -ExecCmds=`"hol.Test.Run $NetAIServerSequence`""
     $NetAIServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetAIServerArguments -PassThru -WindowStyle Hidden
     $NetAIListening = $false
     $Deadline = (Get-Date).AddSeconds(90)
@@ -7755,7 +7758,7 @@ if ($Parts -contains "netai") {
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_netai_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetAIPort} -PlayerName=Bob" } else { "127.0.0.1:${NetAIPort}?Name=Alice" }
-            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
             $NetAIClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
         }
     }
@@ -7836,15 +7839,17 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     $NetFogServerLog = Get-FreshLog $NetFogServerLog
     Remove-Item (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client*.log"), (Join-Path $TestSaved "quick_${NetFogPart}_*.flag") -ErrorAction SilentlyContinue
     Write-AIMatchConfig $NetFogConfig @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    # B2 (D651-D656): the lobby's biome travels in the configuration to the server and, with the game state, to each client ("hol.Biome.Report" below).
+    (Get-Content $NetFogConfig -Raw) -replace '"startingPeasants"', '"biome": "snow", "startingPeasants"' | Set-Content -Encoding ascii $NetFogConfig
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
     # F6b: after 10 s Alice's units march (fast) to 27 m from Bob's forum, inside its sight (D523: 6400 cm) and theirs (3200 cm, F6e.2:
     # they see his centre), stay, and come home.
-    @("waitplayers 2", "mark $NetFogPart") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
+    @("waitplayers 2", "mark $NetFogPart", "hol.Biome.Report") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
         @($(if ($NetFogTrees -and $TreesCutNow) { @("wait $TreesCutWait") + $TreesCut + @("wait $(14 - $TreesCutWait)") } else { "wait 14" })) + @($(if ($NetFogTrees -and -not $TreesCutNow) { $TreesCut + @("wait 6") })) + @("hol.Units.Move -15200 0 0", "wait 16",
         "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
     $NetFogPort = Get-AITestPort
-    $NetFogServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetFogPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetFogConfig`" -abslog=`"$NetFogServerLog`" -ExecCmds=`"hol.Fog.Mode $(if ($NetFogOn) { 2 } else { 0 }),hol.Test.Run $NetFogServerSequence`""
+    $NetFogServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetFogPort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$NetFogConfig`" -abslog=`"$NetFogServerLog`" -ExecCmds=`"hol.Fog.Mode $(if ($NetFogOn) { 2 } else { 0 }),hol.Test.Run $NetFogServerSequence`""
     $NetFogServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetFogServerArguments -PassThru -WindowStyle Hidden
     $NetFogListening = $false
     $Deadline = (Get-Date).AddSeconds(90)
@@ -7865,12 +7870,12 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
             $ReportCount = if ($NetFogTrees) { 48 } else { 40 }
             $ClientReports = @(1..$ReportCount | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report"; if ($NetFogTrees) { "hol.Sources.Report" } } }) + @("hol.Fog.Report")
-            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Biome.Report", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
                 @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetFogPort} -PlayerName=Bob" } else { "127.0.0.1:${NetFogPort}?Name=Alice" }
-            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
             $NetFogClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
         }
     }
@@ -7888,6 +7893,8 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
         $Checks["client $N : sequence done"] = (-not $ClientTimedOut) -and [bool]($ClientLines | Select-String -Pattern "Test mark: end" -Quiet)
         $Held = $ClientLines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
         $Checks["client $N : holds the slot of $(@('Bob', 'Alice')[$N - 1]) ($Held)"] = ($null -ne $Held) -and $Held -eq (2 - $N)
+        # B2: the biome of the lobby (snow in the configuration), read by the client from the replicated configuration.
+        $Checks["client $N : holds the lobby's biome (snow)"] = [bool](Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Biome: snow \(client\)" -Quiet)
         # The buildings it holds (after its mark): its own centre; the other's too only without fog.
         $Seen = @(Get-MarkedLines $ClientLines $NetFogPart | Select-String -Pattern "Building report: (MainCentre of slot \d+)" | ForEach-Object { $_.Matches[0].Groups[1].Value })
         $Wanted = if ($NetFogOn) { @("MainCentre of slot $Held") } else { @("MainCentre of slot 0", "MainCentre of slot 1") }
@@ -7934,7 +7941,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
             Set-Content -Encoding utf8 $BackSequence
         $BackLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_back.log"
         $BackLog = Get-FreshLog $BackLog
-        $BackArguments = "`"$UProject`" 127.0.0.1:${NetFogPort}?Name=Alice -game $(if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=4900 -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }) -saveddirsuffix=Tests_Net2 -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$BackLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $BackSequence`""
+        $BackArguments = "`"$UProject`" 127.0.0.1:${NetFogPort}?Name=Alice -game $(if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=4900 -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }) -saveddirsuffix=Tests_Net2 -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$BackLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $BackSequence`""
         $BackProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $BackArguments -PassThru
         $BackTimedOut = -not $BackProcess.WaitForExit(240000)
         if ($BackTimedOut) { Stop-Process -Id $BackProcess.Id -Force -ErrorAction SilentlyContinue }
@@ -7945,6 +7952,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     if ($NetFogServerTimedOut) { Stop-Process -Id $NetFogServer.Id -Force -ErrorAction SilentlyContinue }
     $Checks["server quit by itself"] = -not $NetFogServerTimedOut
     $NetFogLog = if (Test-Path $NetFogServerLog) { Get-Content $NetFogServerLog } else { @() }
+    $Checks["server : plays the lobby's biome (snow)"] = [bool]($NetFogLog | Select-String -Pattern "Biome: snow \(server\)" -Quiet)
     $ServerSources = $NetFogLog | Select-String -Pattern "Sources \(server\): (\d+) standing" | Select-Object -Last 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
     foreach ($N in $ClientSources.Keys | Sort-Object) {
         $Checks["client $N : sources $(if ($NetFogOn) { 'of its explored cells only' } else { 'all' }) ($($ClientSources[$N]) of $ServerSources)"] =
@@ -8032,6 +8040,92 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     $AllOk = (Report $NetFogPart $Checks) -and $AllOk
 }
 
+# The "netfogview" part (2026-11-04, the red the journal of F9 asked for): "netfogtrees" cuts the pack while Alice's units are 125 m away, so
+# it can only show the client learns the cut when its camp comes back. This one is the other case, the one that must be immediate: her units
+# walk to 12 m from the pack of 10 trees (standing still, in sight), the server cuts the 10 trees, and her client's standing count of sources
+# must fall by 8 or more within 3 s of the cut. Read from the client's own "Sources (client): N standing" lines against the server's cut stamps.
+# Red = the client learns a cut in sight only later (a real bug of the per-camp memory: HOLFogNetSubsystem::PlaceSources / the ghosts).
+if ($Parts -contains "netfogview") {
+    $ViewPart = "netfogview"
+    $ViewServerLog = Join-Path $TestSaved "Logs\quick_${ViewPart}_server.log"
+    $ViewConfig = Join-Path $TestSaved "quick_$ViewPart.json"
+    $ViewServerSequence = Join-Path $TestSaved "quick_${ViewPart}_server.seq"
+    Remove-Item $ViewServerLog, (Join-Path $TestSaved "Logs\quick_${ViewPart}_client*.log"), (Join-Path $TestSaved "quick_${ViewPart}_*.flag") -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $ViewConfig @("Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob")
+    $ViewDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${ViewPart}_done$_.flag" })
+    # Alice's units (slot 0) go to 12 m west of the pack (X 0, Y 1500; "hol.Sources.Grove 160 0 1500 10") and stop there: they see it. 8 s later
+    # (they have been there for ~5 s) the server cuts the 10 trees, then waits 8 s more so the client reports cover the cut.
+    @("waitplayers 2", "mark $ViewPart", "hol.Sources.Grove 160 0 1500 10", "wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move -1200 1500 0", "wait 8") +
+        @(1..10 | ForEach-Object { "hol.Sources.TakeNear 0 1500" }) + @("wait 8", "hol.Sources.Report", "hol.Fog.Report", "waitfile $($ViewDone[0]) 240", "waitfile $($ViewDone[1]) 240", "wait 1", "quit") |
+        Set-Content -Encoding utf8 $ViewServerSequence
+    $ViewPort = Get-AITestPort
+    $ViewServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$ViewPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$ViewConfig`" -abslog=`"$ViewServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $ViewServerSequence`""
+    $ViewServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ViewServerArguments -PassThru -WindowStyle Hidden
+    $ViewListening = $false
+    $Deadline = (Get-Date).AddSeconds(90)
+    while (-not $ViewListening -and (Get-Date) -lt $Deadline -and -not $ViewServer.HasExited) {
+        Start-Sleep -Milliseconds 250
+        $ViewListening = (Test-Path $ViewServerLog) -and (Select-String -Path $ViewServerLog -Pattern "listening on port" -Quiet)
+    }
+    $ViewClients = @()
+    if ($ViewListening) {
+        foreach ($Client in 1, 2) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_${ViewPart}_client$Client.seq"
+            # One sources report a second for 40 s from 6 s in the match (the cut is at ~18 s of the server's sequence).
+            $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Sources.Report" })
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $ViewPart", "wait 6", "hol.Sources.Report") + $ClientReports +
+                @("signal $($ViewDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Join-Path $TestSaved "Logs\quick_${ViewPart}_client$Client.log"
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${ViewPort} -PlayerName=Bob" } else { "127.0.0.1:${ViewPort}?Name=Alice" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $ViewClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $ViewListening
+    $ViewStamp = { param($Line) if ("$Line" -match "^\[(\d+)\.(\d+)\.(\d+)-(\d+)\.(\d+)\.(\d+):(\d+)\]") { [datetime]::new([int] $Matches[1], [int] $Matches[2], [int] $Matches[3], [int] $Matches[4], [int] $Matches[5], [int] $Matches[6], [int] $Matches[7]) } else { $null } }
+    $ViewAliceLog = ""
+    foreach ($ViewClient in $ViewClients) {
+        $TimedOut = -not $ViewClient.Process.WaitForExit(240000)
+        if ($TimedOut) { Stop-Process -Id $ViewClient.Process.Id -Force -ErrorAction SilentlyContinue }
+        $Lines = if (Test-Path $ViewClient.Log) { Get-Content $ViewClient.Log } else { @() }
+        $Checks["client $($ViewClient.Client) : sequence done"] = (-not $TimedOut) -and [bool]($Lines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Held = $Lines | Select-String -Pattern "Camera above the start of slot (\d+) \(" | Select-Object -First 1 | ForEach-Object { [int]$_.Matches[0].Groups[1].Value }
+        $Checks["client $($ViewClient.Client) : holds the slot of $(@('Bob', 'Alice')[$ViewClient.Client - 1]) ($Held)"] = ($null -ne $Held) -and $Held -eq (2 - $ViewClient.Client)
+        if ($ViewClient.Client -eq 2) { $ViewAliceLog = $ViewClient.Log }
+    }
+    $ViewServerTimedOut = -not $ViewServer.WaitForExit($(if ($ViewClients.Count) { 30000 } else { 1000 }))
+    if ($ViewServerTimedOut) { Stop-Process -Id $ViewServer.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $ViewServerTimedOut
+    $ViewServerLines = if (Test-Path $ViewServerLog) { Get-Content $ViewServerLog } else { @() }
+    $ViewCuts = @($ViewServerLines | Select-String -Pattern "Sources: took \d+ from source")
+    $ViewCutAt = if ($ViewCuts.Count) { & $ViewStamp $ViewCuts[0].Line } else { $null }
+    $Checks["server : cut the 10 trees ($($ViewCuts.Count))"] = $ViewCuts.Count -eq 10
+    $ViewReports = @()
+    if ($ViewAliceLog -and (Test-Path $ViewAliceLog)) {
+        $ViewReports = @(Get-MarkedLines (Get-Content $ViewAliceLog) $ViewPart | Select-String -Pattern "Sources \(client\): (\d+) standing of \d+ .*; shown (\d+)," |
+            ForEach-Object { [pscustomobject]@{ At = (& $ViewStamp $_.Line); Standing = [int] $_.Matches[0].Groups[1].Value; Shown = [int] $_.Matches[0].Groups[2].Value } })
+    }
+    # Before: the most she held in the 4 s before the cut (her units stand by the pack); After: the least in 2.5 to 6 s after the cut.
+    $Before = @($ViewReports | Where-Object { $ViewCutAt -and ($ViewCutAt - $_.At).TotalSeconds -gt 0 -and ($ViewCutAt - $_.At).TotalSeconds -le 4 })
+    $After = @($ViewReports | Where-Object { $ViewCutAt -and ($_.At - $ViewCutAt).TotalSeconds -ge 2.5 -and ($_.At - $ViewCutAt).TotalSeconds -le 6 })
+    $BeforeMax = if ($Before.Count) { ($Before | Measure-Object Standing -Maximum).Maximum } else { -1 }
+    $AfterMin = if ($After.Count) { ($After | Measure-Object Standing -Minimum).Minimum } else { -1 }
+    $AfterShown = if ($After.Count) { ($After | Measure-Object Shown -Minimum).Minimum } else { -1 }
+    $FirstStanding = if ($ViewReports.Count) { $ViewReports[0].Standing } else { -1 }
+    $Checks["client 2 (Alice) : held the pack in sight before the cut (first report $FirstStanding standing, $BeforeMax just before, $($Before.Count) reports)"] = $Before.Count -ge 2 -and $FirstStanding -gt 0 -and $BeforeMax - $FirstStanding -ge 10
+    $Checks["client 2 (Alice) : learns the cut in her sight within 3 s (standing $BeforeMax -> $AfterMin, shown $AfterShown, $($After.Count) reports)"] =
+        $After.Count -ge 1 -and $BeforeMax - $AfterMin -ge 8 -and $BeforeMax - $AfterShown -ge 8
+    $AllOk = (Report $ViewPart $Checks) -and $AllOk
+}
+
 # The "netspec" part (D357, D376), after "netfog": a player defeated alone (free for all) becomes a spectator and keeps its connection.
 # The server (as "netfog", the fog Normal) with Alice (slot 0), Bob (slot 1) and an AI (slot 2, so that the match goes on once Bob is
 # out). Bob's client, 6 s in, reports what it holds (own side only: the starts are 300 m apart), has himself defeated
@@ -8063,7 +8157,7 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
     $SpecDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${SpecPart}_done$_.flag" })
     @("waitplayers 2", "mark $SpecPart", "waitfile $($SpecDone[0]) 240", "waitfile $($SpecDone[1]) 240", "wait 1", "quit") | Set-Content -Encoding utf8 $SpecServerSequence
     $SpecPort = Get-AITestPort
-    $SpecServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SpecPort -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SpecConfig`" -abslog=`"$SpecServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $SpecServerSequence`""
+    $SpecServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$SpecPort -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$SpecConfig`" -abslog=`"$SpecServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $SpecServerSequence`""
     $SpecServer = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $SpecServerArguments -PassThru -WindowStyle Hidden
     $SpecListening = $false
     $Deadline = (Get-Date).AddSeconds(240)
@@ -8095,7 +8189,7 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${SpecPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
-            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
             $SpecClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
         }
     }

@@ -20,7 +20,8 @@ import unreal
 from maps import common, eldorado, steppe
 from maps.common import mix_seed
 
-GROUND = steppe.GROUND
+GROUND = "MI_Ground_Crown"  # 2026-11-04: a textured ground of its own (maps/ground.py GROUNDS)
+
 RING_RADIUS = float(os.environ.get("HOL_CROWN_RING", "6800"))
 GATE_WIDTH = float(os.environ.get("HOL_CROWN_GATE", "1600"))
 RING_VERTICES = 24  # the ring is a polygon of this many sides (even: the ramp sits on a vertex, opposite the first one)
@@ -85,7 +86,7 @@ def sources(recipe):
     steppe.NEAR = [row for row in steppe.NEAR if row[0] != "GoldVein"]
     common.MINERAL_RESOURCES = ("Stone",)
     try:
-        placed, groups = steppe.sources(recipe)
+        placed, groups = steppe.sources(recipe, "forests")
     finally:
         steppe.KEEP_OUT, steppe.VEIN_DRAWS, steppe.CENTRE_CLEAR, steppe.NEAR, common.MINERAL_RESOURCES = before
     placed = [source for source in placed if not eldorado.is_gold(source)]
@@ -123,7 +124,7 @@ def relays(recipe):
 
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
-    return steppe.budget_of(recipe)[0]
+    return steppe.floor_of("forests", recipe)
 
 
 def volcano(recipe):

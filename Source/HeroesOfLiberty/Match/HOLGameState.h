@@ -110,7 +110,7 @@ public:
 	bool KeepAbsentSlot(const AHOLPlayerState& Leaving, double Now, double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds);
 	/** R7 (R3.9), server only: a named slot whose player missed the start, kept for the window from Now with Resources. */
 	bool KeepMissingSlot(int32 Slot, const FHOLResources& Resources, double Now,
-		double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds);
+		double WindowSeconds = FHOLDisconnectRules::DefaultWindowSeconds, const FHOLTechnologyState& Technologies = FHOLTechnologyState());
 	/**
 	 * R7.2, server only, by the game mode's PostLogin: the stock of the player taking his slot, the one kept at his
 	 * departure if he comes back within the window (the slot no longer absent), else Starting. True when he came back
@@ -127,11 +127,37 @@ public:
 	TArray<int32> DefeatExpiredAbsences(double Now, double WindowSeconds);
 	bool IsSlotAbsent(int32 Slot) const { return FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot) != INDEX_NONE; }
 	/**
+	 * D717 (T2): the player state of the AI that holds the seat of a player who left (a bot on a seat the launch configuration gave to
+	 * a human), or null. It holds his stock and technologies, so the orders of the brain pass the same queues and are paid on it.
+	 */
+	static AHOLPlayerState* FindHeldBot(const UWorld& World, int32 Slot);
+	/**
+	 * The slots in use by player states, Except left out (PostLogin's TakenSlots): the player state of the AI that holds a human's seat
+	 * does not count, else his own return (or a second connection of his name) would find his seat taken and join as a spectator.
+	 */
+	TArray<int32> GetSlotsInUse(const AHOLPlayerState* Except) const;
+	/**
 	 * B6b (R7), server only, by the game mode's PreLogin and PostLogin: the slot a login of Name takes
 	 * (FHOLMatchConfig::FindSlotForName), a defeated slot never (its window past, or beaten otherwise): he watches, as a
 	 * name absent from the configuration. With bLog, logs "Disconnect: slot N (Name) defeated, joins as spectator".
 	 */
 	int32 FindSlotOnLogin(const FHOLMatchConfig& Config, const FString& Name, TConstArrayView<int32> TakenSlots, bool bLog = true) const;
+	/**
+	 * D717 (T4), server only, by the game mode's PostLogin: the slot a new connection (Logging, no slot yet) of Name takes. As
+	 * FindSlotOnLogin on the slots in use (the AI's seat of an absent player left out), but a LIVE player state of another connection
+	 * that already holds the seat of that name (he restarted before the old connection timed out) does not make him a spectator: it is
+	 * OutReplaced (null otherwise), to be handed over by RetireHolder and kicked. A defeated seat is never taken again.
+	 */
+	int32 FindSlotForLogin(const FHOLMatchConfig& Config, const FString& Name, const AHOLPlayerState& Logging, AHOLPlayerState*& OutReplaced) const;
+	/**
+	 * D717 (T4), server only: the old connection's seat handed over to its successor (called before the successor is given the slot,
+	 * then GiveSlotStock): its stock, technologies and hero sheet are kept for him as at a Logout, with no banner; the old player state
+	 * becomes a spectator without a seat, so its late Logout (KeepAbsentSlot) puts nobody "away" under the new player. The orders,
+	 * building queues and units stay (they belong to the slot).
+	 */
+	void RetireHolder(AHOLPlayerState& Old, double Now, double WindowSeconds);
+	/** A player state of a connection that is still there (not the AI's, not a spectator) holding Slot, Except left out; null: none. */
+	static AHOLPlayerState* FindLiveHolder(const UWorld& World, int32 Slot, const AHOLPlayerState* Except);
 
 	/**
 	 * M6-Q16 (R7): the stock of slot Slot, its player's (AHOLPlayerState) or, while he is away, the one kept for him
@@ -143,6 +169,16 @@ public:
 	static bool SetSlotStock(UWorld& World, int32 Slot, const FHOLResources& Stock);
 	/** Server only: adds Gain to slot Slot's stock (a deposit, a refund). False: nowhere (Gain lost); OutStock: after it. */
 	static bool AddSlotStock(UWorld& World, int32 Slot, const FHOLResources& Gain, FHOLResources& OutStock);
+	/**
+	 * D719 (T0): the technologies of slot Slot, its player's (AHOLPlayerState) or, while he is away, the ones kept for him
+	 * (AbsentSlots). False (OutTechnologies empty): the slot has none (no player state, not absent).
+	 */
+	static bool GetSlotTechnologies(const UWorld& World, int32 Slot, FHOLTechnologyState& OutTechnologies);
+	/**
+	 * D719 (T0), server only: a research of slot Slot ended: added where GetSlotTechnologies reads (the player state, with its
+	 * effects, or the absent's record, given back on his return). False: nowhere, or already had it (nothing written).
+	 */
+	static bool AddSlotTechnology(UWorld& World, int32 Slot, FName Technology);
 	/** Server only: the slots kept for their players gone (R7.5's banner will replicate them). */
 	const TArray<FHOLAbsentSlot>& GetAbsentSlots() const { return AbsentSlots; }
 
@@ -245,6 +281,10 @@ public:
 	int32 GetLives(int32 Slot) const;
 	/** P3: the civilisation tier the slot's hero level opens (HOLHeroXP::GetTier; 0 without a hero), as the HUD and the rules read it. */
 	int32 GetTier(int32 Slot) const;
+	/** G0 (D710), development: forces the slot's tier (0 to 3, whatever its hero's level; GetTier then returns it); Tier below 0 lifts it. Server side, replicated (hol.Cheat.Tier). */
+	void SetTierOverride(int32 Slot, int32 Tier);
+	/** The tier forced for the slot, -1 when none (every machine: the property is replicated). */
+	int32 GetTierOverride(int32 Slot) const;
 	/** P2: the forum's values for a slot: the tier its hero's level opens (HOLHeroXP::GetTier), at least the setting's (tests). */
 	FHOLForumTuning GetForumTuning(int32 Slot) const;
 	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
@@ -357,8 +397,14 @@ private:
 	UPROPERTY(ReplicatedUsing = OnRep_Forums)
 	TArray<FHOLForumState> ForumStates;
 
+	/** G0 (D710): one per slot (MaxSlots), the tier forced for a slot by hol.Cheat.Tier, -1 for none; public, so a client reads the same tier. */
+	UPROPERTY(Replicated)
+	TArray<int32> TierOverrides;
+
 	/** Server only (R7): the slots kept for their players gone, in the order of the departures. */
 	TArray<FHOLAbsentSlot> AbsentSlots;
+	/** D717 (T2), server only: the AI's player state for the seat just kept (KeepMissingSlot), with his name, stock and technologies. */
+	void SpawnHeldBot(int32 Slot, const FString& Name, const FHOLResources& Resources, const FHOLTechnologyState& Technologies);
 	/**
 	 * R7.5: what the banner shows of AbsentSlots, replicated (a state rather than a multicast: a client joining or coming
 	 * back late sees the players gone and those just back as the others do).
