@@ -4,7 +4,7 @@ Créée le 2026-11-05 à la demande de l'utilisateur : des axes d'amélioration 
 
 - **GATE** = `Tools\AutoJourney\session_gate.ps1 -Phase Launch|Merge|Essay|Close` (script, sortie PASS/WARN/FAIL, code 1 s'il y a un FAIL). La session principale le lance : `Launch` avant CHAQUE lancement d'agent, `Merge` avant l'agent de fusion, `Essay` avant de donner une commande `play.ps1`, `Close` avant le bilan.
 - **AGENT** = règle numérotée de `Tools\AutoJourney\agent_rules.md`, que chaque énoncé fait lire en premier.
-- **RAPPORT** = champ du rapport final à 12 champs (voir `agent_rules.md`) que la session principale vérifie à la réception.
+- **RAPPORT** = champ du rapport final à 13 champs (voir `agent_rules.md`) que la session principale vérifie à la réception.
 - **SESSION** = ligne que la session principale coche elle-même dans le tableau « Leçons appliquées » du bilan.
 
 **Bilan de fin de séance (obligatoire, vérifié par `-Phase Close`)** : dans `Auto_Journey_Jour.md`, un titre `### Lecons appliquees <AAAA-MM-JJ>` suivi d'une ligne par règle ci-dessous : `<ID> : appliquee / non appliquee : <preuve (nombre, heure, SHA, sortie)>`. Une règle « non appliquée » devient une ligne `[ ]` de `Auto_Journey_File.md` (ou un durcissement du contrôle).
@@ -30,7 +30,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Pendant les agents
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max dans l'énoncé ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_OUTILS` |
+| L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max (jugés sur `tool_uses`), arrêt à **60 appels déclarés** dans l'énoncé ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_DECLARES` |
 | L1-2 | Commit par lot vert, au plus 30 min sans commit, fichiers par nom | `RAPPORT COMMITS` (dernier commit à HH:MM) ; `status.ps1` à chaque tour signale 45 min sans commit | AGENT 14 |
 | L1-3 | `git merge main` avant le rapport | `RAPPORT merge_main_fait` | AGENT 15 |
 | L3-2, L4-5 | Build C++ lancé dans les 15 premières minutes, en `run_in_background`, agent vivant jusqu'à sa fin ; jamais de code non compilé rendu comme fini | `RAPPORT PREMIER_BUILD`, `BUILD` ; « NON COMPILÉ » en tête sinon | AGENT 11 |
@@ -95,9 +95,9 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Leçons du 2026-11-05 soir (séance autonome 19:12-21:38) : contrôles ajoutés
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| L7-1 | Le décompte d'appels déclaré par les agents est faux de 10 à 30 % (77 déclarés = 108 réels) : seul 	ool_uses de la notification compte | à chaque rapport, la session principale lit 	ool_uses : > 80 = noté hors règle, > 100 = tâche suivante sur agent NEUF et ligne au bilan ; le champ APPELS_OUTILS du rapport est remplacé par 	ool_uses relevé par la session | SESSION |
+| L7-1 | Le décompte d'appels déclaré par les agents est faux de 10 à 30 % (77 déclarés = 108 réels) : seul tool_uses de la notification compte | à chaque rapport, la session principale lit tool_uses : > 80 = noté hors règle, > 100 = tâche suivante sur agent NEUF et ligne au bilan ; le champ du rapport devient APPELS_DECLARES (arrêt à 60 déclarés), le seuil de 80 se juge sur tool_uses relevé par la session | SESSION |
 | L7-2 | Un lancement ne vérifie pas l'état réel du worktree (DLL périmée : Galadriel-7 18 appels perdus ; SHA périmés donnés à la fusion 1) | session_gate.ps1 -Phase Launch -Root <worktree> : FAIL si la DLL du worktree est plus ancienne que le dernier commit de code de main ET que la tâche joue des scénarios ; les énoncés de fusion contiennent les tips relevés par git rev-parse <branche> au moment du lancement, jamais des SHA recopiés d'un rapport | GATE + SESSION |
-| L7-3 | Pas de verrou partagé pour l'éditeur : 2 à 8 éditeurs en permanence, Arwen-5 a attendu ~20 appels et ses 3 pré-vols n'ont pas abouti | un ticket d'éditeur dans Docs\BuildQueue.state (comme uild.ps1) pris par preflight.ps1 / check.ps1 ; au plus 2 éditeurs simultanés | OUTIL |
+| L7-3 | Pas de verrou partagé pour l'éditeur : 2 à 8 éditeurs en permanence, Arwen-5 a attendu ~20 appels et ses 3 pré-vols n'ont pas abouti | un ticket d'éditeur dans Docs\BuildQueue.state (comme build.ps1) pris par preflight.ps1 / check.ps1 ; au plus 2 éditeurs simultanés | OUTIL |
 | L7-4 | Un agent laisse un processus détaché après sa fin (chain.ps1 de Celeborn-4 a relancé des éditeurs, chain2.ps1 d'Arwen-5) | champ de rapport PROCESSUS_DETACHES (liste ou « aucun ») ; la session principale arrête ceux qui restent avant de lancer l'agent suivant du même worktree (Get-CimInstance Win32_Process filtré sur le worktree) | RAPPORT + SESSION |
 | L7-5 | Test rouge non observé quand un symbole manque : le test ne compile pas | l'énoncé d'un agent C++ impose un stub qui compile + test AVANT le premier build (rouge observé), budget de deux builds, et le champ TEST_ROUGE donne « observé » ou « supposé » | AGENT + RAPPORT |
 | L7-6 | Les essais passent par des commandes internes (hol.*), jamais par la vraie touche ni le vrai clic ; aucun son entendu | statut explicite GESTE: réel / interne et SON: entendu / non entendu dans chaque Retours\E-*.md ; un essai de geste ou de son reste LOGIQUE SEULEMENT tant que le scénario click à la vraie touche n'existe pas | AGENT 18 + SESSION |
