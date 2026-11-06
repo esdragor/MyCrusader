@@ -9,6 +9,11 @@ void Test_AudioPlanFirstPlayUsesTheTable(FUnitTest& T)
 	{
 		FHOLAudioCue Cue = HOLAudio::CueFor(Event);
 		FHOLAudioPlan Plan = HOLAudio::Plan(Event, 5000, -1, 7 + Event, -1);
+		if (AudioTestIsSilentEvent(Event))
+		{
+			T.AssertFalse(Plan.bPlay, f"{Cue.Name}: a silent cue does not play");
+			continue;
+		}
 		T.AssertTrue(Plan.bPlay, f"{Cue.Name}: the first play goes");
 		T.AssertEquals(Event, Plan.Event, f"{Cue.Name}: the plan says which event");
 		T.AssertEquals(Cue.Name, Plan.Name, f"{Cue.Name}: the plan carries the cue's name");
@@ -42,12 +47,12 @@ void Test_AudioPlanUnknownEventDoesNotPlay(FUnitTest& T)
 // The same file is not heard twice in a row when the cue has another, whatever the seed.
 void Test_AudioPlanNeverRepeatsTheLastFile(FUnitTest& T)
 {
-	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::UiClick);
+	FHOLAudioCue Cue = HOLAudio::CueFor(HOLAudioEvent::OrderMove);
 	for (int Last = 0; Last < Cue.Stems.Num(); Last++)
 	{
 		for (int Seed = -7; Seed < 20; Seed++)
 		{
-			FHOLAudioPlan Plan = HOLAudio::Plan(HOLAudioEvent::UiClick, 5000, -1, Seed, Last);
+			FHOLAudioPlan Plan = HOLAudio::Plan(HOLAudioEvent::OrderMove, 5000, -1, Seed, Last);
 			T.AssertTrue(Plan.FileIndex != Last, f"last {Last}, seed {Seed}: another file");
 		}
 	}
