@@ -374,3 +374,17 @@ Essais a donner (ranges dans Retours\E-*.md) : diplomacy_qground, diplomacy, dip
 - L3-4 ecriture au bon endroit : appliquee (aucun agent n'a ecrit hors docs voulus ; commits de docs par nom). Verrou d'editeur partage : manquant (Arwen-5 a attendu 20 appels ; 2 a 8 editeurs en permanence).
 - L4-14 sync_worktrees : lance 21:35 (voir ligne suivante).
 Cloture 21:38 : sync_worktrees OK pour Arwen, Celeborn (885e6e7), Elrond, Faramir, Galadriel, Glorfindel (builds de rattrapage lances en priorite basse, a finir sans agent) ; Haldir SAUTE (48 fichiers suivis non commites du chantier maps, EXCLU par l'utilisateur : rien touche, a commiter par sa session) ; Sauron CONFLIT (BuildingTypes.uasset/.csv, 225 commits de retard : a regenerer a la prochaine seance). Gate Close : 2 FAIL restants = Haldir (maps, hors perimetre) ; reponses de Retours\ a reporter dans les chantiers (D730+ au GDD sur accord). Alarme 21:57 : a ignorer.
+
+## Agents du 2026-11-06 (seance INTERACTIVE 10:53 -> fin 13:00, arret dur des agents 13:00, alarme 12:43, fusion groupee des que 3 branches vertes, 3 agents C++ max, maps EXCLU par l'utilisateur)
+| Nom | Id | Worktree / branche | Tache | Classe | Arret | Resultat |
+|---|---|---|---|---|---|---|
+| Etape 0 | ab279ba866977566c | lecture seule | plan de lancement (16 appels) | - | - | OK |
+| Celeborn-8 | a17fd495c1c443472 | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | l.93+106 lot neutres SelfSide + melee qui glitche | C++ 1 | 13:00 | lance 11:05 |
+| Galadriel-5 | a761a59790a901917 | Documents\HeroesOfLiberty-Galadriel / galadriel-tab | l.94 grille Forge, l.107 infobulle Legions, l.108 stats visibles | C++ 2 | 13:00 | lance 11:05 |
+| Glorfindel-8 | a033c5b130c010b48 | Documents\HeroesOfLiberty-Glorfindel / net-playtest | l.97 Legions noms/Hallebardes/MinTier puis l.78 Sites S2 | C++ 3 | 13:00 | lance 11:05 |
+| Elrond-6 (integrateur) | ae1913d6dc1c36194 | Documents\HeroesOfLiberty-Elrond / tiers | l.105 neutrals_qground, l.95 cavalry-flat, rejoue les essais apres fusion | sans C++ | 13:00 | lance 11:05 |
+| Faramir-5 | a94ddd3437445a6d2 | Documents\HeroesOfLiberty-Faramir / fog | l.101,103,104,99 outils L7 puis Q-hold-scope = C | sans C++ | 13:00 | FINI 11:09 (37 tool_uses, d3187ab outils L7 + hold deja fait) |
+| Faramir-6 | ae0a222856e7e000e | DocumentsHeroesOfLiberty-Faramir / fog | nettoyage file L6-2 + docs L7 (copie principale) | sans C++ | 13:00 | lance 11:10 |
+| Arwen-6 | ab5551120595ceebe | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.110 sons medievaux (dix echantillons) puis l.102 verrou editeur | sans C++ | 13:00 | lance 11:05 |
+| Sauron | - | visual | NON LANCE : aucune tache visual, conflit de merge BuildingTypes.uasset (sync annulee) | - | - | - |
+| Haldir | - | maps | EXCLU par l'utilisateur (dossier cartes) | - | - | - |
