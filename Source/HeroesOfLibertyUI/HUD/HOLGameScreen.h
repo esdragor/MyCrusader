@@ -567,6 +567,8 @@ private:
 	FString ShownPlayersTable;
 	/** The names of the players table as last logged (M6-Q12). */
 	FString ShownPlayerNames;
+	/** The pastilles (« Connexion perdue » / « IA ») of the table as last logged (T8, read by lobby_match: empty = none). */
+	FString ShownPlayerStates;
 	/** The missing players last logged by the wait banner (empty: hidden). */
 	FString ShownWaitPlayers;
 	/** Who the disconnection banner last logged as gone (-) or back (+) (empty: hidden). */

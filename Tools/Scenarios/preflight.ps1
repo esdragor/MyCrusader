@@ -1,6 +1,6 @@
 # Pre-flight of a trial before it is listed for the user (Auto_Journey_Retours.md, section 1). check.ps1 only says that the scenario
 # reaches "ready"; this one says whether the TRIAL is worth the user's time. Run from Windows PowerShell:
-#   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\preflight.ps1 <name> [-Root <worktree>] [-MaxSeconds 180]
+#   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\preflight.ps1 <name> [-Root <worktree>] [-MaxSeconds 180] [-PlayerName <name>]
 # Checks (each prints OK / FAIL / WARN, exit 1 if any FAIL):
 #   1. check.ps1 passes (the scenario reaches "ready", no error), run -unattended, so the waitkey steps go on by themselves (check.ps1 stops at the first "Angelscript: Error" line of the log instead of waiting for its timeout; tested by preflight_selftest.ps1);
 #   2. the user's time: waitkey steps and `wait` seconds in the .txt, and the wall time of the run, stay under -MaxSeconds (default 180 s,
@@ -18,7 +18,8 @@
 param(
     [Parameter(Position = 0, Mandatory = $true)] [string] $Name,
     [string] $Root = "",
-    [int] $MaxSeconds = 180
+    [int] $MaxSeconds = 180,
+    [string] $PlayerName = ""   # passed to check.ps1 then to the game (-PlayerName=)
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -66,7 +67,7 @@ else {
 
 # 1, 2 (wall time), 3, 5: the run
 $Start = Get-Date
-& powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Tools\Scenarios\check.ps1") $Name -Root $Root -TimeoutSeconds ($MaxSeconds + 60) | Out-Host
+& powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Tools\Scenarios\check.ps1") $Name -Root $Root -TimeoutSeconds ($MaxSeconds + 60) -PlayerName $PlayerName | Out-Host
 $CheckExit = $LASTEXITCODE
 $Wall = [int]((Get-Date) - $Start).TotalSeconds
 if ($CheckExit -eq 0) { Report "OK" "check.ps1: the scenario reaches ready" } else { Report "FAIL" "check.ps1 failed (see above)" }

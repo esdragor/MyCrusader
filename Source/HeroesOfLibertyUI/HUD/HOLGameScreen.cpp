@@ -1033,6 +1033,20 @@ void UHOLGameScreen::RefreshPlayersTable()
 		UE_LOG(LogHOLUI, Display, TEXT("Players table: %s"), *Names);
 	}
 	ShownPlayersTable = Shown;
+	// T8 on the wire: the pastilles this client reads from the replicated masks, logged when they change (lobby_match).
+	FString States;
+	for (const FHOLPlayersTableRow& Row : Rows)
+	{
+		if (Row.bAway || Row.bAIHeld)
+		{
+			States += (States.IsEmpty() ? FString() : FString(TEXT(", "))) + Row.Name.ToString() + TEXT("=") + (Row.bAIHeld ? TEXT("IA") : TEXT("Connexion perdue"));
+		}
+	}
+	if (States != ShownPlayerStates)
+	{
+		ShownPlayerStates = States;
+		UE_LOG(LogHOLUI, Display, TEXT("Players table state: %s"), States.IsEmpty() ? TEXT("none") : *States);
+	}
 	SetShown(PlayersPanel, !Rows.IsEmpty(), ESlateVisibility::HitTestInvisible);
 	for (int32 Index = 0; Index < PlayerRows.Num(); ++Index)
 	{
