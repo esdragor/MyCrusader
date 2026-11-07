@@ -33,7 +33,7 @@ $Procs | Wait-Process -Timeout 90
 # The waiting message says that the editor is busy and how many are ahead in the queue (L7-3, 2026-11-07); the two that got a slot at once say nothing about waiting.
 $OutC = [string]$(if (Test-Path (Join-Path $Dir "out_c.txt")) { Get-Content (Join-Path $Dir "out_c.txt") -Raw } else { "" })
 Check ($OutC -match 'editeur occupe, \d+ en file') "the third prints 'editeur occupe, N en file' while it waits (output: $(($OutC -replace '\s+', ' ').Trim()))"
-Check ($OutC -match 'en file \(c\)')"the message names the scenario (c)"
+Check ($OutC -match 'en file \(c[;)]')"the message names the scenario (c)"
 $OutA = [string]$(if (Test-Path (Join-Path $Dir "out_a.txt")) { Get-Content (Join-Path $Dir "out_a.txt") -Raw } else { "" })
 Check ($OutA -notmatch 'occupe') "the first one does not wait and says nothing about a busy editor"
 $Rows = @(Get-Content $Events | ForEach-Object { $F = $_ -split ' '; [pscustomobject]@{ Kind = $F[0]; Name = $F[1]; At = [int64]$F[2]; Got = $F[3] } })
