@@ -100,8 +100,6 @@ hol.HUD.Report
 waitlog Produit : Legion Spearman, Black Guard
 hol.HUD.Report
 waitlog Produit : Legion Archer, Legion Crossbowman
-hol.HUD.Report
-waitlog Produit : Bone Ram, Bone Mangonel
 # The selection block, one Legions unit at a time (the newest of its type).
 hol.Camera.FocusNear 5000 2250
 frames 2
