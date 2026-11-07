@@ -1,5 +1,4 @@
 # Rouges connus de quick_check (L8-5) : lus par Tools\Tests\KnownReds.ps1, affiches par quick_check ("rouge connu depuis ...").
 # Format : test | depuis | cause supposee. Le test est le nom imprime devant ": FAIL". Retirer la ligne quand le rouge est corrige
 # (quick_check dit "etait un rouge connu : retirer de known_reds.txt" quand la partie passe).
-camera 2p | 2026-11-06 | right edge 1 s: +Y (got 0 m) ; baseline rouge sur main mesuree par Fusion-2, cause non trouvee (Auto_Journey_File.md, ligne camera 2p / 8p ROUGES)
-camera 8p | 2026-11-06 | right edge 1 s: +Y (got 0 m) ; meme rouge que camera 2p
+# (vide depuis 2026-11-07 : camera 2p et camera 8p sont vertes sur main, quick_check -Parts camera x2 dans Faramir a bc3cf59)

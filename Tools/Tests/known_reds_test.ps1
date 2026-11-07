@@ -15,12 +15,17 @@ Check (Test-Path $List) 'known_reds.txt existe'
 if (-not (Test-Path $Lib) -or -not (Test-Path $List)) { Write-Output '=> FAIL (fichiers absents)'; exit 1 }
 . $Lib
 
-# Le vrai fichier : camera 2p et camera 8p, avec depuis quand et cause
-$Real = @(Get-KnownReds $List)
-foreach ($n in 'camera 2p', 'camera 8p') {
-  $e = $Real | Where-Object { $_.Test -eq $n } | Select-Object -First 1
-  Check ($e -and $e.Since -match '^\d{4}-\d{2}-\d{2}$' -and $e.Cause.Length -gt 5) "known_reds.txt : $n (depuis quand + cause)" ($e | Out-String)
+# Le vrai fichier (2026-11-07 : vide, camera 2p / 8p retirees) : chaque ligne qui s'y trouve a une date et une cause.
+$Live = @(Get-KnownReds $List)
+foreach ($e in $Live) {
+  Check ($e.Since -match '^\d{4}-\d{2}-\d{2}$' -and $e.Cause.Length -gt 5) "known_reds.txt : $($e.Test) (depuis quand + cause)" ($e | Out-String)
 }
+# Les cas de Report ci-dessous prennent une liste de test (camera 2p et camera 8p rouges connus depuis 2026-11-06), pas le contenu vivant du fichier.
+$FixtureList = Join-Path ([IO.Path]::GetTempPath()) ('known_reds_fixture-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.txt')
+Set-Content -Path $FixtureList -Encoding ASCII -Value @('camera 2p | 2026-11-06 | right edge 1 s: +Y (got 0 m)', 'camera 8p | 2026-11-06 | meme rouge que camera 2p')
+$Real = @(Get-KnownReds $FixtureList)
+Remove-Item $FixtureList -ErrorAction SilentlyContinue
+Check ($Real.Count -eq 2 -and $Real[0].Test -eq 'camera 2p' -and $Real[1].Since -eq '2026-11-06') 'liste de test : camera 2p et camera 8p lues'
 
 # Un fichier factice : commentaires et lignes vides ignores, 3 colonnes separees par |
 $Fake = Join-Path ([IO.Path]::GetTempPath()) ('known_reds_test-' + [guid]::NewGuid().ToString('N').Substring(0, 8) + '.txt')

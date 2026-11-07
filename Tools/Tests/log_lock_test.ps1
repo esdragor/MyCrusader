@@ -61,6 +61,29 @@ function Hold([string] $Path, [string] $Text) {
 
 try {
     $Quick = Join-Path $Project "Tools\Tests\quick_check.ps1"
+    if (-not $Only -or $Only -eq "lint") {
+    # ---- L3-3, the source of quick_check.ps1 (no process started): every log handed to the game (-abslog=`"$Var`") comes from
+    # Get-FreshLog (its last assignment before the launch), and no "Logs\quick_*.log" path is used as a read path without going through it
+    # (a literal default path, as Get-NetClientLog's for a client that never launched, reads the PASS of an older pass).
+    $QuickLines = @(Get-Content $Quick -Encoding UTF8)
+    $Bad = @()
+    for ($i = 0; $i -lt $QuickLines.Count; $i++) {
+        $Line = $QuickLines[$i]
+        if ($Line -match '-abslog=`"\$(\w+)`"') {
+            $Var = $Matches[1]
+            $Last = $null
+            for ($j = $i - 1; $j -ge 0; $j--) { if ($QuickLines[$j] -match "^\s*\`$$Var\s*=") { $Last = $QuickLines[$j]; break } }
+            if (-not $Last -or $Last -notmatch 'Get-FreshLog') { $Bad += "line $($i + 1): `$$Var is handed to the game without Get-FreshLog" }
+        }
+        if ($Line -match 'Logs\\quick_[^"]*\.log"' -and $Line -notmatch 'Get-FreshLog|Remove-Item|^\s*#') {
+            # A bare path: allowed only as the assignment of a variable that Get-FreshLog re-assigns within the next 40 lines.
+            $Name = if ($Line -match '^\s*\$(\w+)\s*=\s*Join-Path') { $Matches[1] } else { $null }
+            $Wrapped = $Name -and [bool](@($QuickLines[($i + 1)..([Math]::Min($i + 40,$QuickLines.Count - 1))]) -match "^\s*\`$$Name\s*=\s*Get-FreshLog")
+            if (-not $Wrapped) { $Bad += "line $($i + 1): a Logs\quick_*.log path outside Get-FreshLog: $($Line.Trim())" }
+        }
+    }
+    Case "lint: every log of quick_check.ps1 given to the game or read goes through Get-FreshLog ($($Bad.Count) outside)" ($Bad.Count -eq 0) ($Bad -join " / ")
+    }
     if (-not $Only -or $Only -eq "check") {
     # ---- check.ps1: a scenario whose previous log (still held) says "ready" must not pass when this pass writes nothing.
     $Root = Join-Path $Work "root"
@@ -195,7 +218,12 @@ try {
         @{ Part = "netfog"; Logs = "quick_netfog_server", "quick_netfog_client1", "quick_netfog_client2"; NoKo = "client 1 : sources", "client 1 : sequence done", "client 2 : sequence done" },
         @{ Part = "netfogback"; Logs = "quick_netfogback_server", "quick_netfogback_client1", "quick_netfogback_client2", "quick_netfogback_back"; NoKo = "client 1 : sources", "client 2 back : sequence done" },
         @{ Part = "netfogview"; Logs = "quick_netfogview_server", "quick_netfogview_client1", "quick_netfogview_client2"; NoKo = "server listening", "client 1 : sequence done", "client 2 : sequence done" },
-        @{ Part = "netspec"; Logs ="quick_netspec_server", "quick_netspec_client1", "quick_netspec_client2"; NoKo = "server : slot 1 defeated", "client 1 : sequence done", "client 2 : sequence done" }
+        @{ Part = "netspec"; Logs ="quick_netspec_server", "quick_netspec_client1", "quick_netspec_client2"; NoKo = "server : slot 1 defeated", "client 1 : sequence done", "client 2 : sequence done" },
+        # L3-3: the variants that share the code of netfog / netspec (their own log names).
+        @{ Part = "netfogoff"; Logs = "quick_netfogoff_server", "quick_netfogoff_client1", "quick_netfogoff_client2"; NoKo = "client 1 : sequence done", "client 2 : sequence done" },
+        @{ Part = "netfogtrees"; Logs = "quick_netfogtrees_server", "quick_netfogtrees_client1", "quick_netfogtrees_client2"; NoKo = "client 1 : sequence done", "client 2 : sequence done" },
+        @{ Part = "netspecteam"; Logs = "quick_netspecteam_server", "quick_netspecteam_client1", "quick_netspecteam_client2"; NoKo = "client 1 : sequence done", "client 2 : sequence done" },
+        @{ Part = "netspecteams"; Logs = "quick_netspecteams_server", "quick_netspecteams_client1", "quick_netspecteams_client2"; NoKo = "client 1 : sequence done", "client 2 : sequence done" }
     )
     foreach ($NamedCase in $NamedCases) {
         if ($NamedOnly -and $NamedCase.Part -ne $NamedOnly) { continue }
