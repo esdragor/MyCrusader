@@ -1,6 +1,6 @@
 """Writes the scenarios that let the user LISTEN to the candidates of the sound cues (AudioInProgress.md, method of the ten samples):
 Tools/Scenarios/audio_compare.txt (the 10 cues of the interface), audio_compare_orders.txt (5 orders + 2 selections),
-audio_compare_alerts.txt (7 alerts) and audio_compare_martial.txt (the training alert alone, second round: war sounds), each with
+audio_compare_alerts.txt (7 alerts) and audio_compare_training.txt (the training alert alone, third round: soft sounds), each with
 its .json (the audio_ui match) and .look. For each cue the ten variants A to J play one after the other: Enter = the next variant;
 the panel text ALWAYS names the cue next to the letter ("Alert.TrainingDone C (v_horn_call) vient de jouer. Entree : Alert.TrainingDone D").
 hol.Audio.Candidate <Cue> <A-J> in the console plays one again. The cues and stems are read from Script/Audio/HOLAudioCandidates.as.
@@ -22,8 +22,8 @@ GROUPS = [
     ("audio_compare", ("Ui.",), "les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement)"),
     ("audio_compare_orders", ("Order.", "Select."), "les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment)"),
     ("audio_compare_alerts", ("Alert.",), "les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie)"),
-    ("audio_compare_martial", ("Alert.TrainingDone",), "l'alerte d'entrainement fini, deuxieme tour : sons MARTIAUX (cor, trompette, timbales, trombone, epee, bouclier)"),
-    ("audio_compare_buildings", ("Building.",), "le son de SELECTION d'un batiment, une famille apres l'autre : bois, pierre, sacre, metal, pieces (cuir, cloches, harpe, forge...)"),
+    ("audio_compare_training", ("Alert.TrainingDone",), "l'alerte d'entrainement fini, troisieme tour : sons GRAVES, SOURDS, COURTS et DOUX (bois, cuir, tambour sourd, pierre, metal etouffe), sans cor ni trompette ni clochette"),
+    ("audio_compare_buildings", ("Building.",), "le son de SELECTION d'un batiment, une famille apres l'autre (bois, pierre, sacre, metal, pieces) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
 ]
 # The line of the answer sheet for a cue whose name alone says little (family cues of the buildings): "<label> = _".
 SHEET_LABEL = {

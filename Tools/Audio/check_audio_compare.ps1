@@ -36,9 +36,9 @@ foreach ($File in $Files) {
     $Text = Get-Content $E -Raw
     foreach ($Cue in $Played) {
         $Cues++
-        if ($Text -notmatch "(?m)^$([regex]::Escape($Cue)) = _\s*$") { Problem "${Name}: E-$Name.md has no line '$Cue = _'" }
+        if ($Text -notmatch "(?m)^(?:[^\r\n=]*\[)?$([regex]::Escape($Cue))\]? = _\s*$") { Problem "${Name}: E-$Name.md has no line '$Cue = _'" }
     }
-    $Extra = @([regex]::Matches($Text, '(?m)^([A-Za-z]+\.[A-Za-z]+) = _\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $Played -notcontains $_ })
+    $Extra = @([regex]::Matches($Text, '(?m)^(?:[^\r\n=]*\[)?([A-Za-z]+\.[A-Za-z]+)\]? = _\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $Played -notcontains $_ })
     foreach ($Cue in $Extra) { Problem "${Name}: E-$Name.md asks about $Cue, which the scenario does not play" }
     if ($Text -notmatch '(?m)^GESTE:') { Problem "${Name}: E-$Name.md has no GESTE: line" }
     if ($Text -notmatch '(?m)^SON:') { Problem "${Name}: E-$Name.md has no SON: line" }

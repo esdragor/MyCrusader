@@ -71,34 +71,34 @@ waitlog candidate played Alert.BuildingDone J
 waitkey Alert.BuildingDone J (impactMetal_light_002) vient de jouer. Entree : Alert.TrainingDone A  [nouveau cue]
 hol.Audio.Candidate Alert.TrainingDone A
 waitlog candidate played Alert.TrainingDone A
-waitkey Alert.TrainingDone A (v_horn_call) vient de jouer. Entree : Alert.TrainingDone B
+waitkey Alert.TrainingDone A (s_train_leather_thud) vient de jouer. Entree : Alert.TrainingDone B
 hol.Audio.Candidate Alert.TrainingDone B
 waitlog candidate played Alert.TrainingDone B
-waitkey Alert.TrainingDone B (v_horn_rise) vient de jouer. Entree : Alert.TrainingDone C
+waitkey Alert.TrainingDone B (s_train_wood_knock) vient de jouer. Entree : Alert.TrainingDone C
 hol.Audio.Candidate Alert.TrainingDone C
 waitlog candidate played Alert.TrainingDone C
-waitkey Alert.TrainingDone C (v_trumpet_stac_D4) vient de jouer. Entree : Alert.TrainingDone D
+waitkey Alert.TrainingDone C (s_train_plank_dull) vient de jouer. Entree : Alert.TrainingDone D
 hol.Audio.Candidate Alert.TrainingDone D
 waitlog candidate played Alert.TrainingDone D
-waitkey Alert.TrainingDone D (v_trumpet_call) vient de jouer. Entree : Alert.TrainingDone E
+waitkey Alert.TrainingDone D (s_train_drum_soft) vient de jouer. Entree : Alert.TrainingDone E
 hol.Audio.Candidate Alert.TrainingDone E
 waitlog candidate played Alert.TrainingDone E
-waitkey Alert.TrainingDone E (v_timpani_hit) vient de jouer. Entree : Alert.TrainingDone F
+waitkey Alert.TrainingDone E (s_train_bass_pluck) vient de jouer. Entree : Alert.TrainingDone F
 hol.Audio.Candidate Alert.TrainingDone F
 waitlog candidate played Alert.TrainingDone F
-waitkey Alert.TrainingDone F (v_timpani_double) vient de jouer. Entree : Alert.TrainingDone G
+waitkey Alert.TrainingDone F (s_train_mallet_dull) vient de jouer. Entree : Alert.TrainingDone G
 hol.Audio.Candidate Alert.TrainingDone G
 waitlog candidate played Alert.TrainingDone G
-waitkey Alert.TrainingDone G (v_timpani_roll) vient de jouer. Entree : Alert.TrainingDone H
+waitkey Alert.TrainingDone G (s_train_stone_tap) vient de jouer. Entree : Alert.TrainingDone H
 hol.Audio.Candidate Alert.TrainingDone H
 waitlog candidate played Alert.TrainingDone H
-waitkey Alert.TrainingDone H (v_trombone_low) vient de jouer. Entree : Alert.TrainingDone I
+waitkey Alert.TrainingDone H (s_train_shield_muffled) vient de jouer. Entree : Alert.TrainingDone I
 hol.Audio.Candidate Alert.TrainingDone I
 waitlog candidate played Alert.TrainingDone I
-waitkey Alert.TrainingDone I (drawKnife2) vient de jouer. Entree : Alert.TrainingDone J
+waitkey Alert.TrainingDone I (s_train_cloth_thump) vient de jouer. Entree : Alert.TrainingDone J
 hol.Audio.Candidate Alert.TrainingDone J
 waitlog candidate played Alert.TrainingDone J
-waitkey Alert.TrainingDone J (impactPlate_heavy_000) vient de jouer. Entree : Alert.TechDone A  [nouveau cue]
+waitkey Alert.TrainingDone J (s_train_book_close) vient de jouer. Entree : Alert.TechDone A  [nouveau cue]
 hol.Audio.Candidate Alert.TechDone A
 waitlog candidate played Alert.TechDone A
 waitkey Alert.TechDone A (v_harp_arp_up) vient de jouer. Entree : Alert.TechDone B

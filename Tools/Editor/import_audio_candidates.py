@@ -2,6 +2,7 @@ r"""Imports the CANDIDATES for the interface sounds (Script/Audio/HOLAudioCandid
 
   Kenney rpg-audio / impact-sounds .ogg  ->  /Game/Audio/Candidates/kenney/SW_<stem>
   Candidates\vsco\<stem>.wav (made by Tools/Audio/make_ui_candidates.py)  ->  /Game/Audio/Candidates/vsco/SW_<stem>
+  Candidates\soft\<stem>.wav (s_ stems, made by Tools/Audio/make_soft_candidates.py)  ->  /Game/Audio/Candidates/soft/SW_<stem>
 
 One asset per stem named in an `Add(List, "<Cue>", "<stems>")` line, once each, in the sound class SC_Effects. Sources stay outside the
 repository (C:\Users\baudo\Documents\MyCrusader_Audio, Docs/assets_audio.csv). The candidate assets are NOT committed (they are
@@ -33,6 +34,8 @@ def wanted():
 
 def source(stem):
     """(kind, path of the file)."""
+    if stem.startswith("s_"):
+        return "soft", os.path.join(ROOT, "Candidates", "soft", stem + ".wav")
     if stem.startswith("v_"):
         return "vsco", os.path.join(ROOT, "Candidates", "vsco", stem + ".wav")
     for pack in ("rpg-audio", "impact-sounds"):
