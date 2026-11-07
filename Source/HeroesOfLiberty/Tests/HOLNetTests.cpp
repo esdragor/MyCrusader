@@ -1080,6 +1080,11 @@ bool FHOLNetManagerRoutesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("finished body: no winner"), FHOLManagerRules::MakeFinishedBody({}), FString(TEXT("{\"winners\":[]}")));
 	TestEqual(TEXT("left body: the player's name"), FHOLManagerRules::MakeLeftBody(TEXT("Bob")), FString(TEXT("{\"playerName\":\"Bob\"}")));
 	TestEqual(TEXT("left body: quotes escaped"), FHOLManagerRules::MakeLeftBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
+	// D718 (T5): the server's window and whether the AI keeps the seat go with "left" (the manager's one clock); none given = the name alone.
+	TestEqual(TEXT("left body: the window and the kept seat"), FHOLManagerRules::MakeLeftBody(TEXT("Bob"), 10., true),
+		FString(TEXT("{\"playerName\":\"Bob\",\"windowSeconds\":10,\"keepsSeat\":true}")));
+	TestEqual(TEXT("left body: the window, the seat not kept"), FHOLManagerRules::MakeLeftBody(TEXT("Bob"), 180., false),
+		FString(TEXT("{\"playerName\":\"Bob\",\"windowSeconds\":180,\"keepsSeat\":false}")));
 	TestEqual(TEXT("back route"), FHOLManagerRules::MakeRouteUrl(TEXT("http://127.0.0.1:7700"), TEXT("QC1"), TEXT("back")),
 		FString(TEXT("http://127.0.0.1:7700/matches/QC1/back")));
 	TestEqual(TEXT("back body: the player's name, quotes escaped"), FHOLManagerRules::MakeBackBody(TEXT("a\"b")), FString(TEXT("{\"playerName\":\"a\\\"b\"}")));
