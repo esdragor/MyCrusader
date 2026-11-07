@@ -1,0 +1,57 @@
+﻿# Balayage des clairieres des forets : la MEME foret de 300 arbres huit fois, A a H, avec d'autres clairieres a chaque fois ; Entree = la variante suivante (carte d'essai GladeSweep, tools\make_glade_sweep.ps1)
+# A = les cartes d'aujourd'hui (une clairiere ou un sentier de 3 m, un bosquet sur deux n'en a pas) ; B..H = N clairieres, rayon x le facteur (rayon de base 2,5 a 3,8 m)
+hol.Sources.Label -12000 -6600 300 180 A actuel
+hol.Sources.Label -5000 -6600 300 180 B 1 x1,5
+hol.Sources.Label 2000 -6600 300 180 C 1 x2,5 centre
+hol.Sources.Label 9000 -6600 300 180 D 2 x1,5
+hol.Sources.Label -12000 1400 300 180 E 3 x1,5
+hol.Sources.Label -5000 1400 300 180 F 3 x1,5 dedans
+hol.Sources.Label 2000 1400 300 180 G 5 x1
+hol.Sources.Label 9000 1400 300 180 H 2 x2,5 dedans
+hol.Camera.Zoom -6
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+hol.Camera.Zoom -6
+hol.Camera.Focus -10500 -4000
+frames 25
+capture glade_A
+waitkey Variante A (actuel) : Entree = B
+hol.Camera.Focus -3500 -4000
+frames 25
+capture glade_B
+waitkey Variante B (1 clairiere x1,5) : Entree = C
+hol.Camera.Focus 3500 -4000
+frames 25
+capture glade_C
+waitkey Variante C (1 clairiere x2,5 au centre) : Entree = D
+hol.Camera.Focus 10500 -4000
+frames 25
+capture glade_D
+waitkey Variante D (2 clairieres x1,5) : Entree = E
+hol.Camera.Focus -10500 4000
+frames 25
+capture glade_E
+waitkey Variante E (3 clairieres x1,5) : Entree = F
+hol.Camera.Focus -3500 4000
+frames 25
+capture glade_F
+waitkey Variante F (3 clairieres x1,5 dedans) : Entree = G
+hol.Camera.Focus 3500 4000
+frames 25
+capture glade_G
+waitkey Variante G (5 clairieres x1) : Entree = H
+hol.Camera.Focus 10500 4000
+frames 25
+capture glade_H
+waitkey Variante H (2 clairieres x2,5 dedans) : Entree = fin
+hol.Test.Sanity
+hol.Camera.Zoom -7
+hol.Camera.Focus 0 0
+hol.Camera.TestCursor off
+panel show
+note BALAYAGE DES CLAIRIERES : la meme foret de 300 arbres huit fois (A a H), A = les cartes d'aujourd'hui. Dis laquelle tu preferes (lettre), ou dis plus / moins de clairieres, plus grandes / plus petites.
+note Entree = variante suivante de la camera ; tu peux aussi deplacer la camera librement (carte d'essai, pas une carte de partie).

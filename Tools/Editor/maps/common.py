@@ -673,6 +673,12 @@ GROVE_NEVER = 80.0  # no two trees closer than this, whatever (2026-11-01: 0.8 m
 GROVE_AREA = 1.09 * (GROVE_SPACING + GROVE_SPACING_SLACK / 3.0) ** 2  # cm2 a tree takes up in a blob (a dense random packing of trunks GROVE_SPACING apart: 29 600 at 1.6 to 1.74 m, 56 000 at 2.2 to 2.4 m)
 GROVE_GLADES = os.environ.get("HOL_GROVE_GLADES", "1") != "0"  # a grove of 12 or more has a glade or a 3 m path through it (the default); HOL_GROVE_GLADES=0 makes them solid blocks of trees (question in Auto_Journey_Retours.md, 2026-10-31)
 GLADE_RADIUS = (250.0, 380.0)
+# 2026-11-07 (E-maps-review defect 5: "forests are solid blobs, the glades are nearly invisible"): the knobs of the glade sweep (maps/glade_sweep.py,
+# scenario glade_sweep). GLADE_FORCE 0 (the default) = the draws below, unchanged: every map file stays the same. GLADE_FORCE N > 0: a grove of 12 or
+# more has exactly N glades (no path), each of radius GLADE_RADIUS x GLADE_SCALE, centred up to 55 % of the way out. Nothing sets them in a match map.
+GLADE_SCALE = float(os.environ.get("HOL_GLADE_SCALE", "1"))
+GLADE_FORCE = int(os.environ.get("HOL_GLADE_FORCE", "0"))
+GLADE_REACH = float(os.environ.get("HOL_GLADE_REACH", "0.55"))  # with GLADE_FORCE: how far out (fraction of the blob) a glade may be centred; far out it breaks the outline (a crescent)
 PATH_HALF_WIDTH = 150.0  # a path: no trunk centre within this of its axis, so 3 m between the centres, 1.8 m between the trunks
 BERRY_MIN = 300.0  # cm between the centres of two bushes of 1.1 m radius: 80 cm between the edges, closed to a unit
 BERRY_MAX = 335.0
@@ -803,9 +809,9 @@ def grove_attempt(rng, count, compact):
     glades, paths = [], []
     cut_area = 0.0
     if not compact and count >= 12 and GROVE_GLADES:
-        for _ in range(1 + (1 if count >= 16 and rng.chance(0.4) else 0)):
-            if rng.chance(0.5):
-                glades.append((rng.range(0.0, 0.4), rng.range(0.0, 2 * math.pi), rng.range(*GLADE_RADIUS) * (0.8 if count < 16 else 1.0)))
+        for _ in range(GLADE_FORCE if GLADE_FORCE > 0 else 1 + (1 if count >= 16 and rng.chance(0.4) else 0)):
+            if GLADE_FORCE > 0 or rng.chance(0.5):
+                glades.append((rng.range(0.0, GLADE_REACH if GLADE_FORCE > 0 else 0.4), rng.range(0.0, 2 * math.pi), rng.range(*GLADE_RADIUS) * GLADE_SCALE * (0.8 if count < 16 else 1.0)))
                 cut_area += math.pi * glades[-1][2] ** 2
             else:
                 paths.append((rng.range(0.0, 0.4), rng.range(0.0, 2 * math.pi), rng.range(0.0, 2 * math.pi), rng.chance(0.5)))
@@ -1821,7 +1827,8 @@ def make_map(recipe, module, on_saved):
     layout = spawn(layout_class, label="SourceLayout")
     relays, sources, groups = lay_relays_and_sources(recipe, module)
     sources = outside_relays(sources, relays)  # what the far layer's clearance did not keep out (R2)
-    sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
+    if not getattr(module, "NO_EDITS", False):  # the glade sweep (maps/glade_sweep.py) wears the name of a listed map and must not take its painted forests
+        sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
     export_layout(recipe, relays, sources)  # Saved/MapLayouts/<map file>.json: what the map painter shows
     layout.set_editor_property("sources", sources)
     if relays:
