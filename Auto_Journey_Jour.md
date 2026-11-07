@@ -463,3 +463,26 @@ Reste (file) : noms Legions, G1 points d'appel MinTier (change le jeu), Sites S3
 - L7-8 : appliquee : session_gate -Exclude Haldir fusionne en F1
 
 | (suite 12:48) Celeborn-9 FINI, Arwen-8 FINI 12:37 49 tool_uses, Fusion-3 FINI 12:47 35 declares : main = acdb5cc | | | | | | |
+
+## Agents du 2026-11-07 (seance AUTONOME 09:00 -> fin 12:00, arret dur des agents 11:45, alarme 11:45, fusion groupee des que 3 branches vertes, 3 agents C++ max, cartes INCLUSES, integrateur = Elrond)
+| Nom | Id | Worktree / branche | Tache | Classe | Arret | Resultat |
+|---|---|---|---|---|---|---|
+| Etape 0 | a001cc1c3503141c2 | lecture seule | plan de lancement (13 appels) | - | - | OK 09:11 |
+| sync_worktrees | - | tous | 8 worktrees a jour = main 584f434, 8 builds de sync en file (priorite basse) | - | - | OK 08:58 |
+| Celeborn-10 | ad70ba939d7e13a94 | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | l.116/117 melee bloquee + L8-2 audit Sanity cible a portee sans attaque | C++ 1 | 11:45 | lance 09:15 |
+| Galadriel-7 | a05b331d138de40d8 | Documents\HeroesOfLiberty-Galadriel / galadriel-tab | l.115 noms Legions GetUnitName (sans MinTier) | C++ 2 | 11:45 | lance 09:15 |
+| Glorfindel-9 | ad8a536dd5856f3fc | Documents\HeroesOfLiberty-Glorfindel / net-playtest | l.98 Deconnexion T5-T10 | C++ 3 | 11:45 | lance 09:15 |
+| Elrond-8 (integrateur) | a245b6e200c109dee | Documents\HeroesOfLiberty-Elrond / tiers | l.114 camera 2p/8p rouges (diagnostic sans C++ d'abord), rejoue qground sur main | sans C++ puis C++ | 11:45 | lance 09:15 |
+| Arwen-9 | a4d0ba00f6e5b5af7 | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.111 sons medievaux + L8-4 | sans C++ | 11:45 | lance 09:15 |
+| Faramir-7 | a61ffcc16722298c5 | Documents\HeroesOfLiberty-Faramir / fog | L8-3, L8-5, L8-6, L8-7 outils de session | sans C++ | 11:45 | lance 09:15 |
+| Haldir-1 | a87293573510b61f7 | Documents\HeroesOfLiberty-Haldir / maps | l.35 Gues autel + balayage clairieres, l.23 relais volcan | editeur seul, sans C++ | 11:45 | lance 09:15 |
+| Sauron-1 | a007d64d022c35981 | Documents\HeroesOfLiberty-Sauron / visual | l.24 Biomes plan B0-B5 (docs/regles pures, sans question tranchee) | sans C++ | 11:45 | lance 09:15 || Arwen-9 FINI 09:28 37 tool_uses (audio_compare_martial, E-audio_compare_martial.md LOGIQUE SEULEMENT, 3 commits bfffff2..76dc475, tests 1062/1062) | | | | | | |
+| Arwen-10 | aa288d2e3f775b54f | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.102 L7-3 verrou d'editeur partage (preflight.ps1/check.ps1, 2 editeurs max) | sans C++ | 11:45 | lance 09:31 |
+| Faramir-7 FINI 09:31 57 tool_uses (L8-3/5/6/7 faits, branche fog 1da2c13..6b1e877, gate_test + known_reds_test verts, quick_check non rejoue) | | | | | | |
+| Faramir-8 | ab1911827c99fc861 | Documents\HeroesOfLiberty-Faramir / fog | outils : check.ps1 echoue sur Sanity (L1-12c), Get-FreshLog partout (L3-3), preflight panneau cache (L1-12b) | sans C++ | 11:45 | lance 09:35 |
+| Glorfindel-9 FINI 09:36 49 tool_uses (T5 C# + T6, 5 commits 6ad55e8..a25f1aa, tests 1062/1062 net PASS, dotnet 331/331) | | | | | | |
+| Glorfindel-10 | abb056df0ce6c11ad | Documents\HeroesOfLiberty-Glorfindel / net-playtest | Deconnexion T7 (reconnexion auto client), T8, T9, T10 | C++ 3 | 11:45 | lance 09:38 |
+| Sauron-1 FINI 09:36 61 tool_uses (HOLBiomeDecorPlan + HOLBiomeApply + biome_bounds_check, branche visual 64519cf..ceb6dff, tests 1073/1073) | | | | | | |
+| Sauron-2 | a24d420dca9e5df77 | Documents\HeroesOfLiberty-Sauron / visual | Biomes B1 applicateur au chargement de la carte (C++ lot unique, 4e agent C++ : un seul build via la file, tolere car la file est vide) | C++ 4 (exception ecrite) | 11:45 | lance 09:39 |
+| Celeborn-10 FINI 09:37 50 tool_uses (audit Sanity NoStrike 2c213e5, rouge x8 non observe, correctif non fait ; processus 13040/24504 detaches restants) ; Arwen-10 FINI 09:41 33 tool_uses (verrou editeur 4b37dbc..83bc85d, editor_slot_test 14/14, preflight reel PASS) | | | | | | |
+| Arwen-11 | afb45650f1f28f996 | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.116 L8-1 gate Essay : tip de chaque branche citee dans E-*.md ; puis ligne 21 sequence parasite de -Parts tests | sans C++ | 11:45 | lance 09:43 |
