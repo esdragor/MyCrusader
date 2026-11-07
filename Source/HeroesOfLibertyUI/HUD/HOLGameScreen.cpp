@@ -2518,6 +2518,11 @@ FString UHOLGameScreen::DescribeOverlaps() const
 	return ScriptScreen ? ScriptScreen->DescribeOverlaps() : FString(TEXT("none"));
 }
 
+FString UHOLGameScreen::DescribeRects() const
+{
+	return ScriptScreen ? ScriptScreen->DescribeRects() : FString();
+}
+
 FString UHOLGameScreen::DescribeScript() const
 {
 	if (!ScriptScreen)
