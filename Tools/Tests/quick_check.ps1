@@ -8081,7 +8081,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
 # Red = the client learns a cut in sight only later (a real bug of the per-camp memory: HOLFogNetSubsystem::PlaceSources / the ghosts).
 if ($Parts -contains "netfogview") {
     $ViewPart = "netfogview"
-    $ViewServerLog = Join-Path $TestSaved "Logs\quick_${ViewPart}_server.log"
+    $ViewServerLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${ViewPart}_server.log")   # L3-3: the log of THIS pass (a held one is not read)
     $ViewConfig = Join-Path $TestSaved "quick_$ViewPart.json"
     $ViewServerSequence = Join-Path $TestSaved "quick_${ViewPart}_server.seq"
     Remove-Item $ViewServerLog, (Join-Path $TestSaved "Logs\quick_${ViewPart}_client*.log"), (Join-Path $TestSaved "quick_${ViewPart}_*.flag") -ErrorAction SilentlyContinue
@@ -8115,7 +8115,7 @@ if ($Parts -contains "netfogview") {
             $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Sources.Report" })
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $ViewPart", "wait 6", "hol.Sources.Report") + $ClientReports +
                 @("signal $($ViewDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
-            $ClientLog = Join-Path $TestSaved "Logs\quick_${ViewPart}_client$Client.log"
+            $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${ViewPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${ViewPort} -PlayerName=Bob" } else { "127.0.0.1:${ViewPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
