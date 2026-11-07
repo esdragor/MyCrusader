@@ -1,5 +1,7 @@
 # [À RÉPONDRE] Biomes : look appliqué au monde (B1 visuel) - Sauron-2, 2026-11-07
 
+Reponse: Q1 A puis B, Q2 B (utilisateur 10:36)
+
 Contexte : l'applicateur (Script/Biomes/HOLBiomeApplier.as) pose sur la carte chargée le soleil, le ciel, la brume et les
 couleurs du sol du biome du salon. Les valeurs de la table sont PROVISOIRES (jamais jugées à l'écran) ; deux choix restent à toi.
 
