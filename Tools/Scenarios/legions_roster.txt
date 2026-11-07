@@ -71,27 +71,27 @@ waitlog Cheat: spawned Stable of slot 0
 hol.Camera.FocusNear 2500 6500
 hol.Camera.Zoom -3
 frames 40
-hol.Select.ClickGround 2500 4500
+hol.Select.ClickGround -12200 4600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Legion Archer; B: Legion Crossbowman
-hol.Select.ClickGround 2500 6500
+waitlog HUD cells: A: Legion Archer; Z: Legion Crossbowman
+hol.Select.ClickGround -12200 6600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Bone Ram; B: Bone Mangonel
-hol.Select.ClickGround 2500 8500
+waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+hol.Select.ClickGround -12200 8600
 frames 10
 hol.HUD.Report
 waitlog HUD cells: A: Dread Rider
-hol.Select.ClickGround 2500 2500
+hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Legion Spearman; B: Black Guard
+waitlog HUD cells: A: Legion Spearman; Z: Black Guard
 hol.HUD.Report
 waitlog A: Legion Spearman | F 45 | W 15
 hol.HUD.Report
-waitlog B: Black Guard |
-note 5. La Caserne des Legions : les cases portent "Legion Spearman" (A) et "Black Guard" (B), pas Lancier / Homme d'armes ; le champ de tir "Legion Archer" / "Legion Crossbowman", l'atelier "Bone Ram" / "Bone Mangonel", l'ecurie "Dread Rider".
+waitlog Z: Black Guard |
+note 5. La Caserne des Legions : les cases portent "Legion Spearman" (A) et "Black Guard" (Z), pas Lancier / Homme d'armes ; le champ de tir "Legion Archer" / "Legion Crossbowman", l'atelier "Bone Ram" / "Bone Mangonel", l'ecurie "Dread Rider".
 capture legions_roster_names_barracks
 # The builders' grid: the Barracks' tooltip lists what it produces by the Legions' names.
 hol.Select.Type Zombie
