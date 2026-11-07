@@ -23,7 +23,16 @@ GROUPS = [
     ("audio_compare_orders", ("Order.", "Select."), "les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment)"),
     ("audio_compare_alerts", ("Alert.",), "les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie)"),
     ("audio_compare_martial", ("Alert.TrainingDone",), "l'alerte d'entrainement fini, deuxieme tour : sons MARTIAUX (cor, trompette, timbales, trombone, epee, bouclier)"),
+    ("audio_compare_buildings", ("Building.",), "le son de SELECTION d'un batiment, une famille apres l'autre : bois, pierre, sacre, metal, pieces (cuir, cloches, harpe, forge...)"),
 ]
+# The line of the answer sheet for a cue whose name alone says little (family cues of the buildings): "<label> = _".
+SHEET_LABEL = {
+    "Building.Wood": "Bois (Maison, camps, Moulin, Ferme) [Building.Wood]",
+    "Building.Stone": "Pierre (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) [Building.Stone]",
+    "Building.Sacred": "Sacre (Chapelle, Sanctuaire) [Building.Sacred]",
+    "Building.Metal": "Metal (Forge) [Building.Metal]",
+    "Building.Coins": "Pieces (Marche) [Building.Coins]",
+}
 
 
 def cues(project):
@@ -47,10 +56,11 @@ def write_answer_sheet(retours, name, what, mine, steps, project):
         "STATUT : LOGIQUE SEULEMENT   (aucune oreille n'a encore écouté : l'agent a lancé les scénarios sans son)",
         "GESTE: interne      (les sons sont joués par la commande hol.Audio.Candidate du scénario, pas par un vrai clic ; seule la touche Entrée est la tienne)",
         "SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'un a écouté)",
+        "branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)",
         "",
         "Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.",
     ]
-    out += ["%s = _" % cue for cue, _ in mine]
+    out += ["%s = _" % SHEET_LABEL.get(cue, cue) for cue, _ in mine]
     root = project.replace("/", "\\")
     out += [
         "",
