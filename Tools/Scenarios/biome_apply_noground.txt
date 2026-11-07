@@ -1,0 +1,7 @@
+# B1 visuel, essai de casse : une carte SANS instance MI_Ground_* (StressTest) avec le biome snow : la lumiere change, le sol de la carte reste le sien (pas de groundA dans le monde, pas d erreur).
+frames 90
+hol.Biome.Report
+waitlog Biome: snow
+hol.Biome.World
+waitlog Biome world:
+note Carte sans sol de biome : lumiere posee, sol inchange.

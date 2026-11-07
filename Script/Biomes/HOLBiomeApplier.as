@@ -2,7 +2,7 @@
 // biome arrives or changes, it reads the biome of the match (the lobby's key, or hol.Biome.Index for the scenarios), asks HOLBiomeApply
 // what the world must look like (LookOf: units of the engine) and sets it on the lights, the haze and the ground of the loaded map.
 // It decides nothing: the decisions are in HOLBiomeApply.as and HOLBiomeRules.as. It touches no unit, no gameplay and no shadow (D258).
-// The map's own biome ("default") leaves the look the map file carries as it is.
+// The map's own biome ("default") leaves the look the map file carries as it is; going back to it after a biome gives that look back.
 
 const FConsoleVariable CVar_BiomeIndex("hol.Biome.Index", -1);
 
@@ -13,6 +13,21 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 
 	// Seconds since the biome was last looked at (the configuration of a client arrives after the map's begin play).
 	float SinceLook = 10.0f;
+
+	// What the map file carried, taken once before the first biome is set (given back when the match goes back to the map's own look).
+	bool bRemembered = false;
+	FRotator MapSunRotation;
+	float MapSunIntensity = 0.0f;
+	FLinearColor MapSunColor;
+	float MapSkyIntensity = 0.0f;
+	FLinearColor MapSkyColor;
+	float MapFogDensity = 0.0f;
+	FLinearColor MapFogColor;
+	float MapFogStart = 0.0f;
+
+	// The ground components this applier took over (the only ones it ever touches) and the material each one had.
+	TArray<UStaticMeshComponent> GroundComponents;
+	TArray<UMaterialInterface> GroundOriginals;
 
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
@@ -29,14 +44,90 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 		{
 			return;
 		}
+		int Before = Applied;
 		Applied = Wanted;
 		if (Wanted < 0)
 		{
+			if (Before >= 0)
+			{
+				RestoreMapLook();
+			}
 			return;
+		}
+		if (!bRemembered)
+		{
+			RememberMapLook();
 		}
 		FHOLBiomeLook Look = HOLBiomeApply::LookOf(Wanted);
 		Log(n"LogHOLMatch", HOLBiomeApply::ExpectLine(Look));
 		ApplyToWorld(Look);
+	}
+
+	void RememberMapLook()
+	{
+		bRemembered = true;
+		TArray<ADirectionalLight> Suns;
+		GetAllActorsOfClass(Suns);
+		if (Suns.Num() > 0)
+		{
+			MapSunRotation = Suns[0].GetActorRotation();
+			MapSunIntensity = Suns[0].LightComponent.Intensity;
+			MapSunColor = Suns[0].LightComponent.LightColor;
+		}
+		TArray<ASkyLight> Skies;
+		GetAllActorsOfClass(Skies);
+		if (Skies.Num() > 0)
+		{
+			MapSkyIntensity = Skies[0].LightComponent.Intensity;
+			MapSkyColor = Skies[0].LightComponent.LightColor;
+		}
+		TArray<AExponentialHeightFog> Hazes;
+		GetAllActorsOfClass(Hazes);
+		if (Hazes.Num() > 0)
+		{
+			MapFogDensity = Hazes[0].Component.FogDensity;
+			MapFogColor = Hazes[0].Component.FogInscatteringLuminance;
+			MapFogStart = Hazes[0].Component.StartDistance;
+		}
+	}
+
+	void RestoreMapLook()
+	{
+		if (!bRemembered)
+		{
+			return;
+		}
+		TArray<ADirectionalLight> Suns;
+		GetAllActorsOfClass(Suns);
+		for (ADirectionalLight Sun : Suns)
+		{
+			Sun.SetActorRotation(MapSunRotation);
+			Sun.LightComponent.SetIntensity(MapSunIntensity);
+			// The getter gave the linear value of the map's 8-bit colour (sRGB step): the setter takes it back the same way.
+			Sun.LightComponent.SetLightColor(MapSunColor, true);
+		}
+		TArray<ASkyLight> Skies;
+		GetAllActorsOfClass(Skies);
+		for (ASkyLight Sky : Skies)
+		{
+			Sky.LightComponent.SetIntensity(MapSkyIntensity);
+			Sky.LightComponent.SetLightColor(MapSkyColor);
+			Sky.LightComponent.RecaptureSky();
+		}
+		TArray<AExponentialHeightFog> Hazes;
+		GetAllActorsOfClass(Hazes);
+		for (AExponentialHeightFog Haze : Hazes)
+		{
+			Haze.Component.SetFogDensity(MapFogDensity);
+			Haze.Component.SetFogInscatteringColor(MapFogColor);
+			Haze.Component.SetStartDistance(MapFogStart);
+		}
+		for (int I = 0; I < GroundComponents.Num(); I++)
+		{
+			GroundComponents[I].SetMaterial(0, GroundOriginals[I]);
+		}
+		GroundComponents.Empty();
+		GroundOriginals.Empty();
 	}
 
 	// The lights, the haze and the ground of the loaded map.
@@ -72,24 +163,30 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 		}
 
 		// The ground: the instance of M_GroundVaried the map points to (MI_Ground_*), made dynamic once, then reused for the next biome.
-		TArray<AStaticMeshActor> Meshes;
-		GetAllActorsOfClass(Meshes);
-		for (AStaticMeshActor Mesh : Meshes)
+		// Only the map's own MI_Ground_* meshes are taken over (a mesh with some other dynamic material is never recoloured).
+		if (GroundComponents.Num() == 0)
 		{
-			UStaticMeshComponent Component = Mesh.StaticMeshComponent;
-			UMaterialInterface Material = Component.GetMaterial(0);
-			if (Material == nullptr)
+			TArray<AStaticMeshActor> Meshes;
+			GetAllActorsOfClass(Meshes);
+			for (AStaticMeshActor Mesh : Meshes)
 			{
-				continue;
-			}
-			UMaterialInstanceDynamic Ground = Cast<UMaterialInstanceDynamic>(Material);
-			if (Ground == nullptr)
-			{
-				if (!Material.GetName().ToString().StartsWith("MI_Ground_"))
+				UStaticMeshComponent Component = Mesh.StaticMeshComponent;
+				UMaterialInterface Material = Component.GetMaterial(0);
+				if (Material == nullptr || !Material.GetName().ToString().StartsWith("MI_Ground_"))
 				{
 					continue;
 				}
-				Ground = Component.CreateDynamicMaterialInstance(0);
+				GroundComponents.Add(Component);
+				GroundOriginals.Add(Material);
+				Component.CreateDynamicMaterialInstance(0);
+			}
+		}
+		for (UStaticMeshComponent Component : GroundComponents)
+		{
+			UMaterialInstanceDynamic Ground = Cast<UMaterialInstanceDynamic>(Component.GetMaterial(0));
+			if (Ground == nullptr)
+			{
+				continue;
 			}
 			Ground.SetVectorParameterValue(n"ColorA", Look.GroundA);
 			Ground.SetVectorParameterValue(n"ColorB", Look.GroundB);
