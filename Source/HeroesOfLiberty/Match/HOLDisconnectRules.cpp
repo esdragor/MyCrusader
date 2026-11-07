@@ -105,3 +105,18 @@ FText FHOLDisconnectRules::FormatBackLine(const FString& Name)
 }
 
 #undef LOCTEXT_NAMESPACE
+
+FString FHOLDisconnectRules::FormatSeatReport(const int32 Slot, const FString& Name, const ESeatState State, const double SecondsLeft)
+{
+	switch (State)
+	{
+	case ESeatState::AbsentAIHolds:
+		return FString::Printf(TEXT("slot %d (%s) away, AI holds, %d s left"), Slot, *Name, FMath::Max(0, FMath::CeilToInt(SecondsLeft)));
+	case ESeatState::AIHolds:
+		return FString::Printf(TEXT("slot %d (%s) away, window over, the AI keeps the seat"), Slot, *Name);
+	case ESeatState::Defeated:
+		return FString::Printf(TEXT("slot %d (%s) defeated"), Slot, *Name);
+	default:
+		return FString::Printf(TEXT("slot %d (%s) present"), Slot, *Name);
+	}
+}

@@ -67,6 +67,55 @@ def fmt_pair(p):
     same = A['tgt'] == B['tgt'] and A['place'] and B['place'] and abs(A['px']-B['px']) < 30 and abs(A['py']-B['py']) < 30
     f = lambda n, U: '#%d tgt #%d (%.0f cm) slot (%d,%d) %.0f cm away, place %d/%s np %.1f slide %s' % (n, U['tgt'], d(U, U['tx'], U['ty']), U['px'], U['py'], d(U, U['px'], U['py']), U['place'], U['ang'], U['np'], U['sl'])
     return 'pair #%d/#%d steps %d-%d (%d steps) %s | %s | %s' % (a, b, s0, s1, s1-s0+1, 'SAME PLACE CLAIMED (H1)' if same else 'different places', f(a, A), f(b, B))
+# Celeborn-12 (walk to the slot, FinalLeg = phase 3, no fight): a soldier that does not move for more than WALK_STALL steps
+# (default 20 = 1 s) or that shakes (WALK_SHAKE or more reversals of its step in a window of 20 steps, each step over 5 cm).
+# Read in the SanityDump3 lines of hol.Sanity.DumpUnit -3. Option --stall N / --shake N changes the limits.
+WALK_STALL = 20
+WALK_SHAKE = 8
+for opt in ('--stall', '--shake'):
+    if opt in sys.argv:
+        value = sys.argv[sys.argv.index(opt) + 1]
+        args = [a for a in args if a != value]
+        if opt == '--stall': WALK_STALL = int(value)
+        else: WALK_SHAKE = int(value)
+WALK_ROW = re.compile(r'SanityDump3 #(\d+) step (\d+) at \((-?\d+), (-?\d+)\) vel \((-?\d+), (-?\d+)\) ph (\d) slot \((-?\d+), (-?\d+)\) ap(\d) at(\d) tgt #(-?\d+)')
+def walks(path):
+    dead = {}; seq = collections.defaultdict(list)
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot (\d) killed by', l)
+        if m: dead[int(m[2])] = int(m[1])
+        m = WALK_ROW.search(l)
+        if m:
+            seq[int(m[1])].append((int(m[2]), int(m[3]), int(m[4]), int(m[7]), int(m[10]), int(m[11]), int(m[12]), int(m[8]), int(m[9])))
+    out = []
+    for u, rows in sorted(seq.items()):
+        rows.sort()
+        run = 0; start = 0
+        for a, b in zip(rows, rows[1:]):
+            walking = b[3] == 3 and b[4] == 0 and b[5] == 0 and b[6] == -1 and b[0] == a[0] + 1 and not (u in dead and dead[u] <= b[0])
+            still = walking and abs(b[1]-a[1]) + abs(b[2]-a[2]) <= 2
+            if still:
+                if run == 0: start = a[0]
+                run += 1
+            else:
+                if run > WALK_STALL: out.append(('STALL', u, start, start + run, rows[0], b))
+                run = 0
+        if run > WALK_STALL: out.append(('STALL', u, start, start + run, rows[0], rows[-1]))
+        # reversals: the step's vector against the one before
+        rev = []
+        for i in range(2, len(rows)):
+            p, q, r = rows[i-2], rows[i-1], rows[i]
+            if not (r[3] == 3 and r[4] == 0 and r[5] == 0 and r[6] == -1 and r[0] == q[0] + 1 == p[0] + 2): continue
+            d1 = (q[1]-p[1], q[2]-p[2]); d2 = (r[1]-q[1], r[2]-q[2])
+            if (d1[0]**2+d1[1]**2) > 25 and (d2[0]**2+d2[1]**2) > 25 and d1[0]*d2[0] + d1[1]*d2[1] < 0: rev.append(r[0])
+        for i in range(len(rev)):
+            window = [s for s in rev if rev[i] <= s < rev[i] + 20]
+            if len(window) >= WALK_SHAKE:
+                out.append(('SHAKE', u, rev[i], rev[i] + 20, rows[0], rows[-1])); break
+    return out
+def fmt_walk(w):
+    kind, u, s0, s1 = w[0], w[1], w[2], w[3]
+    return '%s #%d steps %d-%d' % (kind, u, s0, s1)
 bad = 0
 for path in args:
     hits = collections.defaultdict(list); death = {}; last = 0
@@ -82,9 +131,14 @@ for path in args:
         if g[0] > limit: gaps.append((u,) + g)
     sw = switches(path)
     pr = pairs(path)
-    bad += 1 if (gaps or sw or pr) else 0
-    print(('FAIL ' if (gaps or sw or pr) else 'OK   ') + os.path.basename(path), ('gaps ' + str(gaps)) if gaps else '', ('switches while striking (unit, step, from, to) ' + str(sw[:5])) if sw else '')
+    wk = walks(path)
+    if '--walk' in sys.argv:
+        # only the walk checks (Celeborn-12): the other checks stay as they are for the melee_stuck scenarios
+        gaps, sw, pr = [], [], []
+    bad += 1 if (gaps or sw or pr or wk) else 0
+    print(('FAIL ' if (gaps or sw or pr or wk) else 'OK   ') + os.path.basename(path), ('gaps ' + str(gaps)) if gaps else '', ('switches while striking (unit, step, from, to) ' + str(sw[:5])) if sw else '')
     for p in pr[:4]: print('     STUCK ' + fmt_pair(p))
+    for w in wk[:4]: print('     WALK ' + fmt_walk(w))
 print('melee_stuck_gaps: %d of %d runs have a soldier without a blow for more than %d steps, or one that left a living target while striking it' % (bad, len(args), limit))
 sys.exit(1 if bad else 0)
 

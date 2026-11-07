@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Match/HOLForumMessages.h"
 
@@ -9,9 +9,10 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 
-FHOLForumEvent FHOLForumEvent::Make(const EHOLForumEventKind Kind, const int32 Slot, const int32 OtherSlot, const int32 Lives)
+FHOLForumEvent FHOLForumEvent::Make(const EHOLForumEventKind Kind, const int32 Slot, const int32 OtherSlot, const int32 Lives, const EHOLForumEventReason Reason)
 {
 	FHOLForumEvent Event;
+	Event.Reason = Reason;
 	Event.Kind = Kind;
 	Event.Slot = static_cast<int8>(Slot);
 	Event.OtherSlot = static_cast<int8>(OtherSlot);
@@ -209,7 +210,20 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 		break;
 	case EHOLForumEventKind::Defeated:
 	default:
-		if (bOwn)
+		// Answer B (Q-disconnect-left): one kind for every defeat, the reason picks the text.
+		if (Event.Reason == EHOLForumEventReason::Disconnected)
+		{
+			if (bOwn)
+			{
+				Message.Text = LOCTEXT("MessageOwnLeft", "Vous avez quitt\u00e9 la partie");
+			}
+			else
+			{
+				Message.Text = FText::Format(LOCTEXT("MessageLeft", "{0} a quitt\u00e9 la partie"), Name);
+				Message.NamedSlots.Add(Slot);
+			}
+		}
+		else if (bOwn)
 		{
 			Message.Text = LOCTEXT("MessageOwnDefeated", "Vous êtes vaincu");
 		}

@@ -4017,3 +4017,59 @@ msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
 msgstr "終了"
 
+
+#. Key:	ReplacedByNewConnection
+#. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276)
+#: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276)
+msgctxt "HOLNet,ReplacedByNewConnection"
+msgid "Une autre connexion à votre nom a pris votre place"
+msgstr "同じ名前の別の接続があなたの席を引き継ぎました"
+
+#. Key:	ReconnectLine
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+msgctxt "HOLNet,ReconnectLine"
+msgid "Connexion perdue — nouvelle tentative, {0}:{1}"
+msgstr "接続が切れました — 再接続中 {0}:{1}"
+
+#. Key:	ReconnectCancel
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+msgctxt "HOLNet,ReconnectCancel"
+msgid "Annuler"
+msgstr "キャンセル"
+
+#. Key:	TableAway
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+msgctxt "HOLGameScreen,TableAway"
+msgid "Connexion perdue"
+msgstr "接続切れ"
+
+#. Key:	TableAIHeld
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+msgctxt "HOLGameScreen,TableAIHeld"
+msgid "IA"
+msgstr "AI"
+
+#. Key:	TableBadge
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+msgctxt "HOLGameScreen,TableBadge"
+msgid "{0} · {1}"
+msgstr "{0} · {1}"
+
+#. Key:	MessageLeft
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+msgctxt "HOLGameScreen,MessageLeft"
+msgid "{0} a quitté la partie"
+msgstr "{0} はゲームを退出しました"
+
+#. Key:	MessageOwnLeft
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+msgctxt "HOLGameScreen,MessageOwnLeft"
+msgid "Vous avez quitté la partie"
+msgstr "あなたはゲームを退出しました"

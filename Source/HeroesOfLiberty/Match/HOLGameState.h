@@ -236,6 +236,12 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnVictoryChanged);
 	FOnVictoryChanged OnVictoryChanged;
 
+	/** T8 (D722): bit Slot: that slot's player is away, the window running (read from the replicated notices, on every machine). */
+	uint8 GetAbsentMask() const;
+	/** T8 (D722): bit Slot: the window is over and the AI keeps the seat (replicated). */
+	uint8 GetAIHeldMask() const { return AIHeldMask; }
+	/** T9: one line per occupied human seat, as the server reads it (hol.Disconnect.Report). */
+	TArray<FString> DescribeDisconnections(double Now, double WindowSeconds) const;
 	/** Bit Slot: that slot is defeated. */
 	uint8 GetDefeatedMask() const;
 	uint8 GetWinnerMask() const { return WinnerMask; }
@@ -411,6 +417,9 @@ private:
 	 */
 	UPROPERTY(Replicated)
 	TArray<FHOLAbsentNotice> AbsentNotices;
+	/** T8 (D722): bit Slot: away, the window over, the AI keeps the seat to the end (set with bWindowOver, cleared on the return or the defeat). */
+	UPROPERTY(Replicated)
+	uint8 AIHeldMask = 0;
 
 	/** R5: the neutral relays, public. */
 	UPROPERTY(Replicated)
@@ -644,6 +653,10 @@ public:
 	 */
 	bool RequestPause(const AHOLPlayerState& Requester, double Now);
 	bool RequestResume(const AHOLPlayerState& Requester, double Now);
+	/** D720 (T6), server only: the clock of the disconnection windows: Now less the time the match was paused (the window does not run during a pause). */
+	double GetWindowClock(const double Now) const { return Now - WindowPausedSeconds - (IsMatchPaused() ? FMath::Max(Now - PausedAtSeconds, 0.) : 0.); }
+	/** D720 (T6), server only: Slot leaves; if he paused the match, it resumes (his pause stays counted). True when lifted. */
+	bool LiftPauseOf(int32 Slot, double Now);
 
 	/** Every machine: paused, resumed or the count changed (server at once, a client by OnRep). For the pause screen. */
 	DECLARE_MULTICAST_DELEGATE(FOnPauseChanged);
@@ -682,4 +695,6 @@ private:
 	/** Server world time (GetServerWorldTimeSeconds) of the pause: the timer's start. */
 	UPROPERTY(ReplicatedUsing = OnRep_Pause)
 	double PausedAtSeconds = 0.;
+	/** D720 (T6), server only: the seconds of the pauses already ended (taken off the clock of the disconnection windows). */
+	double WindowPausedSeconds = 0.;
 };

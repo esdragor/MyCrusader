@@ -1,0 +1,21 @@
+# B1 visuel, essai de casse : un biome pose en cours de partie (snow, deux fois), puis retour a la carte (-1) : le monde doit retrouver le look que la carte portait. Lu sur le monde par hol.Biome.World (journal), Tools/Tests/biome_restore_check.ps1.
+frames 90
+hol.Biome.World
+frames 5
+hol.Biome.Index 4
+frames 60
+hol.Biome.World
+frames 5
+hol.Biome.Index 4
+frames 60
+hol.Biome.World
+frames 5
+hol.Biome.Index 1
+frames 60
+hol.Biome.World
+frames 5
+hol.Biome.Index -1
+frames 60
+hol.Biome.World
+frames 5
+note Essai de casse : monde de la carte, snow, snow, steppe, retour a la carte (lectures dans le journal).

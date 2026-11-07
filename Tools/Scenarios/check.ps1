@@ -52,6 +52,10 @@ while (((Get-Date) - $Start).TotalSeconds -lt $TimeoutSeconds) {
     # Never a log older than this pass's start (the engine creates it after the removal above).
     if ((Test-Path $Log) -and (Get-Item $Log).LastWriteTime -ge $Start.AddSeconds(-2)) {
         $Text = Get-Content $Log -Raw -ErrorAction SilentlyContinue
+        # L1-12(c): the game's own audit (hol.Test.Sanity: neutral colours, units that spin or shake) failing is a FAIL here too, whatever
+        # the order of its line and the ready line (it used to be seen by preflight.ps1 only, so a scenario "passed" check.ps1 with a broken world).
+        $SanityFail = @($Text -split "`r?`n" | Where-Object { $_ -match "Sanity: FAIL" })
+        if ($SanityFail.Count -gt 0) { $Result = "FAIL (sanity audit: " + (($SanityFail | Select-Object -First 3 | ForEach-Object { $_.Trim() }) -join " / ") + ")"; break }
         if ($Text -match "Scenario ${Name}: ready") { $Result = "PASS"; break }
         if ($Text -match "Test sequence: timeout at step") { $Result = "FAIL (a step timed out)"; break }
         if ($Text -match "LogHOLTest: Error") { $Result = "FAIL (error)"; break }

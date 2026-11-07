@@ -4,8 +4,10 @@
 #   powershell -ExecutionPolicy Bypass -File <worktree>\Tools\Tests\log_lock_test.ps1
 # Prints one PASS / FAIL line per case, then "log_lock_test : PASS" or "FAIL (n)"; exit 0 / 1. ~1 min (the tools wait a few
 # seconds on a held log before giving up on it).
+#   -Only check | tests | named : one family of cases (a red pass in a few seconds); -NamedOnly <part> : one part of the named ones.
+param([string] $Only = "", [string] $NamedOnly = "")
 $ErrorActionPreference = "Stop"
-$Project = (Resolve-Path "$PSScriptRoot\..\..").Path
+$Project =(Resolve-Path "$PSScriptRoot\..\..").Path
 $Work = Join-Path ([IO.Path]::GetTempPath()) ("hol_log_lock_test_" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
 New-Item -ItemType Directory -Force $Work | Out-Null
 $Fails = 0
@@ -58,6 +60,8 @@ function Hold([string] $Path, [string] $Text) {
 }
 
 try {
+    $Quick = Join-Path $Project "Tools\Tests\quick_check.ps1"
+    if (-not $Only -or $Only -eq "check") {
     # ---- check.ps1: a scenario whose previous log (still held) says "ready" must not pass when this pass writes nothing.
     $Root = Join-Path $Work "root"
     New-Item -ItemType Directory -Force (Join-Path $Root "Tools\Scenarios") | Out-Null
@@ -80,6 +84,28 @@ try {
     $Output = @(& powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | ForEach-Object { "$_" })
     Case "check.ps1: a free log and a ready line written by this pass gives PASS (control)" ($LASTEXITCODE -eq 0 -and [bool]($Output -match "check fake : PASS"))
 
+    # L1-12(c): the scenario reaches "ready" but the game's own audit (hol.Test.Sanity) logged "Sanity: FAIL ...": check.ps1 must FAIL
+    # (only preflight.ps1 used to see it). The fake engine writes the lines as the game does; the audit line may come before or after "ready".
+    foreach ($Order in "before", "after") {
+        $SanityText = Join-Path $Work "sanity_$Order.txt"
+        $SanityLine = "LogHOLTest: Sanity: FAIL unit #12 of slot 1 (neutral camp) has the colour of a player"
+        Set-Content -Encoding ascii $SanityText $(if ($Order -eq "before") { @("Scenario fake: step 1", $SanityLine, "Scenario fake: ready") } else { @("Scenario fake: ready", $SanityLine) })
+        Remove-Item $ScenarioLog -Force -ErrorAction SilentlyContinue
+        $env:FAKE_ENGINE_TEXT = $SanityText
+        $Output = @(& powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | ForEach-Object { "$_" })
+        $Exit = $LASTEXITCODE
+        Case "check.ps1: ready and a 'Sanity: FAIL' line ($Order the ready line) is a FAIL, not a PASS (exit $Exit)" ($Exit -ne 0 -and -not [bool]($Output -match "check fake : PASS") -and [bool]($Output -match "check fake : FAIL")) (($Output | Select-Object -Last 2) -join " / ")
+        Case "check.ps1: says it is the sanity audit and shows the line ($Order)" ([bool]($Output -match "sanity audit") -and [bool]($Output -match "Sanity: FAIL unit #12"))
+    }
+    $SanityOk = Join-Path $Work "sanity_ok.txt"
+    Set-Content -Encoding ascii $SanityOk @("Sanity: OK (600 steps, 12 units followed)", "Scenario fake: ready")
+    Remove-Item $ScenarioLog -Force -ErrorAction SilentlyContinue
+    $env:FAKE_ENGINE_TEXT = $SanityOk
+    $Output = @(& powershell -ExecutionPolicy Bypass -File $Check fake -Root $Root -EngineDir $Engine -TimeoutSeconds 20 2>&1 | ForEach-Object { "$_" })
+    Case "check.ps1: ready and 'Sanity: OK' gives PASS (control)" ($LASTEXITCODE -eq 0 -and [bool]($Output -match "check fake : PASS"))
+
+    }
+    if (-not $Only -or $Only -eq "tests") {
     # ---- quick_check.ps1 -Parts tests: the log of THIS pass is read, whatever the file's name.
     $QuickLog = Join-Path $Project "Saved_Tests\Logs\quick_tests.log"
     $Fresh = Join-Path $Work "fresh.txt"
@@ -89,8 +115,7 @@ try {
         $Lines += "LogAutomationController: Test Completed. Result={Success} Name={T$N} Path={Angelscript.UnitTests.T$N}"
     }
     Set-Content -Encoding ascii $Fresh $Lines
-    $Quick = Join-Path $Project "Tools\Tests\quick_check.ps1"
-    $Stale = "LogAutomationController: Test Started. Name={Old}`r`nLogAutomationController: Test Completed. Result={Success} Name={Old} Path={Angelscript.UnitTests.Old}`r`n"
+    $Stale ="LogAutomationController: Test Started. Name={Old}`r`nLogAutomationController: Test Completed. Result={Success} Name={Old} Path={Angelscript.UnitTests.Old}`r`n"
 
     $Held = Hold $QuickLog $Stale
     $env:FAKE_ENGINE_TEXT = $Fresh
@@ -110,7 +135,13 @@ try {
     $env:FAKE_ENGINE_TEXT = $Fresh
     $Output = @(& powershell -ExecutionPolicy Bypass -File $Quick -Parts tests -EngineDir $Engine 2>&1 | ForEach-Object { "$_" })
     Case "quick_check: nothing held gives tests 3/3 PASS (control)" ([bool]($Output -match "tests 3/3 : PASS"))
+    # Coordinator's request (2026-11-07): -Parts tests must not launch the main game (menu/camera sequence): no "sequence" report line, and
+    # the fake engine, which writes into whatever -abslog it is given, finds no quick_game.log written by this pass.
+    Case "quick_check: -Parts tests prints no 'sequence' line (the main game is not launched)" (-not [bool]($Output -match "sequence \d+/\d+ ?:|sequence [^\r\n]*: (PASS|FAIL)")) (($Output | Select-String "sequence" | Select-Object -First 2) -join " / ")
+    Case "quick_check: -Parts tests writes no quick_game.log" (-not (Test-Path (Join-Path $Project "Saved_Tests\Logs\quick_game.log")) -or ((Get-Item (Join-Path $Project "Saved_Tests\Logs\quick_game.log")).LastWriteTime -lt (Get-Date).AddMinutes(-3)))
 
+    }
+    if (-not $Only -or $Only -eq "named") {
     # ---- quick_check.ps1, the named logs of the other parts (net, aiserver, aiduel, aimarket, aisiege, aitech, aiwave, netai,
     # netfog*, netspec*): each log of the part held by an earlier process (its stale lines must never be read, nor the
     # engine's <name>_2.log), the part is played with the fake engine, which writes one text into whatever log it is given and
@@ -163,9 +194,11 @@ try {
         @{ Part = "netai"; Logs = "quick_netai_server", "quick_netai_client1", "quick_netai_client2"; NoKo = "server : 5 starting Peasants for slot 2", "client 1 : sequence done", "client 2 : sequence done" },
         @{ Part = "netfog"; Logs = "quick_netfog_server", "quick_netfog_client1", "quick_netfog_client2"; NoKo = "client 1 : sources", "client 1 : sequence done", "client 2 : sequence done" },
         @{ Part = "netfogback"; Logs = "quick_netfogback_server", "quick_netfogback_client1", "quick_netfogback_client2", "quick_netfogback_back"; NoKo = "client 1 : sources", "client 2 back : sequence done" },
-        @{ Part = "netspec"; Logs = "quick_netspec_server", "quick_netspec_client1", "quick_netspec_client2"; NoKo = "server : slot 1 defeated", "client 1 : sequence done", "client 2 : sequence done" }
+        @{ Part = "netfogview"; Logs = "quick_netfogview_server", "quick_netfogview_client1", "quick_netfogview_client2"; NoKo = "server listening", "client 1 : sequence done", "client 2 : sequence done" },
+        @{ Part = "netspec"; Logs ="quick_netspec_server", "quick_netspec_client1", "quick_netspec_client2"; NoKo = "server : slot 1 defeated", "client 1 : sequence done", "client 2 : sequence done" }
     )
     foreach ($NamedCase in $NamedCases) {
+        if ($NamedOnly -and $NamedCase.Part -ne $NamedOnly) { continue }
         $Part = $NamedCase.Part
         Get-ChildItem $LogDir -Filter "quick_$Part*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
         $Holds = @($NamedCase.Logs | ForEach-Object { Hold (Join-Path $LogDir "$_.log") "STALE LINE`r`n" })
@@ -184,10 +217,13 @@ try {
         Get-ChildItem $LogDir -Filter "quick_$Part*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
     }
     # Control (nothing held, a part with a server and its clients): no log said held, the checks read the pass's text.
-    $Output = @(& powershell -ExecutionPolicy Bypass -File $Quick -Parts netspec -EngineDir $Engine 2>&1 | ForEach-Object { "$_" })
+    if (-not $NamedOnly -or $NamedOnly -eq "netspec") {
+    $Output =@(& powershell -ExecutionPolicy Bypass -File $Quick -Parts netspec -EngineDir $Engine 2>&1 | ForEach-Object { "$_" })
     Case "netspec: nothing held -> no 'held' line (control)" (-not [bool]($Output -match "held by another process"))
     Case "netspec: nothing held -> the checks read the text (control)" (-not [bool]($Output -match "\[KO\] (server : slot 1 defeated|client \d : sequence done)")) (($Output | Select-String "\[KO\]" | Select-Object -First 2) -join " / ")
     Get-ChildItem $LogDir -Filter "quick_netspec*.log" -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+    }
+    }
 }
 finally {
     Remove-Item Env:\FAKE_ENGINE_TEXT, Env:\FAKE_ENGINE_LINGER_MS, Env:\HOL_LOG_HOLD_TRIES -ErrorAction SilentlyContinue

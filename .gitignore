@@ -39,3 +39,5 @@ __pycache__/
 # build queue statistics and state (Tools/build.ps1)
 Docs/BuildQueue.csv
 Docs/BuildQueue.state/
+
+IN_USE.txt

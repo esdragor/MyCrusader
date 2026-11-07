@@ -84,7 +84,26 @@ static FAutoConsoleCommandWithWorldAndArgs CommandFakeAbsent(TEXT("hol.Net.FakeA
 			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Net.FakeAbsent: on the server or in solo, in a match"));
 			return;
 		}
-		const FString Name = Args.IsEmpty() ? FString() : Args[0];
+		// T9: the real chain without a second client: "Leave <Slot>" keeps the slot as a departure does (the AI holds it), "End <Slot>" ends the windows.
+			if (Args.Num() >= 2 && (Args[0] == TEXT("Leave") || Args[0] == TEXT("End")))
+			{
+				const int32 Slot = FCString::Atoi(*Args[1]);
+				const IConsoleVariable* WindowVar = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Match.DisconnectWindowSeconds"));
+				const double Window = WindowVar ? WindowVar->GetFloat() : FHOLDisconnectRules::DefaultWindowSeconds;
+				const double Now = HOLGameState->GetWindowClock(World->GetTimeSeconds());
+				if (Args[0] == TEXT("Leave"))
+				{
+					const bool bKept = HOLGameState->KeepMissingSlot(Slot, FHOLResources(), Now, Window, FHOLTechnologyState());
+					UE_LOG(LogHOLMatch, Display, TEXT("hol.Net.FakeAbsent Leave %d: %s"), Slot, bKept ? TEXT("kept, the AI holds the seat") : TEXT("not kept (not a named human seat of a started match, or already away)"));
+				}
+				else
+				{
+					const TArray<int32> Defeated = HOLGameState->DefeatExpiredAbsences(Now + Window, Window);
+					UE_LOG(LogHOLMatch, Display, TEXT("hol.Net.FakeAbsent End: windows ended, %d seat(s) defeated"), Defeated.Num());
+				}
+				return;
+			}
+			const FString Name = Args.IsEmpty() ? FString() : Args[0];
 		const double Seconds = Args.Num() > 1 ? FCString::Atod(*Args[1]) : 161.;
 		HOLGameState->SetFakeAbsentNotice(Name, Seconds);
 		UE_LOG(LogHOLMatch, Display, TEXT("hol.Net.FakeAbsent: %s"), Name.IsEmpty() ? TEXT("cleared")
@@ -98,6 +117,24 @@ static TAutoConsoleVariable<float> CVarDisconnectWindowSeconds(TEXT("hol.Match.D
 	static_cast<float>(FHOLDisconnectRules::DefaultWindowSeconds),
 	TEXT("R7 (R-Q5): how long a named player gone during the match keeps his slot, in seconds; then his slot loses. ")
 	TEXT("Also -HOLDisconnectWindow=<s> on the command line (tests)."));
+
+/** T9: the seats as the server reads them: present, away with the window left, the AI keeping the seat, defeated. */
+static FAutoConsoleCommandWithWorldAndArgs CommandDisconnectReport(TEXT("hol.Disconnect.Report"),
+	TEXT("hol.Disconnect.Report: one line per named human seat (present / away, AI holds, seconds left / window over / defeated), in LogHOLMatch; server or solo"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+	{
+		AHOLGameState* HOLGameState = World && World->GetNetMode() != NM_Client ? World->GetGameState<AHOLGameState>() : nullptr;
+		if (!HOLGameState)
+		{
+			UE_LOG(LogHOLMatch, Warning, TEXT("hol.Disconnect.Report: on the server or in solo, in a match"));
+			return;
+		}
+		const double Now = HOLGameState->GetWindowClock(World->GetTimeSeconds());
+		for (const FString& Line : HOLGameState->DescribeDisconnections(Now, CVarDisconnectWindowSeconds.GetValueOnGameThread()))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Disconnect report: %s"), *Line);
+		}
+	}));
 
 AHeroesOfLibertyGameModeBase::AHeroesOfLibertyGameModeBase()
 {
@@ -269,11 +306,11 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 		// The old connection's seat handed over (its stock and technologies are given to the new player state below), then it is expelled:
 		// its late Logout keeps nothing (KeepAbsentSlot) and tells the manager nothing.
 		AHOLGameState* ReplacingState = GetGameState<AHOLGameState>();
-		ReplacingState->RetireHolder(*Replaced, GetWorld()->GetTimeSeconds(), CVarDisconnectWindowSeconds.GetValueOnGameThread());
+		ReplacingState->RetireHolder(*Replaced, ReplacingState->GetWindowClock(GetWorld()->GetTimeSeconds()), CVarDisconnectWindowSeconds.GetValueOnGameThread());
 		if (APlayerController* OldController = Cast<APlayerController>(Replaced->GetOwner()); OldController && GameSession)
 		{
 			UE_LOG(LogHOLMatch, Log, TEXT("Disconnect: slot %d (%s): old connection kicked, the new one takes the seat"), Slot, *LoginName);
-			GameSession->KickPlayer(OldController, NSLOCTEXT("HOLNet", "ReplacedByNewConnection", "Another connection of your name took your seat"));
+			GameSession->KickPlayer(OldController, NSLOCTEXT("HOLNet", "ReplacedByNewConnection", "Une autre connexion à votre nom a pris votre place"));
 		}
 	}
 	PlayerState->SetMatchSlot(Slot, MatchConfig.Slots[Slot].ColorIndex);
@@ -429,8 +466,14 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 	// R7 (R-Q5): his slot, units, buildings and stock kept for the window (named matches only).
 	AHOLGameState* AbsenceState = GetGameState<AHOLGameState>();
 	const AHOLPlayerState* LeavingState = Exiting ? Exiting->GetPlayerState<AHOLPlayerState>() : nullptr;
-	if (AbsenceState && LeavingState && AbsenceState->KeepAbsentSlot(*LeavingState, GetWorld()->GetTimeSeconds(),
-		CVarDisconnectWindowSeconds.GetValueOnGameThread()))
+	// D720 (T6): the pause of a player who leaves is lifted at once (it stays counted); the window runs on the clock a pause stops.
+	if (AbsenceState && LeavingState && !LeavingState->IsOnlyASpectator())
+	{
+		AbsenceState->LiftPauseOf(LeavingState->GetPlayerIndex(), GetWorld()->GetTimeSeconds());
+	}
+	const bool bKept = AbsenceState && LeavingState
+		&& AbsenceState->KeepAbsentSlot(*LeavingState, AbsenceState->GetWindowClock(GetWorld()->GetTimeSeconds()), CVarDisconnectWindowSeconds.GetValueOnGameThread());
+	if (bKept)
 	{
 		GetWorldTimerManager().SetTimer(AbsenceTimer, this, &AHeroesOfLibertyGameModeBase::UpdateAbsences, 1.f, true);
 	}
@@ -450,7 +493,10 @@ void AHeroesOfLibertyGameModeBase::Logout(AController* Exiting)
 		if (!PlayerName.IsEmpty())
 		{
 			UE_LOG(LogHOLNet, Log, TEXT("Manager: %s left"), *PlayerName);
-			Link->SendLeft(PlayerName);
+			// D718 (T5): the manager gets the server's window (one clock) and whether the AI keeps the seat after it (« Revenir » to the end).
+			const double WindowSeconds = bKept ? CVarDisconnectWindowSeconds.GetValueOnGameThread() : 0.;
+			const bool bKeepsSeat = bKept && FHOLDisconnectRules::GetWindowEnd(MatchConfig, HOLPlayerState->GetPlayerIndex()) == FHOLDisconnectRules::EWindowEnd::AIHolds;
+			Link->SendLeft(PlayerName, WindowSeconds, bKeepsSeat);
 		}
 	}
 	if (!bEmptyCheckQueued)
@@ -486,7 +532,7 @@ void AHeroesOfLibertyGameModeBase::UpdateAbsences()
 	{
 		return;
 	}
-	HOLGameState->DefeatExpiredAbsences(GetWorld()->GetTimeSeconds(), CVarDisconnectWindowSeconds.GetValueOnGameThread());
+	HOLGameState->DefeatExpiredAbsences(HOLGameState->GetWindowClock(GetWorld()->GetTimeSeconds()), CVarDisconnectWindowSeconds.GetValueOnGameThread());
 	// R7.5: on until the last « de retour » is dropped.
 	// D718 (T5): a seat kept by the AI after its window (bWindowOver) waits for nobody's clock.
 	if (!HOLGameState->GetAbsentSlots().ContainsByPredicate([](const FHOLAbsentSlot& Absent) { return !Absent.bWindowOver; })

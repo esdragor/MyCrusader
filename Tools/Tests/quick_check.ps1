@@ -205,6 +205,8 @@ foreach ($Asked in @($Parts | Where-Object { $_ -match ":" })) {
 # A part asked whole as well as by case (build,build:cut) is played whole.
 foreach ($Part in @($SubCases.Keys)) { if ($Parts -contains $Part) { $SubCases.Remove($Part) } }
 $Parts = @($Parts | ForEach-Object { ($_ -split ":")[0] } | Select-Object -Unique)
+# The main game (menu/camera sequence, the "sequence" report) is for the parts other than "tests": -Parts tests runs the automation tests only.
+$GameNeeded = @($Parts | Where-Object { $_ -ne "tests" }).Count -gt 0
 # The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
 if (@($Parts | Where-Object { $_ -in "production", "move", "bodies", "rocks", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
     $Parts += "camera"
@@ -2614,7 +2616,7 @@ $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
 # drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
 if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
 $GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
-$GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
+$GameProcess = if ($GameNeeded) { Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru } else { $null }
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
 # as net_match.ps1). Each one: camera above the slot it holds, the buildings it has received (the two centres in their
@@ -2948,8 +2950,8 @@ if ($NetListening) {
 # ~660 s with the straggler's groups (J7b trial feedback 1, ~105 s more), when 660 s cut the last parts off.
 # 120 s otherwise: the default's smoke part is done ~40 s after the launch (D327), the menu part ~15 s.
 $GameLimitSeconds = if ($Parts -contains "camera") { 960 } else { 120 }
-$GameTimedOut = -not $GameProcess.WaitForExit($GameLimitSeconds * 1000)
-if ($GameTimedOut) { $GameProcess.Kill() }
+$GameTimedOut = if ($GameNeeded) { -not $GameProcess.WaitForExit($GameLimitSeconds * 1000) } else { $false }
+if ($GameTimedOut -and $GameProcess) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $ValuesOk
@@ -2963,6 +2965,9 @@ function Get-ScriptErrors([string] $Path) {
         Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert failed") } |
         ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
 }
+. (Join-Path $PSScriptRoot "KnownReds.ps1")
+$KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
+$FailedParts = @()
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
@@ -2972,7 +2977,15 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
             -not @($SubCases[$Played] | Where-Object { $Part -eq "$Played $_" -or $Part.StartsWith("$Played $_ ") }).Count) { return $true }
     }
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
-    Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
+    # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
+    $KnownRed = Find-KnownRed $Part $KnownReds
+    $RedTag = ""
+    if ($Failed.Count -gt 0) {
+        $script:FailedParts += $Part
+        $RedTag = if ($KnownRed) { " (rouge connu depuis $($KnownRed.Since) : $($KnownRed.Cause))" } else { " (REGRESSION : pas dans known_reds.txt)" }
+    }
+    elseif ($KnownRed) { $RedTag = " (etait un rouge connu depuis $($KnownRed.Since) : retirer de known_reds.txt)" }
+    Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })$RedTag"
     $Checks.Keys | Where-Object { -not $Checks[$_] } | ForEach-Object { Write-Host "  [KO] $_" }
     return $Failed.Count -eq 0
 }
@@ -3059,7 +3072,7 @@ if ($Parts -contains "sizes") {
     $Errors = @($Errors | Where-Object { $Refused -notcontains $_ })
 }
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
-$AllOk = (Report "sequence" $SequenceChecks) -and $AllOk
+$AllOk = $(if ($GameNeeded) { Report "sequence" $SequenceChecks } else { $true }) -and $AllOk
 $Errors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
 
 if ($Parts -contains "victory") {
@@ -8070,7 +8083,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
 # Red = the client learns a cut in sight only later (a real bug of the per-camp memory: HOLFogNetSubsystem::PlaceSources / the ghosts).
 if ($Parts -contains "netfogview") {
     $ViewPart = "netfogview"
-    $ViewServerLog = Join-Path $TestSaved "Logs\quick_${ViewPart}_server.log"
+    $ViewServerLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${ViewPart}_server.log")   # L3-3: the log of THIS pass (a held one is not read)
     $ViewConfig = Join-Path $TestSaved "quick_$ViewPart.json"
     $ViewServerSequence = Join-Path $TestSaved "quick_${ViewPart}_server.seq"
     Remove-Item $ViewServerLog, (Join-Path $TestSaved "Logs\quick_${ViewPart}_client*.log"), (Join-Path $TestSaved "quick_${ViewPart}_*.flag") -ErrorAction SilentlyContinue
@@ -8104,7 +8117,7 @@ if ($Parts -contains "netfogview") {
             $ClientReports = @(1..40 | ForEach-Object { "wait 1"; "hol.Sources.Report" })
             @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $ViewPart", "wait 6", "hol.Sources.Report") + $ClientReports +
                 @("signal $($ViewDone[$Client - 1])", "mark end", "quit") | Set-Content -Encoding utf8 $ClientSequence
-            $ClientLog = Join-Path $TestSaved "Logs\quick_${ViewPart}_client$Client.log"
+            $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${ViewPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${ViewPort} -PlayerName=Bob" } else { "127.0.0.1:${ViewPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
@@ -8259,4 +8272,4 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
-if (-not $AllOk) { exit 1 }
+if (-not $AllOk) { if ($FailedParts.Count) { Write-Host (Get-RedSummary $FailedParts $KnownReds) }; exit 1 }

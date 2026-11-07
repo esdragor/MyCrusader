@@ -92,6 +92,9 @@ public:
 	/** Lesson 12b: the script's panels and the cheats' panel that cover each other, as drawn: "none" or "A x B" (hol.HUD.Report's "HUD overlap" line). */
 	FString DescribeOverlaps() const;
 
+	/** L1-12b: the boxes behind "HUD overlap", "name=x0,y0,x1,y1; ..." (empty without a script screen): the "HUD rects" line of hol.HUD.Report. */
+	FString DescribeRects() const;
+
 	/**
 	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
 	 * follows the bar's scale (GetBottomScale), read anew on every refresh of the block.
@@ -117,6 +120,9 @@ public:
 	FString DescribeStatsTip() const;
 	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
 	FString DescribeCells() const;
+
+	/** L2: the name the selection block writes for a single selected unit (its faction's own name), "none" without it: the "HUD selection name" line of hol.HUD.Report. */
+	FString DescribeSelectionName() const;
 
 	/** Seconds a short message stays above the grid (D313), the last of them fading out. */
 	static constexpr float MessageSeconds = 3.f;
@@ -403,6 +409,10 @@ private:
 	const FHOLUnitTypeRow* FindUnitType(FName TypeName) const;
 	/** The type's row for the player's faction (cost, name, statistics as that player pays and fields them: FindTypeRowFor). */
 	const FHOLUnitTypeRow* FindUnitTypeFor(FName TypeName, int32 OwnerPlayer) const;
+	/** L2: the name of a unit type as its owner's faction calls it (the Legions' own names; GetUnitName(Type, Row, FactionKey)); no owner (negative): the base name. */
+	FText UnitNameFor(FName TypeName, int32 OwnerPlayer) const;
+	/** L2: the faction key of the player this screen is bound to (NAME_None without one): the names of the buildings' tooltips are the player's own. */
+	FName LocalFactionKey() const;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;

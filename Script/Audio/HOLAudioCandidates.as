@@ -52,11 +52,24 @@ namespace HOLAudioCandidates
 
 		Add(List, "Alert.UnderAttack", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_light,v_mallet_hit_ff2,v_nbell_med,impactMetal_heavy_001,v_nbell_s05");
 		Add(List, "Alert.BuildingDone", "v_harp_A4,v_glock_C5,v_nbell_s07,v_nbell_s03,v_vln_pizz_E5,impactPlate_light_002,impactBell_heavy_002,doorOpen_1,v_triangle_hit,impactMetal_light_002");
-		Add(List, "Alert.TrainingDone", "v_harp_D4,v_harp_B3,v_cello_pizz_B3,v_nbell_s08,v_glock_G4,v_triangle_hit,impactTin_medium_001,metalPot2,v_vln_pizz_A5,v_harp_arp_low");
+		Add(List, "Alert.TrainingDone", "v_horn_call,v_horn_rise,v_trumpet_stac_D4,v_trumpet_call,v_timpani_hit,v_timpani_double,v_timpani_roll,v_trombone_low,drawKnife2,impactPlate_heavy_000");
 		Add(List, "Alert.TechDone", "v_harp_arp_up,v_harp_arp_down,v_glock_arp_up,v_vln_pizz_arp,v_nbell_med,impactBell_heavy_003,bookPlace2,v_gong_smack_light,handleCoins,v_nbell_s02");
 		Add(List, "Alert.Trade", "handleCoins,handleCoins2,impactTin_medium_000,v_tambourine_down,v_triangle_hit,v_nbell_s08,impactGeneric_light_000,impactMetal_light_003,v_glock_C7,handleSmallLeather");
 		Add(List, "Alert.Volcano", "impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_low,v_mallet_hit_ff2,v_mallet_hit_ff,impactMetal_heavy_002,impactPunch_heavy_000,v_nbell_med,v_bass_pizz_E0,creak3");
 		Add(List, "Alert.Diplomacy", "v_harp_arp_up,v_glock_G6,v_nbell_s06,v_cello_pizz_D4,bookOpen,doorOpen_2,creak1,impactPlate_light_003,v_vln_pizz_E5,metalLatch");
+	}
+
+	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per
+	// family). Cue names "Building.<Family>" (HOLAudioBuildings::CueNameOfFamily); NOT cues of the sound table (so not counted by CueCount), only
+	// listened to in the scenario audio_compare_buildings. Materials: wood and planks, stone (mining, dull hits), bells and harp for the sacred,
+	// dull metal, coins with leather purses. Same CC0 packs as above (Kenney rpg-audio and impact-sounds, VSCO 2 CE, Docs/assets_audio.csv).
+	void BuildBuildings(TArray<FHOLAudioCandidates>& List)
+	{
+		Add(List, "Building.Wood", "impactWood_light_000,impactWood_medium_000,impactWood_heavy_000,impactPlank_medium_000,impactPlank_medium_001,chop,doorOpen_1,creak1,footstep_wood_000,v_claves_mf");
+		Add(List, "Building.Stone", "impactMining_000,impactMining_001,impactMining_002,impactMining_003,impactPunch_heavy_000,impactPunch_medium_000,doorClose_1,impactSoft_heavy_000,v_timpani_hit,v_mallet_hit_mf");
+		Add(List, "Building.Sacred", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,v_nbell_s01,v_nbell_s03,v_nbell_med,v_glock_C7,v_harp_arp_up,v_harp_arp_low,v_triangle_hit");
+		Add(List, "Building.Metal", "impactMetal_heavy_000,impactMetal_heavy_001,impactMetal_medium_000,impactMetal_light_000,impactPlate_heavy_000,impactPlate_medium_000,metalPot1,metalLatch,v_gong_smack_light,impactTin_medium_000");
+		Add(List, "Building.Coins", "handleCoins,handleCoins2,impactTin_medium_001,impactTin_medium_002,v_tambourine_down,v_triangle_muted,impactGeneric_light_000,handleSmallLeather,dropLeather,beltHandle1");
 	}
 
 	// The lists, built at each call (script has no mutable global).
@@ -72,12 +85,16 @@ namespace HOLAudioCandidates
 		return Table().Num();
 	}
 
-	// The list of a cue by its name ("Ui.Open"); an empty list (no cue name, no stem) when the table does not know it.
+	// The list of a cue by its name ("Ui.Open", or a family cue "Building.Wood"); an empty list (no cue name, no stem) when the table does not know it.
 	FHOLAudioCandidates ForCue(FString Cue)
 	{
 		TArray<FHOLAudioCandidates> List = Table();
 		for (int Index = 0; Index < List.Num(); Index++)
 			if (List[Index].Cue == Cue) return List[Index];
+		TArray<FHOLAudioCandidates> Buildings;
+		BuildBuildings(Buildings);
+		for (int Index = 0; Index < Buildings.Num(); Index++)
+			if (Buildings[Index].Cue == Cue) return Buildings[Index];
 		return FHOLAudioCandidates();
 	}
 

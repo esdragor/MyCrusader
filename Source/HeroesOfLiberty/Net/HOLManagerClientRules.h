@@ -157,6 +157,52 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	bool CanStart() const;
 };
 
+/**
+ * T7 (D721): the client that lost its match retries the same seat by itself, every few seconds, until the window of the
+ * server is over (the countdown shown is that window). Pure rules, for the tests.
+ */
+struct HEROESOFLIBERTY_API FHOLReconnectRules
+{
+	/** The wait between two attempts (hol.Net.ReconnectInterval). */
+	static constexpr double DefaultIntervalSeconds = 3.;
+	enum class EStep : uint8
+	{
+		/** Nothing to do now (before the cut, or the last attempt is too recent). */
+		Wait,
+		/** Try the match's address again. */
+		Attempt,
+		/** The window is over: the seat is lost (the 1v1's defeat or the AI's seat), back to the list. */
+		GiveUp,
+	};
+	/** The step at Now for a connection lost at LostAt; LastAttemptAt < 0: none yet. */
+	static EStep GetStep(double LostAt, double Now, double WindowSeconds, double LastAttemptAt, double IntervalSeconds);
+	/** Seconds left in the window, 0 at its end. */
+	static double GetSecondsLeft(double LostAt, double Now, double WindowSeconds);
+	/** « Connexion perdue \u2014 nouvelle tentative, 2:41 » (rounded up). */
+	static FText FormatLine(double SecondsLeft);
+};
+
+/** T7: the reconnection of a client, step by step (the state the manager client holds). */
+struct HEROESOFLIBERTY_API FHOLReconnect
+{
+	void Start(double Now, double WindowSeconds, double IntervalSeconds = FHOLReconnectRules::DefaultIntervalSeconds);
+	/** « Annuler »: no more attempt. */
+	void Cancel() { bActive = false; }
+	bool IsActive() const { return bActive; }
+	/** What to do at Now; Attempt counts one and starts the interval, GiveUp ends it. Wait when not started. */
+	FHOLReconnectRules::EStep Tick(double Now);
+	double GetSecondsLeft(double Now) const;
+	int32 GetAttempts() const { return Attempts; }
+
+private:
+	bool bActive = false;
+	double LostAt = 0.;
+	double Window = 0.;
+	double Interval = FHOLReconnectRules::DefaultIntervalSeconds;
+	double LastAttemptAt = -1.;
+	int32 Attempts = 0;
+};
+
 /** A manager the game may call, from servers.json (its address is never shown, M6-Q5). */
 struct FHOLManagerServer
 {

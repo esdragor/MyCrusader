@@ -3,6 +3,17 @@
 #include "Net/HOLManagerClient.h"
 
 #include "Engine/Engine.h"
+#include "Engine/GameViewportClient.h"
+#include "Engine/NetConnection.h"
+#include "Engine/NetDriver.h"
+#include "GameFramework/GameStateBase.h"
+#include "Match/HOLDisconnectRules.h"
+#include "Styling/CoreStyle.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
+#include "Widgets/SBoxPanel.h"
+#include "Widgets/Text/STextBlock.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -20,6 +31,34 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "Serialization/JsonWriter.h"
+
+static TAutoConsoleVariable<float> CVarReconnectInterval(TEXT("hol.Net.ReconnectInterval"), static_cast<float>(FHOLReconnectRules::DefaultIntervalSeconds),
+	TEXT("T7 (D721): seconds between two automatic attempts to rejoin a match whose connection was lost."));
+static TAutoConsoleVariable<float> CVarReconnectWindow(TEXT("hol.Net.ReconnectWindow"), static_cast<float>(FHOLDisconnectRules::DefaultWindowSeconds),
+	TEXT("T7 (D721): seconds the client keeps retrying (the server's window, hol.Match.DisconnectWindowSeconds)."));
+
+// T7 check: the connection of a client in a match is lost as the engine reports a real loss (the same ConnectionLost failure a timeout
+// raises: the engine's own handling closes the connection, the server sees a Logout, our handler starts the automatic return).
+static FAutoConsoleCommand CommandFakeLoss(TEXT("hol.Net.FakeLoss"),
+	TEXT("hol.Net.FakeLoss: on a client in a match, raises ConnectionLost on its connection (the seat is then retried by itself, T7)"),
+	FConsoleCommandDelegate::CreateLambda([]()
+	{
+		if (!GEngine)
+		{
+			return;
+		}
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
+		{
+			UWorld* World = Context.World();
+			if (Context.WorldType == EWorldType::Game && World && World->GetNetMode() == NM_Client && World->GetNetDriver())
+			{
+				UE_LOG(LogHOLNet, Display, TEXT("hol.Net.FakeLoss: ConnectionLost raised on the client's connection"));
+				GEngine->BroadcastNetworkFailure(World, World->GetNetDriver(), ENetworkFailure::ConnectionLost, TEXT("hol.Net.FakeLoss"));
+				return;
+			}
+		}
+		UE_LOG(LogHOLNet, Warning, TEXT("hol.Net.FakeLoss: not a client in a match"));
+	}));
 
 namespace
 {
@@ -148,6 +187,7 @@ void UHOLManagerClient::Initialize(FSubsystemCollectionBase& Collection)
 
 void UHOLManagerClient::Deinitialize()
 {
+	EndReconnect();
 	if (GEngine)
 	{
 		GEngine->OnNetworkFailure().Remove(NetworkFailureHandle);
@@ -160,16 +200,155 @@ void UHOLManagerClient::HandleNetworkFailure(UWorld* World, UNetDriver* NetDrive
 {
 	if (bInMatch && World && World->GetGameInstance() == GetGameInstance())
 	{
-		LoseMatch(MakeMatchLossError(Failure, Message));
+		// T7: the failures of the attempts themselves are the retries' business.
+		if (Reconnect.IsActive())
+		{
+			UE_LOG(LogHOLNet, Log, TEXT("Manager: reconnect attempt failed (%s)"), *Message);
+			return;
+		}
+		const FHOLManagerError Error = MakeMatchLossError(Failure, Message);
+		if ((Failure == ENetworkFailure::ConnectionLost || Failure == ENetworkFailure::ConnectionTimeout) && StartReconnect(Error))
+		{
+			return;
+		}
+		LoseMatch(Error);
 	}
 }
 
 void UHOLManagerClient::HandleTravelFailure(UWorld* World, const ETravelFailure::Type Failure, const FString& Message)
 {
+	if (Reconnect.IsActive())
+	{
+		return;
+	}
 	if (bInMatch && (!World || World->GetGameInstance() == GetGameInstance()))
 	{
 		LoseMatch(MakeMatchTravelError(FString::Printf(TEXT("%s: %s"), ETravelFailure::ToString(Failure), *Message)));
 	}
+}
+
+bool UHOLManagerClient::StartReconnect(const FHOLManagerError& Error)
+{
+	// A spectator (no name) has no seat to take back.
+	if (MatchPlayerName.IsEmpty() || ReconnectAddress.IsEmpty() || CVarReconnectWindow.GetValueOnGameThread() <= 0.f || AfterMatch != EAfterMatch::None)
+	{
+		return false;
+	}
+	ReconnectError = Error;
+	Reconnect.Start(FPlatformTime::Seconds(), CVarReconnectWindow.GetValueOnGameThread(), FMath::Max(0.5f, CVarReconnectInterval.GetValueOnGameThread()));
+	UE_LOG(LogHOLNet, Display, TEXT("Manager: connection lost (%s), retrying the seat for %.0f s"), *Error.Message, CVarReconnectWindow.GetValueOnGameThread());
+	ShowReconnectBanner();
+	ReconnectTicker = FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateUObject(this, &UHOLManagerClient::TickReconnect), 0.5f);
+	return true;
+}
+
+bool UHOLManagerClient::TickReconnect(float)
+{
+	const double Now = FPlatformTime::Seconds();
+	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
+	// Back in the match: a new connection, open, with its game state, after at least one attempt.
+	const UNetDriver* Driver = World ? World->GetNetDriver() : nullptr;
+	if (Reconnect.GetAttempts() > 0 && World && World->GetNetMode() == NM_Client && Driver && Driver->ServerConnection
+		&& Driver->ServerConnection->GetConnectionState() == USOCK_Open && World->GetGameState())
+	{
+		UE_LOG(LogHOLNet, Display, TEXT("Manager: back in the match after %d attempt(s)"), Reconnect.GetAttempts());
+		EndReconnect();
+		return false;
+	}
+	switch (Reconnect.Tick(Now))
+	{
+	case FHOLReconnectRules::EStep::Attempt:
+		UE_LOG(LogHOLNet, Display, TEXT("Manager: reconnect attempt %d"), Reconnect.GetAttempts());
+		if (World && GEngine)
+		{
+			GEngine->SetClientTravel(World, *ReconnectAddress, TRAVEL_Absolute);
+		}
+		break;
+	case FHOLReconnectRules::EStep::GiveUp:
+	{
+		UE_LOG(LogHOLNet, Display, TEXT("Manager: the window is over, the seat is not taken back"));
+		const FHOLManagerError Error = ReconnectError;
+		EndReconnect();
+		LoseMatch(Error);
+		return false;
+	}
+	default:
+		break;
+	}
+	if (ReconnectText.IsValid())
+	{
+		ReconnectText->SetText(FHOLReconnectRules::FormatLine(Reconnect.GetSecondsLeft(Now)));
+	}
+	return true;
+}
+
+void UHOLManagerClient::CancelReconnect()
+{
+	if (!Reconnect.IsActive())
+	{
+		return;
+	}
+	UE_LOG(LogHOLNet, Display, TEXT("Manager: reconnection cancelled"));
+	const FHOLManagerError Error = ReconnectError;
+	EndReconnect();
+	LoseMatch(Error);
+}
+
+void UHOLManagerClient::EndReconnect()
+{
+	Reconnect.Cancel();
+	if (ReconnectTicker.IsValid())
+	{
+		FTSTicker::GetCoreTicker().RemoveTicker(ReconnectTicker);
+		ReconnectTicker.Reset();
+	}
+	HideReconnectBanner();
+}
+
+void UHOLManagerClient::ShowReconnectBanner()
+{
+	if (!GEngine || !GEngine->GameViewport)
+	{
+		return;
+	}
+	HideReconnectBanner();
+	const FSlateFontInfo Font = FCoreStyle::GetDefaultFontStyle("Bold", 22);
+	ReconnectWidget = SNew(SBox)
+		.HAlign(HAlign_Center)
+		.VAlign(VAlign_Top)
+		.Padding(FMargin(0.f, 80.f, 0.f, 0.f))
+		[
+			SNew(SBorder)
+			.Padding(FMargin(20.f, 12.f))
+			[
+				SNew(SHorizontalBox)
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+				[
+					SAssignNew(ReconnectText, STextBlock)
+					.Font(Font)
+					.Text(FHOLReconnectRules::FormatLine(Reconnect.GetSecondsLeft(FPlatformTime::Seconds())))
+				]
+				+ SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(FMargin(24.f, 0.f, 0.f, 0.f))
+				[
+					SNew(SButton)
+					.OnClicked(FOnClicked::CreateWeakLambda(this, [this]() { CancelReconnect(); return FReply::Handled(); }))
+					[
+						SNew(STextBlock).Font(Font).Text(NSLOCTEXT("HOLNet", "ReconnectCancel", "Annuler"))
+					]
+				]
+			]
+		];
+	GEngine->GameViewport->AddViewportWidgetContent(ReconnectWidget.ToSharedRef(), 1000);
+}
+
+void UHOLManagerClient::HideReconnectBanner()
+{
+	if (ReconnectWidget.IsValid() && GEngine && GEngine->GameViewport)
+	{
+		GEngine->GameViewport->RemoveViewportWidgetContent(ReconnectWidget.ToSharedRef());
+	}
+	ReconnectWidget.Reset();
+	ReconnectText.Reset();
 }
 
 void UHOLManagerClient::LoseMatch(const FHOLManagerError& Error)
@@ -451,6 +630,7 @@ bool UHOLManagerClient::OpenMatch(const int32 Port, const FString& PlayerName, c
 	}
 	UE_LOG(LogHOLNet, Display, TEXT("Manager: open %s"), *Address);
 	MatchPlayerName = PlayerName;
+	ReconnectAddress = Address;
 	bInMatch = true;
 	// As the console's "open".
 	GEngine->SetClientTravel(World, *Address, TRAVEL_Absolute);

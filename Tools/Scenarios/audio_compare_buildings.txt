@@ -1,0 +1,163 @@
+# Ecoute : le son de SELECTION d'un batiment, une famille apres l'autre : bois, pierre, sacre, metal, pieces (cuir, cloches, harpe, forge...), dix variantes chacune, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute le son de SELECTION d'un batiment, une famille apres l'autre : bois, pierre, sacre, metal, pieces (cuir, cloches, harpe, forge...). 50 sons, 5 cues, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Wood C.
+note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+capture audio_compare_buildings_start
+waitkey Entree : commencer par Building.Wood A
+hol.Audio.Candidate Building.Wood A
+waitlog candidate played Building.Wood A
+waitkey Building.Wood A (impactWood_light_000) vient de jouer. Entree : Building.Wood B
+hol.Audio.Candidate Building.Wood B
+waitlog candidate played Building.Wood B
+waitkey Building.Wood B (impactWood_medium_000) vient de jouer. Entree : Building.Wood C
+hol.Audio.Candidate Building.Wood C
+waitlog candidate played Building.Wood C
+waitkey Building.Wood C (impactWood_heavy_000) vient de jouer. Entree : Building.Wood D
+hol.Audio.Candidate Building.Wood D
+waitlog candidate played Building.Wood D
+waitkey Building.Wood D (impactPlank_medium_000) vient de jouer. Entree : Building.Wood E
+hol.Audio.Candidate Building.Wood E
+waitlog candidate played Building.Wood E
+waitkey Building.Wood E (impactPlank_medium_001) vient de jouer. Entree : Building.Wood F
+hol.Audio.Candidate Building.Wood F
+waitlog candidate played Building.Wood F
+waitkey Building.Wood F (chop) vient de jouer. Entree : Building.Wood G
+hol.Audio.Candidate Building.Wood G
+waitlog candidate played Building.Wood G
+waitkey Building.Wood G (doorOpen_1) vient de jouer. Entree : Building.Wood H
+hol.Audio.Candidate Building.Wood H
+waitlog candidate played Building.Wood H
+waitkey Building.Wood H (creak1) vient de jouer. Entree : Building.Wood I
+hol.Audio.Candidate Building.Wood I
+waitlog candidate played Building.Wood I
+waitkey Building.Wood I (footstep_wood_000) vient de jouer. Entree : Building.Wood J
+hol.Audio.Candidate Building.Wood J
+waitlog candidate played Building.Wood J
+waitkey Building.Wood J (v_claves_mf) vient de jouer. Entree : Building.Stone A  [nouveau cue]
+hol.Audio.Candidate Building.Stone A
+waitlog candidate played Building.Stone A
+waitkey Building.Stone A (impactMining_000) vient de jouer. Entree : Building.Stone B
+hol.Audio.Candidate Building.Stone B
+waitlog candidate played Building.Stone B
+waitkey Building.Stone B (impactMining_001) vient de jouer. Entree : Building.Stone C
+hol.Audio.Candidate Building.Stone C
+waitlog candidate played Building.Stone C
+waitkey Building.Stone C (impactMining_002) vient de jouer. Entree : Building.Stone D
+hol.Audio.Candidate Building.Stone D
+waitlog candidate played Building.Stone D
+waitkey Building.Stone D (impactMining_003) vient de jouer. Entree : Building.Stone E
+hol.Audio.Candidate Building.Stone E
+waitlog candidate played Building.Stone E
+waitkey Building.Stone E (impactPunch_heavy_000) vient de jouer. Entree : Building.Stone F
+hol.Audio.Candidate Building.Stone F
+waitlog candidate played Building.Stone F
+waitkey Building.Stone F (impactPunch_medium_000) vient de jouer. Entree : Building.Stone G
+hol.Audio.Candidate Building.Stone G
+waitlog candidate played Building.Stone G
+waitkey Building.Stone G (doorClose_1) vient de jouer. Entree : Building.Stone H
+hol.Audio.Candidate Building.Stone H
+waitlog candidate played Building.Stone H
+waitkey Building.Stone H (impactSoft_heavy_000) vient de jouer. Entree : Building.Stone I
+hol.Audio.Candidate Building.Stone I
+waitlog candidate played Building.Stone I
+waitkey Building.Stone I (v_timpani_hit) vient de jouer. Entree : Building.Stone J
+hol.Audio.Candidate Building.Stone J
+waitlog candidate played Building.Stone J
+waitkey Building.Stone J (v_mallet_hit_mf) vient de jouer. Entree : Building.Sacred A  [nouveau cue]
+hol.Audio.Candidate Building.Sacred A
+waitlog candidate played Building.Sacred A
+waitkey Building.Sacred A (impactBell_heavy_000) vient de jouer. Entree : Building.Sacred B
+hol.Audio.Candidate Building.Sacred B
+waitlog candidate played Building.Sacred B
+waitkey Building.Sacred B (impactBell_heavy_001) vient de jouer. Entree : Building.Sacred C
+hol.Audio.Candidate Building.Sacred C
+waitlog candidate played Building.Sacred C
+waitkey Building.Sacred C (impactBell_heavy_002) vient de jouer. Entree : Building.Sacred D
+hol.Audio.Candidate Building.Sacred D
+waitlog candidate played Building.Sacred D
+waitkey Building.Sacred D (v_nbell_s01) vient de jouer. Entree : Building.Sacred E
+hol.Audio.Candidate Building.Sacred E
+waitlog candidate played Building.Sacred E
+waitkey Building.Sacred E (v_nbell_s03) vient de jouer. Entree : Building.Sacred F
+hol.Audio.Candidate Building.Sacred F
+waitlog candidate played Building.Sacred F
+waitkey Building.Sacred F (v_nbell_med) vient de jouer. Entree : Building.Sacred G
+hol.Audio.Candidate Building.Sacred G
+waitlog candidate played Building.Sacred G
+waitkey Building.Sacred G (v_glock_C7) vient de jouer. Entree : Building.Sacred H
+hol.Audio.Candidate Building.Sacred H
+waitlog candidate played Building.Sacred H
+waitkey Building.Sacred H (v_harp_arp_up) vient de jouer. Entree : Building.Sacred I
+hol.Audio.Candidate Building.Sacred I
+waitlog candidate played Building.Sacred I
+waitkey Building.Sacred I (v_harp_arp_low) vient de jouer. Entree : Building.Sacred J
+hol.Audio.Candidate Building.Sacred J
+waitlog candidate played Building.Sacred J
+waitkey Building.Sacred J (v_triangle_hit) vient de jouer. Entree : Building.Metal A  [nouveau cue]
+hol.Audio.Candidate Building.Metal A
+waitlog candidate played Building.Metal A
+waitkey Building.Metal A (impactMetal_heavy_000) vient de jouer. Entree : Building.Metal B
+hol.Audio.Candidate Building.Metal B
+waitlog candidate played Building.Metal B
+waitkey Building.Metal B (impactMetal_heavy_001) vient de jouer. Entree : Building.Metal C
+hol.Audio.Candidate Building.Metal C
+waitlog candidate played Building.Metal C
+waitkey Building.Metal C (impactMetal_medium_000) vient de jouer. Entree : Building.Metal D
+hol.Audio.Candidate Building.Metal D
+waitlog candidate played Building.Metal D
+waitkey Building.Metal D (impactMetal_light_000) vient de jouer. Entree : Building.Metal E
+hol.Audio.Candidate Building.Metal E
+waitlog candidate played Building.Metal E
+waitkey Building.Metal E (impactPlate_heavy_000) vient de jouer. Entree : Building.Metal F
+hol.Audio.Candidate Building.Metal F
+waitlog candidate played Building.Metal F
+waitkey Building.Metal F (impactPlate_medium_000) vient de jouer. Entree : Building.Metal G
+hol.Audio.Candidate Building.Metal G
+waitlog candidate played Building.Metal G
+waitkey Building.Metal G (metalPot1) vient de jouer. Entree : Building.Metal H
+hol.Audio.Candidate Building.Metal H
+waitlog candidate played Building.Metal H
+waitkey Building.Metal H (metalLatch) vient de jouer. Entree : Building.Metal I
+hol.Audio.Candidate Building.Metal I
+waitlog candidate played Building.Metal I
+waitkey Building.Metal I (v_gong_smack_light) vient de jouer. Entree : Building.Metal J
+hol.Audio.Candidate Building.Metal J
+waitlog candidate played Building.Metal J
+waitkey Building.Metal J (impactTin_medium_000) vient de jouer. Entree : Building.Coins A  [nouveau cue]
+hol.Audio.Candidate Building.Coins A
+waitlog candidate played Building.Coins A
+waitkey Building.Coins A (handleCoins) vient de jouer. Entree : Building.Coins B
+hol.Audio.Candidate Building.Coins B
+waitlog candidate played Building.Coins B
+waitkey Building.Coins B (handleCoins2) vient de jouer. Entree : Building.Coins C
+hol.Audio.Candidate Building.Coins C
+waitlog candidate played Building.Coins C
+waitkey Building.Coins C (impactTin_medium_001) vient de jouer. Entree : Building.Coins D
+hol.Audio.Candidate Building.Coins D
+waitlog candidate played Building.Coins D
+waitkey Building.Coins D (impactTin_medium_002) vient de jouer. Entree : Building.Coins E
+hol.Audio.Candidate Building.Coins E
+waitlog candidate played Building.Coins E
+waitkey Building.Coins E (v_tambourine_down) vient de jouer. Entree : Building.Coins F
+hol.Audio.Candidate Building.Coins F
+waitlog candidate played Building.Coins F
+waitkey Building.Coins F (v_triangle_muted) vient de jouer. Entree : Building.Coins G
+hol.Audio.Candidate Building.Coins G
+waitlog candidate played Building.Coins G
+waitkey Building.Coins G (impactGeneric_light_000) vient de jouer. Entree : Building.Coins H
+hol.Audio.Candidate Building.Coins H
+waitlog candidate played Building.Coins H
+waitkey Building.Coins H (handleSmallLeather) vient de jouer. Entree : Building.Coins I
+hol.Audio.Candidate Building.Coins I
+waitlog candidate played Building.Coins I
+waitkey Building.Coins I (dropLeather) vient de jouer. Entree : Building.Coins J
+hol.Audio.Candidate Building.Coins J
+waitlog candidate played Building.Coins J
+waitkey Building.Coins J (beltHandle1) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

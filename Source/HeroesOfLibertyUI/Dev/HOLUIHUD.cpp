@@ -58,6 +58,7 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			// On their own lines too (J6a.5): what the grid's cells write, and their tooltips.
 			UE_LOG(LogHOLUI, Display, TEXT("HUD cells: %s"), *Screen.DescribeCells());
 			UE_LOG(LogHOLUI, Display, TEXT("HUD tooltips: %s"), *Screen.DescribeTooltips());
+			UE_LOG(LogHOLUI, Display, TEXT("HUD selection name: %s"), *Screen.DescribeSelectionName());
 				// The selected unit's statistics (attack with the technologies' bonus...), on their own line too.
 				UE_LOG(LogHOLUI, Display, TEXT("HUD stats: %s"), *Screen.DescribeStats());
 				UE_LOG(LogHOLUI, Display, TEXT("HUD stats tip: %s"), *Screen.DescribeStatsTip());
@@ -94,6 +95,8 @@ namespace UE::HeroesOfLiberty::UI::HUD
 			}
 			// Lesson 12b: which panels cover each other (the script's, and the cheats'), as drawn; preflight.ps1 fails on anything but "none".
 			UE_LOG(LogHOLUI, Display, TEXT("HUD overlap: %s"), *Screen.DescribeOverlaps());
+			// L1-12b: the boxes behind that verdict ("HUD rects: name=x0,y0,x1,y1; ..."), read by preflight.ps1 through HudRects.ps1.
+			UE_LOG(LogHOLUI, Display, TEXT("HUD rects: %s"), *Screen.DescribeRects());
 			// On its own line: the checks read the report's line to its end.
 			if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(Screen.GetOwningPlayer()))
 			{

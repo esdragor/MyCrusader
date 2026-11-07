@@ -40,7 +40,8 @@ namespace
 		}
 		const HOLDiplomacy::FBook Book = GameState.IsDiplomacyMode() ? GameState.GetDiplomacyBook() : HOLDiplomacy::FBook();
 		const TArray<FHOLPlayersTableRow> Rows = HOLForumRules::GetPlayersTable(GameState.GetLaunchConfig(), Forums, GameState.GetDefeatedMask(),
-			Viewer, FHOLForumTuning::FromSettings(), Tiers, GameState.IsDiplomacyMode() ? &Book : nullptr);
+			Viewer, FHOLForumTuning::FromSettings(), Tiers, GameState.IsDiplomacyMode() ? &Book : nullptr,
+			GameState.GetAbsentMask(), GameState.GetAIHeldMask());
 		for (const FHOLPlayersTableRow& Row : Rows)
 		{
 			if (Row.Slot == Slot)
