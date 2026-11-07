@@ -1,0 +1,5 @@
+# B3, test de l EFFET : sans biome au salon (default) la carte garde son look et AUCUN decor generique n est pose (Q1 A) ; hol.Biome.DecorWorld lit le monde.
+frames 150
+hol.Biome.DecorWorld
+waitlog Biome decor world:
+note Aucun decor generique de biome sur la Plaine par defaut (journal).
