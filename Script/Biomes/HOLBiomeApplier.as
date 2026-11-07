@@ -6,6 +6,10 @@
 
 const FConsoleVariable CVar_BiomeIndex("hol.Biome.Index", -1);
 
+// The layout seed the generic decor is laid with (1 until the maps carry their own seed, BiomeInProgress.md B3): a measuring knob, read
+// at the moment the decor is laid (set it, go back to -1, then pick the biome again).
+const FConsoleVariable CVar_BiomeLayoutSeed("hol.Biome.LayoutSeed", 1);
+
 class UHOLBiomeApplier : UScriptWorldSubsystem
 {
 	// The biome set on the world: -2 = not looked at yet, -1 = the map's own (nothing set), 0 to 4 = a biome of the table.
@@ -91,7 +95,7 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 		{
 			Avoid.Add(FVector2D(Site.X - Origin.X, Site.Y - Origin.Y));
 		}
-		TArray<FHOLGenericDecor> Pieces = HOLBiomeDecor::Plan(Biome, 1, Half, Avoid, ReferenceDensities());
+		TArray<FHOLGenericDecor> Pieces = HOLBiomeDecor::Plan(Biome, CVar_BiomeLayoutSeed.GetInt(), Half, Avoid, ReferenceDensities());
 		DecorLayer = Cast<AHOLBiomeDecor>(SpawnActor(AHOLBiomeDecor::StaticClass(), FVector::ZeroVector));
 		UMaterialInterface Matte = Cast<UMaterialInterface>(LoadObject(nullptr, "/Game/Rendering/M_MatteColor.M_MatteColor"));
 		TMap<int, UHierarchicalInstancedStaticMeshComponent> Parts;
@@ -118,7 +122,7 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 				FVector(float(Piece.ScaleXPercent) / 100.0f, float(Piece.ScaleYPercent) / 100.0f, float(Piece.ScaleZPercent) / 100.0f));
 			Parts[Piece.Kind].AddInstance(At, true);
 		}
-		Log(n"LogHOLMatch", f"Biome decor expect: pieces={Pieces.Num()} kinds={Parts.Num()} half={int(Half)}");
+		Log(n"LogHOLMatch", f"Biome decor expect: pieces={Pieces.Num()} kinds={Parts.Num()} half={int(Half)} seed={CVar_BiomeLayoutSeed.GetInt()}");
 	}
 
 	UFUNCTION(BlueprintOverride)
