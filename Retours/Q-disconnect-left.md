@@ -12,3 +12,5 @@ Options
 Recommandation : B si les statistiques doivent traiter le départ comme une défaite (une seule ligne par siège, D508) ; A sinon. A est celui qui est codé et testé.
 
 Valeur par défaut codée : A (type `Left`), derrière `HOLForumMessages` (une ligne à changer pour revenir à `Defeated`).
+
+Reponse: B (utilisateur 10:36)
