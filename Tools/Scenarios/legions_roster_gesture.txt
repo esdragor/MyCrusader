@@ -1,0 +1,106 @@
+# Integration replay (Elrond-9) of the Legions' names (REGLAGE legions_roster) through REAL gestures: a left click selects the building (hol.Select.ClickGround), the key A / Z is pressed (hol.Select.Grid 0 / 1), the produced unit is selected with a left click on its drawn body (hol.Select.ClickUnit). Then it tries to BREAK it: an Aube (Dawn) unit and an Aube Barracks, selected by the same clicks, must keep their Aube names.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Cheat.SpawnBuilding ArcheryRange 0 2500 4500
+waitlog Cheat: spawned ArcheryRange of slot 0
+hol.Cheat.SpawnBuilding Stable 0 2500 6500
+waitlog Cheat: spawned Stable of slot 0
+hol.Cheat.SpawnBuilding SiegeWorkshop 0 2500 8500
+waitlog Cheat: spawned SiegeWorkshop of slot 0
+hol.Camera.FocusNear 2500 2500
+hol.Camera.Zoom -3
+frames 40
+# 1. Barracks: real click, grid and tooltip
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Legion Spearman; Z: Black Guard
+hol.HUD.Report
+waitlog A: Legion Spearman | F 45 | W 15
+hol.HUD.Report
+waitlog Z: Black Guard |
+capture legions_gesture_barracks
+# 2. Key A then key Z: the units come out, the real click selects each one
+hol.Select.Grid 0
+waitlog Production: Spearman of slot 0 done
+hol.Select.Grid 1
+waitlog Production: ManAtArms of slot 0 done
+frames 30
+hol.Camera.FocusNear 2500 2500
+frames 5
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Black Guard
+capture legions_gesture_blackguard
+# 3. Archery range
+hol.Camera.FocusNear 2500 4500
+frames 5
+hol.Select.ClickGround -12200 4600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Legion Archer; Z: Legion Crossbowman
+hol.Select.Grid 0
+waitlog Production: Archer of slot 0 done
+frames 30
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Legion Archer
+# 4. Stable
+hol.Camera.FocusNear 2500 6500
+frames 5
+hol.Select.ClickGround -12200 6600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Dread Rider
+hol.Select.Grid 0
+waitlog Production: LightCavalry of slot 0 done
+frames 30
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Dread Rider
+capture legions_gesture_rider
+# 5. Siege workshop
+hol.Camera.FocusNear 2500 8500
+frames 5
+hol.Select.ClickGround -12200 8600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+# Ram is a higher tier (key A refused: "tier too low"), so the Ram is placed by the cheat, then clicked for real.
+hol.Units.SpawnHere 1 Ram 0 120
+waitlog SpawnHere: 1 Ram of slot 0
+frames 40
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Bone Ram
+# 6. BREAK IT: Aube unit and Aube Barracks, same clicks. They must keep their Aube names.
+hol.Camera.FocusNear 5000 -1500
+frames 2
+hol.Units.SpawnHere 1 Spearman 1 120
+waitlog SpawnHere: 1 Spearman of slot 1
+frames 40
+hol.Select.ClickUnit -1 enemy
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Lancier
+capture legions_gesture_aube_unit
+hol.Camera.FocusNear 6500 4000
+hol.Cheat.SpawnBuilding Barracks 1 6500 4000
+waitlog Cheat: spawned Barracks of slot 1
+frames 40
+hol.Select.ClickGround -8200 4100
+frames 10
+hol.HUD.Report
+capture legions_gesture_aube_barracks
+note Real gestures: you click the Legions' buildings and units; A / Z produce; the names read Legion Spearman, Black Guard, Legion Archer, Legion Crossbowman, Dread Rider, Bone Ram, Bone Mangonel; the Aube unit and Aube Barracks (red) keep the Aube names.
