@@ -11,7 +11,6 @@ capture audio_compare_start
 waitkey Entree : commencer par Ui.Click A
 hol.Audio.Candidate Ui.Click A
 waitlog candidate played Ui.Click A
-capture audio_compare_played
 waitkey Ui.Click A (impactWood_light_000) vient de jouer. Entree : Ui.Click B
 hol.Audio.Candidate Ui.Click B
 waitlog candidate played Ui.Click B

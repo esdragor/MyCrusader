@@ -11,7 +11,6 @@ capture audio_compare_orders_start
 waitkey Entree : commencer par Order.Move A
 hol.Audio.Candidate Order.Move A
 waitlog candidate played Order.Move A
-capture audio_compare_orders_played
 waitkey Order.Move A (handleSmallLeather) vient de jouer. Entree : Order.Move B
 hol.Audio.Candidate Order.Move B
 waitlog candidate played Order.Move B

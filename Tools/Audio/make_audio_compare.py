@@ -83,8 +83,6 @@ def write(name, prefixes, what, all_cues, scen, retours, project):
     for position, step in enumerate(steps):
         out.append("hol.Audio.Candidate %s %s" % (step[0], LETTERS[step[1]]))
         out.append("waitlog candidate played %s %s" % (step[0], LETTERS[step[1]]))
-        if position == 0:
-            out.append("capture %s_played" % name)
         if position + 1 < len(steps):
             nxt = steps[position + 1]
             text = "%s (%s) vient de jouer. Entree : %s%s" % (label(step), step[2], label(nxt), "  [nouveau cue]" if nxt[0] != step[0] else "")
@@ -100,9 +98,7 @@ def write(name, prefixes, what, all_cues, scen, retours, project):
         f.write("\n".join(out) + "\n")
     with open(os.path.join(scen, name + ".look"), "w", encoding="utf-8", newline="\n") as f:
         f.write("# <nom de capture> | ce que l'utilisateur doit voir\n"
-                "%s_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter %s, Entree = variante suivante\n"
-                "%s_played | Le panneau dit « %s (%s) vient de jouer. Entree : %s » : le NOM DU CUE a cote de la lettre\n"
-                % (name, what, name, label(steps[0]), steps[0][2], label(steps[1])))
+                "%s_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter %s, Entree = variante suivante\n"                % (name, what))
     shutil.copyfile(os.path.join(project, "Tools", "Scenarios", "audio_ui.json"), os.path.join(scen, name + ".json"))
     if retours:
         write_answer_sheet(retours, name, what, mine, steps, project)

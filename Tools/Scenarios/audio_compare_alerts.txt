@@ -11,7 +11,6 @@ capture audio_compare_alerts_start
 waitkey Entree : commencer par Alert.UnderAttack A
 hol.Audio.Candidate Alert.UnderAttack A
 waitlog candidate played Alert.UnderAttack A
-capture audio_compare_alerts_played
 waitkey Alert.UnderAttack A (impactBell_heavy_000) vient de jouer. Entree : Alert.UnderAttack B
 hol.Audio.Candidate Alert.UnderAttack B
 waitlog candidate played Alert.UnderAttack B

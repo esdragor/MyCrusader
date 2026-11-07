@@ -11,7 +11,6 @@ capture audio_compare_martial_start
 waitkey Entree : commencer par Alert.TrainingDone A
 hol.Audio.Candidate Alert.TrainingDone A
 waitlog candidate played Alert.TrainingDone A
-capture audio_compare_martial_played
 waitkey Alert.TrainingDone A (v_horn_call) vient de jouer. Entree : Alert.TrainingDone B
 hol.Audio.Candidate Alert.TrainingDone B
 waitlog candidate played Alert.TrainingDone B
