@@ -40,8 +40,11 @@ Write-Host "hud_rects_game_test: duel_challenge"
 $Duel = Invoke-Scenario "duel_challenge"
 $DuelLines = @($Duel | Where-Object { $_ -match "HUD rects:" -and $_ -match "DuelPanel=" })
 Case "duel_challenge: a 'HUD rects:' line holds the duel window (DuelPanel) with a real box" ($DuelLines.Count -gt 0 -and (Test-Real (Get-Box $DuelLines[-1] "DuelPanel"))) "(lines with rects: $(@($Duel | Where-Object { $_ -match 'HUD rects:' }).Count))"
-$ScenarioLines = @($Duel | Where-Object { $_ -match "HUD rects:" -and $_ -match "scenario=" })
-Case "duel_challenge: the scenario's own panel (scenario) is in the 'HUD rects:' line with a real box (the duel window under it must be seen)" ($ScenarioLines.Count -gt 0 -and (Test-Real (Get-Box $ScenarioLines[-1] "scenario"))) "(lines with rects: $(@($Duel | Where-Object { $_ -match 'HUD rects:' }).Count))"
+# duel_challenge hides the scenario's panel (panel hide) before its report so that the duel window can be seen: a hidden panel covers nothing, so
+# it must NOT be in that line (the cause of the red of d4597ac: the case wanted a box for a panel the script had hidden).
+Case "duel_challenge: the scenario's panel is hidden at the report (panel hide), so it is not in the 'HUD rects:' line" ($DuelLines.Count -gt 0 -and $DuelLines[-1] -notmatch "scenario=") ($DuelLines | Select-Object -Last 1)
+# ai_evolving keeps its panel shown: it IS in the line with a real box (what a panel of the script under it would be seen against).
+Case "ai_evolving: the scenario's own panel (scenario) is in the 'HUD rects:' line with a real box" (Test-Real (Get-Box $AiLast "scenario")) $AiLast
 
 Write-Host "hud_rects_game_test: a real overlap fails preflight"
 $AiBox = Get-Box $AiLast "AILevelPanel"
