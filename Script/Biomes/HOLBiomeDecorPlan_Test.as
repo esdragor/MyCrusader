@@ -244,3 +244,18 @@ void Test_PlanUnknownBiomeIsFreshGrass(FUnitTest& T)
 	}
 	T.AssertTrue(bSame, "piece for piece");
 }
+
+// The salts are the Python spawn_decor's convention (1000 * (number + 1)), pinned here as numbers on purpose: the other tests build their
+// expectation from SaltOfSlot, so only this one catches a change of the convention (and with it every map's decor streams).
+void Test_PlanSaltsFollowTheRecipeConvention(FUnitTest& T)
+{
+	T.AssertEquals(1000, int(HOLBiomeDecor::SaltOfSlot(0)), "the first slot's salt");
+	T.AssertEquals(2000, int(HOLBiomeDecor::SaltOfSlot(1)), "the second slot's salt");
+	T.AssertEquals(3000, int(HOLBiomeDecor::SaltOfSlot(2)), "the third slot's salt");
+	T.AssertEquals(0, HOLBiomeDecor::DensityForCount(PlanHalf, 0) == 0.0 ? 0 : 1, "no place asks for no density");
+	// The density that asks for N places asks for exactly N, whatever N (the middle of the interval).
+	for (int Count = 1; Count <= 700; Count += 37)
+	{
+		T.AssertEquals(Count, HOLDecor::Requested(PlanHalf, HOLBiomeDecor::DensityForCount(PlanHalf, Count)), f"a density that asks for exactly {Count} places");
+	}
+}
