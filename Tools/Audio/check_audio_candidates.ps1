@@ -32,12 +32,17 @@ foreach ($Line in $Lines) {
     if ($Line -notmatch '"(?<cue>[A-Za-z]+\.[A-Za-z]+)",\s*"(?<stems>[A-Za-z0-9_,]+)"') { Problem "cannot read the line: $Line"; continue }
     $Cue = $Matches['cue']; $List = @($Matches['stems'] -split ',')
     $Seen += $Cue
-    if ($Names -notcontains $Cue) { Problem "${Cue}: not a cue of the table" }
+    # The five family cues of the building selection (Q3 = A, HOLAudioBuildings.as) are candidates only, not cues of the table.
+    $IsFamily = $Cue -match '^Building\.(Wood|Stone|Sacred|Metal|Coins)$'
+    if ($Names -notcontains $Cue -and -not $IsFamily) { Problem "${Cue}: not a cue of the table" }
     if ($List.Count -ne 10) { Problem "${Cue}: $($List.Count) variants instead of 10" }
     if (@($List | Select-Object -Unique).Count -ne $List.Count) { Problem "${Cue}: a stem twice" }
     foreach ($Stem in $List) {
         $Stems++
-        if ($Stem.StartsWith("v_")) {
+        if ($Stem.StartsWith("s_")) {
+            if (-not (Test-Path (Join-Path $Audio "Candidates\soft\$Stem.wav"))) { Problem "${Cue}: ${Stem}.wav is not in Candidates\soft (run make_soft_candidates.py)" }
+            $Kind = "soft"
+        } elseif ($Stem.StartsWith("v_")) {
             if (-not (Test-Path (Join-Path $Audio "Candidates\vsco\$Stem.wav"))) { Problem "${Cue}: ${Stem}.wav is not in Candidates\vsco (run make_ui_candidates.py)" }
             $Kind = "vsco"
         } else {
@@ -49,6 +54,7 @@ foreach ($Line in $Lines) {
     }
 }
 foreach ($Name in $Names) { if ($Seen -notcontains $Name) { Problem "${Name}: a cue of the table without candidates" } }
+foreach ($Family in "Wood", "Stone", "Sacred", "Metal", "Coins") { if ($Seen -notcontains "Building.$Family") { Problem "Building.${Family}: a family cue without candidates" } }
 Write-Host "  $($Seen.Count) cues, $Stems stems read"
 if ($Problems -eq 0) { Write-Host "check_audio_candidates: PASS"; exit 0 }
 Write-Host "check_audio_candidates: FAIL ($Problems)"

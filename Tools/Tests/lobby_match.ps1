@@ -33,7 +33,7 @@
 #     raises it), his pause is lifted by the server, the client takes slot 1 back BY ITSELF (the banner, then "Manager: back in the match") and queues a Peasant.
 #   -Team (D718 T5): a 2v2 on Moyenne (Alice + an AI against Bob + an AI), -Window 10 by default: Bob closes his game; after the window the server tells the
 #     manager keepsSeat (the AI keeps the seat, the manager still lists Bob away with "Revenir"); Bob comes back late by "Revenir" and queues a Peasant.
-param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [switch] $Replace, [switch] $Reconnect, [switch] $Team, [int] $Window = 0)
+param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [switch] $Replace, [switch] $Reconnect, [switch] $Team, [int] $Window = 0, [string] $Culture = "fr")
 $Began = Get-Date
 if ($Reconnect -or $Team) { $Rejoin = $true }
 if ($Team -and $Window -le 0) { $Window = 10 }
@@ -131,7 +131,7 @@ function Test-Log([string] $Who, [string] $Pattern) { (Test-Path $GameLogs[$Who]
 function Start-Game([string] $Who, [string[]] $Steps, [string] $Name = $Who) {
     $Sequence = Join-Path $Work "$($Who.ToLower()).seq"
     $Steps | Set-Content -Encoding utf8 $Sequence
-    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr " +
+    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=$Culture " +
         "-saveddirsuffix=Tests_$Name -PlayerName=$Name -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$($GameLogs[$Who])`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     Write-Host "$Who : pid $($Process.Id), log $($GameLogs[$Who])"
@@ -271,17 +271,19 @@ if ($AI) {
 # match is over: with two players his defeat ends it, so his return as a spectator is left to Match.DisconnectGameState).
 if ($Rejoin) {
     $Late = ($Window -gt 0) -and -not $Team
+    # The banner's "Bob is back" line is localized (-Culture): the pattern depends on the culture (ASCII source: the Japanese text is built from code points).
+    $BackRx = if ($Culture -like "en*") { "Bob: back" } elseif ($Culture -like "ja*") { "Bob.*" + [char]0x5FA9 + [char]0x5E30 } else { "Bob.*de retour" }
     $RejoinDone = Join-Path $Work "rejoin_done.signal"
     Remove-Item $RejoinDone -ErrorAction SilentlyContinue
     # -Reconnect: Bob pauses, loses his connection (the engine's ConnectionLost), the client takes the seat back by itself; no second game.
-    $ReconnectSteps = @("hol.HUD.Report", "hol.Match.Pause", "wait 3", "hol.Net.FakeLoss", "waitlog Manager: connection lost", "frames 5", "capture lobby_match_reconnect_banner",
+    $ReconnectSteps = @("hol.HUD.Report", "hol.Match.Pause", "wait 3", "hol.Net.FakeLoss", "waitlog Manager: connection lost", "frames 5", "capture lobby_match_reconnect_banner_$Culture",
         "waitlog Manager: back in the match", "wait 6", "frames 60", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_reconnect_bob", "signal $RejoinDone", "wait 1", "quit")
     $Away = $null
     try {
         $Status = $null
         for ($i = 0; $i -lt 40 -and -not $Status; $i++) { try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 } }
         if (-not $Status) { throw "the manager does not answer on $Url" }
-        $AliceEnd = if ($Team) { @("wait $($Window + 8)", "frames 3", "capture lobby_match_team_alice", "hol.HUD.Report") } elseif ($Late) { @("waitlog End banner: Victory", "waitlog Absence banner: hidden", "frames 3", "capture lobby_match_rejoin_win") } elseif ($Replace) { @("frames 3") } else { @("waitlog de retour", "frames 3", "capture lobby_match_rejoin_back") }
+        $AliceEnd = if ($Team) { @("wait $($Window + 8)", "frames 3", "capture lobby_match_team_alice", "hol.HUD.Report") } elseif ($Late) { @("waitlog End banner: Victory", "waitlog Absence banner: hidden", "frames 3", "capture lobby_match_rejoin_win") } elseif ($Replace) { @("frames 3") } else { @("waitlog Absence banner: shown", "frames 3", "capture lobby_match_rejoin_back") }
         $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
             (& $Press CreateButton) + $(if ($Team) { $ToMedium } else { $ToSmall }) + (& $Pick Alice 0) + @("waitlog 2/2 ready", "wait 3") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") +
             (& $InMatch Alice) + $(if ($Replace) { @() } else { @("waitlog Absence banner: shown, Bob", "frames 3", "capture lobby_match_rejoin_away") }) + $AliceEnd +
@@ -310,7 +312,7 @@ if ($Rejoin) {
             Start-Sleep 10   # both players are in the match (the server logs "Bob holds slot 1")
             $Games.Bob2 = Start-Game Bob2 (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3",
                 "capture lobby_match_replace_list") + (& $Press WatchButton0) + @("waitlog Multiplayer: watching match", "waitmap Plain_Small", "waitlog Camera above the start",
-                "frames 30", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_replace_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
+                "frames 30", "wait 5", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_replace_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
             if (-not $Games.Bob2.WaitForExit(300000)) { throw "the second game of Bob still there after 300 s" }
             if (-not $Games.Alice.WaitForExit(60000)) { throw "Alice still there 60 s after Bob" }
             if (-not $Games.Bob.WaitForExit(60000)) { throw "the first game of Bob still there 60 s after the second quit" }
@@ -347,7 +349,7 @@ if ($Rejoin) {
             }
             $Games.Bob2 = Start-Game Bob2 (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3",
                 "capture lobby_match_rejoin_list") + (& $Press RejoinButton0) + @("waitlog Multiplayer: back in match", "waitmap $PlainMap", "waitlog Camera above the start",
-                "frames 30", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_rejoin_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
+                "frames 30", "wait 5", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_rejoin_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
             if (-not $Games.Bob2.WaitForExit(300000)) { throw "the second game of Bob still there after 300 s" }
             if (-not $Games.Alice.WaitForExit(60000)) { throw "Alice still there 60 s after Bob" }
         }
@@ -405,7 +407,7 @@ if ($Rejoin) {
             elseif (-not ($Lines.Bob -match "Manager: back in the match after \d+ attempt")) { $Failure = "Bob : the client did not come back by itself" }
             elseif ($Lines.Bob -match "Multiplayer: back in match") { $Failure = "Bob came back by Â« Revenir Â», not by himself" }
             elseif (-not ($S[$HoldsAt[1]..($S.Count - 1)] -match "Production: slot 1 queued Peasant")) { $Failure = "the server did not accept the Peasant of Bob after his automatic return" }
-            elseif (-not ($Lines.Alice -match "Absence banner: shown, .*Bob.*de retour")) { $Failure = "Alice : no Â« Bob : de retour Â»" }
+            elseif (-not ($Lines.Alice -match "Absence banner: shown, .*$BackRx")) { $Failure = "Alice : no Â« Bob : de retour Â»" }
             elseif (($Lines.Alice + $Lines.Bob) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
         }
         $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
@@ -422,6 +424,8 @@ if ($Rejoin) {
         elseif (-not ($S -match "Victory: match over")) { $Failure = "the server has no 'Victory: match over'" }
         elseif (-not ($Lines.Alice -match "Absence banner: shown, Bob : connexion perdue — 0:(0\d|10)")) { $Failure = "Alice : no banner with at most 0:$Window" }
         elseif (-not ($Lines.Alice -match "End banner: Victory")) { $Failure = "Alice : no victory banner" }
+        # D722 (T8, Q4 = B): the defeat event carries its REASON over the wire and the client reads it: "Bob a quitte la partie", not "vaincu".
+        elseif (-not ($Lines.Alice -match 'LogHOLMatch: Display: Message: Bob a quitt. la partie')) { $Failure = "Alice : no message 'Bob a quitté la partie' (the reason of the defeat did not reach her screen)" }
         elseif ($LobbyLine -match ", rejoin") { $Failure = "Bob : « Revenir » offered after his defeat" }
         elseif ($S -match "Manager: Bob back") { $Failure = "the server took Bob back" }
         elseif (($Lines.Alice + $Lines.Bob + $Lines.Bob2) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
@@ -446,6 +450,10 @@ if ($Rejoin) {
         elseif (-not $Kept) { $Failure = "the server has no 'Disconnect: slot 1 (Bob) kept'" }
         elseif (-not ($S -match "Manager: Bob left")) { $Failure = "the server has no 'Manager: Bob left'" }
         elseif (-not ($Lines.Alice -match "Absence banner: shown, Bob")) { $Failure = "Alice : no absence banner for Bob" }
+        # D722 (T8) on the wire: the replicated masks reach Alice's table (HOLGameScreen logs "Players table state: Bob=<pastille>"): lost connection, then (2v2) "IA" once the window is over, then nothing once he is back.
+        elseif (-not ($Lines.Alice -match "Players table state: .*Bob=Connexion perdue")) { $Failure = "Alice : her players table never showed the pastille 'Connexion perdue' for Bob" }
+        elseif ($Team -and -not ($Lines.Alice -match "Players table state: .*Bob=IA")) { $Failure = "Alice : her players table never showed the pastille 'IA' for Bob after the window (2v2)" }
+        elseif (@($Lines.Alice -match "Players table state: ")[-1] -notmatch "Players table state: none") { $Failure = "Alice : her players table still shows a pastille after Bob came back" }
         elseif (-not ($Lines.Bob2 -match "Multiplayer: lobby $([regex]::Escape($Lobby.id)) .*, rejoin")) { $Failure = "Bob : the line of the lobby without « Revenir » (', rejoin')" }
         elseif (-not ($Lines.Bob2 -match "Multiplayer: back in match \S+ of $([regex]::Escape($Lobby.id)) on port \d+")) { $Failure = "Bob : « Revenir » did not open the match" }
         elseif (@($S -match "LogHOLMatch: Bob holds slot 1").Count -lt 2) { $Failure = "the server: Bob not back in slot 1" }
@@ -455,7 +463,7 @@ if ($Rejoin) {
         elseif ($S -match "Construction order of slot 1 ignored: no player state|Production order of slot 1 ignored: no player state") { $Failure = "the AI's order for his seat was ignored: no player state" }
         elseif ($S -match "Disconnect: slot 1 \(Bob\) back, " -and -not $BackStock) { $Failure = "Bob back without a readable stock" }
         elseif (-not ($S -match "Manager: Bob back")) { $Failure = "the server has no 'Manager: Bob back'" }
-        elseif (-not $Team -and -not ($Lines.Alice -match "Absence banner: shown, .*Bob.*de retour")) { $Failure = "Alice : no « Bob : de retour »" }
+        elseif (-not $Team -and -not ($Lines.Alice -match "Absence banner: shown, .*$BackRx")) { $Failure = "Alice : no « Bob : de retour »" }
         elseif (-not ($(if ($null -ne $BackAt) { $S[$BackAt..($S.Count - 1)] } else { $S }) -match "Production: slot 1 queued Peasant")) { $Failure = "the server did not accept the Peasant of Bob after his return (R7.4)" }
         elseif (($Lines.Alice + $Lines.Bob + $Lines.Bob2) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
         elseif ($Team -and -not ($S -match "not back within \d+ s, the AI keeps the seat \(full brain\)")) { $Failure = "the server did not pass the seat to the full brain at the end of the window" } elseif (-not $Team -and $S -match "Disconnect: slot \d+ not back within") { $Failure = "a slot defeated by its absence" }

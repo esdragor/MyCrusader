@@ -8,6 +8,7 @@
 #include "HUD/HOLGameHUD.h"
 #include "HUD/HOLHUDLayoutRules.h"
 #include "HUD/HOLHUDSpace.h"
+#include "HUD/HOLScenarioPanel.h"
 #include "Brushes/SlateRoundedBoxBrush.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
@@ -187,6 +188,15 @@ void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 		if (CheatPanel->GetBox(CheatBox))
 		{
 			OutBoxes.Add({ TEXT("cheats"), CheatBox });
+		}
+	}
+	// L1-12b: the test scenario's own panel (top centre; a development build only): a panel of the script (the duel window) under it is seen.
+	if (const UHOLScenarioPanel* ScenarioPanel = AHOLGameHUD::FindScenarioPanel(GetOwningPlayer()))
+	{
+		FBox2D ScenarioBox;
+		if (ScenarioPanel->GetBox(ScenarioBox))
+		{
+			OutBoxes.Add({ TEXT("scenario"), ScenarioBox });
 		}
 	}
 	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.

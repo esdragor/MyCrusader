@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-audio_compare_alerts_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie), Entree = variante suivante
+audio_compare_alerts_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie) [TOUT, non compte : plus de 3 min], Entree = variante suivante

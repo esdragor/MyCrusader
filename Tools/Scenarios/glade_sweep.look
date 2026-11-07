@@ -1,0 +1,8 @@
+﻿glade_A | variante A (les cartes d'aujourd'hui) : foret pleine, clairiere petite ou absente
+glade_B | variante B : 1 clairiere, rayon x1,5
+glade_C | variante C : 1 grande clairiere (x2,5) au centre, anneau d'arbres autour
+glade_D | variante D : 2 clairieres, rayon x1,5
+glade_E | variante E : 3 clairieres, rayon x1,5
+glade_F | variante F : 3 clairieres x1,5 gardees a l'interieur
+glade_G | variante G : 5 petites clairieres (x1)
+glade_H | variante H : 2 grandes clairieres (x2,5) gardees a l'interieur

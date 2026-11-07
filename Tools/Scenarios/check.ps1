@@ -1,7 +1,7 @@
 # Runs a scenario (Tools/Scenarios/<name>.txt) without a window and says whether it reaches "Scenario <name>: ready" with no
 # error: the check that a scenario is testable before it is listed for the user (Auto_Journey_Retours.md, section 1), and the
 # test of a chain written as a scenario (every waitlog must come). Run from Windows PowerShell:
-#   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\check.ps1 <name> [-Root <worktree>] [-TimeoutSeconds 240] [-Keys 3]
+#   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\check.ps1 <name> [-Root <worktree>] [-TimeoutSeconds 240] [-Keys 3] [-PlayerName <name>]
 # Prints PASS / FAIL, the scenario's own lines and its errors; the full log is Saved_Tests\Logs\scenario_<name>.log.
 # A step "waitkey" is passed by itself every -Keys seconds is NOT done here: a scenario with waitkey steps stops there (FAIL
 # "waiting for a key"), such a one is checked up to its first key.
@@ -9,7 +9,8 @@ param(
     [Parameter(Position = 0, Mandatory = $true)] [string] $Name,
     [string] $Root = "",
     [string] $EngineDir = "",
-    [int] $TimeoutSeconds = 240
+    [int] $TimeoutSeconds = 240,
+    [string] $PlayerName = ""   # -PlayerName=<name> for the game (a scenario with NAMED Human seats: disconnect_look needs Alice)
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -43,7 +44,7 @@ if (-not $Removed) {
 # One of the 2 editor slots of the machine (EditorSlot.ps1, L7-3): wait for our turn instead of piling one more editor on the others.
 if (-not (Enter-EditorSlot -Name $Name -Root $Root -Max 2 -WaitSeconds 1500)) { Write-Host "check $Name : FAIL (no editor slot after 25 min: 2 editors already run on this machine)"; exit 1 }
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
-$Arguments = "`"$UProject`" -game -RenderOffScreen -nosound -unattended -nosplash -culture=fr -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Scenario $Name`""
+$Arguments = "`"$UProject`" -game -RenderOffScreen -nosound -unattended -nosplash -culture=fr -LiveCoding=0 -asdebugport=0 -saveddirsuffix=Tests -abslog=`"$Log`"$(if ($PlayerName) { " -PlayerName=$PlayerName" }) -ExecCmds=`"hol.Scenario $Name`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 $Start = Get-Date
 $Result = "FAIL (timeout after $TimeoutSeconds s)"

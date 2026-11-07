@@ -21,11 +21,11 @@ frames 40
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Legion Spearman; Z: Black Guard
+waitlog HUD cells: A: Lancier squelette; Z: Garde noire
 hol.HUD.Report
-waitlog A: Legion Spearman | F 45 | W 15
+waitlog A: Lancier squelette | F 45 | W 15
 hol.HUD.Report
-waitlog Z: Black Guard |
+waitlog Z: Garde noire |
 capture legions_gesture_barracks
 # 2. Key A then key Z: the units come out, the real click selects each one
 hol.Select.Grid 0
@@ -38,7 +38,7 @@ frames 5
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Black Guard
+waitlog HUD selection name: Garde noire$
 capture legions_gesture_blackguard
 # 3. Archery range
 hol.Camera.FocusNear 2500 4500
@@ -46,28 +46,28 @@ frames 5
 hol.Select.ClickGround -12200 4600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Legion Archer; Z: Legion Crossbowman
+waitlog HUD cells: A: Archer squelette; Z: Arbalétrier squelette
 hol.Select.Grid 0
 waitlog Production: Archer of slot 0 done
 frames 30
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Legion Archer
+waitlog HUD selection name: Archer squelette$
 # 4. Stable
 hol.Camera.FocusNear 2500 6500
 frames 5
 hol.Select.ClickGround -12200 6600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Dread Rider
+waitlog HUD cells: A: Cavalier funeste
 hol.Select.Grid 0
 waitlog Production: LightCavalry of slot 0 done
 frames 30
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Dread Rider
+waitlog HUD selection name: Cavalier funeste$
 capture legions_gesture_rider
 # 5. Siege workshop
 hol.Camera.FocusNear 2500 8500
@@ -75,7 +75,7 @@ frames 5
 hol.Select.ClickGround -12200 8600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+waitlog HUD cells: A: Bélier d'os; Z: Mangonneau d'os
 # Ram is a higher tier (key A refused: "tier too low"), so the Ram is placed by the cheat, then clicked for real.
 hol.Units.SpawnHere 1 Ram 0 120
 waitlog SpawnHere: 1 Ram of slot 0
@@ -83,7 +83,7 @@ frames 40
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Bone Ram
+waitlog HUD selection name: Bélier d'os$
 # 6. BREAK IT: Aube unit and Aube Barracks, same clicks. They must keep their Aube names.
 hol.Camera.FocusNear 5000 -1500
 frames 2
@@ -93,7 +93,7 @@ frames 40
 hol.Select.ClickUnit -1 enemy
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Lancier
+waitlog HUD selection name: Lancier$
 capture legions_gesture_aube_unit
 hol.Camera.FocusNear 6500 4000
 hol.Cheat.SpawnBuilding Barracks 1 6500 4000
@@ -103,4 +103,71 @@ hol.Select.ClickGround -8200 4100
 frames 10
 hol.HUD.Report
 capture legions_gesture_aube_barracks
-note Real gestures: you click the Legions' buildings and units; A / Z produce; the names read Legion Spearman, Black Guard, Legion Archer, Legion Crossbowman, Dread Rider, Bone Ram, Bone Mangonel; the Aube unit and Aube Barracks (red) keep the Aube names.
+# 7. The same real clicks in ENGLISH, then JAPANESE (hol.UI.Language switches the language live): the text of each building's grid (all seven names) and of the selected Bone Ram.
+hol.UI.Language en
+frames 20
+hol.Camera.FocusNear 2500 2500
+frames 5
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Skeleton Spearman; Z: Black Guard
+capture legions_gesture_en_barracks
+hol.Camera.FocusNear 2500 4500
+frames 5
+hol.Select.ClickGround -12200 4600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Skeleton Archer; Z: Skeleton Crossbowman
+hol.Camera.FocusNear 2500 6500
+frames 5
+hol.Select.ClickGround -12200 6600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Dread Rider
+hol.Camera.FocusNear 2500 8500
+frames 5
+hol.Select.ClickGround -12200 8600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Bone Ram$
+capture legions_gesture_en_ram
+hol.UI.Language ja
+frames 20
+hol.Camera.FocusNear 2500 2500
+frames 5
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: スケルトン槍兵; Z: 黒衛兵
+capture legions_gesture_ja_barracks
+hol.Camera.FocusNear 2500 4500
+frames 5
+hol.Select.ClickGround -12200 4600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: スケルトン弓兵; Z: スケルトン弩兵
+hol.Camera.FocusNear 2500 6500
+frames 5
+hol.Select.ClickGround -12200 6600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: 恐怖の騎兵
+hol.Camera.FocusNear 2500 8500
+frames 5
+hol.Select.ClickGround -12200 8600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: 骨の破城槌; Z: 骨のマンゴネル
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: 骨の破城槌$
+capture legions_gesture_ja_ram
+hol.UI.Language fr
+frames 10
+note Real gestures: you click the Legions' buildings and units; A / Z produce; the names read Lancier squelette, Garde noire, Archer squelette, Arbalétrier squelette, Cavalier funeste, Bélier d'os, Mangonneau d'os; the Aube unit and Aube Barracks (red) keep the Aube names.

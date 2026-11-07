@@ -6,6 +6,7 @@
 param([Parameter(Mandatory = $true)] [string] $Root, [string] $Scenario = 'sanity_ok', [int] $WaitSeconds = 300)
 $Root = (Resolve-Path $Root).Path
 $Tool = Join-Path $PSScriptRoot 'repeat_scenario.ps1'
+$Mine = 'hol_bincopy_' + [regex]::Escape((Split-Path $Root -Leaf)) + '_'   # only THIS worktree's shadows (other sessions' editors also run from hol_bincopy_ directories)
 $Out = Join-Path $env:TEMP ('repeat_scenario_test_' + [guid]::NewGuid().ToString('N').Substring(0, 6) + '.out')
 $Fails = 0
 function Check([bool]$Ok, [string]$What, [string]$Detail = '') { if ($Ok) { Write-Host "PASS $What" } else { $script:Fails++; Write-Host "FAIL $What  $Detail" } }
@@ -19,14 +20,14 @@ $null = $P.Handle
 $Start = Get-Date; $Shadow = $null; $ShadowLocked = $false; $RealFree = $null; $EditorCmd = ''
 while (-not $P.HasExited -and ((Get-Date) - $Start).TotalSeconds -lt $WaitSeconds) {
     Start-Sleep -Seconds 2
-    $Ed = @(Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match 'hol_bincopy_' })
+    $Ed = @(Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match $Mine })
     if ($Ed.Count -and -not $Shadow) { $EditorCmd = $Ed[0].CommandLine; if ($EditorCmd -match '"([^"]*hol_bincopy_[^"]*)\\HeroesOfLiberty\.uproject"') { $Shadow = $Matches[1] } }
     if ($Shadow -and -not $ShadowLocked) {
         $Dll = Join-Path $Shadow 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll'
         if ((Test-Path $Dll) -and -not (CanWrite $Dll)) { $ShadowLocked = $true; $RealFree = CanWrite $RealDll }   # the engine has loaded the SHADOW dll: is the real one free?
     }
 }
-if (-not $P.HasExited) { Stop-Process -Id $P.Id -Force; Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" | Where-Object { $_.CommandLine -match 'hol_bincopy_' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } }
+if (-not $P.HasExited) { Stop-Process -Id $P.Id -Force; Get-CimInstance Win32_Process -Filter "Name = 'UnrealEditor.exe'" | Where-Object { $_.CommandLine -match $Mine } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force } }
 else { $P.WaitForExit() }
 $Text = if (Test-Path $Out) { Get-Content $Out -Raw } else { '' }
 Write-Host $Text.TrimEnd()

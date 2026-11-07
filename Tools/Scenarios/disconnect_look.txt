@@ -1,13 +1,18 @@
-# T8 (D722) : la table des joueurs montre le depart de Bob. Alice (Human, toi) contre Bob (Human, nomme) + une IA dans le camp de Bob. hol.Net.FakeAbsent Leave 1 = vraie perte de Bob (KeepMissingSlot, l IA tient son siege) -> pastille "Connexion perdue" ; hol.Net.FakeAbsent End 1 = fin de fenetre (vrai DefeatExpiredAbsences) -> son camp a une IA : l IA garde le siege, pastille "IA". Commande de console (pas un geste de souris) : l evenement simule est le depart du reseau. 3 minutes au plus.
+# T8 (D722) : la table des joueurs montre le depart de Bob. Alice (Human, toi) contre Bob (Human, nomme) + une IA dans le camp de Bob. hol.Match.StartWaitSeconds 1 = le serveur ne rend plus Bob attendu : la partie demarre sans lui (vraie chaine KeepMissingSlot, l IA tient son siege) -> pastille "Connexion perdue" ; hol.Net.FakeAbsent End 1 = fin de fenetre (vrai DefeatExpiredAbsences) -> son camp a une IA : l IA garde le siege, pastille "IA". Commande de console (pas un geste de souris) : l evenement simule est le depart du reseau. 3 minutes au plus.
 frames 90
 capture disconnect_present
-hol.Net.FakeAbsent Leave 1
-waitlog kept, the AI holds the seat
+hol.Match.StartWaitSeconds 1
+waitlog slot 1 (Bob) held by AI
 frames 150
 capture disconnect_away
 hol.Net.FakeAbsent End 1
 waitlog windows ended
 frames 150
 capture disconnect_ai
+hol.Disconnect.Report
+hol.Net.FakeAbsent Back 1
+waitlog he is back
+frames 150
+capture disconnect_back
 hol.Disconnect.Report
 note Table des joueurs : Bob garde son nom, puis la pastille "Connexion perdue", puis "IA" quand la fenetre est finie et que l IA de son camp garde le siege.

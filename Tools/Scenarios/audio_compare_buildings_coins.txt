@@ -1,0 +1,43 @@
+# Ecoute : le son de SELECTION du batiment de PIECES (Marche) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants, dix variantes chacune, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute le son de SELECTION du batiment de PIECES (Marche) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants. 10 sons, 1 cue, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Coins C.
+note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+capture audio_compare_buildings_coins_start
+waitkey Entree : commencer par Building.Coins A
+hol.Audio.Candidate Building.Coins A
+waitlog candidate played Building.Coins A
+waitkey Building.Coins A (s_coins_purse) vient de jouer. Entree : Building.Coins B
+hol.Audio.Candidate Building.Coins B
+waitlog candidate played Building.Coins B
+waitkey Building.Coins B (s_coins_leather_b) vient de jouer. Entree : Building.Coins C
+hol.Audio.Candidate Building.Coins C
+waitlog candidate played Building.Coins C
+waitkey Building.Coins C (s_coins_leather) vient de jouer. Entree : Building.Coins D
+hol.Audio.Candidate Building.Coins D
+waitlog candidate played Building.Coins D
+waitkey Building.Coins D (s_coins_drop) vient de jouer. Entree : Building.Coins E
+hol.Audio.Candidate Building.Coins E
+waitlog candidate played Building.Coins E
+waitkey Building.Coins E (s_coins_tin_b) vient de jouer. Entree : Building.Coins F
+hol.Audio.Candidate Building.Coins F
+waitlog candidate played Building.Coins F
+waitkey Building.Coins F (s_coins_counter) vient de jouer. Entree : Building.Coins G
+hol.Audio.Candidate Building.Coins G
+waitlog candidate played Building.Coins G
+waitkey Building.Coins G (s_coins_tin) vient de jouer. Entree : Building.Coins H
+hol.Audio.Candidate Building.Coins H
+waitlog candidate played Building.Coins H
+waitkey Building.Coins H (s_coins_cloth) vient de jouer. Entree : Building.Coins I
+hol.Audio.Candidate Building.Coins I
+waitlog candidate played Building.Coins I
+waitkey Building.Coins I (s_coins_soft) vient de jouer. Entree : Building.Coins J
+hol.Audio.Candidate Building.Coins J
+waitlog candidate played Building.Coins J
+waitkey Building.Coins J (s_coins_slap) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

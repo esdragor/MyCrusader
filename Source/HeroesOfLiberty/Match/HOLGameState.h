@@ -120,6 +120,12 @@ public:
 	/** The same at the server time Now (the tests): the return noticed at Now (R7.5's « de retour »). */
 	bool GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& Starting, double Now);
 	/**
+	 * T9, server or solo, development (hol.Net.FakeAbsent Back <Slot>): the return of the player of an absent slot without a second client.
+	 * A player state of his name (no connection) takes the seat as a PostLogin does (GiveSlotStock: the stock as the AI left it, the AI lets
+	 * go, "de retour" in the banner). False when nobody is away on that slot.
+	 */
+	bool SimulateReturn(int32 Slot, const FHOLResources& Starting, double Now);
+	/**
 	 * R7.3, server only, by the game mode each second: the absent slots whose window has run out are defeated
 	 * (reason Disconnected), as by a surrender; those defeated returned. R7.5: the notices of a return older than
 	 * BackNoticeSeconds dropped too.
@@ -695,6 +701,7 @@ private:
 	/** Server world time (GetServerWorldTimeSeconds) of the pause: the timer's start. */
 	UPROPERTY(ReplicatedUsing = OnRep_Pause)
 	double PausedAtSeconds = 0.;
-	/** D720 (T6), server only: the seconds of the pauses already ended (taken off the clock of the disconnection windows). */
+	/** D720 (T6): the seconds of the pauses already ended (taken off the clock of the disconnection windows). Replicated: the clients' banner counts on the same clock. */
+	UPROPERTY(Replicated)
 	double WindowPausedSeconds = 0.;
 };

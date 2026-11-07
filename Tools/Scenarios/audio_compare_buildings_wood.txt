@@ -1,0 +1,43 @@
+# Ecoute : le son de SELECTION des batiments en BOIS (Maison, camps, Moulin, Ferme) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants, dix variantes chacune, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute le son de SELECTION des batiments en BOIS (Maison, camps, Moulin, Ferme) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants. 10 sons, 1 cue, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Wood C.
+note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+capture audio_compare_buildings_wood_start
+waitkey Entree : commencer par Building.Wood A
+hol.Audio.Candidate Building.Wood A
+waitlog candidate played Building.Wood A
+waitkey Building.Wood A (s_wood_light) vient de jouer. Entree : Building.Wood B
+hol.Audio.Candidate Building.Wood B
+waitlog candidate played Building.Wood B
+waitkey Building.Wood B (s_wood_medium) vient de jouer. Entree : Building.Wood C
+hol.Audio.Candidate Building.Wood C
+waitlog candidate played Building.Wood C
+waitkey Building.Wood C (s_wood_heavy) vient de jouer. Entree : Building.Wood D
+hol.Audio.Candidate Building.Wood D
+waitlog candidate played Building.Wood D
+waitkey Building.Wood D (s_wood_plank) vient de jouer. Entree : Building.Wood E
+hol.Audio.Candidate Building.Wood E
+waitlog candidate played Building.Wood E
+waitkey Building.Wood E (s_wood_chop) vient de jouer. Entree : Building.Wood F
+hol.Audio.Candidate Building.Wood F
+waitlog candidate played Building.Wood F
+waitkey Building.Wood F (s_wood_door) vient de jouer. Entree : Building.Wood G
+hol.Audio.Candidate Building.Wood G
+waitlog candidate played Building.Wood G
+waitkey Building.Wood G (s_wood_creak_low) vient de jouer. Entree : Building.Wood H
+hol.Audio.Candidate Building.Wood H
+waitlog candidate played Building.Wood H
+waitkey Building.Wood H (s_wood_step) vient de jouer. Entree : Building.Wood I
+hol.Audio.Candidate Building.Wood I
+waitlog candidate played Building.Wood I
+waitkey Building.Wood I (s_wood_slap_low) vient de jouer. Entree : Building.Wood J
+hol.Audio.Candidate Building.Wood J
+waitlog candidate played Building.Wood J
+waitkey Building.Wood J (s_wood_deep_knock) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

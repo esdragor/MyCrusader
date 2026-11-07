@@ -1,0 +1,43 @@
+# Ecoute : le son de SELECTION des batiments SACRES (Chapelle, Sanctuaire) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants, dix variantes chacune, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute le son de SELECTION des batiments SACRES (Chapelle, Sanctuaire) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants. 10 sons, 1 cue, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Sacred C.
+note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+capture audio_compare_buildings_sacred_start
+waitkey Entree : commencer par Building.Sacred A
+hol.Audio.Candidate Building.Sacred A
+waitlog candidate played Building.Sacred A
+waitkey Building.Sacred A (s_sacred_bass_low) vient de jouer. Entree : Building.Sacred B
+hol.Audio.Candidate Building.Sacred B
+waitlog candidate played Building.Sacred B
+waitkey Building.Sacred B (s_sacred_cello) vient de jouer. Entree : Building.Sacred C
+hol.Audio.Candidate Building.Sacred C
+waitlog candidate played Building.Sacred C
+waitkey Building.Sacred C (s_sacred_harp_b3) vient de jouer. Entree : Building.Sacred D
+hol.Audio.Candidate Building.Sacred D
+waitlog candidate played Building.Sacred D
+waitkey Building.Sacred D (s_sacred_harp_d4) vient de jouer. Entree : Building.Sacred E
+hol.Audio.Candidate Building.Sacred E
+waitlog candidate played Building.Sacred E
+waitkey Building.Sacred E (s_sacred_harp_octave) vient de jouer. Entree : Building.Sacred F
+hol.Audio.Candidate Building.Sacred F
+waitlog candidate played Building.Sacred F
+waitkey Building.Sacred F (s_sacred_gong_low) vient de jouer. Entree : Building.Sacred G
+hol.Audio.Candidate Building.Sacred G
+waitlog candidate played Building.Sacred G
+waitkey Building.Sacred G (s_sacred_drum) vient de jouer. Entree : Building.Sacred H
+hol.Audio.Candidate Building.Sacred H
+waitlog candidate played Building.Sacred H
+waitkey Building.Sacred H (s_sacred_book) vient de jouer. Entree : Building.Sacred I
+hol.Audio.Candidate Building.Sacred I
+waitlog candidate played Building.Sacred I
+waitkey Building.Sacred I (s_sacred_low_toll) vient de jouer. Entree : Building.Sacred J
+hol.Audio.Candidate Building.Sacred J
+waitlog candidate played Building.Sacred J
+waitkey Building.Sacred J (s_sacred_cloth) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

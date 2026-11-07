@@ -1,5 +1,9 @@
-legions_gesture_barracks | La Caserne des Legions cliquee : la grille ecrit Legion Spearman (A) et Black Guard (Z)
-legions_gesture_blackguard | Le Black Guard produit par la touche Z, clique sur son corps : le bloc du bas dit Black Guard
-legions_gesture_rider | Le Dread Rider produit par la touche A de l'Ecurie, clique : le bloc du bas dit Dread Rider
-legions_gesture_aube_unit | Un Lancier de l'Aube (rouge) clique : le bloc garde son nom d'Aube, pas Legion Spearman
+legions_gesture_barracks | La Caserne des Legions cliquee : la grille ecrit Lancier squelette (A) et Garde noire (Z)
+legions_gesture_blackguard | Le Garde noire produit par la touche Z, clique sur son corps : le bloc du bas dit Garde noire
+legions_gesture_rider | Le Cavalier funeste produit par la touche A de l'Ecurie, clique : le bloc du bas dit Cavalier funeste
+legions_gesture_aube_unit | Un Lancier de l'Aube (rouge) clique : le bloc garde son nom d'Aube, pas Lancier squelette
 legions_gesture_aube_barracks | La Caserne de l'Aube (rouge) cliquee : aucune grille Legions, aucun nom Legions
+legions_gesture_en_barracks | EN : la Caserne des Legions cliquee, grille Skeleton Spearman (A) et Black Guard (Z)
+legions_gesture_en_ram | EN : le Belier d os clique : le bloc du bas dit Bone Ram
+legions_gesture_ja_barracks | JA : la Caserne des Legions cliquee, grille スケルトン槍兵 (A) et 黒衛兵 (Z)
+legions_gesture_ja_ram | JA : le Belier d os clique : le bloc du bas dit 骨の破城槌

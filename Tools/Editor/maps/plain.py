@@ -202,6 +202,11 @@ def relays(recipe):
     return common.ring_relays(recipe)
 
 
+def sites(recipe):
+    """S4 (provisional level design, D697): one ring of sacred sites (common.ring_sites)."""
+    return common.ring_sites(recipe, relays(recipe))
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
     return BUDGET_TREES["Huge" if recipe.size_key == "Huge" else "default"]

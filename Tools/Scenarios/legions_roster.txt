@@ -1,5 +1,5 @@
 ﻿# Legions L2 : le socle des Legions en reskin. Toi (slot 0, Legions) : une rangee de chaque unite du socle a gauche ; l'IA gelee (slot 1, Aube) : la meme rangee a droite. Les couts des Legions sont a -25 % de ceux de l'Aube, les noms sont ceux des Legions (surcharges de FactionOverrides.csv).
-# Les 7 types : Spearman (Legion Spearman), ManAtArms (Black Guard), Archer (Legion Archer), Crossbowman (Legion Crossbowman), LightCavalry (Dread Rider), Ram (Bone Ram), Mangonel (Bone Mangonel). Maillages : les memes que ceux de l'Aube (placeholders, L13).
+# Les 7 types : Spearman (Lancier squelette), ManAtArms (Garde noire), Archer (Archer squelette), Crossbowman (Arbalétrier squelette), LightCavalry (Cavalier funeste), Ram (Bélier d'os), Mangonel (Mangonneau d'os). Maillages : les memes que ceux de l'Aube (placeholders, L13).
 # Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
@@ -74,32 +74,32 @@ frames 40
 hol.Select.ClickGround -12200 4600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Legion Archer; Z: Legion Crossbowman
+waitlog HUD cells: A: Archer squelette; Z: Arbalétrier squelette
 hol.Select.ClickGround -12200 6600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+waitlog HUD cells: A: Bélier d'os; Z: Mangonneau d'os
 hol.Select.ClickGround -12200 8600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Dread Rider
+waitlog HUD cells: A: Cavalier funeste
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
-waitlog HUD cells: A: Legion Spearman; Z: Black Guard
+waitlog HUD cells: A: Lancier squelette; Z: Garde noire
 hol.HUD.Report
-waitlog A: Legion Spearman | F 45 | W 15
+waitlog A: Lancier squelette | F 45 | W 15
 hol.HUD.Report
-waitlog Z: Black Guard |
-note 5. La Caserne des Legions : les cases portent "Legion Spearman" (A) et "Black Guard" (Z), pas Lancier / Homme d'armes ; le champ de tir "Legion Archer" / "Legion Crossbowman", l'atelier "Bone Ram" / "Bone Mangonel", l'ecurie "Dread Rider".
+waitlog Z: Garde noire |
+note 5. La Caserne des Legions : les cases portent "Lancier squelette" (A) et "Garde noire" (Z), pas Lancier / Homme d'armes ; le champ de tir "Archer squelette" / "Arbalétrier squelette", l'atelier "Bélier d'os" / "Mangonneau d'os", l'ecurie "Cavalier funeste".
 capture legions_roster_names_barracks
 # The builders' grid: the Barracks' tooltip lists what it produces by the Legions' names.
 hol.Select.Type Zombie
 frames 5
 hol.HUD.Report
-waitlog Produit : Legion Spearman, Black Guard
+waitlog Produit : Lancier squelette, Garde noire
 hol.HUD.Report
-waitlog Produit : Legion Archer, Legion Crossbowman
+waitlog Produit : Archer squelette, Arbalétrier squelette
 # The selection block, one Legions unit at a time (the newest of its type).
 hol.Camera.FocusNear 5000 2250
 frames 2
@@ -112,30 +112,30 @@ waitlog SpawnHere: 1 Mangonel of slot 0
 hol.Select.Type Spearman last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Legion Spearman
+waitlog HUD selection name: Lancier squelette
 hol.Select.Type ManAtArms last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Black Guard
+waitlog HUD selection name: Garde noire
 hol.Select.Type Archer last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Legion Archer
+waitlog HUD selection name: Archer squelette
 hol.Select.Type Crossbowman last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Legion Crossbowman
+waitlog HUD selection name: Arbalétrier squelette
 hol.Select.Type Ram last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Bone Ram
+waitlog HUD selection name: Bélier d'os
 hol.Select.Type Mangonel last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Bone Mangonel
+waitlog HUD selection name: Mangonneau d'os
 hol.Select.Type LightCavalry last
 frames 5
 hol.HUD.Report
-waitlog HUD selection name: Dread Rider
+waitlog HUD selection name: Cavalier funeste
 capture legions_roster_names_selection
-note 6. Un Cavalier leger des Legions est selectionne : le bloc du bas l'appelle "Dread Rider" ; chacune des 7 unites a ete verifiee dans le journal (Legion Spearman, Black Guard, Legion Archer, Legion Crossbowman, Bone Ram, Bone Mangonel, Dread Rider).
+note 6. Un Cavalier leger des Legions est selectionne : le bloc du bas l'appelle "Cavalier funeste" ; chacune des 7 unites a ete verifiee dans le journal (Lancier squelette, Garde noire, Archer squelette, Arbalétrier squelette, Bélier d'os, Mangonneau d'os, Cavalier funeste).

@@ -2,9 +2,31 @@
 #include "Match/HOLFactionRules.h"
 #include "Internationalization/TextKey.h"
 #include "Internationalization/Text.h"
+#include "Internationalization/Internationalization.h"
+#include "Internationalization/Culture.h"
+#include "Internationalization/TextLocalizationResource.h"
+#include "Misc/Paths.h"
+#include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	/** The game's language for a test, the machine's put back after. */
+	struct FScopedLanguage
+	{
+		FString Previous;
+		explicit FScopedLanguage(const TCHAR* Culture)
+		{
+			// The same call as hol.UI.Language / Settings > Language: it also loads the localization resources of the culture (a bare
+			// SetCurrentCulture left en and ja on the French source text in the test editor, 2026-11-07).
+			Previous = FInternationalization::Get().GetCurrentLanguage()->GetName();
+			UKismetInternationalizationLibrary::SetCurrentLanguage(Culture, /*SaveToConfig*/ false);
+		}
+		~FScopedLanguage() { UKismetInternationalizationLibrary::SetCurrentLanguage(Previous, /*SaveToConfig*/ false); }
+	};
+}
 
 // L2 (LegionsInProgress.md): the UI takes its names by type key; a faction with `DisplayName` overrides (the Legions, FactionOverrides.csv)
 // has its own key per type. Every DisplayName row of the real table must read back as that faction's name, and the Dawn and the
@@ -13,10 +35,12 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGameNamesFactionTest, "HeroesOfLiberty.UI.G
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FHOLGameNamesFactionTest::RunTest(const FString& Parameters)
 {
+	// The table's DisplayName is the French source text: the check reads the French names (the language of the machine put back after).
+	const FScopedLanguage French(TEXT("fr"));
 	const FName Legions(TEXT("Legions"));
 	const FName Dawn(TEXT("Dawn"));
 	const FName Spearman(TEXT("Spearman"));
-	TestEqual(TEXT("the Legions' Spearman"), HOLGameNames::GetUnitName(Spearman, nullptr, Legions).ToString(), FString(TEXT("Legion Spearman")));
+	TestEqual(TEXT("the Legions' Spearman"), HOLGameNames::GetUnitName(Spearman, nullptr, Legions).ToString(), FString(TEXT("Lancier squelette")));
 	TestEqual(TEXT("the Dawn's Spearman keeps the base name"), HOLGameNames::GetUnitName(Spearman, nullptr, Dawn).ToString(), HOLGameNames::GetUnitName(Spearman, nullptr).ToString());
 	TestEqual(TEXT("no faction keeps the base name"), HOLGameNames::GetUnitName(Spearman, nullptr, NAME_None).ToString(), HOLGameNames::GetUnitName(Spearman, nullptr).ToString());
 	TestNotEqual(TEXT("the Legions' name is not the Dawn's"), HOLGameNames::GetUnitName(Spearman, nullptr, Legions).ToString(), HOLGameNames::GetUnitName(Spearman, nullptr, Dawn).ToString());
@@ -33,6 +57,68 @@ bool FHOLGameNamesFactionTest::RunTest(const FString& Parameters)
 		}
 	}
 	TestEqual(TEXT("the Legions' seven names are in the table"), Names, 7);
+	return true;
+}
+
+// The Legions' seven names in French (source), English and Japanese (LegionsInProgress.md, user answers of 2026-11-07): the text the
+// screen shows follows the language; the Dawn keeps its own names in French (Lancier, Homme d'armes, Archer, Arbalétrier), and in each
+// language the Legions' name differs from the Dawn's.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGameNamesLegionsLanguagesTest, "HeroesOfLiberty.UI.GameNames.LegionsLanguages",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLGameNamesLegionsLanguagesTest::RunTest(const FString& Parameters)
+{
+	const FName Legions(TEXT("Legions"));
+	const FName Dawn(TEXT("Dawn"));
+	const TCHAR* const Types[] = { TEXT("Spearman"), TEXT("ManAtArms"), TEXT("Archer"), TEXT("Crossbowman"), TEXT("LightCavalry"), TEXT("Ram"), TEXT("Mangonel") };
+	const TCHAR* const French[] = { TEXT("Lancier squelette"), TEXT("Garde noire"), TEXT("Archer squelette"), TEXT("Arbalétrier squelette"),
+		TEXT("Cavalier funeste"), TEXT("Bélier d'os"), TEXT("Mangonneau d'os") };
+	const TCHAR* const English[] = { TEXT("Skeleton Spearman"), TEXT("Black Guard"), TEXT("Skeleton Archer"), TEXT("Skeleton Crossbowman"),
+		TEXT("Dread Rider"), TEXT("Bone Ram"), TEXT("Bone Mangonel") };
+	const TCHAR* const Japanese[] = { TEXT("スケルトン槍兵"), TEXT("黒衛兵"), TEXT("スケルトン弓兵"),
+		TEXT("スケルトン弩兵"), TEXT("恐怖の騎兵"), TEXT("骨の破城槌"),
+		TEXT("骨のマンゴネル") };
+	const TCHAR* const* const Expected[] = { French, English, Japanese };
+	const TCHAR* const Cultures[] = { TEXT("fr"), TEXT("en"), TEXT("ja") };
+	// French is the source text: the code's own call. English and Japanese cannot be switched live in the test editor (the game
+	// localization is loaded there only by an asynchronous preview), so their text is read from the very files the game loads
+	// (Content/Localization/Game/<culture>/Game.locres, namespace HOLGameNames, key Legions_<Type>); the running game's side of it
+	// (hol.UI.Language, real clicks) is the scenario legions_roster_gesture.
+	{
+		const FScopedLanguage Scoped(TEXT("fr"));
+		for (int32 Index = 0; Index < 7; ++Index)
+		{
+			const FString Own = HOLGameNames::GetUnitName(FName(Types[Index]), nullptr, Legions).ToString();
+			TestEqual(*FString::Printf(TEXT("%s of the Legions in fr"), Types[Index]), Own, FString(French[Index]));
+			TestNotEqual(*FString::Printf(TEXT("%s: the Legions' name is not the Dawn's in fr"), Types[Index]),
+				Own, HOLGameNames::GetUnitName(FName(Types[Index]), nullptr, Dawn).ToString());
+		}
+	}
+	for (int32 Language = 1; Language < 3; ++Language)
+	{
+		FTextLocalizationResource Resource;
+		const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), Cultures[Language], TEXT("Game.locres"));
+		if (!TestTrue(*FString::Printf(TEXT("%s is readable"), *File), Resource.LoadFromFile(File, 0)))
+		{
+			continue;
+		}
+		for (int32 Index = 0; Index < 7; ++Index)
+		{
+			const FTextLocalizationResource::FEntry* Entry = Resource.Entries.Find(FTextId(FTextKey(TEXT("HOLGameNames")), FTextKey(*FString::Printf(TEXT("Legions_%s"), Types[Index]))));
+			const FString Own = Entry && Entry->LocalizedString.IsValid() ? *Entry->LocalizedString : FString();
+			TestEqual(*FString::Printf(TEXT("%s of the Legions in %s"), Types[Index], Cultures[Language]), Own, FString(Expected[Language][Index]));
+			TestNotEqual(*FString::Printf(TEXT("%s: the %s name is translated, not the French source"), Types[Index], Cultures[Language]), Own, FString(French[Index]));
+		}
+	}
+	// The Dawn keeps its names (French).
+	{
+		const FScopedLanguage Scoped(TEXT("fr"));
+		const TCHAR* const DawnNames[][2] = { { TEXT("Spearman"), TEXT("Lancier") }, { TEXT("ManAtArms"), TEXT("Homme d'armes") },
+			{ TEXT("Archer"), TEXT("Archer") }, { TEXT("Crossbowman"), TEXT("Arbalétrier") } };
+		for (const TCHAR* const* Pair : DawnNames)
+		{
+			TestEqual(*FString::Printf(TEXT("%s of the Dawn keeps its name"), Pair[0]), HOLGameNames::GetUnitName(FName(Pair[0]), nullptr, Dawn).ToString(), FString(Pair[1]));
+		}
+	}
 	return true;
 }
 

@@ -31,21 +31,26 @@ foreach ($File in $Files) {
         if ($Wait -notmatch '^waitkey [A-Za-z]+\.[A-Za-z]+ [A-J] \(') { Problem "${Name}: the panel text has no cue name next to the letter: $Wait" }
         if ($Wait -match 'Entree : (?<next>\S+) ?(?<letter>[A-J])?' -and $Wait -notmatch 'Entree : fin' -and $Wait -notmatch 'Entree : [A-Za-z]+\.[A-Za-z]+ [A-J]') { Problem "${Name}: the next variant has no cue name: $Wait" }
     }
+    $Mine = Join-Path $Root "Tools\Scenarios\$Name.txt"
+    if (-not (Test-Path $Mine)) { Problem "${Name}: Tools\Scenarios\$Name.txt is missing" }
+    elseif ((Get-Content $Mine -Raw) -ne (Get-Content $File.FullName -Raw)) { Problem "${Name}: Tools\Scenarios\$Name.txt is not the generator's output (run make_audio_compare.py)" }
     $E = Join-Path $Tmp "Retours\E-$Name.md"
+    # A scenario marked "non compte" in its first line (the five families in a row, the old alerts) is not an essay: no sheet, no limit.
+    if ($Lines[0] -match 'non compte') { continue }
+    # Rule 18: an essay lasts 3 minutes at most (10 played sounds, about 12 s each, is about 2 minutes).
+    $Steps = @($Lines | Where-Object { $_ -match '^hol\.Audio\.Candidate ' }).Count
+    if ($Steps -gt 15) { Problem "${Name}: $Steps sounds (more than 15, over the 3 minutes of rule 18); split it by cue family or mark it 'non compte' in its first line" }
     if (-not (Test-Path $E)) { Problem "${Name}: no pre-written Retours\E-$Name.md"; continue }
     $Text = Get-Content $E -Raw
     foreach ($Cue in $Played) {
         $Cues++
-        if ($Text -notmatch "(?m)^$([regex]::Escape($Cue)) = _\s*$") { Problem "${Name}: E-$Name.md has no line '$Cue = _'" }
+        if ($Text -notmatch "(?m)^(?:[^\r\n=]*\[)?$([regex]::Escape($Cue))\]? = _\s*$") { Problem "${Name}: E-$Name.md has no line '$Cue = _'" }
     }
-    $Extra = @([regex]::Matches($Text, '(?m)^([A-Za-z]+\.[A-Za-z]+) = _\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $Played -notcontains $_ })
+    $Extra = @([regex]::Matches($Text, '(?m)^(?:[^\r\n=]*\[)?([A-Za-z]+\.[A-Za-z]+)\]? = _\s*$') | ForEach-Object { $_.Groups[1].Value } | Where-Object { $Played -notcontains $_ })
     foreach ($Cue in $Extra) { Problem "${Name}: E-$Name.md asks about $Cue, which the scenario does not play" }
     if ($Text -notmatch '(?m)^GESTE:') { Problem "${Name}: E-$Name.md has no GESTE: line" }
     if ($Text -notmatch '(?m)^SON:') { Problem "${Name}: E-$Name.md has no SON: line" }
     if ($Text -notmatch [regex]::Escape("play.ps1 $Name")) { Problem "${Name}: E-$Name.md has no play.ps1 command" }
-    $Mine = Join-Path $Root "Tools\Scenarios\$Name.txt"
-    if (-not (Test-Path $Mine)) { Problem "${Name}: Tools\Scenarios\$Name.txt is missing" }
-    elseif ((Get-Content $Mine -Raw) -ne (Get-Content $File.FullName -Raw)) { Problem "${Name}: Tools\Scenarios\$Name.txt is not the generator's output (run make_audio_compare.py)" }
 }
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 Write-Host "  $($Files.Count) scenarios, $Cues cue lines checked"

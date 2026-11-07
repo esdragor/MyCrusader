@@ -15,6 +15,8 @@ param(
     [Parameter(Mandatory)] [string] $LogName,
     [string] $Extra = "",
     [string] $ExtraExec = "",
+    # The map the test runs on (default the stress map); the Biomes decor cost is measured on /Game/Maps/Plain (biome_decor_cost.ps1).
+    [string] $Map = "/Game/Maps/StressTest",
     [switch] $Trace,
     # Plumbing tests only (chapter_measures_test.ps1): runs although other HeroesOfLiberty editors are open. The numbers are then worthless.
     [switch] $IgnoreBusy
@@ -33,11 +35,16 @@ if ($Trace) {
 }
 $Others = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'HeroesOfLiberty' -and $_.Name -match 'Unreal|UnrealBuildTool|dotnet' }
 if ($Others -and -not $IgnoreBusy) { Write-Host "BUSY: $($Others | ForEach-Object { $_.ProcessId })"; exit 1 }
-$ArgList = "`"$UProject`" /Game/Maps/StressTest -game -RenderOffScreen -ResX=888 -ResY=500 -saveddirsuffix=Tests -nosplash -nosound -LiveCoding=0 -as-exit-on-error $Extra -abslog=`"$Log`" -ExecCmds=`"r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,$ExtraExec hol.StressTest $Test 2000 $Seconds quit`""
+$ArgList = "`"$UProject`" $Map -game -RenderOffScreen -ResX=888 -ResY=500 -saveddirsuffix=Tests -nosplash -nosound -LiveCoding=0 -as-exit-on-error $Extra -abslog=`"$Log`" -ExecCmds=`"r.VSync 0,t.MaxFPS 0,scalability 2,hol.Units.SpawnBudget -1,$ExtraExec hol.StressTest $Test 2000 $Seconds quit`""
 $Cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 2 -MaxSamples 3).CounterSamples | ForEach-Object { [math]::Round($_.CookedValue, 1) }
 Write-Host "project: $Project ; cpu before: $($Cpu -join ', ')"
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 $P = Start-Process -FilePath $Exe -ArgumentList $ArgList -PassThru
-$P.WaitForExit(600000) | Out-Null
+# Polled once a second: the peak working set (MB) of the editor process, printed as "peak memory" (Biomes decor cost, 2026-11-07).
+$PeakMb = 0
+while (-not $P.WaitForExit(1000) -and $Clock.Elapsed.TotalSeconds -lt 600) {
+    try { $P.Refresh(); $PeakMb = [math]::Max($PeakMb, [math]::Round($P.WorkingSet64 / 1MB)) } catch { }
+}
 Write-Host "exit: $($P.HasExited) code $($P.ExitCode) in $([math]::Round($Clock.Elapsed.TotalSeconds)) s ; log $Log"
+Write-Host "peak memory: $PeakMb MB (working set of the editor process)"
 Select-String -Path $Log -Pattern '^  (Simulation|Rendering|Frame|Draw):|wood unloaded during|^  (Battle|Arrows during)' | ForEach-Object { $_.Line.Trim() }
