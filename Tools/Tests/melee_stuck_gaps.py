@@ -140,7 +140,8 @@ if '--riposte' in sys.argv:
     args = [a for a in args if a != value]
     RIPOSTE_STEPS = int(value)
 def unanswered(path):
-    dead = {}; last = 0; struck = collections.defaultdict(list); own = collections.defaultdict(list); state = {}
+    dead = {}; last = 0; struck = collections.defaultdict(list); own = collections.defaultdict(list); state = {}; pos = {}
+    STALL_CM = 100
     for l in open(path, encoding='utf-8', errors='ignore'):
         m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot (\d) killed by', l)
         if m: dead[int(m[2])] = int(m[1])
@@ -149,12 +150,18 @@ def unanswered(path):
             s, a, v = int(m[1]), int(m[2]), int(m[3])
             own[a].append(s); struck[v].append((s, a)); last = max(last, s)
         m = WALK_ROW.search(l)
-        if m: state[(int(m[1]), int(m[2]))] = (int(m[7]), int(m[10]), int(m[11]), int(m[12]))
+        if m:
+            state[(int(m[1]), int(m[2]))] = (int(m[7]), int(m[10]), int(m[11]), int(m[12]))
+            pos[(int(m[1]), int(m[2]))] = (int(m[3]), int(m[4]))
     out = []
     for v, blows in sorted(struck.items()):
         for s, a in sorted(blows):
             st = state.get((v, s)) or state.get((v, s - 1)) or state.get((v, s + 1))
             if not st or not (st[0] == 3 and st[1] == 0 and st[2] == 0 and st[3] == -1): continue
+            # Celeborn-16 (Q5 = C says "ONLY if the walk makes no headway"): a walk that goes on at speed (here soldier #11, 700 cm/s along a
+            # detour, struck at step 83, its walk ended at 109) is not a fault; the walk must have stood within STALL_CM for the 10 steps before the blow.
+            p0, p1 = pos.get((v, s - 10)), pos.get((v, s))
+            if p0 is None or p1 is None or abs(p1[0] - p0[0]) + abs(p1[1] - p0[1]) > STALL_CM: continue
             if s + RIPOSTE_STEPS > last or (v in dead and dead[v] <= s + RIPOSTE_STEPS) or (a in dead and dead[a] <= s + RIPOSTE_STEPS): break
             if not any(s <= t <= s + RIPOSTE_STEPS for t in own[v]):
                 out.append(('UNANSWERED', v, s, s + RIPOSTE_STEPS, None, None))
