@@ -127,7 +127,7 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 	}
 	// V4.5b: no alert of its own loss (its defeat, its last life gone by a fall or a razing): its Defeat banner comes, the
 	// thread's line is enough, whatever the order the multicast and the end's state arrive in. An ally's loss stays an alert.
-	const bool bOwnLoss = Event.Kind == EHOLForumEventKind::Defeated || Event.Kind == EHOLForumEventKind::KingDied || Event.Kind == EHOLForumEventKind::Left
+	const bool bOwnLoss = Event.Kind == EHOLForumEventKind::Defeated || Event.Kind == EHOLForumEventKind::KingDied
 		|| ((Event.Kind == EHOLForumEventKind::Fell || Event.Kind == EHOLForumEventKind::Razed) && Event.Lives <= 0);
 	if (bOwn && bOwnLoss)
 	{
@@ -208,20 +208,22 @@ FHOLForumMessage HOLForumMessages::GetMessage(const FHOLForumEvent& Event, const
 			Message.NamedSlots.Add(Slot);
 		}
 		break;
-	case EHOLForumEventKind::Left:
-		if (bOwn)
-		{
-			Message.Text = LOCTEXT("MessageOwnLeft", "Vous avez quitt\u00e9 la partie");
-		}
-		else
-		{
-			Message.Text = FText::Format(LOCTEXT("MessageLeft", "{0} a quitt\u00e9 la partie"), Name);
-			Message.NamedSlots.Add(Slot);
-		}
-		break;
 	case EHOLForumEventKind::Defeated:
 	default:
-		if (bOwn)
+		// Answer B (Q-disconnect-left): one kind for every defeat, the reason picks the text.
+		if (Event.Reason == EHOLForumEventReason::Disconnected)
+		{
+			if (bOwn)
+			{
+				Message.Text = LOCTEXT("MessageOwnLeft", "Vous avez quitt\u00e9 la partie");
+			}
+			else
+			{
+				Message.Text = FText::Format(LOCTEXT("MessageLeft", "{0} a quitt\u00e9 la partie"), Name);
+				Message.NamedSlots.Add(Slot);
+			}
+		}
+		else if (bOwn)
 		{
 			Message.Text = LOCTEXT("MessageOwnDefeated", "Vous êtes vaincu");
 		}
@@ -348,7 +350,6 @@ const TCHAR* HOLForumMessages::GetKindName(const EHOLForumEventKind Kind)
 	case EHOLForumEventKind::Razed: return TEXT("Razed");
 	case EHOLForumEventKind::Defeated: return TEXT("Defeated");
 	case EHOLForumEventKind::KingDied: return TEXT("KingDied");
-	case EHOLForumEventKind::Left: return TEXT("Left");
 	default: return TEXT("?");
 	}
 }

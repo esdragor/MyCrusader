@@ -24,8 +24,6 @@ enum class EHOLForumEventKind : uint8
 	Defeated,
 	/** V5.2 (Regicide, D355): a slot's King died; its defeat (reason King) follows at the end of the step. */
 	KingDied,
-	/** T8 (D722): a slot defeated because its player left and did not come back (reason Disconnected): « Bob a quitt\u00e9 la partie ». */
-	Left,
 };
 
 /** Why a Defeated event happened, when the text depends on it (answer B of Q-disconnect-left): one byte on the wire. */

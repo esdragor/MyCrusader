@@ -589,8 +589,10 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	{
 		MatchStats->RecordEvent(Slot, EHOLMatchStatsEvent::Defeated);
 	}
-	// T8 (D722): a player who left and did not come back has his own text (the forum event does not carry the reason: the kind does).
-	SendForumEvent(FHOLForumEvent::Make(Reason == EHOLDefeatReason::Disconnected ? EHOLForumEventKind::Left : EHOLForumEventKind::Defeated, Slot));
+	// T8 (D722, answer B of Q-disconnect-left): a player who left and did not come back is a defeat like any other (the statistics
+	// above counted it), and the event carries the reason, which picks the text « Bob a quitté la partie ».
+	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, Slot, INDEX_NONE, 0,
+		Reason == EHOLDefeatReason::Disconnected ? EHOLForumEventReason::Disconnected : EHOLForumEventReason::None));
 	CollapseSlot(Slot);
 	// D717 (T2): the AI's player state of a defeated seat goes away (the seat is no longer held, nobody thinks for it).
 	if (AHOLPlayerState* Bot = GetWorld() ? FindHeldBot(*GetWorld(), Slot) : nullptr)
