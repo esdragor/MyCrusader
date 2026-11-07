@@ -11,3 +11,5 @@ Options :
 Recommandation : A (le plus simple à lire et à défendre ; l'équité vient de la symétrie, pas du nombre, D697).
 
 Valeur par défaut codée : `SITE_RINGS = 1` dans `Tools\Editor\maps\common.py` (une ligne à changer ; un anneau de plus s'obtient par `common.ring_sites(..., rings=2)` dans la carte concernée). Rayon : `SITE_RADIUS = 1200` cm (comme le relais), à confirmer aussi.
+
+**Reponse (utilisateur, 2026-11-07 15:4x) : Autre** - 'selon la map, 2 a 3 de base'. Precision demandee et donnee : **2 a 3 sites AU TOTAL par carte** (pas par joueur), le nombre exact varie selon la carte (pas de SITE_RINGS = 1 par joueur). A coder : sites(recipe) avec un nombre fixe par carte (2 ou 3), symetrique, test de symetrie conserve ; rayon 1200 cm non conteste (provisoire).
