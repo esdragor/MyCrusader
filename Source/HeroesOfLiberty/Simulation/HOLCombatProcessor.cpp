@@ -117,6 +117,9 @@ namespace UE::HeroesOfLiberty::Combat
 	float StuckLooseSeconds = 0.f; // OFF by default: the lot of 2026-11-06 17:00 gave 3/8 red with 4 (see Retours/BUG-melee-stuck-attack.md, Correcteur 2)
 	FAutoConsoleVariableRef CVarStuckLooseSeconds(TEXT("hol.Combat.StuckLooseSeconds"), StuckLooseSeconds,
 		TEXT("s (default 0 = off, tried at 4: not better; with hol.Combat.StuckRetargetSeconds): a melee out of reach with no headway for this long, no enemy with a free place it can reach, takes the nearest other enemy whatever the places and the friends in the way (a target the player ordered is kept); 0: off (BUG-melee-stuck-attack)"));
+	int32 SameWalkGoal = 1;
+	FAutoConsoleVariableRef CVarSameWalkGoal(TEXT("hol.Combat.SameWalkGoal"), SameWalkGoal,
+		TEXT("1 (default; Celeborn-14): a unit already walking to the place of the enemy it seeks (within 2 radii + 50 cm) is not given the same walk again at each search step (it restarted the final leg's wait of FinalLegStuckSteps: a walk held by its friends never ended); 0: as before"));
 	int32 WalkRiposteSteps = 10;
 	FAutoConsoleVariableRef CVarWalkRiposteSteps(TEXT("hol.Combat.WalkRiposteSteps"), WalkRiposteSteps,
 		TEXT("steps (default 10 = 0.5 s; Q5 = C): a unit on a player's walk (not an attack-move) whose walk made no headway for this many steps (its place barred, a friend in the way) takes on the enemy that strikes it (HOLCombat::MaySeek); a normal walk is never cut; 0: off (as before: no riposte during a walk)"));
@@ -2719,7 +2722,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// A walk to it at most at the search rate: the first, or once it moved off, or once the last one ended short.
 			const bool bWalkOver = Fighter.Order->Phase == EHOLMovePhase::None;
 			const bool bMoved = FVector2D::DistSquared(EnemyPosition, Combat.ApproachPoint) > FMath::Square(ReapproachDistance);
-			if (Combat.Mode != EHOLCombatMode::Hold && !bWaitFarPlace
+			// Celeborn-14 (diplomacy_qground_watch, #12: ph 3 held 150 steps within 10 cm, 24 reversals): a walk already on its way to that very goal
+			// is not given again. Every search step the same walk was re-issued (a new order: the final leg's wait of FinalLegStuckSteps restarted
+			// from 0 and the unit blipped 10 cm towards the enemy and back), so a walk held by its friends never ended. 0: as before.
+			const bool bSameWalk = SameWalkGoal != 0 && Fighter.Order->Phase != EHOLMovePhase::None
+				&& FVector2D::DistSquared(FVector2D(WalkGoal), FVector2D(Fighter.Order->Slot)) <= FMath::Square(static_cast<double>(Constants.Radius) * 2.0 + 50.0);
+			if (Combat.Mode != EHOLCombatMode::Hold && !bWaitFarPlace && !bSameWalk
 				&& (bZoneTaken || bPlaceNew || ((bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))))
 			{
 				// Stamped (J7b.3): a player's order given meanwhile drops it.
