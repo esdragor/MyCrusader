@@ -78,6 +78,12 @@ for opt in ('--stall', '--shake'):
         args = [a for a in args if a != value]
         if opt == '--stall': WALK_STALL = int(value)
         else: WALK_SHAKE = int(value)
+# Celeborn-14: LOCKED = a walk within LOCK_CM of one spot for more than LOCK_STEPS steps (default 80 = 4 s, twice FinalLegStuckSteps), blips of a seek included. Option --lock N.
+LOCK_STEPS = 80; LOCK_CM = 25
+if '--lock' in sys.argv:
+    value = sys.argv[sys.argv.index('--lock') + 1]
+    args = [a for a in args if a != value]
+    LOCK_STEPS = int(value)
 WALK_ROW = re.compile(r'SanityDump3 #(\d+) step (\d+) at \((-?\d+), (-?\d+)\) vel \((-?\d+), (-?\d+)\) ph (\d) slot \((-?\d+), (-?\d+)\) ap(\d) at(\d) tgt #(-?\d+)')
 def walks(path):
     dead = {}; seq = collections.defaultdict(list)
@@ -101,6 +107,18 @@ def walks(path):
                 if run > WALK_STALL: out.append(('STALL', u, start, start + run, rows[0], b))
                 run = 0
         if run > WALK_STALL: out.append(('STALL', u, start, start + run, rows[0], rows[-1]))
+        # Celeborn-14 (the EFFECT of the spin fix): a walk (ph 3) that stays within LOCK_CM of one spot for more than LOCK_STEPS steps although it blips into a
+        # fight now and then (a seek that re-issues the walk restarts the 2 s wait of FinalLegStuckSteps: the 12-step cycle of #12, 24 reversals) is LOCKED.
+        # Its blows or its attack (ph 0) end the run; rows of the same unit have consecutive steps.
+        lrun = 0; lstart = 0; anchor = None
+        for a, b in zip(rows, rows[1:]):
+            inwalk = b[3] == 3 and b[0] == a[0] + 1 and not (u in dead and dead[u] <= b[0])
+            if inwalk and anchor is not None and abs(b[1]-anchor[0]) + abs(b[2]-anchor[1]) <= LOCK_CM:
+                lrun += 1
+            else:
+                if lrun > LOCK_STEPS: out.append(('LOCKED', u, lstart, lstart + lrun, rows[0], b))
+                lrun = 0; lstart = b[0]; anchor = (b[1], b[2]) if inwalk else None
+        if lrun > LOCK_STEPS: out.append(('LOCKED', u, lstart, lstart + lrun, rows[0], rows[-1]))
         # reversals: the step's vector against the one before
         rev = []
         for i in range(2, len(rows)):
