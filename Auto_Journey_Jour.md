@@ -482,3 +482,7 @@ Reste (file) : noms Legions, G1 points d'appel MinTier (change le jeu), Sites S3
 | Faramir-8 | ab1911827c99fc861 | Documents\HeroesOfLiberty-Faramir / fog | outils : check.ps1 echoue sur Sanity (L1-12c), Get-FreshLog partout (L3-3), preflight panneau cache (L1-12b) | sans C++ | 11:45 | lance 09:35 |
 | Glorfindel-9 FINI 09:36 49 tool_uses (T5 C# + T6, 5 commits 6ad55e8..a25f1aa, tests 1062/1062 net PASS, dotnet 331/331) | | | | | | |
 | Glorfindel-10 | abb056df0ce6c11ad | Documents\HeroesOfLiberty-Glorfindel / net-playtest | Deconnexion T7 (reconnexion auto client), T8, T9, T10 | C++ 3 | 11:45 | lance 09:38 |
+| Sauron-1 FINI 09:36 61 tool_uses (HOLBiomeDecorPlan + HOLBiomeApply + biome_bounds_check, branche visual 64519cf..ceb6dff, tests 1073/1073) | | | | | | |
+| Sauron-2 | a24d420dca9e5df77 | Documents\HeroesOfLiberty-Sauron / visual | Biomes B1 applicateur au chargement de la carte (C++ lot unique, 4e agent C++ : un seul build via la file, tolere car la file est vide) | C++ 4 (exception ecrite) | 11:45 | lance 09:39 |
+| Celeborn-10 FINI 09:37 50 tool_uses (audit Sanity NoStrike 2c213e5, rouge x8 non observe, correctif non fait ; processus 13040/24504 detaches restants) ; Arwen-10 FINI 09:41 33 tool_uses (verrou editeur 4b37dbc..83bc85d, editor_slot_test 14/14, preflight reel PASS) | | | | | | |
+| Arwen-11 | afb45650f1f28f996 | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.116 L8-1 gate Essay : tip de chaque branche citee dans E-*.md ; puis ligne 21 sequence parasite de -Parts tests | sans C++ | 11:45 | lance 09:43 |
