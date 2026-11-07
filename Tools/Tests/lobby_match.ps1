@@ -422,6 +422,8 @@ if ($Rejoin) {
         elseif (-not ($S -match "Victory: match over")) { $Failure = "the server has no 'Victory: match over'" }
         elseif (-not ($Lines.Alice -match "Absence banner: shown, Bob : connexion perdue — 0:(0\d|10)")) { $Failure = "Alice : no banner with at most 0:$Window" }
         elseif (-not ($Lines.Alice -match "End banner: Victory")) { $Failure = "Alice : no victory banner" }
+        # D722 (T8, Q4 = B): the defeat event carries its REASON over the wire and the client reads it: "Bob a quitte la partie", not "vaincu".
+        elseif (-not ($Lines.Alice -match 'HUD message: .*Bob a quitt. la partie')) { $Failure = "Alice : no message 'Bob a quitté la partie' (the reason of the defeat did not reach her screen)" }
         elseif ($LobbyLine -match ", rejoin") { $Failure = "Bob : « Revenir » offered after his defeat" }
         elseif ($S -match "Manager: Bob back") { $Failure = "the server took Bob back" }
         elseif (($Lines.Alice + $Lines.Bob + $Lines.Bob2) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
@@ -446,6 +448,10 @@ if ($Rejoin) {
         elseif (-not $Kept) { $Failure = "the server has no 'Disconnect: slot 1 (Bob) kept'" }
         elseif (-not ($S -match "Manager: Bob left")) { $Failure = "the server has no 'Manager: Bob left'" }
         elseif (-not ($Lines.Alice -match "Absence banner: shown, Bob")) { $Failure = "Alice : no absence banner for Bob" }
+        # D722 (T8) on the wire: the replicated masks reach Alice's table (HOLGameScreen logs "Players table state: Bob=<pastille>"): lost connection, then (2v2) "IA" once the window is over, then nothing once he is back.
+        elseif (-not ($Lines.Alice -match "Players table state: .*Bob=Connexion perdue")) { $Failure = "Alice : her players table never showed the pastille 'Connexion perdue' for Bob" }
+        elseif ($Team -and -not ($Lines.Alice -match "Players table state: .*Bob=IA")) { $Failure = "Alice : her players table never showed the pastille 'IA' for Bob after the window (2v2)" }
+        elseif (@($Lines.Alice -match "Players table state: ")[-1] -notmatch "Players table state: none") { $Failure = "Alice : her players table still shows a pastille after Bob came back" }
         elseif (-not ($Lines.Bob2 -match "Multiplayer: lobby $([regex]::Escape($Lobby.id)) .*, rejoin")) { $Failure = "Bob : the line of the lobby without « Revenir » (', rejoin')" }
         elseif (-not ($Lines.Bob2 -match "Multiplayer: back in match \S+ of $([regex]::Escape($Lobby.id)) on port \d+")) { $Failure = "Bob : « Revenir » did not open the match" }
         elseif (@($S -match "LogHOLMatch: Bob holds slot 1").Count -lt 2) { $Failure = "the server: Bob not back in slot 1" }
