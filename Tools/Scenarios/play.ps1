@@ -1,13 +1,14 @@
 # Opens the game on a test scenario (Tools/Scenarios/<Name>.txt, README.md), with the user's own settings (window,
 # screen, saved games): the user's trial, not a scripted check. Run from Windows PowerShell (never Git Bash: it rewrites
 # /Game/... paths):
-#   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 [-Name] <name> [-Root <worktree>] [-EngineDir <dir>]
+#   powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play.ps1 [-Name] <name> [-Root <worktree>] [-EngineDir <dir>] [-PlayerName <name>]
 # Without a name: lists the scenarios, each with the first comment line of its file. -LiveCoding=0: an open game
 # would otherwise block every build of the project (UnrealBuildTool refuses while Live Coding runs), any worktree.
 param(
     [Parameter(Position = 0)] [string] $Name = "",
     [string] $Root = "",
-    [string] $EngineDir = ""
+    [string] $EngineDir = "",
+    [string] $PlayerName = ""   # -PlayerName=<name> on the game's command line: the local player of a scenario whose Human seats are NAMED (playerName in the .json) needs a name, otherwise it is a spectator
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -43,4 +44,7 @@ Write-Host "play: scenario $Name ($UProject)"
 # The game starts without waiting behind another copy's build (UBT's SDK check, up to minutes) and with its Angelscript
 # debug server on a free port, where no VS Code connects (on the default one the game froze, 2026-10-27).
 $env:UE_SKIP_UBT_SDK_SETUP = "1"
-Start-Process -FilePath $Editor -ArgumentList @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding=0", "-asdebugport=0", "-ExecCmds=`"hol.Scenario $Name`"")
+$GameArgs = @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding=0", "-asdebugport=0")
+if ($PlayerName) { $GameArgs += "-PlayerName=$PlayerName" }
+$GameArgs += "-ExecCmds=`"hol.Scenario $Name`""
+Start-Process -FilePath $Editor -ArgumentList $GameArgs
