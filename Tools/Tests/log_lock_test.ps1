@@ -137,7 +137,7 @@ try {
     Case "quick_check: nothing held gives tests 3/3 PASS (control)" ([bool]($Output -match "tests 3/3 : PASS"))
     # Coordinator's request (2026-11-07): -Parts tests must not launch the main game (menu/camera sequence): no "sequence" report line, and
     # the fake engine, which writes into whatever -abslog it is given, finds no quick_game.log written by this pass.
-    Case "quick_check: -Parts tests prints no 'sequence' line (the main game is not launched)" (-not [bool]($Output -match "(?m)^\s*sequence \d+/\d+")) (($Output | Select-String "sequence" | Select-Object -First 2) -join " / ")
+    Case "quick_check: -Parts tests prints no 'sequence' line (the main game is not launched)" (-not [bool]($Output -match "sequence \d+/\d+ ?:|sequence [^\r\n]*: (PASS|FAIL)")) (($Output | Select-String "sequence" | Select-Object -First 2) -join " / ")
     Case "quick_check: -Parts tests writes no quick_game.log" (-not (Test-Path (Join-Path $Project "Saved_Tests\Logs\quick_game.log")) -or ((Get-Item (Join-Path $Project "Saved_Tests\Logs\quick_game.log")).LastWriteTime -lt (Get-Date).AddMinutes(-3)))
 
     }
