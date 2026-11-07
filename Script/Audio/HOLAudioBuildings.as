@@ -28,6 +28,13 @@ struct FHOLBuildingSounds
 	TArray<int> Events;
 }
 
+// One family of buildings: its name and the name of its cue (AudioBuildingsInProgress.md B3/B4).
+struct FHOLBuildingFamily
+{
+	FString Family = "";
+	FString Cue = "";
+}
+
 namespace HOLAudioBuildings
 {
 	// One building: its production event, and the other kinds at today's defaults (generic selection and construction cues, nothing for a destruction).
@@ -114,5 +121,81 @@ namespace HOLAudioBuildings
 	bool Rings(FString Building, int Kind)
 	{
 		return CueFor(Building, Kind).Stems.Num() > 0;
+	}
+
+	// ---- Families (the user's answer Q3 = A of 2026-11-07: ONE selection sound per FAMILY of buildings, about five sounds) ----
+	// DATA only, nothing chosen, nothing heard: the family cues ("Building.Wood"...) are candidates the user listens to in the scenario
+	// audio_compare_buildings (HOLAudioCandidates.as); they are NOT events of the sound table, so Select.Building stays silent until a
+	// sound is elected and wired in C++ (step B5). Construction done, production and destruction stay silent.
+
+	void AddFamily(TArray<FHOLBuildingFamily>& Rows, FString Family)
+	{
+		FHOLBuildingFamily Row;
+		Row.Family = Family;
+		Row.Cue = "Building." + Family;
+		Rows.Add(Row);
+	}
+
+	// The table "family -> cue": wood, stone, sacred, metal, coins.
+	TArray<FHOLBuildingFamily> Families()
+	{
+		TArray<FHOLBuildingFamily> Rows;
+		AddFamily(Rows, "Wood");
+		AddFamily(Rows, "Stone");
+		AddFamily(Rows, "Sacred");
+		AddFamily(Rows, "Metal");
+		AddFamily(Rows, "Coins");
+		return Rows;
+	}
+
+	int FamilyCount()
+	{
+		return Families().Num();
+	}
+
+	// The name of family Index ("" when out of range).
+	FString FamilyNameAt(int Index)
+	{
+		TArray<FHOLBuildingFamily> Rows = Families();
+		if (Index < 0 || Index >= Rows.Num()) return "";
+		return Rows[Index].Family;
+	}
+
+	bool HasFamily(FString Family)
+	{
+		TArray<FHOLBuildingFamily> Rows = Families();
+		for (int Index = 0; Index < Rows.Num(); Index++)
+		{
+			if (Rows[Index].Family == Family) return true;
+		}
+		return false;
+	}
+
+	// The cue name of a family ("" for an unknown family).
+	FString CueNameOfFamily(FString Family)
+	{
+		TArray<FHOLBuildingFamily> Rows = Families();
+		for (int Index = 0; Index < Rows.Num(); Index++)
+		{
+			if (Rows[Index].Family == Family) return Rows[Index].Cue;
+		}
+		return "";
+	}
+
+	// The table "building -> family", one line per type of BuildingTypes.csv ("" for an unknown building).
+	FString FamilyOf(FString Building)
+	{
+		if (Building == "House" || Building == "LumberCamp" || Building == "MiningCamp" || Building == "Mill" || Building == "Farm") return "Wood";
+		if (Building == "MainCentre" || Building == "Barracks" || Building == "ArcheryRange" || Building == "Stable" || Building == "SiegeWorkshop") return "Stone";
+		if (Building == "Chapel" || Building == "Sanctuary") return "Sacred";
+		if (Building == "Forge") return "Metal";
+		if (Building == "Market") return "Coins";
+		return "";
+	}
+
+	// The family cue name of a building ("" for an unknown building).
+	FString CueNameFor(FString Building)
+	{
+		return CueNameOfFamily(FamilyOf(Building));
 	}
 }

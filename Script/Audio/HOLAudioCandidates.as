@@ -59,6 +59,19 @@ namespace HOLAudioCandidates
 		Add(List, "Alert.Diplomacy", "v_harp_arp_up,v_glock_G6,v_nbell_s06,v_cello_pizz_D4,bookOpen,doorOpen_2,creak1,impactPlate_light_003,v_vln_pizz_E5,metalLatch");
 	}
 
+	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per
+	// family). Cue names "Building.<Family>" (HOLAudioBuildings::CueNameOfFamily); NOT cues of the sound table (so not counted by CueCount), only
+	// listened to in the scenario audio_compare_buildings. Materials: wood and planks, stone (mining, dull hits), bells and harp for the sacred,
+	// dull metal, coins with leather purses. Same CC0 packs as above (Kenney rpg-audio and impact-sounds, VSCO 2 CE, Docs/assets_audio.csv).
+	void BuildBuildings(TArray<FHOLAudioCandidates>& List)
+	{
+		Add(List, "Building.Wood", "impactWood_light_000,impactWood_medium_000,impactWood_heavy_000,impactPlank_medium_000,impactPlank_medium_001,chop,doorOpen_1,creak1,footstep_wood_000,v_claves_mf");
+		Add(List, "Building.Stone", "impactMining_000,impactMining_001,impactMining_002,impactMining_003,impactPunch_heavy_000,impactPunch_medium_000,doorClose_1,impactSoft_heavy_000,v_timpani_hit,v_mallet_hit_mf");
+		Add(List, "Building.Sacred", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,v_nbell_s01,v_nbell_s03,v_nbell_med,v_glock_C7,v_harp_arp_up,v_harp_arp_low,v_triangle_hit");
+		Add(List, "Building.Metal", "impactMetal_heavy_000,impactMetal_heavy_001,impactMetal_medium_000,impactMetal_light_000,impactPlate_heavy_000,impactPlate_medium_000,metalPot1,metalLatch,v_gong_smack_light,impactTin_medium_000");
+		Add(List, "Building.Coins", "handleCoins,handleCoins2,impactTin_medium_001,impactTin_medium_002,v_tambourine_down,v_triangle_muted,impactGeneric_light_000,handleSmallLeather,dropLeather,beltHandle1");
+	}
+
 	// The lists, built at each call (script has no mutable global).
 	TArray<FHOLAudioCandidates> Table()
 	{
@@ -72,12 +85,16 @@ namespace HOLAudioCandidates
 		return Table().Num();
 	}
 
-	// The list of a cue by its name ("Ui.Open"); an empty list (no cue name, no stem) when the table does not know it.
+	// The list of a cue by its name ("Ui.Open", or a family cue "Building.Wood"); an empty list (no cue name, no stem) when the table does not know it.
 	FHOLAudioCandidates ForCue(FString Cue)
 	{
 		TArray<FHOLAudioCandidates> List = Table();
 		for (int Index = 0; Index < List.Num(); Index++)
 			if (List[Index].Cue == Cue) return List[Index];
+		TArray<FHOLAudioCandidates> Buildings;
+		BuildBuildings(Buildings);
+		for (int Index = 0; Index < Buildings.Num(); Index++)
+			if (Buildings[Index].Cue == Cue) return Buildings[Index];
 		return FHOLAudioCandidates();
 	}
 
