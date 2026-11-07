@@ -6578,7 +6578,7 @@ if ($Parts -contains "net") {
     # The log of a client of THIS pass (its name may be its own, Get-FreshLog); a path that does not exist when it never launched.
     function Get-NetClientLog([int] $N) {
         $Log = ($NetClients | Where-Object { $_.Client -eq $N } | Select-Object -First 1).Log
-        if ($Log) { $Log } else { Join-Path $TestSaved "Logs\quick_net_client$N.log" }
+        if ($Log) { $Log } else { Join-Path $TestSaved "Logs\quick_net_client$N.not_launched" }   # L3-3: never the older pass's quick_net_client$N.log
     }
     $Client1Log = ($NetClients | Where-Object { $_.Client -eq 1 } | Select-Object -First 1).Log
     $ClientCorpses = & $CorpseCount @(if ($Client1Log -and (Test-Path $Client1Log)) { Get-Content $Client1Log })
