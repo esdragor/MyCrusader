@@ -113,6 +113,35 @@ def walks(path):
             if len(window) >= WALK_SHAKE:
                 out.append(('SHAKE', u, rev[i], rev[i] + 20, rows[0], rows[-1])); break
     return out
+# Celeborn-13 (Q5 = C, the EFFECT): a soldier struck while its walk makes no headway (ph 3, no fight, no target) must strike back within
+# RIPOSTE_STEPS (default 25 = 1.25 s) of the first blow it takes in that state: its OWN hit on any enemy shows in the log ("Combat: step N #U ... hits").
+# Not flagged if it or its attacker dies first, or when the first blow came in the last RIPOSTE_STEPS of the run. Option --riposte N.
+RIPOSTE_STEPS = 25
+if '--riposte' in sys.argv:
+    value = sys.argv[sys.argv.index('--riposte') + 1]
+    args = [a for a in args if a != value]
+    RIPOSTE_STEPS = int(value)
+def unanswered(path):
+    dead = {}; last = 0; struck = collections.defaultdict(list); own = collections.defaultdict(list); state = {}
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot (\d) killed by', l)
+        if m: dead[int(m[2])] = int(m[1])
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ hits #(\d+)', l)
+        if m:
+            s, a, v = int(m[1]), int(m[2]), int(m[3])
+            own[a].append(s); struck[v].append((s, a)); last = max(last, s)
+        m = WALK_ROW.search(l)
+        if m: state[(int(m[1]), int(m[2]))] = (int(m[7]), int(m[10]), int(m[11]), int(m[12]))
+    out = []
+    for v, blows in sorted(struck.items()):
+        for s, a in sorted(blows):
+            st = state.get((v, s)) or state.get((v, s - 1)) or state.get((v, s + 1))
+            if not st or not (st[0] == 3 and st[1] == 0 and st[2] == 0 and st[3] == -1): continue
+            if s + RIPOSTE_STEPS > last or (v in dead and dead[v] <= s + RIPOSTE_STEPS) or (a in dead and dead[a] <= s + RIPOSTE_STEPS): break
+            if not any(s <= t <= s + RIPOSTE_STEPS for t in own[v]):
+                out.append(('UNANSWERED', v, s, s + RIPOSTE_STEPS, None, None))
+            break
+    return out
 def fmt_walk(w):
     kind, u, s0, s1 = w[0], w[1], w[2], w[3]
     return '%s #%d steps %d-%d' % (kind, u, s0, s1)
@@ -131,14 +160,14 @@ for path in args:
         if g[0] > limit: gaps.append((u,) + g)
     sw = switches(path)
     pr = pairs(path)
-    wk = walks(path)
+    wk = walks(path) + unanswered(path)
     if '--walk' in sys.argv:
         # only the walk checks (Celeborn-12): the other checks stay as they are for the melee_stuck scenarios
         gaps, sw, pr = [], [], []
     bad += 1 if (gaps or sw or pr or wk) else 0
     print(('FAIL ' if (gaps or sw or pr or wk) else 'OK   ') + os.path.basename(path), ('gaps ' + str(gaps)) if gaps else '', ('switches while striking (unit, step, from, to) ' + str(sw[:5])) if sw else '')
     for p in pr[:4]: print('     STUCK ' + fmt_pair(p))
-    for w in wk[:4]: print('     WALK ' + fmt_walk(w))
+    for w in sorted(wk, key=lambda x: x[0] != 'UNANSWERED')[:5]: print('     WALK ' + fmt_walk(w))
 print('melee_stuck_gaps: %d of %d runs have a soldier without a blow for more than %d steps, or one that left a living target while striking it' % (bad, len(args), limit))
 sys.exit(1 if bad else 0)
 
