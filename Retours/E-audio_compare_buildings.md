@@ -1,23 +1,20 @@
-# [À ESSAYER] E-audio_compare_buildings : écoute le son de SELECTION d'un batiment, une famille apres l'autre : bois, pierre, sacre, metal, pieces (cuir, cloches, harpe, forge...) ; tu réponds par cue, la lettre que tu préfères
+# [INDEX] E-audio_compare_buildings : le son de SELECTION des batiments, une fiche PAR FAMILLE (5 essais de 2 min au lieu d'un de 11 min, regle 18)
 
-STATUT : LOGIQUE SEULEMENT   (aucune oreille n'a encore écouté : l'agent a lancé les scénarios sans son)
-GESTE: interne      (les sons sont joués par la commande hol.Audio.Candidate du scénario, pas par un vrai clic ; seule la touche Entrée est la tienne)
-SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'un a écouté)
-branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
+STATUT : LOGIQUE SEULEMENT   (aucune oreille n'a encore ecoute ; cet index n'est pas un essai, ce sont les 5 fiches qui le sont)
+GESTE: interne      (voir chaque fiche : les sons sont joues par hol.Audio.Candidate, seule la touche Entree est la tienne)
+SON: non entendu    (-nosound cote agent)
+branches: heal-sleep
 
-Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.
-Bois (Maison, camps, Moulin, Ferme) [Building.Wood] = _
-Pierre (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) [Building.Stone] = _
-Sacre (Chapelle, Sanctuaire) [Building.Sacred] = _
-Metal (Forge) [Building.Metal] = _
-Pieces (Marche) [Building.Coins] = _
+Une fiche par famille, chacune : 10 sons (A a J), environ 2 min, le panneau affiche le nom du cue a cote de la lettre, Entree = suivant, une ligne `<Cue> = _` a remplir, la liste des lettres avec leur fichier, la commande `play.ps1` :
 
-Pré-vol (2026-11-07 10:45, agent ARWEN-14, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen, branche heal-sleep, binaire du 09:00) : `preflight.ps1 audio_compare_buildings -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` PASS (79 s, 1 PNG, sanity audit passed, 50 lignes « candidate played Building. » sur 50, 0 « candidate missing »).
-Licences vérifiées (Docs\assets_audio.csv) : Kenney rpg-audio et impact-sounds = CC0 (License.txt présents dans C:\Users\baudo\Documents\MyCrusader_Audio\Kenney), VSCO 2 CE = CC0 1.0 (LICENSE présent dans C:\Users\baudo\Documents\MyCrusader_Audio\VSCO) ; aucun nouveau pack, les 50 fichiers sont des candidats déjà importés.
-PNG OUVERTS et vus :
-- audio_compare_buildings_start : l'écran du jeu (forum, 5 Paysans, forêt, panneau du scénario avec les 3 notes : écoute le son de SELECTION d'un bâtiment, 50 sons, 5 cues, comment réécouter avec hol.Audio.Candidate Building.Wood C, réponds par cue) ; aucune fenêtre ne cache le panneau.
-NON VÉRIFIÉ : SON non entendu (aucune oreille : que les 50 sons soient audibles, distincts, bien rangés par famille) ; l'avance par la touche Entrée en jeu réel (waitkey passés en -unattended) ; durée : 50 sons = environ 11 min, au-dessus des 3 min d'un essai (à écouter famille par famille : une lettre par famille suffit, la réponse peut être donnée en plusieurs fois) ; la correspondance famille/bâtiment vient de ta réponse Q3 = A (10:36), rien d'autre n'est tranché ; rien n'est branché dans le jeu (Select.Building reste muet).
+- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_wood.md`   : Bois (Maison, camps, Moulin, Ferme) [Building.Wood]
+- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_stone.md`  : Pierre (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) [Building.Stone]
+- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_sacred.md` : Sacre (Chapelle, Sanctuaire) [Building.Sacred]
+- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_metal.md`  : Metal (Forge) [Building.Metal]
+- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_coins.md`  : Pieces (Marche) [Building.Coins]
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
-Durée : environ 11 min (50 sons, Entrée = variante suivante ; le panneau dit « <Cue> <lettre> (<fichier>) vient de jouer »).
-Réponse attendue : une lettre par cue, `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse attendue : dans chaque fiche, une lettre (ou plusieurs) pour son cue, `OK`, `BUG: ...` ou `REGLAGE: ...` ; tu peux repondre famille par famille, en plusieurs fois.
+
+L'ancien scenario `audio_compare_buildings` (les 5 familles a la suite, 50 sons, environ 11 min) est GARDE comme « tout » et n'est PAS compte comme un essai (plus de 3 min) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`. Il n'a pas de fiche : reponds dans les 5 fiches.
+
+Consigne appliquee (memoire "Sons : pas usants") : GRAVES, SOURDS, COURTS, DOUX ; mesure par `Tools\Audio\check_audio_soft.py` (duree max 0,75 s, centre spectral max environ 730 Hz, 0 % au-dessus de 3 kHz), ce n'est pas une ecoute. Rien n'est branche dans le jeu (Select.Building reste muet).
