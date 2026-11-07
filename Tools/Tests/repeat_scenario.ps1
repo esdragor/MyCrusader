@@ -11,6 +11,7 @@ param(
     [int] $Runs = 12,
     [string] $Root = "",
     [int] $TimeoutSeconds = 240,
+    [string] $EngineDir = "",
     [switch] $Keep
 )
 . (Join-Path $PSScriptRoot 'BinaryCopy.ps1')
@@ -22,7 +23,8 @@ Write-Host "repeat $Name : $Runs pass(es) from the binary copy $Shadow (build.ps
 $Seconds = @(); $Failed = 0
 try {
     for ($K = 1; $K -le $Runs; $K++) {
-        $Out = & powershell -NoProfile -ExecutionPolicy Bypass -File $Check $Name -Root $Shadow -TimeoutSeconds $TimeoutSeconds 2>&1 | Out-String
+        $Extra = if ($EngineDir) { @('-EngineDir', $EngineDir) } else { @() }
+        $Out = & powershell -NoProfile -ExecutionPolicy Bypass -File $Check $Name -Root $Shadow -TimeoutSeconds $TimeoutSeconds @Extra 2>&1 | Out-String
         $Code = $LASTEXITCODE
         $Line = @($Out -split "`r?`n" | Where-Object { $_ -match '^check ' } | Select-Object -Last 1)
         $Log = Join-Path $Root "Saved_Tests\Logs\scenario_$Name.log"
