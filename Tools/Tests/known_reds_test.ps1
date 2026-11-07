@@ -48,7 +48,7 @@ if ($fn) {
   Check ($out -match '\[KO\] right edge') 'Report : les lignes [KO] sont gardees' $out
   Check (($FailedParts -join ',') -eq 'camera 2p,camera 3p') 'Report : FailedParts = les parties rouges' ($FailedParts -join ',')
   $sum = Get-RedSummary $FailedParts $KnownReds
-  Check ($sum -match '1 regression' -and $sum -match 'camera 3p' -and $sum -match '1 rouge connu') 'Get-RedSummary : 1 regression (camera 3p) + 1 rouge connu' $sum
+  Check ($sum -match '1 regression' -and $sum -match 'camera 3p' -and $sum -match '1 rouge.{0,3} connu') 'Get-RedSummary : 1 regression (camera 3p) + 1 rouge connu' $sum
   $sumKnown = Get-RedSummary @('camera 2p', 'camera 8p') $KnownReds
   Check ($sumKnown -match 'aucune regression') 'Get-RedSummary : rouges connus seulement -> "aucune regression"' $sumKnown
 }

@@ -2963,6 +2963,9 @@ function Get-ScriptErrors([string] $Path) {
         Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert failed") } |
         ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
 }
+. (Join-Path $PSScriptRoot "KnownReds.ps1")
+$KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
+$FailedParts = @()
 function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
@@ -2972,7 +2975,15 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
             -not @($SubCases[$Played] | Where-Object { $Part -eq "$Played $_" -or $Part.StartsWith("$Played $_ ") }).Count) { return $true }
     }
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
-    Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
+    # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
+    $KnownRed = Find-KnownRed $Part $KnownReds
+    $RedTag = ""
+    if ($Failed.Count -gt 0) {
+        $script:FailedParts += $Part
+        $RedTag = if ($KnownRed) { " (rouge connu depuis $($KnownRed.Since) : $($KnownRed.Cause))" } else { " (REGRESSION : pas dans known_reds.txt)" }
+    }
+    elseif ($KnownRed) { $RedTag = " (etait un rouge connu depuis $($KnownRed.Since) : retirer de known_reds.txt)" }
+    Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })$RedTag"
     $Checks.Keys | Where-Object { -not $Checks[$_] } | ForEach-Object { Write-Host "  [KO] $_" }
     return $Failed.Count -eq 0
 }
@@ -8259,4 +8270,4 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
-if (-not $AllOk) { exit 1 }
+if (-not $AllOk) { if ($FailedParts.Count) { Write-Host (Get-RedSummary $FailedParts $KnownReds) }; exit 1 }

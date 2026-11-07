@@ -83,11 +83,11 @@ Check ($real -match '^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$') 'L8-3 : le vrai Docs\Sess
 $Q2 = Join-Path $Tmp 'queue2.md'
 Set-Content -Path $Q2 -Encoding ASCII -Value @('- [ ] (a, sans C++, outil) x', '- [ ] (b, sans C++) y', '- [x] (c, sans C++) fait', '- [ ] (d, C++) z')
 $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -QueueFile $Q2 | Out-String
-Check ($o -match '(?m)^FAIL .*sans C\+\+') 'L8-7 : 2 lignes sans C++ -> FAIL' $o
+Check ($o -match "(?m)^FAIL seulement 2 ligne\(s\) '\[ \]'") 'L8-7 : 2 lignes sans C++ -> FAIL' $o
 $Q3 = Join-Path $Tmp 'queue3.md'
 Set-Content -Path $Q3 -Encoding ASCII -Value @('- [ ] (a, sans C++) x', '- [ ] (b, sans C++) y', '- [ ] (c, sans C++) z')
 $o = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -QueueFile $Q3 | Out-String
-Check ($o -match '(?m)^PASS .*sans C\+\+' -and -not ($o -match '(?m)^FAIL .*sans C\+\+')) 'L8-7 : 3 lignes sans C++ -> PASS' $o
+Check ($o -match "(?m)^PASS 3 ligne\(s\) '\[ \]' sans C\+\+" -and -not ($o -match "(?m)^FAIL seulement")) 'L8-7 : 3 lignes sans C++ -> PASS' $o
 
 # --- L8-6 : fins de ligne. .gitattributes existe (CRLF dans l'arbre, LF dans l'index) ; eol_check.ps1 liste (et -Fix corrige) les fichiers MELES de l'arbre de travail
 $RepoRoot = Split-Path -Parent (Split-Path -Parent $Here)
