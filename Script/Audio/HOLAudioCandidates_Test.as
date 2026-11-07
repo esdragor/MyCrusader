@@ -82,6 +82,12 @@ void Test_AudioCandidatesSoftCuesAreSoft(FUnitTest& T)
 {
 	TArray<FString> Cues;
 	Cues.Add("Alert.TrainingDone");
+	Cues.Add("Alert.UnderAttack");
+	Cues.Add("Alert.BuildingDone");
+	Cues.Add("Alert.TechDone");
+	Cues.Add("Alert.Trade");
+	Cues.Add("Alert.Volcano");
+	Cues.Add("Alert.Diplomacy");
 	for (int Family = 0; Family < HOLAudioBuildings::FamilyCount(); Family++)
 		Cues.Add(HOLAudioBuildings::CueNameOfFamily(HOLAudioBuildings::FamilyNameAt(Family)));
 	TArray<FString> Tiring;

@@ -23,7 +23,10 @@ import numpy as np
 
 AUDIO = r"C:\Users\baudo\Documents\MyCrusader_Audio"
 HERE = os.path.dirname(os.path.abspath(__file__))
-LINE = re.compile(r'^\s*Add\(List,\s*"[A-Za-z]+\.[A-Za-z]+",\s*"(?P<stems>[A-Za-z0-9_,]+)"')
+LINE = re.compile(r'^\s*Add\(List,\s*"(?P<cue>[A-Za-z]+\.[A-Za-z]+)",\s*"(?P<stems>[A-Za-z0-9_,]+)"')
+# The cues whose ten candidates MUST all be soft (s_ stems): the training alert, the six other alerts, the five building families.
+SOFT_CUES = ["Alert.TrainingDone", "Alert.UnderAttack", "Alert.BuildingDone", "Alert.TechDone", "Alert.Trade", "Alert.Volcano",
+             "Alert.Diplomacy", "Building.Wood", "Building.Stone", "Building.Sacred", "Building.Metal", "Building.Coins"]
 MAX_SECONDS = 0.80
 MAX_CENTROID = 800.0
 MAX_HIGH_SHARE = 0.01
@@ -68,15 +71,19 @@ def problems_of(values):
 
 
 def soft_stems(candidates_file):
+    """(every s_ stem, {cue: [its s_ stems]})."""
     stems = []
+    by_cue = {}
     with open(candidates_file, encoding="utf-8") as source:
         for line in source:
             match = LINE.match(line)
             if match:
                 for stem in match.group("stems").split(","):
-                    if stem.startswith("s_") and stem not in stems:
-                        stems.append(stem)
-    return stems
+                    if stem.startswith("s_"):
+                        by_cue.setdefault(match.group("cue"), []).append(stem)
+                        if stem not in stems:
+                            stems.append(stem)
+    return stems, by_cue
 
 
 def main():
@@ -86,7 +93,11 @@ def main():
     parser.add_argument("--selftest", action="store_true")
     args = parser.parse_args()
     failures = 0
-    stems = soft_stems(args.file)
+    stems, by_cue = soft_stems(args.file)
+    for cue in SOFT_CUES:
+        if len(by_cue.get(cue, [])) != 10:
+            print("  FAIL : %s has %d soft (s_) candidates, expected 10" % (cue, len(by_cue.get(cue, []))))
+            failures += 1
     if not stems:
         print("  FAIL : no s_ stem in %s (the soft candidates are not named yet)" % args.file)
         failures += 1
