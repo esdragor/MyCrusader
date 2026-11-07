@@ -11,3 +11,5 @@ Options
 Recommandation : C (traite le cas figé sans changer le sens des ordres de marche). Note : le correctif Celeborn-12 (poste dans le corps d'un ennemi immobile = fin de marche immédiate, hol.Orders.SlotBlockedStopDistance 250, 0 = avant) règle déjà le cas de #10 et #11 sans changer cette règle ; la question ne porte que sur le cas général.
 
 Défaut codé : A (comportement actuel). Aucune cvar de riposte n'est écrite (non testée).
+
+Reponse: C (utilisateur, 2026-11-07 apres la seance) : riposter seulement si la marche ne progresse plus (poste barre, immobile depuis N pas) ; la marche normale n'est pas coupee. A coder par l'agent neuf de la ligne 'Celeborn WIP b125064' de la file.
