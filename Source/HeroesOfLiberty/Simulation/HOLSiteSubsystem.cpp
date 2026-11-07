@@ -16,14 +16,14 @@
 namespace
 {
 	bool bSitesEnabled = false;
-	FAutoConsoleVariableRef CVarEnabled(TEXT("hol.Site.Enabled"), bSitesEnabled,
+	FAutoConsoleVariableRef CVarSiteEnabled(TEXT("hol.Site.Enabled"), bSitesEnabled,
 		TEXT("1 to let the sacred sites work (the match option 'Sacred sites' replaces it at S7); 0 by default: the game does not change"));
 
-	float HoldSeconds = HOLSite::DefaultHoldSeconds;
-	FAutoConsoleVariableRef CVarHoldSeconds(TEXT("hol.Site.HoldSeconds"), HoldSeconds,
+	float SiteHoldSeconds = HOLSite::DefaultHoldSeconds;
+	FAutoConsoleVariableRef CVarSiteHoldSeconds(TEXT("hol.Site.HoldSeconds"), SiteHoldSeconds,
 		TEXT("Seconds an adverse side must hold a sacred site's zone alone to take it (provisional 60, like the relay's)"));
 
-	FAutoConsoleCommandWithWorldAndArgs CommandAdd(TEXT("hol.Site.Add"),
+	FAutoConsoleCommandWithWorldAndArgs SiteCommandAdd(TEXT("hol.Site.Add"),
 		TEXT("hol.Site.Add <X> <Y> [Radius=1200]: a neutral sacred site there, server or solo (development only)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
@@ -41,7 +41,7 @@ namespace
 			}
 		}));
 
-	FAutoConsoleCommandWithWorldAndArgs CommandClear(TEXT("hol.Site.Clear"), TEXT("hol.Site.Clear: no sacred site left (development only)"),
+	FAutoConsoleCommandWithWorldAndArgs SiteCommandClear(TEXT("hol.Site.Clear"), TEXT("hol.Site.Clear: no sacred site left (development only)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			if (UHOLSiteSubsystem* Sites = World ? World->GetSubsystem<UHOLSiteSubsystem>() : nullptr)
@@ -50,7 +50,7 @@ namespace
 			}
 		}));
 
-	FAutoConsoleCommandWithWorldAndArgs CommandReport(TEXT("hol.Site.Report"), TEXT("hol.Site.Report: each sacred site's owner, taker and count in the log"),
+	FAutoConsoleCommandWithWorldAndArgs SiteCommandReport(TEXT("hol.Site.Report"), TEXT("hol.Site.Report: each sacred site's owner, taker and count in the log"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 		{
 			const UHOLSiteSubsystem* Sites = World ? World->GetSubsystem<UHOLSiteSubsystem>() : nullptr;
