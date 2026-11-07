@@ -20,12 +20,42 @@ waitlog Grid: attack-move, click on the ground
 hol.Select.LeftClickGround -8000 0
 waitlog Scripted left click at
 waitlog attack-move to
-frames 150
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+frames 25
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+wait 4
 hol.Camera.Zoom 8
 frames 40
 capture dipl_qground_before
 hol.Combat.Report
-waitlog hits 0 kills 0
+waitlog fighting 0 hits 0 kills 0
 frames 20
 hol.Diplomacy.Report
 waitlog Diplomacy report: slot 2 toward slot 1
