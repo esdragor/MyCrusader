@@ -1016,7 +1016,8 @@ void UHOLGameScreen::RefreshPlayersTable()
 		// D6: in the Diplomacy mode the allies and enemies are the book's, not the lobby's teams.
 		const HOLDiplomacy::FBook Book = GameState->IsDiplomacyMode() ? GameState->GetDiplomacyBook() : HOLDiplomacy::FBook();
 		Rows = HOLForumRules::GetPlayersTable(GameState->GetLaunchConfig(), Forums, GameState->GetDefeatedMask(),
-			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers, GameState->IsDiplomacyMode() ? &Book : nullptr);
+			PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE, FHOLForumTuning::FromSettings(), Tiers, GameState->IsDiplomacyMode() ? &Book : nullptr,
+			GameState->GetAbsentMask(), GameState->GetAIHeldMask());
 	}
 	const FString Shown = FString::JoinBy(Rows, TEXT(" | "), [](const FHOLPlayersTableRow& Row) { return Row.Shown; });
 	if (Shown == ShownPlayersTable)

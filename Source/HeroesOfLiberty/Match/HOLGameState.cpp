@@ -576,6 +576,7 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 		return false;
 	}
 	SlotDefeats[Slot] = Reason;
+	AIHeldMask &= ~(1 << Slot);
 	// R7: a slot defeated while its player is away is no longer kept for him.
 	AbsentSlots.RemoveAll([Slot](const FHOLAbsentSlot& Absent) { return Absent.Slot == Slot; });
 	AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
@@ -588,7 +589,8 @@ bool AHOLGameState::DefeatSlot(const int32 Slot, const EHOLDefeatReason Reason)
 	{
 		MatchStats->RecordEvent(Slot, EHOLMatchStatsEvent::Defeated);
 	}
-	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::Defeated, Slot));
+	// T8 (D722): a player who left and did not come back has his own text (the forum event does not carry the reason: the kind does).
+	SendForumEvent(FHOLForumEvent::Make(Reason == EHOLDefeatReason::Disconnected ? EHOLForumEventKind::Left : EHOLForumEventKind::Defeated, Slot));
 	CollapseSlot(Slot);
 	// D717 (T2): the AI's player state of a defeated seat goes away (the seat is no longer held, nobody thinks for it).
 	if (AHOLPlayerState* Bot = GetWorld() ? FindHeldBot(*GetWorld(), Slot) : nullptr)
@@ -968,6 +970,7 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 		// D719 (T0): his technologies, those acquired and those whose research ended while he was away, with their effects.
 		const FHOLTechnologyState Kept = AbsentSlots[Index].Technologies;
 		AbsentSlots.RemoveAt(Index);
+			AIHeldMask &= ~(1 << Slot);
 		// D717 (T2): he is back, the AI lets his seat go (what it remembered of it is dropped).
 		if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
 		{
@@ -1017,6 +1020,7 @@ TArray<int32> AHOLGameState::DefeatExpiredAbsences(const double Now, const doubl
 		if (FHOLDisconnectRules::GetWindowEnd(LaunchConfig, Slot) == FHOLDisconnectRules::EWindowEnd::AIHolds && GetWorld() && FindHeldBot(*GetWorld(), Slot))
 		{
 			AbsentSlots[FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot)].bWindowOver = true;
+				AIHeldMask |= 1 << Slot;
 			AbsentNotices.RemoveAll([Slot](const FHOLAbsentNotice& Notice) { return Notice.Slot == Slot; });
 			if (UHOLAIBrainSubsystem* Brain = UHOLAIBrainSubsystem::Find(GetWorld()))
 			{
@@ -1590,6 +1594,35 @@ void AHOLGameState::ReportDiplomacy() const
 	}
 }
 
-// T8/T9 stubs (red).
-uint8 AHOLGameState::GetAbsentMask() const { return 0; }
-TArray<FString> AHOLGameState::DescribeDisconnections(double, double) const { return {}; }
+uint8 AHOLGameState::GetAbsentMask() const
+{
+	uint8 Mask = 0;
+	for (const FHOLAbsentNotice& Notice : AbsentNotices)
+	{
+		if (Notice.Slot >= 0 && Notice.Slot < FHOLMatchConfig::MaxSlots && Notice.BackAt <= 0.)
+		{
+			Mask |= 1 << Notice.Slot;
+		}
+	}
+	return Mask;
+}
+
+TArray<FString> AHOLGameState::DescribeDisconnections(const double Now, const double WindowSeconds) const
+{
+	TArray<FString> Lines;
+	for (int32 Slot = 0; Slot < LaunchConfig.Slots.Num() && Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+	{
+		const FString Name = LaunchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
+		if (LaunchConfig.Slots[Slot].State != EHOLSlotState::Human || Name.IsEmpty())
+		{
+			continue;
+		}
+		const int32 Index = FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot);
+		using ESeat = FHOLDisconnectRules::ESeatState;
+		const ESeat State = IsSlotDefeated(Slot) ? ESeat::Defeated : Index == INDEX_NONE ? ESeat::Present
+			: AbsentSlots[Index].bWindowOver ? ESeat::AIHolds : ESeat::AbsentAIHolds;
+		Lines.Add(FHOLDisconnectRules::FormatSeatReport(Slot, Name, State,
+			Index != INDEX_NONE ? FHOLDisconnectRules::GetSecondsLeft(AbsentSlots[Index].LeftAt, Now, WindowSeconds) : 0.));
+	}
+	return Lines;
+}
