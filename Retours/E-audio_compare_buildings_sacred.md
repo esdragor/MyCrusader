@@ -6,7 +6,7 @@ SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'
 branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
 
 Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.
-Sacre (Chapelle, Sanctuaire) [Building.Sacred] = _
+Sacre (Chapelle, Sanctuaire) [Building.Sacred] = H (s_sacred_book), mais volume x2 a x3  [REPONSE DE L'UTILISATEUR 2026-11-07, ecoute reelle]
 
 Lettres (le panneau affiche le nom du cue a cote de la lettre) :
 Building.Sacred : A s_sacred_bass_low, B s_sacred_cello, C s_sacred_harp_b3, D s_sacred_harp_d4, E s_sacred_harp_octave, F s_sacred_gong_low, G s_sacred_drum, H s_sacred_book, I s_sacred_low_toll, J s_sacred_cloth

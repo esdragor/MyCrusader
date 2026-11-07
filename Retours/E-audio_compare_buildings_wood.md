@@ -6,7 +6,7 @@ SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'
 branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
 
 Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.
-Bois (Maison, camps, Moulin, Ferme) [Building.Wood] = _
+Bois (Maison, camps, Moulin, Ferme) [Building.Wood] = F (s_wood_door), mais volume x2 a x3  [REPONSE DE L'UTILISATEUR 2026-11-07, ecoute reelle]
 
 Lettres (le panneau affiche le nom du cue a cote de la lettre) :
 Building.Wood : A s_wood_light, B s_wood_medium, C s_wood_heavy, D s_wood_plank, E s_wood_chop, F s_wood_door, G s_wood_creak_low, H s_wood_step, I s_wood_slap_low, J s_wood_deep_knock

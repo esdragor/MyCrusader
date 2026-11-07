@@ -6,7 +6,7 @@ SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'
 branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
 
 Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.
-Pierre (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) [Building.Stone] = _
+Pierre (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) [Building.Stone] = rien de bien : aucune lettre, dix autres candidats a refaire  [REPONSE DE L'UTILISATEUR 2026-11-07, ecoute reelle]
 
 Lettres (le panneau affiche le nom du cue a cote de la lettre) :
 Building.Stone : A s_stone_mine_a, B s_stone_mine_b, C s_stone_mine_c, D s_stone_mine_d, E s_stone_punch_heavy, F s_stone_punch_soft, G s_stone_door, H s_stone_thud, I s_stone_drum, J s_stone_mallet
