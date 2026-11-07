@@ -29,6 +29,98 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 	TArray<UStaticMeshComponent> GroundComponents;
 	TArray<UMaterialInterface> GroundOriginals;
 
+	// The generic decor laid for the biome (B3): one actor with an instanced mesh per kind. Null when none is laid.
+	AHOLBiomeDecor DecorLayer;
+
+	// The densities (per hectare) the map asks of each slot of the biome's kind list: PROVISIONAL, the middle of what the baked DECOR of the
+	// maps asks (Tools/Editor/maps), until each map names its own (Reference of HOLBiomeDecor::Plan).
+	TArray<double> ReferenceDensities()
+	{
+		TArray<double> Reference;
+		Reference.Add(60.0);
+		Reference.Add(30.0);
+		Reference.Add(20.0);
+		Reference.Add(12.0);
+		Reference.Add(8.0);
+		Reference.Add(6.0);
+		Reference.Add(4.0);
+		Reference.Add(3.0);
+		return Reference;
+	}
+
+	void RemoveDecor()
+	{
+		if (DecorLayer != nullptr)
+		{
+			DecorLayer.DestroyActor();
+			DecorLayer = nullptr;
+		}
+	}
+
+	UStaticMesh ShapeMesh(int Shape)
+	{
+		FString Path = "/Engine/BasicShapes/Cone.Cone";
+		if (Shape == HOLBiomeDecor::ShapeSphere)
+		{
+			Path = "/Engine/BasicShapes/Sphere.Sphere";
+		}
+		else if (Shape == HOLBiomeDecor::ShapeCylinder)
+		{
+			Path = "/Engine/BasicShapes/Cylinder.Cylinder";
+		}
+		return Cast<UStaticMesh>(LoadObject(nullptr, Path));
+	}
+
+	// Lays the plan of the biome on the loaded map: from the bounds of the map, the points to keep clear (HOLBiomeDecorSites) and the layout
+	// seed 1. Purely visual (D656): no collision, no navigation, no shadow (D258), cut at 12 000 cm like the baked decor.
+	void LayDecor(int Biome)
+	{
+		TArray<AHOLMapBounds> Bounds;
+		GetAllActorsOfClass(Bounds);
+		if (Bounds.Num() == 0)
+		{
+			Log(n"LogHOLMatch", "Biome decor expect: pieces=0 kinds=0 (the map has no bounds)");
+			return;
+		}
+		FVector Origin;
+		FVector Extent;
+		Bounds[0].GetActorBounds(false, Origin, Extent);
+		double Half = Math::Max(Extent.X, Extent.Y);
+		TArray<FVector2D> Avoid;
+		for (FVector2D Site : HOLBiomeDecorSites::Gather())
+		{
+			Avoid.Add(FVector2D(Site.X - Origin.X, Site.Y - Origin.Y));
+		}
+		TArray<FHOLGenericDecor> Pieces = HOLBiomeDecor::Plan(Biome, 1, Half, Avoid, ReferenceDensities());
+		DecorLayer = Cast<AHOLBiomeDecor>(SpawnActor(AHOLBiomeDecor::StaticClass(), FVector::ZeroVector));
+		UMaterialInterface Matte = Cast<UMaterialInterface>(LoadObject(nullptr, "/Game/Rendering/M_MatteColor.M_MatteColor"));
+		TMap<int, UHierarchicalInstancedStaticMeshComponent> Parts;
+		for (FHOLGenericDecor Piece : Pieces)
+		{
+			if (!Parts.Contains(Piece.Kind))
+			{
+				UHierarchicalInstancedStaticMeshComponent Part = UHierarchicalInstancedStaticMeshComponent::Create(DecorLayer, FName(f"BiomeDecor_{Piece.Kind}"));
+				Part.SetStaticMesh(ShapeMesh(Piece.Shape));
+				Part.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+				Part.SetCollisionProfileName(n"NoCollision");
+				Part.SetGenerateOverlapEvents(false);
+				Part.SetCastShadow(false);
+				Part.SetCullDistances(8000, 12000);
+				UMaterialInstanceDynamic Paint = Part.CreateDynamicMaterialInstance(0, Matte);
+				if (Paint != nullptr)
+				{
+					Paint.SetVectorParameterValue(n"Color", FLinearColor(float(Piece.R) / 1000.0f, float(Piece.G) / 1000.0f, float(Piece.B) / 1000.0f, 1.0f));
+				}
+				Parts.Add(Piece.Kind, Part);
+			}
+			FTransform At(FRotator(0.0f, float(Piece.YawDegrees), 0.0f),
+				FVector(Piece.X + Origin.X, Piece.Y + Origin.Y, Piece.ZCm),
+				FVector(float(Piece.ScaleXPercent) / 100.0f, float(Piece.ScaleYPercent) / 100.0f, float(Piece.ScaleZPercent) / 100.0f));
+			Parts[Piece.Kind].AddInstance(At, true);
+		}
+		Log(n"LogHOLMatch", f"Biome decor expect: pieces={Pieces.Num()} kinds={Parts.Num()} half={int(Half)}");
+	}
+
 	UFUNCTION(BlueprintOverride)
 	void Tick(float DeltaTime)
 	{
@@ -46,6 +138,7 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 		}
 		int Before = Applied;
 		Applied = Wanted;
+		RemoveDecor();
 		if (Wanted < 0)
 		{
 			if (Before >= 0)
@@ -61,6 +154,7 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 		FHOLBiomeLook Look = HOLBiomeApply::LookOf(Wanted);
 		Log(n"LogHOLMatch", HOLBiomeApply::ExpectLine(Look));
 		ApplyToWorld(Look);
+		LayDecor(Wanted);
 	}
 
 	void RememberMapLook()

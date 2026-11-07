@@ -1,0 +1,40 @@
+# B3 : tour des 5 biomes sur la Plaine avec le decor generique (sol + lumiere + decor ensemble), un PNG par biome ; Entree = biome suivant. Valeurs PROVISOIRES : dis aime / pas aime par biome (sol, lumiere, decor). 3 minutes au plus.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Camera.Focus 0 0
+frames 5
+hol.Units.Spawn 8 -450 0 0 ManAtArms 450
+hol.Units.Spawn 8 450 0 1 ManAtArms 450
+waitunits 16
+hol.Camera.Focus 0 0
+frames 20
+hol.Biome.Index 0
+frames 90
+capture decor_0_fresh_grass
+note 1/5 Herbe fraiche : sol, lumiere ET decor (touffes, fleurs, buissons). Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 1
+frames 90
+capture decor_1_dry_steppe
+note 2/5 Steppe seche : sol, lumiere ET decor (herbes seches, buissons). Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 2
+frames 90
+capture decor_2_autumn
+note 3/5 Automne : sol, lumiere ET decor (feuilles mortes, buissons). Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 3
+frames 90
+capture decor_3_dark_forest
+note 4/5 Foret sombre : sol, lumiere ET decor (fougeres, touffes). Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 4
+frames 90
+capture decor_4_snow
+note 5/5 Neige : dernier biome (touffes gelees, buissons nus). Les 5 vues sont dans les captures du scenario.
+frames 5
+hol.Biome.DecorWorld
+hol.Biome.World
+hol.Test.Sanity
+panel show
