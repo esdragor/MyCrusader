@@ -673,6 +673,12 @@ GROVE_NEVER = 80.0  # no two trees closer than this, whatever (2026-11-01: 0.8 m
 GROVE_AREA = 1.09 * (GROVE_SPACING + GROVE_SPACING_SLACK / 3.0) ** 2  # cm2 a tree takes up in a blob (a dense random packing of trunks GROVE_SPACING apart: 29 600 at 1.6 to 1.74 m, 56 000 at 2.2 to 2.4 m)
 GROVE_GLADES = os.environ.get("HOL_GROVE_GLADES", "1") != "0"  # a grove of 12 or more has a glade or a 3 m path through it (the default); HOL_GROVE_GLADES=0 makes them solid blocks of trees (question in Auto_Journey_Retours.md, 2026-10-31)
 GLADE_RADIUS = (250.0, 380.0)
+# 2026-11-07 (E-maps-review defect 5: "forests are solid blobs, the glades are nearly invisible"): the knobs of the glade sweep (maps/glade_sweep.py,
+# scenario glade_sweep). GLADE_FORCE 0 (the default) = the draws below, unchanged: every map file stays the same. GLADE_FORCE N > 0: a grove of 12 or
+# more has exactly N glades (no path), each of radius GLADE_RADIUS x GLADE_SCALE, centred up to 55 % of the way out. Nothing sets them in a match map.
+GLADE_SCALE = float(os.environ.get("HOL_GLADE_SCALE", "1"))
+GLADE_FORCE = int(os.environ.get("HOL_GLADE_FORCE", "0"))
+GLADE_REACH = float(os.environ.get("HOL_GLADE_REACH", "0.55"))  # with GLADE_FORCE: how far out (fraction of the blob) a glade may be centred; far out it breaks the outline (a crescent)
 PATH_HALF_WIDTH = 150.0  # a path: no trunk centre within this of its axis, so 3 m between the centres, 1.8 m between the trunks
 BERRY_MIN = 300.0  # cm between the centres of two bushes of 1.1 m radius: 80 cm between the edges, closed to a unit
 BERRY_MAX = 335.0
@@ -803,9 +809,9 @@ def grove_attempt(rng, count, compact):
     glades, paths = [], []
     cut_area = 0.0
     if not compact and count >= 12 and GROVE_GLADES:
-        for _ in range(1 + (1 if count >= 16 and rng.chance(0.4) else 0)):
-            if rng.chance(0.5):
-                glades.append((rng.range(0.0, 0.4), rng.range(0.0, 2 * math.pi), rng.range(*GLADE_RADIUS) * (0.8 if count < 16 else 1.0)))
+        for _ in range(GLADE_FORCE if GLADE_FORCE > 0 else 1 + (1 if count >= 16 and rng.chance(0.4) else 0)):
+            if GLADE_FORCE > 0 or rng.chance(0.5):
+                glades.append((rng.range(0.0, GLADE_REACH if GLADE_FORCE > 0 else 0.4), rng.range(0.0, 2 * math.pi), rng.range(*GLADE_RADIUS) * GLADE_SCALE * (0.8 if count < 16 else 1.0)))
                 cut_area += math.pi * glades[-1][2] ** 2
             else:
                 paths.append((rng.range(0.0, 0.4), rng.range(0.0, 2 * math.pi), rng.range(0.0, 2 * math.pi), rng.chance(0.5)))
@@ -1326,6 +1332,69 @@ def ring_relays(recipe, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(
     raise RuntimeError("No clear circle for the relays of %s" % recipe.map_path)
 
 
+# ---- Sacred sites (SacredSitesInProgress.md S4, D697): a place of the map taken by a holy unit or the hero, gold and the sacred victory. A module's
+# sites(recipe) gives [(x, y, radius)] in cm, like relays(recipe), as SITE_RINGS rings of one site per place (the number and the places are the map's
+# level design, no formula: SITE_RINGS is a PROVISIONAL value per map, TO CONFIRM by the user, Retours\Q-sites-nombre.md). Rules (tools\Tests\sites_test.py,
+# and the Map.Table test once the HOLSiteLayout class exists): symmetric by a turn of one place, outside every base's reach, inside the bounds, clear of the
+# relays' zones, the altar's zone, the lava flows, the rocks and the veins to keep whole.
+SITE_RADIUS = 1200.0  # cm, as the relay and the ruin (the radius is a TO PROPOSE in S4)
+SITE_RINGS = 1  # default number of rings (one site per place) when a module does not say
+SITE_SWEEP = 16  # turns of the ring tried (of one place's angle) when neither the middle angles nor the axes are clear
+SITE_MARGIN = 500.0 # cm of free ground between a site's zone and a relay's, the bounds' edge
+SITE_FRACTIONS = (1.0, 0.95, 1.05, 0.9, 1.1, 0.85, 1.15, 0.8, 0.75, 1.2, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2)  # of the places' circle
+
+
+def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(), rings=None):
+    """The sites of a map: `rings` rings (SITE_RINGS) of one site per place. A ring lies on the middle angles between two places (on_slots: on the places' own
+    axes, for the maps whose ranges run along the middle angles), on the first circle (SITE_FRACTIONS of the places' circle, the outer ones first: the relays
+    keep the inner ground) where all of its sites are clear; a ring after the first takes the other angles (the places' axes) then the rest of the fractions.
+    Clear: inside the bounds, outside every base's reach and extra_radius (a marsh, a river), SITE_MARGIN from every relay zone, off the altar and the lava
+    flows (common.volcano_site), RELAY_ROCK_CLEAR from every avoid point (0 if none of the circles fits), off the veins to keep whole, and apart from the
+    sites already placed. Symmetric by a turn of one place by construction."""
+    if recipe.size_key is None:
+        return []
+    rings = SITE_RINGS if rings is None else rings
+    places = len(recipe.angles)
+    slots = [recipe.slot(index)[0] for index in range(places)]
+    site = volcano_site(recipe)
+    altar_x, altar_y, altar_radius = site["altar"]
+    zone = SITE_RADIUS
+    middle_first = math.radians(recipe.angles[0] + 180.0 / places)
+    axis_first = math.radians(recipe.angles[0])
+    families = (axis_first, middle_first) if on_slots else (middle_first, axis_first)
+    # Last resort (a 2-place river map: the middle angles lie in the water, the axes in the lava flows and the relays): any other turn of the ring.
+    sweep = tuple(axis_first + math.radians(360.0 / places) * k / SITE_SWEEP for k in range(1, SITE_SWEEP) if 2 * k != SITE_SWEEP)
+    placed = []
+    for _ in range(rings):
+        found = None
+        for rock_clear in (RELAY_ROCK_CLEAR, 0.0):
+            for first in families + sweep:
+                for fraction in SITE_FRACTIONS:
+                    radius = fraction * recipe.slot_radius
+                    if radius < extra_radius + zone + SITE_MARGIN:
+                        continue
+                    ring = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places), zone) for k in range(places)]
+                    clear = all(abs(x) <= recipe.bounds_half - zone - SITE_MARGIN and abs(y) <= recipe.bounds_half - zone - SITE_MARGIN for x, y, _ in ring)
+                    clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + zone + SITE_MARGIN for x, y, _ in ring for slot in slots)
+                    clear = clear and all(math.dist((x, y), (u, v)) >= zone + r + SITE_MARGIN for x, y, _ in ring for u, v, r in list(relays) + placed)
+                    clear = clear and all(math.dist((x, y), (altar_x, altar_y)) >= zone + altar_radius + SITE_MARGIN for x, y, _ in ring)
+                    clear = clear and all(segment_distance((x, y), flow[0], flow[-1]) >= RELAY_LAVA_HALF_WIDTH + zone for x, y, _ in ring for flow in site["flows"])
+                    clear = clear and all(math.dist((x, y), rock) >= zone + rock_clear for x, y, _ in ring for rock in avoid)
+                    clear = clear and all(math.dist((x, y), pile) >= zone + 1.0 for x, y, _ in ring for pile in keep_whole)
+                    if clear:
+                        found = ring
+                        break
+                if found:
+                    break
+            if found:
+                break
+        if found is None:
+            raise RuntimeError("No clear circle for the sites of %s" % recipe.map_path)
+        placed += found
+        families = families[1:] + families[:1]  # the next ring takes the other angles
+    return placed
+
+
 def spawn_relays(relays):
     layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLRelayLayout")
     if layout_class is None:
@@ -1821,7 +1890,8 @@ def make_map(recipe, module, on_saved):
     layout = spawn(layout_class, label="SourceLayout")
     relays, sources, groups = lay_relays_and_sources(recipe, module)
     sources = outside_relays(sources, relays)  # what the far layer's clearance did not keep out (R2)
-    sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
+    if not getattr(module, "NO_EDITS", False):  # the glade sweep (maps/glade_sweep.py) wears the name of a listed map and must not take its painted forests
+        sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
     export_layout(recipe, relays, sources)  # Saved/MapLayouts/<map file>.json: what the map painter shows
     layout.set_editor_property("sources", sources)
     if relays:

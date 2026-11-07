@@ -1,0 +1,19 @@
+﻿# Les Gues Petite : l'autel du volcan doit se tenir SUR LE PONT du milieu (D673), plus dans la riviere ; vue large puis vue rapprochee du centre
+hol.Camera.Zoom -7
+hol.Camera.TestCursor 0.5 0.5
+panel hide
+frames 5
+hol.Camera.Focus 0 0
+frames 40
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture gues_centre_large
+hol.Camera.Zoom 2
+hol.Camera.Focus 0 0
+frames 40
+capture gues_autel_pont
+hol.Test.Sanity
+hol.Camera.Zoom -7
+hol.Camera.TestCursor off
+panel show
+note LES GUES PETITE : l'autel (socle noir a deux marches, pilier noir, haut orange) doit etre sur le pont du milieu, pas dans l'eau bleue de la riviere.

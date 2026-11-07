@@ -122,6 +122,11 @@ def relays(recipe):
     return common.ring_relays(recipe, avoid=avoid_points(recipe), extra_radius=bowl_radius(recipe))
 
 
+def sites(recipe):
+    """S4 (provisional level design, D697): one ring of sacred sites (common.ring_sites), clear of the rocks and of the bowl like the relays."""
+    return common.ring_sites(recipe, relays(recipe), avoid=avoid_points(recipe), extra_radius=bowl_radius(recipe))
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
     return steppe.floor_of("forests", recipe)
