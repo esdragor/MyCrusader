@@ -644,6 +644,10 @@ public:
 	 */
 	bool RequestPause(const AHOLPlayerState& Requester, double Now);
 	bool RequestResume(const AHOLPlayerState& Requester, double Now);
+	/** D720 (T6), server only: the clock of the disconnection windows: Now less the time the match was paused (the window does not run during a pause). */
+	double GetWindowClock(const double Now) const { return Now - WindowPausedSeconds - (IsMatchPaused() ? FMath::Max(Now - PausedAtSeconds, 0.) : 0.); }
+	/** D720 (T6), server only: Slot leaves; if he paused the match, it resumes (his pause stays counted). True when lifted. */
+	bool LiftPauseOf(int32 Slot, double Now);
 
 	/** Every machine: paused, resumed or the count changed (server at once, a client by OnRep). For the pause screen. */
 	DECLARE_MULTICAST_DELEGATE(FOnPauseChanged);
@@ -682,4 +686,6 @@ private:
 	/** Server world time (GetServerWorldTimeSeconds) of the pause: the timer's start. */
 	UPROPERTY(ReplicatedUsing = OnRep_Pause)
 	double PausedAtSeconds = 0.;
+	/** D720 (T6), server only: the seconds of the pauses already ended (taken off the clock of the disconnection windows). */
+	double WindowPausedSeconds = 0.;
 };
