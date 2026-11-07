@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "Containers/Ticker.h"
+
 #include "CoreMinimal.h"
 #include "Net/HOLManagerClientRules.h"
 #include "Player/HOLGameMenuRules.h"
@@ -92,6 +94,11 @@ public:
 	 */
 	void KeepRejoinedLobby(const FString& InLobbyId);
 
+	/** T7 (D721): the connection to the match is lost and the client retries by itself (the screen shows the countdown). */
+	bool IsReconnecting() const { return Reconnect.IsActive(); }
+	/** T7: « Annuler »: no more attempt, back to the list with the message of a lost match. */
+	void CancelReconnect();
+
 	/** Where the menu goes once the match is left (R4.8): read once by the menu's player controller. */
 	enum class EAfterMatch : uint8 { None, Lobby, List };
 	void SetAfterMatch(EAfterMatch InAfterMatch) { AfterMatch = InAfterMatch; }
@@ -128,6 +135,12 @@ private:
 	void HandleNetworkFailure(UWorld* World, class UNetDriver* NetDriver, ENetworkFailure::Type Failure, const FString& Message);
 	void HandleTravelFailure(UWorld* World, ETravelFailure::Type Failure, const FString& Message);
 	void LoseMatch(const FHOLManagerError& Error);
+	/** T7: the match lost while a named player is in it: the retries start; false when they do not (a spectator, no address, no window). */
+	bool StartReconnect(const FHOLManagerError& Error);
+	bool TickReconnect(float DeltaTime);
+	void EndReconnect();
+	void ShowReconnectBanner();
+	void HideReconnectBanner();
 
 	TArray<FHOLManagerServer> Servers;
 	/** In a match opened by OpenMatch (player or spectator), until it is lost or the menu is back. */
@@ -143,5 +156,12 @@ private:
 	/** SP1: I was a spectator in the lobby last read: the way back (ReturnToLobby) joins as one. */
 	bool bLobbySpectator = false;
 	EAfterMatch AfterMatch = EAfterMatch::None;
+	/** T7: the retries of a lost match, the address they open and why the match was lost (shown if they give up). */
+	FHOLReconnect Reconnect;
+	FString ReconnectAddress;
+	FHOLManagerError ReconnectError;
+	FTSTicker::FDelegateHandle ReconnectTicker;
+	TSharedPtr<class SWidget> ReconnectWidget;
+	TSharedPtr<class STextBlock> ReconnectText;
 	FHOLManagerError LobbyLoss;
 };

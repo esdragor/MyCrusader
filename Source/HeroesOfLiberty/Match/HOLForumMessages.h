@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -24,6 +24,8 @@ enum class EHOLForumEventKind : uint8
 	Defeated,
 	/** V5.2 (Regicide, D355): a slot's King died; its defeat (reason King) follows at the end of the step. */
 	KingDied,
+	/** T8 (D722): a slot defeated because its player left and did not come back (reason Disconnected): « Bob a quitt\u00e9 la partie ». */
+	Left,
 };
 
 /** V4.1: one event, sent once by the server to every machine (AHOLGameState::MulticastForumEvent). */

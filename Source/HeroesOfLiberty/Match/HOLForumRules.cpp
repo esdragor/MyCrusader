@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Match/HOLForumRules.h"
 
@@ -437,7 +437,8 @@ FHOLForumBlock HOLForumRules::GetSelectionBlock(const FHOLForumState* State, con
 }
 
 TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig& Config, const TConstArrayView<FHOLForumState> Forums,
-	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers, const HOLDiplomacy::FBook* Book)
+	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers, const HOLDiplomacy::FBook* Book,
+	const uint8 AbsentMask, const uint8 AIHeldMask)
 {
 	// The occupied slots, in their order; grouped by team when there are teams (no team last).
 	TArray<int32> Slots;

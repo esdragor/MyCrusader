@@ -552,3 +552,11 @@ FString FHOLManagerClientRules::MakeMatchAddress(const FString& ManagerUrl, cons
 	}
 	return Address + TEXT("Version=") + FGenericPlatformHttp::UrlEncode(GameVersion);
 }
+
+// T7 stubs (red): the rules come next.
+FHOLReconnectRules::EStep FHOLReconnectRules::GetStep(double, double, double, double, double) { return EStep::Wait; }
+double FHOLReconnectRules::GetSecondsLeft(double, double, double) { return 0.; }
+FText FHOLReconnectRules::FormatLine(double) { return FText::GetEmpty(); }
+void FHOLReconnect::Start(double, double, double) {}
+FHOLReconnectRules::EStep FHOLReconnect::Tick(double) { return FHOLReconnectRules::EStep::Wait; }
+double FHOLReconnect::GetSecondsLeft(double) const { return 0.; }

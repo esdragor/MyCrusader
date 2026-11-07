@@ -236,6 +236,12 @@ public:
 	DECLARE_MULTICAST_DELEGATE(FOnVictoryChanged);
 	FOnVictoryChanged OnVictoryChanged;
 
+	/** T8 (D722): bit Slot: that slot's player is away, the window running (read from the replicated notices, on every machine). */
+	uint8 GetAbsentMask() const;
+	/** T8 (D722): bit Slot: the window is over and the AI keeps the seat (replicated). */
+	uint8 GetAIHeldMask() const { return AIHeldMask; }
+	/** T9: one line per occupied human seat, as the server reads it (hol.Disconnect.Report). */
+	TArray<FString> DescribeDisconnections(double Now, double WindowSeconds) const;
 	/** Bit Slot: that slot is defeated. */
 	uint8 GetDefeatedMask() const;
 	uint8 GetWinnerMask() const { return WinnerMask; }
@@ -411,6 +417,9 @@ private:
 	 */
 	UPROPERTY(Replicated)
 	TArray<FHOLAbsentNotice> AbsentNotices;
+	/** T8 (D722): bit Slot: away, the window over, the AI keeps the seat to the end (set with bWindowOver, cleared on the return or the defeat). */
+	UPROPERTY(Replicated)
+	uint8 AIHeldMask = 0;
 
 	/** R5: the neutral relays, public. */
 	UPROPERTY(Replicated)

@@ -62,6 +62,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, MissingPlayers);
 	DOREPLIFETIME(AHOLGameState, WaitEndSeconds);
 	DOREPLIFETIME(AHOLGameState, AbsentNotices);
+	DOREPLIFETIME(AHOLGameState, AIHeldMask);
 	DOREPLIFETIME(AHOLGameState, RelayViews);
 	DOREPLIFETIME(AHOLGameState, VolcanoViews);
 	DOREPLIFETIME(AHOLGameState, PausesLeft);
@@ -1588,3 +1589,7 @@ void AHOLGameState::ReportDiplomacy() const
 		}
 	}
 }
+
+// T8/T9 stubs (red).
+uint8 AHOLGameState::GetAbsentMask() const { return 0; }
+TArray<FString> AHOLGameState::DescribeDisconnections(double, double) const { return {}; }

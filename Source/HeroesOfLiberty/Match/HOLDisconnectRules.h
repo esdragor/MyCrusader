@@ -87,6 +87,9 @@ struct HEROESOFLIBERTY_API FHOLDisconnectRules
 	/** Seconds left in the window, 0 at its end (the banner of R7.5). */
 	static double GetSecondsLeft(double LeftAt, double Now, double WindowSeconds);
 
+	/** T9: a seat's line for hol.Disconnect.Report, e.g. "slot 1 (Bob) away, AI holds, 162 s left" (SecondsLeft rounded up). */
+	static FString FormatSeatReport(int32 Slot, const FString& Name, ESeatState State, double SecondsLeft);
+
 	/** Index in Absent of the slot, INDEX_NONE if not absent. */
 	static int32 FindAbsent(TConstArrayView<FHOLAbsentSlot> Absent, int32 Slot);
 

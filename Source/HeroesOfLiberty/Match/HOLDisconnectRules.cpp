@@ -105,3 +105,5 @@ FText FHOLDisconnectRules::FormatBackLine(const FString& Name)
 }
 
 #undef LOCTEXT_NAMESPACE
+
+FString FHOLDisconnectRules::FormatSeatReport(int32, const FString&, ESeatState, double) { return FString(); }
