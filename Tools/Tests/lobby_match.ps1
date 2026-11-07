@@ -98,6 +98,8 @@ $BobGivesUp = Join-Path $Work "bob_gives_up.signal"
 $AliceStayed = Join-Path $Work "alice_stayed.signal"
 Remove-Item $ManagerLog, $GameLogs.Bob2, $GameLogs.Alice, $GameLogs.Bob, $GameLogs.Carol, $GameLogs.Dave, $CarolIn, $MatchOver, $DaveDone, $AliceBack, $BobBack, $BobChecked, $BobGivesUp, $AliceStayed -ErrorAction SilentlyContinue
 $Colours = @{ Alice = 2; Bob = 5 }
+# -Team: the two AIs of the lobby take colours 1 and 2 by default; the humans choose others (Alice's colour 2 was refused: 2026-11-07).
+if ($Team) { $Colours = @{ Alice = 6; Bob = 7 } }
 
 # This copy's own ports (copy_ports.ps1): its test manager on a free TCP port of its range (another copy's manager may
 # hold 7700, another copy's test runs in its own range), its match servers from its own UDP range.
