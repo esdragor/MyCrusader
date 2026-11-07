@@ -4,13 +4,14 @@
 #   $Got = Enter-EditorSlot -Name <scenario> -Root <worktree> [-Max 2] [-WaitSeconds 1200]   # $true when a slot is held (waits otherwise)
 #   ... start the editor, wait for it, stop it ...
 #   Exit-EditorSlot                                                                           # frees the slot
-# check.ps1 (hence preflight.ps1) takes one around its game. A ticket belongs to a process (pid + start time): when that process dies
+# check.ps1 (hence preflight.ps1) takes one around its game, and so do crossings.ps1 and the hinterland/cols/crown/fords_paths.ps1 tools. A ticket belongs to a process (pid + start time): when that process dies
 # without freeing it (killed, crashed), the next one to look drops it, so a slot is never lost. Tickets: one JSON per editor under
 # C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.state\editors (a sub-folder: build.ps1 reads the *.json of the folder above) or
 # $env:HOL_EDITOR_SLOT_DIR (tests). All reads and writes happen under an exclusive lock file (queue.lock), as build.ps1 does.
-# Tested end to end by Tools\Scenarios\editor_slot_test.ps1. Not covered: quick_check.ps1 and a hand launch of the editor.
+# Tested end to end by Tools\Scenarios\editor_slot_test.ps1. Not covered: quick_check.ps1, play.ps1 (the user's own game) and a hand launch of the editor.
 
 $script:EditorSlotTicket = $null
+$script:EditorSlotAhead = 0
 
 function Get-EditorSlotDir {
     if ($env:HOL_EDITOR_SLOT_DIR) { $Dir = $env:HOL_EDITOR_SLOT_DIR }
@@ -58,12 +59,13 @@ function Enter-EditorSlot([string]$Name, [string]$Root, [int]$Max = 2, [int]$Wai
     Use-EditorSlotLock { [IO.File]::WriteAllText($File, ($Ticket | ConvertTo-Json), (New-Object Text.UTF8Encoding $false)) } | Out-Null
     $script:EditorSlotTicket = $File
     $Start = Get-Date
-    $Told = $false
+    $Told = -1
     while ($true) {
         $Entered = Use-EditorSlotLock {
             $All = Read-EditorSlotTickets
             $Running = @($All | Where-Object { $_.state -eq "running" }).Count
             $Waiting = @($All | Where-Object { $_.state -eq "waiting" })
+            $script:EditorSlotAhead = 0
             $Place = 0
             for ($I = 0; $I -lt $Waiting.Count; $I++) { if ($Waiting[$I].id -eq $Id) { $Place = $I } }
             if ($Running + $Place -lt $Max) {
@@ -71,15 +73,20 @@ function Enter-EditorSlot([string]$Name, [string]$Root, [int]$Max = 2, [int]$Wai
                 [IO.File]::WriteAllText($File, ($Ticket | ConvertTo-Json), (New-Object Text.UTF8Encoding $false))
                 return $true
             }
+            $script:EditorSlotAhead = $Running + $Place
             return $false
         }
-        if ($Entered) { return $true }
+        if ($Entered) {
+            if ($Told -ge 0) { Write-Host ("editeur libre apres {0} s ({1})" -f [int]((Get-Date) - $Start).TotalSeconds, $Name) }
+            return $true
+        }
         if (((Get-Date) - $Start).TotalSeconds -ge $WaitSeconds) {
             Exit-EditorSlot
             Write-Host "editor slot: no slot after $WaitSeconds s ($Max editors already run)"
             return $false
         }
-        if (-not $Told) { Write-Host "editor slot: $Max editors already run on this machine, waiting for a slot ($Name)"; $Told = $true }
+        # Said once, then again whenever the number ahead of us changes (running editors + earlier requests).
+        if ($Told -ne $script:EditorSlotAhead) { Write-Host "editeur occupe, $($script:EditorSlotAhead) en file ($Name; $Max editors au plus sur la machine)"; $Told = $script:EditorSlotAhead }
         Start-Sleep -Seconds 2
     }
 }

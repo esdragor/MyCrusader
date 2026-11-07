@@ -9,7 +9,9 @@
 #   Launch verifie aussi la file : au moins 3 lignes '[ ]' etiquetees 'sans C++' dans Auto_Journey_File.md (de quoi relancer sans toucher au plafond de 3 agents C++)
 param(
   [Parameter(Mandatory=$true)][ValidateSet('Launch','Merge','Close','Essay','Report')][string]$Phase,
-  [string]$End = '13:30',
+  [string]$End = '',                       # L8-3 : prioritaire ; absent = la ligne de Docs\SessionEnd.txt ('2026-11-07 12:00', creee une fois par la session principale), sinon 13:30 avec un WARN
+  [string]$SessionEndFile = '',            # L8-3 : defaut <copie principale>\Docs\SessionEnd.txt
+  [string]$QueueFile = '',                 # L8-7 : defaut <copie principale>\Auto_Journey_File.md (la file des lignes '[ ]')
   [string[]]$Branches = @(),
   [string]$Root = '',
   [switch]$Scenarios,                      # Launch : la tache de l'agent joue des scenarios (donc exige un binaire du worktree a jour, -Root)
@@ -24,11 +26,33 @@ $Exclude = @($Exclude | ForEach-Object { $_ -split ',' } | Where-Object { $_ } |
 if (-not $RetoursDir) { $RetoursDir = "$Main\Retours" }
 $Fails = 0
 function Say([string]$Level, [string]$Msg) { if ($Level -eq 'FAIL') { $script:Fails++ }; Write-Output ("{0,-4} {1}" -f $Level, $Msg) }
+# Elrond-8 (2026-11-07) : le plus recent des fichiers C++/config d'un worktree (heure d'ECRITURE). Une fusion ecrit les fichiers qu'elle apporte a l'heure
+# de la fusion alors que leur commit garde sa date d'auteur : comparer le binaire a la DATE DE COMMIT laisse passer un binaire compile AVANT la fusion
+# (faux rouges comme 'camera 2p/8p right edge got 0 m', 2026-11-06). On compare donc aussi a l'heure d'ecriture des fichiers.
+function Get-NewestCode([string]$Root) {
+  $f = @(); foreach ($d in 'Source', 'Config') { $p = Join-Path $Root $d; if (Test-Path $p) { $f += Get-ChildItem $p -Recurse -File -Include '*.cpp', '*.h', '*.cs', '*.ini' -ErrorAction SilentlyContinue } }
+  $f | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+function Say-StaleBySource([string]$Root, $Bin, [string]$Level) {
+  $n = Get-NewestCode $Root
+  if ($n -and $Bin -and $n.LastWriteTime -gt $Bin.LastWriteTime.AddSeconds(5)) { Say $Level ("binaire du {0} plus ANCIEN que {1} ecrit le {2} (fusion ou checkout apres la compilation) : Source modifiee apres le binaire, build.ps1 AVANT tout quick_check ou essai" -f $Bin.LastWriteTime.ToString('MM-dd HH:mm'), $n.Name, $n.LastWriteTime.ToString('MM-dd HH:mm')) }
+}
 
 $now = Get-Date
-$endAt = [datetime]::ParseExact($now.ToString('yyyy-MM-dd') + ' ' + $End, 'yyyy-MM-dd HH:mm', $null)
+if (-not $SessionEndFile) { $SessionEndFile = "$Main\Docs\SessionEnd.txt" }
+if (-not $QueueFile) { $QueueFile = "$Main\Auto_Journey_File.md" }
+# L8-3 : l'heure de fin vient de -End, sinon de la 1re ligne de SessionEnd.txt ('2026-11-07 12:00' ou 'HH:mm'), sinon 13:30 + WARN
+$endNote = $null
+$endText = $End
+if (-not $endText -and (Test-Path $SessionEndFile)) { $endText = ((Get-Content $SessionEndFile -ErrorAction SilentlyContinue | Select-Object -First 1) -as [string]).Trim() }
+if (-not $endText) { $endText = '13:30'; $endNote = "ni -End ni $SessionEndFile : fin dure 13:30 par defaut (ecrire 'AAAA-MM-JJ HH:mm' dans Docs\SessionEnd.txt, une fois par seance)" }
+if ($endText -notmatch '^\d{4}-\d{2}-\d{2} ') { $endText = $now.ToString('yyyy-MM-dd') + ' ' + $endText }   # 'HH:mm' seul = aujourd'hui
+$endText = $endText -replace ' (\d):', ' 0$1:'
+$endAt = [datetime]::ParseExact($endText, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture)
+if ($endAt.Date -ne $now.Date) { $endNote = "l'heure de fin lue ($endText) n'est pas d'aujourd'hui : mettre Docs\SessionEnd.txt a jour" }
 $left = [int]($endAt - $now).TotalMinutes
-Write-Output ("Heure PowerShell : {0}  fin dure {1}  reste {2} min" -f $now.ToString('HH:mm:ss'), $End, $left)
+Write-Output ("Heure PowerShell : {0}  fin dure {1}  reste {2} min" -f $now.ToString('HH:mm:ss'), $endAt.ToString('HH:mm'), $left)
+if ($endNote) { Say 'WARN' "SessionEnd : $endNote" }
 
 $wts = Get-ChildItem 'C:\Users\baudo\Documents' -Directory -Filter 'HeroesOfLiberty-*' | Select-Object -ExpandProperty FullName
 
@@ -57,10 +81,10 @@ if ($Phase -eq 'Launch') {
   if ($untracked.Count -gt 0) { Say 'FAIL' ("dossiers non suivis dans la copie principale (bloquent la fusion) : " + (($untracked | ForEach-Object { $_.Substring(3) }) -join ', ') + ' -> demander l''accord de les commiter') } else { Say 'PASS' 'aucun *InProgress.md non suivi' }
   $dirty = @($st | Where-Object { $_ -match '^ ?M ' })
   if ($dirty.Count -gt 0) { Say 'WARN' ("fichiers suivis modifies dans la copie principale : " + (($dirty | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
-  $file = Get-Content "$Main\Auto_Journey_File.md" -ErrorAction SilentlyContinue
+  $file = Get-Content $QueueFile -ErrorAction SilentlyContinue
   $noCpp = @($file | Where-Object { $_ -match '^\s*- \[ \]' -and $_ -match 'sans C\+\+' }).Count
   if ($noCpp -ge 3) { Say 'PASS' "$noCpp ligne(s) '[ ]' sans C++ en file (relance possible sans toucher au plafond)" }
-  else { Say 'WARN' "seulement $noCpp ligne(s) '[ ]' etiquetee(s) 'sans C++' dans Auto_Journey_File.md (< 3) : en ecrire avant de lancer, sinon les agents finis ne pourront pas etre relances (2026-11-05 : 30 min vides)" }
+  else { Say 'FAIL' "seulement $noCpp ligne(s) '[ ]' etiquetee(s) 'sans C++' dans $(Split-Path $QueueFile -Leaf) (< 3) : en ecrire AVANT de lancer, sinon les agents finis ne pourront pas etre relances (2026-11-05 : 30 min vides ; L8-7 : FAIL et non plus WARN)" }
 
   # L7-2 : la DLL du worktree de l'agent doit etre plus recente que le dernier commit de code de main (sinon faux rouges, appels perdus)
   if (-not $Root -or -not (Test-Path $Root)) {
@@ -96,6 +120,7 @@ if ($Phase -eq 'Report') {
       $codeTime = [DateTimeOffset]::FromUnixTimeSeconds([int64]$lastCode).LocalDateTime
       if ($bin.LastWriteTime -ge $codeTime) { Say 'PASS' ("binaire du {0} >= dernier code du {1}" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
       else { Say 'WARN' ("binaire du {0} plus ANCIEN que le dernier code du {1} : build.ps1 AVANT tout quick_check (sinon faux rouges CommandGrid/Technologies/Map.Table)" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
+      Say-StaleBySource $Root $bin 'WARN'
     } else { Say 'WARN' 'binaire ou commit de code introuvable' }
   }
 }
@@ -123,6 +148,7 @@ if ($Phase -eq 'Essay') {
       $codeTime = [DateTimeOffset]::FromUnixTimeSeconds([int64]$lastCode).LocalDateTime
       if ($bin.LastWriteTime -ge $codeTime) { Say 'PASS' ("binaire du {0} >= dernier commit de code du {1}" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
       else { Say 'FAIL' ("binaire du {0} PLUS ANCIEN que le dernier commit de code du {1} : rebuild (build.ps1) avant l'essai" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
+      Say-StaleBySource $Root $bin 'FAIL'
     } else { Say 'WARN' 'binaire ou commit de code introuvable : verifier le build a la main' }
     Say 'WARN' "rappel : l'essai d'un REGLAGE/BUG est rejoue par l'integrateur (geste reel + PNG avant/apres) AVANT cette commande"
   }

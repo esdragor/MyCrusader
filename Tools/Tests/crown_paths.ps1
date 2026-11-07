@@ -55,9 +55,14 @@ foreach ($Query in $Queries) { $Lines += "hol.Nav.Path $(Point $Query.From) $(Po
 $Lines += "frames 2", "quit"
 $Lines | Set-Content -Encoding ascii $Sequence
 
+. (Join-Path $PSScriptRoot "..\Scenarios\EditorSlot.ps1")
+# One of the 2 editor slots of the machine (EditorSlot.ps1, L7-3), freed once the editor is done.
+$Slot = Enter-EditorSlot -Name "crown_paths" -Root $Project -Max 2 -WaitSeconds 1500
+if (-not $Slot) { Write-Host "crown_paths : FAIL (no editor slot after 25 min: 2 editors already run on this machine)"; exit 1 }
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
 if (-not $Process.WaitForExit(240000)) { $Process.Kill() }
+Exit-EditorSlot
 
 $Text = if (Test-Path $Log) { Get-Content $Log } else { @() }
 $Results = @($Text | Select-String -Pattern "Nav path: (.*)" | ForEach-Object { $_.Matches[0].Groups[1].Value })

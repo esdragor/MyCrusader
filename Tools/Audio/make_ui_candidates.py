@@ -70,6 +70,23 @@ ARPEGGIOS = {
 }
 RATE = vsco.RATE
 
+# Second round for Alert.TrainingDone (user, 2026-11-06: "un truc martial"): war sounds of VSCO 2 CE (CC0). token -> ([(folder, file, delay in
+# seconds)], seconds kept); the notes of a token are mixed at their delays, then cut like the others.
+HORN = "Brass/F Horn/sus"
+TRUMPET = "Brass/Trumpet/stac"
+TROMBONE = "Brass/Tenor Trombone/sus"
+TIMPANI = "Percussion/Timpani"
+SEQUENCES = {
+    "v_horn_call": ([(HORN, "MOHorn_sus_C3_v3_1.wav", 0.0)], 1.0),
+    "v_horn_rise": ([(HORN, "MOHorn_sus_F2_v3_1.wav", 0.0), (HORN, "MOHorn_sus_C3_v3_1.wav", 0.4)], 1.4),
+    "v_trumpet_stac_D4": ([(TRUMPET, "Sum_SHTrumpet_stac_D4_v3_rr1.wav", 0.0)], 0.6),
+    "v_trumpet_call": ([(TRUMPET, "Sum_SHTrumpet_stac_G3_v3_rr1.wav", 0.0), (TRUMPET, "Sum_SHTrumpet_stac_D4_v3_rr1.wav", 0.18),
+                        (TRUMPET, "Sum_SHTrumpet_stac_A4_v3_rr1.wav", 0.36)], 1.1),
+    "v_timpani_hit": ([(TIMPANI, "Timpani2_Hit_v4_rr1_Sum.wav", 0.0)], 1.0),
+    "v_timpani_double": ([(TIMPANI, "Timpani2_Hit_v4_rr1_Sum.wav", 0.0), (TIMPANI, "Timpani3_Hit_v4_rr1_Sum.wav", 0.25)], 1.2),
+    "v_timpani_roll": ([(TIMPANI + "/Rolls", "Timpani2_Roll_v5_rr1_Sum.wav", 0.0)], 1.1),
+    "v_trombone_low": ([(TROMBONE, "tenortbn_sus_D2_v3_1.wav", 0.0)], 1.0),
+}
 
 def cut(data, seconds):
     data = data[:int(seconds * RATE)].copy()
@@ -106,7 +123,13 @@ def main():
         for index, note in enumerate(notes):
             mix[index * step:index * step + len(made[note])] += made[note]
         write(os.path.join(out_dir, token + ".wav"), cut(mix, 1.6))
-    print("VSCO candidates: %d files in %s" % (len(SINGLES) + len(ARPEGGIOS), out_dir))
+    for token, (parts, seconds) in SEQUENCES.items():
+        waves = [(vsco.read_wav(vsco.fetch(cache, folder, name)), delay) for folder, name, delay in parts]
+        mix = np.zeros(max(int(delay * RATE) + len(data) for data, delay in waves))
+        for data, delay in waves:
+            mix[int(delay * RATE):int(delay * RATE) + len(data)] += data
+        write(os.path.join(out_dir, token + ".wav"), cut(mix, seconds))
+    print("VSCO candidates: %d files in %s" % (len(SINGLES) + len(ARPEGGIOS) + len(SEQUENCES), out_dir))
 
 
 if __name__ == "__main__":
