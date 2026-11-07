@@ -50,6 +50,30 @@ Check ($fresh -match '(?m)^PASS .*DLL' -and -not ($fresh -match '(?m)^FAIL .*DLL
 $noRoot = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Scenarios | Out-String
 Check ($noRoot -match '(?m)^FAIL .*-Root') 'launch -Scenarios sans -Root -> FAIL' $noRoot
 
+# --- Elrond-8 (2026-11-07) : binaire PERIME par une fusion. Le commit d'un fichier fusionne garde sa date d'auteur (ancienne), donc
+# "binaire >= date du dernier commit de code" laisse passer un binaire compile AVANT la fusion ; le fichier, lui, porte l'heure de la fusion.
+# Cas : vrai depot jetable, commit de code date de 2000, DLL de 2001, mais Source\a.cpp ecrit APRES la DLL (= fusion) -> Report doit signaler (WARN),
+# Essay doit dire FAIL ; DLL plus recente que le fichier -> PASS.
+$Repo = Join-Path $Tmp 'HeroesOfLiberty-FakeMerge'
+New-Item -ItemType Directory -Path (Join-Path $Repo 'Source\M'), (Join-Path $Repo 'Binaries\Win64') -Force | Out-Null
+git -C $Repo init -q 2>$null | Out-Null
+Set-Content -Path (Join-Path $Repo 'Source\M\a.cpp') -Value 'int a;'
+git -C $Repo add Source 2>$null | Out-Null
+$env:GIT_AUTHOR_DATE = '2000-01-01T00:00:00'; $env:GIT_COMMITTER_DATE = '2000-01-01T00:00:00'
+git -C $Repo -c user.name=t -c user.email=t@t commit -q -m code 2>$null | Out-Null
+Remove-Item Env:GIT_AUTHOR_DATE, Env:GIT_COMMITTER_DATE
+$MDll = Join-Path $Repo 'Binaries\Win64\Fake.dll'
+Set-Content -Path $MDll -Value 'x'
+(Get-Item $MDll).LastWriteTime = [datetime]'2001-01-01'
+(Get-Item (Join-Path $Repo 'Source\M\a.cpp')).LastWriteTime = [datetime]'2002-01-01'   # le fichier arrive par la fusion APRES la compilation
+$rep = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo | Out-String
+Check ($rep -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim).*Source') 'report: source ecrite apres le binaire (fusion) -> WARN binaire perime' $rep
+$ess = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $Repo | Out-String
+Check ($ess -match '(?m)^FAIL .*(binaire|DLL).*(ANCIEN|perim).*Source') 'essay: source ecrite apres le binaire (fusion) -> FAIL binaire perime' $ess
+(Get-Item $MDll).LastWriteTime = Get-Date
+$rep2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Report -Root $Repo | Out-String
+Check (-not ($rep2 -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim)') -and $rep2 -match '(?m)^PASS .*binaire') 'report: binaire plus recent que le fichier -> PASS' $rep2
+
 # --- L7-8 + L7-6 : Close -Exclude et ligne GESTE / SON des E-*.md
 $Ret = Join-Path $Tmp 'Retours'
 New-Item -ItemType Directory -Path $Ret | Out-Null

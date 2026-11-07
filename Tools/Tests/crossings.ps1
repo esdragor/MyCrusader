@@ -41,10 +41,15 @@ $SizeJson = $(if ($Size) { ' "mapSize": "' + $Size + '",' } else { "" })
     "waitlog Camera above the start of slot", "frames 5", "hol.Test.Crossings $Count $Seed $Units $Type quit"
 ) | Set-Content -Encoding ascii $Sequence
 
+. (Join-Path $PSScriptRoot "..\Scenarios\EditorSlot.ps1")
+# One of the 2 editor slots of the machine (EditorSlot.ps1, L7-3), freed once the editor is done.
+$Slot = Enter-EditorSlot -Name "crossings" -Root $Project -Max 2 -WaitSeconds 1500
+if (-not $Slot) { Write-Host "crossings : FAIL (no editor slot after 25 min: 2 editors already run on this machine)"; exit 1 }
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -Multiprocess -culture=fr -LiveCoding=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
 $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
 # A crossing takes ~7 s of game; 30 s each at most, then the game is stopped.
 if (-not $Process.WaitForExit([Math]::Max(120, 60 + 30 * $Count) * 1000)) { $Process.Kill() }
+Exit-EditorSlot
 
 $Lines = if (Test-Path $Log) { Get-Content $Log } else { @() }
 $Lines | Select-String -Pattern "Crossing \d+/\d+: arrived .* FAIL" | ForEach-Object { Write-Host ($_.Line -replace "^.*Display: ", "  ") }

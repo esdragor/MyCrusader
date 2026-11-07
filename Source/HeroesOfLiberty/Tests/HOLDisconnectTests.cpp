@@ -796,6 +796,64 @@ bool FHOLDisconnectReplaceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D720 (T6): the window does not run during a pause; the pause of the player who leaves is lifted (his pause stays counted).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectPauseTest, "HeroesOfLiberty.Match.DisconnectPause",
+	UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectPauseTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("Alice"), Alice) && TestNotNull(TEXT("Bob"), Bob))
+	{
+		FHOLMatchConfig Config1v1 = MakeNamedConfig();
+		Config1v1.Slots[2].State = EHOLSlotState::Closed;
+		State->InitVictory(Config1v1);
+		Alice->SetMatchSlot(0, 0);
+		Bob->SetMatchSlot(1, 1);
+		const FHOLResources Starting(200, 200, 200, 200);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*Bob, Starting);
+
+		TestEqual(TEXT("no pause: the window clock is the time"), State->GetWindowClock(50.), 50.);
+		// Alice pauses at 100 and resumes at 160: the clock stood still for 60 s; Bob's departure lifts nobody else's pause.
+		TestTrue(TEXT("Alice pauses"), State->RequestPause(*Alice, 100.));
+		TestEqual(TEXT("paused: the window clock stands still"), State->GetWindowClock(130.), 100.);
+		TestFalse(TEXT("Bob's departure lifts only his own pause"), State->LiftPauseOf(1, 130.));
+		TestTrue(TEXT("Alice's pause stays"), State->IsMatchPaused());
+		TestTrue(TEXT("Alice resumes"), State->RequestResume(*Alice, 160.));
+		TestEqual(TEXT("resumed: 60 s lost to the window"), State->GetWindowClock(200.), 140.);
+
+		// Bob pauses at 300 and leaves at 305: the match runs again for the others, the pause stays counted.
+		TestTrue(TEXT("Bob pauses"), State->RequestPause(*Bob, 300.));
+		const int32 PausesAtLeaving = State->GetPausesLeft();
+		TestTrue(TEXT("Bob leaves: his pause is lifted"), State->LiftPauseOf(1, 305.));
+		TestFalse(TEXT("the match runs again"), State->IsMatchPaused());
+		TestEqual(TEXT("his pause stays counted"), State->GetPausesLeft(), PausesAtLeaving);
+		TestEqual(TEXT("5 s more lost to the window"), State->GetWindowClock(310.), 310. - 60. - 5.);
+		TestFalse(TEXT("nothing to lift twice"), State->LiftPauseOf(1, 306.));
+
+		// A window of 10 s from 310 (clock 245), with a pause of Alice's of 5 s inside it, ends at 325 of the time (10 s + 5 s).
+		TestTrue(TEXT("Bob is away"), State->KeepAbsentSlot(*Bob, State->GetWindowClock(310.), 10.));
+		Bob->Destroy();
+		TestTrue(TEXT("Alice pauses"), State->RequestPause(*Alice, 312.));
+		TestTrue(TEXT("Alice resumes"), State->RequestResume(*Alice, 317.));
+		TestEqual(TEXT("14.9 s of time: the window is not over (5 s were paused)"), State->DefeatExpiredAbsences(State->GetWindowClock(324.9), 10.).Num(), 0);
+		TestEqual(TEXT("15 s of time: the window is over"), State->DefeatExpiredAbsences(State->GetWindowClock(325.), 10.), TArray<int32>{ 1 });
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 // D718 (T5): the end of the window by the rule of T1 (GetWindowEnd). Bob (slot 1) shares his camp with an AI seat (slot 2): at the end of
 // his window his seat is NOT defeated; the AI goes from the "hold" mode to the full brain at the Normal level, the banner goes out,
 // the seat stays his and he takes it back AFTER the window, with the stock the AI left. Contrast, a real 1v1 (Bob alone in his camp, two

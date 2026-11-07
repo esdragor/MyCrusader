@@ -4017,3 +4017,5 @@ msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
 msgstr "終了"
 
+
+#. Key:	ReplacedByNewConnection #. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276) #: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276) msgctxt "HOLNet,ReplacedByNewConnection" msgid "Une autre connexion à votre nom a pris votre place" msgstr "同じ名前の別の接続があなたの席を引き継ぎました"
