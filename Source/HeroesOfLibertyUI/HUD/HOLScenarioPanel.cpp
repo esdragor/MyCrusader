@@ -14,6 +14,7 @@
 #include "Dev/HOLTestHooks.h"
 #include "Engine/Engine.h"
 #include "HeroesOfLibertyUILog.h"
+#include "HUD/HOLHUDSpace.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLQueueItem.h"
 
@@ -154,6 +155,17 @@ FString UHOLScenarioPanel::Describe() const
 		: Display.State == FDisplay::EState::Failed ? TEXT("failed") : TEXT("preparing");
 	return FString::Printf(TEXT("scenario %s %s, %d notes%s"), *Display.Name, StateName, ShownNotes.Num(),
 		Display.WaitingForKey.IsEmpty() ? TEXT("") : TEXT(", waiting for the key"));
+}
+
+bool UHOLScenarioPanel::GetBox(FBox2D& OutBox) const
+{
+	const FGeometry& Geometry = Panel ? Panel->GetCachedGeometry() : FGeometry();
+	if (!Panel || !Panel->IsVisible() || !IsVisible() || Geometry.GetAbsoluteSize().IsNearlyZero())
+	{
+		return false;
+	}
+	OutBox = HOLHUDSpace::BoxOf(this, Geometry);
+	return true;
 }
 
 bool UHOLScenarioPanel::ClickWidget(const FName Name)

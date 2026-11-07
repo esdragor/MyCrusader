@@ -37,6 +37,9 @@ public:
 	/** "scenario order_lines ready, 3 notes", "scenario closed" or "no scenario" (hol.HUD.Report). */
 	FString Describe() const;
 
+	/** The panel as drawn, in the HUD's Slate units (HOLHUDSpace); false while it is hidden or not laid out yet (L1-12b: the boxes of hol.HUD.Report). */
+	bool GetBox(FBox2D& OutBox) const;
+
 	/** Clicks ScenarioRestart or ScenarioClose as the mouse would (hol.HUD.Click); false for another name or when hidden. */
 	bool ClickWidget(FName Name);
 
