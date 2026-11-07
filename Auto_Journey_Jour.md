@@ -526,3 +526,32 @@ Livre : outils de session L8-1/3/5/6/7, verrou d'editeur partage, check.ps1 sur 
 Reste (file) : melee (WIP non valide b125064, agent neuf), Q5, -PlayerName pour disconnect_look, mesures S1/S2 du decor, B5 sons (apres ecoute), regeneration des cartes (apres choix A-H), repeat_scenario verrou de journal.
 Essais prets pour l'utilisateur : legions_roster_gesture (VU A L'ECRAN, depuis le worktree Elrond) ; glade_sweep (VU A L'ECRAN, worktree Haldir) ; biome_apply_tour et biome_decor_tour (VU A L'ECRAN, worktree Sauron, valeurs provisoires) ; LOGIQUE SEULEMENT : audio_compare_martial, audio_compare_buildings (11 min), diplomacy_qground_watch.
 Incident : Haldir-1 a arrete par stray_processes le serveur du peintre de cartes de l'utilisateur (python Tools\MapPainter\server.py lance le 11-06) ; a relancer : python C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\MapPainter\server.py
+### Lecons appliquees 2026-11-07
+- T2-1 : appliquee : etape 0 par sous-agent en lecture seule (13 appels), plan relu ; Sauron (aucune tache visual) pris par Biomes, Haldir inclus (cartes) a la demande de l'utilisateur
+- T2-2 : appliquee : 8 worktrees lances 09:12-09:13, aucune exception
+- L3-12 : sans objet : etape 0 faite
+- L5-1 : appliquee : session_gate -Phase Launch -End 12:00 avant chaque lancement (puis 11:30 via Docs\SessionEnd.txt, lu par le gate depuis la fusion 1 : L8-3 FAIT) ; arret dur change a 11:30 sur demande de l'utilisateur a 10:52, messages envoyes aux 4 agents en cours
+- L5-2 : appliquee : tableau Agents du 2026-11-07 ecrit avant le premier lancement, ids remplis a chaque lancement
+- L3-1, L4-4 : appliquee avec ecarts ecrits : 3 agents C++ au depart ; Sauron-2, Glorfindel-12 et Celeborn-11/12 ont ete des 4e agents C++ (exceptions ecrites, file de build vide ou builds retardes jusqu'a 8 min)
+- L1-10, L5-7 : appliquee : docs commites par nom a chaque boucle (80e3c07, 4a19086, 4cee932, 070817a, 5382f87), jamais GDD.md
+- L4-1, L4-3 : appliquee : alarme 11:45 posee a 08:58, deplacee a 11:08 apres la demande de l'utilisateur ; fusion 3 lancee 11:05, avance rapide 11:16, bilan 11:20
+- L3-8, L4-9, Q5, L1-14 : appliquee : integrateurs Elrond-8/9/10 nommes au lancement ; legions_roster_gesture rejoue sur main avec geste reel et contre-epreuves
+- L3-9 : non mesuree : appels de la session principale non comptes
+- T2-3 : appliquee : enonces commencent par Lis agent_rules.md + arret dur
+- L1-1, L3-6, L4-7, L5-3, L7-1 : appliquee avec 3 ecarts : tool_uses 94 (Haldir-1), 90 (Celeborn-12), 82 (Glorfindel-11) ; aucun > 100 ; les 3 cas hors regle sont notes ; Celeborn-12 a rendu un correctif non valide (WIP b125064, exclu de main)
+- L1-2 : appliquee : commit au moins toutes les 30 min, sauf Celeborn-12 (correctif C++ non commite jusqu'au WIP commite par la session principale)
+- L1-3 : appliquee : merge main fait avant le rapport par tous les agents
+- L3-2, L4-5, L3-5 : appliquee : premiers builds C++ dans les 15 premieres minutes (09:17-09:24, 10:24, 10:35, 10:44) ; Glorfindel-12 a du attendre la file (3 tickets) 
+- L1-8 : partielle : 3 a 5 fichiers mis a jour par agent (journal, EtapeDefini, file, Jour)
+- L1-9, L4-8 : appliquee : aucun agent n'a ecrit GDD.md ; defauts codes pour toutes les questions ; D non numerotees (decisions Q1-Q4 dans les chantiers, a reporter au GDD par la session de revue)
+- L1-7, T2-4 : appliquee : 6 questions agents (Q1-Q5 + Q3), jamais plus de 2 par chantier sauf Biomes (Q1 Q2 groupees), option Autre et defaut presents
+- L5-6 : appliquee : questions regroupees en UN tableau (reponse de l'utilisateur 10:36 : Q1 A puis B, Q2 B, Q3 A, Q4 B)
+- T2-5, T2-6, L5-8 : appliquee : build avant quick_check ; net PASS du premier coup 3 fois ; camera 2p/8p rouges de la veille : binaire perime, vertes
+- T2-7 : appliquee : Retours par fichier Q-/E-, Edit sur lignes precises
+- L1-11 : appliquee : essais donnes depuis des worktrees portant main (gate Essay PASS pour Elrond avant la commande)
+- L3-4 : appliquee : GIT_STATUS_PRINCIPALE rapporte par chaque agent
+- L4-12 : appliquee : outils partages corriges (session_gate SessionEnd/Essay/binaire perime, check.ps1 Sanity, quick_check -Parts tests, preflight HudRects, editor slots), aucune copie privee
+- L4-13 : appliquee : Fusion-3 a supprime le dossier UHT de Galadriel par precaution
+- L3-11, L5-5 : appliquee : regeneration des cartes non lancee (Haldir : pas de budget de carte modifie)
+- L8-9 : appliquee avec un incident : sync_worktrees debut OK (8 worktrees a main 584f434) ; sync fin a echoue 5 worktrees sur IN_USE.txt suivi par erreur dans 8024e47 (Glorfindel-11) : desuivi sur main 581b78c et .gitignore, puis resync OK ; Haldir saute (MI_Ground_Plain.uasset modifie par les generations de cartes, non commite) ; Celeborn garde le WIP b125064 (en avance sur main)
+- L8-2 : partielle : audit NoStrike ajoute (2c213e5), 0 faux positif sur 16 passes, mais ne voit pas les 2 soldats stuck de l'utilisateur
