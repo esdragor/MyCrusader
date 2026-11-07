@@ -4,6 +4,7 @@
 #include "Internationalization/Text.h"
 #include "Internationalization/Internationalization.h"
 #include "Internationalization/Culture.h"
+#include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -16,10 +17,12 @@ namespace
 		FString Previous;
 		explicit FScopedLanguage(const TCHAR* Culture)
 		{
-			Previous = FInternationalization::Get().GetCurrentCulture()->GetName();
-			FInternationalization::Get().SetCurrentCulture(Culture);
+			// The same call as hol.UI.Language / Settings > Language: it also loads the localization resources of the culture (a bare
+			// SetCurrentCulture left en and ja on the French source text in the test editor, 2026-11-07).
+			Previous = FInternationalization::Get().GetCurrentLanguage()->GetName();
+			UKismetInternationalizationLibrary::SetCurrentLanguage(Culture, /*SaveToConfig*/ false);
 		}
-		~FScopedLanguage() { FInternationalization::Get().SetCurrentCulture(Previous); }
+		~FScopedLanguage() { UKismetInternationalizationLibrary::SetCurrentLanguage(Previous, /*SaveToConfig*/ false); }
 	};
 }
 
