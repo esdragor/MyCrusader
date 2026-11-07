@@ -15,7 +15,7 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 	float SinceLook = 10.0f;
 
 	UFUNCTION(BlueprintOverride)
-	void BP_Tick(float DeltaTime)
+	void Tick(float DeltaTime)
 	{
 		SinceLook += DeltaTime;
 		if (SinceLook < 0.25f)
@@ -24,7 +24,7 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 		}
 		SinceLook = 0.0f;
 
-		int Wanted = HOLBiomeApply::WantedBiome(UHOLBiomeReadLibrary::GetMatchBiomeKey(), CVar_BiomeIndex.GetInt());
+		int Wanted = HOLBiomeApply::WantedBiome(HOLBiomeRead::GetMatchBiomeKey(), CVar_BiomeIndex.GetInt());
 		if (Wanted == Applied)
 		{
 			return;
@@ -40,7 +40,62 @@ class UHOLBiomeApplier : UScriptWorldSubsystem
 	}
 
 	// The lights, the haze and the ground of the loaded map.
+	// The colours of the table are the ones ambience.py hands the editor as 8-bit values (no gamma step), hence bSRGB false.
 	void ApplyToWorld(const FHOLBiomeLook& Look)
 	{
+		TArray<ADirectionalLight> Suns;
+		GetAllActorsOfClass(Suns);
+		for (ADirectionalLight Sun : Suns)
+		{
+			Sun.SetActorRotation(FRotator(Look.SunPitch, Look.SunYaw, 0.0f));
+			Sun.LightComponent.SetIntensity(Look.SunIntensityLux);
+			Sun.LightComponent.SetLightColor(Look.SunColor, false);
+		}
+
+		TArray<ASkyLight> Skies;
+		GetAllActorsOfClass(Skies);
+		for (ASkyLight Sky : Skies)
+		{
+			Sky.LightComponent.SetIntensity(Look.SkyIntensity);
+			// The sky light's setter takes a linear colour and goes through sRGB itself: hand it the linear value of the 8-bit one.
+			Sky.LightComponent.SetLightColor(HOLBiomeApply::SrgbToLinear(Look.SkyColor));
+			Sky.LightComponent.RecaptureSky();
+		}
+
+		TArray<AExponentialHeightFog> Hazes;
+		GetAllActorsOfClass(Hazes);
+		for (AExponentialHeightFog Haze : Hazes)
+		{
+			Haze.Component.SetFogDensity(Look.FogDensity);
+			Haze.Component.SetFogInscatteringColor(Look.FogColor);
+			Haze.Component.SetStartDistance(Look.FogStartCm);
+		}
+
+		// The ground: the instance of M_GroundVaried the map points to (MI_Ground_*), made dynamic once, then reused for the next biome.
+		TArray<AStaticMeshActor> Meshes;
+		GetAllActorsOfClass(Meshes);
+		for (AStaticMeshActor Mesh : Meshes)
+		{
+			UStaticMeshComponent Component = Mesh.StaticMeshComponent;
+			UMaterialInterface Material = Component.GetMaterial(0);
+			if (Material == nullptr)
+			{
+				continue;
+			}
+			UMaterialInstanceDynamic Ground = Cast<UMaterialInstanceDynamic>(Material);
+			if (Ground == nullptr)
+			{
+				if (!Material.GetName().ToString().StartsWith("MI_Ground_"))
+				{
+					continue;
+				}
+				Ground = Component.CreateDynamicMaterialInstance(0);
+			}
+			Ground.SetVectorParameterValue(n"ColorA", Look.GroundA);
+			Ground.SetVectorParameterValue(n"ColorB", Look.GroundB);
+			Ground.SetVectorParameterValue(n"ColorC", Look.GroundC);
+			Ground.SetScalarParameterValue(n"TextureScale", Look.DetailScaleCm);
+			Ground.SetScalarParameterValue(n"DetailStrength", Look.DetailStrength);
+		}
 	}
 }

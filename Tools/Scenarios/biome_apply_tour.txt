@@ -1,0 +1,39 @@
+# B1 visuel : tour des 5 biomes sur la Plaine (sol, soleil, ciel, brume), un PNG par biome ; Entree = biome suivant. Valeurs PROVISOIRES : dis aime / pas aime par biome. 3 minutes au plus.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Camera.Focus 0 0
+frames 5
+hol.Units.Spawn 8 -450 0 0 ManAtArms 450
+hol.Units.Spawn 8 450 0 1 ManAtArms 450
+waitunits 16
+hol.Camera.Focus 0 0
+frames 20
+hol.Biome.Index 0
+frames 60
+capture biome_0_fresh_grass
+note 1/5 Herbe fraiche : sol, soleil, ciel et brume. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 1
+frames 60
+capture biome_1_dry_steppe
+note 2/5 Steppe seche : sol, soleil, ciel et brume. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 2
+frames 60
+capture biome_2_autumn
+note 3/5 Automne : sol, soleil, ciel et brume. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 3
+frames 60
+capture biome_3_dark_forest
+note 4/5 Foret sombre : sol, soleil, ciel et brume. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 4
+frames 60
+capture biome_4_snow
+note 5/5 Neige : dernier biome. Les 5 vues sont dans les captures du scenario.
+frames 5
+hol.Biome.World
+hol.Test.Sanity
+panel show

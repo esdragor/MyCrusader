@@ -64,6 +64,17 @@ namespace HOLBiomeApply
 		Look.FogStartCm = float(Biome.FogStartCm);
 		return Look;
 	}
+	float SrgbChannelToLinear(float C)
+	{
+		return C <= 0.04045f ? C / 12.92f : Math::Pow((C + 0.055f) / 1.055f, 2.4f);
+	}
+
+	// The linear colour whose sRGB 8-bit form is the given one (the sky light's setter converts to sRGB itself).
+	FLinearColor SrgbToLinear(const FLinearColor& Color)
+	{
+		return FLinearColor(SrgbChannelToLinear(Color.R), SrgbChannelToLinear(Color.G), SrgbChannelToLinear(Color.B), 1.0f);
+	}
+
 	// The biome to put on the world (B1 visual): the console's override first (hol.Biome.Index 0 to 4, the scenarios and the tour of the
 	// five biomes), else the match's key (the lobby's choice, replicated with the configuration). -1 = the map's own: the look the map file
 	// carries (Tools/Editor/maps/ambience.py) is left as it is, nothing is set. "default" and an unknown key are the map's own.
