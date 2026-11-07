@@ -1,0 +1,4 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+dipl_qwatch_a | 4 s apres le clic : mes hommes d'armes (bleus) engages contre les rouges, melee qui commence
+dipl_qwatch_b | 12 s apres le clic : melee en cours, barres de vie qui baissent ; aucun soldat qui tourne en cercle
+dipl_qwatch_c | 22 s apres le clic : fin de melee ; aucun soldat fige devant une cible vivante sans la frapper
