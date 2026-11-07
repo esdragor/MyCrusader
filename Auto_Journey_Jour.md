@@ -555,3 +555,17 @@ Incident : Haldir-1 a arrete par stray_processes le serveur du peintre de cartes
 - L3-11, L5-5 : appliquee : regeneration des cartes non lancee (Haldir : pas de budget de carte modifie)
 - L8-9 : appliquee avec un incident : sync_worktrees debut OK (8 worktrees a main 584f434) ; sync fin a echoue 5 worktrees sur IN_USE.txt suivi par erreur dans 8024e47 (Glorfindel-11) : desuivi sur main 581b78c et .gitignore, puis resync OK ; Haldir saute (MI_Ground_Plain.uasset modifie par les generations de cartes, non commite) ; Celeborn garde le WIP b125064 (en avance sur main)
 - L8-2 : partielle : audit NoStrike ajoute (2c213e5), 0 faux positif sur 16 passes, mais ne voit pas les 2 soldats stuck de l'utilisateur
+
+## Agents du 2026-11-07 apres-midi (seance AUTONOME 12:10 -> fin 16:10, arret dur des agents 16:10, alarmes 15:28 fusion + 15:56 cloture, 3 agents C++ max = Celeborn, Galadriel, Glorfindel, cartes INCLUSES, integrateur = Elrond vers 15:00, main depart = bc3cf59)
+| Nom | Id | Worktree / branche | Tache | Classe | Arret | Resultat |
+|---|---|---|---|---|---|---|
+| Etape 0 | a4b2411f90d0e712a | lecture seule | plan de lancement (17 appels) | - | - | OK 12:14 |
+| sync_worktrees | - | tous | 8 worktrees a main bc3cf59 (Haldir : MI_Ground_Plain.uasset mis en stash, puis +127) | - | - | OK 12:15 |
+| Arwen-15 | a9033185c12d0956e | Documents\HeroesOfLiberty-Arwen / heal-sleep | l.134 Alert.TrainingDone 3e tour + sons PAS USANTS des 5 familles (audio_compare_buildings) | sans C++ | 16:10 | lance 12:19 |
+| Celeborn-13 | a6191ac386e9e59e8 | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | l.127 WIP b125064 : tests, combat, watch/melee_stuck x8, NoStrike ; puis Q5=C MaySeek cvar | C++ 1 | 16:10 | lance 12:19 |
+| Elrond-11 | a379c6ad871f727b9 | Documents\HeroesOfLiberty-Elrond / tiers | l.128 repeat_scenario.ps1 (passes invalides), l.124 check.ps1/Sanity, l.129 -PlayerName ; puis integrateur 15:00 | sans C++ | 15:00 | lance 12:19 |
+| Faramir-10 | a9cc60470e67e0b23 | Documents\HeroesOfLiberty-Faramir / fog | l.125 Get-FreshLog partout, l.126 preflight panneau cache, l.130 known_reds + HudRects | sans C++ (HudRects en fin si place) | 16:10 | lance 12:19 |
+| Galadriel-8 | a6ee050a7f47c2540 | Documents\HeroesOfLiberty-Galadriel / galadriel-tab | l.136 noms des Legions FR/EN/JA (Game.po), legions_roster_gesture | C++ 2 | 16:10 | lance 12:19 |
+| Glorfindel-14 | a92ebc7288af0b5a0 | Documents\HeroesOfLiberty-Glorfindel / net-playtest | Sites sacres S3 (HOLSite::Step branche, option desactivee), puis l.98 Deconnexion T6-T10 | C++ 3 | 16:10 | lance 12:19 |
+| Sauron-5 | aac2e77274bdf570e | Documents\HeroesOfLiberty-Sauron / visual | l.131 mesures S1/S2 du decor generique des Biomes (B4 NON lance) | sans C++ (editeur) | 16:10 | lance 12:19 |
+| Haldir-2 | a4e64fbae8fbdd73f | Documents\HeroesOfLiberty-Haldir / maps | donnees de cartes des Sites sacres sites(recipe) si hors C++, sinon nettoyage lignes perimees | sans C++ | 16:10 | lance 12:19 |
