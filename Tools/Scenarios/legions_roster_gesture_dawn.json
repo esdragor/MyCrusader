@@ -1,0 +1,1 @@
+{ "version": 2, "map": "/Game/Maps/Plain.Plain", "startingPeasants": 3, "startingHero": true, "slots": [ { "state": "Human", "colorIndex": 0, "team": 1, "faction": "DawnOrder" }, { "state": "AI", "colorIndex": 1, "team": 2, "faction": "BlackLegions", "aiBrain": false } ] }
