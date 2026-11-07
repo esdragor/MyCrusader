@@ -205,6 +205,8 @@ foreach ($Asked in @($Parts | Where-Object { $_ -match ":" })) {
 # A part asked whole as well as by case (build,build:cut) is played whole.
 foreach ($Part in @($SubCases.Keys)) { if ($Parts -contains $Part) { $SubCases.Remove($Part) } }
 $Parts = @($Parts | ForEach-Object { ($_ -split ":")[0] } | Select-Object -Unique)
+# The main game (menu/camera sequence, the "sequence" report) is for the parts other than "tests": -Parts tests runs the automation tests only.
+$GameNeeded = @($Parts | Where-Object { $_ -ne "tests" }).Count -gt 0
 # The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
 if (@($Parts | Where-Object { $_ -in "production", "move", "bodies", "rocks", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
     $Parts += "camera"
@@ -2614,7 +2616,7 @@ $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
 # drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
 if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
 $GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
-$GameProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru
+$GameProcess = if ($GameNeeded) { Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru } else { $null }
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
 # as net_match.ps1). Each one: camera above the slot it holds, the buildings it has received (the two centres in their
@@ -2948,8 +2950,8 @@ if ($NetListening) {
 # ~660 s with the straggler's groups (J7b trial feedback 1, ~105 s more), when 660 s cut the last parts off.
 # 120 s otherwise: the default's smoke part is done ~40 s after the launch (D327), the menu part ~15 s.
 $GameLimitSeconds = if ($Parts -contains "camera") { 960 } else { 120 }
-$GameTimedOut = -not $GameProcess.WaitForExit($GameLimitSeconds * 1000)
-if ($GameTimedOut) { $GameProcess.Kill() }
+$GameTimedOut = if ($GameNeeded) { -not $GameProcess.WaitForExit($GameLimitSeconds * 1000) } else { $false }
+if ($GameTimedOut -and $GameProcess) { $GameProcess.Kill() }
 $GameSeconds = [Math]::Round($Clock.Elapsed.TotalSeconds)
 
 $AllOk = $ValuesOk
@@ -3070,7 +3072,7 @@ if ($Parts -contains "sizes") {
     $Errors = @($Errors | Where-Object { $Refused -notcontains $_ })
 }
 $SequenceChecks["no interface, match or sequence error ($($Errors.Count))"] = $Errors.Count -eq 0
-$AllOk = (Report "sequence" $SequenceChecks) -and $AllOk
+$AllOk = $(if ($GameNeeded) { Report "sequence" $SequenceChecks } else { $true }) -and $AllOk
 $Errors | Select-Object -First 5 | ForEach-Object { Write-Host "  $_" }
 
 if ($Parts -contains "victory") {
