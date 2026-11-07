@@ -51,12 +51,19 @@ namespace UE::HeroesOfLiberty::Dev
 			/** Check 4: each unit's run of steps standing still out of reach of its target while a place was free round it, and the faults found. */
 			TMap<uint32, HOLSanity::FStall> Stalls;
 			TMap<uint32, FString> StallFaults;
+			/** Check 5: each unit's run of steps in reach of a living target without a blow of its own landing, and the faults found. */
+			TMap<uint32, HOLSanity::FNoStrike> NoStrikes;
+			TMap<uint32, FString> NoStrikeFaults;
 		};
 		FSanityWatch Watch;
 		/** hol.Test.SanityStall <Seconds>: check 4, a soldier standing still this long out of reach of its target with a free place round it fails (0: off). */
 		float StallSeconds = 0.5f;
 		FAutoConsoleVariableRef CVarStallSeconds(TEXT("hol.Test.SanityStall"), StallSeconds,
 			TEXT("Seconds (default 0.5; 0 = off) a melee may stand still out of reach of its target while a place is free round that target: longer, hol.Test.Sanity says FAIL (the user's retour on the neutrals trial, D641)"));
+		/** hol.Test.SanityNoStrike <Seconds>: check 5, a melee in reach of its living target landing no blow this long fails (0: off). */
+		float NoStrikeSeconds = 3.f;
+		FAutoConsoleVariableRef CVarNoStrikeSeconds(TEXT("hol.Test.SanityNoStrike"), NoStrikeSeconds,
+			TEXT("Seconds (default 3; 0 = off) a melee soldier may stay in reach of its living target without one blow of its own landing (idle in front of it, or the start of the blow begun again): longer, hol.Test.Sanity says FAIL (BUG-melee-stuck-attack, L8-2)"));
 		/** hol.Test.SanityPlaceWalk: Q-sanity-circling (Q-sanity-circling = C, default 1): the walk round ONE side to the free place a soldier claimed round its target (D641) is tolerated by the spin rules; a turn against the one before is not (see FTrace::PlaceWalk). */
 		int32 PlaceWalkIsManoeuvre = 1;
 		FAutoConsoleVariableRef CVarPlaceWalkIsManoeuvre(TEXT("hol.Test.SanityPlaceWalk"), PlaceWalkIsManoeuvre,
@@ -99,7 +106,7 @@ namespace UE::HeroesOfLiberty::Dev
 			Units->GetAllUnitIds(UnitIds);
 			// Check 4's bodies: every living unit's place and width this step (and whether it shoots, a shooter stands off on purpose).
 			TMap<uint32, TPair<HOLSanity::FBody, bool>> StallBodies;
-			if (StallSeconds > 0.f)
+			if (StallSeconds > 0.f || NoStrikeSeconds > 0.f)
 			{
 				for (const uint32 BodyId : UnitIds)
 				{
@@ -319,6 +326,35 @@ namespace UE::HeroesOfLiberty::Dev
 						}
 					}
 				}
+				if (NoStrikeSeconds > 0.f)
+				{
+					// Check 5: a melee within 40 cm (edge to edge) of its living target. Its own count of blows (Hits) must go up within NoStrikeSeconds:
+					// the target's health falls with it, so the damage is the effect read. A shooter stands off on purpose and is not judged.
+					bool bInReach = false;
+					FString NoStrikeText;
+					const FHOLUnitStateFragment* AimState = Combat && Combat->Target.IsSet() && EntityManager.IsEntityValid(Combat->Target)
+						? EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Combat->Target) : nullptr;
+					const TPair<HOLSanity::FBody, bool>* SelfBodyN = AimState ? StallBodies.Find(UnitId) : nullptr;
+					const TPair<HOLSanity::FBody, bool>* AimBody = AimState ? StallBodies.Find(AimState->UnitId) : nullptr;
+					if (SelfBodyN && AimBody && !SelfBodyN->Value && AimState->CurrentHealth > 0.f && AimState->Activity != EHOLUnitActivity::Dying)
+					{
+						const double AimGap = FVector2D::Distance(SelfBodyN->Key.Where, AimBody->Key.Where) - SelfBodyN->Key.Radius - AimBody->Key.Radius;
+						bInReach = AimGap <= 40.;
+						NoStrikeText = FString::Printf(TEXT("in reach of #%u (health %.0f), %.0f cm from its edge, no blow struck (blows %d, mode %d, attacking %d, approaching %d, flanking %d, phase %d, claimed place %d, ordered target %d, no headway %.1f s)"),
+							AimState->UnitId, static_cast<double>(AimState->CurrentHealth), AimGap, Combat->Hits, static_cast<int32>(Combat->Mode), Combat->bAttacking ? 1 : 0, Combat->bApproaching ? 1 : 0,
+							Combat->bFlanking ? 1 : 0, Order ? static_cast<int32>(Order->Phase) : -1, Combat->bHasPlace ? 1 : 0, Combat->bOrderedTarget ? 1 : 0, Combat->NoProgressSeconds);
+					}
+					HOLSanity::FNoStrike& NoStrike = Watch.NoStrikes.FindOrAdd(UnitId);
+					if (NoStrike.Step(bInReach, Combat ? Combat->Hits : 0, Simulation->GetStepSeconds(), NoStrikeSeconds))
+					{
+						const FString NoStrikeLine = FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) strikes nothing over %.1f s %s"), UnitId, State->OwnerPlayer, Where.X, Where.Y, NoStrikeSeconds, *NoStrikeText);
+						UE_LOG(LogHOLTest, Display, TEXT("SanityNoStrike step %lld: %s"), Watch.Steps, *NoStrikeLine);
+						if (!Watch.NoStrikeFaults.Contains(UnitId))
+						{
+							Watch.NoStrikeFaults.Add(UnitId, NoStrikeLine);
+						}
+					}
+				}
 				if (Window.Places.Num() > WindowSteps)
 				{
 					Window.Places.RemoveAt(0, Window.Places.Num() - WindowSteps, EAllowShrinking::No);
@@ -376,6 +412,8 @@ namespace UE::HeroesOfLiberty::Dev
 			Watch.Windows.Reset();
 			Watch.Stalls.Reset();
 			Watch.StallFaults.Reset();
+			Watch.NoStrikes.Reset();
+			Watch.NoStrikeFaults.Reset();
 			Watch.VerdictAtSteps = 0;
 			Watch.Steps = 0;
 		}
@@ -485,6 +523,18 @@ namespace UE::HeroesOfLiberty::Dev
 				{
 					Failures.Add(Fault.Value);
 				}
+				for (const TPair<uint32, FString>& Fault : Watch.NoStrikeFaults)
+				{
+					Failures.Add(Fault.Value);
+				}
+				int32 NoStrikeRuns = 0;
+				double NoStrikeLongest = 0.;
+				for (const TPair<uint32, HOLSanity::FNoStrike>& NoStrike : Watch.NoStrikes)
+				{
+					NoStrikeRuns += NoStrike.Value.Runs;
+					NoStrikeLongest = FMath::Max(NoStrikeLongest, NoStrike.Value.Longest);
+				}
+				UE_LOG(LogHOLTest, Display, TEXT("Sanity no-strike: %d runs over %.1f s, longest %.1f s (limit hol.Test.SanityNoStrike)"), NoStrikeRuns, NoStrikeSeconds, NoStrikeLongest);
 				int32 StallRuns = 0;
 				double StallLongest = 0.;
 				for (const TPair<uint32, HOLSanity::FStall>& Stall : Watch.Stalls)

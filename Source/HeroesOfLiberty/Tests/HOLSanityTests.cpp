@@ -455,6 +455,51 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Check 5 of hol.Test.Sanity (BUG-melee-stuck-attack, L8-2): a soldier in reach of its living target whose own blows (the count that rises with
+// the damage taken off the target) do not go up. The effect is read: a blow struck ends the run.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSanityNoStrikeTest, "HeroesOfLiberty.Sanity.NoStrike", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLSanityNoStrikeTest::RunTest(const FString& Parameters)
+{
+	// Idle in front of its target (blows stay at 3) for 4 s at 20 steps a second, limit 3 s: told once.
+	HOLSanity::FNoStrike Idle;
+	int32 Told = 0;
+	for (int32 Index = 0; Index < 80; ++Index)
+	{
+		Told += Idle.Step(true, 3, 0.05, 3.) ? 1 : 0;
+	}
+	TestEqual(TEXT("4 s in reach with no blow struck is told once"), Told, 1);
+	TestEqual(TEXT("the run counts the 4 s"), static_cast<int32>(FMath::RoundToInt(Idle.Longest)), 4);
+	// A soldier that strikes every 1.35 s (27 steps): the count goes up, the run restarts, never told.
+	HOLSanity::FNoStrike Striker;
+	int32 Hits = 0;
+	int32 StrikerTold = 0;
+	for (int32 Index = 0; Index < 400; ++Index)
+	{
+		Hits += (Index % 27 == 26) ? 1 : 0;
+		StrikerTold += Striker.Step(true, Hits, 0.05, 3.) ? 1 : 0;
+	}
+	TestEqual(TEXT("a soldier striking every 1.35 s is never told"), StrikerTold, 0);
+	TestTrue(TEXT("its longest wait is under 1.5 s"), Striker.Longest < 1.5);
+	// The start of the blow begun again and again: the cooldown restarts, no blow ever lands.
+	HOLSanity::FNoStrike Looping;
+	int32 LoopTold = 0;
+	for (int32 Index = 0; Index < 200; ++Index)
+	{
+		LoopTold += Looping.Step(true, 7, 0.05, 3.) ? 1 : 0;
+	}
+	TestEqual(TEXT("the blow begun again and again, none struck, is told once"), LoopTold, 1);
+	// Out of reach (or no living target) is not this check's: the run is cleared and starts again from nothing.
+	HOLSanity::FNoStrike Away;
+	for (int32 Index = 0; Index < 100; ++Index)
+	{
+		Away.Step(Index % 50 != 49, 1, 0.05, 3.);
+	}
+	TestTrue(TEXT("a walk away every 2.5 s keeps the run under the limit"), Away.Longest < 3. && Away.Runs == 0);
+	TestFalse(TEXT("limit 0 is off"), HOLSanity::FNoStrike().Step(true, 0, 100., 0.));
+	return true;
+}
+
 // hol.Test.Sanity, check 1 (SAN-Q1 = A, D616): the colour of an owner is the game's one rule (HOLPlayerColors::GetOwnerLinearColor), so a
 // neutral owner (8) or an owner outside the slots is grey and clashes with no player; an owner that IS a slot, taken for a neutral one, is
 // drawn in that slot's colour and the audit reports it (the mutation next to the sound case).

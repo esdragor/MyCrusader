@@ -257,4 +257,45 @@ namespace HOLSanity
 			return false;
 		}
 	};
+
+	// ---- Check 5 (BUG-melee-stuck-attack, L8-2): a soldier in reach of its living target that does not strike. ----
+	/**
+	 * A melee soldier's run of steps in reach of a living target without one blow of its own landing: idle in front of the target, or the start
+	 * of the blow begun again and again (the user's "debut d'animation en boucle"). The EFFECT is read, not a state: a run ends when the unit's
+	 * own count of blows struck (FHOLCombatFragment::Hits, which rises with the damage taken off the target's health) goes up, or when the unit
+	 * is no longer in reach of a living target.
+	 */
+	struct FNoStrike
+	{
+		double Seconds = 0.;
+		double Longest = 0.;
+		/** Blows struck as of the last step (-1: not seen yet). */
+		int32 LastHits = -1;
+		/** The run is over the limit: told once. */
+		bool bTold = false;
+		/** How many runs went over the limit. */
+		int32 Runs = 0;
+
+		/** One step: in reach of a living target or not, and the unit's blows struck so far. Returns true at the step the run first goes over LimitSeconds. */
+		bool Step(const bool bInReachOfLivingTarget, const int32 HitsStruck, const double StepSeconds, const double LimitSeconds)
+		{
+			const bool bStruck = LastHits >= 0 && HitsStruck != LastHits;
+			LastHits = HitsStruck;
+			if (!bInReachOfLivingTarget || bStruck)
+			{
+				bTold = false;
+				Seconds = 0.;
+				return false;
+			}
+			Seconds += StepSeconds;
+			Longest = FMath::Max(Longest, Seconds);
+			if (!bTold && LimitSeconds > 0. && Seconds > LimitSeconds)
+			{
+				bTold = true;
+				++Runs;
+				return true;
+			}
+			return false;
+		}
+	};
 }
