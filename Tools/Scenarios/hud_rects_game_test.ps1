@@ -40,6 +40,8 @@ Write-Host "hud_rects_game_test: duel_challenge"
 $Duel = Invoke-Scenario "duel_challenge"
 $DuelLines = @($Duel | Where-Object { $_ -match "HUD rects:" -and $_ -match "DuelPanel=" })
 Case "duel_challenge: a 'HUD rects:' line holds the duel window (DuelPanel) with a real box" ($DuelLines.Count -gt 0 -and (Test-Real (Get-Box $DuelLines[-1] "DuelPanel"))) "(lines with rects: $(@($Duel | Where-Object { $_ -match 'HUD rects:' }).Count))"
+$ScenarioLines = @($Duel | Where-Object { $_ -match "HUD rects:" -and $_ -match "scenario=" })
+Case "duel_challenge: the scenario's own panel (scenario) is in the 'HUD rects:' line with a real box (the duel window under it must be seen)" ($ScenarioLines.Count -gt 0 -and (Test-Real (Get-Box $ScenarioLines[-1] "scenario"))) "(lines with rects: $(@($Duel | Where-Object { $_ -match 'HUD rects:' }).Count))"
 
 Write-Host "hud_rects_game_test: a real overlap fails preflight"
 $AiBox = Get-Box $AiLast "AILevelPanel"
