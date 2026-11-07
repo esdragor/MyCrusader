@@ -217,3 +217,7 @@ Palier 3 : *Abomination* (Fosse de suture, Atelier de siège), *Cimetière maudi
 
 ## 2026-11-07 apres la seance : reponse de l'utilisateur sur les noms
 Oui, les noms des Legions passent en francais, version courte : Lancier squelette, Garde noire, Archer squelette, Arbaletrier squelette, Cavalier funeste, Belier d'os, Mangonneau d'os (ordre : Legion Spearman, Black Guard, Legion Archer, Legion Crossbowman, Dread Rider, Bone Ram, Bone Mangonel). A cabler dans la table des noms par faction (GetUnitName) et dans les trois Game.po ; le test rouge est legions_roster_gesture. Le GDD n'a pas ces noms : a ecrire par la session de revue du GDD (numero D a prendre).
+
+
+## 2026-11-07 apres la seance : memes noms en anglais et en japonais (demande de l'utilisateur)
+Source du code = francais ; EN : Skeleton Spearman, Black Guard, Skeleton Archer, Skeleton Crossbowman, Dread Rider, Bone Ram, Bone Mangonel. JA, dans le style des noms de l'Aube (槍兵, 重装歩兵, 弓兵, 弩兵, 破城槌, マンゴネル) : スケルトン槍兵, 黒衛兵, スケルトン弓兵, スケルトン弩兵, 恐怖の騎兵, 骨の破城槌, 骨のマンゴネル. Les noms japonais sont une proposition a faire relire par l'utilisateur.
