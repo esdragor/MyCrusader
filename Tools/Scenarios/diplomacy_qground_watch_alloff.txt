@@ -1,0 +1,40 @@
+﻿# A/B Celeborn-14 : diplomacy_qground_watch avec TOUS les correctifs coupes (hol.Combat.WalkRiposteSteps 0, hol.Units.SlotCommitHeadOn 0, hol.Orders.SlotBlockedStopDistance 0) : comportement d'avant WIP v2 + Q5, meme binaire.
+hol.Combat.WalkRiposteSteps 0
+hol.Units.SlotCommitHeadOn 0
+hol.Orders.SlotBlockedStopDistance 0
+hol.Cheat.Resources 2000
+hol.Combat.LogHits 1
+hol.Sanity.Watch 1
+hol.Sanity.DumpUnit -3
+hol.Diplomacy.Force 0 1 neutral
+hol.Diplomacy.Force 1 0 neutral
+hol.Camera.Focus -9500 0
+frames 5
+hol.Units.Spawn 6 -11000 0 0 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+hol.Units.Spawn 6 -9800 0 1 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+frames 120
+hol.Combat.Report
+waitlog fighting 0 hits 0 kills 0
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -8000 0
+waitlog Scripted left click at
+waitlog attack-move to
+waitlog hits #
+hol.Camera.Zoom 8
+wait 4
+capture dipl_qwatch_a
+hol.Combat.Report
+wait 8
+capture dipl_qwatch_b
+hol.Combat.Report
+wait 10
+capture dipl_qwatch_c
+hol.Combat.Report
+hol.Test.Sanity
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 2 toward slot 1
+note Rejeu d integration : Q puis clic sur le sol derriere les neutres, combat suivi 22 s (3 captures), audit Sanity ; la posture du joueur 2 reste Neutre.
