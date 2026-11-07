@@ -4212,4 +4212,3 @@ msgstr "設定"
 msgctxt "HOLTitleScreen,Quit"
 msgid "Quitter"
 msgstr "終了"
-
