@@ -1,4 +1,4 @@
-# Auto_Journey : la file de travail
+﻿# Auto_Journey : la file de travail
 
 Procédure : `Auto_Journey.md` (section « La file de travail »). États : `[ ]` à faire, `[~]` en cours, `[x]` faite, `[?]` attend l'utilisateur (voir `Auto_Journey_Retours.md`), `[B]` bloquée par une autre tâche.
 Une tâche = une phrase, le journal à lire, le premier test rouge, 15-30 min. Le dernier agent d'un worktree ajoute la suivante qu'il voit venir.
