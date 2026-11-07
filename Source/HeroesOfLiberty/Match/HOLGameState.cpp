@@ -69,6 +69,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, PausedBySlot);
 	DOREPLIFETIME(AHOLGameState, PausedByName);
 	DOREPLIFETIME(AHOLGameState, PausedAtSeconds);
+	DOREPLIFETIME(AHOLGameState, WindowPausedSeconds);
 }
 
 void AHOLGameState::SetWaitingForPlayers(const bool bWaiting, const TArray<FString>& Missing, const double EndSeconds)
@@ -1007,6 +1008,26 @@ bool AHOLGameState::GiveSlotStock(AHOLPlayerState& Taking, const FHOLResources& 
 	return false;
 }
 
+bool AHOLGameState::SimulateReturn(const int32 Slot, const FHOLResources& Starting, const double Now)
+{
+	UWorld* World = GetWorld();
+	const int32 Index = FHOLDisconnectRules::FindAbsent(AbsentSlots, Slot);
+	if (!HasAuthority() || !World || !AbsentSlots.IsValidIndex(Index))
+	{
+		return false;
+	}
+	// A player state of his name, without a connection: what PostLogin would have given the seat (the AI's one is retired by GiveSlotStock).
+	AHOLPlayerState* Returning = World->SpawnActor<AHOLPlayerState>();
+	if (!Returning)
+	{
+		return false;
+	}
+	Returning->SetPlayerName(AbsentSlots[Index].Name);
+	Returning->SetMatchSlot(Slot, LaunchConfig.Slots.IsValidIndex(Slot) ? LaunchConfig.Slots[Slot].ColorIndex : 0);
+	AddPlayerState(Returning);
+	return GiveSlotStock(*Returning, Starting, Now);
+}
+
 TArray<int32> AHOLGameState::DefeatExpiredAbsences(const double Now, const double WindowSeconds)
 {
 	// R7.5: the returns shown long enough.
@@ -1165,8 +1186,10 @@ uint8 AHOLGameState::GetDefeatedMask() const
 	return Mask;
 }
 
-TArray<FText> AHOLGameState::GetAbsenceBannerLines(const double Now) const
+TArray<FText> AHOLGameState::GetAbsenceBannerLines(const double WorldNow) const
 {
+	// D720 (T6): the notices are written on the window's clock (the time minus the pauses), so the banner reads that clock too.
+	const double Now = GetWindowClock(WorldNow);
 	TArray<FText> Lines;
 	for (const FHOLAbsentNotice& Notice : AbsentNotices)
 	{
@@ -1189,7 +1212,7 @@ void AHOLGameState::SetFakeAbsentNotice(const FString& Name, const double Second
 	{
 		return;
 	}
-	const double Now = GetServerWorldTimeSeconds();
+	const double Now = GetWindowClock(GetServerWorldTimeSeconds());
 	if (Name.IsEmpty())
 	{
 		AbsentNotices.RemoveAll([](const FHOLAbsentNotice& Notice) { return Notice.Slot == INDEX_NONE; });

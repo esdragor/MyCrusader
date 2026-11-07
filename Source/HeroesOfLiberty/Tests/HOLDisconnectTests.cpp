@@ -854,6 +854,116 @@ bool FHOLDisconnectPauseTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// D720 (T6, cosmetic): the banner of the clients counts down on the window's clock (the time minus the pauses), as the server's window does.
+// A pause of 60 s inside Bob's window of 180 s: seen at the server time 200 the banner reads 0:50 (clock 140, end 190), not 0:00; during a
+// pause the figure stands still; the server's figure of the pauses is replicated (a client cannot guess it).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectBannerClockTest, "HeroesOfLiberty.Match.DisconnectBannerClock", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectBannerClockTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	const FProperty* PausedSeconds = AHOLGameState::StaticClass()->FindPropertyByName(TEXT("WindowPausedSeconds"));
+	TestTrue(TEXT("the seconds of the pauses are replicated (the clients' banner reads them)"), PausedSeconds && PausedSeconds->HasAnyPropertyFlags(CPF_Net));
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	AHOLPlayerState* Bob = World->SpawnActor<AHOLPlayerState>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("Alice"), Alice) && TestNotNull(TEXT("Bob"), Bob))
+	{
+		FHOLMatchConfig Config1v1 = MakeNamedConfig();
+		Config1v1.Slots[2].State = EHOLSlotState::Closed;
+		State->InitVictory(Config1v1);
+		Alice->SetMatchSlot(0, 0);
+		Bob->SetMatchSlot(1, 1);
+		const FHOLResources Starting(200, 200, 200, 200);
+		State->GiveSlotStock(*Alice, Starting);
+		State->GiveSlotStock(*Bob, Starting);
+		TestTrue(TEXT("Bob leaves at the clock 10 (his window ends at 190)"), State->KeepAbsentSlot(*Bob, State->GetWindowClock(10.), 180.));
+		Bob->Destroy();
+
+		auto BannerAt = [State](const double Time)
+		{
+			const TArray<FText> Lines = State->GetAbsenceBannerLines(Time);
+			return Lines.Num() == 1 ? Lines[0].ToString() : FString::Printf(TEXT("%d lines"), Lines.Num());
+		};
+		TestEqual(TEXT("no pause, time 100: 1:30"), BannerAt(100.), FString(TEXT("Bob : connexion perdue — 1:30")));
+		TestTrue(TEXT("Alice pauses at 100"), State->RequestPause(*Alice, 100.));
+		TestEqual(TEXT("paused, time 130: the figure stands still (1:30)"), BannerAt(130.), FString(TEXT("Bob : connexion perdue — 1:30")));
+		TestTrue(TEXT("Alice resumes at 160"), State->RequestResume(*Alice, 160.));
+		TestEqual(TEXT("time 200, 60 s paused: 0:50 and not 0:00"), BannerAt(200.), FString(TEXT("Bob : connexion perdue — 0:50")));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
+// T9: hol.Net.FakeAbsent Back <Slot>, the return without a second client, on the real chain (the console command, as the scenarios run it):
+// Leave 1 keeps the seat (the AI holds it), the AI's stock grows, Back 1 gives the seat to a returning player (a player state of the
+// name, not the AI's) with the stock as the AI left it, the AI lets go, the banner says "de retour" and the seat is no longer the AI's.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectFakeBackTest, "HeroesOfLiberty.Match.DisconnectFakeBack", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectFakeBackTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("Alice"), Alice))
+	{
+		State->InitVictory(MakeNamedConfig());
+		Alice->SetMatchSlot(0, 0);
+		State->AddPlayerState(Alice);
+		State->GiveSlotStock(*Alice, FHOLResources(200, 200, 200, 200));
+
+		IConsoleManager::Get().ProcessUserConsoleInput(TEXT("hol.Net.FakeAbsent Leave 1"), *GLog, World);
+		TestNotNull(TEXT("Leave 1: the AI holds Bob's seat"), AHOLGameState::FindHeldBot(*World, 1));
+		TestTrue(TEXT("Leave 1: his banner is up"), State->GetAbsentNotices().ContainsByPredicate([](const FHOLAbsentNotice& Notice) { return Notice.Slot == 1 && Notice.BackAt <= 0.; }));
+		FHOLResources Stock;
+		TestTrue(TEXT("the AI's stock grows (a deposit)"), AHOLGameState::AddSlotStock(*World, 1, FHOLResources(0, 100, 0, 0), Stock));
+
+		IConsoleManager::Get().ProcessUserConsoleInput(TEXT("hol.Net.FakeAbsent Back 1"), *GLog, World);
+		TestNull(TEXT("Back 1: the AI's player state is gone"), AHOLGameState::FindHeldBot(*World, 1));
+		TestTrue(TEXT("Back 1: the seat is a player's again"), State->GetSlotsInUse(nullptr).Contains(1));
+		FHOLResources Read;
+		TestTrue(TEXT("Back 1: his stock is read"), AHOLGameState::GetSlotStock(*World, 1, Read));
+		TestEqual(TEXT("Back 1: the stock as the AI left it (the deposit is there)"), Read.ToString(), Stock.ToString());
+		TestTrue(TEXT("Back 1: the banner says he is back"), State->GetAbsentNotices().ContainsByPredicate([](const FHOLAbsentNotice& Notice) { return Notice.Slot == 1 && Notice.BackAt > 0.; }));
+		TestEqual(TEXT("Back 1: Alice's stock is untouched"), Alice->GetResources().ToString(), FHOLResources(200, 200, 200, 200).ToString());
+		int32 Seats = 0;
+		for (const APlayerState* Each : State->PlayerArray)
+		{
+			const AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+			Seats += HOLEach && HOLEach->GetPlayerIndex() == 1 ? 1 : 0;
+		}
+		TestEqual(TEXT("Back 1: one player state for his seat"), Seats, 1);
+		AHOLPlayerState* Returned = nullptr;
+		for (APlayerState* Each : State->PlayerArray)
+		{
+			AHOLPlayerState* HOLEach = Cast<AHOLPlayerState>(Each);
+			Returned = HOLEach && HOLEach->GetPlayerIndex() == 1 ? HOLEach : Returned;
+		}
+		TestTrue(TEXT("Back 1: that player state is Bob's, not an AI's"), Returned && !Returned->IsABot() && Returned->GetPlayerName() == TEXT("Bob"));
+		// Nobody away any more: a second Back has nothing to give back.
+		const int32 Notices = State->GetAbsentNotices().Num();
+		IConsoleManager::Get().ProcessUserConsoleInput(TEXT("hol.Net.FakeAbsent Back 1"), *GLog, World);
+		TestEqual(TEXT("a second Back changes nothing"), State->GetAbsentNotices().Num(), Notices);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 // D718 (T5): the end of the window by the rule of T1 (GetWindowEnd). Bob (slot 1) shares his camp with an AI seat (slot 2): at the end of
 // his window his seat is NOT defeated; the AI goes from the "hold" mode to the full brain at the Normal level, the banner goes out,
 // the seat stays his and he takes it back AFTER the window, with the stock the AI left. Contrast, a real 1v1 (Bob alone in his camp, two
