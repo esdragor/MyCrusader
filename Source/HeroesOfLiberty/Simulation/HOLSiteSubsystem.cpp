@@ -149,5 +149,75 @@ int32 UHOLSiteSubsystem::CountOwned(const int32 Slot) const
 
 void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 {
-	// Red-first stub (S5): the rule is not wired yet.
+	UWorld* World = GetWorld();
+	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!IsEnabled() || Sites.IsEmpty() || !Units || !GameState)
+	{
+		return;
+	}
+	const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	TArray<int32> TeamBySlot;
+	TArray<FName> FactionBySlot;
+	TArray<FName> HeroTypeBySlot;
+	TArray<FName> WorkerTypeBySlot;
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		const int32 Camp = HOLVictoryRules::GetCamp(Config, Slot);
+		TeamBySlot.Add(Camp != INDEX_NONE ? Camp : 1000 + Slot);
+		FactionBySlot.Add(HOLFactionRules::GetSlotFactionKey(Config, Slot));
+		HeroTypeBySlot.Add(HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::Hero));
+		WorkerTypeBySlot.Add(HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::Worker));
+	}
+
+	// One walk of the units for all the sites; a neutral owner's units (out of the slots) count for nothing, as at the relays.
+	TArray<TArray<int32>> Takers;
+	TArray<TArray<int32>> Disturbers;
+	Takers.SetNum(Sites.Num());
+	Disturbers.SetNum(Sites.Num());
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		HOLSite::ResetCounts(Takers[Index], Disturbers[Index], Slots);
+	}
+	Units->ForEachLivingUnitWithType([this, Slots, &Takers, &Disturbers, &FactionBySlot, &HeroTypeBySlot, &WorkerTypeBySlot](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
+	{
+		if (Owner >= Slots)
+		{
+			return;
+		}
+		const FVector2D Point(Location);
+		const bool bCanTake = TypeName == HeroTypeBySlot[Owner] || IsHolyType(FactionBySlot[Owner], TypeName);
+		const bool bIsPeasant = TypeName == WorkerTypeBySlot[Owner];
+		for (int32 Index = 0; Index < Sites.Num(); ++Index)
+		{
+			if (FVector2D::DistSquared(Point, Sites[Index].Location) <= FMath::Square(Sites[Index].Radius))
+			{
+				HOLSite::AddUnit(Takers[Index], Disturbers[Index], Owner, bCanTake, bIsPeasant);
+			}
+		}
+	});
+
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(World);
+	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(SiteHoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		FHOLSiteState& State = Sites[Index].State;
+		const int32 OldOwner = State.Owner;
+		// Diplomacy (D369, D401, D703): the owner's camp is the owner and its allies (both said Ally); anyone else, a Neutral included, is an
+		// adversary of its own (the book is read each step, so a break or an alliance counts at once).
+		TArray<int32> OwnerRelativeTeams;
+		if (Relations.IsDiplomacy() && State.Owner >= 0 && State.Owner < Slots)
+		{
+			for (int32 Slot = 0; Slot < Slots; ++Slot)
+			{
+				OwnerRelativeTeams.Add(Slot == State.Owner || !Relations.AreHostile(State.Owner, Slot) ? 500 : 1000 + Slot);
+			}
+		}
+		State = HOLSite::Step(State, Takers[Index], Disturbers[Index], OwnerRelativeTeams.IsEmpty() ? TeamBySlot : OwnerRelativeTeams, HoldSteps, HOLSite::DefaultDecaySteps);
+		if (State.Owner != OldOwner)
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Site %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
+		}
+	}
 }
