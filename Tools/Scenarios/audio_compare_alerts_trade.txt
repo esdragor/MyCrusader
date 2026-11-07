@@ -1,43 +1,43 @@
-# Ecoute : l'alerte de commerce [ANCIENS candidats non doux, non compte], dix variantes chacune, Entree = variante suivante
+# Ecoute : l'alerte de COMMERCE : sons GRAVES, SOURDS, COURTS et DOUX, pas usants (une bourse, pas un tintement), dix variantes chacune, Entree = variante suivante
 # Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute l'alerte de commerce [ANCIENS candidats non doux, non compte]. 10 sons, 1 cue, dix variantes A a J chacune.
+note Ecoute l'alerte de COMMERCE : sons GRAVES, SOURDS, COURTS et DOUX, pas usants (une bourse, pas un tintement). 10 sons, 1 cue, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Alert.Trade C.
 note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_alerts_trade_start
 waitkey Entree : commencer par Alert.Trade A
 hol.Audio.Candidate Alert.Trade A
 waitlog candidate played Alert.Trade A
-waitkey Alert.Trade A (handleCoins) vient de jouer. Entree : Alert.Trade B
+waitkey Alert.Trade A (s_trade_purse) vient de jouer. Entree : Alert.Trade B
 hol.Audio.Candidate Alert.Trade B
 waitlog candidate played Alert.Trade B
-waitkey Alert.Trade B (handleCoins2) vient de jouer. Entree : Alert.Trade C
+waitkey Alert.Trade B (s_trade_purse_b) vient de jouer. Entree : Alert.Trade C
 hol.Audio.Candidate Alert.Trade C
 waitlog candidate played Alert.Trade C
-waitkey Alert.Trade C (impactTin_medium_000) vient de jouer. Entree : Alert.Trade D
+waitkey Alert.Trade C (s_trade_leather) vient de jouer. Entree : Alert.Trade D
 hol.Audio.Candidate Alert.Trade D
 waitlog candidate played Alert.Trade D
-waitkey Alert.Trade D (v_tambourine_down) vient de jouer. Entree : Alert.Trade E
+waitkey Alert.Trade D (s_trade_drop) vient de jouer. Entree : Alert.Trade E
 hol.Audio.Candidate Alert.Trade E
 waitlog candidate played Alert.Trade E
-waitkey Alert.Trade E (v_triangle_hit) vient de jouer. Entree : Alert.Trade F
+waitkey Alert.Trade E (s_trade_tin) vient de jouer. Entree : Alert.Trade F
 hol.Audio.Candidate Alert.Trade F
 waitlog candidate played Alert.Trade F
-waitkey Alert.Trade F (v_nbell_s08) vient de jouer. Entree : Alert.Trade G
+waitkey Alert.Trade F (s_trade_wood_double) vient de jouer. Entree : Alert.Trade G
 hol.Audio.Candidate Alert.Trade G
 waitlog candidate played Alert.Trade G
-waitkey Alert.Trade G (impactGeneric_light_000) vient de jouer. Entree : Alert.Trade H
+waitkey Alert.Trade G (s_trade_cloth_belt) vient de jouer. Entree : Alert.Trade H
 hol.Audio.Candidate Alert.Trade H
 waitlog candidate played Alert.Trade H
-waitkey Alert.Trade H (impactMetal_light_003) vient de jouer. Entree : Alert.Trade I
+waitkey Alert.Trade H (s_trade_soft) vient de jouer. Entree : Alert.Trade I
 hol.Audio.Candidate Alert.Trade I
 waitlog candidate played Alert.Trade I
-waitkey Alert.Trade I (v_glock_C7) vient de jouer. Entree : Alert.Trade J
+waitkey Alert.Trade I (s_trade_coins_double) vient de jouer. Entree : Alert.Trade J
 hol.Audio.Candidate Alert.Trade J
 waitlog candidate played Alert.Trade J
-waitkey Alert.Trade J (handleSmallLeather) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Alert.Trade J (s_trade_generic) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
