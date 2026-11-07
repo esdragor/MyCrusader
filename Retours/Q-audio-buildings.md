@@ -16,3 +16,6 @@ Recommandation : **A**. C'est ton idée de départ (la sélection), sans rouvrir
 Valeur par défaut codée : **tout muet comme aujourd'hui** (sélection et construction générique muettes, fin d'entraînement = `Alert.TrainingDone`, commerce = `Alert.Trade`, destruction sans événement). Une ligne par bâtiment à changer dans `C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Script\Audio\HOLAudioBuildings.as` (fonction `Build`).
 
 Réponse :
+
+
+Reponse: A (utilisateur 10:36) : selection seule, un son par FAMILLE de batiments (bois : Maison, camps, Moulin, Ferme ; pierre : Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege ; sacre : Chapelle, Sanctuaire ; metal : Forge ; pieces : Marche), environ 5 sons ; construction finie, production et destruction restent muettes. Enregistree par ARWEN-14 le 2026-11-07 ; suite : B3/B4 (tables + scenario audio_compare_buildings, faits), B5 (C++) a decrire, l'ecoute de l'utilisateur choisit les sons (aimé/pas aimé, dix nouvelles).
