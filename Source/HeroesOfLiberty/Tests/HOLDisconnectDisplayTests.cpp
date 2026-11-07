@@ -1,9 +1,14 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Engine/Engine.h"
+#include "Engine/World.h"
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLForumMessages.h"
 #include "Match/HOLForumRules.h"
+#include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLMatchStats.h"
+#include "Match/HOLMatchStatsSubsystem.h"
 #include "Misc/AutomationTest.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -59,10 +64,62 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectMessageTest, "HeroesOfLiberty.Mat
 bool FHOLDisconnectMessageTest::RunTest(const FString& Parameters)
 {
 	const FHOLMatchConfig Config = MakeFourHumans();
-	const FHOLForumEvent Left = FHOLForumEvent::Make(EHOLForumEventKind::Left, 1);
+	// Answer B (Q-disconnect-left): one kind, Defeated, and a Reason that picks the text.
+	const FHOLForumEvent Left = FHOLForumEvent::Make(EHOLForumEventKind::Defeated, 1, INDEX_NONE, 0, EHOLForumEventReason::Disconnected);
 	TestEqual(TEXT("seen by another"), HOLForumMessages::GetMessage(Left, Config, 0, false).Text.ToString(), FString(TEXT("Bob a quitt\u00e9 la partie")));
 	TestEqual(TEXT("seen by himself"), HOLForumMessages::GetMessage(Left, Config, 1, false).Text.ToString(), FString(TEXT("Vous avez quitt\u00e9 la partie")));
 	TestFalse(TEXT("not the plain defeat"), HOLForumMessages::GetMessage(Left, Config, 0, false).Text.ToString().Contains(TEXT("vaincu")));
+	TestFalse(TEXT("his own leaving is no alert for himself"), HOLForumMessages::GetMessage(Left, Config, 1, false).bAlert);
+	const FHOLForumEvent Beaten = FHOLForumEvent::Make(EHOLForumEventKind::Defeated, 1);
+	TestEqual(TEXT("no reason: the plain defeat"), HOLForumMessages::GetMessage(Beaten, Config, 0, false).Text.ToString(), FString(TEXT("Bob est vaincu")));
+	return true;
+}
+
+// Answer B on the real chain: DefeatSlot(Disconnected) sends ONE Defeated event carrying the reason, the text written for the
+// viewers says \u00ab a quitt\u00e9 la partie \u00bb, and the statistics count it as the seat's one defeat (D508: one line per seat).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectLeftIsDefeatTest, "HeroesOfLiberty.Match.DisconnectLeftIsDefeat",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLDisconnectLeftIsDefeatTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	UHOLMatchStatsSubsystem* Stats = World->GetSubsystem<UHOLMatchStatsSubsystem>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("stats subsystem"), Stats))
+	{
+		FHOLMatchConfig Config = MakeFourHumans();
+		Config.Slots[0].Team = 1;
+		Config.Slots[1].Team = 2;
+		Config.Slots[2].State = EHOLSlotState::AI;
+		Config.Slots[2].Team = 2;
+		Config.Slots[3].State = EHOLSlotState::Closed;
+		State->InitVictory(Config);
+		TArray<FHOLForumEvent> Events;
+		State->OnForumEvent.AddLambda([&Events](const FHOLForumEvent& Event) { Events.Add(Event); });
+
+		TestTrue(TEXT("Bob's seat is defeated (Disconnected)"), State->DefeatSlot(1, EHOLDefeatReason::Disconnected));
+		TestEqual(TEXT("one event"), Events.Num(), 1);
+		if (Events.Num() == 1)
+		{
+			TestTrue(TEXT("the kind is Defeated"), Events[0].Kind == EHOLForumEventKind::Defeated);
+			TestTrue(TEXT("it carries the reason"), Events[0].Reason == EHOLForumEventReason::Disconnected);
+			TestEqual(TEXT("the text Alice reads"), HOLForumMessages::GetMessage(Events[0], Config, 0, false).Text.ToString(), FString(TEXT("Bob a quitt\u00e9 la partie")));
+		}
+		int32 Defeats = 0;
+		for (const FHOLMatchStatsEventEntry& Entry : Stats->GetStats().Events)
+		{
+			Defeats += (Entry.Kind == EHOLMatchStatsEvent::Defeated && Entry.PlayerIndex == 1) ? 1 : 0;
+		}
+		TestEqual(TEXT("the timeline counts one defeat for Bob's seat"), Defeats, 1);
+
+		// A surrender stays \u00ab vaincu \u00bb and counts the same way.
+		TestTrue(TEXT("Alice gives up"), State->DefeatSlot(0, EHOLDefeatReason::Surrender));
+		TestTrue(TEXT("... the plain defeat, no reason"), Events.Num() == 2 && Events[1].Kind == EHOLForumEventKind::Defeated && Events[1].Reason == EHOLForumEventReason::None);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
 	return true;
 }
 

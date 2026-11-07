@@ -9,9 +9,10 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLVictoryRules.h"
 
-FHOLForumEvent FHOLForumEvent::Make(const EHOLForumEventKind Kind, const int32 Slot, const int32 OtherSlot, const int32 Lives)
+FHOLForumEvent FHOLForumEvent::Make(const EHOLForumEventKind Kind, const int32 Slot, const int32 OtherSlot, const int32 Lives, const EHOLForumEventReason Reason)
 {
 	FHOLForumEvent Event;
+	Event.Reason = Reason;
 	Event.Kind = Kind;
 	Event.Slot = static_cast<int8>(Slot);
 	Event.OtherSlot = static_cast<int8>(OtherSlot);

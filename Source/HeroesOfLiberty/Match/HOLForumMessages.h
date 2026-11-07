@@ -28,6 +28,16 @@ enum class EHOLForumEventKind : uint8
 	Left,
 };
 
+/** Why a Defeated event happened, when the text depends on it (answer B of Q-disconnect-left): one byte on the wire. */
+UENUM()
+enum class EHOLForumEventReason : uint8
+{
+	/** The usual defeat: « Bob est vaincu ». */
+	None,
+	/** The player left and did not come back (EHOLDefeatReason::Disconnected): « Bob a quitté la partie ». Still a defeat for the statistics. */
+	Disconnected,
+};
+
 /** V4.1: one event, sent once by the server to every machine (AHOLGameState::MulticastForumEvent). */
 USTRUCT()
 struct HEROESOFLIBERTY_API FHOLForumEvent
@@ -49,7 +59,11 @@ struct HEROESOFLIBERTY_API FHOLForumEvent
 	UPROPERTY()
 	int8 Lives = 0;
 
-	static FHOLForumEvent Make(EHOLForumEventKind Kind, int32 Slot, int32 OtherSlot = INDEX_NONE, int32 Lives = 0);
+	/** Defeated: why (None = the usual text); None for every other kind. */
+	UPROPERTY()
+	EHOLForumEventReason Reason = EHOLForumEventReason::None;
+
+	static FHOLForumEvent Make(EHOLForumEventKind Kind, int32 Slot, int32 OtherSlot = INDEX_NONE, int32 Lives = 0, EHOLForumEventReason Reason = EHOLForumEventReason::None);
 };
 
 /** V4.1 (V4-Q3, V4-Q4): what a machine shows of an event, as its viewer sees it. */
