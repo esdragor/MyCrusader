@@ -15,3 +15,5 @@ Conséquences visibles : A = rien à l'écran, seulement l'audit ; B = les solda
 Recommandation : A (le défaut est un blocage de 2 s derrière des amis qui se battent, pas un soldat figé pour toujours ; ne change pas le comportement validé par les mesures).
 
 Défaut codé : aucun changement (le contrôle reste à 0,5 s, cvar existante `hol.Combat.WalkRiposteSteps` / constante FinalLegStuckSteps inchangées) ; un seul réglage à changer le moment venu.
+
+**Reponse (utilisateur, 2026-11-07 15:4x) : A** - le controle Sanity.Stall tolere la fin d'une marche FinalLeg (jusqu'a FinalLegStuckSteps + marge ~2,2 s). Rien ne change en jeu. A coder : tolerance dans l'audit hol.Test.Sanity (C++, test rouge d'abord). Piste mesuree (Celeborn-19) : SlotBlockedStopDistance 250 -> 120/150 a mesurer x8 sur les 3 scenarios.

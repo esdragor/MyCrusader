@@ -11,3 +11,5 @@ Options :
 Recommandation : B pour les captures (la plus sûre : rien à régler à l'œil, même geste que duel_challenge) ; C si tu veux garder les notes lisibles pendant l'essai.
 
 Valeur par défaut codée : A (aucune ligne changée). B = deux lignes `panel hide` / `panel show` autour des `capture ai_evolving_normal` et `capture ai_evolving_hard` de `Tools\Scenarios\ai_evolving.txt` ; C = les lignes `hol.Camera.Focus` du même fichier.
+
+**Reponse (utilisateur, 2026-11-07 15:4x) : B** - panel hide / panel show autour des captures ai_evolving_normal et ai_evolving_hard (comme duel_challenge). A faire : 2 lignes dans Tools\Scenarios\ai_evolving.txt, preflight ai_evolving, PNG ouverts.
