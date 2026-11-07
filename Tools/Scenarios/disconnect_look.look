@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+disconnect_present | La table des joueurs (en haut) : Alice et Bob avec leur nom en couleur, aucune pastille
+disconnect_away | Apres le depart de Bob : son nom reste dans la table avec la pastille "Connexion perdue"
+disconnect_ai | Fenetre finie, une IA dans son camp : son nom reste, la pastille devient "IA"

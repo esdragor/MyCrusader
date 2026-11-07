@@ -1,0 +1,21 @@
+Libre (2026-11-04 12:05) : Glorfindel, branche net-playtest, outils de test (Get-FreshLog etendu, 4a5485e) fait, rien en cours ; arret dur 13:30
+PRIS (2026-11-04 16:57) : sous-agent cavalerie C1 (branche cavalry, donnees + script, SANS C++ ni build), voir CavalryInProgress.md. Arret dur 1h.
+SORTIE sous-agent cavalerie C1 (2026-11-04) : branche cavalry, 3 commits (07758ae donnees, ae961a8 script, 3dbf714 scenario), commite, NON COMPILE / NON EXECUTE, pas de C++ touche, pas fusionne dans main
+Libre (2026-11-04 17:15) : Glorfindel, branche net-playtest = main 9f9c591 ; cavalry (C1, non compile) fusionnee dans main puis supprimee, rien en cours
+PRIS (2026-11-05 10:46) : Claude, chantier Legions L0 (branche net-playtest), arret dur 12:40
+Libre (2026-11-05 11:35) : Glorfindel, branche net-playtest = L0 et L1 Legions commites (b5cabaa), rien en cours
+PRIS (2026-11-05 19:20) : sous-agent Legions L2 donnees (branche net-playtest), SANS C++, arret dur 21:30
+Libre (2026-11-05 19:35) : Glorfindel, branche net-playtest, Legions L2 donnees (2dc6cfe, 7bef755) et Morale M2 textes en/ja (a1f0fb7) commites, NON compile, rien en cours
+PRIS (2026-11-05 19:34) : sous-agent Glorfindel, branche net-playtest, Sites sacres S1 + preflight cavalry + Palier 3 G1 script, SANS C++, arret dur 21:30
+Libre (2026-11-05 20:07) : Glorfindel, branche net-playtest, Sites sacres S1+S10/S6 script, Palier 3 G1 script, preflight cavalry joue, commite, NON compile (script seul), rien en cours
+PRIS (2026-11-05 20:13) : sous-agent Legions L2 C++ (branche net-playtest), arret dur 21:30
+Libre (2026-11-05 20:35) : Glorfindel, branche net-playtest, Legions L2 C++ commite (efe13f1, 4b6157c) + scenario legions_roster, tests 999/999, rien en cours
+PRIS (2026-11-05 20:44) : sous-agent Sites Q2=B script + Palier 3 G0 C++ leger (branche net-playtest), arret dur 21:15
+Libre (2026-11-05 21:00) : Glorfindel, branche net-playtest = fe094d5, Sites Q2=B (script) et Palier 3 G0 hol.Cheat.Tier (C++ compile, build PASS, tests 1014/1014) commites, rien en cours
+PRIS (2026-11-06 11:05) : sous-agent C++ n3, branche net-playtest, Legions noms/filtre + Sites S2 C++ + Palier3 G1, arret dur 13:00
+Libre (2026-11-06 11:40) : Glorfindel, net-playtest, Sites S2 + Legions noms/filtre + Palier3 G1 colonne commites (build PASS, tests 1045/1045), pas fusionne, rien en cours
+PRIS (2026-11-07 09:15) : GLORFINDEL-9 agent C++ n3, branche net-playtest, Deconnexion T5 gestionnaire C# + T6-T10 + KickPlayer fr/ja, arret dur 11:45
+Libre (2026-11-07 09:40) : Glorfindel, net-playtest, Deconnexion T5 gestionnaire C# + T6 + texte KickPlayer commites (build PASS, tests 1062/1062, net PASS), pas fusionne dans main, rien en cours
+PRIS (2026-11-07 09:46) : GLORFINDEL-10 agent C++ n3, branche net-playtest, Deconnexion T7 reconnexion client + T8 pastille/texte + T9 commandes, arret dur 11:45
+Libre (2026-11-07 10:10) : Glorfindel, net-playtest, Deconnexion T7 T8 T9 commites (build PASS, tests 1066/1066), net non relance, pas fusionne dans main, rien en cours
+PRIS (2026-11-07 10:12) : GLORFINDEL-11 agent C++ n3, branche net-playtest, Deconnexion verifs net + retour auto client + disconnect_look, arret dur 11:45
