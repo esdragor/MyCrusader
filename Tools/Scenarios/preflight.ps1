@@ -102,12 +102,10 @@ if (Test-Path $Log) {
 }
 
 # 4 (dynamic part): the captures taken during this run
-$Shots = Join-Path $Root "Saved_Tests\Screenshots\HOL"
+. (Join-Path $PSScriptRoot "CaptureResolve.ps1")
 foreach ($P in $Points) {
-    $File = Join-Path $Shots ($P.Capture + ".png")
-    # The engine writes captures under Screenshots\<platform>\HOL (WindowsEditor in the -game runs of check.ps1), not directly under Screenshots\HOL.
-    $Alt = Join-Path $Root ("Saved_Tests\Screenshots\WindowsEditor\HOL\" + $P.Capture + ".png")
-    if (-not (Test-Path $File) -and (Test-Path $Alt)) { $File = $Alt }
+    # The engine writes captures under Screenshots\<platform>\HOL (WindowsEditor in the -game runs of check.ps1): CaptureResolve.ps1 takes the newest.
+    $File = Resolve-CapturePath $Root $P.Capture
     if ((Test-Path $File) -and ((Get-Item $File).LastWriteTime -ge $Start)) { Report "OK" "point '$($P.Capture)': $File  <- OPEN IT and see: $($P.Text)" }
     else { Report "FAIL" "point '$($P.Capture)': no new capture at $File" }
 }
