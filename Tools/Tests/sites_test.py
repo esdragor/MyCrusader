@@ -1,0 +1,89 @@
+"""Sacred sites' map data (SacredSitesInProgress.md S4, D697: the number and the places of the sites are set by every map, no formula): the maps' own
+sites(recipe) gives [(x, y, radius)] in cm, as relays(recipe) does. Without the editor (stand-in `unreal`, maps_stub.py), on the REAL chain (the maps' own
+sites(recipe), relays(recipe) and volcano(recipe)).
+For every map of Tools/Data/Maps.csv and every size, the sites must be: at least one, a whole number of rings of one site per place; symmetric by a turn of
+one place (360 / places degrees), the rule the relays pass (FHOLRelayLayoutRules); a radius above 0; inside the bounds; outside every base's reach; clear of
+every relay zone, of the altar's zone and of the lava flows; and not overlapping each other.
+  python Tools/Tests/sites_test.py [Map[:Size] ...]     prints one line per map and size and PASS / FAIL; exit code 0 / 1
+"""
+import importlib
+import math
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import maps_stub  # noqa: E402
+
+maps_stub.install()
+from maps import common  # noqa: E402
+
+TWIN_TOLERANCE = 100.0  # cm, as the relays' symmetry (CountUnmatchedByTurn)
+
+
+def problems_of(recipe, sites, relays, volcano):
+    """What is wrong with these sites (a list of texts, empty = fine)."""
+    out = []
+    places = len(recipe.angles)
+    if not sites:
+        return ["no site"]
+    if len(sites) % places:
+        out.append("%d sites is not a whole number of rings of %d places" % (len(sites), places))
+    turn = 2.0 * math.pi / places
+    cos, sin = math.cos(turn), math.sin(turn)
+    unmatched = sum(1 for (x, y, r) in sites
+                    if not any(math.dist((x * cos - y * sin, x * sin + y * cos), (u, v)) <= TWIN_TOLERANCE and abs(r - s) < 1.0 for (u, v, s) in sites))
+    if unmatched:
+        out.append("%d sites without a twin after a turn of one place" % unmatched)
+    slots = [recipe.slot(index)[0] for index in range(places)]
+    altar_x, altar_y, altar_radius = volcano["altar"]
+    for i, (x, y, r) in enumerate(sites):
+        if r <= 0.0:
+            out.append("radius %.0f at (%.0f, %.0f)" % (r, x, y))
+        if abs(x) > recipe.bounds_half - r or abs(y) > recipe.bounds_half - r:
+            out.append("a site is outside the bounds at (%.0f, %.0f)" % (x, y))
+        if any(math.dist((x, y), slot) < common.BASE_REACH + r for slot in slots):
+            out.append("a site zone enters a base's reach at (%.0f, %.0f)" % (x, y))
+        if any(math.dist((x, y), (u, v)) < r + s for (u, v, s) in relays):
+            out.append("a site zone meets a relay's at (%.0f, %.0f)" % (x, y))
+        if math.dist((x, y), (altar_x, altar_y)) < r + altar_radius:
+            out.append("a site zone meets the altar's at (%.0f, %.0f)" % (x, y))
+        if any(common.segment_distance((x, y), flow[0], flow[-1]) < common.RELAY_LAVA_HALF_WIDTH + r for flow in volcano["flows"]):
+            out.append("a site zone is on a lava flow at (%.0f, %.0f)" % (x, y))
+        for (u, v, s) in sites[i + 1:]:
+            if math.dist((x, y), (u, v)) < r + s:
+                out.append("two site zones overlap at (%.0f, %.0f)" % (x, y))
+    return out
+
+
+def main(keys):
+    sizes = common.read_sizes()
+    maps = common.read_maps()
+    wanted = [key.split(":") for key in keys] or [[name] for name in maps]
+    failed = 0
+    for want in wanted:
+        name = want[0]
+        module = importlib.import_module("maps." + maps[name])
+        for key in want[1:] or list(sizes):
+            places, side = sizes[key]
+            recipe = common.sized_recipe(name, key, places, side)
+            try:
+                relays = module.relays(recipe)
+            except Exception as error:  # a recipe that needs the editor for its relays: said, counted as not read
+                print("%s %s: relays not read (%s: %s)" % (name, key, type(error).__name__, error))
+                continue
+            try:
+                sites = module.sites(recipe)
+            except AttributeError as error:
+                sites = None
+                problem = "no sites(recipe) (%s)" % error
+            if sites is not None:
+                problem = "; ".join(problems_of(recipe, sites, relays, module.volcano(recipe)[0]))
+            print("%s %s: %s%s" % (name, key, ("%d sites" % len(sites) if sites is not None else "") + (", OK" if not problem else ", " + problem),
+                                   "" if not problem else "  <-- FAIL"))
+            failed += 1 if problem else 0
+    print("sites_test : %s" % ("PASS" if not failed else "FAIL (%d)" % failed))
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
