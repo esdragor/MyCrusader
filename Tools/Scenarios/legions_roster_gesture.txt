@@ -38,7 +38,7 @@ frames 5
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Garde noire
+waitlog HUD selection name: Garde noire$
 capture legions_gesture_blackguard
 # 3. Archery range
 hol.Camera.FocusNear 2500 4500
@@ -53,7 +53,7 @@ frames 30
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Archer squelette
+waitlog HUD selection name: Archer squelette$
 # 4. Stable
 hol.Camera.FocusNear 2500 6500
 frames 5
@@ -67,7 +67,7 @@ frames 30
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Cavalier funeste
+waitlog HUD selection name: Cavalier funeste$
 capture legions_gesture_rider
 # 5. Siege workshop
 hol.Camera.FocusNear 2500 8500
@@ -83,7 +83,7 @@ frames 40
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Bélier d'os
+waitlog HUD selection name: Bélier d'os$
 # 6. BREAK IT: Aube unit and Aube Barracks, same clicks. They must keep their Aube names.
 hol.Camera.FocusNear 5000 -1500
 frames 2
@@ -93,7 +93,7 @@ frames 40
 hol.Select.ClickUnit -1 enemy
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Lancier
+waitlog HUD selection name: Lancier$
 capture legions_gesture_aube_unit
 hol.Camera.FocusNear 6500 4000
 hol.Cheat.SpawnBuilding Barracks 1 6500 4000
@@ -134,7 +134,7 @@ waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: Bone Ram
+waitlog HUD selection name: Bone Ram$
 capture legions_gesture_en_ram
 hol.UI.Language ja
 frames 20
@@ -166,7 +166,7 @@ waitlog HUD cells: A: 骨の破城槌; Z: 骨のマンゴネル
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name: 骨の破城槌
+waitlog HUD selection name: 骨の破城槌$
 capture legions_gesture_ja_ram
 hol.UI.Language fr
 frames 10

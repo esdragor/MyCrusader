@@ -4,6 +4,8 @@
 #include "Internationalization/Text.h"
 #include "Internationalization/Internationalization.h"
 #include "Internationalization/Culture.h"
+#include "Internationalization/TextLocalizationResource.h"
+#include "Misc/Paths.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/AutomationTest.h"
 
@@ -77,16 +79,34 @@ bool FHOLGameNamesLegionsLanguagesTest::RunTest(const FString& Parameters)
 		TEXT("骨のマンゴネル") };
 	const TCHAR* const* const Expected[] = { French, English, Japanese };
 	const TCHAR* const Cultures[] = { TEXT("fr"), TEXT("en"), TEXT("ja") };
-	for (int32 Language = 0; Language < 3; ++Language)
+	// French is the source text: the code's own call. English and Japanese cannot be switched live in the test editor (the game
+	// localization is loaded there only by an asynchronous preview), so their text is read from the very files the game loads
+	// (Content/Localization/Game/<culture>/Game.locres, namespace HOLGameNames, key Legions_<Type>); the running game's side of it
+	// (hol.UI.Language, real clicks) is the scenario legions_roster_gesture.
 	{
-		const FScopedLanguage Scoped(Cultures[Language]);
+		const FScopedLanguage Scoped(TEXT("fr"));
 		for (int32 Index = 0; Index < 7; ++Index)
 		{
-			const FName Type(Types[Index]);
-			const FString Own = HOLGameNames::GetUnitName(Type, nullptr, Legions).ToString();
+			const FString Own = HOLGameNames::GetUnitName(FName(Types[Index]), nullptr, Legions).ToString();
+			TestEqual(*FString::Printf(TEXT("%s of the Legions in fr"), Types[Index]), Own, FString(French[Index]));
+			TestNotEqual(*FString::Printf(TEXT("%s: the Legions' name is not the Dawn's in fr"), Types[Index]),
+				Own, HOLGameNames::GetUnitName(FName(Types[Index]), nullptr, Dawn).ToString());
+		}
+	}
+	for (int32 Language = 1; Language < 3; ++Language)
+	{
+		FTextLocalizationResource Resource;
+		const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), Cultures[Language], TEXT("Game.locres"));
+		if (!TestTrue(*FString::Printf(TEXT("%s is readable"), *File), Resource.LoadFromFile(File, 0)))
+		{
+			continue;
+		}
+		for (int32 Index = 0; Index < 7; ++Index)
+		{
+			const FTextLocalizationResource::FEntry* Entry = Resource.Entries.Find(FTextId(FTextKey(TEXT("HOLGameNames")), FTextKey(*FString::Printf(TEXT("Legions_%s"), Types[Index]))));
+			const FString Own = Entry && Entry->LocalizedString.IsValid() ? *Entry->LocalizedString : FString();
 			TestEqual(*FString::Printf(TEXT("%s of the Legions in %s"), Types[Index], Cultures[Language]), Own, FString(Expected[Language][Index]));
-			TestNotEqual(*FString::Printf(TEXT("%s: the Legions' name is not the Dawn's in %s"), Types[Index], Cultures[Language]),
-				Own, HOLGameNames::GetUnitName(Type, nullptr, Dawn).ToString());
+			TestNotEqual(*FString::Printf(TEXT("%s: the %s name is translated, not the French source"), Types[Index], Cultures[Language]), Own, FString(French[Index]));
 		}
 	}
 	// The Dawn keeps its names (French).

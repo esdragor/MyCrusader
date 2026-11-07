@@ -32,7 +32,7 @@
  * One step per line (empty lines and lines starting with # are skipped):
  *   frames <N>           lets N frames go by (layout of a screen just opened)
  *   wait <Seconds>       lets time go by (a key held, a camera moving)
- *   waitlog <Text>       waits for a log line holding Text, written since the last command
+ *   waitlog <Text>       waits for a log line holding Text, written since the last command (Text ending with "$": the line must END with it)
  *   waitmap <Name>       waits for a game world whose map name holds Name to have begun play
  *   waitplayers <N>      waits for the game world to know N players (a client waits for the others to join)
  *   waitunits <N>        waits for N units at least: simulated (solo, server) or displayed (client, D271)
@@ -164,9 +164,12 @@ namespace UE::HeroesOfLiberty::Dev
 		bool Contains(const FString& Text, const int32 From) const
 		{
 			FScopeLock Lock(&Guard);
+			// A Text ending with "$" must end the line: "HUD selection name: Lancier$" does not accept "...Lancier squelette".
+			const bool bAtLineEnd = Text.EndsWith(TEXT("$"));
+			const FString Wanted = bAtLineEnd ? Text.LeftChop(1) : Text;
 			for (int32 Index = From; Index < Lines.Num(); ++Index)
 			{
-				if (Lines[Index].Contains(Text))
+				if (bAtLineEnd ? Lines[Index].TrimEnd().EndsWith(Wanted) : Lines[Index].Contains(Wanted))
 				{
 					return true;
 				}
