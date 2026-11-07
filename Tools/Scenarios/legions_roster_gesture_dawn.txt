@@ -1,4 +1,4 @@
-# Counter-check of legions_roster_gesture (Elrond-9): you play the AUBE (Dawn), the frozen AI is the Legions. Real clicks and keys on the Aube Barracks / Archery Range / Stable: the grid, the tooltip and the selection block keep the Aube names (no Legion / Black Guard / Dread Rider / Bone). The Legions' unit of the AI, clicked as an enemy, shows ITS Legions name.
+# Counter-check of legions_roster_gesture (Elrond-9): you play the AUBE (Dawn), the frozen AI is the Legions. Real clicks and keys on the Aube Barracks / Archery Range / Stable: the grid, the tooltip and the selection block keep the Aube names (no Legion / Garde noire / Cavalier funeste / Bone). The Legions' unit of the AI, clicked as an enemy, shows ITS Legions name.
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
@@ -18,7 +18,7 @@ frames 40
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
-waitlog HUD cells:
+waitlog HUD cells: A: Lancier; Z: Homme d'armes
 hol.HUD.Report
 waitlog HUD tooltips:
 capture legions_gesture_dawn_barracks
@@ -28,20 +28,20 @@ frames 30
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
-waitlog HUD selection name:
+waitlog HUD selection name: Lancier$
 capture legions_gesture_dawn_unit
 hol.Camera.FocusNear 2500 4500
 frames 5
 hol.Select.ClickGround -12200 4600
 frames 10
 hol.HUD.Report
-waitlog HUD cells:
+waitlog HUD cells: A: Archer; Z: Arbalétrier
 hol.Camera.FocusNear 2500 6500
 frames 5
 hol.Select.ClickGround -12200 6600
 frames 10
 hol.HUD.Report
-waitlog HUD cells:
+waitlog HUD cells: A: Cavalier léger
 hol.Camera.FocusNear 5000 -1500
 frames 2
 hol.Units.SpawnHere 1 Spearman 1 120
@@ -50,6 +50,6 @@ frames 40
 hol.Select.ClickUnit -1 enemy
 frames 10
 hol.HUD.Report
-waitlog HUD selection name:
+waitlog HUD selection name: Lancier squelette$
 capture legions_gesture_dawn_enemy
-note You play the Aube: the Barracks grid and your units keep the Aube names; the Legions' Spearman (red) is called Legion Spearman.
+note You play the Aube: the Barracks grid and your units keep the Aube names; the Legions' Spearman (red) is called Lancier squelette.

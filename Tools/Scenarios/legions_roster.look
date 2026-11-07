@@ -1,5 +1,5 @@
 legions_roster_barracks | La Caserne des Legions selectionnee : sa grille porte le Lancier (A) et l'Homme d'armes (B), pas de Hallebardier
 legions_roster_row | Une rangee des unites du socle des Legions (Lancier, Homme d'armes, Archer, Arbaletrier, Cavalier leger), corps provisoires
 legions_roster_dawn | Trois Lanciers de l'Aube (rouge) a cote de ceux des Legions : meme corps
-legions_roster_names_barracks | La Caserne des Legions selectionnee : la grille ecrit Legion Spearman (A) et Black Guard (Z), plus Lancier ni Homme d'armes
-legions_roster_names_selection | Le Cavalier leger des Legions selectionne : le bloc du bas l'appelle Dread Rider
+legions_roster_names_barracks | La Caserne des Legions selectionnee : la grille ecrit Lancier squelette (A) et Garde noire (Z), plus Lancier ni Homme d'armes
+legions_roster_names_selection | Le Cavalier leger des Legions selectionne : le bloc du bas l'appelle Cavalier funeste

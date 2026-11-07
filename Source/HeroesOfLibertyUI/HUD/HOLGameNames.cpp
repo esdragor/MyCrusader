@@ -75,18 +75,18 @@ namespace HOLGameNames
 
 	FText GetUnitName(const FName TypeName, const FHOLUnitTypeRow* Row, const FName FactionKey)
 	{
-		// The Legions' own names (FactionOverrides.csv, rows `Legions_<Unit>_Name`, field DisplayName; provisional until L13): one key per
+		// The Legions' own names (FactionOverrides.csv, rows `Legions_<Unit>_Name`, field DisplayName; names of 2026-11-07: French short, EN and JA in the .po by fill_po.py): one key per
 		// unit and faction, the texts kept equal to the table by the test UI.GameNames.FactionNames.
 		if (FactionKey == FName(TEXT("Legions")))
 		{
 			static const TMap<FName, FText> LegionsNames = {
-				{ FName(TEXT("Spearman")), LOCTEXT("Legions_Spearman", "Legion Spearman") },
-				{ FName(TEXT("ManAtArms")), LOCTEXT("Legions_ManAtArms", "Black Guard") },
-				{ FName(TEXT("Archer")), LOCTEXT("Legions_Archer", "Legion Archer") },
-				{ FName(TEXT("Crossbowman")), LOCTEXT("Legions_Crossbowman", "Legion Crossbowman") },
-				{ FName(TEXT("LightCavalry")), LOCTEXT("Legions_LightCavalry", "Dread Rider") },
-				{ FName(TEXT("Ram")), LOCTEXT("Legions_Ram", "Bone Ram") },
-				{ FName(TEXT("Mangonel")), LOCTEXT("Legions_Mangonel", "Bone Mangonel") },
+				{ FName(TEXT("Spearman")), LOCTEXT("Legions_Spearman", "Lancier squelette") },
+				{ FName(TEXT("ManAtArms")), LOCTEXT("Legions_ManAtArms", "Garde noire") },
+				{ FName(TEXT("Archer")), LOCTEXT("Legions_Archer", "Archer squelette") },
+				{ FName(TEXT("Crossbowman")), LOCTEXT("Legions_Crossbowman", "Arbalétrier squelette") },
+				{ FName(TEXT("LightCavalry")), LOCTEXT("Legions_LightCavalry", "Cavalier funeste") },
+				{ FName(TEXT("Ram")), LOCTEXT("Legions_Ram", "Bélier d'os") },
+				{ FName(TEXT("Mangonel")), LOCTEXT("Legions_Mangonel", "Mangonneau d'os") },
 			};
 			if (const FText* Own = LegionsNames.Find(TypeName))
 			{
