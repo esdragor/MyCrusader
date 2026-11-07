@@ -1047,6 +1047,12 @@ bool FHOLCombatBuildingAttackTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("An ordered building: no enemy unit taken on (never dropped)"), HOLCombat::MaySeek(false, false, false, true));
 	TestFalse(TEXT("An ordered unit target: none taken on either"), HOLCombat::MaySeek(false, false, true, false));
 	TestFalse(TEXT("A plain walk: none taken on"), HOLCombat::MaySeek(true, false, false, false));
+	// Q5 = C (hol.Combat.WalkRiposteSteps): a walk that no longer progresses ripostes; an ordered target or building still shields
+	TestTrue(TEXT("A walk that made no headway for 10 steps: it takes the enemy that strikes it on"), HOLCombat::MaySeek(true, false, false, false, HOLCombat::IsWalkStalled(10, 10)));
+	TestFalse(TEXT("A walk 9 steps without headway: still a plain walk"), HOLCombat::MaySeek(true, false, false, false, HOLCombat::IsWalkStalled(9, 10)));
+	TestFalse(TEXT("The rule off (0): never stalled"), HOLCombat::IsWalkStalled(1000, 0));
+	TestFalse(TEXT("A stalled walk to an ordered unit target: still none taken on"), HOLCombat::MaySeek(true, false, true, false, true));
+	TestFalse(TEXT("A stalled walk to an ordered building: still none taken on"), HOLCombat::MaySeek(true, false, false, true, true));
 
 	// Search radii: at rest the aggression, the Peasant none; attack-move; hold its reach.
 	TestTrue(TEXT("A Spearman at rest looks for buildings within its aggression"), FMath::IsNearlyEqual(HOLCombat::GetBuildingSearchRadius(Seeker, Spearman), Spearman.AggressionRadius));

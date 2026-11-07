@@ -209,9 +209,19 @@ namespace HOLCombat
 	 * player's order but on an attack-move; never with an ordered target (a unit, until it dies) nor an ordered building
 	 * (a right click on it, Shift or not: until it falls, whatever enemy unit comes).
 	 */
-	inline bool MaySeek(const bool bWalkingOrder, const bool bAttackMove, const bool bOrderedTarget, const bool bOrderedBuilding)
+	inline bool MaySeek(const bool bWalkingOrder, const bool bAttackMove, const bool bOrderedTarget, const bool bOrderedBuilding, const bool bWalkStalled = false)
 	{
-		return (!bWalkingOrder || bAttackMove) && !bOrderedTarget && !bOrderedBuilding;
+		return (!bWalkingOrder || bAttackMove || bWalkStalled) && !bOrderedTarget && !bOrderedBuilding;
+	}
+
+	/**
+	 * Q5 = C: a walk that no longer progresses (its final leg or its path held StuckSteps steps without headway: the place barred, a friend in the
+	 * way) no longer shields the walker from the fight: struck meanwhile, it ripostes (MaySeek's bWalkStalled). A normal walk is not cut (D345,
+	 * J7b.3). MinSteps <= 0: off (hol.Combat.WalkRiposteSteps).
+	 */
+	inline bool IsWalkStalled(const int32 StuckSteps, const int32 MinSteps)
+	{
+		return MinSteps > 0 && StuckSteps >= MinSteps;
 	}
 
 	// Attacks on buildings (D345.2b). Against a building a unit always uses its building attack (FHOLUnitTypeConstants::

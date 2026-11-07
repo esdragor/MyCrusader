@@ -117,6 +117,9 @@ namespace UE::HeroesOfLiberty::Combat
 	float StuckLooseSeconds = 0.f; // OFF by default: the lot of 2026-11-06 17:00 gave 3/8 red with 4 (see Retours/BUG-melee-stuck-attack.md, Correcteur 2)
 	FAutoConsoleVariableRef CVarStuckLooseSeconds(TEXT("hol.Combat.StuckLooseSeconds"), StuckLooseSeconds,
 		TEXT("s (default 0 = off, tried at 4: not better; with hol.Combat.StuckRetargetSeconds): a melee out of reach with no headway for this long, no enemy with a free place it can reach, takes the nearest other enemy whatever the places and the friends in the way (a target the player ordered is kept); 0: off (BUG-melee-stuck-attack)"));
+	int32 WalkRiposteSteps = 10;
+	FAutoConsoleVariableRef CVarWalkRiposteSteps(TEXT("hol.Combat.WalkRiposteSteps"), WalkRiposteSteps,
+		TEXT("steps (default 10 = 0.5 s; Q5 = C): a unit on a player's walk (not an attack-move) whose walk made no headway for this many steps (its place barred, a friend in the way) takes on the enemy that strikes it (HOLCombat::MaySeek); a normal walk is never cut; 0: off (as before: no riposte during a walk)"));
 	float MeleeLock = 60.f;
 	FAutoConsoleVariableRef CVarMeleeLock(TEXT("hol.Combat.MeleeLock"), MeleeLock,
 		TEXT("cm (default 60): a melee soldier that struck last step keeps its target while it lives and stays within its reach plus this (the target nudged out of reach by a few cm no longer makes the soldier take another enemy and begin its blow again: BUG-melee-stuck-attack); 0: off, as before"));
@@ -824,7 +827,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 			const bool bMaySeek = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget,
-				!Combat.OrderedBuilding.IsExplicitlyNull());
+				!Combat.OrderedBuilding.IsExplicitlyNull(), HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps));
 			const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
 			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && Combat.OrderedBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
 				&& !Combat.bAttacking && Combat.Mode != EHOLCombatMode::AttackMove && (Fighter.bBusy || !bMaySeek || !bSearchStep);
@@ -993,7 +996,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
-			const bool bMaySeekNow = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull());
+			const bool bMaySeekNow = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull(),
+				HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps));
 			// Perf: a melee walking to fight will likely search for contact (the serial pass's test, by the step's start).
 			if (bParallelAhead && bStopAtContact && bMaySeekNow && Fighter.State->CurrentHealth > 0 && !Fighter.bBusy && Fighter.Order->Phase != EHOLMovePhase::None
 				&& !HOLCombat::IsRangedAttack(Constants.AttackRange) && (Combat.TargetBuilding.IsExplicitlyNull() || Constants.AggressionRadius > 0.f))
@@ -1518,7 +1522,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			&& Combat.Mode != EHOLCombatMode::AttackMove)
 		{
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None; // not approaching
-			const bool bMaySeek = !bWalkingOrder && !Combat.bOrderedTarget; // not on an attack-move
+			const bool bMaySeek = (!bWalkingOrder || HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps)) && !Combat.bOrderedTarget; // not on an attack-move
 			if (Fighter.bBusy || !bMaySeek || ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) != 0)
 			{
 				if (!Fighter.bBusy)
@@ -1599,7 +1603,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// kept until it dies, an ordered building until it falls (D345: no enemy unit makes it drop it).
 		const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 		const bool bMaySeek = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget,
-			!Combat.OrderedBuilding.IsExplicitlyNull());
+			!Combat.OrderedBuilding.IsExplicitlyNull(), HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps));
 		const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
 		const int32 TargetBeforeSearch = Target;
 		// BUG-melee-stuck-attack (hol.Combat.MeleeLock, the user's rule: a soldier at grips with a target keeps it until it dies): a melee that struck
