@@ -4,7 +4,7 @@
 #   -Phase Merge  : avant l'agent de fusion (pre-vol de chaque branche : -Branches ai-ia1,fog,...)
 #   -Phase Close  : avant le bilan (worktrees propres et a jour, reponses non traitees, bilan des lecons)
 # Sortie : une ligne PASS / WARN / FAIL par controle, code de sortie 1 s'il y a un FAIL.
-#   -Phase Essay  : avant de donner une commande play.ps1 a l'utilisateur (-Root <worktree> : contient main, propre, build plus recent que le dernier commit de code)
+#   -Phase Essay  : avant de donner une commande play.ps1 a l'utilisateur (-Root <worktree> : contient main, propre, build plus recent que le dernier commit de code ; -Essay <nom> : contient aussi le tip de chaque branche citee dans Retours\E-<nom>.md, ligne "branches: a, b" (L8-1))
 #   -Phase Report : a la RECEPTION du rapport de chaque agent (-Root <worktree de l'agent>) : la copie principale n'a que des docs voulus modifies, le worktree contient main, est propre, et son binaire n'est pas plus vieux que le dernier code (sinon build.ps1 AVANT tout quick_check : binaire perime = faux rouges)
 #   Launch verifie aussi la file : au moins 3 lignes '[ ]' etiquetees 'sans C++' dans Auto_Journey_File.md (de quoi relancer sans toucher au plafond de 3 agents C++)
 param(
@@ -16,7 +16,8 @@ param(
   [string]$Root = '',
   [switch]$Scenarios,                      # Launch : la tache de l'agent joue des scenarios (donc exige un binaire du worktree a jour, -Root)
   [string[]]$Exclude = @(),                # Close : worktrees hors perimetre (nom court 'Haldir' ou complet 'HeroesOfLiberty-Haldir')
-  [string]$RetoursDir = '',                # Close : dossier des Retours\ (defaut : la copie principale)
+  [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
+  [string]$Essay = '',                     # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [int]$MinMinutes = 5   # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
 )
 $ErrorActionPreference = 'Continue'
@@ -150,6 +151,39 @@ if ($Phase -eq 'Essay') {
       else { Say 'FAIL' ("binaire du {0} PLUS ANCIEN que le dernier commit de code du {1} : rebuild (build.ps1) avant l'essai" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
       Say-StaleBySource $Root $bin 'FAIL'
     } else { Say 'WARN' 'binaire ou commit de code introuvable : verifier le build a la main' }
+    # L8-1 : le worktree doit contenir le tip de CHAQUE branche citee dans le E-*.md de l'essai (ligne "branches: a, b", a defaut les noms
+    # de branches locales trouves dans le texte). 2026-11-06 : qground joue depuis Elrond sans les correctifs de melee de Celeborn.
+    $eFiles = @()
+    if ($Essay) {
+      $en = [IO.Path]::GetFileNameWithoutExtension($Essay) -replace '^E-', ''
+      $eFiles = @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue | Where-Object { $_.BaseName -eq "E-$en" })
+      if ($eFiles.Count -eq 0) { Say 'FAIL' "Retours\E-$en.md introuvable dans $RetoursDir : les branches de l'essai ne sont pas verifiees" }
+    } else {
+      $eFiles = @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue | Where-Object {
+        $t0 = Get-Content $_.FullName -Raw -Encoding UTF8
+        $t0 -match '(?m)^#.*ESSAYER\]' -and $t0 -notmatch '(?m)^\s*\**R[^\s:]*ponse[^:\n]*:\**\s*\S' })
+      if ($eFiles.Count -eq 0) { Say 'WARN' "aucun E-*.md ouvert dans $RetoursDir (ou donner -Essay <nom>) : branches de l'essai non verifiees" }
+    }
+    $localBranches = @(git -C $Root branch --format='%(refname:short)' 2>$null)
+    foreach ($ef in $eFiles) {
+      $etxt = Get-Content $ef.FullName -Raw -Encoding UTF8
+      $named = $true
+      $cited = @()
+      $bm = [regex]::Match($etxt, '(?mi)^\s*\**branches\s*:\**\s*(.+)$')
+      if ($bm.Success) { $cited = @($bm.Groups[1].Value -split '[,;\s`]+' | Where-Object { $_ -and $_ -ne '-' -and $_ -ne 'aucune' }) }
+      else {
+        $named = $false
+        $cited = @([regex]::Matches($etxt, '[A-Za-z0-9][A-Za-z0-9._/-]*') | ForEach-Object { $_.Value } | Select-Object -Unique |
+          Where-Object { $_.Length -ge 3 -and $_ -notin 'main', 'master' -and $localBranches -contains $_ })
+      }
+      if ($cited.Count -eq 0) { Say 'WARN' ("{0} : aucune branche citee : ajouter la ligne 'branches: a, b' (les branches dont le correctif est joue ; gabarit E_template.md)" -f $ef.Name); continue }
+      foreach ($cb in $cited) {
+        if ($localBranches -notcontains $cb) { Say 'FAIL' ("{0} : branche '{1}' citee mais inconnue de git (faute de frappe ?)" -f $ef.Name, $cb); continue }
+        git -C $Root merge-base --is-ancestor $cb HEAD 2>$null
+        if ($LASTEXITCODE -eq 0) { Say 'PASS' ("{0} : le worktree contient le tip de la branche {1}" -f $ef.Name, $cb) }
+        else { Say 'FAIL' ("{0} : branche '{1}' ABSENTE du worktree (son tip n'est pas ancetre de HEAD){2} : la fusionner ici (git merge {1}) puis build.ps1, ou jouer l'essai dans un worktree qui la contient" -f $ef.Name, $cb, $(if ($named) { '' } else { ' [deduite du texte, pas d une ligne branches:]' })) }
+      }
+    }
     Say 'WARN' "rappel : l'essai d'un REGLAGE/BUG est rejoue par l'integrateur (geste reel + PNG avant/apres) AVANT cette commande"
   }
 }

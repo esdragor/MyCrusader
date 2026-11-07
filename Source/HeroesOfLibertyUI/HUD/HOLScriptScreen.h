@@ -11,6 +11,13 @@ class UCommonTextBlock;
 class UCommonTextStyle;
 class UWidget;
 
+/** A HUD box and its name (Slate units of the HUD), as UHOLScriptScreen::GatherPanelBoxes lists them. */
+struct FHOLHUDNamedBox
+{
+	FString Name;
+	FBox2D Box;
+};
+
 /**
  * The game screen's part written in Angelscript (J8a.5 loop 2): the HUD's blocks move to script one by one, the hero's
  * block first (Script/UI/HOLGameScreenScript.as). UHOLGameScreen makes the one script class derived from this one
@@ -133,6 +140,12 @@ public:
 	 * "HUD overlap" line; preflight.ps1 fails on anything else). Boxes not drawn yet are left out.
 	 */
 	FString DescribeOverlaps() const;
+
+	/** The boxes DescribeOverlaps compares, "name=x0,y0,x1,y1; ..." (Slate units; empty: none drawn): the "HUD rects" line of hol.HUD.Report (L1-12b). */
+	FString DescribeRects() const;
+
+	/** The cheats' panel, PlayersPanel, MenuPanel and the script's outermost visible panels, as drawn (DescribeOverlaps and DescribeRects read it). */
+	void GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const;
 
 	/** The class made by the game screen: the newest script class derived from this one, not abstract; null: none. */
 	static UClass* FindScriptClass();

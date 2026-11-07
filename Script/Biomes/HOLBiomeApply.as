@@ -64,4 +64,33 @@ namespace HOLBiomeApply
 		Look.FogStartCm = float(Biome.FogStartCm);
 		return Look;
 	}
+	float SrgbChannelToLinear(float C)
+	{
+		return C <= 0.04045f ? C / 12.92f : Math::Pow((C + 0.055f) / 1.055f, 2.4f);
+	}
+
+	// The linear colour whose sRGB 8-bit form is the given one (the sky light's setter converts to sRGB itself).
+	FLinearColor SrgbToLinear(const FLinearColor& Color)
+	{
+		return FLinearColor(SrgbChannelToLinear(Color.R), SrgbChannelToLinear(Color.G), SrgbChannelToLinear(Color.B), 1.0f);
+	}
+
+	// The biome to put on the world (B1 visual): the console's override first (hol.Biome.Index 0 to 4, the scenarios and the tour of the
+	// five biomes), else the match's key (the lobby's choice, replicated with the configuration). -1 = the map's own: the look the map file
+	// carries (Tools/Editor/maps/ambience.py) is left as it is, nothing is set. "default" and an unknown key are the map's own.
+	int WantedBiome(const FString& MatchKey, int OverrideIndex)
+	{
+		if (HOLBiome::IsValid(OverrideIndex))
+		{
+			return OverrideIndex;
+		}
+		return HOLBiome::IndexOfKey(MatchKey);
+	}
+
+	// The line the applier writes when it sets a biome: what the WORLD must read back (hol.Biome.World in C++ reads the lights, the haze
+	// and the ground of the loaded map and writes the same fields). Tools/Tests/biome_apply_check.ps1 compares the two.
+	FString ExpectLine(const FHOLBiomeLook& Look)
+	{
+		return f"Biome expect: key={Look.Key} sun={Look.SunIntensityLux} sunPitch={Look.SunPitch} sky={Look.SkyIntensity} fog={Look.FogDensity} groundA={Look.GroundA.R},{Look.GroundA.G},{Look.GroundA.B}";
+	}
 }

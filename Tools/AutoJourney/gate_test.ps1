@@ -154,5 +154,41 @@ Check ($r -match 'PROCESSUS_DETACHES') 'agent_rules: champ PROCESSUS_DETACHES'
 Check ($r -match 'GESTE' -and $r -match 'SON') 'agent_rules: statuts GESTE et SON'
 Check ($r -match 'stray_processes') 'agent_rules: stray_processes.ps1 cite'
 
+# --- L8-1 : session_gate Essay : le worktree doit contenir le tip de CHAQUE branche citee dans le E-*.md de l'essai
+# (2026-11-06 : qground joue depuis Elrond sans les correctifs de melee de Celeborn). Vrai depot git factice : work contient fixa, pas fixb.
+$G = Join-Path $Tmp 'HeroesOfLiberty-FakeGit'
+New-Item -ItemType Directory -Path $G | Out-Null
+function GitIn { git -C $G -c user.name=t -c user.email=t@t @args 2>&1 | Out-Null }
+GitIn init
+GitIn checkout -b main
+GitIn commit --allow-empty -m base
+GitIn checkout -b fixa
+GitIn commit --allow-empty -m a
+GitIn checkout main
+GitIn checkout -b fixb
+GitIn commit --allow-empty -m b
+GitIn checkout main
+GitIn checkout -b work
+GitIn merge fixa --no-edit
+$RetE = Join-Path $Tmp 'RetoursEssay'
+New-Item -ItemType Directory -Path $RetE | Out-Null
+Set-Content -Path (Join-Path $RetE 'E-miss.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-miss : essai`nGESTE: r$($E)el`nbranches: fixa, fixb"
+Set-Content -Path (Join-Path $RetE 'E-ok.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-ok : essai`nGESTE: r$($E)el`nbranches: fixa"
+Set-Content -Path (Join-Path $RetE 'E-prose.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-prose : essai`nGESTE: r$($E)el`nLe correctif est sur la branche fixb, pas sur fixa."
+Set-Content -Path (Join-Path $RetE 'E-none.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-none : essai`nGESTE: r$($E)el`nrien a citer"
+$eMiss = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-miss | Out-String
+Check ($eMiss -match "(?m)^FAIL .*fixb" -and -not ($eMiss -match "(?m)^FAIL .*fixa")) 'essay: branche citee absente du worktree -> FAIL qui nomme fixb (pas fixa)' $eMiss
+$eOk = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-ok | Out-String
+Check ($eOk -match "(?m)^PASS .*fixa" -and -not ($eOk -match "(?m)^FAIL .*branche")) 'essay: branche citee contenue -> PASS' $eOk
+$eProse = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-prose | Out-String
+Check ($eProse -match "(?m)^FAIL .*fixb") 'essay: sans ligne branches:, nom de branche trouve dans le texte -> FAIL fixb' $eProse
+$eNone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-none | Out-String
+Check ($eNone -match "(?m)^WARN .*branches:") 'essay: aucune branche citee -> WARN (ajouter la ligne branches:)' $eNone
+
+# --- L8-1 : la ligne branches: est dans le gabarit et dans les regles
+$Tpl = Get-Content (Join-Path $Here 'E_template.md') -Raw -Encoding UTF8
+Check ($Tpl -match '(?m)^branches\s*:') 'E_template: ligne branches:'
+Check ($r -match 'branches\s*:') 'agent_rules: ligne branches: des essais'
+
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 if ($Fails -gt 0) { Write-Output "=> $Fails FAIL"; exit 1 } else { Write-Output '=> tout PASS'; exit 0 }

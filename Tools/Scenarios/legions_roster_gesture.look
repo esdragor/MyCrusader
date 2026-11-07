@@ -1,0 +1,5 @@
+legions_gesture_barracks | La Caserne des Legions cliquee : la grille ecrit Legion Spearman (A) et Black Guard (Z)
+legions_gesture_blackguard | Le Black Guard produit par la touche Z, clique sur son corps : le bloc du bas dit Black Guard
+legions_gesture_rider | Le Dread Rider produit par la touche A de l'Ecurie, clique : le bloc du bas dit Dread Rider
+legions_gesture_aube_unit | Un Lancier de l'Aube (rouge) clique : le bloc garde son nom d'Aube, pas Legion Spearman
+legions_gesture_aube_barracks | La Caserne de l'Aube (rouge) cliquee : aucune grille Legions, aucun nom Legions

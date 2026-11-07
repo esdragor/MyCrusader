@@ -1,0 +1,8 @@
+# B3, test de l EFFET : le biome du salon (snow) pose son decor generique sur le monde charge ; hol.Biome.DecorWorld lit les meshes instancies du monde, Tools/Tests/biome_decor_check.ps1 compare avec le plan annonce.
+frames 90
+hol.Biome.Report
+waitlog Biome: snow
+frames 60
+hol.Biome.DecorWorld
+waitlog Biome decor world:
+note Decor generique de la neige lu sur le monde de la Plaine (journal).

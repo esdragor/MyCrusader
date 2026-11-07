@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Match/HOLForumRules.h"
 
@@ -437,7 +437,8 @@ FHOLForumBlock HOLForumRules::GetSelectionBlock(const FHOLForumState* State, con
 }
 
 TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig& Config, const TConstArrayView<FHOLForumState> Forums,
-	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers, const HOLDiplomacy::FBook* Book)
+	const uint8 DefeatedMask, const int32 LocalSlot, const FHOLForumTuning& Tuning, const TConstArrayView<int32> Tiers, const HOLDiplomacy::FBook* Book,
+	const uint8 AbsentMask, const uint8 AIHeldMask)
 {
 	// The occupied slots, in their order; grouped by team when there are teams (no team last).
 	TArray<int32> Slots;
@@ -528,6 +529,15 @@ TArray<FHOLPlayersTableRow> HOLForumRules::GetPlayersTable(const FHOLMatchConfig
 			Phase += TEXT(" ") + DescribeHold(State, Tuning);
 			Row.State = FText::Format(State.IsContested() ? LOCTEXT("TableHoldContested", "{0} · contestée {1} s") : LOCTEXT("TableHold", "{0} · tenue {1} s"),
 				Row.State, FText::AsNumber(HoldSeconds));
+		}
+		// T8 (D722): the name stays, with a pastille: Â« Connexion perdue Â» while the window runs, Â« IA Â» once the AI keeps the seat.
+		Row.bAway = !bDefeated && (AbsentMask & (1 << Slot)) != 0;
+		Row.bAIHeld = !bDefeated && !Row.bAway && (AIHeldMask & (1 << Slot)) != 0;
+		if (Row.bAway || Row.bAIHeld)
+		{
+			const FText Badge = Row.bAway ? LOCTEXT("TableAway", "Connexion perdue") : LOCTEXT("TableAIHeld", "IA");
+			Row.State = Row.State.IsEmpty() ? Badge : FText::Format(LOCTEXT("TableBadge", "{0} \u00b7 {1}"), Row.State, Badge);
+			Phase += Row.bAway ? TEXT(" away") : TEXT(" ai-held");
 		}
 		const TCHAR* const RelationShown = Row.Relation == EHOLPlayerRelation::Self ? TEXT(" you")
 			: Row.Relation == EHOLPlayerRelation::Ally ? TEXT(" ally")

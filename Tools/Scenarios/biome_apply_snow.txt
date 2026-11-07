@@ -1,0 +1,7 @@
+# B1 visuel, test de l EFFET : le biome du salon (snow) est applique au monde charge (lumiere, ciel, brume, sol) ; hol.Biome.World lit le monde, Tools/Tests/biome_apply_check.ps1 compare avec ce que le script annonce.
+frames 90
+hol.Biome.Report
+waitlog Biome: snow
+hol.Biome.World
+waitlog Biome world:
+note Biome snow applique au monde de la Plaine : lumiere, ciel, brume et sol lus sur le monde (journal).

@@ -180,6 +180,10 @@ struct FHOLPlayersTableRow
 	bool bStruck = false;
 	/** E4-1: the row's slot seen from the viewer (LocalSlot). */
 	EHOLPlayerRelation Relation = EHOLPlayerRelation::None;
+	/** T8 (D722): his player's connection is lost, the window runs (the pastille « Connexion perdue »). */
+	bool bAway = false;
+	/** T8 (D722): the window is over and the AI keeps the seat (the pastille « IA »). */
+	bool bAIHeld = false;
 	/** First row of a new team (a gap above it); never on the first row. */
 	bool bNewGroup = false;
 	/** For the tests and the HUD's report: "slot 1 you team 2 colour 1 lives 1 ruin", "slot 3 enemy colour 3 lives 0 defeated greyed struck". */
@@ -345,5 +349,6 @@ namespace HOLForumRules
 	 * shows a grey dot when Neutral (Q-diplomacy-table = B); it follows the stances as they change.
 	 */
 	HEROESOFLIBERTY_API TArray<FHOLPlayersTableRow> GetPlayersTable(const FHOLMatchConfig& Config, TConstArrayView<FHOLForumState> Forums,
-		uint8 DefeatedMask, int32 LocalSlot, const FHOLForumTuning& Tuning, TConstArrayView<int32> Tiers = {}, const HOLDiplomacy::FBook* Book = nullptr);
+		uint8 DefeatedMask, int32 LocalSlot, const FHOLForumTuning& Tuning, TConstArrayView<int32> Tiers = {}, const HOLDiplomacy::FBook* Book = nullptr,
+		uint8 AbsentMask = 0, uint8 AIHeldMask = 0);
 }

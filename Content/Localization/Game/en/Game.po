@@ -4018,4 +4018,58 @@ msgid "Quitter"
 msgstr "Quit"
 
 
-#. Key:	ReplacedByNewConnection #. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276) #: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276) msgctxt "HOLNet,ReplacedByNewConnection" msgid "Une autre connexion à votre nom a pris votre place" msgstr "Another connection under your name took your seat"
+#. Key:	ReplacedByNewConnection
+#. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276)
+#: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(276)
+msgctxt "HOLNet,ReplacedByNewConnection"
+msgid "Une autre connexion à votre nom a pris votre place"
+msgstr "Another connection under your name took your seat"
+
+#. Key:	ReconnectLine
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+msgctxt "HOLNet,ReconnectLine"
+msgid "Connexion perdue — nouvelle tentative, {0}:{1}"
+msgstr "Connection lost — retrying, {0}:{1}"
+
+#. Key:	ReconnectCancel
+#. SourceLocation:	Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+#: Source/HeroesOfLibertyUI/Net/HOLManagerClient.cpp(1)
+msgctxt "HOLNet,ReconnectCancel"
+msgid "Annuler"
+msgstr "Cancel"
+
+#. Key:	TableAway
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+msgctxt "HOLGameScreen,TableAway"
+msgid "Connexion perdue"
+msgstr "Connection lost"
+
+#. Key:	TableAIHeld
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+msgctxt "HOLGameScreen,TableAIHeld"
+msgid "IA"
+msgstr "AI"
+
+#. Key:	TableBadge
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumRules.cpp(1)
+msgctxt "HOLGameScreen,TableBadge"
+msgid "{0} · {1}"
+msgstr "{0} · {1}"
+
+#. Key:	MessageLeft
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+msgctxt "HOLGameScreen,MessageLeft"
+msgid "{0} a quitté la partie"
+msgstr "{0} left the game"
+
+#. Key:	MessageOwnLeft
+#. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+#: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(1)
+msgctxt "HOLGameScreen,MessageOwnLeft"
+msgid "Vous avez quitté la partie"
+msgstr "You left the game"

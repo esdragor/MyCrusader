@@ -1,0 +1,8 @@
+# B3, test de l EFFET : le biome du salon (fresh_grass) pose son decor generique sur le monde charge ; hol.Biome.DecorWorld lit les meshes instancies du monde.
+frames 90
+hol.Biome.Report
+waitlog Biome: fresh_grass
+frames 60
+hol.Biome.DecorWorld
+waitlog Biome decor world:
+note Decor generique de l herbe fraiche lu sur le monde de la Plaine (journal).

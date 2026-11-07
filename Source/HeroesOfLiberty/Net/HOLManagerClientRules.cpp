@@ -552,3 +552,63 @@ FString FHOLManagerClientRules::MakeMatchAddress(const FString& ManagerUrl, cons
 	}
 	return Address + TEXT("Version=") + FGenericPlatformHttp::UrlEncode(GameVersion);
 }
+
+// T7 stubs (red): the rules come next.
+FHOLReconnectRules::EStep FHOLReconnectRules::GetStep(const double LostAt, const double Now, const double WindowSeconds, const double LastAttemptAt, const double IntervalSeconds)
+{
+	if (Now < LostAt)
+	{
+		return EStep::Wait;
+	}
+	if (Now >= LostAt + WindowSeconds)
+	{
+		return EStep::GiveUp;
+	}
+	return LastAttemptAt < 0. || Now - LastAttemptAt >= IntervalSeconds - 1e-6 ? EStep::Attempt : EStep::Wait;
+}
+
+double FHOLReconnectRules::GetSecondsLeft(const double LostAt, const double Now, const double WindowSeconds)
+{
+	return FMath::Clamp(LostAt + WindowSeconds - Now, 0., FMath::Max(WindowSeconds, 0.));
+}
+
+FText FHOLReconnectRules::FormatLine(const double SecondsLeft)
+{
+	const int32 Total = FMath::Max(0, FMath::CeilToInt(SecondsLeft));
+	return FText::Format(NSLOCTEXT("HOLNet", "ReconnectLine", "Connexion perdue \u2014 nouvelle tentative, {0}:{1}"),
+		FText::AsNumber(Total / 60), FText::FromString(FString::Printf(TEXT("%02d"), Total % 60)));
+}
+
+void FHOLReconnect::Start(const double Now, const double WindowSeconds, const double IntervalSeconds)
+{
+	bActive = true;
+	LostAt = Now;
+	Window = WindowSeconds;
+	Interval = IntervalSeconds;
+	LastAttemptAt = -1.;
+	Attempts = 0;
+}
+
+FHOLReconnectRules::EStep FHOLReconnect::Tick(const double Now)
+{
+	if (!bActive)
+	{
+		return FHOLReconnectRules::EStep::Wait;
+	}
+	const FHOLReconnectRules::EStep Step = FHOLReconnectRules::GetStep(LostAt, Now, Window, LastAttemptAt, Interval);
+	if (Step == FHOLReconnectRules::EStep::Attempt)
+	{
+		LastAttemptAt = Now;
+		++Attempts;
+	}
+	else if (Step == FHOLReconnectRules::EStep::GiveUp)
+	{
+		bActive = false;
+	}
+	return Step;
+}
+
+double FHOLReconnect::GetSecondsLeft(const double Now) const
+{
+	return FHOLReconnectRules::GetSecondsLeft(LostAt, Now, Window);
+}

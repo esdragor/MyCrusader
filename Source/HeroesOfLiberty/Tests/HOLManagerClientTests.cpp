@@ -604,3 +604,51 @@ bool FHOLManagerClientSpectatorTest::RunTest(const FString& Parameters)
 }
 
 #endif
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+// T7 (D721): the automatic reconnection of the client, step by step on the real state (no network).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLReconnectTest, "HeroesOfLiberty.Net.ManagerClient.Reconnect",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLReconnectTest::RunTest(const FString& Parameters)
+{
+	FHOLReconnect Retry;
+	TestEqual(TEXT("not started: nothing to do"), Retry.Tick(100.), FHOLReconnectRules::EStep::Wait);
+	Retry.Start(100., 180.);
+	TArray<double> Attempts;
+	double GaveUpAt = -1.;
+	int32 After = 0;
+	for (double Now = 99.5; Now < 300.; Now += 0.5)
+	{
+		const FHOLReconnectRules::EStep Step = Retry.Tick(Now);
+		if (Step == FHOLReconnectRules::EStep::Attempt)
+		{
+			Attempts.Add(Now);
+			After += GaveUpAt >= 0. ? 1 : 0;
+		}
+		else if (Step == FHOLReconnectRules::EStep::GiveUp && GaveUpAt < 0.)
+		{
+			GaveUpAt = Now;
+		}
+	}
+	TestEqual(TEXT("one attempt every 3 s over the 180 s window"), Attempts.Num(), 60);
+	TestTrue(TEXT("none before the cut"), Attempts.IsEmpty() || Attempts[0] >= 100.);
+	TestTrue(TEXT("the first at the cut, the second 3 s later"), Attempts.Num() > 1 && FMath::IsNearlyEqual(Attempts[0], 100.) && FMath::IsNearlyEqual(Attempts[1], 103.));
+	TestTrue(TEXT("the last before the end of the window"), !Attempts.IsEmpty() && Attempts.Last() < 280.);
+	TestTrue(TEXT("gives up exactly at the end of the window"), FMath::IsNearlyEqual(GaveUpAt, 280.));
+	TestEqual(TEXT("no attempt after giving up"), After, 0);
+	TestFalse(TEXT("no longer active"), Retry.IsActive());
+
+	FHOLReconnect Cancelled;
+	Cancelled.Start(0., 180.);
+	TestEqual(TEXT("an attempt at once"), Cancelled.Tick(0.), FHOLReconnectRules::EStep::Attempt);
+	Cancelled.Cancel();
+	TestEqual(TEXT("cancelled: no more attempt"), Cancelled.Tick(3.), FHOLReconnectRules::EStep::Wait);
+	TestEqual(TEXT("cancelled: nor give up"), Cancelled.Tick(500.), FHOLReconnectRules::EStep::Wait);
+
+	TestEqual(TEXT("countdown 2:41"), FHOLReconnectRules::FormatLine(160.4).ToString(), FString(TEXT("Connexion perdue \u2014 nouvelle tentative, 2:41")));
+	TestEqual(TEXT("countdown is the window left"), FHOLReconnectRules::GetSecondsLeft(100., 139.2, 180.), 140.8);
+	return true;
+}
+
+#endif

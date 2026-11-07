@@ -92,6 +92,9 @@ public:
 	/** Lesson 12b: the script's panels and the cheats' panel that cover each other, as drawn: "none" or "A x B" (hol.HUD.Report's "HUD overlap" line). */
 	FString DescribeOverlaps() const;
 
+	/** L1-12b: the boxes behind "HUD overlap", "name=x0,y0,x1,y1; ..." (empty without a script screen): the "HUD rects" line of hol.HUD.Report. */
+	FString DescribeRects() const;
+
 	/**
 	 * J8a.5: the padding of a block bottom left above the selection's block and the control groups' bar; EtapeDefini T:
 	 * follows the bar's scale (GetBottomScale), read anew on every refresh of the block.
