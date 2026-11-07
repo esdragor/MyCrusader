@@ -1,43 +1,43 @@
-# Ecoute : l'alerte d'attaque subie [ANCIENS candidats non doux, non compte], dix variantes chacune, Entree = variante suivante
+# Ecoute : l'alerte d'ATTAQUE subie : deux coups SOURDS et graves, reconnaissable mais pas stridente (pas usante), dix variantes chacune, Entree = variante suivante
 # Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute l'alerte d'attaque subie [ANCIENS candidats non doux, non compte]. 10 sons, 1 cue, dix variantes A a J chacune.
+note Ecoute l'alerte d'ATTAQUE subie : deux coups SOURDS et graves, reconnaissable mais pas stridente (pas usante). 10 sons, 1 cue, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Alert.UnderAttack C.
 note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_alerts_attack_start
 waitkey Entree : commencer par Alert.UnderAttack A
 hol.Audio.Candidate Alert.UnderAttack A
 waitlog candidate played Alert.UnderAttack A
-waitkey Alert.UnderAttack A (impactBell_heavy_000) vient de jouer. Entree : Alert.UnderAttack B
+waitkey Alert.UnderAttack A (s_atk_drum_double) vient de jouer. Entree : Alert.UnderAttack B
 hol.Audio.Candidate Alert.UnderAttack B
 waitlog candidate played Alert.UnderAttack B
-waitkey Alert.UnderAttack B (impactBell_heavy_001) vient de jouer. Entree : Alert.UnderAttack C
+waitkey Alert.UnderAttack B (s_atk_drum_deep) vient de jouer. Entree : Alert.UnderAttack C
 hol.Audio.Candidate Alert.UnderAttack C
 waitlog candidate played Alert.UnderAttack C
-waitkey Alert.UnderAttack C (impactBell_heavy_002) vient de jouer. Entree : Alert.UnderAttack D
+waitkey Alert.UnderAttack C (s_atk_punch_double) vient de jouer. Entree : Alert.UnderAttack D
 hol.Audio.Candidate Alert.UnderAttack D
 waitlog candidate played Alert.UnderAttack D
-waitkey Alert.UnderAttack D (impactBell_heavy_003) vient de jouer. Entree : Alert.UnderAttack E
+waitkey Alert.UnderAttack D (s_atk_wood_double) vient de jouer. Entree : Alert.UnderAttack E
 hol.Audio.Candidate Alert.UnderAttack E
 waitlog candidate played Alert.UnderAttack E
-waitkey Alert.UnderAttack E (impactBell_heavy_004) vient de jouer. Entree : Alert.UnderAttack F
+waitkey Alert.UnderAttack E (s_atk_plate_double) vient de jouer. Entree : Alert.UnderAttack F
 hol.Audio.Candidate Alert.UnderAttack F
 waitlog candidate played Alert.UnderAttack F
-waitkey Alert.UnderAttack F (v_gong_smack_light) vient de jouer. Entree : Alert.UnderAttack G
+waitkey Alert.UnderAttack F (s_atk_mining_double) vient de jouer. Entree : Alert.UnderAttack G
 hol.Audio.Candidate Alert.UnderAttack G
 waitlog candidate played Alert.UnderAttack G
-waitkey Alert.UnderAttack G (v_mallet_hit_ff2) vient de jouer. Entree : Alert.UnderAttack H
+waitkey Alert.UnderAttack G (s_atk_bass_double) vient de jouer. Entree : Alert.UnderAttack H
 hol.Audio.Candidate Alert.UnderAttack H
 waitlog candidate played Alert.UnderAttack H
-waitkey Alert.UnderAttack H (v_nbell_med) vient de jouer. Entree : Alert.UnderAttack I
+waitkey Alert.UnderAttack H (s_atk_gong_double) vient de jouer. Entree : Alert.UnderAttack I
 hol.Audio.Candidate Alert.UnderAttack I
 waitlog candidate played Alert.UnderAttack I
-waitkey Alert.UnderAttack I (impactMetal_heavy_001) vient de jouer. Entree : Alert.UnderAttack J
+waitkey Alert.UnderAttack I (s_atk_soft_double) vient de jouer. Entree : Alert.UnderAttack J
 hol.Audio.Candidate Alert.UnderAttack J
 waitlog candidate played Alert.UnderAttack J
-waitkey Alert.UnderAttack J (v_nbell_s05) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Alert.UnderAttack J (s_atk_metal_double) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

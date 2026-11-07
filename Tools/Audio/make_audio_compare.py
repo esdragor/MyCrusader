@@ -23,15 +23,13 @@ GROUPS = [
     ("audio_compare", ("Ui.",), "les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement) [TOUT, non compte : plus de 3 min]", False),
     ("audio_compare_orders", ("Order.", "Select."), "les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]", False),
     ("audio_compare_alerts", ("Alert.",), "les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie) [TOUT, non compte : plus de 3 min]", False),
-    # One scenario per alert (10 sounds, about 2 min). Alert.TrainingDone has its own scenario below. NO sheet and not listed: the old
-    # candidates of these six (bells, harps, glockenspiel) are the rejected "medieval" ones, they must be redone SOFT first
-    # (memory "Sons : pas usants", make_soft_candidates.py) before the user is asked to listen.
-    ("audio_compare_alerts_attack", ("Alert.UnderAttack",), "l'alerte d'attaque subie [ANCIENS candidats non doux, non compte]", False),
-    ("audio_compare_alerts_buildingdone", ("Alert.BuildingDone",), "l'alerte de batiment fini [ANCIENS candidats non doux, non compte]", False),
-    ("audio_compare_alerts_techdone", ("Alert.TechDone",), "l'alerte de technologie finie [ANCIENS candidats non doux, non compte]", False),
-    ("audio_compare_alerts_trade", ("Alert.Trade",), "l'alerte de commerce [ANCIENS candidats non doux, non compte]", False),
-    ("audio_compare_alerts_volcano", ("Alert.Volcano",), "l'alerte de volcan [ANCIENS candidats non doux, non compte]", False),
-    ("audio_compare_alerts_diplomacy", ("Alert.Diplomacy",), "l'alerte de diplomatie [ANCIENS candidats non doux, non compte]", False),
+    # One scenario per alert (10 SOFT sounds, about 2 min, one answer sheet each). Alert.TrainingDone has its own scenario below.
+    ("audio_compare_alerts_attack", ("Alert.UnderAttack",), "l'alerte d'ATTAQUE subie : deux coups SOURDS et graves, reconnaissable mais pas stridente (pas usante)"),
+    ("audio_compare_alerts_buildingdone", ("Alert.BuildingDone",), "l'alerte de BATIMENT fini : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    ("audio_compare_alerts_techdone", ("Alert.TechDone",), "l'alerte de TECHNOLOGIE finie : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    ("audio_compare_alerts_trade", ("Alert.Trade",), "l'alerte de COMMERCE : sons GRAVES, SOURDS, COURTS et DOUX, pas usants (une bourse, pas un tintement)"),
+    ("audio_compare_alerts_volcano", ("Alert.Volcano",), "l'alerte de VOLCAN (le jeu la joue 3 fois a 1 s d'ecart) : grondements GRAVES et SOURDS, pas stridents"),
+    ("audio_compare_alerts_diplomacy", ("Alert.Diplomacy",), "l'alerte de DIPLOMATIE : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
     ("audio_compare_training", ("Alert.TrainingDone",), "l'alerte d'entrainement fini, troisieme tour : sons GRAVES, SOURDS, COURTS et DOUX (bois, cuir, tambour sourd, pierre, metal etouffe), sans cor ni trompette ni clochette"),
     # "tout" (all five families, about 11 min, over the 3 min of rule 18): kept, NOT counted as an essay, no answer sheet.
     ("audio_compare_buildings", ("Building.",), "le son de SELECTION d'un batiment, une famille apres l'autre (bois, pierre, sacre, metal, pieces) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants [TOUT, non compte : 11 min]", False),
@@ -49,6 +47,12 @@ SHEET_LABEL = {
     "Building.Sacred": "Sacre (Chapelle, Sanctuaire) [Building.Sacred]",
     "Building.Metal": "Metal (Forge) [Building.Metal]",
     "Building.Coins": "Pieces (Marche) [Building.Coins]",
+    "Alert.UnderAttack": "Attaque subie [Alert.UnderAttack]",
+    "Alert.BuildingDone": "Batiment fini [Alert.BuildingDone]",
+    "Alert.TechDone": "Technologie finie [Alert.TechDone]",
+    "Alert.Trade": "Commerce [Alert.Trade]",
+    "Alert.Volcano": "Volcan [Alert.Volcano]",
+    "Alert.Diplomacy": "Diplomatie [Alert.Diplomacy]",
 }
 
 

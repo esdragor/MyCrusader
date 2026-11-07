@@ -91,6 +91,74 @@ RECIPES = {
     "s_coins_cloth": ("clothBelt", 0.8, 1000, 0.35),
     "s_coins_soft": ("impactSoft_medium_000", 0.7, 700, 0.30),
     "s_coins_slap": ("v_slapstick_quiet1", 0.6, 600, 0.25),
+    # The six other alerts (round 3 of the alerts, same rule). A 5th element = seconds between two hits of the same sound (the second one
+    # a little softer): "two dull thuds"; the whole clip stays under 0.8 s.
+    # Alert.UnderAttack: recognisable (two low thuds), never shrill.
+    "s_atk_drum_double": ("v_timpani_hit", 1.0, 300, 0.40, 0.28),
+    "s_atk_drum_deep": ("v_timpani_hit", 0.8, 250, 0.40, 0.30),
+    "s_atk_punch_double": ("impactPunch_heavy_000", 0.5, 500, 0.35, 0.27),
+    "s_atk_wood_double": ("impactWood_heavy_001", 0.5, 600, 0.38, 0.28),
+    "s_atk_plate_double": ("impactPlate_heavy_001", 0.5, 450, 0.40, 0.27),
+    "s_atk_mining_double": ("impactMining_003", 0.5, 600, 0.38, 0.28),
+    "s_atk_bass_double": ("v_bass_pizz_E0", 1.0, 300, 0.40, 0.30),
+    "s_atk_gong_double": ("v_gong_smack_low", 0.7, 250, 0.40, 0.30),
+    "s_atk_soft_double": ("impactSoft_heavy_001", 0.5, 500, 0.38, 0.28),
+    "s_atk_metal_double": ("impactMetal_heavy_002", 0.5, 450, 0.38, 0.27),
+    # Alert.BuildingDone
+    "s_bdone_wood_tap": ("impactWood_light_003", 0.7, 1000, 0.30),
+    "s_bdone_plank": ("impactPlank_medium_002", 0.7, 900, 0.30),
+    "s_bdone_door_close": ("doorClose_2", 0.7, 800, 0.40),
+    "s_bdone_hammer": ("impactMetal_light_001", 0.5, 700, 0.30),
+    "s_bdone_mallet": ("v_mallet_hit_mf", 1.0, 400, 0.45),
+    "s_bdone_harp_low": ("v_harp_arp_low", 1.0, 600, 0.70),
+    "s_bdone_cello": ("v_cello_pizz_D4", 0.8, 700, 0.55),
+    "s_bdone_bass": ("v_bass_pizz_E1", 1.0, 400, 0.55),
+    "s_bdone_stone": ("impactMining_004", 0.6, 800, 0.30),
+    "s_bdone_book": ("bookPlace3", 0.7, 800, 0.35),
+    # Alert.TechDone
+    "s_tech_book_flip": ("bookFlip2", 0.5, 400, 0.45),
+    "s_tech_book_place": ("bookPlace2", 0.7, 800, 0.40),
+    "s_tech_book_open": ("bookOpen", 0.7, 800, 0.45),
+    "s_tech_harp_low": ("v_harp_arp_low", 0.8, 500, 0.75),
+    "s_tech_harp_d4": ("v_harp_D4", 0.5, 600, 0.75),
+    "s_tech_cello": ("v_cello_pizz_B3", 1.0, 600, 0.60),
+    "s_tech_wood_soft": ("impactWood_light_004", 0.6, 900, 0.30),
+    "s_tech_cloth": ("cloth3", 0.8, 900, 0.40),
+    "s_tech_plate_light": ("impactPlate_light_001", 0.5, 600, 0.40),
+    "s_tech_knock_double": ("impactWood_medium_003", 0.6, 900, 0.30, 0.22),
+    # Alert.Trade: a purse, not a jingle
+    "s_trade_purse": ("handleCoins", 0.4, 500, 0.45),
+    "s_trade_purse_b": ("handleCoins", 0.5, 600, 0.45),
+    "s_trade_leather": ("handleSmallLeather2", 0.6, 800, 0.30),
+    "s_trade_drop": ("dropLeather", 0.7, 900, 0.35),
+    "s_trade_tin": ("impactTin_medium_003", 0.5, 700, 0.30),
+    "s_trade_wood_double": ("impactWood_light_001", 0.5, 700, 0.25, 0.20),
+    "s_trade_cloth_belt": ("clothBelt2", 0.7, 900, 0.35),
+    "s_trade_soft": ("impactSoft_medium_001", 0.6, 700, 0.30),
+    "s_trade_coins_double": ("handleCoins", 0.6, 700, 0.30, 0.25),
+    "s_trade_generic": ("impactGeneric_light_002", 0.5, 700, 0.30),
+    # Alert.Volcano (the game plays it three times, one second apart): rumbles, deep and dull
+    "s_volc_timpani_deep": ("v_timpani_hit", 0.6, 200, 0.75),
+    "s_volc_gong_low": ("v_gong_smack_low", 0.6, 250, 0.75),
+    "s_volc_bass": ("v_bass_pizz_E0", 0.8, 300, 0.75),
+    "s_volc_heavy_metal": ("impactMetal_heavy_002", 0.4, 350, 0.70),
+    "s_volc_punch": ("impactPunch_heavy_002", 0.4, 400, 0.60),
+    "s_volc_wood_rumble": ("impactWood_heavy_003", 0.4, 400, 0.65),
+    "s_volc_plate": ("impactPlate_heavy_002", 0.4, 350, 0.70),
+    "s_volc_soft_boom": ("impactSoft_heavy_003", 0.4, 300, 0.70),
+    "s_volc_creak": ("creak3", 0.5, 400, 0.75),
+    "s_volc_mining": ("impactMining_001", 0.4, 400, 0.60),
+    # Alert.Diplomacy: calm, a gesture of respect, nothing bright
+    "s_dipl_harp_low": ("v_harp_B3", 0.7, 700, 0.75),
+    "s_dipl_harp_arp": ("v_harp_arp_low", 1.0, 700, 0.75),
+    "s_dipl_cello": ("v_cello_pizz_D4", 0.7, 600, 0.60),
+    "s_dipl_bass": ("v_bass_pizz_E1", 1.0, 450, 0.60),
+    "s_dipl_book_open": ("bookOpen", 0.6, 700, 0.50),
+    "s_dipl_door": ("doorOpen_2", 0.7, 800, 0.50),
+    "s_dipl_cloth": ("cloth4", 0.7, 800, 0.40),
+    "s_dipl_leather_double": ("handleSmallLeather", 0.6, 900, 0.25, 0.22),
+    "s_dipl_creak": ("creak1", 0.5, 600, 0.60),
+    "s_dipl_wood_double": ("impactWood_medium_000", 0.5, 800, 0.28, 0.25),
 }
 
 
@@ -104,7 +172,7 @@ def source_path(name):
     raise RuntimeError("%s.ogg not found in Kenney rpg-audio / impact-sounds under %s" % (name, AUDIO))
 
 
-def render(source, pitch, lowpass, seconds, out_path):
+def render(source, pitch, lowpass, seconds, out_path, gap=0.0):
     """ffmpeg: mono, silence before the attack cut, pitch lowered, three low-pass filters; then numpy: cut, fade out, peak."""
     chain = ("aresample=%d,silenceremove=start_periods=1:start_threshold=-50dB,asetrate=%d,aresample=%d,"
              "lowpass=f=%d,lowpass=f=%d,lowpass=f=%d") % (RATE, int(RATE * pitch), RATE, lowpass, lowpass, lowpass)
@@ -122,6 +190,13 @@ def render(source, pitch, lowpass, seconds, out_path):
     data[:ramp] *= np.linspace(0.0, 1.0, ramp)
     fade = min(len(data), int(FADE * RATE))
     data[len(data) - fade:] *= np.linspace(1.0, 0.0, fade)
+    if gap > 0:
+        # two hits: the same sound again `gap` seconds later, 3 dB softer
+        shift = int(gap * RATE)
+        both = np.zeros(shift + len(data))
+        both[:len(data)] += data
+        both[shift:] += data * 0.7
+        data = both
     peak = np.abs(data).max()
     data = data * (10 ** (PEAK_DB / 20) / peak if peak > 0 else 1.0)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -134,8 +209,10 @@ def render(source, pitch, lowpass, seconds, out_path):
 
 def main():
     out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(AUDIO, "Candidates", "soft")
-    for stem, (name, pitch, lowpass, seconds) in RECIPES.items():
-        render(source_path(name), pitch, lowpass, seconds, os.path.join(out_dir, stem + ".wav"))
+    for stem, recipe in RECIPES.items():
+        name, pitch, lowpass, seconds = recipe[:4]
+        gap = recipe[4] if len(recipe) > 4 else 0.0
+        render(source_path(name), pitch, lowpass, seconds, os.path.join(out_dir, stem + ".wav"), gap)
     print("Soft candidates: %d files in %s" % (len(RECIPES), out_dir))
 
 

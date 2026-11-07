@@ -50,13 +50,13 @@ namespace HOLAudioCandidates
 		Add(List, "Select.Unit", "handleSmallLeather,beltHandle1,impactSoft_medium_003,cloth2,v_claves_mp,v_vln_pizz_C5,metalClick,impactTin_medium_004,v_harp_F6,footstep_wood_001");
 		Add(List, "Select.Building", "metalLatch,doorOpen_2,impactWood_medium_002,impactPlank_medium_004,creak1,metalPot1,impactMining_003,v_mallet_hit_mf,v_bass_pizz_E1,impactPlate_medium_001");
 
-		Add(List, "Alert.UnderAttack", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_light,v_mallet_hit_ff2,v_nbell_med,impactMetal_heavy_001,v_nbell_s05");
-		Add(List, "Alert.BuildingDone", "v_harp_A4,v_glock_C5,v_nbell_s07,v_nbell_s03,v_vln_pizz_E5,impactPlate_light_002,impactBell_heavy_002,doorOpen_1,v_triangle_hit,impactMetal_light_002");
+		Add(List, "Alert.UnderAttack", "s_atk_drum_double,s_atk_drum_deep,s_atk_punch_double,s_atk_wood_double,s_atk_plate_double,s_atk_mining_double,s_atk_bass_double,s_atk_gong_double,s_atk_soft_double,s_atk_metal_double");
+		Add(List, "Alert.BuildingDone", "s_bdone_wood_tap,s_bdone_plank,s_bdone_door_close,s_bdone_hammer,s_bdone_mallet,s_bdone_harp_low,s_bdone_cello,s_bdone_bass,s_bdone_stone,s_bdone_book");
 		Add(List, "Alert.TrainingDone", "s_train_leather_thud,s_train_wood_knock,s_train_plank_dull,s_train_drum_soft,s_train_bass_pluck,s_train_mallet_dull,s_train_stone_tap,s_train_shield_muffled,s_train_cloth_thump,s_train_book_close");
-		Add(List, "Alert.TechDone", "v_harp_arp_up,v_harp_arp_down,v_glock_arp_up,v_vln_pizz_arp,v_nbell_med,impactBell_heavy_003,bookPlace2,v_gong_smack_light,handleCoins,v_nbell_s02");
-		Add(List, "Alert.Trade", "handleCoins,handleCoins2,impactTin_medium_000,v_tambourine_down,v_triangle_hit,v_nbell_s08,impactGeneric_light_000,impactMetal_light_003,v_glock_C7,handleSmallLeather");
-		Add(List, "Alert.Volcano", "impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_low,v_mallet_hit_ff2,v_mallet_hit_ff,impactMetal_heavy_002,impactPunch_heavy_000,v_nbell_med,v_bass_pizz_E0,creak3");
-		Add(List, "Alert.Diplomacy", "v_harp_arp_up,v_glock_G6,v_nbell_s06,v_cello_pizz_D4,bookOpen,doorOpen_2,creak1,impactPlate_light_003,v_vln_pizz_E5,metalLatch");
+		Add(List, "Alert.TechDone", "s_tech_book_flip,s_tech_book_place,s_tech_book_open,s_tech_harp_low,s_tech_harp_d4,s_tech_cello,s_tech_wood_soft,s_tech_cloth,s_tech_plate_light,s_tech_knock_double");
+		Add(List, "Alert.Trade", "s_trade_purse,s_trade_purse_b,s_trade_leather,s_trade_drop,s_trade_tin,s_trade_wood_double,s_trade_cloth_belt,s_trade_soft,s_trade_coins_double,s_trade_generic");
+		Add(List, "Alert.Volcano", "s_volc_timpani_deep,s_volc_gong_low,s_volc_bass,s_volc_heavy_metal,s_volc_punch,s_volc_wood_rumble,s_volc_plate,s_volc_soft_boom,s_volc_creak,s_volc_mining");
+		Add(List, "Alert.Diplomacy", "s_dipl_harp_low,s_dipl_harp_arp,s_dipl_cello,s_dipl_bass,s_dipl_book_open,s_dipl_door,s_dipl_cloth,s_dipl_leather_double,s_dipl_creak,s_dipl_wood_double");
 	}
 
 	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per

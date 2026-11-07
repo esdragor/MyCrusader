@@ -11,64 +11,64 @@ capture audio_compare_alerts_start
 waitkey Entree : commencer par Alert.UnderAttack A
 hol.Audio.Candidate Alert.UnderAttack A
 waitlog candidate played Alert.UnderAttack A
-waitkey Alert.UnderAttack A (impactBell_heavy_000) vient de jouer. Entree : Alert.UnderAttack B
+waitkey Alert.UnderAttack A (s_atk_drum_double) vient de jouer. Entree : Alert.UnderAttack B
 hol.Audio.Candidate Alert.UnderAttack B
 waitlog candidate played Alert.UnderAttack B
-waitkey Alert.UnderAttack B (impactBell_heavy_001) vient de jouer. Entree : Alert.UnderAttack C
+waitkey Alert.UnderAttack B (s_atk_drum_deep) vient de jouer. Entree : Alert.UnderAttack C
 hol.Audio.Candidate Alert.UnderAttack C
 waitlog candidate played Alert.UnderAttack C
-waitkey Alert.UnderAttack C (impactBell_heavy_002) vient de jouer. Entree : Alert.UnderAttack D
+waitkey Alert.UnderAttack C (s_atk_punch_double) vient de jouer. Entree : Alert.UnderAttack D
 hol.Audio.Candidate Alert.UnderAttack D
 waitlog candidate played Alert.UnderAttack D
-waitkey Alert.UnderAttack D (impactBell_heavy_003) vient de jouer. Entree : Alert.UnderAttack E
+waitkey Alert.UnderAttack D (s_atk_wood_double) vient de jouer. Entree : Alert.UnderAttack E
 hol.Audio.Candidate Alert.UnderAttack E
 waitlog candidate played Alert.UnderAttack E
-waitkey Alert.UnderAttack E (impactBell_heavy_004) vient de jouer. Entree : Alert.UnderAttack F
+waitkey Alert.UnderAttack E (s_atk_plate_double) vient de jouer. Entree : Alert.UnderAttack F
 hol.Audio.Candidate Alert.UnderAttack F
 waitlog candidate played Alert.UnderAttack F
-waitkey Alert.UnderAttack F (v_gong_smack_light) vient de jouer. Entree : Alert.UnderAttack G
+waitkey Alert.UnderAttack F (s_atk_mining_double) vient de jouer. Entree : Alert.UnderAttack G
 hol.Audio.Candidate Alert.UnderAttack G
 waitlog candidate played Alert.UnderAttack G
-waitkey Alert.UnderAttack G (v_mallet_hit_ff2) vient de jouer. Entree : Alert.UnderAttack H
+waitkey Alert.UnderAttack G (s_atk_bass_double) vient de jouer. Entree : Alert.UnderAttack H
 hol.Audio.Candidate Alert.UnderAttack H
 waitlog candidate played Alert.UnderAttack H
-waitkey Alert.UnderAttack H (v_nbell_med) vient de jouer. Entree : Alert.UnderAttack I
+waitkey Alert.UnderAttack H (s_atk_gong_double) vient de jouer. Entree : Alert.UnderAttack I
 hol.Audio.Candidate Alert.UnderAttack I
 waitlog candidate played Alert.UnderAttack I
-waitkey Alert.UnderAttack I (impactMetal_heavy_001) vient de jouer. Entree : Alert.UnderAttack J
+waitkey Alert.UnderAttack I (s_atk_soft_double) vient de jouer. Entree : Alert.UnderAttack J
 hol.Audio.Candidate Alert.UnderAttack J
 waitlog candidate played Alert.UnderAttack J
-waitkey Alert.UnderAttack J (v_nbell_s05) vient de jouer. Entree : Alert.BuildingDone A  [nouveau cue]
+waitkey Alert.UnderAttack J (s_atk_metal_double) vient de jouer. Entree : Alert.BuildingDone A  [nouveau cue]
 hol.Audio.Candidate Alert.BuildingDone A
 waitlog candidate played Alert.BuildingDone A
-waitkey Alert.BuildingDone A (v_harp_A4) vient de jouer. Entree : Alert.BuildingDone B
+waitkey Alert.BuildingDone A (s_bdone_wood_tap) vient de jouer. Entree : Alert.BuildingDone B
 hol.Audio.Candidate Alert.BuildingDone B
 waitlog candidate played Alert.BuildingDone B
-waitkey Alert.BuildingDone B (v_glock_C5) vient de jouer. Entree : Alert.BuildingDone C
+waitkey Alert.BuildingDone B (s_bdone_plank) vient de jouer. Entree : Alert.BuildingDone C
 hol.Audio.Candidate Alert.BuildingDone C
 waitlog candidate played Alert.BuildingDone C
-waitkey Alert.BuildingDone C (v_nbell_s07) vient de jouer. Entree : Alert.BuildingDone D
+waitkey Alert.BuildingDone C (s_bdone_door_close) vient de jouer. Entree : Alert.BuildingDone D
 hol.Audio.Candidate Alert.BuildingDone D
 waitlog candidate played Alert.BuildingDone D
-waitkey Alert.BuildingDone D (v_nbell_s03) vient de jouer. Entree : Alert.BuildingDone E
+waitkey Alert.BuildingDone D (s_bdone_hammer) vient de jouer. Entree : Alert.BuildingDone E
 hol.Audio.Candidate Alert.BuildingDone E
 waitlog candidate played Alert.BuildingDone E
-waitkey Alert.BuildingDone E (v_vln_pizz_E5) vient de jouer. Entree : Alert.BuildingDone F
+waitkey Alert.BuildingDone E (s_bdone_mallet) vient de jouer. Entree : Alert.BuildingDone F
 hol.Audio.Candidate Alert.BuildingDone F
 waitlog candidate played Alert.BuildingDone F
-waitkey Alert.BuildingDone F (impactPlate_light_002) vient de jouer. Entree : Alert.BuildingDone G
+waitkey Alert.BuildingDone F (s_bdone_harp_low) vient de jouer. Entree : Alert.BuildingDone G
 hol.Audio.Candidate Alert.BuildingDone G
 waitlog candidate played Alert.BuildingDone G
-waitkey Alert.BuildingDone G (impactBell_heavy_002) vient de jouer. Entree : Alert.BuildingDone H
+waitkey Alert.BuildingDone G (s_bdone_cello) vient de jouer. Entree : Alert.BuildingDone H
 hol.Audio.Candidate Alert.BuildingDone H
 waitlog candidate played Alert.BuildingDone H
-waitkey Alert.BuildingDone H (doorOpen_1) vient de jouer. Entree : Alert.BuildingDone I
+waitkey Alert.BuildingDone H (s_bdone_bass) vient de jouer. Entree : Alert.BuildingDone I
 hol.Audio.Candidate Alert.BuildingDone I
 waitlog candidate played Alert.BuildingDone I
-waitkey Alert.BuildingDone I (v_triangle_hit) vient de jouer. Entree : Alert.BuildingDone J
+waitkey Alert.BuildingDone I (s_bdone_stone) vient de jouer. Entree : Alert.BuildingDone J
 hol.Audio.Candidate Alert.BuildingDone J
 waitlog candidate played Alert.BuildingDone J
-waitkey Alert.BuildingDone J (impactMetal_light_002) vient de jouer. Entree : Alert.TrainingDone A  [nouveau cue]
+waitkey Alert.BuildingDone J (s_bdone_book) vient de jouer. Entree : Alert.TrainingDone A  [nouveau cue]
 hol.Audio.Candidate Alert.TrainingDone A
 waitlog candidate played Alert.TrainingDone A
 waitkey Alert.TrainingDone A (s_train_leather_thud) vient de jouer. Entree : Alert.TrainingDone B
@@ -101,123 +101,123 @@ waitlog candidate played Alert.TrainingDone J
 waitkey Alert.TrainingDone J (s_train_book_close) vient de jouer. Entree : Alert.TechDone A  [nouveau cue]
 hol.Audio.Candidate Alert.TechDone A
 waitlog candidate played Alert.TechDone A
-waitkey Alert.TechDone A (v_harp_arp_up) vient de jouer. Entree : Alert.TechDone B
+waitkey Alert.TechDone A (s_tech_book_flip) vient de jouer. Entree : Alert.TechDone B
 hol.Audio.Candidate Alert.TechDone B
 waitlog candidate played Alert.TechDone B
-waitkey Alert.TechDone B (v_harp_arp_down) vient de jouer. Entree : Alert.TechDone C
+waitkey Alert.TechDone B (s_tech_book_place) vient de jouer. Entree : Alert.TechDone C
 hol.Audio.Candidate Alert.TechDone C
 waitlog candidate played Alert.TechDone C
-waitkey Alert.TechDone C (v_glock_arp_up) vient de jouer. Entree : Alert.TechDone D
+waitkey Alert.TechDone C (s_tech_book_open) vient de jouer. Entree : Alert.TechDone D
 hol.Audio.Candidate Alert.TechDone D
 waitlog candidate played Alert.TechDone D
-waitkey Alert.TechDone D (v_vln_pizz_arp) vient de jouer. Entree : Alert.TechDone E
+waitkey Alert.TechDone D (s_tech_harp_low) vient de jouer. Entree : Alert.TechDone E
 hol.Audio.Candidate Alert.TechDone E
 waitlog candidate played Alert.TechDone E
-waitkey Alert.TechDone E (v_nbell_med) vient de jouer. Entree : Alert.TechDone F
+waitkey Alert.TechDone E (s_tech_harp_d4) vient de jouer. Entree : Alert.TechDone F
 hol.Audio.Candidate Alert.TechDone F
 waitlog candidate played Alert.TechDone F
-waitkey Alert.TechDone F (impactBell_heavy_003) vient de jouer. Entree : Alert.TechDone G
+waitkey Alert.TechDone F (s_tech_cello) vient de jouer. Entree : Alert.TechDone G
 hol.Audio.Candidate Alert.TechDone G
 waitlog candidate played Alert.TechDone G
-waitkey Alert.TechDone G (bookPlace2) vient de jouer. Entree : Alert.TechDone H
+waitkey Alert.TechDone G (s_tech_wood_soft) vient de jouer. Entree : Alert.TechDone H
 hol.Audio.Candidate Alert.TechDone H
 waitlog candidate played Alert.TechDone H
-waitkey Alert.TechDone H (v_gong_smack_light) vient de jouer. Entree : Alert.TechDone I
+waitkey Alert.TechDone H (s_tech_cloth) vient de jouer. Entree : Alert.TechDone I
 hol.Audio.Candidate Alert.TechDone I
 waitlog candidate played Alert.TechDone I
-waitkey Alert.TechDone I (handleCoins) vient de jouer. Entree : Alert.TechDone J
+waitkey Alert.TechDone I (s_tech_plate_light) vient de jouer. Entree : Alert.TechDone J
 hol.Audio.Candidate Alert.TechDone J
 waitlog candidate played Alert.TechDone J
-waitkey Alert.TechDone J (v_nbell_s02) vient de jouer. Entree : Alert.Trade A  [nouveau cue]
+waitkey Alert.TechDone J (s_tech_knock_double) vient de jouer. Entree : Alert.Trade A  [nouveau cue]
 hol.Audio.Candidate Alert.Trade A
 waitlog candidate played Alert.Trade A
-waitkey Alert.Trade A (handleCoins) vient de jouer. Entree : Alert.Trade B
+waitkey Alert.Trade A (s_trade_purse) vient de jouer. Entree : Alert.Trade B
 hol.Audio.Candidate Alert.Trade B
 waitlog candidate played Alert.Trade B
-waitkey Alert.Trade B (handleCoins2) vient de jouer. Entree : Alert.Trade C
+waitkey Alert.Trade B (s_trade_purse_b) vient de jouer. Entree : Alert.Trade C
 hol.Audio.Candidate Alert.Trade C
 waitlog candidate played Alert.Trade C
-waitkey Alert.Trade C (impactTin_medium_000) vient de jouer. Entree : Alert.Trade D
+waitkey Alert.Trade C (s_trade_leather) vient de jouer. Entree : Alert.Trade D
 hol.Audio.Candidate Alert.Trade D
 waitlog candidate played Alert.Trade D
-waitkey Alert.Trade D (v_tambourine_down) vient de jouer. Entree : Alert.Trade E
+waitkey Alert.Trade D (s_trade_drop) vient de jouer. Entree : Alert.Trade E
 hol.Audio.Candidate Alert.Trade E
 waitlog candidate played Alert.Trade E
-waitkey Alert.Trade E (v_triangle_hit) vient de jouer. Entree : Alert.Trade F
+waitkey Alert.Trade E (s_trade_tin) vient de jouer. Entree : Alert.Trade F
 hol.Audio.Candidate Alert.Trade F
 waitlog candidate played Alert.Trade F
-waitkey Alert.Trade F (v_nbell_s08) vient de jouer. Entree : Alert.Trade G
+waitkey Alert.Trade F (s_trade_wood_double) vient de jouer. Entree : Alert.Trade G
 hol.Audio.Candidate Alert.Trade G
 waitlog candidate played Alert.Trade G
-waitkey Alert.Trade G (impactGeneric_light_000) vient de jouer. Entree : Alert.Trade H
+waitkey Alert.Trade G (s_trade_cloth_belt) vient de jouer. Entree : Alert.Trade H
 hol.Audio.Candidate Alert.Trade H
 waitlog candidate played Alert.Trade H
-waitkey Alert.Trade H (impactMetal_light_003) vient de jouer. Entree : Alert.Trade I
+waitkey Alert.Trade H (s_trade_soft) vient de jouer. Entree : Alert.Trade I
 hol.Audio.Candidate Alert.Trade I
 waitlog candidate played Alert.Trade I
-waitkey Alert.Trade I (v_glock_C7) vient de jouer. Entree : Alert.Trade J
+waitkey Alert.Trade I (s_trade_coins_double) vient de jouer. Entree : Alert.Trade J
 hol.Audio.Candidate Alert.Trade J
 waitlog candidate played Alert.Trade J
-waitkey Alert.Trade J (handleSmallLeather) vient de jouer. Entree : Alert.Volcano A  [nouveau cue]
+waitkey Alert.Trade J (s_trade_generic) vient de jouer. Entree : Alert.Volcano A  [nouveau cue]
 hol.Audio.Candidate Alert.Volcano A
 waitlog candidate played Alert.Volcano A
-waitkey Alert.Volcano A (impactBell_heavy_003) vient de jouer. Entree : Alert.Volcano B
+waitkey Alert.Volcano A (s_volc_timpani_deep) vient de jouer. Entree : Alert.Volcano B
 hol.Audio.Candidate Alert.Volcano B
 waitlog candidate played Alert.Volcano B
-waitkey Alert.Volcano B (impactBell_heavy_004) vient de jouer. Entree : Alert.Volcano C
+waitkey Alert.Volcano B (s_volc_gong_low) vient de jouer. Entree : Alert.Volcano C
 hol.Audio.Candidate Alert.Volcano C
 waitlog candidate played Alert.Volcano C
-waitkey Alert.Volcano C (v_gong_smack_low) vient de jouer. Entree : Alert.Volcano D
+waitkey Alert.Volcano C (s_volc_bass) vient de jouer. Entree : Alert.Volcano D
 hol.Audio.Candidate Alert.Volcano D
 waitlog candidate played Alert.Volcano D
-waitkey Alert.Volcano D (v_mallet_hit_ff2) vient de jouer. Entree : Alert.Volcano E
+waitkey Alert.Volcano D (s_volc_heavy_metal) vient de jouer. Entree : Alert.Volcano E
 hol.Audio.Candidate Alert.Volcano E
 waitlog candidate played Alert.Volcano E
-waitkey Alert.Volcano E (v_mallet_hit_ff) vient de jouer. Entree : Alert.Volcano F
+waitkey Alert.Volcano E (s_volc_punch) vient de jouer. Entree : Alert.Volcano F
 hol.Audio.Candidate Alert.Volcano F
 waitlog candidate played Alert.Volcano F
-waitkey Alert.Volcano F (impactMetal_heavy_002) vient de jouer. Entree : Alert.Volcano G
+waitkey Alert.Volcano F (s_volc_wood_rumble) vient de jouer. Entree : Alert.Volcano G
 hol.Audio.Candidate Alert.Volcano G
 waitlog candidate played Alert.Volcano G
-waitkey Alert.Volcano G (impactPunch_heavy_000) vient de jouer. Entree : Alert.Volcano H
+waitkey Alert.Volcano G (s_volc_plate) vient de jouer. Entree : Alert.Volcano H
 hol.Audio.Candidate Alert.Volcano H
 waitlog candidate played Alert.Volcano H
-waitkey Alert.Volcano H (v_nbell_med) vient de jouer. Entree : Alert.Volcano I
+waitkey Alert.Volcano H (s_volc_soft_boom) vient de jouer. Entree : Alert.Volcano I
 hol.Audio.Candidate Alert.Volcano I
 waitlog candidate played Alert.Volcano I
-waitkey Alert.Volcano I (v_bass_pizz_E0) vient de jouer. Entree : Alert.Volcano J
+waitkey Alert.Volcano I (s_volc_creak) vient de jouer. Entree : Alert.Volcano J
 hol.Audio.Candidate Alert.Volcano J
 waitlog candidate played Alert.Volcano J
-waitkey Alert.Volcano J (creak3) vient de jouer. Entree : Alert.Diplomacy A  [nouveau cue]
+waitkey Alert.Volcano J (s_volc_mining) vient de jouer. Entree : Alert.Diplomacy A  [nouveau cue]
 hol.Audio.Candidate Alert.Diplomacy A
 waitlog candidate played Alert.Diplomacy A
-waitkey Alert.Diplomacy A (v_harp_arp_up) vient de jouer. Entree : Alert.Diplomacy B
+waitkey Alert.Diplomacy A (s_dipl_harp_low) vient de jouer. Entree : Alert.Diplomacy B
 hol.Audio.Candidate Alert.Diplomacy B
 waitlog candidate played Alert.Diplomacy B
-waitkey Alert.Diplomacy B (v_glock_G6) vient de jouer. Entree : Alert.Diplomacy C
+waitkey Alert.Diplomacy B (s_dipl_harp_arp) vient de jouer. Entree : Alert.Diplomacy C
 hol.Audio.Candidate Alert.Diplomacy C
 waitlog candidate played Alert.Diplomacy C
-waitkey Alert.Diplomacy C (v_nbell_s06) vient de jouer. Entree : Alert.Diplomacy D
+waitkey Alert.Diplomacy C (s_dipl_cello) vient de jouer. Entree : Alert.Diplomacy D
 hol.Audio.Candidate Alert.Diplomacy D
 waitlog candidate played Alert.Diplomacy D
-waitkey Alert.Diplomacy D (v_cello_pizz_D4) vient de jouer. Entree : Alert.Diplomacy E
+waitkey Alert.Diplomacy D (s_dipl_bass) vient de jouer. Entree : Alert.Diplomacy E
 hol.Audio.Candidate Alert.Diplomacy E
 waitlog candidate played Alert.Diplomacy E
-waitkey Alert.Diplomacy E (bookOpen) vient de jouer. Entree : Alert.Diplomacy F
+waitkey Alert.Diplomacy E (s_dipl_book_open) vient de jouer. Entree : Alert.Diplomacy F
 hol.Audio.Candidate Alert.Diplomacy F
 waitlog candidate played Alert.Diplomacy F
-waitkey Alert.Diplomacy F (doorOpen_2) vient de jouer. Entree : Alert.Diplomacy G
+waitkey Alert.Diplomacy F (s_dipl_door) vient de jouer. Entree : Alert.Diplomacy G
 hol.Audio.Candidate Alert.Diplomacy G
 waitlog candidate played Alert.Diplomacy G
-waitkey Alert.Diplomacy G (creak1) vient de jouer. Entree : Alert.Diplomacy H
+waitkey Alert.Diplomacy G (s_dipl_cloth) vient de jouer. Entree : Alert.Diplomacy H
 hol.Audio.Candidate Alert.Diplomacy H
 waitlog candidate played Alert.Diplomacy H
-waitkey Alert.Diplomacy H (impactPlate_light_003) vient de jouer. Entree : Alert.Diplomacy I
+waitkey Alert.Diplomacy H (s_dipl_leather_double) vient de jouer. Entree : Alert.Diplomacy I
 hol.Audio.Candidate Alert.Diplomacy I
 waitlog candidate played Alert.Diplomacy I
-waitkey Alert.Diplomacy I (v_vln_pizz_E5) vient de jouer. Entree : Alert.Diplomacy J
+waitkey Alert.Diplomacy I (s_dipl_creak) vient de jouer. Entree : Alert.Diplomacy J
 hol.Audio.Candidate Alert.Diplomacy J
 waitlog candidate played Alert.Diplomacy J
-waitkey Alert.Diplomacy J (metalLatch) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Alert.Diplomacy J (s_dipl_wood_double) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
