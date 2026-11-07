@@ -37,9 +37,13 @@ FString FHOLManagerRules::MakeFinishedBody(const TConstArrayView<int32> Winners)
 		*FString::JoinBy(Winners, TEXT(","), [](const int32 Winner) { return FString::FromInt(Winner); }));
 }
 
-FString FHOLManagerRules::MakeLeftBody(const FString& PlayerName)
+FString FHOLManagerRules::MakeLeftBody(const FString& PlayerName, const double WindowSeconds, const bool bKeepsSeat)
 {
-	return FString::Printf(TEXT("{\"playerName\":\"%s\"}"), *PlayerName.ReplaceCharWithEscapedChar());
+	const FString Name = PlayerName.ReplaceCharWithEscapedChar();
+	// D718 (T5): the server's window (the manager's one clock) and whether the AI keeps the seat after it; none given = the name alone (back).
+	return WindowSeconds > 0. ? FString::Printf(TEXT("{\"playerName\":\"%s\",\"windowSeconds\":%g,\"keepsSeat\":%s}"), *Name, WindowSeconds,
+		bKeepsSeat ? TEXT("true") : TEXT("false"))
+		: FString::Printf(TEXT("{\"playerName\":\"%s\"}"), *Name);
 }
 
 FHOLManagerRules::EQuit FHOLManagerRules::ShouldQuit(const bool bManaged, const bool bStarted, const int32 PlayersLeft)
@@ -120,9 +124,9 @@ void UHOLManagerLink::SendFinished(const TConstArrayView<int32> Winners)
 	}
 }
 
-void UHOLManagerLink::SendLeft(const FString& PlayerName)
+void UHOLManagerLink::SendLeft(const FString& PlayerName, const double WindowSeconds, const bool bKeepsSeat)
 {
-	Send(TEXT("left"), FHOLManagerRules::MakeLeftBody(PlayerName));
+	Send(TEXT("left"), FHOLManagerRules::MakeLeftBody(PlayerName, WindowSeconds, bKeepsSeat));
 }
 
 void UHOLManagerLink::SendBack(const FString& PlayerName)

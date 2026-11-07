@@ -37,13 +37,13 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 	/**
 	 * The last player gone after the start: "empty" to the lobby manager (R3.7). R7: a named player gone during the match
-	 * keeps his slot for hol.Match.DisconnectWindowSeconds (AHOLGameState::KeepAbsentSlot).
+	 * keeps his slot for hol.Match.DisconnectWindowSeconds (AHOLGameState::KeepAbsentSlot); "left" then carries that window and whether the AI keeps the seat after it (D718).
 	 */
 	virtual void Logout(AController* Exiting) override;
 	/** The server listens by now: "listening" to the lobby manager, with the port listened on (R3.6). */
 	virtual void StartPlay() override;
 	/**
-	 * D361: a networked match never pauses (FHOLCheatRules::IsPauseAllowed): the solo game alone keeps the engine's pause.
+	 * D513/D720: the engine's own pause stays refused in a networked match (FHOLCheatRules::IsPauseAllowed): a networked match pauses only by the limited pause of the game state (AHOLGameState::RequestPause, 3 per match, 60 s timer), which stops the disconnection windows and is lifted when its player leaves; the solo game keeps the engine's pause.
 	 * The engine asks it for a client's console "pause" (ServerPause, PC its controller: refused and logged) and when it
 	 * clears the pausers (no PC).
 	 */
