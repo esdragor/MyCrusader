@@ -1,12 +1,12 @@
-# Ecoute : les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie), dix variantes MEDIEVAL FANTASY chacune (bois, cuir, parchemin, metal sourd, cloche, pierre, cordes), Entree = variante suivante
+# Ecoute : les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie), dix variantes chacune, Entree = variante suivante
 # Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
 note Ecoute les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie). 70 sons, 7 cues, dix variantes A a J chacune.
-note Entree = la variante suivante (le panneau dit laquelle vient de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Ui.Open C.
-note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes (bois, cloche, harpe...) pour les dix suivantes.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Alert.UnderAttack C.
+note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_alerts_start
 waitkey Entree : commencer par Alert.UnderAttack A
 hol.Audio.Candidate Alert.UnderAttack A
@@ -71,34 +71,34 @@ waitlog candidate played Alert.BuildingDone J
 waitkey Alert.BuildingDone J (impactMetal_light_002) vient de jouer. Entree : Alert.TrainingDone A  [nouveau cue]
 hol.Audio.Candidate Alert.TrainingDone A
 waitlog candidate played Alert.TrainingDone A
-waitkey Alert.TrainingDone A (v_harp_D4) vient de jouer. Entree : Alert.TrainingDone B
+waitkey Alert.TrainingDone A (v_horn_call) vient de jouer. Entree : Alert.TrainingDone B
 hol.Audio.Candidate Alert.TrainingDone B
 waitlog candidate played Alert.TrainingDone B
-waitkey Alert.TrainingDone B (v_harp_B3) vient de jouer. Entree : Alert.TrainingDone C
+waitkey Alert.TrainingDone B (v_horn_rise) vient de jouer. Entree : Alert.TrainingDone C
 hol.Audio.Candidate Alert.TrainingDone C
 waitlog candidate played Alert.TrainingDone C
-waitkey Alert.TrainingDone C (v_cello_pizz_B3) vient de jouer. Entree : Alert.TrainingDone D
+waitkey Alert.TrainingDone C (v_trumpet_stac_D4) vient de jouer. Entree : Alert.TrainingDone D
 hol.Audio.Candidate Alert.TrainingDone D
 waitlog candidate played Alert.TrainingDone D
-waitkey Alert.TrainingDone D (v_nbell_s08) vient de jouer. Entree : Alert.TrainingDone E
+waitkey Alert.TrainingDone D (v_trumpet_call) vient de jouer. Entree : Alert.TrainingDone E
 hol.Audio.Candidate Alert.TrainingDone E
 waitlog candidate played Alert.TrainingDone E
-waitkey Alert.TrainingDone E (v_glock_G4) vient de jouer. Entree : Alert.TrainingDone F
+waitkey Alert.TrainingDone E (v_timpani_hit) vient de jouer. Entree : Alert.TrainingDone F
 hol.Audio.Candidate Alert.TrainingDone F
 waitlog candidate played Alert.TrainingDone F
-waitkey Alert.TrainingDone F (v_triangle_hit) vient de jouer. Entree : Alert.TrainingDone G
+waitkey Alert.TrainingDone F (v_timpani_double) vient de jouer. Entree : Alert.TrainingDone G
 hol.Audio.Candidate Alert.TrainingDone G
 waitlog candidate played Alert.TrainingDone G
-waitkey Alert.TrainingDone G (impactTin_medium_001) vient de jouer. Entree : Alert.TrainingDone H
+waitkey Alert.TrainingDone G (v_timpani_roll) vient de jouer. Entree : Alert.TrainingDone H
 hol.Audio.Candidate Alert.TrainingDone H
 waitlog candidate played Alert.TrainingDone H
-waitkey Alert.TrainingDone H (metalPot2) vient de jouer. Entree : Alert.TrainingDone I
+waitkey Alert.TrainingDone H (v_trombone_low) vient de jouer. Entree : Alert.TrainingDone I
 hol.Audio.Candidate Alert.TrainingDone I
 waitlog candidate played Alert.TrainingDone I
-waitkey Alert.TrainingDone I (v_vln_pizz_A5) vient de jouer. Entree : Alert.TrainingDone J
+waitkey Alert.TrainingDone I (drawKnife2) vient de jouer. Entree : Alert.TrainingDone J
 hol.Audio.Candidate Alert.TrainingDone J
 waitlog candidate played Alert.TrainingDone J
-waitkey Alert.TrainingDone J (v_harp_arp_low) vient de jouer. Entree : Alert.TechDone A  [nouveau cue]
+waitkey Alert.TrainingDone J (impactPlate_heavy_000) vient de jouer. Entree : Alert.TechDone A  [nouveau cue]
 hol.Audio.Candidate Alert.TechDone A
 waitlog candidate played Alert.TechDone A
 waitkey Alert.TechDone A (v_harp_arp_up) vient de jouer. Entree : Alert.TechDone B

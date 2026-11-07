@@ -73,6 +73,40 @@ void Test_AudioCandidatesAreNotTheSpaceshipPack(FUnitTest& T)
 	}
 }
 
+// Alert.TrainingDone is a MARTIAL cue (user, 2026-11-06: "un truc martial"; the first round gave harp, bells and a book): at least
+// eight of its ten variants are war sounds (horn, trumpet, timpani, trombone, sword, shield, metal), none a harp, a glockenspiel,
+// a bell of the Nepalese set or a book.
+void Test_AudioCandidatesTrainingDoneIsMartial(FUnitTest& T)
+{
+	FHOLAudioCandidates List = HOLAudioCandidates::ForCue("Alert.TrainingDone");
+	T.AssertEquals(10, List.Stems.Num(), "ten variants");
+	TArray<FString> Martial;
+	Martial.Add("v_horn");
+	Martial.Add("v_trumpet");
+	Martial.Add("v_timpani");
+	Martial.Add("v_trombone");
+	Martial.Add("drawKnife");
+	Martial.Add("knifeSlice");
+	Martial.Add("impactPlate");
+	Martial.Add("impactMetal");
+	TArray<FString> Soft;
+	Soft.Add("v_harp");
+	Soft.Add("v_glock");
+	Soft.Add("v_nbell");
+	Soft.Add("v_cello");
+	Soft.Add("v_vln");
+	Soft.Add("book");
+	int Count = 0;
+	for (int Index = 0; Index < List.Stems.Num(); Index++)
+	{
+		for (int Word = 0; Word < Martial.Num(); Word++)
+			if (List.Stems[Index].StartsWith(Martial[Word])) { Count++; break; }
+		for (int Word = 0; Word < Soft.Num(); Word++)
+			T.AssertFalse(List.Stems[Index].StartsWith(Soft[Word]), f"{List.Stems[Index]} is not martial (a harp, a bell or a book)");
+	}
+	T.AssertTrue(Count >= 8, f"at least 8 martial variants for the training alert, got {Count}");
+}
+
 // The line the player writes when a candidate plays (the scenario waits for it): cue, label, stem.
 void Test_AudioCandidatesPlayedLine(FUnitTest& T)
 {
