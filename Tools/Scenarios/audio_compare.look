@@ -1,2 +1,3 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 audio_compare_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement), Entree = variante suivante
+audio_compare_played | Le panneau dit « Ui.Click A (impactWood_light_000) vient de jouer. Entree : Ui.Click B » : le NOM DU CUE a cote de la lettre
