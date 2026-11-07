@@ -22,6 +22,7 @@ waitlog Scripted left click at
 waitlog attack-move to
 waitlog hits #
 hol.Camera.Zoom 8
+hol.Camera.Focus -9900 0
 wait 4
 capture dipl_qwatch_a
 hol.Combat.Report
