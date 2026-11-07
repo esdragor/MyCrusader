@@ -32,6 +32,7 @@
 #include "NavigationData.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLAvoidanceHoldFragments.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLBuildProcessor.h"
 #include "Simulation/HOLCombatRules.h"
@@ -436,6 +437,15 @@ namespace UE::HeroesOfLiberty::Orders
 	}
 
 	/** D641 (the neutrals trace of 2026-11-05): who sends a soldier of an attack-move to a new place; read with hol.Sanity.DumpUnit. */
+	/**
+	 * Celeborn-12 (diplomacy_qground_watch): a final leg whose place is inside a still enemy's body (the look-ahead sets FHOLDetourFragment::bSlotBlocked,
+	 * hol.Units.SlotBlockedRadius) is never completed; the walker froze FinalLegStuckSteps (2 s) at 1 m 20 and was struck without answering, no seeking
+	 * during a walk. Within this distance of the place it stands at once (and fights). 0: off (as before).
+	 */
+	float SlotBlockedStopDistance = 250.f;
+	FAutoConsoleVariableRef CVarSlotBlockedStopDistance(TEXT("hol.Orders.SlotBlockedStopDistance"), SlotBlockedStopDistance,
+		TEXT("cm: a final leg to a place inside a still enemy's body ends at once within this distance of it; 0: off (the 2 s wait of FinalLegStuckSteps)"));
+
 	int32 LogFinalLegs = 0;
 	FAutoConsoleVariableRef CVarLogFinalLegs(TEXT("hol.Orders.LogFinalLegs"), LogFinalLegs,
 		TEXT("1: log each final leg (a straight walk to a place) given to a unit on an attack-move, with the call site that gave it (D641 trace); 0 (default): off"));
@@ -656,6 +666,7 @@ void UHOLUnitOrderProcessor::ConfigureQueries(const TSharedRef<FMassEntityManage
 {
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FHOLDetourFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional); // Celeborn-12: bSlotBlocked
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite);
@@ -3916,6 +3927,15 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			const bool bGettingCloser = Distance < Order.LastSlotDistance - 2.f;
 			Order.StuckSteps = bGettingCloser || Distance > StuckCountDistance ? 0 : static_cast<uint16>(FMath::Min<int32>(Order.StuckSteps + 1, MAX_uint16));
 			Order.LastSlotDistance = FMath::Min(Order.LastSlotDistance, Distance);
+			// Celeborn-12: its place inside a still enemy's body (seen by the look-ahead): no use waiting StuckLimit steps for it.
+			if (SlotBlockedStopDistance > 0.f && Distance <= SlotBlockedStopDistance)
+			{
+				const TConstArrayView<FHOLDetourFragment> Detours = Context.GetFragmentView<FHOLDetourFragment>();
+				if (!Detours.IsEmpty() && Detours[EntityIt].bSlotBlocked != 0)
+				{
+					Order.StuckSteps = static_cast<uint16>(FMath::Max(StuckLimit, 1));
+				}
+			}
 			if (Distance > Tolerance && Order.StuckSteps < StuckLimit)
 			{
 				continue;

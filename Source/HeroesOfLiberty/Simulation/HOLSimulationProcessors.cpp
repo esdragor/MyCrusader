@@ -172,6 +172,29 @@ namespace UE::HeroesOfLiberty::Simulation
 	FAutoConsoleVariableRef CVarSlotDetourRadius(TEXT("hol.Units.SlotDetourRadius"), SlotDetourRadius,
 		TEXT("cm: the goal's distance within which hol.Units.SlotDetourMaxSteps counts"));
 
+	/**
+	 * Celeborn-12 (diplomacy_qground_watch, walking to the slot with no fight, phase FinalLeg): (a) the commit straight to the goal (above) shook the walker
+	 * face to face with a friend coming back (the separation pushed both, 17 reversals in 8 s): not committed, and a commit already taken is dropped, while
+	 * a friend comes head on within SlotCommitHeadOnGap cm going against it faster than SlotCommitHeadOnSpeed cm/s. 0: off (as before).
+	 */
+	int32 SlotCommitHeadOn = 1;
+	FAutoConsoleVariableRef CVarSlotCommitHeadOn(TEXT("hol.Units.SlotCommitHeadOn"), SlotCommitHeadOn,
+		TEXT("1: no straight commit to the goal (SlotDetourMaxSteps) against a friend coming head on; 0: as before (the face to face shaking of diplomacy_qground_watch)"));
+	float SlotCommitHeadOnGap = 360.f;
+	FAutoConsoleVariableRef CVarSlotCommitHeadOnGap(TEXT("hol.Units.SlotCommitHeadOnGap"), SlotCommitHeadOnGap,
+		TEXT("cm: how near, ahead, a friend coming back counts as head on for hol.Units.SlotCommitHeadOn"));
+	float SlotCommitHeadOnSpeed = 100.f;
+	FAutoConsoleVariableRef CVarSlotCommitHeadOnSpeed(TEXT("hol.Units.SlotCommitHeadOnSpeed"), SlotCommitHeadOnSpeed,
+		TEXT("cm/s: the speed against the walker's way above which a friend counts as head on"));
+	/**
+	 * Celeborn-12 (b): a goal within SlotBlockedRadius of a still enemy is inside its body, never reached (an enemy is not pushed, D293): the walker froze
+	 * 2 s (FinalLegStuckSteps) at 1 m 20 from it, struck without answering. The order processor ends such a final leg at once when within
+	 * SlotBlockedStopDistance of it; the walker then stands and fights. 0 radius: off (as before).
+	 */
+	float SlotBlockedRadius = 60.f;
+	FAutoConsoleVariableRef CVarSlotBlockedRadius(TEXT("hol.Units.SlotBlockedRadius"), SlotBlockedRadius,
+		TEXT("cm: a goal this near a still enemy's centre is inside its body: the final leg ends at once near it; 0: off"));
+
 	/** J7c.4, loop 19: the ranks behind the front slide along their friends instead of walking into them. */
 	/** J7c.4 loop 29: the melee rules' bookkeeping (army middles, lines of contact) skipped or done without maps when it cannot change anything. */
 	int32 MeleeRuleSkips = 1;
@@ -540,6 +563,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 	// behind it (no turn reaches them; one catching up from behind is its own to avoid).
 	const FVector2D Position(Location.X, Location.Y);
 	const FVector2D Ahead(Direction.X, Direction.Y);
+	Detour.bSlotBlocked = 0; // Celeborn-12: seen again at each step
 	// Only the cells the square around that reach overlaps (D302: 9 to 16 instead of 25 at 3 m/s), in the same order.
 	const double Reach = FMath::Max((Speed + MaxSpeed) * Horizon, Speed * StillHorizon) + (Radius + MaxRadius) * FMath::Max(1.f, AvoidRadiusScale);
 	const FIntPoint MinCell(FMath::FloorToInt32((Position.X - Reach) / LookAheadCellSize), FMath::FloorToInt32((Position.Y - Reach) / LookAheadCellSize));
@@ -587,7 +611,11 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 				{
 					return;
 				}
-				if (Goal && IsStill(Other) && FVector2D::DistSquared(*Goal, OtherPosition) < FMath::Square(ContactDistance))
+				if (Goal && IsStill(Other) && SlotBlockedRadius > 0.f && HOLAvoid::IsPlaceInBody(*Goal, OtherPosition, SlotBlockedRadius) && CampTable.AreHostile(Owners[Other], Owner))
+					{
+						Detour.bSlotBlocked = 1; // Celeborn-12: the goal inside a still enemy's body, read by the order processor
+					}
+					if (Goal && IsStill(Other) && FVector2D::DistSquared(*Goal, OtherPosition) < FMath::Square(ContactDistance))
 				{
 					return;
 				}
@@ -633,7 +661,11 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 				// A still body touching its goal is no wall (MV.4.5.3: a rank of a held line walking back to its place, just
 				// behind a still friend of the rank ahead, saw it as a wall at 1 s and stopped or went round, 1.5 m off its
 				// place): it is to stand beside it, the separation keeping them apart.
-				if (Goal && IsStill(Other) && FVector2D::DistSquared(*Goal, Positions[Other]) < FMath::Square(ContactDistance))
+				if (Goal && IsStill(Other) && SlotBlockedRadius > 0.f && HOLAvoid::IsPlaceInBody(*Goal, Positions[Other], SlotBlockedRadius) && CampTable.AreHostile(Owners[Other], Owner))
+					{
+						Detour.bSlotBlocked = 1;
+					}
+					if (Goal && IsStill(Other) && FVector2D::DistSquared(*Goal, Positions[Other]) < FMath::Square(ContactDistance))
 				{
 					continue;
 				}
@@ -677,6 +709,29 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.ClearSteps = 0;
 		Detour.DetourSteps = 0;
 	};
+	// Celeborn-12 (hol.Units.SlotCommitHeadOn): a friend coming head on, near, ahead: the straight commit to the goal is not kept nor taken (both
+	// were pushed apart by the separation and shook face to face).
+	const auto HeadOnFriend = [this, &Near, &Position, &Ahead, Owner]() -> bool
+	{
+		if (SlotCommitHeadOn == 0)
+		{
+			return false;
+		}
+		for (const int32 Other : Near)
+		{
+			if (!Stills[Other] && !CampTable.AreHostile(Owners[Other], Owner)
+				&& HOLAvoid::IsHeadOn(Ahead, Positions[Other] - Position, Velocities[Other], SlotCommitHeadOnGap, SlotCommitHeadOnSpeed))
+			{
+				return true;
+			}
+		}
+		return false;
+	};
+	if (Detour.bSlotCommit != 0 && HeadOnFriend())
+	{
+		Detour.bSlotCommit = 0;
+		Detour.DetourSteps = 0;
+	}
 	if (Detour.bSlotCommit != 0)
 	{
 		return Direction;
@@ -848,7 +903,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			Forget();
 			return Direction;
 		}
-		if (SlotDetourMaxSteps > 0 && Goal && FVector2D::DistSquared(*Goal, Position) < FMath::Square(static_cast<double>(SlotDetourRadius)))
+		if (SlotDetourMaxSteps > 0 && Goal && FVector2D::DistSquared(*Goal, Position) < FMath::Square(static_cast<double>(SlotDetourRadius)) && !HeadOnFriend())
 		{
 			if (++Detour.DetourSteps >= SlotDetourMaxSteps)
 			{
@@ -1331,6 +1386,12 @@ void UHOLFullSpeedProcessor::Execute(FMassEntityManager& EntityManager, FMassExe
 				if (bOutOfFight)
 				{
 					CountStillContact(Context.GetEntity(EntityIt), FVector2D(Location.X, Location.Y), AgentRadii[EntityIt].Radius);
+				}
+				// Celeborn-12: the place inside a still enemy's body ends the leg only for a walker with nothing to fight (no target, not approaching nor
+				// striking): an ordered attack walks to its target's own place (quick_check combat/orders: 0 hits when it stood at 2 m 50).
+				if (Detour.bSlotBlocked != 0 && !Combats.IsEmpty() && (Combats[EntityIt].bAttacking || Combats[EntityIt].bApproaching || Combats[EntityIt].Target.IsSet()))
+				{
+					Detour.bSlotBlocked = 0;
 				}
 				// On a block's march, never against it (playtest note 1, loop 20: a unit forming up, going round one of
 				// its kind, took a step back): the turn's part against the march dropped, sideways or on.
