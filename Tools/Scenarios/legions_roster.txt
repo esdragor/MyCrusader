@@ -59,3 +59,83 @@ frames 3
 capture legions_roster_dawn
 panel show
 note 4. La meme unite de l'Aube (rouge) a cote : meme corps, meme sante ; seuls le nom et le cout different.
+
+# 5. NOMS PAR FACTION (REGLAGE de l'utilisateur) : CHAQUE unite des Legions porte son nom propre dans la grille (texte de la case), l'infobulle, la bulle "Produit" de la Caserne et le bloc de selection ; les noms d'Aube ne s'affichent plus pour les Legions. Assertions sur le texte reellement ecrit (hol.HUD.Report : lignes "HUD cells", "HUD tooltips", "HUD selection name").
+hol.Camera.FocusNear 2500 4500
+hol.Cheat.SpawnBuilding ArcheryRange 0 2500 4500
+waitlog Cheat: spawned ArcheryRange of slot 0
+hol.Cheat.SpawnBuilding SiegeWorkshop 0 2500 6500
+waitlog Cheat: spawned SiegeWorkshop of slot 0
+hol.Cheat.SpawnBuilding Stable 0 2500 8500
+waitlog Cheat: spawned Stable of slot 0
+hol.Camera.FocusNear 2500 6500
+hol.Camera.Zoom -3
+frames 40
+hol.Select.ClickGround -12200 4600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Legion Archer; Z: Legion Crossbowman
+hol.Select.ClickGround -12200 6600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+hol.Select.ClickGround -12200 8600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Dread Rider
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Legion Spearman; Z: Black Guard
+hol.HUD.Report
+waitlog A: Legion Spearman | F 45 | W 15
+hol.HUD.Report
+waitlog Z: Black Guard |
+note 5. La Caserne des Legions : les cases portent "Legion Spearman" (A) et "Black Guard" (Z), pas Lancier / Homme d'armes ; le champ de tir "Legion Archer" / "Legion Crossbowman", l'atelier "Bone Ram" / "Bone Mangonel", l'ecurie "Dread Rider".
+capture legions_roster_names_barracks
+# The builders' grid: the Barracks' tooltip lists what it produces by the Legions' names.
+hol.Select.Type Zombie
+frames 5
+hol.HUD.Report
+waitlog Produit : Legion Spearman, Black Guard
+hol.HUD.Report
+waitlog Produit : Legion Archer, Legion Crossbowman
+# The selection block, one Legions unit at a time (the newest of its type).
+hol.Camera.FocusNear 5000 2250
+frames 2
+hol.Units.SpawnHere 1 Ram 0 120
+waitlog SpawnHere: 1 Ram of slot 0
+hol.Camera.FocusNear 5000 3000
+frames 2
+hol.Units.SpawnHere 1 Mangonel 0 120
+waitlog SpawnHere: 1 Mangonel of slot 0
+hol.Select.Type Spearman last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Legion Spearman
+hol.Select.Type ManAtArms last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Black Guard
+hol.Select.Type Archer last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Legion Archer
+hol.Select.Type Crossbowman last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Legion Crossbowman
+hol.Select.Type Ram last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Bone Ram
+hol.Select.Type Mangonel last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Bone Mangonel
+hol.Select.Type LightCavalry last
+frames 5
+hol.HUD.Report
+waitlog HUD selection name: Dread Rider
+capture legions_roster_names_selection
+note 6. Un Cavalier leger des Legions est selectionne : le bloc du bas l'appelle "Dread Rider" ; chacune des 7 unites a ete verifiee dans le journal (Legion Spearman, Black Guard, Legion Archer, Legion Crossbowman, Bone Ram, Bone Mangonel, Dread Rider).

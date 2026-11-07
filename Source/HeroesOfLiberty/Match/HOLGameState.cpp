@@ -1359,9 +1359,26 @@ bool AHOLGameState::RequestResume(const AHOLPlayerState& Requester, const double
 		UE_LOG(LogHOLMatch, Display, TEXT("Pause: refused to %s (slot %d): %s"), *Requester.GetPlayerName(), Slot, FHOLPauseRules::ToString(Answer));
 		return false;
 	}
+	WindowPausedSeconds += FMath::Max(Now - PausedAtSeconds, 0.);
 	PausedBySlot = INDEX_NONE;
 	PausedByName.Reset();
 	UE_LOG(LogHOLMatch, Display, TEXT("Pause: resumed by %s (slot %d), %d left"), *Requester.GetPlayerName(), Slot, PausesLeft);
+	ForceNetUpdate();
+	NotifyPauseChanged();
+	return true;
+}
+
+bool AHOLGameState::LiftPauseOf(const int32 Slot, const double Now)
+{
+	if (!HasAuthority() || !IsMatchPaused() || PausedBySlot != Slot)
+	{
+		return false;
+	}
+	// D720: the pause of a player who leaves is lifted at once; it stays counted (PausesLeft untouched).
+	WindowPausedSeconds += FMath::Max(Now - PausedAtSeconds, 0.);
+	UE_LOG(LogHOLMatch, Display, TEXT("Pause: lifted, %s (slot %d) left, %d left"), *PausedByName, Slot, PausesLeft);
+	PausedBySlot = INDEX_NONE;
+	PausedByName.Reset();
 	ForceNetUpdate();
 	NotifyPauseChanged();
 	return true;

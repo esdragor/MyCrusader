@@ -17,7 +17,7 @@ struct HEROESOFLIBERTY_API FHOLManagerRules
 	/** { "winners": [0, 2] } (slots) */
 	static FString MakeFinishedBody(TConstArrayView<int32> Winners);
 	/** { "playerName": "Bob" } (left, M6-Q14) */
-	static FString MakeLeftBody(const FString& PlayerName);
+	static FString MakeLeftBody(const FString& PlayerName, double WindowSeconds = 0., bool bKeepsSeat = false);
 	/** { "playerName": "Bob" } (back, M6-Q15) */
 	static FString MakeBackBody(const FString& PlayerName) { return MakeLeftBody(PlayerName); }
 	/** {} (started, empty) */
@@ -55,7 +55,7 @@ public:
 	void SendFinished(TConstArrayView<int32> Winners);
 	void SendEmpty();
 	/** M6-Q14: a named player left the server (after "started"); each time. */
-	void SendLeft(const FString& PlayerName);
+	void SendLeft(const FString& PlayerName, double WindowSeconds = 0., bool bKeepsSeat = false);
 	/** M6-Q15: a named player back on the server within R7's window (his absent slot taken again); each time. */
 	void SendBack(const FString& PlayerName);
 	bool HasStarted() const { return bStartedSent; }

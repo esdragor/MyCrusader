@@ -219,9 +219,16 @@ public sealed class LobbyMatch(string id, HOLManager.Matches.MatchConfig config,
     /** R7.6: the match's players gone from its server and not back, by their name in the match, with when they left. */
     public Dictionary<string, DateTimeOffset> AwaySince { get; } = new(LobbyRules.NameComparer);
 
+    /** D718 (T5): the server's window for a name of AwaySince (its one clock); absent = LobbyRules.DisconnectWindow. */
+    public Dictionary<string, TimeSpan> AwayWindow { get; } = new(LobbyRules.NameComparer);
+
+    /** D718 (T5): the names of AwaySince whose seat the AI keeps after the window (teams): « Revenir » to the end of the match. */
+    public HashSet<string> AwayKept { get; } = new(LobbyRules.NameComparer);
+
     /** R7.6: the names of AwaySince still within the server's window (GET /lobbies, « Revenir »). */
     public IEnumerable<string> Away(DateTimeOffset now) =>
-        AwaySince.Where(p => now - p.Value < LobbyRules.DisconnectWindow).Select(p => p.Key).Order(StringComparer.Ordinal);
+        AwaySince.Where(p => AwayKept.Contains(p.Key) || now - p.Value < (AwayWindow.TryGetValue(p.Key, out var window) ? window : LobbyRules.DisconnectWindow))
+            .Select(p => p.Key).Order(StringComparer.Ordinal);
 
     /** "empty" received: the server is stopped if it still runs EmptyStopDelay later. */
     public DateTimeOffset? EmptyAt { get; internal set; }
