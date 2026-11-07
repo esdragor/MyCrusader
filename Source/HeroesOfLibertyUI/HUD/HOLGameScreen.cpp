@@ -36,6 +36,7 @@
 #include "HUD/HOLGameNames.h"
 #include "HUD/HOLRelationIcons.h"
 #include "HUD/HOLScriptScreen.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Siege/HOLSiegeRules.h"
@@ -2843,6 +2844,24 @@ const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const
 	const UWorld* World = GetWorld();
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	return Units ? Units->FindTypeRow(TypeName) : nullptr;
+}
+
+FText UHOLGameScreen::UnitNameFor(const FName TypeName, const int32 OwnerPlayer) const
+{
+	const FName FactionKey = OwnerPlayer >= 0 ? HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer) : NAME_None;
+	return HOLGameNames::GetUnitName(TypeName, FindUnitTypeFor(TypeName, OwnerPlayer), FactionKey);
+}
+
+FName UHOLGameScreen::LocalFactionKey() const
+{
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	return PlayerState ? HOLFactionRules::GetSlotFactionKey(GetWorld(), PlayerState->GetPlayerIndex()) : NAME_None;
+}
+
+FString UHOLGameScreen::DescribeSelectionName() const
+{
+	return SelectionName && SelectionName->GetVisibility() != ESlateVisibility::Collapsed && !SelectionName->GetText().IsEmpty()
+		? SelectionName->GetText().ToString() : FString(TEXT("none"));
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitTypeFor(const FName TypeName, const int32 OwnerPlayer) const

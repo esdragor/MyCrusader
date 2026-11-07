@@ -118,6 +118,9 @@ public:
 	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
 	FString DescribeCells() const;
 
+	/** L2: the name the selection block writes for a single selected unit (its faction's own name), "none" without it: the "HUD selection name" line of hol.HUD.Report. */
+	FString DescribeSelectionName() const;
+
 	/** Seconds a short message stays above the grid (D313), the last of them fading out. */
 	static constexpr float MessageSeconds = 3.f;
 	static constexpr float MessageFadeSeconds = 0.5f;
@@ -403,6 +406,10 @@ private:
 	const FHOLUnitTypeRow* FindUnitType(FName TypeName) const;
 	/** The type's row for the player's faction (cost, name, statistics as that player pays and fields them: FindTypeRowFor). */
 	const FHOLUnitTypeRow* FindUnitTypeFor(FName TypeName, int32 OwnerPlayer) const;
+	/** L2: the name of a unit type as its owner's faction calls it (the Legions' own names; GetUnitName(Type, Row, FactionKey)); no owner (negative): the base name. */
+	FText UnitNameFor(FName TypeName, int32 OwnerPlayer) const;
+	/** L2: the faction key of the player this screen is bound to (NAME_None without one): the names of the buildings' tooltips are the player's own. */
+	FName LocalFactionKey() const;
 
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UHOLGridCell>> GridCells;
