@@ -37,6 +37,29 @@ static TAutoConsoleVariable<float> CVarReconnectInterval(TEXT("hol.Net.Reconnect
 static TAutoConsoleVariable<float> CVarReconnectWindow(TEXT("hol.Net.ReconnectWindow"), static_cast<float>(FHOLDisconnectRules::DefaultWindowSeconds),
 	TEXT("T7 (D721): seconds the client keeps retrying (the server's window, hol.Match.DisconnectWindowSeconds)."));
 
+// T7 check: the connection of a client in a match is lost as the engine reports a real loss (the same ConnectionLost failure a timeout
+// raises: the engine's own handling closes the connection, the server sees a Logout, our handler starts the automatic return).
+static FAutoConsoleCommand CommandFakeLoss(TEXT("hol.Net.FakeLoss"),
+	TEXT("hol.Net.FakeLoss: on a client in a match, raises ConnectionLost on its connection (the seat is then retried by itself, T7)"),
+	FConsoleCommandDelegate::CreateLambda([]()
+	{
+		if (!GEngine)
+		{
+			return;
+		}
+		for (const FWorldContext& Context : GEngine->GetWorldContexts())
+		{
+			UWorld* World = Context.World();
+			if (Context.WorldType == EWorldType::Game && World && World->GetNetMode() == NM_Client && World->GetNetDriver())
+			{
+				UE_LOG(LogHOLNet, Display, TEXT("hol.Net.FakeLoss: ConnectionLost raised on the client's connection"));
+				GEngine->BroadcastNetworkFailure(World, World->GetNetDriver(), ENetworkFailure::ConnectionLost, TEXT("hol.Net.FakeLoss"));
+				return;
+			}
+		}
+		UE_LOG(LogHOLNet, Warning, TEXT("hol.Net.FakeLoss: not a client in a match"));
+	}));
+
 namespace
 {
 	const TCHAR* KindName(const FHOLManagerError::EKind Kind)
