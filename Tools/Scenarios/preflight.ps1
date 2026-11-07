@@ -27,6 +27,7 @@ $Txt = Join-Path $Root "Tools\Scenarios\$Name.txt"
 if (-not (Test-Path $Txt)) { Write-Host "preflight: no scenario '$Name'"; exit 1 }
 $Look = Join-Path $Root "Tools\Scenarios\$Name.look"
 $Fails = 0
+. (Join-Path $PSScriptRoot "HudRects.ps1")
 
 function Report([string]$Level, [string]$Text) {
     if ($Level -eq "FAIL") { $script:Fails++ }
@@ -84,6 +85,15 @@ if (Test-Path $Log) {
     if ($Overlaps.Count -eq 0) { Report "WARN" "no 'HUD overlap:' line: the scenario does not call hol.HUD.Report at the moment of the screenshots (a panel hiding another is not checked)" }
     elseif (@($Overlaps | Where-Object { $_.Line -notmatch 'HUD overlap: none' }).Count -gt 0) { Report "FAIL" ("HUD panels cover each other: " + (($Overlaps | Where-Object { $_.Line -notmatch 'HUD overlap: none' } | Select-Object -First 2 | ForEach-Object { $_.Line.Trim() }) -join " / ")) }
     else { Report "OK" "no HUD panel covers another ($($Overlaps.Count) report(s))" }
+    # 12b, every visible widget: "HUD rects: name=x0,y0,x1,y1; ..." (HudRects.ps1; written by hol.HUD.Report once the game logs the boxes of ALL
+    # visible widgets, not only the script's panels, the cheats' panel, PlayersPanel and MenuPanel: FogInProgress.md, "besoin C++ L1-12b").
+    # Without that line nothing is said here (the line above is the check that exists today); with it, two boxes that cover each other are a FAIL.
+    $RectLines = @($Text | Where-Object { $_ -match 'HUD rects:' })
+    if ($RectLines.Count -gt 0) {
+        $RectOverlaps = @(Get-HudRectOverlaps $Text)
+        if ($RectOverlaps.Count -gt 0) { Report "FAIL" ("a widget hides another (HUD rects): " + (($RectOverlaps | Select-Object -First 2) -join " / ")) }
+        else { Report "OK" "no visible widget covers another ($($RectLines.Count) HUD rects line(s))" }
+    }
     $Sanity = @($Text | Select-String -Pattern 'Sanity: ')
     if ($Sanity.Count -eq 0) { Report "WARN" "no 'Sanity:' audit line: the scenario does not call hol.Test.Sanity (neutral colours, spinning, shaking not checked)" }
     elseif (@($Sanity | Where-Object { $_.Line -match 'Sanity: FAIL' }).Count -gt 0) { Report "FAIL" ("sanity audit: " + (($Sanity | Where-Object { $_.Line -match 'Sanity: FAIL' } | Select-Object -First 3 | ForEach-Object { $_.Line.Trim() }) -join " / ")) }
