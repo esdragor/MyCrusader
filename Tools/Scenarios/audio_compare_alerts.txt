@@ -1,10 +1,10 @@
-# Ecoute : les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie), dix variantes chacune, Entree = variante suivante
+# Ecoute : les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie) [TOUT, non compte : plus de 3 min], dix variantes chacune, Entree = variante suivante
 # Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie). 70 sons, 7 cues, dix variantes A a J chacune.
+note Ecoute les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie) [TOUT, non compte : plus de 3 min]. 70 sons, 7 cues, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Alert.UnderAttack C.
 note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_alerts_start

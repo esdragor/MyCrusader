@@ -19,11 +19,28 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LINE = re.compile(r'^\s*Add\(List,\s*"(?P<cue>[A-Za-z]+\.[A-Za-z]+)",\s*"(?P<stems>[A-Za-z0-9_,]+)"')
 LETTERS = "ABCDEFGHIJ"
 GROUPS = [
-    ("audio_compare", ("Ui.",), "les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement)"),
-    ("audio_compare_orders", ("Order.", "Select."), "les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment)"),
-    ("audio_compare_alerts", ("Alert.",), "les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie)"),
+    # The three long ones below are over the 3 minutes of rule 18 (100, 70 and 70 sounds): kept as "tout", NOT counted, no answer sheet.
+    ("audio_compare", ("Ui.",), "les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement) [TOUT, non compte : plus de 3 min]", False),
+    ("audio_compare_orders", ("Order.", "Select."), "les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]", False),
+    ("audio_compare_alerts", ("Alert.",), "les 7 alertes (attaque, batiment fini, entrainement fini, technologie, commerce, volcan, diplomatie) [TOUT, non compte : plus de 3 min]", False),
+    # One scenario per alert (10 sounds, about 2 min). Alert.TrainingDone has its own scenario below. NO sheet and not listed: the old
+    # candidates of these six (bells, harps, glockenspiel) are the rejected "medieval" ones, they must be redone SOFT first
+    # (memory "Sons : pas usants", make_soft_candidates.py) before the user is asked to listen.
+    ("audio_compare_alerts_attack", ("Alert.UnderAttack",), "l'alerte d'attaque subie [ANCIENS candidats non doux, non compte]", False),
+    ("audio_compare_alerts_buildingdone", ("Alert.BuildingDone",), "l'alerte de batiment fini [ANCIENS candidats non doux, non compte]", False),
+    ("audio_compare_alerts_techdone", ("Alert.TechDone",), "l'alerte de technologie finie [ANCIENS candidats non doux, non compte]", False),
+    ("audio_compare_alerts_trade", ("Alert.Trade",), "l'alerte de commerce [ANCIENS candidats non doux, non compte]", False),
+    ("audio_compare_alerts_volcano", ("Alert.Volcano",), "l'alerte de volcan [ANCIENS candidats non doux, non compte]", False),
+    ("audio_compare_alerts_diplomacy", ("Alert.Diplomacy",), "l'alerte de diplomatie [ANCIENS candidats non doux, non compte]", False),
     ("audio_compare_training", ("Alert.TrainingDone",), "l'alerte d'entrainement fini, troisieme tour : sons GRAVES, SOURDS, COURTS et DOUX (bois, cuir, tambour sourd, pierre, metal etouffe), sans cor ni trompette ni clochette"),
-    ("audio_compare_buildings", ("Building.",), "le son de SELECTION d'un batiment, une famille apres l'autre (bois, pierre, sacre, metal, pieces) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    # "tout" (all five families, about 11 min, over the 3 min of rule 18): kept, NOT counted as an essay, no answer sheet.
+    ("audio_compare_buildings", ("Building.",), "le son de SELECTION d'un batiment, une famille apres l'autre (bois, pierre, sacre, metal, pieces) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants [TOUT, non compte : 11 min]", False),
+    # One scenario per family of buildings (10 sounds, about 2 min each) with its own answer sheet.
+    ("audio_compare_buildings_wood", ("Building.Wood",), "le son de SELECTION des batiments en BOIS (Maison, camps, Moulin, Ferme) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    ("audio_compare_buildings_stone", ("Building.Stone",), "le son de SELECTION des batiments en PIERRE (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    ("audio_compare_buildings_sacred", ("Building.Sacred",), "le son de SELECTION des batiments SACRES (Chapelle, Sanctuaire) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    ("audio_compare_buildings_metal", ("Building.Metal",), "le son de SELECTION du batiment de METAL (Forge) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
+    ("audio_compare_buildings_coins", ("Building.Coins",), "le son de SELECTION du batiment de PIECES (Marche) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
 ]
 # The line of the answer sheet for a cue whose name alone says little (family cues of the buildings): "<label> = _".
 SHEET_LABEL = {
@@ -61,11 +78,14 @@ def write_answer_sheet(retours, name, what, mine, steps, project):
         "Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.",
     ]
     out += ["%s = _" % SHEET_LABEL.get(cue, cue) for cue, _ in mine]
+    # The letters, so that the answer is unambiguous: the panel shows the same "<Cue> <letter> (<file>)".
+    out += ["", "Lettres (le panneau affiche le nom du cue a cote de la lettre) :"]
+    out += ["%s : %s" % (cue, ", ".join("%s %s" % (LETTERS[i], stems[i]) for i in range(len(stems)))) for cue, stems in mine]
     root = project.replace("/", "\\")
     out += [
         "",
         "Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File %s\\Tools\\Scenarios\\play.ps1 %s -Root %s`" % (root, name, root),
-        "Durée : environ %d min (%d sons, Entrée = variante suivante ; le panneau dit « <Cue> <lettre> (<fichier>) vient de jouer »)." % (max(1, len(steps) * 12 // 60 + 1), len(steps)),
+        "Durée : environ %d min (%d sons, Entrée = variante suivante ; le panneau dit « <Cue> <lettre> (<fichier>) vient de jouer »)." % (max(1, (len(steps) * 12 + 30) // 60), len(steps)),
         "Réponse attendue : une lettre par cue, `OK`, `BUG: ...` ou `REGLAGE: ...`.",
         "",
     ]
@@ -74,7 +94,7 @@ def write_answer_sheet(retours, name, what, mine, steps, project):
         f.write("\n".join(out))
 
 
-def write(name, prefixes, what, all_cues, scen, retours, project):
+def write(name, prefixes, what, all_cues, scen, retours, project, sheet=True):
     mine = [c for c in all_cues if c[0].startswith(prefixes)]
     steps = [(cue, index, stems[index]) for cue, stems in mine for index in range(len(stems))]
     out = [
@@ -84,9 +104,9 @@ def write(name, prefixes, what, all_cues, scen, retours, project):
         "waitlog Starting hero of slot 1 spawned at",
         "hol.Camera.FocusNear -900 300",
         "frames 10",
-        "note Ecoute %s. %d sons, %d cues, dix variantes A a J chacune." % (what, len(steps), len(mine)),
+        "note Ecoute %s. %d sons, %d %s, dix variantes A a J chacune." % (what, len(steps), len(mine), "cue" if len(mine) == 1 else "cues"),
         "note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate %s C." % steps[0][0],
-        "note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.",
+        ("note Reponds : ta lettre preferee (ou plusieurs)" if len(mine) == 1 else "note Reponds par cue : sa lettre preferee (ou plusieurs)") + ", ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.",
         "capture %s_start" % name,
         "waitkey Entree : commencer par %s" % label(steps[0]),
     ]
@@ -110,7 +130,7 @@ def write(name, prefixes, what, all_cues, scen, retours, project):
         f.write("# <nom de capture> | ce que l'utilisateur doit voir\n"
                 "%s_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter %s, Entree = variante suivante\n"                % (name, what))
     shutil.copyfile(os.path.join(project, "Tools", "Scenarios", "audio_ui.json"), os.path.join(scen, name + ".json"))
-    if retours:
+    if retours and sheet:
         write_answer_sheet(retours, name, what, mine, steps, project)
     return len(steps)
 
@@ -127,4 +147,4 @@ if __name__ == "__main__":
     everything = cues(args.root)
     for group in GROUPS:
         if only is None or group[0] in only:
-            print(group[0], write(group[0], group[1], group[2], everything, scen, args.retours, args.root), "steps")
+            print(group[0], write(group[0], group[1], group[2], everything, scen, args.retours, args.root, group[3] if len(group) > 3 else True), "steps")

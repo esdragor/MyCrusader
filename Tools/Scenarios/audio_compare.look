@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-audio_compare_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement), Entree = variante suivante
+audio_compare_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter les 10 sons de l'interface (clic, survol, ouvrir, fermer, retour, erreur, confirmer, bascule, tic, defilement) [TOUT, non compte : plus de 3 min], Entree = variante suivante
