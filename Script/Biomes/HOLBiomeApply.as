@@ -64,4 +64,22 @@ namespace HOLBiomeApply
 		Look.FogStartCm = float(Biome.FogStartCm);
 		return Look;
 	}
+	// The biome to put on the world (B1 visual): the console's override first (hol.Biome.Index 0 to 4, the scenarios and the tour of the
+	// five biomes), else the match's key (the lobby's choice, replicated with the configuration). -1 = the map's own: the look the map file
+	// carries (Tools/Editor/maps/ambience.py) is left as it is, nothing is set. "default" and an unknown key are the map's own.
+	int WantedBiome(const FString& MatchKey, int OverrideIndex)
+	{
+		if (HOLBiome::IsValid(OverrideIndex))
+		{
+			return OverrideIndex;
+		}
+		return HOLBiome::IndexOfKey(MatchKey);
+	}
+
+	// The line the applier writes when it sets a biome: what the WORLD must read back (hol.Biome.World in C++ reads the lights, the haze
+	// and the ground of the loaded map and writes the same fields). Tools/Tests/biome_apply_check.ps1 compares the two.
+	FString ExpectLine(const FHOLBiomeLook& Look)
+	{
+		return f"Biome expect: key={Look.Key} sun={Look.SunIntensityLux} sunPitch={Look.SunPitch} sky={Look.SkyIntensity} fog={Look.FogDensity} groundA={Look.GroundA.R},{Look.GroundA.G},{Look.GroundA.B}";
+	}
 }
