@@ -336,9 +336,9 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 			Different += Test.Units->FindTypeRow(Name, Legions) != Test.Units->FindTypeRow(Name) ? 1 : 0;
 		}
 		TestEqual(TEXT("seven unit types differ for the Legions (the roster)"), Different, 7);
-		const TCHAR* const RosterNames[][2] = { { TEXT("Spearman"), TEXT("Legion Spearman") }, { TEXT("ManAtArms"), TEXT("Black Guard") },
-			{ TEXT("Archer"), TEXT("Legion Archer") }, { TEXT("Crossbowman"), TEXT("Legion Crossbowman") }, { TEXT("LightCavalry"), TEXT("Dread Rider") },
-			{ TEXT("Ram"), TEXT("Bone Ram") }, { TEXT("Mangonel"), TEXT("Bone Mangonel") } };
+		const TCHAR* const RosterNames[][2] = { { TEXT("Spearman"), TEXT("Lancier squelette") }, { TEXT("ManAtArms"), TEXT("Garde noire") },
+			{ TEXT("Archer"), TEXT("Archer squelette") }, { TEXT("Crossbowman"), TEXT("Arbalétrier squelette") }, { TEXT("LightCavalry"), TEXT("Cavalier funeste") },
+			{ TEXT("Ram"), TEXT("Bélier d'os") }, { TEXT("Mangonel"), TEXT("Mangonneau d'os") } };
 		for (const TCHAR* const* Pair : RosterNames)
 		{
 			const FName Type(Pair[0]);
