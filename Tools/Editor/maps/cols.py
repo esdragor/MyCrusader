@@ -146,6 +146,11 @@ def relays(recipe):
     return common.ring_relays(recipe, on_slots=True)
 
 
+def sites(recipe):
+    """S4 (provisional level design, D697): one ring of sacred sites (common.ring_sites on_slots: in each place's own valley, the ranges run along the middle angles)."""
+    return common.ring_sites(recipe, relays(recipe), on_slots=True)
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
     return steppe.floor_of("forests", recipe)

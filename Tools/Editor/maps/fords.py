@@ -205,6 +205,12 @@ def relays(recipe):
     return common.ring_relays(recipe, avoid=axis_points(recipe), on_slots=river, extra_radius=WATER_WIDTH / 2.0 if river else 0.0)
 
 
+def sites(recipe):
+    """S4 (provisional level design, D697): one ring of sacred sites (common.ring_sites), away from the water like the relays."""
+    river = len(recipe.angles) == 2
+    return common.ring_sites(recipe, relays(recipe), avoid=axis_points(recipe), on_slots=river, extra_radius=WATER_WIDTH / 2.0 if river else 0.0)
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
     return steppe.floor_of("forests", recipe)

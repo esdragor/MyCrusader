@@ -55,9 +55,29 @@ def problems_of(recipe, sites, relays, volcano):
     return out
 
 
+def self_test(module, recipe):
+    """The checks must bite: a good set passes, then one site moved off its twin, one moved into a base's reach and one onto a relay each fail."""
+    relays, volcano, sites = module.relays(recipe), module.volcano(recipe)[0], module.sites(recipe)
+    broken = {
+        "asymmetric": [(sites[0][0] + 1500.0, sites[0][1], sites[0][2])] + sites[1:],
+        "in a base": [(recipe.slot(0)[0][0], recipe.slot(0)[0][1], sites[0][2])] + sites[1:],
+        "on a relay": [(relays[0][0], relays[0][1], sites[0][2])] + sites[1:],
+    }
+    if problems_of(recipe, sites, relays, volcano):
+        return ["the sites of the self-test map are not clear"]
+    return ["self-test: a set %s is not refused" % name for name, bad in broken.items() if not problems_of(recipe, bad, relays, volcano)]
+
+
 def main(keys):
     sizes = common.read_sizes()
     maps = common.read_maps()
+    if not keys:
+        places, side = sizes["Normal"]
+        module = importlib.import_module("maps." + maps["Plain"])
+        bad = self_test(module, common.sized_recipe("Plain", "Normal", places, side))
+        print("self-test: %s" % ("OK" if not bad else "; ".join(bad) + "  <-- FAIL"))
+        if bad:
+            return 1
     wanted = [key.split(":") for key in keys] or [[name] for name in maps]
     failed = 0
     for want in wanted:

@@ -830,6 +830,11 @@ def relays(recipe):
     return common.ring_relays(recipe)
 
 
+def sites(recipe):
+    """S4 (provisional level design, D697): one ring of sacred sites (common.ring_sites)."""
+    return common.ring_sites(recipe, relays(recipe))
+
+
 def volcano(recipe):
     """V4b (D607): the volcano site of the map, symmetric by construction (common.volcano_site); inert unless the match has the Catastrophe option (D398)."""
     return [common.volcano_site(recipe)]

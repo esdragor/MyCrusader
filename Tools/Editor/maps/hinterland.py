@@ -573,6 +573,12 @@ def relays(recipe):
     return common.ring_relays(recipe, avoid=avoid_points(recipe), keep_whole=veins)
 
 
+def sites(recipe):
+    """S4 (provisional level design, D697): one ring of sacred sites (common.ring_sites), clear of the same rocks and veins as the relays."""
+    veins = [(x, y) for type_name, x, y, _ in plan(recipe).points if type_name not in ("Tree", "BerryBush")]
+    return common.ring_sites(recipe, relays(recipe), avoid=avoid_points(recipe), keep_whole=veins)
+
+
 def tree_floor(recipe):
     """The trees every territory must still hold once the relays' zones have taken theirs (common.lay_relays_and_sources): the budget."""
     return steppe.floor_of("forests", recipe)
