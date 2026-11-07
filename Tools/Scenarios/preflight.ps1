@@ -67,7 +67,9 @@ else {
 
 # 1, 2 (wall time), 3, 5: the run
 $Start = Get-Date
-& powershell -ExecutionPolicy Bypass -File (Join-Path $Root "Tools\Scenarios\check.ps1") $Name -Root $Root -TimeoutSeconds ($MaxSeconds + 60) -PlayerName $PlayerName | Out-Host
+$CheckArgs = @("-ExecutionPolicy", "Bypass", "-File", (Join-Path $Root "Tools\Scenarios\check.ps1"), $Name, "-Root", $Root, "-TimeoutSeconds", ($MaxSeconds + 60))
+if ($PlayerName) { $CheckArgs += @("-PlayerName", $PlayerName) }   # an empty value would reach check.ps1 as "-PlayerName" with no argument
+& powershell @CheckArgs | Out-Host
 $CheckExit = $LASTEXITCODE
 $Wall = [int]((Get-Date) - $Start).TotalSeconds
 if ($CheckExit -eq 0) { Report "OK" "check.ps1: the scenario reaches ready" } else { Report "FAIL" "check.ps1 failed (see above)" }
