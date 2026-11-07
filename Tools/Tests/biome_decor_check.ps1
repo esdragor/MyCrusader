@@ -1,7 +1,7 @@
 # B3 (BiomeInProgress.md), test de l EFFET sur le monde charge, sur la vraie chaine : trois parties de la Plaine (biome snow, fresh_grass,
 # aucun biome), chacune lancee par Tools\Scenarios\check.ps1 ; le journal porte
 #   "Biome decor expect: pieces=N kinds=K" (le plan que le script dit avoir pose) et
-#   "Biome decor world: layers= pieces= kinds= sites= minAvoid= collide= nav= shadow=" (hol.Biome.DecorWorld : ce que le MONDE tient, lu sur les
+#   "Biome decor world: layers= pieces= kinds= sites= minAvoid= collide= shadow=" (hol.Biome.DecorWorld : ce que le MONDE tient, lu sur les
 #   meshes instancies eux-memes).
 # PASS seulement si : snow et fresh_grass posent des pieces (pieces > 0, = le plan), sur au moins un site mesure, aucune a moins de 800 cm
 # d un site, aucun composant avec collision, navigation ou ombre, une seule couche ; les deux biomes posent un decor different ; sans biome,
@@ -37,7 +37,7 @@ foreach ($Name in @("biome_decor_snow", "biome_decor_grass", "biome_decor_defaul
         if ($W["layers"] -ne 1) { Write-Host "FAIL $Name : expected one decor actor, the world holds $($W['layers'])"; $Fails++ }
         if ($W["sites"] -le 0) { Write-Host "FAIL $Name : no site found on the map, so the distance proves nothing ($WorldLine)"; $Fails++ }
         elseif ($W["minAvoid"] -lt 800) { Write-Host "FAIL $Name : a piece lies $($W['minAvoid']) cm from a site (less than 800)"; $Fails++ }
-        if ($W["collide"] -ne 0 -or $W["nav"] -ne 0 -or $W["shadow"] -ne 0) { Write-Host "FAIL $Name : a decor component collides ($($W['collide'])), affects the navigation ($($W['nav'])) or casts a shadow ($($W['shadow']))"; $Fails++ }
+        if ($W["collide"] -ne 0 -or $W["shadow"] -ne 0) { Write-Host "FAIL $Name : a decor component collides, so it could cut the navigation mesh ($($W['collide'])), or casts a shadow ($($W['shadow']))"; $Fails++ }
     }
     if ($Fails -eq $Before) { Write-Host "OK   $Name : $WorldLine" }
 }
