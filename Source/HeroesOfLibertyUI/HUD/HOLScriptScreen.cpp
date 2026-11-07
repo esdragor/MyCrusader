@@ -179,20 +179,14 @@ bool UHOLScriptScreen::GetGameScreenBox(const FName WidgetName, FVector2D& OutMi
 	return GetWidgetBox(Widget, OutMin, OutMax);
 }
 
-FString UHOLScriptScreen::DescribeOverlaps() const
+void UHOLScriptScreen::GatherPanelBoxes(TArray<FHOLHUDNamedBox>& OutBoxes) const
 {
-	struct FNamedBox
-	{
-		FString Name;
-		FBox2D Box;
-	};
-	TArray<FNamedBox> Boxes;
 	if (const UHOLCheatPanel* CheatPanel = AHOLGameHUD::FindCheatPanel(GetOwningPlayer()))
 	{
 		FBox2D CheatBox;
 		if (CheatPanel->GetBox(CheatBox))
 		{
-			Boxes.Add({ TEXT("cheats"), CheatBox });
+			OutBoxes.Add({ TEXT("cheats"), CheatBox });
 		}
 	}
 	// The C++ blocks a panel of the script must not cover (the Diplomacy panel's trial): the players' table, the menu's buttons.
@@ -203,7 +197,7 @@ FString UHOLScriptScreen::DescribeOverlaps() const
 		FVector2D High;
 		if (GetGameScreenBox(FName(GameName), Low, High))
 		{
-			Boxes.Add({ GameName, FBox2D(Low, High) });
+			OutBoxes.Add({ GameName, FBox2D(Low, High) });
 		}
 	}
 	if (WidgetTree)
@@ -233,9 +227,30 @@ FString UHOLScriptScreen::DescribeOverlaps() const
 			{
 				continue;
 			}
-			Boxes.Add({ Border->GetName(), HOLHUDSpace::BoxOf(this, Geometry) });
+			OutBoxes.Add({ Border->GetName(), HOLHUDSpace::BoxOf(this, Geometry) });
 		}
 	}
+}
+
+FString UHOLScriptScreen::DescribeRects() const
+{
+	// L1-12b: every box DescribeOverlaps compares (the cheats' panel, PlayersPanel, MenuPanel, the script's outermost visible panels such as
+	// AILevelPanel and DuelPanel), Slate units of the HUD; Tools\Scenarios\HudRects.ps1 reads the line.
+	TArray<FHOLHUDNamedBox> Boxes;
+	GatherPanelBoxes(Boxes);
+	FString Result;
+	for (const FHOLHUDNamedBox& Named : Boxes)
+	{
+		Result += (Result.IsEmpty() ? TEXT("") : TEXT("; ")) + FString::Printf(TEXT("%s=%.1f,%.1f,%.1f,%.1f"), *Named.Name, Named.Box.Min.X, Named.Box.Min.Y, Named.Box.Max.X, Named.Box.Max.Y);
+	}
+	return Result;
+}
+
+FString UHOLScriptScreen::DescribeOverlaps() const
+{
+	using FNamedBox = FHOLHUDNamedBox;
+	TArray<FNamedBox> Boxes;
+	GatherPanelBoxes(Boxes);
 	FString Result;
 	// Placement (2026-11-03, E-diplomacy-compare): a panel must lie inside the window (a box off it was read in another space than the
 	// HUD's, as the windowed game's desktop coordinates were), and the Diplomacy button sits left of the menu's buttons at their height.
