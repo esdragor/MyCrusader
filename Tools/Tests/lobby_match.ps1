@@ -271,6 +271,8 @@ if ($AI) {
 # match is over: with two players his defeat ends it, so his return as a spectator is left to Match.DisconnectGameState).
 if ($Rejoin) {
     $Late = ($Window -gt 0) -and -not $Team
+    # The banner's "Bob is back" line is localized (-Culture): the pattern depends on the culture (ASCII source: the Japanese text is built from code points).
+    $BackRx = if ($Culture -like "en*") { "Bob: back" } elseif ($Culture -like "ja*") { "Bob.*" + [char]0x5FA9 + [char]0x5E30 } else { "Bob.*de retour" }
     $RejoinDone = Join-Path $Work "rejoin_done.signal"
     Remove-Item $RejoinDone -ErrorAction SilentlyContinue
     # -Reconnect: Bob pauses, loses his connection (the engine's ConnectionLost), the client takes the seat back by itself; no second game.
@@ -281,7 +283,7 @@ if ($Rejoin) {
         $Status = $null
         for ($i = 0; $i -lt 40 -and -not $Status; $i++) { try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 } }
         if (-not $Status) { throw "the manager does not answer on $Url" }
-        $AliceEnd = if ($Team) { @("wait $($Window + 8)", "frames 3", "capture lobby_match_team_alice", "hol.HUD.Report") } elseif ($Late) { @("waitlog End banner: Victory", "waitlog Absence banner: hidden", "frames 3", "capture lobby_match_rejoin_win") } elseif ($Replace) { @("frames 3") } else { @("waitlog de retour", "frames 3", "capture lobby_match_rejoin_back") }
+        $AliceEnd = if ($Team) { @("wait $($Window + 8)", "frames 3", "capture lobby_match_team_alice", "hol.HUD.Report") } elseif ($Late) { @("waitlog End banner: Victory", "waitlog Absence banner: hidden", "frames 3", "capture lobby_match_rejoin_win") } elseif ($Replace) { @("frames 3") } else { @("waitlog Absence banner: shown", "frames 3", "capture lobby_match_rejoin_back") }
         $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
             (& $Press CreateButton) + $(if ($Team) { $ToMedium } else { $ToSmall }) + (& $Pick Alice 0) + @("waitlog 2/2 ready", "wait 3") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") +
             (& $InMatch Alice) + $(if ($Replace) { @() } else { @("waitlog Absence banner: shown, Bob", "frames 3", "capture lobby_match_rejoin_away") }) + $AliceEnd +
@@ -405,7 +407,7 @@ if ($Rejoin) {
             elseif (-not ($Lines.Bob -match "Manager: back in the match after \d+ attempt")) { $Failure = "Bob : the client did not come back by itself" }
             elseif ($Lines.Bob -match "Multiplayer: back in match") { $Failure = "Bob came back by Â« Revenir Â», not by himself" }
             elseif (-not ($S[$HoldsAt[1]..($S.Count - 1)] -match "Production: slot 1 queued Peasant")) { $Failure = "the server did not accept the Peasant of Bob after his automatic return" }
-            elseif (-not ($Lines.Alice -match "Absence banner: shown, .*Bob.*de retour")) { $Failure = "Alice : no Â« Bob : de retour Â»" }
+            elseif (-not ($Lines.Alice -match "Absence banner: shown, .*$BackRx")) { $Failure = "Alice : no Â« Bob : de retour Â»" }
             elseif (($Lines.Alice + $Lines.Bob) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
         }
         $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
@@ -461,7 +463,7 @@ if ($Rejoin) {
         elseif ($S -match "Construction order of slot 1 ignored: no player state|Production order of slot 1 ignored: no player state") { $Failure = "the AI's order for his seat was ignored: no player state" }
         elseif ($S -match "Disconnect: slot 1 \(Bob\) back, " -and -not $BackStock) { $Failure = "Bob back without a readable stock" }
         elseif (-not ($S -match "Manager: Bob back")) { $Failure = "the server has no 'Manager: Bob back'" }
-        elseif (-not $Team -and -not ($Lines.Alice -match "Absence banner: shown, .*Bob.*de retour")) { $Failure = "Alice : no « Bob : de retour »" }
+        elseif (-not $Team -and -not ($Lines.Alice -match "Absence banner: shown, .*$BackRx")) { $Failure = "Alice : no « Bob : de retour »" }
         elseif (-not ($(if ($null -ne $BackAt) { $S[$BackAt..($S.Count - 1)] } else { $S }) -match "Production: slot 1 queued Peasant")) { $Failure = "the server did not accept the Peasant of Bob after his return (R7.4)" }
         elseif (($Lines.Alice + $Lines.Bob + $Lines.Bob2) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
         elseif ($Team -and -not ($S -match "not back within \d+ s, the AI keeps the seat \(full brain\)")) { $Failure = "the server did not pass the seat to the full brain at the end of the window" } elseif (-not $Team -and $S -match "Disconnect: slot \d+ not back within") { $Failure = "a slot defeated by its absence" }
