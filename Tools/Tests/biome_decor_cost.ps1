@@ -30,7 +30,17 @@ foreach ($Round in 1..$Rounds) {
         $Scenario, $Seconds = $T.Split(":")
         foreach ($C in $Conditions) {
             $Name = "cost_${Stamp}_$($Scenario.ToLower())_$($C.Name)_$Round"
-            $Out = & (Join-Path $PSScriptRoot "stress_ab.ps1") -Project $Root -Map $Map -Test $Scenario -Seconds ([int]$Seconds) -LogName $Name -ExtraExec "hol.Biome.Index $($C.Index)," | Out-String
+            # Other sessions run editors and builds on this machine: stress_ab.ps1 refuses to start while one runs (BUSY), so wait for a free
+            # moment (up to 40 min per run), and a run during which another editor / build appeared is thrown away and run again (3 tries).
+            $Out = ""; $Tries = 0; $Waited = [Diagnostics.Stopwatch]::StartNew()
+            while ($Tries -lt 3 -and $Waited.Elapsed.TotalMinutes -lt 40) {
+                $Out = & (Join-Path $PSScriptRoot "stress_ab.ps1") -Project $Root -Map $Map -Test $Scenario -Seconds ([int]$Seconds) -LogName $Name -ExtraExec "hol.Biome.Index $($C.Index)," *>&1 | Out-String
+                if ($Out -match "BUSY:") { Start-Sleep 15; continue }
+                $Tries++
+                $After = @(Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'HeroesOfLiberty' -and $_.Name -match 'Unreal|UnrealBuildTool|dotnet' })
+                if ($After.Count -eq 0) { break }
+                Write-Host "  $Name : $($After.Count) other editor / build process(es) at the end of the run ($(($After | ForEach-Object { $_.ProcessId }) -join ',')) : run again"
+            }
             $Text = if (Test-Path (Join-Path $LogDir "$Name.log")) { Get-Content (Join-Path $LogDir "$Name.log") -Raw } else { "" }
             $Step = [regex]::Match($Text, "Simulation: ([\d.]+) ms average per step \(max ([\d.]+) ms")
             $Fps = [regex]::Match($Text, "Rendering: ([\d.]+) fps average")
