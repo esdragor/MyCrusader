@@ -609,6 +609,37 @@ Incident : Haldir-1 a arrete par stray_processes le serveur du peintre de cartes
 | Elrond-14 FINI 15:10 11 tool_uses (Auto_Journey_File.md nettoye 143 -> 55 lignes, archive Docs\Archive\Auto_Journey_File_2026-11-07.md, ad15eba sur main) ; Celeborn-18 FINI partiel 15:13 29 tool_uses (melee_stuck : FinalLeg seul fautif : SlotCommitHeadOn 0 => 4/4 et SlotBlockedStopDistance 0 => 4/4 contre ON 0/8 ; riposte/same non lus) | | | | | | |
 | Celeborn-19 | a264c7af4efdf0b42 | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | conclure A/B : meilleure combinaison <= ALLOFF sur 3 scenarios ; defaut de cvar mesure ; arret 15:55, pas de fusion C++ apres 15:50 | C++ 1 | 15:55 | lance 15:22 |
 | Celeborn-16 | ab0bdad2d700ffbfa | Documents\HeroesOfLiberty-Celeborn / hero-j8-close | tests+combat sur 53b9924, StopWalk quand marche bloquee (UNANSWERED), x8, valider ou non | C++ 1 | 16:10 (48 appels) | lance 13:46 |
+
+## Bilan de la seance autonome (puis presente) du 2026-11-07 apres-midi (12:10 -> 16:10, fin lue dans Docs\SessionEnd.txt, cartes INCLUSES)
+Agents lances : 29 (etape 0, Arwen-15/16/17, Celeborn-13 a 19, Elrond-11/12/13/14, Faramir-10/11/12, Galadriel-8/9, Glorfindel-14/15/16/17, Haldir-2/3, Sauron-5, Fusion-4/5). tool_uses : 99 (Fusion-4), 89 (Glorfindel-16), 88 (Haldir-2), 85 (Glorfindel-15), 83 (Celeborn-13) = 5 agents hors regle 80, aucun > 100. Glorfindel-15/16 et Celeborn-18 re-notifiaient leur rapport en boucle (minuteurs de reveil / Monitor de l'agent) : arretes par TaskStop.
+Fusions dans main (accord de la seance, jamais de push) : F1 df1e1e2 (fog 3f5cc3e, visual 014d8fe, maps 90c4771, galadriel-tab 6c2a091, heal-sleep a194667, net-playtest f98a77d ; tests 1098/1098, aiserver, aiduel, net 17 sous-tests, camera 2p/8p PASS ; avance rapide faite par la session principale apres commit des docs et resolution de Auto_Journey_File.md) ; F2 af7f494 (tiers 367afe5 preflight -PlayerName + fog 94c08f0 CaptureResolve ; tests 1098/1098, sans C++). main depart bc3cf59 -> fin 65d8f13. NON fusionne : hero-j8-close 289a1f4 (WIP melee non valide).
+Livre : noms des Legions FR/EN/JA (verts, joues OK par l'utilisateur) ; Deconnexion T6-T10 (pastilles, bandeau sur l'horloge de fenetre, FakeAbsent Back, gather localisation fr/en/ja, lobby_match -Culture) joue OK ; Sites sacres S3 (UHOLSiteSubsystem desactive) + donnees de cartes sites(recipe) en Python ; 60 candidats sonores DOUX (5 familles de batiments + 6 alertes + training) en scenarios <= 3 min ; outils (repeat_scenario sans passes invalides, check.ps1 Sanity, known_reds, Get-FreshLog, CaptureResolve, -PlayerName) ; file Auto_Journey_File.md nettoyee 143 -> 55 lignes (archive Docs\Archive\Auto_Journey_File_2026-11-07.md).
+Reponses de l'utilisateur en seance : Q-melee-stall = A ; Q-sites-nombre = Autre, 2 a 3 sites AU TOTAL par carte, variable selon la carte ; Q-scenario-panel-covers-world = B ; legions_roster_gesture, _dawn, disconnect_look = OK. Enregistrees (Q-*.md, LegionsInProgress.md, DisconnectInProgress.md, file). A mettre au GDD par la session de revue (D740+, GDD.md non touche : accord requis).
+Melee : hero-j8-close (FinalLeg b125064 + Q5 39d5ea3 + SameWalkGoal 53b9924) : UNANSWERED 0/8 et LOCKED 0/8 mais SlotBlockedStopDistance 250 = fautif de melee_stuck (ON 0/8, coupe 6/8 = ALLOFF) tout en etant le correctif de watch (8/8 contre 1-2/5) ; piste : 120/150 a mesurer x8 sur 3 scenarios (ligne de file).
+Reste (file) : Q-melee-stall=A en code, sites 2-3 total, panel B, gate Essay qui lit 'branches' dans la prose des fiches audio (17 FAIL : essais sonores NON donnes), mesures S1/S2 du decor machine calme, regeneration des cartes (lettre glade_sweep, classe AHOLSiteLayout), B5 sons apres ecoute. Pieges : Auto_Journey_File.md CRLF/LF melanges = conflit total a chaque fusion (corrige : CRLF + BOM partout depuis Elrond-14) ; repeat_scenario ecrit 'FAIL k/N' avec k = nombre de PASS.
+### Lecons appliquees 2026-11-07 (apres-midi)
+- T2-1 : appliquee : etape 0 par sous-agent en lecture seule (17 appels), plan relu ; Haldir sans tache C++ -> chapitre GDD (aucun libre : plan de regeneration des cartes)
+- T2-2 : appliquee : 8 worktrees lances 12:19 (Haldir/Sauron/Elrond relances apres fin), aucun saute sans raison ecrite
+- L5-1 : appliquee : session_gate -Phase Launch -End 16:10 avant le premier lancement (PASS 235 min), heure Get-Date avant chaque lancement ; SessionEnd.txt = 16:10
+- L5-2 : appliquee : tableau Agents du 2026-11-07 apres-midi ecrit avant les lancements, ids remplis (une ligne 'voir lancement' a corriger a la main pour Celeborn-15/16 et Elrond-13)
+- L3-1, L4-4 : appliquee avec ecart ecrit : 3 agents C++ au depart, Faramir-11 4e (file de build vide a 12:41)
+- L1-10, L5-7 : appliquee : docs commites par nom a chaque boucle (7eee10a, 985c332, a3b5a09, ad15eba, 063d23b, 65d8f13), jamais GDD.md
+- L4-1, L4-3 : appliquee : alarmes 15:28 et 15:56 posees a 12:11 ; plus aucun lancement d'agent C++ apres 15:50
+- L3-8, L4-9, Q5, L1-14 : appliquee : integrateur Elrond-13 nomme dans le plan (14:01), rejoue legions_roster_gesture(_dawn) et disconnect_look sur main df1e1e2 avec contre-epreuves FAIL ; l'utilisateur les a joues OK
+- L1-1, L3-6, L4-7, L5-3, L7-1 : appliquee avec 5 ecarts : tool_uses 99 / 89 / 88 / 85 / 83, aucun > 100 ; remplacement par agent neuf a chaque etape melee (Celeborn-13 a 19)
+- L1-3 : appliquee : merge main avant rapport par tous les agents (Celeborn-17/18 conflits File traites)
+- L3-2, L4-5, L3-5 : appliquee : premiers builds C++ dans les 15 premieres minutes (Glorfindel-14 12:21, Galadriel-8 12:28, Celeborn-13 12:22)
+- T2-5 / T2-6 : appliquee : build avant quick_check ; net PASS du premier coup 2 fois ; Galadriel-8 a rendu du code NON COMPILE -> agent neuf dedie (Galadriel-9), conforme a la regle
+- L1-8 : partielle : 3 a 5 fichiers de statut par agent
+- L1-9, L4-8 : appliquee : aucun agent n'a ecrit GDD.md ; defauts codes pour toutes les questions
+- L1-7, T2-4 : appliquee : 3 questions (melee-stall, sites-nombre, panneau) toutes avec option Autre et defaut ; reponses de l'utilisateur en seance
+- Q1/Q2/Q3 : appliquee : preflight PASS, PNG ouverts par l'integrateur ; essais sonores restes LOGIQUE SEULEMENT (SON non entendu)
+- Q10, L4-10, L8-1 : partielle : gate Essay PASS pour les 3 essais donnes ; FAIL (faux positif du parseur 'branches') sur les fiches audio : essais sonores non donnes, ligne de file
+- L8-9 : appliquee : sync_worktrees au debut (8 worktrees, Haldir : MI_Ground_Plain.uasset mis en stash) et a 15:45 (8 worktrees a main 063d23b, builds de sync lances en priorite basse) ; Celeborn garde hero-j8-close en avance
+- L3-4 : appliquee : GIT_STATUS_PRINCIPALE rapporte ; fichiers non commites de la copie principale commites avant chaque avance rapide
+- L7-4 : partielle : 3 chaines de fond d'agents (Celeborn-18) ont survecu a leur agent ; arretees par stray_processes (Celeborn-19)
+- L3-9 : non mesuree : appels de la session principale non comptes (~110 estimes)
+- L8-2 : partielle : le spin #4 de melee_stuck reste le defaut de la melee ; l'audit NoStrike a 0 faute
 | Celeborn-15 | a920de43b724e1d04 (id du lancement 13:24) |
 | Glorfindel-15 | a3be1f94a76b5abd7 | Documents\HeroesOfLiberty-Glorfindel / net-playtest | l.129 play.ps1 -PlayerName puis l.98 Deconnexion T6-T10 | C++ 3 | 16:10 | lance 12:42 |
 | Haldir-2 | a4e64fbae8fbdd73f | Documents\HeroesOfLiberty-Haldir / maps | donnees de cartes des Sites sacres sites(recipe) si hors C++, sinon nettoyage lignes perimees | sans C++ | 16:10 | lance 12:19 |
