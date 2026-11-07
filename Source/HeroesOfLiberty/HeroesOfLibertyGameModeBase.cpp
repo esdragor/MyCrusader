@@ -75,7 +75,7 @@ static FAutoConsoleCommandWithWorldAndArgs CommandKillKing(TEXT("hol.Victory.Kil
 /** R7.5: the disconnection banner in solo, for a capture and the trial's scenario (no slot kept, no defeat). */
 static FAutoConsoleCommandWithWorldAndArgs CommandFakeAbsent(TEXT("hol.Net.FakeAbsent"),
 	TEXT("hol.Net.FakeAbsent [Name] [Seconds=161]: « Name : connexion perdue — m:ss » in the banner, Seconds before its end; ")
-	TEXT("Seconds < 0: « Name : de retour » for 5 s; no Name: the fake ones cleared. Server or solo (development only)"),
+	TEXT("Seconds < 0: « Name : de retour » for 5 s; no Name: the fake ones cleared. Leave <Slot> / End <Slot> / Back <Slot>: the real departure, window end and return of a named seat. Server or solo (development only)"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
 	{
 		AHOLGameState* HOLGameState = World && World->GetNetMode() != NM_Client ? World->GetGameState<AHOLGameState>() : nullptr;

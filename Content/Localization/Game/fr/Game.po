@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-07 12:10\n"
-"PO-Revision-Date: 2026-11-07 12:10\n"
+"POT-Creation-Date: 2026-11-07 12:20\n"
+"PO-Revision-Date: 2026-11-07 12:20\n"
 "Language-Team: \n"
 "Language: fr\n"
 "MIME-Version: 1.0\n"
@@ -889,8 +889,8 @@ msgid "Site {0} - {1}"
 msgstr "Site {0} - {1}"
 
 #. Key:	ReplacedByNewConnection
-#. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(313)
-#: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(313)
+#. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(319)
+#: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(319)
 msgctxt "HOLNet,ReplacedByNewConnection"
 msgid "Une autre connexion à votre nom a pris votre place"
 msgstr "Une autre connexion à votre nom a pris votre place"

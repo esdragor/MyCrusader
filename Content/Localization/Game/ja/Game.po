@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-07 12:10\n"
-"PO-Revision-Date: 2026-11-07 12:10\n"
+"POT-Creation-Date: 2026-11-07 12:20\n"
+"PO-Revision-Date: 2026-11-07 12:20\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -889,11 +889,11 @@ msgid "Site {0} - {1}"
 msgstr "地点 {0} - {1}"
 
 #. Key:	ReplacedByNewConnection
-#. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(313)
-#: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(313)
+#. SourceLocation:	Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(319)
+#: Source/HeroesOfLiberty/HeroesOfLibertyGameModeBase.cpp(319)
 msgctxt "HOLNet,ReplacedByNewConnection"
 msgid "Une autre connexion à votre nom a pris votre place"
-msgstr "同じ名前の別の接続があなたの席を引き継ぎました"
+msgstr "あなたの名前の別の接続に置き換えられました"
 
 #. Key:	Map_Plain
 #. SourceLocation:	Source/HeroesOfLiberty/Map/HOLMapRules.cpp(16)
@@ -1089,14 +1089,14 @@ msgstr "{0}の王が死亡"
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(218)
 msgctxt "HOLGameScreen,MessageOwnLeft"
 msgid "Vous avez quitté la partie"
-msgstr "あなたはゲームを退出しました"
+msgstr "ゲームから退出しました"
 
 #. Key:	MessageLeft
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(222)
 #: Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(222)
 msgctxt "HOLGameScreen,MessageLeft"
 msgid "{0} a quitté la partie"
-msgstr "{0} はゲームを退出しました"
+msgstr "{0}がゲームから退出しました"
 
 #. Key:	MessageOwnDefeated
 #. SourceLocation:	Source/HeroesOfLiberty/Match/HOLForumMessages.cpp(228)
@@ -1369,7 +1369,7 @@ msgstr "ピンク"
 #: Source/HeroesOfLiberty/Net/HOLManagerClientRules.cpp(578)
 msgctxt "HOLNet,ReconnectLine"
 msgid "Connexion perdue — nouvelle tentative, {0}:{1}"
-msgstr "接続が切れました — 再接続中 {0}:{1}"
+msgstr "接続が切れました - 再試行中、{0}:{1}"
 
 #. Key:	NoWinner
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameHUD.cpp(190)
@@ -1964,49 +1964,49 @@ msgstr "聖騎士団長"
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(83)
 msgctxt "HOLGameNames,Legions_Spearman"
 msgid "Legion Spearman"
-msgstr ""
+msgstr "スケルトン槍兵"
 
 #. Key:	Legions_ManAtArms
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(84)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(84)
 msgctxt "HOLGameNames,Legions_ManAtArms"
 msgid "Black Guard"
-msgstr ""
+msgstr "黒衛兵"
 
 #. Key:	Legions_Archer
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(85)
 msgctxt "HOLGameNames,Legions_Archer"
 msgid "Legion Archer"
-msgstr ""
+msgstr "スケルトン弓兵"
 
 #. Key:	Legions_Crossbowman
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(86)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(86)
 msgctxt "HOLGameNames,Legions_Crossbowman"
 msgid "Legion Crossbowman"
-msgstr ""
+msgstr "スケルトン弩兵"
 
 #. Key:	Legions_LightCavalry
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(87)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(87)
 msgctxt "HOLGameNames,Legions_LightCavalry"
 msgid "Dread Rider"
-msgstr ""
+msgstr "恐怖の騎兵"
 
 #. Key:	Legions_Ram
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(88)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(88)
 msgctxt "HOLGameNames,Legions_Ram"
 msgid "Bone Ram"
-msgstr ""
+msgstr "骨の破城槌"
 
 #. Key:	Legions_Mangonel
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(89)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameNames.cpp(89)
 msgctxt "HOLGameNames,Legions_Mangonel"
 msgid "Bone Mangonel"
-msgstr ""
+msgstr "骨のマンゴネル"
 
 #. Key:	WoodInText
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(102)
@@ -2202,84 +2202,84 @@ msgstr "{0} — {1} {2}/{3}"
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1730)
 msgctxt "HOLGameScreen,StatAttackBonus"
 msgid "Attaque {0} (+{1})"
-msgstr ""
+msgstr "攻撃 {0} (+{1})"
 
 #. Key:	StatAttack
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1731)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1731)
 msgctxt "HOLGameScreen,StatAttack"
 msgid "Attaque {0}"
-msgstr ""
+msgstr "攻撃 {0}"
 
 #. Key:	StatMeleeArmor
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1735)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1735)
 msgctxt "HOLGameScreen,StatMeleeArmor"
 msgid "Armure mêlée {0}"
-msgstr ""
+msgstr "近接防御 {0}"
 
 #. Key:	StatRangedArmor
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1737)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1737)
 msgctxt "HOLGameScreen,StatRangedArmor"
 msgid "Armure distance {0}"
-msgstr ""
+msgstr "遠隔防御 {0}"
 
 #. Key:	StatHeroArmor
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1739)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1739)
 msgctxt "HOLGameScreen,StatHeroArmor"
 msgid "Armure héros {0}"
-msgstr ""
+msgstr "英雄防御 {0}"
 
 #. Key:	StatSpeed
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1741)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1741)
 msgctxt "HOLGameScreen,StatSpeed"
 msgid "Vitesse {0} m/s"
-msgstr ""
+msgstr "速度 {0} m/s"
 
 #. Key:	TipHealth
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1747)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1747)
 msgctxt "HOLGameScreen,TipHealth"
 msgid "Points de vie {0}"
-msgstr ""
+msgstr "体力 {0}"
 
 #. Key:	TipBaseAttack
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1751)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1751)
 msgctxt "HOLGameScreen,TipBaseAttack"
 msgid "Attaque de base {0}"
-msgstr ""
+msgstr "基本攻撃 {0}"
 
 #. Key:	TipTechnology
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1755)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1755)
 msgctxt "HOLGameScreen,TipTechnology"
 msgid "Technologies {0} %"
-msgstr ""
+msgstr "技術 {0} %"
 
 #. Key:	StatRangeMelee
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1759)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1759)
 msgctxt "HOLGameScreen,StatRangeMelee"
 msgid "Portée mêlée"
-msgstr ""
+msgstr "近接射程"
 
 #. Key:	StatRange
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1760)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1760)
 msgctxt "HOLGameScreen,StatRange"
 msgid "Portée {0} m"
-msgstr ""
+msgstr "射程 {0} m"
 
 #. Key:	TipSiegeArmor
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1763)
 #: Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(1763)
 msgctxt "HOLGameScreen,TipSiegeArmor"
 msgid "Armure siège {0}"
-msgstr ""
+msgstr "攻城防御 {0}"
 
 #. Key:	ResearchSoon
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp(183)
