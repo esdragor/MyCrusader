@@ -310,7 +310,7 @@ if ($Rejoin) {
             Start-Sleep 10   # both players are in the match (the server logs "Bob holds slot 1")
             $Games.Bob2 = Start-Game Bob2 (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3",
                 "capture lobby_match_replace_list") + (& $Press WatchButton0) + @("waitlog Multiplayer: watching match", "waitmap Plain_Small", "waitlog Camera above the start",
-                "frames 30", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_replace_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
+                "frames 30", "wait 5", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_replace_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
             if (-not $Games.Bob2.WaitForExit(300000)) { throw "the second game of Bob still there after 300 s" }
             if (-not $Games.Alice.WaitForExit(60000)) { throw "Alice still there 60 s after Bob" }
             if (-not $Games.Bob.WaitForExit(60000)) { throw "the first game of Bob still there 60 s after the second quit" }
@@ -347,7 +347,7 @@ if ($Rejoin) {
             }
             $Games.Bob2 = Start-Game Bob2 (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3",
                 "capture lobby_match_rejoin_list") + (& $Press RejoinButton0) + @("waitlog Multiplayer: back in match", "waitmap $PlainMap", "waitlog Camera above the start",
-                "frames 30", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_rejoin_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
+                "frames 30", "wait 5", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_rejoin_bob", "signal $RejoinDone", "wait 1", "quit")) Bob
             if (-not $Games.Bob2.WaitForExit(300000)) { throw "the second game of Bob still there after 300 s" }
             if (-not $Games.Alice.WaitForExit(60000)) { throw "Alice still there 60 s after Bob" }
         }
@@ -423,7 +423,7 @@ if ($Rejoin) {
         elseif (-not ($Lines.Alice -match "Absence banner: shown, Bob : connexion perdue — 0:(0\d|10)")) { $Failure = "Alice : no banner with at most 0:$Window" }
         elseif (-not ($Lines.Alice -match "End banner: Victory")) { $Failure = "Alice : no victory banner" }
         # D722 (T8, Q4 = B): the defeat event carries its REASON over the wire and the client reads it: "Bob a quitte la partie", not "vaincu".
-        elseif (-not ($Lines.Alice -match 'HUD message: .*Bob a quitt. la partie')) { $Failure = "Alice : no message 'Bob a quitté la partie' (the reason of the defeat did not reach her screen)" }
+        elseif (-not ($Lines.Alice -match 'LogHOLMatch: Display: Message: Bob a quitt. la partie')) { $Failure = "Alice : no message 'Bob a quitté la partie' (the reason of the defeat did not reach her screen)" }
         elseif ($LobbyLine -match ", rejoin") { $Failure = "Bob : « Revenir » offered after his defeat" }
         elseif ($S -match "Manager: Bob back") { $Failure = "the server took Bob back" }
         elseif (($Lines.Alice + $Lines.Bob + $Lines.Bob2) -match "Test sequence: timeout") { $Failure = "a sequence timed out" }
