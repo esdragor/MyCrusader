@@ -52,7 +52,7 @@ namespace HOLAudioCandidates
 
 		Add(List, "Alert.UnderAttack", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_light,v_mallet_hit_ff2,v_nbell_med,impactMetal_heavy_001,v_nbell_s05");
 		Add(List, "Alert.BuildingDone", "v_harp_A4,v_glock_C5,v_nbell_s07,v_nbell_s03,v_vln_pizz_E5,impactPlate_light_002,impactBell_heavy_002,doorOpen_1,v_triangle_hit,impactMetal_light_002");
-		Add(List, "Alert.TrainingDone", "v_harp_D4,v_harp_B3,v_cello_pizz_B3,v_nbell_s08,v_glock_G4,v_triangle_hit,impactTin_medium_001,metalPot2,v_vln_pizz_A5,v_harp_arp_low");
+		Add(List, "Alert.TrainingDone", "v_horn_call,v_horn_rise,v_trumpet_stac_D4,v_trumpet_call,v_timpani_hit,v_timpani_double,v_timpani_roll,v_trombone_low,drawKnife2,impactPlate_heavy_000");
 		Add(List, "Alert.TechDone", "v_harp_arp_up,v_harp_arp_down,v_glock_arp_up,v_vln_pizz_arp,v_nbell_med,impactBell_heavy_003,bookPlace2,v_gong_smack_light,handleCoins,v_nbell_s02");
 		Add(List, "Alert.Trade", "handleCoins,handleCoins2,impactTin_medium_000,v_tambourine_down,v_triangle_hit,v_nbell_s08,impactGeneric_light_000,impactMetal_light_003,v_glock_C7,handleSmallLeather");
 		Add(List, "Alert.Volcano", "impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_low,v_mallet_hit_ff2,v_mallet_hit_ff,impactMetal_heavy_002,impactPunch_heavy_000,v_nbell_med,v_bass_pizz_E0,creak3");

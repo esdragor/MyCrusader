@@ -473,7 +473,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
      * POST /matches/{id}/left (M6-Q14): a named player left the match's server. During the match, remembered for
      * "finished"; after it, the away leader leads LeaderReturnGrace longer. Any other name changes nothing.
      */
-    public LobbyMatch ServerLeft(string matchId, string? playerName)
+    public LobbyMatch ServerLeft(string matchId, string? playerName, double? windowSeconds = null, bool keepsSeat = false)
     {
         if (string.IsNullOrWhiteSpace(playerName))
         {
@@ -489,6 +489,23 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 if (match.Config.Slots.FirstOrDefault(slot => LobbyRules.NameComparer.Equals(slot.PlayerName, name)) is { } slot)
                 {
                     match.AwaySince[slot.PlayerName] = clock.UtcNow;
+                    // D718 (T5): the window is the server's (one clock; a value out of 1 s to 1 day is ignored), the seat kept by the AI stays listed to the end.
+                    if (windowSeconds is >= 1 and <= 86400)
+                    {
+                        match.AwayWindow[slot.PlayerName] = TimeSpan.FromSeconds(windowSeconds.Value);
+                    }
+                    else
+                    {
+                        match.AwayWindow.Remove(slot.PlayerName);
+                    }
+                    if (keepsSeat)
+                    {
+                        match.AwayKept.Add(slot.PlayerName);
+                    }
+                    else
+                    {
+                        match.AwayKept.Remove(slot.PlayerName);
+                    }
                 }
             }
             else if (match.Finished && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name))
@@ -516,6 +533,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             {
                 match.LeftBeforeEnd.Remove(name);
                 match.AwaySince.Remove(name);
+                match.AwayWindow.Remove(name);
+                match.AwayKept.Remove(name);
             }
             else if (match.Finished && LobbyRules.NameComparer.Equals(lobby.AwayLeader, name))
             {

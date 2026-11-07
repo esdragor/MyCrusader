@@ -36,6 +36,7 @@
 #include "HUD/HOLGameNames.h"
 #include "HUD/HOLRelationIcons.h"
 #include "HUD/HOLScriptScreen.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Siege/HOLSiegeRules.h"
@@ -113,7 +114,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	}
 
 	/** What a building gives, for its tooltip (D313): « +10 population », « Dépôt : pierre, or », « Produit : Lancier, Homme d'armes ». */
-	FText GetBuildingEffect(const FHOLBuildingTypeRow* Type)
+	FText GetBuildingEffect(const FHOLBuildingTypeRow* Type, const FName FactionKey)
 	{
 		TArray<FText> Lines;
 		if (Type && Type->PopulationProvided > 0)
@@ -134,7 +135,7 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 			TArray<FText> Names;
 			for (const FName Unit : Type->Produces)
 			{
-				Names.Add(HOLGameNames::GetUnitName(Unit, nullptr));
+				Names.Add(HOLGameNames::GetUnitName(Unit, nullptr, FactionKey));
 			}
 			Lines.Add(FText::Format(LOCTEXT("ProducesEffect", "Produit : {0}"), FText::Join(LOCTEXT("ListSeparator", ", "), Names)));
 		}
@@ -1384,7 +1385,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 	ShownSelection = FString::Printf(TEXT("%s (%s)"), *FString::Join(ShownTypes, TEXT(", ")), bOwn ? TEXT("own") : TEXT("other"));
 	if (SelectionName && Views.Num() == 1)
 	{
-		SelectionName->SetText(HOLGameNames::GetUnitName(Views[0].TypeName, FindUnitTypeFor(Views[0].TypeName, Views[0].OwnerPlayer)));
+		SelectionName->SetText(UnitNameFor(Views[0].TypeName, Views[0].OwnerPlayer));
 	}
 	// A group (G.1e, AoE4's way): chips, the player's units of several types by their subgroups (Tab's, « Tous (8) » first,
 	// the active one lit, the soldiers first, the Peasants last); else « Tous » (several types) then one per type.
@@ -1397,7 +1398,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		for (const FHOLSubgroup& Each : Subgroups)
 		{
 			ChipLabels.Add(Each.bAll ? FText::Format(LOCTEXT("SubgroupAll", "Tous ({0})"), Each.Members.Num())
-				: MakeChipLabel(HOLGameNames::GetUnitName(Each.TypeName, FindUnitType(Each.TypeName)), Each.Members.Num()));
+				: MakeChipLabel(UnitNameFor(Each.TypeName, Owner), Each.Members.Num()));
 		}
 		ActiveChip = Subgroups.IndexOfByKey(Subgroup);
 	}
@@ -1409,7 +1410,7 @@ void UHOLGameScreen::RefreshUnitSelection(const TConstArrayView<uint32> UnitIds)
 		}
 		for (const TPair<FName, int32>& Type : PerType)
 		{
-			ChipLabels.Add(MakeChipLabel(HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key)), Type.Value));
+			ChipLabels.Add(MakeChipLabel(UnitNameFor(Type.Key, Owner), Type.Value));
 		}
 		ActiveChip = bOwn ? 0 : INDEX_NONE;
 	}
@@ -1925,7 +1926,7 @@ void UHOLGameScreen::RefreshControlGroups(const float DeltaSeconds)
 		for (const TPair<FName, int32>& Type : PerType)
 		{
 			const FText Name = Units.IsEmpty() ? HOLGameNames::GetBuildingName(Type.Key, UHOLBuildingSettings::FindType(Type.Key))
-				: HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key));
+				: HOLGameNames::GetUnitName(Type.Key, FindUnitType(Type.Key), LocalFactionKey());
 			Lines.Add(FText::Format(LOCTEXT("UnitCount", "{0} × {1}"), Name, Type.Value));
 		}
 		GroupSlot->SetToolTipText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Lines));
@@ -2017,7 +2018,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FHOLResources Cost = UnitType ? UnitType->Cost : FHOLResources();
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const bool bQueueFull = !PlayerController || !PlayerController->FindProductionBuilding(Command.TypeName);
-			const FText Name = HOLGameNames::GetUnitName(Command.TypeName, UnitType);
+			const FText Name = HOLGameNames::GetUnitName(Command.TypeName, UnitType, LocalFactionKey());
 			// S7 (siege engines, GDD 6.1): an engine whose tier the hero has not opened is greyed too, with the reason in its tooltip
 			// (the server refuses it by the same rule, HOLSiege::Check; the workshop is there, it is its grid, the stock is above).
 			HOLSiege::EEngine Engine;
@@ -2077,7 +2078,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetBuildingName(Command.TypeName, BuildType);
 			GridCell->SetCommand(Name, Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
-			GridCell->SetTooltip(Name, Cost, Missing, GetBuildingEffect(BuildType));
+			GridCell->SetTooltip(Name, Cost, Missing, GetBuildingEffect(BuildType, LocalFactionKey()));
 			break;
 		}
 		case EHOLGridCommand::Trade:
@@ -2286,7 +2287,7 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetBuildingName(Building.TypeName, BuildType);
 			AgeCell->SetCommand(Name, !Building.bGreyed && Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
-			AgeCell->SetTooltip(Name, Cost, Missing, Building.bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType));
+			AgeCell->SetTooltip(Name, Cost, Missing, Building.bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType, LocalFactionKey()));
 		}
 	}
 }
@@ -2316,7 +2317,7 @@ void UHOLGameScreen::RefreshQueue(const AHOLBuilding* OwnBuilding)
 			// A research waits in the queue as a unit does (T6): its name, not the type's key.
 			const FHOLTechnologyRow* Research = UHOLTechnologySettings::FindTechnology(ShownQueueTypes[Index]);
 			Item->SetLabel(Research ? HOLGameNames::GetTechnologyName(ShownQueueTypes[Index], Research)
-				: HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index])));
+				: HOLGameNames::GetUnitName(ShownQueueTypes[Index], FindUnitType(ShownQueueTypes[Index]), LocalFactionKey()));
 		}
 	}
 }
@@ -2843,6 +2844,24 @@ const FHOLUnitTypeRow* UHOLGameScreen::FindUnitType(const FName TypeName) const
 	const UWorld* World = GetWorld();
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	return Units ? Units->FindTypeRow(TypeName) : nullptr;
+}
+
+FText UHOLGameScreen::UnitNameFor(const FName TypeName, const int32 OwnerPlayer) const
+{
+	const FName FactionKey = OwnerPlayer >= 0 ? HOLFactionRules::GetSlotFactionKey(GetWorld(), OwnerPlayer) : NAME_None;
+	return HOLGameNames::GetUnitName(TypeName, FindUnitTypeFor(TypeName, OwnerPlayer), FactionKey);
+}
+
+FName UHOLGameScreen::LocalFactionKey() const
+{
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	return PlayerState ? HOLFactionRules::GetSlotFactionKey(GetWorld(), PlayerState->GetPlayerIndex()) : NAME_None;
+}
+
+FString UHOLGameScreen::DescribeSelectionName() const
+{
+	return SelectionName && SelectionName->GetVisibility() != ESlateVisibility::Collapsed && !SelectionName->GetText().IsEmpty()
+		? SelectionName->GetText().ToString() : FString(TEXT("none"));
 }
 
 const FHOLUnitTypeRow* UHOLGameScreen::FindUnitTypeFor(const FName TypeName, const int32 OwnerPlayer) const

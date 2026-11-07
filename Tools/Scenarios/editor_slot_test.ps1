@@ -1,4 +1,4 @@
-# End-to-end test of the shared editor slots (Tools\Scenarios\EditorSlot.ps1, Auto_Journey_Checklist L7-3): three real processes ask for a
+﻿# End-to-end test of the shared editor slots (Tools\Scenarios\EditorSlot.ps1, Auto_Journey_Checklist L7-3): three real processes ask for a
 # slot at once with a cap of 2; at most 2 may hold one at the same time (and 2 do, so the cap is not 1), the third enters only after
 # one left; a ticket whose owner is dead does not count. Uses a temporary folder (HOL_EDITOR_SLOT_DIR), no editor is started.
 # Run: powershell -ExecutionPolicy Bypass -File Tools\Scenarios\editor_slot_test.ps1   (about 20 s). Exit 0 = PASS.
@@ -16,18 +16,26 @@ $Child = Join-Path $Dir "child.ps1"
 @'
 param([string]$Lib, [string]$Name, [string]$Events, [int]$Hold)
 . $Lib
+# Two processes may write at the same instant: retry (a lost line made the test flaky).
+function Log([string]$Line) { for ($I = 0; $I -lt 100; $I++) { try { Add-Content $Events $Line -ErrorAction Stop; return } catch { Start-Sleep -Milliseconds 50 } } }
 $Got = Enter-EditorSlot -Name $Name -Root "test" -Max 2 -WaitSeconds 60
-Add-Content $Events ("enter {0} {1} {2}" -f $Name, [DateTime]::UtcNow.Ticks, $Got)
+Log ("enter {0} {1} {2}" -f $Name, [DateTime]::UtcNow.Ticks, $Got)
 Start-Sleep -Seconds $Hold
-Add-Content $Events ("exit {0} {1}" -f $Name, [DateTime]::UtcNow.Ticks)
+Log ("exit {0} {1}" -f $Name, [DateTime]::UtcNow.Ticks)
 Exit-EditorSlot
 '@ | Set-Content $Child -Encoding UTF8
 
 $Procs = foreach ($Name in "a", "b", "c") {
-    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Child`" -Lib `"$Lib`" -Name $Name -Events `"$Events`" -Hold 6" -PassThru -WindowStyle Hidden
+    Start-Process powershell -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$Child`" -Lib `"$Lib`" -Name $Name -Events `"$Events`" -Hold 6" -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $Dir "out_$Name.txt")
     Start-Sleep -Milliseconds 700
 }
 $Procs | Wait-Process -Timeout 90
+# The waiting message says that the editor is busy and how many are ahead in the queue (L7-3, 2026-11-07); the two that got a slot at once say nothing about waiting.
+$OutC = [string]$(if (Test-Path (Join-Path $Dir "out_c.txt")) { Get-Content (Join-Path $Dir "out_c.txt") -Raw } else { "" })
+Check ($OutC -match 'editeur occupe, \d+ en file') "the third prints 'editeur occupe, N en file' while it waits (output: $(($OutC -replace '\s+', ' ').Trim()))"
+Check ($OutC -match 'en file \(c[;)]')"the message names the scenario (c)"
+$OutA = [string]$(if (Test-Path (Join-Path $Dir "out_a.txt")) { Get-Content (Join-Path $Dir "out_a.txt") -Raw } else { "" })
+Check ($OutA -notmatch 'occupe') "the first one does not wait and says nothing about a busy editor"
 $Rows = @(Get-Content $Events | ForEach-Object { $F = $_ -split ' '; [pscustomobject]@{ Kind = $F[0]; Name = $F[1]; At = [int64]$F[2]; Got = $F[3] } })
 $Enters = @($Rows | Where-Object Kind -eq "enter" | Sort-Object At)
 $Exits = @($Rows | Where-Object Kind -eq "exit" | Sort-Object At)
@@ -57,6 +65,14 @@ Check ($Got -and ((Get-Date) - $T).TotalSeconds -lt 10) "two tickets of a dead o
 Exit-EditorSlot
 Remove-Item $Dir -Recurse -Force -ErrorAction SilentlyContinue
 Remove-Item Env:\HOL_EDITOR_SLOT_DIR
+
+# Every tool that starts a real editor takes a slot around it (a slot taken before Start-Process, freed after the wait/kill), not only check.ps1.
+$Tests = Join-Path (Split-Path $PSScriptRoot -Parent) "Tests"
+foreach ($Script in "crossings", "hinterland_paths", "cols_paths", "crown_paths", "fords_paths") {
+    $Text = Get-Content (Join-Path $Tests "$Script.ps1") -Raw
+    $Enter = $Text.IndexOf("Enter-EditorSlot"); $Start = $Text.IndexOf("Start-Process"); $Exit = $Text.LastIndexOf("Exit-EditorSlot"); $Wait = $Text.IndexOf("WaitForExit")
+    Check ($Text -match 'EditorSlot\.ps1' -and $Enter -ge 0 -and $Enter -lt $Start -and $Exit -gt $Wait) "$Script.ps1 takes an editor slot before its editor and frees it after the wait"
+}
 if ($Fails -eq 0) { Write-Host "editor_slot_test: PASS"; exit 0 }
 Write-Host "editor_slot_test: FAIL ($Fails)"
 exit 1

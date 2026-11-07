@@ -536,6 +536,34 @@ public sealed class LobbyRoutesTests : IClassFixture<WebApplicationFactory<Progr
     }
 
     [Fact]
+    public async Task TheListFollowsTheServersWindowAndKeepsTheSeatHeldByTheAIToTheEnd()
+    {
+        // D718 (T5): "left" carries the server's window (one clock) and whether the AI keeps the seat after it (teams: « Revenir » to the end).
+        var (_, _, matchId) = await StartedLobby();
+        async Task<List<string?>> Away() =>
+            (await Json(await client.GetAsync("/lobbies")))["lobbies"]![0]!["away"]!.AsArray().Select(n => (string?)n).ToList();
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "listening", new { port = 47900 })).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "started")).StatusCode);
+        // A window of 10 s set by the server (a 1v1: the seat is defeated at its end).
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob", windowSeconds = 10, keepsSeat = false })).StatusCode);
+        clock.UtcNow += TimeSpan.FromSeconds(9);
+        Assert.Equal(["Bob"], await Away());
+        clock.UtcNow += TimeSpan.FromSeconds(1);
+        Assert.Empty(await Away());
+        // The AI keeps the seat: still listed long after the window, until he is back or the match is over.
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob", windowSeconds = 10, keepsSeat = true })).StatusCode);
+        clock.UtcNow += TimeSpan.FromHours(2);
+        Assert.Equal(["Bob"], await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "back", new { playerName = "Bob" })).StatusCode);
+        Assert.Empty(await Away());
+        // Gone again with the AI holding: a later back does not leave a stale « kept » flag, and the end of the match empties the list.
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "left", new { playerName = "Bob", windowSeconds = 10, keepsSeat = true })).StatusCode);
+        Assert.Equal(["Bob"], await Away());
+        Assert.Equal(HttpStatusCode.NoContent, (await Server(matchId, "finished", new { winners = new[] { 0 } })).StatusCode);
+        Assert.Empty(await Away());
+    }
+
+    [Fact]
     public async Task ServerRoutesErrors()
     {
         var (_, _, matchId) = await StartedLobby();
