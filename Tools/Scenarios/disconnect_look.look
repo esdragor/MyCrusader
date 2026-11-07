@@ -2,3 +2,4 @@
 disconnect_present | La table des joueurs (en haut) : Alice et Bob avec leur nom en couleur, aucune pastille
 disconnect_away | Apres le depart de Bob : son nom reste dans la table avec la pastille "Connexion perdue"
 disconnect_ai | Fenetre finie, une IA dans son camp : son nom reste, la pastille devient "IA"
+disconnect_back | Bob revient (hol.Net.FakeAbsent Back 1, sans second client) : plus aucune pastille, l IA lache le siege

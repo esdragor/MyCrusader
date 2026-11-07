@@ -85,7 +85,7 @@ static FAutoConsoleCommandWithWorldAndArgs CommandFakeAbsent(TEXT("hol.Net.FakeA
 			return;
 		}
 		// T9: the real chain without a second client: "Leave <Slot>" keeps the slot as a departure does (the AI holds it), "End <Slot>" ends the windows.
-			if (Args.Num() >= 2 && (Args[0] == TEXT("Leave") || Args[0] == TEXT("End")))
+			if (Args.Num() >= 2 && (Args[0] == TEXT("Leave") || Args[0] == TEXT("End") || Args[0] == TEXT("Back")))
 			{
 				const int32 Slot = FCString::Atoi(*Args[1]);
 				const IConsoleVariable* WindowVar = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Match.DisconnectWindowSeconds"));
@@ -98,6 +98,12 @@ static FAutoConsoleCommandWithWorldAndArgs CommandFakeAbsent(TEXT("hol.Net.FakeA
 				}
 				else
 				{
+					const bool bBack = Args[0] == TEXT("Back") && HOLGameState->SimulateReturn(Slot, FHOLResources(), Now);
+					if (Args[0] == TEXT("Back"))
+					{
+						UE_LOG(LogHOLMatch, Display, TEXT("hol.Net.FakeAbsent Back %d: %s"), Slot, bBack ? TEXT("he is back, the AI lets the seat go") : TEXT("nobody is away on that slot"));
+						return;
+					}
 					const TArray<int32> Defeated = HOLGameState->DefeatExpiredAbsences(Now + Window, Window);
 					UE_LOG(LogHOLMatch, Display, TEXT("hol.Net.FakeAbsent End: windows ended, %d seat(s) defeated"), Defeated.Num());
 				}

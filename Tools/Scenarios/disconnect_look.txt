@@ -10,4 +10,9 @@ waitlog windows ended
 frames 150
 capture disconnect_ai
 hol.Disconnect.Report
+hol.Net.FakeAbsent Back 1
+waitlog he is back
+frames 150
+capture disconnect_back
+hol.Disconnect.Report
 note Table des joueurs : Bob garde son nom, puis la pastille "Connexion perdue", puis "IA" quand la fenetre est finie et que l IA de son camp garde le siege.

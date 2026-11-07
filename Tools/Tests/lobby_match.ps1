@@ -33,7 +33,7 @@
 #     raises it), his pause is lifted by the server, the client takes slot 1 back BY ITSELF (the banner, then "Manager: back in the match") and queues a Peasant.
 #   -Team (D718 T5): a 2v2 on Moyenne (Alice + an AI against Bob + an AI), -Window 10 by default: Bob closes his game; after the window the server tells the
 #     manager keepsSeat (the AI keeps the seat, the manager still lists Bob away with "Revenir"); Bob comes back late by "Revenir" and queues a Peasant.
-param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [switch] $Replace, [switch] $Reconnect, [switch] $Team, [int] $Window = 0)
+param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [switch] $Replace, [switch] $Reconnect, [switch] $Team, [int] $Window = 0, [string] $Culture = "fr")
 $Began = Get-Date
 if ($Reconnect -or $Team) { $Rejoin = $true }
 if ($Team -and $Window -le 0) { $Window = 10 }
@@ -131,7 +131,7 @@ function Test-Log([string] $Who, [string] $Pattern) { (Test-Path $GameLogs[$Who]
 function Start-Game([string] $Who, [string[]] $Steps, [string] $Name = $Who) {
     $Sequence = Join-Path $Work "$($Who.ToLower()).seq"
     $Steps | Set-Content -Encoding utf8 $Sequence
-    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr " +
+    $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=$Culture " +
         "-saveddirsuffix=Tests_$Name -PlayerName=$Name -ServersFile=`"$Servers`" -ExecCmds=`"hol.Test.Run $Sequence`" -abslog=`"$($GameLogs[$Who])`""
     $Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     Write-Host "$Who : pid $($Process.Id), log $($GameLogs[$Who])"
@@ -274,7 +274,7 @@ if ($Rejoin) {
     $RejoinDone = Join-Path $Work "rejoin_done.signal"
     Remove-Item $RejoinDone -ErrorAction SilentlyContinue
     # -Reconnect: Bob pauses, loses his connection (the engine's ConnectionLost), the client takes the seat back by itself; no second game.
-    $ReconnectSteps = @("hol.HUD.Report", "hol.Match.Pause", "wait 3", "hol.Net.FakeLoss", "waitlog Manager: connection lost", "frames 5", "capture lobby_match_reconnect_banner",
+    $ReconnectSteps = @("hol.HUD.Report", "hol.Match.Pause", "wait 3", "hol.Net.FakeLoss", "waitlog Manager: connection lost", "frames 5", "capture lobby_match_reconnect_banner_$Culture",
         "waitlog Manager: back in the match", "wait 6", "frames 60", "hol.HUD.Report", "hol.Prod.Queue", "wait 3", "capture lobby_match_reconnect_bob", "signal $RejoinDone", "wait 1", "quit")
     $Away = $null
     try {
