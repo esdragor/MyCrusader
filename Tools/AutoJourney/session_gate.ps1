@@ -24,6 +24,17 @@ $Exclude = @($Exclude | ForEach-Object { $_ -split ',' } | Where-Object { $_ } |
 if (-not $RetoursDir) { $RetoursDir = "$Main\Retours" }
 $Fails = 0
 function Say([string]$Level, [string]$Msg) { if ($Level -eq 'FAIL') { $script:Fails++ }; Write-Output ("{0,-4} {1}" -f $Level, $Msg) }
+# Elrond-8 (2026-11-07) : le plus recent des fichiers C++/config d'un worktree (heure d'ECRITURE). Une fusion ecrit les fichiers qu'elle apporte a l'heure
+# de la fusion alors que leur commit garde sa date d'auteur : comparer le binaire a la DATE DE COMMIT laisse passer un binaire compile AVANT la fusion
+# (faux rouges comme 'camera 2p/8p right edge got 0 m', 2026-11-06). On compare donc aussi a l'heure d'ecriture des fichiers.
+function Get-NewestCode([string]$Root) {
+  $f = @(); foreach ($d in 'Source', 'Config') { $p = Join-Path $Root $d; if (Test-Path $p) { $f += Get-ChildItem $p -Recurse -File -Include '*.cpp', '*.h', '*.cs', '*.ini' -ErrorAction SilentlyContinue } }
+  $f | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+}
+function Say-StaleBySource([string]$Root, $Bin, [string]$Level) {
+  $n = Get-NewestCode $Root
+  if ($n -and $Bin -and $n.LastWriteTime -gt $Bin.LastWriteTime.AddSeconds(5)) { Say $Level ("binaire du {0} plus ANCIEN que {1} ecrit le {2} (fusion ou checkout apres la compilation) : Source modifiee apres le binaire, build.ps1 AVANT tout quick_check ou essai" -f $Bin.LastWriteTime.ToString('MM-dd HH:mm'), $n.Name, $n.LastWriteTime.ToString('MM-dd HH:mm')) }
+}
 
 $now = Get-Date
 $endAt = [datetime]::ParseExact($now.ToString('yyyy-MM-dd') + ' ' + $End, 'yyyy-MM-dd HH:mm', $null)
@@ -96,6 +107,7 @@ if ($Phase -eq 'Report') {
       $codeTime = [DateTimeOffset]::FromUnixTimeSeconds([int64]$lastCode).LocalDateTime
       if ($bin.LastWriteTime -ge $codeTime) { Say 'PASS' ("binaire du {0} >= dernier code du {1}" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
       else { Say 'WARN' ("binaire du {0} plus ANCIEN que le dernier code du {1} : build.ps1 AVANT tout quick_check (sinon faux rouges CommandGrid/Technologies/Map.Table)" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
+      Say-StaleBySource $Root $bin 'WARN'
     } else { Say 'WARN' 'binaire ou commit de code introuvable' }
   }
 }
@@ -123,6 +135,7 @@ if ($Phase -eq 'Essay') {
       $codeTime = [DateTimeOffset]::FromUnixTimeSeconds([int64]$lastCode).LocalDateTime
       if ($bin.LastWriteTime -ge $codeTime) { Say 'PASS' ("binaire du {0} >= dernier commit de code du {1}" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
       else { Say 'FAIL' ("binaire du {0} PLUS ANCIEN que le dernier commit de code du {1} : rebuild (build.ps1) avant l'essai" -f $bin.LastWriteTime.ToString('HH:mm'), $codeTime.ToString('HH:mm')) }
+      Say-StaleBySource $Root $bin 'FAIL'
     } else { Say 'WARN' 'binaire ou commit de code introuvable : verifier le build a la main' }
     Say 'WARN' "rappel : l'essai d'un REGLAGE/BUG est rejoue par l'integrateur (geste reel + PNG avant/apres) AVANT cette commande"
   }
