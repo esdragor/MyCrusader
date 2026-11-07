@@ -1,0 +1,43 @@
+# Ecoute : l'alerte de volcan [ANCIENS candidats non doux, non compte], dix variantes chacune, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute l'alerte de volcan [ANCIENS candidats non doux, non compte]. 10 sons, 1 cue, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Alert.Volcano C.
+note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+capture audio_compare_alerts_volcano_start
+waitkey Entree : commencer par Alert.Volcano A
+hol.Audio.Candidate Alert.Volcano A
+waitlog candidate played Alert.Volcano A
+waitkey Alert.Volcano A (impactBell_heavy_003) vient de jouer. Entree : Alert.Volcano B
+hol.Audio.Candidate Alert.Volcano B
+waitlog candidate played Alert.Volcano B
+waitkey Alert.Volcano B (impactBell_heavy_004) vient de jouer. Entree : Alert.Volcano C
+hol.Audio.Candidate Alert.Volcano C
+waitlog candidate played Alert.Volcano C
+waitkey Alert.Volcano C (v_gong_smack_low) vient de jouer. Entree : Alert.Volcano D
+hol.Audio.Candidate Alert.Volcano D
+waitlog candidate played Alert.Volcano D
+waitkey Alert.Volcano D (v_mallet_hit_ff2) vient de jouer. Entree : Alert.Volcano E
+hol.Audio.Candidate Alert.Volcano E
+waitlog candidate played Alert.Volcano E
+waitkey Alert.Volcano E (v_mallet_hit_ff) vient de jouer. Entree : Alert.Volcano F
+hol.Audio.Candidate Alert.Volcano F
+waitlog candidate played Alert.Volcano F
+waitkey Alert.Volcano F (impactMetal_heavy_002) vient de jouer. Entree : Alert.Volcano G
+hol.Audio.Candidate Alert.Volcano G
+waitlog candidate played Alert.Volcano G
+waitkey Alert.Volcano G (impactPunch_heavy_000) vient de jouer. Entree : Alert.Volcano H
+hol.Audio.Candidate Alert.Volcano H
+waitlog candidate played Alert.Volcano H
+waitkey Alert.Volcano H (v_nbell_med) vient de jouer. Entree : Alert.Volcano I
+hol.Audio.Candidate Alert.Volcano I
+waitlog candidate played Alert.Volcano I
+waitkey Alert.Volcano I (v_bass_pizz_E0) vient de jouer. Entree : Alert.Volcano J
+hol.Audio.Candidate Alert.Volcano J
+waitlog candidate played Alert.Volcano J
+waitkey Alert.Volcano J (creak3) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

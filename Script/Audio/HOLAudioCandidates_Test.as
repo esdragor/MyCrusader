@@ -24,6 +24,7 @@ void Test_AudioCandidatesLabelsAndAssets(FUnitTest& T)
 	T.AssertEquals("J", HOLAudioCandidates::Label(9), "tenth label");
 	T.AssertEquals("vsco", HOLAudioCandidates::Folder("v_harp_C5"), "v_ stems come from the VSCO samples");
 	T.AssertEquals("kenney", HOLAudioCandidates::Folder("bookOpen"), "the others from the Kenney packs");
+	T.AssertEquals("soft", HOLAudioCandidates::Folder("s_leather_thud"), "s_ stems are the softened sounds");
 	T.AssertEquals("/Game/Audio/Candidates/kenney/SW_bookOpen.SW_bookOpen", HOLAudioCandidates::AssetPath("bookOpen"), "asset path, Kenney");
 	T.AssertEquals("/Game/Audio/Candidates/vsco/SW_v_harp_C5.SW_v_harp_C5", HOLAudioCandidates::AssetPath("v_harp_C5"), "asset path, VSCO");
 	for (int Event = 0; Event < HOLAudio::Count(); Event++)
@@ -73,40 +74,44 @@ void Test_AudioCandidatesAreNotTheSpaceshipPack(FUnitTest& T)
 	}
 }
 
-// Alert.TrainingDone is a MARTIAL cue (user, 2026-11-06: "un truc martial"; the first round gave harp, bells and a book): at least
-// eight of its ten variants are war sounds (horn, trumpet, timpani, trombone, sword, shield, metal), none a harp, a glockenspiel,
-// a bell of the Nepalese set or a book.
-void Test_AudioCandidatesTrainingDoneIsMartial(FUnitTest& T)
+// USER RULE of 2026-11-07 ("Sons : pas usants": heard very often and for a long time): the candidates of Alert.TrainingDone (third round, after the
+// martial round was refused) and of the five building families are SOFT sounds, made by Tools/Audio/make_soft_candidates.py (stems "s_..."): low,
+// dull, short. None of them is a trumpet, a horn, a trombone, a bell, a glockenspiel, a triangle or a tambourine (shrill or little-bell sounds).
+// The WAV files themselves are measured by Tools/Audio/check_audio_soft.py (centroid, share above 3 kHz, duration).
+void Test_AudioCandidatesSoftCuesAreSoft(FUnitTest& T)
 {
-	FHOLAudioCandidates List = HOLAudioCandidates::ForCue("Alert.TrainingDone");
-	T.AssertEquals(10, List.Stems.Num(), "ten variants");
-	TArray<FString> Martial;
-	Martial.Add("v_horn");
-	Martial.Add("v_trumpet");
-	Martial.Add("v_timpani");
-	Martial.Add("v_trombone");
-	Martial.Add("drawKnife");
-	Martial.Add("knifeSlice");
-	Martial.Add("impactPlate");
-	Martial.Add("impactMetal");
-	TArray<FString> Soft;
-	Soft.Add("v_harp");
-	Soft.Add("v_glock");
-	Soft.Add("v_nbell");
-	Soft.Add("v_cello");
-	Soft.Add("v_vln");
-	Soft.Add("book");
-	int Count = 0;
-	for (int Index = 0; Index < List.Stems.Num(); Index++)
+	TArray<FString> Cues;
+	Cues.Add("Alert.TrainingDone");
+	Cues.Add("Alert.UnderAttack");
+	Cues.Add("Alert.BuildingDone");
+	Cues.Add("Alert.TechDone");
+	Cues.Add("Alert.Trade");
+	Cues.Add("Alert.Volcano");
+	Cues.Add("Alert.Diplomacy");
+	for (int Family = 0; Family < HOLAudioBuildings::FamilyCount(); Family++)
+		Cues.Add(HOLAudioBuildings::CueNameOfFamily(HOLAudioBuildings::FamilyNameAt(Family)));
+	TArray<FString> Tiring;
+	Tiring.Add("horn");
+	Tiring.Add("trumpet");
+	Tiring.Add("trombone");
+	Tiring.Add("bell");
+	Tiring.Add("glock");
+	Tiring.Add("triangle");
+	Tiring.Add("tambourine");
+	Tiring.Add("chime");
+	for (int Cue = 0; Cue < Cues.Num(); Cue++)
 	{
-		for (int Word = 0; Word < Martial.Num(); Word++)
-			if (List.Stems[Index].StartsWith(Martial[Word])) { Count++; break; }
-		for (int Word = 0; Word < Soft.Num(); Word++)
-			T.AssertFalse(List.Stems[Index].StartsWith(Soft[Word]), f"{List.Stems[Index]} is not martial (a harp, a bell or a book)");
+		FHOLAudioCandidates List = HOLAudioCandidates::ForCue(Cues[Cue]);
+		T.AssertEquals(10, List.Stems.Num(), f"{Cues[Cue]}: ten variants");
+		for (int Index = 0; Index < List.Stems.Num(); Index++)
+		{
+			T.AssertTrue(List.Stems[Index].StartsWith("s_"), f"{Cues[Cue]}: {List.Stems[Index]} is a soft sound (stem s_...)");
+			T.AssertEquals("soft", HOLAudioCandidates::Folder(List.Stems[Index]), f"{List.Stems[Index]} is imported from the soft folder");
+			for (int Word = 0; Word < Tiring.Num(); Word++)
+				T.AssertTrue(List.Stems[Index].Find(Tiring[Word]) < 0, f"{Cues[Cue]}: {List.Stems[Index]} is not a {Tiring[Word]} (tiring)");
+		}
 	}
-	T.AssertTrue(Count >= 8, f"at least 8 martial variants for the training alert, got {Count}");
 }
-
 // The line the player writes when a candidate plays (the scenario waits for it): cue, label, stem.
 void Test_AudioCandidatesPlayedLine(FUnitTest& T)
 {

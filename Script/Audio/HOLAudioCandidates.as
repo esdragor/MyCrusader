@@ -52,7 +52,7 @@ namespace HOLAudioCandidates
 
 		Add(List, "Alert.UnderAttack", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_light,v_mallet_hit_ff2,v_nbell_med,impactMetal_heavy_001,v_nbell_s05");
 		Add(List, "Alert.BuildingDone", "v_harp_A4,v_glock_C5,v_nbell_s07,v_nbell_s03,v_vln_pizz_E5,impactPlate_light_002,impactBell_heavy_002,doorOpen_1,v_triangle_hit,impactMetal_light_002");
-		Add(List, "Alert.TrainingDone", "v_horn_call,v_horn_rise,v_trumpet_stac_D4,v_trumpet_call,v_timpani_hit,v_timpani_double,v_timpani_roll,v_trombone_low,drawKnife2,impactPlate_heavy_000");
+		Add(List, "Alert.TrainingDone", "s_train_leather_thud,s_train_wood_knock,s_train_plank_dull,s_train_drum_soft,s_train_bass_pluck,s_train_mallet_dull,s_train_stone_tap,s_train_shield_muffled,s_train_cloth_thump,s_train_book_close");
 		Add(List, "Alert.TechDone", "v_harp_arp_up,v_harp_arp_down,v_glock_arp_up,v_vln_pizz_arp,v_nbell_med,impactBell_heavy_003,bookPlace2,v_gong_smack_light,handleCoins,v_nbell_s02");
 		Add(List, "Alert.Trade", "handleCoins,handleCoins2,impactTin_medium_000,v_tambourine_down,v_triangle_hit,v_nbell_s08,impactGeneric_light_000,impactMetal_light_003,v_glock_C7,handleSmallLeather");
 		Add(List, "Alert.Volcano", "impactBell_heavy_003,impactBell_heavy_004,v_gong_smack_low,v_mallet_hit_ff2,v_mallet_hit_ff,impactMetal_heavy_002,impactPunch_heavy_000,v_nbell_med,v_bass_pizz_E0,creak3");
@@ -65,11 +65,11 @@ namespace HOLAudioCandidates
 	// dull metal, coins with leather purses. Same CC0 packs as above (Kenney rpg-audio and impact-sounds, VSCO 2 CE, Docs/assets_audio.csv).
 	void BuildBuildings(TArray<FHOLAudioCandidates>& List)
 	{
-		Add(List, "Building.Wood", "impactWood_light_000,impactWood_medium_000,impactWood_heavy_000,impactPlank_medium_000,impactPlank_medium_001,chop,doorOpen_1,creak1,footstep_wood_000,v_claves_mf");
-		Add(List, "Building.Stone", "impactMining_000,impactMining_001,impactMining_002,impactMining_003,impactPunch_heavy_000,impactPunch_medium_000,doorClose_1,impactSoft_heavy_000,v_timpani_hit,v_mallet_hit_mf");
-		Add(List, "Building.Sacred", "impactBell_heavy_000,impactBell_heavy_001,impactBell_heavy_002,v_nbell_s01,v_nbell_s03,v_nbell_med,v_glock_C7,v_harp_arp_up,v_harp_arp_low,v_triangle_hit");
-		Add(List, "Building.Metal", "impactMetal_heavy_000,impactMetal_heavy_001,impactMetal_medium_000,impactMetal_light_000,impactPlate_heavy_000,impactPlate_medium_000,metalPot1,metalLatch,v_gong_smack_light,impactTin_medium_000");
-		Add(List, "Building.Coins", "handleCoins,handleCoins2,impactTin_medium_001,impactTin_medium_002,v_tambourine_down,v_triangle_muted,impactGeneric_light_000,handleSmallLeather,dropLeather,beltHandle1");
+		Add(List, "Building.Wood", "s_wood_light,s_wood_medium,s_wood_heavy,s_wood_plank,s_wood_chop,s_wood_door,s_wood_creak_low,s_wood_step,s_wood_slap_low,s_wood_deep_knock");
+		Add(List, "Building.Stone", "s_stone_mine_a,s_stone_mine_b,s_stone_mine_c,s_stone_mine_d,s_stone_punch_heavy,s_stone_punch_soft,s_stone_door,s_stone_thud,s_stone_drum,s_stone_mallet");
+		Add(List, "Building.Sacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
+		Add(List, "Building.Metal", "s_metal_heavy,s_metal_medium,s_metal_light_low,s_metal_plate_heavy,s_metal_plate_medium,s_metal_pot,s_metal_latch,s_metal_tin,s_metal_gong_muffled,s_metal_mallet");
+		Add(List, "Building.Coins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
 	}
 
 	// The lists, built at each call (script has no mutable global).
@@ -112,10 +112,11 @@ namespace HOLAudioCandidates
 		return FString("ABCDEFGHIJKLMNOPQRSTUVWXYZ").Find(Letter.ToUpper());
 	}
 
-	// "vsco" for the stems of the VSCO recordings (v_...), "kenney" for the others.
+	// "vsco" for the stems of the VSCO recordings (v_...), "soft" for the softened sounds of make_soft_candidates.py (s_...), "kenney" for the others.
 	FString Folder(FString Stem)
 	{
 		if (Stem.StartsWith("v_")) return "vsco";
+		if (Stem.StartsWith("s_")) return "soft";
 		return "kenney";
 	}
 
