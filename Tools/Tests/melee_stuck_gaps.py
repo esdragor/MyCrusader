@@ -170,7 +170,66 @@ def unanswered(path):
 def fmt_walk(w):
     kind, u, s0, s1 = w[0], w[1], w[2], w[3]
     return '%s #%d steps %d-%d' % (kind, u, s0, s1)
+# Celeborn-21 (BUG-melee-stuck-attack, Diagnostic 2: waiting in the second line behind a wall of friends that strike is LEGITIMATE): --strike is
+# the "the soldier strikes" test. A gap of more than `limit` steps without a blow is a FAULT unless it is excused by (E1) the soldier was enclosed
+# (living friends within ENCL_CM on two sides more than 100 degrees apart) during at least ENCL_SHARE of the gap, or (E2) the gap ends within
+# AFTER_DEATH steps after the death of a friend that stood within 250 cm of it (the wall opened). Only the SanityDump3 lines of hol.Sanity.DumpUnit -3
+# give the positions. Prints the fault and the excused gaps, so the second line is visible and not counted.
+ENCL_CM = 140; ENCL_SHARE = 0.6; AFTER_DEATH = 25
+POS = re.compile(r'SanityDump3 #(\d+) step (\d+) at \((-?\d+), (-?\d+)\)')
+def strike_gaps(path, limit):
+    dead = {}; owner = {}; hits = collections.defaultdict(list); pos = collections.defaultdict(dict); last = 0
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ hits #(\d+)', l)
+        if m: hits[int(m[2])].append(int(m[1])); last = max(last, int(m[1]))
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot (\d) killed by', l)
+        if m: dead[int(m[2])] = int(m[1]); owner[int(m[2])] = int(m[3])
+        m = ROW.search(l)
+        if m:
+            for o in re.finditer(r'#(\d+)\((\d)\)', m[20] or ''): owner[int(o[1])] = int(o[2])
+        m = POS.search(l)
+        if m: pos[int(m[2])][int(m[1])] = (int(m[3]), int(m[4]))
+    def enclosed(u, st):
+        me = pos.get(st, {}).get(u)
+        if me is None or owner.get(u) is None: return None
+        near = []
+        for v, p in pos[st].items():
+            if v != u and owner.get(v) == owner[u] and not (v in dead and dead[v] <= st):
+                dx, dy = p[0]-me[0], p[1]-me[1]
+                if dx*dx + dy*dy <= ENCL_CM**2: near.append((dx, dy))
+        for i in range(len(near)):
+            for j in range(i + 1, len(near)):
+                a, b = near[i], near[j]
+                n = ((a[0]**2+a[1]**2) * (b[0]**2+b[1]**2)) ** 0.5
+                if n and (a[0]*b[0] + a[1]*b[1]) / n < -0.17: return True
+        return False
+    faults = []; excused = []
+    for u, h in sorted(hits.items()):
+        pts = [h[0]] + h + [dead.get(u, last)]
+        for a, b in zip(pts, pts[1:]):
+            if b - a <= limit: continue
+            flags = [enclosed(u, s) for s in range(a + 1, b)]
+            known = [f for f in flags if f is not None]
+            share = (sum(1 for f in known if f) / len(known)) if known else 0.0
+            wall_opened = False
+            me = pos.get(b - 1, {}).get(u) or pos.get(a + 1, {}).get(u)
+            if me is not None:
+                for v, dv in dead.items():
+                    if owner.get(v) == owner.get(u) and v != u and b - AFTER_DEATH <= dv <= b:
+                        pv = pos.get(dv - 1, {}).get(v) or pos.get(dv, {}).get(v)
+                        if pv is not None and (pv[0]-me[0])**2 + (pv[1]-me[1])**2 <= 250**2: wall_opened = True
+            row = (u, a, b, b - a, round(share, 2), wall_opened)
+            if share >= ENCL_SHARE or wall_opened: excused.append(row)
+            else: faults.append(row)
+    return faults, excused
 bad = 0
+if '--strike' in sys.argv:
+    for path in args:
+        f, e = strike_gaps(path, limit)
+        bad += 1 if f else 0
+        print(('FAIL ' if f else 'OK   ') + os.path.basename(path) + (' STRIKE-GAP (unit, from, to, steps, enclosed share, wall opened) ' + str(f[:4]) if f else '') + ('  excused second-line waits ' + str(e[:4]) if e else ''))
+    print('melee_stuck_gaps --strike: %d of %d runs have a soldier without a blow for more than %d steps that was neither enclosed by friends nor released by the death of one' % (bad, len(args), limit))
+    sys.exit(1 if bad else 0)
 for path in args:
     hits = collections.defaultdict(list); death = {}; last = 0
     for l in open(path, encoding='utf-8', errors='ignore'):
