@@ -18,6 +18,8 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Misc/AutomationTest.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Net/HOLUnitReplicationRules.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -609,6 +611,66 @@ bool FHOLFactionRosterTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("the Legions' Spearman was born"), NumBorn[1], 1);
 		TestEqual(TEXT("the Dawn's Spearman is born with the table's health"), Health[0], BaseSpearman->MaxHealth);
 		TestEqual(TEXT("the Legions' Spearman is born with the Legions' health (777)"), Health[1], 777);
+	}
+	return true;
+}
+
+// L2 (LegionsInProgress.md), client model: a client draws a unit with ITS OWNER'S FACTION's model, as the server sims it. The real chain
+// of the reception subsystem (the unit received in a slot, its display entity created through CreateEntities, its view made by
+// MakeView), under a fixture that gives the Legions' Spearman a health of 777: the Legions' unit gets the Legions' template (built under
+// "Spearman@Legions") and a view with the Legions' health, the Dawn's keeps the table's.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionClientModelTest, "HeroesOfLiberty.Match.Factions.ClientModel", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLFactionClientModelTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	UHOLUnitReceptionSubsystem* Reception = Test.World->GetSubsystem<UHOLUnitReceptionSubsystem>();
+	const FHOLUnitTypeRow* BaseSpearman = Test.Units->FindTypeRow(Spearman);
+	if (!TestNotNull(TEXT("the reception subsystem"), Reception) || !TestNotNull(TEXT("the Spearman row"), BaseSpearman))
+	{
+		return false;
+	}
+	FFixtureTable Fixture(FixtureBirthOverrides);
+	TestTrue(TEXT("the test can tell the 777 from the table's health"), BaseSpearman->MaxHealth != 777);
+	TestFalse(TEXT("before any unit: no Legions display template"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Display, Legions));
+
+	const FHOLNetUnitState State = FHOLNetUnitState::Make(FVector(500.0, 0.0, 0.0), FVector::ZeroVector, EHOLUnitActivity::Idle, 1);
+	TestTrue(TEXT("the Dawn's Spearman (slot 0) is displayed"), Reception->ReceiveUnitForTest(101, Spearman, 0, State));
+	TestTrue(TEXT("the Legions' Spearman (slot 1) is displayed"), Reception->ReceiveUnitForTest(102, Spearman, 1, State));
+
+	TestTrue(TEXT("the Legions' Spearman was created from the Legions' display template"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Display, Legions));
+	FHOLUnitView DawnView;
+	FHOLUnitView LegionsView;
+	if (TestTrue(TEXT("the Dawn's view is made"), Reception->GetDisplayedUnit(101, DawnView))
+		&& TestTrue(TEXT("the Legions' view is made"), Reception->GetDisplayedUnit(102, LegionsView)))
+	{
+		TestEqual(TEXT("the Dawn's Spearman is drawn with the table's health"), DawnView.MaxHealth, BaseSpearman->MaxHealth);
+		TestEqual(TEXT("the Legions' Spearman is seen with the Legions' health (777)"), LegionsView.MaxHealth, 777);
+	}
+	return true;
+}
+
+// L2, client model: the faction templates are built while the map loads (PreloadFactionTemplates), not at the first unit of the match.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionPreloadTest, "HeroesOfLiberty.Match.Factions.Preload", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLFactionPreloadTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	FFixtureTable Fixture(FixtureBirthOverrides);
+	for (const EHOLUnitTemplateKind Kind : { EHOLUnitTemplateKind::Display, EHOLUnitTemplateKind::Simulation })
+	{
+		TestFalse(TEXT("before the preload: no Legions template"), Test.Units->HasTemplate(Spearman, Kind, Legions));
+		Test.Units->PreloadFactionTemplates(Kind);
+		TestTrue(TEXT("after the preload: the Legions' template is built"), Test.Units->HasTemplate(Spearman, Kind, Legions));
+		TestTrue(TEXT("... and the Dawn's key is still the type's own (nothing built twice)"), Test.Units->GetTemplateKey(Spearman, Dawn) == Spearman);
 	}
 	return true;
 }

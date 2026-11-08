@@ -504,6 +504,20 @@ FString UHOLUnitReceptionSubsystem::MakeReport() const
 		ClockStep - LastServerStep, InBytesPerSecond, MeanFps, LowFps);
 }
 
+bool UHOLUnitReceptionSubsystem::ReceiveUnitForTest(const uint32 UnitId, const FName TypeName, const uint8 OwnerPlayer, const FHOLNetUnitState& State)
+{
+	const int32 TypeIndex = TypeNames.AddUnique(TypeName);
+	FSlot NewSlot;
+	NewSlot.UnitId = UnitId;
+	NewSlot.TypeIndex = static_cast<uint8>(TypeIndex);
+	NewSlot.OwnerPlayer = OwnerPlayer;
+	NewSlot.State = State;
+	const int32 SlotIndex = Slots.Add(NewSlot);
+	DisplayOwners.Arrive(UnitId, SlotIndex);
+	CreateEntities(MakeArrayView(&SlotIndex, 1), GetWorld()->GetTimeSeconds());
+	return Slots[SlotIndex].Entity.IsSet();
+}
+
 bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutView) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();

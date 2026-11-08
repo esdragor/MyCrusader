@@ -327,6 +327,18 @@ FName UHOLUnitSubsystem::GetTemplateKey(const FName TypeName, const FName Factio
 	return FName(*FString::Printf(TEXT("%s@%s"), *TypeName.ToString(), *HOLFactionRules::GetTable().ResolveKey(FactionKey).ToString()));
 }
 
+bool UHOLUnitSubsystem::HasTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind, const FName FactionKey) const
+{
+	const TMap<FName, TSharedPtr<FMassEntityConfig>>& Cache = Kind == EHOLUnitTemplateKind::Display ? DisplayTemplateCache
+		: Kind == EHOLUnitTemplateKind::Corpse ? CorpseTemplateCache : TemplateCache;
+	return Cache.Contains(GetTemplateKey(TypeName, FactionKey));
+}
+
+void UHOLUnitSubsystem::PreloadFactionTemplates(const EHOLUnitTemplateKind Kind)
+{
+	// Stub of the red test: the implementation follows the test (LegionsInProgress.md, client model).
+}
+
 const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind, const FName FactionKey)
 {
 	const bool bDisplay = Kind == EHOLUnitTemplateKind::Display;
