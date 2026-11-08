@@ -42,7 +42,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou pé
 ## Haldir — `maps` — Cartes (`MapsInProgress.md`)
 - [?] (attend l'utilisateur) Choisir une lettre A-H dans `Retours\E-glade-sweep.md` (clairières, essai non joué, resynchroniser Haldir d'abord) et répondre à `Q-sites-nombre.md` (défaut 1 anneau).
 - [ ] (C++) Sites sacrés S4 : classe AHOLSiteLayout + test Map.Table ; puis spawn_sites/export_layout dans common.py ; `SacredSitesInProgress.md`.
-- [B] (sans C++, éditeur seul) UNE régénération des cartes (plan P1-P5, `MapsInProgress.md`) après lettre + Q-sites-nombre + AHOLSiteLayout ; puis perf S5 à 14 400 arbres, hinterland_paths, aiduel.
+- [B] (sans C++, éditeur seul) UNE régénération des cartes (plan P1-P5, `MapsInProgress.md`) après lettre + Q-sites-nombre + AHOLSiteLayout ; puis perf S5 à 14 400 arbres, aiduel. (2026-11-08 Haldir-6 : lenteur de Hinterland résolue, sites_test complet 24 s, hinterland_paths Petite PASS ; reste hinterland_paths Moyenne/Grande à rejouer après régénération.)
 - [?] (attend l'utilisateur) El Dorado : valeurs finales après CQ2 (`hol.Terrain.MarshSpeedPercent`, `HOL_ELDORADO_GOLD`), marche en bloc dans le marais non testée, essai map_eldorado.
 
 ## Sauron — `visual` — Biomes (`BiomeInProgress.md`)

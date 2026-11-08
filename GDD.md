@@ -3439,4 +3439,18 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D738** (§ 17.2, précise D729, réponse de l'utilisateur du 2026-11-05 soir) : **la séance d'essai du prototype (PT7) enchaîne les 5 scénarios d'affilée (~15 min : `playtest_hero_army`, `playtest_hero_death`, `duel_challenge`, `hero_xp`, `volcano`) puis les 3 parties.** Écartés : un scénario par question à la demande, seulement les 2 scénarios neufs avant les parties. Page : `Docs/Seance_Essai_Prototype.md`.
 
-Prochain numéro : **D739**.
+**D739** (§ 7, mêlée, réponse de l'utilisateur du 2026-11-07 à `Q-melee-stall`) : **option A : l'audit `hol.Test.Sanity.Stall` tolère la fin d'une marche `FinalLeg`** (limite = pas de la marche + 0,2 s, réglage `hol.Test.SanityStallFinalLeg`, -1 pour couper) ; le comportement du jeu ne change pas. Code : Celeborn-20 (`3fd4ac7`, branche `hero-j8-close`).
+
+**D740** (§ 17, Sites sacrés, réponse du 2026-11-07 à `Q-sites-nombre`) : **2 à 3 sites AU TOTAL par carte, variable selon la carte** (et non un site par place). **D741** (réponse du 2026-11-08 à `Q-sites-symetrie`) : **option A : symétrie par un demi-tour**, 2 sites par carte sur un diamètre (`SITE_COUNT_DEFAULT = 2`, `SITE_COUNTS` par carte), le 3ᵉ site au milieu reste impossible dès 4 places (autel du volcan) ; B (3 sites sans symétrie exacte) possible plus tard. Code : `Tools/Editor/maps/common.py`, `sites_test.py` (branche `maps`).
+
+**D742** (§ 17.2, essais, réponse du 2026-11-07 à `Q-scenario-panel-covers-world`) : **option B : deux lignes `panel hide` / `panel show` autour des captures des scénarios** dont le panneau recouvre le monde (`ai_evolving` fait). **D743** (§ audio, réponse du 2026-11-07) : **sons de sélection des bâtiments : Bois = F (`s_wood_door`), Sacré = H (`s_sacred_book`), gain ×2 à ×3 (250 % codé, à écouter : écrêtage possible), Pierre et Métal refaits (dix nouveaux candidats doux chacun), Pièces : réutiliser le son d'achat.** **D744** (réponse du 2026-11-08 à `Q-audio-market-select`) : **option A : `handleCoins` devient le son de SÉLECTION du Marché et l'achat / vente se tait** (`Alert.Trade` muet). Câblage C++ : Audio B5 (`c763c6e`, branche `galadriel-tab`).
+
+**D745** (§ 11.1, Palier 3 G1 / D711, réponse du 2026-11-08) : **« fais G1 » : la colonne `MinTier` s'applique à toutes les unités ; Homme d'armes, Arbalétrier, Cavalier léger (et Moine) attendent le palier 1.** Branche `tiers` (en cours : `quick_check` `aiwave` rouge antérieur à G1, voir `SiegeInProgress.md`).
+
+**D746** (§ 7.1, Forum, revue des dix échantillons K à T, réponse du 2026-11-08) : **aimés : K, L (drapeau à remonter), M, N, O, Q (drapeau à remonter), T ; pas aimés : P, R, S.** Tour 2 (`forum_review2`) à partir des aimés, drapeau plus haut sur L et Q ; la hauteur de la tourelle d'angle reste libre.
+
+**D747** (§ 17, Sites sacrés S10, précise D699, réponse du 2026-11-08 à `Q-sites-victoire`) : **option C : il faut tenir TOUS les sites sacrés 600 s (10 min) pour gagner** (et non 300 s) ; le compte gèle quand un adversaire est dans la zone d'un site et repart de zéro quand un site change de main ou qu'une alliance rompt ; le forum reste une voie de victoire en parallèle. Réglage `hol.Site.VictorySeconds` (`HOLSite::DefaultVictorySeconds`, `VictorySeconds` dans `Script\Sites\HOLSiteVictory.as`).
+
+**D748** (§ 17, Sites sacrés S6, précise D699, réponse du 2026-11-08 à `Q-sites-or-par-minute`) : **option A : un site tenu verse 30 or par minute à son propriétaire seul, le même taux pour tous les sites** (deux sites = 60 / min), report des fractions ; réglage `hol.Site.GoldPerMinute` (`HOLSite::DefaultGoldPerMinute`), à ajuster après une partie 1c1 avec un site tenu 10 minutes. Code : S6, branche `net-playtest` (`48b9831`).
+
+Prochain numéro : **D749**.
