@@ -15,6 +15,7 @@
 #include "MassEntitySubsystem.h"
 #include "MassMovementFragments.h"
 #include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
@@ -60,6 +61,10 @@ namespace UE::HeroesOfLiberty::Dev
 		float StallSeconds = 0.5f;
 		FAutoConsoleVariableRef CVarStallSeconds(TEXT("hol.Test.SanityStall"), StallSeconds,
 			TEXT("Seconds (default 0.5; 0 = off) a melee may stand still out of reach of its target while a place is free round that target: longer, hol.Test.Sanity says FAIL (the user's retour on the neutrals trial, D641)"));
+		/** hol.Test.SanityStallFinalLeg <Seconds>: Q-melee-stall = A, the margin added to the wait of a FinalLeg walk (FinalLegStuckSteps) before check 4 judges (-1: no tolerance). */
+		float StallFinalLegMargin = 0.2f;
+		FAutoConsoleVariableRef CVarStallFinalLegMargin(TEXT("hol.Test.SanityStallFinalLeg"), StallFinalLegMargin,
+			TEXT("Seconds (default 0.2; -1 = off, the limit of hol.Test.SanityStall always) added to FinalLegStuckSteps (2 s): a soldier on the FinalLeg of a walk held by its friends may stand that long before check 4 judges it, the walk ends by itself and it fights (Q-melee-stall = A)"));
 		/** hol.Test.SanityNoStrike <Seconds>: check 5, a melee in reach of its living target landing no blow this long fails (0: off). */
 		float NoStrikeSeconds = 3.f;
 		FAutoConsoleVariableRef CVarNoStrikeSeconds(TEXT("hol.Test.SanityNoStrike"), NoStrikeSeconds,
@@ -316,9 +321,21 @@ namespace UE::HeroesOfLiberty::Dev
 						}
 					}
 					HOLSanity::FStall& Stall = Watch.Stalls.FindOrAdd(UnitId);
-					if (Stall.Step(bStalledWithRoom, Simulation->GetStepSeconds(), StallSeconds))
+					// Q-melee-stall = A: the wait at the end of a FinalLeg walk (phase 3) is the game's own (FinalLegStuckSteps); the limit follows it.
+					// The whole run keeps the tolerance once it began on a FinalLeg walk: the step the walk ends is still a stand-still, the soldier strikes after.
+					if (!bStalledWithRoom)
 					{
-						const FString StallLine = FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) stalls over %.1f s %s"), UnitId, State->OwnerPlayer, Where.X, Where.Y, StallSeconds, *StallText);
+						Stall.bFinalLegRun = false;
+					}
+					else if (Order && Order->Phase == EHOLMovePhase::FinalLeg)
+					{
+						Stall.bFinalLegRun = true;
+					}
+					const double StallLimit = HOLSanity::StallLimitSeconds(StallSeconds, Stall.bFinalLegRun,
+						GetDefault<UHOLSimulationSettings>()->FinalLegStuckSteps * static_cast<double>(Simulation->GetStepSeconds()), StallFinalLegMargin);
+					if (Stall.Step(bStalledWithRoom, Simulation->GetStepSeconds(), StallLimit))
+					{
+						const FString StallLine = FString::Printf(TEXT("unit #%u (slot %d) at (%.0f, %.0f) stalls over %.1f s %s"), UnitId, State->OwnerPlayer, Where.X, Where.Y, StallLimit, *StallText);
 						UE_LOG(LogHOLTest, Display, TEXT("SanityStall step %lld: %s"), Watch.Steps, *StallLine);
 						if (!Watch.StallFaults.Contains(UnitId))
 						{

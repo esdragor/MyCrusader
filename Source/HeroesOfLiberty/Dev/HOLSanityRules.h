@@ -236,8 +236,11 @@ namespace HOLSanity
 	 */
 	inline double StallLimitSeconds(const double BaseSeconds, const bool bFinalLegWalk, const double FinalLegSeconds, const double MarginSeconds)
 	{
-		// STUB (test first): the limit as it was.
-		return BaseSeconds;
+		if (!bFinalLegWalk || MarginSeconds < 0. || BaseSeconds <= 0.)
+		{
+			return BaseSeconds;
+		}
+		return FMath::Max(BaseSeconds, FinalLegSeconds + MarginSeconds);
 	}
 
 	/** A unit's run of steps standing still out of reach of its target while a place was free round it: the current run and the longest one (s). */
@@ -249,6 +252,8 @@ namespace HOLSanity
 		bool bTold = false;
 		/** How many runs went over the limit. */
 		int32 Runs = 0;
+		/** Q-melee-stall = A: the current run began or went on during a FinalLeg walk (set by the caller, cleared when the run ends). */
+		bool bFinalLegRun = false;
 
 		/** One step: stalled or not. Returns true at the step the current run first goes over LimitSeconds. */
 		bool Step(const bool bStalledWithRoom, const double StepSeconds, const double LimitSeconds)
