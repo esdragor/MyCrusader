@@ -2,10 +2,13 @@
 # Configuration par défaut du menu (un joueur, Plain, brouillard Normal : F8), forum en (-14800, 0). Le scénario ne règle ni hol.Fog.Mode ni hol.Fog.Render : c'est le chemin du menu.
 # Un bosquet de 10 arbres posé à 90 m à l'est du forum ; mes 4 Hommes d'armes vont le voir (20 m), reviennent au centre ; pendant ce temps le bosquet est coupé d'un coup (cheat, comme si
 # un ennemi le coupait loin de moi) : il doit rester dessiné (c'est l'ancien état connu). Quand on le revoit, il disparaît.
+# Clic au sol : la caméra est posée (hol.Camera.FocusNear) JUSTE avant le clic (2 images), jamais avant une longue attente : dans le jeu du joueur (play.ps1, souris au bord de l'écran = défilement, touche tenue) la caméra
+# dérive pendant les images d'attente, le point sort de l'écran, « hol.Select.LeftClickGround: the point is not on the screen », le clic ne vient jamais et le panneau reste sur « en préparation » (E-fog_trees, 2026-11-08 ; pan_exposure_test.ps1).
 open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+quiet hol.Sanity.Watch 1
 hol.Sources.Grove 160 -5800 0 10 7
 hol.Camera.FocusNear 800 0
 frames 2
@@ -16,22 +19,30 @@ hol.Select.Own
 waitlog Selection: 4 units (own)
 hol.Fog.RenderReport
 waitlog Fog render: mode 1 (post process)
-hol.Camera.FocusNear 4500 0
 hol.Camera.Zoom -2
-frames 20
-hol.Select.OrderNear 7000 0
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Camera.FocusNear 4500 0
+frames 2
+hol.Select.LeftClickGround -7800 0
+waitlog Scripted left click at
 wait 5
 hol.Camera.FocusNear 9000 0
-frames 30
+frames 15
 hol.Sources.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture fogtrees_a
 # Ils reviennent au centre : le bosquet sort de la vue, puis il est coupé sans que je le voie.
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
 hol.Camera.FocusNear 4500 0
-frames 60
-hol.Select.OrderNear 3500 0
+frames 2
+hol.Select.LeftClickGround -11300 0
+waitlog Scripted left click at
 wait 6
 hol.Camera.FocusNear 9000 0
-frames 30
+frames 15
 hol.Sources.Report
 hol.Sources.TakeNear -5800 0
 hol.Sources.TakeNear -5800 0
@@ -43,19 +54,26 @@ hol.Sources.TakeNear -5800 0
 hol.Sources.TakeNear -5800 0
 hol.Sources.TakeNear -5800 0
 hol.Sources.TakeNear -5800 0
-frames 30
+frames 15
 hol.Sources.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture fogtrees_b
 # Les soldats retournent le voir : les arbres disparaissent.
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
 hol.Camera.FocusNear 4500 0
-frames 60
-hol.Select.OrderNear 7000 0
+frames 2
+hol.Select.LeftClickGround -7800 0
+waitlog Scripted left click at
 wait 5
 hol.Camera.FocusNear 9000 0
-frames 30
+frames 15
 hol.Sources.Report
-capture fogtrees_c
-hol.Camera.FocusNear 4500 0
 hol.HUD.Report 1
+waitlog HUD overlap:
+capture fogtrees_c
+hol.Test.Sanity
+hol.Camera.FocusNear 4500 0
 note Brouillard : le bosquet de 10 arbres à 90 m à l'est a été vu puis coupé pendant que mes soldats étaient au centre. Il doit rester dessiné (dans le gris de l'exploré) tant que vous ne le revoyez pas ; dès que les soldats reviennent à 70 m, les arbres disparaissent.
 note A regarder aussi : Echap, Menu, quitter vers le menu, puis Nouvelle partie : la ligne de la carte porte une liste « Brouillard » (Normal par défaut, Carte explorée, Sans brouillard), accessible aussi au clavier. Choisir « Sans brouillard » puis Lancer : plus de noir, plus de masquage.

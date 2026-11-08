@@ -84,7 +84,7 @@ def compose(colour=None, path="/Game/Buildings/Forum/SM_Forum"):
     variant = next((a.split("=", 1)[1].upper() for a in sys.argv[1:] if a.startswith("--variant=")), None)
     items = list(layout.VARIANTS[variant]() if variant else layout.LAYOUT)
     if colour in ("banner", "both"):
-        items += layout.banner_items()
+        items += layout.banner_items(variant)
     owner_material = unreal.load_asset("/Game/Rendering/M_FlatColor")
     if colour and not owner_material:
         raise RuntimeError("Missing /Game/Rendering/M_FlatColor")
@@ -206,4 +206,10 @@ if COMPOSE:
     import forum_layout as _layout
     asked = next((a.split("=", 1)[1].lower() for a in sys.argv[1:] if a.startswith("--colour=")),
                  "none" if any(a.startswith("--variant=") for a in sys.argv[1:]) else _layout.DEFAULT_COLOUR)
-    compose(None if asked == "none" else asked)
+    # --review: the variant goes to /Game/Buildings/Forum/Review/SM_ForumReview_<letter> (the scenario forum_review shows ten side by side,
+    # SM_Forum is left alone); --colour=banner keeps the banners of the chosen design (VI-Q3 = B).
+    _variant = next((a.split("=", 1)[1].upper() for a in sys.argv[1:] if a.startswith("--variant=")), None)
+    if "--review" in sys.argv[1:] and _variant:
+        compose(None if asked == "none" else asked, "/Game/Buildings/Forum/Review/SM_ForumReview_" + _variant)
+    else:
+        compose(None if asked == "none" else asked)

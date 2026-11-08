@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+use_ram | un Belier ENNEMI selectionne : le bloc de stats sous les points de vie, ligne « Attaque batiments 60 » (valeur presente)
+use_mangonel | un Mangonneau ENNEMI selectionne : ligne Attaque avec sa valeur
+use_spearman | un Lancier ENNEMI selectionne : ligne Attaque avec sa valeur
+use_fight | un Lancier ennemi au combat contre un des tiens : la ligne d'activite et la ligne de stats

@@ -398,17 +398,75 @@ TURRET_TOP = 2.3   # the turrets' crown (tower-top, 30 cm) stands on two modules
 POLE_HEIGHT = 0.9  # the pole's top reaches the keep's apex (3.2 modules)
 
 
-def banner_items():
-    """A pole and a cloth on each turret, the cloth flying outward (along Y), seen face on by the RTS camera (it looks along +X)."""
+def banner_items(variant=None):
+    """A pole and a cloth on each turret, the cloth flying outward (along Y), seen face on by the RTS camera (it looks along +X).
+    The third round (BANNER_SPEC) puts the pole on the turret's own crown (turret height, spot, pole length)."""
+    levels, at, pole = BANNER_SPEC.get(variant, (2, TURRET_AT, POLE_HEIGHT))
+    base = levels + 0.3 if variant in BANNER_SPEC else TURRET_TOP
     items = []
-    for tx in (-TURRET_AT, TURRET_AT):
-        for ty in (-TURRET_AT, TURRET_AT):
+    for tx in (-at, at):
+        for ty in (-at, at):
             side = 1.0 if ty > 0 else -1.0
-            items.append(("@pole", tx, ty, TURRET_TOP, 0.0, (0.04, 0.04, POLE_HEIGHT)))
-            items.append(("@cloth", tx, ty + side * 0.37, TURRET_TOP + POLE_HEIGHT - 0.5, 0.0, (0.03, 0.7, 0.5)))
+            items.append(("@pole", tx, ty, base, 0.0, (0.04, 0.04, pole)))
+            items.append(("@cloth", tx, ty + side * 0.37, base + pole - 0.5, 0.0, (0.03, 0.7, 0.5)))
     return items
 
 
+# ---- Third round (U to AD, 2026-11-08), after the user's answer on K to T: liked K, L (flag to raise), M, N, O, Q (flag to raise), T;
+# not liked P (gate), R (crenellated platform), S (portico, no turret). So: mixes of the liked traits, no gate, no platform, always turrets.
+# Each design: keep levels, roof height, turret height (levels, the wall block counts as one), ring (the wall of M) or open court,
+# houses either side (T), flag raised. A raised flag stands on the turret's crown, its pole ends above the keep's apex (or at least
+# 1.1 module long); the other flags are the old ones (K's: pole 0.9 on a 2-level turret).
+ROUND3 = {
+    "U": dict(keep=2, roof=1.2, turrets=3, high=True),                       # L, flag raised
+    "V": dict(keep=3, roof=1.4, turrets=3, high=True),                       # Q, flag raised
+    "W": dict(keep=2, roof=1.9, turrets=3, high=True),                       # L with N's steep roof
+    "X": dict(keep=3, roof=1.9, turrets=3, high=True),                       # Q with N's steep roof
+    "Y": dict(keep=2, roof=1.2, turrets=3, houses=2, high=True),             # L with T's houses (two a side)
+    "Z": dict(keep=2, roof=1.9, turrets=2, houses=True),                     # N with T's houses
+    "AA": dict(keep=2, roof=1.9, turrets=2, ring=True),                      # M with N's steep roof
+    "AB": dict(keep=3, roof=1.4, turrets=3, ring=True, high=True),           # M with Q's three levels, the wall's turrets taller
+    "AC": dict(keep=2, roof=0.8, turrets=2, houses=True),                    # O (low wide roof) with T's houses
+    "AD": dict(keep=3, roof=1.4, turrets=3, houses=2, high=True),            # Q with T's houses (two a side)
+}
+BANNER_SPEC = {}   # design letter -> (turret height, spot of the turrets, pole length)
+
+
+def round3_design(name):
+    spec = ROUND3[name]
+    keep, roof, turrets = spec["keep"], spec["roof"], spec["turrets"]
+    ring = spec.get("ring", False)
+    at = 2.0 if ring else TURRET_AT
+    apex = keep + roof
+    base = turrets + 0.3
+    pole = max(1.1, apex + 0.6 - base) if spec.get("high") else POLE_HEIGHT
+    BANNER_SPEC[name] = (turrets, at, pole)
+
+    def build():
+        p = Plan()
+        if ring:
+            p.court()
+            p.ring("block")
+            for tx in (-2, 2):
+                for ty in (-2, 2):
+                    for level in range(1, turrets):
+                        p.add("tower-paint", tx, ty, level)
+                    p.add("tower-top", tx, ty, turrets)
+        else:
+            p.court(COURT5)
+            corner_turrets(p, turrets)
+        p.keep3(keep, roof)
+        if spec.get("houses"):
+            # T's houses: one either side of the keep; with tall turrets (houses=2) two a side, the front ones standing out from behind the turret
+            for hy, face in ((-2.2, LEFT), (2.2, RIGHT)):
+                for hx in ((-0.7, 0.7) if spec["houses"] == 2 else (0,)):
+                    p.add("wall-paint-window", hx, hy, 0, face)
+                    p.pyramid(hx, hy, 1, 1.0, 0.8)
+        return p.items
+    return build
+
+
 VARIANTS = {name[-1].upper(): fn for name, fn in sorted(globals().items()) if name.startswith("variant_") and callable(fn)}
+VARIANTS.update({name: round3_design(name) for name in ROUND3})
 CHOSEN = "K"   # the user kept K on 2026-11-03 "for now"
 LAYOUT = VARIANTS[CHOSEN]()

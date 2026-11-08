@@ -1,0 +1,38 @@
+# Paliers des unites (Palier 3, G1, D711) : la Caserne grise l'Homme d'armes (case Z) tant que le palier 0 n'est pas passe ; la touche Z ne forme rien ; apres hol.Cheat.Tier 1 la case est active et la touche Z forme un Homme d'armes. Geste reel : la TOUCHE de la case (hol.Select.Grid 1 = Z), comme au clavier. 3 minutes au plus.
+# Plain, toi (slot 0) contre une IA gelee (slot 1) ; palier 0.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Prod.BuildTime 2
+hol.Camera.FocusNear 2800 800
+frames 2
+hol.Cheat.SpawnBuilding Barracks 0 2800 800
+waitlog Cheat: spawned Barracks of slot 0
+hol.Camera.Zoom -2
+frames 60
+hol.Select.Click 0.5 0.5
+waitlog Selection: Barracks of slot 0 (own)
+frames 20
+note 1. Palier 0 : la Caserne est selectionnee ; le Lancier (A) est actif, l'Homme d'armes (Z) est GRISE (palier 1 requis).
+hol.HUD.Report
+waitlog A=Spearman enabled
+hol.HUD.Report
+waitlog Z=ManAtArms greyed
+capture unit_tiers_grey
+note 2. Tu appuies sur Z (la case grisee) : rien ne se forme.
+hol.Select.Grid 1
+frames 60
+hol.HUD.Report
+waitlog Z=ManAtArms greyed
+hol.Cheat.Tier 1
+frames 20
+hol.HUD.Report
+waitlog Z=ManAtArms enabled
+note 3. Palier 1 (hol.Cheat.Tier 1) : l'Homme d'armes est actif ; tu appuies sur Z, la Caserne le forme (2 s pour l'essai).
+hol.Select.Grid 1
+waitlog Production: ManAtArms of slot 0 done
+frames 20
+capture unit_tiers_open
+hol.Test.Sanity
+note 4. A toi : une Caserne au palier 0 ne forme que le Lancier ; l'Homme d'armes, l'Arbalete et le Cavalier leger demandent le palier 1 (hol.Cheat.Tier 1 pour l'ouvrir).

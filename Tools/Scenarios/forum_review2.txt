@@ -1,0 +1,60 @@
+# Forum, tour 2 : dix echantillons U a AD vus dans le jeu (VisualInProgress.md), meles des variantes aimees (K, L, M, N, O, Q, T) ; la lettre est ecrite en jaune sur le sol devant le Forum ; Entree = variante suivante. Dis aime / pas aime par lettre. 3 minutes au plus.
+# Les modeles sont composes avant (Tools\Scenarios\forum_review2.ps1), une fois ; ici seul le jeu tourne. Plain, toi contre une IA. Le Forum de la partie est loin (au sud) : la revue est a l'origine de la carte.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Camera.Focus 450 -3000
+hol.Camera.Zoom 2
+frames 30
+hol.Forum.Review U
+frames 40
+capture fr2_U
+note Forum U (1/10) : comme L (tourelles hautes), drapeau plus haut. Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review V
+frames 40
+capture fr2_V
+note Forum V (2/10) : comme Q (trois etages), drapeau plus haut. Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review W
+frames 40
+capture fr2_W
+note Forum W (3/10) : tourelles hautes (L) et toit pointu (N), drapeau haut. Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review X
+frames 40
+capture fr2_X
+note Forum X (4/10) : trois etages (Q) et toit pointu (N), drapeau haut. Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review Y
+frames 40
+capture fr2_Y
+note Forum Y (5/10) : tourelles hautes (L) et maisons de chaque cote (T), drapeau haut. Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review Z
+frames 40
+capture fr2_Z
+note Forum Z (6/10) : toit pointu (N) et maisons de chaque cote (T). Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review AA
+frames 40
+capture fr2_AA
+note Forum AA (7/10) : enceinte et tourelles d'angle (M), toit pointu (N). Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review AB
+frames 40
+capture fr2_AB
+note Forum AB (8/10) : enceinte (M) a tourelles hautes, donjon de trois etages (Q), drapeau haut. Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review AC
+frames 40
+capture fr2_AC
+note Forum AC (9/10) : toit bas et large (O) et maisons de chaque cote (T). Entree = suivante.
+waitkey Entree : variante suivante
+hol.Forum.Review AD
+frames 40
+capture fr2_AD
+note Forum AD (10/10) : trois etages (Q) et maisons de chaque cote (T), drapeau haut. Dernier. Dis aime / pas aime par lettre.
+frames 5
+hol.Test.Sanity
+panel show
