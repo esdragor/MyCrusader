@@ -75,7 +75,9 @@ hol.Camera.FocusNear 800 0 enemy
 frames 3
 hol.HUD.Report 1
 waitlog HUD overlap:
+panel hide
 capture ai_evolving_normal
+panel show
 note 4. Stade 3 : Entrée, la commande fait passer l'IA à DIFFICILE (la ligne passe à « joue Difficile »), puis nouvelle attaque : elle évalue sa perte et peut laisser la vie pour garder son armée.
 waitkey Entrée : stade 3 DIFFICILE : l'IA passe Difficile et j'attaque
 # Etat propre et identique (retour E4) : la carte est rouverte, tout ce qui restait du stade precedent disparait (troupes des deux camps, batiments rases, vies du forum)
@@ -113,5 +115,7 @@ hol.Camera.FocusNear 800 0 enemy
 frames 3
 hol.HUD.Report 1
 waitlog HUD overlap:
+panel hide
 capture ai_evolving_hard
+panel show
 note 5. (Stade 3 : la décision de l'IA Difficile n'est pas attendue : le forum peut n'avoir plus de vie à perdre ; la ligne HUD montre le stade.) Journal (Saved/Logs) : « evolving, plays Easy / Normal / Hard now » et « forum attacked ... level ... decision ... ».

@@ -6,6 +6,7 @@ open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+quiet hol.Sanity.Watch 1
 hol.Sources.Grove 160 -5800 0 10 7
 hol.Camera.FocusNear 800 0
 frames 2
@@ -19,16 +20,24 @@ waitlog Fog render: mode 1 (post process)
 hol.Camera.FocusNear 4500 0
 hol.Camera.Zoom -2
 frames 20
-hol.Select.OrderNear 7000 0
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -7800 0
+waitlog Scripted left click at
 wait 5
 hol.Camera.FocusNear 9000 0
 frames 30
 hol.Sources.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture fogtrees_a
 # Ils reviennent au centre : le bosquet sort de la vue, puis il est coupé sans que je le voie.
 hol.Camera.FocusNear 4500 0
 frames 60
-hol.Select.OrderNear 3500 0
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -11300 0
+waitlog Scripted left click at
 wait 6
 hol.Camera.FocusNear 9000 0
 frames 30
@@ -45,17 +54,24 @@ hol.Sources.TakeNear -5800 0
 hol.Sources.TakeNear -5800 0
 frames 30
 hol.Sources.Report
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture fogtrees_b
 # Les soldats retournent le voir : les arbres disparaissent.
 hol.Camera.FocusNear 4500 0
 frames 60
-hol.Select.OrderNear 7000 0
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -7800 0
+waitlog Scripted left click at
 wait 5
 hol.Camera.FocusNear 9000 0
 frames 30
 hol.Sources.Report
-capture fogtrees_c
-hol.Camera.FocusNear 4500 0
 hol.HUD.Report 1
+waitlog HUD overlap:
+capture fogtrees_c
+hol.Test.Sanity
+hol.Camera.FocusNear 4500 0
 note Brouillard : le bosquet de 10 arbres à 90 m à l'est a été vu puis coupé pendant que mes soldats étaient au centre. Il doit rester dessiné (dans le gris de l'exploré) tant que vous ne le revoyez pas ; dès que les soldats reviennent à 70 m, les arbres disparaissent.
 note A regarder aussi : Echap, Menu, quitter vers le menu, puis Nouvelle partie : la ligne de la carte porte une liste « Brouillard » (Normal par défaut, Carte explorée, Sans brouillard), accessible aussi au clavier. Choisir « Sans brouillard » puis Lancer : plus de noir, plus de masquage.

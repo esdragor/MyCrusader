@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+siege_wave_base | le forum de l'IA, 6 Lanciers, 2 Beliers et 1 Mangonneau de l'IA (rouges) rassembles devant lui
+siege_wave_march | la vague de l'IA en marche vers la gauche : Lanciers et engins sortis du forum, aucun combat
+siege_wave_arrive | devant ton Centre : des Lanciers rouges et au moins un engin rouge qui frappe le Centre
+siege_wave_hits | 12 s plus tard : les engins rouges devant ton Centre, le Centre abime
