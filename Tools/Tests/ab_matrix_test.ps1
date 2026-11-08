@@ -41,7 +41,7 @@ try {
     Case "default / diplo : 'PASS 5/8', verdict RED" ($T -match "(?m)^default \| diplo \| PASS 5/8 \| verdict RED")
     Case "the spread of the cell is kept" ($T -match "(?m)^default \| diplo \| .*20 / 21 / 25 s")
     $Data = @($T -split "`r?`n" | Where-Object { $_ -match '^(s120|s150|default) \| ' })
-    Case "exactly one line per config/scenario (6, got $($Data.Count))" ($Data.Count -eq 6)
+    Case "exactly one line per config/scenario (6, got $($Data.Count))" ($Data.Count -eq 6) ($Data -join " // ")
     Case "the header names N = 8" ($T -match "N = 8")
     Case "the tool prints the table too" ($R.Text -match "s120 \| melee_stuck \| PASS 3/8")
 
