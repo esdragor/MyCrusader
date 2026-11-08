@@ -230,6 +230,7 @@ void Test_ArmyCompositionCountersHeavyWithCrossbowmen(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Summary;
+	Summary.Tier = 3; // G1 (D711): every unit is open at tier 3
 	RulesAddUnits(Summary.Enemies, n"ManAtArms", 5, 155, 1);
 	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.bValid, "a choice");
@@ -254,6 +255,7 @@ void Test_ArmyCompositionAnswersArchersWithManAtArms(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Summary;
+	Summary.Tier = 3; // G1 (D711): every unit is open at tier 3
 	RulesAddUnits(Summary.Enemies, n"Archer", 6, 70, 1);
 	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.bCounter, "decided by the counter rule");
@@ -278,6 +280,7 @@ void Test_ArmyCompositionFixedMix(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = RulesHandData();
 	FHOLAISummary Summary;
+	Summary.Tier = 3; // G1 (D711): every unit is open at tier 3
 	FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.bValid, "a choice with nothing at all");
 	T.AssertFalse(Choice.bCounter, "no enemy: the fixed mix");
@@ -336,6 +339,7 @@ void Test_ArmyRealTableFigures(FUnitTest& T)
 	T.AssertTrue(HOLAIArmy::UnitValue(Data, Data.Figures[Heavy]) > HOLAIArmy::UnitValue(Data, Data.Figures[Spear]), "table: the Man-at-arms costs more than the Spearman");
 
 	FHOLAISummary Summary;
+	Summary.Tier = 3; // G1 (D711): every unit is open at tier 3
 	RulesAddUnits(Summary.Enemies, n"ManAtArms", 5, Data.Figures[Heavy].Health, 1);
 	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.Type == n"Crossbowman", "table: 5 Men-at-arms, Crossbowmen");

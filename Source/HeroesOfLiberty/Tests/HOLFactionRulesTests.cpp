@@ -387,6 +387,9 @@ bool FHOLFactionRealChainTest::RunTest(const FString& Parameters)
 
 	// (4) The server refuses a unit type of another faction, whatever a client asked: a Monk at slot 1's Chapel is not queued; at slot 0's it is.
 	{
+		// G1 (D711): the Monk opens at tier 1, the grid and the server are tested at tier 1
+		Test.State->SetTierOverride(0, 1);
+		Test.State->SetTierOverride(1, 1);
 		AHOLBuilding* Chapels[2] = { nullptr, nullptr };
 		for (int32 Slot = 0; Slot < 2; ++Slot)
 		{
