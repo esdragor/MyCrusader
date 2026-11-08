@@ -1,0 +1,184 @@
+PLACEHOLDERS DU JEU : tout ce qui est provisoire, une ligne courte par chose.
+Chantier : PlaceholdersInProgress.md. Relevé du 2026-11-08 (lecture des tables et du code, PAS vérifié à l'écran).
+
+RÈGLE : tout chantier qui AJOUTE un provisoire ajoute sa ligne ici ; tout chantier qui REMPLACE ou SUPPRIME
+un provisoire retire sa ligne (et note le remplacement dans PlaceholdersInProgress.md). Une ligne = une chose.
+Un chantier ne se clôt pas sans avoir relu ce fichier.
+
+ÉTIQUETTES (fin de ligne)
+  [forme]      forme de base du moteur (cube, cône, sphère, cylindre)
+  [mannequin]  mannequin du moteur, avec accessoires
+  [kit]        modèle fait d'un kit CC0, un artiste repassera
+  [rien]       rien de dessiné / aucun asset
+  [style]      réglage ou style provisoire (couleur, cadre, son, valeur)
+  [à venir]    pas encore dans le jeu : provisoire dès sa création
+  [?]          à vérifier (relevé par lecture, doute)
+
+== UNITÉS (communes aux deux factions aujourd'hui)
+- Paysan Aube [mannequin]
+- Zombie Légions (même corps que le Paysan) [mannequin]
+- Lancier Aube [mannequin]
+- Lancier Légion (Lancier squelette) [mannequin]
+- Garde (Homme d'armes) Aube [mannequin]
+- Garde noire Légions [mannequin]
+- Archer Aube [mannequin]
+- Archer squelette Légions [mannequin]
+- Arbalétrier Aube [mannequin]
+- Arbalétrier squelette Légions [mannequin]
+- Cavalier léger Aube (mannequin fixe, sans animation) [mannequin]
+- Cavalier funeste Légions [mannequin]
+- Bélier Aube (mannequin fixe) [mannequin]
+- Bélier d'os Légions [mannequin]
+- Mangonneau Aube (mannequin fixe) [mannequin]
+- Mangonneau d'os Légions [mannequin]
+- Moine (commun) [mannequin]
+- Roi [mannequin]
+- Héros Paladin-Commandant Aube [mannequin]
+- Héros Légions (même corps que l'Aube) [mannequin]
+- Light infantry / Nanite (unités d'essai) [mannequin]
+- Hallebardier Aube [à venir]
+- Chevalier Vertueux Aube [à venir]
+- Moine Lumineux Aube [à venir]
+- Guerrier Damné Légions [à venir]
+- Squelette (levé d'un cadavre) Légions [à venir]
+- Nécromancien Légions [à venir]
+- Spectre Assassin Légions [à venir]
+- Champion damné / serviteurs temporaires Légions [à venir ?]
+- Brigands (neutres : lancier, garde, archer, arbalétrier) [mannequin]
+- Archer de l'Aube, Abomination, Cracheur de bile (hors prototype) [à venir]
+
+== BÂTIMENTS
+- Forum (Centre principal) Aube [kit]
+- Forum (Centre principal) Légions (même modèle que l'Aube) [kit]
+- Maison [forme]
+- Camp de bûcherons [forme]
+- Camp de mineurs [forme]
+- Moulin [forme]
+- Ferme (bâtiment) [forme]
+- Caserne [forme]
+- Champ de tir [forme]
+- Marché [forme]
+- Atelier de siège [forme]
+- Écurie [forme]
+- Forge [forme]
+- Sanctuaire de l'Aube [forme]
+- Chapelle (Aube) [forme]
+- Ruine d'un bâtiment (gravats) [forme]
+- Bâtiment en construction (chantier) [?]
+- Nécropole Légions [à venir]
+- Autel de sang Légions [à venir]
+- Fosse des damnés Légions [à venir]
+- Chapelle de campagne Aube [à venir]
+- Académie [à venir]
+- Palissade [à venir]
+- Tour de guet en bois [à venir]
+- Porte de bois [à venir]
+- Mur de pierre [à venir]
+- Porte de pierre [à venir]
+- Tour de pierre [à venir]
+- Rempart praticable [à venir]
+- Autel du Jugement, Crypte des saints, Cimetière maudit, Ossuaire (hors prototype) [à venir]
+
+== RESSOURCES
+- Arbre [forme]
+- Buisson de baies [forme]
+- Filon de pierre petit [forme]
+- Filon de pierre moyen [forme]
+- Filon de pierre normal [forme]
+- Filon de pierre gros [forme]
+- Filon d'or petit [forme]
+- Filon d'or moyen [forme]
+- Filon d'or normal [forme]
+- Filon d'or gros [forme]
+- Champ de ferme (parcelle) [forme]
+- Cadavre (corps laissé par une unité morte) [?]
+
+== DÉCOR DES CARTES (placé par les scripts de cartes)
+- Herbe verte [forme]
+- Herbe sèche [forme]
+- Buisson décor [forme]
+- Pierre [forme]
+- Souche [forme]
+- Rocher (gros) [forme]
+- Rocher de sable [forme]
+- Rocher moussu [forme]
+- Fourré [forme]
+- Fourré sec [forme]
+- Fleur blanche [forme]
+- Fleur violette [forme]
+- Fleur orange [forme]
+- Roseau [forme]
+- Rocher de crête (crêtes de roche) [forme]
+- Mur de roche (chaîne de rochers) [forme]
+- Autel du volcan [forme]
+- Lave du volcan [rien]
+- Basalte du volcan [rien]
+- Relais neutre (marque au sol) [?]
+- Site sacré [à venir]
+- Campement des brigands (décor) [?]
+- Rivière / gué (eau) [?]
+- Arbre biome Herbe fraîche [?]
+- Arbre biome Steppe sèche [?]
+- Arbre biome Automne (n'existe sans doute pas, pour ne pas l'oublier) [à venir ?]
+- Arbre biome Forêt sombre [?]
+- Arbre biome Neige [à venir ?]
+- Rochers par biome (neige, sable, mousse) [?]
+- Autres biomes futurs (désert, marais, jungle...) [à venir]
+
+== MATÉRIEL ET EFFETS DE JEU
+- Flèche (projectile) [?]
+- Carreau d'arbalète (projectile) [?]
+- Projectile du Mangonneau [rien ?]
+- Bannière de l'Aube (étendard planté) [?]
+- Marqueurs de sélection (anneaux, plaques) [forme]
+- Effet de soin (Moine) [?]
+- Aura de l'Aube (effet visuel) [?]
+- Cri « Serrez les rangs » (effet visuel) [?]
+- Impacts, coups, sang, poussière [rien]
+- Fumée / flammes d'un bâtiment qui brûle [rien ?]
+- Trajets et marques d'ordres au sol [?]
+
+== INTERFACE
+- Style de l'interface (couleurs, cadres, boutons) [style]
+- Icônes T_Icon (allié, ennemi, aura, bannière, serrez les rangs, emblème du héros) [?]
+- Icônes des boutons de la grille de commandes [?]
+- Portraits d'unités / de bâtiments [?]
+- Icônes des ressources (nourriture, bois, pierre, or) [?]
+- Icônes des technologies [?]
+- Icônes des talents / des pouvoirs [?]
+- Minimap (résolution) [style]
+- Curseurs (souris) [?]
+- Bandeau de fin de partie [style]
+- Emblème de l'Ordre de l'Aube [à venir]
+- Emblème des Légions [à venir]
+- Couleurs des joueurs [style]
+
+== MENU ET MARQUE
+- Logo du jeu [rien]
+- Écran-titre / menu principal [style]
+- Fond du menu principal [rien ?]
+- Écran de chargement [rien ?]
+- Icône de l'exécutable / de la fenêtre [rien ?]
+- Lanceur et gestionnaire de salons (interface) [style]
+- Image de la page Steam (capsule, captures) [rien]
+
+== SONS ET MUSIQUE
+- Sons de l'interface (pack Kenney, jugés « vaisseau spatial » : refaits en cours) [style]
+- Sons des ordres et de la sélection [style]
+- Alerte du Forum (son 2D du moteur, la voix du héraut viendra) [style]
+- Fanfares du héros (bannière, cri, niveau, palier) [style]
+- Sons des bâtiments (familles bois / pierre / métal / sacré) [style]
+- Sons de combat, de récolte, de construction [rien ?]
+- Pas, voix et cris des unités [rien]
+- Ambiances des cartes [rien]
+- Musique [rien]
+
+== ANIMATIONS
+- Animations de marche, d'attaque, de récolte (mannequin) [mannequin]
+- Animation du Cavalier, du Bélier, du Mangonneau [rien]
+- Animation de chute / de mort (variantes) [?]
+- Animation de construction [?]
+
+== RÈGLES DE JEU À VALEURS PROVISOIRES (pour mémoire, pas des assets)
+- Valeurs des tables CSV (coûts, PV, vitesses) : « provisoires par nature », réglées à l'essai
+- Technologies grisées « Bientôt » (sans effet) : suivies dans TechnologiesInProgress.md

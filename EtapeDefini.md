@@ -217,6 +217,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `UnitStats.md` : tableau des stats des unités, produit par `Tools/Data/make_unit_stats.py` (ne pas modifier à la main)
 - `Manager/PROTOCOL.md` : protocole du gestionnaire de salons (M6)
 - `Tools/Scenarios/README.md` : scénarios de test, lancés par `play.ps1`
+- `Placeholders.txt` : liste courte de tout ce qui est provisoire dans le jeu (une ligne par chose, étiquettes `[forme]` `[mannequin]` `[kit]` `[rien]` `[style]` `[à venir]` `[?]`) ; tout chantier qui ajoute ou retire un provisoire la met à jour
 - `Auto_Journey.md` (procédure et leçons), `Auto_Journey_File.md` (file de travail), `Auto_Journey_Retours.md` (essais, questions, fusions), `Auto_Journey_Jour.md` (bilans) : journée autonome / séances interactives ; commits partout sauf push
 
 ### Chantiers en cours (à la racine)
@@ -247,6 +248,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `TechnologiesInProgress.md` : technologies et Moines
 - `VictoryInProgress.md` : conditions de victoire et paliers
 - `VisualInProgress.md` : visuel des bâtiments (branche `visual`, worktree Sauron)
+- `PlaceholdersInProgress.md` : remplacement des placeholders (arbres, logos, unités, icônes, décor...), ouvert le 2026-11-08, relevé par lecture fait, rien codé ni commité ; liste vivante dans `Placeholders.txt` (à tenir à jour par TOUT chantier, règle dans `CLAUDE.md`) ; questions PQ-1 (par quoi commencer), PQ-2 (direction artistique), PQ-3 (logo), PQ-4 (script de contrôle), PQ-5 (fusion de `visual`) à trancher ; suivant P1 (lever les `[?]`)
 - `VolcanoInProgress.md` : volcan et Catastrophe
 - `LauncherInProgress.md` : lanceur (clos sauf L15+ et l'essai avec un ami)
 
