@@ -18,7 +18,10 @@
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLStartRules.h"
 #include "Misc/AutomationTest.h"
+#include "MassEntityManager.h"
+#include "MassEntitySubsystem.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
+#include "Presentation/HOLCorpse.h"
 #include "Net/HOLUnitReplicationRules.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -665,6 +668,7 @@ bool FHOLFactionPreloadTest::RunTest(const FString& Parameters)
 		return false;
 	}
 	FFixtureTable Fixture(FixtureBirthOverrides);
+	TestFalse(TEXT("before the preload: no Legions body template"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Corpse, Legions));
 	for (const EHOLUnitTemplateKind Kind : { EHOLUnitTemplateKind::Display, EHOLUnitTemplateKind::Simulation })
 	{
 		TestFalse(TEXT("before the preload: no Legions template"), Test.Units->HasTemplate(Spearman, Kind, Legions));
@@ -672,6 +676,59 @@ bool FHOLFactionPreloadTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("after the preload: the Legions' template is built"), Test.Units->HasTemplate(Spearman, Kind, Legions));
 		TestTrue(TEXT("... and the Dawn's key is still the type's own (nothing built twice)"), Test.Units->GetTemplateKey(Spearman, Dawn) == Spearman);
 	}
+	// L13: a machine that draws lays bodies, so the factions' bodies are built with their models while the map loads.
+	TestTrue(TEXT("after the preload: the Legions' body template is built too (L13)"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Corpse, Legions));
+	return true;
+}
+
+// L13 (LegionsInProgress.md), the Legions' bodies: the body a Legions unit leaves is made from the body template of ITS OWNER'S FACTION
+// (built under "Spearman@Legions"), as its model is; the Dawn's body keeps the type's own. The real chain of HOLCorpse::Lay on the
+// test world's entity manager, under a fixture that gives the Legions' Spearman another model (health 777: other constants, so a
+// template of its own, as a mesh override would).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionCorpseTest, "HeroesOfLiberty.Match.Factions.Corpse", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLFactionCorpseTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	UMassEntitySubsystem* Mass = Test.World->GetSubsystem<UMassEntitySubsystem>();
+	if (!TestNotNull(TEXT("the entity subsystem"), Mass))
+	{
+		return false;
+	}
+	FMassEntityManager& EntityManager = Mass->GetMutableEntityManager();
+	FFixtureTable Fixture(FixtureBirthOverrides);
+	TestFalse(TEXT("before any body: no Legions body template"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Corpse, Legions));
+
+	TArray<FHOLCorpseSeed> Seeds;
+	for (int32 Slot = 0; Slot < 2; ++Slot)
+	{
+		FHOLCorpseSeed& Seed = Seeds.AddDefaulted_GetRef();
+		Seed.TypeName = Spearman;
+		Seed.Corpse.TypeName = Spearman;
+		Seed.Corpse.OwnerPlayer = static_cast<uint8>(Slot);
+		Seed.Corpse.Base = FTransform(FVector(1000.0 * (Slot + 1), 0.0, 0.0));
+	}
+	TArray<FMassEntityHandle> Bodies;
+	HOLCorpse::Lay(EntityManager, *Test.Units, Seeds, &Bodies);
+
+	if (TestEqual(TEXT("a body for the Dawn's Spearman and one for the Legions'"), Bodies.Num(), 2))
+	{
+		for (int32 Slot = 0; Slot < 2; ++Slot)
+		{
+			const FHOLCorpseFragment* Corpse = EntityManager.GetFragmentDataPtr<FHOLCorpseFragment>(Bodies[Slot]);
+			if (TestNotNull(TEXT("the body's fragment"), Corpse))
+			{
+				TestEqual(TEXT("the body keeps its owner"), static_cast<int32>(Corpse->OwnerPlayer), Slot);
+			}
+		}
+	}
+	TestTrue(TEXT("the Legions' body was made from the Legions' body template"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Corpse, Legions));
+	TestTrue(TEXT("... and the Dawn's key is still the type's own"), Test.Units->GetTemplateKey(Spearman, Dawn) == Spearman);
+	TestTrue(TEXT("the type's own body template is built (the Dawn's)"), Test.Units->HasTemplate(Spearman, EHOLUnitTemplateKind::Corpse));
 	return true;
 }
 

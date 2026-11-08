@@ -115,7 +115,8 @@ void HOLCorpse::CollectSeeds(const FMassEntityManager& EntityManager, const TCon
 	}
 }
 
-void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units, const TConstArrayView<FHOLCorpseSeed> Seeds)
+void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units, const TConstArrayView<FHOLCorpseSeed> Seeds,
+	TArray<FMassEntityHandle>* OutBodies)
 {
 	TMap<FName, TArray<int32>> SeedsByType;
 	for (int32 Index = 0; Index < Seeds.Num(); ++Index)
@@ -144,6 +145,10 @@ void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units,
 		{
 			const FHOLCorpseSeed& Seed = Seeds[TypeSeeds.Value[Index]];
 			const FMassEntityHandle Entity = Created[Index];
+			if (OutBodies)
+			{
+				OutBodies->Add(Entity);
+			}
 			EntityManager.GetFragmentDataChecked<FHOLCorpseFragment>(Entity) = Seed.Corpse;
 			EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).SetTransform(Seed.Corpse.Base);
 			// Its first frame drawn where it lies: no motion vector from the origin.
