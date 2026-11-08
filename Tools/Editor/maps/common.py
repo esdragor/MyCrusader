@@ -965,6 +965,26 @@ def grove_local(seed, count, reach=None):
     bound = grove_reach(count) if reach is None else reach
     if ("grove", seed, count, bound) in SHAPES:
         return SHAPES[("grove", seed, count, bound)]
+    picks = grove_picks()
+    pick_key = "%d:%d:%r" % (seed, count, bound)
+    attempt = picks.get(pick_key)
+    if attempt is not None:
+        # Haldir-6, 2026-11-08: the search below tries up to 48 attempts (Hinterland Small: a minute in plain Python); the attempt it
+        # chose is written in grove_picks.json, and only that one is thrown again (the same trees: an attempt depends on its seed only).
+        points = grove_attempt(Rng(seed, 11, attempt), count, compact=attempt >= 32)
+        if points is not None:
+            SHAPES[("grove", seed, count, bound)] = points
+            return points
+    attempt, points = grove_search(seed, count, bound)
+    SHAPES[("grove", seed, count, bound)] = points
+    if picks is not None:
+        picks[pick_key] = attempt
+        save_grove_picks()
+    return points
+
+
+def grove_search(seed, count, bound):
+    """(the number of the attempt chosen, its trees): the first attempt whose farthest tree is within bound, else the one with the least extent."""
     best = None
     for attempt in range(48):
         points = grove_attempt(Rng(seed, 11, attempt), count, compact=attempt >= 32)
@@ -972,14 +992,57 @@ def grove_local(seed, count, reach=None):
             continue
         extent = max(math.hypot(x, y) for x, y in points)
         if extent <= bound:
-            SHAPES[("grove", seed, count, bound)] = points
-            return points
+            return attempt, points
         if best is None or extent < best[0]:
-            best = (extent, points)
+            best = (extent, attempt, points)
     if best is None:
         raise RuntimeError("No room for a grove of %d trees (seed %d)" % (count, seed))
-    SHAPES[("grove", seed, count, bound)] = best[1]
-    return best[1]
+    return best[1], best[2]
+
+
+GROVE_PICKS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "grove_picks.json")
+GROVE_PICKS = {}  # "seed:count:bound" -> number of the attempt grove_search chose; None until loaded, or when HOL_GROVE_PICKS=off
+GROVE_PICKS_LOADED = False
+
+
+def grove_signature():
+    """What the picks depend on: the code and the numbers of the groves' dart throwing. When any of it changes, the file is of no use (and rewritten)."""
+    import hashlib
+    import inspect
+    parts = [inspect.getsource(function) for function in (mix_seed, Rng, centred, big_room, grove_attempt, grove_search)]
+    parts += [repr(value) for value in (GROVE_SPACING, GROVE_SPACING_SLACK, GROVE_NEVER, GROVE_AREA, GROVE_GLADES, GLADE_RADIUS, GLADE_SCALE, GLADE_FORCE, GLADE_REACH, PATH_HALF_WIDTH, MASK32)]
+    return hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:16]
+
+
+def grove_picks():
+    """The picks dictionary (loaded once), or None when the file is switched off (HOL_GROVE_PICKS=off) or the code cannot be read."""
+    global GROVE_PICKS_LOADED
+    if os.environ.get("HOL_GROVE_PICKS", "on") == "off":
+        return None
+    if not GROVE_PICKS_LOADED:
+        GROVE_PICKS_LOADED = True
+        try:
+            import json
+            with open(GROVE_PICKS_FILE, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if data.get("signature") == grove_signature():
+                GROVE_PICKS.update({key: int(value) for key, value in data.get("picks", {}).items()})
+        except (OSError, ValueError, TypeError):
+            pass
+    return GROVE_PICKS
+
+
+def save_grove_picks():
+    """Writes the picks next to this file (best effort: a failure only costs the next run its search)."""
+    try:
+        import json
+        text = json.dumps({"signature": grove_signature(), "picks": GROVE_PICKS}, indent=0, sort_keys=True)
+        temporary = "%s.%d.tmp" % (GROVE_PICKS_FILE, os.getpid())
+        with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text + "\n")
+        os.replace(temporary, GROVE_PICKS_FILE)
+    except (OSError, TypeError):
+        pass
 
 
 def grove_points(seed, centre, count, axis=(1.0, 0.0), reach=None):

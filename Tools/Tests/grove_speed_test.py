@@ -21,7 +21,7 @@ import maps_stub  # noqa: E402
 maps_stub.install()
 from maps import common  # noqa: E402
 
-GROVE_BUDGET = 60.0  # seconds for relays + sites of Hinterland:Small (the whole plan is laid once and cached)
+GROVE_BUDGET = 40.0  # seconds for relays + sites of Hinterland:Small with the picks file (Haldir-6: about 3 s; without it, about a minute)
 
 # (seed, count, attempt, compact) -> sha1[:16] of the trees' offsets, taken with the all-pairs free() (c158640)
 SAME_TREES = {
@@ -53,32 +53,65 @@ def same_trees():
     return failed
 
 
-def hinterland_fast():
+def picks_same():
+    """The picks file only skips the search: grove_local with the chosen attempt given gives the trees the full search gives."""
+    failed = 0
+    keys = [(3, 40, 500.0), (5, 25, 330.0), (1234, 14, 850.0), (8, 100, 1500.0), (21, 14, 329.0)]
+    saved = common.save_grove_picks
+    common.save_grove_picks = lambda: None  # the test keys do not go in the file
+    for seed, count, bound in keys:
+        attempt, cold = common.grove_search(seed, count, bound)
+        pick_key = "%d:%d:%r" % (seed, count, bound)
+        common.SHAPES.clear()
+        common.grove_picks()[pick_key] = attempt
+        warm = common.grove_local(seed, count, bound)
+        del common.grove_picks()[pick_key]
+        common.SHAPES.clear()
+        searched = common.grove_local(seed, count, bound)  # no pick: the search itself
+        del common.grove_picks()[pick_key]
+        if digest(warm) != digest(cold) or digest(searched) != digest(cold):
+            failed += 1
+            print("picks %s: attempt %d gives other trees  <-- FAIL" % ((seed, count, bound), attempt))
+    common.save_grove_picks = saved
+    common.SHAPES.clear()
+    print("picks same: %d of %d identical  %s" % (len(keys) - failed, len(keys), "PASS" if not failed else "FAIL"))
+    return failed
+
+
+def hinterland_fast(passes=3):
+    """Hinterland Small relays+sites, PASSES times (the worst counts: the machine is shared with other agents), the shapes forgotten each time."""
     maps = common.read_maps()
     places, side = common.read_sizes()["Small"]
     recipe = common.sized_recipe("Hinterland", "Small", places, side)
     module = importlib.import_module("maps." + maps["Hinterland"])
-    result = {}
+    worst = 0.0
+    for number in range(passes):
+        common.SHAPES.clear()
+        result = {}
 
-    def work():
-        result["relays"] = module.relays(recipe)
-        result["sites"] = module.sites(recipe)
+        def work():
+            result["relays"] = module.relays(recipe)
+            result["sites"] = module.sites(recipe)
 
-    start = time.time()
-    thread = threading.Thread(target=work, daemon=True)
-    thread.start()
-    thread.join(GROVE_BUDGET)
-    if thread.is_alive():
-        print("Hinterland Small relays+sites: not done in %.0f s  <-- FAIL" % GROVE_BUDGET)
-        return 1
-    seconds = time.time() - start
-    ok = len(result["relays"]) > 0 and len(result["sites"]) > 0 and seconds <= GROVE_BUDGET
-    print("Hinterland Small relays+sites: %d relays, %d sites in %.1f s (budget %.0f)  %s" % (len(result["relays"]), len(result["sites"]), seconds, GROVE_BUDGET, "PASS" if ok else "FAIL"))
+        start = time.time()
+        thread = threading.Thread(target=work, daemon=True)
+        thread.start()
+        thread.join(GROVE_BUDGET)
+        if thread.is_alive():
+            print("Hinterland Small relays+sites: pass %d not done in %.0f s (picks file missing or stale? run again to fill it)  <-- FAIL" % (number + 1, GROVE_BUDGET))
+            return 1
+        seconds = time.time() - start
+        worst = max(worst, seconds)
+        if not (len(result["relays"]) > 0 and len(result["sites"]) > 0):
+            print("Hinterland Small relays+sites: nothing laid  <-- FAIL")
+            return 1
+    ok = worst <= GROVE_BUDGET
+    print("Hinterland Small relays+sites: worst of %d passes %.1f s (budget %.0f; HOL_GROVE_PICKS=off gives the cold time, about a minute)  %s" % (passes, worst, GROVE_BUDGET, "PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
 
 if __name__ == "__main__":
-    failed = same_trees() + hinterland_fast()
+    failed = same_trees() + picks_same() + hinterland_fast()
     print("grove_speed_test: %s" % ("PASS" if not failed else "FAIL"))
     sys.stdout.flush()
     os._exit(1 if failed else 0)
