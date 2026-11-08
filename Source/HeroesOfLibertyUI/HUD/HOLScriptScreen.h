@@ -54,6 +54,13 @@ public:
 	void KeyPressed(FName KeyName);
 
 	/**
+	 * The player selected one finished building alone (a click, not a unit, a source or a group): TypeName as BuildingTypes.csv writes it
+	 * ("House"). The script rings the selection sound of its family (Audio B5, HOLAudioBuildings::SelectEventFor).
+	 */
+	UFUNCTION(BlueprintImplementableEvent, Category = "HeroesOfLiberty|UI")
+	void BuildingSelected(const FString& TypeName);
+
+	/**
 	 * Refresh at once, the timer started again: hol.HUD.Report calls it before Describe, the screen then showing what the
 	 * game holds now (the tests' waits draw no frame, so tick no widget).
 	 */

@@ -1169,6 +1169,14 @@ void UHOLGameScreen::RefreshAbsenceBanner()
 void UHOLGameScreen::HandleSelectionChanged()
 {
 	BindBuilding(Controller.IsValid() ? Controller->GetSelection() : nullptr);
+	// Audio B5: one finished building selected alone (not a unit, a source or a group): the script rings its family's selection sound.
+	const AHOLPlayerController* SelectionController = Controller.Get();
+	const AHOLBuilding* SelectedAlone = SelectionController ? SelectionController->GetSelection() : nullptr;
+	if (ScriptScreen && SelectedAlone && SelectedAlone->IsFinished() && SelectionController->GetSelectedUnits().IsEmpty()
+		&& SelectionController->GetSelectedSource() == INDEX_NONE && !SelectionController->HasBuildingGroup())
+	{
+		ScriptScreen->BuildingSelected(SelectedAlone->GetTypeName().ToString());
+	}
 	Refresh();
 }
 
