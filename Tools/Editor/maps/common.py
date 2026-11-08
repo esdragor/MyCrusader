@@ -1344,6 +1344,11 @@ SITE_MARGIN = 500.0 # cm of free ground between a site's zone and a relay's, the
 SITE_FRACTIONS = (1.0, 0.95, 1.05, 0.9, 1.1, 0.85, 1.15, 0.8, 0.75, 1.2, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2)  # of the places' circle
 
 
+def site_count(recipe):
+    """STUB of the red test: the count the map asks for (the user's answer: 2 to 3 sites in all)."""
+    return 2
+
+
 def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(), rings=None):
     """The sites of a map: `rings` rings (SITE_RINGS) of one site per place. A ring lies on the middle angles between two places (on_slots: on the places' own
     axes, for the maps whose ranges run along the middle angles), on the first circle (SITE_FRACTIONS of the places' circle, the outer ones first: the relays
