@@ -17,3 +17,4 @@ Durée : environ 1 min. Réponse attendue : `OK` ou `BUG: le gris grésille enco
 
 
 integre sur main fc601b7 (fusion groupee n1, 2026-11-08 11:38) : session_gate -Phase Essay PASS ; preflight fog_trees PASS sur ce build (Sauron), PNG fogtrees_c ouvert : soldats revenus, plus aucun arbre, brouillard noir autour.
+Reponse: BUG: le scenario reste bloque en preparation (utilisateur, 2026-11-08 ~11:55, lance par play.ps1 fog_trees -Root ...Sauron). A rejouer par le meme geste que l'utilisateur (play.ps1, pas preflight).
