@@ -715,14 +715,29 @@ class Rng:
 
     def uniform(self):
         """In [0, 1)."""
-        return self.next_u32() / 4294967296.0
+        x = self.state  # next_u32 written out: the dart throwing of the groves draws millions of numbers (same numbers, fewer calls)
+        x ^= (x << 13) & MASK32
+        x ^= x >> 17
+        x ^= (x << 5) & MASK32
+        self.state = x
+        return x / 4294967296.0
 
     def range(self, low, high):
-        return low + (high - low) * self.uniform()
+        x = self.state
+        x ^= (x << 13) & MASK32
+        x ^= x >> 17
+        x ^= (x << 5) & MASK32
+        self.state = x
+        return low + (high - low) * (x / 4294967296.0)
 
     def below(self, count):
         """An integer in 0..count-1."""
-        return min(count - 1, int(self.uniform() * count))
+        x = self.state
+        x ^= (x << 13) & MASK32
+        x ^= x >> 17
+        x ^= (x << 5) & MASK32
+        self.state = x
+        return min(count - 1, int(x / 4294967296.0 * count))
 
     def chance(self, probability):
         return self.uniform() < probability
@@ -801,10 +816,15 @@ def grove_attempt(rng, count, compact):
     wobble = 0.4 if compact else 1.0
     harmonics = [(k, rng.range(0.15, 0.35) * wobble * (1.0, 0.8, 0.6)[k - 1], rng.range(0.0, 2 * math.pi)) for k in (1, 2, 3)]
 
+    (k1, a1, p1), (k2, a2, p2), (k3, a3, p3) = harmonics
+    cosine = math.cos
+
     def outline(angle):
-        return max(0.5, min(1.7, 1.0 + sum(amplitude * math.cos(k * angle + phase) for k, amplitude, phase in harmonics)))
+        # The three terms added in the order sum() did (the same floats), without the generator.
+        return max(0.5, min(1.7, 1.0 + (a1 * cosine(k1 * angle + p1) + a2 * cosine(k2 * angle + p2) + a3 * cosine(k3 * angle + p3))))
 
     mean_square = sum(outline(2 * math.pi * i / 72) ** 2 for i in range(72)) / 72
+    root_square = math.sqrt(mean_square)
     # What is cut out of the blob (a glade, a path) is made up for with a bigger blob.
     glades, paths = [], []
     cut_area = 0.0
@@ -831,7 +851,7 @@ def grove_attempt(rng, count, compact):
         u = x / semi_a
         v = (y - bend * x * x / semi_a) / semi_b
         rho = math.hypot(u, v)
-        return rho <= outline(math.atan2(v, u)) / math.sqrt(mean_square)
+        return rho <= outline(math.atan2(v, u)) / root_square
 
     cuts = [(world(fraction, angle), size) for fraction, angle, size in glades]
     corridors = []  # (point, unit direction, both ways)
@@ -839,6 +859,8 @@ def grove_attempt(rng, count, compact):
         corridors.append((world(fraction, angle), (math.cos(heading), math.sin(heading)), through))
 
     def cut_out(x, y, margin=0.0):
+        if not cuts and not corridors:
+            return False
         if any(math.hypot(x - at[0], y - at[1]) < size + margin for at, size in cuts):
             return True
         for at, direction, through in corridors:
@@ -852,9 +874,29 @@ def grove_attempt(rng, count, compact):
         return False
 
     points = []
+    # The trees in a grid of CELL cm squares: free() looks at the cells round the candidate only (it was every tree placed: O(n) per try, minutes
+    # for a grove of 210 in plain Python). The answer is the same (a candidate is free when no tree is nearer than apart, whatever the order).
+    cell = GROVE_SPACING + GROVE_SPACING_SLACK
+    grid = {}
+
+    def add(x, y):
+        points.append((x, y))
+        grid.setdefault((math.floor(x / cell), math.floor(y / cell)), []).append((x, y))
+
+    cells_of = grid.get
 
     def free(x, y, apart):
-        return all((x - px) ** 2 + (y - py) ** 2 >= apart * apart for px, py in points)
+        reach = math.ceil(apart / cell)
+        cx, cy = math.floor(x / cell), math.floor(y / cell)
+        square = apart * apart
+        for i in range(cx - reach, cx + reach + 1):
+            for j in range(cy - reach, cy + reach + 1):
+                in_cell = cells_of((i, j))
+                if in_cell is not None:
+                    for px, py in in_cell:
+                        if (x - px) ** 2 + (y - py) ** 2 < square:
+                            return False
+        return True
 
     # Trees sprout one from another: the next one 220 to ~240 cm from a tree already there (a wall: trunks closer than 2.4 m
     # leave no way through), farther apart towards the edge where the grove thins out, always at least the spacing from every
@@ -869,18 +911,22 @@ def grove_attempt(rng, count, compact):
         if points and stalled < 300:
             # Two drawn, the one nearer the middle sprouts: a plump blob, not a branching tree.
             first, second = points[rng.below(len(points))], points[rng.below(len(points))]
-            parent = min(first, second, key=lambda p: math.hypot(p[0] - middle[0], p[1] - middle[1]))
+            first_far = math.hypot(first[0] - middle[0], first[1] - middle[1])
+            second_far = math.hypot(second[0] - middle[0], second[1] - middle[1])
+            # min(first, second, key=distance): the first of the two when they tie.
+            parent, parent_far = (first, first_far) if first_far <= second_far else (second, second_far)
             angle = rng.range(0.0, 2 * math.pi)
-            share_parent = math.hypot(parent[0] - middle[0], parent[1] - middle[1]) / (radius * 1.2)
+            share_parent = parent_far / (radius * 1.2)
             step = spacing + 8.0 + 28.0 * min(1.0, share_parent) ** 2 * rng.uniform()
             x, y = parent[0] + step * math.cos(angle), parent[1] + step * math.sin(angle)
         else:
             angle = rng.range(0.0, 2 * math.pi)
             share = math.sqrt(rng.uniform())
-            x, y = world(share * outline(angle) / math.sqrt(mean_square), angle)
-        if not inside(x, y) or cut_out(x, y) or not free(x, y, spacing):
+            x, y = world(share * outline(angle) / root_square, angle)
+        # The three tests are pure: the cheap ones first (the same answer, the outline's trigonometry only for the few that survive).
+        if cut_out(x, y) or not free(x, y, spacing) or not inside(x, y):
             continue
-        points.append((x, y))
+        add(x, y)
         stalled = 0
     # The lone trees and the clumps just outside: from one of the outer trees, outwards, never closer than 3 m to another.
     middle = (sum(x for x, _ in points) / len(points), sum(y for _, y in points) / len(points))
@@ -901,7 +947,8 @@ def grove_attempt(rng, count, compact):
                         clump.append(candidate)
                         break
             if len(clump) == size and all(free(x, y, 300.0 if size == 1 else GROVE_SPACING) and not cut_out(x, y, 150.0) for x, y in clump):
-                points += clump
+                for x, y in clump:
+                    add(x, y)
                 break
         else:
             return None
