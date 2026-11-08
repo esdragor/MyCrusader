@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+unit_tiers_grey | Caserne selectionnee au palier 0 : dans la grille de droite le Lancier (A) est actif et l'Homme d'armes (Z) est grise (palier requis)
+unit_tiers_open | Apres hol.Cheat.Tier 1 et la touche Z : la case de l'Homme d'armes est active et un Homme d'armes est sorti de la Caserne

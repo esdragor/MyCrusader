@@ -84,7 +84,7 @@ def compose(colour=None, path="/Game/Buildings/Forum/SM_Forum"):
     variant = next((a.split("=", 1)[1].upper() for a in sys.argv[1:] if a.startswith("--variant=")), None)
     items = list(layout.VARIANTS[variant]() if variant else layout.LAYOUT)
     if colour in ("banner", "both"):
-        items += layout.banner_items()
+        items += layout.banner_items(variant)
     owner_material = unreal.load_asset("/Game/Rendering/M_FlatColor")
     if colour and not owner_material:
         raise RuntimeError("Missing /Game/Rendering/M_FlatColor")

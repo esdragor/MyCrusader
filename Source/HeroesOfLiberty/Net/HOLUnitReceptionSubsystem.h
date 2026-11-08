@@ -57,6 +57,12 @@ public:
 	void SetWatchedLoad(uint32 UnitId, EHOLResource Resource, int32 Amount);
 	void ResetStats();
 
+	/**
+	 * Tests (L2, client model): receives one unit as ReadSlots would (its slot, its type, its owner, its state) and creates its
+	 * display entity through CreateEntities, on a world that is no client. The type joins the type list if it is not there.
+	 */
+	bool ReceiveUnitForTest(uint32 UnitId, FName TypeName, uint8 OwnerPlayer, const FHOLNetUnitState& State);
+
 	// UTickableWorldSubsystem
 	virtual void Tick(float DeltaTime) override;
 	virtual TStatId GetStatId() const override;
