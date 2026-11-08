@@ -340,14 +340,26 @@ void UHOLUnitSubsystem::PreloadFactionTemplates(const EHOLUnitTemplateKind Kind)
 {
 	// Every (faction, type) the overrides name: FindTemplate builds the faction's own template when its row builds other constants
 	// than the table's (GetTemplateKey), and answers the type's own, already built, when it does not (a name or a cost override).
+	// L13: a machine that draws lays bodies (J7c), so each faction's body is built with its model; a dedicated server none.
+	const double StartSeconds = FPlatformTime::Seconds();
+	const bool bCorpses = !GetWorld()->IsNetMode(NM_DedicatedServer);
+	int32 NumBuilt = 0;
 	const HOLFactionRules::FTable& Table = HOLFactionRules::GetTable();
 	for (const HOLFactionRules::FOverrideRow& Override : Table.Overrides)
 	{
 		if (!Override.Faction.IsNone() && !Override.Type.IsNone() && FindTypeRow(Override.Type))
 		{
-			FindTemplate(Override.Type, Kind, Override.Faction);
+			NumBuilt += FindTemplate(Override.Type, Kind, Override.Faction) != nullptr ? 1 : 0;
+			if (bCorpses)
+			{
+				FindTemplate(Override.Type, EHOLUnitTemplateKind::Corpse, Override.Faction);
+			}
 		}
 	}
+	// The measure of the faction preload (L13 reste: "valeur non mesuree"): rows visited, and the time it took.
+	UE_LOG(LogHOLSimulation, Display, TEXT("Faction templates preloaded: %d override rows visited%s, %d faction models built in all, in %.0f ms"),
+		NumBuilt, bCorpses ? TEXT(" (bodies too)") : TEXT(""), DisplayTemplateCache.Num() + TemplateCache.Num() + CorpseTemplateCache.Num(),
+		(FPlatformTime::Seconds() - StartSeconds) * 1000.);
 }
 
 const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind, const FName FactionKey)
