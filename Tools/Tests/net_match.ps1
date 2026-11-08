@@ -47,6 +47,8 @@ param(
     # and no capture in their sequence (a capture waits for drawn frames, which never come without a renderer). They
     # join and receive the match like a player's game, at a fraction of its cost: what a measure of the servers wants.
     [switch] $Headless,
+    # Clients in a real window (second screen, -WinX); default: hidden (-RenderOffScreen, -WindowStyle Hidden), nothing pops on the user's screen.
+    [switch] $Visible,
     [string] $EngineDir = "",
     # The clients run from a COPY of the worktree's binaries (BinaryCopy.ps1) so that Tools\build.ps1 of the worktree stays free during the measure
     # (the staged server is a separate build: untouched). Their saved dirs (Saved_Tests_Net<Tag><N>) are junctions to the worktree's.
@@ -124,7 +126,7 @@ if ($Units -gt 0) {
 }
 if ($ServerCommands) { $ServerArguments += " -ExecCmds=`"$($ServerCommands -join ',')`"" }
 $ServerProcess = Start-Process -FilePath $Server -ArgumentList $ServerArguments `
-    -PassThru -WindowStyle Minimized
+    -PassThru -WindowStyle Hidden
 Write-Host "server: pid $($ServerProcess.Id), log $ServerLog"
 
 # The clients wait for the server to listen, then join; side by side on the second screen (1920 x 1080 from x = 3840).
@@ -170,7 +172,8 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
         -replace '^(ResolutionSizeY|LastUserConfirmedResolutionSizeY)=.*', '$1=1000' `
         -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
     $X = 3840 + ($Client - 1) * $Width
-    $Display = if ($Headless) { "-nullrhi -nosound -unattended" } else { "-windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40" }
+    $Display = if ($Headless) { "-nullrhi -nosound -unattended" } elseif ($Visible) { "-windowed -ResX=$($Width - 20) -ResY=1000 -WinX=$X -WinY=40" } else { "-RenderOffScreen -ResX=$($Width - 20) -ResY=1000 -nosound -unattended" }
+    $WinStyle = if ($Visible) { "Normal" } else { "Hidden" }
     # A light client capped at 60 frames per second (a player's game): without a renderer nothing paces it (600-690 fps) and it burnt more than a
     # processor each (248 % of one core for two, 2026-10-29) in a measure that wants the servers' load, not theirs.
     $ClientCommands = $NetCommands + $(if ($Headless) { @("t.MaxFPS 60") } else { @() }) + "hol.Test.Run $Sequence"
@@ -178,7 +181,7 @@ for ($Client = 1; $Client -le $Clients; $Client++) {
     $ClientProcess = if ($Headless) {
         Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     } else {
-        Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru
+        Start-Process -FilePath (Join-Path $EngineDir "Binaries\Win64\UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle $WinStyle
     }
     $ClientProcesses += $ClientProcess
     $ClientLogs += $ClientLog

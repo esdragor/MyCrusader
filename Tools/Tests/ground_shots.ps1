@@ -35,7 +35,7 @@ Remove-Item $Log -ErrorAction SilentlyContinue
     "capture ground_base", "hol.Camera.Focus 0 0", "frames 40", "capture ground_centre", "hol.Camera.Zoom 8", "frames 40", "capture ground_low",
     "hol.Camera.Zoom 6", "frames 40", "capture ground_lower", "quit") | Set-Content -Encoding ascii $Sequence
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -culture=fr -LiveCoding=0 -as-exit-on-error -asdebugport=0 -saveddirsuffix=$Suffix -abslog=`"$Log`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $Sequence`""
-$Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru
+$Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 if (-not $Process.WaitForExit(600000)) { $Process.Kill() }
 $Shots = Join-Path $Dir "Screenshots\WindowsEditor\HOL"
 $Out = Join-Path $Project "Saved\GroundShots"

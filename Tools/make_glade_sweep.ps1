@@ -21,7 +21,7 @@ $Script = Join-Path $Project "Tools\Editor\make_glade_sweep.py"
 if ($Script -match ' ') { Write-Host "make_glade_sweep : FAIL (a space in $Script)"; exit 1 }
 $Clock = [Diagnostics.Stopwatch]::StartNew()
 $EditorArguments = "`"$UProject`" -nosplash -unattended -Multiprocess -LiveCoding=0 -nosound -abslog=`"$Log`" -ExecCmds=`"py $Script`""
-$Process = Start-Process -FilePath $Editor -ArgumentList $EditorArguments -PassThru -WindowStyle Minimized
+$Process = Start-Process -FilePath $Editor -ArgumentList $EditorArguments -PassThru -WindowStyle Hidden
 $TimedOut = -not $Process.WaitForExit(1800000)
 if ($TimedOut) { Stop-Process -Id $Process.Id -Force -ErrorAction SilentlyContinue }
 $Seconds = [math]::Round($Clock.Elapsed.TotalSeconds)

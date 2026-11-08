@@ -2,6 +2,9 @@
 
 Chaque règle est mécanique : un nombre à compter, une commande à lancer, un champ du rapport. La session principale vérifie ces champs à la réception ; un champ manquant ou hors seuil est noté « non appliqué » au bilan (`Auto_Journey_Checklist.md`).
 
+## Fenêtres (AGENT, 2026-11-08 : « des tests scénario pop sur mon écran et prennent le focus de ma souris »)
+0. **Aucun lancement fenêtré.** Tu ne lances JAMAIS un `UnrealEditor.exe` visible : `-game` / `-server` toujours avec `-nullrhi -nosound` (pas de capture) ou `-RenderOffScreen -nosound -unattended` (capture), et `Start-Process ... -WindowStyle Hidden`. Pour rejouer le geste de l'utilisateur : `play.ps1 <nom> -Hidden -Root <worktree>` (sans `-Hidden`, `play.ps1` ouvre une fenêtre : réservé à l'utilisateur). `quick_check -Visible` et `net_match -Visible` n'existent que pour l'utilisateur. Les outils partagés (`quick_check`, `net_match`, `check.ps1`, `*_paths`, `*_shots`...) sont masqués par défaut ; `Tools\AutoJourney\no_window_test.ps1` échoue si un script d'outil lance un éditeur sans masquage (et `session_gate -Phase Launch` le signale en WARN). Un lancement visible constaté = outil à corriger, pas à contourner.
+
 ## Heure et durée
 1. **Premier geste : `Get-Date` PowerShell.** Si l'heure d'arrêt dur de l'énoncé est déjà passée, ne rien faire d'autre que le dire dans le rapport. Jamais repousser l'arrêt ; seule exception : un build C++ déjà lancé, qu'on attend.
 2. **80 appels d'outils maximum, relevés par la session principale** (champ `tool_uses` de la notification de fin ; ton propre décompte est faux de 10 à 30 % : 77 déclarés = 108 réels). **Tu ne vois pas tes appels : arrête-toi à 60 appels déclarés** (marge de 30 %). À 60 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Jamais continuer « parce que c'est presque fini ». Compte en tenant une liste dans ton journal (un trait par appel), pas de mémoire.
