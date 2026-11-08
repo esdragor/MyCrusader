@@ -1677,6 +1677,9 @@ namespace
 	TAutoConsoleVariable<int32> CVarUnitStats(TEXT("hol.HUD.UnitStats"), 1,
 		TEXT("How the selected unit's statistics (attack with the technologies' bonus, armour, range, speed) are shown under its health: 0 hidden, 1 one line, 2 one line per statistic"));
 
+	TAutoConsoleVariable<int32> CVarUnitStatsBuilding(TEXT("hol.HUD.UnitStatsBuilding"), 1,
+		TEXT("The blow against buildings in the selected unit's statistics (Q-unit-stats-building): 0 never, 1 only for a unit with no ordinary attack (the Ram), 2 also next to an ordinary attack when it differs"));
+
 	/** A statistic as the line writes it: at most one decimal, none when whole (13,2 ; 12). */
 	FText FormatStat(const float Value)
 	{
@@ -1731,13 +1734,29 @@ void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 	const float Attack = Base * static_cast<float>(100 + Percent) / 100.f;
 	const float Bonus = Attack - Base;
 	const bool bStrikes = Row->Attack > 0;
+	// Q-unit-stats-building (default A, hol.HUD.UnitStatsBuilding): a unit with no ordinary attack but a blow against buildings (the Ram:
+	// 0 / 60) shows that blow, otherwise its line has no attack at all. 0 = never (the old line), 1 = only then (default), 2 = also next
+	// to an ordinary attack when it differs (Lancier 8 (bâtiments 20)).
+	const int32 BuildingMode = CVarUnitStatsBuilding.GetValueOnGameThread();
+	const bool bBuildingOnly = BuildingMode >= 1 && !bStrikes && Row->BuildingAttack > 0;
+	const bool bBuildingExtra = BuildingMode >= 2 && bStrikes && Row->BuildingAttack > 0 && Row->BuildingAttack != Row->Attack;
 	TArray<FText> Lines;
 	TArray<FString> Plain;
+	if (bBuildingOnly)
+	{
+		Lines.Add(FText::Format(LOCTEXT("StatBuildingAttack", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))));
+		Plain.Add(FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
+	}
 	if (bStrikes)
 	{
 		Lines.Add(Percent != 0 ? FText::Format(LOCTEXT("StatAttackBonus", "Attaque {0} (+{1})"), FormatStat(Attack), FormatStat(Bonus))
 			: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)));
 		Plain.Add(Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)));
+	}
+	if (bBuildingExtra)
+	{
+		Lines.Add(FText::Format(LOCTEXT("StatBuildingAttackExtra", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))));
+		Plain.Add(FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
 	}
 	// Answer to Q-unit-stats: the line keeps attack, the three armours that matter in a fight (melee, ranged, hero) and speed; the rest is the tooltip.
 	Lines.Add(FText::Format(LOCTEXT("StatMeleeArmor", "Armure mêlée {0}"), Row->MeleeArmor));
