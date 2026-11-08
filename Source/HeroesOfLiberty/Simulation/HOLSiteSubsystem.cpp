@@ -150,6 +150,13 @@ void UHOLSiteSubsystem::ClearSites()
 	Memory.Reset();
 	Victory = FHOLSiteVictoryState();
 	bVictoryApplied = false;
+	if (UWorld* World = GetWorld())
+	{
+		if (AHOLGameState* GameState = World->GetGameState<AHOLGameState>())
+		{
+			GameState->SetSiteCount(FHOLSiteCountNet());
+		}
+	}
 	PublishViews();
 }
 
@@ -352,6 +359,31 @@ void UHOLSiteSubsystem::StepVictory(AHOLGameState& GameState, const TArray<int32
 	}
 	const int32 VictorySteps = FMath::Max(1, FMath::RoundToInt(SiteVictorySeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
 	Victory = HOLSite::VictoryStep(Victory, OwnerBySite, ContestedBySite, VictoryTeam, VictorySteps);
+	{
+		// The count every machine reads (replicated, public, D431): the camp in the lead, the whole seconds left, frozen by a contested site, the winner.
+		FHOLSiteCountNet Count;
+		// Leader and Winner are camp keys (a team, or the lowest slot of the camp in Diplomacy): the count shows the lowest slot of that camp.
+		const auto SlotOfCamp = [&VictoryTeam](const int32 Camp)
+		{
+			return Camp == INDEX_NONE ? static_cast<int32>(INDEX_NONE) : VictoryTeam.IndexOfByKey(Camp);
+		};
+		Count.Leader = SlotOfCamp(Victory.Leader);
+		Count.Winner = SlotOfCamp(Victory.Winner);
+		if (Victory.Winner != INDEX_NONE)
+		{
+			Count.SecondsLeft = 0;
+		}
+		else if (Victory.Leader != INDEX_NONE)
+		{
+			const int32 Rate = FMath::Max(1, GetDefault<UHOLSimulationSettings>()->SimulationRateHz);
+			Count.SecondsLeft = FMath::DivideAndRoundUp(FMath::Max(0, VictorySteps - Victory.Held), Rate);
+			for (const int32 Contested : ContestedBySite)
+			{
+				Count.bFrozen = Count.bFrozen || Contested != 0;
+			}
+		}
+		GameState.SetSiteCount(Count);
+	}
 	if (Victory.Winner == INDEX_NONE || bVictoryApplied || OwnerBySite.IsEmpty())
 	{
 		return;
