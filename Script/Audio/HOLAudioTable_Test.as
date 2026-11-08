@@ -9,7 +9,7 @@ bool AudioTestIsSilentEvent(int Event)
 	return Event == HOLAudioEvent::UiHover || Event == HOLAudioEvent::UiToggle || Event == HOLAudioEvent::UiTick || Event == HOLAudioEvent::UiScroll
 		|| Event == HOLAudioEvent::OrderMove || Event == HOLAudioEvent::OrderAttack || Event == HOLAudioEvent::OrderGather || Event == HOLAudioEvent::OrderBuild
 		|| Event == HOLAudioEvent::OrderGarrison || Event == HOLAudioEvent::SelectBuilding
-		|| Event == HOLAudioEvent::AlertBuildingDone || Event == HOLAudioEvent::AlertTechDone;
+		|| Event == HOLAudioEvent::AlertBuildingDone || Event == HOLAudioEvent::AlertTechDone || Event == HOLAudioEvent::AlertTrade;
 }
 
 // A cue with three variants, for the tests of the choice of a variant (the table's cues have one file each since the user chose).
