@@ -79,6 +79,11 @@ namespace HOLAudioEvent
 	const int AlertTrade = 21;
 	const int AlertVolcano = 22;
 	const int AlertDiplomacy = 23;
+	// The selection of a building by FAMILY (AudioBuildingsInProgress.md; user's answer of 2026-11-07, E-audio_compare_buildings_*): only the
+	// families he elected are events. Wood = F (s_wood_door), Sacred = H (s_sacred_book). Stone, Metal (no letter, ten more candidates) and Coins
+	// (reuse the purchase sound, Q-audio-market-select) are NOT events yet. The generic SelectBuilding above stays silent.
+	const int SelectBuildingWood = 24;
+	const int SelectBuildingSacred = 25;
 }
 
 namespace HOLAudio
@@ -87,6 +92,10 @@ namespace HOLAudio
 	// how many times and how far apart (milliseconds).
 	const int VolcanoRepeatCount = 3;
 	const int VolcanoRepeatGapMs = 1000;
+
+	// THE volume setting of the elected building selection sounds (wood F, sacred H): the user heard them in the trial at volume 100 % and
+	// asked for "volume x2 to x3" (2026-11-07). 250 = x2.5, the middle; ONE line to change (200 = x2, 300 = x3). Above 100 on purpose.
+	const int BuildingSelectGainPercent = 250;
 
 	void Add(TArray<FHOLAudioCue>& Cues, int Event, FString Name, FString Pack, FString StemList, int Volume, int PitchMin, int PitchMax, int CooldownMs, int Priority)
 	{
@@ -141,6 +150,10 @@ namespace HOLAudio
 		Add(Cues, HOLAudioEvent::AlertVolcano, "Alert.Volcano", "impact-sounds", "impactBell_heavy_003", 100, 100, 100, 5000, HOLAudioPriority::Alert);
 		Add(Cues, HOLAudioEvent::AlertDiplomacy, "Alert.Diplomacy", "vsco", "v_harp_arp_up", 80, 100, 100, 1000, HOLAudioPriority::Alert);
 		SetRepeat(Cues, HOLAudioEvent::AlertVolcano, VolcanoRepeatCount, VolcanoRepeatGapMs);
+
+		// The elected building sounds (soft files made by Tools/Audio/make_soft_candidates.py, pack "soft"): volume = BuildingSelectGainPercent.
+		Add(Cues, HOLAudioEvent::SelectBuildingWood, "Select.BuildingWood", "soft", "s_wood_door", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingSacred, "Select.BuildingSacred", "soft", "s_sacred_book", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).
@@ -204,6 +217,8 @@ namespace HOLAudio
 		if (Index < 0 || Index >= Cue.Stems.Num()) return "";
 		// The VSCO 2 CE recordings (CC0) are not a Kenney pack: /Game/Audio/Vsco.
 		if (Cue.Pack == "vsco") return f"/Game/Audio/Vsco/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
+		// The softened sounds the user elected (made from CC0 recordings, Tools/Audio/make_soft_candidates.py): /Game/Audio/Soft.
+		if (Cue.Pack == "soft") return f"/Game/Audio/Soft/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 		return f"/Game/Audio/Kenney/{Cue.Pack}/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 	}
 

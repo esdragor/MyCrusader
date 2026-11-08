@@ -170,7 +170,12 @@ if ($Phase -eq 'Essay') {
       $named = $true
       $cited = @()
       $bm = [regex]::Match($etxt, '(?mi)^\s*\**branches\s*:\**\s*(.+)$')
-      if ($bm.Success) { $cited = @($bm.Groups[1].Value -split '[,;\s`]+' | Where-Object { $_ -and $_ -ne '-' -and $_ -ne 'aucune' }) }
+      if ($bm.Success) {
+        # 2026-11-08 : seule la LISTE compte, pas le commentaire qui suit (fiches "branches: heal-sleep   (le scenario vient de ...)" : 17 faux FAIL) :
+        # on coupe a la premiere parenthese et a deux espaces ou plus, puis on ne garde que des noms de branche plausibles.
+        $listText = ($bm.Groups[1].Value -replace '\s*[\(\[].*$', '') -replace '\s{2,}.*$', ''
+        $cited = @($listText -split '[,;\s`]+' | Where-Object { $_ -and $_ -ne '-' -and $_ -ne 'aucune' -and $_ -match '^[A-Za-z0-9][A-Za-z0-9._/-]*$' })
+      }
       else {
         $named = $false
         $cited = @([regex]::Matches($etxt, '[A-Za-z0-9][A-Za-z0-9._/-]*') | ForEach-Object { $_.Value } | Select-Object -Unique |

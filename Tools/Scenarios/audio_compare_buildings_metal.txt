@@ -11,33 +11,33 @@ capture audio_compare_buildings_metal_start
 waitkey Entree : commencer par Building.Metal A
 hol.Audio.Candidate Building.Metal A
 waitlog candidate played Building.Metal A
-waitkey Building.Metal A (s_metal_heavy) vient de jouer. Entree : Building.Metal B
+waitkey Building.Metal A (s_metal2_anvil_low) vient de jouer. Entree : Building.Metal B
 hol.Audio.Candidate Building.Metal B
 waitlog candidate played Building.Metal B
-waitkey Building.Metal B (s_metal_medium) vient de jouer. Entree : Building.Metal C
+waitkey Building.Metal B (s_metal2_plate_deep) vient de jouer. Entree : Building.Metal C
 hol.Audio.Candidate Building.Metal C
 waitlog candidate played Building.Metal C
-waitkey Building.Metal C (s_metal_light_low) vient de jouer. Entree : Building.Metal D
+waitkey Building.Metal C (s_metal2_pot_deep) vient de jouer. Entree : Building.Metal D
 hol.Audio.Candidate Building.Metal D
 waitlog candidate played Building.Metal D
-waitkey Building.Metal D (s_metal_plate_heavy) vient de jouer. Entree : Building.Metal E
+waitkey Building.Metal D (s_metal2_pot_three) vient de jouer. Entree : Building.Metal E
 hol.Audio.Candidate Building.Metal E
 waitlog candidate played Building.Metal E
-waitkey Building.Metal E (s_metal_plate_medium) vient de jouer. Entree : Building.Metal F
+waitkey Building.Metal E (s_metal2_tin_deep) vient de jouer. Entree : Building.Metal F
 hol.Audio.Candidate Building.Metal F
 waitlog candidate played Building.Metal F
-waitkey Building.Metal F (s_metal_pot) vient de jouer. Entree : Building.Metal G
+waitkey Building.Metal F (s_metal2_latch_deep) vient de jouer. Entree : Building.Metal G
 hol.Audio.Candidate Building.Metal G
 waitlog candidate played Building.Metal G
-waitkey Building.Metal G (s_metal_latch) vient de jouer. Entree : Building.Metal H
+waitkey Building.Metal G (s_metal2_click_deep) vient de jouer. Entree : Building.Metal H
 hol.Audio.Candidate Building.Metal H
 waitlog candidate played Building.Metal H
-waitkey Building.Metal H (s_metal_tin) vient de jouer. Entree : Building.Metal I
+waitkey Building.Metal H (s_metal2_mallet_soft) vient de jouer. Entree : Building.Metal I
 hol.Audio.Candidate Building.Metal I
 waitlog candidate played Building.Metal I
-waitkey Building.Metal I (s_metal_gong_muffled) vient de jouer. Entree : Building.Metal J
+waitkey Building.Metal I (s_metal2_gong_deep) vient de jouer. Entree : Building.Metal J
 hol.Audio.Candidate Building.Metal J
 waitlog candidate played Building.Metal J
-waitkey Building.Metal J (s_metal_mallet) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Metal J (s_metal2_double) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

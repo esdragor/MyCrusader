@@ -193,6 +193,21 @@ namespace HOLAudioBuildings
 		return "";
 	}
 
+	// The audio event of a family's elected selection sound (HOLAudioEvent::SelectBuildingWood / SelectBuildingSacred); -1 while the user has not
+	// elected one for the family (Stone, Metal: ten more candidates asked; Coins: the purchase sound, see Q-audio-market-select) or for an unknown family.
+	int SelectEventOfFamily(FString Family)
+	{
+		if (Family == "Wood") return HOLAudioEvent::SelectBuildingWood;
+		if (Family == "Sacred") return HOLAudioEvent::SelectBuildingSacred;
+		return -1;
+	}
+
+	// The audio event rung when the player selects this building (-1: silent, or an unknown building). The code that plays (step B5, C++) asks this.
+	int SelectEventFor(FString Building)
+	{
+		return SelectEventOfFamily(FamilyOf(Building));
+	}
+
 	// The family cue name of a building ("" for an unknown building).
 	FString CueNameFor(FString Building)
 	{

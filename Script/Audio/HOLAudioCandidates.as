@@ -57,6 +57,9 @@ namespace HOLAudioCandidates
 		Add(List, "Alert.Trade", "s_trade_purse,s_trade_purse_b,s_trade_leather,s_trade_drop,s_trade_tin,s_trade_wood_double,s_trade_cloth_belt,s_trade_soft,s_trade_coins_double,s_trade_generic");
 		Add(List, "Alert.Volcano", "s_volc_timpani_deep,s_volc_gong_low,s_volc_bass,s_volc_heavy_metal,s_volc_punch,s_volc_wood_rumble,s_volc_plate,s_volc_soft_boom,s_volc_creak,s_volc_mining");
 		Add(List, "Alert.Diplomacy", "s_dipl_harp_low,s_dipl_harp_arp,s_dipl_cello,s_dipl_bass,s_dipl_book_open,s_dipl_door,s_dipl_cloth,s_dipl_leather_double,s_dipl_creak,s_dipl_wood_double");
+		// The elected building selection sounds (2026-11-07): the same ten as Building.Wood / Building.Sacred below (the elected one is F / H).
+		Add(List, "Select.BuildingWood", "s_wood_light,s_wood_medium,s_wood_heavy,s_wood_plank,s_wood_chop,s_wood_door,s_wood_creak_low,s_wood_step,s_wood_slap_low,s_wood_deep_knock");
+		Add(List, "Select.BuildingSacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
 	}
 
 	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per
@@ -66,9 +69,9 @@ namespace HOLAudioCandidates
 	void BuildBuildings(TArray<FHOLAudioCandidates>& List)
 	{
 		Add(List, "Building.Wood", "s_wood_light,s_wood_medium,s_wood_heavy,s_wood_plank,s_wood_chop,s_wood_door,s_wood_creak_low,s_wood_step,s_wood_slap_low,s_wood_deep_knock");
-		Add(List, "Building.Stone", "s_stone_mine_a,s_stone_mine_b,s_stone_mine_c,s_stone_mine_d,s_stone_punch_heavy,s_stone_punch_soft,s_stone_door,s_stone_thud,s_stone_drum,s_stone_mallet");
+		Add(List, "Building.Stone", "s_stone2_mine_deep,s_stone2_mine_slow,s_stone2_thud_low,s_stone2_punch_deep,s_stone2_timpani,s_stone2_bass,s_stone2_wood_heavy,s_stone2_door_slow,s_stone2_plank_low,s_stone2_gong_dull");
 		Add(List, "Building.Sacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
-		Add(List, "Building.Metal", "s_metal_heavy,s_metal_medium,s_metal_light_low,s_metal_plate_heavy,s_metal_plate_medium,s_metal_pot,s_metal_latch,s_metal_tin,s_metal_gong_muffled,s_metal_mallet");
+		Add(List, "Building.Metal", "s_metal2_anvil_low,s_metal2_plate_deep,s_metal2_pot_deep,s_metal2_pot_three,s_metal2_tin_deep,s_metal2_latch_deep,s_metal2_click_deep,s_metal2_mallet_soft,s_metal2_gong_deep,s_metal2_double");
 		Add(List, "Building.Coins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
 	}
 
