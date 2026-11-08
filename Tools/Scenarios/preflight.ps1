@@ -51,6 +51,14 @@ if ($Waits -gt $MaxSeconds) { Report "FAIL" "static: the scenario waits $Waits s
 else { Report "OK" "static: $Waits s of explicit waits, $Keys waitkey step(s) (Enter = next stage, the user decides when)" }
 if ($Notes -lt 1) { Report "FAIL" "no `note` line: the user is not told what to try" } else { Report "OK" "$Notes note(s) for the panel" }
 
+# 2b (static, E-fog_trees 2026-11-08): a ground click far (> 10 frames) from the camera placement. check.ps1 runs with the edge scrolling off and no cursor,
+# so it never sees what the user's game (play.ps1: edge scrolling on, a cursor, keys) does: the camera drifts, the point leaves the screen, the click never comes,
+# the panel stays on "en preparation...". See PanExposure.ps1 and pan_exposure_test.ps1.
+. (Join-Path $PSScriptRoot "PanExposure.ps1")
+$PanOffenders = @(Get-PanExposure (Get-Content -Encoding UTF8 $Txt))
+if ($PanOffenders.Count -gt 0) { Report "FAIL" "pan exposure: $($PanOffenders[0]) ($($PanOffenders.Count) in all; set the camera right before the click, 2 frames, not before a long wait)" }
+else { Report "OK" "pan exposure: every ground click is within 10 frames of the camera placement" }
+
 # 4 (static part): the .look file
 $Points = @()
 if (-not (Test-Path $Look)) { Report "FAIL" "no $Name.look: declare each point to look at as '<capture name> | <what the user must see>'" }
