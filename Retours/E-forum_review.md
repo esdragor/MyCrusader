@@ -23,3 +23,7 @@ NON VÉRIFIÉ : jugé à la main uniquement sur des captures de 1066 x 600 px (l
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 forum_review -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
 Durée : environ 2 min (Entrée = variante suivante, la lettre est écrite à l'écran). Les lettres : K, L, M, N, O, P, Q, R, S, T.
 Réponse attendue : `aimé : <lettres> / pas aimé : <lettres>` (ex. `aimé : K, S / pas aimé : N, O`), ou `BUG: ...`.
+
+
+integre sur main fc601b7 (fusion groupee n1, 2026-11-08 11:38) : session_gate -Phase Essay PASS ; preflight forum_review PASS sur ce build (Sauron), PNG fr_N ouvert : Forum N seul sur sol degage, lettre jaune a l'ecran ; WARN preflight : pas de ligne 'HUD overlap'.
+Reponse: aime : K, L (drapeau a remonter), M, N, O, Q (drapeau a remonter), T ; pas aime : P, R, S (utilisateur, 2026-11-08 ~11:55). A reporter dans VisualInProgress.md puis dix nouvelles variantes a partir des aimees (drapeau plus haut sur L et Q).
