@@ -137,6 +137,11 @@ void UHOLSiteSubsystem::ClearSites()
 	Sites.Reset();
 }
 
+void UHOLSiteSubsystem::PublishViews()
+{
+	// S5 stub: nothing is published yet (the test of the views is red).
+}
+
 int32 UHOLSiteSubsystem::CountOwned(const int32 Slot) const
 {
 	int32 Count = 0;
@@ -220,4 +225,5 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 			UE_LOG(LogHOLMatch, Display, TEXT("Site %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
 		}
 	}
+	PublishViews();
 }

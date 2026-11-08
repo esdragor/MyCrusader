@@ -6,6 +6,9 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
+#include "Map/HOLFogMode.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLPlayerState.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSiteSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -128,6 +131,88 @@ namespace UE::HeroesOfLiberty::Tests::SiteSubsystem
 	};
 
 	const FVector Here(0., 0., 0.);
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemViewsTest, "HeroesOfLiberty.Sites.SubsystemViews", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S5 (D701), through the real chain (real units, the real fog, the players' states): each player's state holds only the sites his camp may
+// know. A site nobody saw is in nobody's view; the camp whose unit stands in a zone (a Spearman sees around it) knows the site and sees its
+// state; a site another camp takes is NOT shown to a camp that never saw it; a site once seen stays as it was last seen (frozen) while the
+// fog hides it; without a fog every seat knows every site, live.
+bool FHOLSiteSubsystemViewsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	UHOLVisionSubsystem* Vision = Fixture.World->GetSubsystem<UHOLVisionSubsystem>();
+	if (!TestNotNull(TEXT("the vision subsystem"), Vision))
+	{
+		return false;
+	}
+	AHOLPlayerState* Players[3] = { nullptr, nullptr, nullptr };
+	for (int32 Slot = 0; Slot < 3; ++Slot)
+	{
+		Players[Slot] = Fixture.World->SpawnActor<AHOLPlayerState>();
+		if (!TestNotNull(TEXT("a player state"), Players[Slot]))
+		{
+			return false;
+		}
+		Players[Slot]->SetMatchSlot(Slot, Slot);
+		Fixture.GameState->AddPlayerState(Players[Slot]);
+	}
+	Vision->Start(Fixture.GameState->GetLaunchConfig(), EHOLFogMode::Normal);
+	const int32 SiteA = Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	const int32 SiteB = Fixture.Sites->AddSite(FVector2D(30000., 0.), 1500.f);
+	const uint32 Watcher = Fixture.Place(TEXT("Spearman"), 0, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Spearman of slot 0 on site A"), Watcher != 0);
+	TestTrue(TEXT("a Monk of slot 1 on site B"), Fixture.Place(TEXT("Monk"), 1, FVector(30000., 0., 0.)) != 0);
+	auto Step = [&](const int32 Count)
+	{
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			Vision->Update();
+			Fixture.Tick(1);
+		}
+	};
+	auto Find = [](const AHOLPlayerState* Player, const int32 Index) -> const FHOLSiteView*
+	{
+		return Player->GetSiteViews().FindByPredicate([Index](const FHOLSiteView& View) { return View.Index == Index; });
+	};
+
+	Step(2);
+	TestEqual(TEXT("slot 0 knows one site (the one its Spearman stands in)"), Players[0]->GetSiteViews().Num(), 1);
+	TestTrue(TEXT("... site A, at its place"), Find(Players[0], SiteA) && Find(Players[0], SiteA)->X == 0.f && Find(Players[0], SiteA)->Radius == 1500.f);
+	TestEqual(TEXT("slot 1 knows one site (its Monk's)"), Players[1]->GetSiteViews().Num(), 1);
+	TestTrue(TEXT("... site B"), Find(Players[1], SiteB) != nullptr);
+	TestEqual(TEXT("slot 2 saw nothing: no site in its view"), Players[2]->GetSiteViews().Num(), 0);
+
+	// The Monk of slot 1 takes B: slot 1 sees it its own, slot 0 (never saw B) is shown nothing, slot 2 neither.
+	Step(HoldSteps() + 5);
+	TestTrue(TEXT("slot 1 owns site B in its view"), Find(Players[1], SiteB) && Find(Players[1], SiteB)->Owner == 1);
+	TestEqual(TEXT("a site taken by another camp is not shown to a camp that never saw it"), Players[0]->GetSiteViews().Num(), 1);
+	TestTrue(TEXT("... slot 0 still knows A only"), Find(Players[0], SiteA) != nullptr && Find(Players[0], SiteB) == nullptr);
+	TestEqual(TEXT("slot 2 still knows nothing"), Players[2]->GetSiteViews().Num(), 0);
+
+	// Slot 0's Spearman leaves and a Monk of slot 1 takes A: A is explored by slot 0 but out of its sight, so its view stays as last seen (nobody's).
+	Fixture.Remove(Watcher);
+	TestTrue(TEXT("a Monk of slot 1 on site A"), Fixture.Place(TEXT("Monk"), 1, FVector(0., 0., 0.)) != 0);
+	Step(HoldSteps() + 5);
+	TestTrue(TEXT("slot 1 owns A in its view"), Find(Players[1], SiteA) && Find(Players[1], SiteA)->Owner == 1);
+	TestEqual(TEXT("slot 1 knows both sites"), Players[1]->GetSiteViews().Num(), 2);
+	TestTrue(TEXT("slot 0 still has A (explored)"), Find(Players[0], SiteA) != nullptr);
+	TestTrue(TEXT("... frozen as it last saw it: nobody's"), Find(Players[0], SiteA) && Find(Players[0], SiteA)->Owner == INDEX_NONE);
+
+	// Without a fog every seat knows every site, as it is.
+	Vision->Start(Fixture.GameState->GetLaunchConfig(), EHOLFogMode::Disabled);
+	Step(2);
+	TestEqual(TEXT("no fog: slot 2 knows both sites"), Players[2]->GetSiteViews().Num(), 2);
+	TestTrue(TEXT("no fog: slot 0 sees A live (slot 1's)"), Find(Players[0], SiteA) && Find(Players[0], SiteA)->Owner == 1);
+	return true;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemOffByDefaultTest, "HeroesOfLiberty.Sites.SubsystemOffByDefault", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)

@@ -2,6 +2,11 @@
 
 #include "Simulation/HOLSiteRules.h"
 
+FHOLSiteView HOLSite::MakeView(const int32 Index, const FVector2D& Location, const float Radius, const FHOLSiteState& State, const int32 HoldSteps)
+{
+	return FHOLSiteView();
+}
+
 void HOLSite::ResetCounts(TArray<int32>& Takers, TArray<int32>& Disturbers, const int32 Slots)
 {
 	Takers.Init(0, FMath::Max(0, Slots));

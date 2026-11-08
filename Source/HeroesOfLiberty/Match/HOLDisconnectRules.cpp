@@ -106,7 +106,7 @@ FText FHOLDisconnectRules::FormatBackLine(const FString& Name)
 
 #undef LOCTEXT_NAMESPACE
 
-FString FHOLDisconnectRules::FormatSeatReport(const int32 Slot, const FString& Name, const ESeatState State, const double SecondsLeft)
+FString FHOLDisconnectRules::FormatSeatReport(const int32 Slot, const FString& Name, const ESeatState State, const double SecondsLeft, const EAIMode AIMode)
 {
 	switch (State)
 	{

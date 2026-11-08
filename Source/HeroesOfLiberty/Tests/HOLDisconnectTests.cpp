@@ -965,6 +965,48 @@ bool FHOLDisconnectFakeBackTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// T9: hol.Disconnect.Report on the real chain says how the AI plays the seat it keeps: "hold" in the window (the console Leave), "full brain"
+// when the window ends (DefeatExpiredAbsences, Bob's camp has an AI seat), nothing once he is back. The lines are the ones the command logs.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDisconnectReportModeTest, "HeroesOfLiberty.Match.DisconnectReportMode", UE::HeroesOfLiberty::Tests::Disconnect::Flags)
+bool FHOLDisconnectReportModeTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Disconnect;
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* State = World->SpawnActor<AHOLGameState>();
+	AHOLPlayerState* Alice = World->SpawnActor<AHOLPlayerState>();
+	if (TestNotNull(TEXT("game state"), State) && TestNotNull(TEXT("Alice"), Alice))
+	{
+		State->InitVictory(MakeNamedConfig());
+		Alice->SetMatchSlot(0, 0);
+		State->AddPlayerState(Alice);
+		auto BobLine = [State]() -> FString
+		{
+			for (const FString& Line : State->DescribeDisconnections(0., 180.))
+			{
+				if (Line.StartsWith(TEXT("slot 1 ")))
+				{
+					return Line;
+				}
+			}
+			return FString();
+		};
+		TestFalse(TEXT("present: no AI mode on his line"), BobLine().Contains(TEXT("AI mode")));
+		IConsoleManager::Get().ProcessUserConsoleInput(TEXT("hol.Net.FakeAbsent Leave 1"), *GLog, World);
+		TestTrue(TEXT("in the window: the AI plays the hold mode"), BobLine().EndsWith(TEXT("AI mode hold")));
+		State->DefeatExpiredAbsences(1000., 180.);
+		TestTrue(TEXT("window over: the AI plays the full brain"), BobLine().EndsWith(TEXT("AI mode full brain")));
+		IConsoleManager::Get().ProcessUserConsoleInput(TEXT("hol.Net.FakeAbsent Back 1"), *GLog, World);
+		TestFalse(TEXT("back: no AI mode on his line"), BobLine().Contains(TEXT("AI mode")));
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 // D718 (T5): the end of the window by the rule of T1 (GetWindowEnd). Bob (slot 1) shares his camp with an AI seat (slot 2): at the end of
 // his window his seat is NOT defeated; the AI goes from the "hold" mode to the full brain at the Normal level, the banner goes out,
 // the seat stays his and he takes it back AFTER the window, with the stock the AI left. Contrast, a real 1v1 (Bob alone in his camp, two

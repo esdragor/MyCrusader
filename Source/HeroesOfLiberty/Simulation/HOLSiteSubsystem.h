@@ -47,9 +47,17 @@ public:
 	const TArray<FSite>& GetSites() const { return Sites; }
 	/** Sites the slot owns. */
 	int32 CountOwned(int32 Slot) const;
-	/** The step the simulation is on is applied: counts, rule. Public for the tests. */
+	/** The step the simulation is on is applied: counts, rule, then the views. Public for the tests. */
 	void OnStepEnded(int64 StepIndex);
 	bool BindSteps();
+
+	/**
+	 * S5 (D701): writes to each seat's player state the sites its camp may know: a site is known to a slot when its camp owns it or is taking
+	 * it, or when the fog says the camp explored the site's centre (everything is known without a fog). The view is the site's state while the
+	 * camp sees it (or owns / takes it), and stays as it last saw it while the fog hides it (a site known only by exploration, never seen,
+	 * is shown neutral). A site never known is not in the view. Server or solo; public for the tests.
+	 */
+	void PublishViews();
 
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
@@ -59,6 +67,15 @@ protected:
 private:
 	void UnbindSteps();
 
+	/** What one slot has learnt of one site: known yet, and the view as it last saw it. */
+	struct FKnown
+	{
+		bool bKnown = false;
+		FHOLSiteView View;
+	};
+
 	TArray<FSite> Sites;
+	/** [slot][site]: the memory of each seat (S5), emptied with the sites. */
+	TArray<TArray<FKnown>> Memory;
 	FDelegateHandle StepEndedHandle;
 };
