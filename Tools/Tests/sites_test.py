@@ -1,8 +1,8 @@
 """Sacred sites' map data (SacredSitesInProgress.md S4, D697: the number and the places of the sites are set by every map, no formula): the maps' own
 sites(recipe) gives [(x, y, radius)] in cm, as relays(recipe) does. Without the editor (stand-in `unreal`, maps_stub.py), on the REAL chain (the maps' own
 sites(recipe), relays(recipe) and volcano(recipe)).
-For every map of Tools/Data/Maps.csv and every size, the sites must be: at least one, a whole number of rings of one site per place; symmetric by a turn of
-one place (360 / places degrees), the rule the relays pass (FHOLRelayLayoutRules); a radius above 0; inside the bounds; outside every base's reach; clear of
+For every map of Tools/Data/Maps.csv and every size, the sites must be: 2 to 3 in all (the user's answer, Q-sites-nombre.md; the map's own count,
+common.site_count); symmetric by a half turn (every size has an even number of places; a third site is the middle); a radius above 0; inside the bounds; outside every base's reach; clear of
 every relay zone, of the altar's zone and of the lava flows; and not overlapping each other.
   python Tools/Tests/sites_test.py [Map[:Size] ...]     prints one line per map and size and PASS / FAIL; exit code 0 / 1
 """
@@ -18,6 +18,8 @@ maps_stub.install()
 from maps import common  # noqa: E402
 
 TWIN_TOLERANCE = 100.0  # cm, as the relays' symmetry (CountUnmatchedByTurn)
+MIN_SITES = 2  # the user's answer in Retours\Q-sites-nombre.md: 2 to 3 sites in all per map
+MAX_SITES = 3
 
 
 def problems_of(recipe, sites, relays, volcano):
@@ -26,14 +28,18 @@ def problems_of(recipe, sites, relays, volcano):
     places = len(recipe.angles)
     if not sites:
         return ["no site"]
-    if len(sites) % places:
-        out.append("%d sites is not a whole number of rings of %d places" % (len(sites), places))
-    turn = 2.0 * math.pi / places
-    cos, sin = math.cos(turn), math.sin(turn)
+    # The user's answer (Q-sites-nombre, 2026-11-07): 2 to 3 sites IN ALL per map, not per player; the count is the map's own (common.site_count).
+    if not MIN_SITES <= len(sites) <= MAX_SITES:
+        out.append("%d sites in all: the answer is %d to %d per map" % (len(sites), MIN_SITES, MAX_SITES))
+    if len(sites) != common.site_count(recipe):
+        out.append("%d sites but the map's count is %d" % (len(sites), common.site_count(recipe)))
+    # Every size has an even number of places, so the places themselves are symmetric by a half turn: the sites are too (a third site is the middle).
+    if places % 2:
+        out.append("%d places: a half turn does not map the places on themselves" % places)
     unmatched = sum(1 for (x, y, r) in sites
-                    if not any(math.dist((x * cos - y * sin, x * sin + y * cos), (u, v)) <= TWIN_TOLERANCE and abs(r - s) < 1.0 for (u, v, s) in sites))
+                    if not any(math.dist((-x, -y), (u, v)) <= TWIN_TOLERANCE and abs(r - s) < 1.0 for (u, v, s) in sites))
     if unmatched:
-        out.append("%d sites without a twin after a turn of one place" % unmatched)
+        out.append("%d sites without a twin after a half turn" % unmatched)
     slots = [recipe.slot(index)[0] for index in range(places)]
     altar_x, altar_y, altar_radius = volcano["altar"]
     for i, (x, y, r) in enumerate(sites):

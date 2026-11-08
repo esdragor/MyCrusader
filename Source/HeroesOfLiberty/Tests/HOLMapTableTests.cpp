@@ -12,6 +12,7 @@
 #include "Map/HOLMapRules.h"
 #include "Map/HOLMapSizeRules.h"
 #include "Map/HOLRelayLayout.h"
+#include "Map/HOLSiteLayout.h"
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLTerrainLayout.h"
 #include "Map/HOLTerrainRules.h"
@@ -206,6 +207,8 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 			int32 NumTerrainLayouts = 0;
 			TArray<FHOLPlacedRelay> PlacedRelays;
 			int32 NumRelayLayouts = 0;
+			TArray<FHOLPlacedSite> PlacedSites;
+			int32 NumSiteLayouts = 0;
 			TArray<FHOLPlacedVolcano> PlacedVolcanoes;
 			int32 NumVolcanoLayouts = 0;
 			for (const AActor* Actor : Map->PersistentLevel->Actors)
@@ -214,6 +217,11 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				{
 					PlacedRelays.Append(RelayLayout->GetRelays());
 					++NumRelayLayouts;
+				}
+				if (const AHOLSiteLayout* SiteLayout = Cast<AHOLSiteLayout>(Actor))
+				{
+					PlacedSites.Append(SiteLayout->GetSites());
+					++NumSiteLayouts;
 				}
 				if (const AHOLVolcanoLayout* VolcanoLayout = Cast<AHOLVolcanoLayout>(Actor))
 				{
@@ -326,6 +334,65 @@ bool FHOLMapTableTest::RunTest(const FString& Parameters)
 				}
 				TestEqual(FString::Printf(TEXT("%s: %d sources (trees, bushes, veins) inside a relay's zone"), *Name, SourcesInRelays), SourcesInRelays, 0);
 				AddInfo(FString::Printf(TEXT("%s: %d relays"), *Name, PlacedRelays.Num()));
+			}
+
+			// 3b2. Sacred sites of the maps (SacredSitesInProgress.md S4, D697; the user's answer to Q-sites-symetrie: 2 or 3 sites in all, symmetric by a half turn).
+			// First the rules themselves, measured on THIS map's real places, bounds and relays (a rule that answers "nothing wrong" fails here), then the layout the
+			// map carries: until the maps are regenerated with their sites (MapsInProgress.md, the one regeneration) none is laid, which is reported and not required.
+			{
+				TArray<FVector2D> SlotCentres;
+				Starts.GenerateValueArray(SlotCentres);
+				const auto MakeSite = [](const double X, const double Y, const float Radius = 1200.f)
+				{
+					FHOLPlacedSite Site;
+					Site.Location = FVector(X, Y, 0.);
+					Site.Radius = Radius;
+					return Site;
+				};
+				TestTrue(FString::Printf(TEXT("%s: 2 and 3 sites in all are allowed"), *Name), FHOLSiteLayoutRules::IsCountAllowed(2) && FHOLSiteLayoutRules::IsCountAllowed(3));
+				TestFalse(FString::Printf(TEXT("%s: 1 and 4 sites in all are refused"), *Name), FHOLSiteLayoutRules::IsCountAllowed(1) || FHOLSiteLayoutRules::IsCountAllowed(4));
+				const double Out = 0.5 * Half;
+				TestEqual(FString::Printf(TEXT("%s: a lone site has no twin after a half turn"), *Name), FHOLSiteLayoutRules::CountUnmatchedByHalfTurn({ MakeSite(Out, 0.) }), 1);
+				TestEqual(FString::Printf(TEXT("%s: a site and its opposite are symmetric"), *Name), FHOLSiteLayoutRules::CountUnmatchedByHalfTurn({ MakeSite(Out, 0.), MakeSite(-Out, 0.) }), 0);
+				TestEqual(FString::Printf(TEXT("%s: an opposite moved 3 m off has no twin (both sites unmatched)"), *Name),
+					FHOLSiteLayoutRules::CountUnmatchedByHalfTurn({ MakeSite(Out, 0.), MakeSite(-Out + 300., 0.) }), 2);
+				TestEqual(FString::Printf(TEXT("%s: an opposite of another radius has no twin"), *Name),
+					FHOLSiteLayoutRules::CountUnmatchedByHalfTurn({ MakeSite(Out, 0.), MakeSite(-Out, 0., 2400.f) }), 2);
+				TestEqual(FString::Printf(TEXT("%s: the middle is its own image"), *Name), FHOLSiteLayoutRules::CountUnmatchedByHalfTurn({ MakeSite(0., 0.) }), 0);
+				if (!SlotCentres.IsEmpty())
+				{
+					TestEqual(FString::Printf(TEXT("%s: a site on a place is in a base's reach"), *Name),
+						FHOLSiteLayoutRules::CountInBases({ MakeSite(SlotCentres[0].X, SlotCentres[0].Y) }, SlotCentres, RelayBaseReach), 1);
+				}
+				TestEqual(FString::Printf(TEXT("%s: a site at the edge leaves the bounds"), *Name), FHOLSiteLayoutRules::CountOutside({ MakeSite(Half - 600., 0.), MakeSite(0., 0.) }, Half), 1);
+				TestEqual(FString::Printf(TEXT("%s: a site of radius 0 is a bad radius"), *Name), FHOLSiteLayoutRules::CountBadRadius({ MakeSite(0., 0., 0.f), MakeSite(Out, 0.) }), 1);
+				if (!PlacedRelays.IsEmpty())
+				{
+					TestEqual(FString::Printf(TEXT("%s: a site on a relay is near it"), *Name),
+						FHOLSiteLayoutRules::CountNearRelays({ MakeSite(PlacedRelays[0].Location.X, PlacedRelays[0].Location.Y) }, PlacedRelays, FHOLSiteLayoutRules::ZoneMargin), 1);
+				}
+				TestEqual(FString::Printf(TEXT("%s: two sites 10 m apart are near each other"), *Name),
+					FHOLSiteLayoutRules::CountNearPairs({ MakeSite(0., 0.), MakeSite(1000., 0.) }, FHOLSiteLayoutRules::ZoneMargin), 1);
+				TestEqual(FString::Printf(TEXT("%s: two sites with room between them are not"), *Name),
+					FHOLSiteLayoutRules::CountNearPairs({ MakeSite(0., 0.), MakeSite(3000., 0.) }, FHOLSiteLayoutRules::ZoneMargin), 0);
+
+				constexpr bool bSitesLaidByMaps = false; // true once the maps are regenerated with their sites
+				TestTrue(FString::Printf(TEXT("%s: at most one site layout"), *Name), NumSiteLayouts <= 1);
+				if (bSitesLaidByMaps)
+				{
+					TestEqual(FString::Printf(TEXT("%s: one site layout (Tools\\make_maps.ps1 -Map %s -Sizes %s)"), *Name, MapInfo.Key, Info.Key), NumSiteLayouts, 1);
+				}
+				if (NumSiteLayouts == 1)
+				{
+					TestTrue(FString::Printf(TEXT("%s: %d sites in all (2 or 3)"), *Name, PlacedSites.Num()), FHOLSiteLayoutRules::IsCountAllowed(PlacedSites.Num()));
+					TestEqual(FString::Printf(TEXT("%s: sites without a twin after a half turn"), *Name), FHOLSiteLayoutRules::CountUnmatchedByHalfTurn(PlacedSites), 0);
+					TestEqual(FString::Printf(TEXT("%s: sites whose zone enters a base's reach"), *Name), FHOLSiteLayoutRules::CountInBases(PlacedSites, SlotCentres, RelayBaseReach), 0);
+					TestEqual(FString::Printf(TEXT("%s: sites outside the bounds"), *Name), FHOLSiteLayoutRules::CountOutside(PlacedSites, Half), 0);
+					TestEqual(FString::Printf(TEXT("%s: sites with a bad radius"), *Name), FHOLSiteLayoutRules::CountBadRadius(PlacedSites), 0);
+					TestEqual(FString::Printf(TEXT("%s: sites too near a relay"), *Name), FHOLSiteLayoutRules::CountNearRelays(PlacedSites, PlacedRelays, FHOLSiteLayoutRules::ZoneMargin), 0);
+					TestEqual(FString::Printf(TEXT("%s: pairs of sites too near each other"), *Name), FHOLSiteLayoutRules::CountNearPairs(PlacedSites, FHOLSiteLayoutRules::ZoneMargin), 0);
+					AddInfo(FString::Printf(TEXT("%s: %d sites"), *Name, PlacedSites.Num()));
+				}
 			}
 
 			// 3c. V4b (volcano sites of the maps, D607, D573): a map lays one volcano layout (every map and size, 2026-11-03); its sites are fair between the camps (the flows the same by a
