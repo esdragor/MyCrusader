@@ -40,6 +40,7 @@
 #include "Match/HOLForumRules.h"
 #include "Match/HOLGameState.h"
 #include "Siege/HOLSiegeRules.h"
+#include "Simulation/HOLUnitTierRules.h"
 #include "Match/HOLPlayerColors.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLGameMenuRules.h"
@@ -2036,10 +2037,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FText Name = HOLGameNames::GetUnitName(Command.TypeName, UnitType, LocalFactionKey());
 			// S7 (siege engines, GDD 6.1): an engine whose tier the hero has not opened is greyed too, with the reason in its tooltip
 			// (the server refuses it by the same rule, HOLSiege::Check; the workshop is there, it is its grid, the stock is above).
-			HOLSiege::EEngine Engine;
-			const bool bTierBlocked = PlayerState && BoundTableState.IsValid() && HOLSiege::FindEngine(Command.TypeName, Engine)
-				&& HOLSiege::Check(Engine, BoundTableState->GetTier(PlayerState->GetPlayerIndex()), true, true) == HOLSiege::EBlock::TierTooLow;
-			if (PlayerState && BoundTableState.IsValid() && HOLSiege::FindEngine(Command.TypeName, Engine))
+			// G1 (D711): the tier of every unit is read from its MinTier column.
+			const bool bTierBlocked = PlayerState && BoundTableState.IsValid() && HOLUnitTier::GetMinTier(Command.TypeName) >= 0
+				&& HOLUnitTier::Check(HOLUnitTier::GetMinTier(Command.TypeName), BoundTableState->GetTier(PlayerState->GetPlayerIndex()), true, true) == HOLUnitTier::EBlock::TierTooLow;
+			if (PlayerState && BoundTableState.IsValid())
 			{
 				ShownEngineTier = BoundTableState->GetTier(PlayerState->GetPlayerIndex());
 			}

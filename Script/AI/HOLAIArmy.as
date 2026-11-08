@@ -539,6 +539,11 @@ namespace HOLAIArmy
 		float BestScore = 0.f;
 		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
 		{
+			if (HOLUnitTier::MinTierOf(Data.Candidates[Index].ToString()) > int(Summary.Tier))
+			{
+				// G1 (D711): a unit the tier has not opened is not a candidate (the server refuses it).
+				continue;
+			}
 			if (OnlyBuilding != NAME_None && (Index >= Data.CandidateBuildings.Num() || Data.CandidateBuildings[Index] != OnlyBuilding))
 			{
 				continue;
