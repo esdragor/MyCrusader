@@ -49,7 +49,7 @@ void Test_AudioEveryEventHasACue(FUnitTest& T)
 			T.AssertFalse(Cue.Pack.IsEmpty(), f"event {Event}: a pack");
 			T.AssertTrue(Cue.Stems.Num() >= 1, f"event {Event}: at least one file");
 		}
-		T.AssertTrue(Cue.VolumePercent >= 1 && Cue.VolumePercent <= 100, f"event {Event}: volume 1 to 100");
+		T.AssertTrue(Cue.VolumePercent >= 1 && Cue.VolumePercent <= 300, f"event {Event}: volume 1 to 300 (the elected building sounds are x2 to x3)");
 		T.AssertTrue(Cue.PitchMinPercent >= 50 && Cue.PitchMinPercent <= Cue.PitchMaxPercent, f"event {Event}: pitch range ordered");
 		T.AssertTrue(Cue.PitchMaxPercent <= 200, f"event {Event}: pitch at most 200 %");
 		T.AssertTrue(Cue.CooldownMs >= 0, f"event {Event}: cooldown not negative");
@@ -76,6 +76,9 @@ void Test_AudioNamesAndFilesAreUnique(FUnitTest& T)
 			// The VSCO recordings (CC0) are not a Kenney pack: /Game/Audio/Vsco.
 			if (Cue.Pack == "vsco")
 				Expected = f"/Game/Audio/Vsco/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
+			// The softened sounds the user elected: /Game/Audio/Soft.
+			if (Cue.Pack == "soft")
+				Expected = f"/Game/Audio/Soft/SW_{Cue.Stems[Index]}.SW_{Cue.Stems[Index]}";
 			T.AssertEquals(Expected, Path, f"{Cue.Name}: asset path of file {Index}");
 		}
 	}
