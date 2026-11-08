@@ -13,6 +13,7 @@
 #include "Match/HOLRelayView.h"
 #include "Match/HOLVictoryRules.h"
 #include "Match/HOLVolcanoView.h"
+#include "Match/HOLSiteCount.h"
 #include "Net/HOLPauseRules.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "HOLGameState.generated.h"
@@ -208,6 +209,14 @@ public:
 	const TArray<FHOLVolcanoSiteNet>& GetVolcanoViews() const { return VolcanoViews; }
 	/** Server or solo only. */
 	void SetVolcanoViews(const TArray<FHOLVolcanoSiteNet>& Views);
+
+	/**
+	 * S10 (D431): the sacred sites' victory count as every machine knows it (camp in the lead, seconds left, frozen, winner). Public, shown to all;
+	 * the server writes it (UHOLSiteSubsystem::StepVictory), a client reads it.
+	 */
+	const FHOLSiteCountNet& GetSiteCount() const { return SiteCount; }
+	/** Server or solo only. */
+	void SetSiteCount(const FHOLSiteCountNet& Count);
 	/**
 	 * R7.5: the banner's lines at the server time Now (GetServerWorldTimeSeconds), one per notice, in the order of the
 	 * departures: « Bob : connexion perdue — 2:41 » while away, « Bob : de retour » BackNoticeSeconds after his return.
@@ -436,6 +445,10 @@ private:
 	/** V9a: the volcano sites, public. */
 	UPROPERTY(Replicated)
 	TArray<FHOLVolcanoSiteNet> VolcanoViews;
+
+	/** S10: the sacred sites' victory count, public. */
+	UPROPERTY(Replicated)
+	FHOLSiteCountNet SiteCount;
 	/** The stock kept for slot Slot while its player is away; nullptr: not absent (or no game state of ours). */
 	static FHOLResources* FindAbsentStock(const UWorld& World, int32 Slot);
 

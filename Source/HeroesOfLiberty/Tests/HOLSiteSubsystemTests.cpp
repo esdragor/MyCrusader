@@ -491,4 +491,53 @@ bool FHOLSiteSubsystemVictoryTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemCountTest, "HeroesOfLiberty.Sites.SubsystemCount", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S10 (D431), the count every machine reads (the game state's replicated SiteCount, shown to all): nobody leads before the sites are taken; once slot 0
+// holds both, it leads and the seconds left go down; an adverse Spearman in a zone freezes it (frozen, the seconds stop); once he is gone it goes on.
+bool FHOLSiteSubsystemCountTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FScopedVariable Victory(TEXT("hol.Site.VictorySeconds"), TEXT("20"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+	TestTrue(TEXT("a Monk of slot 0 on site A"), Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.)) != 0);
+	TestTrue(TEXT("a Monk of slot 0 on site B"), Fixture.Place(TEXT("Monk"), 0, FVector(4000., 0., 0.)) != 0);
+	Fixture.Tick(2);
+	TestEqual(TEXT("sites not taken yet: nobody leads"), Fixture.GameState->GetSiteCount().Leader, static_cast<int32>(INDEX_NONE));
+	Fixture.Tick(Rate + 3);
+	const FHOLSiteCountNet Started = Fixture.GameState->GetSiteCount();
+	TestEqual(TEXT("slot 0 holds both sites: it leads"), Started.Leader, 0);
+	TestEqual(TEXT("the count starts at the full time"), Started.SecondsLeft, 20);
+	TestFalse(TEXT("not frozen"), Started.bFrozen);
+
+	Fixture.Tick(5 * Rate);
+	const FHOLSiteCountNet Later = Fixture.GameState->GetSiteCount();
+	TestTrue(TEXT("five seconds later about fifteen are left"), Later.SecondsLeft >= 14 && Later.SecondsLeft <= 15);
+
+	const uint32 Intruder = Fixture.Place(TEXT("Spearman"), 1, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Spearman of slot 1 in the zone of site A"), Intruder != 0);
+	Fixture.Tick(2);
+	const FHOLSiteCountNet Frozen = Fixture.GameState->GetSiteCount();
+	TestTrue(TEXT("an adverse unit in a zone: the count is frozen"), Frozen.bFrozen);
+	Fixture.Tick(4 * Rate);
+	TestEqual(TEXT("frozen: the seconds left did not move"), Fixture.GameState->GetSiteCount().SecondsLeft, Frozen.SecondsLeft);
+	TestEqual(TEXT("frozen: the leader is still slot 0"), Fixture.GameState->GetSiteCount().Leader, 0);
+
+	Fixture.Remove(Intruder);
+	Fixture.Tick(4 * Rate);
+	const FHOLSiteCountNet Going = Fixture.GameState->GetSiteCount();
+	TestFalse(TEXT("the intruder is gone: not frozen"), Going.bFrozen);
+	TestTrue(TEXT("the count went on"), Going.SecondsLeft <= Frozen.SecondsLeft - 3);
+	return true;
+}
+
 #endif
