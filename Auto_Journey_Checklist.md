@@ -131,3 +131,12 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L9-8 | Haldir (3 agents), Sauron, Arwen, Elrond sans tâche utile de 14:20 à 16:10 : la file « sans C++ » était vide et aucun chapitre du GDD n'est libre (tous ont un *InProgress.md) | l'étape 0 liste les chapitres GDD libres (sans *InProgress.md) ; en fin de séance précédente préparer 3 lignes sans C++ par worktree ; réserver un créneau MACHINE CALME en début de séance pour les mesures S1/S2 (jamais possible en cours de séance) | SESSION + ÉTAPE 0 |
 | L9-9 | Mode autonome choisi alors que l'utilisateur était présent : ses réponses (Q-melee-stall A, sites, panneau B) n'ont pas été appliquées en séance | si l'utilisateur répond pendant une séance, proposer de passer en mode interactif (réponse = ligne de tête + relance de l'agent du worktree) | SESSION |
 | L9-10 | Essais sonores : aucun agent n'entend rien ; 12 écoutes réparties en 12 scénarios | un seul panneau d'écoute (touche = cue suivant, lettre = vote, résumé écrit à la fin) ; statut LOGIQUE SEULEMENT à vie pour les agents | AGENT 18 |
+
+## Lecons du 2026-11-08 (seance interactive 10:25-13:40) : controles ajoutes
+| ID | Regle | Controle | Ou |
+|---|---|---|---|
+| L10-1 | Un enonce d'agent a demande de reproduire un bug par play.ps1 fenetre : l'utilisateur a perdu sa souris ~6 min | no_window_test.ps1 (24 lancements corriges) + play.ps1 -Hidden + regle 0 d'agent_rules.md ; l'enonce modele ne contient jamais 'play.ps1' sans -Hidden | OUTIL + SESSION (dans heal-sleep, pas encore dans main) |
+| L10-2 | net rouge 15/15 sur 2 branches puis sur main : le premier reflexe etait de suspecter les branches | au premier net rouge apres un net vert du jour : relancer net sur main SEUL (worktree propre) avant de toucher aux branches | SESSION |
+| L10-3 | 'sans C++' ne dit pas que le binaire est a jour : la fusion 5 a du rebuild (BuildingSelected inexistant) | l'agent de fusion lit session_gate -Phase Report (binaire plus recent que le dernier commit de code) avant son quick_check | AGENT + GATE |
+| L10-4 | Edit echoue sur le C++ en CRLF : 5 agents ont perdu 3 a 5 appels | l'enonce d'un agent C++ donne la methode (remplacement PowerShell sur chaine exacte) | AGENT |
+| L10-5 | Une mesure N=8 de 2 h 20 en fond a occupe un editeur et son format (FAIL k/N, k = PASS) a ete lu a l'envers | ab_matrix.ps1 / repeat_scenario PASS k/N (fait dans heal-sleep) ; lire un tableau de mesure par un agent neuf avant toute conclusion | OUTIL |
