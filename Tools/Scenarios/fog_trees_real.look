@@ -1,4 +1,0 @@
-# <capture name> | what the user must see
-fogtreesr_a | Apres Q puis clic sur le sol : mes 4 soldats sont arrives pres du bosquet de 10 arbres, vu en pleine vue (zone claire)
-fogtreesr_b | Les soldats sont revenus au centre (Q + clic) : le bosquet coupe reste dessine dans le gris de l'explore (10 arbres)
-fogtreesr_c | Les soldats sont reparti vers le bosquet (Q + clic) : les arbres ont disparu
