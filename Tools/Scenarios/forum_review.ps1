@@ -16,8 +16,12 @@ $Cmd = Join-Path $EngineRoot "Engine\Binaries\Win64\UnrealEditor-Cmd.exe"
 $Script = Join-Path $Root "Tools\Editor\make_forum_mesh.py"
 $Failed = 0
 foreach ($Letter in $Letters) {
-    $Log = & $Cmd $UProject -run=pythonscript "-script=$Script --compose --review --variant=$Letter --colour=banner" -unattended -nullrhi -nosplash -nosound -LiveCoding=0 | Out-String
-    $Line = ($Log -split "`n" | Where-Object { $_ -match "Forum compose:" } | Select-Object -Last 1)
+    # unreal.log() goes to the editor log file, not to the standard output: -abslog sends it to a file we read back.
+    $LogFile = Join-Path $env:TEMP "forum_review_$Letter.log"
+    Remove-Item $LogFile -ErrorAction SilentlyContinue
+    & $Cmd $UProject -run=pythonscript "-script=$Script --compose --review --variant=$Letter --colour=banner" -unattended -nullrhi -nosplash -nosound -Multiprocess -LiveCoding=0 "-abslog=$LogFile" | Out-Null
+    $Log = if (Test-Path $LogFile) { Get-Content $LogFile -Raw } else { "" }
+    $Line = ($Log -split "`n" | Where-Object { $_ -match "Forum compose: .*triangles" } | Select-Object -Last 1)
     if ($Line) { Write-Host "variant ${Letter}: $($Line.Trim())" } else { Write-Host "variant ${Letter}: NOT COMPOSED"; $Failed++ }
 }
 $global:LASTEXITCODE = 0

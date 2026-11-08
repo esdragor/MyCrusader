@@ -1,67 +1,60 @@
-# Forum, dix echantillons K a T vus dans le jeu (VisualInProgress.md) : la lettre est dans la note a l'ecran ; Entree = variante suivante. Dis aime / pas aime par lettre. 3 minutes au plus.
-# Les modeles sont composes avant (Tools\Scenarios\forum_review.ps1), une fois ; ici seul le jeu tourne. Plain, toi contre une IA.
+# Forum, dix echantillons K a T vus dans le jeu (VisualInProgress.md) : la lettre est ecrite en jaune sur le sol devant le Forum ; Entree = variante suivante. Dis aime / pas aime par lettre. 3 minutes au plus.
+# Les modeles sont composes avant (Tools\Scenarios\forum_review.ps1), une fois ; ici seul le jeu tourne. Plain, toi contre une IA. Le Forum de la partie est loin (au sud) : la revue est a l'origine de la carte.
 frames 40
 panel hide
 hol.Combat.Enabled 0
-hol.Cheat.Resources 5000
-hol.Forum.Review K
-hol.Camera.Focus 0 0
-frames 10
-hol.Units.SpawnHere 5 Peasant 0 150
-waitunits 5
-hol.Units.SpawnHere 3 ManAtArms 0 -300
-waitunits 8
-wait 12
+hol.Camera.Focus 0 -3000
 hol.Camera.Zoom 2
-hol.Camera.FocusNear -450 1000
 frames 30
+hol.Forum.Review K
+frames 40
 capture fr_K
 note Forum K (1/10) : donjon symetrique, pyramide, tourelles. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review L
-frames 30
+frames 40
 capture fr_L
 note Forum L (2/10) : tourelles hautes. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review M
-frames 30
+frames 40
 capture fr_M
 note Forum M (3/10) : enceinte et tourelles d'angle. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review N
-frames 30
+frames 40
 capture fr_N
 note Forum N (4/10) : toit pointu. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review O
-frames 30
+frames 40
 capture fr_O
 note Forum O (5/10) : toit bas et large. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review P
-frames 30
+frames 40
 capture fr_P
 note Forum P (6/10) : portail sur l'axe. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review Q
-frames 30
+frames 40
 capture fr_Q
 note Forum Q (7/10) : trois etages. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review R
-frames 30
+frames 40
 capture fr_R
 note Forum R (8/10) : plate-forme crenelee et petite pyramide. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review S
-frames 30
+frames 40
 capture fr_S
 note Forum S (9/10) : portique de quatre colonnes, sans tourelle. Entree = suivante.
 waitkey Entree : variante suivante
 hol.Forum.Review T
-frames 30
+frames 40
 capture fr_T
-note Forum T (10/10) : maisons de chaque cote. Dernier. Les 10 vues sont dans les captures du scenario.
+note Forum T (10/10) : maisons de chaque cote. Dernier. Dis aime / pas aime par lettre.
 frames 5
 hol.Test.Sanity
 panel show
