@@ -1,0 +1,40 @@
+# Bug de l'essai siege_wave (precision de l'utilisateur, 2026-11-08 12:02) : dans le bloc de stats d'une unite ENNEMIE (Belier, Lancier de l'IA), « Attaque » n'a pas de valeur. Chaque type ennemi est selectionne par le clic reel (hol.Select.ClickUnit -1 enemy), le bloc est decrit (HUD stats) et capture.
+# Test rouge : la valeur chiffree doit etre dans le texte reel du bloc d'une unite ENNEMIE (waitlog = timeout si absente). Belier : 0 d'attaque ordinaire, 60 contre les batiments. Dernier cas : un Lancier ennemi qui combat un des tiens (ligne d'activite « Attaque » + ligne de stats).
+# Plain, toi (slot 0) contre une IA (slot 1) figee (ThinkSteps) ; les unites ennemies sont faites devant ta camera.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Population 200
+hol.Camera.FocusNear 0 0
+hol.Camera.Zoom -2
+frames 5
+hol.Units.SpawnHere 1 Ram 1 600
+frames 40
+hol.Select.ClickUnit -1 enemy
+frames 10
+hol.Select.Report
+hol.HUD.Report
+frames 5
+waitlog HUD stats: building attack 60,
+capture use_ram
+hol.Units.SpawnHere 1 Mangonel 1 600
+frames 40
+hol.Select.ClickUnit -1 enemy
+frames 10
+hol.HUD.Report
+frames 5
+waitlog HUD stats: attack 45,
+capture use_mangonel
+hol.Units.SpawnHere 1 Spearman 1 600
+frames 40
+hol.Select.ClickUnit -1 enemy
+frames 10
+hol.HUD.Report
+frames 5
+waitlog HUD stats: attack 8,
+capture use_spearman
+hol.Units.SpawnHere 1 Spearman 0 100
+frames 120
+hol.HUD.Report
+frames 5
+capture use_fight
+note Chaque type d'unite ENNEMIE selectionne a son tour : lis le bloc de stats sous les points de vie. Le Belier n'a pas d'attaque ordinaire : « Attaque batiments 60 ».

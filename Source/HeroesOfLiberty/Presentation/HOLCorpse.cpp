@@ -10,6 +10,7 @@
 #include "MassEntityTemplate.h"
 #include "MassEntityUtils.h"
 #include "MassRepresentationFragments.h"
+#include "Match/HOLFactionRules.h"
 #include "Net/HOLNetUnitDisplay.h"
 #include "Presentation/HOLUnitAnimation.h"
 #include "Simulation/HOLCombatRules.h"
@@ -115,16 +116,30 @@ void HOLCorpse::CollectSeeds(const FMassEntityManager& EntityManager, const TCon
 	}
 }
 
-void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units, const TConstArrayView<FHOLCorpseSeed> Seeds)
+void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units, const TConstArrayView<FHOLCorpseSeed> Seeds,
+	TArray<FMassEntityHandle>* OutBodies)
 {
-	TMap<FName, TArray<int32>> SeedsByType;
+	// L13: grouped by body template, which is the type's for its owner's faction (a faction whose row builds other constants has its
+	// own, "Spearman@Legions"; a faction that only renames or reprices shares the type's own).
+	struct FGroup
+	{
+		FName TypeName;
+		FName FactionKey;
+		TArray<int32> Value;
+	};
+	TMap<FName, FGroup> SeedsByTemplate;
 	for (int32 Index = 0; Index < Seeds.Num(); ++Index)
 	{
-		SeedsByType.FindOrAdd(Seeds[Index].TypeName).Add(Index);
+		const FName FactionKey = HOLFactionRules::GetSlotFactionKey(Units.GetWorld(), Seeds[Index].Corpse.OwnerPlayer);
+		FGroup& Group = SeedsByTemplate.FindOrAdd(Units.GetTemplateKey(Seeds[Index].TypeName, FactionKey));
+		Group.TypeName = Seeds[Index].TypeName;
+		Group.FactionKey = FactionKey;
+		Group.Value.Add(Index);
 	}
-	for (const TPair<FName, TArray<int32>>& TypeSeeds : SeedsByType)
+	for (const TPair<FName, FGroup>& Entry : SeedsByTemplate)
 	{
-		const FMassEntityTemplate* Template = Units.FindTemplate(TypeSeeds.Key, EHOLUnitTemplateKind::Corpse);
+		const FGroup& TypeSeeds = Entry.Value;
+		const FMassEntityTemplate* Template = Units.FindTemplate(TypeSeeds.TypeName, EHOLUnitTemplateKind::Corpse, TypeSeeds.FactionKey);
 		if (Template == nullptr)
 		{
 			continue;
@@ -144,6 +159,10 @@ void HOLCorpse::Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units,
 		{
 			const FHOLCorpseSeed& Seed = Seeds[TypeSeeds.Value[Index]];
 			const FMassEntityHandle Entity = Created[Index];
+			if (OutBodies)
+			{
+				OutBodies->Add(Entity);
+			}
 			EntityManager.GetFragmentDataChecked<FHOLCorpseFragment>(Entity) = Seed.Corpse;
 			EntityManager.GetFragmentDataChecked<FTransformFragment>(Entity).SetTransform(Seed.Corpse.Base);
 			// Its first frame drawn where it lies: no motion vector from the origin.

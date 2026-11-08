@@ -806,6 +806,23 @@ if ($Parts -contains "fogclick") {
     Step "mark fogclick end", "hol.Fog.Mode 0"
 }
 
+# The "audiosel" part (Audio B5): selecting a building by a left click plays its family's sound, the sound table's real plan (the log's
+# "cue played <cue>" line, HOLAudioPlayer.as). Solo on Plain: the stone main centre (silent family: no building sound), then a House built
+# on the spot (wood family: Select.BuildingWood once). The click is hol.Select.Click, the path of the mouse.
+if ($Parts -contains "audiosel") {
+    $AudioSelConfig = Join-Path $TestSaved "audiosel_2p.json"
+    '{ "map": "/Game/Maps/Plain.Plain", "slots": [ { "state": "Human", "colorIndex": 0, "team": 1 }, { "state": "AI", "colorIndex": 1, "team": 2 } ] }' |
+        Set-Content -Encoding ascii $AudioSelConfig
+    Step "mark audiosel start", "hol.Camera.TestCursor 0.5 0.5", "open /Game/Maps/MainMenu", "waitmap MainMenu", "waitui", "hol.UI.NewGame.Launch $AudioSelConfig 0", "waitmap Plain", "frames 30",
+        "mark audiosel centre", "hol.Camera.FocusSlot 0", "frames 5", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot 0 (own)", "frames 10", "wait 1",
+        "hol.Cheat.Resources 5000", "hol.Build.PlaceNear House 6000 -3400", "waitlog Construction: slot 0 placed House",
+        "hol.Units.Spawn 5 -10000 -4300 0 Peasant 150", "wait 0.5", "hol.Camera.Focus -9500 -3100", "frames 3",
+        "hol.Select.BoxGround -10600 -4900 -9400 -3700", "waitlog Selection: 5 units (own): Peasant x5", "hol.Build.Instant 1",
+        "hol.Select.OrderNear 6000 -3200", "waitlog Construction: slot 0 finished House", "hol.Build.Instant 0", "frames 5",
+        "mark audiosel house", "hol.Camera.FocusNear 6000 -3400", "frames 5", "hol.Select.Click 0.5 0.5", "waitlog Selection: House", "frames 10", "wait 1",
+        "mark audiosel end"
+}
+
 # The "sizes" part (TC4, map sizes): $MapKey (-Map, Plain by default) at each size, opened from a v3 configuration file by hol.Match.Open (as a
 # server given -MatchConfig=: the game mode alone checks it), places drawn from a fixed seed. Each: the map of the size
 # loaded, one main centre per player on its drawn place (the circle of the size, radius 0.75 of the half side, place 0 at
@@ -1793,7 +1810,7 @@ if ($Parts -contains "camera") {
                 "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "hol.Camera.Focus $($BarracksGhostAt[0]) $($BarracksGhostAt[1] - 300)", "frames 3",
                 "hol.Select.OrderGround $($BarracksGhostAt -join ' ')", "waitlog Build order of slot 0: 1 units to Barracks at ($($BarracksGhostAt -join ', '))",
                 "waitlog Construction: slot 0 finished Barracks at ($($BarracksGhostAt -join ', '))", "wait 0.5",
-                "hol.Select.ClickGround $($BarracksGhostAt -join ' ')", "waitlog Selection: Barracks of slot 0 (own)", "hol.Prod.Queue ManAtArms",
+                "hol.Select.ClickGround $($BarracksGhostAt -join ' ')", "waitlog Selection: Barracks of slot 0 (own)", "hol.Cheat.Tier 1", "hol.Prod.Queue ManAtArms",
                 "waitlog Production: ManAtArms of slot 0 done", "hol.Cheat.FastBuild 0", "wait 9", "hol.Units.Where 0", "hol.Prod.Report",
                 "hol.Camera.Focus $($BarracksGhostRally -join ' ')", "frames 3", "capture build_barracks_ghost_soldier"
             Key Escape
@@ -2767,7 +2784,7 @@ if ($NetListening) {
         $NetSteps += "mark army", "hol.Cheat.Resources 2000", "hol.Cheat.Population 20", "hol.Cheat.FastBuild 1", "wait 1",
             "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear Barracks $($NetBarracksNear -join ' ')", "waitlog Building arrived: Barracks of slot", "waitlog , finished",
             "signal $(Join-Path $TestSaved "quick_net_barracks$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_barracks$Other.flag")", "wait 3",
-            "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue ManAtArms Barracks", "hol.Prod.Queue ManAtArms Barracks",
+            "hol.Cheat.Tier 1", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue ManAtArms Barracks", "hol.Prod.Queue ManAtArms Barracks",
             "waitunits 10", "wait 8", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
             "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear $($NetBarracksNear -join ' ') enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
             "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
@@ -3343,6 +3360,15 @@ if ($Parts -contains "fogclick") {
     $Checks["control, no fog. the same double click takes all 7: the hidden 4 were on the screen (took $($ClearCase.Taken), selection '$($ClearCase.Sel)')"] =
         $ClearCase.Taken -eq 7 -and $ClearCase.Sel -eq "7 units (other): Spearman x7"
     $AllOk = (Report "fogclick" $Checks) -and $AllOk
+}
+
+if ($Parts -contains "audiosel") {
+    $Checks = [ordered]@{}
+    $CentreLines = @(Get-Section "audiosel centre" | Select-String -Pattern "cue played Select\.Building")
+    $HouseLines = @(Get-Section "audiosel house" | Select-String -Pattern "cue played Select\.BuildingWood")
+    $Checks["selecting the stone main centre by a click plays no building sound (lines: $($CentreLines.Count))"] = $CentreLines.Count -eq 0
+    $Checks["selecting the finished House (wood family) by a click plays Select.BuildingWood once (lines: $($HouseLines.Count))"] = $HouseLines.Count -eq 1
+    $AllOk = (Report "audiosel" $Checks) -and $AllOk
 }
 
 if ($Parts -contains "sizes") {

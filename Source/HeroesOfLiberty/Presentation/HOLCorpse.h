@@ -63,8 +63,13 @@ namespace HOLCorpse
 	HEROESOFLIBERTY_API void CollectSeeds(const FMassEntityManager& EntityManager, TConstArrayView<FMassEntityHandle> Entities, double Now,
 		TArray<FHOLCorpseSeed>& Out);
 
-	/** Lays Seeds: one body entity each, per type from its Corpse template (UHOLUnitSubsystem::FindTemplate), placed at its Base. */
-	HEROESOFLIBERTY_API void Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units, TConstArrayView<FHOLCorpseSeed> Seeds);
+	/**
+	 * Lays Seeds: one body entity each, per type from its Corpse template (UHOLUnitSubsystem::FindTemplate), placed at its Base.
+	 * L13: the template is the one of the type for its owner's faction (a faction whose row builds another model has its own body).
+	 * OutBodies, when given, receives the bodies made (tests).
+	 */
+	HEROESOFLIBERTY_API void Lay(FMassEntityManager& EntityManager, UHOLUnitSubsystem& Units, TConstArrayView<FHOLCorpseSeed> Seeds,
+		TArray<FMassEntityHandle>* OutBodies = nullptr);
 
 	/** The bodies of a world that went, since it began (counted when they go, read by hol.Units.CorpseReport). */
 	struct FRemovedStats

@@ -17,3 +17,5 @@ Ce que tu dois voir : (1) palier 0, la Caserne est sélectionnée : la case Lanc
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 unit_tiers -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+intégré sur main a91c0de (fusion 3, 2026-11-08 12:50 : build PASS, quick_check tests/aiserver/aiduel/aiwave/production/combat/net vert, session_gate Essay PASS, preflight unit_tiers PASS hors fenêtre, unit_tiers_grey.png et unit_tiers_open.png ouverts : Z grisé au palier 0, actif au palier 1, Homme d'armes sorti)

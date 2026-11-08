@@ -7,6 +7,7 @@
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
+hol.Cheat.Tier 1
 hol.Cheat.Population 40
 hol.Prod.BuildTime 2
 hol.Combat.LogHits 1

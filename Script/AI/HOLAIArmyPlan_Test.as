@@ -117,6 +117,7 @@ void PlanAddBuilding(FHOLAISummary& Summary, FName Type, EHOLConstructionState S
 FHOLAISummary PlanSummary()
 {
 	FHOLAISummary Summary;
+	Summary.Tier = 3; // G1 (D711): every unit is open at tier 3
 	Summary.Food.Stock = 500;
 	Summary.Wood.Stock = 500;
 	Summary.Stone.Stock = 500;

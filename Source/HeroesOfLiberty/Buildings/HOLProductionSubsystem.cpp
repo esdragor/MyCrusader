@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Buildings/HOLProductionSubsystem.h"
+#include "Simulation/HOLUnitTierRules.h"
 
 #include "Match/HOLMatchStatsSubsystem.h"
 
@@ -439,7 +440,18 @@ void UHOLProductionSubsystem::ApplyOrders()
 				}
 			}
 			// L0 (LQ-7): a unit type the owner's faction does not field is refused here whatever a client asked (its grid hides it).
-			if (Type->Produces.Contains(Order.TypeName) && !HOLFactionRules::IsUnitOpenTo(GetWorld(), Order.TypeName, Order.PlayerIndex))
+			if (Type->Produces.Contains(Order.TypeName))
+				{
+					// G1 (Palier3InProgress.md, D711): EVERY unit opens at the tier of its column MinTier (HOLUnitTier, one rule for all); a client that asks for a Man-at-arms at tier 0 is refused here.
+					const int32 UnitMinTier = HOLUnitTier::GetMinTier(Order.TypeName);
+					const AHOLGameState* TierState = GetWorld()->GetGameState<AHOLGameState>();
+					if (HOLUnitTier::Check(UnitMinTier, TierState ? TierState->GetTier(Order.PlayerIndex) : 0, true, true) == HOLUnitTier::EBlock::TierTooLow)
+					{
+						UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (tier too low: it opens at tier %d)"), Order.PlayerIndex, *Order.TypeName.ToString(), UnitMinTier);
+						continue;
+					}
+				}
+				if (Type->Produces.Contains(Order.TypeName) && !HOLFactionRules::IsUnitOpenTo(GetWorld(), Order.TypeName, Order.PlayerIndex))
 			{
 				UE_LOG(LogHOLCommands, Display, TEXT("Production: slot %d cannot queue %s (not a unit of its faction)"), Order.PlayerIndex,
 					*Order.TypeName.ToString());

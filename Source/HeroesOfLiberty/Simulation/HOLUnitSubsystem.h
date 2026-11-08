@@ -199,6 +199,16 @@ public:
 	 */
 	FName GetTemplateKey(FName TypeName, FName FactionKey) const;
 
+	/** L2 (client model): whether the template of a type for a faction is built (cached under GetTemplateKey). */
+	bool HasTemplate(FName TypeName, EHOLUnitTemplateKind Kind, FName FactionKey = NAME_None) const;
+
+	/**
+	 * L2 (client model): builds, for the kind this world uses, the templates the factions' overrides give a model of their own
+	 * ("Spearman@Legions": health, speed or mesh of the faction's), with their assets, so that the first unit of a faction
+	 * loads nothing in the middle of the match. Called by PreloadTypes after the table's own types.
+	 */
+	void PreloadFactionTemplates(EHOLUnitTemplateKind Kind);
+
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 	virtual void OnWorldBeginPlay(UWorld& InWorld) override;
