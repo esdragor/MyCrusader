@@ -3453,4 +3453,10 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D748** (§ 17, Sites sacrés S6, précise D699, réponse du 2026-11-08 à `Q-sites-or-par-minute`) : **option A : un site tenu verse 30 or par minute à son propriétaire seul, le même taux pour tous les sites** (deux sites = 60 / min), report des fractions ; réglage `hol.Site.GoldPerMinute` (`HOLSite::DefaultGoldPerMinute`), à ajuster après une partie 1c1 avec un site tenu 10 minutes. Code : S6, branche `net-playtest` (`48b9831`).
 
-Prochain numéro : **D749**.
+**D749** (§ 7.1, Forum, revue des dix échantillons du tour 2 U à AD, réponse du 2026-11-08) : **aimés : U, V, W, X, Y, Z, AA, AB ; pas aimés : AC et AD.** Le drapeau haut sur les dérivées de L et Q est validé. Un tour 3 n'est pas nécessaire sauf demande ; l'élection finale du Forum reste à faire par l'utilisateur parmi les aimés.
+
+**D750** (§ interface, stats d'unité, réponse du 2026-11-08 à `Q-unit-stats-building`) : **option 1 : le bloc de stats montre « Attaque bâtiments N » seulement pour une unité sans attaque ordinaire (le Bélier : 60)** ; les autres blocs ne changent pas ; la ligne d'activité « Attaque » (l'unité frappe) reste telle quelle. Réglage `hol.HUD.UnitStatsBuilding` (défaut 1).
+
+**D751** (§ 7, vague de siège de l'IA, précise D617, réponse du 2026-11-08 à `Q-aiwave-escort-spread` 2a) : **option B : l'escorte qui s'étire sur 70 m est un défaut ; l'IA doit marcher en groupe à la vitesse du plus lent (D617) pour ses vagues** ; chantier IA à ouvrir. **D752** (même fichier, 2b) : **option A : la tolérance de « engin devant l'escorte » reste à 100 cm** dans la partie `aiwave` de `quick_check.ps1`.
+
+Prochain numéro : **D753**.
