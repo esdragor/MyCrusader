@@ -11,33 +11,33 @@ capture audio_compare_buildings_stone_start
 waitkey Entree : commencer par Building.Stone A
 hol.Audio.Candidate Building.Stone A
 waitlog candidate played Building.Stone A
-waitkey Building.Stone A (s_stone_mine_a) vient de jouer. Entree : Building.Stone B
+waitkey Building.Stone A (s_stone2_mine_deep) vient de jouer. Entree : Building.Stone B
 hol.Audio.Candidate Building.Stone B
 waitlog candidate played Building.Stone B
-waitkey Building.Stone B (s_stone_mine_b) vient de jouer. Entree : Building.Stone C
+waitkey Building.Stone B (s_stone2_mine_slow) vient de jouer. Entree : Building.Stone C
 hol.Audio.Candidate Building.Stone C
 waitlog candidate played Building.Stone C
-waitkey Building.Stone C (s_stone_mine_c) vient de jouer. Entree : Building.Stone D
+waitkey Building.Stone C (s_stone2_thud_low) vient de jouer. Entree : Building.Stone D
 hol.Audio.Candidate Building.Stone D
 waitlog candidate played Building.Stone D
-waitkey Building.Stone D (s_stone_mine_d) vient de jouer. Entree : Building.Stone E
+waitkey Building.Stone D (s_stone2_punch_deep) vient de jouer. Entree : Building.Stone E
 hol.Audio.Candidate Building.Stone E
 waitlog candidate played Building.Stone E
-waitkey Building.Stone E (s_stone_punch_heavy) vient de jouer. Entree : Building.Stone F
+waitkey Building.Stone E (s_stone2_timpani) vient de jouer. Entree : Building.Stone F
 hol.Audio.Candidate Building.Stone F
 waitlog candidate played Building.Stone F
-waitkey Building.Stone F (s_stone_punch_soft) vient de jouer. Entree : Building.Stone G
+waitkey Building.Stone F (s_stone2_bass) vient de jouer. Entree : Building.Stone G
 hol.Audio.Candidate Building.Stone G
 waitlog candidate played Building.Stone G
-waitkey Building.Stone G (s_stone_door) vient de jouer. Entree : Building.Stone H
+waitkey Building.Stone G (s_stone2_wood_heavy) vient de jouer. Entree : Building.Stone H
 hol.Audio.Candidate Building.Stone H
 waitlog candidate played Building.Stone H
-waitkey Building.Stone H (s_stone_thud) vient de jouer. Entree : Building.Stone I
+waitkey Building.Stone H (s_stone2_door_slow) vient de jouer. Entree : Building.Stone I
 hol.Audio.Candidate Building.Stone I
 waitlog candidate played Building.Stone I
-waitkey Building.Stone I (s_stone_drum) vient de jouer. Entree : Building.Stone J
+waitkey Building.Stone I (s_stone2_plank_low) vient de jouer. Entree : Building.Stone J
 hol.Audio.Candidate Building.Stone J
 waitlog candidate played Building.Stone J
-waitkey Building.Stone J (s_stone_mallet) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Stone J (s_stone2_gong_dull) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
