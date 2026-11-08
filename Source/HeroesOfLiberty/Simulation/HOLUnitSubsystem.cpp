@@ -189,6 +189,8 @@ void UHOLUnitSubsystem::PreloadTypes(UWorld& InWorld)
 			FindTemplate(TypeName, EHOLUnitTemplateKind::Corpse);
 		}
 	}
+	// L2 (client model): the factions' own models too, while the map loads.
+	PreloadFactionTemplates(Kind);
 	bTypesPreloaded = true;
 	UE_LOG(LogHOLSimulation, Display, TEXT("Unit types preloaded: %d of %d (%s) as %s%s, meshes %s, in %.0f ms"), NumBuilt, TypeNames.Num(),
 		*FString::JoinBy(TypeNames, TEXT(", "), [](const FName Name) { return Name.ToString(); }),
@@ -336,7 +338,16 @@ bool UHOLUnitSubsystem::HasTemplate(const FName TypeName, const EHOLUnitTemplate
 
 void UHOLUnitSubsystem::PreloadFactionTemplates(const EHOLUnitTemplateKind Kind)
 {
-	// Stub of the red test: the implementation follows the test (LegionsInProgress.md, client model).
+	// Every (faction, type) the overrides name: FindTemplate builds the faction's own template when its row builds other constants
+	// than the table's (GetTemplateKey), and answers the type's own, already built, when it does not (a name or a cost override).
+	const HOLFactionRules::FTable& Table = HOLFactionRules::GetTable();
+	for (const HOLFactionRules::FOverrideRow& Override : Table.Overrides)
+	{
+		if (!Override.Faction.IsNone() && !Override.Type.IsNone() && FindTypeRow(Override.Type))
+		{
+			FindTemplate(Override.Type, Kind, Override.Faction);
+		}
+	}
 }
 
 const FMassEntityTemplate* UHOLUnitSubsystem::FindTemplate(const FName TypeName, const EHOLUnitTemplateKind Kind, const FName FactionKey)

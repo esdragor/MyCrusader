@@ -15,6 +15,7 @@
 #include "MassRepresentationFragments.h"
 #include "MassRepresentationSubsystem.h"
 #include "GameFramework/GameStateBase.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Net/HOLNetUnitDisplay.h"
@@ -358,19 +359,37 @@ void UHOLUnitReceptionSubsystem::CreateEntities(const TConstArrayView<int32> Slo
 	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
 	const double ClockStep = Clock.GetStep(Now);
 
-	TMap<uint8, TArray<int32>> SlotsByType;
+	// L2 (client model): by template, so by type AND by the model its owner's faction gives it ("Spearman@Legions"): the units of
+	// every faction that share the table's model are created together, as before.
+	struct FModelGroup
+	{
+		uint8 TypeIndex = 0;
+		FName TypeName;
+		FName FactionKey;
+		TArray<int32> Value;
+	};
+	TMap<FName, FModelGroup> SlotsByType;
 	for (const int32 SlotIndex : SlotIndices)
 	{
-		SlotsByType.FindOrAdd(Slots[SlotIndex].TypeIndex).Add(SlotIndex);
+		const uint8 TypeIndex = Slots[SlotIndex].TypeIndex;
+		const FName TypeName = TypeNames.IsValidIndex(TypeIndex) ? TypeNames[TypeIndex] : NAME_None;
+		const FName FactionKey = HOLFactionRules::GetSlotFactionKey(World, Slots[SlotIndex].OwnerPlayer);
+		const FName ModelKey = TypeName.IsNone() ? FName(*FString::Printf(TEXT("#%d"), TypeIndex)) : Units->GetTemplateKey(TypeName, FactionKey);
+		FModelGroup& Group = SlotsByType.FindOrAdd(ModelKey);
+		Group.TypeIndex = TypeIndex;
+		Group.TypeName = TypeName;
+		Group.FactionKey = FactionKey;
+		Group.Value.Add(SlotIndex);
 	}
-	for (const TPair<uint8, TArray<int32>>& TypeSlots : SlotsByType)
+	for (const TPair<FName, FModelGroup>& ModelGroup : SlotsByType)
 	{
-		const FMassEntityTemplate* Template = TypeNames.IsValidIndex(TypeSlots.Key)
-			? Units->FindTemplate(TypeNames[TypeSlots.Key], EHOLUnitTemplateKind::Display) : nullptr;
+		const FModelGroup& TypeSlots = ModelGroup.Value;
+		const FMassEntityTemplate* Template = !TypeSlots.TypeName.IsNone()
+			? Units->FindTemplate(TypeSlots.TypeName, EHOLUnitTemplateKind::Display, TypeSlots.FactionKey) : nullptr;
 		if (Template == nullptr)
 		{
 			UE_LOG(LogHOLNet, Error, TEXT("Unit type %d unknown to this client (%d types): %d units not displayed"),
-				TypeSlots.Key, TypeNames.Num(), TypeSlots.Value.Num());
+				TypeSlots.TypeIndex, TypeNames.Num(), TypeSlots.Value.Num());
 			continue;
 		}
 
@@ -549,7 +568,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		OutView.bLoadAmountKnown = true;
 	}
 	const UHOLUnitSubsystem* Units = GetWorld()->GetSubsystem<UHOLUnitSubsystem>();
-	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRow(OutView.TypeName) : nullptr)
+	// L2 (client model): the row as the owner's faction fields it (its health, size, mesh scale), as the server sims the unit.
+	if (const FHOLUnitTypeRow* Row = Units ? Units->FindTypeRowFor(OutView.TypeName, Slot.OwnerPlayer) : nullptr)
 	{
 		OutView.Radius = Row->Radius;
 		OutView.MeshScale = Row->MeshScale;
