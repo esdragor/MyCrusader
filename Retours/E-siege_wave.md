@@ -19,3 +19,4 @@ Durée : environ 2 min (Entrée, puis ~50 s de marche à vitesse x5). Réponse a
 
 
 integre sur main fc601b7 (fusion groupee n1, 2026-11-08 11:38) : session_gate -Phase Essay PASS ; preflight siege_wave PASS sur ce build (Sauron), PNG siege_wave_hits ouvert : Centre en ruine, 2 engins gris et Lanciers rouges contre Hommes d'armes bleus, HUD 'Votre forum est tombe - 1 vie' ; statut VU A L'ECRAN (geste interne tel que declare dans la fiche).
+Reponse: OK (works) + BUG: les unites ont 'attaque' dans leurs stats mais la valeur manque (utilisateur, 2026-11-08 ~11:55). Agent Galadriel-4 lance.
