@@ -99,7 +99,8 @@ def write_answer_sheet(retours, name, what, mine, steps, project):
 
 
 def write(name, prefixes, what, all_cues, scen, retours, project, sheet=True):
-    mine = [c for c in all_cues if c[0].startswith(prefixes)]
+    # Select.BuildingWood / Select.BuildingSacred (2026-11-08) are the ELECTED building sounds, listened to in the Building.* scenarios: not in the orders one.
+    mine = [c for c in all_cues if c[0].startswith(prefixes) and c[0] not in ("Select.BuildingWood", "Select.BuildingSacred")]
     steps = [(cue, index, stems[index]) for cue, stems in mine for index in range(len(stems))]
     out = [
         "# Ecoute : %s, dix variantes chacune, Entree = variante suivante" % what,
