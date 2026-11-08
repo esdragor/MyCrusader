@@ -22,8 +22,34 @@ struct FHOLSiteState
 	bool operator==(const FHOLSiteState& Other) const { return Owner == Other.Owner && Taker == Other.Taker && Held == Other.Held; }
 };
 
+/**
+ * S10 (D431, D703): the victory count of the sacred sites, the simulation's copy of HOLSiteVictory::FHOLSiteVictoryState (Script/Sites/HOLSiteVictory.as).
+ * Leader: the camp holding every site now (INDEX_NONE for none); Held: the steps it held them; Winner: the camp once the count is full (it stays).
+ */
+struct FHOLSiteVictoryState
+{
+	int32 Leader = INDEX_NONE;
+	int32 Held = 0;
+	int32 Winner = INDEX_NONE;
+	/** The owners of the sites at the last step, to see a site change hands. */
+	TArray<int32> LastOwners;
+};
+
 namespace HOLSite
 {
+	/** S10 (D699): seconds a camp must hold every site. PROVISIONAL (300, the dossier's value; the user has not confirmed it). */
+	constexpr int32 DefaultVictorySeconds = 300;
+
+	/**
+	 * S10: the count after one step (the script's HOLSiteVictory::Step). OwnerBySite: the owner slot of each site (INDEX_NONE nobody's);
+	 * ContestedBySite: nonzero when an adverse unit stands in the site's zone; TeamBySlot: the team of each slot; VictorySteps: the steps to
+	 * hold. The camp holding every site is the team of the owners when they are all of one team. It restarts at 0 when the holding camp
+	 * changes or when any site changed hands (even to a slot of the same camp); a contested site freezes it; nobody holding every site: 0.
+	 * The winner once set stays.
+	 */
+	HEROESOFLIBERTY_API FHOLSiteVictoryState VictoryStep(const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite,
+		const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, int32 VictorySteps);
+
 	/** Values to tune in test (D345, the user chooses them), the same as Script/Sites/HOLSiteRules.as (the script test compares them). */
 	constexpr int32 DefaultHoldSeconds = 60;
 	constexpr int32 DefaultDecaySteps = 2;

@@ -412,4 +412,83 @@ bool FHOLSiteSubsystemSameTwiceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteVictoryRuleTest, "HeroesOfLiberty.Sites.VictoryRule", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S10 (D431, D703), the pure rule (the same as the script's HOLSiteVictory::Step): the camp holding every site counts up to the steps asked; a
+// contested site freezes the count; a site changing hands (even to a slot of the same camp) restarts it; a site nobody owns zeroes it; the
+// winner once set stays.
+bool FHOLSiteVictoryRuleTest::RunTest(const FString& Parameters)
+{
+	const TArray<int32> Teams = { 7, 7, 9, 10 };
+	const TArray<int32> Quiet = { 0, 0 };
+	FHOLSiteVictoryState State;
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		State = HOLSite::VictoryStep(State, { 0, 1 }, Quiet, Teams, 5);
+	}
+	TestEqual(TEXT("two teammates holding both sites: the camp leads"), State.Leader, 7);
+	TestEqual(TEXT("four steps counted"), State.Held, 4);
+	TestEqual(TEXT("no winner yet"), State.Winner, static_cast<int32>(INDEX_NONE));
+	State = HOLSite::VictoryStep(State, { 0, 1 }, { 0, 1 }, Teams, 5);
+	TestEqual(TEXT("a contested site freezes the count"), State.Held, 4);
+	State = HOLSite::VictoryStep(State, { 1, 1 }, Quiet, Teams, 5);
+	TestEqual(TEXT("a site changing hands inside the camp restarts the count (this step is the first)"), State.Held, 1);
+	State = HOLSite::VictoryStep(State, { 1, INDEX_NONE }, Quiet, Teams, 5);
+	TestEqual(TEXT("a site nobody owns: no leader"), State.Leader, static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("a site nobody owns: the count is zero"), State.Held, 0);
+	State = HOLSite::VictoryStep(State, { 0, 2 }, Quiet, Teams, 5);
+	TestEqual(TEXT("two adverse camps owning a site each: nobody leads"), State.Leader, static_cast<int32>(INDEX_NONE));
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		State = HOLSite::VictoryStep(State, { 2, 2 }, Quiet, Teams, 5);
+	}
+	TestEqual(TEXT("the lone camp that held every site for the steps asked wins"), State.Winner, 9);
+	State = HOLSite::VictoryStep(State, { 0, 1 }, Quiet, Teams, 5);
+	TestEqual(TEXT("the winner once set stays"), State.Winner, 9);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemVictoryTest, "HeroesOfLiberty.Sites.SubsystemVictory", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S10 (D431), through the real chain (real Monks take real sites, the game state ends the match): slot 0 holds both sites; an adverse
+// Spearman standing in a zone freezes the count (the effect: after twice the time the match is still on); once he is gone the count goes
+// on, and at the end the two other slots are defeated with the reason SacredSites and the match is over with slot 0 the winner.
+bool FHOLSiteSubsystemVictoryTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FScopedVariable Victory(TEXT("hol.Site.VictorySeconds"), TEXT("5"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+	TestTrue(TEXT("a Monk of slot 0 on site A"), Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.)) != 0);
+	TestTrue(TEXT("a Monk of slot 0 on site B"), Fixture.Place(TEXT("Monk"), 0, FVector(4000., 0., 0.)) != 0);
+	Fixture.Tick(Rate + 3);
+	TestEqual(TEXT("slot 0 took site A"), Fixture.State(0).Owner, 0);
+	TestEqual(TEXT("slot 0 took site B"), Fixture.State(1).Owner, 0);
+	TestFalse(TEXT("the match is on"), Fixture.GameState->IsMatchOver());
+
+	const uint32 Intruder = Fixture.Place(TEXT("Spearman"), 1, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Spearman of slot 1 in the zone of site A"), Intruder != 0);
+	Fixture.Tick(10 * Rate);
+	TestFalse(TEXT("twice the count's time with an adverse unit in a zone: the match is still on"), Fixture.GameState->IsMatchOver());
+	TestEqual(TEXT("slot 1 is not defeated"), static_cast<int32>(Fixture.GameState->GetDefeatReason(1)), static_cast<int32>(EHOLDefeatReason::None));
+
+	Fixture.Remove(Intruder);
+	Fixture.Tick(6 * Rate);
+	TestTrue(TEXT("the count ran out: the match is over"), Fixture.GameState->IsMatchOver());
+	TestEqual(TEXT("slot 1 is defeated by the sites"), static_cast<int32>(Fixture.GameState->GetDefeatReason(1)), static_cast<int32>(EHOLDefeatReason::SacredSites));
+	TestEqual(TEXT("slot 2 is defeated by the sites"), static_cast<int32>(Fixture.GameState->GetDefeatReason(2)), static_cast<int32>(EHOLDefeatReason::SacredSites));
+	TestFalse(TEXT("slot 0 is not defeated"), Fixture.GameState->IsSlotDefeated(0));
+	const TArray<int32> Winners = Fixture.GameState->GetWinners();
+	TestTrue(TEXT("slot 0 alone wins"), Winners.Num() == 1 && Winners[0] == 0);
+	return true;
+}
+
 #endif

@@ -1169,6 +1169,7 @@ const TCHAR* AHOLGameState::GetReasonName(const EHOLDefeatReason Reason)
 	case EHOLDefeatReason::Forum: return TEXT("Forum");
 	case EHOLDefeatReason::King: return TEXT("King");
 	case EHOLDefeatReason::Disconnected: return TEXT("Disconnected");
+	case EHOLDefeatReason::SacredSites: return TEXT("SacredSites");
 	default: return TEXT("None");
 	}
 }

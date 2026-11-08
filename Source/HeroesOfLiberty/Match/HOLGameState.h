@@ -34,6 +34,8 @@ enum class EHOLDefeatReason : uint8
 	King,
 	/** R7.3 (R-Q5, D71): its player left and did not come back within the window. */
 	Disconnected,
+	/** S10 (D431, D703): another camp held every sacred site for the whole count. */
+	SacredSites,
 };
 
 /**

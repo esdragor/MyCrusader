@@ -47,6 +47,8 @@ public:
 	int32 AddSite(const FVector2D& Location, float Radius);
 	void ClearSites();
 	const TArray<FSite>& GetSites() const { return Sites; }
+	/** S10: the victory count (camp holding every site, steps held, winning camp). */
+	const FHOLSiteVictoryState& GetVictory() const { return Victory; }
 	/** Sites the slot owns. */
 	int32 CountOwned(int32 Slot) const;
 	/** The step the simulation is on is applied: counts, rule, then the views. Public for the tests. */
@@ -70,6 +72,17 @@ private:
 	void UnbindSteps();
 	/** S6: the gold by the minute to each slot that owns sites (a defeated slot gets none), written to its player state. */
 	void PayGold(const AHOLGameState& GameState);
+
+	/**
+	 * S10 (D431, D703): the victory count after this step (a camp holding every site, frozen by an adverse unit in a zone, reset by a site
+	 * changing hands or an alliance breaking); once full, every adversary of the winning camp is defeated (EHOLDefeatReason::SacredSites).
+	 * TeamBySlot: the teams the site rules use; Disturbers: [site][slot] units in the zone.
+	 */
+	void StepVictory(AHOLGameState& GameState, const TArray<int32>& TeamBySlot, const TArray<TArray<int32>>& Disturbers);
+
+	FHOLSiteVictoryState Victory;
+	/** The defeat of the adversaries was applied (once). */
+	bool bVictoryApplied = false;
 
 	/** [slot]: the gold fractions carried from a step to the next (S6). */
 	TArray<int32> GoldCarry;

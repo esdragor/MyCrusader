@@ -43,6 +43,13 @@ void HOLSite::AddUnit(TArray<int32>& Takers, TArray<int32>& Disturbers, const in
 	}
 }
 
+FHOLSiteVictoryState HOLSite::VictoryStep(const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite,
+	const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, const int32 VictorySteps)
+{
+	// STUB (red test first): the count never moves.
+	return State;
+}
+
 FHOLSiteState HOLSite::Step(const FHOLSiteState& State, const TArray<int32>& Takers, const TArray<int32>& Disturbers,
 	const TArray<int32>& TeamBySlot, const int32 HoldSteps, const int32 DecaySteps)
 {

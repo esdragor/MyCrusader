@@ -30,6 +30,10 @@ namespace
 	FAutoConsoleVariableRef CVarSiteGoldPerMinute(TEXT("hol.Site.GoldPerMinute"), SiteGoldPerMinute,
 		TEXT("Gold by the minute each held sacred site pays its owner alone (provisional 30, Retours/Q-sites-or-par-minute.md)"));
 
+	float SiteVictorySeconds = HOLSite::DefaultVictorySeconds;
+	FAutoConsoleVariableRef CVarSiteVictorySeconds(TEXT("hol.Site.VictorySeconds"), SiteVictorySeconds,
+		TEXT("Seconds a camp must hold EVERY sacred site to win (provisional 300, D699: SacredSitesInProgress.md S10)"));
+
 	FAutoConsoleCommandWithWorldAndArgs SiteCommandAdd(TEXT("hol.Site.Add"),
 		TEXT("hol.Site.Add <X> <Y> [Radius=1200]: a neutral sacred site there, server or solo (development only)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -71,6 +75,7 @@ namespace
 				const FHOLSiteState& State = Sites->GetSites()[Index].State;
 				Line += FString::Printf(TEXT(" | #%d owner %d taker %d held %d"), Index, State.Owner, State.Taker, State.Held);
 			}
+			Line += FString::Printf(TEXT(" | victory leader %d held %d winner %d"), Sites->GetVictory().Leader, Sites->GetVictory().Held, Sites->GetVictory().Winner);
 			UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Line);
 		}));
 }
@@ -143,6 +148,8 @@ void UHOLSiteSubsystem::ClearSites()
 {
 	Sites.Reset();
 	Memory.Reset();
+	Victory = FHOLSiteVictoryState();
+	bVictoryApplied = false;
 	PublishViews();
 }
 
@@ -295,8 +302,71 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 			UE_LOG(LogHOLMatch, Display, TEXT("Site %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
 		}
 	}
+	if (AHOLGameState* Mutable = World->GetGameState<AHOLGameState>())
+	{
+		StepVictory(*Mutable, TeamBySlot, Disturbers);
+	}
 	PublishViews();
 	PayGold(*GameState);
+}
+
+void UHOLSiteSubsystem::StepVictory(AHOLGameState& GameState, const TArray<int32>& TeamBySlot, const TArray<TArray<int32>>& Disturbers)
+{
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(GetWorld());
+	// The camp key of each slot: its team; in the Diplomacy mode the lowest slot that is not its adversary (itself included), so an alliance that
+	// breaks changes the key of the camp that held every site and resets the count (D703).
+	TArray<int32> VictoryTeam;
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		int32 Key = TeamBySlot[Slot];
+		if (Relations.IsDiplomacy())
+		{
+			Key = Slot;
+			for (int32 Other = 0; Other < Slot; ++Other)
+			{
+				if (!Relations.AreHostile(Slot, Other))
+				{
+					Key = Other;
+					break;
+				}
+			}
+		}
+		VictoryTeam.Add(Key);
+	}
+	TArray<int32> OwnerBySite;
+	TArray<int32> ContestedBySite;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		const int32 Owner = Sites[Index].State.Owner;
+		OwnerBySite.Add(Owner);
+		int32 Contested = 0;
+		for (int32 Slot = 0; Owner >= 0 && Owner < Slots && Slot < Slots; ++Slot)
+		{
+			if (Disturbers[Index][Slot] > 0 && Relations.AreHostile(Owner, Slot))
+			{
+				Contested = 1;
+			}
+		}
+		ContestedBySite.Add(Contested);
+	}
+	const int32 VictorySteps = FMath::Max(1, FMath::RoundToInt(SiteVictorySeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	Victory = HOLSite::VictoryStep(Victory, OwnerBySite, ContestedBySite, VictoryTeam, VictorySteps);
+	if (Victory.Winner == INDEX_NONE || bVictoryApplied || OwnerBySite.IsEmpty())
+	{
+		return;
+	}
+	// The count is full: every adversary of the winning camp is defeated, through the collapse of the forum's defeat (D358).
+	bVictoryApplied = true;
+	const int32 Reference = OwnerBySite[0];
+	UE_LOG(LogHOLMatch, Display, TEXT("Site victory: the camp of slot %d held every site, its adversaries are defeated"), Reference);
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		if (Slot != Reference && Relations.AreHostile(Reference, Slot))
+		{
+			GameState.DefeatSlot(Slot, EHOLDefeatReason::SacredSites);
+		}
+	}
 }
 
 void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
