@@ -715,14 +715,29 @@ class Rng:
 
     def uniform(self):
         """In [0, 1)."""
-        return self.next_u32() / 4294967296.0
+        x = self.state  # next_u32 written out: the dart throwing of the groves draws millions of numbers (same numbers, fewer calls)
+        x ^= (x << 13) & MASK32
+        x ^= x >> 17
+        x ^= (x << 5) & MASK32
+        self.state = x
+        return x / 4294967296.0
 
     def range(self, low, high):
-        return low + (high - low) * self.uniform()
+        x = self.state
+        x ^= (x << 13) & MASK32
+        x ^= x >> 17
+        x ^= (x << 5) & MASK32
+        self.state = x
+        return low + (high - low) * (x / 4294967296.0)
 
     def below(self, count):
         """An integer in 0..count-1."""
-        return min(count - 1, int(self.uniform() * count))
+        x = self.state
+        x ^= (x << 13) & MASK32
+        x ^= x >> 17
+        x ^= (x << 5) & MASK32
+        self.state = x
+        return min(count - 1, int(x / 4294967296.0 * count))
 
     def chance(self, probability):
         return self.uniform() < probability
@@ -801,10 +816,15 @@ def grove_attempt(rng, count, compact):
     wobble = 0.4 if compact else 1.0
     harmonics = [(k, rng.range(0.15, 0.35) * wobble * (1.0, 0.8, 0.6)[k - 1], rng.range(0.0, 2 * math.pi)) for k in (1, 2, 3)]
 
+    (k1, a1, p1), (k2, a2, p2), (k3, a3, p3) = harmonics
+    cosine = math.cos
+
     def outline(angle):
-        return max(0.5, min(1.7, 1.0 + sum(amplitude * math.cos(k * angle + phase) for k, amplitude, phase in harmonics)))
+        # The three terms added in the order sum() did (the same floats), without the generator.
+        return max(0.5, min(1.7, 1.0 + (a1 * cosine(k1 * angle + p1) + a2 * cosine(k2 * angle + p2) + a3 * cosine(k3 * angle + p3))))
 
     mean_square = sum(outline(2 * math.pi * i / 72) ** 2 for i in range(72)) / 72
+    root_square = math.sqrt(mean_square)
     # What is cut out of the blob (a glade, a path) is made up for with a bigger blob.
     glades, paths = [], []
     cut_area = 0.0
@@ -831,7 +851,7 @@ def grove_attempt(rng, count, compact):
         u = x / semi_a
         v = (y - bend * x * x / semi_a) / semi_b
         rho = math.hypot(u, v)
-        return rho <= outline(math.atan2(v, u)) / math.sqrt(mean_square)
+        return rho <= outline(math.atan2(v, u)) / root_square
 
     cuts = [(world(fraction, angle), size) for fraction, angle, size in glades]
     corridors = []  # (point, unit direction, both ways)
@@ -839,6 +859,8 @@ def grove_attempt(rng, count, compact):
         corridors.append((world(fraction, angle), (math.cos(heading), math.sin(heading)), through))
 
     def cut_out(x, y, margin=0.0):
+        if not cuts and not corridors:
+            return False
         if any(math.hypot(x - at[0], y - at[1]) < size + margin for at, size in cuts):
             return True
         for at, direction, through in corridors:
@@ -852,9 +874,29 @@ def grove_attempt(rng, count, compact):
         return False
 
     points = []
+    # The trees in a grid of CELL cm squares: free() looks at the cells round the candidate only (it was every tree placed: O(n) per try, minutes
+    # for a grove of 210 in plain Python). The answer is the same (a candidate is free when no tree is nearer than apart, whatever the order).
+    cell = GROVE_SPACING + GROVE_SPACING_SLACK
+    grid = {}
+
+    def add(x, y):
+        points.append((x, y))
+        grid.setdefault((math.floor(x / cell), math.floor(y / cell)), []).append((x, y))
+
+    cells_of = grid.get
 
     def free(x, y, apart):
-        return all((x - px) ** 2 + (y - py) ** 2 >= apart * apart for px, py in points)
+        reach = math.ceil(apart / cell)
+        cx, cy = math.floor(x / cell), math.floor(y / cell)
+        square = apart * apart
+        for i in range(cx - reach, cx + reach + 1):
+            for j in range(cy - reach, cy + reach + 1):
+                in_cell = cells_of((i, j))
+                if in_cell is not None:
+                    for px, py in in_cell:
+                        if (x - px) ** 2 + (y - py) ** 2 < square:
+                            return False
+        return True
 
     # Trees sprout one from another: the next one 220 to ~240 cm from a tree already there (a wall: trunks closer than 2.4 m
     # leave no way through), farther apart towards the edge where the grove thins out, always at least the spacing from every
@@ -869,18 +911,22 @@ def grove_attempt(rng, count, compact):
         if points and stalled < 300:
             # Two drawn, the one nearer the middle sprouts: a plump blob, not a branching tree.
             first, second = points[rng.below(len(points))], points[rng.below(len(points))]
-            parent = min(first, second, key=lambda p: math.hypot(p[0] - middle[0], p[1] - middle[1]))
+            first_far = math.hypot(first[0] - middle[0], first[1] - middle[1])
+            second_far = math.hypot(second[0] - middle[0], second[1] - middle[1])
+            # min(first, second, key=distance): the first of the two when they tie.
+            parent, parent_far = (first, first_far) if first_far <= second_far else (second, second_far)
             angle = rng.range(0.0, 2 * math.pi)
-            share_parent = math.hypot(parent[0] - middle[0], parent[1] - middle[1]) / (radius * 1.2)
+            share_parent = parent_far / (radius * 1.2)
             step = spacing + 8.0 + 28.0 * min(1.0, share_parent) ** 2 * rng.uniform()
             x, y = parent[0] + step * math.cos(angle), parent[1] + step * math.sin(angle)
         else:
             angle = rng.range(0.0, 2 * math.pi)
             share = math.sqrt(rng.uniform())
-            x, y = world(share * outline(angle) / math.sqrt(mean_square), angle)
-        if not inside(x, y) or cut_out(x, y) or not free(x, y, spacing):
+            x, y = world(share * outline(angle) / root_square, angle)
+        # The three tests are pure: the cheap ones first (the same answer, the outline's trigonometry only for the few that survive).
+        if cut_out(x, y) or not free(x, y, spacing) or not inside(x, y):
             continue
-        points.append((x, y))
+        add(x, y)
         stalled = 0
     # The lone trees and the clumps just outside: from one of the outer trees, outwards, never closer than 3 m to another.
     middle = (sum(x for x, _ in points) / len(points), sum(y for _, y in points) / len(points))
@@ -901,7 +947,8 @@ def grove_attempt(rng, count, compact):
                         clump.append(candidate)
                         break
             if len(clump) == size and all(free(x, y, 300.0 if size == 1 else GROVE_SPACING) and not cut_out(x, y, 150.0) for x, y in clump):
-                points += clump
+                for x, y in clump:
+                    add(x, y)
                 break
         else:
             return None
@@ -918,6 +965,26 @@ def grove_local(seed, count, reach=None):
     bound = grove_reach(count) if reach is None else reach
     if ("grove", seed, count, bound) in SHAPES:
         return SHAPES[("grove", seed, count, bound)]
+    picks = grove_picks()
+    pick_key = "%d:%d:%r" % (seed, count, bound)
+    attempt = picks.get(pick_key)
+    if attempt is not None:
+        # Haldir-6, 2026-11-08: the search below tries up to 48 attempts (Hinterland Small: a minute in plain Python); the attempt it
+        # chose is written in grove_picks.json, and only that one is thrown again (the same trees: an attempt depends on its seed only).
+        points = grove_attempt(Rng(seed, 11, attempt), count, compact=attempt >= 32)
+        if points is not None:
+            SHAPES[("grove", seed, count, bound)] = points
+            return points
+    attempt, points = grove_search(seed, count, bound)
+    SHAPES[("grove", seed, count, bound)] = points
+    if picks is not None:
+        picks[pick_key] = attempt
+        save_grove_picks()
+    return points
+
+
+def grove_search(seed, count, bound):
+    """(the number of the attempt chosen, its trees): the first attempt whose farthest tree is within bound, else the one with the least extent."""
     best = None
     for attempt in range(48):
         points = grove_attempt(Rng(seed, 11, attempt), count, compact=attempt >= 32)
@@ -925,14 +992,57 @@ def grove_local(seed, count, reach=None):
             continue
         extent = max(math.hypot(x, y) for x, y in points)
         if extent <= bound:
-            SHAPES[("grove", seed, count, bound)] = points
-            return points
+            return attempt, points
         if best is None or extent < best[0]:
-            best = (extent, points)
+            best = (extent, attempt, points)
     if best is None:
         raise RuntimeError("No room for a grove of %d trees (seed %d)" % (count, seed))
-    SHAPES[("grove", seed, count, bound)] = best[1]
-    return best[1]
+    return best[1], best[2]
+
+
+GROVE_PICKS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "grove_picks.json")
+GROVE_PICKS = {}  # "seed:count:bound" -> number of the attempt grove_search chose; None until loaded, or when HOL_GROVE_PICKS=off
+GROVE_PICKS_LOADED = False
+
+
+def grove_signature():
+    """What the picks depend on: the code and the numbers of the groves' dart throwing. When any of it changes, the file is of no use (and rewritten)."""
+    import hashlib
+    import inspect
+    parts = [inspect.getsource(function) for function in (mix_seed, Rng, centred, big_room, grove_attempt, grove_search)]
+    parts += [repr(value) for value in (GROVE_SPACING, GROVE_SPACING_SLACK, GROVE_NEVER, GROVE_AREA, GROVE_GLADES, GLADE_RADIUS, GLADE_SCALE, GLADE_FORCE, GLADE_REACH, PATH_HALF_WIDTH, MASK32)]
+    return hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:16]
+
+
+def grove_picks():
+    """The picks dictionary (loaded once), or None when the file is switched off (HOL_GROVE_PICKS=off) or the code cannot be read."""
+    global GROVE_PICKS_LOADED
+    if os.environ.get("HOL_GROVE_PICKS", "on") == "off":
+        return None
+    if not GROVE_PICKS_LOADED:
+        GROVE_PICKS_LOADED = True
+        try:
+            import json
+            with open(GROVE_PICKS_FILE, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+            if data.get("signature") == grove_signature():
+                GROVE_PICKS.update({key: int(value) for key, value in data.get("picks", {}).items()})
+        except (OSError, ValueError, TypeError):
+            pass
+    return GROVE_PICKS
+
+
+def save_grove_picks():
+    """Writes the picks next to this file (best effort: a failure only costs the next run its search)."""
+    try:
+        import json
+        text = json.dumps({"signature": grove_signature(), "picks": GROVE_PICKS}, indent=0, sort_keys=True)
+        temporary = "%s.%d.tmp" % (GROVE_PICKS_FILE, os.getpid())
+        with open(temporary, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text + "\n")
+        os.replace(temporary, GROVE_PICKS_FILE)
+    except (OSError, TypeError):
+        pass
 
 
 def grove_points(seed, centre, count, axis=(1.0, 0.0), reach=None):
@@ -1333,27 +1443,36 @@ def ring_relays(recipe, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(
 
 
 # ---- Sacred sites (SacredSitesInProgress.md S4, D697): a place of the map taken by a holy unit or the hero, gold and the sacred victory. A module's
-# sites(recipe) gives [(x, y, radius)] in cm, like relays(recipe), as SITE_RINGS rings of one site per place (the number and the places are the map's
-# level design, no formula: SITE_RINGS is a PROVISIONAL value per map, TO CONFIRM by the user, Retours\Q-sites-nombre.md). Rules (tools\Tests\sites_test.py,
-# and the Map.Table test once the HOLSiteLayout class exists): symmetric by a turn of one place, outside every base's reach, inside the bounds, clear of the
+# sites(recipe) gives [(x, y, radius)] in cm, like relays(recipe), 2 or 3 sites IN ALL (the user's answer, Retours\Q-sites-nombre.md: the number is the map's own, SITE_COUNTS,
+# no formula). Rules (tools\Tests\sites_test.py, and the Map.Table test once the HOLSiteLayout class exists): symmetric by a half turn, outside every base's reach, inside the bounds, clear of the
 # relays' zones, the altar's zone, the lava flows, the rocks and the veins to keep whole.
 SITE_RADIUS = 1200.0  # cm, as the relay and the ruin (the radius is a TO PROPOSE in S4)
-SITE_RINGS = 1  # default number of rings (one site per place) when a module does not say
+SITE_COUNT_DEFAULT = 2  # sites IN ALL per map (the user, 2026-11-07: "2 a 3 selon la map", not per player) when SITE_COUNTS has no entry for the map
+SITE_COUNTS = {}  # map name -> 2 or 3, the map's own count (empty: all maps at 2). A 3 is a pair plus the MIDDLE of the map (the only third place symmetric by a half
+# turn); it fails with "No clear place" where the altar of the crater is at the middle (4 places and more): see Retours\Q-sites-symetrie.md
 SITE_SWEEP = 16  # turns of the ring tried (of one place's angle) when neither the middle angles nor the axes are clear
 SITE_MARGIN = 500.0 # cm of free ground between a site's zone and a relay's, the bounds' edge
 SITE_FRACTIONS = (1.0, 0.95, 1.05, 0.9, 1.1, 0.85, 1.15, 0.8, 0.75, 1.2, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2)  # of the places' circle
 
 
-def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(), rings=None):
-    """The sites of a map: `rings` rings (SITE_RINGS) of one site per place. A ring lies on the middle angles between two places (on_slots: on the places' own
-    axes, for the maps whose ranges run along the middle angles), on the first circle (SITE_FRACTIONS of the places' circle, the outer ones first: the relays
-    keep the inner ground) where all of its sites are clear; a ring after the first takes the other angles (the places' axes) then the rest of the fractions.
+def site_count(recipe):
+    """The number of sites of a map, IN ALL (2 or 3, the user's answer of 2026-11-07 in Retours\\Q-sites-nombre.md): the map's own entry of SITE_COUNTS."""
+    return SITE_COUNTS.get(recipe.map_name, SITE_COUNT_DEFAULT)
+
+
+def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(), count=None):
+    """The sites of a map: site_count(recipe) sites IN ALL (2 or 3). A pair lies on a diameter, symmetric by a half turn (every size has an even number of
+    places, so the places are too), on the middle angles between two places (on_slots: on the places' own axes, for the maps whose ranges run along the middle
+    angles), on the first circle (SITE_FRACTIONS of the places' circle, the outer ones first: the relays keep the inner ground) where both sites are clear,
+    then on the other angles of the half turn. A third site is the middle of the map (the half turn's fixed point), if it is clear.
     Clear: inside the bounds, outside every base's reach and extra_radius (a marsh, a river), SITE_MARGIN from every relay zone, off the altar and the lava
     flows (common.volcano_site), RELAY_ROCK_CLEAR from every avoid point (0 if none of the circles fits), off the veins to keep whole, and apart from the
-    sites already placed. Symmetric by a turn of one place by construction."""
+    sites already placed."""
     if recipe.size_key is None:
         return []
-    rings = SITE_RINGS if rings is None else rings
+    count = site_count(recipe) if count is None else count
+    if count not in (2, 3):
+        raise ValueError("A map has 2 or 3 sites in all, not %d" % count)
     places = len(recipe.angles)
     slots = [recipe.slot(index)[0] for index in range(places)]
     site = volcano_site(recipe)
@@ -1363,35 +1482,34 @@ def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_
     axis_first = math.radians(recipe.angles[0])
     families = (axis_first, middle_first) if on_slots else (middle_first, axis_first)
     # Last resort (a 2-place river map: the middle angles lie in the water, the axes in the lava flows and the relays): any other turn of the ring.
-    sweep = tuple(axis_first + math.radians(360.0 / places) * k / SITE_SWEEP for k in range(1, SITE_SWEEP) if 2 * k != SITE_SWEEP)
+    sweep = tuple(axis_first + math.pi * k / SITE_SWEEP for k in range(1, SITE_SWEEP))
+    pairs = []  # the candidate pairs, best first: the pair lies on a diameter, its second site the half turn of the first
+    for first in families + sweep:
+        for fraction in SITE_FRACTIONS:
+            radius = fraction * recipe.slot_radius
+            if radius >= extra_radius + zone + SITE_MARGIN:
+                x, y = radius * math.cos(first), radius * math.sin(first)
+                pairs.append([(x, y, zone), (-x, -y, zone)])
     placed = []
-    for _ in range(rings):
+    for candidates in ([[(0.0, 0.0, zone)]] if count == 3 else []) + [pairs]:  # the middle of the map first when there is a third site
         found = None
         for rock_clear in (RELAY_ROCK_CLEAR, 0.0):
-            for first in families + sweep:
-                for fraction in SITE_FRACTIONS:
-                    radius = fraction * recipe.slot_radius
-                    if radius < extra_radius + zone + SITE_MARGIN:
-                        continue
-                    ring = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places), zone) for k in range(places)]
-                    clear = all(abs(x) <= recipe.bounds_half - zone - SITE_MARGIN and abs(y) <= recipe.bounds_half - zone - SITE_MARGIN for x, y, _ in ring)
-                    clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + zone + SITE_MARGIN for x, y, _ in ring for slot in slots)
-                    clear = clear and all(math.dist((x, y), (u, v)) >= zone + r + SITE_MARGIN for x, y, _ in ring for u, v, r in list(relays) + placed)
-                    clear = clear and all(math.dist((x, y), (altar_x, altar_y)) >= zone + altar_radius + SITE_MARGIN for x, y, _ in ring)
-                    clear = clear and all(segment_distance((x, y), flow[0], flow[-1]) >= RELAY_LAVA_HALF_WIDTH + zone for x, y, _ in ring for flow in site["flows"])
-                    clear = clear and all(math.dist((x, y), rock) >= zone + rock_clear for x, y, _ in ring for rock in avoid)
-                    clear = clear and all(math.dist((x, y), pile) >= zone + 1.0 for x, y, _ in ring for pile in keep_whole)
-                    if clear:
-                        found = ring
-                        break
-                if found:
+            for ring in candidates:
+                clear = all(abs(x) <= recipe.bounds_half - zone - SITE_MARGIN and abs(y) <= recipe.bounds_half - zone - SITE_MARGIN for x, y, _ in ring)
+                clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + zone + SITE_MARGIN for x, y, _ in ring for slot in slots)
+                clear = clear and all(math.dist((x, y), (u, v)) >= zone + r + SITE_MARGIN for x, y, _ in ring for u, v, r in list(relays) + placed)
+                clear = clear and all(math.dist((x, y), (altar_x, altar_y)) >= zone + altar_radius + SITE_MARGIN for x, y, _ in ring)
+                clear = clear and all(segment_distance((x, y), flow[0], flow[-1]) >= RELAY_LAVA_HALF_WIDTH + zone for x, y, _ in ring for flow in site["flows"])
+                clear = clear and all(math.dist((x, y), rock) >= zone + rock_clear for x, y, _ in ring for rock in avoid)
+                clear = clear and all(math.dist((x, y), pile) >= zone + 1.0 for x, y, _ in ring for pile in keep_whole)
+                if clear:
+                    found = ring
                     break
             if found:
                 break
         if found is None:
-            raise RuntimeError("No clear circle for the sites of %s" % recipe.map_path)
+            raise RuntimeError("No clear place for the sites of %s (%d in all)" % (recipe.map_path, count))
         placed += found
-        families = families[1:] + families[:1]  # the next ring takes the other angles
     return placed
 
 

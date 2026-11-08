@@ -206,6 +206,16 @@ FString TalentTipTexts = "";
 
 	// The sounds of the screen (AudioInProgress.md A2b, Script/Audio): one player, asked by the clicks and the alerts below.
 	UHOLAudioPlayer Audio;
+
+	// Audio B5: the C++ screen says a finished building was selected alone; its family's elected sound rings (silent for Stone and Metal: no
+	// election yet, SelectEventFor says -1). The event is the table's (HOLAudioBuildings.as), the player's cooldown spares a double click.
+	UFUNCTION(BlueprintOverride)
+	void BuildingSelected(const FString& TypeName)
+	{
+		const int Event = HOLAudioBuildings::SelectEventFor(TypeName);
+		if (Event >= 0)
+			Sound(Event);
+	}
 	bool bVolcanoShown = false;
 
 	// The cue of an event (HOLAudioEvent::), played in 2D; false when the player is not made yet or the cue is in its cooldown.
