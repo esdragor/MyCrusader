@@ -7,26 +7,37 @@ hol.Cheat.Population 200
 hol.Camera.FocusNear 0 0
 hol.Camera.Zoom -2
 frames 5
+# Les trois types ennemis sont faits d'un coup, chacun a son propre point (3 000 cm d'ecart) : le clic ne depend ni de la place d'un autre corps ni des Paysans que l'IA fait naitre en cours de scenario (un clic « derniere unite ennemie » tombait sur eux). Indices absolus parmi les unites ennemies : le heros et les 5 Paysans de depart sont 0 a 5, puis Belier 6, Mangonneau 7, Lancier 8.
 hol.Units.SpawnHere 1 Ram 1 600
-frames 40
-hol.Select.ClickUnit -1 enemy
+frames 2
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Units.SpawnHere 1 Mangonel 1 600
+frames 2
+hol.Camera.FocusNear 6000 0
+frames 2
+hol.Units.SpawnHere 1 Spearman 1 600
+frames 15
+hol.Camera.FocusNear 0 0
+frames 5
+hol.Select.ClickUnit 6 enemy
 frames 10
 hol.Select.Report
 hol.HUD.Report
 frames 5
 waitlog HUD stats: building attack 60,
 capture use_ram
-hol.Units.SpawnHere 1 Mangonel 1 600
-frames 40
-hol.Select.ClickUnit -1 enemy
+hol.Camera.FocusNear 3000 0
+frames 5
+hol.Select.ClickUnit 7 enemy
 frames 10
 hol.HUD.Report
 frames 5
 waitlog HUD stats: attack 45,
 capture use_mangonel
-hol.Units.SpawnHere 1 Spearman 1 600
-frames 40
-hol.Select.ClickUnit -1 enemy
+hol.Camera.FocusNear 6000 0
+frames 5
+hol.Select.ClickUnit 8 enemy
 frames 10
 hol.HUD.Report
 frames 5
