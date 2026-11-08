@@ -17,8 +17,11 @@ FHOLSiteView HOLSite::MakeView(const int32 Index, const FVector2D& Location, con
 
 int32 HOLSite::GoldStep(int32& Carry, const int32 Sites, const int32 RatePerMinute, const int32 StepsPerSecond)
 {
-	// STUB (red test first): pays nothing.
-	return 0;
+	const int32 StepsPerMinute = 60 * FMath::Max(1, StepsPerSecond);
+	Carry += FMath::Max(0, Sites) * FMath::Max(0, RatePerMinute);
+	const int32 Award = Carry / StepsPerMinute;
+	Carry -= Award * StepsPerMinute;
+	return Award;
 }
 
 void HOLSite::ResetCounts(TArray<int32>& Takers, TArray<int32>& Disturbers, const int32 Slots)
