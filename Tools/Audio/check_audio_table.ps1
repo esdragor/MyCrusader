@@ -46,6 +46,15 @@ foreach ($Line in $Lines) {
         }
         continue
     }
+    if ($Pack -eq 'soft') {
+        # The softened sounds the user elected (Tools/Audio/make_soft_candidates.py, 2026-11-08): WAV in MyCrusader_Audio\Candidates\soft, asset under Content\Audio\Soft.
+        foreach ($Stem in ($StemList -split ',')) {
+            $Files++
+            if (-not (Test-Path (Join-Path (Split-Path $Root -Parent) "Candidates\soft\$Stem.wav"))) { Problem "${CueName}: file '${Stem}.wav' is not in Candidates\soft" }
+            if ($Assets -and -not (Test-Path (Join-Path $Content "..\Soft\SW_$Stem.uasset"))) { Problem "${CueName}: asset SW_$Stem is not imported under Content\Audio\Soft" }
+        }
+        continue
+    }
     if (-not $Index.ContainsKey($Pack)) { Problem "${CueName}: pack '$Pack' is not in $Root"; continue }
     if ($Registered -notmatch [regex]::Escape("\Kenney\$Pack\License.txt")) { Problem "${CueName}: pack '$Pack' has no licence line in the registry" }
     foreach ($Stem in ($StemList -split ',')) {

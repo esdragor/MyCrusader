@@ -71,3 +71,40 @@ void Test_AIEngineHeldBack(FUnitTest& T)
 	T.AssertTrue(HOLAISiege::ChooseEngine(Rule, Train, 2, 2, true, 0, 0, 0, true, false).Type == n"Ram", "cannot pay the Mangonel: a Ram");
 	T.AssertFalse(HOLAISiege::ChooseEngine(Rule, Train, 2, 1, true, 0, 0, 0, false, false).bQueue, "cannot pay the Ram");
 }
+
+// The engines follow the same switch as the Workshop: Normal queues nothing by the provisional setting (even at tier 2 with a finished
+// Workshop and the purse full), and raising MinDifficulty to Normal lets Normal queue and still not Easy.
+void Test_AIEngineDifficultyIsTheSameSwitchAsTheWorkshop(FUnitTest& T)
+{
+	FHOLAISiegeSettings Rule;
+	FHOLAIEngineSettings Train;
+	T.AssertFalse(HOLAISiege::ChooseEngine(Rule, Train, 1, 2, true, 0, 0, 0, true, true).bQueue, "Normal: none (provisional)");
+	Rule.MinDifficulty = 1;
+	T.AssertTrue(HOLAISiege::ChooseEngine(Rule, Train, 1, 2, true, 0, 0, 0, true, true).Type == n"Mangonel", "Normal queues when asked");
+	T.AssertFalse(HOLAISiege::ChooseEngine(Rule, Train, 0, 2, true, 0, 0, 0, true, true).bQueue, "Easy still not");
+}
+
+// The size of the train is a setting, not the rule: no Rams and no Mangonels = nothing; one more Ram allowed = a third Ram.
+void Test_AIEngineTrainSizeIsASetting(FUnitTest& T)
+{
+	FHOLAISiegeSettings Rule;
+	FHOLAIEngineSettings Train;
+	Train.MaxRams = 0;
+	Train.MaxMangonels = 0;
+	T.AssertFalse(HOLAISiege::ChooseEngine(Rule, Train, 2, 2, true, 0, 0, 0, true, true).bQueue, "an empty train: nothing");
+	Train.MaxRams = 3;
+	Train.MaxMangonels = 1;
+	T.AssertTrue(HOLAISiege::ChooseEngine(Rule, Train, 2, 2, true, 0, 2, 1, true, true).Type == n"Ram", "a third Ram when the train allows 3");
+	T.AssertFalse(HOLAISiege::ChooseEngine(Rule, Train, 2, 2, true, 0, 3, 1, true, true).bQueue, "3 Rams and a Mangonel: full again");
+}
+
+// The Mangonel never comes before its tier, even with an empty train and the purse full; and the purse alone stops a train that is not full.
+void Test_AIEngineNoMangonelBeforeTier2AndPurseStops(FUnitTest& T)
+{
+	FHOLAISiegeSettings Rule;
+	FHOLAIEngineSettings Train;
+	FHOLAIEngineChoice AtTier1 = HOLAISiege::ChooseEngine(Rule, Train, 2, 1, true, 0, 2, 0, true, true);
+	T.AssertFalse(AtTier1.bQueue, "tier 1, 2 Rams: the Mangonel is not open, the Rams are full: nothing");
+	FHOLAIEngineChoice Poor = HOLAISiege::ChooseEngine(Rule, Train, 2, 2, true, 0, 2, 0, true, false);
+	T.AssertFalse(Poor.bQueue, "tier 2, Rams full, cannot pay the Mangonel: nothing");
+}
