@@ -1,0 +1,7 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+usa_ram | un Belier selectionne : le bloc de stats sous les points de vie, ligne Attaque avec sa valeur
+usa_mangonel | un Mangonneau selectionne : ligne Attaque avec sa valeur
+usa_spearman | un Lancier selectionne : ligne Attaque avec sa valeur
+usa_manatarms | un Homme d'armes selectionne : ligne Attaque avec sa valeur
+usa_archer | un Archer selectionne : ligne Attaque avec sa valeur
+usa_monk | un Moine selectionne : bloc de stats sans ligne Attaque
