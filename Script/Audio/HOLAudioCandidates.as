@@ -60,6 +60,8 @@ namespace HOLAudioCandidates
 		// The elected building selection sounds (2026-11-07): the same ten as Building.Wood / Building.Sacred below (the elected one is F / H).
 		Add(List, "Select.BuildingWood", "s_wood_light,s_wood_medium,s_wood_heavy,s_wood_plank,s_wood_chop,s_wood_door,s_wood_creak_low,s_wood_step,s_wood_slap_low,s_wood_deep_knock");
 		Add(List, "Select.BuildingSacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
+		// The Market's selection (Q-audio-market-select = A, 2026-11-08): a sounding cue has its ten too (the same as Building.Coins).
+		Add(List, "Select.BuildingCoins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
 	}
 
 	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per

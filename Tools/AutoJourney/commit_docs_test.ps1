@@ -58,7 +58,7 @@ $code = $LASTEXITCODE
 $Head1 = (Git $Repo rev-parse HEAD | Out-String).Trim()
 Check ($code -eq 0 -and $Head1 -ne $Head0) 'commit cree (code 0, HEAD avance)' "code=$code out=$out"
 Check ((Git $Repo rev-list --count "$Head0..HEAD" | Out-String).Trim() -eq '1') 'exactement 1 commit'
-$files = @(Git $Repo show --name-only --format= HEAD | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
+$files = @(Git $Repo show --name-only --no-renames --format= HEAD | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
 $expect = @('Auto_Journey_Jour.md', 'EtapeDefini.md', 'Retours/E-new.md', 'Retours/E-old.md') | Sort-Object
 Check ((($files | Sort-Object) -join '|') -eq ($expect -join '|')) 'le commit contient EXACTEMENT les docs (y compris la suppression et le nouveau Retours)' ($files -join ', ')
 $st = @(Git $Repo status --short | ForEach-Object { "$_" })

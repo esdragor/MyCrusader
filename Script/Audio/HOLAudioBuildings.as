@@ -199,6 +199,7 @@ namespace HOLAudioBuildings
 	{
 		if (Family == "Wood") return HOLAudioEvent::SelectBuildingWood;
 		if (Family == "Sacred") return HOLAudioEvent::SelectBuildingSacred;
+		if (Family == "Coins") return HOLAudioEvent::SelectBuildingCoins;   // Q-audio-market-select = A
 		return -1;
 	}
 

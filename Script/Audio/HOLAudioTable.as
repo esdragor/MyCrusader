@@ -84,6 +84,8 @@ namespace HOLAudioEvent
 	// (reuse the purchase sound, Q-audio-market-select) are NOT events yet. The generic SelectBuilding above stays silent.
 	const int SelectBuildingWood = 24;
 	const int SelectBuildingSacred = 25;
+	// The Market's selection (Q-audio-market-select = A, 2026-11-08): handleCoins, the old purchase sound, moved here; Alert.Trade is now silent.
+	const int SelectBuildingCoins = 26;
 }
 
 namespace HOLAudio
@@ -146,7 +148,7 @@ namespace HOLAudio
 		Add(Cues, HOLAudioEvent::AlertBuildingDone, "Alert.BuildingDone", "", "", 80, 100, 100, 500, HOLAudioPriority::Alert);
 		Add(Cues, HOLAudioEvent::AlertTrainingDone, "Alert.TrainingDone", "rpg-audio", "bookPlace2", 80, 100, 100, 400, HOLAudioPriority::Alert);
 		Add(Cues, HOLAudioEvent::AlertTechDone, "Alert.TechDone", "", "", 85, 100, 100, 1000, HOLAudioPriority::Alert);
-		Add(Cues, HOLAudioEvent::AlertTrade, "Alert.Trade", "rpg-audio", "handleCoins", 80, 100, 100, 200, HOLAudioPriority::Alert);
+		Add(Cues, HOLAudioEvent::AlertTrade, "Alert.Trade", "", "", 80, 100, 100, 200, HOLAudioPriority::Alert);   // silent since Q-audio-market-select = A
 		Add(Cues, HOLAudioEvent::AlertVolcano, "Alert.Volcano", "impact-sounds", "impactBell_heavy_003", 100, 100, 100, 5000, HOLAudioPriority::Alert);
 		Add(Cues, HOLAudioEvent::AlertDiplomacy, "Alert.Diplomacy", "vsco", "v_harp_arp_up", 80, 100, 100, 1000, HOLAudioPriority::Alert);
 		SetRepeat(Cues, HOLAudioEvent::AlertVolcano, VolcanoRepeatCount, VolcanoRepeatGapMs);
@@ -154,6 +156,7 @@ namespace HOLAudio
 		// The elected building sounds (soft files made by Tools/Audio/make_soft_candidates.py, pack "soft"): volume = BuildingSelectGainPercent.
 		Add(Cues, HOLAudioEvent::SelectBuildingWood, "Select.BuildingWood", "soft", "s_wood_door", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuildingSacred, "Select.BuildingSacred", "soft", "s_sacred_book", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingCoins, "Select.BuildingCoins", "rpg-audio", "handleCoins", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).
