@@ -14,3 +14,6 @@ NON VÉRIFIÉ : le grésillement du gris (arbres, sol) à l'œil sur écran rée
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 fog_trees -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
 Durée : environ 1 min. Réponse attendue : `OK` ou `BUG: le gris grésille encore, à tel endroit`.
+
+
+integre sur main fc601b7 (fusion groupee n1, 2026-11-08 11:38) : session_gate -Phase Essay PASS ; preflight fog_trees PASS sur ce build (Sauron), PNG fogtrees_c ouvert : soldats revenus, plus aucun arbre, brouillard noir autour.
