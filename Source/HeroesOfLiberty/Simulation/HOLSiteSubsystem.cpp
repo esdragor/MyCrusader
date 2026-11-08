@@ -32,7 +32,7 @@ namespace
 
 	float SiteVictorySeconds = HOLSite::DefaultVictorySeconds;
 	FAutoConsoleVariableRef CVarSiteVictorySeconds(TEXT("hol.Site.VictorySeconds"), SiteVictorySeconds,
-		TEXT("Seconds a camp must hold EVERY sacred site to win (provisional 300, D699: SacredSitesInProgress.md S10)"));
+		TEXT("Seconds a camp must hold EVERY sacred site to win (600, chosen by the user, D747: SacredSitesInProgress.md S10)"));
 
 	FAutoConsoleCommandWithWorldAndArgs SiteCommandAdd(TEXT("hol.Site.Add"),
 		TEXT("hol.Site.Add <X> <Y> [Radius=1200]: a neutral sacred site there, server or solo (development only)"),

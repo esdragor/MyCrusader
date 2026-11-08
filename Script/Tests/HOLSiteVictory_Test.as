@@ -44,10 +44,10 @@ HOLSiteVictory::FHOLSiteVictoryState VictoryRun(const HOLSiteVictory::FHOLSiteVi
 	return State;
 }
 
-// A camp holding every site for the whole count wins, not a step before; nobody wins before; the constant is 300 s of the simulation's steps.
+// A camp holding every site for the whole count wins, not a step before; nobody wins before; the constant is 600 s of the simulation's steps.
 void Test_VictoryHoldingAllSites(FUnitTest& T)
 {
-	T.AssertEquals(300, HOLSiteVictory::VictorySeconds, "the count of the victory is 300 s (D699)");
+	T.AssertEquals(600, HOLSiteVictory::VictorySeconds, "the count of the victory is 600 s (D747)");
 	T.AssertEquals(HOLSiteVictory::VictorySeconds * HOLHero::GetSimulationRateHz(), HOLSiteVictory::VictorySteps(), "in steps, at the simulation's rate");
 	HOLSiteVictory::FHOLSiteVictoryState State;
 	T.AssertEquals(HOLSiteVictory::None, State.Winner, "nobody wins at the start");

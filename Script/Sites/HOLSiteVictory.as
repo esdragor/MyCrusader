@@ -1,6 +1,6 @@
 // Sacred sites, victory count and gold by the minute, pure rules (SacredSitesInProgress.md S10 and S6; GDD 14.3 Sacred sites, D429 to D431,
 // D699, D703): integers only, no world access, tested in HOLSiteVictory_Test.as. The victory: the CAMP (a player alone or all his mutual
-// allies, the team of the site owners' slots) that holds EVERY site for 300 s (D699, a constant of the game) wins; a site with an adverse unit in
+// allies, the team of the site owners' slots) that holds EVERY site for 600 s (D747, a constant of the game) wins; a site with an adverse unit in
 // its zone freezes the count (it never recedes); a site changing hands, even to another slot of the same camp, resets it, and so does an alliance
 // breaking (the teams change: the camp that held all is two camps); two camps cannot count at once (a camp must hold every site). The winner
 // once set stays. Not here: the defeat of the adversaries (the new reason of EHOLDefeatReason, S10's C++), the announcements, the display.
@@ -11,8 +11,8 @@ namespace HOLSiteVictory
 	// No leader / no winner.
 	const int None = -1;
 
-	// Seconds a camp must hold every site (D699: 300 s, to tune in test).
-	const int VictorySeconds = 300;
+	// Seconds a camp must hold every site (600 s, chosen by the user, D747, 2026-11-08).
+	const int VictorySeconds = 600;
 
 	int VictorySteps()
 	{

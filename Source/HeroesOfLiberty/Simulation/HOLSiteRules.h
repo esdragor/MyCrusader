@@ -37,8 +37,8 @@ struct FHOLSiteVictoryState
 
 namespace HOLSite
 {
-	/** S10 (D699): seconds a camp must hold every site. PROVISIONAL (300, the dossier's value; the user has not confirmed it). */
-	constexpr int32 DefaultVictorySeconds = 300;
+	/** S10 (D699): seconds a camp must hold every site. 600, chosen by the user (D747, 2026-11-08). */
+	constexpr int32 DefaultVictorySeconds = 600;
 
 	/**
 	 * S10: the count after one step (the script's HOLSiteVictory::Step). OwnerBySite: the owner slot of each site (INDEX_NONE nobody's);
