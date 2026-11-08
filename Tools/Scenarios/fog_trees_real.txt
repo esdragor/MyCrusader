@@ -1,0 +1,71 @@
+# Brouillard (F7.3 c, F8), GESTE REEL : les soldats sont envoyes par Q puis clic gauche sur le sol (hol.Select.Grid 4 = la touche Q, hol.Select.LeftClickGround = le clic par les gestionnaires d'entree), pas par hol.Select.OrderNear. Un bosquet coupe pendant que je ne le vois pas reste dessine ; quand on le revoit, il disparait.
+# Configuration par defaut du menu (un joueur, Plain, brouillard Normal : F8), forum en (-14800, 0). Le scenario ne regle ni hol.Fog.Mode ni hol.Fog.Render : c'est le chemin du menu.
+# Un bosquet de 10 arbres pose a 90 m a l'est du forum (-5800, 0) ; mes 4 Hommes d'armes vont le voir (a 20 m : x = -7800), reviennent au centre (x = -11300) ; pendant ce temps le bosquet est coupe d'un coup (cheat, comme si un ennemi le coupait loin de moi) : il doit rester dessine (ancien etat connu). Quand on le revoit, il disparait.
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+hol.Sanity.Watch 1
+frames 5
+hol.Sources.Grove 160 -5800 0 10 7
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Units.SpeedScale 10
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Fog.RenderReport
+waitlog Fog render: mode 1 (post process)
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -2
+frames 20
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -7800 0
+waitlog Scripted left click at
+wait 5
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Sources.Report
+capture fogtreesr_a
+# Ils reviennent au centre : le bosquet sort de la vue, puis il est coupe sans que je le voie.
+hol.Camera.FocusNear 4500 0
+frames 60
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -11300 0
+waitlog Scripted left click at
+wait 6
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Sources.Report
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+hol.Sources.TakeNear -5800 0
+frames 30
+hol.Sources.Report
+capture fogtreesr_b
+# Les soldats retournent le voir : les arbres disparaissent.
+hol.Camera.FocusNear 4500 0
+frames 60
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -7800 0
+waitlog Scripted left click at
+wait 5
+hol.Camera.FocusNear 9000 0
+frames 30
+hol.Sources.Report
+capture fogtreesr_c
+hol.Camera.FocusNear 4500 0
+hol.HUD.Report 1
+hol.Test.Sanity
+note Brouillard : Q puis clic sur le sol envoie mes 4 soldats voir le bosquet de 10 arbres a 90 m a l'est ; ils reviennent au centre, le bosquet est coupe pendant qu'ils sont loin. Il doit rester dessine (dans le gris de l'explore) tant que vous ne le revoyez pas ; des que les soldats reviennent a 70 m, les arbres disparaissent.
+note A regarder aussi : Echap, Menu, quitter vers le menu, puis Nouvelle partie : la ligne de la carte porte une liste « Brouillard » (Normal par defaut, Carte exploree, Sans brouillard), accessible aussi au clavier. Choisir « Sans brouillard » puis Lancer : plus de noir, plus de masquage.
