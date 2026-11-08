@@ -6,7 +6,7 @@ SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'
 branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
 
 Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.
-Pieces (Marche) [Building.Coins] = _
+Pieces (Marche) [Building.Coins] = aucune lettre ; « on avait deja un son pour l'achat : on enleve le son d'achat et on le met a la place » (le son d'achat existant devient le son de selection du Marche)  [REPONSE DE L'UTILISATEUR 2026-11-07, ecoute reelle]
 
 Lettres (le panneau affiche le nom du cue a cote de la lettre) :
 Building.Coins : A s_coins_purse, B s_coins_leather_b, C s_coins_leather, D s_coins_drop, E s_coins_tin_b, F s_coins_counter, G s_coins_tin, H s_coins_cloth, I s_coins_soft, J s_coins_slap

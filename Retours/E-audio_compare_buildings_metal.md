@@ -6,7 +6,7 @@ SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'
 branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
 
 Réponses : remplace le _ par la lettre préférée (A à J), plusieurs lettres possibles, ou « aucune, dix autres » et dis ce que tu aimes.
-Metal (Forge) [Building.Metal] = _
+Metal (Forge) [Building.Metal] = rien de bien : aucune lettre, dix autres candidats a refaire  [REPONSE DE L'UTILISATEUR 2026-11-07, ecoute reelle]
 
 Lettres (le panneau affiche le nom du cue a cote de la lettre) :
 Building.Metal : A s_metal_heavy, B s_metal_medium, C s_metal_light_low, D s_metal_plate_heavy, E s_metal_plate_medium, F s_metal_pot, G s_metal_latch, H s_metal_tin, I s_metal_gong_muffled, J s_metal_mallet

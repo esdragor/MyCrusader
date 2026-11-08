@@ -7,7 +7,7 @@ Mode d'emploi 4/5 : `session_gate.ps1 -Phase Launch` exige au moins 3 lignes `sa
 Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou périmées dans `Docs\Archive\Auto_Journey_File_2026-11-07.md` ; encodage UTF-8 avec BOM et fins de ligne CRLF partout.
 
 ## Arwen — `heal-sleep` — Audio, IA, outils
-- [?] (sans C++, attend l'utilisateur) Sons doux : écouter les 5 familles audio_compare_buildings_*, audio_compare_training et les 6 alertes (candidats faits), choisir ; `E-audio_compare*.md`, `Q-audio-candidates.md`.
+- [ ] (sans C++, Arwen, 2026-11-07 soir : l'utilisateur a ECOUTE les 5 familles de bâtiments ; alertes et entraînement déjà tranchés avant) Réponses : Bois = F s_wood_door, volume x2-3 ; Sacré = H s_sacred_book, volume x2-3 ; Pierre = rien de bien, dix autres candidats doux ; Métal = rien de bien, dix autres ; Pièces (Marché) = aucune lettre, le son d'ACHAT existant devient le son de sélection du Marché et est retiré de l'achat (confirmer le sens à l'utilisateur au moment de brancher). À faire : (1) élire F et H dans HOLAudioTable.as avec gain x2-3 (réglage de volume en tête, une ligne) ; (2) refaire dix candidats Pierre et dix Métal (make_soft_candidates, graves/sourds/courts/doux) puis fiches ; (3) Pièces = réutiliser le cue d'achat ; (4) B5 (C++) : transmettre le type du bâtiment sélectionné au script.
 - [ ] (C++, après l'écoute) Audio B5 : transmettre le type du bâtiment sélectionné au script, CueNameFor puis UHOLAudioPlayer.Play ; `AudioInProgress.md`.
 - [~] (sans C++) Neutres N6 (IA du joueur, attend NQ1/NQ2 de Retours) et N7 ; N0-N5 faites ; `NeutralsInProgress.md`.
 - [ ] (sans C++) Technologies (GDD § 11) ou Arbre de talents (§ 9.6) : ouvrir le `*InProgress.md` et le plan si la file se vide.
