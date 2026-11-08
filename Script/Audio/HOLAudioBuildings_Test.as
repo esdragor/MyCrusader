@@ -67,7 +67,7 @@ void Test_AudioBuildingsProductionKeepsTodaysCues(FUnitTest& T)
 	T.AssertEquals(HOLAudioEvent::AlertTechDone, HOLAudioBuildings::EventFor("Sanctuary", HOLBuildingSound::Produced), "the sanctuary researches: Alert.TechDone");
 	T.AssertFalse(HOLAudioBuildings::Rings("Forge", HOLBuildingSound::Produced), "Alert.TechDone is silent (the user's choice)");
 	T.AssertEquals(HOLAudioEvent::AlertTrade, HOLAudioBuildings::EventFor("Market", HOLBuildingSound::Produced), "the market trades: Alert.Trade");
-	T.AssertTrue(HOLAudioBuildings::Rings("Market", HOLBuildingSound::Produced), "a trade rings today");
+	T.AssertFalse(HOLAudioBuildings::Rings("Market", HOLBuildingSound::Produced), "a trade is silent (Q-audio-market-select = A: the coins moved to the selection)");
 	T.AssertEquals(-1, HOLAudioBuildings::EventFor("House", HOLBuildingSound::Produced), "a house produces nothing");
 	T.AssertEquals(-1, HOLAudioBuildings::EventFor("Farm", HOLBuildingSound::Produced), "a farm produces nothing");
 	T.AssertEquals(-1, HOLAudioBuildings::EventFor("LumberCamp", HOLBuildingSound::Produced), "a lumber camp produces nothing");

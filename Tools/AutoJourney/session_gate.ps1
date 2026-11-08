@@ -14,7 +14,8 @@ param(
   [string]$QueueFile = '',                 # L8-7 : defaut <copie principale>\Auto_Journey_File.md (la file des lignes '[ ]')
   [string[]]$Branches = @(),
   [string]$Root = '',
-  [switch]$Scenarios,                      # Launch : la tache de l'agent joue des scenarios (donc exige un binaire du worktree a jour, -Root)
+  [string]$MainRoot = '',                  # Merge (L9-5) : la copie principale a controler (defaut : C:\Users\baudo\Documents\MyCrusader) ; docs seuls modifies = WARN (commit_docs.ps1), CODE modifie = FAIL
+  [switch]$Scenarios,                     # Launch : la tache de l'agent joue des scenarios (donc exige un binaire du worktree a jour, -Root)
   [string[]]$Exclude = @(),                # Close : worktrees hors perimetre (nom court 'Haldir' ou complet 'HeroesOfLiberty-Haldir')
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
   [string]$Essay = '',                     # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
@@ -127,7 +128,16 @@ if ($Phase -eq 'Report') {
 }
 
 if ($Phase -eq 'Merge') {
-  if ($Branches.Count -eq 0) { Say 'FAIL' 'donner -Branches <b1,b2,...>' }
+  # L9-5 : des docs non commites de la copie principale ont bloque l'avance rapide deux fois ; du CODE modifie dans la copie principale ne doit jamais s'y trouver
+  $mr = if ($MainRoot) { $MainRoot } else { $Main }
+  $mdocOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|Retours/.*)$'
+  $mst = @(git -C $mr -c core.quotepath=false status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' } | ForEach-Object { $_.Substring(3).Trim('"') })
+  $mcode = @($mst | Where-Object { $_ -notmatch $mdocOk })
+  $mdocs = @($mst | Where-Object { $_ -match $mdocOk })
+  if ($mcode.Count -gt 0) { Say 'FAIL' ("copie principale $mr : du CODE ou des fichiers hors docs sont modifies (lecon L9-5, ne pas fusionner par-dessus) : " + ($mcode -join ', ')) }
+  elseif ($mdocs.Count -gt 0) { Say 'WARN' ("copie principale $mr : $($mdocs.Count) doc(s) modifie(s) non commite(s) : lancer Tools\AutoJourney\commit_docs.ps1 AVANT la fusion (sinon l'avance rapide est bloquee)") }
+  else { Say 'PASS' "copie principale $mr : propre" }
+  if ($Branches.Count -eq 0 -and -not $MainRoot) { Say 'FAIL' 'donner -Branches <b1,b2,...>' }
   foreach ($b in $Branches) {
     $out = & powershell -ExecutionPolicy Bypass -File "$Main\Tools\AutoJourney\preflight_merge.ps1" -Branch $b 2>&1 | Out-String
     if ($out -match 'REFUSE|BLOQUE') { Say 'FAIL' ("$b : " + (($out -split "`n" | Where-Object { $_ -match 'REFUSE|BLOQUE' } | Select-Object -First 1).Trim())) } else { Say 'PASS' "$b : pre-vol de fusion OK" }
@@ -170,7 +180,12 @@ if ($Phase -eq 'Essay') {
       $named = $true
       $cited = @()
       $bm = [regex]::Match($etxt, '(?mi)^\s*\**branches\s*:\**\s*(.+)$')
-      if ($bm.Success) { $cited = @($bm.Groups[1].Value -split '[,;\s`]+' | Where-Object { $_ -and $_ -ne '-' -and $_ -ne 'aucune' }) }
+      if ($bm.Success) {
+        # 2026-11-08 : seule la LISTE compte, pas le commentaire qui suit (fiches "branches: heal-sleep   (le scenario vient de ...)" : 17 faux FAIL) :
+        # on coupe a la premiere parenthese et a deux espaces ou plus, puis on ne garde que des noms de branche plausibles.
+        $listText = ($bm.Groups[1].Value -replace '\s*[\(\[].*$', '') -replace '\s{2,}.*$', ''
+        $cited = @($listText -split '[,;\s`]+' | Where-Object { $_ -and $_ -ne '-' -and $_ -ne 'aucune' -and $_ -match '^[A-Za-z0-9][A-Za-z0-9._/-]*$' })
+      }
       else {
         $named = $false
         $cited = @([regex]::Matches($etxt, '[A-Za-z0-9][A-Za-z0-9._/-]*') | ForEach-Object { $_.Value } | Select-Object -Unique |
