@@ -1,0 +1,35 @@
+# Deconnexion en 2 contre 2 (D717-D722) : Alice (toi) + une IA contre Bob + une IA. 4 temps, Entree = temps suivant. Bob est tenu par le serveur : hol.Net.FakeAbsent Leave / End / Back = depart, fin de fenetre, retour (commandes de console, pas un geste de souris : l evenement simule est le reseau). 3 minutes au plus. Les notes sont toutes a la fin : le panneau du scenario grandit et recouvrirait le bandeau de Bob.
+hol.Match.DisconnectWindowSeconds 60
+frames 90
+hol.Match.StartWaitSeconds 1
+waitlog slot 1 (Bob) held by AI
+hol.Camera.FocusSlot 1
+frames 200
+capture review_hold
+hol.Disconnect.Report
+waitkey Entree : TEMPS 2, la PAUSE. Je pause ; le compte a rebours de Bob doit se figer
+capture review_pause_before
+hol.Match.Pause
+wait 1
+capture review_pause_a
+wait 4
+capture review_pause_b
+hol.Match.Resume
+wait 1
+capture review_pause_after
+waitkey Entree : TEMPS 3, la fin de fenetre. Bob est dans un camp avec une IA : l IA garde son siege en cerveau complet
+hol.Net.FakeAbsent End 1
+waitlog windows ended
+frames 200
+capture review_end
+hol.Disconnect.Report
+waitkey Entree : TEMPS 4, le retour. Bob revient
+hol.Net.FakeAbsent Back 1
+waitlog he is back
+frames 200
+capture review_back
+hol.Disconnect.Report
+note TEMPS 1, MODE TENIR : Bob est parti, la camera est sur sa base. Pastille "Connexion perdue" dans la table des joueurs, bandeau "Bob : connexion perdue" avec le compte a rebours. L IA tient son siege (Paysans en file, constructions), sans vague.
+note TEMPS 2, PAUSE : le compte a rebours du bandeau est le MEME sur pause_a et pause_b (4 s d ecart), puis repart. En reseau la pause de Bob est levee d office quand il part (couvert par lobby_match -Reconnect, pas ici).
+note TEMPS 3, FIN DE FENETRE : la pastille devient "IA", le bandeau s eteint, Bob n est pas battu ; Disconnect.Report dit "AI mode full brain".
+note TEMPS 4, RETOUR : plus aucune pastille, l IA lache le siege.

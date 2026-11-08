@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+dc1v1_away | Bob parti en 1 contre 1 : pastille "Connexion perdue" et bandeau avec le compte a rebours
+dc1v1_end | Fenetre finie, Bob seul dans son camp : Bob est vaincu, le bandeau s'eteint, l'ecran de fin (victoire d'Alice)
