@@ -7700,8 +7700,13 @@ if ($Parts -contains "aiwave") {
     $WaveSequence = Join-Path $TestSaved "quick_aiwave.seq"
     $WaveLog = Get-FreshLog $WaveLog
     Write-AIMatchConfig $WaveConfig @("AI", "AI", "Closed", "Closed", "Closed", "Closed", "Closed", "Closed") @() "Plain" "" @("Hard", "Normal")
+    # The spawn point (Faramir-16, SiegeInProgress.md): the AI of slot 0 puts its Stable (-13400, 200, 1200 x 1200) and its Barracks (-13000, -1000) right where
+    # (-13000, 0) lies, which wedged a Ram in the pocket between them ((-13614, -436), Moving for 21 samples). (-11500, 800) is clear of every building the AI
+    # places in 520 s, and inside the AI's assembly (-13300, 0, radius 1000: HOLAIArmy AssemblyRadius): an idle soldier beyond it is regrouped there, through
+    # the buildings (a first try at (-11500, 800) was walked back to (-13964, -414) and wedged the same way).
+    $WaveSpawnX = -12500; $WaveSpawnY = 250; $WaveSpawnRadius = 150
     $WaveLines = @("hol.Simulation.SyncNavBuild 1", "wait 3", "hol.Hero.SetXP 0 1300", "hol.Hero.SetXP 1 1300", "hol.Units.Where 0",
-        "hol.Units.Spawn 10 -13000 0 0 Spearman 300", "hol.Units.Spawn 2 -13000 0 0 Ram 300", "hol.Units.Spawn 1 -13000 0 0 Mangonel 300", "wait 1", "hol.Units.Where 0")
+        "hol.Units.Spawn 10 $WaveSpawnX $WaveSpawnY 0 Spearman $WaveSpawnRadius", "hol.Units.Spawn 2 $WaveSpawnX $WaveSpawnY 0 Ram $WaveSpawnRadius", "hol.Units.Spawn 1 $WaveSpawnX $WaveSpawnY 0 Mangonel $WaveSpawnRadius", "wait 1", "hol.Units.Where 0")
     for ($Second = 0; $Second -lt 285; $Second += 5) { $WaveLines += "wait 5" }
     for ($Second = 290; $Second -le 520; $Second += 5) { $WaveLines += "wait 5"; $WaveLines += "hol.Units.Where 0" }
     $WaveLines += "quit"
@@ -7728,17 +7733,21 @@ if ($Parts -contains "aiwave") {
     $Launch = $WaveText | Select-String -Pattern "AI slot 0 step (\d+): attack launched with (\d+) soldiers" | Select-Object -First 1
     $Checks["Hard's wave is launched ($(if ($Launch) { $Launch.Line -replace '^.*step', 'step' } else { 'no wave' }))"] = [bool]$Launch
     if ($Samples.Count -ge 4 -and $Engines.Count -eq 3) {
-        $Start = @(-13000.0, 0.0); $Target = @(14800.0, 0.0)
+        $Start = @([double]$WaveSpawnX, [double]$WaveSpawnY); $Target = @(14800.0, 0.0)
         $Direction = @(($Target[0] - $Start[0]), ($Target[1] - $Start[1])); $Length = [math]::Sqrt($Direction[0] * $Direction[0] + $Direction[1] * $Direction[1])
         $Advance = { param($Point) (($Point[0] - $Start[0]) * $Direction[0] + ($Point[1] - $Start[1]) * $Direction[1]) / $Length }
         $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0
+        # The front of the escort counts a Spearman killed on the way at the last place it was seen (Faramir-16: the two leaders died near the enemy and a Ram that had
+        # always been behind them was then reported "in front of the front-most Spearman", +580 cm, at the very last sample).
+        $LastAdvance = @{}
         foreach ($Sample in $Samples | Select-Object -Skip 2) {
             $Units = & $Parse $Sample
             $Live = @($Escort | Where-Object { $Units.ContainsKey($_) })
             $EngineLive = @($Engines | Where-Object { $Units.ContainsKey($_) })
             foreach ($Id in $EngineLive) { $MaxEngine[$Id] = [math]::Max([double]$MaxEngine[$Id], (& $Advance $Units[$Id])) }
             if ($Live.Count -ge 3) {
-                $Front = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Maximum).Maximum; $Back = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Minimum).Minimum; $Spread = [math]::Max($Spread, $Front - $Back)
+                foreach ($Id in $Live) { $LastAdvance[$Id] = & $Advance $Units[$Id] }
+                $Front = ($LastAdvance.Values | Measure-Object -Maximum).Maximum; $Back = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Minimum).Minimum; $Spread = [math]::Max($Spread, $Front - $Back)
                 $Compared++
                 foreach ($Id in $EngineLive) { if ((& $Advance $Units[$Id]) -gt $Front + 100) { $Ahead += "#$Id +$([int]((& $Advance $Units[$Id]) - $Front))" } }
             }
