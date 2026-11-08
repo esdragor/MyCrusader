@@ -7,6 +7,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLSiteSubsystem.generated.h"
 
+class AHOLGameState;
+
 /**
  * The sacred sites of a match (SacredSitesInProgress.md S5, GDD 14.3, D429 to D431, D697 to D703): where the simulation runs (solo, server),
  * each step it walks the living units once, counts in each site's zone the takers (a holy unit of the slot's faction, or its hero) and the
@@ -66,6 +68,11 @@ protected:
 
 private:
 	void UnbindSteps();
+	/** S6: the gold by the minute to each slot that owns sites (a defeated slot gets none), written to its player state. */
+	void PayGold(const AHOLGameState& GameState);
+
+	/** [slot]: the gold fractions carried from a step to the next (S6). */
+	TArray<int32> GoldCarry;
 
 	/** What one slot has learnt of one site: known yet, and the view as it last saw it. */
 	struct FKnown

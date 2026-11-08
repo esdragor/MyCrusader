@@ -26,6 +26,10 @@ namespace
 	FAutoConsoleVariableRef CVarSiteHoldSeconds(TEXT("hol.Site.HoldSeconds"), SiteHoldSeconds,
 		TEXT("Seconds an adverse side must hold a sacred site's zone alone to take it (provisional 60, like the relay's)"));
 
+	int32 SiteGoldPerMinute = HOLSite::DefaultGoldPerMinute;
+	FAutoConsoleVariableRef CVarSiteGoldPerMinute(TEXT("hol.Site.GoldPerMinute"), SiteGoldPerMinute,
+		TEXT("Gold by the minute each held sacred site pays its owner alone (provisional 30, Retours/Q-sites-or-par-minute.md)"));
+
 	FAutoConsoleCommandWithWorldAndArgs SiteCommandAdd(TEXT("hol.Site.Add"),
 		TEXT("hol.Site.Add <X> <Y> [Radius=1200]: a neutral sacred site there, server or solo (development only)"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
@@ -292,4 +296,39 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 		}
 	}
 	PublishViews();
+	PayGold(*GameState);
+}
+
+void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
+{
+	// S6 (D699): the OWNER alone is paid (its allies get nothing, D703 counts camps for the take, not for the pay), a defeated slot no more.
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	GoldCarry.SetNumZeroed(Slots);
+	for (APlayerState* Each : GameState.PlayerArray)
+	{
+		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
+		const int32 Slot = Player ? Player->GetPlayerIndex() : INDEX_NONE;
+		if (Slot < 0 || Slot >= Slots)
+		{
+			continue;
+		}
+		if (GameState.IsSlotDefeated(Slot))
+		{
+			GoldCarry[Slot] = 0;
+			continue;
+		}
+		const int32 Owned = CountOwned(Slot);
+		if (Owned == 0 && GoldCarry[Slot] == 0)
+		{
+			continue;
+		}
+		const int32 Gold = HOLSite::GoldStep(GoldCarry[Slot], Owned, SiteGoldPerMinute, Rate);
+		if (Gold > 0)
+		{
+			FHOLResources Stock = Player->GetResources();
+			Stock.Gold += Gold;
+			Player->SetResources(Stock);
+		}
+	}
 }

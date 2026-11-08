@@ -315,7 +315,70 @@ bool FHOLSiteSubsystemKeepTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemSameTwiceTest, "HeroesOfLiberty.Sites.SubsystemSameTwice", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemGoldTest, "HeroesOfLiberty.Sites.SubsystemGold", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S6 (D699), through the real chain (real Monks take real sites, the players' states hold the stock): a site held for a minute pays its OWNER
+// exactly the rate (hol.Site.GoldPerMinute 30), the owner alone (a player who holds nothing gets nothing), two sites pay twice, and a site
+// that changes hands stops paying its old owner and starts paying the new one. The effect is the stock of gold, not a predicate.
+bool FHOLSiteSubsystemGoldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FScopedVariable Rate(TEXT("hol.Site.GoldPerMinute"), TEXT("30"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	AHOLPlayerState* Players[3] = { nullptr, nullptr, nullptr };
+	for (int32 Slot = 0; Slot < 3; ++Slot)
+	{
+		Players[Slot] = Fixture.World->SpawnActor<AHOLPlayerState>();
+		if (!TestNotNull(TEXT("a player state"), Players[Slot]))
+		{
+			return false;
+		}
+		Players[Slot]->SetMatchSlot(Slot, Slot);
+		Fixture.GameState->AddPlayerState(Players[Slot]);
+	}
+	const int32 Minute = 60 * GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	const int32 SiteA = Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	const int32 SiteB = Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+	const uint32 MonkA = Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Monk of slot 0 on site A"), MonkA != 0);
+
+	Fixture.Tick(HoldSteps() + 3);
+	TestEqual(TEXT("slot 0 took site A"), Fixture.State(SiteA).Owner, 0);
+	int32 Before0 = Players[0]->GetResources().Gold;
+	int32 Before1 = Players[1]->GetResources().Gold;
+	Fixture.Tick(Minute);
+	TestEqual(TEXT("one site held for a minute pays its owner exactly the rate"), Players[0]->GetResources().Gold - Before0, 30);
+	TestEqual(TEXT("a player who holds nothing gets nothing"), Players[1]->GetResources().Gold - Before1, 0);
+
+	// A second site: two sites pay twice.
+	const uint32 MonkB = Fixture.Place(TEXT("Monk"), 0, FVector(4000., 0., 0.));
+	TestTrue(TEXT("a Monk of slot 0 on site B"), MonkB != 0);
+	Fixture.Tick(HoldSteps() + 3);
+	TestEqual(TEXT("slot 0 took site B"), Fixture.State(SiteB).Owner, 0);
+	Before0 = Players[0]->GetResources().Gold;
+	Fixture.Tick(Minute);
+	TestEqual(TEXT("two sites held for a minute pay twice the rate"), Players[0]->GetResources().Gold - Before0, 60);
+
+	// Site A changes hands: slot 0's Monk leaves it, a Monk of slot 1 takes it. Then slot 0 is paid for B alone and slot 1 for A alone.
+	Fixture.Remove(MonkA);
+	TestTrue(TEXT("a Monk of slot 1 on site A"), Fixture.Place(TEXT("Monk"), 1, FVector(0., 0., 0.)) != 0);
+	Fixture.Tick(HoldSteps() + 3);
+	TestEqual(TEXT("slot 1 took site A from slot 0"), Fixture.State(SiteA).Owner, 1);
+	Before0 = Players[0]->GetResources().Gold;
+	Before1 = Players[1]->GetResources().Gold;
+	Fixture.Tick(Minute);
+	TestEqual(TEXT("the old owner is paid for the site it still holds only"), Players[0]->GetResources().Gold - Before0, 30);
+	TestEqual(TEXT("the new owner is paid for the site it took"), Players[1]->GetResources().Gold - Before1, 30);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemSameTwiceTest,"HeroesOfLiberty.Sites.SubsystemSameTwice", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
 
 // Two identical simulations give the same states, step by step.
 bool FHOLSiteSubsystemSameTwiceTest::RunTest(const FString& Parameters)

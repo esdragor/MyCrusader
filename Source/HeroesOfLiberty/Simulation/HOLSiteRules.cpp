@@ -15,6 +15,12 @@ FHOLSiteView HOLSite::MakeView(const int32 Index, const FVector2D& Location, con
 	return View;
 }
 
+int32 HOLSite::GoldStep(int32& Carry, const int32 Sites, const int32 RatePerMinute, const int32 StepsPerSecond)
+{
+	// STUB (red test first): pays nothing.
+	return 0;
+}
+
 void HOLSite::ResetCounts(TArray<int32>& Takers, TArray<int32>& Disturbers, const int32 Slots)
 {
 	Takers.Init(0, FMath::Max(0, Slots));
