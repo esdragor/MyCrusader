@@ -46,8 +46,60 @@ void HOLSite::AddUnit(TArray<int32>& Takers, TArray<int32>& Disturbers, const in
 FHOLSiteVictoryState HOLSite::VictoryStep(const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite,
 	const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, const int32 VictorySteps)
 {
-	// STUB (red test first): the count never moves.
-	return State;
+	// The winner once set stays.
+	if (State.Winner != INDEX_NONE)
+	{
+		return State;
+	}
+	FHOLSiteVictoryState Next = State;
+	Next.LastOwners = OwnerBySite;
+	// The camp holding every site: the team of the owners' slots when every site has an owner and all the owners are of one team.
+	int32 Camp = INDEX_NONE;
+	bool bHolding = OwnerBySite.Num() > 0;
+	for (int32 Site = 0; bHolding && Site < OwnerBySite.Num(); ++Site)
+	{
+		const int32 Owner = OwnerBySite[Site];
+		if (Owner < 0 || Owner >= TeamBySlot.Num())
+		{
+			bHolding = false;
+			break;
+		}
+		const int32 Team = TeamBySlot[Owner];
+		if (Site == 0)
+		{
+			Camp = Team;
+		}
+		else if (Team != Camp)
+		{
+			bHolding = false;
+		}
+	}
+	if (!bHolding)
+	{
+		Next.Leader = INDEX_NONE;
+		Next.Held = 0;
+		return Next;
+	}
+	// A new holding camp, or any site changed hands (even to a slot of the same camp, or a site appeared or went): the count starts again.
+	if (Camp != State.Leader || State.LastOwners != OwnerBySite)
+	{
+		Next.Leader = Camp;
+		Next.Held = 0;
+	}
+	// A site with an adverse unit in its zone freezes the count (it never recedes).
+	for (const int32 Contested : ContestedBySite)
+	{
+		if (Contested != 0)
+		{
+			return Next;
+		}
+	}
+	Next.Held = Next.Held + 1;
+	if (Next.Held >= VictorySteps)
+	{
+		Next.Winner = Next.Leader;
+	}
+	return Next;
 }
 
 FHOLSiteState HOLSite::Step(const FHOLSiteState& State, const TArray<int32>& Takers, const TArray<int32>& Disturbers,
