@@ -3,6 +3,9 @@
 #include "Simulation/HOLSiteSubsystem.h"
 
 #include "Engine/World.h"
+#include "GameFramework/PlayerState.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLPlayerState.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLFactionRules.h"
@@ -135,11 +138,74 @@ int32 UHOLSiteSubsystem::AddSite(const FVector2D& Location, const float Radius)
 void UHOLSiteSubsystem::ClearSites()
 {
 	Sites.Reset();
+	Memory.Reset();
+	PublishViews();
 }
 
 void UHOLSiteSubsystem::PublishViews()
 {
-	// S5 stub: nothing is published yet (the test of the views is red).
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World && World->GetNetMode() != NM_Client ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+	const bool bFog = Vision && Vision->IsStarted();
+	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(SiteHoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	Memory.SetNum(Slots);
+	for (TArray<FKnown>& PerSlot : Memory)
+	{
+		PerSlot.SetNum(Sites.Num());
+	}
+	TArray<FHOLSiteView> Live;
+	TArray<FHOLSiteView> Neutral;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		Live.Add(HOLSite::MakeView(Index, Sites[Index].Location, Sites[Index].Radius, Sites[Index].State, HoldSteps));
+		Neutral.Add(HOLSite::MakeView(Index, Sites[Index].Location, Sites[Index].Radius, FHOLSiteState(), HoldSteps));
+	}
+	for (APlayerState* Each : GameState->PlayerArray)
+	{
+		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
+		const int32 Slot = Player ? Player->GetPlayerIndex() : INDEX_NONE;
+		if (Slot < 0 || Slot >= Slots)
+		{
+			continue;
+		}
+		const int32 Camp = bFog ? Vision->GetCampIndex(Slot) : INDEX_NONE;
+		// Its camp: itself and its team (the fog's camps, D371); without a fog, itself.
+		const auto IsOfMyCamp = [&](const int32 Other)
+		{
+			return Other == Slot || (Camp != INDEX_NONE && Other >= 0 && Other < Slots && Vision->GetCampIndex(Other) == Camp);
+		};
+		TArray<FHOLSiteView> Views;
+		for (int32 Index = 0; Index < Sites.Num(); ++Index)
+		{
+			FKnown& Known = Memory[Slot][Index];
+			const FHOLSiteState& State = Sites[Index].State;
+			const FVector Centre(Sites[Index].Location.X, Sites[Index].Location.Y, 0.);
+			const EHOLCellVision Sight = bFog ? Vision->GetVision(Slot, Centre) : EHOLCellVision::Visible;
+			// D701: a site is seen by the camp that holds it or is taking it, and by the camp that has it in sight.
+			if (Sight == EHOLCellVision::Visible || IsOfMyCamp(State.Owner) || IsOfMyCamp(State.Taker))
+			{
+				Known.bKnown = true;
+				Known.View = Live[Index];
+			}
+			else if (Sight == EHOLCellVision::Explored && !Known.bKnown)
+			{
+				// Explored without ever being seen (an explored map): known, shown neutral until it is seen.
+				Known.bKnown = true;
+				Known.View = Neutral[Index];
+			}
+			if (Known.bKnown)
+			{
+				Views.Add(Known.View);
+			}
+		}
+		Player->SetSiteViews(Views);
+	}
 }
 
 int32 UHOLSiteSubsystem::CountOwned(const int32 Slot) const

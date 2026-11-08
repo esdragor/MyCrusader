@@ -1646,8 +1646,13 @@ TArray<FString> AHOLGameState::DescribeDisconnections(const double Now, const do
 		using ESeat = FHOLDisconnectRules::ESeatState;
 		const ESeat State = IsSlotDefeated(Slot) ? ESeat::Defeated : Index == INDEX_NONE ? ESeat::Present
 			: AbsentSlots[Index].bWindowOver ? ESeat::AIHolds : ESeat::AbsentAIHolds;
+		// The AI's mode, as the brain holds it (the report reads the brain, not a copy of its own).
+		const UHOLAIBrainSubsystem* Brain = GetWorld() ? UHOLAIBrainSubsystem::Find(GetWorld()) : nullptr;
+		const FHOLDisconnectRules::EAIMode Mode = !Brain ? FHOLDisconnectRules::EAIMode::None
+			: Brain->IsFullBrain(Slot) ? FHOLDisconnectRules::EAIMode::Full
+			: Brain->IsHeld(Slot) ? FHOLDisconnectRules::EAIMode::Hold : FHOLDisconnectRules::EAIMode::None;
 		Lines.Add(FHOLDisconnectRules::FormatSeatReport(Slot, Name, State,
-			Index != INDEX_NONE ? FHOLDisconnectRules::GetSecondsLeft(AbsentSlots[Index].LeftAt, Now, WindowSeconds) : 0.));
+			Index != INDEX_NONE ? FHOLDisconnectRules::GetSecondsLeft(AbsentSlots[Index].LeftAt, Now, WindowSeconds) : 0., Mode));
 	}
 	return Lines;
 }
