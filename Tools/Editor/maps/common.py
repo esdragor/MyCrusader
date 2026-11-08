@@ -1333,32 +1333,36 @@ def ring_relays(recipe, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(
 
 
 # ---- Sacred sites (SacredSitesInProgress.md S4, D697): a place of the map taken by a holy unit or the hero, gold and the sacred victory. A module's
-# sites(recipe) gives [(x, y, radius)] in cm, like relays(recipe), as SITE_RINGS rings of one site per place (the number and the places are the map's
-# level design, no formula: SITE_RINGS is a PROVISIONAL value per map, TO CONFIRM by the user, Retours\Q-sites-nombre.md). Rules (tools\Tests\sites_test.py,
-# and the Map.Table test once the HOLSiteLayout class exists): symmetric by a turn of one place, outside every base's reach, inside the bounds, clear of the
+# sites(recipe) gives [(x, y, radius)] in cm, like relays(recipe), 2 or 3 sites IN ALL (the user's answer, Retours\Q-sites-nombre.md: the number is the map's own, SITE_COUNTS,
+# no formula). Rules (tools\Tests\sites_test.py, and the Map.Table test once the HOLSiteLayout class exists): symmetric by a half turn, outside every base's reach, inside the bounds, clear of the
 # relays' zones, the altar's zone, the lava flows, the rocks and the veins to keep whole.
 SITE_RADIUS = 1200.0  # cm, as the relay and the ruin (the radius is a TO PROPOSE in S4)
-SITE_RINGS = 1  # default number of rings (one site per place) when a module does not say
+SITE_COUNT_DEFAULT = 2  # sites IN ALL per map (the user, 2026-11-07: "2 a 3 selon la map", not per player) when SITE_COUNTS has no entry for the map
+SITE_COUNTS = {}  # map name -> 2 or 3, the map's own count (empty: all maps at 2). A 3 is a pair plus the MIDDLE of the map (the only third place symmetric by a half
+# turn); it fails with "No clear place" where the altar of the crater is at the middle (4 places and more): see Retours\Q-sites-symetrie.md
 SITE_SWEEP = 16  # turns of the ring tried (of one place's angle) when neither the middle angles nor the axes are clear
 SITE_MARGIN = 500.0 # cm of free ground between a site's zone and a relay's, the bounds' edge
 SITE_FRACTIONS = (1.0, 0.95, 1.05, 0.9, 1.1, 0.85, 1.15, 0.8, 0.75, 1.2, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2)  # of the places' circle
 
 
 def site_count(recipe):
-    """STUB of the red test: the count the map asks for (the user's answer: 2 to 3 sites in all)."""
-    return 2
+    """The number of sites of a map, IN ALL (2 or 3, the user's answer of 2026-11-07 in Retours\\Q-sites-nombre.md): the map's own entry of SITE_COUNTS."""
+    return SITE_COUNTS.get(recipe.map_name, SITE_COUNT_DEFAULT)
 
 
-def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(), rings=None):
-    """The sites of a map: `rings` rings (SITE_RINGS) of one site per place. A ring lies on the middle angles between two places (on_slots: on the places' own
-    axes, for the maps whose ranges run along the middle angles), on the first circle (SITE_FRACTIONS of the places' circle, the outer ones first: the relays
-    keep the inner ground) where all of its sites are clear; a ring after the first takes the other angles (the places' axes) then the rest of the fractions.
+def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_whole=(), count=None):
+    """The sites of a map: site_count(recipe) sites IN ALL (2 or 3). A pair lies on a diameter, symmetric by a half turn (every size has an even number of
+    places, so the places are too), on the middle angles between two places (on_slots: on the places' own axes, for the maps whose ranges run along the middle
+    angles), on the first circle (SITE_FRACTIONS of the places' circle, the outer ones first: the relays keep the inner ground) where both sites are clear,
+    then on the other angles of the half turn. A third site is the middle of the map (the half turn's fixed point), if it is clear.
     Clear: inside the bounds, outside every base's reach and extra_radius (a marsh, a river), SITE_MARGIN from every relay zone, off the altar and the lava
     flows (common.volcano_site), RELAY_ROCK_CLEAR from every avoid point (0 if none of the circles fits), off the veins to keep whole, and apart from the
-    sites already placed. Symmetric by a turn of one place by construction."""
+    sites already placed."""
     if recipe.size_key is None:
         return []
-    rings = SITE_RINGS if rings is None else rings
+    count = site_count(recipe) if count is None else count
+    if count not in (2, 3):
+        raise ValueError("A map has 2 or 3 sites in all, not %d" % count)
     places = len(recipe.angles)
     slots = [recipe.slot(index)[0] for index in range(places)]
     site = volcano_site(recipe)
@@ -1368,35 +1372,34 @@ def ring_sites(recipe, relays, avoid=(), extra_radius=0.0, on_slots=False, keep_
     axis_first = math.radians(recipe.angles[0])
     families = (axis_first, middle_first) if on_slots else (middle_first, axis_first)
     # Last resort (a 2-place river map: the middle angles lie in the water, the axes in the lava flows and the relays): any other turn of the ring.
-    sweep = tuple(axis_first + math.radians(360.0 / places) * k / SITE_SWEEP for k in range(1, SITE_SWEEP) if 2 * k != SITE_SWEEP)
+    sweep = tuple(axis_first + math.pi * k / SITE_SWEEP for k in range(1, SITE_SWEEP))
+    pairs = []  # the candidate pairs, best first: the pair lies on a diameter, its second site the half turn of the first
+    for first in families + sweep:
+        for fraction in SITE_FRACTIONS:
+            radius = fraction * recipe.slot_radius
+            if radius >= extra_radius + zone + SITE_MARGIN:
+                x, y = radius * math.cos(first), radius * math.sin(first)
+                pairs.append([(x, y, zone), (-x, -y, zone)])
     placed = []
-    for _ in range(rings):
+    for candidates in ([[(0.0, 0.0, zone)]] if count == 3 else []) + [pairs]:  # the middle of the map first when there is a third site
         found = None
         for rock_clear in (RELAY_ROCK_CLEAR, 0.0):
-            for first in families + sweep:
-                for fraction in SITE_FRACTIONS:
-                    radius = fraction * recipe.slot_radius
-                    if radius < extra_radius + zone + SITE_MARGIN:
-                        continue
-                    ring = [(radius * math.cos(first + 2.0 * math.pi * k / places), radius * math.sin(first + 2.0 * math.pi * k / places), zone) for k in range(places)]
-                    clear = all(abs(x) <= recipe.bounds_half - zone - SITE_MARGIN and abs(y) <= recipe.bounds_half - zone - SITE_MARGIN for x, y, _ in ring)
-                    clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + zone + SITE_MARGIN for x, y, _ in ring for slot in slots)
-                    clear = clear and all(math.dist((x, y), (u, v)) >= zone + r + SITE_MARGIN for x, y, _ in ring for u, v, r in list(relays) + placed)
-                    clear = clear and all(math.dist((x, y), (altar_x, altar_y)) >= zone + altar_radius + SITE_MARGIN for x, y, _ in ring)
-                    clear = clear and all(segment_distance((x, y), flow[0], flow[-1]) >= RELAY_LAVA_HALF_WIDTH + zone for x, y, _ in ring for flow in site["flows"])
-                    clear = clear and all(math.dist((x, y), rock) >= zone + rock_clear for x, y, _ in ring for rock in avoid)
-                    clear = clear and all(math.dist((x, y), pile) >= zone + 1.0 for x, y, _ in ring for pile in keep_whole)
-                    if clear:
-                        found = ring
-                        break
-                if found:
+            for ring in candidates:
+                clear = all(abs(x) <= recipe.bounds_half - zone - SITE_MARGIN and abs(y) <= recipe.bounds_half - zone - SITE_MARGIN for x, y, _ in ring)
+                clear = clear and all(math.dist((x, y), slot) >= BASE_REACH + zone + SITE_MARGIN for x, y, _ in ring for slot in slots)
+                clear = clear and all(math.dist((x, y), (u, v)) >= zone + r + SITE_MARGIN for x, y, _ in ring for u, v, r in list(relays) + placed)
+                clear = clear and all(math.dist((x, y), (altar_x, altar_y)) >= zone + altar_radius + SITE_MARGIN for x, y, _ in ring)
+                clear = clear and all(segment_distance((x, y), flow[0], flow[-1]) >= RELAY_LAVA_HALF_WIDTH + zone for x, y, _ in ring for flow in site["flows"])
+                clear = clear and all(math.dist((x, y), rock) >= zone + rock_clear for x, y, _ in ring for rock in avoid)
+                clear = clear and all(math.dist((x, y), pile) >= zone + 1.0 for x, y, _ in ring for pile in keep_whole)
+                if clear:
+                    found = ring
                     break
             if found:
                 break
         if found is None:
-            raise RuntimeError("No clear circle for the sites of %s" % recipe.map_path)
+            raise RuntimeError("No clear place for the sites of %s (%d in all)" % (recipe.map_path, count))
         placed += found
-        families = families[1:] + families[:1]  # the next ring takes the other angles
     return placed
 
 
