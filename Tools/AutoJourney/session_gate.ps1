@@ -175,7 +175,14 @@ if ($Phase -eq 'Essay') {
     if ($Essay) {
       $en = [IO.Path]::GetFileNameWithoutExtension($Essay) -replace '^E-', ''
       $eFiles = @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue | Where-Object { $_.BaseName -eq "E-$en" })
-      if ($eFiles.Count -eq 0) { Say 'FAIL' "Retours\E-$en.md introuvable dans $RetoursDir : les branches de l'essai ne sont pas verifiees" }
+      if ($eFiles.Count -eq 0) {
+        # 2026-11-09 : -Essay accepte aussi le NOM DU SCENARIO (celui de la commande play.ps1) : on retrouve la ou les fiches qui le citent.
+        $scn = [regex]::Escape($en)
+        $eFiles = @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue | Where-Object {
+          (Get-Content $_.FullName -Raw -Encoding UTF8) -match "(?i)play\.ps1\s+['""]?$scn(?![A-Za-z0-9_])" })
+        if ($eFiles.Count -gt 0) { Say 'PASS' ("scenario '{0}' : fiche(s) retrouvee(s) par sa commande play.ps1 : {1}" -f $en, (($eFiles | ForEach-Object { $_.Name }) -join ', ')) }
+      }
+      if ($eFiles.Count -eq 0) { Say 'FAIL' "Retours\E-$en.md introuvable dans $RetoursDir, et aucune fiche E-*.md ne cite 'play.ps1 $en' : les branches de l'essai ne sont pas verifiees" }
     } else {
       $eFiles = @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue | Where-Object {
         $t0 = Get-Content $_.FullName -Raw -Encoding UTF8
@@ -195,9 +202,9 @@ if ($Phase -eq 'Essay') {
         $cited = @($listText -split '[,;\s`]+' | Where-Object { $_ -and $_ -ne '-' -and $_ -ne 'aucune' -and $_ -match '^[A-Za-z0-9][A-Za-z0-9._/-]*$' })
       }
       else {
+        # 2026-11-09 : seule la ligne 'branches:' compte. Plus de lecture de la PROSE (le mot « branches », « maps », « tiers »... dans le texte
+        # d'une fiche n'est pas une liste de branches) : sans la ligne, c'est un WARN plus bas, pas un FAIL.
         $named = $false
-        $cited = @([regex]::Matches($etxt, '[A-Za-z0-9][A-Za-z0-9._/-]*') | ForEach-Object { $_.Value } | Select-Object -Unique |
-          Where-Object { $_.Length -ge 3 -and $_ -notin 'main', 'master' -and $localBranches -contains $_ })
       }
       if ($cited.Count -eq 0) { Say 'WARN' ("{0} : aucune branche citee : ajouter la ligne 'branches: a, b' (les branches dont le correctif est joue ; gabarit E_template.md)" -f $ef.Name); continue }
       foreach ($cb in $cited) {
