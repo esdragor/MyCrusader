@@ -155,13 +155,13 @@ namespace UE::HeroesOfLiberty::Combat
 	FAutoConsoleVariableRef CVarClaimProgress(TEXT("hol.Combat.ClaimProgress"), ClaimProgress,
 		TEXT("cm (default 25, with hol.Combat.ClaimPlace): the edge distance to its target a melee must gain to count as making headway"));
 	/** Celeborn-24 (BUG-melee-spin-sanity): a claimed place walled in by the bodies round the way to it is not claimed (HOLCombat::IsPlaceWalledIn). */
-	int32 PlaceBoxedIn = 1;
+	int32 PlaceBoxedIn = 0;
 	FAutoConsoleVariableRef CVarPlaceBoxedIn(TEXT("hol.Combat.PlaceBoxedIn"), PlaceBoxedIn,
 		TEXT("1 (default, with hol.Combat.ClaimPlace): a melee does not claim a free place round its target when the bodies round its way to it wall it in (a gap of less than its body): it walks to the target and waits behind the crowd instead of a U round its friends (the spin of melee_stuck); 0: as before"));
 	int32 KeepStuckCount = 1;
 	FAutoConsoleVariableRef CVarKeepStuckCount(TEXT("hol.Combat.KeepStuckCount"), KeepStuckCount,
 		TEXT("1 (default, with hol.Combat.ClaimPlace): a place claimed again after being lost does not set the no-headway count back to 0 (the count that starts hol.Combat.StuckRetargetSeconds); 0: as before"));
-	float NeighbourGap = 600.f;
+	float NeighbourGap = 150.f;
 	FAutoConsoleVariableRef CVarNeighbourGap(TEXT("hol.Combat.NeighbourGap"), NeighbourGap,
 		TEXT("cm (default 600; was 150): a new target within this of the last one keeps the no-headway count (the soldier that swings between two enemies 450 cm apart, np back to 0 at each swing, never reached StuckRetargetSeconds)"));
 	/** Q-neutrals-second-rank = C (the user, 2026-11-05): a soldier walled in between its friends changes target instead of turning back. */

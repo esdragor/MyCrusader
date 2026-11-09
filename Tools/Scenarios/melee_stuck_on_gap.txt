@@ -1,0 +1,27 @@
+# BUG-melee-spin-sanity A/B (Celeborn-24): melee_stuck with ONLY NeighbourGap 600 (the new default); PlaceBoxedIn 0 and KeepStuckCount 0 as of e9a6ad5. Same binary, same start.
+hol.Sanity.Watch 1
+hol.Sanity.DumpUnit -3
+hol.Combat.LogHits 1
+hol.Combat.PlaceBoxedIn 0
+hol.Combat.KeepStuckCount 0
+hol.Combat.NeighbourGap 600
+hol.Cheat.Resources 2000
+hol.Diplomacy.Force 0 1 neutral
+hol.Diplomacy.Force 1 0 neutral
+hol.Camera.Focus -9500 0
+frames 5
+hol.Units.Spawn 6 -11000 0 0 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+hol.Units.Spawn 6 -9800 0 1 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+frames 120
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Select.LeftClickGround -8000 0
+waitlog attack-move to
+wait 20
+hol.Combat.Report
+wait 25
+hol.Combat.Report
+hol.Test.Sanity
