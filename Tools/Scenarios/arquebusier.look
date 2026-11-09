@@ -1,0 +1,3 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+arq_before | un Homme d'armes ennemi selectionne : ses PV a 155/155, l'Arquebusier (bleu) a 14 m en dessous de lui
+arq_hit | le meme Homme d'armes apres le premier tir de l'Arquebusier : PV 117/155 (38 PV de moins, penetration d'armure comprise)

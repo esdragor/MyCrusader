@@ -188,8 +188,8 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("Archery range in the building type table"), ArcheryRange))
 	{
 		TestEqual(TEXT("Archery range: military (F1, D30)"), int32(ArcheryRange->Category), int32(EHOLBuildingCategory::Military));
-		TestTrue(TEXT("Archery range: produces the Archer then the Crossbowman"),
-			ArcheryRange->Produces == TArray<FName>({ ArcherType, CrossbowmanType }));
+		TestTrue(TEXT("Archery range: produces the Archer, the Crossbowman then the Arquebusier (G3)"),
+			ArcheryRange->Produces == TArray<FName>({ ArcherType, CrossbowmanType, FName(TEXT("Arquebusier")) }));
 		for (const FName Produced : ArcheryRange->Produces)
 		{
 			TestTrue(*FString::Printf(TEXT("Archery range: %s in the unit type table"), *Produced.ToString()),

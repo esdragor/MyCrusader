@@ -1,0 +1,39 @@
+# Arquebusier (Palier 3, G3, D710-D716) : un Arquebusier tire sur un Homme d'armes ; la penetration d'armure (50 %) joue : le premier coup fait 155 -> 117 (38 PV), contre 119 (36 PV) sans penetration (valeurs du test Combat.ArmorPenetration). Geste reel : clic sur l'Homme d'armes (ses PV s'affichent), clic sur l'Arquebusier, clic droit sur l'Homme d'armes. 3 minutes au plus.
+# Plain, toi (slot 0) contre une IA gelee (slot 1) ; palier 3 force pour l'essai (hol.Cheat.Tier 3).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Tier 3
+hol.Cheat.Population 40
+# L'Homme d'armes ennemi d'abord, l'Arquebusier (derniere unite a toi) 14 m plus loin, dans sa portee (15 m).
+hol.Camera.FocusNear 5400 0
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 1 100
+waitlog SpawnHere: 1 ManAtArms of slot 1
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 1 Arquebusier 0 100
+waitlog SpawnHere: 1 Arquebusier of slot 0
+hol.Camera.FocusNear 4700 0
+hol.Camera.Zoom 3
+frames 30
+note 1. Un Homme d'armes ennemi (rouge, en haut) et ton Arquebusier (bleu, en bas, 14 m). Tu cliques sur l'Homme d'armes : ses PV sont 155/155.
+hol.Select.ClickUnit -1 enemy
+frames 10
+hol.HUD.Report
+hol.Combat.Report 1
+waitlog ManAtArms slot 1 hp 155/155
+capture arq_before
+note 2. Tu cliques sur l'Arquebusier, puis clic droit sur l'Homme d'armes : l'Arquebusier tire (portee 15 m, un coup toutes les 4 s).
+hol.Select.ClickUnit -1
+frames 10
+hol.Select.ClickUnit -1 enemy order
+wait 2.5
+hol.Select.ClickUnit -1 enemy
+frames 10
+hol.Combat.Report 1
+waitlog ManAtArms slot 1 hp 117/155
+capture arq_hit
+note 3. Premier coup : 155 -> 117, soit 38 PV (40 d'attaque, armure de l'Homme d'armes coupee de moitie par la penetration ; sans penetration : 119, 36 PV).
+hol.Test.Sanity
+note 4. A toi : selectionne l'Arquebusier et clic droit sur l'Homme d'armes (ou sur un Lancier) ; regarde ses PV baisser a chaque coup.
