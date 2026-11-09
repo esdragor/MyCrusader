@@ -28,19 +28,21 @@ waitlog HUD overlap:
 capture sites_frozen
 note 2. Un adversaire dans une zone : « ... (en attente) », l'horloge ne descend plus.
 hol.Units.Remove 6000 3000 800 1
-wait 2
-waitlog sacred announce 60
+wait 4
 hol.HUD.Report 1
+waitlog announce 60
 frames 3
 capture sites_announce60
 note 3. Le compte passe sous 60 s : une ligne « Sites sacres : <nom> gagne dans une minute » s'ajoute sous le bandeau (cloche d'attente provisoire).
-waitlog sacred announce 10
+wait 50
 hol.HUD.Report 1
+waitlog announce 10
 frames 3
 capture sites_announce10
 note 4. A 10 s : « Sites sacres : <nom> gagne dans 10 secondes ».
-waitlog sacred won 0
+wait 8
 hol.HUD.Report 1
+waitlog sacred won 0
 frames 3
 capture sites_won
 note 5. Compte a zero : « Victoire sacree : <ton nom> » et la fin de partie.

@@ -896,7 +896,17 @@ FString TalentTipTexts = "";
 		VolcanoPanel.SetContent(VolcanoText);
 	}
 
-	// One line per site that has something to read (HOLVolcanoBanner::Make, from the library's views: the alert, the lava, the altar).
+	// The sacred sites' banner (S10): the previous second count (for the 60 s and 10 s announcements), the announcement shown and until when
+	// (seconds of the match), its text and the line of Describe. The wording is provisional (Placeholders.txt).
+	int SitePreviousSeconds = -1;
+	int SiteAnnounceThreshold = 0;
+	float SiteAnnounceUntil = 0.0;
+	FString SiteAnnounceText = "";
+	FString SiteTexts = "";
+	const float SiteAnnounceSeconds = 8.0;
+
+	// One line per site that has something to read (HOLVolcanoBanner::Make, from the library's views: the alert, the lava, the altar), then the
+	// sacred sites' count.
 	void RefreshVolcano()
 	{
 		TArray<FHOLVolcanoSiteView> Sites;
@@ -905,8 +915,39 @@ FString TalentTipTexts = "";
 		{
 			Sites.Add(HOLVolcano::GetSiteView(Index));
 		}
-		const FHOLVolcanoBannerView View = HOLVolcanoBanner::Make(Sites);
-		VolcanoTexts = View.Text.Replace("\n", " / ");
+		const FHOLVolcanoBannerView VolcanoView = HOLVolcanoBanner::Make(Sites);
+		// The sacred sites' count (S10): its lines go under the volcano's, in the same panel. The numbers are the game state's (UHOLSiteRulesLibrary,
+		// namespace HOLSiteRules in script: the world context is implicit), the same on a client and on the server.
+		int SiteLeader = -1;
+		int SiteSeconds = -1;
+		bool bSiteFrozen = false;
+		int SiteWinner = -1;
+		HOLSiteRules::GetVictoryCount(SiteLeader, SiteSeconds, bSiteFrozen, SiteWinner);
+		const int SiteViewer = GetLocalSlot();
+		const int SiteNameSlot = SiteWinner >= 0 ? SiteWinner : SiteLeader;
+		const FString SiteName = (SiteNameSlot >= 0 && SiteViewer >= 0) ? HOLDiplomacyRead::GetSlotNameText(SiteViewer, SiteNameSlot) : "";
+		const FHOLSiteBannerView SiteView = HOLSiteBanner::Make(SiteLeader, SiteSeconds, bSiteFrozen, SiteWinner, SiteName);
+		const float SiteNow = float(Math::Max(0, HOLHero::GetServerStep())) / float(Math::Max(1, HOLHero::GetSimulationRateHz()));
+		const int SiteThreshold = HOLSiteBanner::Announce(SitePreviousSeconds, SiteSeconds);
+		if (SiteThreshold > 0)
+		{
+			SiteAnnounceThreshold = SiteThreshold;
+			SiteAnnounceText = HOLSiteBanner::AnnounceText(SiteThreshold, SiteName);
+			SiteAnnounceUntil = SiteNow + SiteAnnounceSeconds;
+			Sound(HOLAudioEvent::AlertVolcano);
+		}
+		SitePreviousSeconds = SiteSeconds;
+		const bool bSiteAnnouncing = SiteAnnounceThreshold > 0 && SiteNow < SiteAnnounceUntil && SiteWinner < 0;
+		if (!bSiteAnnouncing)
+			SiteAnnounceThreshold = 0;
+		SiteTexts = SiteView.bVisible ? (SiteView.Describe + " | " + SiteView.Text + (bSiteAnnouncing ? f" | announce {SiteAnnounceThreshold} | " + SiteAnnounceText : "")) : "";
+		FHOLVolcanoBannerView View = VolcanoView;
+		if (SiteView.bVisible)
+		{
+			View.bVisible = true;
+			View.Text = (VolcanoView.bVisible ? VolcanoView.Text + "\n" : "") + SiteView.Text + (bSiteAnnouncing ? "\n" + SiteAnnounceText : "");
+		}
+		VolcanoTexts = VolcanoView.Text.Replace("\n", " / ");
 		// Under the cheats' panel (folded or open) and under the AI level line when it is there.
 		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);
 		if (Math::Abs(Top - VolcanoTop) > 0.5)
@@ -2126,6 +2167,7 @@ FString TalentTipTexts = "";
 			+ (DuelView.Kind != EHOLDuelWindowKind::None ? "\nduel window: " + DuelTexts : "")
 			+ (AILevelTexts.IsEmpty() ? "" : "\nai level: " + AILevelTexts)
 			+ (VolcanoTexts.IsEmpty() ? "" : "\nvolcano: " + VolcanoTexts)
+			+ (SiteTexts.IsEmpty() ? "" : "\nsacred: " + SiteTexts)
 			+ "\ndiplomacy: " + (bDipOpen ? f"open layout {DipLayout}" + (DipMenuSlot >= 0 ? f" menu {DipMenuSlot}" : "") + (DipMessageSlot >= 0 ? f" message to {DipMessageSlot}" : "") + " | " + DescribeDipFit() + " | " + DipTexts : "closed")
 			+ "\npause: " + PauseView.Describe + (PauseTexts.IsEmpty() ? "" : "\npause texts: " + PauseTexts);
 	}
