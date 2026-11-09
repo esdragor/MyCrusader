@@ -71,18 +71,30 @@ waitlog Cheat: spawned Stable of slot 0
 hol.Camera.FocusNear 2500 6500
 hol.Camera.Zoom -3
 frames 40
+hol.Camera.FocusNear 2500 6500
+hol.Camera.Zoom -3
+frames 2
 hol.Select.ClickGround -12200 4600
 frames 10
 hol.HUD.Report
 waitlog HUD cells: A: Archer squelette; Z: Arbalétrier squelette
+hol.Camera.FocusNear 2500 6500
+hol.Camera.Zoom -3
+frames 2
 hol.Select.ClickGround -12200 6600
 frames 10
 hol.HUD.Report
 waitlog HUD cells: A: Bélier d'os; Z: Mangonneau d'os
+hol.Camera.FocusNear 2500 6500
+hol.Camera.Zoom -3
+frames 2
 hol.Select.ClickGround -12200 8600
 frames 10
 hol.HUD.Report
 waitlog HUD cells: A: Cavalier funeste
+hol.Camera.FocusNear 2500 6500
+hol.Camera.Zoom -3
+frames 2
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
