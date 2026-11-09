@@ -17,7 +17,9 @@ waitlog Cheat: spawned SiegeWorkshop of slot 0
 hol.Camera.FocusNear 2500 2500
 hol.Camera.Zoom -3
 frames 40
-# 1. Barracks: real click, grid and tooltip
+# 1. Barracks: real click, grid and tooltip (camera re-placed 2 frames before the click: pan_exposure_test.ps1)
+hol.Camera.FocusNear 2500 2500
+frames 2
 hol.Select.ClickGround -12200 2600
 frames 10
 hol.HUD.Report
@@ -99,6 +101,8 @@ hol.Camera.FocusNear 6500 4000
 hol.Cheat.SpawnBuilding Barracks 1 6500 4000
 waitlog Cheat: spawned Barracks of slot 1
 frames 40
+hol.Camera.FocusNear 6500 4000
+frames 2
 hol.Select.ClickGround -8200 4100
 frames 10
 hol.HUD.Report
