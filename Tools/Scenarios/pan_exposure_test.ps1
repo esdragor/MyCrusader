@@ -3,7 +3,7 @@
 # E-fog_trees (2026-11-08): the user's play.ps1 run stayed "en preparation": the second LeftClickGround came 60 frames after hol.Camera.FocusNear, the
 # camera drifted, "the point is not on the screen", the waitlog never came. The scenario must now keep every ground click within a few frames of the
 # camera placement. Exit 1 on any offender.
-param([string] $Root = "", [string[]] $Names = @("fog_trees"))
+param([string] $Root = "", [string[]] $Names = @("fog_trees", "neutrals_qground", "diplomacy_qground_watch", "legions_roster_gesture", "legions_roster_gesture_dawn"))
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
 . (Join-Path $PSScriptRoot "PanExposure.ps1")
 $Bad = 0
