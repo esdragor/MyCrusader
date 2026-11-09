@@ -47,13 +47,13 @@ FHOLSiteVictoryState HOLSite::VictoryStep(const FHOLSiteVictoryState& State, con
 	const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, const int32 VictorySteps)
 {
 	// The winner once set stays.
-	if (State.Winner != INDEX_NONE)
+	if (State.Winner >= 0)
 	{
 		return State;
 	}
 	FHOLSiteVictoryState Next = State;
 	Next.LastOwners = OwnerBySite;
-	// The camp holding every site: the team of the owners' slots when every site has an owner and all the owners are of one team.
+	// The camp holding every site: the team of the owners' slots when every site has an owner and all the owners are of one team (a team below zero is no camp, as the script's HoldingCamp).
 	int32 Camp = INDEX_NONE;
 	bool bHolding = OwnerBySite.Num() > 0;
 	for (int32 Site = 0; bHolding && Site < OwnerBySite.Num(); ++Site)
@@ -65,6 +65,11 @@ FHOLSiteVictoryState HOLSite::VictoryStep(const FHOLSiteVictoryState& State, con
 			break;
 		}
 		const int32 Team = TeamBySlot[Owner];
+		if (Team < 0)
+		{
+			bHolding = false;
+			break;
+		}
 		if (Site == 0)
 		{
 			Camp = Team;
