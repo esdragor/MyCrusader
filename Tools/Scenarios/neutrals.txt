@@ -23,22 +23,28 @@ waitlog Spawn: 6 ManAtArms
 frames 40
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): guarding, members 3 of 3, hits taken 0
-hol.Camera.Focus -2300 0
+hol.Camera.Focus -2000 0
+hol.Camera.Zoom -3
 frames 20
 hol.HUD.Report 1
 waitlog HUD overlap:
 capture neutrals_camp
 # Au repos : rien ne bouge tant que personne n est a 15 m ; puis mes soldats entrent dans le rayon.
-hol.Camera.Focus 0 400
-hol.Units.Move -1000 0 0 a
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Camera.Focus -700 0
+frames 2
+hol.Select.LeftClickGround -1000 0
+waitlog Scripted left click at
 waitlog Camp 1: fighting
 hol.Camera.Focus -700 0
-hol.Camera.Zoom 3
+hol.Camera.Zoom 6
 frames 100
 capture neutrals_fight
 waitlog Camp 1: cleared for good
 waitlog Camp 1 reward: slot 0 +100 XP
-frames 30
+frames 150
 capture neutrals_cleared
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): cleared
