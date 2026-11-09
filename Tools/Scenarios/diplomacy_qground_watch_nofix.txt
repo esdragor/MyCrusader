@@ -19,6 +19,8 @@ waitlog fighting 0 hits 0 kills 0
 hol.Select.Army
 hol.Select.Grid 4
 waitlog Grid: attack-move, click on the ground
+hol.Camera.Focus -9500 0
+frames 2
 hol.Select.LeftClickGround -8000 0
 waitlog Scripted left click at
 waitlog attack-move to

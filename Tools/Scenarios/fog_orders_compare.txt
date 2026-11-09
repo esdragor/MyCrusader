@@ -22,6 +22,9 @@ hol.Select.Own
 waitlog Selection: 4 units (own)
 hol.Select.OrderNear 6500 0
 frames 5
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -1
+frames 2
 hol.Select.OrderGround -9000 3000 shift
 frames 5
 hol.Units.SpeedScale 0.05
