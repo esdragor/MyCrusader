@@ -1,0 +1,48 @@
+# AVANT / APRES des sons de selection des batiments (Bois, Sacre, Marche) : 12 sons, Entree = le suivant. Q-audio-select-gain = B.
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer. Rejouer : console (touche ²) puis hol.Audio.SelectGain <wood|sacred|coins> <old|new>.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note AVANT / APRES : pour chaque famille (Bois, Sacre, Marche) l'ANCIEN son (x2,5, ecrete, sature) puis le NOUVEAU (limite a -1 dBFS, joue a 100 %), deux fois chacun. Entree = le son suivant.
+note Le nom du cue et la version qui viennent de jouer sont ecrits a chaque Entree. Reponds ensuite dans la fiche E-audio_select_gain.md : OK, ou REGLAGE: <famille, plus fort / moins fort / autre>.
+capture audio_select_gain_start
+waitkey Entree : commencer (Bois, ancien)
+hol.Audio.SelectGain wood old
+waitlog select gain played wood old
+waitkey [1/12] Bois [Select.BuildingWood] (F, s_wood_door) : ANCIEN x2,5 (ecrete) vient de jouer. Entree : Bois, NOUVEAU limite -1 dBFS, 100 %
+hol.Audio.SelectGain wood new
+waitlog select gain played wood new
+waitkey [2/12] Bois [Select.BuildingWood] (F, s_wood_door) : NOUVEAU limite -1 dBFS, 100 % vient de jouer. Entree : Bois, ANCIEN x2,5 (ecrete)
+hol.Audio.SelectGain wood old
+waitlog select gain played wood old
+waitkey [3/12] Bois [Select.BuildingWood] (F, s_wood_door) : ANCIEN x2,5 (ecrete) vient de jouer. Entree : Bois, NOUVEAU limite -1 dBFS, 100 %
+hol.Audio.SelectGain wood new
+waitlog select gain played wood new
+waitkey [4/12] Bois [Select.BuildingWood] (F, s_wood_door) : NOUVEAU limite -1 dBFS, 100 % vient de jouer. Entree : Sacre, ANCIEN x2,5 (ecrete)
+hol.Audio.SelectGain sacred old
+waitlog select gain played sacred old
+waitkey [5/12] Sacre [Select.BuildingSacred] (H, s_sacred_book) : ANCIEN x2,5 (ecrete) vient de jouer. Entree : Sacre, NOUVEAU limite -1 dBFS, 100 %
+hol.Audio.SelectGain sacred new
+waitlog select gain played sacred new
+waitkey [6/12] Sacre [Select.BuildingSacred] (H, s_sacred_book) : NOUVEAU limite -1 dBFS, 100 % vient de jouer. Entree : Sacre, ANCIEN x2,5 (ecrete)
+hol.Audio.SelectGain sacred old
+waitlog select gain played sacred old
+waitkey [7/12] Sacre [Select.BuildingSacred] (H, s_sacred_book) : ANCIEN x2,5 (ecrete) vient de jouer. Entree : Sacre, NOUVEAU limite -1 dBFS, 100 %
+hol.Audio.SelectGain sacred new
+waitlog select gain played sacred new
+waitkey [8/12] Sacre [Select.BuildingSacred] (H, s_sacred_book) : NOUVEAU limite -1 dBFS, 100 % vient de jouer. Entree : Marche, ANCIEN x2,5 (ecrete)
+hol.Audio.SelectGain coins old
+waitlog select gain played coins old
+waitkey [9/12] Marche [Select.BuildingCoins] (handleCoins) : ANCIEN x2,5 (ecrete) vient de jouer. Entree : Marche, NOUVEAU limite -1 dBFS, 100 %
+hol.Audio.SelectGain coins new
+waitlog select gain played coins new
+waitkey [10/12] Marche [Select.BuildingCoins] (handleCoins) : NOUVEAU limite -1 dBFS, 100 % vient de jouer. Entree : Marche, ANCIEN x2,5 (ecrete)
+hol.Audio.SelectGain coins old
+waitlog select gain played coins old
+waitkey [11/12] Marche [Select.BuildingCoins] (handleCoins) : ANCIEN x2,5 (ecrete) vient de jouer. Entree : Marche, NOUVEAU limite -1 dBFS, 100 %
+hol.Audio.SelectGain coins new
+waitlog select gain played coins new
+waitkey [12/12] Marche [Select.BuildingCoins] (handleCoins) : NOUVEAU limite -1 dBFS, 100 % vient de jouer. Entree : fin
+hol.Test.Sanity
+note Fin. Dis par famille si le NOUVEAU te convient (OK) ou REGLAGE: <ce qui ne va pas>.

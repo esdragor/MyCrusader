@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**169 réglages** : 12 pas codé, 157 provisoire, 0 réglé à l'essai, 0 validé.
+**183 réglages** : 12 pas codé, 170 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -97,7 +97,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
-| `buildings.table` | Table des bâtiments | 13 lignes, 20 colonnes | provisoire | D260, D345 | BuildingTypes.csv * |  |
+| `buildings.table` | Table des bâtiments | 14 lignes, 21 colonnes | provisoire | D260, D345 | BuildingTypes.csv * |  |
 | `ai.opening.QueueLength` | IA : file de Paysans en attente | 2 | provisoire | D527-D531 | HOLAIOpening.as |  |
 | `ai.opening.WeightFood` | IA : poids de la nourriture (ouverture) | 3 | provisoire | D527-D531 | HOLAIOpening.as |  |
 | `ai.opening.WeightWood` | IA : poids du bois (ouverture) | 2 | provisoire | D527-D531 | HOLAIOpening.as |  |
@@ -108,9 +108,9 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `tech.table` | Table des technologies (coûts, durées, pourcentages) | 26 lignes, 13 colonnes | provisoire | D597-D617 | Technologies.csv * |  |
 | `eco.barracks.buildtime` | Caserne : temps de construction (s) | 20 | provisoire | D283 | BuildingTypes.csv Barracks:BuildTime |  |
 | `eco.barracks.cost` | Caserne : coût | (Food=0,Wood=150,Stone=0,Gold=0) | provisoire | D283 | BuildingTypes.csv Barracks:Cost |  |
-| `eco.berry.amount` | Buisson de baies : nourriture | 200 | provisoire | D297 | SourceTypes.csv BerryBush:Amount |  |
+| `eco.berry.amount` | Buisson de baies : nourriture | 300 | provisoire | D297 | SourceTypes.csv BerryBush:Amount |  |
 | `eco.farm.cost` | Ferme : coût | (Food=0,Wood=75,Stone=0,Gold=0) | provisoire | D527 | BuildingTypes.csv Farm:Cost |  |
-| `eco.gold.amount` | Veine d'or : or par veine | 2500 | provisoire | D297 | SourceTypes.csv GoldVein:Amount |  |
+| `eco.gold.amount` | Veine d'or : or par veine | 3000 | provisoire | D297 | SourceTypes.csv GoldVein:Amount |  |
 | `eco.house.cost` | Maison : coût | (Food=0,Wood=50,Stone=0,Gold=0) | provisoire | D283 | BuildingTypes.csv House:Cost |  |
 | `eco.house.pop` | Maison : population ajoutée | 10 | provisoire | D283 | BuildingTypes.csv House:PopulationProvided |  |
 | `eco.mainfc.health` | Forum principal : points de vie | 2400 | provisoire | D345 | BuildingTypes.csv MainCentre:MaxHealth |  |
@@ -162,7 +162,12 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `ai.siege.MaxMangonels` | IA siège : Mangonneaux au plus | 1 | provisoire | S6, D614 | HOLAISiege.as |  |
 | `ai.siege.MaxRams` | IA siège : Béliers au plus | 2 | provisoire | S6, D614 | HOLAISiege.as |  |
 | `ai.siege.MinSoldiers` | IA et siège : soldats avant l'Atelier de siège | 8 | provisoire | S6, D614 | HOLAISiege.as |  |
-| `units.table` | Table des unités (voir UnitStats.md) | 13 lignes, 54 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
+| `morale.attenuation_cap` | Moral : atténuation maximale cumulée (%) | 75 | provisoire | D404, D706 | HOLMoraleRules.as | Jamais 100 % : seule la Lumière sacrée retire (D404) |
+| `morale.bonus_cap_other` | Moral : plafond du bonus sur les dégâts infligés et la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
+| `morale.bonus_cap_taken` | Moral : plafond du bonus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
+| `morale.malus_cap_other` | Moral : plafond du malus sur les dégâts infligés et la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
+| `morale.malus_cap_taken` | Moral : plafond du malus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | Symétrique du bonus ; décidé par l'utilisateur le 2026-11-05 |
+| `units.table` | Table des unités (voir UnitStats.md) | 14 lignes, 56 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
 | `eco.mainfc.health` | Forum principal : points de vie | 2400 | provisoire | D345 | BuildingTypes.csv MainCentre:MaxHealth |  |
 
 ## Question 8 : Le volcan est-il une opportunité plutôt qu'une frustration ?
@@ -238,6 +243,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
+| `biome.decor.density_first` | Biomes : densité de décor de la première case (par hectare) | 60.0 | provisoire | D564-D575 | HOLBiomeApplier.as | Première des 8 cases de ReferenceDensities (60 30 20 12 8 6 4 3) : milieu de ce que demande le décor cuit des cartes |
 | `biome.detail_scale` | Biomes : échelle du détail de sol (cm) | 900 | provisoire | D564-D575 | HOLBiomeRules.as |  |
 | `biome.detail_strength` | Biomes : force du détail de sol (%) | 70 | provisoire | D564-D575 | HOLBiomeRules.as |  |
 | `maps.table` | Cartes et leur budget de ressources | 8 lignes, 4 colonnes | provisoire | D498, D564 | Maps.csv * |  |
@@ -261,6 +267,12 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 |---|---|---|---|---|---|---|
 | `gdd.review_notes` | Notes de reprise de la review du GDD (renvoient à cette fiche) | — | pas codé | D130, D210, D428-D433 | GDD | Les lignes du § 22 « à régler en test » annoncent cette fiche |
 
+### IA
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `ai.hold.base_radius` | IA : rayon de la zone tenue autour du centre (cm) | 3000 | provisoire |  | HOLAIHold.as | Chiffre provisoire ; Retours\Q-hold-scope.md |
+
 ### Neutres
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
@@ -281,6 +293,18 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 |---|---|---|---|---|---|---|
 | `anim.walk_start` | Animation : seuil de départ en marche (part de la vitesse) | 0.15 | provisoire | D234 | HOLUnitAnimation.h |  |
 | `anim.walk_stop` | Animation : seuil d'arrêt (part de la vitesse) | 0.10 | provisoire | D234 | HOLUnitAnimation.h |  |
+
+### Sites sacrés
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `site.decay_steps` | Sites sacrés : recul du compte par pas | 2 | provisoire | D345, D699 | HOLSiteRules.as | Récession du relais (2 par pas), à régler en test |
+| `site.gold_per_minute` | Sites sacrés : or par minute et par site tenu | 30 | provisoire | D699 | HOLSiteRules.h | Petit revenu passif par défaut ; Retours\Q-sites-or-par-minute.md ; cvar hol.Site.GoldPerMinute |
+| `site.hold_seconds` | Sites sacrés : secondes à tenir seul | 60 | provisoire | D345, D699 | HOLSiteRules.as | Valeur du relais, à régler en test (D345 : l'utilisateur choisit) |
+| `site.radius` | Sites sacrés : rayon de la zone par défaut (cm) | 1200 | provisoire | D429 | HOLSiteLayout.h | Celui du relais et de la ruine (12 m) ; la carte peut donner le sien (Tools/Editor/maps/common.py SITE_RADIUS) |
+| `site.sim.decay_steps` | Sites sacrés (simulation C++) : recul du compte par pas | 2 | provisoire | D345, D699 | HOLSiteRules.h | Doit rester égal au script (le test de script compare) |
+| `site.sim.hold_seconds` | Sites sacrés (simulation C++) : secondes à tenir | 60 | provisoire | D345, D699 | HOLSiteRules.h | Doit rester égal au script (le test de script compare) ; cvar hol.Site.HoldSeconds |
+| `site.victory_seconds` | Sites sacrés : secondes à tout tenir pour gagner | 600 | validé | D699, D747 | HOLSiteRules.h | Choisi par l'utilisateur le 2026-11-08 ; le script (HOLSiteVictory.as) a la même valeur |
 
 ### Talents
 
@@ -304,6 +328,13 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `note.ForumRules` | Source/HeroesOfLiberty/Match/HOLForumRules.cpp | Neutre sans icône (provisoire), présentation |
 | `note.GameScreen` | Source/HeroesOfLibertyUI/HUD/HOLGameScreen.cpp | Son d'alerte provisoire, présentation |
 | `note.GameScreenScript` | Script/UI/HOLGameScreenScript.as | Textes du bloc du héros non traduits, présentation |
+| `note.HOLAudioPlayer.as` | Script/Audio/HOLAudioPlayer.as | Sons choisis par nom de fichier sans écoute : l'utilisateur les règle à l'oreille (AudioInProgress.md) |
+| `note.HOLBiomeDecorPlan.as` | Script/Biomes/HOLBiomeDecorPlan.as | Table d'aspect du décor générique (forme moteur |
+| `note.HOLGameNames.h` | Source/HeroesOfLibertyUI/HUD/HOLGameNames.h | Noms d'unités des Légions (DisplayName de FactionOverrides.csv) provisoires jusqu'à L13 : un libellé et non une valeur |
+| `note.HOLSiteBanner.as` | Script/UI/HOLSiteBanner.as | Libellés de la bannière des sites : formulation provisoire que le GDD ne nomme pas (à confirmer avec l'utilisateur) |
+| `note.HOLSiteRulesLibrary.h` | Source/HeroesOfLiberty/Simulation/HOLSiteRulesLibrary.h | Expose à l'Angelscript les valeurs de HOLSiteRules.h (site.sim.*) pour que le test de script les compare : aucune valeur propre |
+| `note.HOLSiteSubsystem.cpp` | Source/HeroesOfLiberty/Simulation/HOLSiteSubsystem.cpp | Les cvar hol.Site.* reprennent les valeurs de HOLSiteRules.h (lignes site.sim.*) : rien à régler ici |
+| `note.HOLSiteSubsystem.h` | Source/HeroesOfLiberty/Simulation/HOLSiteSubsystem.h | Liste des unités saintes (Moine de l'Aube et Moine lumineux) en attendant la colonne de la table des factions : une liste provisoire (D702 ; à remplacer au chantier Légions L13) et non un réglage chiffré |
 | `note.MakeUnitStats` | Tools/Data/make_unit_stats.py | Texte de UnitStats.md : « valeurs provisoires » ; les valeurs sont dans UnitTypes.csv |
 | `note.MatchSettings` | Source/HeroesOfLiberty/Match/HOLMatchSettings.h | Valeurs lues par eco.start.* |
 | `note.RelayLibrary` | Source/HeroesOfLiberty/Simulation/HOLRelayLibrary.h | Commentaire : renvoie aux valeurs du relais (lignes relay.*) |
