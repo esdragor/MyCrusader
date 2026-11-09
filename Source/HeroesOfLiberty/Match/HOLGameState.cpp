@@ -65,6 +65,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, AIHeldMask);
 	DOREPLIFETIME(AHOLGameState, RelayViews);
 	DOREPLIFETIME(AHOLGameState, VolcanoViews);
+	DOREPLIFETIME(AHOLGameState, SiteCount);
 	DOREPLIFETIME(AHOLGameState, PausesLeft);
 	DOREPLIFETIME(AHOLGameState, PausedBySlot);
 	DOREPLIFETIME(AHOLGameState, PausedByName);
@@ -192,6 +193,14 @@ void AHOLGameState::SetVolcanoViews(const TArray<FHOLVolcanoSiteNet>& Views)
 	if (HasAuthority() && VolcanoViews != Views)
 	{
 		VolcanoViews = Views;
+	}
+}
+
+void AHOLGameState::SetSiteCount(const FHOLSiteCountNet& Count)
+{
+	if (HasAuthority() && SiteCount != Count)
+	{
+		SiteCount = Count;
 	}
 }
 
@@ -1169,6 +1178,7 @@ const TCHAR* AHOLGameState::GetReasonName(const EHOLDefeatReason Reason)
 	case EHOLDefeatReason::Forum: return TEXT("Forum");
 	case EHOLDefeatReason::King: return TEXT("King");
 	case EHOLDefeatReason::Disconnected: return TEXT("Disconnected");
+	case EHOLDefeatReason::SacredSites: return TEXT("SacredSites");
 	default: return TEXT("None");
 	}
 }
@@ -1646,8 +1656,13 @@ TArray<FString> AHOLGameState::DescribeDisconnections(const double Now, const do
 		using ESeat = FHOLDisconnectRules::ESeatState;
 		const ESeat State = IsSlotDefeated(Slot) ? ESeat::Defeated : Index == INDEX_NONE ? ESeat::Present
 			: AbsentSlots[Index].bWindowOver ? ESeat::AIHolds : ESeat::AbsentAIHolds;
+		// The AI's mode, as the brain holds it (the report reads the brain, not a copy of its own).
+		const UHOLAIBrainSubsystem* Brain = GetWorld() ? UHOLAIBrainSubsystem::Find(GetWorld()) : nullptr;
+		const FHOLDisconnectRules::EAIMode Mode = !Brain ? FHOLDisconnectRules::EAIMode::None
+			: Brain->IsFullBrain(Slot) ? FHOLDisconnectRules::EAIMode::Full
+			: Brain->IsHeld(Slot) ? FHOLDisconnectRules::EAIMode::Hold : FHOLDisconnectRules::EAIMode::None;
 		Lines.Add(FHOLDisconnectRules::FormatSeatReport(Slot, Name, State,
-			Index != INDEX_NONE ? FHOLDisconnectRules::GetSecondsLeft(AbsentSlots[Index].LeftAt, Now, WindowSeconds) : 0.));
+			Index != INDEX_NONE ? FHOLDisconnectRules::GetSecondsLeft(AbsentSlots[Index].LeftAt, Now, WindowSeconds) : 0., Mode));
 	}
 	return Lines;
 }

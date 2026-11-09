@@ -75,8 +75,8 @@ void Test_ForgeAttackAvailability(FUnitTest& T)
 	T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(Two.bImplemented, 2, 6, Two.MinTier, Two.MinHeroLevel, true, true, true, false, false), "tier 2 after level I: level II");
 }
 
-// The armour lines are in the table but no code reads them yet (F2): they stay refused, "Soon" (D601), with the Forge standing and the purse full.
-void Test_ForgeArmourLinesStayGreyedUntilF2(FUnitTest& T)
+// The armour lines are coded since F2 (Maille, Barde: the combat chain reads them): they are researchable like the attack lines, with the Forge standing and the purse full.
+void Test_ForgeArmourLinesAreResearchableSinceF2(FUnitTest& T)
 {
 	TArray<FHOLAITechnology> Table;
 	HOLAITechnology::ReadAITechnologyTable(Table);
@@ -89,7 +89,7 @@ void Test_ForgeArmourLinesStayGreyedUntilF2(FUnitTest& T)
 	{
 		const FHOLAITechnology Row = ForgeRow(Table, Names[Index]);
 		T.AssertTrue(Row.Building == n"Forge", Names[Index].ToString() + " is a Forge line");
-		T.AssertEquals(HOLTechnologyRules::NotImplemented, HOLTechnologyRules::CheckImplemented(Row.bImplemented, 2, 6, Row.MinTier, Row.MinHeroLevel, true, true, true, false, false),
-			Names[Index].ToString() + " is not coded yet: refused");
+		T.AssertEquals(HOLTechnologyRules::Available, HOLTechnologyRules::CheckImplemented(Row.bImplemented, 2, 6, Row.MinTier, Row.MinHeroLevel, true, true, true, false, false),
+			Names[Index].ToString() + " is coded (F2): researchable at tier 2 with the Forge and the purse");
 	}
 }

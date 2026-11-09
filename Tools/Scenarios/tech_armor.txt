@@ -1,0 +1,26 @@
+# Technologies (F2) : les armures de la Forge (Maille, Barde) retirent une part des coups recus par l'infanterie et la cavalerie du joueur
+# Plain, toi (slot 0) contre une IA passive (slot 1). 1 Homme d'armes et 1 Cavalier leger contre 2 Lanciers. Ce scenario est aussi le test de la chaine : chaque waitlog doit arriver.
+# hol.Combat.LogHits donne chaque coup (la ligne nomme la VICTIME) : Lancier sur Homme d'armes 8 - 4 = 4 ; Lancier sur Cavalier leger 8 + 17 - 1 = 24.
+# Maille II (20 %) : 4 -> 3.2. Barde I (10 %) : 24 -> 21.6. hol.Cheat.Technology donne la technologie d'un coup.
+waitlog Starting hero of slot 0 spawned at
+hol.Cheat.Resources 5000
+hol.Combat.LogHits 1
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Units.SpawnHere 1 ManAtArms 0 200
+hol.Units.SpawnHere 1 LightCavalry 0 200
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 2 Spearman 1 150
+waitunits 4
+note 1. Sans technologie : un Lancier frappe l'Homme d'armes pour 4 et le Cavalier leger pour 24.
+waitlog ManAtArms for 4,
+waitlog LightCavalry for 24,
+hol.Cheat.Technology InfantryArmorII
+waitlog Technology: slot 0 researched InfantryArmorII (cheat)
+note 2. Maille II (-20 % pour l'infanterie) : un coup sur l'Homme d'armes tombe a 3.2 (4 x 0.8).
+waitlog ManAtArms for 3.2,
+hol.Cheat.Technology CavalryArmorI
+waitlog Technology: slot 0 researched CavalryArmorI (cheat)
+note 3. Barde I (-10 % pour la cavalerie) : un coup sur le Cavalier leger tombe a 21.6 (24 x 0.9).
+waitlog LightCavalry for 21.6,

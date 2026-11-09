@@ -6,6 +6,9 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
+#include "Map/HOLFogMode.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLPlayerState.h"
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSiteSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -130,6 +133,88 @@ namespace UE::HeroesOfLiberty::Tests::SiteSubsystem
 	const FVector Here(0., 0., 0.);
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemViewsTest, "HeroesOfLiberty.Sites.SubsystemViews", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S5 (D701), through the real chain (real units, the real fog, the players' states): each player's state holds only the sites his camp may
+// know. A site nobody saw is in nobody's view; the camp whose unit stands in a zone (a Spearman sees around it) knows the site and sees its
+// state; a site another camp takes is NOT shown to a camp that never saw it; a site once seen stays as it was last seen (frozen) while the
+// fog hides it; without a fog every seat knows every site, live.
+bool FHOLSiteSubsystemViewsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	UHOLVisionSubsystem* Vision = Fixture.World->GetSubsystem<UHOLVisionSubsystem>();
+	if (!TestNotNull(TEXT("the vision subsystem"), Vision))
+	{
+		return false;
+	}
+	AHOLPlayerState* Players[3] = { nullptr, nullptr, nullptr };
+	for (int32 Slot = 0; Slot < 3; ++Slot)
+	{
+		Players[Slot] = Fixture.World->SpawnActor<AHOLPlayerState>();
+		if (!TestNotNull(TEXT("a player state"), Players[Slot]))
+		{
+			return false;
+		}
+		Players[Slot]->SetMatchSlot(Slot, Slot);
+		Fixture.GameState->AddPlayerState(Players[Slot]);
+	}
+	Vision->Start(Fixture.GameState->GetLaunchConfig(), EHOLFogMode::Normal);
+	const int32 SiteA = Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	const int32 SiteB = Fixture.Sites->AddSite(FVector2D(30000., 0.), 1500.f);
+	const uint32 Watcher = Fixture.Place(TEXT("Spearman"), 0, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Spearman of slot 0 on site A"), Watcher != 0);
+	TestTrue(TEXT("a Monk of slot 1 on site B"), Fixture.Place(TEXT("Monk"), 1, FVector(30000., 0., 0.)) != 0);
+	auto Step = [&](const int32 Count)
+	{
+		for (int32 Index = 0; Index < Count; ++Index)
+		{
+			Vision->Update();
+			Fixture.Tick(1);
+		}
+	};
+	auto Find = [](const AHOLPlayerState* Player, const int32 Index) -> const FHOLSiteView*
+	{
+		return Player->GetSiteViews().FindByPredicate([Index](const FHOLSiteView& View) { return View.Index == Index; });
+	};
+
+	Step(2);
+	TestEqual(TEXT("slot 0 knows one site (the one its Spearman stands in)"), Players[0]->GetSiteViews().Num(), 1);
+	TestTrue(TEXT("... site A, at its place"), Find(Players[0], SiteA) && Find(Players[0], SiteA)->X == 0.f && Find(Players[0], SiteA)->Radius == 1500.f);
+	TestEqual(TEXT("slot 1 knows one site (its Monk's)"), Players[1]->GetSiteViews().Num(), 1);
+	TestTrue(TEXT("... site B"), Find(Players[1], SiteB) != nullptr);
+	TestEqual(TEXT("slot 2 saw nothing: no site in its view"), Players[2]->GetSiteViews().Num(), 0);
+
+	// The Monk of slot 1 takes B: slot 1 sees it its own, slot 0 (never saw B) is shown nothing, slot 2 neither.
+	Step(HoldSteps() + 5);
+	TestTrue(TEXT("slot 1 owns site B in its view"), Find(Players[1], SiteB) && Find(Players[1], SiteB)->Owner == 1);
+	TestEqual(TEXT("a site taken by another camp is not shown to a camp that never saw it"), Players[0]->GetSiteViews().Num(), 1);
+	TestTrue(TEXT("... slot 0 still knows A only"), Find(Players[0], SiteA) != nullptr && Find(Players[0], SiteB) == nullptr);
+	TestEqual(TEXT("slot 2 still knows nothing"), Players[2]->GetSiteViews().Num(), 0);
+
+	// Slot 0's Spearman leaves and a Monk of slot 1 takes A: A is explored by slot 0 but out of its sight, so its view stays as last seen (nobody's).
+	Fixture.Remove(Watcher);
+	TestTrue(TEXT("a Monk of slot 1 on site A"), Fixture.Place(TEXT("Monk"), 1, FVector(0., 0., 0.)) != 0);
+	Step(HoldSteps() + 5);
+	TestTrue(TEXT("slot 1 owns A in its view"), Find(Players[1], SiteA) && Find(Players[1], SiteA)->Owner == 1);
+	TestEqual(TEXT("slot 1 knows both sites"), Players[1]->GetSiteViews().Num(), 2);
+	TestTrue(TEXT("slot 0 still has A (explored)"), Find(Players[0], SiteA) != nullptr);
+	TestTrue(TEXT("... frozen as it last saw it: nobody's"), Find(Players[0], SiteA) && Find(Players[0], SiteA)->Owner == INDEX_NONE);
+
+	// Without a fog every seat knows every site, as it is.
+	Vision->Start(Fixture.GameState->GetLaunchConfig(), EHOLFogMode::Disabled);
+	Step(2);
+	TestEqual(TEXT("no fog: slot 2 knows both sites"), Players[2]->GetSiteViews().Num(), 2);
+	TestTrue(TEXT("no fog: slot 0 sees A live (slot 1's)"), Find(Players[0], SiteA) && Find(Players[0], SiteA)->Owner == 1);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemOffByDefaultTest, "HeroesOfLiberty.Sites.SubsystemOffByDefault", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
 
 // The option is off by default: a Monk alone in a site's zone for three times the hold changes nothing (the game as it is does not change).
@@ -230,7 +315,70 @@ bool FHOLSiteSubsystemKeepTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemSameTwiceTest, "HeroesOfLiberty.Sites.SubsystemSameTwice", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemGoldTest, "HeroesOfLiberty.Sites.SubsystemGold", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S6 (D699), through the real chain (real Monks take real sites, the players' states hold the stock): a site held for a minute pays its OWNER
+// exactly the rate (hol.Site.GoldPerMinute 30), the owner alone (a player who holds nothing gets nothing), two sites pay twice, and a site
+// that changes hands stops paying its old owner and starts paying the new one. The effect is the stock of gold, not a predicate.
+bool FHOLSiteSubsystemGoldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FScopedVariable Rate(TEXT("hol.Site.GoldPerMinute"), TEXT("30"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	AHOLPlayerState* Players[3] = { nullptr, nullptr, nullptr };
+	for (int32 Slot = 0; Slot < 3; ++Slot)
+	{
+		Players[Slot] = Fixture.World->SpawnActor<AHOLPlayerState>();
+		if (!TestNotNull(TEXT("a player state"), Players[Slot]))
+		{
+			return false;
+		}
+		Players[Slot]->SetMatchSlot(Slot, Slot);
+		Fixture.GameState->AddPlayerState(Players[Slot]);
+	}
+	const int32 Minute = 60 * GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	const int32 SiteA = Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	const int32 SiteB = Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+	const uint32 MonkA = Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Monk of slot 0 on site A"), MonkA != 0);
+
+	Fixture.Tick(HoldSteps() + 3);
+	TestEqual(TEXT("slot 0 took site A"), Fixture.State(SiteA).Owner, 0);
+	int32 Before0 = Players[0]->GetResources().Gold;
+	int32 Before1 = Players[1]->GetResources().Gold;
+	Fixture.Tick(Minute);
+	TestEqual(TEXT("one site held for a minute pays its owner exactly the rate"), Players[0]->GetResources().Gold - Before0, 30);
+	TestEqual(TEXT("a player who holds nothing gets nothing"), Players[1]->GetResources().Gold - Before1, 0);
+
+	// A second site: two sites pay twice.
+	const uint32 MonkB = Fixture.Place(TEXT("Monk"), 0, FVector(4000., 0., 0.));
+	TestTrue(TEXT("a Monk of slot 0 on site B"), MonkB != 0);
+	Fixture.Tick(HoldSteps() + 3);
+	TestEqual(TEXT("slot 0 took site B"), Fixture.State(SiteB).Owner, 0);
+	Before0 = Players[0]->GetResources().Gold;
+	Fixture.Tick(Minute);
+	TestEqual(TEXT("two sites held for a minute pay twice the rate"), Players[0]->GetResources().Gold - Before0, 60);
+
+	// Site A changes hands: slot 0's Monk leaves it, a Monk of slot 1 takes it. Then slot 0 is paid for B alone and slot 1 for A alone.
+	Fixture.Remove(MonkA);
+	TestTrue(TEXT("a Monk of slot 1 on site A"), Fixture.Place(TEXT("Monk"), 1, FVector(0., 0., 0.)) != 0);
+	Fixture.Tick(HoldSteps() + 3);
+	TestEqual(TEXT("slot 1 took site A from slot 0"), Fixture.State(SiteA).Owner, 1);
+	Before0 = Players[0]->GetResources().Gold;
+	Before1 = Players[1]->GetResources().Gold;
+	Fixture.Tick(Minute);
+	TestEqual(TEXT("the old owner is paid for the site it still holds only"), Players[0]->GetResources().Gold - Before0, 30);
+	TestEqual(TEXT("the new owner is paid for the site it took"), Players[1]->GetResources().Gold - Before1, 30);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemSameTwiceTest,"HeroesOfLiberty.Sites.SubsystemSameTwice", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
 
 // Two identical simulations give the same states, step by step.
 bool FHOLSiteSubsystemSameTwiceTest::RunTest(const FString& Parameters)
@@ -261,6 +409,134 @@ bool FHOLSiteSubsystemSameTwiceTest::RunTest(const FString& Parameters)
 		bSame = Histories[0][Index] == Histories[1][Index];
 	}
 	TestTrue(TEXT("the two histories are identical"), bSame);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteVictoryRuleTest, "HeroesOfLiberty.Sites.VictoryRule", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S10 (D431, D703), the pure rule (the same as the script's HOLSiteVictory::Step): the camp holding every site counts up to the steps asked; a
+// contested site freezes the count; a site changing hands (even to a slot of the same camp) restarts it; a site nobody owns zeroes it; the
+// winner once set stays.
+bool FHOLSiteVictoryRuleTest::RunTest(const FString& Parameters)
+{
+	const TArray<int32> Teams = { 7, 7, 9, 10 };
+	const TArray<int32> Quiet = { 0, 0 };
+	FHOLSiteVictoryState State;
+	for (int32 Index = 0; Index < 4; ++Index)
+	{
+		State = HOLSite::VictoryStep(State, { 0, 1 }, Quiet, Teams, 5);
+	}
+	TestEqual(TEXT("two teammates holding both sites: the camp leads"), State.Leader, 7);
+	TestEqual(TEXT("four steps counted"), State.Held, 4);
+	TestEqual(TEXT("no winner yet"), State.Winner, static_cast<int32>(INDEX_NONE));
+	State = HOLSite::VictoryStep(State, { 0, 1 }, { 0, 1 }, Teams, 5);
+	TestEqual(TEXT("a contested site freezes the count"), State.Held, 4);
+	State = HOLSite::VictoryStep(State, { 1, 1 }, Quiet, Teams, 5);
+	TestEqual(TEXT("a site changing hands inside the camp restarts the count (this step is the first)"), State.Held, 1);
+	State = HOLSite::VictoryStep(State, { 1, INDEX_NONE }, Quiet, Teams, 5);
+	TestEqual(TEXT("a site nobody owns: no leader"), State.Leader, static_cast<int32>(INDEX_NONE));
+	TestEqual(TEXT("a site nobody owns: the count is zero"), State.Held, 0);
+	State = HOLSite::VictoryStep(State, { 0, 2 }, Quiet, Teams, 5);
+	TestEqual(TEXT("two adverse camps owning a site each: nobody leads"), State.Leader, static_cast<int32>(INDEX_NONE));
+	for (int32 Index = 0; Index < 5; ++Index)
+	{
+		State = HOLSite::VictoryStep(State, { 2, 2 }, Quiet, Teams, 5);
+	}
+	TestEqual(TEXT("the lone camp that held every site for the steps asked wins"), State.Winner, 9);
+	State = HOLSite::VictoryStep(State, { 0, 1 }, Quiet, Teams, 5);
+	TestEqual(TEXT("the winner once set stays"), State.Winner, 9);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemVictoryTest, "HeroesOfLiberty.Sites.SubsystemVictory", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S10 (D431), through the real chain (real Monks take real sites, the game state ends the match): slot 0 holds both sites; an adverse
+// Spearman standing in a zone freezes the count (the effect: after twice the time the match is still on); once he is gone the count goes
+// on, and at the end the two other slots are defeated with the reason SacredSites and the match is over with slot 0 the winner.
+bool FHOLSiteSubsystemVictoryTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FScopedVariable Victory(TEXT("hol.Site.VictorySeconds"), TEXT("5"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+	TestTrue(TEXT("a Monk of slot 0 on site A"), Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.)) != 0);
+	TestTrue(TEXT("a Monk of slot 0 on site B"), Fixture.Place(TEXT("Monk"), 0, FVector(4000., 0., 0.)) != 0);
+	Fixture.Tick(Rate + 3);
+	TestEqual(TEXT("slot 0 took site A"), Fixture.State(0).Owner, 0);
+	TestEqual(TEXT("slot 0 took site B"), Fixture.State(1).Owner, 0);
+	TestFalse(TEXT("the match is on"), Fixture.GameState->IsMatchOver());
+
+	const uint32 Intruder = Fixture.Place(TEXT("Spearman"), 1, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Spearman of slot 1 in the zone of site A"), Intruder != 0);
+	Fixture.Tick(10 * Rate);
+	TestFalse(TEXT("twice the count's time with an adverse unit in a zone: the match is still on"), Fixture.GameState->IsMatchOver());
+	TestEqual(TEXT("slot 1 is not defeated"), static_cast<int32>(Fixture.GameState->GetDefeatReason(1)), static_cast<int32>(EHOLDefeatReason::None));
+
+	Fixture.Remove(Intruder);
+	Fixture.Tick(6 * Rate);
+	TestTrue(TEXT("the count ran out: the match is over"), Fixture.GameState->IsMatchOver());
+	TestEqual(TEXT("slot 1 is defeated by the sites"), static_cast<int32>(Fixture.GameState->GetDefeatReason(1)), static_cast<int32>(EHOLDefeatReason::SacredSites));
+	TestEqual(TEXT("slot 2 is defeated by the sites"), static_cast<int32>(Fixture.GameState->GetDefeatReason(2)), static_cast<int32>(EHOLDefeatReason::SacredSites));
+	TestFalse(TEXT("slot 0 is not defeated"), Fixture.GameState->IsSlotDefeated(0));
+	const TArray<int32> Winners = Fixture.GameState->GetWinners();
+	TestTrue(TEXT("slot 0 alone wins"), Winners.Num() == 1 && Winners[0] == 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemCountTest, "HeroesOfLiberty.Sites.SubsystemCount", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S10 (D431), the count every machine reads (the game state's replicated SiteCount, shown to all): nobody leads before the sites are taken; once slot 0
+// holds both, it leads and the seconds left go down; an adverse Spearman in a zone freezes it (frozen, the seconds stop); once he is gone it goes on.
+bool FHOLSiteSubsystemCountTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	FScopedVariable Victory(TEXT("hol.Site.VictorySeconds"), TEXT("20"));
+	FFixture Fixture(*this);
+	if (!Fixture.IsReady())
+	{
+		return false;
+	}
+	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+	Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+	TestTrue(TEXT("a Monk of slot 0 on site A"), Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.)) != 0);
+	TestTrue(TEXT("a Monk of slot 0 on site B"), Fixture.Place(TEXT("Monk"), 0, FVector(4000., 0., 0.)) != 0);
+	Fixture.Tick(2);
+	TestEqual(TEXT("sites not taken yet: nobody leads"), Fixture.GameState->GetSiteCount().Leader, static_cast<int32>(INDEX_NONE));
+	Fixture.Tick(Rate + 3);
+	const FHOLSiteCountNet Started = Fixture.GameState->GetSiteCount();
+	TestEqual(TEXT("slot 0 holds both sites: it leads"), Started.Leader, 0);
+	TestEqual(TEXT("the count starts at the full time"), Started.SecondsLeft, 20);
+	TestFalse(TEXT("not frozen"), Started.bFrozen);
+
+	Fixture.Tick(5 * Rate);
+	const FHOLSiteCountNet Later = Fixture.GameState->GetSiteCount();
+	TestTrue(TEXT("five seconds later about fifteen are left"), Later.SecondsLeft >= 14 && Later.SecondsLeft <= 15);
+
+	const uint32 Intruder = Fixture.Place(TEXT("Spearman"), 1, FVector(0., 0., 0.));
+	TestTrue(TEXT("a Spearman of slot 1 in the zone of site A"), Intruder != 0);
+	Fixture.Tick(2);
+	const FHOLSiteCountNet Frozen = Fixture.GameState->GetSiteCount();
+	TestTrue(TEXT("an adverse unit in a zone: the count is frozen"), Frozen.bFrozen);
+	Fixture.Tick(4 * Rate);
+	TestEqual(TEXT("frozen: the seconds left did not move"), Fixture.GameState->GetSiteCount().SecondsLeft, Frozen.SecondsLeft);
+	TestEqual(TEXT("frozen: the leader is still slot 0"), Fixture.GameState->GetSiteCount().Leader, 0);
+
+	Fixture.Remove(Intruder);
+	Fixture.Tick(4 * Rate);
+	const FHOLSiteCountNet Going = Fixture.GameState->GetSiteCount();
+	TestFalse(TEXT("the intruder is gone: not frozen"), Going.bFrozen);
+	TestTrue(TEXT("the count went on"), Going.SecondsLeft <= Frozen.SecondsLeft - 3);
 	return true;
 }
 

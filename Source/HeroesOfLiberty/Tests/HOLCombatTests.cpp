@@ -312,6 +312,13 @@ bool FHOLCombatDamageTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Archer +10 % on Spearman: 5 x 1.1 + 5"), HOLCombat::GetDamage(Archer, Spearman, 1, 0, 10), 10.5f, 0.001f);
 	TestEqual(TEXT("+20 % with the level and the armour bonus together"), HOLCombat::GetDamage(ManAtArms, Spearman, 1, 3, 20), 11.4f, 0.001f);
 	TestEqual(TEXT("Peasant +20 % on Man-at-arms: still 1 at least"), HOLCombat::GetDamage(Peasant, ManAtArms, 1, 0, 20), 1.f);
+	// F2: the defender's Forge armour percent takes that share off the hit after the armour (1 at least).
+	TestEqual(TEXT("armour +0 %: the same hit"), HOLCombat::GetDamage(Spearman, ManAtArms, 1, 0, 0, 0), 4.f);
+	TestEqual(TEXT("Maille I (10 %) on Man-at-arms: 4 -> 3.6"), HOLCombat::GetDamage(Spearman, ManAtArms, 1, 0, 0, 10), 3.6f, 0.001f);
+	TestEqual(TEXT("Maille II (20 %) on Man-at-arms: 4 -> 3.2"), HOLCombat::GetDamage(Spearman, ManAtArms, 1, 0, 0, 20), 3.2f, 0.001f);
+	TestEqual(TEXT("Barde I (10 %) on cavalry: 8 + 17 - 2 = 23 -> 20.7"), HOLCombat::GetDamage(Spearman, Horseman, 1, 0, 0, 10), 20.7f, 0.001f);
+	TestEqual(TEXT("armour percent and attack percent together: (12 x 1.2) x 0.9"), HOLCombat::GetDamage(ManAtArms, Spearman, 1, 0, 20, 10), 12.96f, 0.001f);
+	TestEqual(TEXT("Peasant on Man-at-arms with armour: still 1 at least"), HOLCombat::GetDamage(Peasant, ManAtArms, 1, 0, 0, 20), 1.f);
 
 	// The armour taken off is the one of the attack's type (D345), whatever the reach.
 	FHOLUnitTypeConstants Typed = Spearman;

@@ -1038,6 +1038,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: wave order refused");
 		}
+		for (int Held = 0; Held < Wave_.HoldIds.Num(); Held++)
+		{
+			TArray<int> One;
+			One.Add(Wave_.HoldIds[Held]);
+			HOLAIOrder::IssueAIMoveOrder(PlayerIndex, One, Wave_.HoldPoints[Held]);
+		}
 		if (Wave_.MoveIds.Num() > 0 && !HOLAIOrder::IssueAIMoveOrder(PlayerIndex, Wave_.MoveIds, Assembly))
 		{
 			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: retreat order refused");

@@ -100,6 +100,13 @@ namespace HOLAudioCandidates
 		BuildBuildings(Buildings);
 		for (int Index = 0; Index < Buildings.Num(); Index++)
 			if (Buildings[Index].Cue == Cue) return Buildings[Index];
+		if (Cue == "Building.CoinsElected") // the Market's ELECTED selection sound (the table rings handleCoins), heard in the audio_panel scenario; in no listing
+		{
+			FHOLAudioCandidates Elected;
+			Elected.Cue = Cue;
+			Elected.Stems.Add("handleCoins");
+			return Elected;
+		}
 		return FHOLAudioCandidates();
 	}
 
@@ -141,7 +148,7 @@ namespace HOLAudioCandidates
 	}
 }
 
-// hol.Audio.Candidate <Cue> <A-J>: plays one candidate in 2D and writes "candidate played <Cue> <letter>
+// hol.Audio.Candidate <Cue> <A-J> [loud]: plays one candidate in 2D and writes "candidate played <Cue> <letter>
 // <stem>" to the log (or "candidate missing ..." when the sound wave is not imported). Used by the audio_compare scenarios, and
 // by hand to hear a variant again.
 void HOLAudioCandidateCommand(const TArray<FString>& Args)
@@ -166,7 +173,8 @@ void HOLAudioCandidateCommand(const TArray<FString>& Args)
 		Log(n"LogHOLMatch", HOLAudioCandidates::MissingLine(Args[0], Index, Asset));
 		return;
 	}
-	Gameplay::PlaySound2D(Sound, 1.0, 1.0);
+	const float Volume = (Args.Num() >= 3 && Args[2] == "loud") ? 2.5 : 1.0; // "loud" = the gain of the elected building sounds (BuildingSelectGainPercent 250 %), to hear the clipping
+		Gameplay::PlaySound2D(Sound, Volume, 1.0);
 	Log(n"LogHOLMatch", HOLAudioCandidates::PlayedLine(Args[0], Index, Stem));
 }
 

@@ -36,8 +36,10 @@ namespace HOLCombat
 	 * DefenderArmorBonus is armour added to the defender's (a talent in the aura), 0 by default. T6: AttackerAttackPercent
 	 * is the percent the attacker's player gained on its attack by technologies (Lames affutees, Empennage), 0 by default; it
 	 * scales the Attack (at the attacker's level) before the bonuses and the armour, like the level.
+	 * F2: DefenderArmorPercent is the percent of the hit (after the armour) the defender's player took off by Forge armour
+	 * technologies (Maille, Barde: HOLTechnology::GetArmorStat), 0 by default; the hit stays 1 at least.
 	 */
-	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1, int32 DefenderArmorBonus = 0, int32 AttackerAttackPercent = 0);
+	HEROESOFLIBERTY_API float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, int32 AttackerLevel = 1, int32 DefenderArmorBonus = 0, int32 AttackerAttackPercent = 0, int32 DefenderArmorPercent = 0);
 
 	/**
 	 * J8b.2: a unit's maximum health at its level (the hero's grows +8 % a level, J8b-Q3), rounded to nearest. S5: HealthPercent

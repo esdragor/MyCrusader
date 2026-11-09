@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+sites_count | a gauche sous le panneau Triches la ligne « Victoire sacrée : <nom> dans m:ss » (entre 0:50 et 1:15), des Moines bleus au centre, aucun panneau ne la recouvre
+sites_frozen | a gauche la ligne « Victoire sacrée : <nom> dans m:ss (en attente) » avec un Lancier rouge dans une zone
+sites_announce60 | a gauche le bandeau avec une ligne en plus « Sites sacrés : <nom> gagne dans une minute »
+sites_announce10 | a gauche le bandeau et la ligne « Sites sacrés : <nom> gagne dans 10 secondes »
+sites_won | a gauche « Victoire sacrée : <nom> » (ou la bannière de fin de partie)

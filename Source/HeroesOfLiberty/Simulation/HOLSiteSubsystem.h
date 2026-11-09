@@ -7,6 +7,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLSiteSubsystem.generated.h"
 
+class AHOLGameState;
+
 /**
  * The sacred sites of a match (SacredSitesInProgress.md S5, GDD 14.3, D429 to D431, D697 to D703): where the simulation runs (solo, server),
  * each step it walks the living units once, counts in each site's zone the takers (a holy unit of the slot's faction, or its hero) and the
@@ -45,11 +47,21 @@ public:
 	int32 AddSite(const FVector2D& Location, float Radius);
 	void ClearSites();
 	const TArray<FSite>& GetSites() const { return Sites; }
+	/** S10: the victory count (camp holding every site, steps held, winning camp). */
+	const FHOLSiteVictoryState& GetVictory() const { return Victory; }
 	/** Sites the slot owns. */
 	int32 CountOwned(int32 Slot) const;
-	/** The step the simulation is on is applied: counts, rule. Public for the tests. */
+	/** The step the simulation is on is applied: counts, rule, then the views. Public for the tests. */
 	void OnStepEnded(int64 StepIndex);
 	bool BindSteps();
+
+	/**
+	 * S5 (D701): writes to each seat's player state the sites its camp may know: a site is known to a slot when its camp owns it or is taking
+	 * it, or when the fog says the camp explored the site's centre (everything is known without a fog). The view is the site's state while the
+	 * camp sees it (or owns / takes it), and stays as it last saw it while the fog hides it (a site known only by exploration, never seen,
+	 * is shown neutral). A site never known is not in the view. Server or solo; public for the tests.
+	 */
+	void PublishViews();
 
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
@@ -58,7 +70,32 @@ protected:
 
 private:
 	void UnbindSteps();
+	/** S6: the gold by the minute to each slot that owns sites (a defeated slot gets none), written to its player state. */
+	void PayGold(const AHOLGameState& GameState);
+
+	/**
+	 * S10 (D431, D703): the victory count after this step (a camp holding every site, frozen by an adverse unit in a zone, reset by a site
+	 * changing hands or an alliance breaking); once full, every adversary of the winning camp is defeated (EHOLDefeatReason::SacredSites).
+	 * TeamBySlot: the teams the site rules use; Disturbers: [site][slot] units in the zone.
+	 */
+	void StepVictory(AHOLGameState& GameState, const TArray<int32>& TeamBySlot, const TArray<TArray<int32>>& Disturbers);
+
+	FHOLSiteVictoryState Victory;
+	/** The defeat of the adversaries was applied (once). */
+	bool bVictoryApplied = false;
+
+	/** [slot]: the gold fractions carried from a step to the next (S6). */
+	TArray<int32> GoldCarry;
+
+	/** What one slot has learnt of one site: known yet, and the view as it last saw it. */
+	struct FKnown
+	{
+		bool bKnown = false;
+		FHOLSiteView View;
+	};
 
 	TArray<FSite> Sites;
+	/** [slot][site]: the memory of each seat (S5), emptied with the sites. */
+	TArray<TArray<FKnown>> Memory;
 	FDelegateHandle StepEndedHandle;
 };

@@ -596,6 +596,21 @@ int32 UHOLCombatProcessor::GetTechnologyAttackPercent(const FFighter& Attacker) 
 	}
 }
 
+int32 UHOLCombatProcessor::GetTechnologyArmorPercent(const FFighter& Victim, const EHOLAttackType AttackType) const
+{
+	const int32 Slot = Victim.State->OwnerPlayer;
+	if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots || !HOLTechnology::ArmorCoversAttack(AttackType))
+	{
+		return 0;
+	}
+	const FName Stat = HOLTechnology::GetArmorStat(Victim.Constants->ArmorCategoryMask);
+	if (Stat == HOLTechnology::InfantryArmorStat)
+	{
+		return InfantryArmorPercent[Slot];
+	}
+	return Stat == HOLTechnology::CavalryArmorStat ? CavalryArmorPercent[Slot] : 0;
+}
+
 int32 UHOLCombatProcessor::GetBuildingAttackWithTechnology(const FFighter& Attacker) const
 {
 	// S5: only a type a technology names itself (the Mangonel) hits buildings harder; the attack technologies of the soldiers stay on units.
@@ -695,6 +710,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 	{
 		MeleeAttackPercent[Slot] = 0;
 		RangedAttackPercent[Slot] = 0;
+		InfantryArmorPercent[Slot] = 0;
+		CavalryArmorPercent[Slot] = 0;
 		MangonelDamagePercent[Slot] = 0;
 	}
 	if (const AGameStateBase* GameState = World ? World->GetGameState() : nullptr)
@@ -707,6 +724,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				MeleeAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Melee));
 				RangedAttackPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::GetAttackStat(EHOLAttackType::Ranged));
+				InfantryArmorPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::InfantryArmorStat);
+				CavalryArmorPercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLTechnology::CavalryArmorStat);
 				MangonelDamagePercent[Slot] = HOLPlayerState->GetTechnologyBonusPercent(HOLSiege::GetDamageStat(FName(TEXT("Mangonel"))));
 			}
 		}
@@ -2789,7 +2808,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter));
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter), GetTechnologyArmorPercent(Enemy, Constants.AttackType));
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

@@ -67,7 +67,7 @@ $Lines | Set-Content -Encoding ascii $Sequence
 $Slot = Enter-EditorSlot -Name "cols_paths" -Root $Project -Max 2 -WaitSeconds 1500
 if (-not $Slot) { Write-Host "cols_paths : FAIL (no editor slot after 25 min: 2 editors already run on this machine)"; exit 1 }
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -asdebugport=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
-$Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
+$Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 if (-not $Process.WaitForExit(240000)) { $Process.Kill() }
 Exit-EditorSlot
 

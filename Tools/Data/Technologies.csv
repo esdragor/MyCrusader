@@ -3,10 +3,10 @@ MeleeAttackI,Lames affûtées,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=
 MeleeAttackII,Lames affûtées II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,MeleeAttackI,(MeleeAttack),20,True
 RangedAttackI,Empennage,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(RangedAttack),10,True
 RangedAttackII,Empennage II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,RangedAttackI,(RangedAttack),20,True
-InfantryArmorI,Maille,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(InfantryArmor),10,False
-InfantryArmorII,Maille II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,InfantryArmorI,(InfantryArmor),20,False
-CavalryArmorI,Barde,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(CavalryArmor),10,False
-CavalryArmorII,Barde II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,CavalryArmorI,(CavalryArmor),20,False
+InfantryArmorI,Maille,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(InfantryArmor),10,True
+InfantryArmorII,Maille II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,InfantryArmorI,(InfantryArmor),20,True
+CavalryArmorI,Barde,Military,Common,Forge,1,0,"(Food=150,Wood=0,Stone=0,Gold=100)",30,,(CavalryArmor),10,True
+CavalryArmorII,Barde II,Military,Common,Forge,2,0,"(Food=300,Wood=0,Stone=0,Gold=200)",45,CavalryArmorI,(CavalryArmor),20,True
 DoubleAxesI,Haches doubles,Economy,Common,LumberCamp,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,(GatherWood),10,True
 DoubleAxesII,Haches doubles II,Economy,Common,LumberCamp,2,0,"(Food=200,Wood=200,Stone=0,Gold=0)",45,DoubleAxesI,(GatherWood),20,True
 MinerPicksI,Pics de mineur,Economy,Common,MiningCamp,1,0,"(Food=100,Wood=100,Stone=0,Gold=0)",30,,"(GatherStone,GatherGold)",10,True

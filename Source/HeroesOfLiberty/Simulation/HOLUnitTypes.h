@@ -39,6 +39,12 @@ enum class EHOLArmorCategory : uint8
 	 * (HOLCombat::GetDamage). Aimed at by no bonus for now.
 	 */
 	Hero,
+	/**
+	 * The undead of the Legions (L3, D393): the Zombie, and later the Skeleton, the Damned Warrior, the temporary servants and the Damned
+	 * Champion; never the Necromancer nor the hero. A tag added to their other categories, aimed at by the Dawn's Blessing of Arms
+	 * (FHOLAttackBonus). Last value: the existing ones keep their bit.
+	 */
+	Profane,
 };
 
 /** Bit of a category in FHOLUnitTypeConstants::ArmorCategoryMask (D345: a unit has 1 to any number of categories). */

@@ -1527,6 +1527,21 @@ def spawn_relays(relays):
     layout.set_editor_property("relays", placed)
 
 
+def spawn_sites(sites):
+    """The map's sacred sites (S4, D697) as an AHOLSiteLayout actor, the same way as the relays: [(x, y, radius)] in cm, read by the server (Map.Table checks them)."""
+    layout_class = unreal.load_class(None, "/Script/HeroesOfLiberty.HOLSiteLayout")
+    if layout_class is None:
+        raise RuntimeError("Missing HOLSiteLayout (is the HeroesOfLiberty module compiled?)")
+    layout = spawn(layout_class, label="SiteLayout")
+    placed = []
+    for x, y, radius in sites:
+        site = unreal.HOLPlacedSite()
+        site.set_editor_property("location", unreal.Vector(x, y, 0))
+        site.set_editor_property("radius", radius)
+        placed.append(site)
+    layout.set_editor_property("sites", placed)
+
+
 def outside_relays(sources, relays):
     """The sources whose centre is not inside any relay's zone."""
     kept = []
@@ -1942,8 +1957,8 @@ def apply_edits(recipe, sources, relays=(), module=None):
     return kept + added
 
 
-def export_layout(recipe, relays, sources):
-    """Saved/MapLayouts/<map file>.json for the map painter: bounds, slots, relays and every source (type, x, y)."""
+def export_layout(recipe, relays, sources, sites=()):
+    """Saved/MapLayouts/<map file>.json for the map painter: bounds, slots, relays, the sacred sites (x, y, radius) and every source (type, x, y)."""
     import json
     folder = os.path.join(unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir()), "MapLayouts")
     os.makedirs(folder, exist_ok=True)
@@ -1952,7 +1967,8 @@ def export_layout(recipe, relays, sources):
     for source in sources:
         at = source.get_editor_property("location")
         rows.append([str(source.get_editor_property("type")), round(at.x), round(at.y)])
-    data = {"map": recipe.map_path.rsplit("/", 1)[1], "half": recipe.bounds_half, "slots": slots, "relays": [list(relay) for relay in relays], "sources": rows}
+    data = {"map": recipe.map_path.rsplit("/", 1)[1], "half": recipe.bounds_half, "slots": slots, "relays": [list(relay) for relay in relays],
+            "sites": [list(site) for site in sites], "sources": rows}
     with open(os.path.join(folder, recipe.map_path.rsplit("/", 1)[1] + ".json"), "w", encoding="utf-8") as handle:
         json.dump(data, handle, separators=(",", ":"))
 
@@ -2010,10 +2026,13 @@ def make_map(recipe, module, on_saved):
     sources = outside_relays(sources, relays)  # what the far layer's clearance did not keep out (R2)
     if not getattr(module, "NO_EDITS", False):  # the glade sweep (maps/glade_sweep.py) wears the name of a listed map and must not take its painted forests
         sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
-    export_layout(recipe, relays, sources)  # Saved/MapLayouts/<map file>.json: what the map painter shows
+    sites = list(module.sites(recipe)) if hasattr(module, "sites") else []  # the sacred sites (S4, D697): data like the relays, the map's own level design
+    export_layout(recipe, relays, sources, sites)  # Saved/MapLayouts/<map file>.json: what the map painter shows
     layout.set_editor_property("sources", sources)
     if relays:
         spawn_relays(relays)
+    if sites:
+        spawn_sites(sites)
 
     # Volcano sites (V4b, D607): data read by the server, symmetric by construction; the module gives them (volcano(recipe)), the check refuses an unfair one.
     volcanoes = list(module.volcano(recipe)) if hasattr(module, "volcano") else []
@@ -2041,6 +2060,8 @@ def make_map(recipe, module, on_saved):
     summary = ("Match map created at %s: %d start slots on a %.0f m circle (neighbours %.0f m apart), bounds %.0f m, %d obstacles, "
                "%d sources (%d neutral groups per player)%s, %d relays, navmesh built") % (
         recipe.map_path, places, recipe.slot_radius / 100, neighbours / 100, 2 * recipe.bounds_half / 100, obstacles, len(sources), groups, summary_zones, len(relays))
+    if sites:
+        summary += ", %d sites" % len(sites)
     if volcanoes:
         summary += ", %d volcano site(s) with %d flows" % (len(volcanoes), sum(len(site["flows"]) for site in volcanoes))
     # The navmesh is built once the editor lets it (it locks building for ~2 s after loading), then saved.

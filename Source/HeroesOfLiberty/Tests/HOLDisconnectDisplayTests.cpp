@@ -133,6 +133,14 @@ bool FHOLDisconnectReportTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("away, AI holds"), FHOLDisconnectRules::FormatSeatReport(1, TEXT("Bob"), ESeat::AbsentAIHolds, 161.2), FString(TEXT("slot 1 (Bob) away, AI holds, 162 s left")));
 	TestEqual(TEXT("window over"), FHOLDisconnectRules::FormatSeatReport(2, TEXT("Cleo"), ESeat::AIHolds, 0.), FString(TEXT("slot 2 (Cleo) away, window over, the AI keeps the seat")));
 	TestEqual(TEXT("defeated"), FHOLDisconnectRules::FormatSeatReport(3, TEXT("Dan"), ESeat::Defeated, 0.), FString(TEXT("slot 3 (Dan) defeated")));
+
+	// The AI's mode ends the line of a seat it keeps (the report said who holds the seat, not how the AI plays it).
+	using EMode = FHOLDisconnectRules::EAIMode;
+	TestEqual(TEXT("away, hold mode"), FHOLDisconnectRules::FormatSeatReport(1, TEXT("Bob"), ESeat::AbsentAIHolds, 161.2, EMode::Hold),
+		FString(TEXT("slot 1 (Bob) away, AI holds, 162 s left, AI mode hold")));
+	TestEqual(TEXT("window over, full brain"), FHOLDisconnectRules::FormatSeatReport(2, TEXT("Cleo"), ESeat::AIHolds, 0., EMode::Full),
+		FString(TEXT("slot 2 (Cleo) away, window over, the AI keeps the seat, AI mode full brain")));
+	TestEqual(TEXT("present: no mode"), FHOLDisconnectRules::FormatSeatReport(0, TEXT("Alice"), ESeat::Present, 0., EMode::None), FString(TEXT("slot 0 (Alice) present")));
 	return true;
 }
 

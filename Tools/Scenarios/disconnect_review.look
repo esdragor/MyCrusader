@@ -1,0 +1,8 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+review_hold | Base de Bob, table des joueurs : pastille "Connexion perdue" pour Bob, bandeau "Bob : connexion perdue" avec un compte a rebours
+review_pause_before | Avant la pause : le compte a rebours du bandeau de Bob (reference)
+review_pause_a | Jeu en pause : le compte a rebours du bandeau de Bob
+review_pause_b | 5 secondes plus tard, toujours en pause : le MEME compte a rebours que pause_a (il est fige)
+review_pause_after | Apres la reprise : le compte a rebours repart (un peu moins que pause_before)
+review_end | Fenetre finie, IA dans son camp : la pastille devient "IA", plus de bandeau
+review_back | Bob revient : plus aucune pastille

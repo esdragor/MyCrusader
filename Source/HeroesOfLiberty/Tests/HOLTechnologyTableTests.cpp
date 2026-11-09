@@ -60,7 +60,7 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 
 	/** The statistics some code applies today (T5 gathering and workers, T6 melee and ranged attack): a row whose statistics are all here is Implemented, any other is "Soon" (D601). */
 	constexpr const TCHAR* CodedStats[] = {
-		TEXT("MeleeAttack"), TEXT("RangedAttack"),
+		TEXT("MeleeAttack"), TEXT("RangedAttack"), TEXT("InfantryArmor"), TEXT("CavalryArmor"),
 		TEXT("GatherWood"), TEXT("GatherStone"), TEXT("GatherGold"), TEXT("GatherFood"), TEXT("WorkerSpeed"), TEXT("WorkerCarry"), TEXT("MonkCostDiscount"),
 	};
 
@@ -217,6 +217,8 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("VowOfPoverty"),
 		// F1 (FortificationsInProgress.md): the Forge is a building type now, so its four attack lines (effect coded) are playable; the armour lines wait for F2 (Implemented false).
 		TEXT("MeleeAttackI"), TEXT("MeleeAttackII"), TEXT("RangedAttackI"), TEXT("RangedAttackII"),
+		// F2: Maille and Barde (InfantryArmor, CavalryArmor) are coded in the combat chain.
+		TEXT("InfantryArmorI"), TEXT("InfantryArmorII"), TEXT("CavalryArmorI"), TEXT("CavalryArmorII"),
 	};
 	TSet<FName> Playable;
 	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
@@ -227,7 +229,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 			Playable.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("13 technologies are playable (the 8 economy ones, the Vow of Poverty, and the Forge's four attack lines since F1)"), Playable.Num(), 13);
+	TestEqual(TEXT("17 technologies are playable (the 8 economy ones, the Vow of Poverty, the Forge's four attack lines since F1 and its four armour lines since F2)"), Playable.Num(), 17);
 	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"), TEXT("ReinforcedRam"), TEXT("HeavyMunitions") })
 	{
 		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Soon, TEXT("technology"), false);
@@ -412,6 +414,21 @@ bool FHOLTechnologyRulesTest::RunTest(const FString& Parameters)
 	const FHOLTechnologyRow* Fletching1 = Find(TEXT("RangedAttackI"));
 	TestEqual(TEXT("Empennage I: ranged +10 %"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Ranged), Find), Fletching1 ? Fletching1->Percent : -1);
 	TestEqual(TEXT("Empennage I: nothing for the melee"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::GetAttackStat(EHOLAttackType::Melee), Find), 0);
+
+	// F2 (Q-forge-armure, option A by default): Maille covers light, heavy and gunpowder infantry, Barde the cavalry; nothing else; melee and ranged hits.
+	const auto Mask = [](const std::initializer_list<EHOLArmorCategory> Categories) { int32 Result = 0; for (const EHOLArmorCategory Category : Categories) { Result |= HOLArmorCategoryBit(Category); } return Result; };
+	TestEqual(TEXT("light infantry: Maille"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::LightInfantry })), HOLTechnology::InfantryArmorStat);
+	TestEqual(TEXT("heavy infantry (with the Heavy tag): Maille"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::HeavyInfantry, EHOLArmorCategory::Heavy })), HOLTechnology::InfantryArmorStat);
+	TestEqual(TEXT("gunpowder infantry: Maille"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::GunpowderInfantry })), HOLTechnology::InfantryArmorStat);
+	TestEqual(TEXT("cavalry (with the Heavy tag): Barde"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::Cavalry, EHOLArmorCategory::Heavy })), HOLTechnology::CavalryArmorStat);
+	TestEqual(TEXT("archers and crossbowmen: no armour"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::Ranged })), FName(NAME_None));
+	TestEqual(TEXT("Peasant: no armour"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::Peasant })), FName(NAME_None));
+	TestEqual(TEXT("hero: no armour"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::Hero })), FName(NAME_None));
+	TestEqual(TEXT("siege: no armour"), HOLTechnology::GetArmorStat(Mask({ EHOLArmorCategory::Siege })), FName(NAME_None));
+	TestTrue(TEXT("the armours lower melee and ranged hits"), HOLTechnology::ArmorCoversAttack(EHOLAttackType::Melee) && HOLTechnology::ArmorCoversAttack(EHOLAttackType::Ranged));
+	TestFalse(TEXT("... not siege hits, not hero hits"), HOLTechnology::ArmorCoversAttack(EHOLAttackType::Siege) || HOLTechnology::ArmorCoversAttack(EHOLAttackType::Hero));
+	Researched = { TEXT("InfantryArmorII") };
+	TestEqual(TEXT("Maille II: infantry armour 20 %, cavalry 0"), HOLTechnology::GetBonusPercent(Researched, HOLTechnology::InfantryArmorStat, Find) * 100 + HOLTechnology::GetBonusPercent(Researched, HOLTechnology::CavalryArmorStat, Find), 2000);
 
 	// The player's state: a technology is researched once.
 	FHOLTechnologyState State;

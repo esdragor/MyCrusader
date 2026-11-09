@@ -2,6 +2,28 @@
 
 #include "Simulation/HOLSiteRules.h"
 
+FHOLSiteView HOLSite::MakeView(const int32 Index, const FVector2D& Location, const float Radius, const FHOLSiteState& State, const int32 HoldSteps)
+{
+	FHOLSiteView View;
+	View.Index = static_cast<uint8>(FMath::Clamp(Index, 0, 255));
+	View.X = static_cast<float>(Location.X);
+	View.Y = static_cast<float>(Location.Y);
+	View.Radius = Radius;
+	View.Owner = static_cast<int8>(State.Owner);
+	View.Taker = static_cast<int8>(State.Taker);
+	View.FillPercent = static_cast<uint8>(HoldSteps > 0 ? FMath::Clamp(static_cast<int32>(static_cast<int64>(State.Held) * 100 / HoldSteps), 0, 99) : 0);
+	return View;
+}
+
+int32 HOLSite::GoldStep(int32& Carry, const int32 Sites, const int32 RatePerMinute, const int32 StepsPerSecond)
+{
+	const int32 StepsPerMinute = 60 * FMath::Max(1, StepsPerSecond);
+	Carry += FMath::Max(0, Sites) * FMath::Max(0, RatePerMinute);
+	const int32 Award = Carry / StepsPerMinute;
+	Carry -= Award * StepsPerMinute;
+	return Award;
+}
+
 void HOLSite::ResetCounts(TArray<int32>& Takers, TArray<int32>& Disturbers, const int32 Slots)
 {
 	Takers.Init(0, FMath::Max(0, Slots));
@@ -19,6 +41,70 @@ void HOLSite::AddUnit(TArray<int32>& Takers, TArray<int32>& Disturbers, const in
 	{
 		++Takers[Slot];
 	}
+}
+
+FHOLSiteVictoryState HOLSite::VictoryStep(const FHOLSiteVictoryState& State, const TArray<int32>& OwnerBySite,
+	const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, const int32 VictorySteps)
+{
+	// The winner once set stays.
+	if (State.Winner >= 0)
+	{
+		return State;
+	}
+	FHOLSiteVictoryState Next = State;
+	Next.LastOwners = OwnerBySite;
+	// The camp holding every site: the team of the owners' slots when every site has an owner and all the owners are of one team (a team below zero is no camp, as the script's HoldingCamp).
+	int32 Camp = INDEX_NONE;
+	bool bHolding = OwnerBySite.Num() > 0;
+	for (int32 Site = 0; bHolding && Site < OwnerBySite.Num(); ++Site)
+	{
+		const int32 Owner = OwnerBySite[Site];
+		if (Owner < 0 || Owner >= TeamBySlot.Num())
+		{
+			bHolding = false;
+			break;
+		}
+		const int32 Team = TeamBySlot[Owner];
+		if (Team < 0)
+		{
+			bHolding = false;
+			break;
+		}
+		if (Site == 0)
+		{
+			Camp = Team;
+		}
+		else if (Team != Camp)
+		{
+			bHolding = false;
+		}
+	}
+	if (!bHolding)
+	{
+		Next.Leader = INDEX_NONE;
+		Next.Held = 0;
+		return Next;
+	}
+	// A new holding camp, or any site changed hands (even to a slot of the same camp, or a site appeared or went): the count starts again.
+	if (Camp != State.Leader || State.LastOwners != OwnerBySite)
+	{
+		Next.Leader = Camp;
+		Next.Held = 0;
+	}
+	// A site with an adverse unit in its zone freezes the count (it never recedes).
+	for (const int32 Contested : ContestedBySite)
+	{
+		if (Contested != 0)
+		{
+			return Next;
+		}
+	}
+	Next.Held = Next.Held + 1;
+	if (Next.Held >= VictorySteps)
+	{
+		Next.Winner = Next.Leader;
+	}
+	return Next;
 }
 
 FHOLSiteState HOLSite::Step(const FHOLSiteState& State, const TArray<int32>& Takers, const TArray<int32>& Disturbers,
