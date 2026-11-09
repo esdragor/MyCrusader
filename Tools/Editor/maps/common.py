@@ -1450,6 +1450,7 @@ SITE_RADIUS = 1200.0  # cm, as the relay and the ruin (the radius is a TO PROPOS
 SITE_COUNT_DEFAULT = 2  # sites IN ALL per map (the user, 2026-11-07: "2 a 3 selon la map", not per player) when SITE_COUNTS has no entry for the map
 SITE_COUNTS = {}  # map name -> 2 or 3, the map's own count (empty: all maps at 2). A 3 is a pair plus the MIDDLE of the map (the only third place symmetric by a half
 # turn); it fails with "No clear place" where the altar of the crater is at the middle (4 places and more): see Retours\Q-sites-symetrie.md
+SITES_CLEAR_SOURCES = True  # the user's answer B of 2026-11-09 (Retours\Q-sites-arbres-zone.md): make_map leaves out every source whose centre is inside a site's disc (False = A: nothing removed)
 SITE_SWEEP = 16  # turns of the ring tried (of one place's angle) when neither the middle angles nor the axes are clear
 SITE_MARGIN = 500.0 # cm of free ground between a site's zone and a relay's, the bounds' edge
 SITE_FRACTIONS = (1.0, 0.95, 1.05, 0.9, 1.1, 0.85, 1.15, 0.8, 0.75, 1.2, 0.7, 0.65, 0.6, 0.55, 0.5, 0.45, 0.4, 0.35, 0.3, 0.25, 0.2)  # of the places' circle
@@ -1549,6 +1550,18 @@ def outside_relays(sources, relays):
         at = source.get_editor_property("location")
         if all(math.dist((at.x, at.y), (x, y)) >= radius for x, y, radius in relays):
             kept.append(source)
+    return kept
+
+
+def outside_sites(sources, sites, recipe=None):
+    """The sources whose centre is not inside any sacred site's disc [(x, y, radius)] (SITES_CLEAR_SOURCES, as drop_reserved does for the relays and the altar)."""
+    kept = []
+    for source in sources:
+        at = source.get_editor_property("location")
+        if all(math.dist((at.x, at.y), (x, y)) >= radius for x, y, radius in sites):
+            kept.append(source)
+    if recipe is not None and len(kept) != len(sources):
+        print("[maps] %s: %d sources inside a sacred site's disc left out" % (recipe.map_path, len(sources) - len(kept)))
     return kept
 
 
@@ -2027,6 +2040,8 @@ def make_map(recipe, module, on_saved):
     if not getattr(module, "NO_EDITS", False):  # the glade sweep (maps/glade_sweep.py) wears the name of a listed map and must not take its painted forests
         sources = apply_edits(recipe, sources, relays, module)  # the user's brush strokes (Tools/Data/MapEdits/<map file>.json, made by the map painter), over the recipe's sources
     sites = list(module.sites(recipe)) if hasattr(module, "sites") else []  # the sacred sites (S4, D697): data like the relays, the map's own level design
+    if SITES_CLEAR_SOURCES and sites:
+        sources = outside_sites(sources, sites, recipe)  # answer B of Q-sites-arbres-zone: a clear disc at every site, the draws elsewhere untouched
     export_layout(recipe, relays, sources, sites)  # Saved/MapLayouts/<map file>.json: what the map painter shows
     layout.set_editor_property("sources", sources)
     if relays:
