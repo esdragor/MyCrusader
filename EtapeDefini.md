@@ -313,3 +313,4 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `Auto_Journey_Test1_2026-10-30.md` : archive du test 1 de la journée autonome
 - HUD galadriel-tab (2026-11-06) : BUG forge-tier1-grid et BUG legions_roster (infobulle) corriges, REGLAGE forge (stats de l'unite a l'ecran) fait, Q-unit-stats posee ; commits sur galadriel-tab, pas dans main (InterfaceInProgress.md)
 - Arwen-D751 (heal-sleep, sans C++, 2026-11-09 09:5x) : **D751 vague IA en groupe : aiwave VERT** (cause : Lancier 777 cm/s, cut-off hors bloc ; WaveSpread 1200 + AttackReissue 1 s dans HOLAIArmy.as/HOLAIBrain.as) ; reste tests,aiserver,aiduel ; commit sur heal-sleep, pas dans main.
+- Arwen-D751-racine (d751-root, C++, 2026-11-09 10:44) : **cause racine D751 corrigee** (soldat coupe du bloc garde le rythme du bloc : PaceCap), aiwave 6741 -> PASS x3 sans le contournement script ; branche d751-root, pas dans main.
