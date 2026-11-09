@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -556,7 +556,7 @@ namespace HOLCombat
 	 */
 	inline bool ShouldKeepTargetBothFull(const bool bEnabled, const bool bTargetFull, const bool bNewFull, const double NewEdge, const double TargetEdge, const double MinGain)
 	{
-		return false; // STUB (red test first): the old behaviour, no keeping when the target is full
+		return bEnabled && bTargetFull && bNewFull && NewEdge > TargetEdge - MinGain;
 	}
 
 	/** Angular gap (radians, 0 to pi) between two angles round a target. */

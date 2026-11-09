@@ -1,4 +1,4 @@
-﻿# BUG-melee-spin-sanity A/B (Celeborn-25): melee_stuck with hol.Combat.RearKeepBothFull 1 (a rear soldier keeps its target when both enemies are full). Same binary, same start.
+# BUG-melee-spin-sanity A/B (Celeborn-25): melee_stuck with hol.Combat.RearKeepBothFull 1 (a rear soldier keeps its target when both enemies are full). Same binary, same start.
 hol.Sanity.Watch 1
 hol.Sanity.DumpUnit -3
 hol.Combat.RearKeepBothFull 1
