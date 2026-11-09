@@ -139,7 +139,7 @@ void Test_UnitTierMonotone(FUnitTest& T)
 
 // The simulation's twin (C++, HOLUnitTier::Check on the column MinTier of the unit type table) gives the same reason as the script's on every
 // case: each unit the table holds and the rule lists, each tier, building and stock. The tier of each type is the column's, never typed on
-// the C++ side. A type the table does not hold (Trebuchet, Cannon, Arquebusier: G3, G4) is left out until its row exists.
+// the C++ side. A type the table does not hold (Trebuchet, Cannon: G7, G8) is left out until its row exists.
 void Test_UnitTierScriptAndSimulationRulesAgree(FUnitTest& T)
 {
 	TArray<FString> Types = UnitTierTypes();
@@ -171,7 +171,7 @@ void Test_UnitTierScriptAndSimulationRulesAgree(FUnitTest& T)
 			}
 		}
 	}
-	T.AssertEquals(9 * 4 * 2 * 2, Cases, "the nine units of the table are compared on every case");
+	T.AssertEquals(10 * 4 * 2 * 2, Cases, "the ten units of the table (the Arquebusier since G3) are compared on every case");
 	T.AssertEquals(0, ColumnDifferences, "the column MinTier of the table is the tiers of GDD 11.1");
 	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
 	T.AssertTrue(Refused > 0, "the simulation refuses a unit for its tier");

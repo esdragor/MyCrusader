@@ -625,6 +625,114 @@ bool FHOLCombatHitAndRunTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatArmorPenetrationTest, "HeroesOfLiberty.Combat.ArmorPenetration", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatArmorPenetrationTest::RunTest(const FString& Parameters)
+{
+	// Palier 3 G2 + G3 (D713): the Arquebusier's shot ignores half the armour of its target. The test reads the REAL rows of the
+	// unit table and asserts the EFFECT on the target's health, through the real damage rule and the real landing of a shot.
+	using namespace UE::HeroesOfLiberty::Tests::Combat;
+	FHOLUnitTypeConstants Arquebusier, ManAtArms, Spearman, Crossbowman;
+	if (!GetType(*this, TEXT("Arquebusier"), Arquebusier) || !GetType(*this, TEXT("ManAtArms"), ManAtArms)
+		|| !GetType(*this, TEXT("Spearman"), Spearman) || !GetType(*this, TEXT("Crossbowman"), Crossbowman))
+	{
+		return false;
+	}
+	const double Tile = UHOLBuildingSettings::GetTileSize();
+	TestEqual(TEXT("Arquebusier: 70 HP"), Arquebusier.MaxHealth, 70);
+	TestEqual(TEXT("Arquebusier: attack 40"), Arquebusier.Attack, 40);
+	TestEqual(TEXT("Arquebusier: every 4.0 s"), Arquebusier.AttackInterval, 4.f);
+	TestEqual(TEXT("Arquebusier: reach 15 m"), Arquebusier.AttackRange, 1500.f);
+	TestEqual(TEXT("Arquebusier: 720 cm/s"), Arquebusier.Speed, 720.f);
+	TestEqual(TEXT("Arquebusier: penetration 50 %"), Arquebusier.ArmorPenetration, 50);
+	TestEqual(TEXT("Arquebusier: ranged attack"), int32(Arquebusier.AttackType), int32(EHOLAttackType::Ranged));
+	TestEqual(TEXT("Arquebusier: Ranged and gunpowder infantry"), Arquebusier.ArmorCategoryMask,
+		HOLArmorCategoryBit(EHOLArmorCategory::Ranged) | HOLArmorCategoryBit(EHOLArmorCategory::GunpowderInfantry));
+	TestEqual(TEXT("Arquebusier: no bonus of category"), Arquebusier.Bonuses.Num(), 0);
+	TestEqual(TEXT("no other unit penetrates"), Crossbowman.ArmorPenetration + ManAtArms.ArmorPenetration + Spearman.ArmorPenetration, 0);
+	TestEqual(TEXT("Man-at-arms: ranged armour 4 (the numbers below depend on it)"), ManAtArms.RangedArmor, 4);
+
+	// The effect on the health of a Man-at-arms (155, ranged armour 4 -> 2): 40 - 2 = 38 a shot, landed by the real rule.
+	const auto Shot = [](const FHOLUnitTypeConstants& From, const FHOLUnitTypeConstants& To, float& Health)
+	{
+		const float Damage = HOLCombat::GetDamage(From, To);
+		HOLCombat::ResolveArrow(true, Health, Damage);
+		return Damage;
+	};
+	float Health = static_cast<float>(ManAtArms.MaxHealth);
+	TestEqual(TEXT("one shot on a Man-at-arms: 38"), Shot(Arquebusier, ManAtArms, Health), 38.f);
+	TestEqual(TEXT("its health: 155 - 38 = 117"), Health, 117.f);
+	FHOLUnitTypeConstants NoPenetration = Arquebusier;
+	NoPenetration.ArmorPenetration = 0;
+	Health = static_cast<float>(ManAtArms.MaxHealth);
+	TestEqual(TEXT("same shot without penetration: 36 (the penetration is worth 2)"), Shot(NoPenetration, ManAtArms, Health), 36.f);
+	TestEqual(TEXT("its health: 155 - 36 = 119"), Health, 119.f);
+	// Against no armour the penetration changes nothing.
+	Health = static_cast<float>(Spearman.MaxHealth);
+	TestEqual(TEXT("a Spearman (ranged armour 0) takes 40 either way"), Shot(Arquebusier, Spearman, Health), 40.f);
+	TestEqual(TEXT("without the penetration too"), HOLCombat::GetDamage(NoPenetration, Spearman), 40.f);
+	TestEqual(TEXT("a Spearman's health: 80 - 40"), Health, 40.f);
+
+	// Other penetrations: 100 % takes all the armour, 25 % takes a quarter (4 -> 3), 0 % none.
+	FHOLUnitTypeConstants Probe = Arquebusier;
+	Probe.ArmorPenetration = 100;
+	TestEqual(TEXT("100 %: the whole armour ignored, 40"), HOLCombat::GetDamage(Probe, ManAtArms), 40.f);
+	Probe.ArmorPenetration = 25;
+	TestEqual(TEXT("25 %: armour 4 -> 3, 37"), HOLCombat::GetDamage(Probe, ManAtArms), 37.f);
+	// The hit stays 1 at least; the penetration cannot raise it above the attack alone.
+	Probe.Attack = 1;
+	Probe.ArmorPenetration = 50;
+	TestEqual(TEXT("a weak hit (1) on armour 4 -> 2: still 1"), HOLCombat::GetDamage(Probe, ManAtArms), 1.f);
+	Probe.Attack = 3;
+	TestEqual(TEXT("3 - 2 = 1"), HOLCombat::GetDamage(Probe, ManAtArms), 1.f);
+	Probe.Attack = 5;
+	TestEqual(TEXT("5 - 2 = 3 (without it 1)"), HOLCombat::GetDamage(Probe, ManAtArms), 3.f);
+	// Against a hero the troop factor 0.3 comes AFTER the armour (penetration, then the subtraction, then x 0.3).
+	FHOLUnitTypeConstants HeroLike = ManAtArms;
+	HeroLike.ArmorCategoryMask |= HOLArmorCategoryBit(EHOLArmorCategory::Hero);
+	TestEqual(TEXT("on a hero: (40 - 2) x 0.3"), HOLCombat::GetDamage(Arquebusier, HeroLike), 38.f * HOLCombat::HeroTroopDamageFactor);
+	// The armour a talent adds (T4) is cut by the penetration too: (4 + 2) -> 3 -> 37. The attack percent of a technology does not
+	// touch it: 80 - 2 = 78. The Forge percent comes off the hit after the armour: 38 x 0.9.
+	TestEqual(TEXT("talent armour +2: 6 -> 3, 37"), HOLCombat::GetDamage(Arquebusier, ManAtArms, 1, 2), 37.f);
+	TestEqual(TEXT("technology attack +100 %: 80 - 2"), HOLCombat::GetDamage(Arquebusier, ManAtArms, 1, 0, 100), 78.f);
+	TestEqual(TEXT("Forge armour 10 %: 38 x 0.9"), HOLCombat::GetDamage(Arquebusier, ManAtArms, 1, 0, 0, 10), 38.f * 0.9f);
+	// The penetration is not added to itself: one hit, the same damage each time.
+	TestEqual(TEXT("a second shot does the same"), HOLCombat::GetDamage(Arquebusier, ManAtArms), HOLCombat::GetDamage(Arquebusier, ManAtArms));
+
+	// Against a building (Q2 = B): the penetration does not count, the hit is the table's building attack on the full armour.
+	TestTrue(TEXT("Arquebusier's building attack: ranged, 40, 4 s, its reach"), Arquebusier.BuildingAttackType == EHOLAttackType::Ranged
+		&& Arquebusier.BuildingAttack == 40 && FMath::IsNearlyEqual(Arquebusier.BuildingAttackInterval, 4.f)
+		&& FMath::IsNearlyEqual(Arquebusier.BuildingAttackRange, Arquebusier.AttackRange));
+	const FHOLBuildingTypeRow* House = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::House);
+	if (TestNotNull(TEXT("House in the building type table"), House))
+	{
+		TestEqual(TEXT("a shot on a building: its full ranged armour, whatever the penetration"),
+			HOLConstruction::GetBuildingDamage(Arquebusier.BuildingAttack, Arquebusier.BuildingAttackType, House->RangedArmor),
+			HOLConstruction::GetBuildingDamage(NoPenetration.BuildingAttack, NoPenetration.BuildingAttackType, House->RangedArmor));
+		TestEqual(TEXT("40 - the House's ranged armour, 1 at least"), HOLConstruction::GetBuildingDamage(Arquebusier.BuildingAttack,
+			Arquebusier.BuildingAttackType, House->RangedArmor), FMath::Max(40 - House->RangedArmor, 1));
+	}
+
+	// The row: the Archery range, tier 3, 60 food + 80 gold, 25 s, population 1.
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Row = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Arquebusier"), TEXT("Combat test")) : nullptr;
+	if (TestNotNull(TEXT("Arquebusier row"), Row))
+	{
+		TestTrue(TEXT("Arquebusier: 60 food + 80 gold"), Row->Cost.Food == 60 && Row->Cost.Wood == 0 && Row->Cost.Stone == 0 && Row->Cost.Gold == 80);
+		TestEqual(TEXT("Arquebusier: 25 s"), Row->BuildTime, 25.f);
+		TestEqual(TEXT("Arquebusier: population 1"), Row->Population, 1);
+		TestEqual(TEXT("Arquebusier: opens at tier 3"), Row->MinTier, 3);
+		TestEqual(TEXT("Arquebusier: row penetration 50"), Row->ArmorPenetration, 50);
+	}
+	const FHOLBuildingTypeRow* Range = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::ArcheryRange);
+	if (TestNotNull(TEXT("Archery range"), Range))
+	{
+		TestTrue(TEXT("the Archery range produces the Arquebusier"), Range->Produces.Contains(FName(TEXT("Arquebusier"))));
+	}
+	(void)Tile;
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatRangeTest, "HeroesOfLiberty.Combat.Range", UE::HeroesOfLiberty::Tests::Combat::Flags)
 
 bool FHOLCombatRangeTest::RunTest(const FString& Parameters)

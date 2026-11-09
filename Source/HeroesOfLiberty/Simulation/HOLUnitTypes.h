@@ -340,6 +340,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeConstants : public FMassConstSharedFragme
 	UPROPERTY()
 	int32 HeroArmor = 0;
 
+	/** G2 (D713): percent of the defender's armour (of the attack's type) this attack ignores, 0 by default (the Arquebusier's 50). */
+	UPROPERTY()
+	int32 ArmorPenetration = 0;
+
 	/** Its attack's bonuses (D345), added up for each of the target's categories they aim at. */
 	UPROPERTY()
 	TArray<FHOLAttackBonus> Bonuses;
@@ -606,6 +610,10 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0"))
 	int32 HeroArmor = 0;
 
+	/** G2 (D713): percent of the defender's armour (of the attack's type) this attack ignores, 0 to 100. */
+	UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "0", ClampMax = "100"))
+	int32 ArmorPenetration = 0;
+
 	/** Its attack's bonuses (D345: the Spearman's +17 against cavalry, the Archer's +5 against light and gunpowder infantry). */
 	UPROPERTY(EditAnywhere, Category = "Combat")
 	TArray<FHOLAttackBonus> Bonuses;
@@ -718,6 +726,7 @@ inline FHOLUnitTypeConstants FHOLUnitTypeRow::ToConstants(const FName TypeName) 
 	Constants.RangedArmor = RangedArmor;
 	Constants.SiegeArmor = SiegeArmor;
 	Constants.HeroArmor = HeroArmor;
+	Constants.ArmorPenetration = FMath::Clamp(ArmorPenetration, 0, 100);
 	Constants.Bonuses = Bonuses;
 	Constants.AggressionRadius = AggressionRadius;
 	Constants.bRipostes = Ripostes;
