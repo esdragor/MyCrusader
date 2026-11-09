@@ -222,7 +222,43 @@ def strike_gaps(path, limit):
             if share >= ENCL_SHARE or wall_opened: excused.append(row)
             else: faults.append(row)
     return faults, excused
+# Celeborn-22 (BUG-melee-stuck-attack, L8-2 "the soldier strikes"): --effect asserts the EFFECT of the real gesture (hol.Select.Grid 4 = key Q, then
+# hol.Select.LeftClickGround = real click, "armed attack-move: yes" in the log): the targets LOSE HP. --strike only reads the gaps between blows, so a
+# run in which nobody ever strikes (diplomacy_qground_watch 0/8 on 2026-11-08, 0 blows) was a vacuous GREEN. Faults: (1) no armed click in the log, (2) not one
+# damaging blow, (3) a target whose "HP left" does not go down from one blow to the next, (4) a soldier that lived at least EFFECT_LIFE steps and never took
+# a point of HP from anybody.
+EFFECT_LIFE = 300
+def effect_faults(path):
+    armed = False; blows = []; dead = {}; seen = {}; last = 0
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        if 'Scripted left click' in l and 'armed attack-move: yes' in l: armed = True
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ hits #(\d+) \w+ for (\d+), (\d+) HP left', l)
+        if m:
+            blows.append(tuple(int(x) for x in m.groups())); last = max(last, int(m[1]))
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot \d killed by', l)
+        if m: dead[int(m[2])] = int(m[1])
+        m = re.search(r'SanityDump3 #(\d+) step (\d+) ', l)
+        if m: seen.setdefault(int(m[1]), [int(m[2]), int(m[2])])[1] = int(m[2])
+    faults = []
+    if not armed: faults.append('NO-ARMED-CLICK (the real Q + click gesture never ran)')
+    dealt = collections.Counter(); hp = {}
+    for st, a, t, d, left in blows:
+        if d > 0: dealt[a] += d
+        if t in hp and left >= hp[t]: faults.append('NO-HP-LOSS (target #%d step %d: %d HP left after %d)' % (t, st, left, hp[t]))
+        hp[t] = left
+    if not dealt: faults.append('NO-DAMAGE (not one blow took HP in %d steps)' % last)
+    for u, (s0, s1) in sorted(seen.items()):
+        life = min(s1, dead.get(u, s1)) - s0
+        if life >= EFFECT_LIFE and not dealt[u]: faults.append('NEVER-HURT (soldier #%d lived %d steps, took no HP from anybody)' % (u, life))
+    return faults
 bad = 0
+if '--effect' in sys.argv:
+    for path in args:
+        f = effect_faults(path)
+        bad += 1 if f else 0
+        print(('FAIL ' if f else 'OK   ') + os.path.basename(path) + (' ' + '; '.join(f[:4]) if f else ''))
+    print('melee_stuck_gaps --effect: %d of %d runs where the real gesture did not make the targets lose HP' % (bad, len(args)))
+    sys.exit(1 if bad else 0)
 if '--strike' in sys.argv:
     for path in args:
         f, e = strike_gaps(path, limit)
