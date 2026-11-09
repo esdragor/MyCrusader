@@ -140,8 +140,32 @@ FHOLResources HOLTechnology::GetDiscountedCost(const FHOLResources& Cost, const 
 	return FHOLResources(Scale(Cost.Food), Scale(Cost.Wood), Scale(Cost.Stone), Scale(Cost.Gold));
 }
 
+// ForgeArmorCategories (Q-forge-armure, option A by default, one place to change): the armour categories each Forge armour covers.
+// Maille: light, heavy and gunpowder infantry (Spearman, Man-at-arms, Monk, Musketeer); not the Ranged shooters (Archer, Crossbowman), not the Peasant.
+// Barde: the cavalry, light and heavy. A hero (even with another category) and the siege are never covered.
+static constexpr EHOLArmorCategory ForgeInfantryArmorCategories[] = { EHOLArmorCategory::LightInfantry, EHOLArmorCategory::HeavyInfantry, EHOLArmorCategory::GunpowderInfantry };
+static constexpr EHOLArmorCategory ForgeCavalryArmorCategories[] = { EHOLArmorCategory::Cavalry };
+
 FName HOLTechnology::GetArmorStat(const int32 ArmorCategoryMask)
 {
+	if ((ArmorCategoryMask & (HOLArmorCategoryBit(EHOLArmorCategory::Hero) | HOLArmorCategoryBit(EHOLArmorCategory::King) | HOLArmorCategoryBit(EHOLArmorCategory::Siege))) != 0)
+	{
+		return NAME_None;
+	}
+	for (const EHOLArmorCategory Category : ForgeInfantryArmorCategories)
+	{
+		if ((ArmorCategoryMask & HOLArmorCategoryBit(Category)) != 0)
+		{
+			return InfantryArmorStat;
+		}
+	}
+	for (const EHOLArmorCategory Category : ForgeCavalryArmorCategories)
+	{
+		if ((ArmorCategoryMask & HOLArmorCategoryBit(Category)) != 0)
+		{
+			return CavalryArmorStat;
+		}
+	}
 	return NAME_None;
 }
 

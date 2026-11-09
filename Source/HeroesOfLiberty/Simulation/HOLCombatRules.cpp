@@ -34,7 +34,9 @@ namespace HOLCombat
 		// J8b.2: the attack at the attacker's level (exact at level 1: 30 x 100 / 100 = 30).
 		// T6: then the percent the attacker's player gained by technologies (exact at 0: x 1.f), on the attack alone (not the bonuses).
 		const float Attack = HOLHeroXP::GetLevelStat(static_cast<float>(Attacker.Attack), AttackerLevel) * (1.f + 0.01f * static_cast<float>(FMath::Max(AttackerAttackPercent, 0)));
-		const float Hit = FMath::Max(Attack + static_cast<float>(Damage), 1.f);
+		// F2: the Forge armour percent of the defender's player takes its share off the hit after the armour (exact at 0), 1 at least.
+	const float Gross = (Attack + static_cast<float>(Damage)) * static_cast<float>(100 - FMath::Clamp(DefenderArmorPercent, 0, 90)) / 100.f;
+	const float Hit = FMath::Max(Gross, 1.f);
 		// D17: a hero takes HeroTroopDamageFactor of a troop's hit (any attacker but another hero), unrounded.
 		if (Defender.HasArmorCategory(EHOLArmorCategory::Hero) && !Attacker.HasArmorCategory(EHOLArmorCategory::Hero))
 		{

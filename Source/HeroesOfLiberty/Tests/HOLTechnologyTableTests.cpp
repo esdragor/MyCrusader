@@ -60,7 +60,7 @@ namespace UE::HeroesOfLiberty::Tests::TechnologyTable
 
 	/** The statistics some code applies today (T5 gathering and workers, T6 melee and ranged attack): a row whose statistics are all here is Implemented, any other is "Soon" (D601). */
 	constexpr const TCHAR* CodedStats[] = {
-		TEXT("MeleeAttack"), TEXT("RangedAttack"),
+		TEXT("MeleeAttack"), TEXT("RangedAttack"), TEXT("InfantryArmor"), TEXT("CavalryArmor"),
 		TEXT("GatherWood"), TEXT("GatherStone"), TEXT("GatherGold"), TEXT("GatherFood"), TEXT("WorkerSpeed"), TEXT("WorkerCarry"), TEXT("MonkCostDiscount"),
 	};
 
@@ -217,6 +217,8 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 		TEXT("WheelbarrowI"), TEXT("WheelbarrowII"), TEXT("VowOfPoverty"),
 		// F1 (FortificationsInProgress.md): the Forge is a building type now, so its four attack lines (effect coded) are playable; the armour lines wait for F2 (Implemented false).
 		TEXT("MeleeAttackI"), TEXT("MeleeAttackII"), TEXT("RangedAttackI"), TEXT("RangedAttackII"),
+		// F2: Maille and Barde (InfantryArmor, CavalryArmor) are coded in the combat chain.
+		TEXT("InfantryArmorI"), TEXT("InfantryArmorII"), TEXT("CavalryArmorI"), TEXT("CavalryArmorII"),
 	};
 	TSet<FName> Playable;
 	for (const TPair<FName, uint8*>& Pair : Techs->GetRowMap())
@@ -227,7 +229,7 @@ bool FHOLTechnologyPlayableTest::RunTest(const FString& Parameters)
 			Playable.Add(Pair.Key);
 		}
 	}
-	TestEqual(TEXT("13 technologies are playable (the 8 economy ones, the Vow of Poverty, and the Forge's four attack lines since F1)"), Playable.Num(), 13);
+	TestEqual(TEXT("17 technologies are playable (the 8 economy ones, the Vow of Poverty, the Forge's four attack lines since F1 and its four armour lines since F2)"), Playable.Num(), 17);
 	for (const TCHAR* Soon : { TEXT("ImprovedAlarmBell"), TEXT("TemperedHalberds"), TEXT("ReinforcedRam"), TEXT("HeavyMunitions") })
 	{
 		const FHOLTechnologyRow* Row = Techs->FindRow<FHOLTechnologyRow>(Soon, TEXT("technology"), false);
