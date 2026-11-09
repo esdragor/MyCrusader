@@ -181,7 +181,19 @@ Check ($eMiss -match "(?m)^FAIL .*fixb" -and -not ($eMiss -match "(?m)^FAIL .*fi
 $eOk = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-ok | Out-String
 Check ($eOk -match "(?m)^PASS .*fixa" -and -not ($eOk -match "(?m)^FAIL .*branche")) 'essay: branche citee contenue -> PASS' $eOk
 $eProse = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-prose | Out-String
-Check ($eProse -match "(?m)^FAIL .*fixb") 'essay: sans ligne branches:, nom de branche trouve dans le texte -> FAIL fixb' $eProse
+# 2026-11-09 : seule la ligne 'branches:' compte ; un nom de branche cite en PROSE (fiche sans ligne branches:) ne fait plus FAIL, il fait WARN.
+Check ($eProse -match "(?m)^WARN .*branches:" -and -not ($eProse -match "(?m)^FAIL .*fixb")) 'essay: sans ligne branches:, un nom de branche en prose ne fait pas FAIL (WARN)' $eProse
+# la prose contient le mot 'branches' et un nom de branche absent du worktree, la vraie ligne est plus bas : seule la ligne compte
+Set-Content -Path (Join-Path $RetE 'E-prose2.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-prose2 : essai`nGESTE: r$($E)el`nLes branches du correctif : fixb (a fusionner plus tard), voir fixb.`nbranches: fixa"
+$eProse2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-prose2 | Out-String
+Check ($eProse2 -match "(?m)^PASS .*fixa" -and -not ($eProse2 -match "(?m)^FAIL .*(fixb|branche)")) 'essay: prose contenant "branches" + fixb, ligne branches: fixa -> PASS fixa, aucun FAIL' $eProse2
+# sans -Essay (tous les E-*.md ouverts) : la fiche en prose pure ne fait pas FAIL non plus
+$eAll = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE | Out-String
+Check (-not ($eAll -match "(?m)^FAIL .*(E-prose|E-none)")) 'essay sans -Essay : les fiches en prose (sans ligne branches:) ne font pas FAIL' $eAll
+# -Essay accepte le NOM DU SCENARIO : la fiche est retrouvee par sa commande play.ps1 <scenario>
+Set-Content -Path (Join-Path $RetE 'E-fiche_autre_nom.md') -Encoding UTF8 -Value "# [$A ESSAYER] E-fiche_autre_nom : essai`nGESTE: r$($E)el`nCommande : powershell -File play.ps1 scen_alias -Root X`nbranches: fixa, fixb"
+$eScn = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay scen_alias | Out-String
+Check ($eScn -match "(?m)^FAIL .*fixb" -and -not ($eScn -match "(?m)^FAIL .*introuvable")) 'essay: -Essay <nom du scenario> retrouve la fiche par play.ps1 <scenario> (FAIL fixb)' $eScn
 $eNone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-none | Out-String
 Check ($eNone -match "(?m)^WARN .*branches:") 'essay: aucune branche citee -> WARN (ajouter la ligne branches:)' $eNone
 
