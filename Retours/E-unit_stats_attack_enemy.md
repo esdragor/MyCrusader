@@ -1,18 +1,19 @@
 # [À ESSAYER] E-unit_stats_attack_enemy : clique des unités ENNEMIES (Bélier, Mangonneau, Lancier de l'IA) : leur bloc de stats porte aussi la ligne Attaque avec sa valeur (bug de l'essai siege_wave, 2026-11-08 12:02) ; un Lancier ennemi qui combat un des tiens montre la ligne « Attaque » d'activité.
 
-STATUT : VU À L'ÉCRAN
-GESTE: réel      (clic gauche sur le corps dessiné de chaque unité ennemie, hol.Select.ClickUnit -1/N enemy ; les unités sont posées par cheat et l'IA est figée, aucune touche n'est nécessaire)
-SON: non entendu   (aucun son attendu ici ; lancé sans fenêtre, rien entendu)
-branches: aucune      (seul main compte : binaire de Faramir = main 02ac688, D750 dedans ; les seuls commits de la branche fog sont des scénarios)
+STATUT : VU À L'ÉCRAN (objet de l'essai = l'AFFICHAGE du bloc de stats ennemi, pas un geste)
+GESTE: interne      (`hol.Select.ClickUnit -1/N enemy` : appel interne, pas un vrai clic ; à l'utilisateur de cliquer lui-même l'unité rouge)
+SON: sans objet     (aucun son attendu)
+branches: aucune    (seul main compte : D750 est dans main 60013e8)
 
-Pré-vol (2026-11-09 09:21, agent Faramir-17, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, main 02ac688) : `preflight.ps1 unit_stats_attack_enemy -Root <worktree>` PASS (46 s, 4 PNG). Seul WARN : pas d'audit `Sanity:`.
+Règle (L7-6) : le geste de clic n'est pas jugé ici (interne), seul le contenu du bloc l'est.
+
+Pré-vol (2026-11-09 10:51, agent Elrond-integration, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, main 60013e8, rejoué sur le build de main fusionné) : `preflight.ps1 unit_stats_attack_enemy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` PASS (18 s, 4 PNG, aucun panneau de HUD ne se couvre). Seul WARN : pas d'audit `Sanity:`.
 PNG OUVERTS et vus :
-- use_ram : Bélier ROUGE (« IA Normal 2 »), « Attaque bâtiments 60 · Armure mêlée 0 · Armure distance 60 »
-- use_mangonel : Mangonneau « IA Normal 2 », « Attaque 45 »
-- use_spearman : Lancier « IA Normal 2 », « Attaque 8 », 80/80 PV
-- use_fight : Lancier « IA Normal 2 » à 72/80 PV, au contact d'un des miens, « Attaque 8 » puis la ligne d'activité « Attaque » en dessous
-Panneau du scénario : « en préparation… » sur les PNG (pré-vol sans fenêtre).
-NON VÉRIFIÉ : jamais joué avec une vraie fenêtre ; le geste `ClickUnit -1 enemy` vise la dernière unité ennemie connue : il dépend de l'IA figée (ThinkSteps 100000) ; aucune partie naturelle d'IA ici.
+- use_ram : Bélier « IA Normal 2 » (rouge) 400/400, « Attaque bâtiments 60 · Armure mêlée 0 · Armure distance 60 · Armure héros 0 · Vitesse 2,2 m/s »
+- use_mangonel : Mangonneau « IA Normal 2 » 200/200, « Attaque 45 · ... · Vitesse 1,8 m/s »
+- use_spearman : Lancier « IA Normal 2 » 80/80, « Attaque 8 · armures 0 · Vitesse 7,8 m/s »
+- use_fight : Lancier ennemi au contact d'un Lancier bleu, même bloc de stats puis la ligne d'activité « Attaque » en dessous (les PV restent à 80/80 sur cette capture, le contact vient de commencer)
+NON VÉRIFIÉ : jamais joué avec une vraie fenêtre ni un vrai clic ; `ClickUnit -1 enemy` dépend de l'IA figée (ThinkSteps 100000) ; aucune partie naturelle d'IA (l'essai ne juge que l'affichage) ; panneau du scénario « en préparation… » sur les PNG alors que le journal dit « ready ».
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 unit_stats_attack_enemy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 unit_stats_attack_enemy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.

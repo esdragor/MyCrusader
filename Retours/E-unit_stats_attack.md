@@ -1,20 +1,22 @@
 # [À ESSAYER] E-unit_stats_attack : clique chaque type d'unité à toi (Bélier, Mangonneau, Lancier, Homme d'armes, Archer, Moine) : le bloc de stats sous les points de vie doit porter la ligne Attaque avec sa valeur (Bélier : « Attaque bâtiments 60 », Moine : aucune ligne Attaque).
 
-STATUT : VU À L'ÉCRAN
-GESTE: réel      (clic gauche sur le corps dessiné de chaque unité, hol.Select.ClickUnit ; les unités sont posées par cheat, aucune touche n'est nécessaire pour lire le bloc)
-SON: non entendu   (aucun son attendu ici ; lancé sans fenêtre, rien entendu)
-branches: aucune      (seul main compte : le binaire de Faramir = main 02ac688, D750 `hol.HUD.UnitStatsBuilding` déjà dedans ; les seuls commits de la branche fog sont des scénarios)
+STATUT : VU À L'ÉCRAN (objet de l'essai = l'AFFICHAGE du bloc de stats, pas un geste)
+GESTE: interne      (le scénario sélectionne par `hol.Select.ClickUnit`, c'est un appel interne et non un vrai clic : à l'utilisateur de cliquer lui-même une unité de chaque type ; les unités sont posées par cheat)
+SON: sans objet     (aucun son attendu)
+branches: aucune    (seul main compte : D750 `hol.HUD.UnitStatsBuilding` est dans main 60013e8)
 
-Pré-vol (2026-11-09 09:21, agent Faramir-17, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, main 02ac688) : `preflight.ps1 unit_stats_attack -Root <worktree>` PASS (45 s, 6 PNG). Seul WARN : pas d'audit `Sanity:` (le scénario ne le demande pas).
+Règle (L7-6) : le geste de clic n'est pas jugé ici (interne), seul le contenu du bloc l'est.
+
+Pré-vol (2026-11-09 10:50, agent Elrond-integration, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, main 60013e8, rejoué sur le build de main fusionné) : `preflight.ps1 unit_stats_attack -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` PASS (25 s, 6 PNG, aucun panneau de HUD ne se couvre). Seul WARN : pas d'audit `Sanity:`.
 PNG OUVERTS et vus :
-- usa_ram : Bélier à moi, « Attaque bâtiments 60 · Armure mêlée 0 · Armure distance 60 · Armure héros 0 · Vitesse 2,2 m/s » (la valeur 60 est présente)
-- usa_mangonel : Mangonneau, « Attaque 45 · Armure mêlée 0 · Armure distance 60 · Vitesse 1,8 m/s »
-- usa_spearman : Lancier, « Attaque 8 », 80/80 PV
-- usa_manatarms : Homme d'armes, « Attaque 12 », 155/155 PV
-- usa_archer : Archer, « Attaque 5 », 70/70 PV
-- usa_monk : Moine, aucune ligne Attaque (attendu), 80/80 PV
-Panneau du scénario : reste sur « en préparation… » sur les PNG du pré-vol (essai sans fenêtre, le panneau ne passe à « prêt » qu'à la fin ; non vérifié en jeu).
-NON VÉRIFIÉ : jamais joué avec une vraie fenêtre ni au son ; le Mangonneau n'affiche qu'« Attaque 45 » (pas de ligne « bâtiments » : à confirmer que c'est voulu, la valeur 45 est la même contre bâtiment) ; la police/lisibilité en 1280x720 seulement.
+- usa_ram : Bélier « Vous » 400/400, « Attaque bâtiments 60 · Armure mêlée 0 · Armure distance 60 · Armure héros 0 · Vitesse 2,2 m/s »
+- usa_mangonel : Mangonneau 200/200, « Attaque 45 · Armure mêlée 0 · Armure distance 60 · Armure héros 0 · Vitesse 1,8 m/s »
+- usa_spearman : Lancier 80/80, « Attaque 8 · Armure 0/0/0 · Vitesse 7,8 m/s »
+- usa_manatarms : Homme d'armes 155/155, « Attaque 12 · Armure mêlée 4 · Armure distance 4 · Armure héros 2 · Vitesse 7 m/s »
+- usa_archer : Archer 70/70, « Attaque 5 · Armures 0 · Vitesse 7,8 m/s »
+- usa_monk : Moine 80/80, AUCUNE ligne Attaque (attendu), armures 0, vitesse 7,8 m/s
+Constat : le panneau du scénario reste sur « en préparation… » sur tous les PNG alors que le journal dit « ready » (affichage du panneau, sans rapport avec l'objet).
+NON VÉRIFIÉ : jamais joué par l'agent avec une vraie fenêtre ni un vrai clic de souris ; le Mangonneau n'affiche qu'« Attaque 45 » (pas de ligne « bâtiments » : à confirmer que c'est voulu) ; lisibilité en 1280x720 seulement.
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 unit_stats_attack -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 unit_stats_attack -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
