@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+hold_start | Base de Bob, table des joueurs : pastille "Connexion perdue" et bandeau "Bob : connexion perdue" avec le compte a rebours
+hold_20s | 20 s plus tard : le compte a rebours a baisse, la base est intacte, aucune troupe ennemie
+hold_40s | 40 s apres le depart : compte a rebours plus bas encore, des Paysans rouges sortent vers les baies, aucune troupe : l IA tient le siege sans vague

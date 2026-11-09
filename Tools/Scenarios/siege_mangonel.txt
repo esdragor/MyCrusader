@@ -13,6 +13,8 @@ waitlog Cheat: spawned House of slot 1
 hol.Units.SpawnHere 1 Mangonel 0 50
 waitunits 7
 frames 20
+hol.Camera.FocusNear 3000 0
+frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
 note 1. Le Mangonneau est ordonne vers la Maison ennemie : il la frappe (45 de degats).
