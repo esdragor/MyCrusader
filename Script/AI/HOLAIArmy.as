@@ -113,6 +113,12 @@ struct FHOLAIArmyData
 	float AttackLaunchRatio = 1.5f;
 	float AttackRetreatRatio = 0.6f;
 
+	// N6 (NeutralsInProgress): how a visible neutral camp weighs in the launch of a wave. 1 = it counts like any enemy soldier (what the
+	// summary does since the neutral owner exists: the wave waits until it could beat the camp too); 0 = it is left out, the ratio is
+	// that of the adversaries alone (the wave goes against them and a camp met on the way is only a fight). Q-neutrals-ia-camps:
+	// one line to change, the default keeps today's behaviour.
+	int CampPolicy = 1;
+
 	// The wave falls back when it has lost more than this share of its size.
 	float AttackLossShare = 0.6f;
 
@@ -123,7 +129,9 @@ struct FHOLAIArmyData
 	float AttackCooldown = 90.f;
 
 	// The wave's idle soldiers are ordered again at most this often (s).
-	float AttackReissue = 5.f;
+	float AttackReissue = 1.f;
+	// D751: how far (cm) a free soldier of the wave may walk ahead of its rearmost soldier before it waits for the rest (0: no wait).
+	float WaveSpread = 1200.f;
 
 	// A retreat ends when most of the wave has reached the assembly point, or after this long (s).
 	float AttackRetreatMax = 40.f;
@@ -182,6 +190,10 @@ struct FHOLAIWaveStep
 	TArray<int> AttackIds;
 	FVector AttackTarget;
 	TArray<int> MoveIds;
+
+	// D751: the free soldiers too far ahead of the wave's rear, each to stand where it is (HoldPoints[i] is the place of HoldIds[i]).
+	TArray<int> HoldIds;
+	TArray<FVector> HoldPoints;
 
 	// The ratio that decided (launch ratio or the wave's own ratio) and the wave soldiers alive.
 	float Ratio = 0.f;
@@ -1021,6 +1033,46 @@ namespace HOLAIArmy
 		return Best;
 	}
 
+	// N6: the neutral owner is the first one beyond the slots (FHOLMatchConfig::NeutralOwner = MaxSlots = 8).
+	const int NeutralOwnerSlot = 8;
+
+	// The enemy units of the summary that belong to a neutral camp.
+	TArray<FHOLAIUnit> CampUnits(const FHOLAISummary& Summary)
+	{
+		TArray<FHOLAIUnit> Camp;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (Summary.Enemies[Index].OwnerSlot >= NeutralOwnerSlot)
+			{
+				Camp.Add(Summary.Enemies[Index]);
+			}
+		}
+		return Camp;
+	}
+
+	// The summary seen against the adversaries alone: the neutral camps left out of Enemies.
+	FHOLAISummary AdversaryView(const FHOLAISummary& Summary)
+	{
+		FHOLAISummary Seen = Summary;
+		Seen.Enemies.Empty();
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (Summary.Enemies[Index].OwnerSlot < NeutralOwnerSlot)
+			{
+				Seen.Enemies.Add(Summary.Enemies[Index]);
+			}
+		}
+		return Seen;
+	}
+
+	// Our power ratio over the visible neutral camps alone (the large value when no camp is seen): what a camp costs before the wave.
+	float CampRatio(const FHOLAIArmyData& Data, const FHOLAISummary& Summary)
+	{
+		FHOLAISummary Camp = Summary;
+		Camp.Enemies = CampUnits(Summary);
+		return PowerRatio(Data, Camp);
+	}
+
 	// Whether a wave may be launched now: at home, not defending, the cooldown over, an enemy centre to go to (or a teammate's ruin to help
 	// hold, IA4: then the minimum time does not count and the ratio is that of the spot), enough soldiers, late enough (earlier when no
 	// enemy soldier has been seen: the ratio is then the large value) and our army ahead by the margin.
@@ -1045,13 +1097,19 @@ namespace HOLAIArmy
 		{
 			return true;
 		}
-		const bool bSeen = EnemyValue(Data, Summary) > 0.f;
+		// N6: policy 0 leaves the neutral camps out of what the launch weighs.
+		FHOLAISummary Weighed = Summary;
+		if (Data.CampPolicy == 0)
+		{
+			Weighed = AdversaryView(Summary);
+		}
+		const bool bSeen = EnemyValue(Data, Weighed) > 0.f;
 		// IA3.3: an enemy forum lies fallen: the window is open, the minimum time does not count (the ratio and the soldiers still do).
 		if (!HOLAIForum::EnemyRuin(Summary) && Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
 		{
 			return false;
 		}
-		return PowerRatio(Data, Summary) >= Data.AttackLaunchRatio;
+		return PowerRatio(Data, Weighed) >= Data.AttackLaunchRatio;
 	}
 
 	// The power ratio of the wave's soldiers over the enemy soldiers within AttackRetreatRadius of their centroid (the large value when
@@ -1169,15 +1227,35 @@ namespace HOLAIArmy
 			else if (Now - Wave.LastOrder >= Data.AttackReissue)
 			{
 				bool bFound = false;
-				const FVector Target = WaveTarget(Summary, Data, CentroidOf(Alive), bFound);
+				const FVector Centroid = CentroidOf(Alive);
+				const FVector Target = WaveTarget(Summary, Data, Centroid, bFound);
+				// D751: the wave walks as a group, at its slowest member's speed. The engine paces one order's formation, but the soldiers that
+				// stopped and are sent again leave on their own, faster than the engines (6741 cm front to rear measured by `aiwave`): a free
+				// soldier more than WaveSpread ahead of the rearmost one stops where it stands (and is not sent on) until the rear has caught up.
+				float DirX = Target.X - Centroid.X;
+				float DirY = Target.Y - Centroid.Y;
+				const float DirLength = Math::Sqrt(DirX * DirX + DirY * DirY);
+				float Rear = 0.f;
+				for (int Index = 0; bFound && DirLength > 1.f && Index < Alive.Num(); Index++)
+				{
+					const float Advance = ((Alive[Index].Location.X - Centroid.X) * DirX + (Alive[Index].Location.Y - Centroid.Y) * DirY) / DirLength;
+					Rear = (Index == 0 || Advance < Rear) ? Advance : Rear;
+				}
 				for (int Index = 0; bFound && Index < Alive.Num(); Index++)
 				{
-					if (Alive[Index].bIdle && Alive[Index].TargetId < 0)
+					const float Advance = DirLength > 1.f ? ((Alive[Index].Location.X - Centroid.X) * DirX + (Alive[Index].Location.Y - Centroid.Y) * DirY) / DirLength : 0.f;
+					const bool bAhead = Data.WaveSpread > 0.f && Advance - Rear > Data.WaveSpread;
+					if (bAhead && Alive[Index].TargetId < 0)
+					{
+						Step.HoldIds.Add(Alive[Index].Id);
+						Step.HoldPoints.Add(Alive[Index].Location);
+					}
+					else if (Alive[Index].bIdle && Alive[Index].TargetId < 0)
 					{
 						Step.AttackIds.Add(Alive[Index].Id);
 					}
 				}
-				if (Step.AttackIds.Num() > 0)
+				if (Step.AttackIds.Num() > 0 || Step.HoldIds.Num() > 0)
 				{
 					Step.AttackTarget = Target;
 					Wave.LastOrder = Now;

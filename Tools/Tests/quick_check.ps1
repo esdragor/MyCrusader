@@ -209,6 +209,7 @@ foreach ($Part in @($SubCases.Keys)) { if ($Parts -contains $Part) { $SubCases.R
 $Parts = @($Parts | ForEach-Object { ($_ -split ":")[0] } | Select-Object -Unique)
 # The main game (menu/camera sequence, the "sequence" report) is for the parts other than "tests": -Parts tests runs the automation tests only.
 $GameNeeded = @($Parts | Where-Object { $_ -ne "tests" }).Count -gt 0
+$WinStyle = if ($Visible) { "Normal" } else { "Hidden" }   # nothing pops on the user's screen unless -Visible
 # The solo parts run in the camera part's 2-player match: asked alone, the camera part comes with them.
 if (@($Parts | Where-Object { $_ -in "production", "move", "bodies", "rocks", "sources", "gather", "build", "anims", "formation", "combat" }).Count -and -not ($Parts -contains "camera")) {
     $Parts += "camera"
@@ -530,7 +531,7 @@ if ($Parts -contains "net") {
         }
     }).AddArgument($ManagerListener).AddArgument($ManagerCallsFile)
     $null = $ManagerRunspace.BeginInvoke()
-    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1,hol.Match.StartWaitSeconds 120$NetSourceCommand`""
+    $NetServerArguments = "`"$UProject`" /Game/Maps/Plain -server -nullrhi -Port=$NetPort -ManagerUrl=http://127.0.0.1:${ManagerPort} -MatchId=QC1 -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats $NoStartingPeasants -MatchConfig=`"$NetConfig`" -abslog=`"$NetServerLog`" -ExecCmds=`"hol.Prod.BuildTime 2,hol.Cheat.Refuse 1,hol.Match.StartWaitSeconds 120$NetSourceCommand`""
     $NetServerProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $NetServerArguments -PassThru -WindowStyle Hidden
 }
 
@@ -2635,7 +2636,7 @@ $TimeStep = if ($RealTime) { "" } else { "-UseFixedTimeStep -FPS=$GameFps" }
 # drawn for the commands and the captures (Docs/Archive/TestSpeedInProgress.md). -Visible: always drawn.
 if (-not $RealTime -and -not $Visible) { $GameExec = (@("hol.Test.SkipWaitRendering 1") + @($GameExec | Where-Object { $_ })) -join "," }
 $GameArguments = "`"$UProject`" -game $Display $TimeStep $NoStartingPeasants -saveddirsuffix=Tests -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -ServersFile=`"$TestServers`" -abslog=`"$GameLog`" -ExecCmds=`"hol.Combat.Enabled 0,$(if ($GameExec) { "$GameExec," })hol.Test.Run $SequenceFile`""
-$GameProcess = if ($GameNeeded) { Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru } else { $null }
+$GameProcess = if ($GameNeeded) { Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $GameArguments -PassThru -WindowStyle $WinStyle } else { $null }
 
 # 3 (continued). Once the server listens, the two clients join it, each with its own saved folder (Saved_Tests_Net<N>,
 # as net_match.ps1). Each one: camera above the slot it holds, the buildings it has received (the two centres in their
@@ -2948,7 +2949,7 @@ if ($NetListening) {
         $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
         $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetPort} -PlayerName=Bob" } else { "127.0.0.1:${NetPort}?Name=Alice" }
         $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Prod.BuildTime 2,hol.Gather.LogPopups 1,hol.Test.Run $ClientSequence`""
-        $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru
+        $ClientProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru -WindowStyle $WinStyle
         $NetClients += @{ Client = $Client; Log = $ClientLog; Shots = $ClientShots; Process = $ClientProcess }
         if ($Client -eq 2) {
             # Her wait banner captured (its signal), 120 s at most (the server waits for her as long): Bob's launch waits for it.
@@ -7765,7 +7766,7 @@ if ($Parts -contains "aiwave") {
         $Start = @([double]$WaveSpawnX, [double]$WaveSpawnY); $Target = @(14800.0, 0.0)
         $Direction = @(($Target[0] - $Start[0]), ($Target[1] - $Start[1])); $Length = [math]::Sqrt($Direction[0] * $Direction[0] + $Direction[1] * $Direction[1])
         $Advance = { param($Point) (($Point[0] - $Start[0]) * $Direction[0] + ($Point[1] - $Start[1]) * $Direction[1]) / $Length }
-        $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0
+        $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0; $MarchSpread = 0.0; $MarchSamples = 0; $MarchAt = ""; $WaveMarchLimit = 2500
         # The front of the escort counts a Spearman killed on the way at the last place it was seen (Faramir-16: the two leaders died near the enemy and a Ram that had
         # always been behind them was then reported "in front of the front-most Spearman", +580 cm, at the very last sample).
         $LastAdvance = @{}
@@ -7779,10 +7780,16 @@ if ($Parts -contains "aiwave") {
                 $Front = ($LastAdvance.Values | Measure-Object -Maximum).Maximum; $Back = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Minimum).Minimum; $Spread = [math]::Max($Spread, $Front - $Back)
                 $Compared++
                 foreach ($Id in $EngineLive) { if ((& $Advance $Units[$Id]) -gt $Front + 100) { $Ahead += "#$Id +$([int]((& $Advance $Units[$Id]) - $Front))" } }
+                # D751 (the AI's wave walks as a group, at its slowest member's speed): the whole wave (escort and engines alive) before any contact
+                # (its front still 4000 cm short of the enemy centre) stays within $WaveMarchLimit cm front to rear.
+                $All = @($Live + $EngineLive | ForEach-Object { & $Advance $Units[$_] })
+                $AllFront = ($All | Measure-Object -Maximum).Maximum; $AllBack = ($All | Measure-Object -Minimum).Minimum
+                if ($AllFront -lt $Length - 4000 -and $AllFront -gt 1500) { $MarchSamples++; if (($AllFront - $AllBack) -gt $MarchSpread) { $MarchSpread = $AllFront - $AllBack; $MarchAt = $Sample.Substring(0, [math]::Min(0, $Sample.Length)) } }
             }
         }
         $Checks["every engine has left home (best advance: $(($Engines | ForEach-Object { '#' + $_ + ' ' + [int]$MaxEngine[$_] }) -join ', '))"] = @($Engines | Where-Object { $MaxEngine[$_] -ge 5000 }).Count -eq 3
         $Checks["no engine in front of the escort's front-most Spearman in $Compared samples (escort strung out over at most $([int]$Spread) cm; ahead: $(($Ahead | Select-Object -First 4) -join ', '))"] = $Compared -gt 0 -and $Ahead.Count -eq 0
+        $Checks["D751 the wave marches as a group: front to rear at most $WaveMarchLimit cm in $MarchSamples samples before contact (worst: $([int]$MarchSpread) cm)"] = $MarchSamples -gt 0 -and $MarchSpread -le $WaveMarchLimit
     }
     else { $Checks["samples and engines found ($($Samples.Count) samples, $($Engines.Count) engines)"] = $false }
     $AllOk = (Report "aiwave" $Checks) -and $AllOk
@@ -7833,7 +7840,7 @@ if ($Parts -contains "netai") {
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetAIPort} -PlayerName=Bob" } else { "127.0.0.1:${NetAIPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
-            $NetAIClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+            $NetAIClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru -WindowStyle $WinStyle) }
         }
     }
     $Checks = [ordered]@{}
@@ -7950,7 +7957,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${NetFogPort} -PlayerName=Bob" } else { "127.0.0.1:${NetFogPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
-            $NetFogClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+            $NetFogClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru -WindowStyle $WinStyle) }
         }
     }
     $Checks = [ordered]@{}
@@ -8016,7 +8023,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
         $BackLog = Join-Path $TestSaved "Logs\quick_${NetFogPart}_back.log"
         $BackLog = Get-FreshLog $BackLog
         $BackArguments = "`"$UProject`" 127.0.0.1:${NetFogPort}?Name=Alice -game $(if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=4900 -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }) -saveddirsuffix=Tests_Net2 -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$BackLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $BackSequence`""
-        $BackProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $BackArguments -PassThru
+        $BackProcess = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $BackArguments -PassThru -WindowStyle $WinStyle
         $BackTimedOut = -not $BackProcess.WaitForExit(240000)
         if ($BackTimedOut) { Stop-Process -Id $BackProcess.Id -Force -ErrorAction SilentlyContinue }
         $BackLines = if (Test-Path $BackLog) { Get-Content $BackLog } else { @() }
@@ -8159,7 +8166,7 @@ if ($Parts -contains "netfogview") {
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${ViewPort} -PlayerName=Bob" } else { "127.0.0.1:${ViewPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
-            $ViewClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+            $ViewClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru -WindowStyle $WinStyle) }
         }
     }
     $Checks = [ordered]@{}
@@ -8264,7 +8271,7 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
             $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${SpecPort} -PlayerName=Bob" } else { "127.0.0.1:${SpecPort}?Name=Alice" }
             $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
-            $SpecClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru) }
+            $SpecClients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru -WindowStyle $WinStyle) }
         }
     }
     $Checks = [ordered]@{}

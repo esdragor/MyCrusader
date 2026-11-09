@@ -41,7 +41,7 @@ Remove-Item $Log -ErrorAction SilentlyContinue
 ) | Set-Content -Encoding ascii $Sequence
 
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -as-exit-on-error -saveddirsuffix=Tests -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
-$Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru
+$Process = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 # A run takes ~10 s of game; 40 s each at most, then the game is stopped.
 if (-not $Process.WaitForExit([Math]::Max(120, 60 + 40 * $Count) * 1000)) { $Process.Kill() }
 

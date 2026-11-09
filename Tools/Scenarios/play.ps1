@@ -8,6 +8,7 @@ param(
     [Parameter(Position = 0)] [string] $Name = "",
     [string] $Root = "",
     [string] $EngineDir = "",
+    [switch] $Hidden,   # for an AGENT replaying the user's gesture: no window (-RenderOffScreen -nosound -unattended, -WindowStyle Hidden); by default the window is visible, for the user only (agent_rules.md, "aucun lancement fenetre")
     [string] $PlayerName = ""   # -PlayerName=<name> on the game's command line: the local player of a scenario whose Human seats are NAMED (playerName in the .json) needs a name, otherwise it is a spectator
 )
 
@@ -47,4 +48,9 @@ $env:UE_SKIP_UBT_SDK_SETUP = "1"
 $GameArgs = @("`"$UProject`"", "-game", "-nosplash", "-culture=fr", "-LiveCoding=0", "-asdebugport=0")
 if ($PlayerName) { $GameArgs += "-PlayerName=$PlayerName" }
 $GameArgs += "-ExecCmds=`"hol.Scenario $Name`""
-Start-Process -FilePath $Editor -ArgumentList $GameArgs
+if ($Hidden) {
+    $GameArgs += @("-RenderOffScreen", "-nosound", "-unattended")
+    Start-Process -FilePath $Editor -ArgumentList $GameArgs -WindowStyle Hidden
+} else {
+    Start-Process -FilePath $Editor -ArgumentList $GameArgs
+}

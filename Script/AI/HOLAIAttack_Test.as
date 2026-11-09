@@ -228,8 +228,8 @@ void Test_AttackIdleSoldiersOrderedAgainEveryFewSeconds(FUnitTest& T)
 {
 	FHOLAISummary Summary = AtkSummary(10);
 	FHOLAIWave Wave = AtkWaveOut(Summary, 500.f);
-	const FHOLAIWaveStep Soon = HOLAIArmy::UpdateWave(Wave, Summary, AtkData(), false, false, AtkPoint(), 501.f);
-	T.AssertEquals(0, Soon.AttackIds.Num(), "1 s after the last order: nothing");
+	const FHOLAIWaveStep Soon = HOLAIArmy::UpdateWave(Wave, Summary, AtkData(), false, false, AtkPoint(), 500.5f);
+	T.AssertEquals(0, Soon.AttackIds.Num(), "half a second after the last order: nothing (D751: the wave is looked at every second)");
 	T.AssertFalse(Soon.bRetreat || Soon.bOver, "the wave goes on");
 	const FHOLAIWaveStep Later = HOLAIArmy::UpdateWave(Wave, Summary, AtkData(), false, false, AtkPoint(), 506.f);
 	T.AssertEquals(10, Later.AttackIds.Num(), "6 s later the idle soldiers are ordered again");

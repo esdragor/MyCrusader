@@ -62,6 +62,14 @@ if ($Phase -eq 'Launch') {
   if ($left -lt $MinMinutes) { Say 'FAIL' ("il reste {0} min (< {1}) : AUCUN lancement d'agent" -f $left, $MinMinutes) }
   else { Say 'PASS' ("temps restant {0} min ; arret dur des agents = {1} (jusqu'a +15 min toleres, jamais 15 min trop tot)" -f $left, $endAt.ToString('HH:mm')) }
 
+  # 2026-11-08 : aucun script d'outil ne lance un UnrealEditor visible (pop sur l'ecran de l'utilisateur, vole le focus) : no_window_test.ps1, WARN
+  $nwTest = Join-Path $PSScriptRoot 'no_window_test.ps1'
+  if (Test-Path $nwTest) {
+    $nwOut = (& powershell -NoProfile -ExecutionPolicy Bypass -File $nwTest 2>&1 | Out-String)
+    if ($LASTEXITCODE -eq 0) { Say 'PASS' 'no_window_test : aucun script d outil ne lance d editeur fenetre' }
+    else { Say 'WARN' ("no_window_test ROUGE (un outil ouvre un editeur visible) : " + (($nwOut -split "`n" | Where-Object { $_ -match '^FAIL|\.ps1:\d+' } | Select-Object -First 3 | ForEach-Object { $_.Trim() }) -join ' ; ')) }
+  }
+
   # L8-9 : au DEBUT de chaque Auto_Journey tous les worktrees sont remis a jour (sync_worktrees.ps1) ; WARN par worktree en retard (les agents deja lances en cours de seance retardent apres chaque fusion : normal)
   foreach ($w in $wts) {
     $n9 = Split-Path $w -Leaf

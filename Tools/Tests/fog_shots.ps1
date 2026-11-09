@@ -43,7 +43,7 @@ if ($What -eq "Menu") {
     @("waitmap MainMenu", "waitui", "hol.UI.Open NewGame", "waitui", "frames 20", "hol.UI.Text FogDropdown", "capture newgame_fog_a",
         "hol.UI.Choose FogDropdown 1", "frames 10", "hol.UI.Text FogDropdown", "capture newgame_fog_b", "quit") | Set-Content -Encoding ascii $Sequence
     $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -as-exit-on-error -asdebugport=0 -saveddirsuffix=$Suffix -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
-    $Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru
+    $Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru -WindowStyle Hidden
     if (-not $Process.WaitForExit(180000)) { $Process.Kill() }
     if (Test-Path $Log) { Get-Content $Log | Select-String -Pattern "Text FogDropdown|New game: fog|Test capture|Error:" | ForEach-Object { $_.Line -replace "^.*?\]", "" } }
     $Shots = Join-Path $Dir "Screenshots\WindowsEditor\HOL"
@@ -64,7 +64,7 @@ $Cuts = @(-4000, -2000, 0, 2000, 4000, 6000, 8000, 10000, 12000) | ForEach-Objec
 @("waitplayers 2", "mark fogshots", "wait 8", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0", "wait 14", "hol.Units.Move -15200 0 0", "wait 20") + $Cuts +
     @("hol.Sources.Report", "waitfile $Done 240", "wait 1", "quit") | Set-Content -Encoding utf8 $ServerSequence
 $Port = 17800 + (Get-Random -Maximum 200)
-$ServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$ServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $ServerSequence`""
+$ServerArguments = "`"$UProject`" /Game/Maps/Plain -server -nullrhi -Port=$Port -useperfthreads -unattended -nosplash -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Config`" -abslog=`"$ServerLog`" -ExecCmds=`"hol.Fog.Mode 2,hol.Test.Run $ServerSequence`""
 $Server = Start-Process -FilePath $Editor -ArgumentList $ServerArguments -PassThru -WindowStyle Hidden
 $Listening = $false
 $Deadline = (Get-Date).AddSeconds(90)
@@ -94,7 +94,7 @@ foreach ($Client in 1, 2) {
     $ClientLog = Join-Path $Work "Logs\fog_shots_client$Client.log"
     $Url = if ($Client -eq 1) { "127.0.0.1:${Port} -PlayerName=Bob" } else { "127.0.0.1:${Port}?Name=Alice" }
     $Arguments = "`"$UProject`" $Url -game -RenderOffScreen -ResX=960 -ResY=540 -nosound -saveddirsuffix=$Suffix -nosplash -unattended -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $Sequence`""
-    $Clients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru) }
+    $Clients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru -WindowStyle Hidden) }
 }
 foreach ($C in $Clients) { if (-not $C.Process.WaitForExit(240000)) { $C.Process.Kill() } }
 if (-not $Server.WaitForExit(30000)) { $Server.Kill() }

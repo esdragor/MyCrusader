@@ -4,7 +4,8 @@
 #   powershell -ExecutionPolicy Bypass -File ...\repeat_scenario.ps1 -Names a,b -Runs 8     (several scenarios, one after the other, ONE binary copy)
 # Each pass is Tools\Scenarios\check.ps1 on the shadow project (same checks, same PASS / FAIL line). The log of pass k is kept as
 # <Root>\Saved_Tests\Logs\scenario_<name>_run<k>.log (check.ps1 overwrites scenario_<name>.log every pass).
-# Prints one line per pass, then "repeat <name> : PASS n/N (min / median / max s)". Exit code = number of failed passes + invalid passes.
+# Prints one line per pass, then "repeat <name> : PASS k/N (min / median / max s), verdict OK|RED" (k = passes that passed, N = -Runs;
+# "verdict OK" only if k = N; ab_matrix.ps1 reads this line). Exit code = number of failed passes + invalid passes.
 # A pass is VALID only if it ran on a log of its own : before each pass the tool waits (-MaxWaitSeconds, default 60) until the editor
 # of the previous pass is gone and the scenario log can be removed (2026-11-07 : the previous editor, killed, still held the log, check.ps1
 # gave up after 5 s with "log of an earlier pass is held by another process", the tool counted that as a failed pass and kept the held
@@ -90,8 +91,10 @@ try {
         }
         $Sorted = @($Seconds | Sort-Object)
         $Spread = if ($Sorted.Count) { "{0} / {1} / {2} s" -f $Sorted[0], $Sorted[[int][math]::Floor(($Sorted.Count - 1) / 2)], $Sorted[-1] } else { "no timing" }
-        $Verdict = if ($Failed -eq 0 -and $Invalid -eq 0) { 'PASS' } else { 'FAIL' }
-        Write-Host ("repeat $Scenario : {0} {1}/{2} ({3}){4}" -f $Verdict, ($Runs - $Failed - $Invalid), $Runs, $Spread, $(if ($Invalid) { ", $Invalid INVALID pass(es) not counted as a result of the scenario" } else { "" }))
+        # 2026-11-08 (L9-7) : the line always reads "PASS k/N" with k = passes that PASSED (it used to read "FAIL k/N" with k = the PASS count,
+        # read as "k failures"); the verdict is its own word : "verdict OK" (all N passed) or "verdict RED" (a pass failed or was invalid).
+        $Verdict = if ($Failed -eq 0 -and $Invalid -eq 0) { 'OK' } else { 'RED' }
+        Write-Host ("repeat $Scenario : PASS {0}/{1} ({2}){3}, verdict {4}" -f ($Runs - $Failed - $Invalid), $Runs, $Spread, $(if ($Invalid) { ", $Invalid INVALID pass(es) not counted as a result of the scenario" } else { "" }), $Verdict)
         $Bad += $Failed + $Invalid
     }
 } finally {

@@ -27,6 +27,13 @@ public static class FakeEngine {
         foreach (string a in args) { if (a.StartsWith("-abslog=")) log = a.Substring(8).Trim('"'); }
         if (log == null) return 2;
         string textFile = Environment.GetEnvironmentVariable("FAKE_ENGINE_TEXT");
+        string pattern = Environment.GetEnvironmentVariable("FAKE_ENGINE_PATTERN");   // e.g. "PFP" : launch k writes the good text (P) or the bad one (F)
+        if (!string.IsNullOrEmpty(pattern)) {
+            string counter = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "count.txt");
+            int n = File.Exists(counter) ? int.Parse(File.ReadAllText(counter).Trim()) : 0;
+            File.WriteAllText(counter, (n + 1).ToString());
+            if (pattern[n % pattern.Length] == 'F') textFile = Environment.GetEnvironmentVariable("FAKE_ENGINE_BAD");
+        }
         string text = string.IsNullOrEmpty(textFile) ? "" : File.ReadAllText(textFile);
         FileStream stream;
         try { stream = new FileStream(log, FileMode.Create, FileAccess.Write, FileShare.Read); }
@@ -75,7 +82,7 @@ try {
     $Holder = Start-Holder (Join-Path $Logs "scenario_a.log") 12
     $R = Run-Tool @("a", "-Runs", "2")
     if (-not $Holder.HasExited) { $Holder.WaitForExit() }
-    Case "held log at start : both passes PASS (exit $($R.Exit))" ($R.Exit -eq 0 -and $R.Text -match "repeat a : PASS 2/2") (($R.Lines | Select-Object -Last 4) -join " / ")
+    Case "held log at start : both passes PASS (exit $($R.Exit))" ($R.Exit -eq 0 -and $R.Text -match "repeat a : PASS 2/2" -and $R.Text -match "verdict OK") (($R.Lines | Select-Object -Last 4) -join " / ")
     Case "held log at start : no pass reported as held / invalid" (-not [bool]($R.Text -match "held by another process|INVALID"))
     $Run1 = Join-Path $Logs "scenario_a_run1.log"
     Case "held log at start : run1.log is the log of that pass (ready line)" ((Test-Path $Run1) -and ((Get-Content $Run1 -Raw) -match "Scenario a: ready"))
@@ -90,9 +97,22 @@ try {
     Set-Content -Encoding ascii (Join-Path $Logs "scenario_a_run1.log") "STALE"
     $Holder = Start-Holder (Join-Path $Logs "scenario_a.log") 90
     $R = Run-Tool @("a", "-Runs", "1", "-MaxWaitSeconds", "10", "-Retries", "0")
-    Case "log held all along : INVALID, exit non-zero, never PASS (exit $($R.Exit))" ($R.Exit -ne 0 -and $R.Text -cmatch "pass 1/1 : INVALID" -and -not [bool]($R.Text -match "repeat a : PASS")) (($R.Lines | Select-Object -Last 3) -join " / ")
+    Case "log held all along : INVALID, exit non-zero, never PASS (exit $($R.Exit))" ($R.Exit -ne 0 -and $R.Text -cmatch "pass 1/1 : INVALID" -and -not [bool]($R.Text -match "verdict OK")) (($R.Lines | Select-Object -Last 3) -join " / ")
     Case "log held all along : no run1.log is left for the invalid pass (neither the old STALE one nor a copy of the held log)" (-not (Test-Path (Join-Path $Logs "scenario_a_run1.log")))
     Stop-Process -Id $Holder.Id -Force -ErrorAction SilentlyContinue
+
+    # ---- (4) the summary always reads "PASS k/N" with k = passes that PASSED (2026-11-08, L9-7 : it used to read "FAIL k/N" with k = PASS count,
+    #      which agents read as "k failures"). Launches go good / bad / good : 2 of 3. The verdict is a separate word : "verdict RED" (exit 1).
+    Start-Sleep -Seconds 2
+    Remove-Item (Join-Path $Logs "scenario_*.log") -Force -ErrorAction SilentlyContinue
+    $Bad = Join-Path $Work "bad.txt"
+    Set-Content -Encoding ascii $Bad @("LogHOLTest: Error fake failure")
+    Remove-Item (Join-Path $Engine "count.txt") -Force -ErrorAction SilentlyContinue
+    $env:FAKE_ENGINE_PATTERN = "PFP"; $env:FAKE_ENGINE_BAD = $Bad
+    $R = Run-Tool @("a", "-Runs", "3")
+    Remove-Item Env:FAKE_ENGINE_PATTERN, Env:FAKE_ENGINE_BAD -ErrorAction SilentlyContinue
+    Case "one failed pass of 3 : summary reads 'PASS 2/3' (exit $($R.Exit))" ($R.Exit -eq 1 -and $R.Text -match "repeat a : PASS 2/3") (($R.Lines | Select-Object -Last 4) -join " / ")
+    Case "one failed pass of 3 : 'verdict RED', never 'FAIL 2/3'" ($R.Text -match "verdict RED" -and -not [bool]($R.Text -match "FAIL 2/3"))
 } finally {
     Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "scenario_a.log" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Remove-Item Env:FAKE_ENGINE_TEXT -ErrorAction SilentlyContinue

@@ -39,7 +39,7 @@ $ArgList = "`"$UProject`" $Map -game -RenderOffScreen -ResX=888 -ResY=500 -saved
 $Cpu = (Get-Counter '\Processor(_Total)\% Processor Time' -SampleInterval 2 -MaxSamples 3).CounterSamples | ForEach-Object { [math]::Round($_.CookedValue, 1) }
 Write-Host "project: $Project ; cpu before: $($Cpu -join ', ')"
 $Clock = [Diagnostics.Stopwatch]::StartNew()
-$P = Start-Process -FilePath $Exe -ArgumentList $ArgList -PassThru
+$P = Start-Process -FilePath $Exe -ArgumentList $ArgList -PassThru -WindowStyle Hidden
 # Polled once a second: the peak working set (MB) of the editor process, printed as "peak memory" (Biomes decor cost, 2026-11-07).
 $PeakMb = 0
 while (-not $P.WaitForExit(1000) -and $Clock.Elapsed.TotalSeconds -lt 600) {
