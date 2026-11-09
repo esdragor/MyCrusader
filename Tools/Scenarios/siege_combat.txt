@@ -11,6 +11,8 @@ frames 2
 hol.Units.SpawnHere 1 Mangonel 0 50
 waitunits 7
 frames 20
+hol.Camera.FocusNear 4300 0
+frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
 hol.Select.AttackMoveNear 5500 0

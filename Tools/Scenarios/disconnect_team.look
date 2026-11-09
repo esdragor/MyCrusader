@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+team_hold | Bob et Carol partis : pastilles "Connexion perdue" et bandeau(x) avec compte a rebours
+team_end | Fenetre finie : pastilles "IA" a la place, plus de bandeau, ni Bob ni Carol ne sont battus
+team_later | 10 s plus tard : toujours pastilles "IA" et 2 vies, personne n est battu, la partie continue

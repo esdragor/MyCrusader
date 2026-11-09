@@ -41,9 +41,15 @@ while ((Get-Date) -lt $Deadline -and -not $Process.HasExited) {
     Start-Sleep -Seconds 2
     if ((Test-Path $Log) -and (Select-String -Path $Log -Pattern "Test mark: flicker done" -Quiet)) { $Done = $true; break }
 }
+# The PNGs are written asynchronously after the "done" mark: wait (15 s at most) for the 8 files before stopping the editor
+# (2026-11-09: stopped at once, the run left no PNG at all and the comparison crashed).
+if ($Done) {
+    $WriteDeadline = (Get-Date).AddSeconds(15)
+    while ((Get-Date) -lt $WriteDeadline -and @(Get-ChildItem $Shots -Filter "flick_*.png" -ErrorAction SilentlyContinue).Count -lt 8) { Start-Sleep -Milliseconds 500 }
+}
 if (-not $Process.HasExited) { Stop-Process -Id $Process.Id -Force }
 if (-not $Done) { Write-Host "fog_flicker : FAIL (the scenario did not reach its end; log $Log)"; exit 1 }
 if ($Window) { python (Join-Path $PSScriptRoot "fog_flicker.py") $Shots $Max $Tag $Window } else { python (Join-Path $PSScriptRoot "fog_flicker.py") $Shots $Max $Tag }
-if ($LASTEXITCODE -eq 3 -and $Attempt -lt 6) { Write-Host "fog_flicker : black frames (attempt $Attempt), again"; continue }
+if ($LASTEXITCODE -eq 3 -and $Attempt -lt 6) { Write-Host "fog_flicker : black frames (attempt $Attempt), again"; Start-Sleep -Seconds 8; continue }
 exit $LASTEXITCODE
 }

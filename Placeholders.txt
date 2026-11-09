@@ -24,6 +24,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Archer Aube [mannequin]
 - Archer squelette Légions [mannequin]
 - Arbalétrier Aube [mannequin]
+- Arquebusier (mannequin et squelette de l'Arbalétrier, carreau SM_Bolt : ni corps, ni fumée de poudre, ni son propre) [mannequin]
 - Arbalétrier squelette Légions [mannequin]
 - Cavalier léger Aube (mannequin fixe, sans animation) [mannequin]
 - Cavalier funeste Légions [mannequin]

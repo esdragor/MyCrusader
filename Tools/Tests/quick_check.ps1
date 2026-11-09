@@ -129,6 +129,16 @@ if (-not $MapKey) { Write-Host "quick_check : FAIL (unknown map '$Map'; Tools\Da
 if ($Full) { $Parts = @("tests", "menu", "camera", "production", "move", "sources", "gather", "build", "anims", "formation", "combat", "victory", "sides", "fogclick", "sizes", "net", "aiserver", "netai") }
 # A list passed by -File arrives as one string ("net,sources"): split it.
 $Parts = @($Parts | ForEach-Object { $_ -split "," } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+# The list of provisional things (PlaceholdersInProgress P2, PQ-4 = A): Tools\check_placeholders.ps1 runs at EVERY quick_check
+# (pure PowerShell, no engine, under a second): a provisional type (empty Mesh or the mannequin) with no line in
+# Placeholders.txt fails the run. "placeholders" asked alone runs only this (nothing else starts).
+$PlaceholdersAlone = $Parts -contains "placeholders"
+$Parts = @($Parts | Where-Object { $_ -ne "placeholders" })
+$PlaceholdersOutput = @(powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "..\check_placeholders.ps1") 2>&1)
+$PlaceholdersOk = ($LASTEXITCODE -eq 0)
+$PlaceholdersOutput | ForEach-Object { Write-Host "  $_" }
+if (-not $PlaceholdersOk) { Write-Host "quick_check : FAIL (check_placeholders: a provisional type has no line in Placeholders.txt, see above)"; exit 1 }
+if ($PlaceholdersAlone -and -not $Parts.Count) { Write-Host "quick_check : PASS"; exit 0 }
 # "values" (PT0 of PlaytestInProgress.md, D727): the sheet of values, pure Python, no engine: the tool's own tests (a mini repository per
 # case, then the real registry) and `make_value_sheet.py --check` (a value that moved, a marker with no row, a validated value that
 # drifted fail it). Asked alone, nothing else starts (no editor, no build).

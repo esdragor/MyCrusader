@@ -1,5 +1,8 @@
 # Repro 2 : groupe de 20 paysans, ordres au-dela du bord ouest, en diagonale et vers un coin (Foret Petite, bord a -22000, coin -22000/-22000)
+note Repro 2 (observation seule, rien a jouer) : 20 paysans, ordres au-dela du bord ouest, en diagonale puis vers le coin sud-ouest de la Foret Petite ; capture edge2_after = le groupe reste dans la limite rouge.
+panel hide
 hol.Camera.Zoom -7
+hol.Map.ShowBounds 1
 hol.Camera.FocusNear -4500 0
 frames 5
 hol.Units.SpawnHere 20 Peasant 0 250
@@ -29,3 +32,5 @@ frames 5
 wait 50
 hol.Units.Report 25
 hol.Nav.Units 10
+capture edge2_after
+panel show
