@@ -32,9 +32,21 @@ def main():
     steppe = glade_budget.simulate("Steppe", "Small")
     check("Steppe Small comes out with style G", steppe["status"] == "ok" and steppe["style"] == "G", "%s" % steppe)
 
-    # The detector: a refusal of the generator is reported as a refusal, with its message, not raised and not "ok" (a glade of 60 times the normal size cannot be laid).
-    refused = glade_budget.simulate("Plain", "Small", style=("X", 6, 60.0, 0.55))
-    check("an impossible glade (6 glades x 60) is reported as a refusal", refused["status"] == "RoomError" and bool(refused.get("message")), "%s" % refused)
+    # The detector: a refusal of the generator (here steppe.RoomError, raised by the map module's own sources(), the way the real Steppe raises it) is reported as a refusal
+    # with its message, not raised and not "ok".
+    from maps import plain  # noqa: E402
+    from maps import steppe  # noqa: E402
+
+    class Refusing:
+        def __getattr__(self, name):
+            return getattr(plain, name)
+
+        @staticmethod
+        def sources(recipe):
+            raise steppe.RoomError("Steppe: territory of slot 0 cannot hold 99999 trees in 3 groves")
+
+    refused = glade_budget.simulate("Plain", "Small", module=Refusing())
+    check("a RoomError of the map's sources is reported as a refusal with its message", refused["status"] == "RoomError" and "cannot hold" in refused.get("message", ""), "%s" % refused)
     again = glade_budget.simulate("Plain", "Small")
     check("a refused run leaves no trace in the next one (same trees as before)", again.get("trees") == plain.get("trees"), "%s against %s" % (again.get("trees"), plain.get("trees")))
 
