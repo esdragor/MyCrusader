@@ -41,9 +41,9 @@ frames 10
 hol.HUD.Report
 frames 5
 waitlog HUD stats: attack 8,
-waitlog HUD stats tip: attack: base 8,
-waitlog melee armor: reduces each melee hit by 0 (1 at least)
-waitlog speed: moves at
+waitlog HUD stats tip: attack: 8 | melee armor: -0 per hit
+waitlog hero armor: -
+waitlog per siege hit
 capture usa_spearman
 hol.Camera.FocusNear 7500 0
 frames 3
@@ -55,9 +55,9 @@ frames 10
 hol.HUD.Report
 frames 5
 waitlog HUD stats: attack 12,
-waitlog HUD stats tip: attack: base 12,
-waitlog melee armor: reduces each melee hit by 4 (1 at least)
-waitlog ranged armor: reduces each ranged hit by 4 (1 at least)
+waitlog HUD stats tip: attack: 12 | melee armor: -4 per hit
+waitlog ranged armor: -4 per shot
+waitlog speed: 7 m/s
 capture usa_manatarms
 hol.Camera.FocusNear 10000 0
 frames 3

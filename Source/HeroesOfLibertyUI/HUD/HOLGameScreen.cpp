@@ -1766,28 +1766,24 @@ void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 		Tips.Add(Tip);
 		TipPlain.Add(PlainTip);
 	};
-	const FText AtLeastOne = LOCTEXT("TipAtLeastOne", "(1 au minimum)");
 	if (bBuildingOnly)
 	{
 		AddStat(FText::Format(LOCTEXT("StatBuildingAttack", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
 			FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))),
-			FText::Format(LOCTEXT("TipBuildingAttack", "Dégâts de chaque coup contre un bâtiment : {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
-			FString::Printf(TEXT("building attack: hits a building for %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
+			FText::Format(LOCTEXT("TipBuildingAttack", "Attaque bâtiments : {0} par coup"), FormatStat(static_cast<float>(Row->BuildingAttack))),
+			FString::Printf(TEXT("building attack: %s per hit"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
 	}
 	if (bStrikes)
 	{
-		// The tooltip of the attack: its base, the technologies' bonus, the reach.
+		// The tooltip of the attack (short, Q-unit-stats-tooltips B): its base and the technologies' bonus.
 		TArray<FText> AttackTip;
-		FString AttackTipPlain = FString::Printf(TEXT("attack: base %s"), *FormatStatPlain(Base));
-		AttackTip.Add(FText::Format(LOCTEXT("TipBaseAttack", "Attaque de base {0}"), FormatStat(Base)));
+		FString AttackTipPlain = FString::Printf(TEXT("attack: %s"), *FormatStatPlain(Base));
+		AttackTip.Add(FText::Format(LOCTEXT("TipBaseAttack", "Attaque : {0}"), FormatStat(Base)));
 		if (Percent != 0)
 		{
-			AttackTip.Add(FText::Format(LOCTEXT("TipTechnology", "Technologies {0} %"), FText::FromString(FString::Printf(TEXT("%+d"), Percent))));
+			AttackTip.Add(FText::Format(LOCTEXT("TipTechnology", "{0} % technologies"), FText::FromString(FString::Printf(TEXT("%+d"), Percent))));
 			AttackTipPlain += FString::Printf(TEXT(", technology %+d %%"), Percent);
 		}
-		const bool bMelee = Row->AttackType == EHOLAttackType::Melee;
-		AttackTip.Add(bMelee ? LOCTEXT("StatRangeMelee", "Portée mêlée") : FText::Format(LOCTEXT("StatRange", "Portée {0} m"), FormatStat(Row->AttackRange / 100.f)));
-		AttackTipPlain += bMelee ? FString(TEXT(", range melee")) : FString::Printf(TEXT(", range %s"), *FormatStatPlain(Row->AttackRange / 100.f));
 		AddStat(Percent != 0 ? FText::Format(LOCTEXT("StatAttackBonus", "Attaque {0} (+{1})"), FormatStat(Attack), FormatStat(Bonus))
 				: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)),
 			Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)),
@@ -1797,22 +1793,22 @@ void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 	{
 		AddStat(FText::Format(LOCTEXT("StatBuildingAttackExtra", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
 			FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))),
-			FText::Format(LOCTEXT("TipBuildingAttackExtra", "Dégâts de chaque coup contre un bâtiment : {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
-			FString::Printf(TEXT("building attack: hits a building for %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
+			FText::Format(LOCTEXT("TipBuildingAttackExtra", "Attaque bâtiments : {0} par coup"), FormatStat(static_cast<float>(Row->BuildingAttack))),
+			FString::Printf(TEXT("building attack: %s per hit"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
 	}
 	// Answer to Q-unit-stats: the line keeps attack, the three armours that matter in a fight (melee, ranged, hero) and speed; the siege armour is in the hero armour's tooltip.
 	AddStat(FText::Format(LOCTEXT("StatMeleeArmor", "Armure mêlée {0}"), Row->MeleeArmor), FString::Printf(TEXT("melee armor %d"), Row->MeleeArmor),
-		FText::Format(LOCTEXT("TipMeleeArmor", "Retire {0} à chaque coup de mêlée reçu {1}"), Row->MeleeArmor, AtLeastOne),
-		FString::Printf(TEXT("melee armor: reduces each melee hit by %d (1 at least)"), Row->MeleeArmor));
+		FText::Format(LOCTEXT("TipMeleeArmor", "Armure mêlée : -{0} par coup reçu"), Row->MeleeArmor),
+		FString::Printf(TEXT("melee armor: -%d per hit"), Row->MeleeArmor));
 	AddStat(FText::Format(LOCTEXT("StatRangedArmor", "Armure distance {0}"), Row->RangedArmor), FString::Printf(TEXT("ranged armor %d"), Row->RangedArmor),
-		FText::Format(LOCTEXT("TipRangedArmor", "Retire {0} à chaque coup de tir reçu {1}"), Row->RangedArmor, AtLeastOne),
-		FString::Printf(TEXT("ranged armor: reduces each ranged hit by %d (1 at least)"), Row->RangedArmor));
+		FText::Format(LOCTEXT("TipRangedArmor", "Armure distance : -{0} par tir reçu"), Row->RangedArmor),
+		FString::Printf(TEXT("ranged armor: -%d per shot"), Row->RangedArmor));
 	AddStat(FText::Format(LOCTEXT("StatHeroArmor", "Armure héros {0}"), Row->HeroArmor), FString::Printf(TEXT("hero armor %d"), Row->HeroArmor),
-		FText::Format(LOCTEXT("TipHeroArmor", "Retire {0} à chaque coup reçu d'un héros {1}\nArmure siège {2} : retire {2} à chaque coup de siège reçu {1}"), Row->HeroArmor, AtLeastOne, Row->SiegeArmor),
-		FString::Printf(TEXT("hero armor: reduces each hero hit by %d (1 at least), siege armor %d"), Row->HeroArmor, Row->SiegeArmor));
+		FText::Format(LOCTEXT("TipHeroArmor", "Armure héros : -{0} par coup de héros reçu\nArmure siège : -{1} par coup de siège"), Row->HeroArmor, Row->SiegeArmor),
+		FString::Printf(TEXT("hero armor: -%d per hero hit, siege armor: -%d per siege hit"), Row->HeroArmor, Row->SiegeArmor));
 	AddStat(FText::Format(LOCTEXT("StatSpeed", "Vitesse {0} m/s"), FormatStat(Row->Speed / 100.f)), FString::Printf(TEXT("speed %s"), *FormatStatPlain(Row->Speed / 100.f)),
-		FText::Format(LOCTEXT("TipSpeed", "Vitesse de déplacement : {0} mètres par seconde"), FormatStat(Row->Speed / 100.f)),
-		FString::Printf(TEXT("speed: moves at %s m/s"), *FormatStatPlain(Row->Speed / 100.f)));
+		FText::Format(LOCTEXT("TipSpeed", "Vitesse : {0} m/s"), FormatStat(Row->Speed / 100.f)),
+		FString::Printf(TEXT("speed: %s m/s"), *FormatStatPlain(Row->Speed / 100.f)));
 
 	ShownStats = FString::Join(Plain, TEXT(", "));
 	ShownStatTipList = TipPlain;
