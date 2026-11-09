@@ -35,6 +35,19 @@ void Test_ArmyArquebusierEntersTheTierThreeMix(FUnitTest& T)
 	T.AssertEquals(0, ArquebusierPicks(Data, 2, 28), "tier 2: the Arquebusier is not open, none is planned");
 }
 
+void Test_ArmyArquebusierIsNeverPlannedByTheLegions(FUnitTest& T)
+{
+	// D710: the Legions have no Arquebusier; a Legions AI at tier 3 plans none, yet still plans the other types of the mix.
+	FHOLAIArmyData Data = HOLAIArmy::DefaultData();
+	Data.Faction = n"Legions";
+	T.AssertEquals(0, ArquebusierPicks(Data, 3, 28), "tier 3, Legions AI: 28 units of the fixed mix hold no Arquebusier");
+	FHOLAISummary Summary;
+	Summary.Tier = 3;
+	const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
+	T.AssertTrue(Choice.bValid, "the Legions AI still plans a unit at tier 3");
+	T.AssertTrue(Choice.Type != n"Arquebusier", "and it is not the Arquebusier");
+}
+
 void Test_ArmyArquebusierIsMadeAtTheArcheryRange(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = HOLAIArmy::DefaultData();
