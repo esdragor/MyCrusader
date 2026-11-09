@@ -20,7 +20,8 @@ function Start-Fake([string]$Exe, [string]$ArgString) {
   return $p
 }
 function Get-ChildPids([int]$ParentPid) {
-  return @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentPid" | ForEach-Object { [int]$_.ProcessId })
+  # conhost.exe (console cachee) suit la mort de son parent : ce n'est pas un fils applicatif.
+  return @(Get-CimInstance Win32_Process -Filter "ParentProcessId=$ParentPid" | Where-Object { $_.Name -ne 'conhost.exe' } | ForEach-Object { [int]$_.ProcessId })
 }
 function Alive([int]$ProcId) { return [bool](Get-Process -Id $ProcId -ErrorAction SilentlyContinue) }
 
