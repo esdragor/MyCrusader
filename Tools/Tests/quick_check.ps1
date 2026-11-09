@@ -143,6 +143,8 @@ if ($Parts -contains "values") {
         $ValuesChecks["value_sheet_test.py ($($ValuesTestOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $ValuesCheckOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\make_value_sheet.py") --check 2>&1)
         $ValuesChecks["make_value_sheet.py --check ($($ValuesCheckOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        $UnitStatsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_stats_test.py") 2>&1)
+        $ValuesChecks["unit_stats_test.py ($($UnitStatsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesFailed = @($ValuesChecks.Keys | Where-Object { -not $ValuesChecks[$_] })
     Write-Host "values : $(if ($ValuesFailed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
