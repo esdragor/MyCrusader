@@ -14,6 +14,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou pé
 
 ## Celeborn — `hero-j8-close` — Mêlée et clôture de J8 (`NeutralsInProgress.md`, `DuelInProgress.md`)
 - [?] (C++, attend l'utilisateur) Mêlée : 4361123 NON validé (melee_stuck ON 0/8 contre ALLOFF 6/8) ; Celeborn-18 cherche le correctif fautif ; décision dans `Retours\Q-melee-stall.md`.
+  - Celeborn-19 : aucune combinaison de cvars <= ALLOFF partout (fautif = SlotBlockedStopDistance 250, mais le couper casse watch) ; piste : distance 120/150 a mesurer (cvar, sans C++) ; voir NeutralsInProgress.md.
 - [ ] (C++, agent neuf) BUG-melee-stuck-attack : 2 soldats figés devant la cible (diplomacy_qground) ; A/B SlotDetourMaxSteps et FarPlaceRetarget ; test rouge = le soldat frappe ; `Retours\BUG-melee-stuck-attack.md`.
 - [ ] (C++, test) L8-2 : audit `hol.Test.Sanity` « cible à portée, aucune attaque depuis N s » ; c'est le test rouge de BUG-melee-stuck-attack.
 - [ ] (C++) Neutres 2/4 : hypothèse SelfSide (place du côté du soldat, FindReachableEnemy), puis tremblement de cap de la marche en bloc ; c5f2279 partiel.

@@ -58,6 +58,10 @@ struct HEROESOFLIBERTY_API FHOLDetourFragment : public FMassFragment
 	/** Set for the rest of the leg once that limit is passed: the walker goes straight to its goal, pushing (neutrals trial, melee_spin: a walker circling its own slot). */
 	uint8 bSlotCommit = 0;
 
+	/** Set by the look-ahead at the step when a still ENEMY stands within hol.Units.SlotBlockedRadius of the walker's goal (Celeborn-12: a place inside an
+	 * enemy's body is never reached; D293 does not push an enemy): read by the order processor, which ends the final leg at once near it. */
+	uint8 bSlotBlocked = 0;
+
 	/** The walker met at a crossing and this one's part against it (HOLAvoid::ECrossingRole), kept while it is near (MV.2:
 	 * predicted from last step's velocities, the part would flip once one turned). */
 	FMassEntityHandle Crosser;

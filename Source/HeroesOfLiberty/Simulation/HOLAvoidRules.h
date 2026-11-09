@@ -100,6 +100,26 @@ namespace HOLAvoid
 		return Discriminant < 0. ? TNumericLimits<double>::Max() : (Approach - FMath::Sqrt(Discriminant)) / SpeedSquared;
 	}
 
+	/**
+	 * Celeborn-12 (hol.Units.SlotCommitHeadOn): whether a body at ToOther (from the walker), going at OtherVelocity, is a walker coming head on: ahead of
+	 * the walker (Ahead, unit), within MaxDistance, and going against Ahead faster than MinClosing (cm/s). Committed straight to its place, a walker met
+	 * one: both pushed by the separation, they shook face to face for a second (diplomacy_qground_watch, #11 and #7).
+	 */
+	inline bool IsHeadOn(const FVector2D& Ahead, const FVector2D& ToOther, const FVector2D& OtherVelocity, const double MaxDistance, const double MinClosing)
+	{
+		return FVector2D::DotProduct(ToOther, Ahead) > 0. && ToOther.SizeSquared() < FMath::Square(MaxDistance)
+			&& FVector2D::DotProduct(OtherVelocity, Ahead) < -MinClosing;
+	}
+
+	/**
+	 * Celeborn-12 (hol.Units.SlotBlockedRadius): whether a place is inside a body (its centre within Radius of the place): never reached (an enemy is not
+	 * pushed, D293), the walker froze 2 s at 1 m 20 from it before standing.
+	 */
+	inline bool IsPlaceInBody(const FVector2D& Place, const FVector2D& BodyPosition, const double Radius)
+	{
+		return FVector2D::DistSquared(Place, BodyPosition) < FMath::Square(Radius);
+	}
+
 	/** A building's body as a walker sees it (D324's body, turned by the building's yaw: Cos, Sin). */
 	struct FFootprintBox
 	{

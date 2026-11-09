@@ -229,6 +229,20 @@ namespace HOLSanity
 	using HOLCombat::IsBoxedIn;
 
 
+	/**
+	 * Q-melee-stall = A: how long a stand-still may last before check 4 judges it. A soldier on the FinalLeg of a walk held by its friends waits up to
+	 * FinalLegStuckSteps (FinalLegSeconds) before the walk ends and it fights; that wait is the game's own, not a fault. While such a walk lasts the
+	 * limit is FinalLegSeconds + MarginSeconds if that is longer than BaseSeconds. MarginSeconds < 0: the tolerance is off (the limit stays BaseSeconds).
+	 */
+	inline double StallLimitSeconds(const double BaseSeconds, const bool bFinalLegWalk, const double FinalLegSeconds, const double MarginSeconds)
+	{
+		if (!bFinalLegWalk || MarginSeconds < 0. || BaseSeconds <= 0.)
+		{
+			return BaseSeconds;
+		}
+		return FMath::Max(BaseSeconds, FinalLegSeconds + MarginSeconds);
+	}
+
 	/** A unit's run of steps standing still out of reach of its target while a place was free round it: the current run and the longest one (s). */
 	struct FStall
 	{
@@ -238,6 +252,8 @@ namespace HOLSanity
 		bool bTold = false;
 		/** How many runs went over the limit. */
 		int32 Runs = 0;
+		/** Q-melee-stall = A: the current run began or went on during a FinalLeg walk (set by the caller, cleared when the run ends). */
+		bool bFinalLegRun = false;
 
 		/** One step: stalled or not. Returns true at the step the current run first goes over LimitSeconds. */
 		bool Step(const bool bStalledWithRoom, const double StepSeconds, const double LimitSeconds)

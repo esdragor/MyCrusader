@@ -117,6 +117,12 @@ namespace UE::HeroesOfLiberty::Combat
 	float StuckLooseSeconds = 0.f; // OFF by default: the lot of 2026-11-06 17:00 gave 3/8 red with 4 (see Retours/BUG-melee-stuck-attack.md, Correcteur 2)
 	FAutoConsoleVariableRef CVarStuckLooseSeconds(TEXT("hol.Combat.StuckLooseSeconds"), StuckLooseSeconds,
 		TEXT("s (default 0 = off, tried at 4: not better; with hol.Combat.StuckRetargetSeconds): a melee out of reach with no headway for this long, no enemy with a free place it can reach, takes the nearest other enemy whatever the places and the friends in the way (a target the player ordered is kept); 0: off (BUG-melee-stuck-attack)"));
+	int32 SameWalkGoal = 1;
+	FAutoConsoleVariableRef CVarSameWalkGoal(TEXT("hol.Combat.SameWalkGoal"), SameWalkGoal,
+		TEXT("1 (default; Celeborn-14): a unit already walking to the place of the enemy it seeks (within 2 radii + 50 cm) is not given the same walk again at each search step (it restarted the final leg's wait of FinalLegStuckSteps: a walk held by its friends never ended); 0: as before"));
+	int32 WalkRiposteSteps = 10;
+	FAutoConsoleVariableRef CVarWalkRiposteSteps(TEXT("hol.Combat.WalkRiposteSteps"), WalkRiposteSteps,
+		TEXT("steps (default 10 = 0.5 s; Q5 = C): a unit on a player's walk (not an attack-move) whose walk made no headway for this many steps (its place barred, a friend in the way) takes on the enemy that strikes it (HOLCombat::MaySeek); a normal walk is never cut; 0: off (as before: no riposte during a walk)"));
 	float MeleeLock = 60.f;
 	FAutoConsoleVariableRef CVarMeleeLock(TEXT("hol.Combat.MeleeLock"), MeleeLock,
 		TEXT("cm (default 60): a melee soldier that struck last step keeps its target while it lives and stays within its reach plus this (the target nudged out of reach by a few cm no longer makes the soldier take another enemy and begin its blow again: BUG-melee-stuck-attack); 0: off, as before"));
@@ -148,6 +154,16 @@ namespace UE::HeroesOfLiberty::Combat
 	float ClaimProgress = 25.f;
 	FAutoConsoleVariableRef CVarClaimProgress(TEXT("hol.Combat.ClaimProgress"), ClaimProgress,
 		TEXT("cm (default 25, with hol.Combat.ClaimPlace): the edge distance to its target a melee must gain to count as making headway"));
+	/** Celeborn-24 (BUG-melee-spin-sanity): a claimed place walled in by the bodies round the way to it is not claimed (HOLCombat::IsPlaceWalledIn). */
+	int32 PlaceBoxedIn = 0;
+	FAutoConsoleVariableRef CVarPlaceBoxedIn(TEXT("hol.Combat.PlaceBoxedIn"), PlaceBoxedIn,
+		TEXT("1 (default, with hol.Combat.ClaimPlace): a melee does not claim a free place round its target when the bodies round its way to it wall it in (a gap of less than its body): it walks to the target and waits behind the crowd instead of a U round its friends (the spin of melee_stuck); 0: as before"));
+	int32 KeepStuckCount = 1;
+	FAutoConsoleVariableRef CVarKeepStuckCount(TEXT("hol.Combat.KeepStuckCount"), KeepStuckCount,
+		TEXT("1 (default, with hol.Combat.ClaimPlace): a place claimed again after being lost does not set the no-headway count back to 0 (the count that starts hol.Combat.StuckRetargetSeconds); 0: as before"));
+	float NeighbourGap = 150.f;
+	FAutoConsoleVariableRef CVarNeighbourGap(TEXT("hol.Combat.NeighbourGap"), NeighbourGap,
+		TEXT("cm (default 600; was 150): a new target within this of the last one keeps the no-headway count (the soldier that swings between two enemies 450 cm apart, np back to 0 at each swing, never reached StuckRetargetSeconds)"));
 	/** Q-neutrals-second-rank = C (the user, 2026-11-05): a soldier walled in between its friends changes target instead of turning back. */
 	int32 BoxedRetarget = 0;
 	FAutoConsoleVariableRef CVarBoxedRetarget(TEXT("hol.Combat.BoxedRetarget"), BoxedRetarget,
@@ -843,7 +859,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 			const bool bMaySeek = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget,
-				!Combat.OrderedBuilding.IsExplicitlyNull());
+				!Combat.OrderedBuilding.IsExplicitlyNull(), HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps));
 			const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
 			bIdle = Fighter.State->CurrentHealth > 0 && !Combat.Target.IsSet() && Combat.TargetBuilding.IsExplicitlyNull() && Combat.OrderedBuilding.IsExplicitlyNull() && !Combat.LastAttacker.IsSet() && !Combat.bApproaching
 				&& !Combat.bAttacking && Combat.Mode != EHOLCombatMode::AttackMove && (Fighter.bBusy || !bMaySeek || !bSearchStep);
@@ -1012,7 +1028,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			const FHOLCombatFragment& Combat = *Fighter.Combat;
 			const FHOLUnitTypeConstants& Constants = *Fighter.Constants;
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
-			const bool bMaySeekNow = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull());
+			const bool bMaySeekNow = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget, !Combat.OrderedBuilding.IsExplicitlyNull(),
+				HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps));
 			// Perf: a melee walking to fight will likely search for contact (the serial pass's test, by the step's start).
 			if (bParallelAhead && bStopAtContact && bMaySeekNow && Fighter.State->CurrentHealth > 0 && !Fighter.bBusy && Fighter.Order->Phase != EHOLMovePhase::None
 				&& !HOLCombat::IsRangedAttack(Constants.AttackRange) && (Combat.TargetBuilding.IsExplicitlyNull() || Constants.AggressionRadius > 0.f))
@@ -1537,7 +1554,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			&& Combat.Mode != EHOLCombatMode::AttackMove)
 		{
 			const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None; // not approaching
-			const bool bMaySeek = !bWalkingOrder && !Combat.bOrderedTarget; // not on an attack-move
+			const bool bMaySeek = (!bWalkingOrder || HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps)) && !Combat.bOrderedTarget; // not on an attack-move
 			if (Fighter.bBusy || !bMaySeek || ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) != 0)
 			{
 				if (!Fighter.bBusy)
@@ -1618,7 +1635,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// kept until it dies, an ordered building until it falls (D345: no enemy unit makes it drop it).
 		const bool bWalkingOrder = Fighter.Order->Phase != EHOLMovePhase::None && !Combat.bApproaching;
 		const bool bMaySeek = HOLCombat::MaySeek(bWalkingOrder, Combat.Mode == EHOLCombatMode::AttackMove, Combat.bOrderedTarget,
-			!Combat.OrderedBuilding.IsExplicitlyNull());
+			!Combat.OrderedBuilding.IsExplicitlyNull(), HOLCombat::IsWalkStalled(Fighter.Order->StuckSteps, WalkRiposteSteps));
 		const bool bSearchStep = ((static_cast<int64>(Fighter.UnitId) + StepIndex) % SearchSteps) == 0;
 		const int32 TargetBeforeSearch = Target;
 		// BUG-melee-stuck-attack (hol.Combat.MeleeLock, the user's rule: a soldier at grips with a target keeps it until it dies): a melee that struck
@@ -2540,7 +2557,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				if (Combat.PlaceTarget != Combat.Target)
 				{
 					// A new target next to the last one (the enemies strike in turn, the quarrel is the same crowd): the count of no headway goes on.
-					const bool bNeighbour = Combat.PlaceTarget.IsSet() && HOLCombat::IsNeighbourTarget(FVector2D(Combat.PlaceTargetWhere), EnemyPosition);
+					const bool bNeighbour = Combat.PlaceTarget.IsSet() && HOLCombat::IsNeighbourTarget(FVector2D(Combat.PlaceTargetWhere), EnemyPosition, NeighbourGap);
 					Combat.PlaceTarget = Combat.Target;
 					Combat.bHasPlace = false;
 					if (!bNeighbour)
@@ -2667,6 +2684,18 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				{
 					TArray<HOLCombat::FBody> PlaceBodies;
 					GatherRoomBodies(Index, Target, PlaceBodies);
+						const int32 RoomBodyCount = PlaceBodies.Num(); // before the places the friends claimed (they are no walls)
+						// Celeborn-24 (hol.Combat.PlaceBoxedIn): the spot chosen is not claimed when the bodies round the way to it wall the soldier in.
+						const auto PlaceWalledIn = [&](const double ForAngle) -> bool
+						{
+							if (PlaceBoxedIn == 0)
+							{
+								return false;
+							}
+							const double Reach = Enemy.Constants->Radius + Constants.Radius + 2.;
+							const FVector2D PlaceWhere = EnemyPosition + Reach * FVector2D(FMath::Cos(ForAngle), FMath::Sin(ForAngle));
+							return HOLCombat::IsPlaceWalledIn(Position, Constants.Radius, PlaceWhere, TConstArrayView<HOLCombat::FBody>(PlaceBodies.GetData(), RoomBodyCount));
+						};
 					if (ClaimedSlots != 0)
 					{
 						// BUG-melee-stuck-attack: the places the friends of the same target claimed stand as bodies on their spots.
@@ -2687,7 +2716,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					const FVector2D FromTarget = Position - EnemyPosition;
 					const double SelfSide = FromTarget.IsNearlyZero() ? 0. : FMath::Atan2(FromTarget.Y, FromTarget.X) + (FromTarget.Y < 0. ? 2. * UE_DOUBLE_PI : 0.);
 					double Angle = 0.;
-					if (HOLCombat::ChooseFreePlace(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Combat.bHasPlace, static_cast<double>(Combat.PlaceAngle), SelfSide, PlaceBySide != 0, Angle))
+					if (HOLCombat::ChooseFreePlace(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Combat.bHasPlace, static_cast<double>(Combat.PlaceAngle), SelfSide, PlaceBySide != 0, Angle) && !PlaceWalledIn(Angle))
 					{
 						// D641 (hol.Combat.FarPlaceRetarget): a NEW place across the melee (more than FarPlaceGap from the soldier's side) is refused.
 						const bool bNewClaim = !Combat.bHasPlace || FMath::Abs(Angle - static_cast<double>(Combat.PlaceAngle)) > 1e-3;
@@ -2705,7 +2734,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						if (!bWaitFarPlace)
 						{
 							bPlaceNew = bNewClaim;
-							if (!Combat.bHasPlace)
+							if (!Combat.bHasPlace && KeepStuckCount == 0)
 							{
 								Combat.BestEdge = static_cast<float>(Edge);
 								Combat.NoProgressSeconds = 0.f;
@@ -2734,7 +2763,12 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			// A walk to it at most at the search rate: the first, or once it moved off, or once the last one ended short.
 			const bool bWalkOver = Fighter.Order->Phase == EHOLMovePhase::None;
 			const bool bMoved = FVector2D::DistSquared(EnemyPosition, Combat.ApproachPoint) > FMath::Square(ReapproachDistance);
-			if (Combat.Mode != EHOLCombatMode::Hold && !bWaitFarPlace
+			// Celeborn-14 (diplomacy_qground_watch, #12: ph 3 held 150 steps within 10 cm, 24 reversals): a walk already on its way to that very goal
+			// is not given again. Every search step the same walk was re-issued (a new order: the final leg's wait of FinalLegStuckSteps restarted
+			// from 0 and the unit blipped 10 cm towards the enemy and back), so a walk held by its friends never ended. 0: as before.
+			const bool bSameWalk = SameWalkGoal != 0 && Fighter.Order->Phase != EHOLMovePhase::None
+				&& FVector2D::DistSquared(FVector2D(WalkGoal), FVector2D(Fighter.Order->Slot)) <= FMath::Square(static_cast<double>(Constants.Radius) * 2.0 + 50.0);
+			if (Combat.Mode != EHOLCombatMode::Hold && !bWaitFarPlace && !bSameWalk
 				&& (bZoneTaken || bPlaceNew || ((bSearchStep || bLost || !Combat.bApproaching) && (!Combat.bApproaching || bMoved || bWalkOver))))
 			{
 				// Stamped (J7b.3): a player's order given meanwhile drops it.

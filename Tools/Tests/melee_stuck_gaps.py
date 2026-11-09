@@ -78,6 +78,12 @@ for opt in ('--stall', '--shake'):
         args = [a for a in args if a != value]
         if opt == '--stall': WALK_STALL = int(value)
         else: WALK_SHAKE = int(value)
+# Celeborn-14: LOCKED = a walk within LOCK_CM of one spot for more than LOCK_STEPS steps (default 80 = 4 s, twice FinalLegStuckSteps), blips of a seek included. Option --lock N.
+LOCK_STEPS = 80; LOCK_CM = 25
+if '--lock' in sys.argv:
+    value = sys.argv[sys.argv.index('--lock') + 1]
+    args = [a for a in args if a != value]
+    LOCK_STEPS = int(value)
 WALK_ROW = re.compile(r'SanityDump3 #(\d+) step (\d+) at \((-?\d+), (-?\d+)\) vel \((-?\d+), (-?\d+)\) ph (\d) slot \((-?\d+), (-?\d+)\) ap(\d) at(\d) tgt #(-?\d+)')
 def walks(path):
     dead = {}; seq = collections.defaultdict(list)
@@ -101,6 +107,18 @@ def walks(path):
                 if run > WALK_STALL: out.append(('STALL', u, start, start + run, rows[0], b))
                 run = 0
         if run > WALK_STALL: out.append(('STALL', u, start, start + run, rows[0], rows[-1]))
+        # Celeborn-14 (the EFFECT of the spin fix): a walk (ph 3) that stays within LOCK_CM of one spot for more than LOCK_STEPS steps although it blips into a
+        # fight now and then (a seek that re-issues the walk restarts the 2 s wait of FinalLegStuckSteps: the 12-step cycle of #12, 24 reversals) is LOCKED.
+        # Its blows or its attack (ph 0) end the run; rows of the same unit have consecutive steps.
+        lrun = 0; lstart = 0; anchor = None
+        for a, b in zip(rows, rows[1:]):
+            inwalk = b[3] == 3 and b[0] == a[0] + 1 and not (u in dead and dead[u] <= b[0])
+            if inwalk and anchor is not None and abs(b[1]-anchor[0]) + abs(b[2]-anchor[1]) <= LOCK_CM:
+                lrun += 1
+            else:
+                if lrun > LOCK_STEPS: out.append(('LOCKED', u, lstart, lstart + lrun, rows[0], b))
+                lrun = 0; lstart = b[0]; anchor = (b[1], b[2]) if inwalk else None
+        if lrun > LOCK_STEPS: out.append(('LOCKED', u, lstart, lstart + lrun, rows[0], rows[-1]))
         # reversals: the step's vector against the one before
         rev = []
         for i in range(2, len(rows)):
@@ -113,10 +131,141 @@ def walks(path):
             if len(window) >= WALK_SHAKE:
                 out.append(('SHAKE', u, rev[i], rev[i] + 20, rows[0], rows[-1])); break
     return out
+# Celeborn-13 (Q5 = C, the EFFECT): a soldier struck while its walk makes no headway (ph 3, no fight, no target) must strike back within
+# RIPOSTE_STEPS (default 25 = 1.25 s) of the first blow it takes in that state: its OWN hit on any enemy shows in the log ("Combat: step N #U ... hits").
+# Not flagged if it or its attacker dies first, or when the first blow came in the last RIPOSTE_STEPS of the run. Option --riposte N.
+RIPOSTE_STEPS = 25
+if '--riposte' in sys.argv:
+    value = sys.argv[sys.argv.index('--riposte') + 1]
+    args = [a for a in args if a != value]
+    RIPOSTE_STEPS = int(value)
+def unanswered(path):
+    dead = {}; last = 0; struck = collections.defaultdict(list); own = collections.defaultdict(list); state = {}; pos = {}
+    STALL_CM = 100
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot (\d) killed by', l)
+        if m: dead[int(m[2])] = int(m[1])
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ hits #(\d+)', l)
+        if m:
+            s, a, v = int(m[1]), int(m[2]), int(m[3])
+            own[a].append(s); struck[v].append((s, a)); last = max(last, s)
+        m = WALK_ROW.search(l)
+        if m:
+            state[(int(m[1]), int(m[2]))] = (int(m[7]), int(m[10]), int(m[11]), int(m[12]))
+            pos[(int(m[1]), int(m[2]))] = (int(m[3]), int(m[4]))
+    out = []
+    for v, blows in sorted(struck.items()):
+        for s, a in sorted(blows):
+            st = state.get((v, s)) or state.get((v, s - 1)) or state.get((v, s + 1))
+            if not st or not (st[0] == 3 and st[1] == 0 and st[2] == 0 and st[3] == -1): continue
+            # Celeborn-16 (Q5 = C says "ONLY if the walk makes no headway"): a walk that goes on at speed (here soldier #11, 700 cm/s along a
+            # detour, struck at step 83, its walk ended at 109) is not a fault; the walk must have stood within STALL_CM for the 10 steps before the blow.
+            p0, p1 = pos.get((v, s - 10)), pos.get((v, s))
+            if p0 is None or p1 is None or abs(p1[0] - p0[0]) + abs(p1[1] - p0[1]) > STALL_CM: continue
+            if s + RIPOSTE_STEPS > last or (v in dead and dead[v] <= s + RIPOSTE_STEPS) or (a in dead and dead[a] <= s + RIPOSTE_STEPS): break
+            if not any(s <= t <= s + RIPOSTE_STEPS for t in own[v]):
+                out.append(('UNANSWERED', v, s, s + RIPOSTE_STEPS, None, None))
+            break
+    return out
 def fmt_walk(w):
     kind, u, s0, s1 = w[0], w[1], w[2], w[3]
     return '%s #%d steps %d-%d' % (kind, u, s0, s1)
+# Celeborn-21 (BUG-melee-stuck-attack, Diagnostic 2: waiting in the second line behind a wall of friends that strike is LEGITIMATE): --strike is
+# the "the soldier strikes" test. A gap of more than `limit` steps without a blow is a FAULT unless it is excused by (E1) the soldier was enclosed
+# (living friends within ENCL_CM on two sides more than 100 degrees apart) during at least ENCL_SHARE of the gap, or (E2) the gap ends within
+# AFTER_DEATH steps after the death of a friend that stood within 250 cm of it (the wall opened). Only the SanityDump3 lines of hol.Sanity.DumpUnit -3
+# give the positions. Prints the fault and the excused gaps, so the second line is visible and not counted.
+ENCL_CM = 140; ENCL_SHARE = 0.6; AFTER_DEATH = 25
+POS = re.compile(r'SanityDump3 #(\d+) step (\d+) at \((-?\d+), (-?\d+)\)')
+def strike_gaps(path, limit):
+    dead = {}; owner = {}; hits = collections.defaultdict(list); pos = collections.defaultdict(dict); last = 0
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ hits #(\d+)', l)
+        if m: hits[int(m[2])].append(int(m[1])); last = max(last, int(m[1]))
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot (\d) killed by', l)
+        if m: dead[int(m[2])] = int(m[1]); owner[int(m[2])] = int(m[3])
+        m = ROW.search(l)
+        if m:
+            for o in re.finditer(r'#(\d+)\((\d)\)', m[20] or ''): owner[int(o[1])] = int(o[2])
+        m = POS.search(l)
+        if m: pos[int(m[2])][int(m[1])] = (int(m[3]), int(m[4]))
+    def enclosed(u, st):
+        me = pos.get(st, {}).get(u)
+        if me is None or owner.get(u) is None: return None
+        near = []
+        for v, p in pos[st].items():
+            if v != u and owner.get(v) == owner[u] and not (v in dead and dead[v] <= st):
+                dx, dy = p[0]-me[0], p[1]-me[1]
+                if dx*dx + dy*dy <= ENCL_CM**2: near.append((dx, dy))
+        for i in range(len(near)):
+            for j in range(i + 1, len(near)):
+                a, b = near[i], near[j]
+                n = ((a[0]**2+a[1]**2) * (b[0]**2+b[1]**2)) ** 0.5
+                if n and (a[0]*b[0] + a[1]*b[1]) / n < -0.17: return True
+        return False
+    faults = []; excused = []
+    for u, h in sorted(hits.items()):
+        pts = [h[0]] + h + [dead.get(u, last)]
+        for a, b in zip(pts, pts[1:]):
+            if b - a <= limit: continue
+            flags = [enclosed(u, s) for s in range(a + 1, b)]
+            known = [f for f in flags if f is not None]
+            share = (sum(1 for f in known if f) / len(known)) if known else 0.0
+            wall_opened = False
+            me = pos.get(b - 1, {}).get(u) or pos.get(a + 1, {}).get(u)
+            if me is not None:
+                for v, dv in dead.items():
+                    if owner.get(v) == owner.get(u) and v != u and b - AFTER_DEATH <= dv <= b:
+                        pv = pos.get(dv - 1, {}).get(v) or pos.get(dv, {}).get(v)
+                        if pv is not None and (pv[0]-me[0])**2 + (pv[1]-me[1])**2 <= 250**2: wall_opened = True
+            row = (u, a, b, b - a, round(share, 2), wall_opened)
+            if share >= ENCL_SHARE or wall_opened: excused.append(row)
+            else: faults.append(row)
+    return faults, excused
+# Celeborn-22 (BUG-melee-stuck-attack, L8-2 "the soldier strikes"): --effect asserts the EFFECT of the real gesture (hol.Select.Grid 4 = key Q, then
+# hol.Select.LeftClickGround = real click, "armed attack-move: yes" in the log): the targets LOSE HP. --strike only reads the gaps between blows, so a
+# run in which nobody ever strikes (diplomacy_qground_watch 0/8 on 2026-11-08, 0 blows) was a vacuous GREEN. Faults: (1) no armed click in the log, (2) not one
+# damaging blow, (3) a target whose "HP left" does not go down from one blow to the next, (4) a soldier that lived at least EFFECT_LIFE steps and never took
+# a point of HP from anybody.
+EFFECT_LIFE = 300
+def effect_faults(path):
+    armed = False; blows = []; dead = {}; seen = {}; last = 0
+    for l in open(path, encoding='utf-8', errors='ignore'):
+        if 'Scripted left click' in l and 'armed attack-move: yes' in l: armed = True
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ hits #(\d+) \w+ for (\d+), (\d+) HP left', l)
+        if m:
+            blows.append(tuple(int(x) for x in m.groups())); last = max(last, int(m[1]))
+        m = re.search(r'Combat: step (\d+) #(\d+) \w+ of slot \d killed by', l)
+        if m: dead[int(m[2])] = int(m[1])
+        m = re.search(r'SanityDump3 #(\d+) step (\d+) ', l)
+        if m: seen.setdefault(int(m[1]), [int(m[2]), int(m[2])])[1] = int(m[2])
+    faults = []
+    if not armed: faults.append('NO-ARMED-CLICK (the real Q + click gesture never ran)')
+    dealt = collections.Counter(); hp = {}
+    for st, a, t, d, left in blows:
+        if d > 0: dealt[a] += d
+        if t in hp and left >= hp[t]: faults.append('NO-HP-LOSS (target #%d step %d: %d HP left after %d)' % (t, st, left, hp[t]))
+        hp[t] = left
+    if not dealt: faults.append('NO-DAMAGE (not one blow took HP in %d steps)' % last)
+    for u, (s0, s1) in sorted(seen.items()):
+        life = min(s1, dead.get(u, s1)) - s0
+        if life >= EFFECT_LIFE and not dealt[u]: faults.append('NEVER-HURT (soldier #%d lived %d steps, took no HP from anybody)' % (u, life))
+    return faults
 bad = 0
+if '--effect' in sys.argv:
+    for path in args:
+        f = effect_faults(path)
+        bad += 1 if f else 0
+        print(('FAIL ' if f else 'OK   ') + os.path.basename(path) + (' ' + '; '.join(f[:4]) if f else ''))
+    print('melee_stuck_gaps --effect: %d of %d runs where the real gesture did not make the targets lose HP' % (bad, len(args)))
+    sys.exit(1 if bad else 0)
+if '--strike' in sys.argv:
+    for path in args:
+        f, e = strike_gaps(path, limit)
+        bad += 1 if f else 0
+        print(('FAIL ' if f else 'OK   ') + os.path.basename(path) + (' STRIKE-GAP (unit, from, to, steps, enclosed share, wall opened) ' + str(f[:4]) if f else '') + ('  excused second-line waits ' + str(e[:4]) if e else ''))
+    print('melee_stuck_gaps --strike: %d of %d runs have a soldier without a blow for more than %d steps that was neither enclosed by friends nor released by the death of one' % (bad, len(args), limit))
+    sys.exit(1 if bad else 0)
 for path in args:
     hits = collections.defaultdict(list); death = {}; last = 0
     for l in open(path, encoding='utf-8', errors='ignore'):
@@ -131,14 +280,14 @@ for path in args:
         if g[0] > limit: gaps.append((u,) + g)
     sw = switches(path)
     pr = pairs(path)
-    wk = walks(path)
+    wk = walks(path) + unanswered(path)
     if '--walk' in sys.argv:
         # only the walk checks (Celeborn-12): the other checks stay as they are for the melee_stuck scenarios
         gaps, sw, pr = [], [], []
     bad += 1 if (gaps or sw or pr or wk) else 0
     print(('FAIL ' if (gaps or sw or pr or wk) else 'OK   ') + os.path.basename(path), ('gaps ' + str(gaps)) if gaps else '', ('switches while striking (unit, step, from, to) ' + str(sw[:5])) if sw else '')
     for p in pr[:4]: print('     STUCK ' + fmt_pair(p))
-    for w in wk[:4]: print('     WALK ' + fmt_walk(w))
+    for w in sorted(wk, key=lambda x: x[0] != 'UNANSWERED')[:5]: print('     WALK ' + fmt_walk(w))
 print('melee_stuck_gaps: %d of %d runs have a soldier without a blow for more than %d steps, or one that left a living target while striking it' % (bad, len(args), limit))
 sys.exit(1 if bad else 0)
 

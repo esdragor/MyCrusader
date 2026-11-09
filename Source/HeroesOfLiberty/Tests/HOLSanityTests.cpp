@@ -201,6 +201,44 @@ bool FHOLSanityMotionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Q-melee-stall = A: check 4 tolerates the wait at the end of a FinalLeg walk (FinalLegStuckSteps = 40 steps = 2 s, plus a margin), only while that walk lasts.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSanityStallFinalLegTest, "HeroesOfLiberty.Sanity.StallFinalLeg", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+bool FHOLSanityStallFinalLegTest::RunTest(const FString& Parameters)
+{
+	const double Base = 0.5;
+	const double Wait = 2.0;
+	const double Margin = 0.2;
+	TestEqual(TEXT("no FinalLeg walk: the limit stays 0.5 s"), HOLSanity::StallLimitSeconds(Base, false, Wait, Margin), Base);
+	TestEqual(TEXT("a FinalLeg walk: the limit is the wait plus the margin (2.2 s)"), HOLSanity::StallLimitSeconds(Base, true, Wait, Margin), 2.2);
+	TestEqual(TEXT("margin < 0: the tolerance is off"), HOLSanity::StallLimitSeconds(Base, true, Wait, -1.), Base);
+	TestEqual(TEXT("a base limit already above the wait is kept"), HOLSanity::StallLimitSeconds(5., true, Wait, Margin), 5.);
+	TestEqual(TEXT("the check off (0) stays off"), HOLSanity::StallLimitSeconds(0., true, Wait, Margin), 0.);
+	// The effect through the counter: a 1.5 s stand-still (30 steps of 0.05 s) is a fault at 0.5 s and none at 2.2 s; a 2.4 s one is a fault at 2.2 s.
+	HOLSanity::FStall Short;
+	bool bToldShort = false;
+	for (int32 Step = 0; Step < 30; ++Step)
+	{
+		bToldShort |= Short.Step(true, 0.05, HOLSanity::StallLimitSeconds(Base, true, Wait, Margin));
+	}
+	TestFalse(TEXT("a 1.5 s wait on a FinalLeg walk is not a stall"), bToldShort);
+	HOLSanity::FStall Long;
+	bool bToldLong = false;
+	for (int32 Step = 0; Step < 48; ++Step)
+	{
+		bToldLong |= Long.Step(true, 0.05, HOLSanity::StallLimitSeconds(Base, true, Wait, Margin));
+	}
+	TestTrue(TEXT("a 2.4 s wait is a stall even on a FinalLeg walk"), bToldLong);
+	HOLSanity::FStall Plain;
+	bool bToldPlain = false;
+	for (int32 Step = 0; Step < 30; ++Step)
+	{
+		bToldPlain |= Plain.Step(true, 0.05, HOLSanity::StallLimitSeconds(Base, false, Wait, Margin));
+	}
+	TestTrue(TEXT("a 1.5 s wait off a FinalLeg walk is still a stall"), bToldPlain);
+	return true;
+}
+
 // Check 4 of hol.Test.Sanity (the user's retour on the neutrals trial): a soldier standing still out of reach while a place round its target is free.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSanityStallTest, "HeroesOfLiberty.Sanity.Stall", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -364,7 +402,22 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		Sides[1].Where = FVector2D(0., -400.);
 		TestFalse(TEXT("a body 400 cm off on one side is no wall"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
 		TestFalse(TEXT("nobody near: not boxed in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, TConstArrayView<HOLCombat::FBody>()));
-		// The trace of neutrals (2026-11-05, #11): friends at (-56, 109) and (64, 115) from the soldier, the target at (153, 262), one friend almost on the
+		// Celeborn-24 (BUG-melee-spin-sanity): a free place is not claimed when the way to it is walled in (a second-rank soldier ran a U of 1100 cm to such a place).
+		{
+			TArray<HOLCombat::FBody> Friends;
+			TestFalse(TEXT("a place with nobody round the way: not walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			Friends.Add({ FVector2D(60., 125.), 55.f });
+			TestFalse(TEXT("a friend on one side of the way to the place: not walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			Friends.Add({ FVector2D(60., -140.), 55.f });
+			TestTrue(TEXT("friends at 125 and 140 cm on both sides of the way to the place: walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			Friends[1].Where = FVector2D(60., -400.);
+			TestFalse(TEXT("the second friend 400 cm off: the way is open"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			// The trace of melee_stuck run4 #11: two friends ahead 10 cm apart on one side of the line to the place close it (their gap takes no body of 110).
+			TArray<HOLCombat::FBody> Wall;
+			Wall.Add({ FVector2D(-56., 109.), 55.f });
+			Wall.Add({ FVector2D(64., 115.), 55.f });
+			TestTrue(TEXT("two friends ahead, 10 cm apart: the place beyond is walled in"), HOLCombat::IsPlaceWalledIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+		}		// The trace of neutrals (2026-11-05, #11): friends at (-56, 109) and (64, 115) from the soldier, the target at (153, 262), one friend almost on the
 		// line (cross +2) and the other left of it: both on the same side, a wall all the same (their gap, 10 cm, takes no body of 110).
 		{
 			TArray<HOLCombat::FBody> Wall;

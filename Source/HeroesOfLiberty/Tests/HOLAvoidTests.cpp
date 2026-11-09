@@ -21,6 +21,24 @@ bool FHOLAvoidDetourSideTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Celeborn-12: the commit straight to the place is not taken against a walker coming head on; a place inside a body is blocked.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidHeadOnTest, "HeroesOfLiberty.Movement.HeadOnAndBlockedPlace",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAvoidHeadOnTest::RunTest(const FString& Parameters)
+{
+	const FVector2D East(1., 0.);
+	TestTrue(TEXT("a friend ahead walking back at 650 cm/s is head on"), HOLAvoid::IsHeadOn(East, { 200., 20. }, { -650., 0. }, 360., 100.));
+	TestFalse(TEXT("a friend ahead walking the same way is not"), HOLAvoid::IsHeadOn(East, { 200., 20. }, { 650., 0. }, 360., 100.));
+	TestFalse(TEXT("a friend ahead standing is not"), HOLAvoid::IsHeadOn(East, { 200., 20. }, { 0., 0. }, 360., 100.));
+	TestFalse(TEXT("a friend behind is not"), HOLAvoid::IsHeadOn(East, { -200., 20. }, { 650., 0. }, 360., 100.));
+	TestFalse(TEXT("a friend too far is not"), HOLAvoid::IsHeadOn(East, { 500., 0. }, { -650., 0. }, 360., 100.));
+	TestFalse(TEXT("a friend crossing sideways is not"), HOLAvoid::IsHeadOn(East, { 200., 20. }, { 0., -650. }, 360., 100.));
+	TestTrue(TEXT("a place on a body's centre is in it"), HOLAvoid::IsPlaceInBody({ -10312., -55. }, { -10312., -55. }, 60.));
+	TestTrue(TEXT("a place 40 cm from a body is in it"), HOLAvoid::IsPlaceInBody({ -10066., -216. }, { -10066., -176. }, 60.));
+	TestFalse(TEXT("a place 80 cm from a body is not"), HOLAvoid::IsPlaceInBody({ 0., 0. }, { 80., 0. }, 60.));
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidDetourTurnTest, "HeroesOfLiberty.Movement.DetourTurn",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FHOLAvoidDetourTurnTest::RunTest(const FString& Parameters)
