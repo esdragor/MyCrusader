@@ -6,6 +6,7 @@ open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+note Mesure (observation seule, rien a jouer) : deux ordres en file vers l'inexplore, 8 captures de suite camera fixe ; Tools/Tests/fog_flicker.ps1 compare les images (lignes d'ordre stables, sans strie).
 hol.Camera.FocusNear 800 0
 frames 2
 hol.Units.SpawnHere 4 ManAtArms 0 250
@@ -28,6 +29,7 @@ hol.Select.OrderGround -9000 3000 shift
 frames 5
 hol.Units.SpeedScale 0.1
 wait 6
+panel hide
 hol.Fog.RenderReport
 waitlog Fog render: mode 1
 capture flick_00
@@ -46,4 +48,5 @@ capture flick_06
 frames 1
 capture flick_07
 frames 1
+panel show
 mark flicker done

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "CoreMinimal.h"
 #include "CommonActivatableWidget.h"
@@ -229,8 +229,11 @@ protected:
 	TObjectPtr<UCommonTextBlock> SelectionHealth;
 
 	/** The selected unit's statistics (attack with the technologies' bonus, armour, range, speed): one line or one per statistic (hol.HUD.UnitStats). */
-	UPROPERTY(meta = (BindWidgetOptional))
-	TObjectPtr<UCommonTextBlock> SelectionStats;
+	UPROPERTY()
+	TObjectPtr<UWrapBox> SelectionStats;
+	/** One text block per statistic of that block, each with its own hover tooltip (REGLAGE of unit_stats_attack, 2026-11-09). */
+	UPROPERTY()
+	TArray<TObjectPtr<UCommonTextBlock>> SelectionStatChips;
 
 	/**
 	 * The line under the name (J5, D298): what a gatherer does and carries (« Récolte — Bois 7/10 »), a group's workers by
@@ -595,6 +598,8 @@ private:
 	FString ShownStats;
 	/** The tooltip text of the statistics, culture-free ("health 155 | base attack 12 | range melee | siege armor 0"). */
 	FString ShownStatsTip;
+	/** The plain text of each shown statistic's own tooltip, in the order of the chips (the report's HUD stats tip line). */
+	TArray<FString> ShownStatTipList;
 	/** A main forum's lives last written in SelectionLives (V2.3d). */
 	int32 ShownForumLives = INDEX_NONE;
 

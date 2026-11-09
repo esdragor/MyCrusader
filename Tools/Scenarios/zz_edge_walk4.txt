@@ -1,4 +1,6 @@
 # Repro 4 directions : 20 paysans, ordres au-dela de chaque bord (O, N, E, S), limite rouge, positions et captures
+note Repro 4 directions (observation seule, rien a jouer) : 20 paysans, ordres au-dela de chaque bord (ouest, nord, est, sud) de la Foret Petite ; limite rouge affichee, 4 captures edge4m_*.
+panel hide
 hol.Camera.Zoom -4
 hol.Map.ShowBounds 1
 hol.Units.SpeedScale 3
@@ -45,3 +47,4 @@ hol.Units.Report 25
 capture edge4m_sud
 hol.Nav.Units 3
 hol.Nav.Units 10
+panel show

@@ -54,6 +54,8 @@ waitlog HUD cells: A: Archer squelette; Z: Arbalétrier squelette
 hol.Select.Grid 0
 waitlog Production: Archer of slot 0 done
 frames 30
+hol.Camera.FocusNear 2500 4500
+frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
@@ -68,6 +70,8 @@ waitlog HUD cells: A: Cavalier funeste
 hol.Select.Grid 0
 waitlog Production: LightCavalry of slot 0 done
 frames 30
+hol.Camera.FocusNear 2500 6500
+frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
@@ -84,6 +88,8 @@ waitlog HUD cells: A: Bélier d'os; Z: Mangonneau d'os
 hol.Units.SpawnHere 1 Ram 0 120
 waitlog SpawnHere: 1 Ram of slot 0
 frames 40
+hol.Camera.FocusNear 2500 8500
+frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
@@ -94,7 +100,9 @@ frames 2
 hol.Units.SpawnHere 1 Spearman 1 120
 waitlog SpawnHere: 1 Spearman of slot 1
 frames 40
-hol.Select.ClickUnit -1 enemy
+hol.Camera.FocusNear 5000 -1500
+frames 2
+hol.Select.ClickUnit -1 slot=1
 frames 10
 hol.HUD.Report
 waitlog HUD selection name: Lancier$
@@ -137,6 +145,8 @@ hol.Select.ClickGround -12200 8600
 frames 10
 hol.HUD.Report
 waitlog HUD cells: A: Bone Ram; Z: Bone Mangonel
+hol.Camera.FocusNear 2500 8500
+frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report
@@ -169,6 +179,8 @@ hol.Select.ClickGround -12200 8600
 frames 10
 hol.HUD.Report
 waitlog HUD cells: A: 骨の破城槌; Z: 骨のマンゴネル
+hol.Camera.FocusNear 2500 8500
+frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report

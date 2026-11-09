@@ -1,0 +1,2 @@
+ff_edge | A a la lisiere ouest du bois : l'ennemi de controle au nord est visible, l'ennemi derriere le bois reste dans le noir (HUD fog shown 1 hidden 6)
+ff_inside | B dans le bois : l'ennemi derriere le bois est maintenant visible (HUD fog shown 2 hidden 5)

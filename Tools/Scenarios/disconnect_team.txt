@@ -1,0 +1,19 @@
+# Deconnexion en EQUIPE, fin de fenetre (D717-D718) : Alice (toi) + une IA contre Bob et Carol (deux joueurs, meme camp). Bob et Carol partent des le debut (hol.Match.StartWaitSeconds 1). A la fin de la fenetre (60 s ici), en equipe le siege n est PAS perdu : l IA passe au cerveau complet et joue jusqu au bout (hol.Net.FakeAbsent End = fin de fenetre, vraie chaine DefeatExpiredAbsences). 3 minutes au plus. Les notes sont a la fin.
+hol.Match.DisconnectWindowSeconds 60
+frames 90
+hol.Match.StartWaitSeconds 1
+waitlog slot 1 (Bob) held by AI
+hol.Camera.FocusSlot 1
+frames 120
+capture team_hold
+hol.Disconnect.Report
+waitkey Entree : la fenetre finit. Bob et Carol sont dans un camp sans autre joueur : leurs IA gardent leurs sieges
+hol.Net.FakeAbsent End 1
+hol.Net.FakeAbsent End 2
+waitlog windows ended
+frames 200
+capture team_end
+hol.Disconnect.Report
+wait 10
+capture team_later
+note EQUIPE : team_hold = Bob et Carol sont partis, pastilles "Connexion perdue" et bandeaux avec le compte a rebours. team_end = fenetre finie : pastilles "IA", plus de bandeau, aucun des deux n est battu (leurs vies restent), la partie continue. team_later = 10 s plus tard : toujours "IA", 2 vies, personne n est battu. Disconnect.Report dit "AI mode full brain".

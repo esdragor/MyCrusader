@@ -15,8 +15,12 @@ note 2. Bâtir : un Paysan bâtit une Maison (bâtie vite) ; finie, +25 XP de d�
 hol.Cheat.FastBuild 1
 hol.Units.Spawn 1 -14000 1200 0 Peasant 10
 wait 0.5
+hol.Camera.FocusNear -900 300
+frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
+hol.Camera.FocusNear 2000 2400
+frames 3
 hol.Build.PlaceNear House 2000 2400
 waitlog Construction: slot 0 placed House
 hol.Select.OrderNear 2000 2400
@@ -46,8 +50,12 @@ note 6. Bâtir mort : une 2e Maison, +25 XP pendant la mort (barre du bloc, mont
 hol.Cheat.FastBuild 1
 hol.Units.Spawn 1 -14000 1200 0 Peasant 10
 wait 0.5
+hol.Camera.FocusNear -900 300
+frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
+hol.Camera.FocusNear 6000 0
+frames 3
 hol.Build.PlaceNear House 6000 0
 waitlog Construction: slot 0 placed House
 hol.Select.OrderNear 6000 0

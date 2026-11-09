@@ -1,0 +1,29 @@
+# Brouillard (D383, F2) sur la carte Forest (Small) : une unite a la lisiere d'un bois ne voit pas ce qu'il y a derriere, une unite DANS le bois voit.
+# Le preambule du .json ouvre la carte (pas de open/waitmap ici). Le bois est celui de la CARTE (57 569 sources posees avant le Start, grille de bloqueurs F2 branchee) :
+# hol.Sources.Grove (arbres ajoutes apres le Start) ne bloque pas la vue (trou F2 C++, voir FogInProgress.md), on ne l'utilise donc pas.
+# Sonde de densite (hol.Sources.Nearest, grille de 800 cm, 2026-11-09) : grand bois de la carte entre X 2400 et 10400, Y 400 a 2400 (arbre le plus proche < 50 cm), bord ouest vers X 2000 ; Y 0 est une route (sans arbre).
+# Mesure : au centre degage 4 ennemis a 2400 cm sont tous vus. Les 5 Paysans du forum ennemi sont toujours caches : 5 caches de base.
+# Rouge d'abord : 3c5d97f (meme disposition sans bois : shown 2 hidden 5 des la phase A, la premiere attente ne vient jamais).
+note Observation seule : A (Homme d'armes bleu) est a la lisiere sud du grand bois ; l'ennemi derriere le bois (au nord de l'ecran) reste cache, l'ennemi de controle a l'ouest (a gauche de A, en bas) se voit. Puis B entre dans le bois et voit l'ennemi derriere.
+hol.Camera.FocusNear 19900 1500
+hol.Camera.Zoom -2
+frames 5
+# La camera a l'ecran : +X en haut, +Y a droite. Le bois (bande Y 1000 a 2200 autour de X 3500) est un mur de 1200 cm de large.
+# A, a la lisiere sud du bois (3500, 500, a 500 cm des arbres), un ennemi de controle a l'ouest en terrain ouvert (1100, 500 : vu, 2400 cm), un ennemi derriere le bois (3500, 2950, a 2450 cm de A, 700 cm au-dela des arbres).
+hol.Units.Spawn 1 3500 500 0 ManAtArms 1
+hol.Units.Spawn 1 1100 500 1 ManAtArms 1
+hol.Units.Spawn 1 3500 2950 1 ManAtArms 1
+waitunits 3
+frames 30
+hol.HUD.Report 1
+waitlog units of others 7 shown 1 hidden 6
+panel hide
+capture ff_edge
+# B, DANS le bois (3500, 1600, a 1350 cm de l'ennemi) : il voit autour de lui, donc l'ennemi derriere est vu : 2 vus, 5 caches.
+hol.Units.Spawn 1 3500 1600 0 ManAtArms 1
+waitunits 4
+frames 30
+hol.HUD.Report 1
+waitlog units of others 7 shown 2 hidden 5
+capture ff_inside
+panel show

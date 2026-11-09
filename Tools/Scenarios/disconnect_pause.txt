@@ -1,0 +1,21 @@
+# Deconnexion et PAUSE (D720) : Alice (toi) + une IA contre Bob + une IA, Bob parti (hol.Match.StartWaitSeconds 1). La fenetre de 60 s ne doit PAS s ecouler pendant une pause : le compte a rebours du bandeau reste le meme tant que la partie est en pause, puis repart a la reprise. Commandes de console hol.Match.Pause / Resume (pas un geste de souris). 3 minutes au plus. Les notes sont a la fin.
+hol.Match.DisconnectWindowSeconds 60
+frames 90
+hol.Match.StartWaitSeconds 1
+waitlog slot 1 (Bob) held by AI
+hol.Camera.FocusSlot 1
+frames 120
+capture pause_before
+hol.Match.Pause
+wait 1
+capture pause_a
+wait 8
+capture pause_b
+hol.Disconnect.Report
+hol.Match.Resume
+wait 1
+capture pause_after
+wait 5
+capture pause_later
+waitkey Entree : fin du scenario
+note PAUSE : pause_before = bandeau "Bob : connexion perdue" avec un temps. pause_a et pause_b (8 s d ecart, en pause) montrent LE MEME temps et "Partie en pause" ; pause_after = le temps repart (un peu plus bas) ; pause_later = plus bas encore. La pause d un joueur qui part est levee d office en reseau (couvert par lobby_match -Reconnect, pas ici).

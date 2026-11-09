@@ -1,0 +1,6 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+pause_before | Avant la pause : bandeau "Bob : connexion perdue" avec un compte a rebours qui court
+pause_a | En pause : "Partie en pause", bandeau de Bob avec un temps
+pause_b | 8 s plus tard, toujours en pause : le MEME temps que pause_a (compte a rebours fige)
+pause_after | Apres la reprise : le compte a rebours repart (temps un peu plus bas)
+pause_later | 5 s apres la reprise : temps plus bas encore
