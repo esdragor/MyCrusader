@@ -28,3 +28,5 @@ Durée : environ 2 min. Réglages (une ligne à changer) : `GLADE_FORCE` / `GLAD
 Reponse (utilisateur, 2026-11-09, apres play.ps1 glade_sweep) : OK, « tout est bien » : aucun defaut vu dans les 8 variantes. Aucune lettre choisie : le reglage reste GLADE_FORCE 0 (cartes inchangees) tant qu'une lettre (ou « plus/moins de clairieres ») n'est pas donnee ; la regeneration des cartes reste une tache a part.
 
 Reponse (utilisateur, 2026-11-09) : « j'aime tout » : les 8 variantes (A a H) plaisent, pas de lettre unique. Defaut qui serait code : varier le style de clairieres d'une carte a l'autre (ex. B/C pour la Foret, D/E pour la Plaine, G pour la Steppe...) -> a confirmer ; GLADE_FORCE reste 0 (cartes inchangees) d'ici la.
+
+Reponse (utilisateur, 2026-11-09) : OUI a la repartition variee : un style de clairieres different par carte (B/C Foret, D/E Plaine, G Steppe, etc.), les forets peintes a la main restent intactes. La regeneration des 7 cartes reste une tache a part.
