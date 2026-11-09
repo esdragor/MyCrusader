@@ -31,6 +31,7 @@ hol.Select.OrderGround -4500 400
 hol.Camera.Focus -6000 400
 frames 2
 wait 8
+capture bw_gap_one
 waitkey Entrée : deux Paysans ensemble dans le passage
 # 1b : deux Paysans ensemble, même départ, même arrivée : le second passe derrière le premier.
 hol.Units.Remove -4500 400 400 0
@@ -82,6 +83,7 @@ waitlog Construction: slot 0 placed House
 hol.Select.OrderNear 2000 2400
 waitlog Construction: slot 0 first work on House
 wait 20
+capture bw_cut_house
 waitkey Entrée : six Paysans en marche, une maison commencée en travers
 # Cas 3 : six Paysans nés 50 m au nord de la maison N, envoyés 40 m au sud d'elle (terrain libre) ; N commencée en
 # travers de leur chemin par un Paysan né à l'est d'elle : ils la contournent et arrivent.
