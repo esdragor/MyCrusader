@@ -24,6 +24,7 @@ TREE_BUDGET_PER_PLAYER = 400  # maps-tree-budget-400 (2026-11-04): the base budg
 
 _saved = tempfile.mkdtemp(prefix="glade_budget_")
 base.install_recorder(_saved)
+base.Actors.get_all_level_actors = lambda self: []  # drop_buried (apply_edits) asks the level for its actors: the rocks (obstacles) are not laid here, so nothing is "buried"
 
 
 def _apply(common, values):
@@ -107,8 +108,13 @@ def main(arguments):
     failed = 0
     for map_name in maps:
         for size in sizes or SIZES:
-            row = simulate(map_name, size, style)
-            other = simulate(map_name, size, "A") if versus and row["style"] != "A" else None
+            try:
+                row = simulate(map_name, size, style)
+                other = simulate(map_name, size, "A") if versus and row["style"] != "A" else None
+            except Exception as error:  # noqa: BLE001  (a fault of the harness, not a refusal of the generator: said, and the next size goes on)
+                print("%s %s: HARNESS ERROR %s: %s" % (map_name, size, type(error).__name__, error), flush=True)
+                failed += 1
+                continue
             print(describe(row, other), flush=True)
             failed += row["status"] != "ok"
     print("glade_budget : %s" % ("ALL OK" if not failed else "%d REFUSED" % failed))
