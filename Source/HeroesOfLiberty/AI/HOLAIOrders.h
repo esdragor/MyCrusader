@@ -87,7 +87,7 @@ struct HEROESOFLIBERTY_API FHOLAITypeFigures
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	bool bRanged = false;
 
-	/** Its armour categories by name (LightInfantry, HeavyInfantry, Ranged, Cavalry, Siege, Peasant, GunpowderInfantry, Heavy, King, Hero). */
+	/** Its armour categories by name (LightInfantry, HeavyInfantry, Ranged, Cavalry, Siege, Peasant, GunpowderInfantry, Heavy, King, Hero, Profane). */
 	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
 	TArray<FName> ArmorCategories;
 

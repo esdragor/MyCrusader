@@ -50,6 +50,7 @@ CATEGORIES = {
     "Heavy": "Lourd",
     "King": "Roi",
     "Hero": "Héros",
+    "Profane": "Profane",
 }
 ATTACK_TYPES = {"Melee": "Mêlée", "Ranged": "Distance", "Siege": "Siège", "Hero": "Héros"}
 ARMOR_OF_TYPE = {"Melee": "MeleeArmor", "Ranged": "RangedArmor", "Siege": "SiegeArmor", "Hero": "HeroArmor"}
