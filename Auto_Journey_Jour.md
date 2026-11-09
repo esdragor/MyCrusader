@@ -736,3 +736,50 @@ L7-6/Q10 : partiellement : forum_review/fog_trees/forum_review2 donnes depuis le
 Q12 : appliquee : reponses 'aime/pas aime', 'BUG:', 'C', 'A' enregistrees en minutes et reportees (D739-D748).
 L9-9 : appliquee : mode interactif choisi des le depart.
 NOUVELLES LECONS 2026-11-08 : (1) un enonce d'agent ne doit JAMAIS demander de rejouer un geste par play.ps1 fenetre (souris volee 6 min) : play.ps1 -Hidden obligatoire ; (2) net rouge 15/15 sur main identique a un commit vert 3 quarts d'heure avant : tester 'main seul' des le premier rouge net au lieu de soupconner la branche ; (3) un patch Edit sur C++ CRLF echoue : le patch PowerShell exact doit etre prevu dans l'enonce ; (4) un agent de fusion 'sans C++' doit verifier la date du binaire (fusion 5 a du rebuild).
+
+## Bilan de la seance autonome du 2026-11-09 (08:57 -> fin 13:55, lue dans Docs\SessionEnd.txt, cartes SANS regeneration, ~33 agents, 4 fusions)
+
+**Agents** : etape 0 (24 tool_uses), puis 8 agents d'emblee a 09:20 (un par worktree) et des relances immediates a chaque fin (Glorfindel 1-5, Celeborn 1-4, Galadriel 1-3, Elrond 1-6 dont 4 fusions/integration, Arwen 1-4, Faramir 1-3, Haldir 1-4, Sauron 1-3). Plafond C++ releve a 4 (file de build presque vide : 0 a 1 ticket tout le long). Veilleur de filet toutes les 30 min, silencieux.
+**Dans `main` = bec2aaa** (de 02ac688 ; rien de pousse) en 4 fusions sans conflit : (1) `fog` + `visual` (lint pan_exposure sur 20 scenarios, `stray_processes.ps1` epargne la chaine de build) ; (2) `galadriel-tab` (Legions L3 categorie Profane, UnitTypes.uasset regenere, make_unit_stats repare), `maps` (Forge F2 armures Maille/Barde, Technologies.uasset regenere, spawn_sites/export_layout), `net-playtest` (cause des 15 rouges de net = timeout du client 2 dans quick_check.ps1, bandeau Victoire sacree S10, pont C++ VictoryStepSite + test d'accord), `heal-sleep` (D751 en script, N6 Neutres CampPolicy, outils sans fenetre) ; (3) `d751-root` (cause racine C++ de D751 : PaceCap) ; (4) `hero-j8-close` (Q-melee-stall = A, audit NoStrike, IsPlaceWalledIn, `KeepStuckCount` remis a 0 faute de preuve). Tests sur main : tests 1127/1127, aiserver, aiduel, aiwave, combat, net (17 sous-parties) PASS ; `diplomacy_qground_watch` 8/8, `melee_stuck` 7/8 ; `-Parts values` ROUGE connu (13 a 19 orphelins « provisoire » sans ligne au registre, Q-valeurs-orphelins).
+**Essais** : 5 prets, VU A L'ECRAN mais GESTE interne, dans `Retours\ESSAIS-A-JOUER.md` (unit_stats_attack_enemy, unit_stats_attack, sites_win, duel_challenge_accept, disconnect_review) ; `session_gate -Phase Essay -Root Elrond` sans FAIL a 13:12 sur main bec2aaa. Non donnes : legions_roster_gesture(_dawn), disconnect_1v1, tech_armor (LOGIQUE SEULEMENT), audio (SON jamais entendu).
+**Questions pour l'utilisateur (fichiers `Retours\Q-*.md`, valeur par defaut deja codee)** : Q-arquebusier-valeurs (G2 non autorise), Q-forge-armure (sens de 10/20 + couverture), Q-sites-arbres-zone, Q-placeholders-ordre / -direction, Q-neutrals-ia-camps, Q-legions-l4 (2 questions), Q-valeurs-orphelins ; lettre de `E-glade-sweep` (regeneration des 7 cartes, non faite). D751 : le contournement script `WaveSpread` 1200 est conserve, le retirer est a decider.
+**Reste ouvert** : spin de melee_stuck (~70 % de reussite, preexistant, bruite) ; N2/N7 des Neutres ; Palier 3 G2-G4 (C++, G2 non autorise) ; scenarios fog_orders_flicker / zz_edge_walk* sans note ni .look ; `-Parts neutrals` n'existe pas dans quick_check.
+**Anomalies du processus** : (1) `stray_processes.ps1 -Stop` d'un agent a tue son propre build (Haldir-3) : corrige et teste (Sauron-3) ; (2) code rendu NON COMPILE par Galadriel-1 et Haldir-3 : agent neuf dedie a chaque fois ; (3) mesure N=8 invalide par `effect_measure -Order a,b` passe en une chaine (Celeborn-3) ; (4) tool_uses > 45 : Sauron-1 54, Faramir-1 61, Arwen-1 48 / -2 54 / -3 58 / -4 51, Haldir-3 47, Celeborn-3 50, Elrond-4 49 ; aucun > 80 ; (5) le « 8/8 » de KeepStuckCount d'un agent n'a pas ete reproduit par un autre (5/8) : defaut remis a l'ancienne valeur.
+**NON VERIFIE (global)** : aucun essai joue par un humain ni avec fenetre ; son jamais entendu ; D751 et mele en vraie partie ; determinisme reseau de PaceCap hors aiserver/net ; Forge F2 a l'ecran ; `move`/`formation`/`production`/`smoke` couverts seulement par le PASS global du quick_check.
+
+### Lecons appliquees 2026-11-09
+T2-1 : appliquee : etape 0 en sous-agent (24 tool_uses, 168 s), plan relu contre git (lignes perimees marquees).
+T2-2 : appliquee : un agent par worktree des 09:20 (8), tous relances a chaque fin ; exceptions : Faramir/Sauron/Haldir/Galadriel sans tache apres 10:30 (file sans C++ vide, taches restantes dependent de l'utilisateur).
+L3-12 : appliquee : etape 0 faite.
+L5-1 : appliquee : Get-Date PowerShell avant chaque lancement ; session_gate -Phase Launch PASS 09:15 (FAIL avant l'ecriture du tableau).
+L5-2 : appliquee : tableau '## Agents du 2026-11-09' ecrit AVANT le premier lancement, ids ajoutes a 09:25, mis a jour a chaque fin.
+L3-1/L4-4 : appliquee avec exception ASSUMEE : plafond C++ releve a 4 (0-1 ticket en file, mesure par Docs\BuildQueue.state a 09:33).
+L1-10 : appliquee : commit_docs.ps1 avant les lancements et fusions ; copie principale propre apres chaque avance rapide.
+L5-7 : non applicable (autonome, utilisateur absent ; accord de commits/fusions donne au lancement).
+L4-1/L4-3 : appliquee : alarme de cloture 13:41 posee a 09:00 ; aucune prolongation.
+L3-8/L4-9/Q5/L1-14 : appliquee : integrateur Elrond nomme au lancement ; Elrond-4 a rejoue 5 essais sur main 60013e8 (PNG ouverts) ; fusions 2-4 par agents dedies.
+L3-9 : appliquee : session principale sous ~150 appels d'outils.
+T2-3 : appliquee : enonces commencent par agent_rules.md, chemins absolus, arret dur.
+L1-1/L3-6/L4-7/L5-3/L9-2 : NON appliquee strictement : 9 agents entre 47 et 61 tool_uses (aucun > 80) ; arret a 45 declares sous-estime de 10 a 30 %.
+L1-2 : appliquee : commits toutes les 10 a 30 min (status.ps1 : aucun agent sans commit 45 min).
+L1-3 : appliquee : merge main avant rapport (sauf Celeborn-3, refait par Celeborn-4).
+L3-2/L4-5 : partiellement : Galadriel-1 et Haldir-3 ont rendu du code non compile (NON COMPILE en tete), agents neufs dedies.
+L1-8 : partiellement : plusieurs journaux par agent (InProgress, EtapeDefini, Placeholders) ; Jour.md tenu par la session principale.
+L1-9/L4-8 : appliquee : aucun agent n'a ecrit GDD.md ; questions sans reponse = defaut deja code derriere un reglage.
+L1-7/T2-4 : appliquee : au plus 2 questions par chantier, option Autre et recommandation.
+L5-6 : appliquee : questions regroupees dans la liste ci-dessus (tableau unique a faire a la relecture).
+T2-5 : appliquee : build.ps1 avant quick_check par chaque agent C++ (rapports PREMIER_BUILD).
+T2-7 : appliquee : fiches Retours\E-*.md et Q-*.md par fichier ; Auto_Journey_Retours.md non touche.
+L1-11/L8-1 : appliquee : commandes play.ps1 de ESSAIS-A-JOUER.md pointent le worktree Elrond (= main bec2aaa) ; session_gate -Phase Essay PASS 13:12.
+L3-4 : partiellement : copie principale propre apres chaque fusion ; un agent (Celeborn-4) a copie des binaires pour mesurer.
+L4-12 : appliquee : outils partages corriges : stray_processes.ps1 (Sauron-3), quick_check.ps1 timeout net (Glorfindel-1), make_unit_stats.py + unit_stats_test.py (Galadriel-2), pan_exposure_test.ps1 etendu (Faramir).
+L9-1 : appliquee : aucun minuteur/Monitor/SendMessage de reveil ; notifications « waiting on background » sans doublon.
+L9-3/L10-1 : appliquee : play.ps1 -Hidden et preflights sans fenetre ; aucune fenetre de jeu prise a l'utilisateur.
+L10-2 : partiellement : net lance sur la branche net-playtest (verte) puis sur l'integration, pas sur main seul avant les fusions.
+L10-3 : appliquee : session_gate -Phase Report lu par les agents de fusion (binaire plus ancien que le dernier code = build).
+L8-9 : appliquee : sync_worktrees.ps1 au debut (08:57-09:11, 7 builds de sync) ; fin : lance a 13:13.
+L5-8/L3-3 : appliquee : net rejoue deux fois avant conclusion ; cause des 15 rouges trouvee (timeout du client 2 dans le script).
+Q1/Q5/Q10 : appliquee : fiches E-* VU A L'ECRAN avec PNG ouverts ; essais donnes seulement apres fusion sur main (Elrond-4) ; GESTE interne mentionne partout.
+L7-6 : NON appliquee : aucun essai a geste reel ni son entendu ; les 5 essais restent GESTE: interne.
+L4-14 : en cours : sync_worktrees.ps1 et session_gate -Phase Close lances a 13:13+.
+NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit pas tuer son propre build (corrige, a rejouer sur un vrai build) ; (2) une mesure N=8 d'un agent ne vaut pas une preuve : exiger un second agent sur le meme binaire avant de garder un defaut (KeepStuckCount 8/8 contre 5/8) ; (3) `effect_measure.ps1 -Order` en `powershell -File` recoit une seule chaine : passer par `repeat_scenario.ps1` par scenario ; (4) quand la file sans C++ est vide au milieu de la matinee, les worktrees restent libres plutot que de recevoir un travail invente : preparer les lignes sans C++ a la fin de la seance precedente.
