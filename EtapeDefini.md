@@ -268,6 +268,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `CavalryInProgress.md` : cavalerie (ouvert 2026-11-04, D672, C1 dans `main` (9f9c591) non compilée, C2 C++ en attente) ; **pré-vol `cavalry` joué le 2026-11-05 : PASS, 8 PNG vus (scénario recadré, c513da9 dans `net-playtest`), essai de l'utilisateur à lister après fusion**
 - `DiplomacyInProgress.md` : mode Diplomatie (D366-D376, D385-D387, D650) ; bugs de l'essai en tête de file
 - `DuelInProgress.md` : duel de héros (branche `hero-j8-close` pour les boucles de mêlée)
+- Celeborn-24 (hero-j8-close, 2026-11-09) : melee_stuck A/B N=8 : NeighbourGap 600 = 1/8 (fautif, remis a 150), PlaceBoxedIn 1 = 7/8 (non prouve, remis a 0), KeepStuckCount 1 = 8/8 (garde) ; tests verts, branche prete, pas dans main
 - `FogInProgress.md` : brouillard (F0-F9 dans `main`, clôture à faire)
 - `FortificationsInProgress.md` : fortifications, Forge et Académie (dossier complet le 2026-11-04, D691-D696, rien codé, prêt à lancer dans un worktree donné par l'utilisateur ; F1 Forge en tête ; remparts praticables en dernier)
 - `DisconnectInProgress.md` : déconnexion avec IA qui tient la place (dossier complet le 2026-11-04, D717-D722, rien codé, prêt à lancer dans un worktree donné par l'utilisateur ; T0 correction du retour : technologies et recherches, en tête)
