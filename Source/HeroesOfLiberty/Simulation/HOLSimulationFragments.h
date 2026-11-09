@@ -135,6 +135,13 @@ struct HEROESOFLIBERTY_API FHOLMoveOrderFragment : public FMassFragment
 	 */
 	float MarchSpeed = 0.f;
 
+	/**
+	 * D751: the pace (cm/s, the table's) of the block march this unit was cut off from (a member that leaves its block walks its final leg
+	 * alone, where the order's walkers still on the block no longer count for MarchSpeed): it walks no faster, so a fast soldier cut off from its
+	 * slot does not run ahead of the slow engines of its wave. 0: no cap. Set when it leaves a block, cleared by the next order.
+	 */
+	float PaceCap = 0.f;
+
 	/** Its hold on its formation place (J7a.4): pushed off it, it walks back (HOLFormation::WatchPlace). */
 	HOLFormation::FPlaceHold PlaceHold;
 

@@ -131,7 +131,7 @@ struct FHOLAIArmyData
 	// The wave's idle soldiers are ordered again at most this often (s).
 	float AttackReissue = 1.f;
 	// D751: how far (cm) a free soldier of the wave may walk ahead of its rearmost soldier before it waits for the rest (0: no wait).
-	float WaveSpread = 0.f;
+	float WaveSpread = 1200.f;
 
 	// A retreat ends when most of the wave has reached the assembly point, or after this long (s).
 	float AttackRetreatMax = 40.f;
