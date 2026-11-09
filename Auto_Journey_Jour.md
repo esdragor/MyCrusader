@@ -795,3 +795,5 @@ NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit
 | Sauron-1 (sans C++) | a4ca3cf5b85d197be | HeroesOfLiberty-Sauron | visual | check_placeholders.ps1 dans quick_check, Placeholders P2 | 16:15 |
 | Arwen-1 (sans C++) | aa39dc14c1be940c9 | HeroesOfLiberty-Arwen | d751-root | valeurs orphelins ValueSheet (values vert), puis Neutres N6/N7 | 16:15 |
 | Faramir-1 (sans C++) | a4e5f0e300b88d793 | HeroesOfLiberty-Faramir | fog | panel hide/show ai_evolving, scenarios fog_orders_flicker/zz_edge_walk | 16:15 |
+| Sauron-1 FINI 16:19 (31 tool_uses ; check_placeholders.ps1 + test 10 cas, df6b5fa, dans quick_check ; visual deja dans main) -> Sauron-2 (sans C++) | a7a13704df2bfcb94 | HeroesOfLiberty-Sauron | visual | session_gate Essay (branches: seulement), essais conformes du 10-31 | 16:21 |
+| Arwen-1 FINI 16:19 (33 tool_uses ; ValueSheet 217 lignes, values vert, ebe6d57 ; N7 bloque sans C++ : GetCampState non expose) -> Arwen-2 (sans C++) | a588a66421abfc33d | HeroesOfLiberty-Arwen | d751-root | sons des 5 familles de batiments (reponses), ouverture Technologies | 16:21 |
