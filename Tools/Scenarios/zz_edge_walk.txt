@@ -1,5 +1,6 @@
 # Repro : des paysans envoyes au-dela du bord de la carte (Foret Petite, bord a x = -22000) ; que disent leurs positions ?
 hol.Camera.Zoom -7
+note Repro (observation seule, rien a jouer) : 3 paysans recoivent l'ordre d'aller au-dela du bord ouest de la Foret Petite ; capture edge_after = ils restent dans la limite, aucun hors carte.
 hol.Camera.TestCursor 0.5 0.5
 panel hide
 hol.Camera.FocusNear -4500 0
