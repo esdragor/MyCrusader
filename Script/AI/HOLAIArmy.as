@@ -36,6 +36,11 @@ struct FHOLAIArmyData
 	TArray<FName> CandidateBuildings;
 	TArray<int> CandidateRatios;
 
+	// The faction key that makes each candidate (None: every faction does; parallel to Candidates) and the AI's own faction key (G14, D710: a unit its faction
+	// does not make is never planned, the server would refuse it in a loop). The brain sets Faction from the slot's launch configuration.
+	TArray<FName> CandidateFactions;
+	FName Faction = n"Dawn";
+
 	// Weight of each resource in a unit's value (gold is dearer).
 	float FoodWeight = 1.f;
 	float WoodWeight = 1.f;
@@ -280,6 +285,14 @@ namespace HOLAIArmy
 		Data.Candidates.Add(n"Crossbowman");
 		Data.CandidateBuildings.Add(n"ArcheryRange");
 		Data.CandidateRatios.Add(1);
+		// G14 (Q-ai-arquebusier A): the Arquebusier (tier 3, Dawn only) joins the fixed mix with a share of 1 in 7. It is NOT in Types: the counter rule leaves it out.
+		Data.Candidates.Add(n"Arquebusier");
+		Data.CandidateBuildings.Add(n"ArcheryRange");
+		Data.CandidateRatios.Add(1);
+		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
+		{
+			Data.CandidateFactions.Add(Data.Candidates[Index] == n"Arquebusier" ? n"Dawn" : NAME_None);
+		}
 		return Data;
 	}
 
@@ -554,6 +567,11 @@ namespace HOLAIArmy
 			if (HOLUnitTier::MinTierOf(Data.Candidates[Index].ToString()) > int(Summary.Tier))
 			{
 				// G1 (D711): a unit the tier has not opened is not a candidate (the server refuses it).
+				continue;
+			}
+			if (Index < Data.CandidateFactions.Num() && Data.CandidateFactions[Index] != NAME_None && Data.CandidateFactions[Index] != Data.Faction)
+			{
+				// G14 (D710): a unit the AI's faction does not make is not a candidate (the server refuses it).
 				continue;
 			}
 			if (OnlyBuilding != NAME_None && (Index >= Data.CandidateBuildings.Num() || Data.CandidateBuildings[Index] != OnlyBuilding))
