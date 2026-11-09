@@ -19,6 +19,8 @@ hol.Camera.FocusNear -900 300
 frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
+hol.Camera.FocusNear 2000 2400
+frames 3
 hol.Build.PlaceNear House 2000 2400
 waitlog Construction: slot 0 placed House
 hol.Select.OrderNear 2000 2400
@@ -52,6 +54,8 @@ hol.Camera.FocusNear -900 300
 frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
+hol.Camera.FocusNear 6000 0
+frames 3
 hol.Build.PlaceNear House 6000 0
 waitlog Construction: slot 0 placed House
 hol.Select.OrderNear 6000 0
