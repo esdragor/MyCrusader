@@ -17,3 +17,5 @@ NON VÉRIFIÉ : le tremblement des unités autour du héros pendant la marche de
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 duel_challenge_accept -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min (Entrée au milieu). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse (utilisateur, 2026-11-09, joue par lui) : OK.

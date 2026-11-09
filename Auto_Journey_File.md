@@ -13,6 +13,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou pé
 - [ ] (C++, Galadriel) Légions L4 : Guerrier Damné profil A + rage nécrotique A ; plan en 8 étapes dans `LegionsInProgress.md`.
 - [ ] (sans C++) Valeurs orphelins (A) : lignes `ValueSheet.csv` pour Sites sacrés, Hold de l'IA, moral, biomes ; `note.<Fichier>` pour le reste ; `-Parts values` doit repasser au vert.
 - [ ] (sans C++, Sauron) `Tools/check_placeholders.ps1` (PQ-4 = A) branché dans `quick_check`, puis fusion de `visual` dans `main` (PQ-5 = A) et Placeholders P2 : ressources et décor, dix échantillons (PQ-1 = A).
+- [ ] (REGLAGE de l'utilisateur, 2026-11-09, essai `unit_stats_attack`) le bloc de stats d'une unité n'a pas d'infobulle au survol pour les autres stats que « Attaque » : ajouter une infobulle (hover) pour chaque stat du bloc (PV, armures, vitesse, portée, etc.), libellés du GDD, test rouge d'abord, scénario `unit_stats_attack` rejoué (geste réel + PNG) ; sans C++ si l'interface est en script (`HOLGameScreenScript.as`).
 - [ ] (docs, session principale) écrire D753 à D766 au GDD § 22 (réponses Q1 à Q14) ; prochain numéro D767.
 
 ## Arwen — `heal-sleep` — Audio, IA, outils

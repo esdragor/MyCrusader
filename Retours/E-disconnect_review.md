@@ -20,3 +20,5 @@ Lancer UNE commande (`-PlayerName Alice` obligatoire) : `powershell -ExecutionPo
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 À regarder : temps 1 = pastille « Connexion perdue » et bandeau à compte à rebours ; temps 2 = Pause (le compte à rebours reste le même puis repart) ; temps 3 = fin de fenêtre, pastille « IA », Bob n'est pas battu ; temps 4 = Bob revient, plus de pastille.
+
+Reponse (utilisateur, 2026-11-09, joue par lui) : OK.

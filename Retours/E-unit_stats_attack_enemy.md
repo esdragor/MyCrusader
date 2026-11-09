@@ -17,3 +17,5 @@ NON VÉRIFIÉ : jamais joué avec une vraie fenêtre ni un vrai clic ; `ClickUni
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 unit_stats_attack_enemy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse (utilisateur, 2026-11-09, joue par lui) : OK.

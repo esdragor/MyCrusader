@@ -20,3 +20,5 @@ NON VÉRIFIÉ : jamais joué par l'agent avec une vraie fenêtre ni un vrai clic
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 unit_stats_attack -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse (utilisateur, 2026-11-09, joue par lui) : OK, MAIS pas d'infobulle au survol (hover) pour les autres stats du bloc (hors la ligne Attaque) -> REGLAGE : ligne [ ] en tete de Auto_Journey_File.md (infobulle de survol pour chaque stat du bloc de stats d'une unite, ex. PV, armures, vitesse, portee ; libelles du GDD).

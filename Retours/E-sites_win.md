@@ -19,3 +19,5 @@ NON VÉRIFIÉ : le son de l'annonce ; l'occupation par de vrais clics (Moines en
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 sites_win -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 2 min (scénario d'environ 90 s). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse (utilisateur, 2026-11-09, joue par lui) : OK.
