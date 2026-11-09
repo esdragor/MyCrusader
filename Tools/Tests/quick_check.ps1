@@ -7763,7 +7763,7 @@ if ($Parts -contains "aiwave") {
         $Start = @([double]$WaveSpawnX, [double]$WaveSpawnY); $Target = @(14800.0, 0.0)
         $Direction = @(($Target[0] - $Start[0]), ($Target[1] - $Start[1])); $Length = [math]::Sqrt($Direction[0] * $Direction[0] + $Direction[1] * $Direction[1])
         $Advance = { param($Point) (($Point[0] - $Start[0]) * $Direction[0] + ($Point[1] - $Start[1]) * $Direction[1]) / $Length }
-        $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0
+        $Ahead = @(); $MaxEngine = @{}; $Compared = 0; $Spread = 0.0; $MarchSpread = 0.0; $MarchSamples = 0; $MarchAt = ""; $WaveMarchLimit = 2500
         # The front of the escort counts a Spearman killed on the way at the last place it was seen (Faramir-16: the two leaders died near the enemy and a Ram that had
         # always been behind them was then reported "in front of the front-most Spearman", +580 cm, at the very last sample).
         $LastAdvance = @{}
@@ -7777,10 +7777,16 @@ if ($Parts -contains "aiwave") {
                 $Front = ($LastAdvance.Values | Measure-Object -Maximum).Maximum; $Back = (($Live | ForEach-Object { & $Advance $Units[$_] }) | Measure-Object -Minimum).Minimum; $Spread = [math]::Max($Spread, $Front - $Back)
                 $Compared++
                 foreach ($Id in $EngineLive) { if ((& $Advance $Units[$Id]) -gt $Front + 100) { $Ahead += "#$Id +$([int]((& $Advance $Units[$Id]) - $Front))" } }
+                # D751 (the AI's wave walks as a group, at its slowest member's speed): the whole wave (escort and engines alive) before any contact
+                # (its front still 4000 cm short of the enemy centre) stays within $WaveMarchLimit cm front to rear.
+                $All = @($Live + $EngineLive | ForEach-Object { & $Advance $Units[$_] })
+                $AllFront = ($All | Measure-Object -Maximum).Maximum; $AllBack = ($All | Measure-Object -Minimum).Minimum
+                if ($AllFront -lt $Length - 4000 -and $AllFront -gt 1500) { $MarchSamples++; if (($AllFront - $AllBack) -gt $MarchSpread) { $MarchSpread = $AllFront - $AllBack; $MarchAt = $Sample.Substring(0, [math]::Min(0, $Sample.Length)) } }
             }
         }
         $Checks["every engine has left home (best advance: $(($Engines | ForEach-Object { '#' + $_ + ' ' + [int]$MaxEngine[$_] }) -join ', '))"] = @($Engines | Where-Object { $MaxEngine[$_] -ge 5000 }).Count -eq 3
         $Checks["no engine in front of the escort's front-most Spearman in $Compared samples (escort strung out over at most $([int]$Spread) cm; ahead: $(($Ahead | Select-Object -First 4) -join ', '))"] = $Compared -gt 0 -and $Ahead.Count -eq 0
+        $Checks["D751 the wave marches as a group: front to rear at most $WaveMarchLimit cm in $MarchSamples samples before contact (worst: $([int]$MarchSpread) cm)"] = $MarchSamples -gt 0 -and $MarchSpread -le $WaveMarchLimit
     }
     else { $Checks["samples and engines found ($($Samples.Count) samples, $($Engines.Count) engines)"] = $false }
     $AllOk = (Report "aiwave" $Checks) -and $AllOk
