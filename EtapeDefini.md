@@ -168,6 +168,8 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ### Unités neutres et camps *(`NeutralsInProgress.md`)*
 - N1-N5 et table `Camps.csv` dans `main` ; NQ1 / NQ2 tranchés (D611-D612) ; reste N2 (placement dans les cartes), N7 (affichage)
 - N6 règles de lecture d'un camp par l'IA faites dans `heal-sleep` (Arwen, 97d9a25, tests 1112/1112, pas dans `main`) ; question `Retours\Q-neutrals-ia-camps.md` (ignorer / évaluer / nettoyer d'abord, défaut = évaluer) ; cible « camp » de la vague après la réponse
+- N6 : réponse Q5 = B (évaluer, `CampPolicy` 1, déjà codé : rien à changer, C après le prototype) ; N7 (indicateur de camp) BLOQUÉ : `HOLCampSubsystem::GetCampState` n'est pas exposé au script (lot C++ à ouvrir) et les cartes ne posent pas encore de camp (N2) (Arwen, `d751-root`, 2026-11-09 16:3x)
+- Valeurs orphelins (Q8 = A) FAIT dans `d751-root` (Arwen, ebe6d57, 2026-11-09) : 21 lignes dans `Tools/Data/ValueSheet.csv` (Sites sacrés, Hold de l'IA, moral, biomes + 7 `note.<Fichier>`), `Valeurs.md/csv` régénérés, `quick_check -Parts values` PASS ; pas dans `main`
 
 ### Duel de héros *(GDD § 10, `DuelInProgress.md`)*
 - D1-D5, D4 (défier / répondre), D8 (fenêtre), D9 (IA), cercle dessiné et sortie des non-duellistes (`hol.Duel.ClearCircle`) : dans `main`
@@ -289,7 +291,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `TechnologiesInProgress.md` : technologies et Moines
 - `VictoryInProgress.md` : conditions de victoire et paliers
 - `VisualInProgress.md` : visuel des bâtiments (branche `visual`, worktree Sauron)
-- `PlaceholdersInProgress.md` : remplacement des placeholders (arbres, logos, unités, icônes, décor...), ouvert le 2026-11-08, relevé par lecture fait, rien codé ni commité ; liste vivante dans `Placeholders.txt` (à tenir à jour par TOUT chantier, règle dans `CLAUDE.md`) ; questions PQ-1 (par quoi commencer), PQ-2 (direction artistique), PQ-3 (logo), PQ-4 (script de contrôle), PQ-5 (fusion de `visual`) posées le 2026-11-09 (`Retours\Q-placeholders-ordre.md`, `Q-placeholders-direction.md`, à trancher) ; P1 faite par lecture le 2026-11-09 (reste `[?]` : arbres/rochers par biome, icônes des talents, marques d'ordres ; worktree Sauron, journal commité sur `visual`) ; suivant P2 après réponse PQ-4
+- `PlaceholdersInProgress.md` : remplacement des placeholders (arbres, logos, unités, icônes, décor...), ouvert le 2026-11-08, relevé par lecture fait, rien codé ni commité ; liste vivante dans `Placeholders.txt` (à tenir à jour par TOUT chantier, règle dans `CLAUDE.md`) ; questions PQ-1 (par quoi commencer), PQ-2 (direction artistique), PQ-3 (logo), PQ-4 (script de contrôle), PQ-5 (fusion de `visual`) posées le 2026-11-09 (`Retours\Q-placeholders-ordre.md`, `Q-placeholders-direction.md`, à trancher) ; P1 faite par lecture le 2026-11-09 (reste `[?]` : arbres/rochers par biome, icônes des talents, marques d'ordres ; worktree Sauron, journal commité sur `visual`) ; P2 FAITE le 2026-11-09 (Sauron, branche visual, df6b5fa : `Tools/check_placeholders.ps1` + `placeholders_map.csv`, branché dans `quick_check`, test 10/10) ; `visual` déjà dans `main` ; suivant P3/P4 lot ressources et décor (PQ-1 = A, dix échantillons, jugement à l'écran)
 - `VolcanoInProgress.md` : volcan et Catastrophe
 - `LauncherInProgress.md` : lanceur (clos sauf L15+ et l'essai avec un ami)
 
