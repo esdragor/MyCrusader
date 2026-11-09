@@ -36,6 +36,9 @@ namespace HOLCombat
 	 * DefenderArmorBonus is armour added to the defender's (a talent in the aura), 0 by default. T6: AttackerAttackPercent
 	 * is the percent the attacker's player gained on its attack by technologies (Lames affutees, Empennage), 0 by default; it
 	 * scales the Attack (at the attacker's level) before the bonuses and the armour, like the level.
+	 * G2 (D713): the attacker's ArmorPenetration (percent) cuts the defender's armour (the talent's bonus included) before it comes off:
+	 * 50 % turns an armour of 4 into 2; the minimum of 1, the hero's factor and the Forge percent are applied after it; it never
+	 * counts against a building (HOLConstruction::GetBuildingDamage does not take it, Q2 = B).
 	 * F2: DefenderArmorPercent is the percent of the hit (after the armour) the defender's player took off by Forge armour
 	 * technologies (Maille, Barde: HOLTechnology::GetArmorStat), 0 by default; the hit stays 1 at least.
 	 */

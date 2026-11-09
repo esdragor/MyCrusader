@@ -14,5 +14,6 @@ PNG OUVERTS et vus (Saved_Tests\Screenshots\WindowsEditor\HOL\) :
 - Cosmétique sur les 3 captures : le panneau « en préparation… » reste affiché (défaut connu).
 NON VÉRIFIÉ : la visibilité du camp au repos (arbres) ; la souris physique ; les 100 XP à l'écran (journal seulement) ; la mêlée à l'œil (mêmes BUG ouverts : spin, stuck).
 
-Question (valeur par défaut codée) : voir `Retours\Q-neutrals-camp-cache.md` (où poser le camp pour qu'on le voie).
+Sauron-4 (2026-11-09 16:5x, sans C++) : réponse C de Q-neutrals-camp-cache IMPOSSIBLE par commande de test : les arbres du bosquet sont du décor de la carte, pas des sources (`hol.Sources.TakeNear 0 0` n'en coupe aucun). Repli B essayé (plan serré, zoom +6) : les Lanciers gris se voient entre les troncs mais 1 à 2 sont à moitié cachés ; deux pré-vols avec le plan serré ont échoué à l'audit Sanity (spin de mêlée, unités #8 et #9, bug D641) : scénario NON modifié, essai reste LOGIQUE SEULEMENT.
+Question (valeur par défaut codée) : voir `Retours\Q-neutrals-trees-decor.md` (clairière impossible sans C++ : commande de décor, plan serré ou camp déplacé) et `Retours\Q-neutrals-camp-cache.md`.
 Commande (à NE PAS donner avant le cadrage) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 neutrals -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`

@@ -56,6 +56,11 @@ namespace HOLGameNames
 			// AR8, translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("Crossbowman", "Arbalétrier");
 		}
+		if (TypeName == FName(TEXT("Arquebusier")))
+		{
+			// G3 (Palier 3, D713), translated in Tools/Localization/fill_po.py.
+			return LOCTEXT("Arquebusier", "Arquebusier");
+		}
 		if (TypeName == King)
 		{
 			// V5.1, translated in V5.4 (Tools/Localization/fill_po.py).
