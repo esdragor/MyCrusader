@@ -104,6 +104,16 @@ namespace HOLTechnology
 	/** T6: the statistic that raises the hits of this attack type (Melee, Ranged), NAME_None for the others (siege, hero: no technology yet). */
 	HEROESOFLIBERTY_API FName GetAttackStat(EHOLAttackType AttackType);
 
+	/** F2: the statistics the Forge's armour technologies change (InfantryArmor = Maille, CavalryArmor = Barde): a share of the hits the unit takes. */
+	inline const FName InfantryArmorStat(TEXT("InfantryArmor"));
+	inline const FName CavalryArmorStat(TEXT("CavalryArmor"));
+
+	/** F2 (Q-forge-armure, option A by default): the Forge armour statistic of a unit with these armour categories (a mask of HOLArmorCategoryBit), NAME_None for the units no armour covers (archers, crossbowmen, Peasant, heroes, siege). The one table to change is ForgeArmorCategories in HOLTechnologyRules.cpp. */
+	HEROESOFLIBERTY_API FName GetArmorStat(int32 ArmorCategoryMask);
+
+	/** F2 (Q-forge-armure, option A): whether the Forge armours lower the hits of this attack type (melee and ranged; not siege, not hero). */
+	HEROESOFLIBERTY_API bool ArmorCoversAttack(EHOLAttackType AttackType);
+
 	/** Q-chapelle-moine, Vow of Poverty (GDD 11.1): the statistic that lowers the cost of this unit type (MonkCostDiscount for the Monk), NAME_None for the others. */
 	HEROESOFLIBERTY_API FName GetCostDiscountStat(FName UnitType);
 

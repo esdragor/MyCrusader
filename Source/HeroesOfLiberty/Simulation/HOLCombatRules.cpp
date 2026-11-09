@@ -20,7 +20,7 @@ namespace HOLCombat
 		}
 	}
 
-	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel, const int32 DefenderArmorBonus, const int32 AttackerAttackPercent)
+	float GetDamage(const FHOLUnitTypeConstants& Attacker, const FHOLUnitTypeConstants& Defender, const int32 AttackerLevel, const int32 DefenderArmorBonus, const int32 AttackerAttackPercent, const int32 DefenderArmorPercent)
 	{
 		int32 Damage = 0;
 		for (const FHOLAttackBonus& Bonus : Attacker.Bonuses)

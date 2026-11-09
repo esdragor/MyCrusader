@@ -140,6 +140,16 @@ FHOLResources HOLTechnology::GetDiscountedCost(const FHOLResources& Cost, const 
 	return FHOLResources(Scale(Cost.Food), Scale(Cost.Wood), Scale(Cost.Stone), Scale(Cost.Gold));
 }
 
+FName HOLTechnology::GetArmorStat(const int32 ArmorCategoryMask)
+{
+	return NAME_None;
+}
+
+bool HOLTechnology::ArmorCoversAttack(const EHOLAttackType AttackType)
+{
+	return AttackType == EHOLAttackType::Melee || AttackType == EHOLAttackType::Ranged;
+}
+
 FName HOLTechnology::GetAttackStat(const EHOLAttackType AttackType)
 {
 	switch (AttackType)
