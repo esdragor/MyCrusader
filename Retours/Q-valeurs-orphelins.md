@@ -1,0 +1,15 @@
+# [À RÉPONDRE] Q-valeurs-orphelins : où enregistrer les 13 « provisoire » sans ligne au registre des valeurs
+
+Contexte : `python Tools\Data\make_value_sheet.py --check` (relevé dans le worktree Galadriel, `galadriel-tab`, le 2026-11-09 à 10:2x) signale `Valeurs.md` périmé et **13 fichiers orphelins** : un marqueur « provisoire / à régler » sans ligne dans `Tools\Data\ValueSheet.csv`. C'est ce qui fait échouer `quick_check -Parts values` (avec 1 échec de `value_sheet_test.py`, non diagnostiqué ici : probablement lié à `Valeurs.md` périmé). Rien n'est corrigé ni codé par cette note.
+
+Les 13 fichiers (sortie du contrôle) : `Script\AI\HOLAIHold.as`, `Script\Audio\HOLAudioPlayer.as`, `Script\Biomes\HOLBiomeApplier.as`, `Script\Biomes\HOLBiomeDecorPlan.as`, `Script\Morale\HOLMoraleRules.as`, `Script\Sites\HOLSiteRules.as`, `Script\Sites\HOLSiteVictory.as`, `Source\HeroesOfLiberty\Map\HOLSiteLayout.h`, `Simulation\HOLSiteRules.h`, `Simulation\HOLSiteRulesLibrary.h`, `Simulation\HOLSiteSubsystem.cpp`, `Simulation\HOLSiteSubsystem.h`, `Source\HeroesOfLibertyUI\HUD\HOLGameNames.h`. (Le relevé précédent citait seulement les fichiers des Sites et de `HOLGameNames.h` ; il y en a 6 de plus, Hold de l'IA, audio, biomes, moral, qui n'ont pas de ligne non plus.)
+
+## Q1 : où les enregistrer ?
+- **A (recommandé)** : une session « valeurs » ajoute dans `Tools\Data\ValueSheet.csv` une vraie ligne par réglage chiffré (Id, libellé, groupe, question, source `code`, fichier, expression régulière du nombre, état `provisoire`, décision D, § du GDD) pour les Sites sacrés, le Hold de l'IA, le moral et les biomes ; et une ligne `note.<Fichier>` (source `ignore`, la Note dit pourquoi) pour ce qui n'est pas une valeur à régler (forme provisoire, libellé de `HOLGameNames.h`, lecteur audio). Puis `python Tools\Data\make_value_sheet.py` régénère `Valeurs.md` et `Valeurs.csv`. Conséquence en jeu : aucune ; le registre redevient fidèle et `-Parts values` repasse au vert.
+- B : une seule ligne `note.*` (source `ignore`) par fichier, sans extraire les valeurs. Rapide (13 lignes), le contrôle redevient vert, mais le registre ne sait pas quelles valeurs chiffrées sont à régler.
+- C : restreindre l'expression `MARKER` de `make_value_sheet.py` (par exemple ne plus compter « provisoire » seul). Aucune ligne à écrire, mais le contrôle devient aveugle à de vrais réglages oubliés.
+- Autre : une répartition mixte (A pour les Sites sacrés, B pour le reste, par exemple).
+
+Recommandation : A pour les Sites sacrés et le moral (vraies valeurs de design), B pour `HOLGameNames.h`, `HOLAudioPlayer.as`, les biomes ; jamais C.
+
+Valeur par défaut qui serait codée (si pas de réponse) : B pour les 13 fichiers (13 lignes `note.<Fichier>` de source `ignore` dans `Tools\Data\ValueSheet.csv`, puis régénération de `Valeurs.md`), pour que `-Parts values` ne bloque plus les fusions ; une ligne à retirer par fichier quand A est fait. Ce travail n'est pas fait ici : le worktree est gelé pour la fusion, et le chantier Sites sacrés tient ces fichiers.
