@@ -653,6 +653,17 @@ Reste (file) : Q-melee-stall=A en code, sites 2-3 total, panel B, gate Essay qui
 | Elrond-1 INTEGRATEUR (sans C++) | a1fbcad9a0d509efb | HeroesOfLiberty-Elrond | tiers | essais conformes, l.55 quick_check sequence, preflight_merge hero-j8-close, liste fusion 12:40 | 10:36 |
 | Arwen-1 FINI 10:51 (81 tool_uses : HORS REGLE >80, noted) -> Arwen-2 (sans C++) | a0a33d319db1339f9 | HeroesOfLiberty-Arwen | heal-sleep | prochaine ligne sans C++ audio/outils de la file | 10:54 |
 | Elrond-1 FINI 10:50 (54 tool_uses, hors regle >45 declares mais <80 ; TaskStop) -> Elrond-2 (4e C++, ordre utilisateur 'fais G1') | a7792a62bd6e2d514 | HeroesOfLiberty-Elrond | tiers | Palier 3 G1 : colonne MinTier sur toutes les unites | 10:52 |
+## Agents du 2026-11-09 (seance AUTONOME 09:15 -> fin 13:55, arret dur des agents 13:55, alarmes 13:41 cloture + fusion groupee des que 3 branches vertes (vers 11:30), 3 agents C++ max = Celeborn, Glorfindel, Galadriel, cartes sans regeneration (lettre E-glade-sweep absente), integrateur = Elrond, main depart = 02ac688, accord utilisateur : commits + fusions dans main, jamais de push)
+| nom | id | worktree | branche | tache | lancement |
+|---|---|---|---|---|---|
+| Glorfindel-1 (C++1) | a0b8c5f8904cde59b | HeroesOfLiberty-Glorfindel | net-playtest | PRIORITE 1 net 15 rouges : rejouer net sur main SEUL, puis bisecter SiteCount replique ; puis S10 Victoire sacree | 09:20 |
+| Celeborn-1 (C++2) | ae6f7ebf38fe32b3e | HeroesOfLiberty-Celeborn | hero-j8-close | BUG-melee-stuck-attack (Q-melee-stall=A deja code 3fd4ac7), conclusion 120/150/250 | 09:20 |
+| Galadriel-1 (C++3) | af35105fe8cdb8e78 | HeroesOfLiberty-Galadriel | galadriel-tab | Legions suite apres L13 (LegionsInProgress.md) | 09:20 |
+| Elrond-1 INTEGRATEUR (sans C++) | a0bd44b1380856ef8 | HeroesOfLiberty-Elrond | tiers | Palier 3 G3 Arquebusier / G4 surcharge par faction ; fusion groupee vers 11:30 | 09:20 |
+| Arwen-1 (sans C++) | ac60e21412c097433 | HeroesOfLiberty-Arwen | heal-sleep | D751 l'IA marche en groupe a la vitesse du plus lent (test rouge marche de vague) ; sinon Neutres N6/N7 | 09:20 |
+| Faramir-1 (sans C++) | afa1e32c1c35ac24f | HeroesOfLiberty-Faramir | fog | pan_exposure des scenarios qground (camera 2 images avant le clic), puis rejeu unit_stats_attack(_enemy) | 09:20 |
+| Haldir-1 (sans C++) | a02f1ea6505fdc694 | HeroesOfLiberty-Haldir | maps | common.py spawn_sites/export_layout, preparation regeneration des 7 cartes (sans la lancer) | 09:20 |
+| Sauron-1 (sans C++) | ab6f2bf7d622670f6 | HeroesOfLiberty-Sauron | visual | PlaceholdersInProgress P1 (Placeholders.txt) ; D749 reporte dans VisualInProgress.md | 09:20 |
 | Faramir-1 (sans C++) | a563a484222380e51 | HeroesOfLiberty-Faramir | fog | ai_evolving panel hide/show (Q=B), siege IA, essais fog | 10:36 |
 | Haldir-1 (sans C++) | aa1b485f7a85b5067 | HeroesOfLiberty-Haldir | maps | sites 2-3 au total (Q-sites-nombre), Crown.umap, perf en lecture | 10:36 |
 | Haldir-1 FINI 10:49 (47 tool_uses, ok) -> Haldir-2 (sans C++) | aa96045569d7cdf9a | HeroesOfLiberty-Haldir | maps | Hinterland relays lent (sites_test), hinterland_paths | 10:50 |
