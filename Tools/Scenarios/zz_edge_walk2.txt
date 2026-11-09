@@ -8,16 +8,22 @@ hol.Camera.Focus -23000 0
 frames 40
 hol.Select.Own
 frames 5
+hol.Camera.Focus -23000 0
+frames 2
 hol.Select.OrderGround -25000 0
 frames 5
 wait 14
 hol.Units.Report 25
+hol.Camera.Focus -23000 0
+frames 2
 hol.Select.OrderGround -25000 5000
 frames 5
 wait 12
 hol.Units.Report 25
 hol.Camera.Focus -23000 -20000
 frames 40
+hol.Camera.Focus -23000 -20000
+frames 2
 hol.Select.OrderGround -25000 -25000
 frames 5
 wait 50
