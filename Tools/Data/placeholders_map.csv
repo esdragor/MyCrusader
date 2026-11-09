@@ -1,0 +1,41 @@
+Type,Table,Pattern
+LightInfantry,UnitTypes,Light infantry
+LightInfantryNanite,UnitTypes,Light infantry
+Archer,UnitTypes,^- Archer Aube
+Peasant,UnitTypes,^- Paysan Aube
+Zombie,UnitTypes,^- Zombie
+Spearman,UnitTypes,^- Lancier Aube
+ManAtArms,UnitTypes,^- Garde \(Homme d.armes\) Aube
+King,UnitTypes,^- Roi
+Hero,UnitTypes,^- H.ros Paladin-Commandant
+Crossbowman,UnitTypes,^- Arbal.trier Aube
+Monk,UnitTypes,^- Moine \(commun\)
+Ram,UnitTypes,^- B.lier Aube
+Mangonel,UnitTypes,^- Mangonneau Aube
+LightCavalry,UnitTypes,^- Cavalier l.ger Aube
+MainCentre,BuildingTypes,^- Forum \(Centre principal\) Aube
+House,BuildingTypes,^- Maison
+LumberCamp,BuildingTypes,^- Camp de b.cherons
+MiningCamp,BuildingTypes,^- Camp de mineurs
+Mill,BuildingTypes,^- Moulin
+Barracks,BuildingTypes,^- Caserne
+Farm,BuildingTypes,^- Ferme \(b.timent\)
+Sanctuary,BuildingTypes,^- Sanctuaire de l.Aube
+ArcheryRange,BuildingTypes,^- Champ de tir
+Market,BuildingTypes,^- March.
+SiegeWorkshop,BuildingTypes,^- Atelier de si.ge
+Chapel,BuildingTypes,^- Chapelle \(Aube\)
+Stable,BuildingTypes,^- .curie
+Forge,BuildingTypes,^- Forge
+Tree,SourceTypes,^- Arbre \[
+BerryBush,SourceTypes,^- Buisson de baies
+StoneVein,SourceTypes,^- Filon de pierre normal
+GoldVein,SourceTypes,^- Filon d.or normal
+StoneVeinSmall,SourceTypes,^- Filon de pierre petit
+StoneVeinMedium,SourceTypes,^- Filon de pierre moyen
+StoneVeinBig,SourceTypes,^- Filon de pierre gros
+GoldVeinSmall,SourceTypes,^- Filon d.or petit
+GoldVeinMedium,SourceTypes,^- Filon d.or moyen
+GoldVeinBig,SourceTypes,^- Filon d.or gros
+FarmField,SourceTypes,^- Champ de ferme
+Arquebusier,UnitTypes,^- Arquebusier

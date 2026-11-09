@@ -29,6 +29,8 @@ hol.Select.Grid 1
 waitlog Production: slot 0 queued Mangonel
 waitlog Production: Mangonel of slot 0 done at step
 frames 30
+hol.Camera.FocusNear 2800 800
+frames 2
 hol.Select.ClickUnit -2
 waitlog Selection: Ram
 hol.Select.OrderNear 3400 1500

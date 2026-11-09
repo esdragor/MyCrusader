@@ -76,6 +76,8 @@ note Cas 2 (récolte) : six Paysans vont et viennent entre le filon et le centre
 wait 25
 hol.Units.Spawn 1 -13700 2400 0 Peasant 10
 wait 0.5
+hol.Camera.Focus -12800 2400
+frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Peasant #
 hol.Build.PlaceNear House 2000 2400

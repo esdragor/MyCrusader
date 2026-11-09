@@ -1,0 +1,16 @@
+# Deconnexion, mode TENIR (D717-D718) : Alice (toi) + une IA contre Bob + une IA. Bob est parti des le debut (hol.Match.StartWaitSeconds 1 : le serveur ne l attend plus, vraie chaine KeepMissingSlot). Pendant la fenetre (60 s ici, 180 s en vrai) l IA garde son siege en mode "hold" : elle fait vivre la base (Paysans en file, constructions) mais ne lance aucune vague. 3 minutes au plus. Les notes sont a la fin : le panneau du scenario grandit et recouvrirait le bandeau de Bob.
+hol.Match.DisconnectWindowSeconds 60
+frames 90
+hol.Match.StartWaitSeconds 1
+waitlog slot 1 (Bob) held by AI
+hol.Camera.FocusSlot 1
+frames 120
+capture hold_start
+hol.Disconnect.Report
+wait 20
+capture hold_20s
+wait 20
+capture hold_40s
+hol.Disconnect.Report
+waitkey Entree : fin du scenario (la fenetre n est pas finie : l IA tient encore le siege)
+note MODE TENIR : camera sur la base de Bob. Pastille "Connexion perdue" dans la table des joueurs, bandeau "Bob : connexion perdue" avec le compte a rebours qui descend (hold_start, hold_20s, hold_40s : le temps baisse). L IA garde le siege : les Paysans sortent un a un vers les baies, aucune troupe ne sort vers toi. Disconnect.Report dit "AI mode hold".

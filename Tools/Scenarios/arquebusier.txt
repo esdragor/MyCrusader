@@ -18,6 +18,8 @@ hol.Camera.FocusNear 4700 0
 hol.Camera.Zoom 3
 frames 30
 note 1. Un Homme d'armes ennemi (rouge, en haut) et ton Arquebusier (bleu, en bas, 14 m). Tu cliques sur l'Homme d'armes : ses PV sont 155/155.
+hol.Camera.FocusNear 4700 0
+frames 2
 hol.Select.ClickUnit -1 enemy
 frames 10
 hol.HUD.Report
@@ -25,10 +27,16 @@ hol.Combat.Report 1
 waitlog ManAtArms slot 1 hp 155/155
 capture arq_before
 note 2. Tu cliques sur l'Arquebusier, puis clic droit sur l'Homme d'armes : l'Arquebusier tire (portee 15 m, un coup toutes les 4 s).
+hol.Camera.FocusNear 4700 0
+frames 2
 hol.Select.ClickUnit -1
 frames 10
+hol.Camera.FocusNear 4700 0
+frames 2
 hol.Select.ClickUnit -1 enemy order
 wait 2.5
+hol.Camera.FocusNear 4700 0
+frames 2
 hol.Select.ClickUnit -1 enemy
 frames 10
 hol.Combat.Report 1

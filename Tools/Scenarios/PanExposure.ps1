@@ -18,8 +18,9 @@ function Get-PanExposure([string[]] $Lines, [int] $Max = 10) {
         if ($Line -match '^hol\.Camera\.Focus\w*\b') { $Frames = 0; continue }
         if ($Line -match '^frames\s+(\d+)') { if ($Frames -ge 0) { $Frames += [int]$Matches[1] }; continue }
         if ($Line -match '^wait\s+([\d\.]+)') { if ($Frames -ge 0) { $Frames += [int]([double]$Matches[1] * 60) }; continue }
-        if ($Line -match '^hol\.Select\.(LeftClickGround|OrderGround|ClickGround|AttackMove|BoxGround|Banner)\b' -and $Frames -gt $Max) {
-            $Offenders += "line ${Number}: '$Line' comes $Frames frames after the camera was placed (max $Max): a cursor at the screen's edge or a held key pans the camera meanwhile and the point leaves the screen"
+        if ($Line -match '^hol\.Select\.(LeftClickGround|OrderGround|ClickGround|AttackMove|BoxGround|Banner|ClickUnit)\b' -and $Frames -gt $Max) {
+            $What = if ($Matches[1] -eq 'ClickUnit') { "the unit leaves the screen (hol.Select.ClickUnit finds nothing, the selection stays empty)" } else { "the point leaves the screen" }
+            $Offenders += "line ${Number}: '$Line' comes $Frames frames after the camera was placed (max $Max): a cursor at the screen's edge or a held key pans the camera meanwhile and $What"
         }
     }
     return $Offenders
