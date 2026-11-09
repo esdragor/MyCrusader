@@ -132,7 +132,12 @@ namespace UE::HeroesOfLiberty::Orders
 	/** Its speed in its order (cm/s): in a group's formation, no faster than the slowest of the group's walkers (J7a.4). */
 	float GetOrderWalkSpeed(const FHOLUnitTypeConstants& Constants, const int32 Owner, const FHOLMoveOrderFragment& Order)
 	{
-		return HOLFormation::GetMarchSpeed(GetTypeSpeed(Constants, Owner), Order.bFormation ? Order.MarchSpeed : 0.f) * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
+		float March = Order.bFormation ? Order.MarchSpeed : 0.f;
+		if (Order.bFormation && Order.PaceCap > 0.f)
+		{
+			March = March > 0.f ? FMath::Min(March, Order.PaceCap) : Order.PaceCap;
+		}
+		return HOLFormation::GetMarchSpeed(GetTypeSpeed(Constants, Owner), March) * FMath::Clamp(SpeedScale, MinSpeedScale, MaxSpeedScale);
 	}
 
 	/**
@@ -1683,6 +1688,7 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			// A new order lets its formation place go; a group's formation move gives it a new one (J7a.4).
 			MoveOrder.bFormation = bFormation;
 			MoveOrder.MarchSpeed = Slowest;
+			MoveOrder.PaceCap = 0.f;
 			MoveOrder.PlaceHold.Clear();
 			MoveOrder.FrontYaw = FrontYaw;
 			MoveOrder.bFacesFront = false;
@@ -2636,6 +2642,7 @@ void UHOLUnitOrderProcessor::AdvanceBlocks(FMassEntityManager& EntityManager, co
 				{
 					UE_LOG(LogHOLSimulation, Display, TEXT("Block march: %sunit %d held the block %d steps, left it after %d steps"), *Block.GetTag(), Unit, HOLFormation::BlockMemberStuckSteps, Block.Steps);
 				}
+				EntityManager.GetFragmentDataChecked<FHOLMoveOrderFragment>(Entity).PaceCap = Block.Pace;
 				ToFinalLeg(Serial, Entity, Block.Places[Unit]);
 				Block.Entities.RemoveAt(Unit);
 				Block.Offsets.RemoveAt(Unit);
