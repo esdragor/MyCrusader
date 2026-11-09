@@ -34,12 +34,12 @@ def main():
 
     # The detector: a refusal of the generator (here steppe.RoomError, raised by the map module's own sources(), the way the real Steppe raises it) is reported as a refusal
     # with its message, not raised and not "ok".
-    from maps import plain  # noqa: E402
+    from maps import plain as plain_module  # noqa: E402
     from maps import steppe  # noqa: E402
 
     class Refusing:
         def __getattr__(self, name):
-            return getattr(plain, name)
+            return getattr(plain_module, name)
 
         @staticmethod
         def sources(recipe):
