@@ -3,6 +3,8 @@ waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
 hol.Cheat.Population 60
+# Z (ManAtArms, Garde noire) opens at tier 1 = hero level 3 ("tier too low" otherwise, the grid cell is greyed): same console XP as tiers.txt.
+hol.Hero.SetXP 0 600
 hol.Prod.BuildTime 2
 frames 2
 hol.Camera.FocusNear 2500 2500
