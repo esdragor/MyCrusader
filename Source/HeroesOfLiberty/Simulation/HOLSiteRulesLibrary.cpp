@@ -67,3 +67,20 @@ int32 UHOLSiteRulesLibrary::GetDecaySteps()
 {
 	return HOLSite::DefaultDecaySteps;
 }
+
+
+void UHOLSiteRulesLibrary::VictoryStepSite(const int32 Leader, const int32 Held, const int32 Winner, const TArray<int32>& LastOwners,
+	const TArray<int32>& OwnerBySite, const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, const int32 VictorySteps, int32& OutLeader,
+	int32& OutHeld, int32& OutWinner, TArray<int32>& OutLastOwners)
+{
+	FHOLSiteVictoryState State;
+	State.Leader = Leader;
+	State.Held = Held;
+	State.Winner = Winner;
+	State.LastOwners = LastOwners;
+	const FHOLSiteVictoryState Next = HOLSite::VictoryStep(State, OwnerBySite, ContestedBySite, TeamBySlot, VictorySteps);
+	OutLeader = Next.Leader;
+	OutHeld = Next.Held;
+	OutWinner = Next.Winner;
+	OutLastOwners = Next.LastOwners;
+}

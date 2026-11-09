@@ -42,4 +42,13 @@ public:
 	 */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site", meta = (WorldContext = "WorldContextObject"))
 	static void GetVictoryCount(const UObject* WorldContextObject, int32& OutLeader, int32& OutSecondsLeft, bool& bOutFrozen, int32& OutWinner);
+
+	/**
+	 * S10: HOLSite::VictoryStep (the simulation's victory count) for the script, so that Script/Sites/HOLSiteVictory.as is checked against it
+	 * (Test_SiteVictoryScriptAndSimulationAgree): the state in (leader, steps held, winner, owners at the last step), the step's inputs, the state out.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site")
+	static void VictoryStepSite(int32 Leader, int32 Held, int32 Winner, const TArray<int32>& LastOwners, const TArray<int32>& OwnerBySite,
+		const TArray<int32>& ContestedBySite, const TArray<int32>& TeamBySlot, int32 VictorySteps, int32& OutLeader, int32& OutHeld, int32& OutWinner,
+		TArray<int32>& OutLastOwners);
 };
