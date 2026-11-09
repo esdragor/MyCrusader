@@ -24,3 +24,5 @@ Lancer UNE commande (la carte d'essai est un fichier non commité : `Content\Map
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\make_glade_sweep.ps1` (une minute, éditeur seul) puis
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 glade_sweep -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 Durée : environ 2 min. Réglages (une ligne à changer) : `GLADE_FORCE` / `GLADE_SCALE` / `GLADE_REACH` de `Tools\Editor\maps\common.py` (variables d'environnement `HOL_GLADE_FORCE`, `HOL_GLADE_SCALE`, `HOL_GLADE_REACH`) ; défaut codé = aucun changement (`GLADE_FORCE` 0, les cartes restent les mêmes).
+
+Reponse (utilisateur, 2026-11-09, apres play.ps1 glade_sweep) : OK, « tout est bien » : aucun defaut vu dans les 8 variantes. Aucune lettre choisie : le reglage reste GLADE_FORCE 0 (cartes inchangees) tant qu'une lettre (ou « plus/moins de clairieres ») n'est pas donnee ; la regeneration des cartes reste une tache a part.
