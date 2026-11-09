@@ -42,7 +42,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou pé
 
 ## Haldir — `maps` — Cartes (`MapsInProgress.md`)
 - [?] (attend l'utilisateur) Choisir une lettre A-H dans `Retours\E-glade-sweep.md` (clairières, essai non joué, resynchroniser Haldir d'abord) et répondre à `Q-sites-nombre.md` (défaut 1 anneau).
-- [ ] (C++) Sites sacrés S4 : classe AHOLSiteLayout + test Map.Table ; puis spawn_sites/export_layout dans common.py ; `SacredSitesInProgress.md`.
+- [x] FAIT (sans C++) Sites sacrés S4 : AHOLSiteLayout + Map.Table (c2f6a90), spawn_sites/export_layout/make_map dans common.py (Haldir-8, 30ea608 rouge, cb6e256 vert, 2026-11-09) ; reste pour la régénération : `bSitesLaidByMaps` = true (une ligne C++ dans HOLMapTableTests.cpp), lettre glade_sweep, réponse à `Q-sites-arbres-zone.md` (défaut A) ; `SacredSitesInProgress.md`.
 - [B] (sans C++, éditeur seul) UNE régénération des cartes (plan P1-P5, `MapsInProgress.md`) après lettre + Q-sites-nombre + AHOLSiteLayout ; puis perf S5 à 14 400 arbres, aiduel. (2026-11-08 Haldir-6 : lenteur de Hinterland résolue, sites_test complet 24 s, hinterland_paths Petite PASS ; reste hinterland_paths Moyenne/Grande à rejouer après régénération.)
 - [?] (attend l'utilisateur) El Dorado : valeurs finales après CQ2 (`hol.Terrain.MarshSpeedPercent`, `HOL_ELDORADO_GOLD`), marche en bloc dans le marais non testée, essai map_eldorado.
 
@@ -51,9 +51,9 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou pé
 - [?] (attend l'utilisateur) Biomes B4 : colonne biome de Maps.csv après son jugement des cinq looks (Q2 = B) ; `E-biome_decor_tour.md`, `Q-biomes-look.md`.
 
 ## Transverse (processus et outils, worktree libre)
-- [ ] (sans C++) Refaire en essais conformes les essais ratés du 2026-10-31 encore ouverts (duel_challenge, neutrals, map_eldorado, market, talents, fog_orders, fog_trees) ; vérifier à l'étape 0 lesquels restent.
+- [ ] (sans C++) Refaire en essais conformes les essais ratés du 2026-10-31 encore ouverts (duel_challenge, neutrals, map_eldorado, market, talents, fog_orders, fog_trees) ; vérifier à l'étape 0 lesquels restent. 2026-11-09 (Sauron-tools) : duel_challenge, talents, market, fog_orders, map_eldorado déjà refaits et VU À L'ÉCRAN (Auto_Journey_Retours / Jour) ; duel_challenge_accept refait (`Retours\E-duel_challenge_accept.md`, preflight PASS, GESTE interne) ; restent LOGIQUE SEULEMENT : neutrals (tremblement, rouge ~2/5, mêlée) et fog_trees (gris à juger, grésillement non reproduit).
 - [ ] (sans C++, outil) L8-9 : sync_worktrees.ps1 au début ET à la fin de chaque Auto_Journey ; ajouter l'étape dans `Auto_Journey.md` (fait en partie le 2026-11-06).
-- [ ] (sans C++, outil) `quick_check -Parts tests` seul joue aussi une « sequence » (7 frames), cause non cherchée.
+- [x] (sans C++, outil) `quick_check -Parts tests` seul joue aussi une « sequence » (7 frames) : FAIT, déjà corrigé par 6437678 (GameNeeded, branche fog) ; vérifié 2026-11-09 de bout en bout (1107/1107 PASS en 239 s, « game launch done at 1 s ») ; test d'outil `Tools\Tests\quick_check_tests_only_test.ps1` (7cd5c62, branche visual, rouge sur la version d'avant). Reste : fusionner fog + visual dans main.
 - [ ] (2026-11-07 reponse utilisateur, EN TETE, sans C++, Faramir/fog) Q-scenario-panel-covers-world = B : panel hide/show autour des captures ai_evolving_normal et _hard ; preflight + PNG ouverts.
 - [ ] (2026-11-07 reponse utilisateur, EN TETE, sans C++, Haldir/maps) Q-sites-nombre = 2 a 3 sites AU TOTAL par carte, variable selon la carte : adapter sites(recipe) (common.ring_sites) et sites_test.py ; la classe C++ AHOLSiteLayout reste a faire.
 - [ ] (2026-11-07 reponse utilisateur, EN TETE, C++ test, Celeborn/hero-j8-close) Q-melee-stall = A : l'audit Sanity.Stall tolere la fin d'une marche FinalLeg (test rouge d'abord) ; puis mesurer SlotBlockedStopDistance 120/150 x8 sur melee_stuck, melee_stuck_old, watch (Celeborn-19 : 250 = fautif de melee_stuck mais correctif de watch) ; hero-j8-close 289a1f4 reste hors main.
