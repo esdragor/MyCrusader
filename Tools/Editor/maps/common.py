@@ -955,6 +955,32 @@ def grove_attempt(rng, count, compact):
     return centred(points)
 
 
+# 2026-11-09 (E-glade-sweep answered: "a different style of glades per map"): the eight styles of the sweep and the style of each map. GLADE_STYLES = letter -> (glades, scale,
+# reach) as GLADE_FORCE / GLADE_SCALE / GLADE_REACH; GLADE_STYLE_BY_MAP = the map's style by recipe.map_name (ONE LINE PER MAP to change; a map not listed = GLADE_STYLE_DEFAULT = A =
+# today's maps). The values are the Haldir-9 RECOMMENDATION, to be fixed by the user (Retours\Q-glade-style.md). make_map calls use_glade_style(recipe.map_name) first. Only the groves the
+# generator draws are touched: the forests painted by hand (Tools/Data/MapEdits) are not.
+GLADE_BASE = (GLADE_FORCE, GLADE_SCALE, GLADE_REACH)  # as loaded (the HOL_GLADE_* variables included): what the picks file's signature is computed with, and what a variable keeps
+GLADE_STYLES = {"A": (0, 1.0, 0.55), "B": (1, 1.5, 0.55), "C": (1, 2.5, 0.15), "D": (2, 1.5, 0.55), "E": (3, 1.5, 0.55), "F": (3, 1.5, 0.35), "G": (5, 1.0, 0.6), "H": (2, 2.5, 0.3)}
+GLADE_STYLE_DEFAULT = "A"
+GLADE_STYLE_BY_MAP = {"Forest": "C", "Plain": "D", "Steppe": "G", "Cols": "F", "Fords": "B", "ElDorado": "E", "Crown": "H", "Hinterland": "A"}
+
+
+def glade_style(map_name):
+    return GLADE_STYLE_BY_MAP.get(map_name, GLADE_STYLE_DEFAULT)
+
+
+def use_glade_style(map_name):
+    """Sets GLADE_FORCE / GLADE_SCALE / GLADE_REACH to the map's style (the HOL_GLADE_* variables, when one is set, win: the sweep and its tests)."""
+    global GLADE_FORCE, GLADE_SCALE, GLADE_REACH
+    if any(name in os.environ for name in ("HOL_GLADE_FORCE", "HOL_GLADE_SCALE", "HOL_GLADE_REACH")):
+        values = GLADE_BASE
+    else:
+        values = GLADE_STYLES[glade_style(map_name)]
+    if values != (GLADE_FORCE, GLADE_SCALE, GLADE_REACH):
+        GLADE_FORCE, GLADE_SCALE, GLADE_REACH = values
+        SHAPES.clear()  # the shape cache does not know the knobs
+
+
 SHAPES = {}  # (kind, seed, count, reach) -> offsets: the same shape is asked for again and again by the layout's checks
 
 
@@ -967,6 +993,8 @@ def grove_local(seed, count, reach=None):
         return SHAPES[("grove", seed, count, bound)]
     picks = grove_picks()
     pick_key = "%d:%d:%r" % (seed, count, bound)
+    if (GLADE_FORCE, GLADE_SCALE, GLADE_REACH) != GLADE_BASE:
+        pick_key += ":g%d/%r/%r" % (GLADE_FORCE, GLADE_SCALE, GLADE_REACH)  # the attempt chosen depends on the style: no leak between styles (style A keeps its old keys)
     attempt = picks.get(pick_key)
     if attempt is not None:
         # Haldir-6, 2026-11-08: the search below tries up to 48 attempts (Hinterland Small: a minute in plain Python); the attempt it
@@ -1010,7 +1038,7 @@ def grove_signature():
     import hashlib
     import inspect
     parts = [inspect.getsource(function) for function in (mix_seed, Rng, centred, big_room, grove_attempt, grove_search)]
-    parts += [repr(value) for value in (GROVE_SPACING, GROVE_SPACING_SLACK, GROVE_NEVER, GROVE_AREA, GROVE_GLADES, GLADE_RADIUS, GLADE_SCALE, GLADE_FORCE, GLADE_REACH, PATH_HALF_WIDTH, MASK32)]
+    parts += [repr(value) for value in (GROVE_SPACING, GROVE_SPACING_SLACK, GROVE_NEVER, GROVE_AREA, GROVE_GLADES, GLADE_RADIUS, GLADE_BASE[1], GLADE_BASE[0], GLADE_BASE[2], PATH_HALF_WIDTH, MASK32)]
     return hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
@@ -1994,6 +2022,7 @@ def make_map(recipe, module, on_saved):
     if slot_class is None or bounds_class is None or layout_class is None:
         raise RuntimeError("Missing HOLStartSlot, HOLMapBounds or HOLSourceLayout (is the HeroesOfLiberty module compiled?)")
 
+    use_glade_style(recipe.map_name)  # the map's own style of glades (GLADE_STYLE_BY_MAP)
     level_subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
     if not level_subsystem.new_level(recipe.map_path, False):
         raise RuntimeError("Could not create " + recipe.map_path)
