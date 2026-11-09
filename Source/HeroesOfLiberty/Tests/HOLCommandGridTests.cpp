@@ -496,7 +496,9 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Range, 1);
 		TestTrue(TEXT("Archery range, A: produce an Archer"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Archer")));
 		TestTrue(TEXT("Archery range, Z: produce a Crossbowman"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("Crossbowman")));
-		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		const FHOLGridCommand E = HOLCommandGrid::GetCommand(Range, 2);
+		TestTrue(TEXT("Archery range, E: produce an Arquebusier (G3)"), E.Command == EHOLGridCommand::Produce && E.TypeName == FName(TEXT("Arquebusier")));
+		for (int32 Cell = 3; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
 			TestTrue(*FString::Printf(TEXT("Archery range, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Range, Cell).IsNone());
 		}
