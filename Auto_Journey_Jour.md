@@ -783,3 +783,15 @@ Q1/Q5/Q10 : appliquee : fiches E-* VU A L'ECRAN avec PNG ouverts ; essais donnes
 L7-6 : NON appliquee : aucun essai a geste reel ni son entendu ; les 5 essais restent GESTE: interne.
 L4-14 : en cours : sync_worktrees.ps1 et session_gate -Phase Close lances a 13:13+.
 NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit pas tuer son propre build (corrige, a rejouer sur un vrai build) ; (2) une mesure N=8 d'un agent ne vaut pas une preuve : exiger un second agent sur le meme binaire avant de garder un defaut (KeepStuckCount 8/8 contre 5/8) ; (3) `effect_measure.ps1 -Order` en `powershell -File` recoit une seule chaine : passer par `repeat_scenario.ps1` par scenario ; (4) quand la file sans C++ est vide au milieu de la matinee, les worktrees restent libres plutot que de recevoir un travail invente : preparer les lignes sans C++ a la fin de la seance precedente.
+
+## Agents du 2026-11-09 soir (seance INTERACTIVE 16:12 -> fin 18:11, arret dur des agents 17:40, alarmes 17:41 fusion groupee + 17:56 cloture, 3 agents C++ max = Elrond, Galadriel, Celeborn, cartes INCLUSES (regeneration = tache a part, attend le choix de style Q-glade-style), integrateur = Elrond apres fusion, main depart = 6c001f6, accord utilisateur : commits + fusions dans main, jamais de push ; veilleur 12ebac37 toutes les 5 min)
+| nom | id | worktree | branche | tache | lancement |
+|---|---|---|---|---|---|
+| Elrond-1 (C++) | ab2dbd071202ba465 | HeroesOfLiberty-Elrond | tiers | Palier 3 G2 penetration d'armure puis G3 Arquebusier | 16:15 |
+| Galadriel-1 (C++) | a0b6ada2dfdf4d896 | HeroesOfLiberty-Galadriel | galadriel-tab | Forge F2 verif sens B, infobulles stats, Legions L4 etape 1 | 16:15 |
+| Celeborn-1 (C++) | a5030a4d5d4339c72 | HeroesOfLiberty-Celeborn | hero-j8-close | spin de melee residuel (D641), puis D617 | 16:15 |
+| Glorfindel-1 (sans C++) | a2f942648f77b796e | HeroesOfLiberty-Glorfindel | net-playtest | scenarios Deconnexion disconnect_hold/team/1v1/pause | 16:15 |
+| Haldir-1 (sans C++) | a1c0b4678140c05a1 | HeroesOfLiberty-Haldir | maps | SITES_CLEAR_SOURCES, style de clairiere par carte, glade_sweep, Q-glade-style | 16:15 |
+| Sauron-1 (sans C++) | a4ca3cf5b85d197be | HeroesOfLiberty-Sauron | visual | check_placeholders.ps1 dans quick_check, Placeholders P2 | 16:15 |
+| Arwen-1 (sans C++) | aa39dc14c1be940c9 | HeroesOfLiberty-Arwen | d751-root | valeurs orphelins ValueSheet (values vert), puis Neutres N6/N7 | 16:15 |
+| Faramir-1 (sans C++) | a4e5f0e300b88d793 | HeroesOfLiberty-Faramir | fog | panel hide/show ai_evolving, scenarios fog_orders_flicker/zz_edge_walk | 16:15 |
