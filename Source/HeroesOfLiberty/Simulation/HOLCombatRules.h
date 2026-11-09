@@ -532,7 +532,7 @@ namespace HOLCombat
 	 */
 	inline bool IsPlaceWalledIn(const FVector2D& SelfWhere, const float SelfRadius, const FVector2D& PlaceWhere, TConstArrayView<FBody> Others)
 	{
-		return false; // STUB (Celeborn-24): the test is red first
+		return IsBoxedIn(SelfWhere, SelfRadius, PlaceWhere, Others);
 	}
 
 	/** D641 (hol.Combat.ClaimPlace): the rear flank (a 600 cm tour round the line) is suspended while the soldier holds a claimed place that is within MaxDistance (400 cm). */

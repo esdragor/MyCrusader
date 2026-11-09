@@ -406,11 +406,11 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		{
 			TArray<HOLCombat::FBody> Friends;
 			TestFalse(TEXT("a place with nobody round the way: not walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
-			Friends.Add({ FVector2D(100., 125.), 55.f });
+			Friends.Add({ FVector2D(60., 125.), 55.f });
 			TestFalse(TEXT("a friend on one side of the way to the place: not walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
-			Friends.Add({ FVector2D(100., -140.), 55.f });
+			Friends.Add({ FVector2D(60., -140.), 55.f });
 			TestTrue(TEXT("friends at 125 and 140 cm on both sides of the way to the place: walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
-			Friends[1].Where = FVector2D(100., -400.);
+			Friends[1].Where = FVector2D(60., -400.);
 			TestFalse(TEXT("the second friend 400 cm off: the way is open"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
 			// The trace of melee_stuck run4 #11: two friends ahead 10 cm apart on one side of the line to the place close it (their gap takes no body of 110).
 			TArray<HOLCombat::FBody> Wall;
