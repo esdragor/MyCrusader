@@ -10,6 +10,8 @@ hol.Select.Own
 frames 5
 hol.Camera.Focus -22000 0
 frames 30
+hol.Camera.Focus -22000 0
+frames 2
 hol.Select.OrderGround -25000 0
 wait 14
 hol.Units.Report 25
@@ -17,6 +19,8 @@ capture edge4m_ouest
 hol.Nav.Units 3
 hol.Camera.Focus 0 21500
 frames 30
+hol.Camera.Focus 0 21500
+frames 2
 hol.Select.OrderGround 0 25000
 wait 24
 hol.Units.Report 25
@@ -24,6 +28,8 @@ capture edge4m_nord
 hol.Nav.Units 3
 hol.Camera.Focus 22000 0
 frames 30
+hol.Camera.Focus 22000 0
+frames 2
 hol.Select.OrderGround 25000 0
 wait 24
 hol.Units.Report 25
@@ -31,6 +37,8 @@ capture edge4m_est
 hol.Nav.Units 3
 hol.Camera.Focus 0 -21500
 frames 30
+hol.Camera.Focus 0 -21500
+frames 2
 hol.Select.OrderGround 0 -25000
 wait 24
 hol.Units.Report 25
