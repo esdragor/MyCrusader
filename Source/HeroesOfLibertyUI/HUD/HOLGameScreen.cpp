@@ -1699,19 +1699,32 @@ namespace
 
 FString UHOLGameScreen::DescribeStatsTip() const
 {
-	return ShownStatsTip.IsEmpty() || !SelectionStats || SelectionStats->GetVisibility() != ESlateVisibility::Visible || SelectionStats->GetToolTipText().IsEmpty() ? FString(TEXT("none")) : ShownStatsTip;
+	// One tooltip per shown statistic: only the chips that are visible AND carry a tooltip text are listed.
+	TArray<FString> Parts;
+	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		for (int32 Index = 0; Index < SelectionStatChips.Num() && Index < ShownStatTipList.Num(); ++Index)
+		{
+			UCommonTextBlock* Chip = SelectionStatChips[Index];
+			if (Chip && Chip->GetVisibility() == ESlateVisibility::Visible && !Chip->GetToolTipText().IsEmpty())
+			{
+				Parts.Add(ShownStatTipList[Index]);
+			}
+		}
+	}
+	return Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT(" | "));
 }
 
 void UHOLGameScreen::HideUnitStats()
 {
 	ShownStats.Reset();
 	ShownStatsTip.Reset();
-	if (SelectionStats &&SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
+	ShownStatTipList.Reset();
+	if (SelectionStats && SelectionStats->GetVisibility() != ESlateVisibility::Collapsed)
 	{
 		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
 	}
 }
-
 void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 {
 	// One unit selected (not a hero: his statistics come from his level): its attack with the bonus of the technologies researched
@@ -1741,71 +1754,96 @@ void UHOLGameScreen::RefreshUnitStats(const FHOLUnitView* Unit)
 	const int32 BuildingMode = CVarUnitStatsBuilding.GetValueOnGameThread();
 	const bool bBuildingOnly = BuildingMode >= 1 && !bStrikes && Row->BuildingAttack > 0;
 	const bool bBuildingExtra = BuildingMode >= 2 && bStrikes && Row->BuildingAttack > 0 && Row->BuildingAttack != Row->Attack;
+	// Each statistic of the block is its own text block with its own hover tooltip (REGLAGE of unit_stats_attack, 2026-11-09).
 	TArray<FText> Lines;
 	TArray<FString> Plain;
+	TArray<FText> Tips;
+	TArray<FString> TipPlain;
+	const auto AddStat = [&](const FText& Line, const FString& PlainLine, const FText& Tip, const FString& PlainTip)
+	{
+		Lines.Add(Line);
+		Plain.Add(PlainLine);
+		Tips.Add(Tip);
+		TipPlain.Add(PlainTip);
+	};
+	const FText AtLeastOne = LOCTEXT("TipAtLeastOne", "(1 au minimum)");
 	if (bBuildingOnly)
 	{
-		Lines.Add(FText::Format(LOCTEXT("StatBuildingAttack", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))));
-		Plain.Add(FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
+		AddStat(FText::Format(LOCTEXT("StatBuildingAttack", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
+			FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))),
+			FText::Format(LOCTEXT("TipBuildingAttack", "Dégâts de chaque coup contre un bâtiment : {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
+			FString::Printf(TEXT("building attack: hits a building for %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
 	}
 	if (bStrikes)
 	{
-		Lines.Add(Percent != 0 ? FText::Format(LOCTEXT("StatAttackBonus", "Attaque {0} (+{1})"), FormatStat(Attack), FormatStat(Bonus))
-			: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)));
-		Plain.Add(Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)));
+		// The tooltip of the attack: its base, the technologies' bonus, the reach.
+		TArray<FText> AttackTip;
+		FString AttackTipPlain = FString::Printf(TEXT("attack: base %s"), *FormatStatPlain(Base));
+		AttackTip.Add(FText::Format(LOCTEXT("TipBaseAttack", "Attaque de base {0}"), FormatStat(Base)));
+		if (Percent != 0)
+		{
+			AttackTip.Add(FText::Format(LOCTEXT("TipTechnology", "Technologies {0} %"), FText::FromString(FString::Printf(TEXT("%+d"), Percent))));
+			AttackTipPlain += FString::Printf(TEXT(", technology %+d %%"), Percent);
+		}
+		const bool bMelee = Row->AttackType == EHOLAttackType::Melee;
+		AttackTip.Add(bMelee ? LOCTEXT("StatRangeMelee", "Portée mêlée") : FText::Format(LOCTEXT("StatRange", "Portée {0} m"), FormatStat(Row->AttackRange / 100.f)));
+		AttackTipPlain += bMelee ? FString(TEXT(", range melee")) : FString::Printf(TEXT(", range %s"), *FormatStatPlain(Row->AttackRange / 100.f));
+		AddStat(Percent != 0 ? FText::Format(LOCTEXT("StatAttackBonus", "Attaque {0} (+{1})"), FormatStat(Attack), FormatStat(Bonus))
+				: FText::Format(LOCTEXT("StatAttack", "Attaque {0}"), FormatStat(Attack)),
+			Percent != 0 ? FString::Printf(TEXT("attack %s (+%s)"), *FormatStatPlain(Attack), *FormatStatPlain(Bonus)) : FString::Printf(TEXT("attack %s"), *FormatStatPlain(Attack)),
+			FText::Join(FText::AsCultureInvariant(TEXT("\n")), AttackTip), AttackTipPlain);
 	}
 	if (bBuildingExtra)
 	{
-		Lines.Add(FText::Format(LOCTEXT("StatBuildingAttackExtra", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))));
-		Plain.Add(FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
+		AddStat(FText::Format(LOCTEXT("StatBuildingAttackExtra", "Attaque bâtiments {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
+			FString::Printf(TEXT("building attack %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))),
+			FText::Format(LOCTEXT("TipBuildingAttackExtra", "Dégâts de chaque coup contre un bâtiment : {0}"), FormatStat(static_cast<float>(Row->BuildingAttack))),
+			FString::Printf(TEXT("building attack: hits a building for %s"), *FormatStatPlain(static_cast<float>(Row->BuildingAttack))));
 	}
-	// Answer to Q-unit-stats: the line keeps attack, the three armours that matter in a fight (melee, ranged, hero) and speed; the rest is the tooltip.
-	Lines.Add(FText::Format(LOCTEXT("StatMeleeArmor", "Armure mêlée {0}"), Row->MeleeArmor));
-	Plain.Add(FString::Printf(TEXT("melee armor %d"), Row->MeleeArmor));
-	Lines.Add(FText::Format(LOCTEXT("StatRangedArmor", "Armure distance {0}"), Row->RangedArmor));
-	Plain.Add(FString::Printf(TEXT("ranged armor %d"), Row->RangedArmor));
-	Lines.Add(FText::Format(LOCTEXT("StatHeroArmor", "Armure héros {0}"), Row->HeroArmor));
-	Plain.Add(FString::Printf(TEXT("hero armor %d"), Row->HeroArmor));
-	Lines.Add(FText::Format(LOCTEXT("StatSpeed", "Vitesse {0} m/s"), FormatStat(Row->Speed / 100.f)));
-	Plain.Add(FString::Printf(TEXT("speed %s"), *FormatStatPlain(Row->Speed / 100.f)));
-
-	// The tooltip (on hover): what the line leaves out: health, the attack's base and the technologies' bonus, the range, the siege armour.
-	TArray<FText> Tip;
-	TArray<FString> TipPlain;
-	Tip.Add(FText::Format(LOCTEXT("TipHealth", "Points de vie {0}"), Row->MaxHealth));
-	TipPlain.Add(FString::Printf(TEXT("health %d"), Row->MaxHealth));
-	if (bStrikes)
-	{
-		Tip.Add(FText::Format(LOCTEXT("TipBaseAttack", "Attaque de base {0}"), FormatStat(Base)));
-		TipPlain.Add(FString::Printf(TEXT("base attack %s"), *FormatStatPlain(Base)));
-		if (Percent != 0)
-		{
-			Tip.Add(FText::Format(LOCTEXT("TipTechnology", "Technologies {0} %"), FText::FromString(FString::Printf(TEXT("%+d"), Percent))));
-			TipPlain.Add(FString::Printf(TEXT("technology %+d %%"), Percent));
-		}
-		const bool bMelee = Row->AttackType == EHOLAttackType::Melee;
-		Tip.Add(bMelee ? LOCTEXT("StatRangeMelee", "Portée mêlée")
-			: FText::Format(LOCTEXT("StatRange", "Portée {0} m"), FormatStat(Row->AttackRange / 100.f)));
-		TipPlain.Add(bMelee ? FString(TEXT("range melee")) : FString::Printf(TEXT("range %s"), *FormatStatPlain(Row->AttackRange / 100.f)));
-	}
-	Tip.Add(FText::Format(LOCTEXT("TipSiegeArmor", "Armure siège {0}"), Row->SiegeArmor));
-	TipPlain.Add(FString::Printf(TEXT("siege armor %d"), Row->SiegeArmor));
+	// Answer to Q-unit-stats: the line keeps attack, the three armours that matter in a fight (melee, ranged, hero) and speed; the siege armour is in the hero armour's tooltip.
+	AddStat(FText::Format(LOCTEXT("StatMeleeArmor", "Armure mêlée {0}"), Row->MeleeArmor), FString::Printf(TEXT("melee armor %d"), Row->MeleeArmor),
+		FText::Format(LOCTEXT("TipMeleeArmor", "Retire {0} à chaque coup de mêlée reçu {1}"), Row->MeleeArmor, AtLeastOne),
+		FString::Printf(TEXT("melee armor: reduces each melee hit by %d (1 at least)"), Row->MeleeArmor));
+	AddStat(FText::Format(LOCTEXT("StatRangedArmor", "Armure distance {0}"), Row->RangedArmor), FString::Printf(TEXT("ranged armor %d"), Row->RangedArmor),
+		FText::Format(LOCTEXT("TipRangedArmor", "Retire {0} à chaque coup de tir reçu {1}"), Row->RangedArmor, AtLeastOne),
+		FString::Printf(TEXT("ranged armor: reduces each ranged hit by %d (1 at least)"), Row->RangedArmor));
+	AddStat(FText::Format(LOCTEXT("StatHeroArmor", "Armure héros {0}"), Row->HeroArmor), FString::Printf(TEXT("hero armor %d"), Row->HeroArmor),
+		FText::Format(LOCTEXT("TipHeroArmor", "Retire {0} à chaque coup reçu d'un héros {1}\nArmure siège {2} : retire {2} à chaque coup de siège reçu {1}"), Row->HeroArmor, AtLeastOne, Row->SiegeArmor),
+		FString::Printf(TEXT("hero armor: reduces each hero hit by %d (1 at least), siege armor %d"), Row->HeroArmor, Row->SiegeArmor));
+	AddStat(FText::Format(LOCTEXT("StatSpeed", "Vitesse {0} m/s"), FormatStat(Row->Speed / 100.f)), FString::Printf(TEXT("speed %s"), *FormatStatPlain(Row->Speed / 100.f)),
+		FText::Format(LOCTEXT("TipSpeed", "Vitesse de déplacement : {0} mètres par seconde"), FormatStat(Row->Speed / 100.f)),
+		FString::Printf(TEXT("speed: moves at %s m/s"), *FormatStatPlain(Row->Speed / 100.f)));
 
 	ShownStats = FString::Join(Plain, TEXT(", "));
+	ShownStatTipList = TipPlain;
 	ShownStatsTip = FString::Join(TipPlain, TEXT(" | "));
 	if (SelectionStats)
 	{
-		const FText Text = FText::Join(Mode == 2 ? FText::AsCultureInvariant(TEXT("\n")) : FText::AsCultureInvariant(TEXT("   ·   ")), Lines);
-		if (!SelectionStats->GetText().EqualTo(Text))
+		const FText Separator = FText::AsCultureInvariant(TEXT("   ·   "));
+		for (int32 Index = 0; Index < SelectionStatChips.Num(); ++Index)
 		{
-			SelectionStats->SetText(Text);
+			UCommonTextBlock* Chip = SelectionStatChips[Index];
+			if (!Chip)
+			{
+				continue;
+			}
+			if (Index >= Lines.Num())
+			{
+				Chip->SetVisibility(ESlateVisibility::Collapsed);
+				continue;
+			}
+			const FText Text = Mode == 2 || Index == Lines.Num() - 1 ? Lines[Index] : FText::Format(FText::AsCultureInvariant(TEXT("{0}{1}")), Lines[Index], Separator);
+			if (!Chip->GetText().EqualTo(Text))
+			{
+				Chip->SetText(Text);
+			}
+			Chip->SetToolTipText(Tips[Index]);
+			// Visible (not HitTestInvisible): the hover shows the statistic's own tooltip.
+			Chip->SetVisibility(ESlateVisibility::Visible);
 		}
-		SelectionStats->SetToolTipText(FText::Join(FText::AsCultureInvariant(TEXT("\n")), Tip));
-		// Visible (not HitTestInvisible): the hover shows the tooltip.
-		SelectionStats->SetVisibility(ESlateVisibility::Visible);
+		SelectionStats->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
 	}
 }
-
 void UHOLGameScreen::RefreshUnitHealth(const FHOLUnitView* Unit)
 {
 	using namespace UE::HeroesOfLiberty::UI::GameScreen;
@@ -3292,11 +3330,17 @@ void UHOLGameScreen::BuildLayout()
 	AddToRow(HealthRow, MakeText(TEXT("SelectionHealthLabel"), UHOLTextStyleHUDLabel::StaticClass(), LOCTEXT("Health", "Points de vie")), 8.f);
 	SelectionHealth = MakeText(TEXT("SelectionHealth"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
 	AddToRow(HealthRow, SelectionHealth, 0.f);
-		SelectionStats = MakeText(TEXT("SelectionStats"), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
-		SelectionStats->SetAutoWrapText(true);
+		SelectionStats = WidgetTree->ConstructWidget<UWrapBox>(UWrapBox::StaticClass(), TEXT("SelectionStats"));
 		SelectionStats->SetVisibility(ESlateVisibility::Collapsed);
 		SelectionColumn->AddChildToVerticalBox(SelectionStats)->SetPadding(FMargin(0.f, 2.f, 0.f, 0.f));
-	// A site's progress (J6a.5, D313): a bar and its percentage.
+		for (int32 StatChip = 0; StatChip < 6; ++StatChip)
+		{
+			UCommonTextBlock* Chip = MakeText(*FString::Printf(TEXT("SelectionStat%d"), StatChip), UHOLTextStyleHUD::StaticClass(), FText::GetEmpty());
+			Chip->SetVisibility(ESlateVisibility::Collapsed);
+			SelectionStats->AddChildToWrapBox(Chip);
+			SelectionStatChips.Add(Chip);
+		}
+// A site's progress (J6a.5, D313): a bar and its percentage.
 	UHorizontalBox* ProgressRow = MakeHorizontalBox(TEXT("SelectionProgressRow"));
 	SelectionProgressRow = ProgressRow;
 	SelectionColumn->AddChildToVerticalBox(ProgressRow)->SetPadding(FMargin(0.f, 4.f, 0.f, 0.f));

@@ -108,7 +108,7 @@ namespace HOLTechnology
 	inline const FName InfantryArmorStat(TEXT("InfantryArmor"));
 	inline const FName CavalryArmorStat(TEXT("CavalryArmor"));
 
-	/** F2 (Q-forge-armure, option A by default): the Forge armour statistic of a unit with these armour categories (a mask of HOLArmorCategoryBit), NAME_None for the units no armour covers (archers, crossbowmen, Peasant, heroes, siege). The one table to change is ForgeArmorCategories in HOLTechnologyRules.cpp. */
+	/** F2 (Q-forge-armure, option B, answered 2026-11-09): the Forge armour statistic of a unit with these armour categories (a mask of HOLArmorCategoryBit), NAME_None for the units no armour covers (Peasant, heroes, siege). The one table to change is ForgeArmorCategories in HOLTechnologyRules.cpp. */
 	HEROESOFLIBERTY_API FName GetArmorStat(int32 ArmorCategoryMask);
 
 	/** F2 (Q-forge-armure, option A): whether the Forge armours lower the hits of this attack type (melee and ranged; not siege, not hero). */
