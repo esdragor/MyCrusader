@@ -123,7 +123,9 @@ struct FHOLAIArmyData
 	float AttackCooldown = 90.f;
 
 	// The wave's idle soldiers are ordered again at most this often (s).
-	float AttackReissue = 5.f;
+	float AttackReissue = 1.f;
+	// D751: how far (cm) a free soldier of the wave may walk ahead of its rearmost soldier before it waits for the rest (0: no wait).
+	float WaveSpread = 1200.f;
 
 	// A retreat ends when most of the wave has reached the assembly point, or after this long (s).
 	float AttackRetreatMax = 40.f;
@@ -182,6 +184,10 @@ struct FHOLAIWaveStep
 	TArray<int> AttackIds;
 	FVector AttackTarget;
 	TArray<int> MoveIds;
+
+	// D751: the free soldiers too far ahead of the wave's rear, each to stand where it is (HoldPoints[i] is the place of HoldIds[i]).
+	TArray<int> HoldIds;
+	TArray<FVector> HoldPoints;
 
 	// The ratio that decided (launch ratio or the wave's own ratio) and the wave soldiers alive.
 	float Ratio = 0.f;
@@ -1169,15 +1175,35 @@ namespace HOLAIArmy
 			else if (Now - Wave.LastOrder >= Data.AttackReissue)
 			{
 				bool bFound = false;
-				const FVector Target = WaveTarget(Summary, Data, CentroidOf(Alive), bFound);
+				const FVector Centroid = CentroidOf(Alive);
+				const FVector Target = WaveTarget(Summary, Data, Centroid, bFound);
+				// D751: the wave walks as a group, at its slowest member's speed. The engine paces one order's formation, but the soldiers that
+				// stopped and are sent again leave on their own, faster than the engines (6741 cm front to rear measured by `aiwave`): a free
+				// soldier more than WaveSpread ahead of the rearmost one stops where it stands (and is not sent on) until the rear has caught up.
+				float DirX = Target.X - Centroid.X;
+				float DirY = Target.Y - Centroid.Y;
+				const float DirLength = Math::Sqrt(DirX * DirX + DirY * DirY);
+				float Rear = 0.f;
+				for (int Index = 0; bFound && DirLength > 1.f && Index < Alive.Num(); Index++)
+				{
+					const float Advance = ((Alive[Index].Location.X - Centroid.X) * DirX + (Alive[Index].Location.Y - Centroid.Y) * DirY) / DirLength;
+					Rear = (Index == 0 || Advance < Rear) ? Advance : Rear;
+				}
 				for (int Index = 0; bFound && Index < Alive.Num(); Index++)
 				{
-					if (Alive[Index].bIdle && Alive[Index].TargetId < 0)
+					const float Advance = DirLength > 1.f ? ((Alive[Index].Location.X - Centroid.X) * DirX + (Alive[Index].Location.Y - Centroid.Y) * DirY) / DirLength : 0.f;
+					const bool bAhead = Data.WaveSpread > 0.f && Advance - Rear > Data.WaveSpread;
+					if (bAhead && Alive[Index].TargetId < 0)
+					{
+						Step.HoldIds.Add(Alive[Index].Id);
+						Step.HoldPoints.Add(Alive[Index].Location);
+					}
+					else if (Alive[Index].bIdle && Alive[Index].TargetId < 0)
 					{
 						Step.AttackIds.Add(Alive[Index].Id);
 					}
 				}
-				if (Step.AttackIds.Num() > 0)
+				if (Step.AttackIds.Num() > 0 || Step.HoldIds.Num() > 0)
 				{
 					Step.AttackTarget = Target;
 					Wave.LastOrder = Now;
