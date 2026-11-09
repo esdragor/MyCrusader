@@ -1,5 +1,6 @@
 # Bug de l'essai siege_wave : la ligne Attaque du bloc de stats d'une unite selectionnee n'a pas de valeur (Belier, Mangonneau, Monk...). Chaque type est selectionne par le clic reel (hol.Select.ClickUnit -1), le bloc est decrit (HUD stats) et capture.
 # Test rouge : la valeur chiffree de l'attaque doit etre dans le texte reel du bloc (waitlog = timeout si absente). Belier : 0 d'attaque ordinaire, 60 contre les batiments.
+# REGLAGE 2026-11-09 : chaque stat du bloc (Attaque, armures, Vitesse) a sa propre infobulle ; le rapport HUD stats tip liste une infobulle par stat (test rouge : absent avant le changement).
 # Plain, toi (slot 0) contre une IA (slot 1).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
@@ -40,6 +41,9 @@ frames 10
 hol.HUD.Report
 frames 5
 waitlog HUD stats: attack 8,
+waitlog HUD stats tip: attack: base 8,
+waitlog melee armor: reduces each melee hit by 0 (1 at least)
+waitlog speed: moves at
 capture usa_spearman
 hol.Camera.FocusNear 7500 0
 frames 3
@@ -51,6 +55,9 @@ frames 10
 hol.HUD.Report
 frames 5
 waitlog HUD stats: attack 12,
+waitlog HUD stats tip: attack: base 12,
+waitlog melee armor: reduces each melee hit by 4 (1 at least)
+waitlog ranged armor: reduces each ranged hit by 4 (1 at least)
 capture usa_manatarms
 hol.Camera.FocusNear 10000 0
 frames 3
