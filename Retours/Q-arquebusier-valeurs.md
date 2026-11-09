@@ -17,3 +17,5 @@ Conséquence visible : un groupe d'Arquebusiers au palier 3 fait fondre les Homm
 Recommandation : Q1 = A, Q2 = B si tu veux garder le siège aux engins (le dossier Palier 3 y tient : « finir ou renverser » passe par le Trébuchet et le Canon) ; A si tu veux que la poudre soit utile contre les murs. Ma préférence mesurée : Q2 = B (un seul rôle pour les bâtiments).
 
 Valeur par défaut codée derrière un réglage (une ligne à changer) : Q1 = A dans `Tools\Data\UnitTypes.csv` (ligne `Arquebusier`, G3, à écrire avec le lot C++ de G2/G3), Q2 = B (le coup contre un bâtiment ignore la pénétration) dans `HOLConstructionRules.cpp:335-339` derrière une constante. Rien n'est encore codé : G2 et G3 attendent leur lot C++.
+
+Reponse (utilisateur, 2026-11-09) : Q1 = A MAIS attaque 40 (au lieu de 30 : 70 PV, vitesse 720, attaque 40, intervalle 4,0 s, portee 1500, 60 N + 80 O, 25 s, penetration 50 %) ; Q2 = B (la penetration ne compte pas contre un batiment). Palier 3 G2 (penetration d'armure, C++) AUTORISE. A coder au prochain Auto_Journey (G2 puis G3 puis G4), test rouge d'abord.

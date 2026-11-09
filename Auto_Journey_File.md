@@ -6,6 +6,15 @@ Mode d'emploi 3/5 : étiquettes `sans C++` (relançable sans toucher au plafond 
 Mode d'emploi 4/5 : `session_gate.ps1 -Phase Launch` exige au moins 3 lignes `sans C++` ouvertes ; le dernier agent d'un worktree ajoute la suivante qu'il voit venir.
 Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou périmées dans `Docs\Archive\Auto_Journey_File_2026-11-07.md` ; encodage UTF-8 avec BOM et fins de ligne CRLF partout.
 
+## EN TÊTE — réponses de l'utilisateur du 2026-11-09 (détail : `Retours\REPONSES-2026-11-09.md`, `Retours\Q-*.md`)
+- [ ] (C++, Elrond ou Galadriel) Palier 3 G2 (pénétration d'armure, AUTORISÉE) puis G3 Arquebusier (70 PV, vitesse 720, attaque 40, intervalle 4,0 s, portée 1500, 60 N + 80 O, 25 s, pénétration 50 %, pas contre un bâtiment) puis G4 ; test rouge d'abord ; `Palier3InProgress.md`.
+- [ ] (C++ léger) Forge F2 : `ForgeArmorCategories` passe à B (Maille couvre aussi les tireurs Distance, sauf Paysan et héros) ; sens des 10/20 inchangé (A).
+- [ ] (sans C++, Haldir) `SITES_CLEAR_SOURCES = True` dans `Tools\Editor\maps\common.py` (Q-sites-arbres-zone = B), test d'abord ; la régénération des cartes attend la lettre de `E-glade-sweep`.
+- [ ] (C++, Galadriel) Légions L4 : Guerrier Damné profil A + rage nécrotique A ; plan en 8 étapes dans `LegionsInProgress.md`.
+- [ ] (sans C++) Valeurs orphelins (A) : lignes `ValueSheet.csv` pour Sites sacrés, Hold de l'IA, moral, biomes ; `note.<Fichier>` pour le reste ; `-Parts values` doit repasser au vert.
+- [ ] (sans C++, Sauron) `Tools/check_placeholders.ps1` (PQ-4 = A) branché dans `quick_check`, puis fusion de `visual` dans `main` (PQ-5 = A) et Placeholders P2 : ressources et décor, dix échantillons (PQ-1 = A).
+- [ ] (docs, session principale) écrire D753 à D766 au GDD § 22 (réponses Q1 à Q14) ; prochain numéro D767.
+
 ## Arwen — `heal-sleep` — Audio, IA, outils
 - [ ] (sans C++, Arwen, 2026-11-07 soir : l'utilisateur a ECOUTE les 5 familles de bâtiments ; alertes et entraînement déjà tranchés avant) Réponses : Bois = F s_wood_door, volume x2-3 ; Sacré = H s_sacred_book, volume x2-3 ; Pierre = rien de bien, dix autres candidats doux ; Métal = rien de bien, dix autres ; Pièces (Marché) = aucune lettre, le son d'ACHAT existant devient le son de sélection du Marché et est retiré de l'achat (confirmer le sens à l'utilisateur au moment de brancher). À faire : (1) élire F et H dans HOLAudioTable.as avec gain x2-3 (réglage de volume en tête, une ligne) ; (2) refaire dix candidats Pierre et dix Métal (make_soft_candidates, graves/sourds/courts/doux) puis fiches ; (3) Pièces = réutiliser le cue d'achat ; (4) B5 (C++) : transmettre le type du bâtiment sélectionné au script.
 - [ ] (C++, après l'écoute) Audio B5 : transmettre le type du bâtiment sélectionné au script, CueNameFor puis UHOLAudioPlayer.Play ; `AudioInProgress.md`.

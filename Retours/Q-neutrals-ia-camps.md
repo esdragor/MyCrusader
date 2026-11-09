@@ -11,3 +11,5 @@ Options :
 Recommandation : **B** pour le prototype (aucun changement de comportement, aucune cible de plus, les camps n'étant pas encore posés par les cartes), **C** après le prototype avec les vraies créatures.
 
 Valeur par défaut codée : `CampPolicy = 1` (`FHOLAIArmyData` de `Script/AI/HOLAIArmy.as`) ; changer la réponse = une ligne (0 pour A). Les règles `CampUnits`, `AdversaryView` et `CampRatio` sont déjà testées (`HOLAICamp_Test.as`).
+
+Reponse (utilisateur, 2026-11-09) : B (evaluer, CampPolicy 1 = valeur deja codee). Rien a changer ; C apres le prototype.

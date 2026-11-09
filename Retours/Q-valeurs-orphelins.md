@@ -13,3 +13,5 @@ Les 13 fichiers (sortie du contrôle) : `Script\AI\HOLAIHold.as`, `Script\Audio\
 Recommandation : A pour les Sites sacrés et le moral (vraies valeurs de design), B pour `HOLGameNames.h`, `HOLAudioPlayer.as`, les biomes ; jamais C.
 
 Valeur par défaut qui serait codée (si pas de réponse) : B pour les 13 fichiers (13 lignes `note.<Fichier>` de source `ignore` dans `Tools\Data\ValueSheet.csv`, puis régénération de `Valeurs.md`), pour que `-Parts values` ne bloque plus les fusions ; une ligne à retirer par fichier quand A est fait. Ce travail n'est pas fait ici : le worktree est gelé pour la fusion, et le chantier Sites sacrés tient ces fichiers.
+
+Reponse (utilisateur, 2026-11-09) : A (vraies lignes ValueSheet.csv pour les Sites sacres, le Hold de l'IA, le moral et les biomes ; note.<Fichier> source ignore pour le reste). A faire au prochain Auto_Journey : session valeurs, regenerer Valeurs.md/Valeurs.csv, -Parts values doit repasser au vert.

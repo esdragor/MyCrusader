@@ -27,3 +27,5 @@ Contexte : la direction « stylisé et franc » a été décidée pour les bâti
 - Défaut appliqué sans réponse : B (rien codé tant que tu n'as pas répondu).
 
 Réponds par « PQ-2 = X, PQ-3 = Y, PQ-4 = Z » ou « Autre : ... ».
+
+Reponse (utilisateur, 2026-11-09) : comme recommande : PQ-2 = A, PQ-3 = A, PQ-4 = A (script Tools/check_placeholders.ps1 qui echoue, appele par quick_check, test rouge d'abord).

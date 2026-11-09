@@ -20,3 +20,5 @@ Contexte : 13 bâtiments sur 14, les arbres, baies, filons, le décor des cartes
 - Défaut appliqué sans réponse : C (rien n'est fusionné par un agent ; la fusion reste à la session principale).
 
 Réponds par « PQ-1 = X, PQ-5 = Y » ou « Autre : ... ».
+
+Reponse (utilisateur, 2026-11-09) : comme recommande : PQ-1 = A (ressources et decor d'abord, methode des dix echantillons), PQ-5 = A (fusionner visual dans main d'abord ; l'election finale du Forum se fait avant).

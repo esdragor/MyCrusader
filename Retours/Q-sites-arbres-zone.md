@@ -12,3 +12,5 @@ Options :
 Conséquences visibles : A = sites parfois dans un bosquet ; B = clairière nette de 12 m au site, sans autre changement ; C = les forêts se réorganisent autour des sites.
 Recommandation : B (zone dégagée sans décaler les tirages).
 Réglage : une seule ligne à changer, `SITES_CLEAR_SOURCES = False` (A) dans `Tools\Editor\maps\common.py` (la valeur du code reste A tant que tu n'as pas répondu).
+
+Reponse (utilisateur, 2026-11-09) : B (retirer des sources celles dont le centre est dans le disque d'un site, comme drop_reserved). A coder avec SITES_CLEAR_SOURCES = True dans Tools\Editor\maps\common.py avant la regeneration des cartes.

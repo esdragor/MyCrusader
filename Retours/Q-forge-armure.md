@@ -15,3 +15,5 @@ Options :
 Recommandation : A (suit les catégories d'armure du GDD § 7 sans en inventer ; les héros ont leur propre armure et leurs capacités, les ajouter changerait leur équilibre).
 
 Valeur par défaut codée (à venir avec F2, rien n'est codé aujourd'hui) : une table `ForgeArmorCategories` (une ligne par technologie dans les données, une ligne à changer) ; tant que F2 n'est pas lancée, `InfantryArmorI/II` et `CavalryArmorI/II` restent `Implemented=False` (grisées « Bientôt », D601).
+
+Reponse (utilisateur, 2026-11-09) : option B = Maille couvre aussi les tireurs Distance (toute l'infanterie a pied sauf Paysan et heros) ; Barde = cavalerie. Sens des 10/20 : A (pourcentage de coup retire apres l'armure plate, minimum 1, plafond 90 %). A faire au prochain Auto_Journey : passer ForgeArmorCategories de A a B (une ligne de table) + test.

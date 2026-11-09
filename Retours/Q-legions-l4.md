@@ -53,3 +53,5 @@ Q1 = A, Q2 = A. Résultat visible en jeu : le Guerrier Damné est la masse d'ass
 ## Valeur par défaut qui serait codée (si pas de réponse)
 
 Q1 = A dans la ligne `DamnedWarrior` de `Tools\Data\UnitTypes.csv` ; Q2 = A dans une ligne de `Tools\Data\UnitAbilities.csv` (durée, recharge, coût par coup, plancher de PV, une ligne à changer) et une ligne `NecroticRage` de `Tools\Data\Effects.csv` (dégâts et cadence). Les chiffres sont indicatifs, à régler à l'essai (scénario `legions_warrior`). Le détail de l'implémentation est dans `LegionsInProgress.md`, étape L4.
+
+Reponse (utilisateur, 2026-11-09) : Q1 = A (berserker fragile) ; Q2 = A (rage a la demande, 10 s, +40 % degats, +25 % cadence, 3 PV par coup, recharge 40 s). L4 a coder au prochain Auto_Journey (plan en 8 etapes dans LegionsInProgress.md).
