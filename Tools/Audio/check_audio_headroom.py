@@ -49,6 +49,46 @@ def elected_cues(table_text):
     return cues
 
 
+def selection_cues(table_text):
+    """Every building selection cue of the table, whatever its gain: [(name, pack, stem, percent)]."""
+    consts = dict((m.group(1), int(m.group(2))) for m in re.finditer(r"const int (\w+)\s*=\s*(\d+);", table_text))
+    cues = []
+    for m in re.finditer(r'Add\(Cues, HOLAudioEvent::\w+, "(Select\.Building\w+)", "([\w-]*)", "([\w,]*)", (\w+),', table_text):
+        name, pack, stems, vol = m.groups()
+        percent = int(vol) if vol.isdigit() else consts.get(vol, 100)
+        for stem in stems.split(","):
+            if pack and stem:
+                cues.append((name, pack, stem, percent))
+    return cues
+
+
+# The ceiling of the limited files (Q-audio-select-gain = B, 2026-11-09): -1 dBFS, a tenth of a dB of tolerance for the meter.
+CEILING_DB = -0.9
+
+
+def strict(root, audio):
+    """Q-audio-select-gain = B: no building selection sound may ring above -1 dBFS AT THE GAIN OF THE TABLE. Exit 1 when one does."""
+    table = os.path.join(root, "Script", "Audio", "HOLAudioTable.as")
+    cues = selection_cues(open(table, encoding="utf-8").read())
+    if not cues:
+        print("FAIL : no Select.Building cue found in the table (the pattern or the table changed)")
+        return 1
+    bad = 0
+    for name, pack, stem, percent in cues:
+        path = find_file(audio, pack, stem)
+        if not path:
+            print("FAIL : file not found for %s: %s/%s under %s" % (name, pack, stem, audio))
+            return 1
+        peak, mean = volumedetect(path)
+        after = peak + gain_db(percent)
+        ok = after <= CEILING_DB
+        bad += 0 if ok else 1
+        print("  %-24s %-20s x%.2f: file peak %.1f -> rings at %+.1f dBFS, mean %.1f dB (%s)"
+              % (name, stem, percent / 100.0, peak, after, mean + gain_db(percent), "ok" if ok else "ABOVE -1 dBFS"))
+    print("check_audio_headroom --strict: %s (%d sounds, %d above the -1 dBFS ceiling)" % ("PASS" if not bad else "FAIL", len(cues), bad))
+    return 1 if bad else 0
+
+
 def find_file(audio, pack, stem):
     if pack == "soft":
         candidates = [os.path.join(audio, "Candidates", "soft", stem + ".wav")]
@@ -72,8 +112,9 @@ def report(root, audio):
         return 1
     cues = elected_cues(open(table, encoding="utf-8").read())
     if not cues:
-        print("FAIL : no cue above 100 % found in the table (the pattern or the table changed)")
-        return 1
+        print("no cue above 100 % in the table: nothing can clip by gain (the elected sounds are limited files at 100 %, Q-audio-select-gain = B)")
+        print("check_audio_headroom: PASS")
+        return 0
     clip = 0
     for name, pack, stem, percent in cues:
         path = find_file(audio, pack, stem)
@@ -129,4 +170,6 @@ if __name__ == "__main__":
         sys.exit(selftest())
     root = args[args.index("--root") + 1] if "--root" in args else os.getcwd()
     audio = args[args.index("--audio") + 1] if "--audio" in args else AUDIO
+    if "--strict" in args:
+        sys.exit(strict(root, audio))
     sys.exit(report(root, audio))
