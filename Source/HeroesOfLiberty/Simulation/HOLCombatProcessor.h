@@ -174,10 +174,16 @@ protected:
 	 */
 	int32 MeleeAttackPercent[FHOLMatchConfig::MaxSlots] = {};
 	int32 RangedAttackPercent[FHOLMatchConfig::MaxSlots] = {};
+	/** F2: the percent each slot's Forge armours (Maille, Barde) take off the hits its covered units take. */
+	int32 InfantryArmorPercent[FHOLMatchConfig::MaxSlots] = {};
+	int32 CavalryArmorPercent[FHOLMatchConfig::MaxSlots] = {};
 	/** S5: the percent each slot's technologies add to the Mangonel's damage (Heavy Munitions, HOLSiege::GetDamageStat). */
 	int32 MangonelDamagePercent[FHOLMatchConfig::MaxSlots] = {};
 	/** T6: the percent the technologies of Attacker's player add to its attack, by the attack's type (S5: or by its type, the Mangonel's). */
 	int32 GetTechnologyAttackPercent(const FFighter& Attacker) const;
+
+	/** F2: the percent Victim's player took off a hit of this attack type by Forge armours (0 for a unit no armour covers). */
+	int32 GetTechnologyArmorPercent(const FFighter& Victim, EHOLAttackType AttackType) const;
 	/** S5: Attacker's BuildingAttack with its player's technologies (Heavy Munitions on the Mangonel: 45 -> 54), whole. */
 	int32 GetBuildingAttackWithTechnology(const FFighter& Attacker) const;
 	/** D581: one bit per slot whose hero took Pas de l'Aube (the formation under the cry advances at reduced speed). */
