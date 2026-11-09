@@ -524,6 +524,17 @@ namespace HOLCombat
 		return false;
 	}
 
+	/**
+	 * Celeborn-24 (hol.Combat.PlaceBoxedIn, BUG-melee-spin-sanity): whether the free place a soldier would claim round its target is walled in from where it stands:
+	 * the friends and enemies close round its way to the place (IsBoxedIn read towards the place, not the target) leave no gap its body takes. A second-rank soldier
+	 * that claimed such a place ran a U of 1100 cm round its friends to a place they closed (spin of melee_stuck, #11 and #2: 1000 cm in 3 s for 200 cm net);
+	 * it no longer claims it: it walks to the target and waits behind the crowd. Others = every body but the soldier and its target.
+	 */
+	inline bool IsPlaceWalledIn(const FVector2D& SelfWhere, const float SelfRadius, const FVector2D& PlaceWhere, TConstArrayView<FBody> Others)
+	{
+		return false; // STUB (Celeborn-24): the test is red first
+	}
+
 	/** D641 (hol.Combat.ClaimPlace): the rear flank (a 600 cm tour round the line) is suspended while the soldier holds a claimed place that is within MaxDistance (400 cm). */
 	inline bool ShouldSuspendRearFlank(const bool bHasPlace, const double DistanceToPlace, const double MaxDistance = 400.0)
 	{

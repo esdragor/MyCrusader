@@ -154,6 +154,16 @@ namespace UE::HeroesOfLiberty::Combat
 	float ClaimProgress = 25.f;
 	FAutoConsoleVariableRef CVarClaimProgress(TEXT("hol.Combat.ClaimProgress"), ClaimProgress,
 		TEXT("cm (default 25, with hol.Combat.ClaimPlace): the edge distance to its target a melee must gain to count as making headway"));
+	/** Celeborn-24 (BUG-melee-spin-sanity): a claimed place walled in by the bodies round the way to it is not claimed (HOLCombat::IsPlaceWalledIn). */
+	int32 PlaceBoxedIn = 1;
+	FAutoConsoleVariableRef CVarPlaceBoxedIn(TEXT("hol.Combat.PlaceBoxedIn"), PlaceBoxedIn,
+		TEXT("1 (default, with hol.Combat.ClaimPlace): a melee does not claim a free place round its target when the bodies round its way to it wall it in (a gap of less than its body): it walks to the target and waits behind the crowd instead of a U round its friends (the spin of melee_stuck); 0: as before"));
+	int32 KeepStuckCount = 1;
+	FAutoConsoleVariableRef CVarKeepStuckCount(TEXT("hol.Combat.KeepStuckCount"), KeepStuckCount,
+		TEXT("1 (default, with hol.Combat.ClaimPlace): a place claimed again after being lost does not set the no-headway count back to 0 (the count that starts hol.Combat.StuckRetargetSeconds); 0: as before"));
+	float NeighbourGap = 600.f;
+	FAutoConsoleVariableRef CVarNeighbourGap(TEXT("hol.Combat.NeighbourGap"), NeighbourGap,
+		TEXT("cm (default 600; was 150): a new target within this of the last one keeps the no-headway count (the soldier that swings between two enemies 450 cm apart, np back to 0 at each swing, never reached StuckRetargetSeconds)"));
 	/** Q-neutrals-second-rank = C (the user, 2026-11-05): a soldier walled in between its friends changes target instead of turning back. */
 	int32 BoxedRetarget = 0;
 	FAutoConsoleVariableRef CVarBoxedRetarget(TEXT("hol.Combat.BoxedRetarget"), BoxedRetarget,
@@ -2528,7 +2538,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				if (Combat.PlaceTarget != Combat.Target)
 				{
 					// A new target next to the last one (the enemies strike in turn, the quarrel is the same crowd): the count of no headway goes on.
-					const bool bNeighbour = Combat.PlaceTarget.IsSet() && HOLCombat::IsNeighbourTarget(FVector2D(Combat.PlaceTargetWhere), EnemyPosition);
+					const bool bNeighbour = Combat.PlaceTarget.IsSet() && HOLCombat::IsNeighbourTarget(FVector2D(Combat.PlaceTargetWhere), EnemyPosition, NeighbourGap);
 					Combat.PlaceTarget = Combat.Target;
 					Combat.bHasPlace = false;
 					if (!bNeighbour)
@@ -2655,6 +2665,18 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				{
 					TArray<HOLCombat::FBody> PlaceBodies;
 					GatherRoomBodies(Index, Target, PlaceBodies);
+						const int32 RoomBodyCount = PlaceBodies.Num(); // before the places the friends claimed (they are no walls)
+						// Celeborn-24 (hol.Combat.PlaceBoxedIn): the spot chosen is not claimed when the bodies round the way to it wall the soldier in.
+						const auto PlaceWalledIn = [&](const double ForAngle) -> bool
+						{
+							if (PlaceBoxedIn == 0)
+							{
+								return false;
+							}
+							const double Reach = Enemy.Constants->Radius + Constants.Radius + 2.;
+							const FVector2D PlaceWhere = EnemyPosition + Reach * FVector2D(FMath::Cos(ForAngle), FMath::Sin(ForAngle));
+							return HOLCombat::IsPlaceWalledIn(Position, Constants.Radius, PlaceWhere, TConstArrayView<HOLCombat::FBody>(PlaceBodies.GetData(), RoomBodyCount));
+						};
 					if (ClaimedSlots != 0)
 					{
 						// BUG-melee-stuck-attack: the places the friends of the same target claimed stand as bodies on their spots.
@@ -2675,7 +2697,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					const FVector2D FromTarget = Position - EnemyPosition;
 					const double SelfSide = FromTarget.IsNearlyZero() ? 0. : FMath::Atan2(FromTarget.Y, FromTarget.X) + (FromTarget.Y < 0. ? 2. * UE_DOUBLE_PI : 0.);
 					double Angle = 0.;
-					if (HOLCombat::ChooseFreePlace(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Combat.bHasPlace, static_cast<double>(Combat.PlaceAngle), SelfSide, PlaceBySide != 0, Angle))
+					if (HOLCombat::ChooseFreePlace(EnemyPosition, Enemy.Constants->Radius, Constants.Radius, PlaceBodies, Combat.bHasPlace, static_cast<double>(Combat.PlaceAngle), SelfSide, PlaceBySide != 0, Angle) && !PlaceWalledIn(Angle))
 					{
 						// D641 (hol.Combat.FarPlaceRetarget): a NEW place across the melee (more than FarPlaceGap from the soldier's side) is refused.
 						const bool bNewClaim = !Combat.bHasPlace || FMath::Abs(Angle - static_cast<double>(Combat.PlaceAngle)) > 1e-3;
@@ -2693,7 +2715,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						if (!bWaitFarPlace)
 						{
 							bPlaceNew = bNewClaim;
-							if (!Combat.bHasPlace)
+							if (!Combat.bHasPlace && KeepStuckCount == 0)
 							{
 								Combat.BestEdge = static_cast<float>(Edge);
 								Combat.NoProgressSeconds = 0.f;

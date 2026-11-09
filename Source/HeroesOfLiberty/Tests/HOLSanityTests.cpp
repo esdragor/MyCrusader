@@ -402,7 +402,22 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		Sides[1].Where = FVector2D(0., -400.);
 		TestFalse(TEXT("a body 400 cm off on one side is no wall"), HOLCombat::IsBoxedIn(Self, 55.f, Target, Sides));
 		TestFalse(TEXT("nobody near: not boxed in"), HOLCombat::IsBoxedIn(Self, 55.f, Target, TConstArrayView<HOLCombat::FBody>()));
-		// The trace of neutrals (2026-11-05, #11): friends at (-56, 109) and (64, 115) from the soldier, the target at (153, 262), one friend almost on the
+		// Celeborn-24 (BUG-melee-spin-sanity): a free place is not claimed when the way to it is walled in (a second-rank soldier ran a U of 1100 cm to such a place).
+		{
+			TArray<HOLCombat::FBody> Friends;
+			TestFalse(TEXT("a place with nobody round the way: not walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			Friends.Add({ FVector2D(100., 125.), 55.f });
+			TestFalse(TEXT("a friend on one side of the way to the place: not walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			Friends.Add({ FVector2D(100., -140.), 55.f });
+			TestTrue(TEXT("friends at 125 and 140 cm on both sides of the way to the place: walled in"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			Friends[1].Where = FVector2D(100., -400.);
+			TestFalse(TEXT("the second friend 400 cm off: the way is open"), HOLCombat::IsPlaceWalledIn(Self, 55.f, Target, Friends));
+			// The trace of melee_stuck run4 #11: two friends ahead 10 cm apart on one side of the line to the place close it (their gap takes no body of 110).
+			TArray<HOLCombat::FBody> Wall;
+			Wall.Add({ FVector2D(-56., 109.), 55.f });
+			Wall.Add({ FVector2D(64., 115.), 55.f });
+			TestTrue(TEXT("two friends ahead, 10 cm apart: the place beyond is walled in"), HOLCombat::IsPlaceWalledIn(FVector2D::ZeroVector, 55.f, FVector2D(153., 262.), Wall));
+		}		// The trace of neutrals (2026-11-05, #11): friends at (-56, 109) and (64, 115) from the soldier, the target at (153, 262), one friend almost on the
 		// line (cross +2) and the other left of it: both on the same side, a wall all the same (their gap, 10 cm, takes no body of 110).
 		{
 			TArray<HOLCombat::FBody> Wall;
