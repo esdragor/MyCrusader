@@ -97,7 +97,11 @@ namespace HOLAudio
 
 	// THE volume setting of the elected building selection sounds (wood F, sacred H): the user heard them in the trial at volume 100 % and
 	// asked for "volume x2 to x3" (2026-11-07). 250 = x2.5, the middle; ONE line to change (200 = x2, 300 = x3). Above 100 on purpose.
-	const int BuildingSelectGainPercent = 250;
+	// Q-audio-select-gain = B (2026-11-09): at x2.5 the sounds CLIPPED (+4 dBFS Wood and Sacred, +8 dBFS the Market's coins). The gain is now BAKED into
+	// limited files (Tools/Audio/make_limited_selects.py: +8 dB then a -1 dBFS limiter, stems *_lim) played at 100 %. BuildingSelectOldGainPercent is the
+	// OLD gain, kept only for the before / after scenario audio_select_gain (hol.Audio.SelectGain) ; the old files stay imported for it.
+	const int BuildingSelectGainPercent = 100;
+	const int BuildingSelectOldGainPercent = 250;
 
 	void Add(TArray<FHOLAudioCue>& Cues, int Event, FString Name, FString Pack, FString StemList, int Volume, int PitchMin, int PitchMax, int CooldownMs, int Priority)
 	{
@@ -154,9 +158,9 @@ namespace HOLAudio
 		SetRepeat(Cues, HOLAudioEvent::AlertVolcano, VolcanoRepeatCount, VolcanoRepeatGapMs);
 
 		// The elected building sounds (soft files made by Tools/Audio/make_soft_candidates.py, pack "soft"): volume = BuildingSelectGainPercent.
-		Add(Cues, HOLAudioEvent::SelectBuildingWood, "Select.BuildingWood", "soft", "s_wood_door", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::SelectBuildingSacred, "Select.BuildingSacred", "soft", "s_sacred_book", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
-		Add(Cues, HOLAudioEvent::SelectBuildingCoins, "Select.BuildingCoins", "rpg-audio", "handleCoins", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingWood, "Select.BuildingWood", "soft", "s_wood_door_lim", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingSacred, "Select.BuildingSacred", "soft", "s_sacred_book_lim", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingCoins, "Select.BuildingCoins", "soft", "s_coins_select_lim", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).
