@@ -1033,26 +1033,44 @@ namespace HOLAIArmy
 		return Best;
 	}
 
-	// N6 (STUB, red first): the neutral owner is the first one beyond the slots (FHOLMatchConfig::NeutralOwner = MaxSlots = 8).
+	// N6: the neutral owner is the first one beyond the slots (FHOLMatchConfig::NeutralOwner = MaxSlots = 8).
 	const int NeutralOwnerSlot = 8;
 
 	// The enemy units of the summary that belong to a neutral camp.
 	TArray<FHOLAIUnit> CampUnits(const FHOLAISummary& Summary)
 	{
-		TArray<FHOLAIUnit> None;
-		return None;
+		TArray<FHOLAIUnit> Camp;
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (Summary.Enemies[Index].OwnerSlot >= NeutralOwnerSlot)
+			{
+				Camp.Add(Summary.Enemies[Index]);
+			}
+		}
+		return Camp;
 	}
 
 	// The summary seen against the adversaries alone: the neutral camps left out of Enemies.
 	FHOLAISummary AdversaryView(const FHOLAISummary& Summary)
 	{
-		return Summary;
+		FHOLAISummary Seen = Summary;
+		Seen.Enemies.Empty();
+		for (int Index = 0; Index < Summary.Enemies.Num(); Index++)
+		{
+			if (Summary.Enemies[Index].OwnerSlot < NeutralOwnerSlot)
+			{
+				Seen.Enemies.Add(Summary.Enemies[Index]);
+			}
+		}
+		return Seen;
 	}
 
 	// Our power ratio over the visible neutral camps alone (the large value when no camp is seen): what a camp costs before the wave.
 	float CampRatio(const FHOLAIArmyData& Data, const FHOLAISummary& Summary)
 	{
-		return 0.f;
+		FHOLAISummary Camp = Summary;
+		Camp.Enemies = CampUnits(Summary);
+		return PowerRatio(Data, Camp);
 	}
 
 	// Whether a wave may be launched now: at home, not defending, the cooldown over, an enemy centre to go to (or a teammate's ruin to help
@@ -1079,13 +1097,19 @@ namespace HOLAIArmy
 		{
 			return true;
 		}
-		const bool bSeen = EnemyValue(Data, Summary) > 0.f;
+		// N6: policy 0 leaves the neutral camps out of what the launch weighs.
+		FHOLAISummary Weighed = Summary;
+		if (Data.CampPolicy == 0)
+		{
+			Weighed = AdversaryView(Summary);
+		}
+		const bool bSeen = EnemyValue(Data, Weighed) > 0.f;
 		// IA3.3: an enemy forum lies fallen: the window is open, the minimum time does not count (the ratio and the soldiers still do).
 		if (!HOLAIForum::EnemyRuin(Summary) && Now < (bSeen ? Data.AttackMinSeconds : Data.AttackMinSecondsUnseen))
 		{
 			return false;
 		}
-		return PowerRatio(Data, Summary) >= Data.AttackLaunchRatio;
+		return PowerRatio(Data, Weighed) >= Data.AttackLaunchRatio;
 	}
 
 	// The power ratio of the wave's soldiers over the enemy soldiers within AttackRetreatRadius of their centroid (the large value when
