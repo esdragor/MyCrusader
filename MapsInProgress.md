@@ -750,37 +750,29 @@ Cartes = `Plain, Steppe, Hinterland, ElDorado, Cols, Forest, Fords, Crown` (colo
 
 
 **Simulation du 2026-11-09 (Haldir-12, Tools\Tests\glade_budget.py <Carte> --vs-a, style codé contre style A, 17:27:06) : 0 refus (RoomError) sur les tailles jouées.** Lignes (arbres style codé | style A ; [N relay variant(s) refused first] = variantes de relais refusées avant d'en trouver une, déjà le cas aujourd'hui pour Cols et Forest) :
-  - Cols Huge style F: ok trees 12617 [11 relay variant(s) refused first] | style A: trees 12657 357.1 s
   - Cols Huge style F: ok trees 12617 [11 relay variant(s) refused first] | style A: trees 12657 362.9 s
-  - Cols Large style F: ok trees 7920 [6 relay variant(s) refused first] | style A: trees 7918 39.6 s
   - Cols Large style F: ok trees 7920 [6 relay variant(s) refused first] | style A: trees 7918 39.7 s
   - Cols Medium style F: ok trees 27778 | style A: trees 29443 31.8 s
-  - Cols Normal style F: ok trees 7409 [4 relay variant(s) refused first] | style A: trees 7418 177.1 s
   - Cols Normal style F: ok trees 7409 [4 relay variant(s) refused first] | style A: trees 7418 226.1 s
   - Cols Small style F: ok trees 2500 | style A: trees 2500 8.4 s
-  - Crown Huge style H: ok trees 15040 | style A: trees 14999 115.4 s
   - Crown Huge style H: ok trees 15040 | style A: trees 14999 117.7 s
-  - Crown Large style H: ok trees 9992 | style A: trees 9960 51.7 s
   - Crown Large style H: ok trees 9992 | style A: trees 9960 52.0 s
   - Crown Medium style H: ok trees 31742 | style A: trees 33390 12.1 s
   - Crown Normal style H: ok trees 7500 | style A: trees 7468 23.1 s
   - Crown Small style H: ok trees 2488 | style A: trees 2500 8.8 s
-  - ElDorado Huge style E: ok trees 15040 | style A: trees 15040 114.1 s
   - ElDorado Huge style E: ok trees 15040 | style A: trees 15040 119.3 s
-  - ElDorado Large style E: ok trees 10000 | style A: trees 10000 49.8 s
   - ElDorado Large style E: ok trees 10000 | style A: trees 10000 51.0 s
   - ElDorado Medium style E: ok trees 35530 | style A: trees 36691 18.3 s
   - ElDorado Normal style E: ok trees 7500 | style A: trees 7500 28.0 s
   - ElDorado Small style E: ok trees 2500 | style A: trees 2500 11.8 s
-  - Fords Large style B: ok trees 9984 | style A: trees 9987 106.5 s
   - Fords Large style B: ok trees 9984 | style A: trees 9987 112.6 s
+  - Fords Huge style B: ok trees 15039 [4 relay variant(s) refused first] | style A: trees 15040 461.1 s (Haldir-13, 17:42)
   - Fords Medium style B: ok trees 5000 | style A: trees 5000 27.1 s
-  - Fords Normal style B: ok trees 7491 | style A: trees 7479 42.0 s
   - Fords Normal style B: ok trees 7491 | style A: trees 7479 44.4 s
   - Fords Small style B: ok trees 2429 | style A: trees 2430 14.3 s
-  - Forest Medium style C: ok trees 130985 [3 relay variant(s) refused first] | style A: trees 133647 136.4 s
   - Forest Medium style C: ok trees 130985 [3 relay variant(s) refused first] | style A: trees 133647 140.4 s
-  - Forest Normal style C: ok trees 166289 | style A: trees 166351 65.4 s
+  - Forest Large style C: ok trees 208077 [3 relay variant(s) refused first] | style A: trees 208153 479.7 s (Haldir-13, 17:42)
+  - Forest Huge style C: ok trees 256876 [3 relay variant(s) refused first] | style A: trees 257065 282.0 s (Haldir-13, 17:39)
   - Forest Normal style C: ok trees 166289 | style A: trees 166351 68.9 s
   - Forest Small style C: ok trees 57603 | style A: trees 57505 15.4 s
   - Hinterland Huge style A: ok trees 16148 3.7 s
@@ -793,10 +785,9 @@ Cartes = `Plain, Steppe, Hinterland, ElDorado, Cols, Forest, Fords, Crown` (colo
   - Plain Medium style D: ok trees 5168 | style A: trees 5168 2.1 s
   - Plain Normal style D: ok trees 26604 | style A: trees 27981 3.2 s
   - Plain Small style D: ok trees 2584 | style A: trees 2584 1.6 s
-  - Steppe Large style G: ok trees 4973 | style A: trees 4973 89.9 s
   - Steppe Large style G: ok trees 4973 | style A: trees 4973 90.1 s
+  - Steppe Huge style G: ok trees 7497 [8 relay variant(s) refused first] | style A: trees 7499 179.7 s (Haldir-13, 17:36)
   - Steppe Medium style G: ok trees 2466 | style A: trees 2466 20.2 s
-  - Steppe Normal style G: ok trees 3749 | style A: trees 3749 39.4 s
   - Steppe Normal style G: ok trees 3749 | style A: trees 3749 67.2 s
   - Steppe Small style G: ok trees 1251 | style A: trees 1251 7.2 s
-  - Tailles NON jouées (arrêtées à l'heure) : voir la liste des lignes ci-dessus ; une taille absente n'est pas vérifiée. Cols (F), Forest (C), Hinterland (A) : aucun refus aux tailles jouées ; la Forêt Immense et la Steppe Immense sont les plus lentes (> 5 min en simulation) : à relancer par python Tools\Tests\glade_budget.py Forest Large Huge --vs-a avant la régénération si elles manquent. Non simulé : les rochers de crête (obstacles) et drop_buried (le niveau est vide : aucun arbre « enterré »), donc un refus dû aux rochers ne se voit qu'à la génération. Aucune Q-glade-roomerror.md : aucun refus observé, aucun style de repli nécessaire (repli le plus proche si un refus apparaît : F -> B pour Cols, C -> D pour Forest, sans toucher au tableau de l'utilisateur sans question).
+  - Tailles NON jouées : aucune (Haldir-13, 2026-11-09 17:30-17:43 : Forest Large, Forest Huge, Fords Huge, Steppe Huge simulées par glade_budget.py, 4 en parallèle, 0 RoomError ; les 40 couples carte-taille sont maintenant joués, 0 refus). Les lignes en double (deux passes Cols, Crown, ElDorado, Fords, Steppe, Forest) ont été réduites à la passe complète. Non simulé : les rochers de crête (obstacles) et drop_buried : un refus dû aux rochers ne se voit qu'à la génération. Aucune Q-glade-roomerror.md : aucun refus, aucun style de repli nécessaire (repli le plus proche si un refus apparaît : F -> B pour Cols, C -> D pour Forest, sans toucher au tableau de l'utilisateur sans question).
