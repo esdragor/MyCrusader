@@ -77,15 +77,16 @@ void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 // HOLAudio::BuildingSelectGainPercent), whatever the seed; Stone, Metal and Coins (no election yet) ring nothing; the generic Select.Building stays silent.
 void Test_AudioElectedBuildingSelectionWoodAndSacred(FUnitTest& T)
 {
-	T.AssertTrue(HOLAudio::BuildingSelectGainPercent >= 200 && HOLAudio::BuildingSelectGainPercent <= 300, "the gain is x2 to x3 (the user's words)");
+	// Q-audio-select-gain = B (2026-11-09): the x2.5 clipped, so the gain is BAKED into limited files (+8 dB then a -1 dBFS limiter, *_lim) played at 100 %.
+	T.AssertEquals(100, HOLAudio::BuildingSelectGainPercent, "the limited files ring at 100 %, no gain above 100 left to clip");
 	TArray<FString> Buildings;
 	Buildings.Add("House");        Buildings.Add("LumberCamp"); Buildings.Add("MiningCamp"); Buildings.Add("Mill"); Buildings.Add("Farm");
 	Buildings.Add("Chapel");       Buildings.Add("Sanctuary");
 	for (int Index = 0; Index < Buildings.Num(); Index++)
 	{
 		FString Name = Buildings[Index];
-		FString Stem = "s_wood_door";
-		if (HOLAudioBuildings::FamilyOf(Name) == "Sacred") Stem = "s_sacred_book";
+		FString Stem = "s_wood_door_lim";
+		if (HOLAudioBuildings::FamilyOf(Name) == "Sacred") Stem = "s_sacred_book_lim";
 		int Event = HOLAudioBuildings::SelectEventFor(Name);
 		T.AssertTrue(Event >= 0, f"{Name}: selecting rings an elected event");
 		for (int Seed = -7; Seed < 20; Seed++)
@@ -118,7 +119,7 @@ void Test_AudioMarketSelectionRingsTheCoinsAndTradingIsSilent(FUnitTest& T)
 	{
 		FHOLAudioPlan Plan = HOLAudio::Plan(Event, 5000, -1, Seed, -1);
 		T.AssertTrue(Plan.bPlay, f"Market selection, seed {Seed}: plays");
-		T.AssertEquals("/Game/Audio/Kenney/rpg-audio/SW_handleCoins.SW_handleCoins", Plan.Asset, f"Market selection, seed {Seed}: handleCoins");
+		T.AssertEquals("/Game/Audio/Soft/SW_s_coins_select_lim.SW_s_coins_select_lim", Plan.Asset, f"Market selection, seed {Seed}: handleCoins, limited (Q-audio-select-gain = B)");
 		T.AssertEquals(HOLAudio::BuildingSelectGainPercent, Plan.VolumePercent, f"Market selection, seed {Seed}: at the building selection gain");
 		T.AssertFalse(HOLAudio::Plan(HOLAudioEvent::AlertTrade, 5000, -1, Seed, -1).bPlay, f"a trade, seed {Seed}: silent now");
 	}

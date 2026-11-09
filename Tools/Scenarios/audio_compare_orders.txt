@@ -4,7 +4,7 @@ waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]. 70 sons, 7 cues, dix variantes A a J chacune.
+note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]. 80 sons, 8 cues, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Order.Move C.
 note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_orders_start
@@ -218,6 +218,36 @@ waitlog candidate played Select.Building I
 waitkey Select.Building I (v_bass_pizz_E1) vient de jouer. Entree : Select.Building J
 hol.Audio.Candidate Select.Building J
 waitlog candidate played Select.Building J
-waitkey Select.Building J (impactPlate_medium_001) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Select.Building J (impactPlate_medium_001) vient de jouer. Entree : Select.BuildingCoins A  [nouveau cue]
+hol.Audio.Candidate Select.BuildingCoins A
+waitlog candidate played Select.BuildingCoins A
+waitkey Select.BuildingCoins A (s_coins_purse) vient de jouer. Entree : Select.BuildingCoins B
+hol.Audio.Candidate Select.BuildingCoins B
+waitlog candidate played Select.BuildingCoins B
+waitkey Select.BuildingCoins B (s_coins_leather_b) vient de jouer. Entree : Select.BuildingCoins C
+hol.Audio.Candidate Select.BuildingCoins C
+waitlog candidate played Select.BuildingCoins C
+waitkey Select.BuildingCoins C (s_coins_leather) vient de jouer. Entree : Select.BuildingCoins D
+hol.Audio.Candidate Select.BuildingCoins D
+waitlog candidate played Select.BuildingCoins D
+waitkey Select.BuildingCoins D (s_coins_drop) vient de jouer. Entree : Select.BuildingCoins E
+hol.Audio.Candidate Select.BuildingCoins E
+waitlog candidate played Select.BuildingCoins E
+waitkey Select.BuildingCoins E (s_coins_tin_b) vient de jouer. Entree : Select.BuildingCoins F
+hol.Audio.Candidate Select.BuildingCoins F
+waitlog candidate played Select.BuildingCoins F
+waitkey Select.BuildingCoins F (s_coins_counter) vient de jouer. Entree : Select.BuildingCoins G
+hol.Audio.Candidate Select.BuildingCoins G
+waitlog candidate played Select.BuildingCoins G
+waitkey Select.BuildingCoins G (s_coins_tin) vient de jouer. Entree : Select.BuildingCoins H
+hol.Audio.Candidate Select.BuildingCoins H
+waitlog candidate played Select.BuildingCoins H
+waitkey Select.BuildingCoins H (s_coins_cloth) vient de jouer. Entree : Select.BuildingCoins I
+hol.Audio.Candidate Select.BuildingCoins I
+waitlog candidate played Select.BuildingCoins I
+waitkey Select.BuildingCoins I (s_coins_soft) vient de jouer. Entree : Select.BuildingCoins J
+hol.Audio.Candidate Select.BuildingCoins J
+waitlog candidate played Select.BuildingCoins J
+waitkey Select.BuildingCoins J (s_coins_slap) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
