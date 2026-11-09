@@ -49,7 +49,9 @@ frames 2
 hol.Units.SpawnHere 1 Spearman 1 120
 waitlog SpawnHere: 1 Spearman of slot 1
 frames 40
-hol.Select.ClickUnit -1 enemy
+hol.Camera.FocusNear 5000 -1500
+frames 2
+hol.Select.ClickUnit -1 slot=1
 frames 10
 hol.HUD.Report
 waitlog HUD selection name: Lancier squelette$
