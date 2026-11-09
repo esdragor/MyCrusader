@@ -270,7 +270,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `TechnologiesInProgress.md` : technologies et Moines
 - `VictoryInProgress.md` : conditions de victoire et paliers
 - `VisualInProgress.md` : visuel des bâtiments (branche `visual`, worktree Sauron)
-- `PlaceholdersInProgress.md` : remplacement des placeholders (arbres, logos, unités, icônes, décor...), ouvert le 2026-11-08, relevé par lecture fait, rien codé ni commité ; liste vivante dans `Placeholders.txt` (à tenir à jour par TOUT chantier, règle dans `CLAUDE.md`) ; questions PQ-1 (par quoi commencer), PQ-2 (direction artistique), PQ-3 (logo), PQ-4 (script de contrôle), PQ-5 (fusion de `visual`) à trancher ; suivant P1 (lever les `[?]`)
+- `PlaceholdersInProgress.md` : remplacement des placeholders (arbres, logos, unités, icônes, décor...), ouvert le 2026-11-08, relevé par lecture fait, rien codé ni commité ; liste vivante dans `Placeholders.txt` (à tenir à jour par TOUT chantier, règle dans `CLAUDE.md`) ; questions PQ-1 (par quoi commencer), PQ-2 (direction artistique), PQ-3 (logo), PQ-4 (script de contrôle), PQ-5 (fusion de `visual`) posées le 2026-11-09 (`Retours\Q-placeholders-ordre.md`, `Q-placeholders-direction.md`, à trancher) ; P1 faite par lecture le 2026-11-09 (reste `[?]` : arbres/rochers par biome, icônes des talents, marques d'ordres ; worktree Sauron, journal commité sur `visual`) ; suivant P2 après réponse PQ-4
 - `VolcanoInProgress.md` : volcan et Catastrophe
 - `LauncherInProgress.md` : lanceur (clos sauf L15+ et l'essai avec un ami)
 
