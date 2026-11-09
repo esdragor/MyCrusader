@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerState.h"
 #include "Match/HOLResources.h"
+#include "Match/HOLSiteView.h"
 #include "Simulation/HOLHeroSheet.h"
 #include "Technologies/HOLTechnologyRules.h"
 #include "Engine/NetSerialization.h"
@@ -121,6 +122,14 @@ public:
 	/** Server only: true when it changed (and is then sent at once). */
 	bool SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate);
 
+	/**
+	 * S5 (D701): the sacred sites this player may know (taken or being taken by his camp, or explored by it), as he last saw them; set by
+	 * the server alone (UHOLSiteSubsystem) and replicated to this player only, so a site he never saw is not in what his machine holds.
+	 */
+	const TArray<FHOLSiteView>& GetSiteViews() const { return SiteViews; }
+	/** Server only: true when it changed (and is then sent at once). */
+	bool SetSiteViews(const TArray<FHOLSiteView>& InSiteViews);
+
 	/** The private sheet changed: on the server when set, on the owner's machine when it arrives. */
 	DECLARE_MULTICAST_DELEGATE(FOnHeroPrivateChanged);
 	FOnHeroPrivateChanged OnHeroPrivateChanged;
@@ -179,6 +188,10 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_HeroPrivate)
 	FHOLHeroPrivateSheet HeroPrivate;
+
+	/** S5: the sacred sites this player may know, owner only. */
+	UPROPERTY(Replicated)
+	TArray<FHOLSiteView> SiteViews;
 
 	UFUNCTION()
 	void OnRep_Technologies();

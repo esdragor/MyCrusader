@@ -3,6 +3,9 @@
 #include "Simulation/HOLSiteSubsystem.h"
 
 #include "Engine/World.h"
+#include "GameFramework/PlayerState.h"
+#include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLPlayerState.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLFactionRules.h"
@@ -22,6 +25,14 @@ namespace
 	float SiteHoldSeconds = HOLSite::DefaultHoldSeconds;
 	FAutoConsoleVariableRef CVarSiteHoldSeconds(TEXT("hol.Site.HoldSeconds"), SiteHoldSeconds,
 		TEXT("Seconds an adverse side must hold a sacred site's zone alone to take it (provisional 60, like the relay's)"));
+
+	int32 SiteGoldPerMinute = HOLSite::DefaultGoldPerMinute;
+	FAutoConsoleVariableRef CVarSiteGoldPerMinute(TEXT("hol.Site.GoldPerMinute"), SiteGoldPerMinute,
+		TEXT("Gold by the minute each held sacred site pays its owner alone (provisional 30, Retours/Q-sites-or-par-minute.md)"));
+
+	float SiteVictorySeconds = HOLSite::DefaultVictorySeconds;
+	FAutoConsoleVariableRef CVarSiteVictorySeconds(TEXT("hol.Site.VictorySeconds"), SiteVictorySeconds,
+		TEXT("Seconds a camp must hold EVERY sacred site to win (600, chosen by the user, D747: SacredSitesInProgress.md S10)"));
 
 	FAutoConsoleCommandWithWorldAndArgs SiteCommandAdd(TEXT("hol.Site.Add"),
 		TEXT("hol.Site.Add <X> <Y> [Radius=1200]: a neutral sacred site there, server or solo (development only)"),
@@ -64,6 +75,7 @@ namespace
 				const FHOLSiteState& State = Sites->GetSites()[Index].State;
 				Line += FString::Printf(TEXT(" | #%d owner %d taker %d held %d"), Index, State.Owner, State.Taker, State.Held);
 			}
+			Line += FString::Printf(TEXT(" | victory leader %d held %d winner %d"), Sites->GetVictory().Leader, Sites->GetVictory().Held, Sites->GetVictory().Winner);
 			UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Line);
 		}));
 }
@@ -135,6 +147,83 @@ int32 UHOLSiteSubsystem::AddSite(const FVector2D& Location, const float Radius)
 void UHOLSiteSubsystem::ClearSites()
 {
 	Sites.Reset();
+	Memory.Reset();
+	Victory = FHOLSiteVictoryState();
+	bVictoryApplied = false;
+	if (UWorld* World = GetWorld())
+	{
+		if (AHOLGameState* GameState = World->GetGameState<AHOLGameState>())
+		{
+			GameState->SetSiteCount(FHOLSiteCountNet());
+		}
+	}
+	PublishViews();
+}
+
+void UHOLSiteSubsystem::PublishViews()
+{
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World && World->GetNetMode() != NM_Client ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+	const bool bFog = Vision && Vision->IsStarted();
+	const int32 HoldSteps = FMath::Max(1, FMath::RoundToInt(SiteHoldSeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	Memory.SetNum(Slots);
+	for (TArray<FKnown>& PerSlot : Memory)
+	{
+		PerSlot.SetNum(Sites.Num());
+	}
+	TArray<FHOLSiteView> Live;
+	TArray<FHOLSiteView> Neutral;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		Live.Add(HOLSite::MakeView(Index, Sites[Index].Location, Sites[Index].Radius, Sites[Index].State, HoldSteps));
+		Neutral.Add(HOLSite::MakeView(Index, Sites[Index].Location, Sites[Index].Radius, FHOLSiteState(), HoldSteps));
+	}
+	for (APlayerState* Each : GameState->PlayerArray)
+	{
+		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
+		const int32 Slot = Player ? Player->GetPlayerIndex() : INDEX_NONE;
+		if (Slot < 0 || Slot >= Slots)
+		{
+			continue;
+		}
+		const int32 Camp = bFog ? Vision->GetCampIndex(Slot) : INDEX_NONE;
+		// Its camp: itself and its team (the fog's camps, D371); without a fog, itself.
+		const auto IsOfMyCamp = [&](const int32 Other)
+		{
+			return Other == Slot || (Camp != INDEX_NONE && Other >= 0 && Other < Slots && Vision->GetCampIndex(Other) == Camp);
+		};
+		TArray<FHOLSiteView> Views;
+		for (int32 Index = 0; Index < Sites.Num(); ++Index)
+		{
+			FKnown& Known = Memory[Slot][Index];
+			const FHOLSiteState& State = Sites[Index].State;
+			const FVector Centre(Sites[Index].Location.X, Sites[Index].Location.Y, 0.);
+			const EHOLCellVision Sight = bFog ? Vision->GetVision(Slot, Centre) : EHOLCellVision::Visible;
+			// D701: a site is seen by the camp that holds it or is taking it, and by the camp that has it in sight.
+			if (Sight == EHOLCellVision::Visible || IsOfMyCamp(State.Owner) || IsOfMyCamp(State.Taker))
+			{
+				Known.bKnown = true;
+				Known.View = Live[Index];
+			}
+			else if (Sight == EHOLCellVision::Explored && !Known.bKnown)
+			{
+				// Explored without ever being seen (an explored map): known, shown neutral until it is seen.
+				Known.bKnown = true;
+				Known.View = Neutral[Index];
+			}
+			if (Known.bKnown)
+			{
+				Views.Add(Known.View);
+			}
+		}
+		Player->SetSiteViews(Views);
+	}
 }
 
 int32 UHOLSiteSubsystem::CountOwned(const int32 Slot) const
@@ -218,6 +307,130 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 		if (State.Owner != OldOwner)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Site %d: slot %d takes it from slot %d at step %d"), Index, State.Owner, OldOwner, static_cast<int32>(StepIndex));
+		}
+	}
+	if (AHOLGameState* Mutable = World->GetGameState<AHOLGameState>())
+	{
+		StepVictory(*Mutable, TeamBySlot, Disturbers);
+	}
+	PublishViews();
+	PayGold(*GameState);
+}
+
+void UHOLSiteSubsystem::StepVictory(AHOLGameState& GameState, const TArray<int32>& TeamBySlot, const TArray<TArray<int32>>& Disturbers)
+{
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	const FHOLCampTable Relations = FHOLCampTable::FromWorld(GetWorld());
+	// The camp key of each slot: its team; in the Diplomacy mode the lowest slot that is not its adversary (itself included), so an alliance that
+	// breaks changes the key of the camp that held every site and resets the count (D703).
+	TArray<int32> VictoryTeam;
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		int32 Key = TeamBySlot[Slot];
+		if (Relations.IsDiplomacy())
+		{
+			Key = Slot;
+			for (int32 Other = 0; Other < Slot; ++Other)
+			{
+				if (!Relations.AreHostile(Slot, Other))
+				{
+					Key = Other;
+					break;
+				}
+			}
+		}
+		VictoryTeam.Add(Key);
+	}
+	TArray<int32> OwnerBySite;
+	TArray<int32> ContestedBySite;
+	for (int32 Index = 0; Index < Sites.Num(); ++Index)
+	{
+		const int32 Owner = Sites[Index].State.Owner;
+		OwnerBySite.Add(Owner);
+		int32 Contested = 0;
+		for (int32 Slot = 0; Owner >= 0 && Owner < Slots && Slot < Slots; ++Slot)
+		{
+			if (Disturbers[Index][Slot] > 0 && Relations.AreHostile(Owner, Slot))
+			{
+				Contested = 1;
+			}
+		}
+		ContestedBySite.Add(Contested);
+	}
+	const int32 VictorySteps = FMath::Max(1, FMath::RoundToInt(SiteVictorySeconds * GetDefault<UHOLSimulationSettings>()->SimulationRateHz));
+	Victory = HOLSite::VictoryStep(Victory, OwnerBySite, ContestedBySite, VictoryTeam, VictorySteps);
+	{
+		// The count every machine reads (replicated, public, D431): the camp in the lead, the whole seconds left, frozen by a contested site, the winner.
+		FHOLSiteCountNet Count;
+		// Leader and Winner are camp keys (a team, or the lowest slot of the camp in Diplomacy): the count shows the lowest slot of that camp.
+		const auto SlotOfCamp = [&VictoryTeam](const int32 Camp)
+		{
+			return Camp == INDEX_NONE ? static_cast<int32>(INDEX_NONE) : VictoryTeam.IndexOfByKey(Camp);
+		};
+		Count.Leader = SlotOfCamp(Victory.Leader);
+		Count.Winner = SlotOfCamp(Victory.Winner);
+		if (Victory.Winner != INDEX_NONE)
+		{
+			Count.SecondsLeft = 0;
+		}
+		else if (Victory.Leader != INDEX_NONE)
+		{
+			const int32 Rate = FMath::Max(1, GetDefault<UHOLSimulationSettings>()->SimulationRateHz);
+			Count.SecondsLeft = FMath::DivideAndRoundUp(FMath::Max(0, VictorySteps - Victory.Held), Rate);
+			for (const int32 Contested : ContestedBySite)
+			{
+				Count.bFrozen = Count.bFrozen || Contested != 0;
+			}
+		}
+		GameState.SetSiteCount(Count);
+	}
+	if (Victory.Winner == INDEX_NONE || bVictoryApplied || OwnerBySite.IsEmpty())
+	{
+		return;
+	}
+	// The count is full: every adversary of the winning camp is defeated, through the collapse of the forum's defeat (D358).
+	bVictoryApplied = true;
+	const int32 Reference = OwnerBySite[0];
+	UE_LOG(LogHOLMatch, Display, TEXT("Site victory: the camp of slot %d held every site, its adversaries are defeated"), Reference);
+	for (int32 Slot = 0; Slot < Slots; ++Slot)
+	{
+		if (Slot != Reference && Relations.AreHostile(Reference, Slot))
+		{
+			GameState.DefeatSlot(Slot, EHOLDefeatReason::SacredSites);
+		}
+	}
+}
+
+void UHOLSiteSubsystem::PayGold(const AHOLGameState& GameState)
+{
+	// S6 (D699): the OWNER alone is paid (its allies get nothing, D703 counts camps for the take, not for the pay), a defeated slot no more.
+	const int32 Slots = FHOLMatchConfig::MaxSlots;
+	const int32 Rate = GetDefault<UHOLSimulationSettings>()->SimulationRateHz;
+	GoldCarry.SetNumZeroed(Slots);
+	for (APlayerState* Each : GameState.PlayerArray)
+	{
+		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
+		const int32 Slot = Player ? Player->GetPlayerIndex() : INDEX_NONE;
+		if (Slot < 0 || Slot >= Slots)
+		{
+			continue;
+		}
+		if (GameState.IsSlotDefeated(Slot))
+		{
+			GoldCarry[Slot] = 0;
+			continue;
+		}
+		const int32 Owned = CountOwned(Slot);
+		if (Owned == 0 && GoldCarry[Slot] == 0)
+		{
+			continue;
+		}
+		const int32 Gold = HOLSite::GoldStep(GoldCarry[Slot], Owned, SiteGoldPerMinute, Rate);
+		if (Gold > 0)
+		{
+			FHOLResources Stock = Player->GetResources();
+			Stock.Gold += Gold;
+			Player->SetResources(Stock);
 		}
 	}
 }

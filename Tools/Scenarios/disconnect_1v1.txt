@@ -1,0 +1,17 @@
+# Deconnexion en 1 contre 1 (D717-D718) : Alice (toi) contre Bob, seul dans son camp. Bob part : l IA tient son siege pendant la fenetre, puis la fenetre finit : Bob PERD (compte comme une defaite, "Bob a quitte la partie"). Commandes de console hol.Net.FakeAbsent (pas un geste de souris). 3 minutes au plus.
+hol.Match.DisconnectWindowSeconds 60
+frames 90
+hol.Match.StartWaitSeconds 1
+waitlog slot 1 (Bob) held by AI
+hol.Camera.FocusSlot 1
+frames 150
+capture dc1v1_away
+hol.Disconnect.Report
+note FENETRE OUVERTE : Bob est parti, sa base reste, pastille "Connexion perdue", bandeau avec le compte a rebours.
+waitkey Entree : la fenetre finit. Bob est seul dans son camp : il perd
+hol.Net.FakeAbsent End 1
+waitlog windows ended
+frames 200
+capture dc1v1_end
+hol.Disconnect.Report
+note FIN DE FENETRE : Bob est vaincu (defaite comptee), le bandeau s eteint, un message "Bob a quitte la partie" au journal de partie, et comme Bob etait le seul adversaire la partie est gagnee par Alice (ecran de victoire).

@@ -106,17 +106,26 @@ FText FHOLDisconnectRules::FormatBackLine(const FString& Name)
 
 #undef LOCTEXT_NAMESPACE
 
-FString FHOLDisconnectRules::FormatSeatReport(const int32 Slot, const FString& Name, const ESeatState State, const double SecondsLeft)
+FString FHOLDisconnectRules::FormatSeatReport(const int32 Slot, const FString& Name, const ESeatState State, const double SecondsLeft, const EAIMode AIMode)
 {
+	FString Line;
 	switch (State)
 	{
 	case ESeatState::AbsentAIHolds:
-		return FString::Printf(TEXT("slot %d (%s) away, AI holds, %d s left"), Slot, *Name, FMath::Max(0, FMath::CeilToInt(SecondsLeft)));
+		Line = FString::Printf(TEXT("slot %d (%s) away, AI holds, %d s left"), Slot, *Name, FMath::Max(0, FMath::CeilToInt(SecondsLeft)));
+		break;
 	case ESeatState::AIHolds:
-		return FString::Printf(TEXT("slot %d (%s) away, window over, the AI keeps the seat"), Slot, *Name);
+		Line = FString::Printf(TEXT("slot %d (%s) away, window over, the AI keeps the seat"), Slot, *Name);
+		break;
 	case ESeatState::Defeated:
 		return FString::Printf(TEXT("slot %d (%s) defeated"), Slot, *Name);
 	default:
 		return FString::Printf(TEXT("slot %d (%s) present"), Slot, *Name);
 	}
+	// How the AI plays the seat it keeps: the hold mode in the window, the full brain after it.
+	if (AIMode != EAIMode::None)
+	{
+		Line += AIMode == EAIMode::Hold ? TEXT(", AI mode hold") : TEXT(", AI mode full brain");
+	}
+	return Line;
 }

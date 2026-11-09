@@ -6234,9 +6234,10 @@ if ($Parts -contains "net") {
     $NetSelectedTrees = @{}
     $NetPopups = @{}
     foreach ($NetClient in $NetClients) {
-        # Up to 300 s from the client's own launch (2026-10-27): 120 s from here killed a client launched late on a busy
-        # machine (Turnkey slow) while it quit, after a good match.
-        $ClientLeft = [Math]::Max(0, [int]($NetClient.Process.StartTime.AddSeconds(300) - (Get-Date)).TotalMilliseconds)
+        # Up to 600 s from the client's own launch (2026-11-09): was 300 s (2026-10-27), but the client sequence grew
+        # (hero, technologies, market, monk x4, siege, duel, volcano) and ended at 303-305 s, killed 8 s before its own
+        # "Test mark: end" -> "client N : sequence done" FAIL and every report of the part empty (the 15 reds of 2026-11-08).
+        $ClientLeft = [Math]::Max(0, [int]($NetClient.Process.StartTime.AddSeconds(600) - (Get-Date)).TotalMilliseconds)
         $ClientTimedOut = -not $NetClient.Process.WaitForExit($ClientLeft)
         if ($ClientTimedOut) { $NetClient.Process.Kill() }
         $N = $NetClient.Client

@@ -25,6 +25,18 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, SiteViews, COND_OwnerOnly);
+}
+
+bool AHOLPlayerState::SetSiteViews(const TArray<FHOLSiteView>& InSiteViews)
+{
+	if (SiteViews == InSiteViews)
+	{
+		return false;
+	}
+	SiteViews = InSiteViews;
+	ForceNetUpdate();
+	return true;
 }
 
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)

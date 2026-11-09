@@ -1,0 +1,53 @@
+# Victoire sacree (S10, D431, D703, D747) : tenir les 2 sites lance le compte, le bandeau « Victoire sacree » est a gauche sous le panneau Triches (avec la ligne du volcan), annonces a 60 s et a 10 s, puis la victoire.
+# Plain, toi (slot 0) contre un adversaire sans cerveau. Temps raccourcis (reglages hol.Site.*, provisoires) : prise en 4 s, compte de 75 s au lieu de 600 s. Essai d'environ 2 minutes.
+frames 30
+hol.Sanity.Watch 1
+hol.Site.Enabled 1
+hol.Site.HoldSeconds 4
+hol.Site.VictorySeconds 75
+hol.Site.Add 6000 3000 1200
+hol.Site.Add 6000 -3000 1200
+hol.Units.Spawn 2 6000 3000 0 Monk 200
+hol.Units.Spawn 2 6000 -3000 0 Monk 200
+waitunits 4
+hol.Camera.Zoom -12
+hol.Camera.Report 1
+wait 14
+hol.Camera.Focus 6000 0
+frames 2
+hol.HUD.Report 1
+waitlog sacred leader 0 left
+waitlog HUD overlap:
+capture sites_count
+note 1. A gauche, sous le panneau Triches : « Victoire sacree : <ton nom> dans m:ss » et l'horloge descend (tes 4 Moines tiennent les 2 sites).
+hol.Units.Spawn 1 6000 3000 1 Spearman 100
+wait 3
+hol.Camera.Zoom 10
+hol.Camera.Focus 6000 3000
+frames 2
+hol.HUD.Report 1
+waitlog frozen
+waitlog HUD overlap:
+capture sites_frozen
+note 2. Un adversaire dans une zone : « ... (en attente) », l'horloge ne descend plus.
+hol.Camera.Zoom -10
+hol.Camera.Focus 6000 0
+hol.Units.Remove 6000 3000 800 1
+wait 4
+hol.HUD.Report 1
+waitlog announce 60
+frames 3
+capture sites_announce60
+note 3. Le compte passe sous 60 s : une ligne « Sites sacres : <nom> gagne dans une minute » s'ajoute sous le bandeau (cloche d'attente provisoire).
+wait 50
+hol.HUD.Report 1
+waitlog announce 10
+frames 3
+capture sites_announce10
+note 4. A 10 s : « Sites sacres : <nom> gagne dans 10 secondes ».
+wait 8
+hol.HUD.Report 1
+waitlog sacred won 0
+frames 3
+capture sites_won
+note 5. Compte a zero : « Victoire sacree : <ton nom> » et la fin de partie.
