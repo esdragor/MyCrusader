@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Dev/HOLSanityRules.h"
 #include "Misc/AutomationTest.h"
@@ -434,6 +434,12 @@ bool FHOLSanityStallTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("no claimed place: the flank is not suspended"), HOLCombat::ShouldSuspendRearFlank(false, 100.));
 		TestTrue(TEXT("a target 100 cm from the last is a neighbour"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(60., 80.)));
 		TestFalse(TEXT("a target 300 cm from the last is not"), HOLCombat::IsNeighbourTarget(FVector2D(0., 0.), FVector2D(300., 0.)));
+		// BUG-melee-spin-sanity (hol.Combat.RearKeepBothFull): both enemies full, the new one not clearly nearer: the target is kept (no swing).
+		TestTrue(TEXT("both full, the new one 50 cm nearer: keep the target"), HOLCombat::ShouldKeepTargetBothFull(true, true, true, 300., 350., 200.));
+		TestFalse(TEXT("both full, the new one 250 cm nearer: take it"), HOLCombat::ShouldKeepTargetBothFull(true, true, true, 100., 350., 200.));
+		TestFalse(TEXT("the new one has a place left: take it"), HOLCombat::ShouldKeepTargetBothFull(true, true, false, 300., 350., 200.));
+		TestFalse(TEXT("the target has a place left: the other rule (RearTargetKeep) decides"), HOLCombat::ShouldKeepTargetBothFull(true, false, true, 300., 350., 200.));
+		TestFalse(TEXT("cvar off: as before"), HOLCombat::ShouldKeepTargetBothFull(false, true, true, 300., 350., 200.));
 	}
 	// Q-neutrals-second-rank = C (the trace of neutrals, #11 behind #9 and #13, 2026-11-05): walled in for 1 s, the soldier turns to the nearest enemy
 		// with a free place it can reach; not the target it leaves, not an enemy walled in by a ring of bodies.
