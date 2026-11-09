@@ -113,6 +113,12 @@ struct FHOLAIArmyData
 	float AttackLaunchRatio = 1.5f;
 	float AttackRetreatRatio = 0.6f;
 
+	// N6 (NeutralsInProgress): how a visible neutral camp weighs in the launch of a wave. 1 = it counts like any enemy soldier (what the
+	// summary does since the neutral owner exists: the wave waits until it could beat the camp too); 0 = it is left out, the ratio is
+	// that of the adversaries alone (the wave goes against them and a camp met on the way is only a fight). Q-neutrals-ia-camps:
+	// one line to change, the default keeps today's behaviour.
+	int CampPolicy = 1;
+
 	// The wave falls back when it has lost more than this share of its size.
 	float AttackLossShare = 0.6f;
 
@@ -1025,6 +1031,28 @@ namespace HOLAIArmy
 			}
 		}
 		return Best;
+	}
+
+	// N6 (STUB, red first): the neutral owner is the first one beyond the slots (FHOLMatchConfig::NeutralOwner = MaxSlots = 8).
+	const int NeutralOwnerSlot = 8;
+
+	// The enemy units of the summary that belong to a neutral camp.
+	TArray<FHOLAIUnit> CampUnits(const FHOLAISummary& Summary)
+	{
+		TArray<FHOLAIUnit> None;
+		return None;
+	}
+
+	// The summary seen against the adversaries alone: the neutral camps left out of Enemies.
+	FHOLAISummary AdversaryView(const FHOLAISummary& Summary)
+	{
+		return Summary;
+	}
+
+	// Our power ratio over the visible neutral camps alone (the large value when no camp is seen): what a camp costs before the wave.
+	float CampRatio(const FHOLAIArmyData& Data, const FHOLAISummary& Summary)
+	{
+		return 0.f;
 	}
 
 	// Whether a wave may be launched now: at home, not defending, the cooldown over, an enemy centre to go to (or a teammate's ruin to help
