@@ -14,3 +14,5 @@ NON VÉRIFIÉ : aucun son entendu par un agent ; les textes d'attente par son (�
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_select_gain -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 2 min (12 sons, Entrée à chaque son). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: <famille, plus fort / moins fort / autre>` (le niveau se règle en relançant `Tools\Audio\make_limited_selects.py` avec un autre gain puis `Tools\Editor\import_audio_elected.py`).
+
+Reponse (utilisateur, 2026-11-09 17:00, joue par lui) : OK (limiteur B Bois/Sacre/Marche accepte).

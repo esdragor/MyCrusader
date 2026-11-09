@@ -83,6 +83,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-07 (leçon L6-2) : lignes faites ou pé
 ## Sauron — `visual` — Biomes (`BiomeInProgress.md`)
 - [ ] (sans C++, machine calme, ~25 min) Mesures S1/S2 du décor générique des Biomes (2128 pièces HISM sur la Plaine) par `biome_decor_cost.ps1`.
 - [?] (attend l'utilisateur) Biomes B4 : colonne biome de Maps.csv après son jugement des cinq looks (Q2 = B) ; `E-biome_decor_tour.md`, `Q-biomes-look.md`.
+- [ ] (C++, Sauron, EN TETE, reponse utilisateur 2026-11-09 17:07 Q-neutrals-trees-decor = A) commande de test C++ qui retire les arbres (decor de la carte, pas des sources) autour d'un point, pour que le camp du scenario `neutrals` soit vu dans une clairiere ; puis refaire `neutrals` (preflight + PNG ouverts) et E-neutrals ; journal ScenariosInProgress.md, fiche Retours\Q-neutrals-trees-decor.md.
 - [ ] (sans C++, Sauron, ~25 min) Placeholders lot ressources et décor (PQ-1 = A) : dix échantillons vus dans le jeu, l'utilisateur dit aimé / pas aimé ; `PlaceholdersInProgress.md` ; 1er test : `Tools\check_placeholders.ps1` liste les lignes du lot.
 - [ ] (sans C++, Sauron, ~20 min) `Placeholders.txt` : trancher à l'écran les 6 lignes `[?]` (arbres Herbe fraîche, Steppe sèche, Forêt sombre ; rochers par biome ; trajets d'ordres ; icônes des talents), PNG ouverts ; 1er test : `Tools\check_placeholders.ps1`.
 - [?] (sans C++, attend l'utilisateur) `Retours\Q-neutrals-camp-cache.md` : camp du scénario `neutrals` caché dans le bosquet ; défaut = scénario inchangé ; E-neutrals reste LOGIQUE SEULEMENT.
