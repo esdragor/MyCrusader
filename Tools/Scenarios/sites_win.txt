@@ -10,8 +10,10 @@ hol.Site.Add 6000 -3000 1200
 hol.Units.Spawn 2 6000 3000 0 Monk 200
 hol.Units.Spawn 2 6000 -3000 0 Monk 200
 waitunits 4
+hol.Camera.Zoom -12
+hol.Camera.Report 1
 wait 14
-hol.Camera.FocusNear 6000 0
+hol.Camera.Focus 6000 0
 frames 2
 hol.HUD.Report 1
 waitlog sacred leader 0 left
@@ -20,13 +22,16 @@ capture sites_count
 note 1. A gauche, sous le panneau Triches : « Victoire sacree : <ton nom> dans m:ss » et l'horloge descend (tes 4 Moines tiennent les 2 sites).
 hol.Units.Spawn 1 6000 3000 1 Spearman 100
 wait 3
-hol.Camera.FocusNear 6000 0
+hol.Camera.Zoom 10
+hol.Camera.Focus 6000 3000
 frames 2
 hol.HUD.Report 1
 waitlog frozen
 waitlog HUD overlap:
 capture sites_frozen
 note 2. Un adversaire dans une zone : « ... (en attente) », l'horloge ne descend plus.
+hol.Camera.Zoom -10
+hol.Camera.Focus 6000 0
 hol.Units.Remove 6000 3000 800 1
 wait 4
 hol.HUD.Report 1
