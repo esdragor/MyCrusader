@@ -27,6 +27,8 @@ capture legions_gesture_dawn_barracks
 hol.Select.Grid 0
 waitlog Production: Spearman of slot 0 done
 frames 30
+hol.Camera.FocusNear 2500 2500
+frames 2
 hol.Select.ClickUnit -1
 frames 10
 hol.HUD.Report

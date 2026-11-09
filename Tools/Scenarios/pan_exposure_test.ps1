@@ -6,7 +6,8 @@
 param([string] $Root = "", [string[]] $Names = @("fog_trees", "neutrals_qground", "diplomacy_qground_watch", "legions_roster_gesture", "legions_roster_gesture_dawn",
     "diplomacy_qground", "diplomacy_qground_before", "diplomacy_qground_dump", "diplomacy_qground_watch_nc", "diplomacy_qground_watch_nofix",
     "fog_orders", "fog_orders_compare", "fog_orders_flicker", "fog_orders_flicker_off", "legions_roster", "build_walkers",
-    "zz_edge_walk", "zz_edge_walk2", "zz_edge_walk4", "neutrals_qground_rule"))   # melee_stuck* / melee_spin*: Celeborn's, covered when he fixes them
+    "zz_edge_walk", "zz_edge_walk2", "zz_edge_walk4", "neutrals_qground_rule",
+    "hero_xp", "playtest_hero_xp", "siege", "siege_combat", "siege_mangonel", "siege_raze", "siege_tech", "unit_stats_attack"))   # + ClickUnit (Glorfindel-23)   # melee_stuck* / melee_spin*: Celeborn's, covered when he fixes them
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
 . (Join-Path $PSScriptRoot "PanExposure.ps1")
 $Bad = 0
