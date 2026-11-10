@@ -229,6 +229,14 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	int32 PlayerIndex = INDEX_NONE;
 
 	/**
+	 * Palier 3 G14: the key of the slot's faction (HOLFactionRules::GetSlotFactionKey: Dawn, Legions...), read by Read from the launch
+	 * configuration; NAME_None for a summary built without a world (Make). The script brain copies it into its army data so that it
+	 * plans only the types its faction makes.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	FName Faction = NAME_None;
+
+	/**
 	 * Its idle Peasants, by identifier (ascending): its workers (units whose type gathers, a CarryCapacity) standing with
 	 * nothing to do, as the HUD's idle worker count (D307): a gatherer on its round trip or a builder is not idle. Unit
 	 * identifiers are uint32 in C++; they fit an int32 (Blueprint and script have no uint32).

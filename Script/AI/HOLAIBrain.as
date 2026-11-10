@@ -161,6 +161,11 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		FHOLAISummary Summary = HOLAISummary::ReadAISummary(PlayerIndex);
 		FHOLAIOpeningData Data = HOLAIOpening::DefaultData();
 		ReadFigures(Data);
+		// Palier 3 G14: the army plans only what the slot's faction makes (a summary without a faction keeps the data's default, the Dawn).
+		if (Summary.Faction != NAME_None)
+		{
+			Data.Army.Faction = Summary.Faction;
+		}
 		const int64 Step = GetStepIndex();
 		Data.GameSeconds = float(Step) / 20.f;
 		LogStatus(PlayerIndex, Step, Summary);

@@ -1145,7 +1145,7 @@ namespace HOLAIOpening
 			{
 				const FHOLAIComposition Pick = HOLAIArmy::ChooseComposition(Summary, Data.Army, Building.TypeName);
 				const FHOLAITypeFigures Unit = HOLAIArmy::FiguresOf(Data.Army, Pick.Type);
-				const bool bKnown = Pick.bValid && HOLAIArmy::TypeIndex(Data.Army, Pick.Type) >= 0;
+				const bool bKnown = Pick.bValid && HOLAIArmy::HasFigures(Data.Army, Pick.Type);
 				bool bPays = bKnown && Food >= Unit.CostFood && Wood >= Unit.CostWood && Stone >= Unit.CostStone && Gold >= Unit.CostGold;
 				if (bPays && bHouse && Wood - Unit.CostWood < Data.House.CostWood)
 				{

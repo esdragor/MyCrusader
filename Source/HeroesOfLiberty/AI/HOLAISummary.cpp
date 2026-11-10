@@ -11,6 +11,7 @@
 #include "EngineUtils.h"
 #include "GameFramework/GameStateBase.h"
 #include "Map/HOLVisionSubsystem.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -548,6 +549,8 @@ namespace HOLAISummary
 		{
 			Summary.Tier = GameState->GetTier(PlayerIndex);
 		}
+		// Palier 3 G14: the slot's faction, so that the script brain plans only what its faction makes.
+		Summary.Faction = HOLFactionRules::GetSlotFactionKey(&World, PlayerIndex);
 		return Summary;
 	}
 }

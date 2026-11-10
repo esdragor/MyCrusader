@@ -309,6 +309,13 @@ void Test_ArmyCompositionFixedMix(FUnitTest& T)
 	Range.State = EHOLConstructionState::Finished;
 	Range.Queue.Add(n"Crossbowman");
 	Summary.Buildings.Add(Range);
+	// G14 (Q-ai-arquebusier A): the mix counts 7 shares at tier 3 (2 + 1 + 2 + 1 + the Arquebusier 1), so with the Crossbowman waiting the Arquebusier is the one lacking ...
+	Choice = HOLAIArmy::ChooseComposition(Summary, Data);
+	T.AssertTrue(Choice.Type == n"Arquebusier", "2 Spearmen, 2 Archers, a Man-at-arms and a Crossbowman waiting: the Arquebusier (7th share)");
+	T.AssertTrue(Choice.Building == n"ArcheryRange", "the Arquebusier is made at the Archery range");
+
+	// ... and once it waits too, every one of the 7 shares is filled: the first of the mix again.
+	Summary.Buildings[1].Queue.Add(n"Arquebusier");
 	Choice = HOLAIArmy::ChooseComposition(Summary, Data);
 	T.AssertTrue(Choice.Type == n"Spearman", "every type at its share: the first of the mix");
 }

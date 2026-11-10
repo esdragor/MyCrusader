@@ -36,6 +36,16 @@ struct FHOLAIArmyData
 	TArray<FName> CandidateBuildings;
 	TArray<int> CandidateRatios;
 
+	// The faction key that makes each candidate (None: every faction does; parallel to Candidates) and the AI's own faction key (G14, D710: a unit its faction
+	// does not make is never planned, the server would refuse it in a loop). The brain sets Faction from the slot's launch configuration.
+	TArray<FName> CandidateFactions;
+	FName Faction = n"Dawn";
+
+	// The figures (cost, population...) of the candidates that are not in Types (the Arquebusier: the counter rule leaves it out), so that the
+	// brain can pay and queue it (found by AI.Army.Faction: without them the brain never ordered it). Parallel arrays, filled by LoadFigures.
+	TArray<FName> ExtraTypes;
+	TArray<FHOLAITypeFigures> ExtraFigures;
+
 	// Weight of each resource in a unit's value (gold is dearer).
 	float FoodWeight = 1.f;
 	float WoodWeight = 1.f;
@@ -280,6 +290,14 @@ namespace HOLAIArmy
 		Data.Candidates.Add(n"Crossbowman");
 		Data.CandidateBuildings.Add(n"ArcheryRange");
 		Data.CandidateRatios.Add(1);
+		// G14 (Q-ai-arquebusier A): the Arquebusier (tier 3, Dawn only) joins the fixed mix with a share of 1 in 7. It is NOT in Types: the counter rule leaves it out.
+		Data.Candidates.Add(n"Arquebusier");
+		Data.CandidateBuildings.Add(n"ArcheryRange");
+		Data.CandidateRatios.Add(1);
+		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
+		{
+			Data.CandidateFactions.Add(Data.Candidates[Index] == n"Arquebusier" ? n"Dawn" : NAME_None);
+		}
 		return Data;
 	}
 
@@ -295,6 +313,30 @@ namespace HOLAIArmy
 			Data.Figures.Add(Figures);
 		}
 		HOLAIOrder::ReadAIUnitFigures(n"Peasant", Data.PeasantFigures);
+		Data.ExtraTypes.Empty();
+		Data.ExtraFigures.Empty();
+		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
+		{
+			if (Data.Types.Contains(Data.Candidates[Index]) || Data.ExtraTypes.Contains(Data.Candidates[Index]))
+			{
+				continue;
+			}
+			FHOLAITypeFigures Figures;
+			HOLAIOrder::ReadAIUnitFigures(Data.Candidates[Index], Figures);
+			Data.ExtraTypes.Add(Data.Candidates[Index]);
+			Data.ExtraFigures.Add(Figures);
+		}
+	}
+
+	// Whether the type has usable figures (health) among the types of the counter rule or the extra candidates.
+	bool HasFigures(const FHOLAIArmyData& Data, FName Type)
+	{
+		if (TypeIndex(Data, Type) >= 0)
+		{
+			return true;
+		}
+		const int Extra = Data.ExtraTypes.FindIndex(Type);
+		return Extra >= 0 && Extra < Data.ExtraFigures.Num() && Data.ExtraFigures[Extra].Health > 0;
 	}
 
 	// The index of a type in the data, -1 when it has no usable figures (unknown, or no health).
@@ -530,6 +572,14 @@ namespace HOLAIArmy
 		{
 			Figures = Data.Figures[At];
 		}
+		else
+		{
+			const int Extra = Data.ExtraTypes.FindIndex(Type);
+			if (Extra >= 0 && Extra < Data.ExtraFigures.Num())
+			{
+				Figures = Data.ExtraFigures[Extra];
+			}
+		}
 		return Figures;
 	}
 
@@ -554,6 +604,11 @@ namespace HOLAIArmy
 			if (HOLUnitTier::MinTierOf(Data.Candidates[Index].ToString()) > int(Summary.Tier))
 			{
 				// G1 (D711): a unit the tier has not opened is not a candidate (the server refuses it).
+				continue;
+			}
+			if (Index < Data.CandidateFactions.Num() && Data.CandidateFactions[Index] != NAME_None && Data.CandidateFactions[Index] != Data.Faction)
+			{
+				// G14 (D710): a unit the AI's faction does not make is not a candidate (the server refuses it).
 				continue;
 			}
 			if (OnlyBuilding != NAME_None && (Index >= Data.CandidateBuildings.Num() || Data.CandidateBuildings[Index] != OnlyBuilding))
