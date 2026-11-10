@@ -133,6 +133,9 @@ namespace UE::HeroesOfLiberty::Combat
 	FAutoConsoleVariableRef CVarZoneOfControl(TEXT("hol.Combat.ZoneOfControl"), ZoneOfControl,
 		TEXT("cm edge to edge (default 150): a melee walking to fight (hol.Combat.StopAtContact), no enemy in its reach, takes the nearest enemy this close and walks to it alone (its target kept while in the zone); 0: as before"));
 	/** J7c.4, loop 19: a melee out of reach keeps its target unless the new one is clearly nearer (no swing at each search). */
+	int32 RearKeepBothFull = 0;
+	FAutoConsoleVariableRef CVarRearKeepBothFull(TEXT("hol.Combat.RearKeepBothFull"), RearKeepBothFull,
+		TEXT("1 (default 0 until measured, with hol.Combat.RearTargetKeep): a melee out of reach of its target and of the new one found, BOTH with every place taken, keeps its target unless the new one is RearTargetKeep nearer (the second-rank soldier that swings between two enemies it cannot reach and runs 1000 cm for 200 cm net: BUG-melee-spin-sanity); 0: as before"));
 	float RearTargetKeep = 200.f;
 	FAutoConsoleVariableRef CVarRearTargetKeep(TEXT("hol.Combat.RearTargetKeep"), RearTargetKeep,
 		TEXT("cm (default 200, with hol.Combat.PreferFreeTarget): a melee out of reach of its target and of the new one found keeps its target, alive with a free place around it, unless the new one is this much nearer (edge to edge); 0: as before"));
@@ -1858,6 +1861,11 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						if (PlacesAround(Target) < HOLCombat::MaxAttackers && !IsFarAlong(TargetPosition)
 							&& HOLCombat::GetEdgeDistance(Position, Seeker.Radius, NewPosition, NewRadius)
 								> HOLCombat::GetEdgeDistance(Position, Seeker.Radius, TargetPosition, TargetRadius) - RearTargetKeep)
+						{
+							NewTarget = Target;
+						}
+						else if (HOLCombat::ShouldKeepTargetBothFull(RearKeepBothFull != 0, PlacesAround(Target) >= HOLCombat::MaxAttackers, PlacesAround(NewTarget) >= HOLCombat::MaxAttackers,
+							HOLCombat::GetEdgeDistance(Position, Seeker.Radius, NewPosition, NewRadius), HOLCombat::GetEdgeDistance(Position, Seeker.Radius, TargetPosition, TargetRadius), RearTargetKeep))
 						{
 							NewTarget = Target;
 						}

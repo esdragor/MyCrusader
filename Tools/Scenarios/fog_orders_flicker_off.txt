@@ -6,6 +6,7 @@ open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+note Mesure de reference (observation seule, rien a jouer) : meme scene que fog_orders_flicker mais brouillard dessine coupe (hol.Fog.Render 0) ; 8 captures de suite camera fixe, Tools/Tests/fog_flicker.ps1 compare les images.
 hol.Camera.FocusNear 800 0
 frames 2
 hol.Units.SpawnHere 4 ManAtArms 0 250
@@ -30,6 +31,7 @@ hol.Units.SpeedScale 0.1
 wait 6
 hol.Fog.RenderReport
 waitlog Fog render: mode 0
+panel hide
 capture flick_00
 frames 1
 capture flick_01
@@ -46,4 +48,5 @@ capture flick_06
 frames 1
 capture flick_07
 frames 1
+panel show
 mark flicker done

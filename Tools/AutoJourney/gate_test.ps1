@@ -34,6 +34,21 @@ if (Test-Path $Stray) {
   if (Get-Process -Id $p.Id -ErrorAction SilentlyContinue) { Stop-Process -Id $p.Id -Force }
 }
 
+# --- L11-1 (2026-11-10) : session_gate Launch signale en WARN les python/pythonw orphelins du worktree (7 glade_budget.py detaches, 30 min perdues)
+$PyRoot = Join-Path $Tmp 'HeroesOfLiberty-FakePy'
+New-Item -ItemType Directory -Path $PyRoot | Out-Null
+$FakePyExe = Join-Path $Tmp 'pythonw.exe'
+Copy-Item (Join-Path $env:SystemRoot 'System32\cmd.exe') $FakePyExe
+$gpClean = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $PyRoot | Out-String
+Check ($gpClean -match '(?m)^PASS .*python' -and -not ($gpClean -match '(?m)^WARN .*python')) 'launch: aucun python orphelin -> PASS python' $gpClean
+$pyOrphan = Start-Process $FakePyExe -ArgumentList "/c `"set MARK=$PyRoot\Tools\Tests\glade_budget.py & ping -n 120 127.0.0.1 >nul`"" -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1500
+$gpWarn = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $PyRoot | Out-String
+Check ($gpWarn -match "(?m)^WARN .*python.*$($pyOrphan.Id)") 'launch: pythonw orphelin du Root -> WARN avec son PID' $gpWarn
+Check (-not (Get-Process -Id $pyOrphan.Id -ErrorAction SilentlyContinue) -eq $false) 'launch: le WARN ne tue pas le processus (signale seulement)'
+& powershell -NoProfile -ExecutionPolicy Bypass -File $Stray -Root $PyRoot -PythonOnly -Stop | Out-Null
+if (Get-Process -Id $pyOrphan.Id -ErrorAction SilentlyContinue) { Stop-Process -Id $pyOrphan.Id -Force }
+
 # --- L7-2 : session_gate Launch -Scenarios -Root : DLL du worktree plus ancienne que le dernier code de main
 $Wt = Join-Path $Tmp 'HeroesOfLiberty-FakeDll'
 New-Item -ItemType Directory -Path (Join-Path $Wt 'Binaries\Win64') -Force | Out-Null

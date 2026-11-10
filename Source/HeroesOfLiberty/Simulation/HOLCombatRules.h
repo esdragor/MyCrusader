@@ -552,6 +552,16 @@ namespace HOLCombat
 		return FVector2D::DistSquared(OldWhere, NewWhere) <= MaxDistance * MaxDistance;
 	}
 
+	/**
+	 * BUG-melee-spin-sanity (hol.Combat.RearKeepBothFull, the soldier of the second rank that runs 1000 cm in 3 s for 200 cm net): out of reach of its target and of
+	 * the one the search found, both with every place taken (nothing to gain by changing), it keeps the target it has unless the new one is clearly nearer (MinGain
+	 * of edge distance, as RearTargetKeep): it waits behind the crowd instead of swinging between two enemies it cannot reach, its slot changing at each swing.
+	 */
+	inline bool ShouldKeepTargetBothFull(const bool bEnabled, const bool bTargetFull, const bool bNewFull, const double NewEdge, const double TargetEdge, const double MinGain)
+	{
+		return bEnabled && bTargetFull && bNewFull && NewEdge > TargetEdge - MinGain;
+	}
+
 	/** Angular gap (radians, 0 to pi) between two angles round a target. */
 	inline double GetPlaceGap(const double PlaceAngle, const double SelfAngle)
 	{
