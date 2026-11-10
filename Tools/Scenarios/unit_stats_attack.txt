@@ -50,6 +50,17 @@ waitlog HUD stats: attack 8,
 waitlog HUD stats tip: attack: 8 | melee armor: -0 per hit
 waitlog hero armor: -
 waitlog per siege hit
+# The hover as the mouse does it, on each statistic (test of the user bug "no hover for the other stats"): Slate hit test + the tooltip it would show.
+hol.HUD.Hover 0
+waitlog HUD hover 0: attack: 8
+hol.HUD.Hover 1
+waitlog HUD hover 1: melee armor: -
+hol.HUD.Hover 2
+waitlog HUD hover 2: ranged armor: -
+hol.HUD.Hover 3
+waitlog HUD hover 3: hero armor: -
+hol.HUD.Hover 4
+waitlog HUD hover 4: speed:
 capture usa_spearman
 hol.Camera.FocusNear 7500 0
 frames 3

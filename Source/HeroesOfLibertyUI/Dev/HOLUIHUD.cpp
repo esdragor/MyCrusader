@@ -124,6 +124,27 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		});
 	}
 
+	/** hol.HUD.Hover <StatIndex> [DelaySeconds=0]: hit-tests the centre of the selection block's statistic number StatIndex by Slate's own window hit test; logs "HUD hover <i>: <tooltip>" or why none. */
+	void Hover(const TArray<FString>& Args, UWorld* World)
+	{
+		if (Args.IsEmpty())
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.HUD.Hover <StatIndex> [DelaySeconds=0]"));
+			return;
+		}
+		const int32 Index = FCString::Atoi(*Args[0]);
+		const float Delay = Args.Num() > 1 ? FCString::Atof(*Args[1]) : 0.f;
+		WithGameScreen(World, Delay, [Index](UHOLGameScreen& Screen)
+		{
+			UE_LOG(LogHOLUI, Display, TEXT("HUD hover %d: %s"), Index, *Screen.HoverStat(Index));
+		});
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs HoverCommand(
+		TEXT("hol.HUD.Hover"),
+		TEXT("hol.HUD.Hover <StatIndex> [DelaySeconds=0]: hit-tests the statistic of the selection block by Slate's window hit test and logs the tooltip the hover would show"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Hover));
+
 	/** hol.HUD.Cheats <0|1>: the cheats' panel folded or open, without keeping the choice (scenarios: a known state, whatever was kept). */
 	void Cheats(const TArray<FString>& Args, UWorld* World)
 	{

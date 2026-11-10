@@ -32,6 +32,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Engine/Texture2D.h"
 #include "EngineUtils.h"
+#include "Framework/Application/SlateApplication.h"
 #include "HeroesOfLibertyUILog.h"
 #include "HUD/HOLGameNames.h"
 #include "HUD/HOLRelationIcons.h"
@@ -1713,6 +1714,47 @@ FString UHOLGameScreen::DescribeStatsTip() const
 		}
 	}
 	return Parts.IsEmpty() ? FString(TEXT("none")) : FString::Join(Parts, TEXT(" | "));
+}
+
+FString UHOLGameScreen::HoverStat(const int32 Index) const
+{
+	// The hover as the mouse does it (user bug of unit_stats_attack: no tooltip on the other statistics): the centre of the chip is hit-tested
+	// by Slate's own window hit test, and the tooltip the engine would show is the first non-empty one met from the widget found up to the window.
+	UCommonTextBlock* Chip = SelectionStatChips.IsValidIndex(Index) ? SelectionStatChips[Index].Get() : nullptr;
+	const TSharedPtr<SWidget> ChipWidget = Chip ? Chip->GetCachedWidget() : TSharedPtr<SWidget>();
+	if (!Chip || !ChipWidget.IsValid() || Chip->GetVisibility() == ESlateVisibility::Collapsed || !FSlateApplication::IsInitialized())
+	{
+		return TEXT("no statistic shown");
+	}
+	FSlateApplication& Slate = FSlateApplication::Get();
+	FWidgetPath ChipPath;
+	if (!Slate.FindPathToWidget(ChipWidget.ToSharedRef(), ChipPath, EVisibility::All) || ChipPath.Widgets.Num() == 0)
+	{
+		return TEXT("no path to the statistic");
+	}
+	const FGeometry& Box = ChipPath.Widgets[ChipPath.Widgets.Num() - 1].Geometry;
+	const FVector2f Position = Box.GetAbsolutePosition();
+	const FVector2f Size = Box.GetAbsoluteSize();
+	const FVector2f Centre = Position + Size * 0.5f;
+	const FWidgetPath Hit = Slate.LocateWindowUnderMouse(Centre, Slate.GetInteractiveTopLevelWindows(), true);
+	if (Hit.Widgets.Num() == 0)
+	{
+		return TEXT("nothing under the point");
+	}
+	for (int32 Level = Hit.Widgets.Num() - 1; Level >= 0; --Level)
+	{
+		const TSharedRef<SWidget> Widget = Hit.Widgets[Level].Widget;
+		const TSharedPtr<IToolTip> Tip = Widget->GetToolTip();
+		if (Tip.IsValid() && !Tip->IsEmpty())
+		{
+			if (&Widget.Get() == ChipWidget.Get())
+			{
+				return ShownStatTipList.IsValidIndex(Index) ? ShownStatTipList[Index] : FString(TEXT("tip"));
+			}
+			return FString::Printf(TEXT("the tip of another widget (%s)"), *Widget->GetTypeAsString());
+		}
+	}
+	return FString::Printf(TEXT("none (hit %s)"), *Hit.Widgets[Hit.Widgets.Num() - 1].Widget->GetTypeAsString());
 }
 
 void UHOLGameScreen::HideUnitStats()
