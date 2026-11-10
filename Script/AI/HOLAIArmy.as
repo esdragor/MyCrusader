@@ -41,6 +41,11 @@ struct FHOLAIArmyData
 	TArray<FName> CandidateFactions;
 	FName Faction = n"Dawn";
 
+	// The figures (cost, population...) of the candidates that are not in Types (the Arquebusier: the counter rule leaves it out), so that the
+	// brain can pay and queue it (found by AI.Army.Faction: without them the brain never ordered it). Parallel arrays, filled by LoadFigures.
+	TArray<FName> ExtraTypes;
+	TArray<FHOLAITypeFigures> ExtraFigures;
+
 	// Weight of each resource in a unit's value (gold is dearer).
 	float FoodWeight = 1.f;
 	float WoodWeight = 1.f;
@@ -308,6 +313,30 @@ namespace HOLAIArmy
 			Data.Figures.Add(Figures);
 		}
 		HOLAIOrder::ReadAIUnitFigures(n"Peasant", Data.PeasantFigures);
+		Data.ExtraTypes.Empty();
+		Data.ExtraFigures.Empty();
+		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
+		{
+			if (Data.Types.Contains(Data.Candidates[Index]) || Data.ExtraTypes.Contains(Data.Candidates[Index]))
+			{
+				continue;
+			}
+			FHOLAITypeFigures Figures;
+			HOLAIOrder::ReadAIUnitFigures(Data.Candidates[Index], Figures);
+			Data.ExtraTypes.Add(Data.Candidates[Index]);
+			Data.ExtraFigures.Add(Figures);
+		}
+	}
+
+	// Whether the type has usable figures (health) among the types of the counter rule or the extra candidates.
+	bool HasFigures(const FHOLAIArmyData& Data, FName Type)
+	{
+		if (TypeIndex(Data, Type) >= 0)
+		{
+			return true;
+		}
+		const int Extra = Data.ExtraTypes.FindIndex(Type);
+		return Extra >= 0 && Extra < Data.ExtraFigures.Num() && Data.ExtraFigures[Extra].Health > 0;
 	}
 
 	// The index of a type in the data, -1 when it has no usable figures (unknown, or no health).
@@ -542,6 +571,14 @@ namespace HOLAIArmy
 		if (At >= 0)
 		{
 			Figures = Data.Figures[At];
+		}
+		else
+		{
+			const int Extra = Data.ExtraTypes.FindIndex(Type);
+			if (Extra >= 0 && Extra < Data.ExtraFigures.Num())
+			{
+				Figures = Data.ExtraFigures[Extra];
+			}
 		}
 		return Figures;
 	}
