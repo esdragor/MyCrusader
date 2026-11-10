@@ -866,3 +866,5 @@ NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit
 | Faramir-1 (sans C++) FINI 10:09 (35 tool_uses ok) | ad2fe270 | HeroesOfLiberty-Faramir | fog | L26, L98, L24 | 10:05 |
 | Glorfindel-1 (sans C++) | a36171a6 | HeroesOfLiberty-Glorfindel | net-playtest | L91 stray_processes python | 10:05 |
 | Haldir-1 (sans C++) | a37c3759 | HeroesOfLiberty-Haldir | maps | L79 ligne N sites du journal make_maps | 10:05 || Faramir-2 (sans C++) | a44715cc | HeroesOfLiberty-Faramir | fog | L52, L53, L54 (note+look fog_orders_flicker, zz_edge_walk, fog_trees) | 10:12 |
+| Glorfindel-2 (sans C++) | ae4199b3 | HeroesOfLiberty-Glorfindel | net-playtest | L70 fiches Deconnexion | 10:22 |
+| (FINIS) Haldir-1 10:09 maps 0be29cf, Elrond-1 10:14 tiers 06ccaab (arquebusier note 5), Glorfindel-1 10:19 net-playtest 7701e5f (stray_processes python), Faramir-1 10:09 | | | | | |
