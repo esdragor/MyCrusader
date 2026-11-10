@@ -229,3 +229,5 @@ Variantes de faction : *Cracheur de bile* (Légions), *Bombarde*, *Arquebusier d
 - **2026-11-10 (reponse de l'utilisateur, essai arquebusier = OK)** : le duel et les PV a l'ecran sont valides. Reste a faire : le **modele de l'Arquebusier** (aujourd'hui le mannequin et le squelette de l'Arbalétrier, carreau SM_Bolt : ni corps propre, ni fumee de poudre, ni son propre) ; la ligne de Placeholders.txt (ligne 27) reste tant que ce n'est pas fait. Methode des dix echantillons (aime / pas aime) quand le lot unites sera ouvert (PQ-1 = A : ressources et decor d'abord).
 
 - **2026-11-10 (precision de l'utilisateur)** : l'Arquebusier a aussi besoin de ses **animations** propres (marche, tir a poudre, rechargement, mort), pas seulement du modele ; celles de l'Arbalétrier sont prêtees en attendant.
+
+- **2026-11-10 (reponse de l'utilisateur, essai unit_tiers = valide)** : la Caserne grise l'Homme d'armes (case Z) au palier 0, la case devient active au palier 1 et la touche Z forme un Homme d'armes ; joue en fenetre depuis le worktree Elrond (main f357707, binaire du 10:51). Fiche E-unit_tiers.md archivee dans Docs\Archive\Retours_2026-11-10\.
