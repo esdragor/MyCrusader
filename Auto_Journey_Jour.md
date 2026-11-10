@@ -874,3 +874,5 @@ NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit
 | Arwen-1 FINI 10:39 (85 tool_uses : HORS REGLE >80, G14 d751-root 3b4bd14 tests 1141/1141) ; Sauron-1 FINI 10:38 (55 tool_uses, visual 22e1f57 tests 1138) ; Celeborn-1 FINI 10:34 (50) | | | | | |
 | Elrond-2 FINI 10:44 (17 tool_uses) : FUSION 1 FAITE main=tiers=004969d (maps, net-playtest, fog, hero-j8-close ; build 166 s, tests 1137/1137, aiserver+aiduel PASS) | | | | | |
 | Elrond-3 INTEGRATEUR tour 2 | ab1f57d9 | HeroesOfLiberty-Elrond | tiers | fusion d751-root 3b4bd14 + visual 22e1f57 | 10:45 |
+| Elrond-3 FINI 10:49 (16 tool_uses) : FUSION 2 FAITE main=2162a89 (d751-root 3b4bd14 + visual 22e1f57 ; build 73 s, tests 1142/1142, aiserver+aiduel PASS) | | | | | |
+| Elrond-4 INTEGRATEUR tour 3 | ac3df5b9 | HeroesOfLiberty-Elrond | tiers | fusion galadriel-tab ec28851 | 10:50 |
