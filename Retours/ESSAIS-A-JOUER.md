@@ -1,3 +1,6 @@
+﻿ATTENDU : a rejouer sur le main du 2026-11-10 avant de le donner (session_gate -Phase Essay) ; les essais arquebusier et fog_trees sont faits.
+(Fiche datee du 2026-11-09, build 60013e8 : ne pas la donner telle quelle ; unit_stats_attack_enemy, unit_stats_attack, sites_win, duel_challenge_accept, disconnect_review, glade_sweep ont ete joues le 2026-11-09, voir REPONSES-2026-11-09.md.)
+
 # ESSAIS À JOUER (agent d'intégration Elrond, 2026-11-09 10:50-11:05, build de main 60013e8 fusionné, binaire de 10:37)
 
 Tous préflightés PASS sur le worktree Elrond (= main 60013e8), PNG ouverts et vus (fiches `Retours\E-*.md`), `session_gate -Phase Essay -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` sans FAIL pour chacun. Total environ 8 min. Réponse attendue pour chacun : `OK`, `BUG: ...` ou `REGLAGE: ...`. Aucun n'a été joué par un humain ; ce sont tous des essais d'AFFICHAGE (GESTE: interne dans les fiches : le clic ou le défi du scénario est un appel interne, c'est à toi de faire le vrai geste).
