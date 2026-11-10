@@ -45,3 +45,4 @@ capture arq_hit
 note 3. Premier coup : 155 -> 117, soit 38 PV (40 d'attaque, armure de l'Homme d'armes coupee de moitie par la penetration ; sans penetration : 119, 36 PV).
 hol.Test.Sanity
 note 4. A toi : selectionne l'Arquebusier et clic droit sur l'Homme d'armes (ou sur un Lancier) ; regarde ses PV baisser a chaque coup.
+note 5. Si tu laisses le duel se jouer : 3 tirs (un toutes les 4 s) font 155 -> 117 -> 79 -> 41, normal (155 - 3 x 38). L'Homme d'armes court a 7 m/s, arrive sur l'Arquebusier avant le 4e tir et le frappe (l'Arquebusier n'a que 70 PV : vu a 4 PV apres 3 tirs). Ce n'est pas un bug mais l'equilibre de l'unite (fragile, gros coup rare, fait pour finir un Lourd, pas pour tenir seul) ; les chiffres restent a toi : Retours\Q-arquebusier-valeurs.md.
