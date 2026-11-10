@@ -49,7 +49,8 @@ namespace UE::HeroesOfLiberty::Tests::AIOpening
 		int32 Tree = INDEX_NONE;
 		TArray<uint32> Peasants;
 
-		FWorld()
+		/** Slot1Faction (Palier 3 G14): the faction of the AI of slot 1 in the launch configuration (the Dawn by default). */
+		explicit FWorld(const EHOLFaction Slot1Faction = EHOLFaction::DawnOrder)
 		{
 			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -74,6 +75,7 @@ namespace UE::HeroesOfLiberty::Tests::AIOpening
 			{
 				Config.Slots[Index].State = Index == 0 ? EHOLSlotState::Human : (Index == 1 ? EHOLSlotState::AI : EHOLSlotState::Closed);
 			}
+			Config.Slots[1].Faction = Slot1Faction;
 			State->InitVictory(Config);
 			AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(*World, Config, GetDefault<UHOLMatchSettings>()->StartingResources);
 			for (APlayerState* Each : State->PlayerArray)
@@ -745,6 +747,68 @@ bool FHOLAINeedsUsedUpTest::RunTest(const FString& Parameters)
 	{
 		TestEqual(TEXT("to the tree"), Orders[0].SourceIndex, Test.Tree);
 		TestEqual(TEXT("all four (the fifth builds the camp)"), Orders[0].UnitIds.Num(), 4);
+	}
+	return true;
+}
+
+/**
+ * Palier 3 G14 (Q-ai-arquebusier = A), the AI's faction on the real chain: slot 1 at tier 3 with 15 more Peasants, a Barracks and an
+ * Archery Range finished, the stock in plenty, and an army of 4 Spearmen, 2 Men-at-arms, 4 Archers and 4 Crossbowmen (every share of
+ * the fixed mix is full but the Arquebusier's). One thought, one step:
+ * - an AI of the Dawn queues the Arquebusier at its Range (the type lacking in the mix);
+ * - an AI of the Legions (the launch configuration's faction of slot 1) queues something at its Range, but never an Arquebusier (D710: the
+ *   Legions have none; the production refuses it, so planning it would leave the Range's queue empty forever).
+ * Red while the summary carries no faction and the brain plans for the Dawn whatever the slot: the Legions' Range queue stays empty.
+ */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIArmyFactionTest, "HeroesOfLiberty.AI.Army.Faction", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
+bool FHOLAIArmyFactionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
+	const FName Arquebusier(TEXT("Arquebusier"));
+	for (const EHOLFaction Faction : { EHOLFaction::DawnOrder, EHOLFaction::BlackLegions })
+	{
+		const bool bLegions = Faction == EHOLFaction::BlackLegions;
+		const TCHAR* Label = bLegions ? TEXT("Legions AI") : TEXT("Dawn AI");
+		FWorld Test(Faction);
+		if (!TestTrue(*FString::Printf(TEXT("%s: test world ready"), Label), Test.IsReady()))
+		{
+			return false;
+		}
+		TestEqual(*FString::Printf(TEXT("%s: the summary carries slot 1's faction"), Label), HOLAISummary::Read(*Test.World, 1).Faction,
+			FName(bLegions ? TEXT("Legions") : TEXT("Dawn")));
+		Test.State->SetTierOverride(1, 3);
+		PlaceSoldiers(Test, FName(TEXT("Peasant")), 1, FVector(1000.0, -1000.0, 0.0), 15);
+		PlaceSoldiers(Test, FName(TEXT("Spearman")), 1, FVector(-1000.0, 1000.0, 0.0), 4);
+		PlaceSoldiers(Test, FName(TEXT("ManAtArms")), 1, FVector(-1000.0, 1500.0, 0.0), 2);
+		PlaceSoldiers(Test, FName(TEXT("Archer")), 1, FVector(-1000.0, 2000.0, 0.0), 4);
+		PlaceSoldiers(Test, FName(TEXT("Crossbowman")), 1, FVector(-1000.0, 2500.0, 0.0), 4);
+		AHOLBuilding* Barracks = Test.World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+		AHOLBuilding* Range = Test.World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 3000.0, 0.0), FRotator::ZeroRotator);
+		if (!TestNotNull(TEXT("the Barracks"), Barracks) || !TestNotNull(TEXT("the Archery Range"), Range))
+		{
+			return false;
+		}
+		Barracks->Setup(HOLBuildingTypeNames::Barracks, 1, 1);
+		Range->Setup(HOLBuildingTypeNames::ArcheryRange, 1, 1);
+		Test.AIState->SetPopulation(40, 100);
+		Test.AIState->SetResources(FHOLResources(2000, 2000, 1000, 1000));
+
+		TestTrue(*FString::Printf(TEXT("%s: slot 1 thinks"), Label), Test.Brain->ThinkNow(1));
+		Test.RunStep();
+		bool bArquebusierQueued = false;
+		for (const FHOLProductionItem& Entry : Range->GetProductionQueue())
+		{
+			bArquebusierQueued |= Entry.TypeName == Arquebusier;
+		}
+		if (bLegions)
+		{
+			TestTrue(TEXT("Legions AI: the Range's queue holds a unit (a type the Legions make)"), Range->GetProductionQueue().Num() > 0);
+			TestFalse(TEXT("Legions AI: no Arquebusier in the Range's queue"), bArquebusierQueued);
+		}
+		else
+		{
+			TestTrue(TEXT("Dawn AI: the Arquebusier, the type lacking in the mix, is in the Range's queue"), bArquebusierQueued);
+		}
 	}
 	return true;
 }
