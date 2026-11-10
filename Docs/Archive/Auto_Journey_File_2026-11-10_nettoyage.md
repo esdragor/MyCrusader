@@ -57,3 +57,51 @@ Lignes d'origine : 11, 13, 17, 21, 25, 45, 46, 59, 67, 103
 - [ ] (fait sur la branche visual, pas encore dans main : 15da447, session_gate Essay ne lit que la ligne branches:) (2026-11-07 outil, sans C++) session_gate -Phase Essay lit le mot 'branches' dans la prose des fiches E-audio_compare_*.md comme une liste de branches (17 FAIL) : n'analyser que la ligne 'branches:' ; puis donner les essais sonores a l'utilisateur.
 
 ## Doublons exacts : aucun trouve
+
+## Deuxième passage (2026-11-10, demande de l'utilisateur)
+Lignes de `Auto_Journey_File.md` sorties ou fusionnées, texte exact AVANT modification. Numéro d'origine = numéro dans la version de 125 lignes (avant le nettoyage du matin, `git show b343131^:Auto_Journey_File.md`) ; numéro actuel = numéro dans la version de 93 lignes. Fichier : 93 lignes avant, 85 après (3 lignes archivées en entier, 5 absorbées par des fusions).
+
+[origine 47, actuelle 42 ; archivée : vérifiée verte le 2026-11-10 (Elrond-1, PASS, 39 types)]
+- [ ] (sans C++, Elrond, ~15 min) Valeurs : après la fusion de `d751-root` (ebe6d57, valeurs orphelins), `quick_check -Parts values` doit repasser au vert (rouge connu du 2026-11-09 13:1x) ; sinon ligne dans `Tools\Tests\known_reds.txt`.
+[origine 10, actuelle 41 ; réécrite : G2 et G3 faits (868d22e, a854a6d dans main), ne reste que G4]
+- [ ] (C++, Elrond ou Galadriel) Palier 3 G2 (pénétration d'armure, AUTORISÉE) puis G3 Arquebusier (70 PV, vitesse 720, attaque 40, intervalle 4,0 s, portée 1500, 60 N + 80 O, 25 s, pénétration 50 %, pas contre un bâtiment) puis G4 ; test rouge d'abord ; `Palier3InProgress.md`.
+[origine 23, actuelle 23 ; réécrite : N6 faite (97d9a25), ne reste que N7, passe en [ ]]
+- [~] (sans C++) Neutres N6 (IA du joueur, attend NQ1/NQ2 de Retours) et N7 ; N0-N5 faites ; `NeutralsInProgress.md`.
+[origine 66, actuelle 57 ; réécrite : S10 fait, restent S5, S6, S7]
+- [ ] (C++) Sites sacrés : S5 vue répliquée et visibilité, S6 or, S10 victoire, S7 option de partie, colonne unité sainte ; `SacredSitesInProgress.md`.
+[origine 12, actuelle 64 ; fusionnée (ligne gardée, texte fusionné avec 65 et 68)]
+- [ ] (cartes, Haldir, TÂCHE À PART, éditeur seul) clairières variées par carte (réponse « oui » du 2026-11-09 sur `glade_sweep`) : choisir le style de chaque carte générée (B/C Forêt, D/E Plaine, G Steppe...), réglage par carte dans `Tools\Editor\maps\common.py`, UNE seule régénération des 7 cartes (`-Multiprocess`, au plus 2 éditeurs, avec `SITES_CLEAR_SOURCES = True` et `bSitesLaidByMaps`), puis `tests,sizes`, `crossings`, `hinterland_paths`, `aiduel`, mesure de perf et scénario `maps_review` ; les forêts peintes à la main ne sont pas touchées.
+[origine 77, actuelle 65 ; absorbée dans la fusion de la ligne 64 (régénération des 7 cartes)]
+- [B] (sans C++, éditeur seul) UNE régénération des cartes (plan P1-P5, `MapsInProgress.md`) après lettre + Q-sites-nombre + AHOLSiteLayout ; puis perf S5 à 14 400 arbres, aiduel. (2026-11-08 Haldir-6 : lenteur de Hinterland résolue, sites_test complet 24 s, hinterland_paths Petite PASS ; reste hinterland_paths Moyenne/Grande à rejouer après régénération.)
+[origine 114, actuelle 68 ; absorbée dans la fusion de la ligne 64 (régénération des 7 cartes)]
+- [ ] (cartes, C++ pour bSitesLaidByMaps) regeneration unique des 7 cartes apres la lettre glade_sweep de l'utilisateur ; bSitesLaidByMaps = true ; hinterland_paths Moyenne/Grande.
+[origine 84, actuelle 72 ; fusionnée (ligne gardée, texte fusionné avec 78 et 79)]
+- [ ] (sans C++, machine calme, ~25 min) Mesures S1/S2 du décor générique des Biomes (2128 pièces HISM sur la Plaine) par `biome_decor_cost.ps1`.
+[origine 104, actuelle 78 ; absorbée dans la fusion de la ligne 72 (biome_decor_cost)]
+- [ ] (2026-11-07 mesure, machine calme, Sauron/visual) biome_decor_cost.ps1 -Rounds 3 (~25 min) : S1/S2 du decor generique ; lancer seul, sans autre editeur.
+[origine 113, actuelle 79 ; absorbée dans la fusion de la ligne 72 (biome_decor_cost)]
+- [ ] (machine calme, HORS SEANCE) biome_decor_cost.ps1 -Rounds 3 (aucun chiffre le 2026-11-08 : machine jamais libre).
+[origine 18, actuelle 91 ; fusionnée (ligne gardée, texte fusionné avec 92)]
+- [ ] (docs, session principale) écrire D753 à D766 au GDD § 22 (réponses Q1 à Q14) ; prochain numéro D767.
+[origine 124, actuelle 92 ; absorbée dans la fusion de la ligne 91 (D753-D766 au GDD)]
+- [ ] (2026-11-10, session principale, docs) GDD : decisions D753-D766 a ecrire (relire § 22 avant) ; purger les 15 fiches de Retours\ qui portent une reponse deja reportee (liste : session_gate -Phase Close).
+[origine 115, actuelle 86 ; déplacée dans `Auto_Journey.md`, section « Pièges techniques rencontrés »]
+- [ ] (sans C++) rejouer unit_stats_attack(_enemy) sur un binaire d'apres G1 (PNG ouverts) avant de les donner a l'utilisateur ; E-audio_panel / E-disconnect_review a donner apres les fusions.
+[origine 116, actuelle 87 ; déplacée dans `Auto_Journey.md`, section « Pièges techniques rencontrés »]
+- [ ] (processus) plafond d'appels : 45 vus par l'agent respecte a +-4 sauf 3 agents (115, 81, 55) ; l'enonce d'un agent ne demande JAMAIS play.ps1 fenetre ; un agent de fusion 'sans C++' verifie la date du binaire ; les PNG des pre-vols de fusion sont ouverts par l'agent d'integration avant de donner un essai.
+
+### Auto_Journey.md : lignes modifiées par la demande du 2026-11-10 (texte exact AVANT, numéro de ligne actuel avant édition)
+[Auto_Journey.md ligne 70]
+- Mesures au repos (S1-S7) et paquet : machine calme, **seuls dans leur créneau** (le paquet bloque les autres sessions). Sautés pendant le test.
+[Auto_Journey.md ligne 71]
+- Les fusions dans `main` : pas pendant un test ; le jour d'absence, oui dès que le `quick_check` des parties touchées est vert (décision A), `ai-ia1` en premier. `git checkout -- HeroesOfLiberty.uproject` si la fusion refuse.
+[Auto_Journey.md ligne 95]
+**Test 2 : le veilleur de 20 min n'a rien trouvé à faire en 2 passages** (les notifications de fin d'agent suffisent et la session principale relance). Il reste utile **uniquement comme filet** : toutes les **30 min**, signaler un agent sans commit depuis 45 min ; il ne lance rien de lui-même.
+[Auto_Journey.md ligne 97]
+Au démarrage la session principale crée **un seul rappel récurrent toutes les 20 min** (prompt : « veilleur Auto_Journey : lance `Tools\AutoJourney\status.ps1`, relance tout worktree libre qui a une tâche `[ ]` dans la file, signale tout agent sans commit depuis 45 min »). Les notifications de fin d'agent réveillent déjà la session : les minuteurs « point de 15 min » par agent sont **supprimés** (au test ils tombaient presque tous après le rapport). Le veilleur est la seule sécurité contre un agent bloqué ou une session qui dort. Un rappel disparaît à la fin de la session : le recréer à chaque « commence ton Auto_Journey ».
+[Auto_Journey.md ligne 153]
+- **Le veilleur passe toutes les 5 minutes** (au lieu de 20) : il cherche les `[À RÉPONDRE]` / `[À ESSAYER]` dont la `Reponse:` est devenue non vide, puis pour chacune : (1) enregistre la réponse dans le chantier (`*InProgress.md`, GDD, `EtapeDefini.md`) et retire le marqueur ; (2) `OK` : l'item est rangé et supprimé de Retours ; (3) `BUG:` / `REGLAGE:` / une décision qui demande du travail : ligne `[ ]` en tête de la file **et relance immédiate de l'agent du worktree** avec cette ligne ; (4) `A trancher` : l'item reste, rien n'est décidé.
+[Auto_Journey.md ligne 164]
+1. Lire ce fichier, `Auto_Journey_Jour.md` et `Auto_Journey_Retours.md` (la session principale). **Créer le veilleur** (voir « Le veilleur »).
+[Auto_Journey.md ligne 188]
+- Dans l'énoncé de chaque agent : **80 appels d'outils maximum** (le modèle d'énoncé le dit). Mesure du 2026-11-05 : ~2k tokens par appel (96 appels = 242k, 133 = 284k, 150 = 250k, 185 = 336k).
