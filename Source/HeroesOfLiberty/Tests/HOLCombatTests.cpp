@@ -212,7 +212,61 @@ bool FHOLCombatComeToAidTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatLastAttackerTest, "HeroesOfLiberty.Combat.LastAttacker", UE::HeroesOfLiberty::Tests::Combat::Flags)
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatNeutralAssistTest, "HeroesOfLiberty.Combat.NeutralAssist", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatNeutralAssistTest::RunTest(const FString& Parameters)
+{
+	// D769 (the user, 2026-11-10): a Neutral never strikes first, but a free Neutral within R of a struck comrade takes on whoever strikes.
+	constexpr float R = 600.f;
+	// (radius, same camp, aggressor passive to him, aggressor alive, neighbour free, busy, neighbour->victim, neighbour->aggressor)
+	TestTrue(TEXT("a free comrade at 300 cm of the struck one, the aggressor 400 cm away: helps"),
+		HOLCombat::ShouldAssistNeighbour(R, true, true, true, true, false, 300.f, 400.f));
+	TestTrue(TEXT("exactly at the radius: helps"), HOLCombat::ShouldAssistNeighbour(R, true, true, true, true, false, R, 400.f));
+	TestFalse(TEXT("beyond the radius: stays"), HOLCombat::ShouldAssistNeighbour(R, true, true, true, true, false, R + 1.f, 400.f));
+	TestFalse(TEXT("radius 0 (off): stays as before"), HOLCombat::ShouldAssistNeighbour(0.f, true, true, true, true, false, 100.f, 200.f));
+	TestFalse(TEXT("another camp's soldier struck: not his comrade"), HOLCombat::ShouldAssistNeighbour(R, false, true, true, true, false, 300.f, 400.f));
+	TestFalse(TEXT("an aggressor he takes on by himself (enemy) or never (ally): the ordinary search"),
+		HOLCombat::ShouldAssistNeighbour(R, true, false, true, true, false, 300.f, 400.f));
+	TestFalse(TEXT("a dead aggressor: nothing to take on"), HOLCombat::ShouldAssistNeighbour(R, true, true, false, true, false, 300.f, 400.f));
+	TestFalse(TEXT("already busy with a target or a last attacker: keeps it"), HOLCombat::ShouldAssistNeighbour(R, true, true, true, false, false, 300.f, 400.f));
+	TestFalse(TEXT("a worker at its task: stays at it"), HOLCombat::ShouldAssistNeighbour(R, true, true, true, true, true, 300.f, 400.f));
+	TestTrue(TEXT("the aggressor at the pursuit limit: helps"), HOLCombat::ShouldAssistNeighbour(R, true, true, true, true, false, 300.f, HOLCombat::NeutralAssistPursuit));
+	TestFalse(TEXT("the aggressor beyond the pursuit limit: stays"),
+		HOLCombat::ShouldAssistNeighbour(R, true, true, true, true, false, 300.f, HOLCombat::NeutralAssistPursuit + 1.f));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatAssistNearestTest, "HeroesOfLiberty.Combat.AssistNearestAggressor", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatAssistNearestTest::RunTest(const FString& Parameters)
+{
+	// D769b: (in contact, has current, current distance, current id, new distance, new id)
+	TestTrue(TEXT("a nearer aggressor replaces the farther one he walks to"), HOLCombat::PrefersAssistAggressor(false, true, 500.f, 4, 150.f, 5));
+	TestFalse(TEXT("a farther one does not"), HOLCombat::PrefersAssistAggressor(false, true, 150.f, 5, 500.f, 4));
+	TestTrue(TEXT("equal distance: the smaller id wins"), HOLCombat::PrefersAssistAggressor(false, true, 300.f, 6, 300.f, 3));
+	TestFalse(TEXT("equal distance: the larger id loses"), HOLCombat::PrefersAssistAggressor(false, true, 300.f, 3, 300.f, 6));
+	TestFalse(TEXT("in contact (fighting): keeps his target, even when another is nearer"), HOLCombat::PrefersAssistAggressor(true, true, 500.f, 4, 150.f, 5));
+	TestFalse(TEXT("in contact and none: no change either"), HOLCombat::PrefersAssistAggressor(true, false, 0.f, 0, 150.f, 5));
+	TestTrue(TEXT("none yet: takes it"), HOLCombat::PrefersAssistAggressor(false, false, 0.f, 0, 400.f, 5));
+	TestFalse(TEXT("an aggressor beyond the pursuit limit: refused, even with none"), HOLCombat::PrefersAssistAggressor(false, false, 0.f, 0, HOLCombat::NeutralAssistPursuit + 1.f, 5));
+	TestFalse(TEXT("beyond the pursuit limit: refused though nearer than the current"), HOLCombat::PrefersAssistAggressor(false, true, 5000.f, 4, HOLCombat::NeutralAssistPursuit + 1.f, 5));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatPassiveTargetTest,"HeroesOfLiberty.Combat.PassiveTarget", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatPassiveTargetTest::RunTest(const FString& Parameters)
+{
+	// D769 (the assistants' flicker): (ordered, auto foe, attacks me, remembered last attacker)
+	TestTrue(TEXT("a Neutral that does not strike back, not ordered, not remembered: let go (D6, D401)"), HOLCombat::ShouldDropPassiveTarget(false, false, false, false));
+	TestFalse(TEXT("the aggressor of a helped comrade (remembered as last attacker): kept, though it strikes another"), HOLCombat::ShouldDropPassiveTarget(false, false, false, true));
+	TestFalse(TEXT("an ordered target: kept"), HOLCombat::ShouldDropPassiveTarget(true, false, false, false));
+	TestFalse(TEXT("an automatic foe: kept"), HOLCombat::ShouldDropPassiveTarget(false, true, false, false));
+	TestFalse(TEXT("a Neutral that strikes me: kept"), HOLCombat::ShouldDropPassiveTarget(false, false, true, false));
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatLastAttackerTest,"HeroesOfLiberty.Combat.LastAttacker", UE::HeroesOfLiberty::Tests::Combat::Flags)
 
 bool FHOLCombatLastAttackerTest::RunTest(const FString& Parameters)
 {

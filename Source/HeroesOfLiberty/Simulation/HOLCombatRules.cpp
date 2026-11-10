@@ -242,6 +242,27 @@ namespace HOLCombat
 		return LastHitStep >= 0 && (StepIndex - LastHitStep) * static_cast<int64>(FMath::Max(StepMs, 1)) < static_cast<int64>(LastAttackerMemoryMs);
 	}
 
+	bool ShouldAssistNeighbour(const float AssistRadius, const bool bSameCamp, const bool bAggressorIsPassive, const bool bAggressorAlive, const bool bNeighbourFree,
+		const bool bBusy, const float NeighbourToVictim, const float NeighbourToAggressor)
+	{
+		return AssistRadius > 0.f && bSameCamp && bAggressorIsPassive && bAggressorAlive && bNeighbourFree && !bBusy
+			&& NeighbourToVictim <= AssistRadius && NeighbourToAggressor <= NeutralAssistPursuit;
+	}
+
+	bool PrefersAssistAggressor(const bool bInContact, const bool bHasCurrent, const float CurrentDistance, const uint32 CurrentId, const float NewDistance, const uint32 NewId)
+	{
+		if (bInContact || NewDistance > NeutralAssistPursuit)
+		{
+			return false;
+		}
+		return !bHasCurrent || NewDistance < CurrentDistance || (NewDistance == CurrentDistance && NewId < CurrentId);
+	}
+
+	bool ShouldDropPassiveTarget(const bool bOrderedTarget, const bool bTargetIsAutoFoe, const bool bTargetAttacksMe, const bool bTargetIsLastAttacker)
+	{
+		return !bOrderedTarget && !bTargetIsAutoFoe && !bTargetAttacksMe && !bTargetIsLastAttacker;
+	}
+
 	bool ShouldComeToAid(const ESeekMode Mode, const bool bRanged, const float AggressionRadius, const bool bHasTarget, const double FightingFriendDistance, const float AidRadius)
 	{
 		return Mode == ESeekMode::Auto && !bRanged && AggressionRadius > 0.f && !bHasTarget && AidRadius > 0.f

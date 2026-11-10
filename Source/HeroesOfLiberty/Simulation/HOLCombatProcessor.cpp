@@ -73,6 +73,10 @@ namespace UE::HeroesOfLiberty::Combat
 	int32 AttackMoveEngagesNeutral = 1;
 	FAutoConsoleVariableRef CVarAttackMoveEngagesNeutral(TEXT("hol.Combat.AttackMoveEngagesNeutral"), AttackMoveEngagesNeutral,
 		TEXT("1 (default, D733): the attack-move (Q then a click, on the ground too) engages the Neutral players' units it meets, the stance unchanged; 0: it passes them by (a click on one still orders the attack)"));
+	/** D769: a Neutral never strikes first, but the free soldiers of a struck Neutral's camp within this radius (cm) take on whoever struck him. 0: off; default 600 since the user validated the on-screen trial (2026-11-10). */
+	float NeutralAssistRadius = 600.f;
+	FAutoConsoleVariableRef CVarNeutralAssistRadius(TEXT("hol.Combat.NeutralAssistRadius"), NeutralAssistRadius,
+		TEXT("D769: radius in cm within which a free Neutral soldier takes on the one who strikes a comrade of his camp (never strikes first, stance unchanged); 0 = off, default 600 (user, 2026-11-10)"));
 	/** J7c.4, S3: the same outcome by cheaper ways (a flat entity index, a key sort, no search when the target is in reach). */
 	int32 FastPaths = 1;
 	FAutoConsoleVariableRef CVarFastPaths(TEXT("hol.Combat.FastPaths"), FastPaths,
@@ -464,6 +468,138 @@ bool UHOLCombatProcessor::IsAutoFoe(const FFighter& A, const FFighter& B) const
 	// Neutral on by itself (D369, D401); the stance is not touched.
 	return UE::HeroesOfLiberty::Combat::AttackMoveEngagesNeutral != 0 && A.Combat->Mode == EHOLCombatMode::AttackMove
 		&& StepCamps.IsPassiveAdversary(A.State->OwnerPlayer, B.State->OwnerPlayer);
+}
+
+void UHOLCombatProcessor::AssistNeighbours(const int32 VictimIndex, const FFighter& Aggressor, const int64 StepIndex, const int32 StepMs)
+{
+	// D769: a Neutral struck by someone he would not strike by himself (a Neutral toward the aggressor, in the Diplomacy mode) is helped by the
+	// free soldiers of his camp near him: the blow becomes their LastAttacker, and the ordinary riposte (search radius, memory of 5 s) follows.
+	// D769b: they take the NEAREST of the aggressors that struck a comrade lately (not the first one that came), unless already in contact.
+	const float Radius = UE::HeroesOfLiberty::Combat::NeutralAssistRadius;
+	if (Radius <= 0.f || VictimIndex == INDEX_NONE || !StepCamps.IsDiplomacy())
+	{
+		return;
+	}
+	const FFighter& Victim = Fighters[VictimIndex];
+	if (!StepCamps.IsPassiveAdversary(Victim.State->OwnerPlayer, Aggressor.State->OwnerPlayer))
+	{
+		return;
+	}
+	// The strikes of the memory (aggressor, struck camp, where the comrade stood, step): this one added or renewed, the old ones forgotten.
+	bool bKnown = false;
+	for (FAssistStrike& Strike : AssistStrikes)
+	{
+		if (Strike.Aggressor == Aggressor.Entity && Strike.VictimCamp == Victim.Camp)
+		{
+			Strike.VictimLocation = FVector2D(Victim.Location);
+			Strike.Step = StepIndex;
+			bKnown = true;
+		}
+	}
+	if (!bKnown)
+	{
+		AssistStrikes.Add({ Aggressor.Entity, Victim.Camp, FVector2D(Victim.Location), StepIndex });
+	}
+	AssistStrikes.RemoveAll([StepIndex, StepMs](const FAssistStrike& Strike) { return !HOLCombat::KeepsLastAttacker(StepIndex, Strike.Step, StepMs); });
+	struct FCandidate
+	{
+		int32 Index;
+		int64 Step;
+		FVector2D VictimLocation;
+	};
+	TArray<FCandidate, TInlineAllocator<8>> Strikers;
+	for (const FAssistStrike& Strike : AssistStrikes)
+	{
+		if (Strike.VictimCamp != Victim.Camp)
+		{
+			continue;
+		}
+		for (int32 Index = 0; Index < Fighters.Num(); ++Index)
+		{
+			if (Fighters[Index].Entity == Strike.Aggressor)
+			{
+				if (Fighters[Index].State->CurrentHealth > 0)
+				{
+					Strikers.Add({ Index, Strike.Step, Strike.VictimLocation });
+				}
+				break;
+			}
+		}
+	}
+	for (int32 Other = 0; Other < Fighters.Num(); ++Other)
+	{
+		FFighter& Neighbour = Fighters[Other];
+		if (Other == VictimIndex || Neighbour.Camp != Victim.Camp || Neighbour.State->CurrentHealth <= 0 || Neighbour.Constants->Attack <= 0
+			|| Neighbour.Constants->AggressionRadius <= 0.f || Neighbour.bBusy)
+		{
+			continue;
+		}
+		FHOLCombatFragment& Combat = *Neighbour.Combat;
+		if (!Combat.TargetBuilding.IsExplicitlyNull() || !Combat.OrderedBuilding.IsExplicitlyNull())
+		{
+			continue;
+		}
+		const FVector2D Position(Neighbour.Location);
+		// The helped aggressor he has now (his last attacker, which he walks to or fights), if it is one of the strikes of the memory.
+		int32 CurrentCandidate = INDEX_NONE;
+		for (int32 C = 0; C < Strikers.Num(); ++C)
+		{
+			if (Fighters[Strikers[C].Index].Entity == Combat.LastAttacker)
+			{
+				CurrentCandidate = C;
+			}
+		}
+		const bool bFree = !Combat.Target.IsSet() && !Combat.LastAttacker.IsSet();
+		const bool bHelping = CurrentCandidate != INDEX_NONE && (!Combat.Target.IsSet() || Combat.Target == Combat.LastAttacker);
+		if (!bFree && !bHelping)
+		{
+			continue;
+		}
+		const auto EdgeTo = [&](const FFighter& Enemy)
+		{
+			return HOLCombat::GetEdgeDistance(Position, Neighbour.Constants->Radius, FVector2D(Enemy.Location), Enemy.Constants->Radius);
+		};
+		// The nearest eligible aggressor (edge to edge, the smaller id on a tie).
+		int32 Best = INDEX_NONE;
+		float BestDistance = 0.f;
+		for (int32 C = 0; C < Strikers.Num(); ++C)
+		{
+			const FFighter& Enemy = Fighters[Strikers[C].Index];
+			if (!HOLCombat::ShouldAssistNeighbour(Radius, true, StepCamps.IsPassiveAdversary(Neighbour.State->OwnerPlayer, Enemy.State->OwnerPlayer),
+					Enemy.State->CurrentHealth > 0, true, false, FVector2D::Distance(Position, Strikers[C].VictimLocation), FVector2D::Distance(Position, FVector2D(Enemy.Location))))
+			{
+				continue;
+			}
+			const float Distance = EdgeTo(Enemy);
+			if (Best == INDEX_NONE || HOLCombat::PrefersAssistAggressor(false, true, BestDistance, Fighters[Strikers[Best].Index].UnitId, Distance, Enemy.UnitId))
+			{
+				Best = C;
+				BestDistance = Distance;
+			}
+		}
+		if (Best == INDEX_NONE)
+		{
+			continue;
+		}
+		const FFighter& BestFighter = Fighters[Strikers[Best].Index];
+		if (Best == CurrentCandidate)
+		{
+			Combat.LastHitStep = Strikers[Best].Step;	// still the nearest: the memory is renewed (not lost after 5 s in the middle of the fight)
+			continue;
+		}
+		const bool bHasCurrent = CurrentCandidate != INDEX_NONE;
+		const float CurrentDistance = bHasCurrent ? EdgeTo(Fighters[Strikers[CurrentCandidate].Index]) : 0.f;
+		const uint32 CurrentId = bHasCurrent ? Fighters[Strikers[CurrentCandidate].Index].UnitId : 0u;
+		if (HOLCombat::PrefersAssistAggressor(Combat.bAttacking, bHasCurrent, CurrentDistance, CurrentId, BestDistance, BestFighter.UnitId))
+		{
+			Combat.LastAttacker = BestFighter.Entity;
+			Combat.LastHitStep = Strikers[Best].Step;
+			if (UE::HeroesOfLiberty::Combat::LogHits != 0)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Combat: step %lld #%u assists #%u: takes on #%u (D769%s)"), StepIndex, Neighbour.UnitId, Victim.UnitId, BestFighter.UnitId, bHasCurrent ? TEXT(", nearer one, D769b") : TEXT(""));
+			}
+		}
+	}
 }
 
 void UHOLCombatProcessor::StopWalk(const UWorld& World, FFighter& Fighter) const
@@ -1242,6 +1378,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				HOLCamps::NoteHit(Enemy.UnitId, Fighters[Shooter].State->OwnerPlayer, Landed);
 			}
 			Fighters[Shooter].Combat->DamageDealt += Landed;
+			AssistNeighbours(Victim, Fighters[Shooter], StepIndex, StepMs);
 		}
 		if (LogHits != 0)
 		{
@@ -1606,11 +1743,18 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		// unless the player ordered it (a Neutral stays one that can be attacked on order, but nobody takes it on by itself).
 		if (StepCamps.IsDiplomacy() && Target != INDEX_NONE && Fighters[Target].State->CurrentHealth > 0
 			&& (!StepCamps.AreHostile(Fighter.State->OwnerPlayer, Fighters[Target].State->OwnerPlayer)
-				|| (!Combat.bOrderedTarget && !IsAutoFoe(Fighter, Fighters[Target]) && Fighters[Target].Combat->Target != Fighter.Entity)))
+				|| HOLCombat::ShouldDropPassiveTarget(Combat.bOrderedTarget, IsAutoFoe(Fighter, Fighters[Target]), Fighters[Target].Combat->Target == Fighter.Entity,
+						// D769: the remembered last attacker (the aggressor of a helped comrade) is kept, not dropped then taken again every other step.
+						Combat.LastAttacker == Fighters[Target].Entity && HOLCombat::KeepsLastAttacker(StepIndex, Combat.LastHitStep, StepMs))))
 		{
 			--Fighters[Target].Combat->AttackerCount;
 			Touch(Target);
+			// D769: the one who really strikes him (or a comrade he helps) stays in memory: Disengage forgets it, the search would not find it again.
+			const FMassEntityHandle KeptAttacker = Combat.LastAttacker;
+			const int64 KeptHitStep = Combat.LastHitStep;
 			Combat.Disengage();
+			Combat.LastAttacker = KeptAttacker;
+			Combat.LastHitStep = KeptHitStep;
 			Touch(Index);
 			Target = INDEX_NONE;
 		}
@@ -1896,7 +2040,10 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					for (const FMassEntityHandle Foe : { NearCombat.Target, NearCombat.LastAttacker })
 					{
 						const int32 Other = FindFighter(Foe);
-						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp || !CanTouch(Fighter, Fighters[Other]))
+						// D769 (the flicker of the helpers): a foe he would not take on by himself (a Neutral toward him) is not aided against: the D6 rule let it go at the next
+						// step, the search took it again. Whoever strikes a comrade is the helpers' LastAttacker already (AssistNeighbours).
+						if (Other == INDEX_NONE || Fighters[Other].State->CurrentHealth <= 0 || Fighters[Other].Camp == Fighter.Camp || !CanTouch(Fighter, Fighters[Other])
+							|| (!IsAutoFoe(Fighter, Fighters[Other]) && Fighters[Other].Entity != Combat.LastAttacker))
 						{
 							continue;
 						}
@@ -1955,7 +2102,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			for (const int32 Other : Contacts)
 			{
 				const FFighter& Enemy = Fighters[Other];
-				if (Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy))
+				// D769: a Neutral toward him (not an automatic foe) is no contact or zone choice: D6 let it go at the next step, the zone took it again.
+				if (Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy) || (!IsAutoFoe(Fighter, Enemy) && Enemy.Entity != Combat.LastAttacker))
 				{
 					continue;
 				}
@@ -2022,7 +2170,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			for (const int32 Other : Nearby)
 			{
 				const FFighter& Enemy = Fighters[Other];
-				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy))
+				if (Other == Target || Enemy.Camp == Fighter.Camp || Enemy.State->CurrentHealth <= 0 || !CanTouch(Fighter, Enemy) || (!IsAutoFoe(Fighter, Enemy) && Enemy.Entity != Combat.LastAttacker))
 				{
 					continue;
 				}
@@ -2472,7 +2620,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 						for (const int32 Other : Nearby)
 						{
 							const FFighter& Near = Fighters[Other];
-							if (Near.State->CurrentHealth <= 0 || !CanTouch(Fighter, Near))
+							// D769: a Neutral toward him is no free enemy to go round to (D6 let it go at the next step).
+							if (Near.State->CurrentHealth <= 0 || !CanTouch(Fighter, Near) || (!IsAutoFoe(Fighter, Near) && Near.Entity != Combat.LastAttacker))
 							{
 								continue;
 							}
@@ -2623,7 +2772,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 							{
 								TargetBody = BoxBodies.Num();
 							}
-							else if (!CanTouch(Fighter, Fighters[Other]) || HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius) > BoxedRetargetEnemyReach)
+							else if (!CanTouch(Fighter, Fighters[Other]) || (!IsAutoFoe(Fighter, Fighters[Other]) && Fighters[Other].Entity != Combat.LastAttacker) /* D769: a body only, not a choice */ || HOLCombat::GetEdgeDistance(Position, Constants.Radius, FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius) > BoxedRetargetEnemyReach)
 							{
 								BoxBodies.Add({ FVector2D(Fighters[Other].Location), Fighters[Other].Constants->Radius });
 								BoxFighters.Add(Other);
@@ -2871,6 +3020,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		Enemy.Combat->LastAttacker = Fighter.Entity;
 		Enemy.Combat->LastHitStep = StepIndex;
+		AssistNeighbours(Target, Fighter, StepIndex, StepMs);
 		++Combat.Hits;
 		Combat.DamageDealt += Dealt;
 		++TotalHits;
