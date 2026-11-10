@@ -118,7 +118,7 @@ public:
 	FString DescribeStats() const { return ShownStats.IsEmpty() ? FString(TEXT("none")) : ShownStats; }
 	/** The tooltip on the statistics (the hover): what the line leaves out, read back from the widget; "none" when there is none ("HUD stats tip" line of hol.HUD.Report). */
 	FString DescribeStatsTip() const;
-	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
+	/** The hover on the statistic number Index, hit-tested by Slate at the centre of its chip (the mouse's own path): the tooltip the engine would show, or why none (	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
 	FString DescribeCells() const;
 
 	/** L2: the name the selection block writes for a single selected unit (its faction's own name), "none" without it: the "HUD selection name" line of hol.HUD.Report. */
