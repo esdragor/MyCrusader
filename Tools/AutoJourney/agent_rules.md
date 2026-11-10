@@ -7,7 +7,7 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 
 ## Heure et durée
 1. **Premier geste : `Get-Date` PowerShell.** Si l'heure d'arrêt dur de l'énoncé est déjà passée, ne rien faire d'autre que le dire dans le rapport. Jamais repousser l'arrêt ; seule exception : un build C++ déjà lancé, qu'on attend.
-2. **80 appels d'outils maximum, relevés par la session principale** (champ `tool_uses` de la notification de fin ; ton propre décompte est faux de 10 à 30 % : 77 déclarés = 108 réels). **Tu ne vois pas tes appels : arrête-toi à 60 appels déclarés** (marge de 30 %). À 60 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Jamais continuer « parce que c'est presque fini ». Compte en tenant une liste dans ton journal (un trait par appel), pas de mémoire.
+2. **80 appels d'outils maximum, relevés par la session principale** (champ `tool_uses` de la notification de fin ; ton propre décompte est faux de 10 à 30 % : 77 déclarés = 108 réels). **Tu ne vois pas tes appels : arrête-toi à 45 appels VUS PAR TOI** (L9-2, 2026-11-07 : le décompte déclaré est faux de 25 %, 45 vus = ~56 réels). À 45 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Jamais continuer « parce que c'est presque fini ». Compte en tenant une liste dans ton journal (un trait par appel), pas de mémoire.
 3. Toute heure annoncée vient de `Get-Date` (Git Bash diverge de 5 à 40 min).
 
 ## Écriture
@@ -40,7 +40,7 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 
 ## Rapport final : 13 champs, dans cet ordre (la session principale les vérifie)
 ```
-APPELS_DECLARES: <n> (arrêt à 60 ; le seuil de 80 se juge sur `tool_uses` relevé par la session principale, pas sur ce champ)
+APPELS_DECLARES: <n> (arrêt à 45 vus par toi ; le seuil de 80 se juge sur `tool_uses` relevé par la session principale, pas sur ce champ)
 HEURE_DEBUT/HEURE_FIN: <Get-Date> / <Get-Date>
 PREMIER_BUILD: <HH:MM ou « sans C++ »>   BUILD: PASS / FAIL / NON COMPILÉ
 TEST_ROUGE: <SHA du commit du test, antérieur au correctif> + « assertit l'effet : oui/non »
