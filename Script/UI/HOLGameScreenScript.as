@@ -184,7 +184,7 @@ FString TalentTipTexts = "";
 	TArray<UButton> DipStanceButtons;
 	TArray<UButton> DipChips;
 	TArray<UButton> DipMenuButtons;
-	TArray<UCommonTextBlock> DipPendings;
+	TArray<UCommonTextBlock> DipTheirs;
 	TArray<UButton> DipVisionButtons;
 	// Four a line: [Slot * 4 + button index].
 	TArray<UButton> DipTributeButtons;
@@ -443,7 +443,7 @@ FString TalentTipTexts = "";
 			DipNames.Add(MakeText(FName(f"DipName_{Slot}"), UHOLTextStyleHUDLabel));
 			DipFactions.Add(MakeText(FName(f"DipFaction_{Slot}"), UHOLTextStyleHUDSmall));
 			DipInfos.Add(MakeText(FName(f"DipInfo_{Slot}"), UHOLTextStyleHUDSmall));
-			DipPendings.Add(MakeText(FName(f"DipPending_{Slot}"), UHOLTextStyleHUDLabel));
+			DipTheirs.Add(MakeText(FName(f"DipTheir_{Slot}"), UHOLTextStyleHUDSmall));
 			// The three stance buttons (layouts 0 and 2), the chip (1) and the drop-down's head (2): Enemy 0, Neutral 1, Ally 2 as the stances.
 			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipEnemy_{Slot}")), Slot, HOLDiplomacy::Enemy));
 			DipStanceButtons.Add(BindDipButton(MakeDipButton(FName(f"DipNeutral_{Slot}")), Slot, HOLDiplomacy::Neutral));
@@ -499,7 +499,9 @@ FString TalentTipTexts = "";
 		DipAdd(First, DipSwatchBoxes[Slot], 8.0);
 		// The four tribute buttons, the player's second line in every layout.
 		for (int Button = 0; Button < HOLDiplomacyPanel::TributeButtonCount; ++Button)
-			DipAdd(Second, DipTributeButtons[Slot * 4 + Button], Button + 1 < HOLDiplomacyPanel::TributeButtonCount ? 4.0 : 0.0);
+			DipAdd(Second, DipTributeButtons[Slot * 4 + Button], Button + 1 < HOLDiplomacyPanel::TributeButtonCount ? 4.0 : 14.0);
+		// D768: how the other considers the viewer ("Sa posture : Neutre"), at the end of the same second line in every layout.
+		DipAdd(Second, DipTheirs[Slot], 0.0);
 		if (Layout == 0)
 		{
 			// One wide line: colour, name, faction, lives | three buttons, the wait | vision, message; the tributes under.
@@ -545,6 +547,16 @@ FString TalentTipTexts = "";
 		if (Stance == HOLDiplomacy::Neutral)
 			return FLinearColor(8.5, 7.1, 1.7, 1.0);
 		return FLinearColor(8.5, 2.1, 1.7, 1.0);
+	}
+
+	// The text colours of the stances (the tints above are for the buttons' near-black brush): green, yellow, red.
+	FLinearColor DipStanceTextColor(int Stance) const
+	{
+		if (Stance == HOLDiplomacy::Ally)
+			return FLinearColor(0.45, 0.85, 0.5, 1.0);
+		if (Stance == HOLDiplomacy::Neutral)
+			return FLinearColor(0.95, 0.82, 0.35, 1.0);
+		return FLinearColor(0.95, 0.4, 0.35, 1.0);
 	}
 
 	// A control shown or not (collapsed: no room), greyed or not (its click ignored), its label and tooltip.
@@ -738,8 +750,10 @@ FString TalentTipTexts = "";
 		DipSetButton(DipChips[Slot], bStances && Layout == 1, Row.bStanceEditable, HOLDiplomacyPanelText::StanceLabel(Row.MyStance), FText(), DipStanceTint(Row.MyStance));
 		DipSetButton(DipMenuButtons[Slot], bStances && Layout == 2, Row.bStanceEditable,
 			FText::FromString(HOLDiplomacyPanelText::StanceLabel(Row.MyStance).ToString() + " v"), FText(), DipStanceTint(Row.MyStance));
-		// No waiting state any more (2026-11-04): only the alliance needs both sides, and nothing is written about it.
-		DipPendings[Slot].SetVisibility(ESlateVisibility::Collapsed);
+		// No waiting state (2026-11-04): only the alliance needs both sides. D768: instead, how the other considers the viewer, "Sa posture : Neutre".
+		DipTheirs[Slot].SetVisibility(Row.bShowTheirStance ? ESlateVisibility::SelfHitTestInvisible : ESlateVisibility::Collapsed);
+		DipTheirs[Slot].SetText(FText::FromString(HOLDiplomacyPanelText::TheirStanceText(Row.TheirStance)));
+		DipTheirs[Slot].SetColorAndOpacity(DipStanceTextColor(Row.TheirStance));
 
 		// Vision (checked: [x]), tribute (with the tax, greyed without a Market), private message.
 		const FString Mark = Row.bVisionChecked ? "[x] " : "[ ] ";

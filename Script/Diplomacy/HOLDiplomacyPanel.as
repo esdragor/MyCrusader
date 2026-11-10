@@ -13,6 +13,9 @@ struct FHOLDiplomacyRowView
 	int MyStance = 0;
 	int TheirStance = 0;
 	int Relation = 0;
+	// D768: the line "Sa posture : <TheirStance>" is written, on a human's line in the Diplomacy mode (not on the viewer's own, an AI's, a defeated
+	// player's, nor in the standard modes where the teams are fixed).
+	bool bShowTheirStance = false;
 	// The three posture controls may be used. False: shown but greyed (the standard modes' fixed teams, an AI that is always Enemy, D367, a
 	// defeated player, a spectator).
 	bool bStanceEditable = false;
@@ -62,6 +65,7 @@ namespace HOLDiplomacyPanel
 		const bool bViewerPlays = Viewer >= 0 && !bViewerDefeated;
 		const bool bOther = !Row.bSelf && bViewerPlays;
 		Row.bStanceEditable = bDiplomacyMode && bOther && !bSlotAI && !bSlotDefeated;
+		Row.bShowTheirStance = Row.bStanceEditable;
 		Row.bVisionChecked = bVision && Row.Relation == HOLDiplomacy::Ally;
 		Row.bVisionEnabled = Row.bStanceEditable && Row.Relation == HOLDiplomacy::Ally;
 		Row.TaxPercent = TaxPercent;
@@ -164,6 +168,7 @@ namespace HOLDiplomacyPanelText
 	const FString Locked = "Diplomacy.Locked";
 	const FString Close = "Diplomacy.Close";
 	const FString AIAlways = "Diplomacy.AIAlways";
+	const FString TheirStance = "Diplomacy.TheirStance";
 
 	FText PatternText(FString Key)
 	{
@@ -188,6 +193,7 @@ namespace HOLDiplomacyPanelText
 		if (Key == Locked) return NSLOCTEXT("HOLDiplomacyPanel", "Locked", "Postures verrouillées : équipes fixes");
 		if (Key == Close) return NSLOCTEXT("HOLDiplomacyPanel", "Close", "Fermer");
 		if (Key == AIAlways) return NSLOCTEXT("HOLDiplomacyPanel", "AIAlways", "Les IA sont toujours ennemies");
+		if (Key == TheirStance) return NSLOCTEXT("HOLDiplomacyPanel", "TheirStance", "Sa posture : {0}");
 		return FText();
 	}
 
@@ -203,6 +209,12 @@ namespace HOLDiplomacyPanelText
 		if (Resource == 1) return PatternText(ResWood).ToString();
 		if (Resource == 2) return PatternText(ResStone).ToString();
 		return PatternText(ResGold).ToString();
+	}
+
+	// D768: how the other considers the viewer, "Sa posture : Neutre".
+	FString TheirStanceText(int Stance)
+	{
+		return Format(TheirStance, StanceLabel(Stance).ToString());
 	}
 
 	FText StanceLabel(int Stance)

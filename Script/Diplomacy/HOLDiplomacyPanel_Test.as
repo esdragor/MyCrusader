@@ -140,3 +140,48 @@ void Test_DiplomacyPanelFourTributeButtons(FUnitTest& T)
 	T.AssertEquals(-1, HOLDiplomacyPanel::TributeResourceOfName(n"DipResource"), "no switch control any more");
 	T.AssertTrue("Tribut 100 or" == HOLDiplomacyPanelText::Format(HOLDiplomacyPanelText::Tribute, HOLDiplomacyPanelText::ResourceName(3)), "the label is the existing one, \"Tribut 100 or\"");
 }
+
+// D768: each line of the Diplomacy mode tells how the OTHER considers the viewer ("Sa posture : Neutre"), read from the real book. Lowering a
+// relation drops the other's stance toward the viewer too; raising it (Ally) never raises the other's.
+void Test_DiplomacyPanelTheirStanceShown(FUnitTest& T)
+{
+	FHOLDiplomacyBook Book = DpHumans(4);
+	FHOLDiplomacyRowView Start = DpRow(Book, 0, 1, false);
+	T.AssertTrue(Start.bShowTheirStance, "the other's stance is shown on a human's line in the Diplomacy mode");
+	T.AssertEquals(Start.TheirStance, HOLDiplomacy::Enemy, "at launch everybody is Enemy to everybody (D645)");
+	T.AssertEquals("Sa posture : Ennemi", HOLDiplomacyPanelText::TheirStanceText(Start.TheirStance), "the label");
+	// I say Ally: mine changes, his stays (an alliance needs both sides).
+	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
+	FHOLDiplomacyRowView Offered = DpRow(Book, 0, 1, false);
+	T.AssertEquals(Offered.MyStance, HOLDiplomacy::Ally, "my stance is Ally");
+	T.AssertEquals(Offered.TheirStance, HOLDiplomacy::Enemy, "his stance did not follow me up");
+	// He says Neutral, then Ally: the line follows what he said.
+	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Neutral);
+	T.AssertEquals("Sa posture : Neutre", HOLDiplomacyPanelText::TheirStanceText(DpRow(Book, 0, 1, false).TheirStance), "he says Neutral");
+	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
+	T.AssertEquals("Sa posture : Allié", HOLDiplomacyPanelText::TheirStanceText(DpRow(Book, 0, 1, false).TheirStance), "he says Ally");
+	// I go Neutral: his Ally falls to Neutral with mine; he keeps showing what he has become.
+	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Neutral);
+	T.AssertEquals(DpRow(Book, 0, 1, false).TheirStance, HOLDiplomacy::Neutral, "I went Neutral: his stance toward me dropped to Neutral");
+	// I go Enemy: his stance drops to Enemy, and it is his line for me as well.
+	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Enemy);
+	T.AssertEquals(DpRow(Book, 0, 1, false).TheirStance, HOLDiplomacy::Enemy, "I went Enemy: he is Enemy to me too (automatic switch)");
+	T.AssertEquals(DpRow(Book, 1, 0, false).TheirStance, HOLDiplomacy::Enemy, "and from his side, I am Enemy");
+	// Never shown: on my own line, toward an AI (always Enemy, D367), a defeated player, nor in the locked standard modes.
+	T.AssertFalse(DpRow(Book, 0, 0, false).bShowTheirStance, "not on my own line");
+	T.AssertFalse(DpRow(Book, 0, 1, false, true).bShowTheirStance, "not for a defeated player");
+	TArray<bool> OneAI;
+	OneAI.Add(false);
+	OneAI.Add(true);
+	FHOLDiplomacyBook WithAI = HOLDiplomacy::NewBook(2, OneAI);
+	T.AssertFalse(DpRow(WithAI, 0, 1, false).bShowTheirStance, "not for an AI");
+	TArray<int> Teams;
+	TArray<bool> NoAI;
+	for (int Slot = 0; Slot < 2; Slot++)
+	{
+		Teams.Add(1);
+		NoAI.Add(false);
+	}
+	FHOLDiplomacyBook TeamBook = HOLDiplomacy::NewTeamBook(Teams, NoAI);
+	T.AssertFalse(DpRow(TeamBook, 0, 1, true).bShowTheirStance, "not in the standard modes (locked teams)");
+}

@@ -296,6 +296,7 @@ TRANSLATIONS = {
     "HOLDiplomacyPanel,Locked": ("Stances locked: fixed teams", "姿勢は固定：チーム固定"),
     "HOLDiplomacyPanel,Close": ("Close", "閉じる"),
     "HOLDiplomacyPanel,AIAlways": ("The AIs are always enemies", "AIは常に敵対"),
+    "HOLDiplomacyPanel,TheirStance": ("Their stance: {0}", "相手の姿勢：{0}"),
     "HOLTalentPanel,Reminder": ("Talents to spend: {0}", "未使用のタレント：{0}"),
     "HOLTalentPanel,TooltipAdvisedTalent": ("Takes the talent of the most filled family: {0} — {1}", "最も多く取得した系統のタレントを取る：{0} — {1}"),
     "HOLTalentPanel,TooltipNoAdvice": ("No advised choice until a talent is taken or while no point is kept", "タレントを取得するまで、またはポイントがない間はおすすめはありません"),
