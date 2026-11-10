@@ -8,15 +8,24 @@
 #   (une compilation attendue n'est pas un reste) ; TOUTE la chaine est epargnee : le processus de build porteur du chemin ET tous ses
 #   descendants (cmd, dotnet, cl, link... meme sans le chemin dans leur ligne). Un reste qui a lance un build est arrete SANS /T : ses
 #   descendants hors chaine de build sont arretes un par un, ceux de la chaine restent. -IncludeBuild compte la chaine comme restes.
-#   Test : stray_processes_test.ps1 (faux build / faux editeur, code 0 = vert).
+#   Les python/pythonw/py dont la ligne de commande contient le Root sont du type Python (L11-1, 2026-11-10 : 7 glade_budget.py orphelins) et sont arretes
+#   comme les autres restes ; -PythonOnly se limite a eux. Le Root doit apparaitre en chemin COMPLET (suivi de \ / " ' espace ou fin) : jamais un autre
+#   projet (ProjectShiva / AS_3) ni un worktree au prefixe voisin.
+#   Test : stray_processes_test.ps1 (faux build / faux editeur / faux python, code 0 = vert).
 # Le rapport d'agent a un champ PROCESSUS_DETACHES : colle ici la sortie (ou "aucun").
 param(
   [Parameter(Mandatory=$true)][string]$Root,
   [switch]$Stop,
-  [switch]$IncludeBuild
+  [switch]$IncludeBuild,
+  [switch]$PythonOnly   # L11-1 : ne liste / n'arrete QUE les python/pythonw du Root (session_gate Launch)
 )
 $ErrorActionPreference = 'Continue'
 $rootFull = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+# Le Root doit etre un chemin COMPLET dans la ligne de commande : suivi d'un separateur, d'un guillemet, d'un espace ou de la fin
+# (HeroesOfLiberty-Elrond ne doit pas attraper un processus de HeroesOfLiberty-ElrondBis ni d'un autre projet au prefixe voisin).
+$rootRx = [regex]::new([regex]::Escape($rootFull) + '(?=$|[\\/"''\s;,)])', 'IgnoreCase')
+# python / pythonw / python3.12 / py (lanceur) : un script Python detache (ex. glade_budget.py) survit a l'agent qui l'a lance.
+function Test-PythonProc($p) { return ([string]$p.Name -match '^(py|pythonw?[\d.]*)(\.exe)?$') }
 
 # Ce processus et toute sa chaine de parents.
 $all = @(Get-CimInstance Win32_Process)
@@ -56,7 +65,7 @@ function Get-BuildChain([object[]]$Snapshot) {
   foreach ($p in $Snapshot) {
     if ($skip.Contains([int]$p.ProcessId)) { continue }
     $cmd = [string]$p.CommandLine
-    if ($cmd -and $cmd.IndexOf($rootFull, [StringComparison]::OrdinalIgnoreCase) -ge 0 -and (Test-BuildProc $p)) { $roots += [int]$p.ProcessId }
+    if ($cmd -and $rootRx.IsMatch($cmd) -and (Test-BuildProc $p)) { $roots += [int]$p.ProcessId }
   }
   $chain = New-Object 'System.Collections.Generic.HashSet[int]'
   foreach ($r in $roots) { [void]$chain.Add($r) }
@@ -72,12 +81,14 @@ function Find-Strays {
     if ($skip.Contains([int]$p.ProcessId)) { continue }
     $cmd = [string]$p.CommandLine
     $exe = [string]$p.ExecutablePath
-    $hit = ($cmd -and $cmd.IndexOf($rootFull, [StringComparison]::OrdinalIgnoreCase) -ge 0) -or ($exe -and $exe.StartsWith($rootFull + '\', [StringComparison]::OrdinalIgnoreCase))
+    $hit = ($cmd -and $rootRx.IsMatch($cmd)) -or ($exe -and $exe.StartsWith($rootFull + '\', [StringComparison]::OrdinalIgnoreCase))
     if (-not $hit) { continue }
     $type = 'Autre'
     if ($chain.Contains([int]$p.ProcessId)) { $type = 'Build' }
+    elseif (Test-PythonProc $p) { $type = 'Python' }
     elseif ($p.Name -match '^UnrealEditor|^UE4Editor|^UnrealEditor-Cmd') { $type = 'Editeur' }
     elseif ($p.Name -match '^(powershell|pwsh)' -and $cmd -match '\.ps1|chain|loop') { $type = 'Script' }
+    if ($PythonOnly -and $type -ne 'Python') { continue }
     $found += [pscustomobject]@{ Pid = [int]$p.ProcessId; Name = [string]$p.Name; Type = $type; Start = $p.CreationDate; Cmd = $cmd }
   }
   return $found

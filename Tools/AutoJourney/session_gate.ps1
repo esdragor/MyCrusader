@@ -70,6 +70,24 @@ if ($Phase -eq 'Launch') {
     else { Say 'WARN' ("no_window_test ROUGE (un outil ouvre un editeur visible) : " + (($nwOut -split "`n" | Where-Object { $_ -match '^FAIL|\.ps1:\d+' } | Select-Object -First 3 | ForEach-Object { $_.Trim() }) -join ' ; ')) }
   }
 
+  # L11-1 (2026-11-10) : python/pythonw detaches d'un worktree (7 glade_budget.py orphelins = machine ralentie 30 min) : WARN avec le PID, jamais d'arret ici
+  # (stray_processes.ps1 -Root <worktree> -PythonOnly -Stop). Avec -Root : ce worktree seul ; sans : la copie principale et tous les worktrees.
+  $pyAlive = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^(py|pythonw?[\d.]*)(\.exe)?$' }).Count
+  $pyRoots = @(); if ($Root) { $pyRoots = @($Root) } else { $pyRoots = @($Main) + @($wts) }
+  $pyWarn = 0
+  if ($pyAlive -gt 0) {
+    foreach ($pr in $pyRoots) {
+      if (-not (Test-Path $pr)) { continue }
+      if ($Exclude -contains ((Split-Path $pr -Leaf) -replace '^HeroesOfLiberty-', '')) { continue }
+      $pyOut = & powershell -NoProfile -ExecutionPolicy Bypass -File "$PSScriptRoot\stray_processes.ps1" -Root $pr -PythonOnly 2>&1 | Out-String
+      if ($LASTEXITCODE -ne 0) {
+        $pyWarn++
+        Say 'WARN' ("python/pythonw orphelin(s) pour $pr (stray_processes.ps1 -Root $pr -PythonOnly -Stop) : " + (($pyOut -split "`n" | Where-Object { $_ -match 'PID' } | Select-Object -First 3 | ForEach-Object { ($_ -replace '\s+', ' ').Trim() }) -join ' | '))
+      }
+    }
+  }
+  if ($pyWarn -eq 0) { Say 'PASS' 'aucun python/pythonw orphelin' }
+
   # L8-9 : au DEBUT de chaque Auto_Journey tous les worktrees sont remis a jour (sync_worktrees.ps1) ; WARN par worktree en retard (les agents deja lances en cours de seance retardent apres chaque fusion : normal)
   foreach ($w in $wts) {
     $n9 = Split-Path $w -Leaf
