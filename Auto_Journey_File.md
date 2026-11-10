@@ -10,9 +10,9 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 1. Mêlée (Celeborn) : A/B N=16 melee_stuck contre melee_stuck_on_bf avant de changer le défaut ; puis les lignes mêlée ouvertes.
 2. neutrals dans une clairière (Sauron) : `hol.Decor.ClearNear` dans le scénario, preflight, PNG, E-neutrals.
 3. Rejouer sur main fusionné les essais de `Retours\ESSAIS-A-JOUER.md` et nommer un intégrateur de recette indépendant (Elrond).
-4. GDD : écrire D753-D766 au § 22 puis purger les 15 fiches de `Retours\` déjà reportées (session principale).
+4. GDD : écrire D753-D766 au § 22 (session principale) ; les fiches de `Retours\` ont été purgées le 2026-11-10.
 5. Outils : commit_docs.ps1, play.ps1 -Hidden, curseur virtuel centré, session_gate Launch, build.ps1 -Wait.
-6. Glorfindel : `MI_Ground_Plain.uasset` modifié non commité (question à l'utilisateur, puis restaurer ou commiter).
+6. Audio (Arwen) : build du worktree Arwen (candidats `Content\Audio\Candidates\` non commités, binaire périmé), puis lancer pour l'utilisateur `audio_compare_buildings_stone` (Pierre : Centre principal, Caserne, Champ de tir, Écurie, Atelier de siège) et `audio_compare_buildings_metal` (Métal : Forge), 2 min chacun ; réponse = une lettre A-J, « muets » ou « aucune, dix autres » ; seuls cues audio encore à trancher.
 7. Modèle et animations de l'Arquebusier (Sauron, après le lot ressources et décor PQ-1).
 8. Régénération unique des 7 cartes (TÂCHE À PART, Haldir) : `bSitesLaidByMaps = true`, styles de `Q-glade-style.md`, puis tests, crossings, hinterland_paths, aiduel.
 9. Build de rattrapage des worktrees (`sync_worktrees.ps1` puis `Tools\build.ps1`) avant tout essai.
