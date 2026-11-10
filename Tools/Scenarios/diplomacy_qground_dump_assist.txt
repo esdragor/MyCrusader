@@ -1,0 +1,34 @@
+hol.Combat.NeutralAssistRadius 600
+# DUMP (BUG-melee-stuck-attack) : meme essai que diplomacy_qground, mais le jeu enregistre l etat des 12 soldats a chaque pas (SanityDump3 dans le log) pour lire la paire bloquee ; D733 : Q puis clic sur le SOL derriere des hommes d'un joueur NEUTRE (geste reel : hol.Select.Grid 4 = la touche Q, puis hol.Select.LeftClickGround = vrai clic gauche par les gestionnaires d'entree). Les soldats doivent les rencontrer ET les frapper, posture inchangee. 3 minutes au plus.
+# Preuve (check.ps1) : sans ordre rien ne frappe (hits 0), apres le geste des coups portes ("hits #"), posture Neutral inchangee au rapport.
+hol.Sanity.Watch 1
+hol.Sanity.DumpUnit -3
+hol.Combat.LogHits 1
+hol.Cheat.Resources 2000
+hol.Diplomacy.Force 0 1 neutral
+hol.Diplomacy.Force 1 0 neutral
+hol.Camera.Focus -9500 0
+frames 5
+hol.Units.Spawn 6 -11000 0 0 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+hol.Units.Spawn 6 -9800 0 1 ManAtArms 250
+waitlog Spawn: 6 ManAtArms
+frames 120
+hol.Combat.Report
+waitlog hits 0 kills 0
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Camera.Focus -9500 0
+frames 2
+hol.Select.LeftClickGround -8000 0
+waitlog Scripted left click at
+waitlog attack-move to
+waitlog hits #
+hol.Camera.Zoom 8
+frames 40
+capture dipl_qground_fight
+wait 40
+hol.Diplomacy.Report
+waitlog Diplomacy report: slot 2 toward slot 1
+note D769 : Q puis clic sur le sol derriere les hommes neutres. Regarde les soldats rouges (neutres) : des qu un de leurs voisins est frappe par un bleu, ils doivent riposter (surtout l homme d armes rouge le plus bas, qui n attaquait pas au debut). Ils ne doivent JAMAIS frapper avant un premier coup bleu ; la posture du joueur 2 reste Neutre.

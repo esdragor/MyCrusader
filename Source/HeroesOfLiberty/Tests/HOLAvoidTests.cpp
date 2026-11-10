@@ -36,6 +36,11 @@ bool FHOLAvoidHeadOnTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a place on a body's centre is in it"), HOLAvoid::IsPlaceInBody({ -10312., -55. }, { -10312., -55. }, 60.));
 	TestTrue(TEXT("a place 40 cm from a body is in it"), HOLAvoid::IsPlaceInBody({ -10066., -216. }, { -10066., -176. }, 60.));
 	TestFalse(TEXT("a place 80 cm from a body is not"), HOLAvoid::IsPlaceInBody({ 0., 0. }, { 80., 0. }, 60.));
+	// Celeborn-31: the blocked-slot flag counts only when written on this order and this leg (a flag of the previous walk ended every new walk at once).
+	TestTrue(TEXT("a flag written on this order and leg counts"), HOLAvoid::IsSlotBlockedSeen(1, 7u, 3, 7u, 3));
+	TestFalse(TEXT("a flag of a previous order does not"), HOLAvoid::IsSlotBlockedSeen(1, 6u, 3, 7u, 3));
+	TestFalse(TEXT("a flag of a previous leg does not"), HOLAvoid::IsSlotBlockedSeen(1, 7u, 2, 7u, 3));
+	TestFalse(TEXT("no flag, no block"), HOLAvoid::IsSlotBlockedSeen(0, 7u, 3, 7u, 3));
 	return true;
 }
 

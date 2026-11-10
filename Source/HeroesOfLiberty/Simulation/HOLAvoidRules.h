@@ -120,6 +120,18 @@ namespace HOLAvoid
 		return FVector2D::DistSquared(Place, BodyPosition) < FMath::Square(Radius);
 	}
 
+	/**
+	 * Celeborn-31 (the stall of #12 in the user's trial of diplomacy_qground_dump_assist, 280 steps at 249 cm of its target): FHOLDetourFragment::bSlotBlocked is
+	 * written by the look-ahead, which runs for a WALKING unit only, and the order processor reads it in the same step that gives a new walk (the path is served
+	 * just before AdvanceUnits, the look-ahead has not seen the new order yet). A flag left by the unit's PREVIOUS walk (to a still enemy's centre) ended every
+	 * new walk at once within SlotBlockedStopDistance, and the combat gave the same walk again at each search step. The flag counts only when it was written
+	 * on this order and this leg (the same test as the look-ahead's own reset of the fragment).
+	 */
+	inline bool IsSlotBlockedSeen(const uint8 bSlotBlocked, const uint32 DetourOrderSerial, const uint8 DetourPhase, const uint32 OrderSerial, const uint8 OrderPhase)
+	{
+		return bSlotBlocked != 0 && DetourOrderSerial == OrderSerial && DetourPhase == OrderPhase;
+	}
+
 	/** A building's body as a walker sees it (D324's body, turned by the building's yaw: Cos, Sin). */
 	struct FFootprintBox
 	{

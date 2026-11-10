@@ -10,8 +10,8 @@ waitlog slot 0 level 1 -> 3
 hol.Camera.FocusNear -900 300
 frames 10
 note 1. Combat A, AVEC ton heros (niveau 3, pres du forum) : 6 Hommes d'armes allies contre 10 Lanciers ennemis a 7 m. Regarde qui tombe, et si le heros decide du combat ou s'il n'est qu'un soldat de plus.
-hol.Units.Spawn 6 -15600 300 0 ManAtArms 150
-hol.Units.Spawn 10 -14900 300 1 Spearman 150
+hol.Units.Spawn 6 -16400 300 0 ManAtArms 150
+hol.Units.Spawn 10 -17100 300 1 Spearman 150
 frames 20
 capture playtest_hero_army_a_start
 wait 45

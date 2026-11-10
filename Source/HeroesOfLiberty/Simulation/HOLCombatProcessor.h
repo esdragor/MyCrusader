@@ -85,6 +85,18 @@ protected:
 	/** Whether A takes B on by itself: always outside the Diplomacy mode (the lists hold only other camps), in it only at war (D369: Neutral and allies no). */
 	bool IsAutoFoe(const FFighter& A, const FFighter& B) const;
 
+	/** D769 (hol.Combat.NeutralAssistRadius): the free soldiers of a struck Neutral's camp near him take on who struck him (his blow becomes their LastAttacker). */
+	void AssistNeighbours(int32 VictimIndex, const FFighter& Aggressor, int64 StepIndex, int32 StepMs);
+	/** D769b: the recent strikes on a Neutral camp's soldiers (aggressor, struck camp, where the comrade stood, step): the helpers choose the nearest of them. */
+	struct FAssistStrike
+	{
+		FMassEntityHandle Aggressor;
+		uint8 VictimCamp = 0;
+		FVector2D VictimLocation = FVector2D::ZeroVector;
+		int64 Step = 0;
+	};
+	TArray<FAssistStrike> AssistStrikes;
+
 	/** Stops it dead where it stands (as the order processor's arrival, D290): its walk to the target is over. */
 	void StopWalk(const UWorld& World, FFighter& Fighter) const;
 	static int32 BucketOf(const FIntPoint& Cell);

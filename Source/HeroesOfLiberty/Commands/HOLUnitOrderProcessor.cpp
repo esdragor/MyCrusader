@@ -33,6 +33,7 @@
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLAvoidanceHoldFragments.h"
+#include "Simulation/HOLAvoidRules.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLBuildProcessor.h"
 #include "Simulation/HOLCombatRules.h"
@@ -3938,7 +3939,7 @@ void UHOLUnitOrderProcessor::AdvanceUnits(FMassEntityManager& EntityManager, FMa
 			if (SlotBlockedStopDistance > 0.f && Distance <= SlotBlockedStopDistance)
 			{
 				const TConstArrayView<FHOLDetourFragment> Detours = Context.GetFragmentView<FHOLDetourFragment>();
-				if (!Detours.IsEmpty() && Detours[EntityIt].bSlotBlocked != 0)
+				if (!Detours.IsEmpty() && HOLAvoid::IsSlotBlockedSeen(Detours[EntityIt].bSlotBlocked, Detours[EntityIt].OrderSerial, Detours[EntityIt].Phase, Order.OrderSerial, static_cast<uint8>(Order.Phase))) // Celeborn-31: a flag written on THIS order and leg only
 				{
 					Order.StuckSteps = static_cast<uint16>(FMath::Max(StuckLimit, 1));
 				}

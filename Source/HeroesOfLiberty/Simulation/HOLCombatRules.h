@@ -724,6 +724,35 @@ namespace HOLCombat
 	 */
 	HEROESOFLIBERTY_API bool KeepsLastAttacker(int64 StepIndex, int64 LastHitStep, int32 StepMs);
 
+	/** D769: how far (cm, from the neighbour) the aggressor of a struck comrade may stand for a Neutral to take it on (the search radius cuts it shorter). */
+	inline constexpr float NeutralAssistPursuit = 1200.f;
+
+	/**
+	 * D769b (the user, 2026-11-10: "they walk a long way round to hit a target while one stood next to them"): the helper of a struck comrade takes the
+	 * NEAREST of the aggressors that struck a comrade lately, not the first one that came. Whether the aggressor (NewId, NewDistance: edge to edge, cm)
+	 * replaces the one he has (bHasCurrent, CurrentId, CurrentDistance): never when he is in contact (bInContact: fighting, he keeps it, MeleeLock);
+	 * never beyond NeutralAssistPursuit; when he has none; else only when strictly nearer (equal: the smaller id).
+	 */
+	HEROESOFLIBERTY_API bool PrefersAssistAggressor(bool bInContact, bool bHasCurrent, float CurrentDistance, uint32 CurrentId, float NewDistance, uint32 NewId);
+
+	/**
+	 * D769 (the user, 2026-11-10): a Neutral never strikes first, but he helps his neighbour: when a soldier of his camp is struck within
+	 * AssistRadius of him (centre to centre, NeighbourToVictim), he takes on the one who strikes (its blow becomes his LastAttacker, so the
+	 * ordinary riposte follows). Only a neighbour of the victim's camp (bSameCamp), free (bNeighbourFree: no target, no last attacker; bBusy
+	 * false: not at a task), that would not already take the aggressor on by itself (bAggressorIsPassive: a Neutral toward him; an enemy is
+	 * met by the ordinary search, an ally never), against a living aggressor within NeutralAssistPursuit (NeighbourToAggressor). AssistRadius 0: off.
+	 */
+	HEROESOFLIBERTY_API bool ShouldAssistNeighbour(float AssistRadius, bool bSameCamp, bool bAggressorIsPassive, bool bAggressorAlive, bool bNeighbourFree,
+		bool bBusy, float NeighbourToVictim, float NeighbourToAggressor);
+
+	/**
+	 * D769 (the flicker of the assistants seen on screen: #8 and #12 changed target every 1-3 steps): in the Diplomacy mode, a target that is no
+	 * automatic foe (a Neutral) is let go when it does not strike back, unless the player ordered it. A target that is the soldier's remembered
+	 * last attacker (bTargetIsLastAttacker: it struck a comrade the soldier helps, D769, or the soldier himself) is NOT let go: it is the very
+	 * reason he is fighting. (Dropped, the next search took it again from the memory: a target #1, none, #3, none... every other step.)
+	 */
+	HEROESOFLIBERTY_API bool ShouldDropPassiveTarget(bool bOrderedTarget, bool bTargetIsAutoFoe, bool bTargetAttacksMe, bool bTargetIsLastAttacker);
+
 	/**
 	 * Coming to a friend's aid (MV.4, choice C, AoE4): a melee soldier free to seek by itself (Auto: not on Hold nor an
 	 * attack-move; a Peasant has no aggression), with no target found, goes to help a friend fighting within AidRadius
