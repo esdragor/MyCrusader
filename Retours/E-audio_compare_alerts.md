@@ -19,3 +19,5 @@ Reponse attendue : dans chaque fiche, une lettre (ou plusieurs) pour son cue, `O
 L'ancien scenario `audio_compare_alerts` (les 7 alertes a la suite, 70 sons, environ 14 min) est GARDE comme « tout » et n'est PAS compte comme un essai (plus de 3 min) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_alerts -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`. Il n'a pas de fiche : reponds dans les fiches ci-dessus.
 
 Consigne appliquee (memoire "Sons : pas usants") : GRAVES, SOURDS, COURTS, DOUX ; mesure par `Tools\Audio\check_audio_soft.py` (duree max 0,75 s, centre spectral max environ 630 Hz, 0 % au-dessus de 3 kHz), ce n'est pas une ecoute. Les 6 anciens jeux (cloches, harpe, glockenspiel) sont remplaces. L'alerte d'attaque : deux coups graves (tambour sourd, bois, pierre, plaque etouffee, basse, gong etouffe), reconnaissable sans etre stridente. Rien n'est branche dans le jeu : le jeu entend toujours les sons actuels de HOLAudioTable.as.
+
+Note 2026-11-10 : attaque, volcan, diplomatie validees par l'utilisateur (fiches archivees) ; fin d'entrainement validee aussi.
