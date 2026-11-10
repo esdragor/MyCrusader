@@ -165,10 +165,10 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 
 == SONS ET MUSIQUE
 - Sons de l'interface (pack Kenney, jugés « vaisseau spatial » : refaits en cours) [style]
-- Sons des ordres et de la sélection [style]
+- Sons des ordres (les cinq ordres muets) et de la sélection d'unité (Kenney handleSmallLeather, non remplacé ; sélection d'un bâtiment : voir ligne des bâtiments) [style]
 - Alerte du Forum (son 2D du moteur, la voix du héraut viendra) [style]
 - Fanfares du héros (bannière, cri, niveau, palier) [style]
-- Sons des bâtiments (familles bois / pierre / métal / sacré) [style]
+- Sons de sélection des bâtiments : Bois, Sacré et Marché élus (limiteur B, joués par l'utilisateur le 2026-11-09, restent des sons de pack) ; Pierre et Métal muets en attente d'élection (dix candidats chacun) [style]
 - Sons de combat, de récolte, de construction [rien ?]
 - Pas, voix et cris des unités [rien]
 - Ambiances des cartes [rien]
