@@ -868,3 +868,7 @@ NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit
 | Haldir-1 (sans C++) | a37c3759 | HeroesOfLiberty-Haldir | maps | L79 ligne N sites du journal make_maps | 10:05 || Faramir-2 (sans C++) | a44715cc | HeroesOfLiberty-Faramir | fog | L52, L53, L54 (note+look fog_orders_flicker, zz_edge_walk, fog_trees) | 10:12 |
 | Glorfindel-2 (sans C++) | ae4199b3 | HeroesOfLiberty-Glorfindel | net-playtest | L70 fiches Deconnexion | 10:22 |
 | (FINIS) Haldir-1 10:09 maps 0be29cf, Elrond-1 10:14 tiers 06ccaab (arquebusier note 5), Glorfindel-1 10:19 net-playtest 7701e5f (stray_processes python), Faramir-1 10:09 | | | | | |
+| Elrond-2 INTEGRATEUR (fusion groupee) | a32a38a9 | HeroesOfLiberty-Elrond | tiers | fusion maps 0be29cf, net-playtest 906e70f, fog 934e078, tiers 06ccaab, hero-j8-close e160313 | 10:35 |
+| Galadriel-1 FINI 10:33 NON COMPILE (50 tool_uses, 7bd1332 : hol.HUD.Hover, erreur de header corrigee, a recompiler par un agent neuf) ; Faramir-2 FINI 10:25 (44 tool_uses) ; Glorfindel-2 FINI 10:24 (15) | | | | | |
+| Galadriel-2 (C++ compiler+tester) | ada56630 | HeroesOfLiberty-Galadriel | galadriel-tab | compiler 7bd1332, preflight unit_stats_attack, tests | 10:41 |
+| Arwen-1 FINI 10:39 (85 tool_uses : HORS REGLE >80, G14 d751-root 3b4bd14 tests 1141/1141) ; Sauron-1 FINI 10:38 (55 tool_uses, visual 22e1f57 tests 1138) ; Celeborn-1 FINI 10:34 (50) | | | | | |
