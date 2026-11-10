@@ -40,6 +40,15 @@ try {
   $editor = Start-Fake $fakeEditor "/c `"set MARK=$root\Game.uproject & $sleep`""
   # Le nom build.ps1 n'apparait pas dans la ligne du parent (expansion retardee), seulement dans celle de son fils.
   $chain = Start-Fake $cmdExe "/v:on /c `"set A=bui& set B=ld.ps1& set MARK=$root\Tools\Tests\chain_measure.ps1 & cmd.exe /c set MARK=$root\Tools\!A!!B! ^& $sleep`""
+  # 2026-11-10 (L11-1) : orphelins Python (glade_budget.py : 7 pythonw detaches ont ralenti la machine 30 min). Faux python / pythonw (copies de cmd.exe
+  # renommees) dont la ligne de commande porte le Root ; un leurre `pythonw` d'un AUTRE projet (Root voisin FakeWorktree2, meme prefixe) doit survivre.
+  $fakePyW = Join-Path $tmp 'pythonw.exe'
+  $fakePy = Join-Path $tmp 'python.exe'
+  Copy-Item $cmdExe $fakePyW
+  Copy-Item $cmdExe $fakePy
+  $pyW = Start-Fake $fakePyW "/c `"set MARK=$root\Tools\Tests\glade_budget.py & $sleep`""
+  $py = Start-Fake $fakePy "/c `"set MARK=$root\Tools\Tests\glade_budget.py & $sleep`""
+  $pyOther = Start-Fake $fakePyW "/c `"set MARK=${root}2\Tools\Tests\glade_budget.py & $sleep`""
   Start-Sleep -Milliseconds 1500
   $kids = @{}
   foreach ($p in @($buildPs1, $buildBat, $buildUbt, $editor, $chain)) { $kids[$p.Id] = @(Get-ChildPids $p.Id) }
@@ -61,6 +70,22 @@ try {
   Check 'fils du faux editeur tue' ((@($kids[$editor.Id]) | Where-Object { Alive $_ }).Count -eq 0)
   Check 'faux script de mesure detache tue' (-not (Alive $chain.Id))
   Check 'build lance par le script detache epargne' ((@($nestedBuild) | Where-Object { -not (Alive $_) }).Count -eq 0 -and $nestedBuild.Count -gt 0)
+  Check 'pythonw detache du Root tue' (-not (Alive $pyW.Id))
+  Check 'python detache du Root tue' (-not (Alive $py.Id))
+  Check 'pythonw d un autre projet (Root voisin FakeWorktree2) epargne' (Alive $pyOther.Id)
+  Check 'sortie : les python sont listes avec le type Python' ($out -match "PID\s+$($pyW.Id)\s+Python" -and $out -match "PID\s+$($py.Id)\s+Python")
+
+  # -PythonOnly : ne touche QUE les python du Root (faux editeur epargne), code 0 apres l'arret.
+  $pyW2 = Start-Fake $fakePyW "/c `"set MARK=$root\Tools\Tests\other.py & $sleep`""
+  $editor2 = Start-Fake $fakeEditor "/c `"set MARK=$root\Game.uproject & $sleep`""
+  Start-Sleep -Milliseconds 1200
+  $out2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $script -Root $root -PythonOnly -Stop 2>&1 | Out-String
+  $code2 = $LASTEXITCODE
+  Write-Output $out2
+  Start-Sleep -Milliseconds 500
+  Check '-PythonOnly : pythonw tue' (-not (Alive $pyW2.Id))
+  Check '-PythonOnly : faux editeur epargne' (Alive $editor2.Id)
+  Check '-PythonOnly : code 0 une fois les python arretes' ($code2 -eq 0)
 } finally {
   # Nettoyage : tout ce qui porte le Root factice, puis les copies.
   $ErrorActionPreference = 'Continue'
