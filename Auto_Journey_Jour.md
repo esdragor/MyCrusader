@@ -1,4 +1,4 @@
-﻿# Auto_Journey : l'Ã©tat du jour
+# Auto_Journey : l'Ã©tat du jour
 
 ProcÃ©dure : Auto_Journey.md. Ce fichier ne contient que l'Ã©tat de la journÃ©e (ou du test en cours). Ce qui attend l'utilisateur : Auto_Journey_Retours.md. File de travail : Auto_Journey_File.md. Historique du test du 2026-10-30 : Docs/Archive/Auto_Journey_Test1_2026-10-30.md.
 
@@ -854,3 +854,15 @@ NOUVELLES LECONS 2026-11-09 : (1) un `stray_processes.ps1 -Stop` d'agent ne doit
 - L10-1 (aucun lancement fenetre) : appliquee : aucun play.ps1 fenetre par un agent ; les commandes visibles sont reservees a l'utilisateur.
 - NOUVEAU L11-1 : des processus Python lances detaches par un agent survivent sans parent et saturent la machine (7 glade_budget, ~1000 s CPU chacun) : stray_processes.ps1 doit aussi arreter python/pythonw dont la ligne de commande contient le -Root du worktree.
 - NOUVEAU L11-2 : une question de reglage dont la reponse demande une capacite inexistante (couper des arbres de decor) doit etre verifiee faisable AVANT d'etre posee (sonde de 1 commande) ; sinon l'utilisateur repond deux fois.
+
+## Agents du 2026-11-10 (seance AUTONOME 10:02 -> fin 10:55, arret dur des agents 10:55, alarme 10:40 cloture + fusion groupee, 3 agents C++ max = Galadriel, Arwen, Sauron, cartes SANS regeneration, integrateur/fusion = Elrond (agent neuf vers 10:35), main depart = 644b196, accord utilisateur : commits + fusions dans main, jamais de push ; veilleur 43cc6a94 toutes les 23 min)
+| nom | id | worktree | branche | tache (ligne de Auto_Journey_File.md) | lancement |
+|---|---|---|---|---|---|
+| Galadriel-1 (C++) | a2ff5a5c | HeroesOfLiberty-Galadriel | galadriel-tab | L86 survol des stats (BUG utilisateur) | 10:05 |
+| Arwen-1 (C++) | a50bdc9a | HeroesOfLiberty-Arwen | d751-root | L90 G14 champ Faction de FHOLAISummary | 10:05 |
+| Sauron-1 (C++) | a8a8ad9d | HeroesOfLiberty-Sauron | visual | L88 hol.Decor.ClearNear | 10:05 |
+| Celeborn-1 (sans C++) | aa7703a3 | HeroesOfLiberty-Celeborn | hero-j8-close | L89 mesure melee_stuck_on_bf 8 fois | 10:05 |
+| Elrond-1 (sans C++) | ae078e21 | HeroesOfLiberty-Elrond | tiers | L87 note 5 scenario arquebusier | 10:05 |
+| Faramir-1 (sans C++) FINI 10:09 (35 tool_uses ok) | ad2fe270 | HeroesOfLiberty-Faramir | fog | L26, L98, L24 | 10:05 |
+| Glorfindel-1 (sans C++) | a36171a6 | HeroesOfLiberty-Glorfindel | net-playtest | L91 stray_processes python | 10:05 |
+| Haldir-1 (sans C++) | a37c3759 | HeroesOfLiberty-Haldir | maps | L79 ligne N sites du journal make_maps | 10:05 || Faramir-2 (sans C++) | a44715cc | HeroesOfLiberty-Faramir | fog | L52, L53, L54 (note+look fog_orders_flicker, zz_edge_walk, fog_trees) | 10:12 |
