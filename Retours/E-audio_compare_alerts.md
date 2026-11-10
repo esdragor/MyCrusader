@@ -8,9 +8,7 @@ branches: heal-sleep
 Une fiche par alerte, chacune : 10 sons (A a J), environ 2 min, le panneau affiche le nom du cue a cote de la lettre, Entree = suivant, une ligne `<Cue> = _` a remplir, la liste des lettres avec leur fichier, la commande `play.ps1` :
 
 - `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_alerts_attack.md`       : Attaque subie [Alert.UnderAttack] (deux coups sourds, reconnaissable mais pas stridente)
-- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_alerts_buildingdone.md` : Batiment fini [Alert.BuildingDone]
-- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_alerts_techdone.md`     : Technologie finie [Alert.TechDone]
-- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_alerts_trade.md`        : Commerce [Alert.Trade]
+- (archivees le 2026-11-10 dans Docs\Archive\Retours_2026-11-10\ car ces trois alertes sont muettes par decision : BuildingDone, TechDone, Trade)
 - `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_alerts_volcano.md`      : Volcan [Alert.Volcano] (le jeu la joue 3 fois a 1 s d'ecart)
 - `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_alerts_diplomacy.md`    : Diplomatie [Alert.Diplomacy]
 

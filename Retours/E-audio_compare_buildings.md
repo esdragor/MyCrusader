@@ -11,7 +11,7 @@ Une fiche par famille, chacune : 10 sons (A a J), environ 2 min, le panneau affi
 - `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_stone.md`  : Pierre (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) [Building.Stone]
 - `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_sacred.md` : Sacre (Chapelle, Sanctuaire) [Building.Sacred]
 - `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_metal.md`  : Metal (Forge) [Building.Metal]
-- `C:\Users\baudo\Documents\MyCrusader\Retours\E-audio_compare_buildings_coins.md`  : Pieces (Marche) [Building.Coins]
+- (Pieces/Marche archivee le 2026-11-10 dans Docs\Archive\Retours_2026-11-10\ : Marche = handleCoins, elu ; Bois et Sacre aussi deja elus, il ne reste ouvertes que Pierre et Metal)
 
 Reponse attendue : dans chaque fiche, une lettre (ou plusieurs) pour son cue, `OK`, `BUG: ...` ou `REGLAGE: ...` ; tu peux repondre famille par famille, en plusieurs fois.
 
