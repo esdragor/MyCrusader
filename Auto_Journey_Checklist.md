@@ -9,7 +9,7 @@ Créée le 2026-11-05 à la demande de l'utilisateur : des axes d'amélioration 
 
 **Bilan de fin de séance (obligatoire, vérifié par `-Phase Close`)** : dans `Auto_Journey_Jour.md`, un titre `### Lecons appliquees <AAAA-MM-JJ>` suivi d'une ligne par règle ci-dessous : `<ID> : appliquee / non appliquee : <preuve (nombre, heure, SHA, sortie)>`. Une règle « non appliquée » devient une ligne `[ ]` de `Auto_Journey_File.md` (ou un durcissement du contrôle).
 
-Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-01 ; L1 = leçons du 2026-11-01 ; L3 = 2026-11-03 ; L4 = 2026-11-04 ; L5 = 2026-11-05.
+Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-01 ; L1 = leçons du 2026-11-01 ; L3 = 2026-11-03 ; L4 = 2026-11-04 ; L5 = 2026-11-05 ; texte intégral des leçons L1, L3 et L4 archivé dans `Docs\Archive\Auto_Journey_Lecons_jusqu_au_2026-11-09.md`.
 
 ## Avant le lancement
 | ID | Règle | Contrôle | Où |
@@ -17,12 +17,12 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | T2-1 | Étape 0 par sous-agent en lecture seule ; plan relu contre la procédure ; « rien d'ouvert » interdit | `Auto_Journey_Jour.md` contient le plan de lancement : une ligne par worktree (lancer / raison précise) | SESSION |
 | T2-2 | Un agent par worktree, tous lancés d'emblée ; « Pris » n'est pas un interdit | tableau des agents : une ligne par worktree libre, ou la raison écrite | SESSION |
 | L3-12 | Étape 0 sautée seulement si la file porte déjà les tâches du jour | la file contient des `[ ]` datés du jour | SESSION |
-| L5-1 | Heure lue à `Get-Date` avant CHAQUE lancement ; aucun lancement s'il reste moins de 20 min | `session_gate.ps1 -Phase Launch -End HH:MM` (FAIL si < 20 min) | GATE |
+| L5-1, L3-10, L4-2 | Heure lue à `Get-Date` avant CHAQUE lancement ; aucun lancement s'il reste moins de 5 min (règle de durée du 2026-11-05 PM ; ancien seuil : 20 min) | `session_gate.ps1 -Phase Launch -End HH:MM` (FAIL si < 5 min) | GATE |
 | L5-2 | Tableau agent -> id -> worktree -> branche -> tâche, écrit AU LANCEMENT, relu avant chaque `SendMessage` | titre `## Agents du <date>` dans `Auto_Journey_Jour.md` | GATE |
 | L3-1, L4-4 | Plafond de 3 agents C++ vérifié avant chaque lancement et écrit DANS l'énoncé | `Launch` : tickets de `Docs\BuildQueue.state` < 3 ; énoncé « sans C++ » sinon | GATE + AGENT 10 |
 | L1-10 | Docs de la copie principale commités ; rien de suivi modifié ni de `*InProgress.md` non suivi | `Launch` : FAIL sur `*InProgress.md` non suivi, WARN sur fichier suivi modifié | GATE |
 | L5-7 | Accord de commiter les dossiers non suivis demandé AU LANCEMENT | première question de la séance si le gate le signale | SESSION |
-| L4-1, L4-3 | L'arrêt dur est un contrat ; alarme de fin posée au lancement ; prolongation demandée 15 min avant, max 2 cycles | `CronList` montre l'alarme « fin - 15 min » ; heure de fin écrite dans le titre du tableau | SESSION |
+| L4-1, L4-3 | L'arrêt dur est un contrat ; alarme de fin posée au lancement ; prolongation demandée 15 min avant, max 2 cycles | `CronList` montre l'alarme « fin - 15 min » ; heure de fin écrite dans le titre du tableau ; **assoupli par la règle de durée du 2026-11-05 PM** : arrêt dur des agents = l'heure de fin, dépassement toléré 15 min au plus, au-delà on demande | SESSION |
 | L3-8, L4-9, Q5, L1-14 | Agent d'intégration NOMMÉ au lancement ; il rejoue les essais après la fusion | ligne `intégrateur` du tableau des agents | SESSION |
 | L3-9 | La session principale se relance vers 200k : compter ses propres appels d'outils | à 150 appels de la session principale : écrire le point de reprise dans `Auto_Journey_Jour.md` | SESSION |
 | T2-3 | Énoncé : chemins absolus, « enchaîne sans t'arrêter », arrêt dur, rapport fixe | l'énoncé commence par « lis Tools\AutoJourney\agent_rules.md » + l'heure d'arrêt calculée par `Launch` | AGENT |
@@ -30,7 +30,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Pendant les agents
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max (jugés sur `tool_uses`), arrêt à **60 appels déclarés** dans l'énoncé ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_DECLARES` |
+| L1-1, L3-6, L4-7, L5-3 | Un agent est remplacé à 200k tokens, jamais plus tard ; bug dur = agent neuf | **80 appels d'outils** max (jugés sur `tool_uses`), arrêt à **45 appels VUS PAR L'AGENT** dans l'énoncé (L9-2 du 2026-11-07 ; avant : 60 déclarés) ; `tool_uses` de la notification > 100 = hors règle, tâche suivante sur un agent NEUF (jamais `SendMessage` pour reprendre) | AGENT 2 + RAPPORT `APPELS_DECLARES` |
 | L1-2 | Commit par lot vert, au plus 30 min sans commit, fichiers par nom | `RAPPORT COMMITS` (dernier commit à HH:MM) ; `status.ps1` à chaque tour signale 45 min sans commit | AGENT 14 |
 | L1-3 | `git merge main` avant le rapport | `RAPPORT merge_main_fait` | AGENT 15 |
 | L3-2, L4-5 | Build C++ lancé dans les 15 premières minutes, en `run_in_background`, agent vivant jusqu'à sa fin ; jamais de code non compilé rendu comme fini | `RAPPORT PREMIER_BUILD`, `BUILD` ; « NON COMPILÉ » en tête sinon | AGENT 11 |
@@ -41,13 +41,13 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L5-6 | Questions groupées dans UN tableau (question, recommandée, effet), raccourci « recommandées partout » | message de la session principale | SESSION |
 | T2-5 | `quick_check` ne compile pas : `build.ps1` d'abord | `RAPPORT TESTS` après `BUILD: PASS` | AGENT 8 |
 | T2-6, L5-8 | Un script n'est prêt qu'après un passage de bout en bout ; `net` rouge sans changement = relancer deux fois | sortie collée au rapport | AGENT 8, 9 |
-| T2-7 | `Auto_Journey_Retours.md` seulement par `Edit` de lignes précises (un fichier par item dans `Retours\`) | agents écrivent `Retours\Q-*.md` / `E-*.md` | AGENT 17 |
+| T2-7, L1-5 | `Auto_Journey_Retours.md` seulement par `Edit` de lignes précises (un fichier par item dans `Retours\`) | agents écrivent `Retours\Q-*.md` / `E-*.md` | AGENT 17 |
 | L1-11 | Machine : l'utilisateur joue depuis un build figé ; heure à PowerShell | commande `play.ps1` pointe un worktree validé par `Essay` | GATE |
 | L3-4 | Écriture au bon endroit ; `git status` de la copie principale inchangé | `RAPPORT GIT_STATUS_PRINCIPALE` + `Close` | AGENT 4 + GATE |
 | L4-12, T2 | Outil partagé corrigé au lieu d'un contournement privé | `RAPPORT ANOMALIES_PROCESSUS` cite l'outil corrigé | AGENT 9 |
 | L4-13 | `Intermediate` périmé : supprimer UHT de CE worktree | AGENT 12 | AGENT |
 | L3-11, L5-5 | Régénération des cartes seule, éditeur seul, `-Multiprocess`, mesure de perf, jamais mêlée à un réglage de budget | tâche dédiée dans le tableau des agents ; AGENT 13 | AGENT + SESSION |
-| L3-7 | Veilleur : état déjà vu persisté, silencieux si rien n'a changé | ignorer le premier tour | SESSION |
+| L3-7, L1-4 | Veilleur : état déjà vu persisté, silencieux si rien n'a changé | ignorer le premier tour | SESSION |
 | T2-4 | Au plus 2 questions par chantier et par séance | compte des `Q-*.md` par chantier | SESSION |
 
 ## Essais
@@ -70,7 +70,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
 | L3 / T2 | Fusion groupée : toutes les branches prêtes, UN build `-Priority merge`, UN `quick_check`, avance rapide de `main` | énoncé de fusion de `Auto_Journey.md` | SESSION |
-| L4-6 | La fusion groupée démarre à « fin - 30 min » | alarme + heure | SESSION |
+| L4-6 | La fusion groupée démarre à « fin - 30 min » (assoupli par L7-7 et L8-8 : dès que 3 branches sont vertes, branche C++ d'abord) | alarme + heure | SESSION |
 | Pré-vol | Pré-vol de fusion de chaque branche ; rien n'entre dans `main` sans build PASS et `tests` tout vert sur le résultat | `session_gate.ps1 -Phase Merge -Branches a,b,c` | GATE |
 | L1-3 | Les agents ont fusionné `main` avant le rapport : l'agent de fusion ne rejoue que `tests,aiserver,aiduel` | `RAPPORT merge_main_fait` | RAPPORT |
 | L4-14 | Fin de séance : tous les worktrees remis à jour (`sync_worktrees.ps1`) ; travail non commité d'abord commité | `session_gate.ps1 -Phase Close` : FAIL si fichier suivi non commité, WARN si retard sur `main` | GATE |
@@ -95,7 +95,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 ## Leçons du 2026-11-05 soir (séance autonome 19:12-21:38) : contrôles ajoutés
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
-| L7-1 | Le décompte d'appels déclaré par les agents est faux de 10 à 30 % (77 déclarés = 108 réels) : seul tool_uses de la notification compte | à chaque rapport, la session principale lit tool_uses : > 80 = noté hors règle, > 100 = tâche suivante sur agent NEUF et ligne au bilan ; le champ du rapport devient APPELS_DECLARES (arrêt à 60 déclarés), le seuil de 80 se juge sur tool_uses relevé par la session | SESSION |
+| L7-1 | Le décompte d'appels déclaré par les agents est faux de 10 à 30 % (77 déclarés = 108 réels) : seul tool_uses de la notification compte | à chaque rapport, la session principale lit tool_uses : > 80 = noté hors règle, > 100 = tâche suivante sur agent NEUF et ligne au bilan ; le champ du rapport devient APPELS_DECLARES (arrêt à 60 déclarés ; remplacé le 2026-11-07 par 45 appels vus par l'agent : L9-2), le seuil de 80 se juge sur tool_uses relevé par la session | SESSION |
 | L7-2 | Un lancement ne vérifie pas l'état réel du worktree (DLL périmée : Galadriel-7 18 appels perdus ; SHA périmés donnés à la fusion 1) | session_gate.ps1 -Phase Launch -Root <worktree> : FAIL si la DLL du worktree est plus ancienne que le dernier commit de code de main ET que la tâche joue des scénarios ; les énoncés de fusion contiennent les tips relevés par git rev-parse <branche> au moment du lancement, jamais des SHA recopiés d'un rapport | GATE + SESSION |
 | L7-3 | Pas de verrou partagé pour l'éditeur : 2 à 8 éditeurs en permanence, Arwen-5 a attendu ~20 appels et ses 3 pré-vols n'ont pas abouti | un ticket d'éditeur dans Docs\BuildQueue.state (comme build.ps1) pris par preflight.ps1 / check.ps1 ; au plus 2 éditeurs simultanés | OUTIL |
 | L7-4 | Un agent laisse un processus détaché après sa fin (chain.ps1 de Celeborn-4 a relancé des éditeurs, chain2.ps1 d'Arwen-5) | champ de rapport PROCESSUS_DETACHES (liste ou « aucun ») ; la session principale arrête ceux qui restent avant de lancer l'agent suivant du même worktree (Get-CimInstance Win32_Process filtré sur le worktree) | RAPPORT + SESSION |
@@ -122,7 +122,7 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | ID | Règle | Contrôle | Où |
 |---|---|---|---|
 | L9-1 | 3 agents (Glorfindel-15/16, Celeborn-18) ont re-notifié leur rapport en boucle (minuteur de réveil / Monitor propre à l'agent) et ont consommé des appels | l'énoncé interdit « minuteur, cron, Monitor » ; la session principale fait TaskStop à la 2e notification identique | AGENT + SESSION |
-| L9-2 | 5 agents ont dépassé 80 appels (99, 89, 88, 85, 83) : leur décompte déclaré est faux de 25 % | arrêt dans l'énoncé à « 45 appels VUS PAR TOI » (appliqué dès 14:00, jamais dépassé ensuite) ; le modèle d'énoncé de Auto_Journey.md passe de 60 à 45 | AGENT |
+| L9-2 | 5 agents ont dépassé 80 appels (99, 89, 88, 85, 83) : leur décompte déclaré est faux de 25 % | arrêt dans l'énoncé à « 45 appels VUS PAR TOI » (appliqué dès 14:00, jamais dépassé ensuite) ; le modèle d'énoncé de Auto_Journey.md passe de 60 à 45 (fait le 2026-11-10) | AGENT |
 | L9-3 | session_gate -Phase Essay lit le mot « branches » dans la prose des fiches E-audio_compare_*.md : 17 FAIL, 12 essais sonores non donnés ; -Essay doit porter le nom de la fiche, pas du scénario | ne parser que la ligne ranches: ; accepter le nom du scénario et retrouver sa fiche | OUTIL (ligne de file) |
 | L9-4 | Auto_Journey_File.md aux fins de ligne mêlées : conflit TOTAL à chaque fusion (3 fois), 2 lignes perdues | CRLF + BOM partout depuis Elrond-14 ; eol_check.ps1 dans session_gate -Phase Close ; ligne de statut par agent dans un fichier à part (comme Retours\) plutôt qu'une ligne du fichier partagé | OUTIL + AGENT |
 | L9-5 | L'avance rapide a été bloquée 2 fois par des docs non commités de la copie principale (agents qui écrivent dans les deux copies) | script commit_docs.ps1 (Auto_Journey_*.md, EtapeDefini.md, Retours\*) lancé par la session avant CHAQUE Launch et Merge ; session_gate -Phase Merge distingue « main n'a que des docs » (WARN) de « main a du code » (FAIL) | OUTIL |
