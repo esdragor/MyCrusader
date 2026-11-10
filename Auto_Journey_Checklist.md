@@ -140,3 +140,20 @@ Origines : T2 = test 2 du 2026-10-30 ; Q = « Qualité des essais » du 2026-11-
 | L10-3 | 'sans C++' ne dit pas que le binaire est a jour : la fusion 5 a du rebuild (BuildingSelected inexistant) | l'agent de fusion lit session_gate -Phase Report (binaire plus recent que le dernier commit de code) avant son quick_check | AGENT + GATE |
 | L10-4 | Edit echoue sur le C++ en CRLF : 5 agents ont perdu 3 a 5 appels | l'enonce d'un agent C++ donne la methode (remplacement PowerShell sur chaine exacte) | AGENT |
 | L10-5 | Une mesure N=8 de 2 h 20 en fond a occupe un editeur et son format (FAIL k/N, k = PASS) a ete lu a l'envers | ab_matrix.ps1 / repeat_scenario PASS k/N (fait dans heal-sleep) ; lire un tableau de mesure par un agent neuf avant toute conclusion | OUTIL |
+
+## Lecons du 2026-11-10 (seance autonome 09:57-10:55, 1 h, 15 agents, 3 fusions) : controles a ajouter
+| ID | Regle | Controle | Ou |
+|---|---|---|---|
+| L11-1 | Les 8 worktrees partaient avec des binaires perimes : un build de rattrapage de 397 s (Elrond, note de scenario) a fait attendre 25 a 30 min les 3 agents C++ (build d'Arwen 1002 s) | session_gate Launch : build de rattrapage seulement pour une tache qui joue un scenario ou touche au C++ ; binaire perime + tache de scenario = FAIL | GATE |
+| L11-2 | Des agents ont brule 10 a 20 appels a sonder la file de build (Galadriel 50, Sauron 55, Arwen 85 > 80) | build.ps1 -Wait : un seul appel bloquant ; l'enonce interdit de sonder la file | OUTIL + AGENT |
+| L11-3 | Un agent C++ de 30 min sur un bug deja corrige (infobulles : l'essai du 09-11 tournait sur un binaire d'avant d813698) | un bug rapporte commence par un verdict de 5 min sur main a jour, sans build ; l'agent C++ part seulement si le verdict est rouge | SESSION + AGENT |
+| L11-4 | ~20 lignes sur 58 de la file etaient perimees ; les lignes faites n'etaient pas cochees (les agents n'editent pas le fichier) | la session principale coche en un passage a la fin, `session_gate -Phase Close` echoue si un rapport « fait » n'a pas de ligne cochee (fait a la main le 2026-11-10) | SESSION + GATE |
+| L11-5 | commit_docs.ps1 ne couvre pas Placeholders*, TechnologiesInProgress.md, Docs/SessionEnd.txt : le gate Merge a refuse a 10:33 | ajouter ces chemins a commit_docs.ps1 | OUTIL |
+| L11-6 | play.ps1 -Hidden laisse 2 editeurs vivants, stray_processes -Stop les rate a la 1re passe ; curseur virtuel qui derive en mode cache (camera dans un coin noir : fog_trees) | play.ps1 ferme ses editeurs ; curseur centre par defaut en mode cache ; test sur les deux | OUTIL |
+| L11-7 | Le gate Launch dit FAIL « plafond de 3 agents C++ » meme pour une tache sans C++ | WARN si la tache est declaree sans C++ | GATE |
+| L11-8 | Fusion en 3 tours : un message a l'integrateur en cours est arrive apres son build | liste figee des branches ecrite dans le tableau AVANT de lancer l'integrateur, attente jusqu'a une heure fixe, pas de message en cours | SESSION |
+| L11-9 | Aucun essai donne ni integrateur de recette nomme ; ESSAIS-A-JOUER.md date de la veille | integrateur de recette nomme au lancement, ou « aucun essai donne » ecrit dans le bilan ; ESSAIS-A-JOUER.md rejoue sur main fusionne avant d'etre donne | SESSION |
+| L11-10 | Mesures de melee a N=8 bruitees (base 3/8 le 09-11, 5/8 le 10-11) | N=16 minimum via ab_matrix.ps1 avant de changer un defaut | AGENT |
+| L11-11 | Une fiche supprimee apres un OK de l'utilisateur a ete recreee (E-fog_trees.md) | l'agent lit Retours\REPONSES-*.md avant de creer une fiche d'essai | AGENT |
+| L11-12 | 15 fiches de Retours\ portent une reponse a reporter, signalees par Close mais jamais purgees | ligne de file « purger Retours » en debut de seance suivante | SESSION |
+| L11-13 | Heures annoncees de memoire (decalage de 2 min) | Get-Date avant toute annonce d'heure (deja L5-1, appliquee aux agents, pas a mes messages) | SESSION |
