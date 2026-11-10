@@ -8,6 +8,8 @@ open /Game/Maps/Plain
 waitmap Plain
 waitlog Camera above the start of slot
 frames 5
+# Curseur virtuel au centre de l'ecran : sans cela, en jeu lance sans fenetre (play.ps1 -Hidden, souris a (0,115) = bord gauche) la camera derive et les captures montrent un autre endroit (Faramir-25, 2026-11-10).
+hol.Camera.TestCursor 0.5 0.5
 quiet hol.Sanity.Watch 1
 hol.Sources.Grove 160 -5800 0 10 7
 hol.Camera.FocusNear 800 0
@@ -75,5 +77,6 @@ waitlog HUD overlap:
 capture fogtrees_c
 hol.Test.Sanity
 hol.Camera.FocusNear 4500 0
+hol.Camera.TestCursor off
 note Brouillard : le bosquet de 10 arbres à 90 m à l'est a été vu puis coupé pendant que mes soldats étaient au centre. Il doit rester dessiné (dans le gris de l'exploré) tant que vous ne le revoyez pas ; dès que les soldats reviennent à 70 m, les arbres disparaissent.
 note A regarder aussi : Echap, Menu, quitter vers le menu, puis Nouvelle partie : la ligne de la carte porte une liste « Brouillard » (Normal par défaut, Carte explorée, Sans brouillard), accessible aussi au clavier. Choisir « Sans brouillard » puis Lancer : plus de noir, plus de masquage.
