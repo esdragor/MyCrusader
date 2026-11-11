@@ -254,6 +254,7 @@ if ($Phase -eq 'Essay') {
         # d'une fiche n'est pas une liste de branches) : sans la ligne, c'est un WARN plus bas, pas un FAIL.
         $named = $false
       }
+      if ($cited.Count -eq 0 -and $bm.Success -and $listText.Trim() -eq 'aucune') { Say 'PASS' ("{0} : branches: aucune (seul main compte)" -f $ef.Name); continue }
       if ($cited.Count -eq 0) { Say 'WARN' ("{0} : aucune branche citee : ajouter la ligne 'branches: a, b' (les branches dont le correctif est joue ; gabarit E_template.md)" -f $ef.Name); continue }
       foreach ($cb in $cited) {
         if ($localBranches -notcontains $cb) { Say 'FAIL' ("{0} : branche '{1}' citee mais inconnue de git (faute de frappe ?)" -f $ef.Name, $cb); continue }
