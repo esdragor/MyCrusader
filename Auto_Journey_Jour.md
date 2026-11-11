@@ -63,3 +63,14 @@ Test d'1 h, 13:30-14:30 (agents arret 14:12, fusion groupee ensuite), fusions da
 | Galadriel-T4b | a7277cf1a836dc226 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Talents T4b Mains du guerisseur | 13:31 (arret 13:37 : 55 appels, test rouge seul commite 902dad0) |
 | Galadriel-T4b-2 | a5e9988c064f438c3 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ T4b correctif (agent neuf) | 13:38 |
 | Sauron-CN | a8b90f320e2d826a2 | HeroesOfLiberty-Sauron | visual | sans C++ scenario neutrals ClearNear | 13:31 |
+| Fusion-1 | acb66774812037546 | HeroesOfLiberty-Faramir | fog | fusion groupee d751-root, tiers, visual, galadriel-tab | 13:52 (arret 14:30) |
+| Sauron-PQ1 | a942452d8e7491995 | HeroesOfLiberty-Sauron | visual | sans C++ placeholders ressources/decor, dix echantillons | 13:53 |
+| Arwen-outils | a10ee7ddc751061e5 | HeroesOfLiberty-Arwen | d751-root | sans C++ commit_docs, play -Hidden | 13:53 |
+| Glorfindel-L | afdb8e6fd350c6bc9 | HeroesOfLiberty-Glorfindel | net-playtest | sans C++ gestes Legions + quick_check -Full | 13:53 |
+| Galadriel-heal | a7f4f37dbeb73c398 | HeroesOfLiberty-Galadriel | galadriel-tab | sans C++ scenario talents_heal | 13:55 |
+
+PROLONGATION 13:52 sur demande de l'utilisateur (« repart pour 1h de plus ») : fin de seance 15:30 (14:30 + 1 h), agents d'arret 15:12, fusion groupee 2 ensuite. Elrond libre (G4 partiel, pas de relance : cap de 3 agents C++).
+| Galadriel-L4 | a4887747d0e3044e3 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Legions L4 etape 1 | 13:58 |
+| Sauron-PH | a741877d2e87b3bd0 | HeroesOfLiberty-Sauron | visual | sans C++ placeholders [?] _compare | 14:01 |
+| Elrond-G5 | a4695a05182a3066a | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G5/G6 | 14:10 |
+FUSION 1 faite 14:09 : main = 0ba3651 (e24d24f), d751-root + tiers + visual + galadriel-tab(71b35d9), build PASS, tests 1148/1148, aiserver, aiduel PASS. Pas dans main : a399b77 (scenario talents_heal), Sauron 376d95c+, Arwen outils, Glorfindel. Fusion 2 vers 14:45 puis integrateur (rejeu essais sur main).

@@ -49,6 +49,11 @@ int32 HOLHeroAbility::GetDamageTakenPercent(const bool bInAura, const bool bClos
 	return 100 - FMath::Min(Reduction, MoraleReductionCapPercent);
 }
 
+int32 HOLHeroAbility::GetHealRatePercent(const bool bInAura, const bool bTalent)
+{
+	return bInAura && bTalent ? HealersHandsHealPercent : 100;
+}
+
 int32 HOLHeroAbility::GetCloseRanksSpeedPercent(const bool bUnderCry, const bool bDawnStep, const int32 BasePercent)
 {
 	if (!bUnderCry)

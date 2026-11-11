@@ -15,6 +15,9 @@
 #include "Match/HOLVictoryRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLHealRules.h"
+#include "Simulation/HOLHeroAbilityRules.h"
+#include "Simulation/HOLHeroSheet.h"
+#include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -165,6 +168,34 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 	{
 		Candidates.Add(Unit.Candidate);
 	}
+	// T4b (Mains du guerisseur): the aura sources, as the combat reads them (a living hero, or a banner standing even once its hero is dead),
+	// and the owners who took the talent (the 2nd pick of the Captain). The aura is read at the position of the HEALER (the GDD: "Monks in the aura").
+	struct FAura
+	{
+		FVector2D Location;
+		uint8 Owner = 0;
+	};
+	TArray<FAura> Auras;
+	uint32 HealOwners = 0;
+	if (const UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>())
+	{
+		for (const FUnit& Unit : Step)
+		{
+			if (HOLIsHero(Unit.Constants->ArmorCategoryMask) && Unit.State->CurrentHealth > 0.f && Unit.State->Activity != EHOLUnitActivity::Dying)
+			{
+				Auras.Add(FAura{ Unit.Candidate.Location, Unit.State->OwnerPlayer });
+			}
+		}
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			HealOwners |= HOLHeroTalent::GrantsHealBonus(Heroes->GetSheets(Slot).Private.TalentPicks) ? (1u << Slot) : 0u;
+			FVector BannerLocation;
+			if (Heroes->GetBanner(Slot, BannerLocation))
+			{
+				Auras.Add(FAura{ FVector2D(BannerLocation), static_cast<uint8>(Slot) });
+			}
+		}
+	}
 	for (int32 HealerIndex = 0; HealerIndex < Step.Num(); ++HealerIndex)
 	{
 		const FUnit& Healer = Step[HealerIndex];
@@ -259,12 +290,23 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		}
 		FUnit& Target = Step[Chosen];
 		const float Before = Target.State->CurrentHealth;
-		const float After = HOLHeal::GetHealedHealth(Before, Target.Candidate.MaxHealth, Healer.Constants->HealRate, StepMs);
+		// T4b: +20% when the Healer's owner took Mains du guerisseur and the Healer stands in one of its owner's auras.
+		const uint32 HealerOwner = Healer.State->OwnerPlayer;
+		const bool bTalent = HealerOwner < static_cast<uint32>(FHOLMatchConfig::MaxSlots) && (HealOwners & (1u << HealerOwner)) != 0;
+		bool bInAura = false;
+		for (int32 AuraIndex = 0; bTalent && !bInAura && AuraIndex < Auras.Num(); ++AuraIndex)
+		{
+			bInAura = Auras[AuraIndex].Owner == HealerOwner
+				&& HOLHeroAbility::IsWithinAura(static_cast<float>(FVector2D::Distance(Auras[AuraIndex].Location, Healer.Candidate.Location)));
+		}
+		const bool bBoosted = bTalent && bInAura;
+		const float HealRate = Healer.Constants->HealRate * static_cast<float>(HOLHeroAbility::GetHealRatePercent(bInAura, bTalent)) / 100.f;
+		const float After = HOLHeal::GetHealedHealth(Before, Target.Candidate.MaxHealth, HealRate, StepMs);
 		Target.State->CurrentHealth = After;
 		Candidates[Chosen].Health = After;
 		TotalHealed += static_cast<double>(After - Before);
 		NewKept.Add(Healer.Candidate.UnitId, Target.Candidate.UnitId);
-		Links.Add(FLink{ Healer.Candidate.UnitId, Target.Candidate.UnitId });
+		Links.Add(FLink{ Healer.Candidate.UnitId, Target.Candidate.UnitId, bBoosted });
 		if (!KeptId || *KeptId != Target.Candidate.UnitId)
 		{
 			UE_LOG(LogHOLSimulation, Display, TEXT("Heal: step %lld #%u (slot %d) heals #%u (slot %d), health %.2f/%.0f%s"), StepIndex, Healer.Candidate.UnitId,

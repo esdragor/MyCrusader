@@ -16,7 +16,9 @@ void Test_AITalentEffectFamilies(FUnitTest& T)
 	T.AssertTrue(HOLHero::TalentHasEffect(2, 1), "Boucliers levés exists (row 2, Captain)");
 	T.AssertTrue(HOLHero::TalentHasEffect(4, 1), "Pas de l'Aube exists (row 4, Captain)");
 	T.AssertFalse(HOLHero::TalentHasEffect(2, 0), "no Guardian effect on row 2");
-	T.AssertFalse(HOLHero::TalentHasEffect(3, 1), "no effect on row 3");
+	T.AssertTrue(HOLHero::TalentHasEffect(3, 1), "Mains du guérisseur exists (row 3, Captain, T4b)");
+	T.AssertFalse(HOLHero::TalentHasEffect(3, 0), "no Guardian effect on row 3");
+	T.AssertFalse(HOLHero::TalentHasEffect(5, 1), "no effect on row 5");
 	T.AssertFalse(HOLHero::TalentHasEffect(1, 1), "no row 1");
 	T.AssertFalse(HOLHero::TalentHasEffect(2, 5), "no such family");
 }
