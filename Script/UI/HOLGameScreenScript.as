@@ -917,6 +917,7 @@ FString TalentTipTexts = "";
 	float SiteAnnounceUntil = 0.0;
 	FString SiteAnnounceText = "";
 	FString SiteTexts = "";
+	FString SiteGoldText = "";
 	const float SiteAnnounceSeconds = 8.0;
 
 	// One line per site that has something to read (HOLVolcanoBanner::Make, from the library's views: the alert, the lava, the altar), then the
@@ -961,6 +962,17 @@ FString TalentTipTexts = "";
 			View.bVisible = true;
 			View.Text = (VolcanoView.bVisible ? VolcanoView.Text + "\n" : "") + SiteView.Text + (bSiteAnnouncing ? "\n" + SiteAnnounceText : "");
 		}
+		// S6: "+N or/min" of the sites the local player holds, last line of the same panel (placement by default, Retours/Q-sites-gold-line.md option A).
+		int SiteOwned = 0;
+		int SiteRate = 0;
+		HOLSiteRules::GetGoldIncome(SiteViewer, SiteOwned, SiteRate);
+		const FString SiteGoldLine = SiteViewer >= 0 ? HOLSiteBanner::GoldLine(SiteOwned, SiteRate) : "";
+		if (SiteGoldLine != "")
+		{
+			View.Text = (View.bVisible ? View.Text + "\n" : "") + SiteGoldLine;
+			View.bVisible = true;
+		}
+		SiteGoldText = SiteGoldLine;
 		VolcanoTexts = VolcanoView.Text.Replace("\n", " / ");
 		// Under the cheats' panel (folded or open) and under the AI level line when it is there.
 		const float Top = Math::Max(AILevelTopMin, GetCheatPanelBottom() + AILevelGap) + (AILevelPanel.GetVisibility() == ESlateVisibility::Collapsed ? 0.0 : VolcanoAfterAILine);

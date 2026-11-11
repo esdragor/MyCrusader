@@ -257,6 +257,9 @@ TRANSLATIONS = {
     "HOLGameScreen,TributeGold": ("gold", "金"),
     "HOLGameScreen,MessageTribute": ("{0} gave you {1} {2} (tax {3})", "{0}から{2}{1}の贈り物（税 {3}）"),
 
+    # The sacred sites' gold line (Script/UI/HOLSiteBanner.as, S6): PROPOSED wording, to confirm with the user (Retours/Q-sites-gold-line.md).
+    "HOLSiteBanner,Gold": ("+{0} gold/min", "+{0} 金/分"),
+
     # The hero's block, in script (Script/UI/HOLHeroBlock.as, J8a.5): {0} {1} numbers, the delay m:ss.
     "HOLHeroBlock,Level": ("Level {0}", "レベル {0}"),
     "HOLHeroBlock,Health": ("HP {0} / {1}", "HP {0} / {1}"),

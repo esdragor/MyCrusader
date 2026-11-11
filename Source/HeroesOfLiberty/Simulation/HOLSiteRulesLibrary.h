@@ -44,6 +44,13 @@ public:
 	static void GetVictoryCount(const UObject* WorldContextObject, int32& OutLeader, int32& OutSecondsLeft, bool& bOutFrozen, int32& OutWinner);
 
 	/**
+	 * S6: the sacred sites the player at Slot holds as this machine knows them (the sites in that player state's views whose owner is the slot: the
+	 * server's own list on the server, the replicated one on a client) and the gold a minute each pays (hol.Site.GoldPerMinute), for the HUD line.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Site", meta = (WorldContext = "WorldContextObject"))
+	static void GetGoldIncome(const UObject* WorldContextObject, int32 Slot, int32& OutOwnedSites, int32& OutRatePerMinute);
+
+	/**
 	 * S10: HOLSite::VictoryStep (the simulation's victory count) for the script, so that Script/Sites/HOLSiteVictory.as is checked against it
 	 * (Test_SiteVictoryScriptAndSimulationAgree): the state in (leader, steps held, winner, owners at the last step), the step's inputs, the state out.
 	 */

@@ -5,6 +5,8 @@
 #include "Simulation/HOLSiteRules.h"
 #include "Engine/World.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLPlayerState.h"
+#include "Simulation/HOLSiteSubsystem.h"
 
 namespace
 {
@@ -61,6 +63,34 @@ void UHOLSiteRulesLibrary::GetVictoryCount(const UObject* WorldContextObject, in
 	OutSecondsLeft = Count.SecondsLeft;
 	bOutFrozen = Count.bFrozen;
 	OutWinner = Count.Winner;
+}
+
+void UHOLSiteRulesLibrary::GetGoldIncome(const UObject* WorldContextObject, const int32 Slot, int32& OutOwnedSites, int32& OutRatePerMinute)
+{
+	OutOwnedSites = 0;
+	OutRatePerMinute = UHOLSiteSubsystem::GetGoldPerMinute();
+	const UWorld* World = WorldContextObject ? WorldContextObject->GetWorld() : nullptr;
+	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+	if (!GameState || Slot < 0)
+	{
+		return;
+	}
+	for (const APlayerState* Candidate : GameState->PlayerArray)
+	{
+		const AHOLPlayerState* Player = Cast<AHOLPlayerState>(Candidate);
+		if (!Player || Player->GetPlayerIndex() != Slot)
+		{
+			continue;
+		}
+		for (const FHOLSiteView& View : Player->GetSiteViews())
+		{
+			if (View.Owner == Slot)
+			{
+				++OutOwnedSites;
+			}
+		}
+		return;
+	}
 }
 
 int32 UHOLSiteRulesLibrary::GetDecaySteps()

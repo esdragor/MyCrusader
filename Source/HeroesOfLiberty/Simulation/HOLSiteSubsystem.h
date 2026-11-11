@@ -37,6 +37,9 @@ public:
 	/** The switch (hol.Site.Enabled, 0 by default; the match option replaces it at S7). */
 	static bool IsEnabled();
 
+	/** The gold a minute each held site pays its owner (hol.Site.GoldPerMinute, provisional 30): what the HUD line multiplies by the sites held (S6). */
+	static int32 GetGoldPerMinute();
+
 	/**
 	 * Whether the unit type is a holy unit of the faction (it takes a site). PROVISIONAL list (D702: the Dawn's Monk and Luminous Monk; the
 	 * Legions' Necromancer does not exist yet, so they take by their hero alone) until the faction table's column replaces it.
