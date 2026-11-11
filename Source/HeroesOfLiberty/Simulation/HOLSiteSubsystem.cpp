@@ -77,6 +77,23 @@ namespace
 			}
 			Line += FString::Printf(TEXT(" | victory leader %d held %d winner %d"), Sites->GetVictory().Leader, Sites->GetVictory().Held, Sites->GetVictory().Winner);
 			UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Line);
+				// S5: the sites each player state knows (D701): the server's truth, slot by slot; on a client only its own state's views reach it
+				// (replicated to the owner only), and that is what the net test reads against the server's.
+				if (const AHOLGameState* GameState = World->GetGameState<AHOLGameState>())
+				{
+					for (const APlayerState* Each : GameState->PlayerArray)
+					{
+						if (const AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each))
+						{
+							FString Views = FString::Printf(TEXT("Site views: slot %d: %d view(s)"), Player->GetPlayerIndex(), Player->GetSiteViews().Num());
+							for (const FHOLSiteView& View : Player->GetSiteViews())
+							{
+								Views += TEXT(" | ") + View.Describe();
+							}
+							UE_LOG(LogHOLMatch, Display, TEXT("%s"), *Views);
+						}
+					}
+				}
 		}));
 }
 
