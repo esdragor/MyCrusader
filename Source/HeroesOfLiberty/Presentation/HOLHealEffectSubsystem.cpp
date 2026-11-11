@@ -17,6 +17,8 @@ namespace UE::HeroesOfLiberty::Heal
 {
 	/** The heal's colour (a green, read on the grass and on the player colours) and the height of its line (cm, the unit's chest). */
 	const FColor HealColour(70, 255, 100);
+	/** T4b (Q-talents-heal-visual = A, default): the heal boosted by Mains du guerisseur is gold with "++" (solo and host only: a client does not know it). */
+	const FColor BoostedHealColour(255, 215, 60);
 	constexpr float LineHeight = 110.f;
 	constexpr float PlusHeight = 230.f;
 	/** A client's guess: a unit whose health rose within this many seconds is being healed (the wire carries no heal). */
@@ -31,11 +33,12 @@ namespace UE::HeroesOfLiberty::Heal
 				UHOLHealProcessor::GetTotalHealed(), UHOLHealProcessor::GetHealSteps(), Effect ? Effect->GetDrawnCount() : 0LL);
 		}));
 
-	void DrawHeal(UWorld* World, const FVector& From, const FVector& To)
+	void DrawHeal(UWorld* World, const FVector& From, const FVector& To, const bool bBoosted = false)
 	{
 #if ENABLE_DRAW_DEBUG
-		DrawDebugLine(World, From + FVector(0., 0., LineHeight), To + FVector(0., 0., LineHeight), HealColour, false, -1.f, SDPG_Foreground, 6.f);
-		DrawDebugString(World, To + FVector(0., 0., PlusHeight), TEXT("+"), nullptr, HealColour, 0.f, false, 3.f);
+		const FColor& Colour = bBoosted ? BoostedHealColour : HealColour;
+		DrawDebugLine(World, From + FVector(0., 0., LineHeight), To + FVector(0., 0., LineHeight), Colour, false, -1.f, SDPG_Foreground, 6.f);
+		DrawDebugString(World, To + FVector(0., 0., PlusHeight), bBoosted ? TEXT("++") : TEXT("+"), nullptr, Colour, 0.f, false, 3.f);
 #endif
 	}
 }
@@ -88,7 +91,7 @@ void UHOLHealEffectSubsystem::Tick(const float DeltaTime)
 		{
 			continue;
 		}
-		DrawHeal(World, Healer.Location, Target.Location);
+		DrawHeal(World, Healer.Location, Target.Location, Link.bBoosted);
 		++Drawn;
 	}
 }

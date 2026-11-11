@@ -27,6 +27,8 @@ public:
 	{
 		uint32 HealerId = 0;
 		uint32 TargetId = 0;
+		/** T4b: the heal is the Monk's boosted one (Mains du guerisseur taken, Monk in an aura): the presentation draws it gold. */
+		bool bBoosted = false;
 	};
 	/** The heals of the last step, in healer order (solo and host only: the simulation runs here). */
 	static const TArray<FLink>& GetLinks() { return Links; }

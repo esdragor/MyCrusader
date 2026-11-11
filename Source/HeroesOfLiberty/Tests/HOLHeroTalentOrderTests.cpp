@@ -120,12 +120,12 @@ bool FHOLHeroTalentEffectTableTest::RunTest(const FString& Parameters)
 			// A hero who took only this family up to this row: its row's talent is the last pick.
 			TArray<uint8> Picks;
 			Picks.Init(static_cast<uint8>(Family), Row - HOLHeroTalent::FirstRow + 1);
-			const bool bCoded = (Row == HOLHeroTalent::FirstRow && HOLHeroTalent::GrantsAuraArmor(Picks)) || (Row == HOLHeroTalent::FirstRow + 2 && HOLHeroTalent::GrantsDawnStep(Picks));
+			const bool bCoded = (Row == HOLHeroTalent::FirstRow && HOLHeroTalent::GrantsAuraArmor(Picks)) || (Row == HOLHeroTalent::FirstRow + 1 && HOLHeroTalent::GrantsHealBonus(Picks)) || (Row == HOLHeroTalent::FirstRow + 2 && HOLHeroTalent::GrantsDawnStep(Picks));
 			TestEqual(*FString::Printf(TEXT("row %d family %d: the table says what the code does"), Row, Family), HOLHeroTalent::HasEffect(Row, Family), bCoded);
 			Effects += HOLHeroTalent::HasEffect(Row, Family) ? 1 : 0;
 		}
 	}
-	TestEqual(TEXT("two talents have an effect: Boucliers levés and Pas de l'Aube"), Effects, 2);
+	TestEqual(TEXT("three talents have an effect: Boucliers levés, Mains du guérisseur and Pas de l'Aube"), Effects, 3);
 	TestFalse(TEXT("no row 1"), HOLHeroTalent::HasEffect(1, HOLHeroTalent::FamilyCaptain));
 	TestFalse(TEXT("no family 3"), HOLHeroTalent::HasEffect(2, 3));
 	return true;
