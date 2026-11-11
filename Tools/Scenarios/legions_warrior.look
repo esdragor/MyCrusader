@@ -1,0 +1,3 @@
+legions_warrior_button | Le Guerrier damne clique sur son corps : le bloc du bas dit Guerrier damne, la grille montre la case Rage (E)
+legions_warrior_rage | Apres le clic sur la case Rage : la rage tourne (rien n est dessine : pas d aura ni de couleur ; seule la barre de vie du guerrier baisse a chaque coup)
+legions_warrior_after | Apres les 10 s de rage : le combat continue, la rage est finie (rien a l ecran ne le dit)

@@ -129,7 +129,7 @@ public:
 	 * Refused (false) for another type, a dying unit, under 30 health, during the cool-down, or on a client; the effect itself is
 	 * applied by the combat processor from FHOLCombatFragment::RageMs.
 	 */
-	bool CastRage(uint32 UnitId);
+	bool CastRage(uint32 UnitId, int32 RequiredOwner = INDEX_NONE);
 
 	/** Entity of a unit identifier (D223); an invalid handle when the unit is gone. */
 	FMassEntityHandle FindEntity(uint32 UnitId) const;

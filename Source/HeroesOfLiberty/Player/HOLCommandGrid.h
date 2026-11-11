@@ -31,6 +31,8 @@ enum class EHOLGridCommand : uint8
 	 * ground plants it, 16 m at most from the hero).
 	 */
 	HeroAbility,
+	/** L4: orders the necrotic rage of the selection's Damned Warriors (Context.bRageUnit): the cell GetRageCell. */
+	NecroticRage,
 	/** Researches a technology at the player's selected building (T4, GDD 11): the technology row on W X C V, through the building's queue. */
 	Research,
 	/**
@@ -134,6 +136,8 @@ struct FHOLGridContext
 	 * sheet, J8-Q5).
 	 */
 	bool bHero = false;
+	/** L4: a Damned Warrior is among the units commanded: the necrotic rage on the grid (GetRageCell). */
+	bool bRageUnit = false;
 	int32 HeroLevel = 0;
 	int32 HeroCooldownSeconds[3] = {};
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
@@ -275,6 +279,8 @@ namespace HOLCommandGrid
 	 * rangs, Z Bannière de l'Aube. INDEX_NONE for the passive aura (its box is the hero's block's alone).
 	 */
 	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
+	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
+	HEROESOFLIBERTY_API int32 GetRageCell();
 
 	/**
 	 * The cell of the Market's trade of Resource (food, wood, stone): the sales on the top row, A Z E, the purchases below, Q S D

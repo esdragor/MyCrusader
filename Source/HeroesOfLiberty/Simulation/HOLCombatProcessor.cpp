@@ -35,6 +35,8 @@
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitAbilityRules.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Siege/HOLSiegeRules.h"
@@ -878,6 +880,25 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	}
 	DawnStepOwners = 0;
+
+		// L4: the players necrotic rage orders (the grid button, ServerCastRage), taken here, at the start of the step, in the order given;
+		// only the own Damned Warriors of the player are cast (CastRage checks the owner, the cool-down and the health).
+		if (UHOLCommandSubsystem* RageCommands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+		{
+			TArray<FHOLRageOrder> RageOrders;
+			RageCommands->ConsumeRageOrders(RageOrders);
+			UHOLUnitSubsystem* RageUnits = RageOrders.IsEmpty() ? nullptr : World->GetSubsystem<UHOLUnitSubsystem>();
+			for (const FHOLRageOrder& RageOrder : RageOrders)
+			{
+				for (const uint32 UnitId : RageOrder.UnitIds)
+				{
+					if (RageUnits)
+					{
+						RageUnits->CastRage(UnitId, RageOrder.PlayerIndex);
+					}
+				}
+			}
+		}
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();

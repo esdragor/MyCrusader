@@ -294,9 +294,15 @@ namespace HOLAIArmy
 		Data.Candidates.Add(n"Arquebusier");
 		Data.CandidateBuildings.Add(n"ArcheryRange");
 		Data.CandidateRatios.Add(1);
+		// L4 step 6: the Damned Warrior (Legions only, made at the Barracks) joins the fixed mix with a share of 1 in 8 for a Legions AI. PROVISIONAL share
+		// (Retours\Q-legions-ai-warrior.md, default 1: change this one line). Like the Arquebusier it is NOT in Types (the counter rule leaves it out).
+		Data.Candidates.Add(n"DamnedWarrior");
+		Data.CandidateBuildings.Add(n"Barracks");
+		Data.CandidateRatios.Add(1);
 		for (int Index = 0; Index < Data.Candidates.Num(); Index++)
 		{
-			Data.CandidateFactions.Add(Data.Candidates[Index] == n"Arquebusier" ? n"Dawn" : NAME_None);
+			const FName Key = Data.Candidates[Index];
+			Data.CandidateFactions.Add(Key == n"Arquebusier" ? n"Dawn" : (Key == n"DamnedWarrior" ? n"Legions" : NAME_None));
 		}
 		return Data;
 	}

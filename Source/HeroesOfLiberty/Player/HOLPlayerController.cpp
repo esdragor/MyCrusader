@@ -3605,6 +3605,11 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 		// J8c.4: the hero commanded, his abilities on the grid (his level from the public sheet, the cool-downs from the
 		// private one: the seconds left to the step each is ready at, rounded up).
 		Context.bHero = GetCommandHero() != 0;
+		for (const uint32 UnitId : Units)
+		{
+			FHOLUnitView RageView;
+			Context.bRageUnit |= HOLUnitView::Find(*GetWorld(), UnitId, RageView) && RageView.TypeName == FName(TEXT("DamnedWarrior"));
+		}
 		if (Context.bHero)
 		{
 			const int32 Slot = GetHOLPlayerState()->GetPlayerIndex();
@@ -3930,7 +3935,12 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 		return;
 	}
-	case EHOLGridCommand::CancelConstruction:
+	case EHOLGridCommand::NecroticRage:
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: necrotic rage"));
+		RequestCastRage(GetOwnSelectedUnits());
+		return;
+	}	case EHOLGridCommand::CancelConstruction:
 	{
 		// The site selected alone, or a subgroup's only building.
 		TArray<AHOLBuilding*> Buildings;
@@ -4889,6 +4899,24 @@ void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, con
 	ServerHeroAbility(Ability, Location);
 }
 
+void AHOLPlayerController::RequestCastRage(const TConstArrayView<uint32> UnitIds)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerCastRage(TArray<uint32>(UnitIds));
+	}
+}
+
+void AHOLPlayerController::ServerCastRage_Implementation(const TArray<uint32>& UnitIds)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (HOLPlayerState && Commands && HOLPlayerOrders::IsAccepted(HOLPlayerState->GetPlayerIndex(), UnitIds.Num()))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Rage order: slot %d queued for %d units"), HOLPlayerState->GetPlayerIndex(), UnitIds.Num());
+		Commands->IssueRageOrder(HOLPlayerState->GetPlayerIndex(), UnitIds);
+	}
+}
 void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
 {
 	// The player's own slot only (D288), an ability that is cast (not the aura, not a value out of the enum).

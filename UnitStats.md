@@ -13,7 +13,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Zombie | 35 | 3 | — | 3,7 s | 16,2 | 0,81 | 50 % (1,85 s) | Mêlée | 0,29 case (1,16 m) | 0 | 0 | 0 | 0 | Paysan, Profane | aucun (seulement sur ordre) |
 | Piquier | 80 | 8 | +17 contre Cavalerie | 1,875 s | 32 | 4,27 | 50 % (0,938 s) | Mêlée | 0,33 case (1,3 m) | 0 | 0 | 0 | 0 | Infanterie légère | 4 cases (16 m) |
 | Homme d'armes | 155 | 12 | — | 1,375 s | 43,6 | 8,73 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 4 | 4 | 0 | 2 | Infanterie lourde, Lourd | 4 cases (16 m) |
-| Damned Warrior | 130 | 16 | — | 1,5 s | 40 | 10,67 | 50 % (0,75 s) | Mêlée | 0,17 case (0,7 m) | 2 | 2 | 0 | 1 | Infanterie lourde, Lourd, Profane | 4 cases (16 m) |
+| Guerrier damné | 130 | 16 | — | 1,5 s | 40 | 10,67 | 50 % (0,75 s) | Mêlée | 0,17 case (0,7 m) | 2 | 2 | 0 | 1 | Infanterie lourde, Lourd, Profane | 4 cases (16 m) |
 | Roi | 250 | 50 | — | 1,375 s | 43,6 | 36,36 | 50 % (0,688 s) | Mêlée | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Roi | aucun (riposte seulement) |
 | Paladin-Commandant (héros) | 450 | 30 | — | 1,25 s | 48 | 24 | 50 % (0,625 s) | Héros | 0,17 case (0,7 m) | 0 | 0 | 0 | 0 | Héros | 4 cases (16 m) |
 | Arbalétrier | 80 | 12 | +10 contre Lourd | 2,125 s | 28,2 | 5,65 | 12 % (0,255 s) | Distance (tir) | 5 cases (20 m) | 0 | 0 | 0 | 0 | Distance | 5,33 cases (21,33 m) |
@@ -43,7 +43,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Zombie | 10 | Mêlée | 10 | 2,1 s | 4,76 | 1 case (4 m) |
 | Piquier | 20 | Mêlée | 20 | 2,1 s | 9,52 | 1 case (4 m) |
 | Homme d'armes | 20 | Mêlée | 20 | 2,1 s | 9,52 | 1 case (4 m) |
-| Damned Warrior | 25 | Mêlée | 25 | 2,1 s | 11,9 | 1 case (4 m) |
+| Guerrier damné | 25 | Mêlée | 25 | 2,1 s | 11,9 | 1 case (4 m) |
 | Roi | — | — | — | — | — | — |
 | Paladin-Commandant (héros) | 10 | Mêlée | 10 | 2,1 s | 4,76 | 1 case (4 m) |
 | Arbalétrier | 12 | Distance | 1 | 2,125 s | 0,47 | 5 cases (20 m) |
@@ -67,7 +67,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Zombie | 2 cases/s (8 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Piquier | 1,94 case/s (7,77 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Homme d'armes | 1,74 case/s (6,97 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
-| Damned Warrior | 1,85 case/s (7,4 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
+| Guerrier damné | 1,85 case/s (7,4 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Roi | 1,74 case/s (6,97 m/s) | 0,15 case (0,6 m) | 0,62 case (2,5 m) | 8 cases (32 m) |
 | Paladin-Commandant (héros) | 1,74 case/s (6,97 m/s) | 0,18 case (0,72 m) | 0,62 case (2,5 m) | 12 cases (48 m) |
 | Arbalétrier | 1,8 case/s (7,2 m/s) | 0,13 case (0,52 m) | 0,55 case (2,2 m) | 10 cases (40 m) |
@@ -90,7 +90,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 | Zombie | — | 20 s | 1 | Nourriture 0,49/s, Bois 0,49/s, Pierre 0,49/s, Or 0,49/s | 10 |
 | Piquier | 60 Nourriture + 20 Bois | 15 s | 1 | — | — |
 | Homme d'armes | 100 Nourriture + 20 Or | 22 s | 1 | — | — |
-| Damned Warrior | 90 Nourriture + 25 Or | 24 s | 1 | — | — |
+| Guerrier damné | 90 Nourriture + 25 Or | 24 s | 1 | — | — |
 | Roi | — | 1 s | 0 | — | — |
 | Paladin-Commandant (héros) | — | 1 s | 0 | — | — |
 | Arbalétrier | 80 Nourriture + 40 Or | 22 s | 1 | — | — |
@@ -104,7 +104,7 @@ Produit par `python Tools/Data/make_unit_stats.py` à partir de `Tools/Data/Unit
 
 Ligne = l'attaquant, colonne = la cible. Chaque case : dégâts d'un coup · coups pour tuer · temps pour tuer une cible seule et immobile (élan du premier coup, puis un coup par cadence ; sans le vol de la flèche).
 
-| Attaquant \ Cible | Infanterie légère | Archer | Paysan | Zombie | Piquier | Homme d'armes | Damned Warrior | Roi | Paladin-Commandant (héros) | Arbalétrier | Moine | Bélier | Mangonneau | Cavalier léger | Arquebusier |
+| Attaquant \ Cible | Infanterie légère | Archer | Paysan | Zombie | Piquier | Homme d'armes | Guerrier damné | Roi | Paladin-Commandant (héros) | Arbalétrier | Moine | Bélier | Mangonneau | Cavalier léger | Arquebusier |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Infanterie légère** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 5 · 8,4 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 6 · 22 · 40,3 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s | 8 · 10 · 17,8 s | 8 · 10 · 17,8 s | 8 · 50 · 92,8 s | 8 · 25 · 45,9 s | 7 · 18 · 32,8 s | 8 · 9 · 15,9 s |
 | **Archer** | 10 · 10 · 14,8 s | 5 · 14 · 21,3 s | 5 · 10 · 14,8 s | 5 · 7 · 9,9 s | 10 · 8 · 11,6 s | 1 · 155 · 250,4 s | 3 · 44 · 70,1 s | 5 · 50 · 79,8 s | 1,5 · 300 · 486,1 s | 5 · 16 · 24,6 s | 10 · 8 · 11,6 s | 1 · 400 · 648,6 s | 1 · 200 · 323,6 s | 3 · 40 · 63,6 s | 10 · 7 · 9,9 s |
@@ -112,7 +112,7 @@ Ligne = l'attaquant, colonne = la cible. Chaque case : dégâts d'un coup · cou
 | **Zombie** | 3 · 34 · 124 s | 3 · 24 · 87 s | 3 · 17 · 61,1 s | 3 · 12 · 42,6 s | 3 · 27 · 98 s | 1 · 155 · 571,7 s | 1 · 130 · 479,2 s | 3 · 84 · 309 s | 0,9 · 501 · 1851,8 s | 3 · 27 · 98 s | 3 · 27 · 98 s | 3 · 134 · 494 s | 3 · 67 · 246,1 s | 2 · 60 · 220,2 s | 3 · 24 · 87 s |
 | **Piquier** | 8 · 13 · 23,4 s | 8 · 9 · 15,9 s | 8 · 7 · 12,2 s | 8 · 5 · 8,4 s | 8 · 10 · 17,8 s | 4 · 39 · 72,2 s | 6 · 22 · 40,3 s | 8 · 32 · 59,1 s | 2,4 · 188 · 351,6 s | 8 · 10 · 17,8 s | 8 · 10 · 17,8 s | 8 · 50 · 92,8 s | 8 · 25 · 45,9 s | 24 · 5 · 8,4 s | 8 · 9 · 15,9 s |
 | **Homme d'armes** | 12 · 9 · 11,7 s | 12 · 6 · 7,6 s | 12 · 5 · 6,2 s | 12 · 3 · 3,4 s | 12 · 7 · 8,9 s | 8 · 20 · 26,8 s | 10 · 13 · 17,2 s | 12 · 21 · 28,2 s | 3,6 · 125 · 171,2 s | 12 · 7 · 8,9 s | 12 · 7 · 8,9 s | 12 · 34 · 46,1 s | 12 · 17 · 22,7 s | 11 · 11 · 14,4 s | 12 · 6 · 7,6 s |
-| **Damned Warrior** | 16 · 7 · 9,8 s | 16 · 5 · 6,8 s | 16 · 4 · 5,2 s | 16 · 3 · 3,8 s | 16 · 5 · 6,8 s | 12 · 13 · 18,8 s | 14 · 10 · 14,2 s | 16 · 16 · 23,2 s | 4,8 · 94 · 140,2 s | 16 · 5 · 6,8 s | 16 · 5 · 6,8 s | 16 · 25 · 36,8 s | 16 · 13 · 18,8 s | 15 · 8 · 11,2 s | 16 · 5 · 6,8 s |
+| **Guerrier damné** | 16 · 7 · 9,8 s | 16 · 5 · 6,8 s | 16 · 4 · 5,2 s | 16 · 3 · 3,8 s | 16 · 5 · 6,8 s | 12 · 13 · 18,8 s | 14 · 10 · 14,2 s | 16 · 16 · 23,2 s | 4,8 · 94 · 140,2 s | 16 · 5 · 6,8 s | 16 · 5 · 6,8 s | 16 · 25 · 36,8 s | 16 · 13 · 18,8 s | 15 · 8 · 11,2 s | 16 · 5 · 6,8 s |
 | **Roi** | 50 · 2 · 2,1 s | 50 · 2 · 2,1 s | 50 · 1 · 0,7 s | 50 · 1 · 0,7 s | 50 · 2 · 2,1 s | 46 · 4 · 4,8 s | 48 · 3 · 3,4 s | 50 · 5 · 6,2 s | 15 · 30 · 40,6 s | 50 · 2 · 2,1 s | 50 · 2 · 2,1 s | 50 · 8 · 10,3 s | 50 · 4 · 4,8 s | 49 · 3 · 3,4 s | 50 · 2 · 2,1 s |
 | **Paladin-Commandant (héros)** | 30 · 4 · 4,4 s | 30 · 3 · 3,1 s | 30 · 2 · 1,9 s | 30 · 2 · 1,9 s | 30 · 3 · 3,1 s | 28 · 6 · 6,9 s | 29 · 5 · 5,6 s | 30 · 9 · 10,6 s | 30 · 15 · 18,1 s | 30 · 3 · 3,1 s | 30 · 3 · 3,1 s | 30 · 14 · 16,9 s | 30 · 7 · 8,1 s | 30 · 4 · 4,4 s | 30 · 3 · 3,1 s |
 | **Arbalétrier** | 12 · 9 · 17,3 s | 12 · 6 · 10,9 s | 12 · 5 · 8,8 s | 12 · 3 · 4,5 s | 12 · 7 · 13 s | 18 · 9 · 17,3 s | 20 · 7 · 13 s | 12 · 21 · 42,8 s | 3,6 · 125 · 263,8 s | 12 · 7 · 13 s | 12 · 7 · 13 s | 1 · 400 · 848,1 s | 1 · 200 · 423,1 s | 10 · 12 · 23,6 s | 12 · 6 · 10,9 s |

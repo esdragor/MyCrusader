@@ -1069,7 +1069,7 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 	return NumDestroyed;
 }
 
-bool UHOLUnitSubsystem::CastRage(const uint32 UnitId)
+bool UHOLUnitSubsystem::CastRage(const uint32 UnitId, const int32 RequiredOwner)
 {
 	const FHOLUnitRecord* Record = Units.Find(UnitId);
 	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
@@ -1081,7 +1081,7 @@ bool UHOLUnitSubsystem::CastRage(const uint32 UnitId)
 	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
 	const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record->Entity);
 	FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Record->Entity);
-	if (!State || !Combat || Combat->DeathStep >= 0
+	if (!State || !Combat || Combat->DeathStep >= 0 || (RequiredOwner != INDEX_NONE && State->OwnerPlayer != RequiredOwner)
 		|| !HOLUnitAbility::CanCastRage(State->CurrentHealth > 0.f, State->CurrentHealth, Combat->RageCooldownMs))
 	{
 		return false;

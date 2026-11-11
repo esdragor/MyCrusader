@@ -8,6 +8,8 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionSubsystem.h"
+#include "Simulation/HOLRageVisual.h"
+#include "Simulation/HOLUnitAbilityRules.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
@@ -2112,7 +2114,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
 		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
-			: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
+			: Command.Command == EHOLGridCommand::NecroticRage ? FName(TEXT("NecroticRage"))
+: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
 			: Command.Command == EHOLGridCommand::Trade ? FName(*FString::Printf(TEXT("%s%s"), Command.bBuy ? TEXT("Buy") : TEXT("Sell"),
 				Command.Resource == EHOLResource::Wood ? TEXT("Wood") : Command.Resource == EHOLResource::Stone ? TEXT("Stone") : TEXT("Food")))
 			: Command.TypeName;
@@ -2294,6 +2297,36 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), Effect);
 			break;
 		}
+		case EHOLGridCommand::NecroticRage:
+			{
+				// L4 (Q-legions-l4 Q2 = A): the Damned Warriors' necrotic rage, cast at once (GDD 11.1 "Rage nécrotique"); the numbers in its
+				// tooltip are the simulation's own constants (HOLUnitAbilityRules.h, kept equal to UnitAbilities.csv by Combat.DamnedWarrior.RageConstants).
+				// No icon yet (a text cell, like the hero's abilities: Placeholders.txt).
+				// hol.Rage.Visual 3 or 4 (default 0 = unchanged): the cell shows the seconds left of the rage, then of the recharge, and is greyed meanwhile.
+					FText RageLabel = LOCTEXT("NecroticRageShort", "Rage");
+					EHOLGridCellState RageCellState = EHOLGridCellState::Ready;
+					if (HOLRageVisual::HasIcon(HOLRageVisual::GetMode()) && PlayerController)
+					{
+						for (const uint32 RageUnitId : PlayerController->GetOwnSelectedUnits())
+						{
+							int32 RageMs = 0;
+							int32 RageCooldownMs = 0;
+							if (HOLRageVisual::GetRageState(PlayerController->GetWorld(), RageUnitId, RageMs, RageCooldownMs) && RageCooldownMs > 0)
+							{
+								RageLabel = FText::Format(LOCTEXT("NecroticRageCooldown", "{0}\n{1} s"), RageLabel, FText::AsNumber(FMath::CeilToInt((RageMs > 0 ? RageMs : RageCooldownMs) / 1000.f)));
+								RageCellState = EHOLGridCellState::Greyed;
+								break;
+							}
+						}
+					}
+					GridCell->SetCommand(RageLabel, RageCellState);
+				GridCell->SetTooltip(LOCTEXT("NecroticRageName", "Rage nécrotique"), FHOLResources(), FHOLResources(),
+					FText::Format(LOCTEXT("NecroticRageEffect", "{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s"),
+						FText::AsNumber(HOLUnitAbility::RageDurationMs / 1000), FText::AsNumber(HOLUnitAbility::RageDamagePercent), FText::AsNumber(HOLUnitAbility::RageRatePercent),
+						FText::AsNumber(HOLUnitAbility::RageHpCostPerHit), FText::AsNumber(HOLUnitAbility::RageMinHp), FText::AsNumber(HOLUnitAbility::RageStopHp),
+						FText::AsNumber(HOLUnitAbility::RageCooldownMs / 1000)));
+				break;
+			}
 		default:
 			// An empty cell stays, dark (disabled), at its key's place.
 			GridCell->ClearUnit();
