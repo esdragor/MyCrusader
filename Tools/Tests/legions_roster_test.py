@@ -21,7 +21,7 @@ DATA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data")
 ROSTER = ["Spearman", "ManAtArms", "Archer", "Crossbowman", "LightCavalry", "Ram", "Mangonel"]
 DAWN_ONLY_UNITS = ["Peasant", "Monk", "Halberdier", "Arquebusier"]
 DAWN_ONLY_BUILDINGS = ["Chapel", "Sanctuary"]
-LEGIONS_HOUSES = {"Barracks": ["Spearman", "ManAtArms"], "ArcheryRange": ["Archer", "Crossbowman"], "Stable": ["LightCavalry"],
+LEGIONS_HOUSES = {"Barracks": ["Spearman", "ManAtArms", "DamnedWarrior"], "ArcheryRange": ["Archer", "Crossbowman"], "Stable": ["LightCavalry"],
                   "SiegeWorkshop": ["Ram", "Mangonel"]}
 RESOURCES = ["Food", "Wood", "Stone", "Gold"]
 
