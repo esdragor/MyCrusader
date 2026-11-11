@@ -36,7 +36,10 @@ def build_repo(root):
           "constexpr int UsedCap = 10; // provisoire\n"
           "constexpr int DeadCap = 20; // provisoire\n"
           "constexpr float UsedRatio = 0.5f; // provisoire\n"
+          "constexpr int UncoveredCap = 7; // provisoire\n"
+          "static const int Table[3] = {1, 2, 3};\n"
           "}\n")
+    write(root / "Source" / "Game" / "Other.h", "constexpr int NotCitedAnywhere = 9;\n")
     write(root / "Source" / "Game" / "User.cpp", "int Cap() { return R::UsedCap + 1; }\nfloat Ratio() { return R::UsedRatio; }\n")
     write(root / "Script" / "Uses.as", "int Twice() { return 2; }\n")
     write(root / "Source" / "Game" / "Loader.cpp", 'void Load() { Read("Hp"); }\n')
@@ -106,6 +109,19 @@ def main():
         # the value gets a consumer: it must stop being flagged
         write(root / "Script" / "Uses.as", "int Twice() { return R::DeadCap * 2; }\n")
         check("a consumer in a script clears the flag", "dead" not in {d.id for d in vc.find_dead(root, registry)})
+
+        # the inverse: a constant of a file the registry cites, with no row for it (report only, never fails --check)
+        with tempfile.TemporaryDirectory() as tmp2:
+            root2 = Path(tmp2)
+            registry2 = build_repo(root2)
+            names = {u.name for u in vc.find_uncovered(root2, registry2)}
+            check("a constant of a cited file without a row is listed", "UncoveredCap" in names and "Table" in names)
+            check("rows' own constants are not listed", not (names & {"UsedCap", "DeadCap", "UsedRatio"}))
+            check("a file the registry does not cite is left to make_value_sheet", "NotCitedAnywhere" not in names)
+            buf = io.StringIO()
+            with redirect_stdout(buf):
+                code_unc = vc.main(["--root", str(root2), "--uncovered"])
+            check("--uncovered prints them and exits 0", code_unc == 0 and "UNCOVERED UncoveredCap" in buf.getvalue())
 
     total = passed + len(failed)
     for name in failed:
