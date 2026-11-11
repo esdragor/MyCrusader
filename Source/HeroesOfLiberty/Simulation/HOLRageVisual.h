@@ -26,6 +26,16 @@ namespace HOLRageVisual
 
 	inline bool HasTint(const int32 Mode) { return Mode == ModeTint || Mode == ModeTintIcon; }
 	inline bool HasRing(const int32 Mode) { return Mode == ModeRing; }
+
+	/** Option B: radius (cm) and width of the ring on the ground under a warrior whose rage runs (a proposal, to be judged on the screen). */
+	constexpr double RingRadius = 170.0;
+	constexpr double RingWidth = 22.0;
+
+	/** Option B: a warrior gets its ring while its rage runs (RageMs > 0) and the mode draws one. */
+	inline bool ShouldDrawRing(const int32 Mode, const int32 RageMs)
+	{
+		return HasRing(Mode) && RageMs > 0;
+	}
 	inline bool HasIcon(const int32 Mode) { return Mode == ModeIcon || Mode == ModeTintIcon; }
 
 	/** The share of the dark necrotic red mixed into the owner's colour while the rage runs (a proposal, to be judged on the screen). */

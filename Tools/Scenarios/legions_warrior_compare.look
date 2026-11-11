@@ -1,0 +1,5 @@
+legions_warrior_compare_D | Option D (rien) : cinq guerriers damnes cote a cote, celui qui est clique est en rage et RIEN ne le distingue des autres
+legions_warrior_compare_A | Option A (teinte) : le guerrier en rage a le corps rouge sombre, les quatre autres gardent la couleur du joueur
+legions_warrior_compare_B | Option B (anneau) : un anneau necrotique sous les pieds du seul guerrier en rage, corps inchange
+legions_warrior_compare_C | Option C (case) : corps inchange, la case E du bloc du bas affiche Rage et les secondes restantes (grisee)
+legions_warrior_compare_AC | Option A + C : corps rouge sombre ET case E avec les secondes restantes

@@ -391,7 +391,14 @@ namespace UE::HeroesOfLiberty::Dev
 				HOLTestHooks::GetScenarioDisplay().Notes.Add(Rest);
 				HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
 			}
-			else if (Verb == TEXT("waitkey"))
+			else if (Verb == TEXT("notereset"))
+				{
+					// notereset: forgets the notes shown so far (a scenario of several options shows ONE note per option, not the pile).
+					HOLTestHooks::GetScenarioDisplay().Notes.Reset();
+					UE_LOG(LogHOLTest, Display, TEXT("Scenario notes: reset"));
+					HOLTestHooks::NotifyScenarioChanged(TEXT(""), FColor::Yellow);
+				}
+				else if (Verb == TEXT("waitkey"))
 			{
 				// As long as the user wants: no timeout.
 				StepTimeout = TNumericLimits<double>::Max();

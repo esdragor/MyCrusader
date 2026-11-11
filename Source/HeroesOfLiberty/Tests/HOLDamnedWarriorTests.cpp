@@ -268,6 +268,9 @@ bool FHOLDamnedWarriorRageTest::RunTest(const FString& Parameters)
 				TestTrue(TEXT("mode 1: a warrior NOT in rage is not tinted"), DrawnAt(HOLRageVisual::ModeTint, 0).Equals(Base, 0.001f));
 				TestTrue(TEXT("mode 2 (ring) and 3 (cell state) leave the body's colour alone"), DrawnAt(HOLRageVisual::ModeRing, RageMs).Equals(Base, 0.001f) && DrawnAt(HOLRageVisual::ModeIcon, RageMs).Equals(Base, 0.001f));
 				TestTrue(TEXT("the ring is drawn in mode 2 only"), HOLRageVisual::HasRing(HOLRageVisual::ModeRing) && !HOLRageVisual::HasRing(HOLRageVisual::ModeNone) && !HOLRageVisual::HasRing(HOLRageVisual::ModeTintIcon));
+				TestTrue(TEXT("mode 2 (ring): a warrior in rage gets a ring on the ground"), HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeRing, RageMs));
+				TestFalse(TEXT("mode 2: a warrior NOT in rage gets no ring"), HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeRing, 0));
+				TestFalse(TEXT("modes 0, 1, 3, 4: no ring even in rage"), HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeNone, RageMs) || HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeTint, RageMs) || HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeIcon, RageMs) || HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeTintIcon, RageMs));
 				TestTrue(TEXT("the cell state is shown in modes 3 and 4 only"), HOLRageVisual::HasIcon(HOLRageVisual::ModeIcon) && HOLRageVisual::HasIcon(HOLRageVisual::ModeTintIcon) && !HOLRageVisual::HasIcon(HOLRageVisual::ModeNone) && !HOLRageVisual::HasIcon(HOLRageVisual::ModeTint));
 				RageVisual->Set(0, ECVF_SetByCode);
 			}
