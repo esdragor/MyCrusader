@@ -3,9 +3,9 @@
 frames 40
 panel hide
 hol.Combat.Enabled 0
-hol.Decor.ClearNear 0 -2900 3500
-hol.Camera.Focus 0 -2900
-hol.Camera.Zoom 2
+hol.Decor.ClearNear 0 -3000 3500
+hol.Camera.Focus 0 -3000
+hol.Camera.Zoom 3
 frames 30
 hol.Resource.Review A
 frames 40

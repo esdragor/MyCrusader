@@ -78,7 +78,9 @@ namespace HOLResourceReview
 		{
 			double Angle = double(K) * 360.0 / double(Count) * 0.0174533;
 			double Around = Ring * (1.0 - 0.18 * double(K % 3));
-			Plain(Owner, Sphere, Base + FVector(Math::Cos(Angle) * Around, Math::Sin(Angle) * Around, ZLow + double(K % 3) * ZStep), FVector(Size, Size, Size), Paint);
+			// Round 2 (2026-11-11): the berries were hardly readable from the game camera, so they are 1.7 times bigger.
+			double Berry = Size * 1.7;
+			Plain(Owner, Sphere, Base + FVector(Math::Cos(Angle) * Around, Math::Sin(Angle) * Around, ZLow + double(K % 3) * ZStep), FVector(Berry, Berry, Berry), Paint);
 		}
 	}
 
@@ -338,17 +340,17 @@ void HOLResourceReviewCommand(const TArray<FString>& Args)
 		return;
 	}
 	AHOLResourceReviewActor Shown = Cast<AHOLResourceReviewActor>(SpawnActor(AHOLResourceReviewActor::StaticClass(), ResourceReviewSpot));
-	HOLResourceReview::Tree(Shown, Style, FVector(0.0, -1800.0, 0.0));
-	HOLResourceReview::Bush(Shown, Style, FVector(0.0, -600.0, 0.0));
-	HOLResourceReview::Vein(Shown, Style, FVector(0.0, 700.0, 0.0), FLinearColor(0.20f, 0.20f, 0.22f, 1.0f), FLinearColor(0.50f, 0.54f, 0.62f, 1.0f));
-	HOLResourceReview::Vein(Shown, Style, FVector(0.0, 1900.0, 0.0), FLinearColor(0.16f, 0.13f, 0.09f, 1.0f), FLinearColor(0.95f, 0.62f, 0.04f, 1.0f));
+	HOLResourceReview::Tree(Shown, Style, FVector(0.0, -1400.0, 0.0));
+	HOLResourceReview::Bush(Shown, Style, FVector(0.0, -450.0, 0.0));
+	HOLResourceReview::Vein(Shown, Style, FVector(0.0, 450.0, 0.0), FLinearColor(0.20f, 0.20f, 0.22f, 1.0f), FLinearColor(0.50f, 0.54f, 0.62f, 1.0f));
+	HOLResourceReview::Vein(Shown, Style, FVector(0.0, 1400.0, 0.0), FLinearColor(0.16f, 0.13f, 0.09f, 1.0f), FLinearColor(0.95f, 0.62f, 0.04f, 1.0f));
 	FVector CameraPlace = Gameplay::GetPlayerCameraManager(0).GetCameraLocation();
 	FVector ToCamera = CameraPlace - ResourceReviewSpot;
 	ToCamera.Z = 0.0;
 	ToCamera = ToCamera.GetSafeNormal();
-	FVector LabelPlace = ResourceReviewSpot + ToCamera * 900.0 + FVector(0.0, 0.0, 150.0);
+	FVector LabelPlace = ResourceReviewSpot + ToCamera * 700.0 + FVector(0.0, 0.0, 150.0);
 	Shown.Label.SetText(FText::FromString(f"RESSOURCES {Letter}"));
-	Shown.Label.SetWorldSize(260.0);
+	Shown.Label.SetWorldSize(170.0);
 	Shown.Label.SetTextRenderColor(FColor::Yellow);
 	Shown.Label.SetCastShadow(false);
 	Shown.Label.SetWorldLocation(LabelPlace);
