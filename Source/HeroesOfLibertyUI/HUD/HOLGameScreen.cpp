@@ -8,6 +8,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Buildings/HOLProductionSubsystem.h"
+#include "Simulation/HOLUnitAbilityRules.h"
 #include "CommonTextBlock.h"
 #include "Components/Border.h"
 #include "Components/HorizontalBox.h"
@@ -2295,6 +2296,19 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), Effect);
 			break;
 		}
+		case EHOLGridCommand::NecroticRage:
+			{
+				// L4 (Q-legions-l4 Q2 = A): the Damned Warriors' necrotic rage, cast at once (GDD 11.1 "Rage nécrotique"); the numbers in its
+				// tooltip are the simulation's own constants (HOLUnitAbilityRules.h, kept equal to UnitAbilities.csv by Combat.DamnedWarrior.RageConstants).
+				// No icon yet (a text cell, like the hero's abilities: Placeholders.txt).
+				GridCell->SetCommand(LOCTEXT("NecroticRageShort", "Rage"), EHOLGridCellState::Ready);
+				GridCell->SetTooltip(LOCTEXT("NecroticRageName", "Rage nécrotique"), FHOLResources(), FHOLResources(),
+					FText::Format(LOCTEXT("NecroticRageEffect", "{0} s : +{1} % de dégâts, +{2} % de cadence, {3} PV perdus par coup porté. Refusée sous {4} PV, elle s'arrête à {5} PV ; recharge {6} s"),
+						FText::AsNumber(HOLUnitAbility::RageDurationMs / 1000), FText::AsNumber(HOLUnitAbility::RageDamagePercent), FText::AsNumber(HOLUnitAbility::RageRatePercent),
+						FText::AsNumber(HOLUnitAbility::RageHpCostPerHit), FText::AsNumber(HOLUnitAbility::RageMinHp), FText::AsNumber(HOLUnitAbility::RageStopHp),
+						FText::AsNumber(HOLUnitAbility::RageCooldownMs / 1000)));
+				break;
+			}
 		default:
 			// An empty cell stays, dark (disabled), at its key's place.
 			GridCell->ClearUnit();

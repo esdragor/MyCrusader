@@ -8,6 +8,9 @@
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
+#include "Simulation/HOLUnitAbilityRules.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Player/HOLCommandGrid.h"
 #include "Simulation/HOLCombatProcessor.h"
@@ -55,6 +58,53 @@ bool FHOLDamnedWarriorTableTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("profile A: fragile, less health than the Man-at-arms"), Warrior->MaxHealth < ManAtArms->MaxHealth);
 	TestTrue(TEXT("... and more damage per second than the Man-at-arms"), Warrior->Attack / Warrior->AttackInterval > ManAtArms->Attack / ManAtArms->AttackInterval);
 	TestTrue(TEXT("it has a cost"), Warrior->Cost.Food + Warrior->Cost.Wood + Warrior->Cost.Stone + Warrior->Cost.Gold > 0);
+	return true;
+}
+
+// L4: the C++ copy of the rage's constants (Simulation/HOLUnitAbilityRules.h, which the combat processor and the grid's tooltip read)
+// equals the tables the design is written in: the NecroticRage rows of Tools/Data/UnitAbilities.csv (Name, DisplayName, UnitType, Faction,
+// Effect, CooldownMs, DurationMs, HpCostPerHit, MinHp, StopHp, Description) and Tools/Data/Effects.csv (Name, DisplayName, Sign, Dealt,
+// Taken, Rate, Form, DurationMs, ...). Read from the files, as the Angelscript table is generated from them: a number changed in one
+// place only fails here. Description (quoted, with commas) is the last field of each row and is not read.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDamnedWarriorRageConstantsTest, "HeroesOfLiberty.Combat.DamnedWarrior.RageConstants", EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLDamnedWarriorRageConstantsTest::RunTest(const FString& Parameters)
+{
+	const auto FieldsOf = [](const FString& File, TArray<FString>& OutFields) -> bool
+	{
+		TArray<FString> Lines;
+		if (!FFileHelper::LoadFileToStringArray(Lines, *FPaths::Combine(FPaths::ProjectDir(), TEXT("Tools/Data"), File)))
+		{
+			return false;
+		}
+		for (const FString& Line : Lines)
+		{
+			if (Line.StartsWith(TEXT("NecroticRage,")))
+			{
+				Line.ParseIntoArray(OutFields, TEXT(","), false);
+				return true;
+			}
+		}
+		return false;
+	};
+	TArray<FString> Ability;
+	TArray<FString> Effect;
+	if (!TestTrue(TEXT("UnitAbilities.csv has a NecroticRage row"), FieldsOf(TEXT("UnitAbilities.csv"), Ability)) || !TestTrue(TEXT("Effects.csv has a NecroticRage row"), FieldsOf(TEXT("Effects.csv"), Effect)))
+	{
+		return false;
+	}
+	if (!TestTrue(TEXT("enough fields"), Ability.Num() >= 10 && Effect.Num() >= 8))
+	{
+		return false;
+	}
+	TestEqual(TEXT("the unit type that casts it"), Ability[2], HOLUnitAbility::RageUnitType.ToString());
+	TestEqual(TEXT("cool-down"), FCString::Atoi(*Ability[5]), HOLUnitAbility::RageCooldownMs);
+	TestEqual(TEXT("duration"), FCString::Atoi(*Ability[6]), HOLUnitAbility::RageDurationMs);
+	TestEqual(TEXT("hit points lost per blow"), FCString::Atoi(*Ability[7]), HOLUnitAbility::RageHpCostPerHit);
+	TestEqual(TEXT("refused under (MinHp)"), FCString::Atoi(*Ability[8]), HOLUnitAbility::RageMinHp);
+	TestEqual(TEXT("ends at (StopHp)"), FCString::Atoi(*Ability[9]), HOLUnitAbility::RageStopHp);
+	TestEqual(TEXT("damage dealt, in percent (Effects.csv)"), FCString::Atoi(*Effect[3]), HOLUnitAbility::RageDamagePercent);
+	TestEqual(TEXT("attack rate, in percent (Effects.csv)"), FCString::Atoi(*Effect[5]), HOLUnitAbility::RageRatePercent);
+	TestEqual(TEXT("effect duration (Effects.csv) is the ability's"), FCString::Atoi(*Effect[7]), HOLUnitAbility::RageDurationMs);
 	return true;
 }
 
