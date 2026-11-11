@@ -35,6 +35,7 @@
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLBuildProcessor.h"
+#include "Simulation/HOLDeployProcessor.h"
 #include "Simulation/HOLLightUnitAvoidanceTrait.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitView.h"
@@ -796,6 +797,13 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		if (HOLIsHero(Constants.ArmorCategoryMask))
 		{
 			HeroUnitBySlot.Add(Request.OwnerPlayer, UnitId);
+		}
+		// Palier3InProgress.md G6 b: the Mangonel stands in for the deployable engine behind hol.Siege.Deployable (Q-palier3-deploy-wiring.md Q1 = A):
+		// born packed (phase 0) with the deploy fragment. Last in the body: adding a fragment moves the entity to another archetype, so the
+		// references taken above would dangle.
+		if (Request.TypeName == FName(TEXT("Mangonel")) && HOLDeployStandInEnabled())
+		{
+			EntityManager.AddFragmentToEntity(Entity, FHOLDeployFragment::StaticStruct());
 		}
 	}
 

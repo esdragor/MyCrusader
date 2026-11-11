@@ -73,6 +73,8 @@ protected:
 		FHOLMoveOrderFragment* Order = nullptr;
 		FMassMoveTargetFragment* MoveTarget = nullptr;
 		FMassDesiredMovementFragment* Movement = nullptr;
+		/** Its deploy state when it is a deployable engine (Palier3InProgress.md G6): it fires only once deployed. */
+		struct FHOLDeployFragment* Deploy = nullptr;
 		const FHOLUnitTypeConstants* Constants = nullptr;
 		/** It gathers or builds: a worker at its task takes on nobody by itself (J7b.3 gives orders). */
 		bool bBusy = false;
