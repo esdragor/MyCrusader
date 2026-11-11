@@ -77,6 +77,10 @@ namespace UE::HeroesOfLiberty::Combat
 	float NeutralAssistRadius = 600.f;
 	FAutoConsoleVariableRef CVarNeutralAssistRadius(TEXT("hol.Combat.NeutralAssistRadius"), NeutralAssistRadius,
 		TEXT("D769: radius in cm within which a free Neutral soldier takes on the one who strikes a comrade of his camp (never strikes first, stance unchanged); 0 = off, default 600 (user, 2026-11-10)"));
+	/** D769c: a helper already walking to an aggressor only takes another one nearer than this margin (cm), so a few cm do not swap his target back and forth. 0: off. */
+	float NeutralAssistSwitchMargin = 100.f;
+	FAutoConsoleVariableRef CVarNeutralAssistSwitchMargin(TEXT("hol.Combat.NeutralAssistSwitchMargin"), NeutralAssistSwitchMargin,
+		TEXT("D769c: hysteresis in cm: a helper walking to an aggressor of a comrade swaps to another only if the new one is nearer by more than this; 0 = swap on any gain"));
 	/** J7c.4, S3: the same outcome by cheaper ways (a flat entity index, a key sort, no search when the target is in reach). */
 	int32 FastPaths = 1;
 	FAutoConsoleVariableRef CVarFastPaths(TEXT("hol.Combat.FastPaths"), FastPaths,
@@ -590,7 +594,7 @@ void UHOLCombatProcessor::AssistNeighbours(const int32 VictimIndex, const FFight
 		const bool bHasCurrent = CurrentCandidate != INDEX_NONE;
 		const float CurrentDistance = bHasCurrent ? EdgeTo(Fighters[Strikers[CurrentCandidate].Index]) : 0.f;
 		const uint32 CurrentId = bHasCurrent ? Fighters[Strikers[CurrentCandidate].Index].UnitId : 0u;
-		if (HOLCombat::PrefersAssistAggressor(Combat.bAttacking, bHasCurrent, CurrentDistance, CurrentId, BestDistance, BestFighter.UnitId))
+		if (HOLCombat::PrefersAssistAggressor(Combat.bAttacking, bHasCurrent, CurrentDistance, CurrentId, BestDistance, BestFighter.UnitId, UE::HeroesOfLiberty::Combat::NeutralAssistSwitchMargin))
 		{
 			Combat.LastAttacker = BestFighter.Entity;
 			Combat.LastHitStep = Strikers[Best].Step;

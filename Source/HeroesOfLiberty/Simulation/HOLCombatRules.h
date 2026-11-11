@@ -732,8 +732,10 @@ namespace HOLCombat
 	 * NEAREST of the aggressors that struck a comrade lately, not the first one that came. Whether the aggressor (NewId, NewDistance: edge to edge, cm)
 	 * replaces the one he has (bHasCurrent, CurrentId, CurrentDistance): never when he is in contact (bInContact: fighting, he keeps it, MeleeLock);
 	 * never beyond NeutralAssistPursuit; when he has none; else only when strictly nearer (equal: the smaller id).
+	 * D769c (hysteresis, the helpers kept swapping aggressors a few cm apart): with SwitchMargin > 0 (cm), the new one must be nearer than the
+	 * current one by MORE than the margin to replace it (a tie does not count); 0: the rule above.
 	 */
-	HEROESOFLIBERTY_API bool PrefersAssistAggressor(bool bInContact, bool bHasCurrent, float CurrentDistance, uint32 CurrentId, float NewDistance, uint32 NewId);
+	HEROESOFLIBERTY_API bool PrefersAssistAggressor(bool bInContact, bool bHasCurrent, float CurrentDistance, uint32 CurrentId, float NewDistance, uint32 NewId, float SwitchMargin = 0.f);
 
 	/**
 	 * D769 (the user, 2026-11-10): a Neutral never strikes first, but he helps his neighbour: when a soldier of his camp is struck within

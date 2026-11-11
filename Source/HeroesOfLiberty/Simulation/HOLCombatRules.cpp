@@ -249,13 +249,21 @@ namespace HOLCombat
 			&& NeighbourToVictim <= AssistRadius && NeighbourToAggressor <= NeutralAssistPursuit;
 	}
 
-	bool PrefersAssistAggressor(const bool bInContact, const bool bHasCurrent, const float CurrentDistance, const uint32 CurrentId, const float NewDistance, const uint32 NewId)
+	bool PrefersAssistAggressor(const bool bInContact, const bool bHasCurrent, const float CurrentDistance, const uint32 CurrentId, const float NewDistance, const uint32 NewId, const float SwitchMargin)
 	{
 		if (bInContact || NewDistance > NeutralAssistPursuit)
 		{
 			return false;
 		}
-		return !bHasCurrent || NewDistance < CurrentDistance || (NewDistance == CurrentDistance && NewId < CurrentId);
+		if (!bHasCurrent)
+		{
+			return true;
+		}
+		if (SwitchMargin > 0.f)
+		{
+			return NewDistance < CurrentDistance - SwitchMargin;
+		}
+		return NewDistance < CurrentDistance || (NewDistance == CurrentDistance && NewId < CurrentId);
 	}
 
 	bool ShouldDropPassiveTarget(const bool bOrderedTarget, const bool bTargetIsAutoFoe, const bool bTargetAttacksMe, const bool bTargetIsLastAttacker)

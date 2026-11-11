@@ -250,6 +250,15 @@ bool FHOLCombatAssistNearestTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("none yet: takes it"), HOLCombat::PrefersAssistAggressor(false, false, 0.f, 0, 400.f, 5));
 	TestFalse(TEXT("an aggressor beyond the pursuit limit: refused, even with none"), HOLCombat::PrefersAssistAggressor(false, false, 0.f, 0, HOLCombat::NeutralAssistPursuit + 1.f, 5));
 	TestFalse(TEXT("beyond the pursuit limit: refused though nearer than the current"), HOLCombat::PrefersAssistAggressor(false, true, 5000.f, 4, HOLCombat::NeutralAssistPursuit + 1.f, 5));
+	// D769c: the hysteresis (..., new id, switch margin)
+	TestFalse(TEXT("margin 100: a new one only 40 cm nearer does not replace"), HOLCombat::PrefersAssistAggressor(false, true, 300.f, 4, 260.f, 5, 100.f));
+	TestFalse(TEXT("margin 100: exactly 100 cm nearer does not replace either"), HOLCombat::PrefersAssistAggressor(false, true, 300.f, 4, 200.f, 5, 100.f));
+	TestTrue(TEXT("margin 100: 150 cm nearer replaces"), HOLCombat::PrefersAssistAggressor(false, true, 400.f, 4, 250.f, 5, 100.f));
+	TestFalse(TEXT("margin 100: a tie with the smaller id does not replace"), HOLCombat::PrefersAssistAggressor(false, true, 300.f, 6, 300.f, 3, 100.f));
+	TestTrue(TEXT("margin 100: none yet, takes the first"), HOLCombat::PrefersAssistAggressor(false, false, 0.f, 0, 400.f, 5, 100.f));
+	TestFalse(TEXT("margin 100: in contact, never"), HOLCombat::PrefersAssistAggressor(true, true, 900.f, 4, 150.f, 5, 100.f));
+	TestFalse(TEXT("margin 100: beyond the pursuit limit, never"), HOLCombat::PrefersAssistAggressor(false, true, 5000.f, 4, HOLCombat::NeutralAssistPursuit + 1.f, 5, 100.f));
+	TestTrue(TEXT("margin 0 keeps the old rule: 40 cm nearer replaces"), HOLCombat::PrefersAssistAggressor(false, true, 300.f, 4, 260.f, 5, 0.f));
 	return true;
 }
 
