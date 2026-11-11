@@ -39,8 +39,27 @@ public:
 	/** A camp of Count units of TypeName around Post (cm); its id. The units are born at the next step and adopted then. */
 	int32 AddCamp(const FVector& Post, FName TypeName, int32 Count);
 
-	int32 GetNumCamps() const { return Camps.Num(); }
 	HOLCampRules::EState GetCampState(int32 CampId) const { return Camps.IsValidIndex(CampId) ? Camps[CampId].State : HOLCampRules::EState::Cleared; }
+
+	// N7: the doors of the script (the camp indicator reads them through UHOLCampSubsystem::Get()). The camps live where the
+	// simulation runs (solo, server): on a client there are none, so a client reads 0 camps (NeutralsInProgress.md N7, question
+	// Retours\Q-neutrals-camp-indicator.md: whether the state is replicated).
+
+	/** How many camps the match has (0 on a client). Camp ids are 0 to this minus one. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Neutrals")
+	int32 GetNumCamps() const { return Camps.Num(); }
+
+	/** Cleared for good (its members all fallen: never reverses); false while it lives (guarding, fighting or returning). An unknown id reads as cleared. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Neutrals")
+	bool IsCampCleared(int32 CampId) const { return GetCampState(CampId) == HOLCampRules::EState::Cleared; }
+
+	/** The members alive at the camp's last thought (every fourth step); 0 for an unknown id. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Neutrals")
+	int32 GetCampLivingMembers(int32 CampId) const { return Camps.IsValidIndex(CampId) ? Camps[CampId].Members : 0; }
+
+	/** The camp's post (cm); the origin for an unknown id. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Neutrals")
+	FVector GetCampPost(int32 CampId) const { return Camps.IsValidIndex(CampId) ? Camps[CampId].Post : FVector::ZeroVector; }
 
 	/** One line per camp (hol.Camp.Report). */
 	FString MakeReport() const;
