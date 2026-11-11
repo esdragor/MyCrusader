@@ -758,6 +758,8 @@ bool FHOLAINeedsUsedUpTest::RunTest(const FString& Parameters)
  * - an AI of the Dawn queues the Arquebusier at its Range (the type lacking in the mix);
  * - an AI of the Legions (the launch configuration's faction of slot 1) queues something at its Range, but never an Arquebusier (D710: the
  *   Legions have none; the production refuses it, so planning it would leave the Range's queue empty forever).
+ * - Palier 3 G4: an AI of a faction WITHOUT rules of its own (the Fire heirs: HOLFactionRules reads it as the Dawn, so the server accepts the Arquebusier)
+ *   plans it too: the summary carries the key the rules read, not the raw lobby key. Red while the summary carries `Fire` (the script filter finds `Fire` != `Dawn`).
  * Red while the summary carries no faction and the brain plans for the Dawn whatever the slot: the Legions' Range queue stays empty.
  */
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAIArmyFactionTest, "HeroesOfLiberty.AI.Army.Faction", UE::HeroesOfLiberty::Tests::AIOpening::Flags)
@@ -765,10 +767,10 @@ bool FHOLAIArmyFactionTest::RunTest(const FString& Parameters)
 {
 	using namespace UE::HeroesOfLiberty::Tests::AIOpening;
 	const FName Arquebusier(TEXT("Arquebusier"));
-	for (const EHOLFaction Faction : { EHOLFaction::DawnOrder, EHOLFaction::BlackLegions })
+	for (const EHOLFaction Faction : { EHOLFaction::DawnOrder, EHOLFaction::BlackLegions, EHOLFaction::FireHeirs })
 	{
 		const bool bLegions = Faction == EHOLFaction::BlackLegions;
-		const TCHAR* Label = bLegions ? TEXT("Legions AI") : TEXT("Dawn AI");
+		const TCHAR* Label = bLegions ? TEXT("Legions AI") : Faction == EHOLFaction::FireHeirs ? TEXT("Fire AI (no rules of its own, reads as the Dawn)") : TEXT("Dawn AI");
 		FWorld Test(Faction);
 		if (!TestTrue(*FString::Printf(TEXT("%s: test world ready"), Label), Test.IsReady()))
 		{
