@@ -15,6 +15,9 @@ hol.Camp.Report
 waitlog Camp 0 at (0, -9000): guarding, members 3 of 3, hits taken 0
 hol.Camp.Aggro 0
 hol.Camp.Credit 2
+# Clairiere : le camp est au milieu d un bosquet ; on retire le decor d arbres a 25 m autour du poste pour que les 3 Lanciers soient visibles au repos.
+hol.Decor.ClearNear 0 0 2500
+waitlog Decor.ClearNear 0 0 2500: took
 hol.Camp.Add 0 0 3 Spearman
 waitlog Camp 1: 3 Spearman at
 frames 30
