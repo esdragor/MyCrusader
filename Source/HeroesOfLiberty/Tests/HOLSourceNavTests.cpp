@@ -11,22 +11,22 @@ namespace
 	// The numbers of UHOLSourceNavComponent, written again here on purpose: a source's forbidden box is the cylinder
 	// (from 100 cm under the ground, 400 cm high, of the source's radius) widened by 100 cm.
 	constexpr double Bottom = -100.;
-	constexpr double Height = 400.;
-	constexpr double Margin = 100.;
+	constexpr double TestHeight = 400.;
+	constexpr double TestMargin = 100.;
 	constexpr double SourceRadius = 40.;
 	constexpr int32 GridSide = 142;
-	constexpr double Spacing = 150.;
+	constexpr double TestSpacing = 150.;
 	constexpr int32 NumSources = GridSide * GridSide;	// 20 164, a Forest Medium is 142 935
 
 	FVector LocationOf(const int32 Index)
 	{
-		return FVector((Index % GridSide) * Spacing - 10000., (Index / GridSide) * Spacing - 10000., 0.);
+		return FVector((Index % GridSide) * TestSpacing - 10000., (Index / GridSide) * TestSpacing - 10000., 0.);
 	}
 
 	FBox BoxOf(const int32 Index)
 	{
 		const FVector Base = LocationOf(Index) + FVector(0., 0., Bottom);
-		return FBox(Base - FVector(SourceRadius + Margin, SourceRadius + Margin, Margin), Base + FVector(SourceRadius + Margin, SourceRadius + Margin, Height + Margin));
+		return FBox(Base - FVector(SourceRadius + TestMargin, SourceRadius + TestMargin, TestMargin), Base + FVector(SourceRadius + TestMargin, SourceRadius + TestMargin, TestHeight + TestMargin));
 	}
 
 	/** The union of the boxes of the sources standing, found the long way. */
@@ -113,7 +113,7 @@ bool FHOLSourceNavBoundsTest::RunTest(const FString& Parameters)
 		}
 	}
 	const FVector FarBase = Far + FVector(0., 0., Bottom);
-	Rebuilt += FBox(FarBase - FVector(SourceRadius + Margin, SourceRadius + Margin, Margin), FarBase + FVector(SourceRadius + Margin, SourceRadius + Margin, Height + Margin));
+	Rebuilt += FBox(FarBase - FVector(SourceRadius + TestMargin, SourceRadius + TestMargin, TestMargin), FarBase + FVector(SourceRadius + TestMargin, SourceRadius + TestMargin, TestHeight + TestMargin));
 	TestTrue(TEXT("a source added again at another place: the bounds are the union with its new box"), SameBox(Nav->GetCylindersBounds(), Rebuilt));
 	TestEqual(TEXT("it still counts once"), Nav->GetNumCylinders(), NumSources - Removed.Num());
 

@@ -10,7 +10,7 @@ namespace UE::HeroesOfLiberty::Tests::HeroAbility
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
-	constexpr float Tolerance = 1.e-4f;
+	constexpr float TestTolerance = 1.e-4f;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroAbilityUnlockTest, "HeroesOfLiberty.HeroAbility.Unlock", UE::HeroesOfLiberty::Tests::HeroAbility::Flags)
@@ -43,7 +43,7 @@ bool FHOLHeroAbilityCastTest::RunTest(const FString& Parameters)
 {
 	using namespace HOLHeroAbility;
 	TestTrue(TEXT("Cry ready, hero alive, level 1"), CanCast(EHOLHeroAbility::CloseRanks, 1, true, 0));
-	TestFalse(TEXT("Cry while the hero is dead (§ 9.8)"), CanCast(EHOLHeroAbility::CloseRanks, 1, false, 0));
+	TestFalse(TEXT("Cry while the hero is dead (Â§ 9.8)"), CanCast(EHOLHeroAbility::CloseRanks, 1, false, 0));
 	TestFalse(TEXT("Cry 50 ms before its cool-down ends"), CanCast(EHOLHeroAbility::CloseRanks, 1, true, 50));
 	TestFalse(TEXT("Banner at level 3"), CanCast(EHOLHeroAbility::Banner, 3, true, 0));
 	TestTrue(TEXT("Banner at level 4"), CanCast(EHOLHeroAbility::Banner, 4, true, 0));
@@ -81,7 +81,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroAbilityDamageTest, "HeroesOfLiberty.Her
 bool FHOLHeroAbilityDamageTest::RunTest(const FString& Parameters)
 {
 	using namespace HOLHeroAbility;
-	using UE::HeroesOfLiberty::Tests::HeroAbility::Tolerance;
+	using UE::HeroesOfLiberty::Tests::HeroAbility::TestTolerance;
 	// J8c-Q1: aura -15 %; J8c-Q2: cry -25 %, added up (-40 %), cap 50 %.
 	TestEqual(TEXT("No effect: all of it"), GetDamageTakenPercent(false, false), 100);
 	TestEqual(TEXT("Aura: 85 %"), GetDamageTakenPercent(true, false), 85);
@@ -91,10 +91,10 @@ bool FHOLHeroAbilityDamageTest::RunTest(const FString& Parameters)
 
 	// Health is a float: an Archer's 5 in the aura is 4.25; a Peasant's 3 under both 1.8; a troop's 1.5 on a hero
 	// (D17) in the aura 1.275.
-	TestEqual(TEXT("Archer's 5 in the aura"), GetReducedDamage(5.f, 85), 4.25f, Tolerance);
-	TestEqual(TEXT("Peasant's 3 under aura and cry"), GetReducedDamage(3.f, 60), 1.8f, Tolerance);
-	TestEqual(TEXT("1.5 on a hero in his aura"), GetReducedDamage(1.5f, 85), 1.275f, Tolerance);
-	TestEqual(TEXT("Nothing changed at 100 %"), GetReducedDamage(12.f, 100), 12.f, Tolerance);
+	TestEqual(TEXT("Archer's 5 in the aura"), GetReducedDamage(5.f, 85), 4.25f, TestTolerance);
+	TestEqual(TEXT("Peasant's 3 under aura and cry"), GetReducedDamage(3.f, 60), 1.8f, TestTolerance);
+	TestEqual(TEXT("1.5 on a hero in his aura"), GetReducedDamage(1.5f, 85), 1.275f, TestTolerance);
+	TestEqual(TEXT("Nothing changed at 100 %"), GetReducedDamage(12.f, 100), 12.f, TestTolerance);
 	return true;
 }
 
