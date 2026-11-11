@@ -14,7 +14,7 @@ namespace UE::HeroesOfLiberty::Tests::SourceMassifs
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 	constexpr double Link = HOLGather::NoRoomSourceDistance;
-	constexpr double Nearby = HOLGather::NearbyMassifDistance;
+	constexpr double TestNearby = HOLGather::NearbyMassifDistance;
 	/** A real forest: ~1.1e-4 trees per cm2 (230 trees within a link of a tree), measured on Forest Medium. */
 	constexpr double ForestDensity = 1.1e-4;
 
@@ -133,7 +133,7 @@ namespace UE::HeroesOfLiberty::Tests::SourceMassifs
 			for (int32 B = 0; B < Num; ++B)
 			{
 				const int32 MassifA = Reference.MassifOf[A], MassifB = Reference.MassifOf[B];
-				if (MassifA < MassifB && Sources[A].Resource == Sources[B].Resource && FVector2D::DistSquared(Sources[A].Site.Position, Sources[B].Site.Position) <= Nearby * Nearby)
+				if (MassifA < MassifB && Sources[A].Resource == Sources[B].Resource && FVector2D::DistSquared(Sources[A].Site.Position, Sources[B].Site.Position) <= TestNearby * TestNearby)
 				{
 					Reference.NearbyOf[MassifA].AddUnique(MassifB);
 					Reference.NearbyOf[MassifB].AddUnique(MassifA);
@@ -160,7 +160,7 @@ bool FHOLSourceMassifsReferenceTest::RunTest(const FString& Parameters)
 	const TArray<FHOLGatherSource> Sources = MakeForest(2400);
 	const FReference Reference = MakeReference(Sources);
 	FHOLSourceMassifs Massifs;
-	Massifs.Build(Sources, Link, Nearby);
+	Massifs.Build(Sources, Link, TestNearby);
 	TestEqual(TEXT("built for every source"), Massifs.Num(), Sources.Num());
 	TestTrue(TEXT("several massifs, groves and thresholds to compare"), Reference.NumMassifs > 8);
 	int32 NumLinkMismatches = 0, NumMassifMismatches = 0;
@@ -222,7 +222,7 @@ bool FHOLSourceMassifsBoundTest::RunTest(const FString& Parameters)
 	const TArray<FHOLGatherSource> Sources = MakeForest(20000);
 	const int32 Num = Sources.Num();
 	FHOLSourceMassifs Massifs;
-	Massifs.Build(Sources, Link, Nearby);
+	Massifs.Build(Sources, Link, TestNearby);
 	TestEqual(TEXT("built for every source"), Massifs.Num(), Num);
 	AddInfo(FString::Printf(TEXT("%d sources: %lld candidates looked at, %lld links held after the build"), Num, Massifs.GetNumBuildVisits(), Massifs.GetNumHeldLinks()));
 	TestTrue(*FString::Printf(TEXT("the build looks at no more than 25 candidates per source (%lld for %d sources)"), Massifs.GetNumBuildVisits(), Num),
@@ -236,7 +236,7 @@ bool FHOLSourceMassifsBoundTest::RunTest(const FString& Parameters)
 	AddInfo(FString::Printf(TEXT("after a search of 40 sources: %lld links held"), Massifs.GetNumHeldLinks()));
 	// A search refused everywhere in the biggest massif (a wood of 100 000 trees refusing a gatherer), its links not yet found.
 	FHOLSourceMassifs Refused;
-	Refused.Build(Sources, Link, Nearby);
+	Refused.Build(Sources, Link, TestNearby);
 	int32 NumTried = 0;
 	const double Start = FPlatformTime::Seconds();
 	Refused.Search(1000, [&NumTried](const int32) { ++NumTried; return false; });

@@ -32,7 +32,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSteppe
 	constexpr int32 BerryBushes = 6;
 
 	/** Past this distance from every slot a source belongs to a deposit (the base's room, common.BASE_REACH, 60 m). */
-	constexpr double BaseReach = 6000.0;
+	constexpr double TestBaseReach = 6000.0;
 
 	/** 2026-11-06 (the user: "every camp must have 3 stone and 3 gold mines", in the camp): the Steppe's near veins are on a ring of 54 m round the slot
 	 *  (steppe.py CAMP_VEIN_RING), inside the base's room: 3 gold and 3 stone, none nearer than 50 m (the base's wood and berries are within 45 m). */
@@ -176,9 +176,9 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 				const double Distance = FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]);
 				Trees += Source.Type == TEXT("Tree") && Distance < WoodReach;
 				Bushes += Source.Type == TEXT("BerryBush") && Distance < BerryReach;
-				InBase += Distance < BaseReach;
-				CampStone += HOLSourceTypeNames::IsStoneVein(Source.Type) && Distance < BaseReach;
-				CampGold += HOLSourceTypeNames::IsGoldVein(Source.Type) && Distance < BaseReach;
+				InBase += Distance < TestBaseReach;
+				CampStone += HOLSourceTypeNames::IsStoneVein(Source.Type) && Distance < TestBaseReach;
+				CampGold += HOLSourceTypeNames::IsGoldVein(Source.Type) && Distance < TestBaseReach;
 				NearestStone = HOLSourceTypeNames::IsStoneVein(Source.Type) ? FMath::Min(NearestStone, Distance) : NearestStone;
 				NearestGold = HOLSourceTypeNames::IsGoldVein(Source.Type) ? FMath::Min(NearestGold, Distance) : NearestGold;
 			}
@@ -203,7 +203,7 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 			bool bBase = false;
 			for (const TPair<int32, FVector2D>& Start : Starts)
 			{
-				bBase |= FVector2D::Distance(FVector2D(Sources[Index].Location), Start.Value) < BaseReach;
+				bBase |= FVector2D::Distance(FVector2D(Sources[Index].Location), Start.Value) < TestBaseReach;
 			}
 			if (!bBase)
 			{
@@ -368,7 +368,7 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 			}
 			TestTrue(FString::Printf(TEXT("%s: two trees %.0f cm apart, under %.0f (overlapping trunks)"), Info.Key, ClosestTrees, TrunkOverlap), ClosestTrees >= TrunkOverlap);
 
-			// The groups: a base's wood and berries (within BaseReach of a slot), the deposits (the groups found above).
+			// The groups: a base's wood and berries (within TestBaseReach of a slot), the deposits (the groups found above).
 			TArray<TArray<FVector2D>> Woods, Patches;
 			for (int32 Slot = 0; Slot < Info.NumPlaces; ++Slot)
 			{
@@ -376,7 +376,7 @@ bool FHOLMapSteppeTest::RunTest(const FString& Parameters)
 				TArray<FVector2D>& Patch = Patches.AddDefaulted_GetRef();
 				for (const FHOLPlacedSource& Source : Sources)
 				{
-					if (FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]) < BaseReach)
+					if (FVector2D::Distance(FVector2D(Source.Location), Starts[Slot]) < TestBaseReach)
 					{
 						(Source.Type == TEXT("Tree") ? Wood : Patch).Add(FVector2D(Source.Location));
 					}

@@ -45,7 +45,7 @@ namespace UE::HeroesOfLiberty::Tests::Hero
 		return static_cast<float>(HOLCombat::GetDamage(Attacker, Defender));
 	}
 
-	constexpr float Tolerance = 1.e-4f;
+	constexpr float TestTolerance = 1.e-4f;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroTypeTest, "HeroesOfLiberty.Hero.Type", UE::HeroesOfLiberty::Tests::Hero::Flags)
@@ -161,28 +161,28 @@ bool FHOLHeroResistanceTest::RunTest(const FString& Parameters)
 	{
 		const int32 Plain = FMath::Max(Troop->Attack - HOLCombat::GetArmor(Hero, Troop->AttackType), 1);
 		TestEqual(FString::Printf(TEXT("%s on the hero: x0.3 of %d"), *Troop->TypeName.ToString(), Plain),
-			Hit(*Troop, Hero), ExpectedTroopHitOnHero(Plain), Tolerance);
+			Hit(*Troop, Hero), ExpectedTroopHitOnHero(Plain), TestTolerance);
 	}
 	// The same, written out (the table's values at J8a.1).
-	TestEqual(TEXT("Man-at-arms 12 -> 3.6"), Hit(ManAtArms, Hero), 3.6f, Tolerance);
-	TestEqual(TEXT("Spearman 8 -> 2.4"), Hit(Spearman, Hero), 2.4f, Tolerance);
-	TestEqual(TEXT("Archer 5 -> 1.5"), Hit(Archer, Hero), 1.5f, Tolerance);
-	TestEqual(TEXT("Peasant 3 -> 0.9 (below 1: the x0.3 comes after the 1 at least)"), Hit(Peasant, Hero), 0.9f, Tolerance);
-	TestEqual(TEXT("King 50 -> 15 (not a hero: a troop)"), Hit(King, Hero), 15.f, Tolerance);
+	TestEqual(TEXT("Man-at-arms 12 -> 3.6"), Hit(ManAtArms, Hero), 3.6f, TestTolerance);
+	TestEqual(TEXT("Spearman 8 -> 2.4"), Hit(Spearman, Hero), 2.4f, TestTolerance);
+	TestEqual(TEXT("Archer 5 -> 1.5"), Hit(Archer, Hero), 1.5f, TestTolerance);
+	TestEqual(TEXT("Peasant 3 -> 0.9 (below 1: the x0.3 comes after the 1 at least)"), Hit(Peasant, Hero), 0.9f, TestTolerance);
+	TestEqual(TEXT("King 50 -> 15 (not a hero: a troop)"), Hit(King, Hero), 15.f, TestTolerance);
 
 	// The hero's own hits are not reduced: on a Man-at-arms, 30 minus his hero armour (2).
-	TestEqual(TEXT("Hero on a Man-at-arms: 30 - 2"), Hit(Hero, ManAtArms), static_cast<float>(30 - ManAtArms.HeroArmor), Tolerance);
-	TestEqual(TEXT("... 28"), Hit(Hero, ManAtArms), 28.f, Tolerance);
-	TestEqual(TEXT("Hero on a Spearman: 30"), Hit(Hero, Spearman), 30.f, Tolerance);
+	TestEqual(TEXT("Hero on a Man-at-arms: 30 - 2"), Hit(Hero, ManAtArms), static_cast<float>(30 - ManAtArms.HeroArmor), TestTolerance);
+	TestEqual(TEXT("... 28"), Hit(Hero, ManAtArms), 28.f, TestTolerance);
+	TestEqual(TEXT("Hero on a Spearman: 30"), Hit(Hero, Spearman), 30.f, TestTolerance);
 	// Hero against hero: no resistance (a duel, full damage).
-	TestEqual(TEXT("Hero on a hero: full, 30"), Hit(Hero, Hero), 30.f, Tolerance);
+	TestEqual(TEXT("Hero on a hero: full, 30"), Hit(Hero, Hero), 30.f, TestTolerance);
 
 	// The others unchanged.
-	TestEqual(TEXT("Man-at-arms on a Spearman: 12"), Hit(ManAtArms, Spearman), 12.f, Tolerance);
-	TestEqual(TEXT("Spearman on a Man-at-arms: 8 - 4"), Hit(Spearman, ManAtArms), 4.f, Tolerance);
-	TestEqual(TEXT("Archer on a Spearman: 5 + 5 (light infantry)"), Hit(Archer, Spearman), 10.f, Tolerance);
-	TestEqual(TEXT("Peasant on a Man-at-arms: 1 at least"), Hit(Peasant, ManAtArms), 1.f, Tolerance);
-	TestEqual(TEXT("Man-at-arms on the King: 12"), Hit(ManAtArms, King), 12.f, Tolerance);
+	TestEqual(TEXT("Man-at-arms on a Spearman: 12"), Hit(ManAtArms, Spearman), 12.f, TestTolerance);
+	TestEqual(TEXT("Spearman on a Man-at-arms: 8 - 4"), Hit(Spearman, ManAtArms), 4.f, TestTolerance);
+	TestEqual(TEXT("Archer on a Spearman: 5 + 5 (light infantry)"), Hit(Archer, Spearman), 10.f, TestTolerance);
+	TestEqual(TEXT("Peasant on a Man-at-arms: 1 at least"), Hit(Peasant, ManAtArms), 1.f, TestTolerance);
+	TestEqual(TEXT("Man-at-arms on the King: 12"), Hit(ManAtArms, King), 12.f, TestTolerance);
 	return true;
 }
 
