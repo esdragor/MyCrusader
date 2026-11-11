@@ -49,6 +49,7 @@
  *   waitclock <Seconds>  waits for the game's clock to be Seconds past seqclock (written by captureseq)
  *   quiet <command>      runs a console command without moving the log mark (a waitlog after it still sees the earlier lines)
  *   mark <Text>          writes "Test mark: Text" to the log (sections for the script that reads it)
+ *   notereset <Text>     as note, after emptying the panel's notes (a compare scenario shows one option's note at a time)
  *   note <Text>          adds Text to the scenario's panel (HOLTestHooks::GetScenarioDisplay) and logs
  *                        "Scenario note: Text" (what a scenario asks to try)
  *   panel hide|show      hides the scenario's panel (top centre, over the game's own windows) / shows it again
@@ -391,7 +392,16 @@ namespace UE::HeroesOfLiberty::Dev
 				HOLTestHooks::GetScenarioDisplay().Notes.Add(Rest);
 				HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
 			}
-			else if (Verb == TEXT("waitkey"))
+			else if (Verb == TEXT("notereset"))
+				{
+					// The compare scenarios show one option at a time: its note replaces those before it.
+					UE_LOG(LogHOLTest, Display, TEXT("Scenario note: %s"), *Rest);
+					HOLTestHooks::FScenarioDisplay& NoteDisplay = HOLTestHooks::GetScenarioDisplay();
+					NoteDisplay.Notes.Reset();
+					NoteDisplay.Notes.Add(Rest);
+					HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
+				}
+				else if (Verb == TEXT("waitkey"))
 			{
 				// As long as the user wants: no timeout.
 				StepTimeout = TNumericLimits<double>::Max();
@@ -401,6 +411,11 @@ namespace UE::HeroesOfLiberty::Dev
 					bKeyPressed = false;
 					bWaitingForKey = true;
 					Display.WaitingForKey = Rest.IsEmpty() ? FString(DefaultWaitKeyText) : Rest;
+					// The scenario is set up once its first waitkey waits: the user plays now, not only after the last step.
+					if (Display.State == HOLTestHooks::FScenarioDisplay::EState::Preparing)
+					{
+						Display.State = HOLTestHooks::FScenarioDisplay::EState::Ready;
+					}
 					UE_LOG(LogHOLTest, Display, TEXT("Scenario waits for the key: %s"), *Display.WaitingForKey);
 					HOLTestHooks::NotifyScenarioChanged(Display.WaitingForKey, FColor::Cyan);
 				}
