@@ -123,6 +123,40 @@ def find_dead(root, registry):
     return dead
 
 
+CONSTANT = re.compile(r"^\s*(?:static\s+|inline\s+|constexpr\s+|const\s+)+[\w:<>]+\s+(\w+)\s*(?:\[[^\]]*\])?\s*=\s*[-+0-9{.]", re.M)
+
+
+@dataclass
+class Uncovered:
+    name: str
+    file: str
+    line: int
+
+
+def find_uncovered(root, registry):
+    """The inverse, report only: numeric constants of a file the registry cites (a code row) that no row names (neither as the
+    constant a Locator matches nor inside a Locator). Files the registry does not cite are make_value_sheet's orphan check."""
+    mvs = load("make_value_sheet")
+    root = Path(root)
+    rows = [r for r in mvs.load_registry(registry) if r.source == "code" and r.file and (root / r.file).is_file()]
+    out = []
+    for f in sorted({r.file for r in rows}):
+        text = mvs.read_text(root / f)
+        covered = set()
+        for r in (x for x in rows if x.file == f):
+            covered.update(WORD.findall(r.locator))
+            try:
+                m = re.search(r.locator, text, re.M)
+            except re.error:
+                continue
+            if m:
+                covered.add(defined_name(m.group(0)))
+        for m in CONSTANT.finditer(text):
+            if m.group(1) not in covered:
+                out.append(Uncovered(m.group(1), f, text.count("\n", 0, m.start(1)) + 1))
+    return out
+
+
 def read_known(path):
     known = {}
     p = Path(path)
@@ -143,10 +177,17 @@ def main(argv=None):
     ap.add_argument("--known")
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--uncovered", action="store_true")
     a = ap.parse_args(argv)
     root = Path(a.root)
     registry = Path(a.registry) if a.registry else root / "Tools" / "Data" / "ValueSheet.csv"
     known_path = Path(a.known) if a.known else root / "Tools" / "Data" / "orphan_values_known.txt"
+    if a.uncovered:
+        found = find_uncovered(root, registry)
+        for u in found:
+            print(f"UNCOVERED {u.name} ({u.file}:{u.line})")
+        print(f"{len(found)} constants of cited files have no registry row (report only).")
+        return 0
     dead = find_dead(root, registry)
     known = read_known(known_path)
     ids = {d.id for d in dead}

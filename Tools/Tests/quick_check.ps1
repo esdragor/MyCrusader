@@ -153,6 +153,12 @@ if ($Parts -contains "values") {
         $ValuesChecks["value_sheet_test.py ($($ValuesTestOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $ValuesCheckOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\make_value_sheet.py") --check 2>&1)
         $ValuesChecks["make_value_sheet.py --check ($($ValuesCheckOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # Orphan values (2026-11-11): the tool's own test, then a registry value nothing reads any more (value_consumers.py --check,
+        # known ones in Tools/Data/orphan_values_known.txt).
+        $ConsumersTestOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\value_consumers_test.py") 2>&1)
+        $ValuesChecks["value_consumers_test.py ($($ConsumersTestOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        $ConsumersOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\value_consumers.py") --check 2>&1)
+        $ValuesChecks["value_consumers.py --check ($($ConsumersOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitStatsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_stats_test.py") 2>&1)
         $ValuesChecks["unit_stats_test.py ($($UnitStatsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitAbilitiesOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_abilities_test.py") 2>&1)
@@ -163,7 +169,7 @@ if ($Parts -contains "values") {
     $ValuesFailed = @($ValuesChecks.Keys | Where-Object { -not $ValuesChecks[$_] })
     Write-Host "values : $(if ($ValuesFailed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
     $ValuesFailed | ForEach-Object { Write-Host "  [KO] $_" }
-    if ($ValuesFailed.Count) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
+    if ($ValuesFailed.Count) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
     $ValuesOk = $ValuesFailed.Count -eq 0
     if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { exit 1 }; exit 0 }
 }
