@@ -1,6 +1,6 @@
 # [A ESSAYER] E-resources_compare : dix STYLES (A a J) de l'arbre, du buisson de baies, du filon de pierre et du filon d'or, vus d'un coup dans le jeu ; dis aime / pas aime par lettre
 
-STATUT : VU A L'ECRAN   (les 10 PNG ouverts et vus, tour 2 ; c'est un choix de gout pour toi, pas pour l'agent)
+STATUT : VU À L'ÉCRAN (rejoué par l'intégrateur sur main fusionné : 10 PNG ouverts en 3 planches de contact 800x450 par image ; A à J chacun avec arbre, baies, filon de pierre, filon d'or et l'étiquette RESSOURCES <lettre> ; aucun goût jugé)
 GESTE: interne      (commande hol.Resource.Review lancee par le scenario ; la touche Entree est le seul geste de l'utilisateur, passee en auto par preflight)
 SON: sans objet
 branches: visual
@@ -13,5 +13,8 @@ PNG OUVERTS et vus (tour 2) : res_A a res_J (les dix, en planches de contact) : 
 TOUR 2 (retouche des defauts du tour 1, meme liste de styles A a J) : camera plus pres (zoom 3), rangee resserree (2800 cm), etiquette plus petite, baies 1,7 fois plus grosses ; l'arbre ne penche plus vers le bord, les baies se lisent. Reste : pas d'ombre portee (formes un peu plates).
 NON VERIFIE : aucun style juge pour son gout (c'est ton role) ; pas vu en jeu normal (carte pleine, camera de jeu, foule d'unites) ; les couleurs sont en espace lineaire du materiau M_MatteColor, a l'ecran elles peuvent sembler plus claires que prevu ; filon petit/moyen/gros non montres (seul le filon normal) ; arbres par biome (neige, sable...) vus a part dans E-trees_rocks_compare ; Mangonneau et autres lignes de Placeholders.txt inchangees.
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 resources_compare -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron` (sans -Hidden : fenetre, reservee a toi).
+Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 resources_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir  (rejoue sur le build de main 521adcb fusionne, worktree Faramir ; sans -Hidden = fenetre, reservee a l'utilisateur ; un agent ajoute -Hidden)
 Duree : environ 2 min. Reponse attendue : pour chaque lettre `aime` / `pas aime` (ou `REGLAGE: ...`) ; ensuite dix nouveaux styles.
+
+## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
+Réserve : planches réduites (pas de zoom plein format) ; les baies sont petites (A, B, C, E, J : environ 20 px) mais visibles ; D = cube vert pour les baies. Durée : 10 options à passer par Entrée, environ 3 min (limite).
