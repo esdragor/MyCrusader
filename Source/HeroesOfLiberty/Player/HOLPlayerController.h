@@ -412,6 +412,8 @@ public:
 	void RequestAttackMove(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to stop units (J7b.3), or to stop them holding their position (bHold). */
 	void RequestStopUnits(TConstArrayView<uint32> UnitIds, bool bHold);
+	/** Asks the server for the Mount / Dismount button on units (Palier3InProgress.md G6 d): the engines among them toggle. */
+	void RequestToggleDeploy(TConstArrayView<uint32> UnitIds);
 	/**
 	 * Attack-move mode (J7b.3, the grid's A): the next left click on the ground sends the selected soldiers there (Shift:
 	 * queued); a right click or Escape leaves it.
@@ -723,6 +725,8 @@ private:
 	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
 	UFUNCTION(Server, Reliable)
 	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold);
+	UFUNCTION(Server, Reliable)
+	void ServerToggleDeploy(const TArray<uint32>& UnitIds);
 
 	/**
 	 * A right-button drag (J7a.4): the units and the two ends of the front line on the ground (~4 bytes a unit and two

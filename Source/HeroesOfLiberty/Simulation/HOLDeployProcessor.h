@@ -23,7 +23,7 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 	uint8 Phase = 0;
 	/** How long a change of state has lasted (ms). */
 	int32 ElapsedMs = 0;
-	/** The order waiting to be read: 0 none, 1 attack, 2 move (HOLDeploy::EOrder + 1). */
+	/** The order waiting to be read: 0 none, 1 attack, 2 move (HOLDeploy::EOrder + 1), 3 the Mount / Dismount button (HOLDeploy::Toggle). */
 	uint8 PendingOrder = 0;
 	/** The distance (cm) to the target of a pending attack. */
 	int32 PendingDistanceCm = 0;

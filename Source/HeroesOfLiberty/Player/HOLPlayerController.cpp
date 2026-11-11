@@ -3590,6 +3590,8 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 			{
 				Context.bBuilders |= View.CarryCapacity > 0;
 				Context.bSoldiers |= View.CarryCapacity == 0;
+				Context.bDeployables |= View.DeployPhase >= 0;
+				Context.bDeployedAny |= View.DeployPhase == 1 || View.DeployPhase == 2; // deploying or deployed
 				bAllKings &= View.bKing;
 				bAnyKnown = true;
 			}
@@ -3930,6 +3932,14 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 		return;
 	}
+	case EHOLGridCommand::Deploy:
+	{
+		const TArray<uint32> Own = GetCommandUnits();
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.bPack ? TEXT("pack up") : TEXT("deploy"));
+		bAttackMoveArmed = false;
+		RequestToggleDeploy(Own);
+		return;
+	}
 	case EHOLGridCommand::CancelConstruction:
 	{
 		// The site selected alone, or a subgroup's only building.
@@ -4143,6 +4153,14 @@ void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitId
 	if (UnitIds.Num() > 0)
 	{
 		ServerStopUnits(TArray<uint32>(UnitIds), bHold);
+	}
+}
+
+void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> UnitIds)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerToggleDeploy(TArray<uint32>(UnitIds));
 	}
 }
 
@@ -5103,6 +5121,14 @@ void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& 
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::Stop(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, bHold);
+	}
+}
+
+void AHOLPlayerController::ServerToggleDeploy_Implementation(const TArray<uint32>& UnitIds)
+{
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::ToggleDeploy(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds);
 	}
 }
 
