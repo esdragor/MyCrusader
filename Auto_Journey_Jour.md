@@ -70,3 +70,7 @@ Test d'1 h, 13:30-14:30 (agents arret 14:12, fusion groupee ensuite), fusions da
 | Galadriel-heal | a7f4f37dbeb73c398 | HeroesOfLiberty-Galadriel | galadriel-tab | sans C++ scenario talents_heal | 13:55 |
 
 PROLONGATION 13:52 sur demande de l'utilisateur (« repart pour 1h de plus ») : fin de seance 15:30 (14:30 + 1 h), agents d'arret 15:12, fusion groupee 2 ensuite. Elrond libre (G4 partiel, pas de relance : cap de 3 agents C++).
+| Galadriel-L4 | a4887747d0e3044e3 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Legions L4 etape 1 | 13:58 |
+| Sauron-PH | a741877d2e87b3bd0 | HeroesOfLiberty-Sauron | visual | sans C++ placeholders [?] _compare | 14:01 |
+| Elrond-G5 | a4695a05182a3066a | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G5/G6 | 14:10 |
+FUSION 1 faite 14:09 : main = 0ba3651 (e24d24f), d751-root + tiers + visual + galadriel-tab(71b35d9), build PASS, tests 1148/1148, aiserver, aiduel PASS. Pas dans main : a399b77 (scenario talents_heal), Sauron 376d95c+, Arwen outils, Glorfindel. Fusion 2 vers 14:45 puis integrateur (rejeu essais sur main).

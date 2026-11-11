@@ -49,8 +49,10 @@ void Test_TalentTreeCellsSayWhetherTheyWork(FUnitTest& T)
 	const TArray<FHOLTalentCellView> Cells = HOLTalentTree::Make(1, TreePicks());
 	T.AssertTrue(Cells[1].bHasEffect, "row 2 Captain, Boucliers levés, works");
 	T.AssertTrue(Cells[7].bHasEffect, "row 4 Captain, Pas de l'Aube, works");
-	T.AssertFalse(Cells[4].bHasEffect, "row 3 Captain, Mains du guérisseur, has no Monk yet");
-	T.AssertTrue(Cells[4].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "and its hover says so");
+	T.AssertTrue(Cells[4].bHasEffect, "row 3 Captain, Mains du guérisseur, works (T4b: the Monks in the aura heal 20 % more)");
+	T.AssertFalse(Cells[4].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "and its hover no longer says 'not yet active'");
+	T.AssertFalse(Cells[3].bHasEffect, "row 3 Guardian has no effect yet");
+	T.AssertTrue(Cells[3].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "and its hover says so");
 	T.AssertFalse(Cells[1].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Boucliers levés' hover does not");
 }
 
@@ -88,7 +90,7 @@ void Test_TalentTakenEntriesOnePerTalentWithAHover(FUnitTest& T)
 		T.AssertEquals(Cells[Index * 3 + 1].Tooltip, Taken[Index].Tooltip, f"entry {Index}: the same hover as its cell in the tree");
 		T.AssertTrue(Taken[Index].Tooltip.Contains(Taken[Index].Name), f"entry {Index}: the hover names the talent");
 	}
-	T.AssertTrue(Taken[1].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Mains du guerisseur says it has no effect yet");
+	T.AssertFalse(Taken[1].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Mains du guerisseur works since T4b: no 'not yet active'");
 	T.AssertFalse(Taken[0].Tooltip.Contains(HOLTalentNames::NoEffectYet().ToString()), "Boucliers leves does not");
 }
 

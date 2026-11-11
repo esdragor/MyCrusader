@@ -550,7 +550,9 @@ namespace HOLAISummary
 			Summary.Tier = GameState->GetTier(PlayerIndex);
 		}
 		// Palier 3 G14: the slot's faction, so that the script brain plans only what its faction makes.
-		Summary.Faction = HOLFactionRules::GetSlotFactionKey(&World, PlayerIndex);
+		// Palier 3 G4: the key the RULES read (a faction without rules of its own, Fire / Dragon / Shadow / Templars, reads as the Dawn: the server accepts the
+		// Dawn's Arquebusier for it), not the raw lobby key, so that the script filter and the server agree.
+		Summary.Faction = HOLFactionRules::GetTable().ResolveKey(HOLFactionRules::GetSlotFactionKey(&World, PlayerIndex));
 		return Summary;
 	}
 }

@@ -57,5 +57,6 @@ void Test_TalentNoticeSaysWhenNothingHappensYet(FUnitTest& T)
 {
 	T.AssertFalse(HOLTalentText::NoticeText(2, 1).Contains(HOLTalentNames::NoEffectYet().ToString()), "Boucliers levés works: no warning");
 	T.AssertFalse(HOLTalentText::NoticeText(4, 1).Contains(HOLTalentNames::NoEffectYet().ToString()), "Pas de l'Aube works: no warning");
-	T.AssertTrue(HOLTalentText::NoticeText(3, 1).Contains(HOLTalentNames::NoEffectYet().ToString()), "Mains du guérisseur has no Monk yet: it says so");
+	T.AssertFalse(HOLTalentText::NoticeText(3, 1).Contains(HOLTalentNames::NoEffectYet().ToString()), "Healers Hands works since T4b: no warning");
+	T.AssertTrue(HOLTalentText::NoticeText(5, 1).Contains(HOLTalentNames::NoEffectYet().ToString()), "row 5 Captain has no effect yet: it says so");
 }
