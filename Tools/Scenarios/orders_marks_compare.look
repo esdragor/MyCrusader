@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+ordermark_A_move | A Clic droit sur le sol : la marque du clic, la ligne jaune d'ordre de l'unite vers le point, un point au bout
+ordermark_B_queue | B Trajet en file (Maj + clic droit) : deux segments de ligne, un point a chaque etape
+ordermark_C_attackmove | C Attaque-deplacement (Q puis clic) : sa marque et sa ligne, a comparer avec A
