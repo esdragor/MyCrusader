@@ -136,6 +136,25 @@ if (-not $Only -or $Only -eq 'd') {
     Check (@(Rows $S2 | Where-Object { $_.priority -eq 'merge' }).Count -eq 1) "HOL_BUILD_PRIORITY=merge gives priority merge"
 }
 
+if (-not $Only -or $Only -eq 'e') {
+    Write-Host "[e] -Wait : a waiting build asked with -Wait is never replaced (no exit 3), the newer build queues behind it"
+    $S = New-Scenario e
+    Launch $S 'A' 12
+    Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq 'wt_A' -and $_.state -eq 'compiling' }).Count -eq 1 }) "A holds the slot (compiling)"
+    Launch $S 'B' 2 @('-Wait') 'B1'
+    Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq 'wt_B' }).Count -eq 1 }) "B1 (-Wait) waits in the queue"
+    Launch $S 'B' 2 @() 'B2'
+    Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq 'wt_B' }).Count -eq 2 }) "B2 (newer, no -Wait) queues behind B1 instead of replacing it: 2 wt_B tickets"
+    $Codes = @('A', 'B1', 'B2' | ForEach-Object { Wait-Exit $S $_ 60 })
+    Check (($Codes -join ',') -eq '0,0,0') "A, B1, B2 all finish PASS (exit 0, none superseded), got: $($Codes -join ',')"
+    $R = Rows $S
+    Check (@($R | Where-Object { $_.worktree -eq 'wt_B' -and $_.result -eq 'PASS' }).Count -eq 2) "CSV: two PASS rows for wt_B"
+    Check (@($R | Where-Object { $_.result -eq 'SUPERSEDED' }).Count -eq 0) "CSV: no SUPERSEDED row"
+    $Pass = @($R | Where-Object { $_.result -eq 'PASS' } | Sort-Object compile_start)
+    Check (($Pass.worktree -join ',') -eq 'wt_A,wt_B,wt_B') "CSV: PASS order A, B1, B2, got: $($Pass.worktree -join ',')"
+    Check (@(Tickets $S).Count -eq 0) "queue empty at the end"
+}
+
 Get-Process powershell -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 if ($Failures) { Write-Host "build_queue_test : FAIL ($Failures check(s))"; exit 1 }

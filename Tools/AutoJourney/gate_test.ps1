@@ -65,6 +65,58 @@ Check ($fresh -match '(?m)^PASS .*DLL' -and -not ($fresh -match '(?m)^FAIL .*DLL
 $noRoot = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Scenarios | Out-String
 Check ($noRoot -match '(?m)^FAIL .*-Root') 'launch -Scenarios sans -Root -> FAIL' $noRoot
 
+# --- L11-7 + L11-1 (2026-11-11) : plafond de 3 agents C++ compte depuis la file de build ET IN_USE.txt ; WARN (pas FAIL) si la tache est sans C++ (-NoCpp)
+$CapQ = Join-Path $Tmp 'queue'; $CapW = Join-Path $Tmp 'wts'
+New-Item -ItemType Directory -Path $CapQ, $CapW | Out-Null
+$selfStart = (Get-Process -Id $PID).StartTime.Ticks
+function New-Ticket([string]$Name, [string]$Id, [int]$OwnerPid = $PID, [long]$OwnerStart = $selfStart) {
+  $t = [ordered]@{ id = $Id; root = "x:\$Name"; worktree = "HeroesOfLiberty-$Name"; pid = $OwnerPid; pidStart = $OwnerStart; parentPid = 0; parentStart = 0; priority = 'normal'; requested = (Get-Date).ToString('o'); state = 'waiting'; started = '' }
+  [IO.File]::WriteAllText((Join-Path $CapQ "$Id.json"), ($t | ConvertTo-Json), (New-Object Text.UTF8Encoding($false)))
+}
+function New-InUse([string]$Name, [string]$Text) {
+  $d = Join-Path $CapW "HeroesOfLiberty-$Name"; New-Item -ItemType Directory -Path $d -Force | Out-Null
+  Set-Content -Path (Join-Path $d 'IN_USE.txt') -Value $Text -Encoding ASCII
+}
+function Clear-Cap { Get-ChildItem $CapQ -File | Remove-Item -Force; Get-ChildItem $CapW -Directory | Remove-Item -Recurse -Force }
+function Run-Cap([string[]]$More = @()) { & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -QueueDir $CapQ -WorktreesDir $CapW @More | Out-String }
+New-Ticket 'T1' 'aa01'; New-Ticket 'T2' 'aa02'; New-Ticket 'T3' 'aa03'
+$cap3 = Run-Cap
+Check ($cap3 -match '(?m)^FAIL .*plafond') 'launch: 3 agents C++ dans la file -> FAIL plafond' $cap3
+$cap3n = Run-Cap @('-NoCpp')
+Check ($cap3n -match '(?m)^WARN .*plafond' -and -not ($cap3n -match '(?m)^FAIL .*plafond')) 'launch -NoCpp: plafond atteint -> WARN seulement (tache sans C++)' $cap3n
+Clear-Cap
+New-Ticket 'T1' 'bb01'; New-Ticket 'T2' 'bb02'
+New-InUse 'U3' "Pris (2026-11-11 14:00) : agent Auto_Journey C++, arret dur 15:12"
+$capMix = Run-Cap
+Check ($capMix -match '(?m)^FAIL .*plafond') 'launch: 2 tickets + 1 IN_USE.txt C++ = 3 agents -> FAIL plafond' $capMix
+Clear-Cap
+New-Ticket 'T1' 'cc01'; New-Ticket 'T2' 'cc02'
+New-InUse 'U3' "Pris (2026-11-11 14:00) : agent Auto_Journey sans C++ (outils)"
+New-InUse 'U4' "Libre (2026-11-11 13:00) : ancien agent C++ fini"
+New-Ticket 'T5' 'cc05' 999999 1
+$capOk = Run-Cap
+Check ($capOk -match '(?m)^PASS .*plafond' -and -not ($capOk -match '(?m)^(FAIL|WARN) .*plafond')) 'launch: sans C++ / Libre / ticket au proprietaire mort ne comptent pas -> PASS plafond' $capOk
+Clear-Cap
+New-Ticket 'T1' 'dd01'; New-Ticket 'T1' 'dd02'; New-Ticket 'T2' 'dd03'
+New-InUse 'T2' "Pris : C++"
+$capDup = Run-Cap
+Check ($capDup -match '(?m)^PASS .*plafond') 'launch: 2 tickets du meme worktree + son IN_USE.txt = 1 agent, 2 en tout -> PASS plafond' $capDup
+
+# --- L11-1 : binaire perime PAR LES SOURCES en Launch : FAIL si l'agent va tester (-Scenarios), WARN sinon
+$LRepo = Join-Path $Tmp 'HeroesOfLiberty-FakeLaunch'
+New-Item -ItemType Directory -Path (Join-Path $LRepo 'Source\M'), (Join-Path $LRepo 'Binaries\Win64') -Force | Out-Null
+$LDll = Join-Path $LRepo 'Binaries\Win64\Fake.dll'
+Set-Content -Path $LDll -Value 'x'
+Set-Content -Path (Join-Path $LRepo 'Source\M\a.cpp') -Value 'int a;'
+(Get-Item $LDll).LastWriteTime = (Get-Date).AddMinutes(-10)    # plus recent que le dernier commit de code de main, mais Source ecrit APRES
+$lsStale = Run-Cap @('-Scenarios', '-Root', $LRepo)
+Check ($lsStale -match '(?m)^FAIL .*(binaire|DLL).*(ANCIEN|perim).*Source') 'launch -Scenarios: Source ecrit apres le binaire -> FAIL' $lsStale
+$lnStale = Run-Cap @('-Root', $LRepo)
+Check ($lnStale -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim).*Source' -and -not ($lnStale -match '(?m)^FAIL .*(binaire|DLL).*Source')) 'launch sans -Scenarios: Source ecrit apres le binaire -> WARN seulement' $lnStale
+(Get-Item $LDll).LastWriteTime = (Get-Date).AddMinutes(1)
+$lsFresh = Run-Cap @('-Scenarios', '-Root', $LRepo)
+Check (-not ($lsFresh -match '(?m)^(FAIL|WARN) .*(binaire|DLL).*Source')) 'launch -Scenarios: binaire plus recent que les Source -> pas de signal' $lsFresh
+
 # --- Elrond-8 (2026-11-07) : binaire PERIME par une fusion. Le commit d'un fichier fusionne garde sa date d'auteur (ancienne), donc
 # "binaire >= date du dernier commit de code" laisse passer un binaire compile AVANT la fusion ; le fichier, lui, porte l'heure de la fusion.
 # Cas : vrai depot jetable, commit de code date de 2000, DLL de 2001, mais Source\a.cpp ecrit APRES la DLL (= fusion) -> Report doit signaler (WARN),
