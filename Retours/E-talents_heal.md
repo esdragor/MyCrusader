@@ -21,3 +21,6 @@ Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...` (
 
 ## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
 PNG vus : talents_heal_base (trait vert + du Moine vers un Homme d'armes, bloc héros « Talents à dépenser : 1 »), talents_heal_cell (fenêtre Arbre de talents, 2 cases Capitaine teintées, bloc « Talent pris : Mains du guérisseur — Moines dans l'aura : soins +20 % »), talents_heal_boosted (trait doré avec « ++ » doré, petit mais net). Défaut constaté : dans talents_heal_cell le « ++ » doré est dessiné PAR-DESSUS la fenêtre Arbre de talents (marque du monde au-dessus de l'interface) ; le bandeau « Scénario talents_heal en préparation… » reste affiché sur les 3 PNG. Durée : environ 1 min.
+
+## Faramir 2026-11-11 15:3x (branche fog, sans C++)
+talents_heal_cell : le « ++ » dore (marque du monde du soin) est dessine PAR-DESSUS la fenetre Arbre de talents : probleme de couche de dessin, note dans Auto_Journey_File.md sans trancher (la marque doit-elle passer sous les fenetres du HUD ?). Le bandeau « en preparation... » sur les 3 PNG = ligne (C++) de Auto_Journey_File.md (l'etat ne passe a « pret » qu'a la fin de la sequence). Scenario non modifie.

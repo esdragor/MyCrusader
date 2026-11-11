@@ -18,3 +18,6 @@ Duree : environ 2 min. Reponse attendue : pour chaque lettre `aime` / `pas aime`
 
 ## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
 Réserve : planches réduites (pas de zoom plein format) ; les baies sont petites (A, B, C, E, J : environ 20 px) mais visibles ; D = cube vert pour les baies. Durée : 10 options à passer par Entrée, environ 3 min (limite).
+
+## Faramir-5 2026-11-11 16:2x (branche fog tip 3fd83e2 : `notereset` + etat « pret » des la 1re waitkey ; scenario converti)
+preflight resources_compare PASS (38 s, 10 PNG, 9 waitkey en auto ; 1 WARN : pas de ligne « HUD overlap » ; le FAIL « no note line » d'avant = regex perimee de preflight.ps1 qui ne voyait pas `notereset`, corrigee). PNG ouverts a plein format : res_A (pin 3 cones, baies rouges, 3 cubes de pierre, filon d'or ; etiquette jaune RESSOURCES A) et res_J (pin enneige, pointes aux bouts rouges, losange sur socle ; etiquette RESSOURCES J). Le panneau est masque pendant les captures : aucun bandeau sur ces PNG (donc rien d'empile), la lettre est ecrite au sol. Les 4 objets entiers et nets. Statut : VU A L'ECRAN. Aucun gout juge.
