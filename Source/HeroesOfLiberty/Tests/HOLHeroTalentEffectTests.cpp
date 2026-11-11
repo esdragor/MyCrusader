@@ -12,6 +12,7 @@
 #include "Presentation/HOLBannerSubsystem.h"
 #include "Sound/SoundBase.h"
 #include "Simulation/HOLCombatProcessor.h"
+#include "Simulation/HOLHealProcessor.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
@@ -301,6 +302,111 @@ bool FHOLHeroTalentDawnStepTest::RunTest(const FString& Parameters)
 	}
 	BaseSpeed->Set(FormerBase, ECVF_SetByCode);
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// T4b: the Captain's row-3 talent Mains du guérisseur (GDD 13.2, D111): the Monks in the Dawn Aura heal 20 % more. The health a Monk gives a
+// wounded ally over 10 steps, through the real heal processor, the hero born by the unit subsystem and the talent taken by the order queue's
+// own path (PickTalent): without the talent the base; with it, 1.2 x when the MONK stands within the aura (the patient may stand outside);
+// the Monk out of the aura, or the hero dead with no banner: the base.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroTalentHealersHandsTest, "HeroesOfLiberty.HeroTalent.HealersHands", UE::HeroesOfLiberty::Tests::HeroTalentEffect::Flags)
+
+bool FHOLHeroTalentHealersHandsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::HeroTalentEffect;
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("heroes"), Heroes)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		Heroes->BindSteps();
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLHealProcessor* Heal = NewObject<UHOLHealProcessor>(Simulation);
+		Heal->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		int64 Step = 0;
+		const auto RunStep = [Simulation, Units, Heal, &EntityManager, StepSeconds, &Step]
+		{
+			++Step;
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Heal, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const FName Type, const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = Type;
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			After.RemoveAll([&Before](const uint32 Id) { return Before.Contains(Id); });
+			return After.Num() == 1 ? After[0] : 0u;
+		};
+		const auto StateOf = [Units, &EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Id != 0 ? Units->FindEntity(Id) : FMassEntityHandle();
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		};
+		// A Monk of slot 0 at Location and a Spearman of slot 0 (health 1) 1.5 m from it: the health the Monk gives it in 10 steps (-1: none born).
+		const auto Gain = [&](const FVector& Location)
+		{
+			const uint32 Monk = Place(FName(TEXT("Monk")), 0, Location);
+			const uint32 Patient = Place(Spearman, 0, Location + FVector(150.0, 0.0, 0.0));
+			float Gained = -1.f;
+			if (Monk != 0 && StateOf(Patient))
+			{
+				StateOf(Patient)->CurrentHealth = 1.f;
+				for (int32 Steps = 0; Steps < 10; ++Steps)
+				{
+					RunStep();
+				}
+				Gained = StateOf(Patient) ? StateOf(Patient)->CurrentHealth - 1.f : -1.f;
+			}
+			const uint32 Gone[] = { Monk, Patient };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+			return Gained;
+		};
+
+		const uint32 HeroId = Place(Hero, 0, FVector(0.0, 0.0, 0.0));
+		if (TestTrue(TEXT("slot 0's hero born"), HeroId != 0))
+		{
+			RunStep();
+			const float Base = Gain(FVector(0.0, 1100.0, 0.0));
+			TestTrue(TEXT("no talent: a Monk heals (the base gain is positive)"), Base > 0.f);
+			// Level 3, the Captain's talents of rows 2 and 3 (family 1): Boucliers levés, Mains du guérisseur.
+			Heroes->SetXP(0, HOLHeroXP::GetLevelXP(3));
+			RunStep();
+			TestTrue(TEXT("row 2"), Heroes->PickTalent(0, 1));
+			TestEqual(TEXT("row 2 only: the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base, Tolerance);
+			TestTrue(TEXT("row 3, Mains du guérisseur"), Heroes->PickTalent(0, 1));
+			TestEqual(TEXT("Mains du guérisseur, the Monk 11 m from the hero (in the aura): 1.2 x the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base * 1.2f, Base * 0.01f);
+			TestEqual(TEXT("... the Monk 13 m from the hero, out of the aura: the base"), Gain(FVector(0.0, 1300.0, 0.0)), Base, Tolerance);
+			if (FHOLUnitStateFragment* HeroState = StateOf(HeroId))
+			{
+				HeroState->CurrentHealth = 0.f;
+			}
+			TestEqual(TEXT("... the hero dead, no banner: the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base, Tolerance);
+		}
+	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	return true;

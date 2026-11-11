@@ -44,6 +44,12 @@ namespace HOLHeroAbility
 	/** T4: armour added to the units in the aura by Boucliers levees (row 2, Captain, D111). */
 	constexpr int32 ShieldsUpArmorBonus = 1;
 
+	/** T4b: Mains du guerisseur (row 3, Captain, D111, indicative value of the GDD 13.2): a Monk in the aura heals at this percent of its rate. */
+	constexpr int32 HealersHandsHealPercent = 120;
+
+	/** T4b: the percent of its HealRate a Monk heals at: HealersHandsHealPercent when its owner took the talent and the Monk stands in an aura, 100 otherwise. */
+	HEROESOFLIBERTY_API int32 GetHealRatePercent(bool bInAura, bool bTalent);
+
 	/**
 	 * D581 (TQ2 = A): the speed of a unit under the cry, in percent of its walk, setting hol.Hero.CloseRanksSpeed (default 0: the defensive
 	 * formation holds in place). Pas de l'Aube (Captain, row 4) lets it advance at DawnStepSpeedPercent, its damage reduction kept.
