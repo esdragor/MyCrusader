@@ -32,6 +32,9 @@
 #   State: C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.state\   Statistics: ...\Docs\BuildQueue.csv
 #   (one row per build: worktree, requested, compile_start, end, wait_s, duration_s, result, waited_behind, priority;
 #   summary with Tools\build_queue_report.ps1).
+# -Wait (L11-2): ONE blocking call that waits its turn in the queue and then builds; nothing to poll. A waiting build asked with
+#   -Wait is never replaced by a newer build of the same copy (no exit 3, no lost place): the newer build queues behind it.
+#   The orphan rule still applies (launching process gone: exit 4). Run it with -Wait whenever a sibling build may be queued.
 # Tests only (Tools\Tests\build_queue_test.ps1): -QueueDir, -CsvPath, -FakeBuild <script> replaces Build.bat; env
 #   HOL_BUILD_POLL_SECONDS (default 3) is the queue polling period.
 param(
@@ -39,6 +42,7 @@ param(
     [string] $Target = "HeroesOfLibertyEditor",
     [string] $Config = "Development",
     [switch] $Force,
+    [switch] $Wait,
     [ValidateSet("normal", "merge")] [string] $Priority = $(if ($env:HOL_BUILD_PRIORITY -eq "merge") { "merge" } else { "normal" }),
     [string] $QueueDir = "C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.state",
     [string] $CsvPath = "C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.csv",
@@ -197,7 +201,7 @@ if (-not $env:HOL_BUILD_NO_ORPHAN_CHECK) {
 $Ticket = [pscustomobject]@{
     id = [guid]::NewGuid().ToString("N"); root = $Project.ToLowerInvariant(); worktree = $Worktree
     pid = $PID; pidStart = $Self.StartTime.Ticks; parentPid = $ParentId; parentStart = $ParentStart
-    priority = $Priority; requested = $Requested.ToString("o"); state = "waiting"; started = ""
+    priority = $Priority; requested = $Requested.ToString("o"); state = "waiting"; started = ""; wait = [bool]$Wait
 }
 $TicketFile = $null
 $Behind = New-Object Collections.Generic.List[string]
@@ -209,7 +213,8 @@ $LastShown = ""
 try {
     Use-Lock {
         $Others = Clean-Dead (Read-Tickets)
-        foreach ($Old in @($Others | Where-Object { $_.root -eq $Ticket.root -and $_.state -eq 'waiting' })) {
+        # -Wait tickets are never replaced: this build queues behind them (it compiles after, quick when nothing changed)
+        foreach ($Old in @($Others | Where-Object { $_.root -eq $Ticket.root -and $_.state -eq 'waiting' -and -not $_.wait })) {
             # one waiting build per copy: the newest replaces it, keeps its place in the line and the better priority
             if ($Old.priority -eq 'merge') { $Ticket.priority = 'merge' }
             if ([datetime]::Parse($Old.requested, [Globalization.CultureInfo]::InvariantCulture, 'RoundtripKind') -lt $Requested) {

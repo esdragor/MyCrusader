@@ -215,7 +215,7 @@ if (Test-Path $Eol) {
 
 # --- L7-1, L7-4, L7-6 : agent_rules.md
 $r = Get-Content $Rules -Raw -Encoding UTF8
-Check ($r -match '60 appels') 'agent_rules: arret a 60 appels declares'
+Check ($r -match '45 appels') 'agent_rules: arret a 45 appels vus par l agent (L9-2)'
 Check ($r -match 'tool_uses') 'agent_rules: tool_uses releve par la session principale'
 Check ($r -match 'PROCESSUS_DETACHES') 'agent_rules: champ PROCESSUS_DETACHES'
 Check ($r -match 'GESTE' -and $r -match 'SON') 'agent_rules: statuts GESTE et SON'

@@ -15,7 +15,10 @@ param(
   [string[]]$Branches = @(),
   [string]$Root = '',
   [string]$MainRoot = '',                  # Merge (L9-5) : la copie principale a controler (defaut : C:\Users\baudo\Documents\MyCrusader) ; docs seuls modifies = WARN (commit_docs.ps1), CODE modifie = FAIL
-  [switch]$Scenarios,                     # Launch : la tache de l'agent joue des scenarios (donc exige un binaire du worktree a jour, -Root)
+  [switch]$Scenarios,                     # Launch : la tache de l'agent joue des scenarios (donc exige un binaire du worktree a jour, -Root) ; sans -Scenarios un binaire perime n'est qu'un WARN
+  [switch]$NoCpp,                         # Launch (L11-7) : la tache est declaree 'sans C++' : le plafond de 3 agents C++ atteint n'est plus qu'un WARN (l'agent ne compile rien)
+  [string]$QueueDir = '',                 # Launch : dossier de tickets de build.ps1 (defaut <copie principale>\Docs\BuildQueue.state) ; sert aux tests
+  [string]$WorktreesDir = 'C:\Users\baudo\Documents',   # dossier qui contient les HeroesOfLiberty-* (IN_USE.txt) ; sert aux tests
   [string[]]$Exclude = @(),                # Close : worktrees hors perimetre (nom court 'Haldir' ou complet 'HeroesOfLiberty-Haldir')
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
   [string]$Essay = '',                     # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
@@ -56,7 +59,8 @@ $left = [int]($endAt - $now).TotalMinutes
 Write-Output ("Heure PowerShell : {0}  fin dure {1}  reste {2} min" -f $now.ToString('HH:mm:ss'), $endAt.ToString('HH:mm'), $left)
 if ($endNote) { Say 'WARN' "SessionEnd : $endNote" }
 
-$wts = Get-ChildItem 'C:\Users\baudo\Documents' -Directory -Filter 'HeroesOfLiberty-*' | Select-Object -ExpandProperty FullName
+if (-not $QueueDir) { $QueueDir = "$Main\Docs\BuildQueue.state" }
+$wts = Get-ChildItem $WorktreesDir -Directory -Filter 'HeroesOfLiberty-*' | Select-Object -ExpandProperty FullName
 
 if ($Phase -eq 'Launch') {
   if ($left -lt $MinMinutes) { Say 'FAIL' ("il reste {0} min (< {1}) : AUCUN lancement d'agent" -f $left, $MinMinutes) }
@@ -96,8 +100,32 @@ if ($Phase -eq 'Launch') {
     if ($b9 -gt 0) { Say 'WARN' "$n9 : retard de $b9 commit(s) sur main : au debut de la seance lancer Tools\AutoJourney\sync_worktrees.ps1 AVANT le premier lancement" }
   }
 
-  $q = @(Get-ChildItem "$Main\Docs\BuildQueue.state" -Filter '*.json' -ErrorAction SilentlyContinue).Count
-  if ($q -ge 3) { Say 'FAIL' "$q builds dans la file : plafond de 3 agents C++ atteint, le nouvel agent demarre SANS C++" } else { Say 'PASS' "$q build(s) dans la file (< 3)" }
+  # Plafond de 3 agents C++ (regle 10) : worktrees DISTINCTS qui ont un ticket vivant dans la file de build.ps1 (proprietaire en vie ; un -Wait peut en poser deux)
+  # + worktrees dont IN_USE.txt (texte libre) ne commence pas par 'libre' et cite 'C++' sans 'sans C++'. FAIL pour un agent C++, WARN avec -NoCpp (L11-7).
+  $cppAgents = @{}
+  foreach ($tf in @(Get-ChildItem $QueueDir -Filter '*.json' -ErrorAction SilentlyContinue)) {
+    try {
+      $tk = Get-Content $tf.FullName -Raw | ConvertFrom-Json
+      $alive = $false
+      try { $pp = Get-Process -Id ([int]$tk.pid) -ErrorAction Stop; $alive = (-not $tk.pidStart) -or ([math]::Abs($pp.StartTime.Ticks - [int64]$tk.pidStart) -lt 20000000) } catch { }
+      if ($alive -and $tk.worktree) { $cppAgents[[string]$tk.worktree] = 'file de build' }
+    } catch { }
+  }
+  foreach ($w in $wts) {
+    $iu = Join-Path $w 'IN_USE.txt'
+    if (-not (Test-Path $iu)) { continue }
+    if ((Get-Item $iu).LastWriteTime -lt (Get-Date).AddHours(-12)) { continue }   # une fiche vieille de plus de 12 h n'est plus un agent en cours
+    $iuText = (Get-Content $iu -Raw -ErrorAction SilentlyContinue)
+    if (-not $iuText) { continue }
+    $iuFirst = ($iuText -split "`n" | Where-Object { $_.Trim() } | Select-Object -First 1)
+    if ($iuFirst -match '^\s*libre' -or $iuText -notmatch 'C\+\+' -or $iuFirst -match 'sans C\+\+') { continue }
+    $nm = Split-Path $w -Leaf
+    if (-not $cppAgents.ContainsKey($nm)) { $cppAgents[$nm] = 'IN_USE.txt' }
+  }
+  $ceilLevel = if ($NoCpp) { 'WARN' } else { 'FAIL' }
+  $cppList = (($cppAgents.GetEnumerator() | Sort-Object Name | ForEach-Object { "$($_.Name) ($($_.Value))" }) -join ', ')
+  if ($cppAgents.Count -ge 3) { Say $ceilLevel ("{0} agents C++ (plafond de 3 atteint : {1}) : le nouvel agent demarre SANS C++{2}" -f $cppAgents.Count, $cppList, $(if ($NoCpp) { ' (tache declaree sans C++ : WARN seulement)' } else { '' })) }
+  else { Say 'PASS' ("{0} agent(s) C++ (file de build + IN_USE.txt), plafond de 3 respecte{1}" -f $cppAgents.Count, $(if ($cppList) { " : $cppList" } else { '' })) }
 
   $jour = Get-Content "$Main\Auto_Journey_Jour.md" -Raw -ErrorAction SilentlyContinue
   $marker = '## Agents du ' + $now.ToString('yyyy-MM-dd')
@@ -110,9 +138,9 @@ if ($Phase -eq 'Launch') {
   $dirty = @($st | Where-Object { $_ -match '^ ?M ' })
   if ($dirty.Count -gt 0) { Say 'WARN' ("fichiers suivis modifies dans la copie principale : " + (($dirty | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
   $file = Get-Content $QueueFile -ErrorAction SilentlyContinue
-  $noCpp = @($file | Where-Object { $_ -match '^\s*- \[ \]' -and $_ -match 'sans C\+\+' }).Count
-  if ($noCpp -ge 3) { Say 'PASS' "$noCpp ligne(s) '[ ]' sans C++ en file (relance possible sans toucher au plafond)" }
-  else { Say 'FAIL' "seulement $noCpp ligne(s) '[ ]' etiquetee(s) 'sans C++' dans $(Split-Path $QueueFile -Leaf) (< 3) : en ecrire AVANT de lancer, sinon les agents finis ne pourront pas etre relances (2026-11-05 : 30 min vides ; L8-7 : FAIL et non plus WARN)" }
+  $noCppLines = @($file | Where-Object { $_ -match '^\s*- \[ \]' -and $_ -match 'sans C\+\+' }).Count
+  if ($noCppLines -ge 3) { Say 'PASS' "$noCppLines ligne(s) '[ ]' sans C++ en file (relance possible sans toucher au plafond)" }
+  else { Say 'FAIL' "seulement $noCppLines ligne(s) '[ ]' etiquetee(s) 'sans C++' dans $(Split-Path $QueueFile -Leaf) (< 3) : en ecrire AVANT de lancer, sinon les agents finis ne pourront pas etre relances (2026-11-05 : 30 min vides ; L8-7 : FAIL et non plus WARN)" }
 
   # L7-2 : la DLL du worktree de l'agent doit etre plus recente que le dernier commit de code de main (sinon faux rouges, appels perdus)
   if (-not $Root -or -not (Test-Path $Root)) {
@@ -126,6 +154,8 @@ if ($Phase -eq 'Launch') {
       if ($bin.LastWriteTime -ge $codeTime) { Say 'PASS' ("DLL du worktree du {0} >= dernier commit de code de main du {1}" -f $bin.LastWriteTime.ToString('MM-dd HH:mm'), $codeTime.ToString('MM-dd HH:mm')) }
       else { Say $(if ($Scenarios) { 'FAIL' } else { 'WARN' }) ("DLL du worktree du {0} plus ANCIENNE que le dernier commit de code de main du {1} : build.ps1 (sync) AVANT de lancer un agent qui joue des scenarios" -f $bin.LastWriteTime.ToString('MM-dd HH:mm'), $codeTime.ToString('MM-dd HH:mm')) }
     }
+    # L11-1 : binaire plus vieux que les SOURCES du worktree (fusion ou checkout apres la compilation) : FAIL seulement si l'agent va y tester (-Scenarios), sinon WARN
+    if ($bin) { Say-StaleBySource $Root $bin $(if ($Scenarios) { 'FAIL' } else { 'WARN' }) }
   }
 }
 
