@@ -1,7 +1,7 @@
 # [A ESSAYER] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
 
-STATUT : VU A L'ECRAN (objet de l'essai = l'AFFICHAGE des noms ; les clics passent par hol.Select.ClickGround / ClickUnit, durcis en 798d1d3)
-GESTE: interne      (commandes hol.Select.ClickGround / hol.Select.Grid / hol.Select.ClickUnit : pas de vraie souris)
+STATUT : VU À L'ÉCRAN (rejoué par l'intégrateur sur main fusionné : 9 PNG ouverts en 3 planches ; Caserne des Légions : grille Lancier squelette (A) / Garde noire (Z) ; bloc Garde noire et Cavalier funeste avec leurs stats ; Lancier d'Aube rouge nommé Lancier ; Caserne d'Aube sans grille Légions ; EN : Skeleton Spearman, Black Guard, Bone Ram ; JA : 兵舎, スケルトン槍兵, 黒衛兵, 骨の破城槌)
+GESTE: interne   (hol.Select.ClickGround / Grid / ClickUnit = commandes hol.*, pas de vraie souris ; l'objet de l'essai est l'AFFICHAGE des noms)
 SON: sans objet
 branches: aucune
 
@@ -18,5 +18,8 @@ PNG OUVERTS et vus :
 - legions_gesture_ja_ram : bloc "骨の破城槌" 400/400
 NON VERIFIE : un vrai clic de souris et le son (gestes internes, -RenderOffScreen) ; la grille de la Caserne rouge est absente parce qu'elle est ennemie (le point prouve donc surtout le nom, pas l'absence de noms Legions dans la grille) ; en EN le bloc du Belier garde "Attaque batiments 60" en francais (non juge : hors de l'essai, a signaler) ; la traduction japonaise reste une proposition a relire.
 
-Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 legions_roster_gesture -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel
+Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 legions_roster_gesture -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir  (rejoue sur le build de main 521adcb fusionne, worktree Faramir ; sans -Hidden = fenetre, reservee a l'utilisateur ; un agent ajoute -Hidden)
 Duree : environ 1 min. Reponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
+Défaut constaté : la 3e case de la grille de la Caserne affiche « Damned Warrior » (E) en anglais dans l'interface FR et JA (non traduit) ; le bandeau du scénario reste en français en EN et JA. session_gate -Phase Essay dit « aucune branche citée » alors que la ligne est « branches: aucune » (gabarit : aucune est permis) : le contrôle du gate est trop strict. Durée : environ 1 min de jeu.

@@ -25,10 +25,10 @@ namespace UE::HeroesOfLiberty::Tests::MapHinterland
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	/** The side of a cell of the raster the rocks are drawn on (50 cm: a gap of 14 m is 28 cells). */
-	constexpr double CellSize = 50.0;
+	constexpr double TestCellSize = 50.0;
 
 	/** A source within this of its slot is the base (its wood of 25 trees and its 6 berry bushes); farther, it is the pocket's. */
-	constexpr double BaseReach = 4000.0;
+	constexpr double TestBaseReach = 4000.0;
 
 	/** The veins are in the pockets, never in the base: at least 50 m from every slot (the base's wood and berries are within 40 m). */
 	constexpr double VeinFromSlot = 5000.0;
@@ -160,16 +160,16 @@ namespace UE::HeroesOfLiberty::Tests::MapHinterland
 		int32 Index(const int32 I, const int32 J) const { return J * N + I; }
 		FIntPoint CellOf(const FVector2D& At) const
 		{
-			return FIntPoint(FMath::Clamp(FMath::FloorToInt((At.X - Min.X) / CellSize), 0, N - 1), FMath::Clamp(FMath::FloorToInt((At.Y - Min.Y) / CellSize), 0, N - 1));
+			return FIntPoint(FMath::Clamp(FMath::FloorToInt((At.X - Min.X) / TestCellSize), 0, N - 1), FMath::Clamp(FMath::FloorToInt((At.Y - Min.Y) / TestCellSize), 0, N - 1));
 		}
-		FVector2D CentreOf(const int32 I, const int32 J) const { return FVector2D(Min.X + (I + 0.5) * CellSize, Min.Y + (J + 0.5) * CellSize); }
+		FVector2D CentreOf(const int32 I, const int32 J) const { return FVector2D(Min.X + (I + 0.5) * TestCellSize, Min.Y + (J + 0.5) * TestCellSize); }
 	};
 
 	FRaster Draw(const FData& Data)
 	{
 		FRaster Raster;
 		Raster.Min = Data.Area.Min;
-		Raster.N = FMath::CeilToInt((Data.Area.Max.X - Data.Area.Min.X) / CellSize);
+		Raster.N = FMath::CeilToInt((Data.Area.Max.X - Data.Area.Min.X) / TestCellSize);
 		Raster.Blocked.SetNumZeroed(Raster.N * Raster.N);
 		for (const FRock& Rock : Data.Rocks)
 		{
@@ -463,7 +463,7 @@ bool FHOLMapHinterlandTest::RunTest(const FString& Parameters)
 		{
 			const FVector2D At(Source.Location);
 			const double FromSlot = FVector2D::Distance(At, Data.Starts[NearestSlot(Data, At)]);
-			Pocket += FromSlot >= BaseReach;
+			Pocket += FromSlot >= TestBaseReach;
 			if (HOLSourceTypeNames::IsGoldVein(Source.Type) || HOLSourceTypeNames::IsStoneVein(Source.Type))
 			{
 				++Veins;
