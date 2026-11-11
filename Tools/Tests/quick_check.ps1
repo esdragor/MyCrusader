@@ -1790,7 +1790,8 @@ if ($Parts -contains "camera") {
                 "hol.Camera.Focus $($BarracksRally -join ' ')", "frames 3", "hol.Select.OrderGround $($BarracksRally -join ' ')",
                 "waitlog Rally: slot 0 set the rally point of Barracks at (", "hol.Prod.BuildTime 2", "hol.Prod.Report"
             Key A
-            Step "waitlog Production: Spearman of slot 0 done"
+            # The Man-at-arms opens at tier 1 (G1, D711): the tier opened by the cheat before the key Z (the barracks' grid redrawn).
+            Step "waitlog Production: Spearman of slot 0 done", "hol.Cheat.Tier 1", "frames 20"
             Key Z
             Step "waitlog Production: ManAtArms of slot 0 done"
             Key A
@@ -2221,7 +2222,8 @@ if ($Parts -contains "camera") {
             # II opens; to 3300 (level 6, tier 2): III opens, IV stays locked (the screen follows the level, nothing re-selected).
             # Then the main forum selected: its lives follow the hero's level (4 at level 6, 3 at level 3, 2 at level 1), in its
             # block and in the players' table. The Peasant and the hero removed, his XP back to 0.
-            Step "mark build tiers", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
+            # The tier forced by hol.Cheat.Tier 1 for the Man-at-arms (G1) lifted: the ages and the lives follow the hero's level again.
+            Step "mark build tiers", "hol.Cheat.Tier off", "hol.Units.Spawn 1 $($BuildHero -join ' ') 0 Hero 100", "wait 0.5",
                 "hol.Units.Spawn 1 $($CornerBuilder -join ' ') 0 Peasant 10", "wait 0.5", "hol.Camera.Focus $($CornerBuilder -join ' ')",
                 "frames 3", "hol.Select.ClickUnit -1", "waitlog Selection: Peasant #", "frames 3", "hol.HUD.Report",
                 "hol.Hero.SetXP 0 600", "waitlog Hero level: slot 0 level 1 -> 3", "wait 0.6", "frames 3", "hol.HUD.Report",
@@ -4164,12 +4166,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $Checks = [ordered]@{}
     $Grid = & $Value $Hud "HUD report: .*, grid (.*), queue "
     $Checks["Peasants without wood: the age panels, I open (house, lumber camp, mining camp, mill on A, Z, E, R, barracks and archery range on Q, S, farm on W, greyed), II to IV locked, none chosen; orders S, V ($Grid)"] = (@($Hud | Select-String -Pattern "HUD report: ").Count -ge 1) -and
-        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed X=Sanctuary greyed\] II=locked \[A=Market greyed Q=SiegeWorkshop greyed S=Chapel greyed D=Stable greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
+        [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -First 1).Line -match "grid ages I=open \[A=House greyed Z=LumberCamp greyed E=MiningCamp greyed R=Mill greyed Q=Barracks greyed S=ArcheryRange greyed W=Farm greyed X=Sanctuary greyed\] II=locked \[A=Market greyed Q=SiegeWorkshop greyed S=Chapel greyed D=Stable greyed W=Forge greyed\] III=locked \[\] IV=locked \[\] \(chosen none\), orders S=Stop V=Hold, queue ")
     # The user's trial of J6a.5: a cell writes the name alone, its cost is the tooltip's.
     $Cells = ($Hud | Select-String -Pattern "HUD cells: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; I X: Sanctuaire.+; II A: March.+; II Q: Atelier de si.+ge; II S: Chapelle$") -and -not ($Cells -match "\d")
+    $Checks["the cells write the name alone, no cost ($Cells)"] = [bool]($Cells -match "^S: Arr.+t; V: Tenir; I A: Maison; I Z: Camp de b.+cherons; I E: Camp de mineurs; I R: Moulin; I Q: Caserne; I S: Champ de tir; I W: Ferme; I X: Sanctuaire.+; II A: March.+; II Q: Atelier de si.+ge; II S: Chapelle; II D: .+curie; II W: Forge$") -and -not ($Cells -match "\d")
     $Tooltips = ($Hud | Select-String -Pattern "HUD tooltips: (.*)$" | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
-    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier; I W: Ferme \| W 75 missing; I X: Sanctuaire de l.Aube \| W 250 missing; II Z: Palier II \S+ Essor \| Palier non atteint; II A: March.+ \| W 150 missing \| Palier non atteint; II Q: Atelier de si.+ge \| W 175 missing \| Palier non atteint; II S: Chapelle \| W 200 missing \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
+    $Checks["tooltips: name, cost missing, effect ($Tooltips)"] = [bool]($Tooltips -match "^S: Arr.+t \| Annule les ordres et le combat; V: Tenir la position \| N'attaque .+; I A: Palier I \S+ Fondation; I A: Maison \| W 50 missing \| \+10 population; I Z: Camp de b.+cherons \| W 100 missing \| D.+p.+t : bois; I E: Camp de mineurs \| W 100 missing \| D.+p.+t : pierre, or; I R: Moulin \| W 100 missing \| D.+p.+t : nourriture; I Q: Caserne \| W 150 missing \| Produit : Lancier, Homme d'armes; I S: Champ de tir \| W 150 missing \| Produit : Archer, Arbal.+trier, Arquebusier; I W: Ferme \| W 75 missing; I X: Sanctuaire de l.Aube \| W 250 missing; II Z: Palier II \S+ Essor \| Palier non atteint; II A: March.+ \| W 150 missing \| Palier non atteint; II Q: Atelier de si.+ge \| W 175 missing \| Palier non atteint; II S: Chapelle \| W 200 missing \| Palier non atteint; II D: .+curie \| W 150 missing \| Palier non atteint; II W: Forge \| W 150 missing \| Palier non atteint; III E: Palier III \S+ Puissance \| Palier non atteint; IV R: Palier IV \S+ L.+gende \| Palier non atteint$")
     $Checks["a click on a greyed cell: no ghost, the message (not enough wood)"] = [bool]($Hud | Select-String -Pattern "Command feedback: not enough Wood" -Quiet) -and
         [bool]($Hud | Select-String -Pattern 'HUD message: NotEnoughWood "Pas assez de bois"' -Quiet) -and -not ($Hud | Select-String -Pattern "Placement: LumberCamp" -Quiet) -and
         [bool](($Hud | Select-String -Pattern "HUD report: " | Select-Object -Last 1).Line -match ", message NotEnoughWood")
@@ -4722,7 +4724,7 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $DawnTexts = @($Dawn | Select-String -Pattern "HUD hero talent texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
     $Checks["three talents: the notice names the last, the list names the three, one icon each with its hover ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
         ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[1].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube") -and
-        $DawnTexts[1].Contains("icons B = Boucliers levés — ") -and $DawnTexts[1].Contains(" || M = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || P = Pas de l'Aube — ") -and $DawnTexts[1].Contains("(pas encore actif dans ce prototype)")
+        $DawnTexts[1].Contains("icons B = Boucliers levés — ") -and $DawnTexts[1].Contains(" || M = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || P = Pas de l'Aube — ") -and -not $DawnTexts[1].Contains("pas encore actif")
     $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 3 -First 1))"] =
         ($DawnTexts.Count -ge 4) -and $DawnTexts[3].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[3].Contains("pas encore actif dans ce prototype") -and $DawnTexts[3].Contains(" || G = Grâce abondante — ")
     $DawnMoves = @(-1, -1)
