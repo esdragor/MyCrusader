@@ -23,7 +23,7 @@ hol.Camera.Zoom 2
 frames 3
 hol.Select.OrderNear 4000 0
 frames 2
-note A (1/3) : clic droit : marque du clic, ligne jaune, point au bout. Entree = suivante.
+notereset A (1/3) : clic droit : marque du clic, ligne jaune, point au bout. Entree = suivante.
 capture ordermark_A_click
 wait 2
 frames 40
@@ -33,7 +33,7 @@ hol.Camera.FocusNear 2500 400
 frames 3
 hol.Select.OrderGround -10800 2500 shift
 frames 2
-note B (2/3) : Maj + clic droit : trajet en file, deux segments. Entree = suivante.
+notereset B (2/3) : Maj + clic droit : trajet en file, deux segments. Entree = suivante.
 capture ordermark_B_click
 wait 2
 capture ordermark_B_queue
@@ -42,7 +42,7 @@ hol.Camera.FocusNear 2500 0
 frames 3
 hol.Select.AttackMoveNear 3000 0
 frames 30
-note C (3/3) : attaque-deplacement (Q puis clic gauche). Dis aime / pas aime par lettre.
+notereset C (3/3) : attaque-deplacement (Q puis clic gauche). Dis aime / pas aime par lettre.
 capture ordermark_C_attackmove
 frames 5
 hol.Test.Sanity

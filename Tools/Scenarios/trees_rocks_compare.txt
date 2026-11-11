@@ -5,7 +5,7 @@ hol.Combat.Enabled 0
 hol.Camera.Zoom -1
 frames 30
 hol.Biome.Index 0
-note A (1/5) Herbe fraiche : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
+notereset A (1/5) Herbe fraiche : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
 hol.Camera.Focus 0 -1800
 frames 60
 capture trees_A_fresh_grass
@@ -14,7 +14,7 @@ frames 40
 capture rocks_A_fresh_grass
 waitkey Entree : biome suivant
 hol.Biome.Index 1
-note B (2/5) Steppe seche : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
+notereset B (2/5) Steppe seche : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
 hol.Camera.Focus 0 -1800
 frames 60
 capture trees_B_dry_steppe
@@ -23,7 +23,7 @@ frames 40
 capture rocks_B_dry_steppe
 waitkey Entree : biome suivant
 hol.Biome.Index 2
-note C (3/5) Automne : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
+notereset C (3/5) Automne : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
 hol.Camera.Focus 0 -1800
 frames 60
 capture trees_C_autumn
@@ -32,7 +32,7 @@ frames 40
 capture rocks_C_autumn
 waitkey Entree : biome suivant
 hol.Biome.Index 3
-note D (4/5) Foret sombre : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
+notereset D (4/5) Foret sombre : bosquet d arbres (vue 1), crete de rochers (vue 2). Entree = biome suivant.
 hol.Camera.Focus 0 -1800
 frames 60
 capture trees_D_dark_forest
@@ -41,7 +41,7 @@ frames 40
 capture rocks_D_dark_forest
 waitkey Entree : biome suivant
 hol.Biome.Index 4
-note E (5/5) Neige : bosquet d arbres (vue 1), crete de rochers (vue 2). Dernier. Dis aime / pas aime par lettre.
+notereset E (5/5) Neige : bosquet d arbres (vue 1), crete de rochers (vue 2). Dernier. Dis aime / pas aime par lettre.
 hol.Camera.Focus 0 -1800
 frames 60
 capture trees_E_snow
