@@ -7945,7 +7945,10 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
     # F6b: after 10 s Alice's units march (fast) to 27 m from Bob's forum, inside its sight (D523: 6400 cm) and theirs (3200 cm, F6e.2:
     # they see his centre), stay, and come home.
-    @("waitplayers 2", "mark $NetFogPart", "hol.Biome.Report") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
+    # S5 (SacredSitesInProgress.md, D701): three sacred sites posed by the server (the map's actor is not replicated): #0 in Bob's sight (15200, -3000: probed with the fog's sight per site, Bob's forum sees (15200, -3000) and (15200, 1000) but NOT (15200, 2000) nor (15200, 3000), something blocks his sight to the +Y side; 5000 was outside it),
+    # #1 in Alice's (-14800, 5000), #2 in the middle (0, 8000), in nobody's; a Hero of Alice takes #1 (the hold shortened to 2 s). Each client reports
+    # "Site views" at 6 s (its own player state's, replicated to its owner only); the server reports the same at 8 s (the truth, slot by slot).
+    @("waitplayers 2", "mark $NetFogPart", "hol.Biome.Report", "hol.Site.Enabled 1", "hol.Site.HoldSeconds 2", "hol.Site.Add 15200 -3000", "hol.Site.Add -14800 5000", "hol.Site.Add 0 8000", "hol.Units.Spawn 1 -14800 5000 0 Hero 100") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "hol.Site.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
         @($(if ($NetFogTrees -and $TreesCutNow) { @("wait $TreesCutWait") + $TreesCut + @("wait $(14 - $TreesCutWait)") } else { "wait 14" })) + @($(if ($NetFogTrees -and -not $TreesCutNow) { $TreesCut + @("wait 6") })) + @("hol.Units.Move -15200 0 0", "wait 16",
         "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
@@ -7971,7 +7974,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
             $ReportCount = if ($NetFogTrees) { 48 } else { 40 }
             $ClientReports = @(1..$ReportCount | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report"; if ($NetFogTrees) { "hol.Sources.Report" } } }) + @("hol.Fog.Report")
-            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Biome.Report", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Biome.Report", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report", "hol.Site.Report") + $ClientReports +
                 @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
@@ -8075,6 +8078,23 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
         $Checks["client $N : nothing held beyond its camp's reach ($($LeakLines.Count) reports$(if ($LeakLines.Count) { ', last: ' + ($LeakLines[-1].Line -replace '^.*Fog leaks: ', '') }))"] = $LeakLines.Count -ge 2 -and $LeakTexts.Count -eq 0
         $Sent = if ("$($ServerSentLine.Line)" -match "camp $($ClientFog[$N].Held) sent (\d+) \(on unexplored cells (\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
         $Checks["client $N : holds the $($Sent[0]) sources sent to its camp, none on unexplored cells ($($ClientSources[$N]); unexplored $($Sent[1]))"] = $Sent[0] -gt 0 -and $ClientSources[$N] -eq $Sent[0] -and $Sent[1] -eq 0
+    }
+    # S5 (D701): the sacred sites each client's player state holds ("Site views: slot S: N view(s) | #i (x, y) r.. owner o taker t fill f"): in Normal fog only
+    # the one in its own camp's sight (Alice #1, Bob #0; #2, in nobody's sight, in no one's view), without fog all three; the same text as the server's
+    # for that slot (the effect crossed the wire), and Alice's Hero has taken #1 (owner 0) on both machines.
+    foreach ($N in $ClientFog.Keys | Sort-Object) {
+        $SiteHeld = $ClientFog[$N].Held
+        $SitePattern = 'Site views: slot ' + $SiteHeld + ': (\d+) view\(s\)(.*)$'
+        $SiteServer = @($NetFogLog | Select-String -Pattern $SitePattern | Select-Object -Last 1)
+        $SiteClient = @(Get-MarkedLines (Get-Content $NetFogClientLogs[$N]) $NetFogPart | Select-String -Pattern $SitePattern | Select-Object -Last 1)
+        $SiteTail = { param($Hit) if ($Hit.Count) { $Hit[0].Matches[0].Groups[2].Value.Trim() } else { "no line" } }
+        $SiteServerTail = & $SiteTail $SiteServer
+        $SiteClientTail = & $SiteTail $SiteClient
+        $SiteIndexes = @([regex]::Matches($SiteClientTail, '#(\d+) \(') | ForEach-Object { [int]$_.Groups[1].Value })
+        $SiteWanted = if (-not $NetFogOn) { @(0, 1, 2) } elseif ($SiteHeld -eq 0) { @(1) } else { @(0) }
+        $Checks["client $N : holds the sacred site view(s) #$($SiteWanted -join ',#') only$(if ($NetFogOn) { ' (its camp''s sight)' } else { ' (no fog: all)' }) ($SiteClientTail)"] = $SiteClient.Count -eq 1 -and ($SiteIndexes -join ',') -eq ($SiteWanted -join ',')
+        $Checks["client $N : its sacred site views are the server's for slot $SiteHeld (server: $SiteServerTail)"] = $SiteServer.Count -eq 1 -and $SiteClientTail -eq $SiteServerTail
+        if ($SiteHeld -eq 0) { $Checks["client $N : Alice's Hero has taken site #1, owner 0 ($SiteClientTail)"] = $SiteClientTail -match '#1 \(-14800, 5000\) r1200 owner 0 ' }
     }
     # F6e: each client's cells in sight and explored (its camp's line of "Fog: mode ..."), equal to the server's for that camp (the server's
     # first report is at 8 s, the clients' at 6 s: the units are idle in both).
