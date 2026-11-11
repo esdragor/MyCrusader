@@ -70,6 +70,18 @@ namespace HOLSiteBanner
 		return 0;
 	}
 
+	// S6 (stub, red first): the income of the sites held, gold a minute.
+	int GoldPerMinute(int OwnedSites, int RatePerMinute)
+	{
+		return -1;
+	}
+
+	// S6 (stub, red first): "+N or/min", or empty when nothing is held or paid.
+	FString GoldLine(int OwnedSites, int RatePerMinute)
+	{
+		return "stub";
+	}
+
 	FString AnnounceText(int Threshold, FString LeaderName)
 	{
 		if (Threshold == 60)
