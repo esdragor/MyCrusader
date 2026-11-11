@@ -24,5 +24,31 @@ void UHOLDeployProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 
 void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
 {
-	// Red-test stub: no behaviour yet.
+	const int32 StepMs = HOLCombat::ToMilliseconds(Context.GetDeltaTimeSeconds());
+	// Until the unit table carries the columns (Q-trebuchet-deploy.md), every deployable engine has the Trebuchet's profile.
+	const HOLDeploy::FProfile Profile = HOLDeploy::DefaultProfile();
+	EntityQuery.ForEachEntityChunk(Context, [StepMs, &Profile](FMassExecutionContext& Chunk)
+	{
+		const TArrayView<FHOLDeployFragment> Deploys = Chunk.GetMutableFragmentView<FHOLDeployFragment>();
+		for (FMassExecutionContext::FEntityIterator It = Chunk.CreateEntityIterator(); It; ++It)
+		{
+			FHOLDeployFragment& Fragment = Deploys[It];
+			HOLDeploy::FState State;
+			State.Phase = HOLDeploy::PhaseAt(Fragment.Phase);
+			State.ElapsedMs = Fragment.ElapsedMs;
+			if (Fragment.PendingOrder != 0)
+			{
+				// The order is read once: decided, applied, then forgotten.
+				const HOLDeploy::EOrder Order = Fragment.PendingOrder == 1 ? HOLDeploy::EOrder::Attack : HOLDeploy::EOrder::Move;
+				const HOLDeploy::FDecision Decision = HOLDeploy::Decide(State, Order, Fragment.PendingDistanceCm, Profile);
+				Fragment.LastAction = static_cast<uint8>(Decision.Action);
+				Fragment.LastReason = Decision.Reason;
+				State = HOLDeploy::Apply(State, Decision);
+				Fragment.PendingOrder = 0;
+			}
+			State = HOLDeploy::Advance(State, StepMs, Profile, Fragment.CounterweightPercent);
+			Fragment.Phase = static_cast<uint8>(State.Phase);
+			Fragment.ElapsedMs = State.ElapsedMs;
+		}
+	});
 }
