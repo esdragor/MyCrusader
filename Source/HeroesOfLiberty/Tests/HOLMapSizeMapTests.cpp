@@ -22,7 +22,7 @@ namespace UE::HeroesOfLiberty::Tests::MapSizeMaps
 	const TCHAR* PlainPath = TEXT("/Game/Maps/Plain.Plain");
 
 	/** Past this distance from every slot, a source is neutral (TC-Q7 = B: more of them on the larger sizes). */
-	constexpr double BaseReach = 7000.0;
+	constexpr double TestBaseReach = 7000.0;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMapPlainSizesTest, "HeroesOfLiberty.Map.PlainSizes", UE::HeroesOfLiberty::Tests::MapSizeMaps::Flags)
@@ -115,7 +115,7 @@ bool FHOLMapPlainSizesTest::RunTest(const FString& Parameters)
 			bool bNearSlot = false;
 			for (const TPair<int32, FVector2D>& Start : Starts)
 			{
-				bNearSlot |= FVector2D::Distance(At, Start.Value) < BaseReach;
+				bNearSlot |= FVector2D::Distance(At, Start.Value) < TestBaseReach;
 			}
 			const bool bMatched = (bPaintedForests && Source.Type == TEXT("Tree")) || Sources.ContainsByPredicate([&Source, &Turned](const FHOLPlacedSource& Other)
 				{ return Other.Type == Source.Type && FVector2D::DistSquared(FVector2D(Other.Location), Turned) < 4.0; });

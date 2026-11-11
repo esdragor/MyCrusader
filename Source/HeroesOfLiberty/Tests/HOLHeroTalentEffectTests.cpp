@@ -32,7 +32,7 @@ namespace UE::HeroesOfLiberty::Tests::HeroTalentEffect
 	const FName Hero(TEXT("Hero"));
 	const FName Spearman(TEXT("Spearman"));
 	const FName ManAtArms(TEXT("ManAtArms"));
-	constexpr float Tolerance = 1.e-3f;
+	constexpr float TestTolerance = 1.e-3f;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroTalentShieldsUpTest, "HeroesOfLiberty.HeroTalent.ShieldsUp", UE::HeroesOfLiberty::Tests::HeroTalentEffect::Flags)
@@ -144,13 +144,13 @@ bool FHOLHeroTalentShieldsUpTest::RunTest(const FString& Parameters)
 		if (TestTrue(TEXT("slot 0's hero born"), HeroId != 0))
 		{
 			RunStep();
-			TestEqual(TEXT("no talent: 11 m from the hero, aura, 10.2"), FirstHit(FVector(0.0, 1100.0, 0.0)), 10.2f, Tolerance);
+			TestEqual(TEXT("no talent: 11 m from the hero, aura, 10.2"), FirstHit(FVector(0.0, 1100.0, 0.0)), 10.2f, TestTolerance);
 			Heroes->SetXP(0, HOLHeroXP::GetLevelXP(2));
 			RunStep();
 			// The Captain's row-2 talent (family 1) by the order queue's own path: in the aura (11 m) -1 armour, out of it (13 m) nothing.
 			TestTrue(TEXT("the Captain's talent taken"), Heroes->PickTalent(0, 1));
-			TestEqual(TEXT("Boucliers levés, 11 m from the hero: (12 - 1) x 0.85 = 9.35"), FirstHit(FVector(0.0, 1100.0, 0.0)), 9.35f, Tolerance);
-			TestEqual(TEXT("... 13 m from the hero, out of the aura: the whole 12"), FirstHit(FVector(0.0, 1300.0, 0.0)), 12.f, Tolerance);
+			TestEqual(TEXT("Boucliers levés, 11 m from the hero: (12 - 1) x 0.85 = 9.35"), FirstHit(FVector(0.0, 1100.0, 0.0)), 9.35f, TestTolerance);
+			TestEqual(TEXT("... 13 m from the hero, out of the aura: the whole 12"), FirstHit(FVector(0.0, 1300.0, 0.0)), 12.f, TestTolerance);
 		}
 	}
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
@@ -396,15 +396,15 @@ bool FHOLHeroTalentHealersHandsTest::RunTest(const FString& Parameters)
 			Heroes->SetXP(0, HOLHeroXP::GetLevelXP(3));
 			RunStep();
 			TestTrue(TEXT("row 2"), Heroes->PickTalent(0, 1));
-			TestEqual(TEXT("row 2 only: the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base, Tolerance);
+			TestEqual(TEXT("row 2 only: the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base, TestTolerance);
 			TestTrue(TEXT("row 3, Mains du guérisseur"), Heroes->PickTalent(0, 1));
 			TestEqual(TEXT("Mains du guérisseur, the Monk 11 m from the hero (in the aura): 1.2 x the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base * 1.2f, Base * 0.01f);
-			TestEqual(TEXT("... the Monk 13 m from the hero, out of the aura: the base"), Gain(FVector(0.0, 1300.0, 0.0)), Base, Tolerance);
+			TestEqual(TEXT("... the Monk 13 m from the hero, out of the aura: the base"), Gain(FVector(0.0, 1300.0, 0.0)), Base, TestTolerance);
 			if (FHOLUnitStateFragment* HeroState = StateOf(HeroId))
 			{
 				HeroState->CurrentHealth = 0.f;
 			}
-			TestEqual(TEXT("... the hero dead, no banner: the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base, Tolerance);
+			TestEqual(TEXT("... the hero dead, no banner: the base"), Gain(FVector(0.0, 1100.0, 0.0)), Base, TestTolerance);
 		}
 	}
 	GEngine->DestroyWorldContext(World);

@@ -16,7 +16,7 @@ namespace UE::HeroesOfLiberty::Tests::SourceGrid
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 	constexpr int32 GridSide = 142;
 	constexpr int32 NumSources = GridSide * GridSide;	// 20 164, a Forest Medium is 142 935
-	constexpr double Spacing = 150.;
+	constexpr double TestSpacing = 150.;
 
 	/**
 	 * Twenty thousand sources on a grid 21 km wide, a corner of it in the negative: the four resources interleaved, ties of
@@ -33,7 +33,7 @@ namespace UE::HeroesOfLiberty::Tests::SourceGrid
 			FHOLSource& Source = Sources.AddDefaulted_GetRef();
 			Source.TypeIndex = Index % 13 == 5 ? FHOLSource::NoType : 0;
 			Source.Resource = static_cast<EHOLResource>((Column + 2 * Row) % 4);
-			Source.Location = FVector(Column * Spacing - 10000. + (Row % 2 == 1 ? (Index * 37) % 50 : 0), Row * Spacing - 10000., 0.);
+			Source.Location = FVector(Column * TestSpacing - 10000. + (Row % 2 == 1 ? (Index * 37) % 50 : 0), Row * TestSpacing - 10000., 0.);
 			Source.Radius = 40.f + (Index % 5) * 10.f;
 			Source.Remaining = Index % 11 == 3 ? 0 : 100;
 			Source.OwnerSlot = Index % 17 == 4 ? 1 : (Index % 19 == 7 ? 0 : FHOLSource::NoOwner);
