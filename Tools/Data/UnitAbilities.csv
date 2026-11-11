@@ -1,0 +1,2 @@
+Name,DisplayName,UnitType,Faction,Effect,CooldownMs,DurationMs,HpCostPerHit,MinHp,StopHp,Description
+NecroticRage,Rage nécrotique,DamnedWarrior,Legions,NecroticRage,40000,10000,3,30,20,"Le Guerrier damné se jette dans le combat pendant 10 s : 40 % de dégâts en plus, 25 % de cadence en plus, au prix de 3 PV par coup porté. Refusée sous 30 PV, elle s'arrête à 20 PV ; recharge de 40 s."

@@ -6,7 +6,7 @@ Check that the script is in step (exit code 1 if not):  python Tools/Data/make_e
 
 Columns: Name (stable key), DisplayName (French, the source text of the localisation), Sign (Bonus / Malus), Dealt / Taken / Rate (signed
 "benefit" percents: positive helps the unit, on the damage taken +25 means 25 % less taken), Form (Temporary: DurationMs; Aura: lasts while in
-range, DurationMs is the time a planted source stands, 0 = its own life), RadiusCm (reach of the source), SourceKind (Hero, HeroCry, Banner, Duel),
+range, DurationMs is the time a planted source stands, 0 = its own life), RadiusCm (reach of the source), SourceKind (Hero, HeroCry, Banner, Duel, UnitAbility: laid by the order of a unit ability of UnitAbilities.csv),
 Gives (the effect a source gives instead of its own levers: the Banner gives the Dawn Aura, so the two never add up), Attenuable (a malus the
 Luminous Monk and Discipline of the Dawn can attenuate), Description (French).
 """

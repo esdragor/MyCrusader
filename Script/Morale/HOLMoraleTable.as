@@ -3,13 +3,14 @@
 // HOLMoraleRules.as. Ids are the CSV's row order.
 namespace HOLMoraleTable
 {
-	const int Count = 6;
+	const int Count = 7;
 	const int DawnAura = 0;
 	const int CloseRanks = 1;
 	const int Banner = 2;
 	const int Triumph = 3;
 	const int Demoralised = 4;
 	const int Hesitation = 5;
+	const int NecroticRage = 6;
 
 	// One row of the table.
 	struct FHOLMoraleRow
@@ -121,6 +122,21 @@ namespace HOLMoraleTable
 			R.bAttenuable = true;
 			return R;
 		}
+		if (Id == 6)
+		{
+			R.Key = "NecroticRage";
+			R.bMalusSign = false;
+			R.Dealt = 40;
+			R.Taken = 0;
+			R.Rate = 25;
+			R.bAura = false;
+			R.DurationMs = 10000;
+			R.RadiusCm = 0;
+			R.SourceKind = "UnitAbility";
+			R.Gives = -1;
+			R.bAttenuable = false;
+			return R;
+		}
 		return R;
 	}
 
@@ -132,6 +148,7 @@ namespace HOLMoraleTable
 		if (Id == 3) return NSLOCTEXT("HOLMoraleTable", "NameTriumph", "Triomphe");
 		if (Id == 4) return NSLOCTEXT("HOLMoraleTable", "NameDemoralised", "Démoralisé");
 		if (Id == 5) return NSLOCTEXT("HOLMoraleTable", "NameHesitation", "Hésitation");
+		if (Id == 6) return NSLOCTEXT("HOLMoraleTable", "NameNecroticRage", "Rage nécrotique");
 		return FText();
 	}
 
@@ -143,6 +160,7 @@ namespace HOLMoraleTable
 		if (Id == 3) return NSLOCTEXT("HOLMoraleTable", "DescriptionTriumph", "Après un duel gagné : 10 % de dégâts en plus et 10 % de dégâts reçus en moins pendant 40 s.");
 		if (Id == 4) return NSLOCTEXT("HOLMoraleTable", "DescriptionDemoralised", "Après un duel perdu : 10 % de dégâts en moins et 10 % de dégâts reçus en plus pendant 40 s.");
 		if (Id == 5) return NSLOCTEXT("HOLMoraleTable", "DescriptionHesitation", "Le héros a refusé un duel : 5 % de dégâts en moins pendant 25 s.");
+		if (Id == 6) return NSLOCTEXT("HOLMoraleTable", "DescriptionNecroticRage", "Le Guerrier damné frappe 40 % plus fort et 25 % plus vite pendant 10 s (rage lancée à la demande, voir UnitAbilities.csv).");
 		return FText();
 	}
 

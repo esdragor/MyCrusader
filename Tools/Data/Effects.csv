@@ -5,3 +5,4 @@ Banner,Bannière,Bonus,0,0,0,Aura,45000,1200,Banner,DawnAura,False,La bannière 
 Triumph,Triomphe,Bonus,10,10,0,Temporary,40000,0,Duel,,False,Après un duel gagné : 10 % de dégâts en plus et 10 % de dégâts reçus en moins pendant 40 s.
 Demoralised,Démoralisé,Malus,-10,-10,0,Temporary,40000,0,Duel,,True,Après un duel perdu : 10 % de dégâts en moins et 10 % de dégâts reçus en plus pendant 40 s.
 Hesitation,Hésitation,Malus,-5,0,0,Temporary,25000,0,Duel,,True,Le héros a refusé un duel : 5 % de dégâts en moins pendant 25 s.
+NecroticRage,Rage nécrotique,Bonus,40,0,25,Temporary,10000,0,UnitAbility,,False,"Le Guerrier damné frappe 40 % plus fort et 25 % plus vite pendant 10 s (rage lancée à la demande, voir UnitAbilities.csv)."
