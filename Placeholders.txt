@@ -118,12 +118,12 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Site sacré [à venir]
 - Campement des brigands (aucun décor dans les scripts de cartes, seulement les brigands) [rien]
 - Rivière / gué (eau en pièces plates, lit du gué, pont) [forme]
-- Arbre biome Herbe fraîche [?]
-- Arbre biome Steppe sèche [?]
+- Arbre biome Herbe fraiche (meme arbre dans tous les biomes, D655 : couronne ovale lisse sur tronc cylindre, seule la lumiere le teinte ; vu le 2026-11-11) [forme]
+- Arbre biome Steppe seche (meme arbre que partout, teinte par la lumiere ; vu le 2026-11-11) [forme]
 - Arbre biome Automne (n'existe sans doute pas, pour ne pas l'oublier) [à venir ?]
-- Arbre biome Forêt sombre [?]
+- Arbre biome Foret sombre (meme arbre que partout, plus fonce par la lumiere ; vu le 2026-11-11) [forme]
 - Arbre biome Neige [à venir ?]
-- Rochers par biome (neige, sable, mousse) [?]
+- Rochers par biome (crete = trois ellipsoides aplatis soudes, teintes par le biome : beige, brun, gris-vert, blanc ; D656 ; vu le 2026-11-11) [forme]
 - Autres biomes futurs (désert, marais, jungle...) [à venir]
 
 == MATÉRIEL ET EFFETS DE JEU
