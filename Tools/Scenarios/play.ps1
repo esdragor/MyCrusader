@@ -74,10 +74,13 @@ if ($NoWait) { exit 0 }
 # at most -TimeoutSec, then close them all, deepest first. Never touches a process this launch did not start.
 $Seen = New-Object 'System.Collections.Generic.HashSet[int]'
 [void]$Seen.Add([int]$Proc.Id)
+# The process table comes from a Toolhelp32 snapshot (0.13 s) and not from Get-CimInstance (1.7-3 s a pass, longer while the game
+# loads): with CIM the wait overshot -TimeoutSec by 15-18 s (2026-11-11).
+Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public static class HolPlayTh { [StructLayout(LayoutKind.Sequential, CharSet=CharSet.Unicode)] public struct PE { public uint dwSize, cntUsage, th32ProcessID; public IntPtr th32DefaultHeapID; public uint th32ModuleID, cntThreads, th32ParentProcessID; public int pcPriClassBase; public uint dwFlags; [MarshalAs(UnmanagedType.ByValTStr, SizeConst=260)] public string szExeFile; } [DllImport("kernel32.dll")] public static extern IntPtr CreateToolhelp32Snapshot(uint f, uint p); [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern bool Process32First(IntPtr h, ref PE e); [DllImport("kernel32.dll", CharSet=CharSet.Unicode)] public static extern bool Process32Next(IntPtr h, ref PE e); [DllImport("kernel32.dll")] public static extern bool CloseHandle(IntPtr h); public static System.Collections.Generic.List<uint[]> Snap() { var l = new System.Collections.Generic.List<uint[]>(); IntPtr h = CreateToolhelp32Snapshot(2, 0); PE e = new PE(); e.dwSize = (uint)Marshal.SizeOf(typeof(PE)); if (Process32First(h, ref e)) { do { l.Add(new uint[]{ e.th32ProcessID, e.th32ParentProcessID }); } while (Process32Next(h, ref e)); } CloseHandle(h); return l; } }'
 function Update-Seen {
-    $Snap = @(Get-CimInstance Win32_Process -Property ProcessId,ParentProcessId)
+    $Snap = @([HolPlayTh]::Snap())
     $Kids = @{}
-    foreach ($P in $Snap) { $K = [int]$P.ParentProcessId; if (-not $Kids.ContainsKey($K)) { $Kids[$K] = @() }; $Kids[$K] += [int]$P.ProcessId }
+    foreach ($P in $Snap) { $K = [int]$P[1]; if (-not $Kids.ContainsKey($K)) { $Kids[$K] = @() }; $Kids[$K] += [int]$P[0] }
     $Queue = New-Object 'System.Collections.Generic.Queue[int]'
     foreach ($Id in @($Seen)) { $Queue.Enqueue($Id) }
     while ($Queue.Count -gt 0) {
@@ -88,18 +91,23 @@ function Update-Seen {
 }
 function Get-Alive { $Live = @(Get-Process -Id @($Seen) -ErrorAction SilentlyContinue); return $Live }
 $Deadline = (Get-Date).AddSeconds($TimeoutSec)
+$Clean = $false
+$TimedOut = $false
 try {
-    while ((Get-Date) -lt $Deadline) {
+    while ($true) {
+        if ((Get-Date) -ge $Deadline) { $TimedOut = $true; break }
         [void](Update-Seen)
-        if ((Get-Alive).Count -eq 0) { break }
+        if ((Get-Alive).Count -eq 0) { $Clean = $true; break }
         Start-Sleep -Milliseconds 300
     }
 } finally {
-    [void](Update-Seen)
-    $Left = @(Get-Alive)
+    if (-not $Clean) { [void](Update-Seen) }   # timeout or interrupted: find the children before closing them
+    $Left = @(Get-Alive | Where-Object { -not $_.HasExited })
     if ($Left.Count -gt 0) {
         Write-Host ("play: closing {0} process(es) of the hidden game ({1})" -f $Left.Count, (($Left | ForEach-Object { $_.ProcessName + ":" + $_.Id }) -join ", "))
-        foreach ($P in ($Left | Sort-Object Id -Descending)) { & taskkill /PID $P.Id /F 2>&1 | Out-Null }
+        # Stop-Process, not taskkill.exe: taskkill took 2-3 s per call here
+        foreach ($P in ($Left | Sort-Object Id -Descending)) { Stop-Process -Id $P.Id -Force -ErrorAction SilentlyContinue }
     }
 }
+Write-Host ("play: hidden game ended after {0:N1} s (-TimeoutSec {1})" -f ((Get-Date) - $Deadline.AddSeconds(-$TimeoutSec)).TotalSeconds, $TimeoutSec)
 exit 0
