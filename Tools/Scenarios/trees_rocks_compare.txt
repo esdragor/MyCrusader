@@ -3,7 +3,7 @@ frames 40
 panel hide
 hol.Combat.Enabled 0
 hol.Camera.Focus 0 -1800
-hol.Camera.Zoom 2
+hol.Camera.Zoom -1
 frames 30
 hol.Biome.Index 0
 hol.Camera.Focus 0 -1800

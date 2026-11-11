@@ -9,53 +9,53 @@ hol.Camera.Zoom 3
 frames 30
 hol.Resource.Review A
 frames 40
-capture res_A
 note STYLE A (1/10) : arbre = pin de trois cones ; baies = dome vert, baies rouges ; filons = trois cubes inclines. Entree = suivant.
+capture res_A
 waitkey Entree : style suivant
 hol.Resource.Review B
 frames 40
-capture res_B
 note STYLE B (2/10) : arbre = chene rond ; baies = trois boules, baies bleues ; filons = rocher aux taches de minerai. Entree = suivant.
+capture res_B
 waitkey Entree : style suivant
 hol.Resource.Review C
 frames 40
-capture res_C
 note STYLE C (3/10) : arbre = peuplier mince ; baies = cone bas ; filons = cristaux sur une dalle. Entree = suivant.
+capture res_C
 waitkey Entree : style suivant
 hol.Resource.Review D
 frames 40
-capture res_D
 note STYLE D (4/10) : arbre = parasol large ; baies = bloc de haie ; filons = couches empilees. Entree = suivant.
+capture res_D
 waitkey Entree : style suivant
 hol.Resource.Review E
 frames 40
-capture res_E
 note STYLE E (5/10) : arbre = un seul grand cone ; baies = anneau de cinq boules ; filons = tas de petites boules. Entree = suivant.
+capture res_E
 waitkey Entree : style suivant
 hol.Resource.Review F
 frames 40
-capture res_F
 note STYLE F (6/10) : arbre = trois boules decalees ; baies = dome bas, petites baies orange ; filons = gros cube et petits cubes de minerai. Entree = suivant.
+capture res_F
 waitkey Entree : style suivant
 hol.Resource.Review G
 frames 40
-capture res_G
 note STYLE G (7/10) : arbre = cubes empiles ; baies = dome olive, baies roses ; filons = couronne de pointes. Entree = suivant.
+capture res_G
 waitkey Entree : style suivant
 hol.Resource.Review H
 frames 40
-capture res_H
 note STYLE H (8/10) : arbre d'automne orange et rouge ; baies = tambour a chapeau ; filons = dome enterre piquete de minerai. Entree = suivant.
+capture res_H
 waitkey Entree : style suivant
 hol.Resource.Review I
 frames 40
-capture res_I
 note STYLE I (9/10) : arbre nu a trois branches ; baies = deux tons, baies pales ; filons = dalles penchees. Entree = suivant.
+capture res_I
 waitkey Entree : style suivant
 hol.Resource.Review J
 frames 40
-capture res_J
 note STYLE J (10/10) : pin enneige ; baies = pointes vertes aux bouts rouges ; filons = losange sur un socle. Dernier. Dis aime / pas aime par lettre.
+capture res_J
 frames 5
 hol.Test.Sanity
 panel show

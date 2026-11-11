@@ -26,14 +26,14 @@ hol.HUD.Click TalentWindowAdvised
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 10
-capture talents_icons_A_window
 note Option A (1/2) : la fenetre Arbre de talents avec trois talents pris. Regarde les cases des talents pris : elles sont teintees et portent leur nom en texte, il n'y a pas d'image de talent. Entree = option suivante.
+capture talents_icons_A_window
 waitkey Option A/2 : cases de la fenetre, en texte seulement. Entree pour l'option B
 hol.HUD.Click TalentKey
 wait 1
 frames 8
 hol.HUD.Report
-capture talents_icons_B_letters
 note Option B (2/2) : fenetre fermee. Regarde le bloc du heros en bas a gauche : sous la liste des talents pris, trois pastilles-lettres B, M, P (couleur de famille) ; juste a cote, les trois capacites du heros ont de vraies images. Dis aime / pas aime par lettre.
+capture talents_icons_B_letters
 frames 5
 hol.Test.Sanity
