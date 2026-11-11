@@ -29,6 +29,11 @@ Put $Repo 'Retours/E-old.md' 'v1'
 Put $Repo 'Retours/E-keep.md' 'v1'
 Put $Repo 'Source/x.cpp' 'int x;'
 Put $Repo 'other.md' 'v1'
+Put $Repo 'Placeholders.txt' 'v1'
+Put $Repo 'PlaceholdersInProgress.md' 'v1'
+Put $Repo 'FooInProgress.md' 'v1'
+Put $Repo 'Docs/SessionEnd.txt' 'v1'
+Put $Repo 'Docs/Archive/OldInProgress.md' 'v1'
 Git $Repo add -A | Out-Null
 Git $Repo commit -q -m 'init' | Out-Null
 $Head0 = (Git $Repo rev-parse HEAD | Out-String).Trim()
@@ -44,12 +49,19 @@ Put $Repo 'Retours/E-new.md' 'v1'
 Put $Repo 'Source/x.cpp' 'int x; int y;'
 Put $Repo 'other.md' 'v2'
 Git $Repo add other.md | Out-Null
+# L10-tool (2026-11-11) : Placeholders*, *InProgress.md SUIVIS, Docs/SessionEnd.txt sont aussi des docs ; un *InProgress.md NON suivi ou Docs/Archive/ ne le sont pas
+Put $Repo 'Placeholders.txt' 'v2'
+Put $Repo 'PlaceholdersInProgress.md' 'v2'
+Put $Repo 'FooInProgress.md' 'v2'
+Put $Repo 'Docs/SessionEnd.txt' 'v2'
+Put $Repo 'Docs/Archive/OldInProgress.md' 'v2'
+Put $Repo 'NewInProgress.md' 'v1'
 
 # --- DryRun : liste, ne committe pas
 $dry = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -DryRun | Out-String
 $codeDry = $LASTEXITCODE
-Check ($codeDry -eq 0 -and $dry -match 'Auto_Journey_Jour\.md' -and $dry -match 'E-new\.md' -and $dry -match 'E-old\.md') 'DryRun: liste les docs (modifie, nouveau, supprime)' "code=$codeDry out=$dry"
-Check ($dry -notmatch 'x\.cpp' -and $dry -notmatch 'other\.md') 'DryRun: ne liste ni le code ni les fichiers hors docs' $dry
+Check ($codeDry -eq 0 -and $dry -match 'Auto_Journey_Jour\.md' -and $dry -match 'E-new\.md' -and $dry -match 'E-old\.md' -and $dry -match 'Placeholders\.txt' -and $dry -match 'PlaceholdersInProgress\.md' -and $dry -match 'FooInProgress\.md' -and $dry -match 'SessionEnd\.txt') 'DryRun: liste les docs (modifie, nouveau, supprime, Placeholders, *InProgress.md suivi, SessionEnd.txt)' "code=$codeDry out=$dry"
+Check ($dry -notmatch 'x\.cpp' -and $dry -notmatch 'other\.md' -and $dry -notmatch 'NewInProgress' -and $dry -notmatch 'OldInProgress') 'DryRun: ne liste ni le code ni les fichiers hors docs' $dry
 Check ((Git $Repo rev-parse HEAD | Out-String).Trim() -eq $Head0) 'DryRun: aucun commit cree'
 
 # --- Vrai passage
@@ -59,14 +71,15 @@ $Head1 = (Git $Repo rev-parse HEAD | Out-String).Trim()
 Check ($code -eq 0 -and $Head1 -ne $Head0) 'commit cree (code 0, HEAD avance)' "code=$code out=$out"
 Check ((Git $Repo rev-list --count "$Head0..HEAD" | Out-String).Trim() -eq '1') 'exactement 1 commit'
 $files = @(Git $Repo show --name-only --no-renames --format= HEAD | ForEach-Object { "$_".Trim() } | Where-Object { $_ })
-$expect = @('Auto_Journey_Jour.md', 'EtapeDefini.md', 'Retours/E-new.md', 'Retours/E-old.md') | Sort-Object
+$expect = @('Auto_Journey_Jour.md', 'EtapeDefini.md', 'Retours/E-new.md', 'Retours/E-old.md', 'Placeholders.txt', 'PlaceholdersInProgress.md', 'FooInProgress.md', 'Docs/SessionEnd.txt') | Sort-Object
 Check ((($files | Sort-Object) -join '|') -eq ($expect -join '|')) 'le commit contient EXACTEMENT les docs (y compris la suppression et le nouveau Retours)' ($files -join ', ')
 $st = @(Git $Repo status --short | ForEach-Object { "$_" })
 Check (($st | Where-Object { $_ -match 'Source/x\.cpp' }).Count -eq 1 -and ($st | Where-Object { $_ -match '^ M Source/x\.cpp' }).Count -eq 1) 'le code modifie reste NON commite' ($st -join ' ; ')
 Check (($st | Where-Object { $_ -match '^M  other\.md' }).Count -eq 1) 'un fichier hors docs deja indexe reste indexe, hors du commit' ($st -join ' ; ')
 $msg = (Git $Repo log -1 --format=%B | Out-String)
 Check ($msg -match '^Docs' -and $msg -notmatch 'Co-Authored-By') 'message en anglais commencant par Docs, sans Co-Authored-By' $msg
-Check (-not (Git $Repo status --short -- Auto_Journey_Jour.md EtapeDefini.md Retours | Out-String).Trim()) 'plus aucun doc en attente'
+Check (-not (Git $Repo status --short -- Auto_Journey_Jour.md EtapeDefini.md Retours Placeholders.txt PlaceholdersInProgress.md FooInProgress.md Docs/SessionEnd.txt | Out-String).Trim()) 'plus aucun doc en attente'
+Check ((@($st | Where-Object { $_ -match '^\?\? NewInProgress\.md' }).Count -eq 1) -and (@($st | Where-Object { $_ -match '^ M Docs/Archive/OldInProgress\.md' }).Count -eq 1)) 'un *InProgress.md NON suivi et Docs/Archive/ restent hors du commit' ($st -join ' ; ')
 
 # --- Rien a committer : pas de commit, code 0
 $out2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo | Out-String
@@ -96,6 +109,7 @@ Copy-Item $Repo $MainDocs -Recurse
 Git $MainDocs checkout -q -- Source/x.cpp | Out-Null
 Git $MainDocs reset -q | Out-Null
 Git $MainDocs checkout -q -- other.md | Out-Null
+Git $MainDocs checkout -q -- Docs/Archive/OldInProgress.md | Out-Null
 Put $MainDocs 'EtapeDefini.md' 'v9'
 $g1 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Merge -End 23:59 -MainRoot $MainDocs | Out-String
 Check ($g1 -match '(?m)^WARN .*commit_docs' -and $g1 -notmatch '(?m)^FAIL .*copie principale') 'Merge: main avec seulement des docs modifies -> WARN (lancer commit_docs.ps1), pas de FAIL' $g1
