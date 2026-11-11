@@ -1,4 +1,5 @@
-﻿ATTENDU : a rejouer sur le main du 2026-11-10 avant de le donner (session_gate -Phase Essay) ; les essais arquebusier et fog_trees sont faits.
+﻿NETTOYAGE 2026-11-11 : fiches E-* encore dans Retours\ = E-disconnect_1v1 (non rejoue sur main), E-neutrals et E-playtest_hero_army (LOGIQUE SEULEMENT, Sanity D641), E-audio_compare_buildings (index), _stone, _metal, E-audio_panel (SON, a ecouter par l'utilisateur seul). Les 5 essais numerotes ci-dessous n'ont pas de fiche E-* : leurs scenarios sont dans Tools\Scenarios ; unit_stats_attack_enemy, unit_stats_attack, sites_win, duel_challenge_accept, disconnect_review sont deja joues le 2026-11-09 (voir ligne ci-dessus), donc a ne PAS redonner tels quels.
+ATTENDU : a rejouer sur le main du 2026-11-10 avant de le donner (session_gate -Phase Essay) ; les essais arquebusier et fog_trees sont faits.
 (Fiche datee du 2026-11-09, build 60013e8 : ne pas la donner telle quelle ; unit_stats_attack_enemy, unit_stats_attack, sites_win, duel_challenge_accept, disconnect_review, glade_sweep ont ete joues le 2026-11-09, voir REPONSES-2026-11-09.md.)
 
 # ESSAIS À JOUER (agent d'intégration Elrond, 2026-11-09 10:50-11:05, build de main 60013e8 fusionné, binaire de 10:37)
@@ -35,3 +36,4 @@ Commande (`-PlayerName Alice` obligatoire) : `powershell -ExecutionPolicy Bypass
 - legions_roster_gesture, legions_roster_gesture_dawn : scénarios et .look présents dans main, jamais rejoués ni ouverts par moi (plus de budget) : NON DONNÉS, à préflighter par l'agent suivant (geste réel à vérifier d'abord).
 - tech_armor (Forge F2) : pas de fichier .look, test de chaîne seulement : LOGIQUE SEULEMENT, jamais compté prêt.
 - E-audio_panel, E-audio_compare_* : SON, jamais entendu par un agent : LOGIQUE SEULEMENT à vie pour les agents ; à écouter par toi seul, quand tu veux.
+
