@@ -490,6 +490,7 @@ TRANSLATIONS = {
     "HOLGameNames,DamnedWarrior": ("Damned Warrior", "呪われた戦士"),
     "HOLGameScreen,NecroticRageShort": ("Rage", "怒り"),
     "HOLGameScreen,NecroticRageName": ("Necrotic Rage", "死霊の怒り"),
+    "HOLGameScreen,NecroticRageCooldown": ("{0}\n{1} s", "{0}\n{1}秒"),
     "HOLGameScreen,NecroticRageEffect": ("{0} s: +{1} % damage, +{2} % attack rate, {3} HP lost per blow dealt. Refused under {4} HP, it ends at {5} HP; cooldown {6} s", "{0}秒間：ダメージ+{1}%、攻撃速度+{2}%、攻撃ごとにHP{3}を失う。HPが{4}未満では使用不可、HP{5}で終了。再使用まで{6}秒"),
     # Galadriel L4 (2026-11-11): 17 keys imported by the GatherText without a translation. PROVISIONAL, EN and JA both are proposals for the user to read again ("Sacred Sites" and "Sacred Victory" are literal renderings: the GDD gives no English name).
     "HOLMoraleTable,NameNecroticRage": ("Necrotic Rage", "死霊の怒り"),
