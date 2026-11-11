@@ -113,6 +113,24 @@ try {
     Remove-Item Env:FAKE_ENGINE_PATTERN, Env:FAKE_ENGINE_BAD -ErrorAction SilentlyContinue
     Case "one failed pass of 3 : summary reads 'PASS 2/3' (exit $($R.Exit))" ($R.Exit -eq 1 -and $R.Text -match "repeat a : PASS 2/3") (($R.Lines | Select-Object -Last 4) -join " / ")
     Case "one failed pass of 3 : 'verdict RED', never 'FAIL 2/3'" ($R.Text -match "verdict RED" -and -not [bool]($R.Text -match "FAIL 2/3"))
+
+    # ---- (5) the game disappears with no crash signature in its log (an external kill, 2026-11-11 : a parallel session killed an editor, the pass was counted as a FAIL
+    #      of the scenario) : INVALID, not counted ; (6) the same exit with a crash signature in the log is a real FAIL of the scenario.
+    Start-Sleep -Seconds 2
+    Remove-Item (Join-Path $Logs "scenario_*.log") -Force -ErrorAction SilentlyContinue
+    $Killed = Join-Path $Work "killed.txt"
+    Set-Content -Encoding ascii $Killed @("LogHOLSimulation: Display: Combat: step 12 something", "LogHOLSimulation: Display: Combat: step 13 something")
+    $env:FAKE_ENGINE_TEXT = $Killed
+    $R = Run-Tool @("a", "-Runs", "1", "-Retries", "0")
+    Case "game exited, no crash signature : INVALID, never a FAIL of the scenario, exit non-zero (exit $($R.Exit))" ($R.Exit -ne 0 -and $R.Text -cmatch "pass 1/1 : INVALID" -and -not [bool]($R.Text -match "verdict OK")) (($R.Lines | Select-Object -Last 4) -join " / ")
+    Case "game exited, no crash signature : the summary says the pass was not counted as a result" ($R.Text -match "INVALID pass\(es\) not counted")
+    Remove-Item (Join-Path $Logs "scenario_*.log") -Force -ErrorAction SilentlyContinue
+    $Crashed = Join-Path $Work "crashed.txt"
+    Set-Content -Encoding ascii $Crashed @("LogHOLSimulation: Display: Combat: step 12 something", "LogWindows: Error: Fatal error: Assertion failed: Index != INDEX_NONE")
+    $env:FAKE_ENGINE_TEXT = $Crashed
+    $R = Run-Tool @("a", "-Runs", "1", "-Retries", "0")
+    Case "game exited with a crash signature : a FAIL of the scenario, not INVALID (exit $($R.Exit))" ($R.Exit -ne 0 -and $R.Text -match "repeat a : PASS 0/1" -and -not [bool]($R.Text -cmatch "INVALID")) (($R.Lines | Select-Object -Last 4) -join " / ")
+    $env:FAKE_ENGINE_TEXT = $Ready
 } finally {
     Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.CommandLine -match "scenario_a.log" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
     Remove-Item Env:FAKE_ENGINE_TEXT -ErrorAction SilentlyContinue

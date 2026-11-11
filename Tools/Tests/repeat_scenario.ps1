@@ -11,7 +11,8 @@
 # gave up after 5 s with "log of an earlier pass is held by another process", the tool counted that as a failed pass and kept the held
 # log as run<k>.log : 7 passes out of 8 were copies of the previous one). A pass that still says "held" (or has no result line, or no
 # log written after its start) is INVALID : "pass k/N : INVALID (reason)", retried up to -Retries (default 2) times, never counted
-# as a PASS or as a FAIL of the scenario, and no run<k>.log is kept for it.
+# as a PASS or as a FAIL of the scenario, and no run<k>.log is kept for it. Same for "the game exited" with no crash signature in the log
+# (Fatal error, Assertion failed, access violation...) : an editor killed from outside (2026-11-11) is INVALID, a real crash is a FAIL.
 # The binaries copied are the ones present at the start: a build finishing during the passes does not change them (a new call
 # takes a new copy). -Keep leaves the shadow directory (named in the output) for a look.
 param(
@@ -76,6 +77,9 @@ try {
                     elseif ($Text -match 'held by another process') { $Why = "log held by another process" }
                     elseif ($Text -match 'no editor slot') { $Why = "no editor slot" }
                     elseif (-not (Test-Path $Log) -or (Get-Item $Log).LastWriteTime -lt $PassStart.AddSeconds(-2)) { $Why = "no log written by this pass" }
+                    # 2026-11-11 : the editor killed from outside (a parallel session) is "FAIL (the game exited)" for check.ps1, which this tool counted as a FAIL of
+                    # the scenario. No crash signature in the log = an external kill = INVALID (retried, never a result); a crash signature stays a FAIL.
+                    elseif ($Text -match 'the game exited' -and -not (Select-String -Path $Log -Pattern 'Fatal error|Assertion failed|Unhandled Exception|LogWindows: Error|Critical error|EXCEPTION_ACCESS_VIOLATION|Ensure condition failed' -Quiet)) { $Why = "game exited with no crash signature in its log (killed from outside?)" }
                 }
                 if ($Why) {
                     Write-Host ("  pass {0}/{1} : INVALID ({2}){3}" -f $K, $Runs, $Why, $(if ($Try -lt $Retries) { " : retry $($Try + 1)/$Retries" } else { "" }))
