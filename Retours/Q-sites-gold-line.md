@@ -13,3 +13,5 @@ Conséquences visibles : A et B montrent le revenu total ; C le montre par site.
 Recommandation : A pour l'essai, B quand la barre des ressources est reprise.
 
 Valeur par défaut : le total des sites tenus par le joueur local (propriétaire seul, jamais ses alliés) fois `hol.Site.GoldPerMinute` ; une ligne à changer.
+
+Reponse: AUTRE. Pas de ligne fixe : +N or/min est une INFOBULLE qui apparait quand la souris est sur une ressource (barre des ressources) et elle prend en compte TOUTES les sources de revenu de cette ressource, avec un calcul des paysans sur la ressource en question (pas seulement les sites). - utilisateur, 2026-11-11 soir. La ligne S6 codee en script (GoldLine) et le test rouge 0c8792c sont a abandonner ou refondre dans cette infobulle.

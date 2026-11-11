@@ -19,3 +19,5 @@ Constat du scénario (vu à l'écran, PNG `legions_warrior_rage` et `_after`) : 
 Valeur par défaut codée : D (rien n'est dessiné, comportement actuel) ; le choix n'ajoute qu'un drapeau de rendu à lire sur `RageMs > 0`.
 
 Essai pour choisir : Retours\E-legions_warrior_compare.md (5 options à l'écran, Entrée = suivante) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 legions_warrior_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel (cvar hol.Rage.Visual : 0 D rien (défaut), 1 A, 2 B, 3 C, 4 A+C ; B dessinée depuis 2026-11-11).
+
+Reponse: A+C (teinte rouge sombre + etat sur la case) - recommande, utilisateur, 2026-11-11 soir ; hol.Rage.Visual doit passer a 4 par defaut ; B (anneau) non retenu

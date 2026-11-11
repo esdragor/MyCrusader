@@ -12,3 +12,5 @@ Le *Cracheur de bile* des Légions et la *Bombarde* des Héritiers n'existent pa
 **Recommandation : C** (A maintenant). Le mécanisme existe, est testé côté serveur et grille, et G4 n'a de vrai trou que le filtre de l'IA (corrigé dans le lot). B n'apporte rien de visible avant G8 et les variantes.
 
 **Valeur par défaut codée** : A (aucun réglage à changer ; passer à B = nouvelle étape).
+
+Reponse: C (A maintenant : colonne Faction ; B seulement si les variantes montrent un besoin) - recommande, utilisateur, 2026-11-11 soir

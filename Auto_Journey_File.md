@@ -88,3 +88,13 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - Elrond-27 (G6 b/c, 2026-11-11 16:1x) : fini sans vert, code non commite dans Elrond (tiers), voir Palier3InProgress.md
 - Elrond-29 (G6 d, 2026-11-11 16:55) : bouton Monter / Demonter ecrit sur tiers (test rouge de921d5 vu rouge), chaine build + tests + commit lancee (CORRECTION : la chaine n'avait PAS commite), voir Palier3InProgress.md.
 - Elrond-30 (G6 d, 2026-11-11 17:1x) : G6 d COMMITEE sur tiers (1811c78, tests 1167/1167 + aiserver PASS) ; .po regeneres, quick_check tests,values a l'ecriture en cours (PC redemarre 17:05, chaine relancee) ; G6 e non codee (changement du format du fil, voir Palier3InProgress.md).
+
+
+## Corrections et suites decidees par l'utilisateur (reponses du 2026-11-11 soir, a faire au prochain Auto_Journey)
+- [ ] (sans C++, Galadriel) Rage L4 Q-legions-rage-cap = A : plafond des degats portes de 30 a 40 % dans Script\Morale\HOLMoraleRules.as (lignes 32 et 38), test rouge d'abord ; LegionsInProgress.md.
+- [ ] (C++, Galadriel) Rage L4 Q-legions-warrior-rage-visual = A+C : hol.Rage.Visual par defaut a 4 (teinte + etat sur la case), anneau B non retenu ; fusionner a3e90a8 de galadriel-tab (doublon du verbe notereset : garder l'implementation de fog) ; rejouer legions_warrior sur main ; LegionsInProgress.md.
+- [ ] (C++, Galadriel) Infobulle de la Caserne Q-barracks-tooltip-damned = A : filtre par faction + nom localise, puis retirer la ligne build hud de Tools\Tests\known_reds.txt (net-playtest) ; Retours\Q-barracks-tooltip-damned.md.
+- [ ] (C++, Glorfindel) NOUVEAU : infobulle de revenu par ressource (Q-sites-gold-line, reponse AUTRE) : au survol d'une ressource de la barre du haut, afficher +N/min = TOUS les revenus de cette ressource, avec le calcul des paysans sur la ressource en question (et les sites pour l'or) ; test rouge d'abord sur la vraie chaine ; abandonner la ligne GoldLine de HOLSiteBanner et le test rouge 0c8792c de net-playtest (WIP S6 non vert, ne pas fusionner) ; textes FR/EN/JA ; SacredSitesInProgress.md + InterfaceInProgress.md.
+- [ ] (C++, Arwen) Neutres N7 : indicateur de camp = point sur la minicarte (Q2 B), replication limitee aux camps deja vus (Q1 C) ; libelle de survol a fixer (question si besoin) ; NeutralsInProgress.md.
+- [ ] (C++, Elrond) Palier 3 : G6 e (replication de la phase) puis f (scenario deploy), Q-palier3-deploy-wiring Q1 C Q2 A, bouton case D (Q-palier3-deploy-button A A), G4 filtre par colonne Faction (A maintenant) ; Palier3InProgress.md.
+- [ ] (sans C++, Sauron) Fusionner visual (f0670cf et suivants : scenarios) ; replay des essais sur main fusionne avant de les donner a l'utilisateur.

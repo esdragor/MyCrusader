@@ -12,3 +12,5 @@ Conséquences visibles : A = un joueur Aube ne voit jamais d'unité Légions ; B
 Recommandation : A.
 
 Valeur par défaut : rien changé dans le jeu ; `build hud` est listé dans `Tools\Tests\known_reds.txt` (une ligne à retirer quand tranché).
+
+Reponse: A (l'infobulle filtre par faction et utilise le nom localise ; retirer la ligne known_reds build hud) - recommande, utilisateur, 2026-11-11 soir
