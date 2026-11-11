@@ -74,3 +74,5 @@ PROLONGATION 13:52 sur demande de l'utilisateur (« repart pour 1h de plus ») :
 | Sauron-PH | a741877d2e87b3bd0 | HeroesOfLiberty-Sauron | visual | sans C++ placeholders [?] _compare | 14:01 |
 | Elrond-G5 | a4695a05182a3066a | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G5/G6 | 14:10 |
 FUSION 1 faite 14:09 : main = 0ba3651 (e24d24f), d751-root + tiers + visual + galadriel-tab(71b35d9), build PASS, tests 1148/1148, aiserver, aiduel PASS. Pas dans main : a399b77 (scenario talents_heal), Sauron 376d95c+, Arwen outils, Glorfindel. Fusion 2 vers 14:45 puis integrateur (rejeu essais sur main).
+
+PROLONGATION 15:03 sur demande de l'utilisateur (« tourne jusqu'a 18h ») : fin de seance 18:00 (remplace 15:30), agents d'arret 17:40, fusion groupee 3 a 17:40-18:00. Vague 2 (15:05) : Galadriel-L4f, Elrond-G6, Glorfindel-Full3, Arwen-outils2, Sauron-essais, Celeborn-neutrals (ids ci-dessous). Fusion-2 (a1f58945f52967071) finit : main + db4598e.
