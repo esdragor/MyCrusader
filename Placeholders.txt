@@ -185,4 +185,5 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Technologies grisées « Bientôt » (sans effet) : suivies dans TechnologiesInProgress.md
 
 - Libelle Victoire sacree et annonces 60 s / 10 s (Sites sacres S10, bandeau + ligne sous le volcan) : texte provisoire, cloche AlertVolcano en attente de son propre son
-- Guerrier damné Légions (même corps que l'Homme d'armes, nom anglais provisoire) [mannequin]
+- Guerrier damné Légions (même corps que l'Homme d'armes) [mannequin]
+- Icône du bouton de la rage nécrotique du Guerrier damné (cellule à texte « Rage », aucune texture) [rien]
