@@ -177,8 +177,8 @@ bool FHOLProductionTablesTest::RunTest(const FString& Parameters)
 	if (TestNotNull(TEXT("Barracks in the building type table"), Barracks))
 	{
 		TestEqual(TEXT("Barracks: military (F1, D30)"), int32(Barracks->Category), int32(EHOLBuildingCategory::Military));
-		TestTrue(TEXT("Barracks: produces the Spearman then the Man-at-arms (the Archer went to the Archery range, AR-Q2)"),
-			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType }));
+		TestTrue(TEXT("Barracks: produces the Spearman, the Man-at-arms then the Damned Warrior (the Archer went to the Archery range, AR-Q2; the Damned Warrior is L4 step 3, shown to the Legions only)"),
+			Barracks->Produces == TArray<FName>({ SpearmanType, ManAtArmsType, FName(TEXT("DamnedWarrior")) }));
 		TestEqual(TEXT("Barracks: gives no population"), Barracks->PopulationProvided, 0);
 		TestTrue(TEXT("Barracks: not a deposit"), Barracks->Accepts.IsEmpty());
 	}

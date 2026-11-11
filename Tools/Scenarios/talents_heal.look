@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+talents_heal_base | Un Moine au milieu d'Hommes d'armes blesses a 50 %, trait de soin VERT et « + » vert du Moine vers un Homme d'armes (pas de talent pris en rangee 3)
+talents_heal_cell | La fenetre « Arbre de talents » : la case Capitaine de la rangee 3 (Mains du guerisseur) est teintee doree (prise), sans « pas encore actif »
+talents_heal_boosted | Les memes blesses, talent pris : le trait de soin du Moine est DORE (255, 215, 60) avec « ++ » au lieu de « + »

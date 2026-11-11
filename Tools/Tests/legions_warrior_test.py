@@ -105,7 +105,7 @@ def main():
     if rage:
         row = rage[0]
         check(row.get("UnitType") == "DamnedWarrior", "NecroticRage belongs to the DamnedWarrior")
-        for column in ("CooldownMs", "DurationMs", "HpCostPerHit", "MinHpPercent"):
+        for column in ("CooldownMs", "DurationMs", "HpCostPerHit", "MinHp", "StopHp"):
             check(number(row.get(column)) > 0, "NecroticRage: %s is above zero" % column)
         check(number(row.get("CooldownMs")) > number(row.get("DurationMs")), "NecroticRage: the cooldown outlasts the rage")
 

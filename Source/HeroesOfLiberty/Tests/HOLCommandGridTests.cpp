@@ -459,7 +459,7 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 	}
 
 	// The Barracks' grid (J7a.2): A Spearman, Z Man-at-arms once finished (the Archer of J7c.1 went to the Archery range, AR-Q2);
-	// a site produces nothing, Q cancels it.
+	// C the Damned Warrior (L4, Legions only through the faction filter of the roster), a site produces nothing, Q cancels it.
 	const FHOLBuildingTypeRow* BarracksType = UHOLBuildingSettings::FindType(HOLBuildingTypeNames::Barracks);
 	if (TestNotNull(TEXT("Barracks in the building type table"), BarracksType))
 	{
@@ -471,7 +471,9 @@ bool FHOLCommandGridTablesTest::RunTest(const FString& Parameters)
 		const FHOLGridCommand Z = HOLCommandGrid::GetCommand(Barracks, 1);
 		TestTrue(TEXT("Barracks, A: produce a Spearman"), A.Command == EHOLGridCommand::Produce && A.TypeName == FName(TEXT("Spearman")));
 		TestTrue(TEXT("Barracks, Z: produce a Man-at-arms"), Z.Command == EHOLGridCommand::Produce && Z.TypeName == FName(TEXT("ManAtArms")));
-		for (int32 Cell = 2; Cell < HOLCommandGrid::NumCells; ++Cell)
+		const FHOLGridCommand E = HOLCommandGrid::GetCommand(Barracks, 2);
+		TestTrue(TEXT("Barracks, E: produce a Damned Warrior (L4 step 3)"), E.Command == EHOLGridCommand::Produce && E.TypeName == FName(TEXT("DamnedWarrior")));
+		for (int32 Cell = 3; Cell < HOLCommandGrid::NumCells; ++Cell)
 		{
 			TestTrue(*FString::Printf(TEXT("Barracks, cell %d: nothing"), Cell), HOLCommandGrid::GetCommand(Barracks, Cell).IsNone());
 		}
