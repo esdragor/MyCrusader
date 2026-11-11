@@ -1,6 +1,6 @@
 # [A ESSAYER] E-trees_rocks_compare : les arbres et les rochers sous les cinq biomes, vus d'un coup ; dis aime / pas aime par lettre
 
-STATUT : VU A L'ECRAN   (les 10 PNG ouverts et vus, en planches de contact ; aucun gout juge par l'agent)
+STATUT : VU À L'ÉCRAN (rejoué par l'intégrateur sur main fusionné : 10 PNG ouverts en 3 planches de contact ; les arbres du bosquet sont identiques d'un biome à l'autre, sol, lumière et teinte des rochers changent de A à E ; aucun goût jugé)
 GESTE: interne      (hol.Biome.Index lance par le scenario ; la touche Entree est le seul geste de l'utilisateur, passee en auto par preflight)
 SON: sans objet
 branches: visual
@@ -13,5 +13,8 @@ Pre-vol (2026-11-11 14:17, agent Sauron-R2, worktree C:\Users\baudo\Documents\He
 PNG OUVERTS et vus : trees_A..E et rocks_A..E (planches de contact 2 colonnes, 640x360 par vue).
 NON VERIFIE : vu en camera de jeu a zoom 2, pas en partie complete avec unites ; le bosquet est coupe a droite du cadre (camera centree sur l'est du bosquet) ; les rochers vus sont ceux de la crete de la Plaine (les autres cartes ont d'autres rochers : cols, murs de roche) ; aucune comparaison avec un autre biome sur une autre carte.
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 trees_rocks_compare -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron` (sans -Hidden : fenetre, reservee a toi).
+Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 trees_rocks_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir  (rejoue sur le build de main 521adcb fusionne, worktree Faramir ; sans -Hidden = fenetre, reservee a l'utilisateur ; un agent ajoute -Hidden)
 Duree : environ 1 min 30. Reponse attendue : pour A a E `aime` / `pas aime` (arbre, rocher) ou `REGLAGE: ...`.
+
+## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
+Constats factuels : A (herbe fraîche) montre un sol gris-beige sans vert, proche de E (neige) en plus clair ; le bosquet est coupé par le bord droit de l'image (à moitié hors cadre) ; la base annoncée devant la crête de rochers n'apparaît pas dans le cadre. Durée : 5 options, environ 2 min.
