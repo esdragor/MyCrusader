@@ -90,3 +90,5 @@ FUSION 2 faite 15:07 : main = 521adcb (d751-root ae0678f, tiers 0901124, visual 
 | Faramir-integrateur | acc494e10e653f9ff | HeroesOfLiberty-Faramir | fog | sans C++ recette independante des essais sur main fusionne | 15:09 |
 | Sauron-essais | aa9453ee10c137764 | HeroesOfLiberty-Sauron | visual | sans C++ essais rates du 31 octobre (max 3) | 15:09 |
 | Celeborn-neutrals | a7650e39235995947 | HeroesOfLiberty-Celeborn | hero-j8-close | neutrals spin Sanity scenario ou jeu | 15:09 |
+
+BUILD DE MAIN REPARE 15:47 : main = 39ba5ec (Haldir a9887b554294586f6, 18 fichiers Tests : constantes globales Margin etc. prefixees Test, build PASS, tests 1165/1165). Vague 2b (15:50) : Elrond-G6c ad570df75af4ca526, Celeborn-ab a43a2bbac8298a461, Glorfindel-Full3b aeb427b5792957e83, Sauron-rejeu a7b64d3a1719ffe12, Galadriel-L4g ad046dfc8e1bd5ccf (15:41), Faramir-notereset (15:53, voir rapport). Arret 17:40, fusion 3 a 17:40-18:00. Fiche a ne pas oublier : retirer la ligne known_reds Caserne apres le libelle de Galadriel ; retirer le renommage local SourceBoxMargin de Glorfindel (checkout du fichier) avant sa fusion.
