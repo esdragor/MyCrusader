@@ -124,6 +124,13 @@ public:
 	/** Destroys the queued units; returns how many were destroyed. Called at the end of the fixed step. */
 	int32 FlushDestructions();
 
+	/**
+	 * L4 step 5: the necrotic rage of a Damned Warrior (HOLUnitAbility, UnitAbilities.csv), ordered like the player's button does it.
+	 * Refused (false) for another type, a dying unit, under 30 health, during the cool-down, or on a client; the effect itself is
+	 * applied by the combat processor from FHOLCombatFragment::RageMs.
+	 */
+	bool CastRage(uint32 UnitId);
+
 	/** Entity of a unit identifier (D223); an invalid handle when the unit is gone. */
 	FMassEntityHandle FindEntity(uint32 UnitId) const;
 	/** Identifier of an entity, 0 when it is not a unit (the reverse table of D223). */

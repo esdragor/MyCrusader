@@ -511,6 +511,14 @@ struct HEROESOFLIBERTY_API FHOLCombatFragment : public FMassFragment
 	int32 CloseRanksMs = 0;
 
 	/**
+	 * L4 step 5 (HOLUnitAbility, the Damned Warrior's necrotic rage): milliseconds the rage lasts (counted down each step by the
+	 * combat processor; 0: not enraged) and milliseconds before it can be cast again (counted from the start of the effect). Set by
+	 * UHOLUnitSubsystem::CastRage; part of the step's fingerprint.
+	 */
+	int32 RageMs = 0;
+	int32 RageCooldownMs = 0;
+
+	/**
 	 * D581: the share of its walk it takes, in percent (HOLHeroAbility::GetCloseRanksSpeedPercent): 100, but under its hero's cry
 	 * (0 held in place, Pas de l'Aube 50). Written by the combat processor each step; the movement processor (UHOLFullSpeedProcessor) applies it.
 	 */
