@@ -20,7 +20,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 
 ## Arwen — `heal-sleep` — Audio, IA, Neutres
 - [ ] (sans C++) Neutres N7 (hors GetCampState, voir la ligne C++ de N7 plus bas) ; N0-N6 faites (N6 : 97d9a25) ; `NeutralsInProgress.md`.
-- [ ] (C++, Arwen) Neutres N7 : exposer GetCampState (vivant / nettoyé) au script pour l'indicateur de camp ; `NeutralsInProgress.md` ; 1er test rouge : un test script qui lit l'état d'un camp (absent aujourd'hui).
+- [ ] (C++, Arwen) Neutres N7 : exposer GetCampState (vivant / nettoyé) au script pour l'indicateur de camp ; `NeutralsInProgress.md` ; 1er test rouge : un test script qui lit l'état d'un camp (absent aujourd'hui). [2026-11-11 13:3x Arwen : portes UFUNCTION écrites sur d751-root (rouge caae726, test C++ par réflexion + classe de contrôle script), build en file, vert à commiter ; Q-neutrals-camp-indicator.md posée ; reste : règle HOLCampBanner après réponse]
 
 ## Celeborn — `hero-j8-close` — Mêlée et clôture de J8 (`NeutralsInProgress.md`, `DuelInProgress.md`)
 - [ ] (C++, agent neuf) BUG-melee-stuck-attack : 2 soldats figés devant la cible (diplomacy_qground) ; A/B SlotDetourMaxSteps et FarPlaceRetarget ; test rouge = le soldat frappe ; `Retours\BUG-melee-stuck-attack.md`.
@@ -31,7 +31,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 
 ## Elrond — `tiers` — Intégration, Paliers, Talents
 - (état du 2026-11-09 : Paliers, Talents, Relais, perf S2-S4 : voir `EtapeDefini.md` ; 2026-11-11 : main = 48ae702, tous les worktrees dessus).
-- [ ] (C++, Elrond ou Galadriel) Palier 3 G4 (reste du palier 3 après G2 pénétration d'armure et G3 Arquebusier, faits : 868d22e et a854a6d dans main) ; test rouge d'abord ; `Palier3InProgress.md`.
+- [ ] (C++, Elrond ou Galadriel) Palier 3 G4 (reste du palier 3 après G2 pénétration d'armure et G3 Arquebusier, faits : 868d22e et a854a6d dans main) ; test rouge d'abord ; `Palier3InProgress.md`. **[Elrond-23, 2026-11-11 13:50 : code FAIT sur tiers e853945, test rouge 5b1abf5 vu rouge, tests 1146/1146 + aiserver + aiduel ; reste le test de substitution du Canon (G8) ; Q-palier3-g4-roles a trancher ; a fusionner]**
 - [ ] (C++, Elrond ou Galadriel) Talents T4b « Mains du guérisseur » (Moine : soins +20 % dans l'aura) ; `TalentsInProgress.md` (lot écrit par Haldir-10) ; 1er test rouge : PV rendus par le Moine dans l'aura, sur la vraie chaîne.
 - [ ] (2026-11-10, Elrond, sans C++) Rejouer sur main fusionne (-Phase Essay) les essais de Retours\ESSAIS-A-JOUER.md (date du 2026-11-09) et nommer un integrateur de recette independant.
 
@@ -64,7 +64,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [ ] (sans C++, Sauron, ~25 min) Placeholders lot ressources et décor (PQ-1 = A) : dix échantillons vus dans le jeu, l'utilisateur dit aimé / pas aimé ; `PlaceholdersInProgress.md` ; 1er test : `Tools\check_placeholders.ps1` liste les lignes du lot.
 - [ ] (sans C++, Sauron, ~20 min) `Placeholders.txt` : trancher à l'écran les 6 lignes `[?]` (arbres Herbe fraîche, Steppe sèche, Forêt sombre ; rochers par biome ; trajets d'ordres ; icônes des talents), PNG ouverts ; 1er test : `Tools\check_placeholders.ps1`.
 - [?] (sans C++, attend l'utilisateur) `Retours\Q-neutrals-camp-cache.md` : camp du scénario `neutrals` caché dans le bosquet ; défaut = scénario inchangé ; E-neutrals reste LOGIQUE SEULEMENT.
-- [ ] (2026-11-10, Sauron, sans C++, ~20 min) neutrals dans une clairiere : ajouter `hol.Decor.ClearNear 0 0 2500` + `waitlog Decor.ClearNear 0 0 2500: took` avant `hol.Camp.Add 0 0 3 Spearman` dans `Tools/Scenarios/neutrals.txt`, preflight, PNG, E-neutrals ; la commande n a jamais ete lancee en jeu (VisualInProgress.md).
+- [~] FAIT PARTIEL 2026-11-11 Sauron-N (clairiere ajoutee et VUE, preflight ROUGE Sanity = spin de melee, E-neutrals LOGIQUE SEULEMENT, commit sur visual) (2026-11-10, Sauron, sans C++, ~20 min) neutrals dans une clairiere : ajouter `hol.Decor.ClearNear 0 0 2500` + `waitlog Decor.ClearNear 0 0 2500: took` avant `hol.Camp.Add 0 0 3 Spearman` dans `Tools/Scenarios/neutrals.txt`, preflight, PNG, E-neutrals ; la commande n a jamais ete lancee en jeu (VisualInProgress.md).
 - [ ] (2026-11-10, Sauron, apres le lot ressources et decor PQ-1) Modele de l'Arquebusier ET ses animations (marche, tir a poudre, rechargement, mort ; aujourd'hui celles de l'Arbalétrier) : corps propre, fumee de poudre, son de tir (Placeholders.txt ligne 27) ; dix echantillons vus dans le jeu, l'utilisateur dit aime / pas aime ; Palier3InProgress.md.
 
 ## Outils et processus (worktree libre)

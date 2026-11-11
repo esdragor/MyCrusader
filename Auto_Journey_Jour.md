@@ -51,3 +51,15 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 - L4-14 / L8-9 : partiellement appliquee : sync_worktrees au debut (10:02, deja a jour) et a la fin (10:55, -NoBuild) ; Glorfindel saute (uasset non commite d'une regeneration).
 - Q1-Q4 / Q10 : sans objet : aucun essai donne ; arquebusier et fog_trees passes au pre-vol par leurs agents (PNG ouverts), non joues par l'utilisateur.
 - L7-4 : appliquee : PROCESSUS_DETACHES = aucun dans les 14 rapports ; Faramir-2 a du arreter 2 editeurs laisses par play.ps1 -Hidden (anomalie signalee, a corriger).
+
+## Agents du 2026-11-11
+
+Test d'1 h, 13:30-14:30 (agents arret 14:12, fusion groupee ensuite), fusions dans main OK, jamais de push. Nettoyage 0a fait (e1db39a, 34717c0, 89a5a0b, e09d1cb). Pas de veilleur (1 h, les notifications suffisent). Non lances : Celeborn (lignes melee perimees, D641 ecarte, D769 fait), Faramir (aucune ligne), Glorfindel et Haldir (file de build trop longue pour 1 h, taches a part).
+
+| Nom | Id | Worktree | Branche | Tache | Lance |
+|---|---|---|---|---|---|
+| Arwen-N7 | aee5251a39a3a634a | HeroesOfLiberty-Arwen | d751-root | C++ Neutres N7 GetCampState | 13:31 |
+| Elrond-G4 | a00898a21645ceedb | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G4 | 13:31 |
+| Galadriel-T4b | a7277cf1a836dc226 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Talents T4b Mains du guerisseur | 13:31 (arret 13:37 : 55 appels, test rouge seul commite 902dad0) |
+| Galadriel-T4b-2 | a5e9988c064f438c3 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ T4b correctif (agent neuf) | 13:38 |
+| Sauron-CN | a8b90f320e2d826a2 | HeroesOfLiberty-Sauron | visual | sans C++ scenario neutrals ClearNear | 13:31 |
