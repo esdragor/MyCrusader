@@ -1490,6 +1490,11 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				ChainHeadOfUnit.Add(UnitId, {Step, StepCount});
 			}
 		}
+		// Palier3InProgress.md G6 d: the Mount / Dismount button leaves its note on the deploy fragment (not written yet).
+		if (Order.Kind == EHOLOrderKind::ToggleDeploy)
+		{
+			continue;
+		}
 		// The combat orders without a walk of their own (J7b.3): the units stand where they are, their task and fight
 		// forgotten; an attack's walk to its target is the combat's approach (UHOLCombatProcessor, the same step).
 		if (Order.Kind == EHOLOrderKind::Attack || Order.Kind == EHOLOrderKind::Stop || Order.Kind == EHOLOrderKind::Hold
