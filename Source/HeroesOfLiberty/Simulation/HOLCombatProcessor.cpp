@@ -32,6 +32,7 @@
 #include "Simulation/HOLOrderChainRules.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
+#include "Simulation/HOLUnitAbilityRules.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Siege/HOLSiegeRules.h"
@@ -890,6 +891,8 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
 			HOLHeroAbility::Tick(Combats[EntityIt].CloseRanksMs, StepMs);
+			HOLHeroAbility::Tick(Combats[EntityIt].RageMs, StepMs); // L4: the necrotic rage and its cool-down count down like the cry
+			HOLHeroAbility::Tick(Combats[EntityIt].RageCooldownMs, StepMs);
 			if (bHeroes && States[EntityIt].CurrentHealth > 0.f && Combats[EntityIt].DeathStep < 0)
 			{
 				const FVector Location = Transforms[EntityIt].GetTransform().GetLocation();
@@ -2213,7 +2216,9 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				*Constants.TypeName.ToString(), Fighter.State->OwnerPlayer, Fighters[Target].UnitId, *Fighters[Target].Constants->TypeName.ToString());
 			Combat.TargetBuilding.Reset();
 		}
-		const int32 IntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
+		// L4: under the necrotic rage the unit strikes 25 % faster (the CSV value, HOLUnitAbilityRules.h).
+		const int32 BaseIntervalMs = HOLCombat::ToMilliseconds(Constants.AttackInterval);
+		const int32 IntervalMs = Combat.RageMs > 0 ? HOLUnitAbility::GetRageIntervalMs(BaseIntervalMs) : BaseIntervalMs;
 		if (Target == INDEX_NONE)
 		{
 			// D345.2b: no enemy unit. Its building (ordered, or taken on before), else one it takes on by itself: on an
@@ -2969,7 +2974,18 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 		// An arrow in flight for a long reach; the armour taken off comes from the attack's type (D345), not from the reach.
 		const bool bShot = HOLCombat::IsRangedAttack(Constants.AttackRange);
-		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter), GetTechnologyArmorPercent(Enemy, Constants.AttackType));
+		// L4: a blow dealt under the necrotic rage does +40 % and costs the unit 3 health, never taking it under StopHp (20), where the rage ends.
+		const int32 RagePercent = Combat.RageMs > 0 ? HOLUnitAbility::RageDamagePercent : 0;
+		if (RagePercent > 0)
+		{
+			Fighter.State->CurrentHealth -= HOLUnitAbility::GetRageHitCost(Fighter.State->CurrentHealth);
+			if (Fighter.State->CurrentHealth <= static_cast<float>(HOLUnitAbility::RageStopHp))
+			{
+				Combat.RageMs = 0;
+			}
+			Touch(Index);
+		}
+		const float Damage = HOLCombat::GetDamage(Constants, *Enemy.Constants, Combat.Level, GetTalentArmorBonus(Enemy), GetTechnologyAttackPercent(Fighter) + RagePercent, GetTechnologyArmorPercent(Enemy, Constants.AttackType));
 		if (bShot)
 		{
 			// An arrow (J7c.2): released now, at the strike's moment of the gesture; it lands on its target after its flight

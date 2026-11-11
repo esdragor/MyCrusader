@@ -8,6 +8,7 @@
 #include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLUnitAbilityRules.h"
 #include "Siege/HOLSiegeRules.h"
 #include "Avoidance/MassNavigationObstacleTrait.h"
 #include "Animation/AnimSequenceTransformProviderData.h"
@@ -1058,6 +1059,29 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 	}
 
 	return NumDestroyed;
+}
+
+bool UHOLUnitSubsystem::CastRage(const uint32 UnitId)
+{
+	const FHOLUnitRecord* Record = Units.Find(UnitId);
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!Record || Record->bDying || Record->TypeName != HOLUnitAbility::RageUnitType || !EntitySubsystem
+		|| GetWorld()->GetNetMode() == NM_Client)
+	{
+		return false;
+	}
+	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+	const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record->Entity);
+	FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Record->Entity);
+	if (!State || !Combat || Combat->DeathStep >= 0
+		|| !HOLUnitAbility::CanCastRage(State->CurrentHealth > 0.f, State->CurrentHealth, Combat->RageCooldownMs))
+	{
+		return false;
+	}
+	Combat->RageMs = HOLUnitAbility::RageDurationMs;
+	Combat->RageCooldownMs = HOLUnitAbility::RageCooldownMs;
+	UE_LOG(LogHOLSimulation, Display, TEXT("Unit ability: #%u %s casts the necrotic rage (%d health)"), UnitId, *Record->TypeName.ToString(), FMath::CeilToInt(State->CurrentHealth));
+	return true;
 }
 
 FMassEntityHandle UHOLUnitSubsystem::FindEntity(const uint32 UnitId) const

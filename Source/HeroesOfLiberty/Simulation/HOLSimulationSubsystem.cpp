@@ -149,6 +149,10 @@ namespace UE::HeroesOfLiberty::Simulation
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->Mode));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->DeathStep));
 				MixInto(Parts->Combat, static_cast<uint64>(Combat->LastHitStep));
+				if (Combat->RageMs != 0 || Combat->RageCooldownMs != 0) // L4: only a unit that cast its rage changes the hash
+				{
+					MixInto(Parts->Combat, (static_cast<uint64>(static_cast<uint32>(Combat->RageMs)) << 32) | static_cast<uint32>(Combat->RageCooldownMs));
+				}
 				MixInto(Parts->Combat, (Combat->bAttacking ? 1u : 0u) | (Combat->bApproaching ? 2u : 0u) | (Combat->bAttackMoveDetour ? 4u : 0u) | (Combat->bOrderedTarget ? 8u : 0u));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.X));
 				MixInto(Parts->Combat, BitCast<uint64>(Combat->ApproachPoint.Y));
