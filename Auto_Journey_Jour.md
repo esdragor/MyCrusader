@@ -76,3 +76,19 @@ PROLONGATION 13:52 sur demande de l'utilisateur (« repart pour 1h de plus ») :
 FUSION 1 faite 14:09 : main = 0ba3651 (e24d24f), d751-root + tiers + visual + galadriel-tab(71b35d9), build PASS, tests 1148/1148, aiserver, aiduel PASS. Pas dans main : a399b77 (scenario talents_heal), Sauron 376d95c+, Arwen outils, Glorfindel. Fusion 2 vers 14:45 puis integrateur (rejeu essais sur main).
 
 PROLONGATION 15:03 sur demande de l'utilisateur (« tourne jusqu'a 18h ») : fin de seance 18:00 (remplace 15:30), agents d'arret 17:40, fusion groupee 3 a 17:40-18:00. Vague 2 (15:05) : Galadriel-L4f, Elrond-G6, Glorfindel-Full3, Arwen-outils2, Sauron-essais, Celeborn-neutrals (ids ci-dessous). Fusion-2 (a1f58945f52967071) finit : main + db4598e.
+
+FUSION 2 faite 15:07 : main = 521adcb (d751-root ae0678f, tiers 0901124, visual 3176564, net-playtest cee7093, galadriel-tab db4598e) ; build PASS, tests 1165/1165, aiserver, aiduel PASS ; rien pousse.
+
+## Agents vague 2 du 2026-11-11 (lancee 15:09, arret 17:40, fin 18:00)
+
+| Nom | Id | Worktree | Branche | Tache | Lance |
+|---|---|---|---|---|---|
+| Galadriel-L4f | a2f8dddfefda1e116 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Legions L4 etape f ordre + bouton rage | 15:09 |
+| Elrond-G6b | afa251d5881573432 | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G6 b-d | 15:09 |
+| Glorfindel-Full3 | a62728db11267f2f4 | HeroesOfLiberty-Glorfindel | net-playtest | 3 rouges du quick_check -Full (sources, net 2 clients, netai) | 15:09 |
+| Arwen-outils2 | a27e5ced37c9ec1f7 | HeroesOfLiberty-Arwen | d751-root | sans C++ build_queue_test c/d + modele d'enonce | 15:09 |
+| Faramir-integrateur | acc494e10e653f9ff | HeroesOfLiberty-Faramir | fog | sans C++ recette independante des essais sur main fusionne | 15:09 |
+| Sauron-essais | aa9453ee10c137764 | HeroesOfLiberty-Sauron | visual | sans C++ essais rates du 31 octobre (max 3) | 15:09 |
+| Celeborn-neutrals | a7650e39235995947 | HeroesOfLiberty-Celeborn | hero-j8-close | neutrals spin Sanity scenario ou jeu | 15:09 |
+
+BUILD DE MAIN REPARE 15:47 : main = 39ba5ec (Haldir a9887b554294586f6, 18 fichiers Tests : constantes globales Margin etc. prefixees Test, build PASS, tests 1165/1165). Vague 2b (15:50) : Elrond-G6c ad570df75af4ca526, Celeborn-ab a43a2bbac8298a461, Glorfindel-Full3b aeb427b5792957e83, Sauron-rejeu a7b64d3a1719ffe12, Galadriel-L4g ad046dfc8e1bd5ccf (15:41), Faramir-notereset (15:53, voir rapport). Arret 17:40, fusion 3 a 17:40-18:00. Fiche a ne pas oublier : retirer la ligne known_reds Caserne apres le libelle de Galadriel ; retirer le renommage local SourceBoxMargin de Glorfindel (checkout du fichier) avant sa fusion.

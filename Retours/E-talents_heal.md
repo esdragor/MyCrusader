@@ -1,7 +1,7 @@
 # [À ESSAYER] E-talents_heal : prends « Mains du guérisseur » (T puis la case Capitaine rangée 3) et regarde le trait de soin du Moine passer du vert « + » au doré « ++ »
 
-STATUT : VU À L'ÉCRAN (trait vert sans le talent, trait doré « ++ » avec le talent, case teintée sans « pas encore actif », vus par l'agent sur les trois PNG)
-GESTE: réel   (touche T = clic du bouton `TalentKey`, puis clic de la case `HeroTalentCell_3_1` par `hol.HUD.Click`, le chemin du clic du widget ; ce n'est pas la souris du système ni le clavier : si tu veux le geste complet à la main, joue le scénario et refais T puis le clic toi-même)
+STATUT : VU À L'ÉCRAN (rejoué par l'intégrateur sur main fusionné : trait de soin vert « + » sans talent, doré « ++ » avec le talent, case teintée et « Talent pris : Mains du guérisseur » sans « pas encore actif », les 3 PNG ouverts plein format)
+GESTE: interne   (hol.HUD.Click TalentKey puis HeroTalentCell_3_1 = commandes hol.*, pas la souris ni le clavier ; rétrogradé de « réel » par l'intégrateur ; l'essai ne juge que le visuel du trait, le geste T puis clic à la main reste à faire par l'utilisateur)
 SON: non entendu   (lancé avec -nosound ; le son du talent pris n'a pas été écouté)
 branches: galadriel-tab
 
@@ -15,6 +15,9 @@ PNG OUVERTS et vus (dossier C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\S
 Le héros est blessé lui aussi (PV 261/522) : `hol.Cheat.Wound` blesse tout sauf le Roi ; sans effet sur le trait.
 NON VÉRIFIÉ : le facteur 1,2 en jeu (couvert par le test `HeroTalent.HealersHands`, pas mesuré dans le scénario) ; le cas bannière ; un client en réseau (il voit le trait vert normal : option A de `Q-talents-heal-visual.md`, à trancher) ; le son ; le geste au clavier/souris du système. Le trait se voit : design du trait (couleur, taille du « ++ ») NON TRANCHÉ, option A codée par défaut.
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 talents_heal -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
+Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir  (rejoue sur le build de main 521adcb fusionne, worktree Faramir ; sans -Hidden = fenetre, reservee a l'utilisateur ; un agent ajoute -Hidden)
 (sans `-Hidden`, `play.ps1` ouvre une fenêtre : réservé à l'utilisateur ; l'utilisateur la lance donc sans `-Hidden`.)
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...` (et la réponse à `Retours\Q-talents-heal-visual.md`).
+
+## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
+PNG vus : talents_heal_base (trait vert + du Moine vers un Homme d'armes, bloc héros « Talents à dépenser : 1 »), talents_heal_cell (fenêtre Arbre de talents, 2 cases Capitaine teintées, bloc « Talent pris : Mains du guérisseur — Moines dans l'aura : soins +20 % »), talents_heal_boosted (trait doré avec « ++ » doré, petit mais net). Défaut constaté : dans talents_heal_cell le « ++ » doré est dessiné PAR-DESSUS la fenêtre Arbre de talents (marque du monde au-dessus de l'interface) ; le bandeau « Scénario talents_heal en préparation… » reste affiché sur les 3 PNG. Durée : environ 1 min.

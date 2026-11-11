@@ -33,16 +33,16 @@ namespace UE::HeroesOfLiberty::Tests::Gather
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	/** The fixed step of D217 (20 Hz). */
-	constexpr float StepSeconds = 0.05f;
+	constexpr float TestStepSeconds = 0.05f;
 
-	/** Gathers Resource Steps steps in a row; returns the units taken (the load lost added to OutLost, D306). */
-	int32 GatherSteps(FHOLGatherLoad& Load, const int32 Steps, const float Rate, const int32 Capacity, int32& SourceRemaining,
+	/** Gathers Resource TestSteps steps in a row; returns the units taken (the load lost added to OutLost, D306). */
+	int32 GatherSteps(FHOLGatherLoad& Load, const int32 TestSteps, const float Rate, const int32 Capacity, int32& SourceRemaining,
 		const EHOLResource Resource = EHOLResource::Wood, int32* OutLost = nullptr)
 	{
 		int32 Taken = 0;
-		for (int32 Step = 0; Step < Steps; ++Step)
+		for (int32 Step = 0; Step < TestSteps; ++Step)
 		{
-			Taken += HOLGather::Gather(Load, Resource, Rate, StepSeconds, Capacity, SourceRemaining, OutLost);
+			Taken += HOLGather::Gather(Load, Resource, Rate, TestStepSeconds, Capacity, SourceRemaining, OutLost);
 		}
 		return Taken;
 	}
@@ -731,7 +731,7 @@ bool FHOLGatherVeinSizesTest::RunTest(const FString& Parameters)
 			int32 Gathered = 0;
 			for (int32 Step = 0; Step < 2000000 && Remaining > 0; ++Step)
 			{
-				Gathered += HOLGather::Gather(Load, Sizes[Number].Resource, 0.7f, StepSeconds, 10, Remaining);
+				Gathered += HOLGather::Gather(Load, Sizes[Number].Resource, 0.7f, TestStepSeconds, 10, Remaining);
 				if (HOLGather::IsFull(Load, 10))
 				{
 					Load = FHOLGatherLoad();
@@ -832,8 +832,8 @@ namespace UE::HeroesOfLiberty::Tests::GatherFarm
 {
 	const FName Peasant(TEXT("Peasant"));
 
-	/** Steps the gatherers work (10 s at 20 Hz): a Peasant's load of 10 is not full yet, at a field nor at the berries. */
-	constexpr int32 Steps = 200;
+	/** TestSteps the gatherers work (10 s at 20 Hz): a Peasant's load of 10 is not full yet, at a field nor at the berries. */
+	constexpr int32 TestSteps = 200;
 
 	/** The test world: a game state (slot 0 human, slot 1 AI), the subsystems, slot 0's mill and the step's processors. */
 	struct FFarmWorld
@@ -892,13 +892,13 @@ namespace UE::HeroesOfLiberty::Tests::GatherFarm
 		/** One fixed step: the order processor, then the gathering (the pipeline's order). */
 		void RunStep()
 		{
-			const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+			const float TestStepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 			{
-				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				FMassProcessingContext ProcessingContext(EntityManager, TestStepSeconds);
 				UE::Mass::Executor::Run(*Orders, ProcessingContext);
 			}
 			{
-				FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+				FMassProcessingContext ProcessingContext(EntityManager, TestStepSeconds);
 				UE::Mass::Executor::Run(*Gather, ProcessingContext);
 			}
 		}
@@ -1018,7 +1018,7 @@ bool FHOLGatherFarmFieldTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	const float TestStepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 	const float UnitRate = Constants->GatherRates[EHOLResource::Food];
 	const float FieldRate = FieldRow->GatherRate(UnitRate);
 	const float BushRate = BushRow->GatherRate(UnitRate);
@@ -1070,7 +1070,7 @@ bool FHOLGatherFarmFieldTest::RunTest(const FString& Parameters)
 	int32 MostOnLoneFarm = 0;
 	bool bIntruderGathered = false;
 	bool bPasserToFarm = false;
-	for (int32 Step = 1; Step < Steps; ++Step)
+	for (int32 Step = 1; Step < TestSteps; ++Step)
 	{
 		Test.RunStep();
 		MostOnFarm = FMath::Max(MostOnFarm, (Test.IsGatheringAt(First, Farm) ? 1 : 0) + (Test.IsGatheringAt(Second, Farm) ? 1 : 0));
@@ -1082,9 +1082,9 @@ bool FHOLGatherFarmFieldTest::RunTest(const FString& Parameters)
 	}
 
 	// (a) 0.55 a second at the field, give or take the first step (spent starting).
-	const double Seconds = Steps * StepSeconds;
+	const double Seconds = TestSteps * TestStepSeconds;
 	TestTrue(TEXT("(a) the holder still gathers its field (endless: never used up)"), Test.IsGatheringAt(Holder, Farm));
-	TestEqual(TEXT("(a) food gathered at the field: the field's rate"), Test.GetFoodGathered(Holder), FieldRate * Seconds, FieldRate * StepSeconds + 1e-3);
+	TestEqual(TEXT("(a) food gathered at the field: the field's rate"), Test.GetFoodGathered(Holder), FieldRate * Seconds, FieldRate * TestStepSeconds + 1e-3);
 	TestTrue(TEXT("(a) the field still stands"), Sources[Farm].IsStanding());
 	// (b)
 	TestEqual(TEXT("(b) never two at once at the farm by the mill"), MostOnFarm, 1);
@@ -1096,7 +1096,7 @@ bool FHOLGatherFarmFieldTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("(c) ... and was never sent to slot 0's farm beside them"), bPasserToFarm);
 	// (d)
 	TestTrue(TEXT("(d) the berries' Peasant still gathers"), Test.IsGatheringAt(Picker, Berries));
-	TestEqual(TEXT("(d) food gathered at the berries: the Peasant's own rate"), Test.GetFoodGathered(Picker), BushRate * Seconds, BushRate * StepSeconds + 1e-3);
+	TestEqual(TEXT("(d) food gathered at the berries: the Peasant's own rate"), Test.GetFoodGathered(Picker), BushRate * Seconds, BushRate * TestStepSeconds + 1e-3);
 	return true;
 }
 
@@ -1144,7 +1144,7 @@ bool FHOLGatherSanctuaryTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+	const float TestStepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
 	const float FieldRate = FieldRow->GatherRate(Constants->GatherRates[EHOLResource::Food]);
 	const double BodyRadius = Constants->Radius;
 	const auto Touching = [&Sources, BodyRadius](const int32 SourceIndex)
@@ -1157,12 +1157,12 @@ bool FHOLGatherSanctuaryTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("order to the field in the zone"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ InZone }), Near));
 	TestTrue(TEXT("order to the field out of the zone"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ OutOfZone }), Far));
 	TestTrue(TEXT("order to the field by the rival's Sanctuary"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ ByRival }), Rival));
-	for (int32 Step = 0; Step < Steps; ++Step)
+	for (int32 Step = 0; Step < TestSteps; ++Step)
 	{
 		Test.RunStep();
 	}
-	const double Seconds = Steps * StepSeconds;
-	const double Slack = FieldRate * StepSeconds * 1.15 + 1e-3;
+	const double Seconds = TestSteps * TestStepSeconds;
+	const double Slack = FieldRate * TestStepSeconds * 1.15 + 1e-3;
 	TestEqual(TEXT("in the zone of its Sanctuary: the field's rate + 15 %"), Test.GetFoodGathered(InZone), FieldRate * 1.15 * Seconds, Slack);
 	TestEqual(TEXT("out of the zone: the field's rate"), Test.GetFoodGathered(OutOfZone), FieldRate * Seconds, Slack);
 	TestEqual(TEXT("by a rival's Sanctuary: the field's rate"), Test.GetFoodGathered(ByRival), FieldRate * Seconds, Slack);

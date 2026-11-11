@@ -24,7 +24,7 @@ namespace UE::HeroesOfLiberty::Tests::MapCols
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	/** The side of a cell of the raster the rocks are drawn on (50 cm). */
-	constexpr double CellSize = 50.0;
+	constexpr double TestCellSize = 50.0;
 
 	/** The plaza of the recipe (cols.py PLAZA_FRACTION) as a fraction of the half side, and the margin of its plug beyond the ranges' ends. */
 	constexpr double PlazaFraction = 0.2;
@@ -122,9 +122,9 @@ namespace UE::HeroesOfLiberty::Tests::MapCols
 
 		FIntPoint CellOf(const FVector2D& At) const
 		{
-			return FIntPoint(FMath::Clamp(FMath::FloorToInt((At.X - Min.X) / CellSize), 0, N - 1), FMath::Clamp(FMath::FloorToInt((At.Y - Min.Y) / CellSize), 0, N - 1));
+			return FIntPoint(FMath::Clamp(FMath::FloorToInt((At.X - Min.X) / TestCellSize), 0, N - 1), FMath::Clamp(FMath::FloorToInt((At.Y - Min.Y) / TestCellSize), 0, N - 1));
 		}
-		FVector2D CentreOf(const int32 I, const int32 J) const { return FVector2D(Min.X + (I + 0.5) * CellSize, Min.Y + (J + 0.5) * CellSize); }
+		FVector2D CentreOf(const int32 I, const int32 J) const { return FVector2D(Min.X + (I + 0.5) * TestCellSize, Min.Y + (J + 0.5) * TestCellSize); }
 		bool IsBlocked(const FVector2D& At) const { const FIntPoint Cell = CellOf(At); return Blocked[Cell.Y * N + Cell.X] != 0; }
 	};
 
@@ -132,7 +132,7 @@ namespace UE::HeroesOfLiberty::Tests::MapCols
 	{
 		FRaster Raster;
 		Raster.Min = Data.Area.Min;
-		Raster.N = FMath::CeilToInt((Data.Area.Max.X - Data.Area.Min.X) / CellSize);
+		Raster.N = FMath::CeilToInt((Data.Area.Max.X - Data.Area.Min.X) / TestCellSize);
 		Raster.Blocked.SetNumZeroed(Raster.N * Raster.N);
 		for (const FRock& Rock : Data.Rocks)
 		{
@@ -257,7 +257,7 @@ bool FHOLMapColsTest::RunTest(const FString& Parameters)
 			bool bFree = true;
 			for (double Angle = 0.0; Angle < 2.0 * PI && bFree; Angle += PI / 12.0)
 			{
-				for (double Radius = 0.0; Radius <= FreeRadius && bFree; Radius += CellSize)
+				for (double Radius = 0.0; Radius <= FreeRadius && bFree; Radius += TestCellSize)
 				{
 					bFree = !Raster.IsBlocked(Col.At + FVector2D(FMath::Cos(Angle), FMath::Sin(Angle)) * Radius);
 				}

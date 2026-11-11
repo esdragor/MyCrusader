@@ -36,7 +36,7 @@ namespace UE::HeroesOfLiberty::Tests::StartingHero
 	}
 
 	/** Two bodies clear of each other: their radii and half a metre between them. */
-	constexpr double Clearance = 50.0;
+	constexpr double TestClearance = 50.0;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingHeroLocationTest, "HeroesOfLiberty.Match.StartingHero.Location",
@@ -71,14 +71,14 @@ bool FHOLStartingHeroLocationTest::RunTest(const FString& Parameters)
 				Hero.X >= Centre.X - HalfBody - 500.0 && FMath::Abs(Hero.Y - Centre.Y) <= HalfBody);
 			TestEqual(*FString::Printf(TEXT("%s: at the forum's height"), *Where), Hero.Z, Centre.Z);
 			TestTrue(*FString::Printf(TEXT("%s: clear of the King"), *Where),
-				FVector::Dist2D(Hero, King) >= HeroRadius + KingRadius + Clearance);
+				FVector::Dist2D(Hero, King) >= HeroRadius + KingRadius + TestClearance);
 			// Clear of the starting Peasants, for the rule's number and others around it.
 			for (const int32 Num : { NumPeasants, 1, 3, 8 })
 			{
 				for (const FVector& Peasant : FHOLStartRules::GetStartingPeasantLocations(Centre, HalfBody, Num))
 				{
 					TestTrue(*FString::Printf(TEXT("%s: clear of the %d starting Peasants"), *Where, Num),
-						FVector::Dist2D(Hero, Peasant) >= HeroRadius + PeasantRadius + Clearance);
+						FVector::Dist2D(Hero, Peasant) >= HeroRadius + PeasantRadius + TestClearance);
 				}
 			}
 			TestEqual(*FString::Printf(TEXT("%s: the same place each time"), *Where), FHOLStartRules::GetHeroLocation(Centre, HalfBody), Hero);
@@ -211,7 +211,7 @@ bool FHOLStartingHeroSpawnTest::RunTest(const FString& Parameters)
 				if (Other.UnitId != Hero.UnitId)
 				{
 					TestTrue(*FString::Printf(TEXT("The hero clear of the %s %u"), *Other.TypeName.ToString(), Other.UnitId),
-						FVector::Dist2D(Hero.Location, Other.Location) >= Hero.Radius + Other.Radius + Clearance);
+						FVector::Dist2D(Hero.Location, Other.Location) >= Hero.Radius + Other.Radius + TestClearance);
 				}
 			}
 		}
