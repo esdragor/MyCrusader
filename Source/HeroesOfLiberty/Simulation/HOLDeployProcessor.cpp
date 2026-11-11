@@ -7,6 +7,13 @@
 #include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLCombatRules.h"
 
+// Palier3InProgress.md G6 step b: which unit carries the fragment is not decided (Retours/Q-palier3-deploy-wiring.md). Until it is, the Mangonel
+// stands in for the engine behind this cvar: 0 (default) no unit of the game deploys, 1 every Mangonel is born packed with the fragment.
+static TAutoConsoleVariable<int32> CVarSiegeDeployable(
+	TEXT("hol.Siege.Deployable"), 0,
+	TEXT("Test stand-in for the deployable engine: 1 = every Mangonel is born packed with the deploy fragment (G6). Default 0."),
+	ECVF_Default);
+
 UHOLDeployProcessor::UHOLDeployProcessor()
 	: EntityQuery(*this)
 {
