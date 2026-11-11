@@ -156,7 +156,7 @@ if ($Phase -eq 'Report') {
 if ($Phase -eq 'Merge') {
   # L9-5 : des docs non commites de la copie principale ont bloque l'avance rapide deux fois ; du CODE modifie dans la copie principale ne doit jamais s'y trouver
   $mr = if ($MainRoot) { $MainRoot } else { $Main }
-  $mdocOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|Retours/.*)$'
+  $mdocOk = '^(Auto_Journey.*\.md|EtapeDefini\.md|Retours/.*|Placeholders[^/]*\.(txt|md)|[A-Za-z0-9_]+InProgress\.md|Docs/SessionEnd\.txt)$'   # = Specs de commit_docs.ps1
   $mst = @(git -C $mr -c core.quotepath=false status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' } | ForEach-Object { $_.Substring(3).Trim('"') })
   $mcode = @($mst | Where-Object { $_ -notmatch $mdocOk })
   $mdocs = @($mst | Where-Object { $_ -match $mdocOk })
