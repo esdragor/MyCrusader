@@ -11,7 +11,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **Contrôles et leçons** : `Auto_Journey_Checklist.md` (un contrôle par leçon), `Tools\AutoJourney\session_gate.ps1`, `Tools\AutoJourney\agent_rules.md`.
 - **État du jour** : `Auto_Journey_Jour.md` ; **file de travail** : `Auto_Journey_File.md`.
 - **Ce qui attend l'utilisateur** : `Auto_Journey_Retours.md` et `Retours\`.
-- **Archives** : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`, `Docs/Archive/Auto_Journey_Sections_historiques_2026-11-10.md`, `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`.
+- **Archives** : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`, `Docs/Archive/Auto_Journey_Sections_historiques_2026-11-10.md`, `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`, `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`.
 
 ## Règles de conduite (réécrites après le test d'1 h du 2026-10-30)
 
@@ -36,12 +36,12 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **« Enchaîne sans t'arrêter au premier point qui n'exige pas de code »** (un agent s'était arrêté après avoir constaté qu'un point était déjà bon).
 - Arrêt dur à une heure donnée, lue à l'horloge **PowerShell** (`Get-Date`). Plafond : 80 appels d'outils jugés sur `tool_uses`, arrêt à 45 vus par l'agent (L5-3, L9-2 ; voir « Plafond de tokens = plafond d'appels d'outils »), ancienne mesure du test 2 : ~250k tokens (au test : 50 à 160k tokens, 10 à 30 min par agent, jamais près de 300k). Un agent près de 200k n'est pas relancé : on en prend un neuf qui repart du journal. **Pas de minuteur par agent** : un seul veilleur (voir « Le veilleur »).
 - Rapport final de **10 lignes au plus** : fait / tests / commit / reste / **NON VÉRIFIÉ (obligatoire)** / anomalies du processus.
-- Chaque agent : met à jour `EtapeDefini.md` (relire juste avant, ne toucher que ses lignes : aucun conflit observé) , le journal de son chantier, `Auto_Journey_File.md` (sa ligne) et sa ligne du tableau des agents (`Auto_Journey_Jour.md`) à chaque avancée, `IN_USE.txt` à l'entrée et à la sortie (fichier non suivi par git), commite sur la branche de son worktree (anglais, sans `Co-Authored-By`, jamais de push).
+- Chaque agent : met à jour `EtapeDefini.md` (relire juste avant, ne toucher que ses lignes : aucun conflit observé) , le journal de son chantier, `Auto_Journey_File.md` (sa ligne seulement ; le tableau des agents de `Auto_Journey_Jour.md` est tenu par la session principale : `agent_rules.md` règle 4) à chaque avancée, `IN_USE.txt` à l'entrée et à la sortie (fichier non suivi par git), commite sur la branche de son worktree (anglais, sans `Co-Authored-By`, jamais de push).
 - Test rouge d'abord sur la vraie chaîne ; un changement, une compilation, un passage du test ; `Tools\build.ps1` (file d'attente), `-LiveCoding=0` ; `quick_check -Parts` des seules parties touchées. Un test rouge peut venir du **script de test** et non du jeu (deux cas au test : IA du match 1v1 qui regroupait les unités, héros qui dérive d'1 m) : regarder le dernier `Test mark` du journal de jeu avant de toucher au code.
 
 ### Les retours de l'utilisateur (voir `Auto_Journey_Retours.md`)
-- Tout ce qui attend l'utilisateur est dans **`Auto_Journey_Retours.md`** (1 essais, 2 questions, 3 commits et fusions). Les agents y écrivent, jamais ici.
-- **`Auto_Journey_Retours.md` est léger et sans historique** : dès qu'une réponse de l'utilisateur est reportée dans son chantier (`*InProgress.md`, GDD, file de travail), l'item est **supprimé** du fichier ; idem un essai fait et reporté. Avant de supprimer, vérifier que la réponse est bien écrite dans le chantier (sinon l'y écrire d'abord). Le compteur en tête est recalculé à chaque modification.
+- Tout ce qui attend l'utilisateur est dans **`Auto_Journey_Retours.md`** (1 essais, 2 questions, 3 commits et fusions). Les agents n'y écrivent pas : chacun crée ses fichiers `Retours\Q-<nom>.md` / `Retours\E-<nom>.md` (`agent_rules.md` règles 4, 17, 18), la session principale tient `Auto_Journey_Retours.md`.
+- **`Auto_Journey_Retours.md` est léger et sans historique** : dès qu'une réponse de l'utilisateur est reportée dans son chantier (`*InProgress.md`, GDD, file de travail), l'item est **retiré** du fichier et **archivé dans `Docs\Archive\`** (jamais supprimé : consigne du 2026-11-10) ; idem un essai fait et reporté. Avant de supprimer, vérifier que la réponse est bien écrite dans le chantier (sinon l'y écrire d'abord). Le compteur en tête est recalculé à chaque modification.
 - **Une question est une vraie question pour lui** : contexte en 2 lignes simples, options A/B/C avec leurs conséquences visibles, recommandation, fichier. Jamais une remarque pour soi-même.
 - **Les questions sont posées (décidé le 2026-11-01) : jamais l'agent qui applique la recommandation à la place de l'utilisateur.** Quand c'est rapide (un réglage, une valeur, une forme visible), l'agent construit en plus **un scénario de comparaison `<nom>_compare`** où toutes les options sont à l'écran ou sélectionnables d'une touche (`waitkey` : Entrée passe à l'option suivante, une note dit laquelle est affichée), et la question porte la commande `play.ps1`. L'utilisateur compare puis répond. Ce scénario passe le pré-vol comme un essai (3 min, un PNG par option).
 - **Un essai est listé seulement s'il est testable** : scénario `Tools/Scenarios/<nom>.txt` + `<nom>.look`, **`preflight.ps1` PASS**, statut `VU À L'ÉCRAN` (voir « Qualité des essais »), commande `play.ps1` en chemin absolu, gestes précis, durée annoncée (≤ 3 min). Pas de scénario = on le crée d'abord (Tab et Hommes d'armes en surnombre en manquaient).
@@ -65,13 +65,12 @@ Bilan : sur 16 essais, 5 propres ; les 11 autres cassés par le scénario ou le 
 
 ### Pièges techniques rencontrés
 - **Test 2** : `quick_check` **ne compile pas** (faux vert 530/530 sans les nouveaux tests : `Tools\build.ps1` d'abord) ; les chaînes PowerShell entre guillemets doubles mangent les backticks (relire les lignes écrites par script) ; `IN_USE.txt` écrit **sans accents** (mélange UTF-8/ANSI) ; un scénario échoué laisse l'éditeur ouvert et verrouille `-abslog` (le tuer) ; `make_maps.ps1 -Sizes` ne marche qu'en appel direct `& ...` ; un `git commit`/`merge` qui affiche un avertissement LF/CRLF peut rendre un code non nul alors qu'il a réussi (vérifier `git log -1`) ; les heredocs Python imbriqués dans Bash échouent (Edit/Write ou fichier script). Certaines lignes de la file étaient périmées : voir « Plan de lancement ».
-- L'horloge de Git Bash retarde de 5 minutes sur PowerShell. Les chemins `\` sont mangés dans Bash (12 minutes perdues) : **PowerShell pour tout chemin Windows**.
+- L'horloge de Git Bash diverge de 5 à 40 minutes de PowerShell (`agent_rules.md` règle 3). Les chemins `\` sont mangés dans Bash (12 minutes perdues) : **PowerShell pour tout chemin Windows**.
 - Ne pas mélanger `victory` et `build:*` dans un même passage de `quick_check` (faux échec en cascade). Le message « game launch ended by itself » cache souvent une étape expirée plus haut.
 - Le premier build après modification d'un header prend ~200 s (autres éditeurs ouverts), les suivants 20 s.
 - Mesures au repos (S1-S7) et paquet : machine calme, créneau à part, **seuls dans leur créneau** (le paquet bloque les autres sessions).
 - La fusion dans `main` se fait selon les accords donnés au lancement : sans accord explicite, pas de fusion ni de push ; avec l'accord, dès que le `quick_check` des parties touchées est vert. `git checkout -- HeroesOfLiberty.uproject` si la fusion refuse.
 - Rejouer `unit_stats_attack(_enemy)` sur un binaire d'après G1 (PNG ouverts) avant de les donner à l'utilisateur ; `E-audio_panel` et `E-disconnect_review` se donnent après les fusions.
-- Plafond d'appels : 45 vus par l'agent respecté à ±4 sauf 3 agents (115, 81, 55) ; l'énoncé d'un agent ne demande JAMAIS `play.ps1` fenêtre ; un agent de fusion « sans C++ » vérifie la date du binaire ; les PNG des pré-vols de fusion sont ouverts par l'agent d'intégration avant de donner un essai.
 
 ## Pipeline en bref
 
@@ -111,13 +110,13 @@ Worktree <chemin absolu> (branche <b>, <commits>). Lis <chemin>\CLAUDE.md, la fi
 la ligne <n> de <chemin>\Auto_Journey_File.md et les `Reponse:` utiles de <chemin>\Auto_Journey_Retours.md.
 TÂCHE : <la ligne de la file>. Test rouge d'abord sur la vraie chaîne ; Tools\build.ps1 (-LiveCoding=0) ; quick_check -Parts <parties touchées>.
 ENCHAÎNE sans t'arrêter au premier point qui n'exige pas de code ; prends ensuite la ligne suivante de la file.
-Ne tranche aucun design : pose-le dans Auto_Journey_Retours.md section 2 en VRAIE question (contexte 2 lignes, options A/B/C
+Ne tranche aucun design : pose-le dans C:\Users\baudo\Documents\MyCrusader\Retours\Q-<nom>.md titré [À RÉPONDRE] en VRAIE question (contexte 2 lignes, options A/B/C
 avec leurs conséquences en jeu, recommandation). Si une question bloque la tâche et que les deux options sont peu coûteuses,
 prépare les deux derrière un réglage (cvar/option) et passe à la suite.
-Un essai n'est listé dans Auto_Journey_Retours.md section 1 que si Tools\Scenarios\preflight.ps1 <nom> passe (scénario + <nom>.look, un PNG ouvert et vu par point, <= 3 min, waitkey pour toute attente) : sinon écris-le « LOGIQUE SEULEMENT » et ne le compte pas prêt. Question de réglage rapide : construis aussi <nom>_compare (toutes les options à l'écran, Entrée = option suivante) au lieu de choisir à sa place.
+Un essai n'est listé (C:\Users\baudo\Documents\MyCrusader\Retours\E-<nom>.md titré [À ESSAYER]) que si Tools\Scenarios\preflight.ps1 <nom> passe (scénario + <nom>.look, un PNG ouvert et vu par point, <= 3 min, waitkey pour toute attente) : sinon écris-le « LOGIQUE SEULEMENT » et ne le compte pas prêt. Question de réglage rapide : construis aussi <nom>_compare (toutes les options à l'écran, Entrée = option suivante) au lieu de choisir à sa place.
 Commits verts sur ta branche (anglais, sans Co-Authored-By, jamais de push). Fusion dans main : interdite (l'agent de fusion s'en charge ; dis dans ton rapport que la branche est prête). Au plus 2 questions, regroupées.
-Tiens à jour EtapeDefini.md (relis avant, tes lignes seulement), ton *InProgress.md, Auto_Journey_File.md (ta ligne), ta ligne du tableau
-des agents de Auto_Journey_Jour.md, IN_USE.txt à l'entrée et à la sortie. PowerShell pour tout chemin Windows.
+Tiens à jour EtapeDefini.md (relis avant, tes lignes seulement), ton *InProgress.md, Auto_Journey_File.md (ta ligne seulement),
+IN_USE.txt à l'entrée et à la sortie. PowerShell pour tout chemin Windows.
 ARRÊT DUR à <HH:MM> (Get-Date PowerShell) ou 45 APPELS VUS PAR TOI (L9-2 ; remplace les 60 déclarés) (un agent ne voit pas ses tokens et sous-compte ses appels de 10 à 30 % : 77 déclarés = 108 réels ; la session principale juge le seuil de 80 sur `tool_uses` de la notification de fin, au-delà de 100 la tâche suivante part sur un agent neuf). À 45 : commit, journal à jour pour un agent neuf (fait / prochaine étape / test rouge en cours), rapport. Dernier geste : `Tools\AutoJourney\stray_processes.ps1 -Root <worktree> -Stop` (champ PROCESSUS_DETACHES). Un essai porte les statuts `GESTE: réel / interne` et `SON: entendu / non entendu` (gabarit `Tools\AutoJourney\E_template.md`) ; `session_gate.ps1 -Phase Close -Exclude <worktree>` écarte un worktree hors périmètre. RAPPORT de 13 champs (liste dans `agent_rules.md`, dont APPELS_DECLARES et PROCESSUS_DETACHES), résumé en 10 lignes MAX, dans cet ordre :
 fait / tests / commit / reste / NON VÉRIFIÉ (obligatoire : ce qui n'a pas de test ni de preuve) / anomalies du processus / PROCESSUS_DETACHES.
 ```
@@ -158,7 +157,7 @@ Lancé seulement par « commence ton Auto_Journey interactif » (ou à la demand
 - **Limites inchangées** : au plus 2 questions par chantier ; essais de 3 min ; ~6 essais par jour ; pas de fusion ni de push sans accord explicite.
 - **Mesures du test** (à écrire au bilan) : délai entre `[À RÉPONDRE]`/`[À ESSAYER]` et la réponse ; délai entre la réponse et la relance de l'agent ; nombre de boucles fermées par heure ; nombre de fois où l'utilisateur a été dérangé ; conflits d'édition sur Retours.
 
-Leçons des séances du 2026-11-01, 2026-11-03 et 2026-11-04 : voir `Auto_Journey_Checklist.md` (archive : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`). Celles du 2026-11-05 restent ci-dessous.
+Leçons des séances du 2026-11-01, 2026-11-03 et 2026-11-04 : voir `Auto_Journey_Checklist.md` (archive : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`). Celles du 2026-11-05 sont aussi dans `Auto_Journey_Checklist.md` (texte intégral archivé le 2026-11-11 : `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`).
 
 ## Au démarrage : « commence ton Auto_Journey »
 
@@ -177,30 +176,3 @@ L'utilisateur lance la journée (ou un test d'une heure) par cette seule phrase.
 
 ## Règle de durée (2026-11-05 après-midi, demandée par l'utilisateur, « le plus important »)
 **Mieux vaut une séance qui se termine 15 min plus tard que 15 min plus tôt, sauf si le prompt de lancement dit le contraire** (ex. « arrêt dur strict »). Elle remplace la lecture stricte de « l'arrêt dur est un contrat » (leçon du 2026-11-04, 1 h 45 de dépassement) : le dépassement toléré est **de 15 min au plus** et jamais décidé après coup sans le dire ; au-delà, on demande. Conséquences : (1) l'arrêt dur des agents = l'heure de fin annoncée (plus « fin − 15 min ») ; (2) `session_gate.ps1 -Phase Launch` refuse seulement s'il reste moins de 5 min (avant : 20, la séance du 2026-11-05 est restée vide 30 min) ; (3) l'alarme de clôture reste à « fin − 15 min » pour préparer la fusion et le bilan, pas pour arrêter les agents ; (4) un agent qui rend la main tôt est relancé tant qu'il reste du temps, avec une tâche `sans C++` de la file si les 3 places C++ sont prises.
-
-## Leçons de la séance interactive du 2026-11-05 (10:30 -> close à 11:20 sur demande, fusion 11:50 ; approuvées par l'utilisateur, toutes OBLIGATOIRES)
-
-**Constat de l'utilisateur : des leçons reviennent de séance en séance sans être appliquées (plafond de tokens : écrit le 2026-11-01, 11-03 et 11-04, dépassé à 250-336k le 11-05 par 4 agents).** Cause : une règle en prose relue au démarrage ne se déclenche pas toute seule. **Règle de méthode : une leçon n'est « intégrée » que si elle devient un contrôle mécanique (un nombre qu'un agent peut compter, une commande à lancer, une ligne à cocher), jamais une phrase.** Les leçons ci-dessous sont écrites ainsi ; à chaque fin de séance le bilan liste, pour chaque leçon, « appliquée / non appliquée » avec la preuve (nombre d'appels, heure lue).
-
-### Check-list avant CHAQUE lancement ou envoi (la session principale la déroule, une ligne par lancement dans `Auto_Journey_Jour.md`)
-1. `Get-Date` PowerShell lu juste avant ; heure d'arrêt dur de l'agent = calculée depuis cette lecture ; **aucun lancement s'il reste moins de 5 minutes avant la fin** (règle de durée du 2026-11-05 PM ; l'ancien seuil de 20 min laissait la séance vide) (2026-11-05 : agent lancé à 13:19 avec un arrêt à 13:15).
-2. **Tableau agent -> identifiant -> worktree -> branche -> tâche** écrit dans `Auto_Journey_Jour.md` AU LANCEMENT ; tout `SendMessage` relit ce tableau (2026-11-05 : 3 consignes envoyées au mauvais agent).
-3. Nombre d'agents C++ en cours <= 3 (`Docs\BuildQueue.state\` + tableau).
-4. Pas d'agent « noop » ni de test d'outil par un agent : un outil se teste avec la commande elle-même.
-
-### Plafond de tokens = plafond d'appels d'outils
-- Dans l'énoncé de chaque agent : le modèle d'énoncé arrête à 45 appels vus par l'agent ; le seuil de 80 se juge sur `tool_uses`. Mesure du 2026-11-05 : ~2k tokens par appel (96 appels = 242k, 133 = 284k, 150 = 250k, 185 = 336k).
-- À la réception du rapport, la session principale **lit `tool_uses` de la notification** : au-delà de 100, l'agent est jugé hors règle, noté dans le bilan, et la tâche suivante du même worktree part sur un agent NEUF (jamais un `SendMessage` qui reprend l'agent).
-- Un agent qui revient « waiting on its own background work » n'est pas relancé : il revient seul à la fin du build (2026-11-05 : 6 notifications intermédiaires, aucun doublon lancé).
-
-### Une correction n'est « faite » que si l'effet est mesuré par un geste réel
-- **Un test qui assertit un prédicat ou une ligne de journal ne prouve rien** (2026-11-05 : `IsPassiveAdversary` testé, Q+clic sur neutre qui ne fait rien en jeu ; l'utilisateur l'a trouvé). Le test rouge d'un REGLAGE/BUG assertit l'**effet** (PV de la cible qui baissent, ressource reçue, bouton actif) sur la vraie chaîne, déclenché par la même entrée que l'utilisateur (touche puis clic).
-- **Tout essai d'un REGLAGE/BUG passe par l'intégrateur** (autre agent que l'auteur) sur le build de `main` fusionné, geste réel + PNG avant/après, AVANT que la commande `play.ps1` soit donnée à l'utilisateur. Sans cela l'essai est `LOGIQUE SEULEMENT`. La commande donnée à l'utilisateur pointe le worktree qui porte le build fusionné.
-
-### Questions et réponses
-- Dès le premier envoi : **un tableau unique** (question, option recommandée, ce que ça change), et le raccourci « `recommandées partout` » accepté.
-- Demander **dès le lancement** l'accord pour commiter les dossiers de fonctionnalités non suivis de la copie principale (ils bloquent la fusion).
-
-### Cartes et mesures
-- La régénération des 7 cartes x 5 tailles est **une tâche à part** (éditeur seul, build vide, mesure de perf), jamais mêlée à un réglage de budget ; un changement de budget de cartes ne se fusionne qu'après régénération complète, build et `tests,sizes`.
-- Un `-Parts net` qui échoue sans changement de code (2026-11-05) est relancé deux fois avant d'être cru ; vérifier qu'aucun `UnrealEditor` d'un autre projet (AS_3 / ProjectShiva) ne tourne.
