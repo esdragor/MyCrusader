@@ -23,7 +23,7 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 	uint8 Phase = 0;
 	/** How long a change of state has lasted (ms). */
 	int32 ElapsedMs = 0;
-	/** The order waiting to be read: 0 none, 1 attack, 2 move (HOLDeploy::EOrder + 1). */
+	/** The order waiting to be read: 0 none, 1 attack, 2 move (HOLDeploy::EOrder + 1), 3 the Mount / Dismount button (HOLDeploy::Toggle). */
 	uint8 PendingOrder = 0;
 	/** The distance (cm) to the target of a pending attack. */
 	int32 PendingDistanceCm = 0;
@@ -33,6 +33,12 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 	/** Counterweight (D715): the percentage by which the two delays are shortened. */
 	int32 CounterweightPercent = 0;
 };
+
+/**
+ * Whether the Mangonel stands in for the deployable engine (cvar hol.Siege.Deployable, default 0): the unit subsystem gives every Mangonel
+ * born while it is 1 a FHOLDeployFragment (Retours/Q-palier3-deploy-wiring.md, Q1 = A, the default coded).
+ */
+HEROESOFLIBERTY_API bool HOLDeployStandInEnabled();
 
 /**
  * Carries the deployment of every unit with a FHOLDeployFragment through the fixed step: the order left by the command side is decided

@@ -55,7 +55,7 @@ MARKER = re.compile(r"(?i)(to be tuned|to tune|tuned in test|indicative|à régl
 SCAN_DIRS = ["Source", "Script", "Tools/Data"]
 SCAN_EXT = (".h", ".cpp", ".as", ".py", ".csv")
 SKIP_DIRS = {"Tests", "Intermediate", "Saved", "__pycache__"}
-SKIP_NAMES = {"ValueSheet.csv", "make_value_sheet.py", "value_sheet_test.py"}
+SKIP_NAMES = {"ValueSheet.csv", "make_value_sheet.py", "value_sheet_test.py", "value_consumers.py", "value_consumers_test.py"}
 GDD_MARKER = re.compile(r"(?i)à régler en test")
 
 

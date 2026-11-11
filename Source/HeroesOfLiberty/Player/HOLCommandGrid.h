@@ -31,6 +31,8 @@ enum class EHOLGridCommand : uint8
 	 * ground plants it, 16 m at most from the hero).
 	 */
 	HeroAbility,
+	/** L4: orders the necrotic rage of the selection's Damned Warriors (Context.bRageUnit): the cell GetRageCell. */
+	NecroticRage,
 	/** Researches a technology at the player's selected building (T4, GDD 11): the technology row on W X C V, through the building's queue. */
 	Research,
 	/**
@@ -38,6 +40,8 @@ enum class EHOLGridCommand : uint8
 	 * buy on A Z E (food, wood, stone), sell on Q S D (HOLCommandGrid::GetTradeCell).
 	 */
 	Trade,
+	/** Mount / Dismount (Palier3InProgress.md G6 d): the selected engine that deploys is set up (bPack false) or packed up (bPack true). */
+	Deploy,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -54,6 +58,8 @@ struct FHOLGridCommand
 	/** Trade: the good (food, wood or stone) and the side (bBuy: bought with gold, else sold for gold). */
 	EHOLResource Resource = EHOLResource::Food;
 	bool bBuy = false;
+	/** Deploy: the press packs the engine up (it is deploying or deployed), else it sets it up. */
+	bool bPack = false;
 
 	bool IsNone() const { return Command == EHOLGridCommand::None; }
 	bool operator==(const FHOLGridCommand& Other) const = default;
@@ -128,12 +134,17 @@ struct FHOLGridContext
 	 * others: the server then gives the King a plain move (HOLCombat::GetSearchRadius).
 	 */
 	bool bOnlyKings = false;
+	/** G6 d: among the selected units, one deploys (HOLUnitView::DeployPhase >= 0); bDeployedAny: one is deploying or deployed (the button then packs up). */
+	bool bDeployables = false;
+	bool bDeployedAny = false;
 	/**
 	 * The player's own hero is among the units commanded (J8c.4): his abilities on the grid on the right (HeroAbilityCell),
 	 * read from his level and the seconds left of each ability's cool-down (indexed by EHOLHeroAbility; the owner's private
 	 * sheet, J8-Q5).
 	 */
 	bool bHero = false;
+	/** L4: a Damned Warrior is among the units commanded: the necrotic rage on the grid (GetRageCell). */
+	bool bRageUnit = false;
 	int32 HeroLevel = 0;
 	int32 HeroCooldownSeconds[3] = {};
 	/** The types builders build, their cell and their age (BuildGridSlot, Age of the building type table). */
@@ -269,12 +280,16 @@ namespace HOLCommandGrid
 	inline constexpr int32 AttackMoveCell = 4;
 	inline constexpr int32 StopCell = 5;
 	inline constexpr int32 HoldCell = 11;
+	/** G6 d: Mount / Dismount, D (the cell is PROPOSED, Retours/Q-palier3-deploy-button.md: the orders' panel keeps Q S V). */
+	inline constexpr int32 DeployCell = 6;
 
 	/**
 	 * The hero's abilities on the grid on the right (J8c-Q4, the top row: the units' orders are on the left): A Serrez les
 	 * rangs, Z Bannière de l'Aube. INDEX_NONE for the passive aura (its box is the hero's block's alone).
 	 */
 	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
+	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
+	HEROESOFLIBERTY_API int32 GetRageCell();
 
 	/**
 	 * The cell of the Market's trade of Resource (food, wood, stone): the sales on the top row, A Z E, the purchases below, Q S D

@@ -32,7 +32,9 @@
 #include "NavigationData.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLAvoidanceHoldFragments.h"
+#include "Simulation/HOLDeployProcessor.h"
 #include "Simulation/HOLAvoidRules.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLBuildProcessor.h"
@@ -1489,6 +1491,28 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 			{
 				ChainHeadOfUnit.Add(UnitId, {Step, StepCount});
 			}
+		}
+		// Palier3InProgress.md G6 d: the Mount / Dismount button leaves its note on the deploy fragment of the units that carry one (the others
+		// ignore it); UHOLDeployProcessor decides it (HOLDeploy::Toggle) in this step. Pressed on an engine that is deploying or deployed, it
+		// also drops the engine's ordered target, so that the target does not deploy it again as soon as it is packed.
+		if (Order.Kind == EHOLOrderKind::ToggleDeploy)
+		{
+			for (const FMassEntityHandle Entity : Entities)
+			{
+				FHOLDeployFragment* Deploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Entity);
+				if (!Deploy)
+				{
+					continue;
+				}
+				Deploy->PendingOrder = 3;
+				const uint8 Phase = Deploy->Phase;
+				if (FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
+					Combat && (Phase == static_cast<uint8>(HOLDeploy::EPhase::Deploying) || Phase == static_cast<uint8>(HOLDeploy::EPhase::Deployed)))
+				{
+					Combat->Disengage();
+				}
+			}
+			continue;
 		}
 		// The combat orders without a walk of their own (J7b.3): the units stand where they are, their task and fight
 		// forgotten; an attack's walk to its target is the combat's approach (UHOLCombatProcessor, the same step).

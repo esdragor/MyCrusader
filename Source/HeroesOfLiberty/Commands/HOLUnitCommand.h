@@ -39,6 +39,11 @@ enum class EHOLOrderKind : uint8
 	 * of work): as Gather, the builders' Shift order when it starts (UHOLCommandSubsystem::IssueBuildOrder, bQueue).
 	 */
 	Build,
+	/**
+	 * The Mount / Dismount button (Palier3InProgress.md G6 d): the deploy fragment of each unit that carries one gets a toggle to read
+	 * (UHOLDeployProcessor, HOLDeploy::Toggle). No walk, no combat order: units without the fragment ignore it.
+	 */
+	ToggleDeploy,
 };
 
 /**

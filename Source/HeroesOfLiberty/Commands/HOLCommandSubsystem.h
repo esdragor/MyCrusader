@@ -27,6 +27,12 @@ struct FHOLBlockedFootprint
 	FBox Area = FBox(ForceInit);
 };
 
+/** L4: a player's necrotic rage order (UHOLCommandSubsystem::IssueRageOrder): the units he names, the server keeps his own Damned Warriors. */
+struct FHOLRageOrder
+{
+	int32 PlayerIndex = INDEX_NONE;
+	TArray<uint32> UnitIds;
+};
 /** J8c.3: a player's hero ability asked (UHOLCommandSubsystem::IssueHeroAbilityOrder). */
 struct FHOLHeroAbilityOrder
 {
@@ -220,6 +226,10 @@ public:
 	/** Takes the hero ability orders waiting (UHOLHeroSubsystem, at the end of each step), in the order given. */
 	void ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>& OutOrders);
 
+	/** L4: PlayerIndex's player orders the necrotic rage of UnitIds (ServerCastRage, the grid's button); taken by the combat processor at its next step. */
+	void IssueRageOrder(int32 PlayerIndex, const TArray<uint32>& UnitIds);
+	void ConsumeRageOrders(TArray<FHOLRageOrder>& OutOrders);
+
 	/**
 	 * T3: PlayerIndex's player takes the talent of Family in the next row of its hero (ServerHeroTalent), applied at the end of
 	 * the next step by the hero subsystem, which checks it (HOLHeroTalent::CanPick). Refused here as the ability orders.
@@ -274,6 +284,7 @@ private:
 	TArray<int32> PendingHeroReturnOrders;
 	/** J8c.3: the hero abilities asked, in the order given. */
 	TArray<FHOLHeroAbilityOrder> PendingHeroAbilityOrders;
+	TArray<FHOLRageOrder> PendingRageOrders;
 	/** T3: the talent picks asked, in the order given. */
 	TArray<FHOLHeroTalentOrder> PendingHeroTalentOrders;
 	/** D4: the duel commands asked, in the order given. */

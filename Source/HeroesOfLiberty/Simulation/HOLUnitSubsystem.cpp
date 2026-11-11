@@ -35,6 +35,7 @@
 #include "Net/HOLNetUnitDisplay.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Simulation/HOLBuildProcessor.h"
+#include "Simulation/HOLDeployProcessor.h"
 #include "Simulation/HOLLightUnitAvoidanceTrait.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLUnitView.h"
@@ -797,6 +798,13 @@ void UHOLUnitSubsystem::CreateUnitEntities(const FHOLUnitSpawnRequest& Request, 
 		{
 			HeroUnitBySlot.Add(Request.OwnerPlayer, UnitId);
 		}
+		// Palier3InProgress.md G6 b: the Mangonel stands in for the deployable engine behind hol.Siege.Deployable (Q-palier3-deploy-wiring.md Q1 = A):
+		// born packed (phase 0) with the deploy fragment. Last in the body: adding a fragment moves the entity to another archetype, so the
+		// references taken above would dangle.
+		if (Request.TypeName == FName(TEXT("Mangonel")) && HOLDeployStandInEnabled())
+		{
+			EntityManager.AddFragmentToEntity(Entity, FHOLDeployFragment::StaticStruct());
+		}
 	}
 
 	// Born with somewhere to go (a rally point): one order for the units of the request, applied at this step; a rally
@@ -1061,7 +1069,7 @@ int32 UHOLUnitSubsystem::FlushDestructions()
 	return NumDestroyed;
 }
 
-bool UHOLUnitSubsystem::CastRage(const uint32 UnitId)
+bool UHOLUnitSubsystem::CastRage(const uint32 UnitId, const int32 RequiredOwner)
 {
 	const FHOLUnitRecord* Record = Units.Find(UnitId);
 	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
@@ -1073,7 +1081,7 @@ bool UHOLUnitSubsystem::CastRage(const uint32 UnitId)
 	FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
 	const FHOLUnitStateFragment* State = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Record->Entity);
 	FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Record->Entity);
-	if (!State || !Combat || Combat->DeathStep >= 0
+	if (!State || !Combat || Combat->DeathStep >= 0 || (RequiredOwner != INDEX_NONE && State->OwnerPlayer != RequiredOwner)
 		|| !HOLUnitAbility::CanCastRage(State->CurrentHealth > 0.f, State->CurrentHealth, Combat->RageCooldownMs))
 	{
 		return false;
@@ -1178,6 +1186,10 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.LoadAmount = Gather->Load.Amount;
 		}
 		OutView.bLoadAmountKnown = true;
+		if (const FHOLDeployFragment* Deploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Entity))
+		{
+			OutView.DeployPhase = Deploy->Phase;
+		}
 		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity))
 		{
 			OutView.Radius = Constants->Radius;

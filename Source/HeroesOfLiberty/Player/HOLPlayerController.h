@@ -412,6 +412,8 @@ public:
 	void RequestAttackMove(TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Asks the server to stop units (J7b.3), or to stop them holding their position (bHold). */
 	void RequestStopUnits(TConstArrayView<uint32> UnitIds, bool bHold);
+	/** Asks the server for the Mount / Dismount button on units (Palier3InProgress.md G6 d): the engines among them toggle. */
+	void RequestToggleDeploy(TConstArrayView<uint32> UnitIds);
 	/**
 	 * Attack-move mode (J7b.3, the grid's A): the next left click on the ground sends the selected soldiers there (Shift:
 	 * queued); a right click or Escape leaves it.
@@ -511,6 +513,8 @@ public:
 	 */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Hero")
 	void RequestHeroAbility(EHOLHeroAbility Ability, FVector Location);
+	/** L4: the grid's button of the necrotic rage: the units named, the server keeps the player's own Damned Warriors (ServerCastRage). */
+	void RequestCastRage(TConstArrayView<uint32> UnitIds);
 
 	/**
 	 * T3: the player takes the talent of Family (0 Guardian, 1 Captain, 2 Champion for the Dawn Order) in the next row of its hero.
@@ -723,6 +727,8 @@ private:
 	void ServerAttackMove(const TArray<uint32>& UnitIds, FVector_NetQuantize Target, bool bQueue);
 	UFUNCTION(Server, Reliable)
 	void ServerStopUnits(const TArray<uint32>& UnitIds, bool bHold);
+	UFUNCTION(Server, Reliable)
+	void ServerToggleDeploy(const TArray<uint32>& UnitIds);
 
 	/**
 	 * A right-button drag (J7a.4): the units and the two ends of the front line on the ground (~4 bytes a unit and two
@@ -816,6 +822,10 @@ private:
 	/** J8c.3: the player's own slot's hero ability, queued (UHOLCommandSubsystem::IssueHeroAbilityOrder); the server checks the rest. */
 	UFUNCTION(Server, Reliable)
 	void ServerHeroAbility(EHOLHeroAbility Ability, FVector_NetQuantize Location);
+
+	/** L4: the player's necrotic rage order (UHOLCommandSubsystem::IssueRageOrder); the simulation checks the owner, the type, the health and the cool-down. */
+	UFUNCTION(Server, Reliable)
+	void ServerCastRage(const TArray<uint32>& UnitIds);
 
 	/** T3: the player's own slot's talent pick, queued (UHOLCommandSubsystem::IssueHeroTalentOrder); the server checks the rest. */
 	UFUNCTION(Server, Reliable)

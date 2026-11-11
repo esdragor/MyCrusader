@@ -5,6 +5,7 @@ panel hide
 frames 5
 hol.Camera.Focus -16500 0
 frames 40
+notereset TAILLE 1/5 : Foret profonde Petite (2 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 capture fstretch1_small_base
 hol.Camera.Focus 0 0
 frames 40
@@ -15,7 +16,6 @@ capture fstretch1_small_forest
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note TAILLE 1/5 : Foret profonde Petite (2 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 waitkey Entree : taille suivante (Foret profonde Moyenne)
 open /Game/Maps/Forest_Medium
 waitmap Forest_Medium
@@ -28,6 +28,7 @@ panel hide
 frames 5
 hol.Camera.Focus -23100 0
 frames 40
+notereset TAILLE 2/5 : Foret profonde Moyenne (4 joueurs (peinte par toi)) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 capture fstretch2_medium_base
 hol.Camera.Focus 0 0
 frames 40
@@ -38,7 +39,6 @@ capture fstretch2_medium_forest
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note TAILLE 2/5 : Foret profonde Moyenne (4 joueurs (peinte par toi)) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 waitkey Entree : taille suivante (Foret profonde Normale)
 open /Game/Maps/Forest_Normal
 waitmap Forest_Normal
@@ -51,6 +51,7 @@ panel hide
 frames 5
 hol.Camera.Focus -27450 0
 frames 40
+notereset TAILLE 3/5 : Foret profonde Normale (6 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 capture fstretch3_normal_base
 hol.Camera.Focus 0 0
 frames 40
@@ -61,7 +62,6 @@ capture fstretch3_normal_forest
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note TAILLE 3/5 : Foret profonde Normale (6 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 waitkey Entree : taille suivante (Foret profonde Grande)
 open /Game/Maps/Forest_Large
 waitmap Forest_Large
@@ -74,6 +74,7 @@ panel hide
 frames 5
 hol.Camera.Focus -30300 0
 frames 40
+notereset TAILLE 4/5 : Foret profonde Grande (8 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 capture fstretch4_large_base
 hol.Camera.Focus 0 0
 frames 40
@@ -84,7 +85,6 @@ capture fstretch4_large_forest
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note TAILLE 4/5 : Foret profonde Grande (8 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 waitkey Entree : taille suivante (Foret profonde Immense)
 open /Game/Maps/Forest_Huge
 waitmap Forest_Huge
@@ -97,6 +97,7 @@ panel hide
 frames 5
 hol.Camera.Focus -33000 0
 frames 40
+notereset TAILLE 5/5 : Foret profonde Immense (8 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.
 capture fstretch5_huge_base
 hol.Camera.Focus 0 0
 frames 40
@@ -107,4 +108,3 @@ capture fstretch5_huge_forest
 hol.Camera.Focus 0 0
 hol.Camera.TestCursor off
 panel show
-note TAILLE 5/5 : Foret profonde Immense (8 joueurs) : forets de la Moyenne etirees a cette taille. Camera libre ; Entree = taille suivante.

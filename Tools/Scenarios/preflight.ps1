@@ -39,7 +39,7 @@ function Report([string]$Level, [string]$Text) {
 $Lines = Get-Content $Txt | Where-Object { $_.Trim() -and -not $_.Trim().StartsWith("#") }
 $Waits = ($Lines | Where-Object { $_ -match '^wait\s+([\d\.]+)' } | ForEach-Object { [double]$Matches[1] } | Measure-Object -Sum).Sum
 $Keys = @($Lines | Where-Object { $_ -match '^waitkey' }).Count
-$Notes = @($Lines | Where-Object { $_ -match '^note\s' }).Count
+$Notes = @($Lines | Where-Object { $_ -match '^note(reset)?\s' }).Count
 $Captures = @($Lines | Where-Object { $_ -match '^capture\s+(\S+)' } | ForEach-Object { ($_ -split '\s+')[1] })
 # A capture sequence (`captureseq <Name> <Count> <Step> [Command]`, rule 12a) takes <Name>_0 ... <Name>_<Count-1>; it spans (Count-1) * Step s.
 foreach ($Seq in @($Lines | Where-Object { $_ -match '^captureseq\s+(\S+)\s+(\d+)\s+([\d\.]+)' })) {
@@ -49,7 +49,7 @@ foreach ($Seq in @($Lines | Where-Object { $_ -match '^captureseq\s+(\S+)\s+(\d+
 }
 if ($Waits -gt $MaxSeconds) { Report "FAIL" "static: the scenario waits $Waits s of game time (> $MaxSeconds s)" }
 else { Report "OK" "static: $Waits s of explicit waits, $Keys waitkey step(s) (Enter = next stage, the user decides when)" }
-if ($Notes -lt 1) { Report "FAIL" "no `note` line: the user is not told what to try" } else { Report "OK" "$Notes note(s) for the panel" }
+if ($Notes -lt 1) { Report "FAIL" "no note/notereset line: the user is not told what to try" } else { Report "OK" "$Notes note(s) for the panel" }
 
 # 2b (static, E-fog_trees 2026-11-08): a ground click far (> 10 frames) from the camera placement. check.ps1 runs with the edge scrolling off and no cursor,
 # so it never sees what the user's game (play.ps1: edge scrolling on, a cursor, keys) does: the camera drifts, the point leaves the screen, the click never comes,

@@ -24,6 +24,8 @@
 #include "MassNavigationFragments.h"
 #include "Presentation/HOLArrowSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
+#include "Siege/HOLDeployRules.h"
+#include "Simulation/HOLDeployProcessor.h"
 #include "Simulation/HOLCampSubsystem.h"
 #include "Simulation/HOLDuelSubsystem.h"
 #include "Simulation/HOLHeroAbilityRules.h"
@@ -33,6 +35,8 @@
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitAbilityRules.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Siege/HOLSiegeRules.h"
@@ -257,6 +261,7 @@ void UHOLCombatProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FMassMoveTargetFragment>(EMassFragmentAccess::ReadWrite);
 	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite);
+	EntityQuery.AddRequirement<FHOLDeployFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
 }
@@ -875,6 +880,25 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		}
 	}
 	DawnStepOwners = 0;
+
+		// L4: the players necrotic rage orders (the grid button, ServerCastRage), taken here, at the start of the step, in the order given;
+		// only the own Damned Warriors of the player are cast (CastRage checks the owner, the cool-down and the health).
+		if (UHOLCommandSubsystem* RageCommands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr)
+		{
+			TArray<FHOLRageOrder> RageOrders;
+			RageCommands->ConsumeRageOrders(RageOrders);
+			UHOLUnitSubsystem* RageUnits = RageOrders.IsEmpty() ? nullptr : World->GetSubsystem<UHOLUnitSubsystem>();
+			for (const FHOLRageOrder& RageOrder : RageOrders)
+			{
+				for (const uint32 UnitId : RageOrder.UnitIds)
+				{
+					if (RageUnits)
+					{
+						RageUnits->CastRage(UnitId, RageOrder.PlayerIndex);
+					}
+				}
+			}
+		}
 	EntityQuery.ForEachEntityChunk(Context, [this, bZeroAtGather, &bAnyTarget, &CampTable, StepMs](FMassExecutionContext& Context)
 	{
 		const TArrayView<FHOLCombatFragment> Combats = Context.GetMutableFragmentView<FHOLCombatFragment>();
@@ -885,6 +909,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetMutableFragmentView<FMassMoveTargetFragment>();
 		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
+		const TArrayView<FHOLDeployFragment> Deploys = Context.GetMutableFragmentView<FHOLDeployFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
 		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
@@ -908,6 +933,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.Order = &Orders[EntityIt];
 			Fighter.MoveTarget = &MoveTargets[EntityIt];
 			Fighter.Movement = &Movements[EntityIt];
+			Fighter.Deploy = Deploys.IsEmpty() ? nullptr : &Deploys[EntityIt];
 			Fighter.Constants = &Constants;
 			// N4: a neutral camp's member at its post or walking back is left out of the fight as a worker at its task is (it answers a blow by its camp's thought).
 			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding()
@@ -2438,6 +2464,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				}
 
 				const int32 BuildingIntervalMs = HOLCombat::ToMilliseconds(Constants.BuildingAttackInterval);
+				// G6: the same at a building, the distance being to the wall's nearest point.
+				if (Fighter.Deploy && Fighter.Deploy->Phase != static_cast<uint8>(HOLDeploy::EPhase::Deployed))
+				{
+					Fighter.Deploy->PendingOrder = 1;
+					Fighter.Deploy->PendingDistanceCm = FMath::RoundToInt(FVector2D::Distance(FVector2D(Fighter.Location), FVector2D(FMath::Clamp(Fighter.Location.X, Step.Box.Min.X, Step.Box.Max.X), FMath::Clamp(Fighter.Location.Y, Step.Box.Min.Y, Step.Box.Max.Y))));
+					continue;
+				}
 				if (!Combat.bAttacking)
 				{
 					Combat.CooldownMs = HOLCombat::StartAttack(Combat.CooldownMs, BuildingIntervalMs, Constants.AttackWindUpPercent);
@@ -2963,6 +2996,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			StopWalk(*World, Fighter);
 		}
 		Combat.bApproaching = false;
+		// G6: a deployable engine fires only once deployed; until then it leaves its attack order, with the distance, to the deploy processor.
+		if (Fighter.Deploy && Fighter.Deploy->Phase != static_cast<uint8>(HOLDeploy::EPhase::Deployed))
+		{
+			Fighter.Deploy->PendingOrder = 1;
+			Fighter.Deploy->PendingDistanceCm = FMath::RoundToInt(FVector2D::Distance(FVector2D(Fighter.Location), FVector2D(Enemy.Location)));
+			continue;
+		}
 		if (!Combat.bAttacking)
 		{
 			Combat.CooldownMs = HOLCombat::StartAttack(Combat.CooldownMs, IntervalMs, Constants.AttackWindUpPercent);

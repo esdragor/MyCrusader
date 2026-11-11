@@ -73,6 +73,34 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 	// What each slot's defence remembers (IA2.5: defending or at home, the soldiers just sent back to the assembly point), and the orders
 	// it has given (regroup orders, defence orders: the status line shows them).
 	TMap<int, FHOLAIDefence> Defences;
+
+	// L4 step 6: when each slot's Damned Warriors last cast their necrotic rage (the summary does not carry the abilities' state).
+	TMap<int, FHOLAIRageMemory> RageMemories;
+
+	// The Damned Warriors of the slot in a melee cast their rage (HOLAIRage.as); the server refuses what the rule got wrong (cooldown, health).
+	void ThinkRage(int PlayerIndex, int64 Step, const FHOLAISummary& Summary, const FHOLAIOpeningData& Data)
+	{
+		FHOLAITypeFigures Figures;
+		if (!HOLAIOrder::ReadAIUnitFigures(n"DamnedWarrior", Figures) || Figures.Health <= 0)
+		{
+			return;
+		}
+		FHOLAIRageData RageData = HOLAIRage::DefaultData();
+		RageData.MaxHealth = Figures.Health;
+		FHOLAIRageMemory Memory;
+		RageMemories.Find(PlayerIndex, Memory);
+		const TArray<int> Casters = HOLAIRage::Casters(Summary, RageData, Memory, Data.GameSeconds);
+		if (Casters.Num() > 0 && HOLAIRageOrder::IssueAIRageOrder(PlayerIndex, Casters))
+		{
+			for (int Each = 0; Each < Casters.Num(); Each++)
+			{
+				HOLAIRage::Remember(Memory, Casters[Each], Data.GameSeconds);
+			}
+			RageMemories.Add(PlayerIndex, Memory);
+			Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: necrotic rage cast by {Casters.Num()} Damned Warrior(s)");
+		}
+	}
+
 	TMap<int, int> RegroupCounts;
 	TMap<int, int> DefenceCounts;
 
@@ -999,6 +1027,7 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 				Log(n"LogHOLMatch", f"AI slot {PlayerIndex} step {Step}: soldier {Sniped[Each].SoldierId} snipes enemy {Sniped[Each].TargetId}");
 			}
 		}
+		ThinkRage(PlayerIndex, Step, FullSummary, Data);
 		if (State.bDefending != bWas)
 		{
 			const FString Change = State.bDefending ? "defence begins" : "defence ends, home";
