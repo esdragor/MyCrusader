@@ -8,6 +8,8 @@
 #include "MassExecutor.h"
 #include "MassProcessingContext.h"
 #include "Misc/AutomationTest.h"
+#include "Commands/HOLCommandSubsystem.h"
+#include "Player/HOLCommandGrid.h"
 #include "Simulation/HOLCombatProcessor.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSettings.h"
@@ -172,7 +174,25 @@ bool FHOLDamnedWarriorRageTest::RunTest(const FString& Parameters)
 			TestTrue(TEXT("without the rage the warrior strikes the Peasant (1.5 s apart)"), Calm.Hits >= 4);
 			TestEqual(TEXT("... and it costs him nothing"), Calm.WarriorLost, 0.f, 0.01f);
 
-			TestTrue(TEXT("the rage is cast"), Units->CastRage(Warrior));
+			// L4 step 5 (f): the player's own route, as the button makes it: the grid offers the button to a selection with a Damned
+			// Warrior (and not to another), the click queues the order (ServerCastRage -> IssueRageOrder), the simulation casts it.
+			FHOLGridContext Selection;
+			Selection.bOwnUnits = true;
+			Selection.bRageUnit = true;
+			TestTrue(TEXT("the grid shows the rage button for a selection with a Damned Warrior"), HOLCommandGrid::GetCommand(Selection, HOLCommandGrid::GetRageCell()).Command == EHOLGridCommand::NecroticRage);
+			Selection.bRageUnit = false;
+			TestTrue(TEXT("... and none for another selection"), HOLCommandGrid::GetCommand(Selection, HOLCommandGrid::GetRageCell()).Command != EHOLGridCommand::NecroticRage);
+			UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+			if (TestNotNull(TEXT("commands"), Commands))
+			{
+				Commands->IssueRageOrder(1, { Warrior });
+				RunStep();
+				FHOLCombatFragment* WarriorCombat = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Warrior));
+				TestTrue(TEXT("an order of another player does not cast the rage"), WarriorCombat && WarriorCombat->RageMs == 0);
+				Commands->IssueRageOrder(0, { Warrior });
+				RunStep();
+				TestTrue(TEXT("the order of its owner casts the rage (the rage is running)"), WarriorCombat && WarriorCombat->RageMs > 0);
+			}
 			TestFalse(TEXT("... not again during its 40 s cool-down"), Units->CastRage(Warrior));
 			const FWindow Rage = Measure(9.f);
 			TestTrue(TEXT("under the rage: more blows in the same time (cadence +25 %)"), Rage.Hits > Calm.Hits);

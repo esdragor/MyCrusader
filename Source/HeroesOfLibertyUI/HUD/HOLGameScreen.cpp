@@ -2112,7 +2112,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		const FHOLGridCommand Command = bGridShown && Commands.IsValidIndex(Cell) ? Commands[Cell]
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
 		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
-			: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
+			: Command.Command == EHOLGridCommand::NecroticRage ? FName(TEXT("NecroticRage"))
+: Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
 			: Command.Command == EHOLGridCommand::Trade ? FName(*FString::Printf(TEXT("%s%s"), Command.bBuy ? TEXT("Buy") : TEXT("Sell"),
 				Command.Resource == EHOLResource::Wood ? TEXT("Wood") : Command.Resource == EHOLResource::Stone ? TEXT("Stone") : TEXT("Food")))
 			: Command.TypeName;
