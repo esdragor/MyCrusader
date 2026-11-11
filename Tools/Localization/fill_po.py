@@ -23,6 +23,13 @@ TRANSLATIONS = {
     "HOLGameScreen,Hold": ("Hold", "待機"),
     "HOLGameScreen,HoldName": ("Hold position", "位置を保持"),
     "HOLGameScreen,HoldEffect": ("Attacks only in range, never chases", "射程内のみ攻撃し、追跡しない"),
+    # G6 d, PROPOSED labels of the Mount / Dismount button (Retours/Q-palier3-deploy-button.md): not in the GDD yet.
+    "HOLGameScreen,Deploy": ("Deploy", "展開"),
+    "HOLGameScreen,Pack": ("Pack up", "撤収"),
+    "HOLGameScreen,DeployName": ("Deploy the engine", "兵器を展開"),
+    "HOLGameScreen,PackName": ("Pack up the engine", "兵器を撤収"),
+    "HOLGameScreen,DeployEffect": ("Sets the engine up: it fires, it no longer walks", "兵器を設置する：発射できるが、移動できない"),
+    "HOLGameScreen,PackEffect": ("Folds the engine: it stops firing, it can walk", "兵器を畳む：発射できなくなり、移動できる"),
     "HOLGameScreen,ActivityAttacking": ("Attacking", "攻撃中"),
     "HOLGameScreen,MarketBuyName": ("Buy: {0}", "購入：{0}"),
     "HOLGameScreen,MarketSellName": ("Sell: {0}", "売却：{0}"),

@@ -77,7 +77,9 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			{
 				// The order is read once: decided, applied, then forgotten.
 				const HOLDeploy::EOrder Order = Fragment.PendingOrder == 1 ? HOLDeploy::EOrder::Attack : HOLDeploy::EOrder::Move;
-				const HOLDeploy::FDecision Decision = HOLDeploy::Decide(State, Order, Fragment.PendingDistanceCm, Profile);
+				// The Mount / Dismount button (PendingOrder 3, G6 d) is the manual toggle; an order is decided by where its target stands.
+				const HOLDeploy::FDecision Decision = Fragment.PendingOrder == 3 ? HOLDeploy::Toggle(State)
+					: HOLDeploy::Decide(State, Order, Fragment.PendingDistanceCm, Profile);
 				Fragment.LastAction = static_cast<uint8>(Decision.Action);
 				Fragment.LastReason = Decision.Reason;
 				State = HOLDeploy::Apply(State, Decision);

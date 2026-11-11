@@ -909,7 +909,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TConstArrayView<FTransformFragment> Transforms = Context.GetFragmentView<FTransformFragment>();
 		const TArrayView<FMassMoveTargetFragment> MoveTargets = Context.GetMutableFragmentView<FMassMoveTargetFragment>();
 		const TArrayView<FMassDesiredMovementFragment> Movements = Context.GetMutableFragmentView<FMassDesiredMovementFragment>();
-			const TArrayView<FHOLDeployFragment> Deploys = Context.GetMutableFragmentView<FHOLDeployFragment>();
+		const TArrayView<FHOLDeployFragment> Deploys = Context.GetMutableFragmentView<FHOLDeployFragment>();
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		MaxRadius = FMath::Max(MaxRadius, Constants.Radius);
 		const bool bHeroes = HOLIsHero(Constants.ArmorCategoryMask);
@@ -933,7 +933,7 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 			Fighter.Order = &Orders[EntityIt];
 			Fighter.MoveTarget = &MoveTargets[EntityIt];
 			Fighter.Movement = &Movements[EntityIt];
-				Fighter.Deploy = Deploys.IsEmpty() ? nullptr : &Deploys[EntityIt];
+			Fighter.Deploy = Deploys.IsEmpty() ? nullptr : &Deploys[EntityIt];
 			Fighter.Constants = &Constants;
 			// N4: a neutral camp's member at its post or walking back is left out of the fight as a worker at its task is (it answers a blow by its camp's thought).
 			Fighter.bBusy = Gathers[EntityIt].IsGathering() || Builds[EntityIt].IsBuilding()

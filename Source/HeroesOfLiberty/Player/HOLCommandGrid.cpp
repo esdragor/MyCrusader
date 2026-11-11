@@ -102,6 +102,11 @@ namespace HOLCommandGrid
 		{
 			Result.Command = Cell == AttackMoveCell && Context.bSoldiers && !Context.bOnlyKings ? EHOLGridCommand::AttackMove
 				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell && !Context.bOnlyKings ? EHOLGridCommand::Hold : EHOLGridCommand::None;
+			if (Cell == DeployCell && Context.bDeployables)
+			{
+				Result.Command = EHOLGridCommand::Deploy;
+				Result.bPack = Context.bDeployedAny;
+			}
 		}
 		return Result;
 	}

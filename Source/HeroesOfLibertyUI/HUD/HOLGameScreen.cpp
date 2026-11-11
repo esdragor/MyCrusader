@@ -2122,7 +2122,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		if (ShownOrderTypes.IsValidIndex(Cell))
 		{
 			ShownOrderTypes[Cell] = Command.Command == EHOLGridCommand::AttackMove ? FName(TEXT("AttackMove"))
-				: Command.Command == EHOLGridCommand::Stop ? FName(TEXT("Stop")) : Command.Command == EHOLGridCommand::Hold ? FName(TEXT("Hold")) : NAME_None;
+				: Command.Command == EHOLGridCommand::Stop ? FName(TEXT("Stop")) : Command.Command == EHOLGridCommand::Hold ? FName(TEXT("Hold"))
+				: Command.Command == EHOLGridCommand::Deploy ? FName(Command.bPack ? TEXT("Pack") : TEXT("Deploy")) : NAME_None;
 		}
 		UHOLGridCell* GridCell = GridCells[Cell];
 		if (!GridCell)
@@ -2274,6 +2275,14 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetCommand(LOCTEXT("Hold", "Tenir"), EHOLGridCellState::Ready);
 			GridCell->SetTooltip(LOCTEXT("HoldName", "Tenir la position"), FHOLResources(), FHOLResources(),
 				LOCTEXT("HoldEffect", "N'attaque qu'à portée, ne poursuit pas"));
+			break;
+		case EHOLGridCommand::Deploy:
+			// G6 d: PROPOSED labels (Retours/Q-palier3-deploy-button.md); no icon yet, the cell shows its text (Placeholders.txt).
+			GridCell->SetCommand(Command.bPack ? LOCTEXT("Pack", "Démonter") : LOCTEXT("Deploy", "Monter"), EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Command.bPack ? LOCTEXT("PackName", "Démonter l'engin") : LOCTEXT("DeployName", "Monter l'engin"),
+				FHOLResources(), FHOLResources(),
+				Command.bPack ? LOCTEXT("PackEffect", "Replie l'engin : il ne tire plus, il peut marcher")
+					: LOCTEXT("DeployEffect", "Installe l'engin : il tire, il ne marche plus"));
 			break;
 		case EHOLGridCommand::HeroAbility:
 		{

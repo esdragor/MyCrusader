@@ -1186,6 +1186,10 @@ namespace UE::HeroesOfLiberty::Units
 			OutView.LoadAmount = Gather->Load.Amount;
 		}
 		OutView.bLoadAmountKnown = true;
+		if (const FHOLDeployFragment* Deploy = EntityManager.GetFragmentDataPtr<FHOLDeployFragment>(Entity))
+		{
+			OutView.DeployPhase = Deploy->Phase;
+		}
 		if (const FHOLUnitTypeConstants* Constants = EntityManager.GetConstSharedFragmentDataPtr<FHOLUnitTypeConstants>(Entity))
 		{
 			OutView.Radius = Constants->Radius;

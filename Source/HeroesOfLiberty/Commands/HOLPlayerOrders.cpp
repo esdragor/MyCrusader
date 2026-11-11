@@ -109,6 +109,18 @@ namespace HOLPlayerOrders
 		return true;
 	}
 
+	bool ToggleDeploy(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds)
+	{
+		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());
+		if (!Commands)
+		{
+			return false;
+		}
+		const UHOLCommandSubsystem::FPlayerOrderScope PlayerOrder(*Commands);
+		Commands->IssueCombatOrder(UnitIds, EHOLOrderKind::ToggleDeploy, 0, PlayerIndex);
+		return true;
+	}
+
 	bool Gather(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, const int32 SourceIndex, const bool bQueue)
 	{
 		UHOLCommandSubsystem* Commands = GetQueue(World, PlayerIndex, UnitIds.Num());

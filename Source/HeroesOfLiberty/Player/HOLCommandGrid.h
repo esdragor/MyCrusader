@@ -40,6 +40,8 @@ enum class EHOLGridCommand : uint8
 	 * buy on A Z E (food, wood, stone), sell on Q S D (HOLCommandGrid::GetTradeCell).
 	 */
 	Trade,
+	/** Mount / Dismount (Palier3InProgress.md G6 d): the selected engine that deploys is set up (bPack false) or packed up (bPack true). */
+	Deploy,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -56,6 +58,8 @@ struct FHOLGridCommand
 	/** Trade: the good (food, wood or stone) and the side (bBuy: bought with gold, else sold for gold). */
 	EHOLResource Resource = EHOLResource::Food;
 	bool bBuy = false;
+	/** Deploy: the press packs the engine up (it is deploying or deployed), else it sets it up. */
+	bool bPack = false;
 
 	bool IsNone() const { return Command == EHOLGridCommand::None; }
 	bool operator==(const FHOLGridCommand& Other) const = default;
@@ -130,6 +134,9 @@ struct FHOLGridContext
 	 * others: the server then gives the King a plain move (HOLCombat::GetSearchRadius).
 	 */
 	bool bOnlyKings = false;
+	/** G6 d: among the selected units, one deploys (HOLUnitView::DeployPhase >= 0); bDeployedAny: one is deploying or deployed (the button then packs up). */
+	bool bDeployables = false;
+	bool bDeployedAny = false;
 	/**
 	 * The player's own hero is among the units commanded (J8c.4): his abilities on the grid on the right (HeroAbilityCell),
 	 * read from his level and the seconds left of each ability's cool-down (indexed by EHOLHeroAbility; the owner's private
@@ -273,6 +280,8 @@ namespace HOLCommandGrid
 	inline constexpr int32 AttackMoveCell = 4;
 	inline constexpr int32 StopCell = 5;
 	inline constexpr int32 HoldCell = 11;
+	/** G6 d: Mount / Dismount, D (the cell is PROPOSED, Retours/Q-palier3-deploy-button.md: the orders' panel keeps Q S V). */
+	inline constexpr int32 DeployCell = 6;
 
 	/**
 	 * The hero's abilities on the grid on the right (J8c-Q4, the top row: the units' orders are on the left): A Serrez les
