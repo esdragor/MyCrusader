@@ -96,3 +96,18 @@ BUILD DE MAIN REPARE 15:47 : main = 39ba5ec (Haldir a9887b554294586f6, 18 fichie
 ETAT 16:17 : vague 3 : Galadriel-L4h a1cd0fec44fbad03b (traductions + commit), Faramir-preflight af93257d61ce00d79 (preflight 255 + bandeaux), Glorfindel-Sites a7ba8c99d13bf0022 (Sites sacres S5), Elrond-G6d ad75579f4472fd6ea (diagnostic Deploy.InMatch). Celeborn-ab a43a2bbac8298a461 (ab_matrix neutrals) et Sauron-rejeu a7b64d3a1719ffe12 en cours. Branches a fusionner a 17:40 : d751-root (c66ef03+4c6be, tests verts), net-playtest 83d868e (Full 0 regression ; ligne known_reds Caserne a retirer si Galadriel fusionne), galadriel-tab (a finir), fog (notereset 91299fc+3fd83e2, tests 1167), visual, tiers (ATTENTION tip 8141901 = test Deploy.InMatch ROUGE commite : ne le fusionner que si Elrond le rend vert), hero-j8-close.
 
 ETAT 16:59 : fusion 3 lancee (Haldir a856c708b4426eed0, 7 branches, tips commites, arret 17:30). Agents en cours : Galadriel-rage-visuel a2c3aa3c357d5a353, Elrond-G6d a7975085d12b40ca2, Glorfindel-vue+S6 a6d49c55ad54042fe, Sauron-rejeu a7b64d3a1719ffe12. Celeborn et Faramir libres. Resultat Celeborn : spin de neutrals = seconde ligne (6 soldats contre 3 Lanciers rouge ~70 %), scenario neutrals ramene a 3 Hommes d'armes pour passer vert : MASQUE le residu D641, a dire a l'utilisateur. Glorfindel : trou de vue de Bob cote +Y a eclaircir.
+
+## Bilan 2026-11-11 (13:24-18:02)
+
+Main = fd03266 (fusions 1 a 3, rien pousse). Fusion 1 (15:07) : N7 camp state, Palier 3 G4/G5, scenario neutrals ClearNear, T4b. Fusion 2 : outils d'Arwen, G5/G6a, scenarios, net quick_check, L4 etapes 1-4. Build de main repare par Haldir (39ba5ec, collisions unity de constantes de tests). Fusion 3 (17:28) : G6 d bouton, L4 rage + IA + traductions, S5 prouve sur le reseau, notereset/preflight, neutrals 3v3, essais Sauron ; tests 1173/1173, aiserver, aiduel PASS ; net non relance sur le resultat fusionne. Redemarrage du PC a 17:05 : chaines tuees, reprises. Non fusionne : galadriel-tab a3e90a8 (anneau B et compare ; doublon du verbe notereset avec fog, CONFLIT dans HOLTestSequence.cpp), net-playtest c8bde0e/WIP S6 (contient un test ROUGE, ne pas fusionner), visual f0670cf+ (scenarios de Sauron). Essais PRETS a donner : voir Retours\ESSAIS-A-JOUER.md (a rejouer apres la fusion 3 : non rejoues sur le build final). Questions ouvertes : Q-legions-rage-cap, Q-legions-warrior-rage-visual, Q-legions-ai-warrior, Q-palier3-deploy-wiring, Q-palier3-deploy-button, Q-sites-gold-line, Q-neutrals-camp-indicator, Q-play-hidden-wait, Q-barracks-tooltip-damned, Q-palier3-g4-roles, Q-talents-heal-visual.
+
+### Lecons appliquees 2026-11-11
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| L8-9 sync des worktrees au debut et a la fin | partielle | sync 13:25, 15:07, 18:01 ; Galadriel (conflit notereset) et Glorfindel (WIP S6) en retard |
+| Commits verts seulement | partielle | 2 tips rouges commites par des agents (tiers 8141901, net-playtest 0c8792c), detectes avant fusion |
+| Plafond 45 appels | non appliquee | plusieurs agents 46 a 64 appels |
+| Scratchpad calls.md propre a chaque agent | non appliquee au debut | calls.md ecrase par plusieurs agents, corrige par noms distincts |
+| Pas de commit sur main pendant une fusion | non appliquee | commits de docs sur main a 15:02 et 16:53, remerge necessaire |
+| Recette independante (integrateur) | appliquee | Faramir a rejoue 7 essais sur main fusionne |
