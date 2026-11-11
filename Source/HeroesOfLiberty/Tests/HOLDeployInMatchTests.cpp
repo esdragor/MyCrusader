@@ -63,7 +63,8 @@ bool FHOLDeployInMatchTest::RunTest(const FString& Parameters)
 		int64 Step = 0;
 		const auto RunStep = [Simulation, Units, Combat, Deploy, &EntityManager, StepSeconds, &Step]
 		{
-			++Step;
+			// The simulation's own step index must move: an arrow in flight (the Mangonel's blow) lands when it reaches its ArrivalStep.
+			Step = Simulation->AdvanceStepIndexForTests();
 			Simulation->GetOnStepStarted().Broadcast(Step);
 			Units->ServeBirthRequests();
 			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
@@ -109,11 +110,12 @@ bool FHOLDeployInMatchTest::RunTest(const FString& Parameters)
 			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
 			return State ? State->CurrentHealth : -1.f;
 		};
-		// The Mangonel of slot 0 at the origin, ordered on a Spearman of slot 1 holding its ground 12 m away.
+		// The Mangonel of slot 0 at the origin, ordered on a Spearman of slot 3 (slot 1 is on slot 0's team by default: the first run of this
+		// test landed no blow on it, 2026-11-11) holding its ground 20 m away.
 		const auto Setup = [&](uint32& OutEngine, uint32& OutTarget)
 		{
 			OutEngine = Place(FName(TEXT("Mangonel")), 0, FVector::ZeroVector);
-			OutTarget = Place(FName(TEXT("Spearman")), 1, FVector(2000.0, 0.0, 0.0)); // beyond the proposed minimum range (1200 cm)
+			OutTarget = Place(FName(TEXT("Spearman")), 3, FVector(2000.0, 0.0, 0.0)); // beyond the proposed minimum range (1200 cm)
 			if (OutEngine == 0 || OutTarget == 0)
 			{
 				return false;
@@ -156,6 +158,13 @@ bool FHOLDeployInMatchTest::RunTest(const FString& Parameters)
 				bHit = HealthOf(Foe) < Start;
 			}
 			TestTrue(TEXT("control: the Mangonel hurts its target"), bHit);
+			if (!bHit)
+			{
+				const FHOLCombatFragment* Seen = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Engine));
+				AddInfo(FString::Printf(TEXT("diag: engine hits %d attacking %d approaching %d cooldown %d target set %d, foe health %.1f (start %.1f)"),
+					Seen ? Seen->Hits : -1, Seen ? Seen->bAttacking : -1, Seen ? Seen->bApproaching : -1, Seen ? Seen->CooldownMs : -1,
+					Seen ? Seen->Target.IsSet() : -1, HealthOf(Foe), Start));
+			}
 			Remove(Engine, Foe);
 		}
 

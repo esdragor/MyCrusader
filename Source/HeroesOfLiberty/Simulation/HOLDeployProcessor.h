@@ -35,6 +35,12 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 };
 
 /**
+ * Whether the Mangonel stands in for the deployable engine (cvar hol.Siege.Deployable, default 0): the unit subsystem gives every Mangonel
+ * born while it is 1 a FHOLDeployFragment (Retours/Q-palier3-deploy-wiring.md, Q1 = A, the default coded).
+ */
+HEROESOFLIBERTY_API bool HOLDeployStandInEnabled();
+
+/**
  * Carries the deployment of every unit with a FHOLDeployFragment through the fixed step: the order left by the command side is decided
  * by HOLDeploy::Decide, applied by HOLDeploy::Apply, then the step's time passes through HOLDeploy::Advance. Server and solo only.
  */
