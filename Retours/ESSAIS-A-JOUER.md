@@ -2,6 +2,40 @@
 ATTENDU : a rejouer sur le main du 2026-11-10 avant de le donner (session_gate -Phase Essay) ; les essais arquebusier et fog_trees sont faits.
 (Fiche datee du 2026-11-09, build 60013e8 : ne pas la donner telle quelle ; unit_stats_attack_enemy, unit_stats_attack, sites_win, duel_challenge_accept, disconnect_review, glade_sweep ont ete joues le 2026-11-09, voir REPONSES-2026-11-09.md.)
 
+# ESSAIS À JOUER (2026-11-11, intégrateur indépendant Faramir, 15:09-15:25, main 521adcb fusionné, binaire du 15:03)
+
+Les 7 scénarios ont été rejoués par un agent qui n'a écrit aucune de ces fonctionnalités : preflight PASS pour chacun, PNG ouverts (talents_heal en plein format ; les comparaisons en planches de contact 800x450 par image), fiches Retours\E-*.md mises à jour. Les commandes sont sans -Hidden (fenêtre pour toi). GESTE interne partout : aucun essai ne prouve la souris réelle ; l'objet de chacun est ce que tu VOIS.
+
+## 1. talents_heal (1 min) : trait de soin du Moine doré « ++ »
+Pourquoi : la nouvelle option de talent « Mains du guérisseur » doit changer le trait de soin, vert « + » sans talent, doré « ++ » avec. VU À L'ÉCRAN par moi sur les 3 PNG. Geste : T puis la case Capitaine rangée 3 (le scénario le fait par hol.HUD.Click, refais-le à la main si tu veux). À regarder : le « ++ » est petit ; défaut vu : il est dessiné PAR-DESSUS la fenêtre Arbre de talents. Fiche : Retours\E-talents_heal.md ; question liée : Retours\Q-talents-heal-visual.md.
+Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 talents_heal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+
+## 2. legions_roster_gesture (1 min) : noms des Légions FR / EN / JA
+Pourquoi : cliquer la Caserne des Légions montre Lancier squelette (A) et Garde noire (Z), le Cavalier funeste et le Bélier d'os portent leur nom, la Caserne d'Aube n'a aucune grille Légions ; EN et JA idem. VU À L'ÉCRAN sur 9 PNG. Défaut vu : la 3e case de la grille (E) affiche « Damned Warrior » en anglais dans l'interface FR et JA.
+Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 legions_roster_gesture -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+
+## 3. legions_roster_gesture_dawn (1 min) : l'Aube garde ses noms
+Pourquoi : la Caserne d'Aube montre Lancier, Homme d'armes, Hallebardes trempées ; le Lancier des Légions rouge cliqué montre « Lancier squelette ». VU À L'ÉCRAN sur 3 PNG. Défaut vu : un message d'éditeur « Shaders en préparation (3) » apparaît sur un PNG (absent du jeu empaqueté).
+Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 legions_roster_gesture_dawn -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+
+## 4. talents_icons_compare (1 min) : icônes des talents, 2 options
+Pourquoi : A = fenêtre Arbre de talents, cases prises teintées avec le nom en texte, sans image ; B = pastilles-lettres B M P sous la liste des talents pris dans le bloc du héros. VU À L'ÉCRAN sur 2 PNG. Dis aime / pas aime par lettre. Défaut vu : le bandeau du scénario affiche le texte de l'option A pendant l'option B.
+Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 talents_icons_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+
+## 5. trees_rocks_compare (2 min) : arbres et rochers sous 5 biomes
+Pourquoi : mêmes arbres, sol, lumière et teinte des rochers de A (herbe fraîche) à E (neige) ; dis aime / pas aime par lettre. VU À L'ÉCRAN sur 10 PNG (planches). À savoir : A montre un sol gris-beige sans vert ; le bosquet est coupé par le bord droit du cadre.
+Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 trees_rocks_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+
+## 6. resources_compare (3 min, limite) : dix styles de ressources A à J
+Pourquoi : arbre, baies, filon de pierre, filon d'or en 10 styles ; dis aime / pas aime par lettre. VU À L'ÉCRAN sur 10 PNG (planches). Dix pressions d'Entrée. À savoir : les baies sont petites (environ 20 px).
+Commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 resources_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+
+## Rejoués mais NON listés
+- orders_marks_compare : marques A, B, C vues mais FRAGILES : anneau du clic d'environ 12 px et très pâle (A_click), ligne jaune fine, unités hors cadre sur A_click et B_click, bandeau resté sur le texte des options A et B pendant C (voir E-orders_marks_compare.md). À reprendre avant de le donner.
+- Non rejoués ici : disconnect_1v1, neutrals, playtest_hero_army, audio_* (voir les sections plus bas).
+
+---
+
 # ESSAIS À JOUER (agent d'intégration Elrond, 2026-11-09 10:50-11:05, build de main 60013e8 fusionné, binaire de 10:37)
 
 Tous préflightés PASS sur le worktree Elrond (= main 60013e8), PNG ouverts et vus (fiches `Retours\E-*.md`), `session_gate -Phase Essay -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` sans FAIL pour chacun. Total environ 8 min. Réponse attendue pour chacun : `OK`, `BUG: ...` ou `REGLAGE: ...`. Aucun n'a été joué par un humain ; ce sont tous des essais d'AFFICHAGE (GESTE: interne dans les fiches : le clic ou le défi du scénario est un appel interne, c'est à toi de faire le vrai geste).

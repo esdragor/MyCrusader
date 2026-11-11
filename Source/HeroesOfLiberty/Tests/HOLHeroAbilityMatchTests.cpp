@@ -31,7 +31,7 @@ namespace UE::HeroesOfLiberty::Tests::HeroAbilityMatch
 	const FName Spearman(TEXT("Spearman"));
 	const FName ManAtArms(TEXT("ManAtArms"));
 
-	constexpr float Tolerance = 1.e-3f;
+	constexpr float TestTolerance = 1.e-3f;
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLHeroAbilityInMatchTest, "HeroesOfLiberty.HeroAbility.InMatch", UE::HeroesOfLiberty::Tests::HeroAbilityMatch::Flags)
@@ -148,9 +148,9 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 		if (TestTrue(TEXT("slot 0's hero born"), HeroId != 0))
 		{
 			RunStep(); // his sheet: alive, level 1
-			TestEqual(TEXT("far from the hero (50 m): the whole 12"), FirstHit(FVector(5000.0, 0.0, 0.0)), 12.f, Tolerance);
-			TestEqual(TEXT("11 m from the hero: aura, 10.2"), FirstHit(FVector(0.0, 1100.0, 0.0)), 10.2f, Tolerance);
-			TestEqual(TEXT("13 m from the hero: the whole 12"), FirstHit(FVector(0.0, 1300.0, 0.0)), 12.f, Tolerance);
+			TestEqual(TEXT("far from the hero (50 m): the whole 12"), FirstHit(FVector(5000.0, 0.0, 0.0)), 12.f, TestTolerance);
+			TestEqual(TEXT("11 m from the hero: aura, 10.2"), FirstHit(FVector(0.0, 1100.0, 0.0)), 10.2f, TestTolerance);
+			TestEqual(TEXT("13 m from the hero: the whole 12"), FirstHit(FVector(0.0, 1300.0, 0.0)), 12.f, TestTolerance);
 
 			// The cry (J8c-Q2): the units within 12 m when it is cast, 15 s; then 60 s of cool-down.
 			const uint32 Near = Place(Spearman, 0, FVector(0.0, -1100.0, 0.0));
@@ -185,7 +185,7 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 					CryState = StateOf(Cry);
 					Taken = CryState && CryState->CurrentHealth < Before ? Before - CryState->CurrentHealth : -1.f;
 				}
-				TestEqual(TEXT("under aura and cry: 7.2"), Taken, 7.2f, Tolerance);
+				TestEqual(TEXT("under aura and cry: 7.2"), Taken, 7.2f, TestTolerance);
 			}
 			const uint32 CryGone[] = { Cry, CryAttacker };
 			Units->RequestDestroyUnits(CryGone);
@@ -212,14 +212,14 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 				const UInstancedStaticMeshComponent* BannerInstances = BannerDisplay->GetInstances();
 				TestTrue(TEXT("one instance, without shadow"), BannerInstances && BannerInstances->GetInstanceCount() == 1 && !BannerInstances->CastShadow);
 			}
-			TestEqual(TEXT("26 m from the hero, 10 m from the banner: aura, 10.2"), FirstHit(FVector(2600.0, 0.0, 0.0)), 10.2f, Tolerance);
-			TestEqual(TEXT("11 m from both: one aura, 10.2"), FirstHit(FVector(800.0, 800.0, 0.0)), 10.2f, Tolerance);
+			TestEqual(TEXT("26 m from the hero, 10 m from the banner: aura, 10.2"), FirstHit(FVector(2600.0, 0.0, 0.0)), 10.2f, TestTolerance);
+			TestEqual(TEXT("11 m from both: one aura, 10.2"), FirstHit(FVector(800.0, 800.0, 0.0)), 10.2f, TestTolerance);
 
 			// His death: his aura goes, the banner's stays.
 			Units->KillUnitsOfOwner(0, Hero);
 			RunStep();
-			TestEqual(TEXT("hero dead, 11 m from where he fell: the whole 12"), FirstHit(FVector(-1100.0, 0.0, 0.0)), 12.f, Tolerance);
-			TestEqual(TEXT("hero dead, 10 m from the banner: aura, 10.2"), FirstHit(FVector(2600.0, 0.0, 0.0)), 10.2f, Tolerance);
+			TestEqual(TEXT("hero dead, 11 m from where he fell: the whole 12"), FirstHit(FVector(-1100.0, 0.0, 0.0)), 12.f, TestTolerance);
+			TestEqual(TEXT("hero dead, 10 m from the banner: aura, 10.2"), FirstHit(FVector(2600.0, 0.0, 0.0)), 10.2f, TestTolerance);
 			TestFalse(TEXT("no cry while he is dead"), Heroes->CastCloseRanks(0));
 
 			// 45 s after it was planted, the banner is gone.
@@ -240,7 +240,7 @@ bool FHOLHeroAbilityInMatchTest::RunTest(const FString& Parameters)
 				TestEqual(TEXT("no banner drawn once it fell"), FallenDisplay->GetShown().Num(), 0);
 				TestTrue(TEXT("... no instance left"), !FallenDisplay->GetInstances() || FallenDisplay->GetInstances()->GetInstanceCount() == 0);
 			}
-			TestEqual(TEXT("... 10 m from where it stood: the whole 12"), FirstHit(FVector(2600.0, 0.0, 0.0)), 12.f, Tolerance);
+			TestEqual(TEXT("... 10 m from where it stood: the whole 12"), FirstHit(FVector(2600.0, 0.0, 0.0)), 12.f, TestTolerance);
 		}
 	}
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);

@@ -17,10 +17,10 @@ namespace UE::HeroesOfLiberty::Tests::Construction
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
 	/** The diminishing returns of the settings' default (ln 2 / ln 3). */
-	constexpr float Exponent = 0.63f;
+	constexpr float TestExponent = 0.63f;
 
 	/** A tile for the pure rules below, which take it as an argument: 3 m (the setting, UHOLBuildingSettings::TileSize, is 4 m since D344). */
-	constexpr double Tile = 300.0;
+	constexpr double TestTile = 300.0;
 
 	/** A house, 2 x 2 tiles (6 m), placed with its middle at (X, Y) m. */
 	FBox2D House(const double X, const double Y)
@@ -53,41 +53,41 @@ bool FHOLConstructionGridTest::RunTest(const FString& Parameters)
 	const FVector2D HouseSize(600.0, 600.0);
 
 	// Even number of tiles (a house, 2 x 2): the edges on the grid lines, the middle on a grid point.
-	const FBox2D Even = HOLConstruction::SnapToGrid(FVector2D(1234.0, -60.0), HouseSize, Tile);
+	const FBox2D Even = HOLConstruction::SnapToGrid(FVector2D(1234.0, -60.0), HouseSize, TestTile);
 	TestTrue(TEXT("2 x 2 tiles: corner on the grid"), Even.Min.Equals(FVector2D(900.0, -300.0)));
 	TestTrue(TEXT("2 x 2 tiles: size kept"), Even.GetSize().Equals(HouseSize));
 	TestTrue(TEXT("2 x 2 tiles: middle on a grid point"), Even.GetCenter().Equals(FVector2D(1200.0, 0.0)));
 
 	// Odd number of tiles (3 x 3, no such type yet): the middle in the middle of a tile.
-	const FBox2D Odd = HOLConstruction::SnapToGrid(FVector2D(1234.0, -60.0), FVector2D(900.0, 900.0), Tile);
-	TestTrue(TEXT("3 x 3 tiles: edges on the grid lines"), IsOnGrid(Odd, Tile));
+	const FBox2D Odd = HOLConstruction::SnapToGrid(FVector2D(1234.0, -60.0), FVector2D(900.0, 900.0), TestTile);
+	TestTrue(TEXT("3 x 3 tiles: edges on the grid lines"), IsOnGrid(Odd, TestTile));
 	TestTrue(TEXT("3 x 3 tiles: middle in the middle of a tile"), Odd.GetCenter().Equals(FVector2D(1350.0, -150.0)));
 
 	// Two neighbours snapped side by side touch exactly: no gap, no overlap.
-	const FBox2D Left = HOLConstruction::SnapToGrid(FVector2D(0.0, 0.0), HouseSize, Tile);
-	const FBox2D Right = HOLConstruction::SnapToGrid(FVector2D(620.0, 20.0), HouseSize, Tile);
+	const FBox2D Left = HOLConstruction::SnapToGrid(FVector2D(0.0, 0.0), HouseSize, TestTile);
+	const FBox2D Right = HOLConstruction::SnapToGrid(FVector2D(620.0, 20.0), HouseSize, TestTile);
 	TestEqual(TEXT("side by side: the edges meet"), Right.Min.X, Left.Max.X);
 	TestFalse(TEXT("touching is no overlap"), HOLConstruction::Overlaps(Left, Right));
 
 	// The ghost moves tile by tile: still within half a tile, a whole tile further past it.
-	const FBox2D Moved = HOLConstruction::SnapToGrid(FVector2D(1349.0, -149.0), HouseSize, Tile);
+	const FBox2D Moved = HOLConstruction::SnapToGrid(FVector2D(1349.0, -149.0), HouseSize, TestTile);
 	TestTrue(TEXT("still within half a tile"), Moved.Min.Equals(Even.Min) && Moved.Max.Equals(Even.Max));
-	const FBox2D Next = HOLConstruction::SnapToGrid(FVector2D(1460.0, -60.0), HouseSize, Tile);
-	TestTrue(TEXT("one tile further"), Next.Min.Equals(Even.Min + FVector2D(Tile, 0.0)));
+	const FBox2D Next = HOLConstruction::SnapToGrid(FVector2D(1460.0, -60.0), HouseSize, TestTile);
+	TestTrue(TEXT("one tile further"), Next.Min.Equals(Even.Min + FVector2D(TestTile, 0.0)));
 
 	// The main centre (4 x 4 tiles) of a diagonal start of Plain (150 m from the middle at 135 degrees) moved onto the
 	// grid (AHOLStartSlot::GetMainCentreLocation): at most half a tile each way, and a house beside it touches it.
 	const FVector2D ForumSize(1200.0, 1200.0);
 	const FVector2D Diagonal = FVector2D(-1.0, 1.0) * 15000.0 * UE_DOUBLE_INV_SQRT_2;
-	const FBox2D Forum = HOLConstruction::SnapToGrid(Diagonal, ForumSize, Tile);
-	TestTrue(TEXT("diagonal start: the centre's footprint on the grid"), IsOnGrid(Forum, Tile));
+	const FBox2D Forum = HOLConstruction::SnapToGrid(Diagonal, ForumSize, TestTile);
+	TestTrue(TEXT("diagonal start: the centre's footprint on the grid"), IsOnGrid(Forum, TestTile));
 	TestTrue(TEXT("diagonal start: the centre at (-105, 105) m"), Forum.GetCenter().Equals(FVector2D(-10500.0, 10500.0)));
 	TestTrue(TEXT("diagonal start: moved half a tile at most each way"),
-		FMath::Abs(Forum.GetCenter().X - Diagonal.X) <= Tile * 0.5 && FMath::Abs(Forum.GetCenter().Y - Diagonal.Y) <= Tile * 0.5);
-	const FBox2D Beside = HOLConstruction::SnapToGrid(FVector2D(Forum.Max.X + Tile + 40.0, Forum.GetCenter().Y + 100.0), HouseSize, Tile);
+		FMath::Abs(Forum.GetCenter().X - Diagonal.X) <= TestTile * 0.5 && FMath::Abs(Forum.GetCenter().Y - Diagonal.Y) <= TestTile * 0.5);
+	const FBox2D Beside = HOLConstruction::SnapToGrid(FVector2D(Forum.Max.X + TestTile + 40.0, Forum.GetCenter().Y + 100.0), HouseSize, TestTile);
 	TestEqual(TEXT("a house beside the centre: the edges meet"), Beside.Min.X, Forum.Max.X);
 	TestFalse(TEXT("a house beside the centre: no overlap"), HOLConstruction::Overlaps(Beside, Forum));
-	TestTrue(TEXT("a start on the grid already stays"), HOLConstruction::SnapToGrid(FVector2D(-15000.0, 0.0), ForumSize, Tile).GetCenter().Equals(FVector2D(-15000.0, 0.0)));
+	TestTrue(TEXT("a start on the grid already stays"), HOLConstruction::SnapToGrid(FVector2D(-15000.0, 0.0), ForumSize, TestTile).GetCenter().Equals(FVector2D(-15000.0, 0.0)));
 
 	// Its yaw: the nearest quarter turn, the footprint along the grid lines.
 	TestEqual(TEXT("yaw 44 -> 0"), HOLConstruction::SnapYaw(44.f), 0.f);
@@ -237,30 +237,30 @@ bool FHOLConstructionBuildersTest::RunTest(const FString& Parameters)
 	// A 20 s house at 20 steps per second.
 	const int32 BuildSteps = HOLConstruction::GetBuildSteps(20.f, 0.05f);
 	TestEqual(TEXT("20 s = 400 steps for one builder"), BuildSteps, 400);
-	TestEqual(TEXT("one builder: the table's time"), HOLConstruction::GetStepsToFinish(BuildSteps, 1, Exponent), 400);
+	TestEqual(TEXT("one builder: the table's time"), HOLConstruction::GetStepsToFinish(BuildSteps, 1, TestExponent), 400);
 
 	// Diminishing returns (D312): each builder more speeds it up, less and less; 3 about twice as fast as one.
-	const int32 Three = HOLConstruction::GetStepsToFinish(BuildSteps, 3, Exponent);
+	const int32 Three = HOLConstruction::GetStepsToFinish(BuildSteps, 3, TestExponent);
 	TestTrue(TEXT("3 builders ~2x as fast"), FMath::Abs(400.0 / Three - 2.0) < 0.02);
 	int32 Previous = 0;
 	int32 PreviousGain = TNumericLimits<int32>::Max();
 	for (int32 Builders = 1; Builders <= 10; ++Builders)
 	{
-		const int32 Rate = HOLConstruction::GetWorkPerStep(Builders, Exponent);
+		const int32 Rate = HOLConstruction::GetWorkPerStep(Builders, TestExponent);
 		TestTrue(FString::Printf(TEXT("%d builders faster than %d"), Builders, Builders - 1), Rate > Previous);
 		TestTrue(FString::Printf(TEXT("the builder %d adds less than the one before"), Builders), Rate - Previous < PreviousGain);
 		PreviousGain = Rate - Previous;
 		Previous = Rate;
 	}
-	TestTrue(TEXT("10 builders: far from 10x"), HOLConstruction::GetWorkPerStep(10, Exponent) < 5 * HOLConstruction::WorkPerBuilder);
+	TestTrue(TEXT("10 builders: far from 10x"), HOLConstruction::GetWorkPerStep(10, TestExponent) < 5 * HOLConstruction::WorkPerBuilder);
 	TestEqual(TEXT("exponent 1: each as useful as the first"), HOLConstruction::GetWorkPerStep(4, 1.f), 4 * HOLConstruction::WorkPerBuilder);
-	TestEqual(TEXT("no builder, no work"), HOLConstruction::GetWorkPerStep(0, Exponent), 0);
+	TestEqual(TEXT("no builder, no work"), HOLConstruction::GetWorkPerStep(0, TestExponent), 0);
 
 	// Step by step: nothing without builders, finished exactly once, health rising to the full.
 	const int64 Total = HOLConstruction::GetTotalWork(BuildSteps);
 	int64 Work = 0;
 	TestEqual(TEXT("a bare foundation: 1 HP"), HOLConstruction::GetHealth(600, Work, Total), 1);
-	TestFalse(TEXT("no builder: no progress"), HOLConstruction::AddWork(Work, Total, 0, Exponent));
+	TestFalse(TEXT("no builder: no progress"), HOLConstruction::AddWork(Work, Total, 0, TestExponent));
 	TestEqual(TEXT("still nothing done"), Work, int64(0));
 	int32 Steps = 0;
 	int32 Finishes = 0;
@@ -269,7 +269,7 @@ bool FHOLConstructionBuildersTest::RunTest(const FString& Parameters)
 	while (Steps < 1000 && Work < Total)
 	{
 		const int64 Before = Work;
-		Finishes += HOLConstruction::AddWork(Work, Total, 3, Exponent) ? 1 : 0;
+		Finishes += HOLConstruction::AddWork(Work, Total, 3, TestExponent) ? 1 : 0;
 		const int32 Gain = HOLConstruction::GetHealth(600, Work, Total) - HOLConstruction::GetHealth(600, Before, Total);
 		bHealthRising &= Gain >= 0;
 		Health += Gain;
@@ -277,7 +277,7 @@ bool FHOLConstructionBuildersTest::RunTest(const FString& Parameters)
 	}
 	TestEqual(TEXT("3 builders step by step: the steps foreseen"), Steps, Three);
 	TestEqual(TEXT("finished once"), Finishes, 1);
-	TestFalse(TEXT("a finished building takes no more work"), HOLConstruction::AddWork(Work, Total, 3, Exponent));
+	TestFalse(TEXT("a finished building takes no more work"), HOLConstruction::AddWork(Work, Total, 3, TestExponent));
 	TestEqual(TEXT("progress capped at 1"), HOLConstruction::GetProgress(Work, Total), 1.f);
 	TestTrue(TEXT("health never goes down while building"), bHealthRising);
 	TestEqual(TEXT("unhurt: exactly the full health at the end"), Health, 600);
@@ -530,7 +530,7 @@ bool FHOLConstructionProbesTest::RunTest(const FString& Parameters)
 
 	// A house (2 x 2 tiles): the middles of its four tiles, 1.5 m inside its edges, then its corners 1 m inside.
 	TArray<FVector2D> Probes;
-	HOLConstruction::GetNavProbes(House(0.0, 0.0), Tile, 100.0, Probes);
+	HOLConstruction::GetNavProbes(House(0.0, 0.0), TestTile, 100.0, Probes);
 	TestEqual(TEXT("a house: 4 tile middles and 4 corners"), Probes.Num(), 8);
 	const FVector2D Expected[] = { FVector2D(-150.0, -150.0), FVector2D(-150.0, 150.0), FVector2D(150.0, -150.0), FVector2D(150.0, 150.0),
 		FVector2D(-200.0, -200.0), FVector2D(200.0, -200.0), FVector2D(-200.0, 200.0), FVector2D(200.0, 200.0) };
@@ -551,7 +551,7 @@ bool FHOLConstructionProbesTest::RunTest(const FString& Parameters)
 	TestTrue(FString::Printf(TEXT("a neighbour touching it: its forbidden area (85 cm) far from every probe (%.0f cm)"), Nearest), Nearest >= 100.0);
 
 	// The main centre (4 x 4 tiles): 16 tile middles and 4 corners; no tile: the middle alone.
-	HOLConstruction::GetNavProbes(HOLConstruction::MakeFootprint(FVector2D::ZeroVector, Square), Tile, 100.0, Probes);
+	HOLConstruction::GetNavProbes(HOLConstruction::MakeFootprint(FVector2D::ZeroVector, Square), TestTile, 100.0, Probes);
 	TestEqual(TEXT("a main centre: 16 tile middles and 4 corners"), Probes.Num(), 20);
 	HOLConstruction::GetNavProbes(House(3.0, 3.0), 0.0, 0.0, Probes);
 	TestTrue(TEXT("no tile, no inset: the middle alone"), Probes.Num() == 1 && Probes[0].Equals(FVector2D(300.0, 300.0)));
@@ -1024,15 +1024,15 @@ bool FHOLConstructionBodyTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("a tiny footprint keeps a body of MinBodySide"),
 		HOLConstruction::GetBodySize(FVector2D(150.0, 150.0), Inset).Equals(FVector2D(HOLConstruction::MinBodySide), 0.01));
 	TestTrue(TEXT("never larger than its tiles"), HOLConstruction::GetBodySize(FVector2D(50.0, 50.0), Inset).Equals(FVector2D(50.0, 50.0), 0.01));
-	const FBox2D Tiles = HOLConstruction::SnapToGrid(FVector2D(100.0, 100.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D Tiles = HOLConstruction::SnapToGrid(FVector2D(100.0, 100.0), FVector2D(600.0, 600.0), TestTile);
 	const FBox2D Body = HOLConstruction::GetBody(Tiles, Inset);
 	TestTrue(TEXT("the body box: on the tiles' middle, inset on every side"),
 		Body.Min.Equals(Tiles.Min + FVector2D(Inset), 0.01) && Body.Max.Equals(Tiles.Max - FVector2D(Inset), 0.01));
 
 	// Two houses whose tiles touch (placement on the tiles, D311: allowed): their bodies 2.1 m apart, room for one Peasant
 	// (60 cm radius: 1.2 m wide), not for two abreast (2.4 m).
-	const FBox2D West = HOLConstruction::SnapToGrid(FVector2D(0.0, 0.0), FVector2D(600.0, 600.0), Tile);
-	const FBox2D East = HOLConstruction::SnapToGrid(FVector2D(600.0, 0.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D West = HOLConstruction::SnapToGrid(FVector2D(0.0, 0.0), FVector2D(600.0, 600.0), TestTile);
+	const FBox2D East = HOLConstruction::SnapToGrid(FVector2D(600.0, 0.0), FVector2D(600.0, 600.0), TestTile);
 	TestEqual(TEXT("their tiles touch"), HOLConstruction::GetGap(West, East), 0.0, 0.01);
 	TestFalse(TEXT("so they may stand side by side"), HOLConstruction::Overlaps(West, East));
 	const double Gap = HOLConstruction::GetGap(HOLConstruction::GetBody(West, Inset), HOLConstruction::GetBody(East, Inset));
@@ -1049,9 +1049,9 @@ bool FHOLConstructionBodyTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("but by their tiles"), HOLConstruction::DoesWalkCross(West, 85.0, Through));
 
 	// The ways between neighbours (the paths through them, D324): the box between their facing sides.
-	const FBox2D North = HOLConstruction::SnapToGrid(FVector2D(0.0, 600.0), FVector2D(600.0, 600.0), Tile);
-	const FBox2D Far = HOLConstruction::SnapToGrid(FVector2D(2400.0, 0.0), FVector2D(600.0, 600.0), Tile);
-	const FBox2D Diagonal = HOLConstruction::SnapToGrid(FVector2D(600.0, 600.0), FVector2D(600.0, 600.0), Tile);
+	const FBox2D North = HOLConstruction::SnapToGrid(FVector2D(0.0, 600.0), FVector2D(600.0, 600.0), TestTile);
+	const FBox2D Far = HOLConstruction::SnapToGrid(FVector2D(2400.0, 0.0), FVector2D(600.0, 600.0), TestTile);
+	const FBox2D Diagonal = HOLConstruction::SnapToGrid(FVector2D(600.0, 600.0), FVector2D(600.0, 600.0), TestTile);
 	const TArray<FBox2D> Bodies({ HOLConstruction::GetBody(West, Inset), HOLConstruction::GetBody(East, Inset), HOLConstruction::GetBody(North, Inset),
 		HOLConstruction::GetBody(Far, Inset) });
 	TArray<FBox2D> Ways;
@@ -1092,24 +1092,24 @@ bool FHOLConstructionFreeFootprintTest::RunTest(const FString& Parameters)
 	{
 		const FBox2D Houses[] = { House(0.0, 0.0), House(30.0, 0.0) };
 		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
-		Query.Footprint = HOLConstruction::SnapToGrid(Aim, FVector2D(600.0, 600.0), Tile);
+		Query.Footprint = HOLConstruction::SnapToGrid(Aim, FVector2D(600.0, 600.0), TestTile);
 		Query.Buildings = Houses;
 		FBox2D Obstacle;
-		TestTrue(TEXT("on a house: an obstacle found"), HOLConstruction::FindObstacle(Query, Aim, Tile, Obstacle));
+		TestTrue(TEXT("on a house: an obstacle found"), HOLConstruction::FindObstacle(Query, Aim, TestTile, Obstacle));
 		TestTrue(TEXT("on a house: the house itself, already on the grid"), Obstacle.Min.Equals(Houses[0].Min) && Obstacle.Max.Equals(Houses[0].Max));
 		FBox2D Free;
 		int32 Ring = -1;
-		TestTrue(TEXT("beside a house: found"), HOLConstruction::FindFreeFootprint(Query, Obstacle, Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("beside a house: found"), HOLConstruction::FindFreeFootprint(Query, Obstacle, Aim, TestTile, 4, Anywhere, Free, &Ring));
 		TestEqual(TEXT("beside a house: ring 0 (touching)"), Ring, 0);
 		TestTrue(TEXT("beside a house: east, nearest the aim"), Free.GetCenter().Equals(FVector2D(600.0, 0.0)));
 		TestFalse(TEXT("beside a house: touching, not overlapping"), HOLConstruction::Overlaps(Free, Houses[0]));
-		TestTrue(TEXT("beside a house: on the grid, its size"), IsOnGrid(Free, Tile) && Free.GetSize().Equals(FVector2D(600.0, 600.0)));
+		TestTrue(TEXT("beside a house: on the grid, its size"), IsOnGrid(Free, TestTile) && Free.GetSize().Equals(FVector2D(600.0, 600.0)));
 
 		// The cursor between two houses, inside the second: the one containing the aim is the obstacle.
 		const FBox2D Pair[] = { House(0.0, 0.0), House(0.0, 6.0) };
 		Query.Buildings = Pair;
 		Query.Footprint = House(0.0, 3.0);
-		TestTrue(TEXT("two houses: an obstacle found"), HOLConstruction::FindObstacle(Query, FVector2D(0.0, 400.0), Tile, Obstacle));
+		TestTrue(TEXT("two houses: an obstacle found"), HOLConstruction::FindObstacle(Query, FVector2D(0.0, 400.0), TestTile, Obstacle));
 		TestTrue(TEXT("two houses: the one containing the aim"), Obstacle.Min.Equals(Pair[1].Min));
 	}
 
@@ -1122,13 +1122,13 @@ bool FHOLConstructionFreeFootprintTest::RunTest(const FString& Parameters)
 		Query.Buildings = Blocks;
 		FBox2D Free;
 		int32 Ring = -1;
-		TestTrue(TEXT("ring 0 taken: found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("ring 0 taken: found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, TestTile, 4, Anywhere, Free, &Ring));
 		TestEqual(TEXT("ring 0 taken: ring 1"), Ring, 1);
 		TestTrue(TEXT("ring 0 taken: one tile east of the house"), Free.GetCenter().Equals(FVector2D(900.0, 0.0)));
 
 		// The navmesh refuses that one: the next of ring 1 nearest the aim (north).
 		const auto NotEast = [](const FBox2D& Candidate) { return Candidate.GetCenter().X < 800.0; };
-		TestTrue(TEXT("off the navmesh: another found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, NotEast, Free, &Ring));
+		TestTrue(TEXT("off the navmesh: another found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, TestTile, 4, NotEast, Free, &Ring));
 		TestTrue(TEXT("off the navmesh: still ring 1, not east"), Ring == 1 && Free.GetCenter().X < 800.0);
 	}
 
@@ -1138,14 +1138,14 @@ bool FHOLConstructionFreeFootprintTest::RunTest(const FString& Parameters)
 		FHOLPlacementQuery Query = MakeQuery(0.0, 0.0);
 		Query.Sources = Tree;
 		FBox2D Obstacle;
-		TestTrue(TEXT("on a tree: an obstacle found"), HOLConstruction::FindObstacle(Query, Aim, Tile, Obstacle));
+		TestTrue(TEXT("on a tree: an obstacle found"), HOLConstruction::FindObstacle(Query, Aim, TestTile, Obstacle));
 		TestTrue(TEXT("on a tree: its disc as a box on the grid"), Obstacle.Min.Equals(FVector2D(-300.0, -300.0)) && Obstacle.Max.Equals(FVector2D(600.0, 600.0)));
-		const FBox2D OnGrid = HOLConstruction::SnapOutward(House(3.0, 0.0), Tile);
+		const FBox2D OnGrid = HOLConstruction::SnapOutward(House(3.0, 0.0), TestTile);
 		TestTrue(TEXT("a footprint on the grid: unchanged"), OnGrid.Min.Equals(House(3.0, 0.0).Min) && OnGrid.Max.Equals(House(3.0, 0.0).Max));
 		FBox2D Free;
 		int32 Ring = -1;
-		TestTrue(TEXT("beside a tree: found"), HOLConstruction::FindFreeFootprint(Query, Obstacle, Aim, Tile, 4, Anywhere, Free, &Ring));
-		TestTrue(TEXT("beside a tree: ring 0, clear of the tree"), Ring == 0 && !HOLConstruction::Overlaps(Free, Tree[0]) && IsOnGrid(Free, Tile));
+		TestTrue(TEXT("beside a tree: found"), HOLConstruction::FindFreeFootprint(Query, Obstacle, Aim, TestTile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("beside a tree: ring 0, clear of the tree"), Ring == 0 && !HOLConstruction::Overlaps(Free, Tree[0]) && IsOnGrid(Free, TestTile));
 	}
 
 	// Nothing free within 4 rings (a building covering them all, 50 cm into ring 4): none; with 5 rings, ring 5.
@@ -1155,8 +1155,8 @@ bool FHOLConstructionFreeFootprintTest::RunTest(const FString& Parameters)
 		Query.Buildings = Big;
 		FBox2D Free;
 		int32 Ring = -1;
-		TestFalse(TEXT("all taken within 4 rings: none"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, &Ring));
-		TestTrue(TEXT("5 rings: ring 5"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 5, Anywhere, Free, &Ring) && Ring == 5);
+		TestFalse(TEXT("all taken within 4 rings: none"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, TestTile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("5 rings: ring 5"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, TestTile, 5, Anywhere, Free, &Ring) && Ring == 5);
 	}
 
 	// A candidate refused by another rule is skipped: the map ends at the house's east side, the ghost goes north.
@@ -1165,7 +1165,7 @@ bool FHOLConstructionFreeFootprintTest::RunTest(const FString& Parameters)
 		Query.MapArea.Max.X = 300.0;
 		FBox2D Free;
 		int32 Ring = -1;
-		TestTrue(TEXT("map edge: found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, Tile, 4, Anywhere, Free, &Ring));
+		TestTrue(TEXT("map edge: found"), HOLConstruction::FindFreeFootprint(Query, House(0.0, 0.0), Aim, TestTile, 4, Anywhere, Free, &Ring));
 		TestTrue(TEXT("map edge: ring 0, north (east is out of the map)"), Ring == 0 && Free.GetCenter().Equals(FVector2D(0.0, 600.0)));
 	}
 	return true;

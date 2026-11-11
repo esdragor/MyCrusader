@@ -17,7 +17,7 @@ namespace UE::HeroesOfLiberty::Tests::HeroXP
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 
-	constexpr float Tolerance = 1.e-3f;
+	constexpr float TestTolerance = 1.e-3f;
 
 	const FHOLUnitTypeRow* FindRow(const TCHAR* Name)
 	{
@@ -139,17 +139,17 @@ bool FHOLHeroXPStatsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Level 1: 100 %"), GetStatPercent(1), 100);
 	TestEqual(TEXT("Level 2: 108 %"), GetStatPercent(2), 108);
 	TestEqual(TEXT("Level 6: 140 %"), GetStatPercent(6), 140);
-	TestEqual(TEXT("Level 1 HP: 450"), GetLevelStat(450.f, 1), 450.f, Tolerance);
-	TestEqual(TEXT("Level 2 HP: 486"), GetLevelStat(450.f, 2), 486.f, Tolerance);
-	TestEqual(TEXT("Level 6 HP: 630"), GetLevelStat(450.f, 6), 630.f, Tolerance);
-	TestEqual(TEXT("Level 2 attack: 32.4"), GetLevelStat(30.f, 2), 32.4f, Tolerance);
-	TestEqual(TEXT("Level 6 attack: 42"), GetLevelStat(30.f, 6), 42.f, Tolerance);
+	TestEqual(TEXT("Level 1 HP: 450"), GetLevelStat(450.f, 1), 450.f, TestTolerance);
+	TestEqual(TEXT("Level 2 HP: 486"), GetLevelStat(450.f, 2), 486.f, TestTolerance);
+	TestEqual(TEXT("Level 6 HP: 630"), GetLevelStat(450.f, 6), 630.f, TestTolerance);
+	TestEqual(TEXT("Level 2 attack: 32.4"), GetLevelStat(30.f, 2), 32.4f, TestTolerance);
+	TestEqual(TEXT("Level 6 attack: 42"), GetLevelStat(30.f, 6), 42.f, TestTolerance);
 
 	// The HP gained are added to the current health.
-	TestEqual(TEXT("Wounded at 200, level 1 -> 2: 236"), GetHealthAfterLevelUp(200.f, 450.f, 1, 2), 236.f, Tolerance);
-	TestEqual(TEXT("Full at 450, level 1 -> 2: full at 486"), GetHealthAfterLevelUp(450.f, 450.f, 1, 2), 486.f, Tolerance);
-	TestEqual(TEXT("Two levels at once, 2 -> 4 from 100: 172"), GetHealthAfterLevelUp(100.f, 450.f, 2, 4), 172.f, Tolerance);
-	TestEqual(TEXT("Dead stays dead (0)"), GetHealthAfterLevelUp(0.f, 450.f, 1, 2), 0.f, Tolerance);
+	TestEqual(TEXT("Wounded at 200, level 1 -> 2: 236"), GetHealthAfterLevelUp(200.f, 450.f, 1, 2), 236.f, TestTolerance);
+	TestEqual(TEXT("Full at 450, level 1 -> 2: full at 486"), GetHealthAfterLevelUp(450.f, 450.f, 1, 2), 486.f, TestTolerance);
+	TestEqual(TEXT("Two levels at once, 2 -> 4 from 100: 172"), GetHealthAfterLevelUp(100.f, 450.f, 2, 4), 172.f, TestTolerance);
+	TestEqual(TEXT("Dead stays dead (0)"), GetHealthAfterLevelUp(0.f, 450.f, 1, 2), 0.f, TestTolerance);
 	return true;
 }
 
@@ -168,11 +168,11 @@ bool FHOLHeroXPChainTest::RunTest(const FString& Parameters)
 	const FHOLUnitTypeConstants Hero = HeroRow->ToConstants(TEXT("Hero"));
 	const FHOLUnitTypeConstants ManAtArms = ManAtArmsRow->ToConstants(TEXT("ManAtArms"));
 	const float Level1 = HOLCombat::GetDamage(Hero, ManAtArms);
-	TestEqual(TEXT("Level 1 hit unchanged by the level (1 by default)"), HOLCombat::GetDamage(Hero, ManAtArms, 1), Level1, Tolerance);
-	TestEqual(TEXT("Level 2: +2.4 (30 -> 32.4)"), HOLCombat::GetDamage(Hero, ManAtArms, 2), Level1 + 2.4f, Tolerance);
-	TestEqual(TEXT("Level 6: +12 (30 -> 42)"), HOLCombat::GetDamage(Hero, ManAtArms, 6), Level1 + 12.f, Tolerance);
+	TestEqual(TEXT("Level 1 hit unchanged by the level (1 by default)"), HOLCombat::GetDamage(Hero, ManAtArms, 1), Level1, TestTolerance);
+	TestEqual(TEXT("Level 2: +2.4 (30 -> 32.4)"), HOLCombat::GetDamage(Hero, ManAtArms, 2), Level1 + 2.4f, TestTolerance);
+	TestEqual(TEXT("Level 6: +12 (30 -> 42)"), HOLCombat::GetDamage(Hero, ManAtArms, 6), Level1 + 12.f, TestTolerance);
 	TestEqual(TEXT("A troop's hit on him does not depend on his level"), HOLCombat::GetDamage(ManAtArms, Hero, 1),
-		static_cast<float>(FMath::Max(ManAtArms.Attack - HOLCombat::GetArmor(Hero, ManAtArms.AttackType), 1)) * 0.3f, Tolerance);
+		static_cast<float>(FMath::Max(ManAtArms.Attack - HOLCombat::GetArmor(Hero, ManAtArms.AttackType), 1)) * 0.3f, TestTolerance);
 
 	TestEqual(TEXT("Max health level 1: 450"), HOLCombat::GetMaxHealth(Hero, 1), 450);
 	TestEqual(TEXT("... level 2: 486"), HOLCombat::GetMaxHealth(Hero, 2), 486);
