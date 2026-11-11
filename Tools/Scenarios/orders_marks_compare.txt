@@ -1,0 +1,48 @@
+# Marques d'ordres au sol (Placeholders.txt : Trajets et marques d'ordres au sol [?]) : COMPARAISON des trois marques que le jeu dessine, sans brouillard. Dis aime / pas aime par lettre (A clic droit, B trajet en file, C attaque-deplacement).
+# Plain, quatre Hommes d'armes (toi) ralentis pour que la ligne reste. Les marques de clic ne durent que quelques secondes : chaque option les redonne. Pour la ligne dans le noir du brouillard, voir fog_orders_compare (options D et E). Entree = option suivante. 3 minutes au plus.
+hol.Fog.Mode 0
+open /Game/Maps/Plain
+waitmap Plain
+waitlog Camera above the start of slot
+hol.Sanity.Watch 1
+frames 5
+hol.Camera.FocusNear 800 0
+frames 2
+hol.Units.SpawnHere 4 ManAtArms 0 250
+waitunits 4
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -1
+frames 30
+hol.Select.Own
+waitlog Selection: 4 units (own)
+hol.Units.SpeedScale 0.05
+wait 6
+hol.Camera.FocusNear 4500 0
+hol.Camera.Zoom -1
+frames 3
+hol.Select.OrderNear 6500 0
+frames 2
+capture ordermark_A_click
+wait 2
+hol.Camera.FocusNear 3250 0
+frames 40
+capture ordermark_A_move
+note Option A (1/3) : un clic droit sur le sol. Regarde la marque a l'endroit du clic (juste apres le clic) et la ligne jaune de l'unite vers ce point, avec son point au bout. Entree = option suivante.
+waitkey Option A/3 : clic droit simple (marque du clic, ligne jaune, point). Entree pour l'option B
+hol.Camera.FocusNear 4500 0
+frames 3
+hol.Select.OrderGround -9000 3000 shift
+frames 2
+capture ordermark_B_click
+wait 2
+capture ordermark_B_queue
+note Option B (2/3) : un deuxieme clic droit avec Maj enfonce : le trajet en file. Regarde les deux segments de ligne et les points aux bouts de chaque etape. Entree = option suivante.
+waitkey Option B/3 : trajet en file (deux segments, un point par etape). Entree pour l'option C
+hol.Camera.FocusNear 4500 0
+frames 3
+hol.Select.AttackMoveNear 3000 0
+frames 30
+capture ordermark_C_attackmove
+note Option C (3/3) : l'attaque-deplacement (touche Q puis clic gauche, remplace la file). Regarde si la marque et la ligne se distinguent de celles d'un simple deplacement. Dis aime / pas aime par lettre.
+frames 5
+hol.Test.Sanity

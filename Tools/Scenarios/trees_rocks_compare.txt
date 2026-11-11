@@ -1,0 +1,55 @@
+# Arbres et rochers par biome (Placeholders.txt : lignes [?] Arbre Herbe fraiche / Steppe seche / Foret sombre, Rochers par biome) : les cinq biomes l un apres l autre, a chaque fois le bosquet d arbres (ressource) puis la crete de rochers de la Plaine. Dis aime / pas aime par lettre (A herbe, B steppe, C automne, D foret, E neige) : ce que tu juges est la FORME et la couleur des arbres et des rochers ; en jeu les arbres ne changent pas avec le biome (D655), les rochers de decor sont teintes (D656). Entree = biome suivant. 3 minutes au plus.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Camera.Focus 0 -1800
+hol.Camera.Zoom 2
+frames 30
+hol.Biome.Index 0
+hol.Camera.Focus 0 -1800
+frames 60
+capture trees_A_fresh_grass
+hol.Camera.FocusNear 3000 0
+frames 40
+capture rocks_A_fresh_grass
+note A (1/5) Herbe fraiche : le bosquet d arbres (vue 1) puis la crete de rochers (vue 2) sous ce biome. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 1
+hol.Camera.Focus 0 -1800
+frames 60
+capture trees_B_dry_steppe
+hol.Camera.FocusNear 3000 0
+frames 40
+capture rocks_B_dry_steppe
+note B (2/5) Steppe seche : le bosquet d arbres (vue 1) puis la crete de rochers (vue 2) sous ce biome. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 2
+hol.Camera.Focus 0 -1800
+frames 60
+capture trees_C_autumn
+hol.Camera.FocusNear 3000 0
+frames 40
+capture rocks_C_autumn
+note C (3/5) Automne : le bosquet d arbres (vue 1) puis la crete de rochers (vue 2) sous ce biome. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 3
+hol.Camera.Focus 0 -1800
+frames 60
+capture trees_D_dark_forest
+hol.Camera.FocusNear 3000 0
+frames 40
+capture rocks_D_dark_forest
+note D (4/5) Foret sombre : le bosquet d arbres (vue 1) puis la crete de rochers (vue 2) sous ce biome. Entree = biome suivant.
+waitkey Entree : biome suivant
+hol.Biome.Index 4
+hol.Camera.Focus 0 -1800
+frames 60
+capture trees_E_snow
+hol.Camera.FocusNear 3000 0
+frames 40
+capture rocks_E_snow
+note E (5/5) Neige : le bosquet d arbres (vue 1) puis la crete de rochers (vue 2) sous ce biome. Dernier. Dis aime / pas aime par lettre.
+frames 5
+hol.Biome.World
+hol.Test.Sanity
+panel show
