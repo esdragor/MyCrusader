@@ -2803,7 +2803,7 @@ if ($NetListening) {
             "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear Barracks $($NetBarracksNear -join ' ')", "waitlog Building arrived: Barracks of slot", "waitlog , finished",
             "signal $(Join-Path $TestSaved "quick_net_barracks$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_barracks$Other.flag")", "wait 3",
             "hol.Cheat.Tier 1", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue ManAtArms Barracks", "hol.Prod.Queue ManAtArms Barracks",
-            "waitunits 10", "wait 8", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
+            "waitunits 10", "wait 8", "hol.Cheat.Tier off", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
             "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear $($NetBarracksNear -join ' ') enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
             "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
             "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
@@ -3878,7 +3878,7 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
     $Paths = @($Section | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks = [ordered]@{}
     $Checks["376 sources placed, shown, forbidden on the navmesh ($($Reports | Select-Object -First 1))"] =
-        ($Reports.Count -eq 2) -and ($Reports[0] -eq "376 standing of 376 (Tree 320: 32000 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 376, navmesh 376")
+        ($Reports.Count -eq 2) -and ($Reports[0] -eq "376 standing of 376 (Tree 320: 32000 left, BerryBush 48: 14400 left, StoneVein 4: 12000 left, GoldVein 4: 12000 left); shown 376, navmesh 376")
     $Checks["nearest tree is the first one ($($Section | Select-String -Pattern 'Sources: nearest (.*)$' | ForEach-Object { $_.Matches[0].Groups[1].Value }))"] =
         [bool]($Section | Select-String -Pattern "Sources: nearest 0 Tree at \(-14221, -1816\), 100 left" -Quiet)
     $Checks["three paths ($($Paths.Count))"] = $Paths.Count -eq 3
@@ -3888,7 +3888,7 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
         $Checks["the tree behind still closes its place ($($Paths[2]))"] = $Paths[2] -match "off the navmesh"
     }
     $Checks["used up: 375 left, shown and forbidden ($($Reports | Select-Object -Last 1))"] =
-        ($Reports.Count -eq 2) -and ($Reports[1] -eq "375 standing of 376 (Tree 319: 31900 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 375, navmesh 375")
+        ($Reports.Count -eq 2) -and ($Reports[1] -eq "375 standing of 376 (Tree 319: 31900 left, BerryBush 48: 14400 left, StoneVein 4: 12000 left, GoldVein 4: 12000 left); shown 375, navmesh 375")
     $Checks["capture"] = Test-Path (Join-Path $Shots "src_wood.png")
     $AllOk = (Report "sources" $Checks) -and $AllOk
 }
@@ -6301,7 +6301,7 @@ if ($Parts -contains "net") {
         if ($Parts -contains "sources") {
             # 5 wood left by the server in the tree nearest each start: 31900 - 2 x 95.
             $Sources = $NetLines | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-            $Checks["client $N : 376 sources received, the used-up tree gone ($Sources)"] = $Sources -eq "375 standing of 376 (Tree 319: 31710 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 375, navmesh 0"
+            $Checks["client $N : 376 sources received, the used-up tree gone ($Sources)"] = $Sources -eq "375 standing of 376 (Tree 319: 31710 left, BerryBush 48: 14400 left, StoneVein 4: 12000 left, GoldVein 4: 12000 left); shown 375, navmesh 0"
             $Checks["client $N : saw the tree used up"] = [bool]($ClientLines | Select-String -Pattern "Sources: source 0 used up \(client\)" -Quiet)
 
             # Gathering (J5a.5, D299, D303).
@@ -7899,7 +7899,11 @@ if ($Parts -contains "netai") {
     $Checks["server : Gather order of slot 2: 2 units to source (food)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source \d+ \(Food\)")
     $Checks["server : Gather order of slot 2: 2 units to source (wood)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source \d+ \(Wood\)")
     # The humans' Peasants are theirs: the AI orders none of them.
-    $HumanOrder = Find-NetAILine "Gather order of slot [01]:"
+    # Once a client has left, its seat is held by the AI on purpose (the disconnection feature, D717-D722: "AI brain: slot N held"),
+    # and that brain gathers for it: only the lines before the first such takeover count.
+    $HeldAt = @($NetAILog | Select-String -Pattern "AI brain: slot [01] held" | Select-Object -First 1 | ForEach-Object { $_.LineNumber - 1 })
+    $BeforeHeld = if ($HeldAt.Count) { @($NetAILog | Select-Object -First $HeldAt[0]) } else { @($NetAILog) }
+    $HumanOrder = @($BeforeHeld | Select-String -Pattern "Gather order of slot [01]:" | ForEach-Object { $_.Line }) | Select-Object -First 1
     $Checks["server : no gather order for the humans' slots ($(if ($HumanOrder) { ($HumanOrder -replace '^.*(Gather order)', '$1').Trim() } else { 'none' }))"] = -not $HumanOrder
     $AllOk = (Report "netai" $Checks) -and $AllOk
 }
