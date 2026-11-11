@@ -1,0 +1,51 @@
+# Mains du guerisseur (T4b, Capitaine rangee 3, D111 : Moines dans l'aura, soins +20 %) : un Moine soigne des Hommes d'armes blesses dans l'aura de ton heros, d'abord sans le talent (trait vert « + »), puis apres l'avoir pris (touche T puis clic sur la case Capitaine de la rangee 3 : trait dore « ++ »), Q-talents-heal-visual option A.
+# Plain, toi (slot 0) contre une IA (slot 1), talents_heal.json (copie de talents.json) : 5 Paysans et un heros chacun. 2 points de talent (XP 600) : rangee 2 (Boucliers leves, sans lien avec le soin) puis rangee 3 (Mains du guerisseur). Trois minutes au plus, aucune attente morte.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Cheat.Resources 1000
+hol.Camera.FocusNear -900 300
+frames 10
+hol.Hero.SetXP 0 600
+wait 1
+frames 8
+hol.HUD.Click TalentKey
+wait 1
+frames 8
+hol.HUD.Click HeroTalentCell_2_1
+waitlog Hero talent order: slot 0 family 1 at step
+wait 1
+frames 4
+hol.HUD.Click TalentKey
+wait 1
+frames 4
+hol.Units.Spawn 4 -15900 900 0 ManAtArms 250
+hol.Units.Spawn 1 -15900 900 0 Monk 150
+wait 2
+frames 5
+hol.Cheat.Wound 50
+waitlog Cheat: slot 0 wound to 50 %
+hol.Camera.Focus -15900 900
+hol.Camera.Zoom 10
+waitlog heals #
+frames 20
+hol.Heal.Report
+capture talents_heal_base
+hol.HUD.Click TalentKey
+wait 1
+frames 8
+hol.HUD.Click HeroTalentCell_3_1
+waitlog Hero talent order: slot 0 family 1 at step
+wait 1
+frames 8
+capture talents_heal_cell
+hol.HUD.Click TalentKey
+wait 1
+frames 4
+hol.Cheat.Wound 50
+waitlog Cheat: slot 0 wound to 50 %
+hol.Camera.Focus -15900 900
+frames 30
+hol.Heal.Report
+capture talents_heal_boosted
+note 1. Sans le talent : un Moine soigne tes Hommes d'armes blesses (50 %) dans le cercle d'aura du heros : trait vert et « + » vert.
+note 2. Touche T puis clic sur la case Capitaine de la rangee 3, Mains du guerisseur : la case se teinte, la bulle ne dit plus « pas encore actif ». Les memes blesses, de nouveau a 50 % : le trait de soin est DORE avec « ++ » (en solo et chez l'hote seulement ; un client le voit vert).
