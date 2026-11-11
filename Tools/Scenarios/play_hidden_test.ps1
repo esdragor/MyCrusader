@@ -49,7 +49,7 @@ Check ($v.Out -match 'hol\.Scenario fake' -and $v.Out -notmatch 'TestCursor') 's
 $r = Run @('-Hidden', '-TimeoutSec', '5') 'stay'
 $left = (Alive).Count
 Check ($left -eq 0) ("-Hidden : plus aucun processus du faux moteur apres play.ps1 ($left restent ; sortie : " + (Flat $r.Out) + ")")
-Check ($r.Sec -ge 4 -and $r.Sec -lt 25) ("-Hidden attend l editeur (borne -TimeoutSec 5) : {0:N1} s" -f $r.Sec)
+Check ($r.Sec -ge 4 -and $r.Sec -lt 8) ("-Hidden attend l editeur et s arrete a -TimeoutSec 5 (+ demarrage de powershell, au plus 3 s ; avant 2026-11-11 : 15-18 s de trop, Get-CimInstance a chaque passe) : {0:N1} s" -f $r.Sec)
 Kill-Leftovers
 
 # 3. editeur sorti, petit-fils orphelin
