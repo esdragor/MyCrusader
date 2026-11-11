@@ -735,4 +735,61 @@ bool FHOLFactionCorpseTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// L4 (LegionsInProgress.md, plan step 2): the Damned Warrior is the Legions' Barracks unit, through the real chain and the real
+// tables: the Legions' Barracks grid shows it and the Dawn's does not; a DamnedWarrior ordered at the Legions' Barracks is queued and
+// paid at the faction's price (the row's, no figure written here); the same order at the Dawn's Barracks is refused by the server and
+// pays nothing. Red until the DamnedWarrior row and the Barracks' Produces exist (plan step 3).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLFactionWarriorGridTest, "HeroesOfLiberty.Match.Factions.WarriorGrid", UE::HeroesOfLiberty::Tests::Factions::Flags)
+bool FHOLFactionWarriorGridTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Factions;
+	FWorld Test;
+	if (!TestTrue(TEXT("the test world stands"), Test.IsReady()))
+	{
+		return false;
+	}
+	const FName Barracks(TEXT("Barracks"));
+	const FName Warrior(TEXT("DamnedWarrior"));
+	const FHOLUnitTypeRow* WarriorRow = Test.Units->FindTypeRowFor(Warrior, 1);
+	const FHOLBuildingTypeRow* BarracksRow = UHOLBuildingSettings::FindType(Barracks);
+	if (!TestNotNull(TEXT("the DamnedWarrior row (Legions)"), WarriorRow) || !TestNotNull(TEXT("the Barracks row"), BarracksRow))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the Barracks produces the Damned Warrior"), BarracksRow->Produces.Contains(Warrior));
+	TestTrue(TEXT("the Legions' Barracks grid shows the Damned Warrior"), HOLFactionRules::FilterProduces(Test.World, BarracksRow->Produces, 1).Contains(Warrior));
+	TestFalse(TEXT("the Dawn's Barracks grid does not"), HOLFactionRules::FilterProduces(Test.World, BarracksRow->Produces, 0).Contains(Warrior));
+	TestFalse(TEXT("the Dawn is not offered the type (server rule)"), HOLFactionRules::IsUnitOpenTo(Test.World, Warrior, 0));
+	TestTrue(TEXT("the Legions are"), HOLFactionRules::IsUnitOpenTo(Test.World, Warrior, 1));
+
+	Test.State->SetTierOverride(0, 1);
+	Test.State->SetTierOverride(1, 1);
+	AHOLBuilding* Houses[2] = { nullptr, nullptr };
+	AHOLPlayerState* Payers[2] = { nullptr, nullptr };
+	for (int32 Slot = 0; Slot < 2; ++Slot)
+	{
+		Houses[Slot] = Test.World->SpawnActor<AHOLBuilding>(FVector(Slot * -20000.0 + 4000.0, 0.0, 0.0), FRotator::ZeroRotator);
+		Payers[Slot] = Test.FindPlayerState(Slot);
+		if (!TestNotNull(TEXT("a Barracks"), Houses[Slot]) || !TestNotNull(TEXT("the slot's player state"), Payers[Slot]))
+		{
+			return false;
+		}
+		Houses[Slot]->Setup(Barracks, static_cast<uint8>(Slot), static_cast<uint8>(Slot));
+		Payers[Slot]->SetResources(FHOLResources(5000, 5000, 5000, 5000));
+		FHOLProductionCommand Command;
+		Command.PlayerIndex = Slot;
+		Command.Building = Houses[Slot];
+		Command.TypeName = Warrior;
+		Test.Commands->IssueProductionOrder(Command);
+	}
+	Test.RunStep(1);
+	TestEqual(TEXT("the Dawn's Barracks refused the Damned Warrior"), Houses[0]->GetProductionQueue().Num(), 0);
+	TestTrue(TEXT("... and the Dawn paid nothing"), Payers[0]->GetResources() == FHOLResources(5000, 5000, 5000, 5000));
+	TestEqual(TEXT("the Legions' Barracks queued it"), Houses[1]->GetProductionQueue().Num(), 1);
+	const FHOLResources Paid = Payers[1]->GetResources();
+	TestEqual(TEXT("the Legions paid the row's food"), 5000 - Paid.Food, WarriorRow->Cost.Food);
+	TestEqual(TEXT("the Legions paid the row's gold"), 5000 - Paid.Gold, WarriorRow->Cost.Gold);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
