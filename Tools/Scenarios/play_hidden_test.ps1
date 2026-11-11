@@ -20,7 +20,7 @@ Copy-Item (Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell
 # faux editeur : Mode = stay (dort lui aussi) ou orphan (sort apres 3 s en laissant le petit-fils)
 $Fake = Join-Path $Tmp 'fake_editor.ps1'
 $FakeText = @(
-    'param([string]$Mode = "stay")',
+    'param([string]$Mode = "stay", [Parameter(ValueFromRemainingArguments = $true)] $Rest)',
     'Start-Process powershell -ArgumentList "-NoProfile", "-Command", "Start-Sleep 120" -WindowStyle Hidden',
     'if ($Mode -eq "stay") { Start-Sleep 120 } else { Start-Sleep 3 }'
 )
@@ -61,7 +61,8 @@ Kill-Leftovers
 # 4. -NoWait : rend la main tout de suite
 $n = Run @('-Hidden', '-NoWait') 'stay'
 Check ($n.Sec -lt 15) ("-NoWait rend la main tout de suite ({0:N1} s)" -f $n.Sec)
-Check ((Alive).Count -gt 0) '-NoWait : l editeur vit encore (reste a charge de stray_processes.ps1 -Stop)'
+$al = @(Alive)
+Check ($al.Count -gt 0) ('-NoWait : l editeur vit encore (reste a charge de stray_processes.ps1 -Stop) ; sortie : ' + (Flat $n.Out))
 Kill-Leftovers
 
 Start-Sleep -Milliseconds 500
