@@ -4,6 +4,7 @@ Convention des noms : E-<scenario>.md = essai a jouer (commande play.ps1, repons
 Autres fichiers : ESSAIS-A-JOUER.md (liste des essais a donner, a rejouer sur le main du jour avant de la donner).
 Une fiche repondue et reportee dans son chantier (*InProgress.md, EtapeDefini.md) est archivee dans Docs\Archive\Retours_<date>\ (rien n'est supprime) ; archives : Docs\Archive\Retours_2026-11-10\ (REPONSES-2026-11-09.md, fiches audio d'alertes, buildingdone, techdone, trade, coins) et Docs\Archive\Retours_2026-11-11\ (BUG-melee-stuck-attack.md : corrige par D769 et 3321d17, confirme par l'utilisateur le 2026-11-10 ; le reste ouvert est D641, voir BUG-melee-spin-sanity.md).
 
+Note du 2026-11-11 soir : 10 fiches E-* repondues (OK, REGLAGE, choix) archivees dans Docs\Archive\Retours_2026-11-11\ ; restent ici avec leur Reponse : E-legions_roster_gesture, E-disconnect_1v1, E-audio_compare_buildings_stone/_metal (scenarios jamais demarres), E-neutrals, E-legions_warrior (BUG). Liste ci-dessous = avant ce passage.
 Contenu au 2026-11-11 (12 fichiers avec ESSAIS-A-JOUER.md et ce fichier) :
 - BUG (2) : BUG-melee-spin-sanity.md, BUG-playtest_hero_army-spin.md (D641 secondes lignes, ecartee par decision de l'utilisateur mais defaut du jeu non corrige).
 - E (7) : E-audio_compare_buildings.md (index), _stone, _metal, E-audio_panel.md (SON a ecouter par l'utilisateur seul, pierre et metal encore a choisir) ; E-disconnect_1v1.md (jamais rejoue sur main) ; E-neutrals.md et E-playtest_hero_army.md (LOGIQUE SEULEMENT, Sanity D641).

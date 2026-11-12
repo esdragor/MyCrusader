@@ -23,3 +23,5 @@ Duree : environ 1 min. Reponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 ## Integrateur Faramir 2026-11-11 15:09-15:16, main 521adcb, binaire 15:03 (session_gate -Phase Essay PASS)
 Défaut constaté : la 3e case de la grille de la Caserne affiche « Damned Warrior » (E) en anglais dans l'interface FR et JA (non traduit) ; le bandeau du scénario reste en français en EN et JA. session_gate -Phase Essay dit « aucune branche citée » alors que la ligne est « branches: aucune » (gabarit : aucune est permis) : le contrôle du gate est trop strict. Durée : environ 1 min de jeu.
+
+Reponse: le scenario n'a jamais demarre chez l'utilisateur (erreur etape 41 « jamais venu »), 2026-11-11 soir

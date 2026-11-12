@@ -13,3 +13,5 @@ PNG OUVERTS et vus (Saved_Tests\Screenshots\WindowsEditor\HOL\, dernier pré-vol
 - Cosmétique : le panneau « Scénario neutrals en préparation… » reste sur les captures (défaut connu).
 NON VÉRIFIÉ : la souris physique ; le son ; les 100 XP à l'écran (journal seulement : « Camp 1 reward: slot 0 +100 XP ») ; compter 3 silhouettes grises sur neutrals_camp ; la mêlée à 6 contre 3 (spin D641, toujours rouge ~70 % et NON corrigé).
 Commande (à NE PAS donner avant le cadrage de la session principale) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 neutrals -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`
+
+Reponse: BUG: quand je combats le Lancier neutre, le bras qui ne tient pas la lance est dans son corps (2026-11-11 soir)
