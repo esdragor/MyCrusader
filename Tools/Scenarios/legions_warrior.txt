@@ -1,0 +1,56 @@
+# L4 step 7 (Galadriel): the Legions' Damned Warrior and its necrotic rage button, through REAL gestures. A Barracks of the Legions, a Damned Warrior, an Aube Spearman close by; you click the warrior on its body (hol.Select.ClickUnit), the grid shows the Rage cell, you click it (hol.HUD.Click GridCell02: the same path as the mouse, then the order goes through the server like any order), the rage runs 10 s, then it ends. Nothing in the drawing marks the rage (no aura, no colour: see Retours\Q-legions-warrior-rage-visual.md), so the effect is read in the log (cast line) and in the warrior's health bar.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Hero.SetXP 0 3000
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Camera.FocusNear 2500 2500
+hol.Camera.Zoom -3
+frames 40
+# 1. The Barracks, clicked for real: the grid offers the Damned Warrior in the third cell (key E).
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Lancier squelette; Z: Garde noire; E: Guerrier damné
+# 2. Key E: the Damned Warrior is produced.
+hol.Select.Grid 2
+waitlog Production: DamnedWarrior of slot 0 done
+frames 30
+# 3. An Aube Spearman close by (slot 1) to fight.
+hol.Camera.FocusNear 2500 3300
+frames 2
+hol.Units.SpawnHere 1 Spearman 1 100
+waitlog SpawnHere: 1 Spearman of slot 1
+hol.Camera.FocusNear 2500 2500
+frames 2
+# 4. A left click on the warrior's body selects it: the grid shows the rage button (cell E) and the name reads Guerrier damné.
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Report
+waitlog HUD selection name: Guerrier damné$
+waitlog HUD cells: E: Rage
+capture legions_warrior_button
+# 5. The real click on the Rage cell: the order reaches the simulation, the rage is cast.
+hol.HUD.Click GridCell02
+waitlog Grid: necrotic rage
+waitlog Rage order: slot 0 queued for 1 units
+waitlog casts the necrotic rage
+frames 60
+hol.HUD.Report
+capture legions_warrior_rage
+# 6. The rage lasts 10 s then ends (or at 20 health): let the fight run past it.
+frames 600
+hol.HUD.Report
+capture legions_warrior_after
+# 7. A second click on the cell while it recharges is refused: no second cast line.
+hol.HUD.Click GridCell02
+waitlog Rage order: slot 0 queued for 1 units
+frames 30
+note You click the Barracks, press E for a Damned Warrior, click its body, then click the Rage cell: the order is cast (log: casts the necrotic rage), the warrior loses 3 health per blow for 10 s, then the rage ends. The rage is NOT drawn (no aura, no colour): LOGIC ONLY for the effect, see the question.

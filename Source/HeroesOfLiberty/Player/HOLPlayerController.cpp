@@ -3590,6 +3590,8 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 			{
 				Context.bBuilders |= View.CarryCapacity > 0;
 				Context.bSoldiers |= View.CarryCapacity == 0;
+				Context.bDeployables |= View.DeployPhase >= 0;
+				Context.bDeployedAny |= View.DeployPhase == 1 || View.DeployPhase == 2; // deploying or deployed
 				bAllKings &= View.bKing;
 				bAnyKnown = true;
 			}
@@ -3605,6 +3607,11 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 		// J8c.4: the hero commanded, his abilities on the grid (his level from the public sheet, the cool-downs from the
 		// private one: the seconds left to the step each is ready at, rounded up).
 		Context.bHero = GetCommandHero() != 0;
+		for (const uint32 UnitId : Units)
+		{
+			FHOLUnitView RageView;
+			Context.bRageUnit |= HOLUnitView::Find(*GetWorld(), UnitId, RageView) && RageView.TypeName == FName(TEXT("DamnedWarrior"));
+		}
 		if (Context.bHero)
 		{
 			const int32 Slot = GetHOLPlayerState()->GetPlayerIndex();
@@ -3930,6 +3937,20 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		RequestStopUnits(Own, Command.Command == EHOLGridCommand::Hold);
 		return;
 	}
+	case EHOLGridCommand::NecroticRage:
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Grid: necrotic rage"));
+		RequestCastRage(GetOwnSelectedUnits());
+		return;
+	}
+	case EHOLGridCommand::Deploy:
+	{
+		const TArray<uint32> Own = GetCommandUnits();
+		UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units %s"), Own.Num(), Command.bPack ? TEXT("pack up") : TEXT("deploy"));
+		bAttackMoveArmed = false;
+		RequestToggleDeploy(Own);
+		return;
+	}
 	case EHOLGridCommand::CancelConstruction:
 	{
 		// The site selected alone, or a subgroup's only building.
@@ -4143,6 +4164,14 @@ void AHOLPlayerController::RequestStopUnits(const TConstArrayView<uint32> UnitId
 	if (UnitIds.Num() > 0)
 	{
 		ServerStopUnits(TArray<uint32>(UnitIds), bHold);
+	}
+}
+
+void AHOLPlayerController::RequestToggleDeploy(const TConstArrayView<uint32> UnitIds)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerToggleDeploy(TArray<uint32>(UnitIds));
 	}
 }
 
@@ -4889,6 +4918,24 @@ void AHOLPlayerController::RequestHeroAbility(const EHOLHeroAbility Ability, con
 	ServerHeroAbility(Ability, Location);
 }
 
+void AHOLPlayerController::RequestCastRage(const TConstArrayView<uint32> UnitIds)
+{
+	if (UnitIds.Num() > 0)
+	{
+		ServerCastRage(TArray<uint32>(UnitIds));
+	}
+}
+
+void AHOLPlayerController::ServerCastRage_Implementation(const TArray<uint32>& UnitIds)
+{
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLCommandSubsystem* Commands = GetWorld() ? GetWorld()->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
+	if (HOLPlayerState && Commands && HOLPlayerOrders::IsAccepted(HOLPlayerState->GetPlayerIndex(), UnitIds.Num()))
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Rage order: slot %d queued for %d units"), HOLPlayerState->GetPlayerIndex(), UnitIds.Num());
+		Commands->IssueRageOrder(HOLPlayerState->GetPlayerIndex(), UnitIds);
+	}
+}
 void AHOLPlayerController::ServerHeroAbility_Implementation(const EHOLHeroAbility Ability, const FVector_NetQuantize Location)
 {
 	// The player's own slot only (D288), an ability that is cast (not the aura, not a value out of the enum).
@@ -5103,6 +5150,14 @@ void AHOLPlayerController::ServerStopUnits_Implementation(const TArray<uint32>& 
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::Stop(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, bHold);
+	}
+}
+
+void AHOLPlayerController::ServerToggleDeploy_Implementation(const TArray<uint32>& UnitIds)
+{
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::ToggleDeploy(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds);
 	}
 }
 

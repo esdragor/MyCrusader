@@ -55,6 +55,11 @@ namespace HOLCommandGrid
 			}
 			return Result;
 		}
+		if (Context.bRageUnit && Cell == GetRageCell())
+		{
+			Result.Command = EHOLGridCommand::NecroticRage;
+			return Result;
+		}
 		if (Context.bHero)
 		{
 			for (const EHOLHeroAbility Ability : { EHOLHeroAbility::CloseRanks, EHOLHeroAbility::Banner })
@@ -71,6 +76,10 @@ namespace HOLCommandGrid
 		return Result;
 	}
 
+	int32 GetRageCell()
+	{
+		return 2;
+	}
 	int32 GetHeroAbilityCell(const EHOLHeroAbility Ability)
 	{
 		return Ability == EHOLHeroAbility::CloseRanks ? 0 : Ability == EHOLHeroAbility::Banner ? 1 : INDEX_NONE;
@@ -93,6 +102,11 @@ namespace HOLCommandGrid
 		{
 			Result.Command = Cell == AttackMoveCell && Context.bSoldiers && !Context.bOnlyKings ? EHOLGridCommand::AttackMove
 				: Cell == StopCell ? EHOLGridCommand::Stop : Cell == HoldCell && !Context.bOnlyKings ? EHOLGridCommand::Hold : EHOLGridCommand::None;
+			if (Cell == DeployCell && Context.bDeployables)
+			{
+				Result.Command = EHOLGridCommand::Deploy;
+				Result.bPack = Context.bDeployedAny;
+			}
 		}
 		return Result;
 	}
@@ -154,7 +168,7 @@ namespace HOLCommandGrid
 		if (!IsBuildGrid(Context))
 		{
 			// The hero's cells (A Z) are the grid's; the other keys the orders'.
-			Result.Target = GetCommand(Context, Cell).Command == EHOLGridCommand::HeroAbility ? EHOLGridKeyTarget::Grid : EHOLGridKeyTarget::Orders;
+			Result.Target = GetCommand(Context, Cell).Command == EHOLGridCommand::HeroAbility || GetCommand(Context, Cell).Command == EHOLGridCommand::NecroticRage ? EHOLGridKeyTarget::Grid : EHOLGridKeyTarget::Orders;
 			return Result;
 		}
 		// No age chosen: A Z E R choose one (one not reached: nothing), the others are the orders'.

@@ -60,6 +60,7 @@ void UHOLCommandSubsystem::DropOrdersOf(const int32 PlayerIndex)
 	PendingBuildOrders.RemoveAll(OfPlayer);
 	PendingHeroReturnOrders.Remove(PlayerIndex);
 	PendingHeroAbilityOrders.RemoveAll(OfPlayer);
+	PendingRageOrders.RemoveAll(OfPlayer);
 	PendingHeroTalentOrders.RemoveAll(OfPlayer);
 	PendingDuelOrders.RemoveAll(OfPlayer);
 	PendingDiplomacyOrders.RemoveAll(OfPlayer);
@@ -125,6 +126,20 @@ void UHOLCommandSubsystem::ConsumeHeroAbilityOrders(TArray<FHOLHeroAbilityOrder>
 	Swap(OutOrders, PendingHeroAbilityOrders);
 }
 
+void UHOLCommandSubsystem::IssueRageOrder(const int32 PlayerIndex, const TArray<uint32>& UnitIds)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex) || UnitIds.IsEmpty())
+	{
+		return;
+	}
+	PendingRageOrders.Add(FHOLRageOrder{ PlayerIndex, UnitIds });
+}
+
+void UHOLCommandSubsystem::ConsumeRageOrders(TArray<FHOLRageOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingRageOrders);
+}
 void UHOLCommandSubsystem::IssueHeroTalentOrder(const int32 PlayerIndex, const int32 Family)
 {
 	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || IsRefused(PlayerIndex))
@@ -205,7 +220,7 @@ void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitId
 	{
 		return;
 	}
-	if (!bQueue || Kind != EHOLOrderKind::Attack)
+	if ((!bQueue || Kind != EHOLOrderKind::Attack) && Kind != EHOLOrderKind::ToggleDeploy)
 	{
 		UHOLHealProcessor::CancelOrders(UnitIds);
 	}

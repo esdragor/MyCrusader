@@ -35,6 +35,12 @@ namespace HOLGameNames
 			// S2 (GDD 6.1), translated in Tools/Localization/fill_po.py.
 			return LOCTEXT("Mangonel", "Mangonneau");
 		}
+		if (TypeName == FName(TEXT("DamnedWarrior")))
+		{
+			// L4 (GDD 11.1 "Guerrier Damné", the Legions' Barracks), translated in Tools/Localization/fill_po.py; a key of its own so that the
+			// Barracks tooltip (no table row there) and the grid show a name, not the raw type id.
+			return LOCTEXT("DamnedWarrior", "Guerrier damné");
+		}
 		if (TypeName == Peasant)
 		{
 			return LOCTEXT("Peasant", "Paysan");

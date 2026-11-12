@@ -19,7 +19,9 @@ foreach ($N in 'A', 'B', 'C', 'D', 'E', 'G', 'W', 'X', 'Y', 'Z') {
     New-Item -ItemType Directory -Force (Join-Path $Tmp "wt_$N") | Out-Null
     Copy-Item (Join-Path $Repo "HeroesOfLiberty.uproject") (Join-Path $Tmp "wt_$N")
 }
-Set-Content (Join-Path $Tmp "fake.ps1") 'Start-Sleep -Seconds ([int]$env:HOL_FAKE_SECONDS); "fake build done"; exit 0'
+# HOL_FAKE_GATE (a file path): the fake build also waits until that file exists, so a scenario holds the slot as long as it
+# needs instead of racing a fixed sleep against the slow start of each build.ps1 (Get-CimInstance ~2 s per start).
+Set-Content (Join-Path $Tmp "fake.ps1") 'Start-Sleep -Seconds ([int]$env:HOL_FAKE_SECONDS); if ($env:HOL_FAKE_GATE) { $G = $env:HOL_FAKE_GATE; $End = (Get-Date).AddSeconds(120); while (-not (Test-Path $G) -and (Get-Date) -lt $End) { Start-Sleep -Milliseconds 300 } }; "fake build done"; exit 0'
 $Fake = Join-Path $Tmp "fake.ps1"
 
 function New-Scenario($Name) {
@@ -79,7 +81,10 @@ if (-not $Only -or $Only -eq 'c') {
     Write-Host "[c] orphans"
     $S = New-Scenario c
     New-Item -ItemType Directory -Force $S.Dir | Out-Null
-    Launch $S 'A' 14
+    $Gate = Join-Path $Tmp "gate_c"
+    $env:HOL_FAKE_GATE = $Gate   # A holds the slot until the orphan checks are done
+    Launch $S 'A' 1
+    Remove-Item Env:HOL_FAKE_GATE
     Check (Wait-Until { @(Tickets $S | Where-Object { $_.state -eq 'compiling' }).Count -eq 1 }) "A holds the slot"
     # a ticket whose owner process died (pid that does not exist)
     $Dead = @{ id = "deadbeef"; root = "x:\dead"; worktree = "wt_G"; pid = 999999; pidStart = 1; parentPid = 0; parentStart = 0
@@ -92,7 +97,9 @@ if (-not $Only -or $Only -eq 'c') {
 param($Build, $Root, $Q, $Csv, $Fake)
 Start-Process powershell -WindowStyle Hidden -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$Build`"", '-Root', "`"$Root`"",
     '-QueueDir', "`"$Q`"", '-CsvPath', "`"$Csv`"", '-FakeBuild', "`"$Fake`"")
-Start-Sleep -Seconds 5   # D gets queued with a live parent, then this launcher exits
+# D gets queued with a live parent (wait for ITS ticket, not a fixed delay: build.ps1 starts slowly), then this launcher exits
+$End = (Get-Date).AddSeconds(60)
+while ((Get-Date) -lt $End -and -not (Get-ChildItem $Q -Filter '*.json' -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw) -match 'wt_D' })) { Start-Sleep -Milliseconds 300 }
 '@
     Set-Content $Wrapper $WrapperText
     $env:HOL_FAKE_SECONDS = "3"
@@ -101,6 +108,7 @@ Start-Sleep -Seconds 5   # D gets queued with a live parent, then this launcher 
     Check (Wait-Until { @(Rows $S | Where-Object { $_.worktree -eq 'wt_D' -and $_.result -eq 'ORPHAN' }).Count -eq 1 } 40) "CSV: orphan build wt_D left the queue (ORPHAN row)"
     Check (-not (Test-Path $DeadFile)) "ticket of the dead owner (wt_G) removed from the queue"
     Check (@(Rows $S | Where-Object { $_.worktree -eq 'wt_G' -and $_.result -eq 'ORPHAN' }).Count -eq 1) "CSV: wt_G logged as ORPHAN"
+    Set-Content $Gate "go"
     $Codes = @('A', 'E' | ForEach-Object { Wait-Exit $S $_ })
     Check (($Codes -join ',') -eq '0,0') "A and E (live parent) still finish PASS, got: $($Codes -join ',')"
     Check (@(Rows $S | Where-Object { $_.worktree -eq 'wt_D' -and $_.result -eq 'PASS' }).Count -eq 0) "wt_D never compiled"
@@ -113,7 +121,10 @@ if (-not $Only -or $Only -eq 'd') {
     # history: X and Y compiled 5 min ago (recent), W never (starved)
     $Stamp = (Get-Date).AddMinutes(-5).ToString("yyyy-MM-dd HH:mm:ss")
     Set-Content $S.Csv ("worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority`r`nwt_X,$Stamp,$Stamp,$Stamp,0,1,PASS,`"`",normal`r`nwt_Y,$Stamp,$Stamp,$Stamp,0,1,PASS,`"`",normal") -Encoding ascii
-    Launch $S 'A' 16
+    $Gate = Join-Path $Tmp "gate_d"
+    $env:HOL_FAKE_GATE = $Gate   # A holds the slot until every other build is queued (no race against a fixed sleep)
+    Launch $S 'A' 1
+    Remove-Item Env:HOL_FAKE_GATE
     Check (Wait-Until { @(Tickets $S | Where-Object { $_.state -eq 'compiling' }).Count -eq 1 }) "A holds the slot"
     foreach ($N in 'X', 'Y', 'W') {
         Launch $S $N 2
@@ -121,6 +132,7 @@ if (-not $Only -or $Only -eq 'd') {
     }
     Launch $S 'Z' 2 @('-Priority', 'merge')
     Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq "wt_Z" }).Count -eq 1 }) "wt_Z (merge) queued last"
+    Set-Content $Gate "go"
     foreach ($K in 'A', 'X', 'Y', 'W', 'Z') { Wait-Exit $S $K | Out-Null }
     $Order = @(Rows $S | Where-Object { $_.duration_s -ne '1' -or $_.worktree -eq 'wt_A' } | Sort-Object compile_start | ForEach-Object { $_.worktree }) -join ','
     Check ($Order -eq 'wt_A,wt_Z,wt_W,wt_X,wt_Y') "start order A (compiling), Z (merge), W (starved), X, Y (FIFO); got: $Order"

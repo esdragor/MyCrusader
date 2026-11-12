@@ -14,3 +14,5 @@ Building.Metal : A s_metal2_anvil_low, B s_metal2_plate_deep, C s_metal2_pot_dee
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings_metal -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 2 min (10 sons, Entrée = variante suivante ; le panneau dit « <Cue> <lettre> (<fichier>) vient de jouer »).
 Réponse attendue : une lettre par cue, `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: les sons ne se sont jamais lances, 2026-11-11 soir

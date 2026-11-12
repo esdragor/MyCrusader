@@ -35,6 +35,7 @@
 #include "Resources/HOLSourceSubsystem.h"
 #include "Simulation/HOLBuildFragments.h"
 #include "Simulation/HOLCombatRules.h"
+#include "Simulation/HOLRageVisual.h"
 #include "Simulation/HOLSimulationFragments.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
@@ -576,7 +577,9 @@ void UHOLInterpolatedInstancesProcessor::Execute(FMassEntityManager& EntityManag
 					UMassUpdateInstancedSkinnedMeshProcessor::UpdateMeshTransform(Entity, MeshInfo, Drawn, Representation.PrevTransform,
 						RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
 					MeshInfo.AddBatchedAnimationData(Entity, AnimData, RepresentationLOD.LODSignificance, Representation.PrevLODSignificance);
-					MeshInfo.AddBatchedCustomData(GetCustomData(SlotColors.GetLinear(State.OwnerPlayer), Choice.Prop), RepresentationLOD.LODSignificance,
+					// L4 (hol.Rage.Visual, default 0 = unchanged): a warrior in necrotic rage is tinted dark red in modes 1 and 4.
+					MeshInfo.AddBatchedCustomData(GetCustomData(HOLRageVisual::GetDrawColor(HOLRageVisual::GetMode(), Combat ? Combat->RageMs : 0,
+						SlotColors.GetLinear(State.OwnerPlayer)), Choice.Prop), RepresentationLOD.LODSignificance,
 						Representation.PrevLODSignificance);
 				}
 			}

@@ -1,5 +1,7 @@
 ﻿# Espacement des arbres, comparaison un par un : les memes 10 paquets que tree_spacing, la camera en gros plan sur UN paquet, Entree = paquet suivant (0,2 puis 0,3 ... jusqu'a 1,2 m)
 # Meme disposition que tree_spacing.txt (x = -5500, y = -4500 a 4500, tous les 10 m, meme graine), camera zoomee de 3 crans.
+# Bandeau (Faramir 2026-11-11) : la `note` etait lue apres la derniere attente, donc jamais vue ; elle est posee AVANT la premiere capture.
+note Comparaison un par un : 10 paquets de 14 arbres, gros plan sur chacun, de 0,2 a 1,2 m entre troncs ; Entree = paquet suivant (la distance est ecrite au sol). Dis quelle valeur se lit comme un bois compact sans blanc.
 hol.Cheat.Population 165
 hol.Sources.Grove 20 -5500 -4500 14 7
 hol.Sources.Label -4500 -4500 220 180 0,2 m
@@ -56,4 +58,3 @@ hol.Camera.Focus -5200 4500
 frames 10
 capture tree_compare_last
 waitkey Paquet 1,2 m (14 arbres, troncs a 1,2 m) : Entree = paquet suivant
-note Comparaison un par un : 10 paquets de 14 arbres, gros plan sur chacun, de 0,2 a 1,2 m entre troncs ; Entree passe au paquet suivant (le nom est ecrit au sol). Dis quelle valeur se lit comme un bois compact sans blanc.
