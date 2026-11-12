@@ -153,6 +153,12 @@ if ($Parts -contains "values") {
         $ValuesChecks["value_sheet_test.py ($($ValuesTestOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $ValuesCheckOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\make_value_sheet.py") --check 2>&1)
         $ValuesChecks["make_value_sheet.py --check ($($ValuesCheckOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # Orphan values (2026-11-11): the tool's own test, then a registry value nothing reads any more (value_consumers.py --check,
+        # known ones in Tools/Data/orphan_values_known.txt).
+        $ConsumersTestOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\value_consumers_test.py") 2>&1)
+        $ValuesChecks["value_consumers_test.py ($($ConsumersTestOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        $ConsumersOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\value_consumers.py") --check 2>&1)
+        $ValuesChecks["value_consumers.py --check ($($ConsumersOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitStatsOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_stats_test.py") 2>&1)
         $ValuesChecks["unit_stats_test.py ($($UnitStatsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $UnitAbilitiesOutput = @(python -I (Join-Path $PSScriptRoot "..\Data\unit_abilities_test.py") 2>&1)
@@ -163,7 +169,7 @@ if ($Parts -contains "values") {
     $ValuesFailed = @($ValuesChecks.Keys | Where-Object { -not $ValuesChecks[$_] })
     Write-Host "values : $(if ($ValuesFailed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
     $ValuesFailed | ForEach-Object { Write-Host "  [KO] $_" }
-    if ($ValuesFailed.Count) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
+    if ($ValuesFailed.Count) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
     $ValuesOk = $ValuesFailed.Count -eq 0
     if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { exit 1 }; exit 0 }
 }
@@ -2803,7 +2809,7 @@ if ($NetListening) {
             "hol.Select.Own", "waitlog Select own: 1 units", "hol.Build.PlaceNear Barracks $($NetBarracksNear -join ' ')", "waitlog Building arrived: Barracks of slot", "waitlog , finished",
             "signal $(Join-Path $TestSaved "quick_net_barracks$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_barracks$Other.flag")", "wait 3",
             "hol.Cheat.Tier 1", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue Spearman Barracks", "hol.Prod.Queue ManAtArms Barracks", "hol.Prod.Queue ManAtArms Barracks",
-            "waitunits 10", "wait 8", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
+            "waitunits 10", "wait 8", "hol.Cheat.Tier off", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
             "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear $($NetBarracksNear -join ' ') enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
             "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
             "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
@@ -3878,7 +3884,7 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
     $Paths = @($Section | Select-String -Pattern "Nav path: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value })
     $Checks = [ordered]@{}
     $Checks["376 sources placed, shown, forbidden on the navmesh ($($Reports | Select-Object -First 1))"] =
-        ($Reports.Count -eq 2) -and ($Reports[0] -eq "376 standing of 376 (Tree 320: 32000 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 376, navmesh 376")
+        ($Reports.Count -eq 2) -and ($Reports[0] -eq "376 standing of 376 (Tree 320: 32000 left, BerryBush 48: 14400 left, StoneVein 4: 12000 left, GoldVein 4: 12000 left); shown 376, navmesh 376")
     $Checks["nearest tree is the first one ($($Section | Select-String -Pattern 'Sources: nearest (.*)$' | ForEach-Object { $_.Matches[0].Groups[1].Value }))"] =
         [bool]($Section | Select-String -Pattern "Sources: nearest 0 Tree at \(-14221, -1816\), 100 left" -Quiet)
     $Checks["three paths ($($Paths.Count))"] = $Paths.Count -eq 3
@@ -3888,7 +3894,7 @@ if (($Parts -contains "sources") -and ($Parts -contains "camera")) {
         $Checks["the tree behind still closes its place ($($Paths[2]))"] = $Paths[2] -match "off the navmesh"
     }
     $Checks["used up: 375 left, shown and forbidden ($($Reports | Select-Object -Last 1))"] =
-        ($Reports.Count -eq 2) -and ($Reports[1] -eq "375 standing of 376 (Tree 319: 31900 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 375, navmesh 375")
+        ($Reports.Count -eq 2) -and ($Reports[1] -eq "375 standing of 376 (Tree 319: 31900 left, BerryBush 48: 14400 left, StoneVein 4: 12000 left, GoldVein 4: 12000 left); shown 375, navmesh 375")
     $Checks["capture"] = Test-Path (Join-Path $Shots "src_wood.png")
     $AllOk = (Report "sources" $Checks) -and $AllOk
 }
@@ -6301,7 +6307,7 @@ if ($Parts -contains "net") {
         if ($Parts -contains "sources") {
             # 5 wood left by the server in the tree nearest each start: 31900 - 2 x 95.
             $Sources = $NetLines | Select-String -Pattern "Sources \(client\): (.*)$" | Select-Object -Last 1 | ForEach-Object { $_.Matches[0].Groups[1].Value }
-            $Checks["client $N : 376 sources received, the used-up tree gone ($Sources)"] = $Sources -eq "375 standing of 376 (Tree 319: 31710 left, BerryBush 48: 9600 left, StoneVein 4: 10000 left, GoldVein 4: 10000 left); shown 375, navmesh 0"
+            $Checks["client $N : 376 sources received, the used-up tree gone ($Sources)"] = $Sources -eq "375 standing of 376 (Tree 319: 31710 left, BerryBush 48: 14400 left, StoneVein 4: 12000 left, GoldVein 4: 12000 left); shown 375, navmesh 0"
             $Checks["client $N : saw the tree used up"] = [bool]($ClientLines | Select-String -Pattern "Sources: source 0 used up \(client\)" -Quiet)
 
             # Gathering (J5a.5, D299, D303).
@@ -7899,7 +7905,11 @@ if ($Parts -contains "netai") {
     $Checks["server : Gather order of slot 2: 2 units to source (food)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source \d+ \(Food\)")
     $Checks["server : Gather order of slot 2: 2 units to source (wood)"] = [bool](Find-NetAILine "Gather order of slot 2: 2 units to source \d+ \(Wood\)")
     # The humans' Peasants are theirs: the AI orders none of them.
-    $HumanOrder = Find-NetAILine "Gather order of slot [01]:"
+    # Once a client has left, its seat is held by the AI on purpose (the disconnection feature, D717-D722: "AI brain: slot N held"),
+    # and that brain gathers for it: only the lines before the first such takeover count.
+    $HeldAt = @($NetAILog | Select-String -Pattern "AI brain: slot [01] held" | Select-Object -First 1 | ForEach-Object { $_.LineNumber - 1 })
+    $BeforeHeld = if ($HeldAt.Count) { @($NetAILog | Select-Object -First $HeldAt[0]) } else { @($NetAILog) }
+    $HumanOrder = @($BeforeHeld | Select-String -Pattern "Gather order of slot [01]:" | ForEach-Object { $_.Line }) | Select-Object -First 1
     $Checks["server : no gather order for the humans' slots ($(if ($HumanOrder) { ($HumanOrder -replace '^.*(Gather order)', '$1').Trim() } else { 'none' }))"] = -not $HumanOrder
     $AllOk = (Report "netai" $Checks) -and $AllOk
 }
@@ -7941,7 +7951,10 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
     $NetFogDone = @(1, 2 | ForEach-Object { Join-Path $TestSaved "quick_${NetFogPart}_done$_.flag" })
     # F6b: after 10 s Alice's units march (fast) to 27 m from Bob's forum, inside its sight (D523: 6400 cm) and theirs (3200 cm, F6e.2:
     # they see his centre), stay, and come home.
-    @("waitplayers 2", "mark $NetFogPart", "hol.Biome.Report") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
+    # S5 (SacredSitesInProgress.md, D701): three sacred sites posed by the server (the map's actor is not replicated): #0 in Bob's sight (15200, -3000: probed with the fog's sight per site, Bob's forum sees (15200, -3000) and (15200, 1000) but NOT (15200, 2000) nor (15200, 3000), something blocks his sight to the +Y side; 5000 was outside it),
+    # #1 in Alice's (-14800, 5000), #2 in the middle (0, 8000), in nobody's; a Hero of Alice takes #1 (the hold shortened to 2 s). Each client reports
+    # "Site views" at 6 s (its own player state's, replicated to its owner only); the server reports the same at 8 s (the truth, slot by slot).
+    @("waitplayers 2", "mark $NetFogPart", "hol.Biome.Report", "hol.Site.Enabled 1", "hol.Site.HoldSeconds 2", "hol.Site.Add 15200 -3000", "hol.Site.Add -14800 5000", "hol.Site.Add 0 8000", "hol.Units.Spawn 1 -14800 5000 0 Hero 100") + @($(if ($NetFogTrees) { "hol.Sources.Grove 160 0 1500 10" })) + @("wait 8", "hol.Fog.Report", "hol.Site.Report", "wait 2", "hol.Units.SpeedScale 10", "hol.Units.Move 12500 0 0") +
         @($(if ($NetFogTrees -and $TreesCutNow) { @("wait $TreesCutWait") + $TreesCut + @("wait $(14 - $TreesCutWait)") } else { "wait 14" })) + @($(if ($NetFogTrees -and -not $TreesCutNow) { $TreesCut + @("wait 6") })) + @("hol.Units.Move -15200 0 0", "wait 16",
         "hol.Sources.Report", "hol.Fog.Report", "waitlog Fog net:", "waitfile $($NetFogDone[0]) 240", "waitfile $($NetFogDone[1]) 240", "wait 1", "quit") |
         Set-Content -Encoding utf8 $NetFogServerSequence
@@ -7967,7 +7980,7 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
             # One units report a second for 40 s (the server's march of Alice's units starts at 10 s and is home by 40 s); the buildings once, at the start.
             $ReportCount = if ($NetFogTrees) { 48 } else { 40 }
             $ClientReports = @(1..$ReportCount | ForEach-Object { "wait 1"; "hol.Units.Report"; if ($_ % 2 -eq 0) { "hol.Fog.Report"; if ($NetFogTrees) { "hol.Sources.Report" } } }) + @("hol.Fog.Report")
-            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Biome.Report", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report") + $ClientReports +
+            @("waitmap Plain", "waitlog Camera above the start", "waitplayers 2", "mark $NetFogPart", "wait 6", "hol.Biome.Report", "hol.Buildings.Report", "hol.Sources.Report", "hol.Fog.Report", "hol.Site.Report") + $ClientReports +
                 @($(if (-not ($NetFogBack -and $Client -eq 2)) { "signal $($NetFogDone[$Client - 1])" }), "mark end", "quit") | Where-Object { $_ } | Set-Content -Encoding utf8 $ClientSequence
             $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${NetFogPart}_client$Client.log")
             $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
@@ -8071,6 +8084,23 @@ foreach ($NetFogPart in "netfog", "netfogoff", "netfogback", "netfogtrees") {
         $Checks["client $N : nothing held beyond its camp's reach ($($LeakLines.Count) reports$(if ($LeakLines.Count) { ', last: ' + ($LeakLines[-1].Line -replace '^.*Fog leaks: ', '') }))"] = $LeakLines.Count -ge 2 -and $LeakTexts.Count -eq 0
         $Sent = if ("$($ServerSentLine.Line)" -match "camp $($ClientFog[$N].Held) sent (\d+) \(on unexplored cells (\d+)\)") { @([int]$Matches[1], [int]$Matches[2]) } else { @(-1, -1) }
         $Checks["client $N : holds the $($Sent[0]) sources sent to its camp, none on unexplored cells ($($ClientSources[$N]); unexplored $($Sent[1]))"] = $Sent[0] -gt 0 -and $ClientSources[$N] -eq $Sent[0] -and $Sent[1] -eq 0
+    }
+    # S5 (D701): the sacred sites each client's player state holds ("Site views: slot S: N view(s) | #i (x, y) r.. owner o taker t fill f"): in Normal fog only
+    # the one in its own camp's sight (Alice #1, Bob #0; #2, in nobody's sight, in no one's view), without fog all three; the same text as the server's
+    # for that slot (the effect crossed the wire), and Alice's Hero has taken #1 (owner 0) on both machines.
+    foreach ($N in $ClientFog.Keys | Sort-Object) {
+        $SiteHeld = $ClientFog[$N].Held
+        $SitePattern = 'Site views: slot ' + $SiteHeld + ': (\d+) view\(s\)(.*)$'
+        $SiteServer = @($NetFogLog | Select-String -Pattern $SitePattern | Select-Object -Last 1)
+        $SiteClient = @(Get-MarkedLines (Get-Content $NetFogClientLogs[$N]) $NetFogPart | Select-String -Pattern $SitePattern | Select-Object -Last 1)
+        $SiteTail = { param($Hit) if ($Hit.Count) { $Hit[0].Matches[0].Groups[2].Value.Trim() } else { "no line" } }
+        $SiteServerTail = & $SiteTail $SiteServer
+        $SiteClientTail = & $SiteTail $SiteClient
+        $SiteIndexes = @([regex]::Matches($SiteClientTail, '#(\d+) \(') | ForEach-Object { [int]$_.Groups[1].Value })
+        $SiteWanted = if (-not $NetFogOn) { @(0, 1, 2) } elseif ($SiteHeld -eq 0) { @(1) } else { @(0) }
+        $Checks["client $N : holds the sacred site view(s) #$($SiteWanted -join ',#') only$(if ($NetFogOn) { ' (its camp''s sight)' } else { ' (no fog: all)' }) ($SiteClientTail)"] = $SiteClient.Count -eq 1 -and ($SiteIndexes -join ',') -eq ($SiteWanted -join ',')
+        $Checks["client $N : its sacred site views are the server's for slot $SiteHeld (server: $SiteServerTail)"] = $SiteServer.Count -eq 1 -and $SiteClientTail -eq $SiteServerTail
+        if ($SiteHeld -eq 0) { $Checks["client $N : Alice's Hero has taken site #1, owner 0 ($SiteClientTail)"] = $SiteClientTail -match '#1 \(-14800, 5000\) r1200 owner 0 ' }
     }
     # F6e: each client's cells in sight and explored (its camp's line of "Fog: mode ..."), equal to the server's for that camp (the server's
     # first report is at 8 s, the clients' at 6 s: the units are idle in both).

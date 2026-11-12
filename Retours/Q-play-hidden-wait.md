@@ -13,3 +13,5 @@ Conséquences visibles : A change l'appel des agents qui enchaînaient `play.ps1
 Recommandation : A maintenant, C plus tard (un `quit` de scénario ramènerait l'attente à la durée réelle du scénario).
 
 Valeur par défaut codée : A. Une ligne à changer : `[int] $TimeoutSec = 300` dans `Tools\Scenarios\play.ps1` (ou passer `-NoWait`).
+
+Reponse: A maintenant (-Hidden attend), C plus tard (verbe quit de scenario) - recommande, utilisateur, 2026-11-11 soir

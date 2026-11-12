@@ -43,6 +43,8 @@ struct FHOLUnitView
 	bool bSiege = false;
 	/** The King of Regicide (V5.3): moves, stops and attacks on order only, no attack-move nor hold (HOLCommandGrid::GetOrder). */
 	bool bKing = false;
+	/** G6 d: the deploy phase (HOLDeploy::EPhase as a number) of an engine that deploys, -1 for a unit that does not. Solo and server; a client until G6 e. */
+	int32 DeployPhase = -1;
 	/** A hero (J8a.1: the Hero armour category). IA2.1: the AI's army leaves him out. */
 	bool bHero = false;
 	/** Unhurt (J7b.4): its health is its type's maximum. */

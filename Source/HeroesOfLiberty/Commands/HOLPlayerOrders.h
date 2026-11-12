@@ -48,6 +48,8 @@ namespace HOLPlayerOrders
 	HEROESOFLIBERTY_API bool AttackMove(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, const FVector& Target, bool bQueue = false);
 	/** Stop, or hold the position (J7b.3). */
 	HEROESOFLIBERTY_API bool Stop(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, bool bHold);
+	/** The Mount / Dismount button (Palier3InProgress.md G6 d): through the queue as the other combat orders; the deploy processor decides (HOLDeploy::Toggle). */
+	HEROESOFLIBERTY_API bool ToggleDeploy(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds);
 	/** Gather a source (J5, D296), by its index in UHOLSourceSubsystem::GetSources; the soldiers walk to it. */
 	HEROESOFLIBERTY_API bool Gather(UWorld& World, int32 PlayerIndex, TConstArrayView<uint32> UnitIds, int32 SourceIndex, bool bQueue = false);
 	/** Build or repair a building (J6a.4, D312); the soldiers walk to it. */

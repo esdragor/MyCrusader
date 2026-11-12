@@ -220,7 +220,7 @@ void UHOLCommandSubsystem::IssueCombatOrder(const TConstArrayView<uint32> UnitId
 	{
 		return;
 	}
-	if (!bQueue || Kind != EHOLOrderKind::Attack)
+	if ((!bQueue || Kind != EHOLOrderKind::Attack) && Kind != EHOLOrderKind::ToggleDeploy)
 	{
 		UHOLHealProcessor::CancelOrders(UnitIds);
 	}

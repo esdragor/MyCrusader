@@ -23,6 +23,13 @@ TRANSLATIONS = {
     "HOLGameScreen,Hold": ("Hold", "待機"),
     "HOLGameScreen,HoldName": ("Hold position", "位置を保持"),
     "HOLGameScreen,HoldEffect": ("Attacks only in range, never chases", "射程内のみ攻撃し、追跡しない"),
+    # G6 d, PROPOSED labels of the Mount / Dismount button (Retours/Q-palier3-deploy-button.md): not in the GDD yet.
+    "HOLGameScreen,Deploy": ("Deploy", "展開"),
+    "HOLGameScreen,Pack": ("Pack up", "撤収"),
+    "HOLGameScreen,DeployName": ("Deploy the engine", "兵器を展開"),
+    "HOLGameScreen,PackName": ("Pack up the engine", "兵器を撤収"),
+    "HOLGameScreen,DeployEffect": ("Sets the engine up: it fires, it no longer walks", "兵器を設置する：発射できるが、移動できない"),
+    "HOLGameScreen,PackEffect": ("Folds the engine: it stops firing, it can walk", "兵器を畳む：発射できなくなり、移動できる"),
     "HOLGameScreen,ActivityAttacking": ("Attacking", "攻撃中"),
     "HOLGameScreen,MarketBuyName": ("Buy: {0}", "購入：{0}"),
     "HOLGameScreen,MarketSellName": ("Sell: {0}", "売却：{0}"),
@@ -483,6 +490,7 @@ TRANSLATIONS = {
     "HOLGameNames,DamnedWarrior": ("Damned Warrior", "呪われた戦士"),
     "HOLGameScreen,NecroticRageShort": ("Rage", "怒り"),
     "HOLGameScreen,NecroticRageName": ("Necrotic Rage", "死霊の怒り"),
+    "HOLGameScreen,NecroticRageCooldown": ("{0}\n{1} s", "{0}\n{1}秒"),
     "HOLGameScreen,NecroticRageEffect": ("{0} s: +{1} % damage, +{2} % attack rate, {3} HP lost per blow dealt. Refused under {4} HP, it ends at {5} HP; cooldown {6} s", "{0}秒間：ダメージ+{1}%、攻撃速度+{2}%、攻撃ごとにHP{3}を失う。HPが{4}未満では使用不可、HP{5}で終了。再使用まで{6}秒"),
     # Galadriel L4 (2026-11-11): 17 keys imported by the GatherText without a translation. PROVISIONAL, EN and JA both are proposals for the user to read again ("Sacred Sites" and "Sacred Victory" are literal renderings: the GDD gives no English name).
     "HOLMoraleTable,NameNecroticRage": ("Necrotic Rage", "死霊の怒り"),

@@ -1,0 +1,2 @@
+# Registry values (Tools/Data/ValueSheet.csv ids) that value_consumers.py finds dead (no consumer in Source/ or Script/) and that we keep
+# on purpose. One id per line, then the reason. Empty on 2026-11-11: every registry value has a consumer.

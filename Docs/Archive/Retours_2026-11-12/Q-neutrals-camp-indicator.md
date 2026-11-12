@@ -18,3 +18,5 @@ Valeur par défaut codée : **B** (un client lit 0 camp ; une ligne à changer d
 - **Autre** : à préciser.
 Recommandation : **B** (cohérent avec les sites et le brouillard : un camp non découvert n'a pas de point), libellés de survol à fixer avec la réponse.
 Valeur par défaut codée : aucun indicateur affiché tant que la réponse n'est pas donnée (les portes de lecture existent, la règle d'affichage `HOLCampBanner` n'est pas écrite : un libellé inventé serait à jeter).
+
+Reponse: Q1 C (replication limitee aux camps deja vus), Q2 B (point sur la minicarte, rouge vivant / gris nettoye ; libelle de survol a fixer) - recommande, utilisateur, 2026-11-11 soir

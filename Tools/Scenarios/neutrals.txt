@@ -21,8 +21,8 @@ waitlog Decor.ClearNear 0 0 2500: took
 hol.Camp.Add 0 0 3 Spearman
 waitlog Camp 1: 3 Spearman at
 frames 30
-hol.Units.Spawn 6 -4000 0 0 ManAtArms 200
-waitlog Spawn: 6 ManAtArms
+hol.Units.Spawn 3 -4000 0 0 ManAtArms 200
+waitlog Spawn: 3 ManAtArms
 frames 40
 hol.Camp.Report
 waitlog Camp 1 at (0, 0): guarding, members 3 of 3, hits taken 0
@@ -38,7 +38,7 @@ hol.Select.Grid 4
 waitlog Grid: attack-move, click on the ground
 hol.Camera.Focus -700 0
 frames 2
-hol.Select.LeftClickGround -1000 0
+hol.Select.LeftClickGround -300 0
 waitlog Scripted left click at
 waitlog Camp 1: fighting
 hol.Camera.Focus -700 0
@@ -64,6 +64,6 @@ hol.Units.Move 0 7500 0 a
 waitlog Camp 2: fighting
 waitlog Camp 2: cleared for good
 waitlog Camp 2 reward: slot 0 +100 XP
-note Camp neutre : 3 Lanciers neutres au centre de la carte. Mes 6 Hommes d armes entrent dans leur rayon (15 m), le camp charge, est detruit, et mon heros gagne 100 XP (journal : Camp 1 reward).
+note Camp neutre : 3 Lanciers neutres au centre de la carte. Mes 3 Hommes d armes entrent dans leur rayon (15 m), le camp charge, est detruit, et mon heros gagne 100 XP (journal : Camp 1 reward).
 # Audit du jeu (Auto_Journey, Qualite des essais) : couleur des neutres, unites qui tournent ou tremblent. Lu par preflight.ps1.
 hol.Test.Sanity
