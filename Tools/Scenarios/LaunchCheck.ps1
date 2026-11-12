@@ -45,6 +45,15 @@ function Get-LaunchProblems([string]$Root, [string]$Name, [string]$PlayerName = 
     return $Problems
 }
 
+# A binary of -Root older than its code: "" if fresh (or no dll), the problem otherwise. RED-TEST STAND-IN: the logic of 42e5e41 (dll older
+# than the last C++ commit date), moved here unchanged from preflight.ps1 section 6.
+function Get-StaleBinaryProblem([string]$Root) {
+    $Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"
+    $LastCode = git -C $Root log -1 --format=%cI -- Source Plugins 2>$null
+    if ((Test-Path $Dll) -and $LastCode -and ((Get-Item $Dll).LastWriteTime -lt [datetime]$LastCode)) { return "the binary of $Root ($((Get-Item $Dll).LastWriteTime)) is older than its last C++ commit ($LastCode): Tools\build.ps1 in that copy first" }
+    return ""
+}
+
 # Problems in a game log of the scenario (check.ps1's or the user's launch): an asset the scenario asked for and did not find, a step that
 # timed out, a failed scenario, a local player that became a spectator.
 function Get-LogLaunchProblems([string[]]$Lines) {
