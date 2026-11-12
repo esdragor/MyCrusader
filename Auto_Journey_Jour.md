@@ -148,3 +148,113 @@ Rapports : DOCS-1112a fini 10:45 (6d77b69, 44 appels). FARAMIR-1112a fini 10:50 
 Exception : FARAMIR-1112b lance avec le gate -NoCpp alors qu il compile (7 worktrees dans la file de build) : la verification des essais est la priorite de la seance, il attend son tour par build.ps1 -Wait.
 
 Modeles (consigne du 2026-11-12) : etape 0 et verification sur Fable 5.2, tout le reste sur Opus 5.5. Arret dur des agents 12:30, fusion groupee dans Faramir ensuite (sans push), fin 13:00.
+
+## Bilan du 2026-11-12
+
+Seance autonome 10:26 -> 13:00, 24 agents (Opus 5.5 pour le travail, Fable 5.2 pour l'etape 0, le releve du GDD et la recette). Fusion sans push autorisee par l'utilisateur. Rien pousse.
+
+DANS MAIN (4851635 puis commits de docs) :
+- 4 chapitres du GDD ouverts en regles pures, sans effet en jeu (aucun appelant) : Centres secondaires (D384), Signaux (A1), choix de specialisation de palier (A2), option Nomade (A3). Tests 1200/1200.
+- Outils : controle de lancement des scenarios (binaire perime compare au fichier C++ le plus recent, FARAMIR-1112b) ; eol_check branche dans le gate Close (HALDIR-1112c).
+- Diagnostic des 4 essais jamais demarres (joueur non nomme, sons non commites, binaire perime).
+- Diagnostic du bras du Lancier : animation A_Spearman_Attack, test rouge arm_body_check.py, pas corrige.
+- D770-D782 au GDD § 22 (616719a, accord de l'utilisateur a 12:12), prochain D783.
+- Nettoyage des docs (etape 0a) et corrections de la recette (CLOTURE-1112a, e8ec836).
+
+ECRIT MAIS NON COMPILE (branches pas pretes) :
+- Arwen d751-root WIP 308419b : Neutres N7, point de camp sur la minicarte. Suite : build, test, scenario neutrals_minimap.
+- Elrond tiers WIP cc3213e : Palier 3 G6 e et G4 filtre, scenario deploy jamais lance. Suite : build, quick_check tests,net, preflight deploy.
+- Galadriel galadriel-tab 236e56b : fusion de main compilee (build PASS 3994 s), correctifs rage 40 % et hol.Rage.Visual 4 ecrits NON COMMITES. Suite : commit, build, tests.
+- Glorfindel net-playtest WIP 6703b9f : infobulle de revenu D780, GoldLine retiree. Suite : code vert dans UHOLGatherProcessor, build, test Gather.Income.
+- Sauron visual 6c7292f : styles des ressources figes (arbre C, baies/pierre/or A). Suite : build, preflight, PNG vus.
+
+FAIT MARQUANT : la file de build a ete bloquee par la machine saturee. Build de Glorfindel 1038 s en echec. Galadriel 3994 s dont ~60 min d'attente. 1,2 Go de RAM libre a 11:52 ; 6 editeurs ProjectShiva = 33 Go, 2 jeux = 15 Go. 5 agents C++ sur 5 n'ont rien pu compiler apres 10:56.
+
+ATTEND L'UTILISATEUR :
+- 8 questions dans Retours\ : Q-income-tooltip-rate, Q-neutrals-camp-hover, Q-resources-tree-size, Q-spear-grip, Q-secondary-centers, Q-signals, Q-specialization, Q-nomad.
+- 0 essai jouable : binaire de la copie principale perime, a recompiler machine calme.
+- Recette : Q-income-tooltip-rate recommande C mais le code pose A ; dans Galadriel, le plafond de rage est monte des deux cotes (bonus ET malus) : a confirmer.
+
+REPRISE : premiere tache de chaque worktree = `Tools\build.ps1` machine calme, puis quick_check, avant tout nouveau code.
+
+### Lecons appliquees 2026-11-12
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| 0a nettoyage des docs avant tout agent | oui | DOCS-1112a et nettoyage faits avant les lancements de 10:39 |
+| T2-1 etape 0 | oui | plan ecrit a 10:40 (## Programme du 2026-11-12), Fable 5.2 |
+| T2-2 un agent par worktree d'emblee | oui | 9 agents lances a 10:39 (8 worktrees + docs) |
+| L3-12 | sans objet | etape 0 faite |
+| L5-1 / L3-10 / L4-2 Get-Date et gate Launch | oui | gate Launch avant chaque lancement ; dernier lancement 12:29 (CLOTURE-1112a) |
+| L5-2 tableau agent -> id | oui | 24 lignes avec id ; messages d'arret de 12:38 aux 5 ids du tableau |
+| L3-1 / L4-4 plafond de 3 agents C++ | non | 7 tickets en file a 11:00 ; Arwen, Sauron, Celeborn, Faramir ont compile en plus des 3 agents C++ declares |
+| L1-10 docs commites | en partie | gate Merge 12:10 FAIL GDD.md non commite, leve par 616719a |
+| L5-7 accord de commit | oui | accord de l'utilisateur pour GDD.md a 12:12 |
+| L4-1 / L4-3 arret dur | non | arret 12:30 depasse : 5 agents bloques dans build.ps1 -Wait, arretes par message a 12:38, rapports jusqu'a 12:43 |
+| L3-8 / L4-9 integrateur nomme | en partie | FUSION-1112 et VERIF-1112 nommes a 12:11 et 12:20, pas au lancement |
+| L3-9 appels de la session principale | non verifie | rien au journal |
+| T2-3 enonce type | non verifie | enonces non relus par ce bilan |
+| L1-1 / L3-6 / L4-7 / L5-3 plafond 80 appels | oui | tous sous 60, max 58 (GLORFINDEL-1112a) |
+| L9-2 arret a 45 appels vus | en partie | 8 agents au-dessus de 45 : 58, 56, 52, 51, 49, ~48, 48, 46 |
+| Agents sous 300k tokens | oui | max ~187k |
+| L1-2 commit par lot | en partie | correctifs rage de Galadriel NON COMMITES ; 4 WIP commites seulement sur ordre a 12:38 |
+| L1-3 git merge main avant le rapport | oui | merges Haldir (1b5a1ed... 525d636), Celeborn 1d12401, Galadriel 24461a8, Elrond 6810ce6 |
+| L3-2 / L4-5 build dans les 15 min, NON COMPILE annonce | en partie | builds demandes tot mais en file ; 5 branches annoncees NON COMPILE |
+| L3-5 un lot de headers | non verifie | - |
+| L1-8 un statut par agent | oui | journaux + EtapeDefini par CLOTURE-1112a |
+| L1-9 / L4-8 numeros D, defauts codes | oui | GDD ecrit par DOCS-1112b seul (D770-D782) ; Q-signals, Q-nomad, Q-specialization avec defauts codes |
+| L1-7 / T2-4 questions | oui | 1 question par chantier ; 4 questions de Haldir reportees (plafond atteint) |
+| L5-6 tableau de questions | sans objet | seance autonome |
+| T2-5 build avant quick_check | oui | Galadriel build PASS puis tests 1171/1174 |
+| T2-6 / L5-8 script de bout en bout | en partie | scenarios deploy et neutrals_minimap jamais lances |
+| T2-7 / L1-5 Retours par fichier | oui | 8 Q-*.md dans Retours\ |
+| L1-11 / L10-1 build fige, pas de fenetre | oui | aucune commande play.ps1 donnee |
+| L3-4 ecriture au bon endroit | voir ligne de cloture | gate Close |
+| L4-12 outil partage corrige | oui | LaunchCheck corrige par FARAMIR-1112b ; defauts restants mis en file (recette) |
+| L4-13 / L3-11 / L5-5 / L6-6 / L9-7 / L10-5 / L11-10 | sans objet | ni UHT, ni regeneration, ni mesure |
+| L3-7 / L1-4 veilleur | non verifie | - |
+| Q1-Q4, Q6, Q7, Q9, L4-11, L7-6, L8-1, L8-4, L9-10 essais | sans objet | aucun essai produit ; preflights de FARAMIR-1112b NON FAITS |
+| Q5 / L5-4 / L11-9 recette independante | oui | VERIF-1112 (Fable) 12:26 ; 5 defauts corriges par CLOTURE-1112a (e8ec836) |
+| Q8 defaut commun en tete de file | oui | lignes PREMIER GESTE ajoutees par ce bilan |
+| Q10 / L4-10 / Q11 aucun essai sans preflight | oui | 0 essai donne |
+| Q12 / L1-6 / L11-4 reponses et cochage | voir ligne de cloture | gate Close |
+| L3 / T2 fusion groupee | oui | FUSION-1112 maps + fog + hero-j8-close, tests 1200/1200, --ff-only a 4851635 |
+| L4-6 / L7-7 / L8-8 fusion anticipee, sans rebuild | oui | fusion lancee 12:11, diff C++ vide |
+| Pre-vol gate Merge | en partie | FAIL GDD.md non commite, leve par 616719a avec accord |
+| L9-6 / L11-8 branches figees | en partie | liste figee, mais FARAMIR-1112b a commite sur fog jusqu'a 12:39 (0e9a649, e517855 hors main) |
+| L4-14 / L8-9 sync des worktrees, debut | en partie | sync_worktrees -NoBuild (exception notee) : DLL du 2026-11-11 partout, une cause de la file chargee |
+| L4-14 / L8-9 sync des worktrees, fin | voir ligne de cloture | - |
+| L1-13 test rouge avant correctif | en partie | Haldir rouge puis vert (12aee4a -> 91b39ce, 76f66b8 -> 9d30e2c, 567fd50 -> 1124a13, 938087b -> ae9d9af) ; Glorfindel, Arwen : rouge non observe (non compile) |
+| L5-bilan | oui | ce titre |
+| L6-2 extrait de la file | non verifie | - |
+| L6-4 bug rejoue au geste reel | en partie | bras du Lancier mesure par arm_body_check.py, rien vu en jeu |
+| L6-5 build apres git merge main | non | binaires perimes dans tous les worktrees apres fusion de main |
+| L7-1 tool_uses releves | oui | appels notes a chaque rapport |
+| L7-2 / L11-1 binaire perime au Launch | en partie | faille corrigee par FARAMIR-1112b ; recette : LaunchCheck ne regarde qu'une dll sur deux |
+| L7-3 / L7-4 / L8-5 / L10-4 / L11-11 / L11-13 | non verifie | - |
+| L7-5 stub + test rouge avant build | en partie | Glorfindel stub GetIncomePerMinute + test rouge, rouge non observe |
+| L8-2 audit melee bloquee | non | BUG-melee-stuck pas repris |
+| L8-6 / L9-4 fins de ligne | oui | eol_check au gate Close (HALDIR-1112c, dans main) |
+| L9-1 re-notification en boucle | oui | aucune boucle relevee au journal |
+| L9-5 commit_docs avant Merge | en partie | GDD.md hors couverture : FAIL Merge 12:10 |
+| L9-8 chapitres GDD libres | oui | releve neuf PLAN-1112a 11:02 (A = 4, B = 6, C = 27), 4 chapitres ouverts par Haldir |
+| L9-9 mode interactif | sans objet | une question de l'utilisateur a 11:52, reponse donnee |
+| L10-2 | sans objet | pas de net rouge |
+| L10-3 binaire avant quick_check de fusion | oui | FUSION-1112 : diff C++ vide, launch_check_test 14 PASS sur ee5dd8c |
+| L11-2 build.ps1 -Wait | en partie | utilise, mais l'appel passe en arriere-plan apres 180 s : l'agent ne bloque pas vraiment |
+| L11-3 verdict avant agent C++ | sans objet | - |
+| L11-5 / L11-6 | oui | faits le 2026-11-11 |
+| L11-7 gate -NoCpp | en partie | -NoCpp utilise pour FARAMIR-1112b qui compilait (exception notee) |
+| L11-12 purger Retours | oui | DOCS-1112a 10:45, index de Retours a 20 fichiers (CLOTURE-1112a) |
+| L12-1 / L12-1b charge machine | non | ecrites a 11:08 et 11:28, aucun outil ; ProjectShiva non mis en pause |
+| Pas de push | oui | VERIF-1112 GIT PASS, rien pousse |
+| Gate Close | voir ligne de cloture | - |
+
+### Lecons nouvelles 2026-11-12
+
+- L12-1c charge machine : `session_gate -Phase Launch` WARN si un cl.exe d'un autre moteur tourne ou si la memoire virtuelle libre < 8 Go ; `build.ps1` attend tant que < 8 Go et l'ecrit dans son journal et dans `BuildQueue.csv`.
+- L12-2 sync de debut : `sync_worktrees.ps1` SANS `-NoBuild` avant le premier lancement ; sinon `session_gate -Phase Launch` FAIL si un worktree a plus de 5 commits `Source` de retard sur sa dll.
+- L12-3 attente de build : `build.ps1 -Wait` ne bloque pas (arriere-plan apres 180 s) : l'enonce donne du travail sans binaire pendant l'attente et un delai maximal d'attente (`-MaxWaitMin`) apres lequel l'agent commite en WIP et rend la main.
+- L12-4 binaire d'abord : un agent C++ lance `LaunchCheck` (son binaire demarre) avant d'ecrire du code ; champ de rapport `LAUNCHCHECK_DEBUT`.
+- L12-5 regles pures : au moins un test par regle qui passe par une vraie chaine, aucun test tautologique ; la recette compte les asserts sur valeur calculee (champ `TESTS_TAUTOLOGIQUES : 0`).
+- L12-6 index de docs : l'agent de docs met a jour Retours\LISEZ-MOI, l'index de Retours et EtapeDefini « dans main » dans le meme commit que la fusion ; gate Close WARN si EtapeDefini dit « pas dans main » pour une branche ancetre de main.
