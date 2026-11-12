@@ -16,11 +16,13 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 7. Mesures S1/S2 (machine calme, seules) : `biome_decor_cost.ps1 -Rounds 3` du décor générique des Biomes.
 
 ## Arwen — `d751-root` — Audio, IA, Neutres
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [~] **[ARWEN-1112a 12:38 : C++ ecrit NON COMPILE, WIP commite sur d751-root ; reprise = fin de NeutralsInProgress.md]** (C++, Arwen) Neutres N7 : indicateur de camp = point sur la minicarte (Q2 B), replication limitee aux camps deja vus (Q1 C) ; libelle de survol a fixer (question si besoin) ; NeutralsInProgress.md.
 - [~] **[ARWEN-1112a 12:38 : test rouge script 3955b05 + regle en bouchon, scenario neutrals_minimap ecrit, non compile, non joue]** (sans C++) Neutres N7 (hors GetCampState, voir la ligne C++ de N7 plus bas) ; N0-N6 faites (N6 : 97d9a25) ; `NeutralsInProgress.md`.
 - [ ] **PÉRIMÉE (confirmé 2026-11-12 : vert 3051096 dans main, après le rouge caae726)** (réponse du 2026-11-11 = ligne N7 en tête) (C++, Arwen) Neutres N7 : exposer GetCampState (vivant / nettoyé) au script pour l'indicateur de camp ; `NeutralsInProgress.md` ; 1er test rouge : un test script qui lit l'état d'un camp (absent aujourd'hui). [2026-11-11 13:3x Arwen : portes UFUNCTION écrites sur d751-root (rouge caae726, test C++ par réflexion + classe de contrôle script), build en file, vert à commiter ; Q-neutrals-camp-indicator.md posée ; reste : règle HOLCampBanner après réponse]
 
 ## Celeborn — `hero-j8-close` — Mêlée et clôture de J8 (`NeutralsInProgress.md`, `DuelInProgress.md`)
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [~] (C++, Celeborn) [2026-11-12 11:0x CELEBORN-1112a : cause = A_Spearman_Attack (tous les Lanciers), rouge 966ae02 arm_body_check.py, pas corrige, voir NeutralsInProgress.md] [11:4x CELEBORN-1112b : aucune pose credible avec la prise actuelle, question Retours\Q-spear-grip.md (B mains echangees recommande), a reprendre apres la reponse] BUG neutrals : au combat contre le Lancier neutre, le bras qui ne tient pas la lance est DANS le corps (pose d'attaque du Lancier ; voir si c'est tous les Lanciers ou seulement le neutre) ; AnimationsInProgress / NeutralsInProgress.md ; E-neutrals.
 - [ ] (sans C++, Celeborn, non signale par l'utilisateur) maa_attack (Homme d'armes) : arm_body_check.py mesure 4,3 cm des deux avant-bras dans le tronc a l'image 20 (suivi du coup, epee devant le bouclier) ; a regarder a l'oeil avant tout correctif (seuil 1 cm peut-etre trop dur).
 - [ ] (C++, agent neuf) BUG-melee-stuck-attack : 2 soldats figés devant la cible (diplomacy_qground) ; A/B SlotDetourMaxSteps et FarPlaceRetarget ; test rouge = le soldat frappe ; `Retours\BUG-melee-stuck-attack.md`.
@@ -31,6 +33,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [B] (sans C++) Supprimer les scénarios de repro neutrals_d3, nv1, nv2, nv3, nvpb0, nvpw1, neutrals_trace quand la mêlée est close (`-Parts net` 2 fois).
 
 ## Elrond — `tiers` — Intégration, Paliers, Talents
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [~] (C++, Elrond) Palier 3 **[ELROND-1112b 12:38 : toujours NON COMPILE (build en file, laisse tourner), scenario deploy ecrit jamais lance, WIP cc3213e ; suite : build, quick_check -Parts tests,net, preflight deploy]** : G6 e (replication de la phase) puis f (scenario deploy), Q-palier3-deploy-wiring Q1 C Q2 A, bouton case D (Q-palier3-deploy-button A A), G4 filtre par colonne Faction (A maintenant) ; Palier3InProgress.md. **[ELROND-1112a 2026-11-12 10:58 : G6 e + G4 filtre ecrits sur tiers (test e13e1f7, lot 2210424), NON COMPILES (build en file), case D et Q1 C/Q2 A deja codes ; reste build + quick_check tests,net puis G6 f scenario deploy ; branche PAS prete]**
 - (état du 2026-11-09 : Paliers, Talents, Relais, perf S2-S4 : voir `EtapeDefini.md` ; 2026-11-11 : main = 48ae702, tous les worktrees dessus).
 - [ ] **PÉRIMÉE (confirmé 2026-11-12 : G6 b/c 48d5b99 et G6 d 1811c78 ancêtres de main, arbre Elrond propre ; suite = ligne G6 e en tête)** (C++, Elrond) Palier 3 G6 suite : voir fin de Palier3InProgress.md (Elrond-26 : test InMatch + cvar non commites dans le worktree Elrond, plan en 4 points) ; Q-palier3-deploy-wiring.md.
@@ -39,10 +42,12 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [ ] **PÉRIMÉE (confirmé 2026-11-12 : 521adcb ancêtre de main, `Retours\ESSAIS-A-JOUER.md` ramené à 0 essai prêt ; rejeu annoncé par Faramir le 2026-11-11 15:09)** (2026-11-10, Elrond, sans C++) Rejouer sur main fusionne (-Phase Essay) les essais de Retours\ESSAIS-A-JOUER.md (date du 2026-11-09) et nommer un integrateur de recette independant.
 
 ## Faramir — `fog` — Brouillard, Siège (`FogInProgress.md`) : lignes faites archivées le 2026-11-10 et le 2026-11-12
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [x] (FARAMIR-1112a 2026-11-12 : causes trouvees, outils corriges sur fog 42e5e41, rouge 323b73a ; reste : recompiler la copie jouee puis preflight PASS avant de redonner) (sans C++, Faramir) Scenarios qui ne demarrent jamais chez l'utilisateur : legions_roster_gesture (erreur etape 41 « jamais venu »), disconnect_1v1 (erreur etape 5 « jamais venu »), audio_compare_buildings_stone et _metal (les sons ne se lancent jamais) ; preflight passe pourtant : chercher ce que le preflight ne voit pas (attente d'une etape, commande -PlayerName, son lance sans -nosound, build périmé) ; ajouter ce cas au preflight ; ne plus les donner avant.
 - [ ] (question de couche, rien tranche) talents_heal_cell : le « ++ » dore (marque du monde du soin) est dessine PAR-DESSUS la fenetre Arbre de talents (defaut de couche : la marque du monde passe au-dessus du HUD) ; a trancher par le proprietaire du rendu des marques de soin.
 
 ## Galadriel — `galadriel-tab` — Interface, Marché, Légions
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [ ] (sans C++, Galadriel) Rage L4 Q-legions-rage-cap = A : plafond des degats portes de 30 a 40 % dans Script\Morale\HOLMoraleRules.as (lignes 32 et 38), test rouge d'abord ; LegionsInProgress.md.
 - [ ] (C++, Galadriel) Rage L4 Q-legions-warrior-rage-visual = A+C : hol.Rage.Visual par defaut a 4 (teinte + etat sur la case), anneau B non retenu ; fusionner a3e90a8 de galadriel-tab (doublon du verbe notereset : garder l'implementation de fog) ; rejouer legions_warrior sur main ; LegionsInProgress.md.
 - [ ] (C++, Galadriel) Infobulle de la Caserne Q-barracks-tooltip-damned = A : filtre par faction + nom localise, puis retirer la ligne build hud de Tools\Tests\known_reds.txt (net-playtest) ; Retours\Q-barracks-tooltip-damned.md.
@@ -53,6 +58,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - (Galadriel : le reste de ses journaux est du C++ (code de L4, tribut vers un client distant) ou attend l'utilisateur ; rien d'autre de sans C++ n'en sort.)
 
 ## Glorfindel — `net-playtest` — Légions, Sites, Déconnexion, Réseau
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [~] **GLORFINDEL-1112a 2026-11-12 12:40 : non compilé, WIP 6703b9f (GoldLine + 0c8792c retirés, souche + test rouge Gather.Income + infobulle RefreshTopBar ; reste le code vert dans UHOLGatherProcessor, suite en fin de SacredSitesInProgress.md ; question Q-income-tooltip-rate)** (C++, Glorfindel) NOUVEAU : infobulle de revenu par ressource (Q-sites-gold-line, reponse AUTRE) : au survol d'une ressource de la barre du haut, afficher +N/min = TOUS les revenus de cette ressource, avec le calcul des paysans sur la ressource en question (et les sites pour l'or) ; test rouge d'abord sur la vraie chaine ; abandonner la ligne GoldLine de HOLSiteBanner et le test rouge 0c8792c de net-playtest (WIP S6 non vert, ne pas fusionner) ; textes FR/EN/JA ; SacredSitesInProgress.md + InterfaceInProgress.md.
 - [?] (attend l'utilisateur) Réseau : essai E5 avec un ami ; ensuite seulement remesure MaxServers (D502), r9, R8d ; `NetPlaytestInProgress.md`.
 - [ ] (C++) Légions : modèle client (noms et filtre Hallebardes faits) ; `LegionsInProgress.md`.
@@ -85,6 +91,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [ ] (docs) `GDD.md` l. 3024 porte un vieux « Prochain numéro D214 ».
 
 ## Sauron — `visual` — Biomes, Placeholders, Neutres (`BiomeInProgress.md`, `PlaceholdersInProgress.md`)
+- [ ] PREMIER GESTE prochaine séance : build.ps1 machine calme puis quick_check (binaire périmé, WIP non compilé du 2026-11-12)
 - [ ] (sans C++, Sauron) Fusionner visual (f0670cf et suivants : scenarios) ; replay des essais sur main fusionne avant de les donner a l'utilisateur.
 - [~] (2026-11-12 SAURON-1112a : FIGE en C++ sur visual, test a6e673f + code b315f0b 31194ae, NON COMPILE (build en file a 12:38), quick_check / preflight / PNG non faits ; Q-resources-tree-size defaut A ; reprise = haut de VisualInProgress.md de Sauron) (C++, Sauron) Placeholders ressources resources_compare : l'utilisateur choisit Arbre = C, baies / filon de pierre / filon d'or = A ; tour suivant : figer ces styles (mesh dans SourceTypes.Mesh, filons petit/moyen/gros), ligne Placeholders.txt a retirer au remplacement ; PlaceholdersInProgress.md.
 - [ ] (sans C++, machine calme, HORS SÉANCE (créneau à part), Sauron/visual, ~25 min) Mesures S1/S2 du décor générique des Biomes (2128 pièces HISM sur la Plaine) : `biome_decor_cost.ps1 -Rounds 3` ; lancer seul, sans autre éditeur ; aucun chiffre le 2026-11-08 (machine jamais libre).
@@ -102,5 +109,11 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [ ] (sans C++, recette 2026-11-12 12:26) `LaunchCheck.ps1` `Get-StaleBinaryProblem` ne regarde que `UnrealEditor-HeroesOfLiberty.dll` alors qu'il y a 2 modules (`Source\HeroesOfLibertyUI` a sa dll) : comparer chaque module à sa dll, cas rouge dans `launch_check_test.ps1`.
 - [ ] (sans C++, recette 2026-11-12 12:26) `eol_check` dans le gate Close : si `git ls-files` échoue, liste vide = PASS à tort.
 - [ ] (sans C++, recette 2026-11-12 12:26) `preflight.ps1` : section 6 absente de la liste d'en-tête ; le gate Close ne voit pas les fichiers non suivis `??` de `Retours\`.
+- [ ] (sans C++, outil, bilan 2026-11-12, L12-1c) `session_gate -Phase Launch` : WARN si un cl.exe d'un autre moteur tourne ou si la mémoire virtuelle libre < 8 Go ; `build.ps1` attend tant que < 8 Go et l'écrit (journal + colonne `load` de `BuildQueue.csv`) ; test rouge dans `gate_test.ps1` / `build_queue_test.ps1`.
+- [ ] (sans C++, outil, bilan 2026-11-12, L12-2) `session_gate -Phase Launch` : FAIL si un worktree a plus de 5 commits `Source` de retard sur sa dll (calcul `Say-StaleBySource` existant) ; procédure : `sync_worktrees.ps1` sans `-NoBuild` avant le premier lancement.
+- [ ] (sans C++, outil, bilan 2026-11-12, L12-3) `build.ps1 -MaxWaitMin N` : au-delà de N minutes d'attente, rend la main avec « attente dépassée » ; énoncé modèle : travail sans binaire pendant l'attente, puis commit WIP et rapport.
+- [ ] (sans C++, énoncé, bilan 2026-11-12, L12-4) Énoncé modèle d'un agent C++ : premier geste `LaunchCheck` (binaire qui démarre) avant tout code ; champ de rapport `LAUNCHCHECK_DEBUT`.
+- [ ] (sans C++, énoncé, bilan 2026-11-12, L12-5) Énoncé et rapport : au moins un test par règle qui passe par une vraie chaîne ; champ `TESTS_TAUTOLOGIQUES : 0` compté par la recette.
+- [ ] (sans C++, outil, bilan 2026-11-12, L12-6) Agent de docs : index de Retours, LISEZ-MOI et EtapeDefini « dans main » dans le même commit que la fusion ; `session_gate -Phase Close` WARN si EtapeDefini dit « pas dans main » pour une branche ancêtre de main.
 
 - [ ] (C++, Faramir) Verbe `quit` de scenario (Q-play-hidden-wait = C plus tard) : play.ps1 -Hidden finirait a la fin reelle du scenario ; ScenariosInProgress.md.
