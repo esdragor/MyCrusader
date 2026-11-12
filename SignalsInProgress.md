@@ -65,6 +65,7 @@ ne signale pas. Commit du rouge 76f66b8 (namespace `HOLSignal` absent).
 - Q1 : durée de vie d'un signal. Défaut A = 5 s (`LifetimeMs`), égale à la fenêtre de la limite.
 - Q2 : le coéquipier éliminé signale-t-il ? Défaut B = oui en mode à équipes (`DefeatedTeammateSignals`), jamais en chacun pour soi ni
   en *Diplomatie* (D376).
+- **Réponses de l'utilisateur (2026-11-12, D784)** : Q1 = **A, 5 s** (déjà codé) ; Q2 = **A, NON : un coéquipier éliminé voit les signaux de son équipe mais n'en pose plus** (À CHANGER : `HOLSignal::DefeatedTeammateSignals = false`, test à adapter).
 
 ## Suivi
 

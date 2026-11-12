@@ -3519,4 +3519,22 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D782** (§ art, placeholders des ressources, précise D762 et D763, 2026-11-12, choix du 2026-11-11 sur l'essai `resources_compare`) : **l'arbre prend le style C, les baies, le filon de pierre et le filon d'or le style A** ; ces styles sont à figer (mesh dans `SourceTypes`, filons petit / moyen / gros), les lignes de `Placeholders.txt` tombent au remplacement. Dossier : `PlaceholdersInProgress.md`.
 
-Prochain numéro : **D783**.
+**D783** (§ 5.4, centre secondaire, chiffre D384, 2026-11-12, réponse du 2026-11-12 à `Q-secondary-centers`) : **Q1 B : un centre secondaire coûte 150 bois + 400 pierre** (presque tout en pierre : sans camp de mineurs, pas de centre ; la pierre devient le goulot de l'expansion) ; **Q2 A : il donne 10 de population, comme le forum principal**. Écartés : Q1 A (300 + 300, recommandé et codé par défaut, à changer), C (200 + 250) ; Q2 B (5), C (0). Dossier : `SecondaryCentersInProgress.md`.
+
+**D784** (§ 15, signaux sur la carte, précise D386 et D357, 2026-11-12, réponse du 2026-11-12 à `Q-signals`) : **Q1 A : un signal reste 5 s sur la carte** (la fenêtre de la limite de 3 ; le fil garde la trace) ; **Q2 A : un coéquipier éliminé en partie à équipes voit les signaux de son équipe mais n'en pose plus** (il conseille par écrit seulement). Écartés : Q1 B (10 s), C (jusqu'au 4e signal) ; Q2 B (oui comme sa discussion, recommandé et codé par défaut, à changer), C (signal neutre seul). Dossier : `SignalsInProgress.md`.
+
+**D785** (§ 9.5 et § 13, choix de spécialisation de palier, précise D332 et D684, 2026-11-12, réponse du 2026-11-12 à `Q-specialization`) : **Q1 C : le palier 1 d'abord : le bouton du palier 2 ne s'allume qu'une fois le palier 1 appliqué** (l'ordre est imposé, une seule barre) ; **Q2 A : le compte à rebours se met en pause quand le Forum est à terre** et reprend où il en était quand le Forum est relevé. Écartés : Q1 A (un déblocage à la fois, recommandé et codé par défaut, à changer), B (deux barres en parallèle) ; Q2 B (le compte continue), C (annulé). Dossier : `SpecializationInProgress.md`.
+
+**D786** (§ 14.1 et § 14.3, option Nomade, chiffre D207, 2026-11-12, réponse du 2026-11-12 à `Q-nomad`) : **Q1 B : 1 Paysan par groupe de départ (cinq Paysans seuls, comme le Nomade d'AoE2)** ; **Q2 A : 40 cases (4 000 cm) au moins entre un groupe de départ et un groupe d'un autre camp**. Écartés : Q1 A (2 au plus, recommandé et codé par défaut, à changer), C (3 + 2) ; Q2 B (25 cases), C (60 cases). Dossier : `NomadInProgress.md`.
+
+**D787** (§ art, animation d'attaque du Lancier, 2026-11-12, réponse du 2026-11-12 à `Q-spear-grip`) : **B : mains échangées sur la hampe : main DROITE derrière, à la hanche droite ; main GAUCHE devant** (prise d'estocade à deux mains, aucun bras ne croise le corps). Toute l'attaque et la première image de la chute (`spear_fall`) sont à reposer et à revoir à l'œil. Écartés : A (prise actuelle, bras gauche dans le torse), C (lance au centre, façon pique). Dossier : `NeutralsInProgress.md`.
+
+**D788** (§ 15, infobulle de revenu de la barre du haut, complète D780, 2026-11-12, réponse du 2026-11-12 à `Q-income-tooltip-rate`) : **C : chaque Paysan compte à son taux à la source corrigé des trajets, estimé par la distance au dépôt le plus proche (comme `HOLAINeeds::NetRate`)** : chiffre immédiat et proche du stock réel. Écartés : A (taux à la source sans trajets, codé par défaut, à changer), B (revenu mesuré sur 60 s). Dossier : `SacredSitesInProgress.md`.
+
+**D789** (§ 8.4 et § 15, minicarte, complète D776, 2026-11-12, réponse du 2026-11-12 à `Q-neutrals-camp-hover`, comme recommandé) : **A : rien au survol d'un point de camp neutre pour le prototype** (la minicarte n'a pas de survol ; la couleur rouge / gris porte l'information). Écartés : B (infobulle « Camp neutre : N gardes »), C (survol de tous les points). Dossier : `NeutralsInProgress.md`.
+
+**D790** (§ art, placeholders des ressources, complète D782, 2026-11-12, réponse du 2026-11-12 à `Q-resources-tree-size`, comme recommandé) : **A : l'arbre C garde la taille vue dans `resources_compare` : 7,5 m de haut, couronne dès 1,1 m, 2,4 m de large**. Écartés : B (silhouette C dans l'ancien gabarit de 5 m), C (proportions C réduites à 5 m). Dossier : `PlaceholdersInProgress.md`.
+
+**D791** (§ 7.2 et § 13.3, plafond du moral, précise D771, 2026-11-12, réponse du 2026-11-12) : **« Bonus seulement » : seul le plafond du BONUS de dégâts portés monte à 40 % ; le plafond du MALUS de dégâts portés reste à 30 %**. Dossier : `LegionsInProgress.md`.
+
+Prochain numéro : **D792**.
