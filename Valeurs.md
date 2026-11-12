@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**199 réglages** : 12 pas codé, 186 provisoire, 0 réglé à l'essai, 1 validé.
+**201 réglages** : 12 pas codé, 188 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -300,6 +300,13 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `camp.aggro_radius` | Camp neutre : rayon d'agression (cm) | 1500 | provisoire | D32 | HOLCampRules.as |  |
 | `camp.leash_radius` | Camp neutre : rayon de laisse (cm) | 3000 | provisoire | D32 | HOLCampRules.as |  |
 | `camps.table` | Table des camps neutres | 1 lignes, 3 colonnes | provisoire | D32 | Camps.csv * |  |
+
+### Nomade
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `nomad.group_size` | Nomade : Paysans au plus par groupe de départ | 2 | provisoire | D207 | HOLNomadRules.as | Q-nomad Q1 : petits groupes (5 Paysans = 2, 2, 1) |
+| `nomad.min_enemy_distance_cm` | Nomade : distance minimale à un groupe ennemi au départ (cm) | 4000 | provisoire | D207 | HOLNomadRules.as | Q-nomad Q2 : vigilance de D207, 1 case = 100 cm |
 
 ### Paliers
 
