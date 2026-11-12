@@ -20,3 +20,28 @@ Relevé complet d'origine : `Docs\Archive\Auto_Journey_Test1_2026-10-30.md`, sec
 - **§ 5.2 Ressources spéciales, § 6.2 Bonus de hauteur** : décidés ; la hauteur est exclue du prototype pour les effets de terrain (M-Q2) ; à relire avant d'ouvrir.
 - **D384 Centres secondaires** (XP de territoire) : à vérifier contre `RelaysInProgress.md` avant d'ouvrir.
 - **Après le prototype, ne se prennent pas** : § 13 les quatre autres factions (Enfants du Dragon, Cercle de l'Ombre, Héritiers du Feu, Templiers), § 12.3 Événements futurs (D209), § 14.3 Modes Battlefield et Reliques (D416, D102), § 9.9 Progression hors partie.
+
+## Programme du 2026-11-12 (séance AUTONOME, fin 13:00, plan de l'étape 0 écrit à 10:40)
+
+Départ : main = b62464f (nettoyage des docs commité). Fusion groupée dans main autorisée par l'utilisateur, jamais de push. sync_worktrees lancé avec -NoBuild (exception : séance de 2 h 30, les agents compilent à leur premier build) ; Galadriel en conflit (fusion de main annulée, `Source/HeroesOfLiberty/Dev/HOLTestSequence.cpp`, verbe notereset en double avec fog). Glorfindel (net-playtest 6941e5b) : binaire périmé, +5 commits hors de main dont le WIP S6 rouge (2d47271, 0c8792c).
+
+Plafond : 3 agents C++ en même temps. Premiers C++ : Galadriel, Glorfindel, Elrond. Arwen et Celeborn démarrent sans C++ et passent au C++ à la libération d'une place.
+
+| Worktree | Branche | Tâche de départ (ligne de `Auto_Journey_File.md`) | C++ | Suivante |
+|---|---|---|---|---|
+| Arwen | d751-root | Neutres N7 côté script (ligne « sans C++ » N7), puis ligne C++ N7 point sur la minicarte + réplication des camps vus ; `NeutralsInProgress.md` | non au départ | N7 C++ à la 1re place libre |
+| Celeborn | hero-j8-close | BUG neutrals : bras du Lancier dans le corps, diagnostic par capture d'abord (Lancier neutre contre Lancier du joueur) ; `NeutralsInProgress.md` | non au départ | correctif (C++ si la pose est codée), puis BUG-melee-stuck-attack |
+| Elrond | tiers | Palier 3 G6 e (réplication de la phase) puis f (scénario deploy) ; `Palier3InProgress.md` | oui | bouton case D, G4 filtre Faction |
+| Faramir | fog | Scénarios qui ne démarrent jamais chez l'utilisateur (legions_roster_gesture, disconnect_1v1, audio_compare_buildings_stone/_metal) ; cas ajouté au preflight | non | Q-play-hidden-wait (A en place, C verbe quit) ; worktree de la fusion groupée |
+| Galadriel | galadriel-tab | 1er geste : fusion de main, conflit HOLTestSequence.cpp (garder notereset de fog), build ; puis Rage L4 plafond 40 % (script), Rage visuel défaut 4 ; `LegionsInProgress.md` | oui | REGLAGE market, REGLAGE talents_icons_compare ; infobulle Caserne après la fusion de net-playtest |
+| Glorfindel | net-playtest | 1er geste : build (binaire périmé) ; infobulle de revenu par ressource (Q-sites-gold-line = Autre), abandon de GoldLine et du rouge 0c8792c ; `SacredSitesInProgress.md`, `InterfaceInProgress.md` | oui | Sites S7 option de partie |
+| Haldir | maps | Pas de régénération des 7 cartes (éditeur seul, file de build vide : impossible avec 7 agents) ; chapitre du GDD : D384 Centres secondaires contre `RelaysInProgress.md` (plan et règles pures) | non | § 5.2 / § 6.2 à relire |
+| Sauron | visual | Placeholders ressources : figer Arbre = C, baies / pierre / or = A ; `PlaceholdersInProgress.md` | non | ligne `[?]` Trajets d'ordres de `Placeholders.txt` (OK de l'utilisateur) |
+| Outils/docs | (session principale) | Reporter Q-legions-ai-warrior, Q-play-hidden-wait, Q-talents-heal-visual dans leur journal ; `-NoCpp` au modèle d'énoncé | non | réécrire la ligne « essais ratés du 10-31 » |
+
+Fusion groupée de fin de séance : dans Faramir (fog = main, arbre propre), candidates = tiers, d751-root, hero-j8-close, fog, visual, galadriel-tab (conflit résolu), net-playtest (seulement si le WIP S6 est remplacé par un tip vert), maps (docs seules).
+
+## Agents du 2026-11-12
+
+| Nom | Id | Worktree | Branche | Tache | Lance |
+|---|---|---|---|---|---|
