@@ -59,6 +59,7 @@ et distance minimale.
 
 - Q1 : taille des groupes de départ. Défaut A = 2 au plus (`GroupSize = 2`, 5 Paysans = 2, 2, 1).
 - Q2 : distance minimale à un groupe ennemi. Défaut A = 40 cases (`MinEnemyDistanceCm = 4000`).
+- **Réponses de l'utilisateur (2026-11-12, D786)** : Q1 = **B, 1 Paysan par groupe (cinq Paysans seuls)** (À CHANGER : `GroupSize = 1` dans `HOLNomadRules.as` et ligne `nomad.group_size` de `ValueSheet.csv`, test à adapter) ; Q2 = **A, 40 cases** (déjà codé).
 
 ## Suivi
 

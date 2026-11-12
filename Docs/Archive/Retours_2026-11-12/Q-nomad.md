@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Option Nomade : taille des groupes de départ et distance aux ennemis (NomadInProgress.md, HALDIR-1112g, 2026-11-12)
+# [RÉPONDU 2026-11-12] Option Nomade : taille des groupes de départ et distance aux ennemis (NomadInProgress.md, HALDIR-1112g, 2026-11-12)
 
 Contexte : en Nomade, les Paysans de départ sont « dispersés en petits groupes à des endroits aléatoires » (D207) avec une
 « vigilance : distance minimale entre joueurs ». Le GDD ne chiffre ni la taille des groupes ni cette distance.
@@ -14,6 +14,8 @@ Contexte : en Nomade, les Paysans de départ sont « dispersés en petits groupe
 
 Réglage : `GroupSize = 2` dans `Script/Nomad/HOLNomadRules.as` (ligne `nomad.group_size` de `Tools/Data/ValueSheet.csv`).
 
+Reponse: B (1 Paysan par groupe, cinq Paysans seuls ; GroupSize à passer à 1) - 2026-11-12
+
 ## Q2 : distance minimale entre un groupe de départ et un groupe d'un autre camp ?
 
 - **A (recommandé, codé par défaut)** : **40 cases (4 000 cm)**. En jeu : on ne voit pas l'ennemi au départ, mais on peut le croiser
@@ -24,3 +26,5 @@ Réglage : `GroupSize = 2` dans `Script/Nomad/HOLNomadRules.as` (ligne `nomad.gr
 - **Autre** : à préciser.
 
 Réglage : `MinEnemyDistanceCm = 4000` dans `Script/Nomad/HOLNomadRules.as` (ligne `nomad.min_enemy_distance_cm` de `ValueSheet.csv`).
+
+Reponse: A (40 cases, 4 000 cm ; déjà codé) - 2026-11-12

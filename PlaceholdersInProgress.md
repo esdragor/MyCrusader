@@ -1,6 +1,7 @@
 # Remplacement des placeholders — avancement
 
 ## Décisions (GDD § 22, inscrite le 2026-11-12, choix du 2026-11-11 sur l'essai resources_compare) : D782 (arbre style C ; baies, filon de pierre, filon d'or style A)
+## Réponse de l'utilisateur du 2026-11-12 (GDD § 22) : D790 (Q-resources-tree-size : **A, l'arbre C garde la taille vue dans resources_compare : 7,5 m de haut, couronne dès 1,1 m, 2,4 m de large**, déjà codé : `TreeSeen` de `HOLSourceField.cpp`, branche visual)
 
 Chantier ouvert le 2026-11-08 (copie principale `main`, journaux seuls, aucun code, rien commité). Demande de l'utilisateur : « un chantier pour remplacer les placeholders (logos, arbres, etc.) », avec **deux fichiers** : ce journal (le chantier de remplacement) et **`Placeholders.txt`** (la liste vivante de tout ce qui est provisoire dans le jeu). Chaque étape est notée ici dès qu'elle avance, et `EtapeDefini.md` est mis à jour en même temps.
 
