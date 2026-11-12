@@ -236,6 +236,9 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - 2026-11-12 10:52 (HALDIR-1112a, sans C++) : chapitre OUVERT, D384 pas couvert par les relais (seule l'XP de territoire l'était) ; SC0 relevé + SC1 règles pures en script FAITES (rouge 12aee4a, vert 91b39ce, tests 1180/1180) ; Q-secondary-centers (coût, population, défauts A) ; suivant SC2 données (éditeur), SC3 C++ ; pas dans main
 - 2026-11-12 11:00 (HALDIR-1112b, sans C++) : chapitre EN PAUSE (SC2-SC3 attendent Q-secondary-centers) ; file Haldir à jour ; liste des chapitres du GDD non commencés ÉPUISÉE (§ 5.2 principe, § 6.2 = Fortifications F8/F12) : écarts § 6.2 en lignes `[ ]` de la file
 
+### Signaux sur la carte D386 *(`SignalsInProgress.md`, Haldir, maps)*
+- 2026-11-12 11:41 (HALDIR-1112e, sans C++) : chapitre A1 OUVERT ; SG0 relevé (aucun code de signal) + SG1 règles pures `Script/Signals/HOLSignalRules.as` FAITES (rouge 76f66b8, vert 9d30e2c, tests 1186/1186, values PASS) ; alliés mutuels par `HOLDiplomacy::IsAlly` ; Q-signals (durée 5 s, coéquipier éliminé : défauts codés) ; suivant SG2 C++ (RPC serveur) ; pas dans main
+
 ### Unités neutres et camps *(`NeutralsInProgress.md`)*
 - N1-N5 et table `Camps.csv` dans `main` ; NQ1 / NQ2 tranchés (D611-D612) ; reste N2 (placement dans les cartes), N7 (affichage)
 - N6 règles de lecture d'un camp par l'IA faites dans `heal-sleep` (Arwen, 97d9a25, tests 1112/1112, pas dans `main`) ; question `Retours\Q-neutrals-ia-camps.md` (ignorer / évaluer / nettoyer d'abord, défaut = évaluer) ; cible « camp » de la vague après la réponse
@@ -368,6 +371,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `PlaytestInProgress.md` : tests prioritaires du prototype et fiche de valeurs (dossier complet le 2026-11-05, D723-D729 ; PT7 scenarios complets le 2026-11-06 : playtest_hero_xp dans tiers 4671d95 ; PT0 registre et `Valeurs.md` FAIT dans Haldir, commit 1191641, branche `maps` ; PT7 commencé dans Arwen (ai-ia1) : playtest_hero_army, playtest_hero_death, Docs/Seance_Essai_Prototype.md, Q-playtest-session ; PT1 à PT6, PT8 à faire)
 - `RelaysInProgress.md` : relais neutres et XP de territoire
 - `SecondaryCentersInProgress.md` (Haldir, maps) : centres secondaires D384, ouvert le 2026-11-12, SC0-SC1 faites, en pause sur Q-secondary-centers
+- `SignalsInProgress.md` (Haldir, maps) : signaux sur la carte D386, ouvert le 2026-11-12, SG0-SG1 faites (règles pures en script), suivant SG2 C++
 - `SiegeInProgress.md` : siège léger
 - `SacredSitesInProgress.md` : option de partie Sites sacrés (dossier complet le 2026-11-04, D697-D703, rien codé, prêt à lancer dans un worktree donné par l'utilisateur ; S1 règle pure en tête) ; **S1 FAITE et S10/S6 moitié script FAITES le 2026-11-05 dans Glorfindel (branche `net-playtest`, règle script 28d349f, victoire/or b8a40ac, non fusionnée) ; question `Retours\Q-sites-rule-edges.md` TRANCHEE le 2026-11-05 (Q1 = A, Q2 = B codee : un preneur d'un autre camp repart de zero, test rouge 9794fde, vert 56ae9cd, `net-playtest`) ; suivant S2 (C++, ligne de file)**
 - `TalentsInProgress.md` : arbre de talents
