@@ -231,6 +231,9 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ### Relais neutres et centres secondaires *(`RelaysInProgress.md`)*
 - R0-R6 dans `main` ; reste la vérification en vrai réseau à 2 clients, essai `relays_map` à rejouer sur les cartes de `maps`, RQ3 (IA des relais : défaut B provisoire) (à vérifier)
 
+### Centres secondaires D384 *(`SecondaryCentersInProgress.md`, Haldir, maps)*
+- 2026-11-12 10:52 (HALDIR-1112a, sans C++) : chapitre OUVERT, D384 pas couvert par les relais (seule l'XP de territoire l'était) ; SC0 relevé + SC1 règles pures en script FAITES (rouge 12aee4a, vert 91b39ce, tests 1180/1180) ; Q-secondary-centers (coût, population, défauts A) ; suivant SC2 données (éditeur), SC3 C++ ; pas dans main
+
 ### Unités neutres et camps *(`NeutralsInProgress.md`)*
 - N1-N5 et table `Camps.csv` dans `main` ; NQ1 / NQ2 tranchés (D611-D612) ; reste N2 (placement dans les cartes), N7 (affichage)
 - N6 règles de lecture d'un camp par l'IA faites dans `heal-sleep` (Arwen, 97d9a25, tests 1112/1112, pas dans `main`) ; question `Retours\Q-neutrals-ia-camps.md` (ignorer / évaluer / nettoyer d'abord, défaut = évaluer) ; cible « camp » de la vague après la réponse
@@ -362,6 +365,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 - `NeutralsInProgress.md` : unités neutres et camps
 - `PlaytestInProgress.md` : tests prioritaires du prototype et fiche de valeurs (dossier complet le 2026-11-05, D723-D729 ; PT7 scenarios complets le 2026-11-06 : playtest_hero_xp dans tiers 4671d95 ; PT0 registre et `Valeurs.md` FAIT dans Haldir, commit 1191641, branche `maps` ; PT7 commencé dans Arwen (ai-ia1) : playtest_hero_army, playtest_hero_death, Docs/Seance_Essai_Prototype.md, Q-playtest-session ; PT1 à PT6, PT8 à faire)
 - `RelaysInProgress.md` : relais neutres et XP de territoire
+- `SecondaryCentersInProgress.md` (Haldir, maps) : centres secondaires D384, ouvert le 2026-11-12, SC0-SC1 faites
 - `SiegeInProgress.md` : siège léger
 - `SacredSitesInProgress.md` : option de partie Sites sacrés (dossier complet le 2026-11-04, D697-D703, rien codé, prêt à lancer dans un worktree donné par l'utilisateur ; S1 règle pure en tête) ; **S1 FAITE et S10/S6 moitié script FAITES le 2026-11-05 dans Glorfindel (branche `net-playtest`, règle script 28d349f, victoire/or b8a40ac, non fusionnée) ; question `Retours\Q-sites-rule-edges.md` TRANCHEE le 2026-11-05 (Q1 = A, Q2 = B codee : un preneur d'un autre camp repart de zero, test rouge 9794fde, vert 56ae9cd, `net-playtest`) ; suivant S2 (C++, ligne de file)**
 - `TalentsInProgress.md` : arbre de talents

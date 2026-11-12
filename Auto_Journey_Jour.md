@@ -54,5 +54,9 @@ Fusion groupée de fin de séance : dans Faramir (fog = main, arbre propre), can
 | HALDIR-1112a | a97ce746cad9802ef | Haldir | maps | Chapitre GDD D384 Centres secondaires (sans C++) | 10:39 |
 | SAURON-1112a | a6d3ffa74439af3cb | Sauron | visual | Styles des ressources figes, Placeholders | 10:39 |
 | DOCS-1112a | aaffdd14aada5859e | principale | main | Reponses a reporter, file Outils, checklist L9-4 | 10:39 |
+| FARAMIR-1112b | a08fc0e0731156818 | Faramir | fog | Verification de bout en bout des correctifs de lancement (build, preflight complet) | 10:53 |
+
+Rapports : DOCS-1112a fini 10:45 (6d77b69, 44 appels). FARAMIR-1112a fini 10:50 (fog 323b73a/42e5e41/953fafd, main 3b94faf, 45 appels) : causes des 4 essais jamais demarres = joueur non nomme (disconnect_1v1), sons non commites d Arwen (audio_compare), binaire perime (legions_roster_gesture) ; binaire de la copie principale perime : a recompiler apres la fusion.
+Exception : FARAMIR-1112b lance avec le gate -NoCpp alors qu il compile (7 worktrees dans la file de build) : la verification des essais est la priorite de la seance, il attend son tour par build.ps1 -Wait.
 
 Modeles (consigne du 2026-11-12) : etape 0 et verification sur Fable 5.2, tout le reste sur Opus 5.5. Arret dur des agents 12:30, fusion groupee dans Faramir ensuite (sans push), fin 13:00.
