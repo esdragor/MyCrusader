@@ -70,6 +70,5 @@ ne signale pas. Commit du rouge 76f66b8 (namespace `HOLSignal` absent).
 
 - 2026-11-12 11:33-11:4x (HALDIR-1112e, `maps`, sans C++) : SG0 et test rouge SG1 (76f66b8 ; quick_check `tests` 11:36 : « Namespace
   'HOLSignal' doesn't exist », 0 test lancé). **SG1 VERTE** : quick_check `tests` 1186/1186 PASS (215 s), `values` PASS (3 lignes au
-  registre `comm.signal.max_per_window`, `window_ms`, `lifetime_ms` ; Valeurs.md/.csv régénérés). Commit vert : voir `git log` (message
-  « Signals: pure map signal rules (SG1) »). **Prochaine étape pour un agent neuf : SG2** (agent C++ : RPC serveur, plateau tenu au
+  registre `comm.signal.max_per_window`, `window_ms`, `lifetime_ms` ; Valeurs.md/.csv régénérés). Commit vert 9d30e2c, puis `git merge main` (arbre propre). **Prochaine étape pour un agent neuf : SG2** (agent C++ : RPC serveur, plateau tenu au
   serveur, envoi aux seuls `Sees`), puis SG3. Aucun test rouge en cours. Rien de visible en jeu : pas de ligne à `Placeholders.txt`.
