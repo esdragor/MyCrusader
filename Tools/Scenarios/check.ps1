@@ -16,6 +16,9 @@ param(
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
 $Root = (Resolve-Path $Root).Path
 if (-not (Test-Path (Join-Path $Root "Tools\Scenarios\$Name.txt"))) { Write-Host "check: no scenario '$Name'"; exit 1 }
+# Named Human seats: the same default local player as play.ps1 (the first named Human seat of the .json, LaunchCheck.ps1).
+. (Join-Path $PSScriptRoot "LaunchCheck.ps1")
+if (-not $PlayerName) { $PlayerName = Get-ScenarioPlayerName $Root $Name }
 $UProject = Join-Path $Root "HeroesOfLiberty.uproject"
 if (-not $EngineDir) {
     $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation

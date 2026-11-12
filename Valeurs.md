@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**183 réglages** : 12 pas codé, 170 provisoire, 0 réglé à l'essai, 1 validé.
+**201 réglages** : 12 pas codé, 188 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -167,7 +167,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `morale.bonus_cap_taken` | Moral : plafond du bonus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
 | `morale.malus_cap_other` | Moral : plafond du malus sur les dégâts infligés et la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
 | `morale.malus_cap_taken` | Moral : plafond du malus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | Symétrique du bonus ; décidé par l'utilisateur le 2026-11-05 |
-| `units.table` | Table des unités (voir UnitStats.md) | 14 lignes, 56 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
+| `units.table` | Table des unités (voir UnitStats.md) | 16 lignes, 57 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
 | `eco.mainfc.health` | Forum principal : points de vie | 2400 | provisoire | D345 | BuildingTypes.csv MainCentre:MaxHealth |  |
 
 ## Question 8 : Le volcan est-il une opportunité plutôt qu'une frustration ?
@@ -255,6 +255,14 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 |---|---|---|---|---|---|---|
 | `gdd.convert` | Conversion de la Voix : cibles et durées | — | pas codé | D63 | GDD |  |
 
+### Communication
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `comm.signal.lifetime_ms` | Signaux : durée sur la carte (ms) | 5000 | provisoire |  | HOLSignalRules.as | Q-signals Q1 (pas dans le GDD) |
+| `comm.signal.max_per_window` | Signaux : nombre par joueur dans la fenêtre | 3 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
+| `comm.signal.window_ms` | Signaux : fenêtre de la limite (ms) | 5000 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
+
 ### Diplomatie
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
@@ -273,6 +281,18 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 |---|---|---|---|---|---|---|
 | `ai.hold.base_radius` | IA : rayon de la zone tenue autour du centre (cm) | 3000 | provisoire |  | HOLAIHold.as | Chiffre provisoire ; Retours\Q-hold-scope.md |
 
+### Légions
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `unit.rage.cooldown_ms` | Rage nécrotique : recharge (ms) | 40000 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de UnitAbilities.csv |
+| `unit.rage.damage_percent` | Rage nécrotique : dégâts en plus (%) | 40 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de Effects.csv (test Combat.DamnedWarrior.RageConstants) |
+| `unit.rage.duration_ms` | Rage nécrotique : durée (ms) | 10000 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de UnitAbilities.csv |
+| `unit.rage.hp_per_hit` | Rage nécrotique : PV perdus par coup porté | 3 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de UnitAbilities.csv |
+| `unit.rage.min_hp` | Rage nécrotique : refusée sous (PV) | 30 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de UnitAbilities.csv |
+| `unit.rage.rate_percent` | Rage nécrotique : cadence en plus (%) | 25 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de Effects.csv |
+| `unit.rage.stop_hp` | Rage nécrotique : s'arrête à (PV) | 20 | provisoire | Q-legions-l4 Q2 = A | HOLUnitAbilityRules.h | Copie de UnitAbilities.csv |
+
 ### Neutres
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
@@ -280,6 +300,21 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `camp.aggro_radius` | Camp neutre : rayon d'agression (cm) | 1500 | provisoire | D32 | HOLCampRules.as |  |
 | `camp.leash_radius` | Camp neutre : rayon de laisse (cm) | 3000 | provisoire | D32 | HOLCampRules.as |  |
 | `camps.table` | Table des camps neutres | 1 lignes, 3 colonnes | provisoire | D32 | Camps.csv * |  |
+
+### Nomade
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `nomad.group_size` | Nomade : Paysans au plus par groupe de départ | 2 | provisoire | D207 | HOLNomadRules.as | Q-nomad Q1 : petits groupes (5 Paysans = 2, 2, 1) |
+| `nomad.min_enemy_distance_cm` | Nomade : distance minimale à un groupe ennemi au départ (cm) | 4000 | provisoire | D207 | HOLNomadRules.as | Q-nomad Q2 : vigilance de D207, 1 case = 100 cm |
+
+### Paliers
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `tier.choice.delay_tier1_ms` | Choix de palier : délai de déblocage du palier 1 (ms) | 30000 | provisoire | D684 | HOLSpecializationRules.as | 30 / 45 / 60 s, valeurs à régler en test |
+| `tier.choice.delay_tier2_ms` | Choix de palier : délai de déblocage du palier 2 (ms) | 45000 | provisoire | D684 | HOLSpecializationRules.as | 30 / 45 / 60 s, valeurs à régler en test |
+| `tier.choice.delay_tier3_ms` | Choix de palier : délai de déblocage du palier 3 (ms) | 60000 | provisoire | D684 | HOLSpecializationRules.as | 30 / 45 / 60 s, valeurs à régler en test |
 
 ### Performance
 
@@ -312,6 +347,14 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 |---|---|---|---|---|---|---|
 | `hero.talents.values` | Talents : valeurs des grilles (toutes factions) | — | pas codé | D110, D111, D116, D147, D157, D167, D177, D194-D200 | GDD | Talents.csv n'a pas de valeurs numériques ; les grilles des 6 factions donnent des valeurs indicatives |
 | `talents.table` | Table des talents (sans valeurs numériques) | 24 lignes, 7 colonnes | provisoire | D105-D110 | Talents.csv * | Effets en texte, sans valeurs numériques : les valeurs des grilles ne sont pas codées |
+
+### Économie
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `eco.secondary_centre.cost_stone` | Centre secondaire : coût en pierre | 300 | provisoire | D384 | HOLSecondaryCentreRules.as | Q-secondary-centers Q1 |
+| `eco.secondary_centre.cost_wood` | Centre secondaire : coût en bois | 300 | provisoire | D384 | HOLSecondaryCentreRules.as | Q-secondary-centers Q1 |
+| `eco.secondary_centre.population` | Centre secondaire : base de population | 10 | provisoire | D384 | HOLSecondaryCentreRules.as | Q-secondary-centers Q2 |
 
 ## Fichiers marqués « provisoire » sans valeur à régler
 

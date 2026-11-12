@@ -137,7 +137,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Cri « Serrez les rangs » (anneau au sol) [style]
 - Impacts, coups, sang, poussière [rien]
 - Fumée / flammes d'un bâtiment qui brûle [rien]
-- Trajets et marques d'ordres au sol [?]
+- Trajets et marques d'ordres au sol (anneau blanc du clic, ligne et points jaunes, rouges en attaque-deplacement ; vus et OK par l'utilisateur le 2026-11-11, orders_marks_compare) [style]
 
 == INTERFACE
 - Style de l'interface (couleurs, cadres, boutons) [style]

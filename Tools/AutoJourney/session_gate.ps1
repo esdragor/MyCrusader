@@ -268,6 +268,15 @@ if ($Phase -eq 'Essay') {
 }
 
 if ($Phase -eq 'Close') {
+  # L9-4 (branche le 2026-11-12) : fichiers suivis aux fins de ligne MELEES dans l'arbre de travail (eol_check.ps1, L8-6) : Edit multi-lignes refuse,
+  # conflit total a la fusion (Auto_Journey_File.md, 3 fois). WARN qui nomme les fichiers et la commande -Fix (aucun diff git), PASS sinon.
+  $EolCheck = Join-Path $PSScriptRoot 'eol_check.ps1'
+  function Say-Eol([string]$Dir, [string]$Label) {
+    if (-not (Test-Path $EolCheck)) { Say 'WARN' "$Label : fins de ligne non controlees ($EolCheck introuvable)"; return }
+    $mx = @(& $EolCheck -Root $Dir 2>$null | Where-Object { $_ -match '^MIXTE ' } | ForEach-Object { $_.Substring(6) })
+    if ($mx.Count -gt 0) { Say 'WARN' ("{0} : fins de ligne melees dans {1} fichier(s) suivi(s) : {2} -> powershell -ExecutionPolicy Bypass -File {3} -Root {4} -Fix (aucun diff git)" -f $Label, $mx.Count, (($mx | Select-Object -First 5) -join ', '), $EolCheck, $Dir) }
+    else { Say 'PASS' "$Label : fins de ligne propres (eol_check)" }
+  }
   foreach ($w in $wts) {
     $n = Split-Path $w -Leaf
     if ($Exclude -contains ($n -replace '^HeroesOfLiberty-', '')) { Say 'WARN' "$n : exclu du perimetre (-Exclude), non controle" ; continue }
@@ -275,7 +284,9 @@ if ($Phase -eq 'Close') {
     if ($dirty.Count -gt 0) { Say 'FAIL' "$n : $($dirty.Count) fichier(s) suivi(s) NON commite(s) (commiter sur la branche, jamais laisser en l'air)" } else { Say 'PASS' "$n : propre" }
     $behind = [int](git -C $w rev-list --count 'HEAD..main' 2>$null)
     if ($behind -gt 0) { Say 'FAIL' "$n : retard de $behind commit(s) sur main : L8-9, lancer Tools\AutoJourney\sync_worktrees.ps1 -NoBuild (ou avec build) avant le bilan, aucun agent ne tourne" } else { Say 'PASS' "$n : a jour avec main" }
+    Say-Eol $w $n
   }
+  Say-Eol $Main 'copie principale'
   $dm = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' })
   if ($dm.Count -gt 0) { Say 'FAIL' ("copie principale : fichiers suivis non commites : " + (($dm | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
   # L7-6 : chaque E-*.md ouvert ([... ESSAYER]) porte GESTE: reel|interne et SON: entendu|non entendu

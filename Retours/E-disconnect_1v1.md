@@ -1,6 +1,6 @@
-# [A ESSAYER] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
+# [NE PAS JOUER] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
 
-STATUT : VU A L'ECRAN (objet de l'essai = l'AFFICHAGE ; l'evenement de depart est simule)
+STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : lance sans -PlayerName chez l'utilisateur (spectateur) et binaire de la copie jouee perime (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilee et que preflight.ps1 disconnect_1v1 -Root <cette copie> -PlayerName Alice complet PASS (pre-vol du 2026-11-09 ci-dessous : historique, plus valable)
 GESTE: interne      (commandes hol.Net.FakeAbsent End 1 : le depart reseau est simule sans second client ; Entree = temps suivant)
 SON: sans objet
 branches: net-playtest
@@ -17,3 +17,7 @@ Duree : environ 1 min. Reponse attendue : OK, BUG: ... ou REGLAGE: ...
 A regarder : temps 1 = Bob "Connexion perdue" avec le bandeau 1:00 ; Entree ; temps 2 = Bob Vaincu, "Bob a quitte la partie", ecran Victoire d'Alice.
 
 Reponse: le scenario n'a jamais demarre (erreur etape 5 « jamais venu »), 2026-11-11 soir
+
+## STATUT 2026-11-12 (FARAMIR-1112a) : LOGIQUE SEULEMENT, NE PAS JOUER
+Cause (FARAMIR-1112a, 2026-11-12, journal de l'utilisateur HeroesOfLiberty-Haldir\Saved\Logs\HeroesOfLiberty.log 18:19) : lance SANS -PlayerName (ligne de commande du journal), donc Â« 257 joined as a spectator (name '') Â», etape 5 Â« waitlog Camera above the start of slot Â» jamais venue. Correctif (branche fog, 42e5e41) : play.ps1 et check.ps1 prennent seuls le premier siege Humain nomme du .json (Alice) ; preflight FAIL si play.ps1 ne nomme pas le joueur. binaire de main (copie principale, dll 2026-11-11 11:06) PERIME : 9 commits C++ depuis (rage L4, Monter/Demonter, camps) ; au lancement Angelscript: Error (Namespace 'HOLAIRageOrder' doesn't exist, UHOLCampSubsystem::GetNumCamps) et le jeu reste a l'image 0 (rejoue par FARAMIR-1112a, play.ps1 -Hidden depuis C:\Users\baudo). Arwen (dll 11-11 13:43) et Faramir (dll 11-11 16:02) sont aussi plus vieux que leur dernier commit C++ : recompiler la copie choisie avant de donner la commande.
+Commande a redonner seulement apres : fog fusionnee dans main, copie choisie recompilee, puis preflight.ps1 <nom> -Root <cette copie> PASS (le preflight verifie maintenant le binaire, le joueur nomme et les fichiers non commites).
