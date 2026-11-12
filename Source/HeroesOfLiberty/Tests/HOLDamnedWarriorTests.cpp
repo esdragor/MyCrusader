@@ -256,12 +256,19 @@ bool FHOLDamnedWarriorRageTest::RunTest(const FString& Parameters)
 				int32 CooldownMs = 0;
 				TestTrue(TEXT("the rage's state is read from the combat fragment, running and cooling down"), HOLRageVisual::GetRageState(World, Warrior, RageMs, CooldownMs) && RageMs > 0 && CooldownMs > RageMs);
 				const FVector3f Base(0.2f, 0.4f, 0.9f);
+				// Q-legions-warrior-rage-visual = A+C (2026-11-11): by default (cvar untouched) the warrior in rage is tinted AND its cell shows the
+				// rage's state; no ring (B not kept).
+				const int32 DefaultMode = RageVisual->GetInt();
+				TestEqual(TEXT("hol.Rage.Visual defaults to 4 (tint + cell state)"), DefaultMode, static_cast<int32>(HOLRageVisual::ModeTintIcon));
+				TestFalse(TEXT("by default the warrior in rage is tinted"), HOLRageVisual::GetDrawColor(HOLRageVisual::GetMode(), RageMs, Base).Equals(Base, 0.05f));
+				TestTrue(TEXT("by default the rage cell shows its state"), HOLRageVisual::HasIcon(HOLRageVisual::GetMode()));
+				TestFalse(TEXT("by default no ring is drawn"), HOLRageVisual::ShouldDrawRing(HOLRageVisual::GetMode(), RageMs));
 				const auto DrawnAt = [&](const int32 Mode, const int32 Ms)
 				{
 					RageVisual->Set(Mode, ECVF_SetByCode);
 					return HOLRageVisual::GetDrawColor(HOLRageVisual::GetMode(), Ms, Base);
 				};
-				TestTrue(TEXT("mode 0 (default): the warrior in rage keeps its owner's colour"), DrawnAt(0, RageMs).Equals(Base, 0.001f));
+				TestTrue(TEXT("mode 0 (nothing): the warrior in rage keeps its owner's colour"), DrawnAt(0, RageMs).Equals(Base, 0.001f));
 				const FVector3f Tinted = DrawnAt(HOLRageVisual::ModeTint, RageMs);
 				TestTrue(TEXT("mode 1 (tint): the warrior in rage is darker and redder than its owner's colour"), !Tinted.Equals(Base, 0.05f) && Tinted.Y < Base.Y && Tinted.Z < Base.Z && Tinted.X >= Tinted.Y);
 				TestTrue(TEXT("mode 4 (tint + state): the body is tinted too"), DrawnAt(HOLRageVisual::ModeTintIcon, RageMs).Equals(Tinted, 0.001f));
@@ -272,7 +279,7 @@ bool FHOLDamnedWarriorRageTest::RunTest(const FString& Parameters)
 				TestFalse(TEXT("mode 2: a warrior NOT in rage gets no ring"), HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeRing, 0));
 				TestFalse(TEXT("modes 0, 1, 3, 4: no ring even in rage"), HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeNone, RageMs) || HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeTint, RageMs) || HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeIcon, RageMs) || HOLRageVisual::ShouldDrawRing(HOLRageVisual::ModeTintIcon, RageMs));
 				TestTrue(TEXT("the cell state is shown in modes 3 and 4 only"), HOLRageVisual::HasIcon(HOLRageVisual::ModeIcon) && HOLRageVisual::HasIcon(HOLRageVisual::ModeTintIcon) && !HOLRageVisual::HasIcon(HOLRageVisual::ModeNone) && !HOLRageVisual::HasIcon(HOLRageVisual::ModeTint));
-				RageVisual->Set(0, ECVF_SetByCode);
+				RageVisual->Set(DefaultMode, ECVF_SetByCode);
 			}
 			const FWindow Rage = Measure(9.f);
 			TestTrue(TEXT("under the rage: more blows in the same time (cadence +25 %)"), Rage.Hits > Calm.Hits);

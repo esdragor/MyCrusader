@@ -20,12 +20,24 @@ HOLMorale::FHOLMoraleEffect MoraleAura(int Id, int Lever, int Percent)
 void Test_MoraleStartingCaps(FUnitTest& T)
 {
 	T.AssertEquals(50, HOLMorale::BonusCap(HOLMorale::LeverTaken), "damage taken, bonus cap");
-	T.AssertEquals(30, HOLMorale::BonusCap(HOLMorale::LeverDealt), "damage dealt, bonus cap");
+	T.AssertEquals(40, HOLMorale::BonusCap(HOLMorale::LeverDealt), "damage dealt, bonus cap (40 since Q-legions-rage-cap = A, 2026-11-11)");
 	T.AssertEquals(30, HOLMorale::BonusCap(HOLMorale::LeverRate), "attack rate, bonus cap");
-	T.AssertEquals(30, HOLMorale::MalusCap(HOLMorale::LeverDealt), "damage dealt, malus cap");
+	T.AssertEquals(40, HOLMorale::MalusCap(HOLMorale::LeverDealt), "damage dealt, malus cap (40, symmetric with the bonus, Q-legions-rage-cap = A)");
 	T.AssertEquals(30, HOLMorale::MalusCap(HOLMorale::LeverRate), "attack rate, malus cap");
 	T.AssertEquals(50, HOLMorale::MalusCap(HOLMorale::LeverTaken), "damage taken, malus cap (symmetric, decided by the user on 2026-11-05)");
 	T.AssertEquals(75, HOLMorale::AttenuationCap, "attenuation never reaches 100 %");
+}
+
+// Q-legions-rage-cap = A (2026-11-11): the necrotic rage of the effects table gives its whole +40 % of damage dealt, not +30 %; with
+// Triumph on top it stays at 40, never more; its +25 % of rate is unchanged.
+void Test_MoraleNecroticRageGivesFullForty(FUnitTest& T)
+{
+	HOLMorale::FHOLMoraleState State;
+	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::NecroticRage));
+	T.AssertEquals(40, HOLMorale::Total(State, HOLMorale::LeverDealt), "the rage alone: +40 % of damage dealt");
+	T.AssertEquals(25, HOLMorale::Total(State, HOLMorale::LeverRate), "the rage alone: +25 % of rate");
+	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Triumph));
+	T.AssertEquals(40, HOLMorale::Total(State, HOLMorale::LeverDealt), "rage and Triumph: still 40, the cap");
 }
 
 // The same effect posed twice stays one; it keeps the strongest intensity and the longest time left.
