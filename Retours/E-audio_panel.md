@@ -1,6 +1,6 @@
-# [À ESSAYER] E-audio_panel : écoute TOUS les sons encore ouverts en UNE commande (Entrée = le son suivant), puis tu réponds une lettre par cue dans cette fiche
+# [NE PAS JOUER] E-audio_panel : écoute TOUS les sons encore ouverts en UNE commande (Entrée = le son suivant), puis tu réponds une lettre par cue dans cette fiche
 
-STATUT : LOGIQUE SEULEMENT   (aucune oreille n'a écouté : l'agent a lancé le panneau avec -nosound ; ne devient « prêt » qu'après ton écoute)
+STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : même chaîne de sons que stone/metal, candidats jamais commités (seulement dans Arwen), pré-vol du 2026-11-08 sur un main périmé (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilée et que preflight.ps1 audio_panel -Root <cette copie> -MaxSeconds 900 complet PASS
 GESTE: interne      (les sons sont joués par la commande hol.Audio.Candidate du scénario, pas par un vrai clic ; seule la touche Entrée est la tienne)
 SON: non entendu   (-nosound côté agent ; passe à « entendu » quand tu as écouté)
 branches: heal-sleep   (le panneau, la commande `loud` et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
