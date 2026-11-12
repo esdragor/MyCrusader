@@ -113,7 +113,11 @@ Fusion groupée de fin de séance : dans Faramir (fog = main, arbre propre), can
 | DOCS-1112b | a1d82b0c5596b555a | principale | main | Decisions du 2026-11-11 au GDD § 22 (GDD non commite) | 11:33 |
 | HALDIR-1112f | a0480ef84ff6458e1 | Haldir | maps | Chapitre A2 choix de specialisation de palier : journal + regles pures en script (sans build) | 11:46 |
 | HALDIR-1112g | aa042c6c1dd71fc9f | Haldir | maps | Chapitre A3 option Nomade : journal + regles pures en script (sans build), arbre propre a 12:15 | 11:59 |
+| FUSION-1112 | a99b6f3c8d7b723e1 | Haldir | maps | Fusion groupee sans C++ : maps + fog + hero-j8-close, tests, sans avance rapide (faite par la session principale) | 12:11 |
 
+HALDIR-1112g fini 12:09 (maps 938087b/ae9d9af, merge 525d636, 34 appels, tests 1200/1200) : chapitre option Nomade ouvert, regles pures, Q-nomad ; branche prete.
+GALADRIEL-1112a fini 12:10 (galadriel-tab 24461a8 fusion de main, 236e56b test rouge, 56 appels) : build de la fusion PASS en 3994 s (dont ~60 min d attente), tests 1171/1174 (3 rouges = ses tests rouges) ; correctifs rage 40 % et hol.Rage.Visual 4 ECRITS, NON COMMITES, NON COMPILES ; branche PAS prete. Non relance (aucun build possible avant 13:00).
+12:12 : accord de l utilisateur pour commiter GDD.md (616719a, D770-D782). Gate Merge de 12:10 : FAIL GDD.md non commite (leve par ce commit) et branches en retard de mes commits de docs (l agent de fusion refusionne main).
 HALDIR-1112f fini 11:57 (maps 567fd50/1124a13/581f21b, merge 3ff176d, 40 appels, tests 1193/1193) : chapitre choix de specialisation ouvert, regles pures, Q-specialization ; branche prete.
 Constat 11:52 (question de l utilisateur « pourquoi ca s est degrade ») : 1,2 Go de RAM libre sur 64 ; 6 editeurs ProjectShiva = 33 Go reserves (5 lances entre 11:38 et 11:49), StarRail 10 Go, ProjectRED 5 Go, HeroesOfLiberty ~5 Go. Galadriel compile depuis 10:56.
 HALDIR-1112e fini 11:43 (maps 76f66b8/9d30e2c/16a51cd, merge 8d918a6, 35 appels, tests 1186/1186) : chapitre Signaux ouvert, regles pures, Q-signals (duree de vie, coequipier elimine) ; branche prete.
