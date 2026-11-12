@@ -141,6 +141,9 @@ FString TalentTipTexts = "";
 	float MinimapLastTime = -1.0;
 	int MinimapTerrainWait = 0;
 	int MinimapLitAlerts = 0;
+	// N7: the camp dots last logged ("Minimap camps: N seen, M alive"), -1 before the first reading.
+	int MinimapCampsLogged = -1;
+	int MinimapCampsAliveLogged = -1;
 	FString MinimapLastClick = "none";
 	// The picture's side (px at 1080p) and the margin of the screen, as the C++ screen's MinimapPlace.
 	const float MinimapSize = 240.0;
@@ -1390,6 +1393,23 @@ FString TalentTipTexts = "";
 		Minimap.GatherEntities(PlayerSlot, Entities);
 		TArray<FHOLMinimapMark> Marks;
 		TArray<FHOLMinimapSeen> Seen;
+		// N7 (Q2 B): the neutral camps the player's camp has seen (Q1 C: the server sends him those alone), red alive, grey cleared,
+		// under the buildings and the units.
+		TArray<FHOLMinimapCamp> CampsSeen;
+		Minimap.GatherCamps(PlayerSlot, CampsSeen);
+		int CampsAlive = 0;
+		for (int Index = 0; Index < CampsSeen.Num(); Index++)
+		{
+			Marks.Add(HOLCampMarks::Mark(MinimapFrame, CampsSeen[Index].Location, CampsSeen[Index].bCleared));
+			if (!CampsSeen[Index].bCleared)
+				CampsAlive++;
+		}
+		if (CampsSeen.Num() != MinimapCampsLogged || CampsAlive != MinimapCampsAliveLogged)
+		{
+			MinimapCampsLogged = CampsSeen.Num();
+			MinimapCampsAliveLogged = CampsAlive;
+			Log(n"LogHOLMatch", f"Minimap camps: {CampsSeen.Num()} seen, {CampsAlive} alive");
+		}
 		// Buildings first, the units over them.
 		for (int Pass = 0; Pass < 2; Pass++)
 		{

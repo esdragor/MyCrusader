@@ -487,6 +487,33 @@ void UHOLMinimapView::RefreshTerrain(const int32 /*ViewerSlot: the fog render kn
 	}
 }
 
+void UHOLMinimapView::GatherCamps(const int32 ViewerSlot, TArray<FHOLMinimapCamp>& OutCamps) const
+{
+	OutCamps.Reset();
+	const UWorld* World = GetWorld();
+	const AGameStateBase* GameState = World ? World->GetGameState() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	for (const APlayerState* Each : GameState->PlayerArray)
+	{
+		const AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
+		if (!Player || Player->GetPlayerIndex() != ViewerSlot)
+		{
+			continue;
+		}
+		for (const FHOLCampView& View : Player->GetCampViews())
+		{
+			FHOLMinimapCamp Camp;
+			Camp.Location = FVector2D(View.X, View.Y);
+			Camp.bCleared = View.bCleared;
+			Camp.Living = View.Living;
+			OutCamps.Add(Camp);
+		}
+		return;
+	}
+}
 void UHOLMinimapView::GatherEntities(const int32 ViewerSlot, TArray<FHOLMinimapEntity>& OutEntities) const
 {
 	OutEntities.Reset();

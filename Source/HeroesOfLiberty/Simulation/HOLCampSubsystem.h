@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Simulation/HOLCampRules.h"
+#include "Match/HOLCampView.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLCampSubsystem.generated.h"
 
@@ -82,6 +83,18 @@ private:
 
 	void OnStepEnded(int64 StepIndex);
 
+	/** N7 (Q1 C): writes to each player's state the camps his camp has had in sight (live in sight, as last seen out of it). */
+	void WriteViews();
+
+	/** N7: what one slot knows of one camp. */
+	struct FKnownCamp
+	{
+		bool bKnown = false;
+		FHOLCampView View;
+	};
+
 	TArray<FCamp> Camps;
+	/** N7: per slot, per camp. */
+	TArray<TArray<FKnownCamp>> Known;
 	FDelegateHandle StepEndedHandle;
 };

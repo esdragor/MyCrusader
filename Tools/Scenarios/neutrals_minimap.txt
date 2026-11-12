@@ -1,0 +1,28 @@
+# N7 : le point de camp sur la minicarte (Q2 B : rouge vivant, gris nettoye ; Q1 C : seulement les camps deja vus par mon camp).
+# Chaine reelle : UHOLCampSubsystem ecrit a mon poste (AHOLPlayerState::CampViews) les camps vus, la minicarte les lit (GatherCamps) et le script pose les points (HOLCampMarks).
+# Deux camps : le camp 0 au centre, vu par mes 3 Hommes d armes poses a 18 m ; le camp 1 loin (9000, 9000), jamais vu : pas de point.
+hol.Camp.Aggro 1
+hol.Decor.ClearNear 0 0 2500
+waitlog Decor.ClearNear 0 0 2500: took
+hol.Camp.Add 0 0 3 Spearman
+waitlog Camp 0: 3 Spearman at
+hol.Camp.Add 9000 9000 3 Spearman
+waitlog Camp 1: 3 Spearman at
+frames 30
+hol.Units.Spawn 3 -1800 0 0 ManAtArms 200
+waitlog Spawn: 3 ManAtArms
+waitlog Minimap camps: 1 seen, 1 alive
+hol.Camera.Focus -1000 0
+hol.Camera.Zoom -3
+frames 30
+capture neutrals_minimap_alive
+# Mes soldats attaquent le camp 0 : il est nettoye, son point passe au gris ; le camp 1 reste sans point.
+hol.Camp.Aggro 0
+hol.Units.Move 0 0 0 a
+waitlog Camp 0: cleared for good
+waitlog Minimap camps: 1 seen, 0 alive
+frames 30
+capture neutrals_minimap_cleared
+hol.Camp.Report
+waitlog Camp 1 at (9000, 9000): guarding
+note Point de camp sur la minicarte : un carre ROUGE au centre de la minicarte (camp vivant vu par mes soldats), aucun point pour le camp lointain jamais vu ; apres le combat, le carre devient GRIS (camp nettoye).

@@ -26,6 +26,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, SiteViews, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, CampViews, COND_OwnerOnly);
 }
 
 bool AHOLPlayerState::SetSiteViews(const TArray<FHOLSiteView>& InSiteViews)
@@ -39,6 +40,16 @@ bool AHOLPlayerState::SetSiteViews(const TArray<FHOLSiteView>& InSiteViews)
 	return true;
 }
 
+bool AHOLPlayerState::SetCampViews(const TArray<FHOLCampView>& InCampViews)
+{
+	if (CampViews == InCampViews)
+	{
+		return false;
+	}
+	CampViews = InCampViews;
+	ForceNetUpdate();
+	return true;
+}
 int32 AHOLPlayerState::FindColorIndex(const UWorld& World, const int32 Slot)
 {
 	if (const AGameStateBase* GameState = World.GetGameState())
