@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Prise de la lance du Lancier (bras gauche dans le corps)
+# [RÉPONDU 2026-11-12] Prise de la lance du Lancier (bras gauche dans le corps)
 
 branches: hero-j8-close (aucun correctif de pose commité : rien à jouer)
 
@@ -21,3 +21,5 @@ Scénario `spear_grip_compare` (balayage en jeu) : NON FAIT (il faut une animati
 **Recommandation : B** (la seule prise où aucun bras ne croise le corps ; c'est celle des lanciers à deux mains).
 
 **Valeur par défaut codée : A** (rien n'a changé dans `Tools\Editor\soldier_poses.py`, `SPEAR_GUARD`..`SPEAR_SETTLE` ; la réponse B ou C rouvre le chantier dans `NeutralsInProgress.md`).
+
+Reponse: B (mains échangées : main droite derrière à la hanche droite, main gauche devant ; chantier de pose à rouvrir) - 2026-11-12

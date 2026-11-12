@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Choix de spécialisation de palier : deux points laissés ouverts (HALDIR-1112f, 2026-11-12)
+# [RÉPONDU 2026-11-12] Choix de spécialisation de palier : deux points laissés ouverts (HALDIR-1112f, 2026-11-12)
 
 Chantier : `SpecializationInProgress.md` (worktree Haldir, branche `maps`). Règles pures en script, rien de visible en jeu pour l'instant.
 Défauts codés (une ligne à changer chacun dans `Script/Specialization/HOLSpecializationRules.as`).
@@ -16,6 +16,8 @@ Un joueur qui atteint le palier 2 sans avoir choisi le palier 1 a deux choix ouv
 
 Réglage : `OneUnlockAtATime` (A = true, B = false ; C demanderait une ligne de plus).
 
+Reponse: C (le palier 1 d'abord : le bouton du palier 2 ne s'allume qu'une fois le palier 1 appliqué ; défaut codé A OneUnlockAtATime à changer) - 2026-11-12
+
 ## Q2 : le compte à rebours quand le Forum est à terre
 
 Contexte : « le déblocage se lance au Forum » (D684), qui laisse au chantier le cas du Forum tombé (forum à vies, ruine puis
@@ -28,3 +30,5 @@ reconstruction).
 - **Autre** : à préciser.
 
 Réglage : `ForumDown` (`ForumDownPauses` = A, `ForumDownRuns` = B, `ForumDownCancels` = C).
+
+Reponse: A (en pause quand le Forum est à terre ; déjà codé) - 2026-11-12

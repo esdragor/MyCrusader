@@ -72,6 +72,7 @@ ou 4, palier non atteint, option hors des 2, Templiers à 3) ; deux paliers (Q1)
 
 - Q1 : deux paliers à choisir à la fois. Défaut A = un déblocage à la fois (`OneUnlockAtATime`), comme la barre unique de D684.
 - Q2 : le compte à rebours quand le Forum est à terre. Défaut A = en pause, reprend quand il est relevé (`ForumDown = ForumDownPauses`).
+- **Réponses de l'utilisateur (2026-11-12, D785)** : Q1 = **C, le palier 1 d'abord : le bouton du palier 2 ne s'allume qu'une fois le palier 1 appliqué** (À CHANGER : remplace `OneUnlockAtATime`, une ligne de plus dans `HOLSpecializationRules.as`, test à adapter) ; Q2 = **A, en pause quand le Forum est à terre** (déjà codé).
 
 ## Suivi
 
