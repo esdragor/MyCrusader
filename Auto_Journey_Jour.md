@@ -1,113 +1,22 @@
 # Auto_Journey : l'état du jour
 
 Mode d'emploi : ce fichier ne garde que la dernière journée de travail (tableaux « ## Agents du <date> », bilans, « ### Lecons appliquees <date> » : titres lus par `Tools\AutoJourney\session_gate.ps1`, ne pas les renommer). Procédure : `Auto_Journey.md` ; file de travail : `Auto_Journey_File.md` ; ce qui attend l'utilisateur : `Auto_Journey_Retours.md` et le dossier `Retours\`.
-Les séances plus anciennes sont archivées telles quelles dans `Docs\Archive\Auto_Journey_Jour_jusqu_au_2026-11-09_matin.md` (jusqu'au 2026-11-09 matin) et `Docs\Archive\Auto_Journey_Jour_2026-11-09_soir_archive_2026-11-11.md` (séance du 2026-11-09 soir) ; à la prochaine séance, déplacer de même la journée précédente.
+Les séances plus anciennes sont archivées telles quelles dans `Docs\Archive\Auto_Journey_Jour_jusqu_au_2026-11-09_matin.md` (jusqu'au 2026-11-09 matin), `Docs\Archive\Auto_Journey_Jour_2026-11-09_soir_archive_2026-11-11.md` (séance du 2026-11-09 soir) et `Docs\Archive\Auto_Journey_Jour_2026-11-10_et_2026-11-11_archive_2026-11-12.md` (séances du 2026-11-10 et du 2026-11-11 : tableaux d'agents, bilans, leçons) ; à la prochaine séance, déplacer de même la journée précédente.
 Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.md`.
 
-## Agents du 2026-11-10 (seance AUTONOME 10:02 -> fin 10:55, arret dur des agents 10:55, alarme 10:40 cloture + fusion groupee, 3 agents C++ max = Galadriel, Arwen, Sauron, cartes SANS regeneration, integrateur/fusion = Elrond (agent neuf vers 10:35), main depart = 644b196, accord utilisateur : commits + fusions dans main, jamais de push ; veilleur 43cc6a94 toutes les 23 min)
-| nom | id | worktree | branche | tache (ligne de Auto_Journey_File.md) | lancement |
-|---|---|---|---|---|---|
-| Galadriel-1 (C++) | a2ff5a5c | HeroesOfLiberty-Galadriel | galadriel-tab | L86 survol des stats (BUG utilisateur) | 10:05 |
-| Arwen-1 (C++) | a50bdc9a | HeroesOfLiberty-Arwen | d751-root | L90 G14 champ Faction de FHOLAISummary | 10:05 |
-| Sauron-1 (C++) | a8a8ad9d | HeroesOfLiberty-Sauron | visual | L88 hol.Decor.ClearNear | 10:05 |
-| Celeborn-1 (sans C++) | aa7703a3 | HeroesOfLiberty-Celeborn | hero-j8-close | L89 mesure melee_stuck_on_bf 8 fois | 10:05 |
-| Elrond-1 (sans C++) | ae078e21 | HeroesOfLiberty-Elrond | tiers | L87 note 5 scenario arquebusier | 10:05 |
-| Faramir-1 (sans C++) FINI 10:09 (35 tool_uses ok) | ad2fe270 | HeroesOfLiberty-Faramir | fog | L26, L98, L24 | 10:05 |
-| Glorfindel-1 (sans C++) | a36171a6 | HeroesOfLiberty-Glorfindel | net-playtest | L91 stray_processes python | 10:05 |
-| Haldir-1 (sans C++) | a37c3759 | HeroesOfLiberty-Haldir | maps | L79 ligne N sites du journal make_maps | 10:05 || Faramir-2 (sans C++) | a44715cc | HeroesOfLiberty-Faramir | fog | L52, L53, L54 (note+look fog_orders_flicker, zz_edge_walk, fog_trees) | 10:12 |
-| Glorfindel-2 (sans C++) | ae4199b3 | HeroesOfLiberty-Glorfindel | net-playtest | L70 fiches Deconnexion | 10:22 |
-| (FINIS) Haldir-1 10:09 maps 0be29cf, Elrond-1 10:14 tiers 06ccaab (arquebusier note 5), Glorfindel-1 10:19 net-playtest 7701e5f (stray_processes python), Faramir-1 10:09 | | | | | |
-| Elrond-2 INTEGRATEUR (fusion groupee) | a32a38a9 | HeroesOfLiberty-Elrond | tiers | fusion maps 0be29cf, net-playtest 906e70f, fog 934e078, tiers 06ccaab, hero-j8-close e160313 | 10:35 |
-| Galadriel-1 FINI 10:33 NON COMPILE (50 tool_uses, 7bd1332 : hol.HUD.Hover, erreur de header corrigee, a recompiler par un agent neuf) ; Faramir-2 FINI 10:25 (44 tool_uses) ; Glorfindel-2 FINI 10:24 (15) | | | | | |
-| Galadriel-2 (C++ compiler+tester) | ada56630 | HeroesOfLiberty-Galadriel | galadriel-tab | compiler 7bd1332, preflight unit_stats_attack, tests | 10:41 |
-| Arwen-1 FINI 10:39 (85 tool_uses : HORS REGLE >80, G14 d751-root 3b4bd14 tests 1141/1141) ; Sauron-1 FINI 10:38 (55 tool_uses, visual 22e1f57 tests 1138) ; Celeborn-1 FINI 10:34 (50) | | | | | |
-| Elrond-2 FINI 10:44 (17 tool_uses) : FUSION 1 FAITE main=tiers=004969d (maps, net-playtest, fog, hero-j8-close ; build 166 s, tests 1137/1137, aiserver+aiduel PASS) | | | | | |
-| Elrond-3 INTEGRATEUR tour 2 | ab1f57d9 | HeroesOfLiberty-Elrond | tiers | fusion d751-root 3b4bd14 + visual 22e1f57 | 10:45 |
-| Elrond-3 FINI 10:49 (16 tool_uses) : FUSION 2 FAITE main=2162a89 (d751-root 3b4bd14 + visual 22e1f57 ; build 73 s, tests 1142/1142, aiserver+aiduel PASS) | | | | | |
-| Elrond-4 INTEGRATEUR tour 3 | ac3df5b9 | HeroesOfLiberty-Elrond | tiers | fusion galadriel-tab ec28851 | 10:50 |
+## Dernier bilan : 2026-11-11 (13:24-18:02, détail dans l'archive du 2026-11-12)
 
-## Bilan de la seance autonome du 2026-11-10 (09:57 -> fin 10:55, fin lue dans Docs\SessionEnd.txt, 1 h demandee par l'utilisateur, cartes SANS regeneration, 15 agents dont l'etape 0, 3 fusions)
-- Fusions dans main (avance rapide, rien de pousse) : FUSION 1 main=004969d (maps 0be29cf make_maps.ps1 controle ", N sites" ; net-playtest 906e70f stray_processes type Python ; fog 934e078 scenarios fog ; hero-j8-close 474259b mesures melee ; build 166 s, tests 1137/1137, aiserver+aiduel PASS) ; FUSION 2 main=2162a89 (d751-root 3b4bd14 G14 champ Faction de FHOLAISummary + correctif des chiffres de l'Arquebusier pour l'IA, visual 22e1f57 hol.Decor.ClearNear ; build 73 s, tests 1142/1142, aiserver+aiduel PASS) ; FUSION 3 main=1bb7422 (galadriel-tab ec28851 hol.HUD.Hover, build 40 s, tests 1142/1142, aiserver+aiduel PASS). Docs main final = 4ef3a87.
-- Fait : bug « pas d'infobulle pour les autres stats » : le code actuel est bon (hover 5/5 vert au hit-test Slate), l'essai du 09-11 etait sur un binaire d'avant d813698 ; G14 (l'IA Legions connait sa faction) ; Arquebusier : l'IA ne le commandait jamais faute de chiffres, corrige ; mesure melee : melee_stuck 5/8, melee_stuck_on_bf (RearKeepBothFull 1) 7/8, ecart non significatif a N=8, cvar laisse a 0, A/B N=16 a faire ; stray_processes arrete aussi les python/pythonw du Root et session_gate Launch les signale ; make_maps.ps1 refuse un journal sans 2 ou 3 sites ; note 5 du scenario arquebusier (preflight PASS, PNG vus) ; fog_orders_flicker_off et fog_trees (note, .look, curseur virtuel) ; Technologies T9 (GDD § 11 contre Technologies.csv) ; Placeholders sons mis a jour.
-- Ouvert pour l'utilisateur : Retours\Q-technologies-legions.md [A REPONDRE] (lieu de recherche des 4 technologies Legions, defaut A = Caserne + Necropole) ; Retours\ESSAIS-A-JOUER.md date du 09-11 (build 60013e8, a rejouer sur main avant de le donner : -Phase Essay) ; arquebusier (E-arquebusier.md) a jouer ; Q-arquebusier-valeurs, Q-forge-armure, etc. inchanges.
-- Non fait / a refaire : sync_worktrees SAUTE Glorfindel (Content/Rendering/MI_Ground_Plain.uasset modifie non commite, artefact de regeneration, sauvegarde dans Temp\MI_Ground_Plain.glorfindel.uasset) ; binaires des 6 autres worktrees perimes apres sync -NoBuild (build a lancer au prochain Launch) ; neutrals dans une clairiere (hol.Decor.ClearNear jamais lance en jeu : ajouter la commande a neutrals.txt, preflight, E-neutrals) ; Content/Maps/Crown.umap non suivi (Haldir) et Content/Audio/Candidates/ (Arwen) non suivis, laisses ; regeneration des 7 cartes (bSitesLaidByMaps = true) non planifiee ; D753-D766 du GDD non ecrits.
-- Hors regle : Arwen-1 85 tool_uses (>80, <=100). Autres : Galadriel-1 50 (NON COMPILE, repris par Galadriel-2 21), Sauron-1 55, Celeborn-1 50, Glorfindel-1 49, Haldir-1 44, Faramir-2 44, Faramir-1 35, Elrond-1 33, Elrond-2 17, Elrond-3 16, Elrond-4 13, Glorfindel-2 15.
+- Main = fd03266 après 3 fusions (rien poussé) ; tests 1173/1173, aiserver, aiduel PASS ; net non relancé sur le résultat fusionné.
+- Fusionné : N7 état des camps, Palier 3 G4-G6 d (bouton), T4b Mains du guérisseur, Légions L4 (rage, IA, traductions), S5 prouvé sur le réseau, notereset/preflight, neutrals 3v3, essais de Sauron ; build de main réparé par Haldir (39ba5ec).
+- Non fusionné : galadriel-tab a3e90a8 (conflit notereset avec fog), net-playtest c8bde0e/WIP S6 (test ROUGE), visual f0670cf+ (scénarios) : lignes 95, 100 et 57 de `Auto_Journey_File.md`.
+- Scénario neutrals ramené à 3 Hommes d'armes : masque le résidu D641 (noté dans `NeutralsInProgress.md` et `Retours\E-neutrals.md`).
+- Réponses de l'utilisateur du 2026-11-11 aux Q-*.md reportées (commit bacee4b) ; `Retours\ESSAIS-A-JOUER.md` nettoyé le 2026-11-12 (0 essai prêt).
+- Leçons non appliquées le 2026-11-11 : plafond de 45 appels (agents à 46-64), commits de docs sur main pendant une fusion, calls.md partagé ; 2 tips rouges commités par des agents.
 
-### Lecons appliquees 2026-11-10
-- T2-1 : appliquee : etape 0 (agent adff08e7, 41 tool_uses) a rendu le plan par worktree, relu contre la procedure.
-- T2-2 : appliquee : 8 worktrees lances a 10:05 (tableau ## Agents du 2026-11-10 ecrit avant le lancement).
-- L5-1 : appliquee : session_gate Launch lu a 10:02 (53 min restantes) ; Get-Date lu avant chaque lancement ; 3 lancements tardifs (Galadriel-2 10:40, Elrond-3 10:43, Elrond-4 10:50) pour des fusions et une compilation, jamais d'agent de tache apres l'alarme.
-- L5-2 : appliquee : ids ecrits dans le tableau au lancement ; aucun SendMessage au mauvais agent (2 messages a Elrond-2 et Elrond-3, ids relus).
-- L3-1 / L4-4 : appliquee : 3 agents C++ (Galadriel, Arwen, Sauron) ; 3 builds ont attendu de 25 a 30 min en file derriere les builds de rattrapage (Elrond a lance un build de rattrapage de 397 s sans modifier de C++).
-- L1-10 : appliquee : commit_docs.ps1 avant chaque lancement/fusion, copie principale sans fichier de code modifie ; 4 fichiers de docs non couverts (Placeholders*, TechnologiesInProgress, SessionEnd) commites par nom a 10:33.
-- L4-1 / L4-3 : appliquee : alarme 10:40 posee (CronCreate), fin dure 10:55 ; 3 agents de fusion lances a 10:35, 10:44 et 10:50 (avant la fin), dernier fini 10:55.
-- L3-8 / L4-9 / Q5 : NON appliquee : aucun integrateur de recette independante nomme ; Elrond a fusionne sans rejouer d'essai a l'ecran ; aucun essai donne a l'utilisateur.
-- L5-3 / L7-1 : partiellement appliquee : 1 agent hors regle (Arwen 85 tool_uses > 80), aucun > 100.
-- L1-2 : appliquee : tous les agents ont commite dans les 30 min (dernier commit visible au veilleur).
-- L1-3 : appliquee : merge_main_fait = oui dans tous les rapports.
-- L3-2 / L4-5 : partiellement appliquee : Galadriel-1 a rendu du code NON COMPILE (erreur de header) ; repris par un agent neuf (Galadriel-2) qui a constate le build vert ; builds de Sauron et Arwen lances en run_in_background.
-- L6-3 / L8-3 : appliquee : fin lue dans Docs\SessionEnd.txt (10:55) ; session_gate Merge a refuse a 10:33 (main avance, copie principale sale) : docs commites, branches fusionnees dans tiers puis main en avance rapide.
-- L9-1 : appliquee : aucune notification en boucle ; 4 agents ont d'abord notifie « waiting on background work » (Arwen 4 fois, Elrond-4) sans relance.
-- L4-14 / L8-9 : partiellement appliquee : sync_worktrees au debut (10:02, deja a jour) et a la fin (10:55, -NoBuild) ; Glorfindel saute (uasset non commite d'une regeneration).
-- Q1-Q4 / Q10 : sans objet : aucun essai donne ; arquebusier et fog_trees passes au pre-vol par leurs agents (PNG ouverts), non joues par l'utilisateur.
-- L7-4 : appliquee : PROCESSUS_DETACHES = aucun dans les 14 rapports ; Faramir-2 a du arreter 2 editeurs laisses par play.ps1 -Hidden (anomalie signalee, a corriger).
+## Chapitres du GDD non commencés (relevé Arwen du 2026-10-30, état revu le 2026-11-12 au seul nom des `*InProgress.md`)
 
-## Agents du 2026-11-11
-
-Test d'1 h, 13:30-14:30 (agents arret 14:12, fusion groupee ensuite), fusions dans main OK, jamais de push. Nettoyage 0a fait (e1db39a, 34717c0, 89a5a0b, e09d1cb). Pas de veilleur (1 h, les notifications suffisent). Non lances : Celeborn (lignes melee perimees, D641 ecarte, D769 fait), Faramir (aucune ligne), Glorfindel et Haldir (file de build trop longue pour 1 h, taches a part).
-
-| Nom | Id | Worktree | Branche | Tache | Lance |
-|---|---|---|---|---|---|
-| Arwen-N7 | aee5251a39a3a634a | HeroesOfLiberty-Arwen | d751-root | C++ Neutres N7 GetCampState | 13:31 |
-| Elrond-G4 | a00898a21645ceedb | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G4 | 13:31 |
-| Galadriel-T4b | a7277cf1a836dc226 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Talents T4b Mains du guerisseur | 13:31 (arret 13:37 : 55 appels, test rouge seul commite 902dad0) |
-| Galadriel-T4b-2 | a5e9988c064f438c3 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ T4b correctif (agent neuf) | 13:38 |
-| Sauron-CN | a8b90f320e2d826a2 | HeroesOfLiberty-Sauron | visual | sans C++ scenario neutrals ClearNear | 13:31 |
-| Fusion-1 | acb66774812037546 | HeroesOfLiberty-Faramir | fog | fusion groupee d751-root, tiers, visual, galadriel-tab | 13:52 (arret 14:30) |
-| Sauron-PQ1 | a942452d8e7491995 | HeroesOfLiberty-Sauron | visual | sans C++ placeholders ressources/decor, dix echantillons | 13:53 |
-| Arwen-outils | a10ee7ddc751061e5 | HeroesOfLiberty-Arwen | d751-root | sans C++ commit_docs, play -Hidden | 13:53 |
-| Glorfindel-L | afdb8e6fd350c6bc9 | HeroesOfLiberty-Glorfindel | net-playtest | sans C++ gestes Legions + quick_check -Full | 13:53 |
-| Galadriel-heal | a7f4f37dbeb73c398 | HeroesOfLiberty-Galadriel | galadriel-tab | sans C++ scenario talents_heal | 13:55 |
-
-PROLONGATION 13:52 sur demande de l'utilisateur (« repart pour 1h de plus ») : fin de seance 15:30 (14:30 + 1 h), agents d'arret 15:12, fusion groupee 2 ensuite. Elrond libre (G4 partiel, pas de relance : cap de 3 agents C++).
-| Galadriel-L4 | a4887747d0e3044e3 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Legions L4 etape 1 | 13:58 |
-| Sauron-PH | a741877d2e87b3bd0 | HeroesOfLiberty-Sauron | visual | sans C++ placeholders [?] _compare | 14:01 |
-| Elrond-G5 | a4695a05182a3066a | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G5/G6 | 14:10 |
-FUSION 1 faite 14:09 : main = 0ba3651 (e24d24f), d751-root + tiers + visual + galadriel-tab(71b35d9), build PASS, tests 1148/1148, aiserver, aiduel PASS. Pas dans main : a399b77 (scenario talents_heal), Sauron 376d95c+, Arwen outils, Glorfindel. Fusion 2 vers 14:45 puis integrateur (rejeu essais sur main).
-
-PROLONGATION 15:03 sur demande de l'utilisateur (« tourne jusqu'a 18h ») : fin de seance 18:00 (remplace 15:30), agents d'arret 17:40, fusion groupee 3 a 17:40-18:00. Vague 2 (15:05) : Galadriel-L4f, Elrond-G6, Glorfindel-Full3, Arwen-outils2, Sauron-essais, Celeborn-neutrals (ids ci-dessous). Fusion-2 (a1f58945f52967071) finit : main + db4598e.
-
-FUSION 2 faite 15:07 : main = 521adcb (d751-root ae0678f, tiers 0901124, visual 3176564, net-playtest cee7093, galadriel-tab db4598e) ; build PASS, tests 1165/1165, aiserver, aiduel PASS ; rien pousse.
-
-## Agents vague 2 du 2026-11-11 (lancee 15:09, arret 17:40, fin 18:00)
-
-| Nom | Id | Worktree | Branche | Tache | Lance |
-|---|---|---|---|---|---|
-| Galadriel-L4f | a2f8dddfefda1e116 | HeroesOfLiberty-Galadriel | galadriel-tab | C++ Legions L4 etape f ordre + bouton rage | 15:09 |
-| Elrond-G6b | afa251d5881573432 | HeroesOfLiberty-Elrond | tiers | C++ Palier 3 G6 b-d | 15:09 |
-| Glorfindel-Full3 | a62728db11267f2f4 | HeroesOfLiberty-Glorfindel | net-playtest | 3 rouges du quick_check -Full (sources, net 2 clients, netai) | 15:09 |
-| Arwen-outils2 | a27e5ced37c9ec1f7 | HeroesOfLiberty-Arwen | d751-root | sans C++ build_queue_test c/d + modele d'enonce | 15:09 |
-| Faramir-integrateur | acc494e10e653f9ff | HeroesOfLiberty-Faramir | fog | sans C++ recette independante des essais sur main fusionne | 15:09 |
-| Sauron-essais | aa9453ee10c137764 | HeroesOfLiberty-Sauron | visual | sans C++ essais rates du 31 octobre (max 3) | 15:09 |
-| Celeborn-neutrals | a7650e39235995947 | HeroesOfLiberty-Celeborn | hero-j8-close | neutrals spin Sanity scenario ou jeu | 15:09 |
-
-BUILD DE MAIN REPARE 15:47 : main = 39ba5ec (Haldir a9887b554294586f6, 18 fichiers Tests : constantes globales Margin etc. prefixees Test, build PASS, tests 1165/1165). Vague 2b (15:50) : Elrond-G6c ad570df75af4ca526, Celeborn-ab a43a2bbac8298a461, Glorfindel-Full3b aeb427b5792957e83, Sauron-rejeu a7b64d3a1719ffe12, Galadriel-L4g ad046dfc8e1bd5ccf (15:41), Faramir-notereset (15:53, voir rapport). Arret 17:40, fusion 3 a 17:40-18:00. Fiche a ne pas oublier : retirer la ligne known_reds Caserne apres le libelle de Galadriel ; retirer le renommage local SourceBoxMargin de Glorfindel (checkout du fichier) avant sa fusion.
-
-ETAT 16:17 : vague 3 : Galadriel-L4h a1cd0fec44fbad03b (traductions + commit), Faramir-preflight af93257d61ce00d79 (preflight 255 + bandeaux), Glorfindel-Sites a7ba8c99d13bf0022 (Sites sacres S5), Elrond-G6d ad75579f4472fd6ea (diagnostic Deploy.InMatch). Celeborn-ab a43a2bbac8298a461 (ab_matrix neutrals) et Sauron-rejeu a7b64d3a1719ffe12 en cours. Branches a fusionner a 17:40 : d751-root (c66ef03+4c6be, tests verts), net-playtest 83d868e (Full 0 regression ; ligne known_reds Caserne a retirer si Galadriel fusionne), galadriel-tab (a finir), fog (notereset 91299fc+3fd83e2, tests 1167), visual, tiers (ATTENTION tip 8141901 = test Deploy.InMatch ROUGE commite : ne le fusionner que si Elrond le rend vert), hero-j8-close.
-
-ETAT 16:59 : fusion 3 lancee (Haldir a856c708b4426eed0, 7 branches, tips commites, arret 17:30). Agents en cours : Galadriel-rage-visuel a2c3aa3c357d5a353, Elrond-G6d a7975085d12b40ca2, Glorfindel-vue+S6 a6d49c55ad54042fe, Sauron-rejeu a7b64d3a1719ffe12. Celeborn et Faramir libres. Resultat Celeborn : spin de neutrals = seconde ligne (6 soldats contre 3 Lanciers rouge ~70 %), scenario neutrals ramene a 3 Hommes d'armes pour passer vert : MASQUE le residu D641, a dire a l'utilisateur. Glorfindel : trou de vue de Bob cote +Y a eclaircir.
-
-## Bilan 2026-11-11 (13:24-18:02)
-
-Main = fd03266 (fusions 1 a 3, rien pousse). Fusion 1 (15:07) : N7 camp state, Palier 3 G4/G5, scenario neutrals ClearNear, T4b. Fusion 2 : outils d'Arwen, G5/G6a, scenarios, net quick_check, L4 etapes 1-4. Build de main repare par Haldir (39ba5ec, collisions unity de constantes de tests). Fusion 3 (17:28) : G6 d bouton, L4 rage + IA + traductions, S5 prouve sur le reseau, notereset/preflight, neutrals 3v3, essais Sauron ; tests 1173/1173, aiserver, aiduel PASS ; net non relance sur le resultat fusionne. Redemarrage du PC a 17:05 : chaines tuees, reprises. Non fusionne : galadriel-tab a3e90a8 (anneau B et compare ; doublon du verbe notereset avec fog, CONFLIT dans HOLTestSequence.cpp), net-playtest c8bde0e/WIP S6 (contient un test ROUGE, ne pas fusionner), visual f0670cf+ (scenarios de Sauron). Essais PRETS a donner : voir Retours\ESSAIS-A-JOUER.md (a rejouer apres la fusion 3 : non rejoues sur le build final). Questions ouvertes : Q-legions-rage-cap, Q-legions-warrior-rage-visual, Q-legions-ai-warrior, Q-palier3-deploy-wiring, Q-palier3-deploy-button, Q-sites-gold-line, Q-neutrals-camp-indicator, Q-play-hidden-wait, Q-barracks-tooltip-damned, Q-palier3-g4-roles, Q-talents-heal-visual.
-
-### Lecons appliquees 2026-11-11
-
-| Regle | Etat | Preuve |
-|---|---|---|
-| L8-9 sync des worktrees au debut et a la fin | partielle | sync 13:25, 15:07, 18:01 ; Galadriel (conflit notereset) et Glorfindel (WIP S6) en retard |
-| Commits verts seulement | partielle | 2 tips rouges commites par des agents (tiers 8141901, net-playtest 0c8792c), detectes avant fusion |
-| Plafond 45 appels | non appliquee | plusieurs agents 46 a 64 appels |
-| Scratchpad calls.md propre a chaque agent | non appliquee au debut | calls.md ecrase par plusieurs agents, corrige par noms distincts |
-| Pas de commit sur main pendant une fusion | non appliquee | commits de docs sur main a 15:02 et 16:53, remerge necessaire |
-| Recette independante (integrateur) | appliquee | Faramir a rejoue 7 essais sur main fusionne |
+Relevé complet d'origine : `Docs\Archive\Auto_Journey_Test1_2026-10-30.md`, section du même nom. Depuis, un chantier est ouvert pour : Volcan (`VolcanoInProgress.md`), Technologies (`TechnologiesInProgress.md`), Arbre de talents (`TalentsInProgress.md`), Duel (`DuelInProgress.md`), Marché (`MarketInProgress.md`), Siège (`SiegeInProgress.md`), Neutres (`NeutralsInProgress.md`), Relais (`RelaysInProgress.md`), Légions Noires (`LegionsInProgress.md`). Reste sans chantier :
+- **§ 16.2 World State Manager** (D29) : se construit avec le volcan, pas à part.
+- **§ 5.2 Ressources spéciales, § 6.2 Bonus de hauteur** : décidés ; la hauteur est exclue du prototype pour les effets de terrain (M-Q2) ; à relire avant d'ouvrir.
+- **D384 Centres secondaires** (XP de territoire) : à vérifier contre `RelaysInProgress.md` avant d'ouvrir.
+- **Après le prototype, ne se prennent pas** : § 13 les quatre autres factions (Enfants du Dragon, Cercle de l'Ombre, Héritiers du Feu, Templiers), § 12.3 Événements futurs (D209), § 14.3 Modes Battlefield et Reliques (D416, D102), § 9.9 Progression hors partie.
