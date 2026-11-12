@@ -1,6 +1,6 @@
-# [À ESSAYER] E-audio_compare_buildings_stone : écoute le son de SELECTION des batiments en PIERRE (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants ; tu réponds par cue, la lettre que tu préfères
+# [NE PAS JOUER] E-audio_compare_buildings_stone : écoute le son de SELECTION des batiments en PIERRE (Centre principal, Caserne, Champ de tir, Ecurie, Atelier de siege) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants ; tu réponds par cue, la lettre que tu préfères
 
-STATUT : LOGIQUE SEULEMENT   (aucune oreille n'a encore écouté : l'agent a lancé les scénarios sans son)
+STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : sons candidats jamais commités (seulement dans Arwen) et binaire de la copie jouée périmé (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilée et que preflight.ps1 audio_compare_buildings_stone -Root <cette copie> complet PASS
 GESTE: interne      (les sons sont joués par la commande hol.Audio.Candidate du scénario, pas par un vrai clic ; seule la touche Entrée est la tienne)
 SON: non entendu   (-nosound côté agent ; passe à « entendu » quand quelqu'un a écouté)
 branches: heal-sleep   (le scénario et les candidats viennent du worktree Arwen ; candidats JAMAIS commités, décision B de l'utilisateur)
