@@ -31,6 +31,9 @@ namespace UE::HeroesOfLiberty::Resources
 	const FLinearColor StoneOre(0.50f, 0.54f, 0.62f);
 	const FLinearColor GoldRock(0.16f, 0.13f, 0.09f);
 	const FLinearColor GoldOre(0.95f, 0.62f, 0.04f);
+	// The farm field keeps the look the berry bush had before (green flat dome, red patch).
+	const FLinearColor FieldGreen(0.12f, 0.24f, 0.07f);
+	const FLinearColor FieldRed(0.55f, 0.04f, 0.05f);
 	const FVector2D TreeSeen(60.f, 750.f);
 	const FVector2D BushSeen(110.f, 160.f);
 	const FVector2D VeinSeen(300.f, 300.f);
@@ -188,6 +191,13 @@ TArray<AHOLSourceField::FPiece> AHOLSourceField::MakeProvisionalPieces(const EHO
 		AddSeen(SphereMesh, FVector2D::ZeroVector, FVector(240.f, 240.f, 640.f), 110.f, 0.f, TreeCrown, TreeSeen);
 		break;
 	case EHOLResource::Food:
+		if (Type.Endless)
+		{
+			// A farm field (endless): its flat parcel as before (resources_compare did not show it).
+			Add(SphereMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 1.f), 0.f, 0.f, FieldGreen);
+			Add(SphereMesh, FVector2D(0.1f, -0.1f), FVector(1.3f, 1.3f, 0.45f), 0.62f, 0.f, FieldRed);
+			break;
+		}
 		// Style A of resources_compare: a green dome and seven red berries around it (the berries 1.7 times their first size).
 		AddSeen(SphereMesh, FVector2D::ZeroVector, FVector(220.f, 220.f, 160.f), -10.f, 0.f, BushLeaf, BushSeen);
 		for (int32 Berry = 0; Berry < 7; ++Berry)
