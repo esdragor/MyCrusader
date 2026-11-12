@@ -78,7 +78,7 @@ ou 4, palier non atteint, option hors des 2, Templiers à 3) ; deux paliers (Q1)
 - 2026-11-12 11:45-11:56 (HALDIR-1112f, `maps`, sans C++) : SP0 relevé ; test rouge SP1 commité 567fd50 (quick_check `tests` 11:50 :
   « Identifier 'FHOLSpecializationState' is not a data type », 0 test lancé). **SP1 VERTE** : quick_check `tests,values` 1193/1193 PASS
   (219 s), `values` PASS (3 lignes au registre `tier.choice.delay_tier1_ms`, `_tier2_ms`, `_tier3_ms` ; Valeurs.md/.csv régénérés).
-  Questions `Retours\Q-specialization.md` (Q1 deux paliers à la fois, défaut A ; Q2 Forum à terre, défaut A pause). **Prochaine étape
+  Commit vert 1124a13, puis `git merge main` 3ff176d (docs seuls). Questions `Retours\Q-specialization.md` (Q1 deux paliers à la fois, défaut A ; Q2 Forum à terre, défaut A pause). **Prochaine étape
   pour un agent neuf : SP2** (agent C++ : état sur `AHOLPlayerState`, RPC serveur Start / Cancel avec `AHOLGameState::GetTier`, `Advance`
   au pas de la simulation, événement d'application, `hol.Cheat.Specialization`), puis SP3. Aucun test rouge en cours. Rien de visible en
   jeu : pas de ligne à `Placeholders.txt`.
