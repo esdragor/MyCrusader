@@ -39,6 +39,11 @@ if (-not (Test-Path (Join-Path $Scenarios "$Name.txt"))) {
     exit 1
 }
 
+# A scenario with NAMED Human seats needs the local player's name, or the user is a spectator and the scenario never starts (disconnect_1v1,
+# 2026-11-11: the user's command had no -PlayerName). Without -PlayerName, the first named Human seat of the .json (LaunchCheck.ps1).
+. (Join-Path $PSScriptRoot "LaunchCheck.ps1")
+if (-not $PlayerName) { $PlayerName = Get-ScenarioPlayerName $Root $Name }
+
 $UProject = Join-Path $Root "HeroesOfLiberty.uproject"
 if (-not $EngineDir) {
     # An installed build registered under its name (HKCU\Software\Epic Games\Unreal Engine\Builds), as quick_check.ps1.

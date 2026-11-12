@@ -1,5 +1,7 @@
 # TalentsInProgress.md : arbre de talents (GDD § 9.6, D08, D103-D105, D194 ; Ordre de l'Aube, famille « Serments », D106-D111, D195)
 
+## Décisions (GDD § 22, inscrites le 2026-11-12, réponses du 2026-11-11) : D774 (Q-talents-heal-visual : A, trait doré « ++ » en solo et chez l'hôte ; B seulement si le réseau doit le montrer), D775 (réglage talents_icons_compare : vraies icônes du style des capacités)
+
 Ouvert le 2026-10-30 (journée autonome, Elrond, branche `tiers`). Règle D483 : le neuf en Angelscript (règles pures, table, écran), le C++ seulement pour la simulation et le réseau (stockage des choix, effets sur les capacités).
 
 ## Ce que le GDD tranche déjà (donc pas de question)

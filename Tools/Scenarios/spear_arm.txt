@@ -1,0 +1,27 @@
+# Bras du Lancier (BUG neutrals 2026-11-12) : un Lancier neutre contre un Lancier du joueur, vus de pres au repos puis en melee, pour comparer la pose d'attaque des deux.
+# Le bras qui ne tient pas la lance ne doit pas entrer dans le corps, ni chez le neutre (gris) ni chez le joueur (bleu).
+hol.Camp.Aggro 0
+hol.Decor.ClearNear 0 0 2500
+waitlog Decor.ClearNear 0 0 2500: took
+hol.Camp.Add 0 0 1 Spearman
+waitlog Camp 0: 1 Spearman at
+frames 30
+hol.Units.Spawn 1 -2200 0 0 Spearman 10
+waitlog Spawn: 1 Spearman
+hol.Camera.Focus -1100 0
+hol.Camera.Zoom 10
+frames 20
+capture spear_arm_idle
+hol.Units.Move -900 0 0 a
+waitlog Camp 0: fighting
+frames 40
+hol.Camera.Focus -500 0
+frames 4
+capture spear_arm_fight1
+frames 9
+capture spear_arm_fight2
+frames 9
+capture spear_arm_fight3
+frames 9
+capture spear_arm_fight4
+note Bras du Lancier : un Lancier neutre (gris) et un Lancier bleu en melee, vus de pres.

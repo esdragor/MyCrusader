@@ -1,6 +1,6 @@
-# [NE PAS JOUER : binaire perime, voir STATUT 2026-11-12] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
+# [NE PAS JOUER] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
 
-STATUT : VU À L'ÉCRAN (rejoué par l'intégrateur sur main fusionné : 9 PNG ouverts en 3 planches ; Caserne des Légions : grille Lancier squelette (A) / Garde noire (Z) ; bloc Garde noire et Cavalier funeste avec leurs stats ; Lancier d'Aube rouge nommé Lancier ; Caserne d'Aube sans grille Légions ; EN : Skeleton Spearman, Black Guard, Bone Ram ; JA : 兵舎, スケルトン槍兵, 黒衛兵, 骨の破城槌)
+STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : binaire de la copie jouée périmé (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilée et que preflight.ps1 legions_roster_gesture -Root <cette copie> complet PASS. Historique, plus valable : vu à l'écran le 2026-11-11 (rejoué par l'intégrateur sur main fusionné : 9 PNG ouverts en 3 planches ; Caserne des Légions : grille Lancier squelette (A) / Garde noire (Z) ; bloc Garde noire et Cavalier funeste avec leurs stats ; Lancier d'Aube rouge nommé Lancier ; Caserne d'Aube sans grille Légions ; EN : Skeleton Spearman, Black Guard, Bone Ram ; JA : 兵舎, スケルトン槍兵, 黒衛兵, 骨の破城槌)
 GESTE: interne   (hol.Select.ClickGround / Grid / ClickUnit = commandes hol.*, pas de vraie souris ; l'objet de l'essai est l'AFFICHAGE des noms)
 SON: sans objet
 branches: aucune
