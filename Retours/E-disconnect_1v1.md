@@ -15,3 +15,5 @@ Lancer UNE commande (-PlayerName Alice obligatoire) : powershell -ExecutionPolic
 Duree : environ 1 min. Reponse attendue : OK, BUG: ... ou REGLAGE: ...
 
 A regarder : temps 1 = Bob "Connexion perdue" avec le bandeau 1:00 ; Entree ; temps 2 = Bob Vaincu, "Bob a quitte la partie", ecran Victoire d'Alice.
+
+Reponse: le scenario n'a jamais demarre (erreur etape 5 « jamais venu »), 2026-11-11 soir

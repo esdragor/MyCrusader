@@ -18,3 +18,5 @@
 **Conséquences visibles.** Sans icône (ligne dans `Placeholders.txt`), la case montre son texte, comme la rage nécrotique. En partie en réseau, la case n'apparaît pas chez un client tant que la réplication (G6 e) ne porte pas la phase : l'ordre existe, pas la case.
 
 **Valeur par défaut codée** : Q1 = A, Q2 = A. Aucun effet tant que `hol.Siege.Deployable` vaut 0 (aucune unité ne se monte).
+
+Reponse: Q1 A (case D), Q2 A (Monter / Demonter) - recommande, utilisateur, 2026-11-11 soir

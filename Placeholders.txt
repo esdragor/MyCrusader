@@ -146,7 +146,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Portraits d'unités / de bâtiments (seul l'emblème du héros existe) [rien]
 - Icônes des ressources (nourriture, bois, pierre, or) [rien]
 - Icônes des technologies [rien]
-- Icônes des talents (arbre du héros) [?]
+- Icônes des talents (arbre du héros) : aujourd'hui des lettres / du texte, l'utilisateur veut de vraies icônes comme celles des capacités (2026-11-11) [rien]
 - Minimap (résolution) [style]
 - Curseurs (curseur système, croix pour attaque-déplacement) [style]
 - Bandeau de fin de partie [style]

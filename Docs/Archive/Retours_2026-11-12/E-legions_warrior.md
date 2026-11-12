@@ -17,3 +17,5 @@ NON VÉRIFIÉ : la durée de 10 s et la fin de rage (aucun témoin à l'écran n
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 legions_warrior -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
 Durée : environ 1 min (15 s de jeu). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: BUG: la rage ne fait rien (rien ne se voit) = Q-legions-warrior-rage-visual A+C (2026-11-11 soir)

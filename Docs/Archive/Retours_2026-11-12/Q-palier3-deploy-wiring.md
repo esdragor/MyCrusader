@@ -16,3 +16,5 @@
 **Recommandation : A** (une seule source de vérité pour « peut tirer »).
 
 **Valeur par défaut codée** : Q1 = A (`hol.Siege.Deployable` 0), Q2 = A.
+
+Reponse: Q1 C (reglage hol.Siege.Deployable maintenant, colonne a G7), Q2 A (refus de tir dans le combat) - recommande, utilisateur, 2026-11-11 soir

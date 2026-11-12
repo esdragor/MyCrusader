@@ -10,3 +10,5 @@ Contexte : le talent « Mains du guérisseur » (Capitaine, rangée 3, T4b) fait
 Recommandation : **A** maintenant (rien ne casse, le signe existe pour l'essai), **B** seulement si les parties en réseau doivent montrer le talent aux deux joueurs.
 
 Valeur par défaut codée : A (changer la couleur ou la retirer = une ligne).
+
+Reponse: A (trait dore ++ solo et hote) ; B seulement si le reseau doit le montrer - recommande, utilisateur, 2026-11-11 soir

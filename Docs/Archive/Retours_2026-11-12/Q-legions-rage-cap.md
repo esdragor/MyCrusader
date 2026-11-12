@@ -14,3 +14,5 @@
 **Valeur par défaut codée (en attendant).** Rien n'est changé : la ligne de `Effects.csv` porte les +40 % de ta réponse, le plafond du moral reste à 30 % (effet réel +30 %). Passer à A = une ligne dans `Script\Morale\HOLMoraleRules.as` (la fonction de plafond par levier, ligne 32 et 38) ; passer à B = le chiffre `40` de la ligne `NecroticRage` de `Tools\Data\Effects.csv`, puis `python Tools\Data\make_effects.py`.
 
 Chantier : Légions L4, `LegionsInProgress.md`.
+
+Reponse: A (plafond des degats portes releve de 30 a 40 %, HOLMoraleRules.as) - tout en recommande, utilisateur, 2026-11-11 soir
