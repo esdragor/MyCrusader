@@ -219,6 +219,14 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool ReadAIUnitFigures(const UObject* WorldContextObject, FName TypeName, FHOLAITypeFigures& OutFigures);
 
+	/**
+	 * Palier 3 G4 (Q-palier3-g4-roles = C, A now): whether the faction (its key: `Dawn`, `Legions`...) fields the unit type, by the
+	 * `Faction` column of UnitTypes.csv as the server reads it (HOLFactionRules: `Common` open to all, a key without rules of its own
+	 * read as the Dawn). A type the table does not know, or no faction, is left open.
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI")
+	static bool IsAIUnitOpenToFaction(FName TypeName, FName FactionKey);
+
 	/** The figures of a building type (BuildingTypes.csv); false for an unknown type. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|AI", meta = (WorldContext = "WorldContextObject"))
 	static bool ReadAIBuildingFigures(FName TypeName, FHOLAITypeFigures& OutFigures);

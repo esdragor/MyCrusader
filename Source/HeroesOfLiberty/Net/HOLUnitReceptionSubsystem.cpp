@@ -606,6 +606,8 @@ bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutVi
 		HOLUnitView::SetReceivedHealth(OutView, Slot.State.bFullHealth, Slot.State.Health, MaxHealth, bShare,
 			GameState ? &GameState->GetHeroSheet(Slot.OwnerPlayer) : nullptr);
 	}
+	// G6 e: the phase of an engine that deploys (the Mount / Dismount cell D of a client), -1 otherwise.
+	OutView.DeployPhase = Slot.State.GetDeployPhase();
 	return true;
 }
 

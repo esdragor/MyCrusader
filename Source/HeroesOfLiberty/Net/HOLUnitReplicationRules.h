@@ -88,7 +88,7 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 */
 	static constexpr int32 FrontYawBits = 6;
 	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62, D343: 59, D344: 57); the others write the extras below. */
-	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1;
+	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1 + 1; // G6 e: + the deploys bit
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
 	static constexpr int32 WoundedBits = HealthBits;
 	static constexpr int32 AttackingBits = TargetSlotBits;

@@ -47,12 +47,13 @@ void FHOLNetUnitState::SetCombat(const int32 InHealth, const int32 MaxHealth, co
 
 void FHOLNetUnitState::SetDeploy(const int32 InPhase)
 {
-	(void)InPhase; // G6 e: stub of the red test, the phase is not kept yet.
+	bDeploys = InPhase >= 0;
+	DeployPhase = bDeploys ? static_cast<uint8>(FMath::Min(InPhase, (1 << DeployPhaseBits) - 1)) : 0;
 }
 
 int32 FHOLNetUnitState::GetDeployPhase() const
 {
-	return -1;
+	return bDeploys ? static_cast<int32>(DeployPhase) : -1;
 }
 
 float FHOLNetUnitState::GetFrontYaw() const
@@ -83,7 +84,8 @@ uint16 HOLUnitReplication::GetWireHealthShare(const int32 Health, const int32 Ma
 bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B)
 {
 	return EncodeActivity(A.Activity, A.GatherResource, A.bFacesFront) == EncodeActivity(B.Activity, B.GatherResource, B.bFacesFront)
-		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
+		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw
+		&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase;
 }
 
 FVector FHOLNetUnitState::GetPosition() const
