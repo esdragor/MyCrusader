@@ -213,6 +213,29 @@ if (Test-Path $Eol) {
   Check (-not ($st -match 'mixed\.md')) 'L8-6 : -Fix ne laisse aucun diff git (index LF)' $st
 }
 
+# --- L9-4 (2026-11-12) : session_gate -Phase Close lance eol_check.ps1 sur chaque worktree (annonce par L9-4, constate NON BRANCHE le 2026-11-12) :
+# un fichier suivi aux fins de ligne MELEES (Edit multi-lignes refuse, conflits totaux a la fusion) = WARN qui nomme le worktree et le fichier ;
+# un worktree propre = PASS. Deux vrais depots jetables dans un faux dossier de worktrees (-WorktreesDir).
+$EolWts = Join-Path $Tmp 'eolwts'
+$EolMix = Join-Path $EolWts 'HeroesOfLiberty-EolMixed'
+$EolClean = Join-Path $EolWts 'HeroesOfLiberty-EolClean'
+foreach ($er in $EolMix, $EolClean) {
+  New-Item -ItemType Directory -Path $er -Force | Out-Null
+  git -C $er init -q 2>&1 | Out-Null
+  Copy-Item $Attr (Join-Path $er '.gitattributes')
+  [IO.File]::WriteAllBytes((Join-Path $er 'clean.md'), [Text.Encoding]::UTF8.GetBytes("a`r`nb`r`n"))
+}
+[IO.File]::WriteAllBytes((Join-Path $EolMix 'mixed.md'), [Text.Encoding]::UTF8.GetBytes("a`r`nb`nc`r`n"))
+foreach ($er in $EolMix, $EolClean) {
+  git -C $er add -A 2>&1 | Out-Null
+  git -C $er -c user.name=t -c user.email=t@t commit -q -m t 2>&1 | Out-Null
+}
+$eolPre = & powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolMix | Out-String
+Check ($eolPre -match 'MIXTE mixed\.md') 'L9-4 : le faux worktree EolMixed a bien un fichier mixte (pre-condition)' $eolPre
+$eolClose = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $EolWts -RetoursDir $Ret | Out-String
+Check ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolMixed.*fins de ligne.*mixed\.md') 'L9-4 close: worktree aux fins de ligne melees -> WARN/FAIL qui nomme le fichier' $eolClose
+Check ($eolClose -match '(?m)^PASS .*HeroesOfLiberty-EolClean.*fins de ligne' -and -not ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolClean.*fins de ligne')) 'L9-4 close: worktree aux fins de ligne propres -> PASS fins de ligne' $eolClose
+
 # --- L7-1, L7-4, L7-6 : agent_rules.md
 $r = Get-Content $Rules -Raw -Encoding UTF8
 Check ($r -match '45 appels') 'agent_rules: arret a 45 appels vus par l agent (L9-2)'
