@@ -1,5 +1,7 @@
 ﻿# Marché in progress
 
+## Décisions (GDD § 22, inscrite le 2026-11-12, réglage du 2026-11-11 sur l'essai market) : D781 (Acheter = « +X » + logo de la ressource, Vendre = « +X » + logo de l'or, sans « 100 or = X »)
+
 Chantier **Marché** (GDD § 5.5, D70, D84, D372 ; § 13.5 pour le marché noir du Cercle, après le prototype).
 Ouvert le 2026-10-30 par le test autonome (Galadriel, branche `galadriel-tab`). D483 : le neuf en Angelscript sauf Mass / simulation / réseau / rendu.
 
