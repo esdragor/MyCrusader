@@ -1,6 +1,6 @@
-# [NE PAS JOUER : binaire perime, voir STATUT 2026-11-12] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
+# [NE PAS JOUER] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
 
-STATUT : VU A L'ECRAN (objet de l'essai = l'AFFICHAGE ; l'evenement de depart est simule)
+STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : lance sans -PlayerName chez l'utilisateur (spectateur) et binaire de la copie jouee perime (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilee et que preflight.ps1 disconnect_1v1 -Root <cette copie> -PlayerName Alice complet PASS (pre-vol du 2026-11-09 ci-dessous : historique, plus valable)
 GESTE: interne      (commandes hol.Net.FakeAbsent End 1 : le depart reseau est simule sans second client ; Entree = temps suivant)
 SON: sans objet
 branches: net-playtest
