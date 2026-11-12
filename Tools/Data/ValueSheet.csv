@@ -226,3 +226,6 @@ note.HOLGameNames.h,,Marqueurs sans valeur,,ignore,Source/HeroesOfLibertyUI/HUD/
 eco.secondary_centre.cost_wood,Centre secondaire : coût en bois,Économie,,code,Script/SecondaryCentres/HOLSecondaryCentreRules.as,CostWood\s*=\s*(-?[0-9][0-9._]*),provisoire,D384,§ 5.4,,Q-secondary-centers Q1
 eco.secondary_centre.cost_stone,Centre secondaire : coût en pierre,Économie,,code,Script/SecondaryCentres/HOLSecondaryCentreRules.as,CostStone\s*=\s*(-?[0-9][0-9._]*),provisoire,D384,§ 5.4,,Q-secondary-centers Q1
 eco.secondary_centre.population,Centre secondaire : base de population,Économie,,code,Script/SecondaryCentres/HOLSecondaryCentreRules.as,PopulationBase\s*=\s*(-?[0-9][0-9._]*),provisoire,D384,§ 5.4,,Q-secondary-centers Q2
+comm.signal.max_per_window,Signaux : nombre par joueur dans la fenêtre,Communication,,code,Script/Signals/HOLSignalRules.as,MaxPerWindow\s*=\s*(-?[0-9][0-9._]*),provisoire,D386,§ 15,,"indicatif : 3 toutes les 5 s"
+comm.signal.window_ms,Signaux : fenêtre de la limite (ms),Communication,,code,Script/Signals/HOLSignalRules.as,WindowMs\s*=\s*(-?[0-9][0-9._]*),provisoire,D386,§ 15,,"indicatif : 3 toutes les 5 s"
+comm.signal.lifetime_ms,Signaux : durée sur la carte (ms),Communication,,code,Script/Signals/HOLSignalRules.as,LifetimeMs\s*=\s*(-?[0-9][0-9._]*),provisoire,,§ 15,,Q-signals Q1 (pas dans le GDD)

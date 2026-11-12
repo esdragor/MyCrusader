@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**193 réglages** : 12 pas codé, 180 provisoire, 0 réglé à l'essai, 1 validé.
+**196 réglages** : 12 pas codé, 183 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -254,6 +254,14 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
 | `gdd.convert` | Conversion de la Voix : cibles et durées | — | pas codé | D63 | GDD |  |
+
+### Communication
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `comm.signal.lifetime_ms` | Signaux : durée sur la carte (ms) | 5000 | provisoire |  | HOLSignalRules.as | Q-signals Q1 (pas dans le GDD) |
+| `comm.signal.max_per_window` | Signaux : nombre par joueur dans la fenêtre | 3 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
+| `comm.signal.window_ms` | Signaux : fenêtre de la limite (ms) | 5000 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
 
 ### Diplomatie
 
