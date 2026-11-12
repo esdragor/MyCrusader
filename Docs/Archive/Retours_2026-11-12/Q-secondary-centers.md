@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Centre secondaire : coût et population (D384, § 5.4)
+# [RÉPONDU 2026-11-12] Centre secondaire : coût et population (D384, § 5.4)
 
 Contexte : le centre secondaire (D384) est un vrai forum de plus, façon centre-ville d'AoE4 : il produit des Paysans, prend toutes les
 ressources, tire. Le GDD dit seulement « coûteux, surtout en pierre » et « une base de population », sans chiffre.
@@ -17,6 +17,8 @@ Journal : `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\SecondaryCentersInPro
 
 **Recommandation : A** (lisible pour un joueur d'AoE4, laisse le palier 1 respirer). Codé par défaut : A (`CostWood`, `CostStone`, une ligne chacun).
 
+Reponse: B (150 bois + 400 pierre ; le défaut codé A 300 + 300 est à changer) - 2026-11-12
+
 ## Q2 : combien de population donne un centre secondaire ?
 
 - **A : 10, comme le forum principal.** En jeu : chaque centre vaut une maison, le boom gagne aussi de la population.
@@ -25,3 +27,5 @@ Journal : `C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\SecondaryCentersInPro
 - **Autre** : votre valeur.
 
 **Recommandation : A** (le GDD dit « un vrai forum de plus »). Codé par défaut : A (`PopulationBase = 10`).
+
+Reponse: A (population 10, comme le forum principal ; déjà codé) - 2026-11-12

@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Infobulle de revenu (+N/min) : quel calcul pour les Paysans ?
+# [RÉPONDU 2026-11-12] Infobulle de revenu (+N/min) : quel calcul pour les Paysans ?
 
 Contexte : ta réponse à Q-sites-gold-line (AUTRE) est codée dans Glorfindel (branche net-playtest) : au survol d'une ressource de la barre du haut (montant ou « (3) »), une infobulle « +N nourriture/min », « +N or/min »... = tous les revenus de cette ressource (Paysans dessus + sites sacrés tenus pour l'or). Reste à choisir comment compter les Paysans.
 
@@ -13,3 +13,5 @@ Conséquences visibles : avec A, 10 Paysans au bois loin du camp affichent par e
 Recommandation : C pour le prototype (immédiat et honnête) ; B si tu veux un chiffre exact, quitte au retard.
 
 Valeur par défaut : A (`UHOLGatherProcessor::CountGatherer` additionne `GetGatherRate` par Paysan compté ; une fonction à changer). Textes : « +{0} {1}/min » ({1} = les mots du tribut : nourriture, bois, pierre, or ; anglais et japonais PROVISOIRES dans fill_po.py).
+
+Reponse: C (taux corrigé des trajets, estimation par la distance au dépôt, comme HOLAINeeds::NetRate ; à écrire dans UHOLGatherProcessor) - 2026-11-12

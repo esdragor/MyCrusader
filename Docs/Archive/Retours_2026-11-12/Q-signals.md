@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Signaux sur la carte (§ 15, D386) : durée de vie et coéquipier éliminé
+# [RÉPONDU 2026-11-12] Signaux sur la carte (§ 15, D386) : durée de vie et coéquipier éliminé
 
 Chantier `SignalsInProgress.md` (worktree Haldir, branche `maps`, HALDIR-1112e, 2026-11-12). Règles pures en script faites
 (`Script/Signals/HOLSignalRules.as`) ; rien n'est encore visible en jeu (réseau, icônes et sons viennent après).
@@ -18,6 +18,8 @@ Elle décide combien de signaux d'un même allié on peut voir à la fois.
 **Recommandation : A** (lisible, cohérent avec la limite ; le fil garde la trace). Codé par défaut : `HOLSignal::LifetimeMs = 5000`
 (une ligne, registre `comm.signal.lifetime_ms`).
 
+Reponse: A (5 s ; déjà codé) - 2026-11-12
+
 ## Q2 : un joueur éliminé en partie à équipes peut-il encore poser des signaux pour son équipe ?
 
 Contexte : D357 lui laisse la vision de son équipe et la discussion avec ses coéquipiers (il conseille) ; en chacun pour soi et en
@@ -31,3 +33,5 @@ Contexte : D357 lui laisse la vision de son équipe et la discussion avec ses co
 
 **Recommandation : B** (même règle que sa discussion, D357 ; il n'apprend rien à l'équipe qu'elle ne voie). Codé par défaut :
 `HOLSignal::DefeatedTeammateSignals = true` (une ligne).
+
+Reponse: A (NON : un coéquipier éliminé voit les signaux mais n'en pose plus ; DefeatedTeammateSignals à passer à false) - 2026-11-12
