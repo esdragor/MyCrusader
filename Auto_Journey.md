@@ -110,6 +110,7 @@ Lis C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\agent_rules.md et appl
 Worktree <chemin absolu> (branche <b>, <commits>). Lis <chemin>\CLAUDE.md, la fin de <chemin>\<Chantier>InProgress.md,
 la ligne <n> de <chemin>\Auto_Journey_File.md et les `Reponse:` utiles de <chemin>\Auto_Journey_Retours.md.
 TÂCHE : <la ligne de la file>. Test rouge d'abord sur la vraie chaîne ; `Tools\build.ps1 -LiveCoding=0 -Wait` en UN SEUL appel bloquant (il attend son tour dans la file puis compile, rien à sonder : jamais de boucle ni de relevé de la file, jamais de minuteur/cron/Monitor ; sans C++, aucun build) ; quick_check -Parts <parties touchées>.
+Tâche sans C++ : la session principale vérifie le lancement par `Tools\AutoJourney\session_gate.ps1 -Phase Launch -NoCpp` (plafond de 3 agents C++ en WARN seulement, L11-7), et l'énoncé dit « sans C++ ».
 ENCHAÎNE sans t'arrêter au premier point qui n'exige pas de code ; prends ensuite la ligne suivante de la file.
 Ne tranche aucun design : pose-le dans C:\Users\baudo\Documents\MyCrusader\Retours\Q-<nom>.md titré [À RÉPONDRE] en VRAIE question (contexte 2 lignes, options A/B/C
 avec leurs conséquences en jeu, recommandation). Si une question bloque la tâche et que les deux options sont peu coûteuses,
