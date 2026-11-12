@@ -15,7 +15,7 @@ void Test_SecondaryCentreUnlockedAtTierOneWithoutCap(FUnitTest& T)
 
 void Test_SecondaryCentreCostsMostlyStone(FUnitTest& T)
 {
-	const HOLSecondaryCentre::FHOLCentreCost Cost = HOLSecondaryCentre::Cost();
+	HOLSecondaryCentre::FHOLCentreCost Cost = HOLSecondaryCentre::Cost();
 	T.AssertTrue(Cost.Stone > 0, "it costs stone (D384, 4.x: stone builds the secondary centres)");
 	T.AssertTrue(Cost.Stone >= Cost.Food && Cost.Stone >= Cost.Wood && Cost.Stone >= Cost.Gold, "stone is the largest part");
 	T.AssertTrue(Cost.Food + Cost.Wood + Cost.Stone + Cost.Gold > 0, "costly, never free as the main forum");
@@ -23,7 +23,7 @@ void Test_SecondaryCentreCostsMostlyStone(FUnitTest& T)
 
 void Test_SecondaryCentreStandingIsAForumMore(FUnitTest& T)
 {
-	const HOLSecondaryCentre::FHOLCentreRoleRole = HOLSecondaryCentre::RoleOf(false, true, false);
+	HOLSecondaryCentre::FHOLCentreRole Role = HOLSecondaryCentre::RoleOf(false, true, false);
 	T.AssertTrue(Role.bProducesPeasants, "it trains Peasants");
 	T.AssertTrue(Role.bTakesAllResources, "it takes every resource");
 	T.AssertTrue(Role.bGarrison, "it holds a garrison");
@@ -40,7 +40,7 @@ void Test_SecondaryCentreStandingIsAForumMore(FUnitTest& T)
 
 void Test_SecondaryCentreUnfinishedDoesNothing(FUnitTest& T)
 {
-	const HOLSecondaryCentre::FHOLCentreRoleRole = HOLSecondaryCentre::RoleOf(false, false, false);
+	HOLSecondaryCentre::FHOLCentreRole Role = HOLSecondaryCentre::RoleOf(false, false, false);
 	T.AssertTrue(!Role.bProducesPeasants && !Role.bTakesAllResources && !Role.bGarrison && !Role.bFires, "a foundation does not work yet");
 	T.AssertEquals(0, Role.Population, "no population before it stands");
 	T.AssertTrue(!Role.bRespawnPlace, "no return to a foundation");
@@ -50,7 +50,7 @@ void Test_SecondaryCentreUnfinishedDoesNothing(FUnitTest& T)
 void Test_MainForumAgainstTheSecondaryCentre(FUnitTest& T)
 {
 	const int MainLives = 3;
-	const HOLSecondaryCentre::FHOLCentreRoleMain = HOLSecondaryCentre::RoleOf(true, true, false, MainLives);
+	HOLSecondaryCentre::FHOLCentreRole Main = HOLSecondaryCentre::RoleOf(true, true, false, MainLives);
 	T.AssertEquals(MainLives, Main.Lives, "the main forum keeps its lives");
 	T.AssertTrue(Main.bCountsForDefeat && Main.bFallsIntoRuin, "the main forum alone decides the defeat (D347)");
 	T.AssertTrue(Main.bAntiBuildZone && Main.bAntiDuelZone, "its zones stay (D22, D403)");
@@ -58,7 +58,7 @@ void Test_MainForumAgainstTheSecondaryCentre(FUnitTest& T)
 
 	// The main forum down (in ruin or rebuilding, D351): no production, deposit, fire or garrison; the return, the population and the
 	// zones stay.
-	const HOLSecondaryCentre::FHOLCentreRoleDown = HOLSecondaryCentre::RoleOf(true, true, true, MainLives);
+	HOLSecondaryCentre::FHOLCentreRole Down = HOLSecondaryCentre::RoleOf(true, true, true, MainLives);
 	T.AssertTrue(!Down.bProducesPeasants && !Down.bTakesAllResources && !Down.bGarrison && !Down.bFires, "down: cut");
 	T.AssertTrue(Down.bRespawnPlace, "down: the hero still comes back at the ruin");
 	T.AssertTrue(Down.Population > 0, "down: its population base stays");
