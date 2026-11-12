@@ -1,4 +1,4 @@
-# [A ESSAYER] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
+# [NE PAS JOUER : binaire perime, voir STATUT 2026-11-12] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
 
 STATUT : VU À L'ÉCRAN (rejoué par l'intégrateur sur main fusionné : 9 PNG ouverts en 3 planches ; Caserne des Légions : grille Lancier squelette (A) / Garde noire (Z) ; bloc Garde noire et Cavalier funeste avec leurs stats ; Lancier d'Aube rouge nommé Lancier ; Caserne d'Aube sans grille Légions ; EN : Skeleton Spearman, Black Guard, Bone Ram ; JA : 兵舎, スケルトン槍兵, 黒衛兵, 骨の破城槌)
 GESTE: interne   (hol.Select.ClickGround / Grid / ClickUnit = commandes hol.*, pas de vraie souris ; l'objet de l'essai est l'AFFICHAGE des noms)
@@ -25,3 +25,7 @@ Duree : environ 1 min. Reponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 Défaut constaté : la 3e case de la grille de la Caserne affiche « Damned Warrior » (E) en anglais dans l'interface FR et JA (non traduit) ; le bandeau du scénario reste en français en EN et JA. session_gate -Phase Essay dit « aucune branche citée » alors que la ligne est « branches: aucune » (gabarit : aucune est permis) : le contrôle du gate est trop strict. Durée : environ 1 min de jeu.
 
 Reponse: le scenario n'a jamais demarre chez l'utilisateur (erreur etape 41 « jamais venu »), 2026-11-11 soir
+
+## STATUT 2026-11-12 (FARAMIR-1112a) : LOGIQUE SEULEMENT, NE PAS JOUER
+Cause (FARAMIR-1112a, 2026-11-12) : la commande donnee visait Faramir ; Faramir a avance par avance rapide sur main a 18:01 le 2026-11-11 (C++ de 17:01-17:17 : rage L4, Monter/Demonter) sans recompiler (dll 16:02) : scripts plus neufs que le binaire, l'etape 41 (waitlog HUD selection name: Garde noire) ne vient jamais. Deduit de la chronologie (journal du jeu de l'utilisateur ecrase), rejeu Faramir en cours a la fin de l'agent. binaire de main (copie principale, dll 2026-11-11 11:06) PERIME : 9 commits C++ depuis (rage L4, Monter/Demonter, camps) ; au lancement Angelscript: Error (Namespace 'HOLAIRageOrder' doesn't exist, UHOLCampSubsystem::GetNumCamps) et le jeu reste a l'image 0 (rejoue par FARAMIR-1112a, play.ps1 -Hidden depuis C:\Users\baudo). Arwen (dll 11-11 13:43) et Faramir (dll 11-11 16:02) sont aussi plus vieux que leur dernier commit C++ : recompiler la copie choisie avant de donner la commande.
+Commande a redonner seulement apres : fog fusionnee dans main, copie choisie recompilee, puis preflight.ps1 <nom> -Root <cette copie> PASS (le preflight verifie maintenant le binaire, le joueur nomme et les fichiers non commites).
