@@ -45,3 +45,14 @@ Fusion groupée de fin de séance : dans Faramir (fog = main, arbre propre), can
 
 | Nom | Id | Worktree | Branche | Tache | Lance |
 |---|---|---|---|---|---|
+| ARWEN-1112a | adfd8d813d0ee3470 | Arwen | d751-root | Neutres N7 (script puis C++ minicarte) | 10:39 |
+| CELEBORN-1112a | a0ac31f1f11ca88cc | Celeborn | hero-j8-close | BUG bras du Lancier neutre, puis melee-stuck | 10:39 |
+| ELROND-1112a | ad24ecdf475537e57 | Elrond | tiers | Palier 3 G6 e/f, bouton case D, G4 filtre (C++ 1) | 10:39 |
+| FARAMIR-1112a | ab77d8eddd5c5a203 | Faramir | fog | Scenarios jamais demarres + preflight, Q-play-hidden-wait | 10:39 |
+| GALADRIEL-1112a | ae7e4e7f809c1165b | Galadriel | galadriel-tab | Conflit de fusion, Rage L4 plafond et visuel (C++ 2) | 10:39 |
+| GLORFINDEL-1112a | a2bf758e6f3867c63 | Glorfindel | net-playtest | Build, infobulle de revenu, retrait GoldLine (C++ 3) | 10:39 |
+| HALDIR-1112a | a97ce746cad9802ef | Haldir | maps | Chapitre GDD D384 Centres secondaires (sans C++) | 10:39 |
+| SAURON-1112a | a6d3ffa74439af3cb | Sauron | visual | Styles des ressources figes, Placeholders | 10:39 |
+| DOCS-1112a | aaffdd14aada5859e | principale | main | Reponses a reporter, file Outils, checklist L9-4 | 10:39 |
+
+Modeles (consigne du 2026-11-12) : etape 0 et verification sur Fable 5.2, tout le reste sur Opus 5.5. Arret dur des agents 12:30, fusion groupee dans Faramir ensuite (sans push), fin 13:00.
