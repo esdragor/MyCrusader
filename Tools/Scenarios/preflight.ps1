@@ -19,7 +19,8 @@ param(
     [Parameter(Position = 0, Mandatory = $true)] [string] $Name,
     [string] $Root = "",
     [int] $MaxSeconds = 180,
-    [string] $PlayerName = ""   # passed to check.ps1 then to the game (-PlayerName=)
+    [string] $PlayerName = "",  # passed to check.ps1 then to the game (-PlayerName=)
+    [switch] $AllowUncommitted  # the trial needs files git does not hold (audio candidates, decision B): WARN instead of FAIL, it plays ONLY with -Root <this worktree>
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -59,6 +60,22 @@ $PanOffenders = @(Get-PanExposure (Get-Content -Encoding UTF8 $Txt))
 if ($PanOffenders.Count -gt 0) { Report "FAIL" "pan exposure: $($PanOffenders[0]) ($($PanOffenders.Count) in all; set the camera right before the click, 2 frames, not before a long wait)" }
 else { Report "OK" "pan exposure: every ground click is within 10 frames of the camera placement" }
 
+# 6 (static, 2026-11-12): the USER'S launch, not the agent's. Four trials passed this preflight and never started for the user (2026-11-11):
+# play.ps1 without -PlayerName on named seats (spectator), files only in the agent's worktree, a stale binary in the copy (LaunchCheck.ps1,
+# launch_check_test.ps1). Run the preflight with the -Root of the command given to the user.
+. (Join-Path $PSScriptRoot "LaunchCheck.ps1")
+$LaunchProblems = @(Get-LaunchProblems -Root $Root -Name $Name -PlayerName $PlayerName)
+foreach ($Problem in $LaunchProblems) {
+    if ($AllowUncommitted -and $Problem -match 'uncommitted') { Report "WARN" "user's launch: $Problem (-AllowUncommitted: give the trial ONLY with -Root $Root)" }
+    else { Report "FAIL" "user's launch: $Problem" }
+}
+if ($LaunchProblems.Count -eq 0) { Report "OK" "user's launch: play.ps1 names the local player if needed, every file the trial needs is committed" }
+# A binary older than the newest committed script or C++ change of this copy: the user's game runs old code (legions_roster_gesture, step 41).
+$Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"
+$LastCode = git -C $Root log -1 --format=%cI -- Source Plugins 2>$null
+if ((Test-Path $Dll) -and $LastCode -and ((Get-Item $Dll).LastWriteTime -lt [datetime]$LastCode)) { Report "FAIL" "user's launch: the binary of $Root ($((Get-Item $Dll).LastWriteTime)) is older than its last C++ commit ($LastCode): Tools\build.ps1 in that copy first" }
+else { Report "OK" "user's launch: binary not older than the last C++ commit of $Root" }
+
 # 4 (static part): the .look file
 $Points = @()
 if (-not (Test-Path $Look)) { Report "FAIL" "no $Name.look: declare each point to look at as '<capture name> | <what the user must see>'" }
@@ -90,6 +107,9 @@ if (Test-Path $Log) {
     # LogAutomationTest errors are written by the engine at frame 0 of every run (also on a clean one): not a verdict on the scenario.
     $Bad = @($Text | Select-String -Pattern 'LogHOL\w*: (Warning|Error)|Angelscript: Error|\]\w+: Error:' | Where-Object { $_.Line -notmatch 'LogHOLTest: Warning: .*waitkey|LogAutomationTest: Error' })
     if ($Bad.Count -gt 0) { Report "FAIL" "$($Bad.Count) warning/error line(s) in the log, first: $($Bad[0].Line.Trim()) (a script error right at start usually means the build of this worktree is stale: Tools\build.ps1 first)" } else { Report "OK" "no warning or error in the log" }
+    # 6 (log): what the scenario asked for and did not get, even at Display level ("candidate missing": audio_compare_buildings_*, 2026-11-11).
+    $Missing = @(Get-LogLaunchProblems $Text)
+    if ($Missing.Count -gt 0) { Report "FAIL" "$($Missing.Count) missing asset / failed step line(s) in the log, first: $($Missing[0])" } else { Report "OK" "no missing asset, timed-out step or spectator in the log" }
     # 12b: a panel that hides another. hol.HUD.Report writes "HUD overlap: none" or "HUD overlap: A x B; ..." (the script's panels and the cheats');
     # any line but "none" is a FAIL. Without a hol.HUD.Report in the scenario: WARN (the check is blind).
     $Overlaps = @($Text | Select-String -Pattern 'HUD overlap: ')
