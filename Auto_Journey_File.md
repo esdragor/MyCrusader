@@ -122,5 +122,6 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [ ] (sans C++, énoncé, bilan 2026-11-12, L12-4) Énoncé modèle d'un agent C++ : premier geste `LaunchCheck` (binaire qui démarre) avant tout code ; champ de rapport `LAUNCHCHECK_DEBUT`.
 - [ ] (sans C++, énoncé, bilan 2026-11-12, L12-5) Énoncé et rapport : au moins un test par règle qui passe par une vraie chaîne ; champ `TESTS_TAUTOLOGIQUES : 0` compté par la recette.
 - [ ] (sans C++, outil, bilan 2026-11-12, L12-6) Agent de docs : index de Retours, LISEZ-MOI et EtapeDefini « dans main » dans le même commit que la fusion ; `session_gate -Phase Close` WARN si EtapeDefini dit « pas dans main » pour une branche ancêtre de main.
+- [ ] (sans C++, outil, bilan 2026-11-12, L12-7) `build.ps1` : écrire « BUILD LENT » quand un build dépasse 3 fois la médiane de `Docs\BuildQueue.csv` pour le même nombre d'actions ; `status.ps1` (veilleur) le remonte ; la session principale lance alors le diagnostic de charge et prévient l'utilisateur dans les 5 min.
 
 - [ ] (C++, Faramir) Verbe `quit` de scenario (Q-play-hidden-wait = C plus tard) : play.ps1 -Hidden finirait a la fin reelle du scenario ; ScenariosInProgress.md.
