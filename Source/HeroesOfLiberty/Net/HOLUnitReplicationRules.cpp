@@ -45,6 +45,16 @@ void FHOLNetUnitState::SetCombat(const int32 InHealth, const int32 MaxHealth, co
 		? static_cast<uint8>(FMath::RoundToInt(FRotator::ClampAxis(InFrontYawDegrees) / 360.f * NumDirections) & (NumDirections - 1)) : 0;
 }
 
+void FHOLNetUnitState::SetDeploy(const int32 InPhase)
+{
+	(void)InPhase; // G6 e: stub of the red test, the phase is not kept yet.
+}
+
+int32 FHOLNetUnitState::GetDeployPhase() const
+{
+	return -1;
+}
+
 float FHOLNetUnitState::GetFrontYaw() const
 {
 	return FRotator::NormalizeAxis(static_cast<float>(FrontYaw) * 360.f / static_cast<float>(1 << FrontYawBits));
