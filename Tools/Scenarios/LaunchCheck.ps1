@@ -45,12 +45,20 @@ function Get-LaunchProblems([string]$Root, [string]$Name, [string]$PlayerName = 
     return $Problems
 }
 
-# A binary of -Root older than its code: "" if fresh (or no dll), the problem otherwise. RED-TEST STAND-IN: the logic of 42e5e41 (dll older
-# than the last C++ commit date), moved here unchanged from preflight.ps1 section 6.
+# A binary of -Root older than its code: "" if fresh (or no dll), the problem otherwise. Compared like UBT does: the newest C++ source FILE
+# of the copy (a merge or fast-forward writes its files at that time) against the dll. Not the commit date (42e5e41): a dll built before
+# the commit of the same code is fresh, and a no-op rebuild would never make it newer than that commit (launch_check_test.ps1, case 4).
 function Get-StaleBinaryProblem([string]$Root) {
     $Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"
-    $LastCode = git -C $Root log -1 --format=%cI -- Source Plugins 2>$null
-    if ((Test-Path $Dll) -and $LastCode -and ((Get-Item $Dll).LastWriteTime -lt [datetime]$LastCode)) { return "the binary of $Root ($((Get-Item $Dll).LastWriteTime)) is older than its last C++ commit ($LastCode): Tools\build.ps1 in that copy first" }
+    if (-not (Test-Path $Dll)) { return "" }
+    $Dirs = @("Source", "Plugins") | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path $_ }
+    if (-not $Dirs) { return "" }
+    $Newest = Get-ChildItem $Dirs -Recurse -File -Include *.h, *.cpp, *.inl, *.cs -ErrorAction SilentlyContinue |
+        Where-Object { $_.FullName -notmatch '\\(Intermediate|Binaries)\\' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    $DllTime = (Get-Item $Dll).LastWriteTime
+    if ($Newest -and $Newest.LastWriteTime -gt $DllTime) {
+        return "the binary of $Root ($($DllTime.ToString('s'))) is older than its C++ source $($Newest.FullName.Substring($Root.Length).TrimStart('\')) ($($Newest.LastWriteTime.ToString('s'))): Tools\build.ps1 in that copy first"
+    }
     return ""
 }
 

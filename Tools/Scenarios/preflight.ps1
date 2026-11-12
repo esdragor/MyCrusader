@@ -70,11 +70,11 @@ foreach ($Problem in $LaunchProblems) {
     else { Report "FAIL" "user's launch: $Problem" }
 }
 if ($LaunchProblems.Count -eq 0) { Report "OK" "user's launch: play.ps1 names the local player if needed, every file the trial needs is committed" }
-# A binary older than the newest committed script or C++ change of this copy: the user's game runs old code (legions_roster_gesture, step 41).
-$Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"
-$LastCode = git -C $Root log -1 --format=%cI -- Source Plugins 2>$null
-if ((Test-Path $Dll) -and $LastCode -and ((Get-Item $Dll).LastWriteTime -lt [datetime]$LastCode)) { Report "FAIL" "user's launch: the binary of $Root ($((Get-Item $Dll).LastWriteTime)) is older than its last C++ commit ($LastCode): Tools\build.ps1 in that copy first" }
-else { Report "OK" "user's launch: binary not older than the last C++ commit of $Root" }
+# A binary older than the C++ sources of this copy: the user's game runs old code (legions_roster_gesture, step 41). LaunchCheck.ps1.
+$Stale = Get-StaleBinaryProblem $Root
+if (-not (Test-Path (Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"))) { Report "FAIL" "user's launch: no binary in $Root (Tools\build.ps1 in that copy first)" }
+elseif ($Stale) { Report "FAIL" "user's launch: $Stale" }
+else { Report "OK" "user's launch: binary not older than any C++ source of $Root" }
 
 # 4 (static part): the .look file
 $Points = @()
