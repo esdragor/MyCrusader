@@ -19,11 +19,9 @@ namespace HOLSiteBannerText
 	const FString Won = "Sites.Won";
 	const FString Announce60 = "Sites.Announce60";
 	const FString Announce10 = "Sites.Announce10";
-	const FString Gold = "Sites.Gold";
 
 	FText PatternText(FString Key)
 	{
-		if (Key == Gold) return NSLOCTEXT("HOLSiteBanner", "Gold", "+{0} or/min");
 		if (Key == Countdown) return NSLOCTEXT("HOLSiteBanner", "Countdown", "Victoire sacrée : {0} dans {1}");
 		if (Key == Frozen) return NSLOCTEXT("HOLSiteBanner", "Frozen", "Victoire sacrée : {0} dans {1} (en attente)");
 		if (Key == Won) return NSLOCTEXT("HOLSiteBanner", "Won", "Victoire sacrée : {0}");
@@ -70,21 +68,6 @@ namespace HOLSiteBanner
 		if (PreviousSeconds > 10 && Seconds <= 10)
 			return 10;
 		return 0;
-	}
-
-	// S6: the income of the sites held, gold a minute (each held site pays the rate to its owner alone, D699, D748; nothing held or a zero rate pays 0).
-	int GoldPerMinute(int OwnedSites, int RatePerMinute)
-	{
-		return Math::Max(0, OwnedSites) * Math::Max(0, RatePerMinute);
-	}
-
-	// S6: "+N or/min" (N the total of the sites held), or empty when nothing is held or paid.
-	FString GoldLine(int OwnedSites, int RatePerMinute)
-	{
-		const int Total = GoldPerMinute(OwnedSites, RatePerMinute);
-		if (Total <= 0)
-			return "";
-		return HOLSiteBannerText::Format(HOLSiteBannerText::Gold, f"{Total}");
 	}
 
 	FString AnnounceText(int Threshold, FString LeaderName)

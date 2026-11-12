@@ -85,6 +85,16 @@ public:
 	/** The player's units gathering each resource (J5b, D307): on their round trip or at their source. */
 	const FHOLResources& GetGatherers() const { return Gatherers; }
 
+	/**
+	 * Each resource's income a minute, for the top bar's tooltip (Retours/Q-sites-gold-line.md, answer "other"): every source of it,
+	 * its gatherers (GetGatherIncome) and, for the gold, the sacred sites the player holds (each pays hol.Site.GoldPerMinute, D748).
+	 */
+	FHOLResources GetIncomePerMinute() const;
+	/** What the player's gatherers bring a minute, by resource: each one's rate at its source (its type, the source's, the technologies). */
+	const FHOLResources& GetGatherIncome() const { return GatherIncome; }
+	/** Server only: the gatherers' income a minute, summed by the gathering at each step. */
+	void SetGatherIncome(const FHOLResources& InIncome);
+
 	/** Server only: the stock (the game mode at the start, then the production). */
 	void SetResources(const FHOLResources& InResources);
 	/** Server only: the population, counted by the production at each step. */
@@ -179,6 +189,9 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_Economy)
 	FHOLResources Gatherers;
+
+	UPROPERTY(ReplicatedUsing = OnRep_Economy)
+	FHOLResources GatherIncome;
 
 	UPROPERTY(ReplicatedUsing = OnRep_OrderChains)
 	TArray<FHOLNetOrderChain> OrderChains;

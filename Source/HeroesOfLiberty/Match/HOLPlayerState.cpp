@@ -22,6 +22,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationUsed, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationCap, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, GatherIncome, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
@@ -83,6 +84,17 @@ void AHOLPlayerState::SetPopulation(const int32 InUsed, const int32 InCap)
 	PopulationCap = InCap;
 	OnEconomyChanged.Broadcast();
 	ForceNetUpdate();
+}
+
+FHOLResources AHOLPlayerState::GetIncomePerMinute() const
+{
+	// Stub (red first): nothing counted yet.
+	return FHOLResources();
+}
+
+void AHOLPlayerState::SetGatherIncome(const FHOLResources& InIncome)
+{
+	// Stub (red first): the gathering's sums are not kept yet.
 }
 
 void AHOLPlayerState::SetGatherers(const FHOLResources& InGatherers)

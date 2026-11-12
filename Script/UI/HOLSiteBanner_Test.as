@@ -39,18 +39,3 @@ void Test_SiteBannerAnnouncesAt60And10(FUnitTest& T)
 	T.AssertEquals(HOLSiteBanner::Announce(5, 0), 0, "the win is the banner's, not an announcement");
 	T.AssertEquals(HOLSiteBanner::Announce(600, 599), 0, "the start of the count says nothing");
 }
-
-// S6: the "+N or/min" line of the HUD (the passive income of the sites the local player holds: each pays the rate, D699, D748). Pure: the number of sites
-// held and the rate per minute come from the game (the player state's site views, hol.Site.GoldPerMinute).
-void Test_SiteGoldLineIsTheIncome(FUnitTest& T)
-{
-	T.AssertEquals(HOLSiteBanner::GoldPerMinute(1, 30), 30, "one site pays the rate");
-	T.AssertEquals(HOLSiteBanner::GoldPerMinute(2, 30), 60, "two sites pay twice");
-	T.AssertEquals(HOLSiteBanner::GoldPerMinute(0, 30), 0, "no site, no income");
-	T.AssertEquals(HOLSiteBanner::GoldPerMinute(2, 0), 0, "a rate of zero pays nothing");
-	T.AssertEquals(HOLSiteBanner::GoldLine(0, 30), "", "nothing held: no line on the screen");
-	T.AssertEquals(HOLSiteBanner::GoldLine(2, 0), "", "nothing paid: no line on the screen");
-	T.AssertTrue(HOLSiteBanner::GoldLine(1, 30).Contains("+30"), "one site: +30");
-	T.AssertTrue(HOLSiteBanner::GoldLine(2, 30).Contains("+60"), "two sites: +60");
-	T.AssertFalse(HOLSiteBanner::GoldLine(2, 30).Contains("+30"), "the line is the total, not the rate of one site");
-}
