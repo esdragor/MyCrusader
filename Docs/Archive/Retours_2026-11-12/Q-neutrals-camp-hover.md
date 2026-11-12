@@ -1,4 +1,4 @@
-# [À RÉPONDRE] Neutres N7 : le libellé au survol du point de camp sur la minicarte
+# [RÉPONDU 2026-11-12] Neutres N7 : le libellé au survol du point de camp sur la minicarte
 
 Contexte : le point de camp sur la minicarte est codé (Q2 B : rouge vivant, gris nettoyé ; Q1 C : seulement les camps déjà vus, branche `d751-root`, agent ARWEN-1112a du 2026-11-12). Le GDD ne nomme aucun libellé de camp, et la minicarte n'a aujourd'hui aucun survol (rien ne s'affiche en passant la souris sur un point, ni pour les unités ni pour les bâtiments).
 
@@ -10,3 +10,5 @@ Contexte : le point de camp sur la minicarte est codé (Q2 B : rouge vivant, gri
 
 Recommandation : **A** pour le prototype (la minicarte d'AoE4, notre grille, n'a pas de survol ; la couleur porte l'information ; B si un essai montre qu'on veut le nombre de gardes).
 Valeur par défaut codée : **A** (aucun survol ; le nombre de gardes vus est déjà transmis au poste du joueur, `FHOLMinimapCamp.Living`, prêt pour B sans toucher au réseau).
+
+Reponse: A (rien au survol pour le prototype ; déjà codé) - 2026-11-12

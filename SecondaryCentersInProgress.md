@@ -65,6 +65,7 @@ réapparition, ni territoire) ; « contrôlé » = **à soi** (le centre d'un al
 
 - Q1 : coût. Défaut A = 300 bois + 300 pierre (`CostWood`, `CostStone` de `HOLSecondaryCentreRules.as`).
 - Q2 : base de population. Défaut A = 10, comme le forum principal (`PopulationBase`).
+- **Réponses de l'utilisateur (2026-11-12, D783)** : Q1 = **B, 150 bois + 400 pierre** (À CHANGER : `CostWood = 150`, `CostStone = 400`, durcir `Test_SecondaryCentreCostsMostlyStone`) ; Q2 = **A, population 10** (déjà codé).
 
 ## Suivi
 
