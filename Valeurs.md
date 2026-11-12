@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**196 réglages** : 12 pas codé, 183 provisoire, 0 réglé à l'essai, 1 validé.
+**199 réglages** : 12 pas codé, 186 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -300,6 +300,14 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `camp.aggro_radius` | Camp neutre : rayon d'agression (cm) | 1500 | provisoire | D32 | HOLCampRules.as |  |
 | `camp.leash_radius` | Camp neutre : rayon de laisse (cm) | 3000 | provisoire | D32 | HOLCampRules.as |  |
 | `camps.table` | Table des camps neutres | 1 lignes, 3 colonnes | provisoire | D32 | Camps.csv * |  |
+
+### Paliers
+
+| Id | Réglage | Valeur | État | Décision | Où | Note |
+|---|---|---|---|---|---|---|
+| `tier.choice.delay_tier1_ms` | Choix de palier : délai de déblocage du palier 1 (ms) | 30000 | provisoire | D684 | HOLSpecializationRules.as | 30 / 45 / 60 s, valeurs à régler en test |
+| `tier.choice.delay_tier2_ms` | Choix de palier : délai de déblocage du palier 2 (ms) | 45000 | provisoire | D684 | HOLSpecializationRules.as | 30 / 45 / 60 s, valeurs à régler en test |
+| `tier.choice.delay_tier3_ms` | Choix de palier : délai de déblocage du palier 3 (ms) | 60000 | provisoire | D684 | HOLSpecializationRules.as | 30 / 45 / 60 s, valeurs à régler en test |
 
 ### Performance
 
