@@ -24,3 +24,6 @@ Commande a redonner seulement apres : fog fusionnee dans main, copie choisie rec
 
 ## ETAT 2026-11-13 (nettoyage Retours) : toujours NE PAS JOUER
 Fait depuis : fog fusionnee dans main (b689e5a via maps, 4851635) et correctif du joueur nomme (42e5e41) dans main. Branche net-playtest toujours PAS dans main. Reste : recompiler la copie choisie, puis preflight.ps1 disconnect_1v1 -Root <cette copie> -PlayerName Alice PASS. NON VERIFIE : etat des binaires ce jour.
+
+## 2026-11-13 10:53 (FARAMIR-1113, sans C++) : PAS JOUE, toujours NE PAS JOUER
+session_gate.ps1 -Phase Essay -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir -Essay disconnect_1v1 : FAIL « branche 'net-playtest' ABSENTE du worktree » (binaire Faramir frais, arbre propre, PASS sinon). disconnect_1v1 vit sur net-playtest, pas dans main : pre-vol a faire depuis un worktree qui contient net-playtest (recompile), ou apres fusion de net-playtest dans main. Etape 5 « jamais venu » donc NON reverifiee aujourd'hui (cause connue : lancement sans -PlayerName, corrige dans main par 42e5e41).
