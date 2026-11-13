@@ -89,3 +89,5 @@ Aucune source ne confirme que les deux kits Kenney partagent le même style et l
 
 - 2026-11-08 13:40 (D749) : Forum tour 2 (U a AD) : aimes U V W X Y Z AA AB, pas aimes AC AD ; drapeau haut sur les derivees de L et Q valide. Reste : election finale du Forum par l'utilisateur parmi les aimes ; pas de tour 3 sauf demande.
 
+
+- 2026-11-13 14:20 (reponse de l'utilisateur, essai resources_compare rejoue sur le build de main 568627a) : « A arbres : C » : l'arbre C (peuplier mince) est confirme, comme le choix deja fige dans le jeu ; baies et filons restent en style A. Rien a changer dans le code. Fiche Retours\E-resources_compare.md archivee dans Docs\Archive\Retours_2026-11-13\.
