@@ -141,6 +141,8 @@ public sealed class LobbySettings
     public bool Nomad { get; internal set; }
     public bool Regicide { get; internal set; }
     public bool Catastrophe { get; internal set; }
+    /** S7 (D699, SacredSitesInProgress.md): the box "Sacred sites", unticked by default (HOLSiteOption::DefaultSacredSites). */
+    public bool SacredSites { get; internal set; }
 }
 
 public sealed class Lobby
