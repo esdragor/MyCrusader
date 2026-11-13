@@ -1669,8 +1669,7 @@ namespace UE::HeroesOfLiberty::Player
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				// RED STUB (net signals): the request is not sent yet.
-				(void)Controller;
+				Controller->RequestSignal(FCString::Atoi(*Args[0]), FVector(FCString::Atof(*Args[1]), FCString::Atof(*Args[2]), 0.0));
 			}
 		}));
 	FAutoConsoleCommand SignalReportCommand(
@@ -1697,8 +1696,7 @@ namespace UE::HeroesOfLiberty::Player
 			}
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				// RED STUB (net specialization): the request is not sent yet.
-				(void)Controller;
+				Controller->RequestSpecialization(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]));
 			}
 		}));
 	FAutoConsoleCommand SpecCancelCommand(
@@ -1708,8 +1706,7 @@ namespace UE::HeroesOfLiberty::Player
 		{
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
-				// RED STUB (net specialization): the request is not sent yet.
-				(void)Controller;
+				Controller->RequestCancelSpecialization();
 			}
 		}));
 	FAutoConsoleCommand SpecReportCommand(
