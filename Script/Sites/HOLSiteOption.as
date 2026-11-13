@@ -7,7 +7,7 @@
 namespace HOLSiteOption
 {
 	// The box when the configuration does not carry it (an old JSON, an old save): unticked.
-	const bool DefaultSacredSites = true;
+	const bool DefaultSacredSites = false;
 
 	// Provisional, Q-sites-nomade-distance option B (recommended, not chosen yet): beyond the zone of a site, the sight of a Peasant
 	// (UnitTypes.csv Peasant SightRadius 3200 cm), so that no starting group sees a site at the start (D701: a site is visible once explored).
@@ -17,25 +17,33 @@ namespace HOLSiteOption
 	// The box can be ticked: the map lays at least one site.
 	bool BoxEnabled(int MapSiteCount)
 	{
-		return true;
+		return MapSiteCount > 0;
 	}
 
 	// The sites of the map take part in the match: the box ticked and the map lays at least one.
 	bool SitesActive(bool bSacredSites, int MapSiteCount)
 	{
-		return true;
+		return bSacredSites && BoxEnabled(MapSiteCount);
 	}
 
-	// The least distance between a Nomad starting group and the centre of a site of zone RadiusCm.
+	// The least distance between a Nomad starting group and the centre of a site of zone RadiusCm (a negative radius counts as none).
 	int NomadMinDistanceCm(int RadiusCm)
 	{
-		return 0;
+		return Math::Max(0, RadiusCm) + Math::Max(0, NomadMarginCm);
 	}
 
 	// A Nomad starting group may stand here: without active sites always; with them, at least NomadMinDistanceCm from the centre of every
 	// site (DistanceBySiteCm and RadiusBySiteCm site by site, the same order).
 	bool NomadGroupClear(bool bSitesActive, const TArray<int>& DistanceBySiteCm, const TArray<int>& RadiusBySiteCm)
 	{
+		if (!bSitesActive)
+			return true;
+		const int Sites = Math::Min(DistanceBySiteCm.Num(), RadiusBySiteCm.Num());
+		for (int Site = 0; Site < Sites; Site++)
+		{
+			if (DistanceBySiteCm[Site] < NomadMinDistanceCm(RadiusBySiteCm[Site]))
+				return false;
+		}
 		return true;
 	}
 }
