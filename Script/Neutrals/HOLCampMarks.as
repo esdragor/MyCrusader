@@ -9,18 +9,21 @@ namespace HOLCampMarks
 
 	FLinearColor AliveColor()
 	{
-		return FLinearColor(1.0, 1.0, 1.0, 1.0);
+		return FLinearColor(0.85, 0.12, 0.10, 1.0);
 	}
 
 	FLinearColor ClearedColor()
 	{
-		return FLinearColor(1.0, 1.0, 1.0, 1.0);
+		return FLinearColor(0.45, 0.45, 0.45, 1.0);
 	}
 
 	// The dot of a camp whose post is at World (X, Y cm), alive or cleared.
 	FHOLMinimapMark Mark(FHOLMinimapFrame Frame, FVector2D World, bool bCleared)
 	{
 		FHOLMinimapMark Out;
+		Out.Position = HOLMinimap::ToPicture(Frame, World);
+		Out.Color = bCleared ? ClearedColor() : AliveColor();
+		Out.Size = Size;
 		return Out;
 	}
 }
