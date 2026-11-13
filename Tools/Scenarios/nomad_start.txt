@@ -14,9 +14,11 @@ hol.Buildings.Report
 waitlog Building report:
 hol.HUD.Report
 capture nomad_start_wide
-# 2. Gros plan (zoom au plus pres) : les unites a au moins 100 px a l'ecran.
-hol.Camera.FocusSlot 0
+# 2. Gros plan (zoom au plus pres du jeu : 1500 cm, HOLRTSCamera::MinHeight) centre sur le Roi et le heros (nes 1135 cm derriere le
+# point du depart sur Plain : "king of slot 0 spawned at (-15935, 0)", heros (-15935, 300)). 100 px n'est pas atteignable a ce zoom.
 hol.Camera.Zoom 10
+hol.Camera.Focus -15700 150
+waitlog Camera height 1500 cm
 frames 30
 capture nomad_start_close
 hol.Test.Sanity
