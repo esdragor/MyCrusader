@@ -2249,6 +2249,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			FText Effect = LOCTEXT("MarketNoBook", "Le cours n'est pas encore connu");
 			FHOLResources Cost;
 			bool bGreyed = true;
+			bool bQuoted = false;
+			FHOLTradeGain Gain;
 			if (bMarketSettingsLoaded && BoundTableState.IsValid() && BoundTableState->HasMarketBook() && Good >= 0 && Good < HOLMarket::TradableResources)
 			{
 				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
@@ -2268,9 +2270,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				{
 					Cost[Command.Resource] = HOLMarket::Lot;
 				}
-				Label = Command.bBuy
-					? FText::Format(LOCTEXT("MarketBuyCell", "{0}\n100 or = {1}"), Label, FText::AsNumber(Received))
-					: FText::Format(LOCTEXT("MarketSellCell", "{0}\n100 = {1} or"), Label, FText::AsNumber(Received));
+				// D781 (the user's REGLAGE on the trial `market`, 2026-11-11): under the good's name, « +X » then the logo of what is
+				// received (the good bought, gold for a sale); no « 100 or = X » any more (the rate stays in the tooltip).
+				Gain = HOLCommandGrid::GetTradeGain(Command.Resource, Command.bBuy, Received);
+				bQuoted = true;
 				Effect = Command.bBuy
 					? FText::Format(LOCTEXT("MarketBuyEffect", "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"),
 						FText::AsNumber(Received), GetResourceNameInText(Command.Resource), FText::AsNumber(Quote.Book.Prices[Good]))
@@ -2278,9 +2281,14 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 						GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
 				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 			}
-			ShownTradeLabels[Cell] = Label.ToString().Replace(TEXT("\n"), TEXT(" "));
 			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			if (bQuoted)
+			{
+				GridCell->SetGain(Gain);
+			}
 			GridCell->SetTooltip(Name, Cost, GetMissing(Stock, Cost), Effect);
+			// What the cell itself shows, read back from its widgets (the name, the gain and its logo: "Bois +96 [Wood]").
+			ShownTradeLabels[Cell] = GridCell->DescribeContent();
 			break;
 		}
 		case EHOLGridCommand::CancelConstruction:
@@ -2953,7 +2961,7 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
-	// M5: the text drawn on a Market's trade cells, last on the line ("trades A=Nourriture 100 or = 96 | Z=...").
+	// M5: the text drawn on a Market's trade cells, last on the line ("trades A=Nourriture +96 [Food] | Z=...", D781).
 	TArray<FString> Trades;
 	for (int32 Cell = 0; bGridShown && Cell < ShownTradeLabels.Num(); ++Cell)
 	{

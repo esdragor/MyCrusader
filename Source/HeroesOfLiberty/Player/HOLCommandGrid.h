@@ -99,6 +99,13 @@ struct FHOLCommandFeedback
 	bool operator==(const FHOLCommandFeedback& Other) const = default;
 };
 
+/** D781: what a Market's trade cell shows it gives (HOLCommandGrid::GetTradeGain): « +Amount » then the logo of Logo. */
+struct FHOLTradeGain
+{
+	int32 Amount = 0;
+	EHOLResource Logo = EHOLResource::Gold;
+};
+
 /** What the command grid is read from: the player's selection as this machine knows it. */
 struct FHOLGridContext
 {
@@ -296,6 +303,14 @@ namespace HOLCommandGrid
 	 * (the same keys as the units' orders on the left, another panel); INDEX_NONE for gold, which is the money.
 	 */
 	HEROESOFLIBERTY_API int32 GetTradeCell(EHOLResource Resource, bool bBuy);
+
+	/**
+	 * D781 (the user's REGLAGE on the trial `market`, 2026-11-11): what a trade cell shows under the good's name, « +X » then
+	 * the logo of what the trade gives: the good for a purchase (Received units of it), gold for a sale (Received gold).
+	 */
+	HEROESOFLIBERTY_API FHOLTradeGain GetTradeGain(EHOLResource Resource, bool bBuy, int32 Received);
+	/** « +96 »: the gain's amount as the cell writes it, before its logo (no « 100 or = X »). */
+	HEROESOFLIBERTY_API FString GetTradeGainText(const FHOLTradeGain& Gain);
 
 	/**
 	 * The mouse cursor (the user's trial of A.2, AoE4's way): the red attack cursor (Crosshairs, SHOLAttackCursor) while
