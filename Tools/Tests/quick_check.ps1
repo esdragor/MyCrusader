@@ -2812,7 +2812,7 @@ if ($NetListening) {
             "waitunits 10", "wait 8", "hol.Cheat.Tier off", "signal $(Join-Path $TestSaved "quick_net_soldiers$Client.flag")", "waitfile $(Join-Path $TestSaved "quick_net_soldiers$Other.flag")",
             "hol.Cheat.FastBuild 0", "hol.Camera.FocusNear $($NetBarracksNear -join ' ') enemy", "frames 10", "hol.Units.Report", "capture qcnet_${Client}_army_other",
             "hol.Camera.FocusNear -1500 3500", "frames 5", "hol.Select.Click 0.03 0.05", "waitlog Selection: none", "hol.Select.Own", "waitlog Select own: 5 units",
-            "hol.UI.Key LeftShift 0 0.5", "hol.UI.Key Ampersand 0.2 0.1", "wait 0.6", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
+            "hol.UI.Key LeftShift 0 2", "hol.UI.Key Ampersand 0.4 0.1", "wait 2.2", "waitlog Group 1: created", "hol.Select.Click 0.03 0.05", "waitlog Selection: none",
             "hol.UI.Key Ampersand 0 0.05", "wait 0.4", "hol.Select.Report"
         # The order lines (D328): client 1 orders first and signals it; client 2, a second later, has received no chain
         # (client 1's never reaches it), then orders; each one's chain (one Move, its 5 units) reaches its owner alone.

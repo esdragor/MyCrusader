@@ -1506,6 +1506,41 @@ void UHOLUnitOrderProcessor::ApplyQueuedOrders(FMassEntityManager& EntityManager
 				}
 				Deploy->PendingOrder = 3;
 				const uint8 Phase = Deploy->Phase;
+				// Retours/E-deploy.md: pressed on a packed engine that still walks (a march not over, a stalled walk), it stands where it is
+				// to deploy; otherwise UHOLDeployProcessor reads the walk left over as a new march order and cancels the deploying at once.
+				if (Phase == static_cast<uint8>(HOLDeploy::EPhase::Packed) && World)
+				{
+					if (FHOLMoveOrderFragment* MoveOrder = EntityManager.GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+						MoveOrder && MoveOrder->Phase != EHOLMovePhase::None)
+					{
+						if (FMassMoveTargetFragment* MoveTarget = EntityManager.GetFragmentDataPtr<FMassMoveTargetFragment>(Entity))
+						{
+							if (const FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Entity))
+							{
+								MoveTarget->Center = Transform->GetTransform().GetLocation();
+							}
+							MoveTarget->DistanceToGoal = 0.f;
+							MoveTarget->CreateNewAction(EMassMovementAction::Stand, *World);
+						}
+						if (FMassDesiredMovementFragment* Movement = EntityManager.GetFragmentDataPtr<FMassDesiredMovementFragment>(Entity))
+						{
+							Movement->DesiredVelocity = FVector::ZeroVector;
+						}
+						MoveOrder->Phase = EHOLMovePhase::None;
+						MoveOrder->OrderSerial = 0;
+						MoveOrder->bFormation = false;
+						MoveOrder->MarchSpeed = 0.f;
+						MoveOrder->PlaceHold.Clear();
+						MoveOrder->bFacesFront = false;
+						MoveOrder->bReforming = false;
+						MoveOrder->bStraggler = false;
+						MoveOrder->MarchDirection = FVector2f::ZeroVector;
+						if (FHOLUnitStateFragment* UnitState = EntityManager.GetFragmentDataPtr<FHOLUnitStateFragment>(Entity))
+						{
+							UnitState->Activity = EHOLUnitActivity::Idle;
+						}
+					}
+				}
 				if (FHOLCombatFragment* Combat = EntityManager.GetFragmentDataPtr<FHOLCombatFragment>(Entity);
 					Combat && (Phase == static_cast<uint8>(HOLDeploy::EPhase::Deploying) || Phase == static_cast<uint8>(HOLDeploy::EPhase::Deployed)))
 				{
