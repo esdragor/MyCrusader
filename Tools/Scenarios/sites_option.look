@@ -1,2 +1,4 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 sites_option_on | a gauche sous le panneau Triches la ligne « Victoire sacrée : <nom> dans m:ss » (hol.Site.Enabled à 0 : c'est la case de la configuration qui active les sites), des Moines bleus dans les 2 zones
+sites_option_box_off | écran Nouvelle partie : sur la ligne des options, après Catastrophe, le libellé « Sites sacrés » et sa liste sur « Non »
+sites_option_box_on | même écran, la liste « Sites sacrés » sur « Oui »

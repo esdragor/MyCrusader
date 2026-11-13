@@ -18,3 +18,18 @@ waitlog sacred leader 0 left
 waitlog HUD overlap:
 capture sites_option_on
 note 1. Case cochee (hol.Site.Enabled a 0) : a gauche, sous le panneau Triches, "Victoire sacree : <ton nom> dans m:ss", tes Moines tiennent les 2 sites.
+open /Game/Maps/MainMenu
+waitmap MainMenu
+waitui
+hol.UI.Open NewGame
+waitui
+frames 20
+hol.UI.Choose SacredSitesDropdown 0
+frames 10
+hol.UI.Text SacredSitesDropdown
+capture sites_option_box_off
+hol.UI.Choose SacredSitesDropdown 1
+frames 10
+hol.UI.Text SacredSitesDropdown
+capture sites_option_box_on
+note 2. Ecran Nouvelle partie, ligne des options (Nomade, Regicide, Catastrophe, Sites sacres) : la liste "Sites sacres" passe de Non (defaut) a Oui ; Lancer avec Oui = la partie du point 1.

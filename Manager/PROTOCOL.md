@@ -226,7 +226,7 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   "minutes": null,
   "leader": "Bob",
   "you": "Alice",
-  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false, "size": "Large", "teamsTogether": true, "fog": "Normal", "mode": "Standard", "biome": "default" },
+  "settings": { "map": "Plain", "nomad": false, "regicide": false, "catastrophe": false, "size": "Large", "teamsTogether": true, "fog": "Normal", "mode": "Standard", "biome": "default", "sacredSites": false },
   "maps": [ { "name": "Plain", "maxPlayers": 8, "sizes": [ { "key": "Small", "places": 2 }, { "key": "Medium", "places": 4 },
     { "key": "Normal", "places": 6 }, { "key": "Large", "places": 8 }, { "key": "Huge", "places": 8 } ] } ],
   "slots": [
@@ -244,7 +244,7 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
 
 - `settings.size` (TC3, TC-Q3 / TC-Q4) : clé de la taille (`Small`, `Medium`, `Normal`, `Large`, `Huge` = Petite,
   Moyenne, Normale, Grande, Immense ; `Tools/Data/MapSizes.csv`), qui fixe le nombre de places ; `""` pour une carte
-  sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage. `settings.fog` (F8, D522) : le brouillard de guerre, `Normal` (défaut, carte noire), `Explored` (carte explorée) ou `Disabled` (sans brouillard) ; le chef seul le change, et un changement remet tous les « prêt » à zéro. `settings.mode` (D5, chantier Diplomatie) : le mode de la partie, `Standard` (défaut) ou `Diplomacy` (alliances faites et rompues en cours de partie, chacun pour soi au départ) ; même règles que le brouillard (chef seul, remet les « prêt » à zéro, nom inconnu refusé `bad_request`), recopié dans `mode` de `match.json`. `settings.biome` (B2, D651-D656) : le biome du salon (ambiance : sol, lumière, ciel, brume, décor générique), par sa clé : `default` (défaut, l'ambiance propre de la carte), `fresh_grass`, `dry_steppe`, `autumn`, `dark_forest` ou `snow` (table de `Script/Biomes/HOLBiomeRules.as`, vérifiée par un test) ; n'importe quel biome sur n'importe quelle carte, le chef seul le change (même remise à zéro des « prêt »), inconnu = `bad_request`.
+  sans tailles. `settings.teamsTogether` (TC-Q6) : « Équipes ensemble », alliés sur des places voisines au tirage. `settings.fog` (F8, D522) : le brouillard de guerre, `Normal` (défaut, carte noire), `Explored` (carte explorée) ou `Disabled` (sans brouillard) ; le chef seul le change, et un changement remet tous les « prêt » à zéro. `settings.mode` (D5, chantier Diplomatie) : le mode de la partie, `Standard` (défaut) ou `Diplomacy` (alliances faites et rompues en cours de partie, chacun pour soi au départ) ; même règles que le brouillard (chef seul, remet les « prêt » à zéro, nom inconnu refusé `bad_request`), recopié dans `mode` de `match.json`. `settings.biome` (B2, D651-D656) : le biome du salon (ambiance : sol, lumière, ciel, brume, décor générique), par sa clé : `default` (défaut, l'ambiance propre de la carte), `fresh_grass`, `dry_steppe`, `autumn`, `dark_forest` ou `snow` (table de `Script/Biomes/HOLBiomeRules.as`, vérifiée par un test) ; n'importe quel biome sur n'importe quelle carte, le chef seul le change (même remise à zéro des « prêt »), inconnu = `bad_request`. `settings.sacredSites` (S7, D359, D699, `SacredSitesInProgress.md`) : la case « Sites sacrés » du salon, `false` par défaut (décochée) ; le chef seul la change (même remise à zéro des « prêt ») ; recopiée dans `bSacredSites` de `match.json` (version 4). Absente d'un gestionnaire plus ancien : le client la lit `false`. Sans site sur la carte, la case cochée n'active rien (le grisage à l'écran selon la carte n'est pas fait : le nombre de sites n'est connu qu'au chargement de la carte).
 - `maps` : les cartes de la partie, dans l'ordre de `Tools/Data/Maps.csv` (la table unique des cartes, C0.2 ; la
   première est celle d'un nouveau salon), `LobbyRules.Maps` dans le gestionnaire et `FHOLMapRules` dans le jeu.
 - `maps[].sizes` : les tailles de la carte et leurs places (vide pour une carte sans tailles) ; `maxPlayers` = places
@@ -290,7 +290,7 @@ Champs facultatifs ; seuls ceux présents changent.
 ### `PUT /lobbies/{lobbyId}/settings` — réglages du chef (en-tête `X-Player-Token`)
 
 ```json
-{ "map": "Plain", "nomad": true, "regicide": false, "catastrophe": false, "size": "Small", "teamsTogether": true, "fog": "Explored", "biome": "snow" }
+{ "map": "Plain", "nomad": true, "regicide": false, "catastrophe": false, "size": "Small", "teamsTogether": true, "fog": "Explored", "biome": "snow", "sacredSites": true }
 ```
 
 Champs facultatifs. Un changement (valeur différente de l'actuelle) remet **tous** les « Prêt » à `false`. Une carte
@@ -464,17 +464,17 @@ un salon que tous ont quitté pendant la partie est supprimé. Après `finished`
 gardé jusqu'à l'arrêt du serveur), le serveur reste suivi : il quitte seul
 quand il est vide (`empty`, R3.8) et le gestionnaire l'arrête s'il tourne encore 10 s après.
 
-## `match.json` (`FHOLMatchConfig` version 3)
+## `match.json` (`FHOLMatchConfig` version 4)
 
 Écrit par « Lancer », lu par le serveur avec `-MatchConfig=` (D243, `Source/HeroesOfLiberty/Match/HOLMatchConfig.h`).
 C'est le JSON de `FJsonObjectConverter` (premières lettres en minuscule, énumérations par leur nom, noms de champs
 lus sans tenir compte de la casse). **Version 2 = version 1 + `playerName` par emplacement** (R3.1,
 `FHOLMatchSlot::PlayerName`) ; **version 3 = version 2 + `mapSize`, `bDrawPlaces`, `bTeamsTogether`** (TC1 / TC3,
-tailles de carte) :
+tailles de carte) ; **version 4 = version 3 + `bSacredSites`** (S7, D699, case « Sites sacrés » du salon) :
 
 | Champ | Type | Sens |
 |---|---|---|
-| `version` | entier | `3` |
+| `version` | entier | `4` |
 | `seed` | entier | graine de la partie (tirée par le gestionnaire) |
 | `map` | chaîne | chemin d'objet de la carte, ex. `/Game/Maps/Plain.Plain` |
 | `mapSize` | `"None"`, `"Small"` … `"Huge"` | **nouveau en version 3** : taille du salon (`EHOLMapSize`) ; le serveur joue `GetMapFile(map, mapSize)` ; `"None"` (ou absent) = la carte telle quelle |
