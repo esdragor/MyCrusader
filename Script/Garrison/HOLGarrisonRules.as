@@ -26,18 +26,47 @@ namespace HOLGarrison
 	// Places of a building type (0 = no garrison).
 	int SlotsOf(FName BuildingType)
 	{
+		if (BuildingType == n"TowerWood")
+		{
+			return Math::Max(0, CVar_GarrisonSlotsWatchTower.GetInt());
+		}
+		if (BuildingType == n"TowerStone")
+		{
+			return Math::Max(0, CVar_GarrisonSlotsStoneTower.GetInt());
+		}
+		if (BuildingType == n"TowerReinforced")
+		{
+			return Math::Max(0, CVar_GarrisonSlotsReinforcedTower.GetInt());
+		}
 		return 0;
 	}
 
+	// Q1: are the occupants out of reach while the building stands (A, B) or hurt with it (C)? Read by the later combat step, not here.
 	bool OccupantsProtected()
 	{
-		return true;
+		return CVar_GarrisonOccupantsProtected.GetInt() != 0;
 	}
 
-	// May a unit of this kind garrison, given the three settings of Q2?
+	// May a unit of this kind garrison, given the three settings of Q2? Siege never does; ranged foot always do.
 	bool KindMayEnter(int Kind, bool bMeleeInfantry, bool bHero, bool bCavalry)
 	{
-		return true;
+		if (Kind == KindRangedInfantry)
+		{
+			return true;
+		}
+		if (Kind == KindMeleeInfantry)
+		{
+			return bMeleeInfantry;
+		}
+		if (Kind == KindHero)
+		{
+			return bHero;
+		}
+		if (Kind == KindCavalry)
+		{
+			return bCavalry;
+		}
+		return false;
 	}
 
 	bool KindMayEnterByDefault(int Kind)
@@ -48,12 +77,12 @@ namespace HOLGarrison
 	// Only the building's own slot: an ally's (D374) and an enemy's building are refused.
 	bool SlotMayEnter(int UnitSlot, int BuildingSlot)
 	{
-		return true;
+		return BuildingSlot >= 0 && UnitSlot == BuildingSlot;
 	}
 
 	int FreeSlots(int Slots, int Occupants)
 	{
-		return Slots;
+		return Math::Max(0, Slots - Math::Max(0, Occupants));
 	}
 
 	// Indexes (into UnitSlots / UnitKinds, in the order asked) of the candidates that enter a building of BuildingSlot with Slots places and
@@ -61,9 +90,13 @@ namespace HOLGarrison
 	TArray<int> Admitted(const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Slots, int Occupants)
 	{
 		TArray<int> In;
-		for (int I = 0; I < UnitSlots.Num(); ++I)
+		int Free = FreeSlots(Slots, Occupants);
+		for (int I = 0; I < UnitSlots.Num() && In.Num() < Free; ++I)
 		{
-			In.Add(I);
+			if (UnitKinds.IsValidIndex(I) && SlotMayEnter(UnitSlots[I], BuildingSlot) && KindMayEnterByDefault(UnitKinds[I]))
+			{
+				In.Add(I);
+			}
 		}
 		return In;
 	}
