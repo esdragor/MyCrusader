@@ -184,6 +184,9 @@ public sealed class Lobby
      */
     public Dictionary<string, int> LastMatchColors { get; internal set; } = new(LobbyRules.NameComparer);
 
+    /** The factions of the last finished match's players, by name: one of them coming back by join takes his faction again (no uniqueness, so always). */
+    public Dictionary<string, string> LastMatchFactions { get; internal set; } = new(LobbyRules.NameComparer);
+
     /** The match being started or played (state starting or in_game), null at the lobby. */
     public LobbyMatch? Match { get; internal set; }
 

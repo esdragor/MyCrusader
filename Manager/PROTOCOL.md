@@ -21,7 +21,7 @@ R2.2 ; décisions M6-Q1 à M6-Q9 de `NetPlaytestInProgress.md`.
    s'il a **la version de ce salon** (sinon `version_mismatch`) ; `GET /status` donne la dernière (celle qu'aurait un
    nouveau salon). Publier ne coupe donc ni les salons ni les parties en cours : ils finissent sur leur version.
 3. **Le joueur garde l'emplacement reçu à l'entrée** (premier emplacement ouvert) : pas de route pour changer
-   d'emplacement (= position de départ) dans cette version ; « ma ligne » = couleur, équipe (faction plus tard).
+   d'emplacement (= position de départ) dans cette version ; « ma ligne » = couleur, équipe, faction.
 4. **« Prêt » remis à zéro** : un changement de **ma** ligne remet **mon** « Prêt » à zéro ; un changement du chef
    (carte, options, emplacement ouvert / fermé) remet **tous** les « Prêt » à zéro. Le chef doit lui aussi être
    « Prêt » avant « Lancer ».
@@ -201,7 +201,7 @@ ne le concerne pas), sans plafond de spectateurs ; `name_taken` vaut pour tous l
 
 Un joueur (sans `spectator`) reçoit le **premier emplacement ouvert libre**, la **première couleur libre** de la palette (0 à 7) et
 l'équipe 0 (aucune) ; un joueur de la dernière partie finie du salon (même nom, casse ignorée) reprend sa couleur de
-la partie si aucun joueur présent ne l'a (E2-1). Le premier entré d'un salon est chef. Erreurs : `lobby_not_found`, `version_mismatch`,
+la partie si aucun joueur présent ne l'a (E2-1), et sa faction de la partie (sans condition : une faction n'est pas unique). Le premier entré d'un salon est chef. Erreurs : `lobby_not_found`, `version_mismatch`,
 `invalid_name`, `name_taken`, `lobby_full`, `lobby_in_game`, `bad_request`.
 
 Ordre des vérifications (la première qui échoue donne l'erreur) : `lobby_not_found`, `bad_request` (champ manquant),
@@ -259,7 +259,7 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
   au salon (grisé à l'écran). Pas de `playerName` ni de `ready` : le client la nomme comme le jeu, « IA Normal N »
   (`HOLForumMessages::GetAIName`, N = `index` + 1, texte traduit). Une IA n'est pas un joueur : elle ne compte pas
   dans `players` de `GET /lobbies` et son emplacement n'est pas ouvert à l'entrée.
-- `faction` : rendue mais pas encore modifiable (D11 : deux factions au prototype).
+- `faction` : `DawnOrder`, `BlackLegions` ou `Templars` (`EHOLFaction` par son nom) ; `DawnOrder` à l'entrée. Le joueur règle la sienne (`PUT /me`), le chef celle d'une IA (`PUT /slots/{i}`, `state` `ai`).
 - `match` : `null` hors de `in_game` ; en partie, ce que le client doit faire (voir « Démarrage de la partie ») ;
   lu sans jeton, `playerName` y vaut `null`.
 - `notice` : avis à montrer une fois puis effacé au bout de 10 s : `"server_stopped"` (le serveur de la partie
@@ -271,19 +271,19 @@ depuis 5 s ou plus est retiré avant que sa requête soit traitée (`not_in_lobb
 Champs facultatifs ; seuls ceux présents changent.
 
 ```json
-{ "colorIndex": 4, "team": 2, "ready": true, "spectator": false }
+{ "colorIndex": 4, "team": 2, "ready": true, "spectator": false, "faction": "BlackLegions" }
 ```
 
 - `colorIndex` : 0 à 7, unique dans le salon, joueurs et IA (`color_taken`), ou 8 = « Aléatoire » (E2-2), que
   plusieurs joueurs peuvent avoir. Un joueur qui entre prend la première couleur qu'aucun joueur ni aucune IA n'a. `team` : 0 (aucune) à 4.
-- Un changement de couleur ou d'équipe remet **mon** « Prêt » à `false` (choix 4), sauf si `ready` est dans la même
+- Un changement de couleur, d'équipe ou de faction remet **mon** « Prêt » à `false` (choix 4), sauf si `ready` est dans la même
   requête. Une valeur égale à l'actuelle n'est pas un changement.
 - `spectator` (SP1, D642) : `true` me fait quitter mon emplacement (libéré, avec ma couleur ; « Prêt » à `false`) et
   devenir spectateur, **chef compris** (il le reste et règle et lance sans jouer) ; `false` me donne le **premier
   emplacement ouvert** (`lobby_full` s'il n'y en a pas, rien ne change), avec la couleur que j'avais si elle est libre
   (sinon la première libre), l'équipe 0 et « Prêt » à `false`. Un spectateur (qui le reste dans la requête) n'envoie ni
-  `colorIndex`, ni `team`, ni `ready` : `bad_request`. Devenir joueur et régler sa ligne se font dans la même requête.
-- Plus tard : `faction` (`"DawnOrder"`, `"BlackLegions"`).
+  `colorIndex`, ni `team`, ni `faction`, ni `ready` : `bad_request`. Devenir joueur et régler sa ligne se font dans la même requête.
+- `faction` : `"DawnOrder"`, `"BlackLegions"` ou `"Templars"` (casse ignorée, rendue sous sa forme canonique) ; absent = inchangée ; toute autre valeur, `DragonChildren`, `ShadowCircle` et `FireHeirs` compris (grisées dans le jeu), un nom inconnu ou une chaîne vide, est un `bad_request` qui ne change rien. **Le serveur ne vérifie pas le code de triche** des Templiers : il fait confiance au client, qui ne les propose qu'une fois le code activé. `spectator: true` remet la faction à `DawnOrder` ; `false` rend une ligne de faction `DawnOrder` (ou celle de la même requête).
 - Réponse `200` : l'état du salon. Erreurs : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `bad_request`,
   `color_taken` (dans cet ordre).
 
@@ -306,19 +306,19 @@ le chef en dessous restent fermés). Sans `size`, la taille reste (ou devient ce
 
 ```json
 { "state": "closed" }
-{ "state": "ai", "colorIndex": 5, "team": 2 }
+{ "state": "ai", "colorIndex": 5, "team": 2, "faction": "Templars" }
 ```
 
 `state` : `"open"`, `"closed"` ou `"ai"`. Un changement remet tous les « Prêt » à `false` (ouvrir un emplacement déjà ouvert
 ne change rien). `"open"` ou `"closed"` sur l'emplacement d'une IA la retire.
 
 `"ai"` (IA0.6, Q4) : met une IA de niveau Normal sur un emplacement ouvert ou fermé, en dessous des places de la carte
-à sa taille ; sur l'emplacement d'une IA, change sa couleur ou son équipe. `colorIndex` (0 à 8, 8 = « Aléatoire ») et
-`team` (0 à 4) sont facultatifs : seuls ceux présents changent ; une nouvelle IA prend sinon la première couleur
-libre et l'équipe 0. Couleur unique comme pour un joueur (`color_taken`). Ajouter, retirer ou changer une IA remet
+à sa taille ; sur l'emplacement d'une IA, change sa couleur ou son équipe. `colorIndex` (0 à 8, 8 = « Aléatoire »),
+`team` (0 à 4) et `faction` (comme pour `PUT /me` : `DawnOrder`, `BlackLegions` ou `Templars`) sont facultatifs : seuls ceux présents changent ; une nouvelle IA prend sinon la première couleur
+libre, l'équipe 0 et la faction `DawnOrder`. Couleur unique comme pour un joueur (`color_taken`). Ajouter, retirer ou changer une IA remet
 tous les « Prêt » à `false` (Q6) ; la même IA avec les mêmes valeurs ne change rien. Erreurs `"ai"`, dans cet ordre :
 `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`, `bad_request` (index, couleur ou équipe hors
-bornes, emplacement au-delà des places), `slot_taken` (emplacement d'un joueur), `color_taken`.
+bornes, faction refusée, emplacement au-delà des places), `slot_taken` (emplacement d'un joueur), `color_taken`.
 
 Erreurs `"open"` / `"closed"`, dans cet ordre : `lobby_not_found`, `not_in_lobby`, `lobby_in_game`, `not_leader`, `bad_request` (index
 hors de 0 à 7 ou non entier, `state` absent ou inconnu, ouvrir un emplacement au-delà des places de la carte à sa taille), `slot_taken` (emplacement tenu).
@@ -484,7 +484,7 @@ tailles de carte) :
 | `biome` | `"default"`, `"fresh_grass"`, `"dry_steppe"`, `"autumn"`, `"dark_forest"`, `"snow"` | **B2 (D651-D656)** : le biome du salon par sa clé ; absent ou `default` = la carte telle quelle (les scénarios de test) ; une clé inconnue est lue comme `default` côté jeu ; répliqué aux clients avec la configuration |
 | `slots` | 8 objets | emplacement du salon = index (la place de départ est tirée, `bDrawPlaces`) |
 | `slots[].state` | `"Closed"`, `"Human"`, `"AI"` | `"Human"` pour chaque joueur du salon, `"AI"` pour chaque IA (IA0.6, avec sa couleur, son équipe et sa faction) ; ouvert vide ou fermé → `"Closed"` (faction `DawnOrder`, couleur = index, équipe 0, comme `Normalize`) |
-| `slots[].faction` | `"DawnOrder"`, `"BlackLegions"`, … | |
+| `slots[].faction` | `"DawnOrder"`, `"BlackLegions"`, `"Templars"` | la faction réglée au salon (`PUT /me`, `PUT /slots/{i}`) ; `DawnOrder` pour un emplacement fermé |
 | `slots[].colorIndex` | 0 à 7 | palette D233 ; jamais 8 : un joueur ou une IA sur « Aléatoire » reçoit au lancement, tiré de `seed` dans l'ordre des emplacements, une couleur qu'aucun autre joueur ni aucune IA n'a (choisie ou déjà tirée) ; le salon garde « Aléatoire » |
 | `slots[].team` | 0 à 4 | 0 = aucune |
 | `slots[].playerName` | chaîne | **nouveau en version 2** : nom du joueur attendu (tel qu'au salon : sans espaces autour, forme composée) ; `""` pour un emplacement fermé ou une IA |

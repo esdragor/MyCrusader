@@ -13,12 +13,12 @@ public static class LobbyRoutes
 
     private sealed record JoinRequest(string? PlayerName, string? GameVersion, bool? Spectator = null);
 
-    private sealed record MeRequest(int? ColorIndex, int? Team, bool? Ready, bool? Spectator = null);
+    private sealed record MeRequest(int? ColorIndex, int? Team, bool? Ready, bool? Spectator = null, string? Faction = null);
 
     private sealed record SettingsRequest(string? Map, bool? Nomad, bool? Regicide, bool? Catastrophe, string? Size = null,
         bool? TeamsTogether = null, string? Fog = null, string? Mode = null, string? Biome = null);
 
-    private sealed record SlotRequest(string? State, int? ColorIndex = null, int? Team = null);
+    private sealed record SlotRequest(string? State, int? ColorIndex = null, int? Team = null, string? Faction = null);
 
     /** HTTP status of each error code (PROTOCOL.md, Erreurs). */
     private static readonly Dictionary<string, int> Statuses = new()
@@ -91,7 +91,7 @@ public static class LobbyRoutes
             var body = await Body<MeRequest>(request);
             var token = Token(request);
             return store.Atomic(() =>
-                LobbyViews.State(store, store.UpdateMe(lobbyId, token, body.ColorIndex, body.Team, body.Ready, body.Spectator), token));
+                LobbyViews.State(store, store.UpdateMe(lobbyId, token, body.ColorIndex, body.Team, body.Ready, body.Spectator, body.Faction), token));
         });
 
         app.MapPut("/lobbies/{lobbyId}/settings", async (string lobbyId, HttpRequest request, LobbyStore store) =>
@@ -111,7 +111,7 @@ public static class LobbyRoutes
             bool? open = body.State switch { "open" => true, "closed" => false, _ => null };
             // IA0.6 (Q4): "ai" puts an AI on the slot, or changes its colour and team.
             return store.Atomic(() => LobbyViews.State(store, body.State == "ai"
-                ? store.SetSlotAI(lobbyId, token, slotIndex, body.ColorIndex, body.Team)
+                ? store.SetSlotAI(lobbyId, token, slotIndex, body.ColorIndex, body.Team, body.Faction)
                 : store.SetSlot(lobbyId, token, slotIndex, open), token));
         });
 
