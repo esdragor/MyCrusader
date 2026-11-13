@@ -89,3 +89,5 @@ ou 4, palier non atteint, option hors des 2, Templiers à 3) ; deux paliers (Q1)
 
 ## 2026-11-13 12:33 HALDIR-1113b (agent, maps, sans C++)
 - Ligne 80 durcie aux bornes exactes : 4 tests de plus dans HOLSpecializationRules_Test.as (pas de simulation 50 ms = 600/900/1200 pas pile a 30/45/60 s, pas de 33 ms = 910/1364/1819 pas, premier pas apres la borne ; un pas long de 45 s pose une fois, sans report sur le palier suivant ; pause Forum a terre 10 s + 50 s a terre + 19,999 s = pas encore, +1 ms = pose ; reprise apres annulation a 29,999 s = delai entier ; Templiers 3e commanderie a 30 s). Aucun trou dans les regles : verts d'emblee, pas de commit rouge. quick_check -Parts tests 1207/1207 PASS (12:33), commit 22dbb3b. Reprise : SP2 (C++), inchange.
+
+- 2026-11-13 16:5x (HALDIR-1113c) : nouvelle question [A REPONDRE] posee (L73) : `C:\Users\baudo\Documents\MyCrusader\Retours\Q-specialization-switch.md` (changer d'option en cours ; defaut A = annuler d'abord, comportement actuel ; recommandation B). Le cas Nomade sans forum est pose dans Q-nomad-forum Q2.

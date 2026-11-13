@@ -79,3 +79,5 @@ ne signale pas. Commit du rouge 76f66b8 (namespace `HOLSignal` absent).
 
 ## 2026-11-13 12:35 HALDIR-1113b (agent, maps, sans C++)
 - PROCHAINE ETAPE C++ (l. 72 de Auto_Journey_File.md), non codee : SG2. Lieu : `Source\HeroesOfLiberty\Player\HOLPlayerController.h` (45 RPC `UFUNCTION(Server, Reliable...)` deja la, meme modele) : `ServerPostSignal(Kind, Location)` ; plateau `FHOLSignalBoard` tenu au serveur (GameState ou sous-systeme) qui applique `HOLSignal::Post` (cadence, Silenced pour un vaincu, D784) ; envoi Client RPC aux seuls joueurs pour qui `HOLSignal::Sees` (equipe, vaincu voit sans poser). Test rouge : net_match (signal pose par un client, recu par l'allie, pas par l'adversaire ; vaincu refuse). Puis SG3 (Alt + clic, icone mini-carte, ligne du fil). Les regles pures AS (SG1) sont vertes et durcies (5 s a 4999/5000 ms).
+
+- 2026-11-13 16:5x (HALDIR-1113c) : nouvelle question [A REPONDRE] posee (L73) : `C:\Users\baudo\Documents\MyCrusader\Retours\Q-signals-spectators.md` (elimine en chacun pour soi / Diplomatie et spectateurs ; defaut B de fait = aucun signal ; recommandation A = tous). A traiter dans SG2 (envoi aux spectateurs).
