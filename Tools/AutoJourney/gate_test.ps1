@@ -86,9 +86,19 @@ $cap3n = Run-Cap @('-NoCpp')
 Check ($cap3n -match '(?m)^WARN .*plafond' -and -not ($cap3n -match '(?m)^FAIL .*plafond')) 'launch -NoCpp: plafond atteint -> WARN seulement (tache sans C++)' $cap3n
 Clear-Cap
 New-Ticket 'T1' 'bb01'; New-Ticket 'T2' 'bb02'
-New-InUse 'U3' "Pris (2026-11-11 14:00) : agent Auto_Journey C++, arret dur 15:12"
+New-InUse 'U3' "OCCUPE par U3 (2026-11-11 14:00) : agent Auto_Journey, arret dur 15:12`nCPP: oui"
 $capMix = Run-Cap
-Check ($capMix -match '(?m)^FAIL .*plafond') 'launch: 2 tickets + 1 IN_USE.txt C++ = 3 agents -> FAIL plafond' $capMix
+Check ($capMix -match '(?m)^FAIL .*plafond') 'launch: 2 tickets + 1 IN_USE.txt OCCUPE + CPP: oui = 3 agents -> FAIL plafond' $capMix
+Clear-Cap
+# L13-2 (2026-11-13, faux FAIL vu 3 fois : Haldir et Sauron comptes alors qu'ils etaient sans C++) : le TEXTE d'un IN_USE.txt ne compte plus ;
+# seul un IN_USE.txt OCCUPE (1re ligne) portant la ligne 'CPP: oui' compte. Libre + 'CPP: oui', OCCUPE + 'CPP: non', 'Pris ... C++' sans marqueur : rien.
+New-Ticket 'T1' 'ee01'; New-Ticket 'T2' 'ee02'
+New-InUse 'U3' "Pris (2026-11-11 14:00) : agent Auto_Journey C++, arret dur 15:12"
+New-InUse 'U4' "libre : agent fini (2026-11-13 16:39)`nCPP: oui"
+New-InUse 'U5' "OCCUPE par U5 (2026-11-13 16:40) : outils`nCPP: non"
+New-InUse 'U6' "Haldir agent L73/B4/L65 from 16:40 (lit les fichiers C++ sans compiler)"
+$capText = Run-Cap
+Check ($capText -match '(?m)^PASS 2 agent\(s\) C\+\+' -and -not ($capText -match '(?m)^(FAIL|WARN) .*plafond')) 'L13-2 launch: texte citant C++ / libre + CPP: oui / OCCUPE + CPP: non ne comptent pas -> 2 agents, PASS plafond' $capText
 Clear-Cap
 New-Ticket 'T1' 'cc01'; New-Ticket 'T2' 'cc02'
 New-InUse 'U3' "Pris (2026-11-11 14:00) : agent Auto_Journey sans C++ (outils)"
@@ -98,7 +108,7 @@ $capOk = Run-Cap
 Check ($capOk -match '(?m)^PASS .*plafond' -and -not ($capOk -match '(?m)^(FAIL|WARN) .*plafond')) 'launch: sans C++ / Libre / ticket au proprietaire mort ne comptent pas -> PASS plafond' $capOk
 Clear-Cap
 New-Ticket 'T1' 'dd01'; New-Ticket 'T1' 'dd02'; New-Ticket 'T2' 'dd03'
-New-InUse 'T2' "Pris : C++"
+New-InUse 'T2' "OCCUPE par T2`nCPP: oui"
 $capDup = Run-Cap
 Check ($capDup -match '(?m)^PASS .*plafond') 'launch: 2 tickets du meme worktree + son IN_USE.txt = 1 agent, 2 en tout -> PASS plafond' $capDup
 
@@ -116,6 +126,23 @@ Check ($lnStale -match '(?m)^WARN .*(binaire|DLL).*(ANCIEN|perim).*Source' -and 
 (Get-Item $LDll).LastWriteTime = (Get-Date).AddMinutes(1)
 $lsFresh = Run-Cap @('-Scenarios', '-Root', $LRepo)
 Check (-not ($lsFresh -match '(?m)^(FAIL|WARN) .*(binaire|DLL).*Source')) 'launch -Scenarios: binaire plus recent que les Source -> pas de signal' $lsFresh
+
+# --- L87 (L12-2, 2026-11-12) : Launch FAIL quand le worktree a PLUS de 5 commits touchant Source posterieurs a sa DLL (meme sans -Scenarios).
+# Vrai depot jetable : DLL d'il y a 1 h, 5 commits Source + 1 commit Script apres elle -> pas de FAIL ; 6e commit Source -> FAIL.
+$SRepo = Join-Path $Tmp 'HeroesOfLiberty-FakeSrcLag'
+New-Item -ItemType Directory -Path (Join-Path $SRepo 'Source\M'), (Join-Path $SRepo 'Script'), (Join-Path $SRepo 'Binaries\Win64') -Force | Out-Null
+function GitS { git -C $SRepo -c user.name=t -c user.email=t@t @args 2>&1 | Out-Null }
+GitS init -q
+$SDll = Join-Path $SRepo 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll'
+Set-Content -Path $SDll -Value 'x'
+(Get-Item $SDll).LastWriteTime = (Get-Date).AddHours(-1)
+foreach ($i in 1..5) { Set-Content -Path (Join-Path $SRepo 'Source\M\a.cpp') -Value "int a$i;"; GitS add Source; GitS commit -q -m "src $i" }
+Set-Content -Path (Join-Path $SRepo 'Script\s.as') -Value 'x'; GitS add Script; GitS commit -q -m 'script'
+$lag5 = Run-Cap @('-Root', $SRepo)
+Check (-not ($lag5 -match '(?m)^FAIL .*commit\(s\) Source')) 'L87 launch: 5 commits Source apres la DLL (+1 Script) -> pas de FAIL de retard' $lag5
+Set-Content -Path (Join-Path $SRepo 'Source\M\a.cpp') -Value 'int a6;'; GitS add Source; GitS commit -q -m 'src 6'
+$lag6 = Run-Cap @('-Root', $SRepo)
+Check ($lag6 -match '(?m)^FAIL .*6 commit\(s\) Source') 'L87 launch: 6 commits Source apres la DLL -> FAIL (sync_worktrees.ps1 sans -NoBuild)' $lag6
 
 # --- Elrond-8 (2026-11-07) : binaire PERIME par une fusion. Le commit d'un fichier fusionne garde sa date d'auteur (ancienne), donc
 # "binaire >= date du dernier commit de code" laisse passer un binaire compile AVANT la fusion ; le fichier, lui, porte l'heure de la fusion.
@@ -251,6 +278,34 @@ Check ($r -match 'tool_uses') 'agent_rules: tool_uses releve par la session prin
 Check ($r -match 'PROCESSUS_DETACHES') 'agent_rules: champ PROCESSUS_DETACHES'
 Check ($r -match 'GESTE' -and $r -match 'SON') 'agent_rules: statuts GESTE et SON'
 Check ($r -match 'stray_processes') 'agent_rules: stray_processes.ps1 cite'
+# L13-2 / L88 / L89 : marqueur CPP du IN_USE.txt, LAUNCHCHECK_DEBUT, TESTS_TAUTOLOGIQUES dans agent_rules.md ET dans le modele d'enonce d'Auto_Journey.md
+$ajText = Get-Content (Join-Path (Split-Path -Parent (Split-Path -Parent $Here)) 'Auto_Journey.md') -Raw -Encoding UTF8
+$ajModel = if ($ajText -match '(?s)## Mod.le d..nonc. d.un agent \(.*?```(.*?)```') { $Matches[1] } else { '' }
+foreach ($k in 'CPP: oui', 'LAUNCHCHECK_DEBUT', 'TESTS_TAUTOLOGIQUES') {
+  Check ($r.Contains($k)) "agent_rules: cite '$k'"
+  Check ($ajModel.Contains($k)) "Auto_Journey.md modele d'enonce: cite '$k'"
+}
+Check ($ajText -match 'L12-6') 'Auto_Journey.md: fusion = index de Retours, LISEZ-MOI et EtapeDefini dans le meme commit (L12-6)'
+
+# --- L90 (L12-6) : Close WARN quand EtapeDefini.md dit 'pas dans main' pour une branche (ou des commits cites) deja dans main
+$ERepo = Join-Path $Tmp 'FakeMainCopy'
+New-Item -ItemType Directory -Path $ERepo -Force | Out-Null
+function GitE { git -C $ERepo -c user.name=t -c user.email=t@t @args 2>&1 | Out-Null }
+GitE init -q -b main; Set-Content (Join-Path $ERepo 'r.txt') 'r'; GitE add r.txt; GitE commit -q -m root
+GitE checkout -q -b featx; Set-Content (Join-Path $ERepo 'x.txt') 'x'; GitE add x.txt; GitE commit -q -m x
+$shaX = (git -C $ERepo rev-parse --short HEAD).Trim()
+GitE checkout -q main; GitE merge -q --no-ff featx -m 'merge featx'
+GitE checkout -q -b featy; Set-Content (Join-Path $ERepo 'y.txt') 'y'; GitE add y.txt; GitE commit -q -m y
+$shaY = (git -C $ERepo rev-parse --short HEAD).Trim()
+GitE checkout -q main
+Set-Content -Path (Join-Path $ERepo 'EtapeDefini.md') -Encoding UTF8 -Value @(
+  "- AgentX (featx, sans C++, 2026-11-13) : **outil fait ($shaX), pas dans main.**",
+  "- AgentY (featy, sans C++, 2026-11-13) : **outil fait ($shaY), pas dans main.**",
+  "- AgentZ (featz-inconnue, sans C++) : **rien, pas dans main.**")
+$EWts = Join-Path $Tmp 'emptywts'; New-Item -ItemType Directory -Path $EWts -Force | Out-Null
+$etClose = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $EWts -RetoursDir $Ret -EtapeFile (Join-Path $ERepo 'EtapeDefini.md') | Out-String
+Check ($etClose -match '(?m)^WARN .*featx.*pas dans main') 'L90 close: EtapeDefini dit pas dans main pour featx deja dans main -> WARN' $etClose
+Check (-not ($etClose -match '(?m)^WARN .*(featy|featz).*pas dans main')) 'L90 close: featy (hors main) et branche inconnue -> pas de WARN' $etClose
 
 # --- L8-1 : session_gate Essay : le worktree doit contenir le tip de CHAQUE branche citee dans le E-*.md de l'essai
 # (2026-11-06 : qground joue depuis Elrond sans les correctifs de melee de Celeborn). Vrai depot git factice : work contient fixa, pas fixb.

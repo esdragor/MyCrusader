@@ -168,3 +168,9 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - L41 (note) : talents_heal_cell (« ++ » dore au-dessus de la fenetre Arbre de talents) NON rejoue ici (pas dans la file de cet agent) ; reste question de couche au proprietaire du rendu des marques de soin.
 - L46 : quick_check -Parts build lance 16:34 (memoire 7,2 Go), resultat ci-dessous.
 - Appels : 42 a 16:40 (arret a 45).
+
+### 2026-11-13 (FARAMIR-OUTILS soir, outils AutoJourney, sans C++, branche fog, 16:40-, arret dur 19:45)
+- Taches : (1) L13-2 plafond C++ de `session_gate -Phase Launch` (ne compter que tickets vivants + IN_USE.txt OCCUPE avec `CPP: oui`) ; (2) L87 FAIL > 5 commits Source de retard sur la dll ; (3) L88-L91 de la file.
+- 16:40 : git merge main (avance, 4 fiches E-*), IN_USE.txt OCCUPE + `CPP: non`.
+- 16:45 : tests rouges ecrits dans `Tools\AutoJourney\gate_test.ps1` : L13-2 (texte citant C++ / libre + CPP: oui / OCCUPE + CPP: non = rien), L87 (5 vs 6 commits Source apres la dll, vrai depot jetable), L88/L89 (agent_rules + modele d'enonce citent `CPP: oui`, `LAUNCHCHECK_DEBUT`, `TESTS_TAUTOLOGIQUES`), L90 (Close WARN si EtapeDefini dit « pas dans main » pour une branche deja dans main, `-EtapeFile`).
+- Appels vus : ||||| ||||| ||||| ||||| |||| (24 a 16:47)
