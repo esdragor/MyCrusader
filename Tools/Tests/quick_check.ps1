@@ -2715,12 +2715,16 @@ if ($NetListening) {
         }
         # Diplomacy (D5, net diplomacy): Bob (slot 1) says Ally toward Alice (slot 0), then Alice toward Bob: allied, everybody reports;
         # Bob breaks (Enemy toward Alice), everybody reports again. The server and both clients must read the same stances.
+        # Signals (SG2, net signals): allied, Bob posts 4 Attack signals at once (the 4th over the rate of 3 in 5 s); broken, 5 s
+        # later (a new window), 1 Defend signal. Alice reports after the break (the received lines are read from her whole log).
         if ($Client -eq 1) {
             $NetSteps += "hol.Diplomacy.Stance 0 ally", "wait 2", "signal $NetDipBobFlag", "waitfile $NetDipAlliedFlag 120", "wait 2", "hol.Diplomacy.Report",
-                "waitfile $NetDipServerFlag 120", "hol.Diplomacy.Stance 0 enemy", "wait 2", "hol.Diplomacy.Report", "signal $NetDipBrokenFlag"
+                "hol.Signal.Post 1 1000 2000", "hol.Signal.Post 1 1000 2000", "hol.Signal.Post 1 1000 2000", "hol.Signal.Post 1 1000 2000", "wait 1", "hol.Signal.Report",
+                "waitfile $NetDipServerFlag 120", "hol.Diplomacy.Stance 0 enemy", "wait 2", "hol.Diplomacy.Report",
+                "wait 5", "hol.Signal.Post 2 3000 4000", "wait 1", "hol.Signal.Report", "signal $NetDipBrokenFlag"
         } else {
             $NetSteps += "waitfile $NetDipBobFlag 120", "hol.Diplomacy.Stance 1 ally", "wait 2", "hol.Diplomacy.Report", "signal $NetDipAlliedFlag",
-                "waitfile $NetDipBrokenFlag 120", "wait 2", "hol.Diplomacy.Report"
+                "waitfile $NetDipBrokenFlag 120", "wait 2", "hol.Diplomacy.Report", "hol.Signal.Report"
         }
         foreach ($Slot in 0, 1) {
             $NetSteps += "hol.Camera.FocusSlot $Slot", "frames 3", "hol.Select.Click 0.5 0.5", "waitlog Selection: MainCentre of slot $Slot",
@@ -2884,6 +2888,12 @@ if ($NetListening) {
         # (client 1 stays until client 2 has reported: its player state would be gone from client 2's table)
         $NetSteps += "signal $(Join-Path $TestSaved "quick_net_tech_done$Client.flag")"
         if ($Client -eq 1) { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_tech_done2.flag") 120" }
+        # SP2 (net specialization): Bob starts option 0 of tier 1 (30 s), reports twice 2 s apart (the countdown), Alice reports while it
+        # runs (the view goes to its owner alone), then Bob cancels and reports.
+        $NetSteps += "mark spec"
+        if ($Client -eq 1) { $NetSteps += "hol.Spec.Start 1 0", "wait 1", "hol.Spec.Report", "wait 2", "hol.Spec.Report", "signal $(Join-Path $TestSaved "quick_net_spec_asked.flag")",
+            "waitfile $(Join-Path $TestSaved "quick_net_spec_seen.flag") 120", "hol.Spec.Cancel", "wait 1", "hol.Spec.Report" }
+        else { $NetSteps += "waitfile $(Join-Path $TestSaved "quick_net_spec_asked.flag") 120", "hol.Spec.Report", "signal $(Join-Path $TestSaved "quick_net_spec_seen.flag")" }
         # M6: the Market (see the server's sequence): client 1 spawns it, reports, sells 2 lots of wood, reports; client 2 reports after.
         $NetSteps += "mark market"
         if ($Client -eq 1) { $NetSteps += "hol.Cheat.Resources 2000", "hol.Cheat.SpawnBuilding Market 1 1500 3000", "wait 2", "hol.Market.Report", "hol.Market.Trade wood 2 sell", "wait 2", "hol.Market.Report",
@@ -7157,6 +7167,41 @@ if ($Parts -contains "net") {
         }
     }
     if (-not $NetHeroOnly) { $AllOk = (Report "net technologies" $TechChecks) -and $AllOk }
+    # SG2: Bob's signals through ServerPostSignal / ClientReceiveSignal. Allied: 3 Attack (kind 1) accepted, the 4th refused (rate,
+    # answer 4), received by Bob and by Alice; broken: 1 Defend (kind 2) accepted, received by Bob, never by Alice (an enemy).
+    $SigChecks = [ordered]@{}
+    $SigAnswers = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Signal: slot $BobSlot kind (\d) answer (\d+)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value):$($_.Matches[0].Groups[2].Value)" } })
+    $SigChecks["server: Bob's answers 1:0 x3, 1:4, then 2:0 ($($SigAnswers -join ' '))"] = ($SigAnswers -join " ") -eq "1:0 1:0 1:0 1:4 2:0"
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $SigLines = @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue)
+        $SigAttack = @($SigLines | Select-String -Pattern "Signal: received kind 1 from slot $BobSlot ").Count
+        $SigDefend = @($SigLines | Select-String -Pattern "Signal: received kind 2 from slot $BobSlot ").Count
+        $SigWant = if ($N -eq 1) { 1 } else { 0 }
+        $SigChecks["client $N : Bob's allied signals received 3 ($SigAttack), his signal once enemies $SigWant ($SigDefend)"] = $SigAttack -eq 3 -and $SigDefend -eq $SigWant
+    }
+    if (-not $NetHeroOnly) { $AllOk = (Report "net signals" $SigChecks) -and $AllOk }
+    # SP2: Bob's specialization through ServerStartSpecialization / ServerCancelSpecialization, its view replicated to Bob alone.
+    $SpecChecks = [ordered]@{}
+    $SpecServer = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Specialization: slot $BobSlot (starts tier 1 option 0|cancels), answer (\d+)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value) $($_.Matches[0].Groups[2].Value)" } })
+    $SpecChecks["server: Bob's start then cancel accepted ($($SpecServer -join '; '))"] = ($SpecServer -join "; ") -eq "starts tier 1 option 0 0; cancels 0"
+    $SpecPattern = "Specialization state slot $BobSlot (local|other): pending tier (-?\d+) option (-?\d+), (-?\d+) ms left"
+    foreach ($NetClient in $NetClients) {
+        $N = $NetClient.Client
+        $SpecLines = @(Get-ClientSection @(Get-Content $NetClient.Log -ErrorAction SilentlyContinue) "spec" | Select-String -Pattern $SpecPattern | ForEach-Object { $_.Matches[0] })
+        $SpecSays = ($SpecLines | ForEach-Object { "$($_.Groups[1].Value) $($_.Groups[2].Value)/$($_.Groups[3].Value) $($_.Groups[4].Value)" }) -join "; "
+        if ($N -eq 1) {
+            $SpecOk = $SpecLines.Count -eq 3 -and
+                @($SpecLines[0..1] | Where-Object { $_.Groups[1].Value -eq "local" -and $_.Groups[2].Value -eq "1" -and $_.Groups[3].Value -eq "0" -and [int]$_.Groups[4].Value -gt 0 -and [int]$_.Groups[4].Value -le 30000 }).Count -eq 2 -and
+                [int]$SpecLines[1].Groups[4].Value -lt [int]$SpecLines[0].Groups[4].Value -and $SpecLines[2].Groups[2].Value -eq "0" -and $SpecLines[2].Groups[4].Value -eq "0"
+            $SpecChecks["client 1 (Bob): his choice running, the countdown going down, then cancelled ($SpecSays)"] = $SpecOk
+        }
+        else {
+            $SpecChecks["client 2 (Alice): Bob's view never received while it runs ($SpecSays)"] = $SpecLines.Count -eq 1 -and $SpecLines[0].Groups[1].Value -eq "other" -and
+                $SpecLines[0].Groups[2].Value -eq "0" -and $SpecLines[0].Groups[4].Value -eq "0"
+        }
+    }
+    if (-not $NetHeroOnly) { $AllOk = (Report "net specialization" $SpecChecks) -and $AllOk }
     # M6: the Market over the network. Client 1's Market (finished, replicated), its sale of 2 lots of wood done by the server, the book moved
     # and the same on the server and on both clients (the common price), client 1's stock as the server's.
     if (-not $NetHeroOnly) {
