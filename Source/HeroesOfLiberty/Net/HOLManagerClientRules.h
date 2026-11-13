@@ -244,7 +244,7 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	static FHOLManagerError ReadFailure(bool bConnected, int32 HttpCode, const FString& Body);
 
 	/** PUT /lobbies/{id}/me: only the fields given ({ "colorIndex", "team", "ready", "spectator" }). */
-	static FString MakeMeBody(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady, TOptional<bool> bSpectator = {});
+	static FString MakeMeBody(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady, TOptional<bool> bSpectator = {}, const FString& Faction = FString());
 	/** POST /lobbies/{id}/join: { "playerName", "gameVersion" }, then "spectator": true when entering as one (SP1). */
 	static FString MakeJoinBody(const FString& PlayerName, const FString& GameVersion, bool bSpectator);
 	/**
@@ -259,7 +259,7 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	 * IA0.6 (Q4): PUT /lobbies/{id}/slots/{index}: { "state": "ai" }, then "colorIndex" and "team" when given (on an AI's
 	 * slot: changes its colour or team; on a new AI: the first free colour and team 0 otherwise).
 	 */
-	static FString MakeAISlotBody(TOptional<int32> ColorIndex = {}, TOptional<int32> Team = {});
+	static FString MakeAISlotBody(TOptional<int32> ColorIndex = {}, TOptional<int32> Team = {}, const FString& Faction = FString());
 
 	/** GET /lobbies/{id}/watch: { matchId, port, minutes }; false without a port. */
 	static bool ParseWatch(const FString& Json, FString& OutMatchId, int32& OutPort);

@@ -559,9 +559,9 @@ void UHOLManagerClient::Write(const FString& Route, const FString& Body, FHOLMan
 }
 
 void UHOLManagerClient::UpdateMe(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const TOptional<bool> bReady, FHOLManagerLobbyDone Done,
-	const TOptional<bool> bSpectator)
+	const TOptional<bool> bSpectator, const FString& Faction)
 {
-	Write(TEXT("/me"), FHOLManagerClientRules::MakeMeBody(ColorIndex, Team, bReady, bSpectator), MoveTemp(Done));
+	Write(TEXT("/me"), FHOLManagerClientRules::MakeMeBody(ColorIndex, Team, bReady, bSpectator, Faction), MoveTemp(Done));
 }
 
 void UHOLManagerClient::UpdateSettings(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe, FHOLManagerLobbyDone Done,
@@ -575,9 +575,9 @@ void UHOLManagerClient::SetSlot(const int32 SlotIndex, const bool bOpen, FHOLMan
 	Write(FString::Printf(TEXT("/slots/%d"), SlotIndex), FHOLManagerClientRules::MakeSlotBody(bOpen), MoveTemp(Done));
 }
 
-void UHOLManagerClient::SetSlotAI(const int32 SlotIndex, const TOptional<int32> ColorIndex, const TOptional<int32> Team, FHOLManagerLobbyDone Done)
+void UHOLManagerClient::SetSlotAI(const int32 SlotIndex, const TOptional<int32> ColorIndex, const TOptional<int32> Team, FHOLManagerLobbyDone Done, const FString& Faction)
 {
-	Write(FString::Printf(TEXT("/slots/%d"), SlotIndex), FHOLManagerClientRules::MakeAISlotBody(ColorIndex, Team), MoveTemp(Done));
+	Write(FString::Printf(TEXT("/slots/%d"), SlotIndex), FHOLManagerClientRules::MakeAISlotBody(ColorIndex, Team, Faction), MoveTemp(Done));
 }
 
 void UHOLManagerClient::StartMatch(FHOLManagerStartDone Done)

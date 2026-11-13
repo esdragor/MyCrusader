@@ -200,7 +200,7 @@ FString FHOLManagerClientRules::MakeJoinBody(const FString& PlayerName, const FS
 }
 
 FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const TOptional<bool> bReady,
-	const TOptional<bool> bSpectator)
+	const TOptional<bool> bSpectator, const FString& Faction)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	if (ColorIndex.IsSet())
@@ -218,6 +218,11 @@ FString FHOLManagerClientRules::MakeMeBody(const TOptional<int32> ColorIndex, co
 	if (bSpectator.IsSet())
 	{
 		Object->SetBoolField(TEXT("spectator"), bSpectator.GetValue());
+	}
+	// FactionChoiceInProgress.md: the faction's name (the enum's), only when given.
+	if (!Faction.IsEmpty())
+	{
+		Object->SetStringField(TEXT("faction"), Faction);
 	}
 	return WriteBody(Object);
 }
@@ -287,7 +292,7 @@ FString FHOLManagerClientRules::MakeSlotBody(const bool bOpen)
 	return WriteBody(Object);
 }
 
-FString FHOLManagerClientRules::MakeAISlotBody(const TOptional<int32> ColorIndex, const TOptional<int32> Team)
+FString FHOLManagerClientRules::MakeAISlotBody(const TOptional<int32> ColorIndex, const TOptional<int32> Team, const FString& Faction)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("state"), TEXT("ai"));
@@ -298,6 +303,10 @@ FString FHOLManagerClientRules::MakeAISlotBody(const TOptional<int32> ColorIndex
 	if (Team.IsSet())
 	{
 		Object->SetNumberField(TEXT("team"), Team.GetValue());
+	}
+	if (!Faction.IsEmpty())
+	{
+		Object->SetStringField(TEXT("faction"), Faction);
 	}
 	return WriteBody(Object);
 }
