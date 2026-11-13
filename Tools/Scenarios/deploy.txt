@@ -1,6 +1,6 @@
 # Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, le Mangonneau (nom du GDD ; substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTE ; la case D de sa grille dit Monter ; la touche D le monte (8 s, valeurs proposees), la case dit alors Demonter ; monte et sans ordre, il prend seul la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D le demonte (5 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
 # Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin (le fragment est pose a la naissance).
-# Tir visible (recette 2, 21:25) : apres le premier coup, le projectile est ralenti (hol.Combat.ArrowSpeed 500 : ~4,4 s de vol sur ~22 m au lieu de 0,6 s) pour qu'il soit en l'air sur la capture deploy_fire ; vitesse rendue (3750) avant le demontage. notereset garde le panneau des notes court (il cachait la Maison).
+# Tir visible (recette 2, 21:25) : le coup de siege du Mangonneau sur un batiment n'a PAS de projectile dessine (BuildingAttackType Siege : coup immediat, hol.Combat.ArrowReport 'launched 0') ; on montre donc l'effet : clic sur la Maison, ses PV a deux coups d'intervalle. notereset garde le panneau des notes court (il cachait la Maison).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
@@ -35,22 +35,20 @@ note 3. Monte : la case D dit Demonter. Sans ordre, il tire seul sur la Maison (
 hol.Camera.FocusNear 4200 0
 frames 2
 waitlog Mangonel hits a building for 45
-hol.Combat.ArrowSpeed 500
-note 3b. Projectile ralenti pour la capture (hol.Combat.ArrowSpeed 500).
-wait 7
+hol.Select.Click 0.5 0.32
+note 3b. Tu cliques sur la Maison : ses points de vie baissent de 45 a chaque coup (un coup toutes les 5 s).
+frames 20
 hol.HUD.Report
 hol.Combat.ArrowReport
-capture deploy_fire_wide
-hol.Camera.Zoom 4
-frames 2
 capture deploy_fire
 waitlog Mangonel hits a building for 45
-hol.Combat.ArrowSpeed 3750
-hol.Camera.Zoom -4
-frames 2
-frames 10
+frames 20
+hol.HUD.Report
 capture deploy_fire_hit
 notereset
+hol.Select.ClickUnit -1
+waitlog Selection: Mangonel
+frames 10
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units pack up
 note 4. Tu appuies encore sur D : l'engin se demonte (5 s), il ne tire plus et peut marcher.
