@@ -16,19 +16,19 @@ struct FHOLSpecializationView
 	GENERATED_BODY()
 
 	/** The lowest tier whose unlock runs at the Forum (the bar's), 0 when none runs. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Specialization")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Specialization")
 	int32 PendingTier = 0;
 
 	/** The option of PendingTier that runs, -1 when none. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Specialization")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Specialization")
 	int32 PendingOption = -1;
 
 	/** The match time left before PendingTier's option applies (HOLSpecialization::RemainingMs), 0 when none runs. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Specialization")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Specialization")
 	int32 RemainingMs = 0;
 
 	/** Per tier (index = tier, 1 to 3; index 0 unused): the applied option, or -1. */
-	UPROPERTY(BlueprintReadOnly, Category = "HeroesOfLiberty|Specialization")
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|Specialization")
 	TArray<int32> Chosen;
 
 	int32 GetChosen(const int32 Tier) const { return Chosen.IsValidIndex(Tier) ? Chosen[Tier] : -1; }

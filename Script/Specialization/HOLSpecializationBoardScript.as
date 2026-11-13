@@ -1,0 +1,62 @@
+// The server's specialization board (SP2, SpecializationInProgress.md), the script side of UHOLSpecializationSubsystem: one
+// FHOLSpecializationState per seat; the C++ part gives the seat's tier (AHOLGameState::GetTier), its Forum (complete: answer B of
+// Q-nomad-forum Q2; standing: Q2 answer A, paused) and the world's time; the rules are HOLSpecializationRules.as (Start, Cancel, Advance).
+// Server and solo only (AHOLPlayerController::ServerStartSpecialization calls it; a client never decides).
+// Tested by HeroesOfLiberty.Specialization.ServerBoard. Two options per tier for now (the Templars' third commandery comes with their faction).
+class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
+{
+	TArray<FHOLSpecializationState> States;
+
+	FHOLSpecializationState& StateOf(int Slot)
+	{
+		while (States.Num() <= Slot)
+			States.Add(HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount));
+		return States[Slot];
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int StartSpecialization(int Slot, int Tier, int Option, int PlayerTier, bool bForumComplete)
+	{
+		if (Slot < 0)
+			return HOLSpecialization::BadTier;
+		return HOLSpecialization::Start(StateOf(Slot), Tier, Option, PlayerTier, bForumComplete);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int CancelSpecialization(int Slot)
+	{
+		if (Slot < 0)
+			return HOLSpecialization::NothingToCancel;
+		return HOLSpecialization::Cancel(StateOf(Slot));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool IsSpecializationOpen(int Slot, int Tier, int PlayerTier, bool bForumComplete)
+	{
+		return Slot >= 0 && HOLSpecialization::IsOpen(StateOf(Slot), Tier, PlayerTier, bForumComplete);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	int AdvanceSpecialization(int Slot, int ElapsedMs, bool bForumStanding)
+	{
+		if (Slot < 0)
+			return 0;
+		return HOLSpecialization::Advance(StateOf(Slot), ElapsedMs, bForumStanding);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	FHOLSpecializationView ViewSpecialization(int Slot)
+	{
+		FHOLSpecializationView View;
+		View.Chosen.Add(-1);
+		if (Slot < 0)
+			return View;
+		FHOLSpecializationState& State = StateOf(Slot);
+		for (int Tier = HOLSpecialization::FirstTier; Tier <= HOLSpecialization::LastTier; Tier++)
+			View.Chosen.Add(HOLSpecialization::ChosenOption(State, Tier));
+		View.PendingTier = State.PendingTier;
+		View.PendingOption = State.PendingTier > 0 && State.PendingTier < State.RunningOption.Num() ? State.RunningOption[State.PendingTier] : -1;
+		View.RemainingMs = HOLSpecialization::RemainingMs(State);
+		return View;
+	}
+}
