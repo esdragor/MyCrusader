@@ -7,7 +7,9 @@ at 256 px (gold and white on transparent, dark edged) then reduced.
   python Tools/Editor/make_talent_icons.py --sheet <png>
       the comparison sheet out of the game: every icon in three framings (A dark box + family border, B family disc,
       C dark box + family corner) at 64 and 32 px, labelled, for Retours/Q-talents-icons.md
-Import into the game: not done yet (waits for the answer to Q-talents-icons; same import as make_ui_icons.py).
+The PNGs carry frame A (Q-talents-icons answered A: dark box, border of the family's colour). Import into the game, no window:
+  UnrealEditor-Cmd.exe <project> -run=pythonscript -script=<this file> -unattended -nullrhi -nosplash -nosound
+      the 24 textures into /Game/UI/Icons/Talents/T_Talent_<key> (the editor's Python has no PIL: draw the PNGs first)
 """
 import math
 import os
@@ -50,6 +52,7 @@ def sun_points(centre, inner, outer, rays):
 
 PNG_FOLDER = os.path.join(HERE, "Data", "Icons", "Talents")
 SIZE = 64
+FOLDER = "/Game/UI/Icons/Talents"
 EDGE = EMBLEM_EDGE
 STEEL = (196, 204, 214, 255)
 STEEL_DARK = (70, 76, 88, 255)
@@ -302,14 +305,43 @@ def draw_talent(key):
 
 
 def write_pngs():
-    from PIL import Image
+    """The 24 PNGs in the frame the user chose (Q-talents-icons = A, 2026-11-13 17:45): a dark box with a border of the family's
+    colour (Guardian blue, Captain gold, Champion red), the icon inside."""
     os.makedirs(PNG_FOLDER, exist_ok=True)
     paths = []
     for key in NAMES:
         path = os.path.join(PNG_FOLDER, "T_Talent_%d.png" % key)
-        draw_talent(key).resize((SIZE, SIZE), Image.LANCZOS).save(path)
+        framed(draw_talent(key), key % 10, "A", SIZE).save(path)
         paths.append(path)
     return paths
+
+
+def import_textures():
+    """In the editor (UnrealEditor-Cmd -run=pythonscript, no window): the PNGs as interface textures in /Game/UI/Icons/Talents,
+    the same settings as make_ui_icons.import_textures (UI group, no mipmaps, UserInterface2D, sRGB, never streamed)."""
+    import unreal
+    for key in NAMES:
+        name = "T_Talent_%d" % key
+        task = unreal.AssetImportTask()
+        task.set_editor_property("filename", os.path.join(PNG_FOLDER, name + ".png"))
+        task.set_editor_property("destination_path", FOLDER)
+        task.set_editor_property("destination_name", name)
+        task.set_editor_property("automated", True)
+        task.set_editor_property("replace_existing", True)
+        task.set_editor_property("save", False)
+        unreal.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+        asset = FOLDER + "/" + name
+        texture = unreal.load_asset(asset)
+        if not isinstance(texture, unreal.Texture2D):
+            raise RuntimeError("Could not import %s as a texture (got %s)" % (name, texture))
+        texture.set_editor_property("lod_group", unreal.TextureGroup.TEXTUREGROUP_UI)
+        texture.set_editor_property("mip_gen_settings", unreal.TextureMipGenSettings.TMGS_NO_MIPMAPS)
+        texture.set_editor_property("compression_settings", unreal.TextureCompressionSettings.TC_EDITOR_ICON)
+        texture.set_editor_property("srgb", True)
+        texture.set_editor_property("never_stream", True)
+        if not unreal.EditorAssetLibrary.save_loaded_asset(texture, only_if_is_dirty=False):
+            raise RuntimeError("Could not save " + asset)
+        unreal.log("Talent icon %s imported" % asset)
 
 
 def framed(icon_big, family, variant, size):
@@ -366,7 +398,15 @@ def write_sheet(path):
     return path
 
 
-if __name__ == "__main__":
+try:
+    import unreal  # noqa: F401
+    IN_EDITOR = True
+except ImportError:
+    IN_EDITOR = False
+
+if IN_EDITOR:
+    import_textures()
+elif __name__ == "__main__":
     if len(sys.argv) >= 3 and sys.argv[1] == "--sheet":
         print(write_sheet(sys.argv[2]))
     else:
