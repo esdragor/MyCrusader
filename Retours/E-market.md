@@ -3,7 +3,8 @@
 STATUT : VU À L'ÉCRAN (le libellé des cases ; l'achat et la vente du scénario passent par la commande interne)
 GESTE: interne (le scénario achète et vend par `hol.Select.Grid`, pas par la touche Z / S ; à toi d'essayer A Z E / Q S D et le clic sur les cases)
 SON: non entendu (lancé avec -nosound)
-branches: galadriel-tab
+branches: aucune (main)
+Recette indépendante 19:3x sur main dc67a16 (worktree Faramir, branche fog) : PASS (preflight 21 s, sanity et HUD overlap OK), PNG vus : market_grid (A Z E « +96 / +96 / +64 » + carrés rouge / brun / gris, Q S D « +56 / +56 / +84 » + carré doré, aucun « 100 », stock 2200), market_bought (bois 2296, or 2100, Z « +92 », S « +58 »), market_sold (bois 2196, or 2158, Z et S reviennent à +96 / +56) ; réserves : « Nourriture » remplit toute la largeur de sa case (aucune marge, à revoir en en / ja) ; chiffre « +96 » et carré ~12 px, petits à 1280x720 ; l'en-tête du panneau reste « en préparation… » pendant les captures ; geste interne (Z / S et vrai clic non rejoués).
 
 Ce qui change (D781) : ligne du haut A Z E = Acheter : « +96 » puis le carré de la ressource (rouge nourriture, brun bois, gris pierre) ; ligne du dessous Q S D = Vendre : « +56 » puis le carré doré de l'or. Le nom de la ressource reste en haut de la case (sinon les trois cases Vendre seraient identiques). Le carré tient lieu de logo tant que les icônes de ressources n'existent pas (Placeholders.txt « Icônes des ressources »). L'info-bulle garde la phrase complète pour 100 et le cours.
 

@@ -42,7 +42,8 @@ hol.HUD.Click GridCell02
 waitlog Grid: necrotic rage
 waitlog Rage order: slot 0 queued for 1 units
 waitlog casts the necrotic rage
-frames 60
+# (2026-11-13 recette: was "frames 60", ~0.19 s at the hidden run's speed, before the grid's 4-per-second refresh: wait 1 s, same fix as a633b97.)
+wait 1
 hol.HUD.Report
 # hol.Rage.Visual 4 (default): the cell E is greyed while the rage runs (the HUD must redraw it with time, not only at a selection change).
 waitlog E=NecroticRage greyed

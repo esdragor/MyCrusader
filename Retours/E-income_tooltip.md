@@ -3,7 +3,8 @@
 STATUT : VU À L'ÉCRAN (le contenu de l'infobulle, dans les 3 langues ; le survol à la vraie souris reste à faire par toi)
 GESTE: interne      (`hol.HUD.HoverIncome <i>` : test de survol de Slate au centre du montant, puis la même infobulle dessinée dans la vue pour la capture ; pas de vraie souris)
 SON: sans objet
-branches: net-playtest
+branches: aucune (main)
+Recette indépendante 19:3x sur main dc67a16 (worktree Faramir, branche fog) : PASS (preflight 26 s ; WARN sans hol.HUD.Report ni hol.Test.Sanity), PNG vus : income_tip_fr (« +545 bois/min » sous Bois 210 (5)), income_tip_gold_fr (« +0 or/min » sous Or 200), income_tip_en (« +545 wood/min » sous Wood 240), income_tip_ja (« +545 木材/分 » sous 木材 240) ; réserves : texte de l'infobulle minuscule (~6 px de haut à 1280x720, lisible seulement en zoomant : REGLAGE probable) ; l'infobulle de l'or recouvre le « S » de « Scénario » du panneau (le scénario n'appelle pas hol.HUD.Report, recouvrement non audité) ; survol à la vraie souris non rejoué.
 
 Pré-vol (2026-11-13 18:30, agent Glorfindel L54, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel, main e4f81eb fusionné) : `preflight.ps1 income_tooltip -Root <worktree>` PASS (104 s, 4 PNG).
 Textes relus dans les .po (a70bc24) : `IncomeTip` fr "+{0} {1}/min", en "+{0} {1}/min", ja "+{0} {1}/分" ; `TributeWood/Gold` = bois / or, wood, 木材.
