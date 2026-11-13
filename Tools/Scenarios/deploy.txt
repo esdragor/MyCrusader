@@ -29,8 +29,8 @@ note 2. Tu appuies sur D : l'engin se monte (8 s).
 wait 9
 hol.HUD.Report
 waitlog D=Pack
-capture deploy_deployed
 notereset
+capture deploy_deployed
 note 3. Monte : la case D dit Demonter. Sans ordre, il tire seul sur la Maison (coups de 45).
 hol.Camera.FocusNear 4200 0
 frames 2
