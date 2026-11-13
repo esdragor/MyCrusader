@@ -26,3 +26,9 @@ Le champ optionnel `faction` (nom de `EHOLFaction`) de `PUT /lobbies/{id}/me` et
 ## Journal
 
 - 2026-11-13 19:2x : premier test rouge écrit (stubs de `HOLFactionChoice`, corps de requête avec `faction` déjà codés), commit 7371e9f, build lancé.
+- 2026-11-13 19:5x : rouge constaté (3 tests FactionChoice KO, 1223/1226), puis vert : build PASS, tests 1238/1238, `quick_check -Parts smoke` PASS, `-Parts lobby` PASS (après `net_match.ps1 -StageOnly` : le serveur compilé était plus vieux que la dll).
+- Solo : liste de 5 entrées (6 avec le cheat), Dragon / Ombre / Feu grisés, `HandleFactionChosen`, lancement avec `Sanitize` ; captures vues (`Tools\Tests\faction_shots.ps1`, `faction_A_without` : 5 entrées dont 3 grisées, `faction_B_with` : 6 entrées avec « Templiers » en dernier) ; log : Dragon refusé, Légions prises, Templiers pris avec le cheat, « Templiers » toujours affiché après le retrait du cheat.
+- Salon : client prêt (champ `faction` de `PUT /me` et de `PUT /slots/{i}`, lecture générale de `Row->Faction`, liste active sur ma ligne et sur les IA du chef, grisée sinon, ligne Templiers affichée sans le cheat) ; le Manager a livré sa commande (4043c18). NON FAIT : test de bout en bout du choix de faction au salon (la partie `lobby` de quick_check n'a pas d'étape faction) ; à ajouter.
+- Triple clic réel sur le titre : NON vérifié à l'écran (la console n'injecte pas de clic) ; son compteur est testé (`FactionChoice.TripleClick`), le branchement `NativeOnMouseButtonDown` + `Title` rendu hit-testable est à essayer à la main.
+- Correctif au passage : `HOLSelectionMarkers.cpp` incluait `HOLRageVisual.h` avant son propre en-tête (build FAIL « Expected ... first header »), ordre inversé (5f0266e).
+- Décisions posées sans trancher : aucune ; à noter : le Manager remet « Prêt » à faux quand la faction change (son choix 4, comme couleur et équipe).
