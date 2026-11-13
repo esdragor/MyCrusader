@@ -192,6 +192,30 @@ if (-not $Only -or $Only -eq 'm') {
     Check ($Ok.Count -eq 1 -and $Ok[0].load -match 'vm [\d.]+ GB' -and $Ok[0].load -notmatch 'waited') "CSV load of the normal build: vm GB, no wait, got: $($Ok.load)"
 }
 
+if (-not $Only -or $Only -eq 't') {
+    # L12-3 (2026-11-12): -MaxWaitMin N: past N minutes in the queue, the build gives up (never compiles), says so, leaves the
+    # queue and ends with exit 5, so an agent works without a binary meanwhile instead of waiting for nothing.
+    Write-Host "[t] -MaxWaitMin: wait exceeded"
+    $S = New-Scenario t
+    $Gate = Join-Path $Tmp "gate_t"
+    $env:HOL_FAKE_GATE = $Gate
+    Launch $S 'A' 1
+    Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq 'wt_A' -and $_.state -eq 'compiling' }).Count -eq 1 }) "A holds the slot (compiling)"
+    Launch $S 'B' 1 @('-MaxWaitMin', '0.1')
+    $CodeB = Wait-Exit $S 'B' 60
+    $OutB = Out-Text $S 'B'
+    Check ($CodeB -eq 5) "B (waited past -MaxWaitMin 0.1) exits with code 5, got: $CodeB"
+    Check ($OutB -match 'wait exceeded' -and $OutB -match 'attente depassee') "B says wait exceeded / attente depassee, got: $OutB"
+    Check (@(Tickets $S | Where-Object { $_.worktree -eq 'wt_B' }).Count -eq 0) "no wt_B ticket left in the queue"
+    Set-Content $Gate "go"
+    $CodeA = Wait-Exit $S 'A' 60
+    $env:HOL_FAKE_GATE = ""
+    $R = Rows $S
+    $RowB = @($R | Where-Object { $_.worktree -eq 'wt_B' })
+    Check ($CodeA -eq 0) "A still ends PASS, got: $CodeA"
+    Check ($RowB.Count -eq 1 -and $RowB[0].result -eq 'TIMEOUT' -and -not $RowB[0].compile_start) "CSV row of B: result TIMEOUT, never compiled, got: $($RowB.result)"
+}
+
 Get-Process powershell -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 if ($Failures) { Write-Host "build_queue_test : FAIL ($Failures check(s))"; exit 1 }
