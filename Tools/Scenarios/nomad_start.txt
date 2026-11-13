@@ -23,3 +23,5 @@ frames 30
 capture nomad_start_close
 hol.Test.Sanity
 note Partie Nomade : aucun Centre-ville au depart. Ton Roi, tes 5 Paysans et ton heros sont nes au point de depart ; construis ton premier Forum ou tu veux.
+# The scenario's real end: an agent's play.ps1 -Hidden closes here; the user's own run ignores it and plays on.
+quit
