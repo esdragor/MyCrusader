@@ -10,6 +10,7 @@ $Build = if ($BuildScript) { $BuildScript } else { Join-Path $Repo "Tools\build.
 $Tmp = Join-Path $env:TEMP ("hol_bq_test_" + [guid]::NewGuid().ToString("N").Substring(0, 8))
 New-Item -ItemType Directory -Force $Tmp | Out-Null
 $env:HOL_BUILD_POLL_SECONDS = "1"
+$env:HOL_BUILD_MIN_FREE_VM_GB = "0"   # L12-1c: the queue cases never wait for memory (case [m] raises the floor itself)
 $Failures = 0
 function Check($Condition, $Message) {
     if ($Condition) { Write-Host "  PASS $Message" } else { Write-Host "  FAIL $Message"; $script:Failures++ }
@@ -165,6 +166,30 @@ if (-not $Only -or $Only -eq 'e') {
     $Pass = @($R | Where-Object { $_.result -eq 'PASS' } | Sort-Object compile_start)
     Check (($Pass.worktree -join ',') -eq 'wt_A,wt_B,wt_B') "CSV: PASS order A, B1, B2, got: $($Pass.worktree -join ',')"
     Check (@(Tickets $S).Count -eq 0) "queue empty at the end"
+}
+
+if (-not $Only -or $Only -eq 'm') {
+    # L12-1c (2026-11-12): a build waits while the free virtual memory is under the floor (8 GB) and writes it (log + CSV 'load').
+    # Real measure; the test only raises the floor (HOL_BUILD_MIN_FREE_VM_GB) and shortens the wait cap (HOL_BUILD_MEMORY_WAIT_MAX_SECONDS).
+    Write-Host "[m] free virtual memory floor"
+    $S = New-Scenario m
+    $env:HOL_BUILD_MIN_FREE_VM_GB = "100000"; $env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS = "4"
+    Launch $S 'A' 1
+    $env:HOL_BUILD_MIN_FREE_VM_GB = "0"; $env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS = ""
+    $CodeLow = Wait-Exit $S 'A' 60
+    $OutLow = Out-Text $S 'A'
+    Check ($OutLow -match 'free virtual memory') "low memory: build.ps1 says it waits for free virtual memory, got: $OutLow"
+    $env:HOL_BUILD_MIN_FREE_VM_GB = "0"   # the machine may really be short: floor 0 = never waits
+    Launch $S 'B' 1
+    $env:HOL_BUILD_MIN_FREE_VM_GB = "0"
+    $CodeOk = Wait-Exit $S 'B' 60
+    $R = Rows $S
+    $Low = @($R | Where-Object { $_.worktree -eq 'wt_A' })
+    $Ok = @($R | Where-Object { $_.worktree -eq 'wt_B' })
+    Check ($CodeLow -eq 0 -and $CodeOk -eq 0) "both builds end PASS after the capped wait, got: $CodeLow,$CodeOk"
+    Check ((Get-Content $S.Csv -TotalCount 1) -match ',load$') "CSV header ends with the load column"
+    Check ($Low.Count -eq 1 -and $Low[0].load -match 'vm [\d.]+ GB' -and $Low[0].load -match 'waited [1-9]\d* s') "CSV load of the low-memory build: vm GB + waited N s, got: $($Low.load)"
+    Check ($Ok.Count -eq 1 -and $Ok[0].load -match 'vm [\d.]+ GB' -and $Ok[0].load -notmatch 'waited') "CSV load of the normal build: vm GB, no wait, got: $($Ok.load)"
 }
 
 Get-Process powershell -ErrorAction SilentlyContinue | Out-Null

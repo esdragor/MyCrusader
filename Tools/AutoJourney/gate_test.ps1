@@ -287,6 +287,25 @@ Check ($eScn -match "(?m)^FAIL .*fixb" -and -not ($eScn -match "(?m)^FAIL .*intr
 $eNone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-none | Out-String
 Check ($eNone -match "(?m)^WARN .*branches:") 'essay: aucune branche citee -> WARN (ajouter la ligne branches:)' $eNone
 
+# --- L12-1c (2026-11-12) : session_gate Launch : WARN si la memoire virtuelle libre < seuil (8 Go) ou si un cl.exe d'un AUTRE moteur compile
+$VmRoot = Join-Path $Tmp 'HeroesOfLiberty-FakeVm'
+New-Item -ItemType Directory -Path $VmRoot | Out-Null
+$vmLow = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $VmRoot -MinFreeVirtualGB 100000 | Out-String
+Check ($vmLow -match '(?m)^WARN .*memoire virtuelle libre') 'launch: memoire virtuelle libre < seuil -> WARN (mesure reelle, seuil 100000 Go)' $vmLow
+$vmOk = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $VmRoot -MinFreeVirtualGB 0 | Out-String
+Check ($vmOk -match '(?m)^PASS .*memoire virtuelle libre' -and -not ($vmOk -match '(?m)^WARN .*memoire virtuelle libre')) 'launch: memoire virtuelle libre >= seuil -> PASS' $vmOk
+$FakeCl = Join-Path $Tmp 'cl.exe'
+Copy-Item (Join-Path $env:SystemRoot 'System32\cmd.exe') $FakeCl
+$FakeEngine = 'C:\UE\FakeHolEngine'
+$clOther = Start-Process $FakeCl -ArgumentList "/c `"set MARK=C:\UE\FakeOtherEngine\Engine & ping -n 120 127.0.0.1 >nul`"" -PassThru -WindowStyle Hidden
+$clOurs = Start-Process $FakeCl -ArgumentList "/c `"set MARK=$FakeEngine\Engine\Binaries\DotNET & ping -n 120 127.0.0.1 >nul`"" -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1500
+$clOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $VmRoot -EngineRoot $FakeEngine | Out-String
+Check ($clOut -match "(?m)^WARN .*cl\.exe d'un autre moteur.*\b$($clOther.Id)\b") "launch: cl.exe d'un autre moteur -> WARN avec son PID ($($clOther.Id))" $clOut
+Check (-not ($clOut -match "(?m)^WARN .*cl\.exe.*\b$($clOurs.Id)\b")) "launch: cl.exe du moteur du projet ($($clOurs.Id)) -> pas de WARN" $clOut
+foreach ($cp in $clOther, $clOurs) { Stop-Process -Id $cp.Id -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process -Filter "Name='PING.EXE'" -ErrorAction SilentlyContinue | Where-Object { $_.ParentProcessId -in @($clOther.Id, $clOurs.Id) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
+
 # --- L8-1 : la ligne branches: est dans le gabarit et dans les regles
 $Tpl = Get-Content (Join-Path $Here 'E_template.md') -Raw -Encoding UTF8
 Check ($Tpl -match '(?m)^branches\s*:') 'E_template: ligne branches:'
