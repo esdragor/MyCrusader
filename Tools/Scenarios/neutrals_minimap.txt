@@ -21,7 +21,8 @@ hol.Camp.Aggro 0
 hol.Units.Move 0 0 0 a
 waitlog Camp 0: cleared for good
 waitlog Minimap camps: 1 seen, 0 alive
-frames 30
+# The red ring of the fight alert covers the grey dot for a few seconds: let it fade before the capture.
+wait 6
 capture neutrals_minimap_cleared
 hol.Camp.Report
 waitlog Camp 1 at (9000, 9000): guarding
