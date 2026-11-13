@@ -11,3 +11,6 @@ Version précédente (essais du 2026-11-11 et du 2026-11-09, tous joués ou pér
   - `E-audio_compare_buildings_stone.md` et `_metal.md` (les sons ne se lancent jamais ; index : `E-audio_compare_buildings.md`).
 - **SON, à écouter par toi seul** : `E-audio_panel.md` (worktree Arwen, même chaîne de sons que stone/metal : à ne donner qu'après le diagnostic des sons qui ne se lancent pas).
 - **LOGIQUE SEULEMENT** : `E-playtest_hero_army.md` (preflight FAIL Sanity, spin de mêlée D641, non corrigé).
+
+## Relu au nettoyage du 2026-11-13 (début d'Auto_Journey)
+**Prêts à donner : 0.** Toujours 6 essais (7 fiches E-* avec l'index audio), aucun donné. Changement : fog fusionnée dans main (b689e5a via maps, 4851635), préflight durci 42e5e41 dans main ; reste pour chaque `[NE PAS JOUER]` : recompiler la copie jouée puis `preflight.ps1 <nom> -Root <cette copie>` complet PASS (ligne « ETAT 2026-11-13 » de chaque fiche). net-playtest (E-disconnect_1v1) n'est toujours pas dans main.
