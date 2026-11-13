@@ -6,6 +6,7 @@ GESTE: réel (touche D, deux fois : hol.UI.Key D, evenement clavier Slate) + cli
 SON: non entendu    (-nosound)
 branches: aucune (main)
 
+Recette indépendante 3 23:06 sur main 091df3c : PASS (preflight 40 s), PNG vus : deploy_packed (Mangonneau 200/200, D « Monter »), deploy_deployed (D « Démonter », statut « Attaque »), deploy_fire (Maison IA Normal 2, 555 / 600), deploy_fire_hit (510 / 600), deploy_packed_again (D redit « Monter », statut parti, Maison visible) ; réserves : sur les 2 premières captures le titre du panneau court se replie en deux lignes (« en / préparation… ») et ce panneau mord le toit de la Maison ; les notes écrivent « Demonter » sans accent quand la case dit « Démonter » ; le Mangonneau (mannequin gris) est posé sur un tas de 3 pierres ; aucun projectile (manque connu).
 Pre-vol 2026-11-13 21:40 : `preflight.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` PASS (scenario ready, 37 s, aucun avertissement, HUD sans recouvrement, sanity, pan exposure OK). 5 PNG OUVERTS et vus :
 - deploy_packed : Mangonneau selectionne (200/200, Attaque 45), grille Q Attaque / S Arret / D **Monter** / V Tenir ; la Maison rouge est visible en entier juste sous le panneau court « Scenario deploy en preparation ».
 - deploy_deployed : case D = **Demonter**, statut « Attaque » ; panneau court (notereset avant la capture), Maison visible en entier.

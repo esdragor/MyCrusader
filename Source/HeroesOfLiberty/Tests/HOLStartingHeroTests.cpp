@@ -2,6 +2,9 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "Match/HOLPlayerState.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
@@ -310,6 +313,7 @@ bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
 	constexpr int32 Slot = 0;
 	const FTransform Start(FRotator(0.f, 90.f, 0.f), FVector(5000.0, 2000.0, 0.0));
 	TArray<FHOLUnitView> Born[2];
+	int32 Used[2] = { INDEX_NONE, INDEX_NONE };
 	for (int32 Way = 0; Way < 2; ++Way)
 	{
 		const bool bNomad = Way == 1;
@@ -350,12 +354,27 @@ bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
 					Born[Way].Add(View);
 				}
 			}
+			// The population the top bar reads (AHOLPlayerState), written by the production at the start of each step: the
+			// Nomad's starting units count as the standard start's, even with no building at all (seen at the trial of
+			// nomad_start: "Population 0 / 0" with 5 Peasants alive).
+			AHOLPlayerState* Player = World->SpawnActor<AHOLPlayerState>();
+			UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+			UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+			if (TestNotNull(TEXT("player state"), Player) && TestNotNull(TEXT("production"), Production) && TestNotNull(TEXT("simulation"), Simulation))
+			{
+				Player->SetMatchSlot(Slot, Slot);
+				Production->OnWorldBeginPlay(*World);
+				Simulation->GetOnStepStarted().Broadcast(1);
+				Used[Way] = Player->GetPopulationUsed();
+			}
 		}
 		GEngine->DestroyWorldContext(World);
 		World->DestroyWorld(false);
 	}
 	const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(FHOLMatchConfig::MakeDefault(), GetDefault<UHOLMatchSettings>()->StartingPeasants);
 	TestTrue(TEXT("Standard: its starting Peasants (and hero) born"), NumPeasants > 0 && Born[0].Num() >= NumPeasants);
+	TestTrue(TEXT("Standard: the top bar counts its starting units"), Used[0] > 0);
+	TestEqual(TEXT("Nomad: the top bar counts the same population as the standard start's (no building needed)"), Used[1], Used[0]);
 	if (TestEqual(TEXT("Nomad: as many born as the standard start"), Born[1].Num(), Born[0].Num()))
 	{
 		for (int32 Index = 0; Index < Born[0].Num(); ++Index)
