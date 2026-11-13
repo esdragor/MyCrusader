@@ -96,4 +96,18 @@ Etape 0 (PLAN-1113s, Fable, a11a7e15776d114a2, 16:15-16:22) : machine saturee (c
 | FARAMIR-1113c (integrateur) | afde029828d5ff5bb | Faramir | fog | previols talents, fog_orders, map_eldorado, legions_warrior ; L46 build hud ; sans C++ | 16:25 |
 | (Glorfindel-1113c fini 16:32, 45 appels) | a68f76eb35005a0d9 | Glorfindel | net-playtest | e10be35 scenario income_tooltip + HoverIncome C++ NON COMPILE ; cle IncomeTip manquante des .po (JA « /min ») | 16:25 |
 | GLORFINDEL-1113d | a7568d9edb3f525c0 | Glorfindel | net-playtest | REPRISE : build rang 3, GatherText/fill_po, preview income_tooltip, E-income_tooltip, L58 | 16:35 |
-| CELEBORN-1113e | a93e8f0ebdcb9eb5e | Celeborn | hero-j8-close | merge main, planche hors jeu de la pose B (D787), L27 maa_attack ; sans C++ | 16:25 |
+| (Faramir-1113c fini 16:39, 45 appels) | afde029828d5ff5bb | Faramir | fog | previols PASS + PNG vus : talents, fog_orders, map_eldorado, legions_warrior (scenario corrige a633b97) ; build hud vert, known_reds 85f9997 ; 4 fiches E-* commitees 27c5547 ; fog = main + 3 commits | 16:25 |
+| ARWEN-1113c | a454d725c49c941ad | Arwen | d751-root | carre du camp lisible (rouge), preview neutrals_minimap, audio stone/metal ; build rang 4 si besoin | 16:42 |
+| HALDIR-1113c | a0e978cbf5f63cb71 | Haldir | maps | Q Nomade/specialisation/signaux, B4 foret (regle pure), SG2 si memoire | 16:42 |
+| SAURON-1113c | aacd6893782d30441 | Sauron | visual | Arquebusier : planche 10 echantillons hors jeu, resources_game ; sans C++ | 16:42 |
+| FARAMIR-1113d | addf39bf39b7d793b | Faramir | fog | outils : plafond C++ du gate (L13-2), L87-91 ; sans C++ | 16:42 |
+| (Elrond-1113d fini 16:52, 46 appels) | a61f2c7a4cce2e030 | Elrond | tiers | build PASS 16:43, tests 1224/1224, net 17/17 ; 3762f1a : cause du rouge deploy = HUD (grille d'ordres pas redessinee apres montage), corrige, non recompile ; nouveau rouge : engin monte ne tire pas sur un batiment ; deploy LOGIQUE SEULEMENT | 16:25 |
+| ELROND-1113e | a8e807bfa46907372 | Elrond | tiers | REPRISE : diagnostic engin monte qui ne tire pas, build, preflight deploy, E-deploy | 16:55 |
+| (Sauron-1113c fini 16:54, ~43 appels) | aacd6893782d30441 | Sauron | visual | 3812599 planche arquebus_sheet.png 10 candidats A-J hors jeu, Q-arquebusier-modele [A REPONDRE] ; resources_game laisse non suivi (echec jamais diagnostique) ; sans C++ | 16:42 |
+| CELEBORN-1113f | a3eb8560498eaea10 | Celeborn | hero-j8-close | BUG-melee-stuck-attack : diagnostic, test rouge, C++ seulement si cause + memoire >= 8 Go avant 19:00 | 16:57 |
+| (Galadriel-1113c fini 17:04, ~90 appels) | aa635b7ecdaf26550 | Galadriel | galadriel-tab | f13e060/b372781/1671613 D781 Marche code, NON COMPILE (build 16:43 encore en cours) | 16:25 |
+| (Faramir-1113d fini 17:03, 47 appels) | addf39bf39b7d793b | Faramir | fog | b9e6c03 rouge, 97a0622 correctifs gate L13-2/L87/L88-90, 97239e4 ; gate_test jamais vert (run tue par stray_processes) ; L91 non faite | 16:42 |
+| GALADRIEL-1113d | adaeceb61028fc194 | Galadriel | galadriel-tab | REPRISE : attendre/relancer le build, tests, build:market, preview market, puis L47 | 17:10 |
+| FARAMIR-1113e | a66a0ffa7a0075793 | Faramir | fog | gate_test jusqu'au vert (17 min, arriere-plan), L91 minimal ; sans C++ | 17:10 |
+| SAURON-1113d | ae90b161230d966d5 | Sauron | visual | GIF animes de l'Arquebusier (demande de l'utilisateur), sans C++ | 17:15 |
+| (Celeborn-1113e fini 16:42, 43 appels) | a93e8f0ebdcb9eb5e | Celeborn | hero-j8-close | merge main bf152d5, planche pose B (Saved\c1113e\planche_pose_B.png, gitignore), bras gauche « leve » = effet de camera (preuve), arm_body_check spear VERT / maa_attack ROUGE 4,3 cm ; Q-spear-grip-b-look [A REPONDRE] ; BUG-melee-stuck-attack analyse non commencee (a relancer quand le nombre d'agents baisse) | 16:25 |
