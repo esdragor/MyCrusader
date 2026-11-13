@@ -585,6 +585,8 @@ private:
 	int32 ShownPopulationUsed = 0;
 	int32 ShownPopulationCap = 0;
 	FHOLResources ShownGatherers;
+	/** Each resource's income a minute in its tooltip (Retours/Q-sites-gold-line.md, answer "other"); -1 until first shown. */
+	FHOLResources ShownIncome = FHOLResources(-1, -1, -1, -1);
 	int32 ShownIdleWorkers = INDEX_NONE;
 	/** Seconds since a group's activities (or a group of buildings) were read again. */
 	float SinceGroupRefresh = 0.f;

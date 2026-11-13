@@ -23,6 +23,25 @@ Séance INTERACTIVE 10:16 -> 14:15 (arrêt dur des agents 14:15, +15 min tolér�
 | GLORFINDEL-1113a | aabcfb15a01b099e9 | Glorfindel | net-playtest | quick_check, D788 infobulle de revenu (C++ 3), A4 Canaux | 10:53 |
 | HALDIR-1113a | a4de23c614ef7851b | Haldir | maps | D783-D786 réglages en script, tests à durcir | 10:53 |
 | SAURON-1113a | afb127d057ea93f0e | Sauron | visual | quick_check, préviol resources_compare, Placeholders | 10:53 |
+| GALADRIEL-1113b | ad03afe28f1c0623c | Galadriel | galadriel-tab | REPRISE après coupure API : D791, build (C++ 1), quick_check, préviol legions_warrior | 11:43 |
+| GLORFINDEL-1113b | a17bc1298aaf7e211 | Glorfindel | net-playtest | REPRISE : quick_check, D788 (C++ 2), A4 Canaux | 11:43 |
+| ELROND-1113b | a48eb9c3880c64c30 | Elrond | tiers | REPRISE : build (C++ 3), G6 e/G4 vert, préviol deploy | 11:43 |
+| (Glorfindel-1113b fini 12:26) | a17bc1298aaf7e211 | Glorfindel | net-playtest | 6dfa7ee D788 vert, 59e8f60 A4 vert, tests 1207/1207, net 16 PASS, a859c73 merge main ; branche prête, pas fusionnée | 12:26 |
+| HALDIR-1113b | ae4aa5588546c6d50 | Haldir | maps | tests de délais 30/45/60 s à durcir (sans C++), arrêt 13:10 | 12:28 |
+| (Haldir-1113b fini 12:36) | ae4aa5588546c6d50 | Haldir | maps | 22dbb3b : 4 tests de bornes 30/45/60 s, tests 1207/1207, merge main 1da908f ; branche prête, pas fusionnée | 12:36 |
+| (Elrond-1113b fini 12:45) | a48eb9c3880c64c30 | Elrond | tiers | build PASS, tests 1202/1202, net ROUGE 3/3 (timeout hol.UI.Key Maj/&, machine chargée), deploy preflight FAIL (phase reste Packed, piste portée 5250 > 5000) ; tiers NON prête | 12:45 |
+| ELROND-1113c | ac16adc86b094dcbb | Elrond | tiers | bug deploy (test rouge, correctif C++, build), préviol deploy, tool Maj, arrêt 14:15 | 12:48 |
+| (Faramir-1113b fini 12:47) | a5ed9c305ee716769 | Faramir | fog | 85aa788/224e89a build.ps1 -MaxWaitMin (L12-3), bae86ec/1e4671d eol_check .git cassé + WARN ?? Retours ; préviol disconnect_1v1 impossible (net-playtest pas dans fog) ; gate_test complet non rejoué | 12:47 |
+| SAURON-1113b | a99bf2ce32e5b2ca8 | Sauron | visual | quick_check, préviol resources_compare, Placeholders, arrêt 13:15 | 12:50 |
+| (Sauron-1113b fini 13:01) | a99bf2ce32e5b2ca8 | Sauron | visual | tests 1201/1201, préviol resources_compare PASS 10 PNG vus -> E-resources_compare [À ESSAYER] VU À L'ÉCRAN ; resources_game préviol FAIL (non commité) ; 9e1411c + merge main 7ebaa07 ; branche prête | 12:50 |
+| (Galadriel-1113b fini 13:02) | ad03afe28f1c0623c | Galadriel | galadriel-tab | 15221be D791 vert, e6b9c75 HUD rage + filtre infobulle Caserne (C++, non retesté), tests 1202/1202 sur le build 1 ; legions_warrior préviol FAIL (LaunchCheck compare la dll du module principal aux sources de tous les modules : faux périmé) -> LOGIQUE SEULEMENT | 11:43 |
+| FUSION-1113 | a07fb8de186d7574b | Faramir | fog | fusion groupée fog+maps+net-playtest+visual+d751-root+galadriel-tab (pas tiers), build merge, quick_check tests+net, ff-only main, arrêt 14:15 | 13:07 |
+| CELEBORN-1113b (fini 13:04) | a6598849c692c33a7 | Celeborn | hero-j8-close | cause du bras écrite, 38 variantes B balayées hors jeu, aucune verte (meilleur o25a15u8o4), soldier_poses.py non modifié, spear_arm LOGIQUE SEULEMENT, maa_attack vu [x] | 12:50 |
+| CELEBORN-1113c (fini 13:31) | a1369bf4bd7183379 | Celeborn | hero-j8-close | arm_body_check spear_attack VERT (cause : clés 0 et 56 partageaient le même dict, deepcopy), e0cb438 pose B + a11e355 rebake ; préviol spear_arm FAIL non lu, aucun PNG vu | 13:09 |
+| (Celeborn-1113d fini 13:43) | aafa582ff7cfff719 | Celeborn | hero-j8-close | préviol spear_arm PASS (3553fba scénario recadré, 8788ada journal), 5 PNG vus : pas de traversée visible mais Lancier bleu bras gauche levé douteux, caméra min 15 m -> E-spear_arm LOGIQUE SEULEMENT ; l. 29 non commencée | 13:36 |
+| CELEBORN-1113d | voir lancement 13:36 | Celeborn | hero-j8-close | préviol spear_arm : cause du FAIL, 5 PNG vus, fiche E-spear_arm, analyse l. 29, arrêt 14:15 | 13:36 |
+| ARWEN-1113b (fini 12:53) | a8912b7b64722100f | Arwen | d751-root | tests 1204/1204 ; net 15 REGRESSION valeurs vides (machine chargée, non concluant) ; 577b744 scénario neutrals_minimap (wait 6), PNG rouge/gris vus ; préviol FAIL 1 seul contrôle (294 fichiers Content/Audio/Candidates non commités) -> E-neutrals_minimap LOGIQUE SEULEMENT ; branche prête sous réserve de net | 12:40 |
+| FARAMIR-1113b | a5ed9c305ee716769 | Faramir | fog | préviols legions_roster_gesture/disconnect_1v1 puis outils sans C++, arrêt 13:10, hôte fusion | 12:28 |
 
 ## Programme du 2026-11-13
 

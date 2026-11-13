@@ -394,12 +394,22 @@ namespace UE::HeroesOfLiberty::Dev
 			}
 			else if (Verb == TEXT("notereset"))
 				{
-					// The compare scenarios show one option at a time: its note replaces those before it.
-					UE_LOG(LogHOLTest, Display, TEXT("Scenario note: %s"), *Rest);
+					// The compare scenarios show one option at a time: its note replaces those before it (fog, main).
+					// Without text, notereset only forgets the notes shown so far (galadriel-tab scenarios: notereset then note).
 					HOLTestHooks::FScenarioDisplay& NoteDisplay = HOLTestHooks::GetScenarioDisplay();
 					NoteDisplay.Notes.Reset();
-					NoteDisplay.Notes.Add(Rest);
-					HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
+					const FString NoteText = Rest.TrimStartAndEnd();
+					if (NoteText.IsEmpty())
+					{
+						UE_LOG(LogHOLTest, Display, TEXT("Scenario notes: reset"));
+						HOLTestHooks::NotifyScenarioChanged(TEXT(""), FColor::Yellow);
+					}
+					else
+					{
+						UE_LOG(LogHOLTest, Display, TEXT("Scenario note: %s"), *Rest);
+						NoteDisplay.Notes.Add(Rest);
+						HOLTestHooks::NotifyScenarioChanged(Rest, FColor::Yellow);
+					}
 				}
 				else if (Verb == TEXT("waitkey"))
 			{

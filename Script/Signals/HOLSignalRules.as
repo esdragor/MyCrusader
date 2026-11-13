@@ -37,13 +37,13 @@ namespace HOLSignal
 	const int MaxPerWindow = 3;
 	const int WindowMs = 5000;
 
-	// PROVISIONAL (Q-signals Q1, default A, not in the GDD): how long a signal stays on the map. Equal to the window, a player never has
-	// more than MaxPerWindow signals on the map at once.
+	// D784 (Q-signals Q1 = A, 2026-11-12): how long a signal stays on the map. Equal to the window, a player never has more than
+	// MaxPerWindow signals on the map at once (the feed keeps the trace).
 	const int LifetimeMs = 5000;
 
-	// PROVISIONAL (Q-signals Q2, default B): a defeated player of a team match still signals to its living team, as it still advises it
-	// in the chat (D357). In Diplomacy and free-for-all it talks to the spectators only (D376): never a signal.
-	const bool DefeatedTeammateSignals = true;
+	// D784 (Q-signals Q2 = A, 2026-11-12): a defeated player of a team match sees its team's signals but places none any more (it advises
+	// in writing only, D357). In Diplomacy and free-for-all it talks to the spectators only (D376): never a signal either.
+	const bool DefeatedTeammateSignals = false;
 
 	// The answers of Post.
 	const int Ok = 0;

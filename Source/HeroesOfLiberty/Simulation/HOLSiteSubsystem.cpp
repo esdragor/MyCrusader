@@ -102,6 +102,11 @@ bool UHOLSiteSubsystem::IsEnabled()
 	return bSitesEnabled;
 }
 
+int32 UHOLSiteSubsystem::GetGoldPerMinute()
+{
+	return SiteGoldPerMinute;
+}
+
 bool UHOLSiteSubsystem::IsHolyType(const FName FactionKey, const FName UnitType)
 {
 	static const FName Monk(TEXT("Monk"));

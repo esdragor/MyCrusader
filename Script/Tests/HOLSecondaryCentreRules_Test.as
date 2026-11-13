@@ -15,10 +15,27 @@ void Test_SecondaryCentreUnlockedAtTierOneWithoutCap(FUnitTest& T)
 
 void Test_SecondaryCentreCostsMostlyStone(FUnitTest& T)
 {
+	// D783 (answer of 2026-11-12 to Q-secondary-centers Q1 = B): 150 wood + 400 stone, almost all stone (no miners' camp, no centre).
+	// The decided values are the GDD's, written here on purpose: the test fails if the rules drift from the decision.
 	HOLSecondaryCentre::FHOLCentreCost Cost = HOLSecondaryCentre::Cost();
-	T.AssertTrue(Cost.Stone > 0, "it costs stone (D384, 4.x: stone builds the secondary centres)");
-	T.AssertTrue(Cost.Stone >= Cost.Food && Cost.Stone >= Cost.Wood && Cost.Stone >= Cost.Gold, "stone is the largest part");
-	T.AssertTrue(Cost.Food + Cost.Wood + Cost.Stone + Cost.Gold > 0, "costly, never free as the main forum");
+	T.AssertEquals(0, Cost.Food, "no food (D783)");
+	T.AssertEquals(150, Cost.Wood, "150 wood (D783)");
+	T.AssertEquals(400, Cost.Stone, "400 stone (D783)");
+	T.AssertEquals(0, Cost.Gold, "no gold (D783)");
+	T.AssertTrue(Cost.Stone >= 2 * Cost.Wood, "mostly stone: well above the wood, never at parity (GDD 5.4, D783)");
+	T.AssertTrue(Cost.Stone * 10 >= (Cost.Food + Cost.Wood + Cost.Stone + Cost.Gold) * 7, "stone is at least 70 % of the price");
+}
+
+void Test_SecondaryCentreGivesTenPopulation(FUnitTest& T)
+{
+	// D783 (Q2 = A): 10 population, as the main forum; through the real roles and their sum.
+	TArray<HOLSecondaryCentre::FHOLCentreRole> Centres;
+	Centres.Add(HOLSecondaryCentre::RoleOf(true, true, false, 3));
+	T.AssertEquals(10, HOLSecondaryCentre::PopulationOf(Centres), "the main forum alone: 10");
+	Centres.Add(HOLSecondaryCentre::RoleOf(false, true, false));
+	T.AssertEquals(20, HOLSecondaryCentre::PopulationOf(Centres), "one standing secondary centre adds 10 (D783)");
+	Centres.Add(HOLSecondaryCentre::RoleOf(false, false, false));
+	T.AssertEquals(20, HOLSecondaryCentre::PopulationOf(Centres), "a foundation adds nothing");
 }
 
 void Test_SecondaryCentreStandingIsAForumMore(FUnitTest& T)

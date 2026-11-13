@@ -73,3 +73,9 @@ ne signale pas. Commit du rouge 76f66b8 (namespace `HOLSignal` absent).
   'HOLSignal' doesn't exist », 0 test lancé). **SG1 VERTE** : quick_check `tests` 1186/1186 PASS (215 s), `values` PASS (3 lignes au
   registre `comm.signal.max_per_window`, `window_ms`, `lifetime_ms` ; Valeurs.md/.csv régénérés). Commit vert 9d30e2c, puis `git merge main` (arbre propre). **Prochaine étape pour un agent neuf : SG2** (agent C++ : RPC serveur, plateau tenu au
   serveur, envoi aux seuls `Sees`), puis SG3. Aucun test rouge en cours. Rien de visible en jeu : pas de ligne à `Placeholders.txt`.
+
+## 2026-11-13 11:10 HALDIR-1113 (agent, maps)
+- D784 applique : DefeatedTeammateSignals = false (il voit, ne pose plus) ; rouge dbc9699 (Post -> Silenced, le vivant ne voit rien de lui, le vaincu voit le signal de son equipe ; + Test_SignalStaysFiveSeconds a 4999/5000 ms), vert 8d028ff ; quick_check -Parts tests 1203/1203 PASS (11:10). Toujours aucun appelant en jeu (C++ SC2/SG2/SP2/N2 a faire). Reprise : etape C++ suivante du journal.
+
+## 2026-11-13 12:35 HALDIR-1113b (agent, maps, sans C++)
+- PROCHAINE ETAPE C++ (l. 72 de Auto_Journey_File.md), non codee : SG2. Lieu : `Source\HeroesOfLiberty\Player\HOLPlayerController.h` (45 RPC `UFUNCTION(Server, Reliable...)` deja la, meme modele) : `ServerPostSignal(Kind, Location)` ; plateau `FHOLSignalBoard` tenu au serveur (GameState ou sous-systeme) qui applique `HOLSignal::Post` (cadence, Silenced pour un vaincu, D784) ; envoi Client RPC aux seuls joueurs pour qui `HOLSignal::Sees` (equipe, vaincu voit sans poser). Test rouge : net_match (signal pose par un client, recu par l'allie, pas par l'adversaire ; vaincu refuse). Puis SG3 (Alt + clic, icone mini-carte, ligne du fil). Les regles pures AS (SG1) sont vertes et durcies (5 s a 4999/5000 ms).

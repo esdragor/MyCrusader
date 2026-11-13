@@ -48,18 +48,32 @@ function Get-LaunchProblems([string]$Root, [string]$Name, [string]$PlayerName = 
 # A binary of -Root older than its code: "" if fresh (or no dll), the problem otherwise. Compared like UBT does: the newest C++ source FILE
 # of the copy (a merge or fast-forward writes its files at that time) against the dll. Not the commit date (42e5e41): a dll built before
 # the commit of the same code is fresh, and a no-op rebuild would never make it newer than that commit (launch_check_test.ps1, case 4).
+# One dll per module (2026-11-12): Source\<Module> is compared to Binaries\Win64\UnrealEditor-<Module>.dll (HeroesOfLibertyUI has its own);
+# a module folder without its own dll, Plugins and the *.cs at the top of Source answer to the main dll.
 function Get-StaleBinaryProblem([string]$Root) {
-    $Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"
-    if (-not (Test-Path $Dll)) { return "" }
-    $Dirs = @("Source", "Plugins") | ForEach-Object { Join-Path $Root $_ } | Where-Object { Test-Path $_ }
-    if (-not $Dirs) { return "" }
-    $Newest = Get-ChildItem $Dirs -Recurse -File -Include *.h, *.cpp, *.inl, *.cs -ErrorAction SilentlyContinue |
-        Where-Object { $_.FullName -notmatch '\\(Intermediate|Binaries)\\' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-    $DllTime = (Get-Item $Dll).LastWriteTime
-    if ($Newest -and $Newest.LastWriteTime -gt $DllTime) {
-        return "the binary of $Root ($($DllTime.ToString('s'))) is older than its C++ source $($Newest.FullName.Substring($Root.Length).TrimStart('\')) ($($Newest.LastWriteTime.ToString('s'))): Tools\build.ps1 in that copy first"
+    $Main = Join-Path $Root "Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll"
+    if (-not (Test-Path $Main)) { return "" }
+    $Src = Join-Path $Root "Source"
+    $Groups = @{}
+    $Groups[$Main] = @()
+    foreach ($M in @(Get-ChildItem $Src -Directory -ErrorAction SilentlyContinue)) {
+        $Dll = Join-Path $Root "Binaries\Win64\UnrealEditor-$($M.Name).dll"
+        if (-not (Test-Path $Dll)) { $Dll = $Main }
+        if (-not $Groups.ContainsKey($Dll)) { $Groups[$Dll] = @() }
+        $Groups[$Dll] += Get-ChildItem $M.FullName -Recurse -File -Include *.h, *.cpp, *.inl, *.cs -ErrorAction SilentlyContinue
     }
-    return ""
+    $Plugins = Join-Path $Root "Plugins"
+    if (Test-Path $Plugins) { $Groups[$Main] += Get-ChildItem $Plugins -Recurse -File -Include *.h, *.cpp, *.inl, *.cs -ErrorAction SilentlyContinue }
+    if (Test-Path $Src) { $Groups[$Main] += Get-ChildItem $Src -File -Filter *.cs -ErrorAction SilentlyContinue }
+    $Problems = @()
+    foreach ($Dll in @($Groups.Keys | Sort-Object)) {
+        $Newest = @($Groups[$Dll]) | Where-Object { $_ -and $_.FullName -notmatch '\\(Intermediate|Binaries)\\' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+        $DllTime = (Get-Item $Dll).LastWriteTime
+        if ($Newest -and $Newest.LastWriteTime -gt $DllTime) {
+            $Problems += "the binary $(Split-Path $Dll -Leaf) of $Root ($($DllTime.ToString('s'))) is older than its C++ source $($Newest.FullName.Substring($Root.Length).TrimStart('\')) ($($Newest.LastWriteTime.ToString('s'))): Tools\build.ps1 in that copy first"
+        }
+    }
+    return ($Problems -join " ; ")
 }
 
 # Problems in a game log of the scenario (check.ps1's or the user's launch): an asset the scenario asked for and did not find, a step that

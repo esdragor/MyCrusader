@@ -10,13 +10,13 @@ namespace HOLSecondaryCentre
 	// The tier that unlocks it (GDD 11.1: tier 1, Essor).
 	const int UnlockTier = 1;
 
-	// PROVISIONAL (Q-secondary-centers Q1, default A, AoE4's town centre): its cost, mostly stone (D384).
+	// D783 (Q-secondary-centers Q1 = B, 2026-11-12): its cost, almost all stone (D384: no miners' camp, no centre).
 	const int CostFood = 0;
-	const int CostWood = 300;
-	const int CostStone = 300;
+	const int CostWood = 150;
+	const int CostStone = 400;
 	const int CostGold = 0;
 
-	// PROVISIONAL (Q-secondary-centers Q2, default A): its population base, the main forum's (BuildingTypes.csv MainCentre, 10).
+	// D783 (Q-secondary-centers Q2 = A): its population base, the main forum's (BuildingTypes.csv MainCentre, 10).
 	const int PopulationBase = 10;
 
 	struct FHOLCentreCost
