@@ -92,4 +92,48 @@ bool FHOLSpecializationBoardServerTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// N2 step 1 (NomadInProgress.md; D354, answer B of Q-nomad-forum Q2): the seat's complete Forum is HOLNomad::HasCompleteForum of the
+// script board's state, read by IsForumComplete (what ServerStartSpecialization passes):
+// - a standard seat (0) has one: tier 1 starts;
+// - a Nomad seat (1) has none: IsForumComplete is false, the button is off and the start is refused (nothing runs);
+// - its first Forum complete: IsForumComplete is true for good, the button lights and the start runs.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationNomadForumTest, "HeroesOfLiberty.Specialization.NomadForum", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationNomadForumTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (TestNotNull(TEXT("the script board of specializations"), Board))
+	{
+		constexpr int32 Ok = 0;
+		constexpr int32 NoForumComplete = 8;
+		Board->SetNomadNow(1, true);
+
+		TestTrue(TEXT("A standard seat has a complete Forum"), UHOLSpecializationSubsystem::IsForumComplete(World, 0));
+		TestEqual(TEXT("Its tier 1 starts"), Board->StartNow(0, 1, 0, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 0)), Ok);
+		TestEqual(TEXT("And runs"), Board->ViewNow(0).PendingTier, 1);
+
+		TestFalse(TEXT("A Nomad seat without a Forum has none"), UHOLSpecializationSubsystem::IsForumComplete(World, 1));
+		TestFalse(TEXT("Its button is off (answer B)"), Board->IsOpenNow(1, 1, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)));
+		TestEqual(TEXT("Its start is refused"), Board->StartNow(1, 1, 0, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)), NoForumComplete);
+		TestEqual(TEXT("Nothing runs for it"), Board->ViewNow(1).PendingTier, 0);
+
+		Board->NoteForumCompleteNow(1);
+		TestTrue(TEXT("Its first Forum complete: it has one"), UHOLSpecializationSubsystem::IsForumComplete(World, 1));
+		TestTrue(TEXT("The button lights"), Board->IsOpenNow(1, 1, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)));
+		TestEqual(TEXT("The start runs"), Board->StartNow(1, 1, 0, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)), Ok);
+		TestEqual(TEXT("Tier 1 runs for it"), Board->ViewNow(1).PendingTier, 1);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif

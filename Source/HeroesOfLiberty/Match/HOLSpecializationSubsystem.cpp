@@ -39,8 +39,28 @@ TStatId UHOLSpecializationSubsystem::GetStatId() const
 
 bool UHOLSpecializationSubsystem::IsForumComplete(const UWorld* World, const int32 Slot)
 {
-	// N2 (nomad start, answer B of Q-nomad-forum Q2) routes HOLNomad::HasCompleteForum here; until then every seat starts with a built Forum.
-	return World != nullptr && Slot >= 0;
+	// Answer B of Q-nomad-forum Q2: HOLNomad::HasCompleteForum of the seat (the script board's state); a standard seat is always true.
+	if (!World || Slot < 0)
+	{
+		return false;
+	}
+	UHOLSpecializationSubsystem* Board = Find(World);
+	return !Board || Board->HasCompleteForumNow(Slot);
+}
+
+void UHOLSpecializationSubsystem::SetNomadNow(const int32 Slot, const bool bNomad)
+{
+	SetSeatNomad(Slot, bNomad);
+}
+
+void UHOLSpecializationSubsystem::NoteForumCompleteNow(const int32 Slot)
+{
+	NoteSeatForumComplete(Slot);
+}
+
+bool UHOLSpecializationSubsystem::HasCompleteForumNow(const int32 Slot)
+{
+	return SeatHasCompleteForum(Slot);
 }
 
 bool UHOLSpecializationSubsystem::IsForumStanding(const UWorld* World, const int32 Slot)

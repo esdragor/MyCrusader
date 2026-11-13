@@ -35,9 +35,18 @@ public:
 
 	/**
 	 * The seat has a complete Forum (HOLNomad::HasCompleteForum, answer B of Q-nomad-forum Q2: the button stays off without one).
-	 * Every seat starts with a built Forum until the nomad start lands (N2): true then.
+	 * Read on the world's board (HasCompleteForumNow): a standard seat is true, a Nomad seat false until its first Forum is complete.
 	 */
 	static bool IsForumComplete(const UWorld* World, int32 Slot);
+
+	/** Slot plays the Nomad option (FHOLMatchConfig::bNomad, HOLNomad::NewState): no complete Forum until its first one (N2, at the start). */
+	void SetNomadNow(int32 Slot, bool bNomad);
+
+	/** Slot's first Forum is complete (HOLNomad::NoteForumComplete): the normal rules for good. */
+	void NoteForumCompleteNow(int32 Slot);
+
+	/** HOLNomad::HasCompleteForum of Slot's state: true for a standard seat, and true without script. */
+	bool HasCompleteForumNow(int32 Slot);
 
 	/** The seat's Forum stands (not down, AHOLGameState::IsForumDown): the countdown runs, else it waits (Q2 answer A). */
 	static bool IsForumStanding(const UWorld* World, int32 Slot);
@@ -90,6 +99,18 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
 	FHOLSpecializationView ViewSpecialization(int32 Slot);
 	virtual FHOLSpecializationView ViewSpecialization_Implementation(int32 Slot) { return FHOLSpecializationView(); }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	void SetSeatNomad(int32 Slot, bool bNomad);
+	virtual void SetSeatNomad_Implementation(int32 Slot, bool bNomad) {}
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	void NoteSeatForumComplete(int32 Slot);
+	virtual void NoteSeatForumComplete_Implementation(int32 Slot) {}
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	bool SeatHasCompleteForum(int32 Slot);
+	virtual bool SeatHasCompleteForum_Implementation(int32 Slot) { return true; }
 
 private:
 	/** The world time (ms) of the last tick, -1 before the first. */
