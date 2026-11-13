@@ -1,0 +1,27 @@
+# N2 (c)+(d) (D354) : depart Nomade (option bNomad du .json) : aucun centre principal ; ton Roi (Regicide coche pour le voir naitre),
+# tes 5 Paysans et ton heros naissent au point de ton depart, sans aucun batiment. Les groupes de Paysans (SplitIntoGroups) ne sont PAS
+# encore faits : un seul groupe au point du depart. Plain, toi (slot 0) contre une IA gelee (slot 1, Nomade aussi).
+waitlog Starting hero of slot 0 spawned at
+waitlog Nomad slot 0: no main centre, its units at (
+waitlog Regicide: king of slot 0 spawned at
+waitlog Starting Peasants of slot 0: 5 in front of its main forum
+hol.AI.ThinkSteps 100000
+# 1. Vue large au-dessus du point de depart : des unites, aucun batiment (ni Centre-ville ni chantier).
+hol.Camera.FocusSlot 0
+waitlog Camera above the start of slot 0
+frames 30
+hol.Buildings.Report
+waitlog Building report:
+hol.HUD.Report
+capture nomad_start_wide
+# 2. Gros plan (zoom au plus pres du jeu : 1500 cm, HOLRTSCamera::MinHeight) centre sur le Roi et le heros (nes 1135 cm derriere le
+# point du depart sur Plain : "king of slot 0 spawned at (-15935, 0)", heros (-15935, 300)). 100 px n'est pas atteignable a ce zoom.
+hol.Camera.Zoom 10
+waitlog Camera height 1500 cm
+hol.Camera.Focus -15700 150
+frames 30
+capture nomad_start_close
+hol.Test.Sanity
+note Partie Nomade : aucun Centre-ville au depart. Ton Roi, tes 5 Paysans et ton heros sont nes au point de depart ; construis ton premier Forum ou tu veux.
+# The scenario's real end: an agent's play.ps1 -Hidden closes here; the user's own run ignores it and plays on.
+quit

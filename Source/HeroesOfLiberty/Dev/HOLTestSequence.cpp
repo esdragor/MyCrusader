@@ -62,6 +62,10 @@
  *   waitfile <File> [S]  waits for the file to exist: two clients wait for each other (each one's last report done
  *                        before either quits, quick_check's net part); S: its own timeout in seconds, instead of 60
  *                        (the dedicated server waits for a client's step of the end, J7b.4)
+ *   quit                 the scenario's real end: when nobody is at the keys (as waitkey goes on by itself: play.ps1 -Hidden's
+ *                        -unattended, a scripted check, auto-continue) logs "Scenario quit: the game closes" and closes the game
+ *                        (HOLTestHooks::OnScenarioQuit instead, in the automation tests), the steps after it never run; with
+ *                        the user at the keys, logs "Scenario quit: ignored, the user plays on" and the game stays open
  *   console <Command>    types Command into the game's console (the local player's, as a player would): the player
  *                        controller's own commands (the engine's pause) run too, unlike a plain step
  *   anything else        runs as a console command, in the current game world
@@ -78,6 +82,12 @@ TFunction<FString()>& HOLTestHooks::DescribeInterface()
 {
 	static TFunction<FString()> Probe;
 	return Probe;
+}
+
+TFunction<void()>& HOLTestHooks::OnScenarioQuit()
+{
+	static TFunction<void()> Hook;
+	return Hook;
 }
 
 HOLTestHooks::FScenarioDisplay& HOLTestHooks::GetScenarioDisplay()
@@ -436,6 +446,33 @@ namespace UE::HeroesOfLiberty::Dev
 					EndWaitForKey();
 					UE_LOG(LogHOLTest, Display, TEXT("Scenario key: go on (%s)"), bKeyPressed ? TEXT("key") : TEXT("auto"));
 				}
+			}
+			else if (Verb == TEXT("quit"))
+			{
+				// The scenario's real end, for its launcher (play.ps1 -Hidden waits for the game to close, at most -TimeoutSec). The user's own
+				// run keeps the game: they play on after the last step.
+				if (ShouldAutoContinue())
+				{
+					// The run is complete: its OnDone first (a scenario logs "Scenario <Name>: ready", which check.ps1 and preflight.ps1 wait for).
+					UE_LOG(LogHOLTest, Display, TEXT("Scenario quit: the game closes (step %d, nobody at the keys)"), Next + 1);
+					const TFunction<void()> OnDone = MoveTemp(Options.OnDone);
+					const TFunction<void()> QuitHook = HOLTestHooks::OnScenarioQuit();
+					Finish(/*bQuit*/ false);
+					if (OnDone)
+					{
+						OnDone();
+					}
+					if (QuitHook)
+					{
+						QuitHook();
+					}
+					else
+					{
+						GEngine->Exec(GetGameWorld(), TEXT("quit"));
+					}
+					return false;
+				}
+				UE_LOG(LogHOLTest, Display, TEXT("Scenario quit: ignored, the user plays on"));
 			}
 			else if (Verb == TEXT("signal"))
 			{

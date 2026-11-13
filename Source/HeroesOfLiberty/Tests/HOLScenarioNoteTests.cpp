@@ -68,4 +68,32 @@ bool FHOLScenarioReadyAtWaitKeyTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// quit: an unattended run (play.ps1 -Hidden, here the automation run) closes the game at the scenario's real end, the steps after it never run;
+// play.ps1 -Hidden then ends with the game instead of waiting for its -TimeoutSec.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLScenarioQuitTest, "HeroesOfLiberty.Dev.Scenario.QuitUnattended",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLScenarioQuitTest::RunTest(const FString& Parameters)
+{
+	const TSharedRef<int32> Quits = MakeShared<int32>(0);
+	HOLTestHooks::OnScenarioQuit() = [Quits]() { ++*Quits; };
+	HOLScenarioNoteTestsPrivate::StartScenarioSteps({ TEXT("note A"), TEXT("quit"), TEXT("note After"), TEXT("waitkey") });
+	const TSharedRef<int32> Frames = MakeShared<int32>(0);
+	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this, Frames, Quits]()
+	{
+		HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+		// Without the verb, quit is a plain console command (the engine's own quit) and the run goes on to its waitkey.
+		if (*Quits == 0 && Display.WaitingForKey.IsEmpty() && ++*Frames < HOLScenarioNoteTestsPrivate::NoteTestMaxFrames)
+		{
+			return false;
+		}
+		HOLTestHooks::OnScenarioQuit() = nullptr;
+		TestEqual(TEXT("the unattended run closed the game once at its quit step"), *Quits, 1);
+		TestEqual(TEXT("no step after quit ran (the notes)"), Display.Notes, TArray<FString>{ TEXT("A") });
+		TestTrue(TEXT("no step after quit ran (no waitkey waiting)"), Display.WaitingForKey.IsEmpty());
+		HOLTestHooks::PressContinueKey();
+		return true;
+	}));
+	return true;
+}
+
 #endif

@@ -4,6 +4,8 @@
 #   2. -Hidden : play.ps1 ne rend la main qu'apres avoir ferme l'editeur ET ses fils (aucun processus du faux moteur ne reste).
 #   3. -Hidden, le faux editeur sort tout de suite en laissant un petit-fils orphelin : l'orphelin est ferme aussi.
 #   4. -Hidden -NoWait : ancien comportement (rend la main tout de suite, l'editeur vit encore) ; le test le ferme ensuite lui-meme.
+#   5. -Hidden, scenario fini par `quit` : l'editeur sorti, play.ps1 ferme le fils qui traine et rend la main sans attendre -TimeoutSec.
+#   6. -Hidden -DryRun : un scenario sans `quit` final est signale (il attendra jusqu'a -TimeoutSec).
 # Run : powershell -ExecutionPolicy Bypass -File Tools\Scenarios\play_hidden_test.ps1   (une vingtaine de secondes). Code 0 = PASS.
 $ErrorActionPreference = 'Continue'
 $Play = Join-Path $PSScriptRoot 'play.ps1'
@@ -59,6 +61,27 @@ $o = Run @('-Hidden', '-TimeoutSec', '8') 'orphan'
 $left = (Alive).Count
 Check ($left -eq 0) ("-Hidden : le petit-fils orphelin est ferme aussi ($left restent)")
 Kill-Leftovers
+
+# 5. scenario fini par `quit` (verbe de HOLTestSequence, ScenariosInProgress 2026-11-13) : le jeu se ferme a la fin reelle du scenario ;
+#    l'editeur sorti, play.ps1 n'attend plus -TimeoutSec pour un fils qui traine (le faux editeur sort a 3 s, son petit-fils dort 120 s).
+Set-Content (Join-Path $Root 'Tools\Scenarios\quitting.txt') @('# fake that quits', 'note fin', 'quit') -Encoding UTF8
+$env:HOL_PLAY_PREARGS = "-NoProfile -File `"$Fake`" -Mode orphan"
+$sw5 = [Diagnostics.Stopwatch]::StartNew()
+$q = & powershell -NoProfile -ExecutionPolicy Bypass -File $Play quitting -Root $Root -EngineDir $Eng -Hidden -TimeoutSec 60 2>&1 | Out-String
+$q5 = $sw5.Elapsed.TotalSeconds
+$env:HOL_PLAY_PREARGS = $null
+$left = (Alive).Count
+Check ($q5 -lt 20) ("-Hidden, scenario fini par quit : play.ps1 rend la main a la fin du jeu, pas a -TimeoutSec 60 ({0:N1} s ; sortie : {1})" -f $q5, (Flat $q))
+Check ($left -eq 0) ("-Hidden, scenario fini par quit : le fils qui traine est ferme ($left restent)")
+Check ($q -match 'quit by itself') ("play.ps1 dit que le jeu s est ferme de lui-meme (sortie : " + (Flat $q) + ")")
+Kill-Leftovers
+# 6. -Hidden sur un scenario SANS quit final : play.ps1 le dit (il attendra jusqu'a -TimeoutSec) ; rien de tel avec quit.
+$h = Run @('-Hidden', '-DryRun') 'stay'
+Check ($h.Out -match 'does not end with quit') ("-Hidden -DryRun sans quit final : avertissement (sortie : " + (Flat $h.Out) + ")")
+$env:HOL_PLAY_PREARGS = "-NoProfile -File `"$Fake`" -Mode stay"
+$hq = & powershell -NoProfile -ExecutionPolicy Bypass -File $Play quitting -Root $Root -EngineDir $Eng -Hidden -DryRun 2>&1 | Out-String
+$env:HOL_PLAY_PREARGS = $null
+Check ($hq -notmatch 'does not end with quit') ("-Hidden -DryRun avec quit final : pas d avertissement (sortie : " + (Flat $hq) + ")")
 
 # 4. -NoWait : rend la main tout de suite
 $n = Run @('-Hidden', '-NoWait') 'stay'

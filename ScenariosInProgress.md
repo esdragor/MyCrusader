@@ -198,3 +198,10 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - Tests : `-Only s` 13/13 PASS (17:51) ; build_queue_test complet PASS (17:51-17:54) ; status.ps1 sans erreur (exit 0).
 - NON VERIFIE : aucun vrai build UBT passe par le nouveau code (sans C++) ; « is up to date » (N = 0) non vu dans un vrai journal ici.
 - L91 FAITE (option B). Rien d'autre en cours dans ce worktree.
+
+## Verbe `quit` de scenario (Q-play-hidden-wait = C, file L96, FARAMIR 2026-11-13 22:05-, fog, C++)
+- Verbe `quit` (HOLTestSequence.cpp) : quand personne n'est aux touches (meme regle que waitkey auto : -unattended de play.ps1 -Hidden, hol.Test.Run, auto-continue, automatisation) : log `Scenario quit: the game closes`, OnDone du run d'abord (`Scenario <Name>: ready`, attendu par check.ps1/preflight), puis quit du moteur ; les etapes suivantes ne tournent pas. Utilisateur aux touches : `Scenario quit: ignored, the user plays on`, le jeu reste ouvert (choix de prudence, pas une decision de design). Seam de test : `HOLTestHooks::OnScenarioQuit()` remplace le quit du moteur.
+- play.ps1 -Hidden : l'editeur sorti, ses fils ont 5 s puis sont fermes (plus d'attente jusqu'a -TimeoutSec) ; message `the game quit by itself after X s` ; avertit si le scenario ne finit pas par `quit`.
+- Rouge : 67d9bb3 (play_hidden_test cas 5-6 VU ROUGE 3 FAIL a 22:09 ; test d'automatisation HeroesOfLiberty.Dev.Scenario.QuitUnattended commite avant le code, PAS vu rouge : un seul build). Vert : 3f4a972 + c5e9b76 ; play_hidden_test PASS 22:11.
+- Preuve : `income_tooltip` finit par `quit` (seul scenario touche). AVANT (binaire de main) : play.ps1 -Hidden 302,4 s (timeout 300, scenario fini en 13,7 s).
+- Fin 2026-11-13 22:21 : 2e build (22:14-22:17, OnDone avant quit, le 1er build n'avait pas pris c5e9b76) ; mesure APRES et quick_check tests : voir rapport FARAMIR ; merge de main fait ; les autres scenarios n'ont pas de quit (lot a part).

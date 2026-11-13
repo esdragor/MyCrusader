@@ -45,3 +45,5 @@ capture income_tip_ja
 hol.HUD.HoverIncome -1
 hol.UI.Language fr
 note Survole un montant de la barre du haut (bois, or...) : l'infobulle donne le revenu par minute de cette ressource, trajets compris.
+# The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
+quit
