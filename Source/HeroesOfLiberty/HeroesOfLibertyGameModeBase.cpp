@@ -658,36 +658,67 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		// On the tile grid (D311), facing about the way the start faces (the centre of a symmetric map), turned to the
 		// nearest quarter turn: the houses placed tile by tile line up with it.
 		const FTransform Transform(FRotator(0.f, Start->GetMainCentreYaw(), 0.f), Start->GetMainCentreLocation());
-		AHOLBuilding* Centre = GetWorld()->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
+		if (SpawnSlotStart(*GetWorld(), MatchConfig, Slot, Transform))
+		{
+			AssignBuildingOwners(Slot);
+		}
+	}
+}
+
+AHOLBuilding* AHeroesOfLibertyGameModeBase::SpawnSlotStart(UWorld& World, const FHOLMatchConfig& Config, const int32 Slot, const FTransform& Transform)
+{
+	if (!Config.Slots.IsValidIndex(Slot))
+	{
+		return nullptr;
+	}
+	const FHOLMatchSlot& SlotConfig = Config.Slots[Slot];
+	const FName CentreType = FHOLStartRules::GetMainCentreTypeName(Config, Slot);
+	const FVector Point = Transform.GetLocation();
+	const float HalfBody = GetStartHalfBody(CentreType);
+	const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(Config, GetDefault<UHOLMatchSettings>()->StartingPeasants);
+	const bool bKing = FHOLStartRules::ShouldSpawnKing(Config, Slot);
+	const bool bHero = FHOLStartRules::ShouldSpawnHero(Config, Slot, GetDefault<UHOLMatchSettings>()->bStartingHero);
+	AHOLBuilding* Centre = nullptr;
+	if (Config.bNomad)
+	{
+		// N2 (c)+(d) (D354): a Nomad seat on the script board, no centre; its units born from the start's point.
+		if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(&World))
+		{
+			Board->SetNomadNow(Slot, true);
+		}
+		UE_LOG(LogHOLMatch, Log, TEXT("Nomad slot %d: no main centre, its units at (%.0f, %.0f)"), Slot, Point.X, Point.Y);
+	}
+	else
+	{
+		Centre = World.SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 		if (!Centre)
 		{
-			continue;
+			return nullptr;
 		}
-		Centre->Setup(FHOLStartRules::GetMainCentreTypeName(MatchConfig, Slot), static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
+		Centre->Setup(CentreType, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
 		// V2 (D350): the centre given at the start is the slot's main forum, the one with lives.
 		Centre->SetPrimaryForum(true);
 		Centre->FinishSpawning(Transform);
-		AssignBuildingOwners(Slot);
 		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f), yaw %.0f"), Slot, SlotConfig.ColorIndex,
-			Transform.GetLocation().X, Transform.GetLocation().Y, Transform.Rotator().Yaw);
-		// V5.1 (Regicide, D206): each occupied slot's King, by its main forum.
-		if (FHOLStartRules::ShouldSpawnKing(MatchConfig, Slot))
-		{
-			SpawnKing(*GetWorld(), Slot, *Centre);
-		}
-		// IA1.1: each occupied slot's starting Peasants, in front of its main forum (0 in the test scenarios).
-		const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(MatchConfig, GetDefault<UHOLMatchSettings>()->StartingPeasants);
-		if (NumPeasants > 0)
-		{
-			SpawnStartingPeasants(*GetWorld(), Slot, *Centre, NumPeasants);
-		}
-		// J8a.2 (J8a-Q2): each occupied slot's hero, by its main forum (none in the test scenarios).
-		if (FHOLStartRules::ShouldSpawnHero(MatchConfig, Slot, GetDefault<UHOLMatchSettings>()->bStartingHero))
-		{
-			SpawnStartingHero(*GetWorld(), Slot, *Centre);
-		}
+			Point.X, Point.Y, Transform.Rotator().Yaw);
 	}
+	// V5.1 (Regicide, D206): each occupied slot's King, by its main forum (a Nomad seat: by its start's point).
+	if (bKing)
+	{
+		Centre ? SpawnKing(World, Slot, *Centre) : SpawnKingAt(World, Slot, Point, HalfBody);
+	}
+	// IA1.1: each occupied slot's starting Peasants, in front of its main forum (0 in the test scenarios).
+	if (NumPeasants > 0)
+	{
+		Centre ? SpawnStartingPeasants(World, Slot, *Centre, NumPeasants) : SpawnStartingPeasantsAt(World, Slot, Point, HalfBody, NumPeasants);
+	}
+	// J8a.2 (J8a-Q2): each occupied slot's hero, by its main forum (none in the test scenarios).
+	if (bHero)
+	{
+		Centre ? SpawnStartingHero(World, Slot, *Centre) : SpawnStartingHeroAt(World, Slot, Point, HalfBody);
+	}
+	return Centre;
 }
 
 int32 AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(UWorld& World, const FHOLMatchConfig& Config, const FHOLResources& Starting)

@@ -86,6 +86,14 @@ public:
 	static float GetStartHalfBody(FName BuildingType);
 
 	/**
+	 * One occupied slot's start at Transform (its start's place, SpawnMainCentres): its main centre (the primary forum), then
+	 * its King, starting Peasants and hero by it. N2 (c)+(d), Config.bNomad: the seat is Nomad on the script board
+	 * (UHOLSpecializationSubsystem::SetNomadNow), no centre; the same births from the start's point and the main centre's
+	 * half body. Returns the centre (nullptr for a Nomad seat or when it could not be spawned).
+	 */
+	static AHOLBuilding* SpawnSlotStart(UWorld& World, const FHOLMatchConfig& Config, int32 Slot, const FTransform& Transform);
+
+	/**
 	 * IA0.1 E1: a player state for each AI slot of Config (a bot, no controller), with the slot's colour and the starting
 	 * stock, so that its economy (deposits, foundations, production) runs as a human's. Server only, at the start, before
 	 * the main centres; a slot already holding a player state is skipped. Returns how many were spawned.
