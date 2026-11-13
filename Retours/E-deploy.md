@@ -5,15 +5,10 @@ GESTE: interne      (hol.Select.Grid 6, equivalent de la touche D, pas une vraie
 SON: non entendu    (-nosound)
 branches: tiers
 
-Pre-vol (2026-11-13 12:41, agent ELROND-1113, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Elrond, tiers 64ac8e2, binaire du 11:09 a jour) :
-`preflight.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond` = FAIL (6), 125 s.
-- OK : la Mangonnelle nait avec le fragment (hol.Siege.Deployable 1), la grille dit `D=Deploy`, cellule « Monter » ; `Order: 1 units deploy` apparait apres hol.Select.Grid 6.
-- FAIL : 10 s apres l'ordre, hol.HUD.Report dit encore `D=Deploy` (timeout a l'etape 35, `waitlog D=Pack`) ; aucune ligne `Mangonel hits a building`. La phase ne passe pas a Deploying/Deployed en partie reelle, alors que le test HeroesOfLiberty.Siege.Deploy.PlayerButton est vert.
-- Captures : seule deploy_packed est produite (NON OUVERTE, faute d'appels) ; deploy_deployed, deploy_fire, deploy_packed_again absentes.
-- WARN : la ligne `hol.Test.Sanity` du .txt n'est pas atteinte (le scenario s'arrete avant).
+Pre-vol 2026-11-13 13:56 (ELROND-1113c, tiers 27d91a4, build 13:52) = FAIL (6), 93 s, timeout etape 35 'waitlog D=Pack'.
+- Le journal ajoute au HOLDeployProcessor montre que l'engin SE MONTE : 'Deploy: #13 phase 0 -> 1 (order 3...)' puis 8 s apres 'phase 1 -> 2 (delay over)'.
+- Le defaut est dans le SCENARIO : hol.HUD.Report ne dit pas 'D=Pack' une fois monte (probablement le nom de commande fixe). A corriger dans deploy.txt (waitlog sur la ligne 'Deploy: #') ou dans le rapport HUD.
+- La piste 'Maison a 5250 > portee 5000' est fausse : la Maison est a ~2200 cm.
+- Correctif voisin fait : D presse pendant une marche ne s'annule plus (27d91a4).
 
-Pistes pour l'agent suivant (non verifiees) : (1) la Mangonnelle est a ~5250 cm de la Maison, au-dela de la portee max proposee (5000 cm) : l'acquisition automatique ecrit PendingOrder 1 (attaque) que Decide traduit en marche (March), ou l'ordre de marche note PendingOrder 2, et l'un ou l'autre annule le Toggle ; essayer la Maison a 4000 ; (2) ajouter une ligne de journal au HOLDeployProcessor (phase avant / apres, ordre decide) pour voir ce qui se passe ; (3) verifier que RequestToggleDeploy -> ServerToggleDeploy -> HOLPlayerOrders::ToggleDeploy atteint bien la file en solo (aucune ligne de journal aujourd'hui).
-
-NON VERIFIE : tout ce qui suit l'ordre ; aucun PNG ouvert ; aucun client reseau.
-
-Ne pas lancer tant que le pre-vol n'est pas PASS.
+NON VERIFIE : tir sur la Maison, demontage, PNG (seul deploy_packed produit, NON OUVERT).
