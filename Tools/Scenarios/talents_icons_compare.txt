@@ -1,5 +1,5 @@
-# Icones des talents (Placeholders.txt : Icones des talents (arbre du heros) [?]) : COMPARAISON de ce que le jeu montre aujourd'hui pour un talent pris. Dis aime / pas aime par lettre (A les cases de la fenetre en texte, B les pastilles-lettres B M P sous la liste, a cote des vraies images des capacites du heros).
-# Plain, toi (slot 0) contre une IA : 5 Paysans et un heros chacun. Le scenario prend trois talents a ta place (Boucliers leves = B, Mains du guerisseur = M, Pas de l'Aube = P). Entree = option suivante. 3 minutes au plus.
+# Icones des talents (Q-talents-icons = A, reponse de l'utilisateur 2026-11-13) : chaque talent a maintenant son IMAGE (24 icones au cadre A, bordure de la couleur de famille), dans la fenetre Arbre de talents et dans le bloc du heros.
+# Plain, toi (slot 0) contre une IA : 5 Paysans et un heros chacun. Le scenario prend trois talents a ta place (Boucliers leves, Mains du guerisseur, Pas de l'Aube). Entree = temps suivant. 3 minutes au plus.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Sanity.Watch 1
@@ -26,14 +26,15 @@ hol.HUD.Click TalentWindowAdvised
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 10
-notereset Option A (1/2) : la fenetre Arbre de talents avec trois talents pris. Regarde les cases des talents pris : elles sont teintees et portent leur nom en texte, il n'y a pas d'image de talent. Entree = option suivante.
-capture talents_icons_A_window
-waitkey Option A/2 : cases de la fenetre, en texte seulement. Entree pour l'option B
+notereset 1/2 : la fenetre Arbre de talents avec trois talents pris. Chaque case porte l'image de son talent a gauche de son nom (cadre de la couleur de sa famille) ; les cases prises sont teintees.
+capture talents_icons_window
+waitkey 1/2 : images des cases de l'Arbre. Entree pour la suite
 hol.HUD.Click TalentKey
-wait 1
+# L'avis jaune « Talent pris : ... » (quelques secondes) allonge le bloc du heros jusqu'au panneau des triches du scenario : on attend qu'il s'efface.
+wait 8
 frames 8
 hol.HUD.Report
-notereset Option B (2/2) : fenetre fermee. Regarde le bloc du heros en bas a gauche : sous la liste des talents pris, trois pastilles-lettres B, M, P (couleur de famille) ; juste a cote, les trois capacites du heros ont de vraies images. Dis aime / pas aime par lettre.
-capture talents_icons_B_letters
+notereset 2/2 : fenetre fermee. Regarde le bloc du heros en bas a gauche : sous la liste des talents pris, les images des trois talents (plus de pastilles-lettres), a cote des images des capacites du heros, a la meme taille.
+capture talents_icons_hero_block
 frames 5
 hol.Test.Sanity

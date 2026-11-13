@@ -10,6 +10,7 @@ class UCommonTextBlock;
 class UHorizontalBox;
 class UImage;
 class UVerticalBox;
+struct FHOLTradeGain;
 
 /** How a cell of the grid takes a click. */
 enum class EHOLGridCellState : uint8
@@ -45,6 +46,11 @@ public:
 	/** Shows a command: its name (no icon yet), dimmed when greyed; its cost is the tooltip's. */
 	void SetCommand(const FText& InName, EHOLGridCellState InState);
 	/**
+	 * D781 (a Market's trade cell): under the name set by SetCommand (which hides it), « +X » then the logo of what the trade
+	 * gives (the resource's marker until the resource icons exist), dimmed as the name.
+	 */
+	void SetGain(const FHOLTradeGain& Gain);
+	/**
 	 * Its tooltip (D313): the name, the cost line (or what a cancel gives back; Missing holds, for each resource, more
 	 * than 0 where the stock does not cover the cost, shown in red) and what it gives; an empty name: none.
 	 */
@@ -55,7 +61,10 @@ public:
 	EHOLGridCellState GetState() const { return State; }
 	/** "Maison | W 50 | +10 population": what the tooltip says, for the scripted checks (hol.HUD.Report). */
 	FString DescribeTooltip() const;
-	/** "Maison": what the cell itself writes (empty: nothing), for the scripted checks (hol.HUD.Report). */
+	/**
+	 * "Maison": what the cell itself writes (empty: nothing), for the scripted checks (hol.HUD.Report); a gain shown (D781)
+	 * follows it with its logo's resource: "Bois +96 [Wood]".
+	 */
 	FString DescribeContent() const;
 
 protected:
@@ -98,6 +107,18 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<UCommonTextBlock> TooltipEffect;
 
+	/** D781: the gain line under the name of a trade cell, « +X » then the marker of the resource received. */
+	UPROPERTY(Transient)
+	TObjectPtr<UHorizontalBox> GainLine;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UCommonTextBlock> GainAmount;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UImage> GainMarker;
+
 	EHOLGridCellState State = EHOLGridCellState::Disabled;
 	FString ShownTooltip;
+	/** The resource of the gain's logo, while the gain line is shown (DescribeContent). */
+	EHOLResource ShownGainLogo = EHOLResource::Gold;
 };
