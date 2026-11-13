@@ -22,7 +22,7 @@ void Test_MoraleStartingCaps(FUnitTest& T)
 	T.AssertEquals(50, HOLMorale::BonusCap(HOLMorale::LeverTaken), "damage taken, bonus cap");
 	T.AssertEquals(40, HOLMorale::BonusCap(HOLMorale::LeverDealt), "damage dealt, bonus cap (40 since Q-legions-rage-cap = A, 2026-11-11)");
 	T.AssertEquals(30, HOLMorale::BonusCap(HOLMorale::LeverRate), "attack rate, bonus cap");
-	T.AssertEquals(40, HOLMorale::MalusCap(HOLMorale::LeverDealt), "damage dealt, malus cap (40, symmetric with the bonus, Q-legions-rage-cap = A)");
+	T.AssertEquals(30, HOLMorale::MalusCap(HOLMorale::LeverDealt), "damage dealt, malus cap (stays 30: only the bonus rises to 40, D791)");
 	T.AssertEquals(30, HOLMorale::MalusCap(HOLMorale::LeverRate), "attack rate, malus cap");
 	T.AssertEquals(50, HOLMorale::MalusCap(HOLMorale::LeverTaken), "damage taken, malus cap (symmetric, decided by the user on 2026-11-05)");
 	T.AssertEquals(75, HOLMorale::AttenuationCap, "attenuation never reaches 100 %");
@@ -38,6 +38,21 @@ void Test_MoraleNecroticRageGivesFullForty(FUnitTest& T)
 	T.AssertEquals(25, HOLMorale::Total(State, HOLMorale::LeverRate), "the rage alone: +25 % of rate");
 	HOLMorale::Apply(State, HOLMoraleTable::Effect(HOLMoraleTable::Triumph));
 	T.AssertEquals(40, HOLMorale::Total(State, HOLMorale::LeverDealt), "rage and Triumph: still 40, the cap");
+}
+
+// D791 (2026-11-12, "bonus only"): the malus of damage dealt stays capped at 30 %. Two maluses of -20 on the damage dealt leave the unit
+// dealing 70 % of its damage (not 60 %), while two bonuses of +25 let it deal 140 %.
+void Test_MoraleDealtMalusCapStaysThirty(FUnitTest& T)
+{
+	HOLMorale::FHOLMoraleState Malus;
+	HOLMorale::Apply(Malus, MoraleTemp(1, HOLMorale::LeverDealt, -20, 15000));
+	HOLMorale::Apply(Malus, MoraleTemp(2, HOLMorale::LeverDealt, -20, 15000));
+	T.AssertEquals(-30, HOLMorale::Total(Malus, HOLMorale::LeverDealt), "-20 and -20 on the damage dealt are cut at the malus cap of 30");
+	T.AssertEquals(70, HOLMorale::Multiplier(Malus, HOLMorale::LeverDealt), "the unit still deals 70 % of its damage");
+	HOLMorale::FHOLMoraleState Bonus;
+	HOLMorale::Apply(Bonus, MoraleTemp(1, HOLMorale::LeverDealt, 25, 15000));
+	HOLMorale::Apply(Bonus, MoraleTemp(2, HOLMorale::LeverDealt, 25, 15000));
+	T.AssertEquals(140, HOLMorale::Multiplier(Bonus, HOLMorale::LeverDealt), "+25 and +25 on the damage dealt are cut at the bonus cap of 40");
 }
 
 // The same effect posed twice stays one; it keeps the strongest intensity and the longest time left.
