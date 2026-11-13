@@ -80,6 +80,38 @@ void Test_SignalSeenByTeammatesInTeamModes(FUnitTest& T)
 	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 2, false, HOLSignal::Defend, FVector(0.0, 0.0, 0.0), 3),
 		"its living teammate places one");
 	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 3, 4).Num(), "the defeated teammate still sees its team's signal (D784)");
+	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 3, 4, false).Num(), "a defeated teammate is no spectator: its team's signal only");
+}
+
+void Test_SignalSpectatorsSeeEverySignal(FUnitTest& T)
+{
+	// Answer of 2026-11-13 to Q-signals-spectators (A): a player defeated in Diplomacy or free-for-all and a pure spectator see every
+	// signal of every player, as they see the whole map (they talk to the spectators only, D376: nothing leaks to the players).
+	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLSignalBoard Board;
+	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 0, false, HOLSignal::Attack, FVector(0.0, 0.0, 0.0), 0), "0 places Attack here");
+	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 1, false, HOLSignal::Defend, FVector(0.0, 0.0, 0.0), 1), "1 places Defend here");
+	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 2, false, HOLSignal::Neutral, FVector(0.0, 0.0, 0.0), 2), "2 places a plain one");
+	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 3, 10).Num(), "3 alive (Enemy of all) sees none of them");
+	T.AssertEquals(3, HOLSignal::SeenBy(Board, Book, 3, 10, true).Num(), "3 defeated in Diplomacy, a spectator: every player's signal");
+	T.AssertEquals(3, HOLSignal::SeenBy(Board, Book, -1, 10, true).Num(), "a pure spectator (no seat): every player's signal");
+	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 2, 10).Num(), "a living player still sees its own and its mutual allies' only");
+	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, -1, 10 + HOLSignal::LifetimeMs, true).Num(), "faded for the spectators too");
+
+	// Free-for-all (no team): the defeated player sees the signals of the living ones.
+	TArray<int> Teams;
+	TArray<bool> IsAI;
+	for (int Slot = 0; Slot < 3; Slot++)
+	{
+		Teams.Add(0);
+		IsAI.Add(false);
+	}
+	FHOLDiplomacyBook FreeForAll = HOLDiplomacy::NewTeamBook(Teams, IsAI);
+	FHOLSignalBoard FreeBoard;
+	HOLSignal::Post(FreeBoard, FreeForAll, 0, false, HOLSignal::Rally, FVector(0.0, 0.0, 0.0), 0);
+	HOLSignal::Post(FreeBoard, FreeForAll, 1, false, HOLSignal::Scout, FVector(0.0, 0.0, 0.0), 0);
+	T.AssertEquals(0, HOLSignal::SeenBy(FreeBoard, FreeForAll, 2, 1).Num(), "free-for-all, 2 alive: nobody's signal");
+	T.AssertEquals(2, HOLSignal::SeenBy(FreeBoard, FreeForAll, 2, 1, true).Num(), "free-for-all, 2 defeated: both signals");
 }
 
 void Test_SignalStaysFiveSeconds(FUnitTest& T)

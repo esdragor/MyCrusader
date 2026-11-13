@@ -58,7 +58,7 @@ namespace HOLSignal
 	}
 
 	// Viewer sees a signal of Sender: its own, or a mutual ally's (D386, D369). Never a Neutral or an Enemy.
-	bool Sees(const FHOLDiplomacyBook& Book, int Sender, int Viewer)
+	bool Sees(const FHOLDiplomacyBook& Book, int Sender, int Viewer, bool bViewerSpectator = false)
 	{
 		if (!HOLDiplomacy::InMatch(Book, Sender) || !HOLDiplomacy::InMatch(Book, Viewer))
 			return false;
@@ -127,12 +127,12 @@ namespace HOLSignal
 	}
 
 	// The signals Viewer sees on the map at NowMs: alive, and its own or a mutual ally's.
-	TArray<FHOLSignal> SeenBy(const FHOLSignalBoard& Board, const FHOLDiplomacyBook& Book, int Viewer, int NowMs)
+	TArray<FHOLSignal> SeenBy(const FHOLSignalBoard& Board, const FHOLDiplomacyBook& Book, int Viewer, int NowMs, bool bViewerSpectator = false)
 	{
 		TArray<FHOLSignal> Result;
 		for (const FHOLSignal& Signal : Board.Signals)
 		{
-			if (NowMs - Signal.PostedMs < LifetimeMs && NowMs >= Signal.PostedMs && Sees(Book, Signal.Sender, Viewer))
+			if (NowMs - Signal.PostedMs < LifetimeMs && NowMs >= Signal.PostedMs && Sees(Book, Signal.Sender, Viewer, bViewerSpectator))
 				Result.Add(Signal);
 		}
 		return Result;
