@@ -110,3 +110,69 @@ void Test_TerrainServerAndScriptRulesAgree(FUnitTest& T)
 	}
 	T.AssertEquals(HOLTerrain::ServerScaledSpeed(1, 10), HOLTerrain::ScaledSpeed(1, 10), "a walker never reaches 0");
 }
+
+// B4 (GDD 8.1, D33 "cover in a forest", Q-forest-cover): the damage a hit really deals to a target. Q1 = A (default): a painted forest
+// zone; a ranged hit on a target inside deals less, a melee hit the same, the same arrow outside the full damage; the forest does not slow.
+void Test_TerrainForestZoneCoversFromRanged(FUnitTest& T)
+{
+	FHOLTerrainSettings S = HOLTerrain::Preset(0);
+	T.AssertTrue(S.ForestRangedDamagePercent < 100, "the preset's forest covers");
+	T.AssertTrue(S.ForestRangedDamagePercent > 0, "the preset's forest does not make a unit untouchable");
+	TArray<FHOLTerrainZone> Zones;
+	FHOLTerrainZone Forest;
+	Forest.Kind = HOLTerrain::Forest;
+	Forest.X = 0;
+	Forest.Y = 0;
+	Forest.Radius = 1000;
+	Zones.Add(Forest);
+	TArray<FHOLTerrainTree> NoTrees;
+	int Arrow = 20;
+	int InForestRanged = HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, Zones, NoTrees, true, 300, 0));
+	int InForestMelee = HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, Zones, NoTrees, false, 300, 0));
+	int OutsideRanged = HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, Zones, NoTrees, true, 1001, 0));
+	T.AssertTrue(InForestRanged < Arrow, "an arrow on a target in the forest deals less damage");
+	T.AssertEquals(Arrow * S.ForestRangedDamagePercent / 100, InForestRanged, "by the forest's percent");
+	T.AssertEquals(Arrow, InForestMelee, "a melee hit in the forest deals its full damage");
+	T.AssertEquals(Arrow, OutsideRanged, "the same arrow one centimetre outside deals its full damage");
+	T.AssertTrue(HOLTerrain::InForest(S, Zones, NoTrees, 1000, 0), "the forest's edge counts in");
+	T.AssertEquals(100, HOLTerrain::SpeedPercentAt(S, Zones, 300, 0), "the forest does not slow (not this rule)");
+	T.AssertEquals(1, HOLTerrain::ScaledDamage(1, S.ForestRangedDamagePercent), "a covered hit still hurts");
+}
+
+// Q1 = B behind hol.Terrain.ForestByTrees: in a forest = enough trees near the unit; a painted zone alone no longer counts, a felled
+// grove (fewer trees) no longer covers.
+void Test_TerrainForestByTreesCovers(FUnitTest& T)
+{
+	FHOLTerrainSettings S = HOLTerrain::Preset(0);
+	S.bForestByTrees = true;
+	TArray<FHOLTerrainZone> NoZones;
+	TArray<FHOLTerrainTree> Trees;
+	for (int Index = 0; Index < S.ForestTreeCount; Index++)
+	{
+		FHOLTerrainTree Tree;
+		Tree.X = 5000 + Index * 100;
+		Tree.Y = 0;
+		Trees.Add(Tree);
+	}
+	int Arrow = 20;
+	T.AssertTrue(HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, NoZones, Trees, true, 5000, 0)) < Arrow, "among the trees: covered");
+	T.AssertEquals(Arrow, HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, NoZones, Trees, false, 5000, 0)), "melee among the trees: full");
+	T.AssertEquals(Arrow, HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, NoZones, Trees, true, 5000 + 200 + S.ForestTreeRadius + 1, 0)),
+		"just too far from the last tree: full");
+	Trees.RemoveAt(0);
+	T.AssertEquals(Arrow, HOLTerrain::ScaledDamage(Arrow, HOLTerrain::DamagePercentAt(S, NoZones, Trees, true, 5100, 0)), "one tree felled: no cover");
+	FHOLTerrainZone Forest;
+	Forest.Kind = HOLTerrain::Forest;
+	Forest.Radius = 1000;
+	TArray<FHOLTerrainZone> Zones;
+	Zones.Add(Forest);
+	T.AssertFalse(HOLTerrain::InForest(S, Zones, Trees, 0, 0), "by trees, a painted zone without trees does not count");
+}
+
+// The console variables give the question's defaults (Q-forest-cover Q1 = A zone, Q2 = A 75 %).
+void Test_TerrainForestCVarsDefaults(FUnitTest& T)
+{
+	FHOLTerrainSettings S = HOLTerrain::SettingsFromCVars();
+	T.AssertEquals(HOLTerrain::Preset(0).ForestRangedDamagePercent, S.ForestRangedDamagePercent, "hol.Terrain.ForestRangedPercent starts at the preset's");
+	T.AssertFalse(S.bForestByTrees, "hol.Terrain.ForestByTrees starts off (painted zone)");
+}
