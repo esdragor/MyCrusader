@@ -1,5 +1,6 @@
-# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, la Mangonnelle (substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTEE ; la case D de sa grille dit Monter ; la touche D la monte (8 s, valeurs proposees), la case dit alors Demonter ; montee et sans ordre, elle prend seule la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D la demonte (5 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
+# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, le Mangonneau (nom du GDD ; substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTE ; la case D de sa grille dit Monter ; la touche D le monte (8 s, valeurs proposees), la case dit alors Demonter ; monte et sans ordre, il prend seul la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D le demonte (5 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
 # Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin (le fragment est pose a la naissance).
+# Tir visible (recette 2, 21:25) : apres le premier coup, le projectile est ralenti (hol.Combat.ArrowSpeed 500 : ~4,4 s de vol sur ~22 m au lieu de 0,6 s) pour qu'il soit en l'air sur la capture deploy_fire ; vitesse rendue (3750) avant le demontage. notereset garde le panneau des notes court (il cachait la Maison).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
@@ -21,7 +22,7 @@ frames 20
 hol.HUD.Report
 waitlog D=Deploy
 capture deploy_packed
-note 1. La Mangonnelle est selectionnee, demontee : la case D de la grille dit Monter. Elle ne tire pas sur la Maison ennemie toute proche.
+note 1. Le Mangonneau est selectionne, demonte : la case D dit Monter. Il ne tire pas sur la Maison ennemie toute proche.
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units deploy
 note 2. Tu appuies sur D : l'engin se monte (8 s).
@@ -29,14 +30,21 @@ wait 9
 hol.HUD.Report
 waitlog D=Pack
 capture deploy_deployed
-note 3. Montee : la case D dit Demonter.
+notereset
+note 3. Monte : la case D dit Demonter. Sans ordre, il tire seul sur la Maison (coups de 45).
 hol.Camera.FocusNear 4200 0
 frames 2
 waitlog Mangonel hits a building for 45
-frames 20
+hol.Combat.ArrowSpeed 500
+note 3b. Projectile ralenti pour la capture (hol.Combat.ArrowSpeed 500).
+wait 5.5
 hol.HUD.Report
 capture deploy_fire
-note 3b. Sans aucun ordre, l'engin monte prend seul la Maison ennemie a portee et tire (45 de degats de siege par coup ; reglage hol.Siege.DeployedAutoFire 1 par defaut, ta reponse B a Q-deployed-engine-autofire).
+waitlog Mangonel hits a building for 45
+hol.Combat.ArrowSpeed 3750
+frames 10
+capture deploy_fire_hit
+notereset
 hol.UI.Key D 0 0.1
 waitlog Order: 1 units pack up
 note 4. Tu appuies encore sur D : l'engin se demonte (5 s), il ne tire plus et peut marcher.
