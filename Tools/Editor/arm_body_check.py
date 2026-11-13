@@ -85,16 +85,22 @@ def check(shared, name):
     return ctx, worst
 
 
+DEFAULT_LIMIT_CM = 1.0
+# Q-spear-grip-b-look Q2 = A (2026-11-13): the Man-at-arms' 4.3 cm graze at frame 20 is tolerated, for maa_attack ONLY.
+LIMITS_CM = {"maa_attack": 5.0}
+
+
 def main():
     args = sys.argv[1:]
-    limit = 1.0
+    forced = None
     if "--max" in args:
         i = args.index("--max")
-        limit = float(args[i + 1])
+        forced = float(args[i + 1])
         del args[i:i + 2]
     shared = pa.Shared(False)
     bad = False
     for name in args or ["spear_attack"]:
+        limit = forced if forced is not None else LIMITS_CM.get(name, DEFAULT_LIMIT_CM)
         ctx, worst = check(shared, name)
         fps = ctx["gesture"].get("fps", 30)
         for side, (dp, k, label) in sorted(worst.items()):
