@@ -13,6 +13,7 @@
 #include "MassProcessingContext.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -306,6 +307,58 @@ bool FHOLConstructionFarmBuildersTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("(a) never two on the farm's field"), MostOnFarm <= 1);
 	TestTrue(TEXT("(c) never two on the lone field"), MostOnLoneField <= 1);
+	return true;
+}
+
+// N2 step 2e (NomadInProgress.md; D354, answer B of Q-nomad-forum Q2), on the real chain (the builders' processor, the one
+// place a site ends): a Nomad seat's first Forum (MainCentre) finished by its builders gives it a complete Forum (its
+// specialization opens, its Peasants' death no longer defeats it); a House finished does not; a standard seat finishing a
+// Forum is unchanged (it had one; the board is not written).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLConstructionNomadForumTest, "HeroesOfLiberty.Construction.NomadForum", UE::HeroesOfLiberty::Tests::FarmBuilders::Flags)
+bool FHOLConstructionNomadForumTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::FarmBuilders;
+	using EState = EHOLConstructionState;
+	FBuildersWorld Test;
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(Test.World);
+	IConsoleVariable* Instant = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Build.Instant"));
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()) || !TestNotNull(TEXT("the script board"), Board)
+		|| !TestNotNull(TEXT("hol.Build.Instant"), Instant))
+	{
+		return false;
+	}
+	// A site of slot 0 at Location, built by one Peasant to its end (hol.Build.Instant); finished or not.
+	const auto Build = [&](const FName TypeName, const FVector2D& Location)
+	{
+		AHOLBuilding* Site = Test.PlaceBuilding(TypeName, Location, EState::Foundation);
+		if (!Site)
+		{
+			return false;
+		}
+		Test.OrderBuild(Test.PlaceBuilders(*Site, 1), *Site);
+		const int32 InstantBefore = Instant->GetInt();
+		Instant->Set(1, ECVF_SetByCode);
+		for (int32 Steps = 0; Steps < 20 && !Site->IsFinished(); ++Steps)
+		{
+			Test.RunStep();
+		}
+		Instant->Set(InstantBefore, ECVF_SetByCode);
+		return Site->IsFinished();
+	};
+
+	// Standard seat: unchanged.
+	TestTrue(TEXT("standard: its Forum finished"), Build(HOLBuildingTypeNames::MainCentre, FVector2D(0.0, 0.0)));
+	TestTrue(TEXT("standard: it has a complete Forum"), UHOLSpecializationSubsystem::IsForumComplete(Test.World, 0));
+	TestFalse(TEXT("standard: still never defeated by its Peasants"), UHOLSpecializationSubsystem::IsNomadDefeated(Test.World, 0, 0));
+
+	// Nomad seat.
+	Board->SetNomadNow(0, true);
+	TestFalse(TEXT("Nomad: no complete Forum at the start"), UHOLSpecializationSubsystem::IsForumComplete(Test.World, 0));
+	TestTrue(TEXT("Nomad: a House finished"), Build(HOLBuildingTypeNames::House, FVector2D(30000.0, 0.0)));
+	TestFalse(TEXT("Nomad: a House is no Forum"), UHOLSpecializationSubsystem::IsForumComplete(Test.World, 0));
+	TestTrue(TEXT("Nomad: its first Forum finished"), Build(HOLBuildingTypeNames::MainCentre, FVector2D(60000.0, 0.0)));
+	TestTrue(TEXT("Nomad: it has a complete Forum now"), UHOLSpecializationSubsystem::IsForumComplete(Test.World, 0));
+	TestFalse(TEXT("Nomad: its last Peasant's death no longer defeats it"), UHOLSpecializationSubsystem::IsNomadDefeated(Test.World, 0, 0));
 	return true;
 }
 
