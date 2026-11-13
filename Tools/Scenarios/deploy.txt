@@ -37,11 +37,17 @@ frames 2
 waitlog Mangonel hits a building for 45
 hol.Combat.ArrowSpeed 500
 note 3b. Projectile ralenti pour la capture (hol.Combat.ArrowSpeed 500).
-wait 5.5
+wait 7
 hol.HUD.Report
+hol.Combat.ArrowReport
+capture deploy_fire_wide
+hol.Camera.Zoom 4
+frames 2
 capture deploy_fire
 waitlog Mangonel hits a building for 45
 hol.Combat.ArrowSpeed 3750
+hol.Camera.Zoom -4
+frames 2
 frames 10
 capture deploy_fire_hit
 notereset
