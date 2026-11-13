@@ -301,11 +301,13 @@ GitE checkout -q main
 Set-Content -Path (Join-Path $ERepo 'EtapeDefini.md') -Encoding UTF8 -Value @(
   "- AgentX (featx, sans C++, 2026-11-13) : **outil fait ($shaX), pas dans main.**",
   "- AgentY (featy, sans C++, 2026-11-13) : **outil fait ($shaY), pas dans main.**",
-  "- AgentZ (featz-inconnue, sans C++) : **rien, pas dans main.**")
+  "- AgentZ (featz-inconnue, sans C++) : **rien, pas dans main.**",
+  "- AgentW (featx, sans C++) : **docs seulement, pas dans main.**")
 $EWts = Join-Path $Tmp 'emptywts'; New-Item -ItemType Directory -Path $EWts -Force | Out-Null
 $etClose = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $EWts -RetoursDir $Ret -EtapeFile (Join-Path $ERepo 'EtapeDefini.md') | Out-String
-Check ($etClose -match '(?m)^WARN .*featx.*pas dans main') 'L90 close: EtapeDefini dit pas dans main pour featx deja dans main -> WARN' $etClose
+Check ($etClose -match '(?m)^WARN .*commits .*AgentX.*pas dans main') 'L90 close: EtapeDefini dit pas dans main pour les commits de featx deja dans main -> WARN' $etClose
 Check (-not ($etClose -match '(?m)^WARN .*(featy|featz).*pas dans main')) 'L90 close: featy (hors main) et branche inconnue -> pas de WARN' $etClose
+Check ($etClose -match '(?m)^WARN .*branche featx.*AgentW') 'L90 close: ligne sans SHA, branche featx (1er mot entre parentheses) deja dans main -> WARN' $etClose
 
 # --- L8-1 : session_gate Essay : le worktree doit contenir le tip de CHAQUE branche citee dans le E-*.md de l'essai
 # (2026-11-06 : qground joue depuis Elrond sans les correctifs de melee de Celeborn). Vrai depot git factice : work contient fixa, pas fixb.
