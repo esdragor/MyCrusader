@@ -1,9 +1,16 @@
 # E-deploy : la Mangonnelle (substitut du Trebuchet) se monte et se demonte par la touche D (case D : Monter / Demonter)
 
-STATUT : LOGIQUE SEULEMENT (geste reel et 4 PNG vus, MAIS la question C:\Users\baudo\Documents\MyCrusader\Retours\Q-deployed-engine-autofire.md n'a pas de reponse : l'essai montre le comportement du defaut code hol.Siege.DeployedAutoFire 0 = A, l'engin monte ne tire que sur ordre ; si la reponse est B ou C, le scenario change)
-GESTE: réel         (vraie touche D = hol.UI.Key D, evenement clavier Slate ; vrai clic droit = curseur de test pose sur la Maison par hol.Camera.TestCursorGround -9600 0 puis hol.UI.Key RightMouseButton, appui et relachement par HandleOrder / HandleOrderCompleted)
+STATUT : LOGIQUE SEULEMENT tant que tiers n'est pas fusionnee dans main (la 2e fusion groupee de 22:00 la prend ; la recette elevera la fiche). Preflight du scenario final PASS (20:05, voir ci-dessous) ; reponse B a Q-deployed-engine-autofire appliquee (hol.Siege.DeployedAutoFire defaut 1, commit 73adb69, test HeroesOfLiberty.Siege.Deploy.DeployedAutoFire vert, tests 1238/1238, net 16/16).
+GESTE: réel         (vraie touche D = hol.UI.Key D, evenement clavier Slate, deux fois ; plus de clic droit : le tir est automatique)
 SON: non entendu    (-nosound)
 branches: tiers
+
+Pre-vol 2026-11-13 20:05 (ELROND-1113h, tiers 99f6387, binaire du build PASS 19:57, fenetre cachee) = PASS en 42 s (scenario ready en 18,6 s de jeu, aucun avertissement, HUD sans recouvrement, sanity). Le risque 'premier tir pendant le wait 9 avant le waitlog' ne s'est pas produit : montage fini a la note 3 (34,9 s), waitlog du coup de 45 satisfait 1,6 s plus tard. 4 PNG OUVERTS et vus :
+- deploy_packed : Mangonneau selectionne (panneau : PV 200/200, Attaque 45), grille Q Attaque / S Arret / D **Monter** / V Tenir ; la Maison rouge ennemie est au-dessus de l'engin, intacte.
+- deploy_deployed : case D = **Demonter** ; le panneau ajoute la ligne de statut 'Attaque'.
+- deploy_fire : camera recentree, la Maison rouge est VISIBLE en entier sous le panneau des notes ; case D = Demonter, statut 'Attaque'. Aucun trait de tir ni barre de PV de la Maison n'est visible sur cette image : le coup de 45 est prouve par le journal (waitlog 'Mangonel hits a building for 45'), pas par l'image.
+- deploy_packed_again : case D redit **Monter**, la ligne de statut 'Attaque' a disparu (l'engin ne tire plus).
+Commande pour l'utilisateur (apres la fusion de tiers) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
 
 Pre-vol 2026-11-13 18:57 (ELROND-1113f, tiers, binaire du build PASS 18:21) : scenario PASS en 49 s (ready, aucun avertissement, HUD sans recouvrement, sanity) ; preflight FAIL (1) pour la seule raison 'deploy.txt non commite' (commite ensuite, voir Palier3InProgress.md). 4 PNG ouverts et vus (planche 2x2) : deploy_packed (case D = Monter, Maison rouge a portee intacte), deploy_deployed (case D = Demonter, l'engin ne tire pas), deploy_fire (camera recentree entre l'engin et la Maison : la Maison est VISIBLE sous le panneau des notes, trait de tir rouge de l'engin vers la Maison, statut Attaque, case D = Demonter ; les PV de la Maison ne sont pas affiches en chiffres, le coup de 45 est prouve par le journal), deploy_packed_again (case D = Monter).
 Commande pour l'utilisateur (quand la question sera tranchee) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 deploy -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
