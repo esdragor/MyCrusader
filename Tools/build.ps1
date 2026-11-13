@@ -11,7 +11,8 @@
 #   powershell -ExecutionPolicy Bypass -File Tools\build.ps1 [-Root <copy>] [-Target HeroesOfLibertyEditor] [-Config Development] [-Force] [-Priority merge]
 # Full log: <copy>\Saved\Logs\build.log. Prints one line PASS / FAIL with the first errors.
 # Exit codes: 0 PASS, 1 FAIL, 2 this copy is busy, 3 superseded by a newer build of the same copy (never compiled),
-# 4 orphan (the process that launched this build is gone, so it left the queue without compiling).
+# 4 orphan (the process that launched this build is gone, so it left the queue without compiling), 5 wait exceeded
+# (-MaxWaitMin N: more than N minutes in the queue, left it without compiling).
 #
 # -Priority merge (or the environment variable HOL_BUILD_PRIORITY=merge): for the grouped-merge build. It goes before every
 #   normal build in the queue, never before the build that is already compiling. Queue order: 1. merge; 2. copies that have
@@ -50,7 +51,10 @@ param(
     # L12-1c (2026-11-12): before compiling, wait while the free virtual memory is under this floor (GB), at most
     # MemoryWaitMaxSeconds, then build anyway; the measure and the wait go to the console and to the CSV column 'load'.
     [double] $MinFreeVirtualGB = $(if ("$env:HOL_BUILD_MIN_FREE_VM_GB" -ne "") { [double] $env:HOL_BUILD_MIN_FREE_VM_GB } else { 8 }),
-    [int] $MemoryWaitMaxSeconds = $(if ("$env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS" -ne "") { [int] $env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS } else { 1800 })
+    [int] $MemoryWaitMaxSeconds = $(if ("$env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS" -ne "") { [int] $env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS } else { 1800 }),
+    # L12-3 (2026-11-12): past this many minutes in the queue (0 = no limit), give up without compiling: "wait exceeded
+    # (attente depassee)", ticket removed, CSV result TIMEOUT, exit 5. The agent works without a binary meanwhile.
+    [double] $MaxWaitMin = 0
 )
 $LoadText = ""
 function Get-FreeVirtualGB { $Os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue; if ($Os) { [math]::Round($Os.FreeVirtualMemory / 1MB, 1) } else { -1 } }
@@ -283,6 +287,10 @@ try {
                 if ($Shown -ne $LastShown) {
                     Write-Host "queued behind the build of: $($Names -join ', ') (position $($Decision.Position) of $($Decision.Of) waiting; one build at a time on this engine; $Priority)"
                     $LastShown = $Shown
+                }
+                if ($MaxWaitMin -gt 0 -and ((Get-Date) - $Requested).TotalMinutes -ge $MaxWaitMin) {
+                    Write-Host "build : wait exceeded (attente depassee) after $MaxWaitMin min in the queue behind: $($Behind -join ', '); never compiled ($Worktree); work without a binary, then build again"
+                    $Outcome = "TIMEOUT"; $Result = 5; $Go = $null; break
                 }
                 Start-Sleep -Seconds $Poll
             }
