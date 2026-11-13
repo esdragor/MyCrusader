@@ -104,8 +104,7 @@ bool UHOLSiteSubsystem::IsEnabled()
 
 bool UHOLSiteSubsystem::IsActiveFor(const FHOLMatchConfig& Config, const int32 SiteCount)
 {
-	// RED STUB (S7): the box is not read yet.
-	return IsEnabled() && SiteCount > 0;
+	return (Config.bSacredSites || IsEnabled()) && SiteCount > 0;
 }
 
 int32 UHOLSiteSubsystem::GetGoldPerMinute()

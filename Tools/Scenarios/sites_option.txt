@@ -1,0 +1,20 @@
+# Option de partie Sites sacres (S7, D699) : la case "Sites sacres" de la configuration (sites_option.json, "bSacredSites": true) suffit, hol.Site.Enabled reste a 0.
+# Plain, toi (slot 0) contre un adversaire sans cerveau ; 2 sites, 4 Moines a toi dedans : ils les prennent et le compte de la victoire sacree part. Case decochee : rien (test C++ Sites.SubsystemBox).
+frames 30
+hol.Sanity.Watch 1
+hol.Site.HoldSeconds 4
+hol.Site.VictorySeconds 75
+hol.Site.Add 6000 3000 1200
+hol.Site.Add 6000 -3000 1200
+hol.Units.Spawn 2 6000 3000 0 Monk 200
+hol.Units.Spawn 2 6000 -3000 0 Monk 200
+waitunits 4
+hol.Camera.Zoom -12
+hol.Camera.Focus 6000 0
+wait 14
+frames 2
+hol.HUD.Report 1
+waitlog sacred leader 0 left
+waitlog HUD overlap:
+capture sites_option_on
+note 1. Case cochee (hol.Site.Enabled a 0) : a gauche, sous le panneau Triches, "Victoire sacree : <ton nom> dans m:ss", tes Moines tiennent les 2 sites.
