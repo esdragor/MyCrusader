@@ -188,3 +188,5 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Icône du bouton de la rage nécrotique du Guerrier damné (cellule à texte « Rage », aucune texture) [rien]
 
 Icone du bouton Monter / Demonter de l'engin de siege (cellule a texte, aucune texture) [rien]
+Templiers : jouables seulement par le cheat (triple clic sur le titre), sans regle ni unite propres, ils jouent comme l Aube [regles de l Aube]
+Enfants du Dragon, Cercle de l Ombre, Heritiers du Feu : factions grisees dans Nouvelle partie, sans contenu (jouent comme l Aube si elles etaient prises) [rien]
