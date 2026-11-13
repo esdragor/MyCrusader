@@ -8,6 +8,7 @@
 #include "HOLSiteSubsystem.generated.h"
 
 class AHOLGameState;
+struct FHOLMatchConfig;
 
 /**
  * The sacred sites of a match (SacredSitesInProgress.md S5, GDD 14.3, D429 to D431, D697 to D703): where the simulation runs (solo, server),
@@ -39,6 +40,12 @@ public:
 
 	/** The gold a minute each held site pays its owner (hol.Site.GoldPerMinute, provisional 30): what the HUD line multiplies by the sites held (S6). */
 	static int32 GetGoldPerMinute();
+
+	/**
+	 * The sites take part in this match (S7, D699): the box "Sacred sites" (FHOLMatchConfig::bSacredSites) or hol.Site.Enabled (the
+	 * developers' and the old scenarios' switch), and at least one site. Copy of HOLSiteOption::SitesActive (Script/Sites/HOLSiteOption.as).
+	 */
+	static bool IsActiveFor(const FHOLMatchConfig& Config, int32 SiteCount);
 
 	/**
 	 * Whether the unit type is a holy unit of the faction (it takes a site). PROVISIONAL list (D702: the Dawn's Monk and Luminous Monk; the

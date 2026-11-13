@@ -103,7 +103,7 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 	GENERATED_BODY()
 
 	/** Format version: a file of an older version is read with defaults for its missing fields. */
-	static constexpr int32 CurrentVersion = 3;
+	static constexpr int32 CurrentVersion = 4;
 	static constexpr int32 MaxSlots = 8;
 	/** The owner of the neutral units (camps, NeutralsInProgress.md N3): the first number out of the slots, hostile to every slot (HOLCampTable, D401); no slot, no player, no vision. */
 	static constexpr int32 NeutralOwner = MaxSlots;
@@ -174,6 +174,13 @@ struct HEROESOFLIBERTY_API FHOLMatchConfig
 
 	UPROPERTY()
 	bool bCatastrophe = false;
+
+	/**
+	 * S7 (version 4, D699, SacredSitesInProgress.md): the box "Sacred sites" of the lobby. False (no such field in the file: older files,
+	 * the scenarios without it) = no site of the map takes part (Script/Sites/HOLSiteOption.as DefaultSacredSites); UHOLSiteSubsystem::IsActiveFor.
+	 */
+	UPROPERTY()
+	bool bSacredSites = false;
 
 	/**
 	 * IA1.1: Peasants each occupied slot gets at the start; -1 (no such field in the file, the menu, the lobby) = the

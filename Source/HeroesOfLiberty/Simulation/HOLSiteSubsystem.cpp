@@ -102,6 +102,12 @@ bool UHOLSiteSubsystem::IsEnabled()
 	return bSitesEnabled;
 }
 
+bool UHOLSiteSubsystem::IsActiveFor(const FHOLMatchConfig& Config, const int32 SiteCount)
+{
+	// RED STUB (S7): the box is not read yet.
+	return IsEnabled() && SiteCount > 0;
+}
+
 int32 UHOLSiteSubsystem::GetGoldPerMinute()
 {
 	return SiteGoldPerMinute;
@@ -263,7 +269,7 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 	UWorld* World = GetWorld();
 	const UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
 	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
-	if (!IsEnabled() || Sites.IsEmpty() || !Units || !GameState)
+	if (Sites.IsEmpty() || !Units || !GameState || !IsActiveFor(GameState->GetLaunchConfig(), Sites.Num()))
 	{
 		return;
 	}

@@ -124,7 +124,7 @@ bool FHOLMapSizeLobbyMatchConfigTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("version 3"), Read.Version, 3);
+	TestEqual(TEXT("version 4"), Read.Version, 4);
 	TestTrue(TEXT("Large, places drawn, teams together"), Read.MapSize == EHOLMapSize::Large && Read.bDrawPlaces && Read.bTeamsTogether);
 	TestEqual(TEXT("file played"), FHOLMapSizeRules::GetMapFile(Read.Map, Read.MapSize).ToString(), FString(TEXT("/Game/Maps/Plain_Large.Plain_Large")));
 	TestTrue(TEXT("fits its map"), FHOLMapSizeRules::CheckPlaces(Read));
@@ -148,7 +148,7 @@ bool FHOLMapSizeLobbyAIMatchConfigTest::RunTest(const FString& Parameters)
 	{
 		return false;
 	}
-	TestEqual(TEXT("version 3"), Read.Version, 3);
+	TestEqual(TEXT("version 4"), Read.Version, 4);
 	TestEqual(TEXT("four slots held"), Read.GetNumOccupiedSlots(), 4);
 	const FHOLMatchSlot& Bob = Read.Slots[0];
 	TestTrue(TEXT("slot 0: Bob, human, colour 0, team 1"),
