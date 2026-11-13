@@ -61,6 +61,8 @@
 #include "Widgets/HOLGridCell.h"
 #include "Widgets/HOLQueueItem.h"
 #include "Widgets/HOLRootLayout.h"
+#include "Engine/GameViewportClient.h"
+#include "Widgets/Layout/SBox.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
@@ -1782,6 +1784,72 @@ FString UHOLGameScreen::HoverStat(const int32 Index) const
 				return ShownStatTipList.IsValidIndex(Index) ? ShownStatTipList[Index] : FString(TEXT("tip"));
 			}
 			return FString::Printf(TEXT("the tip of another widget (%s)"), *Widget->GetTypeAsString());
+		}
+	}
+	return FString::Printf(TEXT("none (hit %s)"), *Hit.Widgets[Hit.Widgets.Num() - 1].Widget->GetTypeAsString());
+}
+
+FString UHOLGameScreen::HoverIncome(const int32 Index, const bool bShow)
+{
+	// D788 (scenario income_tooltip): the hover of a resource's amount as the mouse does it, same hit test as HoverStat. The engine shows a
+	// tooltip in a window of its own, which the capture of the viewport does not see: bShow draws the SAME tooltip widget in the viewport.
+	UGameViewportClient* Viewport = GetWorld() ? GetWorld()->GetGameViewport() : nullptr;
+	if (IncomeTipOverlay.IsValid())
+	{
+		if (Viewport)
+		{
+			Viewport->RemoveViewportWidgetContent(IncomeTipOverlay.ToSharedRef());
+		}
+		IncomeTipOverlay.Reset();
+	}
+	UCommonTextBlock* const Amounts[] = { FoodAmount.Get(), WoodAmount.Get(), StoneAmount.Get(), GoldAmount.Get() };
+	if (Index < 0 || Index >= UE_ARRAY_COUNT(Amounts))
+	{
+		return TEXT("closed");
+	}
+	UCommonTextBlock* Amount = Amounts[Index];
+	const TSharedPtr<SWidget> AmountWidget = Amount ? Amount->GetCachedWidget() : TSharedPtr<SWidget>();
+	if (!Amount || !AmountWidget.IsValid() || Amount->GetVisibility() == ESlateVisibility::Collapsed || !FSlateApplication::IsInitialized())
+	{
+		return TEXT("no amount shown");
+	}
+	FSlateApplication& Slate = FSlateApplication::Get();
+	FWidgetPath AmountPath;
+	if (!Slate.FindPathToWidget(AmountWidget.ToSharedRef(), AmountPath, EVisibility::All) || AmountPath.Widgets.Num() == 0)
+	{
+		return TEXT("no path to the amount");
+	}
+	const FGeometry& Box = AmountPath.Widgets[AmountPath.Widgets.Num() - 1].Geometry;
+	const FVector2f Position = Box.GetAbsolutePosition();
+	const FVector2f Size = Box.GetAbsoluteSize();
+	const FWidgetPath Hit = Slate.LocateWindowUnderMouse(Position + Size * 0.5f, Slate.GetInteractiveTopLevelWindows(), true);
+	if (Hit.Widgets.Num() == 0)
+	{
+		return TEXT("nothing under the point");
+	}
+	for (int32 Level = Hit.Widgets.Num() - 1; Level >= 0; --Level)
+	{
+		const TSharedRef<SWidget> Widget = Hit.Widgets[Level].Widget;
+		const TSharedPtr<IToolTip> Tip = Widget->GetToolTip();
+		if (Tip.IsValid() && !Tip->IsEmpty())
+		{
+			if (&Widget.Get() != AmountWidget.Get())
+			{
+				return FString::Printf(TEXT("the tip of another widget (%s)"), *Widget->GetTypeAsString());
+			}
+			if (bShow && Viewport)
+			{
+				const FVector2f Local = GetCachedGeometry().AbsoluteToLocal(Position + FVector2f(0.f, Size.Y));
+				IncomeTipOverlay = SNew(SBox)
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Top)
+					.Padding(FMargin(Local.X, Local.Y + 4.f, 0.f, 0.f))
+					[
+						Tip->AsWidget()
+					];
+				Viewport->AddViewportWidgetContent(IncomeTipOverlay.ToSharedRef(), 1000);
+			}
+			return Amount->GetToolTipText().ToString();
 		}
 	}
 	return FString::Printf(TEXT("none (hit %s)"), *Hit.Widgets[Hit.Widgets.Num() - 1].Widget->GetTypeAsString());

@@ -145,6 +145,27 @@ namespace UE::HeroesOfLiberty::UI::HUD
 		TEXT("hol.HUD.Hover <StatIndex> [DelaySeconds=0]: hit-tests the statistic of the selection block by Slate's window hit test and logs the tooltip the hover would show"),
 		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&Hover));
 
+	/** hol.HUD.HoverIncome <ResourceIndex 0-3 | -1> [Show=1]: hit-tests the amount of a resource of the top bar (D788) and logs "HUD income hover <i>: <tooltip>". */
+	void HoverIncome(const TArray<FString>& Args, UWorld* World)
+	{
+		if (Args.IsEmpty())
+		{
+			UE_LOG(LogHOLUI, Warning, TEXT("Usage: hol.HUD.HoverIncome <ResourceIndex 0 food, 1 wood, 2 stone, 3 gold | -1> [Show=1]"));
+			return;
+		}
+		const int32 Index = FCString::Atoi(*Args[0]);
+		const bool bShow = Args.Num() < 2 || FCString::Atoi(*Args[1]) != 0;
+		WithGameScreen(World, 0.f, [Index, bShow](UHOLGameScreen& Screen)
+		{
+			UE_LOG(LogHOLUI, Display, TEXT("HUD income hover %d: %s"), Index, *Screen.HoverIncome(Index, bShow));
+		});
+	}
+
+	FAutoConsoleCommandWithWorldAndArgs HoverIncomeCommand(
+		TEXT("hol.HUD.HoverIncome"),
+		TEXT("hol.HUD.HoverIncome <0 food | 1 wood | 2 stone | 3 gold | -1> [Show=1]: hit-tests the resource's amount of the top bar, logs the income tooltip the hover would show and draws it in the viewport (scenario captures); -1 removes it"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&HoverIncome));
+
 	/** hol.HUD.Cheats <0|1>: the cheats' panel folded or open, without keeping the choice (scenarios: a known state, whatever was kept). */
 	void Cheats(const TArray<FString>& Args, UWorld* World)
 	{
