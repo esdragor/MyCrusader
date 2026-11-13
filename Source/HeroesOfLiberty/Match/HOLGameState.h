@@ -37,6 +37,8 @@ enum class EHOLDefeatReason : uint8
 	Disconnected,
 	/** S10 (D431, D703): another camp held every sacred site for the whole count. */
 	SacredSites,
+	/** N2 (D354, Nomad option): its last Peasant died before its first Forum was complete (HOLNomad::IsDefeated). */
+	Nomad,
 };
 
 /**
@@ -335,6 +337,12 @@ public:
 	 * Logs "Regicide: king of slot N died".
 	 */
 	bool HandleKingDeath(int32 Slot);
+
+	/**
+	 * N2 (D354): Slot has PeasantCount Peasants left; a Nomad seat with none before its first complete Forum is defeated at once
+	 * (EHOLDefeatReason::Nomad, HOLNomad::IsDefeated read on the script board). A standard seat is never defeated here. True when defeated.
+	 */
+	bool HandleNomadPeasants(int32 Slot, int32 PeasantCount);
 
 	/**
 	 * Server only, cheat (hol.Victory.SkipRuin): the slot's forum leaves its phase at once (ruin -> rebuilding, rebuilding ->

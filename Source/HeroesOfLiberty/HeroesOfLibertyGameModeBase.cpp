@@ -16,6 +16,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "EngineUtils.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLForumMessages.h"
@@ -326,7 +327,7 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	// counted by the production at each step.
 	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
 	{
-		if (HOLGameState->GiveSlotStock(*PlayerState, GetDefault<UHOLMatchSettings>()->StartingResources))
+		if (HOLGameState->GiveSlotStock(*PlayerState, UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources)))
 		{
 			// M6-Q15: back within the window, he counts as present for the manager (a leader stays leader).
 			UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
@@ -340,7 +341,7 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	}
 	else
 	{
-		PlayerState->SetResources(GetDefault<UHOLMatchSettings>()->StartingResources);
+		PlayerState->SetResources(UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources));
 	}
 	AssignBuildingOwners(Slot);
 	// F6e.3 (D520, R7): a player who comes back to a match in progress gets what his camp explored and the buildings it remembers (his client
@@ -420,7 +421,7 @@ void AHeroesOfLibertyGameModeBase::UpdateStartWait()
 		{
 			const FString SlotName = MatchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
 			if (Missing.ContainsByPredicate([&SlotName](const FString& Name) { return Name.Equals(SlotName, ESearchCase::IgnoreCase); })
-				&& HOLGameState->KeepMissingSlot(Slot, GetDefault<UHOLMatchSettings>()->StartingResources, GetWorld()->GetTimeSeconds(),
+				&& HOLGameState->KeepMissingSlot(Slot, UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources), GetWorld()->GetTimeSeconds(),
 					CVarDisconnectWindowSeconds.GetValueOnGameThread()))
 			{
 				GetWorldTimerManager().SetTimer(AbsenceTimer, this, &AHeroesOfLibertyGameModeBase::UpdateAbsences, 1.f, true);
@@ -613,7 +614,7 @@ void AHeroesOfLibertyGameModeBase::StartPlay()
 	if (AHOLStartSlot::WorldHasSlots(GetWorld()))
 	{
 		// IA0.1 E1: the AI slots' player states before their centres (the humans got theirs at their login).
-		SpawnAIPlayerStates(*GetWorld(), MatchConfig, GetDefault<UHOLMatchSettings>()->StartingResources);
+		SpawnAIPlayerStates(*GetWorld(), MatchConfig, UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources));
 		SpawnMainCentres();
 	}
 

@@ -1,0 +1,219 @@
+// Copyright Epic Games, Inc. All Rights Reserved.
+
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
+#include "Match/HOLSpecializationSubsystem.h"
+#include "Misc/AutomationTest.h"
+
+#if WITH_DEV_AUTOMATION_TESTS
+
+// SP2 (SpecializationInProgress.md; GDD 13, D07, D684, D785, answers B of Q-specialization-switch and Q-nomad-forum Q2): the server's
+// specialization board is the script's (the real chain: C++ bridge -> Script/Specialization HOLSpecialization::Start, Cancel, Advance),
+// and each seat's view lands on its player state (what the owner's screen reads):
+// - slot 0 at tier 1 starts option 1: running, 30 s left; 29.999 s later not applied, 1 ms more applied (the event names tier 1, option 1);
+// - the applied tier is final (AlreadyChosen); slot 1 has nothing (one state per seat);
+// - tier 2 without a complete Forum: refused, the button off (NoForumComplete); with one: open, started; the other option replaces it at
+//   the full 45 s (answer B); 10 s with the Forum down: paused (Q2 answer A); cancel: nothing runs, nothing chosen;
+// - through the player state: started again, the world's 45 s of AdvanceAllNow apply it and the view says so.
+namespace UE::HeroesOfLiberty::Tests::SpecializationBoard
+{
+	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationBoardServerTest, "HeroesOfLiberty.Specialization.ServerBoard", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationBoardServerTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (TestNotNull(TEXT("the script board of specializations"), Board))
+	{
+		constexpr int32 Ok = 0;
+		constexpr int32 AlreadyChosen = 4;
+		constexpr int32 NoForumComplete = 8;
+		int32 AppliedSlot = -1, AppliedTier = 0, AppliedOption = -1;
+		Board->OnApplied.AddLambda([&](const int32 Slot, const int32 Tier, const int32 Option) { AppliedSlot = Slot; AppliedTier = Tier; AppliedOption = Option; });
+
+		TestTrue(TEXT("Tier 1's choice is open at tier 1"), Board->IsOpenNow(0, 1, 1, true));
+		TestEqual(TEXT("Slot 0 starts option 1 of tier 1"), Board->StartNow(0, 1, 1, 1, true), Ok);
+		TestEqual(TEXT("It runs"), Board->ViewNow(0).PendingTier, 1);
+		TestEqual(TEXT("Option 1"), Board->ViewNow(0).PendingOption, 1);
+		TestEqual(TEXT("30 s left (D684)"), Board->ViewNow(0).RemainingMs, 30000);
+		TestEqual(TEXT("29.999 s later: not applied"), Board->AdvanceNow(0, 29999, true), 0);
+		TestEqual(TEXT("1 ms left"), Board->ViewNow(0).RemainingMs, 1);
+		TestEqual(TEXT("1 ms more: tier 1 applied"), Board->AdvanceNow(0, 1, true), 1);
+		TestEqual(TEXT("The event names slot 0"), AppliedSlot, 0);
+		TestEqual(TEXT("The event names tier 1"), AppliedTier, 1);
+		TestEqual(TEXT("The event names option 1"), AppliedOption, 1);
+		TestEqual(TEXT("Option 1 is tier 1's"), Board->ViewNow(0).GetChosen(1), 1);
+		TestEqual(TEXT("Nothing runs any more"), Board->ViewNow(0).PendingTier, 0);
+		TestEqual(TEXT("Tier 1 is final"), Board->StartNow(0, 1, 0, 1, true), AlreadyChosen);
+		TestEqual(TEXT("Slot 1 has chosen nothing"), Board->ViewNow(1).GetChosen(1), -1);
+
+		TestFalse(TEXT("Without a complete Forum, tier 2's button is off (Q-nomad-forum Q2 = B)"), Board->IsOpenNow(0, 2, 2, false));
+		TestEqual(TEXT("And the start is refused"), Board->StartNow(0, 2, 0, 2, false), NoForumComplete);
+		TestTrue(TEXT("With one it is open"), Board->IsOpenNow(0, 2, 2, true));
+		TestEqual(TEXT("Option 0 of tier 2"), Board->StartNow(0, 2, 0, 2, true), Ok);
+		TestEqual(TEXT("10 s run"), Board->AdvanceNow(0, 10000, true), 0);
+		TestEqual(TEXT("The other option replaces it (answer B)"), Board->StartNow(0, 2, 1, 2, true), Ok);
+		TestEqual(TEXT("Option 1 runs"), Board->ViewNow(0).PendingOption, 1);
+		TestEqual(TEXT("At the full 45 s"), Board->ViewNow(0).RemainingMs, 45000);
+		TestEqual(TEXT("10 s with the Forum down"), Board->AdvanceNow(0, 10000, false), 0);
+		TestEqual(TEXT("Paused: still 45 s (Q2 = A)"), Board->ViewNow(0).RemainingMs, 45000);
+		TestEqual(TEXT("Cancel"), Board->CancelNow(0), Ok);
+		TestEqual(TEXT("Nothing runs"), Board->ViewNow(0).PendingTier, 0);
+		TestEqual(TEXT("Nothing chosen at tier 2"), Board->ViewNow(0).GetChosen(2), -1);
+
+		AHOLPlayerState* PlayerState = World->SpawnActor<AHOLPlayerState>();
+		if (TestNotNull(TEXT("slot 0's player state"), PlayerState))
+		{
+			PlayerState->SetMatchSlot(0, 0);
+			TestEqual(TEXT("Option 0 of tier 2 again"), Board->StartNow(0, 2, 0, 2, true), Ok);
+			Board->RefreshView(*PlayerState);
+			TestEqual(TEXT("The player state shows it running"), PlayerState->GetSpecialization().PendingTier, 2);
+			Board->AdvanceAllNow(44999);
+			TestEqual(TEXT("1 ms left on the player state"), PlayerState->GetSpecialization().RemainingMs, 1);
+			Board->AdvanceAllNow(1);
+			TestEqual(TEXT("The player state shows option 0 applied at tier 2"), PlayerState->GetSpecialization().GetChosen(2), 0);
+			TestEqual(TEXT("The event names tier 2"), AppliedTier, 2);
+		}
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// N2 step 1 (NomadInProgress.md; D354, answer B of Q-nomad-forum Q2): the seat's complete Forum is HOLNomad::HasCompleteForum of the
+// script board's state, read by IsForumComplete (what ServerStartSpecialization passes):
+// - a standard seat (0) has one: tier 1 starts;
+// - a Nomad seat (1) has none: IsForumComplete is false, the button is off and the start is refused (nothing runs);
+// - its first Forum complete: IsForumComplete is true for good, the button lights and the start runs.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationNomadForumTest, "HeroesOfLiberty.Specialization.NomadForum", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationNomadForumTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (TestNotNull(TEXT("the script board of specializations"), Board))
+	{
+		constexpr int32 Ok = 0;
+		constexpr int32 NoForumComplete = 8;
+		Board->SetNomadNow(1, true);
+
+		TestTrue(TEXT("A standard seat has a complete Forum"), UHOLSpecializationSubsystem::IsForumComplete(World, 0));
+		TestEqual(TEXT("Its tier 1 starts"), Board->StartNow(0, 1, 0, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 0)), Ok);
+		TestEqual(TEXT("And runs"), Board->ViewNow(0).PendingTier, 1);
+
+		TestFalse(TEXT("A Nomad seat without a Forum has none"), UHOLSpecializationSubsystem::IsForumComplete(World, 1));
+		TestFalse(TEXT("Its button is off (answer B)"), Board->IsOpenNow(1, 1, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)));
+		TestEqual(TEXT("Its start is refused"), Board->StartNow(1, 1, 0, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)), NoForumComplete);
+		TestEqual(TEXT("Nothing runs for it"), Board->ViewNow(1).PendingTier, 0);
+
+		Board->NoteForumCompleteNow(1);
+		TestTrue(TEXT("Its first Forum complete: it has one"), UHOLSpecializationSubsystem::IsForumComplete(World, 1));
+		TestTrue(TEXT("The button lights"), Board->IsOpenNow(1, 1, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)));
+		TestEqual(TEXT("The start runs"), Board->StartNow(1, 1, 0, 1, UHOLSpecializationSubsystem::IsForumComplete(World, 1)), Ok);
+		TestEqual(TEXT("Tier 1 runs for it"), Board->ViewNow(1).PendingTier, 1);
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// N2 step 2a (NomadInProgress.md; answer A of Q-nomad-forum Q1, D783): the stock a seat starts with, read where the game mode gives
+// StartingResources (login, AI seats, a missing seat kept):
+// - without bNomad: the standard stock itself, every resource unchanged (the standard match does not change);
+// - with bNomad: the standard stock plus the secondary centre's price, read by the script board (HOLSecondaryCentre::Cost: 150 wood, 400 stone).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationNomadStockTest, "HeroesOfLiberty.Specialization.NomadStock", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationNomadStockTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	TestNotNull(TEXT("the script board of specializations"), UHOLSpecializationSubsystem::Find(World));
+	const FHOLResources Standard(200, 210, 220, 230);
+	const FHOLResources Plain = UHOLSpecializationSubsystem::StartingStock(World, false, Standard);
+	TestTrue(TEXT("Without the Nomad option: the standard stock, unchanged"), Plain == Standard);
+	const FHOLResources Nomad = UHOLSpecializationSubsystem::StartingStock(World, true, Standard);
+	TestEqual(TEXT("Nomad: the food unchanged"), Nomad.Food, 200);
+	TestEqual(TEXT("Nomad: the wood plus the secondary centre's 150 (D783)"), Nomad.Wood, 210 + 150);
+	TestEqual(TEXT("Nomad: the stone plus the secondary centre's 400 (D783)"), Nomad.Stone, 220 + 400);
+	TestEqual(TEXT("Nomad: the gold unchanged"), Nomad.Gold, 230);
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// N2 step (b) (NomadInProgress.md; D354): a Nomad seat whose last Peasant dies before its first complete Forum is defeated
+// (EHOLDefeatReason::Nomad, HOLNomad::IsDefeated read on the script board through AHOLGameState::HandleNomadPeasants):
+// - a standard seat (0) with no Peasant left is NOT defeated (the standard match does not change);
+// - a Nomad seat (1) with Peasants left is not; with none it is, for the reason Nomad;
+// - a Nomad seat (2) whose first Forum was complete is not, even with no Peasant left (the normal rules for good).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationNomadDefeatTest, "HeroesOfLiberty.Specialization.NomadDefeat", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationNomadDefeatTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (TestNotNull(TEXT("game state"), GameState) && TestNotNull(TEXT("the script board of specializations"), Board))
+	{
+		FHOLMatchConfig Config;
+		Config.Slots.SetNum(FHOLMatchConfig::MaxSlots);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			Config.Slots[Slot].State = EHOLSlotState::Human;
+			Config.Slots[Slot].ColorIndex = Slot;
+		}
+		GameState->InitVictory(Config);
+		Board->SetNomadNow(1, true);
+		Board->SetNomadNow(2, true);
+		Board->NoteForumCompleteNow(2);
+
+		TestFalse(TEXT("A standard seat with no Peasant left: no Nomad defeat"), GameState->HandleNomadPeasants(0, 0));
+		TestFalse(TEXT("It is still in the match"), GameState->IsSlotDefeated(0));
+
+		TestFalse(TEXT("A Nomad seat with forum complete once, no Peasant left: no defeat"), GameState->HandleNomadPeasants(2, 0));
+		TestFalse(TEXT("It is still in the match"), GameState->IsSlotDefeated(2));
+
+		TestFalse(TEXT("A Nomad seat with 2 Peasants left: no defeat"), GameState->HandleNomadPeasants(1, 2));
+		TestFalse(TEXT("It is still in the match"), GameState->IsSlotDefeated(1));
+		TestTrue(TEXT("Its last Peasant dies before its first Forum: defeated"), GameState->HandleNomadPeasants(1, 0));
+		TestEqual(TEXT("For the reason Nomad"), static_cast<int32>(GameState->GetDefeatReason(1)), static_cast<int32>(EHOLDefeatReason::Nomad));
+		TestEqual(TEXT("The reason's name"), FString(AHOLGameState::GetReasonName(GameState->GetDefeatReason(1))), FString(TEXT("Nomad")));
+	}
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+#endif

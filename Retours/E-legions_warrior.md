@@ -1,9 +1,11 @@
 # [À ESSAYER] E-legions_warrior : la Rage du Guerrier damné (case E) : teinte pendant 10 s, case grisée qui compte la rage puis la recharge
 
+Statut précédent, réparé : logique seulement (recette indépendante 19:3x sur main dc67a16, worktree Faramir : preflight FAIL, « timeout at step 48: waitlog E=NecroticRage greyed » ; la rage est bien lancée (« casts the necrotic rage ») mais l'unique hol.HUD.Report vient 60 frames = 0,19 s après, AVANT le rafraîchissement de la grille (4 fois par seconde, HOLGameScreen.cpp l. 563-582) : il dit « E=NecroticRage enabled » et n'est jamais redemandé. Même défaut que a633b97 (frames au lieu de secondes, la machine moins chargée tourne plus vite) : le scénario doit attendre en secondes (wait 1) avant le report ; captures legions_warrior_rage / _after non prises ; legions_warrior_button vu : bloc « Guerrier damné », case E « Rage » active)
 STATUT : VU À L'ÉCRAN
+Recette 19:42 sur main dc67a16 + scénario fafdee9 (worktree Faramir, branche fog) : PASS (31 s), PNG vus : button (bloc « Guerrier damné », case E « Rage » active), rage (guerrier teinté violacé, case E grisée « Rage 9 s »), after (teinte partie, Lancier ennemi mort au sol, case E grisée « Rage 29 s » = recharge). Correctif : `frames 60` remplacé par `wait 1` avant le hol.HUD.Report (même défaut que a633b97).
 GESTE: interne (hol.HUD.Click GridCell02 ; objet = affichage)
 SON: non entendu
-branches: fog
+branches: aucune (main)
 
 Pré-vol (2026-11-13 16:2x-16:33, agent FARAMIR-INTEG intégrateur, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, branche fog = main 8d13f46, dll 11-13 13:27/13:29) : `preflight.ps1 legions_warrior -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` PASS (43 s, 3 PNG) APRÈS correctif du scénario a633b97 (frames 600 = ~4 s en cache : la capture « après » montrait encore la rage ; remplacé par wait 11).
 PNG OUVERTS et vus :
