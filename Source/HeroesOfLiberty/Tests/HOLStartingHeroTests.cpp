@@ -225,4 +225,73 @@ bool FHOLStartingHeroSpawnTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingUnitsAtPointTest, "HeroesOfLiberty.Match.StartingHero.AtPoint",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// N2 (c)+(d), first step: the King, the starting Peasants and the hero born from a POINT and a half body (what a Nomad
+// seat without a forum will use) land exactly where the forum's calls put them (the standard start does not change):
+// two worlds, one through the forum, one through the point; the born units compared one by one (type, owner, place).
+bool FHOLStartingUnitsAtPointTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 1;
+	const int32 NumPeasants = GetDefault<UHOLMatchSettings>()->StartingPeasants;
+	const FVector ForumLocation(5000.0, 2000.0, 0.0);
+	TArray<FHOLUnitView> Born[2];
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(ForumLocation, FRotator::ZeroRotator);
+		if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("forum"), Forum))
+		{
+			Forum->Setup(HOLBuildingTypeNames::MainCentre, Slot, Slot);
+			if (Way == 0)
+			{
+				TestTrue(TEXT("Forum: King"), AHeroesOfLibertyGameModeBase::SpawnKing(*World, Slot, *Forum));
+				TestTrue(TEXT("Forum: Peasants"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(*World, Slot, *Forum, NumPeasants));
+				TestTrue(TEXT("Forum: hero"), AHeroesOfLibertyGameModeBase::SpawnStartingHero(*World, Slot, *Forum));
+			}
+			else
+			{
+				// The point's half body read from the main centre's type, as a forum of that type would have it.
+				const float HalfBody = AHeroesOfLibertyGameModeBase::GetStartHalfBody(HOLBuildingTypeNames::MainCentre);
+				Forum->Destroy();
+				TestTrue(TEXT("Point: King"), AHeroesOfLibertyGameModeBase::SpawnKingAt(*World, Slot, ForumLocation, HalfBody));
+				TestTrue(TEXT("Point: Peasants"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasantsAt(*World, Slot, ForumLocation, HalfBody, NumPeasants));
+				TestTrue(TEXT("Point: hero"), AHeroesOfLibertyGameModeBase::SpawnStartingHeroAt(*World, Slot, ForumLocation, HalfBody));
+			}
+			Units->ServeBirthRequests();
+			TArray<uint32> Ids;
+			Units->GetAllUnitIds(Ids);
+			for (const uint32 Id : Ids)
+			{
+				FHOLUnitView View;
+				if (Units->GetUnitView(Id, View))
+				{
+					Born[Way].Add(View);
+				}
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+	TestEqual(TEXT("Forum: King, Peasants and hero born"), Born[0].Num(), NumPeasants + 2);
+	if (TestEqual(TEXT("As many born from the point as from the forum"), Born[1].Num(), Born[0].Num()))
+	{
+		for (int32 Index = 0; Index < Born[0].Num(); ++Index)
+		{
+			const FHOLUnitView& A = Born[0][Index];
+			const FHOLUnitView& B = Born[1][Index];
+			const FString Where = FString::Printf(TEXT("unit %d (%s)"), Index, *A.TypeName.ToString());
+			TestEqual(*FString::Printf(TEXT("%s: same type"), *Where), B.TypeName, A.TypeName);
+			TestEqual(*FString::Printf(TEXT("%s: same owner"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
+			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
+		}
+	}
+	return true;
+}
+
 #endif
