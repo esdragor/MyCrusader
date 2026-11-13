@@ -3,7 +3,7 @@
 // player). No world access, tested in Script\Tests\HOLChatRules_Test.as. Not here: the network (who sends what to whom), the display, the
 // shortcuts, the diplomacy announcements in the feed.
 // The sender always sees its own message. A spectator (D376) talks with the spectators alone in free-for-all and Diplomacy, and with his
-// teammates too in a team game (D357, bTeamGame). Defaults coded while Retours\Q-chat-channels.md is open: a living player's All reaches the
+// teammates too in a team game (D357, bTeamGame). D792 (the user's answer to Q-chat-channels, 1 A and 2 A): a living player's All reaches the
 // spectators too (a message to all leaks nothing); a living player's Allies reaches a spectating teammate only in a team game.
 namespace HOLChat
 {
@@ -35,10 +35,6 @@ namespace HOLChat
 	// Does the message of Sender on Channel (to Target for a private one) reach Receiver?
 	bool Reaches(int Channel, int Sender, int Target, int Receiver, const TArray<int>& TeamBySlot, const TArray<bool>& SpectatorBySlot, bool bTeamGame)
 	{
-		if (Channel >= 0)
-		{
-			return true; // STUB (red first): everybody receives everything
-		}
 		if (Receiver == Sender)
 		{
 			return true;
