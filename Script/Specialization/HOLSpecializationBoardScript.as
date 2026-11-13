@@ -74,6 +74,16 @@ class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 		return Slot >= 0 && HOLNomad::HasCompleteForum(NomadOf(Slot));
 	}
 
+	// N2 step 2a (answer A of Q-nomad-forum Q1): a Nomad seat starts with the standard stock plus the secondary centre's price (D783),
+	// HOLNomad::StartingAmount per resource (0 food, 1 wood, 2 stone, 3 gold). Only called with bNomad (StartingStock).
+	UFUNCTION(BlueprintOverride)
+	int NomadStartingAmount(int Resource, int StandardAmount)
+	{
+		HOLSecondaryCentre::FHOLCentreCost Price = HOLSecondaryCentre::Cost();
+		int ForumPrice = Resource == 0 ? Price.Food : (Resource == 1 ? Price.Wood : (Resource == 2 ? Price.Stone : (Resource == 3 ? Price.Gold : 0)));
+		return HOLNomad::StartingAmount(StandardAmount, ForumPrice, true);
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FHOLSpecializationView ViewSpecialization(int Slot)
 	{
