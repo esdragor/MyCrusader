@@ -296,7 +296,11 @@ if ($Phase -eq 'Close') {
   $EolCheck = Join-Path $PSScriptRoot 'eol_check.ps1'
   function Say-Eol([string]$Dir, [string]$Label) {
     if (-not (Test-Path $EolCheck)) { Say 'WARN' "$Label : fins de ligne non controlees ($EolCheck introuvable)"; return }
-    $mx = @(& $EolCheck -Root $Dir 2>$null | Where-Object { $_ -match '^MIXTE ' } | ForEach-Object { $_.Substring(6) })
+    $eolOut = @(& $EolCheck -Root $Dir 2>$null); $eolCode = $LASTEXITCODE
+    $eolErr = @($eolOut | Where-Object { $_ -match '^ERREUR ' })
+    # ligne 99 (recette 2026-11-12) : git ls-files en echec = rien releve, jamais PASS
+    if ($eolCode -eq 2 -or $eolErr.Count) { Say 'WARN' ("$Label : fins de ligne non controlees (" + (($eolErr | Select-Object -First 1) -replace '^ERREUR ', '') + ")"); return }
+    $mx = @($eolOut | Where-Object { $_ -match '^MIXTE ' } | ForEach-Object { $_.Substring(6) })
     if ($mx.Count -gt 0) { Say 'WARN' ("{0} : fins de ligne melees dans {1} fichier(s) suivi(s) : {2} -> powershell -ExecutionPolicy Bypass -File {3} -Root {4} -Fix (aucun diff git)" -f $Label, $mx.Count, (($mx | Select-Object -First 5) -join ', '), $EolCheck, $Dir) }
     else { Say 'PASS' "$Label : fins de ligne propres (eol_check)" }
   }
@@ -312,6 +316,9 @@ if ($Phase -eq 'Close') {
   Say-Eol $Main 'copie principale'
   $dm = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' })
   if ($dm.Count -gt 0) { Say 'FAIL' ("copie principale : fichiers suivis non commites : " + (($dm | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
+  # ligne 100 (recette 2026-11-12) : les fiches Retours\ jamais ajoutees a git (statut ??) echappaient au controle ci-dessus
+  $ru = @(git -C $Main status --short --untracked-files=all -- Retours 2>$null | Where-Object { $_ -match '^\?\? ' } | ForEach-Object { $_.Substring(3) })
+  if ($ru.Count -gt 0) { Say 'WARN' ("copie principale : {0} fichier(s) de Retours\ non suivi(s) par git (a commiter ou supprimer) : {1}" -f $ru.Count, (($ru | Select-Object -First 8) -join ', ')) } else { Say 'PASS' 'copie principale : aucun fichier non suivi dans Retours\' }
   # L7-6 : chaque E-*.md ouvert ([... ESSAYER]) porte GESTE: reel|interne et SON: entendu|non entendu
   foreach ($e in @(Get-ChildItem $RetoursDir -Filter 'E-*.md' -ErrorAction SilentlyContinue)) {
     $txt = Get-Content $e.FullName -Raw -Encoding UTF8

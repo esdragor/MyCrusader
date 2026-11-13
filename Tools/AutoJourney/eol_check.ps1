@@ -11,7 +11,10 @@ if (-not $Root) { $Root = Split-Path -Parent (Split-Path -Parent (Split-Path -Pa
 # 2026-11-12 (L9-4, session_gate Close le lance sur chaque worktree) : les binaires sont exclus du releve, git lisait leur contenu pour rien
 # (Haldir : 3303 fichiers en 47 s, 2 s sans Content ; aucun fichier mixte dans Content). Un binaire n'a pas de fins de ligne a corriger.
 $BinarySpecs = @('.', ':(exclude)*.uasset', ':(exclude)*.umap', ':(exclude)*.png', ':(exclude)*.jpg', ':(exclude)*.wav', ':(exclude)*.ogg', ':(exclude)*.fbx', ':(exclude)*.dll', ':(exclude)*.exe', ':(exclude)*.zip')
-$mixed = @(git -C $Root ls-files --eol -- $BinarySpecs 2>$null | Where-Object { $_ -match '\bw/mixed\b' } | ForEach-Object { ($_ -split "`t", 2)[1] })
+# Ligne 99 (recette 2026-11-12) : `git ls-files` en echec (pas un depot, .git casse) donnait une liste vide = « aucun fichier mixte » a tort : code 2.
+$listed = @(git -C $Root ls-files --eol -- $BinarySpecs 2>$null)
+if ($LASTEXITCODE -ne 0) { Write-Output "ERREUR git ls-files a echoue dans $Root (code $LASTEXITCODE) : fins de ligne NON controlees"; exit 2 }
+$mixed = @($listed | Where-Object { $_ -match '\bw/mixed\b' } | ForEach-Object { ($_ -split "`t", 2)[1] })
 if ($mixed.Count -eq 0) { Write-Output "aucun fichier mixte dans $Root"; exit 0 }
 foreach ($f in $mixed) {
   $path = Join-Path $Root $f
