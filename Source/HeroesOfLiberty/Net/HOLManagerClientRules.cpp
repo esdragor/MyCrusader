@@ -246,7 +246,8 @@ int32 FHOLLobby::GetNumPlaces() const
 }
 
 FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe,
-	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Mode, const FString& Biome)
+	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Mode, const FString& Biome,
+	const TOptional<bool> bSacredSites)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("map"), Map);

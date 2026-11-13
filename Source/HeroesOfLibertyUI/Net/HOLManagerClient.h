@@ -60,7 +60,7 @@ public:
 	/** PUT /lobbies/{id}/settings (leader): the map by name and the options. */
 	void UpdateSettings(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, FHOLManagerLobbyDone Done,
 		const FString& Size = FString(), TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString(), const FString& Mode = FString(),
-		const FString& Biome = FString());
+		const FString& Biome = FString(), TOptional<bool> bSacredSites = {});
 	/** PUT /lobbies/{id}/slots/{index} (leader): opens or closes a slot nobody holds. */
 	void SetSlot(int32 SlotIndex, bool bOpen, FHOLManagerLobbyDone Done);
 	/**
