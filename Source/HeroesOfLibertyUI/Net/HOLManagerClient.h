@@ -56,7 +56,7 @@ public:
 	void LeaveLobby();
 	/** PUT /lobbies/{id}/me (R4.5): my colour, team, Ready; only the fields set. Answers the lobby's state. */
 	void UpdateMe(TOptional<int32> ColorIndex, TOptional<int32> Team, TOptional<bool> bReady, FHOLManagerLobbyDone Done,
-		TOptional<bool> bSpectator = {});
+		TOptional<bool> bSpectator = {}, const FString& Faction = FString());
 	/** PUT /lobbies/{id}/settings (leader): the map by name and the options. */
 	void UpdateSettings(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, FHOLManagerLobbyDone Done,
 		const FString& Size = FString(), TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString(), const FString& Mode = FString(),
