@@ -77,19 +77,48 @@ namespace HOLTerrain
 	}
 
 	// Whether a unit standing at (X, Y) is in a forest: inside a forest zone (A), or with enough trees near it (B), as the settings say.
-	// RED STUB (B4 first red test): always false.
+	// The edge counts in, as for the marsh (a zone's border, a tree exactly ForestTreeRadius away).
 	bool InForest(const FHOLTerrainSettings& Settings, const TArray<FHOLTerrainZone>& Zones, const TArray<FHOLTerrainTree>& Trees, int X, int Y)
 	{
+		if (Settings.bForestByTrees)
+		{
+			int64 R = Settings.ForestTreeRadius;
+			int Near = 0;
+			for (int Index = 0; Index < Trees.Num(); Index++)
+			{
+				int64 DX = X - Trees[Index].X;
+				int64 DY = Y - Trees[Index].Y;
+				if (DX * DX + DY * DY <= R * R)
+				{
+					Near++;
+					if (Near >= Settings.ForestTreeCount)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		for (int Index = 0; Index < Zones.Num(); Index++)
+		{
+			if (Zones[Index].Kind == Forest && Contains(Zones[Index], X, Y))
+			{
+				return true;
+			}
+		}
 		return false;
 	}
 
 	// The damage percent a target standing at (X, Y) takes from a hit: the forest's cover for a ranged hit, 100 for a melee hit or
 	// outside a forest. Only the target's place counts (the shooter may stand anywhere).
-	// RED STUB (B4 first red test): always 100.
 	int DamagePercentAt(const FHOLTerrainSettings& Settings, const TArray<FHOLTerrainZone>& Zones, const TArray<FHOLTerrainTree>& Trees,
 		bool bRanged, int X, int Y)
 	{
-		return 100;
+		if (!bRanged || !InForest(Settings, Zones, Trees, X, Y))
+		{
+			return 100;
+		}
+		return Settings.ForestRangedDamagePercent;
 	}
 
 	// A hit's damage scaled by a percent, never below 1 for a hit that hurts (a covered arrow still scratches).
