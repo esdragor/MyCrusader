@@ -30,7 +30,8 @@ notereset 1/2 : la fenetre Arbre de talents avec trois talents pris. Chaque case
 capture talents_icons_window
 waitkey 1/2 : images des cases de l'Arbre. Entree pour la suite
 hol.HUD.Click TalentKey
-wait 1
+# L'avis jaune « Talent pris : ... » (quelques secondes) allonge le bloc du heros jusqu'au panneau des triches du scenario : on attend qu'il s'efface.
+wait 8
 frames 8
 hol.HUD.Report
 notereset 2/2 : fenetre fermee. Regarde le bloc du heros en bas a gauche : sous la liste des talents pris, les images des trois talents (plus de pastilles-lettres), a cote des images des capacites du heros, a la meme taille.
