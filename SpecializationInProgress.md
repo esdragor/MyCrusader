@@ -97,3 +97,5 @@ ou 4, palier non atteint, option hors des 2, Templiers à 3) ; deux paliers (Q1)
 ## 2026-11-13 18:08-18:20 HALDIR-1113d (agent, maps, sans C++)
 - Reponse Q-specialization-switch = B APPLIQUEE : Start sur l'autre option du palier en cours remplace (option annulee, l'autre au delai entier) ; clic sur l'option en cours elle-meme = Busy (rien ne repart, inchange). Rouge 9921b5f (Test_SpecializationOtherOptionReplacesTheRunningOne), vert 02507e1.
 - Reponse Q-nomad-forum Q2 = B APPLIQUEE : IsOpen et Start prennent bForumComplete (= HOLNomad::HasCompleteForum, defaut true) ; sans forum acheve le bouton est eteint et Start rend NoForumComplete = 8 ; il s'allume a l'achevement (NoteForumComplete). Rouge 9921b5f (Test_SpecializationNomadButtonWaitsForTheFirstForum), vert e0097ff. quick_check -Parts tests 1227/1227 PASS (18:18), merge main ffddb3a. SP2 : passer HasCompleteForum de l'emplacement a IsOpen/Start.
+
+- 2026-11-13 20:0x HALDIR-1113e : SP2 NON COMMENCE (plafond d'appels atteint apres SG2). Reprise : SP2 inchange (modele : UHOLSignalSubsystem + sous-classe script, etat tenu par le script au serveur).
