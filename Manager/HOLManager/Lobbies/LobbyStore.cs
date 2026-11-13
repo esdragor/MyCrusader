@@ -146,7 +146,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
      * PUT /lobbies/{id}/me: only the given fields change. SP1: spectator = true leaves my slot (the leader stays
      * leader), false takes the first open slot (lobby_full); a spectator has no colour, team nor "Prêt" to set.
      */
-    public Lobby UpdateMe(string lobbyId, string? token, int? colorIndex = null, int? team = null, bool? ready = null, bool? spectator = null)
+    public Lobby UpdateMe(string lobbyId, string? token, int? colorIndex = null, int? team = null, bool? ready = null, bool? spectator = null, string? faction = null)
     {
         lock (gate)
         {
@@ -326,7 +326,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
      * places, or the slot's AI changed; only the given fields change, a new AI taking the first free colour and no
      * team. Its colour is unique as a player's (E2-2: "Aléatoire" never taken). A change resets every "Ready" (Q6).
      */
-    public Lobby SetSlotAI(string lobbyId, string? token, int index, int? colorIndex = null, int? team = null)
+    public Lobby SetSlotAI(string lobbyId, string? token, int index, int? colorIndex = null, int? team = null, string? faction = null)
     {
         lock (gate)
         {
