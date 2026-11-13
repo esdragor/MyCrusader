@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLResources.h"
 #include "Match/HOLSpecializationView.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLSpecializationSubsystem.generated.h"
@@ -47,6 +48,13 @@ public:
 
 	/** HOLNomad::HasCompleteForum of Slot's state: true for a standard seat, and true without script. */
 	bool HasCompleteForumNow(int32 Slot);
+
+	/**
+	 * The stock a seat starts with (N2, answer A of Q-nomad-forum Q1): Standard itself without bNomad (nothing else read);
+	 * with bNomad, HOLNomad::StartingAmount of each resource plus the secondary centre's price (HOLSecondaryCentre::Cost, D783)
+	 * read by the script board; Standard without script.
+	 */
+	static FHOLResources StartingStock(const UWorld* World, bool bNomad, const FHOLResources& Standard);
 
 	/** The seat's Forum stands (not down, AHOLGameState::IsForumDown): the countdown runs, else it waits (Q2 answer A). */
 	static bool IsForumStanding(const UWorld* World, int32 Slot);
@@ -111,6 +119,10 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
 	bool SeatHasCompleteForum(int32 Slot);
 	virtual bool SeatHasCompleteForum_Implementation(int32 Slot) { return true; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	FHOLResources NomadStartingStock(int32 Food, int32 Wood, int32 Stone, int32 Gold);
+	virtual FHOLResources NomadStartingStock_Implementation(int32 Food, int32 Wood, int32 Stone, int32 Gold) { return FHOLResources(Food, Wood, Stone, Gold); }
 
 private:
 	/** The world time (ms) of the last tick, -1 before the first. */

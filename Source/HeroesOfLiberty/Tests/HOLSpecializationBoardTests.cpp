@@ -136,4 +136,34 @@ bool FHOLSpecializationNomadForumTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// N2 step 2a (NomadInProgress.md; answer A of Q-nomad-forum Q1, D783): the stock a seat starts with, read where the game mode gives
+// StartingResources (login, AI seats, a missing seat kept):
+// - without bNomad: the standard stock itself, every resource unchanged (the standard match does not change);
+// - with bNomad: the standard stock plus the secondary centre's price, read by the script board (HOLSecondaryCentre::Cost: 150 wood, 400 stone).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationNomadStockTest, "HeroesOfLiberty.Specialization.NomadStock", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationNomadStockTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	TestNotNull(TEXT("the script board of specializations"), UHOLSpecializationSubsystem::Find(World));
+	const FHOLResources Standard(200, 210, 220, 230);
+	const FHOLResources Plain = UHOLSpecializationSubsystem::StartingStock(World, false, Standard);
+	TestTrue(TEXT("Without the Nomad option: the standard stock, unchanged"), Plain == Standard);
+	const FHOLResources Nomad = UHOLSpecializationSubsystem::StartingStock(World, true, Standard);
+	TestEqual(TEXT("Nomad: the food unchanged"), Nomad.Food, 200);
+	TestEqual(TEXT("Nomad: the wood plus the secondary centre's 150 (D783)"), Nomad.Wood, 210 + 150);
+	TestEqual(TEXT("Nomad: the stone plus the secondary centre's 400 (D783)"), Nomad.Stone, 220 + 400);
+	TestEqual(TEXT("Nomad: the gold unchanged"), Nomad.Gold, 230);
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif

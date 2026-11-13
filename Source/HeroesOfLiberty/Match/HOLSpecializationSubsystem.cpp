@@ -63,6 +63,17 @@ bool UHOLSpecializationSubsystem::HasCompleteForumNow(const int32 Slot)
 	return SeatHasCompleteForum(Slot);
 }
 
+FHOLResources UHOLSpecializationSubsystem::StartingStock(const UWorld* World, const bool bNomad, const FHOLResources& Standard)
+{
+	// Without the Nomad option the standard stock itself (D283): nothing else is read.
+	if (!bNomad)
+	{
+		return Standard;
+	}
+	UHOLSpecializationSubsystem* Board = Find(World);
+	return Board ? Board->NomadStartingStock(Standard.Food, Standard.Wood, Standard.Stone, Standard.Gold) : Standard;
+}
+
 bool UHOLSpecializationSubsystem::IsForumStanding(const UWorld* World, const int32 Slot)
 {
 	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
