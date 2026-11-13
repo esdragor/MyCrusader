@@ -6,6 +6,7 @@
 #include "MassExecutionContext.h"
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
+#include "HeroesOfLibertyLog.h"
 #include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -40,6 +41,7 @@ void UHOLDeployProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 }
 
 void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
@@ -54,6 +56,7 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TArrayView<FMassDesiredMovementFragment> Movements = Chunk.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const TConstArrayView<FHOLMoveOrderFragment> Orders = Chunk.GetFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FHOLCombatFragment> Combats = Chunk.GetFragmentView<FHOLCombatFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> UnitStates = Chunk.GetFragmentView<FHOLUnitStateFragment>();
 		for (FMassExecutionContext::FEntityIterator It = Chunk.CreateEntityIterator(); It; ++It)
 		{
 			FHOLDeployFragment& Fragment = Deploys[It];
@@ -82,10 +85,24 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					: HOLDeploy::Decide(State, Order, Fragment.PendingDistanceCm, Profile);
 				Fragment.LastAction = static_cast<uint8>(Decision.Action);
 				Fragment.LastReason = Decision.Reason;
+				// Retours/E-deploy.md: the decisions that change the phase, or come from the button, are written (a scenario reads them).
+				if (Fragment.PendingOrder == 3 || Decision.NextPhase != State.Phase)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Deploy: #%u phase %d -> %d (order %d, action %d, reason %d, distance %d cm, walk %d)"),
+						UnitStates.IsEmpty() ? 0u : UnitStates[It].UnitId, static_cast<int32>(State.Phase), static_cast<int32>(Decision.NextPhase),
+						Fragment.PendingOrder, static_cast<int32>(Decision.Action), Decision.Reason, Fragment.PendingDistanceCm,
+						Orders.IsEmpty() ? -1 : static_cast<int32>(Orders[It].Phase));
+				}
 				State = HOLDeploy::Apply(State, Decision);
 				Fragment.PendingOrder = 0;
 			}
+			const HOLDeploy::EPhase PhaseBefore = State.Phase;
 			State = HOLDeploy::Advance(State, StepMs, Profile, Fragment.CounterweightPercent);
+			if (State.Phase != PhaseBefore)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Deploy: #%u phase %d -> %d (delay over)"), UnitStates.IsEmpty() ? 0u : UnitStates[It].UnitId,
+					static_cast<int32>(PhaseBefore), static_cast<int32>(State.Phase));
+			}
 			Fragment.Phase = static_cast<uint8>(State.Phase);
 			Fragment.ElapsedMs = State.ElapsedMs;
 		}
