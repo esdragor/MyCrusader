@@ -75,6 +75,17 @@ public:
 	static bool SpawnStartingHero(UWorld& World, int32 Slot, const AHOLBuilding& Forum);
 
 	/**
+	 * N2 (c)+(d): the same three births from a point and a half body instead of a forum (a Nomad seat starts without one).
+	 * The forum's calls above read only its location and half body and call these: the standard start does not change.
+	 */
+	static bool SpawnKingAt(UWorld& World, int32 Slot, const FVector& Centre, float HalfBody);
+	static bool SpawnStartingPeasantsAt(UWorld& World, int32 Slot, const FVector& Centre, float HalfBody, int32 Num);
+	static bool SpawnStartingHeroAt(UWorld& World, int32 Slot, const FVector& Centre, float HalfBody);
+
+	/** Half the body of a building type (UHOLBuildingSettings::GetBodySize of its footprint); 600 when the type is unknown. */
+	static float GetStartHalfBody(FName BuildingType);
+
+	/**
 	 * IA0.1 E1: a player state for each AI slot of Config (a bot, no controller), with the slot's colour and the starting
 	 * stock, so that its economy (deposits, foundations, production) runs as a human's. Server only, at the start, before
 	 * the main centres; a slot already holding a player state is skipped. Returns how many were spawned.

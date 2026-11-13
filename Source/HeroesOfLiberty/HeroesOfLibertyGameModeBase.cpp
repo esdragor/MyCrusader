@@ -748,17 +748,34 @@ FString AHeroesOfLibertyGameModeBase::MakeAIPlayerName(const FHOLMatchConfig& Co
 	return HOLForumMessages::GetSlotName(Slot, INDEX_NONE, Config).ToString();
 }
 
+namespace
+{
+	/** Half the body of a building type row (1200 cm across without a row), as the start's births read it. */
+	float GetHalfBodyOf(const FHOLBuildingTypeRow* Type)
+	{
+		const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
+		return 0.5f * static_cast<float>(Body.GetMax());
+	}
+}
+
+float AHeroesOfLibertyGameModeBase::GetStartHalfBody(const FName BuildingType)
+{
+	return GetHalfBodyOf(UHOLBuildingSettings::FindType(BuildingType));
+}
+
 bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const int32 Slot, const AHOLBuilding& Forum, const int32 Num)
+{
+	return SpawnStartingPeasantsAt(World, Slot, Forum.GetActorLocation(), GetHalfBodyOf(Forum.GetType()), Num);
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasantsAt(UWorld& World, const int32 Slot, const FVector& Centre, const float HalfBody, const int32 Num)
 {
 	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
 	if (!Units)
 	{
 		return false;
 	}
-	const FHOLBuildingTypeRow* Type = Forum.GetType();
-	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
-	const TArray<FVector> Locations =
-		FHOLStartRules::GetStartingPeasantLocations(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()), Num);
+	const TArray<FVector> Locations = FHOLStartRules::GetStartingPeasantLocations(Centre, HalfBody, Num);
 	for (const FVector& Location : Locations)
 	{
 		// A tiny radius: put on the navmesh right under the point, like the King.
@@ -770,14 +787,17 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const in
 
 bool AHeroesOfLibertyGameModeBase::SpawnStartingHero(UWorld& World, const int32 Slot, const AHOLBuilding& Forum)
 {
+	return SpawnStartingHeroAt(World, Slot, Forum.GetActorLocation(), GetHalfBodyOf(Forum.GetType()));
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnStartingHeroAt(UWorld& World, const int32 Slot, const FVector& Centre, const float HalfBody)
+{
 	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
 	if (!Units)
 	{
 		return false;
 	}
-	const FHOLBuildingTypeRow* Type = Forum.GetType();
-	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
-	const FVector Location = FHOLStartRules::GetHeroLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
+	const FVector Location = FHOLStartRules::GetHeroLocation(Centre, HalfBody);
 	// A tiny radius: put on the navmesh right under the point, like the King.
 	Units->RequestUnits(FHOLUnitSpawnRequest{ HOLFactionRules::GetRoleTypeName(&World, Slot, HOLFactionRules::Roles::Hero), 1, Location, 1.f, static_cast<uint8>(Slot) });
 	UE_LOG(LogHOLMatch, Display, TEXT("Starting hero of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
@@ -786,14 +806,17 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingHero(UWorld& World, const int32 
 
 bool AHeroesOfLibertyGameModeBase::SpawnKing(UWorld& World, const int32 Slot, const AHOLBuilding& Forum)
 {
+	return SpawnKingAt(World, Slot, Forum.GetActorLocation(), GetHalfBodyOf(Forum.GetType()));
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnKingAt(UWorld& World, const int32 Slot, const FVector& Centre, const float HalfBody)
+{
 	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
 	if (!Units)
 	{
 		return false;
 	}
-	const FHOLBuildingTypeRow* Type = Forum.GetType();
-	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
-	const FVector Location = FHOLStartRules::GetKingLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
+	const FVector Location = FHOLStartRules::GetKingLocation(Centre, HalfBody);
 	// A tiny radius: put on the navmesh right under the point (FHOLUnitSpawnRequest), like a production's birth.
 	Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::KingTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
 	UE_LOG(LogHOLMatch, Display, TEXT("Regicide: king of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
