@@ -577,7 +577,10 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		}
 		// J8c.4: the hero's cells (units selected: no building, no group) follow his cool-downs and his level. L4: the Damned
 		// Warriors' rage cell too (hol.Rage.Visual 3 or 4: its seconds of rage then of recharge move with time alone).
-		else if (bHeroCellsShown || ShownGridTypes.Contains(FName(TEXT("NecroticRage"))))
+		// G6 f: the engine's D cell (« Monter » / « Démonter ») follows its phase, which the simulation moves without a delegate
+		// (the deploy preflight saw « Monter » still shown once the engine was set up).
+		else if (bHeroCellsShown || ShownGridTypes.Contains(FName(TEXT("NecroticRage")))
+			|| ShownOrderTypes.Contains(FName(TEXT("Deploy"))) || ShownOrderTypes.Contains(FName(TEXT("Pack"))))
 		{
 			RefreshGrid(nullptr, false, BoundPlayerState.Get());
 		}

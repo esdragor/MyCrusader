@@ -1,0 +1,48 @@
+# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, la Mangonnelle (substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTEE ; la case D de sa grille dit Monter ; la touche D la monte (8 s, valeurs proposees), la case dit alors Demonter ; montee et sans ordre, elle prend seule la Maison ennemie a portee et tire (hol.Siege.DeployedAutoFire 1 par defaut, reponse B de l'utilisateur a Retours/Q-deployed-engine-autofire.md) ; la touche D la demonte (5 s), la case redit Monter. Geste reel : la vraie touche D (hol.UI.Key D : evenement clavier Slate, le chemin d'une vraie touche), modele neutrals_qground. 3 minutes au plus.
+# Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin (le fragment est pose a la naissance).
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 40
+hol.Combat.LogHits 1
+hol.Siege.Deployable 1
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Cheat.SpawnBuilding House 1 5300 0
+waitlog Cheat: spawned House of slot 1
+hol.Units.SpawnHere 1 Mangonel 0 50
+waitunits 7
+frames 20
+hol.Camera.FocusNear 3000 0
+frames 2
+hol.Select.ClickUnit -1
+waitlog Selection: Mangonel
+frames 20
+hol.HUD.Report
+waitlog D=Deploy
+capture deploy_packed
+note 1. La Mangonnelle est selectionnee, demontee : la case D de la grille dit Monter. Elle ne tire pas sur la Maison ennemie toute proche.
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units deploy
+note 2. Tu appuies sur D : l'engin se monte (8 s).
+wait 9
+hol.HUD.Report
+waitlog D=Pack
+capture deploy_deployed
+note 3. Montee : la case D dit Demonter.
+hol.Camera.FocusNear 4200 0
+frames 2
+waitlog Mangonel hits a building for 45
+frames 20
+hol.HUD.Report
+capture deploy_fire
+note 3b. Sans aucun ordre, l'engin monte prend seul la Maison ennemie a portee et tire (45 de degats de siege par coup ; reglage hol.Siege.DeployedAutoFire 1 par defaut, ta reponse B a Q-deployed-engine-autofire).
+hol.UI.Key D 0 0.1
+waitlog Order: 1 units pack up
+note 4. Tu appuies encore sur D : l'engin se demonte (5 s), il ne tire plus et peut marcher.
+wait 6
+hol.HUD.Report
+waitlog D=Deploy
+capture deploy_packed_again
+hol.Test.Sanity
+note 5. A toi : D monte ou demonte l'engin selectionne ; un ordre de marche le demonte, un ordre d'attaque le monte s'il est a portee (delais et portees proposes, Palier3InProgress.md G5).

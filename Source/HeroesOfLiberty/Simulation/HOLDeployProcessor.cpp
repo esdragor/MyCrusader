@@ -6,6 +6,7 @@
 #include "MassExecutionContext.h"
 #include "MassMovementFragments.h"
 #include "MassNavigationFragments.h"
+#include "HeroesOfLibertyLog.h"
 #include "Siege/HOLDeployRules.h"
 #include "Simulation/HOLCombatRules.h"
 #include "Simulation/HOLSimulationFragments.h"
@@ -16,6 +17,18 @@ static TAutoConsoleVariable<int32> CVarSiegeDeployable(
 	TEXT("hol.Siege.Deployable"), 0,
 	TEXT("Test stand-in for the deployable engine: 1 = every Mangonel is born packed with the deploy fragment (G6). Default 0."),
 	ECVF_Default);
+
+// G6 f (Retours/Q-deployed-engine-autofire.md, user answer 2026-11-13: B): whether a DEPLOYED engine at rest takes on an enemy building within
+// its building reach by itself. 1 (default, B): it does; 0 (A): only on order (its AggressionRadius is 0 in UnitTypes.csv).
+static TAutoConsoleVariable<int32> CVarSiegeDeployedAutoFire(
+	TEXT("hol.Siege.DeployedAutoFire"), 1,
+	TEXT("A deployed engine at rest: 1 (default) takes on an enemy building within its building reach by itself; 0 fires at a building only on order (Q-deployed-engine-autofire)."),
+	ECVF_Default);
+
+bool HOLDeployedAutoFireEnabled()
+{
+	return CVarSiegeDeployedAutoFire.GetValueOnAnyThread() >= 1;
+}
 
 bool HOLDeployStandInEnabled()
 {
@@ -40,6 +53,7 @@ void UHOLDeployProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FMassDesiredMovementFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
+	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 }
 
 void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
@@ -54,6 +68,7 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 		const TArrayView<FMassDesiredMovementFragment> Movements = Chunk.GetMutableFragmentView<FMassDesiredMovementFragment>();
 		const TConstArrayView<FHOLMoveOrderFragment> Orders = Chunk.GetFragmentView<FHOLMoveOrderFragment>();
 		const TConstArrayView<FHOLCombatFragment> Combats = Chunk.GetFragmentView<FHOLCombatFragment>();
+		const TConstArrayView<FHOLUnitStateFragment> UnitStates = Chunk.GetFragmentView<FHOLUnitStateFragment>();
 		for (FMassExecutionContext::FEntityIterator It = Chunk.CreateEntityIterator(); It; ++It)
 		{
 			FHOLDeployFragment& Fragment = Deploys[It];
@@ -82,10 +97,24 @@ void UHOLDeployProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 					: HOLDeploy::Decide(State, Order, Fragment.PendingDistanceCm, Profile);
 				Fragment.LastAction = static_cast<uint8>(Decision.Action);
 				Fragment.LastReason = Decision.Reason;
+				// Retours/E-deploy.md: the decisions that change the phase, or come from the button, are written (a scenario reads them).
+				if (Fragment.PendingOrder == 3 || Decision.NextPhase != State.Phase)
+				{
+					UE_LOG(LogHOLSimulation, Display, TEXT("Deploy: #%u phase %d -> %d (order %d, action %d, reason %d, distance %d cm, walk %d)"),
+						UnitStates.IsEmpty() ? 0u : UnitStates[It].UnitId, static_cast<int32>(State.Phase), static_cast<int32>(Decision.NextPhase),
+						Fragment.PendingOrder, static_cast<int32>(Decision.Action), Decision.Reason, Fragment.PendingDistanceCm,
+						Orders.IsEmpty() ? -1 : static_cast<int32>(Orders[It].Phase));
+				}
 				State = HOLDeploy::Apply(State, Decision);
 				Fragment.PendingOrder = 0;
 			}
+			const HOLDeploy::EPhase PhaseBefore = State.Phase;
 			State = HOLDeploy::Advance(State, StepMs, Profile, Fragment.CounterweightPercent);
+			if (State.Phase != PhaseBefore)
+			{
+				UE_LOG(LogHOLSimulation, Display, TEXT("Deploy: #%u phase %d -> %d (delay over)"), UnitStates.IsEmpty() ? 0u : UnitStates[It].UnitId,
+					static_cast<int32>(PhaseBefore), static_cast<int32>(State.Phase));
+			}
 			Fragment.Phase = static_cast<uint8>(State.Phase);
 			Fragment.ElapsedMs = State.ElapsedMs;
 		}

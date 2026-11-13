@@ -202,4 +202,112 @@ bool FHOLDeployPlayerButtonTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Retours/E-deploy.md (preflight deploy FAIL 2026-11-13): in a real match the press of D left the engine packed. An engine that still has a
+// walk of its own when the player presses D (a spawn spread, a march not over, a walk stalled) must stand and deploy: the walk is not a new
+// march order that cancels the deploying. Through the REAL queue, order processor, deploy processor and combat; effect: the phase reaches
+// Deployed (the cell D then says Dismount) and the walk is over.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployPressWhileWalkingTest, "HeroesOfLiberty.Siege.Deploy.PressWhileWalking", UE::HeroesOfLiberty::Tests::DeployButton::Flags)
+
+bool FHOLDeployPressWhileWalkingTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	IConsoleVariable* Deployable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Siege.Deployable"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !TestNotNull(TEXT("hol.Siege.Deployable"), Deployable))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	const int32 FormerDeployable = Deployable->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	Deployable->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLUnitOrderProcessor* Orders = NewObject<UHOLUnitOrderProcessor>(Simulation);
+		Orders->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLDeployProcessor* Deploy = NewObject<UHOLDeployProcessor>(Simulation);
+		Deploy->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const int32 StepMs = FMath::RoundToInt(StepSeconds * 1000.f);
+		const auto RunStep = [Simulation, Units, Orders, Deploy, Combat, &EntityManager, StepSeconds]
+		{
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Orders, ProcessingContext);
+			UE::Mass::Executor::Run(*Deploy, ProcessingContext);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		TArray<uint32> Before;
+		Units->GetAllUnitIds(Before);
+		FHOLUnitSpawnRequest Request;
+		Request.TypeName = FName(TEXT("Mangonel"));
+		Request.Count = 1;
+		Request.OwnerPlayer = 0;
+		Request.Center = FVector::ZeroVector;
+		Units->RequestUnits(Request);
+		Units->ServeBirthRequests();
+		TArray<uint32> After;
+		Units->GetAllUnitIds(After);
+		uint32 Engine = 0;
+		for (const uint32 Id : After)
+		{
+			Engine = Before.Contains(Id) ? Engine : Id;
+		}
+		if (TestTrue(TEXT("the deployable Mangonel born"), Engine != 0))
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Engine);
+			const auto PhaseOf = [&EntityManager, Entity]
+			{
+				const FHOLDeployFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(Entity);
+				return Fragment ? static_cast<int32>(Fragment->Phase) : -1;
+			};
+			const auto Walking = [&EntityManager, Entity]
+			{
+				const FHOLMoveOrderFragment* Order = EntityManager->GetFragmentDataPtr<FHOLMoveOrderFragment>(Entity);
+				return Order && Order->Phase != EHOLMovePhase::None;
+			};
+			const TArray<uint32> Mine = { Engine };
+			TestEqual(TEXT("born packed"), PhaseOf(), static_cast<int32>(HOLDeploy::EPhase::Packed));
+			// A walk of its own, not over (no movement runs here: it stays a walk under way, as a stalled one in a match).
+			TestTrue(TEXT("the march order enters the queue"), HOLPlayerOrders::Move(*World, 0, Mine, FVector(4000.0, 0.0, 0.0)));
+			RunStep();
+			RunStep();
+			TestTrue(TEXT("precondition: the packed engine walks"), Walking());
+
+			TestTrue(TEXT("the press enters the queue"), HOLPlayerOrders::ToggleDeploy(*World, 0, Mine));
+			const int32 DeploySteps = HOLDeploy::DefaultProfile().DeployMs / StepMs;
+			for (int32 Index = 0; Index < DeploySteps + 4; ++Index)
+			{
+				RunStep();
+			}
+			TestEqual(TEXT("pressed while walking, the engine ends deployed (cell D: Dismount)"), PhaseOf(), static_cast<int32>(HOLDeploy::EPhase::Deployed));
+			TestFalse(TEXT("pressed while walking, the engine stands (its walk is over)"), Walking());
+			const TArray<uint32> Gone = { Engine };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+		}
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	Deployable->Set(FormerDeployable, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS
