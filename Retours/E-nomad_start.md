@@ -3,7 +3,7 @@
 STATUT : VU À L'ÉCRAN
 GESTE: interne      (le scénario lance la partie et place la caméra par des commandes `hol.*` ; aucun clic à rejouer : l'essai est de regarder le départ)
 SON: sans objet
-branches: maps
+branches: aucune (main)
 
 Pré-vol (2026-11-13 22:30, agent Haldir, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, branche maps 12d2bab sur main 0c09db6) : `preflight.ps1 nomad_start -Root <worktree> -AllowUncommitted` PASS (check 22 s, 2 PNG). Seul WARN : `Content/Maps/Crown.umap` non suivi dans ce worktree (fichier d'un autre chantier, non lu par cet essai, qui joue Plain) : l'essai ne se joue donc QU'AVEC `-Root` ci-dessous.
 PNG OUVERTS et vus :
@@ -17,5 +17,5 @@ NON VÉRIFIÉ :
 - Bouton de spécialisation éteint d'un Nomade sans forum : AUCUNE interface de spécialisation n'existe encore (SP3 pas commencé) ; seule la règle côté serveur refuse le départ (test HeroesOfLiberty.Specialization.NomadForum).
 - Le Roi n'est là que parce que le .json coche Régicide (bRegicide) ; le cercle pâle autour du départ n'a pas été identifié.
 
-Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 nomad_start -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+Lancer UNE commande (22:46 : le scénario et le code sont maintenant DANS main a2465a2, binaire compilé dans le worktree Faramir) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 nomad_start -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
