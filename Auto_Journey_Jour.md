@@ -73,6 +73,34 @@ Séance INTERACTIVE 10:16 -> 14:15 (arrêt dur des agents 14:15, +15 min tolér�
 - Fait : Haldir (maps 93ba4bb) D783-D786 en règles pures, tests 1203/1203 ; Arwen (d751-root 71f94ba) règle N7 verte, tests 1204/1204, préviol neutrals_minimap non fait ; Elrond (tiers 64ac8e2) test Net.DeployPhase corrigé, build non fait ; Galadriel (galadriel-tab 4d4ee79) test rouge du malus 30 %, correctif en fichiers modifiés non commités ; Glorfindel (net-playtest d8e887e) tests rouges Gather.Income et canaux, correctifs non commités ; Faramir (fog 132a8ce) tests rouges L12-1c, 3 fichiers modifiés non commités ; Celeborn et Sauron : rien de commité.
 - Question tranchée : Q-chat-channels 1 A, 2 A -> D792 au GDD (GDD.md modifié, NON commité : accord de l'utilisateur requis), prochain D793.
 - Pas de fusion groupée, pas d'essai donné, 0 essai prêt. Reprise : branches inchangées, relancer les agents un ou deux à la fois quand l'API répond ; premier geste de chacun = git status puis sa ligne de la file.
+## Bilan de la reprise du 2026-11-13 (11:41 -> 14:05, interactive, 3 à 5 agents en parallèle, plus de 403)
+
+- Main = 481bf43 : fusion groupée fog + maps + net-playtest + visual + d751-root + galadriel-tab (fog = cea8c57 puis refusion de main) ; build merge PASS, tests 1221/1221, net PASS du premier coup ; avance rapide refusée une première fois par `Auto_Journey_File.md` non commité dans la copie principale (commité par nom de fichier, refusion, puis ff-only). RIEN POUSSÉ. `GDD.md` (D792) reste non commité.
+- Fait : D788 infobulle de revenu (Glorfindel 6dfa7ee) et A4 canaux (59e8f60) ; D791 et rage L4 + filtre infobulle de la Caserne (Galadriel 15221be, e6b9c75) ; bornes 30/45/60 s des délais de spécialisation (Haldir 22dbb3b) ; N7 minicarte (Arwen) ; `build.ps1 -MaxWaitMin`, eol_check en erreur si `.git` cassé (Faramir) ; correctif G6 f `ToggleDeploy` sur un engin Packed qui marche encore (Elrond 27d91a4) ; D787 prise de lance B : `arm_body_check` vert (cause : clés 0 et 56 de `SPEAR_ATTACK` partageaient un dict, Celeborn e0cb438).
+- Essais : 2 prêts VU À L'ÉCRAN (`resources_compare`, `legions_roster_gesture`) ; 4 LOGIQUE SEULEMENT (`neutrals_minimap`, `spear_arm`, `deploy`, `legions_warrior`).
+- NON fusionnées : `tiers` (Elrond : après le merge de main le code n'est ni recompilé ni testé ; deploy : le scénario attend `D=Pack` que le rapport ne produit pas), `hero-j8-close` (Celeborn : pose B, `spear_arm` à juger à l'œil, merge de main avec conflits de docs résolus en gardant les deux côtés).
+- Non vérifié : C++ HUD de la rage à l'écran ; rouge du carré de camp ; PNG de `resources_compare` et `legions_roster_gesture` pas rouverts sur le build fusionné ; `gate_test.ps1` entier non rejoué ; test Gather.Income contrôle un rapport, pas le chiffre +350/min.
+- Anomalies de processus : 3 builds en file de 16 à 40 min (une autre session compile ProjectShiva) ; `LaunchCheck` compare la dll d'un module aux sources de tous (faux « périmé », vu chez Galadriel) ; `quick_check` net rouge sous charge (3/3 chez Elrond, 15/15 chez Arwen) mais vert à la fusion (Maj tenu 2 s) ; gate Launch compte 5 agents C++ à cause du texte des `IN_USE.txt` ; chemin `Tools\quick_check.ps1` faux dans mes énoncés (le bon : `Tools\Tests\quick_check.ps1`) ; `Docs\SessionEnd.txt` était périmé depuis le 2026-11-10.
+- Reprise : Elrond (recompiler, tests,net, corriger `deploy.txt`), Celeborn (juger la pose B), Galadriel (LaunchCheck module, `legions_warrior` plus près), Arwen (carré du camp lisible, essais audio : décision sur `Content/Audio/Candidates/`), BUG-melee-stuck-attack (analyse non commencée), SP2 / SG2 / `bSitesLaidByMaps` (C++ de Haldir).
+
+### Lecons appliquees 2026-11-13
+
+| Règle | Statut | Preuve |
+|---|---|---|
+| Gate Launch avant chaque lancement (L8, L11) | appliquee | PASS à 11:41 ; 1 FAIL « 5 agents C++ » à 13:00 (faux positif IN_USE.txt, relevé au bilan) |
+| Plafond de 3 agents C++ (L3-1) | appliquee | 3 builds en file à 11:43 puis 1 (Elrond) ; les autres sans C++ |
+| Un seul build `-Wait` par agent, pas de sondage (L11-2) | appliquee | aucune boucle ; files de 16 à 40 min attendues |
+| Agents d'étape sans fenêtre (règle 0) | appliquee | tous les preflights en `-Hidden` / `-RenderOffScreen` |
+| Arrêt à 45 appels vus (L9-2) | appliquee | 41 à 49 appels déclarés, `tool_uses` 29 à 53 |
+| Fusion groupée, un build, un quick_check (L11) | appliquee | un build merge 919 s, tests 1221/1221, net PASS |
+| Pas de fusion sans quick_check vert | appliquee | tiers et hero-j8-close écartées |
+| Essais : préviol PASS + PNG vus avant « À ESSAYER » (règles 1-2) | appliquee | 2 prêts, 4 LOGIQUE SEULEMENT |
+| Recette indépendante des essais (règle 5) | non appliquee | pas de rejeu par un agent tiers des 2 essais prêts après fusion |
+| Sync des worktrees en début de séance (L8-9) | non appliquee | la reprise a démarré sans `sync_worktrees` (WARN du gate Launch) ; fait en fin de séance, Celeborn avec conflits de docs résolus à la main |
+| Pas de question tranchée par l'agent (règle 8) | appliquee | 0 Q-* nouvelle, D792 seule décision reportée |
+| Contrôle `GDD.md` non commité | appliquee | laissé non commité, accord de l'utilisateur requis |
+| Autres règles de la check-list | non verifiee | non relues une à une dans cette reprise |
+
 ## Dernier bilan : 2026-11-12 (séance autonome 10:26-13:00, 26 agents, détail dans l'archive du 2026-11-13)
 
 - Main = 6d46a74 : fusion groupée 4851635 (maps + fog + hero-j8-close, sans C++, tests 1200/1200) puis commits de docs ; rien poussé.
