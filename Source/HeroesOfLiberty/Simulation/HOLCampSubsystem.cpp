@@ -6,7 +6,10 @@
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLPlayerState.h"
 #include "Simulation/HOLHeroSubsystem.h"
 #include "Simulation/HOLHeroXPRules.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -284,6 +287,52 @@ void UHOLCampSubsystem::OnStepEnded(const int64 StepIndex)
 				}
 			}
 		}
+	}
+	WriteViews();
+}
+
+void UHOLCampSubsystem::WriteViews()
+{
+	UWorld* World = GetWorld();
+	const AHOLGameState* GameState = World && World->GetNetMode() != NM_Client ? World->GetGameState<AHOLGameState>() : nullptr;
+	if (!GameState)
+	{
+		return;
+	}
+	const UHOLVisionSubsystem* Vision = World->GetSubsystem<UHOLVisionSubsystem>();
+	const bool bFog = Vision && Vision->IsStarted();
+	Known.SetNum(FHOLMatchConfig::MaxSlots);
+	for (APlayerState* Each : GameState->PlayerArray)
+	{
+		AHOLPlayerState* Player = Cast<AHOLPlayerState>(Each);
+		const int32 Slot = Player ? Player->GetPlayerIndex() : INDEX_NONE;
+		if (Slot < 0 || Slot >= FHOLMatchConfig::MaxSlots)
+		{
+			continue;
+		}
+		TArray<FKnownCamp>& Mine = Known[Slot];
+		Mine.SetNum(Camps.Num());
+		TArray<FHOLCampView> Views;
+		for (int32 CampId = 0; CampId < Camps.Num(); ++CampId)
+		{
+			const FCamp& Camp = Camps[CampId];
+			// Q1 C: in sight of his camp (or without a fog), known and read live; out of sight, as last seen; never seen, absent.
+			if (!bFog || Vision->GetVision(Slot, FVector(Camp.Post.X, Camp.Post.Y, 0.)) == EHOLCellVision::Visible)
+			{
+				FHOLCampView& View = Mine[CampId].View;
+				View.Index = static_cast<uint8>(FMath::Clamp(CampId, 0, 255));
+				View.X = static_cast<float>(Camp.Post.X);
+				View.Y = static_cast<float>(Camp.Post.Y);
+				View.bCleared = Camp.State == HOLCampRules::EState::Cleared;
+				View.Living = static_cast<uint8>(FMath::Clamp(Camp.Members, 0, 255));
+				Mine[CampId].bKnown = true;
+			}
+			if (Mine[CampId].bKnown)
+			{
+				Views.Add(Mine[CampId].View);
+			}
+		}
+		Player->SetCampViews(Views);
 	}
 }
 

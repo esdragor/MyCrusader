@@ -9,6 +9,7 @@
 #include "Simulation/HOLHeroSheet.h"
 #include "Technologies/HOLTechnologyRules.h"
 #include "Engine/NetSerialization.h"
+#include "Match/HOLCampView.h"
 #include "HOLPlayerState.generated.h"
 
 /**
@@ -140,6 +141,14 @@ public:
 	/** Server only: true when it changed (and is then sent at once). */
 	bool SetSiteViews(const TArray<FHOLSiteView>& InSiteViews);
 
+	/**
+	 * N7 (Q1 C): the neutral camps this player's camp has had in sight, read live in sight and frozen as last seen out of it; set by the
+	 * server alone (UHOLCampSubsystem) and replicated to this player only. The minimap's camp dots read it (UHOLMinimapView::GatherCamps).
+	 */
+	const TArray<FHOLCampView>& GetCampViews() const { return CampViews; }
+	/** Server only: true when it changed (and is then sent at once). */
+	bool SetCampViews(const TArray<FHOLCampView>& InCampViews);
+
 	/** The private sheet changed: on the server when set, on the owner's machine when it arrives. */
 	DECLARE_MULTICAST_DELEGATE(FOnHeroPrivateChanged);
 	FOnHeroPrivateChanged OnHeroPrivateChanged;
@@ -205,6 +214,10 @@ private:
 	/** S5: the sacred sites this player may know, owner only. */
 	UPROPERTY(Replicated)
 	TArray<FHOLSiteView> SiteViews;
+
+	/** N7: the neutral camps this player's camp has seen, owner only. */
+	UPROPERTY(Replicated)
+	TArray<FHOLCampView> CampViews;
 
 	UFUNCTION()
 	void OnRep_Technologies();

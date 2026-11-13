@@ -47,6 +47,22 @@ struct HEROESOFLIBERTYUI_API FHOLMinimapEntity
 	int32 Health = 0;
 };
 
+/** N7 (Q2 B): a neutral camp the player's camp has seen (AHOLPlayerState::GetCampViews, UHOLMinimapView::GatherCamps); the script makes its dot. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTYUI_API FHOLMinimapCamp
+{
+	GENERATED_BODY()
+
+	/** The post, ground X and Y (cm). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "Minimap")
+	FVector2D Location = FVector2D::ZeroVector;
+	/** Cleared for good, as last seen. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "Minimap")
+	bool bCleared = false;
+	/** Members alive, as last seen. */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "Minimap")
+	int32 Living = 0;
+};
 /** A dot of the picture, in pixels, as the script lays it out. */
 USTRUCT(BlueprintType)
 struct HEROESOFLIBERTYUI_API FHOLMinimapMark
@@ -110,6 +126,10 @@ public:
 	/** The units and buildings ViewerSlot's player may see (units of the others only in sight, buildings of the others on explored ground). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
 	void GatherEntities(int32 ViewerSlot, TArray<FHOLMinimapEntity>& OutEntities) const;
+
+	/** N7 (Q2 B, Q1 C): the neutral camps ViewerSlot's camp has seen, as his player state holds them (none for another slot on a client). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
+	void GatherCamps(int32 ViewerSlot, TArray<FHOLMinimapCamp>& OutCamps) const;
 
 	/** The map's playable area (AHOLMapBounds): world X and Y of its lower left and upper right; false when the map has none. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Minimap")
