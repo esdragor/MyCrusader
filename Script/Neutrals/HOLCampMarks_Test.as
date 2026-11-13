@@ -29,3 +29,16 @@ void Test_CampMarkSitsOnThePost(FUnitTest& T)
 	T.AssertTrue(Math::Abs(M.Position.X - Expected.X) < 0.01 && Math::Abs(M.Position.Y - Expected.Y) < 0.01, f"the dot is at the post's picture point ({M.Position.X}, {M.Position.Y}) vs ({Expected.X}, {Expected.Y})");
 	T.AssertTrue(M.Size > 6.0, f"a camp's dot is larger than a building's 6 px (got {M.Size})");
 }
+
+// 2026-11-13 (Auto_Journey L21, step 0 of the N7 trial): at 7 px on the 240 px minimap the camp's square hid under the
+// 3 px dots of its own guards and its red did not read on the capture. It must read at a glance: at least 12 px (twice a
+// building's), both alive and cleared, and its red far from the cleared grey.
+void Test_CampMarkReadsAtAGlance(FUnitTest& T)
+{
+	FHOLMinimapMark Alive = HOLCampMarks::Mark(CampMarksFrame(), FVector2D(0.0, 0.0), false);
+	FHOLMinimapMark Cleared = HOLCampMarks::Mark(CampMarksFrame(), FVector2D(0.0, 0.0), true);
+	T.AssertTrue(Alive.Size >= 12.0, f"a living camp's square is at least 12 px (got {Alive.Size})");
+	T.AssertTrue(Cleared.Size >= 12.0, f"a cleared camp's square is at least 12 px (got {Cleared.Size})");
+	T.AssertTrue(Alive.Color.R - Alive.Color.G > 0.5 && Alive.Color.R - Alive.Color.B > 0.5, f"a living camp's red is saturated (got {Alive.Color.R} {Alive.Color.G} {Alive.Color.B})");
+	T.AssertTrue(Alive.Color.G < Cleared.Color.G - 0.2, f"red and grey differ by their green (got {Alive.Color.G} vs {Cleared.Color.G})");
+}
