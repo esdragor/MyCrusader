@@ -453,12 +453,22 @@ namespace UE::HeroesOfLiberty::Dev
 				// run keeps the game: they play on after the last step.
 				if (ShouldAutoContinue())
 				{
+					// The run is complete: its OnDone first (a scenario logs "Scenario <Name>: ready", which check.ps1 and preflight.ps1 wait for).
 					UE_LOG(LogHOLTest, Display, TEXT("Scenario quit: the game closes (step %d, nobody at the keys)"), Next + 1);
-					TFunction<void()> QuitHook = HOLTestHooks::OnScenarioQuit();
-					Finish(/*bQuit*/ !QuitHook);
+					const TFunction<void()> OnDone = MoveTemp(Options.OnDone);
+					const TFunction<void()> QuitHook = HOLTestHooks::OnScenarioQuit();
+					Finish(/*bQuit*/ false);
+					if (OnDone)
+					{
+						OnDone();
+					}
 					if (QuitHook)
 					{
 						QuitHook();
+					}
+					else
+					{
+						GEngine->Exec(GetGameWorld(), TEXT("quit"));
 					}
 					return false;
 				}
