@@ -111,14 +111,36 @@ def hip_turn(twist, bend, hip, side=0.0, nod=0.0):
     return rot
 
 
-# Spearman thrust: both hands on the shaft (left hand behind, right hand in front), the spear level at the waist on
-# his right side, left foot forward. Guard, draw back, fast stab forward (point ~2 m ahead at chest height), short
-# hold, recover to the guard.
+# Spearman thrust: both hands on the shaft, the spear level at the waist on his right side, left foot forward. Guard,
+# draw back, fast stab forward (point ~2 m ahead at chest height), short hold, recover to the guard.
+# Grip B (D787, user's answer of 2026-11-12, Retours\Q-spear-grip.md): the hands swapped, the RIGHT hand behind at
+# the right hip, the LEFT hand in front ("grip" is the left hand, the right one `spacing` cm behind it, hence the
+# negative spacing and the knob 110 cm behind the left hand: the spear itself where grip A held it). Measured hors jeu
+# on arm_body_check's chain (Saved\c1113\grip_b_sweep*.py, sweep 8 `s12`): the trunk turned 25 deg to his right
+# (SPEAR_BLADED, left shoulder forward), the spear angled 15 deg inward about the right hand, raised 8 cm and 4 cm
+# out; DRAWN and LOADED 12 cm further forward and 6 cm higher, a key THROUGH between LOADED and LUNGE: the left
+# forearm no longer crosses the belly (f23-24) and the right hand stays on the hip at the hit.
 SPEAR_PERIOD = 1.875
-SPEAR_THRUST_TOOL = {"kind": "spear", "hands": 2, "handle_length": sp.SPEAR_LENGTH, "knob_offset": 70.0,
+SPEAR_THRUST_TOOL = {"kind": "spear", "hands": 2, "handle_length": sp.SPEAR_LENGTH, "knob_offset": 110.0,
                      "hand_spacing": 40.0, "edge": (1.0, 0.0, 0.0)}
 SPEAR_STANCE = {"l": (-4.0, 16.0, 0.0), "r": (6.0, -14.0, 0.0)}
-SPEAR_FIGHT_ELBOWS = {"l": (-0.3, -0.5, -1.0), "r": (0.8, -0.4, -0.6)}
+SPEAR_FIGHT_ELBOWS = {"l": (-1.0, -0.2, -0.6), "r": (1.0, -0.4, -0.5)}
+SPEAR_BLADED = 25.0
+_BLADED_SHARE = {"pelvis": 0.4, "spine_01": 0.2, "spine_02": 0.2, "spine_03": 0.2, "neck_01": -0.3, "head": -0.3}
+
+
+def bladed(rot, turn=SPEAR_BLADED):
+    """The trunk turned `turn` degrees to his right on top of `rot` (the head turning back: eyes on the enemy)."""
+    out = dict(rot)
+    for bone, share in _BLADED_SHARE.items():
+        r = out.get(bone, (0.0, 0.0, 0.0))
+        out[bone] = (r[0] + turn * share,) + tuple(r[1:])
+    return out
+
+
+def _halfway(a, b):
+    return {n: tuple(0.5 * (x + y) for x, y in zip(a.get(n, (0.0, 0.0, 0.0)), b.get(n, (0.0, 0.0, 0.0))))
+            for n in set(a) | set(b)}
 
 
 def spear_key(t, pose, flow=0.0):
@@ -132,22 +154,26 @@ def spear_key(t, pose, flow=0.0):
 # turns through (the right shoulder forward), the arms extend last and the point arrives at full speed (flow 2.4),
 # overshoots a little, comes back and settles into the guard without a stop. Hermite keys, the pelvis leading the
 # spine, the spine the shoulders, the spear on its keys. Feet planted (IK).
-SPEAR_GUARD = {"pelvis": (0.0, 0.0, -6.0), "rot": hip_turn(4.0, 6.0, 2.0, nod=-4.0),
-               "tool": {"grip": (17.0, 12.0, 104.0), "dir": (-0.098, 0.99, 0.12), "spacing": 40.0}}
-SPEAR_SET = {"pelvis": (0.0, 1.0, -7.5), "rot": hip_turn(0.0, 9.0, 0.0, nod=-5.0),
-             "tool": {"grip": (18.0, 6.0, 103.0), "dir": (-0.105, 0.99, 0.09), "spacing": 40.0}}
-SPEAR_DRAWN = {"pelvis": (1.5, -6.0, -7.0), "rot": merge(hip_turn(30.0, 3.0, 12.0, nod=-4.0), {"clavicle_r": (-10.0, 0.0, 0.0)}),
-               "tool": {"grip": (21.0, -6.0, 108.0), "dir": (-0.11, 0.99, 0.10), "spacing": 40.0}}
-SPEAR_LOADED = {"pelvis": (2.0, -7.5, -6.5), "rot": merge(hip_turn(36.0, 2.0, 14.0, nod=-4.0), {"clavicle_r": (-12.0, 0.0, 0.0)}),
-                "tool": {"grip": (21.0, -9.0, 109.0), "dir": (-0.115, 0.99, 0.10), "spacing": 40.0}}
-SPEAR_LUNGE = {"pelvis": (-1.5, 11.0, -10.5), "rot": hip_turn(-18.0, 16.0, -7.0, nod=-10.0),
-               "tool": {"grip": (15.0, 36.0, 116.0), "dir": (-0.088, 0.995, 0.10), "spacing": 36.0}}
-SPEAR_OVER = {"pelvis": (-1.5, 12.0, -11.0), "rot": hip_turn(-24.0, 17.0, -9.0, nod=-10.0),
-              "tool": {"grip": (14.0, 38.5, 116.0), "dir": (-0.085, 0.995, 0.10), "spacing": 35.0}}
-SPEAR_BACK = {"pelvis": (-1.0, 9.5, -10.0), "rot": hip_turn(-16.0, 15.0, -6.0, nod=-9.0),
-              "tool": {"grip": (16.0, 24.0, 114.0), "dir": (-0.092, 0.995, 0.10), "spacing": 37.0}}
-SPEAR_SETTLE = {"pelvis": (0.5, -1.5, -5.0), "rot": merge(hip_turn(8.0, 4.0, 4.0, nod=-4.0), {"clavicle_r": (-6.0, 0.0, 0.0)}),
-                "tool": {"grip": (17.5, 4.0, 105.0), "dir": (-0.10, 0.99, 0.13), "spacing": 40.0}}
+SPEAR_GUARD = {"pelvis": (0.0, 0.0, -6.0), "rot": bladed(hip_turn(4.0, 6.0, 2.0, nod=-4.0)),
+               "tool": {"grip": (6.99, 49.16, 116.79), "dir": (-0.3502, 0.9290, 0.1198), "spacing": -40.0}}
+SPEAR_SET = {"pelvis": (0.0, 1.0, -7.5), "rot": bladed(hip_turn(0.0, 9.0, 0.0, nod=-5.0)),
+             "tool": {"grip": (7.69, 43.18, 114.60), "dir": (-0.3578, 0.9295, 0.0900), "spacing": -40.0}}
+SPEAR_DRAWN = {"pelvis": (1.5, -6.0, -7.0), "rot": bladed(merge(hip_turn(30.0, 3.0, 12.0, nod=-4.0), {"clavicle_r": (-10.0, 0.0, 0.0)})),
+               "tool": {"grip": (10.52, 43.07, 126.00), "dir": (-0.3621, 0.9268, 0.0999), "spacing": -40.0}}
+SPEAR_LOADED = {"pelvis": (2.0, -7.5, -6.5), "rot": bladed(merge(hip_turn(36.0, 2.0, 14.0, nod=-4.0), {"clavicle_r": (-12.0, 0.0, 0.0)})),
+                "tool": {"grip": (10.33, 40.00, 126.99), "dir": (-0.3667, 0.9250, 0.0998), "spacing": -40.0}}
+SPEAR_LUNGE = {"pelvis": (-1.5, 11.0, -10.5), "rot": bladed(hip_turn(-18.0, 16.0, -7.0, nod=-10.0)),
+               "tool": {"grip": (6.72, 69.65, 127.59), "dir": (-0.3412, 0.9347, 0.0996), "spacing": -36.0}}
+# Grip B: half way from LOADED to LUNGE, the spear 6 cm further forward and 8 cm higher (the left hand passes in front
+# of the belly, not through it).
+SPEAR_THROUGH = {"pelvis": (0.25, 1.75, -8.5), "rot": _halfway(SPEAR_LOADED["rot"], SPEAR_LUNGE["rot"]),
+                 "tool": {"grip": (8.52, 60.82, 135.29), "dir": (-0.3540, 0.9298, 0.0997), "spacing": -38.0}}
+SPEAR_OVER = {"pelvis": (-1.5, 12.0, -11.0), "rot": bladed(hip_turn(-24.0, 17.0, -9.0, nod=-10.0)),
+              "tool": {"grip": (6.16, 71.25, 127.49), "dir": (-0.3384, 0.9357, 0.0996), "spacing": -35.0}}
+SPEAR_BACK = {"pelvis": (-1.0, 9.5, -10.0), "rot": bladed(hip_turn(-16.0, 15.0, -6.0, nod=-9.0)),
+              "tool": {"grip": (7.24, 58.53, 125.68), "dir": (-0.3449, 0.9333, 0.0996), "spacing": -37.0}}
+SPEAR_SETTLE = {"pelvis": (0.5, -1.5, -5.0), "rot": bladed(merge(hip_turn(8.0, 4.0, 4.0, nod=-4.0), {"clavicle_r": (-6.0, 0.0, 0.0)})),
+                "tool": {"grip": (7.44, 41.09, 118.18), "dir": (-0.3516, 0.9271, 0.1295), "spacing": -40.0}}
 SPEAR_LEADS = {"pelvis": 0.12, "rot": {"pelvis": 0.08, "spine_01": 0.065, "spine_02": 0.05, "spine_03": 0.038,
                                        "neck_01": 0.03, "head": 0.025, "clavicle_r": 0.028},
                "elbows": 0.014, "tool": 0.0}
@@ -157,6 +183,7 @@ SPEAR_ATTACK = fighting("A_Spearman_Attack", SPEAR_THRUST_TOOL, ("spear",), [
     spear_key(at(SPEAR_PERIOD, 0.12), SPEAR_SET),                 # anticipation: settles on the knees
     spear_key(at(SPEAR_PERIOD, 0.36), SPEAR_DRAWN, 0.5),          # still drawing back, turning to his right
     spear_key(at(SPEAR_PERIOD, 0.43), SPEAR_LOADED),              # loaded on the back foot: hangs a moment
+    spear_key(at(SPEAR_PERIOD, 0.465), SPEAR_THROUGH, 1.2),       # grip B: the left hand in front of the belly
     spear_key(at(SPEAR_PERIOD, 0.50), SPEAR_LUNGE, (2.4, 0.7)),   # THE HIT at full speed (frame 28 of 56)
     spear_key(at(SPEAR_PERIOD, 0.56), SPEAR_OVER),                # small overshoot
     spear_key(at(SPEAR_PERIOD, 0.64), SPEAR_BACK, 1.0),           # draws back off the target
@@ -753,8 +780,14 @@ def _ft(shift, left=(0.0, 0.0, 0.0), right=(0.0, 0.0, 0.0)):
 
 
 # Frame 0: the hands exactly where spear_attack's frame 0 holds the shaft (measured on the solved guard).
-_SPL_GRIP_HANDS = _hd(((17.0, 12.0, 104.0), (0.707, -0.004, 0.707), (0.592, 0.386, -0.708)),
-                      ((13.1, 50.2, 109.4), (-0.995, -0.098, -0.012), (-0.013, 0.271, -0.962)))
+# Grip B (D787, 2026-11-13): the left hand in front, the right one behind at the hip (Saved\c1113\grip_b_final.py).
+_SPL_GRIP_HANDS = _hd(((7.0, 49.2, 116.8), (0.593, 0.121, 0.796), (0.63, 0.546, -0.552)),
+                      ((21.0, 12.0, 112.0), (-0.864, -0.271, -0.424), (0.276, 0.45, -0.849)))
+# The fall keeps grip A's spear convention (knob 70 cm behind "grip", the back hand): frame 0 is the attack's guard
+# spear seen from the right hand (40 cm behind the left one), the same spear in the same place.
+_SPL_FALL_TOOL = dict(SPEAR_THRUST_TOOL, knob_offset=70.0)
+_SPL_GUARD_SPEAR = _sp((21.0, 12.0, 112.0), SPEAR_GUARD["tool"]["dir"])
+_SPL_IMPACT_ELBOWS = {"l": (-0.3, -0.5, -1.0), "r": (0.8, -0.4, -0.6)}  # grip A's fighting elbows, kept for the fall
 _SPL_LIE = 90.0
 _SPL_UP = (0.0, 0.0, 6.0)           # lying: the pelvis on the thickness of the back, not in the ground
 _SPL_LAND = (0.0, -78.0, 0.0)       # where the heels land (thrown back 0.78 m)...
@@ -767,7 +800,7 @@ _SPL_HANDS = (((-62.0, -168.0, 4.5), (0.0, 0.0, 1.0), (-0.6, -0.8, 0.0)),
 _SPL_ELBOWS = {"l": (-0.2, 0.3, -0.93), "r": (0.8, 0.0, -0.6)}
 _SPL_SPEAR = ((46.0, -36.0, 2.0), (0.12, 1.0, 0.0))
 SPEAR_FALL_KEYS = [
-    dict(_start(SPEAR_GUARD, SPEAR_FIGHT_ELBOWS), hands=_SPL_GRIP_HANDS),
+    dict(_start(SPEAR_GUARD, SPEAR_FIGHT_ELBOWS), hands=_SPL_GRIP_HANDS, tool=_SPL_GUARD_SPEAR),
     # IMPACT: the chest driven back, the head snapped, the arms thrown forward and up, the hands off the shaft.
     _sk(0.06, _plank(4.0, -8.0, (0.0, -4.0, 0.0)),
         _body((0.0, -4.0, 0.0), (0.0, -4.0, 0.0), (0.0, -8.0, 0.0), (0.0, -16.0, 0.0), (0.0, -8.0, 0.0),
@@ -775,7 +808,7 @@ SPEAR_FALL_KEYS = [
         _sp((22.0, 14.0, 106.0), (-0.04, 0.98, 0.18)),
         _hd(((8.0, 18.0, 116.0), (0.55, -0.2, 0.8), (0.5, 0.75, -0.3)),
             ((24.0, 44.0, 120.0), (-0.9, -0.2, 0.35), (0.1, 0.6, -0.75))),
-        flow=(2.4, 0.8), elbows=SPEAR_FIGHT_ELBOWS),
+        flow=(2.4, 0.8), elbows=_SPL_IMPACT_ELBOWS),
     # Off the ground, fast out of the hit: the body tilting back, the legs trailing forward.
     _sk(0.14, _plank(16.0, -10.0, (0.0, -30.0, 9.0)),
         _body((0.0, -16.0, 0.0), (0.0, -2.0, 0.0), (0.0, -4.0, 0.0), (0.0, -8.0, 0.0), (0.0, -2.0, 0.0),
@@ -828,7 +861,7 @@ for _key in SPEAR_FALL_KEYS:
     if _share:
         _key["foot_rot"] = {s: tuple(_share * a for a in _SPL_FOOT_ROT[s]) for s in "lr"}
 SPEAR_FALL_KEYS.append(dict(SPEAR_FALL_KEYS[-1], t=1.0))
-SPEAR_FALL_PROPOSED = {"name": "A_Spearman_Fall", "fps": 30, "tool": SPEAR_THRUST_TOOL, "props": ("spear",),
+SPEAR_FALL_PROPOSED = {"name": "A_Spearman_Fall", "fps": 30, "tool": _SPL_FALL_TOOL, "props": ("spear",),
                        "scene": NONE, "elbows": FALL_ELBOWS, "fist": (55.0, 70.0, 45.0), "stance": SPEAR_STANCE,
                        "keys": SPEAR_FALL_KEYS, "curve": "hermite", "release": 0.0,
                        # The hands and the spear on time (the release keyed exactly), the head lagging (whip).

@@ -12,4 +12,4 @@
 
 **Codé.** Réglage `hol.Siege.DeployedAutoFire` : `0` = A (**défaut codé**, comportement inchangé), `1` = B (`Source\HeroesOfLiberty\Simulation\HOLDeployProcessor.cpp`, une ligne à changer pour le défaut). C n'est pas codé. Test : `HeroesOfLiberty.Siege.Deploy.DeployedAutoFire` (0 : la Maison intacte ; 1 : touchée). Le scénario `deploy` donne un vrai clic droit sur la Maison (`hol.Select.OrderNear 5300 0`) en attendant.
 
-Reponse:
+Reponse: B (monté, l'engin prend seul un bâtiment ennemi à portée ; réglage `hol.Siege.DeployedAutoFire 1` ; le défaut codé passe de 0 à 1). (réponse donnée dans la conversation, 2026-11-13 ~18:50)

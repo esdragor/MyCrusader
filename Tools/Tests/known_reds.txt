@@ -2,4 +2,3 @@
 # Format : test | depuis | cause supposee. Le test est le nom imprime devant ": FAIL". Retirer la ligne quand le rouge est corrige
 # (quick_check dit "etait un rouge connu : retirer de known_reds.txt" quand la partie passe).
 # (vide depuis 2026-11-07 : camera 2p et camera 8p sont vertes sur main, quick_check -Parts camera x2 dans Faramir a bc3cf59)
-build hud | 2026-11-11 | Barracks tooltip "Produit :" lists DamnedWarrior (raw id, Legions unit) for the Dawn faction since 757b5ce (L4): question Retours\Q-barracks-tooltip-damned.md

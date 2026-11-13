@@ -95,6 +95,19 @@ namespace HOLCommandGrid
 		return (bBuy ? 0 : GridColumns) + Good;
 	}
 
+	FHOLTradeGain GetTradeGain(const EHOLResource Resource, const bool bBuy, const int32 Received)
+	{
+		FHOLTradeGain Gain;
+		Gain.Amount = FMath::Max(Received, 0);
+		Gain.Logo = bBuy ? Resource : EHOLResource::Gold;
+		return Gain;
+	}
+
+	FString GetTradeGainText(const FHOLTradeGain& Gain)
+	{
+		return FString::Printf(TEXT("+%d"), Gain.Amount);
+	}
+
 	FHOLGridCommand GetOrder(const FHOLGridContext& Context, const int32 Cell)
 	{
 		FHOLGridCommand Result;

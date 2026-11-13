@@ -45,6 +45,12 @@ namespace HOLNomad
 		return State.bNomad && !State.bForumCompleteOnce;
 	}
 
+	// One forum of the player is (or was) complete: false for a Nomad before his first (the input of HOLSpecialization::IsOpen and Start).
+	bool HasCompleteForum(const FHOLNomadState& State)
+	{
+		return !IsBeforeFirstForum(State);
+	}
+
 	// D354: no Peasant left before the first complete forum is the defeat.
 	bool IsDefeated(const FHOLNomadState& State, int PeasantCount)
 	{

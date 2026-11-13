@@ -1,0 +1,5 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+income_tip_fr | FR : sous le montant de bois de la barre du haut, une infobulle "+N bois/min" avec N > 0 (les Paysans coupent du bois)
+income_tip_gold_fr | FR : sous le montant d'or, une infobulle "+0 or/min" (aucun mineur, aucun site sacre)
+income_tip_en | EN : sous le montant de bois, une infobulle "+N wood/min"
+income_tip_ja | JA : sous le montant de bois, une infobulle "+N 木材/分" (et non "/min")

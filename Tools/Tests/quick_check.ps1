@@ -4734,9 +4734,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $DawnTexts = @($Dawn | Select-String -Pattern "HUD hero talent texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
     $Checks["three talents: the notice names the last, the list names the three, one icon each with its hover ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
         ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[1].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube") -and
-        $DawnTexts[1].Contains("icons B = Boucliers levés — ") -and $DawnTexts[1].Contains(" || M = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || P = Pas de l'Aube — ") -and -not $DawnTexts[1].Contains("pas encore actif")
+        $DawnTexts[1].Contains("icons T_Talent_21 = Boucliers levés — ") -and $DawnTexts[1].Contains(" || T_Talent_31 = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || T_Talent_41 = Pas de l'Aube — ") -and -not $DawnTexts[1].Contains("pas encore actif")
     $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 3 -First 1))"] =
-        ($DawnTexts.Count -ge 4) -and $DawnTexts[3].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[3].Contains("pas encore actif dans ce prototype") -and $DawnTexts[3].Contains(" || G = Grâce abondante — ")
+        ($DawnTexts.Count -ge 4) -and $DawnTexts[3].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[3].Contains("pas encore actif dans ce prototype") -and $DawnTexts[3].Contains(" || T_Talent_51 = Grâce abondante — ")
+    # REGLAGE talents_icons_compare (Q-talents-icons = A): every cell of the tree window shows its talent's image (the texture set on the cell's image).
+    $Checks["the tree window: the 24 cells show their talent's image ($(($DawnWindow | Select-Object -First 1) -replace '^.*(images [^|]*).*$', '$1'))"] =
+        ($DawnWindow.Count -ge 1) -and $DawnWindow[0].Contains("images 24/24 T_Talent_20 .. T_Talent_92")
     $DawnMoves = @(-1, -1)
     if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
         $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
@@ -5193,13 +5196,15 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $MarketBuy = & $Value $HudMarket "(Market: slot 0 bought 1 lots of resource 1 .*)$"
     $MarketSale = & $Value $HudMarket "(Market: slot 0 sold 1 lots of resource 1 .*)$"
     $Checks = [ordered]@{}
-    # The text drawn on the cells, always for 100 of what is given up (user's correction 2026-11-01): buying "100 or = X", selling "100 = Y or",
-    # read again after each trade (the book moves: wood 80 -> 83 after the purchase, back to 80 after the sale).
-    $Checks["the cells say the rate for 100: 96 / 96 / 64 bought and 56 / 56 / 84 sold at the start ($($MarketReports[0] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
-        ($MarketReports[0] -match "trades A=\S+ 100 or = 96 \| Z=\S+ 100 or = 96 \| E=\S+ 100 or = 64 \| Q=\S+ 100 = 56 or \| S=\S+ 100 = 56 or \| D=\S+ 100 = 84 or$")
-    $Checks["the cells follow the book after each trade: wood 92 bought / 58 sold after the purchase, 96 / 56 after the sale ($($MarketReports[1] -replace '^.*trades ','') // $($MarketReports[2] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
-        ($MarketReports[1] -match "\| Z=\S+ 100 or = 92 \|") -and ($MarketReports[1] -match "\| S=\S+ 100 = 58 or \|") -and
-        ($MarketReports[2] -match "\| Z=\S+ 100 or = 96 \|") -and ($MarketReports[2] -match "\| S=\S+ 100 = 56 or \|")
+    # The text drawn on the cells (D781, the user's REGLAGE of 2026-11-11): "+X" then the logo of what is received, the good bought (A Z E),
+    # gold for a sale (Q S D), no "100 or = X" / "100 = Y or" any more; the logo is read from the cell's widget ([Wood] = the wood marker shown).
+    # Read again after each trade (the book moves: wood 80 -> 83 after the purchase, back to 80 after the sale).
+    $Checks["the cells say +X and the logo received: +96 / +96 / +64 bought and +56 / +56 / +84 gold sold at the start ($($MarketReports[0] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
+        ($MarketReports[0] -match "trades A=\S+ \+96 \[Food\] \| Z=\S+ \+96 \[Wood\] \| E=\S+ \+64 \[Stone\] \| Q=\S+ \+56 \[Gold\] \| S=\S+ \+56 \[Gold\] \| D=\S+ \+84 \[Gold\]$") -and
+        -not ($MarketReports[0] -match "trades .*100")
+    $Checks["the cells follow the book after each trade: wood +92 bought / +58 sold after the purchase, +96 / +56 after the sale ($($MarketReports[1] -replace '^.*trades ','') // $($MarketReports[2] -replace '^.*trades ',''))"] = ($MarketReports.Count -ge 3) -and
+        ($MarketReports[1] -match "\| Z=\S+ \+92 \[Wood\] \|") -and ($MarketReports[1] -match "\| S=\S+ \+58 \[Gold\] \|") -and
+        ($MarketReports[2] -match "\| Z=\S+ \+96 \[Wood\] \|") -and ($MarketReports[2] -match "\| S=\S+ \+56 \[Gold\] \|")
     $Checks["the Market selected: the trades on A Z E (buy) / Q S D (sell), 100 gold spent on wood ($MarketBuy) then a lot of wood sold at the book's price ($MarketSale)"] = ($MarketReports.Count -ge 2) -and
         ($MarketReports[0] -match "grid A=BuyFood \w+ Z=BuyWood \w+ E=BuyStone \w+ Q=SellFood \w+ S=SellWood \w+ D=SellStone \w+,") -and
         [bool]($MarketBuy -match "^Market: slot 0 bought 1 lots of resource 1 for 100 gold \(price now 83,") -and

@@ -72,3 +72,11 @@ et distance minimale.
 
 ## 2026-11-13 11:10 HALDIR-1113 (agent, maps)
 - D786 applique : GroupSize = 1 (5 Paysans = 5 groupes de 1), 40 cases inchangees, ValueSheet nomad.group_size mis a jour ; rouge 4f83b15, vert 8d028ff ; quick_check -Parts tests 1203/1203 PASS (11:10). Toujours aucun appelant en jeu (C++ SC2/SG2/SP2/N2 a faire). Reprise : etape C++ suivante du journal.
+
+- 2026-11-13 16:5x (HALDIR-1113c) : nouvelle question [A REPONDRE] posee (L73) : `C:\Users\baudo\Documents\MyCrusader\Retours\Q-nomad-forum.md` (Q1 prix du forum D402, defaut A = cout du centre secondaire ; Q2 palier sans forum, defaut A = pause comme Forum a terre).
+
+- 2026-11-13 17:10 REPONSES de l'utilisateur (via la session principale, ecrites en Reponse: dans les Q de Retours\) : Nomade Q1 = A (150 bois + 400 pierre) ; Nomade Q2 = B (bouton de specialisation ETEINT tant qu'aucun forum n'est acheve : A CHANGER, test rouge dans HOLSpecializationRules puis correction) ; Signaux = A (elimine chacun pour soi / Diplomatie et spectateur pur voient TOUS les signaux : A CHANGER, test rouge sur HOLSignal::Sees puis correction) ; Specialisation clic sur l'autre option = B (remplace directement, delai entier : A CHANGER, une ligne dans HOLSpecialization::Start, test rouge d'abord) ; Foret Q1/Q2 = a trancher (defauts inchanges, rien de plus a coder). NON CODE par HALDIR-1113c (plafond de 45 appels atteint) : prochain agent sans C++.
+
+## 2026-11-13 18:08-18:20 HALDIR-1113d (agent, maps, sans C++)
+- Q2 = B applique (voir SpecializationInProgress.md) : HOLNomad::HasCompleteForum ajoute, entree de HOLSpecialization::IsOpen/Start ; rouge 9921b5f, vert e0097ff ; 1227/1227 PASS.
+- Q1 = A VERIFIE, rien a coder ici : HOLNomad::StartingAmount(StandardAmount, ForumPrice, bNomad) recoit le prix en entree ; aucun appelant ne lit encore le cout du centre secondaire (D783, 150 bois + 400 pierre). NOTE POUR N2 : passer ce cout lu dans les donnees (type du centre secondaire de BuildingTypes.csv), pas MainCentre (0).

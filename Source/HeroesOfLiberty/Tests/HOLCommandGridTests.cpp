@@ -25,6 +25,32 @@ namespace UE::HeroesOfLiberty::Tests::CommandGrid
 	}
 }
 
+// D781 (the user's REGLAGE on the trial `market`, 2026-11-11): a trade cell shows « +X » then the logo of what the trade gives, the
+// good for a purchase, gold for a sale; no « 100 or = X » nor « 100 = X or » any more.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridMarketGainTest, "HeroesOfLiberty.CommandGrid.MarketGain", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)
+bool FHOLCommandGridMarketGainTest::RunTest(const FString& Parameters)
+{
+	const EHOLResource Goods[] = { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone };
+	for (const EHOLResource Good : Goods)
+	{
+		const int32 Index = static_cast<int32>(Good);
+		const FHOLTradeGain Buy = HOLCommandGrid::GetTradeGain(Good, true, 96);
+		TestEqual(*FString::Printf(TEXT("buy good %d: +96 received"), Index), Buy.Amount, 96);
+		TestTrue(*FString::Printf(TEXT("buy good %d: the logo is the good's"), Index), Buy.Logo == Good);
+		const FHOLTradeGain Sell = HOLCommandGrid::GetTradeGain(Good, false, 56);
+		TestEqual(*FString::Printf(TEXT("sell good %d: +56 received"), Index), Sell.Amount, 56);
+		TestTrue(*FString::Printf(TEXT("sell good %d: the logo is gold's"), Index), Sell.Logo == EHOLResource::Gold);
+	}
+	const FString BuyText = HOLCommandGrid::GetTradeGainText(HOLCommandGrid::GetTradeGain(EHOLResource::Wood, true, 96));
+	const FString SellText = HOLCommandGrid::GetTradeGainText(HOLCommandGrid::GetTradeGain(EHOLResource::Stone, false, 84));
+	TestEqual(TEXT("the purchase's text: +96"), BuyText, FString(TEXT("+96")));
+	TestEqual(TEXT("the sale's text: +84"), SellText, FString(TEXT("+84")));
+	TestFalse(TEXT("no « 100 or = X » (D781)"), BuyText.Contains(TEXT("100")) || BuyText.Contains(TEXT("=")) || BuyText.Contains(TEXT("or")));
+	TestFalse(TEXT("no « 100 = X or » (D781)"), SellText.Contains(TEXT("100")) || SellText.Contains(TEXT("=")) || SellText.Contains(TEXT("or")));
+	TestEqual(TEXT("nothing received: +0"), HOLCommandGrid::GetTradeGainText(HOLCommandGrid::GetTradeGain(EHOLResource::Food, true, 0)), FString(TEXT("+0")));
+	return true;
+}
+
 // M5 (Market, GDD 5.5): the selected finished Market gives the grid its trades, PURCHASES on A Z E (food, wood, stone), SALES on Q S D (user's correction, 2026-11-01);
 // nothing for gold (the money), a site, a Market in a group of several (cells merged as any), or a building that is no Market.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCommandGridMarketTest, "HeroesOfLiberty.CommandGrid.Market", UE::HeroesOfLiberty::Tests::CommandGrid::Flags)

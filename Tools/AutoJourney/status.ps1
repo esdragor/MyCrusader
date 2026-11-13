@@ -27,3 +27,10 @@ foreach ($d in $dirs) {
     } else { $state = 'sans IN_USE' }
     Write-Output ("{0} | {1} | {2} | modifies {3} | +{4}/-{5} vs main | {6}" -f $name, $branch, $state, $dirty, $ahead, $behind, $last)
 }
+# L91 : builds marques BUILD LENT par Tools\build.ps1 (colonne load de Docs\BuildQueue.csv) dans les 2 dernieres heures.
+$csv = Join-Path $main 'Docs\BuildQueue.csv'
+if (Test-Path $csv) {
+    $since = (Get-Date).AddHours(-2)
+    $slow = @(Import-Csv $csv | Where-Object { $_.load -match 'BUILD LENT' -and $_.end -and ([datetime] $_.end) -ge $since })
+    foreach ($r in $slow) { Write-Output ("BUILD LENT : {0} fini a {1} : {2} (diagnostic de charge, prevenir l'utilisateur)" -f $r.worktree, $r.end, $r.load) }
+}

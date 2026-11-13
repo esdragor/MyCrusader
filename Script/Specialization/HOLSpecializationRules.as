@@ -53,6 +53,7 @@ namespace HOLSpecialization
 	const int Busy = 5;
 	const int NothingToCancel = 6;
 	const int PreviousTierNotApplied = 7;
+	const int NoForumComplete = 8;
 
 	FHOLSpecializationState NewState(int OptionCount)
 	{
@@ -104,10 +105,11 @@ namespace HOLSpecialization
 	}
 
 	// The tier's button is lit: reached, the tier before applied (D785) and not applied yet (D332: no deadline). It stays lit while its
-	// unlock runs (the bar shows it).
-	bool IsOpen(const FHOLSpecializationState& State, int Tier, int PlayerTier)
+	// unlock runs (the bar shows it). bForumComplete (HOLNomad::HasCompleteForum): answer of 2026-11-13 to Q-nomad-forum Q2 (B), a Nomad's
+	// button stays out until his first forum is complete and lights up then (a forum down later only pauses, ForumDown).
+	bool IsOpen(const FHOLSpecializationState& State, int Tier, int PlayerTier, bool bForumComplete = true)
 	{
-		return IsValidTier(Tier) && PlayerTier >= Tier && PreviousApplied(State, Tier) && ChosenOption(State, Tier) == None;
+		return bForumComplete && IsValidTier(Tier) && PlayerTier >= Tier && PreviousApplied(State, Tier) && ChosenOption(State, Tier) == None;
 	}
 
 	void RefreshPending(FHOLSpecializationState& State)
@@ -123,9 +125,10 @@ namespace HOLSpecialization
 		}
 	}
 
-	// The player clicks Option of Tier: the unlock starts at the Forum (D684). Ok: it runs; any other answer: nothing changed. A running
-	// unlock is not restarted in place: cancel it first.
-	int Start(FHOLSpecializationState& State, int Tier, int Option, int PlayerTier)
+	// The player clicks Option of Tier: the unlock starts at the Forum (D684). Ok: it runs; any other answer: nothing changed. Answer of
+	// 2026-11-13 to Q-specialization-switch (B): a click on another option of the running tier replaces it at once (the running option is
+	// cancelled, the other starts with the full delay); a click on the running option itself restarts nothing (Busy).
+	int Start(FHOLSpecializationState& State, int Tier, int Option, int PlayerTier, bool bForumComplete = true)
 	{
 		if (!IsValidTier(Tier))
 			return BadTier;
@@ -135,10 +138,12 @@ namespace HOLSpecialization
 			return BadOption;
 		if (ChosenOption(State, Tier) != None)
 			return AlreadyChosen;
-		if (IsRunning(State, Tier))
+		if (IsRunning(State, Tier) && State.RunningOption[Tier] == Option)
 			return Busy;
 		if (!PreviousApplied(State, Tier))
 			return PreviousTierNotApplied;
+		if (!bForumComplete)
+			return NoForumComplete;
 		State.RunningOption[Tier] = Option;
 		State.RunningMs[Tier] = 0;
 		RefreshPending(State);

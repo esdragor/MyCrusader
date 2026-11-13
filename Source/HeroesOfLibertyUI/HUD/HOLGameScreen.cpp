@@ -61,6 +61,8 @@
 #include "Widgets/HOLGridCell.h"
 #include "Widgets/HOLQueueItem.h"
 #include "Widgets/HOLRootLayout.h"
+#include "Engine/GameViewportClient.h"
+#include "Widgets/Layout/SBox.h"
 
 #define LOCTEXT_NAMESPACE "HOLGameScreen"
 
@@ -1790,6 +1792,72 @@ FString UHOLGameScreen::HoverStat(const int32 Index) const
 	return FString::Printf(TEXT("none (hit %s)"), *Hit.Widgets[Hit.Widgets.Num() - 1].Widget->GetTypeAsString());
 }
 
+FString UHOLGameScreen::HoverIncome(const int32 Index, const bool bShow)
+{
+	// D788 (scenario income_tooltip): the hover of a resource's amount as the mouse does it, same hit test as HoverStat. The engine shows a
+	// tooltip in a window of its own, which the capture of the viewport does not see: bShow draws the SAME tooltip widget in the viewport.
+	UGameViewportClient* Viewport = GetWorld() ? GetWorld()->GetGameViewport() : nullptr;
+	if (IncomeTipOverlay.IsValid())
+	{
+		if (Viewport)
+		{
+			Viewport->RemoveViewportWidgetContent(IncomeTipOverlay.ToSharedRef());
+		}
+		IncomeTipOverlay.Reset();
+	}
+	UCommonTextBlock* const Amounts[] = { FoodAmount.Get(), WoodAmount.Get(), StoneAmount.Get(), GoldAmount.Get() };
+	if (Index < 0 || Index >= UE_ARRAY_COUNT(Amounts))
+	{
+		return TEXT("closed");
+	}
+	UCommonTextBlock* Amount = Amounts[Index];
+	const TSharedPtr<SWidget> AmountWidget = Amount ? Amount->GetCachedWidget() : TSharedPtr<SWidget>();
+	if (!Amount || !AmountWidget.IsValid() || Amount->GetVisibility() == ESlateVisibility::Collapsed || !FSlateApplication::IsInitialized())
+	{
+		return TEXT("no amount shown");
+	}
+	FSlateApplication& Slate = FSlateApplication::Get();
+	FWidgetPath AmountPath;
+	if (!Slate.FindPathToWidget(AmountWidget.ToSharedRef(), AmountPath, EVisibility::All) || AmountPath.Widgets.Num() == 0)
+	{
+		return TEXT("no path to the amount");
+	}
+	const FGeometry& Box = AmountPath.Widgets[AmountPath.Widgets.Num() - 1].Geometry;
+	const FVector2f Position = Box.GetAbsolutePosition();
+	const FVector2f Size = Box.GetAbsoluteSize();
+	const FWidgetPath Hit = Slate.LocateWindowUnderMouse(Position + Size * 0.5f, Slate.GetInteractiveTopLevelWindows(), true);
+	if (Hit.Widgets.Num() == 0)
+	{
+		return TEXT("nothing under the point");
+	}
+	for (int32 Level = Hit.Widgets.Num() - 1; Level >= 0; --Level)
+	{
+		const TSharedRef<SWidget> Widget = Hit.Widgets[Level].Widget;
+		const TSharedPtr<IToolTip> Tip = Widget->GetToolTip();
+		if (Tip.IsValid() && !Tip->IsEmpty())
+		{
+			if (&Widget.Get() != AmountWidget.Get())
+			{
+				return FString::Printf(TEXT("the tip of another widget (%s)"), *Widget->GetTypeAsString());
+			}
+			if (bShow && Viewport)
+			{
+				const FVector2f Local = GetCachedGeometry().AbsoluteToLocal(Position + FVector2f(0.f, Size.Y));
+				IncomeTipOverlay = SNew(SBox)
+					.HAlign(HAlign_Left)
+					.VAlign(VAlign_Top)
+					.Padding(FMargin(Local.X, Local.Y + 4.f, 0.f, 0.f))
+					[
+						Tip->AsWidget()
+					];
+				Viewport->AddViewportWidgetContent(IncomeTipOverlay.ToSharedRef(), 1000);
+			}
+			return Amount->GetToolTipText().ToString();
+		}
+	}
+	return FString::Printf(TEXT("none (hit %s)"), *Hit.Widgets[Hit.Widgets.Num() - 1].Widget->GetTypeAsString());
+}
+
 void UHOLGameScreen::HideUnitStats()
 {
 	ShownStats.Reset();
@@ -2252,6 +2320,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			FText Effect = LOCTEXT("MarketNoBook", "Le cours n'est pas encore connu");
 			FHOLResources Cost;
 			bool bGreyed = true;
+			bool bQuoted = false;
+			FHOLTradeGain Gain;
 			if (bMarketSettingsLoaded && BoundTableState.IsValid() && BoundTableState->HasMarketBook() && Good >= 0 && Good < HOLMarket::TradableResources)
 			{
 				const HOLMarket::FBook Book = BoundTableState->GetMarketBook();
@@ -2271,9 +2341,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				{
 					Cost[Command.Resource] = HOLMarket::Lot;
 				}
-				Label = Command.bBuy
-					? FText::Format(LOCTEXT("MarketBuyCell", "{0}\n100 or = {1}"), Label, FText::AsNumber(Received))
-					: FText::Format(LOCTEXT("MarketSellCell", "{0}\n100 = {1} or"), Label, FText::AsNumber(Received));
+				// D781 (the user's REGLAGE on the trial `market`, 2026-11-11): under the good's name, « +X » then the logo of what is
+				// received (the good bought, gold for a sale); no « 100 or = X » any more (the rate stays in the tooltip).
+				Gain = HOLCommandGrid::GetTradeGain(Command.Resource, Command.bBuy, Received);
+				bQuoted = true;
 				Effect = Command.bBuy
 					? FText::Format(LOCTEXT("MarketBuyEffect", "100 or contre {0} {1}, taxe comprise ; le cours monte à {2}. Maj : 500 or d'un coup"),
 						FText::AsNumber(Received), GetResourceNameInText(Command.Resource), FText::AsNumber(Quote.Book.Prices[Good]))
@@ -2281,9 +2352,14 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 						GetResourceNameInText(Command.Resource), FText::AsNumber(Received), FText::AsNumber(Quote.Book.Prices[Good]));
 				bGreyed = !(GetMissing(Stock, Cost) == FHOLResources());
 			}
-			ShownTradeLabels[Cell] = Label.ToString().Replace(TEXT("\n"), TEXT(" "));
 			GridCell->SetCommand(Label, bGreyed ? EHOLGridCellState::Greyed : EHOLGridCellState::Ready);
+			if (bQuoted)
+			{
+				GridCell->SetGain(Gain);
+			}
 			GridCell->SetTooltip(Name, Cost, GetMissing(Stock, Cost), Effect);
+			// What the cell itself shows, read back from its widgets (the name, the gain and its logo: "Bois +96 [Wood]").
+			ShownTradeLabels[Cell] = GridCell->DescribeContent();
 			break;
 		}
 		case EHOLGridCommand::CancelConstruction:
@@ -2956,7 +3032,7 @@ FString UHOLGameScreen::Describe() const
 		: FString();
 	// The short message shown (D313), after the queue: the checks of J3 read the line from its start.
 	const FString Message = MessageKey.IsEmpty() ? FString() : FString::Printf(TEXT(", message %s"), *MessageKey);
-	// M5: the text drawn on a Market's trade cells, last on the line ("trades A=Nourriture 100 or = 96 | Z=...").
+	// M5: the text drawn on a Market's trade cells, last on the line ("trades A=Nourriture +96 [Food] | Z=...", D781).
 	TArray<FString> Trades;
 	for (int32 Cell = 0; bGridShown && Cell < ShownTradeLabels.Num(); ++Cell)
 	{
@@ -3137,7 +3213,11 @@ void UHOLGameScreen::BuildLayout()
 		AddToRow(Resources, Value, OutGatherers ? 4.f : 20.f);
 		if (OutGatherers)
 		{
+			// D788: Visible (a text block is SelfHitTestInvisible by default): the hover of the amount and of its gatherers shows the
+			// income tooltip; the top bar is already a hit-test visible panel, no click to the game is lost.
+			Value->SetVisibility(ESlateVisibility::Visible);
 			*OutGatherers = MakeText(*(Name + TEXT("Gatherers")), UHOLTextStyleHUDLabel::StaticClass(), FText::GetEmpty());
+			(*OutGatherers)->SetVisibility(ESlateVisibility::Visible);
 			AddToRow(Resources, *OutGatherers, 20.f);
 		}
 		return Value;
