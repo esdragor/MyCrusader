@@ -83,3 +83,6 @@ ou 4, palier non atteint, option hors des 2, Templiers à 3) ; deux paliers (Q1)
   pour un agent neuf : SP2** (agent C++ : état sur `AHOLPlayerState`, RPC serveur Start / Cancel avec `AHOLGameState::GetTier`, `Advance`
   au pas de la simulation, événement d'application, `hol.Cheat.Specialization`), puis SP3. Aucun test rouge en cours. Rien de visible en
   jeu : pas de ligne à `Placeholders.txt`.
+
+## 2026-11-13 11:10 HALDIR-1113 (agent, maps)
+- D785 applique : OneUnlockAtATime remplace par PreviousTierFirst (palier N ouvert seulement si N-1 applique, reponse PreviousTierNotApplied = 7) ; rouge bad840e (Test_SpecializationTierOneFirst, IsOpen 2/3 eteints avant le palier d'avant ; ligne 80 : 30/45/60 s assertis en litteral et par Start/Advance a 29999/44999/59999 + 1 ms), vert 8d028ff ; quick_check -Parts tests 1203/1203 PASS (11:10). Toujours aucun appelant en jeu (C++ SC2/SG2/SP2/N2 a faire). Reprise : etape C++ suivante du journal.

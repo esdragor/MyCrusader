@@ -69,3 +69,6 @@ et distance minimale.
   `Retours\Q-nomad.md` (Q1 taille des groupes, défaut A 2 ; Q2 distance aux ennemis, défaut A 40 cases). **Prochaine étape pour un agent
   neuf : N2** (agent C++ : départ sans forum, `EHOLDefeatReason::Nomad` par `DefeatSlot`, forum en chantier sans vie), puis N3, N4. Aucun
   test rouge en cours. Rien de visible en jeu : pas de ligne à `Placeholders.txt`.
+
+## 2026-11-13 11:10 HALDIR-1113 (agent, maps)
+- D786 applique : GroupSize = 1 (5 Paysans = 5 groupes de 1), 40 cases inchangees, ValueSheet nomad.group_size mis a jour ; rouge 4f83b15, vert 8d028ff ; quick_check -Parts tests 1203/1203 PASS (11:10). Toujours aucun appelant en jeu (C++ SC2/SG2/SP2/N2 a faire). Reprise : etape C++ suivante du journal.
