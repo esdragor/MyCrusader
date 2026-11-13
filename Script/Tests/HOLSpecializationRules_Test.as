@@ -13,15 +13,17 @@ void Test_SpecializationChoiceOpensWithTheTier(FUnitTest& T)
 	T.AssertTrue(HOLSpecialization::IsOpen(State, 1, 1), "tier 1 reached: its button lights up (D332)");
 	T.AssertTrue(!HOLSpecialization::IsOpen(State, 2, 1), "not tier 2's yet");
 	T.AssertTrue(HOLSpecialization::IsOpen(State, 1, 3), "the choice waits as long as the player wants (D332)");
-	T.AssertTrue(HOLSpecialization::IsOpen(State, 3, 3), "tier 3 has its own choice");
+	T.AssertTrue(!HOLSpecialization::IsOpen(State, 2, 3) && !HOLSpecialization::IsOpen(State, 3, 3),
+		"tiers 2 and 3 reached: their buttons stay out until the tier before is applied (D785)");
 	T.AssertTrue(!HOLSpecialization::IsOpen(State, 0, 3) && !HOLSpecialization::IsOpen(State, 4, 3), "tiers 1 to 3 only");
 }
 
 void Test_SpecializationUnlockDelayGrowsWithTheTier(FUnitTest& T)
 {
-	T.AssertEquals(HOLSpecialization::Tier1DelayMs, HOLSpecialization::DelayMs(1), "tier 1 delay (D684: 30 s)");
-	T.AssertEquals(HOLSpecialization::Tier2DelayMs, HOLSpecialization::DelayMs(2), "tier 2 delay (D684: 45 s)");
-	T.AssertEquals(HOLSpecialization::Tier3DelayMs, HOLSpecialization::DelayMs(3), "tier 3 delay (D684: 60 s)");
+	// The GDD's values, written here on purpose (D684: 30 / 45 / 60 s): the test fails if the rules drift from them.
+	T.AssertEquals(30000, HOLSpecialization::DelayMs(1), "tier 1 delay (D684: 30 s)");
+	T.AssertEquals(45000, HOLSpecialization::DelayMs(2), "tier 2 delay (D684: 45 s)");
+	T.AssertEquals(60000, HOLSpecialization::DelayMs(3), "tier 3 delay (D684: 60 s)");
 	T.AssertTrue(HOLSpecialization::DelayMs(1) < HOLSpecialization::DelayMs(2) && HOLSpecialization::DelayMs(2) < HOLSpecialization::DelayMs(3),
 		"growing with the tier (D684)");
 
@@ -38,11 +40,34 @@ void Test_SpecializationUnlockDelayGrowsWithTheTier(FUnitTest& T)
 	T.AssertTrue(!HOLSpecialization::IsOpen(State, 1, 1), "the button goes out");
 }
 
+void Test_SpecializationThreeTiersLandAtThirtyFortyFiveSixtySeconds(FUnitTest& T)
+{
+	// The three tiers in order through the real Start and Advance, in match milliseconds: 30 s, 45 s, 60 s (D684), not 1 ms before.
+	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 0, 3), "tier 1 starts");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 29999, true), "tier 1 not at 29.999 s");
+	T.AssertEquals(1, HOLSpecialization::Advance(State, 1, true), "tier 1 at 30 s (D684)");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 2, 1, 3), "tier 2 starts");
+	T.AssertEquals(45000, HOLSpecialization::RemainingMs(State), "45 s on the bar");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 44999, true), "tier 2 not at 44.999 s");
+	T.AssertEquals(2, HOLSpecialization::Advance(State, 1, true), "tier 2 at 45 s (D684)");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 3, 0, 3), "tier 3 starts");
+	T.AssertEquals(60000, HOLSpecialization::RemainingMs(State), "60 s on the bar");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 59999, true), "tier 3 not at 59.999 s");
+	T.AssertEquals(3, HOLSpecialization::Advance(State, 1, true), "tier 3 at 60 s (D684)");
+	T.AssertEquals(0, HOLSpecialization::ChosenOption(State, 1), "tier 1's choice");
+	T.AssertEquals(1, HOLSpecialization::ChosenOption(State, 2), "tier 2's choice");
+	T.AssertEquals(0, HOLSpecialization::ChosenOption(State, 3), "tier 3's choice");
+}
+
 void Test_SpecializationCancelGivesTheChoiceBack(FUnitTest& T)
 {
 	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
 	T.AssertEquals(HOLSpecialization::NothingToCancel, HOLSpecialization::Cancel(State), "nothing to cancel");
-	HOLSpecialization::Start(State, 2, 0, 2);
+	// Tier 1 applied first (D785), then tier 2's unlock is cancelled.
+	HOLSpecialization::Start(State, 1, 0, 2);
+	T.AssertEquals(1, HOLSpecialization::Advance(State, HOLSpecialization::DelayMs(1), true), "tier 1 applied");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 2, 0, 2), "tier 2 starts");
 	HOLSpecialization::Advance(State, HOLSpecialization::DelayMs(2) - 1, true);
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Cancel(State), "cancelled before the end, at no cost (D684)");
 	T.AssertEquals(0, State.PendingTier, "nothing runs");
@@ -83,15 +108,23 @@ void Test_SpecializationRefusedStarts(FUnitTest& T)
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Templars, 1, 2, 1), "the third commandery (D131)");
 }
 
-void Test_SpecializationTwoTiersFollowQ1(FUnitTest& T)
+void Test_SpecializationTierOneFirst(FUnitTest& T)
 {
-	// A player who reached tier 2 before choosing tier 1 (Q-specialization Q1: one unlock at a time, or both at once).
+	// D785 (answer of 2026-11-12 to Q-specialization Q1 = C): a player who reached tier 2 before choosing tier 1: tier 1 first, tier 2's
+	// button lights up only once tier 1 is applied (the order is imposed, one bar).
 	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	T.AssertTrue(!HOLSpecialization::IsOpen(State, 2, 2), "tier 1 not applied: tier 2's button stays out (D785)");
+	T.AssertTrue(HOLSpecialization::Start(State, 2, 0, 2) != HOLSpecialization::Ok, "tier 2 refused before tier 1 (D785)");
+	T.AssertEquals(0, State.PendingTier, "nothing runs after the refusal");
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 0, 2), "tier 1's unlock runs");
-	const int Second = HOLSpecialization::Start(State, 2, 0, 2);
-	T.AssertEquals(HOLSpecialization::OneUnlockAtATime ? HOLSpecialization::Busy : HOLSpecialization::Ok, Second,
-		"tier 2's unlock follows Q-specialization Q1");
+	T.AssertTrue(!HOLSpecialization::IsOpen(State, 2, 2), "tier 1 running but not applied: tier 2 still out (D785)");
+	T.AssertTrue(HOLSpecialization::Start(State, 2, 0, 2) != HOLSpecialization::Ok, "tier 2 still refused while tier 1 runs");
 	T.AssertEquals(HOLSpecialization::Busy, HOLSpecialization::Start(State, 1, 1, 2), "the running tier is not restarted: cancel first");
+	T.AssertEquals(1, HOLSpecialization::Advance(State, 30000, true), "tier 1 applied at 30 s");
+	T.AssertTrue(HOLSpecialization::IsOpen(State, 2, 2), "tier 1 applied: tier 2's button lights up (D785)");
+	T.AssertTrue(!HOLSpecialization::IsOpen(State, 3, 3), "tier 3 waits for tier 2 (D785)");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 2, 0, 2), "tier 2 starts now");
+	T.AssertEquals(2, State.PendingTier, "the bar shows tier 2");
 }
 
 void Test_SpecializationForumDownFollowsQ2(FUnitTest& T)
