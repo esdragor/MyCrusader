@@ -33,9 +33,11 @@
 #   State: C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.state\   Statistics: ...\Docs\BuildQueue.csv
 #   (one row per build: worktree, requested, compile_start, end, wait_s, duration_s, result, waited_behind, priority;
 #   summary with Tools\build_queue_report.ps1).
-# BUILD LENT (L91): a build longer than 3 x the median duration of the earlier PASS builds of the same priority (normal /
-#   merge, at least 3 of them) prints "build : BUILD LENT (...)" and appends it to its CSV column 'load'
-#   (Tools\AutoJourney\status.ps1 shows the recent ones).
+# BUILD LENT (L91): the UBT action count N ("[n/N]" lines of build.log) goes to the CSV column 'load' as "actions N"; a build
+#   longer than 3 x the median duration of the earlier PASS builds of the same priority (normal / merge) and of a close
+#   action count (N/2 .. 2N, $SlowActionsBand; at least 3 of them, else no verdict) prints "build : BUILD LENT (...)" and
+#   appends it to 'load' (Tools\AutoJourney\status.ps1 shows the recent ones). No action line in the log: compared with
+#   every earlier PASS build of the same priority (minimal version).
 # -Wait (L11-2): ONE blocking call that waits its turn in the queue and then builds; nothing to poll. A waiting build asked with
 #   -Wait is never replaced by a newer build of the same copy (no exit 3, no lost place): the newer build queues behind it.
 #   The orphan rule still applies (launching process gone: exit 4). Run it with -Wait whenever a sibling build may be queued.
@@ -151,16 +153,38 @@ function Log-Build($Name, $RequestedAt, $StartedAt, $EndedAt, $Result, $Behind, 
     $Duration = if ($StartedAt) { [math]::Round(([datetime] $EndedAt - [datetime] $StartedAt).TotalSeconds) } else { 0 }
     Add-CsvRow ((@($Name, (Format-Time $RequestedAt), (Format-Time $StartedAt), (Format-Time $EndedAt), $Wait, $Duration, $Result, ('"' + $Behind + '"'), $Prio, ('"' + $script:LoadText + '"'))) -join ",")
 }
-function Get-SlowVerdict($Seconds, $Prio) {
-    # L91 (bilan 2026-11-12, L12-7): "BUILD LENT" when this build took more than 3 x the median duration of the earlier PASS
-    # builds of the same type (priority normal / merge) in the CSV; needs at least 3 of them. The CSV has no count of UBT
-    # actions, so the type is the only grouping (minimal version). Returns "" or the verdict text.
+# L91 B setting (proposed default, NOT validated by the user): a build is compared with the earlier builds whose UBT action
+# count M is within N / SlowActionsBand .. N x SlowActionsBand of its own count N.
+$SlowActionsBand = 2
+function Get-ActionCount($Lines) {
+    # L91 B: UnrealBuildTool numbers its actions "[n/N] Compile [x64] X.cpp"; N = the largest total seen (-1 = unknown:
+    # no action line and no "up to date", e.g. a fake build or a failure before UBT ran; 0 = target already up to date).
+    $Max = -1
+    foreach ($L in @($Lines)) { if ("$L" -match '^\s*\[\d+/(\d+)\]') { $Max = [math]::Max($Max, [int] $Matches[1]) } }
+    if ($Max -lt 0 -and (@($Lines) -match 'is up to date').Count) { $Max = 0 }
+    $Max
+}
+function Get-SlowVerdict($Seconds, $Prio, $Actions = -1) {
+    # L91 (bilan 2026-11-12, L12-7; option B answered 2026-11-13): "BUILD LENT" when this build took more than 3 x the median
+    # duration of the earlier PASS builds of the same type (priority normal / merge) whose action count ("actions M" in the
+    # column load) is close to this build's count N (N / SlowActionsBand .. N x SlowActionsBand; N = 0 => M = 0); needs at
+    # least 3 of them, else no verdict (older rows without a count never match). Count unknown (N = -1): minimal version,
+    # median of every earlier PASS of the type. Returns "" or the verdict text.
     if (-not (Test-Path $CsvPath)) { return "" }
-    try { $D = @(Import-Csv $CsvPath | Where-Object { $_.result -eq 'PASS' -and "$($_.priority)" -eq "$Prio" -and [int] $_.duration_s -gt 0 } | ForEach-Object { [int] $_.duration_s } | Sort-Object) } catch { return "" }
+    try {
+        $Rows = @(Import-Csv $CsvPath | Where-Object { $_.result -eq 'PASS' -and "$($_.priority)" -eq "$Prio" -and [int] $_.duration_s -gt 0 })
+        $Close = ""
+        if ($Actions -ge 0) {
+            $Rows = @($Rows | Where-Object { "$($_.load)" -match '(^|; )actions (\d+)(;|$)' -and [int] $Matches[2] -ge $Actions / $SlowActionsBand -and [int] $Matches[2] -le $Actions * $SlowActionsBand })
+            $Close = " of $([math]::Ceiling($Actions / $SlowActionsBand))-$($Actions * $SlowActionsBand) actions"
+        }
+        $D = @($Rows | ForEach-Object { [int] $_.duration_s } | Sort-Object)
+    } catch { return "" }
     if ($D.Count -lt 3) { return "" }
     $Median = if ($D.Count % 2) { $D[[int][math]::Floor($D.Count / 2)] } else { ($D[$D.Count / 2 - 1] + $D[$D.Count / 2]) / 2 }
     if ($Seconds -le 3 * $Median) { return "" }
-    "BUILD LENT ($Seconds s > 3 x median $Median s of $($D.Count) earlier $Prio PASS builds)"
+    $Of = if ($Actions -ge 0) { "$Actions actions, " } else { "" }
+    "BUILD LENT ($Of$Seconds s > 3 x median $Median s of $($D.Count) earlier $Prio PASS builds$Close)"
 }
 function Read-Tickets {
     # Call inside the lock. Returns the readable tickets, newest schema; unreadable files are ignored.
@@ -342,7 +366,9 @@ try {
         $Seconds = [math]::Round($Clock.Elapsed.TotalSeconds)
         $Text = Get-Content $Log
         $Outcome = if ($Code -eq 0) { "PASS" } else { "FAIL" }
-        $Slow = Get-SlowVerdict $Seconds $Ticket.priority   # before Log-Build: the median is of the EARLIER builds
+        $Actions = Get-ActionCount $Text
+        if ($Actions -ge 0) { $LoadText = "$LoadText; actions $Actions" }
+        $Slow = Get-SlowVerdict $Seconds $Ticket.priority $Actions   # before Log-Build: the median is of the EARLIER builds
         if ($Slow) { Write-Host "build : $Slow; load: $LoadText (machine saturee ? diagnostic de charge)"; $LoadText = "$LoadText; $Slow" }
         Log-Build $Worktree $RequestedAt $StartedAt (Get-Date) $Outcome ($Behind -join "+") $Ticket.priority
         if ($Code -eq 0) {
