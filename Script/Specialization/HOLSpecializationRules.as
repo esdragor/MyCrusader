@@ -125,8 +125,9 @@ namespace HOLSpecialization
 		}
 	}
 
-	// The player clicks Option of Tier: the unlock starts at the Forum (D684). Ok: it runs; any other answer: nothing changed. A running
-	// unlock is not restarted in place: cancel it first.
+	// The player clicks Option of Tier: the unlock starts at the Forum (D684). Ok: it runs; any other answer: nothing changed. Answer of
+	// 2026-11-13 to Q-specialization-switch (B): a click on another option of the running tier replaces it at once (the running option is
+	// cancelled, the other starts with the full delay); a click on the running option itself restarts nothing (Busy).
 	int Start(FHOLSpecializationState& State, int Tier, int Option, int PlayerTier, bool bForumComplete = true)
 	{
 		if (!IsValidTier(Tier))
@@ -137,7 +138,7 @@ namespace HOLSpecialization
 			return BadOption;
 		if (ChosenOption(State, Tier) != None)
 			return AlreadyChosen;
-		if (IsRunning(State, Tier))
+		if (IsRunning(State, Tier) && State.RunningOption[Tier] == Option)
 			return Busy;
 		if (!PreviousApplied(State, Tier))
 			return PreviousTierNotApplied;
