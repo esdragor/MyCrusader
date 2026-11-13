@@ -74,6 +74,14 @@ class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 		return Slot >= 0 && HOLNomad::HasCompleteForum(NomadOf(Slot));
 	}
 
+	// N2 (b), D354: no Peasant left before the first complete Forum is the defeat of a Nomad seat (HOLNomad::IsDefeated);
+	// a standard seat is never before its first Forum, so never defeated here.
+	UFUNCTION(BlueprintOverride)
+	bool SeatIsNomadDefeated(int Slot, int PeasantCount)
+	{
+		return Slot >= 0 && HOLNomad::IsDefeated(NomadOf(Slot), PeasantCount);
+	}
+
 	// N2 step 2a (answer A of Q-nomad-forum Q1): a Nomad seat starts with the standard stock plus the secondary centre's price (D783),
 	// HOLNomad::StartingAmount per resource (0 food, 1 wood, 2 stone, 3 gold). Only called with bNomad (StartingStock).
 	UFUNCTION(BlueprintOverride)
