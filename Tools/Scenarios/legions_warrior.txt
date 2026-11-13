@@ -1,4 +1,4 @@
-# L4 step 7 (Galadriel): the Legions' Damned Warrior and its necrotic rage button, through REAL gestures. A Barracks of the Legions, a Damned Warrior, an Aube Spearman close by; you click the warrior on its body (hol.Select.ClickUnit), the grid shows the Rage cell, you click it (hol.HUD.Click GridCell02: the same path as the mouse, then the order goes through the server like any order), the rage runs 10 s, then it ends. Nothing in the drawing marks the rage (no aura, no colour: see Retours\Q-legions-warrior-rage-visual.md), so the effect is read in the log (cast line) and in the warrior's health bar.
+# L4 step 7 (Galadriel): the Legions' Damned Warrior and its necrotic rage button, through REAL gestures. A Barracks of the Legions, a Damned Warrior, an Aube Spearman close by; you click the warrior on its body (hol.Select.ClickUnit), the grid shows the Rage cell, you click it (hol.HUD.Click GridCell02: the same path as the mouse, then the order goes through the server like any order), the rage runs 10 s, then it ends. The rage is drawn by hol.Rage.Visual 4 (default, Q-legions-warrior-rage-visual = A+C): a dark red tint on the warrior and the cell E greyed with the seconds left, then the recharge.
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
 hol.Cheat.Resources 5000
@@ -44,13 +44,17 @@ waitlog Rage order: slot 0 queued for 1 units
 waitlog casts the necrotic rage
 frames 60
 hol.HUD.Report
+# hol.Rage.Visual 4 (default): the cell E is greyed while the rage runs (the HUD must redraw it with time, not only at a selection change).
+waitlog E=NecroticRage greyed
 capture legions_warrior_rage
 # 6. The rage lasts 10 s then ends (or at 20 health): let the fight run past it.
 frames 600
 hol.HUD.Report
+# The 40 s recharge: the cell E stays greyed.
+waitlog E=NecroticRage greyed
 capture legions_warrior_after
-# 7. A second click on the cell while it recharges is refused: no second cast line.
-hol.HUD.Click GridCell02
-waitlog Rage order: slot 0 queued for 1 units
+hol.Test.Sanity
+# 7. hol.Rage.Visual 4 (default since D772): during the rage the warrior is tinted dark red and the cell E shows the seconds left, greyed;
+# after it, the cell shows the seconds of the 40 s recharge, still greyed (no second cast while it recharges).
 frames 30
-note You click the Barracks, press E for a Damned Warrior, click its body, then click the Rage cell: the order is cast (log: casts the necrotic rage), the warrior loses 3 health per blow for 10 s, then the rage ends. The rage is NOT drawn (no aura, no colour): LOGIC ONLY for the effect, see the question.
+note You click the Barracks, press E for a Damned Warrior, click its body, then click the Rage cell: the rage is cast (log: casts the necrotic rage), the warrior turns dark red and the cell E counts down the 10 s of rage, greyed; then the tint goes and the cell counts down the 40 s recharge.

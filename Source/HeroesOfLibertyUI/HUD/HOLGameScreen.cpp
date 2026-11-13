@@ -118,7 +118,8 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 	}
 
 	/** What a building gives, for its tooltip (D313): « +10 population », « Dépôt : pierre, or », « Produit : Lancier, Homme d'armes ». */
-	FText GetBuildingEffect(const FHOLBuildingTypeRow* Type, const FName FactionKey)
+	// Q-barracks-tooltip-damned = A: with a world and a slot, « Produit : » lists only the unit types the slot's faction fields (the grid's filter).
+	FText GetBuildingEffect(const FHOLBuildingTypeRow* Type, const FName FactionKey, const UWorld* World = nullptr, const int32 Slot = INDEX_NONE)
 	{
 		TArray<FText> Lines;
 		if (Type && Type->PopulationProvided > 0)
@@ -134,10 +135,12 @@ namespace UE::HeroesOfLiberty::UI::GameScreen
 			}
 			Lines.Add(FText::Format(LOCTEXT("DepositEffect", "Dépôt : {0}"), FText::Join(LOCTEXT("ListSeparator", ", "), Names)));
 		}
-		if (Type && !Type->Produces.IsEmpty())
+		const TArray<FName> Produced = !Type ? TArray<FName>()
+			: (World && Slot != INDEX_NONE ? HOLFactionRules::FilterProduces(World, Type->Produces, Slot) : Type->Produces);
+		if (!Produced.IsEmpty())
 		{
 			TArray<FText> Names;
-			for (const FName Unit : Type->Produces)
+			for (const FName Unit : Produced)
 			{
 				Names.Add(HOLGameNames::GetUnitName(Unit, nullptr, FactionKey));
 			}
@@ -570,8 +573,9 @@ void UHOLGameScreen::NativeTick(const FGeometry& MyGeometry, const float InDelta
 		{
 			Refresh();
 		}
-		// J8c.4: the hero's cells (units selected: no building, no group) follow his cool-downs and his level.
-		else if (bHeroCellsShown)
+		// J8c.4: the hero's cells (units selected: no building, no group) follow his cool-downs and his level. L4: the Damned
+		// Warriors' rage cell too (hol.Rage.Visual 3 or 4: its seconds of rage then of recharge move with time alone).
+		else if (bHeroCellsShown || ShownGridTypes.Contains(FName(TEXT("NecroticRage"))))
 		{
 			RefreshGrid(nullptr, false, BoundPlayerState.Get());
 		}
@@ -1267,6 +1271,30 @@ void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 	SetGatherers(WoodGatherers, ShownGatherers.Wood);
 	SetGatherers(StoneGatherers, ShownGatherers.Stone);
 	SetGatherers(GoldGatherers, ShownGatherers.Gold);
+	// Over a resource, its income a minute, every source of it (Retours/Q-sites-gold-line.md, answer "other": its gatherers at their
+	// sources and, for the gold, the sacred sites held), set again only when it changes.
+	const FHOLResources Income = PlayerState->GetIncomePerMinute();
+	if (!(Income == ShownIncome))
+	{
+		ShownIncome = Income;
+		const auto SetIncomeTip = [](UCommonTextBlock* Amount, UCommonTextBlock* Count, const FText& Name, const int32 PerMinute)
+		{
+			const FText Tip = FText::Format(LOCTEXT("IncomeTip", "+{0} {1}/min"), FormatAmount(PerMinute), Name);
+			if (Amount)
+			{
+				Amount->SetToolTipText(Tip);
+			}
+			if (Count)
+			{
+				Count->SetToolTipText(Tip);
+			}
+		};
+		// The resources' words of the tribute's message (HOLForumMessages, same keys).
+		SetIncomeTip(FoodAmount, FoodGatherers, LOCTEXT("TributeFood", "nourriture"), Income.Food);
+		SetIncomeTip(WoodAmount, WoodGatherers, LOCTEXT("TributeWood", "bois"), Income.Wood);
+		SetIncomeTip(StoneAmount, StoneGatherers, LOCTEXT("TributeStone", "pierre"), Income.Stone);
+		SetIncomeTip(GoldAmount, GoldGatherers, LOCTEXT("TributeGold", "or"), Income.Gold);
+	}
 	if (PopulationAmount)
 	{
 		PopulationAmount->SetText(FormatRatio(ShownPopulationUsed, ShownPopulationCap));
@@ -2201,7 +2229,8 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetBuildingName(Command.TypeName, BuildType);
 			GridCell->SetCommand(Name, Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
-			GridCell->SetTooltip(Name, Cost, Missing, GetBuildingEffect(BuildType, LocalFactionKey()));
+			GridCell->SetTooltip(Name, Cost, Missing, GetBuildingEffect(BuildType, LocalFactionKey(), GetWorld(),
+					BoundPlayerState.Get() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE));
 			break;
 		}
 		case EHOLGridCommand::Trade:
@@ -2311,7 +2340,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 				// L4 (Q-legions-l4 Q2 = A): the Damned Warriors' necrotic rage, cast at once (GDD 11.1 "Rage nécrotique"); the numbers in its
 				// tooltip are the simulation's own constants (HOLUnitAbilityRules.h, kept equal to UnitAbilities.csv by Combat.DamnedWarrior.RageConstants).
 				// No icon yet (a text cell, like the hero's abilities: Placeholders.txt).
-				// hol.Rage.Visual 3 or 4 (default 0 = unchanged): the cell shows the seconds left of the rage, then of the recharge, and is greyed meanwhile.
+				// hol.Rage.Visual 3 or 4 (default 4, D772): the cell shows the seconds left of the rage, then of the recharge, and is greyed meanwhile.
 					FText RageLabel = LOCTEXT("NecroticRageShort", "Rage");
 					EHOLGridCellState RageCellState = EHOLGridCellState::Ready;
 					if (HOLRageVisual::HasIcon(HOLRageVisual::GetMode()) && PlayerController)
@@ -2448,7 +2477,8 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetBuildingName(Building.TypeName, BuildType);
 			AgeCell->SetCommand(Name, !Building.bGreyed && Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
-			AgeCell->SetTooltip(Name, Cost, Missing, Building.bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType, LocalFactionKey()));
+			AgeCell->SetTooltip(Name, Cost, Missing, Building.bGreyed ? LOCTEXT("AgeLocked", "Palier non atteint") : GetBuildingEffect(BuildType, LocalFactionKey(), GetWorld(),
+					BoundPlayerState.Get() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE));
 		}
 	}
 }

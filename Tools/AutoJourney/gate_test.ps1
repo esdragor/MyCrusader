@@ -230,11 +230,19 @@ foreach ($er in $EolMix, $EolClean) {
   git -C $er add -A 2>&1 | Out-Null
   git -C $er -c user.name=t -c user.email=t@t commit -q -m t 2>&1 | Out-Null
 }
-$eolPre = & powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolMix | Out-String
+# Ligne 99 (recette 2026-11-12) : si `git ls-files` echoue (ici un .git qui pointe dans le vide), la liste vide valait PASS a tort.
+$EolBroken = Join-Path $EolWts 'HeroesOfLiberty-EolBroken'
+New-Item -ItemType Directory -Path $EolBroken -Force | Out-Null
+Set-Content (Join-Path $EolBroken '.git') 'gitdir: C:/nonexistent_hol_gitdir' -Encoding ascii
+$eolBr = & powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolBroken | Out-String
+$eolBrCode = $LASTEXITCODE
+Check ($eolBrCode -eq 2 -and $eolBr -match 'git ls-files' -and -not ($eolBr -match 'aucun fichier mixte')) 'ligne 99 : eol_check sur un depot illisible -> code 2 et ERREUR git ls-files, jamais "aucun fichier mixte"' "code=$eolBrCode out=$eolBr"
+$eolPre =& powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolMix | Out-String
 Check ($eolPre -match 'MIXTE mixed\.md') 'L9-4 : le faux worktree EolMixed a bien un fichier mixte (pre-condition)' $eolPre
 $eolClose = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $EolWts -RetoursDir $Ret | Out-String
 Check ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolMixed.*fins de ligne.*mixed\.md') 'L9-4 close: worktree aux fins de ligne melees -> WARN/FAIL qui nomme le fichier' $eolClose
 Check ($eolClose -match '(?m)^PASS .*HeroesOfLiberty-EolClean.*fins de ligne' -and -not ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolClean.*fins de ligne')) 'L9-4 close: worktree aux fins de ligne propres -> PASS fins de ligne' $eolClose
+Check ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolBroken.*fins de ligne non controlees' -and -not ($eolClose -match '(?m)^PASS .*HeroesOfLiberty-EolBroken.*fins de ligne')) 'ligne 99 close: git ls-files en echec -> fins de ligne non controlees, jamais PASS' $eolClose
 
 # --- L7-1, L7-4, L7-6 : agent_rules.md
 $r = Get-Content $Rules -Raw -Encoding UTF8
@@ -286,6 +294,25 @@ $eScn = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay
 Check ($eScn -match "(?m)^FAIL .*fixb" -and -not ($eScn -match "(?m)^FAIL .*introuvable")) 'essay: -Essay <nom du scenario> retrouve la fiche par play.ps1 <scenario> (FAIL fixb)' $eScn
 $eNone = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Essay -Root $G -RetoursDir $RetE -Essay E-none | Out-String
 Check ($eNone -match "(?m)^WARN .*branches:") 'essay: aucune branche citee -> WARN (ajouter la ligne branches:)' $eNone
+
+# --- L12-1c (2026-11-12) : session_gate Launch : WARN si la memoire virtuelle libre < seuil (8 Go) ou si un cl.exe d'un AUTRE moteur compile
+$VmRoot = Join-Path $Tmp 'HeroesOfLiberty-FakeVm'
+New-Item -ItemType Directory -Path $VmRoot | Out-Null
+$vmLow = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $VmRoot -MinFreeVirtualGB 100000 | Out-String
+Check ($vmLow -match '(?m)^WARN .*memoire virtuelle libre') 'launch: memoire virtuelle libre < seuil -> WARN (mesure reelle, seuil 100000 Go)' $vmLow
+$vmOk = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $VmRoot -MinFreeVirtualGB 0 | Out-String
+Check ($vmOk -match '(?m)^PASS .*memoire virtuelle libre' -and -not ($vmOk -match '(?m)^WARN .*memoire virtuelle libre')) 'launch: memoire virtuelle libre >= seuil -> PASS' $vmOk
+$FakeCl = Join-Path $Tmp 'cl.exe'
+Copy-Item (Join-Path $env:SystemRoot 'System32\cmd.exe') $FakeCl
+$FakeEngine = 'C:\UE\FakeHolEngine'
+$clOther = Start-Process $FakeCl -ArgumentList "/c `"set MARK=C:\UE\FakeOtherEngine\Engine & ping -n 120 127.0.0.1 >nul`"" -PassThru -WindowStyle Hidden
+$clOurs = Start-Process $FakeCl -ArgumentList "/c `"set MARK=$FakeEngine\Engine\Binaries\DotNET & ping -n 120 127.0.0.1 >nul`"" -PassThru -WindowStyle Hidden
+Start-Sleep -Milliseconds 1500
+$clOut = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Launch -End 23:59 -Root $VmRoot -EngineRoot $FakeEngine | Out-String
+Check ($clOut -match "(?m)^WARN .*cl\.exe d'un autre moteur.*\b$($clOther.Id)\b") "launch: cl.exe d'un autre moteur -> WARN avec son PID ($($clOther.Id))" $clOut
+Check (-not ($clOut -match "(?m)^WARN .*cl\.exe.*\b$($clOurs.Id)\b")) "launch: cl.exe du moteur du projet ($($clOurs.Id)) -> pas de WARN" $clOut
+foreach ($cp in $clOther, $clOurs) { Stop-Process -Id $cp.Id -Force -ErrorAction SilentlyContinue }
+Get-CimInstance Win32_Process -Filter "Name='PING.EXE'" -ErrorAction SilentlyContinue | Where-Object { $_.ParentProcessId -in @($clOther.Id, $clOurs.Id) } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }
 
 # --- L8-1 : la ligne branches: est dans le gabarit et dans les regles
 $Tpl = Get-Content (Join-Path $Here 'E_template.md') -Raw -Encoding UTF8

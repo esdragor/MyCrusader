@@ -40,6 +40,9 @@ namespace UE::HeroesOfLiberty::Gather
 	FAutoConsoleVariableRef CVarLogDeposits(TEXT("hol.Gather.LogDeposits"), LogDeposits,
 		TEXT("1: every unload at a deposit is logged (scripted checks of J5: the stock rises at the deposit only)"));
 
+	/** The resources an income is counted for (EHOLResource: Food, Wood, Stone, Gold). */
+	constexpr int32 ResourceCount = 4;
+
 	float SpeedScale = 1.f;
 	FAutoConsoleVariableRef CVarSpeedScale(TEXT("hol.Gather.SpeedScale"), SpeedScale,
 		TEXT("Every gatherer gathers this many times as fast, on this server (development: hol.Cheat.GatherSpeed and the cheats' panel set it; D291); ")
@@ -197,6 +200,7 @@ void UHOLGatherProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 
 	// Each player's gatherers by resource, counted again at every step (J5b, D307).
 	GathererCounts.Reset();
+	GatherIncomeSums.Reset();
 	CollectRestingBodies(Context);
 	EntityQuery.ForEachEntityChunk(Context, [this, &Step](FMassExecutionContext& Context)
 	{
@@ -597,25 +601,7 @@ void UHOLGatherProcessor::Advance(const FStepContext& Step, FGatherer& Gatherer)
 		const EHOLResource Resource = Source->Resource;
 		const EHOLResource Carried = Gather.Load.Resource;
 		int32 Lost = 0;
-		const float UnitRate = Gatherer.Constants.GatherRates[Resource];
-		// T5: the owner's technologies (the Plough, the Double axes, the Miner picks) raise the rate of their resource.
-		// D602: a farm field in the zone of its owner's Sanctuary adds its percent to the technologies' (additive: to confirm).
-		int32 SanctuaryPercent = 0;
-		const TArray<FName>& SourceTypeNames = Step.Sources->GetTypeNames();
-		if (SourceTypeNames.IsValidIndex(Source->TypeIndex) && SourceTypeNames[Source->TypeIndex] == HOLSourceTypeNames::FarmField)
-		{
-			TArray<FVector2D, TInlineAllocator<4>> Own;
-			for (const TPair<uint8, FVector2D>& Sanctuary : Sanctuaries)
-			{
-				if (Sanctuary.Key == Gatherer.OwnerPlayer)
-				{
-					Own.Add(Sanctuary.Value);
-				}
-			}
-			SanctuaryPercent = HOLGather::GetSanctuaryFarmPercent(Own, FVector2D(Source->Location));
-		}
-		const float TechnologyScale = 1.f + 0.01f * (SanctuaryPercent + (Owner ? Owner->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(Resource)) : 0));
-		const float Rate = (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(SpeedScale, 0.1f, 10.f) * TechnologyScale;
+		const float Rate = GetSourceRate(Step, Gatherer, *Source);
 		const int32 Taken = HOLGather::Gather(Gather.Load, Resource, Rate, Step.StepSeconds,
 			CarryCapacity, Remaining, &Lost);
 		if (Taken > 0)
@@ -995,6 +981,65 @@ void UHOLGatherProcessor::CountGatherer(const FStepContext& Step, const FGathere
 		GathererCounts.SetNum(Gatherer.OwnerPlayer + 1);
 	}
 	++GathererCounts[Gatherer.OwnerPlayer][Resource];
+	// D788: its income a second, at its source corrected by its trips (one on its last way home, its source gone, counts nothing).
+	if (Sources.IsValidIndex(Gatherer.Gather.SourceIndex))
+	{
+		using UE::HeroesOfLiberty::Gather::ResourceCount;
+		const int32 Index = Gatherer.OwnerPlayer * ResourceCount + static_cast<int32>(Resource);
+		if (!GatherIncomeSums.IsValidIndex(Index))
+		{
+			GatherIncomeSums.SetNumZeroed((Gatherer.OwnerPlayer + 1) * ResourceCount);
+		}
+		GatherIncomeSums[Index] += GetNetGatherRate(Step, Gatherer, Sources[Gatherer.Gather.SourceIndex]);
+	}
+}
+
+float UHOLGatherProcessor::GetSourceRate(const FStepContext& Step, const FGatherer& Gatherer, const FHOLSource& Source) const
+{
+	const AHOLPlayerState* Owner = Step.Production ? Step.Production->FindPlayerState(Gatherer.OwnerPlayer) : nullptr;
+	const FHOLSourceTypeRow* Type = Step.Sources->GetType(Source.TypeIndex);
+	const EHOLResource Resource = Source.Resource;
+	const float UnitRate = Gatherer.Constants.GatherRates[Resource];
+	// T5: the owner's technologies (the Plough, the Double axes, the Miner picks) raise the rate of their resource.
+	// D602: a farm field in the zone of its owner's Sanctuary adds its percent to the technologies' (additive: to confirm).
+	int32 SanctuaryPercent = 0;
+	const TArray<FName>& SourceTypeNames = Step.Sources->GetTypeNames();
+	if (SourceTypeNames.IsValidIndex(Source.TypeIndex) && SourceTypeNames[Source.TypeIndex] == HOLSourceTypeNames::FarmField)
+	{
+		TArray<FVector2D, TInlineAllocator<4>> Own;
+		for (const TPair<uint8, FVector2D>& Sanctuary : Sanctuaries)
+		{
+			if (Sanctuary.Key == Gatherer.OwnerPlayer)
+			{
+				Own.Add(Sanctuary.Value);
+			}
+		}
+		SanctuaryPercent = HOLGather::GetSanctuaryFarmPercent(Own, FVector2D(Source.Location));
+	}
+	const float TechnologyScale = 1.f + 0.01f * (SanctuaryPercent + (Owner ? Owner->GetTechnologyBonusPercent(HOLTechnology::GetGatherStat(Resource)) : 0));
+	return (Type ? Type->GatherRate(UnitRate) : UnitRate) * FMath::Clamp(UE::HeroesOfLiberty::Gather::SpeedScale, 0.1f, 10.f) * TechnologyScale;
+}
+
+float UHOLGatherProcessor::GetNetGatherRate(const FStepContext& Step, const FGatherer& Gatherer, const FHOLSource& Source) const
+{
+	const float Rate = GetSourceRate(Step, Gatherer, Source);
+	if (Rate <= 0.f)
+	{
+		return 0.f;
+	}
+	const AHOLPlayerState* Owner = Step.Production ? Step.Production->FindPlayerState(Gatherer.OwnerPlayer) : nullptr;
+	const float Load = static_cast<float>(FMath::Max(1, HOLTechnology::ScaleByPercent(Gatherer.Constants.CarryCapacity,
+		Owner ? Owner->GetTechnologyBonusPercent(HOLTechnology::WorkerCarryStat) : 0)));
+	// The walk there and back from the source to the nearest deposit taking its resource, at the gatherer's table speed
+	// (an estimate: the Wheelbarrow and hol.Units.SpeedScale left out). No deposit: its rate at the source.
+	float Trip = 0.f;
+	const FHOLGatherDeposit* Deposit = FindSourceDeposit(Gatherer.OwnerPlayer, Source);
+	if (Deposit && Gatherer.Constants.Speed > 0.f)
+	{
+		const double Distance = FMath::Max(0., HOLGather::GetDepositDistance(FVector2D(Source.Location), *Deposit) - Source.Radius);
+		Trip = static_cast<float>(2. * Distance / Gatherer.Constants.Speed);
+	}
+	return Load / (Load / Rate + Trip);
 }
 
 void UHOLGatherProcessor::PublishGathererCounts(const FStepContext& Step) const
@@ -1012,6 +1057,14 @@ void UHOLGatherProcessor::PublishGathererCounts(const FStepContext& Step) const
 		if (Slot != INDEX_NONE)
 		{
 			HOLPlayerState->SetGatherers(GathererCounts.IsValidIndex(Slot) ? GathererCounts[Slot] : FHOLResources());
+			// D788: its gatherers' income a minute, each one at its source corrected by its trips.
+			FHOLResources Income;
+			for (int32 Resource = 0; Resource < UE::HeroesOfLiberty::Gather::ResourceCount; ++Resource)
+			{
+				const int32 Index = Slot * UE::HeroesOfLiberty::Gather::ResourceCount + Resource;
+				Income[static_cast<EHOLResource>(Resource)] = GatherIncomeSums.IsValidIndex(Index) ? FMath::RoundToInt(60.f * GatherIncomeSums[Index]) : 0;
+			}
+			HOLPlayerState->SetGatherIncome(Income);
 		}
 	}
 }

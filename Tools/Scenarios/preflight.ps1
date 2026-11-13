@@ -13,7 +13,10 @@
 #   4b. HUD panels covering each other (lesson 12b): the log line "HUD overlap: ..." of hol.HUD.Report must say none;
 #   5. the sanity audit of the game itself (units of a neutral camp with a player's colour, a unit that spins without reaching its goal,
 #      units that shake): a scenario may call `hol.Test.Sanity`; any log line "Sanity: FAIL ..." is a FAIL. Without that call: WARN
-#      (the audit is queued in Auto_Journey_File.md, section « Processus »).
+#      (the audit is queued in Auto_Journey_File.md, section « Processus »);
+#   6. the USER'S launch (LaunchCheck.ps1, 2026-11-12): play.ps1 names the player (first named Human seat of the .json), no
+#      uncommitted file the trial needs (-AllowUncommitted = WARN, then it plays only with -Root), each module dll is not older
+#      than the newest C++ file of its own Source\<module> folder, and the log has no « candidate missing », step timeout or spectator.
 # A trial that does not pass is NOT "ready": it is written « LOGIQUE SEULEMENT » in the retours file, or not listed.
 param(
     [Parameter(Position = 0, Mandatory = $true)] [string] $Name,

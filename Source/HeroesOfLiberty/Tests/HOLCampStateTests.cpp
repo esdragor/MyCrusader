@@ -4,6 +4,8 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "Map/HOLFogMode.h"
+#include "Map/HOLVisionSubsystem.h"
 #include "HAL/IConsoleManager.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
@@ -17,6 +19,7 @@
 #include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
+#include "UObject/UnrealType.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -188,6 +191,45 @@ namespace UE::HeroesOfLiberty::Tests::CampState
 	}
 }
 
+// N7 (Q1 C): what a player's state holds of the camps (AHOLPlayerState::CampViews, replicated to him alone), read by reflection so this
+// test builds before the property exists (then it is red: Num -1).
+namespace UE::HeroesOfLiberty::Tests::CampState
+{
+	struct FSeenCamps
+	{
+		int32 Num = -1;
+		bool bCleared = false;
+		int32 Living = -1;
+	};
+
+	/** How many camps the player's state holds, and the first one's state; Num -1 without the property. */
+	FSeenCamps ReadViews(AHOLPlayerState& Player)
+	{
+		FSeenCamps Out;
+		const FArrayProperty* Array = FindFProperty<FArrayProperty>(AHOLPlayerState::StaticClass(), TEXT("CampViews"));
+		const FStructProperty* Inner = Array ? CastField<FStructProperty>(Array->Inner) : nullptr;
+		if (!Inner)
+		{
+			return Out;
+		}
+		FScriptArrayHelper Helper(Array, Array->ContainerPtrToValuePtr<void>(&Player));
+		Out.Num = Helper.Num();
+		if (Out.Num > 0)
+		{
+			const uint8* First = Helper.GetRawPtr(0);
+			if (const FBoolProperty* Cleared = CastField<FBoolProperty>(Inner->Struct->FindPropertyByName(TEXT("bCleared"))))
+			{
+				Out.bCleared = Cleared->GetPropertyValue_InContainer(First);
+			}
+			if (const FByteProperty* Living = CastField<FByteProperty>(Inner->Struct->FindPropertyByName(TEXT("Living"))))
+			{
+				Out.Living = Living->GetPropertyValue_InContainer(First);
+			}
+		}
+		return Out;
+	}
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCampStateDoorsTest, "HeroesOfLiberty.Neutrals.CampStateDoors", UE::HeroesOfLiberty::Tests::CampState::Flags)
 
 // A camp of three Spearmen: alive with three living members once adopted; when its members die, cleared and none living.
@@ -223,6 +265,50 @@ bool FHOLCampStateDoorsTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("... none living"), CallLivingMembers(Camps, CampId), 0);
 	W.RunStepsTo(48);
 	TestEqual(TEXT("Cleared for good: still cleared"), CallIsCleared(Camps, CampId), 1);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCampViewsTest, "HeroesOfLiberty.Neutrals.CampViews", UE::HeroesOfLiberty::Tests::CampState::Flags)
+
+// N7 (Q1 C), the real chain: the camp a player's camp has in sight reaches his state, alive with its members, then cleared; with the fog,
+// a camp never in his sight does not reach it (the one seen before stays, as last seen).
+bool FHOLCampViewsTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::CampState;
+	FWorld W;
+	if (!TestTrue(TEXT("test world ready"), W.IsReady()))
+	{
+		return false;
+	}
+	TestEqual(TEXT("No camp: the player's state holds none"), ReadViews(*W.Player).Num, 0);
+	W.Camps->AddCamp(FVector(20000.0, 0.0, 0.0), FName(TEXT("Spearman")), 3);
+	W.RunStepsTo(16);
+	FSeenCamps Seen = ReadViews(*W.Player);
+	TestEqual(TEXT("No fog: the camp reaches the player's state"), Seen.Num, 1);
+	TestFalse(TEXT("... alive"), Seen.bCleared);
+	TestEqual(TEXT("... with its three members"), Seen.Living, 3);
+
+	W.Units->KillUnitsOfOwner(static_cast<uint8>(FHOLMatchConfig::NeutralOwner));
+	W.RunStepsTo(32);
+	Seen = ReadViews(*W.Player);
+	TestEqual(TEXT("Still one camp in the player's state"), Seen.Num, 1);
+	TestTrue(TEXT("... now cleared"), Seen.bCleared);
+	TestEqual(TEXT("... none living"), Seen.Living, 0);
+
+	UHOLVisionSubsystem* Vision = W.World->GetSubsystem<UHOLVisionSubsystem>();
+	if (Vision)
+	{
+		Vision->Start(W.GameState->GetLaunchConfig(), EHOLFogMode::Normal);
+		Vision->Update();
+	}
+	if (!Vision || !Vision->IsStarted())
+	{
+		AddInfo(TEXT("the fog did not start in this world: the fog case is not checked"));
+		return true;
+	}
+	W.Camps->AddCamp(FVector(-30000.0, -30000.0, 0.0), FName(TEXT("Spearman")), 2);
+	W.RunStepsTo(48);
+	TestEqual(TEXT("With the fog, a camp never in sight is not in the player's state (the first one stays, as last seen)"), ReadViews(*W.Player).Num, 1);
 	return true;
 }
 

@@ -76,6 +76,14 @@ void Test_NomadPeasantsDispersedInSmallGroups(FUnitTest& T)
 	}
 	T.AssertEquals(5, Total, "every Peasant of the start in one group");
 	T.AssertTrue(Sizes.Num() >= 2, "dispersed: more than one group (D207)");
+	// D786 (answer of 2026-11-12 to Q-nomad Q1 = B): one Peasant per starting group, five Peasants alone (AoE2's Nomad).
+	T.AssertEquals(5, Sizes.Num(), "5 Peasants = 5 groups (D786)");
+	for (int Index = 0; Index < Sizes.Num(); Index++)
+		T.AssertEquals(1, Sizes[Index], "each group is one Peasant (D786)");
+	T.AssertEquals(3, HOLNomad::SplitIntoGroups(3).Num(), "3 Peasants = 3 groups of 1");
+	// D786 (Q2 = A): 40 cells (4 000 cm) at least from a group of another camp.
+	T.AssertTrue(!HOLNomad::FarEnough(3999), "39.99 cells: too close (D786)");
+	T.AssertTrue(HOLNomad::FarEnough(4000), "40 cells: far enough (D786)");
 	T.AssertEquals(0, HOLNomad::SplitIntoGroups(0).Num(), "no Peasant, no group");
 	T.AssertTrue(!HOLNomad::FarEnough(HOLNomad::MinEnemyDistanceCm - 1), "too close to an enemy group (D207 vigilance)");
 	T.AssertTrue(HOLNomad::FarEnough(HOLNomad::MinEnemyDistanceCm), "far enough");

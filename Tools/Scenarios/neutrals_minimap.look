@@ -1,0 +1,3 @@
+# <capture name> | what the user must see
+neutrals_minimap_alive | On the minimap (bottom right), a RED square (a little larger than a building's) at the map centre where the camp of 3 grey Spearmen stands; no red square toward the far corner (9000, 9000): that camp was never seen
+neutrals_minimap_cleared | The fight is over: the same square on the minimap is now GREY (camp cleared); still no square for the far camp

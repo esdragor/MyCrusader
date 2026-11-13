@@ -1,0 +1,100 @@
+# L4 (Galadriel): the five ways to SEE the Damned Warrior's necrotic rage, one after the other, on five warriors standing side by side (see Retours\Q-legions-warrior-rage-visual.md). Same set-up as legions_warrior (Barracks of the Legions, key E, a left click on the body, the Rage cell clicked for real), then for each option: hol.Rage.Visual <n>, a DIFFERENT warrior clicked, the Rage cell clicked, one capture, the rage runs out, Enter = next option. Only the clicked warrior is in rage: the four others are the contrast. The cvar stays 0 (D, nothing) unless the user chooses.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Population 60
+hol.Hero.SetXP 0 3000
+hol.Prod.BuildTime 2
+frames 2
+hol.Camera.FocusNear 2500 2500
+hol.Cheat.SpawnBuilding Barracks 0 2500 2500
+waitlog Cheat: spawned Barracks of slot 0
+hol.Camera.FocusNear 2500 2500
+hol.Camera.Zoom -3
+frames 40
+# 1. The Barracks, clicked for real, then key E: the first Damned Warrior is produced.
+hol.Camera.FocusNear 2500 2500
+frames 2
+hol.Select.ClickGround -12200 2600
+frames 10
+hol.HUD.Report
+waitlog HUD cells: A: Lancier squelette; Z: Garde noire; E: Guerrier damné
+hol.Select.Grid 2
+waitlog Production: DamnedWarrior of slot 0 done
+frames 30
+# 2. Four more warriors beside it (free, development command) so that five stand side by side.
+hol.Camera.FocusNear 2500 3300
+frames 2
+hol.Units.SpawnHere 4 DamnedWarrior 0 400
+waitlog SpawnHere: 4 DamnedWarrior of slot 0
+hol.Camera.FocusNear 2500 3000
+frames 30
+# Option D: nothing is drawn (today's behaviour, the default).
+notereset
+note Option D (rien) : le guerrier clique est en rage 10 s, RIEN n est dessine ; seule sa barre de vie baisse plus vite. Le bouton ne dit rien.
+hol.Rage.Visual 0
+hol.Select.ClickUnit -1
+frames 10
+hol.HUD.Click GridCell02
+waitlog Rage order: slot 0 queued for 1 units
+frames 60
+hol.HUD.Report
+capture legions_warrior_compare_D
+frames 560
+waitkey Entree : option A (teinte rouge sombre du corps)
+# Option A: the body is tinted dark red while the rage runs.
+notereset
+note Option A (teinte) : le guerrier clique est en rage, son corps vire au rouge sombre pendant 10 s ; les quatre autres gardent la couleur du joueur.
+hol.Rage.Visual 1
+hol.Select.ClickUnit -2
+frames 10
+hol.HUD.Click GridCell02
+waitlog Rage order: slot 0 queued for 1 units
+frames 60
+hol.HUD.Report
+capture legions_warrior_compare_A
+frames 560
+waitkey Entree : option B (anneau au sol)
+# Option B: a ring on the ground under the warrior in rage.
+notereset
+note Option B (anneau) : le guerrier clique est en rage, un anneau necrotique entoure ses pieds pendant 10 s ; son corps garde la couleur du joueur.
+hol.Rage.Visual 2
+hol.Select.ClickUnit -3
+frames 10
+hol.HUD.Click GridCell02
+waitlog Rage order: slot 0 queued for 1 units
+frames 30
+hol.Select.Report
+waitlog rage (
+frames 30
+hol.HUD.Report
+capture legions_warrior_compare_B
+frames 560
+waitkey Entree : option C (etat sur la case Rage)
+# Option C: the Rage cell shows the seconds left, then the recharge, greyed.
+notereset
+note Option C (case) : le guerrier clique est en rage ; seule la case E change : Rage et les secondes restantes (grisee pendant la rage et la recharge de 40 s). Le corps ne change pas.
+hol.Rage.Visual 3
+hol.Select.ClickUnit -4
+frames 10
+hol.HUD.Click GridCell02
+waitlog Rage order: slot 0 queued for 1 units
+frames 60
+hol.HUD.Report
+capture legions_warrior_compare_C
+frames 560
+waitkey Entree : option A + C (teinte et case)
+# Option A + C: the tint on the body and the state on the cell (the recommendation).
+notereset
+note Option A + C (recommandee) : le guerrier clique est en rage : corps rouge sombre ET case E avec les secondes restantes.
+hol.Rage.Visual 4
+hol.Select.ClickUnit -5
+frames 10
+hol.HUD.Click GridCell02
+waitlog Rage order: slot 0 queued for 1 units
+frames 60
+hol.HUD.Report
+capture legions_warrior_compare_AC
+frames 300
+hol.Rage.Visual 0
+note C est a vous : dites D, A, B, C ou A+C dans Retours\Q-legions-warrior-rage-visual.md (hol.Rage.Visual reste 0 jusque-la).
