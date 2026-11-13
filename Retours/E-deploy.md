@@ -12,3 +12,5 @@ Pre-vol 2026-11-13 13:56 (ELROND-1113c, tiers 27d91a4, build 13:52) = FAIL (6), 
 - Correctif voisin fait : D presse pendant une marche ne s'annule plus (27d91a4).
 
 NON VERIFIE : tir sur la Maison, demontage, PNG (seul deploy_packed produit, NON OUVERT).
+
+Pre-vol 2026-11-13 16:45 (ELROND-1113d, tiers, build 16:43) = FAIL (6), PLUS LOIN : la case D dit bien 'Demonter' une fois monte (correctif HUD, PNG deploy_deployed ouvert et vu) ; nouveau rouge etape 38 : l'engin monte ne tire pas sur la Maison en 60 s (non diagnostique). Statut inchange : LOGIQUE SEULEMENT, NE PAS JOUER.
