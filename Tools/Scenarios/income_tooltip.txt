@@ -12,7 +12,8 @@ hol.Gather.SpeedScale 5
 hol.Units.Gather -14221 -1816 0
 # The rate is the gatherers' while they gather: wait for the first unloads so the income is published.
 waitlog Gather: slot 0
-frames 120
+# 30 frames, not 120: on a saturated machine 120 frames outlived the step's timeout (preflight 2026-11-13 18:25).
+frames 30
 hol.Camera.FocusNear 0 0
 hol.Camera.Zoom -2
 frames 10
