@@ -34,13 +34,13 @@ Remove-Item $Log -ErrorAction SilentlyContinue
 @(
     "waitmap MainMenu", "waitui", "hol.Faction.Cheat 0", "hol.UI.Open NewGame", "waitui", "frames 20",
     "hol.UI.Choose SlotState1 2", "frames 10", "hol.UI.Text SlotFaction0 SlotFaction1",
-    "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.2", "frames 40", "capture faction_A_without",
-    "hol.UI.Key Escape 0.2", "frames 20",
+    "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.3", "wait 2", "frames 10", "capture faction_A_without",
+    "hol.UI.Key Escape 0.3", "wait 1.5", "frames 10",
     "hol.UI.Choose SlotFaction1 2", "frames 5", "hol.UI.Text SlotFaction1",
     "hol.UI.Choose SlotFaction1 1", "frames 5", "hol.UI.Text SlotFaction1",
     "hol.Faction.Cheat 1", "frames 20",
-    "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.2", "frames 40", "capture faction_B_with",
-    "hol.UI.Key Escape 0.2", "frames 20",
+    "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.3", "wait 2", "frames 10", "capture faction_B_with",
+    "hol.UI.Key Escape 0.3", "wait 1.5", "frames 10",
     "hol.UI.Choose SlotFaction1 5", "frames 5", "hol.UI.Text SlotFaction1",
     "hol.Faction.Cheat 0", "frames 10", "hol.UI.Text SlotFaction1",
     "quit"
