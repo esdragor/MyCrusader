@@ -37,6 +37,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSignalSubsystem.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
@@ -5036,6 +5037,53 @@ void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender
 {
 	++NumReceivedSignals;
 	UE_LOG(LogHOLMatch, Display, TEXT("Signal: received kind %d from slot %d at (%.0f, %.0f)"), Kind, Sender, Location.X, Location.Y);
+}
+
+void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 Option)
+{
+	if (!IsSpectator())
+	{
+		ServerStartSpecialization(Tier, Option);
+	}
+}
+
+void AHOLPlayerController::RequestCancelSpecialization()
+{
+	if (!IsSpectator())
+	{
+		ServerCancelSpecialization();
+	}
+}
+
+void AHOLPlayerController::ServerStartSpecialization_Implementation(const int32 Tier, const int32 Option)
+{
+	// The player's own seat only (D288); the script's board decides (HOLSpecialization::Start with the seat's tier and its Forum).
+	UWorld* World = GetWorld();
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (!HOLPlayerState || !GameState || !Board || HOLPlayerState->GetPlayerIndex() < 0)
+	{
+		return;
+	}
+	const int32 Slot = HOLPlayerState->GetPlayerIndex();
+	const int32 Result = Board->StartNow(Slot, Tier, Option, GameState->GetTier(Slot), UHOLSpecializationSubsystem::IsForumComplete(World, Slot));
+	UE_LOG(LogHOLMatch, Display, TEXT("Specialization: slot %d starts tier %d option %d, answer %d"), Slot, Tier, Option, Result);
+	Board->RefreshView(*HOLPlayerState);
+}
+
+void AHOLPlayerController::ServerCancelSpecialization_Implementation()
+{
+	UWorld* World = GetWorld();
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (!HOLPlayerState || !Board || HOLPlayerState->GetPlayerIndex() < 0)
+	{
+		return;
+	}
+	const int32 Result = Board->CancelNow(HOLPlayerState->GetPlayerIndex());
+	UE_LOG(LogHOLMatch, Display, TEXT("Specialization: slot %d cancels, answer %d"), HOLPlayerState->GetPlayerIndex(), Result);
+	Board->RefreshView(*HOLPlayerState);
 }
 
 void AHOLPlayerController::RequestStance(const int32 TargetSlot, const int32 Stance)
