@@ -22,7 +22,9 @@ param(
   [string[]]$Exclude = @(),                # Close : worktrees hors perimetre (nom court 'Haldir' ou complet 'HeroesOfLiberty-Haldir')
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
   [string]$Essay = '',                     # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
-  [int]$MinMinutes = 5   # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
+  [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
+  [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
+  [int]$MinMinutes = 5  # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
 )
 $ErrorActionPreference = 'Continue'
 $Branches = @($Branches | ForEach-Object { $_ -split ',' } | Where-Object { $_ })   # -File passe "a,b" comme une seule chaine
@@ -91,6 +93,27 @@ if ($Phase -eq 'Launch') {
     }
   }
   if ($pyWarn -eq 0) { Say 'PASS' 'aucun python/pythonw orphelin' }
+
+  # L12-1c (2026-11-12) : memoire virtuelle libre (mesure reelle) sous le seuil = WARN ; build.ps1 attend lui-meme tant qu'elle est sous 8 Go
+  $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+  $vmFree = if ($os) { [math]::Round($os.FreeVirtualMemory / 1MB, 1) } else { -1 }
+  if ($vmFree -ge 0 -and $vmFree -lt $MinFreeVirtualGB) { Say 'WARN' ("memoire virtuelle libre {0} Go < {1} Go : attendre (Start-Sleep 120) ou finir des tests avant tout lancement de jeu ou de build" -f $vmFree, $MinFreeVirtualGB) }
+  elseif ($vmFree -ge 0) { Say 'PASS' ("memoire virtuelle libre {0} Go >= {1} Go" -f $vmFree, $MinFreeVirtualGB) }
+  # L12-1c : cl.exe d'un AUTRE moteur (aucun ancetre, lui compris, ne cite $EngineRoot) : il prend la machine sans passer par la file de build.ps1
+  $allProcs = @(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
+  $byPid = @{}; foreach ($pp in $allProcs) { $byPid[[int]$pp.ProcessId] = $pp }
+  $engNorm = $EngineRoot.Replace('/', '\').TrimEnd('\')
+  $foreignCl = @()
+  foreach ($c in @($allProcs | Where-Object { $_.Name -ieq 'cl.exe' })) {
+    $cur = $c; $ours = $false; $seen = 0
+    while ($cur -and $seen -lt 6) {
+      if ($cur.CommandLine -and $cur.CommandLine.Replace('/', '\') -like "*$engNorm\*") { $ours = $true; break }
+      $seen++; $par = [int]$cur.ParentProcessId; $cur = if ($par -and $par -ne [int]$cur.ProcessId) { $byPid[$par] } else { $null }
+    }
+    if (-not $ours) { $foreignCl += $c.ProcessId }
+  }
+  if ($foreignCl.Count) { Say 'WARN' ("cl.exe d'un autre moteur que {0} en cours (PID {1}) : la machine compile hors de la file de build.ps1, builds et jeux plus lents" -f $engNorm, ($foreignCl -join ', ')) }
+  else { Say 'PASS' "aucun cl.exe d'un autre moteur" }
 
   # L8-9 : au DEBUT de chaque Auto_Journey tous les worktrees sont remis a jour (sync_worktrees.ps1) ; WARN par worktree en retard (les agents deja lances en cours de seance retardent apres chaque fusion : normal)
   foreach ($w in $wts) {

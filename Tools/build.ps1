@@ -46,8 +46,14 @@ param(
     [ValidateSet("normal", "merge")] [string] $Priority = $(if ($env:HOL_BUILD_PRIORITY -eq "merge") { "merge" } else { "normal" }),
     [string] $QueueDir = "C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.state",
     [string] $CsvPath = "C:\Users\baudo\Documents\MyCrusader\Docs\BuildQueue.csv",
-    [string] $FakeBuild = ""
+    [string] $FakeBuild = "",
+    # L12-1c (2026-11-12): before compiling, wait while the free virtual memory is under this floor (GB), at most
+    # MemoryWaitMaxSeconds, then build anyway; the measure and the wait go to the console and to the CSV column 'load'.
+    [double] $MinFreeVirtualGB = $(if ("$env:HOL_BUILD_MIN_FREE_VM_GB" -ne "") { [double] $env:HOL_BUILD_MIN_FREE_VM_GB } else { 8 }),
+    [int] $MemoryWaitMaxSeconds = $(if ("$env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS" -ne "") { [int] $env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS } else { 1800 })
 )
+$LoadText = ""
+function Get-FreeVirtualGB { $Os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue; if ($Os) { [math]::Round($Os.FreeVirtualMemory / 1MB, 1) } else { -1 } }
 
 $Project = if ($Root) { (Resolve-Path $Root).Path } else { (Resolve-Path "$PSScriptRoot\..").Path }
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
@@ -101,13 +107,23 @@ function Test-Alive($ProcessId, $StartTicks) {
 }
 function Add-CsvRow($Row) {
     # Append under an exclusive open: two writers just retry. Header written when the file is new/empty.
-    $Header = "worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority"
+    $Header = "worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority,load"
     $Deadline = (Get-Date).AddSeconds(15)
     while ($true) {
         try {
             New-Item -ItemType Directory -Force (Split-Path $CsvPath) | Out-Null
             $Stream = [IO.File]::Open($CsvPath, 'OpenOrCreate', 'ReadWrite', 'None')
             try {
+                if ($Stream.Length -gt 0) {
+                    # L12-1c: an older CSV without the 'load' column gets the new header once (old rows keep an empty load)
+                    $Reader = New-Object IO.StreamReader($Stream, $Utf8, $true, 4096, $true)
+                    $All = $Reader.ReadToEnd(); $Reader.Dispose()
+                    $First = ($All -split "`r?`n", 2)[0]
+                    if ($First -notmatch ',load$') {
+                        $Bytes = $Utf8.GetBytes($Header + $All.Substring($First.Length))
+                        $Stream.SetLength(0); $Stream.Write($Bytes, 0, $Bytes.Length)
+                    }
+                }
                 $Stream.Seek(0, 'End') | Out-Null
                 $Text = ""
                 if ($Stream.Length -eq 0) { $Text = $Header + "`r`n" }
@@ -126,7 +142,7 @@ function Format-Time($Time) { if ($Time) { ([datetime] $Time).ToString("yyyy-MM-
 function Log-Build($Name, $RequestedAt, $StartedAt, $EndedAt, $Result, $Behind, $Prio) {
     $Wait = if ($StartedAt) { [math]::Round(([datetime] $StartedAt - [datetime] $RequestedAt).TotalSeconds) } else { [math]::Round(([datetime] $EndedAt - [datetime] $RequestedAt).TotalSeconds) }
     $Duration = if ($StartedAt) { [math]::Round(([datetime] $EndedAt - [datetime] $StartedAt).TotalSeconds) } else { 0 }
-    Add-CsvRow ((@($Name, (Format-Time $RequestedAt), (Format-Time $StartedAt), (Format-Time $EndedAt), $Wait, $Duration, $Result, ('"' + $Behind + '"'), $Prio)) -join ",")
+    Add-CsvRow ((@($Name, (Format-Time $RequestedAt), (Format-Time $StartedAt), (Format-Time $EndedAt), $Wait, $Duration, $Result, ('"' + $Behind + '"'), $Prio, ('"' + $script:LoadText + '"'))) -join ",")
 }
 function Read-Tickets {
     # Call inside the lock. Returns the readable tickets, newest schema; unreadable files are ignored.
@@ -285,6 +301,17 @@ try {
     if ($Outcome) {
         Log-Build $Worktree $RequestedAt $null (Get-Date) $Outcome ($Behind -join "+") $Ticket.priority
     } else {
+        # L12-1c: wait (holding the slot: the shortage hits every build) while the free virtual memory is under the floor
+        $Vm = Get-FreeVirtualGB
+        $MemClock = [Diagnostics.Stopwatch]::StartNew()
+        if ($Vm -ge 0 -and $Vm -lt $MinFreeVirtualGB) {
+            Write-Host "build : waiting for free virtual memory ($Vm GB < $MinFreeVirtualGB GB, at most $MemoryWaitMaxSeconds s; close games or tests)"
+            while ($Vm -ge 0 -and $Vm -lt $MinFreeVirtualGB -and $MemClock.Elapsed.TotalSeconds -lt $MemoryWaitMaxSeconds) { Start-Sleep -Seconds $Poll; $Vm = Get-FreeVirtualGB }
+            $Waited = [math]::Max(1, [math]::Round($MemClock.Elapsed.TotalSeconds))
+            $Still = if ($Vm -lt $MinFreeVirtualGB) { " still low, built anyway" } else { "" }
+            Write-Host "build : free virtual memory $Vm GB after $Waited s$Still"
+            $LoadText = "vm $Vm GB waited $Waited s$Still"
+        } else { $LoadText = "vm $Vm GB" }
         $StartedAt = Get-Date
         $Clock = [Diagnostics.Stopwatch]::StartNew()
         if ($FakeBuild) { & $FakeBuild *> $Log }
