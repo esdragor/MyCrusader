@@ -4734,9 +4734,12 @@ if (($Parts -contains "build") -and ($Parts -contains "camera")) {
     $DawnTexts = @($Dawn | Select-String -Pattern "HUD hero talent texts: (.*)$" | ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() })
     $Checks["three talents: the notice names the last, the list names the three, one icon each with its hover ($($DawnTexts | Select-Object -Skip 1 -First 1))"] =
         ($DawnTexts.Count -ge 2) -and $DawnTexts[1].Contains("notice Talent pris : Pas de l'Aube — ") -and $DawnTexts[1].Contains("list Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube") -and
-        $DawnTexts[1].Contains("icons B = Boucliers levés — ") -and $DawnTexts[1].Contains(" || M = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || P = Pas de l'Aube — ") -and -not $DawnTexts[1].Contains("pas encore actif")
+        $DawnTexts[1].Contains("icons T_Talent_21 = Boucliers levés — ") -and $DawnTexts[1].Contains(" || T_Talent_31 = Mains du guérisseur — ") -and $DawnTexts[1].Contains(" || T_Talent_41 = Pas de l'Aube — ") -and -not $DawnTexts[1].Contains("pas encore actif")
     $Checks["the advised click: the notice names Grâce abondante and says it has no effect yet ($($DawnTexts | Select-Object -Skip 3 -First 1))"] =
-        ($DawnTexts.Count -ge 4) -and $DawnTexts[3].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[3].Contains("pas encore actif dans ce prototype") -and $DawnTexts[3].Contains(" || G = Grâce abondante — ")
+        ($DawnTexts.Count -ge 4) -and $DawnTexts[3].Contains("notice Talent pris : Grâce abondante — ") -and $DawnTexts[3].Contains("pas encore actif dans ce prototype") -and $DawnTexts[3].Contains(" || T_Talent_51 = Grâce abondante — ")
+    # REGLAGE talents_icons_compare (Q-talents-icons = A): every cell of the tree window shows its talent's image (the texture set on the cell's image).
+    $Checks["the tree window: the 24 cells show their talent's image ($(($DawnWindow | Select-Object -First 1) -replace '^.*(images [^|]*).*$', '$1'))"] =
+        ($DawnWindow.Count -ge 1) -and $DawnWindow[0].Contains("images 24/24 T_Talent_20 .. T_Talent_92")
     $DawnMoves = @(-1, -1)
     if ($DawnSpears.Count -ge 2 -and $DawnSpears[0].Count -eq 2) {
         $HeldAt = @($DawnSpears[0] | Where-Object { $_.Y -gt $BuildHero[1] })[0]
