@@ -7,8 +7,8 @@
 // lever, the bonus and the malus each under their own cap, then offset (D704); the attenuation (D125, D706) shortens a temporary malus and
 // weakens an aura malus by the same fraction, never a bonus; sources add up to 75 % at most, the strongest of one nature counting alone;
 // the immunity (D404) stops a malus from being posed, never a bonus; the removal takes the malus and leaves the bonus.
-// Caps (D704, to tune in test): 50 % on the damage taken (the existing MoraleReductionCapPercent), 40 % on the damage dealt (Q-legions-rage-cap
-// = A, 2026-11-11), 30 % on the rate.
+// Caps (D704, to tune in test): 50 % on the damage taken (the existing MoraleReductionCapPercent), 40 % on the bonus of damage dealt
+// (Q-legions-rage-cap = A, 2026-11-11) but 30 % on its malus (D791, "bonus only"), 30 % on the rate.
 // The malus cap of the damage taken: 50 %, symmetric, decided by the user on 2026-11-05.
 namespace HOLMorale
 {
@@ -34,10 +34,10 @@ namespace HOLMorale
 		return Lever == LeverTaken ? 50 : (Lever == LeverDealt ? 40 : 30);
 	}
 
-	// The cap of the malus on a lever, in percent (of the magnitude).
+	// The cap of the malus on a lever, in percent (of the magnitude). Damage dealt: stays 30, only the bonus rose to 40 (D791, "bonus only").
 	int MalusCap(int Lever)
 	{
-		return Lever == LeverTaken ? 50 : (Lever == LeverDealt ? 40 : 30);
+		return Lever == LeverTaken ? 50 : 30;
 	}
 
 	// One effect on a unit. Id names it (a row of the effects table); Dealt / Taken / Rate are its benefit percents; DurationMs the time left of a
