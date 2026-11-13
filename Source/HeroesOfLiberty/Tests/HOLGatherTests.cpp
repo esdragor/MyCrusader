@@ -1238,13 +1238,21 @@ bool FHOLGatherIncomeTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the three gather at their sources"), Test.IsGatheringAt(Farmer, Farm) && Test.IsGatheringAt(Picker, Berries)
 		&& Test.IsGatheringAt(OtherPicker, OtherBerries));
 
-	// (a) The Peasants: each one's rate at its source, from the tables.
+	// (a) The Peasants (D788): each one's rate at its source, from the tables, slowed by its round trip to the nearest deposit.
+	// The farmer's field faces the mill (a short trip: close to the field's rate); the two pickers' bushes are 80 m away
+	// (a long trip: well under the Peasant's own rate). The sum is under the rates at the sources, not their sum (D788: ~+350,
+	// not +600, for Peasants far from their deposit).
 	const float UnitRate = Constants->GatherRates[EHOLResource::Food];
-	const int32 ExpectedFood = FMath::RoundToInt(60.f * (FieldRow->GatherRate(UnitRate) + 2.f * BushRow->GatherRate(UnitRate)));
-	TestTrue(TEXT("the Peasant gathers food (the table)"), ExpectedFood > 0);
+	const float FieldRate = FieldRow->GatherRate(UnitRate);
+	const float AtSources = 60.f * (FieldRate + 2.f * BushRow->GatherRate(UnitRate));
+	TestTrue(TEXT("the Peasant gathers food (the table)"), AtSources > 0.f);
 	const FHOLResources Income = Players[0]->GetIncomePerMinute();
-	TestEqual(TEXT("(a) slot 0's food a minute: its three Peasants' rates"), Income.Food, ExpectedFood);
-	TestEqual(TEXT("(a) the gatherers' part is the same"), Players[0]->GetGatherIncome().Food, ExpectedFood);
+	TestTrue(*FString::Printf(TEXT("(a) slot 0's food a minute (%d) is under the rates at the sources (%.0f): the trips count"), Income.Food, AtSources),
+		Income.Food > 0 && Income.Food <= FMath::RoundToInt(0.8f * AtSources));
+	TestTrue(*FString::Printf(TEXT("(a) the farmer by its mill still counts most of its field's rate (%d >= %.0f)"), Income.Food, 0.8f * 60.f * FieldRate),
+		Income.Food >= FMath::RoundToInt(0.8f * 60.f * FieldRate));
+	TestEqual(TEXT("(a) the gatherers' part is the same"), Players[0]->GetGatherIncome().Food, Income.Food);
+	const int32 FoodWithBushesFar = Income.Food;
 	TestEqual(TEXT("(a) no wood"), Income.Wood, 0);
 	TestEqual(TEXT("(a) no stone"), Income.Stone, 0);
 	TestEqual(TEXT("(a) no gold"), Income.Gold, 0);
@@ -1263,7 +1271,7 @@ bool FHOLGatherIncomeTest::RunTest(const FString& Parameters)
 	Players[0]->SetSiteViews(Views);
 	const FHOLResources WithSites = Players[0]->GetIncomePerMinute();
 	TestEqual(TEXT("(b) two sites held: twice the rate in gold"), WithSites.Gold, 2 * Rate);
-	TestEqual(TEXT("(b) the food unchanged"), WithSites.Food, ExpectedFood);
+	TestEqual(TEXT("(b) the food unchanged"), WithSites.Food, FoodWithBushesFar);
 	TestEqual(TEXT("(b) slot 1 gets nothing from slot 0's views"), Players[1]->GetIncomePerMinute().Gold, 0);
 	return true;
 }
