@@ -85,5 +85,15 @@ Le relevé du 2026-10-30 est épuisé (archive : `Docs\Archive\Auto_Journey_Test
 
 Séance AUTONOME 16:10 -> 21:00 (arrêt dur 21:00, +15 min toléré), fusion groupée dans main autorisée, GDD.md D792 déjà commité (ecff29a), Content/Audio/Candidates/ exclu via .git/info/exclude, jamais de push.
 
+Etape 0 (PLAN-1113s, Fable, a11a7e15776d114a2, 16:15-16:22) : machine saturee (commit libre 1,9-3,3 Go, CPU 90-100 %, 4 editeurs ProjectShiva), 7 binaires sur 8 perimes (seul Faramir frais) ; un seul build a la fois (ordre Elrond, Galadriel, Glorfindel, Arwen, Haldir) ; integrateur = Faramir (fusion groupee a 20:00 : tiers + hero-j8-close + branches du soir, un build -Priority merge, un quick_check tests,net,build,aiserver,aiduel). Gate Launch 16:22 : 1 FAIL « 5 agents C++ » = faux positif connu (texte d'IN_USE.txt, L13-2), 3 agents C++ reels (Elrond, Galadriel, Glorfindel). Exception a la procedure : lancement en 2 vagues (5 agents a 16:25, puis Arwen, Haldir, Sauron a ~17:00) pour limiter les erreurs API 403 vues le matin avec 8 agents.
+
 | Nom | Id | Worktree | Branche | Tache | Lance |
 |---|---|---|---|---|---|
+| NETTOYAGE-1113e a-d | a94b059a3d63c1af4, abf9e92df44779fc8, acb6eae43808c159e, aba99f0b76402ae7a | principale | main | 0a : 3018bfa, a0bf64a, bbb811d, c7431f5 | 16:10 |
+| ELROND-1113d | a61f2c7a4cce2e030 | Elrond | tiers | merge main, build (C++ 1), quick_check tests,net, deploy rouge/preflight | 16:25 |
+| GALADRIEL-1113c | aa635b7ecdaf26550 | Galadriel | galadriel-tab | L48 market libelle (rouge), L47 icones talents ; build rang 2 | 16:25 |
+| GLORFINDEL-1113c | a68f76eb35005a0d9 | Glorfindel | net-playtest | L54 D788 scenario+.look puis build rang 3 ; L58 S6/S7 | 16:25 |
+| FARAMIR-1113c (integrateur) | afde029828d5ff5bb | Faramir | fog | previols talents, fog_orders, map_eldorado, legions_warrior ; L46 build hud ; sans C++ | 16:25 |
+| (Glorfindel-1113c fini 16:32, 45 appels) | a68f76eb35005a0d9 | Glorfindel | net-playtest | e10be35 scenario income_tooltip + HoverIncome C++ NON COMPILE ; cle IncomeTip manquante des .po (JA « /min ») | 16:25 |
+| GLORFINDEL-1113d | a7568d9edb3f525c0 | Glorfindel | net-playtest | REPRISE : build rang 3, GatherText/fill_po, preview income_tooltip, E-income_tooltip, L58 | 16:35 |
+| CELEBORN-1113e | a93e8f0ebdcb9eb5e | Celeborn | hero-j8-close | merge main, planche hors jeu de la pose B (D787), L27 maa_attack ; sans C++ | 16:25 |
