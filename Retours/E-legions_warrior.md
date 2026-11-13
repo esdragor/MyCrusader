@@ -1,0 +1,16 @@
+# [À ESSAYER] E-legions_warrior : la Rage du Guerrier damné (case E) : teinte pendant 10 s, case grisée qui compte la rage puis la recharge
+
+STATUT : VU À L'ÉCRAN
+GESTE: interne (hol.HUD.Click GridCell02 ; objet = affichage)
+SON: non entendu
+branches: fog
+
+Pré-vol (2026-11-13 16:2x-16:33, agent FARAMIR-INTEG intégrateur, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, branche fog = main 8d13f46, dll 11-13 13:27/13:29) : `preflight.ps1 legions_warrior -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` PASS (43 s, 3 PNG) APRÈS correctif du scénario a633b97 (frames 600 = ~4 s en cache : la capture « après » montrait encore la rage ; remplacé par wait 11).
+PNG OUVERTS et vus :
+- legions_warrior_button : bloc « Guerrier damné », case E « Rage » active
+- legions_warrior_rage : guerrier teinté, case E grisée « Rage 10 s »
+- legions_warrior_after : teinte partie, ennemi mort, case E grisée « Rage 29 s » (recharge)
+NON VÉRIFIÉ / À REGARDER : la teinte se voit VIOLETTE (bleu d'équipe + rouge) plutôt que « rouge sombre » ; la recharge de 40 s compte depuis le LANCEMENT (29 s restants 11 s après) et non depuis la fin de la rage : constats, rien tranché ; son.
+
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 legions_warrior -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
+Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
