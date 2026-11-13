@@ -15,6 +15,14 @@ Séance INTERACTIVE 10:16 -> 14:15 (arrêt dur des agents 14:15, +15 min tolér�
 | NETTOYAGE-1113c | a850b77d806a71b21 | principale | main | 0a : dossier Retours (a6f6705) | 10:17 |
 | NETTOYAGE-1113d | a672c7ec5ddc9f370 | principale | main | 0a : procédure + checklist (2503fed) | 10:17 |
 | PLAN-1113a (Fable) | abf950ecd678b5fcb | principale | main | Étape 0 : plan de lancement (lecture seule) | 10:26 |
+| ARWEN-1113a | ac5a153e4e1701eee | Arwen | d751-root | N7 : LaunchCheck, quick_check, commit vert, préviol neutrals_minimap | 10:53 |
+| CELEBORN-1113a | ada7c3a013d424aa6 | Celeborn | hero-j8-close | D787 prise de lance B, rebake, scénario spear_arm | 10:53 |
+| ELROND-1113a | a68a90030ba3ee8bb | Elrond | tiers | RoundTrip, build (C++ 1), G6 e/G4 vert, préviol deploy | 10:53 |
+| FARAMIR-1113a | ae27fcc2364d7358f | Faramir | fog | Préviols legions_roster_gesture/disconnect_1v1 puis outils sans C++ | 10:53 |
+| GALADRIEL-1113a | a810faea8318d75cd | Galadriel | galadriel-tab | D791 rage, build (C++ 2), quick_check, préviol legions_warrior | 10:53 |
+| GLORFINDEL-1113a | aabcfb15a01b099e9 | Glorfindel | net-playtest | quick_check, D788 infobulle de revenu (C++ 3), A4 Canaux | 10:53 |
+| HALDIR-1113a | a4de23c614ef7851b | Haldir | maps | D783-D786 réglages en script, tests à durcir | 10:53 |
+| SAURON-1113a | afb127d057ea93f0e | Sauron | visual | quick_check, préviol resources_compare, Placeholders | 10:53 |
 
 ## Programme du 2026-11-13
 
