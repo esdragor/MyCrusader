@@ -48,7 +48,8 @@ hol.HUD.Report
 waitlog E=NecroticRage greyed
 capture legions_warrior_rage
 # 6. The rage lasts 10 s then ends (or at 20 health): let the fight run past it.
-frames 600
+# (2026-11-13 integrator: was "frames 600", only ~4 s at the hidden run's ~150 fps: the "after" capture still showed the rage, 6 s left.)
+wait 11
 hol.HUD.Report
 # The 40 s recharge: the cell E stays greyed.
 waitlog E=NecroticRage greyed
