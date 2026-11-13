@@ -3,9 +3,11 @@
 STATUT : LOGIQUE SEULEMENT   (aucune oreille n'a encore ecoute ; cet index n'est pas un essai, ce sont les fiches qui le sont)
 GESTE: interne      (voir chaque fiche : les sons sont joues par hol.Audio.Candidate, seule la touche Entree est la tienne)
 SON: non entendu    (-nosound cote agent : l'agent ne peut pas entendre, c'est a l'utilisateur d'ecouter)
-branches: d751-root
+branches: aucune (main)
 
-ETAT 2026-11-13 18:0x (ARWEN-1113d) : les deux fiches encore ouvertes, `E-audio_compare_buildings_stone.md` (Pierre) et `E-audio_compare_buildings_metal.md` (Forge), sont [A ESSAYER] : pre-vol PASS 17:55 depuis `C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` (d751-root, binaire frais 17:48), panneau VU A L'ECRAN, son NON ENTENDU (a toi d'ecouter). Candidats exclus de git (accord de l'utilisateur), seulement sur le disque d'Arwen : `C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Content\Audio\Candidates\soft\` ; jouer avec `-Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`.
+ETAT 2026-11-13 19:4x (FARAMIR, recette reparee) : candidats copies d'Arwen dans `C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Content\Audio\Candidates\soft\` (decision : copie dans le worktree qui joue l'essai ; non suivis par git) ; pre-vol PASS 19:44 de Pierre et de Forge depuis Faramir (main dc67a16), PNG _start vus ; jouer chaque fiche avec `-Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir` (commande dans la fiche). Son NON ENTENDU (a toi d'ecouter).
+
+ETAT precedent 2026-11-13 18:0x (ARWEN-1113d) : les deux fiches encore ouvertes, `E-audio_compare_buildings_stone.md` (Pierre) et `E-audio_compare_buildings_metal.md` (Forge), sont [A ESSAYER] : pre-vol PASS 17:55 depuis `C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` (d751-root, binaire frais 17:48), panneau VU A L'ECRAN, son NON ENTENDU (a toi d'ecouter). Candidats exclus de git (accord de l'utilisateur), seulement sur le disque d'Arwen : `C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Content\Audio\Candidates\soft\` ; jouer avec `-Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`.
 
 Une fiche par famille, chacune : 10 sons (A a J), environ 2 min, le panneau affiche le nom du cue a cote de la lettre, Entree = suivant, une ligne `<Cue> = _` a remplir, la liste des lettres avec leur fichier, la commande `play.ps1` :
 

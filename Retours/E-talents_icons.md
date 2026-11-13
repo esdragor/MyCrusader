@@ -3,7 +3,8 @@
 STATUT : VU À L'ÉCRAN (les images dans l'Arbre et dans le bloc du héros ; les talents sont pris par le scénario)
 GESTE: interne (le scénario prend les trois talents par `hol.HUD.Click`, pas par ta souris ; à toi de cliquer une case de l'Arbre et une icône du bloc du héros)
 SON: non entendu (lancé avec -nosound)
-branches: galadriel-tab
+branches: aucune (main)
+Recette indépendante 19:3x sur main dc67a16 (worktree Faramir, scénario talents_icons_compare) : PASS (preflight 32 s), PNG vus : talents_icons_window (24 cases, image à gauche du nom, Boucliers levés / Mains du guérisseur / Pas de l'Aube teintées or, rangées 7-9 grisées ; aucun texte tronqué, panneau du scénario au-dessus de la fenêtre sans la toucher), talents_icons_hero_block (« Talents pris (3) » puis trois images bouclier / croix / chevrons à la taille des capacités, plus de lettres) ; réserves : à 1280x720 les images du bloc du héros font ~13 px et celles de l'Arbre ~18 px : dessin à peine lisible (croix et chevrons se devinent, le bouclier non), lisibilité à juger par l'utilisateur ; clic et info-bulle d'une icône non rejoués.
 
 Ce qui change (REGLAGE talents_icons_compare, Q-talents-icons = A) : les lettres et pastilles-lettres B M P sont remplacées par 24 images de talents (style des capacités, cadre de la couleur de la famille : Gardien bleu, Capitaine or, Champion rouge). Arbre : image 32 px à gauche du nom de chaque case. Bloc du héros : une image par talent pris, sous la liste « Talents pris », à la taille des capacités (26 px).
 
