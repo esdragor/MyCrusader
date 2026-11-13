@@ -166,6 +166,7 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetDeployPhaseTest, "HeroesOfLiberty.Net.DeployPhase", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetDeployPhaseTest::RunTest(const FString& Parameters)
 {
+	using namespace UE::HeroesOfLiberty::Tests::Net;
 	// G6 e (Palier 3): the phase of an engine that deploys reaches a client (HOLUnitView::DeployPhase), through Iris' chain.
 	const FVector Here(700.0, -800.0, 0.0);
 	FHOLNetUnitState Plain = FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 50);
