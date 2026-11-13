@@ -4,8 +4,9 @@
 // camp never seen has no dot: the fog does not leak (D381 to D383).
 namespace HOLCampMarks
 {
-	// Side of a camp's square, px (a building's is 6, a unit's 3).
-	const float Size = 7.0;
+	// Side of a camp's square, px (a building's is 6, a unit's 3). 2026-11-13: 7 px hid under the 3 px dots of the camp's own
+	// guards on the 240 px minimap and its red did not read; 12 px (twice a building's) leaves a red rim around them.
+	const float Size = 12.0;
 
 	FLinearColor AliveColor()
 	{
