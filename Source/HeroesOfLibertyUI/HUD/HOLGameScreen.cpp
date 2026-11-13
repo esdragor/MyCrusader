@@ -1267,6 +1267,30 @@ void UHOLGameScreen::RefreshTopBar(const AHOLPlayerState* PlayerState)
 	SetGatherers(WoodGatherers, ShownGatherers.Wood);
 	SetGatherers(StoneGatherers, ShownGatherers.Stone);
 	SetGatherers(GoldGatherers, ShownGatherers.Gold);
+	// Over a resource, its income a minute, every source of it (Retours/Q-sites-gold-line.md, answer "other": its gatherers at their
+	// sources and, for the gold, the sacred sites held), set again only when it changes.
+	const FHOLResources Income = PlayerState->GetIncomePerMinute();
+	if (!(Income == ShownIncome))
+	{
+		ShownIncome = Income;
+		const auto SetIncomeTip = [](UCommonTextBlock* Amount, UCommonTextBlock* Count, const FText& Name, const int32 PerMinute)
+		{
+			const FText Tip = FText::Format(LOCTEXT("IncomeTip", "+{0} {1}/min"), FormatAmount(PerMinute), Name);
+			if (Amount)
+			{
+				Amount->SetToolTipText(Tip);
+			}
+			if (Count)
+			{
+				Count->SetToolTipText(Tip);
+			}
+		};
+		// The resources' words of the tribute's message (HOLForumMessages, same keys).
+		SetIncomeTip(FoodAmount, FoodGatherers, LOCTEXT("TributeFood", "nourriture"), Income.Food);
+		SetIncomeTip(WoodAmount, WoodGatherers, LOCTEXT("TributeWood", "bois"), Income.Wood);
+		SetIncomeTip(StoneAmount, StoneGatherers, LOCTEXT("TributeStone", "pierre"), Income.Stone);
+		SetIncomeTip(GoldAmount, GoldGatherers, LOCTEXT("TributeGold", "or"), Income.Gold);
+	}
 	if (PopulationAmount)
 	{
 		PopulationAmount->SetText(FormatRatio(ShownPopulationUsed, ShownPopulationCap));

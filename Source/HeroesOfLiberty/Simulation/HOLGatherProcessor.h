@@ -168,8 +168,16 @@ private:
 	 * sent with the activity), else on its round trip.
 	 */
 	void SyncActivity(const FStepContext& Step, FGatherer& Gatherer);
-	/** Counts it in its owner's gatherers of its resource (J5b, D307). */
+	/** Counts it in its owner's gatherers of its resource (J5b, D307), and its income a second in its owner's (D788). */
 	void CountGatherer(const FStepContext& Step, const FGatherer& Gatherer);
+	/**
+	 * What the gatherer brings home a second from its source (D788, the top bar's income tooltip): its rate there (the
+	 * source type's, hol.Gather.SpeedScale, its owner's technologies and Sanctuary), slowed by its round trip to the nearest
+	 * deposit of the resource (its load over the time to gather it plus the walk there and back, as HOLAINeeds::NetRate).
+	 */
+	float GetNetGatherRate(const FStepContext& Step, const FGatherer& Gatherer, const FHOLSource& Source) const;
+	/** The gatherer's rate at Source, before any trip (the Gathering phase's). */
+	float GetSourceRate(const FStepContext& Step, const FGatherer& Gatherer, const FHOLSource& Source) const;
 	/** Each player's gatherers by resource, to its player state (the top bar of its HUD). */
 	void PublishGathererCounts(const FStepContext& Step) const;
 	/** Each player's unloads of the step, to its own controller alone: its « +10 » (J5c.3, D298). */
@@ -256,6 +264,8 @@ private:
 	TArray<FRestingBody> RestingBodies;
 	/** This step's gatherers by owner (index) and resource. */
 	TArray<FHOLResources> GathererCounts;
+	/** Each player's income a second by resource from its gatherers at this step (D788), index slot x 4 + EHOLResource. */
+	TArray<float> GatherIncomeSums;
 	/** This step's unloads by owner (index), MaxDepositPopupsPerStep each at most: their « +10 » (J5c.3). */
 	TArray<TArray<FHOLDepositPopup>> DepositPopups;
 	static FCounters Counters;

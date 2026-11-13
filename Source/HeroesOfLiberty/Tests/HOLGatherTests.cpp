@@ -13,6 +13,9 @@
 #include "MassProcessingContext.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLPlayerState.h"
+#include "Match/HOLSiteView.h"
+#include "Simulation/HOLSiteSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Resources/HOLSourceLayout.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -1166,6 +1169,110 @@ bool FHOLGatherSanctuaryTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("in the zone of its Sanctuary: the field's rate + 15 %"), Test.GetFoodGathered(InZone), FieldRate * 1.15 * Seconds, Slack);
 	TestEqual(TEXT("out of the zone: the field's rate"), Test.GetFoodGathered(OutOfZone), FieldRate * Seconds, Slack);
 	TestEqual(TEXT("by a rival's Sanctuary: the field's rate"), Test.GetFoodGathered(ByRival), FieldRate * Seconds, Slack);
+	return true;
+}
+
+// The top bar's income tooltip (Retours/Q-sites-gold-line.md, answer "other": every source of the resource, its Peasants counted on it).
+// (a) Slot 0's Peasants at their sources each count their rate there, read from the real tables: one at its farm field (the field's
+// RateScale), two at berry bushes (the Peasant's own rate); the food a minute is their sum times 60, nothing for the other resources,
+// nothing for slot 1 (no gatherer). (b) The gold counts the sacred sites the player holds (its own views whose owner is its slot): two
+// held and one seen held by slot 1 = 2 x hol.Site.GoldPerMinute, the food unchanged; slot 1 gets nothing from what slot 0 sees.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGatherIncomeTest, "HeroesOfLiberty.Gather.Income", UE::HeroesOfLiberty::Tests::Gather::Flags)
+bool FHOLGatherIncomeTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GatherFarm;
+	FFarmWorld Test;
+	if (!TestTrue(TEXT("test world ready"), Test.IsReady()))
+	{
+		return false;
+	}
+	UWorld& World = *Test.World;
+	AHOLGameState* GameState = World.GetGameState<AHOLGameState>();
+	if (!TestNotNull(TEXT("the game state"), GameState))
+	{
+		return false;
+	}
+	AHOLPlayerState* Players[2] = {};
+	for (int32 Slot = 0; Slot < 2; ++Slot)
+	{
+		Players[Slot] = World.SpawnActor<AHOLPlayerState>();
+		if (!TestNotNull(TEXT("a player state"), Players[Slot]))
+		{
+			return false;
+		}
+		Players[Slot]->SetMatchSlot(Slot, Slot);
+		GameState->AddPlayerState(Players[Slot]);
+	}
+	UHOLSourceSubsystem& Registry = *Test.Sources;
+	const int32 Farm = Registry.AddSource(HOLSourceTypeNames::FarmField, FVector(1000.0, 0.0, 0.0), INDEX_NONE, 0);
+	const int32 Berries = Registry.AddSource(HOLSourceTypeNames::BerryBush, FVector(8000.0, 0.0, 0.0));
+	const int32 OtherBerries = Registry.AddSource(HOLSourceTypeNames::BerryBush, FVector(8000.0, 8000.0, 0.0));
+	const TArray<FHOLSource>& Sources = Registry.GetSources();
+	if (!TestTrue(TEXT("a farm field of slot 0 and two bushes"), Farm != INDEX_NONE && Berries != INDEX_NONE && OtherBerries != INDEX_NONE))
+	{
+		return false;
+	}
+	const FHOLSourceTypeRow* FieldRow = Registry.GetType(Sources[Farm].TypeIndex);
+	const FHOLSourceTypeRow* BushRow = Registry.GetType(Sources[Berries].TypeIndex);
+	const uint32 Farmer = Test.PlacePeasant(0);
+	const uint32 Picker = Test.PlacePeasant(0);
+	const uint32 OtherPicker = Test.PlacePeasant(0);
+	const FHOLUnitTypeConstants* Constants = Test.GetConstants(Farmer);
+	if (!TestTrue(TEXT("the rows, three Peasants and their constants"), FieldRow && BushRow && Farmer && Picker && OtherPicker && Constants))
+	{
+		return false;
+	}
+	const double BodyRadius = Constants->Radius;
+	const auto Touching = [&Sources, BodyRadius](const int32 SourceIndex, const FVector2D& Direction)
+	{
+		return FVector2D(Sources[SourceIndex].Location) + Direction * (Sources[SourceIndex].Radius + BodyRadius + 10.0);
+	};
+	Test.SetDown(Farmer, Touching(Farm, FVector2D(-1.0, 0.0)));
+	Test.SetDown(Picker, Touching(Berries, FVector2D(-1.0, 0.0)));
+	Test.SetDown(OtherPicker, Touching(OtherBerries, FVector2D(-1.0, 0.0)));
+	TestTrue(TEXT("slot 0's order to its farm"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ Farmer }), Farm));
+	TestTrue(TEXT("slot 0's order to the berries"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ Picker }), Berries));
+	TestTrue(TEXT("slot 0's order to the other berries"), HOLPlayerOrders::Gather(World, 0, TArray<uint32>({ OtherPicker }), OtherBerries));
+	Test.RunStep();
+	Test.RunStep();
+	TestTrue(TEXT("the three gather at their sources"), Test.IsGatheringAt(Farmer, Farm) && Test.IsGatheringAt(Picker, Berries)
+		&& Test.IsGatheringAt(OtherPicker, OtherBerries));
+
+	// (a) The Peasants (D788): each one's rate at its source, from the tables, slowed by its round trip to the nearest deposit.
+	// The farmer's field faces the mill (a short trip: close to the field's rate); the two pickers' bushes are 80 m away
+	// (a long trip: well under the Peasant's own rate). The sum is under the rates at the sources, not their sum (D788: ~+350,
+	// not +600, for Peasants far from their deposit).
+	const float UnitRate = Constants->GatherRates[EHOLResource::Food];
+	const float FieldRate = FieldRow->GatherRate(UnitRate);
+	const float AtSources = 60.f * (FieldRate + 2.f * BushRow->GatherRate(UnitRate));
+	TestTrue(TEXT("the Peasant gathers food (the table)"), AtSources > 0.f);
+	const FHOLResources Income = Players[0]->GetIncomePerMinute();
+	TestTrue(*FString::Printf(TEXT("(a) slot 0's food a minute (%d) is under the rates at the sources (%.0f): the trips count"), Income.Food, AtSources),
+		Income.Food > 0 && Income.Food <= FMath::RoundToInt(0.8f * AtSources));
+	TestTrue(*FString::Printf(TEXT("(a) the farmer by its mill still counts most of its field's rate (%d >= %.0f)"), Income.Food, 0.8f * 60.f * FieldRate),
+		Income.Food >= FMath::RoundToInt(0.8f * 60.f * FieldRate));
+	TestEqual(TEXT("(a) the gatherers' part is the same"), Players[0]->GetGatherIncome().Food, Income.Food);
+	const int32 FoodWithBushesFar = Income.Food;
+	TestEqual(TEXT("(a) no wood"), Income.Wood, 0);
+	TestEqual(TEXT("(a) no stone"), Income.Stone, 0);
+	TestEqual(TEXT("(a) no gold"), Income.Gold, 0);
+	TestTrue(TEXT("(a) slot 1, no gatherer: nothing"), Players[1]->GetIncomePerMinute() == FHOLResources());
+
+	// (b) The sacred sites slot 0 holds pay it their gold a minute; the one it sees held by slot 1 does not.
+	const int32 Rate = UHOLSiteSubsystem::GetGoldPerMinute();
+	TestTrue(TEXT("a site pays some gold (hol.Site.GoldPerMinute)"), Rate > 0);
+	TArray<FHOLSiteView> Views;
+	for (int32 Index = 0; Index < 3; ++Index)
+	{
+		FHOLSiteView& View = Views.AddDefaulted_GetRef();
+		View.Index = static_cast<uint8>(Index);
+		View.Owner = Index < 2 ? 0 : 1;
+	}
+	Players[0]->SetSiteViews(Views);
+	const FHOLResources WithSites = Players[0]->GetIncomePerMinute();
+	TestEqual(TEXT("(b) two sites held: twice the rate in gold"), WithSites.Gold, 2 * Rate);
+	TestEqual(TEXT("(b) the food unchanged"), WithSites.Food, FoodWithBushesFar);
+	TestEqual(TEXT("(b) slot 1 gets nothing from slot 0's views"), Players[1]->GetIncomePerMinute().Gold, 0);
 	return true;
 }
 

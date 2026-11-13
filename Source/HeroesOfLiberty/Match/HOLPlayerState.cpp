@@ -9,6 +9,7 @@
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Simulation/HOLOrderChainRules.h"
+#include "Simulation/HOLSiteSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 
@@ -22,6 +23,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationUsed, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, PopulationCap, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Gatherers, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, GatherIncome, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
@@ -81,6 +83,34 @@ void AHOLPlayerState::SetPopulation(const int32 InUsed, const int32 InCap)
 	}
 	PopulationUsed = InUsed;
 	PopulationCap = InCap;
+	OnEconomyChanged.Broadcast();
+	ForceNetUpdate();
+}
+
+FHOLResources AHOLPlayerState::GetIncomePerMinute() const
+{
+	// D780, D788: its gatherers' income, and for the gold the sacred sites it holds (each pays hol.Site.GoldPerMinute).
+	FHOLResources Income = GatherIncome;
+	const int32 Slot = GetPlayerIndex();
+	if (Slot != INDEX_NONE)
+	{
+		int32 Held = 0;
+		for (const FHOLSiteView& View : SiteViews)
+		{
+			Held += View.Owner == Slot ? 1 : 0;
+		}
+		Income.Gold += Held * UHOLSiteSubsystem::GetGoldPerMinute();
+	}
+	return Income;
+}
+
+void AHOLPlayerState::SetGatherIncome(const FHOLResources& InIncome)
+{
+	if (GatherIncome == InIncome)
+	{
+		return;
+	}
+	GatherIncome = InIncome;
 	OnEconomyChanged.Broadcast();
 	ForceNetUpdate();
 }
