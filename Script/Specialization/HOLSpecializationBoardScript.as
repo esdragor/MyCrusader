@@ -44,6 +44,36 @@ class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 		return HOLSpecialization::Advance(StateOf(Slot), ElapsedMs, bForumStanding);
 	}
 
+	// N2 step 1 (answer B of Q-nomad-forum Q2): one FHOLNomadState per seat (HOLNomadRules.as), standard until SetSeatNomad.
+	TArray<FHOLNomadState> NomadStates;
+
+	FHOLNomadState& NomadOf(int Slot)
+	{
+		while (NomadStates.Num() <= Slot)
+			NomadStates.Add(HOLNomad::NewState(false));
+		return NomadStates[Slot];
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void SetSeatNomad(int Slot, bool bNomad)
+	{
+		if (Slot >= 0)
+			NomadOf(Slot) = HOLNomad::NewState(bNomad);
+	}
+
+	UFUNCTION(BlueprintOverride)
+	void NoteSeatForumComplete(int Slot)
+	{
+		if (Slot >= 0)
+			HOLNomad::NoteForumComplete(NomadOf(Slot));
+	}
+
+	UFUNCTION(BlueprintOverride)
+	bool SeatHasCompleteForum(int Slot)
+	{
+		return Slot >= 0 && HOLNomad::HasCompleteForum(NomadOf(Slot));
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FHOLSpecializationView ViewSpecialization(int Slot)
 	{
