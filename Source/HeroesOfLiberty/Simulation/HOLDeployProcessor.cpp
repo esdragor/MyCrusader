@@ -18,11 +18,11 @@ static TAutoConsoleVariable<int32> CVarSiegeDeployable(
 	TEXT("Test stand-in for the deployable engine: 1 = every Mangonel is born packed with the deploy fragment (G6). Default 0."),
 	ECVF_Default);
 
-// G6 f (Retours/Q-deployed-engine-autofire.md, not decided): whether a DEPLOYED engine at rest takes on an enemy building within its building
-// reach by itself. 0 (default, A): only on order (its AggressionRadius is 0 in UnitTypes.csv); 1 (B): it does.
+// G6 f (Retours/Q-deployed-engine-autofire.md, user answer 2026-11-13: B): whether a DEPLOYED engine at rest takes on an enemy building within
+// its building reach by itself. 1 (default, B): it does; 0 (A): only on order (its AggressionRadius is 0 in UnitTypes.csv).
 static TAutoConsoleVariable<int32> CVarSiegeDeployedAutoFire(
-	TEXT("hol.Siege.DeployedAutoFire"), 0,
-	TEXT("A deployed engine at rest: 0 (default) fires at a building only on order; 1 takes on an enemy building within its building reach by itself (Q-deployed-engine-autofire)."),
+	TEXT("hol.Siege.DeployedAutoFire"), 1,
+	TEXT("A deployed engine at rest: 1 (default) takes on an enemy building within its building reach by itself; 0 fires at a building only on order (Q-deployed-engine-autofire)."),
 	ECVF_Default);
 
 bool HOLDeployedAutoFireEnabled()

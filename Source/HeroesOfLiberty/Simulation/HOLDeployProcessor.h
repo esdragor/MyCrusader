@@ -41,8 +41,8 @@ struct HEROESOFLIBERTY_API FHOLDeployFragment : public FMassFragment
 HEROESOFLIBERTY_API bool HOLDeployStandInEnabled();
 
 /**
- * Whether a DEPLOYED engine at rest takes on an enemy building within its building reach by itself (cvar hol.Siege.DeployedAutoFire, default 0:
- * only on order; Retours/Q-deployed-engine-autofire.md, not decided).
+ * Whether a DEPLOYED engine at rest takes on an enemy building within its building reach by itself (cvar hol.Siege.DeployedAutoFire, default 1:
+ * it does; 0: only on order; Retours/Q-deployed-engine-autofire.md, user answer B).
  */
 HEROESOFLIBERTY_API bool HOLDeployedAutoFireEnabled();
 
