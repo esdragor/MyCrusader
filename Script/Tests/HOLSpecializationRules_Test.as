@@ -60,6 +60,97 @@ void Test_SpecializationThreeTiersLandAtThirtyFortyFiveSixtySeconds(FUnitTest& T
 	T.AssertEquals(0, HOLSpecialization::ChosenOption(State, 3), "tier 3's choice");
 }
 
+// Runs the match in steps of StepMs until a choice lands; returns the number of steps, or -1 when the tier that landed is not Tier (or
+// nothing landed within 10 000 steps).
+int SpecializationStepsToLand(FHOLSpecializationState& State, int Tier, int StepMs)
+{
+	for (int Steps = 1; Steps <= 10000; Steps++)
+	{
+		const int Applied = HOLSpecialization::Advance(State, StepMs, true);
+		if (Applied != 0)
+			return Applied == Tier ? Steps : -1;
+	}
+	return -1;
+}
+
+void Test_SpecializationDelaysHoldAtTheSimulationStep(FUnitTest& T)
+{
+	// The bar starts full at 30 / 45 / 60 s (D684), and a match that runs in steps (Advance at the simulation's pace) lands the choice on
+	// the exact step that reaches the delay: 50 ms steps land at 30 / 45 / 60 s exactly (600 / 900 / 1200 steps); 33 ms steps never hit
+	// the delay and land on the first step past it (910 steps = 30.030 s, 909 = 29.997 s is too early; 1364 = 45.012 s; 1819 = 60.027 s).
+	// The step counts are written here on purpose: they fail if a delay drifts by a single step.
+	FHOLSpecializationState Even = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Even, 1, 0, 3), "tier 1 starts");
+	T.AssertEquals(30000, HOLSpecialization::RemainingMs(Even), "30 s on the bar (D684)");
+	T.AssertEquals(600, SpecializationStepsToLand(Even, 1, 50), "tier 1 lands on the 600th 50 ms step: 30 s exactly");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Even, 2, 1, 3), "tier 2 starts");
+	T.AssertEquals(900, SpecializationStepsToLand(Even, 2, 50), "tier 2 lands on the 900th 50 ms step: 45 s exactly");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Even, 3, 0, 3), "tier 3 starts");
+	T.AssertEquals(1200, SpecializationStepsToLand(Even, 3, 50), "tier 3 lands on the 1200th 50 ms step: 60 s exactly");
+	T.AssertEquals(0, Even.PendingTier, "nothing runs any more");
+
+	FHOLSpecializationState Odd = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	HOLSpecialization::Start(Odd, 1, 1, 3);
+	T.AssertEquals(910, SpecializationStepsToLand(Odd, 1, 33), "tier 1: not at 29.997 s, at the first step past 30 s");
+	HOLSpecialization::Start(Odd, 2, 0, 3);
+	T.AssertEquals(1364, SpecializationStepsToLand(Odd, 2, 33), "tier 2: at the first step past 45 s");
+	HOLSpecialization::Start(Odd, 3, 1, 3);
+	T.AssertEquals(1819, SpecializationStepsToLand(Odd, 3, 33), "tier 3: at the first step past 60 s");
+	T.AssertEquals(1, HOLSpecialization::ChosenOption(Odd, 1), "tier 1's choice kept");
+	T.AssertEquals(0, HOLSpecialization::ChosenOption(Odd, 2), "tier 2's choice kept");
+	T.AssertEquals(1, HOLSpecialization::ChosenOption(Odd, 3), "tier 3's choice kept");
+}
+
+void Test_SpecializationOneLongStepLandsOnceWithAnEmptyBar(FUnitTest& T)
+{
+	// A step longer than the whole delay (a hitch, a fast-forward) lands the choice once, and the time past the delay is not carried to the
+	// next tier: the next tier's bar starts full.
+	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	HOLSpecialization::Start(State, 1, 0, 2);
+	T.AssertEquals(1, HOLSpecialization::Advance(State, 30000 + 15000, true), "tier 1 lands in one long step");
+	T.AssertEquals(0, HOLSpecialization::RemainingMs(State), "an empty bar: nothing runs");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 1, true), "nothing lands twice");
+	HOLSpecialization::Start(State, 2, 0, 2);
+	T.AssertEquals(45000, HOLSpecialization::RemainingMs(State), "tier 2's bar starts full: tier 1's extra 15 s are not carried");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 44999, true), "tier 2 not at 44.999 s");
+	T.AssertEquals(2, HOLSpecialization::Advance(State, 1, true), "tier 2 at 45 s");
+}
+
+void Test_SpecializationPauseKeepsTheExactBound(FUnitTest& T)
+{
+	// D785 (Q2 = A): the countdown pauses while the Forum is down; the time already run is kept, the paused time never counts: 10 s run,
+	// 50 s down, then 19.999 s standing is still 1 ms short of 30 s.
+	T.AssertEquals(HOLSpecialization::ForumDownPauses, HOLSpecialization::ForumDown, "the Forum down pauses the countdown (D785)");
+	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	HOLSpecialization::Start(State, 1, 0, 1);
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 10000, true), "10 s run");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 50000, false), "50 s with the Forum down: nothing lands");
+	T.AssertEquals(20000, HOLSpecialization::RemainingMs(State), "the bar kept its place at 20 s left");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 19999, true), "29.999 s of standing time: not yet");
+	T.AssertEquals(1, HOLSpecialization::RemainingMs(State), "1 ms left");
+	T.AssertEquals(1, HOLSpecialization::Advance(State, 1, true), "applied at 30 s of standing time");
+}
+
+void Test_SpecializationRestartAfterCancelRunsTheFullDelay(FUnitTest& T)
+{
+	// A cancel at 29.999 s, then the other option: its unlock starts from zero (D684), so it is still out at 29.999 s and lands at 30 s;
+	// the same for the Templars' third commandery (D131).
+	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	HOLSpecialization::Start(State, 1, 0, 1);
+	HOLSpecialization::Advance(State, 29999, true);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Cancel(State), "cancelled 1 ms before the end");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 1, 1), "the other option");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 29999, true), "the restarted unlock is not at 29.999 s");
+	T.AssertEquals(1, HOLSpecialization::Advance(State, 1, true), "it lands at 30 s");
+	T.AssertEquals(1, HOLSpecialization::ChosenOption(State, 1), "the second pick is kept");
+
+	FHOLSpecializationState Templars = HOLSpecialization::NewState(3);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Templars, 1, 2, 1), "the third commandery (D131)");
+	T.AssertEquals(0, HOLSpecialization::Advance(Templars, 29999, true), "the Templars wait the same 30 s");
+	T.AssertEquals(1, HOLSpecialization::Advance(Templars, 1, true), "applied at 30 s");
+	T.AssertEquals(2, HOLSpecialization::ChosenOption(Templars, 1), "the third commandery is the tier's");
+}
+
 void Test_SpecializationCancelGivesTheChoiceBack(FUnitTest& T)
 {
 	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
