@@ -33,7 +33,7 @@
 #     raises it), his pause is lifted by the server, the client takes slot 1 back BY ITSELF (the banner, then "Manager: back in the match") and queues a Peasant.
 #   -Team (D718 T5): a 2v2 on Moyenne (Alice + an AI against Bob + an AI), -Window 10 by default: Bob closes his game; after the window the server tells the
 #     manager keepsSeat (the AI keeps the seat, the manager still lists Bob away with "Revenir"); Bob comes back late by "Revenir" and queues a Peasant.
-param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [switch] $Replace, [switch] $Reconnect, [switch] $Team, [int] $Window = 0, [string] $Culture = "fr")
+param([string] $EngineDir = "", [switch] $Rejoin, [switch] $AI, [switch] $Replace, [switch] $Reconnect, [switch] $Team, [switch] $Faction, [int] $Window = 0, [string] $Culture = "fr")
 $Began = Get-Date
 if ($Reconnect -or $Team) { $Rejoin = $true }
 if ($Team -and $Window -le 0) { $Window = 10 }
@@ -58,7 +58,7 @@ if (-not (Test-Path $Exe)) { Write-Host "lobby_match : FAIL (no $Exe; run Tools\
 $ServerExe = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLibertyServer.exe"
 # R7.8: -Rejoin has the manager start the editor in server mode through a .cmd (CreateProcess runs it): the code of
 # this copy as built, with no staging (net_match.ps1 -Stage takes minutes). IA0.6 L5: -AI the same.
-if ($Rejoin -or $AI) {
+if ($Rejoin -or $AI -or $Faction) {
     $ServerExe = Join-Path $Project "Saved_Tests\LobbyMatch\editor_server.cmd"
     New-Item -ItemType Directory -Force (Split-Path $ServerExe) | Out-Null
     $WindowArg = if ($Window -gt 0) { " -HOLDisconnectWindow=$Window" } else { "" }
@@ -111,7 +111,7 @@ $Url = "http://127.0.0.1:${Port}"
 # A staged server without Version.txt is "unknown" and refuses everyone (HOLVersion): "dev" for the time of the test.
 $ServerVersion = Join-Path $Project "Saved\StagedBuilds\WindowsServer\HeroesOfLiberty\Version.txt"
 # -Rejoin and -AI run the editor as the server: no staged server to mark.
-$ServerVersionMade = (-not $Rejoin) -and (-not $AI) -and -not (Test-Path $ServerVersion)
+$ServerVersionMade = (-not $Rejoin) -and (-not $AI) -and (-not $Faction) -and -not (Test-Path $ServerVersion)
 if ($ServerVersionMade) { [IO.File]::WriteAllText($ServerVersion, "dev", (New-Object Text.UTF8Encoding $false)) }
 # Servers from this copy's UDP range (7900 and up): out of quick_check's net range (7800-7899), whose clients would join a
 # server of ours still starting (seen 2026-10-27: a second « Alice » and « Bob » from another copy in the match), and
@@ -259,6 +259,76 @@ if ($AI) {
     $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
     if ($Failure) { Write-Host "lobby_match : FAIL (ai: $Failure; log $($GameLogs.Alice); $Took)"; exit 1 }
     Write-Host "lobby_match : PASS (ai: Alice, renamed Alicia on the screen, created a Petite lobby, put an AI on slot 1 (IA Normal 2), 1/1 ready, Launch; match.json slot 1 AI Normal; the server's brain thought for slot 1 and sent its 5 Peasants to gather, seen at work by Alice ($AIBusy); table 'Vous, IA Normal 2'; Alice gave up, Defeat banner; no server left; $Took)"
+    exit 0
+}
+
+# FactionChoiceInProgress.md (-Faction): the faction of the lobby, end to end. Alice (cheat on in her client, hol.Faction.Cheat 1) creates a Moyenne lobby
+# (4 places), takes the Legions then the Templars, puts an AI on slot 2 and gives it the Legions; Bob (no cheat) joins: his line shows the Dawn, Alice's
+# shows "Templiers" (his list holds no Templars) and he can take neither the Templars (not in his list), nor the Dragon (greyed), nor change Alice's line.
+# Both ready, Launch: the manager's match.json carries Templars / DawnOrder / BlackLegions, and the game server logs the keys the rules read.
+if ($Faction) {
+    $PlainMap = "Plain_Medium"
+    try {
+        $Status = $null
+        for ($i = 0; $i -lt 40 -and -not $Status; $i++) { try { $Status = Invoke-RestMethod "${Url}/status" -TimeoutSec 2 } catch { Start-Sleep -Milliseconds 250 } }
+        if (-not $Status) { throw "the manager does not answer on $Url" }
+        $Games.Alice = Start-Game Alice (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 0 lobbies shown", "frames 3") +
+            (& $Press CreateButton) + @("waitlog map Plain Large teams together 1:", "waitui", "hol.UI.Choose SizeDropdown 2",
+            "waitlog settings Plain size Medium teams together 1 nomad 0 regicide 0 catastrophe 0 accepted", "wait 1", "hol.Faction.Cheat 1", "frames 5",
+            "hol.UI.Choose SlotFaction0 1", "waitlog Lobby: faction BlackLegions accepted", "wait 0.5",
+            "hol.UI.Choose SlotFaction0 5", "waitlog Lobby: faction Templars accepted", "wait 0.5",
+            "hol.UI.Choose SlotState2 4", "waitlog Lobby: slot 2 ai accepted", "wait 0.5",
+            "hol.UI.Choose SlotFaction2 1", "waitlog Lobby: ai 2 faction BlackLegions accepted", "wait 0.5") +
+            @("hol.UI.Choose SlotColor0 3", "waitlog Lobby: colour 3 accepted", "wait 0.5", "waitlog : 2 players (") + (& $Press ReadyButton) + @("waitlog Lobby: ready on accepted", "waitlog 2/2 ready", "wait 2") + (& $Press LaunchButton) + @("waitlog Lobby: start sent") + (& $InMatch Alice) + @("wait 6", "quit"))
+        $Deadline = (Get-Date).AddSeconds(180)
+        $Lobby = $null
+        while (-not $Lobby -or $Lobby.size -ne "Medium") {
+            if ($Games.Alice.HasExited -or (Get-Date) -gt $Deadline) { throw "no lobby created by Alice on Moyenne" }
+            Start-Sleep -Milliseconds 500
+            $Lobby = @((Invoke-RestMethod "${Url}/lobbies" -TimeoutSec 2).lobbies)[0]
+        }
+        Write-Host "lobby $($Lobby.id) created by Alice, $($Lobby.map) $($Lobby.size), $($Lobby.maxPlayers) places"
+        $Games.Bob = Start-Game Bob (@("waitmap MainMenu", "waitui", "hol.UI.Open Multiplayer", "waitui", "waitlog Multiplayer: 1 lobbies shown", "frames 3") +
+            (& $Press JoinButton0) + @("waitlog : 2 players (", "waitui", "waitlog Lobby: factions Templars,DawnOrder,BlackLegions", "wait 1",
+            "hol.UI.Text SlotFaction0 SlotFaction1", "hol.UI.Choose SlotFaction1 5", "hol.UI.Choose SlotFaction1 2", "hol.UI.Choose SlotFaction0 1", "wait 1",
+            "hol.UI.Text SlotFaction0 SlotFaction1", "capture lobby_faction_bob") + (& $Press ReadyButton) + @("waitlog Lobby: ready on accepted", "waitlog 2/2 ready") + (& $InMatch Bob) + @("wait 6", "quit"))
+        foreach ($Who in "Alice", "Bob") { if (-not $Games[$Who].WaitForExit(360000)) { throw "$Who still there after 360 s" } }
+    }
+    catch { $Failure = "$_" }
+    finally {
+        foreach ($Game in $Games.Values) { if ($Game -and -not $Game.HasExited) { Stop-Process -Id $Game.Id -Force -ErrorAction SilentlyContinue } }
+        for ($i = 0; $i -lt 30 -and (Get-OurServers).Count; $i++) { Start-Sleep 1 }
+        $Left = Get-OurServers
+        if ($Left.Count) { $Left | ForEach-Object { Write-Host "  stopping server PID $($_.Id)"; Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue } }
+        if ($Manager) { Stop-Process -Id $Manager.Id -Force -ErrorAction SilentlyContinue }
+    }
+    $ServerLog = Get-ChildItem $Matches0 -Recurse -Filter server.log -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -gt $Began } | Sort-Object LastWriteTime | Select-Object -Last 1
+    $S = if ($ServerLog) { @(Get-Content $ServerLog.FullName) } else { @() }
+    $MatchJson = if ($ServerLog) { Get-Content (Join-Path $ServerLog.DirectoryName "match.json") -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json } else { $null }
+    $LA = if (Test-Path $GameLogs.Alice) { @(Get-Content $GameLogs.Alice -Encoding utf8) } else { @() }
+    $LB = if (Test-Path $GameLogs.Bob) { @(Get-Content $GameLogs.Bob -Encoding utf8) } else { @() }
+    Write-Host "  match.json factions: $(if ($MatchJson) { ($MatchJson.slots | Select-Object -First 3 | ForEach-Object { "$($_.state)/$($_.faction)" }) -join ' ' } else { 'not read' })"
+    Write-Host "  Alice :"; $LA -match "Lobby: (faction|ai 2 faction|slot 2|factions|joining)|Faction cheat" | ForEach-Object { Write-Host "    $_" }
+    Write-Host "  Bob :"; $LB -match "Text SlotFaction|Lobby: (faction|factions)|Dropdown SlotFaction" | ForEach-Object { Write-Host "    $_" }
+    Write-Host "  server :"; $S -match "Match factions|Match on " | ForEach-Object { Write-Host "    $_" }
+    if (-not $Failure) {
+        $BobLast = @($LB | Where-Object { $_ -match "Text SlotFaction1: " }) | Select-Object -Last 1
+        if (-not ($LA -match "Lobby: faction BlackLegions accepted")) { $Failure = "Alice : no 'Lobby: faction BlackLegions accepted'" }
+        elseif (-not ($LA -match "Lobby: faction Templars accepted")) { $Failure = "Alice : no 'Lobby: faction Templars accepted' (cheat on)" }
+        elseif (-not ($LA -match "Lobby: ai 2 faction BlackLegions accepted")) { $Failure = "Alice : no 'Lobby: ai 2 faction BlackLegions accepted'" }
+        elseif (-not ($LB -match "Lobby: factions Templars,DawnOrder,BlackLegions")) { $Failure = "Bob : his lobby read never showed the factions Templars,DawnOrder,BlackLegions" }
+        elseif (-not ($LB -match "Text SlotFaction0: Templiers")) { $Failure = "Bob (no cheat) : Alice's line does not say 'Templiers'" }
+        elseif (-not ($LB -match "Text SlotFaction1: Ordre de l'Aube")) { $Failure = "Bob : his own line does not say the Dawn" }
+        elseif ($LB -match "Lobby: faction ") { $Failure = "Bob sent a faction change (the Templars / the Dragon / Alice's line must be refused)" }
+        elseif ($LB -match "Dropdown SlotFaction1: value") { $Failure = "Bob took a value in his faction list (the Templars are not in it, the Dragon is greyed)" }
+        elseif ("$BobLast" -notmatch "Ordre de l'Aube$") { $Failure = "Bob : his line changed after his refused attempts ($BobLast)" }
+        elseif (-not $MatchJson) { $Failure = "no match.json" }
+        elseif ($MatchJson.slots[0].faction -ne "Templars" -or $MatchJson.slots[1].faction -ne "DawnOrder" -or $MatchJson.slots[2].state -ne "AI" -or $MatchJson.slots[2].faction -ne "BlackLegions") { $Failure = "match.json factions are not Templars / DawnOrder / AI BlackLegions" }
+        elseif (-not ($S -match "Match factions: slot 0 Templars, slot 1 Dawn, slot 2 Legions")) { $Failure = "the game server has no 'Match factions: slot 0 Templars, slot 1 Dawn, slot 2 Legions' (GetSlotFactionKey)" }
+    }
+    $Took = "{0:N0} s" -f ((Get-Date) - $Began).TotalSeconds
+    if ($Failure) { Write-Host "lobby_match : FAIL (faction: $Failure; $Took)"; exit 1 }
+    Write-Host "lobby_match : PASS (faction: Alice took the Legions then the Templars, her AI the Legions; Bob without the cheat saw Templiers and could not take the Templars, the Dragon or Alice's line; match.json Templars / DawnOrder / AI BlackLegions; the game server reads Templars / Dawn / Legions; $Took)"
     exit 0
 }
 

@@ -165,6 +165,18 @@ void AHeroesOfLibertyGameModeBase::InitGame(const FString& MapName, const FStrin
 	MatchConfig = bHasConfig ? Match->GetConfigOrDefault() : FHOLMatchConfig::MakeDefault();
 	UE_LOG(LogHOLMatch, Log, TEXT("Match on %s: %s configuration, %d occupied slots"), *MapName,
 		bHasConfig ? TEXT("given") : TEXT("default"), MatchConfig.GetNumOccupiedSlots());
+		{
+			// FactionChoiceInProgress.md: the key the rules read for each occupied slot (HOLFactionRules::GetSlotFactionKey), for the lobby test.
+			TArray<FString> FactionKeys;
+			for (int32 Slot = 0; Slot < MatchConfig.Slots.Num(); ++Slot)
+			{
+				if (MatchConfig.Slots[Slot].State != EHOLSlotState::Closed)
+				{
+					FactionKeys.Add(FString::Printf(TEXT("slot %d %s"), Slot, *HOLFactionRules::GetSlotFactionKey(MatchConfig, Slot).ToString()));
+				}
+			}
+			UE_LOG(LogHOLMatch, Log, TEXT("Match factions: %s"), *FString::Join(FactionKeys, TEXT(", ")));
+		}
 	// TC3 (TC-Q6): each occupied slot's place, fixed (slot i at place i: scenarios, quick_check) or drawn from the seed;
 	// a configuration that does not fit its map is refused: nobody gets a start (AHOLGameState::GetStartPlace).
 	FString PlacesError;

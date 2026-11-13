@@ -717,6 +717,21 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	const FString Logged = FString::Printf(TEXT("%d players (%s), you %s%s, leader %s, %d/%d ready, launch %s, slots %s, spectators (%s)"), Players.Num(),
 		*FString::Join(Players, TEXT(", ")), *Lobby.You, bSpectator ? TEXT(" (spectator)") : TEXT(""), *Lobby.Leader, NumReady, Players.Num(),
 		bLeader ? TEXT("shown") : TEXT("hidden"), *FString::Join(SlotsShown, TEXT(" ")), *FString::Join(Lobby.Spectators, TEXT(", ")));
+	// FactionChoiceInProgress.md: the factions of the occupied slots as the manager gave them, logged when they change (the lobby test reads them).
+	TArray<FString> FactionNamesRead;
+	for (const FHOLLobbySlot& Row : Lobby.Slots)
+	{
+		if (Row.State == EHOLLobbySlotState::Player || Row.State == EHOLLobbySlotState::AI)
+		{
+			FactionNamesRead.Add(Row.Faction);
+		}
+	}
+	const FString FactionsRead = FString::Join(FactionNamesRead, TEXT(","));
+	if (FactionsRead != LoggedFactions)
+	{
+		LoggedFactions = FactionsRead;
+		UE_LOG(LogHOLUI, Display, TEXT("Lobby: factions %s"), *FactionsRead);
+	}
 	if (Logged != LoggedPlayers)
 	{
 		LoggedPlayers = Logged;
@@ -1226,6 +1241,12 @@ void UHOLNewGameScreen::HandleFactionChosen(const int32 SlotIndex, const int32 V
 	if (!HOLFactionChoice::IsChoosable(Faction, HOLFactionChoice::IsCheatOn()))
 	{
 		// The list greys them already; never taken from a stale list.
+		Refresh();
+		return;
+	}
+	// In a lobby only my line and the leader's AIs are changed (their lists are greyed for the others).
+	if (bLobby && SlotIndex != Lobby.FindYourSlot() && !Lobby.CanEditAISlot(SlotIndex))
+	{
 		Refresh();
 		return;
 	}

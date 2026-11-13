@@ -4,7 +4,8 @@
 # On the menu map: Nouvelle partie, an AI on line 2, then the faction list of line 2 opened
 #   A) without the cheat: five entries, Dragon / Ombre / Feu greyed, no Templars      -> faction_A_without
 #   B) with the cheat (hol.Faction.Cheat 1, as a triple click on the title would): six entries -> faction_B_with
-# and read back (hol.UI.Text): Legions chosen, a greyed Dragon refused, the Templars chosen with the cheat, the cheat switched off with a Templar
+# The cheat is switched by REAL triple clicks on the title (hol.UI.Click Title 3, through Slate hit test and routing; two clicks do nothing, a third series switches it off);
+# (on, off, on); a click on Jouer was tried and not kept: hol.UI.Text / Choose did not find the new screen's widgets after it. Read back (hol.UI.Text): Legions chosen, a greyed Dragon refused, the Templars chosen with the cheat, the cheat switched off with a Templar
 # line still saying "Templiers". The triple click itself is not injected (the console has no mouse): its counter is a unit test.
 # Prints the lines that matter; exit code 0 when the captures exist.
 param(
@@ -32,23 +33,24 @@ $Log = Join-Path $Work "Logs\faction_shots.log"
 $Sequence = Join-Path $Work "faction_shots.seq"
 Remove-Item $Log -ErrorAction SilentlyContinue
 @(
-    "waitmap MainMenu", "waitui", "hol.Faction.Cheat 0", "hol.UI.Open NewGame", "waitui", "frames 20",
+    "waitmap MainMenu", "waitui", "hol.Faction.Cheat 0",
+    "hol.UI.Click Title 2", "frames 5", "hol.UI.Click Title 3", "frames 5", "hol.UI.Click Title 3", "frames 5", "hol.UI.Click Title 3", "frames 5",
+    "hol.UI.Open NewGame", "waitui", "frames 20",
     "hol.UI.Choose SlotState1 2", "frames 10", "hol.UI.Text SlotFaction0 SlotFaction1",
-    "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.3", "wait 2", "frames 10", "capture faction_A_without",
-    "hol.UI.Key Escape 0.3", "wait 1.5", "frames 10",
-    "hol.UI.Choose SlotFaction1 2", "frames 5", "hol.UI.Text SlotFaction1",
-    "hol.UI.Choose SlotFaction1 1", "frames 5", "hol.UI.Text SlotFaction1",
-    "hol.Faction.Cheat 1", "frames 20",
     "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.3", "wait 2", "frames 10", "capture faction_B_with",
     "hol.UI.Key Escape 0.3", "wait 1.5", "frames 10",
     "hol.UI.Choose SlotFaction1 5", "frames 5", "hol.UI.Text SlotFaction1",
-    "hol.Faction.Cheat 0", "frames 10", "hol.UI.Text SlotFaction1",
+    "hol.Faction.Cheat 0", "frames 20", "hol.UI.Text SlotFaction1",
+    "hol.UI.Choose SlotFaction1 2", "frames 5", "hol.UI.Text SlotFaction1",
+    "hol.UI.Choose SlotFaction1 1", "frames 5", "hol.UI.Text SlotFaction1",
+    "hol.UI.Focus SlotFaction1", "hol.UI.Key Enter 0.3", "wait 2", "frames 10", "capture faction_A_without",
+    "hol.UI.Key Escape 0.3", "wait 1", "frames 5",
     "quit"
 ) | Set-Content -Encoding ascii $Sequence
 $Arguments = "`"$UProject`" -game -RenderOffScreen -ResX=1600 -ResY=900 -nosound -nosplash -unattended -culture=fr -LiveCoding=0 -as-exit-on-error -asdebugport=0 -saveddirsuffix=$Suffix -abslog=`"$Log`" -ExecCmds=`"hol.Test.Run $Sequence`""
 $Process = Start-Process -FilePath $Editor -ArgumentList $Arguments -PassThru -WindowStyle Hidden
 if (-not $Process.WaitForExit(180000)) { $Process.Kill() }
-if (Test-Path $Log) { Get-Content $Log | Select-String -Pattern "Text Slot|Faction cheat|New game: slot|Test capture|Error:" | ForEach-Object { $_.Line -replace "^.*?\]", "" } }
+if (Test-Path $Log) { Get-Content $Log | Select-String -Pattern "Text Slot|Faction cheat|Title screen|Clicked|New game: slot|Test capture|Error:" | ForEach-Object { $_.Line -replace "^.*?\]", "" } }
 $Shots = Join-Path $Dir "Screenshots\WindowsEditor\HOL"
 $Made = @("faction_A_without.png", "faction_B_with.png") | Where-Object { (Test-Path (Join-Path $Shots $_)) -and (Get-Item (Join-Path $Shots $_)).Length -gt 0 }
 Write-Host "faction_shots : $(if ($Made.Count -eq 2) { 'PASS' } else { 'FAIL' }) ($Shots)"

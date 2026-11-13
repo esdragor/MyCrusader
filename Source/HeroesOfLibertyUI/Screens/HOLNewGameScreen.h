@@ -233,4 +233,6 @@ private:
 	void JoinMatch();
 	/** The players last logged ("Lobby: 2 players ..."), logged again when it changes. */
 	FString LoggedPlayers;
+	/** FactionChoiceInProgress.md: the factions last logged ("Lobby: factions Templars,DawnOrder"), logged again when they change. */
+	FString LoggedFactions;
 };
