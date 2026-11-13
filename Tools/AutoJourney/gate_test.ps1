@@ -230,11 +230,19 @@ foreach ($er in $EolMix, $EolClean) {
   git -C $er add -A 2>&1 | Out-Null
   git -C $er -c user.name=t -c user.email=t@t commit -q -m t 2>&1 | Out-Null
 }
-$eolPre = & powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolMix | Out-String
+# Ligne 99 (recette 2026-11-12) : si `git ls-files` echoue (ici un .git qui pointe dans le vide), la liste vide valait PASS a tort.
+$EolBroken = Join-Path $EolWts 'HeroesOfLiberty-EolBroken'
+New-Item -ItemType Directory -Path $EolBroken -Force | Out-Null
+Set-Content (Join-Path $EolBroken '.git') 'gitdir: C:/nonexistent_hol_gitdir' -Encoding ascii
+$eolBr = & powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolBroken | Out-String
+$eolBrCode = $LASTEXITCODE
+Check ($eolBrCode -eq 2 -and $eolBr -match 'git ls-files' -and -not ($eolBr -match 'aucun fichier mixte')) 'ligne 99 : eol_check sur un depot illisible -> code 2 et ERREUR git ls-files, jamais "aucun fichier mixte"' "code=$eolBrCode out=$eolBr"
+$eolPre =& powershell -NoProfile -ExecutionPolicy Bypass -File $Eol -Root $EolMix | Out-String
 Check ($eolPre -match 'MIXTE mixed\.md') 'L9-4 : le faux worktree EolMixed a bien un fichier mixte (pre-condition)' $eolPre
 $eolClose = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $EolWts -RetoursDir $Ret | Out-String
 Check ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolMixed.*fins de ligne.*mixed\.md') 'L9-4 close: worktree aux fins de ligne melees -> WARN/FAIL qui nomme le fichier' $eolClose
 Check ($eolClose -match '(?m)^PASS .*HeroesOfLiberty-EolClean.*fins de ligne' -and -not ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolClean.*fins de ligne')) 'L9-4 close: worktree aux fins de ligne propres -> PASS fins de ligne' $eolClose
+Check ($eolClose -match '(?m)^(WARN|FAIL) .*HeroesOfLiberty-EolBroken.*fins de ligne non controlees' -and -not ($eolClose -match '(?m)^PASS .*HeroesOfLiberty-EolBroken.*fins de ligne')) 'ligne 99 close: git ls-files en echec -> fins de ligne non controlees, jamais PASS' $eolClose
 
 # --- L7-1, L7-4, L7-6 : agent_rules.md
 $r = Get-Content $Rules -Raw -Encoding UTF8
