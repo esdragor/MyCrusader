@@ -54,6 +54,23 @@ git -C $Tmp commit -q -am "C++ after the build" 2>$null
 Expect ([bool](Get-StaleBinaryProblem $Tmp)) "binary: a source file newer than the dll is a stale binary ($(Get-StaleBinaryProblem $Tmp))"
 (Get-Item $Dll).LastWriteTime = Get-Date
 Expect (-not (Get-StaleBinaryProblem $Tmp)) "binary: rebuilt after the change is fresh"
+# 6. One dll per module (2026-11-12 recette): Source\HeroesOfLibertyUI has its own UnrealEditor-HeroesOfLibertyUI.dll. Each module's dll is
+#    compared to the sources of ITS folder: a UI source newer than the UI dll is stale even when the main dll is newer still, and the reverse.
+New-Item -ItemType Directory -Force "$Tmp\Source\HeroesOfLibertyUI" | Out-Null
+$UiDll = "$Tmp\Binaries\Win64\UnrealEditor-HeroesOfLibertyUI.dll"; Set-Content $UiDll "ui dll"
+(Get-Item $UiDll).LastWriteTime = (Get-Date).AddMinutes(-10)
+Set-Content "$Tmp\Source\HeroesOfLibertyUI\Hud.cpp" "int Hud = 1;"
+(Get-Item "$Tmp\Source\HeroesOfLibertyUI\Hud.cpp").LastWriteTime = (Get-Date).AddMinutes(-5)
+(Get-Item $Dll).LastWriteTime = Get-Date
+git -C $Tmp add -A 2>$null; git -C $Tmp commit -q -m "UI module" 2>$null
+$P6 = Get-StaleBinaryProblem $Tmp
+Expect ([bool]$P6 -and $P6 -match 'HeroesOfLibertyUI') "binary: a UI source newer than the UI dll is stale though the main dll is newer ($P6)"
+(Get-Item $UiDll).LastWriteTime = Get-Date
+(Get-Item "$Tmp\Source\HeroesOfLiberty\A.cpp").LastWriteTime = (Get-Date).AddSeconds(30)
+$P6b = Get-StaleBinaryProblem $Tmp
+Expect ([bool]$P6b -and $P6b -match 'A\.cpp') "binary: a main-module source newer than the main dll is stale though the UI dll is newer ($P6b)"
+(Get-Item $Dll).LastWriteTime = (Get-Date).AddMinutes(1); (Get-Item $UiDll).LastWriteTime = (Get-Date).AddMinutes(1)
+Expect (-not (Get-StaleBinaryProblem $Tmp)) "binary: both module dlls newer than their sources is fresh"
 # 5. The uncommitted files on a real git status (not a hand-written porcelain): a scenario file only in this copy, then committed.
 Set-Content "$Tmp\Tools\Scenarios\only_here.txt" "wait 1"
 Expect (@(Get-LaunchProblems -Root $Tmp -Name "only_here" | Where-Object { $_ -match 'uncommitted' }).Count -eq 1) "uncommitted: an untracked scenario file of the trial is a problem"
