@@ -8,24 +8,26 @@ waitlog Decor.ClearNear 0 0 2500: took
 hol.Camp.Add 0 0 1 Spearman
 waitlog Camp 0: 1 Spearman at
 frames 30
-hol.Units.Spawn 1 -2200 0 0 Spearman 10
+# Le Lancier bleu nait a 8 m (et non 22 m) : a la hauteur mini de la camera (15 m), 22 m d'ecart ne tiennent pas dans l'image de repos.
+hol.Units.Spawn 1 -800 0 0 Spearman 10
 waitlog Spawn: 1 Spearman
-hol.Camera.Focus -1100 0
+# A 8 m, le Lancier bleu est deja dans le rayon du camp : le camp passe en combat des la naissance (avant le clic).
+waitlog Camp 0: fighting
+hol.Camera.Focus -400 0
 hol.Camera.Zoom 10
 frames 20
 capture spear_arm_idle
 hol.Select.Army
 hol.Select.Grid 4
 waitlog Grid: attack-move, click on the ground
-hol.Camera.Focus -1100 0
+hol.Camera.Focus -400 0
 frames 2
 hol.Select.LeftClickGround 400 0
 waitlog Scripted left click at
 waitlog attack-move to
 waitlog hits #
-waitlog Camp 0: fighting
 frames 40
-hol.Camera.Focus -500 0
+hol.Camera.Focus -250 0
 frames 4
 capture spear_arm_fight1
 frames 9
