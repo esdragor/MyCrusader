@@ -108,6 +108,8 @@ TRANSLATIONS = {
     "HOLNewGameScreen,Nomad": ("Nomad", "ノマド"),
     "HOLNewGameScreen,Regicide": ("Regicide", "レジサイド"),
     "HOLNewGameScreen,Catastrophe": ("Catastrophe", "カタストロフィ"),
+    # S7 (D359, D699): the match option, same terms as the announcements of the sites ("Sacred Sites: ...", "聖地：...").
+    "HOLNewGameScreen,SacredSites": ("Sacred Sites", "聖地"),
     "HOLNewGameScreen,Greyed": ("Greyed out: not in the game yet (AI, factions, teams, mode and options).",
                                 "グレー表示：まだゲームにありません（AI、勢力、チーム、モード、オプション）。"),
     "HOLNewGameScreen,Back": ("Back", "戻る"),
