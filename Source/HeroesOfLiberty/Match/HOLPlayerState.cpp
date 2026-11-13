@@ -9,6 +9,7 @@
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Simulation/HOLOrderChainRules.h"
+#include "Simulation/HOLSiteSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 
@@ -88,13 +89,30 @@ void AHOLPlayerState::SetPopulation(const int32 InUsed, const int32 InCap)
 
 FHOLResources AHOLPlayerState::GetIncomePerMinute() const
 {
-	// Stub (red first): nothing counted yet.
-	return FHOLResources();
+	// D780, D788: its gatherers' income, and for the gold the sacred sites it holds (each pays hol.Site.GoldPerMinute).
+	FHOLResources Income = GatherIncome;
+	const int32 Slot = GetPlayerIndex();
+	if (Slot != INDEX_NONE)
+	{
+		int32 Held = 0;
+		for (const FHOLSiteView& View : SiteViews)
+		{
+			Held += View.Owner == Slot ? 1 : 0;
+		}
+		Income.Gold += Held * UHOLSiteSubsystem::GetGoldPerMinute();
+	}
+	return Income;
 }
 
 void AHOLPlayerState::SetGatherIncome(const FHOLResources& InIncome)
 {
-	// Stub (red first): the gathering's sums are not kept yet.
+	if (GatherIncome == InIncome)
+	{
+		return;
+	}
+	GatherIncome = InIncome;
+	OnEconomyChanged.Broadcast();
+	ForceNetUpdate();
 }
 
 void AHOLPlayerState::SetGatherers(const FHOLResources& InGatherers)
