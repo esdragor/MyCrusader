@@ -3202,7 +3202,11 @@ void UHOLGameScreen::BuildLayout()
 		AddToRow(Resources, Value, OutGatherers ? 4.f : 20.f);
 		if (OutGatherers)
 		{
+			// D788: Visible (a text block is SelfHitTestInvisible by default): the hover of the amount and of its gatherers shows the
+			// income tooltip; the top bar is already a hit-test visible panel, no click to the game is lost.
+			Value->SetVisibility(ESlateVisibility::Visible);
 			*OutGatherers = MakeText(*(Name + TEXT("Gatherers")), UHOLTextStyleHUDLabel::StaticClass(), FText::GetEmpty());
+			(*OutGatherers)->SetVisibility(ESlateVisibility::Visible);
 			AddToRow(Resources, *OutGatherers, 20.f);
 		}
 		return Value;
