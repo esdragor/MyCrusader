@@ -216,6 +216,33 @@ if (-not $Only -or $Only -eq 't') {
     Check ($RowB.Count -eq 1 -and $RowB[0].result -eq 'TIMEOUT' -and -not $RowB[0].compile_start) "CSV row of B: result TIMEOUT, never compiled, got: $($RowB.result)"
 }
 
+if (-not $Only -or $Only -eq 's') {
+    # L91 (bilan 2026-11-12, L12-7): a build longer than 3 x the median duration of the earlier PASS builds of the SAME type
+    # (priority normal / merge) in BuildQueue.csv prints "BUILD LENT" and tags its CSV row (column load). Fake CSV: normal
+    # builds of 1-2 s, merge builds of 100 s; a 6 s fake build is slow as a normal build, not as a merge build.
+    Write-Host "[s] BUILD LENT (3 x median of the same type)"
+    $S = New-Scenario s
+    $Old = @("worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority,load")
+    foreach ($D in 1, 1, 2) { $Old += "wt_Z,2026-11-01 10:00:00,2026-11-01 10:00:01,2026-11-01 10:00:0$($D + 1),1,$D,PASS,`"`",normal,`"`"" }
+    foreach ($D in 100, 100, 100) { $Old += "wt_Z,2026-11-01 11:00:00,2026-11-01 11:00:01,2026-11-01 11:01:41,1,$D,PASS,`"`",merge,`"`"" }
+    $Old += "wt_Z,2026-11-01 12:00:00,,2026-11-01 12:00:05,5,0,SUPERSEDED,`"`",normal,`"`""
+    Set-Content $S.Csv $Old -Encoding ASCII
+    Launch $S 'W' 6 @('-Wait')
+    Check ((Wait-Exit $S 'W' 90) -eq 0) "normal 6 s fake build ends PASS"
+    Check ((Out-Text $S 'W') -match 'BUILD LENT') "normal 6 s build vs median 1 s of the normal builds: console says BUILD LENT"
+    $RowW = @(Rows $S | Where-Object { $_.worktree -eq 'wt_W' })
+    Check ($RowW.Count -eq 1 -and $RowW[0].load -match 'BUILD LENT') "CSV row of the normal build tagged BUILD LENT (load), got: $($RowW.load)"
+    Launch $S 'X' 6 @('-Wait', '-Priority', 'merge')
+    Check ((Wait-Exit $S 'X' 90) -eq 0) "merge 6 s fake build ends PASS"
+    Check ((Out-Text $S 'X') -notmatch 'BUILD LENT') "merge 6 s build vs median 100 s of the merge builds: no BUILD LENT"
+    $RowX = @(Rows $S | Where-Object { $_.worktree -eq 'wt_X' })
+    Check ($RowX.Count -eq 1 -and $RowX[0].load -notmatch 'BUILD LENT') "CSV row of the merge build not tagged, got: $($RowX.load)"
+    # fewer than 3 earlier builds of the type: no verdict (an empty CSV never says BUILD LENT)
+    $S2 = New-Scenario s2
+    Launch $S2 'Y' 3 @('-Wait')
+    Check ((Wait-Exit $S2 'Y' 90) -eq 0 -and (Out-Text $S2 'Y') -notmatch 'BUILD LENT') "first build of an empty CSV: no BUILD LENT"
+}
+
 Get-Process powershell -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
 if ($Failures) { Write-Host "build_queue_test : FAIL ($Failures check(s))"; exit 1 }
