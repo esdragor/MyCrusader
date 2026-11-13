@@ -1656,6 +1656,87 @@ namespace UE::HeroesOfLiberty::Player
 				Controller->RequestStance(FCString::Atoi(*Args[0]), Stance);
 			}
 		}));
+	/** SG2, until the Alt + click (SG3): the local players post a map signal (the server's board decides, ServerPostSignal). */
+	FAutoConsoleCommand SignalPostCommand(
+		TEXT("hol.Signal.Post"),
+		TEXT("hol.Signal.Post <Kind> <X> <Y>: the local player posts a signal of that kind (0 Neutral to 5 Scout) at that place of the map"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Signal.Post <Kind> <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				// RED STUB (net signals): the request is not sent yet.
+				(void)Controller;
+			}
+		}));
+	FAutoConsoleCommand SignalReportCommand(
+		TEXT("hol.Signal.Report"),
+		TEXT("hol.Signal.Report: logs the signals each local player has received (ClientReceiveSignal)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				UE_LOG(LogHOLMatch, Display, TEXT("Signal report: slot %d received %d"), PlayerState ? PlayerState->GetPlayerIndex() : -1, Controller->GetNumReceivedSignals());
+			}
+		}));
+	/** SP2, until the Forum's button (SP3): the local players start or cancel a specialization (the server's board decides). */
+	FAutoConsoleCommand SpecStartCommand(
+		TEXT("hol.Spec.Start"),
+		TEXT("hol.Spec.Start <Tier> <Option>: the local player starts the unlock of that option of that tier at his Forum"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Spec.Start <Tier> <Option>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				// RED STUB (net specialization): the request is not sent yet.
+				(void)Controller;
+			}
+		}));
+	FAutoConsoleCommand SpecCancelCommand(
+		TEXT("hol.Spec.Cancel"),
+		TEXT("hol.Spec.Cancel: the local player cancels his running specialization"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				// RED STUB (net specialization): the request is not sent yet.
+				(void)Controller;
+			}
+		}));
+	FAutoConsoleCommand SpecReportCommand(
+		TEXT("hol.Spec.Report"),
+		TEXT("hol.Spec.Report: logs the specialization view of every player state as this machine has it (replicated to its owner alone)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const AGameStateBase* GameState = Controller->GetWorld() ? Controller->GetWorld()->GetGameState() : nullptr;
+				if (!PlayerState || !GameState)
+				{
+					continue;
+				}
+				for (const APlayerState* Other : GameState->PlayerArray)
+				{
+					if (const AHOLPlayerState* OtherState = Cast<AHOLPlayerState>(Other))
+					{
+						const FHOLSpecializationView& View = OtherState->GetSpecialization();
+						UE_LOG(LogHOLMatch, Display, TEXT("Specialization state slot %d %s: pending tier %d option %d, %d ms left, chosen %d %d %d"),
+							OtherState->GetPlayerIndex(), OtherState == PlayerState ? TEXT("local") : TEXT("other"), View.PendingTier, View.PendingOption,
+							View.RemainingMs, View.GetChosen(1), View.GetChosen(2), View.GetChosen(3));
+					}
+				}
+			}
+		}));
 	FAutoConsoleCommand DiplomacyVisionCommand(
 		TEXT("hol.Diplomacy.Vision"),
 		TEXT("hol.Diplomacy.Vision <Slot> <0|1>: the local player stops (0) or starts (1) sharing his vision with that slot (allies only)"),
