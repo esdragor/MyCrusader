@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Match/HOLFactionChoice.h"
 #include "Screens/HOLScreen.h"
 #include "HOLTitleScreen.generated.h"
 
@@ -23,6 +24,8 @@ protected:
 	virtual void BuildLayout() override;
 	virtual void NativeOnInitialized() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
+	/** The title's triple click: the faction cheat (HOLFactionChoice), session only, no sign of it on screen. */
+	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UCommonTextBlock> Title;
@@ -44,7 +47,9 @@ protected:
 	TObjectPtr<class UHOLButton> QuitButton;
 
 private:
-	void HandlePlay();
+HOLFactionChoice::FClickCounter TitleClicks;
+
+void HandlePlay();
 	void HandleMultiplayer();
 	void HandleSettings();
 	void HandleQuit();

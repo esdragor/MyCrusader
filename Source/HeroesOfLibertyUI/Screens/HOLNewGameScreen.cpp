@@ -10,6 +10,7 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "Match/HOLFactionChoice.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/World.h"
 #include "HeroesOfLibertyUILog.h"
@@ -386,11 +387,14 @@ void UHOLNewGameScreen::NativeOnInitialized()
 				HandleTeamChosen(SlotIndex, Value);
 			});
 		}
-		// Greyed (D240): factions are not in the game yet. TC-Q12: the teams are (camps of the combat, FHOLCampTable;
-		// victory by team), chosen in solo too.
+		// FactionChoiceInProgress.md (lifts the grey of D240 and D495): the list is chosen (Dawn, Legions; Dragon, Shadow and Fire greyed in it,
+		// the Templars with the cheat only), in solo and in the lobby (my line, the leader's AIs). TC-Q12: the teams too.
 		if (SlotFactions[SlotIndex])
 		{
-			SlotFactions[SlotIndex]->SetIsEnabled(false);
+			SlotFactions[SlotIndex]->OnSelectionChanged.AddWeakLambda(this, [this, SlotIndex](const int32 Value)
+			{
+				HandleFactionChosen(SlotIndex, Value);
+			});
 		}
 	}
 	for (UHOLDropdown* Greyed : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
@@ -582,7 +586,11 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 		{
 			SlotConfig.ColorIndex = FMath::Clamp(Row->ColorIndex, 0, HOLPlayerColors::RandomColor);
 			SlotConfig.Team = FMath::Clamp(Row->Team, 0, FHOLMatchConfig::MaxTeams);
-			SlotConfig.Faction = Row->Faction == TEXT("BlackLegions") ? EHOLFaction::BlackLegions : EHOLFaction::DawnOrder;
+			// The manager's name of the faction (the enum's); an unknown one reads as the Dawn.
+			if (!HOLFactionChoice::TryFindByName(Row->Faction, SlotConfig.Faction))
+			{
+				SlotConfig.Faction = EHOLFaction::DawnOrder;
+			}
 		}
 		if (bAI)
 		{
@@ -632,8 +640,12 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 		{
 			SlotYou->SetText(bAI ? AIName : LobbyStateNames()[State]);
 		}
-		// Only my line is mine (M6-Q4), and an AI's is the leader's (IA0.6 L4); the faction is not changeable yet.
+		// Only my line is mine (M6-Q4), and an AI's is the leader's (IA0.6 L4); the faction too.
 		const bool bEditable = bMine || Lobby.CanEditAISlot(SlotIndex);
+		if (SlotFactions[SlotIndex])
+		{
+			SlotFactions[SlotIndex]->SetIsEnabled(bEditable);
+		}
 		if (SlotColors[SlotIndex])
 		{
 			SlotColors[SlotIndex]->SetIsEnabled(bEditable);
@@ -792,6 +804,8 @@ void UHOLNewGameScreen::Refresh()
 	}
 	// TC3 (TC-Q4): the slots past the places of the size are closed, not changeable (the lobby sets its own, loop 2).
 	const int32 NumPlaces = FHOLMapSizeRules::GetNumPlaces(Config);
+	UpdateFactionLists();
+	const bool bFactionCheat = HOLFactionChoice::IsCheatOn();
 	// IA0.6 S2: the name column and "Emplacement" in a lobby only; the level column in solo, and in a lobby with an AI
 	// (L4: a lobby without one keeps its width).
 	const bool bLevelColumn = !bLobby || Config.Slots.ContainsByPredicate([](const FHOLMatchSlot& Each) { return Each.State == EHOLSlotState::AI; });
@@ -833,6 +847,16 @@ void UHOLNewGameScreen::Refresh()
 		if (SlotFactions[SlotIndex])
 		{
 			SlotFactions[SlotIndex]->SetSelectedIndex(static_cast<int32>(SlotConfig.Faction));
+			// A line on a faction the list does not hold (the Templars of another player or of the leader's AI, without the cheat here) says its name all the same.
+			if (!HOLFactionChoice::IsListed(SlotConfig.Faction, bFactionCheat))
+			{
+				SlotFactions[SlotIndex]->SetShownText(UE::HeroesOfLiberty::UI::NewGame::FactionNames()[static_cast<int32>(SlotConfig.Faction)]);
+			}
+			// Solo: a line somebody holds. The lobby's (mine, the leader's AIs) is set by ShowLobby.
+			if (!bLobby)
+			{
+				SlotFactions[SlotIndex]->SetIsEnabled(bOccupied);
+			}
 		}
 		if (SlotColors[SlotIndex])
 		{
@@ -981,7 +1005,7 @@ void UHOLNewGameScreen::SendSettings()
 	}
 }
 
-void UHOLNewGameScreen::SendSlotAI(const int32 SlotIndex, const TOptional<int32> ColorIndex, const TOptional<int32> Team)
+void UHOLNewGameScreen::SendSlotAI(const int32 SlotIndex, const TOptional<int32> ColorIndex, const TOptional<int32> Team, const FString& Faction)
 {
 	UHOLManagerClient* Client = GetClient();
 	if (!Client)
@@ -990,12 +1014,13 @@ void UHOLNewGameScreen::SendSlotAI(const int32 SlotIndex, const TOptional<int32>
 	}
 	// IA0.6 L4 (Q4): "slot 2 ai" puts the AI, "ai 2 colour 5" and "ai 2 team 2" change it.
 	const FString What = ColorIndex.IsSet() ? FString::Printf(TEXT("ai %d colour %d"), SlotIndex, ColorIndex.GetValue())
-		: Team.IsSet() ? FString::Printf(TEXT("ai %d team %d"), SlotIndex, Team.GetValue()) : FString::Printf(TEXT("slot %d ai"), SlotIndex);
+		: Team.IsSet() ? FString::Printf(TEXT("ai %d team %d"), SlotIndex, Team.GetValue())
+			: !Faction.IsEmpty() ? FString::Printf(TEXT("ai %d faction %s"), SlotIndex, *Faction) : FString::Printf(TEXT("slot %d ai"), SlotIndex);
 	UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
 	Client->SetSlotAI(SlotIndex, ColorIndex, Team, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
 	{
 		HandleWritten(Written, Error, What);
-	}));
+	}), Faction);
 }
 
 bool UHOLNewGameScreen::IsLobbyAI(const int32 SlotIndex) const
@@ -1166,6 +1191,67 @@ void UHOLNewGameScreen::HandleStateChosen(const int32 SlotIndex, const int32 Val
 	Refresh();
 }
 
+void UHOLNewGameScreen::UpdateFactionLists()
+{
+	const bool bCheat = HOLFactionChoice::IsCheatOn();
+	if (FactionListCheat.IsSet() && FactionListCheat.GetValue() == bCheat)
+	{
+		return;
+	}
+	FactionListCheat = bCheat;
+	const TArray<FText> AllNames = UE::HeroesOfLiberty::UI::NewGame::FactionNames();
+	const TArray<EHOLFaction> Listed = HOLFactionChoice::GetListed(bCheat);
+	TArray<FText> Names;
+	for (const EHOLFaction Faction : Listed)
+	{
+		Names.Add(AllNames[static_cast<int32>(Faction)]);
+	}
+	for (UHOLDropdown* List : SlotFactions)
+	{
+		if (!List)
+		{
+			continue;
+		}
+		List->SetOptions(Names, List->GetSelectedIndex());
+		for (int32 Index = 0; Index < Listed.Num(); ++Index)
+		{
+			List->SetOptionEnabled(Index, HOLFactionChoice::IsChoosable(Listed[Index], bCheat));
+		}
+	}
+}
+
+void UHOLNewGameScreen::HandleFactionChosen(const int32 SlotIndex, const int32 Value)
+{
+	const EHOLFaction Faction = static_cast<EHOLFaction>(Value);
+	if (!HOLFactionChoice::IsChoosable(Faction, HOLFactionChoice::IsCheatOn()))
+	{
+		// The list greys them already; never taken from a stale list.
+		Refresh();
+		return;
+	}
+	Config.Slots[SlotIndex].Faction = Faction;
+	Refresh();
+	const FString Name = HOLFactionChoice::GetName(Faction);
+	if (IsLobbyAI(SlotIndex))
+	{
+		SendSlotAI(SlotIndex, {}, {}, Name);
+		return;
+	}
+	if (UHOLManagerClient* Client = bLobby ? GetClient() : nullptr)
+	{
+		const FString What = FString::Printf(TEXT("faction %s"), *Name);
+		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
+		Client->UpdateMe({}, {}, {}, FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error)
+		{
+			HandleWritten(Written, Error, What);
+		}), {}, Name);
+	}
+	else
+	{
+		UE_LOG(LogHOLUI, Display, TEXT("New game: slot %d faction %s"), SlotIndex, *Name);
+	}
+}
+
 void UHOLNewGameScreen::HandleColorChosen(const int32 SlotIndex, const int32 Value)
 {
 	// A colour held by another occupied slot is greyed in the list: this one is free.
@@ -1226,6 +1312,11 @@ void UHOLNewGameScreen::Launch()
 		return;
 	}
 	FHOLMatchConfig Launched = Config;
+	// A Templar line left from the cheat (switched off since) plays the Dawn: the Templars are the cheat's only.
+	for (FHOLMatchSlot& LaunchedSlot : Launched.Slots)
+	{
+		LaunchedSlot.Faction = HOLFactionChoice::Sanitize(LaunchedSlot.Faction, HOLFactionChoice::IsCheatOn());
+	}
 	Launched.Seed = static_cast<int32>(FDateTime::UtcNow().GetTicks() & MAX_int32);
 	// A scenario whose .json imposes a "seed" (V4-Q2 = C, D608) plays with it, even from the menu's launch.
 	if (TOptional<int32>& Imposed = HOLTestHooks::PendingImposedSeed(); Imposed.IsSet())

@@ -28,6 +28,8 @@ void UHOLTitleScreen::BuildLayout()
 	UVerticalBox* Column = MakeCenteredColumn();
 	// The game's name is not translated.
 	Title = AddText(Column, TEXT("Title"), INVTEXT("Heroes of Liberty"), UHOLTextStyleTitle::StaticClass(), 48.f);
+	// Hit-testable, so that a click on the title reaches the screen (the faction cheat, NativeOnMouseButtonDown).
+	Title->SetVisibility(ESlateVisibility::Visible);
 	PlayButton = AddButton(Column, TEXT("PlayButton"), LOCTEXT("Play", "Jouer"));
 	MultiplayerButton = AddButton(Column, TEXT("MultiplayerButton"), LOCTEXT("Multiplayer", "Multijoueur"));
 	SettingsButton = AddButton(Column, TEXT("SettingsButton"), LOCTEXT("Settings", "Réglages"));
@@ -65,6 +67,19 @@ void UHOLTitleScreen::NativeOnInitialized()
 	{
 		QuitButton->OnClicked().AddUObject(this, &UHOLTitleScreen::HandleQuit);
 	}
+}
+
+FReply UHOLTitleScreen::NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
+{
+	if (InMouseEvent.GetEffectingButton() == EKeys::LeftMouseButton && Title && Title->GetCachedGeometry().IsUnderLocation(InMouseEvent.GetScreenSpacePosition())
+		&& TitleClicks.Click(FPlatformTime::Seconds()))
+	{
+		const bool bOn = !HOLFactionChoice::IsCheatOn();
+		HOLFactionChoice::SetCheatOn(bOn);
+		UE_LOG(LogHOLUI, Display, TEXT("Title screen: faction cheat %s"), bOn ? TEXT("on") : TEXT("off"));
+		return FReply::Handled();
+	}
+	return Super::NativeOnMouseButtonDown(InGeometry, InMouseEvent);
 }
 
 UWidget* UHOLTitleScreen::NativeGetDesiredFocusTarget() const
