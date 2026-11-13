@@ -34,11 +34,11 @@ namespace HOLSpecialization
 	const int Tier2DelayMs = 45000;
 	const int Tier3DelayMs = 60000;
 
-	// PROVISIONAL (Q-specialization Q1, default A, not in the GDD): one unlock at a time (the single bar of D684); false = B, each tier
-	// its own unlock at once.
-	const bool OneUnlockAtATime = true;
+	// D785 (Q-specialization Q1 = C, 2026-11-12): tier 1 first: a tier's button lights up only once the tier before is applied (the
+	// order is imposed, one bar, so one unlock at a time); false = each reached tier its own unlock at once.
+	const bool PreviousTierFirst = true;
 
-	// PROVISIONAL (Q-specialization Q2, default A; D684 leaves it to the chapter): the countdown while the Forum is down.
+	// D785 (Q-specialization Q2 = A, 2026-11-12; D684 leaves it to the chapter): the countdown while the Forum is down pauses.
 	const int ForumDownPauses = 0;
 	const int ForumDownRuns = 1;
 	const int ForumDownCancels = 2;
@@ -52,6 +52,7 @@ namespace HOLSpecialization
 	const int AlreadyChosen = 4;
 	const int Busy = 5;
 	const int NothingToCancel = 6;
+	const int PreviousTierNotApplied = 7;
 
 	FHOLSpecializationState NewState(int OptionCount)
 	{
@@ -96,10 +97,17 @@ namespace HOLSpecialization
 		return IsValidTier(Tier) && Tier < State.RunningOption.Num() && State.RunningOption[Tier] != None;
 	}
 
-	// The tier's button is lit: reached and not applied yet (D332: no deadline). It stays lit while its unlock runs (the bar shows it).
+	// The tier before is applied, or the order is not imposed (D785).
+	bool PreviousApplied(const FHOLSpecializationState& State, int Tier)
+	{
+		return !PreviousTierFirst || Tier <= FirstTier || ChosenOption(State, Tier - 1) != None;
+	}
+
+	// The tier's button is lit: reached, the tier before applied (D785) and not applied yet (D332: no deadline). It stays lit while its
+	// unlock runs (the bar shows it).
 	bool IsOpen(const FHOLSpecializationState& State, int Tier, int PlayerTier)
 	{
-		return IsValidTier(Tier) && PlayerTier >= Tier && ChosenOption(State, Tier) == None;
+		return IsValidTier(Tier) && PlayerTier >= Tier && PreviousApplied(State, Tier) && ChosenOption(State, Tier) == None;
 	}
 
 	void RefreshPending(FHOLSpecializationState& State)
@@ -127,8 +135,10 @@ namespace HOLSpecialization
 			return BadOption;
 		if (ChosenOption(State, Tier) != None)
 			return AlreadyChosen;
-		if (IsRunning(State, Tier) || (OneUnlockAtATime && State.PendingTier != 0))
+		if (IsRunning(State, Tier))
 			return Busy;
+		if (!PreviousApplied(State, Tier))
+			return PreviousTierNotApplied;
 		State.RunningOption[Tier] = Option;
 		State.RunningMs[Tier] = 0;
 		RefreshPending(State);

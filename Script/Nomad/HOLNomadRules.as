@@ -19,11 +19,11 @@ namespace HOLNomad
 {
 	const int None = -1;
 
-	// PROVISIONAL (Q-nomad Q1, default A; D207 says "small groups"): the most Peasants in one starting group (5 Peasants = 2, 2, 1).
-	const int GroupSize = 2;
+	// D786 (Q-nomad Q1 = B, 2026-11-12; D207 says "small groups"): one Peasant per starting group (5 Peasants alone, AoE2's Nomad).
+	const int GroupSize = 1;
 
-	// PROVISIONAL (Q-nomad Q2, default A; D207 "vigilance: minimal distance between players"): the least distance between a starting
-	// group and a group of another camp (cm; 1 cell = 100 cm).
+	// D786 (Q-nomad Q2 = A, 2026-11-12; D207 "vigilance: minimal distance between players"): the least distance between a starting
+	// group and a group of another camp (cm; 1 cell = 100 cm; 40 cells).
 	const int MinEnemyDistanceCm = 4000;
 
 	FHOLNomadState NewState(bool bNomad)
