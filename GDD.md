@@ -3537,4 +3537,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D791** (§ 7.2 et § 13.3, plafond du moral, précise D771, 2026-11-12, réponse du 2026-11-12) : **« Bonus seulement » : seul le plafond du BONUS de dégâts portés monte à 40 % ; le plafond du MALUS de dégâts portés reste à 30 %**. Dossier : `LegionsInProgress.md`.
 
-Prochain numéro : **D792**.
+**D792** (§ 15 Canaux de discussion, complète D385, D376 et D357, 2026-11-13, réponse du 2026-11-13 à `Q-chat-channels`, comme recommandé) : **1 A : le « Tous » d'un joueur vivant arrive aussi aux spectateurs (le spectateur lit le fil public) ; 2 A : en partie par équipes, l'« Alliés » d'un joueur vivant arrive à son coéquipier devenu spectateur (D357 : vision et discussion de l'équipe)**. Écartés : B des deux questions (spectateurs limités à leur canal ; coéquipier spectateur qui ne lit pas les plans). Le spectateur ne parle toujours qu'aux spectateurs (D376). Règle pure : `Script\Chat\HOLChatRules.as` (branche net-playtest).
+
+Prochain numéro : **D793**.
