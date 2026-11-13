@@ -1,0 +1,6 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir (camera a sa hauteur mini, 15 m : silhouettes d'environ 70 px, le detail du poignet se juge sur la planche hors jeu)
+spear_arm_idle | les deux Lanciers dans l'image, le bleu et le neutre gris, debout a 8 m l'un de l'autre, lance droite
+spear_arm_fight1 | les deux Lanciers en melee : lance a l'horizontale a hauteur de taille, tenue des deux mains, aucun bras qui sort du dos ni ne traverse le torse
+spear_arm_fight2 | idem, autre instant de l'estocade
+spear_arm_fight3 | idem, autre instant de l'estocade
+spear_arm_fight4 | idem, autre instant de l'estocade

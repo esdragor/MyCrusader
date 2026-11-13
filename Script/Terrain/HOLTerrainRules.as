@@ -14,7 +14,28 @@ struct FHOLTerrainSettings
 
 	// A walker's speed on a road, in percent of its normal speed (C5, La Foret profonde, CQ6a = A: 130). Read as the marsh's.
 	int RoadSpeedPercent = 130;
+
+	// The ranged damage a target in a forest takes, in percent (B4, GDD 8.1 D33 "cover in a forest"; melee never changes). 100 = no cover
+	// (a bare settings struct); the presets and hol.Terrain.ForestRangedPercent give the question's default (Q-forest-cover Q2 = A: 75).
+	int ForestRangedDamagePercent = 100;
+
+	// What "in a forest" means (Q-forest-cover Q1): false = inside a painted forest zone (A, default), true = near trees (B: at least
+	// ForestTreeCount trees within ForestTreeRadius cm of the unit). hol.Terrain.ForestByTrees picks it.
+	bool bForestByTrees = false;
+	int ForestTreeRadius = 600;
+	int ForestTreeCount = 3;
 }
+
+// One tree of the map, by its trunk position in centimetres (only what the forest rule needs).
+struct FHOLTerrainTree
+{
+	int X = 0;
+	int Y = 0;
+}
+
+// The forest's settings on a running game (B4): read by SettingsFromCVars, one line to change each (Q-forest-cover).
+const FConsoleVariable CVar_TerrainForestRangedPercent("hol.Terrain.ForestRangedPercent", 75);
+const FConsoleVariable CVar_TerrainForestByTrees("hol.Terrain.ForestByTrees", 0);
 
 // One round zone of the map: its centre and radius in centimetres, and its kind.
 struct FHOLTerrainZone
@@ -31,15 +52,84 @@ namespace HOLTerrain
 	const int Marsh = 0;
 	// 1 road: speeds the walkers up (CQ6a = A); a marsh under it wins (the slowing zone first).
 	const int Road = 1;
+	// 2 forest (B4, Q-forest-cover Q1 = A): no effect on speed here, cover against ranged damage (DamagePercentAt).
+	const int Forest = 2;
 
 	// The presets: 0 the marsh slows to 60 % (the unit loses 2 cm in 5, clearly felt), 1 to 75 % (felt, a crossing is not a stop). Neither is
-	// a decision: the user picks (Auto_Journey_Retours.md, C3-Q1).
+	// a decision: the user picks (Auto_Journey_Retours.md, C3-Q1). Both give the forest's cover its default (Q-forest-cover Q2 = A: 75 %).
 	FHOLTerrainSettings Preset(int Index)
 	{
 		FHOLTerrainSettings Settings;
 		Settings.bMarshStopsCharge = true;
 		Settings.MarshSpeedPercent = (Index == 1) ? 75 : 60;
+		Settings.ForestRangedDamagePercent = 75;
 		return Settings;
+	}
+
+	// The settings of a running game: preset 0 with the forest read from the console variables (hol.Terrain.ForestRangedPercent,
+	// hol.Terrain.ForestByTrees), so that the two answers of Q-forest-cover are one line away.
+	FHOLTerrainSettings SettingsFromCVars()
+	{
+		FHOLTerrainSettings Settings = Preset(0);
+		Settings.ForestRangedDamagePercent = CVar_TerrainForestRangedPercent.GetInt();
+		Settings.bForestByTrees = CVar_TerrainForestByTrees.GetInt() != 0;
+		return Settings;
+	}
+
+	// Whether a unit standing at (X, Y) is in a forest: inside a forest zone (A), or with enough trees near it (B), as the settings say.
+	// The edge counts in, as for the marsh (a zone's border, a tree exactly ForestTreeRadius away).
+	bool InForest(const FHOLTerrainSettings& Settings, const TArray<FHOLTerrainZone>& Zones, const TArray<FHOLTerrainTree>& Trees, int X, int Y)
+	{
+		if (Settings.bForestByTrees)
+		{
+			int64 R = Settings.ForestTreeRadius;
+			int Near = 0;
+			for (int Index = 0; Index < Trees.Num(); Index++)
+			{
+				int64 DX = X - Trees[Index].X;
+				int64 DY = Y - Trees[Index].Y;
+				if (DX * DX + DY * DY <= R * R)
+				{
+					Near++;
+					if (Near >= Settings.ForestTreeCount)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		for (int Index = 0; Index < Zones.Num(); Index++)
+		{
+			if (Zones[Index].Kind == Forest && Contains(Zones[Index], X, Y))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	// The damage percent a target standing at (X, Y) takes from a hit: the forest's cover for a ranged hit, 100 for a melee hit or
+	// outside a forest. Only the target's place counts (the shooter may stand anywhere).
+	int DamagePercentAt(const FHOLTerrainSettings& Settings, const TArray<FHOLTerrainZone>& Zones, const TArray<FHOLTerrainTree>& Trees,
+		bool bRanged, int X, int Y)
+	{
+		if (!bRanged || !InForest(Settings, Zones, Trees, X, Y))
+		{
+			return 100;
+		}
+		return Settings.ForestRangedDamagePercent;
+	}
+
+	// A hit's damage scaled by a percent, never below 1 for a hit that hurts (a covered arrow still scratches).
+	int ScaledDamage(int Damage, int Percent)
+	{
+		if (Damage <= 0)
+		{
+			return 0;
+		}
+		int Scaled = Damage * Percent / 100;
+		return Scaled < 1 ? 1 : Scaled;
 	}
 
 	// Whether the point (X, Y) is in the zone (its edge counts in: a unit on the border is slowed).

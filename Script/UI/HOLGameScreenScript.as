@@ -50,12 +50,15 @@ TArray<UButton> TalentCellButtons;
 TArray<UCommonTextBlock> TalentCellLabels;
 UHorizontalBox HeroTalentIcons;
 TArray<UButton> TalentIconButtons;
-TArray<UCommonTextBlock> TalentIconLabels;
+// The talents' images (Tools/Editor/make_talent_icons.py, frame A of Q-talents-icons): the hero block's icons, the tree's cells.
+TArray<UImage> TalentIconImages;
+TArray<UImage> TalentCellImages;
 TArray<FHOLTalentCellView> TalentCells;
 bool bTalentWindowOpen = false;
 FString TalentWindowTexts = "";
 FString TalentIconTexts = "";
 const float TalentCellWidth = 170.0;
+const float TalentCellImageSize = 32.0;
 // T5 (the trial of 2026-10-31: a point spent changed nothing the eye could see): the talents taken by name, and a notice in the accent colour
 // for a few seconds when one is taken (with a sound), both from HOLTalentNames' one table.
 UCommonTextBlock HeroTalentListLabel;
@@ -1203,12 +1206,15 @@ FString TalentTipTexts = "";
 			Icon.OnClicked.AddUFunction(this, n"HandleTalentClicked");
 			Icon.SetVisibility(ESlateVisibility::Collapsed);
 			IconBox.SetContent(Icon);
-			UCommonTextBlock Glyph = MakeText(FName(f"HeroTalentIconGlyph{Index}"), UHOLTextStyleHUD);
-			Glyph.SetVisibility(ESlateVisibility::HitTestInvisible);
-			Icon.AddChild(Glyph);
+			UImage Picture = Cast<UImage>(ConstructWidget(UImage, FName(f"HeroTalentIconImage{Index}")));
+			Picture.SetVisibility(ESlateVisibility::HitTestInvisible);
+			UButtonSlot PictureSlot = Cast<UButtonSlot>(Icon.AddChild(Picture));
+			PictureSlot.SetPadding(FMargin(0.0));
+			PictureSlot.SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+			PictureSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
 			HeroTalentIcons.AddChildToHorizontalBox(IconBox).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
 			TalentIconButtons.Add(Icon);
-			TalentIconLabels.Add(Glyph);
+			TalentIconImages.Add(Picture);
 		}
 	}
 
@@ -1274,14 +1280,26 @@ FString TalentTipTexts = "";
 				// One handler a cell (a button's click does not say which): HandleCell0 .. HandleCell23, the row and the column from the number.
 				Cell.OnClicked.AddUFunction(this, FName(f"HandleCell{Index * HOLTalent::FamilyCount + Family}"));
 				CellBox.SetContent(Cell);
+				// The talent's image (32 px) at the left of its name (REGLAGE talents_icons_compare, Q-talents-icons = A).
+				UHorizontalBox CellLine = Cast<UHorizontalBox>(ConstructWidget(UHorizontalBox, FName(f"HeroTalentCellLine_{Row}_{Family}")));
+				CellLine.SetVisibility(ESlateVisibility::HitTestInvisible);
+				Cell.AddChild(CellLine);
+				USizeBox PictureBox = Cast<USizeBox>(ConstructWidget(USizeBox, FName(f"HeroTalentCellImageBox_{Row}_{Family}")));
+				PictureBox.SetWidthOverride(TalentCellImageSize);
+				PictureBox.SetHeightOverride(TalentCellImageSize);
+				UImage CellPicture = Cast<UImage>(ConstructWidget(UImage, FName(f"HeroTalentCellImage_{Row}_{Family}")));
+				PictureBox.SetContent(CellPicture);
+				CellLine.AddChildToHorizontalBox(PictureBox).SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
 				UCommonTextBlock CellLabel = MakeText(FName(f"HeroTalentCellLabel_{Row}_{Family}"), UHOLTextStyleHUDLabel);
-				CellLabel.SetVisibility(ESlateVisibility::HitTestInvisible);
 				CellLabel.SetJustification(ETextJustify::Center);
-				CellLabel.SetWrapTextAt(TalentCellWidth - 20.0);
-				Cell.AddChild(CellLabel);
+				CellLabel.SetWrapTextAt(TalentCellWidth - TalentCellImageSize - 26.0);
+				UHorizontalBoxSlot LabelSlot = CellLine.AddChildToHorizontalBox(CellLabel);
+				LabelSlot.SetVerticalAlignment(EVerticalAlignment::VAlign_Center);
+				LabelSlot.SetPadding(FMargin(4.0, 0.0, 0.0, 0.0));
 				RowBox.AddChildToHorizontalBox(CellBox).SetPadding(FMargin(0.0, 0.0, 4.0, 0.0));
 				TalentCellButtons.Add(Cell);
 				TalentCellLabels.Add(CellLabel);
+				TalentCellImages.Add(CellPicture);
 			}
 		}
 
@@ -1650,12 +1668,27 @@ FString TalentTipTexts = "";
 			TalentIconButtons[Index].SetVisibility(bShown ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
 			if (!bShown)
 				continue;
-			TalentIconLabels[Index].SetText(FText::FromString(Taken[Index].Glyph));
-			TalentIconLabels[Index].SetColorAndOpacity(TalentFamilyColour(Taken[Index].Family));
-			TalentIconButtons[Index].SetBackgroundColor(TalentFamilyColour(Taken[Index].Family));
+			const FString Shown = ShowTalentImage(TalentIconImages[Index], Taken[Index].Row, Taken[Index].Family);
+			TalentIconButtons[Index].SetBackgroundColor(FLinearColor(1.0, 1.0, 1.0, 1.0));
 			TalentIconButtons[Index].SetToolTipText(FText::FromString(Taken[Index].Tooltip));
-			TalentIconTexts += (Index > 0 ? " || " : "") + Taken[Index].Glyph + " = " + Taken[Index].Tooltip;
+			TalentIconTexts += (Index > 0 ? " || " : "") + Shown + " = " + Taken[Index].Tooltip;
 		}
+	}
+
+	// The talent's image (Tools/Editor/make_talent_icons.py, /Game/UI/Icons/Talents/T_Talent_<row><family>, frame A of Q-talents-icons) set on
+	// Picture; the name of the texture set, "none" when it is missing (the HUD report says which image each icon shows).
+	FString ShowTalentImage(UImage Picture, int Row, int Family)
+	{
+		const FString Name = f"T_Talent_{Row}{Family}";
+		UTexture2D Texture = Cast<UTexture2D>(LoadObject(nullptr, f"/Game/UI/Icons/Talents/{Name}.{Name}"));
+		if (Texture == nullptr)
+		{
+			Picture.SetVisibility(ESlateVisibility::Collapsed);
+			return "none";
+		}
+		Picture.SetBrushFromTexture(Texture, false);
+		Picture.SetVisibility(ESlateVisibility::HitTestInvisible);
+		return Texture.GetName().ToString();
 	}
 
 	// A colour for each family column (Guardian, Captain, Champion), over the buttons' dark: icons and taken cells.
@@ -1689,10 +1722,23 @@ FString TalentTipTexts = "";
 			TalentWindowRowLabels[Index].SetText(FText::FromString(HOLTalentText::RowLabel(HOLTalent::FirstRow + Index)));
 			TalentWindowRowLabels[Index].SetColorAndOpacity(UHOLScriptScreen::GetMutedColor());
 		}
+		int Pictured = 0;
+		FString FirstPicture = "none";
+		FString LastPicture = "none";
 		for (int Index = 0; Index < TalentCellButtons.Num() && Index < TalentCells.Num(); ++Index)
 		{
 			const FHOLTalentCellView Cell = TalentCells[Index];
 			const bool bTaken = Cell.State == EHOLTalentCellState::Taken;
+			const FString Picture = ShowTalentImage(TalentCellImages[Index], Cell.Row, Cell.Family);
+			// The image as faint as its name: full for a cell taken or pickable, dimmed for the others, fainter "plus tard".
+			TalentCellImages[Index].SetOpacity(bTaken || Cell.bPickable ? 1.0 : (Cell.State == EHOLTalentCellState::Locked ? 0.35 : 0.6));
+			if (Picture != "none")
+			{
+				Pictured += 1;
+				if (FirstPicture == "none")
+					FirstPicture = Picture;
+				LastPicture = Picture;
+			}
 			TalentCellLabels[Index].SetText(FText::FromString(Cell.Name));
 			TalentCellLabels[Index].SetColorAndOpacity(bTaken || Cell.bPickable ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
 			if (Cell.State == EHOLTalentCellState::Locked)
@@ -1710,7 +1756,8 @@ FString TalentTipTexts = "";
 		TalentWindowAdvisedLabel.SetColorAndOpacity(TalentView.bAdviceEnabled ? UHOLScriptScreen::GetTextColor() : UHOLScriptScreen::GetMutedColor());
 		UHOLScriptScreen::SetButtonGreyed(TalentWindowAdvised, !TalentView.bAdviceEnabled);
 		TalentWindowAdvised.SetToolTipText(FText::FromString(HOLTalentText::TooltipText(TalentView)));
-		TalentWindowTexts = HOLTalentText::ReminderText(TalentView) + " | " + HOLTalentTree::Describe(TalentCells);
+		TalentWindowTexts = HOLTalentText::ReminderText(TalentView) + " | " + HOLTalentTree::Describe(TalentCells)
+			+ f" | images {Pictured}/{TalentCells.Num()} {FirstPicture} .. {LastPicture}";
 	}
 
 	// T5: what a spent point shows. The talents taken, by name, stay under the reminder; a talent taken since the last refresh raises a notice

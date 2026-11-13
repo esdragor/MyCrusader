@@ -120,6 +120,10 @@ public:
 	FString DescribeStatsTip() const;
 	/** The hover on the statistic number Index, hit-tested by Slate at the centre of its chip (the mouse's own path): the tooltip the engine would show, or why none (see hol.HUD.Hover). */
 	FString HoverStat(int32 Index) const;
+	/** D788: the hover on the amount of resource Index of the top bar (0 food, 1 wood, 2 stone, 3 gold), hit-tested by Slate at its centre: the
+	 *  tooltip the engine would show, or why none. bShow also draws that tooltip widget in the game viewport under the amount (the engine shows it
+	 *  in a window of its own, out of the viewport's capture); any call first removes the one drawn before (Index -1: only that). See hol.HUD.HoverIncome. */
+	FString HoverIncome(int32 Index, bool bShow);
 	/** What the grid's cells write: "A: Maison; Z: Camp de bûcherons; ..." (hol.HUD.Report). */
 	FString DescribeCells() const;
 
@@ -587,6 +591,8 @@ private:
 	FHOLResources ShownGatherers;
 	/** Each resource's income a minute in its tooltip (Retours/Q-sites-gold-line.md, answer "other"); -1 until first shown. */
 	FHOLResources ShownIncome = FHOLResources(-1, -1, -1, -1);
+	/** The income tooltip drawn in the viewport by HoverIncome (scenarios), until the next call. */
+	TSharedPtr<SWidget> IncomeTipOverlay;
 	int32 ShownIdleWorkers = INDEX_NONE;
 	/** Seconds since a group's activities (or a group of buildings) were read again. */
 	float SinceGroupRefresh = 0.f;

@@ -1,7 +1,7 @@
 ﻿# Le Marché (M5) : A Z E = ACHETER nourriture, bois, pierre avec 100 d'or ; Q S D = VENDRE 100 de nourriture, bois, pierre contre de l'or (retour de l'utilisateur 2026-11-01), au cours commun (D84, D582)
 # Plain, toi (slot 0) contre une IA (slot 1), market.json (copie de tiers.json) : 5 Paysans et un héros chacun. Un Marché terminé t'est posé près du forum (triche), et +2000 de chaque ressource (200 de depart + 2000 = 2200 a l ecran).
 # Cours de départ (tableau Market.csv, MK-Q1 = C) : nourriture 80, bois 80, pierre 120, or 100 ; taxe 30 % ; le cours bouge de 3 points par lot de 100 et revient d'1 point toutes les 10 s.
-# Chaque case affiche toujours 100 de ce qu'on donne : acheter = « 100 or = X » (X = ressource reçue), vendre = « 100 = Y or ». Chaque temps attend la touche Entrée (waitkey).
+# D781 (réglage de l'utilisateur 2026-11-11) : chaque case affiche le nom de la ressource puis « +X » et le logo de ce qu'on reçoit : acheter = « +X » + logo de la ressource (pour 100 d'or), vendre = « +Y » + logo de l'or (pour 100 de la ressource) ; plus de « 100 or = X ». Logo = carré de couleur de la ressource (icônes de ressources pas encore faites). Chaque temps attend la touche Entrée (waitkey).
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Cheat.Resources 2000
@@ -13,8 +13,8 @@ hol.Select.Click 0.5 0.5
 waitlog Selection: Market of slot 0 (own)
 frames 10
 capture market_grid
-note 1. Le Marché est sélectionné : la grille en bas à droite montre ses échanges. Ligne du haut A Z E = ACHETER nourriture, bois, pierre : la case dit « 100 or = X » (X = ce qu'on reçoit pour 100 d'or). Ligne du dessous Q S D = VENDRE : « 100 = Y or » (Y = l'or reçu pour 100 de la ressource).
-note Au départ : acheter du bois ou de la nourriture, 100 or = 96 ; de la pierre, 100 or = 64 ; vendre 100 de bois ou de nourriture = 56 or, 100 de pierre = 84 or. L'info-bulle donne la phrase complète et le cours après l'échange.
+note 1. Le Marché est sélectionné : la grille en bas à droite montre ses échanges. Ligne du haut A Z E = ACHETER nourriture, bois, pierre : la case dit « +X » puis le logo de la ressource (X = ce qu'on reçoit pour 100 d'or). Ligne du dessous Q S D = VENDRE : « +Y » puis le logo de l'or (Y = l'or reçu pour 100 de la ressource).
+note Au départ : acheter du bois ou de la nourriture, +96 ; de la pierre, +64 ; vendre 100 de bois ou de nourriture, +56 or ; 100 de pierre, +84 or. L'info-bulle donne la phrase complète (pour 100) et le cours après l'échange.
 # Le scénario fait lui-même un achat puis une vente de bois, pour montrer l'effet à l'écran (stock en haut, cours dans la case).
 hol.Select.Grid 1
 waitlog Market: slot 0 bought 1 lots of resource 1

@@ -22,6 +22,21 @@ namespace UE::HeroesOfLiberty::UI::GridCell
 	constexpr float GreyedOpacity = 0.4f;
 	const EHOLResource Resources[NumResources] = { EHOLResource::Food, EHOLResource::Wood, EHOLResource::Stone, EHOLResource::Gold };
 	const TCHAR* const ResourceLetters[NumResources] = { TEXT("F"), TEXT("W"), TEXT("S"), TEXT("G") };
+	/** The gain's logo in the scripted checks (DescribeContent, D781), in the order of EHOLResource. */
+	const TCHAR* const ResourceWords[NumResources] = { TEXT("Food"), TEXT("Wood"), TEXT("Stone"), TEXT("Gold") };
+	/** The gain's logo on the cell (D781): the resource's marker, larger than the tooltip's, until the resource icons exist. */
+	constexpr float GainMarkerSize = 10.f;
+
+	FLinearColor GetResourceColor(const EHOLResource Resource)
+	{
+		switch (Resource)
+		{
+		case EHOLResource::Food: return HOLUIStyle::Food;
+		case EHOLResource::Wood: return HOLUIStyle::Wood;
+		case EHOLResource::Stone: return HOLUIStyle::Stone;
+		default: return HOLUIStyle::Gold;
+		}
+	}
 }
 
 UHOLGridCell::UHOLGridCell()
@@ -82,6 +97,23 @@ void UHOLGridCell::NativeOnInitialized()
 		UnitName->SetJustification(ETextJustify::Center);
 		UnitName->SetAutoWrapText(true);
 		UnitBox->AddChildToVerticalBox(UnitName)->SetHorizontalAlignment(HAlign_Fill);
+	}
+
+	// D781: a trade cell's gain under the name, « +96 » then the logo of what it gives; hidden on every other cell.
+	if (UnitBox && !GainLine)
+	{
+		using namespace UE::HeroesOfLiberty::UI::GridCell;
+		GainLine = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass(), TEXT("GainLine"));
+		GainAmount = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), TEXT("GainAmount"));
+		GainAmount->SetStyle(UHOLTextStyleHUDTiny::StaticClass());
+		UHorizontalBoxSlot* AmountSlot = GainLine->AddChildToHorizontalBox(GainAmount);
+		AmountSlot->SetVerticalAlignment(VAlign_Center);
+		AmountSlot->SetPadding(FMargin(0.f, 0.f, 3.f, 0.f));
+		GainMarker = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass(), TEXT("GainMarker"));
+		GainMarker->SetDesiredSizeOverride(FVector2D(GainMarkerSize, GainMarkerSize));
+		GainLine->AddChildToHorizontalBox(GainMarker)->SetVerticalAlignment(VAlign_Center);
+		UnitBox->AddChildToVerticalBox(GainLine)->SetHorizontalAlignment(HAlign_Center);
+		GainLine->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
 	// The tooltip (D313), outside the cell's hierarchy: shown by Slate over the cell hovered.
@@ -157,6 +189,12 @@ void UHOLGridCell::SetCommand(const FText& InName, const EHOLGridCellState InSta
 		UnitName->SetVisibility(Face.bName ? ESlateVisibility::HitTestInvisible : ESlateVisibility::Collapsed);
 		UnitName->SetRenderOpacity(Opacity);
 	}
+	if (GainLine)
+	{
+		// Only a trade cell has a gain (SetGain, after this call).
+		GainLine->SetVisibility(ESlateVisibility::Collapsed);
+		GainLine->SetRenderOpacity(Opacity);
+	}
 	if (State != InState)
 	{
 		// A greyed cell still takes a click (D313): enabled, its look darker.
@@ -164,6 +202,20 @@ void UHOLGridCell::SetCommand(const FText& InName, const EHOLGridCellState InSta
 	}
 	State = InState;
 	SetIsEnabled(InState != EHOLGridCellState::Disabled);
+}
+
+void UHOLGridCell::SetGain(const FHOLTradeGain& Gain)
+{
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	if (!GainLine || !GainAmount || !GainMarker)
+	{
+		return;
+	}
+	GainAmount->SetText(FText::FromString(HOLCommandGrid::GetTradeGainText(Gain)));
+	GainMarker->SetColorAndOpacity(GetResourceColor(Gain.Logo));
+	ShownGainLogo = Gain.Logo;
+	GainLine->SetVisibility(ESlateVisibility::HitTestInvisible);
 }
 
 void UHOLGridCell::SetTooltip(const FText& InName, const FHOLResources& Cost, const FHOLResources& Missing, const FText& InEffect)
@@ -208,9 +260,21 @@ FString UHOLGridCell::DescribeTooltip() const
 
 FString UHOLGridCell::DescribeContent() const
 {
-	// The texts the cell shows, its key apart.
-	return UnitBox && UnitBox->GetVisibility() != ESlateVisibility::Collapsed && UnitName && UnitName->GetVisibility() != ESlateVisibility::Collapsed
-		? UnitName->GetText().ToString() : FString();
+	using namespace UE::HeroesOfLiberty::UI::GridCell;
+
+	// The texts the cell shows, its key apart; a trade's gain after them, its logo by the resource's word (D781).
+	if (!UnitBox || UnitBox->GetVisibility() == ESlateVisibility::Collapsed)
+	{
+		return FString();
+	}
+	FString Content = UnitName && UnitName->GetVisibility() != ESlateVisibility::Collapsed ? UnitName->GetText().ToString() : FString();
+	if (GainLine && GainLine->GetVisibility() != ESlateVisibility::Collapsed && GainAmount && GainMarker
+		&& GainMarker->GetVisibility() != ESlateVisibility::Collapsed)
+	{
+		const int32 Logo = static_cast<int32>(ShownGainLogo);
+		Content += FString::Printf(TEXT(" %s [%s]"), *GainAmount->GetText().ToString(), Logo >= 0 && Logo < NumResources ? ResourceWords[Logo] : TEXT("?"));
+	}
+	return Content;
 }
 
 void UHOLGridCell::ClearUnit()

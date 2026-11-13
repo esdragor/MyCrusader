@@ -210,7 +210,7 @@ void Test_SpecializationTierOneFirst(FUnitTest& T)
 	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 0, 2), "tier 1's unlock runs");
 	T.AssertTrue(!HOLSpecialization::IsOpen(State, 2, 2), "tier 1 running but not applied: tier 2 still out (D785)");
 	T.AssertTrue(HOLSpecialization::Start(State, 2, 0, 2) != HOLSpecialization::Ok, "tier 2 still refused while tier 1 runs");
-	T.AssertEquals(HOLSpecialization::Busy, HOLSpecialization::Start(State, 1, 1, 2), "the running tier is not restarted: cancel first");
+	T.AssertEquals(HOLSpecialization::Busy, HOLSpecialization::Start(State, 1, 0, 2), "a click on the running option restarts nothing");
 	T.AssertEquals(1, HOLSpecialization::Advance(State, 30000, true), "tier 1 applied at 30 s");
 	T.AssertTrue(HOLSpecialization::IsOpen(State, 2, 2), "tier 1 applied: tier 2's button lights up (D785)");
 	T.AssertTrue(!HOLSpecialization::IsOpen(State, 3, 3), "tier 3 waits for tier 2 (D785)");
@@ -240,4 +240,51 @@ void Test_SpecializationForumDownFollowsQ2(FUnitTest& T)
 		T.AssertEquals(0, State.PendingTier, "nothing runs");
 		T.AssertTrue(HOLSpecialization::IsOpen(State, 1, 1), "the choice reopens");
 	}
+}
+
+void Test_SpecializationOtherOptionReplacesTheRunningOne(FUnitTest& T)
+{
+	// Answer of 2026-11-13 to Q-specialization-switch (B): during an unlock, a click on the other option of the same tier replaces it at
+	// once (one click): the running option is cancelled, the other starts with the full delay (the time already run is lost).
+	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 0, 1), "option 1 of tier 1 starts");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, 20000, true), "20 s run");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 1, 1), "a click on option 2 is taken at once");
+	T.AssertEquals(1, State.PendingTier, "the bar still shows tier 1");
+	T.AssertEquals(HOLSpecialization::DelayMs(1), HOLSpecialization::RemainingMs(State), "option 2 runs the full delay: the 20 s are lost");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, HOLSpecialization::DelayMs(1) - 1, true), "not at 29.999 s of its own run");
+	T.AssertEquals(1, HOLSpecialization::Advance(State, 1, true), "applied at 30 s");
+	T.AssertEquals(1, HOLSpecialization::ChosenOption(State, 1), "option 2 is the tier's: option 1 was cancelled");
+
+	// The Templars switch to their third commandery the same way (D131).
+	FHOLSpecializationState Templars = HOLSpecialization::NewState(3);
+	HOLSpecialization::Start(Templars, 1, 0, 1);
+	HOLSpecialization::Advance(Templars, 10000, true);
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(Templars, 1, 2, 1), "the third commandery replaces the first");
+	T.AssertEquals(HOLSpecialization::DelayMs(1), HOLSpecialization::RemainingMs(Templars), "with the full delay");
+	T.AssertEquals(1, HOLSpecialization::Advance(Templars, HOLSpecialization::DelayMs(1), true), "applied");
+	T.AssertEquals(2, HOLSpecialization::ChosenOption(Templars, 1), "the third commandery is the tier's");
+}
+
+void Test_SpecializationNomadButtonWaitsForTheFirstForum(FUnitTest& T)
+{
+	// Answer of 2026-11-13 to Q-nomad-forum Q2 (B): a Nomad who reaches tier 1 before any complete forum: the button stays out and nothing
+	// starts; it lights up when his first forum is complete (HOLNomad::NoteForumComplete). A standard player is not concerned.
+	FHOLNomadState Nomad = HOLNomad::NewState(true);
+	FHOLSpecializationState State = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	T.AssertTrue(!HOLSpecialization::IsOpen(State, 1, 1, HOLNomad::HasCompleteForum(Nomad)), "no forum complete: the button stays out");
+	T.AssertTrue(HOLSpecialization::Start(State, 1, 0, 1, HOLNomad::HasCompleteForum(Nomad)) != HOLSpecialization::Ok,
+		"a click before the first forum starts nothing");
+	T.AssertEquals(0, State.PendingTier, "nothing runs");
+	T.AssertEquals(0, HOLSpecialization::Advance(State, HOLSpecialization::DelayMs(1), false), "nothing lands");
+	T.AssertEquals(HOLSpecialization::None, HOLSpecialization::ChosenOption(State, 1), "nothing chosen");
+
+	HOLNomad::NoteForumComplete(Nomad);
+	T.AssertTrue(HOLSpecialization::IsOpen(State, 1, 1, HOLNomad::HasCompleteForum(Nomad)), "the first forum complete: the button lights up");
+	T.AssertEquals(HOLSpecialization::Ok, HOLSpecialization::Start(State, 1, 0, 1, HOLNomad::HasCompleteForum(Nomad)), "the unlock starts");
+	T.AssertEquals(HOLSpecialization::DelayMs(1), HOLSpecialization::RemainingMs(State), "with the full delay");
+
+	FHOLNomadState Standard = HOLNomad::NewState(false);
+	FHOLSpecializationState Other = HOLSpecialization::NewState(HOLSpecialization::DefaultOptionCount);
+	T.AssertTrue(HOLSpecialization::IsOpen(Other, 1, 1, HOLNomad::HasCompleteForum(Standard)), "a standard player: lit at tier 1");
 }
