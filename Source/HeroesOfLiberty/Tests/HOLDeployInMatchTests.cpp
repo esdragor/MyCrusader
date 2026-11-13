@@ -302,7 +302,7 @@ bool FHOLDeployedAutoFireTest::RunTest(const FString& Parameters)
 		const int32 TenSeconds = FMath::CeilToInt(10.f / StepSeconds);
 		const auto Fires = [&](const int32 Value, const TCHAR* What)
 		{
-			if (AutoFire)
+			if (AutoFire && Value >= 0)
 			{
 				AutoFire->Set(Value, ECVF_SetByCode);
 			}
@@ -323,7 +323,10 @@ bool FHOLDeployedAutoFireTest::RunTest(const FString& Parameters)
 			Units->FlushDestructions();
 			return bHit;
 		};
-		// 0 (A, the default): only on order, the House untouched.
+		// The user's answer (2026-11-13, Q-deployed-engine-autofire = B): by DEFAULT (the cvar left at its startup value, no one sets it in this
+		// run) the deployed engine at rest fires at the enemy House by itself.
+		TestTrue(TEXT("hol.Siege.DeployedAutoFire by default (B): the deployed engine at rest fires at the enemy House within its reach"), Fires(-1, TEXT("default")));
+		// 0 (A): only on order, the House untouched.
 		TestFalse(TEXT("hol.Siege.DeployedAutoFire 0: the deployed engine at rest does not fire at the House by itself"), Fires(0, TEXT("A")));
 		// 1 (B): the deployed engine at rest fires at the enemy House within its building reach.
 		TestTrue(TEXT("hol.Siege.DeployedAutoFire 1: the deployed engine at rest fires at the enemy House within its reach"), Fires(1, TEXT("B")));
