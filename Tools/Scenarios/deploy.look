@@ -1,5 +1,5 @@
-# <nom de capture> | ce que l'utilisateur doit voir
+﻿# <nom de capture> | ce que l'utilisateur doit voir
 deploy_packed | Mangonnelle selectionnee, demontee : dans la grille de droite la case D dit Monter ; la Maison ennemie est a portee mais pas touchee
-deploy_deployed | apres la touche D et 8 s : la case D dit Demonter (engin monte)
-deploy_fire | l'engin monte tire sur la Maison ennemie (premier coup de 45, la Maison a perdu des PV)
+deploy_deployed | apres la touche D et 8 s : la case D dit Demonter (engin monte) ; au repos il ne tire pas encore seul (hol.Siege.DeployedAutoFire 0)
+deploy_fire | apres un clic droit sur la Maison ennemie, l'engin monte tire sur la Maison ennemie (premier coup de 45, la Maison a perdu des PV)
 deploy_packed_again | apres la seconde touche D et 5 s : la case D redit Monter (engin demonte)

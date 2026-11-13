@@ -1,4 +1,4 @@
-# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, la Mangonnelle (substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTEE ; la case D de sa grille dit Monter ; la touche D la monte (8 s, valeurs proposees), la case dit alors Demonter et l'engin tire sur la Maison ennemie a portee ; la touche D la demonte (5 s), la case redit Monter. Geste reel : la TOUCHE de la case (hol.Select.Grid 6 = D), comme au clavier. 3 minutes au plus.
+# Engin deployable (Palier 3, G6) : avec hol.Siege.Deployable 1, la Mangonnelle (substitut du Trebuchet tant qu'il n'existe pas) nait DEMONTEE ; la case D de sa grille dit Monter ; la touche D la monte (8 s, valeurs proposees), la case dit alors Demonter ; un clic droit sur la Maison ennemie a portee et l'engin monte tire (un engin monte au repos ne tire pas seul : hol.Siege.DeployedAutoFire 0, Retours/Q-deployed-engine-autofire.md) ; la touche D la demonte (5 s), la case redit Monter. Geste reel : la TOUCHE de la case (hol.Select.Grid 6 = D), comme au clavier. 3 minutes au plus.
 # Plain, toi (slot 0) contre une IA gelee (slot 1). Le cvar doit preceder la naissance de l'engin (le fragment est pose a la naissance).
 waitlog Starting hero of slot 0 spawned at
 hol.AI.ThinkSteps 100000
@@ -29,9 +29,11 @@ wait 9
 hol.HUD.Report
 waitlog D=Pack
 capture deploy_deployed
-note 3. Montee : la case D dit Demonter ; l'engin tire sur la Maison (45 de degats de siege par coup).
+note 3. Montee : la case D dit Demonter. Au repos, l'engin monte ne tire pas seul (reglage hol.Siege.DeployedAutoFire 0, question ouverte).
+hol.Select.OrderNear 5300 0
 waitlog Mangonel hits a building for 45
 capture deploy_fire
+note 3b. Tu fais un clic droit sur la Maison ennemie : l'engin monte tire (45 de degats de siege par coup).
 hol.Select.Grid 6
 waitlog Order: 1 units pack up
 note 4. Tu appuies encore sur D : l'engin se demonte (5 s), il ne tire plus et peut marcher.
