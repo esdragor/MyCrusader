@@ -72,12 +72,25 @@ void Test_SignalSeenByTeammatesInTeamModes(FUnitTest& T)
 	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 1, 1).Num(), "an AI teammate receives it (it may answer later, D386)");
 	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 2, 1).Num(), "the other team does not");
 
-	// A defeated teammate advises its team (D357); whether it may also signal is Q-signals Q2 (default: yes, as its chat).
-	const int Expected = HOLSignal::DefeatedTeammateSignals ? HOLSignal::Ok : HOLSignal::Silenced;
-	T.AssertEquals(Expected, HOLSignal::Post(Board, Book, 3, true, HOLSignal::NeedHelp, FVector(0.0, 0.0, 0.0), 2),
-		"a defeated teammate's signal follows Q-signals Q2");
-	T.AssertEquals(HOLSignal::DefeatedTeammateSignals ? 1 : 0, HOLSignal::SeenBy(Board, Book, 2, 3).Num(),
-		"its living teammate sees it or not, as Q2 says");
+	// D784 (answer of 2026-11-12 to Q-signals Q2 = A): a defeated teammate of a team match sees its team's signals but places none any
+	// more (it advises in writing only, D357).
+	T.AssertEquals(HOLSignal::Silenced, HOLSignal::Post(Board, Book, 3, true, HOLSignal::NeedHelp, FVector(0.0, 0.0, 0.0), 2),
+		"a defeated teammate places no signal (D784)");
+	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 2, 3).Num(), "so its living teammate sees nothing from it (D784)");
+	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 2, false, HOLSignal::Defend, FVector(0.0, 0.0, 0.0), 3),
+		"its living teammate places one");
+	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 3, 4).Num(), "the defeated teammate still sees its team's signal (D784)");
+}
+
+void Test_SignalStaysFiveSeconds(FUnitTest& T)
+{
+	// D784 (Q1 = A): a signal stays 5 s on the map (the window of the limit of 3), seen through the real board.
+	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLSignalBoard Board;
+	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 0, false, HOLSignal::Attack, FVector(0.0, 0.0, 0.0), 0), "placed at 0");
+	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 1, 4999).Num(), "still there at 4.999 s");
+	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 1, 5000).Num(), "gone at 5 s (D784)");
+	T.AssertEquals(5000, HOLSignal::WindowMs, "the lifetime is the window of the limit (D386, D784)");
 }
 
 void Test_FourthSignalInFiveSecondsIsRefused(FUnitTest& T)
