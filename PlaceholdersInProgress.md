@@ -50,6 +50,7 @@ Distinct de `VisualInProgress.md` (le visuel des bâtiments : méthode, kit Kenn
 ## Remplacés (à compléter au fil des chantiers)
 
 - Rien encore. *(Le Forum a un modèle de kit sur la branche `visual`, mais reste `[kit]` : provisoire jusqu'à l'artiste.)*
+- 2026-11-13 (Galadriel, L47, `galadriel-tab` b9ec2c3, pas encore fusionné) : **Icônes des talents** (lettres / texte) remplacées par 24 images au cadre A (Q-talents-icons = A), `/Game/UI/Icons/Talents/T_Talent_<clé>`, dessinées par `Tools/Editor/make_talent_icons.py` ; bloc du héros (26 px) et cases de l'Arbre (32 px à gauche du nom). Ligne retirée de `Placeholders.txt`.
 
 ## Journal
 
