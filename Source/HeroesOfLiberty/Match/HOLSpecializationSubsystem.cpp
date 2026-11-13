@@ -71,7 +71,12 @@ FHOLResources UHOLSpecializationSubsystem::StartingStock(const UWorld* World, co
 		return Standard;
 	}
 	UHOLSpecializationSubsystem* Board = Find(World);
-	return Board ? Board->NomadStartingStock(Standard.Food, Standard.Wood, Standard.Stone, Standard.Gold) : Standard;
+	if (!Board)
+	{
+		return Standard;
+	}
+	return FHOLResources(Board->NomadStartingAmount(0, Standard.Food), Board->NomadStartingAmount(1, Standard.Wood),
+		Board->NomadStartingAmount(2, Standard.Stone), Board->NomadStartingAmount(3, Standard.Gold));
 }
 
 bool UHOLSpecializationSubsystem::IsForumStanding(const UWorld* World, const int32 Slot)

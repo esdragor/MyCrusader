@@ -121,8 +121,9 @@ protected:
 	virtual bool SeatHasCompleteForum_Implementation(int32 Slot) { return true; }
 
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
-	FHOLResources NomadStartingStock(int32 Food, int32 Wood, int32 Stone, int32 Gold);
-	virtual FHOLResources NomadStartingStock_Implementation(int32 Food, int32 Wood, int32 Stone, int32 Gold) { return FHOLResources(Food, Wood, Stone, Gold); }
+	int32 NomadStartingAmount(int32 Resource, int32 StandardAmount);
+	/** One resource of a Nomad seat's starting stock (Resource: 0 food, 1 wood, 2 stone, 3 gold, EHOLResource order); StandardAmount without script. */
+	virtual int32 NomadStartingAmount_Implementation(int32 Resource, int32 StandardAmount) { return StandardAmount; }
 
 private:
 	/** The world time (ms) of the last tick, -1 before the first. */

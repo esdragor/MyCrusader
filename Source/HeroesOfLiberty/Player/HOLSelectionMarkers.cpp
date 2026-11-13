@@ -1,7 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "Simulation/HOLRageVisual.h"
 #include "Player/HOLSelectionMarkers.h"
+#include "Simulation/HOLRageVisual.h"
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
