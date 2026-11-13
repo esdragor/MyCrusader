@@ -315,6 +315,9 @@ void UHOLNewGameScreen::BuildLayout()
 	RegicideDropdown = AddDropdown(Options, TEXT("RegicideDropdown"), OffOn(), 0, ToggleWidth);
 	AddCell(Options, MakeText(LOCTEXT("Catastrophe", "Catastrophe"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
 	CatastropheDropdown = AddDropdown(Options, TEXT("CatastropheDropdown"), OffOn(), 0, ToggleWidth);
+	// S7 (D699): "Sites sacrés", off by default (an old match file without the field reads off too).
+	AddCell(Options, MakeText(LOCTEXT("SacredSites", "Sites sacrés"), UHOLTextStyleBody::StaticClass()), OptionLabelWidth);
+	SacredSitesDropdown = AddDropdown(Options, TEXT("SacredSitesDropdown"), OffOn(), 0, ToggleWidth);
 
 	SpectatorsText = AddText(Column, TEXT("SpectatorsText"), FText::GetEmpty(), UHOLTextStyleNote::StaticClass(), 4.f);
 	SpectatorsText->SetVisibility(ESlateVisibility::Collapsed);
@@ -420,7 +423,7 @@ void UHOLNewGameScreen::NativeOnInitialized()
 	{
 		ModeDropdown->OnSelectionChanged.AddUObject(this, &UHOLNewGameScreen::HandleModeChosen);
 	}
-	for (UHOLDropdown* Option : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get() })
+	for (UHOLDropdown* Option : { NomadDropdown.Get(), RegicideDropdown.Get(), CatastropheDropdown.Get(), SacredSitesDropdown.Get() })
 	{
 		if (Option)
 		{
@@ -562,6 +565,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	Config.bNomad = Lobby.bNomad;
 	Config.bRegicide = Lobby.bRegicide;
 	Config.bCatastrophe = Lobby.bCatastrophe;
+	Config.bSacredSites = Lobby.bSacredSites;
 	// TC3 loop 2: the lobby's size and "Équipes ensemble", the places drawn by the server at the launch.
 	Config.MapSize = Lobby.GetMapSize();
 	Config.bTeamsTogether = Lobby.bTeamsTogether;
@@ -646,7 +650,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
 	const bool bLeader = Lobby.IsYouLeader();
 	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), FogDropdown.Get(), ModeDropdown.Get(), NomadDropdown.Get(),
-		RegicideDropdown.Get(), CatastropheDropdown.Get() })
+		RegicideDropdown.Get(), CatastropheDropdown.Get(), SacredSitesDropdown.Get() })
 	{
 		if (Setting)
 		{
@@ -878,6 +882,10 @@ void UHOLNewGameScreen::Refresh()
 	{
 		CatastropheDropdown->SetSelectedIndex(Config.bCatastrophe ? 1 : 0);
 	}
+	if (SacredSitesDropdown)
+	{
+		SacredSitesDropdown->SetSelectedIndex(Config.bSacredSites ? 1 : 0);
+	}
 }
 
 void UHOLNewGameScreen::HandleMapChosen(const int32 Value)
@@ -948,6 +956,8 @@ void UHOLNewGameScreen::HandleModeChosen(const int32 Value)
 
 void UHOLNewGameScreen::HandleOptionChosen(int32)
 {
+	// S7: the only option already in the game, chosen in solo too (written to the match file at the launch).
+	Config.bSacredSites = SacredSitesDropdown && SacredSitesDropdown->GetSelectedIndex() == 1;
 	if (!bLobby)
 	{
 		return;
@@ -971,13 +981,13 @@ void UHOLNewGameScreen::SendSettings()
 		// TC3: the size by its key (none for a map without sizes), "Équipes ensemble".
 		const FHOLMapSizeInfo* Size = FHOLMapSizeRules::Find(Config.MapSize);
 		const FString SizeKey = Size ? FString(Size->Key) : FString();
-		const FString What = FString::Printf(TEXT("settings %s size %s teams together %d nomad %d regicide %d catastrophe %d"), *Config.Map.GetAssetName(),
-			*SizeKey, Config.bTeamsTogether, Config.bNomad, Config.bRegicide, Config.bCatastrophe);
+		const FString What = FString::Printf(TEXT("settings %s size %s teams together %d nomad %d regicide %d catastrophe %d sacred sites %d"),
+			*Config.Map.GetAssetName(), *SizeKey, Config.bTeamsTogether, Config.bNomad, Config.bRegicide, Config.bCatastrophe, Config.bSacredSites);
 		UE_LOG(LogHOLUI, Display, TEXT("Lobby: %s sent"), *What);
 		Client->UpdateSettings(Config.Map.GetAssetName(), Config.bNomad, Config.bRegicide, Config.bCatastrophe,
 			FHOLManagerLobbyDone::CreateWeakLambda(this, [this, What](const FHOLLobby& Written, const FHOLManagerError& Error) { HandleWritten(Written, Error, What); }),
 			SizeKey, Config.bTeamsTogether, StaticEnum<EHOLFogMode>()->GetNameStringByValue(static_cast<int64>(Config.FogMode)),
-			StaticEnum<EHOLMatchMode>()->GetNameStringByValue(static_cast<int64>(Config.Mode)));
+			StaticEnum<EHOLMatchMode>()->GetNameStringByValue(static_cast<int64>(Config.Mode)), FString(), Config.bSacredSites);
 	}
 }
 

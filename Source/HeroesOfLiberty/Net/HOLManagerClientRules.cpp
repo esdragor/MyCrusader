@@ -246,7 +246,8 @@ int32 FHOLLobby::GetNumPlaces() const
 }
 
 FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool bNomad, const bool bRegicide, const bool bCatastrophe,
-	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Mode, const FString& Biome)
+	const FString& Size, const TOptional<bool> bTeamsTogether, const FString& Fog, const FString& Mode, const FString& Biome,
+	const TOptional<bool> bSacredSites)
 {
 	const TSharedRef<FJsonObject> Object = MakeShared<FJsonObject>();
 	Object->SetStringField(TEXT("map"), Map);
@@ -276,6 +277,11 @@ FString FHOLManagerClientRules::MakeSettingsBody(const FString& Map, const bool 
 	if (!Biome.IsEmpty())
 	{
 		Object->SetStringField(TEXT("biome"), Biome);
+	}
+	// S7 (SacredSitesInProgress.md): the "Sites sacrÃ©s" box, only when given.
+	if (bSacredSites.IsSet())
+	{
+		Object->SetBoolField(TEXT("sacredSites"), bSacredSites.GetValue());
 	}
 	return WriteBody(Object);
 }
@@ -359,6 +365,8 @@ namespace
 		(*Settings)->TryGetBoolField(TEXT("nomad"), Out.bNomad);
 		(*Settings)->TryGetBoolField(TEXT("regicide"), Out.bRegicide);
 		(*Settings)->TryGetBoolField(TEXT("catastrophe"), Out.bCatastrophe);
+		// S7: absent from an older manager (off).
+		(*Settings)->TryGetBoolField(TEXT("sacredSites"), Out.bSacredSites);
 		// TC3: absent from an older manager (no size, teams together).
 		(*Settings)->TryGetStringField(TEXT("size"), Out.Size);
 		(*Settings)->TryGetBoolField(TEXT("teamsTogether"), Out.bTeamsTogether);

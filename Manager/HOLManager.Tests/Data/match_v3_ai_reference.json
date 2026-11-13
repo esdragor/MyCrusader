@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 4,
   "seed": 184467,
   "map": "/Game/Maps/Plain.Plain",
   "mapSize": "Large",
@@ -20,5 +20,6 @@
   "mode": "Standard",
   "bNomad": false,
   "bRegicide": false,
-  "bCatastrophe": false
+  "bCatastrophe": false,
+  "bSacredSites": false
 }

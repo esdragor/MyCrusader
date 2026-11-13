@@ -294,7 +294,8 @@ bool FHOLMapSizeConfigTest::RunTest(const FString& Parameters)
 	const TArray<int32> Fixed = { 0, INDEX_NONE, 2, 3, INDEX_NONE, INDEX_NONE, INDEX_NONE, INDEX_NONE };
 	TestTrue(TEXT("fixed places: slot i at place i"), FHOLMapSizeRules::GetPlaces(Read) == Fixed);
 	TestTrue(TEXT("fixed places of the slots"), FHOLMapSizeRules::GetFixedPlaces(Read.Slots) == Fixed);
-	TestEqual(TEXT("upgraded to version 3"), Read.Version, 3);
+	TestEqual(TEXT("upgraded to version 4"), Read.Version, 4);
+	TestFalse(TEXT("a version 2 file reads the sacred sites unticked (D699)"), Read.bSacredSites);
 
 	// The new fields go through JSON.
 	FHOLMatchConfig Written = Read;

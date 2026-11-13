@@ -6,12 +6,12 @@ using HOLManager.Lobbies;
 namespace HOLManager.Matches;
 
 /**
- * match.json, FHOLMatchConfig version 3 (Source/HeroesOfLiberty/Match/HOLMatchConfig.h) as FJsonObjectConverter
+ * match.json, FHOLMatchConfig version 4 (Source/HeroesOfLiberty/Match/HOLMatchConfig.h) as FJsonObjectConverter
  * writes it: first letter in lower case (bool fields keep their "b"), enums by name, the map as an object path.
  */
 public sealed class MatchConfig
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
 
     [JsonPropertyName("version")] public int Version { get; init; } = CurrentVersion;
     [JsonPropertyName("seed")] public int Seed { get; init; }
@@ -37,6 +37,9 @@ public sealed class MatchConfig
     [JsonPropertyName("bNomad")] public bool Nomad { get; init; }
     [JsonPropertyName("bRegicide")] public bool Regicide { get; init; }
     [JsonPropertyName("bCatastrophe")] public bool Catastrophe { get; init; }
+
+    /** Version 4 (SacredSitesInProgress.md S7, D699): the box "Sacred sites"; a file without it is unticked (HOLSiteOption.as). */
+    [JsonPropertyName("bSacredSites")] public bool SacredSites { get; init; }
 
     private static readonly JsonSerializerOptions Options = new()
     {
@@ -73,6 +76,7 @@ public sealed class MatchConfig
             Nomad = lobby.Settings.Nomad,
             Regicide = lobby.Settings.Regicide,
             Catastrophe = lobby.Settings.Catastrophe,
+            SacredSites = lobby.Settings.SacredSites,
         };
     }
 

@@ -162,12 +162,12 @@ public class LobbyMapSizeTests
         store.UpdateMe(lobby.Id, bob, ready: true);
         store.UpdateMe(lobby.Id, alice, ready: true);
         var config = store.Start(lobby.Id, bob).Config;
-        Assert.Equal((3, "/Game/Maps/Plain.Plain", "Small", true, false),
+        Assert.Equal((4, "/Game/Maps/Plain.Plain", "Small", true, false),
             (config.Version, config.Map, config.MapSize, config.DrawPlaces, config.TeamsTogether));
         Assert.Equal("/Game/Maps/Plain_Small", launcher.Map!.PackagePath);
         var json = JsonNode.Parse(config.ToJson())!.AsObject();
         Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "fogMode", "biome", "slots", "mode", "bNomad",
-            "bRegicide", "bCatastrophe"], json.Select(p => p.Key));
+            "bRegicide", "bCatastrophe", "bSacredSites"], json.Select(p => p.Key));
     }
 
     [Fact]
