@@ -11,7 +11,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **Contrôles et leçons** : `Auto_Journey_Checklist.md` (un contrôle par leçon), `Tools\AutoJourney\session_gate.ps1`, `Tools\AutoJourney\agent_rules.md`.
 - **État du jour** : `Auto_Journey_Jour.md` ; **file de travail** : `Auto_Journey_File.md`.
 - **Ce qui attend l'utilisateur** : `Auto_Journey_Retours.md` et `Retours\`.
-- **Archives** : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`, `Docs/Archive/Auto_Journey_Sections_historiques_2026-11-10.md`, `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`, `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`, `Docs/Archive/Auto_Journey_Nettoyage_2026-11-12.md` (mesures et procédure du test 2, rappel d'essais fait, lignes de la check-list devenues des contrôles du gate).
+- **Archives** : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`, `Docs/Archive/Auto_Journey_Sections_historiques_2026-11-10.md`, `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`, `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`, `Docs/Archive/Auto_Journey_Nettoyage_2026-11-12.md` (mesures et procédure du test 2, rappel d'essais fait, lignes de la check-list devenues des contrôles du gate), `Docs/Archive/Auto_Journey_Checklist_nettoyage_2026-11-13.md` (lignes de la check-list devenues des contrôles du gate ou des règles d'`agent_rules.md`, redites, outils faits, lignes L12 condensées).
 
 ## Règles de conduite (réécrites après le test d'1 h du 2026-10-30)
 
@@ -159,7 +159,7 @@ Lancé seulement par « commence ton Auto_Journey interactif » (ou à la demand
 - **Limites inchangées** : au plus 2 questions par chantier ; essais de 3 min ; ~6 essais par jour ; pas de fusion ni de push sans accord explicite.
 - **Mesures du test** (à écrire au bilan) : délai entre `[À RÉPONDRE]`/`[À ESSAYER]` et la réponse ; délai entre la réponse et la relance de l'agent ; nombre de boucles fermées par heure ; nombre de fois où l'utilisateur a été dérangé ; conflits d'édition sur Retours.
 
-Leçons des séances du 2026-11-01, 2026-11-03 et 2026-11-04 : voir `Auto_Journey_Checklist.md` (archive : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`). Celles du 2026-11-05 sont aussi dans `Auto_Journey_Checklist.md` (texte intégral archivé le 2026-11-11 : `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`).
+Leçons de toutes les séances : `Auto_Journey_Checklist.md` (archives listées au Sommaire).
 
 ## Au démarrage : « commence ton Auto_Journey »
 
