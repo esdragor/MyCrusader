@@ -4,6 +4,7 @@
 
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLMatchStatsSubsystem.h"
+#include "Match/HOLSpecializationSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
 #include "Commands/HOLCommandSubsystem.h"
@@ -888,6 +889,18 @@ void UHOLUnitSubsystem::MarkUnitDying(const uint32 UnitId, const int32 KillerPla
 		if (UHOLMatchStatsSubsystem* MatchStats = GetWorld() ? GetWorld()->GetSubsystem<UHOLMatchStatsSubsystem>() : nullptr)
 		{
 			MatchStats->RecordUnitDeath(Record->OwnerPlayer, IsWorkerType(Record->TypeName), KillerPlayer);
+		}
+		// N2 step 2b bis (D354): a Peasant's death counts its seat's Peasants left. Only a Nomad seat before its first Forum reads
+		// false here: a standard seat always has a complete Forum, nothing else is read nor written for it.
+		const int32 Owner = Record->OwnerPlayer;
+		AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr;
+		if (GameState && IsWorkerType(Record->TypeName) && !UHOLSpecializationSubsystem::IsForumComplete(GetWorld(), Owner)
+			&& !GameState->IsSlotDefeated(Owner))
+		{
+			TArray<int32> Workers;
+			TArray<int32> Military;
+			GetLivingCountsByOwner(Workers, Military);
+			GameState->HandleNomadPeasants(Owner, Workers.IsValidIndex(Owner) ? Workers[Owner] : 0);
 		}
 	}
 }
