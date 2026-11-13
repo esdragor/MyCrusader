@@ -21,7 +21,8 @@ param(
   [string]$WorktreesDir = 'C:\Users\baudo\Documents',   # dossier qui contient les HeroesOfLiberty-* (IN_USE.txt) ; sert aux tests
   [string[]]$Exclude = @(),                # Close : worktrees hors perimetre (nom court 'Haldir' ou complet 'HeroesOfLiberty-Haldir')
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
-  [string]$Essay = '',                     # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
+  [string]$EtapeFile = '',                 # Close (L90 / L12-6) : EtapeDefini.md a relire (defaut <copie principale>\EtapeDefini.md) ; son dossier est le depot git qui porte main
+  [string]$Essay = '',                   # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
   [string]$EngineRoot = 'C:\UE\UE_5.8_HOL', # Launch (L12-1c) : un cl.exe dont aucun ancetre ne cite ce moteur = compilation d'un AUTRE moteur (ProjectShiva sur AS_3...) = WARN
   [int]$MinMinutes = 5  # 2026-11-05 : l'utilisateur prefere finir 15 min APRES l'heure que 15 min avant (sauf consigne contraire dans le prompt de lancement) ; l'ancien seuil de 20 min laissait la seance vide
@@ -124,7 +125,8 @@ if ($Phase -eq 'Launch') {
   }
 
   # Plafond de 3 agents C++ (regle 10) : worktrees DISTINCTS qui ont un ticket vivant dans la file de build.ps1 (proprietaire en vie ; un -Wait peut en poser deux)
-  # + worktrees dont IN_USE.txt (texte libre) ne commence pas par 'libre' et cite 'C++' sans 'sans C++'. FAIL pour un agent C++, WARN avec -NoCpp (L11-7).
+  # + worktrees dont IN_USE.txt est OCCUPE (1re ligne non vide contient 'OCCUPE') ET porte la ligne 'CPP: oui' (L13-2, 2026-11-13 : le TEXTE libre
+  # citant 'C++' faisait compter Haldir et Sauron, sans C++, faux FAIL vu 3 fois). FAIL pour un agent C++, WARN avec -NoCpp (L11-7).
   $cppAgents = @{}
   foreach ($tf in @(Get-ChildItem $QueueDir -Filter '*.json' -ErrorAction SilentlyContinue)) {
     try {
@@ -141,7 +143,7 @@ if ($Phase -eq 'Launch') {
     $iuText = (Get-Content $iu -Raw -ErrorAction SilentlyContinue)
     if (-not $iuText) { continue }
     $iuFirst = ($iuText -split "`n" | Where-Object { $_.Trim() } | Select-Object -First 1)
-    if ($iuFirst -match '^\s*libre' -or $iuText -notmatch 'C\+\+' -or $iuFirst -match 'sans C\+\+') { continue }
+    if ($iuFirst -match '^\s*(libre|sorti)' -or $iuFirst -notmatch '\bOCCUPE\b' -or $iuText -notmatch '(?im)^\s*CPP\s*:\s*oui\s*$') { continue }
     $nm = Split-Path $w -Leaf
     if (-not $cppAgents.ContainsKey($nm)) { $cppAgents[$nm] = 'IN_USE.txt' }
   }
@@ -179,6 +181,15 @@ if ($Phase -eq 'Launch') {
     }
     # L11-1 : binaire plus vieux que les SOURCES du worktree (fusion ou checkout apres la compilation) : FAIL seulement si l'agent va y tester (-Scenarios), sinon WARN
     if ($bin) { Say-StaleBySource $Root $bin $(if ($Scenarios) { 'FAIL' } else { 'WARN' }) }
+    # L87 (L12-2, 2026-11-12) : plus de 5 commits touchant Source posterieurs (date de commit) a la DLL principale du worktree = FAIL, meme sans -Scenarios
+    $mainDll = Join-Path $Root 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll'
+    $lagBin = if (Test-Path $mainDll) { Get-Item $mainDll } else { $bin }
+    if ($lagBin) {
+      $since = [DateTimeOffset]::new($lagBin.LastWriteTime).ToUnixTimeSeconds()
+      $lag = @(git -C $Root log --format=%ct "--since=@$since" HEAD -- Source 2>$null | Where-Object { $_ -match '^\d+$' -and [int64]$_ -gt $since }).Count
+      if ($lag -gt 5) { Say 'FAIL' ("{0} : {1} commit(s) Source de retard sur sa DLL {2} du {3} (> 5) : Tools\AutoJourney\sync_worktrees.ps1 SANS -NoBuild (ou build.ps1 dans ce worktree) avant le lancement" -f (Split-Path $Root -Leaf), $lag, $lagBin.Name, $lagBin.LastWriteTime.ToString('MM-dd HH:mm')) }
+      else { Say 'PASS' ("{0} commit(s) Source de retard sur la DLL du worktree (<= 5)" -f $lag) }
+    }
   }
 }
 
@@ -291,6 +302,26 @@ if ($Phase -eq 'Essay') {
 }
 
 if ($Phase -eq 'Close') {
+  # L90 (L12-6, 2026-11-12) : une ligne d'EtapeDefini.md qui dit « pas dans main » alors que sa branche (1er mot entre parentheses) ou TOUS les
+  # commits qu'elle cite sont deja ancetres de main = doc perimee (la fusion doit la passer « dans main » dans son propre commit) : WARN par ligne.
+  if (-not $EtapeFile) { $EtapeFile = "$Main\EtapeDefini.md" }
+  if (Test-Path $EtapeFile) {
+    $etRepo = Split-Path -Parent $EtapeFile; $etWarn = 0
+    foreach ($el in @(Get-Content $EtapeFile -Encoding UTF8 | Where-Object { $_ -match 'pas dans main' })) {
+      $why = ''
+      $shas = @([regex]::Matches($el, '\b[0-9a-f]{7,40}\b') | ForEach-Object { $_.Value } | Where-Object { git -C $etRepo cat-file -e "$_^{commit}" 2>$null; $LASTEXITCODE -eq 0 })
+      if ($shas.Count -gt 0) {
+        $out = @($shas | Where-Object { git -C $etRepo merge-base --is-ancestor $_ main 2>$null; $LASTEXITCODE -ne 0 })
+        if ($out.Count -eq 0) { $why = 'commits ' + ($shas -join ', ') }
+      } elseif ($el -match '^\s*-\s*[^(]*\(([A-Za-z0-9._/-]+)[,)]') {
+        $br = $Matches[1]
+        git -C $etRepo rev-parse --verify -q "refs/heads/$br" 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { git -C $etRepo merge-base --is-ancestor $br main 2>$null; if ($LASTEXITCODE -eq 0) { $why = "branche $br" } }
+      }
+      if ($why) { $etWarn++; Say 'WARN' ("EtapeDefini dit 'pas dans main' mais {0} deja dans main : passer la ligne a 'dans main' (agent de fusion, meme commit) : {1}" -f $why, $el.Substring(0, [Math]::Min(120, $el.Length))) }
+    }
+    if ($etWarn -eq 0) { Say 'PASS' "EtapeDefini : aucune ligne 'pas dans main' deja fusionnee" }
+  }
   # L9-4 (branche le 2026-11-12) : fichiers suivis aux fins de ligne MELEES dans l'arbre de travail (eol_check.ps1, L8-6) : Edit multi-lignes refuse,
   # conflit total a la fusion (Auto_Journey_File.md, 3 fois). WARN qui nomme les fichiers et la commande -Fix (aucun diff git), PASS sinon.
   $EolCheck = Join-Path $PSScriptRoot 'eol_check.ps1'

@@ -16,12 +16,13 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 6. Un fichier avec fins de ligne mélangées refuse `Edit` multi-lignes : lance `powershell -ExecutionPolicy Bypass -File <ton worktree>\Tools\AutoJourney\eol_check.ps1 -Root <ton worktree> -Fix` (L8-6 : remet l'arbre de travail en CRLF, aucun diff git), ou remplace par lignes et relis le résultat. **Écris les fichiers par l'outil Write/Edit, jamais par heredoc Bash** (le hook casse les heredocs). `IN_USE.txt` sans accents.
 
 ## Tests
-7. **Test rouge d'abord, sur la vraie chaîne** (pas de valeur à la main). Il assertit l'**EFFET** (PV qui baissent, ressource reçue, bouton actif, unité arrivée), jamais seulement un prédicat ou une ligne de journal. Commit du test AVANT l'implémentation (le SHA va au rapport). Un test rouge peut venir du script de test : lis le dernier `Test mark` du journal avant de toucher au code.
+7. **Test rouge d'abord, sur la vraie chaîne** (pas de valeur à la main). Il assertit l'**EFFET** (PV qui baissent, ressource reçue, bouton actif, unité arrivée), jamais seulement un prédicat ou une ligne de journal. Commit du test AVANT l'implémentation (le SHA va au rapport). Un test rouge peut venir du script de test : lis le dernier `Test mark` du journal avant de toucher au code. **Pas de test tautologique (L12-5)** : au moins un test par règle passe par une vraie chaîne (la valeur assertie est CALCULÉE par le code testé, jamais recopiée de la constante ou de l'identité) ; champ de rapport `TESTS_TAUTOLOGIQUES: 0` (dans TESTS), recompté par la recette.
 8. `quick_check` **ne compile pas** : `Tools\build.ps1` d'abord. `-Parts` des seules parties touchées ; `tests` SEUL en cas de doute ; ne jamais lancer deux `quick_check` / `log_lock_test` en parallèle (collision de journaux). Un `net` rouge sans changement de code : le relancer deux fois avant de le croire. **Rouge connu ou régression (L8-5)** : `quick_check` imprime `(rouge connu depuis <date> : <cause>)` pour une partie listée dans `Tools\Tests\known_reds.txt`, `(REGRESSION : pas dans known_reds.txt)` sinon, et une ligne `red summary` en fin de sortie ; seules les REGRESSION bloquent une fusion. Une partie connue qui passe imprime `retirer de known_reds.txt` : retire la ligne.
 9. **Scripts et outils** : un script n'est « prêt » qu'après un passage de bout en bout (colle la sortie au rapport). Outil partagé fautif (`check.ps1`, `preflight.ps1`, `quick_check.ps1`) : corrige l'outil et dis-le, pas de copie privée.
 
 ## Build (C++)
-10. **Au plus 3 agents C++** en même temps : si l'énoncé dit « sans C++ », tu n'en fais pas (docs, scénarios, Angelscript `*_Test.as`, données).
+10. **Au plus 3 agents C++** en même temps : si l'énoncé dit « sans C++ », tu n'en fais pas (docs, scénarios, Angelscript `*_Test.as`, données). **Marqueur du plafond (L13-2)** : ton `IN_USE.txt` à l'entrée = 1re ligne `OCCUPE par <AGENT> (<date heure>) : <tâche>`, 2e ligne `CPP: oui` (tu compiles) ou `CPP: non` ; à la sortie, 1re ligne `libre : ...`. `session_gate.ps1 -Phase Launch` ne compte que les tickets vivants de `Docs\BuildQueue.state` et les `IN_USE.txt` OCCUPE portant `CPP: oui` (le texte libre, même s'il cite « C++ », ne compte plus).
+**Binaire d'abord (L12-4)** : agent C++, premier geste après `git merge main` et AVANT tout code : `powershell -NoProfile -Command ". <worktree>\Tools\Scenarios\LaunchCheck.ps1; Get-StaleBinaryProblem <worktree>"` (sortie vide = chaque dll plus récente que ses sources ; sinon `Tools\build.ps1 -LiveCoding=0 -Wait` d'abord) ; résultat dans le champ `LAUNCHCHECK_DEBUT`.
 11. **Tout le C++ en UN lot, puis `Tools\build.ps1 -LiveCoding=0` en `run_in_background` dans les 15 premières minutes**, et tu restes vivant jusqu'à la fin du build (un build détaché meurt avec l'agent). Un build en attente par worktree : relancer remplace. Rendu sans build = « NON COMPILÉ » en TÊTE du rapport.
 12. Après `git merge main`, un échec de déclaration dans des fichiers que tu n'as pas touchés = supprimer `Intermediate\...\Inc\HeroesOfLiberty\UHT` de CE worktree avant de chercher une cause. Un fichier binaire (`.uasset`) en conflit se **régénère** depuis les CSV fusionnés, jamais « theirs » à l'aveugle.
 13. Régénération des cartes (éditeur) : seulement seul, file de build vide ; l'éditeur se lance avec `-Multiprocess`.
@@ -42,10 +43,10 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 ```
 APPELS_DECLARES: <n> (arrêt à 45 vus par toi ; le seuil de 80 se juge sur `tool_uses` relevé par la session principale, pas sur ce champ)
 HEURE_DEBUT/HEURE_FIN: <Get-Date> / <Get-Date>
-PREMIER_BUILD: <HH:MM ou « sans C++ »>   BUILD: PASS / FAIL / NON COMPILÉ
+PREMIER_BUILD: <HH:MM ou « sans C++ »>   BUILD: PASS / FAIL / NON COMPILÉ   LAUNCHCHECK_DEBUT: <HH:MM vide / sortie de Get-StaleBinaryProblem, ou « sans C++ »>
 TEST_ROUGE: <SHA du commit du test, antérieur au correctif> + « assertit l'effet : oui/non »
 COMMITS: <n>, dernier à <HH:MM> (seuil 30 min), merge_main_fait: oui/non
-TESTS: <parties lancées + chiffres>
+TESTS: <parties lancées + chiffres> ; TESTS_TAUTOLOGIQUES: <n> (doit être 0 ; recompté par la recette)
 ESSAIS: <nom : preflight PASS, PNG ouverts, VU À L'ÉCRAN / LOGIQUE SEULEMENT, commande play.ps1 avec -Root>
 QUESTIONS: <fichiers Retours\Q-*.md créés, valeur par défaut codée>
 FAIT / RESTE: <10 lignes au plus>
