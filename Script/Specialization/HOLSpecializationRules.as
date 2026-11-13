@@ -105,7 +105,7 @@ namespace HOLSpecialization
 
 	// The tier's button is lit: reached, the tier before applied (D785) and not applied yet (D332: no deadline). It stays lit while its
 	// unlock runs (the bar shows it).
-	bool IsOpen(const FHOLSpecializationState& State, int Tier, int PlayerTier)
+	bool IsOpen(const FHOLSpecializationState& State, int Tier, int PlayerTier, bool bForumComplete = true)
 	{
 		return IsValidTier(Tier) && PlayerTier >= Tier && PreviousApplied(State, Tier) && ChosenOption(State, Tier) == None;
 	}
@@ -125,7 +125,7 @@ namespace HOLSpecialization
 
 	// The player clicks Option of Tier: the unlock starts at the Forum (D684). Ok: it runs; any other answer: nothing changed. A running
 	// unlock is not restarted in place: cancel it first.
-	int Start(FHOLSpecializationState& State, int Tier, int Option, int PlayerTier)
+	int Start(FHOLSpecializationState& State, int Tier, int Option, int PlayerTier, bool bForumComplete = true)
 	{
 		if (!IsValidTier(Tier))
 			return BadTier;
