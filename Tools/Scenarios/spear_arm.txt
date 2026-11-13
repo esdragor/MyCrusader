@@ -1,5 +1,7 @@
 # Bras du Lancier (BUG neutrals 2026-11-12) : un Lancier neutre contre un Lancier du joueur, vus de pres au repos puis en melee, pour comparer la pose d'attaque des deux.
+# D787 (prise B, mains echangees) : main droite derriere a la hanche droite, main gauche devant ; geste reel (Q puis clic sur le sol derriere le Lancier neutre).
 # Le bras qui ne tient pas la lance ne doit pas entrer dans le corps, ni chez le neutre (gris) ni chez le joueur (bleu).
+hol.Combat.LogHits 1
 hol.Camp.Aggro 0
 hol.Decor.ClearNear 0 0 2500
 waitlog Decor.ClearNear 0 0 2500: took
@@ -12,7 +14,15 @@ hol.Camera.Focus -1100 0
 hol.Camera.Zoom 10
 frames 20
 capture spear_arm_idle
-hol.Units.Move -900 0 0 a
+hol.Select.Army
+hol.Select.Grid 4
+waitlog Grid: attack-move, click on the ground
+hol.Camera.Focus -1100 0
+frames 2
+hol.Select.LeftClickGround 400 0
+waitlog Scripted left click at
+waitlog attack-move to
+waitlog hits #
 waitlog Camp 0: fighting
 frames 40
 hol.Camera.Focus -500 0

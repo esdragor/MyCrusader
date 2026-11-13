@@ -1,0 +1,6 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+spear_arm_idle | un Lancier bleu a gauche et un Lancier neutre gris a droite, debout, lance droite
+spear_arm_fight1 | les deux Lanciers en melee : main droite derriere a la hanche droite, main gauche devant sur la hampe, aucun bras dans le torse
+spear_arm_fight2 | idem, autre instant de l'estocade
+spear_arm_fight3 | idem, autre instant de l'estocade
+spear_arm_fight4 | idem, autre instant de l'estocade
