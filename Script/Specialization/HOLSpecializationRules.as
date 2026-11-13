@@ -53,6 +53,7 @@ namespace HOLSpecialization
 	const int Busy = 5;
 	const int NothingToCancel = 6;
 	const int PreviousTierNotApplied = 7;
+	const int NoForumComplete = 8;
 
 	FHOLSpecializationState NewState(int OptionCount)
 	{
@@ -104,10 +105,11 @@ namespace HOLSpecialization
 	}
 
 	// The tier's button is lit: reached, the tier before applied (D785) and not applied yet (D332: no deadline). It stays lit while its
-	// unlock runs (the bar shows it).
+	// unlock runs (the bar shows it). bForumComplete (HOLNomad::HasCompleteForum): answer of 2026-11-13 to Q-nomad-forum Q2 (B), a Nomad's
+	// button stays out until his first forum is complete and lights up then (a forum down later only pauses, ForumDown).
 	bool IsOpen(const FHOLSpecializationState& State, int Tier, int PlayerTier, bool bForumComplete = true)
 	{
-		return IsValidTier(Tier) && PlayerTier >= Tier && PreviousApplied(State, Tier) && ChosenOption(State, Tier) == None;
+		return bForumComplete && IsValidTier(Tier) && PlayerTier >= Tier && PreviousApplied(State, Tier) && ChosenOption(State, Tier) == None;
 	}
 
 	void RefreshPending(FHOLSpecializationState& State)
@@ -139,6 +141,8 @@ namespace HOLSpecialization
 			return Busy;
 		if (!PreviousApplied(State, Tier))
 			return PreviousTierNotApplied;
+		if (!bForumComplete)
+			return NoForumComplete;
 		State.RunningOption[Tier] = Option;
 		State.RunningMs[Tier] = 0;
 		RefreshPending(State);
