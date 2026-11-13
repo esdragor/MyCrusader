@@ -24,7 +24,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Archer Aube [mannequin]
 - Archer squelette Légions [mannequin]
 - Arbalétrier Aube [mannequin]
-- Arquebusier (mannequin et squelette de l'Arbalétrier, carreau SM_Bolt : ni corps, ni animations (marche, tir a poudre, rechargement, mort), ni fumée de poudre, ni son propre) [mannequin]
+- Arquebusier (mannequin et squelette de l'Arbalétrier, carreau SM_Bolt : ni corps, ni animations (marche, tir a poudre, rechargement, mort), ni fumée de poudre, ni son propre ; candidats hors jeu seulement, 2026-11-13 : Retours\Q-arquebusier-modele.md) [mannequin]
 - Arbalétrier squelette Légions [mannequin]
 - Cavalier léger Aube (mannequin fixe, sans animation) [mannequin]
 - Cavalier funeste Légions [mannequin]
@@ -144,9 +144,9 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Icônes T_Icon (allié, ennemi, aura, bannière, serrez les rangs, emblème du héros ; dessinées par script) [style]
 - Icônes des boutons de la grille de commandes (cellules à texte, l'icône est prévue par le code mais aucune texture) [rien]
 - Portraits d'unités / de bâtiments (seul l'emblème du héros existe) [rien]
-- Icônes des ressources (nourriture, bois, pierre, or) [rien]
+- Icônes des ressources (nourriture, bois, pierre, or) [rien] ; sur les cases du Marché (D781), un carré de la couleur de la ressource en tient lieu (galadriel-tab, 2026-11-13)
 - Icônes des technologies [rien]
-- Icônes des talents (arbre du héros) : aujourd'hui des lettres / du texte, l'utilisateur veut de vraies icônes comme celles des capacités (2026-11-11) [rien]
+- Icônes des talents (arbre du héros) : aujourd'hui des lettres / du texte, l'utilisateur veut de vraies icônes comme celles des capacités (2026-11-11) [rien] ; 24 icônes dessinées hors jeu (galadriel-tab b711090, Tools/Editor/make_talent_icons.py, Q-talents-icons), pas encore dans le jeu
 - Minimap (résolution) [style]
 - Curseurs (curseur système, croix pour attaque-déplacement) [style]
 - Bandeau de fin de partie [style]
