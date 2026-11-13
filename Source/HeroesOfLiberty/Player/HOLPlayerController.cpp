@@ -36,6 +36,7 @@
 #include "Net/UnrealNetwork.h"
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLSignalSubsystem.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
@@ -4983,6 +4984,58 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 	{
 		ServerDuelAnswer(bAccept);
 	}
+}
+
+void AHOLPlayerController::RequestSignal(const int32 Kind, const FVector& Location)
+{
+	// A pure spectator places none (it has no seat); the board refuses the rest (a defeated player, the rate).
+	if (!IsSpectator())
+	{
+		ServerPostSignal(Kind, Location);
+	}
+}
+
+void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, const FVector Location)
+{
+	// The player's own slot only (D288); the script's board decides (HOLSignal::Post), then each seat that sees it receives it.
+	UWorld* World = GetWorld();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	UHOLSignalSubsystem* Board = UHOLSignalSubsystem::Find(World);
+	if (!HOLPlayerState || !GameState || !Board)
+	{
+		return;
+	}
+	const int32 Sender = HOLPlayerState->GetPlayerIndex();
+	const FHOLSignalBookInput Book = UHOLSignalSubsystem::ReadBook(World);
+	const int32 NowMs = static_cast<int32>(World->GetTimeSeconds() * 1000.0);
+	const int32 Result = Board->PostNow(Book, Sender, GameState->IsSlotDefeated(Sender), Kind, Location, NowMs);
+	UE_LOG(LogHOLMatch, Display, TEXT("Signal: slot %d kind %d answer %d"), Sender, Kind, Result);
+	if (Result != 0)
+	{
+		return;
+	}
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		AHOLPlayerController* Viewer = Cast<AHOLPlayerController>(It->Get());
+		const AHOLPlayerState* ViewerState = Viewer ? Viewer->GetHOLPlayerState() : nullptr;
+		if (!Viewer)
+		{
+			continue;
+		}
+		const int32 ViewerSlot = ViewerState ? ViewerState->GetPlayerIndex() : INDEX_NONE;
+		const bool bSpectator = UHOLSignalSubsystem::IsSignalSpectator(World, ViewerSlot, Viewer->IsSpectator());
+		if (Board->SeesNow(Book, Sender, ViewerSlot, bSpectator))
+		{
+			Viewer->ClientReceiveSignal(Sender, Kind, Location);
+		}
+	}
+}
+
+void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender, const int32 Kind, const FVector Location)
+{
+	++NumReceivedSignals;
+	UE_LOG(LogHOLMatch, Display, TEXT("Signal: received kind %d from slot %d at (%.0f, %.0f)"), Kind, Sender, Location.X, Location.Y);
 }
 
 void AHOLPlayerController::RequestStance(const int32 TargetSlot, const int32 Stance)

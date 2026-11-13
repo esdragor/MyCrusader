@@ -541,6 +541,12 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
 	void RequestStance(int32 TargetSlot, int32 Stance);
 
+	/** SG2 (D386): the player places a map signal of Kind (HOLSignal: 0 neutral, 1 attack... 5 scout) at Location. */
+	void RequestSignal(int32 Kind, const FVector& Location);
+
+	/** SG2: the signals this seat received so far. */
+	int32 GetNumReceivedSignals() const { return NumReceivedSignals; }
+
 	/** D5 (D371): the player lets the player at TargetSlot see what he sees (bShare), or stops (allies only; the server checks it). */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
 	void RequestShareVision(int32 TargetSlot, bool bShare);
@@ -842,6 +848,17 @@ private:
 	void ServerDiplomacyStance(int32 TargetSlot, int32 Stance);
 	UFUNCTION(Server, Reliable)
 	void ServerDiplomacyVision(int32 TargetSlot, bool bShare);
+
+	/** SG2 (D386): the server's board takes the signal (HOLSignal::Post) and sends it to the seats that see it (HOLSignal::Sees). */
+	UFUNCTION(Server, Reliable)
+	void ServerPostSignal(int32 Kind, FVector Location);
+
+	/** SG2: a signal this seat sees (its own, a mutual ally's, or any as a spectator); SG3 draws it. */
+	UFUNCTION(Client, Reliable)
+	void ClientReceiveSignal(int32 Sender, int32 Kind, FVector Location);
+
+	/** SG2: the signals this seat received so far (a test reads it; SG3 draws them). */
+	int32 NumReceivedSignals = 0;
 
 	UPROPERTY(Transient)
 	TObjectPtr<AHOLRTSCamera> RTSCamera;
