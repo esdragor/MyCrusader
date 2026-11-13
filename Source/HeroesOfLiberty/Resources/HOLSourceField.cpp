@@ -20,13 +20,23 @@ namespace UE::HeroesOfLiberty::Resources
 	const TCHAR* MattePath = TEXT("/Game/Rendering/M_MatteColor.M_MatteColor");
 	const FName ColorParameter(TEXT("Color"));
 
-	// The colours of the trees of Plain's grove (create_match_map.py), so that the two kinds of tree match.
-	const FLinearColor TrunkColor(0.22f, 0.15f, 0.09f);
-	const FLinearColor CrownColor(0.10f, 0.22f, 0.08f);
-	const FLinearColor BushColor(0.12f, 0.24f, 0.07f);
-	const FLinearColor BerryColor(0.55f, 0.04f, 0.05f);
-	const FLinearColor StoneColor(0.46f, 0.45f, 0.44f);
-	const FLinearColor GoldColor(0.83f, 0.62f, 0.10f);
+	// The styles chosen by the user in the scenario resources_compare (2026-11-11): tree C, berry bush A, stone and gold veins A.
+	// Colours and sizes are those of Script/Visual/HOLResourceReview.as (the review tool, kept for memory); Seen = the radius and
+	// height (cm) of the source the style was shown at there.
+	const FLinearColor TreeBark(0.07f, 0.04f, 0.02f);
+	const FLinearColor TreeCrown(0.16f, 0.42f, 0.07f);
+	const FLinearColor BushLeaf(0.05f, 0.28f, 0.05f);
+	const FLinearColor BerryRed(0.60f, 0.03f, 0.03f);
+	const FLinearColor StoneRock(0.20f, 0.20f, 0.22f);
+	const FLinearColor StoneOre(0.50f, 0.54f, 0.62f);
+	const FLinearColor GoldRock(0.16f, 0.13f, 0.09f);
+	const FLinearColor GoldOre(0.95f, 0.62f, 0.04f);
+	// The farm field keeps the look the berry bush had before (green flat dome, red patch).
+	const FLinearColor FieldGreen(0.12f, 0.24f, 0.07f);
+	const FLinearColor FieldRed(0.55f, 0.04f, 0.05f);
+	const FVector2D TreeSeen(60.f, 750.f);
+	const FVector2D BushSeen(110.f, 160.f);
+	const FVector2D VeinSeen(300.f, 300.f);
 
 	/** A source's turn and size, drawn from its ground point: the same on every machine, and a forest is not a grid. */
 	void GetVariation(const FVector& Location, float& OutYaw, float& OutScale)
@@ -150,7 +160,8 @@ int32 AHOLSourceField::GetNumNavCylinders() const
 
 float AHOLSourceField::GetDrawnRadius(const FHOLSourceTypeRow& Type)
 {
-	// The widest piece of the provisional shapes below (a final mesh is drawn about as wide as its body).
+	// The widest piece of the provisional shapes below (a final mesh is drawn about as wide as its body). Kept at 2 radii for the
+	// poplar of tree style C too (its crown is 4 radii wide): the selection aims at the trunk's side, as before (2026-11-12).
 	const float WidthInRadii = 2.f;
 	return Type.Radius * WidthInRadii * 0.5f;
 }
@@ -164,29 +175,50 @@ TArray<AHOLSourceField::FPiece> AHOLSourceField::MakeProvisionalPieces(const EHO
 	{
 		Pieces.Add({ Mesh, Offset, Size, BottomZ, Yaw, Color });
 	};
+	// A piece in the centimetres of Script/Visual/HOLResourceReview.as, where the style was shown on a source of radius / height
+	// Seen (X, Y): turned into the source's measures, so that the small, medium and big veins keep the shape.
+	auto AddSeen = [&Add](UStaticMesh* Mesh, const FVector2D& OffsetCm, const FVector& SizeCm, const float BottomCm, const float Yaw,
+		const FLinearColor& Color, const FVector2D& Seen)
+	{
+		Add(Mesh, OffsetCm / Seen.X, FVector(SizeCm.X / Seen.X, SizeCm.Y / Seen.X, SizeCm.Z / Seen.Y), static_cast<float>(BottomCm / Seen.Y), Yaw, Color);
+	};
 	switch (Resource)
 	{
 	case EHOLResource::Wood:
-		// D297: a trunk and a green cone; the cone is wider than the body, so that a forest reads as one canopy, and starts
-		// above a Peasant's head (2.7 m), so that one gathering at its foot is seen under it.
-		// M-Q10 (the user, 2026-10-30): a third lower than before (trunk 0.45 -> 0.30, crown 0.6 -> 0.40, its base 0.4 -> 0.27), as wide as
-		// M-Q9 left it (crown 2 radii, trunk 0.5): thin little trees, many of them.
-		Add(CylinderMesh, FVector2D::ZeroVector, FVector(0.5f, 0.5f, 0.30f), 0.f, 0.f, TrunkColor);
-		Add(ConeMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 0.40f), 0.27f, 0.f, CrownColor);
+		// Style C of resources_compare (the user, 2026-11-11): a poplar, thin trunk and tall light-green egg crown. Replaces the trunk
+		// and cone of D297 / M-Q10. Shown at 7.5 m, the crown from 1.1 m and 2.4 m wide (Q-resources-tree-size: size kept as seen).
+		AddSeen(CylinderMesh, FVector2D::ZeroVector, FVector(50.f, 50.f, 200.f), 0.f, 0.f, TreeBark, TreeSeen);
+		AddSeen(SphereMesh, FVector2D::ZeroVector, FVector(240.f, 240.f, 640.f), 110.f, 0.f, TreeCrown, TreeSeen);
 		break;
 	case EHOLResource::Food:
-		// A bush with red berries on top.
-		Add(SphereMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 1.f), 0.f, 0.f, BushColor);
-		Add(SphereMesh, FVector2D(0.1f, -0.1f), FVector(1.3f, 1.3f, 0.45f), 0.62f, 0.f, BerryColor);
+		if (Type.Endless)
+		{
+			// A farm field (endless): its flat parcel as before (resources_compare did not show it).
+			Add(SphereMesh, FVector2D::ZeroVector, FVector(2.f, 2.f, 1.f), 0.f, 0.f, FieldGreen);
+			Add(SphereMesh, FVector2D(0.1f, -0.1f), FVector(1.3f, 1.3f, 0.45f), 0.62f, 0.f, FieldRed);
+			break;
+		}
+		// Style A of resources_compare: a green dome and seven red berries around it (the berries 1.7 times their first size).
+		AddSeen(SphereMesh, FVector2D::ZeroVector, FVector(220.f, 220.f, 160.f), -10.f, 0.f, BushLeaf, BushSeen);
+		for (int32 Berry = 0; Berry < 7; ++Berry)
+		{
+			const float Angle = FMath::DegreesToRadians(Berry * 360.f / 7.f);
+			const float Around = 92.f * (1.f - 0.18f * (Berry % 3));
+			const float Size = 30.f * 1.7f;
+			AddSeen(SphereMesh, FVector2D(FMath::Cos(Angle) * Around, FMath::Sin(Angle) * Around), FVector(Size), 70.f + 14.f * (Berry % 3) - 0.5f * Size,
+				0.f, BerryRed, BushSeen);
+		}
 		break;
 	case EHOLResource::Stone:
 	case EHOLResource::Gold:
 	{
-		// A heap of three blocks, grey or golden.
-		const FLinearColor& Color = Resource == EHOLResource::Gold ? GoldColor : StoneColor;
-		Add(CubeMesh, FVector2D(-0.3f, -0.2f), FVector(1.1f, 0.9f, 0.6f), 0.f, 15.f, Color);
-		Add(CubeMesh, FVector2D(0.3f, 0.15f), FVector(0.9f, 0.8f, 1.f), 0.f, -20.f, Color);
-		Add(CubeMesh, FVector2D(-0.05f, 0.5f), FVector(0.7f, 0.6f, 0.45f), 0.f, 40.f, Color);
+		// Style A of resources_compare: three cubes, the biggest of the rock's colour, two of the ore's (grey-blue or gold).
+		const bool bGold = Resource == EHOLResource::Gold;
+		const FLinearColor& Rock = bGold ? GoldRock : StoneRock;
+		const FLinearColor& Ore = bGold ? GoldOre : StoneOre;
+		AddSeen(CubeMesh, FVector2D::ZeroVector, FVector(300.f, 300.f, 260.f), 0.f, 20.f, Rock, VeinSeen);
+		AddSeen(CubeMesh, FVector2D(150.f, -120.f), FVector(220.f, 220.f, 200.f), 0.f, 50.f, Ore, VeinSeen);
+		AddSeen(CubeMesh, FVector2D(-140.f, 100.f), FVector(180.f, 180.f, 180.f), 0.f, -15.f, Ore, VeinSeen);
 		break;
 	}
 	}

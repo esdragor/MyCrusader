@@ -1,5 +1,5 @@
-# Le Marché (M5) : A Z E = ACHETER nourriture, bois, pierre avec 100 d'or ; Q S D = VENDRE 100 de nourriture, bois, pierre contre de l'or (retour de l'utilisateur 2026-11-01), au cours commun (D84, D582)
-# Plain, toi (slot 0) contre une IA (slot 1), market.json (copie de tiers.json) : 5 Paysans et un héros chacun. Un Marché terminé t'est posé près du forum (triche), et 2000 de chaque ressource.
+﻿# Le Marché (M5) : A Z E = ACHETER nourriture, bois, pierre avec 100 d'or ; Q S D = VENDRE 100 de nourriture, bois, pierre contre de l'or (retour de l'utilisateur 2026-11-01), au cours commun (D84, D582)
+# Plain, toi (slot 0) contre une IA (slot 1), market.json (copie de tiers.json) : 5 Paysans et un héros chacun. Un Marché terminé t'est posé près du forum (triche), et +2000 de chaque ressource (200 de depart + 2000 = 2200 a l ecran).
 # Cours de départ (tableau Market.csv, MK-Q1 = C) : nourriture 80, bois 80, pierre 120, or 100 ; taxe 30 % ; le cours bouge de 3 points par lot de 100 et revient d'1 point toutes les 10 s.
 # Chaque case affiche toujours 100 de ce qu'on donne : acheter = « 100 or = X » (X = ressource reçue), vendre = « 100 = Y or ». Chaque temps attend la touche Entrée (waitkey).
 waitlog Starting hero of slot 0 spawned at
@@ -23,7 +23,10 @@ capture market_bought
 hol.Select.Grid 5
 waitlog Market: slot 0 sold 1 lots of resource 1
 frames 10
+hol.HUD.Report 1
+waitlog HUD overlap:
 capture market_sold
+hol.Test.Sanity
 note 2. Le scénario vient d'acheter du bois avec 100 d'or (Z) puis d'en vendre 100 (S) : le stock du haut a bougé, et les cases de bois ont changé (le cours monte quand on achète, baisse quand on vend).
 waitkey Entrée : à toi, essaie A Z E (acheter) et Q S D (vendre), ou clique sur les cases
 note 3. Achète plusieurs fois du bois (Z) : chaque achat de 100 d'or rapporte un peu moins de bois (96, 92, 88...). Vends du bois (S) plusieurs fois : le gain baisse (56, 53, 51...). Maj + case = 500 d'un coup (5 lots). Une case que le stock ne paie pas est grisée et le clic dit ce qui manque.

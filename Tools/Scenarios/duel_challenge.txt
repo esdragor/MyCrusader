@@ -42,7 +42,8 @@ waitlog AI duel answer:
 wait 1
 hol.Select.Report
 waitlog Duel rings: none
-capture duel_answer
 panel show
+frames 30
+capture duel_answer
 note 3. Pendant ces secondes une petite fenêtre en haut au centre montrait "Défi envoyé au héros du joueur 2", la barre et les secondes qui descendent (D8 : le jeu ne s'arrête pas, aucun bouton pour celui qui défie). L'IA répond après 2 à 3 s (journal : "AI duel answer: accept|refuse").
 note 4. À forces égales l'IA Normale refuse presque toujours (elle exige 60 % de chances, 48 à 52 % ici) : la fenêtre disparaît. Pour voir l'acceptation, lance le scénario duel_challenge_accept.
