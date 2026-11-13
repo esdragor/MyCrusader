@@ -14,4 +14,5 @@ Recommandation : **A** (lisible à 32 px, même fond que les capacités, la fami
 
 Ce qui est fait : `Tools/Editor/make_talent_icons.py` (branche `galadriel-tab`) dessine les 24 PNG et cette planche. Ce qui reste après ta réponse : importer les textures (éditeur), afficher l'icône dans le bloc du héros et dans l'Arbre de talents (script seul, à la place de la lettre actuelle), rejouer `talents_icons_compare`. Valeur par défaut si rien n'est répondu : **A**.
 
-Réponse: A trancher (l'utilisateur veut en discuter ; rien n'est décidé ; défaut inchangé, aucune icône n'est dans le jeu). (réponse donnée dans la conversation, 2026-11-13 ~17:35)
+Réponse (17:45) : OK = la recommandation A (bordure de la couleur de la famille), les 24 icônes telles que dessinées ; retouches des dessins « Pas de l'Aube » et « Escorte du champion » non demandées. (donnée dans la conversation)
+Réponse (17:35, remplacée) : A trancher.
