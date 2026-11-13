@@ -1,5 +1,6 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Simulation/HOLRageVisual.h"
 #include "Player/HOLSelectionMarkers.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -727,7 +728,24 @@ void AHOLSelectionMarkers::UpdateAuraRings()
 				}
 			}
 		}
-		const FVector2D HeroPoint = Hero ? FVector2D(Hero->Location) : FVector2D::ZeroVector;
+		// L4 option B (hol.Rage.Visual 2): a necrotic ring on the ground under each Damned Warrior whose rage runs (the host's own state).
+			const int32 RageMode = HOLRageVisual::GetMode();
+			if (HOLRageVisual::HasRing(RageMode))
+			{
+				const FName WarriorType(TEXT("DamnedWarrior"));
+				const FLinearColor RageRingColor(0.62f, 0.04f, 0.14f);
+				for (const FHOLUnitView& View : Views)
+				{
+					int32 RageMs = 0;
+					int32 CooldownMs = 0;
+					if (View.TypeName == WarriorType && HOLRageVisual::GetRageState(World, View.UnitId, RageMs, CooldownMs) && HOLRageVisual::ShouldDrawRing(RageMode, RageMs))
+					{
+						AddCircle(FVector2D(View.Location), HOLRageVisual::RingRadius, HOLRageVisual::RingWidth, RageRingColor, View.Location.Z);
+						Parts.Add(FString::Printf(TEXT("rage (%.0f, %.0f)"), View.Location.X, View.Location.Y));
+					}
+				}
+			}
+			const FVector2D HeroPoint = Hero ? FVector2D(Hero->Location) : FVector2D::ZeroVector;
 		if (Hero)
 		{
 			AddCircle(HeroPoint, HOLHeroAbility::AuraRadius, AuraRingWidth, AuraRingColor, Hero->Location.Z);

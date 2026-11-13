@@ -11,8 +11,9 @@
 
 namespace
 {
-	TAutoConsoleVariable<int32> CVarRageVisual(TEXT("hol.Rage.Visual"), 0,
-		TEXT("How the Damned Warrior's necrotic rage is drawn (L4): 0 nothing (default), 1 body tint, 2 ring on the ground, 3 state on the rage cell, 4 tint + cell state."),
+	// Default 4 = A+C (Q-legions-warrior-rage-visual, the user's answer of 2026-11-11; ring B not kept).
+	TAutoConsoleVariable<int32> CVarRageVisual(TEXT("hol.Rage.Visual"), 4,
+		TEXT("How the Damned Warrior's necrotic rage is drawn (L4): 0 nothing, 1 body tint, 2 ring on the ground, 3 state on the rage cell, 4 tint + cell state (default)."),
 		ECVF_Default);
 }
 
