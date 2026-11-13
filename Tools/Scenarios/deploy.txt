@@ -46,6 +46,8 @@ frames 20
 hol.HUD.Report
 capture deploy_fire_hit
 notereset
+hol.Camera.FocusNear 4200 0
+frames 2
 hol.Select.ClickUnit -1
 waitlog Selection: Mangonel
 frames 10
