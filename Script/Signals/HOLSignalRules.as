@@ -57,10 +57,20 @@ namespace HOLSignal
 		return Kind >= 0 && Kind < KindCount;
 	}
 
-	// Viewer sees a signal of Sender: its own, or a mutual ally's (D386, D369). Never a Neutral or an Enemy.
+	// Answer of 2026-11-13 to Q-signals-spectators (A): a spectator sees every signal of every player, as it sees the whole map (it talks
+	// to the spectators only, D376: nothing leaks). A spectator is a pure spectator (no seat: Viewer may be -1) or a player defeated in
+	// free-for-all or Diplomacy; a defeated teammate of a team match is none (D784: its team's signals only). false = no signal at all.
+	const bool SpectatorsSeeAll = true;
+
+	// Viewer sees a signal of Sender: its own, or a mutual ally's (D386, D369), never a Neutral's or an Enemy's; a spectator
+	// (bViewerSpectator, the caller's input as for HOLChat) sees them all (SpectatorsSeeAll).
 	bool Sees(const FHOLDiplomacyBook& Book, int Sender, int Viewer, bool bViewerSpectator = false)
 	{
-		if (!HOLDiplomacy::InMatch(Book, Sender) || !HOLDiplomacy::InMatch(Book, Viewer))
+		if (!HOLDiplomacy::InMatch(Book, Sender))
+			return false;
+		if (bViewerSpectator)
+			return SpectatorsSeeAll;
+		if (!HOLDiplomacy::InMatch(Book, Viewer))
 			return false;
 		return Sender == Viewer || HOLDiplomacy::IsAlly(Book, Sender, Viewer);
 	}
