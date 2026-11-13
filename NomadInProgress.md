@@ -119,3 +119,11 @@ et distance minimale.
 - (2) UI de specialisation : AUCUNE (grep Specializ : rien dans HUD/UI, ni Source ni Script) : SP3 pas commence, rien a voir a l'ecran.
 - (3) groupes de Paysans : NON COMMENCES (fin de (1) apres 22:30, aucun C++ apres 22:45). Plan inchange (HALDIR-1113l).
 - git merge main (ec425ca, scenario quit verb + hol.Spec/hol.Signal) : c94b757 ; build PASS 35 s 22:34 ; quick_check du merge : voir rapport.
+
+## 2026-11-13 22:45-23:xx HALDIR-1113n (maps, C++)
+- Appels : |||||||||| |||||||||| |||||||||| |||||| (~36 a l'ecriture)
+- (1) « Population 0 / 0 » DIAGNOSTIC : `Source/HeroesOfLiberty/Buildings/HOLProductionSubsystem.cpp:519` (avant correctif) : `AdvanceQueues` sortait tot quand le monde n'a AUCUN batiment (« the stress test's maps ») ; la mise a jour de la population (fin de fonction, `PlayerState->SetPopulation`, l. ~618) n'etait jamais atteinte : utilises 0 (au lieu de 5), plafond 0. Depart standard : 5 / plafond du forum.
+- Test rouge a714e74 (`HOLStartingHeroTests.cpp` NomadSeat etendu : un AHOLPlayerState du slot 0, un pas de production, utilises Nomade == utilises standard (> 0)) VU ROUGE 22:50 (« to be 5, but it was 0 »). Correctif 2bde715 (sortie tot retiree : rien ne se produit sans batiment, la population est quand meme comptee). Build PASS 22:51.
+- Plafond du Nomade : GDD muet (D207 : le Roi apparait avec un travailleur ; rien sur le plafond) : Retours\Q-nomad-population.md [A REPONDRE] A (0 jusqu'au premier batiment, actuel, recommande) / B (plafond = population de depart tant qu'aucun batiment) / C (bonus fixe). Defaut A, AUCUN reglage ajoute (NON FAIT).
+- (2) groupes de Paysans : NON COMMENCES. SplitIntoGroups / NomadGroupClear / NomadMarginCm sont en Angelscript (Script/Nomad/HOLNomadRules.as:95, Script/Sites/HOLSiteOption.as:15-37) : aucun pont C++ -> script n'existe ; prochain agent : soit appeler le script depuis `SpawnSlotStart` (derriere bNomad), soit porter les 3 fonctions en C++ (test : NomadSeat, groupes >= 40 m l'un de l'autre D786, hors zone de site, egalite standard intacte).
+- (3) preflight nomad_start a rejouer apres le correctif : voir rapport.
