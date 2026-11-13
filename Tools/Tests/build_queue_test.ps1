@@ -22,7 +22,9 @@ foreach ($N in 'A', 'B', 'C', 'D', 'E', 'G', 'W', 'X', 'Y', 'Z') {
 }
 # HOL_FAKE_GATE (a file path): the fake build also waits until that file exists, so a scenario holds the slot as long as it
 # needs instead of racing a fixed sleep against the slow start of each build.ps1 (Get-CimInstance ~2 s per start).
-Set-Content (Join-Path $Tmp "fake.ps1") 'Start-Sleep -Seconds ([int]$env:HOL_FAKE_SECONDS); if ($env:HOL_FAKE_GATE) { $G = $env:HOL_FAKE_GATE; $End = (Get-Date).AddSeconds(120); while (-not (Test-Path $G) -and (Get-Date) -lt $End) { Start-Sleep -Milliseconds 300 } }; "fake build done"; exit 0'
+# HOL_FAKE_ACTIONS (a number N): the fake build prints UnrealBuildTool's action lines "[1/N] Compile ..." .. "[N/N] ..." (L91 B).
+Remove-Item Env:HOL_FAKE_ACTIONS -ErrorAction SilentlyContinue
+Set-Content (Join-Path $Tmp "fake.ps1") 'if ($env:HOL_FAKE_ACTIONS) { $N = [int]$env:HOL_FAKE_ACTIONS; 1..$N | ForEach-Object { "[$_/$N] Compile [x64] Fake$_.cpp" } }; Start-Sleep -Seconds ([int]$env:HOL_FAKE_SECONDS); if ($env:HOL_FAKE_GATE) { $G = $env:HOL_FAKE_GATE; $End = (Get-Date).AddSeconds(120); while (-not (Test-Path $G) -and (Get-Date) -lt $End) { Start-Sleep -Milliseconds 300 } }; "fake build done"; exit 0'
 $Fake = Join-Path $Tmp "fake.ps1"
 
 function New-Scenario($Name) {
@@ -217,21 +219,33 @@ if (-not $Only -or $Only -eq 't') {
 }
 
 if (-not $Only -or $Only -eq 's') {
-    # L91 (bilan 2026-11-12, L12-7): a build longer than 3 x the median duration of the earlier PASS builds of the SAME type
-    # (priority normal / merge) in BuildQueue.csv prints "BUILD LENT" and tags its CSV row (column load). Fake CSV: normal
-    # builds of 1-2 s, merge builds of 100 s; a 6 s fake build is slow as a normal build, not as a merge build.
-    Write-Host "[s] BUILD LENT (3 x median of the same type)"
+    # L91 (bilan 2026-11-12, L12-7; option B answered 2026-11-13): build.ps1 reads the UnrealBuildTool action count N (the
+    # "[n/N]" lines of build.log), writes "actions N" in the CSV column load, and compares the duration only with the earlier
+    # PASS builds of the SAME type (priority normal / merge) whose action count is close (N/2 .. 2N): more than 3 x their
+    # median => "BUILD LENT" (console + column load). Fake CSV: normal builds of 2 actions in 1-2 s, normal builds of 200
+    # actions in 100 s, merge builds of 100 s (no count). A 6 s build of 2 actions is slow; a 6 s build of 200 actions is not
+    # (the old type-only median, 51 s over the six normal rows, would see neither as slow).
+    Write-Host "[s] BUILD LENT (3 x median of the same type and a close UBT action count)"
     $S = New-Scenario s
     $Old = @("worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority,load")
-    foreach ($D in 1, 1, 2) { $Old += "wt_Z,2026-11-01 10:00:00,2026-11-01 10:00:01,2026-11-01 10:00:0$($D + 1),1,$D,PASS,`"`",normal,`"`"" }
+    foreach ($D in 1, 1, 2) { $Old += "wt_Z,2026-11-01 10:00:00,2026-11-01 10:00:01,2026-11-01 10:00:0$($D + 1),1,$D,PASS,`"`",normal,`"vm 10 GB; actions 2`"" }
+    foreach ($D in 100, 100, 100) { $Old += "wt_Z,2026-11-01 10:30:00,2026-11-01 10:30:01,2026-11-01 10:31:41,1,$D,PASS,`"`",normal,`"vm 10 GB; actions 200`"" }
     foreach ($D in 100, 100, 100) { $Old += "wt_Z,2026-11-01 11:00:00,2026-11-01 11:00:01,2026-11-01 11:01:41,1,$D,PASS,`"`",merge,`"`"" }
     $Old += "wt_Z,2026-11-01 12:00:00,,2026-11-01 12:00:05,5,0,SUPERSEDED,`"`",normal,`"`""
     Set-Content $S.Csv $Old -Encoding ASCII
+    $env:HOL_FAKE_ACTIONS = "2"
     Launch $S 'W' 6 @('-Wait')
-    Check ((Wait-Exit $S 'W' 90) -eq 0) "normal 6 s fake build ends PASS"
-    Check ((Out-Text $S 'W') -match 'BUILD LENT') "normal 6 s build vs median 1 s of the normal builds: console says BUILD LENT"
+    Check ((Wait-Exit $S 'W' 90) -eq 0) "normal 6 s fake build of 2 actions ends PASS"
+    Check ((Out-Text $S 'W') -match 'BUILD LENT') "normal 6 s build of 2 actions vs median 1 s of the 2-action builds: console says BUILD LENT"
     $RowW = @(Rows $S | Where-Object { $_.worktree -eq 'wt_W' })
-    Check ($RowW.Count -eq 1 -and $RowW[0].load -match 'BUILD LENT') "CSV row of the normal build tagged BUILD LENT (load), got: $($RowW.load)"
+    Check ($RowW.Count -eq 1 -and $RowW[0].load -match 'BUILD LENT' -and $RowW[0].load -match '(^|; )actions 2(;|$)') "CSV row of the 2-action build: 'actions 2' and BUILD LENT in load, got: $($RowW.load)"
+    $env:HOL_FAKE_ACTIONS = "200"
+    Launch $S 'A' 6 @('-Wait')
+    Check ((Wait-Exit $S 'A' 90) -eq 0) "normal 6 s fake build of 200 actions ends PASS"
+    Check ((Out-Text $S 'A') -notmatch 'BUILD LENT') "normal 6 s build of 200 actions vs median 100 s of the 200-action builds: no BUILD LENT"
+    $RowA = @(Rows $S | Where-Object { $_.worktree -eq 'wt_A' })
+    Check ($RowA.Count -eq 1 -and $RowA[0].load -match '(^|; )actions 200(;|$)' -and $RowA[0].load -notmatch 'BUILD LENT') "CSV row of the 200-action build: 'actions 200', not tagged, got: $($RowA.load)"
+    Remove-Item Env:HOL_FAKE_ACTIONS -ErrorAction SilentlyContinue
     Launch $S 'X' 6 @('-Wait', '-Priority', 'merge')
     Check ((Wait-Exit $S 'X' 90) -eq 0) "merge 6 s fake build ends PASS"
     Check ((Out-Text $S 'X') -notmatch 'BUILD LENT') "merge 6 s build vs median 100 s of the merge builds: no BUILD LENT"
@@ -241,6 +255,20 @@ if (-not $Only -or $Only -eq 's') {
     $S2 = New-Scenario s2
     Launch $S2 'Y' 3 @('-Wait')
     Check ((Wait-Exit $S2 'Y' 90) -eq 0 -and (Out-Text $S2 'Y') -notmatch 'BUILD LENT') "first build of an empty CSV: no BUILD LENT"
+    # no action count in this build's log: fall back to the minimal version (median of every earlier PASS of the type).
+    # An action count with no earlier PASS of a close count (old rows without 'actions'): no verdict.
+    $S3 = New-Scenario s3
+    $Old = @("worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority,load")
+    foreach ($D in 1, 1, 2) { $Old += "wt_Z,2026-11-01 10:00:00,2026-11-01 10:00:01,2026-11-01 10:00:0$($D + 1),1,$D,PASS,`"`",normal,`"`"" }
+    Set-Content $S3.Csv $Old -Encoding ASCII
+    Launch $S3 'B' 6 @('-Wait')
+    Check ((Wait-Exit $S3 'B' 90) -eq 0 -and (Out-Text $S3 'B') -match 'BUILD LENT') "6 s build without action lines vs old rows of 1-2 s: BUILD LENT (fallback on the type median)"
+    $RowB = @(Rows $S3 | Where-Object { $_.worktree -eq 'wt_B' })
+    Check ($RowB.Count -eq 1 -and $RowB[0].load -notmatch 'actions') "CSV row of the build without action lines: no 'actions' in load, got: $($RowB.load)"
+    $env:HOL_FAKE_ACTIONS = "2"
+    Launch $S3 'C' 6 @('-Wait')
+    Check ((Wait-Exit $S3 'C' 90) -eq 0 -and (Out-Text $S3 'C') -notmatch 'BUILD LENT') "6 s build of 2 actions, no earlier row with an action count: no BUILD LENT"
+    Remove-Item Env:HOL_FAKE_ACTIONS -ErrorAction SilentlyContinue
 }
 
 Get-Process powershell -ErrorAction SilentlyContinue | Out-Null
