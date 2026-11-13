@@ -6,7 +6,10 @@
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HAL/FileManager.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "HeroesOfLibertyGameModeBase.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSettings.h"
@@ -288,6 +291,80 @@ bool FHOLStartingUnitsAtPointTest::RunTest(const FString& Parameters)
 			const FString Where = FString::Printf(TEXT("unit %d (%s)"), Index, *A.TypeName.ToString());
 			TestEqual(*FString::Printf(TEXT("%s: same type"), *Where), B.TypeName, A.TypeName);
 			TestEqual(*FString::Printf(TEXT("%s: same owner"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
+			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadSeatTest, "HeroesOfLiberty.Match.StartingHero.NomadSeat",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// N2 (c)+(d): a slot's start through the game mode's own start (SpawnSlotStart, what SpawnMainCentres calls for each start),
+// two worlds from the same configuration, standard then Nomad (bNomad):
+// - standard: one building (the primary forum) of the slot, a complete Forum on the script board;
+// - Nomad: no building at all, the seat Nomad on the board (no complete Forum), and the very same units born (type, owner,
+//   place within 1 cm) as the standard start's by its forum: born from the start's point and the main centre's half body.
+bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 0;
+	const FTransform Start(FRotator(0.f, 90.f, 0.f), FVector(5000.0, 2000.0, 0.0));
+	TArray<FHOLUnitView> Born[2];
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		const bool bNomad = Way == 1;
+		const TCHAR* Name = bNomad ? TEXT("Nomad") : TEXT("Standard");
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
+		{
+			// The menu's configuration (one human in slot 0, the rule's starting Peasants and hero), Nomad or not.
+			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+			Config.bNomad = bNomad;
+			AHOLBuilding* Centre = AHeroesOfLibertyGameModeBase::SpawnSlotStart(*World, Config, Slot, Start);
+			Units->ServeBirthRequests();
+			int32 NumBuildings = 0;
+			for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+			{
+				NumBuildings += It->IsActorBeingDestroyed() ? 0 : 1;
+			}
+			TestEqual(*FString::Printf(TEXT("%s: buildings at the start"), Name), NumBuildings, bNomad ? 0 : 1);
+			TestEqual(*FString::Printf(TEXT("%s: a centre returned"), Name), Centre != nullptr, !bNomad);
+			if (Centre)
+			{
+				TestTrue(TEXT("Standard: the centre is the slot's primary forum"), Centre->IsPrimaryForum() && Centre->GetOwnerPlayer() == Slot);
+			}
+			TestEqual(*FString::Printf(TEXT("%s: a complete Forum on the board"), Name), UHOLSpecializationSubsystem::IsForumComplete(World, Slot), !bNomad);
+			TArray<uint32> Ids;
+			Units->GetAllUnitIds(Ids);
+			for (const uint32 Id : Ids)
+			{
+				FHOLUnitView View;
+				if (Units->GetUnitView(Id, View))
+				{
+					Born[Way].Add(View);
+				}
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+	const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(FHOLMatchConfig::MakeDefault(), GetDefault<UHOLMatchSettings>()->StartingPeasants);
+	TestTrue(TEXT("Standard: its starting Peasants (and hero) born"), NumPeasants > 0 && Born[0].Num() >= NumPeasants);
+	if (TestEqual(TEXT("Nomad: as many born as the standard start"), Born[1].Num(), Born[0].Num()))
+	{
+		for (int32 Index = 0; Index < Born[0].Num(); ++Index)
+		{
+			const FHOLUnitView& A = Born[0][Index];
+			const FHOLUnitView& B = Born[1][Index];
+			const FString Where = FString::Printf(TEXT("unit %d (%s)"), Index, *A.TypeName.ToString());
+			TestEqual(*FString::Printf(TEXT("%s: same type"), *Where), B.TypeName, A.TypeName);
+			TestEqual(*FString::Printf(TEXT("%s: same owner (slot 0)"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
 			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
 		}
 	}
