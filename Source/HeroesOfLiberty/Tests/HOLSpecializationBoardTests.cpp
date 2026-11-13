@@ -3,6 +3,7 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLMatchConfig.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Misc/AutomationTest.h"
@@ -160,6 +161,55 @@ bool FHOLSpecializationNomadStockTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("Nomad: the wood plus the secondary centre's 150 (D783)"), Nomad.Wood, 210 + 150);
 	TestEqual(TEXT("Nomad: the stone plus the secondary centre's 400 (D783)"), Nomad.Stone, 220 + 400);
 	TestEqual(TEXT("Nomad: the gold unchanged"), Nomad.Gold, 230);
+
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// N2 step (b) (NomadInProgress.md; D354): a Nomad seat whose last Peasant dies before its first complete Forum is defeated
+// (EHOLDefeatReason::Nomad, HOLNomad::IsDefeated read on the script board through AHOLGameState::HandleNomadPeasants):
+// - a standard seat (0) with no Peasant left is NOT defeated (the standard match does not change);
+// - a Nomad seat (1) with Peasants left is not; with none it is, for the reason Nomad;
+// - a Nomad seat (2) whose first Forum was complete is not, even with no Peasant left (the normal rules for good).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSpecializationNomadDefeatTest, "HeroesOfLiberty.Specialization.NomadDefeat", UE::HeroesOfLiberty::Tests::SpecializationBoard::Flags)
+
+bool FHOLSpecializationNomadDefeatTest::RunTest(const FString& Parameters)
+{
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (TestNotNull(TEXT("game state"), GameState) && TestNotNull(TEXT("the script board of specializations"), Board))
+	{
+		FHOLMatchConfig Config;
+		Config.Slots.SetNum(FHOLMatchConfig::MaxSlots);
+		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
+		{
+			Config.Slots[Slot].State = EHOLSlotState::Human;
+			Config.Slots[Slot].ColorIndex = Slot;
+		}
+		GameState->InitVictory(Config);
+		Board->SetNomadNow(1, true);
+		Board->SetNomadNow(2, true);
+		Board->NoteForumCompleteNow(2);
+
+		TestFalse(TEXT("A standard seat with no Peasant left: no Nomad defeat"), GameState->HandleNomadPeasants(0, 0));
+		TestFalse(TEXT("It is still in the match"), GameState->IsSlotDefeated(0));
+
+		TestFalse(TEXT("A Nomad seat with forum complete once, no Peasant left: no defeat"), GameState->HandleNomadPeasants(2, 0));
+		TestFalse(TEXT("It is still in the match"), GameState->IsSlotDefeated(2));
+
+		TestFalse(TEXT("A Nomad seat with 2 Peasants left: no defeat"), GameState->HandleNomadPeasants(1, 2));
+		TestFalse(TEXT("It is still in the match"), GameState->IsSlotDefeated(1));
+		TestTrue(TEXT("Its last Peasant dies before its first Forum: defeated"), GameState->HandleNomadPeasants(1, 0));
+		TestEqual(TEXT("For the reason Nomad"), static_cast<int32>(GameState->GetDefeatReason(1)), static_cast<int32>(EHOLDefeatReason::Nomad));
+		TestEqual(TEXT("The reason's name"), FString(AHOLGameState::GetReasonName(GameState->GetDefeatReason(1))), FString(TEXT("Nomad")));
+	}
 
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

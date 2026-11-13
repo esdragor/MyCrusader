@@ -63,6 +63,17 @@ bool UHOLSpecializationSubsystem::HasCompleteForumNow(const int32 Slot)
 	return SeatHasCompleteForum(Slot);
 }
 
+bool UHOLSpecializationSubsystem::IsNomadDefeated(const UWorld* World, const int32 Slot, const int32 PeasantCount)
+{
+	// D354: only the script board knows a Nomad seat; a standard seat (or no board) is never defeated by its Peasants.
+	if (!World || Slot < 0)
+	{
+		return false;
+	}
+	UHOLSpecializationSubsystem* Board = Find(World);
+	return Board && Board->SeatIsNomadDefeated(Slot, PeasantCount);
+}
+
 FHOLResources UHOLSpecializationSubsystem::StartingStock(const UWorld* World, const bool bNomad, const FHOLResources& Standard)
 {
 	// Without the Nomad option the standard stock itself (D283): nothing else is read.

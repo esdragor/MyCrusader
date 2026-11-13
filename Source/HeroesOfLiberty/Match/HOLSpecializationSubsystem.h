@@ -49,6 +49,9 @@ public:
 	/** HOLNomad::HasCompleteForum of Slot's state: true for a standard seat, and true without script. */
 	bool HasCompleteForumNow(int32 Slot);
 
+	/** HOLNomad::IsDefeated of Slot's state with PeasantCount Peasants left (D354): false for a standard seat, and false without script. */
+	static bool IsNomadDefeated(const UWorld* World, int32 Slot, int32 PeasantCount);
+
 	/**
 	 * The stock a seat starts with (N2, answer A of Q-nomad-forum Q1): Standard itself without bNomad (nothing else read);
 	 * with bNomad, HOLNomad::StartingAmount of each resource plus the secondary centre's price (HOLSecondaryCentre::Cost, D783)
@@ -119,6 +122,10 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
 	bool SeatHasCompleteForum(int32 Slot);
 	virtual bool SeatHasCompleteForum_Implementation(int32 Slot) { return true; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	bool SeatIsNomadDefeated(int32 Slot, int32 PeasantCount);
+	virtual bool SeatIsNomadDefeated_Implementation(int32 Slot, int32 PeasantCount) { return false; }
 
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
 	int32 NomadStartingAmount(int32 Resource, int32 StandardAmount);
