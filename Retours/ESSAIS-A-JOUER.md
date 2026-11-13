@@ -4,9 +4,9 @@
 
 Version précédente (matin du 2026-11-13) : `Docs\Archive\Retours_2026-11-13_soir\ESSAIS-A-JOUER_2026-11-13_matin.md`. Essais joués à 14:20 (`resources_compare` = arbre C, `legions_roster_gesture` = OK) : reportés et archivés dans `Docs\Archive\Retours_2026-11-13\`.
 
-## État réel au 2026-11-13 16:1x
-- **Binaire de la copie principale PÉRIMÉ** : `UnrealEditor-HeroesOfLiberty.dll` du 2026-11-11 11:06, alors que main (ecff29a) porte du C++ jusqu'au 2026-11-13 13:05 (1dc24bc, fusion groupée 481bf43). Recompiler la copie jouée avant tout pré-vol.
-- **Fusionnées dans main** : fog, maps, net-playtest, visual, d751-root, galadriel-tab. **Non fusionnées** : tiers (Elrond), hero-j8-close (Celeborn), heal-sleep (Arwen, sons).
+## État réel au 2026-11-13 21:4x
+- **Binaire de la copie principale PÉRIMÉ** : `UnrealEditor-HeroesOfLiberty.dll` du 2026-11-11 11:06, alors que main (15bbd25) porte le C++ des fusions groupées du soir. Recompiler la copie jouée avant tout pré-vol (ou jouer depuis un worktree à jour de main, comme Faramir).
+- **Fusionnées dans main** : fusion groupée n°1 19:29 (dc67a16 : fog, maps, d751-root, visual, galadriel-tab, net-playtest, hero-j8-close), n°2 21:23 (15bbd25 : maps, net-playtest, tiers) ; heal-sleep aussi dans main. Les mentions « non fusionnée » de tiers / hero-j8-close plus bas sont donc périmées (E-deploy, E-spear_arm : statut à revoir par la recette). **Non fusionnée** : d751-root actuel (« Faction choice », autre session). RIEN POUSSÉ.
 - **Accord de l'utilisateur du jour** : `Content/Audio/Candidates/` exclu par `.git/info/exclude` (partagé par tous les worktrees : le pré-vol ne doit plus échouer sur ces 294 fichiers non commités) ; `GDD.md` commité (D792, c17f8b1). Les sons candidats sont copiés dans le worktree qui joue l'essai (Faramir depuis 19:42, copie d'Arwen).
 
 ## Fiches encore dans Retours\ (8 essais, 9 fiches E-* avec l'index audio), aucune donnée
