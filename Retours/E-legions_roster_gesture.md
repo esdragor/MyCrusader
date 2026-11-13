@@ -1,4 +1,16 @@
-# [NE PAS JOUER] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
+# [À ESSAYER] E-legions_roster_gesture : les noms des Legions (FR, EN, JA) apparaissent quand on clique les batiments et les unites, l'Aube garde ses noms
+
+## PRE-VOL 2026-11-13 10:53-10:55 (FARAMIR-1113, sans C++, worktree Faramir = main 2503fed + merge 25f5094, dll fraiche) : VU A L'ECRAN
+preflight.ps1 legions_roster_gesture -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir : PASS (103 s ; sequence 188 etapes « done in 26.4 s », ready : l'etape 41 « jamais venu » ne se produit plus ; section 6 lancement utilisateur OK ; WARN : pas de ligne Sanity). Les 9 PNG du .look ouverts (3 planches) et vus :
+- barracks : Caserne / Vous / 1500, grille A Lancier squelette, Z Garde noire, E Guerrier damne (le defaut « Damned Warrior » en FR du 2026-11-11 est CORRIGE)
+- blackguard : Garde noire 155/155, attaque 12, armures 4/4/2, 7 m/s ; rider : Cavalier funeste 120/120, 8,8 m/s
+- aube_unit : Lancier rouge (IA Normal 2) 80/80 : nom d'Aube ; aube_barracks : Caserne rouge sans grille
+- en_barracks : Barracks / You, Skeleton Spearman, Black Guard, Damned Warrior ; en_ram : Bone Ram 400/400, « Building attack 60 » (en anglais maintenant)
+- ja_barracks : 兵舎 / あなた, スケルトン槍兵, 黒衛兵, 呪われた戦士 ; ja_ram : 骨の破城槌 400/400
+GESTE: interne (hol.Select.* ; l'objet est l'AFFICHAGE des noms, l'utilisateur clique lui-meme) ; SON: sans objet ; branches: aucune
+Lancer UNE commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 legions_roster_gesture -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir
+Duree : environ 1 min. Reponse attendue : OK, BUG: ... ou REGLAGE: ...
+NON VERIFIE : vrai clic de souris (gestes internes) ; traduction japonaise a relire ; les sections ci-dessous sont l'historique.
 
 STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : binaire de la copie jouée périmé (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilée et que preflight.ps1 legions_roster_gesture -Root <cette copie> complet PASS. Historique, plus valable : vu à l'écran le 2026-11-11 (rejoué par l'intégrateur sur main fusionné : 9 PNG ouverts en 3 planches ; Caserne des Légions : grille Lancier squelette (A) / Garde noire (Z) ; bloc Garde noire et Cavalier funeste avec leurs stats ; Lancier d'Aube rouge nommé Lancier ; Caserne d'Aube sans grille Légions ; EN : Skeleton Spearman, Black Guard, Bone Ram ; JA : 兵舎, スケルトン槍兵, 黒衛兵, 骨の破城槌)
 GESTE: interne   (hol.Select.ClickGround / Grid / ClickUnit = commandes hol.*, pas de vraie souris ; l'objet de l'essai est l'AFFICHAGE des noms)
