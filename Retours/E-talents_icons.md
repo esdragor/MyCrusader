@@ -1,0 +1,17 @@
+# [À ESSAYER] E-talents_icons : chaque talent a son image (cadre A, Q-talents-icons), dans la fenêtre Arbre de talents et dans le bloc du héros
+
+STATUT : VU À L'ÉCRAN (les images dans l'Arbre et dans le bloc du héros ; les talents sont pris par le scénario)
+GESTE: interne (le scénario prend les trois talents par `hol.HUD.Click`, pas par ta souris ; à toi de cliquer une case de l'Arbre et une icône du bloc du héros)
+SON: non entendu (lancé avec -nosound)
+branches: galadriel-tab
+
+Ce qui change (REGLAGE talents_icons_compare, Q-talents-icons = A) : les lettres et pastilles-lettres B M P sont remplacées par 24 images de talents (style des capacités, cadre de la couleur de la famille : Gardien bleu, Capitaine or, Champion rouge). Arbre : image 32 px à gauche du nom de chaque case. Bloc du héros : une image par talent pris, sous la liste « Talents pris », à la taille des capacités (26 px).
+
+Pré-vol (2026-11-13 18:07, agent Galadriel, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel, branche galadriel-tab 7684ec7 sur main 90a1714) : `preflight.ps1 talents_icons_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel` PASS (57 s, 2 PNG). Premier passage 18:05 FAIL (le panneau des triches du scénario touchait le bloc du héros allongé par l'avis jaune « Talent pris : ... ») : le scénario attend désormais que l'avis s'efface (wait 8).
+PNG OUVERTS et vus :
+- talents_icons_window (passage de 18:05, mêmes pas avant cette capture) : les 24 cases portent leur image à gauche du nom ; Boucliers levés, Mains du guérisseur, Pas de l'Aube teintées or ; rangées 7 à 9 (verrouillées) en images et textes grisés.
+- talents_icons_hero_block (18:07) : sous « Talents pris (3) : Boucliers levés, Mains du guérisseur, Pas de l'Aube », trois images (bouclier, croix, chevrons) à la même taille que les trois capacités ; plus de lettres.
+NON VÉRIFIÉ : capture à 1280 x 720 (images de ~15 px à l'écran, lisibilité à 1080p non jugée par l'agent) ; info-bulle et clic sur une icône du bloc du héros non rejoués ; « Pas de l'Aube » (bouclier caché par les chevrons) et « Escorte du champion » (petits boucliers) gardent leur dessin, retouches non demandées.
+
+Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 talents_icons_compare -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
+Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
