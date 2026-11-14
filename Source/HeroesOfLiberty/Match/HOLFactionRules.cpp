@@ -208,6 +208,12 @@ namespace HOLFactionRules
 		return NAME_None;
 	}
 
+	TArray<FName> FTable::FindHolyTypes(const FName Key) const
+	{
+		// STUB (S3 red test first): no holy type read yet.
+		return {};
+	}
+
 	bool FTable::Allows(const FName ColumnValue, const FName Key) const
 	{
 		if (ColumnValue.IsNone() || ColumnValue == Common)
