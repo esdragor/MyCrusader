@@ -31,6 +31,8 @@ namespace HOLFactionRules
 		inline const FName Worker(TEXT("Worker"));
 		inline const FName Hero(TEXT("Hero"));
 		inline const FName MainCentre(TEXT("MainCentre"));
+		/** S3 of the Sacred Sites (D702): a unit type that takes a sacred site, besides the hero; several rows per faction, none at all = only the hero takes. */
+		inline const FName Holy(TEXT("Holy"));
 	}
 
 	/** The key of the `Faction` columns that every faction reads. */
@@ -71,6 +73,12 @@ namespace HOLFactionRules
 
 		/** The type that plays the role for the faction (its own row, else the Dawn's), or None. */
 		FName FindRoleType(FName Key, FName Role) const;
+
+		/**
+		 * S3 of the Sacred Sites (D702): the faction's holy unit types (the `Holy` rows; a faction without rows of its own reads the
+		 * Dawn's). A faction with rows but no `Holy` row has none: only its hero takes a site.
+		 */
+		TArray<FName> FindHolyTypes(FName Key) const;
 
 		/** Whether a `Faction` column value (`Common`, or keys joined by ';') includes the faction. */
 		bool Allows(FName ColumnValue, FName Key) const;

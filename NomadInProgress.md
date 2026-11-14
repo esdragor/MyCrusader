@@ -1,4 +1,4 @@
-# NomadInProgress.md : l'option Nomade (GDD § 14.1 et § 14.3 ; D207, D354, D402, avec D347, D536, D702)
+﻿# NomadInProgress.md : l'option Nomade (GDD § 14.1 et § 14.3 ; D207, D354, D402, avec D347, D536, D702)
 
 Ouvert le 2026-11-12 (séance autonome, HALDIR-1112g, worktree Haldir, branche `maps`, chapitre A3 du relevé du jour). Méthode des
 dossiers par feature : règles tirées du GDD, plan en étapes de 15 min, test rouge d'abord, au plus 2 questions
@@ -169,3 +169,4 @@ et distance minimale.
 - Question Retours\Q-nomad-forum-palier.md [A REPONDRE] (A defaut : page II case C toujours constructible ; B : seulement au palier II ; C : page III).
 - Scenario nomad_start adapte (65953a3) : vue large + minicarte, Z puis C, fondation ; gros plans Roi/heros retires (positions inconnues avant rejeu). NON REJOUE : prochain agent : play.ps1 nomad_start -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, preflight, PNG (minicarte : groupes eloignes ; page II case C non grisee ; fondation peut-etre dans le brouillard a (-14800,-2500) : verifier), puis E-nomad_start.
 
+- 2026-11-14 12:5x (docs, reponses de l'utilisateur) : Q-nomad-net = **A** (D799) : le serveur replique l'etat Nomade de chaque siege (booleen par siege dans l'etat de partie), le joueur distant voit la case Forum et son vrai prix ; ligne Haldir [ ] C++ ; reglage D797 (forum au palier 2) en cours HALDIR-1114e, Retours\Q-nomad-forum-palier.md ; fiche Q-nomad-net archivee dans Docs\Archive\Retours_2026-11-14_b\.

@@ -114,9 +114,7 @@ int32 UHOLSiteSubsystem::GetGoldPerMinute()
 
 bool UHOLSiteSubsystem::IsHolyType(const FName FactionKey, const FName UnitType)
 {
-	static const FName Monk(TEXT("Monk"));
-	static const FName LuminousMonk(TEXT("LuminousMonk"));
-	return FactionKey == HOLFactionRules::Dawn && (UnitType == Monk || UnitType == LuminousMonk);
+	return HOLFactionRules::GetTable().FindHolyTypes(FactionKey).Contains(UnitType);
 }
 
 bool UHOLSiteSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
@@ -275,14 +273,15 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 	const FHOLMatchConfig& Config = GameState->GetLaunchConfig();
 	const int32 Slots = FHOLMatchConfig::MaxSlots;
 	TArray<int32> TeamBySlot;
-	TArray<FName> FactionBySlot;
+	TArray<TArray<FName>> HolyBySlot;
 	TArray<FName> HeroTypeBySlot;
 	TArray<FName> WorkerTypeBySlot;
 	for (int32 Slot = 0; Slot < Slots; ++Slot)
 	{
 		const int32 Camp = HOLVictoryRules::GetCamp(Config, Slot);
 		TeamBySlot.Add(Camp != INDEX_NONE ? Camp : 1000 + Slot);
-		FactionBySlot.Add(HOLFactionRules::GetSlotFactionKey(Config, Slot));
+		// S3 (D702): the Holy rows of the faction table (Tools/Data/Factions.csv), read once a step for all the units.
+		HolyBySlot.Add(HOLFactionRules::GetTable().FindHolyTypes(HOLFactionRules::GetSlotFactionKey(Config, Slot)));
 		HeroTypeBySlot.Add(HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::Hero));
 		WorkerTypeBySlot.Add(HOLFactionRules::GetRoleTypeName(Config, Slot, HOLFactionRules::Roles::Worker));
 	}
@@ -296,14 +295,14 @@ void UHOLSiteSubsystem::OnStepEnded(const int64 StepIndex)
 	{
 		HOLSite::ResetCounts(Takers[Index], Disturbers[Index], Slots);
 	}
-	Units->ForEachLivingUnitWithType([this, Slots, &Takers, &Disturbers, &FactionBySlot, &HeroTypeBySlot, &WorkerTypeBySlot](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
+	Units->ForEachLivingUnitWithType([this, Slots, &Takers, &Disturbers, &HolyBySlot, &HeroTypeBySlot, &WorkerTypeBySlot](const uint32 UnitId, const FName TypeName, const uint8 Owner, const FVector& Location)
 	{
 		if (Owner >= Slots)
 		{
 			return;
 		}
 		const FVector2D Point(Location);
-		const bool bCanTake = TypeName == HeroTypeBySlot[Owner] || IsHolyType(FactionBySlot[Owner], TypeName);
+		const bool bCanTake = TypeName == HeroTypeBySlot[Owner] || HolyBySlot[Owner].Contains(TypeName);
 		const bool bIsPeasant = TypeName == WorkerTypeBySlot[Owner];
 		for (int32 Index = 0; Index < Sites.Num(); ++Index)
 		{

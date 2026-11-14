@@ -1,5 +1,7 @@
 # [À ESSAYER] E-nomad_start : une partie Nomade commence sans aucun bâtiment ; tes Paysans naissent DISPERSÉS en groupes, ton Roi avec l'un, ton héros avec un autre ; ton premier Forum se construit dès l'âge I (C) pour 150 bois + 400 pierre
 
+REGLAGE de l'utilisateur 2026-11-14 : D797, en cours (HALDIR-1114e)
+
 STATUT : VU À L'ÉCRAN (réserve : `preflight` sort FAIL (1) pour la SEULE raison connue `?? Content/Maps/Crown.umap` non suivi dans le worktree Haldir ; tout le reste OK, check PASS)
 GESTE: réel      (partie 4 : sélection des Paysans `hol.Select.Type Peasant`, touche de l'âge I `hol.Select.Grid 0`, touche C `hol.Select.Grid 10`, vrai clic gauche `hol.Select.LeftClickGround` ; parties 1-3 : on regarde seulement)
 SON: non entendu      (`-nosound` ; l'essai ne porte pas sur un son)
