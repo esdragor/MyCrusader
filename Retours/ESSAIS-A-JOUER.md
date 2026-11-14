@@ -32,3 +32,8 @@ Version précédente (matin du 2026-11-13) : `Docs\Archive\Retours_2026-11-13_so
 - **À jouer maintenant : 1** : `E-rocks_compare2.md` `[À ESSAYER]` (VU À L'ÉCRAN, GESTE interne, branches visual), avec sa question `Q-rocks_compare2.md` : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 rocks_compare2 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron` (réserve : pré-vol « lancement joueur » FAIL tant que Sauron n'est pas recompilé).
 - **Pas prêts** : `E-nomad_start.md` (réglage D797 : forum au palier 2, en cours HALDIR-1114e ; question `Q-nomad-forum-palier.md`) ; sons tour 4 (voix, tirs, cheval) en préparation par ARWEN-1114d.
 - Fusion groupée du jour : 12:41 main 0ae4a56, puis net-playtest (main dd2a053, docs 154cf2b). RIEN POUSSÉ.
+
+## Clôture du 2026-11-14 13:4x (main f539041, 3 fusions groupées, RIEN POUSSÉ)
+- Répondus et archivés dans `Docs\Archive\Retours_2026-11-14_c\` : rocks_compare2 + Q-rocks_compare2 (D802 : A, C, D aimés), Q-nomad-forum-palier (D803 : A), sons tour 4 barracks / range / stable (D801 : rejetés, tour 5 à refaire avec des sons naturels).
+- **À jouer maintenant : 1** : `E-nomad_start.md` `[À ESSAYER]` (VU À L'ÉCRAN, GESTE interne, SON non entendu ; worktree Haldir, maps ef6fc88 dans main) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 nomad_start -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
+- Les mentions « À jouer maintenant : rocks_compare2 » et « Pas prêts : nomad_start » plus haut sont périmées.

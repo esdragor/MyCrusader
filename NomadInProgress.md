@@ -1,4 +1,4 @@
-﻿# NomadInProgress.md : l'option Nomade (GDD § 14.1 et § 14.3 ; D207, D354, D402, avec D347, D536, D702)
+# NomadInProgress.md : l'option Nomade (GDD § 14.1 et § 14.3 ; D207, D354, D402, avec D347, D536, D702)
 
 Ouvert le 2026-11-12 (séance autonome, HALDIR-1112g, worktree Haldir, branche `maps`, chapitre A3 du relevé du jour). Méthode des
 dossiers par feature : règles tirées du GDD, plan en étapes de 15 min, test rouge d'abord, au plus 2 questions
@@ -181,3 +181,4 @@ et distance minimale.
 - Build PASS 13:20 (166 s) ; quick_check tests 13:22 : 1266/1266 PASS.
 - nomad_start rejoue 13:23 (play.ps1 -Hidden : quit 24,2 s ; preflight check PASS, seul FAIL Crown.umap non suivi) ; PNG vus : (a) dispersion, (b) page II pleine et C Centre principal net, (c) fondation payee 150/400. E-nomad_start [A ESSAYER] VU A L ECRAN, GESTE: interne.
 - Reste : D799 (replication de l etat Nomade, non fait) ; Q-nomad-forum-palier [A REPONDRE] (medaillon II).
+- 2026-11-14 13:4x (cloture, docs) : D803 (reponse a Q-nomad-forum-palier) = A : forum du Nomade page Palier II case C, constructible des le depart, autres batiments de la page II grises jusqu au palier (deja code) ; fiche archivee dans Docs/Archive/Retours_2026-11-14_c/. Reste : D799 (reseau Nomade) ; E-nomad_start [A ESSAYER] a rejouer par l utilisateur.
