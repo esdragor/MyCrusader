@@ -2,6 +2,8 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -386,6 +388,84 @@ bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
 			TestEqual(*FString::Printf(TEXT("%s: same owner (slot 0)"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
 			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
 		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadFirstForumTest, "HeroesOfLiberty.Match.StartingHero.NomadFirstForum",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// BUG nomad_start point 1 (the user's trial, 2026-11-14: "je ne pouvais pas construire de forum, je n'avais pas l'option"): a Nomad seat
+// builds its first forum from the start (an exception to tier 1, the secondary centre's), for the secondary centre's price (D783: 150
+// wood + 400 stone, HOLSecondaryCentreRules.as). Two worlds from the game mode's own start (SpawnSlotStart), standard then Nomad:
+// - the builders' list of the slot (what the command grid shows): the main centre at age I for the Nomad only;
+// - a placement through the players' orders (HOLPlayerOrders::Place, then the construction's step): a forum foundation of the slot
+//   and the price taken from its stock for the Nomad; nothing placed, nothing paid for the standard seat (its forum stands);
+// - once its foundation stands, the Nomad's list no longer shows it (one first forum).
+bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 0;
+	const FTransform Start(FRotator(0.f, 90.f, 0.f), FVector(5000.0, 2000.0, 0.0));
+	const FVector Spot(11000.0, 2000.0, 0.0);
+	const auto Lists = [](const TArray<FHOLBuildable>& List)
+	{
+		return List.ContainsByPredicate([](const FHOLBuildable& Each) { return Each.TypeName == HOLBuildingTypeNames::MainCentre && Each.Age == 0 && Each.Cell >= 0; });
+	};
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		const bool bNomad = Way == 1;
+		const TCHAR* Name = bNomad ? TEXT("Nomad") : TEXT("Standard");
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLConstructionSubsystem* Construction = World->GetSubsystem<UHOLConstructionSubsystem>();
+		UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+		if (TestNotNull(TEXT("construction"), Construction) && TestNotNull(TEXT("simulation"), Simulation)
+			&& TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
+		{
+			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+			Config.bNomad = bNomad;
+			AHeroesOfLibertyGameModeBase::SpawnSlotStart(*World, Config, Slot, Start);
+			AHOLPlayerState* Player = World->SpawnActor<AHOLPlayerState>();
+			if (TestNotNull(TEXT("player state"), Player))
+			{
+				Player->SetMatchSlot(Slot, Slot);
+				Player->SetResources(FHOLResources(1000, 1000, 1000, 1000));
+				const FHOLResources Before = Player->GetResources();
+				TArray<FHOLBuildable> List;
+				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
+				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list at age I"), Name), Lists(List), bNomad);
+				const auto CountForums = [World]()
+				{
+					int32 Count = 0;
+					for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+					{
+						Count += !It->IsActorBeingDestroyed() && It->GetTypeName() == HOLBuildingTypeNames::MainCentre && It->GetOwnerPlayer() == Slot ? 1 : 0;
+					}
+					return Count;
+				};
+				const int32 ForumsBefore = CountForums();
+				Construction->OnWorldBeginPlay(*World);
+				HOLPlayerOrders::Place(*World, Slot, HOLBuildingTypeNames::MainCentre, Spot, {}, false);
+				Simulation->GetOnStepStarted().Broadcast(1);
+				const FHOLResources After = Player->GetResources();
+				TestEqual(*FString::Printf(TEXT("%s: forums of the slot after the placement"), Name), CountForums(), ForumsBefore + (bNomad ? 1 : 0));
+				TestEqual(*FString::Printf(TEXT("%s: wood paid"), Name), Before.Wood - After.Wood, bNomad ? 150 : 0);
+				TestEqual(*FString::Printf(TEXT("%s: stone paid"), Name), Before.Stone - After.Stone, bNomad ? 400 : 0);
+				TestEqual(*FString::Printf(TEXT("%s: food and gold untouched"), Name), Before.Food - After.Food + Before.Gold - After.Gold, 0);
+				TestEqual(*FString::Printf(TEXT("%s: the forum's cost the grid shows"), Name),
+					UHOLBuildingSettings::GetBuildCost(World, HOLBuildingTypeNames::MainCentre, Slot).ToString(),
+					bNomad ? FHOLResources(Before.Food - After.Food, Before.Wood - After.Wood, Before.Stone - After.Stone, Before.Gold - After.Gold).ToString()
+						: UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre)->Cost.ToString());
+				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
+				TestFalse(*FString::Printf(TEXT("%s: its foundation placed, the forum leaves the list"), Name), Lists(List));
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
 	}
 	return true;
 }
