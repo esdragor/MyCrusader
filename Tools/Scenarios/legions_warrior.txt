@@ -20,7 +20,9 @@ frames 10
 hol.HUD.Report
 waitlog HUD cells: A: Lancier squelette; Z: Garde noire; E: Guerrier damné
 # 2. Key E: the Damned Warrior is produced.
-hol.Select.Grid 2
+# Real key (L14-5): hol.UI.Key sends a Slate keyboard event, the path of a real key (model deploy).
+hol.UI.Key E 0 0.1
+waitlog Key pressed: E
 waitlog Production: DamnedWarrior of slot 0 done
 frames 30
 # 3. An Aube Spearman close by (slot 1) to fight.
@@ -37,8 +39,9 @@ hol.HUD.Report
 waitlog HUD selection name: Guerrier damné$
 waitlog HUD cells: E: Rage
 capture legions_warrior_button
-# 5. The real click on the Rage cell: the order reaches the simulation, the rage is cast.
-hol.HUD.Click GridCell02
+# 5. The real key E of the Rage cell (L14-5: was hol.HUD.Click GridCell02, an internal call; a real mouse click on a HUD cell has no scenario verb yet, hol.UI.Click only reaches menu screens): the order reaches the simulation, the rage is cast.
+hol.UI.Key E 0 0.1
+waitlog Key pressed: E
 waitlog Grid: necrotic rage
 waitlog Rage order: slot 0 queued for 1 units
 waitlog casts the necrotic rage
@@ -55,6 +58,12 @@ hol.HUD.Report
 # The 40 s recharge: the cell E stays greyed.
 waitlog E=NecroticRage greyed
 capture legions_warrior_after
+# 1080p check (L14-5): the same screen in a 1920x1080 window.
+r.SetRes 1920x1080w
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture legions_warrior_1080
 hol.Test.Sanity
 # 7. hol.Rage.Visual 4 (default since D772): during the rage the warrior is tinted dark red and the cell E shows the seconds left, greyed;
 # after it, the cell shows the seconds of the 40 s recharge, still greyed (no second cast while it recharges).
