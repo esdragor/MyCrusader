@@ -73,6 +73,10 @@ public:
 	static constexpr double MuzzleHeight = 225.0;
 	/** How long a puff lasts (s): it swells, rises and shrinks away. */
 	static constexpr double SmokeSeconds = 1.6;
+	/** A puff's scale at its start and at its biggest (SM_PowderSmoke is a 50 cm ball: radius = 50 x scale, cm), and how far it rises (cm). */
+	static constexpr double SmokeStartScale = 0.1;
+	static constexpr double SmokeEndScale = 0.4;
+	static constexpr double SmokeRise = 90.0;
 
 	int32 GetSmokeInFlightCount() const { return Puffs.Num(); }
 	/** The last puff launched (cm, world): for the tests. */

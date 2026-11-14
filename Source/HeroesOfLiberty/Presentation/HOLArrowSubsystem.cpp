@@ -27,10 +27,6 @@ namespace
 	/** The arrow drawn larger than life to be seen from the RTS camera (J7c.2b, trial): at its true 1.2 cm shaft it was
 	 *  a pixel or two wide in the close-ups. 1.5 times as long (~117 cm), 4 times as thick (shaft ~5 cm). */
 	const FVector ArrowScale(1.5, 4.0, 4.0);
-	/** A puff of powder smoke (SM_PowderSmoke is a 50 cm ball): it swells from 0.5 to 2 times, rises 90 cm and shrinks away. */
-	constexpr double SmokeStartScale = 0.5;
-	constexpr double SmokeEndScale = 2.0;
-	constexpr double SmokeRise = 90.0;
 
 	FAutoConsoleCommandWithWorld ArrowReportCommand(
 		TEXT("hol.Combat.ArrowReport"),

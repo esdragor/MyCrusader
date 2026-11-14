@@ -611,6 +611,10 @@ bool FHOLCombatMuzzleSmokeTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("one ball drawn as SM_Bullet"), Balls && Balls->GetInstanceCount() == 1);
 		TestTrue(TEXT("no shadow (D258)"), (!Puffs || !Puffs->CastShadow) && (!Balls || !Balls->CastShadow));
 		TestTrue(TEXT("the puff lasts a second or two"), UHOLArrowSubsystem::SmokeSeconds >= 1.0 && UHOLArrowSubsystem::SmokeSeconds <= 3.0);
+		// The user's setting of 2026-11-14 (arquebusier_gestes: "divide the smoke's size by 5"): the first trial's puff swelled to a
+		// radius of 100 cm (SM_PowderSmoke is a 50 cm ball, scale 2); now 20 cm at its biggest, starting at 5 cm.
+		TestTrue(TEXT("the puff swells to a radius of 20 cm at most (a fifth of the first trial's 100 cm)"), 50.0 * UHOLArrowSubsystem::SmokeEndScale <= 20.0 + UE_DOUBLE_SMALL_NUMBER);
+		TestTrue(TEXT("and starts at a radius of 5 cm at most"), 50.0 * UHOLArrowSubsystem::SmokeStartScale <= 5.0 + UE_DOUBLE_SMALL_NUMBER);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
