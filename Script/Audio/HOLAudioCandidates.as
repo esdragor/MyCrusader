@@ -71,9 +71,10 @@ namespace HOLAudioCandidates
 	void BuildBuildings(TArray<FHOLAudioCandidates>& List)
 	{
 		Add(List, "Building.Wood", "s_wood_light,s_wood_medium,s_wood_heavy,s_wood_plank,s_wood_chop,s_wood_door,s_wood_creak_low,s_wood_step,s_wood_slap_low,s_wood_deep_knock");
-		Add(List, "Building.Stone", "s_stone2_mine_deep,s_stone2_mine_slow,s_stone2_thud_low,s_stone2_punch_deep,s_stone2_timpani,s_stone2_bass,s_stone2_wood_heavy,s_stone2_door_slow,s_stone2_plank_low,s_stone2_gong_dull");
+		// Stone and Metal: round 3 (2026-11-14, round 2 refused and too faint; Tools/Audio/make_soft_candidates.py FIRM_RECIPES, gain baked in the file)
+		Add(List, "Building.Stone", "s_stone3_block,s_stone3_mine_firm,s_stone3_knock,s_stone3_door_heavy,s_stone3_punch,s_stone3_drum_firm,s_stone3_double,s_stone3_gate,s_stone3_mallet,s_stone3_slab");
 		Add(List, "Building.Sacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
-		Add(List, "Building.Metal", "s_metal2_anvil_low,s_metal2_plate_deep,s_metal2_pot_deep,s_metal2_pot_three,s_metal2_tin_deep,s_metal2_latch_deep,s_metal2_click_deep,s_metal2_mallet_soft,s_metal2_gong_deep,s_metal2_double");
+		Add(List, "Building.Metal", "s_metal3_pot_low,s_metal3_hammer_double,s_metal3_plate,s_metal3_pot,s_metal3_latch,s_metal3_click,s_metal3_tin,s_metal3_blade,s_metal3_mallet_firm,s_metal3_gong_short");
 		Add(List, "Building.Coins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
 	}
 
