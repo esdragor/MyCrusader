@@ -22,3 +22,4 @@ Reponse attendue : dans chaque fiche, une lettre (ou plusieurs) pour son cue, `O
 L'ancien scenario `audio_compare_buildings` (les 5 familles a la suite, 50 sons, environ 11 min) est GARDE comme « tout » et n'est PAS compte comme un essai (plus de 3 min) : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`. Il n'a pas de fiche : reponds dans les 5 fiches.
 
 Consigne appliquee (memoire "Sons : pas usants") : GRAVES, SOURDS, COURTS, DOUX ; mesure par `Tools\Audio\check_audio_soft.py` (duree max 0,75 s, centre spectral max environ 730 Hz, 0 % au-dessus de 3 kHz), ce n'est pas une ecoute. Rien n'est branche dans le jeu (Select.Building reste muet).
+Reponse: Pierre et Forge : aucun candidat retenu + volume trop faible (voir les deux fiches). (réponse donnée dans la conversation, 2026-11-14)

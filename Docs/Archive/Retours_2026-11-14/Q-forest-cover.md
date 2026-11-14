@@ -32,3 +32,5 @@ Contexte : D33 dit « couvert en forêt », sans chiffre ; la valeur dit « mod�
 Défaut codé : A (`hol.Terrain.ForestRangedPercent 75`).
 
 Reponse: Q1 A trancher (aucun souvenir de la règle, à débattre et trancher plus tard) ; Q2 A trancher (idem). Rien n'est décidé ; défauts codés inchangés. (réponse donnée dans la conversation, 2026-11-13 ~17:10)
+Reponse (2026-11-14) : l'utilisateur demande qu'on lui redise la règle ENTIÈRE et COMPLÈTE du couvert en forêt (ce que le GDD dit, ce qui est codé, ce qui reste à décider) avant de trancher ; Q1 et Q2 restent OUVERTES (« à trancher »). (réponse donnée dans la conversation, 2026-11-14) Récapitulatif donné dans la conversation le 2026-11-14.
+Reponse (2026-11-14, après le récapitulatif) : on supprime le couvert des forêts : Q1 et Q2 sans objet. (réponse donnée dans la conversation) Reporté : GDD D796, ForestFordInProgress.md ; ligne [ ] Haldir pour retirer le code.
