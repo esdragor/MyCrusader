@@ -32,8 +32,9 @@ foreach ($Line in $Lines) {
     if ($Line -notmatch '"(?<cue>[A-Za-z]+\.[A-Za-z]+)",\s*"(?<stems>[A-Za-z0-9_,]+)"') { Problem "cannot read the line: $Line"; continue }
     $Cue = $Matches['cue']; $List = @($Matches['stems'] -split ',')
     $Seen += $Cue
-    # The five family cues of the building selection (Q3 = A, HOLAudioBuildings.as) are candidates only, not cues of the table.
-    $IsFamily = $Cue -match '^Building\.(Wood|Stone|Sacred|Metal|Coins)$'
+    # The five family cues of the building selection (Q3 = A, HOLAudioBuildings.as) are candidates only, not cues of the table;
+    # so are the round-4 building lists (D798: Barracks voices, Range shots, Stable horse), until one letter is elected into the table.
+    $IsFamily = $Cue -match '^Building\.(Wood|Stone|Sacred|Metal|Coins|Barracks|Range|Stable)$'
     if ($Names -notcontains $Cue -and -not $IsFamily) { Problem "${Cue}: not a cue of the table" }
     if ($List.Count -ne 10) { Problem "${Cue}: $($List.Count) variants instead of 10" }
     if (@($List | Select-Object -Unique).Count -ne $List.Count) { Problem "${Cue}: a stem twice" }

@@ -80,6 +80,10 @@ namespace HOLAudioCandidates
 		Add(List, "Building.Sacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
 		Add(List, "Building.Metal", "s_metal3_pot_low,s_metal3_hammer_double,s_metal3_plate,s_metal3_pot,s_metal3_latch,s_metal3_click,s_metal3_tin,s_metal3_blade,s_metal3_mallet_firm,s_metal3_gong_short");
 		Add(List, "Building.Coins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
+		// Round 4 (D798, 2026-11-14): sounds of ANOTHER nature, one list per building, synthesised by Tools/Audio/make_round4_candidates.py.
+		Add(List, "Building.Barracks", "s_voice_hah,s_voice_ho,s_voice_hey,s_voice_hup,s_voice_duo,s_voice_trio,s_voice_grunt,s_voice_murmur,s_voice_whisper,s_voice_order");
+		Add(List, "Building.Range", "s_shot_twang_low,s_shot_twang,s_shot_twang_whoosh,s_shot_whoosh,s_shot_volley,s_shot_thunk,s_shot_twang_thunk,s_shot_draw,s_shot_double,s_shot_crossbow");
+		Add(List, "Building.Stable", "s_horse_nicker,s_horse_nicker_long,s_horse_snort,s_horse_flutter,s_horse_neigh_low,s_horse_walk,s_horse_trot,s_horse_gallop,s_horse_stamp,s_horse_snort_hoof");
 	}
 
 	// The lists, built at each call (script has no mutable global).
