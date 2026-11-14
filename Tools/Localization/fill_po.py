@@ -721,6 +721,15 @@ TRANSLATIONS = {
     "HOLCheatPanel,ToggleFolded": ("Cheats  +", "チート  +"),
     "HOLCheatPanel,FastBuildOn": ("Fast build: on", "高速建設：オン"),
     "HOLCheatPanel,FastBuildOff": ("Fast build: off", "高速建設：オフ"),
+    "HOLCheatPanel,CheatFood": ("+1000 Food", "+1000 食料"),
+    "HOLCheatPanel,CheatWood": ("+1000 Wood", "+1000 木材"),
+    "HOLCheatPanel,CheatStone": ("+1000 Stone", "+1000 石材"),
+    "HOLCheatPanel,CheatGold": ("+1000 Gold", "+1000 金"),
+    "HOLCheatPanel,CheatAll": ("+1000 of everything", "全資源 +1000"),
+    "HOLCheatPanel,CheatPopulation": ("Population +165", "人口 +165"),
+    "HOLCheatPanel,UnitSpeed": ("Unit speed", "ユニット速度"),
+    "HOLCheatPanel,GatherSpeed": ("Gather speed", "採集速度"),
+    "HOLCheatPanel,SpeedLabel": ("{0}: x{1}", "{0}：x{1}"),
 }
 
 CULTURES = {"en": 0, "ja": 1}

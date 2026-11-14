@@ -46,19 +46,39 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 	struct FCheatButton
 	{
 		const TCHAR* Name;
-		const TCHAR* Label;
 	};
 
-	/** In the order of ECheat; the fast build's label is written by RefreshLabels. */
+	/** In the order of ECheat; the labels come from CheatLabel, the fast build's is written by RefreshLabels. */
 	const FCheatButton CheatSpecs[] = {
-		{ TEXT("CheatFood"), TEXT("+1000 Nourriture") },
-		{ TEXT("CheatWood"), TEXT("+1000 Bois") },
-		{ TEXT("CheatStone"), TEXT("+1000 Pierre") },
-		{ TEXT("CheatGold"), TEXT("+1000 Or") },
-		{ TEXT("CheatAll"), TEXT("+1000 de tout") },
-		{ TEXT("CheatPopulation"), TEXT("Population +165") },
-		{ TEXT("CheatFastBuild"), TEXT("") },
+		{ TEXT("CheatFood") },
+		{ TEXT("CheatWood") },
+		{ TEXT("CheatStone") },
+		{ TEXT("CheatGold") },
+		{ TEXT("CheatAll") },
+		{ TEXT("CheatPopulation") },
+		{ TEXT("CheatFastBuild") },
 	};
+
+	/** A cheat button's label, localized (read when the button is built: a text made at static init would miss the tables). */
+	FText CheatLabel(const int32 Index)
+	{
+		switch (Index)
+		{
+		case 0: return NSLOCTEXT("HOLCheatPanel", "CheatFood", "+1000 Nourriture");
+		case 1: return NSLOCTEXT("HOLCheatPanel", "CheatWood", "+1000 Bois");
+		case 2: return NSLOCTEXT("HOLCheatPanel", "CheatStone", "+1000 Pierre");
+		case 3: return NSLOCTEXT("HOLCheatPanel", "CheatGold", "+1000 Or");
+		case 4: return NSLOCTEXT("HOLCheatPanel", "CheatAll", "+1000 de tout");
+		case 5: return NSLOCTEXT("HOLCheatPanel", "CheatPopulation", "Population +165");
+		default: return FText::GetEmpty();
+		}
+	}
+
+	/** A speed slider's name, localized, in the order of ESpeed. */
+	FText SpeedName(const int32 Index)
+	{
+		return Index == 0 ? NSLOCTEXT("HOLCheatPanel", "UnitSpeed", "Vitesse des unités") : NSLOCTEXT("HOLCheatPanel", "GatherSpeed", "Vitesse de collecte");
+	}
 	const FName ToggleName(TEXT("CheatToggle"));
 
 	/** 1 (default): in a window lower than 700 px the panel starts folded and folds when the hero's block opens (Q-heros-triches-600 = A); 0: as before (A / B measure). */
@@ -69,7 +89,6 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 	struct FSpeedSlider
 	{
 		const TCHAR* Name;
-		const TCHAR* Label;
 		/** The server's setting it changes (hol.Cheat.UnitSpeed, hol.Cheat.GatherSpeed). */
 		const TCHAR* Variable;
 		/** In Describe. */
@@ -78,8 +97,8 @@ namespace UE::HeroesOfLiberty::UI::CheatPanel
 
 	/** In the order of ESpeed. */
 	const FSpeedSlider SpeedSpecs[] = {
-		{ TEXT("CheatUnitSpeed"), TEXT("Vitesse des unités"), TEXT("hol.Units.SpeedScale"), TEXT("unit speed") },
-		{ TEXT("CheatGatherSpeed"), TEXT("Vitesse de collecte"), TEXT("hol.Gather.SpeedScale"), TEXT("gather speed") },
+		{ TEXT("CheatUnitSpeed"), TEXT("hol.Units.SpeedScale"), TEXT("unit speed") },
+		{ TEXT("CheatGatherSpeed"), TEXT("hol.Gather.SpeedScale"), TEXT("gather speed") },
 	};
 }
 
@@ -347,7 +366,9 @@ void UHOLCheatPanel::RefreshLabels()
 	{
 		if (SpeedLabels[Index])
 		{
-			SpeedLabels[Index]->SetText(FText::AsCultureInvariant(FString::Printf(TEXT("%s : x%.1f"), SpeedSpecs[Index].Label, Speeds[Index])));
+			// The value stays a plain « 1.0 » (one decimal, a point) in every language, as before.
+			SpeedLabels[Index]->SetText(FText::Format(NSLOCTEXT("HOLCheatPanel", "SpeedLabel", "{0} : x{1}"), SpeedName(Index),
+				FText::AsCultureInvariant(FString::Printf(TEXT("%.1f"), Speeds[Index]))));
 		}
 	}
 }
@@ -431,7 +452,7 @@ void UHOLCheatPanel::BuildLayout()
 	for (int32 Index = 0; Index < static_cast<int32>(UE_ARRAY_COUNT(CheatSpecs)); ++Index)
 	{
 		UHOLQueueItem* Button = MakeButton(CheatSpecs[Index].Name, CheatColumn, Index == 0 ? 0.f : ButtonGap);
-		Button->SetLabel(FText::AsCultureInvariant(CheatSpecs[Index].Label));
+		Button->SetLabel(CheatLabel(Index));
 		CheatButtons.Add(Button);
 	}
 
