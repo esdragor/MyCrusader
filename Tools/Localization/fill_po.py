@@ -711,6 +711,16 @@ TRANSLATIONS = {
     "HOLGameNames,TechStatKnightAndHalberdierBonusVsProfane": ("Knight and halberdier bonus against the Profane", "騎士と戟兵の対冒涜者ボーナス"),
     "HOLGameNames,TechStatMonkCostDiscount": ("Monk cost reduction", "修道士のコスト軽減"),
     "HOLGameNames,TechEffectLine": ("{0} +{1}%", "{0} +{1}%"),
+    # The scenario's panel and the cheats' panel (development tools, recette 2026-11-13: French in EN/JA).
+    "HOLScenarioPanel,Title": ("Scenario {0}", "シナリオ {0}"),
+    "HOLScenarioPanel,Preparing": ("preparing…", "準備中…"),
+    "HOLScenarioPanel,Ready": ("ready", "準備完了"),
+    "HOLScenarioPanel,Failed": ("error: {0}", "エラー：{0}"),
+    "HOLScenarioPanel,Restart": ("Restart", "リスタート"),
+    "HOLCheatPanel,ToggleOpen": ("Cheats  -", "チート  -"),
+    "HOLCheatPanel,ToggleFolded": ("Cheats  +", "チート  +"),
+    "HOLCheatPanel,FastBuildOn": ("Fast build: on", "高速建設：オン"),
+    "HOLCheatPanel,FastBuildOff": ("Fast build: off", "高速建設：オフ"),
 }
 
 CULTURES = {"en": 0, "ja": 1}

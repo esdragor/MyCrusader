@@ -335,12 +335,13 @@ void UHOLCheatPanel::RefreshLabels()
 
 	if (Toggle)
 	{
-		Toggle->SetLabel(bOpen ? INVTEXT("Triches  -") : INVTEXT("Triches  +"));
+		Toggle->SetLabel(bOpen ? NSLOCTEXT("HOLCheatPanel", "ToggleOpen", "Triches  -") : NSLOCTEXT("HOLCheatPanel", "ToggleFolded", "Triches  +"));
 	}
 	const int32 FastBuildIndex = static_cast<int32>(ECheat::FastBuild);
 	if (CheatButtons.IsValidIndex(FastBuildIndex) && CheatButtons[FastBuildIndex])
 	{
-		CheatButtons[FastBuildIndex]->SetLabel(bFastBuild ? INVTEXT("Construction rapide : oui") : INVTEXT("Construction rapide : non"));
+		CheatButtons[FastBuildIndex]->SetLabel(bFastBuild ? NSLOCTEXT("HOLCheatPanel", "FastBuildOn", "Construction rapide : oui")
+			: NSLOCTEXT("HOLCheatPanel", "FastBuildOff", "Construction rapide : non"));
 	}
 	for (int32 Index = 0; Index < SpeedLabels.Num(); ++Index)
 	{

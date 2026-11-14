@@ -13,7 +13,10 @@
 #include "Components/VerticalBoxSlot.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/Engine.h"
+#include "Fonts/FontMeasure.h"
+#include "Framework/Application/SlateApplication.h"
 #include "HeroesOfLibertyUILog.h"
+#include "Rendering/SlateRenderer.h"
 #include "HUD/HOLHUDSpace.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLQueueItem.h"
@@ -101,25 +104,45 @@ void UHOLScenarioPanel::Refresh()
 	}
 	if (Title)
 	{
-		Title->SetText(FText::AsCultureInvariant(FString::Printf(TEXT("Scénario %s"), *Display.Name)));
+		Title->SetText(FText::Format(NSLOCTEXT("HOLScenarioPanel", "Title", "Scénario {0}"), FText::AsCultureInvariant(Display.Name)));
 	}
 	if (State)
 	{
+		const FText PreparingText = NSLOCTEXT("HOLScenarioPanel", "Preparing", "en préparation…");
+		const FText ReadyText = NSLOCTEXT("HOLScenarioPanel", "Ready", "prêt");
+		const bool bFailed = Display.State == FDisplay::EState::Failed;
 		switch (Display.State)
 		{
 		case FDisplay::EState::Preparing:
-			State->SetText(INVTEXT("en préparation…"));
+			State->SetText(PreparingText);
 			State->SetColorAndOpacity(HOLUIStyle::TextMuted);
 			break;
 		case FDisplay::EState::Ready:
-			State->SetText(INVTEXT("prêt"));
+			State->SetText(ReadyText);
 			State->SetColorAndOpacity(HOLUIStyle::Accent);
 			break;
 		case FDisplay::EState::Failed:
-			State->SetText(FText::AsCultureInvariant(FString::Printf(TEXT("erreur : %s"), *Display.Error)));
+			State->SetText(FText::Format(NSLOCTEXT("HOLScenarioPanel", "Failed", "erreur : {0}"), FText::AsCultureInvariant(Display.Error)));
 			State->SetColorAndOpacity(HOLUIStyle::Missing);
 			break;
 		}
+		// One line while preparing or ready (wrapped at the width of the frame before, it folded into « en / préparation… » and bit
+		// into the scene, recette 2026-11-13); only an error, whose text may be long, wraps. As wide as the longer of the two states, so
+		// the panel keeps its width when « en préparation… » becomes « prêt ».
+		State->SetAutoWrapText(bFailed);
+		float StateWidth = 0.f;
+		if (!bFailed && FSlateApplication::IsInitialized())
+		{
+			const auto Renderer = FSlateApplication::Get().GetRenderer();
+			if (Renderer)
+			{
+				FSlateFontInfo Font;
+				GetDefault<UHOLTextStyleHUDHeading>()->GetFont(Font);
+				const TSharedRef<FSlateFontMeasure> Measure = Renderer->GetFontMeasureService();
+				StateWidth = FMath::Max(Measure->Measure(PreparingText, Font).X, Measure->Measure(ReadyText, Font).X);
+			}
+		}
+		State->SetMinDesiredWidth(StateWidth);
 	}
 	if (NoteColumn && ShownNotes != Display.Notes)
 	{
@@ -254,7 +277,6 @@ void UHOLScenarioPanel::BuildLayout()
 
 	State = WidgetTree->ConstructWidget<UCommonTextBlock>(UCommonTextBlock::StaticClass(), TEXT("ScenarioState"));
 	State->SetStyle(UHOLTextStyleHUDHeading::StaticClass());
-	State->SetAutoWrapText(true);
 	UHorizontalBoxSlot* StateSlot = Header->AddChildToHorizontalBox(State);
 	StateSlot->SetSize(FSlateChildSize(ESlateSizeRule::Fill));
 	StateSlot->SetVerticalAlignment(VAlign_Center);
@@ -264,7 +286,7 @@ void UHOLScenarioPanel::BuildLayout()
 	RestartBox->SetMinDesiredWidth(RestartMinWidth);
 	RestartBox->SetHeightOverride(CloseSize);
 	RestartButton = WidgetTree->ConstructWidget<UHOLQueueItem>(UHOLQueueItem::StaticClass(), RestartName);
-	RestartButton->SetLabel(INVTEXT("Relancer"));
+	RestartButton->SetLabel(NSLOCTEXT("HOLScenarioPanel", "Restart", "Relancer"));
 	RestartBox->SetContent(RestartButton);
 	UHorizontalBoxSlot* RestartSlot = Header->AddChildToHorizontalBox(RestartBox);
 	RestartSlot->SetVerticalAlignment(VAlign_Top);

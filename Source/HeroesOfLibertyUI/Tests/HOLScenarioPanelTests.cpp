@@ -4,8 +4,12 @@
 #include "HUD/HOLScenarioPanel.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
+#include "Internationalization/Text.h"
+#include "Internationalization/TextKey.h"
+#include "Internationalization/TextLocalizationResource.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/Paths.h"
 #include "UObject/Package.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
@@ -27,10 +31,31 @@ namespace HOLScenarioPanelTestsPrivate
 		~FScopedPanelLanguage() { UKismetInternationalizationLibrary::SetCurrentLanguage(Previous, /*SaveToConfig*/ false); }
 	};
 
-	FString TextOf(const UHOLScenarioPanel* Panel, const TCHAR* Name)
+	FText TextObjectOf(const UHOLScenarioPanel* Panel, const TCHAR* Name)
 	{
 		const UCommonTextBlock* Text = Panel && Panel->WidgetTree ? Panel->WidgetTree->FindWidget<UCommonTextBlock>(FName(Name)) : nullptr;
-		return Text ? Text->GetText().ToString() : FString(TEXT("<no widget>"));
+		return Text ? Text->GetText() : FText::AsCultureInvariant(TEXT("<no widget>"));
+	}
+
+	FString TextOf(const UHOLScenarioPanel* Panel, const TCHAR* Name) { return TextObjectOf(Panel, Name).ToString(); }
+
+	/** The translation of a text the panel shows, looked up by the panel's own namespace and key (FTextInspector) in the culture's
+	 *  table: a text left out of the localization (INVTEXT, AsCultureInvariant, the code before the fix) has no key and fails here. */
+	bool TranslationOf(FAutomationTestBase& Test, const FTextLocalizationResource& Resource, const FText& Shown, const FString& What, FString& OutTranslation)
+	{
+		const TOptional<FString> Namespace = FTextInspector::GetNamespace(Shown);
+		const TOptional<FString> Key = FTextInspector::GetKey(Shown);
+		if (!Test.TestTrue(FString::Printf(TEXT("%s (%s) has a localization key"), *What, *Shown.ToString()), Namespace.IsSet() && Key.IsSet()))
+		{
+			return false;
+		}
+		const FTextLocalizationResource::FEntry* Entry = Resource.Entries.Find(FTextId(FTextKey(*Namespace.GetValue()), FTextKey(*Key.GetValue())));
+		if (!Test.TestTrue(FString::Printf(TEXT("%s (%s,%s) is in the table"), *What, *Namespace.GetValue(), *Key.GetValue()), Entry && Entry->LocalizedString.IsValid()))
+		{
+			return false;
+		}
+		OutTranslation = *Entry->LocalizedString;
+		return true;
 	}
 }
 
@@ -56,26 +81,57 @@ bool FHOLScenarioPanelTextTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("fr: the title"), TextOf(Panel, TEXT("ScenarioTitle")), FString(TEXT("Scénario deploy")));
 		TestEqual(TEXT("fr: the state while preparing"), TextOf(Panel, TEXT("ScenarioState")), FString(TEXT("en préparation…")));
 	}
-	for (const TCHAR* Culture : { TEXT("en"), TEXT("ja") })
+	// English and Japanese cannot be switched live in the test editor (the game's localization is loaded there only by an asynchronous
+	// preview: SetCurrentLanguage left the panel French, GALADRIEL-1114c), so the texts the panel shows are translated through the very
+	// files the game loads (Content/Localization/Game/<culture>/Game.locres), by the namespace and key the panel's code gives them, as
+	// HOLGameNamesTests does; the running game's side (hol.UI.Language) is the scenarios deploy / sites_option.
+	struct FExpected { const TCHAR* Culture; const TCHAR* Title; const TCHAR* Preparing; const TCHAR* Ready; };
+	const FExpected Cultures[] = {
+		{ TEXT("en"), TEXT("Scenario deploy"), TEXT("preparing…"), TEXT("ready") },
+		{ TEXT("ja"), TEXT("シナリオ deploy"), TEXT("準備中…"), TEXT("準備完了") } };
+	for (const FExpected& Expected : Cultures)
 	{
-		const FScopedPanelLanguage Scoped(Culture);
+		FTextLocalizationResource Resource;
+		const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), Expected.Culture, TEXT("Game.locres"));
+		if (!TestTrue(FString::Printf(TEXT("%s is readable"), *File), Resource.LoadFromFile(File, 0)))
+		{
+			continue;
+		}
 		Display.State = FDisplay::EState::Preparing;
 		Panel->Refresh();
-		const FString TitleText = TextOf(Panel, TEXT("ScenarioTitle"));
-		TestNotEqual(FString::Printf(TEXT("%s: the title is translated (%s)"), Culture, *TitleText), TitleText, FString(TEXT("Scénario deploy")));
-		TestTrue(FString::Printf(TEXT("%s: the title names the scenario (%s)"), Culture, *TitleText), TitleText.Contains(TEXT("deploy")));
-		const FString Preparing = TextOf(Panel, TEXT("ScenarioState"));
-		TestNotEqual(FString::Printf(TEXT("%s: « en préparation… » is translated (%s)"), Culture, *Preparing), Preparing, FString(TEXT("en préparation…")));
+
+		// The title: the panel's own pattern, translated, formatted with the panel's own argument (the scenario's name).
+		const FText TitleShown = TextObjectOf(Panel, TEXT("ScenarioTitle"));
+		TArray<FHistoricTextFormatData> Formats;
+		FTextInspector::GetHistoricFormatData(TitleShown, Formats);
+		const FHistoricTextFormatData* TitleFormat = Formats.FindByPredicate([](const FHistoricTextFormatData& Data)
+			{ return FTextInspector::GetKey(Data.SourceFmt.GetSourceText()).IsSet(); });
+		if (TestNotNull(FString::Printf(TEXT("%s: the title (%s) is a localized pattern"), Expected.Culture, *TitleShown.ToString()), TitleFormat))
+		{
+			FString Pattern;
+			if (TranslationOf(*this, Resource, TitleFormat->SourceFmt.GetSourceText(), FString::Printf(TEXT("%s: the title's pattern"), Expected.Culture), Pattern))
+			{
+				const FString Title = FText::Format(FTextFormat::FromString(Pattern), TitleFormat->Arguments).ToString();
+				TestEqual(FString::Printf(TEXT("%s: the title"), Expected.Culture), Title, FString(Expected.Title));
+				TestNotEqual(FString::Printf(TEXT("%s: the title is not the French source"), Expected.Culture), Title, TitleShown.ToString());
+			}
+		}
+
+		// The states.
+		const auto CheckState = [&](const TCHAR* Which, const TCHAR* Want)
+		{
+			const FText Shown = TextObjectOf(Panel, TEXT("ScenarioState"));
+			FString Translated;
+			if (TranslationOf(*this, Resource, Shown, FString::Printf(TEXT("%s: the state %s"), Expected.Culture, Which), Translated))
+			{
+				TestEqual(FString::Printf(TEXT("%s: the state %s"), Expected.Culture, Which), Translated, FString(Want));
+				TestNotEqual(FString::Printf(TEXT("%s: the state %s is not the French source"), Expected.Culture, Which), Translated, Shown.ToString());
+			}
+		};
+		CheckState(TEXT("preparing"), Expected.Preparing);
 		Display.State = FDisplay::EState::Ready;
 		Panel->Refresh();
-		const FString Ready = TextOf(Panel, TEXT("ScenarioState"));
-		TestNotEqual(FString::Printf(TEXT("%s: « prêt » is translated (%s)"), Culture, *Ready), Ready, FString(TEXT("prêt")));
-	}
-	{
-		const FScopedPanelLanguage English(TEXT("en"));
-		Display.State = FDisplay::EState::Preparing;
-		Panel->Refresh();
-		TestEqual(TEXT("en: the title"), TextOf(Panel, TEXT("ScenarioTitle")), FString(TEXT("Scenario deploy")));
+		CheckState(TEXT("ready"), Expected.Ready);
 	}
 
 	// One line: the state never wraps while preparing or ready; only an error (its text may be long) wraps.
