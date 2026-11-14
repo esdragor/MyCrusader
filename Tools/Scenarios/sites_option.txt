@@ -29,6 +29,13 @@ hol.Mouse.Click PlayButton
 waitlog Mouse click PlayButton
 waitui
 frames 20
+# The list opens on the kept value (Oui with this configuration): a real click opens it, Up then Enter take Non.
+hol.Mouse.Click SacredSitesDropdown
+frames 10
+hol.UI.Key Up 0 0.1
+frames 5
+hol.UI.Key Enter 0 0.1
+frames 10
 hol.UI.Text SacredSitesDropdown
 waitlog Text SacredSitesDropdown: Non
 capture sites_option_box_off
