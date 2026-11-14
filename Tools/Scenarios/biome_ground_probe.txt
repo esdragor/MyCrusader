@@ -1,0 +1,7 @@
+# Sol de biome, test de l EFFET (BiomeInProgress.md, 2026-11-14) : la partie de rocks_compare2 (meme .json, garde identique par Tools/Tests/biome_ground_check.ps1) charge-t-elle une carte dont le sol est repris par HOLBiomeApplier ? hol.Biome.World lit le monde : groundA= present seulement si un mesh M_GroundVaried (MI_Ground_*) porte le sol.
+frames 40
+hol.Biome.Index 0
+frames 30
+hol.Biome.World
+waitlog Biome world:
+note Sol de biome lu sur le monde de la Plaine (journal : Biome world, groundA).
