@@ -205,3 +205,10 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - Rouge : 67d9bb3 (play_hidden_test cas 5-6 VU ROUGE 3 FAIL a 22:09 ; test d'automatisation HeroesOfLiberty.Dev.Scenario.QuitUnattended commite avant le code, PAS vu rouge : un seul build). Vert : 3f4a972 + c5e9b76 ; play_hidden_test PASS 22:11.
 - Preuve : `income_tooltip` finit par `quit` (seul scenario touche). AVANT (binaire de main) : play.ps1 -Hidden 302,4 s (timeout 300, scenario fini en 13,7 s).
 - Fin 2026-11-13 22:21 : 2e build (22:14-22:17, OnDone avant quit, le 1er build n'avait pas pris c5e9b76) ; mesure APRES et quick_check tests : voir rapport FARAMIR ; merge de main fait ; les autres scenarios n'ont pas de quit (lot a part).
+
+## Verbes a vraie souris hol.Mouse.Click / hol.Mouse.Hover (GLORFINDEL-1114c, 2026-11-14 12:05-, net-playtest, C++, lot L14-5)
+- Constat GALADRIEL-1114e : hol.UI.Click PlayButton route press/release par chemin (RoutePointerDown/Up) sans survol ni passage par les entrees de la plateforme : un bouton Common UI (SButton : IsHovered + capture) ne declenche pas OnClicked. Aucun verbe de vrai survol.
+- Conception : curseur virtuel des scripts (FSlateUser::OverrideCursor, ICursor qui ne garde qu'une position : le curseur du bureau n'est jamais bouge), puis les entrees que la plateforme appelle pour une vraie souris : FSlateApplication::OnMouseMove (hit test, sortie/entree de survol), OnMouseDown / OnMouseUp (capture, preprocesseurs Common UI). L'infobulle est ouverte par le tick de Slate (FSlateUser::UpdateTooltip) quand la souris reste immobile.
+- Code : Source\HeroesOfLibertyUI\Dev\HOLUIMouse.h/.cpp (API Mouse::MoveTo / Click / RestorePlatformCursor / GetCentre + verbes), test Source\HeroesOfLibertyUI\Tests\HOLUIMouseTests.cpp.
+- Rouge e461bdf (API vide) : HeroesOfLiberty.UI.Mouse.ClickAndHover, vraie SWindow hors de l'ecran (-12000,-12000), SButton OnClicked compte 1, montant survole (IsHovered, IsWidgetDirectlyUnderCursor), infobulle ouverte (OnOpening) si l'application est active (sinon AddInfo : non verifie).
+- Build unique lance 12:1x (une seule attente).

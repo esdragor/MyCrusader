@@ -50,7 +50,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLUIMouseClickHoverTest, "HeroesOfLiberty.UI.
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 bool FHOLUIMouseClickHoverTest::RunTest(const FString& Parameters)
 {
-	using namespace UE::HeroesOfLiberty;
+	namespace HOLMouse = UE::HeroesOfLiberty::UI::Mouse;
 	if (!FSlateApplication::IsInitialized())
 	{
 		AddError(TEXT("no Slate application"));
@@ -60,7 +60,7 @@ bool FHOLUIMouseClickHoverTest::RunTest(const FString& Parameters)
 	int32 Clicks = 0;
 	TSharedPtr<SButton> Button;
 	TSharedPtr<STextBlock> Amount;
-	const TSharedRef<Tests::Mouse::SCountingToolTip> Tip = SNew(Tests::Mouse::SCountingToolTip);
+	const TSharedRef<UE::HeroesOfLiberty::Tests::Mouse::SCountingToolTip> Tip = SNew(UE::HeroesOfLiberty::Tests::Mouse::SCountingToolTip);
 	const TSharedRef<SWindow> Window = SNew(SWindow)
 		.Title(INVTEXT("HOL mouse test"))
 		.CreateTitleBar(false)
@@ -94,7 +94,7 @@ bool FHOLUIMouseClickHoverTest::RunTest(const FString& Parameters)
 	Slate.AddWindow(Window, true);
 	ON_SCOPE_EXIT
 	{
-		UI::Mouse::RestorePlatformCursor();
+		HOLMouse::RestorePlatformCursor();
 		FSlateApplication::Get().CloseToolTip();
 		FSlateApplication::Get().DestroyWindowImmediately(Window);
 	};
@@ -105,10 +105,10 @@ bool FHOLUIMouseClickHoverTest::RunTest(const FString& Parameters)
 		Window->PaintWindow(Slate.GetCurrentTime(), 0.f, Elements, FWidgetStyle(), true);
 	}
 
-	UI::Mouse::Click(UI::Mouse::GetCentre(*Button));
+	HOLMouse::Click(HOLMouse::GetCentre(*Button));
 	TestEqual(TEXT("a click of the scripts' mouse at the button's centre runs its OnClicked once"), Clicks, 1);
 
-	UI::Mouse::MoveTo(UI::Mouse::GetCentre(*Amount));
+	HOLMouse::MoveTo(HOLMouse::GetCentre(*Amount));
 	TestTrue(TEXT("the amount is the hovered widget after the move"), Amount->IsHovered());
 	TestFalse(TEXT("the button is left when the mouse goes to the amount"), Button->IsHovered());
 	const TSharedPtr<FSlateUser> User = Slate.GetCursorUser();
