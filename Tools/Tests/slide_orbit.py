@@ -50,26 +50,37 @@ for log in logs:
         steps = sorted(st)
         if len(steps) < WINDOW:
             print(f'#{u}: {len(steps)} dump rows, fewer than the window'); continue
-        head = [math.atan2(st[s]['vy'], st[s]['vx']) if math.hypot(st[s]['vx'], st[s]['vy']) > 30 else None for s in steps]
-        dturn = [0.0] + [abs(wrap(head[i] - head[i - 1])) if head[i] is not None and head[i - 1] is not None else 0.0 for i in range(1, len(steps))]
-        best, bi = -1, 0
-        acc = sum(dturn[:WINDOW])
+        # heading of the DISPLACEMENT between two dumps (the audit judges positions), None when it moved < 0.5 cm
+        def mv(i):
+            return math.hypot(st[steps[i]]['x'] - st[steps[i - 1]]['x'], st[steps[i]]['y'] - st[steps[i - 1]]['y'])
+        head = [None] + [math.atan2(st[steps[i]]['y'] - st[steps[i - 1]]['y'], st[steps[i]]['x'] - st[steps[i - 1]]['x']) if mv(i) > 3.0 else None  # 3 cm: dump positions are rounded to the cm, a still unit's 1 cm jitter gave fake turns (run13 #11)
+                         for i in range(1, len(steps))]
+        dsig, prev = [0.0] * len(steps), None
+        for i in range(len(steps)):
+            if head[i] is not None:
+                if prev is not None: dsig[i] = wrap(head[i] - prev)
+                prev = head[i]
+        # window = where the heading turns the most in ONE direction (the 'net' turn of the audit's spin line)
+        best, bi, acc = -1, 0, sum(dsig[:WINDOW])
         for i in range(0, len(steps) - WINDOW + 1):
-            if i:
-                acc += dturn[i + WINDOW - 1] - dturn[i - 1]
-            if acc > best:
-                best, bi = acc, i
+            if i: acc += dsig[i + WINDOW - 1] - dsig[i - 1]
+            if abs(acc) > best: best, bi = abs(acc), i
+        best = sum(abs(d) for d in dsig[bi:bi + WINDOW])
         win = steps[bi:bi + WINDOW]
         W = [st[s] for s in win]
         path = sum(math.hypot(W[i]['x'] - W[i - 1]['x'], W[i]['y'] - W[i - 1]['y']) for i in range(1, len(W)))
         net = math.hypot(W[-1]['x'] - W[0]['x'], W[-1]['y'] - W[0]['y'])
         signed, rev, last = 0.0, 0, 0
         for i in range(bi + 1, bi + WINDOW):
-            if head[i] is not None and head[i - 1] is not None:
-                d = wrap(head[i] - head[i - 1]); signed += d
-                sg = 1 if d > 0.02 else (-1 if d < -0.02 else 0)
-                if sg and last and sg != last: rev += 1
-                if sg: last = sg
+            d = dsig[i]; signed += d
+            sg = 1 if d > 0.35 else (-1 if d < -0.35 else 0)
+            if sg and last and sg != last: rev += 1
+            if sg: last = sg
+        if '--timeline' in sys.argv:
+            for k in range(0, WINDOW, 15):
+                r = W[k]
+                print(f'   step {win[k]} at ({r["x"]:.0f},{r["y"]:.0f}) v ({r["vx"]:.0f},{r["vy"]:.0f}) tgt #{r["tgt"]} slot {r["slot"]} slide ({r["sx"]:.2f},{r["sy"]:.2f}) place {r["place"]} near '
+                      + ' '.join(f'#{n[0]}({n[1]}) {math.hypot(n[2] - r["x"], n[3] - r["y"]):.0f}cm v{math.hypot(n[4], n[5]):.0f}' for n in r['near']))
         speeds = [math.hypot(r['vx'], r['vy']) for r in W]
         friends = Counter()
         for r in W:
