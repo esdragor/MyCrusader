@@ -4,7 +4,7 @@ waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]. 80 sons, 8 cues, dix variantes A a J chacune.
+note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]. 110 sons, 11 cues, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Order.Move C.
 note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_orders_start
@@ -248,6 +248,96 @@ waitlog candidate played Select.BuildingCoins I
 waitkey Select.BuildingCoins I (s_coins_soft) vient de jouer. Entree : Select.BuildingCoins J
 hol.Audio.Candidate Select.BuildingCoins J
 waitlog candidate played Select.BuildingCoins J
-waitkey Select.BuildingCoins J (s_coins_slap) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Select.BuildingCoins J (s_coins_slap) vient de jouer. Entree : Select.BuildingSiege A  [nouveau cue]
+hol.Audio.Candidate Select.BuildingSiege A
+waitlog candidate played Select.BuildingSiege A
+waitkey Select.BuildingSiege A (s_stone3_block) vient de jouer. Entree : Select.BuildingSiege B
+hol.Audio.Candidate Select.BuildingSiege B
+waitlog candidate played Select.BuildingSiege B
+waitkey Select.BuildingSiege B (s_stone3_mine_firm) vient de jouer. Entree : Select.BuildingSiege C
+hol.Audio.Candidate Select.BuildingSiege C
+waitlog candidate played Select.BuildingSiege C
+waitkey Select.BuildingSiege C (s_stone3_knock) vient de jouer. Entree : Select.BuildingSiege D
+hol.Audio.Candidate Select.BuildingSiege D
+waitlog candidate played Select.BuildingSiege D
+waitkey Select.BuildingSiege D (s_stone3_door_heavy) vient de jouer. Entree : Select.BuildingSiege E
+hol.Audio.Candidate Select.BuildingSiege E
+waitlog candidate played Select.BuildingSiege E
+waitkey Select.BuildingSiege E (s_stone3_punch) vient de jouer. Entree : Select.BuildingSiege F
+hol.Audio.Candidate Select.BuildingSiege F
+waitlog candidate played Select.BuildingSiege F
+waitkey Select.BuildingSiege F (s_stone3_drum_firm) vient de jouer. Entree : Select.BuildingSiege G
+hol.Audio.Candidate Select.BuildingSiege G
+waitlog candidate played Select.BuildingSiege G
+waitkey Select.BuildingSiege G (s_stone3_double) vient de jouer. Entree : Select.BuildingSiege H
+hol.Audio.Candidate Select.BuildingSiege H
+waitlog candidate played Select.BuildingSiege H
+waitkey Select.BuildingSiege H (s_stone3_gate) vient de jouer. Entree : Select.BuildingSiege I
+hol.Audio.Candidate Select.BuildingSiege I
+waitlog candidate played Select.BuildingSiege I
+waitkey Select.BuildingSiege I (s_stone3_mallet) vient de jouer. Entree : Select.BuildingSiege J
+hol.Audio.Candidate Select.BuildingSiege J
+waitlog candidate played Select.BuildingSiege J
+waitkey Select.BuildingSiege J (s_stone3_slab) vient de jouer. Entree : Select.BuildingForum A  [nouveau cue]
+hol.Audio.Candidate Select.BuildingForum A
+waitlog candidate played Select.BuildingForum A
+waitkey Select.BuildingForum A (s_metal3_pot_low) vient de jouer. Entree : Select.BuildingForum B
+hol.Audio.Candidate Select.BuildingForum B
+waitlog candidate played Select.BuildingForum B
+waitkey Select.BuildingForum B (s_metal3_hammer_double) vient de jouer. Entree : Select.BuildingForum C
+hol.Audio.Candidate Select.BuildingForum C
+waitlog candidate played Select.BuildingForum C
+waitkey Select.BuildingForum C (s_metal3_plate) vient de jouer. Entree : Select.BuildingForum D
+hol.Audio.Candidate Select.BuildingForum D
+waitlog candidate played Select.BuildingForum D
+waitkey Select.BuildingForum D (s_metal3_pot) vient de jouer. Entree : Select.BuildingForum E
+hol.Audio.Candidate Select.BuildingForum E
+waitlog candidate played Select.BuildingForum E
+waitkey Select.BuildingForum E (s_metal3_latch) vient de jouer. Entree : Select.BuildingForum F
+hol.Audio.Candidate Select.BuildingForum F
+waitlog candidate played Select.BuildingForum F
+waitkey Select.BuildingForum F (s_metal3_click) vient de jouer. Entree : Select.BuildingForum G
+hol.Audio.Candidate Select.BuildingForum G
+waitlog candidate played Select.BuildingForum G
+waitkey Select.BuildingForum G (s_metal3_tin) vient de jouer. Entree : Select.BuildingForum H
+hol.Audio.Candidate Select.BuildingForum H
+waitlog candidate played Select.BuildingForum H
+waitkey Select.BuildingForum H (s_metal3_blade) vient de jouer. Entree : Select.BuildingForum I
+hol.Audio.Candidate Select.BuildingForum I
+waitlog candidate played Select.BuildingForum I
+waitkey Select.BuildingForum I (s_metal3_mallet_firm) vient de jouer. Entree : Select.BuildingForum J
+hol.Audio.Candidate Select.BuildingForum J
+waitlog candidate played Select.BuildingForum J
+waitkey Select.BuildingForum J (s_metal3_gong_short) vient de jouer. Entree : Select.BuildingForge A  [nouveau cue]
+hol.Audio.Candidate Select.BuildingForge A
+waitlog candidate played Select.BuildingForge A
+waitkey Select.BuildingForge A (s_stone3_block) vient de jouer. Entree : Select.BuildingForge B
+hol.Audio.Candidate Select.BuildingForge B
+waitlog candidate played Select.BuildingForge B
+waitkey Select.BuildingForge B (s_stone3_mine_firm) vient de jouer. Entree : Select.BuildingForge C
+hol.Audio.Candidate Select.BuildingForge C
+waitlog candidate played Select.BuildingForge C
+waitkey Select.BuildingForge C (s_stone3_knock) vient de jouer. Entree : Select.BuildingForge D
+hol.Audio.Candidate Select.BuildingForge D
+waitlog candidate played Select.BuildingForge D
+waitkey Select.BuildingForge D (s_stone3_door_heavy) vient de jouer. Entree : Select.BuildingForge E
+hol.Audio.Candidate Select.BuildingForge E
+waitlog candidate played Select.BuildingForge E
+waitkey Select.BuildingForge E (s_stone3_punch) vient de jouer. Entree : Select.BuildingForge F
+hol.Audio.Candidate Select.BuildingForge F
+waitlog candidate played Select.BuildingForge F
+waitkey Select.BuildingForge F (s_stone3_drum_firm) vient de jouer. Entree : Select.BuildingForge G
+hol.Audio.Candidate Select.BuildingForge G
+waitlog candidate played Select.BuildingForge G
+waitkey Select.BuildingForge G (s_stone3_double) vient de jouer. Entree : Select.BuildingForge H
+hol.Audio.Candidate Select.BuildingForge H
+waitlog candidate played Select.BuildingForge H
+waitkey Select.BuildingForge H (s_stone3_gate) vient de jouer. Entree : Select.BuildingForge I
+hol.Audio.Candidate Select.BuildingForge I
+waitlog candidate played Select.BuildingForge I
+waitkey Select.BuildingForge I (s_stone3_mallet) vient de jouer. Entree : Select.BuildingForge J
+hol.Audio.Candidate Select.BuildingForge J
+waitlog candidate played Select.BuildingForge J
+waitkey Select.BuildingForge J (s_stone3_slab) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
