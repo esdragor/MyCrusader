@@ -17,6 +17,43 @@ UHOLSpecializationSubsystem* UHOLSpecializationSubsystem::Find(const UWorld* Wor
 	return Boards.Num() > 0 ? Boards[0] : nullptr;
 }
 
+TArray<int32> UHOLSpecializationSubsystem::NomadGroups(const UWorld* World, const int32 Peasants)
+{
+	TArray<int32> Sizes;
+	UHOLSpecializationSubsystem* Board = Find(World);
+	if (!Board)
+	{
+		if (Peasants > 0)
+		{
+			Sizes.Add(Peasants);
+		}
+		return Sizes;
+	}
+	// At most one group per Peasant: the script's split ends with a 0.
+	for (int32 Group = 0; Group < FMath::Max(Peasants, 0); ++Group)
+	{
+		const int32 Size = Board->NomadGroupSizeAt(Peasants, Group);
+		if (Size <= 0)
+		{
+			break;
+		}
+		Sizes.Add(Size);
+	}
+	return Sizes;
+}
+
+bool UHOLSpecializationSubsystem::NomadFarEnough(const UWorld* World, const int32 DistanceToClosestEnemyCm)
+{
+	UHOLSpecializationSubsystem* Board = Find(World);
+	return !Board || Board->NomadGroupFarEnough(DistanceToClosestEnemyCm);
+}
+
+int32 UHOLSpecializationSubsystem::NomadSiteDistance(const UWorld* World, const int32 RadiusCm)
+{
+	UHOLSpecializationSubsystem* Board = Find(World);
+	return Board ? Board->NomadSiteMinDistanceCm(RadiusCm) : FMath::Max(RadiusCm, 0);
+}
+
 bool UHOLSpecializationSubsystem::ShouldCreateSubsystem(UObject* Outer) const
 {
 	// Never the abstract C++ class, nor a script class replaced by a reload (as UHOLSignalSubsystem).

@@ -34,6 +34,8 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "TimerManager.h"
 #include "HAL/IConsoleManager.h"
+#include "NavigationSystem.h"
+#include "Simulation/HOLSiteSubsystem.h"
 
 /** V5.1: a King for a slot by its main forum, whatever the option (for the trials of Regicide). */
 static FAutoConsoleCommandWithWorldAndArgs CommandSpawnKing(TEXT("hol.Victory.SpawnKing"),
@@ -677,6 +679,119 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 	}
 }
 
+namespace
+{
+	// BUG nomad_start point 2 (D207): provisional (Placeholders.txt), how far around the start's point a Nomad's groups are cast,
+	// and the least room between two of its groups (beyond each group's own reach).
+	TAutoConsoleVariable<float> CVarNomadScatterRadius(TEXT("hol.Nomad.ScatterRadiusCm"), 6000.f,
+		TEXT("Nomad start (D207): a Nomad's starting groups are cast within this distance of its start's point, cm (provisional)."));
+	TAutoConsoleVariable<float> CVarNomadGroupSpacing(TEXT("hol.Nomad.GroupSpacingCm"), 1500.f,
+		TEXT("Nomad start (D207): the least room between two of a Nomad's starting groups, cm, beyond their reach (provisional)."));
+
+	/** A group's units stand within this of its point (the King KingGap in front, the hero beside him, the Peasants' row: FHOLStartRules). */
+	constexpr double NomadGroupReachCm = 700.0;
+
+	/**
+	 * The places of a Nomad seat's NumGroups starting groups around Point (D207, random but the same for the same slot): on the
+	 * navmesh when the world has one, apart from each other, far enough from every other start of the map (HOLNomad::FarEnough,
+	 * 40 tiles, D786) and from each active site (HOLSiteOption::NomadMinDistanceCm, D702). No clear place: a row from Point (logged).
+	 */
+	TArray<FVector> GetNomadGroupPoints(UWorld& World, const FHOLMatchConfig& Config, const int32 Slot, const FVector& Point, const int32 NumGroups)
+	{
+		TArray<FVector> Points;
+		TArray<FVector> Enemies;
+		for (TActorIterator<AHOLStartSlot> It(&World); It; ++It)
+		{
+			const FVector At = It->GetMainCentreLocation();
+			if (FVector::Dist2D(At, Point) > 100.0)
+			{
+				Enemies.Add(At);
+			}
+		}
+		TArray<FVector2D> SiteCentres;
+		TArray<double> SiteDistances;
+		if (const UHOLSiteSubsystem* Sites = World.GetSubsystem<UHOLSiteSubsystem>())
+		{
+			if (UHOLSiteSubsystem::IsActiveFor(Config, Sites->GetSites().Num()))
+			{
+				for (const auto& Site : Sites->GetSites())
+				{
+					SiteCentres.Add(Site.Location);
+					SiteDistances.Add(UHOLSpecializationSubsystem::NomadSiteDistance(&World, FMath::RoundToInt(Site.Radius)));
+				}
+			}
+		}
+		UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(&World);
+		const bool bNav = Nav && Nav->GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
+		const double Radius = FMath::Max(CVarNomadScatterRadius.GetValueOnGameThread(), 0.f);
+		const double Spacing = FMath::Max(CVarNomadGroupSpacing.GetValueOnGameThread(), 0.f) + 2.0 * NomadGroupReachCm;
+		auto IsClear = [&](const FVector& At)
+		{
+			for (const FVector& Other : Points)
+			{
+				if (FVector::Dist2D(Other, At) < Spacing)
+				{
+					return false;
+				}
+			}
+			if (Enemies.Num() > 0)
+			{
+				double Closest = TNumericLimits<double>::Max();
+				for (const FVector& Enemy : Enemies)
+				{
+					Closest = FMath::Min(Closest, FVector::Dist2D(Enemy, At) - NomadGroupReachCm);
+				}
+				if (!UHOLSpecializationSubsystem::NomadFarEnough(&World, FMath::FloorToInt(FMath::Max(Closest, 0.0))))
+				{
+					return false;
+				}
+			}
+			for (int32 Site = 0; Site < SiteCentres.Num(); ++Site)
+			{
+				if (FVector2D::Distance(SiteCentres[Site], FVector2D(At)) - NomadGroupReachCm < SiteDistances[Site])
+				{
+					return false;
+				}
+			}
+			return true;
+		};
+		FRandomStream Stream(7919 * (Slot + 1));
+		constexpr int32 Tries = 300;
+		for (int32 Group = 0; Group < NumGroups; ++Group)
+		{
+			bool bFound = false;
+			for (int32 Try = 0; Try < Tries && !bFound; ++Try)
+			{
+				const double Angle = Stream.FRandRange(0.f, 2.f * PI);
+				const double Distance = Radius * FMath::Sqrt(Stream.FRand());
+				FVector At = Point + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.0);
+				if (bNav)
+				{
+					FNavLocation OnNav;
+					if (!Nav->ProjectPointToNavigation(At, OnNav, FVector(300.0, 300.0, 5000.0)))
+					{
+						continue;
+					}
+					At = OnNav.Location;
+				}
+				if (IsClear(At))
+				{
+					Points.Add(At);
+					bFound = true;
+				}
+			}
+			if (!bFound)
+			{
+				const FVector At = Point + FVector(0.0, (Group - 0.5 * (NumGroups - 1)) * Spacing, 0.0);
+				UE_LOG(LogHOLMatch, Warning, TEXT("Nomad slot %d: no clear place for group %d within %.0f cm, at (%.0f, %.0f)"), Slot, Group,
+					Radius, At.X, At.Y);
+				Points.Add(At);
+			}
+		}
+		return Points;
+	}
+}
+
 AHOLBuilding* AHeroesOfLibertyGameModeBase::SpawnSlotStart(UWorld& World, const FHOLMatchConfig& Config, const int32 Slot, const FTransform& Transform)
 {
 	if (!Config.Slots.IsValidIndex(Slot))
@@ -693,12 +808,31 @@ AHOLBuilding* AHeroesOfLibertyGameModeBase::SpawnSlotStart(UWorld& World, const 
 	AHOLBuilding* Centre = nullptr;
 	if (Config.bNomad)
 	{
-		// N2 (c)+(d) (D354): a Nomad seat on the script board, no centre; its units born from the start's point.
+		// N2 (c)+(d) (D354): a Nomad seat on the script board, no centre.
 		if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(&World))
 		{
 			Board->SetNomadNow(Slot, true);
 		}
-		UE_LOG(LogHOLMatch, Log, TEXT("Nomad slot %d: no main centre, its units at (%.0f, %.0f)"), Slot, Point.X, Point.Y);
+		UE_LOG(LogHOLMatch, Log, TEXT("Nomad slot %d: no main centre, its units dispersed around (%.0f, %.0f)"), Slot, Point.X, Point.Y);
+		// BUG nomad_start point 2 (D207, D786): its Peasants in groups (HOLNomad::SplitIntoGroups), each group at its own place;
+		// the King with the first group (D207: "with a worker"), the hero with another one.
+		const TArray<int32> Groups = UHOLSpecializationSubsystem::NomadGroups(&World, NumPeasants);
+		const TArray<FVector> Points = GetNomadGroupPoints(World, Config, Slot, Point, FMath::Max(Groups.Num(), 1));
+		if (bKing)
+		{
+			SpawnKingAt(World, Slot, Points[0], 0.f);
+		}
+		for (int32 Group = 0; Group < Groups.Num(); ++Group)
+		{
+			SpawnStartingPeasantsAt(World, Slot, Points[Group], 0.f, Groups[Group]);
+			UE_LOG(LogHOLMatch, Display, TEXT("Nomad slot %d: group %d (%d Peasants) at (%.0f, %.0f)"), Slot, Group, Groups[Group],
+				Points[Group].X, Points[Group].Y);
+		}
+		if (bHero)
+		{
+			SpawnStartingHeroAt(World, Slot, Points[Points.Num() > 1 ? 1 : 0], 0.f);
+		}
+		return nullptr;
 	}
 	else
 	{
