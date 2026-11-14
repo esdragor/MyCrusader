@@ -17,16 +17,6 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 
-namespace UE::HeroesOfLiberty::Garrison
-{
-	/** A kind setting of the script (Script/Garrison/HOLGarrisonRules.as registers it); on when the script is not there (D793: all but siege). */
-	bool IsSettingOn(const TCHAR* Name)
-	{
-		const IConsoleVariable* Setting = IConsoleManager::Get().FindConsoleVariable(Name);
-		return !Setting || Setting->GetInt() != 0;
-	}
-}
-
 bool UHOLGarrisonSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType) const
 {
 	return WorldType == EWorldType::Game || WorldType == EWorldType::PIE;
@@ -67,7 +57,6 @@ int32 UHOLGarrisonSubsystem::GetSlots(const AHOLBuilding& Building)
 
 int32 UHOLGarrisonSubsystem::ApplyOrders()
 {
-	using namespace UE::HeroesOfLiberty::Garrison;
 	UWorld* World = GetWorld();
 	UHOLCommandSubsystem* Commands = World ? World->GetSubsystem<UHOLCommandSubsystem>() : nullptr;
 	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
@@ -120,8 +109,7 @@ int32 UHOLGarrisonSubsystem::ApplyOrders()
 			UnitKinds.Add(HOLGarrison::KindOf(Constants->HasArmorCategory(EHOLArmorCategory::Siege), Constants->HasArmorCategory(EHOLArmorCategory::Hero),
 				Constants->HasArmorCategory(EHOLArmorCategory::Cavalry), HOLCombat::IsRangedAttack(Constants->AttackRange)));
 		}
-		const TArray<int32> In = HOLGarrison::Admitted(UnitSlots, UnitKinds, Building->GetOwnerPlayer(), GetSlots(*Building), Inside.Num(),
-			IsSettingOn(TEXT("hol.Garrison.MeleeInfantry")), IsSettingOn(TEXT("hol.Garrison.Hero")), IsSettingOn(TEXT("hol.Garrison.Cavalry")));
+		const TArray<int32> In = HOLGarrison::AdmittedBySettings(UnitSlots, UnitKinds, Building->GetOwnerPlayer(), GetSlots(*Building), Inside.Num());
 		TArray<uint32> Entered;
 		for (const int32 Index : In)
 		{

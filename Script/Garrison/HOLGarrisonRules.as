@@ -99,19 +99,28 @@ namespace HOLGarrison
 	}
 
 	// Indexes (into UnitSlots / UnitKinds, in the order asked) of the candidates that enter a building of BuildingSlot with Slots places and
-	// Occupants already inside; a refused candidate takes no place.
-	TArray<int> Admitted(const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Slots, int Occupants)
+	// Occupants already inside, with the three kind settings given; a refused candidate takes no place. The C++ twin
+	// (Source/HeroesOfLiberty/Buildings/HOLGarrisonRules.h, applied by the server) must give the same list: Script/Tests/HOLGarrisonParity_Test.as.
+	TArray<int> AdmittedWith(const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Slots, int Occupants,
+		bool bMeleeInfantry, bool bHero, bool bCavalry)
 	{
 		TArray<int> In;
 		int Free = FreeSlots(Slots, Occupants);
 		for (int I = 0; I < UnitSlots.Num() && In.Num() < Free; ++I)
 		{
-			if (UnitKinds.IsValidIndex(I) && SlotMayEnter(UnitSlots[I], BuildingSlot) && KindMayEnterByDefault(UnitKinds[I]))
+			if (UnitKinds.IsValidIndex(I) && SlotMayEnter(UnitSlots[I], BuildingSlot) && KindMayEnter(UnitKinds[I], bMeleeInfantry, bHero, bCavalry))
 			{
 				In.Add(I);
 			}
 		}
 		return In;
+	}
+
+	// The same with the default settings (hol.Garrison.MeleeInfantry / Hero / Cavalry).
+	TArray<int> Admitted(const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Slots, int Occupants)
+	{
+		return AdmittedWith(UnitSlots, UnitKinds, BuildingSlot, Slots, Occupants, CVar_GarrisonMeleeInfantry.GetInt() != 0,
+			CVar_GarrisonHero.GetInt() != 0, CVar_GarrisonCavalry.GetInt() != 0);
 	}
 
 	// The same for a building type, with the default settings.

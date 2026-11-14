@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "HAL/IConsoleManager.h"
 
 /**
  * Garrison, the rule the server applies to an order (F7 lot 2, FortificationsInProgress.md; D693, D374, D793). The C++ twin of
@@ -60,5 +61,20 @@ namespace HOLGarrison
 			}
 		}
 		return In;
+	}
+
+	/** A kind setting of the script (Script/Garrison/HOLGarrisonRules.as registers it); on when the script is not there (D793: all but siege). */
+	inline bool IsSettingOn(const TCHAR* Name)
+	{
+		const IConsoleVariable* Setting = IConsoleManager::Get().FindConsoleVariable(Name);
+		return !Setting || Setting->GetInt() != 0;
+	}
+
+	/** Admitted with the script's three kind settings, as the server applies an order (UHOLGarrisonSubsystem) and as the script's Admitted reads them. */
+	inline TArray<int32> AdmittedBySettings(const TConstArrayView<int32> UnitSlots, const TConstArrayView<EKind> UnitKinds, const int32 BuildingSlot,
+		const int32 Slots, const int32 Occupants)
+	{
+		return Admitted(UnitSlots, UnitKinds, BuildingSlot, Slots, Occupants, IsSettingOn(TEXT("hol.Garrison.MeleeInfantry")),
+			IsSettingOn(TEXT("hol.Garrison.Hero")), IsSettingOn(TEXT("hol.Garrison.Cavalry")));
 	}
 }
