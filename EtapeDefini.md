@@ -406,6 +406,7 @@ même depuis un worktree). Relire juste avant d'éditer et ne toucher que ses li
 ## Fichiers de développement
 
 ### Chantiers récents
+- 2026-11-14 12:5x : réponses de l'utilisateur rangées (D797-D800) : fiches dans `Docs\Archive\Retours_2026-11-14_b\` ; reports dans `NomadInProgress.md`, `AudioBuildingsInProgress.md`, `VisualInProgress.md`, `FogInProgress.md` ; `E-nomad_start` reste (D797 en cours, HALDIR-1114e)
 - `FactionChoiceInProgress.md` : choix de faction et cheat des Templiers (liste dégrisée, triple clic sur le titre, salon), worktree Arwen
 
 ### Références
