@@ -1,6 +1,7 @@
 #include "Blueprint/WidgetTree.h"
 #include "CommonTextBlock.h"
 #include "Dev/HOLTestHooks.h"
+#include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLScenarioPanel.h"
 #include "Internationalization/Culture.h"
 #include "Internationalization/Internationalization.h"
@@ -11,6 +12,7 @@
 #include "Misc/AutomationTest.h"
 #include "Misc/Paths.h"
 #include "UObject/Package.h"
+#include "Widgets/HOLQueueItem.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -151,6 +153,104 @@ bool FHOLScenarioPanelTextTest::RunTest(const FString& Parameters)
 	}
 
 	Display = Saved;
+	return true;
+}
+
+// The cheats' panel (HOLCheatPanel) on the real widget: its buttons (« +1000 Nourriture »...) and its speeds' labels (« Vitesse des unités :
+// x1.0 ») come from the localization tables, English and Japanese translated (recette 2026-11-14: still French in EN/JA, written as
+// culture invariant texts). Same way as above: French from the widget, English and Japanese through Game.locres by the panel's own keys.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCheatPanelTextTest, "HeroesOfLiberty.UI.CheatPanel.Localized",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLCheatPanelTextTest::RunTest(const FString& Parameters)
+{
+	using namespace HOLScenarioPanelTestsPrivate;
+
+	UHOLCheatPanel* Panel = NewObject<UHOLCheatPanel>(GetTransientPackage());
+	Panel->Initialize();
+
+	const auto ButtonText = [Panel](const TCHAR* Name)
+	{
+		const UHOLQueueItem* Button = Panel->WidgetTree ? Panel->WidgetTree->FindWidget<UHOLQueueItem>(FName(Name)) : nullptr;
+		const UCommonTextBlock* Label = Button && Button->WidgetTree ? Button->WidgetTree->FindWidget<UCommonTextBlock>(TEXT("Label")) : nullptr;
+		return Label ? Label->GetText() : FText::AsCultureInvariant(TEXT("<no widget>"));
+	};
+	const auto LabelText = [Panel](const TCHAR* Name)
+	{
+		const UCommonTextBlock* Label = Panel->WidgetTree ? Panel->WidgetTree->FindWidget<UCommonTextBlock>(FName(Name)) : nullptr;
+		return Label ? Label->GetText() : FText::AsCultureInvariant(TEXT("<no widget>"));
+	};
+
+	struct FButton { const TCHAR* Name; const TCHAR* Fr; const TCHAR* En; const TCHAR* Ja; };
+	const FButton Buttons[] = {
+		{ TEXT("CheatFood"), TEXT("+1000 Nourriture"), TEXT("+1000 Food"), TEXT("+1000 食料") },
+		{ TEXT("CheatWood"), TEXT("+1000 Bois"), TEXT("+1000 Wood"), TEXT("+1000 木材") },
+		{ TEXT("CheatStone"), TEXT("+1000 Pierre"), TEXT("+1000 Stone"), TEXT("+1000 石材") },
+		{ TEXT("CheatGold"), TEXT("+1000 Or"), TEXT("+1000 Gold"), TEXT("+1000 金") },
+		{ TEXT("CheatAll"), TEXT("+1000 de tout"), TEXT("+1000 of everything"), TEXT("全資源 +1000") },
+		{ TEXT("CheatPopulation"), TEXT("Population +165"), TEXT("Population +165"), TEXT("人口 +165") },
+		{ TEXT("CheatFastBuild"), TEXT("Construction rapide : non"), TEXT("Fast build: off"), TEXT("高速建設：オフ") } };
+	struct FSpeed { const TCHAR* Name; const TCHAR* Fr; const TCHAR* En; const TCHAR* Ja; };
+	const FSpeed Speeds[] = {
+		{ TEXT("CheatUnitSpeedLabel"), TEXT("Vitesse des unités : x1.0"), TEXT("Unit speed: x1.0"), TEXT("ユニット速度：x1.0") },
+		{ TEXT("CheatGatherSpeedLabel"), TEXT("Vitesse de collecte : x1.0"), TEXT("Gather speed: x1.0"), TEXT("採集速度：x1.0") } };
+
+	{
+		const FScopedPanelLanguage French(TEXT("fr"));
+		for (const FButton& Button : Buttons)
+		{
+			TestEqual(FString::Printf(TEXT("fr: %s"), Button.Name), ButtonText(Button.Name).ToString(), FString(Button.Fr));
+		}
+		for (const FSpeed& Speed : Speeds)
+		{
+			TestEqual(FString::Printf(TEXT("fr: %s"), Speed.Name), LabelText(Speed.Name).ToString(), FString(Speed.Fr));
+		}
+	}
+
+	for (const TCHAR* Culture : { TEXT("en"), TEXT("ja") })
+	{
+		const bool bJapanese = FCString::Strcmp(Culture, TEXT("ja")) == 0;
+		FTextLocalizationResource Resource;
+		const FString File = FPaths::Combine(FPaths::ProjectContentDir(), TEXT("Localization/Game"), Culture, TEXT("Game.locres"));
+		if (!TestTrue(FString::Printf(TEXT("%s is readable"), *File), Resource.LoadFromFile(File, 0)))
+		{
+			continue;
+		}
+		for (const FButton& Button : Buttons)
+		{
+			const FText Shown = ButtonText(Button.Name);
+			FString Translated;
+			if (TranslationOf(*this, Resource, Shown, FString::Printf(TEXT("%s: %s"), Culture, Button.Name), Translated))
+			{
+				TestEqual(FString::Printf(TEXT("%s: %s"), Culture, Button.Name), Translated, FString(bJapanese ? Button.Ja : Button.En));
+			}
+		}
+		// A speed's label: the panel's pattern and its argument 0 (the speed's name) translated by their keys, the value (argument 1) kept.
+		for (const FSpeed& Speed : Speeds)
+		{
+			const FText Shown = LabelText(Speed.Name);
+			TArray<FHistoricTextFormatData> Formats;
+			FTextInspector::GetHistoricFormatData(Shown, Formats);
+			const FHistoricTextFormatData* Format = Formats.FindByPredicate([](const FHistoricTextFormatData& Data)
+				{ return FTextInspector::GetKey(Data.SourceFmt.GetSourceText()).IsSet(); });
+			if (!TestNotNull(FString::Printf(TEXT("%s: %s (%s) is a localized pattern"), Culture, Speed.Name, *Shown.ToString()), Format))
+			{
+				continue;
+			}
+			FString Pattern;
+			FString Name;
+			const FFormatArgumentValue* NameArgument = Format->Arguments.Find(TEXT("0"));
+			if (TestNotNull(FString::Printf(TEXT("%s: %s has its name as argument 0"), Culture, Speed.Name), NameArgument)
+				&& NameArgument->GetType() == EFormatArgumentType::Text
+				&& TranslationOf(*this, Resource, Format->SourceFmt.GetSourceText(), FString::Printf(TEXT("%s: %s's pattern"), Culture, Speed.Name), Pattern)
+				&& TranslationOf(*this, Resource, NameArgument->GetTextValue(), FString::Printf(TEXT("%s: %s's name"), Culture, Speed.Name), Name))
+			{
+				FFormatNamedArguments Arguments = Format->Arguments;
+				Arguments.Add(TEXT("0"), FText::AsCultureInvariant(Name));
+				const FString Label = FText::Format(FTextFormat::FromString(Pattern), Arguments).ToString();
+				TestEqual(FString::Printf(TEXT("%s: %s"), Culture, Speed.Name), Label, FString(bJapanese ? Speed.Ja : Speed.En));
+			}
+		}
+	}
 	return true;
 }
 
