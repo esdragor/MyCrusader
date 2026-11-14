@@ -149,7 +149,9 @@ Ajouts J5c.2 (2026-10-16, outils et charges visibles) :
    leur cible** (bras trop courts si > 0).
 3. **Fabrication** (commandlet, ~1 min, éditeur fermé, autres sessions prévenues) :
    ```powershell
-   & "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+   # Moteur enregistre "UE 5.8 HOL" (2026-11-14 CELEBORN-1114a : C:\UE\UE_5.8_AS_3 refuse le module,
+   # "HeroesOfLiberty could not be found").
+   & "C:\UE\UE_5.8_HOL\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
      "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -run=pythonscript `
      -script="C:\Users\baudo\Documents\MyCrusader\Tools\Editor\make_peasant_animations.py" -unattended -nop4 -nosplash `
      -abslog="<dossier temporaire>\anim.log"
