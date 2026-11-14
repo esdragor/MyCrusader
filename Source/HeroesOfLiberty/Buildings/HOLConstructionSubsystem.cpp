@@ -421,7 +421,8 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	UWorld* World = GetWorld();
 	// Only a type the builders build (D313): a client could name any row, the main centre too.
 	const FHOLBuildingTypeRow* Type = Order.TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(Order.TypeName);
-	if (!Type || !Type->IsBuildable())
+	// BUG nomad_start point 1: a Nomad seat's first forum too (UHOLBuildingSettings::IsFirstForumOpen).
+	if (!Type || !UHOLBuildingSettings::IsBuildableBy(World, Order.TypeName, Order.PlayerIndex))
 	{
 		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s: not buildable"), Order.PlayerIndex, *Order.TypeName.ToString());
 		return;
@@ -450,11 +451,12 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 			*Order.TypeName.ToString(), Centre.X, Centre.Y, DescribeRefusal(Refusal), *PlayerState.GetResources().ToString());
 		return;
 	}
+	const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(World, Order.TypeName, Order.PlayerIndex);
 	FHOLResources Stock = PlayerState.GetResources();
-	if (!HOLConstruction::TryPay(Stock, Type->Cost))
+	if (!HOLConstruction::TryPay(Stock, Cost))
 	{
 		UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d cannot place %s at (%.0f, %.0f): not enough resources (%s; cost %s)"),
-			Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Type->Cost.ToString());
+			Order.PlayerIndex, *Order.TypeName.ToString(), Centre.X, Centre.Y, *Stock.ToString(), *Cost.ToString());
 		return;
 	}
 
@@ -474,7 +476,7 @@ void UHOLConstructionSubsystem::Place(const FHOLConstructionCommand& Order, AHOL
 	Foundation->FinishSpawning(Transform);
 	Foundation->ForceNetUpdate();
 	UE_LOG(LogHOLCommands, Display, TEXT("Construction: slot %d placed %s foundation at (%.0f, %.0f), paid %s (%s)"), Order.PlayerIndex,
-		*Order.TypeName.ToString(), Centre.X, Centre.Y, *Type->Cost.ToString(), *Stock.ToString());
+		*Order.TypeName.ToString(), Centre.X, Centre.Y, *Cost.ToString(), *Stock.ToString());
 
 	// The Peasants selected when it was placed go and build it (J6a.4, D312), at the end of their queue with Shift (D311).
 	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
@@ -509,7 +511,7 @@ void UHOLConstructionSubsystem::Cancel(const FHOLConstructionCommand& Order, AHO
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = Building->GetType();
-	const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(Type->Cost, Building->GetConstructionState(), Building->GetConstructionWork(),
+	const FHOLResources Refund = Type ? HOLConstruction::GetCancelRefund(UHOLBuildingSettings::GetBuildCost(GetWorld(), Building->GetTypeName(), Building->GetOwnerPlayer()), Building->GetConstructionState(), Building->GetConstructionWork(),
 		Building->GetTotalWork()) : FHOLResources();
 	FHOLResources Stock = PlayerState.GetResources();
 	Stock += Refund;
@@ -585,7 +587,7 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 	FHOLResources SiteRefund;
 	if (Type)
 	{
-		SiteRefund = HOLConstruction::GetCancelRefund(Type->Cost, Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
+		SiteRefund = HOLConstruction::GetCancelRefund(UHOLBuildingSettings::GetBuildCost(Building.GetWorld(), Building.GetTypeName(), Building.GetOwnerPlayer()), Building.GetConstructionState(), Building.GetConstructionWork(), Building.GetTotalWork());
 		Refund += SiteRefund;
 	}
 	// Its owner's stock, or the one kept for him while he is away (M6-Q16).

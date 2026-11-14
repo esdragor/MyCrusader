@@ -92,6 +92,15 @@ class UHOLSpecializationBoardScript : UHOLSpecializationSubsystem
 		return HOLNomad::StartingAmount(StandardAmount, ForumPrice, true);
 	}
 
+	// BUG nomad_start point 1 (2026-11-14): a Nomad seat's first forum costs the secondary centre's price (D783), per resource
+	// (0 food, 1 wood, 2 stone, 3 gold); read by UHOLBuildingSettings::GetBuildCost (grid, placement, refund).
+	UFUNCTION(BlueprintOverride)
+	int NomadForumCost(int Resource)
+	{
+		HOLSecondaryCentre::FHOLCentreCost Price = HOLSecondaryCentre::Cost();
+		return Resource == 0 ? Price.Food : (Resource == 1 ? Price.Wood : (Resource == 2 ? Price.Stone : (Resource == 3 ? Price.Gold : 0)));
+	}
+
 	UFUNCTION(BlueprintOverride)
 	FHOLSpecializationView ViewSpecialization(int Slot)
 	{

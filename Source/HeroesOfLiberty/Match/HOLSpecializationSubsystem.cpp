@@ -90,6 +90,17 @@ FHOLResources UHOLSpecializationSubsystem::StartingStock(const UWorld* World, co
 		Board->NomadStartingAmount(2, Standard.Stone), Board->NomadStartingAmount(3, Standard.Gold));
 }
 
+FHOLResources UHOLSpecializationSubsystem::FirstForumCost(const UWorld* World)
+{
+	// BUG nomad_start point 1: the secondary centre's price (D783, HOLSecondaryCentre::Cost), read from the script board.
+	UHOLSpecializationSubsystem* Board = Find(World);
+	if (!Board)
+	{
+		return FHOLResources();
+	}
+	return FHOLResources(Board->NomadForumCost(0), Board->NomadForumCost(1), Board->NomadForumCost(2), Board->NomadForumCost(3));
+}
+
 bool UHOLSpecializationSubsystem::IsForumStanding(const UWorld* World, const int32 Slot)
 {
 	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
