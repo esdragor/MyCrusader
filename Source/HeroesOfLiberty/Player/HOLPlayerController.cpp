@@ -3681,7 +3681,7 @@ void AHOLPlayerController::GetUnitsContext(FHOLGridContext& Context) const
 		if (Context.bBuilders)
 		{
 			// L0 (LQ-7): the buildings the player\'s faction builds.
-			UHOLBuildingSettings::GetBuildableTypes(Context.Buildable, HOLFactionRules::GetSlotFactionKey(GetWorld(), GetHOLPlayerState() ? GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE));
+			UHOLBuildingSettings::GetBuildableTypesForSlot(GetWorld(), GetHOLPlayerState() ? GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE, Context.Buildable);
 		}
 		Context.bOwnUnits = !Units.IsEmpty();
 		// J8c.4: the hero commanded, his abilities on the grid (his level from the public sheet, the cool-downs from the
@@ -3969,7 +3969,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		const FHOLBuildingTypeRow* Type = UHOLBuildingSettings::FindType(Command.TypeName);
 		if (HOLPlayerState && Type)
 		{
-			const FHOLCommandFeedback Feedback = HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), Type->Cost);
+			const FHOLCommandFeedback Feedback = HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), UHOLBuildingSettings::GetBuildCost(GetWorld(), Command.TypeName, HOLPlayerState->GetPlayerIndex()));
 			if (HOLCommandGrid::Blocks(Feedback))
 			{
 				UE_LOG(LogHOLMatch, Display, TEXT("Grid: %s not placed"), *Command.TypeName.ToString());
@@ -4361,7 +4361,7 @@ void AHOLPlayerController::BeginPlacement(const FName TypeName)
 		return;
 	}
 	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
-	if (!Type || !Type->IsBuildable())
+	if (!Type || !UHOLBuildingSettings::IsBuildableBy(GetWorld(), TypeName, GetHOLPlayerState() ? GetHOLPlayerState()->GetPlayerIndex() : INDEX_NONE))
 	{
 		UE_LOG(LogHOLMatch, Warning, TEXT("Placement: %s is not built by builders"), *TypeName.ToString());
 		return;
@@ -4422,7 +4422,7 @@ bool AHOLPlayerController::CheckPlacementHere(const FName TypeName, const FBox2D
 		}
 		return false;
 	}
-	const FHOLCommandFeedback Cost = HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), Type->Cost);
+	const FHOLCommandFeedback Cost = HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), UHOLBuildingSettings::GetBuildCost(GetWorld(), TypeName, HOLPlayerState->GetPlayerIndex()));
 	if (!Cost.IsNone())
 	{
 		OutReason = TEXT("not enough resources");
@@ -4459,7 +4459,7 @@ void AHOLPlayerController::UpdatePlacementGhost()
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	if (!bValid && HOLPlayerState && GhostFeedback.Kind == EHOLCommandFeedback::PlacementRefused
 		&& (GhostFeedback.Refusal == EHOLPlacementRefusal::Building || GhostFeedback.Refusal == EHOLPlacementRefusal::Source)
-		&& HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), Type->Cost).IsNone())
+		&& HOLCommandGrid::CheckBuild(HOLPlayerState->GetResources(), UHOLBuildingSettings::GetBuildCost(GetWorld(), PlacementType, HOLPlayerState->GetPlayerIndex())).IsNone())
 	{
 		FBox2D Free;
 		int32 Ring = 0;

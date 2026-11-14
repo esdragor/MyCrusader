@@ -59,6 +59,21 @@ public:
 	 */
 	static FHOLResources StartingStock(const UWorld* World, bool bNomad, const FHOLResources& Standard);
 
+	/** The price of a Nomad seat's first forum (BUG nomad_start point 1: the secondary centre's, D783, script); nothing without the board. */
+	static FHOLResources FirstForumCost(const UWorld* World);
+
+	/**
+	 * BUG nomad_start point 2 (D207, D786): the sizes of a Nomad seat's starting groups of Peasants (HOLNomad::SplitIntoGroups,
+	 * script); one group of all without the board.
+	 */
+	static TArray<int32> NomadGroups(const UWorld* World, int32 Peasants);
+
+	/** D207, D786: a Nomad starting group this far (cm) from the closest other camp is far enough (HOLNomad::FarEnough); true without the board. */
+	static bool NomadFarEnough(const UWorld* World, int32 DistanceToClosestEnemyCm);
+
+	/** D702: the least distance (cm) from a Nomad starting group to the centre of a site of zone RadiusCm (HOLSiteOption::NomadMinDistanceCm). */
+	static int32 NomadSiteDistance(const UWorld* World, int32 RadiusCm);
+
 	/** The seat's Forum stands (not down, AHOLGameState::IsForumDown): the countdown runs, else it waits (Q2 answer A). */
 	static bool IsForumStanding(const UWorld* World, int32 Slot);
 
@@ -131,6 +146,24 @@ protected:
 	int32 NomadStartingAmount(int32 Resource, int32 StandardAmount);
 	/** One resource of a Nomad seat's starting stock (Resource: 0 food, 1 wood, 2 stone, 3 gold, EHOLResource order); StandardAmount without script. */
 	virtual int32 NomadStartingAmount_Implementation(int32 Resource, int32 StandardAmount) { return StandardAmount; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	int32 NomadForumCost(int32 Resource);
+	/** One resource of a Nomad seat's first forum's price (Resource: 0 food, 1 wood, 2 stone, 3 gold); nothing without script. */
+	virtual int32 NomadForumCost_Implementation(int32 Resource) { return 0; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	int32 NomadGroupSizeAt(int32 Peasants, int32 Group);
+	/** The size of the Nomad's starting group Group (HOLNomad::SplitIntoGroups), 0 past the last; one group of all without script. */
+	virtual int32 NomadGroupSizeAt_Implementation(int32 Peasants, int32 Group) { return Group == 0 ? Peasants : 0; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	bool NomadGroupFarEnough(int32 DistanceToClosestEnemyCm);
+	virtual bool NomadGroupFarEnough_Implementation(int32 DistanceToClosestEnemyCm) { return true; }
+
+	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Specialization")
+	int32 NomadSiteMinDistanceCm(int32 RadiusCm);
+	virtual int32 NomadSiteMinDistanceCm_Implementation(int32 RadiusCm) { return RadiusCm; }
 
 private:
 	/** The world time (ms) of the last tick, -1 before the first. */

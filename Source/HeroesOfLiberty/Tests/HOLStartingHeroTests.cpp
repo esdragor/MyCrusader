@@ -2,6 +2,8 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
 #include "Buildings/HOLProductionSubsystem.h"
 #include "Match/HOLPlayerState.h"
 #include "Simulation/HOLSimulationSubsystem.h"
@@ -17,6 +19,9 @@
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLStartRules.h"
+#include "Map/HOLStartSlot.h"
+#include "Match/HOLFactionRules.h"
+#include "Simulation/HOLSiteSubsystem.h"
 #include "Misc/AutomationTest.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -306,8 +311,8 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadSeatTest, "HeroesOfLiberty.Mat
 // N2 (c)+(d): a slot's start through the game mode's own start (SpawnSlotStart, what SpawnMainCentres calls for each start),
 // two worlds from the same configuration, standard then Nomad (bNomad):
 // - standard: one building (the primary forum) of the slot, a complete Forum on the script board;
-// - Nomad: no building at all, the seat Nomad on the board (no complete Forum), and the very same units born (type, owner,
-//   place within 1 cm) as the standard start's by its forum: born from the start's point and the main centre's half body.
+// - Nomad: no building at all, the seat Nomad on the board (no complete Forum), and the very same units born (type, owner)
+//   as the standard start's by its forum; their places are dispersed (BUG nomad_start point 2, test NomadScatter below).
 bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
 {
 	constexpr int32 Slot = 0;
@@ -384,8 +389,195 @@ bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
 			const FString Where = FString::Printf(TEXT("unit %d (%s)"), Index, *A.TypeName.ToString());
 			TestEqual(*FString::Printf(TEXT("%s: same type"), *Where), B.TypeName, A.TypeName);
 			TestEqual(*FString::Printf(TEXT("%s: same owner (slot 0)"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
-			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
 		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadScatterTest, "HeroesOfLiberty.Match.StartingHero.NomadScatter",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// BUG nomad_start point 2 (D207, D786, D702): a Nomad seat's start through the game mode's own start (SpawnSlotStart), the units
+// born by the unit subsystem, another camp's start 90 m away and an active sacred site 50 m away:
+// - its Peasants dispersed (groups of one, D786): no two of them within 10 m (the standard row is 1.8 m apart);
+// - the King with a Peasant (D207: "the King appears with a worker"), the hero with another one, King and hero not together;
+// - every unit at least 40 tiles (4000 cm, D786) from the other camp's start, and outside the site's zone plus the Nomad's
+//   margin (1200 cm zone + 3200 cm, D702, HOLSiteOption::NomadMarginCm).
+bool FHOLStartingNomadScatterTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 0;
+	constexpr double Apart = 1000.0;
+	constexpr double EnemyCm = 4000.0;
+	constexpr float SiteRadius = 1200.f;
+	constexpr double SiteCm = 1200.0 + 3200.0;
+	const FVector Point(5000.0, 2000.0, 0.0);
+	const FTransform Start(FRotator(0.f, 90.f, 0.f), Point);
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSiteSubsystem* Sites = World->GetSubsystem<UHOLSiteSubsystem>();
+	const AHOLStartSlot* Enemy = World->SpawnActor<AHOLStartSlot>(Point + FVector(9000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	const FVector2D SiteAt(Point.X, Point.Y + 5000.0);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("sites"), Sites) && TestNotNull(TEXT("another camp's start"), Enemy)
+		&& TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
+	{
+		Sites->AddSite(SiteAt, SiteRadius);
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		Config.bNomad = true;
+		Config.bRegicide = true;
+		Config.bSacredSites = true;
+		AHeroesOfLibertyGameModeBase::SpawnSlotStart(*World, Config, Slot, Start);
+		Units->ServeBirthRequests();
+		const FName Worker = HOLFactionRules::GetRoleTypeName(World, Slot, HOLFactionRules::Roles::Worker);
+		TArray<FVector> Peasants;
+		TArray<FVector> Kings;
+		TArray<FVector> Others;
+		TArray<uint32> Ids;
+		Units->GetAllUnitIds(Ids);
+		for (const uint32 Id : Ids)
+		{
+			FHOLUnitView View;
+			if (Units->GetUnitView(Id, View) && static_cast<int32>(View.OwnerPlayer) == Slot)
+			{
+				(View.TypeName == Worker ? Peasants : (View.TypeName == FHOLStartRules::KingTypeName ? Kings : Others)).Add(View.Location);
+			}
+		}
+		const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(Config, GetDefault<UHOLMatchSettings>()->StartingPeasants);
+		TestTrue(TEXT("at least two starting Peasants"), NumPeasants >= 2);
+		TestEqual(TEXT("the starting Peasants born"), Peasants.Num(), NumPeasants);
+		TestEqual(TEXT("the King born (Regicide)"), Kings.Num(), 1);
+		for (int32 A = 0; A < Peasants.Num(); ++A)
+		{
+			for (int32 B = A + 1; B < Peasants.Num(); ++B)
+			{
+				const double Distance = FVector::Dist2D(Peasants[A], Peasants[B]);
+				TestTrue(*FString::Printf(TEXT("Peasants %d and %d dispersed (%.0f cm apart, at least %.0f)"), A, B, Distance, Apart), Distance >= Apart);
+			}
+		}
+		auto ClosestPeasant = [&Peasants](const FVector& At, double& OutDistance)
+		{
+			int32 Best = INDEX_NONE;
+			OutDistance = TNumericLimits<double>::Max();
+			for (int32 Index = 0; Index < Peasants.Num(); ++Index)
+			{
+				const double Distance = FVector::Dist2D(At, Peasants[Index]);
+				if (Distance < OutDistance)
+				{
+					OutDistance = Distance;
+					Best = Index;
+				}
+			}
+			return Best;
+		};
+		double KingGap = 0.0;
+		const int32 KingPeasant = Kings.Num() > 0 ? ClosestPeasant(Kings[0], KingGap) : INDEX_NONE;
+		TestTrue(*FString::Printf(TEXT("the King with a Peasant (%.0f cm)"), KingGap), KingPeasant != INDEX_NONE && KingGap < Apart);
+		for (const FVector& Hero : Others)
+		{
+			double HeroGap = 0.0;
+			const int32 HeroPeasant = ClosestPeasant(Hero, HeroGap);
+			TestTrue(*FString::Printf(TEXT("the hero with a Peasant (%.0f cm)"), HeroGap), HeroPeasant != INDEX_NONE && HeroGap < Apart);
+			TestTrue(TEXT("the hero with another Peasant than the King's"), HeroPeasant != KingPeasant || Peasants.Num() < 2);
+			if (Kings.Num() > 0)
+			{
+				TestTrue(*FString::Printf(TEXT("King and hero not together (%.0f cm)"), FVector::Dist2D(Hero, Kings[0])), FVector::Dist2D(Hero, Kings[0]) >= Apart);
+			}
+		}
+		TArray<FVector> All = Peasants;
+		All.Append(Kings);
+		All.Append(Others);
+		const FVector EnemyAt = Enemy->GetMainCentreLocation();
+		for (const FVector& Each : All)
+		{
+			const double ToEnemy = FVector::Dist2D(Each, EnemyAt);
+			const double ToSite = FVector2D::Distance(FVector2D(Each), SiteAt);
+			TestTrue(*FString::Printf(TEXT("unit at (%.0f, %.0f) 40 tiles from the other camp (%.0f cm)"), Each.X, Each.Y, ToEnemy), ToEnemy >= EnemyCm);
+			TestTrue(*FString::Printf(TEXT("unit at (%.0f, %.0f) outside the site's zone and margin (%.0f cm)"), Each.X, Each.Y, ToSite), ToSite >= SiteCm);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadFirstForumTest, "HeroesOfLiberty.Match.StartingHero.NomadFirstForum",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// BUG nomad_start point 1 (the user's trial, 2026-11-14: "je ne pouvais pas construire de forum, je n'avais pas l'option"): a Nomad seat
+// builds its first forum from the start (an exception to tier 1, the secondary centre's), for the secondary centre's price (D783: 150
+// wood + 400 stone, HOLSecondaryCentreRules.as). Two worlds from the game mode's own start (SpawnSlotStart), standard then Nomad:
+// - the builders' list of the slot (what the command grid shows): the main centre at age I for the Nomad only;
+// - a placement through the players' orders (HOLPlayerOrders::Place, then the construction's step): a forum foundation of the slot
+//   and the price taken from its stock for the Nomad; nothing placed, nothing paid for the standard seat (its forum stands);
+// - once its foundation stands, the Nomad's list no longer shows it (one first forum).
+bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 0;
+	const FTransform Start(FRotator(0.f, 90.f, 0.f), FVector(5000.0, 2000.0, 0.0));
+	const FVector Spot(11000.0, 2000.0, 0.0);
+	const auto Lists = [](const TArray<FHOLBuildable>& List)
+	{
+		return List.ContainsByPredicate([](const FHOLBuildable& Each) { return Each.TypeName == HOLBuildingTypeNames::MainCentre && Each.Age == 0 && Each.Cell >= 0; });
+	};
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		const bool bNomad = Way == 1;
+		const TCHAR* Name = bNomad ? TEXT("Nomad") : TEXT("Standard");
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLConstructionSubsystem* Construction = World->GetSubsystem<UHOLConstructionSubsystem>();
+		UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+		if (TestNotNull(TEXT("construction"), Construction) && TestNotNull(TEXT("simulation"), Simulation)
+			&& TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
+		{
+			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+			Config.bNomad = bNomad;
+			AHeroesOfLibertyGameModeBase::SpawnSlotStart(*World, Config, Slot, Start);
+			AHOLPlayerState* Player = World->SpawnActor<AHOLPlayerState>();
+			if (TestNotNull(TEXT("player state"), Player))
+			{
+				Player->SetMatchSlot(Slot, Slot);
+				Player->SetResources(FHOLResources(1000, 1000, 1000, 1000));
+				const FHOLResources Before = Player->GetResources();
+				TArray<FHOLBuildable> List;
+				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
+				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list at age I"), Name), Lists(List), bNomad);
+				const auto CountForums = [World]()
+				{
+					int32 Count = 0;
+					for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+					{
+						Count += !It->IsActorBeingDestroyed() && It->GetTypeName() == HOLBuildingTypeNames::MainCentre && It->GetOwnerPlayer() == Slot ? 1 : 0;
+					}
+					return Count;
+				};
+				const int32 ForumsBefore = CountForums();
+				Construction->OnWorldBeginPlay(*World);
+				HOLPlayerOrders::Place(*World, Slot, HOLBuildingTypeNames::MainCentre, Spot, {}, false);
+				Simulation->GetOnStepStarted().Broadcast(1);
+				const FHOLResources After = Player->GetResources();
+				TestEqual(*FString::Printf(TEXT("%s: forums of the slot after the placement"), Name), CountForums(), ForumsBefore + (bNomad ? 1 : 0));
+				TestEqual(*FString::Printf(TEXT("%s: wood paid"), Name), Before.Wood - After.Wood, bNomad ? 150 : 0);
+				TestEqual(*FString::Printf(TEXT("%s: stone paid"), Name), Before.Stone - After.Stone, bNomad ? 400 : 0);
+				TestEqual(*FString::Printf(TEXT("%s: food and gold untouched"), Name), Before.Food - After.Food + Before.Gold - After.Gold, 0);
+				TestEqual(*FString::Printf(TEXT("%s: the forum's cost the grid shows"), Name),
+					UHOLBuildingSettings::GetBuildCost(World, HOLBuildingTypeNames::MainCentre, Slot).ToString(),
+					bNomad ? FHOLResources(Before.Food - After.Food, Before.Wood - After.Wood, Before.Stone - After.Stone, Before.Gold - After.Gold).ToString()
+						: UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre)->Cost.ToString());
+				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
+				TestFalse(*FString::Printf(TEXT("%s: its foundation placed, the forum leaves the list"), Name), Lists(List));
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
 	}
 	return true;
 }
