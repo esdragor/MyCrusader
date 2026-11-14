@@ -39,6 +39,14 @@ Chaque règle est mécanique : un nombre à compter, une commande à lancer, un 
 
 20. **Aucun processus détaché à ta fin.** Dernier geste : `powershell -ExecutionPolicy Bypass -File <ton worktree>\Tools\AutoJourney\stray_processes.ps1 -Root <ton worktree> -Stop` (liste puis arrête les `chain`/`loop`/`UnrealEditor` de ton worktree ; un build C++ en cours attendu est listé mais jamais arrêté : toute la chaîne est épargnée, `build.ps1`, `Build.bat`, `UnrealBuildTool`, `dotnet`, `cl`/`link` et TOUS leurs descendants, même un build lancé par un script détaché qui, lui, est arrêté sans `/T` ; test : `Tools\AutoJourney\stray_processes_test.ps1`, code 0 = vert ; ne lance jamais ce script avec le `-Root` d'un AUTRE worktree : le build de l'autre y est épargné, mais ses éditeurs et ses scripts de mesure seraient arrêtés) ; colle la sortie dans `PROCESSUS_DETACHES`. La session principale relance le script avant l'agent suivant du même worktree.
 
+## Outils (L14, 2026-11-14 ; usage, pas de règle neuve)
+- `Tools\AutoJourney\edit_line.ps1 -File <chemin absolu> -Match "<texte littéral>" -NewLine "<ligne>" [-InsertAfter] [-DryRun]` : change UNE ligne d'`EtapeDefini.md`, `Auto_Journey_File.md`, `*InProgress.md`, `Retours\E-*.md` sans Read ni Edit refusé (0 ou plusieurs lignes trouvées = refus, fichier intact ; fins de ligne gardées).
+- `Tools\AutoJourney\status.ps1 -InMain <sha>` : dit `DANS main` / `ABSENT de main` (`git merge-base --is-ancestor`) ; à lancer avant d'écrire « absent de main » dans une recette.
+- ForeignSession (`status.ps1` imprime `AUTRE SESSION ?`, `sync_worktrees.ps1` saute le worktree) : commit de moins de 2 h hors de `main` dans un worktree absent de `## Agents du <date>` = worktree d'une autre session : n'y fusionne rien, n'y conclus rien.
+- `Tools\AutoJourney\commit_docs.ps1 -Only "<f1>,<f2>"` : commite seulement ces docs de la copie principale (code 3 si un fichier n'est pas un doc).
+- `Tools\AutoJourney\extend_session.ps1 <HH:MM | 'yyyy-MM-dd HH:mm'>` : repousse la fin de séance (`Docs\SessionEnd.txt` ; heure passée = lendemain) ; ne repousse jamais l'ARRÊT DUR d'un énoncé d'agent.
+- FrameWaits (`check.ps1` et `no_window_test.ps1 -FrameWaits Warn|Fail`, ou `HOL_CHECK_FRAMES=fail`) : `frames N` > 30 hors prise de caméra = attente d'événement par images (4 s sans fenêtre) ; défaut `Warn` (ligne WARN frames, code inchangé), `Fail` refuse (question `Retours\Q-frames-refus.md`) ; écris `waitlog <texte>` à la place.
+
 ## Rapport final : 13 champs, dans cet ordre (la session principale les vérifie)
 ```
 APPELS_DECLARES: <n> (arrêt à 45 vus par toi ; le seuil de 80 se juge sur `tool_uses` relevé par la session principale, pas sur ce champ)

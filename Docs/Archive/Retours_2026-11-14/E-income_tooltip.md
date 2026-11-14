@@ -20,3 +20,4 @@ NON VÉRIFIÉ : le survol à la vraie souris (délai d'ouverture de l'infobulle 
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 income_tooltip -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel`
 Durée : environ 2 min. Pose la souris sur le montant de bois puis d'or. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-14)

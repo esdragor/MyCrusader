@@ -57,7 +57,9 @@ if (-not $endText) { $endText = '13:30'; $endNote = "ni -End ni $SessionEndFile 
 if ($endText -notmatch '^\d{4}-\d{2}-\d{2} ') { $endText = $now.ToString('yyyy-MM-dd') + ' ' + $endText }   # 'HH:mm' seul = aujourd'hui
 $endText = $endText -replace ' (\d):', ' 0$1:'
 $endAt = [datetime]::ParseExact($endText, 'yyyy-MM-dd HH:mm', [Globalization.CultureInfo]::InvariantCulture)
-if ($endAt.Date -ne $now.Date) { $endNote = "l'heure de fin lue ($endText) n'est pas d'aujourd'hui : mettre Docs\SessionEnd.txt a jour" }
+# L14-13 (2026-11-14) : une fin datee du LENDEMAIN (seance prolongee apres minuit, '2026-11-15 01:00', ecrite par extend_session.ps1) est valable ;
+# seules une date d'avant aujourd'hui (fichier perime) ou une fin a plus de 24 h donnent le WARN. Test : extend_session_test.ps1.
+if ($endAt.Date -lt $now.Date -or $endAt -gt $now.AddHours(24)) { $endNote = "l'heure de fin lue ($endText) n'est ni d'aujourd'hui ni des 24 h a venir : mettre Docs\SessionEnd.txt a jour (extend_session.ps1 <HH:MM>)" }
 $left = [int]($endAt - $now).TotalMinutes
 Write-Output ("Heure PowerShell : {0}  fin dure {1}  reste {2} min" -f $now.ToString('HH:mm:ss'), $endAt.ToString('HH:mm'), $left)
 if ($endNote) { Say 'WARN' "SessionEnd : $endNote" }
@@ -75,6 +77,9 @@ if ($Phase -eq 'Launch') {
     $nwOut = (& powershell -NoProfile -ExecutionPolicy Bypass -File $nwTest 2>&1 | Out-String)
     if ($LASTEXITCODE -eq 0) { Say 'PASS' 'no_window_test : aucun script d outil ne lance d editeur fenetre' }
     else { Say 'WARN' ("no_window_test ROUGE (un outil ouvre un editeur visible) : " + (($nwOut -split "`n" | Where-Object { $_ -match '^FAIL|\.ps1:\d+' } | Select-Object -First 3 | ForEach-Object { $_.Trim() }) -join ' ; ')) }
+    # L14-8 (2026-11-14) : le compte des attentes par images (FrameWaits, defaut Warn) de no_window_test, sinon invisible ici
+    $fwLine = $nwOut -split "`n" | Where-Object { $_ -match '^(WARN|FAIL) frames waits:' } | Select-Object -First 1
+    if ($fwLine) { Say 'WARN' ("no_window_test : " + ($fwLine.Trim() -replace '^(WARN|FAIL) ', '')) }
   }
 
   # L11-1 (2026-11-10) : python/pythonw detaches d'un worktree (7 glade_budget.py orphelins = machine ralentie 30 min) : WARN avec le PID, jamais d'arret ici

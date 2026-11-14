@@ -55,7 +55,7 @@ enum class EHOLBuildingShape : uint8
  * Tools/Editor/make_building_types.py, like the unit types (D221, D227). The values are provisional by nature and
  * are balanced in the CSV.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -91,6 +91,13 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Population places the building gives its owner (D83: the centres give a base, the houses add to it). */
 	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0"))
 	int32 PopulationProvided = 0;
+
+	/**
+	 * F7 (D693, D793 Q1 A): garrison places, 0 = no garrison. Read by the script's rule (HOLGarrison::SlotsOf, Script/Garrison/
+	 * HOLGarrisonRules.as); 0 on every row until the towers exist (F8, F10, F12 plan 3 / 5 / 8).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Garrison", meta = (ClampMin = "0"))
+	int32 GarrisonSlots = 0;
 
 	/** Unit types the building produces (rows of the unit type table), in the order of its command grid (D30). */
 	UPROPERTY(EditAnywhere, Category = "Production")
@@ -159,6 +166,8 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Vision", meta = (ClampMin = "0", ForceUnits = "cm"))
 	float SightRadius = 0.f;
 };
+
+class UWorld;
 
 /** A type builders build: its cell in the builders' grid (4 to 11, the page under the tabs) and its age tab (0 to 3). */
 struct FHOLBuildable
@@ -273,6 +282,21 @@ public:
 
 	/** The types builders build, each with its cell in their grid and its age tab (BuildGridSlot, Age, D313), in the table's order. */
 	static void GetBuildableTypes(TArray<FHOLBuildable>& OutTypes, FName FactionKey = NAME_None);
+
+	/**
+	 * What a slot's builders build (the command grid's list): its faction's types (GetBuildableTypes), and, for a Nomad seat with no
+	 * forum yet (IsFirstForumOpen), the main centre at age I in the cell hol.Nomad.ForumCell (BUG nomad_start point 1, 2026-11-14).
+	 */
+	static void GetBuildableTypesForSlot(const UWorld* World, int32 Slot, TArray<FHOLBuildable>& OutTypes);
+
+	/** A Nomad seat with no complete forum and no forum foundation of its own: it may place its first forum (an exception to tier 1). */
+	static bool IsFirstForumOpen(const UWorld* World, int32 Slot);
+
+	/** A slot may place this type: a buildable row (D313), or the main centre while its first forum is open. */
+	static bool IsBuildableBy(const UWorld* World, FName TypeName, int32 Slot);
+
+	/** What placing this type costs the slot: the table's cost, but the secondary centre's price (D783, script) for a Nomad seat's first forum. */
+	static FHOLResources GetBuildCost(const UWorld* World, FName TypeName, int32 Slot);
 };
 
 /** Row names of the building type table used by the code. */

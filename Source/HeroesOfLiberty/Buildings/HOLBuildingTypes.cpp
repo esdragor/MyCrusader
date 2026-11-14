@@ -2,9 +2,13 @@
 
 #include "Buildings/HOLBuildingTypes.h"
 
+#include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLConstructionRules.h"
+#include "EngineUtils.h"
+#include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLFactionRules.h"
+#include "Match/HOLSpecializationSubsystem.h"
 
 FVector2D UHOLBuildingSettings::GetBodySize(const FVector2D& Footprint)
 {
@@ -49,4 +53,59 @@ void UHOLBuildingSettings::GetBuildableTypes(TArray<FHOLBuildable>& OutTypes, co
 			OutTypes.Add({ Name, Row.BuildGridSlot, Row.Age });
 		}
 	});
+}
+
+namespace UE::HeroesOfLiberty::BuildingTypes
+{
+	/** The cell of a Nomad seat's first forum in the builders' age I page (0 to 11; 10 = C, free in every faction's age I page). */
+	static TAutoConsoleVariable<int32> CVarNomadForumCell(TEXT("hol.Nomad.ForumCell"), 10,
+		TEXT("Cell (0-11) of a Nomad seat's first forum in the builders' age I grid (BUG nomad_start point 1, default 10 = C)."));
+}
+
+void UHOLBuildingSettings::GetBuildableTypesForSlot(const UWorld* World, const int32 Slot, TArray<FHOLBuildable>& OutTypes)
+{
+	GetBuildableTypes(OutTypes, HOLFactionRules::GetSlotFactionKey(World, Slot));
+	if (IsFirstForumOpen(World, Slot))
+	{
+		const int32 Cell = UE::HeroesOfLiberty::BuildingTypes::CVarNomadForumCell.GetValueOnAnyThread();
+		OutTypes.RemoveAll([Cell](const FHOLBuildable& Each) { return Each.Age == 0 && Each.Cell == Cell; });
+		OutTypes.Add({ HOLBuildingTypeNames::MainCentre, Cell, 0 });
+	}
+}
+
+bool UHOLBuildingSettings::IsFirstForumOpen(const UWorld* World, const int32 Slot)
+{
+	if (!World || Slot < 0 || UHOLSpecializationSubsystem::IsForumComplete(World, Slot))
+	{
+		return false;
+	}
+	for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+	{
+		if (!It->IsActorBeingDestroyed() && It->GetOwnerPlayer() == Slot && It->GetTypeName() == HOLBuildingTypeNames::MainCentre)
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+bool UHOLBuildingSettings::IsBuildableBy(const UWorld* World, const FName TypeName, const int32 Slot)
+{
+	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : FindType(TypeName);
+	return Type && (Type->IsBuildable() || (TypeName == HOLBuildingTypeNames::MainCentre && IsFirstForumOpen(World, Slot)));
+}
+
+FHOLResources UHOLBuildingSettings::GetBuildCost(const UWorld* World, const FName TypeName, const int32 Slot)
+{
+	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : FindType(TypeName);
+	if (!Type)
+	{
+		return FHOLResources();
+	}
+	// A Nomad seat's forum before its first complete one (its foundation included, for the refund of a cancel).
+	if (TypeName == HOLBuildingTypeNames::MainCentre && World && Slot >= 0 && !UHOLSpecializationSubsystem::IsForumComplete(World, Slot))
+	{
+		return UHOLSpecializationSubsystem::FirstForumCost(World);
+	}
+	return Type->Cost;
 }

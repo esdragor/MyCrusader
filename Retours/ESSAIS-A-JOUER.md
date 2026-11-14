@@ -7,6 +7,7 @@ Version précédente (matin du 2026-11-13) : `Docs\Archive\Retours_2026-11-13_so
 ## État réel au 2026-11-13 21:4x
 - **Binaire de la copie principale PÉRIMÉ** : `UnrealEditor-HeroesOfLiberty.dll` du 2026-11-11 11:06, alors que main (15bbd25) porte le C++ des fusions groupées du soir. Recompiler la copie jouée avant tout pré-vol (ou jouer depuis un worktree à jour de main, comme Faramir).
 - **Fusionnées dans main** : fusion groupée n°1 19:29 (dc67a16 : fog, maps, d751-root, visual, galadriel-tab, net-playtest, hero-j8-close), n°2 21:23 (15bbd25 : maps, net-playtest, tiers) ; heal-sleep aussi dans main. Les mentions « non fusionnée » de tiers / hero-j8-close plus bas sont donc périmées (E-deploy, E-spear_arm : statut à revoir par la recette). **Non fusionnée** : d751-root actuel (« Faction choice », autre session). RIEN POUSSÉ.
+- **Fusion groupée du 2026-11-14 12:41 (main = 0ae4a56)** : d751-root (tour 3 Pierre/Forge : les WAV candidats restent sur le disque d'Arwen, jouer depuis Arwen), visual (rocks_compare), galadriel-tab (panneau du scénario et des triches traduits), maps (Nomade : premier forum, départ dispersé ; couvert des forêts retiré), hero-j8-close (prise B, chute du Lancier), tiers (garnison) sont DANS main. **Non fusionnée** : net-playtest (en cours). RIEN POUSSÉ.
 - **Accord de l'utilisateur du jour** : `Content/Audio/Candidates/` exclu par `.git/info/exclude` (partagé par tous les worktrees : le pré-vol ne doit plus échouer sur ces 294 fichiers non commités) ; `GDD.md` commité (D792, c17f8b1). Les sons candidats sont copiés dans le worktree qui joue l'essai (Faramir depuis 19:42, copie d'Arwen).
 
 ## Fiches encore dans Retours\ (8 essais, 9 fiches E-* avec l'index audio), aucune donnée
@@ -19,5 +20,11 @@ Version précédente (matin du 2026-11-13) : `Docs\Archive\Retours_2026-11-13_so
 - **`[NE PAS JOUER]`** : `E-disconnect_1v1.md` (net-playtest est maintenant dans main ; reste : copie recompilée puis `preflight.ps1 disconnect_1v1 -Root <copie> -PlayerName Alice` PASS).
 - **LOGIQUE SEULEMENT** :
   - `E-deploy.md` (tiers, non fusionnée ; scénario `waitlog D=Pack` jamais satisfait, le jeu monte bien l'engin).
-  - `E-spear_arm.md` (hero-j8-close, non fusionnée ; caméra min 15 m, prise de lance non jugeable à l'œil).
+  - `E-spear_arm.md` : passée **[À ESSAYER]** le 2026-11-14 10:5x (CELEBORN-1114b : pré-vol PASS après le rebake de la chute D795, 5 PNG vus, GESTE: interne, SON: non entendu, branches: hero-j8-close ; mains non jugeables à 15 m, à regarder au zoom par l'utilisateur ; commande play.ps1 -Root HeroesOfLiberty-Celeborn).
   - `E-playtest_hero_army.md` (pré-vol FAIL Sanity, spin de mêlée D641 non corrigé : voir `BUG-playtest_hero_army-spin.md`).
+
+## Mise à jour du 2026-11-14 (essais joués par l'utilisateur)
+- OK, fiches archivées dans `Docs\Archive\Retours_2026-11-14\` : legions_warrior, neutrals_minimap, fog_orders, map_eldorado, talents, income_tooltip.
+- BUG : nomad_start (forum non constructible au départ Nomade ; départ pas dispersé) ; audio Pierre et Forge (aucun candidat bon, volume trop faible).
+- NON JOUES : market et talents_icons_compare (éditeur de Galadriel ne démarre pas : binaire périmé) : à relancer depuis Faramir.
+- Mise à jour suivante : market et talents_icons_compare rejoués depuis Faramir : OK (fiches archivées). Restent seulement nomad_start et audio Pierre / Forge (en BUG, à refaire).

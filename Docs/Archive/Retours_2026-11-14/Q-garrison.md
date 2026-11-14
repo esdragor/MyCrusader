@@ -25,3 +25,4 @@ Les engins de siège n'entrent jamais (dans les trois options). Les Paysans (D35
 Défaut codé (A) : `hol.Garrison.MeleeInfantry 1`, `hol.Garrison.Hero 1`, `hol.Garrison.Cavalry 0` (B : Cavalry 1 ; C : MeleeInfantry 0 et Hero 0).
 
 Reponse:
+Reponse: Q1 A, Q2 B. (réponse donnée dans la conversation, 2026-11-14) Reporté : GDD D793, FortificationsInProgress.md (F7) ; A CHANGER : défaut codé Q2 = A (`hol.Garrison.Cavalry 0`) devient B (`Cavalry 1`), test rouge d'abord ; Q1 A = défaut déjà codé.

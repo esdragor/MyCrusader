@@ -71,6 +71,6 @@ Séance autonome lancée à 10:18, fin 14:15, fusion groupée acceptée. Excepti
 | ELROND-1114a | ac195c40c7bd23f69 | HeroesOfLiberty-Elrond | garnison Cavalry 0->1 puis B1 Places | non puis oui | 10:43 |
 | FARAMIR-1114a | af91a21702c3bf1be | HeroesOfLiberty-Faramir | outils L14 (edit_line, sync/status, build, commit_docs, extend_session) | non | 10:43 |
 | GALADRIEL-1114a | adc2746379654fce3 | HeroesOfLiberty-Galadriel | titre du panneau de scénario (repli, EN/JA) | non | 10:43 |
-| GLORFINDEL-1114a | a2eb3f9e4ed6fe94d | HeroesOfLiberty-Glorfindel | Sites sacrés suite C++ (S7 Nomade, S6, S3) | oui | 10:43 |
-| HALDIR-1114a | aee2e8266808d4724 | HeroesOfLiberty-Haldir | BUG nomad_start 1 et 2, puis D796 | oui | 10:43 |
-| SAURON-1114a | aeb37e4f0505ba61e | HeroesOfLiberty-Sauron | neutres en clairière, Placeholders (SANS Arquebusier) | non | 10:43 |
+| GLORFINDEL-1114a | aeb37e4f0505ba61e | HeroesOfLiberty-Glorfindel | Sites sacrés suite C++ (S7 Nomade, S6, S3) | oui | 10:43 |
+| HALDIR-1114a | a2eb3f9e4ed6fe94d | HeroesOfLiberty-Haldir | BUG nomad_start 1 et 2, puis D796 | oui | 10:43 |
+| SAURON-1114a | aee2e8266808d4724 | HeroesOfLiberty-Sauron | neutres en clairière, Placeholders (SANS Arquebusier) | non | 10:43 |

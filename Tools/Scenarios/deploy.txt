@@ -60,3 +60,5 @@ waitlog D=Deploy
 capture deploy_packed_again
 hol.Test.Sanity
 note 5. A toi : D monte ou demonte l'engin selectionne ; un ordre de marche le demonte, un ordre d'attaque le monte s'il est a portee (delais et portees proposes, Palier3InProgress.md G5).
+# The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
+quit

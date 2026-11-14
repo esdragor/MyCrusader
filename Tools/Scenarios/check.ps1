@@ -10,12 +10,20 @@ param(
     [string] $Root = "",
     [string] $EngineDir = "",
     [int] $TimeoutSeconds = 240,
-    [string] $PlayerName = ""   # -PlayerName=<name> for the game (a scenario with NAMED Human seats: disconnect_look needs Alice)
+    [string] $PlayerName = "",   # -PlayerName=<name> for the game (a scenario with NAMED Human seats: disconnect_look needs Alice)
+    # L14-8 (2026-11-14): frames > 30 waiting for the game (FrameWaits.ps1) and a waitlog right after a long wait are printed; 'Fail'
+    # refuses the scenario before any editor starts. Default Warn (530 frames > 30 lines in the scenarios on 2026-11-14, most around
+    # shots: question Retours\Q-frames-refus.md) ; one line to change, or HOL_CHECK_FRAMES=fail.
+    [ValidateSet("Warn", "Fail")] [string] $FrameWaits = $(if ($env:HOL_CHECK_FRAMES -eq "fail") { "Fail" } else { "Warn" })
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
 $Root = (Resolve-Path $Root).Path
 if (-not (Test-Path (Join-Path $Root "Tools\Scenarios\$Name.txt"))) { Write-Host "check: no scenario '$Name'"; exit 1 }
+. (Join-Path $PSScriptRoot "FrameWaits.ps1")
+$FrameProblems = @(Get-FrameWaitProblem (Join-Path $Root "Tools\Scenarios\$Name.txt"))
+foreach ($P in $FrameProblems) { Write-Host ("check $Name : frames {0} {1}" -f $(if ($P.Level -eq "FAIL" -and $FrameWaits -eq "Fail") { "FAIL" } else { "WARN" }), $P.Text) }
+if ($FrameWaits -eq "Fail" -and @($FrameProblems | Where-Object { $_.Level -eq "FAIL" }).Count -gt 0) { Write-Host "check $Name : FAIL (frames waits for the game, see above; no editor launched)"; exit 1 }
 # Named Human seats: the same default local player as play.ps1 (the first named Human seat of the .json, LaunchCheck.ps1).
 . (Join-Path $PSScriptRoot "LaunchCheck.ps1")
 if (-not $PlayerName) { $PlayerName = Get-ScenarioPlayerName $Root $Name }

@@ -1,3 +1,5 @@
 # <nom de capture> | ce que l'utilisateur doit voir
 talents_icons_window | Fenetre Arbre de talents avec trois talents pris : chaque case montre l'image de son talent (32 px, cadre de la couleur de famille) a gauche de son nom ; les cases prises sont teintees
 talents_icons_hero_block | Bloc du heros, fenetre fermee : les images des trois talents pris (26 px, taille des capacites) sous la liste des talents, a la place des pastilles-lettres B M P
+talents_icons_hero_block_1080 | Fenetre 1920x1080, Arbre ferme : le bloc du heros entier en bas a gauche, les images des trois talents pris sous la liste, a la taille des capacites, rien de coupe ni de chevauche
+talents_icons_window_1080 | Fenetre 1920x1080, Arbre rouvert par la touche T : les cases image + nom lisibles, les trois cases prises teintees, la fenetre entiere a l'ecran

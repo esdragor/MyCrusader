@@ -2296,7 +2296,9 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		{
 			// The builders' grid (D313): greyed when the stock does not cover the cost (in red in the tooltip).
 			const FHOLBuildingTypeRow* BuildType = UHOLBuildingSettings::FindType(Command.TypeName);
-			const FHOLResources Cost = BuildType ? BuildType->Cost : FHOLResources();
+			// The seat's own price (a Nomad's first forum costs the secondary centre's price, D783), as the server charges it.
+			const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(GetWorld(), Command.TypeName,
+				BoundPlayerState.Get() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE);
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetBuildingName(Command.TypeName, BuildType);
 			GridCell->SetCommand(Name, Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);
@@ -2552,7 +2554,9 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 			}
 			// Greyed when its age is not reached, or when the stock does not cover the cost (in red in the tooltip, D313).
 			const FHOLBuildingTypeRow* BuildType = UHOLBuildingSettings::FindType(Building.TypeName);
-			const FHOLResources Cost = BuildType ? BuildType->Cost : FHOLResources();
+			// The seat's own price (a Nomad's first forum costs the secondary centre's price, D783), as the server charges it.
+			const FHOLResources Cost = UHOLBuildingSettings::GetBuildCost(GetWorld(), Building.TypeName,
+				BoundPlayerState.Get() ? BoundPlayerState->GetPlayerIndex() : INDEX_NONE);
 			const FHOLResources Missing = GetMissing(Stock, Cost);
 			const FText Name = HOLGameNames::GetBuildingName(Building.TypeName, BuildType);
 			AgeCell->SetCommand(Name, !Building.bGreyed && Missing == FHOLResources() ? EHOLGridCellState::Ready : EHOLGridCellState::Greyed);

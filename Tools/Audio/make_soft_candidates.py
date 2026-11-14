@@ -166,6 +166,70 @@ RECIPES = {
 }
 
 
+# Round 3 of Building.Stone and Building.Metal (user, 2026-11-14: round 2 "aucun n'est bien ; sons difficiles a entendre, volume trop
+# faible"). Measured cause: round 2 put its energy below 100 Hz (centroid 28-150 Hz), that laptop speakers and headsets hardly give, then a
+# -4 dB peak: -20 to -47 dB above 200 Hz, against -12 to -19 dB for the three elected sounds. Round 3 = firmer and more distinct: pitch kept
+# near the source (0.6-1.2), low-pass 1.5-2.2 kHz (the attack stays), the rumble below 100-150 Hz removed (high-pass), then the gain baked in
+# the file like the elected sounds (answer B of Q-audio-select-gain): +DRIVE_DB into a limiter, peak -2.1 dB. Still checked by
+# check_audio_soft.py (short, centroid <= 800 Hz, nothing above 3 kHz) plus its audibility floor (>= -18 dB above 200 Hz).
+# stem -> (source stem, pitch factor, low-pass Hz, seconds kept, gap between two hits (0 = one), high-pass Hz)
+DRIVE_DB = 8.0
+FIRM_PEAK_DB = -2.1
+FIRM_RECIPES = {
+    # Building.Stone (MainCentre, Barracks, ArcheryRange, Stable, SiegeWorkshop): stone knocked, a heavy door, a stone step, a firm drum
+    "s_stone3_block": ("impactMining_002", 0.8, 1800, 0.30, 0.0, 120),
+    "s_stone3_mine_firm": ("impactMining_000", 0.9, 2000, 0.30, 0.0, 150),
+    # (first try 2026-11-14: step -19.1 dB and beam -21.7 dB above 200 Hz, too faint; anvil, latch, click, blade centroid 1041-1301 Hz, not
+    # low: filters changed below, the thresholds of check_audio_soft.py untouched; second try: step and beam still -19 to -20 dB, a single
+    # short click that the limiter cannot thicken: sources replaced, a medium punch and a closing gate)
+    "s_stone3_knock": ("impactPunch_medium_002", 0.8, 1800, 0.30, 0.0, 120),
+    "s_stone3_door_heavy": ("doorClose_4", 0.7, 1600, 0.45, 0.0, 100),
+    "s_stone3_punch": ("impactPunch_heavy_003", 0.8, 1800, 0.30, 0.0, 120),
+    "s_stone3_drum_firm": ("v_timpani_hit", 1.2, 1500, 0.45, 0.0, 110),
+    "s_stone3_double": ("impactMining_003", 0.8, 1800, 0.22, 0.16, 120),
+    "s_stone3_gate": ("doorClose_2", 0.8, 1600, 0.40, 0.0, 100),
+    "s_stone3_mallet": ("v_mallet_hit_ff", 1.0, 1500, 0.40, 0.0, 120),
+    "s_stone3_slab": ("impactGeneric_light_002", 0.6, 1600, 0.30, 0.0, 120),
+    # Building.Metal (Forge): anvil, hammer twice, plate, pot, latch, click, tin, a blade drawn, a firm mallet, a short gong
+    "s_metal3_pot_low": ("metalPot2", 0.7, 1500, 0.40, 0.0, 150),  # anvil refused 3 times by the measure (centroid 822-1041 Hz or too faint)
+    "s_metal3_hammer_double": ("impactMetal_medium_002", 0.8, 2200, 0.24, 0.20, 150),
+    "s_metal3_plate": ("impactPlate_medium_001", 0.8, 2000, 0.35, 0.0, 150),
+    "s_metal3_pot": ("metalPot1", 0.8, 2000, 0.35, 0.0, 150),
+    "s_metal3_latch": ("metalLatch", 0.6, 1100, 0.35, 0.0, 150),
+    "s_metal3_click": ("metalClick", 0.6, 1100, 0.30, 0.0, 150),
+    "s_metal3_tin": ("impactTin_medium_003", 0.7, 2000, 0.30, 0.0, 150),
+    "s_metal3_blade": ("drawKnife1", 0.6, 1100, 0.45, 0.0, 150),
+    "s_metal3_mallet_firm": ("v_mallet_hit_ff2", 1.0, 1800, 0.45, 0.0, 150),
+    "s_metal3_gong_short": ("v_gong_smack_light", 0.8, 1500, 0.55, 0.0, 150),
+}
+
+
+def render_firm(source, pitch, lowpass, seconds, out_path, gap, highpass):
+    """Round 3: the soft chain plus a high-pass, then +DRIVE_DB into ffmpeg's limiter (gain baked in the file), peak FIRM_PEAK_DB."""
+    handle, raw = tempfile.mkstemp(suffix=".wav")
+    os.close(handle)
+    handle, limited = tempfile.mkstemp(suffix=".wav")
+    os.close(handle)
+    ceiling = 10 ** (FIRM_PEAK_DB / 20)
+    try:
+        render(source, pitch, lowpass, seconds, raw, gap, highpass=highpass, peak_db=0.0)
+        chain = "volume=%.1fdB,alimiter=limit=%.3f:attack=2:release=80:level=disabled,lowpass=f=%d" % (DRIVE_DB, ceiling, lowpass)
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", raw, "-af", chain, "-c:a", "pcm_s16le", limited], check=True)
+        with wave.open(limited, "rb") as wav:
+            data = np.frombuffer(wav.readframes(wav.getnframes()), dtype="<i2").astype(np.float64) / 32768.0
+    finally:
+        os.remove(raw)
+        os.remove(limited)
+    peak = np.abs(data).max()
+    data = data * (ceiling / peak if peak > 0 else 1.0)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with wave.open(out_path, "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(RATE)
+        out.writeframes((np.clip(data, -1, 1) * 32767).astype("<i2").tobytes())
+
+
 def source_path(name):
     if name.startswith("v_"):
         return os.path.join(AUDIO, "Candidates", "vsco", name + ".wav")
@@ -176,10 +240,13 @@ def source_path(name):
     raise RuntimeError("%s.ogg not found in Kenney rpg-audio / impact-sounds under %s" % (name, AUDIO))
 
 
-def render(source, pitch, lowpass, seconds, out_path, gap=0.0):
-    """ffmpeg: mono, silence before the attack cut, pitch lowered, three low-pass filters; then numpy: cut, fade out, peak."""
+def render(source, pitch, lowpass, seconds, out_path, gap=0.0, highpass=0, peak_db=PEAK_DB):
+    """ffmpeg: mono, silence before the attack cut, pitch lowered, three low-pass filters (two high-pass when asked); then numpy: cut,
+    fade out, peak."""
     chain = ("aresample=%d,silenceremove=start_periods=1:start_threshold=-50dB,asetrate=%d,aresample=%d,"
              "lowpass=f=%d,lowpass=f=%d,lowpass=f=%d") % (RATE, int(RATE * pitch), RATE, lowpass, lowpass, lowpass)
+    if highpass > 0:
+        chain += ",highpass=f=%d,highpass=f=%d" % (highpass, highpass)
     handle, temp = tempfile.mkstemp(suffix=".wav")
     os.close(handle)
     try:
@@ -202,7 +269,7 @@ def render(source, pitch, lowpass, seconds, out_path, gap=0.0):
         both[shift:] += data * 0.7
         data = both
     peak = np.abs(data).max()
-    data = data * (10 ** (PEAK_DB / 20) / peak if peak > 0 else 1.0)
+    data = data * (10 ** (peak_db / 20) / peak if peak > 0 else 1.0)
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
     with wave.open(out_path, "wb") as out:
         out.setnchannels(1)
@@ -213,11 +280,21 @@ def render(source, pitch, lowpass, seconds, out_path, gap=0.0):
 
 def main():
     out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(AUDIO, "Candidates", "soft")
+    only = sys.argv[2] if len(sys.argv) > 2 else ""  # optional stem prefix, e.g. s_stone3_ (the other files are left as they are)
+    made = 0
     for stem, recipe in RECIPES.items():
+        if not stem.startswith(only):
+            continue
         name, pitch, lowpass, seconds = recipe[:4]
         gap = recipe[4] if len(recipe) > 4 else 0.0
         render(source_path(name), pitch, lowpass, seconds, os.path.join(out_dir, stem + ".wav"), gap)
-    print("Soft candidates: %d files in %s" % (len(RECIPES), out_dir))
+        made += 1
+    for stem, (name, pitch, lowpass, seconds, gap, highpass) in FIRM_RECIPES.items():
+        if not stem.startswith(only):
+            continue
+        render_firm(source_path(name), pitch, lowpass, seconds, os.path.join(out_dir, stem + ".wav"), gap, highpass)
+        made += 1
+    print("Soft candidates: %d files in %s" % (made, out_dir))
 
 
 if __name__ == "__main__":

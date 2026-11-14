@@ -67,6 +67,10 @@ function Get-FreeVirtualGB { $Os = Get-CimInstance Win32_OperatingSystem -ErrorA
 $Project = if ($Root) { (Resolve-Path $Root).Path } else { (Resolve-Path "$PSScriptRoot\..").Path }
 $UProject = Join-Path $Project "HeroesOfLiberty.uproject"
 if (-not (Test-Path $UProject)) { Write-Host "build : FAIL (no HeroesOfLiberty.uproject in $Project)"; exit 1 }
+# L14-7 (2026-11-14): the binary check of L12-4 printed by the build itself (forgotten by ~8 C++ agents as an instruction).
+. (Join-Path $PSScriptRoot "Scenarios\LaunchCheck.ps1")
+$StaleAtStart = Get-StaleBinaryProblem $Project
+Write-Host ("build : LaunchCheck debut (Get-StaleBinaryProblem) : " + $(if ($StaleAtStart) { $StaleAtStart } else { "vide (each dll newer than its sources)" }))
 $Association = (Get-Content $UProject -Raw | ConvertFrom-Json).EngineAssociation
 $EngineRoot = (Get-ItemProperty "HKCU:\Software\Epic Games\Unreal Engine\Builds" -ErrorAction SilentlyContinue).$Association
 if (-not $EngineRoot) { Write-Host "build : FAIL (engine '$Association' of the .uproject not found in the registry)"; exit 1 }

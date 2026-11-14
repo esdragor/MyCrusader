@@ -19,3 +19,5 @@ NON VÉRIFIÉ : vraie touche Z / S et vrai clic sur une case (le scénario passe
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 market -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: NON JOUE (2026-11-14) : le lancement depuis le worktree Galadriel échoue (Angelscript : `UHOLSignalBoardScript` et `UHOLSpecializationBoardScript` ont un super type inconnu `UHOLSignalSubsystem` / `UHOLSpecializationSubsystem` = binaire C++ de Galadriel périmé, pas recompilé depuis les fusions). A relancer depuis le worktree Faramir (main cf0374e, binaire compilé, scénarios présents) : -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir.
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-14, essai relancé depuis Faramir)

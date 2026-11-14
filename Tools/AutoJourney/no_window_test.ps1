@@ -5,7 +5,12 @@
 # has -nullrhi or -RenderOffScreen in its argument string; `& UnrealEditor-Cmd.exe` calls carry -nullrhi.
 # Exempt by design (the user's own window): Tools\Scenarios\play.ps1 without -Hidden (checked separately below) and Tools\Scenarios\ai_lobby.ps1
 # (a trial the user plays). No editor is started here: the test reads the scripts and runs on fake scripts in %TEMP%.
-param([string] $Root = '')
+# L14-8 suite (2026-11-14) : the scenarios too (Tools\Scenarios\*.txt or -ScenarioDir): a `frames N` > 30 that waits for the game (same function as
+# check.ps1, Tools\Scenarios\FrameWaits.ps1). Default Warn (question Retours\Q-frames-refus.md, option B coded): "WARN frames <scenario> : ..." lines
+# (15 at most) and a count line "WARN frames waits: N in M scenario(s)", exit unchanged; -FrameWaits Fail or HOL_CHECK_FRAMES=fail = FAIL.
+# Test: Tools\AutoJourney\no_window_frames_test.ps1.
+param([string] $Root = '', [string] $ScenarioDir = '',
+      [ValidateSet('Warn', 'Fail')] [string] $FrameWaits = $(if ($env:HOL_CHECK_FRAMES -eq 'fail') { 'Fail' } else { 'Warn' }))
 $ErrorActionPreference = 'Continue'
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $Root) { $Root = (Resolve-Path (Join-Path $Here '..\..')).Path }
@@ -116,6 +121,26 @@ Check ((Test-Path $NM) -and ((Get-Content $NM -Raw) -match '\[switch\]\s*\$Visib
 # --- The rule is written where agents read it.
 $Rules = Join-Path $Here 'agent_rules.md'
 Check ((Test-Path $Rules) -and ((Get-Content $Rules -Raw) -match 'aucun lancement f')) 'agent_rules.md: rule "aucun lancement fenetre"'
+
+# --- Scenarios: frames > 30 waiting for the game (hidden window ~150 frames/s: the wait is far shorter than written).
+if (-not $ScenarioDir) { $ScenarioDir = Join-Path $Tools 'Scenarios' }
+$FrameLib = Join-Path $Tools 'Scenarios\FrameWaits.ps1'
+if (Test-Path $FrameLib) {
+    . $FrameLib
+    $FrameHits = @()
+    foreach ($Sc in Get-ChildItem $ScenarioDir -Filter *.txt -ErrorAction SilentlyContinue) {
+        foreach ($P in @(Get-FrameWaitProblem $Sc.FullName | Where-Object { $_.Level -eq 'FAIL' })) {
+            $FrameHits += [pscustomobject]@{ Name = $Sc.BaseName; Text = $P.Text }
+        }
+    }
+    $Level = if ($FrameWaits -eq 'Fail') { 'FAIL' } else { 'WARN' }
+    foreach ($H in ($FrameHits | Select-Object -First 15)) { Write-Output ("{0} frames {1} : {2}" -f $Level, $H.Name, $H.Text) }
+    $ScCount = @($FrameHits | Select-Object -ExpandProperty Name -Unique).Count
+    if ($FrameWaits -eq 'Fail') { Check ($FrameHits.Count -eq 0) "scenarios: no frames > 30 waiting for the game (-FrameWaits Fail)" ("{0} in {1} scenario(s)" -f $FrameHits.Count, $ScCount) }
+    elseif ($FrameHits.Count -gt 0) { Write-Output ("WARN frames waits: {0} in {1} scenario(s) of {2} (default Warn, Retours\Q-frames-refus.md ; Fail: -FrameWaits Fail or HOL_CHECK_FRAMES=fail)" -f $FrameHits.Count, $ScCount, $ScenarioDir) }
+    else { Write-Output "PASS scenarios: no frames > 30 waiting for the game" }
+}
+else { Write-Output "WARN frames: $FrameLib missing, scenarios not checked" }
 
 if ($Fails -gt 0) { Write-Output "no_window_test : $Fails FAIL"; exit 1 }
 Write-Output 'no_window_test : PASS'

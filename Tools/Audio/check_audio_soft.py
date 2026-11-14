@@ -6,6 +6,7 @@ The ear decides what is liked; this tool only refuses what is certainly tiring, 
   centroid       <= 800 Hz   (low: the spectral centroid of the whole clip)
   energy > 3 kHz <= 1 %      (nothing shrill: share of the spectral energy above 3 kHz)
   peak           between -12 and -2 dB (audible, not clipping)
+  audible        >= -18 dB above 200 Hz, loudest 100 ms (Building.Stone and Building.Metal only, answer of 2026-11-14)
 
   python check_audio_soft.py [--dir <folder of the wavs>] [--file <HOLAudioCandidates.as>] [--selftest]
 
@@ -31,6 +32,13 @@ MAX_SECONDS = 0.80
 MAX_CENTROID = 800.0
 MAX_HIGH_SHARE = 0.01
 MIN_PEAK_DB, MAX_PEAK_DB = -12.0, -2.0
+# Audible on small speakers (user, 2026-11-14, Stone and Metal: "les sons sont difficiles a entendre, volume trop faible"). Measured on the
+# file: the sound high-passed at 200 Hz (laptop speakers and most headsets give little below), RMS of its loudest 100 ms window, in dB.
+# The round 2 of Stone sat at -21 to -46 dB (energy below 100 Hz), the three elected building sounds the user hears well at -12 to -19.
+# A floor, not a choice: the ear still decides. Only for the cues re-done after that answer.
+AUDIBLE_CUES = ["Building.Stone", "Building.Metal"]
+AUDIBLE_FROM_HZ = 200.0
+MIN_AUDIBLE_DB = -18.0
 
 
 def read(path):
@@ -54,6 +62,18 @@ def measure(path):
     high = float((spectrum[freqs > 3000] ** 2).sum() / energy) if energy > 0 else 0.0
     peak = float(np.abs(data).max())
     return seconds, centroid, high, (20 * np.log10(peak) if peak > 0 else -200.0)
+
+
+def audible_db(path):
+    """RMS (dB) of the loudest 100 ms of the sound once everything below AUDIBLE_FROM_HZ is removed."""
+    rate, data = read(path)
+    spectrum = np.fft.rfft(data)
+    spectrum[np.fft.rfftfreq(len(data), 1.0 / rate) < AUDIBLE_FROM_HZ] = 0
+    heard = np.fft.irfft(spectrum, len(data))
+    window = int(0.1 * rate)
+    power = np.convolve(heard ** 2, np.ones(window) / window, mode="valid") if len(heard) > window else np.array([np.mean(heard ** 2)])
+    loudest = float(power.max())
+    return 10 * np.log10(loudest) if loudest > 0 else -200.0
 
 
 def problems_of(values):
@@ -112,7 +132,28 @@ def main():
         for text in problems_of(values):
             print("  FAIL : %s: %s" % (stem, text))
             failures += 1
+    for cue in AUDIBLE_CUES:
+        for stem in by_cue.get(cue, []):
+            path = os.path.join(args.dir, stem + ".wav")
+            if os.path.exists(path):
+                level = audible_db(path)
+                if level < MIN_AUDIBLE_DB:
+                    print("  FAIL : %s (%s): %.1f dB above %.0f Hz, too faint (min %.0f)" % (stem, cue, level, AUDIBLE_FROM_HZ, MIN_AUDIBLE_DB))
+                    failures += 1
+                else:
+                    print("  audible: %-24s %.1f dB above %.0f Hz" % (stem, level, AUDIBLE_FROM_HZ))
     if args.selftest:
+        # the audibility floor must refuse the sub-bass thud the user could not hear (round 2 of Stone), and accept an elected sound
+        for faint, must_fail in (("s_stone2_thud_low", True), ("s_wood_door_lim", False)):
+            path = os.path.join(args.dir, faint + ".wav")
+            if not os.path.exists(path):
+                print("  FAIL : selftest sound %s is missing" % path)
+                failures += 1
+            elif (audible_db(path) < MIN_AUDIBLE_DB) != must_fail:
+                print("  FAIL : selftest: %s at %.1f dB is %s" % (faint, audible_db(path), "accepted" if must_fail else "refused"))
+                failures += 1
+            else:
+                print("  selftest ok : %s at %.1f dB is %s" % (faint, audible_db(path), "refused" if must_fail else "accepted"))
         for bright in ("v_trumpet_call", "v_glock_C6"):
             path = os.path.join(AUDIO, "Candidates", "vsco", bright + ".wav")
             if not os.path.exists(path):

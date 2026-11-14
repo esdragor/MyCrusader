@@ -149,7 +149,9 @@ Ajouts J5c.2 (2026-10-16, outils et charges visibles) :
    leur cible** (bras trop courts si > 0).
 3. **Fabrication** (commandlet, ~1 min, éditeur fermé, autres sessions prévenues) :
    ```powershell
-   & "C:\UE\UE_5.8_AS_3\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
+   # Moteur enregistre "UE 5.8 HOL" (2026-11-14 CELEBORN-1114a : C:\UE\UE_5.8_AS_3 refuse le module,
+   # "HeroesOfLiberty could not be found").
+   & "C:\UE\UE_5.8_HOL\Engine\Binaries\Win64\UnrealEditor-Cmd.exe" `
      "C:\Users\baudo\Documents\MyCrusader\HeroesOfLiberty.uproject" -run=pythonscript `
      -script="C:\Users\baudo\Documents\MyCrusader\Tools\Editor\make_peasant_animations.py" -unattended -nop4 -nosplash `
      -abslog="<dossier temporaire>\anim.log"
@@ -1010,3 +1012,4 @@ Prochaines animations : à la demande des étapes de jeu, même chaîne, même w
   Réponse de l'utilisateur : **à faire après le prototype**, « tellement peu prioritaire ». Point 3 de « Prochaine étape
   exacte » marqué ainsi. **Plus rien en cours dans le chantier animations** : prochaines animations à la demande des
   étapes de jeu.
+- 2026-11-14 (session principale, docs seulement) : REPONSES de l'utilisateur à Retours\Q-spear-grip-b-look.md : Q1 = A (garder la prise B du Lancier, D787, telle que cuite e0cb438), Q2 = A (maa_attack à 5 cm, fait 132b234). Reporté au GDD (D795). Rien à changer ; fiche archivée. Retours\Q-arquebusier-modele.md : PAS de choix ; remarques de l'utilisateur : les GIF n'ont pas de lettres (Q1 impossible) et les deux montrent les gestes de l'Arbalétrier, aucune animation neuve (Q2 impossible à juger) ; il faut de vrais gestes d'arme à feu (tir + recul + fumée, rechargement à la baguette, hors jeu) et des GIF étiquetés avant de reposer la question.
