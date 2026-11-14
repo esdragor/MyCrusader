@@ -69,3 +69,5 @@ hol.Test.Sanity
 # after it, the cell shows the seconds of the 40 s recharge, still greyed (no second cast while it recharges).
 frames 30
 note You click the Barracks, press E for a Damned Warrior, click its body, then click the Rage cell: the rage is cast (log: casts the necrotic rage), the warrior turns dark red and the cell E counts down the 10 s of rage, greyed; then the tint goes and the cell counts down the 40 s recharge.
+# The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
+quit
