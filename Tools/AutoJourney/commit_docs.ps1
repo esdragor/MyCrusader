@@ -3,9 +3,13 @@
 # Usage : powershell -ExecutionPolicy Bypass -File <ce fichier> [-Root C:\Users\baudo\Documents\MyCrusader] [-Message "Docs: ..."] [-DryRun]
 # Sortie : la liste des fichiers, puis "commit <sha> : n fichier(s)" ou "rien a committer" ; code 0 ; code 2 si -Root n'est pas un depot git.
 # Ne touche ni au code modifie ni aux autres fichiers deja indexes (git commit -- <chemins> ne prend que ces chemins).
+# L14-12 (2026-11-14) : -Only "a,b,..." (chemins relatifs a -Root, \ ou /, separes par des virgules : -File passe "a,b" en une seule chaine)
+# commite CES docs seuls (une archive de l'agent de docs avait embarque Auto_Journey_Jour.md et des fiches E d'autres sessions) ; un chemin hors
+# de la liste des docs = refus (code 3, aucun commit) ; un *InProgress.md neuf NOMME est accepte. Test : commit_docs_test.ps1.
 param(
   [string]$Root = 'C:\Users\baudo\Documents\MyCrusader',
   [string]$Message = '',
+  [string[]]$Only = @(),
   [switch]$DryRun
 )
 $ErrorActionPreference = 'Continue'
@@ -14,6 +18,14 @@ if ($inside -ne 'true') { Write-Output "ERREUR : $Root n'est pas un depot git"; 
 # L10-tool (2026-11-11) : + Placeholders*.txt/md, *InProgress.md SUIVIS (un *InProgress.md neuf non suivi reste hors du commit), Docs/SessionEnd.txt (meme liste que $mdocOk de session_gate -Phase Merge)
 $Specs = @(':(glob)Auto_Journey*.md', 'EtapeDefini.md', 'Retours', ':(glob)Placeholders*.txt', ':(glob)Placeholders*.md', ':(glob)*InProgress.md', 'Docs/SessionEnd.txt')
 $UntrackedSkip = '(^|/)[^/]*InProgress\.md$'
+$Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim().Replace('\', '/') } | Where-Object { $_ })
+if ($Only.Count -gt 0) {
+  $DocRe = '^(Auto_Journey[^/]*\.md|EtapeDefini\.md|Retours/.+|Placeholders[^/]*\.(txt|md)|[^/]*InProgress\.md|Docs/SessionEnd\.txt)$'   # = $Specs
+  $bad = @($Only | Where-Object { $_ -notmatch $DocRe })
+  if ($bad.Count -gt 0) { Write-Output ("ERREUR : -Only hors des docs (jamais du code ni un autre fichier) : " + ($bad -join ', ')); exit 3 }
+  $Specs = @($Only | ForEach-Object { ':(literal)' + $_ })
+  $UntrackedSkip = '^$never'
+}
 $lines = @(& git.exe -C $Root -c core.quotepath=false status --porcelain -uall -- @Specs 2>$null | Where-Object { $_ } | Where-Object { -not ($_ -match '^\?\? ' -and $_.Substring(3).Trim('"') -match $UntrackedSkip) })
 if ($lines.Count -eq 0) { Write-Output 'rien a committer (aucun doc modifie)'; exit 0 }
 foreach ($l in $lines) { Write-Output ("  " + $l) }

@@ -1,10 +1,14 @@
 # Test of the build queue of Tools\build.ps1 (one build at a time, one waiting build per copy, orphans, -Priority merge, CSV).
 # Uses a private queue directory + CSV in %TEMP% and a fake build (-FakeBuild, a sleep) in place of UnrealBuildTool: it
 # never touches the real queue and never starts UBT, so it can run while other copies compile.
-# Run: powershell -ExecutionPolicy Bypass -File <copy>\Tools\Tests\build_queue_test.ps1 [-Only b|c|d]
-# Prints PASS/FAIL per check, a final "build_queue_test : PASS|FAIL"; exit code 0 / 1.
+# Run: powershell -ExecutionPolicy Bypass -File <copy>\Tools\Tests\build_queue_test.ps1 [-Only b|c|d|e|m|t|s]
+# Prints PASS/FAIL per check, a final "build_queue_test : PASS|FAIL"; exit code 0 / 1 ; unknown -Only: exit 2.
+# 2026-11-14 (FARAMIR-1114b, build_queue_output_test.ps1): every line goes through Write-Output (stdout), not Write-Host: a caller that
+# captured the output (`$o = & build_queue_test.ps1`, `| Out-String`) got an EMPTY result; an unknown -Only ran nothing and printed PASS.
 param([string] $Only = "", [string] $BuildScript = "")
 $ErrorActionPreference = "Stop"
+$Parts = @('b', 'c', 'd', 'e', 'm', 't', 's')
+if ($Only -and $Parts -notcontains $Only) { Write-Output ("build_queue_test : unknown part -Only '{0}' (parts: {1})" -f $Only, ($Parts -join ' ')); exit 2 }
 $Repo = (Resolve-Path "$PSScriptRoot\..\..").Path
 $Build = if ($BuildScript) { $BuildScript } else { Join-Path $Repo "Tools\build.ps1" }
 $Tmp = Join-Path $env:TEMP ("hol_bq_test_" + [guid]::NewGuid().ToString("N").Substring(0, 8))
@@ -13,7 +17,7 @@ $env:HOL_BUILD_POLL_SECONDS = "1"
 $env:HOL_BUILD_MIN_FREE_VM_GB = "0"   # L12-1c: the queue cases never wait for memory (case [m] raises the floor itself)
 $Failures = 0
 function Check($Condition, $Message) {
-    if ($Condition) { Write-Host "  PASS $Message" } else { Write-Host "  FAIL $Message"; $script:Failures++ }
+    if ($Condition) { Write-Output "  PASS $Message" } else { Write-Output "  FAIL $Message"; $script:Failures++ }
 }
 # fake copies: a folder with the real .uproject
 foreach ($N in 'A', 'B', 'C', 'D', 'E', 'G', 'W', 'X', 'Y', 'Z') {
@@ -59,7 +63,7 @@ function Rows($S) { if (Test-Path $S.Csv) { @(Import-Csv $S.Csv) } else { @() } 
 function Out-Text($S, $Key) { if (Test-Path $S.Procs[$Key].Out) { Get-Content $S.Procs[$Key].Out -Raw } else { "" } }
 
 if (-not $Only -or $Only -eq 'b') {
-    Write-Host "[b] one waiting build per copy"
+    Write-Output "[b] one waiting build per copy"
     $S = New-Scenario b
     Launch $S 'A' 16
     Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq 'wt_A' -and $_.state -eq 'compiling' }).Count -eq 1 }) "A holds the slot (compiling)"
@@ -81,7 +85,7 @@ if (-not $Only -or $Only -eq 'b') {
 }
 
 if (-not $Only -or $Only -eq 'c') {
-    Write-Host "[c] orphans"
+    Write-Output "[c] orphans"
     $S = New-Scenario c
     New-Item -ItemType Directory -Force $S.Dir | Out-Null
     $Gate = Join-Path $Tmp "gate_c"
@@ -119,7 +123,7 @@ while ((Get-Date) -lt $End -and -not (Get-ChildItem $Q -Filter '*.json' -ErrorAc
 }
 
 if (-not $Only -or $Only -eq 'd') {
-    Write-Host "[d] -Priority merge, then starved copies, then FIFO"
+    Write-Output "[d] -Priority merge, then starved copies, then FIFO"
     $S = New-Scenario d
     # history: X and Y compiled 5 min ago (recent), W never (starved)
     $Stamp = (Get-Date).AddMinutes(-5).ToString("yyyy-MM-dd HH:mm:ss")
@@ -152,7 +156,7 @@ if (-not $Only -or $Only -eq 'd') {
 }
 
 if (-not $Only -or $Only -eq 'e') {
-    Write-Host "[e] -Wait : a waiting build asked with -Wait is never replaced (no exit 3), the newer build queues behind it"
+    Write-Output "[e] -Wait : a waiting build asked with -Wait is never replaced (no exit 3), the newer build queues behind it"
     $S = New-Scenario e
     Launch $S 'A' 12
     Check (Wait-Until { @(Tickets $S | Where-Object { $_.worktree -eq 'wt_A' -and $_.state -eq 'compiling' }).Count -eq 1 }) "A holds the slot (compiling)"
@@ -173,7 +177,7 @@ if (-not $Only -or $Only -eq 'e') {
 if (-not $Only -or $Only -eq 'm') {
     # L12-1c (2026-11-12): a build waits while the free virtual memory is under the floor (8 GB) and writes it (log + CSV 'load').
     # Real measure; the test only raises the floor (HOL_BUILD_MIN_FREE_VM_GB) and shortens the wait cap (HOL_BUILD_MEMORY_WAIT_MAX_SECONDS).
-    Write-Host "[m] free virtual memory floor"
+    Write-Output "[m] free virtual memory floor"
     $S = New-Scenario m
     $env:HOL_BUILD_MIN_FREE_VM_GB = "100000"; $env:HOL_BUILD_MEMORY_WAIT_MAX_SECONDS = "4"
     Launch $S 'A' 1
@@ -197,7 +201,7 @@ if (-not $Only -or $Only -eq 'm') {
 if (-not $Only -or $Only -eq 't') {
     # L12-3 (2026-11-12): -MaxWaitMin N: past N minutes in the queue, the build gives up (never compiles), says so, leaves the
     # queue and ends with exit 5, so an agent works without a binary meanwhile instead of waiting for nothing.
-    Write-Host "[t] -MaxWaitMin: wait exceeded"
+    Write-Output "[t] -MaxWaitMin: wait exceeded"
     $S = New-Scenario t
     $Gate = Join-Path $Tmp "gate_t"
     $env:HOL_FAKE_GATE = $Gate
@@ -225,7 +229,7 @@ if (-not $Only -or $Only -eq 's') {
     # median => "BUILD LENT" (console + column load). Fake CSV: normal builds of 2 actions in 1-2 s, normal builds of 200
     # actions in 100 s, merge builds of 100 s (no count). A 6 s build of 2 actions is slow; a 6 s build of 200 actions is not
     # (the old type-only median, 51 s over the six normal rows, would see neither as slow).
-    Write-Host "[s] BUILD LENT (3 x median of the same type and a close UBT action count)"
+    Write-Output "[s] BUILD LENT (3 x median of the same type and a close UBT action count)"
     $S = New-Scenario s
     $Old = @("worktree,requested,compile_start,end,wait_s,duration_s,result,waited_behind,priority,load")
     foreach ($D in 1, 1, 2) { $Old += "wt_Z,2026-11-01 10:00:00,2026-11-01 10:00:01,2026-11-01 10:00:0$($D + 1),1,$D,PASS,`"`",normal,`"vm 10 GB; actions 2`"" }
@@ -273,6 +277,6 @@ if (-not $Only -or $Only -eq 's') {
 
 Get-Process powershell -ErrorAction SilentlyContinue | Out-Null
 Remove-Item -Recurse -Force $Tmp -ErrorAction SilentlyContinue
-if ($Failures) { Write-Host "build_queue_test : FAIL ($Failures check(s))"; exit 1 }
-Write-Host "build_queue_test : PASS"
+if ($Failures) { Write-Output "build_queue_test : FAIL ($Failures check(s))"; exit 1 }
+Write-Output "build_queue_test : PASS"
 exit 0
