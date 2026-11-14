@@ -55,7 +55,7 @@ void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 	Events.Add(HOLAudioEvent::AlertBuildingDone);
 	Events.Add(HOLAudioEvent::AlertTechDone);
 	Events.Add(HOLAudioEvent::AlertTrade);   // Q-audio-market-select = A (2026-11-08): the purchase sound moved to the Market's selection, buying and selling is silent
-	T.AssertEquals(27, HOLAudio::Count(), "the table has its 24 events, the 2 elected building selections and the Market's");
+	T.AssertEquals(30, HOLAudio::Count(), "the table has its 24 events, the 2 elected building selections, the Market's and the 3 of D798");
 	for (int Index = 0; Index < Events.Num(); Index++)
 	{
 		FHOLAudioCue Cue = HOLAudio::CueFor(Events[Index]);
@@ -98,8 +98,7 @@ void Test_AudioElectedBuildingSelectionWoodAndSacred(FUnitTest& T)
 		}
 	}
 	TArray<FString> Silent;
-	Silent.Add("MainCentre"); Silent.Add("Barracks"); Silent.Add("ArcheryRange"); Silent.Add("Stable"); Silent.Add("SiegeWorkshop");
-	Silent.Add("Forge");
+	Silent.Add("Barracks"); Silent.Add("ArcheryRange"); Silent.Add("Stable");   // MainCentre, SiegeWorkshop, Forge: their own sound (D798)
 	for (int Index = 0; Index < Silent.Num(); Index++)
 	{
 		T.AssertEquals(-1, HOLAudioBuildings::SelectEventFor(Silent[Index]), f"{Silent[Index]}: no election yet, no event");

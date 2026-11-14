@@ -62,6 +62,10 @@ namespace HOLAudioCandidates
 		Add(List, "Select.BuildingSacred", "s_sacred_bass_low,s_sacred_cello,s_sacred_harp_b3,s_sacred_harp_d4,s_sacred_harp_octave,s_sacred_gong_low,s_sacred_drum,s_sacred_book,s_sacred_low_toll,s_sacred_cloth");
 		// The Market's selection (Q-audio-market-select = A, 2026-11-08): a sounding cue has its ten too (the same as Building.Coins).
 		Add(List, "Select.BuildingCoins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
+		// D798 (2026-11-14): the per-building selections, the ten round 3 sounds the user chose from (Siege = Stone A, Forum = Metal B, Forge = Stone G).
+		Add(List, "Select.BuildingSiege", "s_stone3_block,s_stone3_mine_firm,s_stone3_knock,s_stone3_door_heavy,s_stone3_punch,s_stone3_drum_firm,s_stone3_double,s_stone3_gate,s_stone3_mallet,s_stone3_slab");
+		Add(List, "Select.BuildingForum", "s_metal3_pot_low,s_metal3_hammer_double,s_metal3_plate,s_metal3_pot,s_metal3_latch,s_metal3_click,s_metal3_tin,s_metal3_blade,s_metal3_mallet_firm,s_metal3_gong_short");
+		Add(List, "Select.BuildingForge", "s_stone3_block,s_stone3_mine_firm,s_stone3_knock,s_stone3_door_heavy,s_stone3_punch,s_stone3_drum_firm,s_stone3_double,s_stone3_gate,s_stone3_mallet,s_stone3_slab");
 	}
 
 	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per

@@ -86,6 +86,10 @@ namespace HOLAudioEvent
 	const int SelectBuildingSacred = 25;
 	// The Market's selection (Q-audio-market-select = A, 2026-11-08): handleCoins, the old purchase sound, moved here; Alert.Trade is now silent.
 	const int SelectBuildingCoins = 26;
+	// D798 (2026-11-14, round 3 of audio_compare_buildings_stone / _metal): one sound per BUILDING, not per family, for these three.
+	const int SelectBuildingSiege = 27;
+	const int SelectBuildingForum = 28;
+	const int SelectBuildingForge = 29;
 }
 
 namespace HOLAudio
@@ -161,6 +165,10 @@ namespace HOLAudio
 		Add(Cues, HOLAudioEvent::SelectBuildingWood, "Select.BuildingWood", "soft", "s_wood_door_lim", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuildingSacred, "Select.BuildingSacred", "soft", "s_sacred_book_lim", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuildingCoins, "Select.BuildingCoins", "soft", "s_coins_select_lim", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		// D798: the round 3 files already carry their gain (+8 dB in a limiter, peak -2.1 dB), so no _lim copy: Siege = Stone A, Forum = Metal B, Forge = Stone G.
+		Add(Cues, HOLAudioEvent::SelectBuildingSiege, "Select.BuildingSiege", "soft", "s_stone3_block", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingForum, "Select.BuildingForum", "soft", "s_metal3_hammer_double", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingForge, "Select.BuildingForge", "soft", "s_stone3_double", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).
