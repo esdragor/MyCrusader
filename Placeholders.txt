@@ -124,6 +124,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Arbre biome Neige [à venir ?]
 - Rochers par biome (crete = trois ellipsoides aplatis soudes, teintes par le biome : beige, brun, gris-vert, blanc ; D656 ; vu le 2026-11-11) [forme]
 - Revue des rochers et du décor (`hol.Rocks.Review`, essai rocks_compare, tour 1 A-J : candidats en formes du moteur, outil d'essai seulement, rien dans les cartes ; 2026-11-14) [forme]
+- Revue du décor tour 2 (`hol.Rocks.Review2`, essai rocks_compare2, A-H : B, D et mélanges, carré de sol de biome posé par l'outil ; outil d'essai seulement, rien dans les cartes ; 2026-11-14) [forme]
 - Autres biomes futurs (désert, marais, jungle...) [à venir]
 
 == MATÉRIEL ET EFFETS DE JEU
@@ -167,7 +168,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Sons des ordres (les cinq ordres muets) et de la sélection d'unité (Kenney handleSmallLeather, non remplacé ; sélection d'un bâtiment : voir ligne des bâtiments) [style]
 - Alerte du Forum (son 2D du moteur, la voix du héraut viendra) [style]
 - Fanfares du héros (bannière, cri, niveau, palier) [style]
-- Sons de sélection des bâtiments : Bois, Sacré et Marché élus (limiteur B, joués par l'utilisateur le 2026-11-09, restent des sons de pack) ; Pierre et Métal muets : 1er tour de candidats écouté le 2026-11-14, aucun retenu (volume trop faible) [style]
+- Sons de selection des batiments : Bois, Sacre et Marche elus (limiteur B, joues par l'utilisateur le 2026-11-09, restent des sons de pack) ; Atelier de siege = Pierre A, Forum = Metal B, Forge = Pierre G elus (D798, table f0189c3, assets importes 0a4ebc4, sons synthetiques) ; Caserne, Champ de tir, Ecurie muets : tour 4 synthetique (voix / tirs / cheval) a ecouter, non choisi [style]
 - Sons de combat, de récolte, de construction [rien ?]
 - Pas, voix et cris des unités [rien]
 - Ambiances des cartes [rien]
@@ -191,4 +192,4 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Enfants du Dragon, Cercle de l Ombre, Heritiers du Feu : factions grisees dans Nouvelle partie, sans contenu (jouent comme l Aube si elles etaient prises) [rien]
 - Textes EN/JA du panneau du scenario (Scenario {0}, preparing, ready, error, Restart) et des triches (Cheats +/-, Fast build on/off, +1000 Food/Wood/Stone/Gold, +1000 of everything, Population +165, Unit speed, Gather speed, {0}: x{1}), 18 textes de fill_po.py : traduction provisoire de l agent [texte]
 - Japonais de ces 18 textes (シナリオ, 準備中, 準備完了, エラー, リスタート, チート, 高速建設, 全資源, ユニット速度, 採集速度) : a relire par l utilisateur [texte]
-Depart Nomade : rayon de dispersion hol.Nomad.ScatterRadiusCm 6000 et ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
+Depart Nomade (D797 : carte entiere, ScatterRadiusCm 0) : ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
