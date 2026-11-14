@@ -35,8 +35,8 @@ bool GarrisonParitySame(const TArray<int>& A, const TArray<int>& B)
 	return true;
 }
 
-// 400 cases: 0 to 7 candidates of slots -1..2 and kinds -1..5 (outside 0..4 = a kind that never enters), building slot -1..1, places -1..6,
-// occupants -1..6, the three kind settings in every combination. Both copies give the same list in every case, and the table is not empty of
+// 400 cases: building slot -1..2, 0 to 7 candidates (half of the building's slot, half of any slot -1..2) of kinds -1..5 (outside 0..4 = a
+// kind that never enters), places -1..6, occupants -1..2, the three kind settings in every combination. Both copies give the same list in every case, and the table is not empty of
 // meaning: many cases admit someone, and some admit a rider only because the cavalry setting is on.
 void Test_GarrisonScriptAndCppAdmitTheSame(FUnitTest& T)
 {
@@ -48,15 +48,16 @@ void Test_GarrisonScriptAndCppAdmitTheSame(FUnitTest& T)
 	{
 		TArray<int> Slots;
 		TArray<int> Kinds;
+		int BuildingSlot = GarrisonParityNext(Seed, 4) - 1;
 		int Count = GarrisonParityNext(Seed, 8);
 		for (int U = 0; U < Count; ++U)
 		{
-			Slots.Add(GarrisonParityNext(Seed, 4) - 1);
+			// Half the candidates are of the building's own slot (often admitted), the others of any slot -1..2.
+			Slots.Add(GarrisonParityNext(Seed, 2) == 0 ? BuildingSlot : GarrisonParityNext(Seed, 4) - 1);
 			Kinds.Add(GarrisonParityNext(Seed, 7) - 1);
 		}
-		int BuildingSlot = GarrisonParityNext(Seed, 3) - 1;
 		int Places = GarrisonParityNext(Seed, 8) - 1;
-		int Occupants = GarrisonParityNext(Seed, 8) - 1;
+		int Occupants = GarrisonParityNext(Seed, 4) - 1;
 		bool bMelee = (Case & 1) != 0;
 		bool bHero = (Case & 2) != 0;
 		bool bCavalry = (Case & 4) != 0;
