@@ -4,8 +4,8 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: Game\n"
-"POT-Creation-Date: 2026-11-14 10:08\n"
-"PO-Revision-Date: 2026-11-14 10:08\n"
+"POT-Creation-Date: 2026-11-14 11:16\n"
+"PO-Revision-Date: 2026-11-14 11:16\n"
 "Language-Team: \n"
 "Language: ja\n"
 "MIME-Version: 1.0\n"
@@ -1442,32 +1442,95 @@ msgid "Connexion perdue — nouvelle tentative, {0}:{1}"
 msgstr "接続が切れました - 再試行中、{0}:{1}"
 
 #. Key:	ToggleFolded
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(338)
-#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(338)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(357)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(357)
 msgctxt "HOLCheatPanel,ToggleFolded"
 msgid "Triches  +"
 msgstr "チート  +"
 
 #. Key:	ToggleOpen
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(338)
-#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(338)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(357)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(357)
 msgctxt "HOLCheatPanel,ToggleOpen"
 msgid "Triches  -"
 msgstr "チート  -"
 
 #. Key:	FastBuildOn
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(343)
-#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(343)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(362)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(362)
 msgctxt "HOLCheatPanel,FastBuildOn"
 msgid "Construction rapide : oui"
 msgstr "高速建設：オン"
 
 #. Key:	FastBuildOff
-#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(344)
-#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(344)
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(363)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(363)
 msgctxt "HOLCheatPanel,FastBuildOff"
 msgid "Construction rapide : non"
 msgstr "高速建設：オフ"
+
+#. Key:	SpeedLabel
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(370)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(370)
+msgctxt "HOLCheatPanel,SpeedLabel"
+msgid "{0} : x{1}"
+msgstr "{0}：x{1}"
+
+#. Key:	CheatFood
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(67)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(67)
+msgctxt "HOLCheatPanel,CheatFood"
+msgid "+1000 Nourriture"
+msgstr "+1000 食料"
+
+#. Key:	CheatWood
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(68)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(68)
+msgctxt "HOLCheatPanel,CheatWood"
+msgid "+1000 Bois"
+msgstr "+1000 木材"
+
+#. Key:	CheatStone
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(69)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(69)
+msgctxt "HOLCheatPanel,CheatStone"
+msgid "+1000 Pierre"
+msgstr "+1000 石材"
+
+#. Key:	CheatGold
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(70)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(70)
+msgctxt "HOLCheatPanel,CheatGold"
+msgid "+1000 Or"
+msgstr "+1000 金"
+
+#. Key:	CheatAll
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(71)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(71)
+msgctxt "HOLCheatPanel,CheatAll"
+msgid "+1000 de tout"
+msgstr "全資源 +1000"
+
+#. Key:	CheatPopulation
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(72)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(72)
+msgctxt "HOLCheatPanel,CheatPopulation"
+msgid "Population +165"
+msgstr "人口 +165"
+
+#. Key:	GatherSpeed
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(80)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(80)
+msgctxt "HOLCheatPanel,GatherSpeed"
+msgid "Vitesse de collecte"
+msgstr "採集速度"
+
+#. Key:	UnitSpeed
+#. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(80)
+#: Source/HeroesOfLibertyUI/HUD/HOLCheatPanel.cpp(80)
+msgctxt "HOLCheatPanel,UnitSpeed"
+msgid "Vitesse des unités"
+msgstr "ユニット速度"
 
 #. Key:	NoWinner
 #. SourceLocation:	Source/HeroesOfLibertyUI/HUD/HOLGameHUD.cpp(190)
