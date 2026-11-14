@@ -16,16 +16,25 @@ capture market_grid
 note 1. Le Marché est sélectionné : la grille en bas à droite montre ses échanges. Ligne du haut A Z E = ACHETER nourriture, bois, pierre : la case dit « +X » puis le logo de la ressource (X = ce qu'on reçoit pour 100 d'or). Ligne du dessous Q S D = VENDRE : « +Y » puis le logo de l'or (Y = l'or reçu pour 100 de la ressource).
 note Au départ : acheter du bois ou de la nourriture, +96 ; de la pierre, +64 ; vendre 100 de bois ou de nourriture, +56 or ; 100 de pierre, +84 or. L'info-bulle donne la phrase complète (pour 100) et le cours après l'échange.
 # Le scénario fait lui-même un achat puis une vente de bois, pour montrer l'effet à l'écran (stock en haut, cours dans la case).
-hol.Select.Grid 1
+# Geste reel (L14-5) : le clic sur le Marche (hol.Select.Click, un clic gauche au milieu de la vue), puis la vraie touche Z puis S (hol.UI.Key : evenement clavier Slate, le chemin d'une vraie touche), modele deploy.
+hol.UI.Key Z 0 0.1
+waitlog Key pressed: Z
 waitlog Market: slot 0 bought 1 lots of resource 1
 frames 10
 capture market_bought
-hol.Select.Grid 5
+hol.UI.Key S 0 0.1
+waitlog Key pressed: S
 waitlog Market: slot 0 sold 1 lots of resource 1
 frames 10
 hol.HUD.Report 1
 waitlog HUD overlap:
 capture market_sold
+# Verification 1080p (L14-5) : la meme grille dans une fenetre 1920x1080.
+r.SetRes 1920x1080w
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture market_1080
 hol.Test.Sanity
 note 2. Le scénario vient d'acheter du bois avec 100 d'or (Z) puis d'en vendre 100 (S) : le stock du haut a bougé, et les cases de bois ont changé (le cours monte quand on achète, baisse quand on vend).
 waitkey Entrée : à toi, essaie A Z E (acheter) et Q S D (vendre), ou clique sur les cases
