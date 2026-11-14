@@ -225,3 +225,9 @@ jeu s'ouvre directement sur une carte avec des soldats et des ennemis.
 - BESOIN C++ (non code) : un verbe de vrai clic sur un widget du HUD de jeu (comme `hol.UI.Click` : hit test Slate au centre du widget, RoutePointerDown/Up) pour les cases de l'Arbre, « Choix conseille », les cases de grille ; sans lui talents_icons_compare reste GESTE interne.
 - Fiches : Retours\E-market.md, E-talents_icons.md, E-legions_warrior.md ne sont plus dans Retours (archivees dans Docs\Archive\Retours_2026-11-14) : champ GESTE non mis a jour (hors de mes fichiers), a la session principale de rouvrir ou non.
 - Le titre du panneau reste replie « en / preparation… » (legions_warrior) : defaut C++ deja en file.
+
+## Panneau du scenario : NSLOCTEXT + etat sur une ligne, test de langue (GALADRIEL-1114c/d, 2026-11-14 11:10-, galadriel-tab, C++)
+- Rouge : dda8d3d (HeroesOfLiberty.UI.ScenarioPanel.LocalizedOneLine). 1114c : HOLScenarioPanel / HOLCheatPanel en NSLOCTEXT, etat sans repli (sauf erreur, largeur min = le plus long des deux etats), 9 textes EN/JA dans fill_po.py, .po/.archive/.locres regeneres ; partie « langue » restee rouge.
+- Cause (1114d) : DEFAUT DU TEST, pas du code. Les cles HOLScenarioPanel,* et HOLCheatPanel,* sont dans les .po EN/JA ; l'editeur de test ne charge la localisation Game que par un apercu asynchrone, SetCurrentLanguage en/ja y laisse le francais (deja note dans HOLGameNamesTests).
+- Correctif du test : pour en/ja, le texte affiche par le panneau est traduit par SES namespace/cle (FTextInspector ; pour le titre, le motif de FText::Format et l'argument du panneau) dans Content/Localization/Game/<culture>/Game.locres, attendu « Scenario deploy » / « preparing… » / « ready » et « シナリオ deploy » / « 準備中… » / « 準備完了 » ; un INVTEXT (code d'avant) n'a pas de cle et echoue. Partie fr inchangee (vrai texte du widget).
+- Build PASS 11:22 ; test seul vert 11:23 ; commit 8dca955 (code + test + localisation).
