@@ -10,6 +10,7 @@
 #include "Technologies/HOLTechnologyRules.h"
 #include "Engine/NetSerialization.h"
 #include "Match/HOLCampView.h"
+#include "Match/HOLSpecializationView.h"
 #include "HOLPlayerState.generated.h"
 
 /**
@@ -133,6 +134,11 @@ public:
 	/** Server only: true when it changed (and is then sent at once). */
 	bool SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate);
 
+	/** SP2 (D203, D684): the player's specialization (running unlock, time left, applied options), owner only; the client never decides. */
+	const FHOLSpecializationView& GetSpecialization() const { return Specialization; }
+	/** Server only (UHOLSpecializationSubsystem): true when it changed (and is then sent at once). */
+	bool SetSpecialization(const FHOLSpecializationView& InSpecialization);
+
 	/**
 	 * S5 (D701): the sacred sites this player may know (taken or being taken by his camp, or explored by it), as he last saw them; set by
 	 * the server alone (UHOLSiteSubsystem) and replicated to this player only, so a site he never saw is not in what his machine holds.
@@ -210,6 +216,10 @@ private:
 
 	UPROPERTY(ReplicatedUsing = OnRep_HeroPrivate)
 	FHOLHeroPrivateSheet HeroPrivate;
+
+	/** SP2: the specialization's view, owner only (D203: the opponent reads nothing of an unlock in progress). */
+	UPROPERTY(Replicated)
+	FHOLSpecializationView Specialization;
 
 	/** S5: the sacred sites this player may know, owner only. */
 	UPROPERTY(Replicated)

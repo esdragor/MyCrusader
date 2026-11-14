@@ -188,6 +188,12 @@ bool FHOLManagerClientLobbyTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("nomad"), Lobby.bNomad);
 	TestTrue(TEXT("regicide"), Lobby.bRegicide);
 	TestFalse(TEXT("catastrophe"), Lobby.bCatastrophe);
+	TestFalse(TEXT("no sacred sites when the manager does not say"), Lobby.bSacredSites);
+	// S7 (SacredSitesInProgress.md): the "Sites sacrés" box comes back in the lobby's state.
+	FHOLLobby SitesLobby;
+	TestTrue(TEXT("lobby with sacred sites read"), FHOLManagerClientRules::ParseLobby(State.Replace(TEXT(R"("catastrophe": false })"),
+		TEXT(R"("catastrophe": false, "sacredSites": true })")), SitesLobby));
+	TestTrue(TEXT("lobby sacredSites read"), SitesLobby.bSacredSites);
 	TestTrue(TEXT("maps"), Lobby.Maps.Num() == 1 && Lobby.Maps[0] == TEXT("Plain"));
 	// C0.2 (Cartes): several maps served (Tools/Data/Maps.csv), kept in the manager's order.
 	FHOLLobby TwoMaps;
@@ -291,7 +297,12 @@ bool FHOLManagerClientWriteTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("settings nomad"), Settings->GetBoolField(TEXT("nomad")));
 		TestFalse(TEXT("settings regicide"), Settings->GetBoolField(TEXT("regicide")));
 		TestTrue(TEXT("settings catastrophe"), Settings->GetBoolField(TEXT("catastrophe")));
+		TestFalse(TEXT("no sacredSites when not given"), Settings->HasField(TEXT("sacredSites")));
 	}
+	// S7 (SacredSitesInProgress.md): the "Sites sacrés" box goes to the manager, then comes back in the lobby's state.
+	const TSharedPtr<FJsonObject> Sites = ReadBody(FHOLManagerClientRules::MakeSettingsBody(TEXT("Plain"), false, false, false, FString(), {},
+		FString(), FString(), FString(), true));
+	TestTrue(TEXT("settings sacredSites sent"), Sites.IsValid() && Sites->HasField(TEXT("sacredSites")) && Sites->GetBoolField(TEXT("sacredSites")));
 	const TSharedPtr<FJsonObject> Closed = ReadBody(FHOLManagerClientRules::MakeSlotBody(false));
 	TestTrue(TEXT("slot closed"), Closed.IsValid() && Closed->GetStringField(TEXT("state")) == TEXT("closed"));
 	const TSharedPtr<FJsonObject> Opened = ReadBody(FHOLManagerClientRules::MakeSlotBody(true));

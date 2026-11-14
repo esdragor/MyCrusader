@@ -2271,7 +2271,13 @@ void UHOLCombatProcessor::Execute(FMassEntityManager& EntityManager, FMassExecut
 				Seeker.AggressionRadius = Constants.AggressionRadius;
 				Seeker.Mode = Combat.Mode == EHOLCombatMode::Hold ? HOLCombat::ESeekMode::Hold
 					: Combat.Mode == EHOLCombatMode::AttackMove ? HOLCombat::ESeekMode::AttackMove : HOLCombat::ESeekMode::Auto;
-				const float BuildingSearch = HOLCombat::GetBuildingSearchRadius(Seeker, Constants);
+				float BuildingSearch = HOLCombat::GetBuildingSearchRadius(Seeker, Constants);
+				// G6 f: a deployed engine at rest (AggressionRadius 0: only on order) behind hol.Siege.DeployedAutoFire 1 (Q-deployed-engine-autofire, B).
+				if (Seeker.Mode == HOLCombat::ESeekMode::Auto && Fighter.Deploy && Fighter.Deploy->Phase == static_cast<uint8>(HOLDeploy::EPhase::Deployed)
+					&& HOLDeployedAutoFireEnabled())
+				{
+					BuildingSearch = FMath::Max(BuildingSearch, Constants.BuildingAttackRange);
+				}
 				if (BuildingSearch > 0.f)
 				{
 					BuildingCandidates.Reset();

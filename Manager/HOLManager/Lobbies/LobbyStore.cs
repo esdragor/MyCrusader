@@ -209,7 +209,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
 
     /** PUT /lobbies/{id}/settings (leader): only the given fields change; a change resets every "Ready". */
     public Lobby UpdateSettings(string lobbyId, string? token, string? map = null, bool? nomad = null, bool? regicide = null,
-        bool? catastrophe = null, string? size = null, bool? teamsTogether = null, string? fog = null, string? mode = null, string? biome = null)
+        bool? catastrophe = null, string? size = null, bool? teamsTogether = null, string? fog = null, string? mode = null, string? biome = null, bool? sacredSites = null)
     {
         lock (gate)
         {
@@ -251,7 +251,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             var sizeChanged = newSize != settings.Size;
             var changed = mapInfo.Name != settings.Map || sizeChanged || (nomad ?? settings.Nomad) != settings.Nomad
                 || (regicide ?? settings.Regicide) != settings.Regicide || (catastrophe ?? settings.Catastrophe) != settings.Catastrophe
-                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || newFog != settings.Fog || newMode != settings.Mode || newBiome != settings.Biome || extraSlots.Any(s => !s.Closed);
+                || (teamsTogether ?? settings.TeamsTogether) != settings.TeamsTogether || newFog != settings.Fog || newMode != settings.Mode || newBiome != settings.Biome || (sacredSites ?? settings.SacredSites) != settings.SacredSites || extraSlots.Any(s => !s.Closed);
             settings.Map = mapInfo.Name;
             settings.Size = newSize;
             settings.Nomad = nomad ?? settings.Nomad;
@@ -261,6 +261,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             settings.Fog = newFog;
             settings.Mode = newMode;
             settings.Biome = newBiome;
+            settings.SacredSites = sacredSites ?? settings.SacredSites;
             // TC3 (FHOLMapSizeRules::FitSlotsToSize): each player or AI past the places onto the first free slot below, in order.
             foreach (var from in moving)
             {

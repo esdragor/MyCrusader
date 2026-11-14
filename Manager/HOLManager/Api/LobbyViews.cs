@@ -58,6 +58,7 @@ public static class LobbyViews
             fog = lobby.Settings.Fog,
             mode = lobby.Settings.Mode,
             biome = lobby.Settings.Biome,
+            sacredSites = lobby.Settings.SacredSites,
         },
         maps = store.Maps.Select(m => new { name = m.Name, maxPlayers = m.MaxPlayers,
             sizes = m.Sizes.Select(s => new { key = s.Key, places = s.Places }).ToList() }).ToList(),

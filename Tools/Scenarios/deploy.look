@@ -1,0 +1,6 @@
+﻿# <nom de capture> | ce que l'utilisateur doit voir
+deploy_packed | Mangonneau selectionne, demonte : dans la grille de droite la case D dit Monter ; la Maison ennemie est a portee mais pas touchee
+deploy_deployed | apres la touche D et 8 s : la case D dit Demonter (engin monte)
+deploy_fire | sans aucun ordre l'engin monte a frappe seul la Maison : la Maison selectionnee (clic), son panneau donne ses PV deja entames d'un coup ; engin et Maison visibles hors du panneau des notes (aucun projectile n'est dessine pour ce coup de siege : manque connu)
+deploy_fire_hit | apres le coup suivant (5 s) : les PV de la Maison ont baisse de 45 de plus par rapport a deploy_fire
+deploy_packed_again | Mangonneau reselectionne, apres la seconde touche D et 5 s : la case D redit Monter (engin demonte) ; Maison visible

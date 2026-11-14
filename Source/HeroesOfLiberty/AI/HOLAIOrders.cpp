@@ -17,6 +17,9 @@
 #include "Simulation/HOLUnitTypes.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLMatchConfig.h"
+#include "Match/HOLFactionRules.h"
+#include "Simulation/HOLSimulationSettings.h"
+#include "Engine/DataTable.h"
 
 namespace
 {
@@ -277,6 +280,17 @@ bool UHOLAIOrderLibrary::ReadAIMarketBook(const UObject* WorldContextObject, TAr
 		OutPrices.Add(Book.Prices[Resource]);
 	}
 	return true;
+}
+
+bool UHOLAIOrderLibrary::IsAIUnitOpenToFaction(const FName TypeName, const FName FactionKey)
+{
+	if (TypeName.IsNone() || FactionKey.IsNone())
+	{
+		return true;
+	}
+	const UDataTable* Table = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Row = Table ? Table->FindRow<FHOLUnitTypeRow>(TypeName, TEXT("AI faction"), false) : nullptr;
+	return !Row || HOLFactionRules::GetTable().Allows(Row->Faction, FactionKey);
 }
 
 bool UHOLAIOrderLibrary::ReadAIUnitFigures(const UObject* WorldContextObject, const FName TypeName, FHOLAITypeFigures& OutFigures)

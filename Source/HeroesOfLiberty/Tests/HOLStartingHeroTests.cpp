@@ -2,11 +2,17 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "Match/HOLPlayerState.h"
+#include "Simulation/HOLSimulationSubsystem.h"
 #include "Dev/HOLTestHooks.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "HAL/FileManager.h"
+#include "Match/HOLGameState.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "HeroesOfLibertyGameModeBase.h"
 #include "Match/HOLMatchConfig.h"
 #include "Match/HOLMatchSettings.h"
@@ -222,6 +228,165 @@ bool FHOLStartingHeroSpawnTest::RunTest(const FString& Parameters)
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingUnitsAtPointTest, "HeroesOfLiberty.Match.StartingHero.AtPoint",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// N2 (c)+(d), first step: the King, the starting Peasants and the hero born from a POINT and a half body (what a Nomad
+// seat without a forum will use) land exactly where the forum's calls put them (the standard start does not change):
+// two worlds, one through the forum, one through the point; the born units compared one by one (type, owner, place).
+bool FHOLStartingUnitsAtPointTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 1;
+	const int32 NumPeasants = GetDefault<UHOLMatchSettings>()->StartingPeasants;
+	const FVector ForumLocation(5000.0, 2000.0, 0.0);
+	TArray<FHOLUnitView> Born[2];
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		AHOLBuilding* Forum = World->SpawnActor<AHOLBuilding>(ForumLocation, FRotator::ZeroRotator);
+		if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("forum"), Forum))
+		{
+			Forum->Setup(HOLBuildingTypeNames::MainCentre, Slot, Slot);
+			if (Way == 0)
+			{
+				TestTrue(TEXT("Forum: King"), AHeroesOfLibertyGameModeBase::SpawnKing(*World, Slot, *Forum));
+				TestTrue(TEXT("Forum: Peasants"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(*World, Slot, *Forum, NumPeasants));
+				TestTrue(TEXT("Forum: hero"), AHeroesOfLibertyGameModeBase::SpawnStartingHero(*World, Slot, *Forum));
+			}
+			else
+			{
+				// The point's half body read from the main centre's type, as a forum of that type would have it.
+				const float HalfBody = AHeroesOfLibertyGameModeBase::GetStartHalfBody(HOLBuildingTypeNames::MainCentre);
+				Forum->Destroy();
+				TestTrue(TEXT("Point: King"), AHeroesOfLibertyGameModeBase::SpawnKingAt(*World, Slot, ForumLocation, HalfBody));
+				TestTrue(TEXT("Point: Peasants"), AHeroesOfLibertyGameModeBase::SpawnStartingPeasantsAt(*World, Slot, ForumLocation, HalfBody, NumPeasants));
+				TestTrue(TEXT("Point: hero"), AHeroesOfLibertyGameModeBase::SpawnStartingHeroAt(*World, Slot, ForumLocation, HalfBody));
+			}
+			Units->ServeBirthRequests();
+			TArray<uint32> Ids;
+			Units->GetAllUnitIds(Ids);
+			for (const uint32 Id : Ids)
+			{
+				FHOLUnitView View;
+				if (Units->GetUnitView(Id, View))
+				{
+					Born[Way].Add(View);
+				}
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+	TestEqual(TEXT("Forum: King, Peasants and hero born"), Born[0].Num(), NumPeasants + 2);
+	if (TestEqual(TEXT("As many born from the point as from the forum"), Born[1].Num(), Born[0].Num()))
+	{
+		for (int32 Index = 0; Index < Born[0].Num(); ++Index)
+		{
+			const FHOLUnitView& A = Born[0][Index];
+			const FHOLUnitView& B = Born[1][Index];
+			const FString Where = FString::Printf(TEXT("unit %d (%s)"), Index, *A.TypeName.ToString());
+			TestEqual(*FString::Printf(TEXT("%s: same type"), *Where), B.TypeName, A.TypeName);
+			TestEqual(*FString::Printf(TEXT("%s: same owner"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
+			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
+		}
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadSeatTest, "HeroesOfLiberty.Match.StartingHero.NomadSeat",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// N2 (c)+(d): a slot's start through the game mode's own start (SpawnSlotStart, what SpawnMainCentres calls for each start),
+// two worlds from the same configuration, standard then Nomad (bNomad):
+// - standard: one building (the primary forum) of the slot, a complete Forum on the script board;
+// - Nomad: no building at all, the seat Nomad on the board (no complete Forum), and the very same units born (type, owner,
+//   place within 1 cm) as the standard start's by its forum: born from the start's point and the main centre's half body.
+bool FHOLStartingNomadSeatTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 0;
+	const FTransform Start(FRotator(0.f, 90.f, 0.f), FVector(5000.0, 2000.0, 0.0));
+	TArray<FHOLUnitView> Born[2];
+	int32 Used[2] = { INDEX_NONE, INDEX_NONE };
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		const bool bNomad = Way == 1;
+		const TCHAR* Name = bNomad ? TEXT("Nomad") : TEXT("Standard");
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
+		{
+			// The menu's configuration (one human in slot 0, the rule's starting Peasants and hero), Nomad or not.
+			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+			Config.bNomad = bNomad;
+			AHOLBuilding* Centre = AHeroesOfLibertyGameModeBase::SpawnSlotStart(*World, Config, Slot, Start);
+			Units->ServeBirthRequests();
+			int32 NumBuildings = 0;
+			for (TActorIterator<AHOLBuilding> It(World); It; ++It)
+			{
+				NumBuildings += It->IsActorBeingDestroyed() ? 0 : 1;
+			}
+			TestEqual(*FString::Printf(TEXT("%s: buildings at the start"), Name), NumBuildings, bNomad ? 0 : 1);
+			TestEqual(*FString::Printf(TEXT("%s: a centre returned"), Name), Centre != nullptr, !bNomad);
+			if (Centre)
+			{
+				TestTrue(TEXT("Standard: the centre is the slot's primary forum"), Centre->IsPrimaryForum() && Centre->GetOwnerPlayer() == Slot);
+			}
+			TestEqual(*FString::Printf(TEXT("%s: a complete Forum on the board"), Name), UHOLSpecializationSubsystem::IsForumComplete(World, Slot), !bNomad);
+			TArray<uint32> Ids;
+			Units->GetAllUnitIds(Ids);
+			for (const uint32 Id : Ids)
+			{
+				FHOLUnitView View;
+				if (Units->GetUnitView(Id, View))
+				{
+					Born[Way].Add(View);
+				}
+			}
+			// The population the top bar reads (AHOLPlayerState), written by the production at the start of each step: the
+			// Nomad's starting units count as the standard start's, even with no building at all (seen at the trial of
+			// nomad_start: "Population 0 / 0" with 5 Peasants alive).
+			AHOLPlayerState* Player = World->SpawnActor<AHOLPlayerState>();
+			UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+			UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+			if (TestNotNull(TEXT("player state"), Player) && TestNotNull(TEXT("production"), Production) && TestNotNull(TEXT("simulation"), Simulation))
+			{
+				Player->SetMatchSlot(Slot, Slot);
+				Production->OnWorldBeginPlay(*World);
+				Simulation->GetOnStepStarted().Broadcast(1);
+				Used[Way] = Player->GetPopulationUsed();
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+	const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(FHOLMatchConfig::MakeDefault(), GetDefault<UHOLMatchSettings>()->StartingPeasants);
+	TestTrue(TEXT("Standard: its starting Peasants (and hero) born"), NumPeasants > 0 && Born[0].Num() >= NumPeasants);
+	TestTrue(TEXT("Standard: the top bar counts its starting units"), Used[0] > 0);
+	TestEqual(TEXT("Nomad: the top bar counts the same population as the standard start's (no building needed)"), Used[1], Used[0]);
+	if (TestEqual(TEXT("Nomad: as many born as the standard start"), Born[1].Num(), Born[0].Num()))
+	{
+		for (int32 Index = 0; Index < Born[0].Num(); ++Index)
+		{
+			const FHOLUnitView& A = Born[0][Index];
+			const FHOLUnitView& B = Born[1][Index];
+			const FString Where = FString::Printf(TEXT("unit %d (%s)"), Index, *A.TypeName.ToString());
+			TestEqual(*FString::Printf(TEXT("%s: same type"), *Where), B.TypeName, A.TypeName);
+			TestEqual(*FString::Printf(TEXT("%s: same owner (slot 0)"), *Where), static_cast<int32>(B.OwnerPlayer), static_cast<int32>(A.OwnerPlayer));
+			TestTrue(*FString::Printf(TEXT("%s: same place (within 1 cm)"), *Where), FVector::Dist2D(A.Location, B.Location) <= 1.0);
+		}
+	}
 	return true;
 }
 

@@ -105,6 +105,10 @@ protected:
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<UHOLDropdown> CatastropheDropdown;
 
+	/** S7 (SacredSitesInProgress.md, D699): "Sites sacrés", off by default; in solo too (the sites are in the game). */
+	UPROPERTY(meta = (BindWidgetOptional))
+	TObjectPtr<UHOLDropdown> SacredSitesDropdown;
+
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UHOLButton> LaunchButton;
 

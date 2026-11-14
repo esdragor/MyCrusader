@@ -36,6 +36,8 @@
 #include "Net/UnrealNetwork.h"
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLSignalSubsystem.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLRTSCamera.h"
 #include "Player/HOLSelectionMarkers.h"
@@ -1652,6 +1654,84 @@ namespace UE::HeroesOfLiberty::Player
 			for (AHOLPlayerController* Controller : GetLocalControllers())
 			{
 				Controller->RequestStance(FCString::Atoi(*Args[0]), Stance);
+			}
+		}));
+	/** SG2, until the Alt + click (SG3): the local players post a map signal (the server's board decides, ServerPostSignal). */
+	FAutoConsoleCommand SignalPostCommand(
+		TEXT("hol.Signal.Post"),
+		TEXT("hol.Signal.Post <Kind> <X> <Y>: the local player posts a signal of that kind (0 Neutral to 5 Scout) at that place of the map"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 3)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Signal.Post <Kind> <X> <Y>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestSignal(FCString::Atoi(*Args[0]), FVector(FCString::Atof(*Args[1]), FCString::Atof(*Args[2]), 0.0));
+			}
+		}));
+	FAutoConsoleCommand SignalReportCommand(
+		TEXT("hol.Signal.Report"),
+		TEXT("hol.Signal.Report: logs the signals each local player has received (ClientReceiveSignal)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				UE_LOG(LogHOLMatch, Display, TEXT("Signal report: slot %d received %d"), PlayerState ? PlayerState->GetPlayerIndex() : -1, Controller->GetNumReceivedSignals());
+			}
+		}));
+	/** SP2, until the Forum's button (SP3): the local players start or cancel a specialization (the server's board decides). */
+	FAutoConsoleCommand SpecStartCommand(
+		TEXT("hol.Spec.Start"),
+		TEXT("hol.Spec.Start <Tier> <Option>: the local player starts the unlock of that option of that tier at his Forum"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			if (Args.Num() < 2)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Spec.Start <Tier> <Option>"));
+				return;
+			}
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestSpecialization(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]));
+			}
+		}));
+	FAutoConsoleCommand SpecCancelCommand(
+		TEXT("hol.Spec.Cancel"),
+		TEXT("hol.Spec.Cancel: the local player cancels his running specialization"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestCancelSpecialization();
+			}
+		}));
+	FAutoConsoleCommand SpecReportCommand(
+		TEXT("hol.Spec.Report"),
+		TEXT("hol.Spec.Report: logs the specialization view of every player state as this machine has it (replicated to its owner alone)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				const AGameStateBase* GameState = Controller->GetWorld() ? Controller->GetWorld()->GetGameState() : nullptr;
+				if (!PlayerState || !GameState)
+				{
+					continue;
+				}
+				for (const APlayerState* Other : GameState->PlayerArray)
+				{
+					if (const AHOLPlayerState* OtherState = Cast<AHOLPlayerState>(Other))
+					{
+						const FHOLSpecializationView& View = OtherState->GetSpecialization();
+						UE_LOG(LogHOLMatch, Display, TEXT("Specialization state slot %d %s: pending tier %d option %d, %d ms left, chosen %d %d %d"),
+							OtherState->GetPlayerIndex(), OtherState == PlayerState ? TEXT("local") : TEXT("other"), View.PendingTier, View.PendingOption,
+							View.RemainingMs, View.GetChosen(1), View.GetChosen(2), View.GetChosen(3));
+					}
+				}
 			}
 		}));
 	FAutoConsoleCommand DiplomacyVisionCommand(
@@ -4983,6 +5063,105 @@ void AHOLPlayerController::RequestDuelAnswer(const bool bAccept)
 	{
 		ServerDuelAnswer(bAccept);
 	}
+}
+
+void AHOLPlayerController::RequestSignal(const int32 Kind, const FVector& Location)
+{
+	// A pure spectator places none (it has no seat); the board refuses the rest (a defeated player, the rate).
+	if (!IsSpectator())
+	{
+		ServerPostSignal(Kind, Location);
+	}
+}
+
+void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, const FVector Location)
+{
+	// The player's own slot only (D288); the script's board decides (HOLSignal::Post), then each seat that sees it receives it.
+	UWorld* World = GetWorld();
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	UHOLSignalSubsystem* Board = UHOLSignalSubsystem::Find(World);
+	if (!HOLPlayerState || !GameState || !Board)
+	{
+		return;
+	}
+	const int32 Sender = HOLPlayerState->GetPlayerIndex();
+	const FHOLSignalBookInput Book = UHOLSignalSubsystem::ReadBook(World);
+	const int32 NowMs = static_cast<int32>(World->GetTimeSeconds() * 1000.0);
+	const int32 Result = Board->PostNow(Book, Sender, GameState->IsSlotDefeated(Sender), Kind, Location, NowMs);
+	UE_LOG(LogHOLMatch, Display, TEXT("Signal: slot %d kind %d answer %d"), Sender, Kind, Result);
+	if (Result != 0)
+	{
+		return;
+	}
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		AHOLPlayerController* Viewer = Cast<AHOLPlayerController>(It->Get());
+		const AHOLPlayerState* ViewerState = Viewer ? Viewer->GetHOLPlayerState() : nullptr;
+		if (!Viewer)
+		{
+			continue;
+		}
+		const int32 ViewerSlot = ViewerState ? ViewerState->GetPlayerIndex() : INDEX_NONE;
+		const bool bSpectator = UHOLSignalSubsystem::IsSignalSpectator(World, ViewerSlot, Viewer->IsSpectator());
+		if (Board->SeesNow(Book, Sender, ViewerSlot, bSpectator))
+		{
+			Viewer->ClientReceiveSignal(Sender, Kind, Location);
+		}
+	}
+}
+
+void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender, const int32 Kind, const FVector Location)
+{
+	++NumReceivedSignals;
+	UE_LOG(LogHOLMatch, Display, TEXT("Signal: received kind %d from slot %d at (%.0f, %.0f)"), Kind, Sender, Location.X, Location.Y);
+}
+
+void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 Option)
+{
+	if (!IsSpectator())
+	{
+		ServerStartSpecialization(Tier, Option);
+	}
+}
+
+void AHOLPlayerController::RequestCancelSpecialization()
+{
+	if (!IsSpectator())
+	{
+		ServerCancelSpecialization();
+	}
+}
+
+void AHOLPlayerController::ServerStartSpecialization_Implementation(const int32 Tier, const int32 Option)
+{
+	// The player's own seat only (D288); the script's board decides (HOLSpecialization::Start with the seat's tier and its Forum).
+	UWorld* World = GetWorld();
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (!HOLPlayerState || !GameState || !Board || HOLPlayerState->GetPlayerIndex() < 0)
+	{
+		return;
+	}
+	const int32 Slot = HOLPlayerState->GetPlayerIndex();
+	const int32 Result = Board->StartNow(Slot, Tier, Option, GameState->GetTier(Slot), UHOLSpecializationSubsystem::IsForumComplete(World, Slot));
+	UE_LOG(LogHOLMatch, Display, TEXT("Specialization: slot %d starts tier %d option %d, answer %d"), Slot, Tier, Option, Result);
+	Board->RefreshView(*HOLPlayerState);
+}
+
+void AHOLPlayerController::ServerCancelSpecialization_Implementation()
+{
+	UWorld* World = GetWorld();
+	AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World);
+	if (!HOLPlayerState || !Board || HOLPlayerState->GetPlayerIndex() < 0)
+	{
+		return;
+	}
+	const int32 Result = Board->CancelNow(HOLPlayerState->GetPlayerIndex());
+	UE_LOG(LogHOLMatch, Display, TEXT("Specialization: slot %d cancels, answer %d"), HOLPlayerState->GetPlayerIndex(), Result);
+	Board->RefreshView(*HOLPlayerState);
 }
 
 void AHOLPlayerController::RequestStance(const int32 TargetSlot, const int32 Stance)

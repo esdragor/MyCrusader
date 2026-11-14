@@ -48,6 +48,49 @@ void Test_ArmyArquebusierIsNeverPlannedByTheLegions(FUnitTest& T)
 	T.AssertTrue(Choice.Type != n"Arquebusier", "and it is not the Arquebusier");
 }
 
+int TypePicks(FHOLAIArmyData Data, FName Type, int Picks)
+{
+	FHOLAISummary Summary;
+	Summary.Tier = 3;
+	int Made = 0;
+	for (int Pick = 0; Pick < Picks; Pick++)
+	{
+		const FHOLAIComposition Choice = HOLAIArmy::ChooseComposition(Summary, Data);
+		if (!Choice.bValid)
+		{
+			break;
+		}
+		FHOLAIUnit Unit;
+		Unit.Id = 100 + Pick;
+		Unit.Type = Choice.Type;
+		Unit.Health = 60;
+		Unit.bIdle = true;
+		Summary.Army.Add(Unit);
+		if (Choice.Type == Type)
+		{
+			Made++;
+		}
+	}
+	return Made;
+}
+
+void Test_ArmyCandidateFactionComesFromTheUnitTable(FUnitTest& T)
+{
+	// Palier 3 G4 (Q-palier3-g4-roles = C, A now): the AI keeps a candidate by the `Faction` column of UnitTypes.csv (the server's
+	// HOLFactionRules::IsUnitOpenTo), not by a list written in the script. The Monk (column `Dawn`) joins the mix with no faction
+	// written for it: a Legions AI never plans it, a Dawn AI does. Red while the script reads its own list (no entry: open to all).
+	FHOLAIArmyData Data = HOLAIArmy::DefaultData();
+	Data.Candidates.Add(n"Monk");
+	Data.CandidateBuildings.Add(n"Monastery");
+	Data.CandidateRatios.Add(3);
+	Data.CandidateFactions.Add(NAME_None);
+	T.AssertTrue(TypePicks(Data, n"Monk", 30) > 0, "tier 3, Dawn AI: the Monk (column Dawn) is planned");
+	Data.Faction = n"Legions";
+	T.AssertEquals(0, TypePicks(Data, n"Monk", 30), "tier 3, Legions AI: the Monk (column Dawn) is never planned");
+	T.AssertEquals(0, TypePicks(Data, n"Arquebusier", 30), "tier 3, Legions AI: the Arquebusier (column Dawn) is never planned");
+	T.AssertTrue(TypePicks(Data, n"DamnedWarrior", 30) > 0, "tier 3, Legions AI: the Damned Warrior (column Legions) is planned");
+}
+
 void Test_ArmyArquebusierIsMadeAtTheArcheryRange(FUnitTest& T)
 {
 	const FHOLAIArmyData Data = HOLAIArmy::DefaultData();

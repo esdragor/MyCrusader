@@ -103,6 +103,8 @@ struct HEROESOFLIBERTY_API FHOLLobby
 	bool bNomad = false;
 	bool bRegicide = false;
 	bool bCatastrophe = false;
+	/** S7 (SacredSitesInProgress.md, D699): the "Sites sacrés" box; false when an older manager does not say. */
+	bool bSacredSites = false;
 	/** The maps the manager offers, by name. */
 	TArray<FString> Maps;
 	/** Always 8. */
@@ -249,10 +251,11 @@ struct HEROESOFLIBERTY_API FHOLManagerClientRules
 	static FString MakeJoinBody(const FString& PlayerName, const FString& GameVersion, bool bSpectator);
 	/**
 	 * PUT /lobbies/{id}/settings: { "map", "nomad", "regicide", "catastrophe" }, then (TC3) "size" when Size is not empty and
-	 * "teamsTogether" when given.
+	 * "teamsTogether" when given; (S7) "sacredSites" when given.
 	 */
 	static FString MakeSettingsBody(const FString& Map, bool bNomad, bool bRegicide, bool bCatastrophe, const FString& Size = FString(),
-		TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString(), const FString& Mode = FString(), const FString& Biome = FString());
+		TOptional<bool> bTeamsTogether = {}, const FString& Fog = FString(), const FString& Mode = FString(), const FString& Biome = FString(),
+		TOptional<bool> bSacredSites = {});
 	/** PUT /lobbies/{id}/slots/{index}: { "state": "open" | "closed" }. */
 	static FString MakeSlotBody(bool bOpen);
 	/**

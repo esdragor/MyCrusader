@@ -8,6 +8,8 @@
 # windowless game sits on the screen edge and the camera drifts), and play.ps1 WAITS for the game to end (at most -TimeoutSec, default 300)
 # then closes the editor and every child it started, so nothing stays alive after the script. -NoWait gives the old behaviour (returns at once,
 # the editor lives on: stray_processes.ps1 -Stop at the end). -DryRun prints the command line and starts nothing.
+# A scenario whose last step is `quit` (HOLTestSequence.cpp: it closes the game only when nobody is at the keys) ends the hidden run at its
+# real end: once the editor has quit, its children get 5 s, then are closed; -Hidden warns when the scenario has no final quit.
 param(
     [Parameter(Position = 0)] [string] $Name = "",
     [string] $Root = "",
@@ -66,6 +68,10 @@ $GameArgs += "-ExecCmds=`"$ExecCmds`""
 if ($Hidden) { $GameArgs += @("-RenderOffScreen", "-nosound", "-unattended") }
 # Test seam (play_hidden_test.ps1): arguments put BEFORE the game's, so a fake engine can be a script host.
 if ($env:HOL_PLAY_PREARGS) { $GameArgs = @($env:HOL_PLAY_PREARGS) + $GameArgs }
+# A scenario whose last step is `quit` (HOLTestSequence.cpp) closes the hidden game at its real end; without it the hidden game runs until -TimeoutSec.
+$LastStep = Get-Content -Encoding UTF8 (Join-Path $Scenarios "$Name.txt") | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") } | Select-Object -Last 1
+$EndsWithQuit = ($LastStep -eq "quit")
+if ($Hidden -and -not $NoWait -and -not $EndsWithQuit) { Write-Host "play: scenario $Name does not end with quit: the hidden game runs until -TimeoutSec ($TimeoutSec s)" }
 if ($DryRun) { Write-Host ("play: " + $Editor + " " + ($GameArgs -join " ")); exit 0 }
 
 if (-not $Hidden) {
@@ -98,11 +104,17 @@ function Get-Alive { $Live = @(Get-Process -Id @($Seen) -ErrorAction SilentlyCon
 $Deadline = (Get-Date).AddSeconds($TimeoutSec)
 $Clean = $false
 $TimedOut = $false
+# Once the editor itself has quit (a scenario's `quit`), its children get -GraceSec to follow it, then are closed: a straggler no longer holds
+# the script until -TimeoutSec.
+$GraceSec = 5
+$QuitAt = $null
 try {
     while ($true) {
         if ((Get-Date) -ge $Deadline) { $TimedOut = $true; break }
         [void](Update-Seen)
         if ((Get-Alive).Count -eq 0) { $Clean = $true; break }
+        if (-not $QuitAt -and $Proc.HasExited) { $QuitAt = Get-Date }
+        if ($QuitAt -and ((Get-Date) - $QuitAt).TotalSeconds -ge $GraceSec) { break }
         Start-Sleep -Milliseconds 300
     }
 } finally {
@@ -113,6 +125,10 @@ try {
         # Stop-Process, not taskkill.exe: taskkill took 2-3 s per call here
         foreach ($P in ($Left | Sort-Object Id -Descending)) { Stop-Process -Id $P.Id -Force -ErrorAction SilentlyContinue }
     }
+}
+if (-not $QuitAt -and $Proc.HasExited -and -not $TimedOut) { $QuitAt = Get-Date }
+if ($QuitAt) {
+    Write-Host ("play: the game quit by itself after {0:N1} s{1}" -f ($QuitAt - $Deadline.AddSeconds(-$TimeoutSec)).TotalSeconds, $(if ($EndsWithQuit) { " (the scenario's last step is quit)" } else { "" }))
 }
 Write-Host ("play: hidden game ended after {0:N1} s (-TimeoutSec {1})" -f ((Get-Date) - $Deadline.AddSeconds(-$TimeoutSec)).TotalSeconds, $TimeoutSec)
 exit 0

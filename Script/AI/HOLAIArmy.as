@@ -612,7 +612,8 @@ namespace HOLAIArmy
 				// G1 (D711): a unit the tier has not opened is not a candidate (the server refuses it).
 				continue;
 			}
-			if (Index < Data.CandidateFactions.Num() && Data.CandidateFactions[Index] != NAME_None && Data.CandidateFactions[Index] != Data.Faction)
+			if ((Index < Data.CandidateFactions.Num() && Data.CandidateFactions[Index] != NAME_None && Data.CandidateFactions[Index] != Data.Faction)
+				|| !HOLAIOrder::IsAIUnitOpenToFaction(Data.Candidates[Index], Data.Faction)) // G4: the Faction column, as the server reads it
 			{
 				// G14 (D710): a unit the AI's faction does not make is not a candidate (the server refuses it).
 				continue;

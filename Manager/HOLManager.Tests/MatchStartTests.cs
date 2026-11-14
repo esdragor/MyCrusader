@@ -40,11 +40,23 @@ public class MatchStartTests
     }
 
     [Fact]
+    public void SacredSitesBoxGoesFromTheSettingsToTheMatchFile()
+    {
+        var (lobby, bob, alice, _) = ReferenceLobby();
+        Assert.False(JsonNode.Parse(MatchConfig.FromLobby(lobby, store.Maps[0], seed: 1).ToJson())!["bSacredSites"]!.GetValue<bool>());
+        store.UpdateSettings(lobby.Id, bob, sacredSites: true);
+        Assert.False(lobby.Slots[2].Player!.Ready);
+        Assert.True(JsonNode.Parse(MatchConfig.FromLobby(lobby, store.Maps[0], seed: 1).ToJson())!["bSacredSites"]!.GetValue<bool>());
+        store.UpdateSettings(lobby.Id, bob, nomad: false);
+        Assert.True(lobby.Settings.SacredSites);
+    }
+
+    [Fact]
     public void FieldNamesAreTheOnesOfFJsonObjectConverter()
     {
         var (lobby, _, _, _) = ReferenceLobby();
         var json = JsonNode.Parse(MatchConfig.FromLobby(lobby, store.Maps[0], seed: 1).ToJson())!.AsObject();
-        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "fogMode", "biome", "slots", "mode", "bNomad", "bRegicide", "bCatastrophe"],
+        Assert.Equal(["version", "seed", "map", "mapSize", "bDrawPlaces", "bTeamsTogether", "fogMode", "biome", "slots", "mode", "bNomad", "bRegicide", "bCatastrophe", "bSacredSites"],
             json.Select(p => p.Key));
         Assert.Equal(["state", "faction", "colorIndex", "team", "playerName"],
             json["slots"]![0]!.AsObject().Select(p => p.Key));

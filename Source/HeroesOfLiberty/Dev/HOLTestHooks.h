@@ -59,6 +59,13 @@ namespace HOLTestHooks
 	HEROESOFLIBERTY_API bool PressContinueKey();
 
 	/**
+	 * A scenario's quit step closes the game when nobody is at the keys (play.ps1 -Hidden: -unattended; a scripted check; auto-continue),
+	 * so that its launcher ends with the scenario's real end and not at its timeout. Set, it is called instead of the engine's quit: the
+	 * automation tests, which must not close the editor that runs them.
+	 */
+	HEROESOFLIBERTY_API TFunction<void()>& OnScenarioQuit();
+
+	/**
 	 * The configuration a test scenario starts with (hol.Scenario, HOLScenario.cpp), from the text of its .json (Json null:
 	 * it has none, the default configuration). Plain when it names no map; IA1.1: no starting Peasants (StartingPeasants 0)
 	 * unless the .json gives the field ("startingPeasants": 5), the scenarios making their own; J8a.2: no hero

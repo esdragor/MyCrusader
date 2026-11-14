@@ -1,5 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
+#include "Buildings/HOLBuilding.h"
+#include "Buildings/HOLBuildingTypes.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -203,6 +205,138 @@ bool FHOLDeployInMatchTest::RunTest(const FString& Parameters)
 	}
 	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
 	Deployable->Set(FormerDeployable, ECVF_SetByCode);
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	return true;
+}
+
+// Palier3InProgress.md G6 f (preflight deploy 16:45, step 38 'waitlog Mangonel hits a building for 45' never came): a DEPLOYED engine at rest,
+// with no order, near an enemy House within its building reach. Its AggressionRadius is 0 (UnitTypes.csv: 'only on order'), so it never takes a
+// building on by itself. Retours/Q-deployed-engine-autofire.md: cvar hol.Siege.DeployedAutoFire, 0 (default, A) only on order; 1 (B) a deployed
+// engine at rest takes on an enemy building within its building reach. Through the REAL combat and deploy processors; the effect: the House's health.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLDeployedAutoFireTest, "HeroesOfLiberty.Siege.Deploy.DeployedAutoFire", UE::HeroesOfLiberty::Tests::DeployInMatch::Flags)
+
+bool FHOLDeployedAutoFireTest::RunTest(const FString& Parameters)
+{
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	IConsoleVariable* Deployable = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Siege.Deployable"));
+	IConsoleVariable* AutoFire = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Siege.DeployedAutoFire"));
+	if (!TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled) || !TestNotNull(TEXT("hol.Siege.Deployable"), Deployable))
+	{
+		return false;
+	}
+	const int32 FormerEnabled = CombatEnabled->GetInt();
+	const int32 FormerDeployable = Deployable->GetInt();
+	const int32 FormerAutoFire = AutoFire ? AutoFire->GetInt() : 0;
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	Deployable->Set(1, ECVF_SetByCode);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	// The enemy House of slot 3 (slot 1 is on slot 0's team by default), its centre 2200 cm off: the preflight's layout, within the reach (3000).
+	AHOLBuilding* House = World->SpawnActor<AHOLBuilding>(FVector(2200.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("entities"), EntitySubsystem)
+		&& TestNotNull(TEXT("house"), House))
+	{
+		House->Setup(HOLBuildingTypeNames::House, 3, 3);
+		TSharedPtr<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		UHOLDeployProcessor* Deploy = NewObject<UHOLDeployProcessor>(Simulation);
+		Deploy->CallInitialize(Simulation, EntityManager.ToSharedRef());
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const auto RunStep = [Simulation, Units, Combat, Deploy, &EntityManager, StepSeconds]
+		{
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Deploy, ProcessingContext);
+			UE::Mass::Executor::Run(*Combat, ProcessingContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		// A Mangonel of slot 0 at the origin, deployed at once (the deploying itself is HeroesOfLiberty.Siege.Deploy.InMatch's), no order.
+		const auto PlaceDeployed = [Units, &EntityManager]
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = FName(TEXT("Mangonel"));
+				Request.Count = 1;
+				Request.OwnerPlayer = 0;
+				Request.Center = FVector::ZeroVector;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					FHOLDeployFragment* Fragment = Born != 0 ? EntityManager->GetFragmentDataPtr<FHOLDeployFragment>(Units->FindEntity(Born)) : nullptr;
+					if (Fragment)
+					{
+						Fragment->Phase = static_cast<uint8>(HOLDeploy::EPhase::Deployed);
+					}
+					return Fragment ? Born : 0u;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const int32 TenSeconds = FMath::CeilToInt(10.f / StepSeconds);
+		const auto Fires = [&](const int32 Value, const TCHAR* What)
+		{
+			if (AutoFire && Value >= 0)
+			{
+				AutoFire->Set(Value, ECVF_SetByCode);
+			}
+			const uint32 Engine = PlaceDeployed();
+			if (!TestTrue(FString::Printf(TEXT("%s: the deployed Mangonel born"), What), Engine != 0))
+			{
+				return false;
+			}
+			const float Start = House->GetHealth();
+			bool bHit = false;
+			for (int32 Index = 0; Index < TenSeconds && !bHit; ++Index)
+			{
+				RunStep();
+				bHit = House->GetHealth() < Start;
+			}
+			const TArray<uint32> Gone = { Engine };
+			Units->RequestDestroyUnits(Gone);
+			Units->FlushDestructions();
+			return bHit;
+		};
+		// The user's answer (2026-11-13, Q-deployed-engine-autofire = B): by DEFAULT (the cvar left at its startup value, no one sets it in this
+		// run) the deployed engine at rest fires at the enemy House by itself.
+		TestTrue(TEXT("hol.Siege.DeployedAutoFire by default (B): the deployed engine at rest fires at the enemy House within its reach"), Fires(-1, TEXT("default")));
+		// 0 (A): only on order, the House untouched.
+		TestFalse(TEXT("hol.Siege.DeployedAutoFire 0: the deployed engine at rest does not fire at the House by itself"), Fires(0, TEXT("A")));
+		// 1 (B): the deployed engine at rest fires at the enemy House within its building reach.
+		TestTrue(TEXT("hol.Siege.DeployedAutoFire 1: the deployed engine at rest fires at the enemy House within its reach"), Fires(1, TEXT("B")));
+	}
+	CombatEnabled->Set(FormerEnabled, ECVF_SetByCode);
+	Deployable->Set(FormerDeployable, ECVF_SetByCode);
+	if (AutoFire)
+	{
+		AutoFire->Set(FormerAutoFire, ECVF_SetByCode);
+	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	return true;

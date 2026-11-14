@@ -62,7 +62,7 @@ namespace UE::HeroesOfLiberty::Tests::SiteSubsystem
 		UHOLSiteSubsystem* Sites = nullptr;
 		int64 Step = 0;
 
-		explicit FFixture(FAutomationTestBase& Test)
+		explicit FFixture(FAutomationTestBase& Test, const bool bSacredSites = false)
 		{
 			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -74,6 +74,7 @@ namespace UE::HeroesOfLiberty::Tests::SiteSubsystem
 			Sites = World->GetSubsystem<UHOLSiteSubsystem>();
 			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
 			Config.Mode = EHOLMatchMode::Standard;
+			Config.bSacredSites = bSacredSites;
 			Config.Slots.SetNum(FHOLMatchConfig::MaxSlots);
 			for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
 			{
@@ -233,6 +234,32 @@ bool FHOLSiteSubsystemOffByDefaultTest::RunTest(const FString& Parameters)
 	Fixture.Tick(3 * HoldSteps());
 	TestEqual(TEXT("off: nobody owns the site"), Fixture.State(0).Owner, static_cast<int32>(INDEX_NONE));
 	TestEqual(TEXT("off: no one fills its count"), Fixture.State(0).Held, 0);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemBoxTest, "HeroesOfLiberty.Sites.SubsystemBox", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S7 (D699): the box "Sacred sites" of the match, hol.Site.Enabled left at 0: ticked, a Monk alone in the zone takes the site and its owner
+// is paid; unticked (the default), the same Monk changes nothing.
+bool FHOLSiteSubsystemBoxTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	TestFalse(TEXT("hol.Site.Enabled is 0"), UHOLSiteSubsystem::IsEnabled());
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	for (const bool bBox : { true, false })
+	{
+		FFixture Fixture(*this, bBox);
+		if (!Fixture.IsReady())
+		{
+			return false;
+		}
+		Fixture.Sites->AddSite(FVector2D(Here), 1500.f);
+		TestTrue(TEXT("a Monk of slot 0 born in the zone"), Fixture.Place(TEXT("Monk"), 0, Here) != 0);
+		Fixture.Tick(3 * HoldSteps());
+		TestEqual(bBox ? TEXT("box ticked: slot 0 owns the site") : TEXT("box unticked: nobody owns the site"), Fixture.State(0).Owner,
+			bBox ? 0 : static_cast<int32>(INDEX_NONE));
+		TestEqual(bBox ? TEXT("box ticked: slot 0 counts one site") : TEXT("box unticked: slot 0 counts none"), Fixture.Sites->CountOwned(0), bBox ? 1 : 0);
+	}
 	return true;
 }
 

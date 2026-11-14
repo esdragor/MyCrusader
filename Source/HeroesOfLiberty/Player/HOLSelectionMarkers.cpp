@@ -1,6 +1,7 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Player/HOLSelectionMarkers.h"
+#include "Simulation/HOLRageVisual.h"
 
 #include "Simulation/HOLRageVisual.h"
 

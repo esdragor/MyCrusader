@@ -46,6 +46,7 @@ bool FHOLBiomeConfigFileTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the manager's match.json"), FHOLMatchConfig::FromJson(TEXT("{\"version\": 3, \"map\": \"/Game/Maps/Plain.Plain\", \"biome\": \"dark_forest\"}"), FromManager, &Error));
 	TestEqual(TEXT("... its biome by key"), FromManager.Biome, FString(TEXT("dark_forest")));
 	TestTrue(TEXT("a file without it"), FHOLMatchConfig::FromJson(TEXT("{\"version\": 3, \"map\": \"/Game/Maps/Plain.Plain\"}"), FromManager, &Error));
+	TestFalse(TEXT("a version 3 file reads the sacred sites unticked (D699)"), FromManager.bSacredSites);
 	TestEqual(TEXT("... is the map's own"), FromManager.Biome, FString(TEXT("default")));
 
 	// The manager's reference files (Manager/HOLManager.Tests checks them against its own output) carry "biome": "default".

@@ -45,6 +45,17 @@ void FHOLNetUnitState::SetCombat(const int32 InHealth, const int32 MaxHealth, co
 		? static_cast<uint8>(FMath::RoundToInt(FRotator::ClampAxis(InFrontYawDegrees) / 360.f * NumDirections) & (NumDirections - 1)) : 0;
 }
 
+void FHOLNetUnitState::SetDeploy(const int32 InPhase)
+{
+	bDeploys = InPhase >= 0;
+	DeployPhase = bDeploys ? static_cast<uint8>(FMath::Min(InPhase, (1 << DeployPhaseBits) - 1)) : 0;
+}
+
+int32 FHOLNetUnitState::GetDeployPhase() const
+{
+	return bDeploys ? static_cast<int32>(DeployPhase) : -1;
+}
+
 float FHOLNetUnitState::GetFrontYaw() const
 {
 	return FRotator::NormalizeAxis(static_cast<float>(FrontYaw) * 360.f / static_cast<float>(1 << FrontYawBits));
@@ -73,7 +84,8 @@ uint16 HOLUnitReplication::GetWireHealthShare(const int32 Health, const int32 Ma
 bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUnitState& B)
 {
 	return EncodeActivity(A.Activity, A.GatherResource, A.bFacesFront) == EncodeActivity(B.Activity, B.GatherResource, B.bFacesFront)
-		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw;
+		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw
+		&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase;
 }
 
 FVector FHOLNetUnitState::GetPosition() const

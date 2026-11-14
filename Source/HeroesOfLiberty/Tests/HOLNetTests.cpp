@@ -117,8 +117,9 @@ namespace UE::HeroesOfLiberty::Tests::Net
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetReductionTest, "HeroesOfLiberty.Net.Reduction", UE::HeroesOfLiberty::Tests::Net::Flags)
 bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 {
-	TestEqual(TEXT("57 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position)"),
-		FHOLNetUnitState::TotalBits, 57);
+	TestEqual(TEXT("58 bits per state (D301, a load bit of J5, J7-Q5: a 4th activity bit and the full health bit, D343: 7 step bits, D344: 13 per position, G6 e: the deploys bit)"),
+		FHOLNetUnitState::TotalBits, 58);
+	TestEqual(TEXT("2 bits more for a unit that deploys, its phase (G6 e)"), FHOLNetUnitState::DeployingBits, 2);
 	TestEqual(TEXT("9 bits more for a wounded unit, its exact health (J7-Q5 revised; 8 bits until the Ram's 400)"), FHOLNetUnitState::WoundedBits, 9);
 	TestEqual(TEXT("12 bits more for an attacking one, its target's slot"), FHOLNetUnitState::AttackingBits, 12);
 	TestEqual(TEXT("6 bits more for one facing its front at rest"), FHOLNetUnitState::FacingFrontBits, 6);
@@ -159,6 +160,47 @@ bool FHOLNetReductionTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("the 400 m maps fit"), (1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep > 25000.f);
 	TestTrue(TEXT("the largest maps fit, 220 tiles of 4 m centred on the origin (D344)"),
 		(1 << (FHOLNetUnitState::HorizontalBits - 1)) * FHOLNetUnitState::PositionStep >= 44000.f);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetDeployPhaseTest, "HeroesOfLiberty.Net.DeployPhase", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetDeployPhaseTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	// G6 e (Palier 3): the phase of an engine that deploys reaches a client (HOLUnitView::DeployPhase), through Iris' chain.
+	const FVector Here(700.0, -800.0, 0.0);
+	FHOLNetUnitState Plain = FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 50);
+	Plain.SetCombat(100, 100, 0);
+	TestEqual(TEXT("a unit that does not deploy: no phase (-1)"), Plain.GetDeployPhase(), -1);
+	TestFalse(TEXT("a unit that does not deploy: its bit is off"), Plain.bDeploys);
+	for (int32 Phase = 0; Phase < 4; ++Phase)
+	{
+		FHOLNetUnitState Engine = Plain;
+		Engine.SetDeploy(Phase);
+		TestEqual(*FString::Printf(TEXT("phase %d kept by the server's state"), Phase), Engine.GetDeployPhase(), Phase);
+		FHOLNetUnitState Back;
+		if (RoundTrip(*this, Engine, Back))
+		{
+			TestEqual(*FString::Printf(TEXT("phase %d read by the client after the wire"), Phase), Back.GetDeployPhase(), Phase);
+			TestEqual(*FString::Printf(TEXT("phase %d: same state after the trip"), Phase), Back, Engine);
+		}
+	}
+	FHOLNetUnitState Packed = Plain;
+	Packed.SetDeploy(0);
+	FHOLNetUnitState Deploying = Plain;
+	Deploying.SetDeploy(1);
+	FHOLNetUnitState Deployed = Plain;
+	Deployed.SetDeploy(2);
+	TestFalse(TEXT("Deploying and Deployed are not the same action"), HOLUnitReplication::IsSameAction(Deploying, Deployed));
+	TestFalse(TEXT("a packed engine is not a unit that does not deploy"), HOLUnitReplication::IsSameAction(Plain, Packed));
+	FHOLUnitSentRecord Sent;
+	Sent.State = Deploying;
+	Sent.Step = 50;
+	TestTrue(TEXT("its phase changes (mounted): sent at once"),
+		HOLUnitReplication::GetSendReason(Sent, Here, Deployed, 1, 51, 0.05f, FHOLUnitSendRules()) == EHOLUnitSendReason::Activity);
+	FHOLNetUnitState Off = Deployed;
+	Off.SetDeploy(-1);
+	TestEqual(TEXT("no phase again: the state of a unit that does not deploy"), Off, Plain);
 	return true;
 }
 
@@ -203,6 +245,14 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 	// J7-Q5 revised: the largest health the wire carries, and each type of the table one hit off its maximum and at 1.
 	AllStates.Add(WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 98), FHOLNetUnitState::MaxWireHealth,
 		FHOLNetUnitState::MaxWireHealth + 1, 0, false, 0.f));
+	// G6 e: an engine that deploys, at each phase (idle while it mounts, attacking once mounted, wounded while it packs up).
+	for (int32 Phase = 0; Phase < 4; ++Phase)
+	{
+		FHOLNetUnitState Engine = WithCombat(FHOLNetUnitState::Make(Here, FVector::ZeroVector,
+			Phase == 2 ? EHOLUnitActivity::Attacking : EHOLUnitActivity::Idle, 110 + Phase), Phase == 3 ? 50 : 100, 100, 9, Phase == 0, 45.f);
+		Engine.SetDeploy(Phase);
+		AllStates.Add(Engine);
+	}
 	int32 TableMaxHealth = 0;
 	if (const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous(); TestNotNull(TEXT("unit type table"), UnitTypes))
 	{
@@ -268,7 +318,8 @@ bool FHOLNetElementFormatTest::RunTest(const FString& Parameters)
 			static_cast<uint32>(FHOLNetUnitState::TotalBits + (State.bCarrying ? FHOLNetUnitState::CarriedLoadBits : 0)
 				+ (State.bFullHealth ? 0 : FHOLNetUnitState::WoundedBits)
 				+ (State.Activity == EHOLUnitActivity::Attacking ? FHOLNetUnitState::AttackingBits : 0)
-				+ (State.bFacesFront ? FHOLNetUnitState::FacingFrontBits : 0)));
+				+ (State.bFacesFront ? FHOLNetUnitState::FacingFrontBits : 0)
+				+ (State.bDeploys ? FHOLNetUnitState::DeployingBits : 0)));
 
 		FNetBitStreamReader Reader;
 		Reader.InitBits(Buffer, Writer.GetPosBits());

@@ -26,6 +26,7 @@ void AHOLPlayerState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutL
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, GatherIncome, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, OrderChains, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, HeroPrivate, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AHOLPlayerState, Specialization, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, Technologies, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, SiteViews, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AHOLPlayerState, CampViews, COND_OwnerOnly);
@@ -207,6 +208,23 @@ bool AHOLPlayerState::SetHeroPrivate(const FHOLHeroPrivateSheet& InHeroPrivate)
 	OnHeroPrivateChanged.Broadcast();
 	// As the economy: a player state sends once a second by default.
 	ForceNetUpdate();
+	return true;
+}
+
+bool AHOLPlayerState::SetSpecialization(const FHOLSpecializationView& InSpecialization)
+{
+	if (Specialization == InSpecialization)
+	{
+		return false;
+	}
+	// A start, a cancel or an application is sent at once; the countdown alone rides the usual sends (it changes every frame).
+	const bool bSendNow = Specialization.PendingTier != InSpecialization.PendingTier || Specialization.PendingOption != InSpecialization.PendingOption
+		|| Specialization.Chosen != InSpecialization.Chosen;
+	Specialization = InSpecialization;
+	if (bSendNow)
+	{
+		ForceNetUpdate();
+	}
 	return true;
 }
 

@@ -14,6 +14,7 @@
 #include "MassCommonTypes.h"
 #include "MassExecutionContext.h"
 #include "Match/HOLGameState.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
@@ -972,6 +973,16 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 		// Finished: it serves (population, deposit; D312); its builders go on at the next step.
 		Site->SetConstructionState(EHOLConstructionState::Finished);
 		Site->SetBuildersAtWork(0);
+		// N2 step 2e (D354, answer B of Q-nomad-forum Q2): a Nomad seat's first Forum finished gives it a complete Forum. Only a
+		// Nomad seat without one reads false here: a standard seat always has one, nothing is written for it.
+		if (Site->GetTypeName() == HOLBuildingTypeNames::MainCentre && Site->GetOwnerPlayer() >= 0
+			&& !UHOLSpecializationSubsystem::IsForumComplete(World, Site->GetOwnerPlayer()))
+		{
+			if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World))
+			{
+				Board->NoteForumCompleteNow(Site->GetOwnerPlayer());
+			}
+		}
 		// J8b.2: development, its cost x 0.5 to its owner's hero, dead or alive (J8b-Q1, Q2; D06).
 		if (UHOLHeroSubsystem* Heroes = World && Site->GetType() ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr)
 		{

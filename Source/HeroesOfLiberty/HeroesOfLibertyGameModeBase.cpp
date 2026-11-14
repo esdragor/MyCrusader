@@ -16,6 +16,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
 #include "EngineUtils.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Match/HOLDisconnectRules.h"
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLForumMessages.h"
@@ -338,7 +339,7 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	// counted by the production at each step.
 	if (AHOLGameState* HOLGameState = GetGameState<AHOLGameState>())
 	{
-		if (HOLGameState->GiveSlotStock(*PlayerState, GetDefault<UHOLMatchSettings>()->StartingResources))
+		if (HOLGameState->GiveSlotStock(*PlayerState, UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources)))
 		{
 			// M6-Q15: back within the window, he counts as present for the manager (a leader stays leader).
 			UHOLManagerLink* Link = GetGameInstance() ? GetGameInstance()->GetSubsystem<UHOLManagerLink>() : nullptr;
@@ -352,7 +353,7 @@ void AHeroesOfLibertyGameModeBase::PostLogin(APlayerController* NewPlayer)
 	}
 	else
 	{
-		PlayerState->SetResources(GetDefault<UHOLMatchSettings>()->StartingResources);
+		PlayerState->SetResources(UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources));
 	}
 	AssignBuildingOwners(Slot);
 	// F6e.3 (D520, R7): a player who comes back to a match in progress gets what his camp explored and the buildings it remembers (his client
@@ -432,7 +433,7 @@ void AHeroesOfLibertyGameModeBase::UpdateStartWait()
 		{
 			const FString SlotName = MatchConfig.Slots[Slot].PlayerName.TrimStartAndEnd();
 			if (Missing.ContainsByPredicate([&SlotName](const FString& Name) { return Name.Equals(SlotName, ESearchCase::IgnoreCase); })
-				&& HOLGameState->KeepMissingSlot(Slot, GetDefault<UHOLMatchSettings>()->StartingResources, GetWorld()->GetTimeSeconds(),
+				&& HOLGameState->KeepMissingSlot(Slot, UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources), GetWorld()->GetTimeSeconds(),
 					CVarDisconnectWindowSeconds.GetValueOnGameThread()))
 			{
 				GetWorldTimerManager().SetTimer(AbsenceTimer, this, &AHeroesOfLibertyGameModeBase::UpdateAbsences, 1.f, true);
@@ -625,7 +626,7 @@ void AHeroesOfLibertyGameModeBase::StartPlay()
 	if (AHOLStartSlot::WorldHasSlots(GetWorld()))
 	{
 		// IA0.1 E1: the AI slots' player states before their centres (the humans got theirs at their login).
-		SpawnAIPlayerStates(*GetWorld(), MatchConfig, GetDefault<UHOLMatchSettings>()->StartingResources);
+		SpawnAIPlayerStates(*GetWorld(), MatchConfig, UHOLSpecializationSubsystem::StartingStock(GetWorld(), MatchConfig.bNomad, GetDefault<UHOLMatchSettings>()->StartingResources));
 		SpawnMainCentres();
 	}
 
@@ -669,36 +670,67 @@ void AHeroesOfLibertyGameModeBase::SpawnMainCentres()
 		// On the tile grid (D311), facing about the way the start faces (the centre of a symmetric map), turned to the
 		// nearest quarter turn: the houses placed tile by tile line up with it.
 		const FTransform Transform(FRotator(0.f, Start->GetMainCentreYaw(), 0.f), Start->GetMainCentreLocation());
-		AHOLBuilding* Centre = GetWorld()->SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
+		if (SpawnSlotStart(*GetWorld(), MatchConfig, Slot, Transform))
+		{
+			AssignBuildingOwners(Slot);
+		}
+	}
+}
+
+AHOLBuilding* AHeroesOfLibertyGameModeBase::SpawnSlotStart(UWorld& World, const FHOLMatchConfig& Config, const int32 Slot, const FTransform& Transform)
+{
+	if (!Config.Slots.IsValidIndex(Slot))
+	{
+		return nullptr;
+	}
+	const FHOLMatchSlot& SlotConfig = Config.Slots[Slot];
+	const FName CentreType = FHOLStartRules::GetMainCentreTypeName(Config, Slot);
+	const FVector Point = Transform.GetLocation();
+	const float HalfBody = GetStartHalfBody(CentreType);
+	const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(Config, GetDefault<UHOLMatchSettings>()->StartingPeasants);
+	const bool bKing = FHOLStartRules::ShouldSpawnKing(Config, Slot);
+	const bool bHero = FHOLStartRules::ShouldSpawnHero(Config, Slot, GetDefault<UHOLMatchSettings>()->bStartingHero);
+	AHOLBuilding* Centre = nullptr;
+	if (Config.bNomad)
+	{
+		// N2 (c)+(d) (D354): a Nomad seat on the script board, no centre; its units born from the start's point.
+		if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(&World))
+		{
+			Board->SetNomadNow(Slot, true);
+		}
+		UE_LOG(LogHOLMatch, Log, TEXT("Nomad slot %d: no main centre, its units at (%.0f, %.0f)"), Slot, Point.X, Point.Y);
+	}
+	else
+	{
+		Centre = World.SpawnActorDeferred<AHOLBuilding>(AHOLBuilding::StaticClass(), Transform, nullptr, nullptr,
 			ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 		if (!Centre)
 		{
-			continue;
+			return nullptr;
 		}
-		Centre->Setup(FHOLStartRules::GetMainCentreTypeName(MatchConfig, Slot), static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
+		Centre->Setup(CentreType, static_cast<uint8>(Slot), static_cast<uint8>(SlotConfig.ColorIndex));
 		// V2 (D350): the centre given at the start is the slot's main forum, the one with lives.
 		Centre->SetPrimaryForum(true);
 		Centre->FinishSpawning(Transform);
-		AssignBuildingOwners(Slot);
 		UE_LOG(LogHOLMatch, Log, TEXT("Main centre of slot %d (colour %d) at (%.0f, %.0f), yaw %.0f"), Slot, SlotConfig.ColorIndex,
-			Transform.GetLocation().X, Transform.GetLocation().Y, Transform.Rotator().Yaw);
-		// V5.1 (Regicide, D206): each occupied slot's King, by its main forum.
-		if (FHOLStartRules::ShouldSpawnKing(MatchConfig, Slot))
-		{
-			SpawnKing(*GetWorld(), Slot, *Centre);
-		}
-		// IA1.1: each occupied slot's starting Peasants, in front of its main forum (0 in the test scenarios).
-		const int32 NumPeasants = FHOLStartRules::GetNumStartingPeasants(MatchConfig, GetDefault<UHOLMatchSettings>()->StartingPeasants);
-		if (NumPeasants > 0)
-		{
-			SpawnStartingPeasants(*GetWorld(), Slot, *Centre, NumPeasants);
-		}
-		// J8a.2 (J8a-Q2): each occupied slot's hero, by its main forum (none in the test scenarios).
-		if (FHOLStartRules::ShouldSpawnHero(MatchConfig, Slot, GetDefault<UHOLMatchSettings>()->bStartingHero))
-		{
-			SpawnStartingHero(*GetWorld(), Slot, *Centre);
-		}
+			Point.X, Point.Y, Transform.Rotator().Yaw);
 	}
+	// V5.1 (Regicide, D206): each occupied slot's King, by its main forum (a Nomad seat: by its start's point).
+	if (bKing)
+	{
+		Centre ? SpawnKing(World, Slot, *Centre) : SpawnKingAt(World, Slot, Point, HalfBody);
+	}
+	// IA1.1: each occupied slot's starting Peasants, in front of its main forum (0 in the test scenarios).
+	if (NumPeasants > 0)
+	{
+		Centre ? SpawnStartingPeasants(World, Slot, *Centre, NumPeasants) : SpawnStartingPeasantsAt(World, Slot, Point, HalfBody, NumPeasants);
+	}
+	// J8a.2 (J8a-Q2): each occupied slot's hero, by its main forum (none in the test scenarios).
+	if (bHero)
+	{
+		Centre ? SpawnStartingHero(World, Slot, *Centre) : SpawnStartingHeroAt(World, Slot, Point, HalfBody);
+	}
+	return Centre;
 }
 
 int32 AHeroesOfLibertyGameModeBase::SpawnAIPlayerStates(UWorld& World, const FHOLMatchConfig& Config, const FHOLResources& Starting)
@@ -759,17 +791,34 @@ FString AHeroesOfLibertyGameModeBase::MakeAIPlayerName(const FHOLMatchConfig& Co
 	return HOLForumMessages::GetSlotName(Slot, INDEX_NONE, Config).ToString();
 }
 
+namespace
+{
+	/** Half the body of a building type row (1200 cm across without a row), as the start's births read it. */
+	float GetHalfBodyOf(const FHOLBuildingTypeRow* Type)
+	{
+		const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
+		return 0.5f * static_cast<float>(Body.GetMax());
+	}
+}
+
+float AHeroesOfLibertyGameModeBase::GetStartHalfBody(const FName BuildingType)
+{
+	return GetHalfBodyOf(UHOLBuildingSettings::FindType(BuildingType));
+}
+
 bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const int32 Slot, const AHOLBuilding& Forum, const int32 Num)
+{
+	return SpawnStartingPeasantsAt(World, Slot, Forum.GetActorLocation(), GetHalfBodyOf(Forum.GetType()), Num);
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasantsAt(UWorld& World, const int32 Slot, const FVector& Centre, const float HalfBody, const int32 Num)
 {
 	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
 	if (!Units)
 	{
 		return false;
 	}
-	const FHOLBuildingTypeRow* Type = Forum.GetType();
-	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
-	const TArray<FVector> Locations =
-		FHOLStartRules::GetStartingPeasantLocations(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()), Num);
+	const TArray<FVector> Locations = FHOLStartRules::GetStartingPeasantLocations(Centre, HalfBody, Num);
 	for (const FVector& Location : Locations)
 	{
 		// A tiny radius: put on the navmesh right under the point, like the King.
@@ -781,14 +830,17 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingPeasants(UWorld& World, const in
 
 bool AHeroesOfLibertyGameModeBase::SpawnStartingHero(UWorld& World, const int32 Slot, const AHOLBuilding& Forum)
 {
+	return SpawnStartingHeroAt(World, Slot, Forum.GetActorLocation(), GetHalfBodyOf(Forum.GetType()));
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnStartingHeroAt(UWorld& World, const int32 Slot, const FVector& Centre, const float HalfBody)
+{
 	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
 	if (!Units)
 	{
 		return false;
 	}
-	const FHOLBuildingTypeRow* Type = Forum.GetType();
-	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
-	const FVector Location = FHOLStartRules::GetHeroLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
+	const FVector Location = FHOLStartRules::GetHeroLocation(Centre, HalfBody);
 	// A tiny radius: put on the navmesh right under the point, like the King.
 	Units->RequestUnits(FHOLUnitSpawnRequest{ HOLFactionRules::GetRoleTypeName(&World, Slot, HOLFactionRules::Roles::Hero), 1, Location, 1.f, static_cast<uint8>(Slot) });
 	UE_LOG(LogHOLMatch, Display, TEXT("Starting hero of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);
@@ -797,14 +849,17 @@ bool AHeroesOfLibertyGameModeBase::SpawnStartingHero(UWorld& World, const int32 
 
 bool AHeroesOfLibertyGameModeBase::SpawnKing(UWorld& World, const int32 Slot, const AHOLBuilding& Forum)
 {
+	return SpawnKingAt(World, Slot, Forum.GetActorLocation(), GetHalfBodyOf(Forum.GetType()));
+}
+
+bool AHeroesOfLibertyGameModeBase::SpawnKingAt(UWorld& World, const int32 Slot, const FVector& Centre, const float HalfBody)
+{
 	UHOLUnitSubsystem* Units = World.GetSubsystem<UHOLUnitSubsystem>();
 	if (!Units)
 	{
 		return false;
 	}
-	const FHOLBuildingTypeRow* Type = Forum.GetType();
-	const FVector2D Body = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) : FVector2D(1200.0);
-	const FVector Location = FHOLStartRules::GetKingLocation(Forum.GetActorLocation(), 0.5f * static_cast<float>(Body.GetMax()));
+	const FVector Location = FHOLStartRules::GetKingLocation(Centre, HalfBody);
 	// A tiny radius: put on the navmesh right under the point (FHOLUnitSpawnRequest), like a production's birth.
 	Units->RequestUnits(FHOLUnitSpawnRequest{ FHOLStartRules::KingTypeName, 1, Location, 1.f, static_cast<uint8>(Slot) });
 	UE_LOG(LogHOLMatch, Display, TEXT("Regicide: king of slot %d spawned at (%.0f, %.0f)"), Slot, Location.X, Location.Y);

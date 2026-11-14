@@ -88,11 +88,14 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	 */
 	static constexpr int32 FrontYawBits = 6;
 	/** Bits of an unhurt unit that carries nothing and does not fight (J7-Q5: 62, D343: 59, D344: 57); the others write the extras below. */
-	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1;
+	static constexpr int32 TotalBits = 2 * HorizontalBits + 2 * VelocityBits + ActivityBits + StepBits + 1 + 1 + 1; // G6 e: + the deploys bit
 	static constexpr int32 CarriedLoadBits = LoadResourceBits;
 	static constexpr int32 WoundedBits = HealthBits;
 	static constexpr int32 AttackingBits = TargetSlotBits;
 	static constexpr int32 FacingFrontBits = FrontYawBits;
+	/** G6 e: the phase of a unit that deploys, after its "deploys" bit (HOLDeploy::EPhase, 4 values). */
+	static constexpr int32 DeployPhaseBits = 2;
+	static constexpr int32 DeployingBits = DeployPhaseBits;
 
 	UPROPERTY()
 	int16 X = 0;
@@ -138,6 +141,14 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	UPROPERTY()
 	uint8 FrontYaw = 0;
 
+	/** G6 e: the unit deploys (a siege engine that mounts, FHOLDeployFragment): DeployPhase is sent. False otherwise. */
+	UPROPERTY()
+	bool bDeploys = false;
+
+	/** Its phase (HOLDeploy::EPhase, DeployPhaseBits) while bDeploys; 0 otherwise. */
+	UPROPERTY()
+	uint8 DeployPhase = 0;
+
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,
 		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0, EHOLResource GatherResource = EHOLResource::Food);
@@ -155,6 +166,14 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	bool HasTargetSlot() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot < BuildingTargetSlot; }
 	/** Attacking a building (D345.2b). */
 	bool HasBuildingTarget() const { return Activity == EHOLUnitActivity::Attacking && TargetSlot == BuildingTargetSlot; }
+
+	/**
+	 * G6 e (Palier 3): the phase of a unit that deploys (HOLDeploy::EPhase: 0 Packed, 1 Deploying, 2 Deployed, 3 Packing),
+	 * below 0 for one that does not (no FHOLDeployFragment). A change of phase is a change of action (sent at once).
+	 */
+	void SetDeploy(int32 InPhase);
+	/** The phase received, -1 for a unit that does not deploy (HOLUnitView::DeployPhase). */
+	int32 GetDeployPhase() const;
 
 	/** Front (deg, -180 to 180) of a state that faces it. */
 	float GetFrontYaw() const;

@@ -25,6 +25,7 @@ namespace UE::HeroesOfLiberty::Tests
 		Config.Slots[3] = { EHOLSlotState::Human, EHOLFaction::Templars, 7, 1, TEXT("Chloé") };
 		Config.bRegicide = true;
 		Config.bCatastrophe = true;
+		Config.bSacredSites = true;
 		return Config;
 	}
 }
@@ -40,6 +41,7 @@ bool FHOLMatchConfigDefaultTest::RunTest(const FString& Parameters)
 	TestFalse(TEXT("a map is set"), Config.Map.IsNull());
 	TestTrue(TEXT("Standard without options"), Config.Mode == EHOLMatchMode::Standard && !Config.bNomad
 		&& !Config.bRegicide && !Config.bCatastrophe);
+	TestFalse(TEXT("sacred sites unticked by default (D699)"), Config.bSacredSites);
 
 	TSet<int32> Colors;
 	for (const FHOLMatchSlot& Slot : Config.Slots)

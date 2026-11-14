@@ -17,6 +17,7 @@
 #include "Match/HOLForumPresence.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Net/UnrealNetwork.h"
 #include "Simulation/HOLHeroLibrary.h"
 #include "Simulation/HOLHeroSubsystem.h"
@@ -370,6 +371,16 @@ bool AHOLGameState::HandleKingDeath(const int32 Slot)
 	SendForumEvent(FHOLForumEvent::Make(EHOLForumEventKind::KingDied, Slot));
 	PendingKingDefeats |= 1 << Slot;
 	return true;
+}
+
+bool AHOLGameState::HandleNomadPeasants(const int32 Slot, const int32 PeasantCount)
+{
+	// D354: the rule is HOLNomad::IsDefeated (script board); a standard seat (no Nomad state) answers false, nothing changes for it.
+	if (!HasAuthority() || bMatchOver || !UHOLSpecializationSubsystem::IsNomadDefeated(GetWorld(), Slot, PeasantCount))
+	{
+		return false;
+	}
+	return DefeatSlot(Slot, EHOLDefeatReason::Nomad);
 }
 
 void AHOLGameState::ApplyPendingDefeats()
@@ -1179,6 +1190,7 @@ const TCHAR* AHOLGameState::GetReasonName(const EHOLDefeatReason Reason)
 	case EHOLDefeatReason::King: return TEXT("King");
 	case EHOLDefeatReason::Disconnected: return TEXT("Disconnected");
 	case EHOLDefeatReason::SacredSites: return TEXT("SacredSites");
+	case EHOLDefeatReason::Nomad: return TEXT("Nomad");
 	default: return TEXT("None");
 	}
 }

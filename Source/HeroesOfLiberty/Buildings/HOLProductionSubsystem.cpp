@@ -515,11 +515,8 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 			*Cap += Cheat.Value;
 		}
 	}
-	// No building (the stress test's maps): nothing produces, no population to count.
-	if (Buildings.IsEmpty())
-	{
-		return;
-	}
+	// No building (the stress test's maps, a Nomad start): nothing produces below, but the population is still counted at the
+	// end (a Nomad's 5 starting Peasants showed "Population 0 / 0" before its first building, trial of nomad_start).
 
 	TArray<int32> UnitPopulation;
 	Units->GetPopulationByOwner(UnitPopulation);
