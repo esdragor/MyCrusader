@@ -363,3 +363,8 @@ ote dans fog_orders_flicker (+ .look flick_00..07, panel hide avant les captures
 - 13:27-13:39 build PASS (919 s, file derriere Elrond), quick_check tests 1221/1221 PASS, net PASS (17 parties) au 1er essai ; main inchange b390ad4 (refusion : deja a jour).
 - 13:39 git -C MyCrusader merge --ff-only fog REFUSE : Auto_Journey_File.md non commite dans la copie principale (fog le change, 7+/7-) ; non ecrase. A faire : commiter ce fichier (session principale) puis merge --ff-only fog.
 - 13:40-13:57 play.ps1 -Hidden x3 (finissent au timeout 300 s, pas de verbe quit) puis preflight : resources_compare PASS (10 PNG non ouverts), legions_roster_gesture PASS (9 PNG non ouverts), neutrals_minimap PASS (2 PNG ouverts : le carre de camp au centre de la minicarte est tres petit et parait bleu/violet sur alive, gris sur cleared ; rouge non confirme a l'oeil) ; aucune fiche E- modifiee.
+
+## 2026-11-14 FARAMIR-1114a : outils L14 (sans C++)
+- FAIT : L14-1 Tools\AutoJourney\edit_line.ps1 (test rouge 48ff4f3, outil 66c8b40, Tools\Tests\edit_line_test.ps1) ; L14-3 ForeignSession.ps1 + sync_worktrees/status (rouge 381a749, vert 5acb507) ; L14-7/8 build.ps1 LaunchCheck debut + Tools\Scenarios\FrameWaits.ps1 dans check.ps1 (rouge f2ce3e8, vert 5533f0b ; Tools\Tests\frame_waits_test.ps1).
+- Mesure : 206 frames > 30 hors prise de camera dans 116 scenarios, 2 waitlog apres wait > 10 s : defaut Warn, question Retours\Q-frames-refus.md.
+- PROCHAINE ETAPE (agent neuf) : no_window_test refuse frames (meme fonction) ; L14-12 commit_docs.ps1 -Only <fichiers> (etendre commit_docs_test.ps1) ; L14-13 extend_session.ps1 <HH:MM> + session_gate accepte SessionEnd du lendemain (ligne 60 : endAt.Date -ne now.Date) ; ajouter l'usage d'edit_line et status -InMain a agent_rules.md.
