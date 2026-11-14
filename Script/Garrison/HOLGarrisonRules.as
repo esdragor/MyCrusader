@@ -23,9 +23,22 @@ namespace HOLGarrison
 	const int KindSiege = 3;
 	const int KindHero = 4;
 
-	// Places of a building type (0 = no garrison).
+	// Places of a row of the building type table (its GarrisonSlots column, Tools/Data/BuildingTypes.csv; 0 = no garrison).
+	int SlotsOfRow(const FHOLBuildingTypeRow& Row)
+	{
+		return Math::Max(0, Row.GarrisonSlots);
+	}
+
+	// Places of a building type (0 = no garrison). The table is the source (F7 lot 1): a type with a row takes its GarrisonSlots. The three
+	// hol.Garrison.Slots* settings only answer for the tower names while no tower row exists (F8, F10, F12 create them); whether they then
+	// stay as overrides of the table or go is NOT decided (FortificationsInProgress.md F7).
 	int SlotsOf(FName BuildingType)
 	{
+		FHOLBuildingTypeRow Row;
+		if (HOLBuildingType::FindRow(BuildingType, Row))
+		{
+			return SlotsOfRow(Row);
+		}
 		if (BuildingType == n"TowerWood")
 		{
 			return Math::Max(0, CVar_GarrisonSlotsWatchTower.GetInt());
@@ -105,5 +118,11 @@ namespace HOLGarrison
 	TArray<int> AdmittedInto(FName BuildingType, const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Occupants)
 	{
 		return Admitted(UnitSlots, UnitKinds, BuildingSlot, SlotsOf(BuildingType), Occupants);
+	}
+
+	// The same for a row of the building type table.
+	TArray<int> AdmittedIntoRow(const FHOLBuildingTypeRow& Row, const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Occupants)
+	{
+		return Admitted(UnitSlots, UnitKinds, BuildingSlot, SlotsOfRow(Row), Occupants);
 	}
 }
