@@ -135,6 +135,30 @@ void UHOLCommandSubsystem::IssueRageOrder(const int32 PlayerIndex, const TArray<
 	PendingRageOrders.Add(FHOLRageOrder{ PlayerIndex, UnitIds });
 }
 
+void UHOLCommandSubsystem::IssueGarrisonOrder(const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || !Building || UnitIds.IsEmpty() || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingGarrisonOrders.Add(FHOLGarrisonOrder{ PlayerIndex, TArray<uint32>(UnitIds), Building, false });
+}
+
+void UHOLCommandSubsystem::IssueUngarrisonAllOrder(const int32 PlayerIndex, AHOLBuilding* Building)
+{
+	if (PlayerIndex < 0 || PlayerIndex >= FHOLMatchConfig::MaxSlots || !Building || IsRefused(PlayerIndex))
+	{
+		return;
+	}
+	PendingGarrisonOrders.Add(FHOLGarrisonOrder{ PlayerIndex, TArray<uint32>(), Building, true });
+}
+
+void UHOLCommandSubsystem::ConsumeGarrisonOrders(TArray<FHOLGarrisonOrder>& OutOrders)
+{
+	OutOrders.Reset();
+	Swap(OutOrders, PendingGarrisonOrders);
+}
+
 void UHOLCommandSubsystem::ConsumeRageOrders(TArray<FHOLRageOrder>& OutOrders)
 {
 	OutOrders.Reset();

@@ -55,7 +55,7 @@ enum class EHOLBuildingShape : uint8
  * Tools/Editor/make_building_types.py, like the unit types (D221, D227). The values are provisional by nature and
  * are balanced in the CSV.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 {
 	GENERATED_BODY()
@@ -91,6 +91,13 @@ struct HEROESOFLIBERTY_API FHOLBuildingTypeRow : public FTableRowBase
 	/** Population places the building gives its owner (D83: the centres give a base, the houses add to it). */
 	UPROPERTY(EditAnywhere, Category = "Production", meta = (ClampMin = "0"))
 	int32 PopulationProvided = 0;
+
+	/**
+	 * F7 (D693, D793 Q1 A): garrison places, 0 = no garrison. Read by the script's rule (HOLGarrison::SlotsOf, Script/Garrison/
+	 * HOLGarrisonRules.as); 0 on every row until the towers exist (F8, F10, F12 plan 3 / 5 / 8).
+	 */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Garrison", meta = (ClampMin = "0"))
+	int32 GarrisonSlots = 0;
 
 	/** Unit types the building produces (rows of the unit type table), in the order of its command grid (D30). */
 	UPROPERTY(EditAnywhere, Category = "Production")

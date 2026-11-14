@@ -1239,18 +1239,50 @@ void UHOLUnitSubsystem::GetUnitViews(TArray<FHOLUnitView>& OutUnits) const
 	FHOLUnitView View;
 	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
 	{
-		if (UE::HeroesOfLiberty::Units::MakeUnitView(EntityManager, Unit.Key, Unit.Value.TypeName, Unit.Value.Entity, Alpha, View, this))
+		// F7 lot 2: a garrisoned unit is off the field (neither selected, ordered nor aimed at).
+		if (!Unit.Value.Garrison.IsValid()
+			&& UE::HeroesOfLiberty::Units::MakeUnitView(EntityManager, Unit.Key, Unit.Value.TypeName, Unit.Value.Entity, Alpha, View, this))
 		{
 			OutUnits.Add(View);
 		}
 	}
 }
 
+bool UHOLUnitSubsystem::SetGarrison(const uint32 UnitId, AHOLBuilding* Building)
+{
+	FHOLUnitRecord* Unit = Units.Find(UnitId);
+	if (!Unit)
+	{
+		return false;
+	}
+	Unit->Garrison = Building;
+	return true;
+}
+
+AHOLBuilding* UHOLUnitSubsystem::GetGarrison(const uint32 UnitId) const
+{
+	const FHOLUnitRecord* Unit = Units.Find(UnitId);
+	return Unit ? Unit->Garrison.Get() : nullptr;
+}
+
+void UHOLUnitSubsystem::GetGarrisonUnitIds(const AHOLBuilding* Building, TArray<uint32>& OutUnitIds) const
+{
+	OutUnitIds.Reset();
+	for (const TPair<uint32, FHOLUnitRecord>& Unit : Units)
+	{
+		if (Building && Unit.Value.Garrison.Get() == Building)
+		{
+			OutUnitIds.Add(Unit.Key);
+		}
+	}
+	OutUnitIds.Sort();
+}
+
 bool UHOLUnitSubsystem::GetUnitView(const uint32 UnitId, FHOLUnitView& OutUnit) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	const FHOLUnitRecord* Unit = Units.Find(UnitId);
-	if (!EntitySubsystem || !Unit)
+	if (!EntitySubsystem || !Unit || Unit->Garrison.IsValid())
 	{
 		return false;
 	}

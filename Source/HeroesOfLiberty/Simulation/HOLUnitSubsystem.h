@@ -169,6 +169,17 @@ public:
 	bool GetUnitView(uint32 UnitId, struct FHOLUnitView& OutUnit) const;
 
 	/**
+	 * F7 lot 2 (FortificationsInProgress.md, D693): puts a unit in a building's garrison (null Building: back on the field), server and solo,
+	 * without any check (UHOLGarrisonSubsystem applies the rule). A garrisoned unit leaves the views (GetUnitViews, GetUnitView: neither
+	 * selected, ordered nor aimed at) and keeps its population place (GetPopulationByOwner). False for an unknown unit.
+	 */
+	bool SetGarrison(uint32 UnitId, AHOLBuilding* Building);
+	/** The building a unit is garrisoned in; null on the field or unknown. */
+	AHOLBuilding* GetGarrison(uint32 UnitId) const;
+	/** The units garrisoned in a building, in identifier order. */
+	void GetGarrisonUnitIds(const AHOLBuilding* Building, TArray<uint32>& OutUnitIds) const;
+
+	/**
 	 * S5 (Reinforced Ram, GDD 11.1): the percent a slot's technologies add to the health of units of this type (0 for a type that no
 	 * technology changes, HOLSiege::GetHealthStat). Server and solo only: the clients do not know the other players' technologies.
 	 */
@@ -230,6 +241,8 @@ private:
 		uint8 OwnerPlayer = 0;
 		/** At 0 health, waiting for its destruction (MarkUnitDying): no population place. */
 		bool bDying = false;
+		/** F7 lot 2: the building it is garrisoned in (SetGarrison); null on the field. A building gone lets it back into the views. */
+		TWeakObjectPtr<AHOLBuilding> Garrison;
 	};
 
 	const UDataTable* GetTypeTable() const;
