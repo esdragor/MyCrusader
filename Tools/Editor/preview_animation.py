@@ -470,10 +470,13 @@ def draw_cell(canvas, shared, ctx, frame, ox, oy, view, label):
 
     world = ctx["worlds"][frame]
     # Props: filled, flat-shaded toward the camera, depth-buffered.
-    hidden = ctx["gesture"].get("hidden", {})  # {prop: (start s, end s)}: not drawn then (the Archer's arrow)
+    hidden = ctx["gesture"].get("hidden", {})  # {prop: (start s, end s) or [(start, end), ...]}: not drawn then
+    now = ctx["rig"].times[frame]
     for prop in ctx["props"]:
-        span = hidden.get(prop["name"])
-        if span and span[0] <= ctx["rig"].times[frame] <= span[1]:
+        spans = hidden.get(prop["name"]) or ()
+        if spans and not isinstance(spans[0], (tuple, list)):
+            spans = (spans,)
+        if any(a <= now <= b for a, b in spans):
             continue
         for tri, color in peasant_props.posed_triangles(prop, sk, world, shared.prop_tris[prop["name"]]):
             normal = anim_rig.normalize(anim_rig.cross(anim_rig.sub(tri[1], tri[0]), anim_rig.sub(tri[2], tri[0])))

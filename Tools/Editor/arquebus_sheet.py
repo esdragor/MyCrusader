@@ -29,8 +29,9 @@ FLASH = (250, 196, 70)
 MATCH = (230, 110, 40)  # the lit match cord's end
 
 
-def make_gun(name, length, drop, light=False):
-    """A matchlock in the crossbow's tool frame: `length` muzzle to butt, `drop` how far the butt falls (cm)."""
+def make_gun(name, length, drop, light=False, ramrod=True):
+    """A matchlock in the crossbow's tool frame: `length` muzzle to butt, `drop` how far the butt falls (cm).
+    `ramrod` False leaves the stowed ramrod out (arquebus_poses draws it apart, so the gestures can draw it)."""
     sides = 4 if light else 8
     muzzle = BUTT_X - length
     prims = [
@@ -39,8 +40,6 @@ def make_gun(name, length, drop, light=False):
                            x_hint=pp.FLAT),
         pp.prism([(muzzle + 6.0, -1.6), (62.0, -2.2), (62.0, 1.6), (muzzle + 6.0, 1.4)], 3.6, (0.0, 0.0, -1.8),
                  pp.IDENTITY, sp.WOOD),
-        pp.frustum_between((muzzle + 2.0, -2.4, 0.0), (56.0, -2.4, 0.0), (0.45, 0.45), (0.45, 0.45), 3, pp.WOOD_DARK,
-                           x_hint=pp.FLAT),
         # Butt: from the lock back, falling by `drop`.
         pp.prism([(60.0, -2.4), (BUTT_X, -2.4 - drop), (BUTT_X, 1.0), (60.0, 3.2)], 4.4, (0.0, 0.0, -2.2),
                  pp.IDENTITY, pp.WOOD_DARK),
@@ -49,6 +48,9 @@ def make_gun(name, length, drop, light=False):
         pp.box((60.0, 4.6, 2.5), (1.2, 4.4, 1.2), sp.BRASS),
         pp.box((70.0, -4.2, 0.0), (7.0, 1.0, 1.2), sp.IRON),
     ]
+    if ramrod:
+        prims.append(pp.frustum_between((muzzle + 2.0, -2.4, 0.0), (56.0, -2.4, 0.0), (0.45, 0.45), (0.45, 0.45), 3,
+                                        pp.WOOD_DARK, x_hint=pp.FLAT))
     if not light:
         prims.append(pp.box((60.0, 7.2, 2.5), (1.4, 1.4, 1.4), MATCH))
         prims.append(pp.frustum_between((muzzle - 0.5, 2.6, 0.0), (muzzle + 2.5, 2.6, 0.0), (2.2, 2.2), (2.2, 2.2),
