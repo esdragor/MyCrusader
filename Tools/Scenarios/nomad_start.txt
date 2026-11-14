@@ -1,13 +1,14 @@
 # N2 (c)+(d) (D354, D207, D786) : depart Nomade (option bNomad du .json) : aucun centre principal ; tes Paysans naissent en groupes
 # DISPERSES autour du point de ton depart (hol.Nomad.ScatterRadiusCm, graine fixe par siege), ton Roi (Regicide coche pour le voir
 # naitre) avec le groupe 0, ton heros avec le groupe 1, sans aucun batiment. Plain, toi (slot 0) contre une IA gelee (slot 1, Nomade aussi).
-# Captures a 1920x1080 (fenetre).
-r.SetRes 1920x1080w
+# Captures a 1920x1080 (fenetre). Les waitlog du depart viennent AVANT toute commande : waitlog ne lit que les lignes ecrites depuis
+# la derniere commande (HOLTestSequence.cpp LogMark), r.SetRes plus haut les ferait manquer.
 waitlog Nomad slot 0: no main centre, its units dispersed around (
 waitlog Regicide: king of slot 0 spawned at
 waitlog Nomad slot 0: group 0 (
 waitlog Nomad slot 0: group 1 (
 waitlog Starting hero of slot 0 spawned at
+r.SetRes 1920x1080w
 hol.AI.ThinkSteps 100000
 # 1. Vue large (camera au plus haut du jeu : 7000 cm, HOLRTSCamera::MaxHeight) centree entre les groupes : chaque groupe a un endroit
 # different, le Roi pres du groupe 0 (en haut a droite), le heros pres du groupe 1 (a gauche) ; aucun batiment.
