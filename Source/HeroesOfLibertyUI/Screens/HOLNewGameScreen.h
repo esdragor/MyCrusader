@@ -67,6 +67,7 @@ public:
 protected:
 	virtual void BuildLayout() override;
 	virtual void NativeOnInitialized() override;
+	virtual void NativeOnActivated() override;
 	virtual void NativeOnDeactivated() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 	/** Slot state (with the map and the mode above and below), faction, colour, team (D250). */

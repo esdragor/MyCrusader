@@ -81,9 +81,9 @@ bool FHOLFactionChoiceFlagTest::RunTest(const FString& Parameters)
 
 	HOLFactionChoice::FClickCounter Slow;
 	TestFalse(TEXT("slow: 1"), Slow.Click(0.0));
-	TestFalse(TEXT("slow: 2 (the gap 0.9 s is over the window)"), Slow.Click(0.9));
-	TestFalse(TEXT("slow: 3 (counted from the second)"), Slow.Click(1.2));
-	TestTrue(TEXT("slow: three within the window after the restart"), Slow.Click(1.5));
+	TestFalse(TEXT("slow: 2 (the gap 2.1 s is over the window)"), Slow.Click(2.1));
+	TestFalse(TEXT("slow: 3 (counted from the second)"), Slow.Click(2.4));
+	TestTrue(TEXT("slow: three within the window after the restart"), Slow.Click(2.7));
 
 	HOLFactionChoice::FClickCounter Six;
 	int32 Triples = 0;
@@ -95,8 +95,8 @@ bool FHOLFactionChoiceFlagTest::RunTest(const FString& Parameters)
 
 	HOLFactionChoice::FClickCounter Edge;
 	Edge.Click(0.0);
-	Edge.Click(0.8);
-	TestTrue(TEXT("a gap of exactly the window still counts"), Edge.Click(1.6));
+	Edge.Click(2.0);
+	TestTrue(TEXT("a gap of exactly the window still counts"), Edge.Click(4.0));
 	return true;
 }
 

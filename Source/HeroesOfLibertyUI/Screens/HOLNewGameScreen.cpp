@@ -460,6 +460,13 @@ UWidget* UHOLNewGameScreen::NativeGetDesiredFocusTarget() const
 	return bLobby ? (Lobby.IsYouLeader() ? LaunchButton : ReadyButton) : LaunchButton;
 }
 
+void UHOLNewGameScreen::NativeOnActivated()
+{
+	Super::NativeOnActivated();
+	// The stack reuses a closed screen: the cheat may have changed on the title screen since the lists were last filled.
+	UpdateFactionLists();
+}
+
 void UHOLNewGameScreen::NativeOnDeactivated()
 {
 	if (bLobby)

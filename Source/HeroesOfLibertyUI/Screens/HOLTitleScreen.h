@@ -26,6 +26,9 @@ protected:
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 	/** The title's triple click: the faction cheat (HOLFactionChoice), session only, no sign of it on screen. */
 	virtual FReply NativeOnMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	/** Slate sends the second click of a quick pair as a double click, not as a press: it counts too. */
+	virtual FReply NativeOnMouseButtonDoubleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent) override;
+	FReply CountTitleClick(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent, bool& bHandled);
 
 	UPROPERTY(meta = (BindWidgetOptional))
 	TObjectPtr<class UCommonTextBlock> Title;

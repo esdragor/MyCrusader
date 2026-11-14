@@ -41,7 +41,7 @@ namespace HOLFactionChoice
 	 */
 	struct HEROESOFLIBERTY_API FClickCounter
 	{
-		static constexpr double Window = 0.8;
+		static constexpr double Window = 2.0;
 
 		/** A click at Now (seconds); true on the third of a series. */
 		bool Click(double Now);
