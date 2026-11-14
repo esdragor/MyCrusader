@@ -9,7 +9,9 @@ frames 10
 hol.Hero.SetXP 0 600
 wait 1
 frames 8
-hol.HUD.Click HeroTalentButton
+# Geste reel (L14-5) : la vraie touche T ouvre l'Arbre (hol.UI.Key : evenement clavier Slate, modele deploy). Les cases de l'Arbre et « Choix conseille » n'ont pas de touche et aucun verbe de scenario ne fait un vrai clic sur un widget du HUD (hol.UI.Click ne vise que les ecrans de menu) : elles restent en hol.HUD.Click (geste interne, besoin C++ note dans ScenariosInProgress.md).
+hol.UI.Key T 0 0.1
+waitlog Key pressed: T
 wait 1
 frames 8
 hol.HUD.Click HeroTalentCell_2_1
@@ -29,7 +31,8 @@ frames 10
 notereset 1/2 : la fenetre Arbre de talents avec trois talents pris. Chaque case porte l'image de son talent a gauche de son nom (cadre de la couleur de sa famille) ; les cases prises sont teintees.
 capture talents_icons_window
 waitkey 1/2 : images des cases de l'Arbre. Entree pour la suite
-hol.HUD.Click TalentKey
+hol.UI.Key T 0 0.1
+waitlog Key pressed: T
 # L'avis jaune « Talent pris : ... » (quelques secondes) allonge le bloc du heros jusqu'au panneau des triches du scenario : on attend qu'il s'efface.
 wait 8
 frames 8
@@ -37,4 +40,15 @@ hol.HUD.Report
 notereset 2/2 : fenetre fermee. Regarde le bloc du heros en bas a gauche : sous la liste des talents pris, les images des trois talents (plus de pastilles-lettres), a cote des images des capacites du heros, a la meme taille.
 capture talents_icons_hero_block
 frames 5
+# Verification 1080p (L14-5) : le bloc du heros puis l'Arbre rouvert par T, dans une fenetre 1920x1080.
+r.SetRes 1920x1080w
+frames 20
+hol.HUD.Report 1
+waitlog HUD overlap:
+capture talents_icons_hero_block_1080
+hol.UI.Key T 0 0.1
+waitlog Key pressed: T
+wait 1
+frames 8
+capture talents_icons_window_1080
 hol.Test.Sanity

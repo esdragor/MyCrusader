@@ -1,3 +1,4 @@
 legions_warrior_button | Le Guerrier damne clique sur son corps : le bloc du bas dit Guerrier damne, la grille montre la case Rage (E), active
 legions_warrior_rage | Apres le clic sur la case Rage : le guerrier est teinte rouge sombre, la case E est grisee et compte les secondes de rage
 legions_warrior_after | Apres les 10 s de rage : la teinte est partie, la case E reste grisee et compte les secondes de recharge
+legions_warrior_1080 | Fenetre 1920x1080 : le Guerrier damne toujours selectionne, le bloc du bas dit Guerrier damne, la case E grisee compte la recharge, grille et bloc entiers, rien de coupe ni de chevauche
