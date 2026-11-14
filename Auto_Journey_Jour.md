@@ -63,3 +63,14 @@ Le relevé du 2026-10-30 est épuisé (archive : `Docs\Archive\Auto_Journey_Test
 ## Agents du 2026-11-14
 
 Séance autonome lancée à 10:18, fin 14:15, fusion groupée acceptée. Exception : nettoyage 0a allégé (le dossier Retours\ a déjà été nettoyé le 2026-11-14 au matin : Docs\Archive\Retours_2026-11-14\).
+
+| Agent | id | worktree | tâche | C++ | lancé |
+|---|---|---|---|---|---|
+| ARWEN-1114a | ab934782ad4dcc5ca | HeroesOfLiberty-Arwen | gain audio Pierre/Forge + nouveaux candidats | non | 10:43 |
+| CELEBORN-1114a | a3e34d0decc9b8290 | HeroesOfLiberty-Celeborn | D795 prise de lance B, maa_attack, clore melee-stuck | non | 10:43 |
+| ELROND-1114a | ac195c40c7bd23f69 | HeroesOfLiberty-Elrond | garnison Cavalry 0->1 puis B1 Places | non puis oui | 10:43 |
+| FARAMIR-1114a | af91a21702c3bf1be | HeroesOfLiberty-Faramir | outils L14 (edit_line, sync/status, build, commit_docs, extend_session) | non | 10:43 |
+| GALADRIEL-1114a | adc2746379654fce3 | HeroesOfLiberty-Galadriel | titre du panneau de scénario (repli, EN/JA) | non | 10:43 |
+| GLORFINDEL-1114a | a2eb3f9e4ed6fe94d | HeroesOfLiberty-Glorfindel | Sites sacrés suite C++ (S7 Nomade, S6, S3) | oui | 10:43 |
+| HALDIR-1114a | aee2e8266808d4724 | HeroesOfLiberty-Haldir | BUG nomad_start 1 et 2, puis D796 | oui | 10:43 |
+| SAURON-1114a | aeb37e4f0505ba61e | HeroesOfLiberty-Sauron | neutres en clairière, Placeholders (SANS Arquebusier) | non | 10:43 |
