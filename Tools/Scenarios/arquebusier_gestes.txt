@@ -23,13 +23,17 @@ hol.Camera.FocusNear 4000 0
 frames 2
 hol.Select.ClickUnit -1
 frames 10
-hol.Select.OrderGround 4000 -700
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Select.OrderNear 4000 -700
 captureseq arqg_walk 3 0.3
 hol.Camera.FocusNear 4000 -700
 frames 2
 hol.Select.ClickUnit -1
 frames 10
-hol.Select.OrderGround 4000 0
+hol.Camera.FocusNear 4000 -700
+frames 2
+hol.Select.OrderNear 4000 0
 wait 2.5
 hol.Camera.FocusNear 4000 0
 frames 2
@@ -40,10 +44,11 @@ hol.Camera.FocusNear 4000 0
 frames 2
 hol.Select.ClickUnit -1 enemy order
 captureseq arqg_attack 8 0.5
-note 4. Chute : un Homme d'armes ennemi arrive sur lui : la chute est celle de l'Arbaletrier, le fusil lui echappe des mains.
+note 4. Chute : l'Arquebusier est blesse (1 % de ses PV) et un Homme d'armes ennemi arrive sur lui : la chute est celle de l'Arbaletrier, le fusil lui echappe des mains.
 hol.Camera.FocusNear 4000 0
 frames 2
 hol.HUD.Report
+hol.Cheat.Wound 1
 hol.Units.SpawnHere 1 ManAtArms 1 60
 waitlog SpawnHere: 1 ManAtArms of slot 1
 captureseq arqg_fall 8 0.4
