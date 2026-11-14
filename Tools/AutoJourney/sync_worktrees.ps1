@@ -21,10 +21,15 @@ param(
     [string]$BuildScript = 'C:\Users\baudo\Documents\MyCrusader\Tools\build.ps1',
     [string]$QueueDir = '',
     [string]$CsvPath = '',
-    [string]$FakeBuild = ''
+    [string]$FakeBuild = '',
+    # L14-3 : un worktree avec un commit de moins de 2 h hors de main et absent de '## Agents du <date>' de ce fichier est SAUTE
+    # (autre session de l'utilisateur) ; defaut <copie principale>\Auto_Journey_Jour.md.
+    [string]$JourFile = ''
 )
 
 $main = Join-Path $Docs 'MyCrusader'
+if (-not $JourFile) { $JourFile = Join-Path $main 'Auto_Journey_Jour.md' }
+. (Join-Path $PSScriptRoot 'ForeignSession.ps1')
 $dirs = @(Get-ChildItem $Docs -Directory -Filter 'HeroesOfLiberty-*' | ForEach-Object { $_.FullName })
 $CodePaths = @('Source', 'Script', 'Content', 'Tools/Data')   # les memes que session_gate.ps1 -Phase Report
 $Builds = New-Object System.Collections.Generic.List[object]
@@ -65,6 +70,8 @@ foreach ($d in $dirs) {
     if (-not $branch) { Write-Output "$name | ? | pas un worktree git"; continue }
     $dirty = @(git -C $d status --porcelain --untracked-files=no 2>$null | Where-Object { $_ -notmatch 'IN_USE\.txt' -and $_ -notmatch 'HeroesOfLiberty\.uproject' })
     if ($dirty.Count -gt 0) { Write-Output ("{0} | {1} | SAUTE : {2} fichier(s) suivi(s) modifie(s) non commite(s)" -f $name, $branch, $dirty.Count); continue }
+    $foreign = Get-ForeignSessionNote $d $JourFile
+    if ($foreign) { Write-Output ("{0} | {1} | SAUTE ({2}) : ni fusion ni build ; ajouter le worktree au tableau s'il est de la seance" -f $name, $branch, $foreign); continue }
     $behind = [int]((git -C $d rev-list --count 'HEAD..main' 2>$null))
     $wantBuild = $false; $why = ''
     if ($behind -eq 0) {

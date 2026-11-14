@@ -107,7 +107,7 @@ try {
     Check ($st -match "$mainSha.*DANS main") 'status -InMain: a main commit is DANS main' $st
 
     Write-Output '--- 8. the same worktree listed in today''s Agents table: merged as usual'
-    [IO.File]::WriteAllText((Join-Path $Main 'Auto_Journey_Jour.md'), ("## Agents du " + (Get-Date -Format 'yyyy-MM-dd') + "`r`n`r`n| Agent | id | worktree |`r`n|---|---|---|`r`n| TESTEUR | a1 | T |`r`n"))
+    [IO.File]::WriteAllText((Join-Path $Main 'Auto_Journey_Jour.md'), ("## Agents du " + (Get-Date -Format 'yyyy-MM-dd') + "`r`n`r`n| Agent | id | worktree |`r`n|---|---|---|`r`n| TESTEUR-1114a | a1 | HeroesOfLiberty-T |`r`n"))
     $o = Sync @('-NoBuild')
     Check ($o -match 'mis a jour' -and $o -notmatch 'autre session') 'sync: a listed worktree is merged' $o
 } catch {

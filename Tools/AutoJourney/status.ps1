@@ -2,9 +2,21 @@
 # Lecture seule. Usage : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\status.ps1
 # Sortie : une ligne par worktree : nom | branche | libre/pris | fichiers modifies | avance/retard sur main | dernier commit.
 # "libre" = la premiere ligne d'IN_USE.txt commence par Libre ; sinon "pris" (a reprendre sans ecraser, voir Auto_Journey.md).
-param([string]$Docs = 'C:\Users\baudo\Documents')
+# L14-3 (2026-11-14) : "AUTRE SESSION ?" en fin de ligne = commit de moins de 2 h hors de main, worktree absent de '## Agents du <date>'
+#   d'Auto_Journey_Jour.md (ForeignSession.ps1) : ne pas y fusionner ni y conclure. -InMain <sha> : dit si ce commit est DANS main ou
+#   ABSENT de main par `git merge-base --is-ancestor` (a lancer AVANT d'ecrire "absent de main" dans une recette).
+param([string]$Docs = 'C:\Users\baudo\Documents', [string]$JourFile = '', [string]$InMain = '')
 
 $main = Join-Path $Docs 'MyCrusader'
+if (-not $JourFile) { $JourFile = Join-Path $main 'Auto_Journey_Jour.md' }
+. (Join-Path $PSScriptRoot 'ForeignSession.ps1')
+if ($InMain) {
+    $null = git -C $main rev-parse --verify --quiet "$InMain^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) { Write-Output "$InMain : INCONNU (pas un commit de ce depot)"; exit 1 }
+    git -C $main merge-base --is-ancestor $InMain main 2>$null
+    if ($LASTEXITCODE -eq 0) { Write-Output "$InMain : DANS main (git merge-base --is-ancestor $InMain main)" } else { Write-Output "$InMain : ABSENT de main (git merge-base --is-ancestor $InMain main : faux)" }
+    exit 0
+}
 $dirs = @($main) + @(Get-ChildItem $Docs -Directory -Filter 'HeroesOfLiberty-*' | ForEach-Object { $_.FullName })
 Write-Output ("Heure PowerShell : " + (Get-Date -Format 'HH:mm'))
 foreach ($d in $dirs) {
@@ -25,7 +37,8 @@ foreach ($d in $dirs) {
         $age = [int]((Get-Date) - (Get-Item $f).LastWriteTime).TotalMinutes
         $state = "$state(IN_USE il y a ${age} min)"
     } else { $state = 'sans IN_USE' }
-    Write-Output ("{0} | {1} | {2} | modifies {3} | +{4}/-{5} vs main | {6}" -f $name, $branch, $state, $dirty, $ahead, $behind, $last)
+    $foreign = if ($d -ne $main) { Get-ForeignSessionNote $d $JourFile } else { $null }
+    Write-Output (("{0} | {1} | {2} | modifies {3} | +{4}/-{5} vs main | {6}" -f $name, $branch, $state, $dirty, $ahead, $behind, $last) + $(if ($foreign) { " | AUTRE SESSION ? ($foreign)" } else { '' }))
 }
 # L91 : builds marques BUILD LENT par Tools\build.ps1 (colonne load de Docs\BuildQueue.csv) dans les 2 dernieres heures.
 $csv = Join-Path $main 'Docs\BuildQueue.csv'
