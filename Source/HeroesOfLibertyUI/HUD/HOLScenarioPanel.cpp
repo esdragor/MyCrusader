@@ -84,6 +84,11 @@ void UHOLScenarioPanel::Refresh()
 {
 	using namespace UE::HeroesOfLiberty::UI::ScenarioPanel;
 
+	// Built here too when the widget was initialized without a player (the automation test reads the real widget).
+	if (WidgetTree && !WidgetTree->RootWidget)
+	{
+		BuildLayout();
+	}
 	const FDisplay& Display = HOLTestHooks::GetScenarioDisplay();
 	const bool bShown = !Display.Name.IsEmpty() && !Display.bClosed && !Display.bHidden;
 	if (Panel)
