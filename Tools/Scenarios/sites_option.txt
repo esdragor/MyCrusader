@@ -35,6 +35,7 @@ frames 10
 hol.UI.Key Up 0 0.1
 frames 5
 hol.UI.Key Enter 0 0.1
+waitlog Dropdown SacredSitesDropdown: value 0 chosen
 frames 10
 hol.UI.Text SacredSitesDropdown
 waitlog Text SacredSitesDropdown: Non
@@ -44,6 +45,7 @@ frames 10
 hol.UI.Key Down 0 0.1
 frames 5
 hol.UI.Key Enter 0 0.1
+waitlog Dropdown SacredSitesDropdown: value 1 chosen
 frames 10
 hol.UI.Text SacredSitesDropdown
 waitlog Text SacredSitesDropdown: Oui
