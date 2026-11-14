@@ -71,12 +71,16 @@ public:
 	 */
 	static constexpr double MuzzleForward = 150.0;
 	static constexpr double MuzzleHeight = 225.0;
-	/** How long a puff lasts (s): it swells, rises and shrinks away. */
+	/** How long a puff lasts (s): it swells, rises and fades out (translucent). */
 	static constexpr double SmokeSeconds = 1.6;
 	/** A puff's scale at its start and at its biggest (SM_PowderSmoke is a 50 cm ball: radius = 50 x scale, cm), and how far it rises (cm). */
 	static constexpr double SmokeStartScale = 0.1;
 	static constexpr double SmokeEndScale = 0.4;
 	static constexpr double SmokeRise = 90.0;
+	/** The opacity of a puff at its start (0 to 1): a cloud's, not a ball's; M_PowderSmoke reads it as per-instance custom data 0. */
+	static constexpr double SmokeOpacity = 0.55;
+	/** A puff's opacity at this age (0 = just launched, 1 = end of its life): SmokeOpacity falling to 0 (squared, so the tail thins out). */
+	static double GetSmokeOpacity(const double Age) { return SmokeOpacity * FMath::Square(1.0 - FMath::Clamp(Age, 0.0, 1.0)); }
 
 	int32 GetSmokeInFlightCount() const { return Puffs.Num(); }
 	/** The last puff launched (cm, world): for the tests. */
@@ -117,8 +121,11 @@ private:
 	/** The index of the mesh drawing a shot of this type in Meshes (its component made at its first shot); INDEX_NONE: none. */
 	int32 FindOrAddGroup(FName ShooterType);
 
-	/** The index of the group drawing this mesh (its component made on the first call); INDEX_NONE: no mesh or no world. */
-	int32 FindOrAddMeshGroup(UStaticMesh* Mesh);
+	/**
+	 * The index of the group drawing this mesh (its component made on the first call); INDEX_NONE: no mesh or no world.
+	 * NumCustomData: the per-instance custom floats of its component (the smoke's opacity: 1), set at the first call.
+	 */
+	int32 FindOrAddMeshGroup(UStaticMesh* Mesh, int32 NumCustomData = 0);
 
 	/** The group drawing the muzzle smoke of this type (INDEX_NONE: the type has none), looked up once. */
 	int32 FindOrAddSmokeGroup(FName ShooterType);

@@ -2,7 +2,8 @@
 with "--bolt", /Game/Units/Props/SM_Bolt instead, the Crossbowman's bolt in flight (AR-Q5, AR6); with "--bullet",
 /Game/Units/Props/SM_Bullet, the Arquebusier's ball (a dark ball with a pale trail, drawn through UHOLArrowSubsystem's
 ArrowScale 1.5 x 4 x 4, so the mesh ellipsoid is 6 x 2.25 x 2.25 cm: ~18 cm across in flight); with "--smoke",
-/Game/Units/Props/SM_PowderSmoke, the puff at the muzzle at each shot (UnitTypes.csv MuzzleSmoke): a 50 cm ball, centred.
+/Game/Units/Props/SM_PowderSmoke, the puff at the muzzle at each shot (UnitTypes.csv MuzzleSmoke): a 50 cm ball, centred, in
+the translucent /Game/Units/Props/M_PowderSmoke (make_smoke_material.py, to run first; its opacity is per-instance data 0).
 
 SM_Arrow, ~78 cm (soldier_props.ARROW_LENGTH, make_arrow): a thin wooden shaft, an iron point, three white fletchings.
 SM_Bolt, 35 cm (soldier_props.BOLT_LENGTH, bolt_prims): a thicker shaft, a square iron head, two vanes across.
@@ -27,7 +28,7 @@ COLORS = {"MI_ArrowWood": (0.42, 0.27, 0.13), "MI_ArrowIron": (0.30, 0.30, 0.32)
 if BULLET:
     COLORS = {"MI_BulletLead": (0.10, 0.10, 0.11), "MI_BulletTrail": (0.78, 0.77, 0.73)}
 if SMOKE:
-    COLORS = {"MI_PowderSmoke": (0.86, 0.85, 0.81)}
+    COLORS = {"M_PowderSmoke": None}  # the slot's material is the translucent M_PowderSmoke itself, not a matte instance
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 lib = unreal.MaterialEditingLibrary
@@ -47,7 +48,13 @@ def material_instance(name, rgb):
     return mi
 
 
-materials = [material_instance(n, c) for n, c in COLORS.items()]
+if SMOKE:
+    smoke_material = unreal.load_asset(FOLDER + "/M_PowderSmoke")
+    if not smoke_material:
+        raise RuntimeError("Missing " + FOLDER + "/M_PowderSmoke: run make_smoke_material.py first")
+    materials = [smoke_material]
+else:
+    materials = [material_instance(n, c) for n, c in COLORS.items()]
 
 if unreal.EditorAssetLibrary.does_asset_exist(TARGET_PATH):
     unreal.EditorAssetLibrary.delete_asset(TARGET_PATH)

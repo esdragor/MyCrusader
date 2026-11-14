@@ -9,6 +9,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Materials/MaterialInterface.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
 #include "MassNavigationFragments.h"
@@ -615,6 +616,19 @@ bool FHOLCombatMuzzleSmokeTest::RunTest(const FString& Parameters)
 		// radius of 100 cm (SM_PowderSmoke is a 50 cm ball, scale 2); now 20 cm at its biggest, starting at 5 cm.
 		TestTrue(TEXT("the puff swells to a radius of 20 cm at most (a fifth of the first trial's 100 cm)"), 50.0 * UHOLArrowSubsystem::SmokeEndScale <= 20.0 + UE_DOUBLE_SMALL_NUMBER);
 		TestTrue(TEXT("and starts at a radius of 5 cm at most"), 50.0 * UHOLArrowSubsystem::SmokeStartScale <= 5.0 + UE_DOUBLE_SMALL_NUMBER);
+
+		// Translucent smoke (2026-11-14, the user's decision after arquebusier_gestes: the opaque white ball becomes a cloud): the
+		// material blends, each puff carries its own opacity (per-instance custom data 0) and it fades out over its life.
+		const UMaterialInterface* SmokeMaterial = Smoke ? Smoke->GetMaterial(0) : nullptr;
+		TestTrue(TEXT("SM_PowderSmoke's material is translucent"), SmokeMaterial && IsTranslucentBlendMode(SmokeMaterial->GetBlendMode()));
+		TestTrue(TEXT("the puffs carry one custom value each (their opacity)"), Puffs && Puffs->NumCustomDataFloats == 1 && Puffs->PerInstanceSMCustomData.Num() == 1);
+		TestTrue(TEXT("the balls carry none"), Balls && Balls->NumCustomDataFloats == 0);
+		const float First = Puffs && Puffs->PerInstanceSMCustomData.Num() == 1 ? Puffs->PerInstanceSMCustomData[0] : -1.0f;
+		TestTrue(TEXT("a new puff is visible, at the peak at most"), First > 0.0f && First <= UHOLArrowSubsystem::SmokeOpacity + UE_KINDA_SMALL_NUMBER);
+		TestTrue(TEXT("the peak is a cloud's, not a ball's (between 0.2 and 0.8)"), UHOLArrowSubsystem::SmokeOpacity > 0.2 && UHOLArrowSubsystem::SmokeOpacity < 0.8);
+		TestTrue(TEXT("the opacity fades with the age"), UHOLArrowSubsystem::GetSmokeOpacity(0.5) < UHOLArrowSubsystem::GetSmokeOpacity(0.1)
+			&& UHOLArrowSubsystem::GetSmokeOpacity(0.9) < UHOLArrowSubsystem::GetSmokeOpacity(0.5));
+		TestTrue(TEXT("and is gone at the end of the life"), UHOLArrowSubsystem::GetSmokeOpacity(1.0) <= UE_DOUBLE_SMALL_NUMBER);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(/*bInformEngineOfWorld*/ false);

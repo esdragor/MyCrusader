@@ -120,12 +120,12 @@ int32 UHOLArrowSubsystem::FindOrAddSmokeGroup(const FName ShooterType)
 		return *Known;
 	}
 	UStaticMesh* Mesh = GetMuzzleSmokeMesh(ShooterType);
-	const int32 Group = Mesh ? FindOrAddMeshGroup(Mesh) : INDEX_NONE;
+	const int32 Group = Mesh ? FindOrAddMeshGroup(Mesh, /*NumCustomData: the opacity*/ 1) : INDEX_NONE;
 	SmokeGroupByType.Add(ShooterType, Group);
 	return Group;
 }
 
-int32 UHOLArrowSubsystem::FindOrAddMeshGroup(UStaticMesh* Mesh)
+int32 UHOLArrowSubsystem::FindOrAddMeshGroup(UStaticMesh* Mesh, const int32 NumCustomData)
 {
 	UWorld* World = GetWorld();
 	if (!World || !Mesh)
@@ -152,6 +152,7 @@ int32 UHOLArrowSubsystem::FindOrAddMeshGroup(UStaticMesh* Mesh)
 	Component->SetMobility(EComponentMobility::Movable);
 	Component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	Component->SetCastShadow(false);
+	Component->NumCustomDataFloats = NumCustomData;
 	Component->SetCanEverAffectNavigation(false);
 	if (!InstancesOwner->GetRootComponent())
 	{
@@ -259,6 +260,9 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 	// Each mesh's instances (AR9), in its group's order.
 	TArray<TArray<FTransform>> GroupTransforms;
 	GroupTransforms.SetNum(Instances.Num());
+	// The puffs' opacities, in the order of their group's instances (only the smoke's component has the custom value).
+	TArray<TArray<float>> GroupOpacities;
+	GroupOpacities.SetNum(Instances.Num());
 	for (int32 Index = Arrows.Num() - 1; Index >= 0; --Index)
 	{
 		FArrow& Arrow = Arrows[Index];
@@ -293,7 +297,8 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		GroupTransforms[Arrow.Group].Emplace(FRotationMatrix::MakeFromX(Velocity.GetSafeNormal()).ToQuat(), Position, ArrowScale);
 	}
 
-	// The puffs of powder smoke: swelling, rising and shrinking away over SmokeSeconds (their own scale, not the arrows').
+	// The puffs of powder smoke: swelling, rising and fading out over SmokeSeconds (their own scale, not the arrows'): a translucent
+	// cloud whose opacity (custom data 0 of M_PowderSmoke) goes from SmokeOpacity to 0.
 	for (int32 Index = Puffs.Num() - 1; Index >= 0; --Index)
 	{
 		const FPuff& Puff = Puffs[Index];
@@ -309,8 +314,9 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		}
 		const double T = FMath::Max(Age, 0.0);
 		const double Ease = 1.0 - (1.0 - T) * (1.0 - T);
-		const double Scale = FMath::Lerp(SmokeStartScale, SmokeEndScale, Ease) * (1.0 - T * T * T);
+		const double Scale = FMath::Lerp(SmokeStartScale, SmokeEndScale, Ease);
 		GroupTransforms[Puff.Group].Emplace(FQuat::Identity, Puff.Origin + FVector(0.0, 0.0, SmokeRise * Ease), FVector(Scale));
+		GroupOpacities[Puff.Group].Add(static_cast<float>(GetSmokeOpacity(T)));
 	}
 
 	for (int32 Group = 0; Group < Instances.Num(); ++Group)
@@ -340,6 +346,11 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		if (!Transforms.IsEmpty())
 		{
 			Component->BatchUpdateInstancesTransforms(0, Transforms, true, true, true);
+		}
+		const TArray<float>& Opacities = GroupOpacities[Group];
+		for (int32 Index = 0; Component->NumCustomDataFloats > 0 && Index < Opacities.Num(); ++Index)
+		{
+			Component->SetCustomDataValue(Index, 0, Opacities[Index], Index == Opacities.Num() - 1);
 		}
 	}
 }
