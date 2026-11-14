@@ -2,8 +2,8 @@
 // many: a unit enters only a building of its OWN slot (an ally's and an enemy's are refused), only if its kind may garrison, and only up to the
 // free places (places of the building type minus its occupants), in the order asked. No world access, tested in
 // Script\Tests\HOLGarrisonRules_Test.as. Not here: the order, the hidden state of an occupant, the ejection, the network, the interface.
-// The values are the defaults of Retours\Q-garrison.md (Q1 A, Q2 A, NOT answered yet), one setting each; the places move to a BuildingTypes.csv
-// column once the user answers. The tower names are the ones FortificationsInProgress.md plans (TowerWood F8, TowerStone F10,
+// The values are the answers to Retours\Q-garrison.md (D793: Q1 A, Q2 B = everything but siege, cavalry included), one setting each; the
+// places move to a BuildingTypes.csv column. The tower names are the ones FortificationsInProgress.md plans (TowerWood F8, TowerStone F10,
 // TowerReinforced F12): no such row exists yet.
 
 const FConsoleVariable CVar_GarrisonSlotsWatchTower("hol.Garrison.SlotsWatchTower", 3);
@@ -12,7 +12,7 @@ const FConsoleVariable CVar_GarrisonSlotsReinforcedTower("hol.Garrison.SlotsRein
 const FConsoleVariable CVar_GarrisonOccupantsProtected("hol.Garrison.OccupantsProtected", 1);
 const FConsoleVariable CVar_GarrisonMeleeInfantry("hol.Garrison.MeleeInfantry", 1);
 const FConsoleVariable CVar_GarrisonHero("hol.Garrison.Hero", 1);
-const FConsoleVariable CVar_GarrisonCavalry("hol.Garrison.Cavalry", 0);
+const FConsoleVariable CVar_GarrisonCavalry("hol.Garrison.Cavalry", 1);
 
 namespace HOLGarrison
 {
