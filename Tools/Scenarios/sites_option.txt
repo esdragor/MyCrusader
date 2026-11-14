@@ -1,5 +1,6 @@
 # Option de partie Sites sacres (S7, D699) : la case "Sites sacres" de la configuration (sites_option.json, "bSacredSites": true) suffit, hol.Site.Enabled reste a 0.
 # Plain, toi (slot 0) contre un adversaire sans cerveau ; 2 sites, 4 Moines a toi dedans : ils les prennent et le compte de la victoire sacree part. Case decochee : rien (test C++ Sites.SubsystemBox).
+# GESTE REEL (L14-5, GLORFINDEL-1114c) : vrai clic souris hol.Mouse.Click (curseur virtuel de Slate, entrees de la plateforme : survol, appui, relache) sur Jouer (PlayButton) puis sur la liste Sites sacres, puis vraies touches Bas et Entree (hol.UI.Key). hol.UI.Click (appui route sans survol) ne declenchait pas le bouton Common UI (GALADRIEL-1114e).
 frames 30
 hol.Sanity.Watch 1
 hol.Site.HoldSeconds 4
@@ -17,19 +18,33 @@ hol.HUD.Report 1
 waitlog sacred leader 0 left
 waitlog HUD overlap:
 capture sites_option_on
+# Audit de sante avant de quitter la carte (le changement de carte perd le releve de hol.Sanity.Watch).
+hol.Test.Sanity
 note 1. Case cochee (hol.Site.Enabled a 0) : a gauche, sous le panneau Triches, "Victoire sacree : <ton nom> dans m:ss", tes Moines tiennent les 2 sites.
 open /Game/Maps/MainMenu
 waitmap MainMenu
 waitui
-hol.UI.Open NewGame
+frames 20
+hol.Mouse.Click PlayButton
+waitlog Mouse click PlayButton
 waitui
 frames 20
-hol.UI.Choose SacredSitesDropdown 0
-frames 10
 hol.UI.Text SacredSitesDropdown
+waitlog Text SacredSitesDropdown: Non
 capture sites_option_box_off
-hol.UI.Choose SacredSitesDropdown 1
+hol.Mouse.Click SacredSitesDropdown
+frames 10
+hol.UI.Key Down 0 0.1
+frames 5
+hol.UI.Key Enter 0 0.1
 frames 10
 hol.UI.Text SacredSitesDropdown
+waitlog Text SacredSitesDropdown: Oui
 capture sites_option_box_on
+# Verification 1080p (L14-5) : le meme ecran dans une fenetre 1920x1080.
+r.SetRes 1920x1080w
+frames 20
+capture sites_option_1080
 note 2. Ecran Nouvelle partie, ligne des options (Nomade, Regicide, Catastrophe, Sites sacres) : la liste "Sites sacres" passe de Non (defaut) a Oui ; Lancer avec Oui = la partie du point 1.
+# The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
+quit

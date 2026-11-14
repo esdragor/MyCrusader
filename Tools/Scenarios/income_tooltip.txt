@@ -1,3 +1,4 @@
+# GESTE (L14-5, GLORFINDEL-1114c): the hover is a real mouse's (hol.Mouse.Hover: Slate's virtual cursor kept still 30 frames, the log says whether Slate shows the tooltip); the capture still draws it by hol.HUD.HoverIncome (Slate's tooltip window is out of the viewport's capture).
 # D788 (Q-income-tooltip-rate = C): over a resource of the top bar, its income a minute, corrected for the trips to the drop-off.
 # The hover as the mouse does it: hol.HUD.HoverIncome <0 food | 1 wood | 2 stone | 3 gold> hit-tests the centre of the amount by Slate's own
 # window hit test, logs the tooltip the engine would show ("HUD income hover <i>: <text>") and draws that same tooltip widget in the game
@@ -18,12 +19,16 @@ hol.Camera.FocusNear 0 0
 hol.Camera.Zoom -2
 frames 10
 # 1. FR: wood income over the wood amount; no wood income would read "+0 bois/min".
+hol.Mouse.Hover WoodAmount 30
+waitlog Mouse hover WoodAmount
 hol.HUD.HoverIncome 1
 waitlog HUD income hover 1: +
 waitlog  bois/min
 frames 5
 capture income_tip_fr
 # 2. Gold: no gatherer and no sacred site, the tooltip says +0.
+hol.Mouse.Hover GoldAmount 30
+waitlog Mouse hover GoldAmount
 hol.HUD.HoverIncome 3
 waitlog HUD income hover 3: +0 or/min
 frames 5
