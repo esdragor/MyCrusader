@@ -77,6 +77,9 @@ if ($Phase -eq 'Launch') {
     $nwOut = (& powershell -NoProfile -ExecutionPolicy Bypass -File $nwTest 2>&1 | Out-String)
     if ($LASTEXITCODE -eq 0) { Say 'PASS' 'no_window_test : aucun script d outil ne lance d editeur fenetre' }
     else { Say 'WARN' ("no_window_test ROUGE (un outil ouvre un editeur visible) : " + (($nwOut -split "`n" | Where-Object { $_ -match '^FAIL|\.ps1:\d+' } | Select-Object -First 3 | ForEach-Object { $_.Trim() }) -join ' ; ')) }
+    # L14-8 (2026-11-14) : le compte des attentes par images (FrameWaits, defaut Warn) de no_window_test, sinon invisible ici
+    $fwLine = $nwOut -split "`n" | Where-Object { $_ -match '^(WARN|FAIL) frames waits:' } | Select-Object -First 1
+    if ($fwLine) { Say 'WARN' ("no_window_test : " + ($fwLine.Trim() -replace '^(WARN|FAIL) ', '')) }
   }
 
   # L11-1 (2026-11-10) : python/pythonw detaches d'un worktree (7 glade_budget.py orphelins = machine ralentie 30 min) : WARN avec le PID, jamais d'arret ici

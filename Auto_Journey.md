@@ -81,6 +81,12 @@ Auto_Journey_Jour.md     = l'état du jour : décisions, programme, tableau des 
 Auto_Journey_File.md     = la file de travail : prochaines étapes de chaque chantier, prêtes à lancer
 Auto_Journey_Retours.md  = ce qui attend l'utilisateur : essais, questions, fusions
 Tools\AutoJourney\status.ps1 = l'état de tous les worktrees en une commande (étape 0 et veilleur)
+Tools\AutoJourney\status.ps1 -InMain <sha> = ce commit est-il DANS main ou ABSENT (merge-base --is-ancestor), avant d'écrire « absent de main »
+ForeignSession (status.ps1 « AUTRE SESSION ? », sync_worktrees.ps1 le saute) = worktree d'une autre session : n'y fusionner ni conclure
+Tools\AutoJourney\edit_line.ps1 -File <abs> -Match "<texte>" -NewLine "<ligne>" = changer UNE ligne d'un doc de suivi sans Read ni Edit
+Tools\AutoJourney\commit_docs.ps1 -Only "<f1>,<f2>" = commiter seulement ces docs de la copie principale
+Tools\AutoJourney\extend_session.ps1 <HH:MM> = repousser la fin de séance (Docs\SessionEnd.txt ; heure passée = lendemain)
+FrameWaits (check.ps1, no_window_test.ps1 -FrameWaits Warn|Fail, HOL_CHECK_FRAMES=fail) = « frames N » > 30 hors caméra : WARN par défaut, Fail refuse
 ```
 Historique : voir « Archives » au Sommaire.
 

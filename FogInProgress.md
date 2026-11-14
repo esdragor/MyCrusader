@@ -376,3 +376,9 @@ ote dans fog_orders_flicker (+ .look flick_00..07, panel hide avant les captures
 - Frames : no_window_test -ScenarioDir / -FrameWaits Warn|Fail (HOL_CHECK_FRAMES=fail) ; defaut Warn = lignes WARN frames (15 max) + compte, code inchange. no_window_frames_test PASS 6/6.
 - build_queue_test sortie vide : CAUSE = tout en Write-Host (flux d'information) : un appelant qui capture la sortie (`$o = & ...`, `| Out-String` dans le meme processus) recevait 0 caractere ; en plus un -Only inconnu ne jouait rien et disait PASS. Correctif : Write-Output partout, -Only inconnu = code 2. build_queue_output_test PASS 3/3.
 - RESTE : ajouter edit_line / status -InMain / commit_docs -Only / extend_session a agent_rules.md ou Auto_Journey.md (session principale) ; Q-frames-refus.md en attente (defaut Warn).
+## 2026-11-14 FARAMIR-1114c : gate_test de bout en bout, doc des outils L14, frames dans session_gate (sans C++)
+- gate_test.ps1 de bout en bout (11:11-11:23, 690 s) : 80 PASS, `=> tout PASS`, code 0 (le NON VERIFIE de 1114b est leve). no_window_test PASS, WARN frames waits: 206 dans 116 scenarios (defaut Warn).
+- session_gate -Phase Launch : le PASS no_window_test cachait le compte frames ; ajout d'une ligne `WARN no_window_test : frames waits: 206 in 116 scenario(s) ...` (verifie sur la vraie sortie, -End 14:15 ; seul FAIL = plafond de 3 agents C++, etat reel des autres worktrees).
+- Doc : section `Outils (L14)` d'agent_rules.md (avant le rapport final, aucune regle ni titre change) + 6 lignes du bloc `Pipeline en bref` d'Auto_Journey.md : edit_line, status -InMain, ForeignSession, commit_docs -Only, extend_session, FrameWaits.
+- Piege : edit_line.ps1 appele depuis PowerShell 5.1 avec des guillemets doubles DANS -NewLine casse les arguments (PositionalParameterNotFound, fichier intact) : pas de `"` dans le texte, ou Edit.
+- RESTE : Q-frames-refus.md en attente (defaut Warn) ; les 2 docs arrivent dans main par la fusion de fog.
