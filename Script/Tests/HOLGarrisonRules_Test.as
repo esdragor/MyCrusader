@@ -41,15 +41,19 @@ void Test_GarrisonRefusesAllyAndEnemy(FUnitTest& T)
 	T.AssertFalse(In.Contains(5), "the fourth own soldier finds no place");
 }
 
-// Kinds by default (Q-garrison Q2 A): foot soldiers and the hero enter, cavalry and siege do not; Cavalry 1 lets the rider in, never siege.
+// Kinds by default (D793, Q-garrison Q2 B): everything but siege enters, cavalry included; siege never, whatever the settings.
 void Test_GarrisonKindsByDefault(FUnitTest& T)
 {
 	TArray<int> Slots = GarrisonInts(0, 0, 0, 0, 0);
 	TArray<int> Kinds = GarrisonInts(HOLGarrison::KindSiege, HOLGarrison::KindCavalry, HOLGarrison::KindHero, HOLGarrison::KindMeleeInfantry,
 		HOLGarrison::KindRangedInfantry);
 	TArray<int> In = HOLGarrison::AdmittedInto(n"TowerReinforced", Slots, Kinds, 0, 0);
-	T.AssertEquals(In.Num(), 3, "hero, melee and ranged foot enter a Reinforced tower");
-	T.AssertFalse(In.Contains(0) || In.Contains(1), "siege and cavalry stay out by default");
+	T.AssertEquals(In.Num(), 4, "cavalry, hero, melee and ranged foot enter a Reinforced tower");
+	T.AssertTrue(In.Contains(1), "the rider enters by default (D793 Q2 B)");
+	T.AssertFalse(In.Contains(0), "siege stays out");
+	TArray<int> Riders = HOLGarrison::AdmittedInto(n"TowerWood", GarrisonInts(0, 0, 0, 0), GarrisonInts(HOLGarrison::KindCavalry,
+		HOLGarrison::KindSiege, HOLGarrison::KindCavalry, HOLGarrison::KindCavalry), 0, 1);
+	T.AssertTrue(Riders.Num() == 2 && Riders[0] == 0 && Riders[1] == 2, "two riders fill a Watch tower holding one; the siege engine takes no place");
 	T.AssertTrue(HOLGarrison::KindMayEnter(HOLGarrison::KindCavalry, true, true, true), "Cavalry 1: the rider enters");
 	T.AssertFalse(HOLGarrison::KindMayEnter(HOLGarrison::KindSiege, true, true, true), "siege never enters");
 	T.AssertFalse(HOLGarrison::KindMayEnter(HOLGarrison::KindHero, false, false, false), "Q2 C: no hero");
