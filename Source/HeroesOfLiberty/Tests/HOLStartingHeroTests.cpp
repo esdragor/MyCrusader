@@ -20,6 +20,9 @@
 #include "Match/HOLMatchSettings.h"
 #include "Match/HOLStartRules.h"
 #include "Map/HOLStartSlot.h"
+#include "Map/HOLMapBounds.h"
+#include "Player/HOLCommandGrid.h"
+#include "HAL/IConsoleManager.h"
 #include "Match/HOLFactionRules.h"
 #include "Simulation/HOLSiteSubsystem.h"
 #include "Misc/AutomationTest.h"
@@ -421,6 +424,8 @@ bool FHOLStartingNomadScatterTest::RunTest(const FString& Parameters)
 	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
 	UHOLSiteSubsystem* Sites = World->GetSubsystem<UHOLSiteSubsystem>();
 	const AHOLStartSlot* Enemy = World->SpawnActor<AHOLStartSlot>(Point + FVector(9000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	// D797: the groups are cast over the whole map; a map of 400 m a side (AHOLMapBounds' own box), the constraints as before.
+	World->SpawnActor<AHOLMapBounds>(FVector::ZeroVector, FRotator::ZeroRotator);
 	const FVector2D SiteAt(Point.X, Point.Y + 5000.0);
 	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("sites"), Sites) && TestNotNull(TEXT("another camp's start"), Enemy)
 		&& TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
@@ -504,6 +509,85 @@ bool FHOLStartingNomadScatterTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadWholeMapTest, "HeroesOfLiberty.Match.StartingHero.NomadWholeMap",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// D797 (the user's setting on nomad_start, 2026-11-14: "dispersé = dispersé sur TOUTE la carte", the Nomad's principle): a Nomad seat's
+// start through the game mode's own start (SpawnSlotStart) on a map of 400 m a side (AHOLMapBounds' own box), its units born by the
+// unit subsystem:
+// - hol.Nomad.ScatterRadiusCm 0 (the default: the whole map): every unit inside the map's playable area, and the groups spread
+//   over it: one at least 100 m from the start's point (the former disk was 60 m);
+// - hol.Nomad.ScatterRadiusCm 6000 (the optional disk): every unit within 60 m (+ a group's 7 m reach) of the start's point.
+bool FHOLStartingNomadWholeMapTest::RunTest(const FString& Parameters)
+{
+	constexpr int32 Slot = 0;
+	constexpr double FarCm = 10000.0;
+	constexpr double DiskCm = 6000.0;
+	constexpr double ReachCm = 700.0;
+	const FVector Point(5000.0, 2000.0, 0.0);
+	const FTransform Start(FRotator(0.f, 90.f, 0.f), Point);
+	IConsoleVariable* Radius = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Nomad.ScatterRadiusCm"));
+	if (!TestNotNull(TEXT("hol.Nomad.ScatterRadiusCm"), Radius))
+	{
+		return false;
+	}
+	const float Saved = Radius->GetFloat();
+	for (int32 Way = 0; Way < 2; ++Way)
+	{
+		const bool bDisk = Way == 1;
+		const TCHAR* Name = bDisk ? TEXT("disk of 60 m") : TEXT("whole map");
+		Radius->Set(bDisk ? static_cast<float>(DiskCm) : 0.f, ECVF_SetByCode);
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+		const AHOLMapBounds* Bounds = World->SpawnActor<AHOLMapBounds>(FVector::ZeroVector, FRotator::ZeroRotator);
+		if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("map bounds"), Bounds) && TestNotNull(TEXT("the script board"), UHOLSpecializationSubsystem::Find(World)))
+		{
+			FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+			Config.bNomad = true;
+			Config.bRegicide = true;
+			AHeroesOfLibertyGameModeBase::SpawnSlotStart(*World, Config, Slot, Start);
+			Units->ServeBirthRequests();
+			const FBox2D Playable = Bounds->GetPlayableArea();
+			TArray<uint32> Ids;
+			Units->GetAllUnitIds(Ids);
+			int32 Count = 0;
+			double Farthest = 0.0;
+			for (const uint32 Id : Ids)
+			{
+				FHOLUnitView View;
+				if (Units->GetUnitView(Id, View) && static_cast<int32>(View.OwnerPlayer) == Slot)
+				{
+					++Count;
+					const double Distance = FVector::Dist2D(View.Location, Point);
+					Farthest = FMath::Max(Farthest, Distance);
+					TestTrue(*FString::Printf(TEXT("%s: unit at (%.0f, %.0f) inside the map's playable area"), Name, View.Location.X, View.Location.Y),
+						Playable.IsInside(FVector2D(View.Location)));
+					if (bDisk)
+					{
+						TestTrue(*FString::Printf(TEXT("%s: unit at (%.0f, %.0f) within the disk (%.0f cm)"), Name, View.Location.X, View.Location.Y, Distance),
+							Distance <= DiskCm + ReachCm);
+					}
+				}
+			}
+			TestTrue(*FString::Printf(TEXT("%s: units born (%d)"), Name, Count), Count >= 3);
+			if (!bDisk)
+			{
+				TestTrue(*FString::Printf(TEXT("%s: a group spread far over the map (farthest %.0f cm from the start, at least %.0f)"), Name, Farthest, FarCm),
+					Farthest >= FarCm);
+			}
+		}
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+	Radius->Set(Saved, ECVF_SetByCode);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadFirstForumTest, "HeroesOfLiberty.Match.StartingHero.NomadFirstForum",
 	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
 
@@ -521,7 +605,9 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 	const FVector Spot(11000.0, 2000.0, 0.0);
 	const auto Lists = [](const TArray<FHOLBuildable>& List)
 	{
-		return List.ContainsByPredicate([](const FHOLBuildable& Each) { return Each.TypeName == HOLBuildingTypeNames::MainCentre && Each.Age == 0 && Each.Cell >= 0; });
+		// D797 (the user's setting, 2026-11-14: "le centre doit apparaître dans le palier 2"): page « Palier II » (age index 1, where
+		// the secondary centre opens, GDD 11.1), cell C (10), defaults of hol.Nomad.ForumAge / hol.Nomad.ForumCell.
+		return List.ContainsByPredicate([](const FHOLBuildable& Each) { return Each.TypeName == HOLBuildingTypeNames::MainCentre && Each.Age == 1 && Each.Cell == 10; });
 	};
 	for (int32 Way = 0; Way < 2; ++Way)
 	{
@@ -549,7 +635,22 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 				const FHOLResources Before = Player->GetResources();
 				TArray<FHOLBuildable> List;
 				UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
-				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list at age I"), Name), Lists(List), bNomad);
+				TestEqual(*FString::Printf(TEXT("%s: the forum in the builders' list, page Palier II, cell C"), Name), Lists(List), bNomad);
+				// D797: the keys a player presses (HOLCommandGrid::PressKey, the builders' grid of a seat at tier 0): Z opens page II for
+				// the Nomad only (its forum always buildable there), then C asks to build the forum; the Market (II A) stays locked.
+				FHOLGridContext Grid;
+				Grid.bBuilders = true;
+				Grid.bOwnUnits = true;
+				Grid.ReachedAge = 0;
+				Grid.Buildable = List;
+				const FHOLGridKeyResult PageTwo = HOLCommandGrid::PressKey(Grid, INDEX_NONE, 1);
+				TestEqual(*FString::Printf(TEXT("%s: Z opens the page Palier II at tier 0"), Name), PageTwo.ChosenAge, bNomad ? 1 : INDEX_NONE);
+				const FHOLGridKeyResult KeyC = HOLCommandGrid::PressKey(Grid, 1, 10);
+				TestEqual(*FString::Printf(TEXT("%s: II C builds the forum"), Name), KeyC.Target == EHOLGridKeyTarget::Build && KeyC.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
+				const FHOLGridKeyResult KeyA = HOLCommandGrid::PressKey(Grid, 1, 0);
+				TestFalse(*FString::Printf(TEXT("%s: II A (the Market) still locked at tier 0"), Name), KeyA.Target == EHOLGridKeyTarget::Build);
+				const FHOLGridKeyResult Clicked = HOLCommandGrid::ClickAge(Grid, INDEX_NONE, 1, 10);
+				TestEqual(*FString::Printf(TEXT("%s: a click on II C builds the forum"), Name), Clicked.Target == EHOLGridKeyTarget::Build && Clicked.TypeName == HOLBuildingTypeNames::MainCentre, bNomad);
 				const auto CountForums = [World]()
 				{
 					int32 Count = 0;

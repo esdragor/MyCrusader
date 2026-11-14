@@ -139,6 +139,19 @@ namespace HOLCommandGrid
 		return Age >= 0 && Age < NumAges && Age <= Context.ReachedAge;
 	}
 
+	bool IsAgeOpen(const FHOLGridContext& Context, const int32 Age)
+	{
+		return IsAgeReached(Context, Age) || (Age >= 0 && Age < NumAges
+			&& Context.Buildable.ContainsByPredicate([Age](const FHOLBuildable& Each) { return Each.Age == Age && Each.bAlwaysOpen; }));
+	}
+
+	float GetAgePanelOpacity(const FHOLGridContext& Context, const int32 Age)
+	{
+		// A page faded only while nothing on it can be built: a page opened by a type built whatever the tier (a Nomad's first
+		// forum, D797) shown whole, its locked cells greyed one by one (bGreyed); its medallion keeps its locked look.
+		return IsAgeOpen(Context, Age) ? 1.f : LockedAgePanelOpacity;
+	}
+
 	int32 GetCategoryRow(const EHOLBuildingCategory Category)
 	{
 		return Category == EHOLBuildingCategory::Economic ? 0 : Category == EHOLBuildingCategory::Military ? 1 : 2;
@@ -158,7 +171,7 @@ namespace HOLCommandGrid
 				Result.Command = EHOLGridCommand::Build;
 				Result.TypeName = Buildable.TypeName;
 				Result.Age = Age;
-				Result.bGreyed = !IsAgeReached(Context, Age);
+				Result.bGreyed = !IsAgeReached(Context, Age) && !Buildable.bAlwaysOpen;
 				break;
 			}
 		}
@@ -188,7 +201,7 @@ namespace HOLCommandGrid
 		if (ChosenAge == INDEX_NONE)
 		{
 			const bool bAgeKey = Cell < NumAges;
-			const bool bReached = bAgeKey && IsAgeReached(Context, Cell);
+			const bool bReached = bAgeKey && IsAgeOpen(Context, Cell);
 			Result.Target = bReached ? EHOLGridKeyTarget::Age : bAgeKey ? EHOLGridKeyTarget::None : EHOLGridKeyTarget::Orders;
 			Result.ChosenAge = bReached ? Cell : INDEX_NONE;
 			return Result;
@@ -206,7 +219,7 @@ namespace HOLCommandGrid
 
 	FHOLGridKeyResult ClickAge(const FHOLGridContext& Context, const int32 ChosenAge, const int32 Age, const int32 Cell)
 	{
-		if (!IsBuildGrid(Context) || !IsAgeReached(Context, Age))
+		if (!IsBuildGrid(Context) || !IsAgeOpen(Context, Age))
 		{
 			FHOLGridKeyResult Result;
 			Result.ChosenAge = ChosenAge;

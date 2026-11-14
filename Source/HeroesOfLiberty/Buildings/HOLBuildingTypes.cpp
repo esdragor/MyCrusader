@@ -57,9 +57,16 @@ void UHOLBuildingSettings::GetBuildableTypes(TArray<FHOLBuildable>& OutTypes, co
 
 namespace UE::HeroesOfLiberty::BuildingTypes
 {
-	/** The cell of a Nomad seat's first forum in the builders' age I page (0 to 11; 10 = C, free in every faction's age I page). */
+	/** The cell of a Nomad seat's first forum in its builders' age page (0 to 11; 10 = C, free in every faction's pages I and II). */
 	static TAutoConsoleVariable<int32> CVarNomadForumCell(TEXT("hol.Nomad.ForumCell"), 10,
-		TEXT("Cell (0-11) of a Nomad seat's first forum in the builders' age I grid (BUG nomad_start point 1, default 10 = C)."));
+		TEXT("Cell (0-11) of a Nomad seat's first forum in the builders' grid page hol.Nomad.ForumAge (default 10 = C)."));
+	/**
+	 * D797 (the user's setting on nomad_start, 2026-11-14: "le centre doit apparaître dans le palier 2"): the age page of a Nomad seat's
+	 * first forum, 0 = « Palier I », 1 = « Palier II » (Essor, where the secondary centre opens, GDD 11.1), always buildable there
+	 * whatever its tier (Retours/Q-nomad-forum-palier.md: the reading to confirm).
+	 */
+	static TAutoConsoleVariable<int32> CVarNomadForumAge(TEXT("hol.Nomad.ForumAge"), 1,
+		TEXT("Age page (0-3) of a Nomad seat's first forum in the builders' grid, always buildable there (D797, default 1 = Palier II)."));
 }
 
 void UHOLBuildingSettings::GetBuildableTypesForSlot(const UWorld* World, const int32 Slot, TArray<FHOLBuildable>& OutTypes)
@@ -68,8 +75,9 @@ void UHOLBuildingSettings::GetBuildableTypesForSlot(const UWorld* World, const i
 	if (IsFirstForumOpen(World, Slot))
 	{
 		const int32 Cell = UE::HeroesOfLiberty::BuildingTypes::CVarNomadForumCell.GetValueOnAnyThread();
-		OutTypes.RemoveAll([Cell](const FHOLBuildable& Each) { return Each.Age == 0 && Each.Cell == Cell; });
-		OutTypes.Add({ HOLBuildingTypeNames::MainCentre, Cell, 0 });
+		const int32 Age = FMath::Clamp(UE::HeroesOfLiberty::BuildingTypes::CVarNomadForumAge.GetValueOnAnyThread(), 0, 3);
+		OutTypes.RemoveAll([Cell, Age](const FHOLBuildable& Each) { return Each.Age == Age && Each.Cell == Cell; });
+		OutTypes.Add({ HOLBuildingTypeNames::MainCentre, Cell, Age, /*bAlwaysOpen*/ true });
 	}
 }
 

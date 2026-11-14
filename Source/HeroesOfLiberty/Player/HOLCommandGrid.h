@@ -332,6 +332,12 @@ namespace HOLCommandGrid
 
 	/** Age (0 to 3) is reached: its panel's buildings may be placed. */
 	HEROESOFLIBERTY_API bool IsAgeReached(const FHOLGridContext& Context, int32 Age);
+	/** The age reached, or a page holding a type built whatever the tier (FHOLBuildable::bAlwaysOpen: a Nomad's first forum, D797). */
+	HEROESOFLIBERTY_API bool IsAgeOpen(const FHOLGridContext& Context, int32 Age);
+	/** The render opacity of a page not open (IsAgeOpen false): faded, its medallion locked. */
+	inline constexpr float LockedAgePanelOpacity = 0.55f;
+	/** The render opacity of Age's page: whole when open (IsAgeOpen), else LockedAgePanelOpacity. */
+	HEROESOFLIBERTY_API float GetAgePanelOpacity(const FHOLGridContext& Context, int32 Age);
 
 	/**
 	 * The building at Cell (0 to 11) of the panel of Age, the builders' (IsBuildGrid): Build, its type, its age, greyed
