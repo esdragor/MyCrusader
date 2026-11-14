@@ -33,6 +33,17 @@ struct FHOLRageOrder
 	int32 PlayerIndex = INDEX_NONE;
 	TArray<uint32> UnitIds;
 };
+/**
+ * F7 lot 2 (FortificationsInProgress.md, D693): a player's garrison order (UHOLCommandSubsystem::IssueGarrisonOrder): UnitIds enter Building, as
+ * many as it admits (HOLGarrison::Admitted); bExitAll: every unit garrisoned in Building comes out (UnitIds unused).
+ */
+struct FHOLGarrisonOrder
+{
+	int32 PlayerIndex = INDEX_NONE;
+	TArray<uint32> UnitIds;
+	TWeakObjectPtr<AHOLBuilding> Building;
+	bool bExitAll = false;
+};
 /** J8c.3: a player's hero ability asked (UHOLCommandSubsystem::IssueHeroAbilityOrder). */
 struct FHOLHeroAbilityOrder
 {
@@ -231,6 +242,16 @@ public:
 	void ConsumeRageOrders(TArray<FHOLRageOrder>& OutOrders);
 
 	/**
+	 * F7 lot 2: PlayerIndex's player puts UnitIds in Building (garrison) or takes every occupant out of it (IssueUngarrisonAllOrder), applied at
+	 * the start of the next step by the garrison (UHOLGarrisonSubsystem), which checks them (the building's own slot, D374; the kinds, D793; the
+	 * places of its GarrisonSlots column). Refused here as the rage orders.
+	 */
+	void IssueGarrisonOrder(int32 PlayerIndex, TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
+	void IssueUngarrisonAllOrder(int32 PlayerIndex, AHOLBuilding* Building);
+	/** Takes the garrison orders waiting (UHOLGarrisonSubsystem, at the start of each step), in the order given. */
+	void ConsumeGarrisonOrders(TArray<FHOLGarrisonOrder>& OutOrders);
+
+	/**
 	 * T3: PlayerIndex's player takes the talent of Family in the next row of its hero (ServerHeroTalent), applied at the end of
 	 * the next step by the hero subsystem, which checks it (HOLHeroTalent::CanPick). Refused here as the ability orders.
 	 */
@@ -285,6 +306,8 @@ private:
 	/** J8c.3: the hero abilities asked, in the order given. */
 	TArray<FHOLHeroAbilityOrder> PendingHeroAbilityOrders;
 	TArray<FHOLRageOrder> PendingRageOrders;
+	/** F7 lot 2: the garrison orders asked, in the order given. */
+	TArray<FHOLGarrisonOrder> PendingGarrisonOrders;
 	/** T3: the talent picks asked, in the order given. */
 	TArray<FHOLHeroTalentOrder> PendingHeroTalentOrders;
 	/** D4: the duel commands asked, in the order given. */
