@@ -3,8 +3,11 @@
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
+#include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLMatchConfig.h"
+#include "Misc/ScopeExit.h"
+#include "Simulation/HOLUnitTypes.h"
 #include "Misc/AutomationTest.h"
 #include "Map/HOLFogMode.h"
 #include "Map/HOLVisionSubsystem.h"
@@ -62,7 +65,7 @@ namespace UE::HeroesOfLiberty::Tests::SiteSubsystem
 		UHOLSiteSubsystem* Sites = nullptr;
 		int64 Step = 0;
 
-		explicit FFixture(FAutomationTestBase& Test, const bool bSacredSites = false)
+		explicit FFixture(FAutomationTestBase& Test, const bool bSacredSites = false, const EHOLFaction Slot1Faction = EHOLFaction::DawnOrder)
 		{
 			World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 			FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
@@ -81,6 +84,7 @@ namespace UE::HeroesOfLiberty::Tests::SiteSubsystem
 				Config.Slots[Slot].State = Slot < 3 ? EHOLSlotState::Human : EHOLSlotState::Closed;
 				Config.Slots[Slot].Team = 0;
 			}
+			Config.Slots[1].Faction = Slot1Faction;
 			if (GameState)
 			{
 				GameState->InitVictory(Config);
@@ -259,6 +263,100 @@ bool FHOLSiteSubsystemBoxTest::RunTest(const FString& Parameters)
 		TestEqual(bBox ? TEXT("box ticked: slot 0 owns the site") : TEXT("box unticked: nobody owns the site"), Fixture.State(0).Owner,
 			bBox ? 0 : static_cast<int32>(INDEX_NONE));
 		TestEqual(bBox ? TEXT("box ticked: slot 0 counts one site") : TEXT("box unticked: slot 0 counts none"), Fixture.Sites->CountOwned(0), bBox ? 1 : 0);
+	}
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteHolyColumnTest, "HeroesOfLiberty.Sites.HolyColumn", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
+
+// S3 of SacredSitesInProgress.md (D702): who takes a site besides the hero is the `Holy` rows of the faction table (Tools/Data/Factions.csv).
+// 1. The game's table: each faction has its holy types or an explicit empty list (rows of its own, no Holy row), and each holy type is a real
+//    unit type of the unit table that the faction fields (an unknown type fails here).
+// 2. The real chain, the game's table: a Dawn Monk takes, a Legions Monk does not (not their holy unit), a Legions hero does.
+// 3. The real chain, a fixture table where the Legions' holy unit is the Spearman: a Legions Spearman takes, a Dawn Spearman still does not,
+//    a Legions Monk does not: the owner comes from the column, not from a list in the code.
+bool FHOLSiteHolyColumnTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::SiteSubsystem;
+	FScopedVariable Enabled(TEXT("hol.Site.Enabled"), TEXT("1"));
+	FScopedVariable Hold(TEXT("hol.Site.HoldSeconds"), TEXT("1"));
+	const FName Dawn = HOLFactionRules::Dawn;
+	const FName Legions(TEXT("Legions"));
+	const FName Monk(TEXT("Monk"));
+
+	// 1. The game's table.
+	{
+		FFixture Fixture(*this);
+		if (!Fixture.IsReady())
+		{
+			return false;
+		}
+		const HOLFactionRules::FTable& Table = HOLFactionRules::GetTable();
+		TestTrue(TEXT("the Dawn's holy units include the Monk"), Table.FindHolyTypes(Dawn).Contains(Monk));
+		TestTrue(TEXT("the Legions have rows of their own"), Table.HasFaction(Legions));
+		TestEqual(TEXT("the Legions have no holy unit yet (the Necromancer does not exist): explicit empty list"), Table.FindHolyTypes(Legions).Num(), 0);
+		for (const FName Faction : { Dawn, Legions })
+		{
+			for (const FName Type : Table.FindHolyTypes(Faction))
+			{
+				const FHOLUnitTypeRow* Row = Fixture.Units->FindTypeRow(Type);
+				TestNotNull(*FString::Printf(TEXT("holy type %s of %s is a unit type of the table"), *Type.ToString(), *Faction.ToString()), Row);
+				TestTrue(*FString::Printf(TEXT("holy type %s is fielded by %s"), *Type.ToString(), *Faction.ToString()),
+					Row && Table.Allows(Row->Faction, Faction));
+			}
+		}
+	}
+
+	// 2. The real chain, the game's table: slot 0 Dawn, slot 1 Legions.
+	{
+		FFixture Fixture(*this, false, EHOLFaction::BlackLegions);
+		if (!Fixture.IsReady())
+		{
+			return false;
+		}
+		const int32 DawnMonkSite = Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+		const int32 LegionsMonkSite = Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+		const int32 LegionsHeroSite = Fixture.Sites->AddSite(FVector2D(8000., 0.), 1500.f);
+		TestTrue(TEXT("a Monk of slot 0 (Dawn)"), Fixture.Place(TEXT("Monk"), 0, FVector(0., 0., 0.)) != 0);
+		TestTrue(TEXT("a Monk of slot 1 (Legions)"), Fixture.Place(TEXT("Monk"), 1, FVector(4000., 0., 0.)) != 0);
+		TestTrue(TEXT("a hero of slot 1 (Legions)"), Fixture.Place(TEXT("Hero"), 1, FVector(8000., 0., 0.)) != 0);
+		Fixture.Tick(3 * HoldSteps());
+		TestEqual(TEXT("game table: the Dawn Monk takes"), Fixture.State(DawnMonkSite).Owner, 0);
+		TestEqual(TEXT("game table: a Legions Monk takes nothing"), Fixture.State(LegionsMonkSite).Owner, static_cast<int32>(INDEX_NONE));
+		TestEqual(TEXT("game table: the Legions hero takes"), Fixture.State(LegionsHeroSite).Owner, 1);
+	}
+
+	// 3. The real chain, a fixture table: the Legions' holy unit is the Spearman.
+	{
+		HOLFactionRules::FTable Fixed = HOLFactionRules::GetTable();
+		TArray<FString> Problems;
+		TArray<HOLFactionRules::FRoleRow> Rows;
+		HOLFactionRules::ParseRoles(TEXT("Name,Faction,Role,Type\n"
+			"Dawn_Worker,Dawn,Worker,Peasant\nDawn_Hero,Dawn,Hero,Hero\nDawn_MainCentre,Dawn,MainCentre,MainCentre\nDawn_Holy_Monk,Dawn,Holy,Monk\n"
+			"Legions_Worker,Legions,Worker,Zombie\nLegions_Hero,Legions,Hero,Hero\nLegions_MainCentre,Legions,MainCentre,MainCentre\n"
+			"Legions_Holy_Spearman,Legions,Holy,Spearman\n"), Rows, Problems);
+		for (const FString& Problem : Problems)
+		{
+			AddError(Problem);
+		}
+		Fixed.Roles = Rows;
+		HOLFactionRules::SetTableForTests(&Fixed);
+		ON_SCOPE_EXIT { HOLFactionRules::SetTableForTests(nullptr); };
+		FFixture Fixture(*this, false, EHOLFaction::BlackLegions);
+		if (!Fixture.IsReady())
+		{
+			return false;
+		}
+		const int32 LegionsSpearSite = Fixture.Sites->AddSite(FVector2D(0., 0.), 1500.f);
+		const int32 DawnSpearSite = Fixture.Sites->AddSite(FVector2D(4000., 0.), 1500.f);
+		const int32 LegionsMonkSite = Fixture.Sites->AddSite(FVector2D(8000., 0.), 1500.f);
+		TestTrue(TEXT("a Spearman of slot 1 (Legions)"), Fixture.Place(TEXT("Spearman"), 1, FVector(0., 0., 0.)) != 0);
+		TestTrue(TEXT("a Spearman of slot 0 (Dawn)"), Fixture.Place(TEXT("Spearman"), 0, FVector(4000., 0., 0.)) != 0);
+		TestTrue(TEXT("a Monk of slot 1 (Legions)"), Fixture.Place(TEXT("Monk"), 1, FVector(8000., 0., 0.)) != 0);
+		Fixture.Tick(3 * HoldSteps());
+		TestEqual(TEXT("fixture table: the Legions Spearman takes"), Fixture.State(LegionsSpearSite).Owner, 1);
+		TestEqual(TEXT("fixture table: a Dawn Spearman takes nothing"), Fixture.State(DawnSpearSite).Owner, static_cast<int32>(INDEX_NONE));
+		TestEqual(TEXT("fixture table: a Legions Monk takes nothing"), Fixture.State(LegionsMonkSite).Owner, static_cast<int32>(INDEX_NONE));
 	}
 	return true;
 }
