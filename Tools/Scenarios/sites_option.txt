@@ -40,6 +40,9 @@ frames 10
 hol.UI.Text SacredSitesDropdown
 waitlog Text SacredSitesDropdown: Non
 capture sites_option_box_off
+# The hand's mouse moves off and back between two clicks (the list reopens on a new hover).
+hol.Mouse.Hover 20 300 5
+waitlog Mouse hover 20,300
 hol.Mouse.Click SacredSitesDropdown
 frames 10
 hol.UI.Key Down 0 0.1
