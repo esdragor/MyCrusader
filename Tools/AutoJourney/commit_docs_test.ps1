@@ -91,6 +91,29 @@ Put $Repo 'Auto_Journey_File.md' 'v2'
 $out3 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Message 'Docs: custom text' | Out-String
 Check ((Git $Repo log -1 --format=%s | Out-String).Trim() -eq 'Docs: custom text') '-Message est utilise tel quel' $out3
 
+# --- L14-12 (2026-11-14) : -Only <fichiers> commite CES docs seuls (une archive de l'agent de docs avait embarque Auto_Journey_Jour.md et des fiches E
+# en cours d'edition par la recette). Avec -File, "a,b" arrive en une seule chaine : la liste est separee par des virgules ; \ ou / acceptes.
+Put $Repo 'EtapeDefini.md' 'v3'
+Put $Repo 'Auto_Journey_Jour.md' 'v3'
+Put $Repo 'Retours/E-new.md' 'v2'
+Remove-Item (Join-Path $Repo 'Retours/E-keep.md')
+$HeadO = (Git $Repo rev-parse HEAD | Out-String).Trim()
+$o1 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' -DryRun | Out-String
+Check ($LASTEXITCODE -eq 0 -and $o1 -match 'EtapeDefini\.md' -and $o1 -notmatch 'Auto_Journey_Jour' -and $o1 -notmatch 'E-new' -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadO) '-Only -DryRun: liste le seul fichier nomme, aucun commit' $o1
+$o2 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md,Retours\E-new.md,Retours/E-keep.md' -Message 'Docs: only' | Out-String
+$c2 = $LASTEXITCODE
+$f2 = @(Git $Repo show --name-only --no-renames --format= HEAD | ForEach-Object { "$_".Trim() } | Where-Object { $_ } | Sort-Object)
+Check ($c2 -eq 0 -and (Git $Repo rev-list --count "$HeadO..HEAD" | Out-String).Trim() -eq '1' -and ($f2 -join '|') -eq 'EtapeDefini.md|Retours/E-keep.md|Retours/E-new.md') '-Only: le commit contient EXACTEMENT les fichiers nommes (modifie, \ ou /, suppression)' "code=$c2 files=$($f2 -join ', ') out=$o2"
+$st2 = (Git $Repo status --short | Out-String)
+Check ($st2 -match '(?m)^ M Auto_Journey_Jour\.md' -and $st2 -match '(?m)^ M Source/x\.cpp') '-Only: un doc modifie NON nomme (autre session) reste hors du commit' $st2
+$HeadO2 = (Git $Repo rev-parse HEAD | Out-String).Trim()
+$o3 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'Source/x.cpp' | Out-String
+$c3 = $LASTEXITCODE
+Check ($c3 -ne 0 -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadO2 -and $o3 -match 'x\.cpp') '-Only d''un fichier hors docs (code): refuse, code non nul, aucun commit' "code=$c3 out=$o3"
+$o4 = & powershell -NoProfile -ExecutionPolicy Bypass -File $Tool -Root $Repo -Only 'EtapeDefini.md' | Out-String
+Check ($LASTEXITCODE -eq 0 -and $o4 -match 'rien' -and (Git $Repo rev-parse HEAD | Out-String).Trim() -eq $HeadO2) '-Only d''un doc inchange: rien a committer, code 0' $o4
+Git $Repo checkout -q -- Auto_Journey_Jour.md | Out-Null
+
 # --- Pas un depot git
 $NoGit = Join-Path $Tmp 'plain'
 New-Item -ItemType Directory -Path $NoGit | Out-Null
