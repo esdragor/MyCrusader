@@ -679,6 +679,13 @@ struct HEROESOFLIBERTY_API FHOLUnitTypeRow : public FTableRowBase
 	UPROPERTY(EditAnywhere, Category = "Presentation")
 	TSoftObjectPtr<UStaticMesh> Projectile;
 
+	/**
+	 * The puff of powder smoke drawn at the muzzle at each of its shots (Arquebusier: SM_PowderSmoke). Read by the arrow display
+	 * only (UHOLArrowSubsystem, by the shooter's type), never by the simulation; empty (every other type): no smoke.
+	 */
+	UPROPERTY(EditAnywhere, Category = "Presentation")
+	TSoftObjectPtr<UStaticMesh> MuzzleSmoke;
+
 	FHOLUnitTypeConstants ToConstants(FName TypeName) const;
 };
 

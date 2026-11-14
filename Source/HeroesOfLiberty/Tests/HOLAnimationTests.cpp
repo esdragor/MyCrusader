@@ -459,7 +459,10 @@ bool FHOLAnimationTableTest::RunTest(const FString& Parameters)
 			FArmedSoldier{ TEXT("Archer"), TEXT("SKM_Archer"), TEXT("A_Archer_Idle"), TEXT("A_Archer_Walk"), TEXT("A_Archer_Attack"),
 				TEXT("A_Archer_Fall") },
 			FArmedSoldier{ TEXT("Crossbowman"), TEXT("SKM_Crossbowman"), TEXT("A_Crossbow_Idle"), TEXT("A_Crossbow_Walk"), TEXT("A_Crossbow_Attack"),
-				TEXT("A_Crossbow_Fall") } })
+				TEXT("A_Crossbow_Fall") },
+			// The Arquebusier (2026-11-14): his own mesh, idle and walk with the gun on the shoulder, the shot and its ramrod reload, the fall.
+			FArmedSoldier{ TEXT("Arquebusier"), TEXT("SKM_Arquebusier"), TEXT("A_Arquebus_Idle"), TEXT("A_Arquebus_Walk"), TEXT("A_Arquebus_Attack"),
+				TEXT("A_Arquebus_Fall") } })
 	{
 		const FHOLUnitTypeRow* Row = UnitTypes->FindRow<FHOLUnitTypeRow>(Soldier.Name, TEXT("Animation test"));
 		if (!TestNotNull(*FString::Printf(TEXT("%s in the unit type table"), Soldier.Name), Row))

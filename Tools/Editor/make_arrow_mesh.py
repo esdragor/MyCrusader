@@ -1,5 +1,8 @@
 """Creates /Game/Units/Props/SM_Arrow, the arrow drawn in flight (J7c.2b): one instanced mesh for every arrow in the air;
-with "--bolt", /Game/Units/Props/SM_Bolt instead, the Crossbowman's bolt in flight (AR-Q5, AR6).
+with "--bolt", /Game/Units/Props/SM_Bolt instead, the Crossbowman's bolt in flight (AR-Q5, AR6); with "--bullet",
+/Game/Units/Props/SM_Bullet, the Arquebusier's ball (a dark ball with a pale trail, drawn through UHOLArrowSubsystem's
+ArrowScale 1.5 x 4 x 4, so the mesh ellipsoid is 6 x 2.25 x 2.25 cm: ~18 cm across in flight); with "--smoke",
+/Game/Units/Props/SM_PowderSmoke, the puff at the muzzle at each shot (UnitTypes.csv MuzzleSmoke): a 50 cm ball, centred.
 
 SM_Arrow, ~78 cm (soldier_props.ARROW_LENGTH, make_arrow): a thin wooden shaft, an iron point, three white fletchings.
 SM_Bolt, 35 cm (soldier_props.BOLT_LENGTH, bolt_prims): a thicker shaft, a square iron head, two vanes across.
@@ -14,11 +17,17 @@ import sys
 import unreal
 
 BOLT = "--bolt" in sys.argv[1:]
+BULLET = "--bullet" in sys.argv[1:]
+SMOKE = "--smoke" in sys.argv[1:]
 FOLDER = "/Game/Units/Props"
-TARGET_PATH = FOLDER + ("/SM_Bolt" if BOLT else "/SM_Arrow")
+TARGET_PATH = FOLDER + ("/SM_PowderSmoke" if SMOKE else "/SM_Bullet" if BULLET else "/SM_Bolt" if BOLT else "/SM_Arrow")
 PARENT = "/Game/Rendering/M_MatteColor"
 LENGTH = 35.0 if BOLT else 78.0
 COLORS = {"MI_ArrowWood": (0.42, 0.27, 0.13), "MI_ArrowIron": (0.30, 0.30, 0.32), "MI_ArrowFeather": (0.89, 0.87, 0.82)}
+if BULLET:
+    COLORS = {"MI_BulletLead": (0.10, 0.10, 0.11), "MI_BulletTrail": (0.78, 0.77, 0.73)}
+if SMOKE:
+    COLORS = {"MI_PowderSmoke": (0.86, 0.85, 0.81)}
 
 asset_tools = unreal.AssetToolsHelpers.get_asset_tools()
 lib = unreal.MaterialEditingLibrary
@@ -56,7 +65,15 @@ def options(material_id):
     return o
 
 
-if BOLT:
+if SMOKE:
+    # A ball of 50 cm radius centred on the muzzle point, 10 x 8 facets.
+    P.append_sphere_lat_long(mesh, options(0), unreal.Transform(unreal.Vector(0.0, 0.0, 0.0), unreal.Rotator(0.0, 0.0, 0.0)), 50.0, 8, 10, CENTER)
+elif BULLET:
+    # The ball: an ellipsoid 6 x 2.25 x 2.25 cm (x 1.5 x 4 x 4 in flight = 9 cm radius) ending at the origin, and a thin
+    # pale trail behind it along the flight (x 1.5 in flight: ~60 cm).
+    P.append_sphere_lat_long(mesh, options(0), unreal.Transform(unreal.Vector(-6.0, 0.0, 0.0), unreal.Rotator(0.0, 0.0, 0.0), unreal.Vector(6.0, 2.25, 2.25)), 1.0, 8, 12, CENTER)
+    P.append_cylinder(mesh, options(1), unreal.Transform(unreal.Vector(-46.0, 0.0, 0.0), ALONG_X), 0.5, 34.0, 4, 1, True, BASE)
+elif BOLT:
     # Shaft: from the nock (-35) to the head's base (-4.5), thicker than the arrow's (1.0 against 0.6) to read in flight.
     P.append_cylinder(mesh, options(0), unreal.Transform(unreal.Vector(-LENGTH, 0.0, 0.0), ALONG_X), 1.0, LENGTH - 4.5, 4, 1, True, BASE)
     # Square head: a four-sided cone from -4.5 to 0 (the bolt's bodkin).
@@ -95,5 +112,5 @@ for i, (name, _) in enumerate(COLORS.items()):
 static_mesh.set_editor_property("static_materials", static_materials)
 unreal.EditorAssetLibrary.save_loaded_asset(static_mesh)
 bounds = static_mesh.get_bounding_box()
-unreal.log("%s mesh created at %s (%d triangles, bounds %s to %s)" % ("Bolt" if BOLT else "Arrow", TARGET_PATH,
+unreal.log("%s mesh created at %s (%d triangles, bounds %s to %s)" % ("Smoke" if SMOKE else "Bullet" if BULLET else "Bolt" if BOLT else "Arrow", TARGET_PATH,
            static_mesh.get_num_triangles(0), bounds.min, bounds.max))

@@ -27,6 +27,10 @@ namespace
 	/** The arrow drawn larger than life to be seen from the RTS camera (J7c.2b, trial): at its true 1.2 cm shaft it was
 	 *  a pixel or two wide in the close-ups. 1.5 times as long (~117 cm), 4 times as thick (shaft ~5 cm). */
 	const FVector ArrowScale(1.5, 4.0, 4.0);
+	/** A puff of powder smoke (SM_PowderSmoke is a 50 cm ball): it swells from 0.5 to 2 times, rises 90 cm and shrinks away. */
+	constexpr double SmokeStartScale = 0.5;
+	constexpr double SmokeEndScale = 2.0;
+	constexpr double SmokeRise = 90.0;
 
 	FAutoConsoleCommandWithWorld ArrowReportCommand(
 		TEXT("hol.Combat.ArrowReport"),
@@ -81,6 +85,14 @@ UStaticMesh* UHOLArrowSubsystem::GetProjectileMesh(const FName ShooterType)
 	return LoadObject<UStaticMesh>(nullptr, ArrowMeshPath);
 }
 
+UStaticMesh* UHOLArrowSubsystem::GetMuzzleSmokeMesh(const FName ShooterType)
+{
+	const UHOLSimulationSettings* Settings = GetDefault<UHOLSimulationSettings>();
+	const UDataTable* UnitTypes = Settings ? Settings->UnitTypesTable.LoadSynchronous() : nullptr;
+	const FHOLUnitTypeRow* Row = UnitTypes && !ShooterType.IsNone() ? UnitTypes->FindRow<FHOLUnitTypeRow>(ShooterType, TEXT("Arrows"), false) : nullptr;
+	return Row && !Row->MuzzleSmoke.IsNull() ? Row->MuzzleSmoke.LoadSynchronous() : nullptr;
+}
+
 const UInstancedStaticMeshComponent* UHOLArrowSubsystem::GetInstances(const UStaticMesh* Mesh) const
 {
 	const int32 Group = Meshes.IndexOfByKey(Mesh);
@@ -93,15 +105,38 @@ int32 UHOLArrowSubsystem::FindOrAddGroup(const FName ShooterType)
 	{
 		return *Known;
 	}
-	int32& Group = GroupByType.Add(ShooterType, INDEX_NONE);
-	UWorld* World = GetWorld();
+	GroupByType.Add(ShooterType, INDEX_NONE);
 	UStaticMesh* Mesh = GetProjectileMesh(ShooterType);
-	if (!World || !Mesh)
+	if (!GetWorld() || !Mesh)
 	{
 		UE_LOG(LogHOLPresentation, Warning, TEXT("Arrows: no projectile mesh for %s (nor %s), its shots not drawn"), *ShooterType.ToString(), ArrowMeshPath);
 		return INDEX_NONE;
 	}
-	Group = Meshes.IndexOfByKey(Mesh);
+	const int32 Group = FindOrAddMeshGroup(Mesh);
+	GroupByType.Add(ShooterType, Group);
+	return Group;
+}
+
+int32 UHOLArrowSubsystem::FindOrAddSmokeGroup(const FName ShooterType)
+{
+	if (const int32* Known = SmokeGroupByType.Find(ShooterType))
+	{
+		return *Known;
+	}
+	UStaticMesh* Mesh = GetMuzzleSmokeMesh(ShooterType);
+	const int32 Group = Mesh ? FindOrAddMeshGroup(Mesh) : INDEX_NONE;
+	SmokeGroupByType.Add(ShooterType, Group);
+	return Group;
+}
+
+int32 UHOLArrowSubsystem::FindOrAddMeshGroup(UStaticMesh* Mesh)
+{
+	UWorld* World = GetWorld();
+	if (!World || !Mesh)
+	{
+		return INDEX_NONE;
+	}
+	int32 Group = Meshes.IndexOfByKey(Mesh);
 	if (Group != INDEX_NONE)
 	{
 		return Group;
@@ -154,6 +189,16 @@ void UHOLArrowSubsystem::Launch(const FHOLArrowLaunch& Launch)
 	Arrow.Duration = FMath::Max(Launch.FlightMs, 1) / 1000.0;
 	Arrow.Group = FindOrAddGroup(Launch.ShooterType);
 	++Launched;
+	// A gun's shot (the Arquebusier): a puff of powder smoke at the muzzle, ahead of the shooter at his shoulder's height.
+	const int32 SmokeGroup = FindOrAddSmokeGroup(Launch.ShooterType);
+	if (SmokeGroup != INDEX_NONE)
+	{
+		FPuff& Puff = Puffs.AddDefaulted_GetRef();
+		Puff.Origin = Launch.From + Ahead * MuzzleForward + FVector(0.0, 0.0, MuzzleHeight);
+		Puff.Start = World->GetTimeSeconds();
+		Puff.Group = SmokeGroup;
+		LastSmokeOrigin = Puff.Origin;
+	}
 }
 
 void UHOLArrowSubsystem::NoteHealthDrop(const FMassEntityHandle& Target)
@@ -197,7 +242,7 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	const UWorld* World = GetWorld();
-	if (!World || (Arrows.IsEmpty() && !Instances.ContainsByPredicate([](const UInstancedStaticMeshComponent* Component)
+	if (!World || (Arrows.IsEmpty() && Puffs.IsEmpty() && !Instances.ContainsByPredicate([](const UInstancedStaticMeshComponent* Component)
 		{
 			return Component && Component->GetInstanceCount() > 0;
 		})))
@@ -250,6 +295,26 @@ void UHOLArrowSubsystem::Tick(float DeltaTime)
 		const FVector Position = Arrow.From + Span * T + FVector(0.0, 0.0, Arc * 4.0 * T * (1.0 - T));
 		const FVector Velocity = Span + FVector(0.0, 0.0, Arc * (4.0 - 8.0 * T));
 		GroupTransforms[Arrow.Group].Emplace(FRotationMatrix::MakeFromX(Velocity.GetSafeNormal()).ToQuat(), Position, ArrowScale);
+	}
+
+	// The puffs of powder smoke: swelling, rising and shrinking away over SmokeSeconds (their own scale, not the arrows').
+	for (int32 Index = Puffs.Num() - 1; Index >= 0; --Index)
+	{
+		const FPuff& Puff = Puffs[Index];
+		const double Age = (Now - Puff.Start) / SmokeSeconds;
+		if (Age >= 1.0)
+		{
+			Puffs.RemoveAtSwap(Index, EAllowShrinking::No);
+			continue;
+		}
+		if (!GroupTransforms.IsValidIndex(Puff.Group))
+		{
+			continue;
+		}
+		const double T = FMath::Max(Age, 0.0);
+		const double Ease = 1.0 - (1.0 - T) * (1.0 - T);
+		const double Scale = FMath::Lerp(SmokeStartScale, SmokeEndScale, Ease) * (1.0 - T * T * T);
+		GroupTransforms[Puff.Group].Emplace(FQuat::Identity, Puff.Origin + FVector(0.0, 0.0, SmokeRise * Ease), FVector(Scale));
 	}
 
 	for (int32 Group = 0; Group < Instances.Num(); ++Group)

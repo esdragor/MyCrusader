@@ -6,3 +6,5 @@ arqg_attack_3 | le recul puis l'arme baissee, crosse a terre
 arqg_attack_5 | la baguette tiree vers le haut (bras leve)
 arqg_attack_6 | le bourrage : la baguette dans le canon
 arqg_fall_3 | la chute en cours : l'Arquebusier bascule, le fusil lui echappe des mains (il atterrit a ses pieds a la capture suivante)
+arqg_attack_2 | la fumee de poudre devant l'Arquebusier apres le tir (une bouffee blanche qui gonfle puis monte)
+arqg_ball_4 | la balle en vol vers le Belier : un petit trait pale fugace au-dessus de la fumee (la balle ne vole que 0,4 s)

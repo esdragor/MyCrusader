@@ -37,13 +37,17 @@ hol.Select.OrderNear 4000 0
 wait 2.5
 hol.Camera.FocusNear 4000 0
 frames 2
-note 3. Tir : clic droit sur le Belier ennemi, a 14 m : mise en joue, tir (recul), arme posee au sol, charge, balle, baguette tiree, bourrage, baguette rangee, arme relevee (4 s).
+note 3. Tir : clic droit sur le Belier ennemi, a 14 m : mise en joue, tir (recul, bouffee de fumee blanche au canon, balle), arme posee au sol, charge, balle, baguette tiree, bourrage, baguette rangee, arme relevee (4 s).
 hol.Select.ClickUnit -1
 frames 10
 hol.Camera.FocusNear 4000 0
 frames 2
 hol.Select.ClickUnit -1 enemy order
 captureseq arqg_attack 8 0.5
+wait 0.7
+hol.Camera.FocusNear 4400 0
+frames 2
+captureseq arqg_ball 8 0.08
 note 4. Chute : l'Arquebusier est blesse (1 % de ses PV) et un Homme d'armes ennemi arrive sur lui : la chute est celle de l'Arbaletrier, le fusil lui echappe des mains.
 hol.Camera.FocusNear 4000 0
 frames 2

@@ -198,6 +198,7 @@ T_DRAWN, T_TURN, T_INSERT, T_RAM1, T_LIFT1, T_RAM2, T_OUT, T_OVER, T_SEAT, T_STO
     0.600, 0.625, 0.650, 0.690, 0.715, 0.750, 0.790, 0.820, 0.855, 0.865)
 T_REGAIN1, T_REGAIN2, T_CARRY = 0.900, 0.935, 0.970
 
+PATH_OUT = (6.0, 10.0, 0.0)  # the pouch-to-muzzle hand path's middle, pushed out (right, forward, up)
 HAND_SWAP_GRAB = at(P, T_GRAB)
 HAND_SWAP_STOW = at(P, T_STOWED)
 
@@ -206,10 +207,23 @@ def drill_keys():
     keys = []
     add = keys.append
     add(reload_key(at(P, T_GROUND), B_GUARD, R_HIP, ELB_GROUND, flow=1.0))
+    out = hand_mix(R_HIP, R_CHARGE, 0.5)  # hip to the strap: round the front of the belly, not through it
+    out["at"] = (out["at"][0] + 8.0, out["at"][1] + 8.0, out["at"][2])
+    add(reload_key(at(P, (T_GROUND + T_CHARGE) / 2.0), B_GUARD, out, ELB_CHARGE))
     add(reload_key(at(P, T_CHARGE), B_GUARD, R_CHARGE, ELB_CHARGE))
+    away = hand_mix(R_CHARGE, R_OVER_MUZZLE, 0.5)  # strap to muzzle: out and forward round the chest
+    away["at"] = (away["at"][0] + 6.0, away["at"][1] + 10.0, away["at"][2] + 2.0)
+    add(reload_key(at(P, (T_CHARGE + T_POUR) / 2.0), B_GUARD, away, ELB_UP))
     add(reload_key(at(P, T_POUR), B_GUARD, R_OVER_MUZZLE, ELB_UP))
     add(reload_key(at(P, T_POUR2), B_GUARD, R_TIPPED, ELB_UP))
+    down = hand_mix(R_TIPPED, R_POUCH, 0.5)  # muzzle to the pouch at the right hip: out to his right
+    down["at"] = (down["at"][0] + 8.0, down["at"][1] + 8.0, down["at"][2])
+    add(reload_key(at(P, (T_POUR2 + T_POUCH) / 2.0), B_GUARD, down, ELB_GROUND))
     add(reload_key(at(P, T_POUCH), B_GUARD, R_POUCH, ELB_GROUND))
+    # Between the pouch and the muzzle the hand goes round the front of the belly (the straight way ran 4 cm into the trunk).
+    path = hand_mix(R_POUCH, R_BELOW_MUZZLE, 0.5)
+    path["at"] = (path["at"][0] + PATH_OUT[0], path["at"][1] + PATH_OUT[1], path["at"][2] + PATH_OUT[2])
+    add(reload_key(at(P, (T_POUCH + T_BALL) / 2.0), B_GUARD, path, ELB_UP))
     add(reload_key(at(P, T_BALL), B_GUARD, R_BELOW_MUZZLE, ELB_UP))
     add(reload_key(at(P, T_GRAB), B_GUARD, rod_at(GRAB_X), ELB_UP))                         # the tail of the stowed rod
     # Drawn: pulled up along the pipe its whole length, the body leaning back.

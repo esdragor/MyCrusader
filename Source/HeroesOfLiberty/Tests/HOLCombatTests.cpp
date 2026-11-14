@@ -556,6 +556,67 @@ bool FHOLCombatProjectilesTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// Arquebusier (2026-11-14): his ball (SM_Bullet) and the powder smoke at his muzzle (the MuzzleSmoke column, SM_PowderSmoke), from the
+// real table. Only he has them: a shot launched for him draws a ball and ONE puff at the muzzle (ahead of the shooter, at the height of
+// his shoulder), a Crossbowman's draws a bolt and no puff.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatMuzzleSmokeTest, "HeroesOfLiberty.Combat.MuzzleSmoke", UE::HeroesOfLiberty::Tests::Combat::Flags)
+
+bool FHOLCombatMuzzleSmokeTest::RunTest(const FString& Parameters)
+{
+	const UDataTable* UnitTypes = GetDefault<UHOLSimulationSettings>()->UnitTypesTable.LoadSynchronous();
+	const FHOLUnitTypeRow* Arquebusier = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Arquebusier"), TEXT("Combat test")) : nullptr;
+	const FHOLUnitTypeRow* Crossbowman = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Crossbowman"), TEXT("Combat test")) : nullptr;
+	const FHOLUnitTypeRow* Archer = UnitTypes ? UnitTypes->FindRow<FHOLUnitTypeRow>(TEXT("Archer"), TEXT("Combat test")) : nullptr;
+	if (!TestNotNull(TEXT("Arquebusier row"), Arquebusier) || !TestNotNull(TEXT("Crossbowman row"), Crossbowman) || !TestNotNull(TEXT("Archer row"), Archer))
+	{
+		return false;
+	}
+	TestEqual(TEXT("Arquebusier's projectile: SM_Bullet"), Arquebusier->Projectile.ToSoftObjectPath().ToString(), FString(TEXT("/Game/Units/Props/SM_Bullet.SM_Bullet")));
+	TestEqual(TEXT("Arquebusier's muzzle smoke: SM_PowderSmoke"), Arquebusier->MuzzleSmoke.ToSoftObjectPath().ToString(),
+		FString(TEXT("/Game/Units/Props/SM_PowderSmoke.SM_PowderSmoke")));
+	TestTrue(TEXT("Crossbowman: no muzzle smoke"), Crossbowman->MuzzleSmoke.IsNull());
+	TestTrue(TEXT("Archer: no muzzle smoke"), Archer->MuzzleSmoke.IsNull());
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	UHOLArrowSubsystem* Display = World->GetSubsystem<UHOLArrowSubsystem>();
+	if (TestNotNull(TEXT("arrow display in a game world"), Display))
+	{
+		const UStaticMesh* Bullet = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Units/Props/SM_Bullet.SM_Bullet"));
+		const UStaticMesh* Smoke = LoadObject<UStaticMesh>(nullptr, TEXT("/Game/Units/Props/SM_PowderSmoke.SM_PowderSmoke"));
+		TestNotNull(TEXT("SM_Bullet"), Bullet);
+		TestNotNull(TEXT("SM_PowderSmoke"), Smoke);
+		TestTrue(TEXT("an Arquebusier shoots SM_Bullet"), Display->GetProjectileMesh(TEXT("Arquebusier")) == Bullet);
+		TestTrue(TEXT("his muzzle smoke: SM_PowderSmoke"), Display->GetMuzzleSmokeMesh(TEXT("Arquebusier")) == Smoke);
+		TestTrue(TEXT("a Crossbowman has no muzzle smoke"), Display->GetMuzzleSmokeMesh(TEXT("Crossbowman")) == nullptr);
+
+		FHOLArrowLaunch Launch;
+		Launch.From = FVector(0.0, 0.0, 0.0);
+		Launch.To = FVector(2000.0, 0.0, 0.0);
+		Launch.FlightMs = HOLCombat::GetArrowFlightMilliseconds(FVector2D(Launch.From), FVector2D(Launch.To), HOLCombat::GetArrowSpeed());
+		Launch.ShooterType = TEXT("Crossbowman");
+		Display->Launch(Launch);
+		TestEqual(TEXT("a crossbow shot: no puff"), Display->GetSmokeInFlightCount(), 0);
+		Launch.ShooterType = TEXT("Arquebusier");
+		Display->Launch(Launch);
+		TestEqual(TEXT("an arquebus shot: one puff"), Display->GetSmokeInFlightCount(), 1);
+		const FVector Muzzle = Launch.From + FVector(UHOLArrowSubsystem::MuzzleForward, 0.0, UHOLArrowSubsystem::MuzzleHeight);
+		TestTrue(TEXT("the puff at the muzzle: ahead of the shooter, at his shoulder's height"), Display->GetLastSmokeOrigin().Equals(Muzzle, 1.0));
+		Display->Tick(0.01f);
+		const UInstancedStaticMeshComponent* Puffs = Display->GetInstances(Smoke);
+		const UInstancedStaticMeshComponent* Balls = Display->GetInstances(Bullet);
+		TestTrue(TEXT("one puff drawn as SM_PowderSmoke"), Puffs && Puffs->GetInstanceCount() == 1);
+		TestTrue(TEXT("one ball drawn as SM_Bullet"), Balls && Balls->GetInstanceCount() == 1);
+		TestTrue(TEXT("no shadow (D258)"), (!Puffs || !Puffs->CastShadow) && (!Balls || !Balls->CastShadow));
+		TestTrue(TEXT("the puff lasts a second or two"), UHOLArrowSubsystem::SmokeSeconds >= 1.0 && UHOLArrowSubsystem::SmokeSeconds <= 3.0);
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(/*bInformEngineOfWorld*/ false);
+	return true;
+}
+
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLCombatCadenceTest, "HeroesOfLiberty.Combat.Cadence", UE::HeroesOfLiberty::Tests::Combat::Flags)
 
 bool FHOLCombatCadenceTest::RunTest(const FString& Parameters)
