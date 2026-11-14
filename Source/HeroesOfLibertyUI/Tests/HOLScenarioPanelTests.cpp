@@ -1,6 +1,11 @@
 #include "Blueprint/WidgetTree.h"
 #include "CommonTextBlock.h"
 #include "Dev/HOLTestHooks.h"
+#include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
+#include "Misc/ScopeExit.h"
 #include "HUD/HOLCheatPanel.h"
 #include "HUD/HOLScenarioPanel.h"
 #include "Internationalization/Culture.h"
@@ -165,7 +170,33 @@ bool FHOLCheatPanelTextTest::RunTest(const FString& Parameters)
 {
 	using namespace HOLScenarioPanelTestsPrivate;
 
+	// The panel and its buttons (UHOLQueueItem) build their widgets in NativeOnInitialized, which the engine runs only with a player
+	// (UUserWidget::Initialize): a local player and its controller in a game world, as in a match (GALADRIEL-1114g: without them every
+	// button read « <no widget> »).
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	ULocalPlayer* Player = NewObject<ULocalPlayer>(GEngine);
+	APlayerController* Controller = World->SpawnActor<APlayerController>();
+	Controller->Player = Player;
+	Player->PlayerController = Controller;
+	if (!World->GetPlayerControllerIterator())
+	{
+		World->AddController(Controller);
+	}
+	ON_SCOPE_EXIT
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
+
 	UHOLCheatPanel* Panel = NewObject<UHOLCheatPanel>(GetTransientPackage());
+	Panel->SetPlayerContext(FLocalPlayerContext(Player, World));
+	if (!TestTrue(TEXT("the panel has a player"), Panel->GetPlayerContext().IsValid()))
+	{
+		return false;
+	}
 	Panel->Initialize();
 
 	const auto ButtonText = [Panel](const TCHAR* Name)
