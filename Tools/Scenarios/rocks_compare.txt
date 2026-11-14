@@ -1,0 +1,61 @@
+# Rochers et decor des cartes, lot 1 (PlaceholdersInProgress.md, PQ-1 = A), tour 1 : dix STYLES A a J, chacun montre d'un coup, de gauche a droite, un rocher de crete, un gros rocher, un groupe de petites pierres, une souche et un fourre, a leur taille reelle sur la carte. La lettre est ecrite en jaune sur le sol ; Entree = style suivant. A = ce que les cartes dessinent aujourd'hui (pour comparer). Dis aime / pas aime par lettre (ce n'est pas un classement). 3 minutes au plus.
+# Les formes sont des formes de base du moteur (cube, cylindre, cone, sphere) composees par Script\Visual\HOLRocksReview.as : rien n'est sauvegarde, aucun reglage du jeu n'est change. Plain, toi contre une IA.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Decor.ClearNear 0 -3000 3500
+hol.Camera.Focus 0 -3000
+hol.Camera.Zoom 3
+frames 30
+hol.Rocks.Review A
+frames 40
+notereset STYLE A (1/10) : AUJOURD'HUI, spheres aplaties grises, souche cylindre, fourre vert sombre. Entree = suivant.
+capture rocks_A
+waitkey Entree : style suivant
+hol.Rocks.Review B
+frames 40
+notereset STYLE B (2/10) : rochers a facettes (cubes inclines gris-bleu) ; souche a coupe claire ; fourre de trois cubes. Entree = suivant.
+capture rocks_B
+waitkey Entree : style suivant
+hol.Rocks.Review C
+frames 40
+notereset STYLE C (3/10) : dalles de gres empilees ; souche evasee ; fourre de cinq cones. Entree = suivant.
+capture rocks_C
+waitkey Entree : style suivant
+hol.Rocks.Review D
+frames 40
+notereset STYLE D (4/10) : grappe de pierres rondes ; souche a trois racines ; fourre de trois boules. Entree = suivant.
+capture rocks_D
+waitkey Entree : style suivant
+hol.Rocks.Review E
+frames 40
+notereset STYLE E (5/10) : aiguilles d'ardoise sombre ; tronc casse haut ; fourre de pointes fines. Entree = suivant.
+capture rocks_E
+waitkey Entree : style suivant
+hol.Rocks.Review F
+frames 40
+notereset STYLE F (6/10) : mesa rouille a sommet plat ; souche moussue ; fourre sec brun. Entree = suivant.
+capture rocks_F
+waitkey Entree : style suivant
+hol.Rocks.Review G
+frames 40
+notereset STYLE G (7/10) : bloc de calcaire pale a fissure sombre ; coupe fraiche ; fourre vert vif. Entree = suivant.
+capture rocks_G
+waitkey Entree : style suivant
+hol.Rocks.Review H
+frames 40
+notereset STYLE H (8/10) : orgues de basalte noir ; souche calcinee ; fourre tres sombre et bas. Entree = suivant.
+capture rocks_H
+waitkey Entree : style suivant
+hol.Rocks.Review I
+frames 40
+notereset STYLE I (9/10) : rochers gris a chapeau de mousse ; deux souches ; fourre a dessus clair. Entree = suivant.
+capture rocks_I
+waitkey Entree : style suivant
+hol.Rocks.Review J
+frames 40
+notereset STYLE J (10/10) : rochers enneiges ; souche a neige ; fourre enneige. Dernier. Dis aime / pas aime par lettre, ou « aucune, dix autres ».
+capture rocks_J
+frames 5
+hol.Test.Sanity
+panel show
