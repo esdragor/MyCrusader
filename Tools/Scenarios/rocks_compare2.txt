@@ -1,0 +1,56 @@
+# Rochers et decor des cartes, tour 2 (D800 : tu as aime B, rochers a facettes, ET D, pierres rondes) : huit vues A a H d'un coin de carte (huit rochers de tailles variees, deux groupes de petites pierres, deux souches, deux fourres) sur un VRAI SOL DE BIOME : A a E sur l'Herbe fraiche, F a H sur la Foret sombre. A = B seul, B = D seul, C = surtout B (6 rochers sur 8 a facettes), D = moitie-moitie, E = surtout D (2 sur 8) ; F moitie-moitie, G B seul, H D seul sur la Foret sombre. Couleurs plus foncees et souche deux fois plus grande qu'au tour 1. La lettre est ecrite en jaune sur le sol ; Entree = vue suivante. Dis aime / pas aime par lettre. 3 minutes au plus.
+# Les formes sont des formes de base du moteur composees par Script\Visual\HOLRocksReview2.as (pieces de HOLRocksReview.as) : rien n'est sauvegarde, aucun reglage du jeu n'est change. Plain, toi contre une IA ; le biome est pose par hol.Biome.Index (0 Herbe fraiche, 3 Foret sombre), le decor de la carte est retire autour des rochers.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Biome.Index 0
+frames 30
+hol.Decor.ClearNear 0 -3000 3500
+hol.Camera.Focus 0 -3000
+hol.Camera.Zoom 3
+frames 30
+hol.Rocks.Review2 A
+frames 30
+notereset A (1/8) Herbe fraiche : B SEUL, rochers a facettes gris-bleu fonce, souche a coupe claire, fourres de cubes. Entree = suivant.
+capture rocks2_A
+waitkey Entree : vue suivante
+hol.Rocks.Review2 B
+frames 30
+notereset B (2/8) Herbe fraiche : D SEUL, grappes de pierres rondes brun-gris fonce, souche a racines, fourres de boules. Entree = suivant.
+capture rocks2_B
+waitkey Entree : vue suivante
+hol.Rocks.Review2 C
+frames 30
+notereset C (3/8) Herbe fraiche : SURTOUT B (6 rochers a facettes sur 8), petites pierres rondes, une souche de chaque, fourres de boules. Entree = suivant.
+capture rocks2_C
+waitkey Entree : vue suivante
+hol.Rocks.Review2 D
+frames 30
+notereset D (4/8) Herbe fraiche : MOITIE-MOITIE (4 a facettes, 4 grappes rondes), petites pierres rondes, fourres de boules. Entree = suivant.
+capture rocks2_D
+waitkey Entree : vue suivante
+hol.Rocks.Review2 E
+frames 30
+notereset E (5/8) Herbe fraiche : SURTOUT D (2 a facettes sur 8), petites pierres rondes, fourres de boules. Entree = suivant.
+capture rocks2_E
+waitkey Entree : vue suivante
+hol.Biome.Index 3
+frames 30
+hol.Decor.ClearNear 0 -3000 3500
+hol.Rocks.Review2 F
+frames 30
+notereset F (6/8) Foret sombre : MOITIE-MOITIE (4 a facettes, 4 grappes rondes), comme D. Entree = suivant.
+capture rocks2_F
+waitkey Entree : vue suivante
+hol.Rocks.Review2 G
+frames 30
+notereset G (7/8) Foret sombre : B SEUL, comme A. Entree = suivant.
+capture rocks2_G
+waitkey Entree : vue suivante
+hol.Rocks.Review2 H
+frames 30
+notereset H (8/8) Foret sombre : D SEUL, comme B. Dernier. Dis aime / pas aime par lettre, ou aucune, d'autres.
+capture rocks2_H
+frames 5
+hol.Test.Sanity
+panel show
