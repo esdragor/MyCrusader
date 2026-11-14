@@ -84,6 +84,32 @@ try {
     Commit-OnMain 'Source\a.cpp' 'v4' 'code change 4'
     Add-Content (Join-Path $Wt 'Source\a.cpp') 'local edit'
     $o = Sync @(); Check ($o -match 'SAUTE' -and $o -notmatch 'build lance') 'dirty worktree skipped'
+
+    # L14-3 (2026-11-13) : une AUTRE session de l'utilisateur commitait dans Arwen (d751-root, "Faction choice", 19:11-19:17) ;
+    # sync_worktrees y a fusionne main et la recette a conclu a tort. Un commit de moins de 2 h hors de main, d'un worktree absent
+    # du tableau '## Agents du <date>' d'Auto_Journey_Jour.md, fait sauter ET signaler le worktree (sync et status).
+    Write-Output '--- 7. recent commit of another session (worktree not in the Agents table): skipped and reported'
+    RunGit $Wt @('checkout', '--', 'Source\a.cpp') | Out-Null
+    Set-Content (Join-Path $Wt 'Source\b.cpp') 'faction choice'
+    RunGit $Wt @('add', 'Source\b.cpp') | Out-Null
+    RunGit $Wt @('commit', '-m', 'Faction choice (other session)') | Out-Null
+    $foreign = (RunGit $Wt @('rev-parse', '--short', 'HEAD') | Out-String).Trim()
+    $o = Sync @('-NoBuild')
+    Check ($o -match 'SAUTE' -and $o -match 'autre session' -and $o -match $foreign) 'sync: worktree with a recent commit of another session is skipped and named' $o
+    Check ([int](RunGit $Wt @('rev-list', '--count', 'HEAD..main')) -gt 0) 'sync: main was NOT merged into it'
+    $st = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Tools 'AutoJourney\status.ps1') -Docs $Docs 2>&1 | Out-String
+    Write-Host $st.TrimEnd()
+    Check ($st -match 'HeroesOfLiberty-T .*AUTRE SESSION') 'status: the worktree is flagged AUTRE SESSION' $st
+    $st = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Tools 'AutoJourney\status.ps1') -Docs $Docs -InMain $foreign 2>&1 | Out-String
+    Check ($st -match "$foreign.*ABSENT de main") 'status -InMain: a branch-only commit is ABSENT de main (merge-base --is-ancestor)' $st
+    $mainSha = (RunGit $Main @('rev-parse', '--short', 'main') | Out-String).Trim()
+    $st = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path $Tools 'AutoJourney\status.ps1') -Docs $Docs -InMain $mainSha 2>&1 | Out-String
+    Check ($st -match "$mainSha.*DANS main") 'status -InMain: a main commit is DANS main' $st
+
+    Write-Output '--- 8. the same worktree listed in today''s Agents table: merged as usual'
+    [IO.File]::WriteAllText((Join-Path $Main 'Auto_Journey_Jour.md'), ("## Agents du " + (Get-Date -Format 'yyyy-MM-dd') + "`r`n`r`n| Agent | id | worktree |`r`n|---|---|---|`r`n| TESTEUR | a1 | T |`r`n"))
+    $o = Sync @('-NoBuild')
+    Check ($o -match 'mis a jour' -and $o -notmatch 'autre session') 'sync: a listed worktree is merged' $o
 } catch {
     $Fails++; Write-Output ('FAIL exception : ' + $_)
 } finally {
