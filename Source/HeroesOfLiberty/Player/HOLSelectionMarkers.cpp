@@ -3,6 +3,8 @@
 #include "Player/HOLSelectionMarkers.h"
 #include "Simulation/HOLRageVisual.h"
 
+#include "Simulation/HOLRageVisual.h"
+
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Camera/PlayerCameraManager.h"

@@ -61,9 +61,13 @@ public:
 	void EnterLobby(const FHOLLobby& InLobby);
 	bool IsLobby() const { return bLobby; }
 
+	/** The faction cheat (HOLFactionChoice) switched while the screen is open (hol.Faction.Cheat): the lists show the Templars or not at once. */
+	void OnFactionCheatChanged() { Refresh(); }
+
 protected:
 	virtual void BuildLayout() override;
 	virtual void NativeOnInitialized() override;
+	virtual void NativeOnActivated() override;
 	virtual void NativeOnDeactivated() override;
 	virtual UWidget* NativeGetDesiredFocusTarget() const override;
 	/** Slot state (with the map and the mode above and below), faction, colour, team (D250). */
@@ -192,6 +196,10 @@ private:
 	void HandleStateChosen(int32 SlotIndex, int32 Value);
 	void HandleColorChosen(int32 SlotIndex, int32 Value);
 	void HandleTeamChosen(int32 SlotIndex, int32 Value);
+	/** FactionChoiceInProgress.md: a faction of the list (a greyed one cannot be taken); in a lobby, sent for my line or the AI's. */
+	void HandleFactionChosen(int32 SlotIndex, int32 Value);
+	/** The faction lists hold five entries, six with the cheat (the Templars last, so the index is the enum's value); the greyed ones greyed. */
+	void UpdateFactionLists();
 	void HandleOptionChosen(int32 Value);
 	void ToggleReady();
 	/** SP1: network mode, PUT me { "spectator": ... } the other way round from the lobby read last. */
@@ -202,7 +210,7 @@ private:
 	 * IA0.6 L4 (Q4): network mode, the leader puts an AI on a slot (nothing set), or changes an AI's colour or team
 	 * (UHOLManagerClient::SetSlotAI).
 	 */
-	void SendSlotAI(int32 SlotIndex, TOptional<int32> ColorIndex, TOptional<int32> Team);
+	void SendSlotAI(int32 SlotIndex, TOptional<int32> ColorIndex, TOptional<int32> Team, const FString& Faction = FString());
 	/** IA0.6 L4: network mode, the slot holds an AI in the lobby read last. */
 	bool IsLobbyAI(int32 SlotIndex) const;
 	/** Network mode: "Lancer" sent (leader); what follows is B6. */
@@ -219,6 +227,9 @@ private:
 
 	FHOLMatchConfig Config;
 
+	/** The cheat the faction lists were last built for (unset: not built yet). */
+	TOptional<bool> FactionListCheat;
+
 	bool bLobby = false;
 	FHOLLobby Lobby;
 	FTimerHandle ReadTimer;
@@ -227,4 +238,6 @@ private:
 	void JoinMatch();
 	/** The players last logged ("Lobby: 2 players ..."), logged again when it changes. */
 	FString LoggedPlayers;
+	/** FactionChoiceInProgress.md: the factions last logged ("Lobby: factions Templars,DawnOrder"), logged again when they change. */
+	FString LoggedFactions;
 };

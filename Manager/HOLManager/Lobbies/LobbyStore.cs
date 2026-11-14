@@ -146,7 +146,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
      * PUT /lobbies/{id}/me: only the given fields change. SP1: spectator = true leaves my slot (the leader stays
      * leader), false takes the first open slot (lobby_full); a spectator has no colour, team nor "Prêt" to set.
      */
-    public Lobby UpdateMe(string lobbyId, string? token, int? colorIndex = null, int? team = null, bool? ready = null, bool? spectator = null)
+    public Lobby UpdateMe(string lobbyId, string? token, int? colorIndex = null, int? team = null, bool? ready = null, bool? spectator = null, string? faction = null)
     {
         lock (gate)
         {
@@ -156,10 +156,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 throw new LobbyException(LobbyErrors.BadRequest,
                     $"Color is 0 to {LobbyRules.RandomColor} (random), team 0 to {LobbyRules.MaxTeam}.");
             }
+            var newFaction = ResolveFaction(faction);
             var spectating = spectator ?? me.IsSpectator;
-            if (spectating && (colorIndex != null || team != null || ready != null))
+            if (spectating && (colorIndex != null || team != null || ready != null || newFaction != null))
             {
-                throw new LobbyException(LobbyErrors.BadRequest, "A spectator has no colour, team or ready.");
+                throw new LobbyException(LobbyErrors.BadRequest, "A spectator has no colour, team, faction or ready.");
             }
             LobbySlot? freeSlot = null;
             if (!spectating && me.IsSpectator)
@@ -179,6 +180,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                     lobby.Slots[me.SlotIndex].Player = null;
                     me.SlotIndex = -1;
                     me.Ready = false;
+                    me.Faction = LobbyRules.DefaultFaction;
                     lobby.Spectators.Add(me);
                 }
                 return lobby;
@@ -195,9 +197,11 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 me.Team = 0;
                 me.Ready = false;
             }
-            var lineChanged = (colorIndex ?? me.ColorIndex) != me.ColorIndex || (team ?? me.Team) != me.Team;
+            var lineChanged = (colorIndex ?? me.ColorIndex) != me.ColorIndex || (team ?? me.Team) != me.Team
+                || (newFaction ?? me.Faction) != me.Faction;
             me.ColorIndex = colorIndex ?? me.ColorIndex;
             me.Team = team ?? me.Team;
+            me.Faction = newFaction ?? me.Faction;
             me.Ready = ready ?? (lineChanged ? false : me.Ready);
             return lobby;
         }
@@ -327,11 +331,12 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
      * places, or the slot's AI changed; only the given fields change, a new AI taking the first free colour and no
      * team. Its colour is unique as a player's (E2-2: "Aléatoire" never taken). A change resets every "Ready" (Q6).
      */
-    public Lobby SetSlotAI(string lobbyId, string? token, int index, int? colorIndex = null, int? team = null)
+    public Lobby SetSlotAI(string lobbyId, string? token, int index, int? colorIndex = null, int? team = null, string? faction = null)
     {
         lock (gate)
         {
             var lobby = GetLeaderLobby(lobbyId, token);
+            var newFaction = ResolveFaction(faction);
             if (index < 0 || index >= LobbyRules.SlotCount || colorIndex is < 0 or > LobbyRules.RandomColor || team is < 0 or > LobbyRules.MaxTeam)
             {
                 throw new LobbyException(LobbyErrors.BadRequest,
@@ -352,7 +357,8 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                 throw new LobbyException(LobbyErrors.ColorTaken, $"Color {color} is taken.");
             }
             var ai = slot.AI;
-            var changed = ai == null || (colorIndex ?? ai.ColorIndex) != ai.ColorIndex || (team ?? ai.Team) != ai.Team;
+            var changed = ai == null || (colorIndex ?? ai.ColorIndex) != ai.ColorIndex || (team ?? ai.Team) != ai.Team
+                || (newFaction ?? ai.Faction) != ai.Faction;
             if (ai == null)
             {
                 ai = new LobbyAI { ColorIndex = colorIndex ?? FirstFreeColor(lobby) };
@@ -361,6 +367,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             }
             ai.ColorIndex = colorIndex ?? ai.ColorIndex;
             ai.Team = team ?? ai.Team;
+            ai.Faction = newFaction ?? ai.Faction;
             if (changed)
             {
                 ResetReady(lobby);
@@ -457,6 +464,7 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
             lobby.AwayLeaderUntil = lobby.AwayLeader != null && match.LeftBeforeEnd.Contains(lobby.AwayLeader) ? clock.UtcNow
                 : lobby.Leader is { IsSpectator: true } ? clock.UtcNow + LobbyRules.LeaderReturnGrace : null;
             lobby.LastMatchColors = lobby.Players.ToDictionary(p => p.Name, p => p.ColorIndex, LobbyRules.NameComparer);
+            lobby.LastMatchFactions = lobby.Players.ToDictionary(p => p.Name, p => p.Faction, LobbyRules.NameComparer);
             lobby.State = LobbyState.Lobby;
             lobby.Match = null;
             foreach (var slot in lobby.Slots)
@@ -828,12 +836,19 @@ public sealed class LobbyStore(string gameVersion, IClock clock, IReadOnlyList<M
                     && (color == LobbyRules.RandomColor || lobby.Slots.All(s => s.ColorIndex != color))
                 ? color
                 : FirstFreeColor(lobby),
+            Faction = lobby.LastMatchFactions.GetValueOrDefault(name, LobbyRules.DefaultFaction),
             JoinOrder = nextJoinOrder++,
             LastSeen = clock.UtcNow,
         };
         slot.Player = player;
         return new JoinResult(lobby, player.Token, slot.Index);
     }
+
+    /** The canonical faction of a name asked, null if none was asked; a name that is not one of LobbyRules.Factions (empty included) is a bad_request. */
+    private static string? ResolveFaction(string? faction) => faction == null
+        ? null
+        : LobbyRules.ResolveFaction(faction)
+            ?? throw new LobbyException(LobbyErrors.BadRequest, $"Unknown faction: '{faction}' (one of {string.Join(", ", LobbyRules.Factions)}).");
 
     /** The first colour no player or AI has: eight colours for eight slots, one is always free for an empty slot. */
     private static int FirstFreeColor(Lobby lobby) =>

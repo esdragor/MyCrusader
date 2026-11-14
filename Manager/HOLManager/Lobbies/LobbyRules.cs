@@ -49,6 +49,16 @@ public static class LobbyRules
     public const int LobbyNameMaxLength = 24;
     public const string DefaultFaction = "DawnOrder";
 
+    /**
+     * The factions a line can take, EHOLFaction by name: the ones the game offers (the Templars behind its cheat code, which the server
+     * does not check). DragonChildren, ShadowCircle and FireHeirs are greyed in the game: refused here as an unknown name.
+     */
+    public static readonly IReadOnlyList<string> Factions = ["DawnOrder", "BlackLegions", "Templars"];
+
+    /** The canonical name of a faction asked (case ignored), null if it is not one of Factions (an empty string included). */
+    public static string? ResolveFaction(string faction) =>
+        Factions.FirstOrDefault(f => string.Equals(f, faction, StringComparison.OrdinalIgnoreCase));
+
     /** "Lancer": players and AIs together (IA0.6 Q3 = A: the leader alone with an AI starts). */
     public const int MinPlayersToStart = 2;
 
