@@ -16,7 +16,7 @@ hol.Camera.FocusSlot 0
 waitlog Camera above the start of slot 0
 hol.Camera.Zoom -10
 waitlog Camera height 7000 cm
-hol.Camera.Focus -13400 400
+hol.Camera.Focus -14400 1500
 frames 30
 hol.Buildings.Report
 waitlog Building report:
