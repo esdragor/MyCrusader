@@ -304,7 +304,9 @@ HIDDEN_SCALE = 0.001  # the tool bone's scale where the tool is hidden (a 78 cm 
 
 # Gesture key -> bone scaled to HIDDEN_SCALE in its spans: the tool itself (the Archer's arrow), or a piece carried by
 # a bone that is never keyed otherwise (AR6a: the Crossbowman's loaded bolt on ik_hand_r, a child of ik_hand_gun).
-HIDDEN_BONES = (("tool_hidden", anim_rig.TOOL_BONE), ("bolt_hidden", "ik_hand_r"))
+# The Arquebusier's drawn ramrod ("rod_hidden") is on ik_hand_l, a bone never used otherwise: its track is the right hand's
+# frame in the attack (the gesture's "extra_bones", written by anim_rig.Rig.pose) and the reference transform elsewhere.
+HIDDEN_BONES = (("tool_hidden", anim_rig.TOOL_BONE), ("bolt_hidden", "ik_hand_r"), ("rod_hidden", "ik_hand_l"))
 
 
 def hidden_frames(spans, times):

@@ -23,84 +23,10 @@ import soldier_poses  # noqa: E402
 import soldier_props as sp  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
 
-BUTT_X = 95.0          # same butt as the crossbow's tiller (the aim keeps it at the shoulder)
-SMOKE = (206, 204, 198)
-FLASH = (250, 196, 70)
-MATCH = (230, 110, 40)  # the lit match cord's end
+from arquebus_props import (ARQ, BUTT_X, FLASH, MATCH, MUSKET, SMOKE, STRAP, blob, make_bandolier, make_gun,  # noqa: E402,F401
+                            make_smoke)
 
 
-def make_gun(name, length, drop, light=False, ramrod=True):
-    """A matchlock in the crossbow's tool frame: `length` muzzle to butt, `drop` how far the butt falls (cm).
-    `ramrod` False leaves the stowed ramrod out (arquebus_poses draws it apart, so the gestures can draw it)."""
-    sides = 4 if light else 8
-    muzzle = BUTT_X - length
-    prims = [
-        # Barrel on top, forestock under it, ramrod under the forestock.
-        pp.frustum_between((muzzle, 2.6, 0.0), (62.0, 2.6, 0.0), (1.5, 1.5), (1.9, 1.9), sides, sp.IRON,
-                           x_hint=pp.FLAT),
-        pp.prism([(muzzle + 6.0, -1.6), (62.0, -2.2), (62.0, 1.6), (muzzle + 6.0, 1.4)], 3.6, (0.0, 0.0, -1.8),
-                 pp.IDENTITY, sp.WOOD),
-        # Butt: from the lock back, falling by `drop`.
-        pp.prism([(60.0, -2.4), (BUTT_X, -2.4 - drop), (BUTT_X, 1.0), (60.0, 3.2)], 4.4, (0.0, 0.0, -2.2),
-                 pp.IDENTITY, pp.WOOD_DARK),
-        # Lock plate on his right side, the serpentine holding the match, the trigger bar under the stock.
-        pp.box((63.0, 1.0, 2.5), (9.0, 3.0, 0.8), sp.IRON),
-        pp.box((60.0, 4.6, 2.5), (1.2, 4.4, 1.2), sp.BRASS),
-        pp.box((70.0, -4.2, 0.0), (7.0, 1.0, 1.2), sp.IRON),
-    ]
-    if ramrod:
-        prims.append(pp.frustum_between((muzzle + 2.0, -2.4, 0.0), (56.0, -2.4, 0.0), (0.45, 0.45), (0.45, 0.45), 3,
-                                        pp.WOOD_DARK, x_hint=pp.FLAT))
-    if not light:
-        prims.append(pp.box((60.0, 7.2, 2.5), (1.4, 1.4, 1.4), MATCH))
-        prims.append(pp.frustum_between((muzzle - 0.5, 2.6, 0.0), (muzzle + 2.5, 2.6, 0.0), (2.2, 2.2), (2.2, 2.2),
-                                        sides, sp.IRON))  # muzzle ring
-    return {"id": 8, "name": name, "label": name, "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
-
-
-def blob(centre, radius, color, sides=8):
-    """A rough ball: two cones base to base along X."""
-    a = anim_rig.add(centre, (radius, 0.0, 0.0))
-    b = anim_rig.add(centre, (-radius, 0.0, 0.0))
-    r = (radius, radius)
-    small = (radius * 0.35, radius * 0.35)
-    return [pp.frustum_between(a, centre, small, r, sides, color, caps=("bottom",), x_hint=pp.FLAT),
-            pp.frustum_between(centre, b, r, small, sides, color, caps=("top",), x_hint=pp.FLAT)]
-
-
-def make_smoke(name, length, size):
-    """The shot's flash and powder smoke in front of the muzzle (tool frame), `size` 1 = small, 2 = big."""
-    muzzle = BUTT_X - length
-    prims = blob((muzzle - 4.0, 2.6, 0.0), 3.5, FLASH)
-    for k, (dx, dy, dz, r) in enumerate(((-14, 3, 0, 7), (-28, 6, 3, 10), (-44, 10, -2, 12), (-60, 16, 4, 14))):
-        if k >= 2 + size:
-            break
-        prims += blob((muzzle + dx * (0.5 + 0.25 * size), 2.6 + dy, dz), r * (0.6 + 0.3 * size), SMOKE)
-    return {"id": 7, "name": name, "label": name, "bone": "ik_hand_gun", "frame": "tool", "prims": prims}
-
-
-# Bandolier ("twelve apostles"): body terms (forward, right, up), left shoulder over the chest to the right hip.
-STRAP = [(3.0, -17.0, 153.0), (12.0, -10.0, 143.0), (15.8, -2.0, 131.0), (16.0, 7.0, 119.0), (14.5, 15.0, 107.0),
-         (9.0, 21.0, 98.0)]
-
-
-def make_bandolier(light=False):
-    prims = []
-    for a, b in zip(STRAP, STRAP[1:]):
-        prims.append(pp.frustum_between(a, b, (0.5, 2.2), (0.5, 2.2), 4, sp.LEATHER, caps=(), x_hint=(1.0, 0.0, 0.0)))
-    for k in range(1, len(STRAP) - 1):
-        top = anim_rig.add(STRAP[k], (1.4, 0.0, -1.0))
-        bottom = anim_rig.add(top, (0.4, 0.0, -7.0))
-        prims.append(pp.frustum_between(bottom, top, (1.3, 1.3), (1.3, 1.3), 6, pp.WOOD_DARK))
-        prims.append(pp.frustum_between(top, anim_rig.add(top, (0.0, 0.0, 1.2)), (1.4, 1.4), (0.8, 0.8), 6, sp.BRASS))
-    # Powder flask at the right hip, hanging from the strap's end.
-    flask = (11.0, 22.0, 88.0)
-    prims.append(pp.frustum_between(flask, anim_rig.add(flask, (0.0, 0.0, 9.0)), (4.0, 2.6), (1.6, 1.4), 8,
-                                    (120, 80, 40)))
-    return sp.body_piece(6, "bandolier", "bandouliere", "spine_03", prims)
-
-
-ARQ, MUSKET = 110.0, 150.0
 
 
 def register(shared):

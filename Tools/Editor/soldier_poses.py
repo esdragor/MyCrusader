@@ -1601,3 +1601,5 @@ CROSSBOW_FALL = {"name": "A_Crossbow_Fall", "fps": 30, "tool": CROSSBOW_TOOL,
 # the baker scales ik_hand_r (the loaded bolt) to ~0 in the attack's "bolt_hidden" spans.
 GESTURES.update({"crossbow_idle": CROSSBOW_IDLE, "crossbow_walk": CROSSBOW_WALK, "crossbow_attack": CROSSBOW_ATTACK,
                  "crossbow_fall": CROSSBOW_FALL})
+
+import arquebus_poses  # noqa: E402,F401  (the Arquebusier's gestures, added to GESTURES by that file)

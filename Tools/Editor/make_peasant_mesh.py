@@ -97,6 +97,10 @@ SOLDIERS = {
     # AR6: stirrup crossbow, loaded bolt (on ik_hand_r, hidden by the attack from the shot to the placing), bolt quiver.
     "SKM_Crossbowman": ("TP_Crossbowman", [PEASANT_ANIMATIONS + "A_Crossbow_Idle", PEASANT_ANIMATIONS + "A_Crossbow_Walk",
                                            PEASANT_ANIMATIONS + "A_Crossbow_Attack", PEASANT_ANIMATIONS + "A_Crossbow_Fall"]),
+    # Arquebusier (way A, validated 2026-11-14): arquebus, bandolier, ramrod stowed (ik_hand_r, hidden while drawn) and
+    # drawn (ik_hand_l, follows the right hand in the attack); its own idle, walk and attack, the Crossbowman's fall.
+    "SKM_Arquebusier": ("TP_Arquebusier", [PEASANT_ANIMATIONS + "A_Arquebus_Idle", PEASANT_ANIMATIONS + "A_Arquebus_Walk",
+                                           PEASANT_ANIMATIONS + "A_Arquebus_Attack", PEASANT_ANIMATIONS + "A_Arquebus_Fall"]),
     # J8a.2: the Hero, the Man-at-arms' gestures unchanged (J8a-Q3) on the paladin pieces (MeshScale 1.8 in game).
     "SKM_Hero": ("TP_Hero", [PEASANT_ANIMATIONS + "A_ManAtArms_Idle", PEASANT_ANIMATIONS + "A_ManAtArms_Walk",
                              PEASANT_ANIMATIONS + "A_ManAtArms_Attack", PEASANT_ANIMATIONS + "A_ManAtArms_Fall"]),

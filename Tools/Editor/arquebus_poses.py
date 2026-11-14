@@ -1,22 +1,22 @@
-"""NEW gestures of the Arquebusier (hors jeu, no Unreal, nothing baked): the shot with its recoil, the reload with the
-RAMROD, a walk with the gun on the shoulder. Retours/Q-arquebusier-modele.md: the user saw the Crossbowman's gestures
-re-used (the stirrup reload is wrong for a firearm) and asked for real gestures of a firearm.
+"""Gestures of the Arquebusier (Retours/Q-arquebusier-modele.md, way A validated by the user on 2026-11-14): the shot with
+its recoil, the reload with the RAMROD, idle and walk with the gun on the shoulder, the fall (the Crossbowman's). Pure
+Python, no PIL (the Unreal baker imports it through soldier_poses, which imports this file at its end and receives
+GESTURES: arquebus_idle, arquebus_walk, arquebus_attack, arquebus_fall).
 
-Pieces and frames are those of arquebus_sheet.py (the gun in the crossbow's tool frame: X from the muzzle side toward the
-butt, Y the top of the stock, Z across; hands at CROSSBOW_LEFT_GRIP and 45 cm behind). The reload needs the ramrod to
-move on its own, so it is two props of this file:
-  - "ramrod_stowed": under the forestock, bound to ik_hand_r like the crossbow's loaded bolt (a child of ik_hand_gun
-    never keyed: it follows the gun exactly; the baker will scale ik_hand_r to nothing while the rod is drawn);
-  - "ramrod_drawn": in the right hand (bone hand_r, frame bone), its axis along the hand's "across" axis, its head
-    (the end that goes into the barrel) on the axis' positive side.
-The gestures hide one while the other shows ("hidden" spans of key time, the preview's; the baker has its own).
+Pieces and frames: arquebus_props.py (the gun in the crossbow's tool frame, X from the muzzle side toward the butt, Y the
+top of the stock, Z across; hands at CROSSBOW_LEFT_GRIP and 45 cm behind). The ramrod moves on its own in the reload:
+  - "ramrod_stowed" (ik_hand_r, follows the gun) is hidden while the rod is drawn ("bolt_hidden", like the crossbow's
+    bolt);
+  - "ramrod_drawn" (ik_hand_l, a bone never used otherwise) takes the right hand's frame by an "extra_bones" track
+    (rod_track) and is shown only while the rod is drawn ("rod_hidden": its bone scaled to HIDDEN_SCALE otherwise;
+    True = always, in the idle, the walk and the fall).
 
 Attack, AttackInterval 4 s (UnitStats.md), the shot at 12 % (frame 15 of 120, ARQ_SHOT = 0.125 like the crossbow's
 0.125 for 12 %): raise to the shoulder, aim, SHOT with a hard recoil, the gun let down by the left hand, its butt on the
 ground (muzzle up), then the drill: a charge from the bandolier poured in the muzzle, the ball dropped in, the ramrod
 drawn (pulled up its whole length), turned over the muzzle, rammed twice, drawn again, stowed; the gun lifted back to
 the low carry. The powder charge and the ball are mimed (no piece in the hand: like the crossbow's bolt, AR1).
-Run: python Tools/Editor/arquebus_poses.py [--frames N] [--zoom Z]   -> Saved/AnimPreview/arquebus_attack_sheet.png
+Previews: arquebus_preview.py (sheets, closeups), arquebus_new_gif.py (the GIF with the candidates' letters).
 """
 import math
 import os
@@ -25,100 +25,45 @@ import sys
 sys.dont_write_bytecode = True  # no __pycache__ in Tools/Editor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import anim_rig  # noqa: E402
-import arquebus_sheet as aq  # noqa: E402
-import peasant_props as pp  # noqa: E402
-import preview_animation as pa  # noqa: E402
+import arquebus_props as apr  # noqa: E402
 import soldier_poses as sg  # noqa: E402
 import soldier_props as sp  # noqa: E402
 
-SK = anim_rig.Skeleton.load(pa.SKELETON_JSON)
+SKELETON_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Data", "UE4MannequinSkeleton.json")
+SK = anim_rig.Skeleton.load(SKELETON_JSON)
 norm = anim_rig.normalize
 
-# ---------------------------------------------------------------------------------------------------------------------
-# Ramrod geometry (cm, gun frame: x from the muzzle side toward the butt)
-MUZZLE_X = aq.BUTT_X - aq.ARQ          # -15: the muzzle
-ROD_LEN = 64.0                        # stowed from the muzzle's side
-ROD_TAIL = 7.0                        # the hand's grip to the rod's tail end (the end that sticks out upward)
-ROD_PIPE_Y = -2.4                     # stowed under the forestock (aq.make_gun)
-BORE_Y = 2.6                          # the bore, on top of the stock
-ROD_STOW_X = MUZZLE_X + 2.0           # the tail end when stowed (aq.make_gun's old ramrod began at muzzle + 2)
-GRAB_X = ROD_STOW_X + ROD_TAIL        # the hand's grip when it holds the stowed rod's tail
-ROD_RADIUS = 0.9
-
-
-def _sign(x):
-    return 1.0 if x >= 0.0 else -1.0
+# Ramrod geometry (arquebus_props)
+MUZZLE_X, ROD_LEN, ROD_TAIL = apr.MUZZLE_X, apr.ROD_LEN, apr.ROD_TAIL
+ROD_PIPE_Y, BORE_Y, GRAB_X = apr.ROD_PIPE_Y, apr.BORE_Y, apr.GRAB_X
 
 
 def _body_of(v):
     return (anim_rig.dot(v, SK.right), anim_rig.dot(v, SK.forward), anim_rig.dot(v, SK.up))
 
 
-def hand_axes_right():
-    fingers, across, palm, grip = sp.hand_axes(SK, "r")
-    return fingers, across, palm, grip
-
-
 def rod_hand(at, rod, fingers_hint):
     """The right hand gripping a rod: its grip point at `at` (body terms), the rod's axis (head side) along `rod`, the
-    fingers square to the rod toward `fingers_hint`. Returns the free hand dict (palm, fingers in body terms). The hand's
-    across axis (pinky to index) lies along the rod; the palm side follows from the reference hand's handedness."""
-    fingers0, across0, palm0, _ = hand_axes_right()
-    f0 = norm(anim_rig.sub(fingers0, anim_rig.scale(palm0, anim_rig.dot(fingers0, palm0))))
+    fingers square to the rod toward `fingers_hint`. Returns the free hand dict (palm, fingers in body terms): the
+    rig's hand frame (palm, fingers, cross(palm, fingers)) carries the rod's axis (arquebus_props.rod_local)."""
     r = SK.body(norm(rod))
     f = SK.body(fingers_hint)
     f = norm(anim_rig.sub(f, anim_rig.scale(r, anim_rig.dot(f, r))))
-    palm = norm(anim_rig.cross(f, r))  # the hand's frame (palm, fingers, cross(palm, fingers)) carries the rod's axis
+    palm = norm(anim_rig.cross(f, r))
     return {"at": tuple(at), "palm": _body_of(palm), "fingers": _body_of(f)}
 
 
-def ramrod_prop_local():
-    """The ramrod's frame in hand_r's reference frame: origin at the grip point, X along the hand's across axis."""
-    fingers0, across0, palm0, grip0 = hand_axes_right()
-    bt, bq = SK.ref_world[SK.index["hand_r"]]
-    to_local = lambda v: anim_rig.qrot(anim_rig.qconj(bq), v)  # noqa: E731
-    f0 = norm(anim_rig.sub(fingers0, anim_rig.scale(palm0, anim_rig.dot(fingers0, palm0))))
-    x = to_local(anim_rig.cross(palm0, f0))  # exactly square to the rig's palm and fingers (across0 is a little skewed)
-    q = pp.rotation_xz(x, to_local(palm0))
-    return (to_local(anim_rig.sub(grip0, bt)), anim_rig.qnormalize(q))
+ROD_LOCAL = apr.rod_local(SK)
 
 
-def make_ramrod_prims(origin_x, light=False):
-    """A ramrod along +X from its tail (origin_x) to its head: the rod, a cup at the head, a knob at the tail."""
-    sides = 4 if light else 6
-    x0, x1 = origin_x, origin_x + ROD_LEN
-    return [
-        pp.frustum_between((x0, 0.0, 0.0), (x1 - 4.0, 0.0, 0.0), (ROD_RADIUS, ROD_RADIUS), (ROD_RADIUS, ROD_RADIUS),
-                           sides, pp.WOOD_DARK, x_hint=pp.FLAT),
-        pp.frustum_between((x1 - 4.0, 0.0, 0.0), (x1, 0.0, 0.0), (ROD_RADIUS * 1.5, ROD_RADIUS * 1.5),
-                           (ROD_RADIUS * 1.2, ROD_RADIUS * 1.2), sides, sp.BRASS, x_hint=pp.FLAT),
-        pp.frustum_between((x0 - 0.6, 0.0, 0.0), (x0 + 2.0, 0.0, 0.0), (ROD_RADIUS * 1.6, ROD_RADIUS * 1.6),
-                           (ROD_RADIUS * 1.1, ROD_RADIUS * 1.1), sides, sp.BRASS, x_hint=pp.FLAT),
-    ]
-
-
-def make_ramrod_stowed():
-    prims = make_ramrod_prims(ROD_STOW_X)
-    for prim in prims:
-        prim["t"] = anim_rig.add(prim["t"], (0.0, ROD_PIPE_Y, 0.0))
-    return {"id": 5, "name": "ramrod_stowed", "label": "baguette rangee", "bone": "ik_hand_r", "frame": "bone",
-            "local": sp.bolt_local(SK), "prims": prims}
-
-
-def make_ramrod_drawn():
-    return {"id": 4, "name": "ramrod_drawn", "label": "baguette en main", "bone": "hand_r", "frame": "bone",
-            "local": ramrod_prop_local(), "prims": make_ramrod_prims(-ROD_TAIL)}
-
-
-def register(shared):
-    """The gun without its ramrod (the two ramrod props above), the smoke and the bandolier of arquebus_sheet, then
-    the gestures (arq_attack ... under pa.ALL_GESTURES)."""
-    aq.register(shared)
-    pieces = [aq.make_gun("arquebus_r", aq.ARQ, 6.0, ramrod=False), make_ramrod_stowed(), make_ramrod_drawn()]
-    for piece in pieces:
-        shared.props[piece["name"]] = piece
-        shared.prop_tris[piece["name"]] = pp.prop_triangles(piece)
-    pa.ALL_GESTURES.update(GESTURES)
+def rod_track(sk, times, worlds, rig):
+    """The "extra_bones" track of ik_hand_l: the rod's frame (the right hand's, carrying rod_local) on every frame."""
+    out = []
+    lt, lq = ROD_LOCAL
+    for world in worlds:
+        ht, hq = world[sk.index["hand_r"]]
+        out.append((anim_rig.add(ht, anim_rig.qrot(hq, lt)), anim_rig.qnormalize(anim_rig.qmul(hq, lq))))
+    return out
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -306,6 +251,13 @@ ARQUEBUS_LEADS = {"pelvis": 0.04, "rot": {"pelvis": 0.04, "spine_01": 0.03, "spi
                   "elbows": 0.004, "tool": 0.0, "hands": 0.0}
 
 
+FPS = 30
+PROPS = ("arquebus_gun", "arquebus_bandolier", "ramrod_stowed", "ramrod_drawn")
+# The rod's swap, on whole frames: the stowed rod is hidden and the drawn one shown from frame ROD_IN to ROD_OUT (the hand
+# takes the tail at ROD_IN's neighbourhood and puts it back at ROD_OUT's: the two coincide there, no jump).
+ROD_IN, ROD_OUT = 63, 103
+
+
 def build_attack():
     keys = [
         sg.cb_key(0.0, sg.CB_READY, (0.0, 1.0)),
@@ -322,18 +274,17 @@ def build_attack():
     keys += [regain_key(*r) for r in REGAIN]
     keys += [sg.cb_key(at(P, T_CARRY), CARRY, 0.5),               # both hands on the stock again (release ends)
              sg.cb_key(P, sg.CB_READY)]
-    g = sg.fighting("A_Arquebus_Attack", sg.CROSSBOW_TOOL, ("arquebus_r", "bandolier", "ramrod_stowed", "ramrod_drawn"),
-                    keys, sg.CROSSBOW_ELBOWS, 30, sg.CROSSBOW_STANCE, [0, 10, 15, 18, 30, 45, 62, 78, 92, 105])
+    g = sg.fighting("A_Arquebus_Attack", sg.CROSSBOW_TOOL, PROPS, keys, sg.CROSSBOW_ELBOWS, FPS, sg.CROSSBOW_STANCE,
+                    [0, 10, 15, 18, 30, 45, 62, 78, 92, 105])
+    stowed_hidden = [(ROD_IN / float(FPS), ROD_OUT / float(FPS))]
+    drawn_hidden = [(0.0, (ROD_IN - 1) / float(FPS)), ((ROD_OUT + 1) / float(FPS), P)]
     g.update({"frames": 120, "curve": "hermite", "loop": True, "leads": ARQUEBUS_LEADS, "hit_fraction": ARQ_SHOT,
-              "release": [(at(P, 0.185), at(P, T_CARRY))]})
-    g["hidden"] = {"ramrod_stowed": [(HAND_SWAP_GRAB, HAND_SWAP_STOW)],
-                   "ramrod_drawn": [(0.0, HAND_SWAP_GRAB), (HAND_SWAP_STOW, P)]}
+              "release": [(at(P, 0.185), at(P, T_CARRY))],
+              "bolt_hidden": stowed_hidden,      # the baker: ik_hand_r (the stowed rod) at HIDDEN_SCALE
+              "rod_hidden": drawn_hidden,        # the baker: ik_hand_l (the drawn rod) at HIDDEN_SCALE
+              "extra_bones": {"ik_hand_l": rod_track}})
+    g["hidden"] = {"ramrod_stowed": stowed_hidden, "ramrod_drawn": drawn_hidden}  # the preview's
     return g
-
-
-def lists_as_spans(hidden):
-    """The preview reads one (start, end) span per prop; this file's gestures give lists of spans."""
-    return hidden
 
 
 ARQUEBUS_ATTACK = build_attack()
@@ -345,40 +296,16 @@ SHOULDER_TOOL = {"kind": "crossbow", "hands": 1, "handle_length": sp.CROSSBOW_LE
                  "edge": (0.0, 0.0, 1.0)}
 SHOULDER_GRIP = {"grip": (21.0, 12.0, 101.0), "dir": norm((0.04, 0.36, -0.93))}
 SHOULDER_ELBOWS = {"l": (-0.2, -1.0, -0.4), "r": (0.6, -0.6, -0.6)}
-PROPS_CARRY = ("arquebus", "bandolier")
+PROPS_CARRY = ("arquebus_gun", "arquebus_bandolier", "ramrod_stowed")  # the drawn rod is hidden ("rod_hidden")
 ARQUEBUS_IDLE = sg.armed("A_Arquebus_Idle", sg.IDLE, SHOULDER_TOOL, PROPS_CARRY,
                          sg.idle_keys(sg.STAND, SHOULDER_GRIP, sg.LEFT_HANGING), SHOULDER_ELBOWS, {"steady_spine": 1.0})
 ARQUEBUS_WALK = sg.armed("A_Arquebus_Walk", sg.UNARMED_WALK, SHOULDER_TOOL, PROPS_CARRY,
                          sg.walk_keys(sg.STAND, SHOULDER_GRIP, sg.LEFT_SWINGING), SHOULDER_ELBOWS,
                          {"steady_chest": 0.5})
-GESTURES = {"arq_new_attack": ARQUEBUS_ATTACK, "arq_new_idle": ARQUEBUS_IDLE, "arq_new_walk": ARQUEBUS_WALK}
-
-
-def main():
-    args = sys.argv[1:]
-    frames = int(args[args.index("--frames") + 1]) if "--frames" in args else 12
-    zoom = float(args[args.index("--zoom") + 1]) if "--zoom" in args else 1.0
-    shared = pa.Shared(False)
-    register(shared)
-    os.makedirs(pa.OUT_DIR, exist_ok=True)
-    picks = [int(v) for v in args[args.index("--picks") + 1].split(",")] if "--picks" in args else None
-    out = os.path.join(pa.OUT_DIR, "arquebus_attack_sheet.png")
-    ctx = pa.render(shared, "arq_new_attack", frames, out, zoom, picks=picks)
-    print("  " + pa.report(ctx))
-
-
-if __name__ == "__main__":
-    main()
-
-
-def closeup(ctx, shared, picks, out, view_index=1, zoom=2.6):
-    """One view (0 front, 1 side, 2 RTS) of the chosen frames, large: to judge a gesture by eye."""
-    pa.set_zoom(zoom)
-    view = pa.views(shared.sk)[view_index]
-    canvas = pa.Canvas(pa.CELL_W * len(picks), pa.CELL_H + pa.LABEL_H)
-    for col, frame in enumerate(picks):
-        pa.draw_cell(canvas, shared, ctx, frame, col * pa.CELL_W, 0, view, "%.2fs f%d" % (ctx["rig"].times[frame], frame))
-        if col:
-            canvas.line((col * pa.CELL_W, 0), (col * pa.CELL_W, pa.CELL_H + pa.LABEL_H - 1), (210, 210, 205), 0.4)
-    canvas.save(out)
-    pa.set_zoom(1.0)
+# The fall: the Crossbowman's (the gun escapes his hands, the rod stays stowed).
+ARQUEBUS_FALL = dict(sg.CROSSBOW_FALL, name="A_Arquebus_Fall", props=PROPS_CARRY)
+for gesture in (ARQUEBUS_IDLE, ARQUEBUS_WALK, ARQUEBUS_FALL):
+    gesture["rod_hidden"] = True
+GESTURES = {"arquebus_idle": ARQUEBUS_IDLE, "arquebus_walk": ARQUEBUS_WALK, "arquebus_attack": ARQUEBUS_ATTACK,
+            "arquebus_fall": ARQUEBUS_FALL}
+sg.GESTURES.update(GESTURES)  # soldier_poses imports this file at its end; the baker reads soldier_poses.GESTURES

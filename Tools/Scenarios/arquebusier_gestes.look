@@ -1,0 +1,8 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+arqg_idle_0 | l'Arquebusier (bleu) debout, arquebuse sur l'epaule droite, bandouliere sur la poitrine
+arqg_walk_1 | l'Arquebusier en marche, arme sur l'epaule, mains et jambes en mouvement
+arqg_attack_1 | la mise en joue puis le tir : arme a l'epaule
+arqg_attack_3 | le recul puis l'arme baissee, crosse a terre
+arqg_attack_5 | la baguette tiree vers le haut (bras leve)
+arqg_attack_6 | le bourrage : la baguette dans le canon
+arqg_fall_4 | la chute : l'Arquebusier tombe, le fusil lui echappe

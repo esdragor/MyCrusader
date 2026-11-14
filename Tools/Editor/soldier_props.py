@@ -614,7 +614,10 @@ def build_props(sk, light=False):
              make_quiver(light), make_crown(light), make_crossbow(light), make_bolt(sk, light),
              make_bolt_quiver(light), make_longsword(light), make_sun_shield(sk, light), make_tabard(light),
              make_mantle(light), make_pauldron("l", light), make_pauldron("r", light), make_helm(light)]
-    return {p["name"]: p for p in props}
+    out = {p["name"]: p for p in props}
+    import arquebus_props  # the Arquebusier's pieces (this file must be complete first: arquebus_props imports it)
+    out.update(arquebus_props.build_props(sk, light))
+    return out
 
 
 # The soldiers' meshes (J7a.3) and their pieces, always shown.
@@ -626,6 +629,9 @@ SOLDIER_MESHES = {"SKM_Spearman": ("spear",), "SKM_ManAtArms": ("sword", "shield
                   "SKM_King": ("sword", "shield", "crown"),
                   # AR1: the Crossbowman; the loaded bolt is hidden by the gestures after the shot (ik_hand_r).
                   "SKM_Crossbowman": ("crossbow", "bolt", "bolt_quiver"),
+                  # Arquebusier: the gun, the bandolier, the ramrod stowed (ik_hand_r, "bolt_hidden") and drawn
+                  # (ik_hand_l, "rod_hidden").
+                  "SKM_Arquebusier": ("arquebus_gun", "arquebus_bandolier", "ramrod_stowed", "ramrod_drawn"),
                   # J8a.0c: the Hero, a tall Man-at-arms dressed as a paladin (MeshScale 1.8), the Man-at-arms' gestures.
                   "SKM_Hero": ("longsword", "sun_shield", "tabard", "mantle", "pauldron_l", "pauldron_r",
                                "helm")}

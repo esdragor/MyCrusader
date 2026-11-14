@@ -1,0 +1,51 @@
+# Arquebusier, gestes neufs (voie A validee le 2026-11-14) : repos et marche arme sur l'epaule, tir + recul, rechargement a la baguette, chute.
+# Plain, toi (slot 0) contre une IA gelee (slot 1) ; palier 3 force pour l'essai (hol.Cheat.Tier 3). Un Belier ennemi (il ne tire pas sur les unites) sert de cible a 14 m.
+waitlog Starting hero of slot 0 spawned at
+hol.AI.ThinkSteps 100000
+hol.Cheat.Resources 5000
+hol.Cheat.Tier 3
+hol.Cheat.Population 40
+hol.Camera.FocusNear 5400 0
+frames 2
+hol.Units.SpawnHere 1 Ram 1 100
+waitlog SpawnHere: 1 Ram of slot 1
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Units.SpawnHere 1 Arquebusier 0 100
+waitlog SpawnHere: 1 Arquebusier of slot 0
+hol.Camera.FocusNear 4000 0
+hol.Camera.Zoom 4
+frames 30
+notereset 1. Repos : l'Arquebusier (bleu) tient son arquebuse sur l'epaule droite, la bandouliere de charges en travers de la poitrine.
+captureseq arqg_idle 2 1
+note 2. Marche : il marche l'arme sur l'epaule (la main gauche balance).
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Select.ClickUnit -1
+frames 10
+hol.Select.OrderGround 4000 -700
+captureseq arqg_walk 3 0.3
+hol.Camera.FocusNear 4000 -700
+frames 2
+hol.Select.ClickUnit -1
+frames 10
+hol.Select.OrderGround 4000 0
+wait 2.5
+hol.Camera.FocusNear 4000 0
+frames 2
+note 3. Tir : clic droit sur le Belier ennemi, a 14 m : mise en joue, tir (recul), arme posee au sol, charge, balle, baguette tiree, bourrage, baguette rangee, arme relevee (4 s).
+hol.Select.ClickUnit -1
+frames 10
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.Select.ClickUnit -1 enemy order
+captureseq arqg_attack 8 0.5
+note 4. Chute : un Homme d'armes ennemi arrive sur lui : la chute est celle de l'Arbaletrier, le fusil lui echappe des mains.
+hol.Camera.FocusNear 4000 0
+frames 2
+hol.HUD.Report
+hol.Units.SpawnHere 1 ManAtArms 1 60
+waitlog SpawnHere: 1 ManAtArms of slot 1
+captureseq arqg_fall 8 0.4
+hol.Test.Sanity
+quit
