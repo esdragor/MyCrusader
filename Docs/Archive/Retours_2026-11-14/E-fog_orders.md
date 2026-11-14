@@ -13,3 +13,4 @@ NON VÉRIFIÉ : les points d'ordre sont au BORD du noir plutôt que dedans (la l
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 fog_orders -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-14)

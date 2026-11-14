@@ -13,3 +13,4 @@ NON VÉRIFIÉ : écart au look « rien d'autre » : un objet rond gris à pointe
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 map_eldorado -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
 Durée : environ 3 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-14)

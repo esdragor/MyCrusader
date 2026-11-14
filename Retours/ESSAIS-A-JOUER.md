@@ -19,5 +19,11 @@ Version précédente (matin du 2026-11-13) : `Docs\Archive\Retours_2026-11-13_so
 - **`[NE PAS JOUER]`** : `E-disconnect_1v1.md` (net-playtest est maintenant dans main ; reste : copie recompilée puis `preflight.ps1 disconnect_1v1 -Root <copie> -PlayerName Alice` PASS).
 - **LOGIQUE SEULEMENT** :
   - `E-deploy.md` (tiers, non fusionnée ; scénario `waitlog D=Pack` jamais satisfait, le jeu monte bien l'engin).
-  - `E-spear_arm.md` (hero-j8-close, non fusionnée ; caméra min 15 m, prise de lance non jugeable à l'œil).
+  - `E-spear_arm.md` : passée **[À ESSAYER]** le 2026-11-14 10:5x (CELEBORN-1114b : pré-vol PASS après le rebake de la chute D795, 5 PNG vus, GESTE: interne, SON: non entendu, branches: hero-j8-close ; mains non jugeables à 15 m, à regarder au zoom par l'utilisateur ; commande play.ps1 -Root HeroesOfLiberty-Celeborn).
   - `E-playtest_hero_army.md` (pré-vol FAIL Sanity, spin de mêlée D641 non corrigé : voir `BUG-playtest_hero_army-spin.md`).
+
+## Mise à jour du 2026-11-14 (essais joués par l'utilisateur)
+- OK, fiches archivées dans `Docs\Archive\Retours_2026-11-14\` : legions_warrior, neutrals_minimap, fog_orders, map_eldorado, talents, income_tooltip.
+- BUG : nomad_start (forum non constructible au départ Nomade ; départ pas dispersé) ; audio Pierre et Forge (aucun candidat bon, volume trop faible).
+- NON JOUES : market et talents_icons_compare (éditeur de Galadriel ne démarre pas : binaire périmé) : à relancer depuis Faramir.
+- Mise à jour suivante : market et talents_icons_compare rejoués depuis Faramir : OK (fiches archivées). Restent seulement nomad_start et audio Pierre / Forge (en BUG, à refaire).

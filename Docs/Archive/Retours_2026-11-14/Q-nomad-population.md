@@ -19,3 +19,4 @@ Valeur par défaut codée : A (comportement actuel, aucun réglage ajouté ce so
 un réglage dans `UHOLMatchSettings` lu par `UHOLProductionSubsystem::AdvanceQueues`).
 
 Reponse:
+Reponse: A. (réponse donnée dans la conversation, 2026-11-14) Reporté : GDD D794, NomadInProgress.md ; rien à coder (comportement actuel, « Population 5 / 0 »).
