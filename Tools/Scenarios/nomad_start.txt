@@ -1,5 +1,5 @@
 # N2 (c)+(d) (D354, D207, D786) : depart Nomade (option bNomad du .json) : aucun centre principal ; tes Paysans naissent en groupes
-# DISPERSES autour du point de ton depart (hol.Nomad.ScatterRadiusCm, graine fixe par siege), ton Roi (Regicide coche pour le voir
+# DISPERSES sur TOUTE la carte (D797, hol.Nomad.ScatterRadiusCm 0 = carte entiere, graine fixe par siege), ton Roi (Regicide coche pour le voir
 # naitre) avec le groupe 0, ton heros avec le groupe 1, sans aucun batiment. Plain, toi (slot 0) contre une IA gelee (slot 1, Nomade aussi).
 # Captures a 1920x1080 (fenetre). Les waitlog du depart viennent AVANT toute commande : waitlog ne lit que les lignes ecrites depuis
 # la derniere commande (HOLTestSequence.cpp LogMark), r.SetRes plus haut les ferait manquer.
@@ -10,39 +10,30 @@ waitlog Nomad slot 0: group 1 (
 waitlog Starting hero of slot 0 spawned at
 r.SetRes 1920x1080w
 hol.AI.ThinkSteps 100000
-# 1. Vue large (camera au plus haut du jeu : 7000 cm, HOLRTSCamera::MaxHeight) centree entre les groupes : chaque groupe a un endroit
-# different, le Roi pres du groupe 0 (en haut a droite), le heros pres du groupe 1 (a gauche) ; aucun batiment.
+# 1. Vue large (camera au plus haut du jeu : 7000 cm) au-dessus de ton depart nominal : D797, tes groupes sont sur toute la carte, la
+# plupart hors du cadre ; la minicarte (en bas a gauche) montre tes unites eparpillees sur la carte entiere ; aucun batiment.
 hol.Camera.FocusSlot 0
 waitlog Camera above the start of slot 0
 hol.Camera.Zoom -10
 waitlog Camera height 7000 cm
-hol.Camera.Focus -14400 1500
 frames 30
 hol.Buildings.Report
 waitlog Building report:
 hol.HUD.Report
 capture nomad_start_wide
-# 2. Gros plan (1500 cm, HOLRTSCamera::MinHeight) sur le Roi et le groupe 0 (Roi ne a (-12696, 4832), Paysan a (-12246, 4832)).
-hol.Camera.Zoom 11
-waitlog Camera height 1500 cm
-hol.Camera.Focus -12470 4832
-frames 30
-capture nomad_start_king
-# 3. Gros plan sur le heros et le groupe 1 (heros ne a (-17777, 2100), Paysan a (-17327, 1800)).
-hol.Camera.Focus -17550 1950
-frames 30
-capture nomad_start_hero
-# 4. BUG nomad_start point 1 (2026-11-14), geste reel : tes Paysans selectionnes, touche de l'age I (case 0) puis C (case 10,
+# 2. D797, geste reel : tes Paysans selectionnes, touche Z (page Palier II, hol.Nomad.ForumAge 1, ouverte pour le seul forum) puis C (case 10,
 # hol.Nomad.ForumCell) : le fantome du Forum ; clic gauche sur le sol : fondation posee, 150 bois + 400 pierre payes (D783).
 hol.Select.Type Peasant
 frames 2
 hol.Select.Report
-hol.Select.Grid 0
-waitlog Grid: age 0 chosen
+hol.Select.Grid 1
+waitlog Grid: age 1 chosen
 frames 5
 capture nomad_start_grid
 hol.Select.Grid 10
 frames 2
+hol.Camera.Zoom 11
+waitlog Camera height 1500 cm
 hol.Camera.Zoom -3
 waitlog Camera height 3000 cm
 hol.Camera.Focus -14800 -2500
@@ -52,6 +43,6 @@ waitlog Construction: slot 0 placed MainCentre foundation at
 frames 30
 capture nomad_start_forum
 hol.Test.Sanity
-note Partie Nomade : aucun Centre-ville au depart. Tes Paysans sont disperses en groupes autour du depart, ton Roi avec l'un, ton heros avec un autre ; construis ton premier Forum ou tu veux.
+note Partie Nomade : aucun Centre-ville au depart. Tes Paysans sont disperses sur toute la carte (voir la minicarte), ton Roi avec l'un, ton heros avec un autre ; construis ton premier Forum ou tu veux : Paysans selectionnes, Z (Palier II) puis C.
 # The scenario's real end: an agent's play.ps1 -Hidden closes here; the user's own run ignores it and plays on.
 quit

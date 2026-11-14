@@ -12,6 +12,7 @@
 #include "HeroesOfLibertyLog.h"
 #include "HOLVersion.h"
 #include "Kismet/GameplayStatics.h"
+#include "Map/HOLMapBounds.h"
 #include "Map/HOLMapSizeRules.h"
 #include "Map/HOLStartSlot.h"
 #include "Map/HOLVisionSubsystem.h"
@@ -683,8 +684,13 @@ namespace
 {
 	// BUG nomad_start point 2 (D207): provisional (Placeholders.txt), how far around the start's point a Nomad's groups are cast,
 	// and the least room between two of its groups (beyond each group's own reach).
-	TAutoConsoleVariable<float> CVarNomadScatterRadius(TEXT("hol.Nomad.ScatterRadiusCm"), 6000.f,
-		TEXT("Nomad start (D207): a Nomad's starting groups are cast within this distance of its start's point, cm (provisional)."));
+	// D797 (the user's setting, 2026-11-14: "dispersé = dispersé sur TOUTE la carte"): 0 (the default) casts them over the whole map
+	// (AHOLMapBounds' playable area); above 0, an optional disk around the start's point.
+	TAutoConsoleVariable<float> CVarNomadScatterRadius(TEXT("hol.Nomad.ScatterRadiusCm"), 0.f,
+		TEXT("Nomad start (D207, D797): 0 = a Nomad's starting groups cast over the whole map (default); above 0, within this distance of its start's point, cm."));
+
+	/** A map without bounds (the stress test's maps): the groups within this of the start's point. */
+	constexpr double NomadNoBoundsRadiusCm = 6000.0;
 	TAutoConsoleVariable<float> CVarNomadGroupSpacing(TEXT("hol.Nomad.GroupSpacingCm"), 1500.f,
 		TEXT("Nomad start (D207): the least room between two of a Nomad's starting groups, cm, beyond their reach (provisional)."));
 
@@ -723,10 +729,25 @@ namespace
 		}
 		UNavigationSystemV1* Nav = FNavigationSystem::GetCurrent<UNavigationSystemV1>(&World);
 		const bool bNav = Nav && Nav->GetDefaultNavDataInstance(FNavigationSystem::DontCreate);
-		const double Radius = FMath::Max(CVarNomadScatterRadius.GetValueOnGameThread(), 0.f);
+		// D797: the whole map's playable area (the groups' reach kept inside it), or a disk around Point (the setting, or no bounds).
+		const AHOLMapBounds* Bounds = AHOLMapBounds::Find(&World);
+		FBox2D Area(ForceInit);
+		if (Bounds)
+		{
+			const FBox2D Playable = Bounds->GetPlayableArea();
+			const FVector2D Inset(FMath::Min(NomadGroupReachCm, 0.5 * Playable.GetSize().X), FMath::Min(NomadGroupReachCm, 0.5 * Playable.GetSize().Y));
+			Area = FBox2D(Playable.Min + Inset, Playable.Max - Inset);
+		}
+		const double Setting = FMath::Max(CVarNomadScatterRadius.GetValueOnGameThread(), 0.f);
+		const bool bWholeMap = Setting <= 0.0 && Bounds;
+		const double Radius = Setting > 0.0 ? Setting : NomadNoBoundsRadiusCm;
 		const double Spacing = FMath::Max(CVarNomadGroupSpacing.GetValueOnGameThread(), 0.f) + 2.0 * NomadGroupReachCm;
 		auto IsClear = [&](const FVector& At)
 		{
+			if (Bounds && !Area.IsInside(FVector2D(At)))
+			{
+				return false;
+			}
 			for (const FVector& Other : Points)
 			{
 				if (FVector::Dist2D(Other, At) < Spacing)
@@ -762,9 +783,18 @@ namespace
 			bool bFound = false;
 			for (int32 Try = 0; Try < Tries && !bFound; ++Try)
 			{
-				const double Angle = Stream.FRandRange(0.f, 2.f * PI);
-				const double Distance = Radius * FMath::Sqrt(Stream.FRand());
-				FVector At = Point + FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.0);
+				FVector At = Point;
+				if (bWholeMap)
+				{
+					At.X = Stream.FRandRange(Area.Min.X, Area.Max.X);
+					At.Y = Stream.FRandRange(Area.Min.Y, Area.Max.Y);
+				}
+				else
+				{
+					const double Angle = Stream.FRandRange(0.f, 2.f * PI);
+					const double Distance = Radius * FMath::Sqrt(Stream.FRand());
+					At += FVector(FMath::Cos(Angle) * Distance, FMath::Sin(Angle) * Distance, 0.0);
+				}
 				if (bNav)
 				{
 					FNavLocation OnNav;
@@ -783,8 +813,8 @@ namespace
 			if (!bFound)
 			{
 				const FVector At = Point + FVector(0.0, (Group - 0.5 * (NumGroups - 1)) * Spacing, 0.0);
-				UE_LOG(LogHOLMatch, Warning, TEXT("Nomad slot %d: no clear place for group %d within %.0f cm, at (%.0f, %.0f)"), Slot, Group,
-					Radius, At.X, At.Y);
+				UE_LOG(LogHOLMatch, Warning, TEXT("Nomad slot %d: no clear place for group %d %s, at (%.0f, %.0f)"), Slot, Group,
+					bWholeMap ? TEXT("on the whole map") : *FString::Printf(TEXT("within %.0f cm"), Radius), At.X, At.Y);
 				Points.Add(At);
 			}
 		}

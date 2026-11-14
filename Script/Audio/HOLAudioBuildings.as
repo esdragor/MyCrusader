@@ -206,6 +206,10 @@ namespace HOLAudioBuildings
 	// The audio event rung when the player selects this building (-1: silent, or an unknown building). The code that plays (step B5, C++) asks this.
 	int SelectEventFor(FString Building)
 	{
+		// D798 (2026-11-14): these three have their OWN sound, before their family's (Stone and Metal have no family sound).
+		if (Building == "SiegeWorkshop") return HOLAudioEvent::SelectBuildingSiege;
+		if (Building == "MainCentre") return HOLAudioEvent::SelectBuildingForum;
+		if (Building == "Forge") return HOLAudioEvent::SelectBuildingForge;
 		return SelectEventOfFamily(FamilyOf(Building));
 	}
 

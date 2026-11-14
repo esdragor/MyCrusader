@@ -23,6 +23,7 @@ namespace HOLFactionRules
 			"Dawn_Worker,Dawn,Worker,Peasant\n"
 			"Dawn_Hero,Dawn,Hero,Hero\n"
 			"Dawn_MainCentre,Dawn,MainCentre,MainCentre\n"
+			"Dawn_Holy_Monk,Dawn,Holy,Monk\n"
 			"Legions_Worker,Legions,Worker,Zombie\n"
 			"Legions_Hero,Legions,Hero,Hero\n"
 			"Legions_MainCentre,Legions,MainCentre,MainCentre\n");
@@ -151,7 +152,7 @@ namespace HOLFactionRules
 
 		bool IsKnownRole(const FName Role)
 		{
-			return Role == Roles::Worker || Role == Roles::Hero || Role == Roles::MainCentre;
+			return Role == Roles::Worker || Role == Roles::Hero || Role == Roles::MainCentre || Role == Roles::Holy;
 		}
 
 		FTable Load()
@@ -206,6 +207,21 @@ namespace HOLFactionRules
 			}
 		}
 		return NAME_None;
+	}
+
+	TArray<FName> FTable::FindHolyTypes(const FName Key) const
+	{
+		// A faction with rows of its own reads only them (no Holy row = none, its hero alone takes); one without reads the Dawn's (ResolveKey).
+		const FName Resolved = ResolveKey(Key);
+		TArray<FName> Types;
+		for (const FRoleRow& Row : Roles)
+		{
+			if (Row.Faction == Resolved && Row.Role == Roles::Holy)
+			{
+				Types.AddUnique(Row.Type);
+			}
+		}
+		return Types;
 	}
 
 	bool FTable::Allows(const FName ColumnValue, const FName Key) const
@@ -270,9 +286,11 @@ namespace HOLFactionRules
 			}
 			else if (!IsKnownRole(Row.Role))
 			{
-				OutProblems.Add(FString::Printf(TEXT("Factions.csv: %s has an unknown role %s (Worker, Hero, MainCentre)"), *Cells[0], *Cells[2]));
+				OutProblems.Add(FString::Printf(TEXT("Factions.csv: %s has an unknown role %s (Worker, Hero, MainCentre, Holy)"), *Cells[0], *Cells[2]));
 			}
-			else if (OutRows.ContainsByPredicate([&Row](const FRoleRow& Other) { return Other.Faction == Row.Faction && Other.Role == Row.Role; }))
+			// One row per (faction, role), except Holy: a faction may have several holy types, each once.
+			else if (OutRows.ContainsByPredicate([&Row](const FRoleRow& Other)
+				{ return Other.Faction == Row.Faction && Other.Role == Row.Role && (Row.Role != Roles::Holy || Other.Type == Row.Type); }))
 			{
 				OutProblems.Add(FString::Printf(TEXT("Factions.csv: %s repeats the role %s of faction %s"), *Cells[0], *Cells[2], *Cells[1]));
 			}

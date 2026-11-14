@@ -19,7 +19,7 @@ struct FHOLMatchConfig;
  * OFF BY DEFAULT: the match option "Sacred sites" is S7 (not written yet), until then hol.Site.Enabled (0) is the switch; off, a step does
  * nothing, and with no site laid (S4: the maps lay none yet; hol.Site.Add for development) it does nothing either, so the game as it is does
  * not change. Not here yet (the next steps of the dossier): the replicated views and the visibility (S5/S9), the gold by the minute (S6), the
- * victory count (S10), the holy units from the faction table's column (S3 of the dossier: for now Holy below, provisional).
+ * victory count (S10). The holy units are the faction table's `Holy` rows (S3, Tools/Data/Factions.csv).
  */
 UCLASS()
 class HEROESOFLIBERTY_API UHOLSiteSubsystem : public UWorldSubsystem
@@ -48,8 +48,9 @@ public:
 	static bool IsActiveFor(const FHOLMatchConfig& Config, int32 SiteCount);
 
 	/**
-	 * Whether the unit type is a holy unit of the faction (it takes a site). PROVISIONAL list (D702: the Dawn's Monk and Luminous Monk; the
-	 * Legions' Necromancer does not exist yet, so they take by their hero alone) until the faction table's column replaces it.
+	 * Whether the unit type is a holy unit of the faction (it takes a site): a `Holy` row of the faction table (S3, D702;
+	 * HOLFactionRules::FTable::FindHolyTypes). The Dawn: the Monk (no Luminous Monk type exists yet); the Legions: none until the Necromancer
+	 * exists, so they take by their hero alone.
 	 */
 	static bool IsHolyType(FName FactionKey, FName UnitType);
 

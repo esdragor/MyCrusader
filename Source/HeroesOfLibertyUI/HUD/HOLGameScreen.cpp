@@ -2493,8 +2493,14 @@ void UHOLGameScreen::RefreshAges(const AHOLPlayerState* PlayerState)
 			if (AgePanel)
 			{
 				AgePanel->SetBrush(bChosen ? FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f, HOLUIStyle::Accent, 2.f) : FSlateRoundedBoxBrush(HOLUIStyle::HUDPanel, 4.f));
-				AgePanel->SetRenderOpacity(Look == EMedallionLook::Locked ? 0.55f : 1.f);
 			}
+		}
+		// The panel faded only while nothing on it can be built (a Nomad's page II with its first forum shown whole, D797);
+		// written when it changed.
+		const float PanelOpacity = HOLCommandGrid::GetAgePanelOpacity(Context, Age);
+		if (AgePanel && AgePanel->GetRenderOpacity() != PanelOpacity)
+		{
+			AgePanel->SetRenderOpacity(PanelOpacity);
 		}
 		// « Palier II — Essor », and « Palier non atteint » under it while not reached; read on every refresh (the language may
 		// change), written when it changed.

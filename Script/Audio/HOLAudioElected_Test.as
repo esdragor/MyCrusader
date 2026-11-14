@@ -55,7 +55,7 @@ void Test_AudioSilentCuesNeverPlay(FUnitTest& T)
 	Events.Add(HOLAudioEvent::AlertBuildingDone);
 	Events.Add(HOLAudioEvent::AlertTechDone);
 	Events.Add(HOLAudioEvent::AlertTrade);   // Q-audio-market-select = A (2026-11-08): the purchase sound moved to the Market's selection, buying and selling is silent
-	T.AssertEquals(27, HOLAudio::Count(), "the table has its 24 events, the 2 elected building selections and the Market's");
+	T.AssertEquals(30, HOLAudio::Count(), "the table has its 24 events, the 2 elected building selections, the Market's and the 3 of D798");
 	for (int Index = 0; Index < Events.Num(); Index++)
 	{
 		FHOLAudioCue Cue = HOLAudio::CueFor(Events[Index]);
@@ -98,8 +98,7 @@ void Test_AudioElectedBuildingSelectionWoodAndSacred(FUnitTest& T)
 		}
 	}
 	TArray<FString> Silent;
-	Silent.Add("MainCentre"); Silent.Add("Barracks"); Silent.Add("ArcheryRange"); Silent.Add("Stable"); Silent.Add("SiegeWorkshop");
-	Silent.Add("Forge");
+	Silent.Add("Barracks"); Silent.Add("ArcheryRange"); Silent.Add("Stable");   // MainCentre, SiegeWorkshop, Forge: their own sound (D798)
 	for (int Index = 0; Index < Silent.Num(); Index++)
 	{
 		T.AssertEquals(-1, HOLAudioBuildings::SelectEventFor(Silent[Index]), f"{Silent[Index]}: no election yet, no event");
@@ -124,6 +123,49 @@ void Test_AudioMarketSelectionRingsTheCoinsAndTradingIsSilent(FUnitTest& T)
 		T.AssertFalse(HOLAudio::Plan(HOLAudioEvent::AlertTrade, 5000, -1, Seed, -1).bPlay, f"a trade, seed {Seed}: silent now");
 	}
 	T.AssertEquals("Alert.Trade", HOLAudio::CueFor(HOLAudioEvent::AlertTrade).Name, "the Alert.Trade cue stays in the table (same numbering)");
+}
+
+// D798 (2026-11-14, the user's ear on audio_compare_buildings_stone / _metal, round 3): Siege workshop = Building.Stone A, Forum (MainCentre) =
+// Building.Metal B, Forge = Building.Stone G. The elected file is CALCULATED from the letter through the candidate list the user listened to
+// (HOLAudioCandidates::ForCue + IndexOfLabel), never copied; EFFECT on the real plan the game plays: selecting the building rings that file, from
+// /Game/Audio/Soft (the committed elected assets, not the candidates), at the building selection gain, whatever the seed. Barracks, Archery range and
+// Stable stay silent (round 4: voices, shots, a horse, not chosen yet).
+void Test_AudioElectedSiegeForumForgeRingTheirLetters(FUnitTest& T)
+{
+	TArray<FString> Buildings;
+	TArray<FString> FamilyCues;
+	TArray<FString> Letters;
+	Buildings.Add("SiegeWorkshop"); FamilyCues.Add("Building.Stone"); Letters.Add("A");
+	Buildings.Add("MainCentre");    FamilyCues.Add("Building.Metal"); Letters.Add("B");
+	Buildings.Add("Forge");         FamilyCues.Add("Building.Stone"); Letters.Add("G");
+	TArray<int> Seen;
+	for (int Index = 0; Index < Buildings.Num(); Index++)
+	{
+		FString Name = Buildings[Index];
+		FHOLAudioCandidates Heard = HOLAudioCandidates::ForCue(FamilyCues[Index]);
+		int Letter = HOLAudioCandidates::IndexOfLabel(Letters[Index]);
+		T.AssertTrue(Letter >= 0 && Letter < Heard.Stems.Num(), f"{Name}: letter {Letters[Index]} exists in {FamilyCues[Index]}");
+		if (Letter < 0 || Letter >= Heard.Stems.Num()) continue;
+		FString Stem = Heard.Stems[Letter];
+		int Event = HOLAudioBuildings::SelectEventFor(Name);
+		T.AssertTrue(Event >= 0, f"{Name}: selecting rings an elected event");
+		T.AssertFalse(Seen.Contains(Event), f"{Name}: its own event");
+		Seen.Add(Event);
+		FHOLAudioCue Cue = HOLAudio::CueFor(Event);
+		T.AssertEquals("soft", Cue.Pack, f"{Name}: the pack of the elected soft sounds");
+		T.AssertEquals(1, Cue.Stems.Num(), f"{Name}: only the elected file");
+		for (int Seed = -7; Seed < 20; Seed++)
+		{
+			FHOLAudioPlan Plan = HOLAudio::Plan(Event, 5000, -1, Seed, -1);
+			T.AssertTrue(Plan.bPlay, f"{Name}, seed {Seed}: plays");
+			T.AssertEquals(f"/Game/Audio/Soft/SW_{Stem}.SW_{Stem}", Plan.Asset, f"{Name}, seed {Seed}: {FamilyCues[Index]} {Letters[Index]}");
+			T.AssertEquals(HOLAudio::BuildingSelectGainPercent, Plan.VolumePercent, f"{Name}, seed {Seed}: at the building selection gain");
+		}
+	}
+	TArray<FString> Silent;
+	Silent.Add("Barracks"); Silent.Add("ArcheryRange"); Silent.Add("Stable");
+	for (int Index = 0; Index < Silent.Num(); Index++)
+		T.AssertEquals(-1, HOLAudioBuildings::SelectEventFor(Silent[Index]), f"{Silent[Index]}: round 4 not chosen, silent");
 }
 
 // Every cue is answered now: none is left on the spaceship console packs the user rejected.

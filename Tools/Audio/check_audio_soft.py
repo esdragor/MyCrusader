@@ -27,7 +27,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 LINE = re.compile(r'^\s*Add\(List,\s*"(?P<cue>[A-Za-z]+\.[A-Za-z]+)",\s*"(?P<stems>[A-Za-z0-9_,]+)"')
 # The cues whose ten candidates MUST all be soft (s_ stems): the training alert, the six other alerts, the five building families.
 SOFT_CUES = ["Alert.TrainingDone", "Alert.UnderAttack", "Alert.BuildingDone", "Alert.TechDone", "Alert.Trade", "Alert.Volcano",
-             "Alert.Diplomacy", "Building.Wood", "Building.Stone", "Building.Sacred", "Building.Metal", "Building.Coins"]
+             "Alert.Diplomacy", "Building.Wood", "Building.Stone", "Building.Sacred", "Building.Metal", "Building.Coins",
+             "Building.Barracks", "Building.Range", "Building.Stable"]
 MAX_SECONDS = 0.80
 MAX_CENTROID = 800.0
 MAX_HIGH_SHARE = 0.01
@@ -36,7 +37,7 @@ MIN_PEAK_DB, MAX_PEAK_DB = -12.0, -2.0
 # file: the sound high-passed at 200 Hz (laptop speakers and most headsets give little below), RMS of its loudest 100 ms window, in dB.
 # The round 2 of Stone sat at -21 to -46 dB (energy below 100 Hz), the three elected building sounds the user hears well at -12 to -19.
 # A floor, not a choice: the ear still decides. Only for the cues re-done after that answer.
-AUDIBLE_CUES = ["Building.Stone", "Building.Metal"]
+AUDIBLE_CUES = ["Building.Stone", "Building.Metal", "Building.Barracks", "Building.Range", "Building.Stable"]
 AUDIBLE_FROM_HZ = 200.0
 MIN_AUDIBLE_DB = -18.0
 

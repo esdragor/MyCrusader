@@ -13,5 +13,6 @@ PNG OUVERTS et vus :
 - <nom_png> : <ce qui est vu>
 NON VÉRIFIÉ : <obligatoire>
 
+Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File <worktree>\Tools\Scenarios\play.ps1 <nom> -Root <worktree>`
 Durée : environ <n> min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.

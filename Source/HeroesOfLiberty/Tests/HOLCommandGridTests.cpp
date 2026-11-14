@@ -731,6 +731,17 @@ bool FHOLCommandGridAgesTest::RunTest(const FString& Parameters)
 	TestTrue(TEXT("II Q: the barracks, greyed"), Locked.TypeName == HOLBuildingTypeNames::Barracks && Locked.Age == 1 && Locked.bGreyed);
 	TestTrue(TEXT("III: empty"), HOLCommandGrid::GetAgeBuilding(Builders, 2, 4).IsNone());
 
+	// The pages' fading (D797): a page not reached faded; a Nomad's page II holding his first forum (bAlwaysOpen) shown
+	// whole at age I, its barracks still greyed, its medallion's look unchanged (IsAgeReached false).
+	TestTrue(TEXT("I reached: page whole"), HOLCommandGrid::GetAgePanelOpacity(Builders, 0) == 1.f);
+	TestTrue(TEXT("II not reached: page faded"), HOLCommandGrid::GetAgePanelOpacity(Builders, 1) < 1.f);
+	FHOLGridContext Nomad = Builders;
+	Nomad.Buildable.Add({ HOLBuildingTypeNames::MainCentre, 10, 1, /*bAlwaysOpen*/ true });
+	TestTrue(TEXT("Nomad: page II whole (its forum always buildable)"), HOLCommandGrid::GetAgePanelOpacity(Nomad, 1) == 1.f);
+	TestTrue(TEXT("Nomad: page III still faded"), HOLCommandGrid::GetAgePanelOpacity(Nomad, 2) < 1.f);
+	TestFalse(TEXT("Nomad: age II not reached (medallion locked)"), HOLCommandGrid::IsAgeReached(Nomad, 1));
+	TestTrue(TEXT("Nomad: II Q barracks still greyed"), HOLCommandGrid::GetAgeBuilding(Nomad, 1, 4).bGreyed);
+
 	// No age chosen: A chooses I; Z (not reached) nothing; Q S V the orders (a Peasant has no attack-move: GetOrder).
 	TestTrue(TEXT("A: age I chosen"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 0) == Key{ EHOLGridKeyTarget::Age, 0 });
 	TestTrue(TEXT("Z, not reached: nothing"), HOLCommandGrid::PressKey(Builders, INDEX_NONE, 1) == Key{ EHOLGridKeyTarget::None, INDEX_NONE });

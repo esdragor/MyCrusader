@@ -175,6 +175,8 @@ struct FHOLBuildable
 	FName TypeName;
 	int32 Cell = INDEX_NONE;
 	int32 Age = 0;
+	/** Built whatever the tier reached: its age page opens for it alone (a Nomad seat's first forum, D797). */
+	bool bAlwaysOpen = false;
 };
 
 /** Where the building type table lives (DefaultGame.ini). */

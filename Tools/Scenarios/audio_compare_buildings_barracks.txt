@@ -1,0 +1,43 @@
+# Ecoute : le son de SELECTION de la CASERNE, tour 4 : des VOIX d'hommes d'armes (cris, ordres, murmures), synthetiques, dix variantes chacune, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+hol.Camera.FocusNear -900 300
+frames 10
+note Ecoute le son de SELECTION de la CASERNE, tour 4 : des VOIX d'hommes d'armes (cris, ordres, murmures), synthetiques. 10 sons, 1 cue, dix variantes A a J chacune.
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Barracks C.
+note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+capture audio_compare_buildings_barracks_start
+waitkey Entree : commencer par Building.Barracks A
+hol.Audio.Candidate Building.Barracks A
+waitlog candidate played Building.Barracks A
+waitkey Building.Barracks A (s_voice_hah) vient de jouer. Entree : Building.Barracks B
+hol.Audio.Candidate Building.Barracks B
+waitlog candidate played Building.Barracks B
+waitkey Building.Barracks B (s_voice_ho) vient de jouer. Entree : Building.Barracks C
+hol.Audio.Candidate Building.Barracks C
+waitlog candidate played Building.Barracks C
+waitkey Building.Barracks C (s_voice_hey) vient de jouer. Entree : Building.Barracks D
+hol.Audio.Candidate Building.Barracks D
+waitlog candidate played Building.Barracks D
+waitkey Building.Barracks D (s_voice_hup) vient de jouer. Entree : Building.Barracks E
+hol.Audio.Candidate Building.Barracks E
+waitlog candidate played Building.Barracks E
+waitkey Building.Barracks E (s_voice_duo) vient de jouer. Entree : Building.Barracks F
+hol.Audio.Candidate Building.Barracks F
+waitlog candidate played Building.Barracks F
+waitkey Building.Barracks F (s_voice_trio) vient de jouer. Entree : Building.Barracks G
+hol.Audio.Candidate Building.Barracks G
+waitlog candidate played Building.Barracks G
+waitkey Building.Barracks G (s_voice_grunt) vient de jouer. Entree : Building.Barracks H
+hol.Audio.Candidate Building.Barracks H
+waitlog candidate played Building.Barracks H
+waitkey Building.Barracks H (s_voice_murmur) vient de jouer. Entree : Building.Barracks I
+hol.Audio.Candidate Building.Barracks I
+waitlog candidate played Building.Barracks I
+waitkey Building.Barracks I (s_voice_whisper) vient de jouer. Entree : Building.Barracks J
+hol.Audio.Candidate Building.Barracks J
+waitlog candidate played Building.Barracks J
+waitkey Building.Barracks J (s_voice_order) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

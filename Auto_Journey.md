@@ -6,7 +6,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **Au démarrage** : section « Au démarrage : « commence ton Auto_Journey » » (sync des worktrees, `session_gate.ps1 -Phase Launch`, étape 0, plan de lancement, clôture).
 - **Nettoyage des docs** : étape 0a de « Au démarrage » (demande de l'utilisateur du 2026-11-10 : 4 agents en parallèle archivent dans `Docs\Archive\` sans jamais supprimer, avant tout agent de travail).
 - **Règle de durée** : section « Règle de durée » (mieux vaut finir 15 min plus tard que 15 min plus tôt ; gate Launch refuse sous 5 min).
-- **Qualité des essais** : section « Qualité des essais » (12 règles ; pré-vol, 3 min, recette indépendante) ; modèle d'énoncé d'un agent plus bas (45 appels vus par l'agent) ; modèles des agents (Fable 5.2 pour planifier et vérifier, Opus 5.5 pour le reste) dans « Comment écrire l'énoncé d'un agent ».
+- **Qualité des essais** : section « Qualité des essais » (15 règles ; pré-vol, 3 min, recette indépendante) ; modèle d'énoncé d'un agent plus bas (45 appels vus par l'agent) ; modèles des agents (Fable 5.2 pour planifier et vérifier, Opus 5.5 pour le reste) dans « Comment écrire l'énoncé d'un agent ».
 - **Fusions** : « Builds : ne pas saturer la file » (fusion groupée, plafond de 3 agents C++) et « Fusions dans `main` » (pré-vol de fusion).
 - **Contrôles et leçons** : `Auto_Journey_Checklist.md` (un contrôle par leçon), `Tools\AutoJourney\session_gate.ps1`, `Tools\AutoJourney\agent_rules.md`.
 - **État du jour** : `Auto_Journey_Jour.md` ; **file de travail** : `Auto_Journey_File.md`.
@@ -63,6 +63,9 @@ Règles, **toutes obligatoires** :
 10. **Un essai par intégration** : les essais d'un jour sont rejoués sur un build de `main` fusionné (une seule fois, en fin de journée) avant d'être donnés ; sinon ils indiquent leur worktree et ne comptent pas comme intégrés (la rencontre cartes + neutres n'a été vue que par l'utilisateur).
 11. **Plafond de volume** : au plus ~6 essais de 3 min par jour donnés à l'utilisateur, classés par priorité ; le reste attend dans la file « prêts mais non donnés », hors de Retours.
 12. **Réponses balisées** : l'utilisateur écrit `OK`, `BUG: ...`, `REGLAGE: ...` ou `A trancher`. Une ligne `BUG:` ou `REGLAGE:` devient une ligne `[ ]` de la file (règle 8), faite au prochain « commence ton Auto_Journey ».
+13. **Commande complète** (retour de l'utilisateur du 2026-11-14) : chaque commande donnée à l'utilisateur est COMPLÈTE et copiable telle quelle ; jamais « même commande avec… » ni de commande abrégée (il copie-colle).
+14. **Questions par l'interface de choix** (retour du 2026-11-14) : une question à l'utilisateur passe par l'interface de choix (`AskUserQuestion`) quand elle existe et que la session est interactive.
+15. **Compare dans les deux sens** (retour du 2026-11-14) : dans un scénario `<nom>_compare`, Entrée = option suivante ET Backspace = option précédente (à implémenter dans `waitkey` / le modèle compare : C++ + test, ligne de file).
 
 ### Pièges techniques rencontrés
 - **Test 2** : `quick_check` **ne compile pas** (faux vert 530/530 sans les nouveaux tests : `Tools\build.ps1` d'abord) ; les chaînes PowerShell entre guillemets doubles mangent les backticks (relire les lignes écrites par script) ; `IN_USE.txt` écrit **sans accents** (mélange UTF-8/ANSI) ; un scénario échoué laisse l'éditeur ouvert et verrouille `-abslog` (le tuer) ; `make_maps.ps1 -Sizes` ne marche qu'en appel direct `& ...` ; un `git commit`/`merge` qui affiche un avertissement LF/CRLF peut rendre un code non nul alors qu'il a réussi (vérifier `git log -1`) ; les heredocs Python imbriqués dans Bash échouent (Edit/Write ou fichier script).
