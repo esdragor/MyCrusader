@@ -145,6 +145,13 @@ namespace HOLCommandGrid
 			&& Context.Buildable.ContainsByPredicate([Age](const FHOLBuildable& Each) { return Each.Age == Age && Each.bAlwaysOpen; }));
 	}
 
+	float GetAgePanelOpacity(const FHOLGridContext& Context, const int32 Age)
+	{
+		// A page faded only while nothing on it can be built: a page opened by a type built whatever the tier (a Nomad's first
+		// forum, D797) shown whole, its locked cells greyed one by one (bGreyed); its medallion keeps its locked look.
+		return IsAgeOpen(Context, Age) ? 1.f : LockedAgePanelOpacity;
+	}
+
 	int32 GetCategoryRow(const EHOLBuildingCategory Category)
 	{
 		return Category == EHOLBuildingCategory::Economic ? 0 : Category == EHOLBuildingCategory::Military ? 1 : 2;
