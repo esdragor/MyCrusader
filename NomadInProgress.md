@@ -170,3 +170,5 @@ et distance minimale.
 - Scenario nomad_start adapte (65953a3) : vue large + minicarte, Z puis C, fondation ; gros plans Roi/heros retires (positions inconnues avant rejeu). NON REJOUE : prochain agent : play.ps1 nomad_start -Hidden -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir, preflight, PNG (minicarte : groupes eloignes ; page II case C non grisee ; fondation peut-etre dans le brouillard a (-14800,-2500) : verifier), puis E-nomad_start.
 
 - 2026-11-14 12:5x (docs, reponses de l'utilisateur) : Q-nomad-net = **A** (D799) : le serveur replique l'etat Nomade de chaque siege (booleen par siege dans l'etat de partie), le joueur distant voit la case Forum et son vrai prix ; ligne Haldir [ ] C++ ; reglage D797 (forum au palier 2) en cours HALDIR-1114e, Retours\Q-nomad-forum-palier.md ; fiche Q-nomad-net archivee dans Docs\Archive\Retours_2026-11-14_b\.
+## 2026-11-14 13:05-13:2x HALDIR-1114f (maps, build seul) rejeu D797
+- Appels : ~37 vus. LAUNCHCHECK 13:05 : dll perimees (sources de tests datees 13:04 par le merge main 21397c2) ; build PASS 13:11 (224 s, file derriere Sauron).
