@@ -3606,6 +3606,15 @@ void AHOLPlayerController::GetGridCommands(TArray<FHOLGridCommand>& OutCommands)
 		Context.bBuildingFinished = Building->IsFinished();
 		Context.bForumDown = Building->IsForumDown();
 		Context.bMarket = Building->GetTypeName() == HOLBuildingTypeNames::Market;
+		// SP3: the main Forum's specialization cells, read from the owner's view and the hero's tier (the server decides, D203).
+		Context.bPrimaryForum = Building->IsPrimaryForum();
+		if (Context.bPrimaryForum && HOLPlayerState)
+		{
+			if (AHOLGameState* SpecGameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
+			{
+				HOLCommandGrid::SetSpecialization(Context, SpecGameState->GetTier(HOLPlayerState->GetPlayerIndex()), HOLPlayerState->GetSpecialization());
+			}
+		}
 		if (Type)
 		{
 			Context.Produces = HOLFactionRules::FilterProduces(GetWorld(), Type->Produces, Building->GetOwnerPlayer());
@@ -4056,6 +4065,13 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		return;
 	}
+	case EHOLGridCommand::Specialize:
+		// SP3 (D332, D684): the Forum's cell asks the server's board (ServerStartSpecialization); the other option replaces the running one.
+		RequestSpecialization(Command.Tier, Command.Option);
+		return;
+	case EHOLGridCommand::CancelSpecialization:
+		RequestCancelSpecialization();
+		return;
 	default:
 		return;
 	}

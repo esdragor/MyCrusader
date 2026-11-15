@@ -2307,6 +2307,22 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			GridCell->SetTooltip(Name, Cost, Missing, Effect);
 			break;
 		}
+		case EHOLGridCommand::Specialize:
+		case EHOLGridCommand::CancelSpecialization:
+		{
+			// SP3 (D332, D684): the main Forum's choice of the open tier, free; running, its cell shows the seconds left and cancels at no cost.
+			// Provisional names (Placeholders.txt): the GDD 13 names of each faction's options are not in the text table yet.
+			const FText TierNumber = FText::AsNumber(Command.Tier);
+			const FText Name = Command.Option == 0 ? FText::Format(LOCTEXT("SpecializationOptionA", "Voie A du palier {0}"), TierNumber)
+				: FText::Format(LOCTEXT("SpecializationOptionB", "Voie B du palier {0}"), TierNumber);
+			const bool bRunning = Command.Command == EHOLGridCommand::CancelSpecialization;
+			GridCell->SetCommand(bRunning ? FText::Format(LOCTEXT("SpecializationRunningCell", "{0}\nEn cours : {1} s\nAnnuler"), Name,
+				FText::AsNumber(FMath::DivideAndRoundUp(Command.RemainingMs, 1000))) : Name, EHOLGridCellState::Ready);
+			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), bRunning
+				? LOCTEXT("SpecializationRunningEffect", "Déblocage en cours au Forum. Cliquer annule sans coût ; le choix reste ouvert.")
+				: LOCTEXT("SpecializationEffect", "Gratuit. Se débloque au Forum en 30 / 45 / 60 s (palier I / II / III), en parallèle de sa file. Définitif une fois appliqué."));
+			break;
+		}
 		case EHOLGridCommand::Build:
 		{
 			// The builders' grid (D313): greyed when the stock does not cover the cost (in red in the tooltip).

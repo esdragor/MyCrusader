@@ -7,6 +7,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionRules.h"
 #include "Match/HOLResources.h"
+#include "Match/HOLSpecializationView.h"
 #include "Simulation/HOLHeroAbilityRules.h"
 #include "Technologies/HOLTechnologyRules.h"
 
@@ -42,6 +43,10 @@ enum class EHOLGridCommand : uint8
 	Trade,
 	/** Mount / Dismount (Palier3InProgress.md G6 d): the selected engine that deploys is set up (bPack false) or packed up (bPack true). */
 	Deploy,
+	/** SP3 (GDD 13, D332, D684): the selected main Forum starts the unlock of Option at Tier (ServerStartSpecialization); free, 30/45/60 s. */
+	Specialize,
+	/** SP3 (D684): the running unlock is cancelled at no cost (ServerCancelSpecialization), the choice open again. */
+	CancelSpecialization,
 };
 
 /** A cell's command and the type it names (the unit produced, the building placed). */
@@ -60,6 +65,10 @@ struct FHOLGridCommand
 	bool bBuy = false;
 	/** Deploy: the press packs the engine up (it is deploying or deployed), else it sets it up. */
 	bool bPack = false;
+	/** Specialize / CancelSpecialization (SP3): the tier (1 to 3) and its option (0 or 1); CancelSpecialization: the match time left. */
+	int32 Tier = 0;
+	int32 Option = INDEX_NONE;
+	int32 RemainingMs = 0;
 
 	bool IsNone() const { return Command == EHOLGridCommand::None; }
 	bool operator==(const FHOLGridCommand& Other) const = default;
@@ -158,6 +167,14 @@ struct FHOLGridContext
 	TArray<FHOLBuildable> Buildable;
 	/** The last age the player has reached (P3: AHOLGameState::GetTier, the tier his hero level opens): the panels after it greyed. */
 	int32 ReachedAge = 0;
+	/**
+	 * SP3: the player's own main Forum is selected alone (finished, standing): its specialization cells (GetSpecializationCell). The tier
+	 * whose choice it offers (SetSpecialization: 0 none), the option running there (INDEX_NONE none) and its match time left.
+	 */
+	bool bPrimaryForum = false;
+	int32 SpecializationTier = 0;
+	int32 SpecializationPendingOption = INDEX_NONE;
+	int32 SpecializationRemainingMs = 0;
 };
 
 /** Where a key of the grid goes (the user's choice of 2026-10-21, AoE4's way): the grid on the right, the orders on the left. */
@@ -297,6 +314,21 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API int32 GetHeroAbilityCell(EHOLHeroAbility Ability);
 	/** L4: the cell of the necrotic rage, after the hero's two (to confirm against the AoE4 grid). */
 	HEROESOFLIBERTY_API int32 GetRageCell();
+
+	/** SP3: the options of a tier's choice (D07: 2; the Templars' 3 commanderies, D131, are not drawn yet). */
+	inline constexpr int32 SpecializationOptions = 2;
+	/**
+	 * SP3: the cell of the Forum's grid that offers Option (0 or 1): hol.UI.SpecializationCell (default 6, D then F: the middle row,
+	 * free on a Forum; Retours/Q-specialization-ui.md), Option after it.
+	 */
+	HEROESOFLIBERTY_API int32 GetSpecializationCell(int32 Option);
+	/**
+	 * SP3: the tier whose choice the Forum offers, read from the owner's view (the server's board decides, D203): the running one,
+	 * else the lowest tier not chosen when the hero has reached it (D785: tier N only once N-1 is applied), else 0.
+	 */
+	HEROESOFLIBERTY_API int32 GetOpenSpecializationTier(int32 PlayerTier, const FHOLSpecializationView& View);
+	/** SP3: fills Context's specialization fields from the view (bPrimaryForum is the caller's). */
+	HEROESOFLIBERTY_API void SetSpecialization(FHOLGridContext& Context, int32 PlayerTier, const FHOLSpecializationView& View);
 
 	/**
 	 * The cell of the Market's trade of Resource (food, wood, stone): the sales on the top row, A Z E, the purchases below, Q S D
