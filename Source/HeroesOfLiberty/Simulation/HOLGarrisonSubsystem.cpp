@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLGarrisonSubsystem.h"
 
@@ -57,6 +57,40 @@ int32 UHOLGarrisonSubsystem::GetSlots(const AHOLBuilding& Building)
 	return UHOLBuildingTypeLibrary::FindRow(Building.GetTypeName(), Row) ? FMath::Max(0, Row.GarrisonSlots) : 0;
 }
 
+int32 UHOLGarrisonSubsystem::EjectAll(AHOLBuilding& Building)
+{
+	UWorld* World = Building.GetWorld();
+	UHOLUnitSubsystem* Units = World ? World->GetSubsystem<UHOLUnitSubsystem>() : nullptr;
+	UMassEntitySubsystem* EntitySubsystem = World ? World->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (!Units || !EntitySubsystem || World->GetNetMode() == NM_Client)
+	{
+		return 0;
+	}
+	TArray<uint32> Inside;
+	Units->GetGarrisonUnitIds(&Building, Inside);
+	// Each one out on its own free point at the building's foot, where its births stand (on the side of its rally point, else below it on the
+	// screen), not at its centre for the keep-out to push them all out the same way (lot 3b); the same when it falls (lot 3c).
+	const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+	FMassEntityManager& Entities = EntitySubsystem->GetMutableEntityManager();
+	int32 Moved = 0;
+	for (const uint32 UnitId : Inside)
+	{
+		if (!Units->SetGarrison(UnitId, nullptr))
+		{
+			continue;
+		}
+		const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+		if (FTransformFragment* Transform = Production && Entity.IsSet() ? Entities.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr)
+		{
+			FVector Exit = Production->GetBirthLocation(Building, Moved);
+			Exit.Z = Transform->GetTransform().GetLocation().Z;
+			Transform->GetMutableTransform().SetLocation(Exit);
+		}
+		++Moved;
+	}
+	return Moved;
+}
+
 int32 UHOLGarrisonSubsystem::ApplyOrders()
 {
 	UWorld* World = GetWorld();
@@ -83,27 +117,7 @@ int32 UHOLGarrisonSubsystem::ApplyOrders()
 		Units->GetGarrisonUnitIds(Building, Inside);
 		if (Order.bExitAll)
 		{
-			// F7 lot 3b (D693): each one out on its own free point at the building's foot, where its births stand (on the side of its rally
-			// point, else below it on the screen), not at its centre for the keep-out to push them all out the same way.
-			const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
-			FMassEntityManager& MutableEntities = World->GetSubsystem<UMassEntitySubsystem>()->GetMutableEntityManager();
-			int32 ExitIndex = 0;
-			for (const uint32 UnitId : Inside)
-			{
-				if (!Units->SetGarrison(UnitId, nullptr))
-				{
-					continue;
-				}
-				++Moved;
-				const FMassEntityHandle Entity = Units->FindEntity(UnitId);
-				FTransformFragment* Transform = Production && Entity.IsSet() ? MutableEntities.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
-				if (Transform)
-				{
-					FVector Exit = Production->GetBirthLocation(*Building, ExitIndex++);
-					Exit.Z = Transform->GetTransform().GetLocation().Z;
-					Transform->GetMutableTransform().SetLocation(Exit);
-				}
-			}
+			Moved += EjectAll(*Building);
 			UE_LOG(LogHOLSimulation, Display, TEXT("Garrison: slot %d takes %d units out of %s"), Order.PlayerIndex, Inside.Num(), *Building->GetTypeName().ToString());
 			continue;
 		}
