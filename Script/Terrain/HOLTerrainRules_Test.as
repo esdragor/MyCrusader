@@ -125,3 +125,39 @@ void Test_TerrainUnknownZoneKindNeutral(FUnitTest& T)
 	T.AssertFalse(HOLTerrain::StopsCharge(S, Zones, 300, 0), "an old forest zone does not stop a charge");
 }
 
+// F4 (GDD 8.1, D33): a cavalry walker and a siege engine go slower in a forest, a unit on foot does not; out of a forest nobody is slowed.
+// The speeds are walked through the rule (ForestSpeedPercent then ScaledSpeed), never the settings' numbers retyped.
+void Test_TerrainForestSlowsCavalryAndSiege(FUnitTest& T)
+{
+	FHOLTerrainSettings S;
+	int Speed = 600;
+	int CavalryInForest = HOLTerrain::ScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Cavalry, true));
+	int CavalryOutside = HOLTerrain::ScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Cavalry, false));
+	int SiegeInForest = HOLTerrain::ScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Siege, true));
+	int FootInForest = HOLTerrain::ScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::OnFoot, true));
+	T.AssertTrue(CavalryInForest < CavalryOutside, "the cavalry goes slower in a forest (" + CavalryInForest + " < " + CavalryOutside + ")");
+	T.AssertTrue(CavalryInForest > 0, "the cavalry is slowed, not stopped");
+	T.AssertTrue(SiegeInForest < Speed, "a siege engine goes slower in a forest (" + SiegeInForest + ")");
+	T.AssertEquals(Speed, FootInForest, "a unit on foot keeps its speed in a forest");
+	T.AssertEquals(Speed, CavalryOutside, "out of a forest the cavalry keeps its speed");
+	T.AssertTrue(CavalryInForest < Speed && CavalryInForest >= Speed / 2, "a moderate slowing (between half and full speed)");
+	S.ForestCavalrySpeedPercent = 50;
+	T.AssertEquals(Speed / 2, HOLTerrain::ScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Cavalry, true)), "the one setting line changes the cavalry");
+	T.AssertEquals(SiegeInForest, HOLTerrain::ScaledSpeed(Speed, HOLTerrain::ForestSpeedPercent(S, HOLTerrain::Siege, true)), "and not the siege");
+}
+
+// F5 (GDD 8.1, D33): a unit on a ford defends less well (takes more of the same hit); off the ford, the hit is unchanged; 0 stays 0.
+void Test_TerrainFordWeakensDefence(FUnitTest& T)
+{
+	FHOLTerrainSettings S;
+	int Hit = 25;
+	int OnFord = HOLTerrain::FordDamageTaken(S, Hit, true);
+	int OffFord = HOLTerrain::FordDamageTaken(S, Hit, false);
+	T.AssertTrue(OnFord > OffFord, "a unit on a ford takes more of the same hit (" + OnFord + " > " + OffFord + ")");
+	T.AssertEquals(Hit, OffFord, "off the ford the hit is unchanged");
+	T.AssertTrue(OnFord < Hit * 2, "a moderate weakening (less than double)");
+	T.AssertEquals(0, HOLTerrain::FordDamageTaken(S, 0, true), "no hit, no damage, even on a ford");
+	S.FordDamageTakenPercent = 200;
+	T.AssertEquals(Hit * 2, HOLTerrain::FordDamageTaken(S, Hit, true), "the one setting line changes the ford");
+}
+
