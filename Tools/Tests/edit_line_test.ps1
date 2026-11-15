@@ -64,6 +64,26 @@ try {
     $o = Run @('-File', $p, '-Match', 'y', '-NewLine', 'y2')
     $b = Bytes $p
     Check ($b[0] -eq 0xEF -and $Utf8.GetString($b, 3, $b.Length - 3) -eq "x`r`ny2`r`n") 'BOM kept, line replaced' $o
+
+    Write-Output '--- 6. L15-2 : -Match must hit EXACTLY one line (refusal proposes -Append) ; -Append adds a line without overwriting any'
+    $f = Put 'Etape2.md' ("# Etapes`r`n- HALDIR-1114g : D799 historique`r`n- HALDIR-1115a : D799 en cours`r`n- ARWEN : fini`r`n")
+    $before = Bytes $f
+    $o = Run @('-File', $f, '-Match', 'D799', '-NewLine', '- HALDIR-1115a : fait')
+    Check ($Code -ne 0 -and $o -match '2 lignes' -and $o -match '-Append' -and (Same $before (Bytes $f))) 'L15-2 two lines hold -Match: refused, -Append proposed, file unchanged' $o
+    $o = Run @('-File', $f, '-Match', 'D800', '-NewLine', 'x')
+    Check ($Code -ne 0 -and $o -match 'aucune ligne' -and $o -match '-Append' -and (Same $before (Bytes $f))) 'L15-2 no line holds -Match: refused, -Append proposed, file unchanged' $o
+    $o = Run @('-File', $f, '-Append', "- FARAMIR-1115b : L15-2 fait$e", '-After', 'HALDIR')
+    Check ($Code -eq 0 -and (Text $f) -eq "# Etapes`r`n- HALDIR-1114g : D799 historique`r`n- HALDIR-1115a : D799 en cours`r`n- FARAMIR-1115b : L15-2 fait$e`r`n- ARWEN : fini`r`n") 'L15-2 -Append -After: added after the LAST line holding -After, CRLF kept, no line overwritten' ((Text $f) -replace "`r", '\r' -replace "`n", '\n')
+    $o = Run @('-File', $f, '-Append', 'fin')
+    Check ($Code -eq 0 -and (Text $f).EndsWith("- ARWEN : fini`r`nfin`r`n")) 'L15-2 -Append without -After: added at the end of the file with CRLF' ((Text $f) -replace "`r", '\r' -replace "`n", '\n')
+    $f2 = Put 'noeol.md' "a`r`nb"
+    $o = Run @('-File', $f2, '-Append', 'c')
+    Check ($Code -eq 0 -and (Text $f2) -eq "a`r`nb`r`nc") 'L15-2 -Append to a file without final newline: the old last line gets a CRLF, nothing glued' ((Text $f2) -replace "`r", '\r' -replace "`n", '\n')
+    $before = Bytes $f
+    $o = Run @('-File', $f, '-Append', 'x', '-After', 'introuvable')
+    Check ($Code -ne 0 -and (Same $before (Bytes $f))) 'L15-2 -Append -After that no line holds: refused, file unchanged' $o
+    $o = Run @('-File', $f, '-Append', "a`r`nb")
+    Check ($Code -ne 0 -and (Same $before (Bytes $f))) 'L15-2 -Append text holding a line break: refused, file unchanged' $o
 } catch {
     $Fails++; Write-Output ('FAIL exception : ' + $_)
 } finally {
