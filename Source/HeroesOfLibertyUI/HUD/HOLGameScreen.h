@@ -530,6 +530,9 @@ private:
 	void HandleHeroReadyMessage(const struct FHOLForumMessage& Message);
 	/** D372 amended (TB-Q1): a tribute for ReceiverSlot, shown in the thread of that player's machine only. */
 	void HandleTributeMessage(int32 ReceiverSlot, const struct FHOLForumMessage& Message);
+
+	/** SG3 lot 2 (D386, D445): a map signal received by ViewerSlot, a line in the thread of that player's machine only. */
+	void HandleSignalMessage(int32 ViewerSlot, const struct FHOLForumMessage& Message);
 	/**
 	 * J8b.4 (J8b-Q4, D202): the local player's hero gone up: the minor alerts « Paladin-Commandant : niveau N » and, at
 	 * levels 3 and 6, « Palier 1 / 2 atteint » (HOLForumMessages::GetHeroLevelMessages), thread's lines with one sound.
@@ -571,6 +574,7 @@ private:
 	FDelegateHandle TableForumEventHandle;
 	FDelegateHandle TableHeroReadyHandle;
 	FDelegateHandle TableTributeHandle;
+	FDelegateHandle TableSignalHandle;
 	FDelegateHandle TableHeroLevelHandle;
 	/** What the table shows, for Describe ("players [slot 0 you colour 0 lives 2 standing | ...]"). */
 	FString ShownPlayersTable;

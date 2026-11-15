@@ -723,6 +723,7 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		Previous->OnForumEvent.Remove(TableForumEventHandle);
 		Previous->OnHeroReadyMessage.Remove(TableHeroReadyHandle);
 		Previous->OnTributeMessage.Remove(TableTributeHandle);
+		Previous->OnSignalMessage.Remove(TableSignalHandle);
 		Previous->OnHeroLevelUp.Remove(TableHeroLevelHandle);
 	}
 	TableForumsHandle.Reset();
@@ -743,6 +744,8 @@ void UHOLGameScreen::BindTableState(AHOLGameState* GameState)
 		// J8a.4: the local player's hero ready to return (its owner alone, once per death).
 		TableHeroReadyHandle = GameState->OnHeroReadyMessage.AddUObject(this, &UHOLGameScreen::HandleHeroReadyMessage);
 		TableTributeHandle = GameState->OnTributeMessage.AddUObject(this, &UHOLGameScreen::HandleTributeMessage);
+		// SG3 lot 2: a map signal received (its viewer alone).
+		TableSignalHandle = GameState->OnSignalMessage.AddUObject(this, &UHOLGameScreen::HandleSignalMessage);
 		// J8b.4: a hero gone up (every machine): the alerts for its owner alone.
 		TableHeroLevelHandle = GameState->OnHeroLevelUp.AddUObject(this, &UHOLGameScreen::HandleHeroLevelUp);
 	}
@@ -753,6 +756,18 @@ void UHOLGameScreen::HandleTributeMessage(const int32 ReceiverSlot, const FHOLFo
 	// Only the receiver's machine shows it (TB-Q1).
 	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
 	if (const UWorld* World = GetWorld(); World && PlayerState && PlayerState->GetPlayerIndex() == ReceiverSlot)
+	{
+		MessageThread.Add(Message, World->GetRealTimeSeconds());
+		RebuildMessages();
+	}
+}
+
+void UHOLGameScreen::HandleSignalMessage(const int32 ViewerSlot, const FHOLForumMessage& Message)
+{
+	// Only the viewer's machine shows it (a spectator: no slot).
+	const AHOLPlayerState* PlayerState = BoundPlayerState.Get();
+	const int32 OwnSlot = PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
+	if (const UWorld* World = GetWorld(); World && OwnSlot == ViewerSlot)
 	{
 		MessageThread.Add(Message, World->GetRealTimeSeconds());
 		RebuildMessages();

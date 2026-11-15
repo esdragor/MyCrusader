@@ -125,6 +125,13 @@ namespace HOLForumMessages
 	HEROESOFLIBERTY_API FHOLForumMessage GetHeroReadyMessage();
 
 	/**
+	 * SG3 (GDD 15, D386, D445's single table of texts): the thread's line of a map signal received by ViewerSlot, a minor line (no
+	 * banner): « Joueur 2 : Attaque ici », « Vous : Signal » for the neutral one. Kind as HOLSignalInput (0 neutral, 1 attack, 2 defend,
+	 * 3 need help, 4 rally, 5 scout); the wheel's labels are the GDD's. NamedSlots holds the sender.
+	 */
+	HEROESOFLIBERTY_API FHOLForumMessage GetSignalMessage(int32 SenderSlot, int32 Kind, const FHOLMatchConfig& Config, int32 ViewerSlot);
+
+	/**
 	 * J8b.4 (J8b-Q4, D202): the minor alerts of the viewer's hero going up from OldLevel to NewLevel, in their order:
 	 * « Paladin-Commandant : niveau N », then « Palier 1 atteint » when level 3 is reached or passed, « Palier 2 atteint »
 	 * for level 6 (the tiers' content is another chapter). None when he does not go up.

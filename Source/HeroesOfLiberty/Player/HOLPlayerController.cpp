@@ -5172,6 +5172,12 @@ void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender
 	Received.Color = HOLSignalInput::ColorOf(Kind);
 	ReceivedSignals.Add(Received);
 	HOLSignalInput::Expire(ReceivedSignals, Received.ReceivedAt);
+	// SG3 lot 2 (D386, D445): its line in the thread of messages, through the game state (the HUD of this viewer's machine shows it).
+	if (AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
+	{
+		const AHOLPlayerState* ViewerState = GetHOLPlayerState();
+		GameState->NoteSignalReceived(Sender, Kind, ViewerState ? ViewerState->GetPlayerIndex() : INDEX_NONE);
+	}
 }
 
 TArray<FHOLReceivedSignal> AHOLPlayerController::GetActiveSignals() const
