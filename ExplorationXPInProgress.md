@@ -62,3 +62,4 @@ Branche `visual`, worktree Sauron. Ouvert le 2026-11-15 10:2x par SAURON-1115b. 
 
 ||||||||||||||||||| (SAURON-1115c : ~49)
 ||||||||||||||||||||||||||||||| (SAURON-1115d : 31 au build)
+- 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D809 (Q-exploration-xp) = Q1 C (défaut, tranche 3 + lieu 25) + Q2 B : seuls les lieux sans autre paiement paient à la 1re vue (autel du Volcan, futurs lieux), pas relais ni camps ; ligne [ ] Sauron (C++) dans Auto_Journey_File.md.

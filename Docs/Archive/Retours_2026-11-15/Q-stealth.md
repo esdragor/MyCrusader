@@ -39,3 +39,5 @@ Ses propres unités dans la zone : à demi transparentes (comme AoE4) dans les t
 
 **Recommandation : B** (bosquet + contour discret), pour qu'un joueur sache toujours où il peut se cacher. Rien n'est
 dessiné à ce stade (aucune forme provisoire).
+
+Reponse (2026-11-15) : Q1 A : « tout proche » = 2 cases, 800 cm (hol.Stealth.RevealDistance 800, défaut codé). Q2 B : certaines cartes seulement, celles à bosquets (les cartes ouvertes restent sans zone). Q3 B : bosquet d'arbres bas + contour discret au sol au survol ou quand une de ses unités y entre ; ses unités dans la zone à demi transparentes. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D824) et le journal du chantier.

@@ -21,4 +21,4 @@ rebours », sans dire où exactement. Codé en attendant : deux cases dans la gr
 **Recommandation : B** (c'est la lettre de D332 et de D684 : bouton dans le HUD de faction + barre à part), en gardant A comme raccourci.
 Réglage : `hol.UI.SpecializationCell` (case de la Voie A, la Voie B juste après ; 6 = D, 4 = Q).
 
-Réponse :
+Reponse (2026-11-15) : B : un bouton permanent à l'emplacement de faction (D201, près du portrait du héros) qui s'allume quand un palier est ouvert, petit panneau des deux options, barre du compte à rebours dessous ; les cases D et F de la grille du Forum restent comme raccourci (A). PAS le défaut codé (A seul). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D823) et le journal du chantier.

@@ -24,3 +24,5 @@ Même binaire, une copie, passes une par une. Logs gardés dans `HeroesOfLiberty
 - Le taux de PASS dépend surtout du pas de simulation où arrive l'ordre (même pas = même échec, au cm près) : 6/8 (CELEBORN-1115a) puis 3/8 (1115b) ce matin, c'est la variance, pas le correctif.
 
 Recommandation (inchangée) : **A, garder 8** ; le tremblement disparaît en jeu, les autres échecs restent les mêmes.
+
+Reponse (2026-11-15) : A : garder 8 pas (MarchMemberDetourSteps 8, défaut codé) ; mesure x16 : 0 tremblement sur 24 passes avec 8. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D815) et le journal du chantier.

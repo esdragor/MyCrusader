@@ -12,3 +12,5 @@
 **Recommandation** : A (cohérent avec « hors terrain » et l'abri des occupants ; C possible plus tard comme technologie).
 
 Posée par ELROND-1115b, 2026-11-15, branche tiers.
+
+Reponse (2026-11-15) : A : non, une unité en garnison n'est ni soignée ni soigneuse ; elle reprend ses soins en sortant (hol.Garrison.HealInside 0, défaut codé). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D812) et le journal du chantier.

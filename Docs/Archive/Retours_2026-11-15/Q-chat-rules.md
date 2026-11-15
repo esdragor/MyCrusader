@@ -9,3 +9,5 @@
 - **Autre** : à préciser.
 
 **Recommandation : A** (même traitement qu'un vaincu, cohérent avec D376) ; puis aligner `HOLChatRules.as` (cas « sans siège » + test). Le défaut est dans le code (`ServerPostChat`, une ligne), pas encore derrière un réglage : à mettre derrière une cvar si B ou C est choisi.
+
+Reponse (2026-11-15) : A : le spectateur sans siège est un spectateur comme un vaincu : il parle et lit avec les spectateurs sur Tous et Alliés, jamais en privé, et lit le Tous des joueurs vivants. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D806) et le journal du chantier.

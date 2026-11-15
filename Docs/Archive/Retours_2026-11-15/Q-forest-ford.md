@@ -22,3 +22,5 @@ Conséquences visibles : avec A, une cavalerie qui traverse 10 m de forêt met 1
 Note : sur la carte **Les Gués**, D496 dit « gués sans ralentissement » ; la défense réduite y est-elle gardée ? (défaut codé : oui, la règle ne connaît pas la carte).
 
 **Réglage** : une ligne chacune dans `FHOLTerrainSettings` (`ForestCavalrySpeedPercent`, `ForestSiegeSpeedPercent`, `FordDamageTakenPercent`).
+
+Reponse (2026-11-15) : Q1 A : « être en forêt » = une zone peinte par la carte (le gué aussi). Q2 A : cavalerie 80 % de la vitesse, siège 70 % en forêt, dégâts reçus 120 % sur un gué (valeurs codées). Note Les Gués : défense réduite gardée (défaut codé, non contredit). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D810) et le journal du chantier.

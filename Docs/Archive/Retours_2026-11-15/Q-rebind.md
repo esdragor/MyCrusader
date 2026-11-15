@@ -15,4 +15,4 @@
 
 **Valeur par défaut codée (une ligne à changer)** : `HOLRebind::Scope = ScopeAll` dans `Script\Input\HOLRebindRules.as` (B = `ScopeGrid` : toute action hors de la grille est refusée « OutOfScope ») ; l'onglet reste grisé (`HOLSettingsScreen.cpp` l. 246, C++ non touché).
 
-Réponse :
+Reponse (2026-11-15) : A : onglet Commandes grisé jusqu'à M4, puis TOUS les raccourcis de D30 changeables (HOLRebind::Scope = ScopeAll, défaut codé). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D819) et le journal du chantier.

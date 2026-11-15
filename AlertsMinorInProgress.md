@@ -58,3 +58,4 @@ l. 760, 772, 781, 798, 825) ; textes dans la table unique `HOLForumMessages.cpp`
 - Rouge VU a l'execution 13:28 : tests 1312/1314, seuls Test_AlertPopulationFullOnReaching et Test_AlertPopulationFullRepeat (stub false).
 - Vert 13:32 : regle IsPopulationFull / ShouldAlertPopulationFull / PopulationFullText ecrite, quick_check tests PASS (test + correctif dans le meme commit).
 - Etape 3 FAITE. Suivant : branchement C++ du section 3 (agent C++), puis recherche terminee et batiment acheve selon la reponse a Q-alerts-minor.
+- 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D804 (Q-alerts-minor) = B : trois lignes + son court par type + ping mini-carte (pas pour population pleine), « attaqué ailleurs » = ligne + son, 1 fois / 30 s ; question archivée ; ligne [ ] Galadriel (C++) dans Auto_Journey_File.md. Le défaut codé (A pour population pleine seulement) est donc élargi.

@@ -12,3 +12,5 @@ Options :
 Conséquences visibles : A = texte à plisser les yeux en 1080p ; B = infobulle lisible, cohérente avec la barre ; C = même effet partout, chantier plus large.
 Recommandation : B (puis C si d'autres infobulles ont le même défaut).
 Valeur par défaut : A (état actuel) ; aucun réglage possible sans C++ (agent sans C++).
+
+Reponse (2026-11-15) : B : l'infobulle de revenu prend le style du HUD (police de la barre, environ 14 px, fond sombre, bord doré) ; C (toutes les infobulles) possible plus tard si d'autres ont le même défaut. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D814) et le journal du chantier.

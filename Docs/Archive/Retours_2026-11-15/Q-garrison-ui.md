@@ -32,3 +32,5 @@ Aujourd'hui aucun dépôt n'a de places (`GarrisonSlots` 0 partout) : la questio
 
 **Recommandation : A** (l'économie reste comme elle est, la garnison du forum garde son geste à part, comme la Cloche d'AoE).
 **Codé (défaut A)** : dans `AHOLPlayerController::OrderAt`, la garnison passe après les chantiers, les attaques et les dépôts ; réglage `hol.Garrison.RightClickEnters` (1 : un clic droit sur sa propre tour finie avec des places = garnison ; 0 : un simple déplacement).
+
+Reponse (2026-11-15) : Q1 C : case de grille « Sortir tous » (touche) ET portraits cliquables des occupants dans le cadre du bâtiment (clic = cette unité sort). Q2 A : un clic droit sur un bâtiment à la fois dépôt et garnison dépose d'abord ; on garnit par le bouton (ou Alt + clic droit, à confirmer). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D813) et le journal du chantier.

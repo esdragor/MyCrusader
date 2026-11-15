@@ -12,4 +12,4 @@ Recommandation : **A** (une ligne par carte à changer le jour où une carte n'a
 Valeur par défaut codée : A (`NumSites = 2` dans `HOLMapRules.h`, une valeur par carte dans `MakeMaps`).
 Posée par GLORFINDEL-1115a, 2026-11-15, chantier `SacredSitesInProgress.md` (S7).
 
-Réponse :
+Reponse (2026-11-15) : A : le tableau des cartes du code (FHOLMapInfo::NumSites, 2 partout) dit si la case « Sites sacrés » est grisée ; une carte à 0 est grisée (défaut codé). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D822) et le journal du chantier.

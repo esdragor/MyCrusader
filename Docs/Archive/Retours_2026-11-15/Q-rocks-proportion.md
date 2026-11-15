@@ -32,3 +32,5 @@ Contexte : un scénario sans `mapSize` charge la carte de TEST `Plain.umap` (sol
 - **Autre**.
 
 Recommandation : **C**. **Codé par défaut : A** (rien changé ; `Tools\Tests\scenario_mapsize_check.ps1 -List` donne la liste).
+
+Reponse (2026-11-15) : Q1 C : 6 rochers à facettes sur 8 (75 %, ROCK_STYLE C, défaut codé). Q2 C : mapSize Small seulement aux scénarios montrés à l'utilisateur, au fil de leurs essais, en rejouant chacun (les autres restent sur la carte de test). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D820) et le journal du chantier.

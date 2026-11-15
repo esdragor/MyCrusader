@@ -20,3 +20,5 @@ bataille entend une alerte sans quitter le terrain des yeux ; la répétition à
 
 **Défaut codé en attendant** : A pour « population pleine » seulement (règle pure `Script\UI\HOLAlertRules.as`, ligne muette, une fois quand la
 population devient pleine, pas de nouvelle ligne avant `HOLAlertRules::PopulationRepeatSeconds = 30.0`, une ligne à changer). Pas encore branchée au HUD (C++ à faire).
+
+Reponse (2026-11-15) : B : trois lignes (population pleine, recherche terminée, bâtiment achevé) + un son court par type et un ping sur la mini-carte (pas de ping pour population pleine) ; « attaqué ailleurs » gagne une ligne « Vos troupes sont attaquées » + son ; une même ligne au plus toutes les 30 s. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D804) et le journal du chantier.

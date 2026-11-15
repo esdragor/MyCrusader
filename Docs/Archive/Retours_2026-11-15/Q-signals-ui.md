@@ -27,4 +27,4 @@ Recommandation : **A** (le plus rapide en combat, et B peut s'y ajouter plus tar
 
 Recommandation : **B** à terme ; **A** en attendant (déjà codé, `hol.Signal.IconStyle 0`).
 
-Réponse :
+Reponse (2026-11-15) : Q1 A : Alt + clic bref = neutre ; Alt + clic glissé (plus de 16 px) = le type de ce côté, aucune roue affichée (défaut codé). Q2 A : carré arrondi de 10 px, une couleur par type (hol.Signal.IconStyle 0, défaut codé) ; les pictogrammes B restent possibles plus tard. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D821) et le journal du chantier.

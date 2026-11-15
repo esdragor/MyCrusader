@@ -27,3 +27,5 @@ La règle pure de patrouille est codée (aller-retour A/B, attaque-déplacement 
 
 Valeur par défaut codée : aucune case (la règle pure `Script\Orders\HOLPatrolRules.as` ne choisit ni case ni touche ;
 le branchement C++ attend la réponse). Distance d'arrivée d'une jambe : `HOLPatrolRules::ArriveRadius = 150` (une ligne à changer).
+
+Reponse (2026-11-15) : Q1 C : Patrouille sur la case F seule ; Suivre et focus sans case (clic droit sur un allié = suivre, sur un ennemi = attaque = focus). Q2 B : Suivre un allié = garde du corps (reste près de lui et attaque les ennemis à portée) ; Suivre un ennemi = l'attaquer ; focus = toute la sélection attaque une seule cible jusqu'à sa mort. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D818) et le journal du chantier.

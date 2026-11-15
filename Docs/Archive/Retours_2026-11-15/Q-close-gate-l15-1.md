@@ -19,3 +19,5 @@ La copie principale figure au tableau (« copie principale », NETTOYAGE-0a) ; s
 - Autre : ...
 Recommandation : **B** (personne ne joue depuis la copie principale ; ses essais passent par les worktrees).
 Défaut codé : **A** (la règle telle qu'écrite) ; reglage NON code (budget d appels) : une ligne a changer dans le bloc L15-1 de `session_gate.ps1`
+
+Reponse (2026-11-15) : Q1 B : un commit Source plus récent que la DLL ne fait FAIL que si Get-StaleBinaryProblem est aussi non vide, sinon WARN. Q2 B : la copie principale n'est contrôlée que sur « à main » (+0/-0), pas sur la DLL. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D808) et le journal du chantier.

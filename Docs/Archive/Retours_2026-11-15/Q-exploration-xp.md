@@ -30,4 +30,4 @@ La règle pure est codée par **tranche** (carré de cases du brouillard qui pai
 
 **Recommandation : B** (pas de double crédit, garde la part de D05). **Défaut en place : C** (liste vide, rien de branché, aucun changement de jeu).
 
-Réponse : 
+Reponse (2026-11-15) : Q1 C : tranche 3 XP + lieu 25 XP (préréglage 0, défaut codé). Q2 B : seuls les lieux sans autre paiement paient à la 1re vue (autel du Volcan, futurs lieux) ; relais et camps ne paient pas deux fois. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D809) et le journal du chantier.

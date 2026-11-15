@@ -13,3 +13,5 @@ Rappel des durées (pour 1 bâtisseur ; avec N Paysans la courbe N^0,63 de D312 
 **Recommandation : A (75 s)** : cohérent avec D557 (durées AoE divisées par 2) et avec D402 (le chantier doit exister et pouvoir tomber).
 
 **Défaut codé** : rien n'est changé tant que la question est ouverte (aujourd'hui 0 s = achevé au premier coup). Une ligne à changer : `Tools\Data\BuildingTypes.csv`, `MainCentre`, colonne `BuildTime` (puis régénérer la table `.uasset`) ; elle ne touche que les forums **construits** (le forum de départ standard est posé fini). Test à écrire avec : fondation MainCentre d'un siège Nomade avec N Paysans toujours en chantier avant `GetBuildSteps(BuildTime) / N^0,63` pas.
+
+Reponse (2026-11-15) : B : 150 s pour 1 Paysan (valeur AoE pleine ; environ 54 s avec 5 Paysans, courbe N^0,63 de D312) ; PAS la recommandation A (75 s). Une ligne à changer : MainCentre BuildTime dans BuildingTypes.csv. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D816) et le journal du chantier.

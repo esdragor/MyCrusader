@@ -12,3 +12,5 @@ Question : comment choisit-on le canal en écrivant, et comment la ligne montre-
 Valeur par défaut codée : la marque de A/B dans la ligne (« (Alliés) », « (Privé) », rien pour Tous), dans `HOLForumMessages::GetChatMessage` (une ligne à changer). La saisie (touche, champ) n'est pas codée tant que la réponse n'est pas là.
 
 Chantier : `ChatInProgress.md` (worktree HeroesOfLiberty-Glorfindel, branche net-playtest), GLORFINDEL-1115e, 2026-11-15.
+
+Reponse (2026-11-15) : A : Entrée ouvre un champ sur le canal Alliés (Tous sans allié) ; Tab bascule Alliés -> Tous -> privé (joueur choisi dans le panneau Diplomatie) ; la ligne reçue dit « Bob : (Alliés) texte », « (Privé) », rien pour Tous. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D807) et le journal du chantier.

@@ -19,3 +19,5 @@ Ce qui est déjà codé (valeurs proposées, une ligne chacune) : une tour finie
 **Recommandation : Q1 A + Q2 A.** Les tireurs sont ceux qui gagnent à être en hauteur (D693 bonus de hauteur) et une IA qui ressort après le calme ne gèle pas son armée ; c'est aussi le plus lisible pour le joueur (« les Archers de l'IA montent dans la tour quand je l'attaque »).
 
 Réponse : une ligne à changer par question (réglages ci-dessus), test `Script\AI\HOLAIGarrisonRules_Test.as` à mettre à jour.
+
+Reponse (2026-11-15) : Q1 A : l'IA envoie dans la tour attaquée les tireurs à pied seulement (hol.AI.GarrisonRule 1). Q2 A : les occupants ressortent après 15 s sans coup sur la tour (hol.AI.GarrisonExitCalmSeconds 15). (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D811) et le journal du chantier.

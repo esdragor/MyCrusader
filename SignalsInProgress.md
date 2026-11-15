@@ -122,3 +122,4 @@ ne signale pas. Commit du rouge 76f66b8 (namespace `HOLSignal` absent).
 - FAIT (5a75423) : RefreshMinimap journalise 'Minimap signal mark at (x, y) px' et 'Minimap signals: N (world t s)' ; scenario : waitlog Minimap signals: 1 puis waitlog Minimap signals: 0 avant la 2e capture. preflight PASS 14:26, 2 PNG vus (carre a 1 s, absent apres) -> E [A ESSAYER].
 - NON FAIT (arret de seance) : quick_check -Parts tests non lance apres le changement de script (log seul) ; aucun test unitaire ajoute (l'effet est asserti par les waitlog du scenario) ; .look non mis a jour (2e ligne dit encore '6 s plus tard').
 - PROCHAINE ETAPE : quick_check -Parts tests ; marque au sol, roue et Alt + clic minicarte apres Q-signals-ui ; SG4 sons.
+- 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D821 (Q-signals-ui) = Q1 A (Alt + clic glissé > 16 px) + Q2 A (carré de couleur par type) : défauts codés, rien à changer ; pictogrammes (B) possibles plus tard.

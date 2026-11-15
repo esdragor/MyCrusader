@@ -19,3 +19,5 @@ Agent HALDIR-1115c, 2026-11-15. Journal : `NomadInProgress.md` (worktree Haldir,
 - **Autre** : à préciser.
 
 **Réglage codé** (une ligne à changer, `Script\AI\HOLAINomadRules.as`) : `hol.AI.NomadForumRule` = 1 (Q1 A ; 0 = l'IA ne fonde jamais d'elle-même) ; `hol.AI.NomadGroupRadius` = 700 cm (deux Paysans à moins de 7 m forment un groupe). Q2 A n'est codé qu'en partie (la règle pose sans attendre de rassemblement ; l'envoi des autres Paysans vers la fondation reste à coder) ; Q1 B, Q1 C, Q2 B et Q2 C ne sont pas codés : rien n'est encore branché au jeu (l'ordre de construction de l'IA, en C++, reste à faire).
+
+Reponse (2026-11-15) : Q1 A : l'IA pose son premier forum au groupe de Paysans le plus nombreux dès que le stock couvre le prix (défaut codé). Q2 A : elle pose tout de suite, les autres Paysans marchent vers la fondation pour la bâtir ensemble. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D817) et le journal du chantier.

@@ -15,3 +15,5 @@ Valeur par défaut appliquée : A (rien changé ; la liste `Building.Stable` de 
 Pour info (pas de question) : les sons CC-BY 3.0 sont H du Champ de tir (s_shot5_volley_a, copyc4t) et J du Champ de tir (s_shot5_bolt_hit, spookymodem) : crédit à prévoir dans le jeu s'ils sont élus.
 
 Réponse attendue : `A`, `B`, `C` ou `Autre: ...`.
+
+Reponse (2026-11-15) : A : garder les 8 sons Red Library pour l'écoute des 10 lettres ; les remplacer par du CC0 sûr seulement si une lettre A-H est élue ; rien n'est publié avant l'élection. (réponse donnée dans la conversation, 2026-11-15) Suite : reportée dans le GDD (D805) et le journal du chantier.
