@@ -8495,7 +8495,8 @@ if ($Parts -contains "netsig3") {
             $ClientSequence = Join-Path $TestSaved "quick_${Sig3Part}_client$Client.seq"
             $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers $($Sig3Launched.Count)", "mark $Sig3Part")
             if ($Client -eq 1) {
-                $Steps += @("waitfile $(& $Sig3Flag 'phase1') 120", "hol.Signal.Post 1 1000 2000", "wait 2", "signal $(& $Sig3Flag 'posted1')",
+                # A4 (D385): Bob's Allies chat message while Alice is his mutual ally and Carol Neutral (Alice reads it, Carol not).
+                $Steps += @("waitfile $(& $Sig3Flag 'phase1') 120", "hol.Signal.Post 1 1000 2000", "hol.Chat.Say allies Hello allies", "wait 2", "signal $(& $Sig3Flag 'posted1')",
                     "waitfile $(& $Sig3Flag 'phase2') 90", "hol.Signal.Post 2 3000 4000", "wait 2", "signal $(& $Sig3Flag 'posted2')")
             }
             elseif ($Client -eq 3) {
@@ -8524,13 +8525,22 @@ if ($Parts -contains "netsig3") {
     $Checks["server: accepted Bob's 1 then 2, Carol's 3 (slot:kind:answer $($Sig3Answers -join ' '))"] = ($Sig3Answers -join " ") -eq "1:1:0 1:2:0 2:3:0"
     # Each client: (Bob's kind 1 while Neutral to Carol, Bob's kind 2 while Enemy to Carol, Carol's kind 3) received, and the count wanted.
     $Sig3Want = @{ 1 = @(1, 1, 0); 2 = @(1, 1, 0); 3 = @(0, 0, 1) }
+    $Sig3ChatWant = @{ 1 = 1; 2 = 1; 3 = 0 }
+    $Sig3ChatAnswers = @(if (Test-Path $Sig3ServerLog) { Select-String -Path $Sig3ServerLog -Pattern "Chat: slot (\d) channel (\d) sent to (\d+) seats" | ForEach-Object { "$($_.Matches[0].Groups[1].Value):$($_.Matches[0].Groups[2].Value):$($_.Matches[0].Groups[3].Value)" } })
+    $Checks["server: Bob's Allies chat message sent to 2 seats (slot:channel:seats $($Sig3ChatAnswers -join ' '))"] = ($Sig3ChatAnswers -join " ") -eq "1:1:2"
     foreach ($N in 1, 2, 3) {
         $Sig3Client = $Sig3Clients | Where-Object { $_.Client -eq $N } | Select-Object -First 1
         $Lines = if ($Sig3Client -and (Test-Path $Sig3Client.Log)) { @(Get-Content $Sig3Client.Log) } else { @() }
         $Got = @(@("kind 1 from slot 1 ", "kind 2 from slot 1 ", "kind 3 from slot 2 ") | ForEach-Object { @($Lines | Select-String -SimpleMatch -Pattern "Signal: received $_").Count })
         $Checks["client $N ($($Sig3Names[$N])) : sequence done"] = [bool]($Lines | Select-String -Pattern "Test mark: end" -Quiet)
         $Checks["client $N ($($Sig3Names[$N])) : received Bob neutral-time / Bob enemy-time / Carol's own = $($Sig3Want[$N] -join '/') ($($Got -join '/'))"] = ($Got -join "/") -eq ($Sig3Want[$N] -join "/")
+        # A4 (D385): Bob's Allies chat message (ServerPostChat -> HOLChat -> ClientReceiveChat): Bob and Alice read it, Carol never.
+        $ChatGot = @($Lines | Select-String -SimpleMatch -Pattern "Chat: received channel 1 from slot 1: Hello allies").Count
+        $Checks["client $N ($($Sig3Names[$N])) : Bob's Allies chat message read $($Sig3ChatWant[$N]) ($ChatGot)"] = $ChatGot -eq $Sig3ChatWant[$N]
     }
+    # Alice's thread line names Bob as the players' table does (GetPlayerName) with the channel.
+    $Sig3Alice = $Sig3Clients | Where-Object { $_.Client -eq 2 } | Select-Object -First 1
+    $Checks["client 2 (Alice) : thread line 'Chat message: Bob : (Alli...) Hello allies'"] = [bool]($Sig3Alice -and (Test-Path $Sig3Alice.Log) -and (Select-String -Path $Sig3Alice.Log -Pattern "Chat message: Bob : \(Alli.*\) Hello allies \(slot 0\)" -Quiet))
     Write-Host "netsig3 : $([Math]::Round($Clock.Elapsed.TotalSeconds) - $Sig3StartedAt) s (started at $Sig3StartedAt s of the run)"
     $AllOk = (Report "net signals 3 clients" $Checks) -and $AllOk
 }
