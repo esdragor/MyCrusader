@@ -76,3 +76,8 @@ Séance autonome lancée à 09:02, fin 17:00, fusion groupée acceptée (sans pu
 
 | Agent | id | worktree | tâche | C++ | lancé |
 |---|---|---|---|---|---|
+| NETTOYAGE-0a x3 | a0673aca322fa97a5, ab4a09201e485b1bb, a2e0db8e436dd6ee6 | copie principale | archives Jour/Retours, File, Procédure/Checklist (e91b4f2, c52244f, c8fff23) | non | 09:04 |
+| ETAPE0-1115 | acaf5b92f52066709 | lecture seule | plan de lancement (Fable) | non | 09:09 |
+| ARWEN-1115a | a46cb350aeee07631 | HeroesOfLiberty-Arwen | audio tour 5 (sons naturels Caserne/Champ de tir/Écurie, D801) | non | 09:17 |
+| SAURON-1115a | ad0a06bfc2b35225f | HeroesOfLiberty-Sauron | rochers D802 (réglage, DECOR_KINDS, mapSize, resources_game.*), SANS Arquebusier | non | 09:17 |
+| CELEBORN-1115a | ac79e43a4cf1fd115 | HeroesOfLiberty-Celeborn | Neutres 2/4 hypothèse SelfSide (rangement, mesure x8, règle) | non puis oui | 09:17 |
