@@ -6,8 +6,17 @@
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
+#include "MassExecutor.h"
+#include "MassProcessingContext.h"
 #include "Match/HOLGameState.h"
 #include "Misc/AutomationTest.h"
+#include "Simulation/HOLCombatProcessor.h"
+#include "Simulation/HOLSimulationFragments.h"
+#include "Simulation/HOLSimulationProcessors.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
@@ -146,6 +155,148 @@ bool FHOLGarrisonOrderTest::RunTest(const FString& Parameters)
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);
 	Table->RemoveRow(TestTowerType);
+	return true;
+}
+
+// F7 lot 3a (FortificationsInProgress.md, D693): a garrisoned unit's body is off the field. Through the REAL processors of the step: the keep-out
+// (UHOLFootprintKeepOutProcessor) and the combat (UHOLCombatProcessor) run on the world's entities. The garrisoned body stands inside its
+// building's body and the keep-out leaves it there (a control unit at a House's centre is pushed out by the same run); an enemy Archer that
+// had taken it as its target lets it go and its health does not move.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGarrisonOffFieldTest, "HeroesOfLiberty.Garrison.OffField", UE::HeroesOfLiberty::Tests::GarrisonOrder::Flags)
+
+bool FHOLGarrisonOffFieldTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GarrisonOrder;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("garrison test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.GarrisonSlots = 2;
+	Table->AddRow(TestTowerType, TowerRow);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	AHOLBuilding* Tower = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* House = World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("commands"), Commands)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("tower"), Tower) && TestNotNull(TEXT("house"), House))
+	{
+		Tower->Setup(TestTowerType, 0, 0);
+		House->Setup(HOLBuildingTypeNames::House, 0, 0);
+		const TSharedRef<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLFootprintKeepOutProcessor* KeepOut = NewObject<UHOLFootprintKeepOutProcessor>(Simulation);
+		KeepOut->CallInitialize(Simulation, EntityManager);
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager);
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const auto RunStep = [Simulation, Units, KeepOut, Combat, EntityManager, StepSeconds]
+		{
+			Simulation->GetOnStepStarted().Broadcast(Simulation->GetStepIndex());
+			Units->ServeBirthRequests();
+			FMassProcessingContext ProcessingContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*KeepOut, ProcessingContext);
+			FMassProcessingContext CombatContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, CombatContext);
+			Units->FlushDestructions();
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const TCHAR* Type, const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(Type);
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		const auto LocationOf = [Units, EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FTransformFragment* Transform = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+			return Transform ? Transform->GetTransform().GetLocation() : FVector(1.0e9);
+		};
+		const auto TargetOf = [Units, EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FHOLCombatFragment* Fragment = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Entity) : nullptr;
+			return Fragment ? Fragment->Target : FMassEntityHandle();
+		};
+		const auto HealthOf = [Units, EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			return State ? State->CurrentHealth : -1.f;
+		};
+		// Inside the building's body (the keep-out's own rectangle, D324), the building unturned.
+		const auto InsideBody = [](const AHOLBuilding& Building, const FVector& Location)
+		{
+			const FHOLBuildingTypeRow* Type = Building.GetType();
+			if (!Type)
+			{
+				return false;
+			}
+			const FVector2D Half = UHOLBuildingSettings::GetBodySize(Type->Footprint) * 0.5;
+			const FVector2D Local = FVector2D(Location) - FVector2D(Building.GetActorLocation());
+			return FMath::Abs(Local.X) <= Half.X && FMath::Abs(Local.Y) <= Half.Y;
+		};
+
+		const uint32 Ally = Place(TEXT("Spearman"), 0, FVector(2300.0, 0.0, 0.0));
+		const uint32 Control = Place(TEXT("Spearman"), 0, FVector(-3000.0, 0.0, 0.0));
+		const uint32 Foe = Place(TEXT("Archer"), 3, FVector(2000.0, 0.0, 0.0));
+		if (TestTrue(TEXT("the three units born"), Ally && Control && Foe))
+		{
+			const FMassEntityHandle AllyEntity = Units->FindEntity(Ally);
+			for (int32 Step = 0; Step < 20 && TargetOf(Foe) != AllyEntity; ++Step)
+			{
+				RunStep();
+			}
+			TestFalse(TEXT("control: the keep-out pushes a unit standing at a House's centre out of its body"), InsideBody(*House, LocationOf(Control)));
+			TestTrue(TEXT("control: the enemy Archer takes the Spearman as its target before the garrison"), TargetOf(Foe) == AllyEntity);
+
+			const uint32 Asked[] = { Ally };
+			Commands->IssueGarrisonOrder(0, Asked, Tower);
+			RunStep();
+			TestTrue(TEXT("the Spearman is in the tower"), Units->GetGarrison(Ally) == Tower);
+			const float Health = HealthOf(Ally);
+			for (int32 Step = 0; Step < 20; ++Step)
+			{
+				RunStep();
+			}
+			TestTrue(TEXT("the garrisoned body stands inside the tower's body and the keep-out leaves it there"), InsideBody(*Tower, LocationOf(Ally)));
+			TestTrue(TEXT("the enemy Archer lets the garrisoned Spearman go"), TargetOf(Foe) != AllyEntity);
+			TestEqual(TEXT("the garrisoned Spearman's health does not move"), HealthOf(Ally), Health);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	Table->RemoveRow(TestTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
 	return true;
 }
 
