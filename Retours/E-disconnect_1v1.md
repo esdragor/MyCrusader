@@ -1,8 +1,8 @@
-# [NE PAS JOUER] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
+# [A ESSAYER] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
 
-STATUT : NE PAS JOUER (LOGIQUE SEULEMENT) ; cause : lance sans -PlayerName chez l'utilisateur (spectateur) et binaire de la copie jouee perime (diagnostic 3b94faf) ; redonner quand la copie choisie est recompilee et que preflight.ps1 disconnect_1v1 -Root <cette copie> -PlayerName Alice complet PASS (pre-vol du 2026-11-09 ci-dessous : historique, plus valable)
+STATUT : VU A L'ECRAN (GLORFINDEL-1115a, 2026-11-15 09:33 : preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice PASS 49 s, 2 PNG ouverts et vus, session_gate -Phase Essay sans FAIL) ; geste INTERNE (depart simule, pas de second jeu)
 GESTE: interne      (commandes hol.Net.FakeAbsent End 1 : le depart reseau est simule sans second client ; Entree = temps suivant)
-SON: sans objet
+SON: non entendu   (-nosound ; aucun son attendu dans cet essai)
 branches: net-playtest
 
 Pre-vol (2026-11-09 16:3x, agent Glorfindel-22 sans C++, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel, main e9a349a) : preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice PASS (35 s, 2 PNG). WARN : pas de ligne HUD overlap ni Sanity.
@@ -27,3 +27,11 @@ Fait depuis : fog fusionnee dans main (b689e5a via maps, 4851635) et correctif d
 
 ## 2026-11-13 10:53 (FARAMIR-1113, sans C++) : PAS JOUE, toujours NE PAS JOUER
 session_gate.ps1 -Phase Essay -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir -Essay disconnect_1v1 : FAIL « branche 'net-playtest' ABSENTE du worktree » (binaire Faramir frais, arbre propre, PASS sinon). disconnect_1v1 vit sur net-playtest, pas dans main : pre-vol a faire depuis un worktree qui contient net-playtest (recompile), ou apres fusion de net-playtest dans main. Etape 5 « jamais venu » donc NON reverifiee aujourd'hui (cause connue : lancement sans -PlayerName, corrige dans main par 42e5e41).
+
+## 2026-11-15 09:33 (GLORFINDEL-1115a, sans C++) : PRE-VOL PASS, redonne [A ESSAYER]
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel (net-playtest = main 0ed4f60 + net-playtest, binaire 09:21 plus recent que le dernier commit de code). preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice : PASS (49 s ; check PASS, aucun avertissement ni spectateur au journal ; WARN pas de HUD overlap ni Sanity). La Reponse du 11-11 (etape 5 jamais venue) est close : cause = lancement sans -PlayerName + binaire perime, corrige par 42e5e41 (dans main) ; l'etape 5 passe ce jour.
+PNG OUVERTS et vus :
+- dc1v1_away : base de Bob (forum, 4 tours, baies, arbres), liste des joueurs 'Bob 2 vies Connexion perdue', bandeau 'Bob : connexion perdue - 1:00' sous le panneau du scenario.
+- dc1v1_end : ecran 'Victoire' (Continuer / Quitter vers le menu / Statistiques), Bob 'Vaincu' dans la liste, ligne 'Bob a quitte la partie' ; le bandeau n'est plus visible (sa place est couverte par le panneau du scenario, qui affiche maintenant la note : extinction non distinguable du recouvrement sur la capture).
+NON VERIFIE : depart reel d'un second jeu (geste interne hol.Net.FakeAbsent) ; extinction du bandeau (voir ci-dessus) ; le waitkey (Entree) est voulu (deux temps).
+Commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice
