@@ -264,6 +264,8 @@ void UHOLCombatProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>&
 	EntityQuery.AddRequirement<FHOLDeployFragment>(EMassFragmentAccess::ReadWrite, EMassFragmentPresence::Optional);
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::All);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+	// F7 lot 3a: a garrisoned unit is no fighter: it strikes nobody and nobody finds it (a target that leaves the list is let go).
+	EntityQuery.AddTagRequirement<FHOLGarrisonedTag>(EMassFragmentPresence::None);
 }
 
 int32 UHOLCombatProcessor::BucketOf(const FIntPoint& Cell)

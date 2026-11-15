@@ -1,4 +1,4 @@
-// Copyright Epic Games, Inc. All Rights Reserved.
+﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -24,6 +24,11 @@ class HEROESOFLIBERTY_API UHOLGarrisonSubsystem : public UWorldSubsystem
 public:
 	/** Applies the garrison orders waiting; returns how many units went in or out. Nothing on a client. */
 	int32 ApplyOrders();
+	/**
+	 * F7 lots 3b and 3c (D693): every occupant of Building back on the field, each on its own free point at the building's foot (where its
+	 * births stand), health unchanged: exit all, and the building's fall (UHOLConstructionSubsystem::DestroyBuilding). Server only; returns how many.
+	 */
+	static int32 EjectAll(AHOLBuilding& Building);
 	/** The places of a building: its type's GarrisonSlots (0 for a type without a row). */
 	static int32 GetSlots(const AHOLBuilding& Building);
 

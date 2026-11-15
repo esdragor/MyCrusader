@@ -20,6 +20,7 @@
 #include "Match/HOLPlayerState.h"
 #include "NavigationSystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLGarrisonSubsystem.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
 
@@ -618,6 +619,8 @@ void UHOLConstructionSubsystem::DestroyBuilding(AHOLBuilding& Building)
 	}
 	// IA1.2 F6a (IA1.2-Q2): a farm's field leaves the map with it; its Peasant goes to a free farm of the massif, or idles.
 	Building.ReleaseLinkedSource();
+	// F7 lot 3c (D693): its garrison back on the field at its foot, health unchanged, before it leaves the world.
+	UHOLGarrisonSubsystem::EjectAll(Building);
 	Building.ReleaseFootprint();
 	Building.Destroy();
 }

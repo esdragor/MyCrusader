@@ -5,6 +5,7 @@
 #include "Commands/HOLCommandSubsystem.h"
 #include "Commands/HOLUnitCommand.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "MassCommonFragments.h"
 #include "MassCommonTypes.h"
@@ -22,6 +23,15 @@
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
+
+namespace UE::HeroesOfLiberty::Heal
+{
+	// F7 (Retours/Q-garrison-soin.md, D693): is a garrisoned unit healed (and does a garrisoned healer heal)? 0 = A: no, it is off the field
+	// (default, the question's recommendation); 1 = B: as on the field, its body at its building's centre.
+	int32 GarrisonHealInside = 0;
+	FAutoConsoleVariableRef CVarGarrisonHealInside(TEXT("hol.Garrison.HealInside"), GarrisonHealInside,
+		TEXT("F7: 0 = a garrisoned unit is neither healed nor heals (off the field, default); 1 = as on the field (Retours/Q-garrison-soin.md)."));
+}
 
 TArray<UHOLHealProcessor::FLink> UHOLHealProcessor::Links;
 double UHOLHealProcessor::TotalHealed = 0.;
@@ -121,8 +131,10 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		const TConstArrayView<FHOLCombatFragment> Combats = Chunk.GetFragmentView<FHOLCombatFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Chunk.GetFragmentView<FTransformFragment>();
 		const FHOLUnitTypeConstants& Constants = Chunk.GetConstSharedFragment<FHOLUnitTypeConstants>();
-		const bool bHealer = Constants.HealRate > 0.f && Constants.HealRange > 0.f;
-		const bool bUnhealable = !HOLCanBeHealed(Constants.ArmorCategoryMask)
+		// F7 (Retours/Q-garrison-soin.md): a garrisoned chunk is off the field unless hol.Garrison.HealInside says otherwise.
+		const bool bOffField = UE::HeroesOfLiberty::Heal::GarrisonHealInside == 0 && Chunk.DoesArchetypeHaveTag<FHOLGarrisonedTag>();
+		const bool bHealer = !bOffField && Constants.HealRate > 0.f && Constants.HealRange > 0.f;
+		const bool bUnhealable = bOffField || !HOLCanBeHealed(Constants.ArmorCategoryMask)
 			|| (Constants.ArmorCategoryMask & HOLArmorCategoryBit(EHOLArmorCategory::Siege)) != 0;
 		for (FMassExecutionContext::FEntityIterator It = Chunk.CreateEntityIterator(); It; ++It)
 		{
