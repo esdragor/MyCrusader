@@ -93,3 +93,103 @@ Fusion groupée n°2 (FUSION-1115b, 11:06-11:1x, intégration fog dans HeroesOfL
 Fusion groupée n°4 (FUSION-1115d, 12:04-12:1x, intégration fog dans HeroesOfLiberty-Faramir) : main b128d49 -> c8716f5 (avance rapide, rien poussé) ; fusionnées galadriel-tab (2b9251c), d751-root (f32b9e1 ; conflit docs ScenariosInProgress.md, deux sections gardées), maps (c1cde36), fog (19fc9d4) ; `git merge main` : déjà à jour ; aucune exclue ; hero-j8-close non fusionnée (consigne) ; build PASS 124 s, quick_check tests 1303/1303 + values + net (19 PASS) + aiserver + aiduel PASS en 378 s ; preflight BLOQUE galadriel-tab / d751-root / fog (commit de docs de main manquant) couvert par le retest sur l'intégration.
 Fusion groupée n°6 (FUSION-1115f, 13:49-14:0x, intégration fog dans HeroesOfLiberty-Faramir) : main ec4c899 -> 78891c6 (avance rapide, rien poussé) ; fusionnées tiers (a28395b), maps (6f7c7c9), galadriel-tab (ace7f80), net-playtest (8b8e309), aucun conflit, `git merge main` final : déjà à jour ; quick_check.ps1 identique à main ; aucune exclue ; build PASS 96 s, quick_check tests 1320/1320 + values (aucun orphelin) + net (19 PASS) + netsig3 (3 clients) + aiserver + aiduel PASS en 419 s ; preflight BLOQUE des 4 branches (2 commits de docs/quick_check de main manquants) couvert par le retest sur l'intégration.
 Fusion finale n°7 (FUSION-1115g, 14:27-14:4x, intégration fog dans HeroesOfLiberty-Faramir) : main 6385623 -> da3054c (avance rapide, rien poussé ; main valait 71c44e8 au début, 6385623 = docs seuls fusionnés après les tests) ; fusionnées tiers (6b81a72), maps (5a75423), net-playtest (602aa8c), visual (3c02c56), aucun conflit, aucune exclue ; quick_check.ps1 = netsig3 étendu de main + test d'accord exploration_xp dans values (fusion automatique, 3 lignes) ; Get-StaleBinaryProblem vide = pas de build ; quick_check tests 1320/1320 + values + net (19 PASS) + netsig3 (3 clients) + aiserver + aiduel PASS en 424 s ; preflight BLOQUE des 4 branches (2 commits de docs de main manquants) couvert par le retest sur l'intégration.
+
+### Bilan du 2026-11-15
+
+- **Seance** : autonome 09:02 -> arretee a 14:37 sur demande de l'utilisateur (fin dure prevue 17:00), fusion groupee acceptee, rien pousse ; environ 65 agents (tableau ci-dessus), 7 fusions.
+- **main** : 140cdb7 -> 22ad07b. Fusions : n°1 (6 branches, d751-root exclue), n°2 (d751-root, tiers), n°3 (tiers en avance rapide, session principale), n°4 (galadriel-tab, d751-root, maps, fog), n°5 (6 branches), n°6 (tiers, maps, galadriel-tab, net-playtest), n°7 (tiers, maps, net-playtest, visual). Tests 1267 -> 1320 verts (values, net 19 parties + netsig3, aiserver, aiduel PASS a chaque fusion). RIEN POUSSE.
+- **Fait** : outils L15-1 (gate Close) et L15-2 (edit_line), quick_check -Parts values seul corrige (rouge morale preexistant depuis le 11-12 : donnees), harnais net a 3 clients (netsig3) et chat reseau teste (prive, limites, spectateur) ; garnison F7 lots 3a-3e, 4b clic droit, 4c regle pure de l'IA ; Nomade : reseau D799, fin du premier forum repliquee, IA Nomade branchee (IsBuildableBy) ; Sites sacrés S7 grise par carte ; signaux SG3 (Alt + clic, carre sur la mini-carte, ligne du fil) ; specialisation SP3 (bouton du Forum) ; XP d'exploration cablee + test d'accord ; regles pures : furtivite, patrouille, raccourcis, alerte population, foret/gue ; audio tour 5 (enregistrements libres) ; rochers D802 ; UHOLDropdown (Entree perdue : delai de reouverture) ; gestes reels (talents, infobulle revenu, sites_option) ; releve GDD neuf ; recette independante sur le build fusionne.
+- **Essais [A ESSAYER] a jouer** (Retours\ESSAIS-A-JOUER.md) : nomad_start, disconnect_1v1, income_tooltip, talents_icons_compare, sites_option (touches reelles), specialization_button (defaut : texte en cours deborde), signals_altclick (carre blanc = signal neutre), audio_compare_buildings_barracks / _range / _stable (SON a juger : commandes -Root Arwen) ; LOGIQUE SEULEMENT : nomad_ai (forum deja acheve, BuildTime 0).
+- **Questions ouvertes (18)** : Q-rocks-proportion, Q-income-tooltip-taille, Q-sites-grisage, Q-audio-licences-tour5, Q-march-member-detour (mesure x16 ajoutee), Q-garrison-soin, Q-garrison-ui, Q-garrison-ia, Q-signals-ui, Q-rebind, Q-stealth, Q-patrol-follow, Q-exploration-xp, Q-forest-ford, Q-alerts-minor, Q-nomad-ia, Q-nomad-forum-duree, Q-specialization-ui, Q-chat-ui, Q-chat-rules, Q-close-gate-l15-1 (Q-arquebusier-modele : autre session).
+- **Non fini, travail ROUGE non commite dans les arbres** : Elrond (tiers : texte de la case de specialisation en cours + rapport HUD : test ForumGrid rouge voulu, git mv du test vers le module UI) ; Galadriel (galadriel-tab : alerte population branchee mais test sans PlayerContext : suite dans AlertsMinorInProgress.md). Ces deux worktrees ne sont PAS synchronises avec main.
+- **Non verifie** : aucun son entendu ; la plupart des affichages non vus (ligne de signal, alerte, bouton de specialisation) ; aucune partie d'IA Nomade vue ; gestes internes declares ; copie principale : build lance 14:46 (resultat a verifier).
+- **Anomalies du processus** : l'outil Edit refuse apres un build/commit (SAURON-1115c a perdu 8 Edit) ; la session principale a donne une syntaxe fausse d'edit_line et cree des doublons dans le tableau ; le classifieur de permissions refuse les commits rouges seuls et plusieurs git merge main chaines ; HALDIR-1115a a ecrase la ligne 315 d'EtapeDefini (restauree) ; 5 agents arretes a 45 appels sans livrer ; la session principale a depasse largement son budget de contexte (axes L15-3 a L15-9).
+
+### Lecons appliquees 2026-11-15
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| T2-1 | non evalue | - |
+| T2-2 | non evalue | - |
+| L3-12 | non evalue | - |
+| L5-7 | non evalue | - |
+| L3-9 | non evalue | - |
+| T2-3 | non evalue | - |
+| L1-2 | non evalue | - |
+| L1-3 | non evalue | - |
+| L3-5 | non evalue | - |
+| L1-8 | non evalue | - |
+| L1-7 | non evalue | - |
+| L5-6 | non evalue | - |
+| T2-5 | non evalue | - |
+| L4-13 | non evalue | - |
+| T2-4 | non evalue | - |
+| Q1 | non evalue | - |
+| Q2 | non evalue | - |
+| Q3 | non evalue | - |
+| Q4 | non evalue | - |
+| Q8 | non evalue | - |
+| Q9 | non evalue | - |
+| Q11 | non evalue | - |
+| L4-11 | non evalue | - |
+| L1-13 | non evalue | - |
+| L6-2 | non evalue | - |
+| L6-4 | non evalue | - |
+| L6-6 | non evalue | - |
+| L7-5 | non evalue | - |
+| L7-7 | non evalue | - |
+| L8-2 | non evalue | - |
+| L8-4 | non evalue | - |
+| L8-8 | non evalue | - |
+| L9-1 | non evalue | - |
+| L9-6 | non evalue | - |
+| L9-8 | non evalue | - |
+| L9-9 | non evalue | - |
+| L9-10 | non evalue | - |
+| L10-2 | non evalue | - |
+| L10-3 | non evalue | - |
+| L10-4 | non evalue | - |
+| L11-3 | non evalue | - |
+| L11-4 | appliquee | lignes faites retirees de la file : c52244f (Docs\Archive\Auto_Journey_File_faits_2026-11-15.md) |
+| L11-8 | non evalue | - |
+| L11-9 | appliquee | RECETTE-1115a (Fable, 11:19) : 4 PASS, 3 FAIL sur le build fusionne |
+| L11-11 | non evalue | - |
+| L11-12 | non evalue | - |
+| L11-13 | appliquee | heures lues par Get-Date |
+| L12-1 | non evalue | - |
+| L12-1b | non evalue | - |
+| L12-2 | appliquee | sync_worktrees sans -NoBuild a 09:09 et a 14:37 |
+| L12-3 | non evalue | - |
+| L12-4 | partielle | LaunchCheck avant le code pour la plupart des agents C++ ; CELEBORN-1115b apres ses modifications |
+| L12-5 | appliquee | TESTS_TAUTOLOGIQUES: 0 dans les rapports |
+| L12-7 | non evalue | - |
+| L13-1 | non evalue | - |
+| L13-2 | appliquee | plafond C++ lu dans les tickets de BuildQueue.state (gate Launch) |
+| L13-3 | appliquee | docs de la copie principale commites avant chaque fusion |
+| L13-4 | appliquee | net PASS a chaque fusion (7 fusions) |
+| L13-5 | non evalue | - |
+| L13-6 | non evalue | - |
+| L13-7 | non evalue | - |
+| L13-8 | non evalue | - |
+| L14-1 | non appliquee | agents a 46-66 appels ; 5 arretes sans livrer |
+| L14-2 | non evalue | - |
+| L14-3 | appliquee | ForeignSession : aucun worktree d une autre session ce jour |
+| L14-4 | non evalue | - |
+| L14-5 | partielle | gestes reels : talents_icons_compare, income_tooltip, sites_option, specialization_button, signals_altclick ; nomad_start, disconnect_1v1, audio : internes |
+| L14-6 | non evalue | - |
+| L14-7 | appliquee | build.ps1 imprime Get-StaleBinaryProblem |
+| L14-8 | appliquee | FrameWaits dans check.ps1 : WARN 230 attentes frames |
+| L14-9 | non evalue | - |
+| L14-10 | non evalue | - |
+| L14-11 | non evalue | - |
+| L14-12 | appliquee | commit_docs.ps1 -Only (accepte Docs/Archive/ : b65ff21) |
+| L14-13 | non evalue | - |
+| L15-1 | partielle | sync_worktrees SANS -NoBuild a 14:37 : Arwen, Celeborn, Faramir, Glorfindel, Sauron, Haldir a main avec DLL a jour ; Elrond et Galadriel NON synchronises (travail rouge non commite dans l arbre) ; copie principale : build lance 14:46 |
+| L15-2 | appliquee | edit_line refuse un -Match non unique (fog 938e972) ; la syntaxe -Append a ete mal donnee aux agents par la session principale |
+| L15-3 | non appliquee | axe de la seance : replace_text.ps1 a ecrire (Edit refuses apres build/commit : SAURON-1115c 8 Edit perdus) |
+| L15-4 | non appliquee | axe de la seance : agents_table.ps1 a ecrire (3 lignes en double, ids vides) |
+| L15-5 | non appliquee | axe de la seance : convention du rouge vu a l execution (classifieur refuse le commit rouge seul) |
+| L15-6 | non appliquee | axe de la seance : build_wait.ps1 a ecrire |
+| L15-7 | partielle | releve GDD refait (RELEVE-1115a, Docs\ReleveGDD_2026-11-15.md) mais apres 3 h de seance, pas a l etape 0 |
+| L15-8 | non appliquee | recette independante faite (4 PASS, 3 FAIL audio) mais `.look` sans objet nomme ni verification des assets |
+| L15-9 | non appliquee | au moins 5 agents arretes a 45 appels sans livrer |
