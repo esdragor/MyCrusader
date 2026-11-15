@@ -54,13 +54,29 @@ namespace HOLTerrain
 	// nearby) is the caller's (Q-forest-ford Q1); the movement step scales the speed by it (ScaledSpeed), as by the marsh's.
 	int ForestSpeedPercent(const FHOLTerrainSettings& Settings, int Category, bool bInForest)
 	{
-		return 100; // RED STUB (F4 not written yet)
+		if (!bInForest)
+		{
+			return 100;
+		}
+		if (Category == Cavalry)
+		{
+			return Settings.ForestCavalrySpeedPercent;
+		}
+		if (Category == Siege)
+		{
+			return Settings.ForestSiegeSpeedPercent;
+		}
+		return 100;
 	}
 
 	// F5: the damage a unit takes from a hit, on a ford or not (its defence reduced on a ford). Never below 0.
 	int FordDamageTaken(const FHOLTerrainSettings& Settings, int Damage, bool bOnFord)
 	{
-		return Damage; // RED STUB (F5 not written yet)
+		if (Damage <= 0)
+		{
+			return 0;
+		}
+		return bOnFord ? Damage * Settings.FordDamageTakenPercent / 100 : Damage;
 	}
 
 	// The presets: 0 the marsh slows to 60 % (the unit loses 2 cm in 5, clearly felt), 1 to 75 % (felt, a crossing is not a stop). Neither is

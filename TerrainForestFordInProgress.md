@@ -28,6 +28,18 @@ Regles pures Angelscript seulement (`Script\Terrain\HOLTerrainRules.as` + `_Test
 
 ## Journal
 - 2026-11-15 12:25 : merge main (avance rapide 2b9251c -> cdbfe27), IN_USE OCCUPE, chantier ouvert.
+- 12:26 : test rouge commite bd48de5 (stubs neutres : `ForestSpeedPercent` = 100, `FordDamageTaken` = degats) ; quick_check -Parts tests
+  lance 12:26 (attendu rouge : Test_TerrainForestSlowsCavalryAndSiege, Test_TerrainFordWeakensDefence).
+- 12:30 : VU ROUGE : tests 1303/1305, seuls les 2 attendus (assertions « Expected true, got false »).
+- 12:34 : vert : `ForestSpeedPercent` (cavalerie / siege en foret = leur ligne de reglage, a pied et hors foret 100) et
+  `FordDamageTaken` (degats x FordDamageTakenPercent / 100 sur un gue, 0 reste 0) ; tests 1305/1305 PASS (186 s).
+  Valeurs assertees calculees par la regle (ScaledSpeed(ForestSpeedPercent), FordDamageTaken), jamais recopiees : tautologiques 0.
+
+## Etat (12:34)
+- F4 / F5 regles pures FAITES ET VERTES (galadriel-tab, pas dans main). Rien de branche au jeu.
+- Prochaine etape (C++, un autre agent, apres la reponse a Q-forest-ford) : copie C++ dans HOLTerrainRules.h + test d'accord script /
+  serveur ; le simulateur de mouvement lit ForestSpeedPercent (categorie de l'unite, en foret), le combat lit FordDamageTaken ;
+  definir « en foret » / « sur un gue » (zone peinte `Forest` / `Ford`, ou arbres) selon Q1.
 
 ## Appels (un trait par appel)
-||||||||||||||
+|||||||||||||||||||||||||||||
