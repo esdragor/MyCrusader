@@ -1452,6 +1452,20 @@ FString TalentTipTexts = "";
 				}
 			}
 		}
+		// SG3 (GDD 15, D386): the received signals' icons while they live (hol.Signal.IconSeconds; look: Retours/Q-signals-ui.md).
+		AHOLPlayerController SignalViewer = Cast<AHOLPlayerController>(GetOwningPlayer());
+		if (SignalViewer != nullptr)
+		{
+			TArray<FHOLReceivedSignal> Signals = SignalViewer.GetActiveSignals();
+			for (int Index = 0; Index < Signals.Num(); Index++)
+			{
+				FHOLMinimapMark SignalMark;
+				SignalMark.Position = HOLMinimap::ToPicture(MinimapFrame, FVector2D(Signals[Index].Location.X, Signals[Index].Location.Y));
+				SignalMark.Color = Signals[Index].Color;
+				SignalMark.Size = 10.0;
+				Marks.Add(SignalMark);
+			}
+		}
 		// The alerts: what lost health since the last reading, aged by the game's clock.
 		const float Now = Gameplay::GetTimeSeconds();
 		HOLMinimap::Age(MinimapAlerts, MinimapLastTime < 0.0 ? 0.0 : Math::Max(0.0, Now - MinimapLastTime), Minimap.GetAlertSeconds());

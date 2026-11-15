@@ -1361,6 +1361,13 @@ void AHOLGameState::NoteTributeReceived(const int32 GiverSlot, const int32 Recei
 	OnTributeMessage.Broadcast(ReceiverSlot, Message);
 }
 
+void AHOLGameState::NoteSignalReceived(const int32 SenderSlot, const int32 Kind, const int32 ViewerSlot)
+{
+	const FHOLForumMessage Message = HOLForumMessages::GetSignalMessage(SenderSlot, Kind, GetLaunchConfig(), ViewerSlot);
+	UE_LOG(LogHOLMatch, Display, TEXT("%s (slot %d)"), *Message.Shown, ViewerSlot);
+	OnSignalMessage.Broadcast(ViewerSlot, Message);
+}
+
 void AHOLGameState::NoteHeroReady()
 {
 	const UWorld* World = GetWorld();

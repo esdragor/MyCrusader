@@ -5163,6 +5163,28 @@ void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender
 {
 	++NumReceivedSignals;
 	UE_LOG(LogHOLMatch, Display, TEXT("Signal: received kind %d from slot %d at (%.0f, %.0f)"), Kind, Sender, Location.X, Location.Y);
+	// SG3: its icon on the minimap while it lives (D784: 5 s).
+	FHOLReceivedSignal Received;
+	Received.Sender = Sender;
+	Received.Kind = Kind;
+	Received.Location = Location;
+	Received.ReceivedAt = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	Received.Color = HOLSignalInput::ColorOf(Kind);
+	ReceivedSignals.Add(Received);
+	HOLSignalInput::Expire(ReceivedSignals, Received.ReceivedAt);
+	// SG3 lot 2 (D386, D445): its line in the thread of messages, through the game state (the HUD of this viewer's machine shows it).
+	if (AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
+	{
+		const AHOLPlayerState* ViewerState = GetHOLPlayerState();
+		GameState->NoteSignalReceived(Sender, Kind, ViewerState ? ViewerState->GetPlayerIndex() : INDEX_NONE);
+	}
+}
+
+TArray<FHOLReceivedSignal> AHOLPlayerController::GetActiveSignals() const
+{
+	TArray<FHOLReceivedSignal> Active = ReceivedSignals;
+	HOLSignalInput::Expire(Active, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0);
+	return Active;
 }
 
 void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 Option)
@@ -5610,6 +5632,13 @@ void AHOLPlayerController::HandleSelectStarted()
 		PlantBannerAt(Cursor);
 		return;
 	}
+	// SG3 (GDD 15, D386): Alt held, the left click places a map signal (resolved at the release), never selects.
+	if (IsInputKeyDown(EKeys::LeftAlt) || IsInputKeyDown(EKeys::RightAlt))
+	{
+		bSelectPressed = false;
+		bSignalPressed = GetCursorFraction(SignalPressFraction);
+		return;
+	}
 	bSelectPressed = GetCursorFraction(SelectPressFraction);
 	SelectPressTime = GetWorld()->GetRealTimeSeconds();
 }
@@ -5627,6 +5656,25 @@ void AHOLPlayerController::ScriptLeftClick(const FVector2D& ViewportFraction)
 
 void AHOLPlayerController::HandleSelectCompleted()
 {
+	// SG3: an Alt + click's signal, at the ground under the press; its kind from the release (brief: neutral, a drag: the wheel's).
+	if (bSignalPressed)
+	{
+		bSignalPressed = false;
+		FVector2D Release;
+		if (!GetCursorFraction(Release))
+		{
+			Release = SignalPressFraction;
+		}
+		const FVector2D PressPixels = ToPixels(SignalPressFraction);
+		const int32 Kind = HOLSignalInput::KindOfAltClick(PressPixels, ToPixels(Release));
+		FVector Origin, Direction, Ground;
+		if (RTSCamera && DeprojectScreenPositionToWorld(PressPixels.X, PressPixels.Y, Origin, Direction) && RTSCamera->GetGroundPoint(Origin, Direction, Ground))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Signal: Alt + click kind %d at (%.0f, %.0f)"), Kind, Ground.X, Ground.Y);
+			RequestSignal(Kind, Ground);
+		}
+		return;
+	}
 	// Resolved at the release: a press that moved past a few pixels drew a box (D288).
 	if (!bSelectPressed)
 	{

@@ -263,6 +263,37 @@ FHOLForumMessage HOLForumMessages::GetTributeMessage(const int32 GiverSlot, cons
 	return Message;
 }
 
+FHOLForumMessage HOLForumMessages::GetSignalMessage(const int32 SenderSlot, const int32 Kind, const FHOLMatchConfig& Config, const int32 ViewerSlot)
+{
+	FText Label;
+	switch (Kind)
+	{
+	case 1:
+		Label = LOCTEXT("SignalAttack", "Attaque ici");
+		break;
+	case 2:
+		Label = LOCTEXT("SignalDefend", "Défends ici");
+		break;
+	case 3:
+		Label = LOCTEXT("SignalNeedHelp", "Besoin d'aide");
+		break;
+	case 4:
+		Label = LOCTEXT("SignalRally", "Regroupement");
+		break;
+	case 5:
+		Label = LOCTEXT("SignalScout", "Éclaire ici");
+		break;
+	default:
+		Label = LOCTEXT("SignalNeutral", "Signal");
+		break;
+	}
+	FHOLForumMessage Message;
+	Message.Text = FText::Format(LOCTEXT("MessageSignal", "{0} : {1}"), GetPlayerName(Config, SenderSlot, ViewerSlot), Label);
+	Message.NamedSlots.Add(SenderSlot);
+	Message.Shown = FString::Printf(TEXT("Signal message: %s"), *Message.Text.ToString());
+	return Message;
+}
+
 FHOLForumMessage HOLForumMessages::GetHeroReadyMessage()
 {
 	FHOLForumMessage Message;

@@ -606,6 +606,16 @@ public:
 	void NoteTributeReceived(int32 GiverSlot, int32 ReceiverSlot, int32 Resource, int32 Arrives, int32 Tax);
 
 	/**
+	 * SG3 (D386, D445): a map signal received by this machine's ViewerSlot (AHOLPlayerController::ClientReceiveSignal): its thread's line
+	 * (HOLForumMessages::GetSignalMessage), the viewer's slot first; the HUD whose player is that slot shows it. Logs "Signal message: <text> (slot N)".
+	 */
+	DECLARE_MULTICAST_DELEGATE_TwoParams(FOnSignalMessage, int32 /*ViewerSlot*/, const FHOLForumMessage& /*Message*/);
+	FOnSignalMessage OnSignalMessage;
+
+	/** SG3: a signal of Kind placed by SenderSlot reached ViewerSlot's machine: OnSignalMessage. */
+	void NoteSignalReceived(int32 SenderSlot, int32 Kind, int32 ViewerSlot);
+
+	/**
 	 * J8b.4 (J8b-Q4): every machine with a player, a slot's hero gone up from OldLevel to NewLevel in its public sheet
 	 * (FHOLHeroLevelWatch: not the first level seen). Logs "Hero level up: slot N level A -> B", then this: his golden flash
 	 * for all, the alerts for his owner (the HUD).
