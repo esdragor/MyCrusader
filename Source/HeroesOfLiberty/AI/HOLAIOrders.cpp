@@ -170,7 +170,9 @@ int32 UHOLAIOrderLibrary::CheckAIPlacement(const UObject* WorldContextObject, co
 {
 	const UWorld* World = GetAuthorityWorld(WorldContextObject);
 	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
-	if (!World || !Type || !Type->IsBuildable())
+	// The server's own rule (UHOLConstructionSubsystem: IsBuildableBy): a Nomad seat's first forum is placed although the MainCentre
+	// has no cell of the grid.
+	if (!World || !Type || !UHOLBuildingSettings::IsBuildableBy(World, TypeName, PlayerIndex))
 	{
 		return -1;
 	}
@@ -183,7 +185,7 @@ bool UHOLAIOrderLibrary::FindAIPlacement(const UObject* WorldContextObject, cons
 	const UWorld* World = GetAuthorityWorld(WorldContextObject);
 	const FHOLBuildingTypeRow* Type = TypeName.IsNone() ? nullptr : UHOLBuildingSettings::FindType(TypeName);
 	FBox2D Footprint;
-	if (!World || !Type || !Type->IsBuildable()
+	if (!World || !Type || !UHOLBuildingSettings::IsBuildableBy(World, TypeName, PlayerIndex)
 		|| !UHOLConstructionSubsystem::FindRingFootprint(*World, *Type, FVector2D(Centre), PlayerIndex, MaxRings, {}, Footprint))
 	{
 		return false;
