@@ -54,3 +54,18 @@ FText FHOLMapRules::GetDisplayName(const FSoftObjectPath& Asset)
 	const FHOLMapInfo* Info = FindByAsset(Asset);
 	return Info ? Info->DisplayName : FText::AsCultureInvariant(Asset.GetAssetName());
 }
+
+// S7 red step (stub): the count and the hook are not read yet.
+int32 FHOLMapRules::GetSiteCount(const FSoftObjectPath&)
+{
+	return 2;
+}
+
+FHOLMapRules::FScopedSiteCount::FScopedSiteCount(const TCHAR* InKey, int32)
+	: Key(InKey)
+{
+}
+
+FHOLMapRules::FScopedSiteCount::~FScopedSiteCount()
+{
+}
