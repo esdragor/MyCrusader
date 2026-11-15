@@ -2,7 +2,10 @@
 # Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
-hol.Camera.FocusNear -900 300
+# le Champ de tir que tu ecoutes, finie et a toi, posee derriere le centre (la place du Champ de tir d'archers.txt), camera dessus : l'ecran montre le batiment du son, pas le Forum.
+hol.Cheat.SpawnBuilding ArcheryRange 0 -3800 4600
+waitlog Cheat: spawned ArcheryRange of slot 0
+hol.Camera.FocusNear -3800 4600
 frames 10
 note Ecoute le son de SELECTION du CHAMP DE TIR, tour 5 : arc long, arbalete, volee d'archers, ENREGISTRES (echantillons libres). 10 sons, 1 cue, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Range C.
