@@ -2,6 +2,7 @@
 
 #include "Buildings/HOLBuilding.h"
 #include "Buildings/HOLBuildingTypes.h"
+#include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
@@ -569,6 +570,116 @@ bool FHOLGarrisonExitPointTest::RunTest(const FString& Parameters)
 			TestFalse(TEXT("exit all puts the second Spearman out of the tower's body"), InsideBody(*Tower, LocationOf(B)));
 			TestTrue(TEXT("each on its own point (farther apart than their two radii)"),
 				FVector2D::Distance(FVector2D(LocationOf(A)), FVector2D(LocationOf(B))) > RadiusOf(A) + RadiusOf(B));
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	Table->RemoveRow(TestTowerType);
+	return true;
+}
+
+// F7 lot 3c (FortificationsInProgress.md, D693): a garrisoned building destroyed (its health brought to 0 through the real damage of the server,
+// UHOLConstructionSubsystem::DamageBuilding) ejects its occupants: back on the field, each out of the fallen body on its own point, health unchanged.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGarrisonEjectionTest, "HeroesOfLiberty.Garrison.Ejection", UE::HeroesOfLiberty::Tests::GarrisonOrder::Flags)
+
+bool FHOLGarrisonEjectionTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GarrisonOrder;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("garrison test")) : nullptr;
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow))
+	{
+		return false;
+	}
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.GarrisonSlots = 2;
+	Table->AddRow(TestTowerType, TowerRow);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	AHOLBuilding* Tower = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("commands"), Commands)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("tower"), Tower))
+	{
+		Tower->Setup(TestTowerType, 0, 0);
+		const TSharedRef<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		const auto RunStep = [Simulation, Units]
+		{
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const TCHAR* Type, const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(Type);
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		const auto LocationOf = [Units, EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FTransformFragment* Transform = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+			return Transform ? Transform->GetTransform().GetLocation() : FVector(1.0e9);
+		};
+		const auto StateOf = [Units, EntityManager](const uint32 Id) -> FHOLUnitStateFragment*
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			return Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+		};
+		const FHOLBuildingTypeRow* Type = Tower->GetType();
+		const FVector2D Centre(Tower->GetActorLocation());
+		const FVector2D Half = Type ? UHOLBuildingSettings::GetBodySize(Type->Footprint) * 0.5 : FVector2D(1.0e9);
+		const auto InsideBody = [Centre, Half](const FVector& Location)
+		{
+			const FVector2D Local = FVector2D(Location) - Centre;
+			return FMath::Abs(Local.X) <= Half.X && FMath::Abs(Local.Y) <= Half.Y;
+		};
+
+		const uint32 A = Place(TEXT("Spearman"), 0, FVector(2000.0, 600.0, 0.0));
+		const uint32 B = Place(TEXT("Spearman"), 0, FVector(2000.0, -600.0, 0.0));
+		if (TestTrue(TEXT("the two Spearmen born"), A && B) && TestNotNull(TEXT("state of A"), StateOf(A)) && TestNotNull(TEXT("state of B"), StateOf(B)))
+		{
+			StateOf(A)->CurrentHealth = 50.f;
+			const float HealthA = StateOf(A)->CurrentHealth;
+			const float HealthB = StateOf(B)->CurrentHealth;
+			const uint32 Asked[] = { A, B };
+			Commands->IssueGarrisonOrder(0, Asked, Tower);
+			RunStep();
+			TestTrue(TEXT("control: both garrisoned bodies stand inside the tower's body"), Units->GetGarrison(A) == Tower && Units->GetGarrison(B) == Tower
+				&& InsideBody(LocationOf(A)) && InsideBody(LocationOf(B)));
+
+			const int32 Dealt = UHOLConstructionSubsystem::DamageBuilding(*Tower, 1000000, EHOLAttackType::Siege);
+			TestTrue(TEXT("control: the damage of the server destroys the tower"), Dealt > 0 && !IsValid(Tower));
+			RunStep();
+			TestTrue(TEXT("both back on the field"), Units->GetGarrison(A) == nullptr && Units->GetGarrison(B) == nullptr);
+			TestFalse(TEXT("the fall ejects the first Spearman out of the tower's body"), InsideBody(LocationOf(A)));
+			TestFalse(TEXT("the fall ejects the second Spearman out of the tower's body"), InsideBody(LocationOf(B)));
+			TestTrue(TEXT("each on its own point"), FVector2D::Distance(FVector2D(LocationOf(A)), FVector2D(LocationOf(B))) > 1.0);
+			TestEqual(TEXT("the first Spearman's health unchanged by the fall"), StateOf(A) ? StateOf(A)->CurrentHealth : -1.f, HealthA);
+			TestEqual(TEXT("the second Spearman's health unchanged by the fall"), StateOf(B) ? StateOf(B)->CurrentHealth : -1.f, HealthB);
 		}
 	}
 	GEngine->DestroyWorldContext(World);
