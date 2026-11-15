@@ -309,6 +309,45 @@ Check ($etClose -match '(?m)^WARN .*commits .*AgentX.*pas dans main') 'L90 close
 Check (-not ($etClose -match '(?m)^WARN .*(featy|featz).*pas dans main')) 'L90 close: featy (hors main) et branche inconnue -> pas de WARN' $etClose
 Check ($etClose -match '(?m)^WARN .*branche featx.*AgentW') 'L90 close: ligne sans SHA, branche featx (1er mot entre parentheses) deja dans main -> WARN' $etClose
 
+# --- L15-1 (2026-11-15, demande de l'utilisateur) : Close FAIL pour tout worktree de '## Agents du <date>' (-JourFile) qui n'est pas a main (+0/-0),
+# qui a des commits Source plus recents que sa DLL, ou dont Get-StaleBinaryProblem (Tools\Scenarios\LaunchCheck.ps1) n'est pas vide ; la copie
+# principale aussi si elle figure au tableau (-MainRoot). Vrais depots jetables : HeroesOfLiberty-T1 (branche work, 1 commit Source d'avance sur
+# main, DLL de 2000), HeroesOfLiberty-Other (meme retard mais hors du tableau du jour : non controle), fausse copie principale a main, DLL fraiche.
+$JWts = Join-Path $Tmp 'jourwts'
+$JT1 = Join-Path $JWts 'HeroesOfLiberty-T1'; $JOther = Join-Path $JWts 'HeroesOfLiberty-Other'; $JMain = Join-Path $Tmp 'FakeMainL15'
+function GitJ([string]$Dir) { git -C $Dir -c user.name=t -c user.email=t@t @args 2>&1 | Out-Null }
+foreach ($jr in $JT1, $JOther, $JMain) {
+  New-Item -ItemType Directory -Path (Join-Path $jr 'Source\M'), (Join-Path $jr 'Binaries\Win64') -Force | Out-Null
+  GitJ $jr init -q -b main
+  Set-Content (Join-Path $jr 'Source\M\a.cpp') 'int a;'; GitJ $jr add Source; GitJ $jr commit -q -m base
+  $jd = Join-Path $jr 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll'; Set-Content $jd 'x'; (Get-Item $jd).LastWriteTime = (Get-Date).AddMinutes(2)
+}
+foreach ($jr in $JT1, $JOther) {
+  GitJ $jr checkout -q -b work
+  Set-Content (Join-Path $jr 'Source\M\a.cpp') 'int a2;'; GitJ $jr add Source; GitJ $jr commit -q -m 'src work'
+  (Get-Item (Join-Path $jr 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')).LastWriteTime = [datetime]'2000-01-01'
+}
+$JFile = Join-Path $Tmp 'Jour.md'
+$jToday = (Get-Date).ToString('yyyy-MM-dd')
+Set-Content -Path $JFile -Encoding UTF8 -Value @('## Agents du 2000-01-01', '| Agent | id | worktree | tache |', '|---|---|---|---|', '| OLD | x | HeroesOfLiberty-Other | ancien |', '',
+  "## Agents du $jToday", '', '| Agent | id | worktree | tache | C++ | lance |', '|---|---|---|---|---|---|',
+  '| T1-AGENT | a1 | HeroesOfLiberty-T1 | outil | non | 09:00 |', '| NETTOYAGE | a2 | copie principale | docs (HeroesOfLiberty-Other cite en tache) | non | 09:01 |', '| LECTEUR | a3 | lecture seule | plan | non | 09:02 |', '',
+  '## Autre section', '| X | y | HeroesOfLiberty-Other | z |')
+function Run-J { & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $JWts -RetoursDir $Ret -JourFile $JFile -MainRoot $JMain -EtapeFile (Join-Path $ERepo 'EtapeDefini.md') | Out-String }
+$jAhead = [int](git -C $JT1 rev-list --count 'main..HEAD'); $jSrc = [int](git -C $JT1 rev-list --count HEAD -- Source)   # calcules par git, pas recopies
+$jRed = Run-J
+Check ($jRed -match "(?m)^FAIL HeroesOfLiberty-T1 : L15-1 pas a main \(\+$jAhead/-0\)") "L15-1 close: worktree du tableau en avance de $jAhead commit sur main -> FAIL +$jAhead/-0" $jRed
+Check ($jRed -match "(?m)^FAIL HeroesOfLiberty-T1 : L15-1 $jSrc commit\(s\) Source plus recents que sa DLL") "L15-1 close: $jSrc commits Source apres la DLL -> FAIL qui les compte" $jRed
+Check ($jRed -match '(?m)^FAIL HeroesOfLiberty-T1 : L15-1 Get-StaleBinaryProblem.*a\.cpp') 'L15-1 close: Get-StaleBinaryProblem non vide (a.cpp plus recent que la DLL) -> FAIL' $jRed
+Check ($jRed -match '(?m)^PASS copie principale : L15-1 a main') 'L15-1 close: copie principale citee au tableau, a main, DLL fraiche -> PASS' $jRed
+Check (-not ($jRed -match '(?m)^(PASS|FAIL|WARN) HeroesOfLiberty-Other : L15-1')) 'L15-1 close: worktree hors du tableau du jour (ancienne section, autre section, colonne tache) -> non controle' $jRed
+GitJ $JT1 branch -f main work
+(Get-Item (Join-Path $JT1 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')).LastWriteTime = (Get-Date).AddMinutes(2)
+$jGreen = Run-J
+Check ($jGreen -match '(?m)^PASS HeroesOfLiberty-T1 : L15-1 a main' -and -not ($jGreen -match '(?m)^FAIL .*L15-1')) 'L15-1 close: T1 a main (branch -f) et DLL rebuildee -> PASS, aucun FAIL L15-1' $jGreen
+$jNoSec = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $JWts -RetoursDir $Ret -JourFile (Join-Path $Tmp 'absentJour.md') -EtapeFile (Join-Path $ERepo 'EtapeDefini.md') | Out-String
+Check ($jNoSec -match "(?m)^WARN L15-1 : pas de section '## Agents du") 'L15-1 close: pas de tableau du jour -> WARN (non controle), jamais PASS muet' $jNoSec
+
 # --- L8-1 : session_gate Essay : le worktree doit contenir le tip de CHAQUE branche citee dans le E-*.md de l'essai
 # (2026-11-06 : qground joue depuis Elrond sans les correctifs de melee de Celeborn). Vrai depot git factice : work contient fixa, pas fixb.
 $G = Join-Path $Tmp 'HeroesOfLiberty-FakeGit'
