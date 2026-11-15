@@ -1,43 +1,43 @@
-# Ecoute : le son de SELECTION de l'ECURIE, tour 4 : un CHEVAL (hennissement grave, ebrouement, sabots), synthetiques, dix variantes chacune, Entree = variante suivante
+# Ecoute : le son de SELECTION de l'ECURIE, tour 5 : un vrai CHEVAL (hennissements, ebrouements, pas, trot), ENREGISTRE (echantillons libres), dix variantes chacune, Entree = variante suivante
 # Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute le son de SELECTION de l'ECURIE, tour 4 : un CHEVAL (hennissement grave, ebrouement, sabots), synthetiques. 10 sons, 1 cue, dix variantes A a J chacune.
+note Ecoute le son de SELECTION de l'ECURIE, tour 5 : un vrai CHEVAL (hennissements, ebrouements, pas, trot), ENREGISTRE (echantillons libres). 10 sons, 1 cue, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Stable C.
 note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_buildings_stable_start
 waitkey Entree : commencer par Building.Stable A
 hol.Audio.Candidate Building.Stable A
 waitlog candidate played Building.Stable A
-waitkey Building.Stable A (s_horse_nicker) vient de jouer. Entree : Building.Stable B
+waitkey Building.Stable A (s_horse5_whinny_a) vient de jouer. Entree : Building.Stable B
 hol.Audio.Candidate Building.Stable B
 waitlog candidate played Building.Stable B
-waitkey Building.Stable B (s_horse_nicker_long) vient de jouer. Entree : Building.Stable C
+waitkey Building.Stable B (s_horse5_whinny_b) vient de jouer. Entree : Building.Stable C
 hol.Audio.Candidate Building.Stable C
 waitlog candidate played Building.Stable C
-waitkey Building.Stable C (s_horse_snort) vient de jouer. Entree : Building.Stable D
+waitkey Building.Stable C (s_horse5_whinny_c) vient de jouer. Entree : Building.Stable D
 hol.Audio.Candidate Building.Stable D
 waitlog candidate played Building.Stable D
-waitkey Building.Stable D (s_horse_flutter) vient de jouer. Entree : Building.Stable E
+waitkey Building.Stable D (s_horse5_snort_a) vient de jouer. Entree : Building.Stable E
 hol.Audio.Candidate Building.Stable E
 waitlog candidate played Building.Stable E
-waitkey Building.Stable E (s_horse_neigh_low) vient de jouer. Entree : Building.Stable F
+waitkey Building.Stable E (s_horse5_snort_b) vient de jouer. Entree : Building.Stable F
 hol.Audio.Candidate Building.Stable F
 waitlog candidate played Building.Stable F
-waitkey Building.Stable F (s_horse_walk) vient de jouer. Entree : Building.Stable G
+waitkey Building.Stable F (s_horse5_vocal_a) vient de jouer. Entree : Building.Stable G
 hol.Audio.Candidate Building.Stable G
 waitlog candidate played Building.Stable G
-waitkey Building.Stable G (s_horse_trot) vient de jouer. Entree : Building.Stable H
+waitkey Building.Stable G (s_horse5_vocal_b) vient de jouer. Entree : Building.Stable H
 hol.Audio.Candidate Building.Stable H
 waitlog candidate played Building.Stable H
-waitkey Building.Stable H (s_horse_gallop) vient de jouer. Entree : Building.Stable I
+waitkey Building.Stable H (s_horse5_walk) vient de jouer. Entree : Building.Stable I
 hol.Audio.Candidate Building.Stable I
 waitlog candidate played Building.Stable I
-waitkey Building.Stable I (s_horse_stamp) vient de jouer. Entree : Building.Stable J
+waitkey Building.Stable I (s_horse5_trot_a) vient de jouer. Entree : Building.Stable J
 hol.Audio.Candidate Building.Stable J
 waitlog candidate played Building.Stable J
-waitkey Building.Stable J (s_horse_snort_hoof) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Stable J (s_horse5_trot_b) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

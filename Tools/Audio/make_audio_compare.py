@@ -39,10 +39,10 @@ GROUPS = [
     ("audio_compare_buildings_sacred", ("Building.Sacred",), "le son de SELECTION des batiments SACRES (Chapelle, Sanctuaire) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
     ("audio_compare_buildings_metal", ("Building.Metal",), "le son de SELECTION du batiment de METAL (Forge) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
     ("audio_compare_buildings_coins", ("Building.Coins",), "le son de SELECTION du batiment de PIECES (Marche) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
-    # Round 4 (D798): sounds of another nature, one scenario per building (synthesised placeholders, make_round4_candidates.py).
-    ("audio_compare_buildings_barracks", ("Building.Barracks",), "le son de SELECTION de la CASERNE, tour 4 : des VOIX d'hommes d'armes (cris, ordres, murmures), synthetiques"),
-    ("audio_compare_buildings_range", ("Building.Range",), "le son de SELECTION du CHAMP DE TIR, tour 4 : des TIRS (corde d'arc, sifflement de fleche, impact), synthetiques"),
-    ("audio_compare_buildings_stable", ("Building.Stable",), "le son de SELECTION de l'ECURIE, tour 4 : un CHEVAL (hennissement grave, ebrouement, sabots), synthetiques"),
+    # Round 5 (D801): one scenario per building, RECORDED free samples (make_round5_candidates.py; round 4 synthesis refused).
+    ("audio_compare_buildings_barracks", ("Building.Barracks",), "le son de SELECTION de la CASERNE, tour 5 : des VOIX d'hommes d'armes et des lames, ENREGISTREES (echantillons libres)"),
+    ("audio_compare_buildings_range", ("Building.Range",), "le son de SELECTION du CHAMP DE TIR, tour 5 : arc long, arbalete, volee d'archers, ENREGISTRES (echantillons libres)"),
+    ("audio_compare_buildings_stable", ("Building.Stable",), "le son de SELECTION de l'ECURIE, tour 5 : un vrai CHEVAL (hennissements, ebrouements, pas, trot), ENREGISTRE (echantillons libres)"),
 ]
 # The line of the answer sheet for a cue whose name alone says little (family cues of the buildings): "<label> = _".
 SHEET_LABEL = {
