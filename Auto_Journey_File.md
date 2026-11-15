@@ -37,7 +37,7 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 - [~] (C++, Elrond) Palier 3 : G6 fini côté agent ; preflight deploy PASS (21:4x, PV Maison 555 puis 510/600, 5 PNG vus), E-deploy [À ESSAYER] VU À L'ÉCRAN ; reste : projectile du coup de siège (décision C++ de présentation) ; tiers PAS dans main ; historique archivé le 2026-11-14 ; Palier3InProgress.md.
 
 ## Faramir — `fog` — Brouillard, Siège (`FogInProgress.md`) : lignes faites archivées le 2026-11-10, le 2026-11-12 et le 2026-11-13
-- [ ] (C++, L15-15) waitkey : Backspace = option precedente dans les scenarios *_compare (test rouge d'abord, rejouer 2 scenarios compare)
+- [~] (C++, L15-15) waitkey : Backspace = option precedente dans les scenarios *_compare : FAIT fog 53c106f (test da10225, tests 1270/1270, FARAMIR-1115a) ; RESTE rejouer 2 scenarios compare aux deux touches (verbe de vraie touche) + texte du waitkey
 - [ ] PREMIER GESTE prochaine séance : `sync_worktrees.ps1` vers main ecff29a (fog dans main ; build PASS et tests 1221/1221 faits à la fusion groupée 568627a ; ecff29a n'ajoute que des docs, pas de rebuild)
 - [ ] (question de couche, rien tranche) talents_heal_cell : le « ++ » dore (marque du monde du soin) est dessine PAR-DESSUS la fenetre Arbre de talents (defaut de couche : la marque du monde passe au-dessus du HUD) ; a trancher par le proprietaire du rendu des marques de soin.
 
