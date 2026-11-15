@@ -15,16 +15,19 @@ waitlog Key pressed: T
 wait 1
 frames 8
 hol.HUD.Click HeroTalentCell_2_1
+waitlog Mouse click HeroTalentCell_2_1 x1 at
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 8
 hol.HUD.Click TalentWindowAdvised
+waitlog Mouse click TalentWindowAdvised x1 at
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 8
 hol.Hero.SetXP 0 1300
 wait 1
 hol.HUD.Click TalentWindowAdvised
+waitlog Mouse click TalentWindowAdvised x1 at
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 10
