@@ -683,4 +683,97 @@ bool FHOLStartingNomadFirstForumTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingNomadReplicatedTest, "HeroesOfLiberty.Match.StartingHero.NomadReplicated",
+	UE::HeroesOfLiberty::Tests::StartingHero::Flags)
+
+// D799 (answer A of Q-nomad-net): the server replicates each seat's Nomad state (one bit per seat in the game state), so a remote
+// player's grid shows the forum cell open and its true price as on the host. Two worlds:
+// - the server: the game mode's own start (SpawnSlotStart, Nomad option) for slot 0 marks the seat Nomad in its game state;
+// - a client: its own game state and script board, never told by the game mode; it receives the server's bits as the replication
+//   does (AHOLGameState::ApplyNomadSeats, the body of OnRep_NomadSeats). Before them: no forum in its builders' grid. After them:
+//   for slot 0, page « Palier II » cell C builds the forum, not greyed, for the price the server computes (150 wood + 400 stone);
+//   for slot 1 (not Nomad, no centre either): no forum cell, the table's price.
+bool FHOLStartingNomadReplicatedTest::RunTest(const FString& Parameters)
+{
+	const auto MakeWorld = []()
+	{
+		UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+		FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+		Context.SetCurrentWorld(World);
+		World->InitializeActorsForPlay(FURL());
+		AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+		World->SetGameState(GameState);
+		return World;
+	};
+	const auto ForumCell = [](UWorld* World, const int32 Slot)
+	{
+		TArray<FHOLBuildable> List;
+		UHOLBuildingSettings::GetBuildableTypesForSlot(World, Slot, List);
+		FHOLGridContext Grid;
+		Grid.bBuilders = true;
+		Grid.bOwnUnits = true;
+		Grid.ReachedAge = 0;
+		Grid.Buildable = List;
+		return HOLCommandGrid::GetAgeBuilding(Grid, 1, 10);
+	};
+	UWorld* Server = MakeWorld();
+	UWorld* Client = MakeWorld();
+	AHOLGameState* ServerState = Server->GetGameState<AHOLGameState>();
+	AHOLGameState* ClientState = Client->GetGameState<AHOLGameState>();
+	if (TestNotNull(TEXT("server game state"), ServerState) && TestNotNull(TEXT("client game state"), ClientState)
+		&& TestNotNull(TEXT("server board"), UHOLSpecializationSubsystem::Find(Server)) && TestNotNull(TEXT("client board"), UHOLSpecializationSubsystem::Find(Client)))
+	{
+		FHOLMatchConfig Config = FHOLMatchConfig::MakeDefault();
+		Config.bNomad = true;
+		AHeroesOfLibertyGameModeBase::SpawnSlotStart(*Server, Config, 0, FTransform(FRotator::ZeroRotator, FVector(5000.0, 2000.0, 0.0)));
+		TestTrue(TEXT("server: slot 0 Nomad in the game state"), ServerState->IsSeatNomad(0));
+		TestFalse(TEXT("server: slot 1 not Nomad"), ServerState->IsSeatNomad(1));
+		const FHOLResources ServerCost = UHOLBuildingSettings::GetBuildCost(Server, HOLBuildingTypeNames::MainCentre, 0);
+		TestEqual(TEXT("server: the forum's price, wood"), ServerCost.Wood, 150);
+		TestEqual(TEXT("server: the forum's price, stone"), ServerCost.Stone, 400);
+
+		TestFalse(TEXT("client before the replication: no forum in cell II C"), ForumCell(Client, 0).TypeName == HOLBuildingTypeNames::MainCentre);
+		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats(), ServerState->GetNomadForumSeats());
+		TestTrue(TEXT("client: slot 0 Nomad"), ClientState->IsSeatNomad(0));
+		const FHOLGridCommand Nomad = ForumCell(Client, 0);
+		TestTrue(TEXT("client, slot 0: cell II C builds the forum"), Nomad.Command == EHOLGridCommand::Build && Nomad.TypeName == HOLBuildingTypeNames::MainCentre);
+		TestFalse(TEXT("client, slot 0: the forum cell active (not greyed)"), Nomad.bGreyed);
+		const FHOLResources ClientCost = UHOLBuildingSettings::GetBuildCost(Client, HOLBuildingTypeNames::MainCentre, 0);
+		TestEqual(TEXT("client, slot 0: the forum's price shown, the server's"), ClientCost.ToString(), ServerCost.ToString());
+		TestEqual(TEXT("client, slot 0: 150 wood"), ClientCost.Wood, 150);
+		TestEqual(TEXT("client, slot 0: 400 stone"), ClientCost.Stone, 400);
+		const FHOLGridCommand Standard = ForumCell(Client, 1);
+		TestFalse(TEXT("client, slot 1 (standard): no forum in cell II C"), Standard.TypeName == HOLBuildingTypeNames::MainCentre);
+		TestEqual(TEXT("client, slot 1: the table's forum price"), UHOLBuildingSettings::GetBuildCost(Client, HOLBuildingTypeNames::MainCentre, 1).ToString(),
+			UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre)->Cost.ToString());
+		// D354 ("from the first forum complete, the normal rules"; the forum then falls to ruins and is rebuilt in place, D417-D420):
+		// the server notes slot 0's first forum complete (what HOLBuildProcessor calls when it finishes); the client receives the bits
+		// as the replication does: its board knows the forum complete, the cell II C closed, the forum's price back to the table's.
+		ServerState->NoteSeatForumComplete(0);
+		TestTrue(TEXT("server: slot 0's first forum complete"), UHOLSpecializationSubsystem::IsForumComplete(Server, 0));
+		const FHOLResources ServerAfter = UHOLBuildingSettings::GetBuildCost(Server, HOLBuildingTypeNames::MainCentre, 0);
+		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats(), ServerState->GetNomadForumSeats());
+		TestTrue(TEXT("client: slot 0 still Nomad"), ClientState->IsSeatNomad(0));
+		TestTrue(TEXT("client: slot 0's first forum complete"), UHOLSpecializationSubsystem::IsForumComplete(Client, 0));
+		TestFalse(TEXT("client: slot 0's forum cell closed"), UHOLBuildingSettings::IsFirstForumOpen(Client, 0));
+		TestFalse(TEXT("client, slot 0 after its first forum: no forum in cell II C"), ForumCell(Client, 0).TypeName == HOLBuildingTypeNames::MainCentre);
+		const FHOLResources ClientAfter = UHOLBuildingSettings::GetBuildCost(Client, HOLBuildingTypeNames::MainCentre, 0);
+		TestEqual(TEXT("client, slot 0 after its first forum: the server's price"), ClientAfter.ToString(), ServerAfter.ToString());
+		TestEqual(TEXT("client, slot 0 after its first forum: the table's price"), ClientAfter.ToString(),
+			UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre)->Cost.ToString());
+		TestFalse(TEXT("client, slot 0 after its first forum: no longer the first forum's 150 wood + 400 stone"), ClientAfter.Wood == 150 && ClientAfter.Stone == 400);
+		// The server takes the seat back (development command hol.Nomad.SetSeat): the client's grid follows.
+		ServerState->SetSeatNomad(0, false);
+		TestEqual(TEXT("server: the seat's forum bit cleared with it"), static_cast<int32>(ServerState->GetNomadForumSeats()), 0);
+		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats(), ServerState->GetNomadForumSeats());
+		TestFalse(TEXT("client, slot 0 no longer Nomad: no forum cell"), ForumCell(Client, 0).TypeName == HOLBuildingTypeNames::MainCentre);
+	}
+	for (UWorld* World : { Server, Client })
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	}
+	return true;
+}
+
 #endif

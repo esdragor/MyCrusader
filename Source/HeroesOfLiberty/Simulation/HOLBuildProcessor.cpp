@@ -978,7 +978,12 @@ void UHOLBuildProcessor::ApplyWork(const FStepContext& Step)
 		if (Site->GetTypeName() == HOLBuildingTypeNames::MainCentre && Site->GetOwnerPlayer() >= 0
 			&& !UHOLSpecializationSubsystem::IsForumComplete(World, Site->GetOwnerPlayer()))
 		{
-			if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World))
+			// Through the game state (D799): its replicated bit tells every client's board too (HALDIR-1115b).
+			if (AHOLGameState* SeatState = World->GetGameState<AHOLGameState>())
+			{
+				SeatState->NoteSeatForumComplete(Site->GetOwnerPlayer());
+			}
+			else if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(World))
 			{
 				Board->NoteForumCompleteNow(Site->GetOwnerPlayer());
 			}

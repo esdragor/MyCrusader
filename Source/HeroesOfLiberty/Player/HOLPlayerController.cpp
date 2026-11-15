@@ -2285,6 +2285,11 @@ void AHOLPlayerController::PlayerTick(const float DeltaTime)
 	{
 		HandleContinueKey();
 	}
+	// Backspace: a compare scenario's previous option (rule 15 of « Qualité des essais », HOLTestSequence.cpp); read like Enter, nothing bound.
+	if (IsLocalController() && WasInputKeyJustPressed(EKeys::BackSpace))
+	{
+		HOLTestHooks::PressBackKey();
+	}
 	// The red attack cursor while Q waits for its point (A.2): every way out of the mode brings the arrow back.
 	const EMouseCursor::Type Cursor = HOLCommandGrid::GetMouseCursor(bAttackMoveArmed, IsPlacing());
 	if (IsLocalController() && CurrentMouseCursor != Cursor)

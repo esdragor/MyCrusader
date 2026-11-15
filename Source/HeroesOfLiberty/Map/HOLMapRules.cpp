@@ -54,3 +54,48 @@ FText FHOLMapRules::GetDisplayName(const FSoftObjectPath& Asset)
 	const FHOLMapInfo* Info = FindByAsset(Asset);
 	return Info ? Info->DisplayName : FText::AsCultureInvariant(Asset.GetAssetName());
 }
+
+namespace UE::HeroesOfLiberty::Map
+{
+	/** FScopedSiteCount's counts, by the table's key (empty outside the tests). */
+	TMap<FString, int32>& SiteCountOverrides()
+	{
+		static TMap<FString, int32> Overrides;
+		return Overrides;
+	}
+}
+
+int32 FHOLMapRules::GetSiteCount(const FSoftObjectPath& Asset)
+{
+	const FHOLMapInfo* Info = FindByAsset(Asset);
+	if (!Info)
+	{
+		return 0;
+	}
+	const int32* Override = UE::HeroesOfLiberty::Map::SiteCountOverrides().Find(Info->Key);
+	return Override ? *Override : Info->NumSites;
+}
+
+FHOLMapRules::FScopedSiteCount::FScopedSiteCount(const TCHAR* InKey, const int32 Count)
+	: Key(InKey)
+{
+	TMap<FString, int32>& Overrides = UE::HeroesOfLiberty::Map::SiteCountOverrides();
+	if (const int32* Old = Overrides.Find(Key))
+	{
+		Previous = *Old;
+	}
+	Overrides.Add(Key, Count);
+}
+
+FHOLMapRules::FScopedSiteCount::~FScopedSiteCount()
+{
+	TMap<FString, int32>& Overrides = UE::HeroesOfLiberty::Map::SiteCountOverrides();
+	if (Previous.IsSet())
+	{
+		Overrides.Add(Key, Previous.GetValue());
+	}
+	else
+	{
+		Overrides.Remove(Key);
+	}
+}

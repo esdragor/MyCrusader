@@ -34,6 +34,13 @@ struct FHOLMapInfo
 	 * (Map.Table), in groves of 30 to 40.
 	 */
 	bool bDenseWood = false;
+
+	/**
+	 * S7 (SacredSitesInProgress.md, D699): the sacred sites the map's file lays IN ALL, the generator's own count (Tools/Editor/maps/
+	 * common.py site_count: SITE_COUNTS, else SITE_COUNT_DEFAULT = 2; the user's answer in Retours\Q-sites-nombre.md). 0 = a map
+	 * without a site layer: the box "Sites sacres" of the new game screen is greyed on it (HOLSiteOption.as BoxEnabled).
+	 */
+	int32 NumSites = 2;
 };
 
 /** C0.1: pure rules of the match maps, for the menu, the list of lobbies and the manager client (one table, Maps.csv). */
@@ -56,4 +63,23 @@ struct HEROESOFLIBERTY_API FHOLMapRules
 
 	/** The translated name of a map, or its asset name as it is for one the table does not know (a test map). */
 	static FText GetDisplayName(const FSoftObjectPath& Asset);
+
+	/**
+	 * S7 (D699): the sacred sites a map's file lays, known before the map is loaded (the box "Sites sacres" of the new game screen, greyed
+	 * at 0): the table's NumSites; 0 for a map the table does not know (a test map).
+	 */
+	static int32 GetSiteCount(const FSoftObjectPath& Asset);
+
+	/** S7 test hook: while alive, the table's map of Key lays Count sites (every map of the table lays some: a test needs one without). */
+	struct HEROESOFLIBERTY_API FScopedSiteCount
+	{
+		FScopedSiteCount(const TCHAR* InKey, int32 Count);
+		~FScopedSiteCount();
+		FScopedSiteCount(const FScopedSiteCount&) = delete;
+		FScopedSiteCount& operator=(const FScopedSiteCount&) = delete;
+
+	private:
+		FString Key;
+		TOptional<int32> Previous;
+	};
 };

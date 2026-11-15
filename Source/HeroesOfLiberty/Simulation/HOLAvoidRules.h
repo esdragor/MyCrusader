@@ -170,4 +170,25 @@ namespace HOLAvoid
 	 * empty). PatienceDegrees at 0 or less: off, the state cleared.
 	 */
 	HEROESOFLIBERTY_API bool StepLoopPatience(FLoopPatience& State, const FVector2D& Asked, double DeltaTime, double PatienceDegrees, double WaitSeconds, double ForgetSeconds);
+
+	/**
+	 * CELEBORN-1115b (hol.Units.MarchMemberDetourSteps): whether a detour round a member of the walker's own order (its block, its forming up) is
+	 * remembered. Never before (MV.2: remembered without end, members drifted up to 2.4 m off their files): two members of a block converging on
+	 * their slots, each predicted from the other's last velocity, turned one step and went straight the next, in phase (neutrals_trace run3, #9/#10:
+	 * 27 rad of to and fro in 8 s). MaxSteps <= 0: never (as before).
+	 */
+	inline bool RemembersMemberDetour(const int32 MaxSteps)
+	{
+		return MaxSteps > 0;
+	}
+
+	/**
+	 * One more step of a remembered detour round a member of its own order (MemberSteps counted, 1 at the step it was taken): true once MaxSteps steps
+	 * were held, the detour then to be forgotten (bounded, MV.2's drift).
+	 */
+	inline bool IsMemberDetourOver(uint8& MemberSteps, const int32 MaxSteps)
+	{
+		MemberSteps = static_cast<uint8>(FMath::Min<int32>(MemberSteps + 1, 255));
+		return MemberSteps >= MaxSteps;
+	}
 }
