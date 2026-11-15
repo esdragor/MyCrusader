@@ -1,0 +1,23 @@
+# SG3 (D784, D445) : signal neutre par geste REEL : Alt maintenu (hol.UI.Key LeftAlt, appui tenu 3 s) puis un vrai clic gauche bref
+# (hol.Mouse.Click X Y, pixels du cadre) sur le sol : le controleur (HOLPlayerController.cpp, IsInputKeyDown(LeftAlt)) pose un signal neutre,
+# le serveur le renvoie a ton equipe (toi compris) : carre colore de 10 px sur la minicarte (HOLGameScreenScript.as) et ligne du fil.
+# Plain, toi (slot 0) contre une IA gelee (slot 1).
+waitlog AI brain HOLAIBrain awake
+r.SetRes 1920x1080w
+hol.AI.ThinkSteps 100000
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+hol.Camera.Zoom -3
+waitlog Camera height 3000 cm
+wait 1
+# 1. Geste reel : Alt maintenu, clic gauche bref sur le sol (a droite et au-dessus de ton forum).
+hol.UI.Key LeftAlt 0 3
+wait 0.5
+hol.Mouse.Click 1400 350
+waitlog Signal: Alt + click kind
+waitlog Signal: received kind
+wait 1
+capture signals_altclick
+hol.Test.Sanity
+note Signal : maintiens Alt et fais un clic gauche bref sur le sol : un signal neutre est pose ; un petit carre colore apparait sur la minicarte (en bas a gauche) a cet endroit pendant 5 s, et le fil de messages dit « Vous : Signal ».
+quit

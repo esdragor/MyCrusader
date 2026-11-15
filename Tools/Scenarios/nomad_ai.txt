@@ -10,12 +10,18 @@ waitlog Nomad forum founded at (
 r.SetRes 1920x1080w
 hol.Buildings.Report
 waitlog Building report:
-# 1. Camera au-dessus du depart nominal du siege 1 (premier jet, test rouge : le forum de l'IA n'y est pas).
-hol.Camera.FocusSlot 1
-waitlog Camera above the start of slot 1
+# 1. Camera sur le groupe 0 des Paysans de l'IA (graine fixe par siege : groupe 0 du siege 1 a (-13619, -16943) ; fondation vue au
+# premier passage 14:07 a (-14000, -16800), place libre la plus proche). Premier jet (FocusSlot 1, depart nominal) : rouge, voir NomadInProgress.md.
+# Hauteur : comme nomad_start, d'abord au plus haut (7000 cm), puis au plus bas (1500), puis 3 crans (3000 cm).
+hol.Camera.Focus -14000 -16800
+hol.Camera.Zoom -10
+waitlog Camera height 7000 cm
+hol.Camera.Zoom 11
+waitlog Camera height 1500 cm
 hol.Camera.Zoom -3
 waitlog Camera height 3000 cm
 wait 3
+hol.HUD.Report
 capture nomad_ai_forum
 hol.Test.Sanity
 note Partie Nomade contre une IA Normale Nomade : elle n'a aucun Centre-ville au depart ; regarde : elle pose seule la fondation de son premier Forum la ou sont ses Paysans, et ils vont la batir.
