@@ -1,0 +1,1 @@
+{ "version": 2, "map": "/Game/Maps/Plain.Plain", "mode": "Diplomacy", "fogMode": "Normal", "startingPeasants": 0, "startingHero": false, "slots": [ { "state": "Human", "colorIndex": 0, "faction": "DawnOrder" }, { "state": "Human", "colorIndex": 1, "faction": "BlackLegions" }, { "state": "AI", "colorIndex": 3, "faction": "BlackLegions", "aiBrain": false } ] }

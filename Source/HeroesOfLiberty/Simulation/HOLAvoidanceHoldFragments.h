@@ -55,6 +55,9 @@ struct HEROESOFLIBERTY_API FHOLDetourFragment : public FMassFragment
 	/** Steps this detour has been held while the walker was near its goal (hol.Units.SlotDetourMaxSteps). */
 	uint8 DetourSteps = 0;
 
+	/** CELEBORN-1115b: steps a detour round a member of its own order has been held (0: the detour is not round one; hol.Units.MarchMemberDetourSteps). */
+	uint8 MemberSteps = 0;
+
 	/** Set for the rest of the leg once that limit is passed: the walker goes straight to its goal, pushing (neutrals trial, melee_spin: a walker circling its own slot). */
 	uint8 bSlotCommit = 0;
 
