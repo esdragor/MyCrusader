@@ -16,7 +16,7 @@ Chantier B5 du relevé « Chapitres du GDD non commencés » (`Auto_Journey_Jour
 ## Plan (étapes de 15 min)
 1. [fait] Test rouge `Script\Orders\HOLPatrolRules_Test.as` + bouchon `HOLPatrolRules.as` ; VU ROUGE par `quick_check -Parts tests`.
    Rouge attendu : `Test_PatrolUnitGoesBackToAOnceAtB` (« l'unité repart vers A une fois en B ») et `Test_PatrolManualOrderStopsIt`.
-2. Vert : `Advance` (demi-tour à `ArriveRadius` du bout de la jambe), `LegTarget`, `LegOrder` (AttackMove tant qu'active), `OnManualOrder`.
+2. [fait 3a636ce] Vert : `Advance` (demi-tour à `ArriveRadius` du bout de la jambe), `LegTarget`, `LegOrder` (AttackMove tant qu'active), `OnManualOrder`.
 3. (après réponse, AGENT C++) brancher : nouvel `EHOLOrderKind::Patrol`, case de grille, relance de l'attaque-déplacement à chaque jambe
    dans `HOLUnitOrderProcessor.cpp`, fin sur tout ordre manuel ; scénario `patrol` (geste réel : touche puis clic).
 4. (après réponse) règle pure de Suivre (allié : reste à distance ; ennemi : selon la réponse) et de focus.
@@ -26,3 +26,8 @@ Chantier B5 du relevé « Chapitres du GDD non commencés » (`Auto_Journey_Jour
 
 ## Journal
 - 10:19 ouvert ; test rouge + bouchon écrits.
+- 10:23 VU ROUGE (`quick_check -Parts tests` : 1270/1272, KO = Test_PatrolUnitGoesBackToAOnceAtB et Test_PatrolManualOrderStopsIt) ; commit 85550d5.
+- 10:27 VERT 3a636ce (tests 1272/1272). Le test 1 a été corrigé avec le code : il comptait des pas fixes (24 pas = déjà reparti
+  vers B), il suit maintenant les arrivées (B atteint, puis A, puis repart > 400). Avec le bouchon il reste rouge (la jambe ne change
+  jamais : A jamais rejoint) ; ce rouge-là est déduit, non relancé.
+- Suivant pour un agent neuf : attendre `Q-patrol-follow.md`, puis étape 3 (agent C++). Aucun code Suivre/focus écrit.
