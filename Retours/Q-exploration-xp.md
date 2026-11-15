@@ -14,4 +14,9 @@ La règle pure est codée par **tranche** (carré de cases du brouillard qui pai
 
 **Défaut codé : C**, `HOLExplorationXP::Preset(0)` dans `Script\Heroes\HOLExplorationXPRules.as` (A = `Preset(1)`, B = `Preset(2)`, valeurs dans la structure `FHOLExplorationXPSettings`, une ligne à changer). Rien n'est branché au jeu (lecture du brouillard en C++ à faire) : réponse sans effet visible avant ce branchement.
 
+**Précisions du branchement (2026-11-15, SAURON-1115d)** :
+- Dans un camp à plusieurs sièges, chaque siège du camp est payé (défaut codé) ; partage entre alliés : à décider.
+- Constat : la liste des lieux (relais, camps, autel) est vide : le préréglage B ne paie rien en jeu aujourd'hui.
+- Côté C++ le préréglage se change par la console : `hol.HeroXP.ExplorationPreset` (0 = C défaut, 1 = A, 2 = B), lu au départ du brouillard.
+
 Réponse : 
