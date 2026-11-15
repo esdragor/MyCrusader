@@ -59,6 +59,13 @@ namespace HOLTestHooks
 	HEROESOFLIBERTY_API bool PressContinueKey();
 
 	/**
+	 * The back key was pressed in game (Backspace, the player controller), rule 15 of « Qualité des essais »: in a <name>_compare scenario
+	 * waiting on a waitkey, the previous option runs again (an option ends at its waitkey and starts at its first notereset, else right after
+	 * the waitkey before it). False when nothing went back (no waitkey waiting, not a compare scenario, or the first option).
+	 */
+	HEROESOFLIBERTY_API bool PressBackKey();
+
+	/**
 	 * A scenario's quit step closes the game when nobody is at the keys (play.ps1 -Hidden: -unattended; a scripted check; auto-continue),
 	 * so that its launcher ends with the scenario's real end and not at its timeout. Set, it is called instead of the engine's quit: the
 	 * automation tests, which must not close the editor that runs them.

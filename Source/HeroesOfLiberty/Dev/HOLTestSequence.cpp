@@ -734,6 +734,12 @@ bool HOLTestHooks::PressContinueKey()
 	return bWaited;
 }
 
+bool HOLTestHooks::PressBackKey()
+{
+	// Red test first (FHOLScenarioBackKeyTest): not yet implemented.
+	return false;
+}
+
 void HOLTestSequence::Run(const FName Owner, TArray<FString>&& Steps, FRunOptions&& Options)
 {
 	UE::HeroesOfLiberty::Dev::GetSequence(Owner).Start(MoveTemp(Steps), MoveTemp(Options));
