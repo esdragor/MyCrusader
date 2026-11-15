@@ -14,6 +14,7 @@
 #include "Match/HOLFactionRules.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
+#include "Match/HOLSpecializationSubsystem.h"
 #include "Resources/HOLSourceSubsystem.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLUnitView.h"
@@ -548,6 +549,13 @@ namespace HOLAISummary
 		if (GameState)
 		{
 			Summary.Tier = GameState->GetTier(PlayerIndex);
+		}
+		// N3 (Nomad): a Nomad seat before its first complete forum, and the price of its MainCentre now (the first forum's own price).
+		Summary.bNomadBeforeFirstForum = GameState && GameState->IsSeatNomad(PlayerIndex)
+			&& !UHOLSpecializationSubsystem::IsForumComplete(&World, PlayerIndex);
+		{
+			const FHOLResources Price = UHOLBuildingSettings::GetBuildCost(&World, HOLBuildingTypeNames::MainCentre, PlayerIndex);
+			Summary.ForumPrice = { Price.Food, Price.Wood, Price.Stone, Price.Gold };
 		}
 		// Palier 3 G14: the slot's faction, so that the script brain plans only what its faction makes.
 		// Palier 3 G4: the key the RULES read (a faction without rules of its own, Fire / Dragon / Shadow / Templars, reads as the Dawn: the server accepts the

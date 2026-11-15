@@ -197,6 +197,12 @@ class UHOLAIBrain : UHOLAIBrainSubsystem
 		const int64 Step = GetStepIndex();
 		Data.GameSeconds = float(Step) / 20.f;
 		LogStatus(PlayerIndex, Step, Summary);
+		// N3 (Nomad): a Nomad seat before its first complete forum founds it (HOLAINomadThink.as) and thinks of nothing else until then.
+		if (Summary.bNomadBeforeFirstForum)
+		{
+			HOLAINomadThink::Think(PlayerIndex, Step, Summary, Data.Rings);
+			return true;
+		}
 		// 0a. The technologies (T7, D648: every level, a delay per level): first, so that a research is paid before the other purchases
 		// of the thought; while it saves for one, the other purchases of this thought do not see the stock set aside for it.
 		const bool bHeld = IsHeld(PlayerIndex);

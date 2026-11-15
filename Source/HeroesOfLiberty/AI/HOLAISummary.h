@@ -294,6 +294,17 @@ struct HEROESOFLIBERTY_API FHOLAISummary
 	FVector CentreLocation = FVector::ZeroVector;
 
 	/**
+	 * N3 (Nomad, D354, D402): the slot is a Nomad seat whose first forum is not complete yet (AHOLGameState::IsSeatNomad and
+	 * not UHOLSpecializationSubsystem::IsForumComplete): the brain founds it (HOLAINomad::Plan) before its ordinary rules.
+	 */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	bool bNomadBeforeFirstForum = false;
+
+	/** N3: what placing its MainCentre costs the slot now (UHOLBuildingSettings::GetBuildCost: food, wood, stone, gold). */
+	UPROPERTY(BlueprintReadOnly, ScriptReadWrite, Category = "AI")
+	TArray<int32> ForumPrice;
+
+	/**
 	 * Its army (IA2.1): its soldiers (Spearman, ManAtArms, Archer, Crossbowman...), the dying left out, by identifier
 	 * (ascending). Not its Peasants (PeasantIds), nor its King and its hero (left out of the army: they do not take the
 	 * soldiers' orders; the hero comes with his own chantier).
