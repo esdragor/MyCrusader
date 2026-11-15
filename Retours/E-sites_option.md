@@ -1,7 +1,7 @@
 # E-sites_option : la case « Sites sacrés » (Non / Oui) de l'écran Nouvelle partie active les sites sacrés et leur victoire
 
 STATUT : LOGIQUE SEULEMENT   (le choix Non -> Oui est fait par `hol.UI.Choose SacredSitesDropdown`, pas par un vrai clic ; le point 1 est joué avec hol.Site.Enabled 0 et la case cochée)
-GESTE: interne      (hol.UI.Choose SacredSitesDropdown 0 / 1 : appel interne, pas un clic sur la liste)
+GESTE: reel (GALADRIEL-1115d : clics hol.Mouse.Click, Non par Haut+Entree, Oui par vraies touches Entree, Bas, Entree ; check 4/4, preflight PASS 12:03)
 Essai GALADRIEL-1115b (2026-11-15 09:47-09:58, galadriel-tab) : Oui par vraies touches (Entree sur la liste, Bas, Entree apres le choix clavier de Non) = INSTABLE : check PASS 09:47 (1 fois), preflights 09:52, 09:56, 09:58 en echec (la 1re Entree n'ouvre pas la liste, timeout sur list opened), avec ou sans survol de la souris avant ; controle sans Bas : timeout sur value 1 chosen (le test assertit bien l'effet). Scenario remis a hol.UI.Choose (98ff3df). Cause a chercher cote UHOLDropdown / Common UI (focus apres Choose -> CloseList -> SetFocus), C++ : non fait.
 SON: non entendu    (-nosound)
 branches: aucune (main)

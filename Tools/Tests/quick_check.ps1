@@ -209,6 +209,8 @@ if ($Parts -contains "hero") {
     $Parts = @($Parts | Where-Object { $_ -ne "hero" }) + @("net")
     if (-not ($Parts -contains "build")) { $Parts += "build:hero" }
 }
+# "netsig3" (SG2, D386, D369): the signals seen by three clients, played with "net" (not with "hero" alone), or asked alone.
+if (($Parts -contains "net") -and -not $NetHeroOnly -and -not ($Parts -contains "netsig3")) { $Parts += "netsig3" }
 # part:case (EtapeDefini F): the cases each part can play alone. Each case: the marks after "mark <part>" it plays (its
 # section and the ones its report reads) and the set-up that stands for the cases skipped before it (the state it needs:
 # wood, logs; then a selection, so that its Escape logs "Selection: none"). "build gap" reads "build wall" too (the
@@ -8446,6 +8448,91 @@ foreach ($SpecPart in "netspec", "netspecteam", "netspecteams") {
     $SpecLog = if (Test-Path $SpecServerLog) { Get-Content $SpecServerLog } else { @() }
     $Checks["server : slot 1 defeated by the cheat, the match goes on (the AI $(if ($SpecTeam) { 'ally' } else { 'and Alice' }) stands)"] = [bool]($SpecLog | Select-String -Pattern "Victory: slot 1 defeated" -Quiet) -and -not [bool]($SpecLog | Select-String -Pattern "match over" -Quiet)
     $AllOk = (Report $SpecPart $Checks) -and $AllOk
+}
+
+# The "netsig3" part (SG2; D386, D369: a signal reaches its sender and his mutual allies only, never a Neutral nor an Enemy), played
+# with "net": a server in Diplomacy and three clients, Alice (slot 0), Bob (slot 1), Carol (slot 2). The server forces the stances
+# (hol.Diplomacy.Force): Bob and Alice mutual allies, Bob and Carol Neutral; Bob posts an Attack (kind 1); then Bob and Carol Enemy,
+# Bob posts a Defend (kind 2); last, Carol posts a kind 3 (her own client must receive it: her reception works). Alice receives
+# Bob's two, Carol neither, Bob and Alice never Carol's.
+if ($Parts -contains "netsig3") {
+    $Sig3Part = "netsig3"
+    # Its own time, told apart from the run before it (the net part must not double, 2026-11-15).
+    $Sig3StartedAt = [Math]::Round($Clock.Elapsed.TotalSeconds)
+    $Sig3ServerLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${Sig3Part}_server.log")
+    $Sig3Config = Join-Path $TestSaved "quick_${Sig3Part}.json"
+    $Sig3ServerSequence = Join-Path $TestSaved "quick_${Sig3Part}_server.seq"
+    Remove-Item (Join-Path $TestSaved "Logs\quick_${Sig3Part}_client*.log"), (Join-Path $TestSaved "quick_${Sig3Part}_*.flag") -ErrorAction SilentlyContinue
+    Write-AIMatchConfig $Sig3Config @("Human", "Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob", "Carol")
+    (Get-Content $Sig3Config -Raw) -replace '"version": 2,', '"version": 2, "mode": "Diplomacy",' | Set-Content -Encoding ascii $Sig3Config
+    $Sig3Names = @{ 1 = "Bob"; 2 = "Alice"; 3 = "Carol" }
+    # The clients launched: the harness's third client, Carol (her own saved directory Saved_Tests_Net3).
+    $Sig3Launched = @(1, 2, 3)
+    $Sig3Flag = { param($Name) Join-Path $TestSaved "quick_${Sig3Part}_$Name.flag" }
+    $Sig3Done = @(1, 2, 3 | ForEach-Object { & $Sig3Flag "done$_" })
+    @("waitplayers $($Sig3Launched.Count)", "mark $Sig3Part", "wait 2",
+        "hol.Diplomacy.Force 1 0 ally", "hol.Diplomacy.Force 0 1 ally", "hol.Diplomacy.Force 1 2 neutral", "hol.Diplomacy.Force 2 1 neutral", "wait 2", "hol.Diplomacy.Report", "signal $(& $Sig3Flag 'phase1')",
+        "waitfile $(& $Sig3Flag 'posted1') 90", "hol.Diplomacy.Force 1 2 enemy", "hol.Diplomacy.Force 2 1 enemy", "wait 2", "hol.Diplomacy.Report", "signal $(& $Sig3Flag 'phase2')") +
+        @($Sig3Done | ForEach-Object { "waitfile $_ 90" }) + @("wait 1", "quit") | Set-Content -Encoding utf8 $Sig3ServerSequence
+    $Sig3Port = Get-AITestPort
+    $Sig3ServerArguments = "`"$UProject`" /Game/Maps/Plain -server -Port=$Sig3Port -useperfthreads -unattended -nosplash -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -nosound -saveddirsuffix=Tests_NetSrv -HOLCheats -MatchConfig=`"$Sig3Config`" -abslog=`"$Sig3ServerLog`" -ExecCmds=`"hol.Test.Run $Sig3ServerSequence`""
+    $Sig3Server = Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $Sig3ServerArguments -PassThru -WindowStyle Hidden
+    $Sig3Listening = $false
+    $Deadline = (Get-Date).AddSeconds(240)
+    while (-not $Sig3Listening -and (Get-Date) -lt $Deadline -and -not $Sig3Server.HasExited) {
+        Start-Sleep -Milliseconds 500
+        $Sig3Listening = (Test-Path $Sig3ServerLog) -and (Select-String -Path $Sig3ServerLog -Pattern "listening on port" -Quiet)
+    }
+    $Sig3Clients = @()
+    if ($Sig3Listening) {
+        foreach ($Client in $Sig3Launched) {
+            $ClientSettings = Join-Path $Project "Saved_Tests_Net$Client\Config\WindowsEditor\GameUserSettings.ini"
+            if (-not (Test-Path $ClientSettings)) {
+                New-Item -ItemType Directory -Force (Split-Path $ClientSettings) | Out-Null
+                (Get-Content (Join-Path $PSScriptRoot "GameUserSettings.ini")) `
+                    -replace '^(DisplayIndex|LastUserConfirmedDisplayIndex)=.*', '$1=-1' | Set-Content -Encoding ascii $ClientSettings
+            }
+            $ClientSequence = Join-Path $TestSaved "quick_${Sig3Part}_client$Client.seq"
+            $Steps = @("waitmap Plain", "waitlog Camera above the start", "waitplayers $($Sig3Launched.Count)", "mark $Sig3Part")
+            if ($Client -eq 1) {
+                $Steps += @("waitfile $(& $Sig3Flag 'phase1') 120", "hol.Signal.Post 1 1000 2000", "wait 2", "signal $(& $Sig3Flag 'posted1')",
+                    "waitfile $(& $Sig3Flag 'phase2') 90", "hol.Signal.Post 2 3000 4000", "wait 2", "signal $(& $Sig3Flag 'posted2')")
+            }
+            elseif ($Client -eq 3) {
+                $Steps += @("waitfile $(& $Sig3Flag 'posted2') 180", "hol.Signal.Post 3 5000 6000", "wait 2", "signal $(& $Sig3Flag 'posted3')")
+            }
+            $Steps += @("waitfile $(& $Sig3Flag 'posted3') 60", "wait 1", "hol.Diplomacy.Report", "hol.Signal.Report", "signal $($Sig3Done[$Client - 1])") +
+                @($Sig3Done | Where-Object { $_ -ne $Sig3Done[$Client - 1] } | ForEach-Object { "waitfile $_ 60" }) + @("mark end", "quit")
+            $Steps | Set-Content -Encoding utf8 $ClientSequence
+            $ClientLog = Get-FreshLog (Join-Path $TestSaved "Logs\quick_${Sig3Part}_client$Client.log")
+            $ClientDisplay = if ($Visible) { "-windowed -ResX=940 -ResY=530 -WinX=$(3940 + ($Client - 1) * 960) -WinY=1020" } else { "-RenderOffScreen -ResX=960 -ResY=540 -nosound" }
+            $ClientUrl = if ($Client -eq 1) { "127.0.0.1:${Sig3Port} -PlayerName=Bob" } else { "127.0.0.1:${Sig3Port}?Name=$($Sig3Names[$Client])" }
+            $ClientArguments = "`"$UProject`" $ClientUrl -game $ClientDisplay -saveddirsuffix=Tests_Net$Client -nosplash -unattended -Multiprocess -LiveCoding=0 -asdebugport=0 -as-exit-on-error -culture=fr -abslog=`"$ClientLog`" -ExecCmds=`"hol.Camera.TestCursor 0.5 0.5,hol.Test.Run $ClientSequence`""
+            $Sig3Clients += @{ Client = $Client; Log = $ClientLog; Process = (Start-Process -FilePath (Join-Path $EngineDir "UnrealEditor.exe") -ArgumentList $ClientArguments -PassThru -WindowStyle $WinStyle) }
+        }
+    }
+    $Checks = [ordered]@{}
+    $Checks["server listening"] = $Sig3Listening
+    foreach ($Sig3Client in $Sig3Clients) {
+        $TimedOut = -not $Sig3Client.Process.WaitForExit(300000)
+        if ($TimedOut) { Stop-Process -Id $Sig3Client.Process.Id -Force -ErrorAction SilentlyContinue }
+    }
+    $Sig3ServerTimedOut = -not $Sig3Server.WaitForExit($(if ($Sig3Clients.Count) { 30000 } else { 1000 }))
+    if ($Sig3ServerTimedOut) { Stop-Process -Id $Sig3Server.Id -Force -ErrorAction SilentlyContinue }
+    $Checks["server quit by itself"] = -not $Sig3ServerTimedOut
+    $Sig3Answers = @(if (Test-Path $Sig3ServerLog) { Select-String -Path $Sig3ServerLog -Pattern "Signal: slot (\d) kind (\d) answer (\d+)" | ForEach-Object { "$($_.Matches[0].Groups[1].Value):$($_.Matches[0].Groups[2].Value):$($_.Matches[0].Groups[3].Value)" } })
+    $Checks["server: accepted Bob's 1 then 2, Carol's 3 (slot:kind:answer $($Sig3Answers -join ' '))"] = ($Sig3Answers -join " ") -eq "1:1:0 1:2:0 2:3:0"
+    # Each client: (Bob's kind 1 while Neutral to Carol, Bob's kind 2 while Enemy to Carol, Carol's kind 3) received, and the count wanted.
+    $Sig3Want = @{ 1 = @(1, 1, 0); 2 = @(1, 1, 0); 3 = @(0, 0, 1) }
+    foreach ($N in 1, 2, 3) {
+        $Sig3Client = $Sig3Clients | Where-Object { $_.Client -eq $N } | Select-Object -First 1
+        $Lines = if ($Sig3Client -and (Test-Path $Sig3Client.Log)) { @(Get-Content $Sig3Client.Log) } else { @() }
+        $Got = @(@("kind 1 from slot 1 ", "kind 2 from slot 1 ", "kind 3 from slot 2 ") | ForEach-Object { @($Lines | Select-String -SimpleMatch -Pattern "Signal: received $_").Count })
+        $Checks["client $N ($($Sig3Names[$N])) : sequence done"] = [bool]($Lines | Select-String -Pattern "Test mark: end" -Quiet)
+        $Checks["client $N ($($Sig3Names[$N])) : received Bob neutral-time / Bob enemy-time / Carol's own = $($Sig3Want[$N] -join '/') ($($Got -join '/'))"] = ($Got -join "/") -eq ($Sig3Want[$N] -join "/")
+    }
+    Write-Host "netsig3 : $([Math]::Round($Clock.Elapsed.TotalSeconds) - $Sig3StartedAt) s (started at $Sig3StartedAt s of the run)"
+    $AllOk = (Report "net signals 3 clients" $Checks) -and $AllOk
 }
 
 Write-Host "quick_check : $(if ($AllOk) { 'PASS' } else { 'FAIL' }) in $([Math]::Round($Clock.Elapsed.TotalSeconds)) s (game launch done at $GameSeconds s)"
