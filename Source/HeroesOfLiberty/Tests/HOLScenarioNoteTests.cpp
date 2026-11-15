@@ -13,10 +13,11 @@ namespace HOLScenarioNoteTestsPrivate
 	/** A run waiting for its key that never comes within this many frames is a failure, not a hang. */
 	constexpr int32 NoteTestMaxFrames = 600;
 
-	void StartScenarioSteps(const TArray<FString>& InSteps)
+	void StartScenarioSteps(const TArray<FString>& InSteps, const FString& Name = FString())
 	{
-		// The panel starts again at each scenario (HOLScenario.cpp).
+		// The panel starts again at each scenario (HOLScenario.cpp), with the scenario's name.
 		HOLTestHooks::GetScenarioDisplay() = HOLTestHooks::FScenarioDisplay();
+		HOLTestHooks::GetScenarioDisplay().Name = Name;
 		HOLTestSequence::FRunOptions Options;
 		Options.bQuitOnTimeout = false;
 		TArray<FString> Steps = InSteps;
@@ -62,6 +63,83 @@ bool FHOLScenarioReadyAtWaitKeyTest::RunTest(const FString& Parameters)
 		}
 		TestFalse(TEXT("the run reached its first waitkey"), Display.WaitingForKey.IsEmpty());
 		TestTrue(TEXT("the scenario is ready at its first waitkey"), Display.State == HOLTestHooks::FScenarioDisplay::EState::Ready);
+		HOLTestHooks::PressContinueKey();
+		return true;
+	}));
+	return true;
+}
+
+// Rule 15 of « Qualité des essais » (the user, 2026-11-14): in a <name>_compare scenario, Enter = next option and Backspace = previous
+// option. An option ends at its waitkey and starts at its first notereset (else right after the waitkey before it): Backspace at option B's
+// waitkey runs option A again, from its notereset to its own waitkey; at the first option there is none before (the key does nothing).
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLScenarioBackKeyTest, "HeroesOfLiberty.Dev.Scenario.BackKeyPreviousOption",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLScenarioBackKeyTest::RunTest(const FString& Parameters)
+{
+	HOLScenarioNoteTestsPrivate::StartScenarioSteps({ TEXT("note setup"), TEXT("notereset A"), TEXT("note A2"), TEXT("waitkey key A"),
+		TEXT("notereset B"), TEXT("waitkey key B"), TEXT("notereset C"), TEXT("waitkey key C") }, TEXT("back_compare"));
+	const TSharedRef<int32> Frames = MakeShared<int32>(0);
+	const TSharedRef<int32> Phase = MakeShared<int32>(0);
+	const TSharedRef<bool> bBackAtB = MakeShared<bool>(false);
+	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this, Frames, Phase, bBackAtB]()
+	{
+		HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+		if (++*Frames >= HOLScenarioNoteTestsPrivate::NoteTestMaxFrames)
+		{
+			AddError(FString::Printf(TEXT("phase %d never came: waiting for \"%s\", notes %s"), *Phase, *Display.WaitingForKey,
+				*FString::Join(Display.Notes, TEXT(", "))));
+			HOLTestHooks::PressContinueKey();
+			return true;
+		}
+		if (*Phase == 0)
+		{
+			// Option A waits: Enter, the next option.
+			if (Display.WaitingForKey == TEXT("key A"))
+			{
+				HOLTestHooks::PressContinueKey();
+			}
+			else if (Display.WaitingForKey == TEXT("key B"))
+			{
+				TestEqual(TEXT("option B shows its note"), Display.Notes, TArray<FString>{ TEXT("B") });
+				*bBackAtB = HOLTestHooks::PressBackKey();
+				*Phase = 1;
+			}
+			return false;
+		}
+		if (Display.WaitingForKey != TEXT("key A"))
+		{
+			return false;
+		}
+		TestTrue(TEXT("Backspace at option B's waitkey was taken"), *bBackAtB);
+		TestEqual(TEXT("option A ran again (its notereset and its note)"), Display.Notes, TArray<FString>{ TEXT("A"), TEXT("A2") });
+		TestFalse(TEXT("Backspace at the first option does nothing (no option before it)"), HOLTestHooks::PressBackKey());
+		HOLTestHooks::PressContinueKey();
+		return true;
+	}));
+	return true;
+}
+
+// Backspace only in a compare scenario: elsewhere its steps are not options, nothing runs again.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLScenarioBackKeyNotCompareTest, "HeroesOfLiberty.Dev.Scenario.BackKeyOnlyInCompare",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLScenarioBackKeyNotCompareTest::RunTest(const FString& Parameters)
+{
+	HOLScenarioNoteTestsPrivate::StartScenarioSteps({ TEXT("notereset A"), TEXT("waitkey key A"), TEXT("notereset B"), TEXT("waitkey key B") },
+		TEXT("plain"));
+	const TSharedRef<int32> Frames = MakeShared<int32>(0);
+	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this, Frames]()
+	{
+		HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+		if (Display.WaitingForKey == TEXT("key A"))
+		{
+			HOLTestHooks::PressContinueKey();
+		}
+		if (Display.WaitingForKey != TEXT("key B") && ++*Frames < HOLScenarioNoteTestsPrivate::NoteTestMaxFrames)
+		{
+			return false;
+		}
+		TestEqual(TEXT("the run reached its second waitkey"), Display.WaitingForKey, FString(TEXT("key B")));
+		TestFalse(TEXT("Backspace outside a compare scenario does nothing"), HOLTestHooks::PressBackKey());
 		HOLTestHooks::PressContinueKey();
 		return true;
 	}));

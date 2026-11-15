@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**201 réglages** : 12 pas codé, 188 provisoire, 0 réglé à l'essai, 1 validé.
+**205 réglages** : 12 pas codé, 192 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -97,7 +97,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
-| `buildings.table` | Table des bâtiments | 14 lignes, 21 colonnes | provisoire | D260, D345 | BuildingTypes.csv * |  |
+| `buildings.table` | Table des bâtiments | 14 lignes, 22 colonnes | provisoire | D260, D345 | BuildingTypes.csv * |  |
 | `ai.opening.QueueLength` | IA : file de Paysans en attente | 2 | provisoire | D527-D531 | HOLAIOpening.as |  |
 | `ai.opening.WeightFood` | IA : poids de la nourriture (ouverture) | 3 | provisoire | D527-D531 | HOLAIOpening.as |  |
 | `ai.opening.WeightWood` | IA : poids du bois (ouverture) | 2 | provisoire | D527-D531 | HOLAIOpening.as |  |
@@ -163,11 +163,12 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `ai.siege.MaxRams` | IA siège : Béliers au plus | 2 | provisoire | S6, D614 | HOLAISiege.as |  |
 | `ai.siege.MinSoldiers` | IA et siège : soldats avant l'Atelier de siège | 8 | provisoire | S6, D614 | HOLAISiege.as |  |
 | `morale.attenuation_cap` | Moral : atténuation maximale cumulée (%) | 75 | provisoire | D404, D706 | HOLMoraleRules.as | Jamais 100 % : seule la Lumière sacrée retire (D404) |
-| `morale.bonus_cap_other` | Moral : plafond du bonus sur les dégâts infligés et la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
+| `morale.bonus_cap_dealt` | Moral : plafond du bonus sur les dégâts infligés (%) | 40 | provisoire | D704, D771, D791 | HOLMoraleRules.as | Décidé (Q-legions-rage-cap = A, 2026-11-11) : 40, la rage nécrotique donne ses +40 % ; bonus seul (D791), le malus reste 30 |
+| `morale.bonus_cap_rate` | Moral : plafond du bonus sur la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test (ancienne ligne morale.bonus_cap_other, scindée quand le levier Dealt est passé à 40) |
 | `morale.bonus_cap_taken` | Moral : plafond du bonus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
 | `morale.malus_cap_other` | Moral : plafond du malus sur les dégâts infligés et la cadence (%) | 30 | provisoire | D704 | HOLMoraleRules.as | À régler en test |
 | `morale.malus_cap_taken` | Moral : plafond du malus sur les dégâts subis (%) | 50 | provisoire | D704 | HOLMoraleRules.as | Symétrique du bonus ; décidé par l'utilisateur le 2026-11-05 |
-| `units.table` | Table des unités (voir UnitStats.md) | 16 lignes, 57 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
+| `units.table` | Table des unités (voir UnitStats.md) | 16 lignes, 58 colonnes | provisoire | D227, D345 | UnitTypes.csv * | Détail dans UnitStats.md (make_unit_stats.py) |
 | `eco.mainfc.health` | Forum principal : points de vie | 2400 | provisoire | D345 | BuildingTypes.csv MainCentre:MaxHealth |  |
 
 ## Question 8 : Le volcan est-il une opportunité plutôt qu'une frustration ?
@@ -227,6 +228,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
 | `gdd.fog_grace` | Brouillard : délai de grâce d'environ 0,5 s | — | pas codé | D526 | GDD | Chantier brouillard : FogInProgress.md |
+| `stealth.reveal_distance_cm` | Furtivité : distance où un ennemi « tout proche » révèle une unité dans une zone de furtivité (cm) | 800 | provisoire | D383, D396 | HOLStealthRules.as | Défaut 800 = 2 cases, en attente de Retours\Q-stealth.md ; cvar hol.Stealth.RevealDistance ; forme rectangulaire des zones provisoire aussi (vient avec les cartes) |
 | `vision.building_sight` | Rayon de vue d'un bâtiment (forum principal, cases) | 6400 | provisoire | D523 | BuildingTypes.csv MainCentre:SightRadius |  |
 | `vision.forest_trees` | Vue : arbres qui font une case de forêt | 2 | provisoire | D383, D523 | HOLVisionRules.h |  |
 | `vision.height_bonus_per_cm` | Vue : bonus de hauteur (cm de vue par cm) | 1 | provisoire | D383, D523 | HOLVisionRules.h |  |
@@ -259,7 +261,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
-| `comm.signal.lifetime_ms` | Signaux : durée sur la carte (ms) | 5000 | provisoire |  | HOLSignalRules.as | Q-signals Q1 (pas dans le GDD) |
+| `comm.signal.lifetime_ms` | Signaux : durée sur la carte (ms) | 5000 | provisoire | D784 | HOLSignalRules.as | Décidé (Q-signals Q1 = A : 5 s) |
 | `comm.signal.max_per_window` | Signaux : nombre par joueur dans la fenêtre | 3 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
 | `comm.signal.window_ms` | Signaux : fenêtre de la limite (ms) | 5000 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
 
@@ -305,8 +307,9 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
-| `nomad.group_size` | Nomade : Paysans au plus par groupe de départ | 2 | provisoire | D207 | HOLNomadRules.as | Q-nomad Q1 : petits groupes (5 Paysans = 2, 2, 1) |
-| `nomad.min_enemy_distance_cm` | Nomade : distance minimale à un groupe ennemi au départ (cm) | 4000 | provisoire | D207 | HOLNomadRules.as | Q-nomad Q2 : vigilance de D207, 1 case = 100 cm |
+| `nomad.group_size` | Nomade : Paysans au plus par groupe de départ | 1 | provisoire | D786 | HOLNomadRules.as | Décidé (Q-nomad Q1 = B) : 1 Paysan par groupe (5 Paysans = 5 groupes de 1) |
+| `nomad.group_spacing_cm` | Nomade : écart minimal entre deux groupes de départ au-delà de leur portée (cm) | 1500 | provisoire | D207, D797 | HeroesOfLibertyGameModeBase.cpp | Cvar hol.Nomad.GroupSpacingCm (BUG nomad_start point 2) ; listé dans Placeholders.txt |
+| `nomad.min_enemy_distance_cm` | Nomade : distance minimale à un groupe ennemi au départ (cm) | 4000 | provisoire | D786 | HOLNomadRules.as | Décidé (Q-nomad Q2 = A) : 40 cases, 1 case = 100 cm |
 
 ### Paliers
 
@@ -336,6 +339,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | `site.decay_steps` | Sites sacrés : recul du compte par pas | 2 | provisoire | D345, D699 | HOLSiteRules.as | Récession du relais (2 par pas), à régler en test |
 | `site.gold_per_minute` | Sites sacrés : or par minute et par site tenu | 30 | provisoire | D699 | HOLSiteRules.h | Petit revenu passif par défaut ; Retours\Q-sites-or-par-minute.md ; cvar hol.Site.GoldPerMinute |
 | `site.hold_seconds` | Sites sacrés : secondes à tenir seul | 60 | provisoire | D345, D699 | HOLSiteRules.as | Valeur du relais, à régler en test (D345 : l'utilisateur choisit) |
+| `site.nomad_margin_cm` | Sites sacrés : marge de Nomade au-delà de la zone d'un site pour un groupe de départ (cm) | 3200 | provisoire |  | HOLSiteOption.as | Défaut = option B recommandée, non choisie : la vue d'un Paysan (3200 cm), aucun groupe ne voit un site au départ |
 | `site.radius` | Sites sacrés : rayon de la zone par défaut (cm) | 1200 | provisoire | D429 | HOLSiteLayout.h | Celui du relais et de la ruine (12 m) ; la carte peut donner le sien (Tools/Editor/maps/common.py SITE_RADIUS) |
 | `site.sim.decay_steps` | Sites sacrés (simulation C++) : recul du compte par pas | 2 | provisoire | D345, D699 | HOLSiteRules.h | Doit rester égal au script (le test de script compare) |
 | `site.sim.hold_seconds` | Sites sacrés (simulation C++) : secondes à tenir | 60 | provisoire | D345, D699 | HOLSiteRules.h | Doit rester égal au script (le test de script compare) ; cvar hol.Site.HoldSeconds |
@@ -352,9 +356,9 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
-| `eco.secondary_centre.cost_stone` | Centre secondaire : coût en pierre | 300 | provisoire | D384 | HOLSecondaryCentreRules.as | Q-secondary-centers Q1 |
-| `eco.secondary_centre.cost_wood` | Centre secondaire : coût en bois | 300 | provisoire | D384 | HOLSecondaryCentreRules.as | Q-secondary-centers Q1 |
-| `eco.secondary_centre.population` | Centre secondaire : base de population | 10 | provisoire | D384 | HOLSecondaryCentreRules.as | Q-secondary-centers Q2 |
+| `eco.secondary_centre.cost_stone` | Centre secondaire : coût en pierre | 400 | provisoire | D783 | HOLSecondaryCentreRules.as | Décidé (Q-secondary-centers Q1 = B : 150 bois + 400 pierre) |
+| `eco.secondary_centre.cost_wood` | Centre secondaire : coût en bois | 150 | provisoire | D783 | HOLSecondaryCentreRules.as | Décidé (Q-secondary-centers Q1 = B : 150 bois + 400 pierre) |
+| `eco.secondary_centre.population` | Centre secondaire : base de population | 10 | provisoire | D783 | HOLSecondaryCentreRules.as | Décidé (Q-secondary-centers Q2 = A : 10 comme le forum) |
 
 ## Fichiers marqués « provisoire » sans valeur à régler
 

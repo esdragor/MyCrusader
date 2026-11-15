@@ -161,93 +161,93 @@ waitlog candidate played Building.Coins J
 waitkey Building.Coins J (s_coins_slap) vient de jouer. Entree : Building.Barracks A  [nouveau cue]
 hol.Audio.Candidate Building.Barracks A
 waitlog candidate played Building.Barracks A
-waitkey Building.Barracks A (s_voice_hah) vient de jouer. Entree : Building.Barracks B
+waitkey Building.Barracks A (s_voice5_yell_a) vient de jouer. Entree : Building.Barracks B
 hol.Audio.Candidate Building.Barracks B
 waitlog candidate played Building.Barracks B
-waitkey Building.Barracks B (s_voice_ho) vient de jouer. Entree : Building.Barracks C
+waitkey Building.Barracks B (s_voice5_yell_b) vient de jouer. Entree : Building.Barracks C
 hol.Audio.Candidate Building.Barracks C
 waitlog candidate played Building.Barracks C
-waitkey Building.Barracks C (s_voice_hey) vient de jouer. Entree : Building.Barracks D
+waitkey Building.Barracks C (s_voice5_yell_c) vient de jouer. Entree : Building.Barracks D
 hol.Audio.Candidate Building.Barracks D
 waitlog candidate played Building.Barracks D
-waitkey Building.Barracks D (s_voice_hup) vient de jouer. Entree : Building.Barracks E
+waitkey Building.Barracks D (s_voice5_yell_d) vient de jouer. Entree : Building.Barracks E
 hol.Audio.Candidate Building.Barracks E
 waitlog candidate played Building.Barracks E
-waitkey Building.Barracks E (s_voice_duo) vient de jouer. Entree : Building.Barracks F
+waitkey Building.Barracks E (s_voice5_grunt_a) vient de jouer. Entree : Building.Barracks F
 hol.Audio.Candidate Building.Barracks F
 waitlog candidate played Building.Barracks F
-waitkey Building.Barracks F (s_voice_trio) vient de jouer. Entree : Building.Barracks G
+waitkey Building.Barracks F (s_voice5_grunt_b) vient de jouer. Entree : Building.Barracks G
 hol.Audio.Candidate Building.Barracks G
 waitlog candidate played Building.Barracks G
-waitkey Building.Barracks G (s_voice_grunt) vient de jouer. Entree : Building.Barracks H
+waitkey Building.Barracks G (s_voice5_crowd_a) vient de jouer. Entree : Building.Barracks H
 hol.Audio.Candidate Building.Barracks H
 waitlog candidate played Building.Barracks H
-waitkey Building.Barracks H (s_voice_murmur) vient de jouer. Entree : Building.Barracks I
+waitkey Building.Barracks H (s_voice5_crowd_b) vient de jouer. Entree : Building.Barracks I
 hol.Audio.Candidate Building.Barracks I
 waitlog candidate played Building.Barracks I
-waitkey Building.Barracks I (s_voice_whisper) vient de jouer. Entree : Building.Barracks J
+waitkey Building.Barracks I (s_voice5_sword_draw) vient de jouer. Entree : Building.Barracks J
 hol.Audio.Candidate Building.Barracks J
 waitlog candidate played Building.Barracks J
-waitkey Building.Barracks J (s_voice_order) vient de jouer. Entree : Building.Range A  [nouveau cue]
+waitkey Building.Barracks J (s_voice5_sword_sheath) vient de jouer. Entree : Building.Range A  [nouveau cue]
 hol.Audio.Candidate Building.Range A
 waitlog candidate played Building.Range A
-waitkey Building.Range A (s_shot_twang_low) vient de jouer. Entree : Building.Range B
+waitkey Building.Range A (s_shot5_longbow_a) vient de jouer. Entree : Building.Range B
 hol.Audio.Candidate Building.Range B
 waitlog candidate played Building.Range B
-waitkey Building.Range B (s_shot_twang) vient de jouer. Entree : Building.Range C
+waitkey Building.Range B (s_shot5_longbow_b) vient de jouer. Entree : Building.Range C
 hol.Audio.Candidate Building.Range C
 waitlog candidate played Building.Range C
-waitkey Building.Range C (s_shot_twang_whoosh) vient de jouer. Entree : Building.Range D
+waitkey Building.Range C (s_shot5_longbow_set) vient de jouer. Entree : Building.Range D
 hol.Audio.Candidate Building.Range D
 waitlog candidate played Building.Range D
-waitkey Building.Range D (s_shot_whoosh) vient de jouer. Entree : Building.Range E
+waitkey Building.Range D (s_shot5_nock) vient de jouer. Entree : Building.Range E
 hol.Audio.Candidate Building.Range E
 waitlog candidate played Building.Range E
-waitkey Building.Range E (s_shot_volley) vient de jouer. Entree : Building.Range F
+waitkey Building.Range E (s_shot5_crossbow_a) vient de jouer. Entree : Building.Range F
 hol.Audio.Candidate Building.Range F
 waitlog candidate played Building.Range F
-waitkey Building.Range F (s_shot_thunk) vient de jouer. Entree : Building.Range G
+waitkey Building.Range F (s_shot5_crossbow_b) vient de jouer. Entree : Building.Range G
 hol.Audio.Candidate Building.Range G
 waitlog candidate played Building.Range G
-waitkey Building.Range G (s_shot_twang_thunk) vient de jouer. Entree : Building.Range H
+waitkey Building.Range G (s_shot5_bow) vient de jouer. Entree : Building.Range H
 hol.Audio.Candidate Building.Range H
 waitlog candidate played Building.Range H
-waitkey Building.Range H (s_shot_draw) vient de jouer. Entree : Building.Range I
+waitkey Building.Range H (s_shot5_volley_a) vient de jouer. Entree : Building.Range I
 hol.Audio.Candidate Building.Range I
 waitlog candidate played Building.Range I
-waitkey Building.Range I (s_shot_double) vient de jouer. Entree : Building.Range J
+waitkey Building.Range I (s_shot5_arrow_pass) vient de jouer. Entree : Building.Range J
 hol.Audio.Candidate Building.Range J
 waitlog candidate played Building.Range J
-waitkey Building.Range J (s_shot_crossbow) vient de jouer. Entree : Building.Stable A  [nouveau cue]
+waitkey Building.Range J (s_shot5_bolt_hit) vient de jouer. Entree : Building.Stable A  [nouveau cue]
 hol.Audio.Candidate Building.Stable A
 waitlog candidate played Building.Stable A
-waitkey Building.Stable A (s_horse_nicker) vient de jouer. Entree : Building.Stable B
+waitkey Building.Stable A (s_horse5_whinny_a) vient de jouer. Entree : Building.Stable B
 hol.Audio.Candidate Building.Stable B
 waitlog candidate played Building.Stable B
-waitkey Building.Stable B (s_horse_nicker_long) vient de jouer. Entree : Building.Stable C
+waitkey Building.Stable B (s_horse5_whinny_b) vient de jouer. Entree : Building.Stable C
 hol.Audio.Candidate Building.Stable C
 waitlog candidate played Building.Stable C
-waitkey Building.Stable C (s_horse_snort) vient de jouer. Entree : Building.Stable D
+waitkey Building.Stable C (s_horse5_whinny_c) vient de jouer. Entree : Building.Stable D
 hol.Audio.Candidate Building.Stable D
 waitlog candidate played Building.Stable D
-waitkey Building.Stable D (s_horse_flutter) vient de jouer. Entree : Building.Stable E
+waitkey Building.Stable D (s_horse5_snort_a) vient de jouer. Entree : Building.Stable E
 hol.Audio.Candidate Building.Stable E
 waitlog candidate played Building.Stable E
-waitkey Building.Stable E (s_horse_neigh_low) vient de jouer. Entree : Building.Stable F
+waitkey Building.Stable E (s_horse5_snort_b) vient de jouer. Entree : Building.Stable F
 hol.Audio.Candidate Building.Stable F
 waitlog candidate played Building.Stable F
-waitkey Building.Stable F (s_horse_walk) vient de jouer. Entree : Building.Stable G
+waitkey Building.Stable F (s_horse5_vocal_a) vient de jouer. Entree : Building.Stable G
 hol.Audio.Candidate Building.Stable G
 waitlog candidate played Building.Stable G
-waitkey Building.Stable G (s_horse_trot) vient de jouer. Entree : Building.Stable H
+waitkey Building.Stable G (s_horse5_vocal_b) vient de jouer. Entree : Building.Stable H
 hol.Audio.Candidate Building.Stable H
 waitlog candidate played Building.Stable H
-waitkey Building.Stable H (s_horse_gallop) vient de jouer. Entree : Building.Stable I
+waitkey Building.Stable H (s_horse5_walk) vient de jouer. Entree : Building.Stable I
 hol.Audio.Candidate Building.Stable I
 waitlog candidate played Building.Stable I
-waitkey Building.Stable I (s_horse_stamp) vient de jouer. Entree : Building.Stable J
+waitkey Building.Stable I (s_horse5_trot_a) vient de jouer. Entree : Building.Stable J
 hol.Audio.Candidate Building.Stable J
 waitlog candidate played Building.Stable J
-waitkey Building.Stable J (s_horse_snort_hoof) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Stable J (s_horse5_trot_b) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

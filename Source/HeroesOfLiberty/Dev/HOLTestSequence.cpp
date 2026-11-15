@@ -430,6 +430,7 @@ namespace UE::HeroesOfLiberty::Dev
 				{
 					bKeyPressed = false;
 					bWaitingForKey = true;
+						bBackPressed = false;
 					Display.WaitingForKey = Rest.IsEmpty() ? FString(DefaultWaitKeyText) : Rest;
 					// The scenario is set up once its first waitkey waits: the user plays now, not only after the last step.
 					if (Display.State == HOLTestHooks::FScenarioDisplay::EState::Preparing)
@@ -439,7 +440,21 @@ namespace UE::HeroesOfLiberty::Dev
 					UE_LOG(LogHOLTest, Display, TEXT("Scenario waits for the key: %s"), *Display.WaitingForKey);
 					HOLTestHooks::NotifyScenarioChanged(Display.WaitingForKey, FColor::Cyan);
 				}
-				const bool bAuto = ShouldAutoContinue() && Waited >= AutoContinueSeconds;
+				if (bBackPressed)
+					{
+						// Backspace in a compare scenario: the previous option runs again, from its first step (Tick moves on to it).
+						bBackPressed = false;
+						const int32 PreviousStart = FindPreviousOptionStart();
+						if (PreviousStart != INDEX_NONE)
+						{
+							EndWaitForKey();
+							UE_LOG(LogHOLTest, Display, TEXT("Scenario key: back to the previous option (step %d: %s)"), PreviousStart + 1,
+								*Steps[PreviousStart]);
+							Next = PreviousStart - 1;
+							return true;
+						}
+					}
+					const bool bAuto = ShouldAutoContinue() && Waited >= AutoContinueSeconds;
 				bDone = bKeyPressed || bAuto;
 				if (bDone)
 				{
@@ -656,6 +671,69 @@ namespace UE::HeroesOfLiberty::Dev
 			bKeyPressed = true;
 			return true;
 		}
+
+		/** The back key (rule 15 of « Qualité des essais »): true when this compare scenario's run goes back to its previous option. */
+		bool PressBack()
+		{
+			if (!bRunning || !bWaitingForKey || FindPreviousOptionStart() == INDEX_NONE)
+			{
+				return false;
+			}
+			bBackPressed = true;
+			return true;
+		}
+
+	private:
+		static FString StepVerb(const FString& Step)
+		{
+			FString Verb = Step;
+			FString Rest;
+			Step.Split(TEXT(" "), &Verb, &Rest);
+			return Verb;
+		}
+
+		/** The waitkey step before Before, INDEX_NONE without one. */
+		int32 FindWaitKeyBefore(const int32 Before) const
+		{
+			for (int32 Index = FMath::Min(Before, Steps.Num()) - 1; Index >= 0; --Index)
+			{
+				if (StepVerb(Steps[Index]) == TEXT("waitkey"))
+				{
+					return Index;
+				}
+			}
+			return INDEX_NONE;
+		}
+
+		/**
+		 * In a <name>_compare scenario waiting on a waitkey (Next), the first step of the option before the one this waitkey closes: an option
+		 * ends at its waitkey and starts at its first notereset, else right after the waitkey before it. INDEX_NONE when this is the first
+		 * option (no waitkey before, or the steps before it are the set-up with no notereset) or not a compare scenario.
+		 */
+		int32 FindPreviousOptionStart() const
+		{
+			if (!HOLTestHooks::GetScenarioDisplay().Name.Contains(TEXT("_compare")))
+			{
+				return INDEX_NONE;
+			}
+			const int32 PreviousEnd = FindWaitKeyBefore(Next);
+			if (PreviousEnd == INDEX_NONE)
+			{
+				return INDEX_NONE;
+			}
+			const int32 PreviousBegin = FindWaitKeyBefore(PreviousEnd);
+			for (int32 Index = PreviousBegin + 1; Index < PreviousEnd; ++Index)
+			{
+				if (StepVerb(Steps[Index]) == TEXT("notereset"))
+				{
+					return Index;
+				}
+			}
+			return PreviousBegin == INDEX_NONE ? INDEX_NONE : PreviousBegin + 1;
+		}
+
+		/** The back key was pressed during the current waitkey. */
+		bool bBackPressed = false;
 	};
 
 	/** One run per owner: hol.Test.Run's, a scenario's. */
@@ -678,6 +756,16 @@ namespace UE::HeroesOfLiberty::Dev
 			bWaited |= Pair.Value->PressKey();
 		}
 		return bWaited;
+	}
+
+	bool PressBackKey()
+	{
+		bool bWent = false;
+		for (const TPair<FName, TUniquePtr<FTestSequence>>& Pair : Sequences)
+		{
+			bWent |= Pair.Value->PressBack();
+		}
+		return bWent;
 	}
 
 	FTestSequence& GetSequence(const FName Owner)
@@ -732,6 +820,13 @@ bool HOLTestHooks::PressContinueKey()
 	const bool bWaited = UE::HeroesOfLiberty::Dev::PressContinueKey();
 	UE_LOG(LogHOLTest, Display, TEXT("Scenario key: pressed (%s)"), bWaited ? TEXT("a step was waiting") : TEXT("nothing waiting"));
 	return bWaited;
+}
+
+bool HOLTestHooks::PressBackKey()
+{
+	const bool bWent = UE::HeroesOfLiberty::Dev::PressBackKey();
+	UE_LOG(LogHOLTest, Display, TEXT("Scenario back key: pressed (%s)"), bWent ? TEXT("previous option") : TEXT("nothing to go back to"));
+	return bWent;
 }
 
 void HOLTestSequence::Run(const FName Owner, TArray<FString>&& Steps, FRunOptions&& Options)

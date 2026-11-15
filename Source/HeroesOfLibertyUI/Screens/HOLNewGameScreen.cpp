@@ -669,7 +669,7 @@ void UHOLNewGameScreen::ShowLobby(const FHOLLobby& InLobby)
 	// The map, its size, "Équipes ensemble" and the options are the leader's; the mode has one value yet.
 	const bool bLeader = Lobby.IsYouLeader();
 	for (UHOLDropdown* Setting : { MapDropdown.Get(), SizeDropdown.Get(), TeamsTogetherDropdown.Get(), FogDropdown.Get(), ModeDropdown.Get(), NomadDropdown.Get(),
-		RegicideDropdown.Get(), CatastropheDropdown.Get(), SacredSitesDropdown.Get() })
+		RegicideDropdown.Get(), CatastropheDropdown.Get() })
 	{
 		if (Setting)
 		{
@@ -931,6 +931,9 @@ void UHOLNewGameScreen::Refresh()
 	if (SacredSitesDropdown)
 	{
 		SacredSitesDropdown->SetSelectedIndex(Config.bSacredSites ? 1 : 0);
+		// S7 (D699, HOLSiteOption.as BoxEnabled): greyed on a map without a site layer (its count known before loading, FHOLMapRules);
+		// in a lobby, the leader's alone like the other options.
+		SacredSitesDropdown->SetIsEnabled((!bLobby || Lobby.IsYouLeader()) && FHOLMapRules::GetSiteCount(Config.Map) > 0);
 	}
 }
 
