@@ -101,3 +101,10 @@ ne signale pas. Commit du rouge 76f66b8 (namespace `HOLSignal` absent).
 - Questions : `C:\Users\baudo\Documents\MyCrusader\Retours\Q-signals-ui.md` (Q1 geste de la roue, defaut A glisser ; Q2 icone, defaut A couleur par type).
 - RESTE (agent neuf) : marque au SOL dans le monde (non faite) ; ligne du fil de messages D445 (non faite) ; dessin de la roue pendant le glisser (selon Q1) ; Alt + clic SUR LA MINI-CARTE (non fait : seul le monde) ; scenario `signals_altclick` a geste reel (hol.Mouse.Click avec Alt) + preflight ; ligne `Placeholders.txt` pour les icones provisoires (interdit a cet agent : a faire par la session principale) ; SG4 sons.
 - NON VERIFIE : l'affichage (aucune image prise), la deprojection du clic (pas de vue au banc), le chemin Alt reel (IsInputKeyDown).
+
+## 2026-11-15 13:04 HALDIR-1115e (agent, maps, C++) : SG3 lot 2
+
+- FAIT : ligne du fil de messages d'un signal recu (HOLForumMessages::GetSignalMessage, table unique D445 : '{nom} : Attaque ici / Defends ici / Besoin d'aide / Regroupement / Eclaire ici', neutre '{nom} : Signal' ; ClientReceiveSignal -> AHOLGameState::NoteSignalReceived -> OnSignalMessage -> HUD HandleSignalMessage, viewer seul). Test HeroesOfLiberty.Signals.ThreadLine vu ROUGE (stub, 1304/1305) puis VERT ; tests 1305/1305, net PASS ; commit fc0798c.
+- Placeholders.txt : ligne 'Icones de signaux' ajoutee (copie principale, non commitee).
+- RESTE (agent neuf) : scenario signals_altclick (geste reel hol.Mouse.Click avec Alt a verifier, .look : carre 10 px couleur du type, journal 'Signal: received kind' + 'Signal message: Vous : Signal (slot 0)') + preflight + E-signals_altclick.md ; marque au SOL (provisoire) ; dessin de la roue et Alt + clic mini-carte apres Q-signals-ui ; SG4 sons. Spectateur : pas de ligne (HUD sans player state ne verifie pas INDEX_NONE ? : NON VERIFIE).
+
