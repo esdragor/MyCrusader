@@ -43,6 +43,22 @@ namespace HOLExplorationXP
 	FHOLExplorationXPSettings Preset(int Index)
 	{
 		FHOLExplorationXPSettings Settings;
+		Settings.CellsPerTranche = 16;
+		if (Index == 1)
+		{
+			Settings.XPPerTranche = 6;
+			Settings.XPPerPlace = 0;
+		}
+		else if (Index == 2)
+		{
+			Settings.XPPerTranche = 0;
+			Settings.XPPerPlace = 40;
+		}
+		else
+		{
+			Settings.XPPerTranche = 3;
+			Settings.XPPerPlace = 25;
+		}
 		return Settings;
 	}
 
@@ -50,18 +66,61 @@ namespace HOLExplorationXP
 	FHOLExplorationXPState NewState(const FHOLExplorationXPSettings& Settings, int GridCells, int NumPlaces)
 	{
 		FHOLExplorationXPState State;
+		int Side = Math::Max(1, Settings.CellsPerTranche);
+		State.GridCells = Math::Max(0, GridCells);
+		State.TranchesPerSide = (State.GridCells + Side - 1) / Side;
+		for (int I = 0; I < State.TranchesPerSide * State.TranchesPerSide; I++)
+			State.TrancheDone.Add(false);
+		for (int I = 0; I < NumPlaces; I++)
+			State.PlaceDone.Add(false);
 		return State;
+	}
+
+	// Whether the cell is on the side's grid.
+	bool InGrid(const FHOLExplorationXPState& State, int CellX, int CellY)
+	{
+		return CellX >= 0 && CellY >= 0 && CellX < State.GridCells && CellY < State.GridCells;
+	}
+
+	// The index of the cell's tranche in State.TrancheDone (the cell must be in the grid).
+	int TrancheIndex(const FHOLExplorationXPSettings& Settings, const FHOLExplorationXPState& State, int CellX, int CellY)
+	{
+		int Side = Math::Max(1, Settings.CellsPerTranche);
+		return (CellY / Side) * State.TranchesPerSide + (CellX / Side);
+	}
+
+	// Marks the cell's tranche and places done; the XP they pay, those not done yet.
+	int MarkCell(const FHOLExplorationXPSettings& Settings, FHOLExplorationXPState& State, const TArray<FHOLExplorationPlace>& Places, int CellX, int CellY)
+	{
+		if (!InGrid(State, CellX, CellY))
+			return 0;
+		int XP = 0;
+		int Tranche = TrancheIndex(Settings, State, CellX, CellY);
+		if (!State.TrancheDone[Tranche])
+		{
+			State.TrancheDone[Tranche] = true;
+			XP += Settings.XPPerTranche;
+		}
+		for (int I = 0; I < Places.Num() && I < State.PlaceDone.Num(); I++)
+		{
+			if (State.PlaceDone[I] || Places[I].CellX != CellX || Places[I].CellY != CellY)
+				continue;
+			State.PlaceDone[I] = true;
+			XP += Settings.XPPerPlace;
+		}
+		return XP;
 	}
 
 	// A cell explored before the match starts (the bases' first sight, "Explored map" mode): it pays nothing, ever.
 	void MarkExploredAtStart(FHOLExplorationXPState& State, const FHOLExplorationXPSettings& Settings, const TArray<FHOLExplorationPlace>& Places, int CellX, int CellY)
 	{
+		MarkCell(Settings, State, Places, CellX, CellY);
 	}
 
 	// The XP a side's hero gets when the side newly explores the cell (CellX, CellY): its tranche's and its places' first time, 0 otherwise.
 	// bHeroDead is not read on purpose: D06, exploration keeps paying while the hero is recovering.
 	int OnCellExplored(const FHOLExplorationXPSettings& Settings, FHOLExplorationXPState& State, const TArray<FHOLExplorationPlace>& Places, int CellX, int CellY, bool bHeroDead)
 	{
-		return 0;
+		return MarkCell(Settings, State, Places, CellX, CellY);
 	}
 }
