@@ -2,7 +2,7 @@
 # CARTE DE TEST /Game/Maps/Plain (EHOLMapSize::None : dalles grises M_MatteGround, aucun MI_Ground_*), que HOLBiomeApplier ne teinte pas ; avec mapSize,
 # FHOLMapSizeRules::GetMapFile charge la carte generee (Plain_Small...) et son sol de biome. Ce test lit chaque scenario de Tools\Scenarios : un scenario
 # qui MONTRE le decor ou le biome (son .txt appelle hol.Rocks.Review, hol.Resource.Review ou hol.Biome.) doit porter mapSize, sauf ceux listes dans
-# $Exceptions (carte de test voulue). Les autres scenarios sans mapSize (jeu, carte de test) sont comptes, pas refuses (Retours\Q-scenarios-mapsize.md).
+# $Exceptions (carte de test voulue). Les autres scenarios sans mapSize (jeu, carte de test) sont comptes, pas refuses (Retours\Q-rocks-proportion.md, Q2).
 #   powershell -ExecutionPolicy Bypass -File Tools\Tests\scenario_mapsize_check.ps1 [-Root <worktree>] [-List]
 param([string] $Root = "", [switch] $List)
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
