@@ -8466,8 +8466,8 @@ if ($Parts -contains "netsig3") {
     Write-AIMatchConfig $Sig3Config @("Human", "Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob", "Carol")
     (Get-Content $Sig3Config -Raw) -replace '"version": 2,', '"version": 2, "mode": "Diplomacy",' | Set-Content -Encoding ascii $Sig3Config
     $Sig3Names = @{ 1 = "Bob"; 2 = "Alice"; 3 = "Carol" }
-    # The clients launched (the harness's third client).
-    $Sig3Launched = @(1, 2)
+    # The clients launched: the harness's third client, Carol (her own saved directory Saved_Tests_Net3).
+    $Sig3Launched = @(1, 2, 3)
     $Sig3Flag = { param($Name) Join-Path $TestSaved "quick_${Sig3Part}_$Name.flag" }
     $Sig3Done = @(1, 2, 3 | ForEach-Object { & $Sig3Flag "done$_" })
     @("waitplayers $($Sig3Launched.Count)", "mark $Sig3Part", "wait 2",
