@@ -1,4 +1,4 @@
-# GESTE (L14-5, GLORFINDEL-1114c): the hover is a real mouse's (hol.Mouse.Hover: Slate's virtual cursor kept still 30 frames, the log says whether Slate shows the tooltip); the capture still draws it by hol.HUD.HoverIncome (Slate's tooltip window is out of the viewport's capture).
+# GESTE (L14-5, GLORFINDEL-1114c, GALADRIEL-1115a): every hover (FR, gold, EN, JA) is a real mouse's (hol.Mouse.Hover: Slate's virtual cursor kept still 30 frames) and the text is asserted on the tooltip Slate itself shows (log "tip text ..."); the capture still draws it by hol.HUD.HoverIncome (Slate's tooltip window is out of the viewport's capture).
 # D788 (Q-income-tooltip-rate = C): over a resource of the top bar, its income a minute, corrected for the trips to the drop-off.
 # The hover as the mouse does it: hol.HUD.HoverIncome <0 food | 1 wood | 2 stone | 3 gold> hit-tests the centre of the amount by Slate's own
 # window hit test, logs the tooltip the engine would show ("HUD income hover <i>: <text>") and draws that same tooltip widget in the game
@@ -21,6 +21,7 @@ frames 10
 # 1. FR: wood income over the wood amount; no wood income would read "+0 bois/min".
 hol.Mouse.Hover WoodAmount 30
 waitlog Mouse hover WoodAmount
+waitlog  bois/min"
 hol.HUD.HoverIncome 1
 waitlog HUD income hover 1: +
 waitlog  bois/min
@@ -29,6 +30,7 @@ capture income_tip_fr
 # 2. Gold: no gatherer and no sacred site, the tooltip says +0.
 hol.Mouse.Hover GoldAmount 30
 waitlog Mouse hover GoldAmount
+waitlog tooltip shown, tip text "+0 or/min"
 hol.HUD.HoverIncome 3
 waitlog HUD income hover 3: +0 or/min
 frames 5
@@ -36,6 +38,11 @@ capture income_tip_gold_fr
 # 3. EN, the same hover after a live language switch.
 hol.UI.Language en
 frames 10
+# The real mouse moves off the amount and back (a new hover opens a new tooltip with the new language's text).
+hol.Mouse.Hover 20 300 5
+waitlog Mouse hover 20,300
+hol.Mouse.Hover WoodAmount 30
+waitlog  wood/min"
 hol.HUD.HoverIncome 1
 waitlog  wood/min
 frames 5
@@ -43,6 +50,10 @@ capture income_tip_en
 # 4. JA: "/分", not "/min".
 hol.UI.Language ja
 frames 10
+hol.Mouse.Hover 20 300 5
+waitlog Mouse hover 20,300
+hol.Mouse.Hover WoodAmount 30
+waitlog  木材/分"
 hol.HUD.HoverIncome 1
 waitlog  木材/分
 frames 5
