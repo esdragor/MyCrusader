@@ -37,6 +37,12 @@ Branche `visual`, worktree Sauron. Ouvert le 2026-11-15 10:2x par SAURON-1115b. 
 - 2026-11-15 10:2x : chantier ouvert, journal + question Ã©crits (SAURON-1115b).
 - 2026-11-15 10:2x : etapes 1 et 2 FAITES (SAURON-1115b) : test rouge VU ROUGE (tests 1268/1272, les 4 tests HOLExplorationXPRules_Test KO), commit 2487a66 ; regle codee (tranches, lieux, depart, hors grille, prereglages A/B/C, defaut C), quick_check -Parts tests 1272/1272 PASS, commit cf77faf, merge main de32333 (tests non relances apres le merge). Prochaine etape = 3 (C++, worktree du brouillard) : voir 'Ce qu'il faudra lire du brouillard'. Rien n'est branche au jeu.
 
+- 2026-11-15 12:25 : SAURON-1115c, etape 3 (C++ branchement). merge main (avance rapide cdbfe27), LaunchCheck non vide -> build.
+  - Poids 25 % TRANCHE PAR LE CODE : `UHOLHeroSubsystem::AddXP` n'applique aucun poids ; seul `HOLBuildProcessor` passe par `HOLHeroXP::GetXP` (Development) ; les deux porteurs Exploration existants (`HOLRelaySubsystem` XP de territoire, `HOLCampSubsystem` part des camps) ajoutent leur XP telle quelle. Donc la valeur de la regle = XP finale, PAS de `GetWeightPercent` reapplique.
+  - Jumeau C++ `Source\HeroesOfLiberty\Simulation\HOLExplorationXPRules.h/.cpp` (memes nombres que le .as ; cvar `hol.HeroXP.ExplorationPreset` 0 = C defaut, 1 = A, 2 = B, lue au Start du brouillard).
+  - Test `Source\HeroesOfLiberty\Tests\HOLExplorationXPTests.cpp` (`HeroesOfLiberty.ExplorationXP.FogPaysTheHero`) : vraie chaine (Peasant, UHOLVisionSubsystem::Update, fiche du heros) ; 1re seconde = 0 XP ; deplacement lointain : XP = N tranches neuves (comptees par le test depuis le brouillard) x XPPerTranche ; meme lieu une 2e fois = rien de plus ; camp adverse = 0.
+  - Branchement prevu : `FHOLVisionMap::Lay` note les cases passees inexplorees -> explorees par camp (`TakeNewlyExplored`) ; `UHOLVisionSubsystem::Update` (serveur et solo, jamais client) les draine : pendant la 1re seconde (SimulationRateHz pas) `MarkExploredAtStart`, ensuite `OnCellExplored` et `AddXP(Slot, XP, Exploration)` pour CHAQUE slot du camp (camp = equipe ou slot seul ; partage entre allies NON TRANCHE, note pour la question). Mode Carte exploree : ExploreAll ne note rien -> 0 XP. Lieux (relais, camps, autels) : liste VIDE pour l'instant (preset B ne paie donc rien en jeu) -> reste a faire.
+
 ## Appels (un trait par appel)
 
 |||||||||||||||||||
