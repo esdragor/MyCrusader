@@ -2,8 +2,142 @@
 
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLAvoidRules.h"
+#include "Dev/HOLSanityRules.h"
+#include "HAL/IConsoleManager.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
+
+namespace
+{
+	/** A console variable of the game (its shipped default in a test run), Fallback when it does not exist. */
+	double GetGameCVar(const TCHAR* Name, const double Fallback)
+	{
+		const IConsoleVariable* Variable = IConsoleManager::Get().FindConsoleVariable(Name);
+		return Variable ? Variable->GetFloat() : Fallback;
+	}
+
+	/** A walker of a block's march: its velocity of the last step and its remembered detour (FHOLDetourFragment's fields). */
+	struct FMarchWalker
+	{
+		FVector2D Velocity = FVector2D::ZeroVector;
+		int8 Side = 0;
+		uint8 Turn = 0;
+		uint8 ClearSteps = 0;
+		uint8 MemberSteps = 0;
+	};
+
+	/**
+	 * One step of UHOLFullSpeedProcessor::AvoidBodies for a walker going straight to its slot (ToSlot) with one body near (ToOther), a member of
+	 * its own order going at Other's last velocity: the straight course when clear, the remembered detour (HOLAvoid::NextDetourTurn), else the
+	 * smallest clear turn away from it, remembered only by HOLAvoid::RemembersMemberDetour. Returns the way (unit).
+	 */
+	FVector2D StepMarchMember(FMarchWalker& Me, const FMarchWalker& Other, const FVector2D& ToSlot, const FVector2D& ToOther, const double Speed, const double Contact,
+		const double AvoidTime, const int32 Turns, const int32 MemberMaxSteps)
+	{
+		constexpr double AngleStep = 10.; // AvoidAngleStep of HOLSimulationProcessors.cpp
+		const FVector2D Ahead = ToSlot.GetSafeNormal();
+		const double Horizon = FMath::Min(AvoidTime, ToSlot.Size() / Speed);
+		const bool bNear = FVector2D::DotProduct(ToOther, Ahead) > -Contact && ToOther.SizeSquared() < FMath::Square((Speed + Other.Velocity.Size()) * Horizon + Contact);
+		const auto IsClear = [&](const FVector2D& Way) { return !bNear || HOLAvoid::TimeToContact(ToOther, Way * Speed - Other.Velocity, Contact, false) >= Horizon; };
+		const auto Forget = [&Me] { Me.Side = 0; Me.Turn = 0; Me.ClearSteps = 0; Me.MemberSteps = 0; };
+		if (Me.Turn > 0 && !bNear)
+		{
+			Me.ClearSteps = static_cast<uint8>(FMath::Max<int32>(Me.ClearSteps, HOLAvoid::EaseBackSteps - 1));
+		}
+		if (Me.Turn == 0 && IsClear(Ahead))
+		{
+			return Ahead;
+		}
+		if (Me.Turn > 0)
+		{
+			const double Hand = Me.Side;
+			const int32 Turn = HOLAvoid::NextDetourTurn(Me.Turn, Turns, Me.ClearSteps, [&](const int32 Each) { return IsClear(Ahead.GetRotated(Hand * Each * AngleStep)); });
+			Me.Turn = static_cast<uint8>(Turn != INDEX_NONE ? Turn : HOLAvoid::TurnWithoutClearWay(Me.Turn, Turns, false));
+			if (Me.Turn == 0)
+			{
+				Forget();
+				return Ahead;
+			}
+			const FVector2D Way = Ahead.GetRotated(Hand * Me.Turn * AngleStep);
+			if (Me.MemberSteps > 0 && HOLAvoid::IsMemberDetourOver(Me.MemberSteps, MemberMaxSteps))
+			{
+				Forget();
+			}
+			return Way;
+		}
+		const double Side = HOLAvoid::ChooseDetourSide(Ahead, ToOther, Contact * 1.1);
+		for (int32 Index = 0; Index < 2 * Turns; ++Index)
+		{
+			const int32 Turn = Index / 2 + 1;
+			const double Hand = Index % 2 == 0 ? Side : -Side;
+			const FVector2D Way = Ahead.GetRotated(Hand * Turn * AngleStep);
+			if (IsClear(Way))
+			{
+				if (HOLAvoid::RemembersMemberDetour(MemberMaxSteps))
+				{
+					Me.Side = static_cast<int8>(Hand);
+					Me.Turn = static_cast<uint8>(Turn);
+					Me.MemberSteps = 1;
+				}
+				return Way;
+			}
+		}
+		return Ahead;
+	}
+
+	/**
+	 * neutrals_trace run3 (CELEBORN-1115a, Saved\c1115a\nt_run3.log, steps 306-329): #9 and #10, two Men-at-arms of one block marching north at 697 cm/s,
+	 * #10 229 cm to the right of #9, #9's slot 650 cm ahead and 130 cm to its right, #10's 166 cm to its left: they converge. Their places across held
+	 * by the block (the separation), both step together, each predicting the other from its last velocity. The audit's whole-window rules
+	 * (HOLSanity::Analyse, 30 Hz, 8 s) on the places the steps make.
+	 */
+	HOLSanity::FResult RunMarchPair(const int32 MemberMaxSteps, const bool bRight)
+	{
+		constexpr double Speed = 697.;
+		constexpr double Contact = 120.; // two bodies of 60 cm, members of one block bare (hol.Units.AvoidMarchMembersBare)
+		constexpr float Step = 1.f / 30.f;
+		const double AvoidTime = GetGameCVar(TEXT("hol.Units.AvoidTime"), 0.5);
+		const int32 Turns = FMath::FloorToInt32(GetGameCVar(TEXT("hol.Units.AvoidMaxAngle"), 60.) / 10.);
+		const FVector2D LeftToSlot(130., 650.);
+		const FVector2D RightToSlot(-166., 650.);
+		const FVector2D LeftToRight(229., 0.);
+		FMarchWalker Left;
+		FMarchWalker Right;
+		HOLSanity::FTrace Trace;
+		FVector2D Place = FVector2D::ZeroVector;
+		for (int32 Index = 0; Index < 240; ++Index)
+		{
+			const FMarchWalker LastLeft = Left;
+			const FMarchWalker LastRight = Right;
+			Left.Velocity = StepMarchMember(Left, LastRight, LeftToSlot, LeftToRight, Speed, Contact, AvoidTime, Turns, MemberMaxSteps) * Speed;
+			Right.Velocity = StepMarchMember(Right, LastLeft, RightToSlot, -LeftToRight, Speed, Contact, AvoidTime, Turns, MemberMaxSteps) * Speed;
+			Place += (bRight ? Right.Velocity : Left.Velocity) * Step;
+			Trace.Places.Add(Place);
+			Trace.Ordered.Add(1);
+		}
+		return HOLSanity::Analyse(Trace, Step);
+	}
+}
+
+// CELEBORN-1115b: the trembling walk of a block's march (neutrals_trace run3, #9/#10 'shakes over 8 s ... to and fro 26.6 rad'). Two members converging
+// on their slots, a detour round one of its own order never remembered: each turned one step (its straight course met the other's), went straight the
+// next (the other, turned, looked clear), in phase. With the game's hol.Units.MarchMemberDetourSteps neither shakes, and both still march.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidMarchPairTest, "HeroesOfLiberty.Movement.MarchPairNoTremble",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLAvoidMarchPairTest::RunTest(const FString& Parameters)
+{
+	const HOLSanity::FResult Before = RunMarchPair(0, false);
+	TestTrue(*FString::Printf(TEXT("the old rule (never remembered) trembles, as on the real chain (to and fro %.1f rad in 8 s)"), Before.Zigzag), Before.bShake);
+	const int32 MemberMaxSteps = static_cast<int32>(GetGameCVar(TEXT("hol.Units.MarchMemberDetourSteps"), 0.));
+	for (const bool bRight : { false, true })
+	{
+		const HOLSanity::FResult Now = RunMarchPair(MemberMaxSteps, bRight);
+		const TCHAR* Who = bRight ? TEXT("#10") : TEXT("#9");
+		TestFalse(*FString::Printf(TEXT("%s does not tremble with hol.Units.MarchMemberDetourSteps %d (to and fro %.1f rad in 8 s, turn %.1f)"), Who, MemberMaxSteps, Now.Zigzag, Now.Turn), Now.bShake);
+		TestTrue(*FString::Printf(TEXT("%s still marches (net %.0f cm in 8 s)"), Who, Now.Net), Now.Net > 0.9f * 697.f * 8.f);
+	}
+	return true;
+}
 
 // MV.2 checks (D293): the remembered detour's rules.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLAvoidDetourSideTest, "HeroesOfLiberty.Movement.DetourSide",

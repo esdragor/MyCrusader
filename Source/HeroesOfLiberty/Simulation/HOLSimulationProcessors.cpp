@@ -168,6 +168,10 @@ namespace UE::HeroesOfLiberty::Simulation
 	int32 SlotDetourMaxSteps = 8;
 	FAutoConsoleVariableRef CVarSlotDetourMaxSteps(TEXT("hol.Units.SlotDetourMaxSteps"), SlotDetourMaxSteps,
 		TEXT("Steps a detour is held near the walker's goal before it goes straight to it for the rest of the leg (the slot circling of melee_spin); 0: off"));
+	// CELEBORN-1115b: the trembling walk of a block's march (neutrals_trace run3, #9/#10, HOLAvoid::RemembersMemberDetour).
+	int32 MarchMemberDetourSteps = 0;
+	FAutoConsoleVariableRef CVarMarchMemberDetourSteps(TEXT("hol.Units.MarchMemberDetourSteps"), MarchMemberDetourSteps,
+		TEXT("Steps a detour round a member of the walker's own order (its block, its forming up) is remembered; 0: never, each step from the straight course (as before)"));
 	float SlotDetourRadius = 300.f;
 	FAutoConsoleVariableRef CVarSlotDetourRadius(TEXT("hol.Units.SlotDetourRadius"), SlotDetourRadius,
 		TEXT("cm: the goal's distance within which hol.Units.SlotDetourMaxSteps counts"));
@@ -708,6 +712,7 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 		Detour.Turn = 0;
 		Detour.ClearSteps = 0;
 		Detour.DetourSteps = 0;
+		Detour.MemberSteps = 0;
 	};
 	// Celeborn-12 (hol.Units.SlotCommitHeadOn): a friend coming head on, near, ahead: the straight commit to the goal is not kept nor taken (both
 	// were pushed apart by the separation and shook face to face).
@@ -913,6 +918,11 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			}
 		}
 		const FVector2D Way = WayOf(Hand, Detour.Turn);
+		// CELEBORN-1115b: a detour round a member of its own order is held at most hol.Units.MarchMemberDetourSteps steps (MV.2's drift).
+		if (Detour.MemberSteps > 0 && HOLAvoid::IsMemberDetourOver(Detour.MemberSteps, MarchMemberDetourSteps))
+		{
+			Forget();
+		}
 		return FVector(Way.X, Way.Y, 0.);
 	}
 
@@ -932,11 +942,15 @@ FVector UHOLFullSpeedProcessor::AvoidBodies(const FMassEntityHandle Entity, cons
 			{
 				// Not remembered around one of its own order (a member of its block, one forming up): its file pulls it
 				// back at the next step (MV.2: remembered, members drifted up to 2.4 m off their files on the march).
-				if (FormUpSerial == 0u || FormUpSerials[Blocker] != FormUpSerial)
+				// CELEBORN-1115b (hol.Units.MarchMemberDetourSteps): remembered a few steps all the same, else two members converging on their slots
+				// turned one step and went straight the next, in phase (neutrals_trace run3, #9/#10: 27 rad of to and fro in 8 s).
+				const bool bOwnOrder = FormUpSerial != 0u && FormUpSerials[Blocker] == FormUpSerial;
+				if (!bOwnOrder || HOLAvoid::RemembersMemberDetour(MarchMemberDetourSteps))
 				{
 					Detour.Blocker = Entities[Blocker];
 					Detour.Side = static_cast<int8>(Hand);
 					Detour.Turn = static_cast<uint8>(Turn);
+					Detour.MemberSteps = bOwnOrder ? 1 : 0;
 				}
 				return FVector(Way.X, Way.Y, 0.);
 			}
