@@ -63,8 +63,10 @@ private:
 	void RecoverMarketBook();
 	/** The Standard row of the Market table, read once at the first use. */
 	bool EnsureMarketSettings();
-	/** Where the Index-th unit born at Building stands: an arc below it on the screen (the camera's side). */
+public:
+	/** Where the Index-th unit born at Building stands: an arc below it on the screen (the camera's side). Also the garrison's exit points (F7 lot 3b). */
 	FVector GetBirthLocation(const AHOLBuilding& Building, int32 Index) const;
+private:
 
 	FDelegateHandle StepStartedHandle;
 	float StepSeconds = 0.05f;

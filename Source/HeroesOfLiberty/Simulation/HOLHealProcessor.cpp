@@ -131,8 +131,10 @@ void UHOLHealProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutio
 		const TConstArrayView<FHOLCombatFragment> Combats = Chunk.GetFragmentView<FHOLCombatFragment>();
 		const TConstArrayView<FTransformFragment> Transforms = Chunk.GetFragmentView<FTransformFragment>();
 		const FHOLUnitTypeConstants& Constants = Chunk.GetConstSharedFragment<FHOLUnitTypeConstants>();
-		const bool bHealer = Constants.HealRate > 0.f && Constants.HealRange > 0.f;
-		const bool bUnhealable = !HOLCanBeHealed(Constants.ArmorCategoryMask)
+		// F7 (Retours/Q-garrison-soin.md): a garrisoned chunk is off the field unless hol.Garrison.HealInside says otherwise.
+		const bool bOffField = UE::HeroesOfLiberty::Heal::GarrisonHealInside == 0 && Chunk.DoesArchetypeHaveTag<FHOLGarrisonedTag>();
+		const bool bHealer = !bOffField && Constants.HealRate > 0.f && Constants.HealRange > 0.f;
+		const bool bUnhealable = bOffField || !HOLCanBeHealed(Constants.ArmorCategoryMask)
 			|| (Constants.ArmorCategoryMask & HOLArmorCategoryBit(EHOLArmorCategory::Siege)) != 0;
 		for (FMassExecutionContext::FEntityIterator It = Chunk.CreateEntityIterator(); It; ++It)
 		{

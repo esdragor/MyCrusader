@@ -310,6 +310,7 @@ namespace
 void UHOLInterpolatedInstancesProcessor::ConfigureQueries(const TSharedRef<FMassEntityManager>& EntityManager)
 {
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+	EntityQuery.AddTagRequirement<FHOLGarrisonedTag>(EMassFragmentPresence::None); // F7: a garrisoned body is not drawn (server and solo; a client has no tag yet, lot 3e)
 	EntityQuery.AddRequirement<FTransformFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLPreviousTransformFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);

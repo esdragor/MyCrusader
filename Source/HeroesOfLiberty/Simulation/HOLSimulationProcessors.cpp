@@ -1537,6 +1537,7 @@ void UHOLUnitSeparationProcessor::ConfigureQueries(const TSharedRef<FMassEntityM
 	EntityQuery.AddRequirement<FHOLMoveOrderFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+	EntityQuery.AddTagRequirement<FHOLGarrisonedTag>(EMassFragmentPresence::None); // F7: a garrisoned body is off the field (neither pushes nor is pushed)
 	EntityQuery.AddConstSharedRequirement<FHOLUnitTypeConstants>(EMassFragmentPresence::Optional);
 }
 

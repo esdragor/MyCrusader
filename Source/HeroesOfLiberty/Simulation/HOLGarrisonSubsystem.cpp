@@ -6,6 +6,8 @@
 #include "Buildings/HOLBuildingTypeLibrary.h"
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLGarrisonRules.h"
+#include "Buildings/HOLProductionSubsystem.h"
+#include "MassCommonFragments.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
 #include "HAL/IConsoleManager.h"
@@ -81,9 +83,26 @@ int32 UHOLGarrisonSubsystem::ApplyOrders()
 		Units->GetGarrisonUnitIds(Building, Inside);
 		if (Order.bExitAll)
 		{
+			// F7 lot 3b (D693): each one out on its own free point at the building's foot, where its births stand (on the side of its rally
+			// point, else below it on the screen), not at its centre for the keep-out to push them all out the same way.
+			const UHOLProductionSubsystem* Production = World->GetSubsystem<UHOLProductionSubsystem>();
+			FMassEntityManager& MutableEntities = World->GetSubsystem<UMassEntitySubsystem>()->GetMutableEntityManager();
+			int32 ExitIndex = 0;
 			for (const uint32 UnitId : Inside)
 			{
-				Moved += Units->SetGarrison(UnitId, nullptr) ? 1 : 0;
+				if (!Units->SetGarrison(UnitId, nullptr))
+				{
+					continue;
+				}
+				++Moved;
+				const FMassEntityHandle Entity = Units->FindEntity(UnitId);
+				FTransformFragment* Transform = Production && Entity.IsSet() ? MutableEntities.GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+				if (Transform)
+				{
+					FVector Exit = Production->GetBirthLocation(*Building, ExitIndex++);
+					Exit.Z = Transform->GetTransform().GetLocation().Z;
+					Transform->GetMutableTransform().SetLocation(Exit);
+				}
 			}
 			UE_LOG(LogHOLSimulation, Display, TEXT("Garrison: slot %d takes %d units out of %s"), Order.PlayerIndex, Inside.Num(), *Building->GetTypeName().ToString());
 			continue;
