@@ -19,4 +19,15 @@ La règle pure est codée par **tranche** (carré de cases du brouillard qui pai
 - Constat : la liste des lieux (relais, camps, autel) est vide : le préréglage B ne paie rien en jeu aujourd'hui.
 - Côté C++ le préréglage se change par la console : `hol.HeroXP.ExplorationPreset` (0 = C défaut, 1 = A, 2 = B), lu au départ du brouillard.
 
+**[À RÉPONDRE] Lieux : recouvrement avec les porteurs existants (2026-11-15, SAURON-1115e)** : relais et camps neutres créditent DÉJÀ la source Exploration : le relais paie l'XP de territoire à la minute tant qu'on le tient (`HOLRelaySubsystem`, D388), le camp paie sa récompense quand il est nettoyé (`HOLCampSubsystem`) ; l'autel n'existe que sur la carte Volcan. Payer aussi leur 1re vue (B : 40 XP, C : 25 XP) crédite deux fois la même source pour le même lieu et s'ajoute à la part ~15 % de D05. Lieux NON BRANCHÉS en attendant (liste vide : B ne paie rien, C ne paie que les tranches).
+
+| Option | Ce qui paie à la 1re vue | Conséquences visibles |
+|---|---|---|
+| **A** Tous les lieux | relais + camps + autel | l'éclaireur est récompensé de trouver un relais ou un camp, puis le relais/camp paie encore à la prise ou au nettoyage ; la part Exploration grossit (~10 lieux x 25-40 XP en plus) |
+| **B** Seulement les lieux sans autre paiement | autel (Volcan) et futurs lieux sans porteur | pas de double crédit ; hors Volcan, B ne paie rien et C se réduit aux tranches |
+| **C** Aucun lieu | rien | la vue ne paie que la surface (tranches) ; les lieux paient par leur prise ou leur nettoyage, comme aujourd'hui |
+| **Autre** | ex. vue d'un lieu payée mais retirée de la récompense de prise | — |
+
+**Recommandation : B** (pas de double crédit, garde la part de D05). **Défaut en place : C** (liste vide, rien de branché, aucun changement de jeu).
+
 Réponse : 
