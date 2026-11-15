@@ -193,3 +193,4 @@ Fusion finale n°7 (FUSION-1115g, 14:27-14:4x, intégration fog dans HeroesOfLib
 | L15-7 | partielle | releve GDD refait (RELEVE-1115a, Docs\ReleveGDD_2026-11-15.md) mais apres 3 h de seance, pas a l etape 0 |
 | L15-8 | non appliquee | recette independante faite (4 PASS, 3 FAIL audio) mais `.look` sans objet nomme ni verification des assets |
 | L15-9 | non appliquee | au moins 5 agents arretes a 45 appels sans livrer |
+| L15-10 | non appliquee | 709k tokens consommes, ~60 rapports de 30 a 50 lignes, enonces de 800 a 1 200 mots (regle ajoutee a la cloture)
