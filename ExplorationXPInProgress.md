@@ -52,6 +52,7 @@ Branche `visual`, worktree Sauron. Ouvert le 2026-11-15 10:2x par SAURON-1115b. 
   - Reste ensuite : lieux (relais, camps neutres, autels) dans `Places` (vide = preset B ne paie rien) ; test d'accord .as / C++ (modele `Test_RelayScriptAndSimulationRulesAgree`) ; partage entre allies d'un meme camp (chaque slot du camp paye = defaut, a ajouter a Q-exploration-xp).
 
 - 2026-11-15 12:43 : SAURON-1115d, LaunchCheck vide. Etapes 1-4 du branchement APPLIQUEES (code ci-dessus ; en plus `UpdateClient` appelle aussi `PayExplorationXP`, qui sur un client vide la liste sans payer, pour qu'elle ne grossisse pas). Build lance 12:46. Q-exploration-xp.md complete (chaque siege du camp paye ; lieux vides -> preset B ne paie rien en jeu).
+- 2026-11-15 12:55 : SAURON-1115d VERT : build PASS 12:47 (131 s), quick_check -Parts tests 1304/1304 PASS (FogPaysTheHero vert), commit 3d94384, -Parts net PASS (303 s). Etape 3 FAITE. Reste : lieux (relais, camps neutres, autels) dans Places (vide = preset B ne paie rien en jeu) ; test d'accord .as / C++ ; partage entre allies (Q-exploration-xp) ; frequence reelle d'Update (1re seconde = SimulationRateHz appels d'Update, a verifier en partie). Pas dans main.
 
 ## Appels (un trait par appel)
 
