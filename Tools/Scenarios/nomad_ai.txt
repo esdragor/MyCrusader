@@ -1,0 +1,22 @@
+# N3 (D354, D786, Q-nomad-ia defauts A/A) : partie NATURELLE Nomade (option bNomad du .json, les deux sieges) : toi (slot 0) contre une IA
+# Normale (slot 1), rien de pose d'office, l'IA n'est pas gelee. Ses Paysans naissent disperses sur toute la carte (D797) ; des que son stock
+# couvre le prix du forum (150 bois + 400 pierre), elle pose la fondation de son premier Forum au centre de son plus gros groupe
+# (HOLAINomadThink.as : "AI slot 1 step N: Nomad forum founded at (X, Y), group G, K Peasants sent") et y envoie ses Paysans.
+# Les waitlog du depart viennent AVANT toute commande : waitlog ne lit que les lignes ecrites depuis la derniere commande.
+waitlog AI brain HOLAIBrain awake
+waitlog Nomad slot 1: group 0 (
+waitlog AI slot 1 step
+waitlog Nomad forum founded at (
+r.SetRes 1920x1080w
+hol.Buildings.Report
+waitlog Building report:
+# 1. Camera au-dessus du depart nominal du siege 1 (premier jet, test rouge : le forum de l'IA n'y est pas).
+hol.Camera.FocusSlot 1
+waitlog Camera above the start of slot 1
+hol.Camera.Zoom -3
+waitlog Camera height 3000 cm
+wait 3
+capture nomad_ai_forum
+hol.Test.Sanity
+note Partie Nomade contre une IA Normale Nomade : elle n'a aucun Centre-ville au depart ; regarde : elle pose seule la fondation de son premier Forum la ou sont ses Paysans, et ils vont la batir.
+quit

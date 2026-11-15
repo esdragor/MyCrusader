@@ -219,3 +219,9 @@ et distance minimale.
 - Build PASS 13:40 (107 s) ; quick_check tests 13:43 : 1314/1314 PASS (FoundsFirstForum VERT). quick_check tests,aiserver,aiduel lance 13:43.
 - quick_check tests,aiserver,aiduel 13:48 : tests 1314/1314 PASS, aiserver PASS, aiduel PASS (269 s). Commit vert : test HOLAINomadTests.cpp + branchement (HOLAISummary, HOLAINomadThink.as, HOLAIBrain.as) + correctif HOLAIOrders.cpp + journal.
 - Reste N3 : Q-nomad-ia [A REPONDRE] (defauts A/A codes) ; essai d IA Nomade en partie naturelle (scenario a ecrire, pas fait) ; fusion dans main par l agent de fusion.
+
+## 2026-11-15 14:02-1x:xx HALDIR-1115h (maps, sans C++) N3 : essai nomad_ai (IA Nomade en partie naturelle)
+- git merge main (avance rapide 6a77f35) ; Get-StaleBinaryProblem 14:03 : dll perimees (HOLSpecializationGridTests.cpp, HOLGameScreen.cpp du merge) -> build.ps1 -LiveCoding=0 -Wait (aucun C++ ecrit).
+- Texte de la pose verifie dans le code (Script\AI\HOLAINomadThink.as:54) : "AI slot {N} step {S}: Nomad forum founded at (X, Y), group G, K Peasants sent".
+- Scenario Tools\Scenarios\nomad_ai.txt/.json/.look ecrit (premier jet camera FocusSlot 1 = test rouge attendu : le forum de l IA n est pas au depart nominal).
+- Signals (pour signals_altclick) : hol.Mouse.Click n a PAS de modificateur (HOLUIMouse.cpp prend Slate.GetModifierKeys()) ; Alt maintenu possible par hol.UI.Key LeftAlt <Delay> <HoldSeconds> (HOLUIKey.cpp:89), le controleur lit IsInputKeyDown(LeftAlt) (HOLPlayerController.cpp:5753, 5981) : NON ESSAYE.
