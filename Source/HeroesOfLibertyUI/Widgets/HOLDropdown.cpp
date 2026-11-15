@@ -153,7 +153,11 @@ void UHOLDropdown::CloseList()
 {
 	if (Anchor && Anchor->IsOpen())
 	{
+		// Closed by a choice or Back (keyboard, gamepad, a click on a value): no click is on its way to the dropdown, so
+		// HandleListOpenChanged does not hold back the next one (an Enter 0.24 s after a choice by Enter was lost).
+		bClosingByCode = true;
 		Anchor->Close();
+		bClosingByCode = false;
 	}
 }
 
@@ -169,7 +173,8 @@ void UHOLDropdown::HandleListOpenChanged(const bool bIsOpen)
 	UE_LOG(LogHOLUI, Display, TEXT("Dropdown %s: list %s"), *GetName(), bIsOpen ? TEXT("opened") : TEXT("closed"));
 	if (!bIsOpen)
 	{
-		ListClosedTime = FPlatformTime::Seconds();
+		// Only a click outside the list closes it from outside our code: that click may land on the dropdown.
+		ListClosedTime = bClosingByCode ? -1.0 : FPlatformTime::Seconds();
 		List = nullptr;
 		// The focus was in the list, which is gone: back on the dropdown (Back, a value taken with the gamepad).
 		SetFocus();

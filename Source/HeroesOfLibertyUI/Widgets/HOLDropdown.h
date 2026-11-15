@@ -91,8 +91,10 @@ private:
 	TArray<FLinearColor> Swatches;
 	TArray<bool> OptionEnabled;
 	int32 SelectedIndex = 0;
-	/** When the list last closed: the click that closes it by landing on the dropdown must not open it again. */
+	/** When the list last closed by a click outside it: that click, landing on the dropdown, must not open it again. */
 	double ListClosedTime = -1.0;
+	/** CloseList at work (a choice or Back): the close arms no reopen delay. */
+	bool bClosingByCode = false;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UHOLDropdownList> List;

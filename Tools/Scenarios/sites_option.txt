@@ -43,8 +43,14 @@ capture sites_option_box_off
 # The hand's mouse moves off and back between two clicks (the list reopens on a new hover).
 hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
-# GESTE INTERNE for Oui only: a second real click on the list does not reopen it after a keyboard choice (GLORFINDEL-1114c, widget side, to investigate).
-hol.UI.Choose SacredSitesDropdown 1
+# Oui by real keys (GALADRIEL-1115d): the focus is back on the dropdown after the keyboard choice of Non; Enter opens the list
+# again (on Non), Down then Enter take Oui. hol.UI.Key logs the focused widget before each key.
+hol.UI.Key Enter 0 0.1
+waitlog Dropdown SacredSitesDropdown: list opened
+frames 5
+hol.UI.Key Down 0 0.1
+frames 5
+hol.UI.Key Enter 0 0.1
 waitlog Dropdown SacredSitesDropdown: value 1 chosen
 frames 10
 hol.UI.Text SacredSitesDropdown
