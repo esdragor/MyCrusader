@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-audio_compare_buildings_stable_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter le son de SELECTION de l'ECURIE, tour 5 : un vrai CHEVAL (hennissements, ebrouements, pas, trot), ENREGISTRE (echantillons libres), Entree = variante suivante
+audio_compare_buildings_stable_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter le son de SELECTION de l'ECURIE, tour 5 : un vrai CHEVAL (hennissements, ebrouements, pas, trot), ENREGISTRE (echantillons libres), Entree = variante suivante ; le batiment Ecurie (pose fini par le scenario, a toi) est visible au centre de l'ecran, pas le Forum de depart
