@@ -165,6 +165,9 @@ if ($Parts -contains "values") {
         $ValuesChecks["unit_abilities_test.py ($($UnitAbilitiesOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         $LegionsWarriorOutput = @(python -I (Join-Path $PSScriptRoot "legions_warrior_test.py") 2>&1)
         $ValuesChecks["legions_warrior_test.py ($($LegionsWarriorOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # S7: FHOLMapInfo::NumSites (greys the box "Sites sacres") = the sites each map's file lays (Tools/Editor/maps, common.py SITE_COUNTS).
+        $SiteCountOutput = @(python -I (Join-Path $PSScriptRoot "site_count_accord_test.py") 2>&1)
+        $ValuesChecks["site_count_accord_test.py ($($SiteCountOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesFailed = @($ValuesChecks.Keys | Where-Object { -not $ValuesChecks[$_] })
     Write-Host "values : $(if ($ValuesFailed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
