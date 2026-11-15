@@ -1,5 +1,10 @@
 #include "Blueprint/WidgetTree.h"
+#include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
+#include "Engine/World.h"
+#include "GameFramework/PlayerController.h"
 #include "Map/HOLMapRules.h"
+#include "Misc/ScopeExit.h"
 #include "Match/HOLMatchConfig.h"
 #include "Misc/AutomationTest.h"
 #include "Net/HOLManagerClientRules.h"
@@ -28,8 +33,32 @@ bool FHOLNewGameSitesBoxTest::RunTest(const FString& Parameters)
 	}
 	TestTrue(TEXT("the hook gone: Plain lays its sites again"), FHOLMapRules::GetSiteCount(Plain) >= 2);
 
-	// The real screen.
+	// The real screen. It builds its widgets in NativeOnInitialized, which the engine runs only with a player (UUserWidget::Initialize):
+	// a local player and its controller in a game world, as HOLScenarioPanelTests' cheat panel (GLORFINDEL-1115b: without them the
+	// screen had no widget, « the screen has its box Sites sacres » failed after the green code).
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	ULocalPlayer* Player = NewObject<ULocalPlayer>(GEngine);
+	APlayerController* Controller = World->SpawnActor<APlayerController>();
+	Controller->Player = Player;
+	Player->PlayerController = Controller;
+	if (!World->GetPlayerControllerIterator())
+	{
+		World->AddController(Controller);
+	}
+	ON_SCOPE_EXIT
+	{
+		GEngine->DestroyWorldContext(World);
+		World->DestroyWorld(false);
+	};
 	UHOLNewGameScreen* Screen = NewObject<UHOLNewGameScreen>(GetTransientPackage());
+	Screen->SetPlayerContext(FLocalPlayerContext(Player, World));
+	if (!TestTrue(TEXT("the screen has a player"), Screen->GetPlayerContext().IsValid()))
+	{
+		return false;
+	}
 	Screen->Initialize();
 	const UHOLDropdown* Box = Screen->WidgetTree ? Screen->WidgetTree->FindWidget<UHOLDropdown>(TEXT("SacredSitesDropdown")) : nullptr;
 	if (!TestNotNull(TEXT("the screen has its box Sites sacres"), Box))
