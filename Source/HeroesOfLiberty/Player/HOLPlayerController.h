@@ -10,6 +10,7 @@
 #include "Player/HOLCommandGrid.h"
 #include "Player/HOLUnitPicking.h"
 #include "Simulation/HOLHeroAbilityRules.h"
+#include "Player/HOLSignalInput.h"
 #include "HOLPlayerController.generated.h"
 
 class AHOLBuilding;
@@ -550,6 +551,19 @@ public:
 
 	/** SG2: the signals this seat received so far. */
 	int32 GetNumReceivedSignals() const { return NumReceivedSignals; }
+
+	/** SG3: the received signals still alive (hol.Signal.IconSeconds), for the minimap's icons (HOLGameScreenScript). */
+	UFUNCTION(BlueprintCallable, Category = "Signals")
+	TArray<FHOLReceivedSignal> GetActiveSignals() const;
+
+private:
+	/** SG3: the received signals (ClientReceiveSignal), faded by HOLSignalInput::Expire. */
+	TArray<FHOLReceivedSignal> ReceivedSignals;
+	/** SG3: an Alt + click pressed (resolved at the release: brief = neutral, a drag = the wheel's kind). */
+	bool bSignalPressed = false;
+	FVector2D SignalPressFraction = FVector2D::ZeroVector;
+
+public:
 
 	/** SP2 (GDD 13, D07): the player starts the unlock of Option (0, 1, or 2 for the Templars) at Tier at his Forum; the server decides. */
 	void RequestSpecialization(int32 Tier, int32 Option);
