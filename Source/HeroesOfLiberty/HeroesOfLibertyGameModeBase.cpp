@@ -838,8 +838,13 @@ AHOLBuilding* AHeroesOfLibertyGameModeBase::SpawnSlotStart(UWorld& World, const 
 	AHOLBuilding* Centre = nullptr;
 	if (Config.bNomad)
 	{
-		// N2 (c)+(d) (D354): a Nomad seat on the script board, no centre.
-		if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(&World))
+		// N2 (c)+(d) (D354): a Nomad seat on the script board, no centre. D799: through the game state's replicated bits (every
+		// machine's board then knows it); without a game state, the board alone.
+		if (AHOLGameState* NomadState = World.GetGameState<AHOLGameState>())
+		{
+			NomadState->SetSeatNomad(Slot, true);
+		}
+		else if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(&World))
 		{
 			Board->SetNomadNow(Slot, true);
 		}

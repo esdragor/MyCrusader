@@ -310,6 +310,21 @@ public:
 	void SetTierOverride(int32 Slot, int32 Tier);
 	/** The tier forced for the slot, -1 when none (every machine: the property is replicated). */
 	int32 GetTierOverride(int32 Slot) const;
+	/**
+	 * D799 (answer A of Q-nomad-net): the seat plays the Nomad option. Server side (the game mode's SpawnSlotStart, or
+	 * hol.Nomad.SetSeat); one bit per seat in NomadSeats, replicated: every machine's script board knows it (ApplyNomadSeats).
+	 */
+	void SetSeatNomad(int32 Slot, bool bNomad);
+	/** D799: the seat plays the Nomad option (every machine: the bits are replicated). */
+	bool IsSeatNomad(int32 Slot) const { return Slot >= 0 && Slot < 8 && (NomadSeats & (1 << Slot)) != 0; }
+	/** D799: bit Slot = that seat is Nomad. */
+	uint8 GetNomadSeats() const { return NomadSeats; }
+	/**
+	 * D799: the bits received (the body of OnRep_NomadSeats; SetSeatNomad on the server): each seat whose bit changed set Nomad or
+	 * standard on this machine's script board (UHOLSpecializationSubsystem::SetNomadNow), so that a client's grid opens a Nomad
+	 * seat's first forum at its true price (UHOLBuildingSettings::GetBuildableTypesForSlot, GetBuildCost). Logs "Nomad seats: N".
+	 */
+	void ApplyNomadSeats(uint8 Seats);
 	/** P2: the forum's values for a slot: the tier its hero's level opens (HOLHeroXP::GetTier), at least the setting's (tests). */
 	FHOLForumTuning GetForumTuning(int32 Slot) const;
 	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
@@ -510,6 +525,16 @@ private:
 
 	UFUNCTION()
 	void OnRep_LaunchConfig();
+
+	/** D799: bit Slot = that seat is Nomad (SetSeatNomad), replicated. */
+	UPROPERTY(ReplicatedUsing = OnRep_NomadSeats)
+	uint8 NomadSeats = 0;
+
+	/** D799: the bits this machine's script board was given last (ApplyNomadSeats sets only the seats that changed). */
+	uint8 AppliedNomadSeats = 0;
+
+	UFUNCTION()
+	void OnRep_NomadSeats();
 
 	/** One per slot (MaxSlots). */
 	UPROPERTY(ReplicatedUsing = OnRep_Victory)

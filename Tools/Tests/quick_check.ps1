@@ -383,6 +383,11 @@ if ($Parts -contains "net") {
     # A refused cheat (R3.4, R-Q7): the server, launched with -HOLCheats as every test server, refuses the clients' cheats
     # from the start (hol.Cheat.Refuse 1 in its -ExecCmds); client 1 asks for 500 wood, then signals; the server allows
     # them again for the rest (the army's resources) and answers.
+    # D799 (Nomad seats replicated): client 1 asks, the server makes slot 1 Nomad (hol.Nomad.SetSeat), client 1 reports what its
+    # own grid computes for slots 1 and 0 (the forum's price), then the server takes the seat back (standard for the rest).
+    $NetNomadAskFlag = Join-Path $TestSaved "quick_net_nomad_ask.flag"
+    $NetNomadSetFlag = Join-Path $TestSaved "quick_net_nomad_set.flag"
+    $NetNomadSeenFlag = Join-Path $TestSaved "quick_net_nomad_seen.flag"
     $NetCheatTriedFlag = Join-Path $TestSaved "quick_net_cheat_tried.flag"
     $NetCheatBackFlag = Join-Path $TestSaved "quick_net_cheat_back.flag"
     # The limited pause (D513, P5): Bob (client 1) pauses; Alice (client 2) asks to resume, refused while the timer runs;
@@ -406,7 +411,8 @@ if ($Parts -contains "net") {
     # "hero" alone (J8a.6): the clients' cheats allowed at once (Bob's gold), the heroes made once both clients are done
     # with their start (their "done" signals).
     $(if ($NetHeroOnly) { @("hol.Cheat.Refuse 0", "waitfile $(Join-Path $TestSaved "quick_net_done1.flag") 300", "waitfile $(Join-Path $TestSaved "quick_net_done2.flag") 300") }
-    else { @("waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
+    else { @("waitfile $NetNomadAskFlag 300", "mark net nomad", "hol.Nomad.SetSeat 1 1", "signal $NetNomadSetFlag", "waitfile $NetNomadSeenFlag 60", "hol.Nomad.SetSeat 1 0",
+        "waitfile $NetCheatTriedFlag 300", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "hol.Cheat.Refuse 0", "signal $NetCheatBackFlag",
         "waitfile $NetPauseCheckFlag 120", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport", "signal $NetPauseCheckedFlag",
         "waitfile $NetResumedFlag 60", "hol.Match.PauseReport", "wait 1", "hol.Match.PauseReport",
         "waitfile $NetDipAlliedFlag 120", "wait 2", "mark net diplomacy allied", "hol.Diplomacy.Report", "signal $NetDipServerFlag", "waitfile $NetDipBrokenFlag 120", "wait 2", "mark net diplomacy broken", "hol.Diplomacy.Report",
@@ -2705,6 +2711,7 @@ if ($NetListening) {
         $NetStartSteps = $NetSteps.Count
         # The refused cheat (R3.4): client 1's 500 wood, refused by the server (hol.Cheat.Refuse 1 until its signal).
         # The refused pause (D361): client 1 types "pause" in its console, as a player would (the engine's ServerPause).
+        if ($Client -eq 1) { $NetSteps += "signal $NetNomadAskFlag", "waitfile $NetNomadSetFlag 60", "wait 1", "hol.Nomad.Report 1", "hol.Nomad.Report 0", "signal $NetNomadSeenFlag" }
         if ($Client -eq 1) { $NetSteps += "hol.Cheat.Wood 500", "console pause", "wait 1", "hol.Prod.Report", "signal $NetCheatTriedFlag", "waitfile $NetCheatBackFlag 60" }
         # The limited pause (D513): Bob pauses, Alice's resume is refused (timer running), Bob's second pause too.
         if ($Client -eq 1) {
@@ -6658,6 +6665,15 @@ if ($Parts -contains "net") {
     $CheatGranted = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Cheat: slot \d resources" |
         Where-Object { -not $ReturnMarkLine.Count -or $_.LineNumber -lt $ReturnMarkLine[0] } }).Count
     $Checks["server: client 1's cheat refused ($CheatRefused), the army's granted ($CheatGranted of 2)"] = $CheatRefused -eq 1 -and $CheatGranted -eq 2
+    # D799: slot 1 made Nomad by the server: client 1's own grid knows it and shows its first forum's true price (150 wood, 400 stone,
+    # computed by the client's script board); slot 0 stays standard there (its forum complete, not that price). Its centre stands: cell closed.
+    $NomadLines = @(if ($Client1Log -and (Test-Path $Client1Log)) { Select-String -Path $Client1Log -Pattern "Nomad report: slot (\d) nomad (\d), forum complete (\d), forum cell open (\d), forum price wood (\d+) stone (\d+)" | ForEach-Object { $_.Matches[0] } })
+    $NomadOne = @($NomadLines | Where-Object { $_.Groups[1].Value -eq "1" } | Select-Object -First 1)
+    $NomadZero = @($NomadLines | Where-Object { $_.Groups[1].Value -eq "0" } | Select-Object -First 1)
+    $NomadServer = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -SimpleMatch "Nomad seats: 2 (server)" }).Count
+    $Checks["nomad (D799): client 1 sees slot 1 Nomad at 150 wood + 400 stone ($(if ($NomadOne.Count) { $NomadOne[0].Value } else { 'no report' })), slot 0 standard ($(if ($NomadZero.Count) { $NomadZero[0].Value } else { 'no report' })), server $NomadServer"] =
+        $NomadServer -ge 1 -and $NomadOne.Count -eq 1 -and $NomadOne[0].Groups[2].Value -eq "1" -and $NomadOne[0].Groups[3].Value -eq "0" -and $NomadOne[0].Groups[5].Value -eq "150" -and $NomadOne[0].Groups[6].Value -eq "400" -and
+        $NomadZero.Count -eq 1 -and $NomadZero[0].Groups[2].Value -eq "0" -and $NomadZero[0].Groups[3].Value -eq "1" -and -not ($NomadZero[0].Groups[5].Value -eq "150" -and $NomadZero[0].Groups[6].Value -eq "400")
     # D361: client 1's console "pause" refused by the server (its log), the server never paused, its simulation stepping on.
     $PauseRefused = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause refused from Bob \(slot 1\)" }).Count
     $PauseReports = @(if (Test-Path $NetServerLog) { Select-String -Path $NetServerLog -Pattern "Pause report: paused (\d), simulation step (-?\d+)" | ForEach-Object { $_.Matches[0] } })
