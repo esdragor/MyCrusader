@@ -614,6 +614,11 @@ public:
 
 	/** SG3: a signal of Kind placed by SenderSlot reached ViewerSlot's machine: OnSignalMessage. */
 	void NoteSignalReceived(int32 SenderSlot, int32 Kind, int32 ViewerSlot);
+	/**
+	 * A4 (D385): a chat message of SenderSlot on Channel reached ViewerSlot's machine (AHOLPlayerController::ClientReceiveChat): its
+	 * thread's line (HOLForumMessages::GetChatMessage) through OnSignalMessage (the HUD's thread of minor lines). Logs "Chat message: ...".
+	 */
+	void NoteChatReceived(int32 SenderSlot, int32 Channel, const FString& ChatText, int32 ViewerSlot);
 
 	/**
 	 * J8b.4 (J8b-Q4): every machine with a player, a slot's hero gone up from OldLevel to NewLevel in its public sheet

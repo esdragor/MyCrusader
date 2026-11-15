@@ -1367,6 +1367,12 @@ void AHOLGameState::NoteSignalReceived(const int32 SenderSlot, const int32 Kind,
 	UE_LOG(LogHOLMatch, Display, TEXT("%s (slot %d)"), *Message.Shown, ViewerSlot);
 	OnSignalMessage.Broadcast(ViewerSlot, Message);
 }
+void AHOLGameState::NoteChatReceived(const int32 SenderSlot, const int32 Channel, const FString& ChatText, const int32 ViewerSlot)
+{
+	const FHOLForumMessage Message = HOLForumMessages::GetChatMessage(SenderSlot, Channel, ChatText, GetLaunchConfig(), ViewerSlot);
+	UE_LOG(LogHOLMatch, Display, TEXT("%s (slot %d)"), *Message.Shown, ViewerSlot);
+	OnSignalMessage.Broadcast(ViewerSlot, Message);
+}
 
 void AHOLGameState::NoteHeroReady()
 {
