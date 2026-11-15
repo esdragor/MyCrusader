@@ -83,7 +83,7 @@ Auto_Journey_Jour.md     = l'état du jour : décisions, programme, tableau des 
 Auto_Journey_File.md     = la file de travail : prochaines étapes de chaque chantier, prêtes à lancer
 Auto_Journey_Retours.md  = ce qui attend l'utilisateur : essais, questions, fusions
 Tools\AutoJourney\status.ps1 = l'état de tous les worktrees en une commande (étape 0 et veilleur)
-status.ps1 -InMain, ForeignSession, edit_line.ps1, commit_docs.ps1 -Only, extend_session.ps1, FrameWaits = agent_rules.md section « Outils (L14) » (lignes archivées le 2026-11-15)
+status.ps1 -InMain, ForeignSession, edit_line.ps1 (-Match = exactement 1 ligne, sinon refus ; -Append [-After] pour ajouter, L15-2), commit_docs.ps1 -Only, extend_session.ps1, FrameWaits = agent_rules.md section « Outils (L14) » (lignes archivées le 2026-11-15)
 ```
 Historique : voir « Archives » au Sommaire.
 
