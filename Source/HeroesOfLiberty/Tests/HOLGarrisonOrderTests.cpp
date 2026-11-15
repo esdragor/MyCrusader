@@ -10,6 +10,7 @@
 #include "MassCommonFragments.h"
 #include "MassEntitySubsystem.h"
 #include "MassExecutor.h"
+#include "MassNavigationFragments.h"
 #include "MassProcessingContext.h"
 #include "Match/HOLGameState.h"
 #include "Misc/AutomationTest.h"
@@ -415,6 +416,16 @@ bool FHOLGarrisonSeparationHealTest::RunTest(const FString& Parameters)
 			MoveTo(FieldB, FVector(5.0, 3000.0, 0.0));
 			MoveTo(InA, Tower->GetActorLocation());
 			MoveTo(InB, Tower->GetActorLocation() + FVector(5.0, 0.0, 0.0));
+			// The separation only looks from a walker (a standing pair is left as it stands): one of each pair walks, so that only the garrison
+			// tag can keep the two garrisoned bodies where they stand.
+			for (const uint32 Walker : { FieldB, InB })
+			{
+				const FMassEntityHandle Entity = Units->FindEntity(Walker);
+				if (FMassMoveTargetFragment* MoveTarget = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FMassMoveTargetFragment>(Entity) : nullptr)
+				{
+					MoveTarget->CreateNewAction(EMassMovementAction::Move, *World);
+				}
+			}
 			const double InsideBefore = Distance2D(InA, InB);
 			for (int32 Step = 0; Step < 10; ++Step)
 			{
