@@ -7,6 +7,11 @@ r.SetRes 1920x1080w
 hol.AI.ThinkSteps 100000
 hol.Camera.FocusSlot own
 waitlog Camera above the start of slot 0
+# Hauteur comme nomad_ai (1er jet "Zoom -3" seul : 3000 cm jamais atteinte, timeout 14:15) : au plus haut, au plus bas, puis 3 crans.
+hol.Camera.Zoom -10
+waitlog Camera height 7000 cm
+hol.Camera.Zoom 11
+waitlog Camera height 1500 cm
 hol.Camera.Zoom -3
 waitlog Camera height 3000 cm
 wait 1
@@ -18,6 +23,9 @@ waitlog Signal: Alt + click kind
 waitlog Signal: received kind
 wait 1
 capture signals_altclick
+# 2. Temoin : le carre du signal dure 5 s (D445) ; 6 s plus tard il a disparu de la minicarte (comparer les deux PNG).
+wait 6
+capture signals_altclick_after
 hol.Test.Sanity
-note Signal : maintiens Alt et fais un clic gauche bref sur le sol : un signal neutre est pose ; un petit carre colore apparait sur la minicarte (en bas a gauche) a cet endroit pendant 5 s, et le fil de messages dit « Vous : Signal ».
+note Signal : maintiens Alt et fais un clic gauche bref sur le sol : un signal neutre est pose ; un petit carre colore apparait sur la minicarte (en bas a droite) a cet endroit pendant 5 s, et le fil de messages dit « Vous : Signal ».
 quit
