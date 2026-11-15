@@ -20,9 +20,13 @@ Zone provisoire = rectangle aligné (centre, demi-étendue), comme une case de b
 ## Étapes (15 min chacune)
 
 1. [fait] Journal, question `Retours\Q-stealth.md` (N, cartes, aspect).
-2. [en cours] Test rouge : vu à N - 1, caché à N + 1 (ennemi hors zone), vu si ennemi dans la zone loin de l'unité, jamais
-   caché hors zone. Bouchon qui ne cache rien = rouge vu à l'exécution.
-3. Vert : la règle.
+2. [fait] Test rouge : vu à N - 1, caché à N + 1 (ennemi hors zone), vu si ennemi dans la zone loin de l'unité, jamais
+   caché hors zone. Bouchon qui ne cache rien = ROUGE VU à l'exécution (10:23, `quick_check -Parts tests` 1270/1272, KO
+   `Test_StealthHiddenJustBeyondRevealDistance` et `Test_StealthSeenByEnemyInsideTheZone`) ; commit 3b370fa.
+3. [fait] Vert : la règle (distance au carré <= N², ennemi dans une zone qui contient l'unité). N est lu par la règle
+   (`HOLStealth::RevealDistance`), jamais recopié dans les tests. `quick_check -Parts tests` 1272/1272 PASS (10:26).
+   Prochaine étape (agent neuf) : attendre `Retours\Q-stealth.md` (changer le défaut du cvar si N diffère), puis l'étape 4
+   (C++, agent C++) ; rien d'autre à faire sans C++.
 4. (Plus tard, C++, autre agent) Branchement dans la vue par camp, voir ci-dessous.
 
 ## Ce qu'il faudra lire côté C++ ensuite (vision par camp)

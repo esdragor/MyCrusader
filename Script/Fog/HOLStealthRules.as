@@ -26,8 +26,39 @@ namespace HOLStealth
 	}
 
 	// Is the unit at UnitPosition hidden from the camp whose units stand at ViewerPositions?
+	// Hidden when the unit stands in at least one zone and no viewer is within Distance (inclusive) nor inside a zone holding the unit.
 	bool IsHiddenFrom(const TArray<FHOLStealthZone>& Zones, const FVector2D& UnitPosition, const TArray<FVector2D>& ViewerPositions, float Distance)
 	{
-		return false;
+		bool bInZone = false;
+		for (const FHOLStealthZone& Zone : Zones)
+		{
+			if (IsInZone(Zone, UnitPosition))
+			{
+				bInZone = true;
+				break;
+			}
+		}
+		if (!bInZone)
+		{
+			return false;
+		}
+		const float DistanceSquared = Distance * Distance;
+		for (const FVector2D& Viewer : ViewerPositions)
+		{
+			const float DX = Viewer.X - UnitPosition.X;
+			const float DY = Viewer.Y - UnitPosition.Y;
+			if (DX * DX + DY * DY <= DistanceSquared)
+			{
+				return false;
+			}
+			for (const FHOLStealthZone& Zone : Zones)
+			{
+				if (IsInZone(Zone, UnitPosition) && IsInZone(Zone, Viewer))
+				{
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 }
