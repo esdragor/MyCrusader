@@ -374,11 +374,12 @@ DECOR_KINDS = {
     "GrassGreen": ("/Engine/BasicShapes/Cone", unreal.LinearColor(0.075, 0.115, 0.035, 1.0), (0.55, 0.55, 0.60), 1.0),
     "GrassStraw": ("/Engine/BasicShapes/Cone", unreal.LinearColor(0.20, 0.17, 0.075, 1.0), (0.50, 0.50, 0.75), 1.0),
     "Bush": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.11, 0.09, 0.04, 1.0), (1.50, 1.50, 0.70), 0.3),
-    "Stone": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.27, 0.255, 0.23, 1.0), (0.70, 0.55, 0.35), 0.2),
+    # Boulder and Stone: the ROUND rocks of D802 in tour 2's dark brown (RoundBody of HOLRocksReview2.as; tour 1's 0,24-0,27 grey read light grey).
+    "Stone": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.036, 0.031, 0.024, 1.0), (0.70, 0.55, 0.35), 0.2),
     "Stump": ("/Engine/BasicShapes/Cylinder", unreal.LinearColor(0.11, 0.075, 0.045, 1.0), (0.50, 0.50, 0.45), 1.0),
     # The big pieces, seen from the camera's height (M-Q7: nothing may be empty): a boulder 2.6 m long, a thicket 3.6 m across. They are
     # what fill_holes puts where a map has nothing within MAX_EMPTY_RADIUS; a map's DECOR may ask for some too.
-    "Boulder": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.24, 0.23, 0.21, 1.0), (2.60, 2.00, 1.50), 0.35),
+    "Boulder": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.036, 0.031, 0.024, 1.0), (2.60, 2.00, 1.50), 0.35),
     "Thicket": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.045, 0.080, 0.028, 1.0), (3.60, 3.20, 1.60), 0.35),
     # M-Q8 (the user: "the map looks desolate", a reference minimap full of small different clumps): more kinds, none a resource (nothing the
     # players could take for gold, stone or berries: no yellow lumps, no red bushes). Their names carry Boulder / Thicket when they are big
@@ -390,7 +391,30 @@ DECOR_KINDS = {
     "FlowerPurple": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.220, 0.070, 0.300, 1.0), (0.45, 0.45, 0.28), 0.5),
     "FlowerOrange": ("/Engine/BasicShapes/Sphere", unreal.LinearColor(0.550, 0.180, 0.030, 1.0), (0.45, 0.45, 0.28), 0.5),
     "Reed": ("/Engine/BasicShapes/Cylinder", unreal.LinearColor(0.120, 0.140, 0.050, 1.0), (0.14, 0.14, 1.60), 1.0),
+    # D802 (rocks_compare2, tour 2): the FACETED rocks the user liked (B of tour 1: tilted engine cubes, dark grey-blue FacetBody of
+    # Script/Visual/HOLRocksReview2.as; the matte colours are lifted about 2,5 times by the game camera's exposure). Never asked for by a map's
+    # DECOR: split_rocks turns ROCK_STYLE's share of every Boulder and Stone laid into these (ROCK_FACETS).
+    "FacetBoulder": ("/Engine/BasicShapes/Cube", unreal.LinearColor(0.026, 0.028, 0.035, 1.0), (2.00, 1.70, 1.40), 0.6),
+    "FacetStone": ("/Engine/BasicShapes/Cube", unreal.LinearColor(0.042, 0.045, 0.054, 1.0), (0.56, 0.48, 0.39), 0.6),
 }
+# D802 (the user liked A, C and D of rocks_compare2): the share of FACETED rocks among the map's boulders and stones, the others stay round.
+# A = faceted alone (8 of 8), C = mostly faceted (6 of 8), D = half and half (4 of 8). ROCK_STYLE is the setting (one line to change,
+# Retours\Q-rocks-proportion.md; default C, the middle of the three); the maps must be regenerated (editor) for it to show.
+ROCK_STYLES = {"A": 1.0, "C": 0.75, "D": 0.5}
+ROCK_STYLE = "C"
+ROCK_FACETS = {"Boulder": "FacetBoulder", "Stone": "FacetStone"}  # round kind -> its faceted kind
+FACET_TILT = 14.0  # degrees: the most a faceted rock leans (the review's cubes lean 8 to 18 degrees)
+
+
+def split_rocks(places, share):
+    """places ({kind: [(x, y, turn, size)]}) with the share of every round rock kind of ROCK_FACETS moved to its faceted kind: the i-th rock
+    goes faceted when frac(i x golden ratio) < share (an even spread along the list, the exact share on long lists; 1 = all, 0 = none)."""
+    out = {kind: list(items) for kind, items in places.items() if kind not in ROCK_FACETS}
+    for kind, facet in ROCK_FACETS.items():
+        for number, place in enumerate(places.get(kind, ())):
+            target = facet if (number * 0.6180339887) % 1.0 < share else kind
+            out.setdefault(target, []).append(place)
+    return out
 # The clumps (M-Q8): small mixed groups of scenery, a few metres across, scattered over the map like the reference minimap's patches of
 # bushes, stones, flowers: name -> (radius in cm, [(kind, how many)]). A map module opts in with CLUMPS = {name: clumps per hectare}.
 DECOR_CLUMPS = {
@@ -548,6 +572,7 @@ def spawn_decor(recipe, density, sources, extra_avoid=(), clumps=None):
     landmarks = list(avoid) + [(x, y) for kind in places if is_big(kind) for x, y, _, _ in places[kind]]
     for kind, extra in fill_holes(recipe, landmarks).items():
         places[kind] = places.get(kind, []) + extra
+    places = split_rocks(places, ROCK_STYLES[ROCK_STYLE])  # D802
     made = {}
     for kind in sorted(places):
         mesh, color, scale, lift = DECOR_KINDS[kind]
@@ -567,8 +592,9 @@ def spawn_decor(recipe, density, sources, extra_avoid=(), clumps=None):
         for x, y, turn, size in places[kind]:
             grow = 0.75 + 0.5 * size  # 0.75 to 1.25 of the kind's scale
             height = scale[2] * grow
+            lean = FACET_TILT if kind in ROCK_FACETS.values() else 0.0  # a faceted rock leans, a round one sits flat
             transforms.append(unreal.Transform(unreal.Vector(x, y, 50.0 * height * lift),
-                                               unreal.Rotator(roll=0, pitch=0, yaw=360.0 * turn),
+                                               unreal.Rotator(roll=lean * math.cos(2 * math.pi * size), pitch=lean * math.sin(2 * math.pi * size), yaw=360.0 * turn),
                                                unreal.Vector(scale[0] * grow, scale[1] * grow, height)))
         component.add_instances(transforms, False)
         made[kind] = len(transforms)
