@@ -1380,6 +1380,9 @@ FString TalentTipTexts = "";
 
 	// The picture again from the game: the terrain (the fog, the explored sources) twice a second, the dots, the alerts and the
 	// camera's frame at every refresh. Hidden when the map has no bounds.
+	// SG3: the signals' marks last logged (a scenario waits for "Minimap signals: 1" then "Minimap signals: 0").
+	int MinimapSignalsLogged = 0;
+
 	void RefreshMinimap()
 	{
 		if (Minimap == nullptr)
@@ -1464,6 +1467,13 @@ FString TalentTipTexts = "";
 				SignalMark.Color = Signals[Index].Color;
 				SignalMark.Size = 10.0;
 				Marks.Add(SignalMark);
+				if (Signals.Num() != MinimapSignalsLogged)
+					Log(n"LogHOLMatch", f"Minimap signal mark at ({SignalMark.Position.X}, {SignalMark.Position.Y}) px of {MinimapSize}, received at {Signals[Index].ReceivedAt} s");
+			}
+			if (Signals.Num() != MinimapSignalsLogged)
+			{
+				MinimapSignalsLogged = Signals.Num();
+				Log(n"LogHOLMatch", f"Minimap signals: {Signals.Num()} (world {Gameplay::GetTimeSeconds()} s)");
 			}
 		}
 		// The alerts: what lost health since the last reading, aged by the game's clock.
