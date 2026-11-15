@@ -5,6 +5,7 @@
 #include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyUILog.h"
 #include "InputCoreTypes.h"
+#include "Types/ReflectionMetadata.h"
 
 /**
  * Key press sent to Slate as if it came from the keyboard or the gamepad, for the scripted end-to-end checks (D246):
@@ -16,6 +17,13 @@
  */
 namespace UE::HeroesOfLiberty::UI
 {
+	/** The widget holding the keyboard focus of a Slate user, by its path of names (UMG names where Slate has them). */
+	FString FocusedWidgetName(const uint32 UserIndex)
+	{
+		const TSharedPtr<SWidget> Focused = FSlateApplication::IsInitialized() ? FSlateApplication::Get().GetUserFocusedWidget(UserIndex) : nullptr;
+		return Focused ? FReflectionMetaData::GetWidgetPath(Focused.Get(), /*bShort*/ true) : FString(TEXT("none"));
+	}
+
 	void PressKey(const TArray<FString>& Args)
 	{
 		if (Args.IsEmpty())
@@ -56,16 +64,20 @@ namespace UE::HeroesOfLiberty::UI
 				return false;
 			}
 			const FKeyEvent Event(Key, FModifierKeysState(), Slate.GetUserIndexForKeyboard(), /*bIsRepeat*/ false, 0, 0);
-			UE_LOG(LogHOLUI, Display, TEXT("Key pressed: %s"), *Key.ToString());
-			Slate.ProcessKeyDownEvent(Event);
+			// The widget the key goes to first (keyboard focus), for a scripted trial whose key seems lost.
+			UE_LOG(LogHOLUI, Display, TEXT("Key pressed: %s (focus: %s)"), *Key.ToString(), *FocusedWidgetName(Event.GetUserIndex()));
+			const bool bDownHandled = Slate.ProcessKeyDownEvent(Event);
 
 			// Released after the hold (a tenth of a second by default, so that the press and the release are not seen in
 			// the same frame).
-			FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Event](float)
+			FTSTicker::GetCoreTicker().AddTicker(FTickerDelegate::CreateLambda([Event, bDownHandled](float)
 			{
 				if (FSlateApplication::IsInitialized())
 				{
-					FSlateApplication::Get().ProcessKeyUpEvent(Event);
+					const FString Focus = FocusedWidgetName(Event.GetUserIndex());
+					const bool bUpHandled = FSlateApplication::Get().ProcessKeyUpEvent(Event);
+					UE_LOG(LogHOLUI, Display, TEXT("Key released: %s (focus: %s; down %s, up %s)"), *Event.GetKey().ToString(), *Focus,
+						bDownHandled ? TEXT("handled") : TEXT("not handled"), bUpHandled ? TEXT("handled") : TEXT("not handled"));
 				}
 				return false;
 			}), FMath::Max(Hold, 0.02f));
