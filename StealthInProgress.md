@@ -31,7 +31,8 @@ Zone provisoire = rectangle aligné (centre, demi-étendue), comme une case de b
    values` ROUGE vu 11:02 : « ORPHELIN Script/Fog/HOLStealthRules.as », marqueur « provisional shape »). Ligne
    `stealth.reveal_distance_cm` ajoutée à `Tools\Data\ValueSheet.csv` (code, motif sur le cvar `hol.Stealth.RevealDistance`,
    provisoire, D383/D396, § 8.2 ; la note cite aussi la forme rectangulaire provisoire), `Valeurs.md/.csv` régénérés par
-   `make_value_sheet.py` (valeur lue 800). `-Parts values` PASS ; `-Parts tests` : voir le commit. main fusionnée (ad6395c).
+   `make_value_sheet.py` (valeur lue 800). `-Parts values` PASS ; `-Parts tests` 1286/1286 PASS (sans rebuild après merge main). main fusionnée (ad6395c).
+   Commit 162b28d. Prochaine étape inchangée : réponse Q-stealth puis étape 4 (C++). Fusion dans main : agent de fusion n°2.
 4. (Plus tard, C++, autre agent) Branchement dans la vue par camp, voir ci-dessous.
 
 ## Ce qu'il faudra lire côté C++ ensuite (vision par camp)
