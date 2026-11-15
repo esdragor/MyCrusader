@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Map/HOLFogMode.h"
 #include "Map/HOLVisionRules.h"
+#include "Simulation/HOLExplorationXPRules.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "HOLVisionSubsystem.generated.h"
 
@@ -205,6 +206,15 @@ private:
 		uint32 Stamp = 0;
 		double Radius = 0.;
 	};
+
+	/**
+	 * B2 (ExplorationXPInProgress.md): the cells newly explored by each camp's sight pay its hero the Exploration XP (server and solo
+	 * only; the first second's sight pays nothing). Every slot of the camp is paid (sharing between allies: Retours/Q-exploration-xp.md).
+	 */
+	void PayExplorationXP();
+	HOLExplorationXP::FSettings ExplorationSettings;
+	TArray<HOLExplorationXP::FState> ExplorationStates;
+	int32 UpdatesSinceStart = 0;
 
 	FHOLVisionMap Map;
 	EHOLFogMode Mode = EHOLFogMode::Disabled;

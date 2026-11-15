@@ -262,6 +262,20 @@ public:
 	int32 CountVisible(int32 Camp) const;
 	int32 CountExplored(int32 Camp) const;
 
+	/**
+	 * B2 (ExplorationXPInProgress.md): the cells (grid indices) Camp's observers turned from unexplored to explored since the last call,
+	 * taken (the list is emptied). ExploreAll and AddExploredRuns note nothing: only sight explores.
+	 */
+	TArray<int32> TakeNewlyExplored(const int32 Camp)
+	{
+		TArray<int32> Cells;
+		if (NewlyExplored.IsValidIndex(Camp))
+		{
+			Swap(Cells, NewlyExplored[Camp]);
+		}
+		return Cells;
+	}
+
 private:
 	struct FObserver
 	{
@@ -285,6 +299,8 @@ private:
 	/** Per camp, then per cell: Counts[Camp * Grid.Num() + Index]. */
 	TArray<uint16> Counts;
 	TArray<bool> Explored;
+	/** B2: per camp, the cells newly explored by sight and not taken yet (TakeNewlyExplored). */
+	TArray<TArray<int32>> NewlyExplored;
 	TSparseArray<FObserver> Observers;
 };
 

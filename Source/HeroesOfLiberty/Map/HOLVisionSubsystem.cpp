@@ -21,6 +21,9 @@
 #include "Net/HOLFogNetSubsystem.h"
 #include "Net/HOLUnitReceptionSubsystem.h"
 #include "Resources/HOLSourceSubsystem.h"
+#include "Simulation/HOLHeroSubsystem.h"
+#include "Simulation/HOLHeroXPRules.h"
+#include "Simulation/HOLSimulationSettings.h"
 #include "Simulation/HOLSimulationSubsystem.h"
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitTypes.h"
@@ -127,6 +130,14 @@ void UHOLVisionSubsystem::Start(const FHOLMatchConfig& Config, const EHOLFogMode
 	Ghosts.SetNum(Camps.Num());
 	GhostVersions.Reset();
 	GhostVersions.SetNumZeroed(Camps.Num());
+	// B2: each camp's exploration XP memory (the preset of hol.HeroXP.ExplorationPreset; no places listed yet).
+	ExplorationSettings = HOLExplorationXP::Preset(HOLExplorationXP::GetPresetIndex());
+	ExplorationStates.Reset();
+	for (int32 Camp = 0; Camp < Camps.Num(); ++Camp)
+	{
+		ExplorationStates.Add(HOLExplorationXP::NewState(ExplorationSettings, Map.GetGrid().Side, 0));
+	}
+	UpdatesSinceStart = 0;
 	if (Mode == EHOLFogMode::Explored)
 	{
 		for (int32 Camp = 0; Camp < Camps.Num(); ++Camp)
@@ -388,7 +399,52 @@ void UHOLVisionSubsystem::Update()
 		RefreshBuildingMemory(LocalState->GetPlayerIndex());
 		RefreshSourceMemory(LocalState->GetPlayerIndex());
 	}
+	PayExplorationXP();
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
+}
+
+void UHOLVisionSubsystem::PayExplorationXP()
+{
+	// The newly explored cells are always taken (a client's too, never paid there: the server holds each camp's explored, D520).
+	UWorld* World = GetWorld();
+	const bool bPays = !bClient && World && World->GetNetMode() != NM_Client;
+	const bool bAtStart = UpdatesSinceStart < FMath::Max(1, GetDefault<UHOLSimulationSettings>()->SimulationRateHz);
+	++UpdatesSinceStart;
+	UHOLHeroSubsystem* Heroes = bPays ? World->GetSubsystem<UHOLHeroSubsystem>() : nullptr;
+	const FHOLVisionGrid& Grid = Map.GetGrid();
+	for (int32 Camp = 0; Camp < Map.GetNumCamps(); ++Camp)
+	{
+		const TArray<int32> Cells = Map.TakeNewlyExplored(Camp);
+		if (!bPays || !ExplorationStates.IsValidIndex(Camp))
+		{
+			continue;
+		}
+		HOLExplorationXP::FState& State = ExplorationStates[Camp];
+		int32 XP = 0;
+		for (const int32 Index : Cells)
+		{
+			const FIntPoint Cell = Grid.ToCell(Index);
+			if (bAtStart)
+			{
+				HOLExplorationXP::MarkExploredAtStart(State, ExplorationSettings, TConstArrayView<FIntPoint>(), Cell);
+			}
+			else
+			{
+				// D06: exploration keeps paying while the hero recovers.
+				XP += HOLExplorationXP::OnCellExplored(ExplorationSettings, State, TConstArrayView<FIntPoint>(), Cell, false);
+			}
+		}
+		if (XP > 0 && Heroes)
+		{
+			for (int32 Slot = 0; Slot < CampOfSlot.Num(); ++Slot)
+			{
+				if (CampOfSlot[Slot] == Camp)
+				{
+					Heroes->AddXP(Slot, XP, EHOLXPSource::Exploration);
+				}
+			}
+		}
+	}
 }
 
 bool UHOLVisionSubsystem::KeepSourceDrawn(const int32 SourceIndex) const
@@ -516,6 +572,7 @@ bool UHOLVisionSubsystem::UpdateClient()
 	EndPass(true, ClientCamp);
 	RefreshSourceMemory(PlayerState->GetPlayerIndex());
 	SyncGhostActors(PlayerState->GetPlayerIndex());
+	PayExplorationXP();
 	LastUpdateMs = (FPlatformTime::Seconds() - StartSeconds) * 1000.;
 	return true;
 }

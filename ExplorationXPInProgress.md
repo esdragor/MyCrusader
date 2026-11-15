@@ -51,6 +51,9 @@ Branche `visual`, worktree Sauron. Ouvert le 2026-11-15 10:2x par SAURON-1115b. 
   4. `Map\HOLVisionSubsystem.cpp` : includes `Simulation/HOLHeroSubsystem.h`, `Simulation/HOLHeroXPRules.h`, `Simulation/HOLSimulationSettings.h` ; `Start` apres `Map.Init(...)` : `ExplorationSettings = Preset(GetPresetIndex())`, un `NewState(ExplorationSettings, Map.GetGrid().Side, 0)` par camp, `UpdatesSinceStart = 0` ; fin de `Update()` : `PayExplorationXP();` ; `PayExplorationXP` : rien si `bClient` ou NM_Client ; `bAtStart = UpdatesSinceStart < Max(1, SimulationRateHz)` puis `++UpdatesSinceStart` ; par camp : chaque `Map.TakeNewlyExplored(Camp)` -> `Grid.ToCell(Index)` -> `MarkExploredAtStart` (debut) ou `XP += OnCellExplored(..., {}, Cell, false)` ; si XP > 0 : `Heroes->AddXP(Slot, XP, EHOLXPSource::Exploration)` pour chaque slot avec `CampOfSlot[Slot] == Camp`.
   - Reste ensuite : lieux (relais, camps neutres, autels) dans `Places` (vide = preset B ne paie rien) ; test d'accord .as / C++ (modele `Test_RelayScriptAndSimulationRulesAgree`) ; partage entre allies d'un meme camp (chaque slot du camp paye = defaut, a ajouter a Q-exploration-xp).
 
+- 2026-11-15 12:43 : SAURON-1115d, LaunchCheck vide. Etapes 1-4 du branchement APPLIQUEES (code ci-dessus ; en plus `UpdateClient` appelle aussi `PayExplorationXP`, qui sur un client vide la liste sans payer, pour qu'elle ne grossisse pas). Build lance 12:46. Q-exploration-xp.md complete (chaque siege du camp paye ; lieux vides -> preset B ne paie rien en jeu).
+
 ## Appels (un trait par appel)
 
 ||||||||||||||||||| (SAURON-1115c : ~49)
+||||||||||||||||||||||||||||||| (SAURON-1115d : 31 au build)
