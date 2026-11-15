@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**204 réglages** : 12 pas codé, 191 provisoire, 0 réglé à l'essai, 1 validé.
+**205 réglages** : 12 pas codé, 192 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -228,6 +228,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
 | `gdd.fog_grace` | Brouillard : délai de grâce d'environ 0,5 s | — | pas codé | D526 | GDD | Chantier brouillard : FogInProgress.md |
+| `stealth.reveal_distance_cm` | Furtivité : distance où un ennemi « tout proche » révèle une unité dans une zone de furtivité (cm) | 800 | provisoire | D383, D396 | HOLStealthRules.as | Défaut 800 = 2 cases, en attente de Retours\Q-stealth.md ; cvar hol.Stealth.RevealDistance ; forme rectangulaire des zones provisoire aussi (vient avec les cartes) |
 | `vision.building_sight` | Rayon de vue d'un bâtiment (forum principal, cases) | 6400 | provisoire | D523 | BuildingTypes.csv MainCentre:SightRadius |  |
 | `vision.forest_trees` | Vue : arbres qui font une case de forêt | 2 | provisoire | D383, D523 | HOLVisionRules.h |  |
 | `vision.height_bonus_per_cm` | Vue : bonus de hauteur (cm de vue par cm) | 1 | provisoire | D383, D523 | HOLVisionRules.h |  |

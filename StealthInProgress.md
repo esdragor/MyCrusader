@@ -27,6 +27,11 @@ Zone provisoire = rectangle aligné (centre, demi-étendue), comme une case de b
    (`HOLStealth::RevealDistance`), jamais recopié dans les tests. `quick_check -Parts tests` 1272/1272 PASS (10:26).
    Prochaine étape (agent neuf) : attendre `Retours\Q-stealth.md` (changer le défaut du cvar si N diffère), puis l'étape 4
    (C++, agent C++) ; rien d'autre à faire sans C++.
+3b. [fait, ARWEN-1115d 2026-11-15] Registre des valeurs : la fusion groupée n°1 avait exclu d751-root (`quick_check -Parts
+   values` ROUGE vu 11:02 : « ORPHELIN Script/Fog/HOLStealthRules.as », marqueur « provisional shape »). Ligne
+   `stealth.reveal_distance_cm` ajoutée à `Tools\Data\ValueSheet.csv` (code, motif sur le cvar `hol.Stealth.RevealDistance`,
+   provisoire, D383/D396, § 8.2 ; la note cite aussi la forme rectangulaire provisoire), `Valeurs.md/.csv` régénérés par
+   `make_value_sheet.py` (valeur lue 800). `-Parts values` PASS ; `-Parts tests` : voir le commit. main fusionnée (ad6395c).
 4. (Plus tard, C++, autre agent) Branchement dans la vue par camp, voir ci-dessous.
 
 ## Ce qu'il faudra lire côté C++ ensuite (vision par camp)
@@ -44,3 +49,4 @@ Zone provisoire = rectangle aligné (centre, demi-étendue), comme une case de b
 ## Décompte des appels (un trait par appel)
 
 ||||||||||||
+ARWEN-1115d : ||||||||||||||||||| (19 à l'écriture)

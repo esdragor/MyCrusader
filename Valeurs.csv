@@ -2,6 +2,7 @@ Id,Label,Group,Question,Source,State,Value,Where,Locator,Decision,GddRef,LastSee
 gdd.aube,"Aube : pouvoirs, capacités, grilles de talents (valeurs « à régler en test »)",Aube,10,gdd,pas codé,,,,"D85, D36, D111, D195",§ 13.2,
 gdd.fog_grace,"Brouillard : délai de grâce d'environ 0,5 s",Brouillard,,gdd,pas codé,,,,D526,§ 8.4,
 note.Vision,,Brouillard,,ignore,provisoire,,Source/HeroesOfLiberty/Map/HOLVisionRules.h,,,,
+stealth.reveal_distance_cm,Furtivité : distance où un ennemi « tout proche » révèle une unité dans une zone de furtivité (cm),Brouillard,,code,provisoire,800,Script/Fog/HOLStealthRules.as,"hol\.Stealth\.RevealDistance"",\s*(\d+)\)","D383, D396",§ 8.2,
 vision.building_sight,"Rayon de vue d'un bâtiment (forum principal, cases)",Brouillard,,table,provisoire,6400,Tools/Data/BuildingTypes.csv,MainCentre:SightRadius,D523,§ 8.4,
 vision.forest_trees,Vue : arbres qui font une case de forêt,Brouillard,,code,provisoire,2,Source/HeroesOfLiberty/Map/HOLVisionRules.h,ForestTrees\s*=\s*(-?[0-9][0-9._]*),"D383, D523",§ 8.4,
 vision.height_bonus_per_cm,Vue : bonus de hauteur (cm de vue par cm),Brouillard,,code,provisoire,1,Source/HeroesOfLiberty/Map/HOLVisionRules.h,HeightBonusPerCm\s*=\s*([0-9.]+),"D383, D523",§ 8.4,
