@@ -213,6 +213,8 @@ void FHOLVisionMap::Init(const FHOLVisionGrid& InGrid, const int32 InNumCamps, c
 	Trees.Init(0, Grid.Num());
 	Counts.Init(0, NumCamps * Grid.Num());
 	Explored.Init(false, NumCamps * Grid.Num());
+	NewlyExplored.Reset();
+	NewlyExplored.SetNum(NumCamps);
 	Observers.Empty();
 }
 
@@ -439,7 +441,11 @@ void FHOLVisionMap::Lay(FObserver& Observer)
 		uint16& Count = Counts[Offset + Index];
 		ensure(Count < MAX_uint16);
 		++Count;
-		Explored[Offset + Index] = true;
+		if (!Explored[Offset + Index])
+		{
+			Explored[Offset + Index] = true;
+			NewlyExplored[Observer.Camp].Add(Index);
+		}
 		Observer.Seen.Add(Index);
 	}
 }
