@@ -196,6 +196,9 @@ if ($Parts -contains "values") {
         # S7: FHOLMapInfo::NumSites (greys the box "Sites sacres") = the sites each map's file lays (Tools/Editor/maps, common.py SITE_COUNTS).
         $SiteCountOutput = @(python -I (Join-Path $PSScriptRoot "site_count_accord_test.py") 2>&1)
         $ValuesChecks["site_count_accord_test.py ($($SiteCountOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # B2: the exploration XP numbers (defaults and presets A/B/C) agree between Script/Heroes/HOLExplorationXPRules.as and its C++ twin.
+        $ExplorationXPOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_accord_test.py") 2>&1)
+        $ValuesChecks["exploration_xp_accord_test.py ($($ExplorationXPOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
