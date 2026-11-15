@@ -9,24 +9,24 @@ frames 10
 hol.Hero.SetXP 0 600
 wait 1
 frames 8
-# Geste reel (L14-5) : la vraie touche T ouvre l'Arbre (hol.UI.Key : evenement clavier Slate, modele deploy). Les cases de l'Arbre et « Choix conseille » n'ont pas de touche et aucun verbe de scenario ne fait un vrai clic sur un widget du HUD (hol.UI.Click ne vise que les ecrans de menu) : elles restent en hol.HUD.Click (geste interne, besoin C++ note dans ScenariosInProgress.md).
+# Geste reel (L14-5) : la vraie touche T ouvre l'Arbre (hol.UI.Key : evenement clavier Slate, modele deploy), puis vrais clics souris (hol.Mouse.Click : curseur virtuel de Slate, entrees de la plateforme survol/appui/relache, GLORFINDEL-1114c) sur une case de l'Arbre puis deux fois sur « Choix conseille ».
 hol.UI.Key T 0 0.1
 waitlog Key pressed: T
 wait 1
 frames 8
-hol.HUD.Click HeroTalentCell_2_1
+hol.Mouse.Click HeroTalentCell_2_1
 waitlog Mouse click HeroTalentCell_2_1 x1 at
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 8
-hol.HUD.Click TalentWindowAdvised
+hol.Mouse.Click TalentWindowAdvised
 waitlog Mouse click TalentWindowAdvised x1 at
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
 frames 8
 hol.Hero.SetXP 0 1300
 wait 1
-hol.HUD.Click TalentWindowAdvised
+hol.Mouse.Click TalentWindowAdvised
 waitlog Mouse click TalentWindowAdvised x1 at
 waitlog Hero talent order: slot 0 family 1 at step
 wait 1
