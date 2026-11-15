@@ -295,3 +295,22 @@ namespace HOLPlayerOrders
 		return true;
 	}
 }
+
+// F7 lots 4a / 4b (FortificationsInProgress.md): RED STUBS, replaced by the rule in the next commit.
+namespace HOLPlayerOrders
+{
+	bool TakesGarrisonOrder(const AHOLBuilding& Building, const int32 PlayerIndex)
+	{
+		return false;
+	}
+
+	bool Garrison(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+	{
+		return false;
+	}
+
+	bool UngarrisonAll(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building)
+	{
+		return false;
+	}
+}

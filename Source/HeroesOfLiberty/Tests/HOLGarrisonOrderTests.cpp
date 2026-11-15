@@ -4,6 +4,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Buildings/HOLConstructionSubsystem.h"
 #include "Commands/HOLCommandSubsystem.h"
+#include "Commands/HOLPlayerOrders.h"
 #include "Engine/DataTable.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -843,4 +844,119 @@ bool FHOLGarrisonShelterTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// F7 lot 4b (FortificationsInProgress.md, D693 « ordre sur un batiment », D374, D793): a right click on one of the player's own finished buildings
+// with places is a garrison order (HOLPlayerOrders::TakesGarrisonOrder, read by AHOLPlayerController::OrderAt on the client and again by the
+// server). Through the REAL chain (HOLPlayerOrders::Garrison, the command queue, the garrison at the next step) the Spearman ends inside; a House
+// (0 place), an enemy's tower and the setting hol.Garrison.RightClickEnters 0 take nobody (the controller falls back to a move). Exit all
+// (HOLPlayerOrders::UngarrisonAll, the order of the coming button, lot 4a) empties the tower, and is refused to another slot.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGarrisonRightClickTest, "HeroesOfLiberty.Garrison.RightClick", UE::HeroesOfLiberty::Tests::GarrisonOrder::Flags)
+
+bool FHOLGarrisonRightClickTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GarrisonOrder;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("garrison test")) : nullptr;
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow))
+	{
+		return false;
+	}
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.GarrisonSlots = 2;
+	Table->AddRow(TestTowerType, TowerRow);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	AHOLBuilding* Tower = World->SpawnActor<AHOLBuilding>(FVector(3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* House = World->SpawnActor<AHOLBuilding>(FVector(-3000.0, 0.0, 0.0), FRotator::ZeroRotator);
+	AHOLBuilding* FoeTower = World->SpawnActor<AHOLBuilding>(FVector(0.0, 4000.0, 0.0), FRotator::ZeroRotator);
+	IConsoleVariable* RightClick = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Garrison.RightClickEnters"));
+	TestNotNull(TEXT("the setting hol.Garrison.RightClickEnters exists (Retours/Q-garrison-ui.md)"), RightClick);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("tower"), Tower) && TestNotNull(TEXT("house"), House)
+		&& TestNotNull(TEXT("foe tower"), FoeTower))
+	{
+		Tower->Setup(TestTowerType, 0, 0);
+		House->Setup(HOLBuildingTypeNames::House, 0, 0);
+		FoeTower->Setup(TestTowerType, 3, 3);
+		const auto RunStep = [Simulation, Units]
+		{
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		const auto Place = [Units](const int32 Owner, const FVector& Location)
+		{
+			TArray<uint32> Before;
+			Units->GetAllUnitIds(Before);
+			FHOLUnitSpawnRequest Request;
+			Request.TypeName = FName(TEXT("Spearman"));
+			Request.Count = 1;
+			Request.OwnerPlayer = static_cast<uint8>(Owner);
+			Request.Center = Location;
+			Units->RequestUnits(Request);
+			Units->ServeBirthRequests();
+			TArray<uint32> After;
+			Units->GetAllUnitIds(After);
+			uint32 Born = 0;
+			for (const uint32 Id : After)
+			{
+				Born = Before.Contains(Id) ? Born : Id;
+			}
+			return Born;
+		};
+		const auto Selectable = [World](const uint32 Id)
+		{
+			TArray<FHOLUnitView> Views;
+			HOLUnitView::Gather(*World, Views);
+			return Views.ContainsByPredicate([Id](const FHOLUnitView& View) { return View.UnitId == Id; });
+		};
+
+		const uint32 First = Place(0, FVector(2000.0, -600.0, 0.0));
+		const uint32 Second = Place(0, FVector(2000.0, 600.0, 0.0));
+		if (TestTrue(TEXT("the two Spearmen born"), First && Second))
+		{
+			TestTrue(TEXT("the player's own finished tower with places takes the right click"), HOLPlayerOrders::TakesGarrisonOrder(*Tower, 0));
+			TestFalse(TEXT("a House (0 place) does not take it"), HOLPlayerOrders::TakesGarrisonOrder(*House, 0));
+			TestFalse(TEXT("an enemy's tower does not take it (D374)"), HOLPlayerOrders::TakesGarrisonOrder(*FoeTower, 0));
+
+			const uint32 FirstAsks[] = { First };
+			TestTrue(TEXT("the right click's garrison order enters the queue"), HOLPlayerOrders::Garrison(*World, 0, FirstAsks, Tower));
+			RunStep();
+			TestTrue(TEXT("after the step the first Spearman is inside the tower"), Units->GetGarrison(First) == Tower);
+			TestFalse(TEXT("and has left the selection"), Selectable(First));
+
+			const uint32 SecondAsks[] = { Second };
+			TestFalse(TEXT("a House refuses the garrison order"), HOLPlayerOrders::Garrison(*World, 0, SecondAsks, House));
+			TestFalse(TEXT("an enemy's tower refuses it"), HOLPlayerOrders::Garrison(*World, 0, SecondAsks, FoeTower));
+			if (RightClick)
+			{
+				const int32 Saved = RightClick->GetInt();
+				RightClick->Set(0, ECVF_SetByCode);
+				TestFalse(TEXT("with hol.Garrison.RightClickEnters 0 the tower does not take the right click"), HOLPlayerOrders::TakesGarrisonOrder(*Tower, 0));
+				TestFalse(TEXT("nor the garrison order"), HOLPlayerOrders::Garrison(*World, 0, SecondAsks, Tower));
+				RightClick->Set(Saved, ECVF_SetByCode);
+			}
+			RunStep();
+			TestTrue(TEXT("the second Spearman stays on the field"), Units->GetGarrison(Second) == nullptr && Selectable(Second));
+
+			TestFalse(TEXT("another slot cannot empty the tower"), HOLPlayerOrders::UngarrisonAll(*World, 3, Tower));
+			TestTrue(TEXT("exit all enters the queue"), HOLPlayerOrders::UngarrisonAll(*World, 0, Tower));
+			RunStep();
+			TArray<uint32> Inside;
+			Units->GetGarrisonUnitIds(Tower, Inside);
+			TestEqual(TEXT("the tower is empty after exit all"), Inside.Num(), 0);
+			TestTrue(TEXT("the first Spearman is back in the selection"), Selectable(First));
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	Table->RemoveRow(TestTowerType);
+	return true;
+}
 #endif // WITH_DEV_AUTOMATION_TESTS
