@@ -32,19 +32,22 @@ void Test_PatrolUnitGoesBackToAOnceAtB(FUnitTest& T)
 	const FVector B = FVector(1000.f, 0.f, 0.f);
 	FHOLPatrolState State = HOLPatrolRules::Start(A, B);
 	FVector Position = A;
-	float Farthest = 0.f;
-	for (int Index = 0; Index < 12; Index++)
+	bool bReachedB = false;
+	bool bBackAtA = false;
+	float FarthestAfterA = 0.f;
+	for (int Index = 0; Index < 30; Index++)
 	{
 		Position = HOLPatrolTest::Tick(State, Position);
-		Farthest = Math::Max(Farthest, Position.X);
+		if (!bReachedB)
+			bReachedB = (Position - B).Size() <= HOLPatrolRules::ArriveRadius;
+		else if (!bBackAtA)
+			bBackAtA = (Position - A).Size() <= HOLPatrolRules::ArriveRadius;
+		else
+			FarthestAfterA = Math::Max(FarthestAfterA, Position.X);
 	}
-	T.AssertTrue(Farthest >= 1000.f - HOLPatrolRules::ArriveRadius, f"the unit reached B (farthest X {Farthest})");
-	for (int Index = 0; Index < 12; Index++)
-		Position = HOLPatrolTest::Tick(State, Position);
-	T.AssertTrue((Position - A).Size() <= HOLPatrolRules::ArriveRadius, f"the unit went back to A once at B (X {Position.X})");
-	for (int Index = 0; Index < 5; Index++)
-		Position = HOLPatrolTest::Tick(State, Position);
-	T.AssertTrue(Position.X >= 400.f, f"at A it leaves for B again (X {Position.X})");
+	T.AssertTrue(bReachedB, "the unit reached B");
+	T.AssertTrue(bBackAtA, f"the unit went back to A once at B (ends at X {Position.X})");
+	T.AssertTrue(FarthestAfterA >= 400.f, f"at A it leaves for B again (farthest X after A {FarthestAfterA})");
 }
 
 // EFFECT: every leg, out and back, is an attack-move (the unit takes on the enemies met on the way), never a plain move.

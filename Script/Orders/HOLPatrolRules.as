@@ -32,24 +32,35 @@ namespace HOLPatrolRules
 		return State;
 	}
 
+	// Where the current leg ends: B on the way out, A on the way back.
 	FVector LegTarget(const FHOLPatrolState& State)
 	{
-		return State.PointB;
+		return State.bTowardB ? State.PointB : State.PointA;
 	}
 
+	// The order the unit walks the leg under: an attack-move while the patrol lasts, nothing once it is over.
 	EHOLPatrolOrder LegOrder(const FHOLPatrolState& State)
 	{
-		return EHOLPatrolOrder::AttackMove;
+		return State.bActive ? EHOLPatrolOrder::AttackMove : EHOLPatrolOrder::None;
 	}
 
-	// RED STUB (test first): never turns round.
+	// Sees where the unit stands: at the end of the leg (within Radius, on the ground plane) it turns round toward the other point.
+	// Returns true when a new leg starts (the caller gives the unit a new attack-move to LegTarget).
 	bool Advance(FHOLPatrolState& State, FVector UnitLocation, float Radius)
 	{
-		return false;
+		if (!State.bActive)
+			return false;
+		FVector Away = LegTarget(State) - UnitLocation;
+		Away.Z = 0.f;
+		if (Away.Size() > Radius)
+			return false;
+		State.bTowardB = !State.bTowardB;
+		return true;
 	}
 
-	// RED STUB (test first): a manual order does nothing yet.
+	// Any manual order (move, attack, attack-move, stop, hold, another patrol) ends this patrol.
 	void OnManualOrder(FHOLPatrolState& State)
 	{
+		State.bActive = false;
 	}
 }
