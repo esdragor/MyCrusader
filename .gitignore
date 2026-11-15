@@ -41,3 +41,6 @@ Docs/BuildQueue.csv
 Docs/BuildQueue.state/
 
 IN_USE.txt
+
+# Discovery scenario left untracked since 2026-11-11 (its .txt says 'Discovery (temporary)': where the real sources sit around the Forum on the Plain test map); kept locally, never committed (SAURON-1115a)
+Tools/Scenarios/resources_game.*
