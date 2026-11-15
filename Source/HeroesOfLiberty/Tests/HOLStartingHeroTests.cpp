@@ -733,7 +733,7 @@ bool FHOLStartingNomadReplicatedTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("server: the forum's price, stone"), ServerCost.Stone, 400);
 
 		TestFalse(TEXT("client before the replication: no forum in cell II C"), ForumCell(Client, 0).TypeName == HOLBuildingTypeNames::MainCentre);
-		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats());
+		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats(), ServerState->GetNomadForumSeats());
 		TestTrue(TEXT("client: slot 0 Nomad"), ClientState->IsSeatNomad(0));
 		const FHOLGridCommand Nomad = ForumCell(Client, 0);
 		TestTrue(TEXT("client, slot 0: cell II C builds the forum"), Nomad.Command == EHOLGridCommand::Build && Nomad.TypeName == HOLBuildingTypeNames::MainCentre);
@@ -746,9 +746,26 @@ bool FHOLStartingNomadReplicatedTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("client, slot 1 (standard): no forum in cell II C"), Standard.TypeName == HOLBuildingTypeNames::MainCentre);
 		TestEqual(TEXT("client, slot 1: the table's forum price"), UHOLBuildingSettings::GetBuildCost(Client, HOLBuildingTypeNames::MainCentre, 1).ToString(),
 			UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre)->Cost.ToString());
+		// D354 ("from the first forum complete, the normal rules"; the forum then falls to ruins and is rebuilt in place, D417-D420):
+		// the server notes slot 0's first forum complete (what HOLBuildProcessor calls when it finishes); the client receives the bits
+		// as the replication does: its board knows the forum complete, the cell II C closed, the forum's price back to the table's.
+		ServerState->NoteSeatForumComplete(0);
+		TestTrue(TEXT("server: slot 0's first forum complete"), UHOLSpecializationSubsystem::IsForumComplete(Server, 0));
+		const FHOLResources ServerAfter = UHOLBuildingSettings::GetBuildCost(Server, HOLBuildingTypeNames::MainCentre, 0);
+		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats(), ServerState->GetNomadForumSeats());
+		TestTrue(TEXT("client: slot 0 still Nomad"), ClientState->IsSeatNomad(0));
+		TestTrue(TEXT("client: slot 0's first forum complete"), UHOLSpecializationSubsystem::IsForumComplete(Client, 0));
+		TestFalse(TEXT("client: slot 0's forum cell closed"), UHOLBuildingSettings::IsFirstForumOpen(Client, 0));
+		TestFalse(TEXT("client, slot 0 after its first forum: no forum in cell II C"), ForumCell(Client, 0).TypeName == HOLBuildingTypeNames::MainCentre);
+		const FHOLResources ClientAfter = UHOLBuildingSettings::GetBuildCost(Client, HOLBuildingTypeNames::MainCentre, 0);
+		TestEqual(TEXT("client, slot 0 after its first forum: the server's price"), ClientAfter.ToString(), ServerAfter.ToString());
+		TestEqual(TEXT("client, slot 0 after its first forum: the table's price"), ClientAfter.ToString(),
+			UHOLBuildingSettings::FindType(HOLBuildingTypeNames::MainCentre)->Cost.ToString());
+		TestFalse(TEXT("client, slot 0 after its first forum: no longer the first forum's 150 wood + 400 stone"), ClientAfter.Wood == 150 && ClientAfter.Stone == 400);
 		// The server takes the seat back (development command hol.Nomad.SetSeat): the client's grid follows.
 		ServerState->SetSeatNomad(0, false);
-		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats());
+		TestEqual(TEXT("server: the seat's forum bit cleared with it"), static_cast<int32>(ServerState->GetNomadForumSeats()), 0);
+		ClientState->ApplyNomadSeats(ServerState->GetNomadSeats(), ServerState->GetNomadForumSeats());
 		TestFalse(TEXT("client, slot 0 no longer Nomad: no forum cell"), ForumCell(Client, 0).TypeName == HOLBuildingTypeNames::MainCentre);
 	}
 	for (UWorld* World : { Server, Client })

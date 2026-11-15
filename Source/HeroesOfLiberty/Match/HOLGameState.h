@@ -324,7 +324,16 @@ public:
 	 * standard on this machine's script board (UHOLSpecializationSubsystem::SetNomadNow), so that a client's grid opens a Nomad
 	 * seat's first forum at its true price (UHOLBuildingSettings::GetBuildableTypesForSlot, GetBuildCost). Logs "Nomad seats: N".
 	 */
-	void ApplyNomadSeats(uint8 Seats);
+	void ApplyNomadSeats(uint8 Seats, uint8 ForumSeats);
+	/**
+	 * D354 ("from the first forum complete, the normal rules"), D799: the server notes a seat's first forum complete (HOLBuildProcessor,
+	 * or hol.Nomad.ForumDone); one bit per seat in NomadForumSeats, replicated with NomadSeats: every machine's script board knows it
+	 * (ApplyNomadSeats -> UHOLSpecializationSubsystem::NoteForumCompleteNow), so a client's grid closes the forum cell and shows the
+	 * table's price again (GetBuildCost). SetSeatNomad clears the seat's bit (its script state starts again).
+	 */
+	void NoteSeatForumComplete(int32 Slot);
+	/** Bit Slot = that seat's first forum is complete (noted by NoteSeatForumComplete; every machine: the bits are replicated). */
+	uint8 GetNomadForumSeats() const { return NomadForumSeats; }
 	/** P2: the forum's values for a slot: the tier its hero's level opens (HOLHeroXP::GetTier), at least the setting's (tests). */
 	FHOLForumTuning GetForumTuning(int32 Slot) const;
 	/** The slot's main forum is in ruin or rebuilding: unbreakable, no production, no deposit (D351). */
@@ -532,6 +541,13 @@ private:
 
 	/** D799: the bits this machine's script board was given last (ApplyNomadSeats sets only the seats that changed). */
 	uint8 AppliedNomadSeats = 0;
+
+	/** D354, D799: bit Slot = that seat's first forum complete (NoteSeatForumComplete), replicated with NomadSeats (same notify). */
+	UPROPERTY(ReplicatedUsing = OnRep_NomadSeats)
+	uint8 NomadForumSeats = 0;
+
+	/** The forum bits this machine's script board was given last (cleared for a seat whose Nomad bit changed). */
+	uint8 AppliedNomadForumSeats = 0;
 
 	UFUNCTION()
 	void OnRep_NomadSeats();

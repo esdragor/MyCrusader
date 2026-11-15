@@ -34,6 +34,21 @@ namespace
 			GameState->SetSeatNomad(FCString::Atoi(*Args[0]), FCString::Atoi(*Args[1]) != 0);
 		}));
 
+	/** D354, D799, development (the net test): the server notes a seat's first forum complete (replicated bit), as its construction would. */
+	FAutoConsoleCommandWithWorldAndArgs NomadForumDoneCommand(
+		TEXT("hol.Nomad.ForumDone"),
+		TEXT("hol.Nomad.ForumDone <Slot>: the server notes that seat's first forum complete, replicated to every client (development only)"),
+		FConsoleCommandWithWorldAndArgsDelegate::CreateLambda([](const TArray<FString>& Args, UWorld* World)
+		{
+			AHOLGameState* GameState = World ? World->GetGameState<AHOLGameState>() : nullptr;
+			if (Args.IsEmpty() || !GameState || !GameState->HasAuthority())
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Nomad.ForumDone <Slot> (server only)"));
+				return;
+			}
+			GameState->NoteSeatForumComplete(FCString::Atoi(*Args[0]));
+		}));
+
 	/** D799 (the net test): what this machine computes for a seat's first forum (its grid's cell, its price). */
 	FAutoConsoleCommandWithWorldAndArgs NomadReportCommand(
 		TEXT("hol.Nomad.Report"),

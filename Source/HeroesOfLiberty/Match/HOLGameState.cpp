@@ -57,6 +57,7 @@ void AHOLGameState::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLif
 	DOREPLIFETIME(AHOLGameState, WinnerMask);
 	DOREPLIFETIME(AHOLGameState, LaunchConfig);
 	DOREPLIFETIME(AHOLGameState, NomadSeats);
+	DOREPLIFETIME(AHOLGameState, NomadForumSeats);
 	DOREPLIFETIME(AHOLGameState, FogMode);
 	DOREPLIFETIME(AHOLGameState, ForumStates);
 	DOREPLIFETIME(AHOLGameState, TierOverrides);
@@ -149,11 +150,20 @@ void AHOLGameState::SetSeatNomad(const int32 Slot, const bool bNomad)
 		return;
 	}
 	const uint8 Bit = static_cast<uint8>(1 << Slot);
-	ApplyNomadSeats(bNomad ? static_cast<uint8>(NomadSeats | Bit) : static_cast<uint8>(NomadSeats & ~Bit));
+	ApplyNomadSeats(bNomad ? static_cast<uint8>(NomadSeats | Bit) : static_cast<uint8>(NomadSeats & ~Bit), static_cast<uint8>(NomadForumSeats & ~Bit));
 	ForceNetUpdate();
 }
 
-void AHOLGameState::ApplyNomadSeats(const uint8 Seats)
+void AHOLGameState::NoteSeatForumComplete(const int32 Slot)
+{
+	// STUB (red, HALDIR-1115b): the server's own board only, no replicated bit.
+	if (UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(GetWorld()))
+	{
+		Board->NoteForumCompleteNow(Slot);
+	}
+}
+
+void AHOLGameState::ApplyNomadSeats(const uint8 Seats, const uint8 ForumSeats)
 {
 	NomadSeats = Seats;
 	UHOLSpecializationSubsystem* Board = UHOLSpecializationSubsystem::Find(GetWorld());
@@ -171,7 +181,7 @@ void AHOLGameState::ApplyNomadSeats(const uint8 Seats)
 
 void AHOLGameState::OnRep_NomadSeats()
 {
-	ApplyNomadSeats(NomadSeats);
+	ApplyNomadSeats(NomadSeats, NomadForumSeats);
 }
 
 int32 AHOLGameState::GetStartPlace(const int32 Slot) const
