@@ -35,6 +35,7 @@ Branche `visual`, worktree Sauron. Ouvert le 2026-11-15 10:2x par SAURON-1115b. 
 ## Suivi
 
 - 2026-11-15 10:2x : chantier ouvert, journal + question Ã©crits (SAURON-1115b).
+- 2026-11-15 10:2x : etapes 1 et 2 FAITES (SAURON-1115b) : test rouge VU ROUGE (tests 1268/1272, les 4 tests HOLExplorationXPRules_Test KO), commit 2487a66 ; regle codee (tranches, lieux, depart, hors grille, prereglages A/B/C, defaut C), quick_check -Parts tests 1272/1272 PASS, commit cf77faf, merge main de32333 (tests non relances apres le merge). Prochaine etape = 3 (C++, worktree du brouillard) : voir 'Ce qu'il faudra lire du brouillard'. Rien n'est branche au jeu.
 
 ## Appels (un trait par appel)
 
