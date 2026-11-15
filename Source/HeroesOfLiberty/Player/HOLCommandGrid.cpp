@@ -3,9 +3,45 @@
 #include "Player/HOLCommandGrid.h"
 
 #include "Buildings/HOLBuildingTypes.h"
+#include "HAL/IConsoleManager.h"
+
+namespace
+{
+	// SP3 (Retours/Q-specialization-ui.md, default A): the Forum's grid cell of the first specialization option, the second after it.
+	TAutoConsoleVariable<int32> CVarSpecializationCell(TEXT("hol.UI.SpecializationCell"), 6,
+		TEXT("SP3: the main Forum's grid cell (0-10) of the first specialization option, the second one after it (default 6: D then F)."));
+}
 
 namespace HOLCommandGrid
 {
+	int32 GetSpecializationCell(const int32 Option)
+	{
+		return FMath::Clamp(CVarSpecializationCell.GetValueOnAnyThread(), 0, NumCells - SpecializationOptions) + Option;
+	}
+
+	int32 GetOpenSpecializationTier(const int32 PlayerTier, const FHOLSpecializationView& View)
+	{
+		if (View.PendingTier > 0)
+		{
+			return View.PendingTier;
+		}
+		for (int32 Tier = 1; Tier <= 3; ++Tier)
+		{
+			if (View.GetChosen(Tier) < 0)
+			{
+				return Tier <= PlayerTier ? Tier : 0;
+			}
+		}
+		return 0;
+	}
+
+	void SetSpecialization(FHOLGridContext& Context, const int32 PlayerTier, const FHOLSpecializationView& View)
+	{
+		Context.SpecializationTier = GetOpenSpecializationTier(PlayerTier, View);
+		Context.SpecializationPendingOption = View.PendingTier > 0 ? View.PendingOption : INDEX_NONE;
+		Context.SpecializationRemainingMs = View.PendingTier > 0 ? View.RemainingMs : 0;
+	}
+
 	FHOLGridCommand GetCommand(const FHOLGridContext& Context, const int32 Cell)
 	{
 		FHOLGridCommand Result;
@@ -46,6 +82,17 @@ namespace HOLCommandGrid
 			{
 				Result.Command = EHOLGridCommand::Produce;
 				Result.TypeName = Context.Produces[Cell];
+			}
+			else if (Context.bPrimaryForum && !Context.bBuildingGroup && Context.SpecializationTier > 0
+				&& Cell >= GetSpecializationCell(0) && Cell < GetSpecializationCell(SpecializationOptions))
+			{
+				// SP3 (D332, D684, D785): the open tier's two options; the running one cancels at no cost (its time left on the cell), the
+				// other still starts (answer B of Q-specialization-switch: it replaces). The server's board decides (ServerStartSpecialization).
+				Result.Option = Cell - GetSpecializationCell(0);
+				Result.Tier = Context.SpecializationTier;
+				const bool bRunning = Result.Option == Context.SpecializationPendingOption;
+				Result.Command = bRunning ? EHOLGridCommand::CancelSpecialization : EHOLGridCommand::Specialize;
+				Result.RemainingMs = bRunning ? Context.SpecializationRemainingMs : 0;
 			}
 			else if (Cell >= ResearchFirstCell && Context.Researches.IsValidIndex(Cell - ResearchFirstCell))
 			{
