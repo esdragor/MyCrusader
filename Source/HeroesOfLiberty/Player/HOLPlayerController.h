@@ -551,6 +551,11 @@ public:
 
 	/** SG2: the signals this seat received so far. */
 	int32 GetNumReceivedSignals() const { return NumReceivedSignals; }
+	/** A4 (D385): the player sends Text on Channel (HOLChat: 0 All, 1 Allies, 2 Private to TargetSlot); the server decides who reads it. */
+	void RequestChat(int32 Channel, const FString& Text, int32 TargetSlot);
+
+	/** A4: the chat messages this seat received so far (hol.Chat.Report). */
+	int32 GetNumReceivedChats() const { return NumReceivedChats; }
 
 	/** SG3: the received signals still alive (hol.Signal.IconSeconds), for the minimap's icons (HOLGameScreenScript). */
 	UFUNCTION(BlueprintCallable, Category = "Signals")
@@ -891,6 +896,18 @@ private:
 
 	/** SG2: the signals this seat received so far (a test reads it; SG3 draws them). */
 	int32 NumReceivedSignals = 0;
+	/** A4 (D385, D376, D792): the server's gate (HOLChat::CheckPost: length, rate), then each seat the message reaches (HOLChat::Reaches). */
+	UFUNCTION(Server, Reliable)
+	void ServerPostChat(int32 Channel, const FString& Text, int32 TargetSlot);
+
+	/** A4: a chat message this seat reads: its line in the thread (AHOLGameState::NoteChatReceived). */
+	UFUNCTION(Client, Reliable)
+	void ClientReceiveChat(int32 SenderSlot, int32 Channel, const FString& Text);
+
+	/** A4: the chat messages this seat received so far. */
+	int32 NumReceivedChats = 0;
+	/** A4, server: this player's recent posts (ms of the world's time), the rate of HOLChat::CheckPost. */
+	TArray<int32> ChatPostTimesMs;
 
 	/** SP2 (D07, D684): the server's board starts the unlock of Option at Tier for this player's seat (HOLSpecialization::Start). */
 	UFUNCTION(Server, Reliable)

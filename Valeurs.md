@@ -4,7 +4,7 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 États : *pas codé* (le GDD la nomme, aucun code), *provisoire* (codée, jamais jouée), *réglé à l'essai* (changée après un essai), *validé* (l'utilisateur l'a confirmée).
 
-**205 réglages** : 12 pas codé, 192 provisoire, 0 réglé à l'essai, 1 validé.
+**208 réglages** : 12 pas codé, 195 provisoire, 0 réglé à l'essai, 1 validé.
 
 ## Question 1 : Le héros est-il important sans être obligatoire ?
 
@@ -261,6 +261,9 @@ Générée par `Tools/Data/make_value_sheet.py` depuis `Tools/Data/ValueSheet.cs
 
 | Id | Réglage | Valeur | État | Décision | Où | Note |
 |---|---|---|---|---|---|---|
+| `comm.chat.max_length` | Discussion : longueur maximale d'un message (caractères) | 200 | provisoire | D385 | HOLChatRules.h | indicatif : 200 caractères, refusé au-delà (cvar hol.Chat.MaxLength) |
+| `comm.chat.max_per_window` | Discussion : messages par joueur dans la fenêtre | 5 | provisoire | D385 | HOLChatRules.h | indicatif : 5 toutes les 10 s (cvar hol.Chat.MaxPerWindow) |
+| `comm.chat.window_ms` | Discussion : fenêtre de la limite (ms) | 10000 | provisoire | D385 | HOLChatRules.h | indicatif : 5 toutes les 10 s (cvar hol.Chat.WindowMs) |
 | `comm.signal.lifetime_ms` | Signaux : durée sur la carte (ms) | 5000 | provisoire | D784 | HOLSignalRules.as | Décidé (Q-signals Q1 = A : 5 s) |
 | `comm.signal.max_per_window` | Signaux : nombre par joueur dans la fenêtre | 3 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |
 | `comm.signal.window_ms` | Signaux : fenêtre de la limite (ms) | 5000 | provisoire | D386 | HOLSignalRules.as | indicatif : 3 toutes les 5 s |

@@ -37,6 +37,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSignalSubsystem.h"
+#include "Match/HOLChatRules.h"
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLRTSCamera.h"
@@ -1681,6 +1682,41 @@ namespace UE::HeroesOfLiberty::Player
 			{
 				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
 				UE_LOG(LogHOLMatch, Display, TEXT("Signal report: slot %d received %d"), PlayerState ? PlayerState->GetPlayerIndex() : -1, Controller->GetNumReceivedSignals());
+			}
+		}));	/** A4, until the input (Enter and a field, Retours/Q-chat-ui.md): the local players send a chat message (the server decides who reads it). */
+	FAutoConsoleCommand ChatSayCommand(
+		TEXT("hol.Chat.Say"),
+		TEXT("hol.Chat.Say <all|allies|private> [<TargetSlot> for private] <text...>: the local player sends that chat message"),
+		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
+		{
+			const int32 Channel = Args.Num() > 0 ? HOLChat::ParseChannel(Args[0]) : INDEX_NONE;
+			const int32 First = Channel == HOLChat::Private ? 2 : 1;
+			if (Channel == INDEX_NONE || Args.Num() <= First)
+			{
+				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Chat.Say <all|allies|private> [<TargetSlot>] <text>"));
+				return;
+			}
+			const int32 Target = Channel == HOLChat::Private ? FCString::Atoi(*Args[1]) : INDEX_NONE;
+			TArray<FString> Words;
+			for (int32 Index = First; Index < Args.Num(); ++Index)
+			{
+				Words.Add(Args[Index]);
+			}
+			const FString Text = FString::Join(Words, TEXT(" "));
+			for (AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				Controller->RequestChat(Channel, Text, Target);
+			}
+		}));
+	FAutoConsoleCommand ChatReportCommand(
+		TEXT("hol.Chat.Report"),
+		TEXT("hol.Chat.Report: logs the chat messages each local player has received (ClientReceiveChat)"),
+		FConsoleCommandDelegate::CreateLambda([]()
+		{
+			for (const AHOLPlayerController* Controller : GetLocalControllers())
+			{
+				const AHOLPlayerState* PlayerState = Controller->GetHOLPlayerState();
+				UE_LOG(LogHOLMatch, Display, TEXT("Chat report: slot %d received %d"), PlayerState ? PlayerState->GetPlayerIndex() : -1, Controller->GetNumReceivedChats());
 			}
 		}));
 	/** SP2, until the Forum's button (SP3): the local players start or cancel a specialization (the server's board decides). */
@@ -5201,6 +5237,71 @@ TArray<FHOLReceivedSignal> AHOLPlayerController::GetActiveSignals() const
 	TArray<FHOLReceivedSignal> Active = ReceivedSignals;
 	HOLSignalInput::Expire(Active, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0);
 	return Active;
+}
+// A4: the chat's gate, values of the registry (Tools/Data/ValueSheet.csv, HOLChat::MaxTextLength, MaxPerWindow, WindowMs).
+static TAutoConsoleVariable<int32> CVarChatMaxLength(TEXT("hol.Chat.MaxLength"), HOLChat::MaxTextLength,
+	TEXT("A4: a chat message's maximum length in characters; longer, the server refuses it (registry comm.chat.*)."));
+static TAutoConsoleVariable<int32> CVarChatMaxPerWindow(TEXT("hol.Chat.MaxPerWindow"), HOLChat::MaxPerWindow,
+	TEXT("A4: the chat messages a player may send within hol.Chat.WindowMs; more, the server refuses them (registry comm.chat.*)."));
+static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), HOLChat::WindowMs,
+	TEXT("A4: the window of the chat's rate, in ms (registry comm.chat.*)."));
+
+void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
+{
+	// A pure spectator talks too (with the spectators, D376): the server decides.
+	ServerPostChat(Channel, Text, TargetSlot);
+}
+
+void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, const FString& Text, const int32 TargetSlot)
+{
+	// The player's own slot only (D288); the server alone decides who reads it (HOLChat, mirror of Script/Chat/HOLChatRules.as).
+	UWorld* World = GetWorld();
+	if (!World)
+	{
+		return;
+	}
+	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
+	const int32 Sender = HOLPlayerState && !IsSpectator() ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
+	const HOLChat::FSeats Seats = HOLChat::ReadSeats(World);
+	const int32 NowMs = static_cast<int32>(World->GetTimeSeconds() * 1000.0);
+	const int32 Answer = HOLChat::CheckPost(Seats, Channel, Sender, TargetSlot, Text, ChatPostTimesMs, NowMs,
+		CVarChatMaxLength.GetValueOnGameThread(), CVarChatMaxPerWindow.GetValueOnGameThread(), CVarChatWindowMs.GetValueOnGameThread());
+	UE_LOG(LogHOLMatch, Display, TEXT("Chat: slot %d channel %d answer %d"), Sender, Channel, Answer);
+	if (Answer != HOLChat::Ok)
+	{
+		return;
+	}
+	int32 Sent = 0;
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It)
+	{
+		AHOLPlayerController* Viewer = Cast<AHOLPlayerController>(It->Get());
+		if (!Viewer)
+		{
+			continue;
+		}
+		const AHOLPlayerState* ViewerState = Viewer->GetHOLPlayerState();
+		const int32 ViewerSlot = ViewerState && !Viewer->IsSpectator() ? ViewerState->GetPlayerIndex() : INDEX_NONE;
+		// Two pure spectators (no seat): the spectators' talk, never a private message of one of them.
+		const bool bReaches = Viewer == this
+			|| (Sender == INDEX_NONE && ViewerSlot == INDEX_NONE ? Channel != HOLChat::Private : HOLChat::Reaches(Seats, Channel, Sender, TargetSlot, ViewerSlot));
+		if (bReaches)
+		{
+			Viewer->ClientReceiveChat(Sender, Channel, Text);
+			++Sent;
+		}
+	}
+	UE_LOG(LogHOLMatch, Display, TEXT("Chat: slot %d channel %d sent to %d seats"), Sender, Channel, Sent);
+}
+
+void AHOLPlayerController::ClientReceiveChat_Implementation(const int32 SenderSlot, const int32 Channel, const FString& Text)
+{
+	++NumReceivedChats;
+	UE_LOG(LogHOLMatch, Display, TEXT("Chat: received channel %d from slot %d: %s"), Channel, SenderSlot, *Text);
+	if (AHOLGameState* GameState = GetWorld() ? GetWorld()->GetGameState<AHOLGameState>() : nullptr)
+	{
+		const AHOLPlayerState* ViewerState = GetHOLPlayerState();
+		GameState->NoteChatReceived(SenderSlot, Channel, Text, ViewerState ? ViewerState->GetPlayerIndex() : INDEX_NONE);
+	}
 }
 
 void AHOLPlayerController::RequestSpecialization(const int32 Tier, const int32 Option)

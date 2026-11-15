@@ -293,6 +293,24 @@ FHOLForumMessage HOLForumMessages::GetSignalMessage(const int32 SenderSlot, cons
 	Message.Shown = FString::Printf(TEXT("Signal message: %s"), *Message.Text.ToString());
 	return Message;
 }
+FHOLForumMessage HOLForumMessages::GetChatMessage(const int32 SenderSlot, const int32 Channel, const FString& ChatText, const FHOLMatchConfig& Config, const int32 ViewerSlot)
+{
+	// The channel's tag before the text; All has none (the look is the user's, Retours/Q-chat-ui.md).
+	FText Tag;
+	if (Channel == 1)
+	{
+		Tag = LOCTEXT("ChatAllies", "(AlliÃ©s) ");
+	}
+	else if (Channel == 2)
+	{
+		Tag = LOCTEXT("ChatPrivate", "(PrivÃ©) ");
+	}
+	FHOLForumMessage Message;
+	Message.Text = FText::Format(LOCTEXT("MessageChat", "{0} : {1}{2}"), GetPlayerName(Config, SenderSlot, ViewerSlot), Tag, FText::AsCultureInvariant(ChatText));
+	Message.NamedSlots.Add(SenderSlot);
+	Message.Shown = FString::Printf(TEXT("Chat message: %s"), *Message.Text.ToString());
+	return Message;
+}
 
 FHOLForumMessage HOLForumMessages::GetHeroReadyMessage()
 {

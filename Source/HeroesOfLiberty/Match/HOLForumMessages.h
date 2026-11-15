@@ -130,6 +130,12 @@ namespace HOLForumMessages
 	 * 3 need help, 4 rally, 5 scout); the wheel's labels are the GDD's. NamedSlots holds the sender.
 	 */
 	HEROESOFLIBERTY_API FHOLForumMessage GetSignalMessage(int32 SenderSlot, int32 Kind, const FHOLMatchConfig& Config, int32 ViewerSlot);
+	/**
+	 * A4 (GDD 15, D385, D446: the thread is the chat's future place): the thread's line of a chat message received by ViewerSlot, a
+	 * minor line: the sender named as the players' table names him (GetPlayerName), the channel (HOLChat: 0 All, 1 Allies, 2 Private)
+	 * and the text. Provisional look (Retours/Q-chat-ui.md). NamedSlots holds the sender; Shown "Chat message: <text>".
+	 */
+	HEROESOFLIBERTY_API FHOLForumMessage GetChatMessage(int32 SenderSlot, int32 Channel, const FString& ChatText, const FHOLMatchConfig& Config, int32 ViewerSlot);
 
 	/**
 	 * J8b.4 (J8b-Q4, D202): the minor alerts of the viewer's hero going up from OldLevel to NewLevel, in their order:
