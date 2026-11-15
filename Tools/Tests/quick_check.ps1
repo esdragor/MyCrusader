@@ -139,6 +139,34 @@ $PlaceholdersOk = ($LASTEXITCODE -eq 0)
 $PlaceholdersOutput | ForEach-Object { Write-Host "  $_" }
 if (-not $PlaceholdersOk) { Write-Host "quick_check : FAIL (check_placeholders: a provisional type has no line in Placeholders.txt, see above)"; exit 1 }
 if ($PlaceholdersAlone -and -not $Parts.Count) { Write-Host "quick_check : PASS"; exit 0 }
+# L8-5: the known reds and the one PASS / FAIL line of every part, defined here so that the "values" part below, which can
+# stop the run on its own, goes through the same tagging (2026-11-15: "-Parts values" alone printed neither REGRESSION nor a
+# red summary; test: Tools\Tests\quick_check_values_red_test.ps1). $SubCases is filled further down (-Parts part:case).
+. (Join-Path $PSScriptRoot "KnownReds.ps1")
+$KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
+$FailedParts = @()
+$SubCases = @{}
+function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
+    # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
+    # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
+    # too ("build hero return" for build:hero).
+    foreach ($Played in @($SubCases.Keys)) {
+        if ($Part -match "^$([regex]::Escape($Played))( |$)" -and
+            -not @($SubCases[$Played] | Where-Object { $Part -eq "$Played $_" -or $Part.StartsWith("$Played $_ ") }).Count) { return $true }
+    }
+    $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
+    # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
+    $KnownRed = Find-KnownRed $Part $KnownReds
+    $RedTag = ""
+    if ($Failed.Count -gt 0) {
+        $script:FailedParts += $Part
+        $RedTag = if ($KnownRed) { " (rouge connu depuis $($KnownRed.Since) : $($KnownRed.Cause))" } else { " (REGRESSION : pas dans known_reds.txt)" }
+    }
+    elseif ($KnownRed) { $RedTag = " (etait un rouge connu depuis $($KnownRed.Since) : retirer de known_reds.txt)" }
+    Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })$RedTag"
+    $Checks.Keys | Where-Object { -not $Checks[$_] } | ForEach-Object { Write-Host "  [KO] $_" }
+    return $Failed.Count -eq 0
+}
 # "values" (PT0 of PlaytestInProgress.md, D727): the sheet of values, pure Python, no engine: the tool's own tests (a mini repository per
 # case, then the real registry) and `make_value_sheet.py --check` (a value that moved, a marker with no row, a validated value that
 # drifted fail it). Asked alone, nothing else starts (no editor, no build).
@@ -169,12 +197,9 @@ if ($Parts -contains "values") {
         $SiteCountOutput = @(python -I (Join-Path $PSScriptRoot "site_count_accord_test.py") 2>&1)
         $ValuesChecks["site_count_accord_test.py ($($SiteCountOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
-    $ValuesFailed = @($ValuesChecks.Keys | Where-Object { -not $ValuesChecks[$_] })
-    Write-Host "values : $(if ($ValuesFailed.Count -eq 0) { 'PASS' } else { 'FAIL' })"
-    $ValuesFailed | ForEach-Object { Write-Host "  [KO] $_" }
-    if ($ValuesFailed.Count) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
-    $ValuesOk = $ValuesFailed.Count -eq 0
-    if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { exit 1 }; exit 0 }
+    $ValuesOk = Report "values" $ValuesChecks
+    if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
+    if (-not $Parts.Count) { Write-Host "quick_check : $(if ($ValuesOk) { 'PASS' } else { 'FAIL' })"; if (-not $ValuesOk) { Write-Host (Get-RedSummary $FailedParts $KnownReds); exit 1 }; exit 0 }
 }
 # "hero" (J8a.6): the hero's checks alone, solo and 2 clients: the build part's hero cases (build:hero) and the net part
 # cut to its hero phases (each client goes from its start to the hero sheets, the server spawns the heroes once both
@@ -3030,32 +3055,9 @@ function Get-ScriptErrors([string] $Path) {
         Where-Object { -not ($_.Context.PostContext.Count -and $_.Context.PostContext[0] -match "^\s*Assert failed") } |
         ForEach-Object { $_.Matches[0].Groups[1].Value.Trim() } | Select-Object -First 3)
 }
-. (Join-Path $PSScriptRoot "KnownReds.ps1")
-$KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
-$FailedParts = @()
-function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
-    # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
-    # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
-    # too ("build hero return" for build:hero).
-    foreach ($Played in @($SubCases.Keys)) {
-        if ($Part -match "^$([regex]::Escape($Played))( |$)" -and
-            -not @($SubCases[$Played] | Where-Object { $Part -eq "$Played $_" -or $Part.StartsWith("$Played $_ ") }).Count) { return $true }
-    }
-    $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
-    # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
-    $KnownRed = Find-KnownRed $Part $KnownReds
-    $RedTag = ""
-    if ($Failed.Count -gt 0) {
-        $script:FailedParts += $Part
-        $RedTag = if ($KnownRed) { " (rouge connu depuis $($KnownRed.Since) : $($KnownRed.Cause))" } else { " (REGRESSION : pas dans known_reds.txt)" }
-    }
-    elseif ($KnownRed) { $RedTag = " (etait un rouge connu depuis $($KnownRed.Since) : retirer de known_reds.txt)" }
-    Write-Host "$Part : $(if ($Failed.Count -eq 0) { 'PASS' } else { 'FAIL' })$RedTag"
-    $Checks.Keys | Where-Object { -not $Checks[$_] } | ForEach-Object { Write-Host "  [KO] $_" }
-    return $Failed.Count -eq 0
-}
+# (The known reds and the Report function are defined at the top, before the "values" part, which reports through them too.)
 
-$Log = if (Test-Path $GameLog) { Get-Content $GameLog } else { @() }
+$Log =if (Test-Path $GameLog) { Get-Content $GameLog } else { @() }
 # The game's time against the clock's (fixed time step, Docs/Archive/TestSpeedInProgress.md).
 $SpeedLine = @($Log | Select-String -Pattern "Test sequence: done in .*" | ForEach-Object { $_.Matches[0].Value }) | Select-Object -Last 1
 if ($SpeedLine) { Write-Host "game speed : $SpeedLine" }
