@@ -1256,6 +1256,41 @@ bool UHOLUnitSubsystem::SetGarrison(const uint32 UnitId, AHOLBuilding* Building)
 		return false;
 	}
 	Unit->Garrison = Building;
+	// F7 lot 3a (D693): the body off the field. Garrisoned, it stands at its building's centre (inside its body, where no other unit walks)
+	// and carries FHOLGarrisonedTag, which the step's keep-out and combat leave out; out again, the tag is taken off.
+	UMassEntitySubsystem* EntitySubsystem = GetWorld() ? GetWorld()->GetSubsystem<UMassEntitySubsystem>() : nullptr;
+	if (EntitySubsystem && Unit->Entity.IsSet() && EntitySubsystem->GetEntityManager().IsEntityValid(Unit->Entity))
+	{
+		FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+		if (Building)
+		{
+			if (FTransformFragment* Transform = EntityManager.GetFragmentDataPtr<FTransformFragment>(Unit->Entity))
+			{
+				FVector Location = Building->GetActorLocation();
+				Location.Z = Transform->GetTransform().GetLocation().Z;
+				Transform->GetMutableTransform().SetLocation(Location);
+			}
+		}
+		if (EntityManager.IsProcessing())
+		{
+			if (Building)
+			{
+				EntityManager.Defer().AddTag<FHOLGarrisonedTag>(Unit->Entity);
+			}
+			else
+			{
+				EntityManager.Defer().RemoveTag<FHOLGarrisonedTag>(Unit->Entity);
+			}
+		}
+		else if (Building)
+		{
+			EntityManager.AddTagToEntity(Unit->Entity, FHOLGarrisonedTag::StaticStruct());
+		}
+		else
+		{
+			EntityManager.RemoveTagFromEntity(Unit->Entity, FHOLGarrisonedTag::StaticStruct());
+		}
+	}
 	return true;
 }
 

@@ -28,6 +28,16 @@ struct HEROESOFLIBERTY_API FHOLLightUnitTag : public FMassTag
 };
 
 /**
+ * F7 lot 3a (D693): a unit garrisoned in a building, its body off the field. Put and taken by UHOLUnitSubsystem::SetGarrison; the step's
+ * keep-out, separation, combat and heal leave it out (neither pushed, nor a fighter, nor a target), and the instances do not draw it.
+ */
+USTRUCT()
+struct HEROESOFLIBERTY_API FHOLGarrisonedTag : public FMassTag
+{
+	GENERATED_BODY()
+};
+
+/**
  * What the RTS layer sees a unit doing (D226): standing, walking to its current order, gathering at its source, on its
  * gathering's round trip, or building. Sent to every client in 3 bits (FHOLNetUnitState::ActivityBits), Gathering with
  * its resource (J5c.1): it takes values 4 to 7 of the wire (HOLUnitReplication::EncodeActivity); Building (J6a.4) takes

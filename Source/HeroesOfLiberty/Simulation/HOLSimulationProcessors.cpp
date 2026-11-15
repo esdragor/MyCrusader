@@ -2371,6 +2371,7 @@ void UHOLFootprintKeepOutProcessor::ConfigureQueries(const TSharedRef<FMassEntit
 	EntityQuery.AddRequirement<FHOLUnitStateFragment>(EMassFragmentAccess::ReadOnly);
 	EntityQuery.AddRequirement<FHOLCombatFragment>(EMassFragmentAccess::ReadOnly, EMassFragmentPresence::Optional);
 	EntityQuery.AddTagRequirement<FHOLLightUnitTag>(EMassFragmentPresence::All);
+	EntityQuery.AddTagRequirement<FHOLGarrisonedTag>(EMassFragmentPresence::None); // F7 lot 3a: a garrisoned body stays inside its building
 }
 
 void UHOLFootprintKeepOutProcessor::Execute(FMassEntityManager& EntityManager, FMassExecutionContext& Context)
