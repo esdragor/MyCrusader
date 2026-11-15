@@ -17,6 +17,15 @@ struct FHOLTerrainSettings
 
 	// D796 (2026-11-14): no cover in a forest any more (the pure rule of B4, its settings and console variables removed); a forest
 	// blocks walkers by its trees (ForestFordInProgress.md), nothing here.
+
+	// F4 (GDD 8.1, D33): the speed of a cavalry walker in a forest, in percent of its normal speed (Q-forest-ford Q2 = A by default: 80).
+	int ForestCavalrySpeedPercent = 80;
+
+	// F4: the speed of a siege engine in a forest, in percent (Q-forest-ford Q2 = A: 70). Units on foot keep their speed.
+	int ForestSiegeSpeedPercent = 70;
+
+	// F5 (GDD 8.1, D33): the damage a unit standing on a ford takes, in percent of the hit (its defence reduced; Q2 = A: 120).
+	int FordDamageTakenPercent = 120;
 }
 
 // One round zone of the map: its centre and radius in centimetres, and its kind.
@@ -35,6 +44,24 @@ namespace HOLTerrain
 	// 1 road: speeds the walkers up (CQ6a = A); a marsh under it wins (the slowing zone first).
 	const int Road = 1;
 	// (2 was the forest's cover zone, removed by D796.)
+
+	// The walker categories the forest tells apart (F4): on foot (never slowed by a forest), cavalry, siege engines.
+	const int OnFoot = 0;
+	const int Cavalry = 1;
+	const int Siege = 2;
+
+	// F4: the speed, in percent of normal, of a walker of the category in or out of a forest. What "in a forest" is (painted zone or trees
+	// nearby) is the caller's (Q-forest-ford Q1); the movement step scales the speed by it (ScaledSpeed), as by the marsh's.
+	int ForestSpeedPercent(const FHOLTerrainSettings& Settings, int Category, bool bInForest)
+	{
+		return 100; // RED STUB (F4 not written yet)
+	}
+
+	// F5: the damage a unit takes from a hit, on a ford or not (its defence reduced on a ford). Never below 0.
+	int FordDamageTaken(const FHOLTerrainSettings& Settings, int Damage, bool bOnFord)
+	{
+		return Damage; // RED STUB (F5 not written yet)
+	}
 
 	// The presets: 0 the marsh slows to 60 % (the unit loses 2 cm in 5, clearly felt), 1 to 75 % (felt, a crossing is not a stop). Neither is
 	// a decision: the user picks (Auto_Journey_Retours.md, C3-Q1).
