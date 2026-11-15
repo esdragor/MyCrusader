@@ -149,6 +149,13 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	UPROPERTY()
 	uint8 DeployPhase = 0;
 
+	/**
+	 * F7 lot 3e (D693): the unit is in a garrison (FHOLGarrisonedTag on the server). No bit more: the activity's free value
+	 * HOLUnitReplication::GarrisonedWireValue; the client takes the body off its field (UHOLUnitReceptionSubsystem::SetGarrisonedTag).
+	 */
+	UPROPERTY()
+	bool bGarrisoned = false;
+
 	/** Reduces a state; values out of range are held at the range's edge. */
 	static FHOLNetUnitState Make(const FVector& Position, const FVector& Velocity, EHOLUnitActivity Activity, int64 Step,
 		EHOLResource LoadResource = EHOLResource::Food, int32 LoadAmount = 0, EHOLResource GatherResource = EHOLResource::Food);
@@ -174,6 +181,12 @@ struct HEROESOFLIBERTY_API FHOLNetUnitState
 	void SetDeploy(int32 InPhase);
 	/** The phase received, -1 for a unit that does not deploy (HOLUnitView::DeployPhase). */
 	int32 GetDeployPhase() const;
+
+	/**
+	 * F7 lot 3e: in a garrison or not, after SetCombat and SetDeploy. A garrisoned unit is sent idle (its activity, gathered
+	 * resource, front and target do not count: off the field), its health and deploy phase kept. A change is a change of action.
+	 */
+	void SetGarrisoned(bool bInGarrisoned);
 
 	/** Front (deg, -180 to 180) of a state that faces it. */
 	float GetFrontYaw() const;
@@ -293,6 +306,8 @@ namespace HOLUnitReplication
 	constexpr uint8 DyingWireValue = 9;
 	/** Idle and facing its front at its formation place (J7b.4): Idle, with FrontYaw written. */
 	constexpr uint8 IdleFacingFrontWireValue = 10;
+	/** F7 lot 3e: a unit in a garrison (FHOLNetUnitState::bGarrisoned), idle off the field; no extra bits. */
+	constexpr uint8 GarrisonedWireValue = 11;
 
 	/**
 	 * Health of a wounded unit as sent (J7-Q5 revised): its health points, 0 only at 0 health or below, held at

@@ -12,6 +12,8 @@
 #include "MassEntitySubsystem.h"
 #include "MassEntityTemplate.h"
 #include "MassEntityUtils.h"
+#include "MassCommandBuffer.h"
+#include "MassEntityView.h"
 #include "MassRepresentationFragments.h"
 #include "MassRepresentationSubsystem.h"
 #include "GameFramework/GameStateBase.h"
@@ -424,6 +426,7 @@ void UHOLUnitReceptionSubsystem::CreateEntities(const TConstArrayView<int32> Slo
 			UnitState.OwnerPlayer = Slot.OwnerPlayer;
 			UnitState.Activity = Slot.State.Activity;
 			UnitState.GatherResource = Slot.State.GatherResource;
+			SetGarrisonedTag(EntityManager, Entity, Slot.State.bGarrisoned); // F7 lot 3e: born in a garrison, not drawn
 		}
 		NumDisplayed += Created.Num();
 		Stats.NumArrivals += Created.Num();
@@ -457,6 +460,7 @@ void UHOLUnitReceptionSubsystem::ApplyState(FSlot& Slot, const double Now)
 	FHOLUnitStateFragment& UnitState = EntityManager.GetFragmentDataChecked<FHOLUnitStateFragment>(Slot.Entity);
 	UnitState.Activity = Slot.State.Activity;
 	UnitState.GatherResource = Slot.State.GatherResource;
+	SetGarrisonedTag(EntityManager, Slot.Entity, Slot.State.bGarrisoned); // F7 lot 3e
 
 	const double Gap = FVector::Dist(Displayed, Predicted);
 	++Stats.NumStates;
@@ -537,12 +541,41 @@ bool UHOLUnitReceptionSubsystem::ReceiveUnitForTest(const uint32 UnitId, const F
 	return Slots[SlotIndex].Entity.IsSet();
 }
 
+void UHOLUnitReceptionSubsystem::SetGarrisonedTag(FMassEntityManager& EntityManager, const FMassEntityHandle Entity, const bool bGarrisoned)
+{
+	if (!Entity.IsSet() || !EntityManager.IsEntityValid(Entity) || FMassEntityView(EntityManager, Entity).HasTag<FHOLGarrisonedTag>() == bGarrisoned)
+	{
+		return;
+	}
+	// As UHOLUnitSubsystem::SetGarrison on the server: deferred while Mass processes, at once otherwise.
+	if (EntityManager.IsProcessing())
+	{
+		if (bGarrisoned)
+		{
+			EntityManager.Defer().AddTag<FHOLGarrisonedTag>(Entity);
+		}
+		else
+		{
+			EntityManager.Defer().RemoveTag<FHOLGarrisonedTag>(Entity);
+		}
+	}
+	else if (bGarrisoned)
+	{
+		EntityManager.AddTagToEntity(Entity, FHOLGarrisonedTag::StaticStruct());
+	}
+	else
+	{
+		EntityManager.RemoveTagFromEntity(Entity, FHOLGarrisonedTag::StaticStruct());
+	}
+}
+
 bool UHOLUnitReceptionSubsystem::MakeView(const FSlot& Slot, FHOLUnitView& OutView) const
 {
 	const UMassEntitySubsystem* EntitySubsystem = GetWorld()->GetSubsystem<UMassEntitySubsystem>();
 	const FTransformFragment* Transform = EntitySubsystem && Slot.Entity.IsSet()
 		? EntitySubsystem->GetEntityManager().GetFragmentDataPtr<FTransformFragment>(Slot.Entity) : nullptr;
-	if (!Transform)
+	// F7 lot 3e: a garrisoned unit is off the field, not listed (as on the server).
+	if (!Transform || Slot.State.bGarrisoned)
 	{
 		return false;
 	}

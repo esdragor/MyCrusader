@@ -688,4 +688,159 @@ bool FHOLGarrisonEjectionTest::RunTest(const FString& Parameters)
 	return true;
 }
 
+// F7 lot 3d (FortificationsInProgress.md, D693, D793 Q1 = A: the occupants are sheltered): an area blow (the Mangonel's, S4, D614) that falls by
+// the tower does not lower its occupants' health; a witness outside the tower, within the same circle, is hit. Through the REAL combat processor
+// (UHOLCombatProcessor) and the real Mangonel row: an enemy Mangonel ordered on a Spearman standing at the tower's foot. The occupants stand at the
+// tower's centre (UHOLUnitSubsystem::SetGarrison), nearer the blow than the witness (checked first): on the field they would be hit.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGarrisonShelterTest, "HeroesOfLiberty.Garrison.Shelter", UE::HeroesOfLiberty::Tests::GarrisonOrder::Flags)
+
+bool FHOLGarrisonShelterTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::GarrisonOrder;
+	UDataTable* Table = const_cast<UDataTable*>(GetDefault<UHOLBuildingSettings>()->BuildingTypesTable.LoadSynchronous());
+	const FHOLBuildingTypeRow* HouseRow = Table ? Table->FindRow<FHOLBuildingTypeRow>(HOLBuildingTypeNames::House, TEXT("garrison test")) : nullptr;
+	IConsoleVariable* CombatEnabled = IConsoleManager::Get().FindConsoleVariable(TEXT("hol.Combat.Enabled"));
+	if (!TestNotNull(TEXT("the building type table and its House row"), HouseRow) || !TestNotNull(TEXT("hol.Combat.Enabled"), CombatEnabled))
+	{
+		return false;
+	}
+	const int32 FormerCombat = CombatEnabled->GetInt();
+	CombatEnabled->Set(1, ECVF_SetByCode);
+	FHOLBuildingTypeRow TowerRow = *HouseRow;
+	TowerRow.GarrisonSlots = 2;
+	Table->AddRow(TestTowerType, TowerRow);
+
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	World->InitializeActorsForPlay(FURL());
+	AHOLGameState* GameState = World->SpawnActor<AHOLGameState>();
+	World->SetGameState(GameState);
+	UHOLUnitSubsystem* Units = World->GetSubsystem<UHOLUnitSubsystem>();
+	UHOLSimulationSubsystem* Simulation = World->GetSubsystem<UHOLSimulationSubsystem>();
+	UHOLCommandSubsystem* Commands = World->GetSubsystem<UHOLCommandSubsystem>();
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	const FVector TowerAt(3000.0, 0.0, 0.0);
+	AHOLBuilding* Tower = World->SpawnActor<AHOLBuilding>(TowerAt, FRotator::ZeroRotator);
+	if (TestNotNull(TEXT("units"), Units) && TestNotNull(TEXT("simulation"), Simulation) && TestNotNull(TEXT("commands"), Commands)
+		&& TestNotNull(TEXT("entities"), EntitySubsystem) && TestNotNull(TEXT("tower"), Tower))
+	{
+		Tower->Setup(TestTowerType, 0, 0);
+		const TSharedRef<FMassEntityManager> EntityManager = EntitySubsystem->GetMutableEntityManager().AsShared();
+		UHOLCombatProcessor* Combat = NewObject<UHOLCombatProcessor>(Simulation);
+		Combat->CallInitialize(Simulation, EntityManager);
+		const float StepSeconds = GetDefault<UHOLSimulationSettings>()->GetStepSeconds();
+		const auto RunStep = [Simulation, Units, Combat, EntityManager, StepSeconds]
+		{
+			// The step index moves first: the Mangonel's blow lands when the step reaches its ArrivalStep.
+			const int64 Step = Simulation->AdvanceStepIndexForTests();
+			Simulation->GetOnStepStarted().Broadcast(Step);
+			Units->ServeBirthRequests();
+			FMassProcessingContext CombatContext(EntityManager, StepSeconds);
+			UE::Mass::Executor::Run(*Combat, CombatContext);
+			Units->FlushDestructions();
+			Simulation->GetOnStepEnded().Broadcast(Step);
+		};
+		// Born again until its identifier is a multiple of 4 (one search step of 4), as HeroesOfLiberty.Siege.Deploy.InMatch.
+		const auto Place = [Units](const TCHAR* Type, const int32 Owner, const FVector& Location)
+		{
+			for (int32 Attempt = 0; Attempt < 8; ++Attempt)
+			{
+				TArray<uint32> Before;
+				Units->GetAllUnitIds(Before);
+				FHOLUnitSpawnRequest Request;
+				Request.TypeName = FName(Type);
+				Request.Count = 1;
+				Request.OwnerPlayer = static_cast<uint8>(Owner);
+				Request.Center = Location;
+				Units->RequestUnits(Request);
+				Units->ServeBirthRequests();
+				TArray<uint32> After;
+				Units->GetAllUnitIds(After);
+				uint32 Born = 0;
+				for (const uint32 Id : After)
+				{
+					Born = Before.Contains(Id) ? Born : Id;
+				}
+				if (Born == 0 || Born % 4 == 0)
+				{
+					return Born;
+				}
+				const uint32 Again[] = { Born };
+				Units->RequestDestroyUnits(Again);
+				Units->FlushDestructions();
+			}
+			return 0u;
+		};
+		const auto LocationOf = [Units, EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FTransformFragment* Transform = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FTransformFragment>(Entity) : nullptr;
+			return Transform ? Transform->GetTransform().GetLocation() : FVector(1.0e9);
+		};
+		const auto HealthOf = [Units, EntityManager](const uint32 Id)
+		{
+			const FMassEntityHandle Entity = Units->FindEntity(Id);
+			const FHOLUnitStateFragment* State = Entity.IsSet() ? EntityManager->GetFragmentDataPtr<FHOLUnitStateFragment>(Entity) : nullptr;
+			return State ? State->CurrentHealth : -1.f;
+		};
+		const auto Hold = [Units, EntityManager](const uint32 Id)
+		{
+			FHOLCombatFragment* Fragment = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Id));
+			if (Fragment)
+			{
+				Fragment->Mode = EHOLCombatMode::Hold;
+			}
+			return Fragment != nullptr;
+		};
+
+		// Slot 0's tower, two occupants; the target at the tower's foot (100 cm from its centre) and the witness 224 cm from the target,
+		// both of slot 0 and holding their ground; slot 3's Mangonel 20 m from the target (beyond its proposed minimum range, 1200 cm).
+		const uint32 OccupantA = Place(TEXT("Spearman"), 0, FVector(3000.0, -900.0, 0.0));
+		const uint32 OccupantB = Place(TEXT("Spearman"), 0, FVector(3000.0, 900.0, 0.0));
+		const uint32 Target = Place(TEXT("Spearman"), 0, FVector(3100.0, 0.0, 0.0));
+		const uint32 Witness = Place(TEXT("Spearman"), 0, FVector(3000.0, 200.0, 0.0));
+		const uint32 Engine = Place(TEXT("Mangonel"), 3, FVector(1100.0, 0.0, 0.0));
+		if (TestTrue(TEXT("the five units born"), OccupantA && OccupantB && Target && Witness && Engine) && TestTrue(TEXT("the target and the witness hold"), Hold(Target) && Hold(Witness)))
+		{
+			const uint32 Asked[] = { OccupantA, OccupantB };
+			Commands->IssueGarrisonOrder(0, Asked, Tower);
+			RunStep();
+			TestTrue(TEXT("the two Spearmen are in the tower"), Units->GetGarrison(OccupantA) == Tower && Units->GetGarrison(OccupantB) == Tower);
+			const FVector2D TargetAt(LocationOf(Target));
+			const double WitnessGap = FVector2D::Distance(TargetAt, FVector2D(LocationOf(Witness)));
+			TestTrue(TEXT("control: the first occupant stands nearer the blow than the witness (on the field it would be hit)"),
+				FVector2D::Distance(TargetAt, FVector2D(LocationOf(OccupantA))) < WitnessGap);
+			TestTrue(TEXT("control: the second occupant stands nearer the blow than the witness"), FVector2D::Distance(TargetAt, FVector2D(LocationOf(OccupantB))) < WitnessGap);
+			const float StartA = HealthOf(OccupantA);
+			const float StartB = HealthOf(OccupantB);
+			const float StartTarget = HealthOf(Target);
+			const float StartWitness = HealthOf(Witness);
+
+			FHOLCombatFragment* EngineCombat = EntityManager->GetFragmentDataPtr<FHOLCombatFragment>(Units->FindEntity(Engine));
+			if (TestNotNull(TEXT("the Mangonel's combat"), EngineCombat))
+			{
+				EngineCombat->Target = Units->FindEntity(Target);
+				EngineCombat->bOrderedTarget = true;
+			}
+			const int32 TenSeconds = FMath::CeilToInt(10.f / StepSeconds);
+			bool bHit = false;
+			for (int32 Index = 0; Index < TenSeconds && !bHit; ++Index)
+			{
+				RunStep();
+				bHit = HealthOf(Target) < StartTarget;
+			}
+			TestTrue(TEXT("control: the Mangonel's blow lands on the target at the tower's foot"), bHit);
+			TestTrue(TEXT("the witness outside the tower, within the circle, is hit"), HealthOf(Witness) < StartWitness);
+			TestEqual(TEXT("the first occupant's health does not move (sheltered)"), HealthOf(OccupantA), StartA);
+			TestEqual(TEXT("the second occupant's health does not move (sheltered)"), HealthOf(OccupantB), StartB);
+		}
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
+	Table->RemoveRow(TestTowerType);
+	CombatEnabled->Set(FormerCombat, ECVF_SetByCode);
+	return true;
+}
+
 #endif // WITH_DEV_AUTOMATION_TESTS

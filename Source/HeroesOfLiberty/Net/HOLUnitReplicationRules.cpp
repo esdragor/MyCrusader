@@ -56,6 +56,20 @@ int32 FHOLNetUnitState::GetDeployPhase() const
 	return bDeploys ? static_cast<int32>(DeployPhase) : -1;
 }
 
+void FHOLNetUnitState::SetGarrisoned(const bool bInGarrisoned)
+{
+	bGarrisoned = bInGarrisoned;
+	if (bGarrisoned)
+	{
+		// Off the field: sent idle, what it gathered, its front and its target do not count (the same state whatever they were).
+		Activity = EHOLUnitActivity::Idle;
+		GatherResource = EHOLResource::Food;
+		bFacesFront = false;
+		FrontYaw = 0;
+		TargetSlot = 0;
+	}
+}
+
 float FHOLNetUnitState::GetFrontYaw() const
 {
 	return FRotator::NormalizeAxis(static_cast<float>(FrontYaw) * 360.f / static_cast<float>(1 << FrontYawBits));
@@ -85,7 +99,7 @@ bool HOLUnitReplication::IsSameAction(const FHOLNetUnitState& A, const FHOLNetUn
 {
 	return EncodeActivity(A.Activity, A.GatherResource, A.bFacesFront) == EncodeActivity(B.Activity, B.GatherResource, B.bFacesFront)
 		&& A.bFullHealth == B.bFullHealth && A.Health == B.Health && A.TargetSlot == B.TargetSlot && A.FrontYaw == B.FrontYaw
-		&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase;
+		&& A.bDeploys == B.bDeploys && A.DeployPhase == B.DeployPhase && A.bGarrisoned == B.bGarrisoned;
 }
 
 FVector FHOLNetUnitState::GetPosition() const

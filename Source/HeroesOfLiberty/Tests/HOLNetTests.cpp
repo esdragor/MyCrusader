@@ -2,6 +2,13 @@
 
 #include "Algo/AnyOf.h"
 #include "Engine/DataTable.h"
+#include "Engine/Engine.h"
+#include "Engine/World.h"
+#include "MassCommonFragments.h"
+#include "MassEntitySubsystem.h"
+#include "MassEntityView.h"
+#include "Net/HOLUnitReceptionSubsystem.h"
+#include "Simulation/HOLSimulationFragments.h"
 #include "Iris/Serialization/NetBitStreamReader.h"
 #include "Iris/Serialization/NetBitStreamWriter.h"
 #include "Iris/Serialization/NetSerializationContext.h"
@@ -201,6 +208,61 @@ bool FHOLNetDeployPhaseTest::RunTest(const FString& Parameters)
 	FHOLNetUnitState Off = Deployed;
 	Off.SetDeploy(-1);
 	TestEqual(TEXT("no phase again: the state of a unit that does not deploy"), Off, Plain);
+	return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLNetGarrisonedTest, "HeroesOfLiberty.Net.Garrisoned", UE::HeroesOfLiberty::Tests::Net::Flags)
+bool FHOLNetGarrisonedTest::RunTest(const FString& Parameters)
+{
+	using namespace UE::HeroesOfLiberty::Tests::Net;
+	// F7 lot 3e (D693): a unit in a garrison reaches a client as such, through the server's state, Iris' chain and the client's body: the client
+	// puts FHOLGarrisonedTag on it (its body is then neither drawn nor listed, as on the server), and takes it off when the unit comes out.
+	const FVector Here(700.0, -800.0, 0.0);
+	// As UHOLUnitReplicationSubsystem sends it: a wounded Spearman at rest facing its front, then the same in a garrison.
+	FHOLNetUnitState Field = FHOLNetUnitState::Make(Here, FVector::ZeroVector, EHOLUnitActivity::Idle, 50);
+	Field.SetCombat(40, 60, 0, true, 90.f);
+	FHOLNetUnitState Inside = Field;
+	Inside.SetGarrisoned(true);
+	TestTrue(TEXT("the server's state says garrisoned"), Inside.bGarrisoned);
+	TestFalse(TEXT("garrisoned and on the field are not the same action"), HOLUnitReplication::IsSameAction(Field, Inside));
+	FHOLUnitSentRecord Sent;
+	Sent.State = Field;
+	Sent.Step = 50;
+	TestTrue(TEXT("going in: sent at once"),
+		HOLUnitReplication::GetSendReason(Sent, Here, Inside, 1, 51, 0.05f, FHOLUnitSendRules()) == EHOLUnitSendReason::Activity);
+	FHOLNetUnitState InsideBack;
+	FHOLNetUnitState FieldBack;
+	if (!RoundTrip(*this, Inside, InsideBack) || !RoundTrip(*this, Field, FieldBack))
+	{
+		return false;
+	}
+	TestTrue(TEXT("the client reads the unit garrisoned after the wire"), InsideBack.bGarrisoned);
+	TestEqual(TEXT("garrisoned: same state after the trip"), InsideBack, Inside);
+	TestFalse(TEXT("control: a unit on the field is read not garrisoned"), FieldBack.bGarrisoned);
+	TestEqual(TEXT("control: on the field, same state after the trip"), FieldBack, Field);
+	TestEqual(TEXT("the garrisoned unit's wounded health kept on the wire"), static_cast<int32>(InsideBack.Health), static_cast<int32>(FieldBack.Health));
+
+	// The client's body (UHOLUnitReceptionSubsystem: on arrival and at each state received).
+	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
+	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);
+	Context.SetCurrentWorld(World);
+	UMassEntitySubsystem* EntitySubsystem = World->GetSubsystem<UMassEntitySubsystem>();
+	if (TestNotNull(TEXT("entities"), EntitySubsystem))
+	{
+		FMassEntityManager& EntityManager = EntitySubsystem->GetMutableEntityManager();
+		const UScriptStruct* const Fragments[] = { FTransformFragment::StaticStruct(), FHOLUnitStateFragment::StaticStruct() };
+		const FMassEntityHandle Body = EntityManager.CreateEntity(EntityManager.CreateArchetype(Fragments));
+		const auto Tagged = [&EntityManager, Body] { return FMassEntityView(EntityManager, Body).HasTag<FHOLGarrisonedTag>(); };
+		TestFalse(TEXT("control: a body received carries no garrison tag"), Tagged());
+		UHOLUnitReceptionSubsystem::SetGarrisonedTag(EntityManager, Body, FieldBack.bGarrisoned);
+		TestFalse(TEXT("a unit on the field: no tag (drawn)"), Tagged());
+		UHOLUnitReceptionSubsystem::SetGarrisonedTag(EntityManager, Body, InsideBack.bGarrisoned);
+		TestTrue(TEXT("a garrisoned unit: the client's body carries FHOLGarrisonedTag (not drawn)"), Tagged());
+		UHOLUnitReceptionSubsystem::SetGarrisonedTag(EntityManager, Body, FieldBack.bGarrisoned);
+		TestFalse(TEXT("out again: the tag is taken off (drawn again)"), Tagged());
+	}
+	GEngine->DestroyWorldContext(World);
+	World->DestroyWorld(false);
 	return true;
 }
 

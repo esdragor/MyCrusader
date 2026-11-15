@@ -307,6 +307,8 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 		const TConstArrayView<FHOLDeployFragment> Deploys = Context.GetFragmentView<FHOLDeployFragment>(); // G6 e: empty for a unit that does not deploy
 		const FHOLUnitTypeConstants& Constants = Context.GetConstSharedFragment<FHOLUnitTypeConstants>();
 		const uint8 TypeIndex = TypeIndices.FindRef(Constants.TypeName);
+		// F7 lot 3e (D693): a garrisoned unit is sent as such (FHOLNetUnitState::SetGarrisoned); its client takes its body off the field.
+		const bool bGarrisoned = Context.DoesArchetypeHaveTag<FHOLGarrisonedTag>();
 
 		for (FMassExecutionContext::FEntityIterator EntityIt = Context.CreateEntityIterator(); EntityIt; ++EntityIt)
 		{
@@ -381,6 +383,7 @@ void UHOLUnitReplicationSubsystem::OnStepEnded(const int64 Step)
 				FHOLNetUnitState Current = Base;
 				Current.SetCombat(ShownHealth, MaxHealth, TargetSlot, bFacesFront, Order.FrontYaw, bHero);
 				Current.SetDeploy(Deploys.IsEmpty() ? -1 : static_cast<int32>(Deploys[EntityIt].Phase)); // G6 e
+				Current.SetGarrisoned(bGarrisoned); // F7 lot 3e
 				return Current;
 			};
 			const auto SetIdentity = [this, &State, TypeIndex](const FView& View)

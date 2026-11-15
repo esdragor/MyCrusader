@@ -193,7 +193,9 @@ void FHOLNetUnitStateNetSerializer::Quantize(FNetSerializationContext& Context, 
 	Target.Y = Source.Y;
 	Target.VelocityX = Source.VelocityX;
 	Target.VelocityY = Source.VelocityY;
-	Target.Activity = HOLUnitReplication::EncodeActivity(Source.Activity, Source.GatherResource, Source.bFacesFront);
+	// F7 lot 3e: a garrisoned unit is sent as the activity's free value GarrisonedWireValue, no bit more.
+	Target.Activity = Source.bGarrisoned ? HOLUnitReplication::GarrisonedWireValue
+		: HOLUnitReplication::EncodeActivity(Source.Activity, Source.GatherResource, Source.bFacesFront);
 	Target.Step = Source.Step;
 	Target.bCarrying = Source.bCarrying ? 1 : 0;
 	Target.LoadResource = static_cast<uint8>(Source.LoadResource);
@@ -213,7 +215,9 @@ void FHOLNetUnitStateNetSerializer::Dequantize(FNetSerializationContext& Context
 	Target.Y = Source.Y;
 	Target.VelocityX = Source.VelocityX;
 	Target.VelocityY = Source.VelocityY;
+	// The free value GarrisonedWireValue reads as Idle (DecodeActivity) and garrisoned.
 	HOLUnitReplication::DecodeActivity(Source.Activity, Target.Activity, Target.GatherResource, Target.bFacesFront);
+	Target.bGarrisoned = Source.Activity == HOLUnitReplication::GarrisonedWireValue;
 	Target.Step = Source.Step;
 	Target.bCarrying = Source.bCarrying != 0;
 	Target.LoadResource = static_cast<EHOLResource>(Source.LoadResource);

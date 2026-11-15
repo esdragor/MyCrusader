@@ -35,6 +35,11 @@ public:
 	FString MakeReport() const;
 	/** Where the states sat in what was received (D300): the bits Iris wrote around them, over that many seconds. */
 	static FString MakeBitProbeReport(double Seconds);
+	/**
+	 * F7 lot 3e (D693): a received unit in a garrison (FHOLNetUnitState::bGarrisoned) carries FHOLGarrisonedTag on this client, as on the
+	 * server: its body is not drawn (UHOLInterpolatedInstancesProcessor) nor listed (MakeView); out again, the tag is taken off.
+	 */
+	static void SetGarrisonedTag(struct FMassEntityManager& EntityManager, FMassEntityHandle Entity, bool bGarrisoned);
 	/** The units displayed, counted by type and owner ("2 displayed: Peasant of slot 0 x1, ..."), for hol.Units.Report (J3). */
 	FString DescribeDisplayed() const;
 
