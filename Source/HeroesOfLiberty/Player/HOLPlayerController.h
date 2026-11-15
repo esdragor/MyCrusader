@@ -371,6 +371,10 @@ public:
 	 * it sorts them (it alone knows each load): the carriers of a resource it takes unload there, the others walk to Point.
 	 */
 	void RequestDropOffUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building, const FVector& Point, bool bQueue = false);
+	/** F7 lot 4b: asks the server to put UnitIds in Building, one of the player's own finished buildings with places (HOLPlayerOrders::Garrison). */
+	void RequestGarrisonUnits(TConstArrayView<uint32> UnitIds, AHOLBuilding* Building);
+	/** F7 lot 4a: asks the server to take every occupant out of Building (HOLPlayerOrders::UngarrisonAll), for the coming button (Retours/Q-garrison-ui.md Q1). */
+	void RequestUngarrisonAll(AHOLBuilding* Building);
 	/** Asks the server to cancel one of the player's buildings not yet finished (refunded, D311). */
 	void RequestCancelBuilding(AHOLBuilding* Building);
 
@@ -764,6 +768,14 @@ private:
 	/** The units' identifiers, the building they unload at and the ground point clicked (D485). */
 	UFUNCTION(Server, Reliable)
 	void ServerDropOffUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building, FVector_NetQuantize Point, bool bQueue);
+
+	/** F7 lot 4b: the units' identifiers and the building they enter. */
+	UFUNCTION(Server, Reliable)
+	void ServerGarrisonUnits(const TArray<uint32>& UnitIds, AHOLBuilding* Building);
+
+	/** F7 lot 4a: the building whose occupants all come out. */
+	UFUNCTION(Server, Reliable)
+	void ServerUngarrisonAll(AHOLBuilding* Building);
 
 	UFUNCTION(Server, Reliable)
 	void ServerCancelBuilding(AHOLBuilding* Building);

@@ -2862,6 +2862,15 @@ void AHOLPlayerController::OrderAt(const FVector2D& ViewportFraction, const bool
 			OnOrderGiven.Broadcast(Site->GetActorLocation());
 			return;
 		}
+		// F7 lot 4b (D693 « ordre sur un bâtiment », Retours/Q-garrison-ui.md Q2 default A: after the deposits): one of the player's own
+		// finished buildings with places: the selected units enter it (the garrison takes the kinds and the free places at the step).
+		if (Site && HOLPlayerState && HOLPlayerOrders::TakesGarrisonOrder(*Site, HOLPlayerState->GetPlayerIndex()))
+		{
+			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units garrison %s"), Own.Num(), *DescribeBuilding(Site));
+			RequestGarrisonUnits(Own, Site);
+			OnOrderGiven.Broadcast(Site->GetActorLocation());
+			return;
+		}
 		if (Source)
 		{
 			UE_LOG(LogHOLMatch, Display, TEXT("Order: %d units gather source %d (%s) at (%.0f, %.0f)%s"), Own.Num(), SourceIndex,
@@ -4570,6 +4579,40 @@ void AHOLPlayerController::ServerDropOffUnits_Implementation(const TArray<uint32
 	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
 	{
 		HOLPlayerOrders::DropOff(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building, Point, bQueue);
+	}
+}
+
+void AHOLPlayerController::RequestGarrisonUnits(const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
+{
+	if (!IsSpectator() && UnitIds.Num() > 0 && Building)
+	{
+		ServerGarrisonUnits(TArray<uint32>(UnitIds), Building);
+	}
+}
+
+void AHOLPlayerController::RequestUngarrisonAll(AHOLBuilding* Building)
+{
+	if (!IsSpectator() && Building)
+	{
+		UE_LOG(LogHOLMatch, Display, TEXT("Exit all request: %s"), *DescribeBuilding(Building));
+		ServerUngarrisonAll(Building);
+	}
+}
+
+void AHOLPlayerController::ServerGarrisonUnits_Implementation(const TArray<uint32>& UnitIds, AHOLBuilding* Building)
+{
+	// The order names the player: its own units, its own building (D374); the garrison checks the kinds and the places at the step.
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::Garrison(*GetWorld(), HOLPlayerState->GetPlayerIndex(), UnitIds, Building);
+	}
+}
+
+void AHOLPlayerController::ServerUngarrisonAll_Implementation(AHOLBuilding* Building)
+{
+	if (const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState())
+	{
+		HOLPlayerOrders::UngarrisonAll(*GetWorld(), HOLPlayerState->GetPlayerIndex(), Building);
 	}
 }
 

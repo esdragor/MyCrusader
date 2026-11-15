@@ -6,6 +6,7 @@
 #include "Buildings/HOLBuildingTypes.h"
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
+#include "HAL/IConsoleManager.h"
 #include "HeroesOfLibertyLog.h"
 #include "Match/HOLMatchConfig.h"
 #include "Resources/HOLSourceSubsystem.h"
@@ -296,21 +297,43 @@ namespace HOLPlayerOrders
 	}
 }
 
-// F7 lots 4a / 4b (FortificationsInProgress.md): RED STUBS, replaced by the rule in the next commit.
+// F7 lots 4a / 4b (FortificationsInProgress.md, D693, D374): the garrison orders of a player. Retours/Q-garrison-ui.md Q2 (default A: the
+// deposits before the garrison in AHOLPlayerController::OrderAt); 0: a right click on one's own tower is a plain move.
+static TAutoConsoleVariable<int32> CVarHOLGarrisonRightClickEnters(TEXT("hol.Garrison.RightClickEnters"), 1,
+	TEXT("F7 4b (Retours/Q-garrison-ui.md): 1 = a right click of units on one's own finished building with places is a garrison order; 0 = a move."));
+
 namespace HOLPlayerOrders
 {
 	bool TakesGarrisonOrder(const AHOLBuilding& Building, const int32 PlayerIndex)
 	{
-		return false;
+		if (CVarHOLGarrisonRightClickEnters.GetValueOnAnyThread() == 0 || PlayerIndex < 0 || Building.GetOwnerPlayer() != PlayerIndex
+			|| Building.NeedsBuilders())
+		{
+			return false;
+		}
+		const FHOLBuildingTypeRow* Row = Building.GetType();
+		return Row && Row->GarrisonSlots > 0;
 	}
 
 	bool Garrison(UWorld& World, const int32 PlayerIndex, const TConstArrayView<uint32> UnitIds, AHOLBuilding* Building)
 	{
-		return false;
+		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
+		if (!Commands || !Building || UnitIds.IsEmpty() || !IsAccepted(PlayerIndex, UnitIds.Num()) || !TakesGarrisonOrder(*Building, PlayerIndex))
+		{
+			return false;
+		}
+		Commands->IssueGarrisonOrder(PlayerIndex, UnitIds, Building);
+		return true;
 	}
 
 	bool UngarrisonAll(UWorld& World, const int32 PlayerIndex, AHOLBuilding* Building)
 	{
-		return false;
+		UHOLCommandSubsystem* Commands = World.GetSubsystem<UHOLCommandSubsystem>();
+		if (!Commands || !Building || !IsAccepted(PlayerIndex, 1) || Building->GetOwnerPlayer() != PlayerIndex)
+		{
+			return false;
+		}
+		Commands->IssueUngarrisonAllOrder(PlayerIndex, Building);
+		return true;
 	}
 }
