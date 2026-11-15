@@ -11,7 +11,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **Contrôles et leçons** : `Auto_Journey_Checklist.md` (un contrôle par leçon), `Tools\AutoJourney\session_gate.ps1`, `Tools\AutoJourney\agent_rules.md`.
 - **État du jour** : `Auto_Journey_Jour.md` ; **file de travail** : `Auto_Journey_File.md`.
 - **Ce qui attend l'utilisateur** : `Auto_Journey_Retours.md` et `Retours\`.
-- **Archives** : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`, `Docs/Archive/Auto_Journey_Sections_historiques_2026-11-10.md`, `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`, `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`, `Docs/Archive/Auto_Journey_Nettoyage_2026-11-12.md` (mesures et procédure du test 2, rappel d'essais fait, lignes de la check-list devenues des contrôles du gate), `Docs/Archive/Auto_Journey_Checklist_nettoyage_2026-11-13.md` (lignes de la check-list devenues des contrôles du gate ou des règles d'`agent_rules.md`, redites, outils faits, lignes L12 condensées), `Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-13_soir.md` (copie intégrale des deux fichiers avant le nettoyage du soir : exemples datés de la procédure, lignes de la check-list devenues des contrôles du gate ou redites).
+- **Archives** : `Docs/Archive/Auto_Journey_Lecons_jusqu_au_2026-11-09.md`, `Docs/Archive/Auto_Journey_Sections_historiques_2026-11-10.md`, `Docs/Archive/Auto_Journey_Test1_2026-10-30.md`, `Docs/Archive/Auto_Journey_Lecons_2026-11-05_et_corrections_2026-11-11.md`, `Docs/Archive/Auto_Journey_Nettoyage_2026-11-12.md` (mesures et procédure du test 2, rappel d'essais fait, lignes de la check-list devenues des contrôles du gate), `Docs/Archive/Auto_Journey_Checklist_nettoyage_2026-11-13.md` (lignes de la check-list devenues des contrôles du gate ou des règles d'`agent_rules.md`, redites, outils faits, lignes L12 condensées), `Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-13_soir.md` (copie intégrale des deux fichiers avant le nettoyage du soir : exemples datés de la procédure, lignes de la check-list devenues des contrôles du gate ou redites), `Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-15.md` (redites d'`agent_rules.md` dans la procédure, lignes de la check-list devenues des contrôles de `-Phase Close`, relevés datés de L12-1/L12-1b).
 
 ## Règles de conduite (réécrites après le test d'1 h du 2026-10-30)
 
@@ -20,8 +20,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **L'étape 0 est un sous-agent en lecture seule** qui lance `Tools\AutoJourney\status.ps1` et rend le **plan de lancement** (voir ce titre). Le programme de `Auto_Journey_Jour.md` est celui d'hier soir, pas une vérité.
 - **Avant de relayer une consigne entre deux agents, comparer ce que chacun doit produire** (test 3) pour éviter les doublons : si deux agents touchent au même fichier ou à la même question, répartir avant de lancer.
 - **Recouper chaque affirmation de l'étape 0 avec le fichier concerné avant de la mettre dans un énoncé** (test 3) : le plan de lancement est un résumé ; un état « libre », « fusionné » ou « fait » se vérifie dans le fichier d'origine (`IN_USE.txt`, `git log`, journal du chantier).
-- **Lancer un script une fois de bout en bout avant de dire qu'il est prêt** (test 3) : un script jamais exécuté jusqu'au bout n'est pas prêt.
-- **Corriger l'outil partagé (`preflight.ps1`, `check.ps1`) au lieu d'en garder une copie privée, et le dire dans le rapport** (test 3) : une copie privée corrigée laisse le défaut au prochain agent.
+- Script prêt seulement après un passage de bout en bout ; outil partagé corrigé, pas de copie privée (test 3) : `agent_rules.md` règle 9 (texte archivé : `Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-15.md`).
 - **Ne modifier `Auto_Journey_Retours.md` qu'avec l'outil Edit sur des lignes précises** (pas de script de remplacement, le fichier est en CRLF et édité en parallèle par plusieurs agents), et **recompter l'en-tête à chaque modification**.
 
 ### Qui travaille, et sur quoi
@@ -38,7 +37,7 @@ Ce fichier est la **procédure** (elle change rarement). L'état du jour est dan
 - **Modèles (consigne de l'utilisateur du 2026-11-12)** : Fable 5.2 seulement pour la planification (étape 0) et la vérification (recette, relecture) ; Opus 5.5 pour tout le reste ; contexte de la session principale le plus petit possible ; contexte d'un sous-agent sous 300k.
 - Rapport final de **10 lignes au plus** : fait / tests / commit / reste / **NON VÉRIFIÉ (obligatoire)** / anomalies du processus.
 - Chaque agent : met à jour `EtapeDefini.md` (relire juste avant, ne toucher que ses lignes : aucun conflit observé) , le journal de son chantier, `Auto_Journey_File.md` (sa ligne seulement ; le tableau des agents de `Auto_Journey_Jour.md` est tenu par la session principale : `agent_rules.md` règle 4) à chaque avancée, `IN_USE.txt` à l'entrée et à la sortie (fichier non suivi par git), commite sur la branche de son worktree (anglais, sans `Co-Authored-By`, jamais de push).
-- Test rouge d'abord sur la vraie chaîne ; un changement, une compilation, un passage du test ; `Tools\build.ps1` (file d'attente), `-LiveCoding=0` ; `quick_check -Parts` des seules parties touchées. Un test rouge peut venir du **script de test** et non du jeu : regarder le dernier `Test mark` du journal de jeu avant de toucher au code.
+- Test rouge, build, `quick_check -Parts` : `agent_rules.md` règles 7, 8 et 11 (texte archivé : `Docs/Archive/Auto_Journey_Procedure_Checklist_nettoyage_2026-11-15.md`).
 
 ### Les retours de l'utilisateur (voir `Auto_Journey_Retours.md`)
 - Tout ce qui attend l'utilisateur est dans **`Auto_Journey_Retours.md`** (1 essais, 2 questions, 3 commits et fusions). Les agents n'y écrivent pas : chacun crée ses fichiers `Retours\Q-<nom>.md` / `Retours\E-<nom>.md` (`agent_rules.md` règles 4, 17, 18), la session principale tient `Auto_Journey_Retours.md`.
@@ -84,12 +83,7 @@ Auto_Journey_Jour.md     = l'état du jour : décisions, programme, tableau des 
 Auto_Journey_File.md     = la file de travail : prochaines étapes de chaque chantier, prêtes à lancer
 Auto_Journey_Retours.md  = ce qui attend l'utilisateur : essais, questions, fusions
 Tools\AutoJourney\status.ps1 = l'état de tous les worktrees en une commande (étape 0 et veilleur)
-Tools\AutoJourney\status.ps1 -InMain <sha> = ce commit est-il DANS main ou ABSENT (merge-base --is-ancestor), avant d'écrire « absent de main »
-ForeignSession (status.ps1 « AUTRE SESSION ? », sync_worktrees.ps1 le saute) = worktree d'une autre session : n'y fusionner ni conclure
-Tools\AutoJourney\edit_line.ps1 -File <abs> -Match "<texte>" -NewLine "<ligne>" = changer UNE ligne d'un doc de suivi sans Read ni Edit
-Tools\AutoJourney\commit_docs.ps1 -Only "<f1>,<f2>" = commiter seulement ces docs de la copie principale
-Tools\AutoJourney\extend_session.ps1 <HH:MM> = repousser la fin de séance (Docs\SessionEnd.txt ; heure passée = lendemain)
-FrameWaits (check.ps1, no_window_test.ps1 -FrameWaits Warn|Fail, HOL_CHECK_FRAMES=fail) = « frames N » > 30 hors caméra : WARN par défaut, Fail refuse
+status.ps1 -InMain, ForeignSession, edit_line.ps1, commit_docs.ps1 -Only, extend_session.ps1, FrameWaits = agent_rules.md section « Outils (L14) » (lignes archivées le 2026-11-15)
 ```
 Historique : voir « Archives » au Sommaire.
 
