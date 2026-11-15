@@ -1,8 +1,5 @@
-# GESTE (L14-5, GLORFINDEL-1114c, GALADRIEL-1115a): every hover (FR, gold, EN, JA) is a real mouse's (hol.Mouse.Hover: Slate's virtual cursor kept still 30 frames) and the text is asserted on the tooltip Slate itself shows (log "tip text ..."); the capture still draws it by hol.HUD.HoverIncome (Slate's tooltip window is out of the viewport's capture).
+# GESTE (L14-5, GLORFINDEL-1114c, GALADRIEL-1115a/b): every hover (FR, gold, EN, JA) is a real mouse's (hol.Mouse.Hover: Slate's virtual cursor kept still 30 frames), the text is asserted on the tooltip Slate itself shows (log "tip text ...") and the capture shows that same tooltip (hol.HUD.HoverIncome, which drew a second one over it, is gone: GALADRIEL-1115b).
 # D788 (Q-income-tooltip-rate = C): over a resource of the top bar, its income a minute, corrected for the trips to the drop-off.
-# The hover as the mouse does it: hol.HUD.HoverIncome <0 food | 1 wood | 2 stone | 3 gold> hit-tests the centre of the amount by Slate's own
-# window hit test, logs the tooltip the engine would show ("HUD income hover <i>: <text>") and draws that same tooltip widget in the game
-# viewport under the amount (the engine shows it in a window of its own, which the capture of the viewport does not see); -1 removes it.
 # Exact texts (read in the .po files and fill_po.py, 2026-11-13): FR "+{0} {1}/min" with "bois"; EN "+{0} {1}/min" with "wood"; JA "+{0} {1}/分" with "木材".
 # Plain, you (slot 0) against a frozen AI (slot 1). Your Peasants are sent to the wood nearest your town centre.
 waitlog Starting hero of slot 0 spawned at
@@ -22,17 +19,12 @@ frames 10
 hol.Mouse.Hover WoodAmount 30
 waitlog Mouse hover WoodAmount
 waitlog  bois/min"
-hol.HUD.HoverIncome 1
-waitlog HUD income hover 1: +
-waitlog  bois/min
 frames 5
 capture income_tip_fr
 # 2. Gold: no gatherer and no sacred site, the tooltip says +0.
 hol.Mouse.Hover GoldAmount 30
 waitlog Mouse hover GoldAmount
 waitlog tooltip shown, tip text "+0 or/min"
-hol.HUD.HoverIncome 3
-waitlog HUD income hover 3: +0 or/min
 frames 5
 capture income_tip_gold_fr
 # 3. EN, the same hover after a live language switch.
@@ -43,8 +35,6 @@ hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
 hol.Mouse.Hover WoodAmount 30
 waitlog  wood/min"
-hol.HUD.HoverIncome 1
-waitlog  wood/min
 frames 5
 capture income_tip_en
 # 4. JA: "/分", not "/min".
@@ -54,11 +44,8 @@ hol.Mouse.Hover 20 300 5
 waitlog Mouse hover 20,300
 hol.Mouse.Hover WoodAmount 30
 waitlog  木材/分"
-hol.HUD.HoverIncome 1
-waitlog  木材/分
 frames 5
 capture income_tip_ja
-hol.HUD.HoverIncome -1
 hol.UI.Language fr
 note Survole un montant de la barre du haut (bois, or...) : l'infobulle donne le revenu par minute de cette ressource, trajets compris.
 # The scenario's real end: an agent's play.ps1 -Hidden closes here instead of at its -TimeoutSec; the user's own run ignores it and plays on.
