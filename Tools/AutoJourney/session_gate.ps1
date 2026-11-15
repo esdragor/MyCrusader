@@ -2,7 +2,9 @@
 # Usage : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\MyCrusader\Tools\AutoJourney\session_gate.ps1 -Phase Launch -End 13:30
 #   -Phase Launch : avant CHAQUE lancement d'agent (heure, temps restant, agents C++, tableau des agents, docs non suivis)
 #   -Phase Merge  : avant l'agent de fusion (pre-vol de chaque branche : -Branches ai-ia1,fog,...)
-#   -Phase Close  : avant le bilan (worktrees propres et a jour, reponses non traitees, bilan des lecons)
+#   -Phase Close  : avant le bilan (worktrees propres et a jour, reponses non traitees, bilan des lecons) ; L15-1 : FAIL pour chaque worktree du tableau
+#                   '## Agents du <date>' (-JourFile ; la copie principale -MainRoot si elle y figure) pas a main (+0/-0), avec des commits Source plus
+#                   recents que sa DLL, ou dont Get-StaleBinaryProblem (Tools\Scenarios\LaunchCheck.ps1) n'est pas vide
 # Sortie : une ligne PASS / WARN / FAIL par controle, code de sortie 1 s'il y a un FAIL.
 #   -Phase Essay  : avant de donner une commande play.ps1 a l'utilisateur (-Root <worktree> : contient main, propre, build plus recent que le dernier commit de code ; -Essay <nom> : contient aussi le tip de chaque branche citee dans Retours\E-<nom>.md, ligne "branches: a, b" (L8-1))
 #   -Phase Report : a la RECEPTION du rapport de chaque agent (-Root <worktree de l'agent>) : la copie principale n'a que des docs voulus modifies, le worktree contient main, est propre, et son binaire n'est pas plus vieux que le dernier code (sinon build.ps1 AVANT tout quick_check : binaire perime = faux rouges)
@@ -21,6 +23,7 @@ param(
   [string]$WorktreesDir = 'C:\Users\baudo\Documents',   # dossier qui contient les HeroesOfLiberty-* (IN_USE.txt) ; sert aux tests
   [string[]]$Exclude = @(),                # Close : worktrees hors perimetre (nom court 'Haldir' ou complet 'HeroesOfLiberty-Haldir')
   [string]$RetoursDir = '',                # Close, Essay : dossier des Retours\ (defaut : la copie principale)
+  [string]$JourFile = '',                  # Launch, Close (L15-1) : Auto_Journey_Jour.md a lire (defaut <copie principale>\Auto_Journey_Jour.md) ; sert aux tests
   [string]$EtapeFile = '',                 # Close (L90 / L12-6) : EtapeDefini.md a relire (defaut <copie principale>\EtapeDefini.md) ; son dossier est le depot git qui porte main
   [string]$Essay = '',                   # Essay : nom de l'essai (E-<nom>.md de Retours\) dont les branches citees doivent etre dans le worktree ; defaut : tous les E-*.md ouverts
   [double]$MinFreeVirtualGB = 8,           # Launch (L12-1c) : memoire virtuelle libre sous ce seuil = WARN (2026-11-12 : builds et jeux qui echouent faute de memoire)
@@ -32,6 +35,7 @@ $Branches = @($Branches | ForEach-Object { $_ -split ',' } | Where-Object { $_ }
 $Main = 'C:\Users\baudo\Documents\MyCrusader'
 $Exclude = @($Exclude | ForEach-Object { $_ -split ',' } | Where-Object { $_ } | ForEach-Object { $_ -replace '^HeroesOfLiberty-', '' })
 if (-not $RetoursDir) { $RetoursDir = "$Main\Retours" }
+if (-not $JourFile) { $JourFile = "$Main\Auto_Journey_Jour.md" }
 $Fails = 0
 function Say([string]$Level, [string]$Msg) { if ($Level -eq 'FAIL') { $script:Fails++ }; Write-Output ("{0,-4} {1}" -f $Level, $Msg) }
 # Elrond-8 (2026-11-07) : le plus recent des fichiers C++/config d'un worktree (heure d'ECRITURE). Une fusion ecrit les fichiers qu'elle apporte a l'heure
@@ -157,7 +161,7 @@ if ($Phase -eq 'Launch') {
   if ($cppAgents.Count -ge 3) { Say $ceilLevel ("{0} agents C++ (plafond de 3 atteint : {1}) : le nouvel agent demarre SANS C++{2}" -f $cppAgents.Count, $cppList, $(if ($NoCpp) { ' (tache declaree sans C++ : WARN seulement)' } else { '' })) }
   else { Say 'PASS' ("{0} agent(s) C++ (file de build + IN_USE.txt), plafond de 3 respecte{1}" -f $cppAgents.Count, $(if ($cppList) { " : $cppList" } else { '' })) }
 
-  $jour = Get-Content "$Main\Auto_Journey_Jour.md" -Raw -ErrorAction SilentlyContinue
+  $jour = Get-Content $JourFile -Raw -ErrorAction SilentlyContinue
   $marker = '## Agents du ' + $now.ToString('yyyy-MM-dd')
   if ($jour -and $jour.Contains($marker)) { Say 'PASS' "tableau agent -> id -> worktree present ($marker)" }
   else { Say 'FAIL' "pas de tableau '$marker' dans Auto_Journey_Jour.md : l'ecrire AVANT de lancer ou d'envoyer un message (colonnes : nom, id, worktree, branche, tache, heure de lancement)" }
@@ -349,6 +353,54 @@ if ($Phase -eq 'Close') {
     if ($behind -gt 0) { Say 'FAIL' "$n : retard de $behind commit(s) sur main : L8-9, lancer Tools\AutoJourney\sync_worktrees.ps1 -NoBuild (ou avec build) avant le bilan, aucun agent ne tourne" } else { Say 'PASS' "$n : a jour avec main" }
     Say-Eol $w $n
   }
+  # L15-1 (2026-11-15, demande de l'utilisateur) : en FIN de seance, chaque worktree du tableau '## Agents du <date>' (colonne worktree, noms
+  # HeroesOfLiberty-<X> ; la copie principale si 'copie principale' ou 'MyCrusader' y figure) est a main (+0/-0), n'a aucun commit Source plus
+  # recent que sa DLL UnrealEditor-HeroesOfLiberty.dll, et Get-StaleBinaryProblem est vide ; sinon FAIL (sync_worktrees.ps1 SANS -NoBuild, puis
+  # attendre les builds). Les worktrees absents du tableau du jour (ForeignSession, autre session) ne sont pas controles ici. Test : gate_test.ps1.
+  $jMarker = '## Agents du ' + $now.ToString('yyyy-MM-dd')
+  $jLines = @(Get-Content $JourFile -Encoding UTF8 -ErrorAction SilentlyContinue)
+  $jStart = -1
+  for ($k = 0; $k -lt $jLines.Count; $k++) { if ($jLines[$k].Trim() -eq $jMarker) { $jStart = $k; break } }
+  if ($jStart -lt 0) { Say 'WARN' "L15-1 : pas de section '$jMarker' dans $JourFile : worktrees de fin de seance non controles (main, DLL)" }
+  else {
+    $jRoots = [ordered]@{}; $wCol = -1
+    for ($k = $jStart + 1; $k -lt $jLines.Count -and $jLines[$k] -notmatch '^##\s'; $k++) {
+      $row = $jLines[$k]
+      if ($row -notmatch '^\s*\|' -or $row -match '^[\s|:-]+$') { continue }
+      $cells = @($row.Trim().Trim('|') -split '\|' | ForEach-Object { $_.Trim() })
+      $hdr = @(0..($cells.Count - 1) | Where-Object { $cells[$_] -match '^(?i)worktree$' })
+      if ($hdr.Count) { $wCol = $hdr[0]; continue }
+      $cell = if ($wCol -ge 0 -and $wCol -lt $cells.Count) { $cells[$wCol] } else { $row }
+      foreach ($mm in [regex]::Matches($cell, 'HeroesOfLiberty-[A-Za-z0-9_]+')) { if (-not $jRoots.Contains($mm.Value)) { $jRoots[$mm.Value] = Join-Path $WorktreesDir $mm.Value } }
+      if ($cell -match '(?i)copie principale|MyCrusader' -and -not $jRoots.Contains('copie principale')) { $jRoots['copie principale'] = $(if ($MainRoot) { $MainRoot } else { $Main }) }
+    }
+    $lcScript = Join-Path (Split-Path -Parent $PSScriptRoot) 'Scenarios\LaunchCheck.ps1'
+    foreach ($jn in @($jRoots.Keys)) {
+      $jr = $jRoots[$jn]
+      if ($Exclude -contains ($jn -replace '^HeroesOfLiberty-', '')) { continue }
+      if (-not (Test-Path $jr)) { Say 'WARN' "$jn : L15-1 worktree du tableau du jour introuvable ($jr) : non controle"; continue }
+      $jBad = 0
+      $lr = (@(git -C $jr rev-list --left-right --count 'main...HEAD' 2>$null) -join ' ')
+      if ($lr -match '^\s*(\d+)\s+(\d+)\s*$') {
+        $jBehind = [int]$Matches[1]; $jAhead = [int]$Matches[2]
+        if ($jBehind -ne 0 -or $jAhead -ne 0) { $jBad++; Say 'FAIL' ("{0} : L15-1 pas a main (+{1}/-{2}) : fusionner sa branche dans main, puis Tools\AutoJourney\sync_worktrees.ps1 SANS -NoBuild et attendre la fin des builds" -f $jn, $jAhead, $jBehind) }
+      } else { $jBad++; Say 'FAIL' "$jn : L15-1 git rev-list main...HEAD illisible ($jr) : position par rapport a main inconnue" }
+      $jDll = Join-Path $jr 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll'
+      if (-not (Test-Path $jDll)) { $jBad++; Say 'WARN' "$jn : L15-1 DLL UnrealEditor-HeroesOfLiberty.dll introuvable : fraicheur du binaire non controlee (build.ps1 dans ce worktree)" }
+      else {
+        $jBin = Get-Item $jDll
+        $jSince = [DateTimeOffset]::new($jBin.LastWriteTime).ToUnixTimeSeconds()
+        $jLag = @(git -C $jr log --format=%ct "--since=@$jSince" HEAD -- Source 2>$null | Where-Object { $_ -match '^\d+$' -and [int64]$_ -gt $jSince }).Count
+        if ($jLag -gt 0) { $jBad++; Say 'FAIL' ("{0} : L15-1 {1} commit(s) Source plus recents que sa DLL du {2} : Tools\AutoJourney\sync_worktrees.ps1 SANS -NoBuild (ou build.ps1 dans ce worktree) et attendre la fin du build" -f $jn, $jLag, $jBin.LastWriteTime.ToString('MM-dd HH:mm')) }
+        if (-not (Test-Path $lcScript)) { $jBad++; Say 'WARN' "$jn : L15-1 $lcScript introuvable : Get-StaleBinaryProblem non lance" }
+        else {
+          $jStale = & { param($s, $r) . $s; Get-StaleBinaryProblem $r } $lcScript $jr
+          if ($jStale) { $jBad++; Say 'FAIL' ("{0} : L15-1 Get-StaleBinaryProblem : {1}" -f $jn, $jStale) }
+        }
+      }
+      if ($jBad -eq 0) { Say 'PASS' "$jn : L15-1 a main (+0/-0), aucun commit Source plus recent que la DLL, Get-StaleBinaryProblem vide" }
+    }
+  }
   Say-Eol $Main 'copie principale'
   $dm = @(git -C $Main status --short 2>$null | Where-Object { $_ -match '^ ?[MADR]' })
   if ($dm.Count -gt 0) { Say 'FAIL' ("copie principale : fichiers suivis non commites : " + (($dm | ForEach-Object { $_.Substring(3) }) -join ', ')) } else { Say 'PASS' 'copie principale propre' }
@@ -367,7 +419,7 @@ if ($Phase -eq 'Close') {
   }
   $ret = @(Get-ChildItem "$Main\Retours" -Filter '*.md' -ErrorAction SilentlyContinue | Where-Object { (Get-Content $_.FullName -Raw) -match '(?m)^\s*\**R[ée]ponse[^:\n]*:\**\s*\S' })
   if ($ret.Count -gt 0) { Say 'WARN' ("reponses de l'utilisateur encore dans Retours\ (a reporter dans le chantier puis supprimer) : " + (($ret | ForEach-Object { $_.Name }) -join ', ')) } else { Say 'PASS' 'aucune reponse non traitee dans Retours\' }
-  $jour = Get-Content "$Main\Auto_Journey_Jour.md" -Raw -ErrorAction SilentlyContinue
+  $jour = Get-Content $JourFile -Raw -ErrorAction SilentlyContinue
   $m2 = '### Lecons appliquees ' + $now.ToString('yyyy-MM-dd')
   if ($jour -and $jour.Contains($m2)) { Say 'PASS' "bilan des lecons present ($m2)" } else { Say 'FAIL' "pas de '$m2' dans Auto_Journey_Jour.md : une ligne par regle de Auto_Journey_Checklist.md, 'appliquee' ou 'non appliquee' + la preuve" }
 }
