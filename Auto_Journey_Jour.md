@@ -22,7 +22,8 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | ARWEN-1116a (fini 15:29) | ac111a3e17e21e0c8 | HeroesOfLiberty-Arwen | D826 A1 : Champ de tir G et Écurie G propres, 4c75047 (rouge vu 15:07), c86557c, f54f287 ; 2 fiches [À ESSAYER] SON non entendu ; quick_check non lancé (lancé par la session principale 15:30) ; A2 Caserne non commencée ; 46 tool_uses | non | 15:02 |
 | ARWEN-1116b | a6b77b77c83feb390 | HeroesOfLiberty-Arwen | D826 A2 : 10 sons Caserne sans cri de douleur | non | 15:31 |
 | CELEBORN-1116a (fini 15:25) | a0db914885097e3c3 | HeroesOfLiberty-Celeborn | D816 forum 150 s : 97f757c, rouge vu 15:07, tests 1320/1320, nomad_ai [À ESSAYER] vu ; avance rapide main 131b77d ; test C++ 150 s en attente (plafond) ; 41 tool_uses | non | 15:02 |
-| CELEBORN-1116b | a6624ad14803c32b0 | HeroesOfLiberty-Celeborn | ligne sans C++ (rejeu nomad_start à 150 s d abord) ; test C++ 150 s si place libre | non | 15:28 |
+| CELEBORN-1116b (fini 15:40) | a6624ad14803c32b0 | HeroesOfLiberty-Celeborn | nomad_start rejoué 150 s, geste réel Z/C/clic : a349e1f, 4677857 ; preflight PASS 15:37 ; avance rapide main 9f47a97 ; C++ refusé (plafond) ; 38 tool_uses | non | 15:28 |
+| CELEBORN-1116c | a1c18b1328d1f04f0 | HeroesOfLiberty-Celeborn | HUD « 1 en construction » vs 2 bâtisseurs, puis ligne sans C++ | non | 15:41 |
 | GLORFINDEL-1116a (fini 15:32) | a31c68576c0fc91a9 | HeroesOfLiberty-Glorfindel | D806 script d3fd15f + D807 règle canal bd2ca42, rouges vus 15:16/15:26, tests 1322/1322 ; jumeaux C++ en file (plafond) ; 2 Edit refusés ; ~51 tool_uses | non | 15:02 |
 | GLORFINDEL-1116b | a8532c8bf8b9fdde1 | HeroesOfLiberty-Glorfindel | ligne sans C++ du chantier réseau/chat | non | 15:33 |
 | FARAMIR-1116a | a81a40ab63a80a04f | HeroesOfLiberty-Faramir | D808 gate Close WARN ; worktree d intégration des fusions | non | 15:02 |
