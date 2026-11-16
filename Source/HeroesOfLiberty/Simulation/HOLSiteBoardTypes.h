@@ -8,7 +8,7 @@
 /**
  * One sacred site (S2; GDD 14.3, D429 to D431, D697 to D703): its owner (a slot), who is filling its count and the count of steps held
  * toward its capture. A USTRUCT since MIG-CPP-Site (D836 point 3) so that the script board (Script/Sites/HOLSiteBoardScript.as) takes and gives
- * it; the fields are the same as before (HOLSiteRules.h includes this header). The rule is HOLSite::Step (C++) and HOLSite::Step of
+ * it; the fields are the same as before (HOLSiteRules.h includes this header). The rule is HOLSite::Step of
  * Script/Sites/HOLSiteRules.as.
  */
 USTRUCT(BlueprintType)
