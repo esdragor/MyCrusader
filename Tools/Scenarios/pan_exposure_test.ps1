@@ -18,6 +18,18 @@ foreach ($Name in @($Names | ForEach-Object { $_ -split ',' } | Where-Object { $
     if ($Offenders.Count -gt 0) { $Bad++; Write-Host "FAIL $Name : $($Offenders.Count) ground click(s) too long after the camera"; $Offenders | ForEach-Object { Write-Host "     $_" } }
     else { Write-Host "OK   $Name : every ground click is within 10 frames of the camera placement" }
 }
+# Rule 2 (2026-11-16, SAURON-1116a): no 'hol.Select.ClickUnit <N> enemy' without slot=<S>, in EVERY scenario of Tools\Scenarios (not only $Names).
+$EnemyFiles = @(Get-ChildItem (Join-Path $Root "Tools\Scenarios") -Filter *.txt)
+$EnemyBad = 0
+foreach ($File in $EnemyFiles) {
+    $Enemy = @(Get-EnemyClickWithoutSlot (Get-Content -Encoding UTF8 $File.FullName))
+    if ($Enemy.Count -gt 0) { $Bad++; $EnemyBad++; Write-Host "FAIL $($File.BaseName) : $($Enemy.Count) enemy click(s) without slot="; $Enemy | ForEach-Object { Write-Host "     $_" } }
+}
+if ($EnemyBad -eq 0) { Write-Host "OK   enemy clicks : no 'ClickUnit <N> enemy' without slot= in $($EnemyFiles.Count) scenario files" }
+$Flagged = @(Get-EnemyClickWithoutSlot @("# hol.Select.ClickUnit -1 enemy (a comment)", "hol.Select.ClickUnit -1 enemy order", "quiet hol.Select.ClickUnit 6 order enemy"))
+if ($Flagged.Count -eq 2) { Write-Host "OK   control enemy_noslot : flagged (2)" } else { $Bad++; Write-Host "FAIL control enemy_noslot : $($Flagged.Count) flagged, 2 expected" }
+$Clean = @(Get-EnemyClickWithoutSlot @("hol.Select.ClickUnit -1 slot=1", "hol.Select.ClickUnit -1 order slot=1", "hol.Select.ClickUnit 3 ally", "hol.Select.ClickUnit -1 enemyfoo"))
+if ($Clean.Count -eq 0) { Write-Host "OK   control enemy_slot : not flagged" } else { $Bad++; Write-Host "FAIL control enemy_slot : $($Clean.Count) flagged, 0 expected" }
 # Controls of the checker itself (fixtures): a ClickUnit 400 frames after the camera must be flagged, one 2 frames after must not.
 $Far = @(Get-PanExposure (Get-Content -Encoding UTF8 (Join-Path $PSScriptRoot "pan_exposure_fixtures\clickunit_far.txt")))
 if ($Far.Count -ge 1) { Write-Host "OK   control clickunit_far : flagged ($($Far.Count))" } else { $Bad++; Write-Host "FAIL control clickunit_far : a ClickUnit 400 frames after the camera was NOT flagged" }

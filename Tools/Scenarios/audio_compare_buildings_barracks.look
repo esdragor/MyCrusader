@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-audio_compare_buildings_barracks_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter le son de SELECTION de la CASERNE, tour 5 : des VOIX d'hommes d'armes et des lames, ENREGISTREES (echantillons libres), Entree = variante suivante ; le batiment Caserne (pose fini par le scenario, a toi) est visible au centre de l'ecran, pas le Forum de depart
+audio_compare_buildings_barracks_start | OBJET : la Caserne au centre de l'ecran (posee par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION de la CASERNE, tour 6 : dix sons neufs sans aucune voix, A a J (lames, tambour, cor), Entree = variante suivante

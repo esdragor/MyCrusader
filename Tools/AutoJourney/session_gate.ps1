@@ -357,6 +357,8 @@ if ($Phase -eq 'Close') {
   # HeroesOfLiberty-<X> ; la copie principale si 'copie principale' ou 'MyCrusader' y figure) est a main (+0/-0), n'a aucun commit Source plus
   # recent que sa DLL UnrealEditor-HeroesOfLiberty.dll, et Get-StaleBinaryProblem est vide ; sinon FAIL (sync_worktrees.ps1 SANS -NoBuild, puis
   # attendre les builds). Les worktrees absents du tableau du jour (ForeignSession, autre session) ne sont pas controles ici. Test : gate_test.ps1.
+  # D808 (2026-11-15, Q-close-gate-l15-1 = B + B) : commits Source plus recents que la DLL = WARN si Get-StaleBinaryProblem est vide (FAIL sinon) ;
+  # la copie principale n'est controlee que sur 'a main' (+0/-0), pas sur sa DLL.
   $jMarker = '## Agents du ' + $now.ToString('yyyy-MM-dd')
   $jLines = @(Get-Content $JourFile -Encoding UTF8 -ErrorAction SilentlyContinue)
   $jStart = -1
@@ -385,20 +387,31 @@ if ($Phase -eq 'Close') {
         $jBehind = [int]$Matches[1]; $jAhead = [int]$Matches[2]
         if ($jBehind -ne 0 -or $jAhead -ne 0) { $jBad++; Say 'FAIL' ("{0} : L15-1 pas a main (+{1}/-{2}) : fusionner sa branche dans main, puis Tools\AutoJourney\sync_worktrees.ps1 SANS -NoBuild et attendre la fin des builds" -f $jn, $jAhead, $jBehind) }
       } else { $jBad++; Say 'FAIL' "$jn : L15-1 git rev-list main...HEAD illisible ($jr) : position par rapport a main inconnue" }
+      # D808 Q2 B : la copie principale (docs seulement) n'est controlee que sur 'a main' (+0/-0), jamais sur sa DLL.
+      $jDocsOnly = ($jn -eq 'copie principale')
       $jDll = Join-Path $jr 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll'
-      if (-not (Test-Path $jDll)) { $jBad++; Say 'WARN' "$jn : L15-1 DLL UnrealEditor-HeroesOfLiberty.dll introuvable : fraicheur du binaire non controlee (build.ps1 dans ce worktree)" }
+      $jWarn = 0
+      if ($jDocsOnly) { }
+      elseif (-not (Test-Path $jDll)) { $jBad++; Say 'WARN' "$jn : L15-1 DLL UnrealEditor-HeroesOfLiberty.dll introuvable : fraicheur du binaire non controlee (build.ps1 dans ce worktree)" }
       else {
         $jBin = Get-Item $jDll
         $jSince = [DateTimeOffset]::new($jBin.LastWriteTime).ToUnixTimeSeconds()
         $jLag = @(git -C $jr log --format=%ct "--since=@$jSince" HEAD -- Source 2>$null | Where-Object { $_ -match '^\d+$' -and [int64]$_ -gt $jSince }).Count
-        if ($jLag -gt 0) { $jBad++; Say 'FAIL' ("{0} : L15-1 {1} commit(s) Source plus recents que sa DLL du {2} : Tools\AutoJourney\sync_worktrees.ps1 SANS -NoBuild (ou build.ps1 dans ce worktree) et attendre la fin du build" -f $jn, $jLag, $jBin.LastWriteTime.ToString('MM-dd HH:mm')) }
+        $jStale = $null; $jStaleKnown = $false
         if (-not (Test-Path $lcScript)) { $jBad++; Say 'WARN' "$jn : L15-1 $lcScript introuvable : Get-StaleBinaryProblem non lance" }
-        else {
-          $jStale = & { param($s, $r) . $s; Get-StaleBinaryProblem $r } $lcScript $jr
-          if ($jStale) { $jBad++; Say 'FAIL' ("{0} : L15-1 Get-StaleBinaryProblem : {1}" -f $jn, $jStale) }
+        else { $jStale = & { param($s, $r) . $s; Get-StaleBinaryProblem $r } $lcScript $jr; $jStaleKnown = $true }
+        # D808 Q1 B : des commits Source plus recents que la DLL ne font FAIL que si Get-StaleBinaryProblem est aussi non vide (un fichier plus
+        # recent que la DLL prouve un build manquant) ou n'a pas pu etre lance ; sinon WARN (commit pose apres un build qui avait deja ces fichiers).
+        if ($jLag -gt 0) {
+          if ($jStale -or -not $jStaleKnown) { $jBad++; Say 'FAIL' ("{0} : L15-1 {1} commit(s) Source plus recents que sa DLL du {2} : Tools\AutoJourney\sync_worktrees.ps1 SANS -NoBuild (ou build.ps1 dans ce worktree) et attendre la fin du build" -f $jn, $jLag, $jBin.LastWriteTime.ToString('MM-dd HH:mm')) }
+          else { $jWarn++; Say 'WARN' ("{0} : L15-1 {1} commit(s) Source plus recents que sa DLL du {2}, mais Get-StaleBinaryProblem vide (aucun fichier Source plus recent que la DLL) : rien a recompiler a priori (D808)" -f $jn, $jLag, $jBin.LastWriteTime.ToString('MM-dd HH:mm')) }
         }
+        if ($jStale) { $jBad++; Say 'FAIL' ("{0} : L15-1 Get-StaleBinaryProblem : {1}" -f $jn, $jStale) }
       }
-      if ($jBad -eq 0) { Say 'PASS' "$jn : L15-1 a main (+0/-0), aucun commit Source plus recent que la DLL, Get-StaleBinaryProblem vide" }
+      if ($jBad -eq 0 -and $jWarn -eq 0) {
+        if ($jDocsOnly) { Say 'PASS' "$jn : L15-1 a main (+0/-0) (docs seulement : DLL non controlee, D808)" }
+        else { Say 'PASS' "$jn : L15-1 a main (+0/-0), aucun commit Source plus recent que la DLL, Get-StaleBinaryProblem vide" }
+      }
     }
   }
   Say-Eol $Main 'copie principale'

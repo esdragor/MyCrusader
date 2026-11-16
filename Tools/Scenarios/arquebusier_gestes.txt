@@ -42,7 +42,7 @@ hol.Select.ClickUnit -1
 frames 10
 hol.Camera.FocusNear 4000 0
 frames 2
-hol.Select.ClickUnit -1 enemy order
+hol.Select.ClickUnit -1 slot=1 order
 captureseq arqg_attack 8 0.5
 wait 0.7
 hol.Camera.FocusNear 4400 0

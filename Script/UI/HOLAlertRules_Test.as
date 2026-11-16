@@ -28,3 +28,19 @@ void Test_AlertPopulationFullRepeat(FUnitTest& T)
 	T.AssertTrue(HOLAlertRules::ShouldAlertPopulationFull(Quick, 10, 10, 3.0, 2.0), "full again 3 s later with a 2 s delay: a new line");
 	T.AssertTrue(HOLAlertRules::PopulationRepeatSeconds >= 2.0, "the default delay (Q-alerts-minor) is a real delay");
 }
+
+void Test_AlertAttackedElsewhereOncePer30s(FUnitTest& T)
+{
+	FHOLAttackAlertWatch Watch;
+	T.AssertTrue(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, false, 100.0, HOLAlertRules::AttackRepeatSeconds), "a hit out of view: the line goes");
+	T.AssertFalse(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, false, 110.0, HOLAlertRules::AttackRepeatSeconds), "another hit 10 s later: quiet");
+	T.AssertFalse(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, false, 129.0, HOLAlertRules::AttackRepeatSeconds), "29 s after the line: still quiet");
+	T.AssertTrue(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, false, 130.0, HOLAlertRules::AttackRepeatSeconds), "30 s after the line: the line goes again");
+}
+
+void Test_AlertAttackedInViewQuiet(FUnitTest& T)
+{
+	FHOLAttackAlertWatch Watch;
+	T.AssertFalse(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, true, 100.0, 30.0), "a hit in view: the player sees it, no line");
+	T.AssertTrue(HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, false, 101.0, 30.0), "a hit out of view right after: the line goes (the hit in view did not count)");
+}
