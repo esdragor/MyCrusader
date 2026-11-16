@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-audio_compare_buildings_range_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter le son de SELECTION du CHAMP DE TIR, tour 5 : arc long, arbalete, volee d'archers, ENREGISTRES (echantillons libres), Entree = variante suivante ; le batiment Champ de tir (pose fini par le scenario, a toi) est visible au centre de l'ecran, pas le Forum de depart
+audio_compare_buildings_range_start | OBJET : le Champ de tir (cibles) au centre de l'ecran (pose par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre, 5 variantes A a E, Entree = variante suivante
