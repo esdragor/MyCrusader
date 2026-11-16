@@ -32,7 +32,8 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | SAURON-1116a (fini 15:33) | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | ClickUnit enemy sans slot= refusé (preflight + pan_exposure_test, 341 scénarios), 69fa04f, a1f559f, rouge vu 15:04 ; S2 D809 C++ en file (plafond) ; 49 tool_uses | non | 15:02 |
 | SAURON-1116b | a037e24d4319b88ca | HeroesOfLiberty-Sauron | scénario arquebusier (tir à la naissance) puis ligne sans C++ | non | 15:33 |
 | SAURON-1116b (fini 15:43) | a037e24d4319b88ca | HeroesOfLiberty-Sauron | arquebusier déjà corrigé (a1f559f), preflight PASS ; D820 preflight refuse un essai sans mapSize (b1e97e3, rouge vu 15:37) ; E-arquebusier [À ESSAYER] ; avance rapide main 7d23773 ; 33 tool_uses | non | 15:33 |
-| SAURON-1116c | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 : mapSize sur les 4 essais ouverts, puis Volcan V9c sans C++ | non | 15:46 |
+| SAURON-1116c (fini 15:55) | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 mapSize Small sur 5 essais : 88dd5c2, f9db1dc ; preflight deploy et nomad_start PASS ; audio sans preflight (sons absents de Sauron) ; pas de ligne V9c ; avance rapide main | non | 15:46 |
+| SAURON-1116d | af60f614d09275eab | HeroesOfLiberty-Sauron | défauts communs Q8 : ovales blancs (deploy, nomad_start) et Condition failed au pas 0 | non | 15:56 |
 Exception 15:37 : essais audio_compare_buildings_range/_stable donnés malgré session_gate Essay FAIL (4 fichiers non commités dans Arwen = scripts Tools/Audio/*.py d ARWEN-1116b en cours, hors jeu) ; d751-root dans main en avance rapide 365326f (tests 1320/1320 + values PASS lancés par la session principale 15:30) ; sons hors git présents dans Arwen seulement.
 
 ## Résumé de la séance du 2026-11-15
