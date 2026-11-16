@@ -26,11 +26,14 @@ capture nomad_start_wide
 hol.Select.Type Peasant
 frames 2
 hol.Select.Report
-hol.Select.Grid 1
+# L14-5 geste reel : vraie touche Z (evenement clavier Slate, hol.UI.Key), vraie touche C, vrai clic gauche au centre de la vue (hol.Mouse.Click, la camera est centree sur le point vise).
+hol.UI.Key Z 0 0.1
+waitlog Key pressed: Z
 waitlog Grid: age 1 chosen
 frames 5
 capture nomad_start_grid
-hol.Select.Grid 10
+hol.UI.Key C 0 0.1
+waitlog Key pressed: C
 frames 2
 hol.Camera.Zoom 11
 waitlog Camera height 1500 cm
@@ -38,7 +41,8 @@ hol.Camera.Zoom -3
 waitlog Camera height 3000 cm
 hol.Camera.Focus -14800 -2500
 frames 10
-hol.Select.LeftClickGround -14800 -2500
+hol.Mouse.Click 960 540
+waitlog Mouse click 960,540
 waitlog Construction: slot 0 placed MainCentre foundation at
 frames 30
 capture nomad_start_forum
