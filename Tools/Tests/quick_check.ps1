@@ -8469,7 +8469,7 @@ if ($Parts -contains "netsig3") {
     Write-AIMatchConfig $Sig3Config @("Human", "Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob", "Carol")
     (Get-Content $Sig3Config -Raw) -replace '"version": 2,', '"version": 2, "mode": "Diplomacy",' | Set-Content -Encoding ascii $Sig3Config
     $Sig3Names = @{ 1 = "Bob"; 2 = "Alice"; 3 = "Carol" }
-    # A chat text one character longer than hol.Chat.MaxLength's default (HOLChat::MaxTextLength = 200): the server refuses it.
+    # A chat text one character longer than hol.Chat.MaxLength's default (HOLChat::MaxTextLength = 200, Script/Chat/HOLChatRules.as): the server refuses it.
     $Sig3LongText = "x" * 201
     # The clients launched: the harness's third client, Carol (her own saved directory Saved_Tests_Net3).
     $Sig3Launched = @(1, 2, 3)
