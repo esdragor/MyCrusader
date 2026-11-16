@@ -43,3 +43,33 @@ void Test_GameMenuStatsButton(FUnitTest& T)
 	T.AssertTrue(HOLGameMenuRules::ShowsStatsButton(true, true), "a spectator after the end: shown");
 	T.AssertTrue(HOLGameMenuRules::ShowsStatsButton(false, true), "a player after the end: shown");
 }
+
+int Esc(EHOLGameMenuEscape Action)
+{
+	return int(Action);
+}
+
+// HeroesOfLiberty.Victory.GameMenu.Escape: what Escape does in a match.
+void Test_GameMenuEscape(FUnitTest& T)
+{
+	// The menu open: Escape closes it, whatever lies below.
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(true, false, false)), Esc(EHOLGameMenuEscape::CloseMenu), "menu open, nothing selected: close");
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(true, false, true)), Esc(EHOLGameMenuEscape::CloseMenu), "menu open, units selected: close");
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(true, true, true)), Esc(EHOLGameMenuEscape::CloseMenu), "menu open, a mode armed: close");
+	// A mode armed is left first, the selection kept (D313).
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(false, true, true)), Esc(EHOLGameMenuEscape::CancelMode), "mode armed, units selected: cancel the mode");
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(false, true, false)), Esc(EHOLGameMenuEscape::CancelMode), "mode armed, nothing selected: cancel the mode");
+	// A selection is dropped, as before V1.3; nothing to undo: the menu.
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(false, false, true)), Esc(EHOLGameMenuEscape::Deselect), "units or a building selected: deselect");
+	T.AssertEquals(Esc(HOLGameMenuRules::GetEscapeAction(false, false, false)), Esc(EHOLGameMenuEscape::OpenMenu), "nothing selected: open the menu");
+}
+
+// HeroesOfLiberty.Victory.GameMenu.Input: menu input while match screens open and close.
+void Test_GameMenuKeepsInput(FUnitTest& T)
+{
+	T.AssertTrue(HOLGameMenuRules::KeepsMatchMenuInput(true, false), "a match screen opens: menu input on");
+	T.AssertTrue(HOLGameMenuRules::KeepsMatchMenuInput(true, true), "the menu opens over the banner: on");
+	T.AssertFalse(HOLGameMenuRules::KeepsMatchMenuInput(false, false), "the last match screen closes: off, Escape back to the match");
+	// V1.4a: the menu closed over the end banner, Escape must still close the banner.
+	T.AssertTrue(HOLGameMenuRules::KeepsMatchMenuInput(false, true), "the menu closes, the banner still open: kept");
+}
