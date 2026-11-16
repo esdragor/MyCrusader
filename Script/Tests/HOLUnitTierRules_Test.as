@@ -184,9 +184,8 @@ void Test_UnitTierScriptAndSimulationRulesAgree(FUnitTest& T)
 
 // Every row of the unit type table (Tools\Data\UnitTypes.csv, the 16 rows), not only the units the rule lists (MIG-J-UnitTier, D830/D835):
 // the C++ twin reads the column MinTier of each row, the script its own table. A row the script lists gives the very same reason on every
-// tier 0 to 3, building and stock. A row the script leaves out on purpose (the hero, the King and the two test dummies: NotListed, "the
-// caller does not ask this rule about them") is never refused for its tier by the C++ either, which is the one reason its callers read
-// (HOLProductionSubsystem.cpp, HOLGameScreen.cpp: == TierTooLow). A type outside the table is NotListed on both sides.
+// tier 0 to 3, building and stock. Since D836 point 6 the script lists every row: the hero, the King and the two test dummies are of tier 0
+// as the column MinTier says (they were NotListed before). A type outside the table is NotListed on both sides.
 void Test_UnitTierAgreesOnEveryRowOfTheTable(FUnitTest& T)
 {
 	TArray<FString> Rows;
@@ -241,8 +240,13 @@ void Test_UnitTierAgreesOnEveryRowOfTheTable(FUnitTest& T)
 	}
 	T.AssertEquals(16, RowsFound, "the 16 rows of the unit type table exist in the C++ column");
 	T.AssertEquals(16 * 4 * 2 * 2, Cases, "every row on every tier 0 to 3, building and stock");
-	T.AssertEquals(12, Listed, "the script lists the twelve produced units of the table (the Zombie and the Damned Warrior included)");
-	T.AssertEquals(4, LeftOut, "only the hero, the King and the two test dummies are left out of the script's rule");
+	T.AssertEquals(16, Listed, "the script lists every row of the table (D836 point 6: the hero, the King and the two test dummies at tier 0, as the column)");
+	T.AssertEquals(0, LeftOut, "no row of the table is left out of the script's rule (D836 point 6)");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("Hero"), "the hero is of tier 0, as its column MinTier (D836 point 6)");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("King"), "the King is of tier 0, as its column MinTier");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("LightInfantry"), "the LightInfantry dummy is of tier 0, as its column MinTier");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("LightInfantryNanite"), "the LightInfantryNanite dummy is of tier 0, as its column MinTier");
+	T.AssertEquals(HOLUnitTierRules::CheckUnit(n"Hero", 0, true, true), HOLUnitTier::Check("Hero", 0, true, true), "the hero at tier 0: the script gives the C++ reason, not NotListed");
 	T.AssertEquals(0, Differences, "on every row the script lists, the script and the C++ give the same reason");
 	T.AssertEquals(0, LeftOutRefusedForTier, "a row the script leaves out is never refused for its tier by the C++");
 	T.AssertEquals(HOLUnitTier::NotListed, HOLUnitTierRules::CheckUnit(n"Dragon", 3, true, true), "a type outside the table: NotListed in C++");
