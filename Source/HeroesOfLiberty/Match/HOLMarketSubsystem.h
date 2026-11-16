@@ -13,9 +13,10 @@
  * UHOLUnitTierSubsystem: the server (AHOLProductionSubsystem) asks its script subclass (Script/Economy/HOLMarketBoardScript.as, the rules
  * Script/Economy/HOLMarketRules.as and HOLTributeRules.as) for the two calls that are made rarely: the return of the book to rest (every
  * RecoverEverySeconds, HOLMarket::Recover) and what a tribute delivers (once per Tribute order, HOLTribute::Received). Abstract: only a script
- * subclass is born. Without it (no script compiled) the static calls fall back to the C++ rules, so the behaviour is the same as before the bridge;
- * the C++ rules are kept in this lot. Left in C++ this lot: NewBook (HOLGameState), the Slate quote (HOLGameScreen), the taxes of the diplomacy
- * library, HOLPlayerController and HOLAIOrders. The trade itself (HOLMarket::Apply) stays C++ for now (the price of each order, higher frequency).
+ * subclass is born. There is no C++ copy of these two rules any more: without a script board (no script compiled) the static calls are inert and
+ * safe (the book is returned unchanged, the amount received is the amount sent) and log an error. Left in C++: NewBook (HOLGameState), the Slate quote
+ * (HOLGameScreen), the taxes of the diplomacy library, HOLPlayerController and HOLAIOrders. The trade itself (HOLMarket::Apply) stays C++ for now
+ * (the price of each order, higher frequency).
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLMarketSubsystem : public UWorldSubsystem
@@ -26,10 +27,10 @@ public:
 	/** The world's market board (its script subclass), or null (no script compiled, or no world). */
 	static UHOLMarketSubsystem* Find(const UWorld* World);
 
-	/** The book after Intervals intervals back toward rest: the board's answer, or HOLMarket::Recover's when the world has no script board. */
+	/** The book after Intervals intervals back toward rest: the board's answer; the book unchanged (and an error logged) when the world has no script board. */
 	static HOLMarket::FBook Recover(const UWorld* World, const HOLMarket::FSettings& Settings, const HOLMarket::FBook& Book, int32 Intervals);
 
-	/** What reaches the receiver of a tribute of Sent at TaxPercent: the board's answer, or HOLTribute::Received's when the world has no script board. */
+	/** What reaches the receiver of a tribute of Sent at TaxPercent: the board's answer; Sent (and an error logged) when the world has no script board. */
 	static int32 Received(const UWorld* World, int32 Sent, int32 TaxPercent);
 
 	/** The board's answers (the native events below, i.e. the script rules in the script subclass). */
@@ -50,12 +51,12 @@ public:
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
-	/** The book after Intervals intervals toward rest. The default implementation is the C++ rule HOLMarket::Recover. */
+	/** The book after Intervals intervals toward rest. The script subclass overrides it (HOLMarket::Recover of the script); the default is inert: the book unchanged, an error logged. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
 	FHOLMarketBridgeBook RecoverPrices(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Intervals);
 	virtual FHOLMarketBridgeBook RecoverPrices_Implementation(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, int32 Intervals);
 
-	/** What reaches the receiver of Sent at TaxPercent. The default implementation is the C++ rule HOLTribute::Received. */
+	/** What reaches the receiver of Sent at TaxPercent. The script subclass overrides it (HOLTribute::Received of the script); the default is inert: Sent, an error logged. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Market")
 	int32 TributeReceived(int32 Sent, int32 TaxPercent);
 	virtual int32 TributeReceived_Implementation(int32 Sent, int32 TaxPercent);

@@ -69,14 +69,15 @@ bool FHOLMarketServerBoardTest::RunTest(const FString& Parameters)
 			TestEqual(TEXT("Stone never goes past its base"), Rest.Prices[2], 120);
 		}
 
-		// The server's call (the static one) is the board's answer, and the same as the C++ rule at every interval.
-		for (int32 Intervals = 0; Intervals <= 40; Intervals += 5)
+		// The server's call (the static one) is the board's answer, at figures worked by hand (1 point per interval toward the base, never past it).
+		struct FRecoverCase { int32 Intervals; int32 Prices[HOLMarket::BookSize]; };
+		const FRecoverCase Cases[] = { { 0, { 110, 70, 125, 100 } }, { 5, { 105, 75, 120, 100 } }, { 10, { 100, 80, 120, 100 } }, { 40, { 80, 80, 120, 100 } } };
+		for (const FRecoverCase& Case : Cases)
 		{
-			const HOLMarket::FBook ViaBridge = UHOLMarketSubsystem::Recover(World, Settings, Raised, Intervals);
-			const HOLMarket::FBook ViaRule = HOLMarket::Recover(Settings, Raised, Intervals);
+			const HOLMarket::FBook ViaBridge = UHOLMarketSubsystem::Recover(World, Settings, Raised, Case.Intervals);
 			for (int32 Index = 0; Index < HOLMarket::BookSize; ++Index)
 			{
-				TestEqual(*FString::Printf(TEXT("%d intervals, resource %d: the bridge gives the C++ rule's price"), Intervals, Index), ViaBridge.Prices[Index], ViaRule.Prices[Index]);
+				TestEqual(*FString::Printf(TEXT("%d intervals, resource %d: the bridge gives the script's price"), Case.Intervals, Index), ViaBridge.Prices[Index], Case.Prices[Index]);
 			}
 		}
 
@@ -84,10 +85,12 @@ bool FHOLMarketServerBoardTest::RunTest(const FString& Parameters)
 		TestEqual(TEXT("100 sent at 30 %: 70 arrive"), Board->ReceivedNow(100, HOLTribute::DefaultTaxPercent), 70);
 		TestEqual(TEXT("250 sent at 30 %: 175 arrive"), Board->ReceivedNow(250, HOLTribute::DefaultTaxPercent), 175);
 		TestEqual(TEXT("1 sent at 30 %: 1 arrives"), Board->ReceivedNow(1, HOLTribute::DefaultTaxPercent), 1);
-		for (int32 Sent : {1, 7, 10, 99, 100, 250, 1000})
+		// The server's call (the static one), at figures worked by hand: Sent minus Sent * 30 / 100 rounded down.
+		const int32 SentAndArrives[][2] = { { 1, 1 }, { 7, 5 }, { 10, 7 }, { 99, 70 }, { 100, 70 }, { 250, 175 }, { 1000, 700 } };
+		for (const int32 (&Case)[2] : SentAndArrives)
 		{
-			TestEqual(*FString::Printf(TEXT("%d sent: the bridge gives the C++ rule's amount"), Sent),
-				UHOLMarketSubsystem::Received(World, Sent, HOLTribute::DefaultTaxPercent), HOLTribute::Received(Sent, HOLTribute::DefaultTaxPercent));
+			TestEqual(*FString::Printf(TEXT("%d sent: the bridge gives the script's amount"), Case[0]),
+				UHOLMarketSubsystem::Received(World, Case[0], HOLTribute::DefaultTaxPercent), Case[1]);
 		}
 	}
 	GEngine->DestroyWorldContext(World);

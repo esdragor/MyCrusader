@@ -20,7 +20,8 @@ HOLMarket::FBook UHOLMarketSubsystem::Recover(const UWorld* World, const HOLMark
 	{
 		return FromBridge(Board->RecoverNow(ToBridge(Settings), ToBridge(Book), Intervals));
 	}
-	return HOLMarket::Recover(Settings, Book, Intervals);
+	UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the book is not recovered (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
+	return Book;
 }
 
 int32 UHOLMarketSubsystem::Received(const UWorld* World, const int32 Sent, const int32 TaxPercent)
@@ -29,7 +30,8 @@ int32 UHOLMarketSubsystem::Received(const UWorld* World, const int32 Sent, const
 	{
 		return Board->ReceivedNow(Sent, TaxPercent);
 	}
-	return HOLTribute::Received(Sent, TaxPercent);
+	UE_LOG(LogTemp, Error, TEXT("Market: no script board in this world, the tribute arrives untaxed (Script/Economy/HOLMarketBoardScript.as did not compile?)"));
+	return Sent;
 }
 
 FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverNow(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Intervals)
@@ -111,10 +113,12 @@ bool UHOLMarketSubsystem::DoesSupportWorldType(const EWorldType::Type WorldType)
 
 FHOLMarketBridgeBook UHOLMarketSubsystem::RecoverPrices_Implementation(const FHOLMarketBridgeSettings& Settings, const FHOLMarketBridgeBook& Book, const int32 Intervals)
 {
-	return ToBridge(HOLMarket::Recover(FromBridge(Settings), FromBridge(Book), Intervals));
+	UE_LOG(LogTemp, Error, TEXT("Market: RecoverPrices has no script implementation, the book is returned unchanged"));
+	return Book;
 }
 
 int32 UHOLMarketSubsystem::TributeReceived_Implementation(const int32 Sent, const int32 TaxPercent)
 {
-	return HOLTribute::Received(Sent, TaxPercent);
+	UE_LOG(LogTemp, Error, TEXT("Market: TributeReceived has no script implementation, the amount is returned unchanged"));
+	return Sent;
 }
