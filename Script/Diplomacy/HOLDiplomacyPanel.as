@@ -1,7 +1,7 @@
 // The Diplomacy panel's rows (D7 of DiplomacyInProgress.md, GDD D387, pure): for each player, what the line shows and what it lets the viewer do,
 // from the facts the game gives (the stances of the book, the Market, the mode). The three presentations of the panel (hol.UI.DiplomacyLayout
 // 0|1|2) read these same rows: they differ by where the controls sit, never by what they do. Whole numbers and flags only; nothing here reads
-// the world. Tested in HOLDiplomacyPanel_Test.as on the real rules (HOLDiplomacyRules.as).
+// the world. Tested in HOLDiplomacyPanel_Test.as on the real rules (HOLDiplomacyRead).
 struct FHOLDiplomacyRowView
 {
 	int Slot = -1;
@@ -37,11 +37,11 @@ namespace HOLDiplomacyPanel
 	// The stance cycled by a click on the colour chip (layout 1): Ally -> Neutral -> Enemy -> Ally, the order the GDD names them.
 	int NextStance(int Stance)
 	{
-		if (Stance == HOLDiplomacy::Ally)
-			return HOLDiplomacy::Neutral;
-		if (Stance == HOLDiplomacy::Neutral)
-			return HOLDiplomacy::Enemy;
-		return HOLDiplomacy::Ally;
+		if (Stance == HOLDiplomacyRead::GetStanceAlly())
+			return HOLDiplomacyRead::GetStanceNeutral();
+		if (Stance == HOLDiplomacyRead::GetStanceNeutral())
+			return HOLDiplomacyRead::GetStanceEnemy();
+		return HOLDiplomacyRead::GetStanceAlly();
 	}
 
 	// The facts are the viewer's seat (Viewer, -1 for a spectator), the other seat (Slot) and what the book says of the pair.
@@ -59,15 +59,15 @@ namespace HOLDiplomacyPanel
 		// An AI is Enemy to everybody whatever is said to it (D367).
 		if (bDiplomacyMode && bSlotAI)
 		{
-			Row.MyStance = HOLDiplomacy::Enemy;
-			Row.Relation = HOLDiplomacy::Enemy;
+			Row.MyStance = HOLDiplomacyRead::GetStanceEnemy();
+			Row.Relation = HOLDiplomacyRead::GetStanceEnemy();
 		}
 		const bool bViewerPlays = Viewer >= 0 && !bViewerDefeated;
 		const bool bOther = !Row.bSelf && bViewerPlays;
 		Row.bStanceEditable = bDiplomacyMode && bOther && !bSlotAI && !bSlotDefeated;
 		Row.bShowTheirStance = Row.bStanceEditable;
-		Row.bVisionChecked = bVision && Row.Relation == HOLDiplomacy::Ally;
-		Row.bVisionEnabled = Row.bStanceEditable && Row.Relation == HOLDiplomacy::Ally;
+		Row.bVisionChecked = bVision && Row.Relation == HOLDiplomacyRead::GetStanceAlly();
+		Row.bVisionEnabled = Row.bStanceEditable && Row.Relation == HOLDiplomacyRead::GetStanceAlly();
 		Row.TaxPercent = TaxPercent;
 		Row.bNoMarket = !bViewerHasMarket;
 		Row.bTributeEnabled = bOther && bViewerHasMarket && !bSlotDefeated;
@@ -87,9 +87,9 @@ namespace HOLDiplomacyPanel
 
 	FString StanceName(int Stance)
 	{
-		if (Stance == HOLDiplomacy::Ally)
+		if (Stance == HOLDiplomacyRead::GetStanceAlly())
 			return "ally";
-		if (Stance == HOLDiplomacy::Neutral)
+		if (Stance == HOLDiplomacyRead::GetStanceNeutral())
 			return "neutral";
 		return "enemy";
 	}
@@ -219,9 +219,9 @@ namespace HOLDiplomacyPanelText
 
 	FText StanceLabel(int Stance)
 	{
-		if (Stance == HOLDiplomacy::Ally)
+		if (Stance == HOLDiplomacyRead::GetStanceAlly())
 			return PatternText(Ally);
-		if (Stance == HOLDiplomacy::Neutral)
+		if (Stance == HOLDiplomacyRead::GetStanceNeutral())
 			return PatternText(Neutral);
 		return PatternText(Enemy);
 	}
