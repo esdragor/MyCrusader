@@ -66,6 +66,26 @@ void Test_ChatTeamGameSpectatorTalksToTeammates(FUnitTest& T)
 	T.AssertTrue(Back.Contains(1), "team game: the living teammate's Allies reaches the spectating one");
 }
 
+// D806 (Q-chat-rules A): a spectator without a seat (a pure observer, D376) is a slot outside the seats (-1 on the server, or one past
+// them for a second observer); he is treated as a defeated player: he talks and reads with the spectators on All and Allies, never
+// privately, and he reads the living players' All, never their Allies. Slot 3 is defeated, 0 to 2 alive.
+void Test_ChatSeatlessSpectatorIsADefeatedOne(FUnitTest& T)
+{
+	TArray<int> Teams = ChatTeams();
+	TArray<bool> Spectators = ChatSpectators(false, false, false, true);
+	TArray<int> ToAll = HOLChat::Recipients(HOLChat::All, -1, -1, Teams, Spectators, false);
+	T.AssertTrue(ToAll.Num() == 2 && ToAll.Contains(-1) && ToAll.Contains(3), "seatless All: himself and the defeated slot, no living player");
+	TArray<int> ToAllies = HOLChat::Recipients(HOLChat::Allies, -1, -1, Teams, Spectators, false);
+	T.AssertTrue(ToAllies.Num() == 2 && ToAllies.Contains(3), "seatless Allies: the defeated slot, no living player");
+	TArray<int> ToPrivate = HOLChat::Recipients(HOLChat::Private, -1, 3, Teams, Spectators, false);
+	T.AssertTrue(ToPrivate.Num() == 1 && ToPrivate[0] == -1, "seatless private, even to a spectator: nobody but himself");
+	T.AssertTrue(HOLChat::Reaches(HOLChat::All, -1, -1, 4, Teams, Spectators, false), "two observers: the All of one reaches the other");
+	T.AssertTrue(HOLChat::Reaches(HOLChat::Allies, -1, -1, 4, Teams, Spectators, false), "two observers: the Allies of one reaches the other");
+	T.AssertTrue(HOLChat::Reaches(HOLChat::Allies, 3, -1, -1, Teams, Spectators, false), "the defeated slot's Allies reaches the observer");
+	T.AssertTrue(HOLChat::Reaches(HOLChat::All, 0, -1, -1, Teams, Spectators, false), "D792 1 A: the observer reads a living player's All");
+	T.AssertFalse(HOLChat::Reaches(HOLChat::Allies, 0, -1, -1, Teams, Spectators, true), "never a living player's Allies, team game too");
+}
+
 // A living player's All reaches everybody, the spectators too.
 void Test_ChatAllReachesEverybody(FUnitTest& T)
 {

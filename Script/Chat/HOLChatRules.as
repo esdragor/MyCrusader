@@ -5,15 +5,24 @@
 // The sender always sees its own message. A spectator (D376) talks with the spectators alone in free-for-all and Diplomacy, and with his
 // teammates too in a team game (D357, bTeamGame). D792 (the user's answer to Q-chat-channels, 1 A and 2 A): a living player's All reaches the
 // spectators too (a message to all leaks nothing); a living player's Allies reaches a spectating teammate only in a team game.
+// D806 (Q-chat-rules A): a spectator without a seat (a slot outside the seats) is treated as a defeated one: All and Allies with the
+// spectators, never a private message, the living players' All read (C++ mirror: Source/HeroesOfLiberty/Match/HOLChatRules.cpp).
 namespace HOLChat
 {
 	const int All = 0;
 	const int Allies = 1;
 	const int Private = 2;
 
+	// D806 (Q-chat-rules A): a slot outside the seats (-1, INDEX_NONE on the server, or past the seats for a second observer) is a
+	// spectator without a seat (a pure observer, D376), as the C++ FSeats::IsSpectator says.
+	bool IsSeated(const TArray<bool>& SpectatorBySlot, int Slot)
+	{
+		return SpectatorBySlot.IsValidIndex(Slot);
+	}
+
 	bool IsSpectator(const TArray<bool>& SpectatorBySlot, int Slot)
 	{
-		return SpectatorBySlot.IsValidIndex(Slot) && SpectatorBySlot[Slot];
+		return !IsSeated(SpectatorBySlot, Slot) || SpectatorBySlot[Slot];
 	}
 
 	// Two slots of the same camp: the same team, a real one (>= 0).
@@ -35,6 +44,11 @@ namespace HOLChat
 	// Does the message of Sender on Channel (to Target for a private one) reach Receiver?
 	bool Reaches(int Channel, int Sender, int Target, int Receiver, const TArray<int>& TeamBySlot, const TArray<bool>& SpectatorBySlot, bool bTeamGame)
 	{
+		// D806: an observer never talks privately, not even to a spectator (before the sender's own check: two observers share -1).
+		if (Channel == Private && !IsSeated(SpectatorBySlot, Sender))
+		{
+			return false;
+		}
 		if (Receiver == Sender)
 		{
 			return true;
@@ -49,6 +63,11 @@ namespace HOLChat
 		}
 		if (Channel == Allies)
 		{
+			// D806: an observer is on the spectators' side of the Allies channel, every spectator is his mate (never a living player).
+			if (!IsSeated(SpectatorBySlot, Sender) || !IsSeated(SpectatorBySlot, Receiver))
+			{
+				return IsSpectator(SpectatorBySlot, Sender) && IsSpectator(SpectatorBySlot, Receiver);
+			}
 			// Mates; a spectator and a living player are not on the same side of the Allies channel outside a team game.
 			return AreMates(TeamBySlot, Sender, Receiver)
 				&& (bTeamGame || IsSpectator(SpectatorBySlot, Sender) == IsSpectator(SpectatorBySlot, Receiver));
