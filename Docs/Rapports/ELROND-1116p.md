@@ -1,0 +1,12 @@
+﻿# ELROND-1116p : MIG-S1c-UnitAbility (tiers, sans C++, sans build)
+
+APPELS_DECLARES: 12 ; HEURE_DEBUT/HEURE_FIN: 22:21 / 22:32 ; BUILDS_DEMANDES: 0 ; LAUNCHCHECK_DEBUT: sans objet (sans C++)
+COMMIT: 03084e1 sur tiers (merge main non fait : DLL a jour avec le socle, main 8031fd9 deja dedans)
+GREP : HOLUnitAbilityRules.as n'avait AUCUN appelant hors tests (HOLUnitAbilityRules_Test.as, HOLSocleLibraries_Test.as). HOLAIRage.as n'appelait pas la copie : l'emploi « non confirme » est confirme FAUX ; il codait en dur MinHealth 30, RecastEvery 40 et le type "DamnedWarrior" (copie de nombres) : redirige vers HOLUnitAbilityRead (GetRageMinHp, GetRageCooldownMs, GetRageUnitType) dans DefaultData / Casters. Aucun appelant dans Source\ (HOLAIRageOrders.cpp est le C++ distinct).
+TEST_ROUGE: vu a 22:26 : tests 1346/1349 (Test_RageAIReadsTheLibrary, valeur attendue MinHp + 1), remise ; vert 22:30 : 1347/1349 (seuls Nomad D831), values PASS. TESTS_TAUTOLOGIQUES: 0 (le test passe par la vraie chaine Casters)
+TESTS_SCRIPT_AJOUTES: 1 (Test_RageAIReadsTheLibrary) ; reecrits sur la bibliotheque : Test_UnitAbilityCanCast, Test_UnitAbilityHitCostNeverKills (HOLUnitAbilityRules_Test.as) ; bloc « deux copies » de Test_UnitAbilityReadLibraryAgreesWithTable retire (HOLSocleLibraries_Test.as)
+TESTS_CPP_RETIRES: 0 ; LIGNES_CPP_SUPPRIMEES: 0 ; LIGNES_MIGREES_PAR_LOT: 0 ; TYPES_A_EXPOSER: aucun
+SUPPRIME : Script\Units\HOLUnitAbilityRules.as (CanCast, CooldownEnd, EffectEnd, HitCost, EffectEnded). CooldownEnd / EffectEnd / EffectEnded (calcul de temps) n'ont pas d'equivalent dans la bibliotheque : plus testes en script ; la duree et le cooldown restent testes (Test_UnitAbilityReadLibraryAgreesWithTable) et le C++ (HOLDamnedWarriorTests.cpp) couvre la regle.
+GARDES (non touches) : HOLUnitAbilityTable.as, UnitAbilities.csv, make_unit_abilities.py (textes + autres lecteurs), HOLMoraleTable. Tools\Tests\unit_ability_accord_test.py et sa ligne de quick_check.ps1 GARDES : il compare les TABLES generees (qui restent) a HOLUnitAbilityRules.h, pas la copie supprimee ; condition de retrait non remplie. Aucun test retire.
+NON VERIFIE : rien de bloquant ; le jeu n'a pas ete lance (logique seulement).
+PROCESSUS_DETACHES: voir stray_processes ci-dessous.
