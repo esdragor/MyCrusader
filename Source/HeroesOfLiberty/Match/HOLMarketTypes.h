@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -13,44 +13,44 @@
  * rule itself is in script (Script/Economy/HOLMarketRules.as, FHOLMarketSettings): M4 hands it these numbers. Whole numbers
  * only, so that the server and the clients agree to the last gold piece.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLMarketRow : public FTableRowBase
 {
 	GENERATED_BODY()
 
 	/** Gold for one lot of 100 food at rest. */
-	UPROPERTY(EditAnywhere, Category = "Prices", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prices", meta = (ClampMin = "1"))
 	int32 FoodPrice = 80;
 
-	UPROPERTY(EditAnywhere, Category = "Prices", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prices", meta = (ClampMin = "1"))
 	int32 WoodPrice = 80;
 
-	UPROPERTY(EditAnywhere, Category = "Prices", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prices", meta = (ClampMin = "1"))
 	int32 StonePrice = 120;
 
 	/** Gold is the money: its price is kept for the book's four entries and is not traded. */
-	UPROPERTY(EditAnywhere, Category = "Prices", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Prices", meta = (ClampMin = "1"))
 	int32 GoldPrice = 100;
 
 	/** Tax in percent of the price: a sale pays the price minus it, a purchase costs the price plus it. */
-	UPROPERTY(EditAnywhere, Category = "Rate", meta = (ClampMin = "0", ClampMax = "99"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rate", meta = (ClampMin = "0", ClampMax = "99"))
 	int32 FeePercent = 30;
 
 	/** How far one lot sold or bought moves its price (gold per lot). */
-	UPROPERTY(EditAnywhere, Category = "Rate", meta = (ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rate", meta = (ClampMin = "0"))
 	int32 Step = 3;
 
 	/** A price never leaves [MinPrice, MaxPrice]. */
-	UPROPERTY(EditAnywhere, Category = "Rate", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rate", meta = (ClampMin = "1"))
 	int32 MinPrice = 20;
 
-	UPROPERTY(EditAnywhere, Category = "Rate", meta = (ClampMin = "1"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rate", meta = (ClampMin = "1"))
 	int32 MaxPrice = 300;
 
 	/** Every RecoverEverySeconds seconds a price moves RecoverPoints toward its base. */
-	UPROPERTY(EditAnywhere, Category = "Recovery", meta = (ClampMin = "0"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recovery", meta = (ClampMin = "0"))
 	int32 RecoverPoints = 1;
 
-	UPROPERTY(EditAnywhere, Category = "Recovery", meta = (ClampMin = "1", ForceUnits = "s"))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Recovery", meta = (ClampMin = "1", ForceUnits = "s"))
 	int32 RecoverEverySeconds = 10;
 };

@@ -19,21 +19,21 @@ enum class EHOLResource : uint8
  * An amount of the four base resources (§ 5.1): a player's stock, or a cost. Written in the type tables as
  * "(Food=50,Wood=0,Stone=0,Gold=0)", like any struct column.
  */
-USTRUCT()
+USTRUCT(BlueprintType)
 struct HEROESOFLIBERTY_API FHOLResources
 {
 	GENERATED_BODY()
 
-	UPROPERTY(EditAnywhere, Category = "Resources")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resources")
 	int32 Food = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Resources")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resources")
 	int32 Wood = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Resources")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resources")
 	int32 Stone = 0;
 
-	UPROPERTY(EditAnywhere, Category = "Resources")
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Resources")
 	int32 Gold = 0;
 
 	FHOLResources() = default;

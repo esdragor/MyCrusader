@@ -12,6 +12,32 @@
  * lives as the players' table shows them, the local player's Market and the tribute's tax. Read only: the orders go through AHOLPlayerController
  * (RequestStance, RequestShareVision, RequestPanelTribute).
  */
+/**
+ * A book of stances (HOLDiplomacy::FBook) as the script sees it (socle step 1 of the migration, D830, D836 (5)): the same fields, so that the
+ * interface reads the replicated book (GetBook) and asks the C++ rule (IsAlly, FiresAtOnce...) instead of its own copy,
+ * Script/Diplomacy/HOLDiplomacyRules.as (whose FHOLDiplomacyBook goes with it). Stances[From * Slots + To], Vision[From * Slots + To].
+ */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLDiplomacyStances
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 Slots = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bLocked = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	TArray<int32> Stances;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	TArray<bool> bAI;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	TArray<bool> Vision;
+};
+
 UCLASS()
 class HEROESOFLIBERTY_API UHOLDiplomacyReadLibrary : public UBlueprintFunctionLibrary
 {
@@ -72,4 +98,55 @@ public:
 	/** The panel's presentation (hol.UI.DiplomacyLayout 0|1|2): 0 three buttons, 1 cycle on the colour chip, 2 drop-down menu. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
 	static int32 GetPanelLayout();
+
+	// Socle step 1 (D830, D836 (5)): the C++ rule HOLDiplomacy on a book, wrappers only. The results of SetStance / SetVision are the numbers
+	// of HOLDiplomacy::EResult (0 Ok, 1 NoSuchSlot, 2 Self, 3 BadStance, 4 SenderIsAI, 5 Locked, 6 NotAlly).
+
+	/** The book of this machine (AHOLGameState::GetDiplomacyBook, replicated); an empty book without a game state. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy", meta = (WorldContext = "WorldContextObject"))
+	static FHOLDiplomacyStances GetBook(const UObject* WorldContextObject);
+
+	/** HOLDiplomacy::NewBook: a Diplomacy match's book, every stance at the default. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static FHOLDiplomacyStances NewBook(int32 Slots, const TArray<bool>& IsAI);
+
+	/** HOLDiplomacy::NewTeamBook: the locked book of a match with fixed teams. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static FHOLDiplomacyStances NewTeamBook(const TArray<int32>& TeamBySlot, const TArray<bool>& IsAI);
+
+	/** HOLDiplomacy::SetStance on Book (the result's number, see above). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 SetStance(UPARAM(ref) FHOLDiplomacyStances& Book, int32 From, int32 To, int32 Stance);
+
+	/** HOLDiplomacy::SetVision on Book (the result's number, see above). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 SetVision(UPARAM(ref) FHOLDiplomacyStances& Book, int32 From, int32 To, bool bShare);
+
+	/** HOLDiplomacy::StanceOf. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 StanceOf(const FHOLDiplomacyStances& Book, int32 From, int32 To);
+
+	/** HOLDiplomacy::Relation: the most hostile of the two stances (D375). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 Relation(const FHOLDiplomacyStances& Book, int32 A, int32 B);
+
+	/** HOLDiplomacy::IsAlly. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool IsAlly(const FHOLDiplomacyStances& Book, int32 A, int32 B);
+
+	/** HOLDiplomacy::IsAdversary: Neutral included (D401). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool IsAdversary(const FHOLDiplomacyStances& Book, int32 A, int32 B);
+
+	/** HOLDiplomacy::FiresAtOnce: only at war (D369). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool FiresAtOnce(const FHOLDiplomacyStances& Book, int32 A, int32 B);
+
+	/** HOLDiplomacy::SharesVision: To sees what From sees (D371). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool SharesVision(const FHOLDiplomacyStances& Book, int32 From, int32 To);
+
+	/** HOLDiplomacy::CanLeaveRampart (D374). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool CanLeaveRampart(const FHOLDiplomacyStances& Book, int32 UnitOwner, int32 RampartOwner);
 };
