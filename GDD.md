@@ -3621,4 +3621,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D833** (Alertes mineures, D202, D446, D449, D804 B, D829, 2026-11-16 17:1x, réponse de l'utilisateur à Q-alert_population_visible) : la ligne « Population pleine » du fil de messages reste **15 s** (au lieu des ~8 s de D446) et joue le **son court** prévu par D804 B (exception à « ligne muette » de D449 pour cette alerte) : l'utilisateur ne l'avait pas vue pendant l'essai alors qu'elle était entrée au fil.
 
-Prochain numéro : **D834**.
+**D834** (Audio des bâtiments, D832, 2026-11-16 17:2x, réécoute de l'utilisateur) : son de sélection de l'**Écurie = s_horse6_snort** (le B du tour 6 coupé à 0,48 s : seulement l'ébrouement « pfff » de la fin, 0,94 s, sans le hennissement).
+
+Prochain numéro : **D835**.

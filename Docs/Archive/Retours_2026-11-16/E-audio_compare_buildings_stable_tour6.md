@@ -40,3 +40,4 @@ Commande complète :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 audio_compare_buildings_stable_cut -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
 Durée : moins d'1 min (2 sons, Entrée = suivant). Réponse attendue : `A` (le coupé, élu pour l'Écurie), `B`, ou `REGLAGE: ...`.
 Reponse D832 : _
+Reponse: A (le B coupé, ébrouement seul) ; utilisateur, 2026-11-16 17:2x ; D834 ; élection dans HOLAudioTable.as en tête de la section Arwen
