@@ -80,7 +80,9 @@ while (((Get-Date) - $Start).TotalSeconds -lt $TimeoutSeconds) {
 Get-Process -Id $Process.Id -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
 Exit-EditorSlot
 if (Test-Path $Log) {
-    Get-Content $Log | Select-String -Pattern "Scenario |Test sequence|Production:|Technology:|LogHOLTest: Error|Error:" | Select-Object -Last 40 | ForEach-Object { $_.Line }
+    # The engine's 20 smoke-test lines under -culture=fr are one line here (CheckLog.ps1, check_log_test.ps1).
+    . (Join-Path $PSScriptRoot "CheckLog.ps1")
+    Select-CheckLogLines @(Get-Content $Log)
 }
 Write-Host "check $Name : $Result ($([int]((Get-Date) - $Start).TotalSeconds) s)"
 if ($Result -eq "PASS") { exit 0 } else { exit 1 }

@@ -71,6 +71,17 @@ public:
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
 	int32 GetLocalSlot() const;
 
+	/**
+	 * The minor alerts (D202, HOLAlertRules.as): the shown player's places taken and given (D282) and the HUD's real time (s).
+	 * False for a spectator or before the player state arrives.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UI")
+	bool GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const;
+
+	/** A minor alert's line in the C++ screen's thread of messages (D446), on this machine only. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
+	void AddThreadLine(const FText& Line);
+
 	/** A HUD panel, the C++ screen's look (rounded, HOLUIStyle::HUDPanel), the only kind of widget taking clicks. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|UI")
 	UBorder* MakePanel(FName Name);

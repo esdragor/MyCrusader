@@ -41,3 +41,27 @@ namespace HOLAlertRules
 		return NSLOCTEXT("HOLGameScreen", "PopulationFull", "Population pleine");
 	}
 }
+
+// D804 B (Q-alerts-minor): a unit or a building of the player attacked where the camera does not look: a line (and a short sound),
+// at most once per AttackRepeatSeconds, however many hits land meanwhile.
+struct FHOLAttackAlertWatch
+{
+	// When the last line went (seconds, the HUD's real time).
+	float LastAlertSeconds = -1000.0;
+}
+
+namespace HOLAlertRules
+{
+	// D804 B: "attaque ailleurs" once per 30 s.
+	const float AttackRepeatSeconds = 30.0;
+
+	// True when the attacked elsewhere line goes now: a hit on something of the player out of the camera's view, the last line
+	// RepeatSeconds old or more. A hit in view says nothing (the player sees it) and does not delay the next line.
+	bool ShouldAlertAttackedElsewhere(FHOLAttackAlertWatch& Watch, bool bHitInView, float NowSeconds, float RepeatSeconds)
+	{
+		if (bHitInView || NowSeconds - Watch.LastAlertSeconds < RepeatSeconds)
+			return false;
+		Watch.LastAlertSeconds = NowSeconds;
+		return true;
+	}
+}

@@ -28,6 +28,6 @@ hol.Select.BoxGround -16800 3500 -15200 5500
 waitlog Selection: 6 units (own)
 hol.Camera.Focus -13200 4500
 frames 5
-hol.Select.ClickUnit -2 order enemy
+hol.Select.ClickUnit -2 order slot=1
 note 2. Clic droit donné sur le héros ennemi. Regarde le rang autour de lui : AVEC RankSlide 1, les soldats de derrière s'insèrent et le rang glisse (quelques secondes) pour faire une place ; aucun frappeur n'est chassé du combat. SANS (0) : ils restent plantés derrière.
 note À toi ensuite : sélectionne d'autres Hommes d'armes, reclique droit sur un ennemi serré (au besoin hol.Units.SpawnHere 6 ManAtArms 0 400 pour en refaire naître au centre de l'écran).

@@ -1,46 +1,31 @@
-# Ecoute : le son de SELECTION du CHAMP DE TIR, tour 5 : arc long, arbalete, volee d'archers, ENREGISTRES (echantillons libres), dix variantes chacune, Entree = variante suivante
-# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+# Ecoute : le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre, cinq variantes du MEME son, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. D826 : la sorte de son G du tour 5 est elue, il faut une version propre ; A = le G du tour 5 tel quel (reference), B a E = le meme enregistrement, non coupe, sans saturation, du plus clair (B, aucun filtre) au plus doux (E, passe-bas 1,5 kHz). Jamais choisi a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
-# le Champ de tir que tu ecoutes, finie et a toi, posee derriere le centre (la place du Champ de tir d'archers.txt), camera dessus : l'ecran montre le batiment du son, pas le Forum.
+# le Champ de tir que tu ecoutes, fini(e) et a toi, pose(e) derriere le centre, camera dessus : l'ecran montre le batiment du son, pas le Forum.
 hol.Cheat.SpawnBuilding ArcheryRange 0 -3800 4600
 waitlog Cheat: spawned ArcheryRange of slot 0
 hol.Camera.FocusNear -3800 4600
 frames 10
-note Ecoute le son de SELECTION du CHAMP DE TIR, tour 5 : arc long, arbalete, volee d'archers, ENREGISTRES (echantillons libres). 10 sons, 1 cue, dix variantes A a J chacune.
+note Ecoute le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre. 5 sons, 1 cue : A = le G du tour 5 (reference, mauvaise qualite), B = propre sans filtre, C = passe-bas 6 kHz, D = passe-bas 3 kHz, E = passe-bas 1,5 kHz (le plus doux).
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Range C.
-note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+note Reponds : ta lettre preferee (B a E), ou REGLAGE: <ce qui ne va pas> (encore sale, trop aigu, trop long...).
 capture audio_compare_buildings_range_start
 waitkey Entree : commencer par Building.Range A
 hol.Audio.Candidate Building.Range A
 waitlog candidate played Building.Range A
-waitkey Building.Range A (s_shot5_longbow_a) vient de jouer. Entree : Building.Range B
+waitkey Building.Range A (s_shot5_bow) vient de jouer. Entree : Building.Range B
 hol.Audio.Candidate Building.Range B
 waitlog candidate played Building.Range B
-waitkey Building.Range B (s_shot5_longbow_b) vient de jouer. Entree : Building.Range C
+waitkey Building.Range B (s_shot6_bow_full) vient de jouer. Entree : Building.Range C
 hol.Audio.Candidate Building.Range C
 waitlog candidate played Building.Range C
-waitkey Building.Range C (s_shot5_longbow_set) vient de jouer. Entree : Building.Range D
+waitkey Building.Range C (s_shot6_bow_lp6k) vient de jouer. Entree : Building.Range D
 hol.Audio.Candidate Building.Range D
 waitlog candidate played Building.Range D
-waitkey Building.Range D (s_shot5_nock) vient de jouer. Entree : Building.Range E
+waitkey Building.Range D (s_shot6_bow_lp3k) vient de jouer. Entree : Building.Range E
 hol.Audio.Candidate Building.Range E
 waitlog candidate played Building.Range E
-waitkey Building.Range E (s_shot5_crossbow_a) vient de jouer. Entree : Building.Range F
-hol.Audio.Candidate Building.Range F
-waitlog candidate played Building.Range F
-waitkey Building.Range F (s_shot5_crossbow_b) vient de jouer. Entree : Building.Range G
-hol.Audio.Candidate Building.Range G
-waitlog candidate played Building.Range G
-waitkey Building.Range G (s_shot5_bow) vient de jouer. Entree : Building.Range H
-hol.Audio.Candidate Building.Range H
-waitlog candidate played Building.Range H
-waitkey Building.Range H (s_shot5_volley_a) vient de jouer. Entree : Building.Range I
-hol.Audio.Candidate Building.Range I
-waitlog candidate played Building.Range I
-waitkey Building.Range I (s_shot5_arrow_pass) vient de jouer. Entree : Building.Range J
-hol.Audio.Candidate Building.Range J
-waitlog candidate played Building.Range J
-waitkey Building.Range J (s_shot5_bolt_hit) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Range E (s_shot6_bow_lp1k5) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
-note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
+note Fin de l'ecoute. Dis ta lettre preferee (B a E), ou REGLAGE: <ce qui ne va pas>.

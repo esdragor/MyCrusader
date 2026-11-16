@@ -42,6 +42,25 @@ int32 UHOLScriptScreen::GetLocalSlot() const
 	return PlayerState ? PlayerState->GetPlayerIndex() : INDEX_NONE;
 }
 
+bool UHOLScriptScreen::GetPopulationNow(int32& OutUsed, int32& OutCap, float& OutRealSeconds) const
+{
+	const UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>();
+	const AHOLPlayerState* PlayerState = GameScreen ? GameScreen->GetBoundPlayerState() : nullptr;
+	const UWorld* World = GetWorld();
+	OutUsed = PlayerState ? PlayerState->GetPopulationUsed() : 0;
+	OutCap = PlayerState ? PlayerState->GetPopulationCap() : 0;
+	OutRealSeconds = World ? static_cast<float>(World->GetRealTimeSeconds()) : 0.f;
+	return PlayerState != nullptr && World != nullptr;
+}
+
+void UHOLScriptScreen::AddThreadLine(const FText& Line)
+{
+	if (UHOLGameScreen* GameScreen = GetTypedOuter<UHOLGameScreen>())
+	{
+		GameScreen->AddThreadLine(Line);
+	}
+}
+
 UBorder* UHOLScriptScreen::MakePanel(const FName Name)
 {
 	UBorder* Panel = WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), Name);
