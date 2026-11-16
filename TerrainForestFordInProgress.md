@@ -44,3 +44,5 @@ Regles pures Angelscript seulement (`Script\Terrain\HOLTerrainRules.as` + `_Test
 ## Appels (un trait par appel)
 |||||||||||||||||||||||||||||
 - 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D810 (Q-forest-ford) = Q1 A (zone peinte) + Q2 A (cavalerie 80 %, siège 70 %, gué 120 % ; défaut codé) ; reste le branchement C++ du mouvement et du combat (ligne [ ] Galadriel).
+
+- 2026-11-16 21:36 (HALDIR-1116n, D836) : la vitesse marais/route est la regle C++ seule (FHOLTerrainRules) ; HOLTerrainRules.as ne garde que les reglages et ForestSpeedPercent / FordDamageTaken / StopsCharge (+ Contains pour StopsCharge) jusqu'au branchement de D810 ; le test de la foret passe par HOLTerrain::ServerScaledSpeed (C++). Commit c377240.

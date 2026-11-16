@@ -1,4 +1,4 @@
-﻿# Quick check of the project (D267), on two levels (D327):
+# Quick check of the project (D267), on two levels (D327):
 #   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
 #     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
 #     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
@@ -208,6 +208,9 @@ if ($Parts -contains "values") {
         # E3-05: Talents.csv grid (port of HOLTalentTableTests.cpp: 8 rows, 3 families, 7 cells).
         $TalentTableOutput = @(python -I (Join-Path $PSScriptRoot "talent_table_test.py") 2>&1)
         $ValuesChecks["talent_table_test.py ($($TalentTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-13: Tools/Data/Maps.csv says what the code table (HOLMapRules.cpp) says (ported from the Map.Csv test of HOLMapRulesTests.cpp).
+        $MapTableOutput = @(python -I (Join-Path $PSScriptRoot "map_table_test.py") 2>&1)
+        $ValuesChecks["map_table_test.py ($($MapTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
