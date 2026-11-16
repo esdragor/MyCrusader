@@ -8,7 +8,7 @@
 #include "HeroesOfLibertyUILog.h"
 #include "HOLVersion.h"
 #include "Kismet/KismetSystemLibrary.h"
-#include "Screens/HOLConfirmDialog.h"
+#include "Screens/HOLConfirmDialogScreen.h"
 #include "Screens/HOLMultiplayerScreen.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
@@ -128,14 +128,8 @@ void UHOLTitleScreen::HandleQuit()
 
 void UHOLTitleScreen::AskToQuit(APlayerController* PlayerController)
 {
-	UHOLRootLayout* Layout = UHOLRootLayout::Get(PlayerController);
-	UHOLConfirmDialog* Dialog = Layout ? Cast<UHOLConfirmDialog>(Layout->PushModal(UHOLConfirmDialog::StaticClass())) : nullptr;
-	if (!Dialog)
-	{
-		return;
-	}
 	const TWeakObjectPtr<APlayerController> WeakController(PlayerController);
-	Dialog->SetUp(LOCTEXT("QuitQuestion", "Quitter le jeu ?"), LOCTEXT("QuitConfirm", "Quitter"), [WeakController]()
+	UHOLConfirmDialogScreen::Ask(PlayerController, LOCTEXT("QuitQuestion", "Quitter le jeu ?"), LOCTEXT("QuitConfirm", "Quitter"), [WeakController]()
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("Title screen: Quit"));
 		UKismetSystemLibrary::QuitGame(WeakController.Get(), WeakController.Get(), EQuitPreference::Quit, false);

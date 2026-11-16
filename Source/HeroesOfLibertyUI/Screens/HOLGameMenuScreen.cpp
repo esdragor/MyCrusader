@@ -1,4 +1,4 @@
-﻿#include "Screens/HOLGameMenuScreen.h"
+#include "Screens/HOLGameMenuScreen.h"
 
 #include "CommonTextBlock.h"
 #include "Components/VerticalBox.h"
@@ -16,7 +16,7 @@
 #include "Net/HOLManagerClient.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLPlayerController.h"
-#include "Screens/HOLConfirmDialog.h"
+#include "Screens/HOLConfirmDialogScreen.h"
 #include "Screens/HOLEndBannerScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "UObject/UObjectIterator.h"
@@ -110,14 +110,9 @@ bool UHOLGameMenuScreen::AskToSurrender(APlayerController* PlayerController)
 	{
 		return false;
 	}
-	UHOLConfirmDialog* Dialog = Cast<UHOLConfirmDialog>(Layout->PushModal(UHOLConfirmDialog::StaticClass()));
-	if (!Dialog)
-	{
-		return false;
-	}
 	// Yes: the server defeats this player (D356), then the menu closes on the match; No: back to the menu.
 	const TWeakObjectPtr<APlayerController> WeakController(PlayerController);
-	Dialog->SetUp(LOCTEXT("SurrenderQuestion", "Abandonner la partie ?"), FText::GetEmpty(), [WeakController]()
+	if (!UHOLConfirmDialogScreen::Ask(PlayerController, LOCTEXT("SurrenderQuestion", "Abandonner la partie ?"), FText::GetEmpty(), [WeakController]()
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("Game menu: Surrender"));
 		// The menu first: the end banner then opens over the match (at once in solo or on a listen server).
@@ -129,7 +124,10 @@ bool UHOLGameMenuScreen::AskToSurrender(APlayerController* PlayerController)
 		{
 			Controller->RequestSurrender();
 		}
-	});
+	}))
+	{
+		return false;
+	}
 	return true;
 }
 
