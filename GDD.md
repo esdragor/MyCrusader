@@ -3623,4 +3623,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D834** (Audio des bâtiments, D832, 2026-11-16 17:2x, réécoute de l'utilisateur) : son de sélection de l'**Écurie = s_horse6_snort** (le B du tour 6 coupé à 0,48 s : seulement l'ébrouement « pfff » de la fin, 0,94 s, sans le hennissement).
 
-Prochain numéro : **D835**.
+**D835** (Méthode de développement, D830, 2026-11-16 18:0x, validation du plan Docs\Rapports\ANALYSE-1116a.md par l'utilisateur) : l'ORDRE du plan est validé tel quel : étape 0 = deux pilotes (1. le chat : tests en script, suppression de HOLChatRules.cpp, essai d'une RPC écrite en script ; 2. HOLGameMenu), étape 1 = un seul lot C++ (liaisons script, points d'appel génériques), puis étapes 2 à 6. **Q1 (tests de la simulation Mass) : décidée APRÈS le pilote** (harnais C++ si il tient en un lot). **Q2 (rythme) : A, confirmée par l'utilisateur le 2026-11-16 à 19:5x** (lancement de la première séance de migration, interface de choix) : migration SEULE dans des séances dédiées pendant 3 à 5 séances (étapes 0 à 3, celles qui suppriment le plus de builds), puis moitié migration, moitié fonctions. Première séance : 2026-11-16 19:48-23:00, autonome, fusion groupée sans push. Les décisions D483 et D484 sont à réécrire avec l'utilisateur à la sortie de l'étape 0 (mesures des pilotes).
+
+Prochain numéro : **D836**.
