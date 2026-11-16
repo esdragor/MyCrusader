@@ -27,3 +27,18 @@ int32 UHOLUnitAbilityReadLibrary::GetRageIntervalMs(const int32 IntervalMs)
 {
 	return HOLUnitAbility::GetRageIntervalMs(IntervalMs);
 }
+
+int32 UHOLUnitAbilityReadLibrary::GetRageCooldownEndMs(const int32 StartMs)
+{
+	return HOLUnitAbility::GetRageCooldownEndMs(StartMs);
+}
+
+int32 UHOLUnitAbilityReadLibrary::GetRageEffectEndMs(const int32 StartMs)
+{
+	return HOLUnitAbility::GetRageEffectEndMs(StartMs);
+}
+
+bool UHOLUnitAbilityReadLibrary::IsRageEffectEnded(const int32 StartMs, const int32 NowMs, const float Health)
+{
+	return HOLUnitAbility::IsRageEffectEnded(StartMs, NowMs, Health);
+}
