@@ -32,7 +32,7 @@ namespace HOLSite
 	/**
 	 * S6 (D699): the whole gold to give the owner of Sites held sites for this step (0 most steps). Carry: the fractions kept from one step to
 	 * the next (rate x sites, in gold x steps), so a minute of a site gives exactly its rate whatever the simulation rate (the pattern of
-	 * HOLRelay::TerritoryXP). A negative count or rate is nothing. The same as HOLSiteVictory::GoldStep of the script.
+	 * HOLRelay::TerritoryXP of Script/Relays/HOLRelayRules.as). A negative count or rate is nothing. The same as HOLSiteVictory::GoldStep of the script.
 	 */
 	HEROESOFLIBERTY_API int32 GoldStep(int32& Carry, int32 Sites, int32 RatePerMinute, int32 StepsPerSecond);
 

@@ -44,8 +44,8 @@ struct HEROESOFLIBERTY_API FHOLRelayXPResult
  * UHOLGarrisonBoard: UHOLRelaySubsystem::OnStepEnded counts the units of each zone (Mass / by-step: C++) and asks the world's board, once per relay
  * and per step, for the relay after the step (RelayStep) and, once per slot, for the territory XP of the step (RelayTerritoryXP). The script
  * subclass (Script/Relays/HOLRelayBoardScript.as) answers by HOLRelay::StepWith and HOLRelay::TerritoryXPAt of Script/Relays/HOLRelayRules.as.
- * Abstract: only a script subclass is born. Without it (no script compiled) the server keeps the C++ rules (HOLRelay::Step, HOLRelay::TerritoryXP),
- * and the default of each event is that same C++ rule, so nothing changes until the script board exists. NOT bridged: HOLRelay::MakeView and
+ * Abstract: only a script subclass is born. Without it (no script compiled) there is NO C++ rule any more (the copy was removed): the bridge is inert
+ * and safe (the relay keeps its state, the XP is nil) and logs an error. NOT bridged: HOLRelay::MakeView and
  * FillPercent, which fill the REPLICATED FHOLRelayView (network exception: they stay C++). Server and solo only.
  */
 UCLASS(Abstract)
@@ -57,11 +57,11 @@ public:
 	/** The world's relay board (its script subclass), or null (no script compiled, or no world). */
 	static UHOLRelayBoard* Find(const UWorld* World);
 
-	/** The relay after one step: the board's answer when the script board exists, else HOLRelay::Step (the server's call, once per relay and per step). */
+	/** The relay after one step: the board's answer when the script board exists, else the relay unchanged and an error logged (the server's call, once per relay and per step). */
 	static FHOLRelayState StepForRelay(const UWorld* World, const FHOLRelayState& State, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot,
 		int32 HoldSteps, int32 DecaySteps);
 
-	/** The territory XP of one step: the board's answer when the script board exists, else HOLRelay::TerritoryXP. Carry is updated in place. */
+	/** The territory XP of one step: the board's answer when the script board exists, else 0 and an error logged. Carry is updated in place. */
 	static int32 TerritoryXPFor(const UWorld* World, int32& Carry, int32 Relays, int32 Centres, int32 StepsPerSecond);
 
 	/** The board's answer for a relay (the native event below, i.e. the script rule in its script subclass). */
@@ -78,14 +78,14 @@ public:
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
-	/** Overridden by the script board; the default is the C++ rule HOLRelay::Step (same answer). */
+	/** Overridden by the script board; the default is inert (the state unchanged, an error logged). */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Relay")
 	FHOLRelayBoardState RelayStep(const FHOLRelayBoardState& State, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot, int32 HoldSteps,
 		int32 DecaySteps);
 	virtual FHOLRelayBoardState RelayStep_Implementation(const FHOLRelayBoardState& State, const TArray<int32>& UnitsBySlot, const TArray<int32>& TeamBySlot,
 		int32 HoldSteps, int32 DecaySteps);
 
-	/** Overridden by the script board; the default is the C++ rule HOLRelay::TerritoryXP (same answer). */
+	/** Overridden by the script board; the default is inert (no XP, the carry unchanged, an error logged). */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Relay")
 	FHOLRelayXPResult RelayTerritoryXP(int32 Carry, int32 Relays, int32 Centres, int32 StepsPerSecond);
 	virtual FHOLRelayXPResult RelayTerritoryXP_Implementation(int32 Carry, int32 Relays, int32 Centres, int32 StepsPerSecond);

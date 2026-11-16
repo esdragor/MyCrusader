@@ -154,74 +154,6 @@ void Test_RelayTerritoryXP(FUnitTest& T)
 	T.AssertEquals(0, Total, "nothing held: no XP (a negative count is no holding)");
 }
 
-// The simulation's copy of the rules (C++, HOLRelay::Step) gives the same relay as the script's on every case (MIG-J-Relay, extended): each
-// owner (nobody, each of the four slots, a slot out of the arrays), each count (0, 1, 2, 100, one step short, full), each presence of the four
-// slots (0 to 3 units each), five arrangements of the teams (each alone, two pairs, crossed pairs, one against three, all allied) and a sixth
-// where the zone counts three slots only (arrays of unequal lengths). Both relays are computed by their own copy, never written by hand.
-void Test_RelayScriptAndSimulationRulesAgree(FUnitTest& T)
-{
-	TArray<int> Owners;
-	Owners.Add(-1);
-	Owners.Add(0);
-	Owners.Add(1);
-	Owners.Add(2);
-	Owners.Add(3);
-	Owners.Add(7);
-	TArray<int> Helds;
-	Helds.Add(0);
-	Helds.Add(1);
-	Helds.Add(2);
-	Helds.Add(100);
-	Helds.Add(HOLRelay::HoldSteps() - 1);
-	Helds.Add(HOLRelay::HoldSteps());
-	int Cases = 0;
-	int Differences = 0;
-	int Captures = 0;
-	int Frozen = 0;
-	for (int O = 0; O < Owners.Num(); O++)
-	{
-		for (int H = 0; H < Helds.Num(); H++)
-		{
-			for (int A = 0; A < 6; A++)
-			{
-				const TArray<int> Teams = RelayArrangement(A == 5 ? 0 : A);
-				for (int Presence = 0; Presence < 256; Presence++)
-				{
-					TArray<int> Units;
-					int Rest = Presence;
-					for (int Slot = 0; Slot < 4; Slot++)
-					{
-						Units.Add(Rest % 4);
-						Rest = Rest / 4;
-					}
-					if (A == 5)
-						Units.RemoveAt(3);
-					HOLRelay::FHOLRelayState State;
-					State.Owner = Owners[O];
-					State.Taker = Helds[H] > 0 ? (O + H) % 4 : -1;
-					State.Held = Helds[H];
-					const HOLRelay::FHOLRelayState Script = HOLRelay::Step(State, Units, Teams);
-					int OwnerOut = -9;
-					int TakerOut = -9;
-					int HeldOut = -9;
-					HOLRelayRules::StepRelay(State.Owner, State.Taker, State.Held, Units, Teams, HOLRelay::HoldSteps(), HOLRelay::DecaySteps, OwnerOut, TakerOut, HeldOut);
-					Cases++;
-					if (Script.Owner != OwnerOut || Script.Taker != TakerOut || Script.Held != HeldOut)
-						Differences++;
-					if (Script.Owner != State.Owner)
-						Captures++;
-					if (Script.Held == State.Held && State.Held > 0)
-						Frozen++;
-				}
-			}
-		}
-	}
-	T.AssertEquals(Owners.Num() * Helds.Num() * 6 * 256, Cases, "every case compared");
-	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
-	T.AssertTrue(Captures > 0, "the table holds captures (" + Captures + ")");
-	T.AssertTrue(Frozen > 0, "the table holds frozen counts (" + Frozen + ")");
-}
-
 // R5, the C++ HeroesOfLiberty.Relays.Ring ported (its FillPercent part; MakeView and FHOLRelayView::Describe stay in C++: the view is the
 // replicated struct, not exposed to the script): what a relay's ring shows, the share of the capture held.
 void Test_RelayRing(FUnitTest& T)
@@ -248,33 +180,10 @@ void Test_RelayRing(FUnitTest& T)
 	T.AssertEquals(99, HOLRelay::FillPercent(Short, HOLRelay::HoldSteps()), "one step short of the capture: 99");
 }
 
-// The provisional values and the territory XP of the simulation (C++) are the script's.
-void Test_RelayConstantsAndXPAgreeWithTheSimulation(FUnitTest& T)
+// The provisional values the simulation (C++) still holds (the subsystem's capture time and recession) are the script's. The territory XP is script-only now
+// (the C++ copy and its XP rates were removed: tested by Test_RelayTerritoryXP above and HeroesOfLiberty.Relay.ServerBoard).
+void Test_RelayConstantsAgreeWithTheSimulation(FUnitTest& T)
 {
 	T.AssertEquals(HOLRelay::HoldSeconds, HOLRelayRules::GetHoldSeconds(), "the capture time");
 	T.AssertEquals(HOLRelay::DecaySteps, HOLRelayRules::GetDecaySteps(), "the recession");
-	T.AssertEquals(HOLRelay::RelayXPPerMinute, HOLRelayRules::GetRelayXPPerMinute(), "the relay's rate");
-	T.AssertEquals(HOLRelay::CentreXPPerMinute, HOLRelayRules::GetCentreXPPerMinute(), "the centre's rate");
-	HOLRelay::FHOLTerritoryCarry Script;
-	int SimCarry = 0;
-	int Differences = 0;
-	int ScriptTotal = 0;
-	int SimTotal = 0;
-	for (int Step = 0; Step < 3000; Step++)
-	{
-		// Negative counts too (no holding, the rule's Max(0, ...)).
-		const int Relays = (Step / 700) % 5 - 1;
-		const int Centres = (Step / 900) % 4 - 1;
-		const int ScriptXP = HOLRelay::TerritoryXP(Script, Relays, Centres);
-		int NewCarry = 0;
-		const int SimXP = HOLRelayRules::TerritoryXPStep(SimCarry, Relays, Centres, HOLRelay::StepsPerSecond, NewCarry);
-		SimCarry = NewCarry;
-		ScriptTotal += ScriptXP;
-		SimTotal += SimXP;
-		if (ScriptXP != SimXP)
-			Differences++;
-	}
-	T.AssertEquals(0, Differences, "the same XP at every step");
-	T.AssertEquals(ScriptTotal, SimTotal, "the same total");
-	T.AssertTrue(ScriptTotal > 0, "the case does give XP");
 }

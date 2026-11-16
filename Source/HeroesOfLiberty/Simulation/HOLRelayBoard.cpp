@@ -23,6 +23,17 @@ namespace
 		Board.Held = State.Held;
 		return Board;
 	}
+
+	// The C++ rule is gone (the script is the only source): without the board the answer is inert; said once, not at every step.
+	void LogNoBoard(const TCHAR* What)
+	{
+		static bool bLogged = false;
+		if (!bLogged)
+		{
+			bLogged = true;
+			UE_LOG(LogTemp, Error, TEXT("HOLRelayBoard: %s asked without the script board (Script/Relays/HOLRelayBoardScript.as not compiled): the relay rules are script-only, the answer is inert"), What);
+		}
+	}
 }
 
 UHOLRelayBoard* UHOLRelayBoard::Find(const UWorld* World)
@@ -56,7 +67,8 @@ FHOLRelayState UHOLRelayBoard::StepForRelay(const UWorld* World, const FHOLRelay
 	UHOLRelayBoard* Board = Find(World);
 	if (!Board)
 	{
-		return HOLRelay::Step(State, UnitsBySlot, TeamBySlot, HoldSteps, DecaySteps);
+		LogNoBoard(TEXT("StepForRelay"));
+		return State;
 	}
 	return ToState(Board->StepNow(ToBoard(State), UnitsBySlot, TeamBySlot, HoldSteps, DecaySteps));
 }
@@ -66,7 +78,8 @@ int32 UHOLRelayBoard::TerritoryXPFor(const UWorld* World, int32& Carry, const in
 	UHOLRelayBoard* Board = Find(World);
 	if (!Board)
 	{
-		return HOLRelay::TerritoryXP(Carry, Relays, Centres, StepsPerSecond);
+		LogNoBoard(TEXT("TerritoryXPFor"));
+		return 0;
 	}
 	const FHOLRelayXPResult Result = Board->TerritoryXPNow(Carry, Relays, Centres, StepsPerSecond);
 	Carry = Result.Carry;
@@ -87,14 +100,15 @@ FHOLRelayXPResult UHOLRelayBoard::TerritoryXPNow(const int32 Carry, const int32 
 FHOLRelayBoardState UHOLRelayBoard::RelayStep_Implementation(const FHOLRelayBoardState& State, const TArray<int32>& UnitsBySlot,
 	const TArray<int32>& TeamBySlot, const int32 HoldSteps, const int32 DecaySteps)
 {
-	// The C++ rule, the same answer as the script's.
-	return ToBoard(HOLRelay::Step(ToState(State), UnitsBySlot, TeamBySlot, HoldSteps, DecaySteps));
+	LogNoBoard(TEXT("RelayStep"));
+	return State;
 }
 
 FHOLRelayXPResult UHOLRelayBoard::RelayTerritoryXP_Implementation(int32 Carry, const int32 Relays, const int32 Centres, const int32 StepsPerSecond)
 {
+	LogNoBoard(TEXT("RelayTerritoryXP"));
 	FHOLRelayXPResult Result;
-	Result.Award = HOLRelay::TerritoryXP(Carry, Relays, Centres, StepsPerSecond);
+	Result.Award = 0;
 	Result.Carry = Carry;
 	return Result;
 }
