@@ -40,3 +40,5 @@ RECETTE PASS (RECETTE-1115a, intégrateur indépendant, 2026-11-15 11:19 ; workt
 - Réserves cherchées pour faire échouer, non bloquantes : (1) la fondation est à GAUCHE du centre du cadre (posée à (-14800, -3600) pour un clic visé à (-14800, -2500)), collée à la lisière de la forêt, alors que le `.look` dit « au centre du cadre » ; (2) le panneau du scénario affiche « en préparation… » sur les 3 captures (la note n'arrive qu'à la fin) ; (3) les points bleus de la minicarte sont très petits (1 à 2 px sur la capture 1920x1080) : la dispersion se lit mieux au journal qu'à l'œil ; (4) une unité rouge de l'IA près du départ, « Population 5 / 0 » : non jugés.
 - Inchangé : GESTE interne (`hol.Select.*`), SON non entendu (`-nosound`).
 - Commande de la fiche (Haldir) gardée : binaire de Haldir non périmé (Get-StaleBinaryProblem vide à 11:18, dll 10:10, HEAD fffe788). NON REJOUÉ depuis Haldir : cette recette ne porte que sur le build de Faramir ; Haldir ne contient pas 753fd00.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)

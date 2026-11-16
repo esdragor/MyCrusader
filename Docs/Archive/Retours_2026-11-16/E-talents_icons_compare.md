@@ -27,3 +27,5 @@ RECETTE PASS (RECETTE-1115a, intégrateur indépendant, 2026-11-15 11:23 ; workt
 - Réserves cherchées pour faire échouer, non bloquantes : (1) sur talents_icons_window l'infobulle de « Choix conseillé » (« Pas de choix conseillé tant qu'aucun talent n'est pris ou qu'aucun point n'est à dépenser ») reste affichée sous le bouton, en très petit texte (même police que l'infobulle de revenu) ; (2) sur la même capture le bloc du héros porte en plus un texte jaune « Talent pris : Pas de l'Aube — ... » qui l'allonge vers le haut ; (3) sur talents_icons_window_1080 l'Arbre est ouvert alors que la note du panneau dit encore « 2/2 : fenêtre fermée » ; (4) la liste des joueurs affiche « Vous 3 vies » contre « IA Normal 2 : 2 vies » : non jugé.
 - Inchangé : GESTE réel au sens de la fiche (curseur virtuel de Slate, pas la souris du bureau), SON sans objet.
 - Commande de la fiche (Galadriel) gardée : binaire de Galadriel non périmé (Get-StaleBinaryProblem vide à 11:18, dll 09:19, HEAD 85c0735). NON REJOUÉ depuis Galadriel : cette recette ne porte que sur le build de Faramir ; Galadriel ne contient pas 753fd00.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)

@@ -16,3 +16,5 @@ NON VÉRIFIÉ : vrai clic sur la liste (geste interne) ; que « Lancer » avec O
 
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Faramir\Tools\Scenarios\play.ps1 sites_option -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)

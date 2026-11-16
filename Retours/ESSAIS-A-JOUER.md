@@ -1,5 +1,7 @@
 # ESSAIS À JOUER (nettoyage du 2026-11-13 soir, étape 0a de l'Auto_Journey)
 
+**À JOUR AU 2026-11-16** : les 10 essais de la séance du 2026-11-15 sont joués et archivés dans `Docs\Archive\Retours_2026-11-16\` (6 OK ; signals_altclick REGLAGE D825 ; audio barracks rien, range G, stable G, qualité mauvaise D826). **À jouer maintenant : 0.** Restent dans ce dossier, non prêts : `E-nomad_ai.md` (LOGIQUE SEULEMENT, forum déjà achevé : D816 150 s à coder), `E-deploy.md` (statut contradictoire), `E-audio_panel.md` (NE PAS JOUER), `E-playtest_hero_army.md` (LOGIQUE SEULEMENT, spin D641). Tout ce qui suit est l'historique.
+
 **Prêts à donner : 0** au nettoyage de 16:1x (aucune fiche E-* n'avait un pré-vol PASS sur une copie à jour). **Mise à jour 18:0x (ARWEN-1113d)** : 2 écoutes de sons passées `[À ESSAYER]` (Pierre, Forge ; voir « SONS » ci-dessous) : l'écran est vu, le son ne peut être jugé que par toi.
 
 Version précédente (matin du 2026-11-13) : `Docs\Archive\Retours_2026-11-13_soir\ESSAIS-A-JOUER_2026-11-13_matin.md`. Essais joués à 14:20 (`resources_compare` = arbre C, `legions_roster_gesture` = OK) : reportés et archivés dans `Docs\Archive\Retours_2026-11-13\`.

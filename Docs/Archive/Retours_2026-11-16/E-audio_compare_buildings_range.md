@@ -41,3 +41,5 @@ Agent ARWEN-1115e, 2026-11-15 11:32-11:45, worktree C:\Users\baudo\Documents\Her
 - Commande complète (règle 13), copiable telle quelle :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings_range -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 - Inchangé : GESTE interne, SON non entendu (`-nosound`, aucun son entendu par l'agent) : reste LOGIQUE SEULEMENT tant que tu n'as pas écouté.
+
+Reponse: Building.Range G (s_shot5_bow, arc), « mais ce que tu m'as donné est de mauvaise qualité ». (réponse donnée dans la conversation, 2026-11-16) Suite : GDD D826 (la sorte de son G est élue, une version propre est à trouver), ligne [ ] Arwen, AudioBuildingsInProgress.md.

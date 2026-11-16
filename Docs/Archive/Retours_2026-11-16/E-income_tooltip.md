@@ -31,3 +31,5 @@ RECETTE PASS (RECETTE-1115a, intégrateur indépendant, 2026-11-15 11:22 ; workt
 - Réserves cherchées pour faire échouer, non bloquantes : (1) le texte de l'infobulle est TRÈS petit (environ 7 px de haut à 1280x720, à la limite du lisible sur la capture) : déjà posé dans Q-income-tooltip-taille ; (2) l'infobulle de l'or recouvre le début du titre du panneau du scénario (« Scénario » en partie caché) ; (3) le chiffre +545 bois/min pour 5 Paysans n'est pas recoupé par un autre calcul (non jugé) ; (4) aucune capture en 1920x1080.
 - Inchangé : GESTE réel au sens de la fiche (curseur virtuel de Slate, pas la souris du bureau), SON sans objet.
 - Commande de la fiche (Galadriel) gardée : binaire de Galadriel non périmé (Get-StaleBinaryProblem vide à 11:18, dll 09:19, HEAD 85c0735). NON REJOUÉ depuis Galadriel : cette recette ne porte que sur le build de Faramir ; Galadriel ne contient pas 753fd00.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)

@@ -41,3 +41,5 @@ Agent ARWEN-1115e, 2026-11-15 11:32-11:45, worktree C:\Users\baudo\Documents\Her
 - Commande complète (règle 13), copiable telle quelle :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings_barracks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 - Inchangé : GESTE interne, SON non entendu (`-nosound`, aucun son entendu par l'agent) : reste LOGIQUE SEULEMENT tant que tu n'as pas écouté.
+
+Reponse: aucune lettre : « rien, c'est des cris de douleur que tu m'as donné, et de mauvaise qualité ». (réponse donnée dans la conversation, 2026-11-16) Suite : GDD D826, ligne [ ] Arwen (tour 6 Caserne), AudioBuildingsInProgress.md.

@@ -16,3 +16,5 @@ NON VÉRIFIÉ : pourquoi le temps du monde court à ~0,68 de l'horloge en -Rende
 Commande complète (règle 13, 2026-11-14) :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Haldir\Tools\Scenarios\play.ps1 signals_altclick -Root C:\Users\baudo\Documents\HeroesOfLiberty-Haldir`
 Durée : environ 40 s, aucune touche. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: REGLAGE : il faut que le signal soit animé, pas qu'un carré ; il faut qu'il se voie aussi dans le monde (une bannière, un « ! », une croix...) ; il faut que si je clique sur la minicarte au lieu du monde, ça marche aussi. (réponse donnée dans la conversation, 2026-11-16) Suite : GDD D825, ligne [ ] Haldir dans Auto_Journey_File.md, SignalsInProgress.md.

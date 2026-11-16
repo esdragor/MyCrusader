@@ -44,3 +44,5 @@ RECETTE PASS (RECETTE-1115a, integrateur independant, 2026-11-15 11:20 ; worktre
 - Reserves cherchees pour faire echouer, non bloquantes : (1) sur dc1v1_end le panneau du scenario affiche encore la note du temps 1 ("FENETRE OUVERTE : Bob est parti...") a cote de l'ecran Victoire : la note "FIN DE FENETRE" n'arrive qu'apres la capture ; (2) l'extinction du bandeau n'est toujours pas distinguable : sa place est couverte par le panneau des notes ; (3) le forum de Bob a DISPARU de l'image sur dc1v1_end (journal "Victory: slot 1 collapsed (0 units, 1 buildings)") alors que la note du temps 1 dit "sa base reste" : voulu a la defaite ou non, non juge.
 - Inchange : GESTE interne (hol.Net.FakeAbsent, pas de second jeu), SON non entendu.
 - Commande de la fiche (Glorfindel) gardee : binaire de Glorfindel non perime (Get-StaleBinaryProblem vide a 11:18, dll 09:58, HEAD a0828f9). NON REJOUE depuis Glorfindel : cette recette ne porte que sur le build de Faramir ; Glorfindel ne contient pas 753fd00.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)

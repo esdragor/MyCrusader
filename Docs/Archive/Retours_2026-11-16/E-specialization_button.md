@@ -18,3 +18,5 @@ NON VÉRIFIÉ : lisibilité de la case en cours à 1080p (capture en 1066x600 se
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 specialization_button -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
 Durée : environ 2 min (3 min max). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)

@@ -239,3 +239,4 @@ et distance minimale.
 - Appels : ~44 vus (arret). Aucun C++, aucun build.
 - 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D816 (Q-nomad-forum-duree) = B : 150 s pour 1 Paysan (PAS la reco A 75 s) ; à faire : `BuildingTypes.csv` MainCentre BuildTime 0 -> 150 + table .uasset + test + rejeu nomad_ai (ligne [ ] Haldir, C++).
 - 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D817 (Q-nomad-ia) = Q1 A + Q2 A : défauts codés ; reste l'envoi des autres Paysans vers la fondation (ligne [ ] Haldir).
+- 2026-11-16 (réponse de l'utilisateur, session principale, docs seulement) : essai nomad_start joué : OK ; fiche archivée dans Docs\Archive\Retours_2026-11-16\.
