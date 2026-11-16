@@ -199,6 +199,9 @@ if ($Parts -contains "values") {
         # B2: the exploration XP numbers (defaults and presets A/B/C) agree between Script/Heroes/HOLExplorationXPRules.as and its C++ twin.
         $ExplorationXPOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_accord_test.py") 2>&1)
         $ValuesChecks["exploration_xp_accord_test.py ($($ExplorationXPOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # MIG-J-UnitAbility: the necrotic rage numbers agree between the script tables (HOLUnitAbilityTable, HOLMoraleTable) and HOLUnitAbilityRules.h.
+        $UnitAbilityAccordOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_accord_test.py") 2>&1)
+        $ValuesChecks["unit_ability_accord_test.py ($($UnitAbilityAccordOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }

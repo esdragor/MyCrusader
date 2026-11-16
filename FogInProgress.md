@@ -384,3 +384,8 @@ ote dans fog_orders_flicker (+ .look flick_00..07, panel hide avant les captures
 - RESTE : Q-frames-refus.md en attente (defaut Warn) ; les 2 docs arrivent dans main par la fusion de fog.
 - 2026-11-14 (session principale, docs seulement) : essai `fog_orders` JOUE par l'utilisateur : OK (lignes d'ordre jaunes nettes au-dessus du brouillard). Fiche `E-fog_orders.md` archivée dans `Docs\Archive\Retours_2026-11-14\`.
 - 2026-11-14 12:5x (docs, reponse de l'utilisateur) : Q-frames-refus = **B** : check.ps1 -FrameWaits garde le defaut Warn ; Fail seulement pour les scenarios neufs ou reecrits ; bascule du defaut apres reecriture des 116 scenarios ; fiche archivee dans Docs\Archive\Retours_2026-11-14_b\.
+
+## 2026-11-16 soir, FARAMIR-1116m (migration D830, sans C++)
+- MIG-J-Siege-a f5af17c (20:27) : Test_SiegeFindEngine, Test_SiegeTechnologyHealth, Test_SiegeTechnologies ; rouge vu 20:23 (1327/1332).
+- MIG-J-Siege-b 5f55490 (20:34) : Test_SiegeCombatVectors, Test_SiegeTableVectors ; rouge vu 20:31 (1330/1334). Vert 1332/1334 (2 rouges D831 connus).
+- Cherry-pick sur main : f5af17c, 5f55490 (+ ce journal). WIP D827/D828 (de79413) intouché. Suivant : bascule Siege (ligne du Lot C++ de fin de séance), décision de l utilisateur (R9).

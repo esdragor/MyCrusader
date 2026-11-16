@@ -95,6 +95,17 @@ namespace HOLRelay
 		return Next;
 	}
 
+	// R5: the share of the capture held, 0 to 99 (the ring is full only by the change of owner); 0 with no hold steps. The C++ twin is
+	// HOLRelay::FillPercent (Source/HeroesOfLiberty/Simulation/HOLRelayRules.h), which fills the replicated FHOLRelayView the markers draw.
+	int FillPercent(const FHOLRelayState& State, int Steps)
+	{
+		if (Steps <= 0)
+			return 0;
+		if (State.Held >= Steps)
+			return 99;
+		return Math::Clamp(Math::IntegerDivisionTrunc(State.Held * 100, Steps), 0, 99);
+	}
+
 	// Territory XP: the fractions carried from a step to the next (rate x holdings, in XP x steps), so that a minute of one relay gives
 	// exactly its rate whatever the simulation rate.
 	struct FHOLTerritoryCarry

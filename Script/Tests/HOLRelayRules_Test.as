@@ -30,6 +30,10 @@ TArray<int> RelayArrangement(int Index)
 		return RelayTeams(0, 0, 1, 1);
 	if (Index == 2)
 		return RelayTeams(0, 1, 0, 1);
+	if (Index == 3)
+		return RelayTeams(0, 1, 1, 1);
+	if (Index == 4)
+		return RelayTeams(0, 0, 0, 0);
 	return RelayTeams();
 }
 
@@ -150,55 +154,98 @@ void Test_RelayTerritoryXP(FUnitTest& T)
 	T.AssertEquals(0, Total, "nothing held: no XP (a negative count is no holding)");
 }
 
-// The simulation's copy of the rules (C++, HOLRelay::Step) gives the same relay as the script's on every case: each owner, taker and count,
-// each presence of the four slots (none, one unit, three units), three arrangements of the teams.
+// The simulation's copy of the rules (C++, HOLRelay::Step) gives the same relay as the script's on every case (MIG-J-Relay, extended): each
+// owner (nobody, each of the four slots, a slot out of the arrays), each count (0, 1, 2, 100, one step short, full), each presence of the four
+// slots (0 to 3 units each), five arrangements of the teams (each alone, two pairs, crossed pairs, one against three, all allied) and a sixth
+// where the zone counts three slots only (arrays of unequal lengths). Both relays are computed by their own copy, never written by hand.
 void Test_RelayScriptAndSimulationRulesAgree(FUnitTest& T)
 {
 	TArray<int> Owners;
 	Owners.Add(-1);
 	Owners.Add(0);
+	Owners.Add(1);
 	Owners.Add(2);
+	Owners.Add(3);
+	Owners.Add(7);
 	TArray<int> Helds;
 	Helds.Add(0);
 	Helds.Add(1);
+	Helds.Add(2);
 	Helds.Add(100);
 	Helds.Add(HOLRelay::HoldSteps() - 1);
+	Helds.Add(HOLRelay::HoldSteps());
 	int Cases = 0;
 	int Differences = 0;
+	int Captures = 0;
+	int Frozen = 0;
 	for (int O = 0; O < Owners.Num(); O++)
 	{
 		for (int H = 0; H < Helds.Num(); H++)
 		{
-			for (int A = 0; A < 3; A++)
+			for (int A = 0; A < 6; A++)
 			{
-				for (int Presence = 0; Presence < 81; Presence++)
+				const TArray<int> Teams = RelayArrangement(A == 5 ? 0 : A);
+				for (int Presence = 0; Presence < 256; Presence++)
 				{
 					TArray<int> Units;
 					int Rest = Presence;
 					for (int Slot = 0; Slot < 4; Slot++)
 					{
-						const int Digit = Rest % 3;
-						Rest = Rest / 3;
-						Units.Add(Digit == 0 ? 0 : Digit == 1 ? 1 : 3);
+						Units.Add(Rest % 4);
+						Rest = Rest / 4;
 					}
+					if (A == 5)
+						Units.RemoveAt(3);
 					HOLRelay::FHOLRelayState State;
 					State.Owner = Owners[O];
-					State.Taker = Helds[H] > 0 ? 1 : -1;
+					State.Taker = Helds[H] > 0 ? (O + H) % 4 : -1;
 					State.Held = Helds[H];
-					const HOLRelay::FHOLRelayState Script = HOLRelay::Step(State, Units, RelayArrangement(A));
+					const HOLRelay::FHOLRelayState Script = HOLRelay::Step(State, Units, Teams);
 					int OwnerOut = -9;
 					int TakerOut = -9;
 					int HeldOut = -9;
-					HOLRelayRules::StepRelay(State.Owner, State.Taker, State.Held, Units, RelayArrangement(A), HOLRelay::HoldSteps(), HOLRelay::DecaySteps, OwnerOut, TakerOut, HeldOut);
+					HOLRelayRules::StepRelay(State.Owner, State.Taker, State.Held, Units, Teams, HOLRelay::HoldSteps(), HOLRelay::DecaySteps, OwnerOut, TakerOut, HeldOut);
 					Cases++;
 					if (Script.Owner != OwnerOut || Script.Taker != TakerOut || Script.Held != HeldOut)
 						Differences++;
+					if (Script.Owner != State.Owner)
+						Captures++;
+					if (Script.Held == State.Held && State.Held > 0)
+						Frozen++;
 				}
 			}
 		}
 	}
-	T.AssertEquals(3 * 4 * 3 * 81, Cases, "every case compared");
+	T.AssertEquals(Owners.Num() * Helds.Num() * 6 * 256, Cases, "every case compared");
 	T.AssertEquals(0, Differences, "the script and the simulation agree on every case");
+	T.AssertTrue(Captures > 0, "the table holds captures (" + Captures + ")");
+	T.AssertTrue(Frozen > 0, "the table holds frozen counts (" + Frozen + ")");
+}
+
+// R5, the C++ HeroesOfLiberty.Relays.Ring ported (its FillPercent part; MakeView and FHOLRelayView::Describe stay in C++: the view is the
+// replicated struct, not exposed to the script): what a relay's ring shows, the share of the capture held.
+void Test_RelayRing(FUnitTest& T)
+{
+	HOLRelay::FHOLRelayState State;
+	T.AssertEquals(0, HOLRelay::FillPercent(State, 600), "nothing held: 0");
+	State.Held = 150;
+	T.AssertEquals(25, HOLRelay::FillPercent(State, 600), "a quarter: 25");
+	State.Held = 599;
+	T.AssertEquals(99, HOLRelay::FillPercent(State, 600), "almost taken: 99, never 100 (the ring is full only by the change of owner)");
+	State.Held = 900;
+	T.AssertEquals(99, HOLRelay::FillPercent(State, 600), "past the count: 99");
+	T.AssertEquals(0, HOLRelay::FillPercent(State, 0), "no hold steps: 0, no division by 0");
+	State.Owner = 2;
+	State.Taker = 1;
+	State.Held = 300;
+	T.AssertEquals(50, HOLRelay::FillPercent(State, 600), "the C++ view's case (owner 2, taker 1, 300 of 600): half filled");
+	State.Held = -5;
+	T.AssertEquals(0, HOLRelay::FillPercent(State, 600), "a negative count shows nothing");
+	// Through the real chain: an enemy alone for half the capture time fills half the ring, one step short of the capture 99.
+	HOLRelay::FHOLRelayState Half = RelayRun(HOLRelay::FHOLRelayState(), RelayUnits(0, 2), RelayTeams(), HOLRelay::HoldSteps() / 2);
+	T.AssertEquals(50, HOLRelay::FillPercent(Half, HOLRelay::HoldSteps()), "an enemy alone for half the capture time: half the ring");
+	HOLRelay::FHOLRelayState Short = RelayRun(Half, RelayUnits(0, 2), RelayTeams(), HOLRelay::HoldSteps() / 2 - 1);
+	T.AssertEquals(99, HOLRelay::FillPercent(Short, HOLRelay::HoldSteps()), "one step short of the capture: 99");
 }
 
 // The provisional values and the territory XP of the simulation (C++) are the script's.
@@ -215,8 +262,9 @@ void Test_RelayConstantsAndXPAgreeWithTheSimulation(FUnitTest& T)
 	int SimTotal = 0;
 	for (int Step = 0; Step < 3000; Step++)
 	{
-		const int Relays = (Step / 700) % 4;
-		const int Centres = (Step / 900) % 3;
+		// Negative counts too (no holding, the rule's Max(0, ...)).
+		const int Relays = (Step / 700) % 5 - 1;
+		const int Centres = (Step / 900) % 4 - 1;
 		const int ScriptXP = HOLRelay::TerritoryXP(Script, Relays, Centres);
 		int NewCarry = 0;
 		const int SimXP = HOLRelayRules::TerritoryXPStep(SimCarry, Relays, Centres, HOLRelay::StepsPerSecond, NewCarry);
