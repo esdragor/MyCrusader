@@ -5,9 +5,9 @@ class UHOLSignalBoardScript : UHOLSignalSubsystem
 {
 	FHOLSignalBoard Board;
 
-	FHOLDiplomacyBook ToBook(const FHOLSignalBookInput& Input)
+	FHOLDiplomacyStances ToBook(const FHOLSignalBookInput& Input)
 	{
-		FHOLDiplomacyBook Book = HOLDiplomacy::NewBook(Input.Slots, Input.IsAI);
+		FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(Input.Slots, Input.IsAI);
 		Book.bLocked = Input.bLocked;
 		for (int Index = 0; Index < Book.Stances.Num() && Index < Input.Stances.Num(); Index++)
 			Book.Stances[Index] = Input.Stances[Index];
