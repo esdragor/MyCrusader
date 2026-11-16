@@ -17,9 +17,9 @@ class UHOLEndBannerScreenScript : UHOLEndBannerScreen
 	void BuildBanner()
 	{
 		UVerticalBox Column = MakeBannerColumn();
-		Title = AddBannerText(Column, n"Title", FText::GetEmpty(), true);
+		Title = AddBannerText(Column, n"Title", FText(), true);
 		// Under the title: the spectator's winner (M6-Q10).
-		Detail = AddBannerText(Column, n"Detail", FText::GetEmpty(), false);
+		Detail = AddBannerText(Column, n"Detail", FText(), false);
 		if (Detail != nullptr)
 			Detail.SetVisibility(ESlateVisibility::Collapsed);
 		UHorizontalBox Buttons = AddBannerRow(Column);
