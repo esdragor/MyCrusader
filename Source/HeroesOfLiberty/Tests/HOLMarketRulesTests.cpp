@@ -112,10 +112,7 @@ bool FHOLMarketRulesTest::RunTest(const FString& Parameters)
 	HOLMarket::FBook High = Book;
 	High.Prices[Wood] = S.MaxPrice - 1;
 	TestEqual(TEXT("the price stops at the cap"), HOLMarket::Buy(S, High, Wood, 3, 100000, S.FeePercent).Book.Prices[Wood], S.MaxPrice);
-	TestEqual(TEXT("4 intervals: wood 71 to 75"), HOLMarket::Recover(S, Three.Book, 4).Prices[Wood], 75);
-	TestEqual(TEXT("9 intervals: back to 80"), HOLMarket::Recover(S, Three.Book, 9).Prices[Wood], 80);
-	TestEqual(TEXT("no further than the base"), HOLMarket::Recover(S, Three.Book, 50).Prices[Wood], 80);
-	TestEqual(TEXT("a price above the base comes down"), HOLMarket::Recover(S, High, 2).Prices[Wood], S.MaxPrice - 3);
+	// The way back to rest (Recover) is the script's rule now: Test_MarketRulesVectors (Script/Economy/HOLMarketRules_Test.as) holds these four figures, and Market.ServerBoard the bridge.
 	return true;
 }
 
@@ -361,10 +358,7 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLTributeChainTest, "HeroesOfLiberty.Market.T
 bool FHOLTributeChainTest::RunTest(const FString& Parameters)
 {
 	TestEqual(TEXT("the tax is 30 % by default"), HOLTribute::DefaultTaxPercent, 30);
-	TestEqual(TEXT("100 sent: 70 arrive"), HOLTribute::Received(100, 30), 70);
-	TestEqual(TEXT("1 sent: the tax rounds down, the gift is not eaten"), HOLTribute::Received(1, 30), 1);
-	TestEqual(TEXT("a tax over 100 % is bounded"), HOLTribute::Received(100, 250), 0);
-	TestEqual(TEXT("nothing sent: nothing arrives"), HOLTribute::Received(0, 30), 0);
+	// What a gift reaches the receiver as is the script's rule now: Test_MarketTributeVectors (Script/Economy/HOLMarketRules_Test.as) holds the four figures; the chain below reads it through the bridge.
 
 	UWorld* World = UWorld::CreateWorld(EWorldType::Game, /*bInformEngineOfWorld*/ false);
 	FWorldContext& Context = GEngine->CreateNewWorldContext(EWorldType::Game);

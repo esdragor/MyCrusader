@@ -12,14 +12,11 @@
  * that the server and the clients agree to the last gold piece; both are tested on the same figures (the Market.csv ones).
  * Resources by index: 0 food, 1 wood, 2 stone, 3 gold (gold is the money, it has no tradable price).
  */
-/** D372 (tributes, GDD 5.5): what a gift reaches the receiver as, the Market keeping the tax. The script's rule (Script/Economy/HOLTributeRules.as) has the same figures. */
+/** D372 (tributes, GDD 5.5): the Market keeps a tax on a gift. What a gift reaches the receiver as is the script's rule (Script/Economy/HOLTributeRules.as), reached through UHOLMarketSubsystem::Received; only the default tax figure stays here. */
 namespace HOLTribute
 {
 	/** About 30 % (D372, indicative, to be tuned in play). */
 	constexpr int32 DefaultTaxPercent = 30;
-
-	/** What reaches the receiver of Sent at TaxPercent: the tax rounded down (a gift of 1 is not eaten), bounded to 0..100 %. */
-	HEROESOFLIBERTY_API int32 Received(int32 Sent, int32 TaxPercent);
 }
 
 namespace HOLMarket
@@ -79,7 +76,4 @@ namespace HOLMarket
 
 	/** The Standard row of /Game/Match/MarketRates (make_market.py), as settings; false (logged) if the table or the row is missing. */
 	HEROESOFLIBERTY_API bool LoadStandardSettings(FSettings& OutSettings);
-
-	/** After Intervals intervals every price has moved RecoverPoints per interval toward its base, never past it. */
-	HEROESOFLIBERTY_API FBook Recover(const FSettings& Settings, const FBook& Book, int32 Intervals);
 }

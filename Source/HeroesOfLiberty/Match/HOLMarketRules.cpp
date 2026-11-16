@@ -164,34 +164,4 @@ namespace HOLMarket
 		OutSettings = SettingsFromRow(*Row);
 		return true;
 	}
-
-	FBook Recover(const FSettings& Settings, const FBook& Book, const int32 Intervals)
-	{
-		FBook Later = Book;
-		const int32 Move = FMath::Max(0, Intervals) * Settings.RecoverPoints;
-		for (int32 Resource = 0; Resource < BookSize; ++Resource)
-		{
-			const int32 Base = Settings.BasePrices[Resource];
-			const int32 Price = Later.Prices[Resource];
-			if (Price < Base)
-			{
-				Later.Prices[Resource] = FMath::Min(Base, Price + Move);
-			}
-			else if (Price > Base)
-			{
-				Later.Prices[Resource] = FMath::Max(Base, Price - Move);
-			}
-		}
-		return Later;
-	}
-}
-
-int32 HOLTribute::Received(const int32 Sent, const int32 TaxPercent)
-{
-	if (Sent <= 0)
-	{
-		return 0;
-	}
-	const int32 Tax = (Sent * FMath::Clamp(TaxPercent, 0, 100)) / 100;
-	return Sent - Tax;
 }
