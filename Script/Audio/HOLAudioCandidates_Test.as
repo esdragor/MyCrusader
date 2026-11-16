@@ -12,7 +12,10 @@ void Test_AudioCandidatesEveryCueHasTen(FUnitTest& T)
 		FString Name = HOLAudio::CueFor(Event).Name;
 		FHOLAudioCandidates List = HOLAudioCandidates::ForCue(Name);
 		T.AssertEquals(Name, List.Cue, f"{Name}: the list is found by the cue's name");
-		T.AssertEquals(10, List.Stems.Num(), f"{Name}: ten variants");
+		// D832: the Archery range was chosen from the round 6 sweep of five variants (Building.Range), not from ten.
+		const int Expected = Name == "Select.BuildingRange" ? HOLAudioCandidates::ForCue("Building.Range").Stems.Num() : 10;
+		T.AssertTrue(Expected >= 5, f"{Name}: at least five variants heard");
+		T.AssertEquals(Expected, List.Stems.Num(), f"{Name}: its {Expected} variants");
 	}
 	T.AssertTrue(HOLAudioCandidates::ForCue("Nothing.Here").Stems.Num() == 0, "an unknown cue has no candidate");
 }

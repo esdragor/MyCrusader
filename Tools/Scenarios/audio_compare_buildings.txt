@@ -4,7 +4,7 @@ waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute le son de SELECTION d'un batiment, une famille apres l'autre (bois, pierre, sacre, metal, pieces) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants [TOUT, non compte : 11 min]. 70 sons, 8 cues, dix variantes A a J chacune.
+note Ecoute le son de SELECTION d'un batiment, une famille apres l'autre (bois, pierre, sacre, metal, pieces) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants [TOUT, non compte : 11 min]. 72 sons, 9 cues, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Wood C.
 note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_buildings_start
@@ -218,6 +218,12 @@ waitlog candidate played Building.Stable D
 waitkey Building.Stable D (s_horse6_vocal_lp3k) vient de jouer. Entree : Building.Stable E
 hol.Audio.Candidate Building.Stable E
 waitlog candidate played Building.Stable E
-waitkey Building.Stable E (s_horse6_vocal_lp1k5) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Stable E (s_horse6_vocal_lp1k5) vient de jouer. Entree : Building.CutStable A  [nouveau cue]
+hol.Audio.Candidate Building.CutStable A
+waitlog candidate played Building.CutStable A
+waitkey Building.CutStable A (s_horse6_snort) vient de jouer. Entree : Building.CutStable B
+hol.Audio.Candidate Building.CutStable B
+waitlog candidate played Building.CutStable B
+waitkey Building.CutStable B (s_horse6_vocal_full) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
