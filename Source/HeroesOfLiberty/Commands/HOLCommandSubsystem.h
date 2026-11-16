@@ -35,7 +35,7 @@ struct FHOLRageOrder
 };
 /**
  * F7 lot 2 (FortificationsInProgress.md, D693): a player's garrison order (UHOLCommandSubsystem::IssueGarrisonOrder): UnitIds enter Building, as
- * many as it admits (HOLGarrison::Admitted); bExitAll: every unit garrisoned in Building comes out (UnitIds unused).
+ * many as it admits (the script's HOLGarrison::Admitted); bExitAll: every unit garrisoned in Building comes out (UnitIds unused).
  */
 struct FHOLGarrisonOrder
 {

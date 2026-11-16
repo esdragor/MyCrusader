@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLGarrisonSubsystem.h"
 
@@ -143,7 +143,7 @@ int32 UHOLGarrisonSubsystem::ApplyOrders()
 			UnitKinds.Add(HOLGarrison::KindOf(Constants->HasArmorCategory(EHOLArmorCategory::Siege), Constants->HasArmorCategory(EHOLArmorCategory::Hero),
 				Constants->HasArmorCategory(EHOLArmorCategory::Cavalry), HOLCombat::IsRangedAttack(Constants->AttackRange)));
 		}
-		// The script board decides when it exists (D836 point 4); else the C++ rule, the same list.
+		// The script board decides (D836 point 4); without it nobody enters (R7).
 		const TArray<int32> In = UHOLGarrisonBoard::AdmittedForOrder(World, UnitSlots, UnitKinds, Building->GetOwnerPlayer(), GetSlots(*Building), Inside.Num());
 		TArray<uint32> Entered;
 		for (const int32 Index : In)
