@@ -4,36 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Match/HOLSiteView.h"
+#include "Simulation/HOLSiteBoardTypes.h"
 
-/**
- * One sacred site (S2; GDD 14.3, D429 to D431, D697 to D703): its owner (a slot), who is filling its count and the count of steps held
- * toward its capture. The simulation's copy of the rules written and tested in Script/Sites/HOLSiteRules.as (the simulation cannot call
- * the script): the script test Test_SiteScriptAndSimulationRulesAgree compares the two on every case.
- */
-struct FHOLSiteState
-{
-	/** The owner's slot, INDEX_NONE for nobody. */
-	int32 Owner = INDEX_NONE;
-	/** The slot with the most takers among the adverse camp filling the count, INDEX_NONE while nobody fills it. */
-	int32 Taker = INDEX_NONE;
-	/** Steps held toward the capture. */
-	int32 Held = 0;
-
-	bool operator==(const FHOLSiteState& Other) const { return Owner == Other.Owner && Taker == Other.Taker && Held == Other.Held; }
-};
-
-/**
- * S10 (D431, D703): the victory count of the sacred sites, the simulation's copy of HOLSiteVictory::FHOLSiteVictoryState (Script/Sites/HOLSiteVictory.as).
- * Leader: the camp holding every site now (INDEX_NONE for none); Held: the steps it held them; Winner: the camp once the count is full (it stays).
- */
-struct FHOLSiteVictoryState
-{
-	int32 Leader = INDEX_NONE;
-	int32 Held = 0;
-	int32 Winner = INDEX_NONE;
-	/** The owners of the sites at the last step, to see a site change hands. */
-	TArray<int32> LastOwners;
-};
+// FHOLSiteState and FHOLSiteVictoryState (the simulation's copy of the script's rule states) are USTRUCTs of the script bridge since MIG-CPP-Site.
 
 namespace HOLSite
 {
