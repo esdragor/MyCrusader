@@ -3619,4 +3619,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D832** (Audio des bâtiments, tour 6, D801, D826, 2026-11-16 16:5x, écoute de l'utilisateur) : son de sélection du **Champ de tir = B** du tour 6 (tir d'arc G du tour 5, version propre sans filtre) ; **Caserne = A** du tour 6 (une lame tirée, sans voix) ; **Écurie = B** du tour 6 MAIS seulement l'ébrouement (« pfff ») de la fin, SANS le hennissement du début (à couper, puis réécoute par l'utilisateur).
 
-Prochain numéro : **D833**.
+**D833** (Alertes mineures, D202, D446, D449, D804 B, D829, 2026-11-16 17:1x, réponse de l'utilisateur à Q-alert_population_visible) : la ligne « Population pleine » du fil de messages reste **15 s** (au lieu des ~8 s de D446) et joue le **son court** prévu par D804 B (exception à « ligne muette » de D449 pour cette alerte) : l'utilisateur ne l'avait pas vue pendant l'essai alors qu'elle était entrée au fil.
+
+Prochain numéro : **D834**.
