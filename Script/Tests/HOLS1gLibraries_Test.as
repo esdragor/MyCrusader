@@ -8,8 +8,16 @@ void Test_OrderChainReadLibrarySmoke(FUnitTest& T)
 {
 	FHOLOrderChainStep BuildSeven = HOLOrderChainRead::MakeBuild(7);
 	TArray<FHOLOrderChainUnitSteps> Units;
-	int Ids[4] = {10, 11, 12, 13};
-	int Sources[4] = {3, 0, 4, 3};
+	TArray<int> Ids;
+	Ids.Add(10);
+	Ids.Add(11);
+	Ids.Add(12);
+	Ids.Add(13);
+	TArray<int> Sources;
+	Sources.Add(3);
+	Sources.Add(0);
+	Sources.Add(4);
+	Sources.Add(3);
 	for (int Index = 0; Index < 4; ++Index)
 	{
 		FHOLOrderChainUnitSteps Unit;
