@@ -37,12 +37,20 @@ namespace HOLUnitTier
 		return UnknownTier;
 	}
 
+	// True when Tools\Data\UnitTypes.csv holds a row for the type. The Trebuchet and the Cannon have none yet (G7, G8): the C++ rule, which reads the column,
+	// answers NotListed for them on every tier and the production leaves them to HOLSiege::Check; Check below answers the same (MIG-CPP-UnitTier,
+	// ELROND-1116q). Their GDD tier stays in MinTierOf (the AI reads it). Delete this function and its use in Check when their rows exist.
+	bool HasRowInUnitTypes(const FString& UnitType)
+	{
+		return UnitType != "Trebuchet" && UnitType != "Cannon";
+	}
+
 	// Why a unit cannot be queued now, or Available. Tier: the player's tier (the hero's level or a forced one); bBuildingFinished: the
 	// player owns a finished building that produces it; bCanPay: the stock covers the cost.
 	int Check(const FString& UnitType, int Tier, bool bBuildingFinished, bool bCanPay)
 	{
 		const int MinTier = MinTierOf(UnitType);
-		if (MinTier == UnknownTier)
+		if (MinTier == UnknownTier || !HasRowInUnitTypes(UnitType))
 			return NotListed;
 		if (Tier < MinTier)
 			return TierTooLow;
