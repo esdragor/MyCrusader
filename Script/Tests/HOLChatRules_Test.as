@@ -92,3 +92,23 @@ void Test_ChatAllReachesEverybody(FUnitTest& T)
 	TArray<int> To = HOLChat::Recipients(HOLChat::All, 2, -1, ChatTeams(), ChatSpectators(false, false, false, true), false);
 	T.AssertTrue(To.Num() == 4, "All: the four slots");
 }
+
+// D807 (Q-chat-ui A): Enter opens the field on Allies (All without an ally); Tab goes Allies -> All -> Private (the player chosen in the
+// Diplomacy panel) -> Allies, skipping a channel nobody would read.
+void Test_ChatInputChannelCycle(FUnitTest& T)
+{
+	int Channel = HOLChat::OpeningChannel(true);
+	T.AssertTrue(Channel == HOLChat::Allies, "Enter with an ally: the field opens on Allies");
+	Channel = HOLChat::NextChannel(Channel, true, true);
+	T.AssertTrue(Channel == HOLChat::All, "Tab: Allies -> All");
+	Channel = HOLChat::NextChannel(Channel, true, true);
+	T.AssertTrue(Channel == HOLChat::Private, "Tab: All -> Private");
+	Channel = HOLChat::NextChannel(Channel, true, true);
+	T.AssertTrue(Channel == HOLChat::Allies, "Tab: Private -> Allies");
+	T.AssertTrue(HOLChat::NextChannel(HOLChat::All, true, false) == HOLChat::Allies, "Tab without a chosen player: All -> Allies");
+	int Alone = HOLChat::OpeningChannel(false);
+	T.AssertTrue(Alone == HOLChat::All, "Enter without an ally (free-for-all): the field opens on All");
+	T.AssertTrue(HOLChat::NextChannel(Alone, false, true) == HOLChat::Private, "without an ally: All -> Private");
+	T.AssertTrue(HOLChat::NextChannel(HOLChat::Private, false, true) == HOLChat::All, "without an ally: Private -> All, never Allies");
+	T.AssertTrue(HOLChat::NextChannel(Alone, false, false) == HOLChat::All, "alone and no chosen player: Tab stays on All");
+}

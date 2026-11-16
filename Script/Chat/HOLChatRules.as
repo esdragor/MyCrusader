@@ -79,6 +79,28 @@ namespace HOLChat
 		return false;
 	}
 
+	// D807 (Q-chat-ui A): the channel the input field opens on with Enter: Allies, or All for a player without an ally (free-for-all).
+	int OpeningChannel(bool bHasAlly)
+	{
+		return bHasAlly ? Allies : All;
+	}
+
+	// D807: Tab in the field: Allies -> All -> Private (to the player chosen in the Diplomacy panel, D387) -> Allies; a channel nobody
+	// would read is skipped (Allies without an ally, Private without a chosen player). All is always there.
+	int NextChannel(int Current, bool bHasAlly, bool bHasPrivateTarget)
+	{
+		int Channel = Current;
+		for (int Step = 0; Step < 3; ++Step)
+		{
+			Channel = Channel == Allies ? All : (Channel == All ? Private : Allies);
+			if ((Channel != Allies || bHasAlly) && (Channel != Private || bHasPrivateTarget))
+			{
+				return Channel;
+			}
+		}
+		return All;
+	}
+
 	// Every slot the message reaches, the sender's first.
 	TArray<int> Recipients(int Channel, int Sender, int Target, const TArray<int>& TeamBySlot, const TArray<bool>& SpectatorBySlot, bool bTeamGame)
 	{
