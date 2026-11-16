@@ -15,7 +15,15 @@ Séance de MIGRATION (D830, D835 : Q2 = A, confirmée à 19:5x) lancée à 19:48
 | Agent | id | worktree | tâche | C++ | lancé |
 |---|---|---|---|---|---|
 | NETTOYAGE-0a x3 (finis 19:5x-19:58) | a07ebbf5c80c06df5, a947ebe998cceabf6, ac3589e2f5e727a08 | copie principale | Jour/Retours 85faaa3 ; procédure/check-list 9bed923 (6 lignes archivées) ; file 8f16bc5 (24 lignes archivées, 25 marquées « C++ : attend la migration D830 ») | non | 19:50 |
-| ETAPE0-1116-MIG (Fable) | ae68889f866fac3d9 | lecture seule + file | plan de lancement de la migration : Docs\Rapports\ETAPE0-1116-MIG.md, section « Migration D830/D835 » de la file | non | 20:0x |
+| ETAPE0-1116-MIG (Fable, fini 20:07) | ae68889f866fac3d9 | lecture seule + file | plan de lancement : Docs\Rapports\ETAPE0-1116-MIG.md ; lots MIG-* dans la file a9d000c ; R9 : le sens de chaque jumeau (script ou C++) sera décidé avec l'utilisateur en fin de séance, les agents proposent | non | 19:59 |
+| GLORFINDEL-1116m | ac6eb070840559445 | HeroesOfLiberty-Glorfindel | pilote 1, le chat : MIG-P1a (script) -> P1b (UN build : pont + suppression HOLChatRules.cpp/.h) -> P1c (quick_check tests,net) -> P1d (RPC en script, branche jetable try-as-rpc) | P1b seulement | 20:11 |
+| GALADRIEL-1116m | a3ee0a9e4019b4a94 | HeroesOfLiberty-Galadriel | pilote 2, HOLGameMenu : MIG-P2a, P2b (script) -> P2c (UN build si les liaisons suffisent) -> P2d HOLEndBanner | P2c seulement | 20:11 |
+| ARWEN-1116m | a1025a22c0b3198ff | HeroesOfLiberty-Arwen | jumeaux Camp, UnitAbility, Diplomacy | non | 20:11 |
+| CELEBORN-1116m | a9c0b4cf47a67a1d1 | HeroesOfLiberty-Celeborn | jumeaux Relay, Garrison | non | 20:11 |
+| ELROND-1116m | a530028b6fc2c9be1 | HeroesOfLiberty-Elrond | jumeaux UnitTier, Technology ; libre à 21:40 pour le lot C++ + fusion | non | 20:11 |
+| FARAMIR-1116m | ae1aac699fb3d6722 | HeroesOfLiberty-Faramir | jumeau Siege a/b sur fog (Script\ seulement, cherry-pick) | non | 20:11 |
+| HALDIR-1116m | a102ebd7d2acb0ffd | HeroesOfLiberty-Haldir | jumeaux Terrain, Site | non | 20:11 |
+| SAURON-1116m | a11d89bedc9193faf | HeroesOfLiberty-Sauron | jumeaux ExplorationXP, Deploy, Market | non | 20:11 |
 
 ## Résumé de la séance du 2026-11-16 après-midi
 
