@@ -345,6 +345,18 @@ GitJ $JT1 branch -f main work
 (Get-Item (Join-Path $JT1 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')).LastWriteTime = (Get-Date).AddMinutes(2)
 $jGreen = Run-J
 Check ($jGreen -match '(?m)^PASS HeroesOfLiberty-T1 : L15-1 a main' -and -not ($jGreen -match '(?m)^FAIL .*L15-1')) 'L15-1 close: T1 a main (branch -f) et DLL rebuildee -> PASS, aucun FAIL L15-1' $jGreen
+# D808 (2026-11-15, reponse a Q-close-gate-l15-1 = B + B) : Q1 B, des commits Source plus recents que la DLL ne font FAIL que si Get-StaleBinaryProblem
+# est aussi non vide (un fichier plus recent que la DLL prouve un build manquant), sinon WARN (commit apres le build, fichier deja compile).
+# Q2 B : la copie principale (docs seulement) n'est controlee que sur 'a main' (+0/-0), jamais sur sa DLL.
+(Get-Item (Join-Path $JT1 'Source\M\a.cpp')).LastWriteTime = [datetime]'2000-01-01'
+(Get-Item (Join-Path $JT1 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')).LastWriteTime = [datetime]'2001-01-01'   # build apres le fichier, avant les commits
+(Get-Item (Join-Path $JMain 'Binaries\Win64\UnrealEditor-HeroesOfLiberty.dll')).LastWriteTime = [datetime]'2000-01-01'  # copie principale : DLL ancienne
+$jLagW = [int](git -C $JT1 rev-list --count HEAD -- Source)   # tous les commits Source sont posterieurs a 2001 : calcule par git
+$jStaleT1 = & { param($s, $r) . $s; Get-StaleBinaryProblem $r } (Join-Path (Split-Path -Parent $Here) 'Scenarios\LaunchCheck.ps1') $JT1
+Check (-not $jStaleT1) 'D808 pre-condition: T1 sans fichier Source plus recent que la DLL (Get-StaleBinaryProblem vide)' $jStaleT1
+$jWarn = Run-J
+Check ($jWarn -match "(?m)^WARN HeroesOfLiberty-T1 : L15-1 $jLagW commit\(s\) Source plus recents que sa DLL" -and -not ($jWarn -match '(?m)^FAIL HeroesOfLiberty-T1 : L15-1')) "D808 Q1 close: $jLagW commits Source apres la DLL, Get-StaleBinaryProblem vide -> WARN, pas FAIL" $jWarn
+Check ($jWarn -match '(?m)^PASS copie principale : L15-1 a main' -and -not ($jWarn -match '(?m)^(FAIL|WARN) copie principale : L15-1')) 'D808 Q2 close: copie principale a main, DLL ancienne -> PASS a main, DLL non controlee' $jWarn
 $jNoSec = & powershell -NoProfile -ExecutionPolicy Bypass -File $Gate -Phase Close -End 23:59 -WorktreesDir $JWts -RetoursDir $Ret -JourFile (Join-Path $Tmp 'absentJour.md') -EtapeFile (Join-Path $ERepo 'EtapeDefini.md') | Out-String
 Check ($jNoSec -match "(?m)^WARN L15-1 : pas de section '## Agents du") 'L15-1 close: pas de tableau du jour -> WARN (non controle), jamais PASS muet' $jNoSec
 
