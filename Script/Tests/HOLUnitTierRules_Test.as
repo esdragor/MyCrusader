@@ -93,9 +93,9 @@ void Test_UnitTierAgreesWithTheSiegeRule(FUnitTest& T)
 		{
 			for (int Pay = 0; Pay < 2; Pay++)
 			{
-				const int RamSiege = HOLSiege::Check(EHOLSiegeEngine::Ram, Tier, Building == 1, Pay == 1);
+				const int RamSiege = HOLSiegeCheck::Check(int(EHOLSiegeEngine::Ram), Tier, Building == 1, Pay == 1);
 				const int RamUnit = HOLUnitTier::Check("Ram", Tier, Building == 1, Pay == 1);
-				const int MangonelSiege = HOLSiege::Check(EHOLSiegeEngine::Mangonel, Tier, Building == 1, Pay == 1);
+				const int MangonelSiege = HOLSiegeCheck::Check(int(EHOLSiegeEngine::Mangonel), Tier, Building == 1, Pay == 1);
 				const int MangonelUnit = HOLUnitTier::Check("Mangonel", Tier, Building == 1, Pay == 1);
 				Cases += 2;
 				if (RamSiege != RamUnit)
@@ -107,10 +107,10 @@ void Test_UnitTierAgreesWithTheSiegeRule(FUnitTest& T)
 	}
 	T.AssertEquals(32, Cases, "every case compared");
 	T.AssertEquals(0, Differences, "the unit rule and the siege rule give the same reason on every case");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Ram), HOLUnitTier::MinTierOf("Ram"), "the same tier for the Ram");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Mangonel), HOLUnitTier::MinTierOf("Mangonel"), "the same tier for the Mangonel");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Trebuchet), HOLUnitTier::MinTierOf("Trebuchet"), "the same tier for the Trebuchet");
-	T.AssertEquals(HOLSiege::TierOf(EHOLSiegeEngine::Cannon), HOLUnitTier::MinTierOf("Cannon"), "the same tier for the Cannon");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Ram)), HOLUnitTier::MinTierOf("Ram"), "the same tier for the Ram");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Mangonel)), HOLUnitTier::MinTierOf("Mangonel"), "the same tier for the Mangonel");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Trebuchet)), HOLUnitTier::MinTierOf("Trebuchet"), "the same tier for the Trebuchet");
+	T.AssertEquals(HOLSiegeCheck::GetTier(int(EHOLSiegeEngine::Cannon)), HOLUnitTier::MinTierOf("Cannon"), "the same tier for the Cannon");
 	T.AssertEquals(HOLSiege::Available, HOLUnitTier::Available, "the same number for 'nothing stops it'");
 	T.AssertEquals(HOLSiege::TierTooLow, HOLUnitTier::TierTooLow, "the same number for the tier");
 	T.AssertEquals(HOLSiege::NoWorkshop, HOLUnitTier::NoBuilding, "the same number for the building");
