@@ -19,12 +19,13 @@ namespace HOLUnitTier
 	const int UnknownTier = -1;
 
 	// The tier a unit opens at (GDD 11.1, D711): the Peasant, the Spearman and the Archer at 0; the Man-at-arms, the Crossbowman, the Light
-	// cavalry, the Monk and the Ram at 1; the Mangonel at 2; the Trebuchet, the Cannon and the Arquebusier at 3.
+	// cavalry, the Monk and the Ram at 1; the Mangonel at 2; the Trebuchet, the Cannon and the Arquebusier at 3. The Legions' Zombie (0) and Damned Warrior (1) as the column MinTier
+	// of Tools\Data\UnitTypes.csv gives them (MIG-J-UnitTier: the whole-table agreement test found them missing here).
 	int MinTierOf(const FString& UnitType)
 	{
-		if (UnitType == "Peasant" || UnitType == "Spearman" || UnitType == "Archer")
+		if (UnitType == "Peasant" || UnitType == "Spearman" || UnitType == "Archer" || UnitType == "Zombie")
 			return 0;
-		if (UnitType == "ManAtArms" || UnitType == "Crossbowman" || UnitType == "LightCavalry" || UnitType == "Monk" || UnitType == "Ram")
+		if (UnitType == "ManAtArms" || UnitType == "Crossbowman" || UnitType == "LightCavalry" || UnitType == "Monk" || UnitType == "Ram" || UnitType == "DamnedWarrior")
 			return 1;
 		if (UnitType == "Mangonel")
 			return 2;
