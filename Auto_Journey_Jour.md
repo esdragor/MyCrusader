@@ -35,6 +35,7 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | SAURON-1116c (fini 15:55) | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 mapSize Small sur 5 essais : 88dd5c2, f9db1dc ; preflight deploy et nomad_start PASS ; audio sans preflight (sons absents de Sauron) ; pas de ligne V9c ; avance rapide main | non | 15:46 |
 | SAURON-1116d | af60f614d09275eab | HeroesOfLiberty-Sauron | défauts communs Q8 : ovales blancs (deploy, nomad_start) et Condition failed au pas 0 | non | 15:56 |
 Exception 15:37 : essais audio_compare_buildings_range/_stable donnés malgré session_gate Essay FAIL (4 fichiers non commités dans Arwen = scripts Tools/Audio/*.py d ARWEN-1116b en cours, hors jeu) ; d751-root dans main en avance rapide 365326f (tests 1320/1320 + values PASS lancés par la session principale 15:30) ; sons hors git présents dans Arwen seulement.
+Exception 16:00 : alert_population donné malgré Essay FAIL « binaire 15:22 plus ancien que le commit 15:27 » : a11ed2a a été compilé avant d être commité (Get-StaleBinaryProblem vide) ; faux positif du gate à corriger (comparer les sources, pas l heure du commit).
 
 ## Résumé de la séance du 2026-11-15
 

@@ -3607,4 +3607,8 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D826** (Audio des bâtiments, tour 5, D801, D805, 2026-11-16, écoute de l'utilisateur) : **Caserne : aucune lettre** : « ce sont des cris de douleur, et de mauvaise qualité » : le tour 6 de la Caserne ne doit contenir **aucun cri de douleur ni grognement de blessé** (D801 : des hommes qui s'entraînent dans un camp). **Champ de tir : G** (`s_shot5_bow`, tir d'arc) et **Écurie : G** (`s_horse5_vocal_b`, ébrouement + voix de cheval) : **la sorte de son est élue**, mais l'enregistrement donné est « de mauvaise qualité » : il faut une **version propre** du même son (meilleure source, ou un traitement moins destructeur que la coupe à 0,6-0,8 s et le passe-bas ≤ 800 Hz du tour 5), à réécouter avant d'entrer dans `HOLAudioTable.as`. Rien n'est élu dans la table à ce stade. Journal : `AudioBuildingsInProgress.md`.
 
-Prochain numéro : **D827**.
+**D827** (Scénarios de comparaison, règle 15 de « Qualité des essais », 2026-11-16, réponse de l'utilisateur à Retours\Q-waitkey-texte.md Q1) : « Backspace = option précédente » est annoncé par le PANNEAU (C++, HOLTestSequence.cpp) : dans un scénario `_compare`, quand une option précédente existe, le texte de l'attente reçoit « · Backspace : option précédente » (absent à la 1re option) ; aucun .txt n'est modifié.
+
+**D828** (Scénarios de comparaison, 2026-11-16, Q-waitkey-texte Q2) : une option commence JUSTE APRÈS l'attente précédente (C++, `FindPreviousOptionStart`) ; le `notereset` ne délimite plus que la 1re option ; Backspace rejoue donc la commande qui règle l'option (8 scénarios aujourd'hui fautifs : rocks_compare, rocks_compare2, resources_compare, forest_stretch_compare, trees_rocks_compare, orders_marks_compare, talents_icons_compare, legions_warrior_compare). Risque accepté : une option qui fait apparaître des unités avant sa note les refait apparaître.
+
+Prochain numéro : **D829**.
