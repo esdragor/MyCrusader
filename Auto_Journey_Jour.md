@@ -48,6 +48,109 @@ DÉCISION 16:3x (D830, utilisateur) : arrêt du développement C++ ; passage du 
 Exception 17:16 : audio_compare_buildings_stable_cut donné malgré Essay FAIL (binaire « plus ancien » que DefaultEngine.ini et des .uasset de son : le gate compte la config et les assets comme du code ; Get-StaleBinaryProblem vide) : preflight rejoué par la session principale à 17:16 sur l état courant, PASS, PNG vu (L16-2 respectée : l essai se lance).
 DÉCISIONS DE CLÔTURE 17:2x (utilisateur) : (1) D831 gardé, 2 rouges Nomad connus jusqu à la migration ; (2) fusion groupée MAINTENANT (dépassement jusqu à ~18:15 toléré) ; (3) sync_worktrees -NoBuild en fin de séance (accord écrit de l utilisateur, L15-1) : le bilan liste les worktrees à rebuilder.
 
+### Bilan du 2026-11-16
+
+- **Séance** : interactive 14:46 -> ~18:00, fusion groupée acceptée, rien poussé ; 27 agents (tableau ci-dessus), 8 worktrees lancés d'emblée.
+- **main** : 9c9d22b (début) -> 3d3cb3c. Fusions : avances rapides de la session principale (hero-j8-close, d751-root, visual, fog, galadriel-tab) + FUSION-1116a (2bd5fd3 : tiers, visual, maps, galadriel-tab, net-playtest ; fog exclue, WIP). Tests 1320 -> 1326/1328 (2 rouges connus D831 : NomadFirstForum, NomadReplicated) ; values, net (377 s), aiserver PASS. RIEN POUSSÉ.
+- **Essais joués par l'utilisateur** : nomad_ai OK, arquebusier OK, nomad_start REGLAGE (D831 : Forum sur E) puis OK, alert_population BUG (D829) puis OK ; sons : Champ de tir B, Caserne A, Écurie B coupée (D832, D834).
+- **Décisions** : D827-D834 ; D830 = arrêt du développement C++, passage du maximum en Angelscript, tests compris (plan Docs\Rapports\ANALYSE-1116a.md à valider en début de prochaine séance) ; prochain D835.
+- **Builds** : 3088 s au lieu de 45 s (Haldir 15:22-16:13, autre projet ProjectShiva en parallèle), file jusqu'à 1 h 35, 5 agents C++ bloqués ; remarque de l'utilisateur : « on perd énormément de temps à cause des builds » (L16-1).
+- **Non fini** : specialization_button échoue sur main intégrée (ligne Elrond) ; signals_altclick sans mapSize (ligne Haldir) ; Faramir WIP D827/D828 non compilé ; élection Écurie (ligne Arwen) ; défaut du cvar hol.Nomad.ForumCell en C++ et tests Nomad à corriger avec la migration D830.
+- **Fin de séance** : sync_worktrees -NoBuild à 17:45 (ACCORD de l'utilisateur) ; worktrees à reconstruire en début de prochaine séance : Arwen, Elrond, Faramir, Galadriel, Glorfindel, Haldir, Sauron (Celeborn à jour).
+- **Anomalies de la session principale** : essais audio donnés sur un binaire périmé (L16-2 : script du HUD cassé, éditeur bloqué chez l'utilisateur) ; D831 fusionné dans main à 16:45 sans quick_check (2 rouges) ; réponses en anglais à un utilisateur francophone ; ligne SAURON-1116b en double dans le tableau ; faux positifs du gate Essay (heure du commit, config et assets comptés comme du code).
+
+### Lecons appliquees 2026-11-16
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| T2-1 | appliquee | ETAPE0-1116 en lecture seule, plan Docs\Rapports\ETAPE0-1116.md |
+| T2-2 | appliquee | 8 worktrees lancés à 15:02 |
+| L3-12 | non evalue | - |
+| L5-7 | non evalue | - |
+| L3-9 | non evalue | - |
+| T2-3 | appliquee | brief commun Tools\AutoJourney\brief_commun.md |
+| L1-2 | appliquee | commits par lot rouge puis vert (ex. 4c75047, c86557c) |
+| L1-3 | partielle | avance rapide main dans la plupart des lignes ; FARAMIR-1116a laisse un merge en conflit à 1116b |
+| L3-5 | non evalue | - |
+| L1-8 | non evalue | - |
+| L1-7 | non evalue | - |
+| L5-6 | non evalue | - |
+| T2-5 | appliquee | FUSION-1116a : build PASS 340 s puis quick_check |
+| L4-13 | non evalue | - |
+| T2-4 | non evalue | - |
+| Q1 | partielle | preflight PASS (barracks, nomad_start, stable_cut) ; essais audio donnés sur binaire périmé (L16-2) |
+| Q2 | non evalue | - |
+| Q3 | non evalue | - |
+| Q4 | non evalue | - |
+| Q8 | non evalue | - |
+| Q9 | non evalue | - |
+| Q11 | partielle | 7 essais donnés + 2 rejoués (nomad_start, alert_population) |
+| L4-11 | non evalue | - |
+| L1-13 | partielle | rouge vu avant le correctif dans la plupart des lots ; SAURON-1116e rouge non vu, FARAMIR-1116c non compilé |
+| L6-2 | appliquee | extrait rendu par ETAPE0-1116 |
+| L6-4 | appliquee | alert_population rejoué par le geste de l'utilisateur (SAURON-1116e) |
+| L6-6 | non evalue | - |
+| L7-5 | non evalue | - |
+| L7-7 | non evalue | - |
+| L8-2 | non evalue | - |
+| L8-4 | non evalue | - |
+| L8-8 | non evalue | - |
+| L9-1 | non evalue | - |
+| L9-6 | appliquee | FUSION-1116a 17:20-17:43, liste de branches figée |
+| L9-8 | partielle | Faramir et Arwen sans ligne sans C++ après 16:00 |
+| L9-9 | appliquee | séance interactive, utilisateur présent |
+| L9-10 | non evalue | - |
+| L10-2 | non evalue | - |
+| L10-3 | partielle | builds de rafraîchissement lancés 16:03 ; essais audio sur binaire périmé (L16-2) |
+| L10-4 | non evalue | - |
+| L11-3 | appliquee | SAURON-1116b : arquebusier déjà corrigé (a1f559f) vu avant de coder |
+| L11-4 | appliquee | file nettoyée a707951 (14 [x], 12 périmées) |
+| L11-8 | non evalue | - |
+| L11-9 | appliquee | RECETTE-1116a |
+| L11-11 | non evalue | - |
+| L11-12 | non evalue | - |
+| L11-13 | appliquee | heures lues par Get-Date |
+| L12-1 | non evalue | - |
+| L12-1b | appliquee | BUILD LENT 16:08 : ProjectShiva en parallèle, vm 1,8-6,5 Go |
+| L12-2 | appliquee | sync_worktrees -NoBuild 17:45 avec accord de l'utilisateur |
+| L12-3 | non evalue | - |
+| L12-4 | non evalue | - |
+| L12-5 | appliquee | TESTS_TAUTOLOGIQUES: 0 (FUSION-1116a) |
+| L12-7 | appliquee | BUILD LENT 16:08 signalé à l'utilisateur |
+| L13-1 | non evalue | - |
+| L13-2 | appliquee | C++ refusé au plafond (CELEBORN-1116a/b, GLORFINDEL-1116a, SAURON-1116a) |
+| L13-3 | appliquee | preflight_merge PASS 17:42 |
+| L13-4 | appliquee | net PASS à la fusion (377 s) |
+| L13-5 | non evalue | - |
+| L13-6 | non evalue | - |
+| L13-7 | non evalue | - |
+| L13-8 | non evalue | - |
+| L14-1 | partielle | 5 agents au-dessus de 45 appels (ARWEN-1116d 63, GLORFINDEL-1116a ~51, HALDIR-1116a 50) |
+| L14-2 | non appliquee | file de build encore le goulot : 1 h 35 chez Haldir (L16-1) |
+| L14-3 | non evalue | - |
+| L14-4 | appliquee | questions par l'interface de choix |
+| L14-5 | appliquee | gestes réels : Z/C/clic (CELEBORN-1116b), vraie touche Backspace (FARAMIR-1116b) |
+| L14-6 | partielle | rouge vu à l'exécution sauf SAURON-1116e et FARAMIR-1116c |
+| L14-7 | appliquee | Get-StaleBinaryProblem lu (exceptions 16:00 et 17:16) |
+| L14-8 | non evalue | - |
+| L14-9 | non evalue | - |
+| L14-10 | non evalue | - |
+| L14-11 | non evalue | - |
+| L14-12 | appliquee | commit_docs.ps1 -Only (ce bilan) |
+| L14-13 | non evalue | - |
+| L15-1 | appliquee | sync_worktrees -NoBuild 17:45 avec accord écrit ; worktrees à rebuilder listés au bilan |
+| L15-2 | non evalue | - |
+| L15-3 | non evalue | GLORFINDEL-1116a : 2 Edit refusés |
+| L15-4 | non appliquee | ligne SAURON-1116b en double dans le tableau |
+| L15-5 | appliquee | rouge vu à l'exécution dans les rapports (ex. 4c75047 15:07, 734b313 15:33) |
+| L15-6 | non evalue | - |
+| L15-7 | non evalue | - |
+| L15-8 | non evalue | - |
+| L15-9 | partielle | FARAMIR-1116c rendu non compilé ; rapport ELROND-1116a non reçu à 17:22 |
+| L15-10 | appliquee | brief_commun.md + rapports dans Docs\Rapports |
+| L16-1 | partielle | D830 décidée 16:3x ; plan ANALYSE-1116a.md à valider en début de prochaine séance |
+| L16-2 | non appliquee | essais audio donnés sur binaire périmé (16:4x), règle ajoutée ; respectée à 17:16 (stable_cut) |
+
 ## Résumé de la séance du 2026-11-15
 
 - Séance autonome 09:02 -> 14:37 (arrêtée par l'utilisateur), ~65 agents, 7 fusions groupées, rien poussé : main 140cdb7 -> 22ad07b, tests 1267 -> 1320 verts.

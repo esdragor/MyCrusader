@@ -1,0 +1,20 @@
+# ELROND-1116a : rapport (worktree HeroesOfLiberty-Elrond, branche tiers)
+
+APPELS_DECLARES: 41 (arrêt à 45 vus par moi)
+HEURE_DEBUT/HEURE_FIN: 15:02 / 17:20
+PREMIER_BUILD: 15:04   BUILD: PASS (15:04, 16:36, 17:13 env.)   LAUNCHCHECK_DEBUT: 15:03 vide (binaire de la veille à jour sur le bouchon rouge)
+TEST_ROUGE: vu à 16:39 : quick_check tests 1319/1320, « Expected 'Each running line fits one line of the cell, 9 characters ('En cours 30 s / Annuler': 13)' » (HOLSpecializationGridTests.cpp:89) ; avant ça, rouge de la veille 2026-11-15 14:26 1319/1320 (bouchon NAME_None de GetReportName). Assertit l'effet : oui (texte de la case calculé par HOLGameNames, nom du rapport calculé par HOLCommandGrid). Défaut aussi VU ROUGE à l'exécution sur specialization_button_running.png à 15:15 (« En cours 29 s » replié, « Annuler » en 3e ligne coupée).
+COMMITS: 4 (3949fd5 vert test + correctif 1 ; 1ede5b5 merge main ; 76ab50a vert test + correctif 2 + scénario ; 0dde5ec merge main), dernier à 17:19. Écart de 2 h entre 15:13 et 17:18 : build en file derrière Galadriel/Haldir/Sauron (23 min puis 12 min, BUILD LENT). merge_main_fait: oui
+TESTS: quick_check tests,net PASS 15:12 (tests 1320/1320, net + netsig3 PASS) ; tests 1319/1320 ROUGE 16:40 ; tests 1320/1320 PASS 17:17 (net non relancé après le 2e correctif : texte seul, aucun code réseau touché). TESTS_TAUTOLOGIQUES: 0
+ESSAIS: specialization_button : preflight PASS 17:18 (34 s), 3 PNG ouverts, VU À L'ÉCRAN (GESTE réel, SON sans objet) ; fiche C:\Users\baudo\Documents\MyCrusader\Retours\E-specialization_button.md [À ESSAYER] ; commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Elrond\Tools\Scenarios\play.ps1 specialization_button -Root C:\Users\baudo\Documents\HeroesOfLiberty-Elrond`
+QUESTIONS: aucune. Choix de lisibilité noté (non tranché comme design) : « En cours {0} s » ne tient pas sur une ligne de case (9 caractères, « Voie A du ») ; la case en cours écrit « {0} s » puis « Annuler », « En cours » reste dans l'infobulle (« Déblocage en cours au Forum »). Une ligne de LOCTEXT suffit pour changer.
+FAIT / RESTE:
+- FAIT : rouge non commité de la veille repris sans rien écraser ; GetReportName = SpecializeT<palier><A|B> / CancelSpecializationT<palier><A|B> dans hol.HUD.Report ; test ForumGrid déplacé (git mv) vers HeroesOfLibertyUI.
+- FAIT : case en cours sur 2 lignes « N s » / « Annuler » ; test : chaque ligne ≤ 9 caractères ; scénario : waitlog `=SpecializeT1A enabled` / `=CancelSpecializationT1A enabled` ; .look sur 2 lignes.
+- VU (PNG running 17:18) : plus de 3e ligne, plus de débordement sur la case C.
+- RESTE (C++, non fait, arrêt du C++ décidé à 16:3x) : l'infobulle (souris sur D) commence au milieu de la 2e ligne de la case et coupe le bas de « Annuler » / « palier » ; libellés GDD 13 par faction ; net à 2 clients ; D823 (bouton permanent).
+- Aucune ligne suivante prise (consigne de 16:3x). Branche prête.
+NON VÉRIFIÉ: valeur exacte de N sur le PNG (29 ou 20, illisible à 1066x600) ; lisibilité à 1080p ; quick_check net après 76ab50a ; le 3e waitlog `=SpecializeT1A enabled` peut retrouver la ligne du 1er rapport (pas de preuve qu'il lit seulement le rapport neuf).
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Elrond
+ANOMALIES_PROCESSUS: build en file 23 min (15:16 -> 16:36) puis 12 min (BUILD LENT 713 s, machine saturée, vm 15.2 GB) ; le 1er de ces builds a compilé HOLGameNames.cpp avant mon édition de 16:34 alors que Get-StaleBinaryProblem disait ensuite « vide » (la DLL liée à 16:36 est plus récente que la source éditée à 16:34 : LaunchCheck compare la DLL, pas l'objet ; faux « à jour » possible quand une source change pendant un build en file). Fusion de main : conflit du journal SpecializationInProgress.md résolu à la main (lignes des deux côtés gardées).
+GIT_STATUS_PRINCIPALE: hors docs voulus, inchangée : oui (mes écritures : EtapeDefini.md l. 360, Auto_Journey_File.md l. 44, Retours\E-specialization_button.md, ce rapport ; les autres M / ?? viennent d'autres sessions)
