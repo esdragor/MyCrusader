@@ -17,3 +17,4 @@ Aujourd'hui chaque attente affiche son propre texte (« Entree : style suivant �
 - **C. Laisser** : Backspace ne marche que dans les _compare sans `notereset` ou à `notereset` en tête d'option (ex. `tree_spacing_compare`, les `audio_compare_*`).
 - **Autre** : à préciser.
 - **Recommandation : A** (pas de convention à retenir). Valeur par défaut codée : C (rien changé).
+Reponse: Q1 = B (le panneau l ajoute, C++), Q2 = A (option = juste après l attente, C++) ; utilisateur, 2026-11-16 16:0x, par l interface de choix ; D827, D828 ; ligne [ ] en tête de la file de Faramir.
