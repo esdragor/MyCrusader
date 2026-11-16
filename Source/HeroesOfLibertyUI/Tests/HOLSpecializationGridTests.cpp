@@ -2,6 +2,7 @@
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
+#include "HUD/HOLGameNames.h"
 #include "Match/HOLGameState.h"
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Misc/AutomationTest.h"
@@ -68,6 +69,34 @@ bool FHOLSpecializationGridTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("Running: its cell cancels"), B.Command == EHOLGridCommand::CancelSpecialization);
 		TestEqual(TEXT("It shows the board's 30 s left (D684)"), B.RemainingMs, 30000);
 		TestTrue(TEXT("The other option still starts (answer B: it replaces)"), A.Command == EHOLGridCommand::Specialize);
+
+		// ELROND-1115i (Retours/E-specialization_button.md: four lines overflowed cell D): the running cell's text, from the game's
+		// text table, fits the cell: two lines at most, none longer than the other option's cell label, the name left to the tooltip.
+		const FString Running = HOLGameNames::GetSpecializationCellText(B).ToString();
+		const FString Other = HOLGameNames::GetSpecializationCellText(A).ToString();
+		TArray<FString> Lines;
+		Running.ParseIntoArrayLines(Lines);
+		int32 Longest = 0;
+		for (const FString& Line : Lines)
+		{
+			Longest = FMath::Max(Longest, Line.Len());
+		}
+		const FString Shown = Running.Replace(TEXT("\n"), TEXT(" / "));
+		TestTrue(FString::Printf(TEXT("The running cell writes two lines at most ('%s': %d)"), *Shown, Lines.Num()), Lines.Num() >= 1 && Lines.Num() <= 2);
+		TestTrue(FString::Printf(TEXT("No line longer than the other cell's label '%s' (%d, %d)"), *Other, Longest, Other.Len()), Longest <= Other.Len());
+		TestFalse(FString::Printf(TEXT("The option's name is in the tooltip only, not on the running cell ('%s')"), *Shown),
+			Running.Contains(HOLGameNames::GetSpecializationName(B.Tier, B.Option).ToString()));
+		TestTrue(FString::Printf(TEXT("It writes the board's seconds left ('%s')"), *Shown), Running.Contains(FString::FromInt(FMath::DivideAndRoundUp(B.RemainingMs, 1000))));
+
+		// hol.HUD.Report lists the specialization cells (ShownGridTypes), so a scenario waits for them in the standard report.
+		const FName StartReport = HOLCommandGrid::GetReportName(A);
+		const FName RunningReport = HOLCommandGrid::GetReportName(B);
+		TestFalse(TEXT("The report names the cell that starts"), StartReport.IsNone());
+		TestFalse(TEXT("And the running one"), RunningReport.IsNone());
+		TestNotEqual(TEXT("Starting and cancelling read apart in the report"), StartReport, RunningReport);
+		TestEqual(TEXT("The running one: cancel, tier 1, option B"), RunningReport.ToString(), FString(TEXT("CancelSpecializationT1B")));
+		TestEqual(TEXT("The other: start, tier 1, option A"), StartReport.ToString(), FString(TEXT("SpecializeT1A")));
+		TestTrue(TEXT("The Peasant keeps its own report name"), HOLCommandGrid::GetReportName(HOLCommandGrid::GetCommand(ForumContext(1, Board->ViewNow(0)), 0)).IsNone());
 		Board->AdvanceNow(0, 10000, true);
 		TestEqual(TEXT("10 s later: 20 s left on the cell"), HOLCommandGrid::GetCommand(ForumContext(1, Board->ViewNow(0)), CellB).RemainingMs, 20000);
 

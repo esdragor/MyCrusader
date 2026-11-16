@@ -329,6 +329,11 @@ namespace HOLCommandGrid
 	HEROESOFLIBERTY_API int32 GetOpenSpecializationTier(int32 PlayerTier, const FHOLSpecializationView& View);
 	/** SP3: fills Context's specialization fields from the view (bPrimaryForum is the caller's). */
 	HEROESOFLIBERTY_API void SetSpecialization(FHOLGridContext& Context, int32 PlayerTier, const FHOLSpecializationView& View);
+	/**
+	 * SP3: the name hol.HUD.Report gives a specialization cell (Â« SpecializeT1A Â», running Â« CancelSpecializationT1A Â»: tier, then
+	 * option A or B), so a scenario waits for it in the standard HUD report; None for any other command.
+	 */
+	HEROESOFLIBERTY_API FName GetReportName(const FHOLGridCommand& Command);
 
 	/**
 	 * The cell of the Market's trade of Resource (food, wood, stone): the sales on the top row, A Z E, the purchases below, Q S D
