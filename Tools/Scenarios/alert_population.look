@@ -1,2 +1,2 @@
 # <nom de capture> | ce que l'utilisateur doit voir
-alert_population | Capture 1920x1080, camera a 3000 cm au-dessus de ton forum, forum selectionne : dans le fil de messages (en haut a droite), la ligne lisible "Population pleine" ; la barre des ressources dit 10 / 10 de population ; 10 Paysans autour du forum. Journal exact : "HUD messages: ... Population pleine".
+alert_population | Capture 1920x1080, camera a 3000 cm au-dessus de ton forum, forum selectionne : dans le fil de messages (en haut a droite), la ligne lisible "Population pleine" ; la barre des ressources dit 10 / 10 de population ; 9 Paysans pres du forum et le 10e en file (panneau de production "Paysan", la place est reservee des la mise en file). Journal exact : "HUD messages: ... Population pleine".
