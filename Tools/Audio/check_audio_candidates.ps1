@@ -36,7 +36,9 @@ foreach ($Line in $Lines) {
     # so are the round-4 building lists (D798: Barracks voices, Range shots, Stable horse), until one letter is elected into the table.
     $IsFamily = $Cue -match '^Building\.(Wood|Stone|Sacred|Metal|Coins|Barracks|Range|Stable)$'
     if ($Names -notcontains $Cue -and -not $IsFamily) { Problem "${Cue}: not a cue of the table" }
-    if ($List.Count -ne 10) { Problem "${Cue}: $($List.Count) variants instead of 10" }
+    # D826 (2026-11-16): Range and Stable are a round 6 sweep of one elected sound (3 to 10 stems), every other cue has ten.
+    if ($Cue -match '^Building\.(Range|Stable)$') { if ($List.Count -lt 3 -or $List.Count -gt 10) { Problem "${Cue}: $($List.Count) variants instead of 3 to 10" } }
+    elseif ($List.Count -ne 10) { Problem "${Cue}: $($List.Count) variants instead of 10" }
     if (@($List | Select-Object -Unique).Count -ne $List.Count) { Problem "${Cue}: a stem twice" }
     foreach ($Stem in $List) {
         $Stems++

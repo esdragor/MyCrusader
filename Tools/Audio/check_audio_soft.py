@@ -38,6 +38,11 @@ MIN_PEAK_DB, MAX_PEAK_DB = -12.0, -2.0
 # The round 2 of Stone sat at -21 to -46 dB (energy below 100 Hz), the three elected building sounds the user hears well at -12 to -19.
 # A floor, not a choice: the ear still decides. Only for the cues re-done after that answer.
 AUDIBLE_CUES = ["Building.Stone", "Building.Metal", "Building.Barracks", "Building.Range", "Building.Stable"]
+# D826 (2026-11-16): the Range and Stable lists are round 6, a SWEEP of ONE elected sound (the round 5 G as reference + clean variants,
+# low-pass none to 1.5 kHz, make_round6_candidates.py): 3 to 10 stems, and the ear chooses how soft: duration up to 2 s (the sound is not cut),
+# centroid and share above 3 kHz printed but not refused. Peak and audibility still checked.
+CLEAN_CUES = ["Building.Range", "Building.Stable"]
+CLEAN_MAX_SECONDS = 2.0
 AUDIBLE_FROM_HZ = 200.0
 MIN_AUDIBLE_DB = -18.0
 
@@ -77,9 +82,15 @@ def audible_db(path):
     return 10 * np.log10(loudest) if loudest > 0 else -200.0
 
 
-def problems_of(values):
+def problems_of(values, clean=False):
     seconds, centroid, high, peak = values
     found = []
+    if clean:
+        if seconds > CLEAN_MAX_SECONDS:
+            found.append("%.2f s is too long even for a clean sweep (max %.2f)" % (seconds, CLEAN_MAX_SECONDS))
+        if not (MIN_PEAK_DB <= peak <= MAX_PEAK_DB):
+            found.append("peak %.1f dB outside %.0f..%.0f" % (peak, MIN_PEAK_DB, MAX_PEAK_DB))
+        return found
     if seconds > MAX_SECONDS:
         found.append("%.2f s is not short (max %.2f)" % (seconds, MAX_SECONDS))
     if centroid > MAX_CENTROID:
@@ -116,6 +127,8 @@ def main():
     failures = 0
     stems, by_cue = soft_stems(args.file)
     for cue in SOFT_CUES:
+        if cue in CLEAN_CUES and 3 <= len(by_cue.get(cue, [])) <= 10:
+            continue
         if len(by_cue.get(cue, [])) != 10:
             print("  FAIL : %s has %d soft (s_) candidates, expected 10" % (cue, len(by_cue.get(cue, []))))
             failures += 1
@@ -130,7 +143,8 @@ def main():
             continue
         values = measure(path)
         print("  %-26s %.2f s  centroid %4.0f Hz  >3k %4.1f %%  peak %5.1f dB" % (stem, values[0], values[1], values[2] * 100, values[3]))
-        for text in problems_of(values):
+        clean = all(cue in CLEAN_CUES for cue, listed in by_cue.items() if stem in listed)
+        for text in problems_of(values, clean):
             print("  FAIL : %s: %s" % (stem, text))
             failures += 1
     for cue in AUDIBLE_CUES:
