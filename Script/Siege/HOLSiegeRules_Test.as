@@ -87,3 +87,83 @@ void Test_SiegeIsAvailableAgreesWithCheck(FUnitTest& T)
 		}
 	}
 }
+
+// MIG-J-Siege-a (D830, migration 2026-11-16): the C++ tests of Source/HeroesOfLiberty/Tests/HOLSiegeTests.cpp ported to script. The
+// tests above already carry the tiers, the prototype and the reasons of HeroesOfLiberty.Siege.Tiers; the three below carry the rest of
+// Siege.Tiers, Siege.TechnologyHealth and Siege.Technologies, on the same vectors, through the REAL tables where the script can read
+// them (type table -> C++ HOLAIOrder::ReadAIUnitFigures / HOLAITechnology::ReadAITechnologyTable -> script).
+
+// Port of the end of HeroesOfLiberty.Siege.Tiers (S3): a unit type name is an engine only for the four of GDD 6.1; the words the
+// production logs.
+void Test_SiegeFindEngine(FUnitTest& T)
+{
+	EHOLSiegeEngine Found = EHOLSiegeEngine::Cannon;
+	T.AssertTrue(HOLSiege::FindEngine(n"Ram", Found) && Found == EHOLSiegeEngine::Ram, "Ram is the Ram");
+	T.AssertTrue(HOLSiege::FindEngine(n"Mangonel", Found) && Found == EHOLSiegeEngine::Mangonel, "Mangonel is the Mangonel");
+	T.AssertTrue(HOLSiege::FindEngine(n"Trebuchet", Found) && Found == EHOLSiegeEngine::Trebuchet, "Trebuchet is the Trebuchet");
+	T.AssertTrue(HOLSiege::FindEngine(n"Cannon", Found) && Found == EHOLSiegeEngine::Cannon, "Cannon is the Cannon");
+	T.AssertFalse(HOLSiege::FindEngine(n"Spearman", Found), "the Spearman is no engine");
+	T.AssertFalse(HOLSiege::FindEngine(NAME_None, Found), "no name is no engine");
+	T.AssertTrue(HOLSiege::DescribeBlock(HOLSiege::TierTooLow) == "tier too low", "tier words");
+	T.AssertTrue(HOLSiege::DescribeBlock(HOLSiege::NotInPrototype) == "not in the prototype", "prototype words");
+	T.AssertTrue(HOLSiege::DescribeBlock(HOLSiege::NoWorkshop) == "no workshop", "workshop words");
+	T.AssertTrue(HOLSiege::DescribeBlock(HOLSiege::CannotPay) == "cannot pay", "cost words");
+	T.AssertTrue(HOLSiege::DescribeBlock(HOLSiege::Available) == "none", "nothing stops it");
+}
+
+// Port of HeroesOfLiberty.Siege.TechnologyHealth (S5): a type's maximum health with the percent its player's technologies add
+// (Reinforced Ram: +10 % on the REAL Ram row's 400 -> 440), rounded to nearest, 0 changes nothing, a negative percent is no loss; the
+// Mangonel's blow on the REAL Spearman row: 45, and 54 with Heavy Munitions (+20 % on the attack alone).
+void Test_SiegeTechnologyHealth(FUnitTest& T)
+{
+	FHOLAITypeFigures Ram;
+	FHOLAITypeFigures Mangonel;
+	FHOLAITypeFigures Spearman;
+	T.AssertTrue(HOLAIOrder::ReadAIUnitFigures(n"Ram", Ram), "Ram row");
+	T.AssertTrue(HOLAIOrder::ReadAIUnitFigures(n"Mangonel", Mangonel), "Mangonel row");
+	T.AssertTrue(HOLAIOrder::ReadAIUnitFigures(n"Spearman", Spearman), "Spearman row");
+	T.AssertEquals(400, Ram.Health, "no technology: 400");
+	T.AssertEquals(400, HOLSiege::HealthWithTechnology(Ram.Health, 0), "0 percent: 400");
+	T.AssertEquals(440, HOLSiege::HealthWithTechnology(Ram.Health, 10), "+10 percent: 440");
+	T.AssertEquals(480, HOLSiege::HealthWithTechnology(Ram.Health, 20), "+20 percent: 480");
+	T.AssertEquals(400, HOLSiege::HealthWithTechnology(Ram.Health, -10), "a negative percent is not a loss");
+	const float Blow = HOLAIArmy::HitDamage(Mangonel, Spearman);
+	T.AssertTrue(Math::Abs(Blow - 45.f) < 0.01f, f"Mangonel on a Spearman: 45 (got {Blow})");
+	const float Boosted = Blow - float(Mangonel.Damage) + HOLSiege::AttackWithTechnology(Mangonel.Damage, 20);
+	T.AssertTrue(Math::Abs(Boosted - 54.f) < 0.01f, f"Mangonel on a Spearman with Heavy Munitions: 54 (got {Boosted})");
+}
+
+// Port of HeroesOfLiberty.Siege.Technologies on the REAL technology table (Tools/Data/Technologies.csv): the siege workshop's two
+// technologies open at the tier of the engine they improve, an engine of the prototype; the statistic each changes is the one the
+// engine reads (S5). Left in C++ (not readable from script): the row's Stats, the workshop's Age and Produces.
+void Test_SiegeTechnologies(FUnitTest& T)
+{
+	TArray<FHOLAITechnology> Table;
+	T.AssertTrue(HOLAITechnology::ReadAITechnologyTable(Table), "the real table is there");
+	int AtTheWorkshop = 0;
+	int ReinforcedRamTier = -1;
+	int HeavyMunitionsTier = -1;
+	for (int Index = 0; Index < Table.Num(); Index++)
+	{
+		if (Table[Index].Building == n"SiegeWorkshop")
+			AtTheWorkshop++;
+		if (Table[Index].Name == n"ReinforcedRam")
+			ReinforcedRamTier = Table[Index].MinTier;
+		if (Table[Index].Name == n"HeavyMunitions")
+			HeavyMunitionsTier = Table[Index].MinTier;
+	}
+	T.AssertEquals(2, AtTheWorkshop, "two technologies at the siege workshop (GDD 11.1)");
+	EHOLSiegeEngine RamEngine = EHOLSiegeEngine::Cannon;
+	EHOLSiegeEngine MangonelEngine = EHOLSiegeEngine::Cannon;
+	T.AssertTrue(HOLSiege::FindEngine(n"Ram", RamEngine), "Reinforced Ram improves the Ram, an engine");
+	T.AssertTrue(HOLSiege::FindEngine(n"Mangonel", MangonelEngine), "Heavy Munitions improves the Mangonel, an engine");
+	T.AssertEquals(HOLSiege::TierOf(RamEngine), ReinforcedRamTier, "ReinforcedRam opens at the tier of the engine it improves");
+	T.AssertEquals(HOLSiege::TierOf(MangonelEngine), HeavyMunitionsTier, "HeavyMunitions opens at the tier of the engine it improves");
+	T.AssertTrue(HOLSiege::InPrototype(RamEngine), "ReinforcedRam improves an engine of the prototype");
+	T.AssertTrue(HOLSiege::InPrototype(MangonelEngine), "HeavyMunitions improves an engine of the prototype");
+	T.AssertTrue(HOLSiege::HealthStatOf(n"Ram") == n"RamHealth", "the Ram reads RamHealth");
+	T.AssertTrue(HOLSiege::DamageStatOf(n"Mangonel") == n"MangonelDamage", "the Mangonel reads MangonelDamage");
+	T.AssertTrue(HOLSiege::HealthStatOf(n"Mangonel") == NAME_None, "the Mangonel's health has no technology");
+	T.AssertTrue(HOLSiege::DamageStatOf(n"Ram") == NAME_None, "the Ram's damage has no technology");
+	T.AssertTrue(HOLSiege::HealthStatOf(n"Spearman") == NAME_None, "a Spearman has none");
+}
