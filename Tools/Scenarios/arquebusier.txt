@@ -20,7 +20,7 @@ frames 30
 note 1. Un Homme d'armes ennemi (rouge, en haut) et ton Arquebusier (bleu, en bas, 14 m). Tu cliques sur l'Homme d'armes : ses PV sont 155/155.
 hol.Camera.FocusNear 4700 0
 frames 2
-hol.Select.ClickUnit -1 enemy
+hol.Select.ClickUnit -1 slot=1
 frames 10
 hol.HUD.Report
 hol.Combat.Report 1
@@ -33,11 +33,11 @@ hol.Select.ClickUnit -1
 frames 10
 hol.Camera.FocusNear 4700 0
 frames 2
-hol.Select.ClickUnit -1 enemy order
+hol.Select.ClickUnit -1 slot=1 order
 wait 2.5
 hol.Camera.FocusNear 4700 0
 frames 2
-hol.Select.ClickUnit -1 enemy
+hol.Select.ClickUnit -1 slot=1
 frames 10
 hol.Combat.Report 1
 waitlog ManAtArms slot 1 hp 117/155

@@ -62,6 +62,10 @@ if ($Notes -lt 1) { Report "FAIL" "no note/notereset line: the user is not told 
 $PanOffenders = @(Get-PanExposure (Get-Content -Encoding UTF8 $Txt))
 if ($PanOffenders.Count -gt 0) { Report "FAIL" "pan exposure: $($PanOffenders[0]) ($($PanOffenders.Count) in all; set the camera right before the click, 2 frames, not before a long wait)" }
 else { Report "OK" "pan exposure: every ground click is within 10 frames of the camera placement" }
+# 2c (static, 2026-11-16): 'hol.Select.ClickUnit <N> enemy' counts every unit not the player's (a neutral camp, a 3rd player): name the slot (PanExposure.ps1).
+$EnemyOffenders = @(Get-EnemyClickWithoutSlot (Get-Content -Encoding UTF8 $Txt))
+if ($EnemyOffenders.Count -gt 0) { Report "FAIL" "enemy click: $($EnemyOffenders[0]) ($($EnemyOffenders.Count) in all)" }
+else { Report "OK" "enemy click: every hol.Select.ClickUnit on another player's unit names its slot (slot=<S>)" }
 
 # 6 (static, 2026-11-12): the USER'S launch, not the agent's. Four trials passed this preflight and never started for the user (2026-11-11):
 # play.ps1 without -PlayerName on named seats (spectator), files only in the agent's worktree, a stale binary in the copy (LaunchCheck.ps1,
