@@ -20,10 +20,11 @@ Séance de MIGRATION (D830, D835 : Q2 = A, confirmée à 19:5x) lancée à 19:48
 | GALADRIEL-1116m | a3ee0a9e4019b4a94 | HeroesOfLiberty-Galadriel | pilote 2, HOLGameMenu : MIG-P2a, P2b (script) -> P2c (UN build si les liaisons suffisent) -> P2d HOLEndBanner | P2c seulement | 20:11 |
 | ARWEN-1116m | a1025a22c0b3198ff | HeroesOfLiberty-Arwen | jumeaux Camp, UnitAbility, Diplomacy | non | 20:11 |
 | CELEBORN-1116m | a9c0b4cf47a67a1d1 | HeroesOfLiberty-Celeborn | jumeaux Relay, Garrison | non | 20:11 |
-| ELROND-1116m | a530028b6fc2c9be1 | HeroesOfLiberty-Elrond | jumeaux UnitTier, Technology ; libre à 21:40 pour le lot C++ + fusion | non | 20:11 |
+| ELROND-1116m (fini 20:3x) | a530028b6fc2c9be1 | HeroesOfLiberty-Elrond | UnitTier ba50275 (accord 16 lignes, rouge RÉEL : Zombie et Damned Warrior absents de MinTier du .as, corrigé), Technology df294d2 (49 lignes C++ portées) ; tests 1328/1330 (2 rouges D831 connus) ; sens proposé : C++ reste (R9) ; écart à trancher : héros/Roi/mannequins NotListed côté script, palier 0 côté C++ ; branche tiers prête ; Elrond libre pour la fusion | non | 20:11 |
 | FARAMIR-1116m | ae1aac699fb3d6722 | HeroesOfLiberty-Faramir | jumeau Siege a/b sur fog (Script\ seulement, cherry-pick) | non | 20:11 |
 | HALDIR-1116m | a102ebd7d2acb0ffd | HeroesOfLiberty-Haldir | jumeaux Terrain, Site | non | 20:11 |
 | SAURON-1116m | a11d89bedc9193faf | HeroesOfLiberty-Sauron | jumeaux ExplorationXP, Deploy, Market | non | 20:11 |
+| PLAN-1116-E3 (Fable) | ad68d0b7fa6726c2b | lecture seule + file | tableau de décision R9 (sens de chaque jumeau, pour l'utilisateur en fin de séance) + lots de l'étape 3 pour la prochaine séance ; exception : Elrond n'est pas relancé (plus de lot sans build, réservé à la fusion de 21:50 ; l'étape 3 exige la suppression du C++ dans le même lot) | non | 20:3x |
 
 ## Résumé de la séance du 2026-11-16 après-midi
 
