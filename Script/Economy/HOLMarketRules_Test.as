@@ -285,3 +285,89 @@ void Test_MarketRecoverC(FUnitTest& T)
 	T.AssertEquals(80, HOLMarket::Recover(C, Sold.Book, 9).Prices[MarketWood], "C: 9 intervals, wood back at 80");
 	T.AssertEquals(80, HOLMarket::Recover(C, Sold.Book, 50).Prices[MarketWood], "C: no further than 80");
 }
+
+// MIG-J-Market (D830, D835): the vectors of the C++ twin's pure part, HeroesOfLiberty.Market.Rules (HOLMarketRulesTests.cpp), name for
+// name, so the script and the C++ are held to the same figures while both copies exist. The C++ reads its settings from Tools/Data/Market.csv
+// (row Standard): the "settings:" lines below hold the script's default preset to the figures that C++ test reads from the table.
+void Test_MarketRulesVectors(FUnitTest& T)
+{
+	FHOLMarketSettings S = MarketSettings();
+	T.AssertEquals(80, S.BasePrices[MarketFood], "settings: food base");
+	T.AssertEquals(120, S.BasePrices[MarketStone], "settings: stone base");
+	T.AssertEquals(100, S.BasePrices[MarketGold], "settings: gold base");
+	T.AssertEquals(30, S.FeePercent, "settings: tax");
+	T.AssertEquals(3, S.Step, "settings: step");
+	T.AssertEquals(20, S.MinPrice, "settings: floor");
+	T.AssertEquals(300, S.MaxPrice, "settings: cap");
+
+	FHOLMarketBook Book = HOLMarket::NewBook(S);
+	T.AssertEquals(80, Book.Prices[MarketWood], "fresh book: wood at 80");
+	T.AssertEquals(120, Book.Prices[MarketStone], "fresh book: stone at 120");
+
+	// The round trip: wood sold at 80 pays 56 and falls to 77; bought back at 77 costs 101 and returns to 80.
+	FHOLMarketTrade Sold = HOLMarket::Sell(S, Book, MarketWood, 1, 100, S.FeePercent);
+	T.AssertTrue(Sold.bOk, "a lot of wood sold");
+	T.AssertEquals(56, Sold.Gold, "it pays 56");
+	T.AssertEquals(100, Sold.Units, "100 wood leave the stock");
+	T.AssertEquals(77, Sold.Book.Prices[MarketWood], "wood falls to 77");
+	T.AssertEquals(80, Book.Prices[MarketWood], "the book given is not changed");
+	FHOLMarketTrade Bought = HOLMarket::Buy(S, Sold.Book, MarketWood, 1, 1000, S.FeePercent);
+	T.AssertTrue(Bought.bOk, "a lot of wood bought");
+	T.AssertEquals(101, Bought.Gold, "it costs 101");
+	T.AssertEquals(80, Bought.Book.Prices[MarketWood], "wood returns to 80");
+
+	// Stone: 120 sold pays 84, bought back at 117 costs 153.
+	FHOLMarketTrade StoneSold = HOLMarket::Sell(S, Book, MarketStone, 1, 100, S.FeePercent);
+	T.AssertEquals(84, StoneSold.Gold, "a lot of stone pays 84");
+	T.AssertEquals(153, HOLMarket::Buy(S, StoneSold.Book, MarketStone, 1, 1000, S.FeePercent).Gold, "a lot of stone bought back costs 153");
+
+	// Lot by lot: three lots of wood at 80, 77, 74.
+	FHOLMarketTrade Three = HOLMarket::Sell(S, Book, MarketWood, 3, 300, S.FeePercent);
+	T.AssertEquals(56 + 53 + 51, Three.Gold, "three lots, each at the price left by the one before");
+	T.AssertEquals(71, Three.Book.Prices[MarketWood], "three lots: wood at 71");
+
+	// The refusals change nothing.
+	T.AssertEquals("lots", HOLMarket::Sell(S, Book, MarketWood, 0, 500, S.FeePercent).Reason, "zero lots");
+	T.AssertEquals("resource", HOLMarket::Sell(S, Book, MarketGold, 1, 500, S.FeePercent).Reason, "gold is not traded");
+	T.AssertEquals("stock", HOLMarket::Sell(S, Book, MarketWood, 2, 150, S.FeePercent).Reason, "two lots from 150");
+	FHOLMarketTrade Poor = HOLMarket::Buy(S, Book, MarketStone, 1, 10, S.FeePercent);
+	T.AssertEquals("gold", Poor.Reason, "a lot with 10 gold");
+	T.AssertTrue(!Poor.bOk && Poor.Gold == 0 && Poor.Units == 0 && Poor.Book.Prices[MarketStone] == 120, "a refusal moves nothing");
+
+	// A purchase by lots of 100 gold, each lot at the price the one before left.
+	FHOLMarketTrade Gold1 = HOLMarket::BuyWithGold(S, Book, MarketWood, 1, 1000, S.FeePercent);
+	T.AssertTrue(Gold1.bOk, "100 gold spent on wood");
+	T.AssertEquals(100, Gold1.Gold, "it spends 100 gold");
+	T.AssertEquals(96, Gold1.Units, "it brings 96 wood (80 plus 30 % = 104 per 100 wood)");
+	T.AssertEquals(83, Gold1.Book.Prices[MarketWood], "wood rises to 83");
+	FHOLMarketTrade Gold2 = HOLMarket::BuyWithGold(S, Book, MarketWood, 2, 1000, S.FeePercent);
+	T.AssertEquals(200, Gold2.Gold, "two lots of gold: 200 gold");
+	T.AssertEquals(96 + 92, Gold2.Units, "two lots of gold: 96 + 92 wood (83 plus 30 % = 108)");
+	T.AssertEquals(86, Gold2.Book.Prices[MarketWood], "two lots of gold: wood at 86");
+	T.AssertEquals(64, HOLMarket::BuyWithGold(S, Book, MarketStone, 1, 1000, S.FeePercent).Units, "100 gold on stone brings 64");
+	T.AssertEquals("gold", HOLMarket::BuyWithGold(S, Book, MarketWood, 1, 99, S.FeePercent).Reason, "with 99 gold: refused (gold)");
+	T.AssertEquals("resource", HOLMarket::BuyWithGold(S, Book, MarketGold, 1, 1000, S.FeePercent).Reason, "gold is not bought with gold");
+
+	// The bounds, and the way back.
+	FHOLMarketBook Low = Book;
+	Low.Prices[MarketWood] = S.MinPrice + 1;
+	T.AssertEquals(S.MinPrice, HOLMarket::Sell(S, Low, MarketWood, 3, 1000, S.FeePercent).Book.Prices[MarketWood], "the price stops at the floor");
+	FHOLMarketBook High = Book;
+	High.Prices[MarketWood] = S.MaxPrice - 1;
+	T.AssertEquals(S.MaxPrice, HOLMarket::Buy(S, High, MarketWood, 3, 100000, S.FeePercent).Book.Prices[MarketWood], "the price stops at the cap");
+	T.AssertEquals(75, HOLMarket::Recover(S, Three.Book, 4).Prices[MarketWood], "4 intervals: wood 71 to 75");
+	T.AssertEquals(80, HOLMarket::Recover(S, Three.Book, 9).Prices[MarketWood], "9 intervals: back to 80");
+	T.AssertEquals(80, HOLMarket::Recover(S, Three.Book, 50).Prices[MarketWood], "no further than the base");
+	T.AssertEquals(S.MaxPrice - 3, HOLMarket::Recover(S, High, 2).Prices[MarketWood], "a price above the base comes down");
+}
+
+// MIG-J-Market: the pure head of HeroesOfLiberty.Market.Tribute (HOLMarketRulesTests.cpp), name for name; its world part (order queue,
+// production step, stocks) stays in C++.
+void Test_MarketTributeVectors(FUnitTest& T)
+{
+	T.AssertEquals(30, HOLTribute::DefaultTaxPercent, "the tax is 30 % by default");
+	T.AssertEquals(70, HOLTribute::Received(100, 30), "100 sent: 70 arrive");
+	T.AssertEquals(1, HOLTribute::Received(1, 30), "1 sent: the tax rounds down, the gift is not eaten");
+	T.AssertEquals(0, HOLTribute::Received(100, 250), "a tax over 100 % is bounded");
+	T.AssertEquals(0, HOLTribute::Received(0, 30), "nothing sent: nothing arrives");
+}
