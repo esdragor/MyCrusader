@@ -17,22 +17,22 @@ void Test_SignalKindsAreTheWheelAndTheNeutral(FUnitTest& T)
 }
 
 // A Diplomacy match of four humans: 0 and 1 mutual allies; 0 says Ally to 2 but 2 says Neutral (one-sided); 3 stays Enemy.
-FHOLDiplomacyBook SignalTestBook()
+FHOLDiplomacyStances SignalTestBook()
 {
 	TArray<bool> IsAI;
 	for (int Slot = 0; Slot < 4; Slot++)
 		IsAI.Add(false);
-	FHOLDiplomacyBook Book = HOLDiplomacy::NewBook(4, IsAI);
-	HOLDiplomacy::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
-	HOLDiplomacy::SetStance(Book, 0, 2, HOLDiplomacy::Ally);
-	HOLDiplomacy::SetStance(Book, 2, 0, HOLDiplomacy::Neutral);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(4, IsAI);
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
+	HOLDiplomacyRead::SetStance(Book, 0, 2, HOLDiplomacy::Ally);
+	HOLDiplomacyRead::SetStance(Book, 2, 0, HOLDiplomacy::Neutral);
 	return Book;
 }
 
 void Test_SignalSeenByMutualAlliesOnly(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLDiplomacyStances Book = SignalTestBook();
 	FHOLSignalBoard Board;
 	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 0, false, HOLSignal::Attack, FVector(100.0, 200.0, 0.0), 0),
 		"player 0 places Attack here");
@@ -50,7 +50,7 @@ void Test_SignalSeenByMutualAlliesOnly(FUnitTest& T)
 	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 3, 10).Num(), "an Enemy does not see it");
 
 	// The break is immediate (D370): once 1 says Enemy, it no longer sees 0's signals.
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
 	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 1, 20).Num(), "a broken alliance hides the signals at once");
 }
 
@@ -66,7 +66,7 @@ void Test_SignalSeenByTeammatesInTeamModes(FUnitTest& T)
 	IsAI.Add(true);
 	IsAI.Add(false);
 	IsAI.Add(false);
-	FHOLDiplomacyBook Book = HOLDiplomacy::NewTeamBook(Teams, IsAI);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewTeamBook(Teams, IsAI);
 	FHOLSignalBoard Board;
 	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 0, false, HOLSignal::Rally, FVector(0.0, 0.0, 0.0), 0), "Rally");
 	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 1, 1).Num(), "an AI teammate receives it (it may answer later, D386)");
@@ -87,7 +87,7 @@ void Test_SignalSpectatorsSeeEverySignal(FUnitTest& T)
 {
 	// Answer of 2026-11-13 to Q-signals-spectators (A): a player defeated in Diplomacy or free-for-all and a pure spectator see every
 	// signal of every player, as they see the whole map (they talk to the spectators only, D376: nothing leaks to the players).
-	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLDiplomacyStances Book = SignalTestBook();
 	FHOLSignalBoard Board;
 	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 0, false, HOLSignal::Attack, FVector(0.0, 0.0, 0.0), 0), "0 places Attack here");
 	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 1, false, HOLSignal::Defend, FVector(0.0, 0.0, 0.0), 1), "1 places Defend here");
@@ -106,7 +106,7 @@ void Test_SignalSpectatorsSeeEverySignal(FUnitTest& T)
 		Teams.Add(0);
 		IsAI.Add(false);
 	}
-	FHOLDiplomacyBook FreeForAll = HOLDiplomacy::NewTeamBook(Teams, IsAI);
+	FHOLDiplomacyStances FreeForAll = HOLDiplomacyRead::NewTeamBook(Teams, IsAI);
 	FHOLSignalBoard FreeBoard;
 	HOLSignal::Post(FreeBoard, FreeForAll, 0, false, HOLSignal::Rally, FVector(0.0, 0.0, 0.0), 0);
 	HOLSignal::Post(FreeBoard, FreeForAll, 1, false, HOLSignal::Scout, FVector(0.0, 0.0, 0.0), 0);
@@ -117,7 +117,7 @@ void Test_SignalSpectatorsSeeEverySignal(FUnitTest& T)
 void Test_SignalStaysFiveSeconds(FUnitTest& T)
 {
 	// D784 (Q1 = A): a signal stays 5 s on the map (the window of the limit of 3), seen through the real board.
-	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLDiplomacyStances Book = SignalTestBook();
 	FHOLSignalBoard Board;
 	T.AssertEquals(HOLSignal::Ok, HOLSignal::Post(Board, Book, 0, false, HOLSignal::Attack, FVector(0.0, 0.0, 0.0), 0), "placed at 0");
 	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 1, 4999).Num(), "still there at 4.999 s");
@@ -127,7 +127,7 @@ void Test_SignalStaysFiveSeconds(FUnitTest& T)
 
 void Test_FourthSignalInFiveSecondsIsRefused(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLDiplomacyStances Book = SignalTestBook();
 	FHOLSignalBoard Board;
 	const int Step = HOLSignal::WindowMs / (HOLSignal::MaxPerWindow + 1);
 	int Now = 0;
@@ -153,7 +153,7 @@ void Test_FourthSignalInFiveSecondsIsRefused(FUnitTest& T)
 
 void Test_SignalFadesAfterItsLifetime(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLDiplomacyStances Book = SignalTestBook();
 	FHOLSignalBoard Board;
 	HOLSignal::Post(Board, Book, 0, false, HOLSignal::Scout, FVector(0.0, 0.0, 0.0), 1000);
 	T.AssertEquals(1, HOLSignal::SeenBy(Board, Book, 1, 1000 + HOLSignal::LifetimeMs - 1).Num(), "still on the map");
@@ -164,7 +164,7 @@ void Test_SignalFadesAfterItsLifetime(FUnitTest& T)
 
 void Test_RefusedSignals(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = SignalTestBook();
+	FHOLDiplomacyStances Book = SignalTestBook();
 	FHOLSignalBoard Board;
 	T.AssertEquals(HOLSignal::BadKind, HOLSignal::Post(Board, Book, 0, false, HOLSignal::KindCount, FVector(0.0, 0.0, 0.0), 0),
 		"an unknown kind");

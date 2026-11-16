@@ -1,3 +1,4 @@
+// MIG-S1c-Siege: the engines' tiers, prototype set, reasons (Check), names and statistics are the C++ rule HOLSiege (Siege/HOLSiegeRules.h), read through HOLSiegeCheck::; what stays here is the numbering (enum, reasons) and what that library does not expose.
 // The siege engines' pure rules (SiegeInProgress.md S1, GDD 6.1, D23, D77, D180): which engine opens at which tier, which are in the
 // prototype, and why an engine cannot be queued now. Integers and booleans only (D468 determinism), no world access, tested alone
 // in script (HOLSiegeRules_Test.as). The numbers that are the GDD's (the tiers, the prototype's two engines) are here; the stats of an
@@ -44,33 +45,13 @@ namespace HOLSiege
 		return EHOLSiegeEngine::Cannon;
 	}
 
-	// The tier an engine opens at (GDD 6.1: Ram 1, Mangonel 2, Trebuchet 3, Cannon 3 with the powder, D180). The siege workshop is
-	// itself a tier 1 building (GDD 11.1), so no engine opens before 1.
-	int TierOf(EHOLSiegeEngine Engine)
-	{
-		switch (Engine)
-		{
-			case EHOLSiegeEngine::Ram: return 1;
-			case EHOLSiegeEngine::Mangonel: return 2;
-			case EHOLSiegeEngine::Trebuchet: return 3;
-			case EHOLSiegeEngine::Cannon: return 3;
-		}
-		return 3;
-	}
-
-	// True for the prototype's siege: the Ram and the Mangonel (D77). The other two wait.
-	bool InPrototype(EHOLSiegeEngine Engine)
-	{
-		return Engine == EHOLSiegeEngine::Ram || Engine == EHOLSiegeEngine::Mangonel;
-	}
-
 	// The prototype's engines, in the order of their tier.
 	TArray<EHOLSiegeEngine> PrototypeEngines()
 	{
 		TArray<EHOLSiegeEngine> Result;
 		for (int Index = 0; Index < EngineCount; Index++)
 		{
-			if (InPrototype(EngineAt(Index)))
+			if (HOLSiegeCheck::InPrototype(Index))
 				Result.Add(EngineAt(Index));
 		}
 		return Result;
@@ -83,86 +64,16 @@ namespace HOLSiege
 		TArray<EHOLSiegeEngine> Prototype = PrototypeEngines();
 		for (int Index = 0; Index < Prototype.Num(); Index++)
 		{
-			if (TierOf(Prototype[Index]) <= HeroTier)
+			if (HOLSiegeCheck::GetTier(int(Prototype[Index])) <= HeroTier)
 				Result.Add(Prototype[Index]);
 		}
 		return Result;
 	}
 
-	// Why an engine cannot be queued now, or Available. HeroTier is the tier the hero's level has opened; bWorkshopFinished: the
-	// player owns a finished siege workshop; bCanPay: the stock covers the engine's cost.
-	int Check(EHOLSiegeEngine Engine, int HeroTier, bool bWorkshopFinished, bool bCanPay)
-	{
-		if (!InPrototype(Engine))
-			return NotInPrototype;
-		if (HeroTier < TierOf(Engine))
-			return TierTooLow;
-		if (!bWorkshopFinished)
-			return NoWorkshop;
-		if (!bCanPay)
-			return CannotPay;
-		return Available;
-	}
-
 	// True when the engine can be queued now.
 	bool IsAvailable(EHOLSiegeEngine Engine, int HeroTier, bool bWorkshopFinished, bool bCanPay)
 	{
-		return Check(Engine, HeroTier, bWorkshopFinished, bCanPay) == Available;
-	}
-
-	// S3: the engine a unit type is, by the name of its row (Ram, Mangonel, Trebuchet, Cannon); false for any other type. The C++
-	// HOLSiege::FindEngine, which the production reads (HOLProductionSubsystem.cpp).
-	bool FindEngine(FName TypeName, EHOLSiegeEngine& OutEngine)
-	{
-		if (TypeName == n"Ram")
-		{
-			OutEngine = EHOLSiegeEngine::Ram;
-			return true;
-		}
-		if (TypeName == n"Mangonel")
-		{
-			OutEngine = EHOLSiegeEngine::Mangonel;
-			return true;
-		}
-		if (TypeName == n"Trebuchet")
-		{
-			OutEngine = EHOLSiegeEngine::Trebuchet;
-			return true;
-		}
-		if (TypeName == n"Cannon")
-		{
-			OutEngine = EHOLSiegeEngine::Cannon;
-			return true;
-		}
-		return false;
-	}
-
-	// The words of a reason in the log of the production ("tier too low"), as the C++ HOLSiege::DescribeBlock.
-	FString DescribeBlock(int Reason)
-	{
-		if (Reason == NotInPrototype)
-			return "not in the prototype";
-		if (Reason == TierTooLow)
-			return "tier too low";
-		if (Reason == NoWorkshop)
-			return "no workshop";
-		if (Reason == CannotPay)
-			return "cannot pay";
-		return "none";
-	}
-
-	// S5: the technology statistic that raises this type's health (Ram: RamHealth, Tools/Data/Technologies.csv ReinforcedRam),
-	// NAME_None for any other type. The C++ HOLSiege::GetHealthStat.
-	FName HealthStatOf(FName TypeName)
-	{
-		return TypeName == n"Ram" ? n"RamHealth" : NAME_None;
-	}
-
-	// S5: the technology statistic that raises this type's damage (Mangonel: MangonelDamage, HeavyMunitions), NAME_None for any
-	// other type. The C++ HOLSiege::GetDamageStat.
-	FName DamageStatOf(FName TypeName)
-	{
-		return TypeName == n"Mangonel" ? n"MangonelDamage" : NAME_None;
+		return HOLSiegeCheck::Check(int(Engine), HeroTier, bWorkshopFinished, bCanPay) == Available;
 	}
 
 	// S5: a maximum health with the percent its player's technologies add, rounded once to nearest (400 + 10 % = 440); a negative

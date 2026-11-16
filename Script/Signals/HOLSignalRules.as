@@ -62,23 +62,29 @@ namespace HOLSignal
 	// free-for-all or Diplomacy; a defeated teammate of a team match is none (D784: its team's signals only). false = no signal at all.
 	const bool SpectatorsSeeAll = true;
 
+	// Slot is a seat of the match (HOLDiplomacy::InMatch of the C++ rule is not exposed by HOLDiplomacyRead: to expose at the next C++ lot).
+	bool InMatch(const FHOLDiplomacyStances& Book, int Slot)
+	{
+		return Slot >= 0 && Slot < Book.Slots;
+	}
+
 	// Viewer sees a signal of Sender: its own, or a mutual ally's (D386, D369), never a Neutral's or an Enemy's; a spectator
 	// (bViewerSpectator, the caller's input as for HOLChat) sees them all (SpectatorsSeeAll).
-	bool Sees(const FHOLDiplomacyBook& Book, int Sender, int Viewer, bool bViewerSpectator = false)
+	bool Sees(const FHOLDiplomacyStances& Book, int Sender, int Viewer, bool bViewerSpectator = false)
 	{
-		if (!HOLDiplomacy::InMatch(Book, Sender))
+		if (!InMatch(Book, Sender))
 			return false;
 		if (bViewerSpectator)
 			return SpectatorsSeeAll;
-		if (!HOLDiplomacy::InMatch(Book, Viewer))
+		if (!InMatch(Book, Viewer))
 			return false;
-		return Sender == Viewer || HOLDiplomacy::IsAlly(Book, Sender, Viewer);
+		return Sender == Viewer || HOLDiplomacyRead::IsAlly(Book, Sender, Viewer);
 	}
 
 	// Sender may place a signal: in the match, and alive or a defeated teammate of a team match (Q2; D376 for the others).
-	bool CanSend(const FHOLDiplomacyBook& Book, int Sender, bool bDefeated)
+	bool CanSend(const FHOLDiplomacyStances& Book, int Sender, bool bDefeated)
 	{
-		if (!HOLDiplomacy::InMatch(Book, Sender))
+		if (!InMatch(Book, Sender))
 			return false;
 		return !bDefeated || (Book.bLocked && DefeatedTeammateSignals);
 	}
@@ -114,11 +120,11 @@ namespace HOLSignal
 	}
 
 	// Sender places a signal of Kind at Location at NowMs. Ok: it is on the board; any other answer: nothing changed.
-	int Post(FHOLSignalBoard& Board, const FHOLDiplomacyBook& Book, int Sender, bool bDefeated, int Kind, FVector Location, int NowMs)
+	int Post(FHOLSignalBoard& Board, const FHOLDiplomacyStances& Book, int Sender, bool bDefeated, int Kind, FVector Location, int NowMs)
 	{
 		if (!IsValidKind(Kind))
 			return BadKind;
-		if (!HOLDiplomacy::InMatch(Book, Sender))
+		if (!InMatch(Book, Sender))
 			return NoSuchSlot;
 		if (!CanSend(Book, Sender, bDefeated))
 			return Silenced;
@@ -137,7 +143,7 @@ namespace HOLSignal
 	}
 
 	// The signals Viewer sees on the map at NowMs: alive, and its own or a mutual ally's.
-	TArray<FHOLSignal> SeenBy(const FHOLSignalBoard& Board, const FHOLDiplomacyBook& Book, int Viewer, int NowMs, bool bViewerSpectator = false)
+	TArray<FHOLSignal> SeenBy(const FHOLSignalBoard& Board, const FHOLDiplomacyStances& Book, int Viewer, int NowMs, bool bViewerSpectator = false)
 	{
 		TArray<FHOLSignal> Result;
 		for (const FHOLSignal& Signal : Board.Signals)

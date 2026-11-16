@@ -2,6 +2,7 @@
 // script through their new libraries (HOLSiegeCheck, HOLDiplomacyRead, HOLUnitAbilityRead), on the SAME vectors as their C++ tests
 // (HOLSiegeTests.cpp Siege.Tiers, HOLDiplomacyRulesTests.cpp Diplomacy.Rules, HOLDamnedWarriorTests.cpp against UnitAbilities.csv).
 // The script copies (HOLSiegeRules.as, HOLDiplomacyRules.as) are not removed yet: next lots (HOLUnitAbilityRules.as is gone, MIG-S1c-UnitAbility).
+// The Siege script copy is removed (MIG-S1c-Siege); HOLDiplomacyRules.as and HOLUnitAbilityRules.as are not yet: next lots.
 
 // HeroesOfLiberty.Siege.Tiers through HOLSiegeCheck (engine and block numbers: EHOLSiegeEngine, HOLSiege::Available... of the script).
 void Test_SiegeCheckLibraryVectors(FUnitTest& T)
@@ -29,7 +30,7 @@ void Test_SiegeCheckLibraryVectors(FUnitTest& T)
 	T.AssertEquals(HOLSiege::NoWorkshop, HOLSiegeCheck::Check(Mangonel, 2, false, false), "then the workshop");
 	T.AssertEquals(HOLSiege::CannotPay, HOLSiegeCheck::Check(Mangonel, 2, true, false), "then the cost");
 
-	// While the two copies exist: the C++ rule and the script's agree on every engine, tier and pair of booleans.
+	// MIG-S1c-Siege: the script copy is gone; the library's reason is checked on every engine, tier and pair of booleans against the order of its own parts (prototype, tier, workshop, cost).
 	for (int Index = 0; Index < HOLSiege::EngineCount; Index++)
 	{
 		const EHOLSiegeEngine Engine = HOLSiege::EngineAt(Index);
@@ -39,7 +40,8 @@ void Test_SiegeCheckLibraryVectors(FUnitTest& T)
 			{
 				const bool bWorkshop = (Mask & 1) != 0;
 				const bool bPay = (Mask & 2) != 0;
-				T.AssertEquals(HOLSiege::Check(Engine, Tier, bWorkshop, bPay), HOLSiegeCheck::Check(int(Engine), Tier, bWorkshop, bPay), f"engine {Index} tier {Tier} mask {Mask}: C++ and script agree");
+				const int Expected = !HOLSiegeCheck::InPrototype(int(Engine)) ? HOLSiege::NotInPrototype : (Tier < HOLSiegeCheck::GetTier(int(Engine)) ? HOLSiege::TierTooLow : (!bWorkshop ? HOLSiege::NoWorkshop : (!bPay ? HOLSiege::CannotPay : HOLSiege::Available)));
+				T.AssertEquals(Expected, HOLSiegeCheck::Check(int(Engine), Tier, bWorkshop, bPay), f"engine {Index} tier {Tier} mask {Mask}: the reason follows the order of its parts");
 			}
 		}
 	}
