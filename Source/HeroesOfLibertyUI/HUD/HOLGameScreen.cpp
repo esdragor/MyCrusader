@@ -2674,6 +2674,13 @@ void UHOLGameScreen::UpdateHead()
 			: 1;
 		HeadProgress = HOLProduction::GetProgress(Head, UHOLProductionSubsystem::GetDisplayStep(GetWorld()), BuildSteps);
 		HeadState = EHeadState::InProgress;
+		// D829: done but no place in the population: it stays at 100 % and the queue says so.
+		const AHOLPlayerState* PlayerStateOfHead = BoundPlayerState.Get();
+		if (HeadProgress >= 1.f && PlayerStateOfHead
+			&& HOLCommandGrid::IsPopulationBlocked(PlayerStateOfHead->GetPopulationUsed(), PlayerStateOfHead->GetPopulationCap(), UnitType ? UnitType->Population : 1))
+		{
+			HeadState = EHeadState::PopulationFull;
+		}
 	}
 	else
 	{
@@ -2690,7 +2697,8 @@ void UHOLGameScreen::UpdateHead()
 	{
 		QueueProgress->SetPercent(HeadProgress);
 	}
-	SetShown(QueueProgress, HeadState != EHeadState::PopulationFull);
+	// D829: a unit held at 100 % keeps its full bar, the note beside it.
+	SetShown(QueueProgress, HeadState != EHeadState::PopulationFull || HeadProgress > 0.f);
 	SetShown(QueueNote, HeadState == EHeadState::PopulationFull);
 }
 
@@ -2789,7 +2797,11 @@ void UHOLGameScreen::CheckPopulationBlocked()
 		for (FHOLBuildingIterator It(World); It && !bBlocked; ++It)
 		{
 			const TArray<FHOLProductionItem>& Queue = It->GetProductionQueue();
-			if (It->GetOwnerPlayer() != PlayerState->GetPlayerIndex() || !It->IsFinished() || Queue.IsEmpty() || Queue[0].IsStarted())
+			// D829: blocked = the head is done (100 %) and has no place to come out; a unit in production holds no place.
+			const FHOLUnitTypeRow* HeadType = Queue.IsEmpty() ? nullptr : FindUnitType(Queue[0].TypeName);
+			if (It->GetOwnerPlayer() != PlayerState->GetPlayerIndex() || !It->IsFinished() || !HeadType
+				|| !HOLProduction::IsWaitingForRoom(Queue[0], UHOLProductionSubsystem::GetDisplayStep(World),
+					UHOLProductionSubsystem::GetBuildSteps(*HeadType, GetDefault<UHOLSimulationSettings>()->GetStepSeconds())))
 			{
 				continue;
 			}
@@ -2803,6 +2815,12 @@ void UHOLGameScreen::CheckPopulationBlocked()
 		FHOLCommandFeedback Feedback;
 		Feedback.Kind = EHOLCommandFeedback::PopulationFull;
 		ShowMessage(GetFeedbackKey(Feedback), GetFeedbackText(Feedback));
+	}
+	if (bBlocked && !bPopulationBlocked)
+	{
+		// D829 (the user's BUG on alert_population): the production stops at 100 %, the population full line goes to the thread (D202).
+		AddThreadLine(LOCTEXT("PopulationFull", "Population pleine"));
+		UE_LOG(LogHOLUI, Display, TEXT("HUD: production held at 100 %% (population full), line to the thread"));
 	}
 	bPopulationBlocked = bBlocked;
 }
