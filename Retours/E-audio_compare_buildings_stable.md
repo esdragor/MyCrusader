@@ -26,3 +26,4 @@ assets: (hors git, seulement dans le worktree Arwen) `C:\Users\baudo\Documents\H
 Commande complète (règle 13, 2026-11-14) :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings_stable -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 1 min (5 sons, Entrée = suivant). Réponse attendue : la lettre (B à E), `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: REGLAGE : B mais pas le hennissement de début, juste le pfffff de fin (utilisateur, 2026-11-16 16:5x ; D832 ; ligne [ ] en tête de la section Arwen)

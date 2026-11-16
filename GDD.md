@@ -3613,4 +3613,10 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D829** (Production et population, D202, D804, 2026-11-16, BUG de l'utilisateur sur l'essai alert_population) : la population se vérifie à la FIN de la production, pas à la mise en file : on peut mettre en file Paysans et soldats même à population pleine ; une unité qui atteint 100 % vérifie la population avant de sortir ; s'il n'y a pas de place, elle RESTE à 100 % sans sortir, la file indique « population maximale » (et l'alerte « Population pleine » entre dans le fil), et elle sort dès qu'une place se libère. Constat de l'utilisateur : la ligne « Population pleine » n'est jamais apparue dans le fil pendant l'essai.
 
-Prochain numéro : **D830**.
+**D830** (Méthode de développement, C++ et Angelscript, 2026-11-16 16:3x, décision de l'utilisateur après la séance du jour : un build de 51 min au lieu de 45 s, 5 agents C++ bloqués) : on ARRÊTE le développement de fonctionnalités en C++ et on passe le MAXIMUM du code en Angelscript, TESTS COMPRIS (les tests automatisés C++ passent en Angelscript autant que possible). Ne reste en C++ que ce qu'Angelscript ne peut pas porter (à établir par le plan de migration Docs\Rapports\ANALYSE-1116a.md, validé par l'utilisateur à la prochaine séance avant toute migration). Les builds C++ en cours le 2026-11-16 se terminent et sont commités ; aucune nouvelle tâche C++ n'est lancée en attendant le plan.
+
+**D831** (Raccourcis de la grille, Nomade, D816, 2026-11-16, REGLAGE de l'utilisateur sur l'essai nomad_start) : le Forum (town center, MainCentre) du Nomade se pose par la touche **E** (et non C) dans la page Palier II de la grille (Z puis E).
+
+**D832** (Audio des bâtiments, tour 6, D801, D826, 2026-11-16 16:5x, écoute de l'utilisateur) : son de sélection du **Champ de tir = B** du tour 6 (tir d'arc G du tour 5, version propre sans filtre) ; **Caserne = A** du tour 6 (une lame tirée, sans voix) ; **Écurie = B** du tour 6 MAIS seulement l'ébrouement (« pfff ») de la fin, SANS le hennissement du début (à couper, puis réécoute par l'utilisateur).
+
+Prochain numéro : **D833**.

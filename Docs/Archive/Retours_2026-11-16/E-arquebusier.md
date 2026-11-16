@@ -15,3 +15,4 @@ NON VÉRIFIÉ : vrais clics souris de la note 4 (geste interne dans la préparat
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle, jamais « même commande avec… ».
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Sauron\Tools\Scenarios\play.ps1 arquebusier -Root C:\Users\baudo\Documents\HeroesOfLiberty-Sauron`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK (utilisateur, 2026-11-16 16:3x, dans la conversation)
