@@ -146,7 +146,7 @@ if ($PlaceholdersAlone -and -not $Parts.Count) { Write-Host "quick_check : PASS"
 $KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
 $FailedParts = @()
 $SubCases = @{}
-function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
+function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks, [string[]] $FailedTests = @()) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
     # too ("build hero return" for build:hero).
@@ -157,6 +157,12 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
     # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
     $KnownRed = Find-KnownRed $Part $KnownReds
+    # The "tests" part (SAURON-1116n): known red when its one failed check is "all green" and EVERY failed test is listed
+    # (Find-KnownTestRed); the part is then added to the list so that Get-RedSummary counts it known too.
+    if (-not $KnownRed -and $Failed.Count -eq 1 -and @($FailedTests).Count) {
+        $KnownRed = Find-KnownTestRed $FailedTests $KnownReds
+        if ($KnownRed) { $script:KnownReds = @($KnownReds) + [pscustomobject]@{ Test = $Part; Since = $KnownRed.Since; Cause = $KnownRed.Cause } }
+    }
     $RedTag = ""
     if ($Failed.Count -gt 0) {
         $script:FailedParts += $Part
@@ -196,12 +202,21 @@ if ($Parts -contains "values") {
         # S7: FHOLMapInfo::NumSites (greys the box "Sites sacres") = the sites each map's file lays (Tools/Editor/maps, common.py SITE_COUNTS).
         $SiteCountOutput = @(python -I (Join-Path $PSScriptRoot "site_count_accord_test.py") 2>&1)
         $ValuesChecks["site_count_accord_test.py ($($SiteCountOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
-        # B2: the exploration XP numbers (defaults and presets A/B/C) agree between Script/Heroes/HOLExplorationXPRules.as and its C++ twin.
-        $ExplorationXPOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_accord_test.py") 2>&1)
-        $ValuesChecks["exploration_xp_accord_test.py ($($ExplorationXPOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # MIG-J-UnitAbility: the necrotic rage numbers agree between the script tables (HOLUnitAbilityTable, HOLMoraleTable) and HOLUnitAbilityRules.h.
         $UnitAbilityAccordOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_accord_test.py") 2>&1)
         $ValuesChecks["unit_ability_accord_test.py ($($UnitAbilityAccordOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-01: Camps.csv against UnitTypes.csv (port of HOLCampTableTests.cpp, D613).
+        $CampTableOutput = @(python -I (Join-Path $PSScriptRoot "camp_table_test.py") 2>&1)
+        $ValuesChecks["camp_table_test.py ($($CampTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-05: Talents.csv grid (port of HOLTalentTableTests.cpp: 8 rows, 3 families, 7 cells).
+        $TalentTableOutput = @(python -I (Join-Path $PSScriptRoot "talent_table_test.py") 2>&1)
+        $ValuesChecks["talent_table_test.py ($($TalentTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # E3-13: Tools/Data/Maps.csv says what the code table (HOLMapRules.cpp) says (ported from the Map.Csv test of HOLMapRulesTests.cpp).
+        $MapTableOutput = @(python -I (Join-Path $PSScriptRoot "map_table_test.py") 2>&1)
+        $ValuesChecks["map_table_test.py ($($MapTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # D809 / D836: the exploration XP presets A / B / C of HOLExplorationXPRules.cpp (C++ only source) equal the numbers decided.
+        $ExplorationPresetsOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_presets_test.py") 2>&1)
+        $ValuesChecks["exploration_xp_presets_test.py ($($ExplorationPresetsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
@@ -7482,7 +7497,7 @@ if ($TestsProcess) {
     $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
     $ScriptTests = @($Results | Where-Object { $_.Groups[2].Value -like "Angelscript.UnitTests.*" }).Count
     $Checks["script tests ran ($ScriptTests)"] = $ScriptTests -gt 0
-    $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
+    $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks $Failures) -and $AllOk
 }
 
 # The "lobby" part (M6 R5.4): lobby_match.ps1 on its own, once the rest is done (its three games and the test manager
@@ -8472,7 +8487,7 @@ if ($Parts -contains "netsig3") {
     Write-AIMatchConfig $Sig3Config @("Human", "Human", "Human", "Closed", "Closed", "Closed", "Closed", "Closed") @("Alice", "Bob", "Carol")
     (Get-Content $Sig3Config -Raw) -replace '"version": 2,', '"version": 2, "mode": "Diplomacy",' | Set-Content -Encoding ascii $Sig3Config
     $Sig3Names = @{ 1 = "Bob"; 2 = "Alice"; 3 = "Carol" }
-    # A chat text one character longer than hol.Chat.MaxLength's default (HOLChat::MaxTextLength = 200): the server refuses it.
+    # A chat text one character longer than hol.Chat.MaxLength's default (HOLChat::MaxTextLength = 200, Script/Chat/HOLChatRules.as): the server refuses it.
     $Sig3LongText = "x" * 201
     # The clients launched: the harness's third client, Carol (her own saved directory Saved_Tests_Net3).
     $Sig3Launched = @(1, 2, 3)

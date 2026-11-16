@@ -141,7 +141,7 @@ namespace HOLAITech
 			bool bRequiresDone = Technology.Requires.IsNone() || Done.Contains(Technology.Requires);
 			bool bCanPay = Stock[0] >= Technology.CostFood + Rule.Reserve[0] && Stock[1] >= Technology.CostWood + Rule.Reserve[1]
 				&& Stock[2] >= Technology.CostStone + Rule.Reserve[2] && Stock[3] >= Technology.CostGold + Rule.Reserve[3];
-			const int Block = HOLTechnologyRules::CheckImplemented(Technology.bImplemented, HeroTier, HeroLevel, Technology.MinTier, Technology.MinHeroLevel,
+			const int Block = HOLTechnologyCheck::Check(Technology.bImplemented, HeroTier, HeroLevel, Technology.MinTier, Technology.MinHeroLevel,
 				bRequiresDone, BuildingIndex >= 0, bCanPay, Done.Contains(Technology.Name), false);
 			if (Block == HOLTechnologyRules::CannotPay)
 			{
