@@ -24,7 +24,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Archer Aube [mannequin]
 - Archer squelette Légions [mannequin]
 - Arbalétrier Aube [mannequin]
-- Arquebusier (mannequin et squelette de l'Arbalétrier, carreau SM_Bolt : ni corps, ni animations (marche, tir a poudre, rechargement, mort), ni fumée de poudre, ni son propre ; candidats hors jeu seulement, 2026-11-13 : Retours\Q-arquebusier-modele.md) [mannequin]
+- Arquebusier (mannequin de l'Arbalétrier, corps propre non fait ; balle SM_Bullet = ellipsoïde sombre sans modèle d'artiste ; fumée de poudre = une sphère translucide à bord doux qui s'efface (SM_PowderSmoke, M_PowderSmoke), sans texture de fumée ; pas de son propre ; mort = chute de l'Arbalétrier. Arquebuse, bandoulière, baguette et gestes repos / marche / tir / rechargement faits le 2026-11-14 : Retours\Q-arquebusier-modele.md) [mannequin]
 - Arbalétrier squelette Légions [mannequin]
 - Cavalier léger Aube (mannequin fixe, sans animation) [mannequin]
 - Cavalier funeste Légions [mannequin]
@@ -97,9 +97,9 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Herbe verte [forme]
 - Herbe sèche [forme]
 - Buisson décor [forme]
-- Pierre [forme]
+- Pierre (ronde = sphère brun foncé ; à facettes = cube penché gris-bleu foncé ; part des facettes = ROCK_STYLE, D802, défaut C 75 % ; cartes à régénérer ; 2026-11-15) [forme]
 - Souche [forme]
-- Rocher (gros) [forme]
+- Rocher (gros) (rond = sphère brun foncé ; à facettes = cube penché gris-bleu foncé ; part ROCK_STYLE, D802, défaut C 75 % ; cartes à régénérer ; 2026-11-15) [forme]
 - Rocher de sable [forme]
 - Rocher moussu [forme]
 - Fourré [forme]
@@ -148,6 +148,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Icônes des ressources (nourriture, bois, pierre, or) [rien] ; sur les cases du Marché (D781), un carré de la couleur de la ressource en tient lieu (galadriel-tab, 2026-11-13)
 - Icônes des technologies [rien]
 - Minimap (résolution) [style]
+- Icônes de signaux (carré coloré de 10 px sur la mini-carte, marque au sol) (SG3, Retours\Q-signals-ui.md Q2 ; marque au sol pas encore faite ; HALDIR-1115e, 2026-11-15) [style]
 - Curseurs (curseur système, croix pour attaque-déplacement) [style]
 - Bandeau de fin de partie [style]
 - Emblème de l'Ordre de l'Aube [à venir]
@@ -168,7 +169,7 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Sons des ordres (les cinq ordres muets) et de la sélection d'unité (Kenney handleSmallLeather, non remplacé ; sélection d'un bâtiment : voir ligne des bâtiments) [style]
 - Alerte du Forum (son 2D du moteur, la voix du héraut viendra) [style]
 - Fanfares du héros (bannière, cri, niveau, palier) [style]
-- Sons de selection des batiments : Bois, Sacre et Marche elus (limiteur B, joues par l'utilisateur le 2026-11-09, restent des sons de pack) ; Atelier de siege = Pierre A, Forum = Metal B, Forge = Pierre G elus (D798, table f0189c3, assets importes 0a4ebc4, sons synthetiques) ; Caserne, Champ de tir, Ecurie muets : tour 4 synthetique (voix / tirs / cheval) a ecouter, non choisi [style]
+- Sons de selection des batiments : Bois, Sacre et Marche elus (limiteur B, joues par l'utilisateur le 2026-11-09, restent des sons de pack) ; Atelier de siege = Pierre A, Forum = Metal B, Forge = Pierre G elus (D798, table f0189c3, assets importes 0a4ebc4, sons synthetiques) ; Caserne, Champ de tir, Ecurie muets : tour 5 = echantillons enregistres libres (CC0 / CC-BY, make_round5_candidates.py, 2026-11-15) ecoute le 2026-11-16 (D826) : Caserne rien, Champ de tir G et Ecurie G elus en sorte mais de mauvaise qualite, tour 6 a faire ; toujours muets [style]
 - Sons de combat, de récolte, de construction [rien ?]
 - Pas, voix et cris des unités [rien]
 - Ambiances des cartes [rien]
@@ -193,3 +194,4 @@ Un chantier ne se clôt pas sans avoir relu ce fichier.
 - Textes EN/JA du panneau du scenario (Scenario {0}, preparing, ready, error, Restart) et des triches (Cheats +/-, Fast build on/off, +1000 Food/Wood/Stone/Gold, +1000 of everything, Population +165, Unit speed, Gather speed, {0}: x{1}), 18 textes de fill_po.py : traduction provisoire de l agent [texte]
 - Japonais de ces 18 textes (シナリオ, 準備中, 準備完了, エラー, リスタート, チート, 高速建設, 全資源, ユニット速度, 採集速度) : a relire par l utilisateur [texte]
 Depart Nomade (D797 : carte entiere, ScatterRadiusCm 0) : ecart hol.Nomad.GroupSpacingCm 1500 provisoires (D207 dit 'endroits aleatoires de la carte'), HALDIR-1114c
+Specialisation (SP3) : libelles Voie A / Voie B du palier N dans la grille du Forum, provisoires (noms GDD 13 par faction a brancher)
