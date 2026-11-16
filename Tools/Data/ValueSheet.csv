@@ -188,7 +188,7 @@ note.GameScreen,,Marqueurs sans valeur,,ignore,Source/HeroesOfLibertyUI/HUD/HOLG
 note.ScriptScreen,,Marqueurs sans valeur,,ignore,Source/HeroesOfLibertyUI/HUD/HOLScriptScreen.cpp,,provisoire,,,,"Touche provisoire du panneau de Diplomatie, reconfigurable"
 note.GameScreenScript,,Marqueurs sans valeur,,ignore,Script/UI/HOLGameScreenScript.as,,provisoire,,,,"Textes du bloc du héros non traduits, présentation"
 note.VolcanoBanner,,Marqueurs sans valeur,,ignore,Script/UI/HOLVolcanoBanner.as,,provisoire,,,,Libellés provisoires de la bannière du volcan
-note.DiplomacyRulesAs,,Marqueurs sans valeur,,ignore,Script/Diplomacy/HOLDiplomacyRules.as,,provisoire,,,,Posture au lancement : voir diplomacy.default_stance
+note.DiplomacyRulesAs,,Marqueurs sans valeur,,ignore,Source/HeroesOfLiberty/Match/HOLDiplomacyRules.cpp,,provisoire,,,,Posture au lancement : voir diplomacy.default_stance
 note.AIBrain,,Marqueurs sans valeur,,ignore,Script/AI/HOLAIBrain.as,,provisoire,,,,Commentaires des étapes de l'IA : valeurs dans HOLAIArmy / Siege / Cavalry / Tech
 note.AIAltar,,Marqueurs sans valeur,,ignore,Script/AI/HOLAIAltar.as,,provisoire,,,,Valeurs lues par les lignes ai.altar.* et volcano.ai.*
 note.AITalent,,Marqueurs sans valeur,,ignore,Script/Talents/HOLAITalent.as,,provisoire,,,,"Tirage du talent de l'IA, provisoire (TQ1) : règle, pas une valeur"
