@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -84,6 +84,9 @@ bool FHOLSpecializationGridTest::RunTest(const FString& Parameters)
 		const FString Shown = Running.Replace(TEXT("\n"), TEXT(" / "));
 		TestTrue(FString::Printf(TEXT("The running cell writes two lines at most ('%s': %d)"), *Shown, Lines.Num()), Lines.Num() >= 1 && Lines.Num() <= 2);
 		TestTrue(FString::Printf(TEXT("No line longer than the other cell's label '%s' (%d, %d)"), *Other, Longest, Other.Len()), Longest <= Other.Len());
+		// ELROND-1116a (specialization_button_running.png: "En cours 29 s" wrapped to a third line and "Annuler" was cut): one line of a
+		// grid cell holds "Voie A du" (9 characters, specialization_button_open.png), so no line of the running cell is longer.
+		TestTrue(FString::Printf(TEXT("Each running line fits one line of the cell, 9 characters ('%s': %d)"), *Shown, Longest), Longest <= 9);
 		TestFalse(FString::Printf(TEXT("The option's name is in the tooltip only, not on the running cell ('%s')"), *Shown),
 			Running.Contains(HOLGameNames::GetSpecializationName(B.Tier, B.Option).ToString()));
 		TestTrue(FString::Printf(TEXT("It writes the board's seconds left ('%s')"), *Shown), Running.Contains(FString::FromInt(FMath::DivideAndRoundUp(B.RemainingMs, 1000))));

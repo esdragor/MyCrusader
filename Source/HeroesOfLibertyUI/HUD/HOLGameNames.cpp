@@ -453,7 +453,7 @@ namespace HOLGameNames
 		{
 			return GetSpecializationName(Command.Tier, Command.Option);
 		}
-		return FText::Format(LOCTEXT("SpecializationRunningCell", "En cours {0} s\nAnnuler"),
+		return FText::Format(LOCTEXT("SpecializationRunningCell", "{0} s\nAnnuler"),
 			FText::AsNumber(FMath::DivideAndRoundUp(Command.RemainingMs, 1000)));
 	}
 }
