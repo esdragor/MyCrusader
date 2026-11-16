@@ -18,12 +18,16 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | ETAPE0-1116 (fini 14:59) | a9cf56384f78b1e33 | lecture seule | plan Docs\Rapports\ETAPE0-1116.md : 8 worktrees lancés ; intégrateur = Faramir (fusions) + recette Fable à nommer ; numéros de file du plan décalés par le nettoyage | non | 14:53 |
 | HALDIR-1116a | ae9fb8959589cabc8 | HeroesOfLiberty-Haldir | D825 marque au sol du signal, rejeu signals_altclick | oui 1/3 | 15:02 |
 | ELROND-1116a | a63d1f8ef58f85a18 | HeroesOfLiberty-Elrond | reprise rouge : case spécialisation 2 lignes + HUD.Report | oui 2/3 | 15:02 |
-| GALADRIEL-1116a | ab831f363570878c2 | HeroesOfLiberty-Galadriel | reprise rouge : alerte population (PlayerContext) | oui 3/3 | 15:02 |
-| ARWEN-1116a | ac111a3e17e21e0c8 | HeroesOfLiberty-Arwen | D826 tour 6 : Champ de tir G et Écurie G propres | non | 15:02 |
-| CELEBORN-1116a | a0db914885097e3c3 | HeroesOfLiberty-Celeborn | D816 forum Nomade 150 s, rejeu nomad_ai (exception : ligne de Haldir) | non | 15:02 |
-| GLORFINDEL-1116a | a31c68576c0fc91a9 | HeroesOfLiberty-Glorfindel | D806 chat du spectateur : script puis jumeau C++ | non puis oui | 15:02 |
+| GALADRIEL-1116a (fini 15:34) | ab831f363570878c2 | HeroesOfLiberty-Galadriel | alerte population VERTE : a11ed2a (PlayerContext), merge 825b841, tests 1321/1321 ; build 674 s ; scénario G2 non fait ; 42 tool_uses | oui | 15:02 |
+| ARWEN-1116a (fini 15:29) | ac111a3e17e21e0c8 | HeroesOfLiberty-Arwen | D826 A1 : Champ de tir G et Écurie G propres, 4c75047 (rouge vu 15:07), c86557c, f54f287 ; 2 fiches [À ESSAYER] SON non entendu ; quick_check non lancé (lancé par la session principale 15:30) ; A2 Caserne non commencée ; 46 tool_uses | non | 15:02 |
+| ARWEN-1116b | a6b77b77c83feb390 | HeroesOfLiberty-Arwen | D826 A2 : 10 sons Caserne sans cri de douleur | non | 15:31 |
+| CELEBORN-1116a (fini 15:25) | a0db914885097e3c3 | HeroesOfLiberty-Celeborn | D816 forum 150 s : 97f757c, rouge vu 15:07, tests 1320/1320, nomad_ai [À ESSAYER] vu ; avance rapide main 131b77d ; test C++ 150 s en attente (plafond) ; 41 tool_uses | non | 15:02 |
+| CELEBORN-1116b | a6624ad14803c32b0 | HeroesOfLiberty-Celeborn | ligne sans C++ (rejeu nomad_start à 150 s d abord) ; test C++ 150 s si place libre | non | 15:28 |
+| GLORFINDEL-1116a (fini 15:32) | a31c68576c0fc91a9 | HeroesOfLiberty-Glorfindel | D806 script d3fd15f + D807 règle canal bd2ca42, rouges vus 15:16/15:26, tests 1322/1322 ; jumeaux C++ en file (plafond) ; 2 Edit refusés ; ~51 tool_uses | non | 15:02 |
+| GLORFINDEL-1116b | a8532c8bf8b9fdde1 | HeroesOfLiberty-Glorfindel | ligne sans C++ du chantier réseau/chat | non | 15:33 |
 | FARAMIR-1116a | a81a40ab63a80a04f | HeroesOfLiberty-Faramir | D808 gate Close WARN ; worktree d intégration des fusions | non | 15:02 |
-| SAURON-1116a | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | contrôle ClickUnit enemy sans slot=, 4 scénarios rejoués | non | 15:02 |
+| SAURON-1116a (fini 15:33) | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | ClickUnit enemy sans slot= refusé (preflight + pan_exposure_test, 341 scénarios), 69fa04f, a1f559f, rouge vu 15:04 ; S2 D809 C++ en file (plafond) ; 49 tool_uses | non | 15:02 |
+| SAURON-1116b | a037e24d4319b88ca | HeroesOfLiberty-Sauron | scénario arquebusier (tir à la naissance) puis ligne sans C++ | non | 15:33 |
 
 ## Résumé de la séance du 2026-11-15
 

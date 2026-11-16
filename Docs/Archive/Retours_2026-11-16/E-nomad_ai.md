@@ -18,3 +18,4 @@ Porte (15:21) : `session_gate.ps1 -Phase Essay -Root C:\Users\baudo\Documents\He
 Commande complète (règle 13, 2026-11-14) :
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 nomad_ai -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`
 Durée : environ 2 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: OK (utilisateur, 2026-11-16 15:32, dans la conversation ; essai joué sur main 131b77d)
