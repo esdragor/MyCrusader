@@ -1,7 +1,7 @@
 # Auto_Journey : l'état du jour
 
 Mode d'emploi : ce fichier ne garde que la dernière journée de travail (tableaux « ## Agents du <date> », bilans, « ### Lecons appliquees <date> » : titres lus par `Tools\AutoJourney\session_gate.ps1`, ne pas les renommer). Procédure : `Auto_Journey.md` ; file de travail : `Auto_Journey_File.md` ; ce qui attend l'utilisateur : `Auto_Journey_Retours.md` et le dossier `Retours\`.
-Les séances plus anciennes sont archivées telles quelles dans `Docs\Archive\Auto_Journey_Jour_jusqu_au_2026-11-09_matin.md` (jusqu'au 2026-11-09 matin), `Docs\Archive\Auto_Journey_Jour_2026-11-09_soir_archive_2026-11-11.md` (séance du 2026-11-09 soir), `Docs\Archive\Auto_Journey_Jour_2026-11-10_et_2026-11-11_archive_2026-11-12.md` (séances du 2026-11-10 et du 2026-11-11 : tableaux d'agents, bilans, leçons), `Docs\Archive\Auto_Journey_Jour_2026-11-12_archive_2026-11-13.md` (séance du 2026-11-12 : programme, tableau d'agents, bilan, leçons ; résumé du 2026-11-11), `Docs\Archive\Auto_Journey_Jour_2026-11-13_matin_archive_2026-11-13.md` (séance interactive du 2026-11-13 matin et reprise : tableau d'agents, programme, bilans, leçons) et `Docs\Archive\Auto_Journey_Jour_2026-11-13_soir_archive_2026-11-14.md` (séance autonome du 2026-11-13 soir : bilan, leçons, tableau d'agents ; résumés du 2026-11-13 matin et du 2026-11-12) et `Docs\Archive\Auto_Journey_Jour_2026-11-14_archive_2026-11-15.md` (séance autonome du 2026-11-14 : tableau d'agents, bilan, leçons ; résumé dans ce fichier) ; à la prochaine séance, déplacer de même la journée précédente.
+Les séances plus anciennes sont archivées telles quelles dans `Docs\Archive\Auto_Journey_Jour_jusqu_au_2026-11-09_matin.md` (jusqu'au 2026-11-09 matin), `Docs\Archive\Auto_Journey_Jour_2026-11-09_soir_archive_2026-11-11.md` (séance du 2026-11-09 soir), `Docs\Archive\Auto_Journey_Jour_2026-11-10_et_2026-11-11_archive_2026-11-12.md` (séances du 2026-11-10 et du 2026-11-11 : tableaux d'agents, bilans, leçons), `Docs\Archive\Auto_Journey_Jour_2026-11-12_archive_2026-11-13.md` (séance du 2026-11-12 : programme, tableau d'agents, bilan, leçons ; résumé du 2026-11-11), `Docs\Archive\Auto_Journey_Jour_2026-11-13_matin_archive_2026-11-13.md` (séance interactive du 2026-11-13 matin et reprise : tableau d'agents, programme, bilans, leçons) et `Docs\Archive\Auto_Journey_Jour_2026-11-13_soir_archive_2026-11-14.md` (séance autonome du 2026-11-13 soir : bilan, leçons, tableau d'agents ; résumés du 2026-11-13 matin et du 2026-11-12) et `Docs\Archive\Auto_Journey_Jour_2026-11-14_archive_2026-11-15.md` (séance autonome du 2026-11-14 : tableau d'agents, bilan, leçons ; résumé dans ce fichier) et `Docs\Archive\Auto_Journey_Jour_2026-11-15_archive_2026-11-16.md` (séance autonome du 2026-11-15 : tableau d'agents, fusions n°1-7, bilan, leçons ; résumé dans ce fichier) ; à la prochaine séance, déplacer de même la journée précédente.
 Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.md`.
 
 ## Chapitres du GDD non commencés
@@ -14,190 +14,19 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 
 | Agent | id | worktree | tâche | C++ | lancé |
 |---|---|---|---|---|---|
+| NETTOYAGE-0a x3 (finis 14:5x-14:57) | a6ae4c52427324b6b, a09b5d09cdd8f72b7, af1f27952d57d5b0a | copie principale | archives Jour/Retours bad6bd6, File a707951 (14 [x], 12 périmées), Procédure/Checklist edc2dfc ; règle 7 alignée sur L15-5 | non | 14:49 |
+| ETAPE0-1116 (fini 14:59) | a9cf56384f78b1e33 | lecture seule | plan Docs\Rapports\ETAPE0-1116.md : 8 worktrees lancés ; intégrateur = Faramir (fusions) + recette Fable à nommer ; numéros de file du plan décalés par le nettoyage | non | 14:53 |
+| HALDIR-1116a | ae9fb8959589cabc8 | HeroesOfLiberty-Haldir | D825 marque au sol du signal, rejeu signals_altclick | oui 1/3 | 15:02 |
+| ELROND-1116a | a63d1f8ef58f85a18 | HeroesOfLiberty-Elrond | reprise rouge : case spécialisation 2 lignes + HUD.Report | oui 2/3 | 15:02 |
+| GALADRIEL-1116a | ab831f363570878c2 | HeroesOfLiberty-Galadriel | reprise rouge : alerte population (PlayerContext) | oui 3/3 | 15:02 |
+| ARWEN-1116a | ac111a3e17e21e0c8 | HeroesOfLiberty-Arwen | D826 tour 6 : Champ de tir G et Écurie G propres | non | 15:02 |
+| CELEBORN-1116a | a0db914885097e3c3 | HeroesOfLiberty-Celeborn | D816 forum Nomade 150 s, rejeu nomad_ai (exception : ligne de Haldir) | non | 15:02 |
+| GLORFINDEL-1116a | a31c68576c0fc91a9 | HeroesOfLiberty-Glorfindel | D806 chat du spectateur : script puis jumeau C++ | non puis oui | 15:02 |
+| FARAMIR-1116a | a81a40ab63a80a04f | HeroesOfLiberty-Faramir | D808 gate Close WARN ; worktree d intégration des fusions | non | 15:02 |
+| SAURON-1116a | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | contrôle ClickUnit enemy sans slot=, 4 scénarios rejoués | non | 15:02 |
 
-## Agents du 2026-11-15
+## Résumé de la séance du 2026-11-15
 
-Séance autonome lancée à 09:02, fin 17:00, fusion groupée acceptée (sans push). Exception : nettoyage 0a sans le dossier Retours\ (déjà nettoyé le 2026-11-14 au soir, 11 fichiers).
-
-| Agent | id | worktree | tâche | C++ | lancé |
-|---|---|---|---|---|---|
-| NETTOYAGE-0a x3 | a0673aca322fa97a5, ab4a09201e485b1bb, a2e0db8e436dd6ee6 | copie principale | archives Jour/Retours, File, Procédure/Checklist (e91b4f2, c52244f, c8fff23) | non | 09:04 |
-| ETAPE0-1115 | acaf5b92f52066709 | lecture seule | plan de lancement (Fable) | non | 09:09 |
-| ARWEN-1115a | a46cb350aeee07631 | HeroesOfLiberty-Arwen | audio tour 5 (sons naturels Caserne/Champ de tir/Écurie, D801) | non | 09:17 |
-| SAURON-1115a | ad0a06bfc2b35225f | HeroesOfLiberty-Sauron | rochers D802 (réglage, DECOR_KINDS, mapSize, resources_game.*), SANS Arquebusier | non | 09:17 |
-| CELEBORN-1115a | ac79e43a4cf1fd115 | HeroesOfLiberty-Celeborn | Neutres 2/4 hypothèse SelfSide (rangement, mesure x8, règle) | non puis oui | 09:17 |
-| SAURON-1115a (fini 09:28) | ad0a06bfc2b35225f | HeroesOfLiberty-Sauron | rochers D802 : bf9d823 rouge, 36a4be8 vert, 7d92178 (merge main), Q-rocks-proportion ; 53 tool_uses | non | 09:17 |
-| HALDIR-1115a | a93df869e3e9d501c | HeroesOfLiberty-Haldir | D799 réseau Nomade (booléen Nomade par siège) | oui 1/3 | 09:30 |
-| HALDIR-1115a (fini 09:52) | a93df869e3e9d501c | HeroesOfLiberty-Haldir | D799 fait : fa31def test (non vu rouge), 0875a5e code, tests 1269/1269, net PASS ; reste fin du forum non répliquée ; ligne 315 d'EtapeDefini écrasée par edit_line puis restaurée par la session principale ; 49 tool_uses | oui | 09:30 |
-| FARAMIR-1115a (fini 09:55) | aa04149035f3fc902 | HeroesOfLiberty-Faramir | règle 15 Backspace : da10225 rouge (vu), 53c106f vert, 80cb749 ; tests 1270/1270 ; rejeu compare et gate Close L15-1 non faits ; 41 appels | oui | 09:30 |
-| ELROND-1115a (fini 10:01) | a9ca157745ed36801 | HeroesOfLiberty-Elrond | garnison F7 lot 3a : 70cd83f rouge (vu), d60b862 vert, 5a907c7 ; tests 1269/1269 ; net non lancé ; 66 tool_uses (54 vus) | oui | 09:30 |
-| GLORFINDEL-1115a (fini 10:03) | a7b125035e9bce977 | HeroesOfLiberty-Glorfindel | disconnect_1v1 rejoué, PASS, [À ESSAYER] ; S7 grisage : e3ccea1 rouge (vu), code vert non commité, test encore KO, Q-sites-grisage ; 59 tool_uses | oui | 09:30 |
-| HALDIR-1115b (fini 10:16) | a872a640d3521c553 | HeroesOfLiberty-Haldir | fin du premier forum répliquée : b4ffd4f rouge (vu), 097a26f code, fffe788 ; tests 1269/1269, net PASS ; design déjà tranché (D354, D417-D420), pas de question ; Nomade N3 IA non fait (design) ; 45 appels | oui | 09:53 |
-| GALADRIEL-1115c (fini 10:28) | a5a2d96b1127f6fe2 | HeroesOfLiberty-Galadriel | B6 raccourcis reconfigurables : f9b3e24 rouge (vu, 5 KO), 61ec678 vert, 85c0735 ; tests 1275/1275 ; Q-rebind (quand ouvrir l'onglet, quels raccourcis) ; table des 49 raccourcis D30 ; règle non branchée ; 41 appels | non | 10:19 |
-| GLORFINDEL-1115c (fini 10:28) | a599c629d23707a12 | HeroesOfLiberty-Glorfindel | B5 Patrouille : 85550d5 rouge (vu), 3a636ce vert, 35cefa2, a0828f9 ; tests 1272/1272 ; Q-patrol-follow (case de grille, Suivre, focus) ; test 1 corrigé après le rouge (rouge déduit) ; règle non branchée ; 40 appels | non | 10:19 |
-| SAURON-1115b (fini 10:28) | ac83ef1d4183d67f1 | HeroesOfLiberty-Sauron | B2 XP d'exploration : 2487a66 rouge (vu), cf77faf vert, 2e5f8e3, merge de32333 ; tests 1272/1272 (avant merge) ; Q-exploration-xp (surface / lieux / les deux, défaut C) ; règle non branchée ; 44 appels | non | 10:19 |
-| ARWEN-1115c (fini 10:27) | a69bf5b4bd8bb4b92 | HeroesOfLiberty-Arwen | B3 zones de furtivité : 3b370fa rouge (vu), d8bbe87 vert, 71bb3e4 ; tests 1272/1272 ; Q-stealth (N, cartes, aspect) ; règle pure non branchée au jeu ; 41 appels | non | 10:19 |
-| FARAMIR-1115c (fini 10:32) | a56dc2be67712d8a6 | HeroesOfLiberty-Faramir | rouge `values` : déjà dans main depuis 3224cbd (commentaire dans BonusCap) et d2c3ab6 (cvar nomad.group_spacing sans ligne au registre) ; correctif données fog 46f9a1b (ValueSheet.csv, Valeurs.md régénérés) ; `values` PASS ; outil : `-Parts values` seul sort avant le marquage « rouge connu » (ligne [ ]) ; 22 appels | non | 10:28 |
-| ELROND-1115c (fini 10:51) | a9d552040713f6c6f | HeroesOfLiberty-Elrond | SeparationAndHeal : cause = le BANC (la séparation sort si personne ne marche) ; e965d21 banc vert, 38f959e rouge 3c (vu), 6527e21 éjection à la destruction, b2d6331 ; tests 1272/1272, net PASS ; tiers VERTE donc fusionnable ; 51 tool_uses (47 vus) | oui | 10:24 |
-| ELROND-1115d (fini 11:03) | a2902756dd1f0b9d9 | HeroesOfLiberty-Elrond | garnison 3d abri (test Shelter vu rouge sous mutation) + 3e réseau (test Net.Garrisoned vu rouge, code non fait) : RIEN commité, 7 fichiers modifiés dans l'arbre, tiers reste verte à b2d6331 ; 51 tool_uses | oui | 10:54 |
-| ELROND-1115e (fini 11:16) | a6b6e394065f5e086 | HeroesOfLiberty-Elrond | lots 3d abri + 3e réseau VERTS : 43156bd (tests 1274/1274, net PASS 20 lignes) ; `git merge main` refusé par le classifieur (chaîné au commit) ; 4a-4d restent ; 41 appels | oui | 11:06 |
-| RECETTE-1115a (fini 11:31) | afbcb4a48b0a2fbc7 | HeroesOfLiberty-Faramir (= main 753fd00) | recette indépendante (Fable) sur le build fusionné : PASS nomad_start, disconnect_1v1, income_tooltip, talents_icons_compare ; FAIL x3 audio_compare_buildings_* (les 30 sons du tour 5 n'existent que sur le disque d'Arwen, hors git ; binaire d'Arwen périmé) ; NON REJOUÉS : deploy (statut contradictoire), sites_option, playtest_hero_army, audio_panel ; docs commitées 5d83ef2 ; 44 appels | non | 11:19 |
-| ARWEN-1115e (fini 11:43) | a9d274e61daf8479c | HeroesOfLiberty-Arwen | merge main (2 avances rapides), build 11:35 et 11:39, 3 preflights audio PASS (30 sons du tour 5 présents), gate Essay PASS, journal 6d88a66 ; constat : les 3 scénarios posent le Forum, pas le bâtiment (panneau trompeur) ; 38 appels | non (build seul) | 11:33 |
-| CELEBORN-1115c (fini 12:37) | af0429c7b69acfb34 | HeroesOfLiberty-Celeborn | mesure x16 en jeu (binaire 10:06, machine calme) : neutrals_trace 8 = 6/16 contre 0 = 4/16 ; rejeu « _gap » 4/8 contre 3/8 ; tremblement de marche : 0 passe sur 24 avec 8, 2 sur 24 avec 0 (rare, pas prouvé statistiquement) ; spins de mêlée (D641) 18 contre 22, sans lien ; le même pas d'ordre donne le même échec (variance) ; 361b190 (2 scénarios _gap + journal) ; paragraphe chiffré ajouté à Q-march-member-detour (A inchangée) ; 38 appels | non | 11:45 |
-| HALDIR-1115c (fini 11:54) | a4575345e4d54a18c | HeroesOfLiberty-Haldir | Nomade N3 IA : ce9aad9 rouge (vu, 1288/1292), 2c1eee5 règle HOLAINomadRules.as (fonder au plus gros groupe de Paysans quand le stock couvre le prix), 996cb6a, c1cde36 ; tests 1292/1292 ; Q-nomad-ia (2 questions, défauts A codés) ; règle non branchée (C++ de l'IA restant) ; 45 appels | non | 11:48 |
-| FARAMIR-1115d (fini 11:50) | ae30559c8f07b40c8 | HeroesOfLiberty-Faramir | outil quick_check -Parts values seul : 3b66f35 test rouge (vu, 4/8 KO), 19fc9d4 correctif (Report remonté avant la partie values), test 8/8, values PASS ; copie dans main commitée par la session principale ; 23 appels | non | 11:48 |
-| GALADRIEL-1115d (fini 12:03) | a7f7da03103e68212 | HeroesOfLiberty-Galadriel | UHOLDropdown : cause = le garde ReopenDelaySeconds (0,3 s) armé aussi par un choix au clavier, l'Entrée suivante arrivait 0,24 s après (pas un problème de focus) ; correctif b9b66f1 (test + correctif dans UN commit : le classifieur a refusé le commit du rouge seul ; rouge vu à l'exécution 11:52) ; tests 1298/1298, sites_option 4/4, preflight PASS, E-sites_option GESTE: réel ; 45 appels | oui | 11:48 |
-| ARWEN-1115f (fini 11:52) | aedf9e59a26dcb044 | HeroesOfLiberty-Arwen | scénarios audio : bon bâtiment posé par `hol.Cheat.SpawnBuilding` (verbe existant) : 0c0564c rouge (Forum vu), 4688f7b vert, f32b9e1, 5aa2c16 (merge main) ; 3 preflights PASS, gate Essay x3 sans FAIL ; l'Écurie provisoire a la même forme que la Caserne (BlockAndTower) ; 36 appels | non | 11:48 |
-| ELROND-1115f (fini 11:34) | a221a41ca044862c3 | HeroesOfLiberty-Elrond | garnison 4b clic droit sur sa tour VERT (afb69a1 rouge vu, ef624dd), ordre « sortir tous » prêt côté serveur ; 4a bouton/liste attend Q-garrison-ui ; 4d bloqué (aucune tour en table) ; tests 1298/1298, net PASS ; 43 appels | oui | 11:18 |
-| FUSION-1115d (fini 12:16) | a1c77805092302cd8 | HeroesOfLiberty-Faramir (intégration fog) | fusion groupée n°4 : main b128d49 -> c8716f5 (avance rapide) + docs 339cebc ; galadriel-tab, d751-root, maps, fog ; un conflit de docs (ScenariosInProgress.md) résolu en gardant les deux ; tests 1303/1303, net 19 PASS, aiserver, aiduel PASS ; values déduite de l'exit 0 ; RIEN POUSSÉ ; hero-j8-close attend la mesure de Celeborn ; 39 tool_uses | oui | 12:08 |
-| FUSION-1115e (fini 13:2x) | a3dc766007f87b0eb | HeroesOfLiberty-Faramir (intégration fog) | Fusion groupée n°5 : main f0657d2 -> 9c3f180 (avance rapide) + docs EtapeDefini.md (commit séparé) ; 6 branches fusionnées (tiers, visual, maps, net-playtest, galadriel-tab, hero-j8-close), aucune exclue ; un conflit de docs (SignalsInProgress.md, maps/net-playtest) résolu en gardant les deux ; quick_check.ps1 identique à main ; build PASS 88 s ; tests 1312/1312, values, net 19 + netsig3 (3 clients), aiserver, aiduel PASS (406 s) ; RIEN POUSSÉ | oui | 13:08 |
-| GLORFINDEL-1115d (fini 12:34) | aac05e020c44fdbdf | HeroesOfLiberty-Glorfindel | sous-match netsig3 (1 serveur + 3 clients) : cd8175a rouge (vu), f213c0c vert ; Bob et Alice (alliés mutuels) reçoivent le signal, Carol (neutre puis ennemie) non mais reçoit le sien ; `-Parts net` PASS 358 s (netsig3 +43 s, ~+15 %) ; quick_check.ps1 reporté dans main (commité par la session principale) ; le spectateur à 3 clients non joué ; 40 appels | non (build du merge) | 12:22 |
-| RELEVE-1115a (fini 12:22) | ad26ca905c102dce8 | lecture seule (copie principale) | relevé GDD neuf : Docs\ReleveGDD_2026-11-15.md (état réel A1-B6, branchements C++ à faire, 14 questions en attente, nouveaux C1 alertes D202 et C2 D391) ; commité par la session principale (cdbfe27) avec l'archive de l'ancien relevé ; 30 appels | non | 12:17 |
-| SAURON-1115c (arrêté 12:42, NON CÂBLÉ) | ac35c412502b9b7c6 | HeroesOfLiberty-Sauron | XP d'exploration : jumeau C++ de la règle + test rouge 960714b (vu rouge 1303/1304), 469a8bb ; le câblage n'est PAS appliqué (8 Edit refusés « not read » après le build de fond) ; la branche visual n'est donc PAS verte ; poids 25 % non réappliqué (lu dans le code) ; ~52 appels | oui | 12:28 |
-| SAURON-1115d (fini 12:56) | a9e57a70c91fe08d7 | HeroesOfLiberty-Sauron | XP d'exploration CÂBLÉE : FHOLVisionMap::Lay + TakeNewlyExplored, UHOLVisionSubsystem::PayExplorationXP (serveur ou solo ; 1re seconde = MarkExploredAtStart sans XP ; chaque siège du camp payé) ; 3d94384 (le test 960714b passe au vert), 5dec542, 8ad96c9 ; tests 1304/1304, net PASS 303 s ; la liste des lieux est vide (préréglage B ne paie rien) ; non vu en partie réelle ; visual est VERTE ; ~45 appels | oui | 12:45 |
-| HALDIR-1115d (fini 12:46) | ade33e8405f776756 | HeroesOfLiberty-Haldir | SG3 lot 1 VERT : Alt + clic pose un signal (clic bref = neutre ; glisser > 16 px = un des 5 types selon la direction), carré coloré de 10 px sur la mini-carte 5 s ; 2f92882 (test Signals.AltClick vu rouge 1303/1304 puis vert ; le classifieur a refusé le commit du rouge seul), 2773a6f ; tests 1304/1304, net PASS ; Q-signals-ui ; aucune image prise ; 48 appels (57 tool_uses) | oui | 12:28 |
-| HALDIR-1115e (fini 13:04) | ad41308d7a58775e1 | HeroesOfLiberty-Haldir | SG3 lot 2 : ligne du fil de messages à la réception d'un signal (libellés GDD § 15 dans HOLForumMessages, D445) : fc0798c (test + code ; rouge vu 1304/1305 sur bouchon), 07349a9, 14acb73 ; tests 1305/1305, net PASS (3 clients) ; ligne Placeholders ajoutée (non commitée) ; scénario signals_altclick et marque au sol NON faits (45 appels) ; jamais vu à l'écran ; 46 tool_uses | oui | 12:50 |
-| FUSION-1115e (fini 13:16) | a3dc766007f87b0eb | HeroesOfLiberty-Faramir (intégration fog) | fusion groupée n°5 : main f0657d2 -> 9c3f180 (avance rapide) + docs 0220edf ; tiers, visual, maps, net-playtest, galadriel-tab, hero-j8-close, aucune exclue ; un conflit de docs (SignalsInProgress.md) résolu en gardant les deux ; tests 1312/1312, values PASS (aucun orphelin), net 19 parties + netsig3 PASS, aiserver, aiduel PASS ; RIEN POUSSÉ ; 38 tool_uses | oui | 13:08 |
-| ELROND-1115h (fini 13:38) | a701486c1155eac69 | HeroesOfLiberty-Elrond | SP3 spécialisation : commandes Specialize / CancelSpecialization dans la grille du Forum (cases D et F, cvar hol.UI.SpecializationCell=6, palier N seulement après N-1 : D785), RPC existantes ; test Specialization.ForumGrid vu rouge 1312/1313 puis a28395b (test + code) : tests 1313/1313, net 20 parties PASS ; libellés provisoires (ligne Placeholders ajoutée) ; Q-specialization-ui (A cases D/F défaut, B emplacement de faction D201 recommandé, C Q/S) ; non vu à l'écran ; 46 appels | oui | 13:20 |
-| GLORFINDEL-1115e (fini 13:48) | aca6c955776c77e05 | HeroesOfLiberty-Glorfindel | chat A4 transport VERT : ServerPostChat (refus : vide, trop long, trop rapide, canal inconnu, privé sans autre siège), destinataires par HOLChat::Reaches (miroir C++ de HOLChatRules.as), ClientReceiveChat -> fil de messages ; cvars hol.Chat.MaxLength 200, MaxPerWindow 5, WindowMs 10000 + lignes comm.chat.* au registre ; commandes hol.Chat.Say / hol.Chat.Report ; 8b8e309 (test + code, rouge vu sur stub : 1313/1315, netsig3 KO) ; tests 1315/1315, net PASS 344 s (netsig3 40 s) ; Q-chat-ui ; saisie (Entrée, champ) et chat du salon (D505) NON faits ; 47 appels | oui | 13:20 |
-| FUSION-1115f (fini 14:00) | aa5de796ae0416ca7 | HeroesOfLiberty-Faramir (intégration fog) | fusion groupée n°6 : main ec4c899 -> 78891c6 (avance rapide) + docs 0ca7d2f/23e5843 ; tiers (b2d6331 puis a28395b), maps (6f7c7c9), galadriel-tab (ace7f80), net-playtest (8b8e309) ; aucune exclue, aucun conflit ; tests 1320/1320, values PASS, net 19 parties + netsig3 PASS, aiserver, aiduel PASS ; RIEN POUSSÉ ; 31 tool_uses | oui | 13:52 |
-| GALADRIEL-1115g (arrêté 14:19, ROUGE, NON COMMITÉ) | a84f14a1ef951649d | HeroesOfLiberty-Galadriel | alerte population : branchement écrit et compilé (UHOLScriptScreen::GetPopulationNow + AddThreadLine, UHOLGameScreen::AddThreadLine + GetBoundPlayerState, RefreshPopulationAlert dans Refresh() du script), test UI.Alerts.PopulationFullThread vu rouge 1320/1321 puis TOUJOURS rouge (cause non lue) ; clé de texte vérifiée (pas de doublon : Config\Game.ini rassemble Script et Source) ; l'énoncé donnait « edit_line -Append -After » : ERREUR DE LA SESSION PRINCIPALE, la syntaxe est « -Append "<ligne>" -After "<texte>" » ; 52 tool_uses | oui | 14:05 |
-| GALADRIEL-1115h | a8d955351acf214fa | HeroesOfLiberty-Galadriel | lire l'assertion du rouge, corriger, commit vert (puis scénario alert_population) | oui | 14:28 |
-| SAURON-1115e (fini 14:06) | a06fe07f539ffdd75 | HeroesOfLiberty-Sauron | XP d'exploration : test d'accord exploration_xp_accord_test.py (compare les défauts des structs .as/.h et les 3 préréglages C 16/3/25, A 16/6/0, B 16/0/40 entre .as et .cpp ; rouge vu sur copie jetable « script 6, C++ 7 », vert sur le dépôt, branché dans values du worktree seulement : À REPORTER dans quick_check.ps1 de main à la fusion) : 3c02c56 ; LIEUX NON branchés : le relais paie déjà l'XP Exploration (HOLRelaySubsystem.cpp ~l.260, D388), le camp neutre aussi au nettoyage (HOLCampSubsystem.cpp ~l.278), l'autel n'existe que sur la carte Volcan : point [À RÉPONDRE] ajouté à Q-exploration-xp (B recommandée) ; dll périmées (aucun build) ; 25 appels | non | 14:05 |
-| HALDIR-1115h (fini 14:10) | aed0bffa0d85df369 | HeroesOfLiberty-Haldir | scénario nomad_ai : 1f434da (rouge = délai dépassé), 301ee1f, 7455b90 ; preflight PASS (-AllowUncommitted : Crown.umap non suivi) ; l'IA fonde seule son forum au pas 4 MAIS le PNG le montre DÉJÀ ACHEVÉ : « finished MainCentre ... after 1 steps of work » : BUG SOUPÇONNÉ (durée de construction du forum Nomade) → E-nomad_ai classé LOGIQUE SEULEMENT ; signals_altclick écrit (Alt tenu par hol.UI.Key LeftAlt 0 3 puis hol.Mouse.Click 1400 350), jamais lancé ; edit_line a raccourci sa ligne 74 de Auto_Journey_File.md ; 43 appels | non | 14:05 |
-| HALDIR-1115i (fini 14:18) | a9d49ab9a6d2856e2 | HeroesOfLiberty-Haldir | diagnostic du forum Nomade en 1 pas : Tools\Data\BuildingTypes.csv, ligne MainCentre BuildTime = 0 (un forum de départ standard est posé fini) → GetBuildSteps(0) = max(1, 0) = 1 pas ; aucun cas spécial Nomade ni IA ; D402 écarte « forum achevé à la pose » mais aucune décision ne donne une durée : Q-nomad-forum-duree (A 75 s recommandée / B 150 s / C 60 s pour 1 Paysan ; valeur laissée à 0) ; signals_altclick : b53e2ed, preflight PASS (1er échec : zoom -3 seul), 2 PNG ; Alt tenu par hol.UI.Key atteint PlayerInput (« Signal: Alt + click kind 0 at (-13767, 1950) », « received kind 0 from slot 0 »), le fil « Vous : Signal » est VISIBLE, mais le carré du signal n'est PAS vu sur la mini-carte (les 2 PNG sont identiques, le petit carré blanc est autre chose) → E-signals_altclick LOGIQUE SEULEMENT ; 45 appels | non | 14:13 |
-| ELROND-1115i (fini 14:10) | a08e7a236d0307aba | HeroesOfLiberty-Elrond | scénario specialization_button à geste réel : a392b65 (rouge : « no scenario »), 76600b7, 6b81a72 ; preflight PASS, 3 PNG vus (D = Voie A, F = Voie B du palier 1 à la taille des autres cases) ; DÉFAUT VU : en cours, le texte de 4 lignes déborde la case D sur la case C ; l'infobulle couvre la 3e rangée ; hol.HUD.Report ne liste pas les cases de spécialisation ; E-specialization_button [À ESSAYER] VU À L'ÉCRAN avec défaut, GESTE réel ; 46 appels | non | 14:05 |
-| HALDIR-1115j | aa2a03fefedb25864 | HeroesOfLiberty-Haldir | signaux : pourquoi le carré du signal n'apparaît pas sur la mini-carte (script d'abord, sans C++), test rouge, correctif, rejeu signals_altclick | non puis oui | 14:25 |
-| ELROND-1115j | aa9ea16b2d56d8680 | HeroesOfLiberty-Elrond | corriger le texte de la case en cours (2 lignes) et hol.HUD.Report des cases de spécialisation, rejouer le preflight | oui | 14:15 |
-| GLORFINDEL-1115f | a2a49553f1fdf2379 | HeroesOfLiberty-Glorfindel | chat sur le vrai réseau : privé, refus de cadence / longueur, spectateur (sous-match netsig3 étendu) | non puis oui | 14:05 |
-| HALDIR-1115f (arrêté 13:34, ROUGE, NON COMMITÉ) | ad72d7695de2c8da1 | HeroesOfLiberty-Haldir | IA Nomade : branchement écrit (HOLAISummary 2 champs, HOLAINomadThink.as, HOLAIBrain.ThinkRules) ; test AI.Nomad.FoundsFirstForum vu rouge sur stub, TOUJOURS rouge après le branchement (1313/1314), WaitsWithoutPrice, aiserver, aiduel PASS ; cause du rouge non lue ; rien commité ; 54 tool_uses | oui | 13:20 |
-| HALDIR-1115g (fini 13:48) | ae64a90b1c22109a6 | HeroesOfLiberty-Haldir | IA Nomade VERTE : cause lue dans le journal (« no spot for the Nomad forum near (3000, 3000) ») : FindAIPlacement / CheckAIPlacement (HOLAIOrders.cpp) testaient Type->IsBuildable() (le MainCentre n'a pas de case de grille) au lieu de UHOLBuildingSettings::IsBuildableBy, déjà utilisée par le serveur (HOLConstructionSubsystem.cpp:426) et le joueur (HOLPlayerController.cpp:4378) : l'IA appelle maintenant la même fonction ; commit 6f7c7c9 ; tests 1314/1314, aiserver, aiduel PASS ; pas vu en partie réelle (ni scénario ni écran), Q-nomad-ia ouverte ; ~31 appels | oui | 13:40 |
-| GALADRIEL-1115f (fini 13:32) | ad484b4421b4ee904 | HeroesOfLiberty-Galadriel | alertes mineures D202 : inventaire par lecture (dans le fil : tribut, signal, héros prêt, niveau/palier du héros ; manquent : population pleine, recherche terminée, bâtiment achevé ; « attaqué ailleurs » a déjà un ping clignotant sur la mini-carte HOLMinimapRules.as, donc le relevé disait faux) ; règle pure population pleine HOLAlertRules.as (front montant, anti-répétition 30 s) : ace7f80 (rouge vu 1312/1314 puis vert 1314/1314) ; Q-alerts-minor (défaut A, recommandation B) ; reste le branchement C++ (GetPopulationUsed/Cap en UFUNCTION, AddThreadLine) ; un build a été nécessaire (binaire périmé après le merge) ; 46 appels | non (build du merge) | 13:20 |
-| ELROND-1115g (fini 12:45) | a1c4d6af1af7ad493 | HeroesOfLiberty-Elrond | garnison 4c : règle pure HOLAIGarrisonRules.as (tour appelle en Normal/Difficile, tour finie avec places, touchée depuis 5 s au plus ; unités à 15 m, tireurs ; sortie après 15 s de calme ; seuils en cvars hol.AI.Garrison*) : 9e010ac (test + règle, rouge vu sur souche 1303/1307), 4413adf, bde6983 ; tests 1307/1307, aiserver PASS ; l'IA ne peut avoir aucune tour aujourd'hui (GarrisonSlots 0 partout) donc le branchement C++ attend la ligne TowerWood (F8) ; Q-garrison-ia ; 38 appels | oui (build du merge) | 12:28 |
-| GALADRIEL-1115e (fini 12:34) | ab1e4f58e3b092c6b | HeroesOfLiberty-Galadriel | B4 forêt/gué : bd48de5 rouge (vu, 1303/1305), 029e8ae vert (1305/1305) ; ForestSpeedPercent (cavalerie, siège) et FordDamageTaken dans HOLTerrainRules.as ; « être en forêt » = booléen de l'appelant (Q1 non tranchée) ; Q-forest-ford ; non branché ; 37 appels | non | 12:28 |
-| FUSION-1115c (session principale, sans agent) | — | copie principale | fusion n°3 : tiers (lots 3d, 3e, 4b : 43156bd..3c3150d) : main 5d83ef2 -> 3c3150d en avance rapide (`preflight_merge` : avance rapide possible ; tiers testée sur son propre binaire 1298/1298 + net PASS, merge main = docs seuls) ; RIEN POUSSÉ | oui | 11:38 |
-| FUSION-1115a (fini 11:00) | adacc41da29155c7c | HeroesOfLiberty-Faramir (intégration fog) | fusion groupée n°1 : main 599cb00 -> c2c7d56 (avance rapide) + docs 97d6889 ; 6 branches (fog, visual, net-playtest, maps, hero-j8-close, galadriel-tab) ; d751-root EXCLUE (values rouge : orphelin HOLStealthRules.as) ; tiers non fusionnée (consigne) ; tests 1287/1287, values, net 19/19, aiserver, aiduel PASS ; RIEN POUSSÉ ; 66 tool_uses | oui | 10:36 |
-| ARWEN-1115d (fini 11:05) | adb1afe94728b91c2 | HeroesOfLiberty-Arwen | registre : ligne stealth.reveal_distance_cm (162b28d, ca9b0ea), merge main propre ; values PASS (239 lignes), tests 1286/1286 sur le binaire présent (pas de rebuild) ; d751-root prête pour la fusion n°2 ; 31 appels | non | 11:02 |
-| FUSION-1115b (fini 11:16) | a245249a8ded34a38 | HeroesOfLiberty-Faramir (intégration fog) | fusion groupée n°2 : main 97d6889 -> 753fd00 (avance rapide) + docs 0ca7d2f ; d751-root (ca9b0ea) + tiers (b2d6331, sans conflit) ; tests 1295/1295, values, net 19/19, aiserver, aiduel PASS ; RIEN POUSSÉ ; 25 tool_uses | oui | 11:09 |
-| GLORFINDEL-1115b (fini 10:13) | a1f3996c59cc84cd9 | HeroesOfLiberty-Glorfindel | S7 grisage VERT : cf7d33f (le KO venait du test : pas de PlayerContext), fed20bd test d'accord NumSites/cartes, 17a9af8 ; tests 1269/1269 ; `quick_check -Parts values` ROUGE avant lui (value_sheet morale.bonus_cap_taken/other) : à vérifier à la fusion ; 33 appels | oui | 10:05 |
-| ELROND-1115b (fini 10:22) | a3c9d412d9ae329da | HeroesOfLiberty-Elrond | garnison : 79c5d1f rouge (vu), 82a934e WIP, 8e62c66 ; ExitPoint (3b) VERT, SeparationAndHeal ROUGE (régression, assertion non lue), net PASS, Q-garrison-soin ; tiers NON fusionnable ; 64 tool_uses (53 vus) | oui | 10:03 |
-| ELROND-1115c | a9d552040713f6c6f | HeroesOfLiberty-Elrond | régression SeparationAndHeal (lire l'assertion, banc ou code), commit vert, puis 3c éjection | oui | 10:24 |
-| FARAMIR-1115b (fini 10:19) | a7ebd6c2503e428f6 | HeroesOfLiberty-Faramir | L15-1 gate Close + L15-2 edit_line -Append : a898371 rouge (vu), 938e972 outils, 6f2de0a ; gate_test 87/87, edit_line_test 20/20 ; outils copiés dans main (commités par la session principale) ; Q-close-gate-l15-1 (2 questions) ; 42 appels | non | 09:56 |
-| HALDIR-1115b | a872a640d3521c553 | HeroesOfLiberty-Haldir | fin du premier forum répliquée au client (commence sans compiler, plafond C++ atteint) | non puis oui | 09:54 |
-| ELROND-1115a | a9ca157745ed36801 | HeroesOfLiberty-Elrond | garnison F7 lot 3a corps hors terrain puis 3b-3e | oui 2/3 | 09:30 |
-| FARAMIR-1115a | aa04149035f3fc902 | HeroesOfLiberty-Faramir | Backspace dans waitkey/compare + gate Close L15-1 (DLL à jour) | oui 3/3 puis non | 09:30 |
-| GLORFINDEL-1115a | a7b125035e9bce977 | HeroesOfLiberty-Glorfindel | disconnect_1v1 preflight puis Sites S7 grisage | non puis oui | 09:30 |
-| ARWEN-1115a (fini 09:37) | a46cb350aeee07631 | HeroesOfLiberty-Arwen | audio tour 5 en enregistrements libres : 2d8ebdd rouge, 0e98c8b vert, 442b7de ; barracks/range preflight PASS, stable non abouti ; 47 tool_uses | non | 09:17 |
-| CELEBORN-1115a (fini 09:43) | ac79e43a4cf1fd115 | HeroesOfLiberty-Celeborn | tâche déjà faite (SelfSide = c5f2279 dans main depuis 11-06) ; A/B x8 6/8 vs 2/8 ; scénarios rangés a3c5908 ; piste du tremblement de marche en bloc ; 42 tool_uses | non | 09:17 |
-| GALADRIEL-1115a (fini 09:43) | a3eab82a8f6b5c483 | HeroesOfLiberty-Galadriel | gestes réels : talents_icons_compare (hol.Mouse.Click, feaf662 rouge, dd47594 vert) et income_tooltip (hol.Mouse.Hover), 841f7ec ; sites_option « Oui » encore interne ; 45 tool_uses | non | 09:31 |
-| GALADRIEL-1115b (fini 10:00) | a0ac58b8de9e19911 | HeroesOfLiberty-Galadriel | income_tooltip sans HoverIncome (10290ba, preflight PASS, Q-income-tooltip-taille), sites_option touches instable 1/4 (retour hol.UI.Choose, cause UHOLDropdown C++ en [ ]), gate Essay sans FAIL ; 37 appels | non | 09:46 |
-| CELEBORN-1115b (fini 10:26) | adca45477189ebd5f | HeroesOfLiberty-Celeborn | tremblement de marche en bloc : cause confirmée (AvoidBodies, détour non mémorisé autour d'un voisin de bloc), 805b4ac rouge (vu), 5e01993 correctif cvar hol.Units.MarchMemberDetourSteps (défaut 8), tests 1269/1269 ; A/B x8 3/8 contre 3/8 (aucun « shake » en 16 passes : rien prouvé en jeu) ; Q-march-member-detour ; 45 appels | oui | 09:45 |
-| ARWEN-1115b (fini 09:46) | a4ca08c2585246a0b | HeroesOfLiberty-Arwen | preflight stable PASS, 3 fiches E audio au gabarit, quick_check tests 1268/1268, check_audio_* PASS, tableau des licences, Q-audio-licences-tour5 ; fdbe318 ; 20 appels | non | 09:39 |
-| GALADRIEL-1115a | a3eab82a8f6b5c483 | HeroesOfLiberty-Galadriel | gestes réels (talents_icons_compare, income_tooltip, sites_option) | non | 09:30 |
-
-Fusion groupée n°1 (FUSION-1115a, 10:34-11:0x, intégration fog dans HeroesOfLiberty-Faramir) : main 599cb00 -> c2c7d56 (avance rapide, rien poussé) ; fusionnées fog, visual, net-playtest, maps, hero-j8-close, galadriel-tab ; build PASS 321 s, quick_check tests 1287/1287 + values + net (19 PASS) + aiserver + aiduel PASS ; EXCLUE d751-root (Arwen : `values` ROUGE, ORPHELIN Script/Fog/HOLStealthRules.as marqueur provisoire sans ligne au registre ; 1er passage avec elle : tests 1291/1291 mais values FAIL) ; tiers non fusionnée (consigne).
-Fusion groupée n°2 (FUSION-1115b, 11:06-11:1x, intégration fog dans HeroesOfLiberty-Faramir) : main 97d6889 -> 753fd00 (avance rapide, rien poussé) ; fusionnées d751-root (ca9b0ea, avance rapide) puis tiers (b2d6331, pas c39803e = merge de l'ancien main non vérifié vert ; aucun conflit) ; aucune exclue ; build PASS 93 s, quick_check tests 1295/1295 + values + net (19 PASS) + aiserver + aiduel PASS en 382 s ; preflight tiers BLOQUE (59 commits de main manquants) couvert par le retest sur l'intégration.
-Fusion groupée n°4 (FUSION-1115d, 12:04-12:1x, intégration fog dans HeroesOfLiberty-Faramir) : main b128d49 -> c8716f5 (avance rapide, rien poussé) ; fusionnées galadriel-tab (2b9251c), d751-root (f32b9e1 ; conflit docs ScenariosInProgress.md, deux sections gardées), maps (c1cde36), fog (19fc9d4) ; `git merge main` : déjà à jour ; aucune exclue ; hero-j8-close non fusionnée (consigne) ; build PASS 124 s, quick_check tests 1303/1303 + values + net (19 PASS) + aiserver + aiduel PASS en 378 s ; preflight BLOQUE galadriel-tab / d751-root / fog (commit de docs de main manquant) couvert par le retest sur l'intégration.
-Fusion groupée n°6 (FUSION-1115f, 13:49-14:0x, intégration fog dans HeroesOfLiberty-Faramir) : main ec4c899 -> 78891c6 (avance rapide, rien poussé) ; fusionnées tiers (a28395b), maps (6f7c7c9), galadriel-tab (ace7f80), net-playtest (8b8e309), aucun conflit, `git merge main` final : déjà à jour ; quick_check.ps1 identique à main ; aucune exclue ; build PASS 96 s, quick_check tests 1320/1320 + values (aucun orphelin) + net (19 PASS) + netsig3 (3 clients) + aiserver + aiduel PASS en 419 s ; preflight BLOQUE des 4 branches (2 commits de docs/quick_check de main manquants) couvert par le retest sur l'intégration.
-Fusion finale n°7 (FUSION-1115g, 14:27-14:4x, intégration fog dans HeroesOfLiberty-Faramir) : main 6385623 -> da3054c (avance rapide, rien poussé ; main valait 71c44e8 au début, 6385623 = docs seuls fusionnés après les tests) ; fusionnées tiers (6b81a72), maps (5a75423), net-playtest (602aa8c), visual (3c02c56), aucun conflit, aucune exclue ; quick_check.ps1 = netsig3 étendu de main + test d'accord exploration_xp dans values (fusion automatique, 3 lignes) ; Get-StaleBinaryProblem vide = pas de build ; quick_check tests 1320/1320 + values + net (19 PASS) + netsig3 (3 clients) + aiserver + aiduel PASS en 424 s ; preflight BLOQUE des 4 branches (2 commits de docs de main manquants) couvert par le retest sur l'intégration.
-
-### Bilan du 2026-11-15
-
-- **Seance** : autonome 09:02 -> arretee a 14:37 sur demande de l'utilisateur (fin dure prevue 17:00), fusion groupee acceptee, rien pousse ; environ 65 agents (tableau ci-dessus), 7 fusions.
-- **main** : 140cdb7 -> 22ad07b. Fusions : n°1 (6 branches, d751-root exclue), n°2 (d751-root, tiers), n°3 (tiers en avance rapide, session principale), n°4 (galadriel-tab, d751-root, maps, fog), n°5 (6 branches), n°6 (tiers, maps, galadriel-tab, net-playtest), n°7 (tiers, maps, net-playtest, visual). Tests 1267 -> 1320 verts (values, net 19 parties + netsig3, aiserver, aiduel PASS a chaque fusion). RIEN POUSSE.
-- **Fait** : outils L15-1 (gate Close) et L15-2 (edit_line), quick_check -Parts values seul corrige (rouge morale preexistant depuis le 11-12 : donnees), harnais net a 3 clients (netsig3) et chat reseau teste (prive, limites, spectateur) ; garnison F7 lots 3a-3e, 4b clic droit, 4c regle pure de l'IA ; Nomade : reseau D799, fin du premier forum repliquee, IA Nomade branchee (IsBuildableBy) ; Sites sacrés S7 grise par carte ; signaux SG3 (Alt + clic, carre sur la mini-carte, ligne du fil) ; specialisation SP3 (bouton du Forum) ; XP d'exploration cablee + test d'accord ; regles pures : furtivite, patrouille, raccourcis, alerte population, foret/gue ; audio tour 5 (enregistrements libres) ; rochers D802 ; UHOLDropdown (Entree perdue : delai de reouverture) ; gestes reels (talents, infobulle revenu, sites_option) ; releve GDD neuf ; recette independante sur le build fusionne.
-- **Essais [A ESSAYER] a jouer** (Retours\ESSAIS-A-JOUER.md) : nomad_start, disconnect_1v1, income_tooltip, talents_icons_compare, sites_option (touches reelles), specialization_button (defaut : texte en cours deborde), signals_altclick (carre blanc = signal neutre), audio_compare_buildings_barracks / _range / _stable (SON a juger : commandes -Root Arwen) ; LOGIQUE SEULEMENT : nomad_ai (forum deja acheve, BuildTime 0).
-- **Questions ouvertes (18)** : Q-rocks-proportion, Q-income-tooltip-taille, Q-sites-grisage, Q-audio-licences-tour5, Q-march-member-detour (mesure x16 ajoutee), Q-garrison-soin, Q-garrison-ui, Q-garrison-ia, Q-signals-ui, Q-rebind, Q-stealth, Q-patrol-follow, Q-exploration-xp, Q-forest-ford, Q-alerts-minor, Q-nomad-ia, Q-nomad-forum-duree, Q-specialization-ui, Q-chat-ui, Q-chat-rules, Q-close-gate-l15-1 (Q-arquebusier-modele : autre session).
-- **Non fini, travail ROUGE non commite dans les arbres** : Elrond (tiers : texte de la case de specialisation en cours + rapport HUD : test ForumGrid rouge voulu, git mv du test vers le module UI) ; Galadriel (galadriel-tab : alerte population branchee mais test sans PlayerContext : suite dans AlertsMinorInProgress.md). Ces deux worktrees ne sont PAS synchronises avec main.
-- **Non verifie** : aucun son entendu ; la plupart des affichages non vus (ligne de signal, alerte, bouton de specialisation) ; aucune partie d'IA Nomade vue ; gestes internes declares ; copie principale : build lance 14:46 (resultat a verifier).
-- **Anomalies du processus** : l'outil Edit refuse apres un build/commit (SAURON-1115c a perdu 8 Edit) ; la session principale a donne une syntaxe fausse d'edit_line et cree des doublons dans le tableau ; le classifieur de permissions refuse les commits rouges seuls et plusieurs git merge main chaines ; HALDIR-1115a a ecrase la ligne 315 d'EtapeDefini (restauree) ; 5 agents arretes a 45 appels sans livrer ; la session principale a depasse largement son budget de contexte (axes L15-3 a L15-9).
-
-### Lecons appliquees 2026-11-15
-
-| Regle | Etat | Preuve |
-|---|---|---|
-| T2-1 | non evalue | - |
-| T2-2 | non evalue | - |
-| L3-12 | non evalue | - |
-| L5-7 | non evalue | - |
-| L3-9 | non evalue | - |
-| T2-3 | non evalue | - |
-| L1-2 | non evalue | - |
-| L1-3 | non evalue | - |
-| L3-5 | non evalue | - |
-| L1-8 | non evalue | - |
-| L1-7 | non evalue | - |
-| L5-6 | non evalue | - |
-| T2-5 | non evalue | - |
-| L4-13 | non evalue | - |
-| T2-4 | non evalue | - |
-| Q1 | non evalue | - |
-| Q2 | non evalue | - |
-| Q3 | non evalue | - |
-| Q4 | non evalue | - |
-| Q8 | non evalue | - |
-| Q9 | non evalue | - |
-| Q11 | non evalue | - |
-| L4-11 | non evalue | - |
-| L1-13 | non evalue | - |
-| L6-2 | non evalue | - |
-| L6-4 | non evalue | - |
-| L6-6 | non evalue | - |
-| L7-5 | non evalue | - |
-| L7-7 | non evalue | - |
-| L8-2 | non evalue | - |
-| L8-4 | non evalue | - |
-| L8-8 | non evalue | - |
-| L9-1 | non evalue | - |
-| L9-6 | non evalue | - |
-| L9-8 | non evalue | - |
-| L9-9 | non evalue | - |
-| L9-10 | non evalue | - |
-| L10-2 | non evalue | - |
-| L10-3 | non evalue | - |
-| L10-4 | non evalue | - |
-| L11-3 | non evalue | - |
-| L11-4 | appliquee | lignes faites retirees de la file : c52244f (Docs\Archive\Auto_Journey_File_faits_2026-11-15.md) |
-| L11-8 | non evalue | - |
-| L11-9 | appliquee | RECETTE-1115a (Fable, 11:19) : 4 PASS, 3 FAIL sur le build fusionne |
-| L11-11 | non evalue | - |
-| L11-12 | non evalue | - |
-| L11-13 | appliquee | heures lues par Get-Date |
-| L12-1 | non evalue | - |
-| L12-1b | non evalue | - |
-| L12-2 | appliquee | sync_worktrees sans -NoBuild a 09:09 et a 14:37 |
-| L12-3 | non evalue | - |
-| L12-4 | partielle | LaunchCheck avant le code pour la plupart des agents C++ ; CELEBORN-1115b apres ses modifications |
-| L12-5 | appliquee | TESTS_TAUTOLOGIQUES: 0 dans les rapports |
-| L12-7 | non evalue | - |
-| L13-1 | non evalue | - |
-| L13-2 | appliquee | plafond C++ lu dans les tickets de BuildQueue.state (gate Launch) |
-| L13-3 | appliquee | docs de la copie principale commites avant chaque fusion |
-| L13-4 | appliquee | net PASS a chaque fusion (7 fusions) |
-| L13-5 | non evalue | - |
-| L13-6 | non evalue | - |
-| L13-7 | non evalue | - |
-| L13-8 | non evalue | - |
-| L14-1 | non appliquee | agents a 46-66 appels ; 5 arretes sans livrer |
-| L14-2 | non evalue | - |
-| L14-3 | appliquee | ForeignSession : aucun worktree d une autre session ce jour |
-| L14-4 | non evalue | - |
-| L14-5 | partielle | gestes reels : talents_icons_compare, income_tooltip, sites_option, specialization_button, signals_altclick ; nomad_start, disconnect_1v1, audio : internes |
-| L14-6 | non evalue | - |
-| L14-7 | appliquee | build.ps1 imprime Get-StaleBinaryProblem |
-| L14-8 | appliquee | FrameWaits dans check.ps1 : WARN 230 attentes frames |
-| L14-9 | non evalue | - |
-| L14-10 | non evalue | - |
-| L14-11 | non evalue | - |
-| L14-12 | appliquee | commit_docs.ps1 -Only (accepte Docs/Archive/ : b65ff21) |
-| L14-13 | non evalue | - |
-| L15-1 | partielle | sync_worktrees SANS -NoBuild a 14:37 : Arwen, Celeborn, Faramir, Glorfindel, Sauron, Haldir a main avec DLL a jour ; Elrond et Galadriel NON synchronises (travail rouge non commite dans l arbre) ; copie principale : build lance 14:46 |
-| L15-2 | appliquee | edit_line refuse un -Match non unique (fog 938e972) ; la syntaxe -Append a ete mal donnee aux agents par la session principale |
-| L15-3 | non appliquee | axe de la seance : replace_text.ps1 a ecrire (Edit refuses apres build/commit : SAURON-1115c 8 Edit perdus) |
-| L15-4 | non appliquee | axe de la seance : agents_table.ps1 a ecrire (3 lignes en double, ids vides) |
-| L15-5 | non appliquee | axe de la seance : convention du rouge vu a l execution (classifieur refuse le commit rouge seul) |
-| L15-6 | non appliquee | axe de la seance : build_wait.ps1 a ecrire |
-| L15-7 | partielle | releve GDD refait (RELEVE-1115a, Docs\ReleveGDD_2026-11-15.md) mais apres 3 h de seance, pas a l etape 0 |
-| L15-8 | non appliquee | recette independante faite (4 PASS, 3 FAIL audio) mais `.look` sans objet nomme ni verification des assets |
-| L15-9 | non appliquee | au moins 5 agents arretes a 45 appels sans livrer |
-| L15-10 | non appliquee | 709k tokens consommes, ~60 rapports de 30 a 50 lignes, enonces de 800 a 1 200 mots (regle ajoutee a la cloture)
+- Séance autonome 09:02 -> 14:37 (arrêtée par l'utilisateur), ~65 agents, 7 fusions groupées, rien poussé : main 140cdb7 -> 22ad07b, tests 1267 -> 1320 verts.
+- Reste ROUGE non commité, worktrees non synchronisés avec main : Elrond (tiers : texte de la case de spécialisation en cours + rapport HUD, test ForumGrid rouge voulu, git mv du test vers le module UI) ; Galadriel (galadriel-tab : alerte population branchée, test sans PlayerContext, suite dans AlertsMinorInProgress.md).
+- Détail (tableau d'agents, fusions, bilan, leçons) : `Docs\Archive\Auto_Journey_Jour_2026-11-15_archive_2026-11-16.md`.
