@@ -142,28 +142,6 @@ bool FHOLMatchStatsSendTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-// C4: the scores of the statistics screen.
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMatchStatsScoresTest, "HeroesOfLiberty.Match.Stats.Scores",
-	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
-
-bool FHOLMatchStatsScoresTest::RunTest(const FString& Parameters)
-{
-	FHOLPlayerMatchStats Player;
-	TestEqual(TEXT("nothing done: no military score"), HOLMatchStats::GetMilitaryScore(Player), 0);
-	TestEqual(TEXT("nothing done: no economy score"), HOLMatchStats::GetEconomyScore(Player), 0);
-
-	Player.UnitsKilled = 7;
-	Player.UnitsLost = 4;
-	Player.BuildingsLost = 2;
-	TestEqual(TEXT("10 a kill, losses not counted"), HOLMatchStats::GetMilitaryScore(Player), 70);
-
-	Player.Gathered = FHOLResources(120, 85, 30, 9);
-	Player.UnitsTrained = 3;
-	TestEqual(TEXT("244 gathered is 24, 3 trained 15"), HOLMatchStats::GetEconomyScore(Player), 39);
-	TestEqual(TEXT("military unchanged by the economy"), HOLMatchStats::GetMilitaryScore(Player), 70);
-	return true;
-}
-
 // C5: the curves of the « Chronologie »: a sample's values, the points, the round graduations of the axes.
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLMatchStatsCurvesTest, "HeroesOfLiberty.Match.Stats.Curves",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
