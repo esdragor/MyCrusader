@@ -14,6 +14,8 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 
 | Agent | id | worktree | tâche | C++ | lancé |
 |---|---|---|---|---|---|
+| NETTOYAGE-0a x3 (finis 14:5x-14:57) | a6ae4c52427324b6b, a09b5d09cdd8f72b7, af1f27952d57d5b0a | copie principale | archives Jour/Retours bad6bd6, File a707951 (14 [x], 12 périmées), Procédure/Checklist edc2dfc ; règle 7 alignée sur L15-5 | non | 14:49 |
+| ETAPE0-1116 | a9cf56384f78b1e33 | lecture seule | plan de lancement (Fable), Docs\Rapports\ETAPE0-1116.md | non | 14:53 |
 
 ## Résumé de la séance du 2026-11-15
 
