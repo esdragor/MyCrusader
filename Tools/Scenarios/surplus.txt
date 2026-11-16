@@ -30,7 +30,7 @@ waitlog Selection: 8 units (own)
 # La camera revient sur l'anneau, puis le clic droit sur le héros ennemi.
 hol.Camera.Focus -13200 4500
 frames 5
-hol.Select.ClickUnit -2 order enemy
+hol.Select.ClickUnit -2 order slot=1
 note 2. Clic droit donné sur le héros ennemi : tes 8 renforts marchent vers lui, mais ses 6 places sont prises par les 6 premiers (le héros ennemi tient plusieurs secondes).
 note AVEC le correctif (1) : les renforts qui n'ont plus de place quittent le héros pour l'Homme d'armes ennemi derrière lui (ou lui, s'il a une place) ; leur ordre est fini. SANS (0) : ils restent plantés derrière l'anneau, sans frapper.
 note À toi ensuite : sélectionne d'autres Hommes d'armes, reclique droit sur un ennemi encerclé (au besoin hol.Units.SpawnHere 6 ManAtArms 0 400 pour en refaire naître au centre de l'écran).

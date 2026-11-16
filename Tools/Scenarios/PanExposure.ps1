@@ -25,3 +25,21 @@ function Get-PanExposure([string[]] $Lines, [int] $Max = 10) {
     }
     return $Offenders
 }
+
+# Enemy click without a slot (2026-11-16, SAURON-1116a; HALDIR-1112c): 'hol.Select.ClickUnit <N> enemy' picks the N-th of ALL the units that are not
+# the local player's (by identifier): a neutral camp's or a 3rd player's units are counted too, so the index lands on another unit as soon as one of
+# them exists. Name the owner instead: 'slot=<S>' (HOLPlayerController.cpp, hol.Select.ClickUnit).
+function Get-EnemyClickWithoutSlot([string[]] $Lines) {
+    $Offenders = @()
+    $Number = 0
+    foreach ($Raw in $Lines) {
+        $Number++
+        $Line = $Raw.Trim()
+        if (-not $Line -or $Line.StartsWith("#")) { continue }
+        $Line = $Line -replace '^quiet\s+', ''
+        if ($Line -match '^hol\.Select\.ClickUnit\b' -and (@($Line -split '\s+') -contains 'enemy') -and $Line -notmatch '\bslot=\d+') {
+            $Offenders += "line ${Number}: '$Line' clicks 'enemy' without slot=<S>: the index counts every unit not yours (a neutral camp, a 3rd player); write slot=<S>"
+        }
+    }
+    return $Offenders
+}
