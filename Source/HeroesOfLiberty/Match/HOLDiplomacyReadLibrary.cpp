@@ -262,6 +262,30 @@ bool UHOLDiplomacyReadLibrary::CanLeaveRampart(const FHOLDiplomacyStances& Book,
 	return HOLDiplomacy::CanLeaveRampart(ToBook(Book), UnitOwner, RampartOwner);
 }
 
+bool UHOLDiplomacyReadLibrary::InMatch(const FHOLDiplomacyStances& Book, const int32 Slot)
+{
+	return HOLDiplomacy::InMatch(ToBook(Book), Slot);
+}
+
+bool UHOLDiplomacyReadLibrary::CanGarrison(const int32 UnitOwner, const int32 BuildingOwner)
+{
+	return HOLDiplomacy::CanGarrison(UnitOwner, BuildingOwner);
+}
+
+bool UHOLDiplomacyReadLibrary::DoorsOpenFor(const FHOLDiplomacyStances& Book, const int32 Owner, const int32 Other)
+{
+	return HOLDiplomacy::DoorsOpenFor(ToBook(Book), Owner, Other);
+}
+
+FHOLDiplomacyAlliedVictory UHOLDiplomacyReadLibrary::AlliedVictory(const FHOLDiplomacyStances& Book, const TArray<bool>& Defeated)
+{
+	const HOLDiplomacy::FAlliedVictory Victory = HOLDiplomacy::AlliedVictory(ToBook(Book), Defeated);
+	FHOLDiplomacyAlliedVictory Out;
+	Out.bEnded = Victory.bEnded;
+	Out.Winners = Victory.Winners;
+	return Out;
+}
+
 // Constants and codes of HOLDiplomacy, and the SetStance / SetVision fiches (D836 (5)). Wrappers only.
 
 int32 UHOLDiplomacyReadLibrary::GetStanceEnemy() { return HOLDiplomacy::Enemy; }
