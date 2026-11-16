@@ -39,6 +39,8 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 Exception 15:37 : essais audio_compare_buildings_range/_stable donnés malgré session_gate Essay FAIL (4 fichiers non commités dans Arwen = scripts Tools/Audio/*.py d ARWEN-1116b en cours, hors jeu) ; d751-root dans main en avance rapide 365326f (tests 1320/1320 + values PASS lancés par la session principale 15:30) ; sons hors git présents dans Arwen seulement.
 Exception 16:00 : alert_population donné malgré Essay FAIL « binaire 15:22 plus ancien que le commit 15:27 » : a11ed2a a été compilé avant d être commité (Get-StaleBinaryProblem vide) ; faux positif du gate à corriger (comparer les sources, pas l heure du commit).
 BUILD LENT 16:08 (L12-7) : build Haldir en compilation depuis 15:11 (55 min) en parallèle d un UnrealBuildTool ProjectShiva (Playable-vendetta, cl.exe actif) ; vm libre 6,5 Go ; 4 builds en attente (Elrond, Glorfindel, Celeborn, Arwen) ; utilisateur prévenu.
+BUILDS 16:24 : Haldir 15:22-16:13 = 3088 s (médiane normale 45 s, x70) en parallèle des builds ProjectShiva, vm 1,8-6,5 Go ; un seul build fini entre 15:22 et 16:13 ; builds de rafraîchissement Celeborn et Arwen ANNULÉS par la session principale (aucun agent ne les attend) ; remarque de l utilisateur : « on perd énormément de temps à cause des builds ».
+DÉCISION 16:3x (D830, utilisateur) : arrêt du développement C++ ; passage du maximum en Angelscript, tests compris ; cette séance ne produit que le plan (ANALYSE-1116a, Fable, Docs\Rapports\ANALYSE-1116a.md) ; les builds en file (Elrond, Glorfindel, Haldir, Sauron BUG D829) finissent puis les agents s arrêtent ; aucun worktree n est relancé sur une tâche C++.
 
 ## Résumé de la séance du 2026-11-15
 
