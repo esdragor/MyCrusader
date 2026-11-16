@@ -13,3 +13,4 @@ Recommandation : B (le son court est déjà décidé par D804 B ; c'est le moyen
 Valeur par défaut codée : A (rien n'a changé : durée D446, ligne muette) ; aucune réglage ajouté à ce stade.
 
 Réponse :
+Reponse: B (15 s + son court de D804 B) ; utilisateur, 2026-11-16 17:1x, par l interface de choix ; D833 ; ligne [ ] en tête de la section Galadriel.
