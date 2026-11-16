@@ -58,3 +58,30 @@ l. 760, 772, 781, 798, 825) ; textes dans la table unique `HOLForumMessages.cpp`
 - Rouge VU a l'execution 13:28 : tests 1312/1314, seuls Test_AlertPopulationFullOnReaching et Test_AlertPopulationFullRepeat (stub false).
 - Vert 13:32 : regle IsPopulationFull / ShouldAlertPopulationFull / PopulationFullText ecrite, quick_check tests PASS (test + correctif dans le meme commit).
 - Etape 3 FAITE. Suivant : branchement C++ du section 3 (agent C++), puis recherche terminee et batiment acheve selon la reponse a Q-alerts-minor.
+
+## 6. Branchement au HUD (GALADRIEL-1115g, 2026-11-15 14:02-14:2x, C++)
+- Plus petit changement retenu (AHOLPlayerState non touche) : `UHOLScriptScreen::GetPopulationNow(Used, Cap, RealSeconds)` (BlueprintPure, lit le
+  joueur que montre l'ecran C++ : `UHOLGameScreen::GetBoundPlayerState`, rien pour un spectateur) et `UHOLScriptScreen::AddThreadLine(FText)`
+  (BlueprintCallable) -> `UHOLGameScreen::AddThreadLine` (MessageThread.Add + RebuildMessages, modele HandleSignalMessage, ligne muette).
+- Script : `HOLGameScreenScript.as` `RefreshPopulationAlert()` a chaque Refresh (4 fois/s), membre `FHOLPopulationAlertWatch PopulationWatch`.
+- Test (vraie chaine) : `Source\HeroesOfLibertyUI\Tests\HOLPopulationAlertThreadTests.cpp` `HeroesOfLiberty.UI.Alerts.PopulationFullThread` :
+  vrai UHOLGameScreen + sa partie script, AHOLPlayerState::SetPopulation, temps reel du monde, Refresh par DescribeScript, compte des lignes
+  « Population pleine » de DescribeMessages (0 / 1 / 1 / 1 a 9 s / 2 a 34 s). Friend de UHOLGameScreen pour BindPlayerState.
+- Build PASS 14:10 (129 s, file derriere Elrond). ROUGE VU 14:14 : tests 1320/1321, seul PopulationFullThread (script non branche).
+  Vert : quick_check tests relance apres l'edition du script (resultat et commit : voir EtapeDefini / rapport).
+- Localisation (3) verifiee : Config\Game.ini rassemble Script/*.as ET Source ; la cle HOLGameScreen,PopulationFull existe deja en C++
+  (LOCTEXT de la note de file, meme texte source « Population pleine ») : meme cle + meme source = une seule entree, pas de doublon.
+- NON FAIT : scenario `alert_population` + .look + preflight (budget d'appels) ; verbe hol.Cheat de population non cherche.
+- Suivant : scenario alert_population (remplir la population : chercher un verbe hol.Cheat, sinon produire jusqu'au plafond), puis
+  recherche terminee / batiment acheve selon la reponse a Q-alerts-minor.
+- 1re relance 14:15 : script non compile (GetPopulationNow : float& C++ = float32 en script), corrige ; vert NON obtenu (tests 1320/1321), rien commite. Appels GALADRIEL-1115g : 44.
+- GALADRIEL-1115h (14:24-14:3x, arret de seance demande, aucun build ni test lance, rien modifie dans le code, rien commite) :
+  CAUSE LUE (Saved_Tests\Logs\quick_tests.log l. 19214) : « Expected 'its part in script' to be not null » (test l. 32). ScriptScreen
+  est cree dans UHOLGameScreen::NativeOnInitialized, que UUserWidget::Initialize ne lance qu'avec un contexte de joueur ; le test cree
+  l'ecran avec le World seul -> pas de partie script. Les hypotheses (a)(b)(c) ne sont pas en cause a ce stade (jamais atteintes).
+  PROCHAINE ETAPE (test seul, C++ -> build) : modele HOLNewGameSitesBoxTests.cpp l. 36-61 : ULocalPlayer + APlayerController
+  (Controller->Player, Player->PlayerController, World->AddController), puis `NewObject<UHOLGameScreen>(GetTransientPackage())`,
+  `SetPlayerContext(FLocalPlayerContext(Player, World))`, `Initialize()` (NativeConstruct non lance : pas de Refresh ni de
+  controleur requis), puis BindPlayerState(Player) comme aujourd'hui. Ensuite build, quick_check -Parts tests ; si encore rouge,
+  lire l'assertion : piste (a) appeler RefreshPopulationAlert() en premier dans Refresh() du script.
+- GALADRIEL-1116a (15:02-) : correctif du test (ULocalPlayer + APlayerController, SetPlayerContext, Initialize, modele HOLNewGameSitesBoxTests). Build PASS 15:22 (674 s, file + memoire). VERT 15:26 : quick_check tests 1321/1321 (rouge vu 2026-11-15 14:14 : 1320/1321, assertion l. 32). Commit branchement + test, puis merge main, puis G2 scenario alert_population.

@@ -1363,6 +1363,23 @@ FString TalentTipTexts = "";
 		RefreshDiplomacy();
 		RefreshPause();
 		RefreshMinimap();
+		RefreshPopulationAlert();
+	}
+
+	// D202, Q-alerts-minor default A: the population full line in the thread of messages (muted, no ping), once when the population
+	// becomes full, not again sooner than HOLAlertRules::PopulationRepeatSeconds. Nothing for a spectator (no player state shown).
+	FHOLPopulationAlertWatch PopulationWatch;
+
+	void RefreshPopulationAlert()
+	{
+		int Used = 0;
+		int Cap = 0;
+		// The C++ float is a float32 in script.
+		float32 Now = 0;
+		if (!GetPopulationNow(Used, Cap, Now))
+			return;
+		if (HOLAlertRules::ShouldAlertPopulationFull(PopulationWatch, Used, Cap, Now, HOLAlertRules::PopulationRepeatSeconds))
+			AddThreadLine(HOLAlertRules::PopulationFullText());
 	}
 
 	void BuildMinimap(UOverlay Frame)
