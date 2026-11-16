@@ -13,6 +13,18 @@ function Get-KnownReds([string] $Path) {
 function Find-KnownRed([string] $Part, $Reds) {
     @($Reds | Where-Object { $_.Test -eq $Part }) | Select-Object -First 1
 }
+# La partie "tests" (SAURON-1116n) : son nom ("tests 1326/1328") n'est jamais dans la liste, ce sont les tests C++ / script en
+# echec qui y sont (ex. "HeroesOfLiberty.Match.StartingHero.NomadFirstForum"). Rouge connu si TOUS les tests KO y sont, sinon rien
+# (un seul test hors liste = regression). Rend une entree { Test ; Since = la plus ancienne date ; Cause = les tests nommes }.
+# Test : Tools\Tests\known_reds_tests_part_test.ps1.
+function Find-KnownTestRed([string[]] $FailedTests, $Reds) {
+    $Tests = @($FailedTests | Where-Object { $_ })
+    if (-not $Tests.Count) { return }
+    $Hits = @(foreach ($T in $Tests) { Find-KnownRed $T $Reds })
+    if ($Hits.Count -ne $Tests.Count) { return }
+    $Short = @($Tests | ForEach-Object { ($_ -split '\.')[-1] })
+    [pscustomobject]@{ Test = ($Tests -join ', '); Since = (@($Hits | ForEach-Object { $_.Since } | Sort-Object))[0]; Cause = "$($Tests.Count) test(s) de known_reds.txt : $($Short -join ', ')" }
+}
 function Get-RedSummary($FailedParts, $Reds) {
     $Failed = @($FailedParts)
     $Known = @($Failed | Where-Object { Find-KnownRed $_ $Reds })

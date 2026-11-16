@@ -146,7 +146,7 @@ if ($PlaceholdersAlone -and -not $Parts.Count) { Write-Host "quick_check : PASS"
 $KnownReds = @(Get-KnownReds (Join-Path $PSScriptRoot "known_reds.txt"))
 $FailedParts = @()
 $SubCases = @{}
-function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks) {
+function Report([string] $Part, [System.Collections.Specialized.OrderedDictionary] $Checks, [string[]] $FailedTests = @()) {
     # A part played by cases: only the reports of the cases asked ("build cut" for build:cut), the others not played
     # (their checks still read their empty sections: [regex]::Match on "$X", never on null). A case's own further reports
     # too ("build hero return" for build:hero).
@@ -157,6 +157,12 @@ function Report([string] $Part, [System.Collections.Specialized.OrderedDictionar
     $Failed = @($Checks.Keys | Where-Object { -not $Checks[$_] })
     # L8-5: a known red (Tools/Tests/known_reds.txt) is told apart from a regression; a known red that passes is told to leave the list.
     $KnownRed = Find-KnownRed $Part $KnownReds
+    # The "tests" part (SAURON-1116n): known red when its one failed check is "all green" and EVERY failed test is listed
+    # (Find-KnownTestRed); the part is then added to the list so that Get-RedSummary counts it known too.
+    if (-not $KnownRed -and $Failed.Count -eq 1 -and @($FailedTests).Count) {
+        $KnownRed = Find-KnownTestRed $FailedTests $KnownReds
+        if ($KnownRed) { $script:KnownReds = @($KnownReds) + [pscustomobject]@{ Test = $Part; Since = $KnownRed.Since; Cause = $KnownRed.Cause } }
+    }
     $RedTag = ""
     if ($Failed.Count -gt 0) {
         $script:FailedParts += $Part
@@ -7482,7 +7488,7 @@ if ($TestsProcess) {
     $Checks["scripts compiled ($(if ($ScriptErrors.Count) { $ScriptErrors -join ' ' } else { 'no error' }))"] = $ScriptErrors.Count -eq 0
     $ScriptTests = @($Results | Where-Object { $_.Groups[2].Value -like "Angelscript.UnitTests.*" }).Count
     $Checks["script tests ran ($ScriptTests)"] = $ScriptTests -gt 0
-    $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks) -and $AllOk
+    $AllOk = (Report "tests $($Results.Count - $Failures.Count)/$($Results.Count)" $Checks $Failures) -and $AllOk
 }
 
 # The "lobby" part (M6 R5.4): lobby_match.ps1 on its own, once the rest is done (its three games and the test manager
