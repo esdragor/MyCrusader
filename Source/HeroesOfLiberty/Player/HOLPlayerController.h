@@ -560,6 +560,8 @@ public:
 	/** SG3: the received signals still alive (hol.Signal.IconSeconds), for the minimap's icons (HOLGameScreenScript). */
 	UFUNCTION(BlueprintCallable, Category = "Signals")
 	TArray<FHOLReceivedSignal> GetActiveSignals() const;
+	/** SG3: what ClientReceiveSignal does on this machine (keeps the signal for the minimap and the ground mark, D825; its thread line). */
+	void ReceiveSignal(int32 Sender, int32 Kind, const FVector& Location);
 
 private:
 	/** SG3: the received signals (ClientReceiveSignal), faded by HOLSignalInput::Expire. */
