@@ -111,6 +111,75 @@ void Test_TerrainServerAndScriptRulesAgree(FUnitTest& T)
 	T.AssertEquals(HOLTerrain::ServerScaledSpeed(1, 10), HOLTerrain::ScaledSpeed(1, 10), "a walker never reaches 0");
 }
 
+// MIG-J-Terrain (D830, D835): the agreement widened to every zone the server knows. The marsh of both presets and a marsh stronger than both,
+// the road at the server's speed and at the 150 % of the C++ test (HeroesOfLiberty.Terrain.Rules, "the road's own percent is read"), each on a
+// grid of points around the zone (inside, edge, one centimetre out, far); the scaled speed above 100 % (the road's). The forest (F4), the ford
+// (F5) and the charge stopped in a marsh have no server copy (no C++ rule, no library function): nothing to agree with, noted in the report.
+void Test_TerrainServerAndScriptAgreeOnEveryZone(FUnitTest& T)
+{
+	TArray<int> MarshPercents;
+	MarshPercents.Add(HOLTerrain::Preset(0).MarshSpeedPercent);
+	MarshPercents.Add(HOLTerrain::Preset(1).MarshSpeedPercent);
+	MarshPercents.Add(25);
+	TArray<int> RoadPercents;
+	RoadPercents.Add(HOLTerrain::GetServerDefaultRoadPercent());
+	RoadPercents.Add(150);
+	int Compared = 0;
+	int Differences = 0;
+	int Slowed = 0;
+	int Sped = 0;
+	for (int X = -1000; X <= 3000; X += 125)
+	{
+		for (int Y = -3000; Y <= 0; Y += 125)
+		{
+			for (int M = 0; M < MarshPercents.Num(); M++)
+			{
+				FHOLTerrainSettings S = HOLTerrain::Preset(0);
+				S.MarshSpeedPercent = MarshPercents[M];
+				TArray<FHOLTerrainZone> Marsh;
+				Marsh.Add(MarshZone(1000, -2000, 500));
+				const int Script = HOLTerrain::SpeedPercentAt(S, Marsh, X, Y);
+				Compared++;
+				if (HOLTerrain::ServerSpeedPercent(S.MarshSpeedPercent, 1000, -2000, 500, X, Y) != Script)
+					Differences++;
+				if (Script < 100)
+					Slowed++;
+			}
+			for (int R = 0; R < RoadPercents.Num(); R++)
+			{
+				FHOLTerrainSettings S = HOLTerrain::Preset(0);
+				S.RoadSpeedPercent = RoadPercents[R];
+				TArray<FHOLTerrainZone> Road;
+				FHOLTerrainZone Zone;
+				Zone.Kind = HOLTerrain::Road;
+				Zone.X = 1000;
+				Zone.Y = -2000;
+				Zone.Radius = 500;
+				Road.Add(Zone);
+				const int Script = HOLTerrain::SpeedPercentAt(S, Road, X, Y);
+				Compared++;
+				if (HOLTerrain::ServerRoadSpeedPercent(S.RoadSpeedPercent, 1000, -2000, 500, X, Y) != Script)
+					Differences++;
+				if (Script > 100)
+					Sped++;
+			}
+		}
+	}
+	for (int Speed = 0; Speed <= 700; Speed += 97)
+	{
+		for (int R = 0; R < RoadPercents.Num(); R++)
+		{
+			Compared++;
+			if (HOLTerrain::ServerScaledSpeed(Speed, RoadPercents[R]) != HOLTerrain::ScaledSpeed(Speed, RoadPercents[R]))
+				Differences++;
+		}
+	}
+	T.AssertEquals(33 * 25 * 5 + 8 * 2, Compared, "every point, zone and speed compared");
+	T.AssertEquals(0, Differences, "the server and the script agree on every marsh, road and scaled speed");
+	T.AssertTrue(Slowed > 0 && Sped > 0, "the grid does reach into the zones (" + Slowed + " slowed, " + Sped + " sped up)");
+	T.AssertEquals(150, HOLTerrain::ServerRoadSpeedPercent(150, 5000, 0, 400, 5000, 0), "the server reads the road's own percent (the C++ test's vector)");
+}
+
 // D796 (2026-11-14): the forest's cover (B4: Test_TerrainForestZoneCoversFromRanged, Test_TerrainForestByTreesCovers,
 // Test_TerrainForestCVarsDefaults) is removed with its rule; a zone of an unknown kind (2, the old forest) neither slows nor stops a charge.
 void Test_TerrainUnknownZoneKindNeutral(FUnitTest& T)
