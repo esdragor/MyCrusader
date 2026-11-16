@@ -9,8 +9,9 @@
 /**
  * Pure rules of the production of units at a building (J3, D280, D282), applied by the server at each simulation
  * step: the cost is taken when an item is queued and given back in full when it is cancelled; the item at the head of
- * the queue starts when the player has room for it in the population, and waits otherwise (as in AoE); it is done
- * BuildSteps steps after it started. No engine state: tested on their own.
+ * the queue starts at once, whatever the population (D829); it is done BuildSteps steps after it started, and comes out only
+ * when the player has room for it in the population: otherwise it stays at 100 % until a place is free (D829, the user's BUG
+ * on alert_population). No engine state: tested on their own.
  */
 
 /** One item of a building's production queue, as replicated to the building's owner (D282). */
@@ -23,7 +24,7 @@ struct HEROESOFLIBERTY_API FHOLProductionItem
 	UPROPERTY()
 	FName TypeName;
 
-	/** Simulation step the item started at, NotStarted while it waits (not at the head, or population full). */
+	/** Simulation step the item started at, NotStarted while it waits behind the head (D829: the head starts whatever the population). */
 	UPROPERTY()
 	int64 StartStep = NotStarted;
 
@@ -70,9 +71,9 @@ namespace HOLProduction
 	HEROESOFLIBERTY_API bool Cancel(TArray<FHOLProductionItem>& Queue, int32 Index, const FHOLProductionCost& Cost, FHOLResources& Stock);
 
 	/**
-	 * Advances a queue to Step: the head item that is done leaves the queue (its type goes to OutDone), and the new
-	 * head starts if FreePopulation has room for it (FreePopulation then loses its places). A started item already
-	 * holds its places: the caller counts them in the population used, with the player's units.
+	 * Advances a queue to Step (D829): the head starts at once, whatever the population; once done, it leaves the queue (its type
+	 * goes to OutDone) only if FreePopulation has room for it (FreePopulation then loses its places), and otherwise stays at 100 %
+	 * until a place is free. An item in production holds no place: the population used is the player's units alone.
 	 */
 	HEROESOFLIBERTY_API void Advance(TArray<FHOLProductionItem>& Queue, int64 Step,
 		TFunctionRef<FHOLProductionCost(FName)> GetCost, int32& FreePopulation, TArray<FName>& OutDone);
@@ -82,4 +83,7 @@ namespace HOLProduction
 
 	/** Share of Item done at Step (with its fraction, the client's estimate of the server clock), 0 to 1. */
 	HEROESOFLIBERTY_API float GetProgress(const FHOLProductionItem& Item, double Step, int32 BuildSteps);
+
+	/** D829: Item is done (100 % at Step) but still in its queue: it waits for a place in the population to come out. */
+	HEROESOFLIBERTY_API bool IsWaitingForRoom(const FHOLProductionItem& Item, double Step, int32 BuildSteps);
 }

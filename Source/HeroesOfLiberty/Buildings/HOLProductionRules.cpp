@@ -43,20 +43,22 @@ void HOLProduction::Advance(TArray<FHOLProductionItem>& Queue, const int64 Step,
 	{
 		FHOLProductionItem& Head = Queue[0];
 		const FHOLProductionCost Cost = GetCost(Head.TypeName);
+		// D829: the head starts whatever the population (a unit can be queued and produced at population full).
 		if (!Head.IsStarted())
 		{
-			// A research (T3, no place) starts whatever the population: a player over his cap still finishes it.
-			if (Cost.Population > 0 && FreePopulation < Cost.Population)
-			{
-				return;
-			}
-			FreePopulation -= Cost.Population;
 			Head.StartStep = Step;
 		}
 		if (Step - Head.StartStep < FMath::Max(Cost.BuildSteps, 1))
 		{
 			return;
 		}
+		// D829: done, it checks the population before coming out; without room it stays at 100 % (and the queue behind it waits).
+		// A research (T3, no place) always comes out.
+		if (Cost.Population > 0 && FreePopulation < Cost.Population)
+		{
+			return;
+		}
+		FreePopulation -= Cost.Population;
 		OutDone.Add(Head.TypeName);
 		Queue.RemoveAt(0);
 	}
@@ -73,6 +75,11 @@ int32 HOLProduction::GetStartedPopulation(const TArray<FHOLProductionItem>& Queu
 		}
 	}
 	return Population;
+}
+
+bool HOLProduction::IsWaitingForRoom(const FHOLProductionItem& Item, const double Step, const int32 BuildSteps)
+{
+	return Item.IsStarted() && Step - static_cast<double>(Item.StartStep) >= FMath::Max(BuildSteps, 1);
 }
 
 float HOLProduction::GetProgress(const FHOLProductionItem& Item, const double Step, const int32 BuildSteps)
