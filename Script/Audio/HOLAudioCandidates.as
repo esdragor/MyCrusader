@@ -82,7 +82,9 @@ namespace HOLAudioCandidates
 		Add(List, "Building.Coins", "s_coins_purse,s_coins_leather_b,s_coins_leather,s_coins_drop,s_coins_tin_b,s_coins_counter,s_coins_tin,s_coins_cloth,s_coins_soft,s_coins_slap");
 		// Round 5 (D801, 2026-11-15; the synthesised round 4 was refused): RECORDED free samples (CC0 / CC-BY, sources and licences in
 		// Tools/Audio/make_round5_candidates.py), cut, filtered soft and levelled by that script.
-		Add(List, "Building.Barracks", "s_voice5_yell_a,s_voice5_yell_b,s_voice5_yell_c,s_voice5_yell_d,s_voice5_grunt_a,s_voice5_grunt_b,s_voice5_crowd_a,s_voice5_crowd_b,s_voice5_sword_draw,s_voice5_sword_sheath");
+		// Round 6 Barracks (D826 lot A2, 2026-11-16): no letter of round 5 kept ("cris de douleur"), ten NEW sounds WITHOUT any voice (blades,
+		// war drum, horn; CC0), clean like Range and Stable: Tools/Audio/make_round6_candidates.py (BARRACKS).
+		Add(List, "Building.Barracks", "s_barr6_draw_a,s_barr6_draw_b,s_barr6_draw_c,s_barr6_sheath_a,s_barr6_sheath_b,s_barr6_two_blades,s_barr6_drum,s_barr6_drum_double,s_barr6_horn,s_barr6_drum_blade");
 		// Round 6 (D826, 2026-11-16): the user elected the KIND of letter G of round 5 for the Range and the Stable, but heard a poor recording.
 		// A = the round 5 G unchanged (reference), B-E = the same event of the same source, not cut, no drive, low-pass none / 6k / 3k / 1.5k
 		// (Tools/Audio/make_round6_candidates.py, test round6_candidates_test.py). Nothing elected into HOLAudioTable.as before the user hears them.
