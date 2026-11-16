@@ -23,10 +23,10 @@ FHOLDiplomacyStances SignalTestBook()
 	for (int Slot = 0; Slot < 4; Slot++)
 		IsAI.Add(false);
 	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(4, IsAI);
-	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacy::Ally);
-	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacy::Ally);
-	HOLDiplomacyRead::SetStance(Book, 0, 2, HOLDiplomacy::Ally);
-	HOLDiplomacyRead::SetStance(Book, 2, 0, HOLDiplomacy::Neutral);
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Book, 0, 2, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Book, 2, 0, HOLDiplomacyRead::GetStanceNeutral());
 	return Book;
 }
 
@@ -50,7 +50,7 @@ void Test_SignalSeenByMutualAlliesOnly(FUnitTest& T)
 	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 3, 10).Num(), "an Enemy does not see it");
 
 	// The break is immediate (D370): once 1 says Enemy, it no longer sees 0's signals.
-	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceEnemy());
 	T.AssertEquals(0, HOLSignal::SeenBy(Board, Book, 1, 20).Num(), "a broken alliance hides the signals at once");
 }
 
