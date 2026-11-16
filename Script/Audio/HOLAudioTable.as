@@ -90,6 +90,10 @@ namespace HOLAudioEvent
 	const int SelectBuildingSiege = 27;
 	const int SelectBuildingForum = 28;
 	const int SelectBuildingForge = 29;
+	// D832 (2026-11-16, round 6 of audio_compare_buildings_range / _barracks): Archery range = Range B, Barracks = Barracks A. The Stable waits for
+	// the user to hear its cut snort again (audio_compare_buildings_stable_cut).
+	const int SelectBuildingRange = 30;
+	const int SelectBuildingBarracks = 31;
 }
 
 namespace HOLAudio
@@ -169,6 +173,9 @@ namespace HOLAudio
 		Add(Cues, HOLAudioEvent::SelectBuildingSiege, "Select.BuildingSiege", "soft", "s_stone3_block", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuildingForum, "Select.BuildingForum", "soft", "s_metal3_hammer_double", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 		Add(Cues, HOLAudioEvent::SelectBuildingForge, "Select.BuildingForge", "soft", "s_stone3_double", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		// D832: round 6 files (Tools/Audio/make_round6_candidates.py, peak -2.5 dB, no _lim copy): Archery range = Range B (bow shot, no filter), Barracks = Barracks A (one blade drawn).
+		Add(Cues, HOLAudioEvent::SelectBuildingRange, "Select.BuildingRange", "soft", "s_shot6_bow_full", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
+		Add(Cues, HOLAudioEvent::SelectBuildingBarracks, "Select.BuildingBarracks", "soft", "s_barr6_draw_a", BuildingSelectGainPercent, 97, 103, 60, HOLAudioPriority::Order);
 	}
 
 	// The table, built at each call (script has no mutable global; 24 small structs, a sound is not played 100 times a frame).

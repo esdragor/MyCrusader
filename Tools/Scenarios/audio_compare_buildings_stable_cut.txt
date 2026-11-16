@@ -1,0 +1,22 @@
+# Ecoute : le son de SELECTION de l'ECURIE, reecoute D832 : le B du tour 6 COUPE (seulement l'ebrouement pfff de la fin, sans le hennissement du debut) contre le B entier [non compte : sa fiche est E-audio_compare_buildings_stable.md], deux variantes, Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. D832 : tu as dit B, mais sans le hennissement du debut, juste le pfffff de fin ; A = le B coupe (le hennissement, la partie voisee, est retire ; meme enregistrement, meme licence), B = le B entier pour comparer. Jamais choisi a ta place.
+waitlog Starting hero of slot 0 spawned at
+waitlog Starting hero of slot 1 spawned at
+# l'Ecurie que tu ecoutes, fini(e) et a toi, pose(e) derriere le centre, camera dessus : l'ecran montre le batiment du son, pas le Forum.
+hol.Cheat.SpawnBuilding Stable 0 -3800 4600
+waitlog Cheat: spawned Stable of slot 0
+hol.Camera.FocusNear -3800 4600
+frames 10
+note Ecoute le son de SELECTION de l'ECURIE, reecoute D832. 2 sons, 1 cue : A = le B du tour 6 COUPE (seulement l'ebrouement pfff de la fin, 0,94 s), B = le B entier (hennissement puis ebrouement, 1,42 s).
+note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.CutStable C.
+note Reponds : A (le coupe), B (l'entier), ou REGLAGE: <ce qui ne va pas> (coupe trop tot, trop tard, encore un bout de hennissement...).
+capture audio_compare_buildings_stable_cut_start
+waitkey Entree : commencer par Building.CutStable A
+hol.Audio.Candidate Building.CutStable A
+waitlog candidate played Building.CutStable A
+waitkey Building.CutStable A (s_horse6_snort) vient de jouer. Entree : Building.CutStable B
+hol.Audio.Candidate Building.CutStable B
+waitlog candidate played Building.CutStable B
+waitkey Building.CutStable B (s_horse6_vocal_full) vient de jouer : c'etait la derniere. Entree : fin
+hol.Test.Sanity
+note Fin de l'ecoute. Dis A, B, ou REGLAGE: <ce qui ne va pas>.

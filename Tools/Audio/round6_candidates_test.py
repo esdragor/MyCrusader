@@ -146,6 +146,55 @@ for stem in stems:
     if seconds > 2.0:
         fail("%s: %.2f s, longer than 2 s" % (stem, seconds))
 
+
+# D832 REGLAGE (2026-11-16): Stable B without the neigh of its start, only the snort ("pfff") of its end. Building.CutStable = [the cut, B whole].
+# The neigh is a VOICED sound (a pitch: strong autocorrelation between 250 and 1500 Hz), the snort a breath (noise): measured here, not in the
+# generator. Effect: B whole has a voiced neigh; the cut has none left in its audible part, keeps the snort's body, is not cut at its end.
+STABLE_CUT = "Building.CutStable"
+STABLE_B = "s_horse6_vocal_full"
+
+
+def voiced_frames(data, rate, within_db=25.0, threshold=0.7):
+    """Frames of 40 ms (hop 20 ms) within `within_db` of the loudest whose normalised autocorrelation peaks >= threshold for a pitch of 250-1500 Hz."""
+    size, hop = int(0.04 * rate), int(0.02 * rate)
+    lo, hi = int(rate / 1500), int(rate / 250)
+    levels, harms = [], []
+    for start in range(0, len(data) - size + 1, hop):
+        frame = data[start:start + size] - data[start:start + size].mean()
+        ac = np.correlate(frame, frame, "full")[size - 1:]
+        harms.append(float(ac[lo:hi].max() / max(1e-12, ac[0])))
+        levels.append(10 * np.log10(max(1e-20, float(np.mean(frame ** 2)))))
+    top = max(levels) if levels else 0.0
+    return [i * hop / rate for i in range(len(levels)) if levels[i] >= top - within_db and harms[i] >= threshold]
+
+
+stems = lists.get(STABLE_CUT, [])
+if len(stems) != 2 or stems[1] != STABLE_B:
+    fail("%s: %s, expected [the snort cut out of %s, %s]" % (STABLE_CUT, ",".join(stems) or "nothing", STABLE_B, STABLE_B))
+else:
+    whole_path, cut_path = os.path.join(SOFT, STABLE_B + ".wav"), os.path.join(SOFT, stems[0] + ".wav")
+    if not os.path.exists(cut_path) or not os.path.exists(whole_path):
+        fail("%s: %s.wav or %s.wav is not in %s (run make_round6_candidates.py)" % (STABLE_CUT, stems[0], STABLE_B, SOFT))
+    else:
+        rate, whole = read(whole_path)
+        _, cut = read(cut_path)
+        neigh, left = voiced_frames(whole, rate), voiced_frames(cut, rate)
+        tail = loudest_db(cut[-int(0.1 * rate):], rate)
+        top = loudest_db(cut, rate)
+        peak = 20 * np.log10(max(1e-9, float(np.abs(cut).max())))
+        print("  %-24s %.2f s  voiced frames %d (B whole: %d, %.2f-%.2f s)  tail %5.1f dB  peak %5.1f dB" % (
+            stems[0], len(cut) / rate, len(left), len(neigh), min(neigh or [0]), max(neigh or [0]), top - tail, peak))
+        if len(neigh) < 3:
+            fail("%s: B whole shows no voiced neigh (%d frames): the measure cannot tell the neigh from the snort" % (STABLE_B, len(neigh)))
+        if left:
+            fail("%s: still a voiced neigh at %s s" % (stems[0], ", ".join("%.2f" % at for at in left)))
+        if not 0.15 <= len(cut) / rate < len(whole) / rate - 0.2:
+            fail("%s: %.2f s, expected the snort only (0.15 s to B whole minus the neigh)" % (stems[0], len(cut) / rate))
+        if top - tail < 30.0:
+            fail("%s: cut while still sounding (last 100 ms only %.1f dB under the loudest)" % (stems[0], top - tail))
+        if not -12.0 <= peak <= -2.0:
+            fail("%s: peak %.1f dB outside -12..-2" % (stems[0], peak))
+
 if failures == 0:
     print("round6_candidates_test: PASS")
     sys.exit(0)

@@ -42,7 +42,8 @@ AUDIBLE_CUES = ["Building.Stone", "Building.Metal", "Building.Barracks", "Buildi
 # low-pass none to 1.5 kHz, make_round6_candidates.py): 3 to 10 stems, and the ear chooses how soft: duration up to 2 s (the sound is not cut),
 # centroid and share above 3 kHz printed but not refused. Peak and audibility still checked.
 # D826 lot A2 (2026-11-16): the Barracks list is round 6 too, ten NEW sounds without voice, treated the same clean way (not cut, no drive).
-CLEAN_CUES = ["Building.Range", "Building.Stable", "Building.Barracks"]
+CLEAN_CUES = ["Building.Range", "Building.Stable", "Building.Barracks",
+              "Select.BuildingRange", "Select.BuildingBarracks", "Building.CutStable"]   # D832: the elected round 6 cues and the cut snort keep the clean rules
 CLEAN_MAX_SECONDS = 2.0
 AUDIBLE_FROM_HZ = 200.0
 MIN_AUDIBLE_DB = -18.0

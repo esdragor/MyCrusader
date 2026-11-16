@@ -4,7 +4,7 @@ waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
 hol.Camera.FocusNear -900 300
 frames 10
-note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]. 110 sons, 11 cues, dix variantes A a J chacune.
+note Ecoute les 5 ordres (deplacer, attaquer, recolter, construire, garnison) et les 2 selections (unite, batiment) [TOUT, non compte : plus de 3 min]. 125 sons, 13 cues, dix variantes A a J chacune.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Order.Move C.
 note Reponds par cue : sa lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
 capture audio_compare_orders_start
@@ -338,6 +338,51 @@ waitlog candidate played Select.BuildingForge I
 waitkey Select.BuildingForge I (s_stone3_mallet) vient de jouer. Entree : Select.BuildingForge J
 hol.Audio.Candidate Select.BuildingForge J
 waitlog candidate played Select.BuildingForge J
-waitkey Select.BuildingForge J (s_stone3_slab) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Select.BuildingForge J (s_stone3_slab) vient de jouer. Entree : Select.BuildingRange A  [nouveau cue]
+hol.Audio.Candidate Select.BuildingRange A
+waitlog candidate played Select.BuildingRange A
+waitkey Select.BuildingRange A (s_shot5_bow) vient de jouer. Entree : Select.BuildingRange B
+hol.Audio.Candidate Select.BuildingRange B
+waitlog candidate played Select.BuildingRange B
+waitkey Select.BuildingRange B (s_shot6_bow_full) vient de jouer. Entree : Select.BuildingRange C
+hol.Audio.Candidate Select.BuildingRange C
+waitlog candidate played Select.BuildingRange C
+waitkey Select.BuildingRange C (s_shot6_bow_lp6k) vient de jouer. Entree : Select.BuildingRange D
+hol.Audio.Candidate Select.BuildingRange D
+waitlog candidate played Select.BuildingRange D
+waitkey Select.BuildingRange D (s_shot6_bow_lp3k) vient de jouer. Entree : Select.BuildingRange E
+hol.Audio.Candidate Select.BuildingRange E
+waitlog candidate played Select.BuildingRange E
+waitkey Select.BuildingRange E (s_shot6_bow_lp1k5) vient de jouer. Entree : Select.BuildingBarracks A  [nouveau cue]
+hol.Audio.Candidate Select.BuildingBarracks A
+waitlog candidate played Select.BuildingBarracks A
+waitkey Select.BuildingBarracks A (s_barr6_draw_a) vient de jouer. Entree : Select.BuildingBarracks B
+hol.Audio.Candidate Select.BuildingBarracks B
+waitlog candidate played Select.BuildingBarracks B
+waitkey Select.BuildingBarracks B (s_barr6_draw_b) vient de jouer. Entree : Select.BuildingBarracks C
+hol.Audio.Candidate Select.BuildingBarracks C
+waitlog candidate played Select.BuildingBarracks C
+waitkey Select.BuildingBarracks C (s_barr6_draw_c) vient de jouer. Entree : Select.BuildingBarracks D
+hol.Audio.Candidate Select.BuildingBarracks D
+waitlog candidate played Select.BuildingBarracks D
+waitkey Select.BuildingBarracks D (s_barr6_sheath_a) vient de jouer. Entree : Select.BuildingBarracks E
+hol.Audio.Candidate Select.BuildingBarracks E
+waitlog candidate played Select.BuildingBarracks E
+waitkey Select.BuildingBarracks E (s_barr6_sheath_b) vient de jouer. Entree : Select.BuildingBarracks F
+hol.Audio.Candidate Select.BuildingBarracks F
+waitlog candidate played Select.BuildingBarracks F
+waitkey Select.BuildingBarracks F (s_barr6_two_blades) vient de jouer. Entree : Select.BuildingBarracks G
+hol.Audio.Candidate Select.BuildingBarracks G
+waitlog candidate played Select.BuildingBarracks G
+waitkey Select.BuildingBarracks G (s_barr6_drum) vient de jouer. Entree : Select.BuildingBarracks H
+hol.Audio.Candidate Select.BuildingBarracks H
+waitlog candidate played Select.BuildingBarracks H
+waitkey Select.BuildingBarracks H (s_barr6_drum_double) vient de jouer. Entree : Select.BuildingBarracks I
+hol.Audio.Candidate Select.BuildingBarracks I
+waitlog candidate played Select.BuildingBarracks I
+waitkey Select.BuildingBarracks I (s_barr6_horn) vient de jouer. Entree : Select.BuildingBarracks J
+hol.Audio.Candidate Select.BuildingBarracks J
+waitlog candidate played Select.BuildingBarracks J
+waitkey Select.BuildingBarracks J (s_barr6_drum_blade) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
 note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.

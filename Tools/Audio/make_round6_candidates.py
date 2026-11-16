@@ -13,7 +13,9 @@ Round 6 takes the SAME event of the SAME source file and treats it gently:
 Barracks (lot A2): the user kept NO letter of round 5 (pain cries, poor quality): ten NEW sounds without any voice (BARRACKS below),
 blades, a war drum and a horn, layered by a few, treated the same clean way (high-pass 80 Hz, no low-pass, no drive, soft release).
 
-  python make_round6_candidates.py [out_dir]
+Stable cut (D832 REGLAGE): s_horse6_snort = Stable B with its voiced neigh cut off, only the snort of the end (SNORT below).
+
+  python make_round6_candidates.py [out_dir] [--snort-only]
 Output: 16-bit mono 48 kHz WAV <out_dir>\\<stem>.wav (default MyCrusader_Audio\\Candidates\\soft). Needs ffmpeg on PATH (decoding).
 Sources and licences: SOURCES of make_round5_candidates.py (bow_ogrebane.wav CC0, rl_snort_vocal.flac CC0 as marked by archive.org, D805).
 Test: round6_candidates_test.py.
@@ -155,9 +157,53 @@ def level(data, floor=0.3):
     return out
 
 
+# D832 REGLAGE (2026-11-16): the user elected Stable B (s_horse6_vocal_full) "but not the neigh of the start, only the pfffff of the end".
+# stem -> the round 6 reference and its low-pass (B = no low-pass). Same recording, same licence (rl_snort_vocal.flac CC0, D805).
+SNORT = {"s_horse6_snort": ("s_horse5_vocal_b", None)}
+SNORT_MARGIN = 0.03   # seconds kept off after the last voiced frame of the neigh (its decay), before the snort
+SNORT_FADE_IN = 0.015
+
+
+def voiced(frame):
+    """Normalised autocorrelation peak for a pitch of 250-1500 Hz: near 1 for the neigh (a voice), low for the snort (a breath)."""
+    frame = frame - frame.mean()
+    ac = np.correlate(frame, frame, "full")[len(frame) - 1:]
+    return float(ac[int(RATE / 1500):int(RATE / 250)].max() / max(1e-12, ac[0]))
+
+
+def neigh_end(data, threshold=0.7, gap=0.06):
+    """End (s) of the voiced neigh at the start: 30 ms frames every 10 ms, the run of voiced frames from the first one, allowing gaps of `gap` s."""
+    size, hop = int(0.03 * RATE), int(0.01 * RATE)
+    end, last = None, None
+    for start in range(0, len(data) - size + 1, hop):
+        if voiced(data[start:start + size]) >= threshold:
+            if last is not None and start - last > gap * RATE:
+                break
+            last = start
+            end = start + size
+    return 0.0 if end is None else end / RATE
+
+
+def render_snort(stem):
+    reference, cutoff = SNORT[stem]
+    whole, at = render(reference, cutoff)
+    start = int((neigh_end(whole) + SNORT_MARGIN) * RATE)
+    clip = whole[start:].copy()
+    fade = int(SNORT_FADE_IN * RATE)
+    clip[:fade] *= np.linspace(0, 1, fade)
+    return level(fades(clip)), at + start / RATE
+
+
 def main():
-    out_dir = sys.argv[1] if len(sys.argv) > 1 else os.path.join(round5.AUDIO, "Candidates", "soft")
+    args = [arg for arg in sys.argv[1:] if not arg.startswith("--")]
+    out_dir = args[0] if args else os.path.join(round5.AUDIO, "Candidates", "soft")
     os.makedirs(out_dir, exist_ok=True)
+    for stem in SNORT:
+        data, at = render_snort(stem)
+        round5.write(os.path.join(out_dir, stem + ".wav"), data)
+        print("%-22s snort of %s from %.2f s  %.2f s (neigh cut off)" % (stem, SNORT[stem][0], at, len(data) / RATE))
+    if "--snort-only" in sys.argv:
+        return
     for reference, prefix in ELECTED.items():
         for suffix, cutoff in SWEEP:
             stem = prefix + suffix
