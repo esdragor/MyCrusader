@@ -27,3 +27,4 @@ Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\D
 Durée : environ 3 min (1 min de scénario, puis laisse le forum s'achever). Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
 
 Historique : fiche précédente (D797, réponse OK du 2026-11-16) archivée dans `Docs\Archive\Retours_2026-11-16\E-nomad_start.md`.
+Reponse: REGLAGE : Le town center sera sur E, pas C (utilisateur, 2026-11-16 16:3x, dans la conversation ; D831 ; ligne [ ] en tête de la section Celeborn de la file)

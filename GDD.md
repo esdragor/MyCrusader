@@ -3615,4 +3615,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D830** (Méthode de développement, C++ et Angelscript, 2026-11-16 16:3x, décision de l'utilisateur après la séance du jour : un build de 51 min au lieu de 45 s, 5 agents C++ bloqués) : on ARRÊTE le développement de fonctionnalités en C++ et on passe le MAXIMUM du code en Angelscript, TESTS COMPRIS (les tests automatisés C++ passent en Angelscript autant que possible). Ne reste en C++ que ce qu'Angelscript ne peut pas porter (à établir par le plan de migration Docs\Rapports\ANALYSE-1116a.md, validé par l'utilisateur à la prochaine séance avant toute migration). Les builds C++ en cours le 2026-11-16 se terminent et sont commités ; aucune nouvelle tâche C++ n'est lancée en attendant le plan.
 
-Prochain numéro : **D831**.
+**D831** (Raccourcis de la grille, Nomade, D816, 2026-11-16, REGLAGE de l'utilisateur sur l'essai nomad_start) : le Forum (town center, MainCentre) du Nomade se pose par la touche **E** (et non C) dans la page Palier II de la grille (Z puis E).
+
+Prochain numéro : **D832**.
