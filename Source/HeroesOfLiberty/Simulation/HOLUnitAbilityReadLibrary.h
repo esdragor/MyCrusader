@@ -53,4 +53,16 @@ public:
 	/** HOLUnitAbility::GetRageIntervalMs: the attack interval under the rage. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
 	static int32 GetRageIntervalMs(int32 IntervalMs);
+
+	/** HOLUnitAbility::GetRageCooldownEndMs: when the cool-down of a rage cast at StartMs ends (StartMs + the cool-down). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
+	static int32 GetRageCooldownEndMs(int32 StartMs);
+
+	/** HOLUnitAbility::GetRageEffectEndMs: when the effect of a rage cast at StartMs ends by time (StartMs + the duration). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
+	static int32 GetRageEffectEndMs(int32 StartMs);
+
+	/** HOLUnitAbility::IsRageEffectEnded: over by time, or because the unit is at (or under) the stop floor. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|UnitAbility")
+	static bool IsRageEffectEnded(int32 StartMs, int32 NowMs, float Health);
 };

@@ -38,6 +38,69 @@ struct HEROESOFLIBERTY_API FHOLDiplomacyStances
 	TArray<bool> Vision;
 };
 
+/**
+ * What HOLDiplomacy::SetStance did (HOLDiplomacy::FStanceChange), for the script (socle step 1, D836 (5)): the same fields. Named apart from the
+ * script's own FHOLStanceChange (Script/Diplomacy/HOLDiplomacyRules.as), which goes with that file at the redirection lot. Result is a
+ * HOLDiplomacy::EResult number (GetResultOk...).
+ */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLDiplomacyStanceChange
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 Result = 0;
+
+	/** A stance really changed (the line told to all). */
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bAnnounce = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 From = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 To = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 Stance = 0;
+
+	/** The relation of the pair before and after. */
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 Before = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 After = 0;
+
+	/** The pair was allied and no longer is / became allied. */
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bBroke = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bFormed = false;
+};
+
+/** What HOLDiplomacy::SetVision did (HOLDiplomacy::FVisionChange), for the script; named apart from the script's FHOLVisionChange for the same reason. */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLDiplomacyVisionChange
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 Result = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bAnnounce = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 From = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	int32 To = 0;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bShare = false;
+};
+
 UCLASS()
 class HEROESOFLIBERTY_API UHOLDiplomacyReadLibrary : public UBlueprintFunctionLibrary
 {
@@ -149,4 +212,58 @@ public:
 	/** HOLDiplomacy::CanLeaveRampart (D374). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
 	static bool CanLeaveRampart(const FHOLDiplomacyStances& Book, int32 UnitOwner, int32 RampartOwner);
+
+	// Constants and codes of HOLDiplomacy (D836 (5)): the script reads them here, its own copy goes at the redirection lot.
+
+	/** HOLDiplomacy::Enemy (0): the lower the stance, the more hostile. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetStanceEnemy();
+
+	/** HOLDiplomacy::Neutral (1). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetStanceNeutral();
+
+	/** HOLDiplomacy::Ally (2). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetStanceAlly();
+
+	/** HOLDiplomacy::DefaultStance: the stance at launch of a Diplomacy match. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetStanceDefault();
+
+	/** HOLDiplomacy::EResult::Ok (0). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultOk();
+
+	/** HOLDiplomacy::EResult::NoSuchSlot (1). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultNoSuchSlot();
+
+	/** HOLDiplomacy::EResult::Self (2). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultSelf();
+
+	/** HOLDiplomacy::EResult::BadStance (3). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultBadStance();
+
+	/** HOLDiplomacy::EResult::SenderIsAI (4). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultSenderIsAI();
+
+	/** HOLDiplomacy::EResult::Locked (5). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultLocked();
+
+	/** HOLDiplomacy::EResult::NotAlly (6): vision only. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static int32 GetResultNotAlly();
+
+	/** HOLDiplomacy::SetStance on Book, with its whole fiche (Result, bAnnounce, Before, After, bBroke, bFormed...); SetStance keeps returning the number alone. */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	static FHOLDiplomacyStanceChange ChangeStance(UPARAM(ref) FHOLDiplomacyStances& Book, int32 From, int32 To, int32 Stance);
+
+	/** HOLDiplomacy::SetVision on Book, with its whole fiche (Result, bAnnounce, bShare...). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Diplomacy")
+	static FHOLDiplomacyVisionChange ChangeVision(UPARAM(ref) FHOLDiplomacyStances& Book, int32 From, int32 To, bool bShare);
 };

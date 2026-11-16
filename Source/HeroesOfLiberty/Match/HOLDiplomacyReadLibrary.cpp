@@ -261,3 +261,49 @@ bool UHOLDiplomacyReadLibrary::CanLeaveRampart(const FHOLDiplomacyStances& Book,
 {
 	return HOLDiplomacy::CanLeaveRampart(ToBook(Book), UnitOwner, RampartOwner);
 }
+
+// Constants and codes of HOLDiplomacy, and the SetStance / SetVision fiches (D836 (5)). Wrappers only.
+
+int32 UHOLDiplomacyReadLibrary::GetStanceEnemy() { return HOLDiplomacy::Enemy; }
+int32 UHOLDiplomacyReadLibrary::GetStanceNeutral() { return HOLDiplomacy::Neutral; }
+int32 UHOLDiplomacyReadLibrary::GetStanceAlly() { return HOLDiplomacy::Ally; }
+int32 UHOLDiplomacyReadLibrary::GetStanceDefault() { return HOLDiplomacy::DefaultStance; }
+int32 UHOLDiplomacyReadLibrary::GetResultOk() { return static_cast<int32>(HOLDiplomacy::EResult::Ok); }
+int32 UHOLDiplomacyReadLibrary::GetResultNoSuchSlot() { return static_cast<int32>(HOLDiplomacy::EResult::NoSuchSlot); }
+int32 UHOLDiplomacyReadLibrary::GetResultSelf() { return static_cast<int32>(HOLDiplomacy::EResult::Self); }
+int32 UHOLDiplomacyReadLibrary::GetResultBadStance() { return static_cast<int32>(HOLDiplomacy::EResult::BadStance); }
+int32 UHOLDiplomacyReadLibrary::GetResultSenderIsAI() { return static_cast<int32>(HOLDiplomacy::EResult::SenderIsAI); }
+int32 UHOLDiplomacyReadLibrary::GetResultLocked() { return static_cast<int32>(HOLDiplomacy::EResult::Locked); }
+int32 UHOLDiplomacyReadLibrary::GetResultNotAlly() { return static_cast<int32>(HOLDiplomacy::EResult::NotAlly); }
+
+FHOLDiplomacyStanceChange UHOLDiplomacyReadLibrary::ChangeStance(FHOLDiplomacyStances& Book, const int32 From, const int32 To, const int32 Stance)
+{
+	HOLDiplomacy::FBook Rule = ToBook(Book);
+	const HOLDiplomacy::FStanceChange Change = HOLDiplomacy::SetStance(Rule, From, To, Stance);
+	Book = FromBook(Rule);
+	FHOLDiplomacyStanceChange Out;
+	Out.Result = static_cast<int32>(Change.Result);
+	Out.bAnnounce = Change.bAnnounce;
+	Out.From = Change.From;
+	Out.To = Change.To;
+	Out.Stance = Change.Stance;
+	Out.Before = Change.Before;
+	Out.After = Change.After;
+	Out.bBroke = Change.bBroke;
+	Out.bFormed = Change.bFormed;
+	return Out;
+}
+
+FHOLDiplomacyVisionChange UHOLDiplomacyReadLibrary::ChangeVision(FHOLDiplomacyStances& Book, const int32 From, const int32 To, const bool bShare)
+{
+	HOLDiplomacy::FBook Rule = ToBook(Book);
+	const HOLDiplomacy::FVisionChange Change = HOLDiplomacy::SetVision(Rule, From, To, bShare);
+	Book = FromBook(Rule);
+	FHOLDiplomacyVisionChange Out;
+	Out.Result = static_cast<int32>(Change.Result);
+	Out.bAnnounce = Change.bAnnounce;
+	Out.From = Change.From;
+	Out.To = Change.To;
+	Out.bShare = Change.bShare;
+	return Out;
+}
