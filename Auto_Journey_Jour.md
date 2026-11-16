@@ -15,7 +15,15 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | Agent | id | worktree | tâche | C++ | lancé |
 |---|---|---|---|---|---|
 | NETTOYAGE-0a x3 (finis 14:5x-14:57) | a6ae4c52427324b6b, a09b5d09cdd8f72b7, af1f27952d57d5b0a | copie principale | archives Jour/Retours bad6bd6, File a707951 (14 [x], 12 périmées), Procédure/Checklist edc2dfc ; règle 7 alignée sur L15-5 | non | 14:49 |
-| ETAPE0-1116 | a9cf56384f78b1e33 | lecture seule | plan de lancement (Fable), Docs\Rapports\ETAPE0-1116.md | non | 14:53 |
+| ETAPE0-1116 (fini 14:59) | a9cf56384f78b1e33 | lecture seule | plan Docs\Rapports\ETAPE0-1116.md : 8 worktrees lancés ; intégrateur = Faramir (fusions) + recette Fable à nommer ; numéros de file du plan décalés par le nettoyage | non | 14:53 |
+| HALDIR-1116a | ae9fb8959589cabc8 | HeroesOfLiberty-Haldir | D825 marque au sol du signal, rejeu signals_altclick | oui 1/3 | 15:02 |
+| ELROND-1116a | a63d1f8ef58f85a18 | HeroesOfLiberty-Elrond | reprise rouge : case spécialisation 2 lignes + HUD.Report | oui 2/3 | 15:02 |
+| GALADRIEL-1116a | ab831f363570878c2 | HeroesOfLiberty-Galadriel | reprise rouge : alerte population (PlayerContext) | oui 3/3 | 15:02 |
+| ARWEN-1116a | ac111a3e17e21e0c8 | HeroesOfLiberty-Arwen | D826 tour 6 : Champ de tir G et Écurie G propres | non | 15:02 |
+| CELEBORN-1116a | a0db914885097e3c3 | HeroesOfLiberty-Celeborn | D816 forum Nomade 150 s, rejeu nomad_ai (exception : ligne de Haldir) | non | 15:02 |
+| GLORFINDEL-1116a | a31c68576c0fc91a9 | HeroesOfLiberty-Glorfindel | D806 chat du spectateur : script puis jumeau C++ | non puis oui | 15:02 |
+| FARAMIR-1116a | a81a40ab63a80a04f | HeroesOfLiberty-Faramir | D808 gate Close WARN ; worktree d intégration des fusions | non | 15:02 |
+| SAURON-1116a | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | contrôle ClickUnit enemy sans slot=, 4 scénarios rejoués | non | 15:02 |
 
 ## Résumé de la séance du 2026-11-15
 
