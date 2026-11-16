@@ -1,4 +1,4 @@
-﻿# Quick check of the project (D267), on two levels (D327):
+# Quick check of the project (D267), on two levels (D327):
 #   - by default (no argument, under a minute): the automation tests in their own process WHILE a single short game goes
 #     through the "smoke" part: the title and New game screens in French, a 2-player match launched from there, the
 #     camera moved by the arrow key, its own centre selected then nothing, 3 Men-at-arms boxed and sent beside an enemy
@@ -205,6 +205,9 @@ if ($Parts -contains "values") {
         # MIG-J-UnitAbility: the necrotic rage numbers agree between the script tables (HOLUnitAbilityTable, HOLMoraleTable) and HOLUnitAbilityRules.h.
         $UnitAbilityAccordOutput = @(python -I (Join-Path $PSScriptRoot "unit_ability_accord_test.py") 2>&1)
         $ValuesChecks["unit_ability_accord_test.py ($($UnitAbilityAccordOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # D809 / D836: the exploration XP presets A / B / C of HOLExplorationXPRules.cpp (C++ only source) equal the numbers decided.
+        $ExplorationPresetsOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_presets_test.py") 2>&1)
+        $ValuesChecks["exploration_xp_presets_test.py ($($ExplorationPresetsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
     }
     $ValuesOk = Report "values" $ValuesChecks
     if (-not $ValuesOk) { $ValuesOutput = @($ValuesTestOutput) + @($ValuesCheckOutput) + @($ConsumersTestOutput) + @($ConsumersOutput); $ValuesOutput | Where-Object { $_ -match "^(ERREUR|DERIVE|ORPHELIN|FAIL|ERROR|AVERTISSEMENT|DEAD|STALE)" } | Select-Object -First 20 | ForEach-Object { Write-Host "    $_" } }
