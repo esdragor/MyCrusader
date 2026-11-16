@@ -26,11 +26,14 @@ capture nomad_start_wide
 hol.Select.Type Peasant
 frames 2
 hol.Select.Report
-hol.Select.Grid 1
+# L14-5 geste reel : vraie touche Z (evenement clavier Slate, hol.UI.Key), vraie touche C, vrai clic gauche au centre de la vue (hol.Mouse.Click, la camera est centree sur le point vise).
+hol.UI.Key Z 0 0.1
+waitlog Key pressed: Z
 waitlog Grid: age 1 chosen
 frames 5
 capture nomad_start_grid
-hol.Select.Grid 10
+hol.UI.Key C 0 0.1
+waitlog Key pressed: C
 frames 2
 hol.Camera.Zoom 11
 waitlog Camera height 1500 cm
@@ -38,10 +41,18 @@ hol.Camera.Zoom -3
 waitlog Camera height 3000 cm
 hol.Camera.Focus -14800 -2500
 frames 10
-hol.Select.LeftClickGround -14800 -2500
+hol.Mouse.Click 960 540
+waitlog Mouse click 960,540
 waitlog Construction: slot 0 placed MainCentre foundation at
 frames 30
 capture nomad_start_forum
+# 3. D816 (Q-nomad-forum-duree = B) : le forum se BATIT (150 s pour 1 Paysan, plus vite a plusieurs) : le Paysan le plus proche donne le
+# premier coup, puis un 2e Paysan arrive et le chantier est encore ouvert (avant D816, BuildTime 0, le forum s achevait au premier coup
+# et la 2e ligne ne venait jamais).
+waitlog Construction: slot 0 first work on MainCentre
+waitlog Construction: slot 0 MainCentre at (
+hol.HUD.Report
+capture nomad_start_site
 hol.Test.Sanity
 note Partie Nomade : aucun Centre-ville au depart. Tes Paysans sont disperses sur toute la carte (voir la minicarte), ton Roi avec l'un, ton heros avec un autre ; construis ton premier Forum ou tu veux : Paysans selectionnes, Z (Palier II) puis C.
 # The scenario's real end: an agent's play.ps1 -Hidden closes here; the user's own run ignores it and plays on.
