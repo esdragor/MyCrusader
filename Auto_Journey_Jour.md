@@ -20,7 +20,8 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | ELROND-1116a | a63d1f8ef58f85a18 | HeroesOfLiberty-Elrond | reprise rouge : case spécialisation 2 lignes + HUD.Report | oui 2/3 | 15:02 |
 | GALADRIEL-1116a (fini 15:34) | ab831f363570878c2 | HeroesOfLiberty-Galadriel | alerte population VERTE : a11ed2a (PlayerContext), merge 825b841, tests 1321/1321 ; build 674 s ; scénario G2 non fait ; 42 tool_uses | oui | 15:02 |
 | ARWEN-1116a (fini 15:29) | ac111a3e17e21e0c8 | HeroesOfLiberty-Arwen | D826 A1 : Champ de tir G et Écurie G propres, 4c75047 (rouge vu 15:07), c86557c, f54f287 ; 2 fiches [À ESSAYER] SON non entendu ; quick_check non lancé (lancé par la session principale 15:30) ; A2 Caserne non commencée ; 46 tool_uses | non | 15:02 |
-| ARWEN-1116b | a6b77b77c83feb390 | HeroesOfLiberty-Arwen | D826 A2 : 10 sons Caserne sans cri de douleur | non | 15:31 |
+| ARWEN-1116b (fini 15:52) | a6b77b77c83feb390 | HeroesOfLiberty-Arwen | D826 A2 : 10 sons Caserne sans voix (CC0), 734b313 (rouge vu 15:33), 2b89d11 ; preflight barracks PASS ; avance rapide main 8544b31 ; 43 tool_uses | non | 15:31 |
+| ARWEN-1116c | ae396791bb333c20c | HeroesOfLiberty-Arwen | make_audio_compare.py pose le bâtiment (check_audio_compare vert) | non | 15:53 |
 | CELEBORN-1116a (fini 15:25) | a0db914885097e3c3 | HeroesOfLiberty-Celeborn | D816 forum 150 s : 97f757c, rouge vu 15:07, tests 1320/1320, nomad_ai [À ESSAYER] vu ; avance rapide main 131b77d ; test C++ 150 s en attente (plafond) ; 41 tool_uses | non | 15:02 |
 | CELEBORN-1116b (fini 15:40) | a6624ad14803c32b0 | HeroesOfLiberty-Celeborn | nomad_start rejoué 150 s, geste réel Z/C/clic : a349e1f, 4677857 ; preflight PASS 15:37 ; avance rapide main 9f47a97 ; C++ refusé (plafond) ; 38 tool_uses | non | 15:28 |
 | CELEBORN-1116c | a1c18b1328d1f04f0 | HeroesOfLiberty-Celeborn | HUD « 1 en construction » vs 2 bâtisseurs, puis ligne sans C++ | non | 15:41 |
@@ -31,7 +32,8 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | SAURON-1116a (fini 15:33) | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | ClickUnit enemy sans slot= refusé (preflight + pan_exposure_test, 341 scénarios), 69fa04f, a1f559f, rouge vu 15:04 ; S2 D809 C++ en file (plafond) ; 49 tool_uses | non | 15:02 |
 | SAURON-1116b | a037e24d4319b88ca | HeroesOfLiberty-Sauron | scénario arquebusier (tir à la naissance) puis ligne sans C++ | non | 15:33 |
 | SAURON-1116b (fini 15:43) | a037e24d4319b88ca | HeroesOfLiberty-Sauron | arquebusier déjà corrigé (a1f559f), preflight PASS ; D820 preflight refuse un essai sans mapSize (b1e97e3, rouge vu 15:37) ; E-arquebusier [À ESSAYER] ; avance rapide main 7d23773 ; 33 tool_uses | non | 15:33 |
-| SAURON-1116c | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 : mapSize sur les 4 essais ouverts, puis Volcan V9c sans C++ | non | 15:46 |
+| SAURON-1116c (fini 15:55) | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 mapSize Small sur 5 essais : 88dd5c2, f9db1dc ; preflight deploy et nomad_start PASS ; audio sans preflight (sons absents de Sauron) ; pas de ligne V9c ; avance rapide main | non | 15:46 |
+| SAURON-1116d | af60f614d09275eab | HeroesOfLiberty-Sauron | défauts communs Q8 : ovales blancs (deploy, nomad_start) et Condition failed au pas 0 | non | 15:56 |
 Exception 15:37 : essais audio_compare_buildings_range/_stable donnés malgré session_gate Essay FAIL (4 fichiers non commités dans Arwen = scripts Tools/Audio/*.py d ARWEN-1116b en cours, hors jeu) ; d751-root dans main en avance rapide 365326f (tests 1320/1320 + values PASS lancés par la session principale 15:30) ; sons hors git présents dans Arwen seulement.
 
 ## Résumé de la séance du 2026-11-15
