@@ -59,3 +59,33 @@ l. 760, 772, 781, 798, 825) ; textes dans la table unique `HOLForumMessages.cpp`
 - Vert 13:32 : regle IsPopulationFull / ShouldAlertPopulationFull / PopulationFullText ecrite, quick_check tests PASS (test + correctif dans le meme commit).
 - Etape 3 FAITE. Suivant : branchement C++ du section 3 (agent C++), puis recherche terminee et batiment acheve selon la reponse a Q-alerts-minor.
 - 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D804 (Q-alerts-minor) = B : trois lignes + son court par type + ping mini-carte (pas pour population pleine), « attaqué ailleurs » = ligne + son, 1 fois / 30 s ; question archivée ; ligne [ ] Galadriel (C++) dans Auto_Journey_File.md. Le défaut codé (A pour population pleine seulement) est donc élargi.
+
+## 6. Branchement au HUD (GALADRIEL-1115g, 2026-11-15 14:02-14:2x, C++)
+- Plus petit changement retenu (AHOLPlayerState non touche) : `UHOLScriptScreen::GetPopulationNow(Used, Cap, RealSeconds)` (BlueprintPure, lit le
+  joueur que montre l'ecran C++ : `UHOLGameScreen::GetBoundPlayerState`, rien pour un spectateur) et `UHOLScriptScreen::AddThreadLine(FText)`
+  (BlueprintCallable) -> `UHOLGameScreen::AddThreadLine` (MessageThread.Add + RebuildMessages, modele HandleSignalMessage, ligne muette).
+- Script : `HOLGameScreenScript.as` `RefreshPopulationAlert()` a chaque Refresh (4 fois/s), membre `FHOLPopulationAlertWatch PopulationWatch`.
+- Test (vraie chaine) : `Source\HeroesOfLibertyUI\Tests\HOLPopulationAlertThreadTests.cpp` `HeroesOfLiberty.UI.Alerts.PopulationFullThread` :
+  vrai UHOLGameScreen + sa partie script, AHOLPlayerState::SetPopulation, temps reel du monde, Refresh par DescribeScript, compte des lignes
+  « Population pleine » de DescribeMessages (0 / 1 / 1 / 1 a 9 s / 2 a 34 s). Friend de UHOLGameScreen pour BindPlayerState.
+- Build PASS 14:10 (129 s, file derriere Elrond). ROUGE VU 14:14 : tests 1320/1321, seul PopulationFullThread (script non branche).
+  Vert : quick_check tests relance apres l'edition du script (resultat et commit : voir EtapeDefini / rapport).
+- Localisation (3) verifiee : Config\Game.ini rassemble Script/*.as ET Source ; la cle HOLGameScreen,PopulationFull existe deja en C++
+  (LOCTEXT de la note de file, meme texte source « Population pleine ») : meme cle + meme source = une seule entree, pas de doublon.
+- NON FAIT : scenario `alert_population` + .look + preflight (budget d'appels) ; verbe hol.Cheat de population non cherche.
+- Suivant : scenario alert_population (remplir la population : chercher un verbe hol.Cheat, sinon produire jusqu'au plafond), puis
+  recherche terminee / batiment acheve selon la reponse a Q-alerts-minor.
+- 1re relance 14:15 : script non compile (GetPopulationNow : float& C++ = float32 en script), corrige ; vert NON obtenu (tests 1320/1321), rien commite. Appels GALADRIEL-1115g : 44.
+- GALADRIEL-1115h (14:24-14:3x, arret de seance demande, aucun build ni test lance, rien modifie dans le code, rien commite) :
+  CAUSE LUE (Saved_Tests\Logs\quick_tests.log l. 19214) : « Expected 'its part in script' to be not null » (test l. 32). ScriptScreen
+  est cree dans UHOLGameScreen::NativeOnInitialized, que UUserWidget::Initialize ne lance qu'avec un contexte de joueur ; le test cree
+  l'ecran avec le World seul -> pas de partie script. Les hypotheses (a)(b)(c) ne sont pas en cause a ce stade (jamais atteintes).
+  PROCHAINE ETAPE (test seul, C++ -> build) : modele HOLNewGameSitesBoxTests.cpp l. 36-61 : ULocalPlayer + APlayerController
+  (Controller->Player, Player->PlayerController, World->AddController), puis `NewObject<UHOLGameScreen>(GetTransientPackage())`,
+  `SetPlayerContext(FLocalPlayerContext(Player, World))`, `Initialize()` (NativeConstruct non lance : pas de Refresh ni de
+  controleur requis), puis BindPlayerState(Player) comme aujourd'hui. Ensuite build, quick_check -Parts tests ; si encore rouge,
+  lire l'assertion : piste (a) appeler RefreshPopulationAlert() en premier dans Refresh() du script.
+- GALADRIEL-1116a (15:02-) : correctif du test (ULocalPlayer + APlayerController, SetPlayerContext, Initialize, modele HOLNewGameSitesBoxTests). Build PASS 15:22 (674 s, file + memoire). VERT 15:26 : quick_check tests 1321/1321 (rouge vu 2026-11-15 14:14 : 1320/1321, assertion l. 32). Commit branchement + test, puis merge main, puis G2 scenario alert_population.
+- GALADRIEL-1116a suite : commit a11ed2a (branchement + test vert), merge main 825b841 (conflit de ce journal seul, deux cotes gardes ; main touche aussi le script l. 1384+ et BuildingTypes.csv/.uasset : fusion auto), LaunchCheck apres merge vide 15:28, quick_check tests relance sur la fusion 15:29. G2 NON COMMENCE (budget d'appels) : hol.Cheat.Population N n'ajoute que du plafond (AddCheatPopulation, N negatif non borne ici : a verifier) ; aucune ligne de journal quand le fil recoit une ligne (RebuildMessages ne logue rien) : le scenario lira 'hol.HUD.Report 1' (HUD messages) apres avoir rempli la population (produire des Paysans au centre par la vraie touche jusqu'au plafond, ou plafond reduit par cheat negatif), waitlog sur 'Population pleine' du rapport ; capture du fil de messages.
+- GALADRIEL-1116b (15:34-, sans C++, LaunchCheck vide 15:37) : G2 FAIT : scenario alert_population (.txt/.look/.json, 15097fc + 329037a) : Plain seul, 9 Paysans offerts (9/10), vrai clic 960 540 sur le forum + vraie touche A : Paysan en file, population 10/10 des la mise en file (place reservee), 'HUD messages: [Population pleine]' ~1 s apres. Lecons : waitlog = sous-chaine LITTERALE (pas de regex : '.*' a fait 2 timeouts) ; la ligne vit ~8 s (D446), la capturer juste apres la mise en file, pas a la sortie du Paysan (20 s). preflight PASS 15:47 (71 s), PNG vu ; fiche Retours\E-alert_population.md [A ESSAYER] VU A L'ECRAN. Suivant : D804 B reste (recherche terminee, batiment acheve, son court, ping, attaque ailleurs) = C++ (aucun evenement relaye au HUD).
+- GALADRIEL-1116b suite (sans C++) : D804 B 'attaque ailleurs 1 fois / 30 s' REGLE PURE : HOLAlertRules::ShouldAlertAttackedElsewhere(Watch, bHitInView, Now, RepeatSeconds) + FHOLAttackAlertWatch, AttackRepeatSeconds = 30 (un coup dans la vue ne dit rien et ne retarde pas la ligne suivante). ROUGE VU 15:52 (stub false : tests 1321/1323, seuls Test_AlertAttackedElsewhereOncePer30s / Test_AlertAttackedInViewQuiet), VERT 15:55 (1323/1323), un commit test + correctif. RESTE (C++) : detecter le coup hors de la vue (HOLMinimapRules.Detect sait deja les PV en baisse) et brancher la ligne + son ; recherche terminee, batiment acheve, sons courts, ping.
