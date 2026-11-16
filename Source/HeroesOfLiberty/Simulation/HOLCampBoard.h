@@ -123,8 +123,8 @@ struct HEROESOFLIBERTY_API FHOLCampBoardShare
  * The camps' rule for the server, as UHOLGarrisonBoard: UHOLCampSubsystem (C++, the units and the world) gives what a camp sees and
  * asks the world's board for the thought (Step) and the XP shares (Rewards); the script subclass (Script/Neutrals/HOLCampBoardScript.as)
  * answers by HOLCamp::Step / HOLCamp::Rewards of Script/Neutrals/HOLCampRules.as. Abstract: only a script subclass is born. Without
- * it the server keeps the C++ rule (HOLCampRules::Step / Rewards), and the default of each event is that same rule: nothing changes
- * until the script board exists. Server and solo only.
+ * it the camps are inert (there is no C++ rule any more, D836 point 3): the default of each event keeps the state, gives no reward and
+ * logs an error. Server and solo only.
  */
 UCLASS(Abstract)
 class HEROESOFLIBERTY_API UHOLCampBoard : public UWorldSubsystem
@@ -135,11 +135,11 @@ public:
 	/** The world's camp board (its script subclass), or null (no script compiled, or no world). */
 	static UHOLCampBoard* Find(const UWorld* World);
 
-	/** What the server applies: the board's thought when the script board exists, else HOLCampRules::Step (the state goes in and out). */
+	/** What the server applies: the board's thought when the script board exists, else the state is kept, nobody is sent back and an error is logged (the state goes in and out). */
 	static HOLCampRules::FStep StepForCamp(const UWorld* World, HOLCampRules::EState& InOutState, const HOLCampRules::FSettings& Settings,
 		const FVector2D& Post, const TArray<HOLCampRules::FMember>& Members, const TArray<HOLCampRules::FIntruder>& Intruders, bool bAttacked);
 
-	/** What the server applies to a cleared camp: the board's shares when the script board exists, else HOLCampRules::Rewards. */
+	/** What the server applies to a cleared camp: the board's shares when the script board exists, else no share and an error is logged. */
 	static TArray<HOLCampRules::FShare> RewardsForCamp(const UWorld* World, const HOLCampRules::FSettings& Settings, const TArray<HOLCampRules::FHit>& Hits);
 
 	/** The board's thought (the script's HOLCamp::Step). */
@@ -156,7 +156,7 @@ public:
 protected:
 	virtual bool DoesSupportWorldType(const EWorldType::Type WorldType) const override;
 
-	/** Overridden by the script board; the default is the C++ rule (same answer). */
+	/** Overridden by the script board; the default is inert (state kept, no reward) and logs an error. */
 	UFUNCTION(BlueprintNativeEvent, Category = "HeroesOfLiberty|Camp")
 	FHOLCampBoardStep CampStep(EHOLCampBoardState State, const FHOLCampBoardSettings& Settings, FVector2D Post, const TArray<FHOLCampBoardMember>& Members,
 		const TArray<FHOLCampBoardIntruder>& Intruders, bool bAttacked);
