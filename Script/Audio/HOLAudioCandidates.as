@@ -83,8 +83,11 @@ namespace HOLAudioCandidates
 		// Round 5 (D801, 2026-11-15; the synthesised round 4 was refused): RECORDED free samples (CC0 / CC-BY, sources and licences in
 		// Tools/Audio/make_round5_candidates.py), cut, filtered soft and levelled by that script.
 		Add(List, "Building.Barracks", "s_voice5_yell_a,s_voice5_yell_b,s_voice5_yell_c,s_voice5_yell_d,s_voice5_grunt_a,s_voice5_grunt_b,s_voice5_crowd_a,s_voice5_crowd_b,s_voice5_sword_draw,s_voice5_sword_sheath");
-		Add(List, "Building.Range", "s_shot5_longbow_a,s_shot5_longbow_b,s_shot5_longbow_set,s_shot5_nock,s_shot5_crossbow_a,s_shot5_crossbow_b,s_shot5_bow,s_shot5_volley_a,s_shot5_arrow_pass,s_shot5_bolt_hit");
-		Add(List, "Building.Stable", "s_horse5_whinny_a,s_horse5_whinny_b,s_horse5_whinny_c,s_horse5_snort_a,s_horse5_snort_b,s_horse5_vocal_a,s_horse5_vocal_b,s_horse5_walk,s_horse5_trot_a,s_horse5_trot_b");
+		// Round 6 (D826, 2026-11-16): the user elected the KIND of letter G of round 5 for the Range and the Stable, but heard a poor recording.
+		// A = the round 5 G unchanged (reference), B-E = the same event of the same source, not cut, no drive, low-pass none / 6k / 3k / 1.5k
+		// (Tools/Audio/make_round6_candidates.py, test round6_candidates_test.py). Nothing elected into HOLAudioTable.as before the user hears them.
+		Add(List, "Building.Range", "s_shot5_bow,s_shot6_bow_full,s_shot6_bow_lp6k,s_shot6_bow_lp3k,s_shot6_bow_lp1k5");
+		Add(List, "Building.Stable", "s_horse5_vocal_b,s_horse6_vocal_full,s_horse6_vocal_lp6k,s_horse6_vocal_lp3k,s_horse6_vocal_lp1k5");
 	}
 
 	// The lists, built at each call (script has no mutable global).
