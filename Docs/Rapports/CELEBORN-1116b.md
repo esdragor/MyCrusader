@@ -1,0 +1,20 @@
+# CELEBORN-1116b (worktree C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn, branche hero-j8-close, sans C++)
+
+APPELS_DECLARES: 34 (arrêt à 45 vus)
+HEURE_DEBUT/HEURE_FIN: 2026-11-16 15:27 / 15:40
+PREMIER_BUILD: sans C++   BUILD: sans objet (aucun build, aucun C++ écrit)   LAUNCHCHECK_DEBUT: 15:29 vide (Get-StaleBinaryProblem) ; vide aussi après le merge de main 15:39 (le merge n'apporte que Tools/Audio, scénarios audio et docs)
+TEST_ROUGE: sans objet (pas de code de jeu touché ; deux changements de scénario). Équivalent scénario : avant D816 (BuildTime 0) la ligne « Construction: slot 0 MainCentre at (..), 2 builders at work » ne pouvait pas venir (forum achevé au premier coup, rouge déjà vu par CELEBORN-1116a sur nomad_ai 15:07) ; non rejoué en rouge ici. Assertit l'effet : oui (chantier encore ouvert au 2e bâtisseur, vu au journal et sur le PNG).
+COMMITS: 2 (a349e1f 15:33 point nomad_start_site ; 4677857 15:37 geste réel), dernier à 15:37 ; merge_main_fait: oui (85d35b8, 15:39)
+TESTS: preflight nomad_start PASS 15:32 (44 s, 4 PNG) puis PASS 15:37 (49 s, 4 PNG), -AllowUncommitted à cause des 16 c28_*/c31_* non suivis (non touchés) ; play.ps1 nomad_start -Hidden 15:30 (28 s, scénario d'origine). Aucun quick_check (pas de code). TESTS_TAUTOLOGIQUES: 0
+ESSAIS: nomad_start : preflight PASS, 4 PNG OUVERTS (wide, grid, forum, site), VU À L'ÉCRAN, GESTE: réel (hol.UI.Key Z, hol.UI.Key C, hol.Mouse.Click 960 540), SON: non entendu ; session_gate -Phase Essay : aucun FAIL ; fiche C:\Users\baudo\Documents\MyCrusader\Retours\E-nomad_start.md [À ESSAYER] (non commitée) ; commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 nomad_start -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`
+QUESTIONS: aucune
+FAIT / RESTE:
+- Rejeu de nomad_start tel quel avec le forum à 150 s : les 3 captures sont inchangées (la capture du forum vient 30 images après la pose, aucun Paysan n'est encore arrivé). Seule différence au journal : l'IA Nomade pose maintenant son forum au pas 0 (D817) ; le .look ne demande que « aucun bâtiment du slot 0 » : tenu.
+- a349e1f : 4e point nomad_start_site : waitlog « first work on MainCentre » (+3 s) puis « MainCentre at (..), 2 builders at work » (+14 s), aucun « finished » ; PNG : chantier bleu (dalle + 4 tours d'angle basses), 2 Paysans au travail.
+- 4677857 (ligne L14-5 de la file, nomad_start) : vraies touches Z, C et vrai clic au centre de la vue à la place de hol.Select.Grid / LeftClickGround ; fondation posée au même point (-14800, -3600).
+- File : ligne D816 [~] et ligne L14-5 mises à jour ; EtapeDefini ligne 48 ; NomadInProgress.md lignes 245-246.
+- RESTE : test C++ HOLConstructionTests.cpp « MainCentre: 150 s for one builder » (session_gate refuse encore : plafond de 3 à 15:28 et 15:34 : Elrond, Haldir (file de build), Galadriel puis Glorfindel (IN_USE)) ; D817 (envoi des autres Paysans, C++) ; fusion de hero-j8-close (branche PRÊTE).
+NON VÉRIFIÉ: durée totale de 150 s pour un Paysan seul (le scénario s'arrête au 2e bâtisseur) ; barre de progression du chantier ; sur le PNG site du 2e passage, le HUD dit « 1 en construction · 4 en marche » alors que le journal dit 2 bâtisseurs (retard du HUD ? non cherché) ; capture wide du 2e passage en décor gris (« Shaders en préparation (1) ») ; rejeu par un intégrateur sur main non fait ; infobulle de la case C.
+PROCESSUS_DETACHES: « aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn » (stray_processes.ps1 -Stop, 15:39)
+ANOMALIES_PROCESSUS: session_gate Launch : WARN mémoire virtuelle libre 2,6 Go < 8 Go et cl.exe d'un autre moteur en cours (PID 42064) ; lancements faits malgré tout (2 preflight, 1 play), sans échec. Fichier E-nomad_ai.md non touché.
+GIT_STATUS_PRINCIPALE: M Auto_Journey_File.md, M Auto_Journey_Jour.md (déjà modifié avant moi), M EtapeDefini.md, ?? Docs/Priorite_Socle_Factions_2026-11-16.md, ?? Docs/Rapports/, ?? Retours/E-audio_compare_buildings_range.md, ?? Retours/E-audio_compare_buildings_stable.md, ?? Retours/E-nomad_start.md ; inchangée hors docs voulus : oui

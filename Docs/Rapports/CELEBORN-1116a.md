@@ -1,0 +1,18 @@
+# CELEBORN-1116a : rapport (D816, forum Nomade 150 s)
+
+APPELS_DECLARES: 33 (arrêt à 45 vus par moi ; le seuil de 80 se juge sur `tool_uses`)
+HEURE_DEBUT/HEURE_FIN: 2026-11-16 15:02:21 / 15:24:04
+PREMIER_BUILD: sans C++   BUILD: sans objet (aucun C++ touché)   LAUNCHCHECK_DEBUT: sans C++ (session_gate Essay : PASS « binaire du 14:43 >= dernier commit de code »)
+TEST_ROUGE: vu à 15:07 : `Test sequence: timeout at step 13: waitlog Construction: slot 1 MainCentre at (` (preflight nomad_ai -AllowUncommitted ; le journal montrait `Construction: slot 1 finished MainCentre ... after 1 steps of work (by builders: 1 x1)`). Rouge de scénario, pas de commit séparé (L15-5 : un seul commit vert, test + correctif) : 97f757c. Assertit l'effet : oui (chantier encore ouvert quand un 2e Paysan arrive, calculé par HOLBuildProcessor depuis la donnée du CSV par la vraie table).
+COMMITS: 3 (97f757c correctif + scénario, 35f399c merge main, 653b3f2 journal), dernier à 15:24, merge_main_fait: oui
+TESTS: quick_check -Parts tests : 1320/1320 PASS (15:17, 234 s) ; preflight nomad_ai PASS 15:19 (avec -AllowUncommitted) puis 15:21 (commité, sans option) ; TESTS_TAUTOLOGIQUES: 0
+ESSAIS: nomad_ai : preflight PASS (47 s, 1 PNG), PNG nomad_ai_forum OUVERT 2 fois (forum rouge écrasé = chantier qui monte, HOLBuilding.cpp:82, 2 Paysans de l'IA au bord), VU À L'ÉCRAN ; `Retours\E-nomad_ai.md` [À ESSAYER] (remplace la fiche LOGIQUE SEULEMENT du 11-15) ; commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn\Tools\Scenarios\play.ps1 nomad_ai -Root C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn`
+QUESTIONS: aucune
+FAIT / RESTE:
+- FAIT : `Tools\Data\BuildingTypes.csv` MainCentre BuildTime 0 -> 150 ; `Content\Buildings\BuildingTypes.uasset` régénérée (make_building_types.py par UnrealEditor-Cmd -run=pythonscript, caché, 14 lignes, 0 erreur) ; `nomad_ai.txt` + 2 waitlog (premier coup, puis changement du nombre de bâtisseurs, chantier ouvert) ; `nomad_ai.look` exige la ligne `MainCentre at (...), N builders at work` sans `finished` avant la capture.
+- RESTE (2e tâche du plan, C2, C++) : NON LANCÉE : `session_gate -Phase Launch` 15:1x = FAIL plafond C++ (Elrond, Galadriel, Haldir). Écrite dans la ligne de file 73 (`[~]`) et au journal `NomadInProgress.md` : test `MainCentre: 150 s for one builder` dans HOLConstructionTests.cpp. Puis C3 = D817 (ligne 74, C++).
+- Branche hero-j8-close PRÊTE (main fusionné, rien poussé).
+NON VÉRIFIÉ: durée réelle jusqu'à l'achèvement du forum (150 s / N^0,63) non mesurée ; forum du joueur Nomade (nomad_start) et centres secondaires (même type MainCentre, D783) passent aussi à 150 s : non rejoués ; forum de départ standard supposé posé achevé (les 1320 tests passent, aucun scénario de départ standard rejoué).
+PROCESSUS_DETACHES: « aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Celeborn »
+ANOMALIES_PROCESSUS: `session_gate -Phase Essay` : 1 FAIL « 2 fichiers de code différents de main (BuildingTypes.uasset) : l'essai ne compte pas comme intégré » : attendu tant que hero-j8-close n'est pas fusionnée dans main ; la commande de l'essai joue depuis Celeborn. Lignes `LogAutomationTest: Error: Condition failed` au démarrage du jeu (frame 0, avant le scénario) : bruit du moteur, non compté par preflight. Les 16 fichiers c28_*/c31_* non suivis : non touchés. Le Write de `Retours\E-nomad_ai.md` a écrasé la fiche LOGIQUE SEULEMENT commitée (71c44e8) : voulu.
+GIT_STATUS_PRINCIPALE: ` M Auto_Journey_File.md`, ` M Auto_Journey_Jour.md`, ` M EtapeDefini.md`, ` M Retours/E-nomad_ai.md`, `?? Docs/Priorite_Socle_Factions_2026-11-16.md`, `?? Docs/Rapports/` ; inchangée hors docs voulus : oui (Auto_Journey_Jour.md et Priorite_Socle_* ne viennent pas de moi).
