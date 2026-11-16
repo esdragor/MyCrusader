@@ -179,4 +179,20 @@ namespace HOLSiege
 	{
 		return float(Attack) * (1.f + 0.01f * float(Math::Max(AttackPercent, 0)));
 	}
+
+	// S4 (SQ1 = B, D614): whether a unit of this attack on units takes a unit on by itself; the Ram (attack 0 on units) does not, it
+	// takes buildings only. The C++ combat sets FSeeker::bCanAttackUnits from it (HOLCombatProcessor.cpp: Constants.Attack > 0).
+	bool TakesUnitsOn(int Attack)
+	{
+		return Attack > 0;
+	}
+
+	// S4 (D614): whether Other lies within an area of Radius cm around Centre (centre to centre, the circle's edge in): the units the
+	// Mangonel's blow reaches around its target. The C++ HOLCombat::IsInArea.
+	bool IsInArea(FVector2D Centre, FVector2D Other, float Radius)
+	{
+		const double DX = Other.X - Centre.X;
+		const double DY = Other.Y - Centre.Y;
+		return DX * DX + DY * DY <= double(Radius) * double(Radius);
+	}
 }
