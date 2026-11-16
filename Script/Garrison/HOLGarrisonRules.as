@@ -23,6 +23,20 @@ namespace HOLGarrison
 	const int KindSiege = 3;
 	const int KindHero = 4;
 
+	// A unit's kind from its type (the C++ twin's HOLGarrison::KindOf, Source/HeroesOfLiberty/Buildings/HOLGarrisonRules.h, which the server
+	// feeds with the type's armour categories and its attack range): siege first (the Ram, the Mangonel), then the hero, the cavalry (a mounted
+	// shooter is cavalry), the shooters, the rest on foot.
+	int KindOf(bool bSiege, bool bHero, bool bCavalry, bool bRanged)
+	{
+		if (bSiege)
+			return KindSiege;
+		if (bHero)
+			return KindHero;
+		if (bCavalry)
+			return KindCavalry;
+		return bRanged ? KindRangedInfantry : KindMeleeInfantry;
+	}
+
 	// Places of a row of the building type table (its GarrisonSlots column, Tools/Data/BuildingTypes.csv; 0 = no garrison).
 	int SlotsOfRow(const FHOLBuildingTypeRow& Row)
 	{
