@@ -2,7 +2,9 @@
 
 #include "Dev/HOLTestHooks.h"
 #include "Dev/HOLTestSequence.h"
+#include "HAL/FileManager.h"
 #include "Misc/AutomationTest.h"
+#include "Misc/Paths.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
@@ -98,7 +100,7 @@ bool FHOLScenarioBackKeyTest::RunTest(const FString& Parameters)
 			{
 				HOLTestHooks::PressContinueKey();
 			}
-			else if (Display.WaitingForKey == TEXT("key B"))
+			else if (Display.WaitingForKey.StartsWith(TEXT("key B")))
 			{
 				TestEqual(TEXT("option B shows its note"), Display.Notes, TArray<FString>{ TEXT("B") });
 				*bBackAtB = HOLTestHooks::PressBackKey();
@@ -115,6 +117,68 @@ bool FHOLScenarioBackKeyTest::RunTest(const FString& Parameters)
 		TestFalse(TEXT("Backspace at the first option does nothing (no option before it)"), HOLTestHooks::PressBackKey());
 		HOLTestHooks::PressContinueKey();
 		return true;
+	}));
+	return true;
+}
+
+// D828 (the user, 2026-11-16, Q-waitkey-texte Q2): an option starts right after the waitkey before it, so Backspace runs again the command
+// that sets the option even when it comes before the option's notereset (rocks_compare: hol.Rocks.Review C, then notereset STYLE C). Here
+// that command is a signal (a file written): Backspace at option C's waitkey writes option B's file again. D827 (Q1): the panel's waitkey
+// text says « · Backspace : option précédente » when an option before exists, not at the first option.
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLScenarioBackKeyReplaysSettingTest, "HeroesOfLiberty.Dev.Scenario.BackKeyReplaysOptionSetting",
+	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+bool FHOLScenarioBackKeyReplaysSettingTest::RunTest(const FString& Parameters)
+{
+	const FString SignalB = FPaths::ConvertRelativePathToFull(FPaths::ProjectSavedDir() / TEXT("ScenarioBackKeyOptionB.signal"));
+	IFileManager::Get().Delete(*SignalB);
+	HOLScenarioNoteTestsPrivate::StartScenarioSteps({ TEXT("note setup"), TEXT("notereset A"), TEXT("waitkey key A"),
+		FString(TEXT("signal ")) + SignalB, TEXT("notereset B"), TEXT("waitkey key B"), TEXT("notereset C"), TEXT("waitkey key C") },
+		TEXT("setting_compare"));
+	const FString BackText = TEXT("· Backspace : option précédente");
+	const TSharedRef<int32> Frames = MakeShared<int32>(0);
+	const TSharedRef<int32> Phase = MakeShared<int32>(0);
+	ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this, Frames, Phase, SignalB, BackText]()
+	{
+		HOLTestHooks::FScenarioDisplay& Display = HOLTestHooks::GetScenarioDisplay();
+		if (++*Frames >= HOLScenarioNoteTestsPrivate::NoteTestMaxFrames)
+		{
+			AddError(FString::Printf(TEXT("phase %d never came: waiting for \"%s\""), *Phase, *Display.WaitingForKey));
+			HOLTestHooks::PressContinueKey();
+			return true;
+		}
+		if (*Phase == 0 && Display.WaitingForKey.StartsWith(TEXT("key A")))
+		{
+			TestEqual(TEXT("D827: the first option's waitkey text does not offer Backspace"), Display.WaitingForKey, FString(TEXT("key A")));
+			HOLTestHooks::PressContinueKey();
+			*Phase = 1;
+		}
+		else if (*Phase == 1 && Display.WaitingForKey.StartsWith(TEXT("key B")))
+		{
+			TestTrue(TEXT("option B ran its setting command (the signal file)"), IFileManager::Get().FileExists(*SignalB));
+			IFileManager::Get().Delete(*SignalB);
+			HOLTestHooks::PressContinueKey();
+			*Phase = 2;
+		}
+		else if (*Phase == 2 && Display.WaitingForKey.StartsWith(TEXT("key C")))
+		{
+			TestEqual(TEXT("D827: option C's waitkey text offers Backspace"), Display.WaitingForKey, FString(TEXT("key C ")) + BackText);
+			TestTrue(TEXT("Backspace at option C's waitkey was taken"), HOLTestHooks::PressBackKey());
+			*Phase = 3;
+		}
+		else if (*Phase == 3 && Display.WaitingForKey.StartsWith(TEXT("key B")))
+		{
+			TestTrue(TEXT("D828: Backspace ran option B's setting command again (before its notereset)"), IFileManager::Get().FileExists(*SignalB));
+			TestEqual(TEXT("D827: option B's waitkey text offers Backspace"), Display.WaitingForKey, FString(TEXT("key B ")) + BackText);
+			IFileManager::Get().Delete(*SignalB);
+			HOLTestHooks::PressContinueKey();
+			*Phase = 4;
+		}
+		else if (*Phase == 4 && Display.WaitingForKey.StartsWith(TEXT("key C")))
+		{
+			HOLTestHooks::PressContinueKey();
+			return true;
+		}
+		return false;
 	}));
 	return true;
 }
