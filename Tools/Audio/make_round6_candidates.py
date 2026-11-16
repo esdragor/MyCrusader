@@ -10,6 +10,9 @@ Round 6 takes the SAME event of the SAME source file and treats it gently:
     peak limiter), a 80 Hz high-pass against rumble, 4 ms fade in, 40 ms fade out;
   - a SWEEP of the low-pass (none, 6 kHz, 3 kHz, 1.5 kHz): the ear chooses how soft, the agent never hears the sounds.
 
+Barracks (lot A2): the user kept NO letter of round 5 (pain cries, poor quality): ten NEW sounds without any voice (BARRACKS below),
+blades, a war drum and a horn, layered by a few, treated the same clean way (high-pass 80 Hz, no low-pass, no drive, soft release).
+
   python make_round6_candidates.py [out_dir]
 Output: 16-bit mono 48 kHz WAV <out_dir>\\<stem>.wav (default MyCrusader_Audio\\Candidates\\soft). Needs ffmpeg on PATH (decoding).
 Sources and licences: SOURCES of make_round5_candidates.py (bow_ogrebane.wav CC0, rl_snort_vocal.flac CC0 as marked by archive.org, D805).
@@ -34,6 +37,61 @@ SILENCE_FOR = 0.12    # ...for 120 ms
 ELECTED = {"s_shot5_bow": "s_shot6_bow_", "s_horse5_vocal_b": "s_horse6_vocal_"}
 # suffix -> low-pass in Hz (None = no low-pass); first = the cleanest
 SWEEP = [("full", None), ("lp6k", 6000.0), ("lp3k", 3000.0), ("lp1k5", 1500.0)]
+
+# Barracks, lot A2 of D826: the user kept NO letter of round 5 ("cris de douleur, mauvaise qualite"), so ten NEW sounds, no voice at all:
+# blades drawn and sheathed (StillNorthMedia CC0, SOURCES of round 5), a war drum and a horn call (VSCO 2 CE, CC0 1.0), and layers of them.
+# stem -> parts; a part = (kind, file, event or folder, delay in s, seconds kept or None):
+#   kind "r5": <file> of round 5 SOURCE_DIR, its event of rank <event> (0 = loudest), found like round 5;
+#   kind "vsco": VSCO 2 CE sample <folder>/<file>, fetched once into MyCrusader_Audio\VSCO; a part with seconds kept gets a soft release.
+TIMPANI = "Percussion/Timpani"
+HORN = "Brass/F Horn/sus"
+BARRACKS = {
+    "s_barr6_draw_a": [("r5", "sabre_draw_fast.wav", 0, 0.0, None)],
+    "s_barr6_draw_b": [("r5", "sabre_draw_fast.wav", 1, 0.0, None)],
+    "s_barr6_draw_c": [("r5", "sabre_draw_fast.wav", 2, 0.0, None)],
+    "s_barr6_sheath_a": [("r5", "seax_sheath_fast.wav", 0, 0.0, None)],
+    "s_barr6_sheath_b": [("r5", "seax_sheath_fast.wav", 1, 0.0, None)],
+    "s_barr6_two_blades": [("r5", "sabre_draw_fast.wav", 0, 0.0, None), ("r5", "sabre_draw_fast.wav", 1, 0.14, None)],
+    "s_barr6_drum": [("vsco", "Timpani5_Hit_v4_rr1_Sum.wav", TIMPANI, 0.0, 1.2)],
+    "s_barr6_drum_double": [("vsco", "Timpani5_Hit_v4_rr1_Sum.wav", TIMPANI, 0.0, 0.5),
+                            ("vsco", "Timpani4_Hit_v4_rr1_Sum.wav", TIMPANI, 0.24, 1.1)],
+    "s_barr6_horn": [("vsco", "MOHorn_sus_F2_v3_1.wav", HORN, 0.0, 0.9)],
+    "s_barr6_drum_blade": [("vsco", "Timpani5_Hit_v4_rr1_Sum.wav", TIMPANI, 0.0, 1.2), ("r5", "sabre_draw_fast.wav", 0, 0.10, None)],
+}
+RELEASE = 0.30   # seconds of the soft release (power 4) at the end of a part kept shorter than its sample, and of every Barracks sound
+
+
+def release(data, seconds=RELEASE):
+    """Dies away over the last `seconds` ((1 - t) ** 4: 30 dB down well before the end), so a held note or a ringing drum is never cut."""
+    n = min(len(data) // 2, int(seconds * RATE))
+    out = data.copy()
+    if n > 0:
+        out[-n:] *= (1.0 - np.linspace(0, 1, n)) ** 4
+    return out
+
+
+def barracks_part(kind, name, which, keep):
+    if kind == "r5":
+        data = round5.decode(os.path.join(round5.SOURCE_DIR, name))
+        starts = round5.events(data, 0.7)
+        start = starts[min(which, len(starts) - 1)]
+        return data[start:start + int(MAX_SECONDS * RATE)]
+    import vsco_samples as vsco
+    data = vsco.read_wav(vsco.fetch(os.path.join(round5.AUDIO, "VSCO"), which, name))
+    return release(data[:int(keep * RATE)]) if keep else data[:int(MAX_SECONDS * RATE)]
+
+
+def render_barracks(stem):
+    parts = []
+    for kind, name, which, delay, keep in BARRACKS[stem]:
+        data = barracks_part(kind, name, which, keep)
+        parts.append((int(delay * RATE), data / max(1e-9, np.abs(data).max()) * (1.0 if not parts else 0.8)))
+    mix = np.zeros(max(offset + len(data) for offset, data in parts))
+    for offset, data in parts:
+        mix[offset:offset + len(data)] += data
+    filtered = round5.band(mix, HIGH_PASS, RATE * 10.0)   # high-pass only, no low-pass, no drive
+    clip = natural_clip(filtered, 0)
+    return level(release(fades(clip)), 0.1)   # a short sheath click needs its first click turned down further to be heard
 
 
 def natural_clip(data, start):
@@ -85,12 +143,12 @@ def limit(data, ceiling):
     return data * np.minimum(held, smooth)
 
 
-def level(data):
+def level(data, floor=0.3):
     """Peak -2.5 dB; a transient too faint above 200 Hz (check_audio_soft floor -18 dB, target -16 dB) has its click limited step by step."""
     target = 10 ** (PEAK_DB / 20)
     out = data / max(1e-9, np.abs(data).max()) * target
     ceiling = 1.0
-    while round5.measure(out)[2] < round5.TARGET_AUDIBLE_DB and ceiling > 0.3:
+    while round5.measure(out)[2] < round5.TARGET_AUDIBLE_DB and ceiling > floor:
         ceiling *= 0.9
         limited = limit(data / max(1e-9, np.abs(data).max()), ceiling)
         out = limited / max(1e-9, np.abs(limited).max()) * target
@@ -107,6 +165,10 @@ def main():
             round5.write(os.path.join(out_dir, stem + ".wav"), data)
             print("%-22s from %-20s at %6.2f s  %.2f s  low-pass %s" % (stem, round5.RECIPES[reference][0], at, len(data) / RATE,
                                                                        "none" if cutoff is None else "%.0f Hz" % cutoff))
+    for stem in BARRACKS:
+        data = render_barracks(stem)
+        round5.write(os.path.join(out_dir, stem + ".wav"), data)
+        print("%-22s from %s  %.2f s" % (stem, " + ".join(part[1] for part in BARRACKS[stem]), len(data) / RATE))
 
 
 if __name__ == "__main__":

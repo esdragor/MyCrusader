@@ -1,46 +1,46 @@
-# Ecoute : le son de SELECTION de la CASERNE, tour 5 : des VOIX d'hommes d'armes et des lames, ENREGISTREES (echantillons libres), dix variantes chacune, Entree = variante suivante
-# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.
+# Ecoute : le son de SELECTION de la CASERNE, tour 6 : dix sons NEUFS, AUCUNE voix (ni cri, ni grognement, ni foule), propres (non coupes, sans saturation), Entree = variante suivante
+# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. D826 : aucune lettre du tour 5 retenue (cris de douleur, mauvaise qualite) ; sources CC0 (StillNorthMedia lames, VSCO 2 CE timbale et cor), jamais choisies a ta place.
 waitlog Starting hero of slot 0 spawned at
 waitlog Starting hero of slot 1 spawned at
-# la Caserne que tu ecoutes, finie et a toi, posee derriere le centre (la place du Champ de tir d'archers.txt), camera dessus : l'ecran montre le batiment du son, pas le Forum.
+# la Caserne que tu ecoutes, finie et a toi, posee derriere le centre, camera dessus : l'ecran montre le batiment du son, pas le Forum.
 hol.Cheat.SpawnBuilding Barracks 0 -3800 4600
 waitlog Cheat: spawned Barracks of slot 0
 hol.Camera.FocusNear -3800 4600
 frames 10
-note Ecoute le son de SELECTION de la CASERNE, tour 5 : des VOIX d'hommes d'armes et des lames, ENREGISTREES (echantillons libres). 10 sons, 1 cue, dix variantes A a J chacune.
+note Ecoute le son de SELECTION de la CASERNE, tour 6 : dix sons NEUFS, sans aucune voix. A B C = une lame tiree, D E = une lame rengainee, F = deux lames tirees ensemble, G = tambour de guerre (un coup), H = tambour (deux coups), I = un cor (une note), J = tambour puis lame.
 note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate Building.Barracks C.
-note Reponds : ta lettre preferee (ou plusieurs), ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.
+note Reponds : ta lettre preferee (ou plusieurs), ou REGLAGE: <ce qui ne va pas> (trop aigu, trop long...), ou aucune, dix autres.
 capture audio_compare_buildings_barracks_start
 waitkey Entree : commencer par Building.Barracks A
 hol.Audio.Candidate Building.Barracks A
 waitlog candidate played Building.Barracks A
-waitkey Building.Barracks A (s_voice5_yell_a) vient de jouer. Entree : Building.Barracks B
+waitkey Building.Barracks A (s_barr6_draw_a) vient de jouer. Entree : Building.Barracks B
 hol.Audio.Candidate Building.Barracks B
 waitlog candidate played Building.Barracks B
-waitkey Building.Barracks B (s_voice5_yell_b) vient de jouer. Entree : Building.Barracks C
+waitkey Building.Barracks B (s_barr6_draw_b) vient de jouer. Entree : Building.Barracks C
 hol.Audio.Candidate Building.Barracks C
 waitlog candidate played Building.Barracks C
-waitkey Building.Barracks C (s_voice5_yell_c) vient de jouer. Entree : Building.Barracks D
+waitkey Building.Barracks C (s_barr6_draw_c) vient de jouer. Entree : Building.Barracks D
 hol.Audio.Candidate Building.Barracks D
 waitlog candidate played Building.Barracks D
-waitkey Building.Barracks D (s_voice5_yell_d) vient de jouer. Entree : Building.Barracks E
+waitkey Building.Barracks D (s_barr6_sheath_a) vient de jouer. Entree : Building.Barracks E
 hol.Audio.Candidate Building.Barracks E
 waitlog candidate played Building.Barracks E
-waitkey Building.Barracks E (s_voice5_grunt_a) vient de jouer. Entree : Building.Barracks F
+waitkey Building.Barracks E (s_barr6_sheath_b) vient de jouer. Entree : Building.Barracks F
 hol.Audio.Candidate Building.Barracks F
 waitlog candidate played Building.Barracks F
-waitkey Building.Barracks F (s_voice5_grunt_b) vient de jouer. Entree : Building.Barracks G
+waitkey Building.Barracks F (s_barr6_two_blades) vient de jouer. Entree : Building.Barracks G
 hol.Audio.Candidate Building.Barracks G
 waitlog candidate played Building.Barracks G
-waitkey Building.Barracks G (s_voice5_crowd_a) vient de jouer. Entree : Building.Barracks H
+waitkey Building.Barracks G (s_barr6_drum) vient de jouer. Entree : Building.Barracks H
 hol.Audio.Candidate Building.Barracks H
 waitlog candidate played Building.Barracks H
-waitkey Building.Barracks H (s_voice5_crowd_b) vient de jouer. Entree : Building.Barracks I
+waitkey Building.Barracks H (s_barr6_drum_double) vient de jouer. Entree : Building.Barracks I
 hol.Audio.Candidate Building.Barracks I
 waitlog candidate played Building.Barracks I
-waitkey Building.Barracks I (s_voice5_sword_draw) vient de jouer. Entree : Building.Barracks J
+waitkey Building.Barracks I (s_barr6_horn) vient de jouer. Entree : Building.Barracks J
 hol.Audio.Candidate Building.Barracks J
 waitlog candidate played Building.Barracks J
-waitkey Building.Barracks J (s_voice5_sword_sheath) vient de jouer : c'etait la derniere. Entree : fin
+waitkey Building.Barracks J (s_barr6_drum_blade) vient de jouer : c'etait la derniere. Entree : fin
 hol.Test.Sanity
-note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.
+note Fin de l'ecoute. Dis ta lettre preferee (A a J), ou REGLAGE: <ce qui ne va pas>.

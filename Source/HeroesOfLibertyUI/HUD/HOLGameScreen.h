@@ -79,6 +79,15 @@ public:
 	/** V4.3: the major alert's banner, "<text> (slot N)" or "none": the line "HUD alert" of hol.HUD.Report. */
 	FString DescribeAlert() const;
 
+	/** D202: a minor alert's line in the thread of messages (the script's, HOLAlertRules.as), on this machine only, muted (D449). */
+	void AddThreadLine(const FText& Line);
+
+	/** The player state the screen shows (the local player's); null for a spectator or before it arrives. */
+	const AHOLPlayerState* GetBoundPlayerState() const;
+
+	/** The population full alert's test binds a player state without a player controller. */
+	friend class FHOLPopulationAlertThreadTest;
+
 	/**
 	 * Clicks a cell of the grid (GridCell00 to GridCell11), an item of the queue (QueueItem0 to QueueItem4) or the idle
 	 * workers' counter (IdleWorkers), « Menu » (MenuButton) or « Statistiques » (StatsButton), found by its name, by the same path as the mouse (hol.HUD.Click). False when it is

@@ -28,6 +28,11 @@ CANDIDATES = os.path.join(HERE, "..", "..", "Script", "Audio", "HOLAudioCandidat
 LINE = re.compile(r'^\s*Add\(List,\s*"(?P<cue>[A-Za-z]+\.[A-Za-z]+)",\s*"(?P<stems>[A-Za-z0-9_,]+)"')
 # cue -> (round 5 reference elected by D826, prefix of its round 6 variants)
 ELECTED = {"Building.Range": ("s_shot5_bow", "s_shot6_bow_"), "Building.Stable": ("s_horse5_vocal_b", "s_horse6_vocal_")}
+# Barracks (D826 lot A2): the user kept NO letter of round 5 ("cris de douleur, mauvaise qualite"): ten NEW sounds, none cut out of a voice
+# recording (no yell, grunt nor crowd), treated as cleanly as the Range and Stable round 6 (not cut, no drive, peak -12..-2 dB, <= 2 s).
+BARRACKS = "Building.Barracks"
+BARRACKS_PREFIX = "s_barr6_"
+VOICE_WORDS = ("yell", "grunt", "crowd", "voice", "shout", "scream")
 
 failures = 0
 
@@ -106,6 +111,40 @@ for cue, (reference, prefix) in ELECTED.items():
             fail("%s: peak %.1f dB outside -12..-2" % (stem, peak))
     if variants and brightest < 1.5 * reference_centroid:
         fail("%s: the brightest round 6 variant (%.0f Hz) is not 1.5 times brighter than the reference (%.0f Hz)" % (cue, brightest, reference_centroid))
+
+sys.path.insert(0, HERE)
+import make_round6_candidates as round6  # noqa: E402  (the recipes the WAV files were made from)
+
+stems = lists.get(BARRACKS, [])
+if len(stems) != 10:
+    fail("%s: %d stems, expected 10 new sounds" % (BARRACKS, len(stems)))
+for stem in stems:
+    if not stem.startswith(BARRACKS_PREFIX) or any(word in stem for word in VOICE_WORDS):
+        fail("%s: %s is not a round 6 sound without voice (%s*)" % (BARRACKS, stem, BARRACKS_PREFIX))
+        continue
+    recipe = getattr(round6, "BARRACKS", {}).get(stem)
+    if not recipe:
+        fail("%s: no recipe for %s in make_round6_candidates.BARRACKS" % (BARRACKS, stem))
+        continue
+    voiced = [part[1] for part in recipe if any(word in part[1].lower() for word in VOICE_WORDS)]
+    if voiced:
+        fail("%s: %s is cut out of a voice recording: %s" % (BARRACKS, stem, ", ".join(voiced)))
+    path = os.path.join(SOFT, stem + ".wav")
+    if not os.path.exists(path):
+        fail("%s: %s.wav is not in %s (run make_round6_candidates.py)" % (BARRACKS, stem, SOFT))
+        continue
+    rate, data = read(path)
+    tail = loudest_db(data[-int(0.1 * rate):], rate)
+    top = loudest_db(data, rate)
+    peak = 20 * np.log10(max(1e-9, float(np.abs(data).max())))
+    seconds = len(data) / rate
+    print("  %-24s %.2f s  tail %5.1f dB under the loudest  centroid %4.0f Hz  peak %5.1f dB" % (stem, seconds, top - tail, centroid(data, rate), peak))
+    if top - tail < 30.0:
+        fail("%s: cut while still sounding (last 100 ms only %.1f dB under the loudest, min 30)" % (stem, top - tail))
+    if not -12.0 <= peak <= -2.0:
+        fail("%s: peak %.1f dB outside -12..-2" % (stem, peak))
+    if seconds > 2.0:
+        fail("%s: %.2f s, longer than 2 s" % (stem, seconds))
 
 if failures == 0:
     print("round6_candidates_test: PASS")
