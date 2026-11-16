@@ -214,6 +214,9 @@ if ($Parts -contains "values") {
         # E3-13: Tools/Data/Maps.csv says what the code table (HOLMapRules.cpp) says (ported from the Map.Csv test of HOLMapRulesTests.cpp).
         $MapTableOutput = @(python -I (Join-Path $PSScriptRoot "map_table_test.py") 2>&1)
         $ValuesChecks["map_table_test.py ($($MapTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
+        # L17-03: Technologies.csv against the grid 11.1 and BuildingTypes.csv (port of the Table and Playable tests of HOLTechnologyTableTests.cpp).
+        $TechnologyTableOutput = @(python -I (Join-Path $PSScriptRoot "technology_table_test.py") 2>&1)
+        $ValuesChecks["technology_table_test.py ($($TechnologyTableOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
         # D809 / D836: the exploration XP presets A / B / C of HOLExplorationXPRules.cpp (C++ only source) equal the numbers decided.
         $ExplorationPresetsOutput = @(python -I (Join-Path $PSScriptRoot "exploration_xp_presets_test.py") 2>&1)
         $ValuesChecks["exploration_xp_presets_test.py ($($ExplorationPresetsOutput | Select-Object -Last 1))"] = ($LASTEXITCODE -eq 0)
