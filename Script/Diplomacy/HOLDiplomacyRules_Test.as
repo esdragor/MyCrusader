@@ -557,7 +557,7 @@ void Test_DiplomacyRulesVectors(FUnitTest& T)
 	T.AssertEquals(HOLDiplomacyRead::GetResultLocked(), HOLDiplomacyRead::ChangeVision(Locked, 0, 1, false).Result, "no box to tick");
 }
 
-// Garrison, ramparts and allied victory vectors: script rules only (not exposed by HOLDiplomacyRead).
+// Garrison, ramparts and allied victory vectors of the C++ test (CanGarrison, DoorsOpenFor, CanLeaveRampart, AlliedVictory, all exposed by HOLDiplomacyRead).
 void Test_DiplomacyRulesVectorsGarrisonVictory(FUnitTest& T)
 {
 	// Garrison and ramparts (D374).
