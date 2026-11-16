@@ -39,11 +39,51 @@ GROUPS = [
     ("audio_compare_buildings_sacred", ("Building.Sacred",), "le son de SELECTION des batiments SACRES (Chapelle, Sanctuaire) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
     ("audio_compare_buildings_metal", ("Building.Metal",), "le son de SELECTION du batiment de METAL (Forge) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
     ("audio_compare_buildings_coins", ("Building.Coins",), "le son de SELECTION du batiment de PIECES (Marche) : sons GRAVES, SOURDS, COURTS et DOUX, pas usants"),
-    # Round 5 (D801): one scenario per building, RECORDED free samples (make_round5_candidates.py; round 4 synthesis refused).
-    ("audio_compare_buildings_barracks", ("Building.Barracks",), "le son de SELECTION de la CASERNE, tour 5 : des VOIX d'hommes d'armes et des lames, ENREGISTREES (echantillons libres)"),
+    # Round 5 (D801) then round 6 (D826): one scenario per building (make_round6_candidates.py), the building itself on screen.
+    ("audio_compare_buildings_barracks", ("Building.Barracks",), "le son de SELECTION de la CASERNE, tour 6 : dix sons NEUFS, AUCUNE voix (ni cri, ni grognement, ni foule), propres (non coupes, sans saturation)"),
     ("audio_compare_buildings_range", ("Building.Range",), "le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre"),
     ("audio_compare_buildings_stable", ("Building.Stable",), "le son de SELECTION de l'ECURIE, tour 6 : l'ebrouement et la voix de cheval G du tour 5 en version propre"),
 ]
+# The scenario of ONE building places that building, finished and owned by the player, behind the centre, and puts the camera on it:
+# the screen shows the building whose sound plays, not the Forum. name -> (class for hol.Cheat.SpawnBuilding, "<who> que tu ecoutes, ...").
+BUILDING = {
+    "audio_compare_buildings_barracks": ("Barracks", "la Caserne que tu ecoutes, finie et a toi, posee"),
+    "audio_compare_buildings_range": ("ArcheryRange", "le Champ de tir que tu ecoutes, fini(e) et a toi, pose(e)"),
+    "audio_compare_buildings_stable": ("Stable", "l'Ecurie que tu ecoutes, fini(e) et a toi, pose(e)"),
+}
+BUILDING_AT = (-3800, 4600)
+# Texts of a scenario that differ from the general ones (round 6, D826): count (title, "" = none), source (second line),
+# intro / answer / end (notes), look (what the capture must show). A missing key keeps the general text.
+CLEAN6_SOURCE = "D826 : la sorte de son G du tour 5 est elue, il faut une version propre ; A = le G du tour 5 tel quel (reference), B a E = le meme enregistrement, non coupe, sans saturation, du plus clair (B, aucun filtre) au plus doux (E, passe-bas 1,5 kHz). Jamais choisi a ta place."
+CLEAN6_LETTERS = "5 sons, 1 cue : A = le G du tour 5 (reference, mauvaise qualite), B = propre sans filtre, C = passe-bas 6 kHz, D = passe-bas 3 kHz, E = passe-bas 1,5 kHz (le plus doux)."
+CLEAN6_ANSWER = "Reponds : ta lettre preferee (B a E), ou REGLAGE: <ce qui ne va pas> (encore sale, trop aigu, trop long...)."
+CLEAN6_END = "Fin de l'ecoute. Dis ta lettre preferee (B a E), ou REGLAGE: <ce qui ne va pas>."
+TEXT = {
+    "audio_compare_buildings_barracks": {
+        "count": "",
+        "source": "D826 : aucune lettre du tour 5 retenue (cris de douleur, mauvaise qualite) ; sources CC0 (StillNorthMedia lames, VSCO 2 CE timbale et cor), jamais choisies a ta place.",
+        "intro": "Ecoute le son de SELECTION de la CASERNE, tour 6 : dix sons NEUFS, sans aucune voix. A B C = une lame tiree, D E = une lame rengainee, F = deux lames tirees ensemble, G = tambour de guerre (un coup), H = tambour (deux coups), I = un cor (une note), J = tambour puis lame.",
+        "answer": "Reponds : ta lettre preferee (ou plusieurs), ou REGLAGE: <ce qui ne va pas> (trop aigu, trop long...), ou aucune, dix autres.",
+        "end": "Fin de l'ecoute. Dis ta lettre preferee (A a J), ou REGLAGE: <ce qui ne va pas>.",
+        "look": "OBJET : la Caserne au centre de l'ecran (posee par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION de la CASERNE, tour 6 : dix sons neufs sans aucune voix, A a J (lames, tambour, cor), Entree = variante suivante",
+    },
+    "audio_compare_buildings_range": {
+        "count": "cinq variantes du MEME son",
+        "source": CLEAN6_SOURCE,
+        "intro": "Ecoute le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre. " + CLEAN6_LETTERS,
+        "answer": CLEAN6_ANSWER,
+        "end": CLEAN6_END,
+        "look": "OBJET : le Champ de tir (cibles) au centre de l'ecran (pose par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre, 5 variantes A a E, Entree = variante suivante",
+    },
+    "audio_compare_buildings_stable": {
+        "count": "cinq variantes du MEME son",
+        "source": CLEAN6_SOURCE,
+        "intro": "Ecoute le son de SELECTION de l'ECURIE, tour 6 : l'ebrouement et la voix de cheval G du tour 5 en version propre. " + CLEAN6_LETTERS,
+        "answer": CLEAN6_ANSWER,
+        "end": CLEAN6_END,
+        "look": "OBJET : l'Ecurie (forme provisoire BlockAndTower) au centre de l'ecran (pose par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION de l'ECURIE, tour 6 : l'ebrouement et la voix de cheval G du tour 5 en version propre, 5 variantes A a E, Entree = variante suivante",
+    },
+}
 # The line of the answer sheet for a cue whose name alone says little (family cues of the buildings): "<label> = _".
 SHEET_LABEL = {
     "Building.Wood": "Bois (Maison, camps, Moulin, Ferme) [Building.Wood]",
@@ -106,16 +146,30 @@ def write(name, prefixes, what, all_cues, scen, retours, project, sheet=True):
     # Select.BuildingWood / Select.BuildingSacred (2026-11-08) are the ELECTED building sounds, listened to in the Building.* scenarios: not in the orders one.
     mine = [c for c in all_cues if c[0].startswith(prefixes) and c[0] not in ("Select.BuildingWood", "Select.BuildingSacred")]
     steps = [(cue, index, stems[index]) for cue, stems in mine for index in range(len(stems))]
+    custom = TEXT.get(name, {})
+    count = custom.get("count", "dix variantes chacune")
     out = [
-        "# Ecoute : %s, dix variantes chacune, Entree = variante suivante" % what,
-        "# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place.",
+        "# Ecoute : %s%s, Entree = variante suivante" % (what, ", " + count if count else ""),
+        "# Plain, toi contre une IA, pour avoir l'ecran du jeu ; rien a cliquer : le panneau dit quelle variante vient de jouer. "
+        + custom.get("source", "Sources CC0 (Kenney rpg-audio et impact-sounds, VSCO 2 CE), jamais choisies a ta place."),
         "waitlog Starting hero of slot 0 spawned at",
         "waitlog Starting hero of slot 1 spawned at",
-        "hol.Camera.FocusNear -900 300",
+    ]
+    if name in BUILDING:
+        building, who = BUILDING[name]
+        out += [
+            "# %s derriere le centre, camera dessus : l'ecran montre le batiment du son, pas le Forum." % who,
+            "hol.Cheat.SpawnBuilding %s 0 %d %d" % (building, BUILDING_AT[0], BUILDING_AT[1]),
+            "waitlog Cheat: spawned %s of slot 0" % building,
+            "hol.Camera.FocusNear %d %d" % BUILDING_AT,
+        ]
+    else:
+        out.append("hol.Camera.FocusNear -900 300")
+    out += [
         "frames 10",
-        "note Ecoute %s. %d sons, %d %s, dix variantes A a J chacune." % (what, len(steps), len(mine), "cue" if len(mine) == 1 else "cues"),
+        "note " + custom.get("intro", "Ecoute %s. %d sons, %d %s, dix variantes A a J chacune." % (what, len(steps), len(mine), "cue" if len(mine) == 1 else "cues")),
         "note Entree = la variante suivante (le panneau dit le cue et la lettre qui viennent de jouer). Pour reecouter : console (touche ²) puis hol.Audio.Candidate <Cue> <lettre>, par exemple hol.Audio.Candidate %s C." % steps[0][0],
-        ("note Reponds : ta lettre preferee (ou plusieurs)" if len(mine) == 1 else "note Reponds par cue : sa lettre preferee (ou plusieurs)") + ", ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes.",
+        "note " + custom.get("answer", ("Reponds : ta lettre preferee (ou plusieurs)" if len(mine) == 1 else "Reponds par cue : sa lettre preferee (ou plusieurs)") + ", ou « aucune, dix autres » ; tu peux dire ce que tu aimes pour les dix suivantes."),
         "capture %s_start" % name,
         "waitkey Entree : commencer par %s" % label(steps[0]),
     ]
@@ -130,14 +184,14 @@ def write(name, prefixes, what, all_cues, scen, retours, project, sheet=True):
         out.append("waitkey " + text)
     out += [
         "hol.Test.Sanity",
-        "note Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>.",
+        "note " + custom.get("end", "Fin de l'ecoute. Dis par cue ta lettre preferee, ou REGLAGE: <ce qui ne va pas>."),
     ]
     os.makedirs(scen, exist_ok=True)
     with open(os.path.join(scen, name + ".txt"), "w", encoding="utf-8", newline="\n") as f:
         f.write("\n".join(out) + "\n")
     with open(os.path.join(scen, name + ".look"), "w", encoding="utf-8", newline="\n") as f:
         f.write("# <nom de capture> | ce que l'utilisateur doit voir\n"
-                "%s_start | L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter %s, Entree = variante suivante\n"                % (name, what))
+                "%s_start | %s\n" % (name, custom.get("look", "L'ecran du jeu avec le panneau du scenario : les notes disent d'ecouter %s, Entree = variante suivante" % what)))
     shutil.copyfile(os.path.join(project, "Tools", "Scenarios", "audio_ui.json"), os.path.join(scen, name + ".json"))
     if retours and sheet:
         write_answer_sheet(retours, name, what, mine, steps, project)
