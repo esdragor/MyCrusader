@@ -7,6 +7,10 @@ waitlog AI brain HOLAIBrain awake
 waitlog Nomad slot 1: group 0 (
 waitlog AI slot 1 step
 waitlog Nomad forum founded at (
+# D816 (Q-nomad-forum-duree = B) : le forum se BATIT (150 s pour 1 Paysan, N^0,63) : premier coup, puis un 2e Paysan arrive et le chantier
+# est encore ouvert (cette ligne ne vient jamais si le forum s'acheve au premier coup, BuildTime 0 : rouge du 2026-11-15).
+waitlog Construction: slot 1 first work on MainCentre
+waitlog Construction: slot 1 MainCentre at (
 r.SetRes 1920x1080w
 hol.Buildings.Report
 waitlog Building report:
