@@ -83,7 +83,7 @@ namespace HOLPlayerOrders
 	 * F7 lot 4b (FortificationsInProgress.md, D693 « ordre sur un bâtiment », D374): whether a right click of PlayerIndex's units on Building is a
 	 * garrison order: the player's own building, finished, with places (GarrisonSlots of its row), and the setting hol.Garrison.RightClickEnters
 	 * on (default 1, Retours/Q-garrison-ui.md). Read by the client (AHOLPlayerController::OrderAt, after the sites, the attacks and the
-	 * deposits) and again by the server (Garrison below). Kinds and free places are the garrison's at the step (HOLGarrison::AdmittedBySettings).
+	 * deposits) and again by the server (Garrison below). Kinds and free places are the garrison's at the step (the script's HOLGarrison::Admitted).
 	 */
 	HEROESOFLIBERTY_API bool TakesGarrisonOrder(const AHOLBuilding& Building, int32 PlayerIndex);
 	/** F7 lot 4b: UnitIds enter Building (UHOLCommandSubsystem::IssueGarrisonOrder) when TakesGarrisonOrder; false: refused here, the caller moves them. */

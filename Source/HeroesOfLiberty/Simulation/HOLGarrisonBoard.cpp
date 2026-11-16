@@ -35,7 +35,9 @@ TArray<int32> UHOLGarrisonBoard::AdmittedForOrder(const UWorld* World, const TAr
 	UHOLGarrisonBoard* Board = Find(World);
 	if (!Board)
 	{
-		return HOLGarrison::AdmittedBySettings(UnitSlots, UnitKinds, BuildingSlot, Slots, Occupants);
+		// No script board: nobody enters (R7, no free passage); the rule is the script's alone.
+		UE_LOG(LogTemp, Warning, TEXT("Garrison: no script board, the order is refused"));
+		return TArray<int32>();
 	}
 	TArray<int32> Kinds;
 	Kinds.Reserve(UnitKinds.Num());
@@ -55,12 +57,6 @@ TArray<int32> UHOLGarrisonBoard::AdmittedNow(const TArray<int32>& UnitSlots, con
 TArray<int32> UHOLGarrisonBoard::GarrisonAdmitted_Implementation(const TArray<int32>& UnitSlots, const TArray<int32>& UnitKinds, const int32 BuildingSlot,
 	const int32 Slots, const int32 Occupants)
 {
-	// The C++ rule, the same list as the script's (a kind outside 0..4 never enters, as in the script).
-	TArray<HOLGarrison::EKind> Kinds;
-	Kinds.Reserve(UnitKinds.Num());
-	for (const int32 Kind : UnitKinds)
-	{
-		Kinds.Add(Kind >= 0 && Kind <= static_cast<int32>(HOLGarrison::EKind::Hero) ? static_cast<HOLGarrison::EKind>(Kind) : HOLGarrison::EKind::Siege);
-	}
-	return HOLGarrison::AdmittedBySettings(UnitSlots, Kinds, BuildingSlot, Slots, Occupants);
+	// No script board subclass: refused (R7). The rule is the script's alone (HOLGarrisonBoardScript.as overrides this).
+	return TArray<int32>();
 }

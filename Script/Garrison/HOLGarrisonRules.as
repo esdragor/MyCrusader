@@ -23,7 +23,7 @@ namespace HOLGarrison
 	const int KindSiege = 3;
 	const int KindHero = 4;
 
-	// A unit's kind from its type (the C++ twin's HOLGarrison::KindOf, Source/HeroesOfLiberty/Buildings/HOLGarrisonRules.h, which the server
+	// A unit's kind from its type (C++ HOLGarrison::KindOf, Source/HeroesOfLiberty/Buildings/HOLGarrisonRules.h, which the server
 	// feeds with the type's armour categories and its attack range): siege first (the Ram, the Mangonel), then the hero, the cavalry (a mounted
 	// shooter is cavalry), the shooters, the rest on foot.
 	int KindOf(bool bSiege, bool bHero, bool bCavalry, bool bRanged)
@@ -113,8 +113,8 @@ namespace HOLGarrison
 	}
 
 	// Indexes (into UnitSlots / UnitKinds, in the order asked) of the candidates that enter a building of BuildingSlot with Slots places and
-	// Occupants already inside, with the three kind settings given; a refused candidate takes no place. The C++ twin
-	// (Source/HeroesOfLiberty/Buildings/HOLGarrisonRules.h, applied by the server) must give the same list: Script/Tests/HOLGarrisonParity_Test.as.
+	// Occupants already inside, with the three kind settings given; a refused candidate takes no place.
+	// The only copy of the rule: the server asks it through UHOLGarrisonBoard (Script/Garrison/HOLGarrisonBoardScript.as).
 	TArray<int> AdmittedWith(const TArray<int>& UnitSlots, const TArray<int>& UnitKinds, int BuildingSlot, int Slots, int Occupants,
 		bool bMeleeInfantry, bool bHero, bool bCavalry)
 	{

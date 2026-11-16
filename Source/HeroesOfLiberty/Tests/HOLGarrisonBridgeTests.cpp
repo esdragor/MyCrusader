@@ -1,6 +1,5 @@
 // Copyright Epic Games, Inc. All Rights Reserved.
 
-#include "Buildings/HOLGarrisonRuleLibrary.h"
 #include "Engine/Engine.h"
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
@@ -9,8 +8,8 @@
 #if WITH_DEV_AUTOMATION_TESTS
 
 // F7, bascule Garrison (D830/D836 point 4, AngelscriptInProgress.md): the server asks the script's rule through UHOLGarrisonBoard
-// (Script/Garrison/HOLGarrisonBoardScript.as -> HOLGarrison::Admitted of HOLGarrisonRules.as). The C++ rule stays until the proof, so the
-// test also checks that the board and the C++ rule give the same list.
+// (Script/Garrison/HOLGarrisonBoardScript.as -> HOLGarrison::Admitted of HOLGarrisonRules.as). The C++ copy of the rule is gone: the script
+// is the only source, and the values below are written by hand (the parity tests are removed).
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGarrisonServerBoardTest, "HeroesOfLiberty.Garrison.ServerBoard",
 	EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
 
@@ -32,7 +31,6 @@ bool FHOLGarrisonServerBoardTest::RunTest(const FString& Parameters)
 		TestTrue(TEXT("One free place left (2 of 3 inside): only the first admitted"), Board->AdmittedNow(UnitSlots, UnitKinds, 0, 3, 2) == TArray<int32>({0}));
 		TestEqual(TEXT("A building of nobody (slot -1) admits nobody"), Board->AdmittedNow(UnitSlots, UnitKinds, INDEX_NONE, 5, 0).Num(), 0);
 		TestEqual(TEXT("A kind outside 0..4 never enters"), Board->AdmittedNow({0}, {9}, 0, 5, 0).Num(), 0);
-		TestTrue(TEXT("The board and the C++ rule give the same list"), TwoPlaces == UHOLGarrisonRuleLibrary::AdmittedBySettings(UnitSlots, UnitKinds, 0, 2, 0));
 
 		// The path of the server's order (UHOLGarrisonSubsystem): kinds as HOLGarrison::EKind.
 		const TArray<HOLGarrison::EKind> Kinds = {HOLGarrison::EKind::MeleeInfantry, HOLGarrison::EKind::Siege, HOLGarrison::EKind::MeleeInfantry,
