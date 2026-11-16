@@ -3631,4 +3631,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D838** (Migration Angelscript, Q1 du plan ANALYSE-1116a, D836, 2026-11-16 21:3x, réponse de l'utilisateur) : les **tests de la simulation Mass** (25 fichiers, ~12 700 lignes) **restent en C++** : la simulation reste en C++ (D836), ses tests aussi ; pas de harnais de test de la simulation en script ; l'étape 6 du plan sort de la migration. Fusions de la séance de migration : avance de `main` en local à chaque fusion groupée verte (build PASS, tests verts) sans redemander ; rien n'est poussé.
 
-Prochain numéro : **D839**.
+**D839** (Langage de développement, D830, D836, 2026-11-16 21:5x, consigne de l'utilisateur) : le développement futur se fait **directement dans le bon langage** : Angelscript par défaut pour tout code neuf (règles, IA, interface, tests), C++ seulement par exception justifiée (Mass / appelé par pas, réplication, Slate, mesure, liaison à exposer), sans jumeau ; écrit dans `CLAUDE.md` (règle permanente) et `Tools\AutoJourney\brief_commun.md`. Les chantiers de fonctions de `Auto_Journey_File.md` marqués « (C++ : attend la migration D830) » se réécrivent donc en script quand la migration les débloque.
+
+Prochain numéro : **D840**.

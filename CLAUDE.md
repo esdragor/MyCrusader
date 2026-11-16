@@ -6,6 +6,15 @@ Les sessions (transcripts) de ce projet sont dans `C:\Users\baudo\ProjectPersoCl
 Ne **jamais** les chercher ni écrire de notes à leur sujet dans `C:\Users\baudo\.claude\projects` : cet emplacement n'est
 pas utilisé. Toute note de ce type va dans le projet (ce fichier, `EtapeDefini.md`, les `*InProgress.md`).
 
+## Langage de développement : Angelscript par défaut, C++ par exception (règle permanente, D830, D836, D839)
+
+Tout code NEUF s'écrit **directement en Angelscript** (règles, IA, interface, tests, outils de jeu) : plus de « C++ d'abord,
+migration ensuite ». Le C++ reste l'exception et s'écrit seulement pour une raison dite dans la tâche : processeur Mass ou
+code appelé par entité et par pas, réplication réseau, Slate / widget de base, mesure de performance, ou liaison à exposer au
+script. Une règle n'a qu'une seule source (pas de jumeau C++ et script) ; sens de chaque règle existante : D836 du `GDD.md`.
+Les tests de la simulation Mass restent en C++ (D838) ; tout autre test neuf s'écrit en script. Une tâche qui a besoin de C++
+neuf le regroupe dans le lot C++ de la séance (un build) au lieu d'ouvrir un build par fichier.
+
 ## EtapeDefini.md à chaque avancée (règle absolue)
 
 À chaque avancée (question tranchée, boucle ou sous-étape faite, commit même sur une branche de worktree, fusion dans

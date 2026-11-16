@@ -55,7 +55,7 @@
 #include "Simulation/HOLUnitSubsystem.h"
 #include "Simulation/HOLUnitView.h"
 #include "Sound/SoundBase.h"
-#include "Screens/HOLGameMenu.h"
+#include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLGridCell.h"
@@ -2835,7 +2835,7 @@ void UHOLGameScreen::HandleQueueItemClicked(const int32 Index)
 
 void UHOLGameScreen::HandleMenuClicked()
 {
-	UHOLGameMenu::Open(GetOwningPlayer());
+	UHOLGameMenuScreen::Open(GetOwningPlayer());
 }
 
 void UHOLGameScreen::HandleStatsClicked()

@@ -17,7 +17,7 @@
 #include "Match/HOLMatchStatsSubsystem.h"
 #include "Match/HOLPlayerColors.h"
 #include "TimerManager.h"
-#include "Screens/HOLGameMenu.h"
+#include "Screens/HOLGameMenuScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
 #include "Widgets/HOLRootLayout.h"
@@ -143,7 +143,7 @@ void UHOLStatsScreen::NativeOnInitialized()
 void UHOLStatsScreen::NativeOnActivated()
 {
 	Super::NativeOnActivated();
-	UHOLGameMenu::SetMatchMenuInput(GetOwningPlayer(), true, this);
+	UHOLGameMenuScreen::SetMatchMenuInput(GetOwningPlayer(), true, this);
 	// The screen comes back from the layout's pool with its buttons deselected: its tab and its series again as last shown.
 	SelectTab(TabIndex);
 	SelectSeries(SeriesIndex);
@@ -182,7 +182,7 @@ void UHOLStatsScreen::NativeOnDeactivated()
 	}
 	UpdatedHandle.Reset();
 	RefusedHandle.Reset();
-	UHOLGameMenu::SetMatchMenuInput(GetOwningPlayer(), false, this);
+	UHOLGameMenuScreen::SetMatchMenuInput(GetOwningPlayer(), false, this);
 	Super::NativeOnDeactivated();
 }
 
