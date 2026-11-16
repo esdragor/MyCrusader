@@ -17,6 +17,56 @@ Mode d'emploi 5/5 : nettoyage du 2026-11-10 (demande de l'utilisateur) : fichier
 6. Régénération unique des 7 cartes (TÂCHE À PART, Haldir) : `bSitesLaidByMaps = true`, styles de `Q-glade-style.md`, puis tests, crossings, hinterland_paths, aiduel.
 7. Mesures S1/S2 (machine calme, seules) : `biome_decor_cost.ps1 -Rounds 3` du décor générique des Biomes.
 
+## Migration D830/D835 (séance du 2026-11-16 soir)
+Plan de lancement, sous-étapes, fichiers verrouillés et risques : `Docs\Rapports\ETAPE0-1116-MIG.md` (étape 0). Seules ces lignes se lancent ce soir (Q2 = A) ; les lignes des sections par worktree ci-dessous attendent.
+Règles des lots : test en script d'abord, rouge VU par un bouchon qui compile (jamais par une fonction absente) ; test déjà vert = une valeur faussée une fois ; accord ou mêmes vecteurs tant que deux copies existent ; un jumeau = un seul worktree ; `Source\` interdit hors pilotes ; registre des tests dans le rapport de l'agent ; la bascule s'écrit dans « Lot C++ de fin de séance ».
+
+### Glorfindel — `net-playtest` — Pilote 1 : le chat (`ChatInProgress.md`)
+- [ ] (MIG-P1a, sans C++) tests C++ du chat réécrits en script : garde `CheckPost`, routage par matrice d'alliances, observateur (10 assertions du patch D806, patch NON appliqué) ; `Script\Chat\HOLChatRules.as`, `Script\Tests\HOLChatRules_Test.as` ; rouge : `Test_ChatGateRefusals` contre un bouchon qui renvoie Ok.
+- [ ] (MIG-P1b, C++ : pont appelable du serveur + suppression du jumeau, UN build) `ServerPostChat` appelle la règle du script ; `HOLChatRules.cpp/.h`, `Chat.Route` et `Chat.Gate` supprimés, `Chat.ThreadLine` gardé ; `HOLPlayerController.cpp`, `HOLChatTransportTests.cpp`, pont neuf `Match\HOLChatSubsystem`, `Script\Chat\HOLChatBoardScript.as` ; rouge : `Test_ChatBoardScriptAnswers` contre une sous-classe bouchon ; `git rm Docs\Patches\D806_cpp_twin_observer.patch`.
+- [ ] (MIG-P1c, sans C++) `quick_check -Parts tests,net` ; mesure : une valeur de la garde changée dans le `.as` sans build ; attentes de `netsig3` (`Tools\Tests\quick_check.ps1`) ; lignes C++ supprimées comptées.
+- [ ] (MIG-P1d, sans C++, branche jetable `try-as-rpc`, jamais fusionnée) une RPC `Server` et une `Client` écrites en script avec Iris ; réponse oui ou non, lignes du journal du serveur citées ; `Script\Dev\HOLScriptRpcProbe.as` (neuf) ; rouge : la ligne « reçu par le serveur » absente avant la RPC.
+
+### Galadriel — `galadriel-tab` — Pilote 2 : `HOLGameMenu` (`AngelscriptInProgress.md`, recette J8a.5)
+- [ ] (MIG-P2a, sans C++) relevé des liaisons (`UHOLGameMenu` dérive de `UHOLScreen`, pas de `UHOLScriptScreen`) puis les 5 règles de l'écran et leurs tests en script sur les vecteurs de `HOLGameMenuTests.cpp` ; `Script\UI\HOLGameMenuRules.as`, `Script\UI\HOLGameMenuRules_Test.as` (neufs) ; rouge : `Test_GameMenuCanSurrender` contre un bouchon.
+- [ ] (MIG-P2b, sans C++) écran du menu en script ; `Script\UI\HOLGameMenuScript.as` et son test (neufs) ; rouge : `Test_GameMenuScriptButtons` contre un écran vide ; sortie : liste des types à exposer.
+- [ ] (MIG-P2c, C++ : le HUD ouvre la classe du script + suppression de l'écran C++, UN build) `Screens\HOLGameMenu.cpp/.h` supprimés ; `HOLGameHUD.*`, `HOLGameScreen.*`, `HOLUIOpen.cpp`, `HOLEndBanner.cpp`, `HOLStatsScreen.cpp` ; rouge : scénario d'ouverture du menu ; si des liaisons manquent : pas de build, la ligne passe au lot C++.
+- [ ] (MIG-P2d, sans C++ d'abord) `HOLEndBanner` (215 + 80 lignes) par la même recette ; `Script\UI\HOLEndBannerScript.as` et son test (neufs) ; rouge : `Test_EndBannerWhich` contre un bouchon.
+
+### Arwen — `d751-root` — jumeaux Camp, UnitAbility, Diplomacy
+- [ ] (MIG-J-Camp, sans C++) portage de `HOLCampRulesTests.cpp` (2 tests purs, 135 lignes) en script, relevé des appelants (`HOLCampSubsystem.h`), ligne de bascule ; `Script\Neutrals\HOLCampRules.as`, `HOLCampRules_Test.as` ; rouge : `Test_CampOwner`.
+- [ ] (MIG-J-UnitAbility, sans C++) accord des constantes avec `HOLUnitAbilityRules.h` (appelé par Mass : le C++ reste) ; `Script\Units\HOLUnitAbilityRules.as`, `Script\Tests\HOLUnitAbilityRules_Test.as`, `Tools\Tests\unit_ability_accord_test.py` (neuf) ; rouge : une constante faussée.
+- [ ] (MIG-J-Diplomacy, sans C++) portage de `HOLDiplomacyRulesTests.cpp` (1 test pur, 162 lignes) ; `Script\Diplomacy\HOLDiplomacyRules.as`, `HOLDiplomacyRules_Test.as` ; rouge : `Test_DiplomacyRulesVectors`.
+
+### Celeborn — `hero-j8-close` — jumeaux Relay, Garrison
+- [ ] (MIG-J-Relay, sans C++) portage de `HOLRelayRingTests.cpp` (39 lignes) et accord étendu par `HOLRelayLibrary` ; `Script\Relays\HOLRelayRules.as`, `Script\Tests\HOLRelayRules_Test.as` ; rouge : `Test_RelayRing`, sinon un vecteur faussé de l'accord.
+- [ ] (MIG-J-Garrison, sans C++) parité étendue à chaque type d'unité par `HOLGarrisonRuleLibrary` ; `Script\Garrison\HOLGarrisonRules.as`, `Script\Tests\HOLGarrisonRules_Test.as`, `HOLGarrisonParity_Test.as` ; rouge : `Test_GarrisonScriptAndCppAdmitTheSame` avec un vecteur faussé.
+
+### Elrond — `tiers` — jumeaux UnitTier, Technology
+- [ ] (MIG-J-UnitTier, sans C++) accord étendu à toute la table et aux paliers 0 à 3 par `HOLUnitTierRulesLibrary`, relevé des appelants (`HOLProductionSubsystem.cpp` l. 446-448, `HOLGameScreen.cpp`) ; `Script\Units\HOLUnitTierRules.as`, `Script\Tests\HOLUnitTierRules_Test.as` ; rouge : une ligne de la table faussée.
+- [ ] (MIG-J-Technology, sans C++) portage de `Technologies.Rules` (`HOLTechnologyTableTests.cpp`) par `HOLTechnologyCheckLibrary` (appelé par Mass : le C++ reste) ; `Script\Technologies\HOLTechnologyRules.as`, `Script\Tests\HOLTechnologyRules_Test.as` ; rouge : `Test_TechnologyRulesVectors`.
+
+### Faramir — `fog` — jumeau Siege (WIP D827/D828 de `fog` intouché ; fusion par cherry-pick)
+- [ ] (MIG-J-Siege-a, sans C++) portage de `Siege.TechnologyHealth`, `Siege.Tiers`, `Siege.Technologies` (`HOLSiegeTests.cpp`) ; `Script\Siege\HOLSiegeRules.as`, `HOLSiegeRules_Test.as` ; commits limités à `Script\` et aux docs ; rouge : `Test_SiegeTechnologyHealth`.
+- [ ] (MIG-J-Siege-b, sans C++) suite : `Siege.Combat`, `Siege.Table` ; mêmes fichiers ; rouge : `Test_SiegeCombatVectors`.
+
+### Haldir — `maps` — jumeaux Terrain, Site
+- [ ] (MIG-J-Terrain, sans C++) accord étendu à la route, à la forêt et au gué par `HOLTerrainLibrary` ; `Script\Terrain\HOLTerrainRules.as`, `HOLTerrainRules_Test.as` ; rouge : `Test_TerrainServerAndScriptRulesAgree` étendu (rouge réel si le C++ n'a pas la forêt : noter l'écart, ne commiter que du vert).
+- [ ] (MIG-J-Site, sans C++) accord étendu par `HOLSiteRulesLibrary`, relevé des appelants (`HOLSiteSubsystem.h`) ; `Script\Sites\HOLSiteRules.as`, `Script\Tests\HOLSiteRules_Test.as` ; rouge : `Test_SiteScriptAndSimulationRulesAgree` avec un vecteur faussé.
+
+### Sauron — `visual` — jumeaux ExplorationXP, Deploy, Market
+- [ ] (MIG-J-ExplorationXP, sans C++) accord python vu rouge puis vert et présent dans `quick_check`, relevé de la fréquence d'appel (`HOLVisionSubsystem.h`) ; `Script\Heroes\HOLExplorationXPRules.as`, `HOLExplorationXPRules_Test.as`, `Tools\Tests\exploration_xp_accord_test.py` ; rouge : un préréglage faussé dans le `.as`.
+- [ ] (MIG-J-Deploy, sans C++) registre nom à nom des 9 tests de `HOLDeployRulesTests.cpp` contre les 9 du script, vecteurs manquants portés ; `Script\Siege\HOLDeployRules.as`, `Script\Tests\HOLDeployRules_Test.as` ; rouge : `Test_DeployEveryCombination`.
+- [ ] (MIG-J-Market, sans C++) portage des parts pures `Market.Rules` et `Market.Tribute` (`HOLMarketRulesTests.cpp`) ; `Script\Economy\HOLMarketRules.as`, `HOLMarketRules_Test.as` ; rouge : `Test_MarketTributeVectors`.
+
+### Lot C++ de fin de séance (un agent, un worktree, UN build ; proposé : avec la fusion groupée, à 21:50)
+- [ ] (MIG-CPP, C++ : bascules préparées par les lots ci-dessus) au plus 3 bascules dont la ligne est complète à 21:45 (fichiers, appelants, accord vert, registre), un commit par bascule ; le reste ouvre la prochaine séance ; `quick_check -Parts tests,net`.
+- (les agents ajoutent ici une ligne `[ ]` par bascule : règle, sens proposé, fichiers C++ à changer ou supprimer, test d'accord vert)
+
+### Lignes périmées vues à l'étape 0 (à confirmer par la session principale)
+- Glorfindel « jumeau C++ HOLChatRules.cpp » (D806) : remplacée par MIG-P1 ; la DLL a été reconstruite à 19:23, « DLL à reconstruire » ne vaut plus.
+- Galadriel D804 « a11ed2a ... pas dans main » : `galadriel-tab` est à +0 de `main`.
+
 ## Arwen — `d751-root` — Audio, IA, Neutres
 - [ ] (D834, réponse de l utilisateur 2026-11-16 17:2x ; Angelscript, SANS C++) élire l Écurie = s_horse6_snort dans HOLAudioTable.as (comme Champ de tir B et Caserne A en 89e03a6), test AS rouge d abord ; les sons sont sous /Game/Audio/Soft (galadriel-tab).
 - [ ] (C++, D824 Q-stealth Q1 = A, Q3 = B) furtivite : distance 800 cm (defaut) ; aspect = bosquet d'arbres bas + contour discret au sol au survol ou quand une unite du joueur y entre, ses unites a demi transparentes ; branchement vue par camp ; `StealthInProgress.md` (C++ : attend la migration D830)
