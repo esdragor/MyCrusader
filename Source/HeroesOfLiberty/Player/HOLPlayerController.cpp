@@ -861,6 +861,7 @@ namespace UE::HeroesOfLiberty::Player
 					UE_LOG(LogHOLMatch, Display, TEXT("Aura rings: %s"), *Markers->DescribeAuraRings());
 					UE_LOG(LogHOLMatch, Display, TEXT("Relay rings: %s"), *Markers->DescribeRelayRings());
 					UE_LOG(LogHOLMatch, Display, TEXT("Duel rings: %s"), *Markers->DescribeDuelRings());
+					UE_LOG(LogHOLMatch, Display, TEXT("Signal marks: %s"), *Markers->DescribeSignalMarks());
 				}
 			}
 		}));
@@ -5212,6 +5213,11 @@ void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, con
 }
 
 void AHOLPlayerController::ClientReceiveSignal_Implementation(const int32 Sender, const int32 Kind, const FVector Location)
+{
+	ReceiveSignal(Sender, Kind, Location);
+}
+
+void AHOLPlayerController::ReceiveSignal(const int32 Sender, const int32 Kind, const FVector& Location)
 {
 	++NumReceivedSignals;
 	UE_LOG(LogHOLMatch, Display, TEXT("Signal: received kind %d from slot %d at (%.0f, %.0f)"), Kind, Sender, Location.X, Location.Y);
