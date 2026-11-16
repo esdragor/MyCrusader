@@ -8,6 +8,15 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 **Relevé du 2026-11-15** : voir Docs\ReleveGDD_2026-11-15.md (état réel de A1-A4 et B1-B6, branchements C++ à faire, questions en attente). L'ancien relevé du 2026-11-12 est archivé dans Docs\Archive\Auto_Journey_Jour_Chapitres_GDD_releve_2026-11-12_archive_2026-11-15.md.
 
+## Agents du 2026-11-16
+
+Séance de MIGRATION (D830, D835 : Q2 = A, confirmée à 19:5x) lancée à 19:48, fin 23:00, AUTONOME, fusion groupée acceptée (sans push). Veilleur toutes les 30 min (:13 et :43), alarme de clôture 22:45. Plan : Docs\Rapports\ANALYSE-1116a.md. Exception : nettoyage 0a à 3 agents (dossier Retours\ archivé par BILAN-1116 à 17:5x). sync_worktrees 19:52 sans -NoBuild : aucun build nécessaire, Get-StaleBinaryProblem vide dans les 8 worktrees (19:5x).
+
+| Agent | id | worktree | tâche | C++ | lancé |
+|---|---|---|---|---|---|
+| NETTOYAGE-0a x3 (finis 19:5x-19:58) | a07ebbf5c80c06df5, a947ebe998cceabf6, ac3589e2f5e727a08 | copie principale | Jour/Retours 85faaa3 ; procédure/check-list 9bed923 (6 lignes archivées) ; file 8f16bc5 (24 lignes archivées, 25 marquées « C++ : attend la migration D830 ») | non | 19:50 |
+| ETAPE0-1116-MIG (Fable) | ae68889f866fac3d9 | lecture seule + file | plan de lancement de la migration : Docs\Rapports\ETAPE0-1116-MIG.md, section « Migration D830/D835 » de la file | non | 20:0x |
+
 ## Résumé de la séance du 2026-11-16 après-midi
 
 - Séance interactive 14:46 -> ~18:00, 27 agents, fusion groupée FUSION-1116a, rien poussé : main 9c9d22b -> 3d3cb3c, tests 1326/1328 (2 rouges connus D831 : NomadFirstForum, NomadReplicated).
