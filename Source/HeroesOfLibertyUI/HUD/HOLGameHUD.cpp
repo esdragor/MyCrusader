@@ -16,7 +16,7 @@
 #include "Match/HOLGameState.h"
 #include "Match/HOLPlayerState.h"
 #include "Player/HOLGameMenuRules.h"
-#include "Screens/HOLEndBanner.h"
+#include "Screens/HOLEndBannerScreen.h"
 #include "TimerManager.h"
 #include "Player/HOLPlayerController.h"
 #include "Screens/HOLGameMenuScreen.h"
@@ -178,7 +178,7 @@ void AHOLGameHUD::RefreshEndBanner()
 		EndBanner->SetResult(Due);
 		return;
 	}
-	EndBanner = UHOLEndBanner::Open(PlayerController, Due);
+	EndBanner = UHOLEndBannerScreen::Open(PlayerController, Due);
 	if (EndBanner && Due == EHOLEndBanner::MatchOver)
 	{
 		// M6-Q10: the spectator's banner names the winners (the lobby's names, an AI's « IA Difficile 3 », else Joueur N).

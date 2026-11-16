@@ -6,7 +6,7 @@
 
 class AHOLGameState;
 class AHOLPlayerController;
-class UHOLEndBanner;
+class UHOLEndBannerScreen;
 enum class EHOLEndBanner : uint8;
 class UFont;
 class UHOLCheatPanel;
@@ -77,7 +77,7 @@ private:
 	TObjectPtr<UHOLScenarioPanel> ScenarioPanel;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UHOLEndBanner> EndBanner;
+	TObjectPtr<UHOLEndBannerScreen> EndBanner;
 
 	TWeakObjectPtr<AHOLGameState> WatchedGameState;
 	FTimerHandle WatchVictoryTimer;
