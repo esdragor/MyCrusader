@@ -7,7 +7,7 @@
 #include "HeroesOfLibertyUILog.h"
 #include "Kismet/KismetInternationalizationLibrary.h"
 #include "Misc/FileHelper.h"
-#include "Screens/HOLGameMenu.h"
+#include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLMultiplayerScreen.h"
 #include "Screens/HOLNewGameScreen.h"
 #include "Screens/HOLSettingsScreen.h"
@@ -82,7 +82,7 @@ namespace UE::HeroesOfLiberty::UI
 			}
 			else if (Screen == TEXT("GameMenu"))
 			{
-				if (!UHOLGameMenu::Open(PlayerController))
+				if (!UHOLGameMenuScreen::Open(PlayerController))
 				{
 					UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Open: no match to open the in-game menu over"));
 					return;
@@ -97,7 +97,7 @@ namespace UE::HeroesOfLiberty::UI
 			}
 			else if (Screen == TEXT("Surrender"))
 			{
-				if (!UHOLGameMenu::AskToSurrender(PlayerController))
+				if (!UHOLGameMenuScreen::AskToSurrender(PlayerController))
 				{
 					UE_LOG(LogHOLUI, Warning, TEXT("hol.UI.Open: no in-game menu open, or surrender not offered"));
 					return;

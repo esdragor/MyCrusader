@@ -7,7 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Net/HOLManagerClient.h"
 #include "Player/HOLGameMenuRules.h"
-#include "Screens/HOLGameMenu.h"
+#include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "Widgets/HOLButton.h"
@@ -33,7 +33,7 @@ UHOLEndBanner* UHOLEndBanner::Open(APlayerController* PlayerController, const EH
 	{
 		Modal->DeactivateWidget();
 	}
-	if (UHOLGameMenu* Menu = UHOLGameMenu::Find(PlayerController))
+	if (UHOLGameMenuScreen* Menu = UHOLGameMenuScreen::Find(PlayerController))
 	{
 		Menu->DeactivateWidget();
 	}
@@ -167,7 +167,7 @@ void UHOLEndBanner::NativeOnInitialized()
 void UHOLEndBanner::NativeOnActivated()
 {
 	Super::NativeOnActivated();
-	UHOLGameMenu::SetMatchMenuInput(GetOwningPlayer(), true, this);
+	UHOLGameMenuScreen::SetMatchMenuInput(GetOwningPlayer(), true, this);
 	// From a lobby (R4.8): « Retour au salon » and « Quitter vers la liste », nobody sent back by himself (M6-Q7
 	// revised); the spectator's banner (M6-Q10), from a lobby or the list's « Regarder », has no way back to a lobby he
 	// is not in, but quits to the list as well.
@@ -196,7 +196,7 @@ void UHOLEndBanner::RefreshWayBack()
 
 void UHOLEndBanner::NativeOnDeactivated()
 {
-	UHOLGameMenu::SetMatchMenuInput(GetOwningPlayer(), false, this);
+	UHOLGameMenuScreen::SetMatchMenuInput(GetOwningPlayer(), false, this);
 	Super::NativeOnDeactivated();
 }
 
