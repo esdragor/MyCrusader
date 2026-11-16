@@ -66,6 +66,9 @@ namespace HOLAudioCandidates
 		Add(List, "Select.BuildingSiege", "s_stone3_block,s_stone3_mine_firm,s_stone3_knock,s_stone3_door_heavy,s_stone3_punch,s_stone3_drum_firm,s_stone3_double,s_stone3_gate,s_stone3_mallet,s_stone3_slab");
 		Add(List, "Select.BuildingForum", "s_metal3_pot_low,s_metal3_hammer_double,s_metal3_plate,s_metal3_pot,s_metal3_latch,s_metal3_click,s_metal3_tin,s_metal3_blade,s_metal3_mallet_firm,s_metal3_gong_short");
 		Add(List, "Select.BuildingForge", "s_stone3_block,s_stone3_mine_firm,s_stone3_knock,s_stone3_door_heavy,s_stone3_punch,s_stone3_drum_firm,s_stone3_double,s_stone3_gate,s_stone3_mallet,s_stone3_slab");
+		// D832 (2026-11-16): the round 6 lists the user chose from (Range B, Barracks A); the Range round 6 had five variants, not ten.
+		Add(List, "Select.BuildingRange", "s_shot5_bow,s_shot6_bow_full,s_shot6_bow_lp6k,s_shot6_bow_lp3k,s_shot6_bow_lp1k5");
+		Add(List, "Select.BuildingBarracks", "s_barr6_draw_a,s_barr6_draw_b,s_barr6_draw_c,s_barr6_sheath_a,s_barr6_sheath_b,s_barr6_two_blades,s_barr6_drum,s_barr6_drum_double,s_barr6_horn,s_barr6_drum_blade");
 	}
 
 	// The ten candidates of each FAMILY of buildings (AudioBuildingsInProgress.md B4, the user's answer Q3 = A of 2026-11-07: one selection sound per
@@ -90,6 +93,9 @@ namespace HOLAudioCandidates
 		// (Tools/Audio/make_round6_candidates.py, test round6_candidates_test.py). Nothing elected into HOLAudioTable.as before the user hears them.
 		Add(List, "Building.Range", "s_shot5_bow,s_shot6_bow_full,s_shot6_bow_lp6k,s_shot6_bow_lp3k,s_shot6_bow_lp1k5");
 		Add(List, "Building.Stable", "s_horse5_vocal_b,s_horse6_vocal_full,s_horse6_vocal_lp6k,s_horse6_vocal_lp3k,s_horse6_vocal_lp1k5");
+		// D832 REGLAGE (2026-11-16): the user wants Stable B WITHOUT the neigh of its start, only the snort ("pfff") of its end. A = B cut (the snort
+		// alone, make_round6_candidates.py SNORT), B = B whole, to compare (scenario audio_compare_buildings_stable_cut).
+		Add(List, "Building.CutStable", "s_horse6_snort,s_horse6_vocal_full");
 	}
 
 	// The lists, built at each call (script has no mutable global).

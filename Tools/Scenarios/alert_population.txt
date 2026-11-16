@@ -1,4 +1,4 @@
-# D804 B / D202 (GALADRIEL-1116b) : population pleine en partie : quand ta population atteint le plafond, la ligne discrete "Population pleine" entre au fil de messages (en haut a droite, muette, D449), une fois (pas de nouvelle ligne avant 30 s). Geste reel : vrai clic sur ton forum (hol.Mouse.Click, pixels du cadre), puis la vraie touche A (hol.UI.Key, evenement clavier Slate) produit le 10e Paysan. Plain, toi seul, forum = 10 places, 9 Paysans offerts. 1 min environ.
+# D829 (BUG de l'utilisateur, SAURON-1116e) / D202 : la population se verifie a la FIN de la production. 9 Paysans (9 / 10), deux Paysans en file (vraie touche A deux fois) : le 1er sort (10 / 10), le 2e va a 100 % et NE SORT PAS ; la file dit "Population pleine" et la ligne "Population pleine" entre au fil (en haut a droite, muette, D449). Geste reel : vrai clic sur ton forum, puis la vraie touche A, deux fois. Plain, toi seul. 1 min 30 environ.
 waitlog Camera above the start of slot 0
 r.SetRes 1920x1080w
 hol.Cheat.Resources 500
@@ -19,7 +19,7 @@ waitlog Camera height 3000 cm
 wait 1
 hol.HUD.Report
 note Population 9 / 10 : 9 Paysans, ton forum loge 10. Le fil de messages (en haut a droite) est vide.
-waitkey Entree : clic sur ton forum, puis la touche A (Paysan)
+waitkey Appuie sur Entree et ne touche plus a rien : le scenario clique lui-meme ton forum et appuie lui-meme deux fois sur A
 # 1. Geste reel : clic gauche sur le forum (au centre de l'ecran, la camera est au-dessus de lui), puis la vraie touche A.
 hol.Mouse.Click 960 540
 frames 10
@@ -28,12 +28,17 @@ waitlog HUD cells: A:
 hol.UI.Key A 0 0.1
 waitlog Key pressed: A
 waitlog Production: slot 0 queued
-# 2. Le Paysan mis en file reserve sa place : population 10 / 10 tout de suite, la ligne "Population pleine" entre au fil au Refresh
-# suivant du HUD (4 fois par seconde). 1er jet (15:40) : capture apres la sortie du Paysan (20 s) : la ligne (~8 s, D446) etait deja partie.
+frames 10
+hol.UI.Key A 0 0.1
+waitlog Production: slot 0 queued
+# 2. D829 : en production, un Paysan ne prend pas de place (9 / 10). Le 1er sort (10 / 10) ; le 2e va a 100 % et attend une place :
+# la file dit "Population pleine", la ligne "Population pleine" entre au fil (journal du HUD ci-dessous), elle vit ~8 s (D446).
+waitlog Production: Peasant of slot 0 done
+waitlog production held at 100 %
 wait 1
 hol.HUD.Report
 waitlog Population pleine]
 capture alert_population
 hol.Test.Sanity
-note La population est pleine (10 / 10) : la ligne "Population pleine" est entree au fil de messages, en haut a droite, sans son.
-note Essaie aussi : construis une maison (+10 places), remplis-la encore : la ligne revient (au plus une fois par 30 s).
+note Population 10 / 10 : le 2e Paysan est a 100 % et ne sort pas, la file dit "Population pleine", la ligne "Population pleine" est au fil (en haut a droite).
+note Essaie aussi : tue un Paysan (ou construis une maison) : le Paysan a 100 % sort aussitot.

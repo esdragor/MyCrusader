@@ -218,7 +218,25 @@ private:
 	/** "1 | (x, y) r600 slots 0-1 style 1" or "none": what UpdateDuelRings drew last. */
 	FString DuelRingsDescription = TEXT("none");
 
+	/**
+	 * D825 (the user's trial of signals_altclick): the received signals' marks in the world, at their point, while they live (5 s, D784):
+	 * a diamond on the ground with a cross in it, in the kind's colour (D821). Placeholder shape (Placeholders.txt).
+	 */
+	UPROPERTY(Transient)
+	TObjectPtr<UInstancedStaticMeshComponent> SignalMarks;
+	/** "1 | kind 1 (x, y)" or "none": what UpdateSignalMarks drew last. */
+	FString SignalMarksDescription = TEXT("none");
+
 public:
+	/** D825: draws the controller's living signals (GetActiveSignals) on the ground; each Tick, and a test calls it. */
+	void UpdateSignalMarks();
+	/** The signals' ground marks drawn (hol.Select.Report's "Signal marks:" line, logged at each change). */
+	const FString& DescribeSignalMarks() const { return SignalMarksDescription; }
+	/** Their instances (SignalMarkPieces per signal), for the test. */
+	const UInstancedStaticMeshComponent* GetSignalMarks() const { return SignalMarks; }
+	/** The pieces of one signal's mark: the diamond's frame and the cross's two strips. */
+	static constexpr int32 SignalMarkPieces = 3;
+
 	/** The duel circles drawn (hol.Select.Report's "Duel rings:" line). */
 	const FString& DescribeDuelRings() const { return DuelRingsDescription; }
 	/** The player's aura circles drawn (hol.Select.Report's "Aura rings:" line). */

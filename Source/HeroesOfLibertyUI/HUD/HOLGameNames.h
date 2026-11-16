@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 
 struct FHOLBuildingTypeRow;
+struct FHOLGridCommand;
 struct FHOLSourceTypeRow;
 struct FHOLTechnologyRow;
 struct FHOLUnitTypeRow;
@@ -22,4 +23,11 @@ namespace HOLGameNames
 	/** T8: a technology's name (a table's DisplayName is not a localized text), and its effect, one line by statistic ("Récolte du bois +10 %"). */
 	HEROESOFLIBERTYUI_API FText GetTechnologyName(FName TypeName, const FHOLTechnologyRow* Row);
 	HEROESOFLIBERTYUI_API FText GetTechnologyEffect(const FHOLTechnologyRow& Row);
+	/** SP3: the name of Option (0 or 1) of the specialization Tier (provisional Â« Voie A / B du palier N Â», Placeholders.txt; GDD 13 per faction to come). */
+	HEROESOFLIBERTYUI_API FText GetSpecializationName(int32 Tier, int32 Option);
+	/**
+	 * SP3: what a specialization cell of the Forum's grid writes (Specialize / CancelSpecialization): the option's name; running, two
+	 * short lines (the seconds left, then Â« Annuler Â»), the option's name in its tooltip (ELROND-1115i: four lines overflowed the cell).
+	 */
+	HEROESOFLIBERTYUI_API FText GetSpecializationCellText(const FHOLGridCommand& Command);
 }

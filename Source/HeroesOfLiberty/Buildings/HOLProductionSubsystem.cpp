@@ -495,10 +495,9 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 	// L2: the cost, the places and the time of an item are its payer's faction's (FindTypeRow(type, faction)), the building's owner.
 	const auto GetCostOfPayer = [this](const int32 Payer) { return [this, Payer](const FName TypeName) { return GetCost(TypeName, Payer); }; };
 
-	// Each player's cap (its buildings) and the places its units in production hold.
+	// Each player's cap (its buildings). D829: a unit in production holds no place; it takes one when it comes out.
 	TArray<AHOLBuilding*> Buildings;
 	TMap<int32, int32> Caps;
-	TMap<int32, int32> Started;
 	for (FHOLBuildingIterator It(World); It; ++It)
 	{
 		AHOLBuilding* Building = *It;
@@ -506,7 +505,6 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		Buildings.Add(Building);
 		// Only a finished building gives places (D312): a house's foundation gives none.
 		Caps.FindOrAdd(Building->GetOwnerPlayer()) += Type ? HOLConstruction::GetPopulationProvided(Type->PopulationProvided, Building->IsFinished()) : 0;
-		Started.FindOrAdd(Building->GetOwnerPlayer()) += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOfPayer(Building->GetOwnerPlayer()));
 	}
 	for (const TPair<int32, int32>& Cheat : CheatPopulation)
 	{
@@ -523,7 +521,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 	TMap<int32, int32> FreePopulation;
 	for (const TPair<int32, int32>& Cap : Caps)
 	{
-		const int32 Used = (UnitPopulation.IsValidIndex(Cap.Key) ? UnitPopulation[Cap.Key] : 0) + Started.FindRef(Cap.Key);
+		const int32 Used = UnitPopulation.IsValidIndex(Cap.Key) ? UnitPopulation[Cap.Key] : 0;
 		FreePopulation.Add(Cap.Key, HOLProduction::GetPopulationCap(Cap.Value) - Used);
 	}
 
@@ -589,7 +587,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		}
 	}
 
-	// The population each player sees: its units (the births just asked for included) and its units in production. Every
+	// The population each player sees: its units (the births just asked for included; D829: none for its units in production). Every
 	// player, not only those with a building: one left without any (a defeated one's collapse, D358) shows 0 / 0, not the
 	// population it had before (seen at the trial of victory_surrender).
 	Units->GetPopulationByOwner(UnitPopulation);
@@ -606,15 +604,7 @@ void UHOLProductionSubsystem::AdvanceQueues(const int64 StepIndex)
 		{
 			continue;
 		}
-		int32 InProduction = 0;
-		for (const AHOLBuilding* Building : Buildings)
-		{
-			if (Building->GetOwnerPlayer() == PlayerIndex)
-			{
-				InProduction += HOLProduction::GetStartedPopulation(Building->GetProductionQueue(), GetCostOfPayer(PlayerIndex));
-			}
-		}
-		const int32 Used = (UnitPopulation.IsValidIndex(PlayerIndex) ? UnitPopulation[PlayerIndex] : 0) + InProduction;
+		const int32 Used = UnitPopulation.IsValidIndex(PlayerIndex) ? UnitPopulation[PlayerIndex] : 0;
 		PlayerState->SetPopulation(Used, HOLProduction::GetPopulationCap(Caps.FindRef(PlayerIndex)));
 	}
 }

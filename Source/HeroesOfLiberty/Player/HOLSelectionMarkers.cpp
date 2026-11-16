@@ -230,6 +230,15 @@ namespace UE::HeroesOfLiberty::SelectionMarkers
 		TEXT("hol.Duel.RingStyle"),
 		1,
 		TEXT("Look of the duel circle on the ground: 0 thin white, 1 thick red (default), 2 thick, half in each duellist's colour."));
+	/**
+	 * D825 (the user's trial of signals_altclick): a received signal's mark on the ground, at its point: the diamond's side (cm) and
+	 * its strokes' width. Placeholder shape (Placeholders.txt « Icones de signaux »).
+	 */
+	TAutoConsoleVariable<float> CVarSignalGroundMarkSize(
+		TEXT("hol.Signal.GroundMarkSize"),
+		500.f,
+		TEXT("D825: side (cm) of a received signal's mark on the ground (a diamond with a cross, the kind's colour), 5 s at its point."));
+	constexpr double SignalMarkStroke = 45.0;
 	constexpr double DuelRingThinWidth = 14.0;
 	constexpr double DuelRingThickWidth = 30.0;
 	const FLinearColor DuelRingWhite(0.85f, 0.85f, 0.85f);
@@ -334,6 +343,10 @@ AHOLSelectionMarkers::AHOLSelectionMarkers()
 	RelayRings = MakeMarkerComponent(*this, TEXT("RelayRings"));
 	AuraRings = MakeMarkerComponent(*this, TEXT("AuraRings"));
 	DuelRings = MakeMarkerComponent(*this, TEXT("DuelRings"));
+	SignalMarks = MakeMarkerComponent(*this, TEXT("SignalMarks"));
+	// A signal is seen through the fog (as the orders' lines, F7.3): the custom stencil the fog's post process leaves unfogged.
+	SignalMarks->SetRenderCustomDepth(true);
+	SignalMarks->SetCustomDepthStencilValue(1);
 	for (int32 Index = 0; Index < NumGhostEdges; ++Index)
 	{
 		GhostEdges.Add(MakeFlagComponent(*this, *FString::Printf(TEXT("GhostEdge%d"), Index)));
@@ -373,6 +386,8 @@ void AHOLSelectionMarkers::Init(AHOLPlayerController* InController)
 	AuraRings->SetMaterial(0, Frames->GetMaterial(0));
 	DuelRings->SetStaticMesh(Plane);
 	DuelRings->SetMaterial(0, Frames->GetMaterial(0));
+	SignalMarks->SetStaticMesh(Plane);
+	SignalMarks->SetMaterial(0, Frames->GetMaterial(0));
 
 	UMaterialInterface* Flat = LoadMaterial(FlatMaterialPath);
 	CubeMesh = Cube;
@@ -470,6 +485,7 @@ void AHOLSelectionMarkers::Tick(const float DeltaSeconds)
 	UpdateRelayRings();
 	UpdateAuraRings();
 	UpdateDuelRings();
+	UpdateSignalMarks();
 	UpdateFrame();
 	UpdateFlag();
 	UpdateGhost();
@@ -861,6 +877,44 @@ void AHOLSelectionMarkers::UpdateDuelRings()
 	}
 	DuelRingsDescription = Circles == 0 ? FString(TEXT("none")) : FString::Printf(TEXT("%d |%s"), Circles, *Line);
 	SetInstances(*DuelRings, Transforms, CustomData);
+}
+
+void AHOLSelectionMarkers::UpdateSignalMarks()
+{
+	using namespace UE::HeroesOfLiberty::SelectionMarkers;
+
+	TArray<FTransform> Transforms;
+	TArray<float> CustomData;
+	FString Line;
+	const AHOLPlayerController* PlayerController = Controller.Get();
+	// The living ones only (GetActiveSignals: hol.Signal.IconSeconds of the world's time, D784), as the minimap's squares.
+	const TArray<FHOLReceivedSignal> Signals = PlayerController ? PlayerController->GetActiveSignals() : TArray<FHOLReceivedSignal>();
+	const double Size = FMath::Max(100.0, static_cast<double>(CVarSignalGroundMarkSize.GetValueOnGameThread()));
+	const double Stroke = FMath::Min(SignalMarkStroke, Size / 4.0);
+	const FQuat Diamond(FVector::UpVector, UE_DOUBLE_PI / 4.0);
+	for (const FHOLReceivedSignal& Signal : Signals)
+	{
+		// At the signal's point (the ground the Alt + click hit), just above it.
+		const FVector Centre = Signal.Location + FVector(0.0, 0.0, GroundOffset);
+		// The diamond: a square frame turned 45 degrees (the buildings' frames are square to the axes).
+		Transforms.Add(FTransform(Diamond, Centre, FVector(Size / ShapeSize, Size / ShapeSize, 1.0)));
+		AddCustomData(CustomData, Signal.Color, Stroke * 2.0 / Size);
+		// The cross: two filled strips along the diamond's diagonals, corner to corner.
+		const double Diagonal = Size * UE_DOUBLE_SQRT_2;
+		Transforms.Add(FTransform(FQuat::Identity, Centre, FVector(Diagonal / ShapeSize, Stroke / ShapeSize, 1.0)));
+		AddCustomData(CustomData, Signal.Color, 1.0);
+		Transforms.Add(FTransform(FQuat::Identity, Centre, FVector(Stroke / ShapeSize, Diagonal / ShapeSize, 1.0)));
+		AddCustomData(CustomData, Signal.Color, 1.0);
+		Line += FString::Printf(TEXT(" kind %d (%.0f, %.0f)"), Signal.Kind, Signal.Location.X, Signal.Location.Y);
+	}
+	SetInstances(*SignalMarks, Transforms, CustomData);
+	const FString Description = Signals.IsEmpty() ? FString(TEXT("none")) : FString::Printf(TEXT("%d |%s"), Signals.Num(), *Line);
+	if (Description != SignalMarksDescription)
+	{
+		// For the scenarios (signals_altclick waits on it): each change of the marks drawn.
+		UE_LOG(LogHOLMatch, Display, TEXT("Signal ground marks: %s"), *Description);
+		SignalMarksDescription = Description;
+	}
 }
 
 bool AHOLSelectionMarkers::ShowsHealthBar(const bool bSelected, const bool bFullHealth)

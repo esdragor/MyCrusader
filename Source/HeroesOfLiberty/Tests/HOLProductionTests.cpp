@@ -73,33 +73,28 @@ bool FHOLProductionAdvanceTest::RunTest(const FString& Parameters)
 	HOLProduction::TryEnqueue(Queue, Peasant, Cost, 5, Stock);
 	TArray<FName> Done;
 
-	// Population full: the head waits, as in AoE.
+	// D829: the head starts whatever the population (no place taken while in production); the next one waits behind it.
 	int32 FreePopulation = 0;
 	HOLProduction::Advance(Queue, 10, GetCost, FreePopulation, Done);
-	TestFalse(TEXT("waits while the population is full"), Queue[0].IsStarted());
-	TestEqual(TEXT("no progress while waiting"), HOLProduction::GetProgress(Queue[0], 10.0, Cost.BuildSteps), 0.f);
-
-	// Room for one: the head starts and holds its place; the next one does not start.
-	FreePopulation = 1;
-	HOLProduction::Advance(Queue, 11, GetCost, FreePopulation, Done);
-	TestEqual(TEXT("head started at step 11"), Queue[0].StartStep, int64(11));
-	TestEqual(TEXT("its place is taken"), FreePopulation, 0);
+	TestEqual(TEXT("head started at step 10, population full"), Queue[0].StartStep, int64(10));
+	TestEqual(TEXT("no place taken while in production"), FreePopulation, 0);
 	TestFalse(TEXT("only the head is produced"), Queue[1].IsStarted());
-	TestEqual(TEXT("started items hold their places"), HOLProduction::GetStartedPopulation(Queue, GetCost), 1);
-	TestEqual(TEXT("half done two steps later"), HOLProduction::GetProgress(Queue[0], 13.0, Cost.BuildSteps), 0.5f);
+	TestEqual(TEXT("half done two steps later"), HOLProduction::GetProgress(Queue[0], 12.0, Cost.BuildSteps), 0.5f);
+	TestFalse(TEXT("not waiting for room before 100 %"), HOLProduction::IsWaitingForRoom(Queue[0], 13.0, Cost.BuildSteps));
 
-	// Not done before BuildSteps steps.
-	FreePopulation = 5;
+	// D829: done at step 14 but no place: it stays at 100 %, nothing comes out, the next one does not start.
 	HOLProduction::Advance(Queue, 14, GetCost, FreePopulation, Done);
-	TestEqual(TEXT("not done after 3 steps"), Done.Num(), 0);
+	TestEqual(TEXT("done but no place: nothing comes out"), Done.Num(), 0);
+	TestTrue(TEXT("it waits at 100 % for a place"), HOLProduction::IsWaitingForRoom(Queue[0], 14.0, Cost.BuildSteps));
+	TestFalse(TEXT("the next one waits behind it"), Queue[1].IsStarted());
 
-	// Done after BuildSteps steps; the next one starts at the same step.
+	// A place is free: it comes out and takes it; the next one starts at the same step.
+	FreePopulation = 5;
 	HOLProduction::Advance(Queue, 15, GetCost, FreePopulation, Done);
 	TestEqual(TEXT("one unit done"), Done.Num(), 1);
 	TestEqual(TEXT("one item left"), Queue.Num(), 1);
 	TestEqual(TEXT("the next one starts at once"), Queue[0].StartStep, int64(15));
-	TestEqual(TEXT("its place is taken"), FreePopulation, 4);
-	TestEqual(TEXT("progress is capped"), HOLProduction::GetProgress(Queue[0], 100.0, Cost.BuildSteps), 1.f);
+	TestEqual(TEXT("the unit out takes its place"), FreePopulation, 4);	TestEqual(TEXT("progress is capped"), HOLProduction::GetProgress(Queue[0], 100.0, Cost.BuildSteps), 1.f);
 
 	HOLProduction::Advance(Queue, 19, GetCost, FreePopulation, Done);
 	TestEqual(TEXT("both units done"), Done.Num(), 2);

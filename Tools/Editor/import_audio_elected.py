@@ -20,6 +20,10 @@ LINE = re.compile(r'^\s*Add\(Cues,[^"]*"[A-Za-z]+\.[A-Za-z]+",\s*"soft",\s*"(?P<
 
 
 def wanted():
+    # HOL_AUDIO_ONLY="a,b": only these stems (an election or a new candidate imports its own file without re-importing the committed ones).
+    only = [stem for stem in os.environ.get("HOL_AUDIO_ONLY", "").split(",") if stem]
+    if only:
+        return only
     seen = []
     with open(TABLE, encoding="utf-8") as table:
         for line in table:

@@ -43,6 +43,8 @@ GROUPS = [
     ("audio_compare_buildings_barracks", ("Building.Barracks",), "le son de SELECTION de la CASERNE, tour 6 : dix sons NEUFS, AUCUNE voix (ni cri, ni grognement, ni foule), propres (non coupes, sans saturation)"),
     ("audio_compare_buildings_range", ("Building.Range",), "le son de SELECTION du CHAMP DE TIR, tour 6 : le tir d'arc G du tour 5 en version propre"),
     ("audio_compare_buildings_stable", ("Building.Stable",), "le son de SELECTION de l'ECURIE, tour 6 : l'ebrouement et la voix de cheval G du tour 5 en version propre"),
+    # D832 REGLAGE (2026-11-16): Stable B without the neigh, only the snort; its answer goes in E-audio_compare_buildings_stable.md (no sheet).
+    ("audio_compare_buildings_stable_cut", ("Building.CutStable",), "le son de SELECTION de l'ECURIE, reecoute D832 : le B du tour 6 COUPE (seulement l'ebrouement pfff de la fin, sans le hennissement du debut) contre le B entier [non compte : sa fiche est E-audio_compare_buildings_stable.md]", False),
 ]
 # The scenario of ONE building places that building, finished and owned by the player, behind the centre, and puts the camera on it:
 # the screen shows the building whose sound plays, not the Forum. name -> (class for hol.Cheat.SpawnBuilding, "<who> que tu ecoutes, ...").
@@ -50,6 +52,7 @@ BUILDING = {
     "audio_compare_buildings_barracks": ("Barracks", "la Caserne que tu ecoutes, finie et a toi, posee"),
     "audio_compare_buildings_range": ("ArcheryRange", "le Champ de tir que tu ecoutes, fini(e) et a toi, pose(e)"),
     "audio_compare_buildings_stable": ("Stable", "l'Ecurie que tu ecoutes, fini(e) et a toi, pose(e)"),
+    "audio_compare_buildings_stable_cut": ("Stable", "l'Ecurie que tu ecoutes, fini(e) et a toi, pose(e)"),
 }
 BUILDING_AT = (-3800, 4600)
 # Texts of a scenario that differ from the general ones (round 6, D826): count (title, "" = none), source (second line),
@@ -82,6 +85,14 @@ TEXT = {
         "answer": CLEAN6_ANSWER,
         "end": CLEAN6_END,
         "look": "OBJET : l'Ecurie (forme provisoire BlockAndTower) au centre de l'ecran (pose par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION de l'ECURIE, tour 6 : l'ebrouement et la voix de cheval G du tour 5 en version propre, 5 variantes A a E, Entree = variante suivante",
+    },
+    "audio_compare_buildings_stable_cut": {
+        "count": "deux variantes",
+        "source": "D832 : tu as dit B, mais sans le hennissement du debut, juste le pfffff de fin ; A = le B coupe (le hennissement, la partie voisee, est retire ; meme enregistrement, meme licence), B = le B entier pour comparer. Jamais choisi a ta place.",
+        "intro": "Ecoute le son de SELECTION de l'ECURIE, reecoute D832. 2 sons, 1 cue : A = le B du tour 6 COUPE (seulement l'ebrouement pfff de la fin, 0,94 s), B = le B entier (hennissement puis ebrouement, 1,42 s).",
+        "answer": "Reponds : A (le coupe), B (l'entier), ou REGLAGE: <ce qui ne va pas> (coupe trop tot, trop tard, encore un bout de hennissement...).",
+        "end": "Fin de l'ecoute. Dis A, B, ou REGLAGE: <ce qui ne va pas>.",
+        "look": "OBJET : l'Ecurie (forme provisoire BlockAndTower) au centre de l'ecran (pose par hol.Cheat.SpawnBuilding, pas le Forum) ; le panneau du scenario dit d'ecouter le son de SELECTION de l'ECURIE, reecoute D832 : A = le B coupe (seulement l'ebrouement), B = le B entier, Entree = variante suivante",
     },
 }
 # The line of the answer sheet for a cue whose name alone says little (family cues of the buildings): "<label> = _".

@@ -26,3 +26,18 @@ assets: (hors git, seulement dans le worktree Arwen) `C:\Users\baudo\Documents\H
 Commande complète (règle 13, 2026-11-14) :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings_stable -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 1 min (5 sons, Entrée = suivant). Réponse attendue : la lettre (B à E), `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: REGLAGE : B mais pas le hennissement de début, juste le pfffff de fin (utilisateur, 2026-11-16 16:5x ; D832 ; ligne [ ] en tête de la section Arwen)
+## Réécoute D832 (ARWEN-1116d, 2026-11-16 17:1x) : B coupé (seulement le « pfff ») contre B entier
+SON: non entendu   (-nosound côté agent ; l'écoute est la tienne)
+GESTE: interne
+branches: galadriel-tab
+Ton REGLAGE ci-dessus appliqué : `s_horse6_snort` = le B du tour 6 (`s_horse6_vocal_full`) dont la partie VOISÉE du début (le hennissement, mesurée 0,02-0,40 s par autocorrélation) est retirée : coupe à 0,48 s, il reste l'ébrouement de la fin, 0,94 s, fondu d'entrée 15 ms, crête -2,5 dB ; même enregistrement (Red Library R12-60, CC0, D805), outil `Tools\Audio\make_round6_candidates.py --snort-only`. Test `round6_candidates_test.py` : 0 trame voisée dans le coupé (19 dans le B entier).
+A = `s_horse6_snort` (B coupé), B = `s_horse6_vocal_full` (B entier, pour comparer) ; cue `Building.CutStable`. Rien n'est élu pour l'Écurie avant ta réponse (Champ de tir B et Caserne A sont élus, D832, commit 89e03a6).
+Pré-vol (2026-11-16 17:12, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel, branche galadriel-tab 1c34b42) : `preflight.ps1 audio_compare_buildings_stable_cut -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel` PASS (1 PNG). PNG OUVERT et vu : audio_compare_buildings_stable_cut_start : l'Écurie (forme provisoire bleue) au centre, panneau « réécoute D832, A = le B COUPÉ (seulement l'ébrouement pfff de la fin, 0,94 s), B = le B entier ». (Le panneau cite par erreur l'exemple « hol.Audio.Candidate Building.CutStable C » : seules A et B existent.)
+NON VÉRIFIÉ : aucun son entendu par l'agent ; la frontière hennissement / ébrouement est mesurée, pas écoutée (si un bout de hennissement reste ou si le début du pfff est mangé : `REGLAGE: coupe plus tôt / plus tard`).
+assets: (hors git, seulement dans le worktree Galadriel) `C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Content\Audio\Candidates\soft\SW_s_horse6_snort.uasset` ; WAV `C:\Users\baudo\Documents\MyCrusader_Audio\Candidates\soft\s_horse6_snort.wav`. (Les élus `SW_s_shot6_bow_full` et `SW_s_barr6_draw_a` sous `Content\Audio\Soft` SONT commités.)
+Commande complète :
+`powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 audio_compare_buildings_stable_cut -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
+Durée : moins d'1 min (2 sons, Entrée = suivant). Réponse attendue : `A` (le coupé, élu pour l'Écurie), `B`, ou `REGLAGE: ...`.
+Reponse D832 : _
+Reponse: A (le B coupé, ébrouement seul) ; utilisateur, 2026-11-16 17:2x ; D834 ; élection dans HOLAudioTable.as en tête de la section Arwen

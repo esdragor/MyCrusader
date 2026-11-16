@@ -1,6 +1,7 @@
 #include "HUD/HOLGameNames.h"
 
 #include "Buildings/HOLBuildingTypes.h"
+#include "Player/HOLCommandGrid.h"
 #include "Resources/HOLSourceTypes.h"
 #include "Simulation/HOLUnitTypes.h"
 #include "Technologies/HOLTechnologyTypes.h"
@@ -437,6 +438,23 @@ namespace HOLGameNames
 			Lines.Add(FText::Format(LOCTEXT("TechEffectLine", "{0} +{1} %"), GetTechnologyStatName(Stat), FText::AsNumber(Row.Percent)));
 		}
 		return FText::Join(FText::FromString(TEXT("\n")), Lines);
+	}
+
+	FText GetSpecializationName(const int32 Tier, const int32 Option)
+	{
+		const FText TierNumber = FText::AsNumber(Tier);
+		return Option == 0 ? FText::Format(LOCTEXT("SpecializationOptionA", "Voie A du palier {0}"), TierNumber)
+			: FText::Format(LOCTEXT("SpecializationOptionB", "Voie B du palier {0}"), TierNumber);
+	}
+
+	FText GetSpecializationCellText(const FHOLGridCommand& Command)
+	{
+		if (Command.Command != EHOLGridCommand::CancelSpecialization)
+		{
+			return GetSpecializationName(Command.Tier, Command.Option);
+		}
+		return FText::Format(LOCTEXT("SpecializationRunningCell", "{0} s\nAnnuler"),
+			FText::AsNumber(FMath::DivideAndRoundUp(Command.RemainingMs, 1000)));
 	}
 }
 
