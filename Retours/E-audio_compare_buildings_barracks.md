@@ -20,9 +20,9 @@ Les lames (A, B, C, F, J) sont très claires (centroïde vers 6 kHz, bien au-des
 
 Building.Barracks = _
 
-Pré-vol : PREFLIGHT_A_REMPLIR
+Pré-vol (2026-11-16 15:49, agent ARWEN-1116b, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Arwen, branche d751-root 734b313) : `preflight.ps1 audio_compare_buildings_barracks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen` PASS (1 PNG, 1 WARN commun hol.HUD.Report). Les 10 lettres A à J jouées dans le journal de la partie (`Scenario waits for the key: Building.Barracks J (s_barr6_drum_blade)`), aucun asset manquant.
 PNG OUVERTS et vus :
-- PNG_A_REMPLIR
+- audio_compare_buildings_barracks_start : la Caserne (forme provisoire bleue) au centre de l'écran, le panneau du scénario « tour 6 : dix sons NEUFS, sans aucune voix. A B C = une lame tiree ... J = tambour puis lame ».
 NON VÉRIFIÉ : aucun son entendu par l'agent (-nosound) ; la clarté des lames (choisie non filtrée, l'oreille décide) ; le cor est une note tenue coupée à 0,9 s avec une extinction douce (pas un appel de plusieurs notes).
 
 assets: (hors git, seulement dans le worktree Arwen) `C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Content\Audio\Candidates\soft\SW_s_barr6_draw_a.uasset`, `SW_s_barr6_draw_b.uasset`, `SW_s_barr6_draw_c.uasset`, `SW_s_barr6_sheath_a.uasset`, `SW_s_barr6_sheath_b.uasset`, `SW_s_barr6_two_blades.uasset`, `SW_s_barr6_drum.uasset`, `SW_s_barr6_drum_double.uasset`, `SW_s_barr6_horn.uasset`, `SW_s_barr6_drum_blade.uasset` ; WAV dans `C:\Users\baudo\Documents\MyCrusader_Audio\Candidates\soft\` (refaits par `Tools\Audio\make_round6_candidates.py`).
