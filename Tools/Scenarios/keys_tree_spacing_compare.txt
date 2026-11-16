@@ -1,0 +1,34 @@
+# Preuve agent (FARAMIR-1116b, regle 15 de « Qualite des essais ») : tree_spacing_compare paquets 0,2 a 0,5 m, Entree = vraie touche (hol.UI.Key Enter) aux attentes 0,2 et 0,3, une seule vraie touche Backspace posee dans l'option 0,2, qui tombe pendant l'attente de 0,4 : le scenario doit revenir au paquet 0,3 (camera recentree). Pour un agent (play.ps1 -Hidden), pas pour l'utilisateur.
+# Sans notereset, une option commence juste apres l'attente precedente (FindPreviousOptionStart) : l'option 0,2 n'est pas rejouee par le retour, la touche Backspace n'est posee qu'une fois.
+hol.Cheat.Population 165
+hol.Sources.Grove 20 -5500 -4500 14 7
+hol.Sources.Label -4500 -4500 220 180 0,2 m
+hol.Sources.Grove 30 -5500 -3500 14 7
+hol.Sources.Label -4500 -3500 220 180 0,3 m
+hol.Sources.Grove 40 -5500 -2500 14 7
+hol.Sources.Label -4500 -2500 220 180 0,4 m
+hol.Sources.Grove 50 -5500 -1500 14 7
+hol.Sources.Label -4500 -1500 220 180 0,5 m
+hol.Camera.Focus -5200 -4500
+hol.Camera.Zoom 3
+frames 20
+hol.Camera.Focus -5200 -4500
+frames 10
+capture keys_tree_02
+hol.UI.Key Enter 0.3 0.05
+hol.UI.Key BackSpace 1.7 0.05
+waitkey Paquet 0,2 m : Entree = paquet suivant
+hol.Camera.Focus -5200 -3500
+frames 10
+capture keys_tree_03
+hol.UI.Key Enter 0.3 0.05
+waitkey Paquet 0,3 m : Entree = paquet suivant
+hol.Camera.Focus -5200 -2500
+frames 10
+capture keys_tree_04
+waitkey Paquet 0,4 m : Entree = paquet suivant, Backspace = paquet precedent
+hol.Camera.Focus -5200 -1500
+frames 10
+capture keys_tree_05
+waitkey Paquet 0,5 m : Entree = fin
+quit

@@ -1,0 +1,33 @@
+# Preuve agent (FARAMIR-1116b, regle 15 de « Qualite des essais ») : rocks_compare styles A a D, Entree = vraie touche (hol.UI.Key Enter) aux attentes A et B, une seule vraie touche Backspace posee avant la note de B, qui tombe pendant l'attente de C : le scenario doit revenir a l'option B. Pour un agent (play.ps1 -Hidden), pas pour l'utilisateur.
+# La touche Backspace est posee une fois, avant le notereset de B (debut de l'option B selon FindPreviousOptionStart) : le retour ne la rejoue pas, pas de boucle.
+frames 40
+panel hide
+hol.Combat.Enabled 0
+hol.Decor.ClearNear 0 -3000 3500
+hol.Camera.Focus 0 -3000
+hol.Camera.Zoom 3
+frames 30
+hol.Rocks.Review A
+frames 40
+notereset STYLE A (1/4)
+capture keys_rocks_A
+hol.UI.Key Enter 0.3 0.05
+waitkey Entree : style suivant
+hol.Rocks.Review B
+frames 40
+hol.UI.Key BackSpace 3.0 0.05
+notereset STYLE B (2/4)
+capture keys_rocks_B
+hol.UI.Key Enter 0.3 0.05
+waitkey Entree : style suivant
+hol.Rocks.Review C
+frames 40
+notereset STYLE C (3/4)
+capture keys_rocks_C
+waitkey Entree : style suivant, Backspace : style precedent
+hol.Rocks.Review D
+frames 40
+notereset STYLE D (4/4)
+capture keys_rocks_D
+waitkey Entree : fin
+quit
