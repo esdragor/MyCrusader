@@ -109,4 +109,74 @@ namespace HOLSiege
 	{
 		return Check(Engine, HeroTier, bWorkshopFinished, bCanPay) == Available;
 	}
+
+	// S3: the engine a unit type is, by the name of its row (Ram, Mangonel, Trebuchet, Cannon); false for any other type. The C++
+	// HOLSiege::FindEngine, which the production reads (HOLProductionSubsystem.cpp).
+	bool FindEngine(FName TypeName, EHOLSiegeEngine& OutEngine)
+	{
+		if (TypeName == n"Ram")
+		{
+			OutEngine = EHOLSiegeEngine::Ram;
+			return true;
+		}
+		if (TypeName == n"Mangonel")
+		{
+			OutEngine = EHOLSiegeEngine::Mangonel;
+			return true;
+		}
+		if (TypeName == n"Trebuchet")
+		{
+			OutEngine = EHOLSiegeEngine::Trebuchet;
+			return true;
+		}
+		if (TypeName == n"Cannon")
+		{
+			OutEngine = EHOLSiegeEngine::Cannon;
+			return true;
+		}
+		return false;
+	}
+
+	// The words of a reason in the log of the production ("tier too low"), as the C++ HOLSiege::DescribeBlock.
+	FString DescribeBlock(int Reason)
+	{
+		if (Reason == NotInPrototype)
+			return "not in the prototype";
+		if (Reason == TierTooLow)
+			return "tier too low";
+		if (Reason == NoWorkshop)
+			return "no workshop";
+		if (Reason == CannotPay)
+			return "cannot pay";
+		return "none";
+	}
+
+	// S5: the technology statistic that raises this type's health (Ram: RamHealth, Tools/Data/Technologies.csv ReinforcedRam),
+	// NAME_None for any other type. The C++ HOLSiege::GetHealthStat.
+	FName HealthStatOf(FName TypeName)
+	{
+		return TypeName == n"Ram" ? n"RamHealth" : NAME_None;
+	}
+
+	// S5: the technology statistic that raises this type's damage (Mangonel: MangonelDamage, HeavyMunitions), NAME_None for any
+	// other type. The C++ HOLSiege::GetDamageStat.
+	FName DamageStatOf(FName TypeName)
+	{
+		return TypeName == n"Mangonel" ? n"MangonelDamage" : NAME_None;
+	}
+
+	// S5: a maximum health with the percent its player's technologies add, rounded once to nearest (400 + 10 % = 440); a negative
+	// percent is no loss. HOLCombat::GetMaxHealth at level 1 (the level's share is not in the script).
+	int HealthWithTechnology(int Health, int HealthPercent)
+	{
+		const float Raised = float(Health) * (1.f + 0.01f * float(Math::Max(HealthPercent, 0)));
+		return Raised >= 0.f ? int(Raised + 0.5f) : -int(0.5f - Raised);
+	}
+
+	// T6 / S5: the attack of one hit with the percent its player's technologies add (Heavy Munitions: 45 x 1.2 = 54), on the attack
+	// alone, not the bonuses; a negative percent is no loss. HOLCombat::GetDamage's attack at level 1.
+	float AttackWithTechnology(int Attack, int AttackPercent)
+	{
+		return float(Attack) * (1.f + 0.01f * float(Math::Max(AttackPercent, 0)));
+	}
 }
