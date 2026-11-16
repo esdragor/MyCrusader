@@ -4,14 +4,13 @@
 #include "Engine/World.h"
 #include "Misc/AutomationTest.h"
 #include "Simulation/HOLSiteBoardSubsystem.h"
-#include "Simulation/HOLSiteRules.h"
 
 #if WITH_DEV_AUTOMATION_TESTS
 
 // MIG-CPP-Site (D836 point 3): the sacred-site rules are the script's (Script/Sites/HOLSiteRules.as and HOLSiteVictory.as), reached by the server
 // through the bridge UHOLSiteBoardSubsystem (Script/Sites/HOLSiteBoardScript.as), once per site and step with the counts aggregated. The rules
 // are tested in script (HOLSiteRules_Test.as, HOLSiteVictory_Test.as); here the real chain C++ bridge -> script board, with the hold and decay
-// steps GIVEN by the caller (the script must use them, not its own constants) and the same answers as the C++ rules on a sweep.
+// steps GIVEN by the caller (the script must use them, not its own constants). Without a board there is no rule (the C++ copy is gone): the state is left unchanged.
 namespace UE::HeroesOfLiberty::Tests::SiteBridge
 {
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
@@ -62,45 +61,16 @@ bool FHOLSiteServerBoardTest::RunTest(const FString& Parameters)
 		Frozen = Board->VictoryStepNow(Frozen, {0, 1}, {0, 1}, VictoryTeams, 2);
 		TestEqual(TEXT("A contested site freezes the count: no winner"), Frozen.Winner, static_cast<int32>(INDEX_NONE));
 
-		// The server's call (the static one) is the board's answer, and the same as the C++ rule on a sweep of states and counts.
-		int32 Cases = 0;
-		int32 Differences = 0;
-		const int32 Owners[] = {INDEX_NONE, 0, 1};
-		const int32 SiteTakers[] = {INDEX_NONE, 2};
-		const int32 HeldSteps[] = {0, 5, 299};
-		for (const int32 Owner : Owners)
-		{
-			for (const int32 Taker : SiteTakers)
-			{
-				for (const int32 HeldValue : HeldSteps)
-				{
-					FHOLSiteState State;
-					State.Owner = Owner;
-					State.Taker = Taker;
-					State.Held = HeldValue;
-					for (int32 Mask = 0; Mask < 64; ++Mask)
-					{
-						// Per slot: bit 0 = a disturber, bit 1 = a taker (a taker is a disturber too).
-						TArray<int32> Takers;
-						TArray<int32> Disturbers;
-						for (int32 Slot = 0; Slot < 3; ++Slot)
-						{
-							const int32 Bits = (Mask >> (2 * Slot)) & 3;
-							Takers.Add((Bits & 2) ? 1 : 0);
-							Disturbers.Add(Bits != 0 ? 1 : 0);
-						}
-						++Cases;
-						if (!(UHOLSiteBoardSubsystem::StepSite(Board, State, Takers, Disturbers, Teams, 300, DecaySteps) == HOLSite::Step(State, Takers, Disturbers, Teams, 300, DecaySteps)))
-						{
-							++Differences;
-						}
-					}
-				}
-			}
-		}
-		TestEqual(*FString::Printf(TEXT("The bridge gives the C++ rule's answer on %d cases"), Cases), Differences, 0);
-		// Without a board the server's call is the C++ rule (the same behaviour as before the bridge).
-		TestTrue(TEXT("Without a board the call is the C++ rule"), UHOLSiteBoardSubsystem::StepSite(nullptr, Held, {0, 1, 0}, {0, 1, 0}, Teams, 300, DecaySteps) == Taken);
+		// The server's call (the static one) is the board's answer.
+		TestTrue(TEXT("The server's call with the board is the board's answer"), UHOLSiteBoardSubsystem::StepSite(Board, Held, {0, 1, 0}, {0, 1, 0}, Teams, 300, DecaySteps) == Taken);
+		// Without a board there is no rule (the C++ copy is gone): the state is unchanged and an error is logged (once, maybe already earlier).
+		AddExpectedError(TEXT("no script board"), EAutomationExpectedErrorFlags::Contains, 0);
+		TestTrue(TEXT("Without a board the site is left unchanged"), UHOLSiteBoardSubsystem::StepSite(nullptr, Held, {0, 1, 0}, {0, 1, 0}, Teams, 300, DecaySteps) == Held);
+		FHOLSiteVictoryState Counting;
+		Counting.Leader = 7;
+		Counting.Held = 3;
+		const FHOLSiteVictoryState Idle = UHOLSiteBoardSubsystem::VictoryStep(nullptr, Counting, {0, 1}, {0, 0}, VictoryTeams, 2);
+		TestTrue(TEXT("Without a board the victory count is left unchanged"), Idle.Leader == 7 && Idle.Held == 3 && Idle.Winner == INDEX_NONE);
 	}
 	GEngine->DestroyWorldContext(World);
 	World->DestroyWorld(false);

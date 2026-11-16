@@ -537,42 +537,6 @@ bool FHOLSiteSubsystemSameTwiceTest::RunTest(const FString& Parameters)
 	return true;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteVictoryRuleTest, "HeroesOfLiberty.Sites.VictoryRule", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
-
-// S10 (D431, D703), the pure rule (the same as the script's HOLSiteVictory::Step): the camp holding every site counts up to the steps asked; a
-// contested site freezes the count; a site changing hands (even to a slot of the same camp) restarts it; a site nobody owns zeroes it; the
-// winner once set stays.
-bool FHOLSiteVictoryRuleTest::RunTest(const FString& Parameters)
-{
-	const TArray<int32> Teams = { 7, 7, 9, 10 };
-	const TArray<int32> Quiet = { 0, 0 };
-	FHOLSiteVictoryState State;
-	for (int32 Index = 0; Index < 4; ++Index)
-	{
-		State = HOLSite::VictoryStep(State, { 0, 1 }, Quiet, Teams, 5);
-	}
-	TestEqual(TEXT("two teammates holding both sites: the camp leads"), State.Leader, 7);
-	TestEqual(TEXT("four steps counted"), State.Held, 4);
-	TestEqual(TEXT("no winner yet"), State.Winner, static_cast<int32>(INDEX_NONE));
-	State = HOLSite::VictoryStep(State, { 0, 1 }, { 0, 1 }, Teams, 5);
-	TestEqual(TEXT("a contested site freezes the count"), State.Held, 4);
-	State = HOLSite::VictoryStep(State, { 1, 1 }, Quiet, Teams, 5);
-	TestEqual(TEXT("a site changing hands inside the camp restarts the count (this step is the first)"), State.Held, 1);
-	State = HOLSite::VictoryStep(State, { 1, INDEX_NONE }, Quiet, Teams, 5);
-	TestEqual(TEXT("a site nobody owns: no leader"), State.Leader, static_cast<int32>(INDEX_NONE));
-	TestEqual(TEXT("a site nobody owns: the count is zero"), State.Held, 0);
-	State = HOLSite::VictoryStep(State, { 0, 2 }, Quiet, Teams, 5);
-	TestEqual(TEXT("two adverse camps owning a site each: nobody leads"), State.Leader, static_cast<int32>(INDEX_NONE));
-	for (int32 Index = 0; Index < 5; ++Index)
-	{
-		State = HOLSite::VictoryStep(State, { 2, 2 }, Quiet, Teams, 5);
-	}
-	TestEqual(TEXT("the lone camp that held every site for the steps asked wins"), State.Winner, 9);
-	State = HOLSite::VictoryStep(State, { 0, 1 }, Quiet, Teams, 5);
-	TestEqual(TEXT("the winner once set stays"), State.Winner, 9);
-	return true;
-}
-
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLSiteSubsystemVictoryTest, "HeroesOfLiberty.Sites.SubsystemVictory", UE::HeroesOfLiberty::Tests::SiteSubsystem::Flags)
 
 // S10 (D431), through the real chain (real Monks take real sites, the game state ends the match): slot 0 holds both sites; an adverse
