@@ -101,6 +101,22 @@ struct HEROESOFLIBERTY_API FHOLDiplomacyVisionChange
 	bool bShare = false;
 };
 
+/**
+ * The end by allied victory (HOLDiplomacy::FAlliedVictory) for the script (S1e part 2, D836 (5)): the winners, together, when it ends. Named apart
+ * from the script's own FHOLAlliedVictory (Script/Diplomacy/HOLDiplomacyRules.as), which goes with that file.
+ */
+USTRUCT(BlueprintType)
+struct HEROESOFLIBERTY_API FHOLDiplomacyAlliedVictory
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	bool bEnded = false;
+
+	UPROPERTY(BlueprintReadWrite, Category = "Diplomacy")
+	TArray<int32> Winners;
+};
+
 UCLASS()
 class HEROESOFLIBERTY_API UHOLDiplomacyReadLibrary : public UBlueprintFunctionLibrary
 {
@@ -212,6 +228,22 @@ public:
 	/** HOLDiplomacy::CanLeaveRampart (D374). */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
 	static bool CanLeaveRampart(const FHOLDiplomacyStances& Book, int32 UnitOwner, int32 RampartOwner);
+
+	/** HOLDiplomacy::InMatch: Slot is a seat of the book (0 <= Slot < Slots). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool InMatch(const FHOLDiplomacyStances& Book, int32 Slot);
+
+	/** HOLDiplomacy::CanGarrison: only in one's own building (D374). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool CanGarrison(int32 UnitOwner, int32 BuildingOwner);
+
+	/** HOLDiplomacy::DoorsOpenFor: the doors and ramparts of Owner are open to Other (its own and an ally's), shut to everybody else (D371, D374). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static bool DoorsOpenFor(const FHOLDiplomacyStances& Book, int32 Owner, int32 Other);
+
+	/** HOLDiplomacy::AlliedVictory: the survivors (not Defeated; a slot beyond the list is alive) all allied to each other and at least one beaten: they win together (D373). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Diplomacy")
+	static FHOLDiplomacyAlliedVictory AlliedVictory(const FHOLDiplomacyStances& Book, const TArray<bool>& Defeated);
 
 	// Constants and codes of HOLDiplomacy (D836 (5)): the script reads them here, its own copy goes at the redirection lot.
 

@@ -44,3 +44,61 @@ void Test_UnitAbilityRageTimesReadLibrarySmoke(FUnitTest& T)
 	T.AssertTrue(HOLUnitAbilityRead::IsRageEffectEnded(5000, 6000, 20.0), "at the stop floor: over");
 	T.AssertFalse(HOLUnitAbilityRead::IsRageEffectEnded(5000, 6000, 21.0), "above the stop floor: still raging");
 }
+
+// HOLDiplomacyRules_Test.as (Test_DiplomacyGarrisonAndRamparts, S1e part 2): garrison only at home, the doors of an ally are open, those of a stranger are not.
+void Test_DiplomacyGarrisonDoorsReadLibrarySmoke(FUnitTest& T)
+{
+	TArray<bool> IsAI;
+	IsAI.Add(false);
+	IsAI.Add(false);
+	IsAI.Add(false);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(3, IsAI);
+	HOLDiplomacyRead::SetStance(Book, 0, 1, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceAlly());
+	T.AssertTrue(HOLDiplomacyRead::CanGarrison(0, 0), "garrison in one's own building");
+	T.AssertFalse(HOLDiplomacyRead::CanGarrison(0, 1), "never in an ally's");
+	T.AssertTrue(HOLDiplomacyRead::DoorsOpenFor(Book, 1, 1), "one's own doors");
+	T.AssertTrue(HOLDiplomacyRead::DoorsOpenFor(Book, 1, 0), "an ally's doors are open");
+	T.AssertFalse(HOLDiplomacyRead::DoorsOpenFor(Book, 1, 2), "a stranger's are not");
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceEnemy());
+	T.AssertFalse(HOLDiplomacyRead::DoorsOpenFor(Book, 0, 1), "the break shuts the doors at once");
+}
+
+// HOLDiplomacyRules_Test.as (Test_DiplomacyAlliedVictory, S1e part 2): all the survivors allied to each other and one beaten: the winners, together, in order.
+void Test_DiplomacyAlliedVictoryReadLibrarySmoke(FUnitTest& T)
+{
+	TArray<bool> IsAI;
+	IsAI.Add(false);
+	IsAI.Add(false);
+	FHOLDiplomacyStances Pair = HOLDiplomacyRead::NewBook(2, IsAI);
+	HOLDiplomacyRead::SetStance(Pair, 0, 1, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Pair, 1, 0, HOLDiplomacyRead::GetStanceAlly());
+	TArray<bool> NoOneDown;
+	NoOneDown.Add(false);
+	NoOneDown.Add(false);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Pair, NoOneDown).bEnded, "everybody allied but nobody beaten: it goes on");
+	TArray<bool> NoOneStanding;
+	NoOneStanding.Add(true);
+	NoOneStanding.Add(true);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Pair, NoOneStanding).bEnded, "no survivor: not an allied victory");
+	TArray<bool> OneDown;
+	OneDown.Add(false);
+	OneDown.Add(true);
+	FHOLDiplomacyAlliedVictory Win = HOLDiplomacyRead::AlliedVictory(Pair, OneDown);
+	T.AssertTrue(Win.bEnded, "the last standing wins at once");
+	T.AssertEquals(1, Win.Winners.Num(), "one winner");
+	T.AssertEquals(0, Win.Winners[0], "player 0");
+}
+
+// HOLSignalRules.as (its own InMatch, S1e part 2): a seat of the book is 0 <= Slot < Slots.
+void Test_DiplomacyInMatchReadLibrarySmoke(FUnitTest& T)
+{
+	TArray<bool> IsAI;
+	IsAI.Add(false);
+	IsAI.Add(true);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(2, IsAI);
+	T.AssertTrue(HOLDiplomacyRead::InMatch(Book, 0), "seat 0");
+	T.AssertTrue(HOLDiplomacyRead::InMatch(Book, 1), "seat 1 (an AI is a seat)");
+	T.AssertFalse(HOLDiplomacyRead::InMatch(Book, 2), "beyond the book");
+	T.AssertFalse(HOLDiplomacyRead::InMatch(Book, -1), "negative");
+}
