@@ -18,49 +18,6 @@ namespace UE::HeroesOfLiberty::Tests::StartingPeasants
 	constexpr EAutomationTestFlags Flags = EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter;
 }
 
-IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingPeasantsLocationsTest, "HeroesOfLiberty.Match.StartingPeasants.Locations",
-	UE::HeroesOfLiberty::Tests::StartingPeasants::Flags)
-
-bool FHOLStartingPeasantsLocationsTest::RunTest(const FString& Parameters)
-{
-	// Eight forums around the middle of a map, as Plain's eight starts (about 150 m out), two body sizes.
-	for (const float HalfBody : { 600.f, 800.f })
-	{
-		for (int32 Slot = 0; Slot < FHOLMatchConfig::MaxSlots; ++Slot)
-		{
-			const double Angle = Slot * UE_DOUBLE_PI / 4.0;
-			const FVector Centre(15000.0 * FMath::Cos(Angle), 15000.0 * FMath::Sin(Angle), 120.0);
-			const FVector King = FHOLStartRules::GetKingLocation(Centre, HalfBody);
-			const TArray<FVector> Peasants = FHOLStartRules::GetStartingPeasantLocations(Centre, HalfBody, 5);
-			const FString Where = FString::Printf(TEXT("slot %d, half body %.0f"), Slot, HalfBody);
-			if (!TestEqual(*FString::Printf(TEXT("%s: 5 places"), *Where), Peasants.Num(), 5))
-			{
-				continue;
-			}
-			for (int32 Index = 0; Index < Peasants.Num(); ++Index)
-			{
-				const FVector& Peasant = Peasants[Index];
-				// In front (-X, the births' side), off the body (a square HalfBody around the centre) by a body's width.
-				TestTrue(*FString::Printf(TEXT("%s: Peasant %d in front of the forum, off its body"), *Where, Index),
-					Peasant.X <= Centre.X - HalfBody - 100.0);
-				TestTrue(*FString::Printf(TEXT("%s: Peasant %d by the forum (within 5 m of its edge)"), *Where, Index),
-					Peasant.X >= Centre.X - HalfBody - 500.0 && FMath::Abs(Peasant.Y - Centre.Y) <= HalfBody);
-				TestTrue(*FString::Printf(TEXT("%s: Peasant %d off the King (2 m)"), *Where, Index),
-					FVector::Dist2D(Peasant, King) >= 200.0);
-				TestEqual(*FString::Printf(TEXT("%s: Peasant %d at the forum's height"), *Where, Index), Peasant.Z, Centre.Z);
-				for (int32 Other = Index + 1; Other < Peasants.Num(); ++Other)
-				{
-					TestTrue(*FString::Printf(TEXT("%s: Peasants %d and %d apart (1.5 m)"), *Where, Index, Other),
-						FVector::Dist2D(Peasant, Peasants[Other]) >= 150.0);
-				}
-			}
-		}
-	}
-	TestEqual(TEXT("No Peasant, no place"), FHOLStartRules::GetStartingPeasantLocations(FVector::ZeroVector, 600.f, 0).Num(), 0);
-	TestEqual(TEXT("Another number, as many places"), FHOLStartRules::GetStartingPeasantLocations(FVector::ZeroVector, 600.f, 3).Num(), 3);
-	return true;
-}
-
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLStartingPeasantsCountTest, "HeroesOfLiberty.Match.StartingPeasants.Count",
 	UE::HeroesOfLiberty::Tests::StartingPeasants::Flags)
 

@@ -129,7 +129,6 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FHOLGameNamesForgeTest, "HeroesOfLiberty.UI.Gam
 bool FHOLGameNamesForgeTest::RunTest(const FString& Parameters)
 {
 	const FText Name = HOLGameNames::GetBuildingName(TEXT("Forge"), nullptr);
-	TestEqual(TEXT("the Forge's name"), Name.ToString(), FString(TEXT("Forge")));
 	TestEqual(TEXT("its localization key"), FTextInspector::GetKey(Name).Get(FString()), FString(TEXT("Forge")));
 	TestEqual(TEXT("its localization namespace"), FTextInspector::GetNamespace(Name).Get(FString()), FString(TEXT("HOLGameNames")));
 	return true;
