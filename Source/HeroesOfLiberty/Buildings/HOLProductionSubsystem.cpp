@@ -4,6 +4,7 @@
 #include "Simulation/HOLUnitTierRules.h"
 #include "Simulation/HOLUnitTierSubsystem.h"
 
+#include "Match/HOLMarketSubsystem.h"
 #include "Match/HOLMatchStatsSubsystem.h"
 
 #include "Buildings/HOLBuilding.h"
@@ -193,7 +194,7 @@ void UHOLProductionSubsystem::RecoverMarketBook()
 	if (++StepsSinceMarketRecover >= IntervalSteps)
 	{
 		StepsSinceMarketRecover = 0;
-		GameState->SetMarketBook(HOLMarket::Recover(MarketSettings, GameState->GetMarketBook(), 1));
+		GameState->SetMarketBook(UHOLMarketSubsystem::Recover(GetWorld(), MarketSettings, GameState->GetMarketBook(), 1));
 	}
 }
 
@@ -251,7 +252,7 @@ void UHOLProductionSubsystem::ApplyTribute(const FHOLProductionCommand& Order, c
 		UE_LOG(LogHOLCommands, Display, TEXT("Tribute: slot %d cannot give %d of resource %d (stock %d)"), Order.PlayerIndex, Order.Amount, Order.Resource, GiverStock[Resource]);
 		return;
 	}
-	const int32 Arrives = HOLTribute::Received(Order.Amount, HOLTribute::DefaultTaxPercent);
+	const int32 Arrives = UHOLMarketSubsystem::Received(GetWorld(), Order.Amount, HOLTribute::DefaultTaxPercent);
 	FHOLResources TakerStock = Taker->GetResources();
 	GiverStock[Resource] -= Order.Amount;
 	TakerStock[Resource] += Arrives;
