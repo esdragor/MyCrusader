@@ -1,0 +1,4 @@
+# <nom de capture> | ce que l'utilisateur doit voir
+specialization_button_open | Forum principal selectionne, palier 1 : la case de specialisation est visible et affiche Voie A du palier 1 (case D, 2e rangee, 3e colonne de la grille, meme taille que les autres cases, texte entier) et Voie B du palier 1 a cote (case F)
+specialization_button_running | Apres le vrai clic sur la case D : la case D affiche « Voie A du palier 1 / En cours : N s / Annuler » (N entre 25 et 30), meme taille de case, texte non coupe ; Voie B du palier 1 toujours en case F
+specialization_button_cancelled | Apres le second clic sur la case D (Annuler) : la case D affiche de nouveau Voie A du palier 1, sans « En cours » ; le choix reste ouvert

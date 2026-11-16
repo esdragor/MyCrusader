@@ -504,3 +504,4 @@ eutrals + essai. Voir aussi ValueSheet.csv : site.* / morale.* / ai.hold.* / bio
   - Retours\Q-march-member-detour.md : paragraphe « Mesure x16 2026-11-15 » ajoute (chiffres, recommandation A inchangee), rien tranche. Scenarios neutrals_trace_gap / _gap_mm0 commites.
   - REPRISE : rien d'urgent ; reponse de l'utilisateur a la question ; les spins de melee du camp 1 (o1 21/22/29 deterministes) sont des cas rejouables pour D641.
   Appels : ||||||||||||||||||||||||||||||| (31)
+- 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D815 (Q-march-member-detour) = A : MarchMemberDetourSteps 8 gardé (défaut codé), rien à changer.
