@@ -1,31 +1,6 @@
 // The stances of the Diplomacy mode (D369, D370, D375, D401, D367; GDD 14.3): Ally / Neutral / Enemy of each player toward each other,
 // the relation of a pair (the most hostile of the two), the immediate break, and what is announced to all (HOLDiplomacyRules.as). Pure.
-// Redirected to HOLDiplomacyRead (CELEBORN-1116t, D836 (5)): the tests below run on the library (FHOLDiplomacyStances, the change fiches). Only the garrison, doors and allied victory
-// tests stay on HOLDiplomacyRules.as (CanGarrison, DoorsOpenFor, AlliedVictory are not exposed by HOLDiplomacyRead yet).
-
-// A book of Slots humans, in the Diplomacy mode (unlocked), every stance at the default.
-FHOLDiplomacyBook HumansBook(int Slots)
-{
-	TArray<bool> NoAI;
-	for (int Slot = 0; Slot < Slots; Slot++)
-		NoAI.Add(false);
-	return HOLDiplomacy::NewBook(Slots, NoAI);
-}
-
-// Two players allied both ways, in a book of Slots humans.
-void MakeAllies(FHOLDiplomacyBook& Book, int A, int B)
-{
-	HOLDiplomacy::SetStance(Book, A, B, HOLDiplomacy::Ally);
-	HOLDiplomacy::SetStance(Book, B, A, HOLDiplomacy::Ally);
-}
-
-// MIG-J-Diplomacy (D830/D835, 2026-11-16): the vectors of the C++ twin's test HeroesOfLiberty.Diplomacy.Rules
-// (Source/HeroesOfLiberty/Tests/HOLDiplomacyRulesTests.cpp), in its order, so that both copies answer the same cases while two exist.
-void DiploVecAllies(FHOLDiplomacyBook& Book, int A, int B)
-{
-	HOLDiplomacy::SetStance(Book, A, B, HOLDiplomacy::Ally);
-	HOLDiplomacy::SetStance(Book, B, A, HOLDiplomacy::Ally);
-}
+// Every test runs on HOLDiplomacyRead (CELEBORN-1116t, 1116u, D836 (5)): FHOLDiplomacyStances, the change fiches, CanGarrison, DoorsOpenFor, AlliedVictory.
 
 // Count flags, flag i set when bit i of Bits is (the C++ test's brace lists, { false, true } = DiploVecFlags(2, 2)).
 TArray<bool> DiploVecFlags(int Count, int Bits)
@@ -368,28 +343,28 @@ void Test_DiplomacyVisionRefusals(FUnitTest& T)
 // ally are shut at the very second of the break, and the units left on its ramparts cannot get down.
 void Test_DiplomacyGarrisonAndRamparts(FUnitTest& T)
 {
-	FHOLDiplomacyBook Book = HumansBook(3);
-	MakeAllies(Book, 0, 1);
-	T.AssertTrue(HOLDiplomacy::CanGarrison(0, 0), "in one's own building");
-	T.AssertFalse(HOLDiplomacy::CanGarrison(0, 1), "never in an ally's");
-	T.AssertFalse(HOLDiplomacy::CanGarrison(0, 2), "nor in another's");
+	FHOLDiplomacyStances Book = LibHumansBook(3);
+	LibMakeAllies(Book, 0, 1);
+	T.AssertTrue(HOLDiplomacyRead::CanGarrison(0, 0), "in one's own building");
+	T.AssertFalse(HOLDiplomacyRead::CanGarrison(0, 1), "never in an ally's");
+	T.AssertFalse(HOLDiplomacyRead::CanGarrison(0, 2), "nor in another's");
 
-	T.AssertTrue(HOLDiplomacy::DoorsOpenFor(Book, 1, 1), "one's own doors");
-	T.AssertTrue(HOLDiplomacy::DoorsOpenFor(Book, 1, 0), "an ally's doors and ramparts are open");
-	T.AssertTrue(HOLDiplomacy::DoorsOpenFor(Book, 0, 1), "both ways");
-	T.AssertFalse(HOLDiplomacy::DoorsOpenFor(Book, 1, 2), "a stranger's are not");
+	T.AssertTrue(HOLDiplomacyRead::DoorsOpenFor(Book, 1, 1), "one's own doors");
+	T.AssertTrue(HOLDiplomacyRead::DoorsOpenFor(Book, 1, 0), "an ally's doors and ramparts are open");
+	T.AssertTrue(HOLDiplomacyRead::DoorsOpenFor(Book, 0, 1), "both ways");
+	T.AssertFalse(HOLDiplomacyRead::DoorsOpenFor(Book, 1, 2), "a stranger's are not");
 
 	// Player 0's units climb on 1's ramparts; 1 betrays: they cannot get down, and 1's units cannot cross 0's gates either.
-	T.AssertTrue(HOLDiplomacy::CanLeaveRampart(Book, 0, 1), "allied: the unit gets down when it wants");
-	HOLDiplomacy::SetStance(Book, 1, 0, HOLDiplomacy::Enemy);
-	T.AssertFalse(HOLDiplomacy::CanLeaveRampart(Book, 0, 1), "after the break: it stays there");
-	T.AssertFalse(HOLDiplomacy::DoorsOpenFor(Book, 0, 1), "the gates are shut to the other");
-	T.AssertTrue(HOLDiplomacy::CanLeaveRampart(Book, 1, 1), "the owner's own units come and go");
+	T.AssertTrue(HOLDiplomacyRead::CanLeaveRampart(Book, 0, 1), "allied: the unit gets down when it wants");
+	HOLDiplomacyRead::SetStance(Book, 1, 0, HOLDiplomacyRead::GetStanceEnemy());
+	T.AssertFalse(HOLDiplomacyRead::CanLeaveRampart(Book, 0, 1), "after the break: it stays there");
+	T.AssertFalse(HOLDiplomacyRead::DoorsOpenFor(Book, 0, 1), "the gates are shut to the other");
+	T.AssertTrue(HOLDiplomacyRead::CanLeaveRampart(Book, 1, 1), "the owner's own units come and go");
 	// Neutral is not allied either: the doors are shut.
-	FHOLDiplomacyBook Calm = HumansBook(2);
-	HOLDiplomacy::SetStance(Calm, 0, 1, HOLDiplomacy::Ally);
-	HOLDiplomacy::SetStance(Calm, 1, 0, HOLDiplomacy::Neutral);
-	T.AssertFalse(HOLDiplomacy::DoorsOpenFor(Calm, 0, 1), "Ally against Neutral: Neutral, shut");
+	FHOLDiplomacyStances Calm = LibHumansBook(2);
+	HOLDiplomacyRead::SetStance(Calm, 0, 1, HOLDiplomacyRead::GetStanceAlly());
+	HOLDiplomacyRead::SetStance(Calm, 1, 0, HOLDiplomacyRead::GetStanceNeutral());
+	T.AssertFalse(HOLDiplomacyRead::DoorsOpenFor(Calm, 0, 1), "Ally against Neutral: Neutral, shut");
 }
 
 // The allied victory (D373): all the survivors allied to each other AND at least one player beaten; at once, no box, no countdown.
@@ -400,34 +375,34 @@ void Test_DiplomacyAlliedVictory(FUnitTest& T)
 	Defeated.Add(false);
 	Defeated.Add(false);
 	Defeated.Add(true);
-	FHOLDiplomacyBook Book = HumansBook(4);
+	FHOLDiplomacyStances Book = LibHumansBook(4);
 	// Nobody allied: three enemy survivors, the game goes on.
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Book, Defeated).bEnded, "three enemy survivors: no victory");
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Book, Defeated).bEnded, "three enemy survivors: no victory");
 
-	MakeAllies(Book, 0, 1);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Book, Defeated).bEnded, "two allied, one apart: no victory");
-	MakeAllies(Book, 1, 2);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Book, Defeated).bEnded, "0-1 and 1-2 allied but not 0-2: no chain");
-	MakeAllies(Book, 0, 2);
-	FHOLAlliedVictory Win = HOLDiplomacy::AlliedVictory(Book, Defeated);
+	LibMakeAllies(Book, 0, 1);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Book, Defeated).bEnded, "two allied, one apart: no victory");
+	LibMakeAllies(Book, 1, 2);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Book, Defeated).bEnded, "0-1 and 1-2 allied but not 0-2: no chain");
+	LibMakeAllies(Book, 0, 2);
+	FHOLDiplomacyAlliedVictory Win = HOLDiplomacyRead::AlliedVictory(Book, Defeated);
 	T.AssertTrue(Win.bEnded, "all three survivors allied to each other, one beaten: victory at once");
 	T.AssertEquals(3, Win.Winners.Num(), "the three win together");
 	T.AssertEquals(0, Win.Winners[0], "in order");
 	T.AssertEquals(2, Win.Winners[2], "in order");
 
 	// The traitor who breaks just before the last common enemy falls wins alone: the others are no longer all allied.
-	HOLDiplomacy::SetStance(Book, 2, 0, HOLDiplomacy::Enemy);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Book, Defeated).bEnded, "a break: not all allied any more");
+	HOLDiplomacyRead::SetStance(Book, 2, 0, HOLDiplomacyRead::GetStanceEnemy());
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Book, Defeated).bEnded, "a break: not all allied any more");
 
 	// Nobody beaten: a general alliance does not end the game (D373).
 	TArray<bool> NoOneDown;
 	NoOneDown.Add(false);
 	NoOneDown.Add(false);
-	FHOLDiplomacyBook Pair = HumansBook(2);
-	MakeAllies(Pair, 0, 1);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Pair, NoOneDown).bEnded, "everybody allied but nobody beaten: it goes on");
+	FHOLDiplomacyStances Pair = LibHumansBook(2);
+	LibMakeAllies(Pair, 0, 1);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Pair, NoOneDown).bEnded, "everybody allied but nobody beaten: it goes on");
 	NoOneDown[1] = true;
-	FHOLAlliedVictory Last = HOLDiplomacy::AlliedVictory(Pair, NoOneDown);
+	FHOLDiplomacyAlliedVictory Last = HOLDiplomacyRead::AlliedVictory(Pair, NoOneDown);
 	T.AssertTrue(Last.bEnded, "one beaten, one survivor: it ends");
 	T.AssertEquals(1, Last.Winners.Num(), "the last standing");
 	T.AssertEquals(0, Last.Winners[0], "player 0");
@@ -436,11 +411,11 @@ void Test_DiplomacyAlliedVictory(FUnitTest& T)
 	TArray<bool> AllDown;
 	AllDown.Add(true);
 	AllDown.Add(true);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Pair, AllDown).bEnded, "no survivor: not an allied victory");
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Pair, AllDown).bEnded, "no survivor: not an allied victory");
 	// A list shorter than the slots: the missing ones are alive.
 	TArray<bool> Short;
 	Short.Add(true);
-	FHOLAlliedVictory FromShort = HOLDiplomacy::AlliedVictory(Pair, Short);
+	FHOLDiplomacyAlliedVictory FromShort = HOLDiplomacyRead::AlliedVictory(Pair, Short);
 	T.AssertTrue(FromShort.bEnded, "player 0 beaten, 1 alive by default");
 	T.AssertEquals(1, FromShort.Winners[0], "player 1 wins");
 }
@@ -454,16 +429,16 @@ void Test_DiplomacyAlliedVictoryAIsAndTeams(FUnitTest& T)
 	IsAI.Add(false);
 	IsAI.Add(true);
 	IsAI.Add(false);
-	FHOLDiplomacyBook Book = HOLDiplomacy::NewBook(4, IsAI);
-	MakeAllies(Book, 0, 1);
+	FHOLDiplomacyStances Book = HOLDiplomacyRead::NewBook(4, IsAI);
+	LibMakeAllies(Book, 0, 1);
 	TArray<bool> Defeated;
 	Defeated.Add(false);
 	Defeated.Add(false);
 	Defeated.Add(false);
 	Defeated.Add(true);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Book, Defeated).bEnded, "two allied humans, an AI alive and one beaten: no victory");
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Book, Defeated).bEnded, "two allied humans, an AI alive and one beaten: no victory");
 	Defeated[2] = true;
-	FHOLAlliedVictory Win = HOLDiplomacy::AlliedVictory(Book, Defeated);
+	FHOLDiplomacyAlliedVictory Win = HOLDiplomacyRead::AlliedVictory(Book, Defeated);
 	T.AssertTrue(Win.bEnded, "the AI eliminated: the allied humans win together");
 	T.AssertEquals(2, Win.Winners.Num(), "both");
 
@@ -476,15 +451,15 @@ void Test_DiplomacyAlliedVictoryAIsAndTeams(FUnitTest& T)
 	TArray<bool> NoAI;
 	for (int Slot = 0; Slot < 4; Slot++)
 		NoAI.Add(false);
-	FHOLDiplomacyBook TeamBook = HOLDiplomacy::NewTeamBook(Teams, NoAI);
+	FHOLDiplomacyStances TeamBook = HOLDiplomacyRead::NewTeamBook(Teams, NoAI);
 	TArray<bool> Down;
 	Down.Add(false);
 	Down.Add(true);
 	Down.Add(true);
 	Down.Add(false);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(TeamBook, Down).bEnded, "one of each team alive: it goes on");
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(TeamBook, Down).bEnded, "one of each team alive: it goes on");
 	Down[3] = true;
-	FHOLAlliedVictory TeamWin = HOLDiplomacy::AlliedVictory(TeamBook, Down);
+	FHOLDiplomacyAlliedVictory TeamWin = HOLDiplomacyRead::AlliedVictory(TeamBook, Down);
 	T.AssertTrue(TeamWin.bEnded, "only team 1 is left");
 	T.AssertEquals(1, TeamWin.Winners.Num(), "its survivor");
 }
@@ -586,44 +561,44 @@ void Test_DiplomacyRulesVectors(FUnitTest& T)
 void Test_DiplomacyRulesVectorsGarrisonVictory(FUnitTest& T)
 {
 	// Garrison and ramparts (D374).
-	FHOLDiplomacyBook Trio = HumansBook(3);
-	DiploVecAllies(Trio, 0, 1);
-	T.AssertTrue(HOLDiplomacy::CanGarrison(0, 0), "garrison in one's own");
-	T.AssertFalse(HOLDiplomacy::CanGarrison(0, 1), "never in an ally's");
-	T.AssertTrue(HOLDiplomacy::DoorsOpenFor(Trio, 1, 0) && HOLDiplomacy::DoorsOpenFor(Trio, 0, 1), "an ally's doors are open");
-	T.AssertFalse(HOLDiplomacy::DoorsOpenFor(Trio, 1, 2), "a stranger's are not");
-	T.AssertTrue(HOLDiplomacy::CanLeaveRampart(Trio, 0, 1), "allied: down when it wants");
-	HOLDiplomacy::SetStance(Trio, 1, 0, HOLDiplomacy::Enemy);
-	T.AssertFalse(HOLDiplomacy::CanLeaveRampart(Trio, 0, 1), "after the break: it stays there");
-	T.AssertTrue(HOLDiplomacy::CanLeaveRampart(Trio, 1, 1), "the owner's own units come and go");
+	FHOLDiplomacyStances Trio = LibHumansBook(3);
+	LibDiploVecAllies(Trio, 0, 1);
+	T.AssertTrue(HOLDiplomacyRead::CanGarrison(0, 0), "garrison in one's own");
+	T.AssertFalse(HOLDiplomacyRead::CanGarrison(0, 1), "never in an ally's");
+	T.AssertTrue(HOLDiplomacyRead::DoorsOpenFor(Trio, 1, 0) && HOLDiplomacyRead::DoorsOpenFor(Trio, 0, 1), "an ally's doors are open");
+	T.AssertFalse(HOLDiplomacyRead::DoorsOpenFor(Trio, 1, 2), "a stranger's are not");
+	T.AssertTrue(HOLDiplomacyRead::CanLeaveRampart(Trio, 0, 1), "allied: down when it wants");
+	HOLDiplomacyRead::SetStance(Trio, 1, 0, HOLDiplomacyRead::GetStanceEnemy());
+	T.AssertFalse(HOLDiplomacyRead::CanLeaveRampart(Trio, 0, 1), "after the break: it stays there");
+	T.AssertTrue(HOLDiplomacyRead::CanLeaveRampart(Trio, 1, 1), "the owner's own units come and go");
 
 	// The allied victory (D373).
-	FHOLDiplomacyBook Four = HumansBook(4);
+	FHOLDiplomacyStances Four = LibHumansBook(4);
 	const TArray<bool> OneDown = DiploVecFlags(4, 8);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Four, OneDown).bEnded, "three enemy survivors: no victory");
-	DiploVecAllies(Four, 0, 1);
-	DiploVecAllies(Four, 1, 2);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Four, OneDown).bEnded, "no chain: 0-2 not allied");
-	DiploVecAllies(Four, 0, 2);
-	FHOLAlliedVictory Win = HOLDiplomacy::AlliedVictory(Four, OneDown);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Four, OneDown).bEnded, "three enemy survivors: no victory");
+	LibDiploVecAllies(Four, 0, 1);
+	LibDiploVecAllies(Four, 1, 2);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Four, OneDown).bEnded, "no chain: 0-2 not allied");
+	LibDiploVecAllies(Four, 0, 2);
+	FHOLDiplomacyAlliedVictory Win = HOLDiplomacyRead::AlliedVictory(Four, OneDown);
 	T.AssertTrue(Win.bEnded, "all survivors allied, one beaten: victory");
 	T.AssertEquals("0,1,2", DiploVecList(Win.Winners), "the three win together");
-	HOLDiplomacy::SetStance(Four, 2, 0, HOLDiplomacy::Enemy);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Four, OneDown).bEnded, "a break: not all allied any more");
-	FHOLDiplomacyBook Allies = HumansBook(2);
-	DiploVecAllies(Allies, 0, 1);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Allies, DiploVecFlags(2, 0)).bEnded, "nobody beaten: it goes on");
-	T.AssertEquals("0", DiploVecList(HOLDiplomacy::AlliedVictory(Allies, DiploVecFlags(2, 2)).Winners), "the last standing wins");
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(Allies, DiploVecFlags(2, 3)).bEnded, "nobody left: not an allied victory");
-	T.AssertEquals("1", DiploVecList(HOLDiplomacy::AlliedVictory(Allies, DiploVecFlags(1, 1)).Winners), "a list shorter than the slots: the missing are alive");
+	HOLDiplomacyRead::SetStance(Four, 2, 0, HOLDiplomacyRead::GetStanceEnemy());
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Four, OneDown).bEnded, "a break: not all allied any more");
+	FHOLDiplomacyStances Allies = LibHumansBook(2);
+	LibDiploVecAllies(Allies, 0, 1);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Allies, DiploVecFlags(2, 0)).bEnded, "nobody beaten: it goes on");
+	T.AssertEquals("0", DiploVecList(HOLDiplomacyRead::AlliedVictory(Allies, DiploVecFlags(2, 2)).Winners), "the last standing wins");
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(Allies, DiploVecFlags(2, 3)).bEnded, "nobody left: not an allied victory");
+	T.AssertEquals("1", DiploVecList(HOLDiplomacyRead::AlliedVictory(Allies, DiploVecFlags(1, 1)).Winners), "a list shorter than the slots: the missing are alive");
 	// An AI alive blocks it (D367); teams give the team victory.
-	FHOLDiplomacyBook AIGame = HOLDiplomacy::NewBook(4, DiploVecFlags(4, 4));
-	DiploVecAllies(AIGame, 0, 1);
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(AIGame, DiploVecFlags(4, 8)).bEnded, "an AI alive: no victory");
-	T.AssertEquals("0,1", DiploVecList(HOLDiplomacy::AlliedVictory(AIGame, DiploVecFlags(4, 12)).Winners), "the AI eliminated: both win");
+	FHOLDiplomacyStances AIGame = HOLDiplomacyRead::NewBook(4, DiploVecFlags(4, 4));
+	LibDiploVecAllies(AIGame, 0, 1);
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(AIGame, DiploVecFlags(4, 8)).bEnded, "an AI alive: no victory");
+	T.AssertEquals("0,1", DiploVecList(HOLDiplomacyRead::AlliedVictory(AIGame, DiploVecFlags(4, 12)).Winners), "the AI eliminated: both win");
 	TArray<int> TwoTeams;
 	TwoTeams.Add(1); TwoTeams.Add(1); TwoTeams.Add(2); TwoTeams.Add(2);
-	FHOLDiplomacyBook TeamGame = HOLDiplomacy::NewTeamBook(TwoTeams, DiploVecFlags(4, 0));
-	T.AssertFalse(HOLDiplomacy::AlliedVictory(TeamGame, DiploVecFlags(4, 6)).bEnded, "one of each team alive: it goes on");
-	T.AssertTrue(HOLDiplomacy::AlliedVictory(TeamGame, DiploVecFlags(4, 14)).bEnded, "only team 1 left");
+	FHOLDiplomacyStances TeamGame = HOLDiplomacyRead::NewTeamBook(TwoTeams, DiploVecFlags(4, 0));
+	T.AssertFalse(HOLDiplomacyRead::AlliedVictory(TeamGame, DiploVecFlags(4, 6)).bEnded, "one of each team alive: it goes on");
+	T.AssertTrue(HOLDiplomacyRead::AlliedVictory(TeamGame, DiploVecFlags(4, 14)).bEnded, "only team 1 left");
 }

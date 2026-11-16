@@ -62,21 +62,15 @@ namespace HOLSignal
 	// free-for-all or Diplomacy; a defeated teammate of a team match is none (D784: its team's signals only). false = no signal at all.
 	const bool SpectatorsSeeAll = true;
 
-	// Slot is a seat of the match (HOLDiplomacy::InMatch of the C++ rule is not exposed by HOLDiplomacyRead: to expose at the next C++ lot).
-	bool InMatch(const FHOLDiplomacyStances& Book, int Slot)
-	{
-		return Slot >= 0 && Slot < Book.Slots;
-	}
-
 	// Viewer sees a signal of Sender: its own, or a mutual ally's (D386, D369), never a Neutral's or an Enemy's; a spectator
 	// (bViewerSpectator, the caller's input as for HOLChat) sees them all (SpectatorsSeeAll).
 	bool Sees(const FHOLDiplomacyStances& Book, int Sender, int Viewer, bool bViewerSpectator = false)
 	{
-		if (!InMatch(Book, Sender))
+		if (!HOLDiplomacyRead::InMatch(Book, Sender))
 			return false;
 		if (bViewerSpectator)
 			return SpectatorsSeeAll;
-		if (!InMatch(Book, Viewer))
+		if (!HOLDiplomacyRead::InMatch(Book, Viewer))
 			return false;
 		return Sender == Viewer || HOLDiplomacyRead::IsAlly(Book, Sender, Viewer);
 	}
@@ -84,7 +78,7 @@ namespace HOLSignal
 	// Sender may place a signal: in the match, and alive or a defeated teammate of a team match (Q2; D376 for the others).
 	bool CanSend(const FHOLDiplomacyStances& Book, int Sender, bool bDefeated)
 	{
-		if (!InMatch(Book, Sender))
+		if (!HOLDiplomacyRead::InMatch(Book, Sender))
 			return false;
 		return !bDefeated || (Book.bLocked && DefeatedTeammateSignals);
 	}
@@ -124,7 +118,7 @@ namespace HOLSignal
 	{
 		if (!IsValidKind(Kind))
 			return BadKind;
-		if (!InMatch(Book, Sender))
+		if (!HOLDiplomacyRead::InMatch(Book, Sender))
 			return NoSuchSlot;
 		if (!CanSend(Book, Sender, bDefeated))
 			return Silenced;
