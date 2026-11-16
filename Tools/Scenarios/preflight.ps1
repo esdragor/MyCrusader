@@ -121,6 +121,8 @@ if (Test-Path $Log) {
     $Text = Get-Content $Log
     # Any error line of the game or of the script engine (a stale build shows as "Angelscript: Error"), and HOL warnings.
     # LogAutomationTest errors are written by the engine at frame 0 of every run (also on a clean one): not a verdict on the scenario.
+    # Cause (SAURON-1116d): 20 "Condition failed" of the engine's smoke tests UnifiedErrorTests.cpp under -culture=fr (0 under
+    # -culture=en), see CheckLog.ps1.
     $Bad = @($Text | Select-String -Pattern 'LogHOL\w*: (Warning|Error)|Angelscript: Error|\]\w+: Error:' | Where-Object { $_.Line -notmatch 'LogHOLTest: Warning: .*waitkey|LogAutomationTest: Error' })
     if ($Bad.Count -gt 0) { Report "FAIL" "$($Bad.Count) warning/error line(s) in the log, first: $($Bad[0].Line.Trim()) (a script error right at start usually means the build of this worktree is stale: Tools\build.ps1 first)" } else { Report "OK" "no warning or error in the log" }
     # 6 (log): what the scenario asked for and did not get, even at Display level ("candidate missing": audio_compare_buildings_*, 2026-11-11).
