@@ -17,7 +17,7 @@
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLPlayerController.h"
 #include "Screens/HOLConfirmDialog.h"
-#include "Screens/HOLEndBanner.h"
+#include "Screens/HOLEndBannerScreen.h"
 #include "Style/HOLUIStyles.h"
 #include "UObject/UObjectIterator.h"
 #include "Widgets/HOLButton.h"
@@ -194,7 +194,7 @@ void UHOLGameMenuScreen::QuitMatch()
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("Game menu: quit to menu"));
 	}
-	UHOLEndBanner::LeaveMatch(GetOwningPlayer());
+	UHOLEndBannerScreen::LeaveMatch(GetOwningPlayer());
 }
 
 void UHOLGameMenuScreen::ReturnToLobby()
@@ -206,7 +206,7 @@ void UHOLGameMenuScreen::ReturnToLobby()
 	}
 	UE_LOG(LogHOLUI, Display, TEXT("Game menu: back to lobby"));
 	Client->SetAfterMatch(UHOLManagerClient::EAfterMatch::Lobby);
-	UHOLEndBanner::LeaveMatch(GetOwningPlayer());
+	UHOLEndBannerScreen::LeaveMatch(GetOwningPlayer());
 }
 
 void UHOLGameMenuScreen::ShowResult()
@@ -215,7 +215,7 @@ void UHOLGameMenuScreen::ShowResult()
 	if (AHOLGameHUD* HUD = PlayerController ? Cast<AHOLGameHUD>(PlayerController->GetHUD()) : nullptr)
 	{
 		UE_LOG(LogHOLUI, Display, TEXT("Game menu: result"));
-		// The banner closes this menu as it opens (UHOLEndBanner::Open).
+		// The banner closes this menu as it opens (UHOLEndBannerScreen::Open).
 		HUD->ReopenEndBanner();
 	}
 }
