@@ -23,7 +23,8 @@ param(
     [string] $Root = "",
     [int] $MaxSeconds = 180,
     [string] $PlayerName = "",  # passed to check.ps1 then to the game (-PlayerName=)
-    [switch] $AllowUncommitted  # the trial needs files git does not hold (audio candidates, decision B): WARN instead of FAIL, it plays ONLY with -Root <this worktree>
+    [switch] $AllowUncommitted,  # the trial needs files git does not hold (audio candidates, decision B): WARN instead of FAIL, it plays ONLY with -Root <this worktree>
+    [switch] $TestMap  # D820 (Q-rocks-proportion Q2 = C): the trial needs the grey test map ON PURPOSE (say why in the E- file): WARN instead of FAIL for a .json without mapSize
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -66,6 +67,14 @@ else { Report "OK" "pan exposure: every ground click is within 10 frames of the 
 $EnemyOffenders = @(Get-EnemyClickWithoutSlot (Get-Content -Encoding UTF8 $Txt))
 if ($EnemyOffenders.Count -gt 0) { Report "FAIL" "enemy click: $($EnemyOffenders[0]) ($($EnemyOffenders.Count) in all)" }
 else { Report "OK" "enemy click: every hol.Select.ClickUnit on another player's unit names its slot (slot=<S>)" }
+
+# 2d (static, D820 = Q-rocks-proportion Q2 C, 2026-11-16): a trial shown to the user plays on a GENERATED map (biome ground, decor), not on the grey
+# test map that a .json without mapSize loads (EHOLMapSize::None, see Tools\Tests\scenario_mapsize_check.ps1): add "mapSize": "Small" to <name>.json and
+# replay the trial (decor may stand on a placement). -TestMap = the grey map is wanted (WARN).
+$MapJson = Join-Path $Root "Tools\Scenarios\$Name.json"
+if ((Test-Path $MapJson) -and ((Get-Content $MapJson -Raw) -notmatch '"mapSize"')) {
+    Report $(if ($TestMap) { "WARN" } else { "FAIL" }) "map: $Name.json has no mapSize, the trial plays on the grey test map (D820: add mapSize Small to the .json and replay; -TestMap if the test map is wanted)"
+} else { Report "OK" "map: the trial plays on a generated map (mapSize), or has no .json" }
 
 # 6 (static, 2026-11-12): the USER'S launch, not the agent's. Four trials passed this preflight and never started for the user (2026-11-11):
 # play.ps1 without -PlayerName on named seats (spectator), files only in the agent's worktree, a stale binary in the copy (LaunchCheck.ps1,
