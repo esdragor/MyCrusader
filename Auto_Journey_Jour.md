@@ -28,12 +28,14 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | GLORFINDEL-1116a (fini 15:32) | a31c68576c0fc91a9 | HeroesOfLiberty-Glorfindel | D806 script d3fd15f + D807 règle canal bd2ca42, rouges vus 15:16/15:26, tests 1322/1322 ; jumeaux C++ en file (plafond) ; 2 Edit refusés ; ~51 tool_uses | non | 15:02 |
 | GLORFINDEL-1116b | a8532c8bf8b9fdde1 | HeroesOfLiberty-Glorfindel | ligne sans C++ du chantier réseau/chat | non | 15:33 |
 | FARAMIR-1116a (fini 15:44) | a81a40ab63a80a04f | HeroesOfLiberty-Faramir | D808 gate Close WARN si DLL à jour : e033cd5, gate_test rouge vu 15:24 puis 90/90 ; merge main en CONFLIT (ScenariosInProgress.md) laissé à FARAMIR-1116b ; 41 tool_uses | non | 15:02 |
-| FARAMIR-1116b | ad086d121102218ca | HeroesOfLiberty-Faramir | conflit docs du merge main, puis F2 rejeu compare Entrée/Backspace | non | 15:46 |
+| FARAMIR-1116b (fini 15:57) | ad086d121102218ca | HeroesOfLiberty-Faramir | conflit résolu d2e9cb6 ; Backspace rejoué par vraie touche 596460d, 2de3515 : OK sur keys_tree_spacing_compare, KO sur keys_rocks_compare (8 scénarios : réglage avant notereset) ; Q-waitkey-texte ; avance rapide main (D808 dans main) ; 37 tool_uses | non | 15:46 |
 | SAURON-1116a (fini 15:33) | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | ClickUnit enemy sans slot= refusé (preflight + pan_exposure_test, 341 scénarios), 69fa04f, a1f559f, rouge vu 15:04 ; S2 D809 C++ en file (plafond) ; 49 tool_uses | non | 15:02 |
 | SAURON-1116b | a037e24d4319b88ca | HeroesOfLiberty-Sauron | scénario arquebusier (tir à la naissance) puis ligne sans C++ | non | 15:33 |
 | SAURON-1116b (fini 15:43) | a037e24d4319b88ca | HeroesOfLiberty-Sauron | arquebusier déjà corrigé (a1f559f), preflight PASS ; D820 preflight refuse un essai sans mapSize (b1e97e3, rouge vu 15:37) ; E-arquebusier [À ESSAYER] ; avance rapide main 7d23773 ; 33 tool_uses | non | 15:33 |
-| SAURON-1116c | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 : mapSize sur les 4 essais ouverts, puis Volcan V9c sans C++ | non | 15:46 |
+| SAURON-1116c (fini 15:55) | ae47393561ba4b7ae | HeroesOfLiberty-Sauron | D820 mapSize Small sur 5 essais : 88dd5c2, f9db1dc ; preflight deploy et nomad_start PASS ; audio sans preflight (sons absents de Sauron) ; pas de ligne V9c ; avance rapide main | non | 15:46 |
+| SAURON-1116d | af60f614d09275eab | HeroesOfLiberty-Sauron | défauts communs Q8 : ovales blancs (deploy, nomad_start) et Condition failed au pas 0 | non | 15:56 |
 Exception 15:37 : essais audio_compare_buildings_range/_stable donnés malgré session_gate Essay FAIL (4 fichiers non commités dans Arwen = scripts Tools/Audio/*.py d ARWEN-1116b en cours, hors jeu) ; d751-root dans main en avance rapide 365326f (tests 1320/1320 + values PASS lancés par la session principale 15:30) ; sons hors git présents dans Arwen seulement.
+Exception 16:00 : alert_population donné malgré Essay FAIL « binaire 15:22 plus ancien que le commit 15:27 » : a11ed2a a été compilé avant d être commité (Get-StaleBinaryProblem vide) ; faux positif du gate à corriger (comparer les sources, pas l heure du commit).
 
 ## Résumé de la séance du 2026-11-15
 

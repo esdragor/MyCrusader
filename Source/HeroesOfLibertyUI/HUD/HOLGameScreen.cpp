@@ -774,6 +774,22 @@ void UHOLGameScreen::HandleSignalMessage(const int32 ViewerSlot, const FHOLForum
 	}
 }
 
+const AHOLPlayerState* UHOLGameScreen::GetBoundPlayerState() const
+{
+	return BoundPlayerState.Get();
+}
+
+void UHOLGameScreen::AddThreadLine(const FText& Line)
+{
+	if (const UWorld* World = GetWorld())
+	{
+		FHOLForumMessage Message;
+		Message.Text = Line;
+		MessageThread.Add(Message, World->GetRealTimeSeconds());
+		RebuildMessages();
+	}
+}
+
 void UHOLGameScreen::HandleHeroReadyMessage(const FHOLForumMessage& Message)
 {
 	if (const UWorld* World = GetWorld())
