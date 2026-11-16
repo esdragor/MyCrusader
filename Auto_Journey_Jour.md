@@ -8,6 +8,13 @@ Historique du test du 2026-10-30 : `Docs\Archive\Auto_Journey_Test1_2026-10-30.m
 
 **Relevé du 2026-11-15** : voir Docs\ReleveGDD_2026-11-15.md (état réel de A1-A4 et B1-B6, branchements C++ à faire, questions en attente). L'ancien relevé du 2026-11-12 est archivé dans Docs\Archive\Auto_Journey_Jour_Chapitres_GDD_releve_2026-11-12_archive_2026-11-15.md.
 
+## Agents du 2026-11-16
+
+Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans push). Veilleur toutes les 5 min. Exception : nettoyage 0a sans le dossier Retours\ (nettoyé ce matin, bf2624b/a477105 : 3 agents au lieu de 4). Rapports complets dans Docs\Rapports\<AGENT>.md (L15-10), brief commun Tools\AutoJourney\brief_commun.md.
+
+| Agent | id | worktree | tâche | C++ | lancé |
+|---|---|---|---|---|---|
+
 ## Agents du 2026-11-15
 
 Séance autonome lancée à 09:02, fin 17:00, fusion groupée acceptée (sans push). Exception : nettoyage 0a sans le dossier Retours\ (déjà nettoyé le 2026-11-14 au soir, 11 fichiers).
