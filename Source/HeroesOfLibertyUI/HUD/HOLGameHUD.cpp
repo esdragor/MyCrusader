@@ -19,7 +19,7 @@
 #include "Screens/HOLEndBanner.h"
 #include "TimerManager.h"
 #include "Player/HOLPlayerController.h"
-#include "Screens/HOLGameMenu.h"
+#include "Screens/HOLGameMenuScreen.h"
 #include "Screens/HOLStatsScreen.h"
 #include "Widgets/HOLRootLayout.h"
 #include "Style/HOLUIStyles.h"
@@ -118,7 +118,7 @@ void AHOLGameHUD::BeginPlay()
 		const TWeakObjectPtr<AHOLPlayerController> WeakController(HOLController);
 		HOLController->OnGameMenuRequested.AddWeakLambda(this, [WeakController]()
 		{
-			UHOLGameMenu::Open(WeakController.Get());
+			UHOLGameMenuScreen::Open(WeakController.Get());
 		});
 	}
 	// D357, V1-Q2: the end banner, at each defeat or the match's end.

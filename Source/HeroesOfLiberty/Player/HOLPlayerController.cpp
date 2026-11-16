@@ -37,7 +37,7 @@
 #include "Map/HOLStartSlot.h"
 #include "Match/HOLPlayerState.h"
 #include "Match/HOLSignalSubsystem.h"
-#include "Match/HOLChatRules.h"
+#include "Match/HOLChatSubsystem.h"
 #include "Match/HOLSpecializationSubsystem.h"
 #include "Player/HOLGameMenuRules.h"
 #include "Player/HOLRTSCamera.h"
@@ -1690,14 +1690,14 @@ namespace UE::HeroesOfLiberty::Player
 		TEXT("hol.Chat.Say <all|allies|private> [<TargetSlot> for private] <text...>: the local player sends that chat message"),
 		FConsoleCommandWithArgsDelegate::CreateLambda([](const TArray<FString>& Args)
 		{
-			const int32 Channel = Args.Num() > 0 ? HOLChat::ParseChannel(Args[0]) : INDEX_NONE;
-			const int32 First = Channel == HOLChat::Private ? 2 : 1;
+			const int32 Channel = Args.Num() > 0 ? UHOLChatSubsystem::ParseChannel(Args[0]) : INDEX_NONE;
+			const int32 First = Channel == UHOLChatSubsystem::ChannelPrivate ? 2 : 1;
 			if (Channel == INDEX_NONE || Args.Num() <= First)
 			{
 				UE_LOG(LogHOLMatch, Warning, TEXT("Usage: hol.Chat.Say <all|allies|private> [<TargetSlot>] <text>"));
 				return;
 			}
-			const int32 Target = Channel == HOLChat::Private ? FCString::Atoi(*Args[1]) : INDEX_NONE;
+			const int32 Target = Channel == UHOLChatSubsystem::ChannelPrivate ? FCString::Atoi(*Args[1]) : INDEX_NONE;
 			TArray<FString> Words;
 			for (int32 Index = First; Index < Args.Num(); ++Index)
 			{
@@ -5244,12 +5244,13 @@ TArray<FHOLReceivedSignal> AHOLPlayerController::GetActiveSignals() const
 	HOLSignalInput::Expire(Active, GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0);
 	return Active;
 }
-// A4: the chat's gate, values of the registry (Tools/Data/ValueSheet.csv, HOLChat::MaxTextLength, MaxPerWindow, WindowMs).
-static TAutoConsoleVariable<int32> CVarChatMaxLength(TEXT("hol.Chat.MaxLength"), HOLChat::MaxTextLength,
+// A4: the chat's gate; 0 = the registry's value, the script's default (Tools/Data/ValueSheet.csv; Script/Chat/HOLChatRules.as,
+// HOLChat::MaxTextLength, MaxPerWindow, WindowMs; MIG-P1b: changed there without a build).
+static TAutoConsoleVariable<int32> CVarChatMaxLength(TEXT("hol.Chat.MaxLength"), 0,
 	TEXT("A4: a chat message's maximum length in characters; longer, the server refuses it (registry comm.chat.*)."));
-static TAutoConsoleVariable<int32> CVarChatMaxPerWindow(TEXT("hol.Chat.MaxPerWindow"), HOLChat::MaxPerWindow,
+static TAutoConsoleVariable<int32> CVarChatMaxPerWindow(TEXT("hol.Chat.MaxPerWindow"), 0,
 	TEXT("A4: the chat messages a player may send within hol.Chat.WindowMs; more, the server refuses them (registry comm.chat.*)."));
-static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), HOLChat::WindowMs,
+static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), 0,
 	TEXT("A4: the window of the chat's rate, in ms (registry comm.chat.*)."));
 
 void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
@@ -5260,7 +5261,7 @@ void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text,
 
 void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
-	// The player's own slot only (D288); the server alone decides who reads it (HOLChat, mirror of Script/Chat/HOLChatRules.as).
+	// The player's own slot only (D288); the server alone decides who reads it (the script board, Script/Chat/HOLChatBoardScript.as).
 	UWorld* World = GetWorld();
 	if (!World)
 	{
@@ -5268,12 +5269,18 @@ void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, co
 	}
 	const AHOLPlayerState* HOLPlayerState = GetHOLPlayerState();
 	const int32 Sender = HOLPlayerState && !IsSpectator() ? HOLPlayerState->GetPlayerIndex() : INDEX_NONE;
-	const HOLChat::FSeats Seats = HOLChat::ReadSeats(World);
+	UHOLChatSubsystem* Board = UHOLChatSubsystem::Find(World);
+	const FHOLChatSeats Seats = UHOLChatSubsystem::ReadSeats(World);
 	const int32 NowMs = static_cast<int32>(World->GetTimeSeconds() * 1000.0);
-	const int32 Answer = HOLChat::CheckPost(Seats, Channel, Sender, TargetSlot, Text, ChatPostTimesMs, NowMs,
-		CVarChatMaxLength.GetValueOnGameThread(), CVarChatMaxPerWindow.GetValueOnGameThread(), CVarChatWindowMs.GetValueOnGameThread());
+	const FHOLChatGateAnswer Gate = Board ? Board->CheckPostNow(Seats, Channel, Sender, TargetSlot, Text, ChatPostTimesMs, NowMs,
+		CVarChatMaxLength.GetValueOnGameThread(), CVarChatMaxPerWindow.GetValueOnGameThread(), CVarChatWindowMs.GetValueOnGameThread()) : FHOLChatGateAnswer();
+	if (Board)
+	{
+		ChatPostTimesMs = Gate.RecentMs;
+	}
+	const int32 Answer = Gate.Answer;
 	UE_LOG(LogHOLMatch, Display, TEXT("Chat: slot %d channel %d answer %d"), Sender, Channel, Answer);
-	if (Answer != HOLChat::Ok)
+	if (!Board || Answer != UHOLChatSubsystem::AnswerOk)
 	{
 		return;
 	}
@@ -5287,9 +5294,8 @@ void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, co
 		}
 		const AHOLPlayerState* ViewerState = Viewer->GetHOLPlayerState();
 		const int32 ViewerSlot = ViewerState && !Viewer->IsSpectator() ? ViewerState->GetPlayerIndex() : INDEX_NONE;
-		// Two pure spectators (no seat): the spectators' talk, never a private message of one of them.
-		const bool bReaches = Viewer == this
-			|| (Sender == INDEX_NONE && ViewerSlot == INDEX_NONE ? Channel != HOLChat::Private : HOLChat::Reaches(Seats, Channel, Sender, TargetSlot, ViewerSlot));
+		// Two pure spectators (no seat) share INDEX_NONE: the script rule gives them the spectators' talk, never a private message (D806).
+		const bool bReaches = Viewer == this || Board->ReachesNow(Seats, Channel, Sender, TargetSlot, ViewerSlot);
 		if (bReaches)
 		{
 			Viewer->ClientReceiveChat(Sender, Channel, Text);
