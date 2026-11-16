@@ -3617,4 +3617,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D831** (Raccourcis de la grille, Nomade, D816, 2026-11-16, REGLAGE de l'utilisateur sur l'essai nomad_start) : le Forum (town center, MainCentre) du Nomade se pose par la touche **E** (et non C) dans la page Palier II de la grille (Z puis E).
 
-Prochain numéro : **D832**.
+**D832** (Audio des bâtiments, tour 6, D801, D826, 2026-11-16 16:5x, écoute de l'utilisateur) : son de sélection du **Champ de tir = B** du tour 6 (tir d'arc G du tour 5, version propre sans filtre) ; **Caserne = A** du tour 6 (une lame tirée, sans voix) ; **Écurie = B** du tour 6 MAIS seulement l'ébrouement (« pfff ») de la fin, SANS le hennissement du début (à couper, puis réécoute par l'utilisateur).
+
+Prochain numéro : **D833**.

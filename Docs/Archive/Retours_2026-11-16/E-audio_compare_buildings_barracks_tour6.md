@@ -30,3 +30,4 @@ assets: (hors git, seulement dans le worktree Arwen) `C:\Users\baudo\Documents\H
 Commande complète (règle 13, 2026-11-14) :
 `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Arwen\Tools\Scenarios\play.ps1 audio_compare_buildings_barracks -Root C:\Users\baudo\Documents\HeroesOfLiberty-Arwen`
 Durée : environ 1 min 30 (10 sons, Entrée = suivant). Réponse attendue : la lettre (A à J, ou plusieurs), `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: A (utilisateur, 2026-11-16 16:5x, dans la conversation ; D832)
