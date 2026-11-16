@@ -63,6 +63,12 @@ namespace HOLSite
 	// camp). A slot with no unit does not count; a slot out of one of the arrays is ignored.
 	FHOLSiteState Step(const FHOLSiteState& State, const TArray<int>& Takers, const TArray<int>& Disturbers, const TArray<int>& TeamBySlot)
 	{
+		return Step(State, Takers, Disturbers, TeamBySlot, HoldSteps(), DecaySteps);
+	}
+
+	// The same with the steps to hold and the steps given back GIVEN by the caller (the server's bridge, HOLSiteBoardScript.as: the C++ settings).
+	FHOLSiteState Step(const FHOLSiteState& State, const TArray<int>& Takers, const TArray<int>& Disturbers, const TArray<int>& TeamBySlot, int InHoldSteps, int InDecaySteps)
+	{
 		FHOLSiteState Next = State;
 		const int Slots = Math::Min(Math::Min(Takers.Num(), Disturbers.Num()), TeamBySlot.Num());
 		const int OwnerTeam = (State.Owner >= 0 && State.Owner < TeamBySlot.Num()) ? TeamBySlot[State.Owner] : -1;
@@ -94,7 +100,7 @@ namespace HOLSite
 		if (AdverseTeams.Num() == 0)
 		{
 			// Nobody adverse: the count recedes.
-			Next.Held = Math::Max(0, State.Held - DecaySteps);
+			Next.Held = Math::Max(0, State.Held - InDecaySteps);
 			if (Next.Held == 0)
 				Next.Taker = None;
 			return Next;
@@ -110,7 +116,7 @@ namespace HOLSite
 			// its own camp recede.
 			if (State.Held > 0 && TakerTeam != AdverseTeams[0])
 				return Next;
-			Next.Held = Math::Max(0, State.Held - DecaySteps);
+			Next.Held = Math::Max(0, State.Held - InDecaySteps);
 			if (Next.Held == 0)
 				Next.Taker = None;
 			return Next;
@@ -121,7 +127,7 @@ namespace HOLSite
 		const int Held = (StartedBy >= 0 && StartedBy != TeamBySlot[Taker]) ? 0 : State.Held;
 		Next.Taker = Taker;
 		Next.Held = Held + 1;
-		if (Next.Held >= HoldSteps())
+		if (Next.Held >= InHoldSteps)
 		{
 			Next.Owner = Taker;
 			Next.Taker = None;
