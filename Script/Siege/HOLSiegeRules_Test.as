@@ -167,3 +167,82 @@ void Test_SiegeTechnologies(FUnitTest& T)
 	T.AssertTrue(HOLSiege::DamageStatOf(n"Ram") == NAME_None, "the Ram's damage has no technology");
 	T.AssertTrue(HOLSiege::HealthStatOf(n"Spearman") == NAME_None, "a Spearman has none");
 }
+
+// MIG-J-Siege-b (D830, migration 2026-11-16): HeroesOfLiberty.Siege.Combat and HeroesOfLiberty.Siege.Table ported to script, on the
+// same vectors, the rows read from the REAL type tables through C++ (HOLAIOrder::ReadAIUnitFigures / ReadAIBuildingFigures).
+
+// Port of HeroesOfLiberty.Siege.Combat (S4, SQ1 = B, D614): the Ram takes no unit on by itself (its attack on units is 0 in the real
+// table), a unit that attacks units does; the Mangonel's blow reaches the units within its area around the target and only those (the
+// edge of the circle is in). The choice among candidates (HOLCombat::ChooseTarget, attack-move and hold) stays in C++ (Mass).
+void Test_SiegeCombatVectors(FUnitTest& T)
+{
+	FHOLAITypeFigures Ram;
+	FHOLAITypeFigures Mangonel;
+	FHOLAITypeFigures Spearman;
+	T.AssertTrue(HOLAIOrder::ReadAIUnitFigures(n"Ram", Ram), "Ram row");
+	T.AssertTrue(HOLAIOrder::ReadAIUnitFigures(n"Mangonel", Mangonel), "Mangonel row");
+	T.AssertTrue(HOLAIOrder::ReadAIUnitFigures(n"Spearman", Spearman), "Spearman row");
+	T.AssertTrue(HOLSiege::TakesUnitsOn(Spearman.Damage), "a unit that attacks units takes the enemy on");
+	T.AssertFalse(HOLSiege::TakesUnitsOn(Ram.Damage), "the Ram (no attack on units) takes nobody on");
+	T.AssertTrue(HOLSiege::TakesUnitsOn(Mangonel.Damage), "the Mangonel takes units on");
+
+	// The area: centre to centre, the circle's edge in.
+	const FVector2D Centre(1000.0, 1000.0);
+	T.AssertTrue(HOLSiege::IsInArea(Centre, Centre, 250.f), "on the target");
+	T.AssertTrue(HOLSiege::IsInArea(Centre, Centre + FVector2D(249.0, 0.0), 250.f), "249 cm: in");
+	T.AssertTrue(HOLSiege::IsInArea(Centre, Centre + FVector2D(150.0, 200.0), 250.f), "250 cm: the edge is in");
+	T.AssertFalse(HOLSiege::IsInArea(Centre, Centre + FVector2D(0.0, 251.0), 250.f), "251 cm: out");
+	T.AssertFalse(HOLSiege::IsInArea(Centre, Centre + FVector2D(1.0, 0.0), 0.f), "no area (0): nobody but the target itself, never another");
+}
+
+// Port of HeroesOfLiberty.Siege.Table (S2, SQ1 = B / D614, SQ2 = A / D615, SQ3 / D625): the figures of the two engines and of the
+// siege workshop that the script can read, from the REAL tables. Left in C++ (not readable from script): the workshop's age, grid slot,
+// footprint, health, category, products, deposit, walkability and sight; the engines' attack type, attack on buildings, area, sight,
+// siege and hero armours, and the "only the Mangonel has an area" sweep over every row.
+void Test_SiegeTableVectors(FUnitTest& T)
+{
+	FHOLAITypeFigures Workshop;
+	const bool bWorkshop = HOLAIOrder::ReadAIBuildingFigures(n"SiegeWorkshop", Workshop);
+	T.AssertTrue(bWorkshop, "SiegeWorkshop in the building type table");
+	if (bWorkshop)
+	{
+		T.AssertTrue(Workshop.CostWood == 175 && Workshop.CostFood == 0 && Workshop.CostStone == 0 && Workshop.CostGold == 0, "Workshop: 175 wood, nothing else");
+		T.AssertTrue(Math::Abs(Workshop.BuildTime - 25.f) < 0.01f, "Workshop: 25 s to build");
+		T.AssertEquals(0, Workshop.Population, "Workshop: no population");
+	}
+
+	FHOLAITypeFigures Ram;
+	const bool bRam = HOLAIOrder::ReadAIUnitFigures(n"Ram", Ram);
+	T.AssertTrue(bRam, "Ram in the unit type table");
+	if (bRam)
+	{
+		T.AssertEquals(400, Ram.Health, "Ram: 400 health");
+		T.AssertTrue(Math::Abs(Ram.Speed - 220.f) < 0.01f, "Ram: 220 cm/s");
+		T.AssertEquals(3, Ram.Population, "Ram: 3 places");
+		T.AssertTrue(Ram.CostWood == 150 && Ram.CostGold == 75 && Ram.CostFood == 0 && Ram.CostStone == 0, "Ram: 150 wood + 75 gold");
+		T.AssertTrue(Ram.ArmorCategories.Num() == 1 && Ram.ArmorCategories[0] == n"Siege", "Ram: armour category Siege alone (D345)");
+		T.AssertEquals(0, Ram.Damage, "Ram: no attack on units (SQ1 = B)");
+		T.AssertTrue(Ram.BuildTime > 0.f, "Ram: a production time");
+		T.AssertEquals(60, Ram.RangedArmor, "Ram: ranged armour 60 (SQ3, D625)");
+		T.AssertTrue(Ram.MeleeArmor >= 0 && Ram.RangedArmor >= 0, "Ram: armours not negative");
+	}
+
+	FHOLAITypeFigures Mangonel;
+	const bool bMangonel = HOLAIOrder::ReadAIUnitFigures(n"Mangonel", Mangonel);
+	T.AssertTrue(bMangonel, "Mangonel in the unit type table");
+	if (bMangonel)
+	{
+		T.AssertEquals(200, Mangonel.Health, "Mangonel: 200 health");
+		T.AssertTrue(Math::Abs(Mangonel.Speed - 180.f) < 0.01f, "Mangonel: 180 cm/s");
+		T.AssertEquals(4, Mangonel.Population, "Mangonel: 4 places");
+		T.AssertTrue(Mangonel.CostWood == 200 && Mangonel.CostGold == 150 && Mangonel.CostFood == 0 && Mangonel.CostStone == 0, "Mangonel: 200 wood + 150 gold");
+		T.AssertTrue(Mangonel.ArmorCategories.Num() == 1 && Mangonel.ArmorCategories[0] == n"Siege", "Mangonel: armour category Siege alone");
+		T.AssertEquals(45, Mangonel.Damage, "Mangonel: 45 damage");
+		T.AssertFalse(Mangonel.bRanged, "Mangonel: a siege attack, not a ranged one");
+		T.AssertTrue(Math::Abs(Mangonel.AttackInterval - 5.f) < 0.01f, "Mangonel: every 5 s");
+		T.AssertTrue(Math::Abs(Mangonel.AttackRange - 3000.f) < 0.01f, "Mangonel: 3 000 cm reach");
+		T.AssertTrue(Mangonel.BuildTime > 0.f, "Mangonel: a production time");
+		T.AssertEquals(60, Mangonel.RangedArmor, "Mangonel: ranged armour 60 (SQ3, D625)");
+		T.AssertTrue(Mangonel.MeleeArmor >= 0 && Mangonel.RangedArmor >= 0, "Mangonel: armours not negative");
+	}
+}
