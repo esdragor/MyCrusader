@@ -28,6 +28,7 @@ Séance INTERACTIVE lancée à 14:46, fin 18:00, fusion groupée acceptée (sans
 | FARAMIR-1116a | a81a40ab63a80a04f | HeroesOfLiberty-Faramir | D808 gate Close WARN ; worktree d intégration des fusions | non | 15:02 |
 | SAURON-1116a (fini 15:33) | aef255f6b302cebb3 | HeroesOfLiberty-Sauron | ClickUnit enemy sans slot= refusé (preflight + pan_exposure_test, 341 scénarios), 69fa04f, a1f559f, rouge vu 15:04 ; S2 D809 C++ en file (plafond) ; 49 tool_uses | non | 15:02 |
 | SAURON-1116b | a037e24d4319b88ca | HeroesOfLiberty-Sauron | scénario arquebusier (tir à la naissance) puis ligne sans C++ | non | 15:33 |
+Exception 15:37 : essais audio_compare_buildings_range/_stable donnés malgré session_gate Essay FAIL (4 fichiers non commités dans Arwen = scripts Tools/Audio/*.py d ARWEN-1116b en cours, hors jeu) ; d751-root dans main en avance rapide 365326f (tests 1320/1320 + values PASS lancés par la session principale 15:30) ; sons hors git présents dans Arwen seulement.
 
 ## Résumé de la séance du 2026-11-15
 
