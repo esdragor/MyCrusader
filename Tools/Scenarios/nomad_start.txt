@@ -51,7 +51,10 @@ capture nomad_start_forum
 # et la 2e ligne ne venait jamais).
 waitlog Construction: slot 0 first work on MainCentre
 waitlog Construction: slot 0 MainCentre at (
+# The group's line of the HUD is read 4 times a second (HOLGameScreen.cpp GroupRefreshInterval 0.25 s): read it after a refresh, not 1 frame after the 2nd builder's arrival (CELEBORN-1116c: '1 en construction' on the picture while the log said 2 builders).
+wait 0.5
 hol.HUD.Report
+waitlog building 2 fighting
 capture nomad_start_site
 hol.Test.Sanity
 note Partie Nomade : aucun Centre-ville au depart. Tes Paysans sont disperses sur toute la carte (voir la minicarte), ton Roi avec l'un, ton heros avec un autre ; construis ton premier Forum ou tu veux : Paysans selectionnes, Z (Palier II) puis C.
