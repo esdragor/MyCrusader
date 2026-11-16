@@ -51,3 +51,4 @@ Zone provisoire = rectangle aligné (centre, demi-étendue), comme une case de b
 
 ||||||||||||
 ARWEN-1115d : ||||||||||||||||||| (19 à l'écriture)
+- 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D824 (Q-stealth) = Q1 A (800 cm, défaut) + Q2 B (certaines cartes à bosquets) + Q3 B (bosquet + contour discret au sol) ; lignes [ ] Arwen (aspect, branchement vue par camp) et Haldir (zones sur quelques cartes).

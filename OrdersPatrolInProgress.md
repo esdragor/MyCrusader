@@ -31,3 +31,4 @@ Chantier B5 du relevé « Chapitres du GDD non commencés » (`Auto_Journey_Jour
   vers B), il suit maintenant les arrivées (B atteint, puis A, puis repart > 400). Avec le bouchon il reste rouge (la jambe ne change
   jamais : A jamais rejoint) ; ce rouge-là est déduit, non relancé.
 - Suivant pour un agent neuf : attendre `Q-patrol-follow.md`, puis étape 3 (agent C++). Aucun code Suivre/focus écrit.
+- 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D818 (Q-patrol-follow) = Q1 C (Patrouille sur F seule ; Suivre et focus au clic droit) + Q2 B (Suivre un allié = garde du corps, un ennemi = attaque, focus = une cible) ; reste le branchement C++ (ligne [ ] Glorfindel).

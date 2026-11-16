@@ -1,0 +1,36 @@
+# SG3 (D784, D445) : signal neutre par geste REEL : Alt maintenu (hol.UI.Key LeftAlt, appui tenu 3 s) puis un vrai clic gauche bref
+# (hol.Mouse.Click X Y, pixels du cadre) sur le sol : le controleur (HOLPlayerController.cpp, IsInputKeyDown(LeftAlt)) pose un signal neutre,
+# le serveur le renvoie a ton equipe (toi compris) : carre colore de 10 px sur la minicarte (HOLGameScreenScript.as) et ligne du fil.
+# Plain, toi (slot 0) contre une IA gelee (slot 1).
+waitlog AI brain HOLAIBrain awake
+r.SetRes 1920x1080w
+hol.AI.ThinkSteps 100000
+hol.Camera.FocusSlot own
+waitlog Camera above the start of slot 0
+# Hauteur comme nomad_ai (1er jet "Zoom -3" seul : 3000 cm jamais atteinte, timeout 14:15) : au plus haut, au plus bas, puis 3 crans.
+hol.Camera.Zoom -10
+waitlog Camera height 7000 cm
+hol.Camera.Zoom 11
+waitlog Camera height 1500 cm
+hol.Camera.Zoom -3
+waitlog Camera height 3000 cm
+wait 1
+# 1. Geste reel : Alt maintenu, clic gauche bref sur le sol (a droite et au-dessus de ton forum).
+hol.UI.Key LeftAlt 0 3
+wait 0.5
+hol.Mouse.Click 1400 350
+waitlog Signal: Alt + click kind
+waitlog Signal: received kind
+# Effet : la minicarte (HOLGameScreenScript.RefreshMinimap) porte la marque du signal.
+waitlog Minimap signals: 1
+wait 1
+capture signals_altclick
+# 2. Temoin : le carre du signal dure 5 s DE JEU (hol.Signal.IconSeconds, D784). HALDIR-1115j (14:25) : "wait 6" compte l'horloge de
+# l'application (FApp), plus rapide ici que le temps du monde (5 s de jeu = 7,3 s d'horloge) : la 2e capture tombait 1 image avant le
+# depart de la marque. On attend donc l'effet (la marque quitte la minicarte) puis on capture.
+waitlog Minimap signals: 0
+wait 0.5
+capture signals_altclick_after
+hol.Test.Sanity
+note Signal : maintiens Alt et fais un clic gauche bref sur le sol : un signal neutre est pose ; un petit carre colore apparait sur la minicarte (en bas a droite) a cet endroit pendant 5 s, et le fil de messages dit « Vous : Signal ».
+quit

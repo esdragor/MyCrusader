@@ -1,0 +1,48 @@
+# [A ESSAYER] E-disconnect_1v1 : Deconnexion en 1 contre 1 : Bob (seul adversaire) part, la fenetre finit, Bob est vaincu et Alice gagne
+
+STATUT : VU A L'ECRAN (GLORFINDEL-1115a, 2026-11-15 09:33 : preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice PASS 49 s, 2 PNG ouverts et vus, session_gate -Phase Essay sans FAIL) ; geste INTERNE (depart simule, pas de second jeu)
+GESTE: interne      (commandes hol.Net.FakeAbsent End 1 : le depart reseau est simule sans second client ; Entree = temps suivant)
+SON: non entendu   (-nosound ; aucun son attendu dans cet essai)
+branches: net-playtest
+
+Pre-vol (2026-11-09 16:3x, agent Glorfindel-22 sans C++, worktree C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel, main e9a349a) : preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice PASS (35 s, 2 PNG). WARN : pas de ligne HUD overlap ni Sanity.
+PNG OUVERTS et vus :
+- dc1v1_away : base de Bob (forum, tours, baies, arbres), pastille "Connexion perdue" a cote de Bob (2 vies) dans la liste des joueurs, bandeau "Bob : connexion perdue - 1:00" sous le panneau du scenario
+- dc1v1_end : ecran "Victoire" (Continuer / Quitter vers le menu / Statistiques), Bob "Vaincu" dans la liste des joueurs, ligne de journal "Bob a quitte la partie"
+NON VERIFIE : le depart reel d'un second jeu (lobby_match -Reconnect/-Team) ; la liste de Bob montre encore "2 vies" apres "Vaincu" (non juge : c'est un affichage de la defaite comptee, pas un point de l'essai) ; le texte "en preparation" du panneau du scenario reste affiche pendant tout le scenario (le panneau des notes recouvre le bandeau si on ajoute des notes en cours de route : les notes sont donc a la fin) ; le scenario porte un waitkey (Entree) voulu : deux temps.
+
+Lancer UNE commande (-PlayerName Alice obligatoire) : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice
+Duree : environ 1 min. Reponse attendue : OK, BUG: ... ou REGLAGE: ...
+
+A regarder : temps 1 = Bob "Connexion perdue" avec le bandeau 1:00 ; Entree ; temps 2 = Bob Vaincu, "Bob a quitte la partie", ecran Victoire d'Alice.
+
+Reponse: le scenario n'a jamais demarre (erreur etape 5 « jamais venu »), 2026-11-11 soir
+
+## STATUT 2026-11-12 (FARAMIR-1112a) : LOGIQUE SEULEMENT, NE PAS JOUER
+Cause (FARAMIR-1112a, 2026-11-12, journal de l'utilisateur HeroesOfLiberty-Haldir\Saved\Logs\HeroesOfLiberty.log 18:19) : lance SANS -PlayerName (ligne de commande du journal), donc Â« 257 joined as a spectator (name '') Â», etape 5 Â« waitlog Camera above the start of slot Â» jamais venue. Correctif (branche fog, 42e5e41) : play.ps1 et check.ps1 prennent seuls le premier siege Humain nomme du .json (Alice) ; preflight FAIL si play.ps1 ne nomme pas le joueur. binaire de main (copie principale, dll 2026-11-11 11:06) PERIME : 9 commits C++ depuis (rage L4, Monter/Demonter, camps) ; au lancement Angelscript: Error (Namespace 'HOLAIRageOrder' doesn't exist, UHOLCampSubsystem::GetNumCamps) et le jeu reste a l'image 0 (rejoue par FARAMIR-1112a, play.ps1 -Hidden depuis C:\Users\baudo). Arwen (dll 11-11 13:43) et Faramir (dll 11-11 16:02) sont aussi plus vieux que leur dernier commit C++ : recompiler la copie choisie avant de donner la commande.
+Commande a redonner seulement apres : fog fusionnee dans main, copie choisie recompilee, puis preflight.ps1 <nom> -Root <cette copie> PASS (le preflight verifie maintenant le binaire, le joueur nomme et les fichiers non commites).
+
+## ETAT 2026-11-13 (nettoyage Retours) : toujours NE PAS JOUER
+Fait depuis : fog fusionnee dans main (b689e5a via maps, 4851635) et correctif du joueur nomme (42e5e41) dans main. Branche net-playtest toujours PAS dans main. Reste : recompiler la copie choisie, puis preflight.ps1 disconnect_1v1 -Root <cette copie> -PlayerName Alice PASS. NON VERIFIE : etat des binaires ce jour.
+
+## 2026-11-13 10:53 (FARAMIR-1113, sans C++) : PAS JOUE, toujours NE PAS JOUER
+session_gate.ps1 -Phase Essay -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir -Essay disconnect_1v1 : FAIL « branche 'net-playtest' ABSENTE du worktree » (binaire Faramir frais, arbre propre, PASS sinon). disconnect_1v1 vit sur net-playtest, pas dans main : pre-vol a faire depuis un worktree qui contient net-playtest (recompile), ou apres fusion de net-playtest dans main. Etape 5 « jamais venu » donc NON reverifiee aujourd'hui (cause connue : lancement sans -PlayerName, corrige dans main par 42e5e41).
+
+## 2026-11-15 09:33 (GLORFINDEL-1115a, sans C++) : PRE-VOL PASS, redonne [A ESSAYER]
+Worktree C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel (net-playtest = main 0ed4f60 + net-playtest, binaire 09:21 plus recent que le dernier commit de code). preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice : PASS (49 s ; check PASS, aucun avertissement ni spectateur au journal ; WARN pas de HUD overlap ni Sanity). La Reponse du 11-11 (etape 5 jamais venue) est close : cause = lancement sans -PlayerName + binaire perime, corrige par 42e5e41 (dans main) ; l'etape 5 passe ce jour.
+PNG OUVERTS et vus :
+- dc1v1_away : base de Bob (forum, 4 tours, baies, arbres), liste des joueurs 'Bob 2 vies Connexion perdue', bandeau 'Bob : connexion perdue - 1:00' sous le panneau du scenario.
+- dc1v1_end : ecran 'Victoire' (Continuer / Quitter vers le menu / Statistiques), Bob 'Vaincu' dans la liste, ligne 'Bob a quitte la partie' ; le bandeau n'est plus visible (sa place est couverte par le panneau du scenario, qui affiche maintenant la note : extinction non distinguable du recouvrement sur la capture).
+NON VERIFIE : depart reel d'un second jeu (geste interne hol.Net.FakeAbsent) ; extinction du bandeau (voir ci-dessus) ; le waitkey (Entree) est voulu (deux temps).
+Commande : powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel\Tools\Scenarios\play.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Glorfindel -PlayerName Alice
+
+## Recette 2026-11-15 (build fusionné 753fd00)
+RECETTE PASS (RECETTE-1115a, integrateur independant, 2026-11-15 11:20 ; worktree C:\Users\baudo\Documents\HeroesOfLiberty-Faramir, branche fog = main 753fd00, binaire de 11:08).
+- preflight.ps1 disconnect_1v1 -Root C:\Users\baudo\Documents\HeroesOfLiberty-Faramir -PlayerName Alice : PASS, 0 FAIL (check PASS 34 s, aucun avertissement ni spectateur au journal, lancement joueur OK) ; 3 WARN : pas de ligne HUD overlap, pas de ligne Sanity, 'frames 90' a la ligne 3 du scenario (attente par images). session_gate.ps1 -Phase Essay -Essay disconnect_1v1 : aucun FAIL (le worktree contient le tip de net-playtest).
+- Journal (Saved_Tests\Logs\scenario_disconnect_1v1.log) : "Disconnect: slot 1 (Bob) held by AI", "Players table state: Bob=Connexion perdue", "Absence banner: shown, Bob : connexion perdue - 1:00", "Disconnect: slot 1 not back within 60 s", "Victory: slot 1 defeated (Disconnected)", "Message: Bob a quitte la partie", "Victory: match over, winners 0", "End banner: Victory".
+- PNG OUVERTS et vus : dc1v1_away (forum de Bob avec 4 tours a drapeau rouge, liste des joueurs "Bob 2 vies Connexion perdue", bandeau "Bob : connexion perdue - 1:00" sous le panneau du scenario) ; dc1v1_end (ecran "Victoire" avec Continuer / Quitter vers le menu / Statistiques, Bob "Vaincu" dans la liste, ligne "Bob a quitte la partie").
+- Reserves cherchees pour faire echouer, non bloquantes : (1) sur dc1v1_end le panneau du scenario affiche encore la note du temps 1 ("FENETRE OUVERTE : Bob est parti...") a cote de l'ecran Victoire : la note "FIN DE FENETRE" n'arrive qu'apres la capture ; (2) l'extinction du bandeau n'est toujours pas distinguable : sa place est couverte par le panneau des notes ; (3) le forum de Bob a DISPARU de l'image sur dc1v1_end (journal "Victory: slot 1 collapsed (0 units, 1 buildings)") alors que la note du temps 1 dit "sa base reste" : voulu a la defaite ou non, non juge.
+- Inchange : GESTE interne (hol.Net.FakeAbsent, pas de second jeu), SON non entendu.
+- Commande de la fiche (Glorfindel) gardee : binaire de Glorfindel non perime (Get-StaleBinaryProblem vide a 11:18, dll 09:58, HEAD a0828f9). NON REJOUE depuis Glorfindel : cette recette ne porte que sur le build de Faramir ; Glorfindel ne contient pas 753fd00.
+
+Reponse: OK. (réponse donnée dans la conversation, 2026-11-16)
