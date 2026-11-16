@@ -1,7 +1,7 @@
 // Socle step 1 of the migration (D830, D836, SOCLE-1116a): the C++ rules that STAY in C++ (Siege, Diplomacy, UnitAbility), read from
 // script through their new libraries (HOLSiegeCheck, HOLDiplomacyRead, HOLUnitAbilityRead), on the SAME vectors as their C++ tests
 // (HOLSiegeTests.cpp Siege.Tiers, HOLDiplomacyRulesTests.cpp Diplomacy.Rules, HOLDamnedWarriorTests.cpp against UnitAbilities.csv).
-// The script copies (HOLSiegeRules.as, HOLDiplomacyRules.as, HOLUnitAbilityRules.as) are not removed yet: next lot.
+// The script copies (HOLSiegeRules.as, HOLDiplomacyRules.as) are not removed yet: next lots (HOLUnitAbilityRules.as is gone, MIG-S1c-UnitAbility).
 
 // HeroesOfLiberty.Siege.Tiers through HOLSiegeCheck (engine and block numbers: EHOLSiegeEngine, HOLSiege::Available... of the script).
 void Test_SiegeCheckLibraryVectors(FUnitTest& T)
@@ -182,8 +182,7 @@ void Test_DiplomacyReadLibraryVectors(FUnitTest& T)
 }
 
 // HOLDamnedWarriorTests.cpp checks the C++ constants against UnitAbilities.csv and Effects.csv: here the same, through HOLUnitAbilityRead,
-// against the script's table made from the same CSV (HOLUnitAbilityTable) and the real morale chain (Effects.csv); the pure rules agree
-// with the script's copy on the same vectors.
+// against the script's table made from the same CSV (HOLUnitAbilityTable) and the real morale chain (Effects.csv); the cast and hit-cost vectors are in HOLUnitAbilityRules_Test.as (the script copy of the rules is gone).
 void Test_UnitAbilityReadLibraryAgreesWithTable(FUnitTest& T)
 {
 	const HOLUnitAbilityTable::FHOLUnitAbilityRow Rage = HOLUnitAbilityTable::Row(HOLUnitAbilityTable::NecroticRage);
@@ -211,15 +210,6 @@ void Test_UnitAbilityReadLibraryAgreesWithTable(FUnitTest& T)
 	T.AssertEquals(800, HOLUnitAbilityRead::GetRageIntervalMs(1000), "25 % more blows: 1 000 ms -> 800 ms");
 	T.AssertEquals(1, HOLUnitAbilityRead::GetRageIntervalMs(1), "never under 1 ms");
 
-	// While the two copies exist: casting and the price of a blow agree with the script's rule.
-	for (int Health = 0; Health <= Rage.MinHp + 20; Health++)
-	{
-		T.AssertEquals(HOLUnitAbilityRules::HitCost(Rage, Health), int(HOLUnitAbilityRead::GetRageHitCost(float(Health))), f"health {Health}: the same price");
-		for (int Left = 0; Left <= 1; Left++)
-		{
-			T.AssertTrue(HOLUnitAbilityRead::CanCastRage(true, float(Health), Left) == HOLUnitAbilityRules::CanCast(Rage, true, Health, 1000 - Left, 1000), f"health {Health} left {Left}: the same answer");
-		}
-	}
 	T.AssertFalse(HOLUnitAbilityRead::CanCastRage(false, float(Rage.MinHp + 50), 0), "dead: refused");
 }
 

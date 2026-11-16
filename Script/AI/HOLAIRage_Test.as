@@ -77,3 +77,22 @@ void Test_RageHealthAndCooldownGuards(FUnitTest& T)
 	Data.MaxHealth = 0;
 	T.AssertEquals(0, HOLAIRage::Casters(WarriorInAMelee(300.f, n"Spearman", 100), Data, FHOLAIRageMemory(), 10.f).Num(), "unknown full health: never casts");
 }
+
+// D836 (2): the AI's rage numbers are the C++ rule's, read through HOLUnitAbilityRead (no copy): the defaults are the library's, and the real
+// chain refuses under the floor and holds the cool-down at the library's value.
+void Test_RageAIReadsTheLibrary(FUnitTest& T)
+{
+	FHOLAIRageData Data = HOLAIRage::DefaultData();
+	const int MinHp = HOLUnitAbilityRead::GetRageMinHp();
+	const int CooldownMs = HOLUnitAbilityRead::GetRageCooldownMs();
+	T.AssertEquals(MinHp, Data.MinHealth, "the floor is the library's");
+	T.AssertEquals(CooldownMs, int(Data.RecastEvery * 1000.f + 0.5f), "the recast delay is the library's cool-down");
+	Data.MaxHealth = 40;
+	FHOLAIRageMemory Memory;
+	T.AssertEquals(1, HOLAIRage::Casters(WarriorInAMelee(300.f, n"Spearman", MinHp), Data, Memory, 10.f).Num(), "at the library's floor: casts");
+	T.AssertEquals(0, HOLAIRage::Casters(WarriorInAMelee(300.f, n"Spearman", MinHp - 1), Data, Memory, 10.f).Num(), "one under the library's floor: no cast");
+	HOLAIRage::Remember(Memory, 7, 10.f);
+	const float CooldownSeconds = float(CooldownMs) / 1000.f;
+	T.AssertEquals(0, HOLAIRage::Casters(WarriorInAMelee(300.f, n"Spearman", MinHp), Data, Memory, 10.f + CooldownSeconds - 1.f).Num(), "one second before the library's cool-down ends: no cast");
+	T.AssertEquals(1, HOLAIRage::Casters(WarriorInAMelee(300.f, n"Spearman", MinHp), Data, Memory, 10.f + CooldownSeconds).Num(), "at the end of the library's cool-down: casts");
+}
