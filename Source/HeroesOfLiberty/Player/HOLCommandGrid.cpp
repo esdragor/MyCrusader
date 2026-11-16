@@ -42,6 +42,16 @@ namespace HOLCommandGrid
 		Context.SpecializationRemainingMs = View.PendingTier > 0 ? View.RemainingMs : 0;
 	}
 
+	FName GetReportName(const FHOLGridCommand& Command)
+	{
+		if (Command.Command != EHOLGridCommand::Specialize && Command.Command != EHOLGridCommand::CancelSpecialization)
+		{
+			return NAME_None;
+		}
+		return FName(*FString::Printf(TEXT("%sT%d%s"), Command.Command == EHOLGridCommand::Specialize ? TEXT("Specialize") : TEXT("CancelSpecialization"),
+			Command.Tier, Command.Option == 0 ? TEXT("A") : TEXT("B")));
+	}
+
 	FHOLGridCommand GetCommand(const FHOLGridContext& Context, const int32 Cell)
 	{
 		FHOLGridCommand Result;

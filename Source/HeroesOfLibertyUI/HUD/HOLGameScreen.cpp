@@ -2245,6 +2245,7 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 			: bOrdersShown && Orders.IsValidIndex(Cell) ? Orders[Cell] : FHOLGridCommand();
 		ShownGridTypes[Cell] = !bGridShown ? NAME_None : Command.Command == EHOLGridCommand::CancelConstruction ? CancelName
 			: Command.Command == EHOLGridCommand::NecroticRage ? FName(TEXT("NecroticRage"))
+			: Command.Command == EHOLGridCommand::Specialize || Command.Command == EHOLGridCommand::CancelSpecialization ? HOLCommandGrid::GetReportName(Command)
 : Command.Command == EHOLGridCommand::HeroAbility ? FName(Command.Ability == EHOLHeroAbility::Banner ? TEXT("Banner") : TEXT("CloseRanks"))
 			: Command.Command == EHOLGridCommand::Trade ? FName(*FString::Printf(TEXT("%s%s"), Command.bBuy ? TEXT("Buy") : TEXT("Sell"),
 				Command.Resource == EHOLResource::Wood ? TEXT("Wood") : Command.Resource == EHOLResource::Stone ? TEXT("Stone") : TEXT("Food")))
@@ -2328,12 +2329,10 @@ void UHOLGameScreen::RefreshGrid(const AHOLBuilding* OwnBuilding, const bool bOw
 		{
 			// SP3 (D332, D684): the main Forum's choice of the open tier, free; running, its cell shows the seconds left and cancels at no cost.
 			// Provisional names (Placeholders.txt): the GDD 13 names of each faction's options are not in the text table yet.
-			const FText TierNumber = FText::AsNumber(Command.Tier);
-			const FText Name = Command.Option == 0 ? FText::Format(LOCTEXT("SpecializationOptionA", "Voie A du palier {0}"), TierNumber)
-				: FText::Format(LOCTEXT("SpecializationOptionB", "Voie B du palier {0}"), TierNumber);
+			// The cell's text and the option's name come from the game's text table (HOLGameNames): running, the name is in the tooltip only.
+			const FText Name = HOLGameNames::GetSpecializationName(Command.Tier, Command.Option);
 			const bool bRunning = Command.Command == EHOLGridCommand::CancelSpecialization;
-			GridCell->SetCommand(bRunning ? FText::Format(LOCTEXT("SpecializationRunningCell", "{0}\nEn cours : {1} s\nAnnuler"), Name,
-				FText::AsNumber(FMath::DivideAndRoundUp(Command.RemainingMs, 1000))) : Name, EHOLGridCellState::Ready);
+			GridCell->SetCommand(HOLGameNames::GetSpecializationCellText(Command), EHOLGridCellState::Ready);
 			GridCell->SetTooltip(Name, FHOLResources(), FHOLResources(), bRunning
 				? LOCTEXT("SpecializationRunningEffect", "Déblocage en cours au Forum. Cliquer annule sans coût ; le choix reste ouvert.")
 				: LOCTEXT("SpecializationEffect", "Gratuit. Se débloque au Forum en 30 / 45 / 60 s (palier I / II / III), en parallèle de sa file. Définitif une fois appliqué."));
