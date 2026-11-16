@@ -1,0 +1,26 @@
+# GALADRIEL-1116n — MIG-CPP bascule GameMenu (galadriel-tab)
+
+APPELS_DECLARES: 41 (arrêt à 45 vus par moi)
+HEURE_DEBUT/HEURE_FIN: 21:08 / 21:32 (Get-Date)
+PREMIER_BUILD: 21:13   BUILD: PASS (333 s, fini 21:18)   LAUNCHCHECK_DEBUT: 21:09 vide (binaire à jour)
+TEST_ROUGE: vu a 21:21 : tests 1353/1356 (Angelscript.UnitTests.UI.HOLGameMenuScreen_Test.Test_GameMenuScreenScriptClass rouge : aucune classe de script du menu ; + les 2 Nomad connus) ; test et correctif dans le même commit 444ee83 (L15-5). Assertit l'effet : oui pour la chaîne réelle par la partie victory (menu ouvert par le jeu, Abandonner, menu sur la bannière), le test unitaire vérifie la classe trouvée par FindScriptClass et la vue faite de ReadFacts sans partie.
+COMMITS: 2 + 1 merge (444ee83 bascule, fd1afe5 journal, 884860e merge main), dernier à 21:31, merge_main_fait: oui (docs seulement)
+TESTS: quick_check -Parts tests 21:21 1353/1356 (rouge voulu) ; tests,net 21:22 0/0 (erreur de script : surcharges BP_BuildMenu/BP_RefreshMenu à nommer BuildMenu/RefreshMenu, corrigé) ; tests,net 21:28 tests 1354/1356 (seuls NomadFirstForum/NomadReplicated, D831) + net 19 parties PASS + net signals 3 clients PASS ; victory 21:29 PASS (sequence, victory, victory forum, victory regicide). Total : 1353 -> 1356 (+2 tests script, +1 vu). TESTS_TAUTOLOGIQUES: 0
+BUILDS_DEMANDES: 1
+TESTS_CPP_RETIRES: 0 (les 7 tests Victory.GameMenu.* / EndBanner.* restent : HOLGameMenuRules a encore des appelants C++)
+TESTS_SCRIPT_AJOUTES: 2 (Test_GameMenuScreenScriptClass, Test_GameMenuScreenNoMatch)
+LIGNES_CPP_SUPPRIMEES: 421 (HOLGameMenu.cpp 333 + HOLGameMenu.h 88) ; C++ ajouté 436 (HOLGameMenuScreen.h 155 + .cpp 281, dont commentaires et 12 UPROPERTY) ; 5 appelants retouchés (14 lignes)
+LIGNES_MIGREES_PAR_LOT: 131 lignes de script (HOLGameMenuScreen.as 110 + test 21) ; mise en page, rafraîchissement, aiguillage des clics passés en script
+TYPES_A_EXPOSER: faits : FHOLGameMenuFacts (USTRUCT), UHOLGameMenuScreen (Abstract, Blueprintable) : FindScriptClass, ReadFacts, SetButtonLabel, MenuLog, MakeMenuColumn, AddMenuTitle, AddMenuButton, AskSurrender, PauseMatch, QuitMatch, ReturnToLobby, ShowResult, BP_BuildMenu, BP_RefreshMenu, FocusTarget. Non faits (contournés) : UENUM EHOLEndBanner/EHOLMatchOrigin (origine en int), UFUNCTION sur UHOLScreen/UHOLButton/UHOLRootLayout/AHOLGameState/UHOLManagerClient (enveloppes statiques), UHOLConfirmDialog::SetUp en délégué dynamique (dialogue gardé en C++). Pour la bannière : même voie.
+ESSAIS: aucun (la partie victory de quick_check joue le menu réel : waitlog « Game menu: opened », focus SurrenderButton, abandon)
+QUESTIONS: aucune
+FAIT / RESTE:
+- Fait (a) : base C++ UHOLGameMenuScreen : UHOLScreen (Screens/HOLGameMenuScreen.h/.cpp) avec les liaisons ci-dessus ; Open/Find/AskToSurrender/SetMatchMenuInput gardés en C++ (racine, TFunction, IMC_UI) ; recherche de classe de script (modèle UHOLScriptScreen::FindScriptClass).
+- Fait (b) : classe de script UHOLGameMenuScreenScript (Script/UI/HOLGameMenuScreen.as) appliquant HOLGameMenuScript::Make / Click ; ouverture par PushMenu(classe du script) aux 5 points (HOLGameHUD, HOLUIOpen, HOLEndBanner, HOLStatsScreen, HOLGameScreen) ; Screens/HOLGameMenu.cpp/.h supprimés.
+- Contrôleur verrouillé (HOLPlayerController.cpp/.h), Chat\ et HOLChatSubsystem* non touchés.
+- Reste : ligne `[ ] (MIG-CPP bascule EndBanner)` ajoutée à Auto_Journey_File.md (nouveau build nécessaire, pas fait ce soir).
+- Branche galadriel-tab PRÊTE pour la fusion (884860e) : build PASS, tests 1354/1356 (seuls les 2 Nomad D831), net PASS, victory PASS. Pas de fusion dans main.
+NON VÉRIFIÉ: lobby_match (partie lobby : « Retour au salon », « Game menu: match over, ways out lobby, list, result ») non rejoué ; partie victory non jouée AVANT la classe de script (rouge vu seulement par le test unitaire) ; pas de capture d'écran du menu (aspect, focus manette, libellé « Pause (N) » en réseau) ; libellés en culture source seulement ; parties hud/build non lancées (HUD C++ touché seulement par le renommage des appels).
+PROCESSUS_DETACHES: aucun processus detache pour C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel
+ANOMALIES_PROCESSUS: (1) edit_line.ps1 lancé par `powershell -File` depuis PowerShell 5.1 a imprimé « ligne N » sans écrire pour des -NewLine accentués (Auto_Journey_File.md et AngelscriptInProgress.md restés inchangés, vu à la relecture) ; refait en ASCII pour la file et par remplacement .NET pour le journal et EtapeDefini.md. (2) quick_check imprime encore « REGRESSION : pas dans known_reds.txt » pour les 2 Nomad listés (déjà signalé par 1116m). (3) Une attente par Start-Sleep a été refusée par le harnais : attente du build par notification de tâche de fond. (4) EDITS_REFUSES: 0.
+GIT_STATUS_PRINCIPALE: ` M Auto_Journey.md`, ` M Auto_Journey_File.md`, ` M Auto_Journey_Jour.md`, ` M EtapeDefini.md`, ` M GDD.md`, ` M Tools/AutoJourney/brief_commun.md`, `?? Docs/Priorite_Socle_Factions_2026-11-16.md`, `?? Docs/Rapports/PLAN-1116-E3.md`, `?? Docs/Rapports/SAURON-1116n.md`, `?? Retours/Q-migration-r9.md` ; les miens : Auto_Journey_File.md (ligne 83 [x], ligne 84 EndBanner) et EtapeDefini.md (ligne 11) ; le reste vient d'autres sessions ; inchangée hors docs voulus : oui
