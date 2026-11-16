@@ -6,18 +6,6 @@
 
 namespace
 {
-	HOLCampRules::FSettings ToRules(const FHOLCampBoardSettings& In)
-	{
-		HOLCampRules::FSettings Out;
-		Out.Aggro = static_cast<HOLCampRules::EAggro>(In.Aggro);
-		Out.Credit = static_cast<HOLCampRules::ECredit>(In.Credit);
-		Out.AggroRadius = In.AggroRadius;
-		Out.LeashRadius = In.LeashRadius;
-		Out.ArriveRadius = In.ArriveRadius;
-		Out.RewardXP = In.RewardXP;
-		return Out;
-	}
-
 	FHOLCampBoardSettings ToBoard(const HOLCampRules::FSettings& In)
 	{
 		FHOLCampBoardSettings Out;
@@ -62,7 +50,9 @@ HOLCampRules::FStep UHOLCampBoard::StepForCamp(const UWorld* World, HOLCampRules
 	UHOLCampBoard* Board = Find(World);
 	if (!Board)
 	{
-		return HOLCampRules::Step(InOutState, Settings, Post, Members, Intruders, bAttacked);
+		// No script board: no C++ rule to fall back on (D836 point 3). The camp does not move: the state is kept, nobody is sent back.
+		UE_LOG(LogTemp, Error, TEXT("Camp: no script board, the camp keeps its state"));
+		return HOLCampRules::FStep();
 	}
 	TArray<FHOLCampBoardMember> BoardMembers;
 	BoardMembers.Reserve(Members.Num());
@@ -98,7 +88,9 @@ TArray<HOLCampRules::FShare> UHOLCampBoard::RewardsForCamp(const UWorld* World, 
 	UHOLCampBoard* Board = Find(World);
 	if (!Board)
 	{
-		return HOLCampRules::Rewards(Settings, Hits);
+		// No script board: no reward.
+		UE_LOG(LogTemp, Error, TEXT("Camp: no script board, no reward"));
+		return TArray<HOLCampRules::FShare>();
 	}
 	TArray<FHOLCampBoardHit> BoardHits;
 	BoardHits.Reserve(Hits.Num());
@@ -128,41 +120,15 @@ TArray<FHOLCampBoardShare> UHOLCampBoard::RewardsNow(const FHOLCampBoardSettings
 FHOLCampBoardStep UHOLCampBoard::CampStep_Implementation(const EHOLCampBoardState State, const FHOLCampBoardSettings& Settings, const FVector2D Post,
 	const TArray<FHOLCampBoardMember>& Members, const TArray<FHOLCampBoardIntruder>& Intruders, const bool bAttacked)
 {
-	// The C++ rule, the same thought as the script's.
-	TArray<HOLCampRules::FMember> RuleMembers;
-	for (const FHOLCampBoardMember& Member : Members)
-	{
-		RuleMembers.Add(HOLCampRules::FMember{ static_cast<uint32>(Member.Id), Member.Location });
-	}
-	TArray<HOLCampRules::FIntruder> RuleIntruders;
-	for (const FHOLCampBoardIntruder& Intruder : Intruders)
-	{
-		RuleIntruders.Add(HOLCampRules::FIntruder{ static_cast<uint32>(Intruder.Id), Intruder.Owner, Intruder.Location });
-	}
-	HOLCampRules::EState RuleState = static_cast<HOLCampRules::EState>(State);
-	const HOLCampRules::FStep Step = HOLCampRules::Step(RuleState, ToRules(Settings), Post, RuleMembers, RuleIntruders, bAttacked);
+	// Inert and safe: only the script board knows the rule. The camp does not move (state kept, nothing changed, nobody sent back).
+	UE_LOG(LogTemp, Error, TEXT("Camp: no script override of CampStep, the camp keeps its state"));
 	FHOLCampBoardStep Answer;
-	Answer.State = static_cast<EHOLCampBoardState>(RuleState);
-	Answer.bChanged = Step.bChanged;
-	Answer.bJustCleared = Step.bJustCleared;
-	for (const uint32 Id : Step.ReturnIds)
-	{
-		Answer.ReturnIds.Add(static_cast<int32>(Id));
-	}
+	Answer.State = State;
 	return Answer;
 }
 
 TArray<FHOLCampBoardShare> UHOLCampBoard::CampRewards_Implementation(const FHOLCampBoardSettings& Settings, const TArray<FHOLCampBoardHit>& Hits)
 {
-	TArray<HOLCampRules::FHit> RuleHits;
-	for (const FHOLCampBoardHit& Hit : Hits)
-	{
-		RuleHits.Add(HOLCampRules::FHit{ Hit.Owner, Hit.Damage });
-	}
-	TArray<FHOLCampBoardShare> Shares;
-	for (const HOLCampRules::FShare& Share : HOLCampRules::Rewards(ToRules(Settings), RuleHits))
-	{
-		Shares.Add(FHOLCampBoardShare{ Share.Owner, Share.XP });
-	}
-	return Shares;
+	UE_LOG(LogTemp, Error, TEXT("Camp: no script override of CampRewards, no reward"));
+	return TArray<FHOLCampBoardShare>();
 }

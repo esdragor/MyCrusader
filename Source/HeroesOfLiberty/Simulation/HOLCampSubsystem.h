@@ -1,4 +1,4 @@
-﻿// Copyright Epic Games, Inc. All Rights Reserved.
+// Copyright Epic Games, Inc. All Rights Reserved.
 
 #pragma once
 
@@ -20,7 +20,7 @@ namespace HOLCamps
 /**
  * The neutral camps of a match (NeutralsInProgress.md N3 to N5, GDD 8.4, D32), on the server (and in solo). A camp is a post and a
  * group of units of the Neutral owner (FHOLMatchConfig::NeutralOwner, hostile to every slot, D401). Its thoughts come from
- * HOLCampRules (the twin of Script/Neutrals/HOLCampRules.as): at the tail of every fourth step the camp reads its living members
+ * HOLCampRules' types and Script/Neutrals/HOLCampRules.as (the rule, through UHOLCampBoard): at the tail of every fourth step the camp reads its living members
  * and the adversary units near its post, takes the step, and acts on it: guarding or returning members are passive (the combat
  * processor leaves them alone), fighting ones are not and are sent at the intruder (attack-move, a server order), a cleared camp
  * is cleared for good and its XP is shared out among the heroes by the credit rule (Exploration source). The cvars hol.Camp.Aggro

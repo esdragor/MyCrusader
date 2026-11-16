@@ -244,8 +244,8 @@ void Test_CampSettingsAreCoherent(FUnitTest& T)
 	T.AssertTrue(S.RewardXP > 0, "a cleared camp pays");
 }
 
-// MIG-J-Camp (D830/D835, 2026-11-16): the vectors of the C++ twin's test HeroesOfLiberty.Neutrals.CampRules
-// (Source/HeroesOfLiberty/Tests/HOLCampRulesTests.cpp), case by case, so that both copies answer the same cases while two exist.
+// MIG-J-Camp (D830/D835, 2026-11-16): the vectors of the former C++ test HeroesOfLiberty.Neutrals.CampRules (removed with the C++ rule,
+// D836 point 3, HALDIR-1116s): this test is its equivalent, case by case; the rule is the script's alone.
 FHOLCampHit CampVectorHit(int Owner, int Damage)
 {
 	FHOLCampHit Hit;
