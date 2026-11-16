@@ -36,6 +36,92 @@ Séance de MIGRATION (D830, D835 : Q2 = A, confirmée à 19:5x) lancée à 19:48
 - **Décisions qui t'attendent** (prochaine séance de migration) : le sens de chaque jumeau (R9 : script ou C++ seule source ; les agents proposent surtout « C++ reste » pour ce qui est appelé par Mass : Terrain, UnitAbility, Technology, Deploy, ExplorationXP, Siege) ; réécriture de D483/D484.
 - **Reprises** : lignes « REPRISE » de la section Migration de la file (Glorfindel P1b, bascules Celeborn, défaut known_reds de quick_check, deploy_accord_test.py dans values, tableau R9).
 
+### Lecons appliquees 2026-11-16
+
+Seance de migration du soir (le tableau de l'apres-midi est archive dans Docs\Archive\Auto_Journey_Jour_2026-11-16_apres-midi_archive_2026-11-16.md).
+
+| Regle | Etat | Preuve |
+|---|---|---|
+| T2-1 | appliquee | ETAPE0-1116-MIG en lecture seule (+ file a9d000c), plan Docs\Rapports\ETAPE0-1116-MIG.md |
+| T2-2 | appliquee | 8 worktrees lances a 20:11 apres session_gate Launch PASS x8 |
+| L3-12 | non evalue | - |
+| L5-7 | non evalue | - |
+| L4-1 | non evalue | - |
+| L3-8 | non evalue | - |
+| L3-9 | non evalue | - |
+| T2-3 | appliquee | brief_commun.md mis a jour (ccbeff3), enonces courts |
+| L1-1 | non evalue | - |
+| L1-2 | non evalue | - |
+| L1-3 | non evalue | - |
+| L3-2 | non evalue | - |
+| L3-5 | non evalue | - |
+| L1-8 | non evalue | - |
+| L1-9 | non evalue | - |
+| L1-7 | non evalue | - |
+| L5-6 | non evalue | - |
+| T2-5 | appliquee | fusion : build PASS + quick_check tests,values sur le resultat (1352/1354, 2 rouges D831 connus) |
+| T2-6 | non evalue | - |
+| T2-7 | non evalue | - |
+| L4-12 | non evalue | - |
+| L4-13 | non evalue | - |
+| L3-11 | non evalue | - |
+| L3-7 | non evalue | - |
+| T2-4 | non evalue | - |
+| L4-11 | non evalue | - |
+| L1-13 | non evalue | - |
+| L6-2 | non evalue | - |
+| L6-4 | non evalue | - |
+| L6-6 | non evalue | - |
+| L7-7 | non evalue | - |
+| L8-4 | non evalue | - |
+| L8-8 | non evalue | - |
+| L9-1 | non evalue | - |
+| L9-6 | non evalue | - |
+| L9-8 | non evalue | - |
+| L9-9 | non evalue | - |
+| L9-10 | non evalue | - |
+| L10-2 | non evalue | - |
+| L10-3 | non evalue | - |
+| L11-3 | non evalue | - |
+| L11-4 | non evalue | - |
+| L11-8 | non evalue | - |
+| L11-9 | non evalue | - |
+| L11-10 | non evalue | - |
+| L11-11 | non evalue | - |
+| L11-12 | non evalue | - |
+| L11-13 | non evalue | - |
+| L12-1 | non evalue | - |
+| L12-1b | non evalue | - |
+| L13-1 | non evalue | - |
+| L13-3 | non evalue | - |
+| L13-4 | non evalue | - |
+| L13-5 | non evalue | - |
+| L13-6 | non evalue | - |
+| L13-7 | non evalue | - |
+| L14-2 | non evalue | - |
+| L14-4 | non evalue | - |
+| L14-5 | non evalue | - |
+| L14-6 | non evalue | - |
+| L14-9 | non evalue | - |
+| L14-10 | non evalue | - |
+| L14-11 | non evalue | - |
+| L15-3 | non evalue | - |
+| L15-4 | non evalue | - |
+| L15-6 | non evalue | - |
+| L15-7 | non evalue | - |
+| L15-8 | non evalue | - |
+| L15-9 | non evalue | - |
+| L15-10 | appliquee | rapports dans Docs\Rapports\*-1116m.md, reponses de 6 lignes |
+| L16-1 | non evalue | - |
+| L16-2 | appliquee | Get-StaleBinaryProblem vide dans les 8 worktrees a 19:5x avant tout lancement |
+| L16-3 | non evalue | - |
+| L16-4 | non evalue | - |
+| L16-5 | non evalue | - |
+| L16-6 | non evalue | - |
+| L16-7 | non evalue | - |
+| L16-8 | non evalue | - |
+| L16-9 | appliquee | idem L16-2, et sync_worktrees sans -NoBuild a 20:5x (8 builds PASS) |
+
 ## Résumé de la séance du 2026-11-16 après-midi
 
 - Séance interactive 14:46 -> ~18:00, 27 agents, fusion groupée FUSION-1116a, rien poussé : main 9c9d22b -> 3d3cb3c, tests 1326/1328 (2 rouges connus D831 : NomadFirstForum, NomadReplicated).
