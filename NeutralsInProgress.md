@@ -505,3 +505,4 @@ eutrals + essai. Voir aussi ValueSheet.csv : site.* / morale.* / ai.hold.* / bio
   - REPRISE : rien d'urgent ; reponse de l'utilisateur a la question ; les spins de melee du camp 1 (o1 21/22/29 deterministes) sont des cas rejouables pour D641.
   Appels : ||||||||||||||||||||||||||||||| (31)
 - 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D815 (Q-march-member-detour) = A : MarchMemberDetourSteps 8 gardé (défaut codé), rien à changer.
+- 2026-11-16 soir (ARWEN-1116m, migration D830/D835, sans C++) : MIG-J-Camp 5ef9f10 (Test_CampRulesVectors, Test_CampOwner), MIG-J-UnitAbility 8fe93e7 (unit_ability_accord_test.py), MIG-J-Diplomacy 72560c2 (Test_DiplomacyRulesVectors) ; registre dans Docs\Rapports\ARWEN-1116m.md ; REPRISE : decision du sens des jumeaux (R9) par l'utilisateur.

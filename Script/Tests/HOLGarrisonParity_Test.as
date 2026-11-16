@@ -84,6 +84,55 @@ void Test_GarrisonScriptAndCppAdmitTheSame(FUnitTest& T)
 	T.AssertEquals(Differ, 0, "the script and the C++ twin admit the same units in all 400 cases");
 	T.AssertTrue(Admitting >= 80, "at least 80 of the 400 cases admit someone (" + Admitting + ")");
 	T.AssertTrue(RiderBySetting >= 10, "at least 10 cases change with the cavalry setting (" + RiderBySetting + ")");
+
+	// MIG-J-Garrison, extended to each kind of unit: every kind -1..5 (0..4 the rule's, the others never enter) from each slot -1..2 into a
+	// building of slot -1 or 0, with -1..5 places, -1..2 occupants and the three settings in every combination; the candidates are two of that
+	// kind and slot around an own archer and one of that kind from the building's slot (8960 cases, none drawn by chance).
+	int Cases = 0;
+	int Exhaustive = 0;
+	int AdmittingKind = 0;
+	for (int Kind = -1; Kind <= 5; ++Kind)
+	{
+		for (int UnitSlot = -1; UnitSlot <= 2; ++UnitSlot)
+		{
+			for (int Settings = 0; Settings < 8; ++Settings)
+			{
+				for (int Building = -1; Building <= 0; ++Building)
+				{
+					for (int P = 0; P < 5; ++P)
+					{
+						const int ExPlaces = P == 4 ? 5 : P - 1;
+						for (int ExOccupants = -1; ExOccupants <= 2; ++ExOccupants)
+						{
+							TArray<int> ExSlots;
+							TArray<int> ExKinds;
+							ExSlots.Add(UnitSlot); ExKinds.Add(Kind);
+							ExSlots.Add(0); ExKinds.Add(HOLGarrison::KindRangedInfantry);
+							ExSlots.Add(Building); ExKinds.Add(Kind);
+							ExSlots.Add(UnitSlot); ExKinds.Add(Kind);
+							const bool bM = (Settings & 1) != 0;
+							const bool bH = (Settings & 2) != 0;
+							const bool bC = (Settings & 4) != 0;
+							TArray<int> ExScript = HOLGarrison::AdmittedWith(ExSlots, ExKinds, Building, ExPlaces, ExOccupants, bM, bH, bC);
+							TArray<int> ExCpp = HOLGarrisonRule::AdmittedWith(ExSlots, ExKinds, Building, ExPlaces, ExOccupants, bM, bH, bC);
+							++Cases;
+							if (!GarrisonParitySame(ExScript, ExCpp))
+							{
+								++Exhaustive;
+								if (Exhaustive <= 5)
+									T.AssertTrue(false, "kind " + Kind + " slot " + UnitSlot + " settings " + Settings + ": script " + GarrisonParityText(ExScript) + " but C++ " + GarrisonParityText(ExCpp));
+							}
+							if (ExScript.Contains(2))
+								++AdmittingKind;
+						}
+					}
+				}
+			}
+		}
+	}
+	T.AssertEquals(Cases, 7 * 4 * 8 * 2 * 5 * 4, "every kind, slot, setting, building, place and occupant case compared");
+	T.AssertEquals(Exhaustive, 0, "the script and the C++ twin admit the same units for every kind of unit");
+	T.AssertTrue(AdmittingKind > 0, "the table admits units of the kind tried (" + AdmittingKind + ")");
 }
 
 // With the default settings, read by name on each side (the script's hol.Garrison.* variables; the server reads the same names): the same list.

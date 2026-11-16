@@ -37,6 +37,8 @@ void Test_UnitTierTable(FUnitTest& T)
 	T.AssertEquals(3, HOLUnitTier::MinTierOf("Trebuchet"), "the Trebuchet opens at tier 3");
 	T.AssertEquals(3, HOLUnitTier::MinTierOf("Cannon"), "the Cannon opens at tier 3");
 	T.AssertEquals(3, HOLUnitTier::MinTierOf("Arquebusier"), "the Arquebusier opens at tier 3");
+	T.AssertEquals(0, HOLUnitTier::MinTierOf("Zombie"), "the Zombie (Legions) is of tier 0, as its column MinTier");
+	T.AssertEquals(1, HOLUnitTier::MinTierOf("DamnedWarrior"), "the Damned Warrior (Legions) opens at tier 1, as its column MinTier");
 	T.AssertEquals(HOLUnitTier::UnknownTier, HOLUnitTier::MinTierOf("Dragon"), "a type outside the table has no tier");
 }
 
@@ -178,4 +180,71 @@ void Test_UnitTierScriptAndSimulationRulesAgree(FUnitTest& T)
 	T.AssertEquals(HOLUnitTier::TierTooLow, HOLUnitTierRules::CheckUnit(n"ManAtArms", 0, true, true), "the C++ rule refuses the Man-at-arms at tier 0 on the real column");
 	T.AssertEquals(HOLUnitTier::Available, HOLUnitTierRules::CheckUnit(n"ManAtArms", 1, true, true), "and lets him out at tier 1");
 	T.AssertEquals(HOLUnitTier::Available, HOLUnitTierRules::CheckUnit(n"Spearman", 0, true, true), "the Spearman is of tier 0");
+}
+
+// Every row of the unit type table (Tools\Data\UnitTypes.csv, the 16 rows), not only the units the rule lists (MIG-J-UnitTier, D830/D835):
+// the C++ twin reads the column MinTier of each row, the script its own table. A row the script lists gives the very same reason on every
+// tier 0 to 3, building and stock. A row the script leaves out on purpose (the hero, the King and the two test dummies: NotListed, "the
+// caller does not ask this rule about them") is never refused for its tier by the C++ either, which is the one reason its callers read
+// (HOLProductionSubsystem.cpp, HOLGameScreen.cpp: == TierTooLow). A type outside the table is NotListed on both sides.
+void Test_UnitTierAgreesOnEveryRowOfTheTable(FUnitTest& T)
+{
+	TArray<FString> Rows;
+	Rows.Add("LightInfantry");
+	Rows.Add("LightInfantryNanite");
+	Rows.Add("Archer");
+	Rows.Add("Peasant");
+	Rows.Add("Zombie");
+	Rows.Add("Spearman");
+	Rows.Add("ManAtArms");
+	Rows.Add("DamnedWarrior");
+	Rows.Add("King");
+	Rows.Add("Hero");
+	Rows.Add("Crossbowman");
+	Rows.Add("Monk");
+	Rows.Add("Ram");
+	Rows.Add("Mangonel");
+	Rows.Add("LightCavalry");
+	Rows.Add("Arquebusier");
+	int RowsFound = 0;
+	int Listed = 0;
+	int LeftOut = 0;
+	int Cases = 0;
+	int Differences = 0;
+	int LeftOutRefusedForTier = 0;
+	for (int Row = 0; Row < Rows.Num(); Row++)
+	{
+		const FName Name = FName(Rows[Row]);
+		if (HOLUnitTierRules::GetUnitMinTier(Name) >= 0)
+			RowsFound++;
+		const bool bListed = HOLUnitTier::MinTierOf(Rows[Row]) != HOLUnitTier::UnknownTier;
+		if (bListed)
+			Listed++;
+		else
+			LeftOut++;
+		for (int Tier = 0; Tier <= 3; Tier++)
+		{
+			for (int Building = 0; Building < 2; Building++)
+			{
+				for (int Pay = 0; Pay < 2; Pay++)
+				{
+					const int Script = HOLUnitTier::Check(Rows[Row], Tier, Building == 1, Pay == 1);
+					const int Sim = HOLUnitTierRules::CheckUnit(Name, Tier, Building == 1, Pay == 1);
+					Cases++;
+					if (bListed && Script != Sim)
+						Differences++;
+					if (!bListed && Sim == HOLUnitTier::TierTooLow)
+						LeftOutRefusedForTier++;
+				}
+			}
+		}
+	}
+	T.AssertEquals(16, RowsFound, "the 16 rows of the unit type table exist in the C++ column");
+	T.AssertEquals(16 * 4 * 2 * 2, Cases, "every row on every tier 0 to 3, building and stock");
+	T.AssertEquals(12, Listed, "the script lists the twelve produced units of the table (the Zombie and the Damned Warrior included)");
+	T.AssertEquals(4, LeftOut, "only the hero, the King and the two test dummies are left out of the script's rule");
+	T.AssertEquals(0, Differences, "on every row the script lists, the script and the C++ give the same reason");
+	T.AssertEquals(0, LeftOutRefusedForTier, "a row the script leaves out is never refused for its tier by the C++");
+	T.AssertEquals(HOLUnitTier::NotListed, HOLUnitTierRules::CheckUnit(n"Dragon", 3, true, true), "a type outside the table: NotListed in C++");
+	T.AssertEquals(HOLUnitTier::NotListed, HOLUnitTier::Check("Dragon", 3, true, true), "and in the script");
 }

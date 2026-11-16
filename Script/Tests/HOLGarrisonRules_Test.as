@@ -60,6 +60,39 @@ void Test_GarrisonKindsByDefault(FUnitTest& T)
 	T.AssertTrue(HOLGarrison::KindMayEnter(HOLGarrison::KindRangedInfantry, false, false, false), "Q2 C: ranged foot still enter");
 }
 
+// MIG-J-Garrison: a unit's kind from its type, each of the 16 combinations of the four marks the server reads (siege, hero, cavalry, ranged
+// attack), in the C++ twin's order; then through the real chain: a mounted shooter is a rider, kept out when the cavalry setting is off.
+void Test_GarrisonKindOfEachUnitType(FUnitTest& T)
+{
+	int Siege = 0;
+	int Hero = 0;
+	int Cavalry = 0;
+	int Ranged = 0;
+	int Melee = 0;
+	for (int Marks = 0; Marks < 16; ++Marks)
+	{
+		const int Kind = HOLGarrison::KindOf((Marks & 1) != 0, (Marks & 2) != 0, (Marks & 4) != 0, (Marks & 8) != 0);
+		if (Kind == HOLGarrison::KindSiege) ++Siege;
+		if (Kind == HOLGarrison::KindHero) ++Hero;
+		if (Kind == HOLGarrison::KindCavalry) ++Cavalry;
+		if (Kind == HOLGarrison::KindRangedInfantry) ++Ranged;
+		if (Kind == HOLGarrison::KindMeleeInfantry) ++Melee;
+	}
+	T.AssertEquals(Siege, 8, "every siege mark is siege (the Ram, the Mangonel), whatever else");
+	T.AssertEquals(Hero, 4, "a hero not siege is a hero, mounted or shooting");
+	T.AssertEquals(Cavalry, 2, "a rider neither siege nor hero is cavalry, shooting or not");
+	T.AssertEquals(Ranged, 1, "a shooter on foot is ranged infantry");
+	T.AssertEquals(Melee, 1, "no mark: melee infantry");
+	T.AssertEquals(HOLGarrison::KindOf(false, false, true, true), HOLGarrison::KindCavalry, "a mounted shooter is a rider");
+	T.AssertEquals(HOLGarrison::KindOf(false, true, true, false), HOLGarrison::KindHero, "a mounted hero is a hero");
+	T.AssertEquals(HOLGarrison::KindOf(true, true, false, true), HOLGarrison::KindSiege, "siege before everything");
+	TArray<int> Kinds;
+	Kinds.Add(HOLGarrison::KindOf(false, false, true, true));
+	Kinds.Add(HOLGarrison::KindOf(false, false, false, true));
+	TArray<int> In = HOLGarrison::AdmittedWith(GarrisonInts(0, 0), Kinds, 0, 5, 0, true, true, false);
+	T.AssertTrue(In.Num() == 1 && In[0] == 1, "cavalry setting off: the foot archer enters, the mounted one stays out");
+}
+
 // F7 lot 1: the places come from the building type table's GarrisonSlots column (Tools/Data/BuildingTypes.csv, FHOLBuildingTypeRow). A row
 // with 4 places admits through the same chain as a type name; a row left at 0 (every real row for now: no tower row exists) admits nobody.
 void Test_GarrisonPlacesComeFromTheTypeTable(FUnitTest& T)

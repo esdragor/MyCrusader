@@ -243,3 +243,115 @@ void Test_CampSettingsAreCoherent(FUnitTest& T)
 	T.AssertTrue(S.AggroRadius < S.LeashRadius, "the leash is longer than the aggro radius (the camp does not drop a fight it has just begun)");
 	T.AssertTrue(S.RewardXP > 0, "a cleared camp pays");
 }
+
+// MIG-J-Camp (D830/D835, 2026-11-16): the vectors of the C++ twin's test HeroesOfLiberty.Neutrals.CampRules
+// (Source/HeroesOfLiberty/Tests/HOLCampRulesTests.cpp), case by case, so that both copies answer the same cases while two exist.
+FHOLCampHit CampVectorHit(int Owner, int Damage)
+{
+	FHOLCampHit Hit;
+	Hit.Owner = Owner;
+	Hit.Damage = Damage;
+	return Hit;
+}
+
+void Test_CampRulesVectors(FUnitTest& T)
+{
+	FHOLCampSettings S;
+	S.Aggro = EHOLCampAggro::OnSight;
+	const TArray<FHOLCampMember> Members = CampMembers(3, CampPost);
+
+	// On sight: an intruder at the aggro radius (inclusive) draws the camp, one beyond does not.
+	FHOLCampMemory Memory;
+	FHOLCampStep Step = HOLCamp::Step(Memory, S, CampPost, Members, TArray<FHOLCampIntruder>(), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Guarding && !Step.bChanged, "nobody near: guarding");
+	HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(S.AggroRadius + 1.f), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Guarding, "beyond the aggro radius: still guarding");
+	Step = HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(S.AggroRadius), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Fighting && Step.bChanged, "at the aggro radius: fighting");
+
+	// The leash: nobody within it, everyone goes back; then at the post, guarding again.
+	Step = HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(S.LeashRadius + 1.f), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Returning, "nobody within the leash: returning");
+	T.AssertEquals(3, Step.ReturnIds.Num(), "all sent back");
+	HOLCamp::Step(Memory, S, CampPost, CampMembers(3, CampPost + FVector(S.ArriveRadius + 1.f, 0, 0)), TArray<FHOLCampIntruder>(), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Returning, "not yet at the post: still returning");
+	HOLCamp::Step(Memory, S, CampPost, CampMembers(3, CampPost + FVector(S.ArriveRadius, 0, 0)), TArray<FHOLCampIntruder>(), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Guarding, "at the post: guarding");
+
+	// A member chasing past the leash is sent back alone.
+	Memory.State = EHOLCampState::Fighting;
+	TArray<FHOLCampMember> Chasers = CampMembers(2, CampPost);
+	Chasers[1].Location = CampPost + FVector(S.LeashRadius + 1.f, 0, 0);
+	Step = HOLCamp::Step(Memory, S, CampPost, Chasers, CampIntruderAt(100.f), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Fighting && Step.ReturnIds.Num() == 1, "one member past the leash is sent back");
+	T.AssertEquals(Chasers[1].Id, Step.ReturnIds.Num() == 1 ? Step.ReturnIds[0] : -1, "the one past the leash");
+
+	// Only when attacked: the sight does not draw it, a blow from one it can reach does, a blow from beyond the leash does not.
+	S.Aggro = EHOLCampAggro::OnAttack;
+	Memory.State = EHOLCampState::Guarding;
+	HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(100.f), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Guarding, "on attack: an intruder on the post, no blow: guarding");
+	HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(S.LeashRadius + 1.f), true);
+	T.AssertTrue(Memory.State == EHOLCampState::Guarding, "a blow from beyond the leash is not answered");
+	HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(100.f), true);
+	T.AssertTrue(Memory.State == EHOLCampState::Fighting, "a blow draws it");
+
+	// Cleared for good: no member left = cleared once; members listed later do not bring it back.
+	Memory.State = EHOLCampState::Fighting;
+	Step = HOLCamp::Step(Memory, S, CampPost, TArray<FHOLCampMember>(), TArray<FHOLCampIntruder>(), false);
+	T.AssertTrue(Memory.State == EHOLCampState::Cleared && Step.bJustCleared, "no member left: cleared, once");
+	Step = HOLCamp::Step(Memory, S, CampPost, Members, CampIntruderAt(10.f), true);
+	T.AssertTrue(Memory.State == EHOLCampState::Cleared && !Step.bChanged && !Step.bJustCleared, "cleared for good (D32)");
+
+	// The reward by credit rule, on the C++ hits (owner 1: 60 + 10, owner 0: 30 + 10 and the last blow): the shares add up.
+	TArray<FHOLCampHit> Hits;
+	Hits.Add(CampVectorHit(1, 60));
+	Hits.Add(CampVectorHit(0, 30));
+	Hits.Add(CampVectorHit(1, 10));
+	Hits.Add(CampVectorHit(0, 10));
+	S.RewardXP = 100;
+	S.Credit = EHOLCampCredit::LastBlow;
+	TArray<FHOLCampShare> Shares = HOLCamp::Rewards(S, Hits);
+	T.AssertTrue(Shares.Num() == 1 && Shares[0].Owner == 0 && Shares[0].XP == 100, "last blow: all to the owner of the last hit");
+	S.Credit = EHOLCampCredit::MostDamage;
+	Shares = HOLCamp::Rewards(S, Hits);
+	T.AssertTrue(Shares.Num() == 1 && Shares[0].Owner == 1 && Shares[0].XP == 100, "most damage: all to owner 1 (70 against 40)");
+	S.Credit = EHOLCampCredit::Shared;
+	Shares = HOLCamp::Rewards(S, Hits);
+	T.AssertEquals(2, Shares.Num(), "shared: two owners");
+	T.AssertEquals(0, Shares.Num() == 2 ? Shares[0].Owner : -1, "shared: owners ascending");
+	T.AssertEquals(36, Shares.Num() == 2 ? Shares[0].XP : -1, "shared: owner 0, 40 of 110");
+	T.AssertEquals(64, Shares.Num() == 2 ? Shares[1].XP : -1, "shared: owner 1, 70 of 110 plus the rounding");
+	T.AssertEquals(0, HOLCamp::Rewards(S, TArray<FHOLCampHit>()).Num(), "no hit, no share");
+}
+
+// MIG-J-Camp: the script side of HeroesOfLiberty.Neutrals.Owner. The neutral owner is the first number past the slots (D401), hostile
+// to every slot: an intruder of any slot draws the camp and the blow of any slot earns its owner the reward. The constants of
+// FHOLMatchConfig, HOLVictoryRules::AreHostile and the HOLCamps statics of the combat processor have no script copy: they stay in C++.
+void Test_CampOwner(FUnitTest& T)
+{
+	FHOLCampSettings S;
+	S.Credit = EHOLCampCredit::LastBlow;
+	const TArray<FHOLCampMember> Members = CampMembers(2, CampPost);
+	int Drawn = 0;
+	int Paid = 0;
+	for (int Slot = 0; Slot < HOLAIArmy::NeutralOwnerSlot; Slot++)
+	{
+		TArray<FHOLCampIntruder> Intruders = CampIntruderAt(S.AggroRadius);
+		Intruders[0].Owner = Slot;
+		FHOLCampMemory Memory;
+		HOLCamp::Step(Memory, S, CampPost, Members, Intruders, false);
+		Drawn += Memory.State == EHOLCampState::Fighting ? 1 : 0;
+
+		TArray<FHOLCampHit> Hits;
+		FHOLCampHit Hit;
+		Hit.Owner = Slot;
+		Hit.Damage = 5;
+		Hits.Add(Hit);
+		TArray<FHOLCampShare> Shares = HOLCamp::Rewards(S, Hits);
+		Paid += (Shares.Num() == 1 && Shares[0].Owner == Slot && Shares[0].XP == S.RewardXP) ? 1 : 0;
+	}
+	T.AssertEquals(8, HOLAIArmy::NeutralOwnerSlot, "the neutral owner is the first number past the 8 slots (FHOLMatchConfig::NeutralOwner = MaxSlots)");
+	T.AssertEquals(HOLAIArmy::NeutralOwnerSlot, Drawn, "an intruder of every slot draws the camp");
+	T.AssertEquals(HOLAIArmy::NeutralOwnerSlot, Paid, "the blow of every slot earns its owner the reward");
+}

@@ -63,3 +63,4 @@ Branche `visual`, worktree Sauron. Ouvert le 2026-11-15 10:2x par SAURON-1115b. 
 ||||||||||||||||||| (SAURON-1115c : ~49)
 ||||||||||||||||||||||||||||||| (SAURON-1115d : 31 au build)
 - 2026-11-15 (réponse de l'utilisateur, session principale, docs seulement) : D809 (Q-exploration-xp) = Q1 C (défaut, tranche 3 + lieu 25) + Q2 B : seuls les lieux sans autre paiement paient à la 1re vue (autel du Volcan, futurs lieux), pas relais ni camps ; ligne [ ] Sauron (C++) dans Auto_Journey_File.md.
+- 2026-11-16 20:1x SAURON-1116m (migration, sans C++) : accord exploration_xp_accord_test.py vu ROUGE (préréglage B 41) puis vert, dans quick_check values ; appelant C++ = UHOLVisionSubsystem::PayExplorationXP par camp et par case nouvellement explorée ; aucun appelant script ; bascule proposée (C++ reste, copie script supprimée) dans Auto_Journey_File.md, à décider par l'utilisateur.
