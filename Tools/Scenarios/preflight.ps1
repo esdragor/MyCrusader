@@ -23,7 +23,8 @@ param(
     [string] $Root = "",
     [int] $MaxSeconds = 180,
     [string] $PlayerName = "",  # passed to check.ps1 then to the game (-PlayerName=)
-    [switch] $AllowUncommitted  # the trial needs files git does not hold (audio candidates, decision B): WARN instead of FAIL, it plays ONLY with -Root <this worktree>
+    [switch] $AllowUncommitted,  # the trial needs files git does not hold (audio candidates, decision B): WARN instead of FAIL, it plays ONLY with -Root <this worktree>
+    [switch] $TestMap  # D820 (Q-rocks-proportion Q2 = C): the trial needs the grey test map ON PURPOSE (say why in the E- file): WARN instead of FAIL for a .json without mapSize
 )
 
 if (-not $Root) { $Root = Resolve-Path "$PSScriptRoot\..\.." }
@@ -62,6 +63,18 @@ if ($Notes -lt 1) { Report "FAIL" "no note/notereset line: the user is not told 
 $PanOffenders = @(Get-PanExposure (Get-Content -Encoding UTF8 $Txt))
 if ($PanOffenders.Count -gt 0) { Report "FAIL" "pan exposure: $($PanOffenders[0]) ($($PanOffenders.Count) in all; set the camera right before the click, 2 frames, not before a long wait)" }
 else { Report "OK" "pan exposure: every ground click is within 10 frames of the camera placement" }
+# 2c (static, 2026-11-16): 'hol.Select.ClickUnit <N> enemy' counts every unit not the player's (a neutral camp, a 3rd player): name the slot (PanExposure.ps1).
+$EnemyOffenders = @(Get-EnemyClickWithoutSlot (Get-Content -Encoding UTF8 $Txt))
+if ($EnemyOffenders.Count -gt 0) { Report "FAIL" "enemy click: $($EnemyOffenders[0]) ($($EnemyOffenders.Count) in all)" }
+else { Report "OK" "enemy click: every hol.Select.ClickUnit on another player's unit names its slot (slot=<S>)" }
+
+# 2d (static, D820 = Q-rocks-proportion Q2 C, 2026-11-16): a trial shown to the user plays on a GENERATED map (biome ground, decor), not on the grey
+# test map that a .json without mapSize loads (EHOLMapSize::None, see Tools\Tests\scenario_mapsize_check.ps1): add "mapSize": "Small" to <name>.json and
+# replay the trial (decor may stand on a placement). -TestMap = the grey map is wanted (WARN).
+$MapJson = Join-Path $Root "Tools\Scenarios\$Name.json"
+if ((Test-Path $MapJson) -and ((Get-Content $MapJson -Raw) -notmatch '"mapSize"')) {
+    Report $(if ($TestMap) { "WARN" } else { "FAIL" }) "map: $Name.json has no mapSize, the trial plays on the grey test map (D820: add mapSize Small to the .json and replay; -TestMap if the test map is wanted)"
+} else { Report "OK" "map: the trial plays on a generated map (mapSize), or has no .json" }
 
 # 6 (static, 2026-11-12): the USER'S launch, not the agent's. Four trials passed this preflight and never started for the user (2026-11-11):
 # play.ps1 without -PlayerName on named seats (spectator), files only in the agent's worktree, a stale binary in the copy (LaunchCheck.ps1,
@@ -108,6 +121,8 @@ if (Test-Path $Log) {
     $Text = Get-Content $Log
     # Any error line of the game or of the script engine (a stale build shows as "Angelscript: Error"), and HOL warnings.
     # LogAutomationTest errors are written by the engine at frame 0 of every run (also on a clean one): not a verdict on the scenario.
+    # Cause (SAURON-1116d): 20 "Condition failed" of the engine's smoke tests UnifiedErrorTests.cpp under -culture=fr (0 under
+    # -culture=en), see CheckLog.ps1.
     $Bad = @($Text | Select-String -Pattern 'LogHOL\w*: (Warning|Error)|Angelscript: Error|\]\w+: Error:' | Where-Object { $_.Line -notmatch 'LogHOLTest: Warning: .*waitkey|LogAutomationTest: Error' })
     if ($Bad.Count -gt 0) { Report "FAIL" "$($Bad.Count) warning/error line(s) in the log, first: $($Bad[0].Line.Trim()) (a script error right at start usually means the build of this worktree is stale: Tools\build.ps1 first)" } else { Report "OK" "no warning or error in the log" }
     # 6 (log): what the scenario asked for and did not get, even at Display level ("candidate missing": audio_compare_buildings_*, 2026-11-11).

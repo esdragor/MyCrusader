@@ -31,9 +31,23 @@ foreach ($File in $Files) {
         if ($Wait -notmatch '^waitkey [A-Za-z]+\.[A-Za-z]+ [A-J] \(') { Problem "${Name}: the panel text has no cue name next to the letter: $Wait" }
         if ($Wait -match 'Entree : (?<next>\S+) ?(?<letter>[A-J])?' -and $Wait -notmatch 'Entree : fin' -and $Wait -notmatch 'Entree : [A-Za-z]+\.[A-Za-z]+ [A-J]') { Problem "${Name}: the next variant has no cue name: $Wait" }
     }
+    # A scenario of ONE building (Caserne, Champ de tir, Ecurie) shows that building, not the Forum: the generator places it
+    # (hol.Cheat.SpawnBuilding <class> 0 X Y, waits for its log line, and the camera goes to the same X Y).
+    $Classes = @{ "Building.Barracks" = "Barracks"; "Building.Range" = "ArcheryRange"; "Building.Stable" = "Stable" }
+    if ($Played.Count -eq 1 -and $Classes.ContainsKey($Played[0])) {
+        $Class = $Classes[$Played[0]]
+        $Spawn = @($Lines | Where-Object { $_ -match "^hol\.Cheat\.SpawnBuilding $Class 0 -?\d+ -?\d+$" })
+        if ($Spawn.Count -ne 1) { Problem "${Name}: the generator does not place the $Class (no line 'hol.Cheat.SpawnBuilding $Class 0 X Y')" }
+        else {
+            $null = $Spawn[0] -match ' (?<x>-?\d+) (?<y>-?\d+)$'
+            if ($Lines -notcontains "waitlog Cheat: spawned $Class of slot 0") { Problem "${Name}: no 'waitlog Cheat: spawned $Class of slot 0' after the spawn" }
+            if ($Lines -notcontains "hol.Camera.FocusNear $($Matches['x']) $($Matches['y'])") { Problem "${Name}: the camera does not go to the $Class ($($Matches['x']) $($Matches['y']))" }
+        }
+    }
     $Mine = Join-Path $Root "Tools\Scenarios\$Name.txt"
     if (-not (Test-Path $Mine)) { Problem "${Name}: Tools\Scenarios\$Name.txt is missing" }
-    elseif ((Get-Content $Mine -Raw) -ne (Get-Content $File.FullName -Raw)) { Problem "${Name}: Tools\Scenarios\$Name.txt is not the generator's output (run make_audio_compare.py)" }
+    # Line endings do not count: git checks the scenarios out in CRLF (.gitattributes eol=crlf), the generator writes LF.
+    elseif (((Get-Content $Mine -Raw) -replace "`r`n", "`n") -ne ((Get-Content $File.FullName -Raw) -replace "`r`n", "`n")) { Problem "${Name}: Tools\Scenarios\$Name.txt is not the generator's output (run make_audio_compare.py)" }
     $E = Join-Path $Tmp "Retours\E-$Name.md"
     # A scenario marked "non compte" in its first line (the five families in a row, the old alerts) is not an essay: no sheet, no limit.
     if ($Lines[0] -match 'non compte') { continue }
