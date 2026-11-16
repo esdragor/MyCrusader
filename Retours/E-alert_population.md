@@ -16,3 +16,4 @@ NON VÉRIFIÉ : le son (aucun, -nosound) ; la répétition après 30 s en partie
 Commande complète (règle 13, 2026-11-14) : chaque commande est écrite en entier, copiable telle quelle.
 Lancer UNE commande : `powershell -ExecutionPolicy Bypass -File C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel\Tools\Scenarios\play.ps1 alert_population -Root C:\Users\baudo\Documents\HeroesOfLiberty-Galadriel`
 Durée : environ 1 min. Réponse attendue : `OK`, `BUG: ...` ou `REGLAGE: ...`.
+Reponse: BUG : jamais eu le fil, de meme, le check de population se fait a la fin de la prod (on queue des soldats et des paysans a 100%, ils checkent avant de sortir, si non, ben ils reste a 100% mais ne sortent pas, mettent comme quoi on est max pop et des qu un slot se libere, c est parti) ; utilisateur, 2026-11-16 16:06, dans la conversation ; D829 ; ligne [ ] en tête de file (Galadriel), corrigée dans le worktree Sauron (libre).

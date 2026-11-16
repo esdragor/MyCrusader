@@ -3611,4 +3611,6 @@ La courbe d'XP (Q04) reste à régler en test.
 
 **D828** (Scénarios de comparaison, 2026-11-16, Q-waitkey-texte Q2) : une option commence JUSTE APRÈS l'attente précédente (C++, `FindPreviousOptionStart`) ; le `notereset` ne délimite plus que la 1re option ; Backspace rejoue donc la commande qui règle l'option (8 scénarios aujourd'hui fautifs : rocks_compare, rocks_compare2, resources_compare, forest_stretch_compare, trees_rocks_compare, orders_marks_compare, talents_icons_compare, legions_warrior_compare). Risque accepté : une option qui fait apparaître des unités avant sa note les refait apparaître.
 
-Prochain numéro : **D829**.
+**D829** (Production et population, D202, D804, 2026-11-16, BUG de l'utilisateur sur l'essai alert_population) : la population se vérifie à la FIN de la production, pas à la mise en file : on peut mettre en file Paysans et soldats même à population pleine ; une unité qui atteint 100 % vérifie la population avant de sortir ; s'il n'y a pas de place, elle RESTE à 100 % sans sortir, la file indique « population maximale » (et l'alerte « Population pleine » entre dans le fil), et elle sort dès qu'une place se libère. Constat de l'utilisateur : la ligne « Population pleine » n'est jamais apparue dans le fil pendant l'essai.
+
+Prochain numéro : **D830**.
