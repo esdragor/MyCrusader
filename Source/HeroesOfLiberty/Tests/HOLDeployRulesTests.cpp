@@ -5,8 +5,8 @@
 
 #if WITH_DEV_AUTOMATION_TESTS
 
-// Palier 3 G5 (Palier3InProgress.md, GDD D712, D715): the C++ twin of the deployable engine's rule, tested with the SAME cases as
-// Script/Tests/HOLDeployRules_Test.as (the script and the C++ must agree). The expectations come from D712 and from the profile's own
+// Palier 3 G5 (Palier3InProgress.md, GDD D712, D715): the deployable engine's rule (only in C++, the script copy was removed, D836); its script test was
+// Script/Tests/HOLDeployRules_Test.as, removed with it (D836). The expectations come from D712 and from the profile's own
 // values (the delays, the ranges), never retyped numbers: the values are PROPOSED (Retours/Q-trebuchet-deploy.md), no test pins one.
 namespace UE::HeroesOfLiberty::Tests::Deploy
 {
