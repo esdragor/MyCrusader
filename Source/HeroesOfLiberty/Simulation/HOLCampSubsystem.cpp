@@ -1,6 +1,7 @@
 ﻿// Copyright Epic Games, Inc. All Rights Reserved.
 
 #include "Simulation/HOLCampSubsystem.h"
+#include "Simulation/HOLCampBoard.h"
 
 #include "Commands/HOLCommandSubsystem.h"
 #include "Engine/World.h"
@@ -234,7 +235,7 @@ void UHOLCampSubsystem::OnStepEnded(const int64 StepIndex)
 		}
 
 		const HOLCampRules::EState Before = Camp.State;
-		const HOLCampRules::FStep Step = HOLCampRules::Step(Camp.State, Settings, Post, Members, Intruders, Camp.bAttacked);
+		const HOLCampRules::FStep Step = UHOLCampBoard::StepForCamp(World, Camp.State, Settings, Post, Members, Intruders, Camp.bAttacked);
 		Camp.bAttacked = false;
 		Camp.Members = Members.Num();
 		if (Step.bChanged)
@@ -275,7 +276,7 @@ void UHOLCampSubsystem::OnStepEnded(const int64 StepIndex)
 		{
 			UHOLHeroSubsystem* Heroes = World->GetSubsystem<UHOLHeroSubsystem>();
 			UE_LOG(LogHOLMatch, Display, TEXT("Camp %d: cleared for good (%d hits taken)"), CampId, Camp.Hits.Num());
-			for (const HOLCampRules::FShare& Share : HOLCampRules::Rewards(Settings, Camp.Hits))
+			for (const HOLCampRules::FShare& Share : UHOLCampBoard::RewardsForCamp(World, Settings, Camp.Hits))
 			{
 				if (Share.Owner >= 0 && Share.Owner < FHOLMatchConfig::MaxSlots && Share.XP > 0)
 				{
