@@ -3,6 +3,7 @@
 #include "Player/HOLCommandGridReadLibrary.h"
 
 #include "Player/HOLCommandGrid.h"
+#include "Technologies/HOLTechnologyTypes.h"
 
 // Unique namespace: unity builds merge the .cpp files, an anonymous namespace would collide with another file's helpers.
 namespace HOLCommandGridReadLibraryPrivate
@@ -23,6 +24,18 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.bHero = View.bHero;
 		Out.HeroLevel = View.HeroLevel;
 		Out.ReachedAge = View.ReachedAge;
+		Out.Researches = View.Researches;
+		Out.bDeployables = View.bDeployables;
+		Out.bDeployedAny = View.bDeployedAny;
+		Out.bRageUnit = View.bRageUnit;
+		Out.bPrimaryForum = View.bPrimaryForum;
+		Out.SpecializationTier = View.SpecializationTier;
+		Out.SpecializationPendingOption = View.SpecializationPendingOption;
+		Out.SpecializationRemainingMs = View.SpecializationRemainingMs;
+		for (int32 Ability = 0; Ability < 3 && Ability < View.HeroCooldownSeconds.Num(); ++Ability)
+		{
+			Out.HeroCooldownSeconds[Ability] = View.HeroCooldownSeconds[Ability];
+		}
 		const int32 Count = FMath::Min3(View.BuildableTypes.Num(), View.BuildableCells.Num(), View.BuildableAges.Num());
 		for (int32 Index = 0; Index < Count; ++Index)
 		{
@@ -30,6 +43,7 @@ namespace HOLCommandGridReadLibraryPrivate
 			Buildable.TypeName = View.BuildableTypes[Index];
 			Buildable.Cell = View.BuildableCells[Index];
 			Buildable.Age = View.BuildableAges[Index];
+			Buildable.bAlwaysOpen = View.BuildableAlwaysOpen.IsValidIndex(Index) && View.BuildableAlwaysOpen[Index];
 			Out.Buildable.Add(Buildable);
 		}
 		return Out;
@@ -44,6 +58,12 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.bGreyed = Command.bGreyed;
 		Out.Resource = Command.Resource;
 		Out.bBuy = Command.bBuy;
+		Out.Ability = static_cast<int32>(Command.Ability);
+		Out.CooldownSeconds = Command.CooldownSeconds;
+		Out.bPack = Command.bPack;
+		Out.Tier = Command.Tier;
+		Out.Option = Command.Option;
+		Out.RemainingMs = Command.RemainingMs;
 		return Out;
 	}
 
@@ -56,6 +76,12 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.bGreyed = View.bGreyed;
 		Out.Resource = View.Resource;
 		Out.bBuy = View.bBuy;
+		Out.Ability = static_cast<EHOLHeroAbility>(static_cast<uint8>(View.Ability));
+		Out.CooldownSeconds = View.CooldownSeconds;
+		Out.bPack = View.bPack;
+		Out.Tier = View.Tier;
+		Out.Option = View.Option;
+		Out.RemainingMs = View.RemainingMs;
 		return Out;
 	}
 
@@ -75,6 +101,7 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.Resource = Feedback.Resource;
 		Out.Refusal = static_cast<int32>(Feedback.Refusal);
 		Out.Category = Feedback.Category;
+		Out.Block = static_cast<int32>(Feedback.Block);
 		return Out;
 	}
 
@@ -85,6 +112,7 @@ namespace HOLCommandGridReadLibraryPrivate
 		Out.Resource = View.Resource;
 		Out.Refusal = static_cast<EHOLPlacementRefusal>(View.Refusal);
 		Out.Category = View.Category;
+		Out.Block = static_cast<HOLTechnology::EBlock>(static_cast<uint8>(View.Block));
 		return Out;
 	}
 
@@ -334,3 +362,82 @@ int32 UHOLCommandGridReadLibrary::PickEvenly(const TArray<FHOLQueueChoiceView>& 
 	}
 	return HOLCommandGrid::PickEvenly(Rule, static_cast<uint32>(LastKey));
 }
+
+// ---- MIG-C-CommandGrid, 2nd lot (GALADRIEL-1117n). NOT COMPILED when written. ----
+
+int32 UHOLCommandGridReadLibrary::GetAttackMoveCell() { return HOLCommandGrid::AttackMoveCell; }
+int32 UHOLCommandGridReadLibrary::GetStopCell() { return HOLCommandGrid::StopCell; }
+int32 UHOLCommandGridReadLibrary::GetHoldCell() { return HOLCommandGrid::HoldCell; }
+int32 UHOLCommandGridReadLibrary::GetDeployCell() { return HOLCommandGrid::DeployCell; }
+int32 UHOLCommandGridReadLibrary::GetResearchFirstCell() { return HOLCommandGrid::ResearchFirstCell; }
+int32 UHOLCommandGridReadLibrary::GetNumAges() { return HOLCommandGrid::NumAges; }
+
+int32 UHOLCommandGridReadLibrary::GetHeroAbilityAura() { return static_cast<int32>(EHOLHeroAbility::Aura); }
+int32 UHOLCommandGridReadLibrary::GetHeroAbilityCloseRanks() { return static_cast<int32>(EHOLHeroAbility::CloseRanks); }
+int32 UHOLCommandGridReadLibrary::GetHeroAbilityBanner() { return static_cast<int32>(EHOLHeroAbility::Banner); }
+
+int32 UHOLCommandGridReadLibrary::GetHeroAbilityCell(const int32 Ability)
+{
+	return HOLCommandGrid::GetHeroAbilityCell(static_cast<EHOLHeroAbility>(static_cast<uint8>(Ability)));
+}
+
+int32 UHOLCommandGridReadLibrary::GetRageCell() { return HOLCommandGrid::GetRageCell(); }
+int32 UHOLCommandGridReadLibrary::GetSpecializationCell(const int32 Option) { return HOLCommandGrid::GetSpecializationCell(Option); }
+FName UHOLCommandGridReadLibrary::GetReportName(const FHOLGridCommandView& Command) { return HOLCommandGrid::GetReportName(ToRule(Command)); }
+
+bool UHOLCommandGridReadLibrary::IsAgeOpen(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::IsAgeOpen(ToRule(Context), Age); }
+float UHOLCommandGridReadLibrary::GetAgePanelOpacity(const FHOLGridContextView& Context, const int32 Age) { return HOLCommandGrid::GetAgePanelOpacity(ToRule(Context), Age); }
+
+int32 UHOLCommandGridReadLibrary::GetMouseCursor(const bool bAttackMoveArmed, const bool bPlacing)
+{
+	return static_cast<int32>(HOLCommandGrid::GetMouseCursor(bAttackMoveArmed, bPlacing));
+}
+
+int32 UHOLCommandGridReadLibrary::GetCursorCrosshairs() { return static_cast<int32>(EMouseCursor::Crosshairs); }
+int32 UHOLCommandGridReadLibrary::GetCursorDefault() { return static_cast<int32>(EMouseCursor::Default); }
+
+TArray<FName> UHOLCommandGridReadLibrary::GetBuildingResearches(const FName Building)
+{
+	TArray<FName> Names;
+	UHOLTechnologySettings::GetBuildingTechnologies(Building, Names);
+	return Names;
+}
+
+bool UHOLCommandGridReadLibrary::IsTechnologyInTable(const FName Technology) { return UHOLTechnologySettings::FindTechnology(Technology) != nullptr; }
+
+bool UHOLCommandGridReadLibrary::IsTechnologyImplemented(const FName Technology)
+{
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	return Row && Row->Implemented;
+}
+
+int32 UHOLCommandGridReadLibrary::GetTechnologyFoodCost(const FName Technology)
+{
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	return Row ? Row->Cost.Food : -1;
+}
+
+FHOLFeedbackView UHOLCommandGridReadLibrary::CheckResearch(const FName Technology, const FHOLTechFactsView& Facts, const FHOLResources& Stock,
+	const int32 QueueLength, const int32 MaxQueue)
+{
+	const FHOLTechnologyRow* Row = UHOLTechnologySettings::FindTechnology(Technology);
+	if (!Row)
+	{
+		return FHOLFeedbackView();
+	}
+	HOLTechnology::FFacts Rule;
+	Rule.HeroTier = Facts.HeroTier;
+	Rule.bRequiresDone = Facts.bRequiresDone;
+	Rule.bBuildingFinished = Facts.bBuildingFinished;
+	Rule.bResearched = Facts.bResearched;
+	Rule.bQueued = Facts.bQueued;
+	return FromRule(HOLCommandGrid::CheckResearch(*Row, Rule, Stock, QueueLength, MaxQueue));
+}
+
+int32 UHOLCommandGridReadLibrary::GetBlockNone() { return static_cast<int32>(HOLTechnology::EBlock::None); }
+int32 UHOLCommandGridReadLibrary::GetBlockNotImplemented() { return static_cast<int32>(HOLTechnology::EBlock::NotImplemented); }
+int32 UHOLCommandGridReadLibrary::GetBlockAlreadyResearched() { return static_cast<int32>(HOLTechnology::EBlock::AlreadyResearched); }
+int32 UHOLCommandGridReadLibrary::GetBlockAlreadyQueued() { return static_cast<int32>(HOLTechnology::EBlock::AlreadyQueued); }
+int32 UHOLCommandGridReadLibrary::GetBlockTierTooLow() { return static_cast<int32>(HOLTechnology::EBlock::TierTooLow); }
+int32 UHOLCommandGridReadLibrary::GetBlockRequiresMissing() { return static_cast<int32>(HOLTechnology::EBlock::RequiresMissing); }
+int32 UHOLCommandGridReadLibrary::GetBlockNoBuilding() { return static_cast<int32>(HOLTechnology::EBlock::NoBuilding); }

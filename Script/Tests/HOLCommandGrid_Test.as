@@ -1,10 +1,10 @@
 // MIG-C-CommandGrid (D830, D836, D839, GALADRIEL-1117m): the script port of HOLCommandGridTests.cpp, run against the read library of the command grid's
 // rules that STAY in C++ (HOLCommandGrid, Player/HOLCommandGrid.h, read by the HUD): UHOLCommandGridReadLibrary (namespace HOLCommandGridRead). Same
-// vectors as the C++ tests. Ported here (10 of 15): MarketGain, Market, Commands, Feedback, Cycle, Categories, Group, Subgroups, Distribution, Tables
-// (its first half: the builders' grid of the table and the Barracks / Archery range grids). NOT ported yet: UnitOrders, HeroAbility, Research,
-// Specialization, Deploy-cell and the report-name tests (they need CheckResearch / the hero cells / the specialization view: TYPES_A_EXPOSER in
-// HOLCommandGridReadLibrary.h). The C++ file stays until the rouge vu / vert is confirmed by the main session. The library is NOT COMPILED at the
-// time of writing: if a Test_CG* fails to compile, the cause is in the .cpp or in a name used here (HOLBuildingTypeNames strings).
+// vectors as the C++ tests. Ported here (15 of 15, GALADRIEL-1117o): MarketGain, Market, Commands, Feedback, Cycle, Categories, Group, Subgroups,
+// Distribution, Tables (both halves: builders' grid, Barracks, Archery range, Siege workshop, Chapel), UnitOrders, HeroAbilities, Ages, MouseCursor,
+// Research. The C++ file stays until the rouge vu / vert is confirmed by the main session. The library (555ca10) is NOT COMPILED at the
+// time of writing: if a Test_CG* fails to compile, the cause is in the .cpp or in a name used here (HOLBuildingTypeNames strings). Not read by any
+// test (not exposed): the specialization view (SetSpecialization, GetOpenSpecializationTier).
 
 FHOLGridContextView CGMakeBuilders()
 {
@@ -606,4 +606,423 @@ void Test_CGTables(FUnitTest& T)
 		T.AssertTrue(HOLCommandGridRead::GetCommand(Range, Cell).Command == EHOLGridCommandKind::None, "Archery range: the other cells are empty");
 	}
 	T.AssertFalse(HOLCommandGridRead::GetProducesOf(n"Barracks").Contains(n"Archer"), "no Archer at the Barracks any more (AR-Q2)");
+
+	// Siege workshop (S2): A Ram, Z Mangonel once finished; nothing else.
+	FHOLGridContextView Workshop;
+	Workshop.bOwnBuilding = true;
+	Workshop.bBuildingFinished = true;
+	Workshop.Produces = HOLCommandGridRead::GetProducesOf(n"SiegeWorkshop");
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Workshop, 0).Command == EHOLGridCommandKind::Produce && HOLCommandGridRead::GetCommand(Workshop, 0).TypeName == n"Ram", "Siege workshop, A: produce a Ram");
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Workshop, 1).Command == EHOLGridCommandKind::Produce && HOLCommandGridRead::GetCommand(Workshop, 1).TypeName == n"Mangonel", "Siege workshop, Z: produce a Mangonel");
+	for (int Cell = 2; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		T.AssertTrue(HOLCommandGridRead::GetCommand(Workshop, Cell).Command == EHOLGridCommandKind::None,"Siege workshop: the other cells are empty");
+	}
+
+	// Chapel (Q-chapelle-moine = A): A Monk once finished; nothing else.
+	FHOLGridContextView Chapel;
+	Chapel.bOwnBuilding = true;
+	Chapel.bBuildingFinished = true;
+	Chapel.Produces = HOLCommandGridRead::GetProducesOf(n"Chapel");
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Chapel, 0).Command == EHOLGridCommandKind::Produce && HOLCommandGridRead::GetCommand(Chapel, 0).TypeName == n"Monk", "Chapel, A: produce a Monk");
+	for (int Cell = 1; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		T.AssertTrue(HOLCommandGridRead::GetCommand(Chapel, Cell).Command == EHOLGridCommandKind::None, "Chapel: the other cells are empty");
+	}
+}
+
+// Helpers of the 2nd lot (UnitOrders, HeroAbilities, Ages, MouseCursor, Research).
+bool CGNamesEqual(const TArray<FName>& A, const TArray<FName>& B)
+{
+	if (A.Num() != B.Num())
+	{
+		return false;
+	}
+	for (int I = 0; I < A.Num(); I++)
+	{
+		if (A[I] != B[I])
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+// FHOLGridKeyResult == Key{ Target, ChosenAge } (no type name).
+bool CGKeyIs(const FHOLGridKeyResultView& Result, EHOLGridKeyTargetKind Target, int ChosenAge)
+{
+	FName NoName;
+	return Result.Target == Target && Result.ChosenAge == ChosenAge && Result.TypeName == NoName;
+}
+
+// FHOLGridKeyResult == Key{ Build, ChosenAge, TypeName }.
+bool CGKeyBuild(const FHOLGridKeyResultView& Result, int ChosenAge, FName TypeName)
+{
+	return Result.Target == EHOLGridKeyTargetKind::Build && Result.ChosenAge == ChosenAge && Result.TypeName == TypeName;
+}
+
+// HeroesOfLiberty.CommandGrid.UnitOrders
+void Test_CGUnitOrders(FUnitTest& T)
+{
+	// The orders' panel left of the grid: Q attack-move (soldiers among the selection), S stop, V hold (any own units).
+	T.AssertEquals(4, HOLCommandGridRead::GetAttackMoveCell(), "Q is cell 4");
+	T.AssertEquals(5, HOLCommandGridRead::GetStopCell(), "S is cell 5");
+	T.AssertEquals(11, HOLCommandGridRead::GetHoldCell(), "V is cell 11");
+	int QCell = HOLCommandGridRead::GetAttackMoveCell();
+	int SCell = HOLCommandGridRead::GetStopCell();
+	int VCell = HOLCommandGridRead::GetHoldCell();
+
+	// Soldiers alone: Q S V on the left, nothing else; nothing on the right (they do not build).
+	FHOLGridContextView Soldiers;
+	Soldiers.bOwnUnits = true;
+	Soldiers.bSoldiers = true;
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Soldiers, QCell).Command == EHOLGridCommandKind::AttackMove, "soldiers: Q attack-move");
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Soldiers, SCell).Command == EHOLGridCommandKind::Stop, "soldiers: S stop");
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Soldiers, VCell).Command == EHOLGridCommandKind::Hold, "soldiers: V hold");
+	for (int Cell = 0; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		if (Cell != QCell && Cell != SCell && Cell != VCell)
+		{
+			T.AssertTrue(HOLCommandGridRead::GetOrder(Soldiers, Cell).Command == EHOLGridCommandKind::None, "soldiers: the other orders are empty");
+		}
+		T.AssertTrue(HOLCommandGridRead::GetCommand(Soldiers, Cell).Command == EHOLGridCommandKind::None, "soldiers: the grid cell is empty");
+	}
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Soldiers, 6).Command == EHOLGridCommandKind::None, "D is no order any more");
+
+	// Peasants alone (builders, no soldier): no attack-move, S and V still there; the builders' grid on the right.
+	FHOLGridContextView Peasants;
+	Peasants.bBuilders = true;
+	Peasants.bOwnUnits = true;
+	Peasants = HOLCommandGridRead::WithTableBuildables(Peasants);
+	T.AssertTrue(HOLCommandGridRead::IsBuildGrid(Peasants), "Peasants: the builders' grid");
+	for (int Cell = 0; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		T.AssertTrue(HOLCommandGridRead::GetOrder(Peasants, Cell).Command != EHOLGridCommandKind::AttackMove, "Peasants alone: no attack-move");
+	}
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Peasants, SCell).Command == EHOLGridCommandKind::Stop, "Peasants: S stop");
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Peasants, VCell).Command == EHOLGridCommandKind::Hold, "Peasants: V hold");
+	T.AssertTrue(HOLCommandGridRead::GetAgeBuilding(Peasants, 0, 0).TypeName == n"House", "Peasants: A of panel I the house, on the right");
+
+	// Peasants and soldiers together: the orders, Q included; the builders' grid hidden.
+	FHOLGridContextView Mixed = Peasants;
+	Mixed.bSoldiers = true;
+	T.AssertFalse(HOLCommandGridRead::IsBuildGrid(Mixed), "mixed: no builders' grid");
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Mixed, QCell).Command == EHOLGridCommandKind::AttackMove, "mixed: Q attack-move");
+	for (int Cell = 0; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		T.AssertTrue(HOLCommandGridRead::GetCommand(Mixed, Cell).Command == EHOLGridCommandKind::None, "mixed: the cell is empty on the right");
+	}
+
+	// An enemy selection (no own unit): no order.
+	FHOLGridContextView Enemy;
+	for (int Cell = 0; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		T.AssertTrue(HOLCommandGridRead::GetOrder(Enemy, Cell).Command == EHOLGridCommandKind::None, "enemy selection: the order is empty");
+	}
+
+	// A building of the player's (the Barracks, finished or a site): its grid only, no orders.
+	FHOLGridContextView Barracks;
+	Barracks.bOwnBuilding = true;
+	Barracks.Produces.Add(n"Spearman");
+	Barracks.Produces.Add(n"ManAtArms");
+	Barracks.bOwnUnits = true;  // never set with a building; the building wins all the same
+	Barracks.bSoldiers = true;
+	for (int Pass = 0; Pass < 2; Pass++)
+	{
+		bool bFinished = Pass == 0;
+		Barracks.bBuildingFinished = bFinished;
+		for (int Cell = 0; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+		{
+			T.AssertTrue(HOLCommandGridRead::GetOrder(Barracks, Cell).Command == EHOLGridCommandKind::None, "Barracks: no order");
+		}
+		EHOLGridCommandKind Expected = bFinished ? EHOLGridCommandKind::Produce : EHOLGridCommandKind::None;
+		T.AssertTrue(HOLCommandGridRead::GetCommand(Barracks, 0).Command == Expected, "Barracks: A its first unit or nothing");
+		T.AssertTrue(HOLCommandGridRead::PressKey(Barracks, -1, 4).Target == EHOLGridKeyTargetKind::Grid, "Barracks: keys to the grid");
+	}
+}
+
+// HeroesOfLiberty.CommandGrid.HeroAbilities
+void Test_CGHeroAbilities(FUnitTest& T)
+{
+	// J8c.4: the hero among the units commanded, his abilities on the grid on the right, A the cry, Z the banner; the passive aura has no cell.
+	int Aura = HOLCommandGridRead::GetHeroAbilityAura();
+	int CloseRanks = HOLCommandGridRead::GetHeroAbilityCloseRanks();
+	int Banner = HOLCommandGridRead::GetHeroAbilityBanner();
+	T.AssertEquals(0, HOLCommandGridRead::GetHeroAbilityCell(CloseRanks), "A: Serrez les rangs");
+	T.AssertEquals(1, HOLCommandGridRead::GetHeroAbilityCell(Banner), "Z: Banniere");
+	T.AssertEquals(-1, HOLCommandGridRead::GetHeroAbilityCell(Aura), "the aura: no cell");
+
+	// The hero alone at level 1: A the cry, ready; Z the banner, greyed (level 4); nothing else; the orders as soldiers'.
+	FHOLGridContextView Hero;
+	Hero.bOwnUnits = true;
+	Hero.bSoldiers = true;
+	Hero.bHero = true;
+	Hero.HeroLevel = 1;
+	FHOLGridCommandView Cry = HOLCommandGridRead::GetCommand(Hero, 0);
+	T.AssertTrue(Cry.Command == EHOLGridCommandKind::HeroAbility && Cry.Ability == CloseRanks && !Cry.bGreyed && Cry.CooldownSeconds == 0, "level 1: A the cry, ready");
+	FHOLGridCommandView BannerCmd = HOLCommandGridRead::GetCommand(Hero, 1);
+	T.AssertTrue(BannerCmd.Command == EHOLGridCommandKind::HeroAbility && BannerCmd.Ability == Banner && BannerCmd.bGreyed, "level 1: Z the banner, greyed");
+	for (int Cell = 2; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		T.AssertTrue(HOLCommandGridRead::GetCommand(Hero, Cell).Command == EHOLGridCommandKind::None, "hero: the grid cell is empty");
+	}
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Hero, HOLCommandGridRead::GetAttackMoveCell()).Command == EHOLGridCommandKind::AttackMove, "hero: Q attack-move");
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Hero, 0).Command == EHOLGridCommandKind::None, "hero: A no order");
+
+	// The keys: A and Z to the grid, the others to the orders as before.
+	T.AssertTrue(HOLCommandGridRead::PressKey(Hero, -1, 0).Target == EHOLGridKeyTargetKind::Grid, "hero: A to the grid");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Hero, -1, 1).Target == EHOLGridKeyTargetKind::Grid, "hero: Z to the grid");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Hero, -1, 2).Target == EHOLGridKeyTargetKind::Orders, "hero: E to the orders");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Hero, -1, HOLCommandGridRead::GetAttackMoveCell()).Target == EHOLGridKeyTargetKind::Orders, "hero: Q to the orders");
+
+	// Level 4: the banner open. Cooling down: greyed, the seconds left told.
+	Hero.HeroLevel = 4;
+	T.AssertFalse(HOLCommandGridRead::GetCommand(Hero, 1).bGreyed, "level 4: Z ready");
+	Hero.HeroCooldownSeconds.Add(0);
+	Hero.HeroCooldownSeconds.Add(0);
+	Hero.HeroCooldownSeconds.Add(0);
+	Hero.HeroCooldownSeconds[CloseRanks] = 42;
+	FHOLGridCommandView Cooling = HOLCommandGridRead::GetCommand(Hero, 0);
+	T.AssertTrue(Cooling.bGreyed && Cooling.CooldownSeconds == 42, "cry cooling down: greyed, 42 s");
+	T.AssertFalse(HOLCommandGridRead::GetCommand(Hero, 1).bGreyed, "the banner's cool-down is its own");
+
+	// No hero among the units commanded (soldiers alone, another subgroup): nothing on the right, A and Z to the orders.
+	FHOLGridContextView Soldiers = Hero;
+	Soldiers.bHero = false;
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Soldiers, 0).Command == EHOLGridCommandKind::None && HOLCommandGridRead::GetCommand(Soldiers, 1).Command == EHOLGridCommandKind::None, "no hero: A empty");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Soldiers, -1, 0).Target == EHOLGridKeyTargetKind::Orders, "no hero: A to the orders");
+
+	// A building selected wins (never set together; the building's grid all the same).
+	FHOLGridContextView Building = Hero;
+	Building.bOwnBuilding = true;
+	Building.bBuildingFinished = true;
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Building, 0).Command == EHOLGridCommandKind::None, "a building: no hero cell");
+}
+
+// HeroesOfLiberty.CommandGrid.Ages
+void Test_CGAges(FUnitTest& T)
+{
+	// The 4 age panels: only age I reached for now; a building of an age not reached greyed.
+	FHOLGridContextView Builders = CGMakeBuilders();
+	Builders.bOwnUnits = true;
+	Builders.BuildableTypes.Add(n"Barracks");
+	Builders.BuildableCells.Add(4);
+	Builders.BuildableAges.Add(1);
+	for (int Age = 0; Age < HOLCommandGridRead::GetNumAges(); Age++)
+	{
+		bool bReached = HOLCommandGridRead::IsAgeReached(Builders, Age);
+		T.AssertTrue(bReached == (Age == 0), "age reached: I only");
+	}
+	FHOLGridCommandView Locked = HOLCommandGridRead::GetAgeBuilding(Builders, 1, 4);
+	T.AssertTrue(Locked.TypeName == n"Barracks" && Locked.Age == 1 && Locked.bGreyed, "II Q: the barracks, greyed");
+	T.AssertTrue(HOLCommandGridRead::GetAgeBuilding(Builders, 2, 4).Command == EHOLGridCommandKind::None, "III: empty");
+
+	// The pages' fading (D797): a page not reached faded; a Nomad's page II holding his first forum (bAlwaysOpen) shown whole at age I.
+	float OpacityI = HOLCommandGridRead::GetAgePanelOpacity(Builders, 0);
+	float OpacityII = HOLCommandGridRead::GetAgePanelOpacity(Builders, 1);
+	T.AssertTrue(OpacityI == 1.0, "I reached: page whole");
+	T.AssertTrue(OpacityII < 1.0, "II not reached: page faded");
+	FHOLGridContextView Nomad = Builders;
+	Nomad.BuildableTypes.Add(n"MainCentre");
+	Nomad.BuildableCells.Add(10);
+	Nomad.BuildableAges.Add(1);
+	for (int I = 0; I < 4; I++)
+	{
+		Nomad.BuildableAlwaysOpen.Add(false);
+	}
+	Nomad.BuildableAlwaysOpen.Add(true);  // the last entry: the Nomad's first forum
+	float NomadII = HOLCommandGridRead::GetAgePanelOpacity(Nomad, 1);
+	float NomadIII = HOLCommandGridRead::GetAgePanelOpacity(Nomad, 2);
+	T.AssertTrue(NomadII == 1.0, "Nomad: page II whole (its forum always buildable)");
+	T.AssertTrue(NomadIII < 1.0, "Nomad: page III still faded");
+	T.AssertFalse(HOLCommandGridRead::IsAgeReached(Nomad, 1), "Nomad: age II not reached (medallion locked)");
+	T.AssertTrue(HOLCommandGridRead::GetAgeBuilding(Nomad, 1, 4).bGreyed, "Nomad: II Q barracks still greyed");
+
+	// No age chosen: A chooses I; Z (not reached) nothing; Q S V the orders (a Peasant has no attack-move: GetOrder).
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, -1, 0), EHOLGridKeyTargetKind::Age, 0), "A: age I chosen");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, -1, 1), EHOLGridKeyTargetKind::None, -1), "Z, not reached: nothing");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, -1, 4), EHOLGridKeyTargetKind::Orders, -1), "Q, no age: the orders");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Builders, -1, 5).Target == EHOLGridKeyTargetKind::Orders
+		&& HOLCommandGridRead::GetOrder(Builders, 5).Command == EHOLGridCommandKind::Stop, "S, no age: the orders (stop)");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Builders, -1, 11).Target == EHOLGridKeyTargetKind::Orders, "V, no age: the orders");
+
+	// Age I chosen: every key its building's, A then A the house's ghost, the age kept; then E the mining camp's, Z the lumber camp's, still I.
+	T.AssertTrue(CGKeyBuild(HOLCommandGridRead::PressKey(Builders, 0, 0), 0, n"House"), "A then A: the house, I kept");
+	T.AssertTrue(CGKeyBuild(HOLCommandGridRead::PressKey(Builders, 0, 2), 0, n"MiningCamp"), "then E: the mining camp, I kept");
+	T.AssertTrue(CGKeyBuild(HOLCommandGridRead::PressKey(Builders, 0, 1), 0, n"LumberCamp"), "then Z: the lumber camp, I kept");
+	// An empty cell of the chosen age: nothing, never an order nor an age, the age kept.
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, 0, 11), EHOLGridKeyTargetKind::None, 0), "I, V (empty): nothing, I kept");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, 0, 3), EHOLGridKeyTargetKind::None, 0), "I, R (empty): nothing, I kept");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, 0, 4), EHOLGridKeyTargetKind::None, 0), "I, Q (empty): nothing, I kept");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Builders, 0, 12), EHOLGridKeyTargetKind::None, 0), "out of the grid: nothing, I kept");
+
+	// Age II reached (later): Z chooses it with no age chosen, its Q the barracks; an age chosen, Z is its building's.
+	FHOLGridContextView Later = Builders;
+	Later.ReachedAge = 1;
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Later, -1, 1), EHOLGridKeyTargetKind::Age, 1), "II reached, no age, Z: II chosen");
+	T.AssertTrue(CGKeyBuild(HOLCommandGridRead::PressKey(Later, 0, 1), 0, n"LumberCamp"), "II reached, I chosen, Z: the lumber camp, I kept");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Later, 1, 0), EHOLGridKeyTargetKind::None, 1), "II, A (empty): nothing, II kept");
+	T.AssertTrue(CGKeyBuild(HOLCommandGridRead::PressKey(Later, 1, 4), 1, n"Barracks"), "II, Q: the barracks");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Later, 1, 5), EHOLGridKeyTargetKind::None, 1), "II, S (empty): nothing");
+
+	// The mouse: a header chooses its age, a building its ghost (its age chosen); an age not reached nothing, the chosen kept.
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::ClickAge(Builders, -1, 0, -1), EHOLGridKeyTargetKind::Age, 0), "click header I");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::ClickAge(Builders, 0, 1, -1), EHOLGridKeyTargetKind::None, 0), "click header II (not reached): nothing");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::ClickAge(Builders, 0, 0, -1), EHOLGridKeyTargetKind::Age, 0), "click header I, I chosen: I");
+	T.AssertTrue(CGKeyBuild(HOLCommandGridRead::ClickAge(Builders, -1, 0, 1), 0, n"LumberCamp"), "click I Z: the lumber camp, I chosen");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::ClickAge(Builders, -1, 1, 4), EHOLGridKeyTargetKind::None, -1), "click II Q (not reached): nothing");
+
+	// The chosen age closed by a placement, a cancel, Escape, another selection; kept by a placement with Shift.
+	T.AssertEquals(-1, HOLCommandGridRead::GetChosenAgeAfter(0, EHOLAgeEventKind::Placed), "placed: closed");
+	T.AssertEquals(0, HOLCommandGridRead::GetChosenAgeAfter(0, EHOLAgeEventKind::PlacedKept), "placed with Shift: kept");
+	T.AssertEquals(-1, HOLCommandGridRead::GetChosenAgeAfter(0, EHOLAgeEventKind::Cancelled), "cancelled: closed");
+	T.AssertEquals(-1, HOLCommandGridRead::GetChosenAgeAfter(0, EHOLAgeEventKind::Escape), "Escape: closed");
+	T.AssertEquals(-1, HOLCommandGridRead::GetChosenAgeAfter(0, EHOLAgeEventKind::SelectionChanged), "another selection: closed");
+
+	// Soldiers among the selection: no panels, A Z E R go to the orders (nothing there), Q to the attack-move.
+	FHOLGridContextView Mixed = Builders;
+	Mixed.bSoldiers = true;
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::PressKey(Mixed, -1, 0), EHOLGridKeyTargetKind::Orders, -1), "mixed, A: the orders");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Mixed, -1, 4).Target == EHOLGridKeyTargetKind::Orders, "mixed, Q: the orders");
+	T.AssertTrue(HOLCommandGridRead::GetOrder(Mixed, 4).Command == EHOLGridCommandKind::AttackMove, "mixed, Q: attack-move");
+	T.AssertTrue(HOLCommandGridRead::GetAgeBuilding(Mixed, 0, 0).Command == EHOLGridCommandKind::None, "mixed: no panel");
+	T.AssertTrue(CGKeyIs(HOLCommandGridRead::ClickAge(Mixed, -1, 0, 0), EHOLGridKeyTargetKind::None, -1), "mixed: a click on a panel does nothing");
+}
+
+// HeroesOfLiberty.CommandGrid.MouseCursor
+void Test_CGMouseCursor(FUnitTest& T)
+{
+	// The user's trial of A.2: the red attack cursor while Q waits for its point, the arrow again once chosen or cancelled.
+	int Crosshairs = HOLCommandGridRead::GetCursorCrosshairs();
+	int Arrow = HOLCommandGridRead::GetCursorDefault();
+	T.AssertEquals(Crosshairs, HOLCommandGridRead::GetMouseCursor(true, false), "Q pressed, the point not chosen: the attack cursor");
+	T.AssertEquals(Arrow, HOLCommandGridRead::GetMouseCursor(false, false), "the point chosen or the mode cancelled: the arrow");
+	T.AssertEquals(Arrow, HOLCommandGridRead::GetMouseCursor(false, true), "placement mode: the arrow (the ghost shows it)");
+	T.AssertEquals(Arrow, HOLCommandGridRead::GetMouseCursor(true, true), "placement wins over a mode left armed");
+	T.AssertTrue(Crosshairs != Arrow, "the attack cursor is not the arrow");
+}
+
+// HeroesOfLiberty.CommandGrid.Research
+void Test_CGResearch(FUnitTest& T)
+{
+	// The table's side: what each building researches, in the order of the table.
+	TArray<FName> FarmTechs = HOLCommandGridRead::GetBuildingResearches(n"Farm");
+	TArray<FName> FarmExpected;
+	FarmExpected.Add(n"PloughI");
+	FarmExpected.Add(n"PloughII");
+	FarmExpected.Add(n"WheelbarrowI");
+	FarmExpected.Add(n"WheelbarrowII");
+	T.AssertTrue(CGNamesEqual(FarmTechs, FarmExpected), "the Farm researches the Plough and the Wheelbarrow, I then II");
+	TArray<FName> CentreExpected;
+	CentreExpected.Add(n"ImprovedAlarmBell");
+	T.AssertTrue(CGNamesEqual(HOLCommandGridRead::GetBuildingResearches(n"MainCentre"), CentreExpected), "the main centre researches the alarm bell only (the militia is dropped, D600)");
+	TArray<FName> BarracksExpected;
+	BarracksExpected.Add(n"TemperedHalberds");
+	T.AssertTrue(CGNamesEqual(HOLCommandGridRead::GetBuildingResearches(n"Barracks"), BarracksExpected), "the Barracks research the halberds");
+	T.AssertEquals(0, HOLCommandGridRead::GetBuildingResearches(n"House").Num(), "the House researches nothing");
+
+	// The rule's side: a finished building gives its research row from W, after its production on A; a site, a forum down, builders: none.
+	FHOLGridContextView Farm;
+	Farm.bOwnBuilding = true;
+	Farm.bBuildingFinished = true;
+	Farm.Researches = FarmTechs;
+	int First = HOLCommandGridRead::GetResearchFirstCell();
+	T.AssertEquals(8, First, "the research row starts on W");
+	for (int Cell = 0; Cell < HOLCommandGridRead::GetNumCells(); Cell++)
+	{
+		FHOLGridCommandView Command = HOLCommandGridRead::GetCommand(Farm, Cell);
+		int Index = Cell - First;
+		if (Index >= 0 && Index < Farm.Researches.Num())
+		{
+			T.AssertTrue(Command.Command == EHOLGridCommandKind::Research && Command.TypeName == Farm.Researches[Index], "Farm: the cell researches its technology");
+		}
+		else
+		{
+			T.AssertTrue(Command.Command == EHOLGridCommandKind::None, "Farm: the cell is empty");
+		}
+	}
+	FHOLGridContextView Centre;
+	Centre.bOwnBuilding = true;
+	Centre.bBuildingFinished = true;
+	Centre.Produces.Add(n"Peasant");
+	Centre.Researches = HOLCommandGridRead::GetBuildingResearches(n"MainCentre");
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Centre, 0).Command == EHOLGridCommandKind::Produce, "centre: A still produces a Peasant");
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Centre, 8).TypeName == n"ImprovedAlarmBell" && HOLCommandGridRead::GetCommand(Centre, 9).Command == EHOLGridCommandKind::None, "centre: W the alarm bell, X empty");
+	FHOLGridContextView Site = Farm;
+	Site.bBuildingFinished = false;
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Site, 8).Command == EHOLGridCommandKind::None, "a site researches nothing");
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Site, HOLCommandGridRead::GetCancelCell()).Command == EHOLGridCommandKind::CancelConstruction, "a site keeps its cancel on V");
+	FHOLGridContextView Down = Centre;
+	Down.bForumDown = true;
+	T.AssertTrue(HOLCommandGridRead::GetCommand(Down, 8).Command == EHOLGridCommandKind::None, "a forum down researches nothing");
+	T.AssertTrue(HOLCommandGridRead::PressKey(Farm, -1, 8).Target == EHOLGridKeyTargetKind::Grid, "every key of a building is the grid's");
+
+	// What a press tells (the order of the server's reasons, then the stock, then the queue).
+	bool bPlough1 = HOLCommandGridRead::IsTechnologyInTable(n"PloughI");
+	bool bPlough2 = HOLCommandGridRead::IsTechnologyInTable(n"PloughII");
+	T.AssertTrue(bPlough1, "PloughI in the table");
+	T.AssertTrue(bPlough2, "PloughII in the table");
+	if (!bPlough1 || !bPlough2)
+	{
+		return;
+	}
+	FHOLResources Rich = CGRes(5000, 5000, 5000, 5000);
+	FHOLTechFactsView Facts;
+	Facts.HeroTier = 1;
+	Facts.bBuildingFinished = true;
+	T.AssertTrue(HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 0, 5).Kind == EHOLCommandFeedbackKind::None, "tier 1, rich, room: goes through");
+	Facts.HeroTier = 0;
+	FHOLFeedbackView Tier = HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 0, 5);
+	T.AssertTrue(Tier.Kind == EHOLCommandFeedbackKind::ResearchRefused && Tier.Block == HOLCommandGridRead::GetBlockTierTooLow() && HOLCommandGridRead::Blocks(Tier), "tier 0: refused, the tier");
+	FString TierText = HOLCommandGridRead::Describe(Tier);
+	T.AssertTrue(TierText == "research refused (tier too low)", "the tier is logged");
+	Facts.HeroTier = 1;
+	Facts.bResearched = true;
+	T.AssertEquals(HOLCommandGridRead::GetBlockAlreadyResearched(), HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 0, 5).Block, "done already");
+	Facts.bResearched = false;
+	Facts.bQueued = true;
+	T.AssertEquals(HOLCommandGridRead::GetBlockAlreadyQueued(), HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 0, 5).Block, "already in a queue");
+	Facts.bQueued = false;
+	Facts.bRequiresDone = false;
+	Facts.HeroTier = 2;
+	T.AssertEquals(HOLCommandGridRead::GetBlockRequiresMissing(), HOLCommandGridRead::CheckResearch(n"PloughII", Facts, Rich, 0, 5).Block, "level II before level I");
+	Facts.bRequiresDone = true;
+	Facts.bBuildingFinished = false;
+	T.AssertEquals(HOLCommandGridRead::GetBlockNoBuilding(), HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 0, 5).Block, "no finished building");
+	Facts.bBuildingFinished = true;
+	int FoodCost = HOLCommandGridRead::GetTechnologyFoodCost(n"PloughI");
+	FHOLFeedbackView Poor = HOLCommandGridRead::CheckResearch(n"PloughI", Facts, CGRes(FoodCost - 1, 5000, 5000, 5000), 0, 5);
+	T.AssertTrue(Poor.Kind == EHOLCommandFeedbackKind::NotEnoughResources && Poor.Resource == EHOLResource::Food && HOLCommandGridRead::Blocks(Poor), "one food short: not enough food, blocks");
+	FHOLFeedbackView Full = HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 5, 5);
+	T.AssertTrue(Full.Kind == EHOLCommandFeedbackKind::QueueFull && HOLCommandGridRead::Blocks(Full), "5 of 5 in the queue: queue full, blocks");
+	Facts.HeroTier = 0;
+	T.AssertEquals(HOLCommandGridRead::GetBlockTierTooLow(), HOLCommandGridRead::CheckResearch(n"PloughI", Facts, Rich, 5, 5).Block, "the rules before the queue");
+	T.AssertEquals(HOLCommandGridRead::GetBlockTierTooLow(), HOLCommandGridRead::CheckResearch(n"PloughI", Facts, CGRes(0, 0, 0, 0), 0, 5).Block, "the rules before the stock");
+
+	// T-Q10/T-Q11 = B (D601): the Improved Alarm Bell and the Tempered Halberds are in the grid but have no effect yet: refused "Soon",
+	// whatever the tier, the building, the stock or the queue, and the press tells it.
+	TArray<FName> SoonNames;
+	SoonNames.Add(n"ImprovedAlarmBell");
+	SoonNames.Add(n"TemperedHalberds");
+	for (int I = 0; I < SoonNames.Num(); I++)
+	{
+		FName SoonName = SoonNames[I];
+		bool bInTable = HOLCommandGridRead::IsTechnologyInTable(SoonName);
+		T.AssertTrue(bInTable, "the soon technology is in the table");
+		if (!bInTable)
+		{
+			continue;
+		}
+		T.AssertFalse(HOLCommandGridRead::IsTechnologyImplemented(SoonName), "not implemented in the table");
+		FHOLTechFactsView SoonFacts;
+		SoonFacts.HeroTier = 2;
+		SoonFacts.bBuildingFinished = true;
+		FHOLFeedbackView Refused = HOLCommandGridRead::CheckResearch(SoonName, SoonFacts, Rich, 0, 5);
+		T.AssertTrue(Refused.Kind == EHOLCommandFeedbackKind::ResearchRefused && Refused.Block == HOLCommandGridRead::GetBlockNotImplemented() && HOLCommandGridRead::Blocks(Refused), "refused, soon, and it blocks");
+		FString SoonText = HOLCommandGridRead::Describe(Refused);
+		T.AssertTrue(SoonText == "research refused (soon)", "the log says soon");
+		SoonFacts.HeroTier = 0;
+		SoonFacts.bBuildingFinished = false;
+		T.AssertEquals(HOLCommandGridRead::GetBlockNotImplemented(), HOLCommandGridRead::CheckResearch(SoonName, SoonFacts, CGRes(0, 0, 0, 0), 5, 5).Block, "soon even with no tier, no building, no stock");
+	}
 }

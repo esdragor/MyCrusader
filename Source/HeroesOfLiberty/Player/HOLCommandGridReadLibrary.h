@@ -102,6 +102,47 @@ struct FHOLGridContextView
 	TArray<int32> BuildableAges;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	int32 ReachedAge = 0;
+	/** FHOLBuildable::bAlwaysOpen per buildable type (a Nomad's first forum); a missing entry is false. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<bool> BuildableAlwaysOpen;
+	/** The technologies the selected building researches, in the table's order (FHOLGridContext::Researches). */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<FName> Researches;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bDeployables = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bDeployedAny = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bRageUnit = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bPrimaryForum = false;
+	/** FHOLGridContext::HeroCooldownSeconds[3], indexed by the hero ability number (GetHeroAbilityAura / CloseRanks / Banner); a missing entry is 0. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	TArray<int32> HeroCooldownSeconds;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 SpecializationTier = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 SpecializationPendingOption = -1;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 SpecializationRemainingMs = 0;
+};
+
+/** The facts of one technology asked (HOLTechnology::FFacts without bCanPay, which CheckResearch reads from the stock); the defaults are FFacts'. */
+USTRUCT(BlueprintType)
+struct FHOLTechFactsView
+{
+	GENERATED_BODY()
+
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 HeroTier = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bRequiresDone = true;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bBuildingFinished = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bResearched = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bQueued = false;
 };
 
 /** FHOLGridCommand's fields the tests read. */
@@ -122,6 +163,19 @@ struct FHOLGridCommandView
 	EHOLResource Resource = EHOLResource::Food;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	bool bBuy = false;
+	/** EHOLHeroAbility as its number (GetHeroAbilityAura / CloseRanks / Banner); the enum is not a UENUM. Default: the Aura's. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 Ability = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 CooldownSeconds = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	bool bPack = false;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 Tier = 0;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 Option = -1;
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 RemainingMs = 0;
 };
 
 /** FHOLGridKeyResult as a USTRUCT. */
@@ -153,6 +207,9 @@ struct FHOLFeedbackView
 	int32 Refusal = 0;
 	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
 	EHOLBuildingCategory Category = EHOLBuildingCategory::Economic;
+	/** HOLTechnology::EBlock as its number (GetBlockNone / TierTooLow / ...); the enum is not a UENUM. */
+	UPROPERTY(BlueprintReadWrite, Category = "HeroesOfLiberty|CommandGrid")
+	int32 Block = 0;
 };
 
 /** FHOLTradeGain as a USTRUCT. */
@@ -335,4 +392,77 @@ public:
 	static TArray<FHOLGridCommandView> MergeCommands(const TArray<FHOLGridCommandView>& PerBuilding, const TArray<int32>& Priority);
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
 	static int32 PickEvenly(const TArray<FHOLQueueChoiceView>& Choices, int32 LastKey);
+
+	// ---- MIG-C-CommandGrid, 2nd lot (GALADRIEL-1117n): the orders' cells, the hero, the ages, the cursor, the research. NOT COMPILED when written. ----
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetAttackMoveCell();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetStopCell();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetHoldCell();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetDeployCell();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetResearchFirstCell();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetNumAges();
+
+	/** The EHOLHeroAbility values as numbers, for FHOLGridCommandView::Ability and the HeroCooldownSeconds index. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetHeroAbilityAura();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetHeroAbilityCloseRanks();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetHeroAbilityBanner();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetHeroAbilityCell(int32 Ability);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetRageCell();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetSpecializationCell(int32 Option);
+	/** HOLCommandGrid::GetReportName of a command (None for a command that is not a specialization cell). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static FName GetReportName(const FHOLGridCommandView& Command);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static bool IsAgeOpen(const FHOLGridContextView& Context, int32 Age);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static float GetAgePanelOpacity(const FHOLGridContextView& Context, int32 Age);
+
+	/** HOLCommandGrid::GetMouseCursor as EMouseCursor's number; compare with GetCursorCrosshairs / GetCursorDefault. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetMouseCursor(bool bAttackMoveArmed, bool bPlacing);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetCursorCrosshairs();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetCursorDefault();
+
+	/** UHOLTechnologySettings::GetBuildingTechnologies(Building): the building's research row, in the table's order. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static TArray<FName> GetBuildingResearches(FName Building);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static bool IsTechnologyInTable(FName Technology);
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static bool IsTechnologyImplemented(FName Technology);
+	/** The Food of the technology's cost (-1 when it is not in the table). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetTechnologyFoodCost(FName Technology);
+	/** HOLCommandGrid::CheckResearch of a technology of the table (an empty feedback when it is not in it: read IsTechnologyInTable first). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static FHOLFeedbackView CheckResearch(FName Technology, const FHOLTechFactsView& Facts, const FHOLResources& Stock, int32 QueueLength, int32 MaxQueue);
+	/** HOLTechnology::EBlock as numbers, for FHOLFeedbackView::Block. */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockNone();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockNotImplemented();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockAlreadyResearched();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockAlreadyQueued();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockTierTooLow();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockRequiresMissing();
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|CommandGrid")
+	static int32 GetBlockNoBuilding();
 };
