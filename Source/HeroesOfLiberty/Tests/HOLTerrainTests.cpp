@@ -72,6 +72,33 @@ bool FHOLTerrainRulesTest::RunTest(const FString& Parameters)
 	TestEqual(TEXT("a walker never reaches 0"), FHOLTerrainRules::GetScaledSpeed(1, 10), 1);
 	TestEqual(TEXT("a unit that does not walk stays still"), FHOLTerrainRules::GetScaledSpeed(0, Strength), 0);
 	TestEqual(TEXT("the percent of the speed"), FHOLTerrainRules::GetScaledSpeed(500, Strength), 500 * Strength / 100);
+
+	// D810 (Q-forest-ford Q2 = A): F4 the forest slows cavalry (80) and siege (70), never the walker on foot; F5 a ford weakens the defence (120).
+	using FRules = FHOLTerrainRules;
+	FHOLTerrainZone ForestZone = MakeMarsh(9000, 0, 500);
+	ForestZone.Kind = HOLTerrainKind::Forest;
+	FHOLTerrainZone FordZone = MakeMarsh(12000, 0, 500);
+	FordZone.Kind = HOLTerrainKind::Ford;
+	const TArray<FHOLTerrainZone> Painted{ ForestZone, FordZone, MakeMarsh(0, 0, 500), MakeMarsh(9000, 0, 200) };
+	TestEqual(TEXT("cavalry in a forest: 80 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0), 80);
+	TestEqual(TEXT("siege in a forest: 70 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Siege, 9400, 0), 70);
+	TestEqual(TEXT("on foot in a forest: 100 %"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::OnFoot, 9400, 0), 100);
+	TestEqual(TEXT("cavalry one centimetre out of the forest"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9501, 0), 100);
+	TestEqual(TEXT("a ford slows nobody"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 12000, 0), 100);
+	TestEqual(TEXT("marsh under a forest: the slowest wins"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9000, 0), FMath::Min(Strength, 80));
+	TestEqual(TEXT("the marsh alone slows cavalry as before"), FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 0, 0), Strength);
+	TestEqual(TEXT("the forest scales a real speed"), FRules::GetScaledSpeed(500, FRules::GetWalkerSpeedPercentAt(Strength, Painted, HOLTerrainWalker::Cavalry, 9400, 0)), 400);
+	TestTrue(TEXT("a unit on the ford is read in the ford"), FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12500, 0));
+	TestFalse(TEXT("one centimetre off the ford"), FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12501, 0));
+	TestEqual(TEXT("a hit of 100 on a ford: 120"), FRules::GetFordDamageTaken(100, FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 12000, 0)), 120);
+	TestEqual(TEXT("a hit of 100 off a ford: 100"), FRules::GetFordDamageTaken(100, FRules::IsInZoneOfKind(Painted, HOLTerrainKind::Ford, 0, 0)), 100);
+	TestEqual(TEXT("a ford percent that composes"), FRules::GetFordDamageTakenPercent(true), 120);
+	TestEqual(TEXT("no hit, no damage on a ford"), FRules::GetFordDamageTaken(0, true), 0);
+	TestEqual(TEXT("a negative hit is 0"), FRules::GetFordDamageTaken(-5, true), 0);
+	TestTrue(TEXT("a charge stops in a marsh"), FRules::StopsCharge(true, Painted, 100, 0));
+	TestFalse(TEXT("a charge does not stop out of a marsh"), FRules::StopsCharge(true, Painted, 2000, 0));
+	TestFalse(TEXT("a charge does not stop in a forest or on a ford"), FRules::StopsCharge(true, Painted, 9400, 0) || FRules::StopsCharge(true, Painted, 12000, 0));
+	TestFalse(TEXT("the setting off: the marsh stops nothing"), FRules::StopsCharge(false, Painted, 100, 0));
 	return true;
 }
 
