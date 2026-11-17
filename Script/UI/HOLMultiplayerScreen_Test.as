@@ -15,7 +15,7 @@ void Test_MultiplayerScreenScriptClass(FUnitTest& T)
 void Test_MultiplayerPlayerName(FUnitTest& T)
 {
 	T.AssertTrue(UHOLMultiplayerScreen::IsValidPlayerName("Chef"), "a plain name");
-	T.AssertTrue(UHOLMultiplayerScreen::IsValidPlayerName("  Chef de guerre-2_b  "), "spaces, - and _ are kept, the ends trimmed");
+	T.AssertTrue(UHOLMultiplayerScreen::IsValidPlayerName("  Le chef-2_b  "), "spaces, - and _ are kept, the ends trimmed");
 	T.AssertTrue(UHOLMultiplayerScreen::IsValidPlayerName("1234567890123456"), "16 characters");
 	T.AssertFalse(UHOLMultiplayerScreen::IsValidPlayerName("12345678901234567"), "17 characters");
 	T.AssertFalse(UHOLMultiplayerScreen::IsValidPlayerName("   "), "only spaces");

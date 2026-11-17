@@ -18,14 +18,14 @@ class UHOLMultiplayerScreenScript : UHOLMultiplayerScreen
 	void BuildMultiplayer()
 	{
 		UVerticalBox Column = MakeMultiplayerColumn();
-		Title = AddMultiplayerText(Column, n"Title", ScreenText(n"Title"), true);
+		Title = AddMultiplayerText(Column, n"Title", UHOLMultiplayerScreen::ScreenText(n"Title"), true);
 		AddNameRow(Column);
 		AddLobbyListBox(Column, MultiplayerNameWidth + MultiplayerMapWidth + MultiplayerPlayersWidth + MultiplayerStateWidth + MultiplayerActionWidth + MultiplayerSpectateWidth + 40.0f, 240.0f);
 		StatusText = AddMultiplayerText(Column, n"StatusText", FText(), false);
 		UHorizontalBox Buttons = AddMultiplayerRow(Column);
-		RefreshButton = AddMultiplayerButton(Buttons, n"RefreshButton", ScreenText(n"Refresh"));
-		CreateButton = AddMultiplayerButton(Buttons, n"CreateButton", ScreenText(n"Create"));
-		BackButton = AddMultiplayerButton(Buttons, n"BackButton", ScreenText(n"Back"));
+		RefreshButton = AddMultiplayerButton(Buttons, n"RefreshButton", UHOLMultiplayerScreen::ScreenText(n"Refresh"));
+		CreateButton = AddMultiplayerButton(Buttons, n"CreateButton", UHOLMultiplayerScreen::ScreenText(n"Create"));
+		BackButton = AddMultiplayerButton(Buttons, n"BackButton", UHOLMultiplayerScreen::ScreenText(n"Back"));
 		if (RefreshButton != nullptr)
 			RefreshButton.OnButtonBaseClicked.AddUFunction(this, n"HandleButtonClicked");
 		if (CreateButton != nullptr)
