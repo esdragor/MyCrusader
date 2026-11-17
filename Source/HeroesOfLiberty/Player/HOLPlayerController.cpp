@@ -61,6 +61,11 @@
 namespace HOLRpcScriptRoute_Haldir1117n
 {
 	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, TArrayView<const int32> Args);
+	// HALDIR-1117q (NOT COMPILED): the Economy routes (hol.Rpc.ScriptEconomy); true = the script actor took the call, false = the caller sends the C++ RPC.
+	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, FName TypeName);
+	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Index);
+	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Receiver, int32 Resource, int32 Amount);
+	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, int32 Resource, int32 Lots, bool bBuy);
 }
 
 namespace UE::HeroesOfLiberty::Player
@@ -3946,7 +3951,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 			UE_CLOG(HasBuildingGroup(), LogHOLMatch, Display, TEXT("Grid: %s queued at %s (#%u), subgroup %s"), *Command.TypeName.ToString(),
 				*DescribeBuilding(Building), Building->GetUniqueID(), *DescribeSubgroup());
 			LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-			ServerQueueProduction(Building, Command.TypeName);
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { ServerQueueProduction(Building, Command.TypeName); }
 		}
 		return;
 	}
@@ -3988,7 +3993,7 @@ void AHOLPlayerController::ExecuteGridCommand(const FHOLGridCommand& Command)
 		}
 		UE_LOG(LogHOLMatch, Display, TEXT("Grid: research %s at %s (#%u)"), *Command.TypeName.ToString(), *DescribeBuilding(Building), Building->GetUniqueID());
 		LastProductionBuilding.Add(Command.TypeName, Building->GetUniqueID());
-		ServerQueueProduction(Building, Command.TypeName);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, Command.TypeName)) { ServerQueueProduction(Building, Command.TypeName); }
 		return;
 	}
 	case EHOLGridCommand::Trade:
@@ -4187,7 +4192,7 @@ void AHOLPlayerController::RequestProduction(const FName TypeName)
 {
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerQueueProduction(Building, TypeName);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteQueueProduction(this, Building, TypeName)) { ServerQueueProduction(Building, TypeName); }
 	}
 }
 
@@ -4199,7 +4204,7 @@ void AHOLPlayerController::RequestCancelProduction(const int32 Index)
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerCancelProduction(Building, Index);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteCancelProduction(this, Building, Index)) { ServerCancelProduction(Building, Index); }
 	}
 }
 
@@ -4211,7 +4216,7 @@ void AHOLPlayerController::RequestTribute(const int32 Receiver, const int32 Reso
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerTribute(Building, Receiver, Resource, Amount);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, Building, Receiver, Resource, Amount)) { ServerTribute(Building, Receiver, Resource, Amount); }
 	}
 }
 
@@ -4226,7 +4231,7 @@ void AHOLPlayerController::RequestPanelTribute(const int32 Receiver, const int32
 	{
 		if (It->GetOwnerPlayer() == HOLPlayerState->GetPlayerIndex() && It->GetTypeName() == HOLBuildingTypeNames::Market && It->IsFinished())
 		{
-			ServerTribute(*It, Receiver, Resource, Amount);
+			if (!HOLRpcScriptRoute_Haldir1117n::RouteTribute(this, *It, Receiver, Resource, Amount)) { ServerTribute(*It, Receiver, Resource, Amount); }
 			return;
 		}
 	}
@@ -4240,7 +4245,7 @@ void AHOLPlayerController::RequestMarketTrade(const int32 Resource, const int32 
 	}
 	if (AHOLBuilding* Building = GetOwnSelection())
 	{
-		ServerMarketTrade(Building, Resource, Lots, bBuy);
+		if (!HOLRpcScriptRoute_Haldir1117n::RouteMarketTrade(this, Building, Resource, Lots, bBuy)) { ServerMarketTrade(Building, Resource, Lots, bBuy); }
 	}
 }
 
@@ -5223,7 +5228,7 @@ namespace HOLRpcScriptRoute_Haldir1117n
 
 	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
 	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
-	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location)
+	bool CallFull(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location, UObject* Object, const FName* Name)
 	{
 		if (!Controller || !IsOn(CVarName))
 		{
@@ -5252,6 +5257,20 @@ namespace HOLRpcScriptRoute_Haldir1117n
 					StrProperty->SetPropertyValue_InContainer(Params.GetData(), *Text);
 				}
 			}
+			else if (const FObjectPropertyBase* ObjectProperty = CastField<FObjectPropertyBase>(*It))
+				{
+					if (Object)
+					{
+						ObjectProperty->SetObjectPropertyValue(ObjectProperty->ContainerPtrToValuePtr<void>(Params.GetData()), Object);
+					}
+				}
+			else if (const FNameProperty* NameProperty = CastField<FNameProperty>(*It))
+				{
+					if (Name)
+					{
+						NameProperty->SetPropertyValue_InContainer(Params.GetData(), *Name);
+					}
+				}
 			else if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
 			{
 				if (Location && StructProperty->Struct == TBaseStructure<FVector>::Get())
@@ -5279,6 +5298,35 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		RpcActor->ProcessEvent(Function, Params.GetData());
 		Function->DestroyStruct(Params.GetData());
 		return true;
+	}
+
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location)
+	{
+		return CallFull(Controller, CVarName, FunctionName, Args, Text, Location, nullptr, nullptr);
+	}
+
+	// HALDIR-1117q (NOT COMPILED): the Economy routes. The building object and the type name fill the object / name parameters, the ints the rest in order (bool as 0 / 1).
+	bool RouteQueueProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const FName TypeName)
+	{
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerQueueProduction"), TArrayView<const int32>(), nullptr, nullptr, Building, &TypeName);
+	}
+
+	bool RouteCancelProduction(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Index)
+	{
+		const int32 Args[1] = { Index };
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerCancelProduction"), TArrayView<const int32>(Args, 1), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteTribute(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Receiver, const int32 Resource, const int32 Amount)
+	{
+		const int32 Args[3] = { Receiver, Resource, Amount };
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerTribute"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
+	}
+
+	bool RouteMarketTrade(AHOLPlayerController* Controller, AHOLBuilding* Building, const int32 Resource, const int32 Lots, const bool bBuy)
+	{
+		const int32 Args[3] = { Resource, Lots, bBuy ? 1 : 0 };
+		return CallFull(Controller, TEXT("hol.Rpc.ScriptEconomy"), TEXT("ServerMarketTrade"), TArrayView<const int32>(Args, 3), nullptr, nullptr, Building, nullptr);
 	}
 
 	// The int-only form (the HALDIR-1117n / 1117o routes).
