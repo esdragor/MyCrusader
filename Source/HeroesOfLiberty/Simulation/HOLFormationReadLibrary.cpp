@@ -40,6 +40,12 @@ double UHOLFormationReadLibrary::GetConstant(const FName Name)
 		{ TEXT("BlockBreakDistance"), HOLFormation::BlockBreakDistance },
 		{ TEXT("BlockMemberStuckSteps"), HOLFormation::BlockMemberStuckSteps },
 		{ TEXT("FileSlideMaxAngle"), HOLFormation::FileSlideMaxAngle },
+		{ TEXT("BlockTurnWindow"), HOLFormation::BlockTurnWindow },
+		{ TEXT("BlockLagDistance"), HOLFormation::BlockLagDistance },
+		{ TEXT("BlockSoftHoldDistance"), HOLFormation::BlockSoftHoldDistance },
+		{ TEXT("BlockBlendMargin"), HOLFormation::BlockBlendMargin },
+		{ TEXT("BlockJoinDistance"), HOLFormation::BlockJoinDistance },
+		{ TEXT("SettleMinGapInSpacings"), HOLFormation::SettleMinGapInSpacings },
 	};
 	const double* Found = Constants.Find(Name);
 	return Found ? *Found : 0.;
@@ -142,4 +148,78 @@ void UHOLFormationReadLibrary::GetCorridorAt(const TArray<double>& Shift, const 
 	const double Distance, double& OutShift, double& OutSqueeze)
 {
 	HOLFormation::GetCorridorAt(Shift, Squeeze, SampleStep, Distance, OutShift, OutSqueeze);
+}
+
+// ---- GALADRIEL-1117q (NOT COMPILED) ----
+
+void UHOLFormationReadLibrary::PlaceGroupClamped(const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit, const bool bPeasantsOnly,
+	const FVector2D& Target, const FVector2D& Forward, const double ColumnSpacing, const double RowSpacing, const double MaxPlaceX,
+	int32& OutProjected, TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit)
+{
+	int32 Projected = 0;
+	HOLFormation::PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, Target, Forward, ColumnSpacing, RowSpacing,
+		[&Projected, MaxPlaceX](const FVector2D& Place) { ++Projected; return FVector2D(FMath::Min(Place.X, MaxPlaceX), Place.Y); },
+		OutPlaces, OutPlaceOfUnit);
+	OutProjected = Projected;
+}
+
+void UHOLFormationReadLibrary::PlaceGroupAvoidingDisc(const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit, const bool bPeasantsOnly,
+	const FVector2D& Target, const FVector2D& Forward, const double ColumnSpacing, const double RowSpacing, const bool bWalledIn,
+	const FVector2D& DiscCentre, const double Clearance, int32& OutProjected, TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit)
+{
+	int32 Projected = 0;
+	HOLFormation::PlaceGroup(Positions, KindOfUnit, bPeasantsOnly, Target, Forward, ColumnSpacing, RowSpacing,
+		[bWalledIn, DiscCentre, Clearance](const FVector2D& Point) { return !bWalledIn && FVector2D::Distance(Point, DiscCentre) >= Clearance; },
+		[&Projected, bWalledIn](const FVector2D& Place) { ++Projected; return bWalledIn ? FVector2D::ZeroVector : Place; },
+		OutPlaces, OutPlaceOfUnit);
+	OutProjected = Projected;
+}
+
+int32 UHOLFormationReadLibrary::SettleBlockedPlacesWalled(TArray<FVector2D>& InOutPlaces, const TArray<bool>& IsBlocked, const FVector2D& Anchor,
+	const double Spacing, TArray<bool>& OutSettled)
+{
+	return HOLFormation::SettleBlockedPlaces(InOutPlaces, IsBlocked, Anchor, Spacing, [](const FVector2D&) { return false; }, OutSettled);
+}
+
+void UHOLFormationReadLibrary::AssignPlacesByKind(const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit, const TArray<FVector2D>& Places,
+	const FVector2D& Forward, TArray<int32>& OutPlaceOfUnit)
+{
+	HOLFormation::AssignPlacesByKind(Positions, KindOfUnit, Places, Forward, OutPlaceOfUnit);
+}
+
+double UHOLFormationReadLibrary::GetLineLength(const TArray<FVector2D>& Points) { return HOLFormation::GetLineLength(Points); }
+FVector2D UHOLFormationReadLibrary::GetPointOnLine(const TArray<FVector2D>& Points, const double Distance) { return HOLFormation::GetPointOnLine(Points, Distance); }
+
+FVector2D UHOLFormationReadLibrary::GetDirectionOnLine(const TArray<FVector2D>& Points, const double Distance, const double Window, const FVector2D& Fallback)
+{
+	return HOLFormation::GetDirectionOnLine(Points, Distance, Window, Fallback);
+}
+
+FVector2D UHOLFormationReadLibrary::BlockOffsetToWorld(const FVector2D& Offset, const FVector2D& Forward) { return HOLFormation::BlockOffsetToWorld(Offset, Forward); }
+FVector2D UHOLFormationReadLibrary::WorldToBlockOffset(const FVector2D& Delta, const FVector2D& Forward) { return HOLFormation::WorldToBlockOffset(Delta, Forward); }
+
+FVector2D UHOLFormationReadLibrary::GetSlotOnPath(const TArray<FVector2D>& Points, const double Distance, const FVector2D& Offset, const FVector2D& Fallback)
+{
+	return HOLFormation::GetSlotOnPath(Points, Distance, Offset, Fallback);
+}
+
+double UHOLFormationReadLibrary::GetBlockSoftPace(const double MaxGap) { return HOLFormation::GetBlockSoftPace(MaxGap); }
+double UHOLFormationReadLibrary::GetBlockBlendDistance(const double BlockSize, const double PathLength) { return HOLFormation::GetBlockBlendDistance(BlockSize, PathLength); }
+double UHOLFormationReadLibrary::GetBlockBlend(const double Remaining, const double BlendDistance) { return HOLFormation::GetBlockBlend(Remaining, BlendDistance); }
+
+int32 UHOLFormationReadLibrary::FindPackets(const TArray<FVector2D>& Positions, const double LinkDistance, TArray<int32>& OutPacketOfUnit,
+	TArray<int32>& OutPacketSizes)
+{
+	return HOLFormation::FindPackets(Positions, LinkDistance, OutPacketOfUnit, OutPacketSizes);
+}
+
+int32 UHOLFormationReadLibrary::FindStragglers(const TArray<FVector2D>& Positions, const double LinkDistance, TArray<bool>& OutIsStraggler)
+{
+	return HOLFormation::FindStragglers(Positions, LinkDistance, OutIsStraggler);
+}
+
+int32 UHOLFormationReadLibrary::ReserveRearSlots(const TArray<FVector2D>& Slots, const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit,
+	const TArray<bool>& IsStraggler, TArray<int32>& OutSlotOfUnit, TArray<bool>& OutQueued)
+{
+	return HOLFormation::ReserveRearSlots(Slots, Positions, KindOfUnit, IsStraggler, OutSlotOfUnit, OutQueued);
 }

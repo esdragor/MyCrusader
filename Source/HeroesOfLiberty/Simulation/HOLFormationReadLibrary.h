@@ -31,8 +31,8 @@ struct HEROESOFLIBERTY_API FHOLPlaceHoldView
 /**
  * MIG-C-Formation (D830, D836, D839): the rules of the simple formation (HOLFormation, Simulation/HOLFormationRules.h, one C++ source read
  * by the simulation) made callable from script, for the script port of HOLFormationTests.cpp (Script/Tests/HOLFormation_Test.as). Thin
- * wrappers, no rule of its own. Not exposed yet (listed in the report): the by-depth assignment, the block (packets, stragglers, rear slots,
- * blend, line, corridor offsets), the settle of blocked places, the overload of PlaceGroup with IsFree.
+ * wrappers, no rule of its own. Block, packets, stragglers, rear slots, settle: exposed by GALADRIEL-1117q (all basic types);
+ * blend, line, offsets.
  * NOT COMPILED when written (GALADRIEL-1117p).
  */
 UCLASS()
@@ -118,4 +118,67 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
 	static void GetCorridorAt(const TArray<double>& Shift, const TArray<double>& Squeeze, double SampleStep, double Distance,
 		double& OutShift, double& OutSqueeze);
+
+	// ---- GALADRIEL-1117q (NOT COMPILED): what the four remaining tests (AssignByDepth, Group, Block, Settle) need ----
+
+	/** HOLFormation::PlaceGroup with a ProjectPlace that counts its calls (OutProjected) and clamps X to MaxPlaceX (pass a huge value for the identity). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static void PlaceGroupClamped(const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit, bool bPeasantsOnly,
+		const FVector2D& Target, const FVector2D& Forward, double ColumnSpacing, double RowSpacing, double MaxPlaceX, int32& OutProjected,
+		TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit);
+
+	/**
+	 * The PlaceGroup overload with IsFree: free = at least Clearance from DiscCentre (nothing is free when bWalledIn); ProjectPlace counts its
+	 * calls (OutProjected) and returns the place given (the zero vector when bWalledIn, the caller's fallback).
+	 */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static void PlaceGroupAvoidingDisc(const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit, bool bPeasantsOnly,
+		const FVector2D& Target, const FVector2D& Forward, double ColumnSpacing, double RowSpacing, bool bWalledIn,
+		const FVector2D& DiscCentre, double Clearance, int32& OutProjected, TArray<FVector2D>& OutPlaces, TArray<int32>& OutPlaceOfUnit);
+
+	/** HOLFormation::SettleBlockedPlaces with an IsFree that is always false (walled in). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static int32 SettleBlockedPlacesWalled(UPARAM(ref) TArray<FVector2D>& InOutPlaces, const TArray<bool>& IsBlocked, const FVector2D& Anchor,
+		double Spacing, TArray<bool>& OutSettled);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static void AssignPlacesByKind(const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit, const TArray<FVector2D>& Places,
+		const FVector2D& Forward, TArray<int32>& OutPlaceOfUnit);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static double GetLineLength(const TArray<FVector2D>& Points);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static FVector2D GetPointOnLine(const TArray<FVector2D>& Points, double Distance);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static FVector2D GetDirectionOnLine(const TArray<FVector2D>& Points, double Distance, double Window, const FVector2D& Fallback);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static FVector2D BlockOffsetToWorld(const FVector2D& Offset, const FVector2D& Forward);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static FVector2D WorldToBlockOffset(const FVector2D& Delta, const FVector2D& Forward);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static FVector2D GetSlotOnPath(const TArray<FVector2D>& Points, double Distance, const FVector2D& Offset, const FVector2D& Fallback);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static double GetBlockSoftPace(double MaxGap);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static double GetBlockBlendDistance(double BlockSize, double PathLength);
+
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Formation")
+	static double GetBlockBlend(double Remaining, double BlendDistance);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static int32 FindPackets(const TArray<FVector2D>& Positions, double LinkDistance, TArray<int32>& OutPacketOfUnit, TArray<int32>& OutPacketSizes);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static int32 FindStragglers(const TArray<FVector2D>& Positions, double LinkDistance, TArray<bool>& OutIsStraggler);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Formation")
+	static int32 ReserveRearSlots(const TArray<FVector2D>& Slots, const TArray<FVector2D>& Positions, const TArray<int32>& KindOfUnit,
+		const TArray<bool>& IsStraggler, TArray<int32>& OutSlotOfUnit, TArray<bool>& OutQueued);
 };
