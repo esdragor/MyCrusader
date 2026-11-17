@@ -94,6 +94,22 @@ public:
 	/** UnitId as int32 (cast back to uint32); 0 stops watching. */
 	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
 	static bool WatchUnit(AActor* RpcActor, int32 UnitId);
+
+	// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat. Same model: the owner controller's _Implementation does the work (board, fan-out, journal). The fan-out
+	// reaches each viewer by its script Client RPC when hol.Rpc.ScriptSignal / ScriptChat is 1 (HOLPlayerController.cpp, HOLRpcScriptRoute_Haldir1117n::CallEx). False: no owner controller.
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool PostSignal(AActor* RpcActor, int32 Kind, double X, double Y, double Z);
+
+	/** Client: AHOLPlayerController::ClientReceiveSignal_Implementation (keeps the signal for the minimap, the ground mark, the thread line). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool ReceiveSignal(AActor* RpcActor, int32 Sender, int32 Kind, double X, double Y, double Z);
+
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool PostChat(AActor* RpcActor, int32 Channel, const FString& Text, int32 TargetSlot);
+
+	/** Client: AHOLPlayerController::ClientReceiveChat_Implementation (counts it, adds the thread line). */
+	UFUNCTION(BlueprintCallable, Category = "HeroesOfLiberty|Rpc")
+	static bool ReceiveChat(AActor* RpcActor, int32 SenderSlot, int32 Channel, const FString& Text);
 };
 
 /** Server entry point the script cannot have by itself (generalises HOLScriptRpcProbeBridge): one actor per script class derived from the base. */

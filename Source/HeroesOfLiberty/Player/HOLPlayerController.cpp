@@ -5074,8 +5074,9 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return CVar && CVar->GetInt() != 0;
 	}
 
-	// Calls the script actor's Server RPC by name with at most one int argument (bool as 0 / 1); false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
-	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
+	// Calls the script actor's RPC by name (Server from a client, or Client from the server: HALDIR-1117p). Int arguments (bool as 0 / 1) fill the bool / int32 / uint32 parameters in order,
+	// Text the FString parameter and Location the FVector one. false: no actor, no such function (script not loaded): the caller falls back to the C++ RPC.
+	bool CallEx(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args, const FString* Text, const FVector* Location)
 	{
 		if (!Controller || !IsOn(CVarName))
 		{
@@ -5091,19 +5092,41 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		Params.SetNumZeroed(FMath::Max<int32>(Function->ParmsSize, 1));
 		Function->InitializeStruct(Params.GetData());
 		int32 ArgIndex = 0;
-		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm) && ArgIndex < Args.Num(); ++It, ++ArgIndex)
+		for (TFieldIterator<FProperty> It(Function); It && It->HasAnyPropertyFlags(CPF_Parm); ++It)
 		{
-			if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+			if (It->HasAnyPropertyFlags(CPF_ReturnParm))
 			{
-				BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex] != 0);
+				continue;
 			}
-			else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+			if (const FStrProperty* StrProperty = CastField<FStrProperty>(*It))
 			{
-				IntProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex]);
+				if (Text)
+				{
+					StrProperty->SetPropertyValue_InContainer(Params.GetData(), *Text);
+				}
 			}
-			else if (const FUInt32Property* UIntProperty = CastField<FUInt32Property>(*It))
+			else if (const FStructProperty* StructProperty = CastField<FStructProperty>(*It))
 			{
-				UIntProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint32>(Args[ArgIndex]));
+				if (Location && StructProperty->Struct == TBaseStructure<FVector>::Get())
+				{
+					*StructProperty->ContainerPtrToValuePtr<FVector>(Params.GetData()) = *Location;
+				}
+			}
+			else if (Args.IsValidIndex(ArgIndex))
+			{
+				if (const FBoolProperty* BoolProperty = CastField<FBoolProperty>(*It))
+				{
+					BoolProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex] != 0);
+				}
+				else if (const FIntProperty* IntProperty = CastField<FIntProperty>(*It))
+				{
+					IntProperty->SetPropertyValue_InContainer(Params.GetData(), Args[ArgIndex]);
+				}
+				else if (const FUInt32Property* UIntProperty = CastField<FUInt32Property>(*It))
+				{
+					UIntProperty->SetPropertyValue_InContainer(Params.GetData(), static_cast<uint32>(Args[ArgIndex]));
+				}
+				++ArgIndex;
 			}
 		}
 		RpcActor->ProcessEvent(Function, Params.GetData());
@@ -5111,6 +5134,11 @@ namespace HOLRpcScriptRoute_Haldir1117n
 		return true;
 	}
 
+	// The int-only form (the HALDIR-1117n / 1117o routes).
+	bool CallN(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const TArrayView<const int32> Args)
+	{
+		return CallEx(Controller, CVarName, FunctionName, Args, nullptr, nullptr);
+	}
 	// The one-int form of the HALDIR-1117n routes (bool as 0 / 1).
 	bool Call(AHOLPlayerController* Controller, const TCHAR* CVarName, const TCHAR* FunctionName, const bool bHasArg, const int32 Arg)
 	{
@@ -5253,7 +5281,11 @@ void AHOLPlayerController::RequestSignal(const int32 Kind, const FVector& Locati
 	// A pure spectator places none (it has no seat); the board refuses the rest (a defeated player, the rate).
 	if (!IsSpectator())
 	{
-		ServerPostSignal(Kind, Location);
+		const int32 SignalArgs[1] = { Kind };
+			if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptSignal"), TEXT("ServerPostSignal"), TArrayView<const int32>(SignalArgs, 1), nullptr, &Location))
+			{
+				ServerPostSignal(Kind, Location);
+			}
 	}
 }
 
@@ -5289,7 +5321,12 @@ void AHOLPlayerController::ServerPostSignal_Implementation(const int32 Kind, con
 		const bool bSpectator = UHOLSignalSubsystem::IsSignalSpectator(World, ViewerSlot, Viewer->IsSpectator());
 		if (Board->SeesNow(Book, Sender, ViewerSlot, bSpectator))
 		{
-			Viewer->ClientReceiveSignal(Sender, Kind, Location);
+			// HALDIR-1117p: through the viewer's script actor (Client RPC) when hol.Rpc.ScriptSignal is 1, else the C++ RPC as before.
+				const int32 ReceiveArgs[2] = { Sender, Kind };
+				if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, TEXT("hol.Rpc.ScriptSignal"), TEXT("ClientReceiveSignal"), TArrayView<const int32>(ReceiveArgs, 2), nullptr, &Location))
+				{
+					Viewer->ClientReceiveSignal(Sender, Kind, Location);
+				}
 		}
 	}
 }
@@ -5338,7 +5375,11 @@ static TAutoConsoleVariable<int32> CVarChatWindowMs(TEXT("hol.Chat.WindowMs"), 0
 void AHOLPlayerController::RequestChat(const int32 Channel, const FString& Text, const int32 TargetSlot)
 {
 	// A pure spectator talks too (with the spectators, D376): the server decides.
-	ServerPostChat(Channel, Text, TargetSlot);
+	const int32 ChatArgs[2] = { Channel, TargetSlot };
+	if (!HOLRpcScriptRoute_Haldir1117n::CallEx(this, TEXT("hol.Rpc.ScriptChat"), TEXT("ServerPostChat"), TArrayView<const int32>(ChatArgs, 2), &Text, nullptr))
+	{
+		ServerPostChat(Channel, Text, TargetSlot);
+	}
 }
 
 void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, const FString& Text, const int32 TargetSlot)
@@ -5380,7 +5421,12 @@ void AHOLPlayerController::ServerPostChat_Implementation(const int32 Channel, co
 		const bool bReaches = Viewer == this || Board->ReachesNow(Seats, Channel, Sender, TargetSlot, ViewerSlot);
 		if (bReaches)
 		{
-			Viewer->ClientReceiveChat(Sender, Channel, Text);
+			// HALDIR-1117p: through the viewer's script actor (Client RPC) when hol.Rpc.ScriptChat is 1, else the C++ RPC as before.
+				const int32 ReceiveChatArgs[2] = { Sender, Channel };
+				if (!HOLRpcScriptRoute_Haldir1117n::CallEx(Viewer, TEXT("hol.Rpc.ScriptChat"), TEXT("ClientReceiveChat"), TArrayView<const int32>(ReceiveChatArgs, 2), &Text, nullptr))
+				{
+					Viewer->ClientReceiveChat(Sender, Channel, Text);
+				}
 			++Sent;
 		}
 	}

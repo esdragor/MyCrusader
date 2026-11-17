@@ -196,3 +196,32 @@ bool UHOLRpcBridgeLibrary::WatchUnit(AActor* RpcActor, const int32 UnitId)
 	if (Controller) { Controller->ServerWatchUnit_Implementation(static_cast<uint32>(UnitId)); }
 	return Controller != nullptr;
 }
+
+// ---- HALDIR-1117p (NOT COMPILED), MIG2-S3 T5 lot L1: Signals and chat (friend class: the _Implementation of the owner controller, same body, same journal).
+bool UHOLRpcBridgeLibrary::PostSignal(AActor* RpcActor, const int32 Kind, const double X, const double Y, const double Z)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerPostSignal_Implementation(Kind, FVector(X, Y, Z)); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::ReceiveSignal(AActor* RpcActor, const int32 Sender, const int32 Kind, const double X, const double Y, const double Z)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ClientReceiveSignal_Implementation(Sender, Kind, FVector(X, Y, Z)); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::PostChat(AActor* RpcActor, const int32 Channel, const FString& Text, const int32 TargetSlot)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ServerPostChat_Implementation(Channel, Text, TargetSlot); }
+	return Controller != nullptr;
+}
+
+bool UHOLRpcBridgeLibrary::ReceiveChat(AActor* RpcActor, const int32 SenderSlot, const int32 Channel, const FString& Text)
+{
+	AHOLPlayerController* Controller = HOLRpcBridgeL1_Haldir1117o::OwnerController(RpcActor);
+	if (Controller) { Controller->ClientReceiveChat_Implementation(SenderSlot, Channel, Text); }
+	return Controller != nullptr;
+}
