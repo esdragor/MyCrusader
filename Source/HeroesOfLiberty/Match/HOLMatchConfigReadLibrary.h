@@ -99,4 +99,36 @@ public:
 	/** FFileHelper::LoadFileToString of a path relative to the project directory (FPaths::ProjectDir()); false if unreadable. */
 	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
 	static bool LoadProjectFileText(const FString& RelativePath, FString& OutText);
+
+	/** FHOLMatchConfig::NeutralOwner (the owner index of the neutral units). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
+	static int32 GetNeutralOwner();
+
+	/** HOLPlayerColors::GetColor(i).DWColor() for i in 0..NumColors-1, each as an int32 bit pattern (the script counts the distinct ones). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
+	static TArray<int32> GetPaletteDWColors();
+
+	/** HOLPlayerColors::GetColorName(ColorIndex).ToString() (empty = unnamed). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
+	static FString GetPaletteColorName(int32 ColorIndex);
+
+	/** HOLPlayerColors::GetLinearColor(A) == HOLPlayerColors::GetLinearColor(B) (an index of NumColors and above wraps). */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
+	static bool PaletteLinearColorsEqual(int32 IndexA, int32 IndexB);
+
+	/**
+	 * HOLPlayerColors::GetOwnerLinearColor(OwnerPlayer, SlotColors) compared with HOLPlayerColors::GetLinearColor(PaletteIndex) within Tolerance
+	 * (0 = exact): the colour a unit of that owner is drawn with is that palette colour. SlotColors[Slot] is the colour each slot chose.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
+	static bool OwnerColorIsPaletteColor(int32 OwnerPlayer, const TArray<int32>& SlotColors, int32 PaletteIndex, float Tolerance);
+
+	/**
+	 * What a dedicated server started with -MatchConfig=<file> goes through, on a game instance subsystem made here (UHOLMatchSubsystem): Json is
+	 * written to a file of the automation transient directory, then a fresh subsystem is asked HasConfig and GetConfigOrDefault before the load (no
+	 * configuration, the default), LoadFromFile, then HasConfig and the configuration against Json (AreEqual). The refusal of a missing file is not
+	 * here (it logs an Error that only the C++ test declares expected). False if Json is unreadable or the file cannot be written.
+	 */
+	UFUNCTION(BlueprintPure, Category = "HeroesOfLiberty|Match")
+	static bool RunSubsystemFile(const FString& Json, bool& bOutNoConfigAtFirst, bool& bOutDefaultWhenNone, bool& bOutLoaded, bool& bOutConfigFromFile);
 };

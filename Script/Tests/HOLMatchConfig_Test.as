@@ -4,9 +4,10 @@
 // faction 0 DawnOrder 1 BlackLegions 5 Templars; mode 0 Standard; map size 0 None). Same vectors as the C++ tests. Differences, all stated:
 // the C++ fixture MakeFilledConfig is rebuilt here from MakeDefaultJson + SetSlotJson / SetOptionsJson; "reads its own JSON" and "identical after
 // a round trip" go through RoundTripsLosslessly (FromJson, ToJson, FromJson, same configuration) since the script holds no struct; "output
-// untouched on failure" is ReadLeavesOutputUntouchedOnFailure. Not ported (stay C++): SubsystemFile (UGameInstance + UHOLMatchSubsystem +
-// files), PlayerColors and NeutralUnitColor (HOLPlayerColors, a palette table with no library). This file compiles only after the C++ lot of
-// the library is built (the build is pending); the C++ tests are NOT removed here.
+// untouched on failure" is ReadLeavesOutputUntouchedOnFailure. SubsystemFile, PlayerColors and NeutralUnitColor are ported below (CELEBORN-1117o) through new library functions (RunSubsystemFile,
+// GetPaletteDWColors, GetPaletteColorName, PaletteLinearColorsEqual, OwnerColorIsPaletteColor, GetNeutralOwner); not ported: the refusal of a
+// missing file in SubsystemFile (it logs an Error that only the C++ test declares expected), so the C++ SubsystemFile test stays. This file compiles
+// only after the C++ lot of the library is built (the build is pending); the three C++ tests are NOT removed until red then green is seen.
 
 struct FMCFGView
 {
@@ -254,4 +255,64 @@ void Test_MatchConfigRandomColors(FUnitTest& T)
 		}
 	}
 	T.AssertTrue(FirstDrawn.Num() > 1, "the draw varies with the seed");
+}
+
+// SubsystemFile: what a dedicated server started with -MatchConfig=<file> goes through (a UHOLMatchSubsystem fed from a file).
+void Test_MatchConfigSubsystemFile(FUnitTest& T)
+{
+	bool bNoConfigAtFirst = false;
+	bool bDefaultWhenNone = false;
+	bool bLoaded = false;
+	bool bConfigFromFile = false;
+	bool bRan = HOLMatchConfigRead::RunSubsystemFile(MCFG_Filled(), bNoConfigAtFirst, bDefaultWhenNone, bLoaded, bConfigFromFile);
+	T.AssertTrue(bRan, "file written");
+	T.AssertTrue(bNoConfigAtFirst, "no configuration at first");
+	T.AssertTrue(bDefaultWhenNone, "default when none");
+	T.AssertTrue(bLoaded, "file read");
+	T.AssertTrue(bConfigFromFile, "configuration from the file");
+}
+
+// PlayerColors: the palette is eight distinct named colours and an index past the end wraps.
+void Test_MatchConfigPlayerColors(FUnitTest& T)
+{
+	int NumColors = HOLMatchConfigRead::GetNumColors();
+	TArray<int> Palette = HOLMatchConfigRead::GetPaletteDWColors();
+	T.AssertEquals(NumColors, Palette.Num(), "one colour per palette index");
+	TArray<int> Distinct;
+	for (int Index = 0; Index < NumColors; Index++)
+	{
+		if (Index < Palette.Num() && !Distinct.Contains(Palette[Index]))
+		{
+			Distinct.Add(Palette[Index]);
+		}
+		T.AssertFalse(HOLMatchConfigRead::GetPaletteColorName(Index).IsEmpty(), "named (" + Index + ")");
+	}
+	T.AssertEquals(NumColors, Distinct.Num(), "distinct colours");
+	T.AssertTrue(HOLMatchConfigRead::PaletteLinearColorsEqual(NumColors, 0), "index wraps");
+}
+
+// NeutralUnitColor: neutral units (owner 8) were drawn in the colour of palette index 0 (blue); the colour written for the neutral owner must be
+// the colour of no slot, whatever the slots chose, and every slot keeps its chosen colour.
+void Test_MatchConfigNeutralUnitColor(FUnitTest& T)
+{
+	int Slots = HOLMatchConfigRead::GetMaxSlots();
+	int NumColors = HOLMatchConfigRead::GetNumColors();
+	int Neutral = HOLMatchConfigRead::GetNeutralOwner();
+	// The default assignment (slot i, colour i) and a shuffled one: both use the whole palette.
+	for (int Variant = 0; Variant < 2; Variant++)
+	{
+		TArray<int> SlotColors;
+		for (int Slot = 0; Slot < Slots; Slot++)
+		{
+			SlotColors.Add(Variant == 0 ? Slot : (Slot * 3 + 1) % NumColors);
+		}
+		for (int Color = 0; Color < NumColors; Color++)
+		{
+			T.AssertFalse(HOLMatchConfigRead::OwnerColorIsPaletteColor(Neutral, SlotColors, Color, 0.001f), "variant " + Variant + ": neutral colour is not palette colour " + Color);
+		}
+		for (int Slot = 0; Slot < Slots; Slot++)
+		{
+			T.AssertTrue(HOLMatchConfigRead::OwnerColorIsPaletteColor(Slot, SlotColors, SlotColors[Slot], 0.0f), "variant " + Variant + ": slot " + Slot + " keeps its chosen colour");
+		}
+	}
 }
