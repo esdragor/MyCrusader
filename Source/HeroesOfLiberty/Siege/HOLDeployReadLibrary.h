@@ -87,7 +87,7 @@ struct FHOLDeployDecision
 
 /**
  * The deployable siege engine's rule that STAYS in C++ (HOLDeploy, Siege/HOLDeployRules.h, read by Mass) read by Angelscript (namespace
- * HOLDeployRead there): D836 keeps the rule in C++, so that its tests (HOLDeployRulesTests.cpp, 9 tests) can be ported to script (socle
+ * HOLDeployRead there): D836 keeps the rule in C++, so that its 9 tests, now in Script/Tests/HOLDeployRules_Test.as, run against the real rule (socle
  * step 1f, D830, D839). Wrappers only: no rule here; the C++ enums and structs are copied to their UENUM/USTRUCT twins and back.
  */
 UCLASS()
